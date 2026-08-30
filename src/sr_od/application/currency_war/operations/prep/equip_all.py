@@ -30,9 +30,6 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_comps import (
     equip_alloc_empty_reason,
 )
-from sr_od.application.currency_war.kernel.cw_junk_first import (
-    junk_first_allocation as _junk_first_allocation,
-)
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     load_avatar_templates,
@@ -517,20 +514,20 @@ class EquipAll(SrOperation):
             _round_now, _node_type,
             _reg_eq.opening_hold_battle_gate_enabled,
             _reg_eq.opening_hold_battle_nodes)
-        _rust_release = _rust_release_active(
-            list(getattr(_st_hold, 'enemy_affixes', []) or []) if _st_hold is not None else [],
-            _reg_eq.rust_wear_release_enabled)
-        _transition_hold = _transition_hold_active(_tgt_comp, _form, _dual, _opening_round)
-        # W880 装备环境信号单源(软弱无力/额外打击 → fill-to-3 量变体,
-        # kernel/cw_equip_env):决策调用处构造一次打包传递,变体不再各自摸 state;
-        # state 缺失(离线/旧栈)= 空集 → 环境判据安全默认不启用。
+        # W880 装备环境信号单源(设计 §2.2):构造点唯一 = 本处,一次打包传递;
+        # 生锈豁免(门)、fill3(量)、变宝为废(序)三个变体一律吃 signals,
+        # 不再各自摸 state;state 缺失(离线/旧栈)= 空集 → 判据安全默认不启用。
+        from sr_od.application.currency_war.kernel.cw_equip_env import (
+            apply_equip_env_variants as _apply_env_variants,
+        )
         from sr_od.application.currency_war.kernel.cw_equip_env import (
             build_equip_env_signals,
         )
-        from sr_od.application.currency_war.kernel.cw_equip_env import (
-            fill3_allocation as _fill3_allocation,
-        )
         _equip_signals = build_equip_env_signals(_st_hold)
+        _rust_release = _rust_release_active(
+            sorted(_equip_signals.enemy_affixes),
+            _reg_eq.rust_wear_release_enabled)
+        _transition_hold = _transition_hold_active(_tgt_comp, _form, _dual, _opening_round)
         # fill 防线③(设计 §3.1):过渡期 hold(非生锈豁免态)不激活 fill——
         # hold 语义(攒给成型核心)优先,防两套意图打架
         _fill_hold = bool(_transition_hold and not _rust_release)
@@ -641,18 +638,15 @@ class EquipAll(SrOperation):
                 # 变宝为废牺牲合成排序(kernel/cw_junk_first;决策排序包装,
                 # 开关默认关=基分配原样零漂移;W849 拖拽执行链零触碰——本行
                 # 只换决策函数,输入输出形态不变 list[(char, equip)])
-                alloc = _junk_first_allocation(
-                    _match.session, _reg_eq, _tgt_comp, deployed,
-                    [n for n, _ in wearable], occupied_m7,
-                    list(getattr(_st_hold, 'enemy_affixes', []) or [])
-                    if _st_hold is not None else [])
-                # W880 装备穿满族 fill-to-3 量变体(软弱无力/额外打击;开关默认
-                # 关=基分配原样零漂移):非命脉散件改派给差件凑满 3 的角色
-                # (前排先=承伤序,已穿多者先=集中度)。纯决策后处理,执行链零触碰;
-                # 追加在 junk_first(序)之后不改其既有排序成员,只添改派尾差。
-                alloc, _fill_action = _fill3_allocation(
-                    _reg_eq, _tgt_comp, deployed, alloc, occupied_m7,
-                    _equip_signals, hold_active=_fill_hold)
+                # W880 装备环境变体管道(设计 §2.2:门→量→序):基分配
+                # equip_allocation 只算一次;①门=hold/生锈豁免(hold_active
+                # 调用侧传入)②量=fill3(软弱无力/额外打击,开关默认关零漂移)
+                # ③序=变宝为废牺牲合成(吃 signals,行为不变迁移归位)。
+                # 纯决策后处理,执行链(W849 drag/验穿)零触碰。
+                alloc, _env_actions = _apply_env_variants(
+                    _equip_signals, _reg_eq, _match.session, _tgt_comp,
+                    deployed, [n for n, _ in wearable], occupied_m7,
+                    hold_active=_fill_hold)
                 if _transition_hold and _rust_release:
                     # W607 H2②(ADR-0461):库藏生锈在场,owned 滞留=主动喂敌
                     # (competitors.md:45)→ hold 豁免,分配序列全量穿戴。

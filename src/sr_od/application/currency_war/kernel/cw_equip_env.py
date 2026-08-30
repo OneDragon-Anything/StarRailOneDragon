@@ -203,3 +203,44 @@ def fill3_allocation(registry,
              '(机制真值=affix_effects_data:未穿满3件伤害80%%/每空栏承伤+8%%真伤)',
              moved, fill_target, sorted(signals.enemy_affixes))
     return new_alloc, f'filled:{moved}'
+
+
+def apply_equip_env_variants(signals: EquipEnvSignals,
+                             registry,
+                             session,
+                             comp: Comp | None,
+                             deployed: list,
+                             owned: list[str],
+                             occupied: dict[tuple[str, int], list[str]] | None,
+                             hold_active: bool,
+                             ) -> tuple[list[tuple[str, str]], list[str]]:
+    """装备环境变体管道统一入口(设计 §2.2 门/量/序;EquipAll 唯一调用点)。
+
+    - 基分配 ``equip_allocation`` 只算一次;
+    - ①门 = hold/生锈豁免:**不在本函数内改写分配**——门作用于 hold 过滤分支
+      (equip_all 既有语义),经 ``hold_active`` 实参(已含生锈豁免组合)辖量变体;
+    - ②量 = fill3(``fill3_allocation``,软弱无力/额外打击合并);
+    - ③序 = 变宝为废牺牲合成(``junk_first_allocation``,行为不变迁移:改吃
+      signals 派生的词缀名单 + 直收②的产出为基分配,位面记账/推迟预算零改动)。
+
+    序依据(设计 §2.2):门先裁掉不该穿的范围,量在范围内决定「穿满给谁」,
+    序最后决定「先合成哪个」——序变体依赖 alloc 的合成事件语义,必须最后;
+    fill 改派件均非主线组件,不可能构成 key 高价值合成完成件,不扰序变体的
+    推迟/牺牲判定。
+
+    返回 (分配序列, 各变体动作记录 ``['fill3=<动作>']``);全开关默认关 =
+    基分配原样(零漂移锚)。session 缺失(离线/旧栈)由序变体内部保守降级。
+    """
+    from sr_od.application.currency_war.kernel.cw_comps import equip_allocation
+    from sr_od.application.currency_war.kernel.cw_junk_first import (
+        junk_first_allocation,
+    )
+    actions: list[str] = []
+    base = equip_allocation(comp, deployed, owned, occupied)
+    alloc, fill_action = fill3_allocation(registry, comp, deployed, base,
+                                          occupied, signals, hold_active)
+    actions.append(f'fill3={fill_action}')
+    alloc = junk_first_allocation(session, registry, comp, deployed, owned,
+                                  occupied, sorted(signals.enemy_affixes),
+                                  base_alloc=alloc)
+    return alloc, actions

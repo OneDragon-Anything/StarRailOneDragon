@@ -204,8 +204,13 @@ def junk_first_allocation(session,
                           owned: list[str],
                           occupied: dict[tuple[str, int], list[str]] | None,
                           enemy_affixes: list[str] | None,
+                          base_alloc: list[tuple[str, str]] | None = None,
                           ) -> list[tuple[str, str]]:
     """EquipAll 决策入口包装:基分配(语义不变)→ 变宝为废后处理。
+
+    ``base_alloc``:W880 管道接入(设计 §2.2 量→序)——调用方已算好基分配
+    (可经 fill3 量变体改派后)时直传,本函数不再重复计算 equip_allocation;
+    None(缺省,含既有测试/旧调用)→ 内部自算,行为逐位不变。
 
     - registry 开关关(默认)→ 基分配原样返回(**零漂移锚**);
     - 环境不在场 → 同上;
@@ -217,7 +222,8 @@ def junk_first_allocation(session,
     session=None 时预算按耗尽计,只重排不推迟)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import equip_allocation
-    base = equip_allocation(comp, deployed, owned, occupied)
+    base = (base_alloc if base_alloc is not None
+            else equip_allocation(comp, deployed, owned, occupied))
     enabled = bool(getattr(registry, 'junk_first_sacrifice_enabled', False))
     if not enabled or comp is None:
         return base
