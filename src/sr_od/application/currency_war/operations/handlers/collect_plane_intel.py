@@ -124,6 +124,31 @@ def node_seq_cross_mismatch(prep_seq: list[str | None],
     return mism if compared else None
 
 
+def decide_plane_skip(plane_no: int, session_plane: int | None,
+                      ledger_seq: list[str | None] | None) -> tuple[bool, str]:
+    """单位面「是否跳过采集」判据(纯函数,可单测)。
+
+    语义(实机观察实证:P2 采集时逐位面全量重采,位面 1 已变暗=过去时,
+    重采浪费且变暗渲染下节点条识别退化导致长时间停留):
+    - ``session_plane`` 有真值且 ``plane_no < session_plane``(过去位面):
+      台账已有该位面值 → 跳过(台账值 = 过去位面进位面时代已写入,不覆写
+      不重采);台账**缺值** → 不跳,降级补采一次(变暗态低置信,记日志)。
+    - 当前/未来位面(>= session_plane)→ 正常采集。
+    - ``session_plane`` 无真值(None)→ 不跳全量采集(无真值不发明跳过)。
+
+    :param ledger_seq: 节点台账该位面序列(``PlaneNodeLedger.seq_by_plane``;
+        None/空/全 None 位 = 缺值)。注意全 None 与缺值同判——全 None 的行
+        对查表方(:func:`cw_state.ledger_node_type`)等价于没有。
+    :return: ``(skip, note)``;skip=True 时 note 说明跳过原因,skip=False 时
+        note 为空串或降级补采标注(仅作日志用途)。
+    """
+    if session_plane is None or plane_no >= session_plane:
+        return False, ''
+    if not ledger_seq or all(v is None for v in ledger_seq):
+        return False, 'past位面缺值,降级补采(变暗态低置信)'
+    return True, '跳过(已完成,台账保留,不覆写)'
+
+
 class CollectPlaneIntel(SrOperation):
     """位面详情:一次采集位面情报(三 boss 大图标 SIFT + 词缀横条 + 节点带;
     接管局补采主通道,亦开局校准通用)。"""
@@ -145,6 +170,13 @@ class CollectPlaneIntel(SrOperation):
         # 与数量只有投资环境选择能改变 → 进位面时读一次建档,此后查表):
         # 逐位面详情条序列(键=位面号 1-based;值=槽类型序,下标 i = 第 i+1 轮)。
         self._detail_seqs: dict[int, list[str | None]] = {}
+        # 会话位面真值(1-based;0=未知)→ skip 过去位面判据输入。来源:入口
+        # 备战帧快照(:attr:`_prep_plane`)或位面详情屏顶栏 OCR(read_phase_round,
+        # 自带单调守卫);读不到保持 0 = 不跳过全量采集(无真值不发明跳过)。
+        self._session_plane: int = 0
+        # 逐位面采集计时(观测缺口补齐:用户观察到 P2 停留无法从日志诊断)。
+        self._plane_start: float | None = None      # 当前位面计时起点(monotonic)
+        self._plane_start_plane: int = 0            # 计时起点对应的位面号(1-based)
 
     # ---- 内部工具 -------------------------------------------------------
 
@@ -322,6 +354,45 @@ class CollectPlaneIntel(SrOperation):
                 _log.info('[cw-plane-intel] 位面%s boss 未取得(徽章态/读取失败),'
                           'boss_fit 对应位面走中性(尽力采披露)', ','.join(_miss))
             return self.round_success('三位面采集完')
+        # 会话位面真值:优先入口备战帧快照,无则位面详情屏顶栏 OCR 读一次
+        # (read_phase_round 自带 last-known-good + 单调守卫);读不到保持 0。
+        if self._session_plane == 0:
+            if self._prep_plane:
+                self._session_plane = self._prep_plane
+            else:
+                with contextlib.suppress(Exception):
+                    from sr_od.application.currency_war.obs.cw_observation import (
+                        read_phase_round,
+                    )
+                    _sp = read_phase_round(self.ctx, screen)
+                    if _sp and _sp[0]:
+                        self._session_plane = int(_sp[0])
+        plane_no = self._cur_plane + 1
+        # skip 过滤(判据=:func:`decide_plane_skip`;跳过位面不点卡不重采,
+        # 台账保留其进位面时代已写的值 —— close_and_report 只落 _detail_seqs
+        # 里实际采过的位面,跳过位面自然不覆写)。
+        _ledger_seq: list[str | None] | None = None
+        with contextlib.suppress(Exception):
+            from sr_od.application.currency_war.kernel.cw_state import (
+                get_node_ledger,
+            )
+            _ledger = get_node_ledger(
+                getattr(getattr(self.ctx, 'cw_match', None), 'session', None))
+            if _ledger is not None:
+                _ledger_seq = _ledger.seq_by_plane.get(plane_no)
+        _skip, _note = decide_plane_skip(plane_no, self._session_plane or None,
+                                         _ledger_seq)
+        if _skip:
+            _log.info('[cw-plane-intel] 位面%d:%s(session_plane=%d)',
+                      plane_no, _note, self._session_plane)
+            self._cur_plane += 1
+            return self.round_wait(f'位面{plane_no}跳过(已完成),下一位面')
+        if _note:   # 降级补采路径(past 缺值),日志标注低置信
+            _log.info('[cw-plane-intel] 位面%d:%s', plane_no, _note)
+        # 逐位面计时起点(retry 重入同位面不重置——耗时含 retry 空转,正要暴露)
+        if self._plane_start is None or self._plane_start_plane != plane_no:
+            self._plane_start = time.monotonic()
+            self._plane_start_plane = plane_no
         # ① 点位面卡(选中当前采集位面)
         card = self._area_center(_PLANE_CARD_AREAS[self._cur_plane])
         if card is None:
@@ -390,7 +461,9 @@ class CollectPlaneIntel(SrOperation):
             _log.info('[cw-plane-intel] 位面%d 首领节点=徽章态(无头像无名,本屏无身份)'
                       '→ 记 None 跳过,不空转重试(W221/ADR-0398)', self._cur_plane + 1)
         self._plane_bosses[self._cur_plane] = val
-        _log.info('[cw-plane-intel] 采集进度:%s', self._plane_bosses)
+        _dt = time.monotonic() - self._plane_start if self._plane_start else 0.0
+        _log.info('[cw-plane-intel] 位面%d 采集完成(耗时 %.1fs,session_plane=%s):%s',
+                  plane_no, _dt, self._session_plane or '?', self._plane_bosses)
         self._cur_plane += 1
         return self.round_wait(f'位面{self._cur_plane}完成,下一位面')
 

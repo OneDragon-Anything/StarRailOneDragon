@@ -664,6 +664,10 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
     - 该带是**选中位面的彩色渲染态**(位面详情里位面 2/3 也可选中展开,
       非备战的锁灰态)→ **接管局三位面 boss 全量采集通道**:依次点三张
       位面卡,每选中一张调本函数,boss 槽 SIFT 认该位面 boss;
+      ⚠️ 选中**过去位面**(位面号 < 会话当前位面)时节点全部变暗(灰态),
+      本读法在该渲染下识别可能退化(实机 P2 采位面 1 长停留实证)——
+      消费方 CollectPlaneIntel 按 ``decide_plane_skip`` 跳过过去位面,
+      仅台账缺值时降级补采一次;
     - clean 门同 ``_MIN_CLEAN_CIRCLES``。
     返回 None:模板未加载 / 非该画面 / 圆数不足(坏帧)。
     """
