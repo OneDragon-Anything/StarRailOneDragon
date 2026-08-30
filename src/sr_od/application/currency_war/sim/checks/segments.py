@@ -94,6 +94,13 @@ def seg_check_gold_identity(rows: list[dict]) -> list[dict]:
 
 
 
+#: 溢余容忍带(ADR-0478):g0 ≤ interest_floor + 容差视为息线邻近浮动态,
+#: 不构成 [17] 残量违规。边界依据:51-52 带内同息档 discharge 依赖店里
+#: 恰有 1-2 费件,店里没有时空坐是设计内最优(ADR-0434 息线以下支出门
+#: 默认拒跨档花,1 死金 < 跨档息损);真堆积(≥53)不受影响仍红。
+_OVERFLOW_TOLERANCE: int = 2
+
+
 def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
     """[17] 溢余即花(段级单轮版):金>50 且存在高边际价值购买目标却
     整轮无花费动作。
@@ -104,8 +111,12 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
     要连续 ≥2 轮才报,本条单轮即报,诊断灵敏度更高、预期噪声也更高,
     违规率按「量级说明」读不按达标线读)。
     豁免:formed_stop 行(策略自认停手攒息)、bench 满守卫拦截轮
-    (想买买不了,``bench_full_skipped_buys``>0 披露在场)。
+    (想买买不了,``bench_full_skipped_buys``>0 披露在场)、息线邻近
+    容忍带(g0 ≤ interest_floor+``_OVERFLOW_TOLERANCE``,ADR-0478)。
     """
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
     out: list[dict] = []
     for row in rows:
         if (row.get('plane') or 1) != 1:
@@ -117,6 +128,8 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
             continue
         g0 = _seg_gold0(row)
         if g0 is None or g0 <= 50 or _seg_spent(row):
+            continue
+        if g0 <= DEFAULT_REGISTRY.interest_floor() + _OVERFLOW_TOLERANCE:
             continue
         engines = _seg_engines(row)
         if engines >= 2:
@@ -371,6 +384,12 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     refresh_ev_budget 预算式([3] 花后保息线)/M-A 有界预算
     (ADR-0409)/迁移审计 w332b(git 历史) 义务预算——按预算显式裁定搜索成本,破息
     是授权语义内的代价。
+    ⑥ **boss 窗地板授权**(ADR-0478):boss 节点(node ∈
+    ``boss_round_node_types``)是 interest_rule 的旁路窗(ADR-0347 ⑤/
+    ADR-0356——窗内唯一授权器 = boss_floor 破息地板 10),授权范围内
+    合法跌破息基、下探至 boss_floor 属设计内行为(ADR-0426 同一语义);
+    花后金仍 ≥ boss_floor → 豁免;跌破 boss_floor → 不豁免照报
+    (越权信号,ADR-0426 边界原文)。
     ④⑤同时把升级/刷新/买件花费分解(spend_breakdown)写进事件,
     归因不需人工分账(`w649_mutation/` B2)。
     仍不满足 = 买件引发的凭空破息(真破息候选,行为判读输入)。
@@ -378,6 +397,9 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     """
     out: list[dict] = []
     streaks = _combat_streak_by_round(rows)
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
     for row in rows:
         if (row.get('plane') or 1) != 1:
             continue
@@ -411,6 +433,10 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
             exceptions.append('levelup_spend')
         if spend_rf > 0:
             exceptions.append('refresh_spend')
+        if node in DEFAULT_REGISTRY.boss_round_node_types:
+            if gold_end >= DEFAULT_REGISTRY.boss_floor:
+                exceptions.append('boss_floor_authorized')
+            # else: boss 窗越权跌破地板(ADR-0426 边界),不豁免照报
         if exceptions:
             continue
         last_cards = ((row.get('sim') or {}).get('shop_waves') or [{}])[-1] \
@@ -420,7 +446,11 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
             'detail': f'破息 {g0}->{gold_end} 无例外依据(购 {len(bought)} 笔'
                       f' channels={[b.get("channel") for b in bought]},'
                       f' 进轮连胜 {streaks.get(row.get("round_num"), 0)},'
-                      f' 节点={node})——[6]/[19]',
+                      f' 节点={node})'
+                      + ('——boss 窗跌破地板越权'
+                         if node in DEFAULT_REGISTRY.boss_round_node_types
+                         else '')
+                      + '——[6]/[19]',
             'gold_before': g0, 'gold_after': gold_end,
             # 花费分解(升级/刷新/买件按通道;`w649_mutation/` B2:归因不看人工)
             'spend_breakdown': {'levelup': spend_lv, 'refresh': spend_rf,
