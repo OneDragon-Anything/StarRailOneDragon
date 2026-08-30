@@ -6,10 +6,11 @@ UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要�
 结构性缺口(ADR-0269 病灶;设计单一源 = 设计收口终版五条定案,
 .debug/temp/currency_war/w884_overlay_p2_final/DESIGN_FINAL.md)。
 
-**当前交付态(Phase 2 子批 1-2)**:注册表 + 一致性断言就绪;消费面尚未切换
-(P0 清场表 / bail 清单 / battle_loop 分支 / 退出链均保持原状,零行为变化),
-A/B/C/D 逐面切换归子批 3-6。消费面切换完成前,本表是「声明 + 锁」,
-不是运行时唯一判定源。
+**当前交付态(Phase 2 子批 1-2 + B 面)**:注册表 + 一致性断言就绪;B 面
+(director bail 扫描,prep_director 事件 overlay 检测)已切换为消费
+``derive_decision()``;其余消费面(P0 清场 / battle_loop 分支 / 退出链)
+尚未切换,A/C/D 逐面切换归子批 3/5/6。全部切换完成前,本表对未切换面是
+「声明 + 锁」,不是运行时唯一判定源。
 
 C1 红线(机器化于测试仓 ``test_cw_overlay_registry.py``):
 ``semantic='decision'`` ⇒ ``closable is False``——关闭即丢决策内容的交互
