@@ -7,9 +7,13 @@ obs 依赖面(refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
 
 from __future__ import annotations
 
+import dataclasses
+import itertools
 import time
+import weakref
+from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cv2.typing import MatLike
 
@@ -109,7 +113,13 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
-    pass
+    from sr_od.application.currency_war.decision.cw_strategy import (
+        StrategySession,
+    )
+    from sr_od.application.currency_war.decision.decision_v2.contracts import (
+        Decision,
+        Snapshot,
+    )
 
 
 
@@ -315,34 +325,73 @@ _NODE_ICON_SHOT_TS: dict[int, float] = {}
 
 
 
-# ===== 备战决策结果缓存(w891 延迟审计候选②)=====
+# ===== 备战决策结果缓存(备战环操作延迟审计的缓存件:重复感知帧跳过全量候选枚举;决策与开臂判据见 ADR-0501)=====
 
-#: 键 = ('v1', 感知指纹, defer_count);值 = (Decision, action)。跨 PrepDirector
-#: 派发存活(模块级):审计口径的重复求值主体 = 外环重派后对未变状态全量重算。
+#: 键 = ('v2', 臂身份段, 感知指纹, defer_count);值 = (Decision, action, 簿记重放)。
+#: 跨 PrepDirector 派发存活(模块级):重复求值主体 = 外环重派后对未变状态全量重算。
 _DECISION_CACHE: dict[tuple, tuple] = {}
 #: 上界防无限增长(同指纹复用语义安全,首动作落地即失效;超限整体清空)。
 _DECISION_CACHE_LIMIT: int = 64
-#: 命中/未命中计数(开臂判据①「命中率 ≥30%」的数据源)。
+#: 命中/未命中计数(开臂判据①「命中率 ≥30%」的数据源;只增,判读取滚动窗)。
 _decision_cache_stats: dict[str, int] = {'hit': 0, 'miss': 0}
+#: 周期统计日志步长(每 N 次 decide 落一行命中统计,供离线判读开臂判据①)。
+_DECISION_STATS_LOG_EVERY: int = 50
+#: strategy 实例 → 臂 token(弱引用表:实例回收即除名,无 id 复用串臂风险)。
+_DECISION_CACHE_OWNERS: weakref.WeakKeyDictionary[Any, int] = \
+    weakref.WeakKeyDictionary()
+_OWNER_TOKEN_SEQ: itertools.count[int] = itertools.count(1)
+
+#: decide 命中臂重放的会话簿记字段(int 增量重放)。完整副作用面由
+#: test_cw_prep_decision_cache 的全量副作用面锁保证 decide 新增 session 写面必须先入此表。
+#: - prep_phase / prep_phase_retry:主流程阶段机(_main_flow_step 出动作时前移)
+#: - free_bench_gold_wait:腾席链 b 金真值等待计数(清零或 +1)
+_DECISION_REPLAY_INT_FIELDS: tuple[str, ...] = (
+    'prep_phase', 'prep_phase_retry', 'free_bench_gold_wait')
+#: r412 满息 latch(单调置真;置真重放)。该写面本身是快照字段的纯函数
+#: (gold/gold_trusted 在指纹内),重放为兜底一致性而非行为必需。
+_DECISION_REPLAY_LATCH_FIELDS: tuple[str, ...] = ('v2_ever_full_interest',)
 
 
 def _decision_cache_clear(reason: str) -> None:
     """缓存整体失效。唯一失效点 = 任一动作 progressed(成功动作必然改写
-    decide 消费的会话轮簿记如 v2_round_bought,其中部分指纹不可见——防会话
-    隐藏态漂移,宁可少缓存不可错复用)。"""
+    感知指纹可见的板面/金/席面)。"""
     if _DECISION_CACHE:
-        log.info(f'[cw][director-v2] 决策缓存清空({reason},n={len(_DECISION_CACHE)})')
+        log.info(f'[cw][director-v2] 决策缓存清空({reason},n={len(_DECISION_CACHE)},'
+                 f'hit={_decision_cache_stats["hit"]},'
+                 f'miss={_decision_cache_stats["miss"]})')
     _DECISION_CACHE.clear()
 
 
-def _fp_canon(value):
-    """指纹规范化(递归):dataclass→名字段元组;映射→排序项元组;集合→排序
-    元组;序列→逐元素;标量原样。同语义输入必得相等结果。"""
-    import dataclasses
+def _decision_cache_owner_key(strategy: Any) -> tuple[int, int]:
+    """缓存键的臂身份段:(strategy 实例 token, registry 实例 id)。
+
+    同一进程先后/交替跑不同 registry(构造参替换 registry 即换臂)或不同
+    策略实例的对局时,感知指纹可能完全相同(开局标准帧同 plane/round/
+    gold/bench)——无身份段则旧臂结果跨臂错误复用,且无法从遥测分辨。
+    token 经弱引用表分配:实例存活期间恒定、回收即除名,规避裸 id() 的
+    复用串臂。边界:同一 strategy 实例中途换 registry 且旧 registry 已被
+    GC 时 id 可能撞旧条目——该形态不存在(换臂 = 换 strategy 实例),
+    且 progressed 失效使条目存活期极短。"""
+    try:
+        tok = _DECISION_CACHE_OWNERS.get(strategy)
+        if tok is None:
+            tok = next(_OWNER_TOKEN_SEQ)
+            _DECISION_CACHE_OWNERS[strategy] = tok
+    except TypeError:   # 不可弱引用宿主:退共享段(现役 CwStrategy 实例可弱引用)
+        tok = -1
+    return (tok, id(getattr(strategy, 'registry', None)))
+
+
+def _fp_canon(value: Any) -> Any:
+    """指纹规范化(递归):dataclass→名字段元组;映射(含 MappingProxyType)
+    →排序项元组;集合→排序元组;序列→逐元素;标量原样。同语义输入必得
+    相等结果。Snapshot.board 实机/sim 侧均为 MappingProxyType(只读视图),
+    isinstance(x, dict) 为 False——必须走 Mapping 族判定,否则 proxy 原样
+    进入指纹元组,作缓存键哈希时 TypeError。"""
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
         return tuple((f.name, _fp_canon(getattr(value, f.name)))
                      for f in dataclasses.fields(value))
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         return tuple(sorted((repr(k), _fp_canon(v)) for k, v in value.items()))
     if isinstance(value, (frozenset, set)):
         return tuple(sorted(repr(_fp_canon(v)) for v in value))
@@ -351,35 +400,86 @@ def _fp_canon(value):
     return value
 
 
-def prep_decision_fingerprint(snapshot) -> tuple:
+def prep_decision_fingerprint(snapshot: Snapshot) -> tuple:
     """备战决策缓存键的感知指纹:对 Snapshot 的**全部** dataclass 字段动态
     枚举(dataclasses.fields)规范化——快照契约「字段只增不改删」,新增字段
     自动进指纹,结构性防「缓存键漏感知字段=错误复用」。"""
     return _fp_canon(snapshot)
 
 
-def _decision_cache_key(snapshot, session) -> tuple:
-    """缓存键 = 感知指纹 + defer_count。defer_count 是指纹外的显式会话面:
-    Defer 门=2 会改变策略行为(框架侧计数,快照不可见);其余会话消费面
-    (v2_round_bought 等轮簿记)只在成功动作后变化 → 由 progressed 失效覆盖。"""
-    return ('v1', prep_decision_fingerprint(snapshot),
+def _decision_cache_key(snapshot: Snapshot, session: StrategySession,
+                        strategy: Any) -> tuple:
+    """缓存键 = 臂身份 + 感知指纹 + defer_count。defer_count 是指纹外的显式
+    会话面(Defer 门=2 改变策略行为);decide 自身簿记(prep_phase 等)经
+    命中臂重放对齐,不入键。"""
+    return ('v2', _decision_cache_owner_key(strategy),
+            prep_decision_fingerprint(snapshot),
             getattr(session, 'defer_count', 0))
 
 
-def _decision_cache_lookup(snapshot, session) -> tuple | None:
-    """命中返回缓存的 (Decision, action);未命中返回 None 并记账。"""
-    hit = _DECISION_CACHE.get(_decision_cache_key(snapshot, session))
+def _decision_replay_begin(session: StrategySession) -> dict[str, Any]:
+    """decide 前采会话簿记基线(store 时配对算增量;见 _decision_cache_store)。"""
+    base: dict[str, Any] = {k: getattr(session, k, 0)
+                            for k in _DECISION_REPLAY_INT_FIELDS}
+    base.update({k: bool(getattr(session, k, False))
+                 for k in _DECISION_REPLAY_LATCH_FIELDS})
+    return base
+
+
+def _decision_cache_stats_snapshot() -> dict[str, int]:
+    """命中/未命中计数的只读导出口(开臂判据①命中率数据源;测试/判读消费)。"""
+    return dict(_decision_cache_stats)
+
+
+def _decision_cache_log_stats() -> None:
+    """每 N 次 decide 落一行命中统计(离线判读开臂判据①的日志面)。"""
+    total = _decision_cache_stats['hit'] + _decision_cache_stats['miss']
+    if total and total % _DECISION_STATS_LOG_EVERY == 0:
+        rate = 100.0 * _decision_cache_stats['hit'] / total
+        log.info(f'[cw][director-v2] 决策缓存统计 n={total} '
+                 f'hit={_decision_cache_stats["hit"]} '
+                 f'miss={_decision_cache_stats["miss"]} 命中率={rate:.1f}%')
+
+
+def _decision_cache_lookup(snapshot: Snapshot, session: StrategySession,
+                           strategy: Any) -> tuple | None:
+    """命中返回缓存的 (Decision, action) 并把存储时捕获的 decide 簿记增量
+    重放进 session(命中语义 = 跑了 decide 的簿记、跳过候选枚举与评分);
+    未命中返回 None 并记账。"""
+    hit = _DECISION_CACHE.get(
+        _decision_cache_key(snapshot, session, strategy))
     if hit is not None:
         _decision_cache_stats['hit'] += 1
-    else:
-        _decision_cache_stats['miss'] += 1
-        if len(_DECISION_CACHE) >= _DECISION_CACHE_LIMIT:
-            _DECISION_CACHE.clear()
-    return hit
+        _decision_cache_log_stats()
+        _, _, replay = hit
+        for k, d in replay['ints'].items():
+            if d:
+                setattr(session, k, getattr(session, k, 0) + d)
+        for k in replay['latches']:
+            setattr(session, k, True)
+        return hit[0], hit[1]
+    _decision_cache_stats['miss'] += 1
+    _decision_cache_log_stats()
+    if len(_DECISION_CACHE) >= _DECISION_CACHE_LIMIT:
+        _DECISION_CACHE.clear()
+    return None
 
 
-def _decision_cache_store(snapshot, session, decision, action) -> None:
-    _DECISION_CACHE[_decision_cache_key(snapshot, session)] = (decision, action)
+def _decision_cache_store(snapshot: Snapshot, session: StrategySession,
+                          strategy: Any, decision: Decision,
+                          action: PrepAction | None,
+                          replay_base: dict[str, Any]) -> None:
+    """存 (Decision, action) 及本次 decide 的会话簿记增量(decide 后采值
+    减 replay_base;命中臂重放该增量=「簿记已跑」语义)。"""
+    ints: dict[str, int] = {}
+    for k in _DECISION_REPLAY_INT_FIELDS:
+        d = int(getattr(session, k, 0)) - int(replay_base[k])
+        if d:
+            ints[k] = d
+    latches: list[str] = [k for k in _DECISION_REPLAY_LATCH_FIELDS
+                          if getattr(session, k, False) and not replay_base[k]]
+    _DECISION_CACHE[_decision_cache_key(snapshot, session, strategy)] = (
+        decision, action, {'ints': ints, 'latches': latches})
 
 
 class PrepDirector(SrOperation):
@@ -2023,7 +2123,8 @@ class PrepDirector(SrOperation):
 
         def _decide_port(snapshot, session_):
             if _cache_on:
-                cached = _decision_cache_lookup(snapshot, session_)
+                cached = _decision_cache_lookup(snapshot, session_,
+                                                match.strategy)
                 if cached is not None:
                     decision, action = cached
                     adapter.last_action = action
@@ -2038,12 +2139,15 @@ class PrepDirector(SrOperation):
                     if acct['last_obs'] is not None and action is not None:
                         self._record_step(acct['last_obs'], action)
                     log.info('[cw][director-v2] 决策缓存命中'
-                             '(指纹未变→意向不变,跳过全量求值)')
+                             '(指纹未变→意向不变,簿记已重放,跳过全量求值)')
                     return decision
+            replay_base = (_decision_replay_begin(session_)
+                           if _cache_on else None)
             decision = adapter.decide(snapshot, session_)
             if _cache_on:
-                _decision_cache_store(snapshot, session_, decision,
-                                      adapter.last_action)
+                _decision_cache_store(snapshot, session_, match.strategy,
+                                      decision, adapter.last_action,
+                                      replay_base)
             # F8 步进遥测(旧环 _record_step 同款;obs = 最近观察帧)
             if acct['last_obs'] is not None and adapter.last_action is not None:
                 self._record_step(acct['last_obs'], adapter.last_action)

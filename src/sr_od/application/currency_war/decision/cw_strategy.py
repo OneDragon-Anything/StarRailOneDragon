@@ -80,11 +80,14 @@ class CwStrategy(ABC):
 
     # 备战决策结果缓存开关(默认关;消费点 = prep_director._run_prep_loop_v2 的
     # decide 端口):开 = 备战决策输入指纹未变的迭代复用上次 (Decision, action),
-    # 跳过全量候选枚举与评分(审计口径 55 万行/日决策日志的主体)。行为语义 =
-    # 纯函数同输入复用;残余风险 = 策略内部存在指纹不可见的隐状态。
+    # 跳过全量候选枚举与评分(审计口径 55 万行/日决策日志的主体)。命中语义 =
+    # 「跑了 decide 的会话簿记、跳过求值」:缓存存储时捕获 decide 的簿记增量
+    # (prep_phase 阶段机/free_bench_gold_wait 等待计数/满息 latch,全量清单见
+    # prep_director._DECISION_REPLAY_* 与其 REPORT),命中臂重放进 session。
     # 开臂判据(strategy-work §3 生命周期门,全部满足才翻默认值,任一不满足
     # → 删码留 ADR):实机 ≥2 局开臂局对近期基线,①命中率(命中 decide/总
-    # decide)≥30%;②零复用致异常(无新增 stall 强出战 / ping-pong 停机 /
+    # decide)≥30%(数据源 = director 日志「决策缓存统计」行,每 50 次 decide
+    # 落一行);②零复用致异常(无新增 stall 强出战 / ping-pong 停机 /
     # v2 defect);③备战环决策日志行数较基线降 ≥50%。
     prep_decision_cache_enabled: bool = False
 
