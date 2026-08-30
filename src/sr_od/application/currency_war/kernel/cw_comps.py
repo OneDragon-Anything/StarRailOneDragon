@@ -376,15 +376,24 @@ MONO_ATTRIBUTE_MIN_TIER: int = 4
 
 
 def is_mono_attribute_comp(comp: Comp) -> bool:
-    """单属性队判据:form_tiers 主档 ∈ ATTRIBUTE_TYPE_FACTIONS 且档深 ≥4。
+    """单属性队判据:form_tiers **主档**(全库最深档)∈ ATTRIBUTE_TYPE_FACTIONS 且档深 ≥4。
 
     出处:final_comps README D3「希儿怕量子熄火」+ w882 攻击角度1(枚举锁改判据);
     消费点:effective_mechanic_attributes(单属性队臂开启时动态并入携带)。
     判型只看 form_tiers(成型档位),flex_factions 的属性羁绊不算 —— 副羁绊宽口径
     (量子同频在 29 个聚类高频出现)不构成单属性队。
+    「主档」校验(w922 审计 P2-2):属性羁绊须并列全 comp 最深档才算主档——
+    主档为非属性羁绊的形态(如 列车同行5+量子同频4)是羁绊乘区驱动型,不是
+    单属性队,不误收(与「宁缺勿错」收口一致);并列最深档含属性羁绊判真
+    (档位乘区并列 = 双主档形态,与希儿量子 量子同频4+贝洛伯格2 基线不矛盾)。
     """
-    depths = [t for f, t in comp.form_tiers.items() if f in ATTRIBUTE_TYPE_FACTIONS]
-    return bool(depths) and max(depths) >= MONO_ATTRIBUTE_MIN_TIER
+    if not comp.form_tiers:
+        return False
+    main_depth = max(comp.form_tiers.values())
+    if main_depth < MONO_ATTRIBUTE_MIN_TIER:
+        return False
+    return any(f in ATTRIBUTE_TYPE_FACTIONS and t == main_depth
+               for f, t in comp.form_tiers.items())
 
 
 def w878_active_tags(registry: DecisionV2Registry | None = None) -> frozenset[str]:
@@ -399,6 +408,9 @@ def effective_mechanic_attributes(comp: Comp,
 
     关臂 tag 仍在携带词汇表内(结构锁口径),只是不参与评分求交 —— 这样开关翻默认值时
     只动本函数门槛,不动 20 套 comp 标注;全关时若 comp 属性集无 W878 tag 则原列表透传。
+    返回值约定(w922 审计 P3):**调用方不可变**——快速路径零分配,直接透传 comp 内部
+    list(恒等性由 test_w878_default_off_effective_attrs_passthrough 锁定),仅触发
+    滤除/并入时才返回新 list;消费点一律只读,禁原地改写返回值。
     单属性队臂开启时,满足 is_mono_attribute_comp 判据的 comp 动态并入「单属性队」
     携带(w882 攻击角度1 采纳:载体判据化,新属性 comp 落档即自动入判,无需逐套打标);
     判据不满足的静态标注原样保留,漂移由判据边界锁拦截。
