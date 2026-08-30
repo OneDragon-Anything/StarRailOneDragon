@@ -1,7 +1,7 @@
 # P23:死亡窗支出分配的 EV 门与两域分账——停手窗域长时域账门(参数化)、死亡域第二账式与攥金优势引理
 
 > 状态:**已证(结构命题+引理);数值结论为参数化/弱标定级,如实分级见 §命题分级**
-> 数据源(全部既有单一源,零新常数):sim 账本 `.debug/temp/currency_war/w676_p1_ab/arm_off/ledger_main/decisions.jsonl`(只读);模型定谳报告 `.debug/temp/currency_war/w690_lv10_ev/REPORT.md`(下称 W690);两域门设计 `.debug/temp/currency_war/w684_p1_v3_design/DESIGN.md`(下称 v6 设计);终审 `.debug/temp/currency_war/w706_allocator_attack_final/REPORT.md`(下称 W706)。
+> 数据源(全部既有单一源,零新常数):sim 账本 `.debug/temp/currency_war/w676_p1_ab/arm_off/ledger_main/decisions.jsonl`(只读);模型定谳报告 W690(w690 批,结论承载:ADR-0474/ADR-0493);两域门设计 v6 设计(w684 批,设计承载:ADR-0474);终审 W706(w706 批,结论承载:ADR-0474)。
 > 立题来源:W690 §5-4 挂账(「本命题建议由 leader 定号后晋升 `proofs/p23-*.md`」);消费方 = v6 设计的支出分配器(死亡窗支出分配)两域出清算子 O 的参数集,及 `math_proofs.md` 体系晋升。
 > 方法承:P21(`proofs/p21-p2-deathbed-levelup-ev.md`)§④ 非濒死「受益覆盖」式;本命题是 P21 在**停手窗与死亡域**的推广(辖域关系见 §5,不替代 P21)。
 

@@ -104,6 +104,5 @@ tag ∈ {off_target, for_gold} ∧ spend_gate_active(…)  → 返回 None
 
 - P11(泄息义务的存在性前提:溢余段持有边际=0)、P17(FLIP 姿态 A/B 判据);
 - ADR-0296(候选生成器架构)、W348 断链修复批(`61d16733`)、W362 审查批②
-  (`.debug/temp/currency_war/w362_six_review_batch2/REVIEW.md`,挂账来源与
-  「防过度声明」边界原话);
+  (挂账来源与「防过度声明」边界原话,w362 批审查记录);
 - 姊妹篇 P19(同为 W362 挂账命题化:计数语义)。

@@ -3,7 +3,7 @@
 > 状态:**已证**(口径命题 + 稳定性命题 + 误差界命题;落地=cw_line_switch.py,registry.line_switch_*)
 > 数据源(单一源代码,数值不抄):`cw_shop_odds`(`SHOP_SLOTS=5` L28、`POOL_COPIES_PER_CARD={1:27,2:27,3:9,4:9,5:9}` L33、`DISTINCT_CARDS_PER_COST` L37、`REFRESH_PROB` 表 L44-52,即 P5 实值表)、`cw_chars.CHARACTERS`(标签集)、`cw_state`(`BENCH_CAPACITY`/`bench_occupied`)、decision_v2 registry(`line_switch_theta=1.0`/`line_switch_debias_delta=0.15`/`line_switch_min_dwell=2` L791-796、`interest_floor=50` L812)
 > 实现:`src/sr_od/application/currency_war/kernel/cw_line_switch.py`(`p_bar_faction`/`line_distance`/`e_rounds`/`should_switch_e`)
-> 设计:`.debug/temp/currency_war/w328_unformed_posture/DESIGN.md` §③
+> 设计:W328 未成型姿态设计稿 §③(设计裁决承载:ADR-0426;实现:`posture_release.py`/`cw_line_switch.py`)
 > 提出:W345 审查问⑥/C5-②(E_rounds 判据未命题化);证明=本批(W349)
 
 ## 命题

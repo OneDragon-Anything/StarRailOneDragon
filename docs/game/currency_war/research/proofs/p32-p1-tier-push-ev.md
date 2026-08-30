@@ -1,7 +1,7 @@
 # P32 · P1 档位推进目标函数:激活档→出口 hp 的阶跃期望与因果方向
 
 > 状态:**结构已证(实证阶跃 + EV 下界推导);量级参数待 sim A/B 兑现**。
-> 证据源:W801 七局 P1 逐节点失血表(`.debug/temp/currency_war/w801_p1_exit_quality/REPORT.md`,21 个掉血帧真值);H3 阶梯(p03,e0/e1/e2 胜率 13.9/41.6/77.8%);P20(体系激活边际 2.6-2.9×);P29(档位进度项 Δp_tier·R_rest 结构)。
+> 证据源:W801 七局 P1 逐节点失血表(docs/develop/currency_war/prereg/w801_p1_exit_quality/REPORT.md,21 个掉血帧真值;自 `.debug/temp/` 迁入);H3 阶梯(p03,e0/e1/e2 胜率 13.9/41.6/77.8%);P20(体系激活边际 2.6-2.9×);P29(档位进度项 Δp_tier·R_rest 结构)。
 > 本篇 = W803 设计件的命题基础(设计批纪律:零落码)。
 
 ## 命题

@@ -1,7 +1,7 @@
 # P21:P2 濒死段(hp≤H₀)连发 LevelUp 的期望收益为负;升级不再负的判据 = 存活到账 + 剩余战斗受益覆盖成本
 
 > 状态:**已证**(期望符号命题 + 判据形式;敏感网格全负域如实报告:避伤口径下升级收益在濒死域内恒负、在全部观测参数域不覆盖成本——升级的正经济性只在 P3 型成型进度长时域账,见 §④)
-> 数据源:实机语料 `.debug/temp/currency_war/replay/outcomes.jsonl`(114 局逐轮结算,只读;统计脚本 `tools/cw/proofs/w502_p21_deathbed_levelup_ev.py` + 语料脚本 `.debug/temp/currency_war/w502_deathbed_levelup/p2_damage_dist.py`,结果快照 `damage_dist.json` / `p21_ev_results.json` 同目录)。
+> 数据源:实机语料 `.debug/temp/currency_war/replay/outcomes.jsonl`(114 局逐轮结算,只读;统计脚本 `tools/cw/proofs/w502_p21_deathbed_levelup_ev.py` + 语料脚本 `p2_damage_dist.py` 与结果快照 `damage_dist.json` / `p21_ev_results.json`(docs/develop/currency_war/prereg/w502_deathbed_levelup/,自 `.debug/temp/` 迁入)。
 > 立题来源:W490 复盘 §二c/§四-6(⑰⑱⑲ 三局 P2 濒死 LevelUp 雨复发:20/18/1 次,连发 ×5/×13/×6/×11,87→37 金等);W493(sim LevelUp 支出 62.5% 占比);W496(值函数终局条件化从未实现,ADR-0445 明文 DP 值函数不动)。
 
 ## 命题

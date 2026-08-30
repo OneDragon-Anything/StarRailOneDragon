@@ -1,7 +1,7 @@
 # P11 溢余金机会成本命题(P5 定理的 P2 语境边界审计)
 
 > 状态:**已证(口径命题:P2 溢余段 D 的机会成本下界=0,批口径面值成本在该段系统性高估)**
-> 数据源(全部真实表值+回放账):`cw_horizon.interest`(=min(g//10,5),GOLD_CAP_INTEREST=50)、`decision_v2.registry`(hp_to_gold=0.5 等,仅引用不新增)、W151 四局 P2 实测锚(收入 +13~19 金/轮、金 85-160 堆到死;`.debug/temp/currency_war/cw_dev/deep_read/W151_报告.md`)、W152 回放账(spend 42-135;同目录 `W152_报告.md`,数据边界=4 局 87 条 P2 记录中 14 个 shop 帧)、P6(回档账下界 1-3 金)、P10 ①(携带溢价公式)
+> 数据源(全部真实表值+回放账):`cw_horizon.interest`(=min(g//10,5),GOLD_CAP_INTEREST=50)、`decision_v2.registry`(hp_to_gold=0.5 等,仅引用不新增)、W151 四局 P2 实测锚(收入 +13~19 金/轮、金 85-160 堆到死)、W152 回放账(spend 42-135;数据边界=4 局 87 条 P2 记录中 14 个 shop 帧)、P6(回档账下界 1-3 金)、P10 ①(携带溢价公式)
 > 计算脚本:`tools/cw/proofs/w153_p11_p12_p2_refresh.py`(可重跑复核,零随机纯表值)
 > 提出:W153 批(为 P2 D 通道修法②供弹药);口述依据=[17](≥50 溢余随时花,簇主条)
 
