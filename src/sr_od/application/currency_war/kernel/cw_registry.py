@@ -1280,7 +1280,9 @@ class DecisionV2Registry:
     #: 约束(硬门批)落地后按同格 PREREG 重验;不过则删码留 ADR
     #: (第 4 态),禁悬置默认关。开臂翻默认时必须盘点「断言开关
     #: 关闭行为」的锁组语义(第 3 态义务,test_cw_piece_value 每锁
-    #: 带 off 臂零漂移断言)。
+    #: 带 off 臂零漂移断言)。硬门已落码(ADR-0497,子旗标
+    #: piece_value_bench_gate_enabled 默认关),重验仍待跑 = 开臂
+    #: 判据挂账维持。
     piece_value_enabled: bool = False
     #: Phase 1 买侧试点子旗标(设计 §4.3 迁移表):买评分消费
     #: evaluate_piece 的 A+B 分量作排序加项(锁定帧线外件辖域);
@@ -1311,6 +1313,20 @@ class DecisionV2Registry:
     #: §硬门选项评估);挂账偿付前 0.0 是唯一两格可行值,零漂移另由
     #: 伞旗标默认关双保险。
     piece_value_w_retention: float = 0.0
+    #: 买前 bench 容量预检硬门子旗标(ADR-0497,件价值开臂前置件;
+    #: W852 REPORT §3 挂账偿付落码):bench 空位 ≤ 推导 reserve 时拒
+    #: 新买非合成件(经 spend_gate.bench_front_full 单一实现 reserve
+    #: 扩参;拒因进遥测 sess_pv_bench_block;与支出门 D3 链序先到先
+    #: 记零双计)。默认关 = 第 1 态零漂移;开臂判据 = W836 PREREG
+    #: 同格重验(a-only 双臂,G4/M1-L 两格)在硬门落地后重跑,不过
+    #: 则删码留 ADR(禁悬置默认关)。
+    piece_value_bench_gate_enabled: bool = False
+    #: reserve 上限扫描旋钮(缺省 2 = W852 扫描建议带 {1,2} 上沿;
+    #: reserve 本体禁拍死值,推导单一源 = piece_value.bench_reserve:
+    #: 基线 1 = P29 卡点保守禁囤阈值,开对项 = 线内 1★ 恰持 1 份的
+    #: 合成线开对数,链深 3 张的槽位需求峰值 2 − 已沉没 1)。本字段
+    #: 只截上限,下界恒 1(bench_front_full 硬不变式同款守卫)。
+    piece_value_bench_reserve_cap: int = 2
 
     # ===== P1→P2 接口机制五开关——定谳清理,删码留档(ADR-0487)=====
     #: 曾以 p1_iface_{lockline_v2,carry_equip,hardnode_prep,lossstreak_
@@ -1479,6 +1495,10 @@ class DecisionV2Registry:
                                # 置于链尾:既有守卫先到先记,守卫已拒的
                                # 候选门不求值不产生门拒因;d3_bench 只记
                                # 「未满栏但前瞻挤占」)
+        'pv_bench_reserve',    # 件价值·买前 bench 容量预检硬门(ADR-0497;
+                               # 伞默认关=零漂移。置于 spend_gate 后:双门
+                               # 并存帧 d3_bench 先到先记,本门只记
+                               # 「未达 D3 带但 ≥ 容量−reserve」不重叠带)
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
     #: interest_floor 字段已删(D3 双源清偿,`w628_migration_b2/`):息线单一源 =
@@ -1555,13 +1575,15 @@ class DecisionV2Registry:
             # (资源维, 回合态维) → (约束名...) 或 ('none', 原因)
             # ('catchup' 列已随 `w126_b_arm/`/ADR-0349 追赶态退场改为 'mode' 常态列)
             ('gold', 'boss'): ('gold_floor', 'interest_rule'),
-            # ('gold', 'boss') / ('bench', 'boss') 格不含 spend_gate:
-            # 门在 boss 窗让位(W774⑤ 同仲裁语义)。
+            # ('gold', 'boss') / ('bench', 'boss') 格不含 spend_gate/
+            # pv_bench_reserve:两门在 boss 窗让位(W774⑤ 同仲裁语义)。
             ('gold', 'emergency'): ('gold_floor', 'spend_gate'),
             ('gold', 'mode'): ('gold_floor', 'interest_rule', 'spend_gate'),
             ('bench', 'boss'): ('bench_capacity',),
-            ('bench', 'emergency'): ('bench_capacity', 'spend_gate'),
-            ('bench', 'mode'): ('bench_capacity', 'spend_gate'),
+            ('bench', 'emergency'): ('bench_capacity', 'spend_gate',
+                                     'pv_bench_reserve'),
+            ('bench', 'mode'): ('bench_capacity', 'spend_gate',
+                                'pv_bench_reserve'),
             # 血预算停手门只辖升级(全回合态生效——emergency 态内同样
             # 拒,设计件 12 §5.3「不是第五种覆盖态」;ADR-0448)
             ('slot', 'boss'): ('blood_budget_stop', 'boss_levelup_ban'),

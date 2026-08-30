@@ -74,14 +74,21 @@ def _on(registry: DecisionV2Registry, sub: bool) -> bool:
 
 
 def bench_front_full(state: GameState,
-                     registry: DecisionV2Registry) -> bool:
-    """bench 挤占前瞻判据(占用 ≥ 容量−1)。
+                     registry: DecisionV2Registry,
+                     reserve: int = 1) -> bool:
+    """bench 挤占前瞻判据(占用 ≥ 容量−reserve;reserve 缺省 1)。
 
-    单一实现(设计 §1.4 D3/§3.2):支出门 D3 位置臂与 P29 囤牌加项的
-    既有定性门(realization.p29_priority_term)消费同一函数,禁第二处
-    ——这是 G4(存活挤席)的直接落点。
+    单一实现:支出门 D3 位置臂(缺省 reserve=1,占用 ≥ 容量−1)、
+    P29 囤牌加项的既有定性门(realization.p29_priority_term)与
+    件价值买前 bench 容量预检硬门(piece_value.bench_gate_verdict,
+    传推导 reserve)消费同一函数,禁第二处——这是 G4(存活挤席)
+    的直接落点。reserve 语义 = 为受保护类(合成/缺档/当轮可部署)
+    保留的空位数,推导单一源 = piece_value.bench_reserve;
+    ``reserve >= 1`` 是硬不变式(P29 卡点保守处理:占用 ≥ 容量−1
+    即达禁囤阈值,reserve 再小不构成「预检」)。
     """
-    return bench_occupied(state.bench or []) >= registry.bench_capacity - 1
+    return bench_occupied(state.bench or []) \
+        >= registry.bench_capacity - max(1, reserve)
 
 
 def _missing_names(state: GameState, session: StrategySession,

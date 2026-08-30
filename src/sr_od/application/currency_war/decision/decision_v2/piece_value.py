@@ -25,6 +25,7 @@ test_cw_piece_value 锁 6。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.decision.cw_strategy import StrategySession
@@ -35,6 +36,11 @@ from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     bench_occupied,
 )
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.decision.decision_v2.remediation import (
+        RejectReason,
+    )
 
 #: 分量 D 的持有份数权重(与 realization._MERGE_HELD_FRAC 同语义同值:
 #: merge 候选构造性持有 2 份 → 2/3;份数比非标定值。披露面只读复刻,
@@ -242,3 +248,114 @@ def evaluate_piece(piece: object, state: GameState,
         activation=activation, retention=retention, tier_gap=tier_gap,
         merge=merge, bench_cost=bench_cost, interest_cost=interest_cost,
         weight=weight)
+
+
+# ===== 买前 bench 容量预检硬门(ADR-0497;件价值开臂前置件,W852
+# ===== REPORT §3 挂账偿付:B 辖域位置成本约束,消费面逻辑不进评分)=====
+
+def bench_reserve(state: GameState, session: StrategySession | None,
+                  registry: DecisionV2Registry) -> int:
+    """预留空位数(reserve)推导(禁拍死值;状态依赖,逐帧可复算)。
+
+    推导(结论→出处→边界):
+    - **基线项 1**(P29 卡点保守处理的直译):P29 明文「bench 占用 ≥
+      容量−1 时 H 取禁囤阈值」——每帧至少保 1 个空位给受保护类
+      (线内缺档成员 Δp_tier·R_rest ≥ 1.4×R_rest 金当量 / 激活钥匙件
+      P20 2.6-2.9×),受保护类单帧到达期望 ≥1 而囤牌期权近零
+      (P1:≤2 费再遇 7-15 轮;W846 归因:B 买入 56.7% 为 ≤2 费),
+      不对称性恒成立 → 基线 reserve=1 恒在。
+    - **开对项 +1/线**:线内同名 1★ 恰持 1 份(合成线开对)数。
+      2★ 合成链深 = 3 张,但槽位需求峰值 = 2(第 3 张到达即触发
+      merge 完成,满栏合成买合法,W544/ADR-0453,不需空位);已沉没
+      1 槽后剩余需求 = 第 2 张的 1 个空位——若该空位被囤牌件占掉,
+      整条合成线停在深度 1(沉没 1 槽 + 1 购),其损失大于一枚新
+      囤牌的期权值 → 每条开对线 reserve +1。
+    - **上限 cap**:registry.piece_value_bench_reserve_cap(扫描旋钮,
+      缺省 2 = W852 扫描建议带 {1,2} 上沿);reserve ≥ 1 硬不变式
+      (bench_front_full 同款守卫)。
+    - 边界:无锁线意向(session 无 v3_intention/未 locked)时开对数
+      不可判 → 退基线 1(保守,辖域不明不扩张预检)。
+    """
+    reserve = 1
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        IntentionState,
+        locked_buy_scope,
+    )
+    ist = getattr(session, 'v3_intention', None)
+    scope = locked_buy_scope(ist) if isinstance(ist, IntentionState) else None
+    if scope:
+        raw_counts: dict[str, int] = {}
+        for u in (list(state.deployed or [])
+                  + [b for b in (state.bench or []) if b is not None]):
+            n = getattr(u, 'char_id', '') or ''
+            if n in scope and (getattr(u, 'star', 1) or 1) < 2:
+                raw_counts[n] = raw_counts.get(n, 0) + 1
+        reserve += sum(1 for c in raw_counts.values() if c == 1)
+    return min(reserve, max(1, registry.piece_value_bench_reserve_cap))
+
+
+def bench_gate_verdict(cand, working: GameState, state: GameState,
+                       session: StrategySession | None,
+                       registry: DecisionV2Registry) -> RejectReason | None:
+    """买前 bench 容量预检硬门:空位 ≤ reserve 时拒新买非合成件。
+
+    设计单一源 = ADR-0497(本模块头注释同源);判据谓词单一实现 =
+    spend_gate.bench_front_full(传推导 reserve,禁第二处);豁免面 =
+    merge 候选(合成完备,ADR-0437/0438 通道同语义)∪ 当轮可部署
+    (转化性,不占 bench)∪ 线内缺档成员(missing_members 单一源,
+    C 账受保护类)。让位序与支出门 D3 同族:boss 窗让位(W774⑤)、
+    ADR-0474 分配器接管帧让位。与 D3 的裁决序去重:本门约束名在
+    spend_gate 之后(链序先到先记,arbiter 首拒即断)——双门并存帧
+    D3 覆盖占用 ≥ 容量−1 带,本门只记「未达 D3 带但 ≥ 容量−reserve」
+    的不重叠带,零双计。伞 = piece_value_enabled × 本门子旗标,默认
+    关零漂移(开臂判据挂账 = W836 PREREG 同格重验,ADR-0497)。
+    拒因经 session.v3_pv_block 帧级计数进遥测(sess_pv_bench_block)。
+    """
+    if not (registry.piece_value_enabled
+            and registry.piece_value_bench_gate_enabled):
+        return None
+    from sr_od.application.currency_war.kernel.cw_state import BuyCard
+    a = cand.action
+    if not isinstance(a, BuyCard) or getattr(cand, 'merge', False):
+        return None    # 只辖买侧;merge 候选让位(合成完备豁免)
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
+        boss_window_active,
+    )
+    if boss_window_active(state, session, registry):
+        return None    # boss 窗让位(W774⑤ 同仲裁语义)
+    from sr_od.application.currency_war.decision.decision_v2.realization import (
+        d2_entry_frame,
+        missing_members,
+    )
+    if d2_entry_frame(state, registry):
+        return None    # ADR-0474 分配器接管帧让位(单一分配器)
+    from sr_od.application.currency_war.decision.decision_v2.spend_gate import (
+        _deploy_free,
+        bench_front_full,
+    )
+    if _deploy_free(working):
+        return None    # 当轮可部署(转化性豁免,D3 同语义)
+    name = getattr(getattr(a, 'card', None), 'name', '') or ''
+    if name and name in missing_members(state, session, registry):
+        return None    # 线内缺档成员 = 受保护类(硬门保护对象不拒)
+    reserve = bench_reserve(state, session, registry)
+    if not bench_front_full(working, registry, reserve=reserve):
+        return None
+    occ = bench_occupied(working.bench or [])
+    # 拒因产出 + 帧级拒因计数(sess_pv_bench_block 透传写入面;
+    # 轮键惰性重置,v3_sg_block 同模式)
+    from sr_od.application.currency_war.decision.decision_v2.remediation import (
+        RejectReason,
+    )
+    key = (state.plane, state.round_num)
+    if getattr(session, 'v3_pv_block_key', None) != key:
+        session.v3_pv_block_key = key
+        session.v3_pv_block = {}
+    blocks: dict[str, int] = getattr(session, 'v3_pv_block', {}) or {}
+    blocks['pv_bench_reserve'] = blocks.get('pv_bench_reserve', 0) + 1
+    session.v3_pv_block = blocks
+    return RejectReason(
+        'pv_bench_reserve', '', 0,
+        f'pv_bench_reserve:件价值硬门 bench 预检拒(占用{occ}≥容量'
+        f'{registry.bench_capacity}-{reserve},reserve=1+开对,'
+        f'非合成∧非缺档∧非当轮可部署)')

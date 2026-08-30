@@ -1886,6 +1886,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # sess_spend_gate_block 同名同位;伞关/零拒因恒 None)
                 'sess_spend_gate_block': (
                     dict(getattr(sess, 'v3_sg_block', None) or {}) or None),
+                # 件价值·bench 预检硬门拒因计数(生产 decisions 行
+                # sess_pv_bench_block 同名同位;伞关/零拒因恒 None)
+                'sess_pv_bench_block': (
+                    dict(getattr(sess, 'v3_pv_block', None) or {}) or None),
                 'actions': _acts,
                 'sim': {
                     'node': nodes[rn - 1], 'delta': delta,

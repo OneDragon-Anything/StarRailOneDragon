@@ -511,6 +511,17 @@ def _check_constraint(name: str, cand: Candidate,
         )
         return spend_gate_verdict(cand, working, state, session, registry,
                                   auth=auth)
+    if name == 'pv_bench_reserve':
+        # 件价值·买前 bench 容量预检硬门(ADR-0497;伞默认关=零漂移):
+        # bench 空位 ≤ 推导 reserve 时拒新买非合成件,判据谓词消费
+        # spend_gate.bench_front_full 单一实现(reserve 扩参)。置于
+        # spend_gate 之后:双门并存帧 d3_bench 先到先记(首拒即断),
+        # 本门只记「未达 D3 带但 ≥ 容量−reserve」的不重叠带,零双计;
+        # 门拒为纪律型(resource 空,不进回连)。
+        from sr_od.application.currency_war.decision.decision_v2.piece_value import (
+            bench_gate_verdict,
+        )
+        return bench_gate_verdict(cand, working, state, session, registry)
     # (约束名 'p1_iface_gate' 已随五开关定谳清理删除,ADR-0487;
     #  arbiter_matrix 检查按 constraints 清单锁,历史约束名不保留。)
     return None    # 未知约束名:放行(审计表锁名存在)

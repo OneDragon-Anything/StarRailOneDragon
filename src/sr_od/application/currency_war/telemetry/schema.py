@@ -230,6 +230,11 @@ class DecisionTrace:
     # d3_bench,值=本备战帧内拒因次数,轮键惰性重置)。None=无 match
     # 注册(离线/测试);{}=门开但本帧零拒因;伞关恒 None(无写点)。
     sess_spend_gate_block: dict | None = None
+    # 件价值·买前 bench 容量预检硬门拒因计数(ADR-0497;
+    # session.v3_pv_block 透传,写入端=piece_value.bench_gate_verdict,
+    # 键=pv_bench_reserve,值=本备战帧内拒因次数,轮键惰性重置)。
+    # None=无 match 注册(离线/测试);{}=门开但本帧零拒因;伞关恒 None。
+    sess_pv_bench_block: dict | None = None
 
 
 
