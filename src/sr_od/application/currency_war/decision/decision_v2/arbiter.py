@@ -43,6 +43,9 @@ from sr_od.application.currency_war.decision.decision_v2.filters import (
 from sr_od.application.currency_war.decision.decision_v2.handoff import (
     directed_refresh_budget,
 )
+from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (
+    p2_spend_auth_core_must_buy,
+)
 from sr_od.application.currency_war.decision.decision_v2.phase import (
     Phase,
     derive_phase,
@@ -185,6 +188,16 @@ def _check_constraint(name: str, cand: Candidate,
     if name == 'gold_floor':
         cost = _cost_of(cand, working)
         if cost <= 0:
+            return None
+        # 位面 2 支出授权(W757 v2 落码;ADR-0480):授权帧内授权目标
+        # 买/定向刷新按层预算带放行金地板(常授权=花完仍≥息线;加急=
+        # 花完≥保留金占位)。授权帧为 None(开关关/条件不合/接管帧/
+        # 末窗/覆盖纪律态)时本臂恒假=零漂移;升级永不在辖(模块内拒)。
+        from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (  # noqa: E501
+            p2_spend_auth_spend_authorized,
+        )
+        if p2_spend_auth_spend_authorized(cand, working, state, session,
+                                          registry, auth):
             return None
         floor = _active_floor(state, session, registry)
         if cand.tag == 'o1_bench_fill':
@@ -343,6 +356,17 @@ def _check_constraint(name: str, cand: Candidate,
             if auth is not None:
                 auth['ev_auth'] = round(ev, 1)   # 授权依据 trace(放行)
             return None    # EV 授权放行(含破息)
+        # 位面 2 支出授权(W757 v2 落码;ADR-0480):加急授权层(T3 命中)
+        # 内授权目标买/定向 D 允许破息至保留金下限([18] 止损落点;下限
+        # 即 [22]④ 息差账的机械化,P25 待证标注见 registry 挂账注释)。
+        # 常授权层在此不可达放行:花完仍≥息线的买已被上方 early-return,
+        # 贴线带 [45,息线) EV≤0 维持拒(P25 占位期保守=不买,零漂移)。
+        from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (  # noqa: E501
+            p2_spend_auth_spend_authorized,
+        )
+        if p2_spend_auth_spend_authorized(cand, working, state, session,
+                                          registry, auth):
+            return None    # 加急层破息授权放行(预算带=保留金下限)
         return RejectReason('interest_rule', '', 0,
                             f'EV≤0 破息拒(V{v:.1f}-C{c}={ev:.1f},'
                             f'{working.gold}→{after})')
@@ -793,7 +817,17 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 约束链照常辖,金可行性(g_after≥R*)在 gold_floor 的 o1
             # 地板加深处辖。
             _o1_ok = cand.tag == 'o1_bench_fill'
-            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok):
+            # 位面 2 支出授权·优先级 1 必买(W757 v2 落码;ADR-0480;
+            # [31]② 目标件刷新出现=唯一最高优先级):授权帧内锁定线核心卡
+            # 买候选凭授权越过非正分门(评分零维/低分不再结构性拦住
+            # 「见了核心卡不买」病灶;局3 希儿型弃购的反向锁)。豁免≠
+            # 必采纳:金地板/息账门按授权层预算带辖(p2_spend_auth 门臂),
+            # bench/copies_cap 照常;只辖核心名(优先级 2-4 不凭本豁免,
+            # 各自按既有判据独立过门)。开关关/授权帧 None=恒假零漂移。
+            _p2_auth_ok = p2_spend_auth_core_must_buy(
+                cand, working, state, session, registry)
+            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok
+                    or _p2_auth_ok):
                 res.log.append({'tag': cand.tag, 'score': val,
                                 'desc': _describe(cand, state),
                                 'accepted': False, 'reject': '非正分',
