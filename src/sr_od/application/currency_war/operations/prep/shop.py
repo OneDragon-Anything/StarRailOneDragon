@@ -73,6 +73,22 @@ def _apply_hp(state: GameState, hp_value: int | None,
     state.hp_trusted = trusted
 
 
+def _r1_rule_hp_applicable(pr: tuple[int, int] | None,
+                           last_hp: int | None,
+                           last_hp_real: int | None) -> bool:
+    """r1 规则真值判据:位面1轮次1 且整局尚无任何 hp 真值。
+
+    游戏规则保证:货币战争开局小队满血 100(r1 备战帧=首战未打,血量
+    不可能已变),因此该帧 hp=100 是**规则固定值**,非 OCR 读取、非结算
+    推导,可信度等同真读(ADR-0282 hp 三层的第四条来源语义:规则)。
+    边界:①仅位面1(位面交接后 hp 带过,r1 不再恒满血);②last_hp/
+    last_hp_real 任一存在 = 已有真读或结算真值,规则值无话语权(r2+
+    仍走既有结算真值/读取链,本判据零介入)。
+    """
+    return (pr is not None and pr[0] == 1 and pr[1] == 1
+            and last_hp is None and last_hp_real is None)
+
+
 def sell_guard_ok(expected: str | None, live: str | None) -> bool:
     """卖前对拍守卫(迁移审计 w62(git 历史) 件2 设计章2.5 轻守卫;ADR-0329)。
 
@@ -333,6 +349,7 @@ class BuyShopCards(SrOperation):
         _hp_raw = read_hp_opt(self.ctx, screen)
         _hp_readable = _hp_raw is not None
         _hp_trusted = _hp_readable   # 真读帧两位皆 True(对齐 read_game_state 真读口径)
+        _hp_rule = False   # r1 规则真值标记(判据与边界见 _r1_rule_hp_applicable)
         if _hp_raw is None:
             _pr = read_phase_round(self.ctx, screen)
             _now_t = ((_pr[0] - 1) * 9 + _pr[1]) if (_pr and _pr[0] and _pr[1]) else None
@@ -345,8 +362,19 @@ class BuyShopCards(SrOperation):
                 _hp_trusted = True   # 结算真值:trusted 位=True;非本帧真读,readable 位保持 False
             else:
                 _hp_raw = None
-            log.info('[cw][shop] HP 区 miss→%s(fresh=%s 结算真值/不覆盖)',
-                     _hp_raw, _fresh)
+                # r1 规则真值:首战未打的备战帧 hp=100 由开局满血规则保证,
+                # 按可信真值赋位(两位皆 True,来源语义=规则,非读取)。
+                # r2+ 不适用(仍 fail-closed:无真值不产值)。
+                if (match is not None
+                        and _r1_rule_hp_applicable(
+                            _pr, match.session.last_hp,
+                            match.session.last_hp_real)):
+                    _hp_raw = 100
+                    _hp_readable = True
+                    _hp_trusted = True
+                    _hp_rule = True
+            log.info('[cw][shop] HP 区 miss→%s(fresh=%s 结算真值/r1规则真值=%s/不覆盖)',
+                     _hp_raw, _fresh, _hp_rule)
         hp_value = _hp_raw
         # round9 同款读对 29 —— 间歇时序,非持续)→ 重读 2 次取真值。防 maybe_pivot hp_safe 信号失效
         # (误判满血不保血 → 不必要失血死)。真满血重读仍 HP_MAX(无害);HP 区持续空(罕见)→ hp_value=None 不覆盖。

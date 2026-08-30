@@ -181,7 +181,9 @@ def _hp_entry(dec_frame: dict[str, Any] | None,
 
     - source='settlement':结算屏真值(trusted = hp_confidence ≥ 0.9);
     - source='frame':决策备帧 hp(trusted = hp_readable 且 state.hp_trusted
-      非 False——hp=100 是 read_hp miss 默认值,不可信必须显影)。
+      非 False——readable=False 时 hp 是 read_hp miss 沿用值/兜底值,不可信
+      必须显影;位面1轮次1首战未打备战帧的 100 是规则固定值,写入点已赋
+      两位 True,在此链上自然显为 trusted,与真读同可信度)。
     两源皆缺 → hp=None, trusted=False。
     """
     if outcome is not None and outcome.get('hp_after') is not None:

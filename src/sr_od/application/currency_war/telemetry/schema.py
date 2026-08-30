@@ -116,7 +116,7 @@ class DecisionTrace:
     eval_breakdown: dict[str, float] = field(default_factory=dict)    # target comp 的特征分解
     actions: list[dict[str, Any]] = field(default_factory=list)       # action plan(每项带 __type__)
     hp: int = 0                                   # 决策时 HP(冗余于 state,便于快速筛)
-    hp_readable: bool = True                      # hp 真读到?(False=读不到;ADR-0282:此时 hp=沿用 last_hp_real,开局无真值才是 100 兜底)
+    hp_readable: bool = True                      # hp 值来源可读位(三来源,True 可信度等同真读:①真读=OCR;②结算=结算屏经新鲜度门;③规则=位面1轮次1首战未打备战帧开局满血 100;False=读不到,ADR-0282:此时 hp=沿用 last_hp_real,无真值才是 100 兜底)
     gold: int = 0                                 # 决策时 gold(冗余,便于 gold 轨迹)
     gold_readable: bool = True                    # gold 真读到?(ADR-0282:prep_director「gold 不可信」日志升级为字段,对齐 hp_readable)
     # —— live 观测扩容(strategy/05_observation;全部可选,回放/影子对齐)——

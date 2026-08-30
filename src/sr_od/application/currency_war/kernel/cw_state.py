@@ -169,8 +169,13 @@ class GameState:
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
-    hp: int = 100          # 小队生命值(锁血决策用;读不到时=沿用 last_hp_real / 开局兜底 100,ADR-0282)
-    hp_readable: bool = True   # hp 是否真读到(False=读不到,ADR-0282:hp 此时为沿用值/兜底值;遥测保真,决策不用)
+    hp: int = 100          # 小队生命值(锁血决策用;读不到时=沿用 last_hp_real / 开局兜底 100,ADR-0282;r1 首战未打备战帧=规则固定值 100,见 hp_readable)
+    # hp 值来源可读位(ADR-0282;False=读不到,hp 此时为沿用值/兜底值;遥测保真,决策不用)。
+    # 三来源,True 时可信度等同真读:
+    # ①真读=OCR 备战 HP 区;②结算=结算屏「小队生命值」经新鲜度门写入;
+    # ③规则=位面1轮次1(首战未打)备战帧的开局满血固定值 100——游戏规则保证,
+    # 非读取值(shop._r1_rule_hp_applicable 判据)。
+    hp_readable: bool = True
     # hp 值可信位(ADR-0282 对账层语义细分;ADR-0431 帧龄门收紧):True=hp
     # 是可信值(真读且过下行守卫的帧,或**同节点内**沿用了 session.last_hp_real
     # 真值的帧——shop 开态帧间无战斗,值必然未变);False=跨节点沿用帧
@@ -178,7 +183,8 @@ class GameState:
     # 真值兜底 100」的假值帧。写入点唯一=read_game_state(按对账结果 +
     # last_hp_real_node==当前节点号派生)。默认 False=未知帧按不可信处理
     # (保守);决策消费=posture_release.flip_hit 假帧守卫(hp_readable or
-    # hp_trusted:同节点沿用真值帧可评估,兜底 100 帧仍拒;谓词口径零改)。
+    # hp_trusted:同节点沿用真值帧可评估,兜底 100 帧仍拒;谓词口径零改;
+    # r1 规则真值帧经写入点赋两位 True,不落此保守面)。
     hp_trusted: bool = False
     # r319(ADR-0213 批次2):gold/board 可读保真位(对齐 hp_readable
     # 模式——int/dict 契约下动画帧 miss 与真值不可区分;消费方
