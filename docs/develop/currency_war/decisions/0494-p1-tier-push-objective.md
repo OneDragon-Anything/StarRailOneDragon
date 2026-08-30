@@ -11,7 +11,7 @@ W801 七局掉血帧阶跃实证:P1 出口 hp 的决定量是**离散战力档�
 落码四件(模块 `decision_v2/tier_push.py`,伞开关 `p1_tier_push_enabled` + 三子旗标 gate/deadline/r6_budget,全部默认关零漂移;开关生命周期第 1 态,开臂判据挂 PREREG v2,不过则删码留 ADR):
 
 1. **缺口差分项**(评分加项,买/升级/部署共用):`ΔG·W(r)·V_tier`;G = deployed 域注册表自算的「距最近成型档组最小缺件数」(三线:仙舟3 / 列车2∧DOT2 / 列车2∧希儿系成型;面板快照滞后一拍不用,W789 问题 0);逐帧存量差分无跨帧账本;线级取「差分·V_tier」最大者;V_tier 按线分权(仙舟锚定 `tier_push_v_anchor`/列车·DOT 降权/希儿最低,占位挂标定)。消费点在 off-lock 降级**之前**——线外候选经既有 W802 κ 折扣通道获得降级非禁绝语义,罚分本体零新增(W802 单一实现)。
-2. **r7 死线**:`W(r)` 三段(r1-r5 平缓 `tier_push_w_early`/r6 陡升 `tier_push_w_r6`/r7+ 坍缩 `tier_push_w_late`;占位,标定挂账);子旗标关恒 1.0(消融归因)。
+2. **r7 死线**:`W(r)` 三段(r1-r5 平缓 `tier_push_w_early`/r6-r7 陡升 `tier_push_w_r6`——r7 备战帧购买直接作用于 r7 遭遇战/r8+ 坍缩 `tier_push_w_late`,设计 §3②「r7 帧后」坍缩语义;占位,标定挂账);子旗标关恒 1.0(消融归因)。
 3. **散装板硬门**(filter 层后置步,`p1_tier_push_gate_enabled`):r4 起 `max_bond_tier(deployed)<2` 帧拒「对任何意向线缺口零增量」的纯散件买入;豁免判据与缺口差分**同一 dist 函数**(单一源,首张豁免防自锁);压库豁免 ≤2 费+每帧 ≤2 张+不穿透 bench 挤占门(needs_slot 不获豁免)。
 4. **r6 建档轮预算承诺**(`p1_tier_push_r6_budget_enabled`):arbiter gold_floor 的 EV 门式授权臂(V 含缺口差分项,与买侧 V 同单一源;Δstreak 由板面差分 win 维承载不另造账),击穿地板放行缺口前进的买入;**血线辖域门最小实现**:消费存活 `state.hp` + `posture_release.hp_decision_trusted` 单一守卫 + 报警线 `blood_margin_low_hp`(=40,[18] 纯语义阈值占位挂标定),hp<报警线授权否决(W774⑤ 已删码 ADR-0487,概念重建批若立项则切换状态源,接缝挂账设计 §8-5)。
 5. **刷新超几何项**:缺档成员 `Δp_tier·P(本刷出缺件)·W(r)`,沿 W795 侧一机制+金水位辖域门同款(花完 <息线 → 0);Δp_tier 单一源 = `realization_delta_p_tier`(W802/P29/W803 三处共享,禁第二源)。

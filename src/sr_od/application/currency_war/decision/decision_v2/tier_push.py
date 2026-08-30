@@ -197,12 +197,14 @@ def _registry_of(session: StrategySession | None) -> DecisionV2Registry | None:
 
 
 def deadline_weight(state: GameState, registry: DecisionV2Registry) -> float:
-    """r7 死线权重 W(r)(设计 §3②;单调递增,r7 后坍缩 boss 残差)。
+    """r7 死线权重 W(r)(设计 §3②;单调递增,r7 帧后坍缩 boss 残差)。
 
-    - r1-r5 平缓 = ``tier_push_w_early``(占位);r6 陡升 =
-      ``tier_push_w_r6``(掉血帧 71% 集中 r7+r9,W801 §3,r6 是 boss 前
-      真实备战窗);r7+ 残差 = ``tier_push_w_late``(新增档位只经 r8-r9
-      两个购买窗,兑现概率打折——不是硬截止,是评分的时效折价);
+    - r1-r5 平缓 = ``tier_push_w_early``(占位);r6-r7 陡升 =
+      ``tier_push_w_r6``(掉血帧 71% 集中 r7+r9,W801 §3,r6/r7 是
+      真实备战窗——r7 备战帧购买直接作用于 r7 遭遇战,属陡升段);
+      r8+ 残差 = ``tier_push_w_late``(设计 §3②「r7 帧后新增档位只经
+      r8-r9 两个购买窗、只对 r9 boss 兑现」——坍缩自 r8 起,不是硬
+      截止,是评分的时效折价);
     - 子旗标关 = 恒 1.0(消融归因:纯缺口差分,无时间整形);
     - 形状参数全部占位,sim 标定批标定(设计 §8-3)。
     """
@@ -211,7 +213,7 @@ def deadline_weight(state: GameState, registry: DecisionV2Registry) -> float:
     if state.plane != 1:
         return 1.0
     r = int(state.round_num or 0)
-    if r >= 7:
+    if r >= 8:   # r7 遭遇的备战帧享陡升权重(设计 §3②「r7 帧后」坍缩)
         return registry.tier_push_w_late
     if r >= 6:
         return registry.tier_push_w_r6
