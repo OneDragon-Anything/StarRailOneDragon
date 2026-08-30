@@ -663,7 +663,9 @@ class PrepActionExecutor:
         with contextlib.suppress(Exception):   # 激活失败不拦重发(与失焦守卫同 best-effort)
             self._ctx.controller.active_window()
         time.sleep(0.3)
-        ok2, detail2 = self._launch_attempt()
+        # 重发段 press_time=0.15:人工解锁实证参数(2026-08-30 16:31 手动 click_game
+        # 0.15 即生效)——输入管线半死态下短按下可能不被采样,重发放长按下加固。
+        ok2, detail2 = self._launch_attempt(press_time=0.15)
         if ok2:
             self._launch_dead_reset()
             return True, f'{detail2}(激活重发)'
@@ -675,9 +677,11 @@ class PrepActionExecutor:
             return False, escalated
         return False, f'出战 click 未落地(激活重发后仍在备战;首次: {detail})'
 
-    def _launch_attempt(self) -> tuple[bool, str]:
+    def _launch_attempt(self, press_time: float = 0.1) -> tuple[bool, str]:
         """单次发射尝试:找按钮 → mouse_move+click+失焦守卫 → 轮询转移。
 
+        press_time:按下时长(秒);默认 0.1(框架 click 默认),激活重发段用
+        0.15(人工解锁实证参数,防输入管线半死态短按下不被采样)。
         成功判据 = 备战标识消失(或未达上限警告弹出后确认完成且标识消失);
         轮询耗尽仍备战 = 未落地 → (False, detail),由调用方决定重发/失败。
 
@@ -704,7 +708,7 @@ class PrepActionExecutor:
                 return False, '找不到出战按钮'
         btn = area_center(self._ctx, _btn_area) or PrepActionExecutor.BATTLE_FALLBACK
         self._ctx.controller.mouse_move(btn)   # bug#1 缓解(2026-08-06 r9 实打出战 click ×4 未落地)
-        self._ctx.controller.click(btn)
+        self._ctx.controller.click(btn, press_time=press_time)
         # r9 失焦守卫:click 后验窗口焦点,失焦 → game_win.active() 激活 + 重点一次
         # (live 实证 2026-08-18:窗口后台化时输入静默丢,截图正常 → 环僵尸 20min;
         # MCP click 激活后立即恢复。active() 是框架窗口原语,见 pc_game_window)。)
@@ -715,7 +719,7 @@ class PrepActionExecutor:
                 self._ctx.controller.game_win.active()
                 time.sleep(0.3)
                 self._ctx.controller.mouse_move(btn)
-                self._ctx.controller.click(btn)
+                self._ctx.controller.click(btn, press_time=press_time)
         except Exception:   # noqa: BLE001  焦点守卫 best-effort(无窗口对象则跳过)
             pass
         for _ in range(6):   # 6 × 0.5s 轮询窗口(同 battle_prep D-70)
