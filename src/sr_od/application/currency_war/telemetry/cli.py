@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from sr_od.application.currency_war.kernel.cw_observe import (
     DEFAULT_REPLAY_DIR,
 )
 from sr_od.application.currency_war.sim.ledger_hooks import run_checks_on_replay
+from sr_od.application.currency_war.telemetry import match_archive as _arch
 from sr_od.application.currency_war.telemetry.query import (
     _list_runs,
     _load_decisions_rounds,
@@ -27,6 +29,39 @@ from sr_od.application.currency_war.telemetry.query import (
 )
 
 
+def _len_rounds(archive: dict | None) -> int:
+    """档案逐轮表行数(None 安全;assemble 回显用)。"""
+    return len((archive or {}).get('rounds') or [])
+
+
+def _match_view_lines(slice_dir: Path, segments: list[str],
+                      view: str) -> list[tuple[str, list[str]]]:
+    """档案切片目录 → 逐视图行(与 query 主路径同函数同参数,单源)。"""
+    out: list[tuple[str, list[str]]] = []
+    if view in ('rounds', 'all'):
+        out.append(('[rounds]', [ln for s in segments
+                                 for ln in query_rounds(slice_dir, s)]))
+    if view in ('supply', 'all'):
+        out.append(('[supply]', [ln for s in segments
+                                 for ln in query_supply(slice_dir, s)]))
+    if view in ('tiers', 'all'):
+        out.append(('[tiers]', [ln for s in segments
+                                for ln in query_tiers(slice_dir, s)]))
+    if view in ('anomalies', 'all'):
+        # 逐段与 query 主路径同构(空段同样打 ✓ 行,保证与 --run 逐字节一致)
+        out.append(('[anomalies]',
+                    [ln for s in segments
+                     for ln in (query_anomalies(slice_dir, s)
+                                or ['  ✓ 无异常标记'])]))
+    if view in ('hp', 'all'):
+        out.append(('[hp]', [ln for s in segments
+                             for ln in query_hp(slice_dir, s)]))
+    if view in ('economy', 'all'):
+        out.append(('[economy]', [ln for s in segments
+                                  for ln in query_economy(slice_dir, s)]))
+    return out
+
+
 def _cli_main() -> None:
     import argparse
     import sys
@@ -34,9 +69,15 @@ def _cli_main() -> None:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser(prog='cw_telemetry',
                                  description='货币战争遥测查询(复盘判读单一入口)')
-    ap.add_argument('cmd', choices=['query', 'checks'])
+    ap.add_argument('cmd', choices=['query', 'checks', 'assemble'])
     ap.add_argument('--run', default='', help='run_id(缺省=最近一局)')
-    ap.add_argument('--recent', type=int, default=0, help='最近 N 局概览')
+    ap.add_argument('--recent', type=int, default=0, help='最近 N 局概览'
+                    '(matches/index.jsonl 存在时改读档案索引)')
+    ap.add_argument('--match', default='', metavar='GAME_ID',
+                    help='直读按局档案(g_*;视图自档案切片计算,与 --run 聚合同源)')
+    ap.add_argument('--game', default='', metavar='GAME_ID',
+                    help='assemble 子命令:点名装配指定局(补装配/崩溃局兜底,'
+                         '绕过水位线;缺省=只装水位线后的新局)')
     ap.add_argument('--view', default='rounds',
                     choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec',
                              'hp', 'economy', 'exogenous', 'execevents',
@@ -71,10 +112,37 @@ def _cli_main() -> None:
         print('\n'.join(run_checks_on_replay(replay_dir,
                                              args.recent or 5)))
         return
+    if args.cmd == 'assemble':
+        # 按局存档装配(离线兜底入口):缺省=水位线后的新局(与局终钩子
+        # 同入口);--game 点名 = 补装配/崩溃局,不问水位线
+        if args.game:
+            a = _arch.assemble_game(replay_dir, args.game)
+            print(f"[assemble] {args.game}: "
+                  + ('装配完成 ' f"({_len_rounds(a)} 轮)"
+                     if a else '游戏不存在(检查 game_id,--recent 看索引)'))
+        else:
+            done = _arch.assemble_pending(replay_dir)
+            print(f"[assemble] 新装配 {len(done)} 局: {', '.join(done) or '(无)'}")
+        return
     if not runs:
         print('(无 replay 数据)')
         return
     if args.recent:
+        idx = _arch.matches_dir(replay_dir) / 'index.jsonl'
+        if idx.exists() and not args.run and not args.match:
+            # 概览改读档案索引(一行一局摘要,视图零计算)
+            entries = [json.loads(ln) for ln in
+                       idx.open('r', encoding='utf-8') if ln.strip()]
+            print(f"—— 最近 {args.recent} 局(档案索引)——")
+            for e in entries[-args.recent:]:
+                seg_s = '+'.join(e.get('segments') or [])
+                abn = ' abandoned' if e.get('abandoned') else ''
+                print(f"{e.get('game_id')} [{seg_s}] {e.get('start_ts')}"
+                      f" → P{e.get('plane_reached')}r{e.get('rounds_survived')}"
+                      f" result={e.get('result')}{abn}"
+                      f" hp={e.get('final_hp')} 轮={e.get('n_rounds')}"
+                      f" 败场={e.get('n_loss_nodes')}")
+            return
         print(f"—— 最近 {args.recent} 局 ——")
         for rid in runs[-args.recent:]:
             best = _load_decisions_rounds(replay_dir, rid)
@@ -88,6 +156,30 @@ def _cli_main() -> None:
                   f" | 末态 hp={last.get('hp_after')} comp={last.get('comp_tag')}")
         return
     rid = args.run or runs[-1]
+    if args.match:
+        # --match 直读按局档案:切片物化到临时目录后走同一套视图函数
+        # (与 --run 聚合输出逐字节一致,单一源不建第二套视图实现)
+        archive = _arch.load_archive(replay_dir, args.match)
+        if archive is None:
+            print(f'(档案不存在: {args.match}——先 assemble --game {args.match})')
+            return
+        import atexit
+        import shutil
+        import tempfile
+        tmp_root = Path(tempfile.mkdtemp(prefix='cw_match_'))
+        atexit.register(shutil.rmtree, tmp_root, ignore_errors=True)
+        _arch.materialize_slice(archive, tmp_root)
+        segs = [s.get('run_id') for s in (archive.get('segments') or [])]
+        endgame = archive.get('endgame') or {}
+        print(f"=== {archive.get('game_id')} ==="
+              f" [{' + '.join(segs)}]"
+              f" {archive.get('start_ts')} → {archive.get('end_ts')}"
+              f" result={endgame.get('result')}"
+              f"{'(abandoned)' if endgame.get('abandoned') else ''}")
+        for view_name, seg in _match_view_lines(tmp_root, segs, args.view):
+            print(view_name)
+            print('\n'.join(seg))
+        return
     print(f"=== {rid} ===")
     if args.view in ('rounds', 'all'):
         print('[rounds]')

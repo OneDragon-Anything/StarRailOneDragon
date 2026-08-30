@@ -1538,6 +1538,15 @@ class CurrencyWarRunLoop(SrOperation):
                     final_hp=self._last_true_hp(_outcome.final_hp),
                     notes='auto')
                 self._summary_written = True
+                # 按局存档装配(终局旁路,零运行时侵入):挂在 on_match_end
+                # 调用点之后同一生命周期;只读 replay/*.jsonl 写 matches/,
+                # 不碰任何内存态/决策路径,失败不阻塞局终收口。
+                try:
+                    from sr_od.application.currency_war.telemetry import match_archive
+                    match_archive.assemble_pending(
+                        state.get_recorder().replay_dir)
+                except Exception as e:   # noqa: BLE001  观测旁路,best-effort
+                    log.warning('[cw][archive] 局终装配失败(不阻塞): %s', e)
                 self.ctx.cw_match = None
             return self.round_success('对局结束,回大厅')
 

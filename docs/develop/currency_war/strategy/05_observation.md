@@ -56,6 +56,7 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 - `cw_weight_search`:CEM 权重搜索(防退化三件套);
 - `cw_divergence_stats`:影子 DP 姿态 vs 生产姿态分歧频率(人机问询触发门数据源);
 - `cw_match_recorder`:对局采集器(§4;离线重放模式可对历史截图目录重跑提取)。历史局审计通道 = decisions.jsonl(写路径在 telemetry recorder;live vs 旧 v1 plan 的对拍器已随 strategy_v1 退役,ADR-0477)。
+- `telemetry/match_archive`:按局存档(ADR-0486)——终局旁路把一个游戏局(可跨多个 run 段,game_id 按段首帧继承)装配为自包含档案 `replay/matches/match_<game_id>.json` + `matches/index.jsonl` 摘要索引。触发 = 局终钩子(battle_loop 调 `assemble_pending`)+ CLI `assemble [--game]` 兜底;查询 CLI `--match <game_id>` 直读档案(切片物化后复用同一套视图函数,输出与 `--run` 一致),`--recent` 读索引;水位线实现旧数据不回填;写盘 tmp+rename 原子。保留策略(记账未实现):index 永久,档案超窗口可删留行、可从 replay 原始流重装配。
 
 ## 6. 日志格式标准(可检索;单一源)
 

@@ -8,6 +8,8 @@
 uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [--run ID] --view rounds|supply|anomalies|hp|economy|all
 ```
 
+- **按局档案(跨 run 段免拼段)**:正常局局终自动装配;`--match <game_id>` 直读单局档案(`--recent` 读索引;崩溃局补装配 `assemble --game <game_id>`,ADR-0486)。
+
 - rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买;hp=掉血×板深;economy=金轨迹/滞留;anomalies=异常标记。
 - **生产局秒级自检**:`telemetry.cli checks --recent 5`——逐局判栈(v2 栈跑 coldstart 检查,default 栈跳过),违规带 run_id 溯源;sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations。检查器自身由测试仓变异自检锁钉死(去门变异必须涌现违规)。
 - 日志跨 run 累积(append+轮转,重启不销毁证据):查旧局按时间窗 grep;需关注行检索 `grep [cw!]`;格式标准单一源在 strategy/05 §6。
