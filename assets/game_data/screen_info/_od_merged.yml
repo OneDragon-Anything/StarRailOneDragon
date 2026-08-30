@@ -10546,3 +10546,49 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
+- screen_id: currency_war_train_supply
+  screen_name: 货币战争-列车补给弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 标识-列车补给
+    id_mark: true
+    pc_rect:
+    - 860
+    - 40
+    - 1060
+    - 105
+    text: 列车补给
+    lcs_percent: 0.8
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-领取补贴
+    id_mark: false
+    pc_rect:
+    - 850
+    - 420
+    - 1070
+    - 660
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 文本-领取提示
+    id_mark: false
+    pc_rect:
+    - 850
+    - 885
+    - 1070
+    - 935
+    text: 点击领取今日补给
+    lcs_percent: 0.7
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []

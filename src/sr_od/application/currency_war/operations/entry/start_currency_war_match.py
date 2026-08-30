@@ -45,6 +45,9 @@ class StartCurrencyWarMatch(SrOperation):
     MODE_SELECT_SCREEN: ClassVar[str] = '货币战争-模式选择'
     BRIEFING_SCREEN: ClassVar[str] = '货币战争-简报'
     PREP_SCREEN: ClassVar[str] = '货币战争-备战'
+    # 列车补给每日弹窗(建档 2026-08-31,launch_dead 停机后实锤:全屏弹窗挡死入局链
+    # → 推进到备战阶段超时)。建档案:assets/game_data/screen_info/currency_war_train_supply.yml
+    TRAIN_SUPPLY_SCREEN: ClassVar[str] = '货币战争-列车补给弹窗'
 
     STATUS_AT_PREP: ClassVar[str] = '到达备战阶段'
 
@@ -82,11 +85,35 @@ class StartCurrencyWarMatch(SrOperation):
         """是否到达备战阶段(备战独有「购买经验」按钮,screen_info area 判定,替代全屏 ocr)。"""
         return self.round_by_find_area(screen, StartCurrencyWarMatch.PREP_SCREEN, '备战标识-购买经验', crop_first=False).is_success
 
+    def _handle_train_supply_popup(self, screen) -> OperationRoundResult | None:
+        """列车补给每日弹窗处理:命中 → 点中央徽章领取 → round_wait 等动画回落。
+
+        游戏语义(2026-08-31 建档实锤):全屏领取弹窗,「点击领取今日补给」= 点任意处/
+        中央徽章即领取,**无 X 关闭钮**——补贴为免费领取无消耗,领取优先;
+        领取点击未落地时弹窗仍在,round_wait 重跑本分支再点同点位(自愈重试,
+        吃节点自身 retry 预算,不会无限空转)。挡在入局链最前面(大世界/大厅
+        之上),故「点开始」「推进到备战阶段」两节点入口都先走本分支。
+        离线建档声明:点击落地后的画面回落未实机验证(现场保活禁点击),
+        待下一局实机复核。
+        """
+        if not self.round_by_find_area(
+                screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '标识-列车补给',
+                crop_first=False).is_success:
+            return None
+        _log.info('[cw-entry] 列车补给每日弹窗 → 领取今日补贴(点中央徽章)')
+        self.round_by_find_and_click_area(
+            screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '按钮-领取补贴',
+            success_wait=2, crop_first=False)
+        return self.round_wait(wait=3)
+
     @operation_node(name='点开始', is_start_node=True)
     def click_start(self) -> OperationRoundResult:
         screen = self.last_screenshot
         if self._at_prep(screen):
             return self.round_success(StartCurrencyWarMatch.STATUS_AT_PREP)
+        popup = self._handle_train_supply_popup(screen)
+        if popup is not None:
+            return popup
         # lobby screen_info area(按钮-开始货币战争)替代全屏 ocr(根治 LCS 误匹配)。
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         return self.round_by_find_and_click_area(
@@ -100,6 +127,10 @@ class StartCurrencyWarMatch(SrOperation):
         screen = self.last_screenshot
         if self._at_prep(screen):
             return self.round_success(StartCurrencyWarMatch.STATUS_AT_PREP)
+        # 列车补给每日弹窗优先于一切推进分支(全屏遮罩挡死下面全部前进按钮)。
+        popup = self._handle_train_supply_popup(screen)
+        if popup is not None:
+            return popup
 
         # 残留大厅态(2026-08-27 实机事故:上局结束「回大厅」后大厅 UI 层残留,
         # app 层 _enter_lobby 见大厅锚即跳过 enter op → 死按钮态直达本 op)。
