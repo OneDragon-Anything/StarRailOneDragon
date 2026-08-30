@@ -6,6 +6,7 @@ P2ReplayEntry 描述一场 P2 节点的实机重放输入;simulate_p2_replay_ent
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -126,7 +127,9 @@ def simulate_p2_replay_entry(entry: P2ReplayEntry, seed: int, *,
     不是「贴近」——贴脸=过拟合警报,迁移审计 w186(git 历史) §6);真值 run 是旧策略
     病局,sim 跑当前策略,决策层差异 expected,锚只锁结算与经济层。
     """
-    sess = StrategySession()
+    # 会话随机流从局 seed 派生(w910_sim_determinism/REPORT,与 engine_p1
+    # 构造点同契约):禁裸 StrategySession() 的 OS 熵默认入 sim。
+    sess = StrategySession(rng=random.Random(f'sim-p2-entry-{seed}'))
     if entry.locked_comp:
         from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
         if entry.locked_comp in COMP_LIBRARY:

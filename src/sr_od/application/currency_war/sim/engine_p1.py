@@ -572,7 +572,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         if invest:
             raise ValueError('案 b 臂(_p2_entry)不支持 invest 注入')
         st = _p2_entry.build_state()
-        sess = session or StrategySession()
+        sess = session or StrategySession(
+            rng=random.Random(f'sim-p1-entry-{seed}'))
         sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
         streak = _p2_entry.streak
         # 带符号 streak(生产口径:连胜 +/连败 −,结算「连胜×N」前缀=方向;
@@ -597,7 +598,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 bench_place(st.bench, BenchChar(
                     slot=0, char_id=n,
                     faction=(CHARACTERS[n].factions or ['散'])[0]))
-        sess = session or StrategySession()
+        # 会话随机流从局 seed 派生(w910_sim_determinism/REPORT):与上方
+        # rng(引擎采样流,seed 派生)同源不同流,杜绝裸 StrategySession()
+        # 的 OS 熵默认——未来决策层接入 rng 消费时,同 seed 局天然可复现。
+        sess = session or StrategySession(
+            rng=random.Random(f'sim-p1-{seed}'))
         sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
         streak = 0
         streak_signed = 0

@@ -250,7 +250,14 @@ class StrategySession:
     star_pending_regression: dict[str, int] = field(default_factory=dict)
     # bail_reason_counts:BailToOuter 同因计数(局级,环重建不清零 —— ping-pong 诊断用;≥3 记 [cw!])。
     bail_reason_counts: dict[str, int] = field(default_factory=dict)
-    rng: random.Random = field(default_factory=random.Random)  # 可种子化(公平/replay);蒙特卡洛 D 牌用
+    # ⚠️ 显式种子化(w910_sim_determinism/REPORT):default 禁止 OS 熵种子
+    # (原 default_factory=random.Random 无参构造 = 每次构造取 urandom,裸
+    # 构造点得到不可复现流)。现 default=固定种子 0 的独立实例:确定
+    # 性由构造保证;真实随机面由消费方显式注入——生产 run loop 按
+    # cw_config.strategy_seed 覆盖(operations/battle_loop.py),sim 引擎
+    # 从局 seed 派生(sim/engine_p1.py)。当前决策层无 rng 消费点
+    # (grep 证),本字段是公开随机接口的种子契约锚。
+    rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     # ⚖️ memory/plane/round_num/pending_deploys 已删(2026-08-16 review D1/D2/TOP4:0 读者;
     # 进度真源 = session.last_state(每回合框架刷新);策略私有 scratch 无消费者)。
