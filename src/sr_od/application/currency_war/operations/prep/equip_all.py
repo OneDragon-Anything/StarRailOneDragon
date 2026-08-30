@@ -29,7 +29,9 @@ from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_comps import (
     equip_alloc_empty_reason,
-    equip_allocation,
+)
+from sr_od.application.currency_war.kernel.cw_junk_first import (
+    junk_first_allocation as _junk_first_allocation,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.obs.currency_war_char_id import (
@@ -623,9 +625,14 @@ class EquipAll(SrOperation):
                     log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                     _stop_reason = 'pool_empty(无穿戴候选)'
                     break
-                alloc = equip_allocation(
-                    _tgt_comp, deployed,
-                    [n for n, _ in wearable], occupied_m7)
+                # 变宝为废牺牲合成排序(kernel/cw_junk_first;决策排序包装,
+                # 开关默认关=基分配原样零漂移;W849 拖拽执行链零触碰——本行
+                # 只换决策函数,输入输出形态不变 list[(char, equip)])
+                alloc = _junk_first_allocation(
+                    _match.session, _reg_eq, _tgt_comp, deployed,
+                    [n for n, _ in wearable], occupied_m7,
+                    list(getattr(_st_hold, 'enemy_affixes', []) or [])
+                    if _st_hold is not None else [])
                 if _transition_hold and _rust_release:
                     # W607 H2②(ADR-0461):库藏生锈在场,owned 滞留=主动喂敌
                     # (competitors.md:45)→ hold 豁免,分配序列全量穿戴。
