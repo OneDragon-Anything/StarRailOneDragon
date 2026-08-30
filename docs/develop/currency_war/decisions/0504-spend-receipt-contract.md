@@ -2,7 +2,10 @@
 
 - **Status**: accepted(开关 `spend_receipt_gate_enabled` 生命周期第 1 态默认关;开臂判据挂账见尾节)
 - **Date**: 2026-08-31
-- **实现**: commit 03650f2d(R-D 批1;设计单一源 `.debug/temp/currency_war/w921_rd_design/DESIGN.md` §1.1/§4/§5)
+- **实现**: commit 03650f2d(R-D 批1;设计单一源 = 本 ADR Context/Decision 节
+  + w921 设计件 `.debug/temp/currency_war/w921_rd_design/DESIGN.md`(临时
+  工作件,不入 git)§1.1/§4/§5;判前预注册持久单一源 =
+  `docs/develop/currency_war/prereg/w937_spend_receipt/PREREG.md`)
 
 ## Context(背景)
 
@@ -35,8 +38,11 @@ reconcile_spend`,arbiter 入口与段尾调用,`posture.Posture` 三新字段带
 
 1. **授权包(姿态层产出侧)**:`Posture` 增 `premises`(前提 token
    `'pop_slot'`/`'spend_channel'`)、`buy_budget`(买侧扩张预算,奖励帧=溢余段
-   `g−R*`,`economy_cycle.overflow` 单一源,量级标定归 D2 批)、`auth_id`
-   (`f'{plane}-{round}'`,对账挂接键)。前提不成立的授权**产出侧拒发**
+   `g−R*`,`economy_cycle.overflow` 单一源,量级标定归 D2 批;**授权≠义务**:
+   buy 渠道 = 扩张许可(`buy_obligation=False`,奖励帧 EV 链「正确地不花」
+   是设计内行为,不记未兑现、不触发降级;True=义务型买授权保留位,
+   w943_audit5 P2-2))、`auth_id`(`f'{plane}-{round}'`,**轮标识**——
+   跨轮唯一,轮内多决策段共用,回执 last-wins 取末段,对账挂接键)。前提不成立的授权**产出侧拒发**
    (D1):板满∧bench 空 → `level_up=False`(13-2);无通道节点 →
    `refresh_budget=0`(20-5);拒发后 tag 回落词汇表 v2 既有项 `'存息'`。
 2. **执行回执(执行层)**:`SpendReceipt` 按渠道(buy/levelup/refresh)汇总采纳
@@ -63,11 +69,18 @@ schema)+ sim 账本行 `posture_unfulfilled`(`sim/engine_p1.py` 轮入口快照)
 ## Consequences
 
 - **开关关零漂移**:契约面全旁路(16 seeds ledger digest 逐位一致,w937 REPORT §三)。
-- **生产写入端挂账**:schema 字段已就位,行级落盘差两行(recorder 映射 +
-  shop.py extra 键);接线前生产行无 `posture_unfulfilled`,授权未兑现占比的
-  实机判读以 session 内存面/逐局复盘为主。
+- **生产写入端已接线**(w943_audit5 P3-8 回填,执行记录 da222efb):
+  recorder 逐 decision 行直读 session 属性(`v3_posture_unfulfilled`,
+  第三路接线,不依赖 shop.py `_extra` 透传键——该键无需落);字段逐帧
+  帧级复位契约由 `attach_spend_authorization` 入口清场保证(见下条)。
+- **声明字段帧级复位契约**:`v3_posture_unfulfilled` 是全量重算面——
+  每次仲裁入口无条件清 None、段尾对账覆写(w943_audit5 P1-1 处置,
+  条件写滞留根除),「无未兑现帧=None」逐帧成立。
 - **20-5 通道缺位只声明不修**:无通道节点的执行通道接线归 R-F 行为批
-  (`_NO_CHANNEL_NODE_TOKENS` 即接口位),本契约只让缺口显式可见。
+  (`_NO_CHANNEL_NODE_TOKENS` 即接口位;**现辖域如实声明 = 仅
+  {supply,补给}**——奖励节点经实机核实有商店通道(复盘 g_20260831
+  P1 r1/r2/r8),不入该集;词表重审归 R-F,w943_audit5 P2-3/P3-10),
+  本契约只让缺口显式可见。
 - **D2 量级标定挂账**:`buy_budget` 当前量级=溢余段全额(授权面雏形,零新常数);
   精细档量推导 + sim 敏感度扫描归 DESIGN §2-D2 标定批,标定前不构成新花钱通道
   (买侧消费仍走既有 EV 过滤链)。
@@ -79,14 +92,18 @@ schema)+ sim 账本行 `posture_unfulfilled`(`sim/engine_p1.py` 轮入口快照)
 - 新锁 `sr-od-test/test/sr_od/app/currency_war/test_cw_spend_receipt.py` 11 条
   (授权包装配/产出侧拒发+守卫移除负控/r4 形态锁/四枚举/对账门三选一/开关关零漂移);
 - 关臂零漂移:16 seeds digest 逐位(`PYTHONHASHSEED=0` 钉 seed,stash 前后对拍);
-- sim A/B 预注册(`PREREG.md` 判前落盘):n=300/臂同 seed 配对,主判据=授权未兑现
-  帧占比 5.37%→1.89%(−3.48pp,方向成立),次要(终局 hp/残金/存活)全部不劣化;
-- L1 快速集全绿(1973P/0F/2S/1XP)+ ruff 0 error。
+- sim A/B 预注册:判前落盘(`prereg/w937_spend_receipt/PREREG.md`,
+  **v2 渠道级口径**)。v1 帧级口径(5.37%→1.89%)存在分子粒度错位与
+  分母共动两洞(w943_audit5 P2-1),原数字降级为历史记录不进开臂量化
+  判断;v2 渠道级主判据 + 同帧集配对无损判据的 A/B 结果见 w937 REPORT
+  返修节。
+- L1 快速集全绿 + ruff 0 error。
 
 ## 开臂判据(挂账,生命周期第 1→2 态)
 
-判前预注册 `.debug/temp/currency_war/w937_rd_batch1/PREREG.md`:sim A/B(n≥300/臂
-同 seed 配对)主判据=授权未兑现帧占比下降 ∧ 次要(终局 hp/残金/存活)不劣化;过 →
-第 2 态进开臂评审(实机锚点=dp 判花帧滞留金占轮均金比下降,DESIGN §5-4),由编排者
-裁定排期;不过 → 第 4 态删码留本 ADR。批1 A/B 已过主判据(见 §验证),**本 ADR 记录
-时不翻默认**,开臂评审待实机锚点排期。
+判前预注册 `docs/develop/currency_war/prereg/w937_spend_receipt/PREREG.md`
+(v2 渠道级口径;`.debug` 工作件副本为临时跑批配套):sim A/B(n≥300/臂
+同 seed 配对)主判据 = 渠道级未兑现占比下降(A)∧ 同帧集配对兑现不劣化(B)
+∧ 次要(hp/残金/存活)不劣化;过 → 第 2 态进开臂评审(实机锚点=dp 判花
+帧滞留金占轮均金比下降),由编排者裁定排期;不过 → 第 4 态删码留本 ADR。
+**本 ADR 记录时不翻默认**。

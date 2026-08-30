@@ -771,10 +771,14 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                 else 'mode')
     # 预算-回执契约·授权包装配(w921_rd_design DESIGN §1.1-A;开关
     # spend_receipt_gate_enabled 默认关=零漂移):本帧支出授权就地补
-    # 前提位/授权号/买侧预算,前提不成立的授权产出侧拒发(姿态载体
-    # 就地改写,下方 dp_spend 臂/评分窗读同一缓存=授权面收窄)。
+    # 前提位/轮标识/买侧预算,前提不成立的授权产出侧拒发(姿态载体
+    # 就地改写,下方 constraint 各臂——dp_spend 臂/升级前提防线——
+    # 读同一缓存=授权面收窄。**辖域声明**:候选评分(scored)在
+    # arbitrate 之前生成,评分窗读的是 attach 前缓存,不受拒发约束;
+    # 被拒发授权的候选仍参与排序,由 _check_constraint 纵深兜住)。
     # 快照写 session.v3_spend_auth,段尾回执/对账消费(见 arbitrate
-    # 末段)。release 帧(替代消费通道自身)不重复授权,零改动。
+    # 末段);attach 同帧级复位 v3_posture_unfulfilled(P1-1)。
+    # release 帧(替代消费通道自身)不重复授权,零改动。
     attach_spend_authorization(state, session, registry)
     working = state.copy()
     ordered = sorted(scored, key=lambda t: -t[1])

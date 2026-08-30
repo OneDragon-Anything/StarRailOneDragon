@@ -928,11 +928,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         getattr(sess, 'v3_release_budget', 0) or 0)
                     _round_release_reason = str(
                         getattr(sess, 'v3_release_reason', '') or '')
-                    # 预算-回执契约·对账门声明(轮入口快照,与生产
-                    # decisions 行 posture_unfulfilled 同语义;判前
-                    # 预注册 A/B 主判据的数据源)
-                    _unf = getattr(sess, 'v3_posture_unfulfilled', None)
-                    _round_posture_unfulfilled = dict(_unf) if _unf else None
                     # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
                     _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
                                                 False))
@@ -943,6 +938,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
                     _round_handoff_hp_proj = getattr(
                         sess, 'v3_handoff_hp_proj', None)
+                # 预算-回执契约·对账门声明(**逐段覆写=末段口径**,
+                # 与回执 last-wins/生产 per-frame 直读同语义;w943_audit5
+                # P3-4:首段口径会漏记「前段已兑现、刷新后重决策段未兑现」
+                # 的轮。判前预注册 A/B 主判据的数据源)
+                _unf = getattr(sess, 'v3_posture_unfulfilled', None)
+                _round_posture_unfulfilled = dict(_unf) if _unf else None
                 if not use_refresh:
                     acts = [a for a in acts
                             if not isinstance(a, RefreshShop)]
