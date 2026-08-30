@@ -1331,6 +1331,7 @@ class CurrencyWarRunLoop(SrOperation):
                 self._director_fail_streak = 0
                 # ADR-0250:备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
                 self._battle_ts = time.monotonic()
+                self._speed_click_done = False   # 新一场战斗 → 倍速点击预算重置(1e 分支)
             return self.round_wait(wait=2)  # 战斗中,下轮再判
 
         # 1b. 详情弹窗(点卡/点角色触发的:"可合成列表"祝福详情 / "角色详情"角色信息)→ ESC 关闭。
@@ -1396,6 +1397,21 @@ class CurrencyWarRunLoop(SrOperation):
             # X 点击失败兜底:ESC 同样关闭(实测无副作用)
             self.ctx.controller.esc()
             return self.round_wait(wait=1.5)
+
+        # 1e. 战斗倍速(实机效率批 w781,ADR-0485):战斗窗口内检测「1x 档图标」
+        #     → 点右上倍速按钮切 2x。幂等门=模板只命中 1x 档图形(阈值 0.85;
+        #     实拍对拍:1x 帧 1.000 / 已切换帧 0.62-0.67,.debug/temp/currency_war/
+        #     w781_efficiency_impl/),已 2x 时图形不同不命中 → 不会误切回。
+        #     每场战斗只试一次(_speed_click_done 出战成功处置位);模板 miss=
+        #     放行(fail-open,零行为变更)。战斗中画面以点击为主(必守#3),
+        #     按钮坐标进 screen_info(货币战争-战斗)。
+        if (getattr(self, '_battle_ts', None) is not None
+                and not getattr(self, '_speed_click_done', False)):
+            self._speed_click_done = True   # 无论命中与否本场只试一次(防点击循环)
+            if self.round_by_find_area(screen, '货币战争-战斗', '标识-倍速一倍档').is_success:
+                _sp = self.round_by_click_area(screen, '货币战争-战斗', '按钮-战斗倍速')
+                log.info('[cw-loop] 战斗倍速:1x 档命中 → 点倍速按钮切 2x(%s)', _sp.status)
+                return self.round_wait(wait=1.5)
 
         # 2. 点击空白加速 / 点击空白处继续 → 点空白
         if (self.round_by_ocr(screen, '点击空白加速').is_success
