@@ -186,7 +186,7 @@ def _check_constraint(name: str, cand: Candidate,
         cost = _cost_of(cand, working)
         if cost <= 0:
             return None
-        # (位面 2 支出授权·加急预算放宽授权臂已随定谳清理删除,ADR-0489:
+        # (位面 2 支出授权·加急预算放宽授权臂已随定谳清理删除,ADR-0492:
         # 四轮 A/B M0b 四口径穷尽 0-4.1% → 授权窗内花费结构性死路。)
         # (P1→P2 接口机制·③遭遇备战/④连败金流授权臂已随五开关定谳清理
         # 删除,ADR-0487:W793 A/B 触发面全开火仍主判据双败,确认无效。)
@@ -347,7 +347,7 @@ def _check_constraint(name: str, cand: Candidate,
             if auth is not None:
                 auth['ev_auth'] = round(ev, 1)   # 授权依据 trace(放行)
             return None    # EV 授权放行(含破息)
-        # (位面 2 支出授权·加急破息豁免臂已随定谳清理删除,ADR-0489:
+        # (位面 2 支出授权·加急破息豁免臂已随定谳清理删除,ADR-0492:
         # 判定②sink 解锁失败,M0b-v4 水位不升 0.0%。)
         return RejectReason('interest_rule', '', 0,
                             f'EV≤0 破息拒(V{v:.1f}-C{c}={ev:.1f},'
@@ -802,7 +802,7 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 地板加深处辖。
             _o1_ok = cand.tag == 'o1_bench_fill'
             # (位面 2 支出授权·优先级 1 核心必买豁免已随定谳清理删除,
-            # ADR-0489:窗口内花费结构性死路,概念被数据否决。)
+            # ADR-0492:窗口内花费结构性死路,概念被数据否决。)
             if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok):
                 res.log.append({'tag': cand.tag, 'score': val,
                                 'desc': _describe(cand, state),

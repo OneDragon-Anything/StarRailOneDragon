@@ -1125,7 +1125,7 @@ class DecisionV2Registry:
     #: 不过 → 删码留 ADR-0443。
     c1_directed_spend_enabled: bool = False
 
-    # (位面 2 支出授权 p2_spend_auth 全机制已随定谳清理删除,ADR-0489:
+    # (位面 2 支出授权 p2_spend_auth 全机制已随定谳清理删除,ADR-0492:
     # 四轮 A/B(W762/W772/W779/W785)M0b 四口径穷尽 0-4.1%,授权窗内
     # 花费结构性死路;W801 判根因=授权/方向类杠杆与档位累积型目标变量
     # 类型错配。窗前预转换思想由 W795/W803 P29/档位积分/D2 入口转化继承。

@@ -199,7 +199,7 @@ class TelemetryRecorder:
                 _rs = getattr(_sess, 'v3_release_reason', None)
                 trace.sess_release_reason = None if _rs is None else str(_rs)
                 # (位面 2 支出授权 sess_p2_auth_intercept/water 写入面已随
-                # 定谳清理删除,ADR-0489;schema 字段按历史数据只读口径保留,
+                # 定谳清理删除,ADR-0492;schema 字段按历史数据只读口径保留,
                 # 新数据恒 None。)
             _led = getattr(_sess, 'xp_expect_ledger', None)
             if _led is not None and is_dataclass(_led):

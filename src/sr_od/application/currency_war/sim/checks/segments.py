@@ -537,7 +537,7 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
 
 
 _LEVELUP_AUTH_WHITELIST = ('pop_slot', 'dp', 'static_ev')
-# ('p2_auth_xp' 臂已随位面 2 支出授权定谳清理删除,ADR-0489;XP sink
+# ('p2_auth_xp' 臂已随位面 2 支出授权定谳清理删除,ADR-0492;XP sink
 # 在 W785 sink 分解中 0 帧/0 金,供给面从未开火。)
 
 # 同 check_levelup_interest_engine_gate(ADR-0410 static_ev 并入)——

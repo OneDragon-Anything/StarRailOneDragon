@@ -247,7 +247,7 @@ def _compensate_gold(working: GameState, state: GameState,
     占用守卫防陈旧提案)。
     """
     a = rej.cand.action
-    # (位面 2 支出授权·核心必买补偿豁免已随定谳清理删除,ADR-0489;
+    # (位面 2 支出授权·核心必买补偿豁免已随定谳清理删除,ADR-0492;
     # 分数门恢复单一判据。)
     if rej.score <= registry.remedy_min_score:
         return []    # 只救高价值买(§1.3 remedy_min_score 下沿)
@@ -377,7 +377,7 @@ def _compensate_bench(working: GameState, state: GameState,
     a = rej.cand.action
     if not isinstance(a, BuyCard):
         return []
-    # (位面 2 支出授权·核心必买补偿豁免已随定谳清理删除,ADR-0489。)
+    # (位面 2 支出授权·核心必买补偿豁免已随定谳清理删除,ADR-0492。)
     if rej.score <= registry.remedy_min_score:
         return []
     if a.card.name in (getattr(session, 'v2_round_sold', None) or ()):

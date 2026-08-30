@@ -377,7 +377,7 @@ class DecisionV2Strategy(CwStrategy):
         # ADR-0348 ↺:扑满节点识别遥测(识别≠授权;每轮入口采样)
         session.v3_piggy_reward = reward_node_is_battle(state)
         # (位面 2 支出授权·拦截原因枚举披露键 v3_p2_auth_intercept 已随
-        # 定谳清理删除,ADR-0489;历史对局数据中的 sess_p2_auth_intercept/
+        # 定谳清理删除,ADR-0492;历史对局数据中的 sess_p2_auth_intercept/
         # sess_p2_auth_water 字段按只读口径留存,schema 字段不删。)
         # (P1→P2 接口机制拦截枚举披露键 v3_p1_iface_intercept 已随五开关
         # 定谳清理删除,ADR-0487;历史对局数据中的该字段按只读口径留存。)

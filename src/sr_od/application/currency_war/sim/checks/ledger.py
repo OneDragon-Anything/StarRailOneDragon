@@ -204,7 +204,7 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
     **判据(重定义后)**:违规 = lv≥5(追级段)的 LevelUp 发生在时点金
     (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp,
     static_ev}**('p2_auth_xp' 臂已随位面 2 支出授权定谳清理删除,
-    ADR-0489:W785 sink 分解 XP 0 帧/0 金)。授权依据 = sim 账本 LevelUp 行的 ``auth`` 键
+    ADR-0492:W785 sink 分解 XP 0 帧/0 金)。授权依据 = sim 账本 LevelUp 行的 ``auth`` 键
     (LevelUp.auth_basis 观测字段,arbiter 升级门/remediation 补偿臂放行
     时写入,单一源=``ev.levelup_ev_basis``)。
 

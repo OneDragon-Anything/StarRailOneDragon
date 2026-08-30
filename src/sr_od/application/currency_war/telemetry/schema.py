@@ -215,7 +215,7 @@ class DecisionTrace:
     sess_release_budget: int | None = None
     # 义务来源(''/'flip'/'third_path'/'reserve_admission';判读兑现率分域)。
     sess_release_reason: str | None = None
-    # 位面 2 支出授权·历史数据字段(只读口径,ADR-0489 定谳清理):写入面
+    # 位面 2 支出授权·历史数据字段(只读口径,ADR-0492 定谳清理):写入面
     # (strategy 披露键 + recorder 透传)已随机制删除,新数据恒 None;
     # 字段保留供存量 runs.jsonl 判读脚本消费。
     # sess_p2_auth_intercept:金堆积候选帧逐帧拦截原因枚举(取值

@@ -263,7 +263,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
 
     返回:'pop_slot'=① [33] 人口位 / 'dp'=② DP 花费授权 /
     'static_ev'=③ 静态 EV 平台账 / ''=拒。(臂④ 'p2_auth_xp' 位面 2
-    支出授权 XP sink 已随定谳清理删除,ADR-0489。)消费点:arbiter 升级门与
+    支出授权 XP sink 已随定谳清理删除,ADR-0492。)消费点:arbiter 升级门与
     remediation 补偿臂(放行时写入 ``LevelUp.auth_basis`` 观测字段→sim
     账本 LevelUp 行 auth 键→检查器 levelup_interest_engine_gate 判据
     重定义,`w131_a2n_arm/`/ADR-0354)、levelup_ev_authorized(bool 包装)。
@@ -348,7 +348,7 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
     if schedule_upgrade(state, session) \
             and after >= registry.interest_floor():
         return 'dp'
-    # (位面 2 支出授权·XP sink 臂④已随定谳清理删除,ADR-0489:
+    # (位面 2 支出授权·XP sink 臂④已随定谳清理删除,ADR-0492:
     # W785 sink 分解 D 44 帧/XP 0 帧——XP 供给面从未开火,概念被数据否决。)
     # ③ 静态 EV 账(V−C≥0;V 含省刷金项,`w126_b_arm/`/P5 检验点②)
     v = val - int_emb + levelup_refresh_saving(state, session, registry)
