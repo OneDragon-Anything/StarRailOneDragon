@@ -916,8 +916,14 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
 
     单调守卫(审计 P0,2026-08-16,M38 同款毒化面):plane 局内单调递增、round 同位面内递增,
     读到**倒退值**(如 plane3 → plane2)= OCR 假阳 → 保旧 + obs_conflict 留证(毒化面:
-    level_plan/支出 gate/P2P3 概率表/_expected_level 兜底全歪)。digits fallback 抓首个数字
-    对噪声极敏感,是倒退误读的主要来源 —— fallback 路径读出的倒退一律拒。
+    level_plan/支出 gate/P2P3 概率表/_expected_level 兜底全歪)。
+
+    数字 fallback 分支已停用(w891 延迟审计候选③):该分支唯一合法产出 (1,1) 与
+    无历史兜底返回值完全重合,结构上不可能改变任何返回值;近两日 868 次被拒全为
+    纯浪费的 OCR 判读(被拒数字是 A8 难度/Lv 泄漏的错源,不是可修复的形变真值,
+    上下文规则修复无对象)→ 整段删除即治本。blob 无 X-Y/第X位面 匹配 → 直接走
+    last-known-good/(1,1) 兜底。值域守卫(source=ocr_range)不属 fallback,是
+    M70 假 win 防毒化守卫,保留。
     """
     global _last_phase_round
     blob = ''.join(r.data for r in _ocr(ctx, screen, _area_rect(ctx, A_PHASE)))
@@ -943,26 +949,7 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
             return _last_phase_round
         _last_phase_round = new
         return _last_phase_round
-    digits = re.findall(r'\d', blob)
-    if digits:
-        d = int(digits[0])
-        # fallback 单数字:首数字同时当 plane/round 本就是强假设(仅开局 (1,1) 合法)——
-        # ⚠️ 值域守卫(M70 根因同上):"8" 来自 A8/Lv.8 泄漏,不是位面。只接受 1(开局 1-1)。
-        if d == 1:
-            new = (1, 1)
-        else:
-            obs_conflict('phase_round', _last_phase_round, (d, d), screen,
-                         verdict='拒-fallback数字非1(单数字仅开局1-1合法,A8/Lv泄漏)', source='ocr_digits_fallback')
-            new = None
-        if new is not None:
-            if _last_phase_round is not None and (new[0] < _last_phase_round[0]
-                                                  or (new[0] == _last_phase_round[0] and new[1] < _last_phase_round[1])):
-                obs_conflict('phase_round', _last_phase_round, new, screen,
-                             verdict='保旧-单调守卫(fallback数字倒退拒)', source='ocr_digits_fallback')
-                return _last_phase_round
-            _last_phase_round = new
-            return _last_phase_round
-    # OCR 失败(过渡帧)→ 返回上次成功值,避免 (1,1) 误导 level_plan
+    # OCR 失败(过渡帧/错源单数字)→ 返回上次成功值,避免 (1,1) 误导 level_plan
     if _last_phase_round is not None:
         return _last_phase_round
     return 1, 1

@@ -315,6 +315,73 @@ _NODE_ICON_SHOT_TS: dict[int, float] = {}
 
 
 
+# ===== 备战决策结果缓存(w891 延迟审计候选②)=====
+
+#: 键 = ('v1', 感知指纹, defer_count);值 = (Decision, action)。跨 PrepDirector
+#: 派发存活(模块级):审计口径的重复求值主体 = 外环重派后对未变状态全量重算。
+_DECISION_CACHE: dict[tuple, tuple] = {}
+#: 上界防无限增长(同指纹复用语义安全,首动作落地即失效;超限整体清空)。
+_DECISION_CACHE_LIMIT: int = 64
+#: 命中/未命中计数(开臂判据①「命中率 ≥30%」的数据源)。
+_decision_cache_stats: dict[str, int] = {'hit': 0, 'miss': 0}
+
+
+def _decision_cache_clear(reason: str) -> None:
+    """缓存整体失效。唯一失效点 = 任一动作 progressed(成功动作必然改写
+    decide 消费的会话轮簿记如 v2_round_bought,其中部分指纹不可见——防会话
+    隐藏态漂移,宁可少缓存不可错复用)。"""
+    if _DECISION_CACHE:
+        log.info(f'[cw][director-v2] 决策缓存清空({reason},n={len(_DECISION_CACHE)})')
+    _DECISION_CACHE.clear()
+
+
+def _fp_canon(value):
+    """指纹规范化(递归):dataclass→名字段元组;映射→排序项元组;集合→排序
+    元组;序列→逐元素;标量原样。同语义输入必得相等结果。"""
+    import dataclasses
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return tuple((f.name, _fp_canon(getattr(value, f.name)))
+                     for f in dataclasses.fields(value))
+    if isinstance(value, dict):
+        return tuple(sorted((repr(k), _fp_canon(v)) for k, v in value.items()))
+    if isinstance(value, (frozenset, set)):
+        return tuple(sorted(repr(_fp_canon(v)) for v in value))
+    if isinstance(value, (list, tuple)):
+        return tuple(_fp_canon(v) for v in value)
+    return value
+
+
+def prep_decision_fingerprint(snapshot) -> tuple:
+    """备战决策缓存键的感知指纹:对 Snapshot 的**全部** dataclass 字段动态
+    枚举(dataclasses.fields)规范化——快照契约「字段只增不改删」,新增字段
+    自动进指纹,结构性防「缓存键漏感知字段=错误复用」。"""
+    return _fp_canon(snapshot)
+
+
+def _decision_cache_key(snapshot, session) -> tuple:
+    """缓存键 = 感知指纹 + defer_count。defer_count 是指纹外的显式会话面:
+    Defer 门=2 会改变策略行为(框架侧计数,快照不可见);其余会话消费面
+    (v2_round_bought 等轮簿记)只在成功动作后变化 → 由 progressed 失效覆盖。"""
+    return ('v1', prep_decision_fingerprint(snapshot),
+            getattr(session, 'defer_count', 0))
+
+
+def _decision_cache_lookup(snapshot, session) -> tuple | None:
+    """命中返回缓存的 (Decision, action);未命中返回 None 并记账。"""
+    hit = _DECISION_CACHE.get(_decision_cache_key(snapshot, session))
+    if hit is not None:
+        _decision_cache_stats['hit'] += 1
+    else:
+        _decision_cache_stats['miss'] += 1
+        if len(_DECISION_CACHE) >= _DECISION_CACHE_LIMIT:
+            _DECISION_CACHE.clear()
+    return hit
+
+
+def _decision_cache_store(snapshot, session, decision, action) -> None:
+    _DECISION_CACHE[_decision_cache_key(snapshot, session)] = (decision, action)
+
+
 class PrepDirector(SrOperation):
     """备战决策环:观察驱动单步决策,替代 BattlePrepCycle 固定序列(P1)。
 
@@ -1935,6 +2002,10 @@ class PrepDirector(SrOperation):
         )
 
         adapter = DecideAdapter(match.strategy, config, self._executor)
+        # 决策缓存臂(默认关;开关/开臂判据 = CwStrategy.prep_decision_cache_enabled):
+        # 指纹未变 → 复用上次 (Decision, action),跳过全量候选枚举与评分。
+        _cache_on = bool(getattr(match.strategy,
+                                 'prep_decision_cache_enabled', False))
         forced_ok = {'ok': False}   # force_battle 端口结果(出口映射消费)
         # 动作级记账状态(端口间传递;生命周期 = 单步,每次 execute 重置)
         acct: dict = {'last_obs': None, 'key': None, 'progressed': False,
@@ -1951,7 +2022,28 @@ class PrepDirector(SrOperation):
             return snapshot_from_obs(obs, session)
 
         def _decide_port(snapshot, session_):
+            if _cache_on:
+                cached = _decision_cache_lookup(snapshot, session_)
+                if cached is not None:
+                    decision, action = cached
+                    adapter.last_action = action
+                    if decision.ops:
+                        # 复用帧补绑:binding 表「每 decide 覆盖」(DecideAdapter
+                        # 契约),缓存路径跳过 decide 需重绑首 op(同类私有面,
+                        # app 桶内可达;仅首 op 与 adapter.decide 绑定面一致)。
+                        adapter._binding[decision.ops[0].op_key] = action
+                    # F8 步进遥测命中帧照记:decisions.jsonl 缺行会误触发
+                    # 策略失活早停检测(battle_loop 读 strategy_round_live,
+                    # ADR-0342)与复盘判读断档——缓存只省求值,不省遥测。
+                    if acct['last_obs'] is not None and action is not None:
+                        self._record_step(acct['last_obs'], action)
+                    log.info('[cw][director-v2] 决策缓存命中'
+                             '(指纹未变→意向不变,跳过全量求值)')
+                    return decision
             decision = adapter.decide(snapshot, session_)
+            if _cache_on:
+                _decision_cache_store(snapshot, session_, decision,
+                                      adapter.last_action)
             # F8 步进遥测(旧环 _record_step 同款;obs = 最近观察帧)
             if acct['last_obs'] is not None and adapter.last_action is not None:
                 self._record_step(acct['last_obs'], adapter.last_action)
@@ -1994,6 +2086,9 @@ class PrepDirector(SrOperation):
                 self._spend_unit_close(progressed=progressed, detail=detail,
                                        boundary='closed' if progressed else 'failed')
             acct['progressed'] = progressed
+            if progressed and _cache_on:
+                _decision_cache_clear('动作落地(会话轮簿记随成功动作变化,'
+                                      '指纹不可见)')
             log.info(f'[cw][director-v2] step {key} → {"✓" if progressed else "✗"} {detail}')
             # 期望态层·经验(W552;仅 progressed 分支,旧环同款)
             if progressed and isinstance(action, LevelUp):
