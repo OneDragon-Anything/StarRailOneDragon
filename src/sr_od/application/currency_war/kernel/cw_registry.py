@@ -1629,6 +1629,26 @@ class DecisionV2Registry:
     #: → tag 行动喂敌,克速度依赖/量子拉条(阿雅鞋队/希儿量子,tag 均有载体)。
     #: 「敌多动=DoT 多结算」半边不走本表(cw_system_cards affix_likes 通道已覆盖,防双计)。
     w875_sync_action_enabled: bool = False
+    #: ===== W878 死 tag 复活 4 批子旗标(开关生命周期第 1 态:默认关)=====
+    #: 复活 4 个零携带死 tag 的 comp 侧载体(裁决依据=死映射三问:概念存在×判据可判×
+    #: 量级匹配 mechanics_fit ±0.25/±0.20 粒度;判型出处见 cw_comps.W878_GATED_TAGS 注记):
+    #: - 单属性队:属性熄火 7 词条(风/火/冰/雷/物理/量子/虚数,敌我方该属性伤害 1 点×4 次)
+    #:   克纯色主档队;载体=希儿量子(量子同频4 属性型羁绊主档)——量子熄火局防错选希儿线。
+    #: - 成型羁绊队:形单影只(1/2/3 个未激活羁绊 → 伤害 85%/60%/30%)利羁绊全的板;
+    #:   载体=羁绊驱动型 comp(战力来自羁绊档位乘区,装备流/单核族不打,逐套判型理由
+    #:   见 cw_comps COMP_LIBRARY 标注注释)——全表最大量级词条(-70%)。
+    #: - 慢速:冻结族 3 词条(极速制冷/坠入陷阱/冷冻冬眠)克拖久+耗点队;
+    #:   载体=DOT 磨血族(叠层×引爆胜利条件,final_dot_kafka)。
+    #: - 依赖合成装备:变宝为废(每位面首次进阶合成 50% 垃圾袋)克全预算砸核心装的流;
+    #:   载体=白厄反甲族(装备即胜利条件,final_baie_reflect);合成侧已由 junk_first
+    #:   排序器处理,本 tag 补选型侧(comp_score 在该词缀下给装备流降分),两半互补不重复。
+    #: 开臂判据挂账(环境恢复后补验):①单帧锁组(test_cw_w878_deadtag_revive)全绿;
+    #: ②含对应词缀的 sim/实机局样本 ≥10 局判读方向一致(样本量恢复后由编排者定谳,
+    #: 当前无模拟/实机输入,悬置默认关)。
+    w878_mono_attribute_enabled: bool = False
+    w878_formed_bond_enabled: bool = False
+    w878_slow_burn_enabled: bool = False
+    w878_synth_equip_dep_enabled: bool = False
     #: 长线利好刷价参数(机制原文 cw_invest_data id=120:花费刷新 30 次后得 20 金,
     #: 之后本局刷新只需 1 金)。阈值/折后价单一源在本表,消费点 =
     #: cw_economy.refresh_cost_effective(刷新 EV 判据参数化接缝)。

@@ -323,6 +323,56 @@ def merged_mechanic_tables(registry: DecisionV2Registry | None = None,
                 dst[tag] = list(src[tag])
     return affix_map, counters, synergies
 
+# ===== W878 死 tag 复活 4 批(开关生命周期第 1 态:默认关,子旗标见 cw_registry)=====
+# 裁决依据:死映射三问(概念在十类 comp 体系存在 × 判据可从现有数据推导 × 词条量级匹配
+# mechanics_fit ±0.25/±0.20 离散步进);判死/观测桶(爆发速杀/高费低费审美)不在本批复活范围。
+# 与 W875 先例的差异:本批 4 个 tag 的 AFFIX_MECHANIC_MAP/MECHANIC_COUNTERS/SYNERGIES 行
+# 在基表早已存在(属性熄火/装备依赖/成型羁绊利好/冻结),缺的只是 comp 侧载体 —— 因此开关
+# 不走并表,走**载体滤除**:tag 已进 COMP_LIBRARY 携带词汇(死映射防线:值域⊆词汇表),
+# mechanics_fit 经 effective_mechanic_attributes 滤除关臂 tag,全关 = 基表路径零漂移。
+#
+# 判型出处(逐 tag):
+# - 单属性队:final_comps README D3「希儿怕量子熄火」明文 + plaza 希儿聚类 36/38 篇核心
+#   羁绊=量子同频(属性型羁绊)。判据 = form_tiers 以**属性型羁绊**为主档且档深 ≥4;
+#   当前 COMP_LIBRARY 仅希儿量子命中,其余六属性熄火无纯色主档 comp 对应(恒中性=正确)。
+# - 成型羁绊队:形单影只词条原文(未激活羁绊 → 伤害 85%/60%/30%)+ README B1(羁绊档位
+#   乘区)/C4。判据 = 终局战力主要来自羁绊档位乘区(form_tiers 主档羁绊驱动),排除装备流
+#   (白厄反甲)/单核(命运圣杯红A/万敌单C——攻略明言「夜神燃血也不要凑」,羁绊不满也有
+#   战力);逐套判型理由在各 comp 标注注释,边界套昼神阿雅注记裁断理由。
+# - 慢速:final_dot_kafka(叠层×引爆磨血胜利条件)。判据 = DOT 载体持有(DoT tag);
+#   大招流(姬子等)D 三星一波清不算慢速。
+# - 依赖合成装备:final_baie_reflect(反甲装备流,以牙还牙甲=胜利条件)+ README C4 特权
+#   装备体系。判据 = 装备本体即胜利条件;合成侧处理在 junk_first 排序器(不动),本 tag
+#   只补选型侧,两半互补禁重复建模。
+W878_GATED_TAGS: dict[str, str] = {
+    "单属性队": "w878_mono_attribute_enabled",
+    "成型羁绊队": "w878_formed_bond_enabled",
+    "慢速": "w878_slow_burn_enabled",
+    "依赖合成装备": "w878_synth_equip_dep_enabled",
+}
+
+
+def w878_active_tags(registry: DecisionV2Registry | None = None) -> frozenset[str]:
+    """W878 复活包当前放行的 comp 机械属性 tag 集(开关 = registry 子旗标;全关 = 空集)。"""
+    reg = registry if isinstance(registry, DecisionV2Registry) else DEFAULT_REGISTRY
+    return frozenset(tag for tag, flag in W878_GATED_TAGS.items() if getattr(reg, flag, False))
+
+
+def effective_mechanic_attributes(comp: Comp,
+                                  registry: DecisionV2Registry | None = None) -> list[str]:
+    """comp 生效机械属性 = 原属性 − 关臂 W878 tag(单一滤除口;mechanics_fit 消费)。
+
+    关臂 tag 仍在携带词汇表内(结构锁口径),只是不参与评分求交 —— 这样开关翻默认值时
+    只动本函数门槛,不动 20 套 comp 标注;全关时若 comp 属性集无 W878 tag 则原列表透传。
+    """
+    active = w878_active_tags(registry)
+    if not active:
+        gated = {t for t in comp.mechanic_attributes if t in W878_GATED_TAGS}
+        if not gated:
+            return comp.mechanic_attributes
+    return [a for a in comp.mechanic_attributes
+            if a not in W878_GATED_TAGS or a in active]
+
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
 # 自动写入采到的新词缀/校准)。本文件不 import 该注册表(迁移审计 w266(git 历史) 勘误:旧注释称「顶部 import 重导出」
 # 与事实不符,mechanics_fit 亦不消费);消费方为 cw_briefing_obs.load_affix_effects_from_file(ast 提取)。
@@ -540,7 +590,7 @@ COMP_LIBRARY: list[Comp] = [
         #   v2 教义 A 流铁三角=三月七 自适应外骨骼(吸仇恨刚需)/姬子 以牙还牙甲×2-3;
         #   恒等约束(多重集不变)下以 A 流首选件(外骨骼)替换 B 流错位件。B 流拆分批放开恒等时
         #   姬子侧补 以牙还牙甲×2。
-        countered_by_bosses=[], mechanic_attributes=["治疗护盾"],
+        countered_by_bosses=[], mechanic_attributes=["治疗护盾", "成型羁绊队"],   # 成型羁绊队:战力=列车同行4 档乘区(w878 判型;开关见 W878_GATED_TAGS)
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["符玄", "艾丝妲"],
         typical_form_round=5,
         # ===== v2(迁移审计 w25(git 历史),C4):姬子列车家族(A/B 未拆条——分岔变量=词条前置:敌方多动旺→A 反震/怕词条在→B 输出)=====
@@ -616,7 +666,8 @@ COMP_LIBRARY: list[Comp] = [
         # +缇宝 15+符玄 14 常驻减益辅助群;皮靴 30 断层第一(carry 吃鞋)+风暴潮 14+螺旋桨 13;
         # 节奏 6级搜牌 12/29(2费 → 6级停)→7级 7 → 速升9 4(瓦尔特 5费);与黄泉减益(3费/7级)错位。
         key_equips=["反重力皮靴", "火力风暴潮", "光速螺旋桨", "反卫星狙击枪"],
-        mechanic_attributes=["减益叠加"], shared_chars=["黄泉", "花火", "不死途", "开拓者·记忆", "椒丘"],
+        mechanic_attributes=["减益叠加", "成型羁绊队"],   # 成型羁绊队:减益4 档乘区为战力主体(w878)
+        shared_chars=["黄泉", "花火", "不死途", "开拓者·记忆", "椒丘"],
         transition_chars=["椒丘", "风堇", "开拓者·记忆"], typical_form_round=6,
         family="legacy", branch_key="v2 未单列(长尾保活,C5 兼容不删;减益通用板)",
         flex_factions=["燃血", "量子同频", "列车同行", "治疗", "持续伤害"],
@@ -638,7 +689,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"],
-        mechanic_attributes=["欢愉叠层"], shared_chars=["瓦尔特", "爻光", "火花"],
+        mechanic_attributes=["欢愉叠层", "成型羁绊队"], shared_chars=["瓦尔特", "爻光", "火花"],   # 成型羁绊队:欢愉 4-6 档乘区(w878)
         char_positions={"爻光": "back"},   # ADR-0139:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版)
         transition_chars=["花火"], typical_form_round=6,   # 评审🟡2:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
         # v2 迁移(迁移审计 w25(git 历史)):银狼LV.999 由 transition(卖)改 substitute_plan(不卖,转档)——C4 替班语义
@@ -667,7 +718,10 @@ COMP_LIBRARY: list[Comp] = [
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
         key_equips=["火力风暴潮", "高周波电锯", "火力风暴潮·特权", "战场进化手册"],   # 评审🟡4:plaza 风暴潮68>电锯36 顺序倒置修正
         countered_by_bosses=["剧目", "蕉研组"],   # 攻略:剧目/蕉研组 boss 希儿难度大
-        mechanic_attributes=["量子拉条"], shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
+        # 单属性队:量子同频4 属性型羁绊主档 ≥4(final_comps README D3「希儿怕量子熄火」,
+        # plaza 希儿聚类 36/38 篇核心羁绊=量子同频)——量子熄火局对本套是主输出瘫痪级 counter。
+        # 成型羁绊队:量子同频/贝洛伯格档位乘区。两者均为 w878 复活 tag(开关见 W878_GATED_TAGS)。
+        mechanic_attributes=["量子拉条", "单属性队", "成型羁绊队"], shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
         transition_chars=["刃", "符玄"], typical_form_round=6,   # v2 迁移(迁移审计 w25(git 历史)):希儿是 core 非打工,移出 transition
         # ===== v2(迁移审计 w25(git 历史)):希儿量子家族(五线最收敛,无流派)=====
         family="希儿量子", branch_key="无流派(五线最收敛)",
@@ -697,7 +751,7 @@ COMP_LIBRARY: list[Comp] = [
         plaza_carry="黄泉",
         key_equips=["高周波电锯", "火力风暴潮", "光速螺旋桨", "永动机"],
         countered_by_bosses=["单体boss"],   # 攻略:单体 boss 黄泉输出乏力
-        mechanic_attributes=["减益"], shared_chars=["刃", "乱破", "符玄"],
+        mechanic_attributes=["减益", "成型羁绊队"], shared_chars=["刃", "乱破", "符玄"],   # 成型羁绊队:巡海4+减益4 档乘区(w878)
         transition_chars=["刃", "椒丘", "桑博"], typical_form_round=7,
         # ===== v2(迁移审计 w25(git 历史)):黄泉减益家族(无流派;第四件=装备池)=====
         family="黄泉减益", branch_key="无流派(第四件=装备池)",
@@ -724,7 +778,7 @@ COMP_LIBRARY: list[Comp] = [
         # (carry 聚类 n=8,7/8 击破形)。**锚=波提欧簇**(12 篇,击破12/巡海12 全击破形;不死途簇 n=14 的
         # 主体是减益板[减益13/巡海12/击破11 混合],不当击破锚)。常驻 忘归人12/大丽花11/灵砂11/乱破11/阮·梅10。
         # 装备:波提欧=虫洞掘进钻头16/光速螺旋桨9,不死途=反重力皮靴。
-        mechanic_attributes=["击破"], shared_chars=["黄泉", "流萤", "忘归人"],
+        mechanic_attributes=["击破", "成型羁绊队"], shared_chars=["黄泉", "流萤", "忘归人"],   # 成型羁绊队:击破6 档乘区(w878)
         key_equips=["虫洞掘进钻头", "光速螺旋桨", "反重力皮靴", "光速螺旋桨·特权"],   # 评审🟡7:波提欧=钻头16/螺旋桨9,不死途=皮靴24(旧空表 equip_fit 恒 None)
         transition_chars=["赛飞儿", "灵砂", "忘归人"], typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;v2 白厄A 巡海流为白厄系,非本套)",
@@ -743,7 +797,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):丹恒·饮月(龙丹)= A 级;攻略(76987716 直读纠正):4战技点+4列车(周日开)
         # 凛(远坂凛)V4.4 新:宝石叠99层→第二魔法实验拐198%爆伤(+默认70%=268%);饮月双电锯+风暴潮
         # 杨叔(瓦尔特)+记忆主必备;4列车给160%前台强度;刃+符玄补。苍龙濯世破百亿
-        key_equips=["高周波电锯", "动能激发剑", "火力风暴潮", "斩首行动"], mechanic_attributes=["战技点依赖"],
+        key_equips=["高周波电锯", "动能激发剑", "火力风暴潮", "斩首行动"], mechanic_attributes=["战技点依赖", "成型羁绊队"],   # 成型羁绊队:战技点4+列车4 档乘区(w878)
         shared_chars=["远坂凛", "瓦尔特", "花火"], transition_chars=["花火", "风堇", "姬子·启行"],
         typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;战技点作副档散于各线)",
@@ -767,7 +821,7 @@ COMP_LIBRARY: list[Comp] = [
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],   # 评审🟡4:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
         # ↑ 迁移审计 w55(git 历史)(R2 §1 闪闪条):「高周波电锯」→「反重力皮靴」——v2 教义 闪闪=**反重力皮靴**(41%,
         #   锁轴速度载体;comp_definitions_v2 圣杯A);电锯是旧平铺残件
-        mechanic_attributes=["连携高频开大"], shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],
+        mechanic_attributes=["连携高频开大", "成型羁绊队"], shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],   # 成型羁绊队:能量5 硬约束+圣杯任务链=档位乘区(w878)
         transition_chars=["花火", "刃"], typical_form_round=7,   # v2 迁移(迁移审计 w25(git 历史)):远坂凛是 core(1 星即够),移出 transition
         # ===== v2(迁移审计 w25(git 历史)):圣杯双C家族·B Saber 能量线(~25%)=====
         family="圣杯双C", branch_key="B Saber 能量线(~25%;能量 5 为硬约束——口述「哪怕下远坂凛都不能拆能量」)", branch_of="命运圣杯红A",
@@ -802,7 +856,7 @@ COMP_LIBRARY: list[Comp] = [
         # 星间21 并列,量子仅 flex 位 → 核心改 星间+欢愉(花火=欢愉阵营);core 补 开拓者·欢愉(20/25 在场,
         # 欢愉形态保留不换记忆)与银狼LV.999(17/25)。
         key_equips=["火力风暴潮", "高周波电锯", "碎星斩舰刀", "动能激发剑"],   # 花火1风暴潮+暴击刀;爻光三鞋
-        countered_by_bosses=[], mechanic_attributes=["幸运一击"],
+        countered_by_bosses=[], mechanic_attributes=["幸运一击", "成型羁绊队"],   # 成型羁绊队:星间转职章+欢愉档乘区(w878)
         shared_chars=["银狼", "符玄", "丹恒·饮月"], transition_chars=["丹恒·饮月", "银枝"],
         typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;花火线)",
@@ -825,7 +879,7 @@ COMP_LIBRARY: list[Comp] = [
         # plaza:大黑塔 3星率 0.82(4费);5级搜牌 20/38 篇(小黑塔 1费 5级 D 干);装备 电锯29/永动机20/蓄能帆17/电光履16
         # 记忆主必拿(「记忆主一定要拿,后台花火防战技点不足」);后期可上花火补战技点。
         key_equips=["高周波电锯", "永动机", "蓄能帆", "电光履"],
-        mechanic_attributes=["追击"], shared_chars=["黑塔", "缇宝", "翡翠"],
+        mechanic_attributes=["追击", "成型羁绊队"], shared_chars=["黑塔", "缇宝", "翡翠"],   # 成型羁绊队:学者档=星级总量成长乘区(w878)
         transition_chars=["艾丝妲", "丹恒·腾荒"], typical_form_round=6,   # v2 迁移(迁移审计 w25(git 历史)):黑塔(小黑塔)是 core/替班C,移出 transition
         # ===== v2(迁移审计 w25(git 历史)):大黑塔群攻家族(档位=连续深度谱,非流派)=====
         family="大黑塔群攻", branch_key="档位=连续深度谱(群攻3+学者2 众数 29% → 完全体群攻5+学者4 仅 19%,低档通关是常态)",
@@ -856,7 +910,7 @@ COMP_LIBRARY: list[Comp] = [
         # 银枝(风暴潮+冷笑话)+翡翠(3群攻)+鸟(拉条加攻增伤+10%幸运);必须3星银枝;适合对群,对单大降
         # ⚠️ ADR-0152 评审🔴(注册表对拍):银枝=**星间旅人** 2费,非贝洛伯格(24 篇银枝帖贝洛伯格激活 0 次)
         # —— 旧 factions[贝洛伯格+群攻] 错;核心只有群攻,星间旅人/公司/盛会之星(翡翠/知更鸟)是 flex。
-        key_equips=["火力风暴潮", "冷笑话引擎", "绝对热量"], mechanic_attributes=["群攻"],
+        key_equips=["火力风暴潮", "冷笑话引擎", "绝对热量"], mechanic_attributes=["群攻", "成型羁绊队"],   # 成型羁绊队:群攻档乘区+大招驱动的羁绊协同型(w878)
         countered_by_bosses=["单体长战"], shared_chars=["翡翠", "知更鸟"],
         transition_chars=["椒丘", "星期日", "刃"], typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;群攻族并归大黑塔线)",
@@ -880,7 +934,10 @@ COMP_LIBRARY: list[Comp] = [
         # form_progress 恒 0 → 不靠 form commit(轮数兜底要求 fp>0,fp=0 不触发),select_comp 候选但 progress 低。
         key_equips=["以牙还牙甲", "高周波电锯", "以牙还牙甲·特权", "热血沸腾拳"],   # meta:反甲流需 3 以牙还牙甲
         countered_by_bosses=["红绿灯", "酒杯怪", "琥珀王", "死龙"],
-        mechanic_attributes=["高频低单次"], shared_chars=["白厄"],
+        # 依赖合成装备:以牙还牙甲×3 反甲链+掩体生成枪=胜利条件本身(final_baie_reflect 明文
+        # 「反甲装备流」);装备依赖词条(变宝为废)的选型侧降分载体(合成侧由 junk_first 处理,
+        # 两半互补)。羁绊维判非成型羁绊队:factions/form_tiers 空,装备流例外。
+        mechanic_attributes=["高频低单次", "依赖合成装备"], shared_chars=["白厄"],
         transition_chars=["符玄"], typical_form_round=7,   # v2 迁移(迁移审计 w25(git 历史)):白厄 core/三月七 P2 直留终局,均移出 transition
         # ===== v2(迁移审计 w25(git 历史)):白厄反甲家族(A 巡海流 ~64% / B 列车护盾流 ~29%;A/B 未拆条)=====
         family="白厄反甲", branch_key="A/B 未拆(副羁绊层分岔:A 巡海 64%/B 列车护盾 29%;B 实为白厄借列车骨架)",
@@ -913,7 +970,7 @@ COMP_LIBRARY: list[Comp] = [
         # V4.4 评级(76807134):狼尊 = B 级;攻略(76832783 直读):5欢愉(最大利用阿哈装备),狼尊双风暴潮+爻光双鞋
         # 刃(星核猎手):刃+狼尊行动7次→狼尊释放欢愉技。强依赖鞋≥6;尽量不d全力升级;也作绯英早期过渡c
         # ADR-0152 评审🔴(狼尊簇 68 篇对拍):本体刃仅 2/68,千冶·刃 36/68 → core 刃改千冶·刃(V4.4 实战常驻)。
-        key_equips=["火力风暴潮", "反重力皮靴", "反重力皮靴", "光速螺旋桨"], mechanic_attributes=["欢愉叠层"],
+        key_equips=["火力风暴潮", "反重力皮靴", "反重力皮靴", "光速螺旋桨"], mechanic_attributes=["欢愉叠层", "成型羁绊队"],   # 成型羁绊队:欢愉 5-7 档乘区(w878)
         # ↑ 迁移审计 w55(git 历史)(R2 §1 狼尊条):「高周波电锯」→「反重力皮靴」(第二双)——v2 教义 银狼=风暴潮+
         #   **速度件**(升费链要行动),电锯非速度件(旧值重排残留);爻光本就是皮靴(攻略:爻光双鞋)
         shared_chars=["爻光", "花火"], transition_chars=["花火", "符玄"], typical_form_round=5,   # v2 迁移(迁移审计 w25(git 历史)):爻光是 core,移出 transition
@@ -951,7 +1008,7 @@ COMP_LIBRARY: list[Comp] = [
         # 0.88;实战板多为 昼神4+量子3/能量+治疗混搭(flex 已收)。强帖(「80连胜焚决」/「小伊卡」)
         # use 均 0 且依赖本体/遗器/充能绳(M11)→ **保持 B**(评审🟡:升 A 依据不足,勿按万敌标准拔高)。
         key_equips=["反重力皮靴", "反重力皮靴", "白昼·光速螺旋桨", "火力风暴潮"],
-        countered_by_bosses=["电视机"], mechanic_attributes=["速度依赖"],
+        countered_by_bosses=["电视机"], mechanic_attributes=["速度依赖", "成型羁绊队"],   # 成型羁绊队(边界套):昼之半神4 主档为战力底盘,速度件是执行载体非战力源(w878 裁注)
         shared_chars=["风堇", "昔涟", "银狼"], transition_chars=["风堇", "艾丝妲", "阿格莱雅"],
         typical_form_round=8,
         family="legacy", branch_key="v2 未单列(长尾保活;昼半并入 DOT·B 速度/昼半流的家族口径待拆分批)",
@@ -974,7 +1031,7 @@ COMP_LIBRARY: list[Comp] = [
         # ADR-0152 评审🔴(锚点对拍):飞霄 carry 仅 3 篇(<5 不在聚类)→ plaza_carry 置空;plaza 追击族
         # 真代表 = **那刻夏**(「5追击4昼之半神 后台主c之光」6444 use:「没鞋也没追击转别上那刻夏,
         # 至少得有其1」,装备优先级原文全序列)→ 补 core;追击簇 flex 常见 公司/昼之半神/群攻。
-        key_equips=["火力风暴潮", "火力风暴潮", "永动机", "电磁弹射器"], mechanic_attributes=["追击"],
+        key_equips=["火力风暴潮", "火力风暴潮", "永动机", "电磁弹射器"], mechanic_attributes=["追击", "成型羁绊队"],   # 成型羁绊队:追击档乘区(≥3追击=300%倍率,w878)
         shared_chars=["知更鸟", "缇宝", "不死途", "那刻夏"], transition_chars=["赛飞儿", "风堇", "刃"],
         typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;追击=大黑塔线的降级路径变体)",
@@ -1043,7 +1100,9 @@ COMP_LIBRARY: list[Comp] = [
         # ADR-0152(plaza 卡芙卡 11/黑天鹅 11 篇校准):常驻 千冶·刃11/黑天鹅10/符玄9/瓦尔特8/海瑟音7
         # (core 的「刃」改「千冶·刃」+补海瑟音);装备 风暴潮19/反重力皮靴8。
         key_equips=["火力风暴潮", "反重力皮靴", "蓄能帆", "光速螺旋桨"],
-        mechanic_attributes=["DoT"],
+        # 慢速:DOT 叠层×引爆磨血胜利条件(final_dot_kafka),冻结族词条的慢热载体(w878)。
+        # 成型羁绊队:持续伤害档一路加深(2→4→6)是本线成长乘区(w878)。
+        mechanic_attributes=["DoT", "慢速", "成型羁绊队"],
         shared_chars=["桑博", "千冶·刃", "黑天鹅"],
         transition_chars=["桑博", "艾丝妲"], typical_form_round=4,   # v2 迁移(迁移审计 w25(git 历史)):卡芙卡是 core,移出 transition
         # ===== v2(迁移审计 w25(git 历史)):DOT卡芙卡家族·A 引爆流(~47%;B 速度/昼半流未建条,拆分批落位)=====
@@ -1074,7 +1133,7 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"仙舟": 5}, strength="B", form_difficulty="medium", early_power="中",
         # plaza:景元 3星率 0.69(5费);7级搜牌 7/16;装备 电锯13/风暴潮12/皮靴6;常驻 符玄13/爻光11/藿藿11
         key_equips=["高周波电锯", "火力风暴潮", "反重力皮靴", "电光履"],
-        mechanic_attributes=["召唤追击"],   # 神君:仙舟召唤物计数(12041/12042 变体 id 只计羁绊)
+        mechanic_attributes=["召唤追击", "成型羁绊队"],   # 神君:仙舟召唤物计数(12041/12042 变体 id 只计羁绊);成型羁绊队:仙舟5 召唤计数档乘区(w878)
         shared_chars=["符玄", "忘归人", "藿藿"], transition_chars=["藿藿", "丹恒·饮月", "符玄"],
         typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;仙舟铁三角=P1 体系卡,非 v2 终局家族)",
@@ -1097,7 +1156,9 @@ COMP_LIBRARY: list[Comp] = [
         name="专家桑博DOT", factions=["持续伤害", "贝洛伯格"], core_chars=["桑博", "卡芙卡", "千冶·刃"],
         form_tiers={"持续伤害": 4, "贝洛伯格": 2}, strength="B", form_difficulty="easy", early_power="中",
         key_equips=["火力风暴潮", "火力风暴潮", "冷笑话引擎"],   # 桑博装备越早越好;卡芙卡过渡给随便骰子
-        mechanic_attributes=["DoT"],
+        # 慢速:DOT 磨血(桑博 DoT 越早越好,同 final_dot_kafka 磨血胜利条件,w878)。
+        # 成型羁绊队:持续伤害档乘区(w878)。
+        mechanic_attributes=["DoT", "慢速", "成型羁绊队"],
         shared_chars=["卡芙卡", "海瑟音", "千冶·刃"], transition_chars=["卡芙卡", "艾丝妲"],   # v2 迁移(迁移审计 w25(git 历史)):桑博是 core,移出 transition
         typical_form_round=5,
         # ===== v2(迁移审计 w25(git 历史)):DOT卡芙卡家族·桑博专家变体(v2 明言:策略入口变体,不独立成套)=====
@@ -1245,19 +1306,21 @@ def mechanics_fit(comp: Comp, mechanics: set[str],
 
     ⚠️ comp 驱动(用户 debuff=buff):同一词缀对不同 comp 方向相反。经 comp.mechanic_attributes
     查全局 MECHANIC_COUNTERS/SYNERGIES 判(数据驱动,comp 不必逐词缀列举;W875 补全包
-    子集经 merged_mechanic_tables 按开关并表,全关=基表零漂移)。
-    无机制信息(无敌人词缀 / comp 无 mechanic_attributes)→ **None**(ADR-0107 动态权重剔除,治死重)。
+    子集经 merged_mechanic_tables 按开关并表,全关=基表零漂移;W878 复活包 tag 载体经
+    effective_mechanic_attributes 按开关滤除,全关=原属性集零漂移)。
+    无机制信息(无敌人词缀 / comp 无生效机械属性)→ **None**(ADR-0107 动态权重剔除,治死重)。
     典型:万敌[燃血] + 反伤 → synergy 升(debuff=buff);阿雅[速度依赖] + 禁速 → counter 降。
     """
-    if not mechanics or not comp.mechanic_attributes:
+    eff_attrs = effective_mechanic_attributes(comp, registry)
+    if not mechanics or not eff_attrs:
         return None
     _, counters, synergies = merged_mechanic_tables(registry)
     score = 0.5
     for mech in mechanics:
         countered_attrs = counters.get(mech, [])
         synergy_attrs = synergies.get(mech, [])
-        n_counter = sum(1 for a in comp.mechanic_attributes if a in countered_attrs)
-        n_synergy = sum(1 for a in comp.mechanic_attributes if a in synergy_attrs)
+        n_counter = sum(1 for a in eff_attrs if a in countered_attrs)
+        n_synergy = sum(1 for a in eff_attrs if a in synergy_attrs)
         score -= 0.25 * n_counter    # 每命中一个 counter 降 0.25
         score += 0.20 * n_synergy    # 每命中一个 synergy 升 0.20(debuff=buff 利好)
     return clamp(score, 0.0, 1.0)
