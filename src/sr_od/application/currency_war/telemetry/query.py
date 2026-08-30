@@ -445,6 +445,13 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
     迁移审计 w317(git 历史)(G4 读端欠账):行尾补 killed(1=击杀/0=未杀/?=旧数据或
     未采到)与 boss_names(迁移审计 w244(git 历史) boss 分层,非空才显示)——「这轮输
     给谁」的断层归因不再需要另开窗口直查 jsonl。
+
+    hp 可信位显示层过滤(与 query_anomalies 同门 HP_CONF_TRUSTED 判据,
+    `_outcome_hp_trusted` 单一源):不可信行(OCR miss 兜底 hp=0 / 合成快照行)
+    **保留显示但行尾标 `伪值`**,且不推进 prev_hp 链——显示层语义「标注优于
+    删除」(行留证据可见,判读侧自辨),链侧语义与 anomalies 一致(伪值入链
+    会让后续真值轮 Δ 算错,g_20260830_150029 实证 Δ=+67 荒谬行)。缺
+    hp_confidence 字段(旧数据/sim 账本行)按可信,不误标。
     """
     lines = []
     prev_hp: int | None = None
@@ -453,6 +460,9 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
             continue
         hp = o.get("hp_after")
         delta = (prev_hp - hp) if (prev_hp is not None and hp is not None) else None
+        # 伪值行的 Δ 无意义(链不经过它),Δ 置 -;真值/可信行的 Δ 才是账
+        if not _outcome_hp_trusted(o):
+            delta = None
         _b = o.get("board_before") or {}
         depth = sum(_b.values())
         # sim 批次:board 恒空(设计如此)→ 回退账本深度(sim.depth
@@ -470,12 +480,15 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
         k_s = '1' if _killed else ('0' if _killed is False else '?')
         _bosses = [b for b in (o.get("boss_names") or []) if b]
         boss_s = f" boss=[{'|'.join(_bosses)}]" if _bosses else ""
+        # 伪值标注(显示层过滤):不可信行保留行留证据,行尾标「伪值」
+        fake_s = "" if _outcome_hp_trusted(o) else " 伪值"
         lines.append(
             f"  p{o.get('plane')}r{o.get('round_num')} {o.get('node_type') or '?':8s}"
             f" hp={hp} Δ={delta_s}"
             f" 板深={depth_s} bench={bench if bench is not None else '-'}"
-            f" killed={k_s}{boss_s}")
-        if hp is not None:
+            f" killed={k_s}{boss_s}{fake_s}")
+        # 链推进同 anomalies 门:伪值不推进 prev_hp(推进即污染后续真值 Δ)
+        if hp is not None and _outcome_hp_trusted(o):
             prev_hp = hp
     return lines
 
