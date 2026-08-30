@@ -22,6 +22,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
+from sr_od.application.currency_war.kernel.cw_overlay_registry import derive_decision
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     BailToOuter,
     ClickSpheres,
@@ -327,12 +328,20 @@ _NODE_ICON_SHOT_TS: dict[int, float] = {}
 
 # ===== 备战决策结果缓存(备战环操作延迟审计的缓存件:重复感知帧跳过全量候选枚举;决策与开臂判据见 ADR-0501)=====
 
-#: 键 = ('v2', 臂身份段, 感知指纹, defer_count);值 = (Decision, action, 簿记重放)。
-#: 跨 PrepDirector 派发存活(模块级):重复求值主体 = 外环重派后对未变状态全量重算。
+#: 键 = ('v3', 臂身份段, 感知指纹, defer_count, decide 前簿记基线);
+#: 值 = (Decision, action, 簿记重放)。簿记基线入键的语义:命中只允许发生在
+#: 「真实 decide 当时的会话输入状态」上——命中重放使簿记前进后,同条目即不可
+#: 再命中,下一次 decide 必然真实重算(_main_flow_stage 阶段机的失败换向机制
+#: 因此保留;防「同一失败动作冻结重发 + 相位越界」)。跨 PrepDirector 派发
+#: 存活(模块级):重复求值主体 = 外环重派后对未变状态全量重算。
 _DECISION_CACHE: dict[tuple, tuple] = {}
 #: 上界防无限增长(同指纹复用语义安全,首动作落地即失效;超限整体清空)。
 _DECISION_CACHE_LIMIT: int = 64
-#: 命中/未命中计数(开臂判据①「命中率 ≥30%」的数据源;只增,判读取滚动窗)。
+#: 命中/未命中计数:模块级**终身累计**(clear 不重置)。开臂判据①「命中率 ≥30%」
+#: 的实测口径 = 判据①数据源取本计数的只读导出口 `_decision_cache_stats_snapshot()`
+#: 按「开臂局起点 → 局终」做**差分窗**:命中率 = Δhit/(Δhit+Δmiss)(跨局累计
+#: 混入基线噪声,禁用终身值直读);周期日志行(每 _DECISION_STATS_LOG_EVERY 次
+#: decide)为终身累计口径,判读同样按局界差分消费。
 _decision_cache_stats: dict[str, int] = {'hit': 0, 'miss': 0}
 #: 周期统计日志步长(每 N 次 decide 落一行命中统计,供离线判读开臂判据①)。
 _DECISION_STATS_LOG_EVERY: int = 50
@@ -408,13 +417,23 @@ def prep_decision_fingerprint(snapshot: Snapshot) -> tuple:
 
 
 def _decision_cache_key(snapshot: Snapshot, session: StrategySession,
-                        strategy: Any) -> tuple:
-    """缓存键 = 臂身份 + 感知指纹 + defer_count。defer_count 是指纹外的显式
-    会话面(Defer 门=2 改变策略行为);decide 自身簿记(prep_phase 等)经
-    命中臂重放对齐,不入键。"""
-    return ('v2', _decision_cache_owner_key(strategy),
+                        strategy: Any,
+                        bookkeeping_base: dict[str, Any] | None = None) -> tuple:
+    """缓存键 = 臂身份 + 感知指纹 + defer_count + decide 前簿记基线。
+
+    簿记基线(prep_phase 等 decide 自身会话写面的**前值**)入键:命中只发生在
+    「真实 decide 当时的会话输入状态」——相位/计数任一前进即换键,失败动作的
+    恢复机制(阶段机换向)保留,下一 decide 真实重算;重放进 session 的增量
+    因此对同条目至多生效一次(防相位越界出域)。``bookkeeping_base`` = store
+    侧传 decide 前基线(``_decision_replay_begin`` 产物);None(lookup 侧)=
+    现读 session(此刻即待重算 decide 的前值,语义一致)。defer_count 是指纹外
+    的框架侧显式会话面(Defer 门=2 改变策略行为)。"""
+    base = bookkeeping_base if bookkeeping_base is not None else \
+        {k: getattr(session, k, 0) for k in _DECISION_REPLAY_INT_FIELDS}
+    return ('v3', _decision_cache_owner_key(strategy),
             prep_decision_fingerprint(snapshot),
-            getattr(session, 'defer_count', 0))
+            getattr(session, 'defer_count', 0),
+            tuple(base[k] for k in _DECISION_REPLAY_INT_FIELDS))
 
 
 def _decision_replay_begin(session: StrategySession) -> dict[str, Any]:
@@ -470,7 +489,9 @@ def _decision_cache_store(snapshot: Snapshot, session: StrategySession,
                           action: PrepAction | None,
                           replay_base: dict[str, Any]) -> None:
     """存 (Decision, action) 及本次 decide 的会话簿记增量(decide 后采值
-    减 replay_base;命中臂重放该增量=「簿记已跑」语义)。"""
+    减 replay_base;命中臂重放该增量=「簿记已跑」语义)。键用 decide **前**
+    基线(replay_base):命中语义 = 「同输入重放同 decide」,重放使簿记前进后
+    同条目即不可再命中,下一 decide 必然真实重算(阶段机失败换向保留)。"""
     ints: dict[str, int] = {}
     for k in _DECISION_REPLAY_INT_FIELDS:
         d = int(getattr(session, k, 0)) - int(replay_base[k])
@@ -478,7 +499,8 @@ def _decision_cache_store(snapshot: Snapshot, session: StrategySession,
             ints[k] = d
     latches: list[str] = [k for k in _DECISION_REPLAY_LATCH_FIELDS
                           if getattr(session, k, False) and not replay_base[k]]
-    _DECISION_CACHE[_decision_cache_key(snapshot, session, strategy)] = (
+    _DECISION_CACHE[_decision_cache_key(snapshot, session, strategy,
+                                        bookkeeping_base=replay_base)] = (
         decision, action, {'ints': ints, 'latches': latches})
 
 
@@ -548,29 +570,18 @@ class PrepDirector(SrOperation):
         obs.box_overlay_open = self.round_by_find_area(
             screen, '货币战争-备战-武装箱选择', '标识-请选择', crop_first=False).is_success
         # 事件 overlay(挡操作:deploy/equip 全灭根因,live 2026-08-15):检测到即由环 bail 交外环。
-        # star_tome(星徽秘典四选一)2026-08-16 补(review P2:纵深防御 —— loop 0i 判据 miss 时
-        # 误派本环,穿模观察/动作失败搅动;加清单 → 即刻 bail 交回外环 0i 接管)。
-        for _scr, _area, _tag in (
-            ('货币战争-盛会之星', '标识-盛会之星', 'megastar'),
-            ('货币战争-选择伙伴', '标识-选择伙伴', 'partner'),
-            ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
-            ('货币战争-星徽秘典弹窗', '标识-星徽秘典', 'star_tome'),
-            # 书册卡「专家邀请函」五选一(2026-08-30 建档):同 star_tome 纵深防御
-            # —— loop 0k 判据 miss 时即刻 bail 交回外环 handler(HandleBookcard)。
-            ('货币战争-备战-专家邀请函', '标识-专家邀请函', 'bookcard'),
-            # 遭遇节点二选一(2026-08-30 补,W835 纵深防御):loop 0i 判据 miss 时
-            # 即刻 bail 交回外环 handler(HandleEncounter 选择难度)——缺此行时遭遇屏
-            # 挡 deploy/equip 致环内空转(局 12/13 实证)。
-            ('货币战争-遭遇节点', '标识-遭遇节点', 'encounter'),
-            # r10 review 根因修:投资策略/投资环境/补给 3 个 0e 屏(此前白名单缺 → 在策略屏上
-            # 卡片立绘被 HoughCircles 误检成假球 → ClickSpheres 连败 → 恢复原语盲点 (960,530)
-            # = 中卡描述区正中 → 误开星徽详情弹窗 → 15 streak 停机,M53 实锤)。
-            ('货币战争-投资策略', '标识-请选择投资策略', 'invest_strategy'),
-            ('货币战争-投资环境', '标识-投资环境', 'invest_env'),
-            ('货币战争-补给', '标识-补给阶段', 'supply'),
-        ):
-            if self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success:
-                obs.event_overlay = _tag
+        # 扫描集单一源 = kernel/cw_overlay_registry 的 decision 派生段(B 面切换,
+        # 零成员变化):锚 = spec.anchor_area,tag = spec.bail_tag,消费方拼
+        # '事件overlay:' 前缀。命中即短路;break 语义与手写清单时代一致。
+        # 遍历序 = 注册表声明序(与旧手写序不同但行为等价):各 decision overlay
+        # 是全屏顶层弹窗,单帧锚互斥(历史帧组 ≤1 命中实证),先命中哪个即哪个
+        # overlay 在场;且任一 decision overlay 在场的外层行为相同(即刻 bail 交
+        # 外环 handler),序只影响多命中假想帧的 tag 归属。
+        for _spec in derive_decision():
+            if self.round_by_find_area(
+                    screen, _spec.screen_name, _spec.anchor_area,
+                    crop_first=False).is_success:
+                obs.event_overlay = _spec.bail_tag
                 break
         occupied = [i + 1 for i, p in enumerate(self._bench_pts)
                     if slot_occupied(screen, int(p.x), int(p.y))]
