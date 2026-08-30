@@ -1,4 +1,4 @@
-"""位面 2 支出授权(W757 v3.1 设计落码;决策 why=ADR-0480/ADR-0481)。
+"""位面 2 支出授权(W757 v3.2 设计落码;决策 why=ADR-0480/0481/0483)。
 
 设计对象(W754 立案 B):P2 板面冻结在过渡形态、带金血崩死、血线恶化
 无支出响应、锁线后目标核心卡不买。v3 起为**两通道**结构(W762 A/B 机制
@@ -41,15 +41,39 @@ False,P21 濒死禁 / ADR-0448 停升级线 AND 既有单一源不动)。
 独立豁免(应急/war 模式/boss 窗)随两通道重构一并撤销——死亡窗帧
 恰是止血授权的目标人群,W762 归因的「交界豁免系统性排除」即此。
 
-**通道 B 方向梯级(v3.1)**:hoard 集(投影成功 ∧ 非空)→ 桥池方向件
-(``cw_bridge_pool.BRIDGE_POOL_P2`` 现成输出)→ [31]① 空窗期语义
-(现有牌能凑的羁绊填充件,以过渡体系键非空为「非纯散件」下界,排序
-归评分层)。**纯散件恒不授权**([31] 反散件原则);**hoard 投影失败帧
-跳过 hoard 级直落桥池/[31]①,禁用整库保守域作方向源**(该保守域语义
-是 prep_brain 既有买侧 D1 用的,整库含散件,与反散件原则直接冲突;
-单帧锁⑬)。通道 B 的 D 消费 [31]② 硬约束明文的「保血急救」合法用途
-——T3 触发即其语境锚;凑数羁绊 D 禁令原文不变(刷新仍走 V_D 批账,
-j=0 负例保持)。**bench 保留槽(v3.1)**:通道 B 买入后备战席须保留
+**通道 B 方向梯级(v3.1 基础;v3.2 重排为 L1/L2/L3)**:方向源梯级
+hoard 集(投影成功 ∧ 非空)→ 桥池方向件(``cw_bridge_pool.
+BRIDGE_POOL_P2`` 现成输出)→ [31]① 空窗期语义(现有牌能凑的羁绊填充
+件,以过渡体系键非空为「非纯散件」下界,排序归评分层)。**纯散件恒
+不授权**([31] 反散件原则);**hoard 投影失败帧跳过 hoard 级直落桥池/
+[31]①,禁用整库保守域作方向源**(该保守域语义是 prep_brain 既有买侧
+D1 用的,整库含散件,与反散件原则直接冲突;单帧锁⑬)。
+
+**v3.2 梯级重排(W772 A/B V3 分支 2:M0b=4.1% 出手失效——v3.1 梯级
+给出的买目标太便宜,513 授权帧 503 帧毛支出>0 却低于当轮收入,金账
+不降、囤金原样带到死)**:
+- **L1 高价值定向**:①锁定线核心卡(贵价 3-5 费);②2★ 升级凑档件
+  (为已在板/已在 bench 的同名件买第 2/3 副本,3合1 跳档,合成机制
+  经 ``merge_buy_completes`` 单一源);③线内 3-5 费终局件(方向源集
+  ∩ 费用 3-5)。**「高价值」无新魔数**——由净支出闸(下条)按单笔
+  预期支出降序累计机械化排序;
+- **L2 定向 D 找 L1 目标**:RefreshShop 照旧(P12 批账 j≥1 翻正才付,
+  j=0 负例不变;通道 B 的 D 消费 [31]②「保血急救」合法用途,T3 触发
+  即语境锚);
+- **L3 低价兜底**:仅当 L1 全部过不了净支出闸(净支出闸选中集为空)
+  时,v3.1 原梯级输出照旧放行(兜底层接受小额净支出);L1 过闸存在
+  时 L3 件不获授权放行(单帧锁⑮)。
+
+**净支出闭环闸(v3.2;W772 修订方向③,单帧锁⑭)**:通道 B 授权帧
+的买候选须过净支出闸——本轮预期收入 = 基础奖励 + 连胜档 + 息
+(economy §10 口径,备战帧可算,单一源 = ``BASE_INCOME``/
+``streak_gold``/``cw_plane_table.interest``);授权放行的 L1 选中集
+按单笔预期支出降序累计,累计 Σ支出 > 预期收入的前缀才放行——
+「净支出 ≤0 的候选不出手,直接上更强目标」。校验是**目标选择器不
+是新收门**:既有息账门放行的笔授权不拒(False 即回落既有裁决),
+只在「同样合法的多个方向」中选净支出>0 的——与「只开门不收门」
+相容;L3 兜底帧仍接受小额净支出(W772 空转形态的修正点在 L1 过闸
+存在时的方向选择,不在兜底层)。**bench 保留槽(v3.1)**:通道 B 买入后备战席须保留
 ≥1 空槽([22]② 机械化;防连续止血买入填满 bench → 线锁定后核心卡
 无槽可进的挤出回声),不足则本帧授权降额(回落既有裁决;卖出腾槽归
 既有补偿/演进机制,授权通道只开门不发射动作)。
@@ -264,12 +288,102 @@ def p2_spend_auth_intercept(state: GameState, session: StrategySession,
     return _frame_verdict(state, session, registry)[1]
 
 
-def _budget_band_ok(auth: P2SpendAuth, working_gold: int, cost: int,
-                    registry: DecisionV2Registry) -> bool:
-    """单笔花费是否落在当前授权层预算带内(层强度唯一裁决点;v3 对齐)。
+def _reserve_floor(state: GameState, session: StrategySession,
+                   registry: DecisionV2Registry) -> int:
+    """加急层保留金下限(v3.2 公式化;取代常数占位,单帧锁组「放宽有
+    界」的界)。
 
-    - **加急层(urgent)**:花完 ≥ 保留金占位下限([18] 止损机械化;
-      破息放宽的唯一档);
+    **下限 = 5 × min(本位面剩余备战轮数, cap)**——P13 息流式的直接
+    截断:保留金的收益上限 = 每轮息 5 金、封顶 ``cap`` 轮(位面末守息
+    无意义,P13「r9 C=0」同源截断),取值域 [5, 15]。剩余备战轮数含
+    当前帧(末轮帧仍保 5)。公式输入异常(日程表缺/轮数越界)回落
+    ``p2_spend_auth_reserve_floor`` **绝对异常地板**(常数 20 的 v3.2
+    语义:只防负值/公式输入异常,不再参与常态判定)。W772 实证(1462
+    加急帧/破息仅 53)证明常数下限把出手力度卡死;权衡账 = T3 帧
+    多保金的息收益 ≤5 金/轮 vs 救活一场败局 15.39(P2 条件败局伤害)。
+    """
+    from sr_od.application.currency_war.kernel.cw_plane_table import (
+        schedule_of,
+    )
+    try:
+        plen = schedule_of(session)[state.plane - 1]
+        remaining = int(plen) - int(state.round_num or 0) + 1
+    except Exception:   # noqa: BLE001  公式输入异常显式回落异常地板
+        return registry.p2_spend_auth_reserve_floor
+    if remaining < 1:
+        return registry.p2_spend_auth_reserve_floor
+    return 5 * min(remaining,
+                   max(1, registry.p2_spend_auth_reserve_rounds_cap))
+
+
+def _expected_round_income(working: GameState) -> int:
+    """本轮预期收入(economy §10 备战帧口径;净支出闸的分母单一源)。
+
+    = 基础奖励(BASE_INCOME)+ 连胜档(streak_gold,连败/无连胜取
+    counter0 档 1)+ 息(interest,g 按**花前**金账——与结算息同源)。
+    三分量全部为既有单一源转发,零新常量。"""
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        BASE_INCOME,
+        streak_gold,
+    )
+    from sr_od.application.currency_war.kernel.cw_plane_table import (
+        interest,
+    )
+    streak = max(0, working.streak or 0)
+    return BASE_INCOME + streak_gold(streak) + interest(working.gold or 0)
+
+
+def _channel_b_l1_selected(working: GameState,
+                           session: StrategySession) -> frozenset[str]:
+    """净支出闸 L1 选中名集(v3.2;空集 = L1 全败/无 L1 目标 → 落 L3)。
+
+    L1 成员(§模块 docstring 三子句):①核心名 ∩ 费 3-5;②同名副本
+    买入即完成 3合1(``merge_buy_completes`` 单一源);③方向源集 ∩
+    费 3-5。选中规则 = 按单笔预期支出**降序**累计,累计 Σ支出 > 本轮
+    预期收入的前缀全部入选(W772 修订方向③:净支出 ≤0 的候选不出手;
+    「高价值」无新魔数,由本闸机械化排序)。收入读 ``_expected_round_
+    income``;店读 ``working.shop``(帧快照,与仲裁同一工作态)。
+    """
+    income = _expected_round_income(working)
+    core = _core_names(session)
+    direction = _channel_b_direction(working, session)
+    from sr_od.application.currency_war.kernel.cw_state import (
+        merge_buy_completes,
+    )
+    cands: list[tuple[int, str]] = []
+    for sc in working.shop or []:
+        name = getattr(sc, 'name', '')
+        cost = int(getattr(sc, 'cost', 0) or 0)
+        if not name or cost <= 0:
+            continue
+        l1 = ((name in core and 3 <= cost <= 5)
+              or merge_buy_completes(name, getattr(sc, 'star', 1) or 1,
+                                     working.bench, working.deployed,
+                                     working.shop)
+              or (direction is not None and name in direction
+                  and 3 <= cost <= 5))
+        if l1:
+            cands.append((cost, name))
+    if not cands:
+        return frozenset()
+    cands.sort(reverse=True)
+    selected: set[str] = set()
+    acc = 0
+    for cost, name in cands:
+        selected.add(name)
+        acc += cost
+        if acc > income:
+            return frozenset(selected)
+    return frozenset()   # L1 全部过不了净支出闸 → L3 兜底
+
+
+def _budget_band_ok(auth: P2SpendAuth, working: GameState, cost: int,
+                    registry: DecisionV2Registry,
+                    session: StrategySession) -> bool:
+    """单笔花费是否落在当前授权层预算带内(层强度唯一裁决点)。
+
+    - **加急层(urgent)**:花完 ≥ 保留金下限(v3.2 公式化:
+      ``_reserve_floor``;[18] 止损机械化,破息放宽的唯一档);
     - **常授权层:无独立地板**(v3 预算带对齐——既有息账门放行的笔
       授权不拒、拒绝的笔不改判,「与既有门同判」;v2 的「花完仍≥息线
       +贴线带保守不买」是比既有门更严的收门,G1-A 破息反降 0.93%→
@@ -277,7 +391,8 @@ def _budget_band_ok(auth: P2SpendAuth, working_gold: int, cost: int,
     """
     if not auth.urgent:
         return True
-    return working_gold - cost >= registry.p2_spend_auth_reserve_floor
+    return ((working.gold or 0) - cost
+            >= _reserve_floor(working, session, registry))
 
 
 def _in_scope(a, cand, state: GameState, session: StrategySession,
@@ -311,12 +426,14 @@ def p2_spend_auth_spend_authorized(cand, working: GameState,
                                    auth_trace: dict | None = None) -> bool:
     """arbiter 门侧消费:本笔花费的**加急预算放宽**是否放行。
 
-    v3 对齐后的消费契约:本函数只在**加急层**(T3 命中,通道 A 加急 /
-    通道 B 共档)放行破息至保留金下限的授权目标买/定向 D——常授权层
-    恒 False = 既有息账门全权裁决(「与既有门同判」,不叠加独立地板;
-    授权臂只做额外放行,从不拒绝,False 即回落既有裁决,零收门)。
-    升级(LevelUp)永不在辖;通道 B 买入受 bench 保留槽约束(不足降
-    额);授权帧 None(开关关/条件不合/接管帧)恒 False=零行为。
+    消费契约:本函数只在**加急层**(T3 命中,通道 A 加急 / 通道 B 共
+    档)放行破息至保留金下限的授权目标买/定向 D——常授权层恒 False =
+    既有息账门全权裁决(「与既有门同判」,不叠加独立地板;授权臂只做
+    额外放行,从不拒绝,False 即回落既有裁决,零收门)。升级(LevelUp)
+    永不在辖;通道 B 买入受**净支出闸 L1 梯级选择**(v3.2,锁⑭⑮:净支
+    出闸选中集非空时仅选中名获放行,空集=L1 全败落 L3 兜底照旧)与
+    bench 保留槽约束(不足降额);授权帧 None(开关关/条件不合/接管帧)
+    恒 False=零行为。
     """
     auth = p2_spend_auth_frame(state, session, registry)
     if auth is None or not auth.urgent:
@@ -329,17 +446,32 @@ def p2_spend_auth_spend_authorized(cand, working: GameState,
         return False
     cost = int(getattr(a, 'cost', 0) or (a.card.cost if isinstance(a, BuyCard)
                                          else 2) or 0)
-    if cost <= 0 or not _budget_band_ok(auth, working.gold or 0, cost,
-                                        registry):
+    if cost <= 0:
+        return False
+    # 净支出闸 L1 梯级选择(v3.2;锁⑭⑮):通道 B 帧的买候选,选中集非
+    # 空时仅选中名获授权放行(高价值优先,兜底件不获放行——回落既有裁
+    # 决,非收门);空集 = L1 全败/无 L1 目标 → L3 兜底照旧(接受小额
+    # 净支出)。D(L2)不经本闸(P12 批账不动)。
+    l1_selected: frozenset[str] | None = None
+    if auth.channel_b:
+        l1_selected = _channel_b_l1_selected(working, session)
+        if l1_selected and isinstance(a, BuyCard) \
+                and getattr(a.card, 'name', '') not in l1_selected:
+            return False
+    if not _budget_band_ok(auth, working, cost, registry, session):
         return False
     if isinstance(a, BuyCard) and auth.channel_b \
             and not _bench_reserve_ok(working, a):
         return False    # 锁⑫:保留槽不足,本帧授权降额
     if auth_trace is not None:
+        tier = ('L1' if l1_selected else 'L3兜底') \
+            if (auth.channel_b and l1_selected is not None) else ''
         auth_trace['p2_spend_auth'] = (
             f"加急层放行(金{working.gold}-费{cost};"
             f"通道{'A' if auth.channel_a else ''}"
-            f"{'B' if auth.channel_b else ''};"
+            f"{'B' if auth.channel_b else ''}"
+            f"{'·' + tier if tier else ''};"
+            f'保留金下限{_reserve_floor(working, session, registry)};'
             f'连败{auth.notes["loss_streak"]}/hp报警{auth.notes["hp_alert"]})')
     return True
 
