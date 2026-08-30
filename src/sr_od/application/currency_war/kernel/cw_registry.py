@@ -1274,13 +1274,13 @@ class DecisionV2Registry:
     # ===== .debug/temp/currency_war/w831_piece_value_design/REPORT.md v2
     # ===== + W833 轻复核三补丁)=====
     #: 伞开关+三消费点子旗标,生命周期第 1 态:默认关+零漂移锚
-    #: (策略开关的生命周期,唯一合法理由=行为输入未就绪:w_activation/
-    #: w_retention 占位,B 分量挂 P34 待证)。**开臂判据挂账 =
-    #: .debug/temp/currency_war/w836_piece_value_p1/PREREG.md**(主门
-    #: M1-L 传导格 + G7 复算上界带,折算式/配对定义/效应量下界判前
-    #: 冻结);A/B 数据齐即跑,不过则删码留 ADR(第 4 态),禁悬置
-    #: 默认关。开臂翻默认时必须盘点「断言开关关闭行为」的锁组语义
-    #: (第 3 态义务,test_cw_piece_value 每锁带 off 臂零漂移断言)。
+    #: (策略开关的生命周期)。权重面已标定(A=1.0/B=0.0 定谳,见
+    #: 两字段注释),但 W836 PREREG 主门在标定批判明「剂量不足且 B
+    #: 分量无可行标定值」→ **不开臂**,开臂判据 = B 辖域位置成本
+    #: 约束(硬门批)落地后按同格 PREREG 重验;不过则删码留 ADR
+    #: (第 4 态),禁悬置默认关。开臂翻默认时必须盘点「断言开关
+    #: 关闭行为」的锁组语义(第 3 态义务,test_cw_piece_value 每锁
+    #: 带 off 臂零漂移断言)。
     piece_value_enabled: bool = False
     #: Phase 1 买侧试点子旗标(设计 §4.3 迁移表):买评分消费
     #: evaluate_piece 的 A+B 分量作排序加项(锁定帧线外件辖域);
@@ -1290,12 +1290,26 @@ class DecisionV2Registry:
     piece_value_keep_enabled: bool = False
     #: Phase 2 合成时点侧(设计 §4.3;Phase 1 零消费点,占位声明)。
     piece_value_merge_enabled: bool = False
-    #: 分量 A 占位权重(P20,辖域 e<2;占位值不做生产决策,开臂前
-    #: sim 标定批消偿,PREREG 挂账)。C/D/E/F 的权重字段在本 Phase
-    #: 的 registry 上**不存在**(类型层收窄的 registry 侧半边,契约
-    #: 锁兜底断言面);全量权重组 Phase 2 随全量 weight 类型引入。
-    piece_value_w_activation: float = 0.0
-    #: 分量 B 占位权重(P1+P11,量挂 P34 待证;占位纪律同上)。
+    #: 分量 A 权重,标定值 1.0(标定批 REPORT=
+    #: .debug/temp/currency_war/w852_weight_calibration/REPORT.md)。
+    #: 推导(数学先行):分量 A 的原值 = engine_jump_gold(e),即 e→e+1
+    #: 激活跳变的金值(ADR-0352 量纲);P20 已证 e0→1 次战边际战力为
+    #: 散件升星的 2.6-2.9 倍、辖域内排序首位——权重取 1 保持「分量值
+    #: =命题值」映射,无自由参数。数据面:sim 分量隔离(A-only,
+    #: n=200/臂)G4 满栏帧差 −0.5pp(cap +2pp)绿,无剂量病灶。
+    #: C/D/E/F 的权重字段在本 Phase 的 registry 上**不存在**(类型层
+    #: 收窄的 registry 侧半边,契约锁兜底断言面);全量权重组 Phase 2
+    #: 随全量 weight 类型引入。
+    piece_value_w_activation: float = 1.0
+    #: 分量 B 权重,标定定谳值 0.0(标定批 REPORT 同上;**非占位,是
+    #: 结论**)。标定批扫参判明:B 分量对权重的剂量响应是「全有全无」
+    #: 离散型——w_retention∈{0.05,0.2,0.4,0.7,1.0} 全部 G4 满栏帧差
+    #: ≈+10pp(cap +2pp)红、病灶②效应量 ≤6.6%(≪判前下界 30%);
+    #: 买入翻转发生在近零分候选密集带,任何非零加项都开火,权重量级
+    #: 不是可行标定维度。根因 = B 辖域缺位置成本约束(P29 持位成本 H
+    #: 未标定,「买前 bench 容量预检」硬门评估与重标挂账,见 REPORT
+    #: §硬门选项评估);挂账偿付前 0.0 是唯一两格可行值,零漂移另由
+    #: 伞旗标默认关双保险。
     piece_value_w_retention: float = 0.0
 
     # ===== P1→P2 接口机制五开关——定谳清理,删码留档(ADR-0487)=====
