@@ -761,14 +761,26 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                 }
                 f_o.write(_json.dumps(o, ensure_ascii=False) + '\n')
                 # 第三流:牌面波(生产 shop_snapshots 同 schema——
-                # supply 视图零改动可查 sim 批次)
+                # supply 视图零改动可查 sim 批次)。w919(R-A 批1):
+                # 行附 rho_obs(ρ 实测单帧分子;生产 rec 路 pair 自
+                # session 意向取,sim 无 session 方向态恒 ''——方向
+                # join 走同批 decisions 行 sess_p1_pair)。计算失败
+                # → None,行照写(观测不炸账本)。
                 for w in row['sim'].get('shop_waves') or []:
+                    from sr_od.application.currency_war.telemetry.schema import (
+                        rho_shop_obs,
+                    )
+                    try:
+                        _rho = rho_shop_obs(w['cards'])
+                    except Exception:   # noqa: BLE001  观测 best-effort
+                        _rho = None
                     f_s.write(_json.dumps({
                         'schema_version': 1, 'ts': row['ts'],
                         'run_id': run_id, 'plane': row['plane'],
                         'round_num': row['round_num'],
                         'event': w['event'], 'gold': w['gold'],
                         'shop': w['cards'],
+                        'rho_obs': _rho,
                     }, ensure_ascii=False) + '\n')
     # manifest(审查#5:写半失败无标记 → 残批被当有效批;判读端
     # 可校验 manifest 在+行数匹配才认批)。ledger_semantics 标记

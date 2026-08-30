@@ -7,7 +7,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.kernel.cw_intention import _to_jsonable
+from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRAITS
+from sr_od.application.currency_war.kernel.cw_intention import (
+    SEELE_SYSTEM,
+    _bond_members,
+    _to_jsonable,
+)
 from sr_od.application.currency_war.kernel.cw_state import (
     Action,
     GameState,
@@ -19,6 +24,45 @@ from sr_od.application.currency_war.kernel.cw_state import (
 # sim 禁依 telemetry;本模块经上行 import 取用)。replay 序列化符号
 # (_to_jsonable/serialize_intention)同理下沉 kernel/cw_intention。
 SCHEMA_VERSION: int = 1   # 决策迹 schema 版本(字段名稳定;改 schema 升版本号)
+
+
+
+# ===== ρ 实测观测面(w919 R-A 批1;设计=同目录设计件 §2.1 辅通道口径)=====
+
+RHO_SYSTEM_KEYS: tuple[str, ...] = (
+    *(b for b, _t in TRANSITION_TRAITS),
+    SEELE_SYSTEM,
+)
+"""ρ 实测的体系键域(四过渡体系:TRANSITION_TRAITS 三羁绊 + 希儿系;
+派生自单一源,不手写名单)。"""
+
+RHO_SHOP_OBS_FIELDS: tuple[str, ...] = ('systems', 'pair', 'n_shop')
+"""shop_snapshots 行 ``rho_obs`` 键面单一源(测试锁面;语义见 rho_shop_obs)。"""
+
+
+def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
+    """shop 单帧 ρ 实测分子:各体系「当前可买且对 form 有贡献」的在店件数。
+
+    - 口径出处:R-A 设计件 §2.1——ρ(s,t)=观测窗 W 内体系 s 成员在店帧
+      占比(P31① 辅通道)。本函数只记**单帧分子计数**;W 窗占比由读端
+      按帧聚合,窗口假设不进采集点。消费=理论口径(E_rounds 超几何)
+      的对拍与牌池结构变化检出,决策消费主通道不经此。
+    - 成员判定 = ``cw_intention._bond_members``(阵营∪流派全成员;
+      多标签件在各命中体系各计 1,Σ systems 可超 n_shop——与
+      OutcomeRecord.board_before 人次口径同判据)。
+    - ``pair`` = 当前方向标签(p1_pair 优先次 transition_pair;''=空窗),
+      读端 join decisions 行 sess_p1_pair 对齐方向与供给。
+    - 纯函数契约:只读 shop 元素 name;未识别卡不属任何体系(只进 n_shop)。
+    """
+    names = [str(getattr(c, 'name', None)
+                 if not isinstance(c, dict) else c.get('name')) or ''
+             for c in (shop or [])]
+    systems: dict[str, int] = {}
+    for key in RHO_SYSTEM_KEYS:
+        members = _bond_members(key)
+        systems[key] = sum(1 for n in names if n in members)
+    return {'systems': systems, 'pair': str(pair or ''),
+            'n_shop': len(names)}
 
 
 
@@ -83,9 +127,12 @@ def p1_pair_label(ist: Any) -> str:
       一侧非空,故按 p1_pair 优先取其一。
     - 体系键域/二元组语义见 cw_intention.IntentionState.p1_pair 注释;
       tuple/None/非 dataclass 输入一律安全退化空串(纯观测不阻塞环)。
+      dict 形态(serialize_intention 产物,recorder 经 extra/快照取用)
+      同口径支持(w919 rho_obs.pair 消费)。
     """
-    pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
-        or tuple(getattr(ist, 'transition_pair', ()) or ())
+    _get = (lambda k: (ist or {}).get(k)) if isinstance(ist, dict) \
+        else (lambda k: getattr(ist, k, ()))
+    pair = tuple(_get('p1_pair') or ()) or tuple(_get('transition_pair') or ())
     return '+'.join(str(k) for k in pair)
 
 
@@ -235,6 +282,19 @@ class DecisionTrace:
     # 键=pv_bench_reserve,值=本备战帧内拒因次数,轮键惰性重置)。
     # None=无 match 注册(离线/测试);{}=门开但本帧零拒因;伞关恒 None。
     sess_pv_bench_block: dict | None = None
+    # —— w919 R-A 批1 方向重估决策面观测(纯观测零行为;设计=.debug/temp/
+    # currency_war/w919_ra_obs/DESIGN.md 采集点2,P31 方向供给感知批1)——
+    # 辖域=plane==1 ∧ 有意向状态机;P2+ 方向=locked_comp 已由 v3_intention
+    # 嵌套行携带不重复平铺。缺省 None=无意向/采集失败/旧记录(不破坏 schema)。
+    # 切换候选:无滞回重派生的 support′ 排序 top-2 标签(_derive_p1_pair
+    # prev_pair=() 现算;''=P1 外/未过锁门槛/派生失败)。
+    sess_dir_candidate: str | None = None
+    # 滞回压着切换的信号位:无滞回原始派生 ≠ 施加滞回后派生(滞回分支
+    # 只在压着切换时重排产物,不等即压着);None=一侧为空无法判。
+    sess_dir_switch: bool | None = None
+    # 供给衰减坐标透传(ist.supply_drought;体系键→连续零在店轮数 t,
+    # support′=γ^t·sup+β·[在店]);None=无意向状态机,{}=尚无观测帧。
+    sess_dir_supply_drought: dict | None = None
 
 
 

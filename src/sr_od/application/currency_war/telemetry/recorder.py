@@ -35,6 +35,8 @@ from sr_od.application.currency_war.telemetry.schema import (
     RunSummary,
     SpendUnitRecord,
     append_jsonl,
+    p1_pair_label,
+    rho_shop_obs,
     salvageable_1star_value,
     serialize_action,
     serialize_state,
@@ -49,6 +51,37 @@ from sr_od.application.currency_war.telemetry.version_stamp import (
 )
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
+
+def _direction_obs_fields(state: GameState, ist: Any) -> dict[str, Any]:
+    """w919 方向重估决策面观测(纯观测零行为;设计=同批设计件采集点2)。
+
+    - 候选 = ``_derive_p1_pair`` 无滞回重派生(prev_pair=() 使滞回 no-op
+      → support′ 原始序);switch = 原始派生 ≠ 施加滞回后派生(prev_pair=
+      当前 pair 重算 = 决策面实际产物)——不等即滞回正在压着切换(滞回
+      分支只在压着时重排,否则原样返回)。
+      开关关时 drought 空 → support′ 退纯资产支持度,
+      raw==applied(该恒等本身即 A/B 对账锚,观测不被开关门控)。
+    - 纯函数契约:只读 ist/state;_derive_p1_pair 无副作用(排序派生,
+      不改 ist)。调用方负责 best-effort 兜底(采集失败静默跳过)。
+    """
+    from sr_od.application.currency_war.kernel.cw_intention import _derive_p1_pair
+    cur = tuple(getattr(ist, 'p1_pair', ()) or ()) \
+        or tuple(getattr(ist, 'transition_pair', ()) or ())
+    exclude = frozenset(getattr(ist, 'pair_evicted', ()) or ())
+    drought = dict(getattr(ist, 'supply_drought', {}) or {})
+    raw = _derive_p1_pair(state, exclude=exclude, drought=drought,
+                          prev_pair=())
+    applied = _derive_p1_pair(state, exclude=exclude, drought=drought,
+                              prev_pair=cur) if cur else raw
+    switch: bool | None = None
+    if raw and applied:
+        # 整元组不等 = 滞回真的移动了产物(派生返回值按 _P1_PAIR_PREF 序
+        # 规整,首位不可当支持度 top-1 比;滞回分支只在「压着切换」时
+        # 重排,否则原样返回 → 不等即压着切换,序约定无关)。
+        switch = tuple(raw) != tuple(applied)
+    return {'candidate': '+'.join(str(k) for k in raw),
+            'switch': switch, 'drought': drought}
+
 
 class TelemetryRecorder:
     """三路 JSONL 采集器。enabled=False 时全 no-op(生产默认关)。
@@ -205,6 +238,15 @@ class TelemetryRecorder:
                 # 伞关无写点恒 None)
                 _pv = getattr(_sess, 'v3_pv_block', None)
                 trace.sess_pv_bench_block = dict(_pv) if _pv else None
+                # w919 方向重估决策面观测(P1 辖域;采集失败静默跳过不炸主链)
+                _ist_live = getattr(_sess, 'v3_intention', None)
+                if int(getattr(state, 'plane', 0) or 0) == 1 \
+                        and _ist_live is not None:
+                    with contextlib.suppress(Exception):
+                        _dobs = _direction_obs_fields(state, _ist_live)
+                        trace.sess_dir_candidate = str(_dobs['candidate'])
+                        trace.sess_dir_switch = _dobs['switch']
+                        trace.sess_dir_supply_drought = _dobs['drought']
                 # (位面 2 支出授权 sess_p2_auth_intercept/water 写入面已随
                 # 定谳清理删除,ADR-0492;schema 字段按历史数据只读口径保留,
                 # 新数据恒 None。)
@@ -671,9 +713,21 @@ def record_shop_snapshot(event: str, shop: list, gold: int,
     event:``offer``(进店首见)/ ``refresh``(刷新后新牌面)—— 买牌回合里 bot 会 refresh,
     只记进店帧会丢中间 4-5 波牌 → 「配方件来没来」复盘断章取义(局18:据此误判
     「仙舟 8 轮断供」实为 r2 爻光×3 在店没买)。shop 元素为 ShopCard(或已序列化 dict)。
+
+    w919(R-A 批1):行附 ``rho_obs``(ρ 实测单帧分子;键面=RHO_SHOP_OBS_FIELDS,
+    口径见 rho_shop_obs)。pair 取当前意向方向(session 自取;dict/object 两形态
+    兼容);采集失败 → rho_obs=None,行照写(静默跳过不炸主链)。
     """
     if not _telstate._CURRENT_RUN_ID:
         return
+    _pair = ''
+    _rho: dict[str, Any] | None = None
+    with contextlib.suppress(Exception):   # 观测 best-effort
+        _m = _telstate._CTX_MATCH_REF[0]
+        _ist = getattr(getattr(_m, 'session', None), 'v3_intention', None)
+        _pair = p1_pair_label(_ist)
+    with contextlib.suppress(Exception):   # 观测 best-effort
+        _rho = rho_shop_obs(shop, pair=_pair)
     rec = _telstate.get_recorder()
     rec._append("shop_snapshots.jsonl", {
         "schema_version": 1,
@@ -684,6 +738,7 @@ def record_shop_snapshot(event: str, shop: list, gold: int,
         "shop": [{k: getattr(c, k, None)
                   for k in ('name', 'faction', 'cost', 'star', 'merge_preview')}
                  for c in shop],
+        "rho_obs": _rho,
     })
 
 
