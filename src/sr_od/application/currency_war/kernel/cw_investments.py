@@ -430,7 +430,7 @@ ENV_CATEGORY, ENV_FACTION = _derive_env_tables()
 
 # ===== 补遗:plaza 不收的条目(手维护)=====
 _MANUAL_EXTRAS: list[InvestmentStrategy] = [
-    # 与「追击星徽套组」(id 352201 系)同效果,plaza 只收一张;米游社图鉴收两张(content 6302)
+    # 与「追击星徽套组」(id 320101,PLAZA_AUGMENTS)同效果,plaza 只收一张;米游社图鉴收两张(content 6302)
     _strat("追击星徽套组(二)", "棱彩", "获得1个【追击星徽】,和1个【飞霄】,以及1个【永动机】。(与追击星徽套组同效果)", "6302"),
 ]
 
