@@ -458,8 +458,12 @@ def evaluate_release(state: GameState, session: StrategySession,
 _REWARD_NODE_TOKENS: frozenset[str] = frozenset({'reward', '奖励'})
 
 #: 无商店执行通道节点 token(刷新授权前提的否定域;20-5 形态:
-#: 补给节点无商店消费面。通道接线本体归 R-F 行为批,本契约只声明
-#: no_channel 语义位)。
+#: 补给节点无商店消费面)。**现辖域如实声明**:仅 {supply,补给}——
+#: 奖励节点经实机核实**有**商店执行通道(复盘 g_20260831 P1 r1/r2
+#: 奖励帧买牌、r8 奖励帧买+升级均执行落地),不入本集;其它节点类型
+#: 是否有通道未经核实,接口位重审归 R-F 行为批(含词表与
+#: ev.NON_BATTLE_NODE_TOKENS 的关系——那是「无战斗」词表,与本集
+#: 「无商店」语义不同源,禁混用)。
 _NO_CHANNEL_NODE_TOKENS: frozenset[str] = frozenset({'supply', '补给'})
 
 
@@ -507,9 +511,16 @@ def attach_spend_authorization(state: GameState, session: StrategySession,
     返回授权包快照写 ``session.v3_spend_auth``(对账门的授权侧输入);
     release 帧(tag='release')是替代消费通道自身,不重复授权,返回
     None。开关关恒 None 且姿态零改动。
+
+    帧级全量重算语义(复位唯一挂点,开臂判据的遥测正确性前提):
+    本函数在每次仲裁入口无条件执行,两个出口都先清
+    ``session.v3_posture_unfulfilled=None``——每决策段「入口=无声明、
+    段尾=本段真值」,与回执 last-wins 同口径;条件写滞留
+    (w943_audit5 P1-1)由此根除。
     """
     if not registry.spend_receipt_gate_enabled:
         return None
+    session.v3_posture_unfulfilled = None    # 帧级复位(P1-1;覆写在 reconcile)
     from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         overflow,
     )
@@ -554,10 +565,50 @@ def attach_spend_authorization(state: GameState, session: StrategySession,
             'level_up': posture.level_up,
             'refresh_budget': posture.refresh_budget,
             'buy_budget': buy_budget,
+            # buy=扩张许可非义务(授权≠义务,P2-2):False=奖励帧攒息是
+            # 设计内行为,回执不记未兑现;True=义务型买授权保留位。
+            'buy_obligation': False,
             'premises': posture.premises,
             'suppressed': tuple(suppressed)}
     session.v3_spend_auth = auth
     return auth
+
+
+def _accrue_release_frame_spend(session: StrategySession, actions: list) -> None:
+    """release 帧非刷新渠道实花入账(买牌/升级)。
+
+    **行为修复声明(编排者裁决,2026-08-31;原「纯记账零行为」声明
+    不成立已撤回)**:本入账使 v3_release_spent 计入
+    authorize_release_refresh 的预算约束——release 帧刷新授权随之真实
+    收紧。这是预算门从失明恢复为执行:旧行为=买/升消费对预算门不可见,
+    危机帧在预算外继续获刷新授权(r4 实花 5 记 0 即门失明的直接证据,
+    超授权滥刷形态);新行为=全部渠道消费共同消耗 budget_gold,如实
+    执行 ADR-0503 设计预算(min(溢余, REFRESH_ROLL_CAP×刷价))。
+    病灶=记账分支不对称:刷新授权时逐笔扣账,买牌/升级走各自授权链
+    (spend_gate 息 EV 中性 / ev 可负担性)从不触账——实机复盘
+    g_20260831_053546 P2 r4(升级 4+买 1 记 0)/r5(买 4 记 2)即此洞,
+    ADR-0503 确认门②的实花分项账因此失真。记账点=仲裁收尾(经
+    build_spend_receipt 的无条件调用点),按本段采纳动作汇总裁,轮内
+    跨段自然累计;刷新不计(授权门已逐笔扣,再计=双记)。开臂证据
+    (W933/W939)取得于门失明形态,预算执行后的改善保持由 armed 态
+    A/B 实证(.debug/temp/currency_war/w935_budget_enforce_ab/)。
+    """
+    if getattr(session, 'v3_release', None) is None:
+        return
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BuyCard,
+        LevelUp,
+    )
+    delta = 0
+    for a in actions:
+        if isinstance(a, BuyCard):
+            # cost 缺失按 3 兜底(与回执 buy 渠道同口径)
+            delta += a.card.cost if a.card.cost is not None else 3
+        elif isinstance(a, LevelUp):
+            delta += a.cost
+    if delta:
+        session.v3_release_spent = getattr(session, 'v3_release_spent', 0) \
+            + delta
 
 
 def build_spend_receipt(state: GameState, session: StrategySession,
@@ -570,7 +621,11 @@ def build_spend_receipt(state: GameState, session: StrategySession,
     (执行时点前提复核——授权发出后 working 态演化的残余面)>
     no_candidate(候选全滤空/无候选,附 Top1 拒因)。开关关或无授权
     快照(release 帧)→ None。
+    release 帧实花记账(_accrue_release_frame_spend)在授权快照检查之前
+    执行——release 帧无授权包(回执契约对 release 帧返回 None 是既有
+    语义),记账分支与之独立,两契约互不辖。
     """
+    _accrue_release_frame_spend(session, actions)
     auth = getattr(session, 'v3_spend_auth', None)
     if auth is None or not registry.spend_receipt_gate_enabled:
         return None
@@ -580,26 +635,38 @@ def build_spend_receipt(state: GameState, session: StrategySession,
         RefreshShop,
     )
     r = SpendReceipt()
+    lv_done = rf_done = buy_done = False
     for a in actions:
         if isinstance(a, BuyCard):
-            r.buy_spent += a.card.cost or 3
+            buy_done = True
+            # 0 金合法消费(0 费牌)不虚记(w943_audit5 P3-2:缺省只补 None)
+            r.buy_spent += a.card.cost if a.card.cost is not None else 3
         elif isinstance(a, LevelUp):
+            lv_done = True
             r.levelup_spent += a.cost
         elif isinstance(a, RefreshShop):
-            r.refresh_spent += a.cost or 2
+            rf_done = True
+            r.refresh_spent += a.cost if a.cost is not None else 2
     r.top_reject = next((row.get('reject', '') for row in log_rows
                          if row.get('reject')), '')
+    # 兑现判定 = 渠道动作是否发生(免费刷/0 费买也是兑现;spent=金观测面)
     _no_channel = not spend_channel_ok(state)
-    if auth['level_up'] and r.levelup_spent == 0:
+    if auth['level_up'] and not lv_done:
         if _no_channel:
             r.levelup_reason = 'no_channel'
         elif not levelup_premise_ok(state):
             r.levelup_reason = 'no_premise'    # 执行时点复核(残余面)
         else:
             r.levelup_reason = 'no_candidate'
-    if auth['refresh_budget'] > 0 and r.refresh_spent == 0:
+    if auth['refresh_budget'] > 0 and not rf_done:
         r.refresh_reason = 'no_channel' if _no_channel else 'no_candidate'
-    if auth['buy_budget'] > 0 and r.buy_spent == 0:
+    # buy 渠道 = 扩张**许可**非支出义务(授权≠义务,w943_audit5 P2-2):
+    # 奖励帧 EV 链「正确地不花」(攒息/无合格候选)是设计内行为
+    # ([1]/[15] 压库语义 + P13 息律),不记未兑现、不触发降级——
+    # buy reason 仅在 buy_obligation=True(义务标记,当前无生产置点,
+    # 保留位=未来义务型买授权的挂接键)时产出。
+    if auth.get('buy_obligation') and auth['buy_budget'] > 0 \
+            and not buy_done:
         r.buy_reason = 'no_candidate'
     return r
 
@@ -677,6 +744,12 @@ def authorize_release_refresh(session: StrategySession,
     息纪律门拦住的负分刷新(搜索成本显式裁定,同 W249 病灶修法)。
     directed_only 帧(成型帧末窗投影臂)消费定向化:find_ok=False
     (店内无可找件)拒——禁盲刷;找件帧放行,升级不经本门不受辖。
+    预算钳制账=v3_release_spent(全渠道共享:刷新逐笔 + 买/升经
+    _accrue_release_frame_spend 入账)——危机帧全部渠道消费共同消耗
+    budget_gold,如实执行 ADR-0503 设计预算(行为修复:预算门从失明
+    恢复为执行;旧形态买/升对门不可见=超授权滥刷,编排者裁决
+    2026-08-31)。upgrade 硬界归 ev 可负担性链、买牌归 spend_gate/EV
+    层的既有口径不变,本门只辖刷新放行。
     """
     directive = getattr(session, 'v3_release', None)
     if directive is None or cost <= 0:

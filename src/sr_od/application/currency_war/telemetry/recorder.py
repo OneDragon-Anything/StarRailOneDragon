@@ -229,9 +229,10 @@ class TelemetryRecorder:
                 trace.sess_release_budget = _w611_int('v3_release_budget')
                 _rs = getattr(_sess, 'v3_release_reason', None)
                 trace.sess_release_reason = None if _rs is None else str(_rs)
-                # 实花面(v3_release_spent=authorize_release_refresh 逐笔扣账
-                # 真实消费,每轮入口清零):ADR-0503 开臂判据②「危机帧实花
-                # 分项账非全零」的生产观测源,记账面(budget)不作兑现证据。
+                # 实花面(v3_release_spent,全渠道:刷新经授权门逐笔扣账 +
+                # 买牌/升级经仲裁收尾回执汇总;每轮入口清零):ADR-0503
+                # 开臂判据②「危机帧实花分项账非全零」的生产观测源,记账面
+                # (budget)不作兑现证据。
                 trace.sess_release_spent = _w611_int('v3_release_spent')
                 # W937 预算-回执契约(ADR-0504):姿态授权未兑现回执透传
                 # (extra 键不泛化透传,缺此映射行则 shop 端装配静默丢弃)
