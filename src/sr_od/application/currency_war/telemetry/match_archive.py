@@ -322,6 +322,16 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
                 (int(s.get('plane') or 1), int(s.get('round_num') or 0)), []).append(s)
         except (TypeError, ValueError):
             continue
+    # 每轮决策迹帧计数(复盘「零决策行」缺口一眼可见,免翻原始 jsonl;
+    # 已知形态:补给轮只有首补给 detour 一次性快照,后续补给轮 = 0,
+    # 写入端接线归 operations 面——W941 返修 REPORT 判定节)
+    dec_count: dict[tuple[int, int], int] = {}
+    for d in dec:
+        try:
+            k = (int(d.get('plane') or 1), int(d.get('round_num') or 0))
+        except (TypeError, ValueError):
+            continue
+        dec_count[k] = dec_count.get(k, 0) + 1
     rounds: list[dict[str, Any]] = []
     prev_hp: int | None = None
     for key in sorted(keys):
@@ -394,6 +404,9 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'bench': st.get('bench'),
             'equips': st.get('equips'),
             'decision_detail': detail,
+            # 决策迹帧数(v4):0 = 该轮采集缺口(已知形态=非首补给轮;
+            # 判读结合 outcome.source='synthetic_supply' 分型)
+            'n_decision_frames': dec_count.get(key, 0),
             # —— 战后终态(v3):该轮最晚帧板面计数(执行后、战斗前;
             # 战斗不改板面)= 「执行后」快照,与上方「决策时」列并列对照。
             # None/terminal_source='none' = 该轮无决策迹帧(仅结算行轮,
