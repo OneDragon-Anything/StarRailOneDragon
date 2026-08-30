@@ -23,7 +23,6 @@ SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立�
 """
 from __future__ import annotations
 
-from datetime import datetime
 
 import cv2
 import numpy as np
@@ -794,8 +793,10 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         # 开启按钮,非购买经验 UI)。撤掉昨天的商店开态静默跳过(它掩盖真问题:
         # 真召唤物在商店开时占槽也永远发现不了)。真根因 = 该占槽物品是箱/卡包的
         # **变体渲染**,find_supply_boxes/find_tomes/宽松互斥全没认出 → 漏到本钩子。
-        # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它;另加
-        # **书册卡内容确认钩子**(模板已认但开启行为未知 → 下次在场停机点开看)。
+        # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它。
+        # 书册卡开启语义已确认(2026-08-30 实机:点槽 → 「专家邀请函」五选一),
+        # 原确认停机钩子退役,自动处理链见 operations/handlers/handle_bookcard.py
+        # (备战环预清场 + loop 0k 弹窗分支接线)。
         _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
         _obj_slots: set[int] = {i for i, _p in find_supply_boxes(screen, _bench_slots9)}
         _obj_slots |= {i for i, _p in find_tomes(screen, _bench_slots9)}
@@ -804,57 +805,6 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         # 揭示动作由备战环派发前统一做(battle_loop 备战分支接线)→ 本钩子视其为
         # 已知物品,不再落 unknown 停机(否则免费增益反成停机源)。
         _obj_slots |= {i for i, _p in find_trial_reveal_cards(screen, _bench_slots9)}
-        # r100k 书册卡确认钩子(临时,确认后删):模板认出它了,但开启后是什么未知
-        # (名字带「未知」占位)。下次备战遇到 → 停机,AI 点「开启」看内容 → 改名
-        # + 若有奖励弹窗接线 handler → 删本段。每局只停一次(flag 挡重复)。
-        # [ADR-0263 同病核查] 本钩子**免疫**右侧 overlay 误触:触发极性是
-        # find_bookcards 的**正向 TM 命中**(书册卡模板 ≥0.75 于 slot rect 内),
-        # 非 summon 的「占用 + 识别不匹配」缺位判定 —— overlay 盖住槽位只会让
-        # 模板匹配不到(不触发),overlay 自身内容(连胜规则表等)对书册卡模板
-        # TM 到不了 0.75(同库互撞实测 ≤0.505 量级)→ 无需 overlay 守卫。
-        # r133 时序守卫(局37 实证):检测点=备战读,但同轮后续 bot 进战斗 →
-        # 停机落点在战斗画面,实物没看成,触发浪费一次。修:**画面须是备战态
-        # 才停**——用「备战阶段」OCR 关键词在场判(非备战态=跳过本轮,下轮再遇)。
-        # r133 时序守卫(局37 实证)→ r330 升级:帧态判据从
-        # OCR「备战阶段」关键词(弱:过渡帧可能残留文字)改为
-        # **id_mark 精准判定**(is_prep_like_frame,备战/开商店
-        # 二屏;与 gate 同判据源)。
-        try:
-            _bc = find_bookcards(screen, _bench_slots9)
-            if _bc and ctx.run_context is not None:
-                from pathlib import Path as _P2
-                _fp2 = _P2('.debug/temp/currency_war/bookcard_confirm_hook.flag')
-                if not _fp2.exists():
-                    from sr_od.application.currency_war.kernel.cw_obs_core import (
-                        is_prep_like_frame,
-                    )
-                    if is_prep_like_frame(ctx, screen):
-                        # ADR-0263 Revision 第三段:金币说明 overlay(C 类无档案,
-                        # 进不了两段式的 UPPER_SCREENS)以锚 OCR 判定补充排除
-                        # —— 停机后的「点开启」动作在 overlay 下会落空。
-                        from sr_od.application.currency_war.kernel.cw_obs_core import (
-                            gold_info_overlay_open,
-                        )
-                        _bc_rect = next((r for i, r in _bench_slots9
-                                         if i == _bc[0][0]), None)
-                        if (_bc_rect is not None
-                                and gold_info_overlay_open(ctx, screen)):
-                            from one_dragon.utils.log_utils import log as _lg3
-                            _lg3.info('[cw-hook][bookcard] 书册卡在场但金币说明'
-                                      'overlay 开着 → 跳过(ADR-0263 rev 锚段)')
-                        else:
-                            _fp2.write_text(
-                                f'书册卡确认钩子(r100k):slot{_bc[0][0]} 书册卡在场(模板已识别)。\n'
-                                f'处理:点 ({_bc[0][1].x},{_bc[0][1].y}) 「开启」→ 看产出(弹窗/直接入账)'
-                                f'→ ①改模板名 书册卡_未知.png → 真名;②若有交互弹窗,接 handler;'
-                                f'③删本钩子段(cw_identity_obs 搜「bookcard_confirm」)+删本 flag。\n'
-                                f'{datetime.now().isoformat(timespec="seconds")}', encoding='utf-8')
-                            from one_dragon.utils.log_utils import log as _log2
-                            _log2.warning('[cw!][bookcard] 书册卡在场(已识别,内容未知)→ 停机点开确认'
-                                          '(流程见 flag;确认后删钩子)')
-                            ctx.run_context.stop_running(reason='hook:bookcard_confirm')
-        except Exception:   # noqa: BLE001  确认钩子 best-effort
-            pass
         _item_tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
                      if t is not None]
         _tm_g = _get_tome_gray()
@@ -960,9 +910,9 @@ _tome_gray: MatLike | None = None
 _tome_loaded: bool = False
 # 书册卡(r100k 建档,2026-08-20):青蓝卡片+白色书册/文件夹 icon+底部「开启」,
 # 占备战席 1 槽。四帧实测 TM 0.975-1.0(模板=停机帧 slot1 裁剪);与典籍/补给箱
-# 互撞 0.505/0.462(分离度足够)。**开启行为未知**(名字带「未知」待实机确认:
-# 下次备战遇到→钩子停机→AI 点开看内容→改名+接线开启 handler)。识别先行让
-# summon 钩子不再拦它,但开启语义未接(占槽待开,不阻塞读身份)。
+# 互撞 0.505/0.462(分离度足够)。开启语义已确认(2026-08-30 实机:点槽 →
+# 「专家邀请函」五选一,选后专家入商店;处理链 = handle_bookcard.py)。模板名
+# 「书册卡_未知」为历史占位,改名需同步 _get_bookcard_gray 路径与测试锁,暂保留。
 _bookcard_gray: MatLike | None = None
 _bookcard_loaded: bool = False
 _BOOKCARD_TM_THR: float = 0.75   # 自身帧 0.975+,留选中态余量;vs 典籍 0.505 分离充足

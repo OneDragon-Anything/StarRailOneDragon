@@ -39,6 +39,9 @@ from sr_od.application.currency_war.obs.cw_settlement_obs import (
 from sr_od.application.currency_war.operations.handlers.handle_armory_box import (
     HandleArmoryBoxDialog,
 )
+from sr_od.application.currency_war.operations.handlers.handle_bookcard import (
+    HandleBookcard,
+)
 from sr_od.application.currency_war.operations.handlers.handle_deploy_not_full import (
     HandleDeployNotFull,
 )
@@ -1027,6 +1030,16 @@ class CurrencyWarRunLoop(SrOperation):
             self._handle_star_tome_pick(screen)
             return self.round_wait(wait=2)
 
+        # 0k. 专家邀请函弹窗(2026-08-30 建档):备战席「书册卡」点开后的五选一
+        #     (4 角色卡+现金为王)→ HandleBookcard 全链(开卡/选卡/收案;选卡
+        #     判据=主力阵营同线→在场阵营同线→现金为王兜底,见 handler docstring)。
+        #     判据同 0i:id_mark 命中即接管,不放行到备战分支(弹窗盖备战 →
+        #     误派 PrepDirector ping-pong)。替代原 bookcard_confirm 停机钩子
+        #     (钩子段已随本分支接线删除)。
+        if self.round_by_find_area(screen, '货币战争-备战-专家邀请函', '标识-专家邀请函', crop_first=False).is_success:
+            HandleBookcard(self.ctx).execute()
+            return self.round_wait(wait=2)
+
         # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档):出战时前台空被
         #     游戏拒(cap 满角色留 bench / 前排保证未触发的边缘)。处理:点确认关弹窗 → 下轮
         #     备战分支 PrepDirector 重新部署(前排保证会把 bench 角色强转前排);若再次出战仍
@@ -1278,6 +1291,7 @@ class CurrencyWarRunLoop(SrOperation):
             )
             from sr_od.application.currency_war.obs.cw_identity_obs import (
                 _ctx_slots,
+                find_bookcards,
                 find_trial_reveal_cards,
             )
             for _reveal_i in range(3):
@@ -1289,6 +1303,18 @@ class CurrencyWarRunLoop(SrOperation):
                 self.ctx.controller.click(_center)
                 log.info('[cw-loop] 试用角色揭示卡 slot%s → 点击揭示(免费 2★)', _slot)
                 time.sleep(1.2)   # 揭示动画窗(发光消散 + 角色卡落位)
+                screen = self.screenshot()
+            # 书册卡清场(2026-08-30 建档,与揭示卡同型预清场):开启后弹「专家邀请函」
+            # 五选一,HandleBookcard 全链处理(开卡→默认策略选卡→收案);替代原
+            # bookcard_confirm 停机钩子(钩子段已删,见 cw_identity_obs)。上界 2 轮
+            # 防识别抖动死循环;选中的专家入商店由正常商店逻辑接管。
+            for _bc_i in range(2):
+                _bc_cards = find_bookcards(screen, _ctx_slots(self.ctx, '备战栏', 9))
+                if not _bc_cards or not is_prep_like_frame(self.ctx, screen):
+                    break
+                _bc_result = HandleBookcard(self.ctx).execute()
+                log.info('[cw-loop] 书册卡 slot%s → 处理链执行 success=%s',
+                         _bc_cards[0][0], getattr(_bc_result, 'success', None))
                 screen = self.screenshot()
             _ok = PrepDirector(self.ctx).execute()
             if not _ok or not _ok.success:   # 迁移审计 w68(git 历史):OperationResult 无 __bool__,

@@ -388,6 +388,9 @@ class PrepDirector(SrOperation):
             ('货币战争-选择伙伴', '标识-选择伙伴', 'partner'),
             ('货币战争-祈愿试炼', '标识-祈愿试炼', 'wish_trial'),
             ('货币战争-星徽秘典弹窗', '标识-星徽秘典', 'star_tome'),
+            # 书册卡「专家邀请函」五选一(2026-08-30 建档):同 star_tome 纵深防御
+            # —— loop 0k 判据 miss 时即刻 bail 交回外环 handler(HandleBookcard)。
+            ('货币战争-备战-专家邀请函', '标识-专家邀请函', 'bookcard'),
             # r10 review 根因修:投资策略/投资环境/补给 3 个 0e 屏(此前白名单缺 → 在策略屏上
             # 卡片立绘被 HoughCircles 误检成假球 → ClickSpheres 连败 → 恢复原语盲点 (960,530)
             # = 中卡描述区正中 → 误开星徽详情弹窗 → 15 streak 停机,M53 实锤)。
