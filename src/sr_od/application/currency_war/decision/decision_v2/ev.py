@@ -228,7 +228,11 @@ def levelup_refresh_saving(state: GameState, session: StrategySession,
         state.level, ch.cost, target_star=2, owned=j)
     e_next = expected_refreshes_for_card(
         state.level + 1, ch.cost, target_star=2, owned=j)
-    return max(0.0, e_now - e_next) * (state.shop_refresh_cost or 2)
+    # 刷价参数化(W875 长线利好):开关默认关=恒基价;refresh_count 观测挂账未接线
+    # (getattr 缺省 0 → 折后价永不生效,零漂移)。
+    from sr_od.application.currency_war.kernel.cw_economy import refresh_cost_effective
+    return max(0.0, e_now - e_next) * refresh_cost_effective(
+        state, getattr(session, 'v3_refresh_count', 0), registry)
 
 
 def _vd_core_copies(state: GameState, core: str) -> list:

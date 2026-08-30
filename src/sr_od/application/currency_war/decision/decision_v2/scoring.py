@@ -596,7 +596,11 @@ def _vd_p1_pair(state: GameState, session: StrategySession,
         expected_refreshes,
         refresh_prob,
     )
-    refresh_cost = state.shop_refresh_cost or 2
+    from sr_od.application.currency_war.kernel.cw_economy import refresh_cost_effective
+    # 刷价参数化(W875 长线利好):开关默认关=恒基价;refresh_count 观测挂账未接线
+    # (session.v3_refresh_count 现不存在,getattr 缺省 0 → 折后价永不生效,零漂移)。
+    refresh_cost = refresh_cost_effective(state, getattr(session, 'v3_refresh_count', 0),
+                                          registry)
     best: float | None = None
     for name in missing:
         ch = _CH.get(name)
@@ -720,7 +724,10 @@ def vd_refresh_score(state: GameState, session: StrategySession,
              - registry.rung_value.get(1, 0.0))
     dwin = (registry.h3_win_rate.get(2, 0.0)
             - registry.h3_win_rate.get(1, 0.0))
-    spend = e * (state.shop_refresh_cost or 2)
+    # 刷价参数化(W875 长线利好,同 _vd_p1_pair:默认关=恒基价零漂移)
+    from sr_od.application.currency_war.kernel.cw_economy import refresh_cost_effective
+    spend = e * refresh_cost_effective(state, getattr(session, 'v3_refresh_count', 0),
+                                       registry)
     if state.plane >= 2 and registry.vd_p2_enabled:
         # `w154_p2d/`/ADR-0361 P2 段口径(P11 成本侧 + P12 收益侧);P1 收益侧
         # 骨架值治理见 ADR-0425:

@@ -8,11 +8,10 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_comps import (
-    AFFIX_MECHANIC_MAP,
-    MECHANIC_COUNTERS,
     augment_affinity,
     form_progress,
     mechanics_fit,
+    merged_mechanic_tables,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_FACTION_MATCH_FLOOR,
@@ -67,10 +66,11 @@ def _opt_counters_dot(opt: str) -> bool:
     名 → ``AFFIX_MECHANIC_MAP`` 机制 tag → ``MECHANIC_COUNTERS`` 克制属性,与「净化身心」
     同类的任意 anti-DoT 词缀/环境都覆盖(不止单点名);子串包含匹配保留旧 OCR 容错语义
     (旧 config dot_punish_envs 名单已删 —— 游戏客观数据非用户偏好,版本全量一致)。
-    未知名(不在映射)→ False(不惩罚)。
+    未知名(不在映射)→ False(不惩罚)。W875 补全包词缀按开关并表(全关=基表零漂移)。
     """
-    for affix, tag in AFFIX_MECHANIC_MAP.items():
-        if affix in opt and not _DOT_PUNISHED_MECHS.isdisjoint(MECHANIC_COUNTERS.get(tag, ())):
+    affix_map, counters, _ = merged_mechanic_tables()
+    for affix, tag in affix_map.items():
+        if affix in opt and not _DOT_PUNISHED_MECHS.isdisjoint(counters.get(tag, ())):
             return True
     return False
 
@@ -236,7 +236,8 @@ def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> floa
     """
     if target_comp is None:
         return 0.5
-    mechs = {AFFIX_MECHANIC_MAP.get(a, a) for a in option.affixes}
+    affix_map, _, _ = merged_mechanic_tables()
+    mechs = {affix_map.get(a, a) for a in option.affixes}
     fit = mechanics_fit(target_comp, mechs)
     return fit if fit is not None else 0.5
 

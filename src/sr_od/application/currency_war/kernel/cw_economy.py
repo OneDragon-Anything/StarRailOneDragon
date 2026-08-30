@@ -130,6 +130,32 @@ def _refresh_cost(state: GameState, refresh_used: int) -> int:
     return SHOP_REFRESH_COST
 
 
+def refresh_cost_effective(state: GameState, refresh_count: int,
+                           registry: DecisionV2Registry | None = None) -> int:
+    """刷新 EV 判据用的参数化刷价(W875 长线利好接入;开关默认关 = 恒基价零漂移)。
+
+    机制真值(cw_invest_data id=120 长线利好原文):花费金币进行 30 次刷新后获得
+    20 金,之后本局刷新只需 1 金。阈值/折后价单一源 = registry
+    (longterm_refresh_threshold / longterm_refresh_price,禁硬编码);
+    环境在场信号 = cw_effect_ledger 台账(state.active_env 长线利好 →
+    mutations.refresh_price_after 非 None)。
+    开臂判据挂账(开关生命周期第 1 态):①局内累计付费刷新计数接线
+    (refresh_count 由调用方注入,现无此观测,缺省 0 → 折后价永不生效);
+    ②sim A/B(同池配对)刷新/经济指标正向后翻默认值并改写行为锁组。
+    """
+    base = state.shop_refresh_cost or 2
+    reg = registry if isinstance(registry, DecisionV2Registry) else DEFAULT_REGISTRY
+    if not reg.longterm_refresh_discount_enabled:
+        return base
+    if refresh_count < reg.longterm_refresh_threshold:
+        return base
+    from sr_od.application.currency_war.kernel.cw_effect_ledger import build_env_ledger
+    led = build_env_ledger([state.active_env] if state.active_env else [])
+    if led.mutations.refresh_price_after is None:
+        return base
+    return reg.longterm_refresh_price
+
+
 
 def xp_click_cost(state: GameState) -> int:
     """一次「购买经验」单击花金(state.level_up_cost OCR 实读优先;缺 → XP_CLICK_COST_FALLBACK;

@@ -35,6 +35,10 @@ from typing import TYPE_CHECKING
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
 from sr_od.application.currency_war.kernel.cw_investments import INVESTMENT_ENVS
+from sr_od.application.currency_war.kernel.cw_registry import (
+    DEFAULT_REGISTRY,
+    DecisionV2Registry,
+)
 from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     effective_hp_threshold,
@@ -254,6 +258,62 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     # 其余词缀(首领强化/复仇心切/倒计时类/灼热轰炸等)为纯数值/无 comp 交互(灼热轰炸:前排受击+DoT
     # 均匀影响,无 comp flip),不入表;实机 OCR 按需补
 }
+
+# ===== W875 环境B类评分补全包(开关生命周期第 1 态:默认关,子旗标见 cw_registry)=====
+# 死映射防线(W872 攻击口径:映射存在但 tag 零 comp 携带 = mechanics_fit 恒中性空转):
+# 每行准入前已核查「该 tag 的 counter/synergy 值域至少被 1 个 comp 的 mechanic_attributes
+# 携带」。逐条核查结论(8 条):能量逃逸/同步行动准入(见下);区别对待/霸凌弱者(星级维)、
+# 以人为本(羁绊基础伤害占比维)、挫其锋芒(伤害减免维)——comp 侧无对应 tag 且现有 tag 词汇
+# 无处安放,禁造零携带死映射,挂账待 comp 侧 mechanic_attributes 建模批;应激反应/一鼓作气
+# (敌方多动)的 DoT 受益半边已由 cw_system_cards affix_likes 通道覆盖,评分面无差分 tag,同样挂账。
+# 机制真值 = affix_effects_data.py 效果原文逐字。
+W875_AFFIX_MECHANIC_MAP: dict[str, str] = {
+    "能量逃逸": "能量削弱",   # 敌受击使攻击者能量 -4 → 克开大依赖(连携高频开大)
+    "同步行动": "行动喂敌",   # 我方行动提前时敌也提前 20% → 克速度依赖/量子拉条(我方提速喂敌)
+}
+W875_MECHANIC_COUNTERS: dict[str, list[str]] = {
+    "能量削弱": ["连携高频开大"],          # 载体:连携高频开大 comp(cw_comps,Saber 连携队)
+    "行动喂敌": ["速度依赖", "量子拉条"],   # 载体:昼神阿雅(速度依赖)/希儿量子(量子拉条)
+}
+W875_MECHANIC_SYNERGIES: dict[str, list[str]] = {}
+
+# W875 子旗标 → 机制 tag(单一源;开关名与 cw_registry 字段一一对应)
+_W875_TAG_FLAG: dict[str, str] = {
+    "能量削弱": "w875_energy_leak_enabled",
+    "行动喂敌": "w875_sync_action_enabled",
+}
+
+
+def w875_active_tags(registry: DecisionV2Registry | None = None) -> frozenset[str]:
+    """W875 补全包当前放行的机制 tag 集(开关 = registry 子旗标;全关 = 空集 = 基表零漂移)。"""
+    reg = registry if isinstance(registry, DecisionV2Registry) else DEFAULT_REGISTRY
+    return frozenset(tag for tag, flag in _W875_TAG_FLAG.items() if getattr(reg, flag, False))
+
+
+def merged_mechanic_tables(registry: DecisionV2Registry | None = None,
+                           ) -> tuple[dict[str, str], dict[str, list[str]], dict[str, list[str]]]:
+    """生效机制三元组(词缀映射/克制/受利)= 基表 + W875 放行子集。
+
+    全关时原样返回基表对象(零分配零漂移);任一子旗标开才做合并拷贝。
+    消费点:mechanics_fit / current_enemy_mechanics / cw_events / cw_intention
+    (缺省栈无注入臂时落 DEFAULT_REGISTRY,与 prep_director 缺省注记同型;
+    sim A/B 注入面 = 传 registry 参数,基表路径行为不变)。
+    """
+    active = w875_active_tags(registry)
+    if not active:
+        return AFFIX_MECHANIC_MAP, MECHANIC_COUNTERS, MECHANIC_SYNERGIES
+    affix_map = dict(AFFIX_MECHANIC_MAP)
+    counters = {k: list(v) for k, v in MECHANIC_COUNTERS.items()}
+    synergies = {k: list(v) for k, v in MECHANIC_SYNERGIES.items()}
+    for affix, tag in W875_AFFIX_MECHANIC_MAP.items():
+        if tag not in active:
+            continue
+        affix_map[affix] = tag
+        for src, dst in ((W875_MECHANIC_COUNTERS, counters),
+                         (W875_MECHANIC_SYNERGIES, synergies)):
+            if tag in src:
+                dst[tag] = list(src[tag])
+    return affix_map, counters, synergies
 
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
 # 自动写入采到的新词缀/校准)。本文件不 import 该注册表(迁移审计 w266(git 历史) 勘误:旧注释称「顶部 import 重导出」
@@ -1171,20 +1231,23 @@ def equip_fit(comp: Comp, state: GameState) -> float | None:
     return clamp((held / len(comp.key_equips)) ** 0.7, 0.0, 1.0)
 
 
-def mechanics_fit(comp: Comp, mechanics: set[str]) -> float | None:
+def mechanics_fit(comp: Comp, mechanics: set[str],
+                  registry: DecisionV2Registry | None = None) -> float | None:
     """机制契合(comp 相关,双向 0..1):命中 counter(克这 comp)→ 降;命中 synergy(利这 comp)→ 升。
 
     ⚠️ comp 驱动(用户 debuff=buff):同一词缀对不同 comp 方向相反。经 comp.mechanic_attributes
-    查全局 MECHANIC_COUNTERS/SYNERGIES 判(数据驱动,comp 不必逐词缀列举)。
+    查全局 MECHANIC_COUNTERS/SYNERGIES 判(数据驱动,comp 不必逐词缀列举;W875 补全包
+    子集经 merged_mechanic_tables 按开关并表,全关=基表零漂移)。
     无机制信息(无敌人词缀 / comp 无 mechanic_attributes)→ **None**(ADR-0107 动态权重剔除,治死重)。
     典型:万敌[燃血] + 反伤 → synergy 升(debuff=buff);阿雅[速度依赖] + 禁速 → counter 降。
     """
     if not mechanics or not comp.mechanic_attributes:
         return None
+    _, counters, synergies = merged_mechanic_tables(registry)
     score = 0.5
     for mech in mechanics:
-        countered_attrs = MECHANIC_COUNTERS.get(mech, [])
-        synergy_attrs = MECHANIC_SYNERGIES.get(mech, [])
+        countered_attrs = counters.get(mech, [])
+        synergy_attrs = synergies.get(mech, [])
         n_counter = sum(1 for a in comp.mechanic_attributes if a in countered_attrs)
         n_synergy = sum(1 for a in comp.mechanic_attributes if a in synergy_attrs)
         score -= 0.25 * n_counter    # 每命中一个 counter 降 0.25
@@ -1294,9 +1357,12 @@ def strength_base(comp: Comp) -> float:
     return {"S": 1.0, "A": 0.7, "B": 0.4}.get(comp.strength, 0.5)
 
 
-def current_enemy_mechanics(state: GameState) -> set[str]:
-    """当前敌人机制 tag 集合(从 state.enemy_affixes 经 AFFIX_MECHANIC_MAP 映射;未知词缀原样透传)。"""
-    return {AFFIX_MECHANIC_MAP.get(a, a) for a in state.enemy_affixes}
+def current_enemy_mechanics(state: GameState,
+                            registry: DecisionV2Registry | None = None) -> set[str]:
+    """当前敌人机制 tag 集合(从 state.enemy_affixes 经 AFFIX_MECHANIC_MAP 映射;未知词缀原样透传;
+    W875 补全包词缀经 merged_mechanic_tables 按开关并表,全关=基表零漂移)。"""
+    affix_map, _, _ = merged_mechanic_tables(registry)
+    return {affix_map.get(a, a) for a in state.enemy_affixes}
 
 
 def make_score_context(state: GameState, bosses: list[str] | None = None) -> ScoreContext:

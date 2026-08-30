@@ -197,7 +197,10 @@ def release_directive(state: GameState, session: StrategySession,
     义务预算 = max(既有臂义务(DP 授权), min(溢余, C_t))——
     义务不缩水既有臂(取 max),容量封顶防把金推进负 EV 件。
     """
-    cost = refresh_cost_of(state)
+    # 刷价参数化(W875 长线利好):默认关=refresh_cost_of 基价零漂移;refresh_count
+    # 观测挂账未接线(getattr 缺省 0 → 折后价永不生效)。
+    from sr_od.application.currency_war.kernel.cw_economy import refresh_cost_effective
+    cost = refresh_cost_effective(state, getattr(session, 'v3_refresh_count', 0), registry)
     from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         obligation,
     )

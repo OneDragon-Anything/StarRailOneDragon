@@ -1616,6 +1616,28 @@ class DecisionV2Registry:
     audit_resource_dims: tuple[str, ...] = ('gold', 'bench', 'slot', 'round_mutex')
     audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'mode')
 
+    # ===== W875 环境B类评分补全包 + 长线利好刷价参数(开关生命周期第 1 态:默认关)=====
+    #: 生命周期第 1 态纪律(策略开关的唯一合法存在理由 = 行为输入未就绪):
+    #: 关 = 基表/基价零漂移;开臂判据 = sim A/B(同池配对)目标指标正向后翻默认值,
+    #: 同时改写断言旧默认行为的行为锁组(hash 锁之外的锁最易漏)。
+    #: 评分补全包子旗标(逐条独立;死映射防线 = 每行准入前已核查该 tag 的
+    #: counter 值域至少被 1 个 comp 的 mechanic_attributes 携带,W872 攻击口径):
+    #: 能量逃逸(敌受击使攻击者能量 -4,机制原文 affix_effects_data「能量逃逸」)
+    #: → tag 能量削弱,克连携高频开大(Saber 连携队,tag 有载体)。
+    w875_energy_leak_enabled: bool = False
+    #: 同步行动(我方行动提前时敌也提前 20%,机制原文 affix_effects_data「同步行动」)
+    #: → tag 行动喂敌,克速度依赖/量子拉条(阿雅鞋队/希儿量子,tag 均有载体)。
+    #: 「敌多动=DoT 多结算」半边不走本表(cw_system_cards affix_likes 通道已覆盖,防双计)。
+    w875_sync_action_enabled: bool = False
+    #: 长线利好刷价参数(机制原文 cw_invest_data id=120:花费刷新 30 次后得 20 金,
+    #: 之后本局刷新只需 1 金)。阈值/折后价单一源在本表,消费点 =
+    #: cw_economy.refresh_cost_effective(刷新 EV 判据参数化接缝)。
+    #: 开臂判据挂账:①局内累计付费刷新计数接线(refresh_count 由调用方注入,
+    #: 现无此观测,缺省 0 → 折后价永不生效);②sim A/B 刷新/经济指标正向。
+    longterm_refresh_discount_enabled: bool = False
+    longterm_refresh_threshold: int = 30
+    longterm_refresh_price: int = 1
+
     def interest_floor(self) -> int:
         """息线单一源(D3 双源清偿,`w628_migration_b2/`):派生 = interest_cap × 10。
 

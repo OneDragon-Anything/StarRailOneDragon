@@ -51,7 +51,6 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
-    AFFIX_MECHANIC_MAP,
     COMP_LIBRARY,
     STRONG_ENV_MECHS,
     V2_FAMILIES,
@@ -60,6 +59,7 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     augment_env_affinity,
     derive_key_equips,
     get_comp,
+    merged_mechanic_tables,
 )
 from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRAITS
 from sr_od.application.currency_war.kernel.cw_line_switch import (
@@ -398,7 +398,8 @@ def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
         return None
     if not state.enemy_affixes:
         return None
-    mech = {AFFIX_MECHANIC_MAP.get(a, a) for a in state.enemy_affixes}
+    affix_map, _, _ = merged_mechanic_tables()
+    mech = {affix_map.get(a, a) for a in state.enemy_affixes}
     return bool(mech & need)
 
 
