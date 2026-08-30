@@ -206,6 +206,49 @@ def bench_buy_identity_missing(bought_names: list[str],
     return [n for n in bought_names if n and n not in _have]
 
 
+def refresh_wave_is_refresh_only(actions: list) -> bool:
+    """仅刷新波判定(执行边界压缩·连击共享往返的单一判据)。
+
+    「仅刷新波」= plan 首动作即 RefreshShop(执行前缀截在该刷,波内
+    无任何买卡/升级/卖出)。此时波循环顶的整帧读未被本波动作污染,
+    state.gold / state.shop 即刷新点击前现读——``w592_free_refresh_fix/``
+    (ADR-0456 勘误)禁用 state.shop 当刷前读的失效条件(「波内买卡
+    不从 state.shop 摘已买牌」)在仅刷新波不成立,可安全复用。
+    返回 False 的波(前缀含买/卖)维持刷前 pre-shot 现读,语义不变。
+    """
+    return bool(actions) and isinstance(actions[0], RefreshShop)
+
+
+def build_post_buy_incremental_state(
+        last_state: GameState,
+        gold_read: int | None,
+        tracked_bench_chars: list[BenchChar],
+        last_node_type: str | None,
+        hp_value: int | None,
+        hp_readable: bool,
+        hp_trusted: bool,
+) -> GameState | None:
+    """买后重估增量态构造(执行边界压缩·买后验证增量的单一构造点)。
+
+    机制不变量:买牌/卖牌/刷新不触 plane/round/board/level/xp/streak/
+    node_type(升级触 level/xp,由调用方 total_level 门拦截,不进本函数);
+    gold 用关店帧真读;bench 重播 tracked_bench_chars(执行侧
+    mutate_bench_deployed 逐动作同步的权威源,末波垫底 state 的 bench
+    是执行前快照,必须重播)。gold_read=None(失读)→ 返回 None,
+    调用方回退全量 read_game_state(fail-closed,宁全量不造值)。
+    """
+    if gold_read is None:
+        return None
+    post = deepcopy(last_state)
+    post.gold = gold_read
+    if tracked_bench_chars:
+        post.bench = bench_from_compact(deepcopy(tracked_bench_chars))
+    _apply_hp(post, hp_value, hp_readable, hp_trusted)
+    if last_node_type:
+        post.node_type = last_node_type
+    return post
+
+
 def _form_progress(comp, state) -> float:
     """fp 遥测helper(review 要求:fp 轨迹可观测;comp None 时不调)。"""
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
@@ -454,9 +497,12 @@ class BuyShopCards(SrOperation):
         elif match is not None and match.session.last_hp is not None:
             log.info('[cw] hp 结算值陈久跳过覆盖(last_hp=%s t=%s, now t=%s)→ 用 prep 现读 %s(防冻结毒化)',
                      match.session.last_hp, _hp_t, _now_t, hp_value)
-        _tgt_state = read_game_state(self.ctx, self.screenshot(),
-                                     phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
-        _apply_hp(_tgt_state, hp_value, _hp_readable, _hp_trusted)
+        # 执行边界压缩·观察段级一次:原此处有一次 update_target 专用的
+        # 独立整帧 read_game_state(PHASE_PREP_SHOP_OPEN)——与波循环首波
+        # 读同帧同参(两次读之间无任何点击),合并为首波一次(判据与
+        # 逐段盘点见 w891 候选①报告 §1.2/§1.3)。update_target 移入
+        # 波循环首波执行,插入点在 session 拷贝/金救援之前 = 与旧独立读
+        # 输入保真(raw 读+hp 覆盖,未救援金、未拷 session 态)。
         if match is None:
             # 防御:无对局态(独立 run_operation 调本 op)→ 临时 match,不挂 ctx(局外不复用)
             # (default 栈退役后,防御具现改用唯一策略载体 decision_v2)
@@ -465,7 +511,6 @@ class BuyShopCards(SrOperation):
             )
             _def = DecisionV2Strategy()
             match = CurrencyWarMatch(_def, _def.create_session(config))
-        match.strategy.update_target(_tgt_state, match.session, config)
 
         total_buy = total_level = total_refresh = 0
         # `w577_refresh_fee_and_andon/`(ADR-0456)「计划≠尝试」执行事实:plan 里被硬墙跳过/截断丢弃的
@@ -504,14 +549,25 @@ class BuyShopCards(SrOperation):
         _buy_unidentified = False
         _buy_pre_bench = deepcopy(match.session.tracked_bench_chars)
         _buy_pre_deployed = deepcopy(match.session.tracked_deployed)
+        # 执行边界压缩(本批):_target_seeded = 首波 update_target 已做
+        # (替代原开店后独立读,见上方合并注);_prev_refresh_only =
+        # 上一波是「仅刷新波」(连击续刷判定输入,判据单一源 =
+        # refresh_wave_is_refresh_only)。
+        _target_seeded = False
+        _prev_refresh_only = False
         for _ in range(BuyShopCards.MAX_REFRESH + 1):
-            time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读)
+            if not _prev_refresh_only:
+                time.sleep(0.3)  # 等 board 面板 settle(买牌/shop 开 → panel 动画显示 tier 链"2/4/6/8"→ OCR 误读;连击续刷波前一动作是刷新,面板未变,跳过)
             # 光标 parking(审计 P0,2026-08-16):上轮 BuyCard/LevelUp/Refresh 点击后光标停在按钮上
             # (购买经验距等级区 18px/牌位=识别区本身)→ 污染本帧 read_game_state;park 后再读。
             self.park_cursor(after_wait=0.1)
             state = read_game_state(self.ctx, self.screenshot(),
                                     phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
             _apply_hp(state, hp_value, _hp_readable, _hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖(值+位同写,`w580_hp_trust_defense/`)
+            if not _target_seeded:
+                # 执行边界压缩:原开店后 update_target 专用读的首波替代(见循环前注)。
+                _target_seeded = True
+                match.strategy.update_target(state, match.session, config)
             # r7 review P0-①:shop 开帧节点行被遮 node_type 恒 None(plan 路径 1700/1706 None 实证,
             # boss 判定死码)→ 拷 Director shop 关态真值(仿 hp_value 同法)。
             if match is not None and match.session.last_node_type:
@@ -683,6 +739,7 @@ class BuyShopCards(SrOperation):
             # 执行至首个 RefreshShop(含);无 RefreshShop 则执行全部(DeployMove/SellBench 仍跳过)
             refresh_idx = next((i for i, a in enumerate(actions) if isinstance(a, RefreshShop)), None)
             prefix = actions if refresh_idx is None else actions[:refresh_idx + 1]
+            _wave_refresh_only = refresh_wave_is_refresh_only(actions)
             if refresh_idx is not None and refresh_idx + 1 < len(actions):
                 # `w577_refresh_fee_and_andon/`:截断丢弃的尾部动作(下波会重 plan,但本 plan 行已按
                 # 全量记账)对分类器是「计划≠尝试」,可见化不停(ADR-0456)
@@ -776,20 +833,31 @@ class BuyShopCards(SrOperation):
 
 
                         from sr_od.application.currency_war.prep_director import build_refresh_expect, refresh_reconcile_mismatches
-                        # `w592_free_refresh_fix/`(ADR-0456 勘误):点击前一帧现读金 + 牌名集。
-                        # 刷前名集不得用 state.shop——那是本波 plan 期读数,
-                        # 波内买卡不从 state.shop 摘已买牌,而游戏画面买后
-                        # 即离场;买+刷新波里「plan 读 vs 点击后实读」集合
-                        # 必不等,刷新真落空会被误判成免费生效。
-                        _pre_shot = self.screenshot()
-                        _pre_gold = read_gold_opt(self.ctx, _pre_shot)
-                        # 本波已买槽位现读为空槽/未识别(''),是自身买卡
-                        # 所致、不含刷新证据,比较前剔除;刷后一侧不剔除
-                        # ——含 '' 仍按不可判不猜(语义同 refresh_effective)。
-                        _pre_shop_names = [c.name
-                                           for c in read_shop_cards(self.ctx,
-                                                                    _pre_shot)
-                                           if c.name]
+                        # 刷前现读两口径(执行边界压缩·连击共享往返):
+                        # - 仅刷新波(_wave_refresh_only,判据单一源 =
+                        #   refresh_wave_is_refresh_only):本波无买卡/卖出,
+                        #   波循环顶整帧读未被本波动作污染 → state.gold/
+                        #   state.shop 即点击前现读,跳过 pre-shot 重复读;
+                        # - 其余波:`w592_free_refresh_fix/`(ADR-0456 勘误)
+                        #   原语义——点击前一帧现读金 + 牌名集。刷前名集
+                        #   不得用 state.shop:那是本波 plan 期读数,波内
+                        #   买卡不从 state.shop 摘已买牌,买+刷新波里
+                        #   「plan 读 vs 点击后实读」集合必不等,刷新真落空
+                        #   会被误判成免费生效。
+                        if _wave_refresh_only:
+                            _pre_gold = state.gold if state.gold > 0 else None
+                            _pre_shop_names = [c.name for c in state.shop
+                                               if c.name]
+                        else:
+                            _pre_shot = self.screenshot()
+                            _pre_gold = read_gold_opt(self.ctx, _pre_shot)
+                            # 本波已买槽位现读为空槽/未识别(''),是自身买卡
+                            # 所致、不含刷新证据,比较前剔除;刷后一侧不剔除
+                            # ——含 '' 仍按不可判不猜(语义同 refresh_effective)。
+                            _pre_shop_names = [c.name
+                                               for c in read_shop_cards(self.ctx,
+                                                                        _pre_shot)
+                                               if c.name]
                         _refresh_expect = build_refresh_expect(
                             _pre_gold, REFRESH_COST_BASE,
                             [(c.name, c.star) for c in state.shop],
@@ -1024,6 +1092,9 @@ class BuyShopCards(SrOperation):
                         total_sell_fail += 1   # 拖 3 次源槽未变(现有语义)
                         log.warning('[cw-shop] Sell bench%d %s 拖3次源槽未变',
                                     action.bench_idx, _expected)
+            # 连击续刷判定输入:本波是否「仅刷新且真点击」(硬墙跳过/未刷
+            # 均为 False → 下一波恢复波顶 settle 与 pre-shot 语义)。
+            _prev_refresh_only = bool(_wave_refresh_only and did_refresh)
             if not did_refresh:
                 break   # 本轮无刷新(或硬墙)→ 买完收工
 
@@ -1199,11 +1270,28 @@ class BuyShopCards(SrOperation):
         # 就有方向。幂等(update_target 是纯重估,已锁线不漂移)。
         try:
             if match is not None and (total_buy or total_level or total_refresh):
-                _post = read_game_state(self.ctx, self.screenshot(),
-                                        phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
-                _apply_hp(_post, hp_value, _hp_readable, _hp_trusted)
-                if match.session.last_node_type:
-                    _post.node_type = match.session.last_node_type
+                _post = None
+                if not total_level:
+                    # 执行边界压缩·买后验证增量:本单元动作(无升级)只改
+                    # gold/bench(plane/round/board 等机制不变量,构造单一源 =
+                    # build_post_buy_incremental_state)→ 单区金真读 + tracked
+                    # 重播,替代整帧 OCR;金失读回退全量读(fail-closed)。
+                    _inc_gold = None
+                    with contextlib.suppress(Exception):
+                        _inc_gold = read_gold_opt(self.ctx, self.screenshot())
+                    if _inc_gold is not None:
+                        _post = build_post_buy_incremental_state(
+                            state, _inc_gold,
+                            (match.session.tracked_bench_chars
+                             or _tracked_bench_chars(match.session.tracked_bench)),
+                            match.session.last_node_type or None,
+                            hp_value, _hp_readable, _hp_trusted)
+                if _post is None:
+                    _post = read_game_state(self.ctx, self.screenshot(),
+                                            phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
+                    _apply_hp(_post, hp_value, _hp_readable, _hp_trusted)
+                    if match.session.last_node_type:
+                        _post.node_type = match.session.last_node_type
                 match.strategy.update_target(_post, match.session, config)
         except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
             log.debug('[cw] 买后重估失败(不阻塞): %s', e)
