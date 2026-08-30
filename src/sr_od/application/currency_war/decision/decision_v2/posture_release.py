@@ -186,6 +186,27 @@ def _findable_in_shop(state: GameState, session: StrategySession,
                for card in (state.shop or []))
 
 
+def crisis_release_open(state: GameState, session: StrategySession,
+                        registry: DecisionV2Registry) -> bool:
+    """危机金出口臂辖域(ADR-0503):开关 ∧ 应急带 ∧ 溢余段。
+
+    应急让位(ADR-0426)的成立前提是「让位后有承接者接住这笔金」;W907
+    实证观测帧类(商店全离线/板满)承接者全空 → 溢余金零兑换。本谓词
+    只在让位前提失效的帧类放行危机臂,正常 flip 臂辖区结构不动。
+    判据全既有单一源符号(开关/应急线/储备线溢余),零新常数。
+    """
+    if not registry.crisis_release_enabled:
+        return False
+    from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
+        overflow,
+    )
+    from sr_od.application.currency_war.decision.decision_v2.filters import (
+        is_emergency,
+    )
+    return is_emergency(state, registry) and overflow(state, session,
+                                                      registry) > 0
+
+
 def release_directive(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry, phase_value: str,
                       posture: Posture) -> ReleaseDirective | None:
@@ -280,6 +301,25 @@ def release_directive(state: GameState, session: StrategySession,
         is_emergency,
     )
     if is_emergency(state, registry):
+        # 危机金出口臂(ADR-0503):应急让位的承接者缺失帧(W907:商店
+        # 全离线→应急搜牌空、死亡域 V>0 无提案→chosen 恒空)改产危机
+        # 指令——义务模型的「存是为了关键时刻能花」,hp≤应急线正是关键
+        # 时刻。预算=min(溢余, REFRESH_ROLL_CAP×刷价):搜索转化的期权
+        # 上界取分配器同源刷帽(单一源),不越过溢余线;每笔支出仍受
+        # 息档截断/boss_floor/g≥0 三门辖(authorize_release_refresh
+        # 保留),买牌仍走 EV 过滤层——义务不废 EV 过滤原则不破。
+        # hp 可信位边界:消费 is_emergency→state.hp,100 兜底帧非应急
+        # →臂死(fail-closed,与既有应急带消费点同口径,ADR-0428 放宽
+        # 不随)。开关关 → 走下方原让位 return None,零漂移。
+        if crisis_release_open(state, session, registry):
+            from sr_od.application.currency_war.kernel.cw_economy import (
+                REFRESH_ROLL_CAP,
+            )
+            ov = _overflow(state, session, registry)
+            budget = min(ov, REFRESH_ROLL_CAP * cost)
+            return ReleaseDirective(budget_gold=budget,
+                                    rolls=budget // cost if cost else 0,
+                                    reason='crisis')
         return None    # 应急辖区,release 让位(与 flip 同一让位结构)
     if _overflow(state, session, registry) <= 0:
         return None    # g≤R*:存息有 0.1/轮 真实收益,息线以内零漂移(I-1 锚)

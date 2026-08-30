@@ -864,6 +864,13 @@ class DecisionV2Registry:
     # ===== outcome 无一致正方向、机理核 rung 路径不动,见该 ADR。)=====
 
     # ===== W332b 未成型期姿态:泄息通道(release)与换线判据参数 =====
+    #: 危机金出口臂(ADR-0503;W907 病灶:hp≤emergency_hp 帧应急让位使
+    #: release 恒 None,溢余金在死亡门口零兑换)。True=危机帧(应急带∧
+    #: 溢余)产 reason='crisis' 泄息指令(预算=min(溢余,REFRESH_ROLL_CAP×
+    #: 刷价),posture 降级 tag='release');False=现行为(release 让位,
+    #: 零漂移锚)。默认关=开关生命周期第 1 态,开臂判据挂账
+    #: ADR-0503 §开臂(sim A/B 主判据+实机观察局锚)。
+    crisis_release_enabled: bool = False
     #: 设计决策单一源=ADR-0426(谱系节含设计稿索引与两轮对抗修订记录)。**符号不稳参数一律默认值+标定接口,不拍死**:
     #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
     #: (总开关 release_enabled 已随 ADR-0426 增补 D 第 4 态清理:被经济
