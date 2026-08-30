@@ -1,6 +1,6 @@
 # P22(草稿 _w610)·淘金客在场时「刷新买经验」的每金 XP 占优定理
 
-> 状态:**草稿,未入 math_proofs.md 索引**(实现批合并后按新命题流程回填)。
+> 状态:**已证(占优定理,零自由参数;边界:免费刷新不计 XP 仅文本证据,挂实采复核)**。2026-08-30 命题清欠批入索引(math_proofs.md P22 行)。
 > 数据源:①机制常量 `cw_state.py`(`XP_PER_BUY=4`、`XP_TO_NEXT_LEVEL={3:4,4:6,5:20,6:40,7:52,8:72,9:84}`、`REFRESH_COST_BASE=2`,ADR-0456);②买经验单价 flat-4 裁决(ADR-0275:VLM 三帧 lv4/lv7=4 + telemetry lv5 实测锚 4 + W332 复活后全样本读值=4);③局23 实机遥测 `run_20260829_130420`(`.debug/temp/currency_war/replay/decisions.jsonl`,decisions 行 state.xp_progress 逐帧);④投资策略注册表 `cw_invest_data.py:259`(淘金客 301601 棱彩:「你每次消耗金币刷新商店,都会获得2经验值」)+ `cw_investments.py:139`(`EconomyEffect(xp_per_refresh=2)`)。
 > 口述来源(最高权威):用户 2026-08-30 实机发现「当前局拿到淘金客后,完全不用买经验了,一直刷新商店就好」。
 
