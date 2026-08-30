@@ -44,7 +44,7 @@ id_mark/两个节点条);boss 节点圆由 ``read_plane_detail_nodes`` 动态定
 import contextlib
 import logging
 import time
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
@@ -72,6 +72,29 @@ _LABEL_AREA: str = '文本-节点类型名'
 # 间隔重读给动画时间,超宽上限才真失败(覆盖最慢加载)。
 _NODE_BAR_READ_INTERVAL_S: float = 2.0   # 两次重读的间隔(给转换/加载动画时间)
 _NODE_BAR_WAIT_CAP_S: float = 90.0       # 非clean 总等待上限,超限才真失败
+
+# 静止帧提前放弃(2026-08-30 哨兵 20:22:36 实证:变暗静态条被判「切卡动画中」
+# 硬等 90s 后放弃,采集从未通过此门)。区分信号=帧稳定性:真动画(位面转换/
+# 加载)帧间必有变化;连续 2 帧零变化(隔一个重读间隔)= 静止渲染态(变暗条/
+# 特效遮蔽),继续等不会变 clean → 提前放弃,不等满上限。
+_GATE_STATIC_FAIL_FRAMES: int = 2        # 连续 N 帧零变化 → 判静止
+_FRAME_DIFF_TOL: float = 1.0             # 降采样灰度平均绝对差 ≤ 该值 = 零变化
+
+
+def _frame_thumbnail(screen) -> Any:
+    """截图 → 96x54 灰度缩略图(帧差比较的降采样表示;RGB 输入)。"""
+    import cv2 as _cv2
+    gray = _cv2.cvtColor(screen, _cv2.COLOR_RGB2GRAY)
+    return _cv2.resize(gray, (96, 54))
+
+
+def _frames_identical(a: Any, b: Any) -> bool:
+    """两缩略图是否零变化(平均绝对差 ≤ :data:`_FRAME_DIFF_TOL`;容忍编码/压缩噪声)。"""
+    import cv2 as _cv2
+    import numpy as _np
+    return float(_cv2.absdiff(
+        _np.asarray(a, dtype=_np.uint8),
+        _np.asarray(b, dtype=_np.uint8)).mean()) <= _FRAME_DIFF_TOL
 
 
 def conclude_plane_boss(label: str | None, sift_name: str | None) -> tuple[str, str | None]:
@@ -177,6 +200,10 @@ class CollectPlaneIntel(SrOperation):
         # 逐位面采集计时(观测缺口补齐:用户观察到 P2 停留无法从日志诊断)。
         self._plane_start: float | None = None      # 当前位面计时起点(monotonic)
         self._plane_start_plane: int = 0            # 计时起点对应的位面号(1-based)
+        # 非clean等待门的帧稳定性追踪(静止帧提前放弃,见 _GATE_STATIC_FAIL_FRAMES):
+        # 上一次进门时的缩略图(None=本等待幕尚无前帧)+ 连续零变化帧计数。
+        self._gate_prev_thumb: Any = None
+        self._gate_static_streak: int = 0
 
     # ---- 内部工具 -------------------------------------------------------
 
@@ -241,16 +268,45 @@ class CollectPlaneIntel(SrOperation):
         return name
 
     def _nonclean_read_gate(self, reason: str) -> OperationRoundResult:
-        """非clean帧等待门:节点条读不出时不短窗即弃——间隔重读等动画窗,
-        超宽上限(:data:`_NODE_BAR_WAIT_CAP_S`)才真失败。
+        """非clean帧等待门:节点条读不出时分流两路——
 
-        clean 判定语义不变(读出即 clean);上限是墙钟计时(覆盖最慢加载),
-        与 round retry 账解耦——因此 ``采集`` 节点的 retry 预算须 ≥ 上限/间隔
-        (node_max_retry_times=60),否则预算先耗尽、上限兜不住。
+        ① 帧在变(真动画:位面转换/加载)→ 间隔重读等动画窗,超宽上限
+           (:data:`_NODE_BAR_WAIT_CAP_S`)才真失败(原始设计,2026-08-27 过场帧
+           实证:动画窗远长于短窗连读);
+        ② 帧静止(连续 :data:`_GATE_STATIC_FAIL_FRAMES` 帧零变化)→ 非动画,
+           读不出是渲染态问题(变暗条/特效遮蔽),等下去不会变 clean →
+           **提前放弃**(2026-08-30 哨兵实证:变暗静态条被当「切卡动画中」
+           硬等 90s,采集从未通过此门;静止帧判定让此类失败从 90s 收敛到
+           ~一个重读间隔)。
+
+        clean 判定语义不变(读出即 clean);上限与静止判定都是墙钟/帧序
+        计时,与 round retry 账解耦——因此 ``采集`` 节点的 retry 预算须
+        ≥ 上限/间隔(node_max_retry_times=60),否则预算先耗尽。
         """
         now = time.monotonic()
         if self._nonclean_wait_start is None:
             self._nonclean_wait_start = now
+            self._gate_prev_thumb = None    # 新等待幕:帧稳定性账清零
+            self._gate_static_streak = 0
+        # 帧稳定性:与本等待幕上一帧比(每轮 round_retry 后框架刷新截图,
+        # 同帧=静止;真动画帧间必有变化,不受影响);无截图(异常态)不判静止,
+        # 保守走上限路径。
+        if self.last_screenshot is not None:
+            thumb = _frame_thumbnail(self.last_screenshot)
+            if self._gate_prev_thumb is not None and _frames_identical(
+                    thumb, self._gate_prev_thumb):
+                self._gate_static_streak += 1
+            else:
+                self._gate_static_streak = 0
+            self._gate_prev_thumb = thumb
+            if self._gate_static_streak + 1 >= _GATE_STATIC_FAIL_FRAMES:
+                self._nonclean_wait_start = None
+                self._best_effort_close_detail()
+                return self.round_fail(
+                    f'节点条非clean({reason})但画面已静止'
+                    f'(连续{self._gate_static_streak + 1}帧零变化,非动画;'
+                    f'变暗/渲染态读不出)——提前放弃,不等'
+                    f'{_NODE_BAR_WAIT_CAP_S:.0f}s')
         if now - self._nonclean_wait_start > _NODE_BAR_WAIT_CAP_S:
             self._nonclean_wait_start = None
             self._best_effort_close_detail()
