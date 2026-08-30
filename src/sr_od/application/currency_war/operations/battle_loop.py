@@ -1371,10 +1371,12 @@ class CurrencyWarRunLoop(SrOperation):
                 if self.round_by_ocr(screen, _btn, lcs_percent=0.8).is_success:
                     self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
                     self.park_cursor(after_wait=0.1)
-                    return self.round_wait(wait=2)
+                    # wait=2→1(实机效率批 w781):结算各页静态,SETTLEMENT_NEXT
+                    # 同位连点幂等(与分支 3b 同语义,见 3b wait=1 注)。
+                    return self.round_wait(wait=1)
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             self.park_cursor(after_wait=0.1)
-            return self.round_wait(wait=2)
+            return self.round_wait(wait=1)
 
         # 1g. 中断挑战 dialog(bug#2:ESC 误按/误点左上角弹「是否中断挑战」,历史 3 次实锤;
         #     2026-08-17 建档「货币战争-中断挑战弹窗」,替原停机钩子)。真模态、点遮罩无效;
@@ -1398,7 +1400,7 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.esc()
             return self.round_wait(wait=1.5)
 
-        # 1e. 战斗倍速(实机效率批 w781,ADR-0485):战斗窗口内检测「1x 档图标」
+        # 1e. 战斗倍速(实机效率批 w781,ADR-0484):战斗窗口内检测「1x 档图标」
         #     → 点右上倍速按钮切 2x。幂等门=模板只命中 1x 档图形(阈值 0.85;
         #     实拍对拍:1x 帧 1.000 / 已切换帧 0.62-0.67,.debug/temp/currency_war/
         #     w781_efficiency_impl/),已 2x 时图形不同不命中 → 不会误切回。
@@ -1449,13 +1451,13 @@ class CurrencyWarRunLoop(SrOperation):
             if getattr(self, '_last_settle_fp', None) != _fp:
                 self._rounds_done += 1
                 self._last_settle_fp = _fp
-            # 0.5s(原 1.0s 核减):此 sleep 只为点击前取到渲染完成的
-            # 新帧——按钮位置静态,点击未生效有 settle_stay 计数 +
+            # 0.2s(原 1.0→0.5 核减,实机效率批 w781 再核减):此 sleep 只为点击前取到
+            # 渲染完成的新帧——按钮位置静态,点击未生效有 settle_stay 计数 +
             # 长按兜底重试链,短 sleep 只多走一轮 loop(耗时审计
             # 报告 .debug/temp/currency_war/w417_duration_audit/
             # REPORT.md「需验证」:每轮结算段固定链)。
-            time.sleep(0.5)
-            if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=2).is_success:
+            time.sleep(0.2)
+            if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=1).is_success:
                 # 停留计数(M39 实证 2026-08-16,3-1 普通轮结算):「继续挑战」OCR/模板全识别、
                 # 普通 click **不响应**(40min 空转同帧),长按 0.5s @ 底部中央才推进(手动实锤;
                 # 推进后进 P3 投资策略 = 3-1 只是普通关,非终局)。归因未定(焦点/热区偏移/交互
@@ -1469,10 +1471,12 @@ class CurrencyWarRunLoop(SrOperation):
                     self._settle_stay = 0
                 # ⚠️ 场景切换过渡等待(用户 2026-08-16 实证):结算→下一场景时**备战先渲染、
                 # 事件 overlay(投资策略/遭遇等)后弹出**(M47 22:34:43 帧同屏并存实锤)——旧
-                # wait=2 时 loop 可能在 overlay 半开帧进备战分支动手(点球乱操作)。加到 3s
-                # + 备战分支过渡门(见分支1)双保险。
-                return self.round_wait(wait=3)
-            return self.round_wait(wait=3)
+                # wait=2 时 loop 可能在 overlay 半开帧进备战分支动手(点球乱操作)。
+                # wait=3→1.5(实机效率批 w781):半开帧防护主防线 = 备战分支双锚 +
+                # PREP_SETTLE_S 3s 稳定门 + 0e 系分支前置,本 wait 只是首拍缓冲;
+                # overlay 若已弹,0e 分支先于备战分支接管,语义不变。
+                return self.round_wait(wait=1.5)
+            return self.round_wait(wait=1.5)
         self._settle_stay = 0   # 离开结算屏重置
 
         # 3b. 对局结束结算(前往结算→下一页→返回货币战争)→ 逐页点回大厅。结算"前进"按钮恒在底部中央。

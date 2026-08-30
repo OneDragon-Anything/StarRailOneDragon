@@ -1998,17 +1998,20 @@ class PrepDirector(SrOperation):
                 self._xp_apply_buy_clicks(detail)
             # r292+P0③:EnsureShopClosed 执行成功后 = 店确定关的可靠时点
             #(节点行探针挂点;前置 wait_stable_frame 无条件化,离线契约放行)
+            # w781:gate 稳定帧透传探针(复用帧 + 全图 OCR 缓存,省一次截图/OCR)
             if 'EnsureShopClosed' in key and progressed:
+                _probe_frame = None
                 try:
                     from sr_od.application.currency_war.obs.cw_observation_gate import (
                         PROFILE_CLOSED,
                         wait_stable_frame,
                     )
-                    wait_stable_frame(self, profile=PROFILE_CLOSED,
-                                      segment='op_settle')
+                    _probe_frame = wait_stable_frame(
+                        self, profile=PROFILE_CLOSED,
+                        segment='op_settle')
                 except Exception:   # noqa: BLE001  离线契约:放行
                     pass
-                self._probe_node_type()
+                self._probe_node_type(_probe_frame)
             return progressed, detail
 
         def _recover_port() -> bool:
@@ -2156,11 +2159,14 @@ class PrepDirector(SrOperation):
             return self.round_fail(status=reason or '留证停机')
         return self.round_fail(status=reason or 'v2 环失败')
 
-    def _probe_node_type(self) -> None:
+    def _probe_node_type(self, screen: MatLike | None = None) -> None:
         """[观测] 备战入场读节点行序列(read_node_sequence)→ log。
 
         自 battle_prep._probe_node_type 搬入(P1 挂载切换,doc §7 L1)。read_node_sequence =
         HoughCircles 动态定圆 + HSV 三态 + Hu 匹配 + OCR(见 cw_node_reader)。
+        screen 传入时(实机效率批 w781:EnsureShopClosed 后的 gate 稳定帧透传)复用该帧
+        不重截——gate 稳定帧的全图 OCR 已按 id(image) 缓存,节点行 OCR 读缓存命中,
+        省一次截图 + 全图 OCR;None=自截图(旧行为,离线/其他调用点兼容)。
         未识别图标采集钩子(版本前哨,保留):未来圆 hu_dist > 阈值 → 裁图标存盘。
         ⚠️ 已知误报(2026-08-16 复盘):历史 61 张采集全是**宝箱(奖励)图标的小尺寸 Hu 漂移**
         (idx 4/5/7 远处节点,非新类型)——HU_DIST_UNRECOGNIZED=2.8 对远距小图标过严,
@@ -2174,7 +2180,7 @@ class PrepDirector(SrOperation):
             from sr_od.application.currency_war.obs.cw_observation import (
                 read_node_sequence,
             )
-            screen = self.screenshot()
+            screen = screen if screen is not None else self.screenshot()
             slots = read_node_sequence(self.ctx, screen)
             if not slots:
                 log.info('[cw-director][nodeseq] skip(模板未加载 / 非 clean 备战帧)')
