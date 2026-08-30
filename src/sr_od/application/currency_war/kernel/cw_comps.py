@@ -1979,10 +1979,18 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
         # core 先吃满(跳过会触发非预期合成的基础件 → 留 owned)
         for cn in _cores:
             while pool and capacity.get(cn, 0) > 0:
-                g = pool.pop(0)
-                if _is_basic(g) and not _pairing_ok(cn, g):
-                    continue
-                _assign(cn, g)
+                # 只取「可安全穿」的首件;被配对守卫拦下的件**留在 pool**
+                # (交给 _others 兜底/最终留 owned)——旧实现 pop 后丢弃,
+                # 一个穿残留基础件的 core 就能把整池吃光,身后无残留件的
+                # 角色一件分不到(分配空但 diag 判「存在可行组合」的
+                # unknown 漂移由此而来;违背上方「跳过=留 owned」注释与本
+                # 函数 docstring「发不完留在 owned 囤着」,缺陷语义修复)。
+                _k = next((i for i, e in enumerate(pool)
+                           if not (_is_basic(e) and not _pairing_ok(cn, e))),
+                          None)
+                if _k is None:
+                    break   # 该 core 对整池都被守卫拦 → 一件不取,整池留 owned
+                _assign(cn, pool.pop(_k))
         # 非 core:每人 1 件保底(同样过配对守卫)
         for d in _others:
             n = d.char_id
@@ -2002,10 +2010,15 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
             if not pool:
                 break
             if capacity.get(n, 0) > 0:
-                g = pool.pop(0)
-                if _is_basic(g) and not _pairing_ok(n, g):
-                    continue    # 留 owned(防非预期合成)
-                _assign(n, g)
+                # 同 core 分配侧的修法:被配对守卫拦的件留 pool(轮转给
+                # 下一个人),不 pop 丢弃——否则一个有残留件的人会把整池
+                # 吃光,后面的人一件分不到。
+                _k = next((i for i, e in enumerate(pool)
+                           if not (_is_basic(e) and not _pairing_ok(n, e))),
+                          None)
+                if _k is None:
+                    continue    # 该人对整池都被拦 → 跳过此人(件留 pool)
+                _assign(n, pool.pop(_k))
                 _gave = True
         _round += 1
         if not _gave and not pool:
