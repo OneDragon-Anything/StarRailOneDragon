@@ -1583,6 +1583,9 @@ class DecisionV2Registry:
     #:   sacrifice_first/deferred 动作与画面合成事件对得上,误判 0
     #:   (误判 = 牺牲对吞了主线组件,或该排未排)。
     #: 两钥匙齐 → A/B 判据后翻默认值。
+    #: ⚠️ 禁独立开臂(联动评审约束):本旗标(执行侧防护)翻默认值前须与选型侧
+    #: w878_synth_equip_dep_enabled 联动评审——同一机制(变宝为废)的两面,
+    #: 防护已覆盖多少风险、选型侧 -0.25 是否过反应,须同批对照拍板,不得各自单独定。
     junk_first_sacrifice_enabled: bool = False
 
     # ===== 装备穿满族 fill-to-3(软弱无力+额外打击合并量变体;
@@ -1661,7 +1664,14 @@ class DecisionV2Registry:
     #:   排序器处理,本 tag 补选型侧(comp_score 在该词缀下给装备流降分),两半互补不重复。
     #: 开臂判据挂账(环境恢复后补验):①单帧锁组(test_cw_w878_deadtag_revive)全绿;
     #: ②含对应词缀的 sim/实机局样本 ≥10 局判读方向一致(样本量恢复后由编排者定谳,
-    #: 当前无模拟/实机输入,悬置默认关)。
+    #: 当前无模拟/实机输入,悬置默认关);
+    #: ③成型羁绊队开臂前须补验「判非 3 套(红A/万敌单C/反甲白厄)在形单影只局的
+    #: 伤害档位方向」——判非理由「羁绊不满也有战力」与词条罚的「伤害倍率出口」不同维,
+    #: 万敌单C方向存疑(死 tag 裁决攻击批形单影只角度)。
+    #: ⚠️ 两旗标禁独立开臂:w878_synth_equip_dep_enabled(选型侧 -0.25 降分)与
+    #: junk_first_sacrifice_enabled(执行侧牺牲合成防护)是同一机制的两面——选型惩罚叠
+    #: 已有防护疑过反应,开臂须两侧联动评审(junk+tag 对照),构造期校验禁选型侧单独开
+    #: (见本类 __post_init__)。junk_first 侧单独开合法(防护先行、选型侧观望)。
     w878_mono_attribute_enabled: bool = False
     w878_formed_bond_enabled: bool = False
     w878_slow_burn_enabled: bool = False
@@ -1674,6 +1684,19 @@ class DecisionV2Registry:
     longterm_refresh_discount_enabled: bool = False
     longterm_refresh_threshold: int = 30
     longterm_refresh_price: int = 1
+
+    def __post_init__(self) -> None:
+        """开臂约束构造期校验(策略开关生命周期纪律,非行为分支)。
+
+        w878_synth_equip_dep_enabled 禁独立开臂:选型侧 -0.25 降分与执行侧
+        junk_first 牺牲合成防护是同一机制(变宝为废)的两面,选型惩罚叠已有防护
+        属未对照的过反应风险——须两侧联动评审后同开(出处 = 死 tag 裁决攻击批
+        旗标交互角度)。junk_first 侧单独开合法(防护先行、选型侧观望)。
+        """
+        if self.w878_synth_equip_dep_enabled and not self.junk_first_sacrifice_enabled:
+            raise ValueError(
+                "w878_synth_equip_dep_enabled 禁独立开臂:须与 junk_first_sacrifice_enabled"
+                "联动评审后同开(选型侧 -0.25 与执行侧防护为同一机制两面,禁未对照单独开臂)")
 
     def interest_floor(self) -> int:
         """息线单一源(D3 双源清偿,`w628_migration_b2/`):派生 = interest_cap × 10。
