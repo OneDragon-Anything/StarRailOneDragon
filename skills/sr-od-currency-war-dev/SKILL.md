@@ -32,6 +32,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | **模拟测试说明**(sim 能信什么/武器库/压测官/分诊与回灌) | [references/sim-testing.md](references/sim-testing.md) |
 | **测试分层**(L1 快速集 `uv run pytest @sr-od-test/cw_quick.txt` ~3min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/` ~5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 各域 checklist 消费;策略验证阶梯单一源 = strategy-work §4 |
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
+| **单局复盘协议**(局终深度复盘:阅读理解→逐节点玩家对拍→位面三问;实机监控局终派单执行,45min 策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 攒批局中不改**;重启/早停/残局清理/监控栈与哨兵) | [references/runtime-ops.md](references/runtime-ops.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 叠加细则 = [references/autonomous-loop.md](references/autonomous-loop.md);进度结构见 od-dev-progress-tracking §2.5 |
 | 人怎么玩(直觉假设登记簿——策略命题权威=math_proofs 证明与 sim/实机实证,ADR-0482;改策略必读=了解在册假设及证明状态) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
