@@ -14,6 +14,11 @@ A/B/C/D 逐面切换归子批 3-6。消费面切换完成前,本表是「声明 
 C1 红线(机器化于测试仓 ``test_cw_overlay_registry.py``):
 ``semantic='decision'`` ⇒ ``closable is False``——关闭即丢决策内容的交互
 overlay(选卡/选择类,曾实证遭遇节点被清场误关,C1 事故)禁止进清场派生集。
+
+**桶归属 = kernel(共享声明表,零包内依赖)**:UPPER_SCREENS 帧态门拼装在
+kernel(``cw_obs_core``),包布局矩阵禁 kernel→obs 边(kernel 只许依 data);
+本表是纯声明(dataclass + 字符串常量,无任何包内 import),落 kernel 使
+kernel 消费面合法,obs/app 消费面(obs→kernel / app→kernel)同样合法。
 """
 from __future__ import annotations
 
