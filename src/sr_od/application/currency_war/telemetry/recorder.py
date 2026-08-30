@@ -44,6 +44,9 @@ from sr_od.application.currency_war.telemetry.state import (
     _consume_unit_exec_facts,
     _consume_unit_gold_close,
 )
+from sr_od.application.currency_war.telemetry.version_stamp import (
+    current_version_stamp,
+)
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
 
@@ -325,6 +328,11 @@ class TelemetryRecorder:
             gold_trajectory=list(self._gold_trajectory.get(run_id, [])),
             notes=notes,
         )
+        # 策略版本戳(match archive 二期②):局终写时点打戳——决策明细语义
+        # 随版本解读,戳必须是「跑这局的版本」而非装配时点版本。
+        _stamp = current_version_stamp()
+        summary.code_commit = _stamp['code_commit']
+        summary.registry_fingerprint = _stamp['registry_fingerprint']
         self._append("runs.jsonl", _to_jsonable(summary))
         # 清理内存累积
         self._gold_trajectory.pop(run_id, None)

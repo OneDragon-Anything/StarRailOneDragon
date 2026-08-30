@@ -44,7 +44,12 @@ from sr_od.application.currency_war.telemetry.query import (
 )
 
 #: 档案 schema 版本(字段变更时递增;消费端按版本分支)
-SCHEMA_VERSION: int = 1
+#: v2(match archive 二期批):+rounds[].decision_detail(v3_intention/
+#: candidate_scores/eval_breakdown/dp_posture 逐帧明细显形;全帧本就在
+#: slices.decisions 切片里,v2 只是把判读高频字段提到逐轮表)+ rounds[].bench
+#: /equips(备战席逐张/装备栏 owned)+ 顶层 strategy_version(策略版本戳,
+#: 取自 runs 行;旧档案无此键 = 版本未知)。全部加法字段,旧档案向后兼容。
+SCHEMA_VERSION: int = 2
 
 #: 档案子目录(replay/matches/)
 MATCHES_DIRNAME: str = 'matches'
@@ -280,6 +285,15 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
         # form_score:同轮末帧时点值(无决策帧 → outcome 无此字段 → None)
         nt_out = (outcome or {}).get('node_type')
         nt_state = st.get('node_type')
+        # 决策流程明细(二期①)显形:该轮最优决策帧的意向/打分/分解/姿态。
+        # 全量决策帧本就在 slices.decisions.jsonl 切片(逐帧全字段),这里只
+        # 提判读高频字段进逐轮表,免「查明细先翻切片」—— None = 该轮无决策帧。
+        detail = None
+        if frame is not None:
+            detail = {'v3_intention': frame.get('v3_intention'),
+                      'candidate_scores': frame.get('candidate_scores'),
+                      'eval_breakdown': frame.get('eval_breakdown'),
+                      'dp_posture': frame.get('dp_posture') or None}
         rounds.append({
             'plane': key[0], 'round': key[1],
             'node_type': nt_out or nt_state,
@@ -300,6 +314,12 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'target_comp': (frame or {}).get('target_comp'),
             'board': st.get('board'),
             'deployed': st.get('deployed'),
+            # 备战席逐张 + 装备栏 owned(二期③⑤):帧 state 全量快照里本就
+            # 有,提到逐轮表与 board/deployed 并读——阵容质量三维的 bench 维
+            # 此前只能翻切片。None = 无决策帧/字段缺(旧数据)。
+            'bench': st.get('bench'),
+            'equips': st.get('equips'),
+            'decision_detail': detail,
             'outcome': outcome,
             'evidence': _evidence_links(replay_dir, key),
         })
@@ -337,9 +357,21 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
     first_fk = seg_summaries[0]['first_frame'] if seg_summaries else None
     continuity_note = ('孤立续局段(上一段不在库,game_id 取本段)'
                        if first_fk is not None and first_fk != (1, 1) else '')
+    # 策略版本戳(二期②):runs 行在写入时点已打戳(version_stamp),此处
+    # 只透传——段序倒查取首个非空(末段优先=终局时点版本);各段各自版本
+    # 在 segments[].summary 里可查。None = 旧数据无戳(消费端读「版本未知」)。
+    strategy_version: dict[str, str] | None = None
+    for s in reversed(seg_summaries):
+        row = s.get('summary') or {}
+        if row.get('code_commit') or row.get('registry_fingerprint'):
+            strategy_version = {'code_commit': row.get('code_commit') or '',
+                                'registry_fingerprint':
+                                    row.get('registry_fingerprint') or ''}
+            break
     return {
         'schema_version': SCHEMA_VERSION,
         'game_id': game['game_id'],
+        'strategy_version': strategy_version,
         'segments': seg_summaries,
         'start_ts': game.get('start_ts') or '',
         'end_ts': game.get('end_ts') or '',
@@ -430,6 +462,10 @@ def rebuild_index(replay_dir: Path | str) -> None:
             'final_hp': endgame.get('final_hp'),
             'n_rounds': len(a.get('rounds') or []),
             'n_loss_nodes': len(a.get('loss_nodes') or []),
+            # 策略版本戳(二期②):''=旧档案/未采 = 版本未知
+            'code_commit': (a.get('strategy_version') or {}).get('code_commit') or '',
+            'registry_fingerprint': (a.get('strategy_version') or {})
+            .get('registry_fingerprint') or '',
         })
     entries.sort(key=lambda e: e.get('start_ts') or '')
     md.mkdir(parents=True, exist_ok=True)

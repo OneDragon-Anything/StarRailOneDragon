@@ -259,8 +259,13 @@ class OutcomeRecord:
     # —— r339 板深快照(板深→胜率模型校准数据源;复盘发现 sim
     # 天花板 8%>=60 vs 实机 3/3 达标的矛盾根因=模型缺板深机制,
     # 而逐轮板面×掉血对就是拟合数据):战前板面+上阵深度。
+    # board_before 语义(match archive 二期③④文档化):{阵营: 人次}——
+    # **不是板深**。多标签角色在每个命中阵营各计 1,Σ人数 ≥ 实际在场数;
+    # 板深粗代理 = Σ人数(下界),精确在场数 = state.deployed 占用数
+    # (decisions 帧)。读端拿它做板深校准时按人次口径降权
+    # (telemetry-reading「已知缺口」同一判据)。
     board_before: dict[str, int] = field(default_factory=dict)   # 战前 {阵营:人数}
-    bench_count: int = 0               # 战前 bench 数(板深第二维)
+    bench_count: int = 0               # 战前 bench 数(板深第二维;ADR-0316 占用数口径)
     # —— 迁移审计 w28(git 历史)(行来源标记,镜像 RunSummary.source/ADR-0273 惯例):''=结算屏真值行;
     # 'recovered'=relaunch 残留结算屏(启动宽限内首见,round_num 已按屏面「X-Y」
     # 尽力校正,训练侧可剔);'synthetic_supply'=补给节点合成行(无结算屏节点的
@@ -310,6 +315,11 @@ class RunSummary:
     # —— ADR-0273(批⑧ F2):行来源标记。''=正常终局/stop 路径写;'recovered'=
     # 兜底回填(从 outcomes/decisions 重算,盖 FAIL/崩溃/重启杀局路径)。
     source: str = ""
+    # —— 策略版本戳(match archive 二期②):本段 run 实际跑的代码版本,
+    # recorder.record_run_summary 写入时点打戳(单一源=telemetry/version_stamp;
+    # 装配端只透传不重算)。''=未采/旧记录(消费端读空 = 版本未知,不猜)。
+    code_commit: str = ""
+    registry_fingerprint: str = ""
 
 
 
