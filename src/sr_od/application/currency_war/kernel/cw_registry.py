@@ -1270,6 +1270,34 @@ class DecisionV2Registry:
     #: 压库豁免每帧张数上限(设计 §3④ 收口)。
     tier_push_press_round_cap: int = 2
 
+    # ===== 件价值模型 Phase 1(W831 v2 §4 落码规格;设计单一源=
+    # ===== .debug/temp/currency_war/w831_piece_value_design/REPORT.md v2
+    # ===== + W833 轻复核三补丁)=====
+    #: 伞开关+三消费点子旗标,生命周期第 1 态:默认关+零漂移锚
+    #: (策略开关的生命周期,唯一合法理由=行为输入未就绪:w_activation/
+    #: w_retention 占位,B 分量挂 P34 待证)。**开臂判据挂账 =
+    #: .debug/temp/currency_war/w836_piece_value_p1/PREREG.md**(主门
+    #: M1-L 传导格 + G7 复算上界带,折算式/配对定义/效应量下界判前
+    #: 冻结);A/B 数据齐即跑,不过则删码留 ADR(第 4 态),禁悬置
+    #: 默认关。开臂翻默认时必须盘点「断言开关关闭行为」的锁组语义
+    #: (第 3 态义务,test_cw_piece_value 每锁带 off 臂零漂移断言)。
+    piece_value_enabled: bool = False
+    #: Phase 1 买侧试点子旗标(设计 §4.3 迁移表):买评分消费
+    #: evaluate_piece 的 A+B 分量作排序加项(锁定帧线外件辖域);
+    #: κ 通道零改动——W802 锁 #3 恒等式基线跨批可比性不受扰。
+    piece_value_buy_enabled: bool = False
+    #: Phase 2 留/卖侧(设计 §4.3;Phase 1 零消费点,占位声明)。
+    piece_value_keep_enabled: bool = False
+    #: Phase 2 合成时点侧(设计 §4.3;Phase 1 零消费点,占位声明)。
+    piece_value_merge_enabled: bool = False
+    #: 分量 A 占位权重(P20,辖域 e<2;占位值不做生产决策,开臂前
+    #: sim 标定批消偿,PREREG 挂账)。C/D/E/F 的权重字段在本 Phase
+    #: 的 registry 上**不存在**(类型层收窄的 registry 侧半边,契约
+    #: 锁兜底断言面);全量权重组 Phase 2 随全量 weight 类型引入。
+    piece_value_w_activation: float = 0.0
+    #: 分量 B 占位权重(P1+P11,量挂 P34 待证;占位纪律同上)。
+    piece_value_w_retention: float = 0.0
+
     # ===== P1→P2 接口机制五开关——定谳清理,删码留档(ADR-0487)=====
     #: 曾以 p1_iface_{lockline_v2,carry_equip,hardnode_prep,lossstreak_
     #: flow,blood_bands}_enabled 五开关 + swing_degrade_n/swing_loss_n/

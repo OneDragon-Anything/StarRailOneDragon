@@ -1077,6 +1077,35 @@ def score_candidate(cand: Candidate, state: GameState,
     _tp_gap = candidate_gap_term(cand, state, after_state, session, registry)
     if _tp_gap:
         val += _tp_gap
+    # 件价值模型 Phase 1·买侧试点(W831 v2 §4.3;伞+buy 子旗标默认关
+    # 恒 0 零漂移):锁定帧线外买候选消费 evaluate_piece 的 A+B 分量
+    # 作排序加项,加在 off-lock 降级**之前**——随既有 W802 κ 通道被
+    # 比例外侧应用(κ 路径零改动,锁 #3 恒等式基线不受扰;与 tp_gap
+    # 同位同语义)。C/D/E/F 分量只进披露键,禁进评分/决策路径
+    # (W833 补丁④哨兵语义;类型层收窄 = PieceValueWeightPhase1
+    # 两字段 weight)。bd['pv*'] 系披露键,判读先看分量再看行为
+    # (设计 §3.3 归因通道:按分量归因,禁按 total 归因)。
+    _pv = None
+    if registry.piece_value_enabled and registry.piece_value_buy_enabled \
+            and isinstance(cand.action, BuyCard):
+        from sr_od.application.currency_war.decision.decision_v2.piece_value import (  # noqa: E501
+            evaluate_piece,
+            phase1_weight_from_registry,
+        )
+        from sr_od.application.currency_war.kernel.cw_intention import (
+            IntentionState,
+            locked_buy_scope,
+        )
+        ist = getattr(session, 'v3_intention', None)
+        scope = (locked_buy_scope(ist)
+                 if isinstance(ist, IntentionState) else None)
+        if scope:
+            _pv = evaluate_piece(cand.action.card, state,
+                                 phase1_weight_from_registry(registry),
+                                 registry, session=session,
+                                 target_scope=frozenset(scope))
+            if _pv.total:
+                val += _pv.total
     # `w150_buy_lock/`/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
     # forming_bias 等偏置先行计入,本约束最后收口,防
     # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
@@ -1104,6 +1133,14 @@ def score_candidate(cand: Candidate, state: GameState,
         out_bd['rc_merge_timing'] = round(_rc_merge, 4)
     if off_lock:
         out_bd['off_lock'] = off_lock
+    if _pv is not None:
+        out_bd['pv'] = round(_pv.total, 4)
+        out_bd['pv_activation'] = round(_pv.activation, 4)
+        out_bd['pv_retention'] = round(_pv.retention, 4)
+        out_bd['pv_tier_gap'] = round(_pv.tier_gap, 4)
+        out_bd['pv_merge'] = round(_pv.merge, 4)
+        out_bd['pv_bench_cost'] = round(_pv.bench_cost, 4)
+        out_bd['pv_interest_cost'] = round(_pv.interest_cost, 4)
     return val, out_bd
 
 
