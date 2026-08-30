@@ -1,0 +1,355 @@
+"""货币战争交互 overlay 生命周期注册表(单一枚举点)。
+
+每个 overlay 一条 :class:`OverlaySpec` 声明(识别锚/语义类/退场动作/派发序),
+五个消费面(P0 清场 / director bail / battle_loop 派发 / 退出恢复链 /
+UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要手工同步多处」的
+结构性缺口(ADR-0269 病灶;设计单一源 = 设计收口终版五条定案,
+.debug/temp/currency_war/w884_overlay_p2_final/DESIGN_FINAL.md)。
+
+**当前交付态(Phase 2 子批 1-2)**:注册表 + 一致性断言就绪;消费面尚未切换
+(P0 清场表 / bail 清单 / battle_loop 分支 / 退出链均保持原状,零行为变化),
+A/B/C/D 逐面切换归子批 3-6。消费面切换完成前,本表是「声明 + 锁」,
+不是运行时唯一判定源。
+
+C1 红线(机器化于测试仓 ``test_cw_overlay_registry.py``):
+``semantic='decision'`` ⇒ ``closable is False``——关闭即丢决策内容的交互
+overlay(选卡/选择类,曾实证遭遇节点被清场误关,C1 事故)禁止进清场派生集。
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+#: 语义类:decision = 有专属 handler 的交互 overlay(选卡/选择即推进,关闭即丢决策内容)
+SEMANTIC_DECISION: str = 'decision'
+#: 语义类:display = 展示型弹窗(无决策内容,关闭即走)
+SEMANTIC_DISPLAY: str = 'display'
+#: 语义类:system = 流程性弹窗(确认/提示/节点容器)
+SEMANTIC_SYSTEM: str = 'system'
+
+#: 退场动作:点 close_area 按钮(清场/退局链共用载荷)
+CLOSE_ACTION_AREA: str = 'close_area'
+#: 退场动作:点裸坐标(close_point 载荷,1080p)
+CLOSE_ACTION_POINT: str = 'point'
+#: 退场动作:按 ESC
+CLOSE_ACTION_ESC: str = 'esc'
+#: 退场动作:交专属 handler 消化(decision 类常态)
+CLOSE_ACTION_HANDLE: str = 'handle'
+
+#: 恢复/退局面动作:派 handler 消化
+RECOVERY_HANDLE: str = 'handle'
+#: 恢复/退局面动作:按 ESC
+RECOVERY_ESC: str = 'esc'
+#: 恢复/退局面动作:点返回按钮(close_area 载荷)
+RECOVERY_BACK_BUTTON: str = 'back_button'
+#: 恢复/退局面动作:复用 close_action 载荷(close_area 或 point)离屏
+RECOVERY_CLOSE: str = 'close'
+
+
+@dataclass(frozen=True)
+class OverlaySpec:
+    """单个交互 overlay 的生命周期声明(识别/语义/退场/派发)。"""
+
+    # ── 识别 ──
+    # 键;必须已建档于 assets/game_data/screen_info(与 screen_info 同键空间)
+    screen_name: str
+    # 识别锚 area 名(五消费面统一走此锚,禁各自再写锚)
+    anchor_area: str
+    # ── 语义 ──
+    # 'decision' | 'display' | 'system'(SEMANTIC_* 常量)
+    semantic: str
+    # 第二锚(可选;双锚防误派,0a0/0a3 经验;非空 = 同帧双命中才派发)
+    anchor_area_alt: str = ''
+    # 专属 handler 类名;decision 恒非空;'' = 无(清场/兜底消化)
+    handler_id: str = ''
+    # 可清场否;decision 恒 False(C1 红线,一致性测试断言)
+    closable: bool = False
+    # ── 退场动作 ──
+    # 'close_area' | 'point' | 'esc' | 'handle'(CLOSE_ACTION_* 常量)
+    close_action: str = CLOSE_ACTION_AREA
+    # close_action='close_area' 时必填(清场/退局链共用)
+    close_area: str = ''
+    # close_action='point' 时必填(1080p 界内,一致性测试校验)
+    close_point: tuple[int, int] | None = None
+    # ── 派发与计数 ──
+    # C 面派发优先序(全表唯一,一致性测试断言;值 = 迁移时 battle_loop
+    # 0 系分支注释序转数据,非 C 面消费的 gate/退局-only 条目排在所有
+    # 分支条目之后)
+    dispatch_priority: int = 0
+    # 恢复/退局面动作:'esc'|'back_button'|'handle'|'close'(RECOVERY_* 常量)
+    recovery_exit: str = RECOVERY_CLOSE
+    # director bail 同因键后缀('事件overlay:' 前缀由消费方拼;decision 类
+    # 必填且全表唯一,一致性测试断言)
+    bail_tag: str = ''
+    # 未建档条目 = False(0e3/0f modal 待 Phase 2 子批 0 实机建档后置 True
+    # 并补 screen_name/anchor_area 终值);False 条目不参与任何派生
+    # (UPPER_SCREENS/清场集/bail 扫描集),一致性测试豁免其建档断言
+    active: bool = True
+
+
+#: 注册表(唯一枚举点)。声明序 = UPPER_SCREENS 派生段顺序(与迁移前常量
+#: 逐位一致);C 面派发序用 dispatch_priority 字段表达,与声明序无关。
+OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
+    # ── decision(9 条;= 现 director bail 清单成员,C1 红线 closable=False)──
+    OverlaySpec(
+        screen_name='货币战争-选择伙伴',
+        anchor_area='标识-选择伙伴',
+        semantic=SEMANTIC_DECISION,
+        handler_id='HandleSelectPartner',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=2,
+        recovery_exit=RECOVERY_HANDLE,
+        bail_tag='partner',
+    ),
+    OverlaySpec(
+        screen_name='货币战争-祈愿试炼',
+        anchor_area='标识-祈愿试炼',
+        semantic=SEMANTIC_DECISION,
+        handler_id='HandleWishTrial',
+        close_action=CLOSE_ACTION_HANDLE,
+        # 派发序:必须在道具详情(19,未激活)之前——祈愿选项名含「聘用书」,
+        # 曾被道具详情分支截胡(r31 死循环实锤);序提前后负条件即不需要
+        dispatch_priority=11,
+        recovery_exit=RECOVERY_HANDLE,
+        bail_tag='wish_trial',
+    ),
+    OverlaySpec(
+        screen_name='货币战争-遭遇节点',
+        anchor_area='标识-遭遇节点',
+        semantic=SEMANTIC_DECISION,
+        handler_id='HandleEncounter',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=4,
+        # 退局链现状走 Esc(恢复面恢复口径)
+        recovery_exit=RECOVERY_ESC,
+        bail_tag='encounter',
+    ),
+    OverlaySpec(
+        screen_name='货币战争-投资策略',
+        anchor_area='标识-请选择投资策略',
+        semantic=SEMANTIC_DECISION,
+        handler_id='HandleInvestStrategy',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=6,
+        recovery_exit=RECOVERY_HANDLE,
+        bail_tag='invest_strategy',
+    ),
+    OverlaySpec(
+        screen_name='货币战争-投资环境',
+        anchor_area='标识-投资环境',
+        semantic=SEMANTIC_DECISION,
+        handler_id='HandleInvestEnv',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=7,
+        # 退局链现状 = 点「返回备战界面」
+        recovery_exit=RECOVERY_BACK_BUTTON,
+        bail_tag='invest_env',
+    ),
+    OverlaySpec(
+        screen_name='货币战争-盛会之星',
+        anchor_area='标识-盛会之星',
+        semantic=SEMANTIC_DECISION,
+        handler_id='RunMegastarNode',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=3,
+        # 退局链现状走 Esc
+        recovery_exit=RECOVERY_ESC,
+        bail_tag='megastar',
+    ),
+    # display/system 交替段(声明序对齐 UPPER_SCREENS 派生段)
+    # 展示型奖励总览:环入口可一键关(现 ENTRY_OVERLAY_CLOSE 成员)
+    OverlaySpec(
+        screen_name='货币战争-积分奖励',
+        anchor_area='标识-积分奖励',
+        semantic=SEMANTIC_DISPLAY,
+        closable=True,
+        close_area='按钮-关闭',
+        dispatch_priority=15,
+        recovery_exit=RECOVERY_CLOSE,
+    ),
+    OverlaySpec(
+        screen_name='货币战争-简报',
+        anchor_area='标识-本场对局首领',
+        semantic=SEMANTIC_SYSTEM,
+        handler_id='HandleBriefing',
+        close_action=CLOSE_ACTION_HANDLE,
+        # P2/P3 开局位面简报(三 boss+词缀+下一步),0 系最前消化(全屏 OCR
+        # 密集屏,头部 find_area 优先命中绕开全屏 OCR 依赖)
+        dispatch_priority=1,
+        recovery_exit=RECOVERY_CLOSE,
+    ),
+    # 中断挑战弹窗:流程性(退局/挂起语义),环入口可一键关
+    OverlaySpec(
+        screen_name='货币战争-中断挑战弹窗',
+        anchor_area='标识-中断挑战',
+        semantic=SEMANTIC_SYSTEM,
+        closable=True,
+        close_area='按钮-关闭',
+        dispatch_priority=16,
+        # 退局链现状 = 点「放弃并结算」(按钮域动作);D 面切换时按按钮域
+        # 载荷精确化,先以点关闭钮作恢复口径
+        recovery_exit=RECOVERY_CLOSE,
+    ),
+    OverlaySpec(
+        screen_name='货币战争-未达上限警告',
+        anchor_area='标识-未达上限警告',
+        semantic=SEMANTIC_SYSTEM,
+        handler_id='HandleDeployNotFull',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=5,
+        recovery_exit=RECOVERY_HANDLE,
+    ),
+    OverlaySpec(
+        screen_name='货币战争-提示-前台无角色',
+        anchor_area='标识-无角色提示',
+        semantic=SEMANTIC_SYSTEM,
+        close_area='按钮-确认',
+        dispatch_priority=14,
+        recovery_exit=RECOVERY_CLOSE,
+    ),
+    # 武装箱弹窗:四选一选卡有专属 handler(0f),但**也是现清场表成员**——
+    # 环入口清它 = 现行生产行为;语义归 system(非 decision)保两维现状:
+    # bail 扫描集(= decision 条目)不加成员、清场派生集不减成员。
+    # 「关闭即丢一次开箱选择」的取舍与补给同型,见补给条注释。
+    OverlaySpec(
+        screen_name='货币战争-武装箱弹窗',
+        anchor_area='标识-简易武装箱',
+        semantic=SEMANTIC_SYSTEM,
+        handler_id='HandleArmoryBoxDialog',
+        closable=True,
+        close_area='按钮-关闭',
+        dispatch_priority=9,
+        recovery_exit=RECOVERY_HANDLE,
+    ),
+    OverlaySpec(
+        screen_name='货币战争-商店刷新概率表',
+        anchor_area='标识-刷新概率表',
+        semantic=SEMANTIC_DISPLAY,
+        # 不进清场派生集(现 ENTRY_OVERLAY_CLOSE 无此条,零行为前提);
+        # close_point 载荷供 battle_loop 0e2 / 恢复链复用
+        close_action=CLOSE_ACTION_POINT,
+        # × 位置 VLM 定位(实测坐标);无关闭按钮 area
+        close_point=(1501, 263),
+        dispatch_priority=10,
+        recovery_exit=RECOVERY_CLOSE,
+    ),
+    # 星徽详情浮窗:纯展示(点星徽弹详情),无 battle_loop 消费分支
+    OverlaySpec(
+        screen_name='货币战争-星徽详情',
+        anchor_area='标识-流派星徽',
+        semantic=SEMANTIC_DISPLAY,
+        close_area='按钮-关闭',
+        dispatch_priority=17,
+        recovery_exit=RECOVERY_CLOSE,
+    ),
+    # 星徽秘典弹窗:decision 化(设计定案 5)——有选卡价值(0i 阵营匹配选卡),
+    # 「关闭即丢决策内容」;closable=False ⇒ A 面切换后从清场派生集消失
+    # (环入口不再一键关,改由 0i 选卡消化;行为断言门挂子批 3)。
+    # handler_id 待 C 面切换把 0i ``_handle_star_tome_pick`` 收拢为
+    # HandleStarTome 类(挂账见 PENDING_HANDLER_IDS)。
+    OverlaySpec(
+        screen_name='货币战争-星徽秘典弹窗',
+        anchor_area='标识-星徽秘典',
+        semantic=SEMANTIC_DECISION,
+        handler_id='HandleStarTome',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=12,
+        recovery_exit=RECOVERY_HANDLE,
+        bail_tag='star_tome',
+    ),
+    OverlaySpec(
+        screen_name='货币战争-备战-专家邀请函',
+        anchor_area='标识-专家邀请函',
+        semantic=SEMANTIC_DECISION,
+        handler_id='HandleBookcard',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=13,
+        recovery_exit=RECOVERY_HANDLE,
+        bail_tag='bookcard',
+    ),
+    # 补给:节点级选卡(RunSupplyNode 生命周期 owner)。语义 decision ⇒
+    # C1 红线 closable=False ⇒ A 面切换后从清场派生集消失——补给 modal
+    # 不再被环入口「返回备战界面」一键离场,改走 bail → RunSupplyNode
+    # 消化(与星徽秘典同型「严格不劣」论证:少丢一次补给选择)。
+    # ⚠️ 这是注册表化相对现 ENTRY_OVERLAY_CLOSE 的第二处清场集成员变化
+    # (第一处 = 星徽秘典,设计定案 5 明示),A 面切换批须过行为断言门。
+    OverlaySpec(
+        screen_name='货币战争-补给',
+        anchor_area='标识-补给阶段',
+        semantic=SEMANTIC_DECISION,
+        handler_id='RunSupplyNode',
+        close_action=CLOSE_ACTION_HANDLE,
+        dispatch_priority=8,
+        recovery_exit=RECOVERY_HANDLE,
+        bail_tag='supply',
+    ),
+    # 难度确认:开局难度确认弹窗,长尾——无 battle_loop 消费分支、无专属
+    # handler(设计定案未单独裁决);声明为 system + 推进按钮载荷挂账,
+    # 待出现消费需求时再定语义/接 handler
+    OverlaySpec(
+        screen_name='货币战争-难度确认',
+        anchor_area='标识-当前难度职级',
+        semantic=SEMANTIC_SYSTEM,
+        close_area='按钮-开始对局',
+        dispatch_priority=18,
+        recovery_exit=RECOVERY_HANDLE,
+    ),
+    # ── 未激活条目(active=False,待 Phase 2 子批 0 实机建档)──
+    # 道具详情弹窗(聘用书类 modal):现 battle_loop 0e3 裸 OCR 分支;建档后
+    # screen_name/anchor_area 取建档终值(id_mark 用独有标题行),判定坍缩
+    # 为单 area 锚。派发序必须在祈愿试炼(11)之后(祈愿选项名含「聘用书」)。
+    OverlaySpec(
+        screen_name='货币战争-道具详情弹窗',
+        anchor_area='',
+        semantic=SEMANTIC_DISPLAY,
+        close_action=CLOSE_ACTION_POINT,
+        # × 位置 VLM 定位(battle_loop 0e3 现值)
+        close_point=(1862, 65),
+        dispatch_priority=19,
+        recovery_exit=RECOVERY_CLOSE,
+        active=False,
+    ),
+    # 消耗品详情浮层:现 battle_loop 0f(esc)裸 OCR 双条件分支;「拖动到」
+    # 只出现在消耗品详情 modal(天然独有 id_mark 候选),建档后单锚收编
+    OverlaySpec(
+        screen_name='货币战争-消耗品详情浮层',
+        anchor_area='',
+        semantic=SEMANTIC_DISPLAY,
+        close_action=CLOSE_ACTION_ESC,
+        dispatch_priority=20,
+        recovery_exit=RECOVERY_ESC,
+        active=False,
+    ),
+)
+
+#: handler 收拢挂账:C 面切换(子批 3-6)把 battle_loop inline 逻辑收拢为
+#: handler 类前,这些 handler_id 尚不可 import;一致性测试对此集合豁免
+#: handler 存在性断言(集合必须 ⊆ registry 引用集,防挂账集腐化)。
+PENDING_HANDLER_IDS: frozenset[str] = frozenset({'HandleStarTome'})
+
+
+def derive_upper_screens() -> tuple[str, ...]:
+    """UPPER_SCREENS 派生段:registry 全量激活条目(声明序)。
+
+    帧态门消费方(cw_obs_core.is_prep_like_frame 逐屏判定)再拼
+    ``UPPER_SCREENS_NON_OVERLAY`` 残余段成完整常量;新 overlay 建档 +
+    一条激活 spec 即自动获得帧态门排除。
+    """
+    return tuple(spec.screen_name for spec in OVERLAY_REGISTRY if spec.active)
+
+
+def derive_clearable() -> tuple[OverlaySpec, ...]:
+    """P0 清场派生集:激活且 closable 的条目(声明序;A 面消费)。"""
+    return tuple(spec for spec in OVERLAY_REGISTRY
+                 if spec.active and spec.closable)
+
+
+def derive_decision() -> tuple[OverlaySpec, ...]:
+    """director bail 扫描派生集:激活的 decision 条目(声明序;B 面消费)。"""
+    return tuple(spec for spec in OVERLAY_REGISTRY
+                 if spec.active and spec.semantic == SEMANTIC_DECISION)
+
+
+def dispatch_order() -> tuple[OverlaySpec, ...]:
+    """C 面表驱动派发序:激活条目按 dispatch_priority 升序。"""
+    return tuple(sorted((s for s in OVERLAY_REGISTRY if s.active),
+                        key=lambda s: s.dispatch_priority))

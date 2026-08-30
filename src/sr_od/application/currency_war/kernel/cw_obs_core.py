@@ -16,6 +16,7 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
+from sr_od.application.currency_war.obs.overlay_registry import derive_upper_screens
 from sr_od.context.sr_context import SrContext
 
 # screen_info「货币战争-备战」(currency_war_battle_prep.yml)area 名
@@ -86,28 +87,17 @@ def _ocr(ctx: SrContext, screen: MatLike, rect: Rect | None) -> list:
     return ctx.ocr_service.get_ocr_result_list(image=screen, rect=rect, crop_first=False)
 
 
-#: 上层屏名单(ADR-0269 两段式第一段):会盖在备战底层 UI 之上的画面/弹窗。
-#: 这些画面在场时备战 id_mark 往往仍可见 → 单判「备战/开商店」会在中间态放行
-#: (局72 12:57 伙伴误拖实锤:选择伙伴画面被判备战帧)。**逐个**判定,
-#: 不能把名单与备战屏合并成一次 get_match_screen_name 调用——框架按注册序
-#: 返首个命中,备战在前则上层帧照样先中备战(对抗审查轴①)。
-#: 名单按 assets/game_data/screen_info 的 screen_name 全名核对(2026-08-24)。
-UPPER_SCREENS: tuple[str, ...] = (
-    '货币战争-选择伙伴',
-    '货币战争-祈愿试炼',
-    '货币战争-遭遇节点',
-    '货币战争-投资策略',
-    '货币战争-投资环境',
-    '货币战争-盛会之星',
+#: 非 overlay 上层屏残余段(ADR-0269 两段式第二段;设计终版定案 2):
+#: 会盖备战底层 UI、但**不是 overlay 生命周期对象**的画面——无 handler、
+#: 无退场动作,注册表语义覆盖不到,显式保留 + 逐条 why 问责
+#: (防「整表派生」强迫僵尸 spec 进注册表;注册表一致性测试断言
+#: 「常量 = 派生值」防手改绕过派生)。
+UPPER_SCREENS_NON_OVERLAY: tuple[str, ...] = (
+    # 位面过渡:过渡帧(无交互对象),钩子/帧态门需排除
     '货币战争-位面过渡',
-    '货币战争-积分奖励',
-    '货币战争-简报',
-    '货币战争-中断挑战弹窗',
-    '货币战争-未达上限警告',
-    '货币战争-提示-前台无角色',
-    '货币战争-武装箱弹窗',
-    '货币战争-商店刷新概率表',
+    # 攻略码输入弹窗:工具域弹窗,非对局 overlay 生命周期对象
     '货币战争-攻略码输入弹窗',
+    # 备战-角色详情:检视浮窗(无 handler/无退场动作)
     '货币战争-备战-角色详情',
     # 装备详情浮窗(点右侧装备弹,备战底层 UI 全可见)与 角色信息提示(悬停角色
     # tooltip)同型穿透:唯一真值锚(装备推荐)只属角色详情大面板,两形态帧
@@ -116,15 +106,19 @@ UPPER_SCREENS: tuple[str, ...] = (
     # 画面档按形态拆分后此处同步扩容,与 ADR-0269 同手法)。
     '货币战争-备战-装备详情浮窗',
     '货币战争-备战-角色信息提示',
-    '货币战争-星徽详情',
-    '货币战争-星徽秘典弹窗',
-    # 书册卡「专家邀请函」五选一(2026-08-30 建档):弹窗盖备战中上部 →
-    # 在场 = 非备战帧(钩子/环不在弹窗上做备战动作;选卡交 HandleBookcard)
-    '货币战争-备战-专家邀请函',
-    '货币战争-补给',
-    '货币战争-难度确认',
+    # 赛前画面(对局外),非对局 overlay
     '货币战争-阵容编辑',
     '货币战争-模式选择',
+)
+
+#: 上层屏名单 = overlay 注册表派生段 + 非 overlay 残余段(成员集与迁移前
+#: 手写常量完全一致;两段拼接使残余屏移到段尾——逐屏判定的布尔结果与
+#: 顺序无关,行为不变,消费方 is_prep_like_frame 零改动。防回归断言
+#: 「常量 = 派生值」在测试仓 test_cw_overlay_registry.py)。
+#: **逐个**判定,不能把名单与备战屏合并成一次 get_match_screen_name
+#: 调用——框架按注册序返首个命中,备战在前则上层帧照样先中备战。
+UPPER_SCREENS: tuple[str, ...] = (
+    derive_upper_screens() + UPPER_SCREENS_NON_OVERLAY
 )
 
 # 金币说明 overlay 锚(ADR-0263 Revision):C 类无档案 overlay(无独立 screen
