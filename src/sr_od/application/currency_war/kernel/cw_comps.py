@@ -334,13 +334,17 @@ def merged_mechanic_tables(registry: DecisionV2Registry | None = None,
 # mechanics_fit ±0.25/±0.20 离散步进);判死/观测桶(爆发速杀/高费低费审美)不在本批复活范围。
 # 与 W875 先例的差异:本批 4 个 tag 的 AFFIX_MECHANIC_MAP/MECHANIC_COUNTERS/SYNERGIES 行
 # 在基表早已存在(属性熄火/装备依赖/成型羁绊利好/冻结),缺的只是 comp 侧载体 —— 因此开关
-# 不走并表,走**载体滤除**:tag 已进 COMP_LIBRARY 携带词汇(死映射防线:值域⊆词汇表),
-# mechanics_fit 经 effective_mechanic_attributes 滤除关臂 tag,全关 = 基表路径零漂移。
+# 不走并表,走**载体滤除**:复活的 4 个 tag 的 comp 侧载体分两种形态落码 ——
+# 静态标注(成型羁绊队/慢速/依赖合成装备:COMP_LIBRARY 逐套 mechanic_attributes 打标)
+# 与判据性动态载体(单属性队:effective_mechanic_attributes 按 ATTRIBUTE_TYPE_FACTIONS
+# 判据动态并入,见下);mechanics_fit 经 effective_mechanic_attributes 滤除/注入,
+# 全关 = 基表路径零漂移。
 #
 # 判型出处(逐 tag):
 # - 单属性队:final_comps README D3「希儿怕量子熄火」明文 + plaza 希儿聚类 36/38 篇核心
 #   羁绊=量子同频(属性型羁绊)。判据 = form_tiers 以**属性型羁绊**为主档且档深 ≥4;
-#   当前 COMP_LIBRARY 仅希儿量子命中,其余六属性熄火无纯色主档 comp 对应(恒中性=正确)。
+#   当前 COMP_LIBRARY 仅希儿量子命中(静态标注);其余六属性熄火无纯色主档 comp 对应
+#   (恒中性=正确)。载体的判据性动态并入落点 = effective_mechanic_attributes(见下)。
 # - 成型羁绊队:形单影只词条原文(未激活羁绊 → 伤害 85%/60%/30%)+ README B1(羁绊档位
 #   乘区)/C4。判据 = 终局战力主要来自羁绊档位乘区(form_tiers 主档羁绊驱动),排除装备流
 #   (白厄反甲)/单核(命运圣杯红A/万敌单C——攻略明言「夜神燃血也不要凑」,羁绊不满也有
@@ -359,10 +363,28 @@ W878_GATED_TAGS: dict[str, str] = {
 
 # 「属性型羁绊」判据载体(单属性队 tag 的判型基;唯一载体枚举锁已按 w882 攻击采纳
 # 改为判据性锁,锁在 test_cw_w878_deadtag_revive):凡 form_tiers 主档 ∈ 本集且档深 ≥4
-# 的 comp 即满足单属性队判据。V4.4 全羁绊表仅量子同频按角色属性聚合(量子伤害体系),
-# 其余羁绊按阵营/流派聚合非属性型;新属性羁绊(如火纯色线)入表时在此加键,
-# 判据性锁自动放行,无需再改锁。
+# 的 comp 即满足单属性队判据,由 is_mono_attribute_comp 判定、effective_mechanic_attributes
+# 在单属性队臂开启时动态并入「单属性队」携带 —— 新属性 comp(如火纯色线)入表加键后
+# 落档即自动入判,无需改锁改标注。V4.4 全羁绊表仅量子同频按角色属性聚合(量子伤害
+# 体系),其余羁绊按阵营/流派聚合非属性型。
 ATTRIBUTE_TYPE_FACTIONS: frozenset[str] = frozenset({"量子同频"})
+
+# 单属性队判据的档深下限(档位乘区主档;V4.4 量子同频满档=4,希儿量子基线即此值;
+# w882 攻击指出该阈值无独立出处、系倒推希儿单例,按「宁缺勿错」保持 ≥4 收口,
+# 新属性羁绊入表时须按同口径复核)。
+MONO_ATTRIBUTE_MIN_TIER: int = 4
+
+
+def is_mono_attribute_comp(comp: Comp) -> bool:
+    """单属性队判据:form_tiers 主档 ∈ ATTRIBUTE_TYPE_FACTIONS 且档深 ≥4。
+
+    出处:final_comps README D3「希儿怕量子熄火」+ w882 攻击角度1(枚举锁改判据);
+    消费点:effective_mechanic_attributes(单属性队臂开启时动态并入携带)。
+    判型只看 form_tiers(成型档位),flex_factions 的属性羁绊不算 —— 副羁绊宽口径
+    (量子同频在 29 个聚类高频出现)不构成单属性队。
+    """
+    depths = [t for f, t in comp.form_tiers.items() if f in ATTRIBUTE_TYPE_FACTIONS]
+    return bool(depths) and max(depths) >= MONO_ATTRIBUTE_MIN_TIER
 
 
 def w878_active_tags(registry: DecisionV2Registry | None = None) -> frozenset[str]:
@@ -373,18 +395,24 @@ def w878_active_tags(registry: DecisionV2Registry | None = None) -> frozenset[st
 
 def effective_mechanic_attributes(comp: Comp,
                                   registry: DecisionV2Registry | None = None) -> list[str]:
-    """comp 生效机械属性 = 原属性 − 关臂 W878 tag(单一滤除口;mechanics_fit 消费)。
+    """comp 生效机械属性 = 原属性 − 关臂 W878 tag + 判据性动态载体(单一滤除口;mechanics_fit 消费)。
 
     关臂 tag 仍在携带词汇表内(结构锁口径),只是不参与评分求交 —— 这样开关翻默认值时
     只动本函数门槛,不动 20 套 comp 标注;全关时若 comp 属性集无 W878 tag 则原列表透传。
+    单属性队臂开启时,满足 is_mono_attribute_comp 判据的 comp 动态并入「单属性队」
+    携带(w882 攻击角度1 采纳:载体判据化,新属性 comp 落档即自动入判,无需逐套打标);
+    判据不满足的静态标注原样保留,漂移由判据边界锁拦截。
     """
     active = w878_active_tags(registry)
     if not active:
         gated = {t for t in comp.mechanic_attributes if t in W878_GATED_TAGS}
         if not gated:
             return comp.mechanic_attributes
-    return [a for a in comp.mechanic_attributes
-            if a not in W878_GATED_TAGS or a in active]
+    attrs = [a for a in comp.mechanic_attributes
+             if a not in W878_GATED_TAGS or a in active]
+    if "单属性队" in active and "单属性队" not in attrs and is_mono_attribute_comp(comp):
+        attrs = [*attrs, "单属性队"]
+    return attrs
 
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
 # 自动写入采到的新词缀/校准)。本文件不 import 该注册表(迁移审计 w266(git 历史) 勘误:旧注释称「顶部 import 重导出」
