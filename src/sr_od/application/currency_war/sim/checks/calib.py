@@ -458,14 +458,24 @@ def check_p2_loss_band_anchor(ledgers: list[list[dict]],
 
 
 
+# P2 战斗类聚合胜率带(w193_p2sim/ADR-0377 校准族)。
+# 重锚依据(W910 sim 确定性修复后的首个正式重锚):旧上沿 0.35 = 语料边际
+# 0-0.15 + β 上沿 headroom(ADR-0377);行为批累积位移(W748 起)+确定性
+# 修复后,HEAD 实测聚合胜率 ≈0.26(seed 0-99 窗 0.2401 / 100-199 窗
+# 0.2836,合并 671 战斗行,pool 指纹 6400d5d8edeaf68d+eqg1,n=100×2 局
+# 同窗口径)。新上沿 = 最高窗实测 0.2836 圆整 0.30 + headroom 0.15(与
+# 原锚同构:观测上沿 + 模型失控缓冲);语义不变——只防胜率模型失控
+# (β 注入回归/clip 失效),不钉策略胜率点值,行为批位移靠重锚吸收。
+P2_WIN_RATE_BAND: tuple[float, float] = (0.0, 0.45)
+
+
 def check_p2_win_rate_band(ledgers: list[list[dict]],
                            report: dict | None = None) -> dict:
-    """P2 胜率带锚(`w193_p2sim/`/ADR-0377)。
+    """P2 胜率带锚(`w193_p2sim/`/ADR-0377;重锚依据见 P2_WIN_RATE_BAND 注)。
 
-    判据:calibrated 批的 P2 战斗类胜率聚合必须落在语料带
-    [0, 0.35](语料边际 0-0.15 + β 上沿 headroom;>0.35=胜率模型
-    失控[如 β 注入回归/clip 失效],<0=全败同样异常)。战斗结算数
-    <20 的批不判(样本贫困,只披露)。
+    判据:calibrated 批的 P2 战斗类胜率聚合必须落在带
+    ``P2_WIN_RATE_BAND``(>上沿=胜率模型失控[如 β 注入回归/clip 失效],
+    <下沿=全败同样异常)。战斗结算数<20 的批不判(样本贫困,只披露)。
     """
     if not (report or {}).get('p2_combat_calibrated'):
         return {'violations': 0, 'detail': [],
@@ -482,8 +492,10 @@ def check_p2_win_rate_band(ledgers: list[list[dict]],
                 wins += 1 if (s.get('delta') or 0) >= 0 else 0
     rate = wins / total if total else None
     out = []
-    if total >= 20 and rate is not None and not 0.0 <= rate <= 0.35:
-        out.append(f'P2 战斗胜率 {rate:.3f}({wins}/{total}) 带外[0,0.35]')
+    if total >= 20 and rate is not None and not (
+            P2_WIN_RATE_BAND[0] <= rate <= P2_WIN_RATE_BAND[1]):
+        out.append(f'P2 战斗胜率 {rate:.3f}({wins}/{total}) '
+                   f'带外{list(P2_WIN_RATE_BAND)}')
     return {'violations': len(out), 'detail': out,
             'win_rate': round(rate, 4) if rate is not None else None,
             'combat_total': total}
