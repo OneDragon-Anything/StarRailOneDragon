@@ -928,8 +928,16 @@ def score_candidate(cand: Candidate, state: GameState,
             # 无目标语境(未锁线/核心已齐/窗外/该等级刷不到):
             # D 让位——刷新金只用于找目标件/保血急救([31] 硬约束)
             val = -(cand.action.cost or 2)
+        # 锁线后兑现链·搜牌侧(W802;缺件感知定向刷新,金水位辖域门+
+        # 3-4 费有效域;开关关恒 0 零漂移)。bd['rc_search'] 记加项判读。
+        from sr_od.application.currency_war.decision.decision_v2.realization import (
+            refresh_search_term,
+        )
+        _rc_search = refresh_search_term(state, session, registry)
+        if _rc_search:
+            val += _rc_search
         return val, {'base': base, 'after': None, 'refresh_ev': val,
-                     'int_emb': 0.0}
+                     'int_emb': 0.0, 'rc_search': _rc_search}
     after_state = apply_for_score(cand, state, session)
     if after_state is None:
         return 0.0, {'base': base, 'after': None, 'int_emb': 0.0}
@@ -1032,6 +1040,21 @@ def score_candidate(cand: Candidate, state: GameState,
     # 三窗无一致正方向)、filler_star 期权分与方向门豁免(ADR-0402,
     # `w504_filler_star_adr0402/` 开臂 A/B wash)的评分消费块均已删除,删除清单与证据链见各
     # ADR 定谳/清理节。
+    # 锁线后兑现链·买入/合成时点侧(W802;开关关恒 0 零漂移):
+    # P29 羁绊感知囤牌优先级(事前辖域门含反向锁)与 merge 候选合成
+    # 时点项(非新豁免,ADR-0437/0438 豁免通道不动)。两者只加线内
+    # 候选/merge 候选的分,与末段 off_lock 降级不叠(off_lock 只辖
+    # 线外候选,辖域互斥);bd 记判读键。
+    from sr_od.application.currency_war.decision.decision_v2.realization import (
+        merge_timing_term,
+        p29_priority_term,
+    )
+    _rc_p29 = p29_priority_term(cand, state, session, registry)
+    if _rc_p29:
+        val += _rc_p29
+    _rc_merge = merge_timing_term(cand, state, session, registry)
+    if _rc_merge:
+        val += _rc_merge
     # `w150_buy_lock/`/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
     # forming_bias 等偏置先行计入,本约束最后收口,防
     # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
@@ -1040,9 +1063,21 @@ def score_candidate(cand: Candidate, state: GameState,
         val = min(val, 0.0) - 1.0   # 末轮围栏:可靠非正分拒(仲裁层
         # 「非正分」收口,log 可见)
     elif off_lock:
-        val -= registry.off_lock_buy_penalty
+        if registry.realization_chain_enabled \
+                and registry.realization_buy_enabled:
+            # 兑现链·买入侧(W789 Q1 定谳修法):off-lock 罚分常数
+            # 改机会成本比例折扣——只折扣正增量部分(val·(1−κ)),
+            # 负分不被抬升(深负候选的「降级非禁绝」语义不变成
+            # 「洗白」);W789 复算 0.742−3.0=−2.258 的量级失配修正。
+            val -= registry.realization_off_lock_kappa * max(val, 0.0)
+        else:
+            val -= registry.off_lock_buy_penalty
     out_bd = {'base': base, 'after': after, 'int_emb': int_emb,
               'form_gold': round(form_gold, 3)}
+    if _rc_p29:
+        out_bd['rc_p29'] = round(_rc_p29, 4)
+    if _rc_merge:
+        out_bd['rc_merge_timing'] = round(_rc_merge, 4)
     if off_lock:
         out_bd['off_lock'] = off_lock
     return val, out_bd

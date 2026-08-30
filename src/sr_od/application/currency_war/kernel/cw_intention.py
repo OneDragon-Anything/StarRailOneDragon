@@ -221,6 +221,13 @@ class IntentionState:
     """R3 断供驱逐的体系级断供计数器(体系键 → 连续无新件可见轮数;
     计数语义同 LineTrack.frozen_rounds——成员在可见面(在店∪到手)
     出现即清零)。"""
+    supply_drought: dict[str, int] = field(default_factory=dict)
+    """方向侧供给衰减计数器(W802 兑现链方向侧;体系键 → 连续零在店
+    轮数 t,support′ = γ^t·support + β·[成员在店] 的衰减坐标)。
+    [坐标系] 键域 = TRANSITION_TRAITS 三羁绊 ∪ SEELE_SYSTEM;取值时机 =
+    每 game-round 恰一次由 update_intention._update_supply_decay 现读
+    shop 刷新(成员在店清零,零在店 +1);缺键 = 尚无观测帧(排序侧
+    退纯资产支持度,不施加衰减/加项)。开关关恒空 dict(零漂移)。"""
     tracks: dict[str, LineTrack] = field(default_factory=dict)
     last_event: str = ''               # 最近一次状态转移(判读/遥测锚点)
     revoke_evidence: dict[str, object] = field(default_factory=dict)
@@ -505,17 +512,28 @@ def _p1_system_support(state: GameState) -> dict[str, float]:
 
 
 def _derive_p1_pair(state: GameState,
-                    exclude: frozenset[str] = frozenset()) -> tuple[str, ...]:
+                    exclude: frozenset[str] = frozenset(),
+                    registry: DecisionV2Registry | None = None,
+                    drought: dict[str, int] | None = None,
+                    prev_pair: tuple[str, ...] = (),
+                    ) -> tuple[str, ...]:
     """P1 配方对派生:支持度 top-2(平手按激活占比序),规整为
     ``_P1_PAIR_PREF`` 序的二元组;最高支持度未达门槛 → ()(空窗不锁)。
 
     ``exclude``:R3 断供驱逐的体系键集(移出候选后重派生;蓝图 §4.3-R3)。
     体系对随资产**重派生**([20]「变体按来牌选」——支持度只增,变更
     是来牌选型不是 pivot;[23] 冻结语义辖终局线,不辖 P1 配方)。
+
+    ``drought``/``prev_pair``/``registry``:方向侧供给感知支持度
+    (``_supply_prime``,γ 衰减)与切换滞回(``_pair_hysteresis``,P16
+    δ 复用)的输入;开关关时三项不被消费(排序退纯资产支持度,逐位
+    旧行为——W802 兑现链方向侧零漂移锚)。
     """
-    sup = _p1_system_support(state)
+    reg = registry or DEFAULT_REGISTRY
+    sup = _supply_prime(_p1_system_support(state), drought, reg)
     ranked = [k for k in sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
               if k not in exclude]
+    ranked = _pair_hysteresis(prev_pair, ranked, sup, reg)
     if not ranked or sup[ranked[0]] < P1_PAIR_LOCK_MIN_SUPPORT:
         return ()
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
@@ -560,6 +578,77 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
             ist.last_event = f'evict:pair_drought:{sys}:{n}'
 
 
+def _update_supply_decay(state: GameState, ist: IntentionState,
+                         registry: DecisionV2Registry | None) -> None:
+    """方向侧供给衰减计数(W802 兑现链设计侧四;每 game-round 恰一次,
+    与断供驱逐同一驱动点)。对 support′ 支持度全体系键:成员在店 →
+    清零;零在店 → +1。开关关恒不动(supply_drought 保持空 dict,
+    排序侧退纯资产支持度——零漂移)。驱逐计数器(pair_drought)与本
+    计数器分域:前者辖 pair 成员资格(硬驱逐),本计数辖所有体系的
+    相对排序(连续单调衰减),作用面不同(W796 面 5「量级相近≠等效」)。
+    """
+    reg = registry or DEFAULT_REGISTRY
+    if not (reg.realization_chain_enabled
+            and reg.realization_direction_enabled):
+        return
+    shop_names = {getattr(c, 'name', '') or '' for c in (state.shop or [])}
+    for bond, _t in TRANSITION_TRAITS:
+        if _bond_members(bond) & shop_names:
+            ist.supply_drought[bond] = 0
+        else:
+            ist.supply_drought[bond] = ist.supply_drought.get(bond, 0) + 1
+    if '希儿' in shop_names:
+        ist.supply_drought[SEELE_SYSTEM] = 0
+    else:
+        ist.supply_drought[SEELE_SYSTEM] = \
+            ist.supply_drought.get(SEELE_SYSTEM, 0) + 1
+
+
+def _supply_prime(sup: dict[str, float], drought: dict[str, int] | None,
+                  registry: DecisionV2Registry) -> dict[str, float]:
+    """γ 衰减供给感知支持度 support′(设计侧四;P31① 落码形态):
+
+        support′(s,t) = γ^t·support(s) + β·[成员在店]
+
+    - t = ``supply_drought`` 连续零在店轮数(缺键=尚无观测帧 → 纯资产
+      支持度,不施加衰减也不加项——首帧不造基准偏置);
+    - γ 经验带 [0.7,0.8] 量级锚(注册表 realization_direction_gamma,
+      sim 扫描标定挂账);β = realization_direction_beta(占位);
+    - 「成员在店」= 衰减计数当帧清零(t==0)——ρ 窗口 W 占位 1 帧,
+    β/λ/W 同批标定(PREREG §6)。
+    """
+    if not (registry.realization_chain_enabled
+            and registry.realization_direction_enabled) or not drought:
+        return sup
+    out: dict[str, float] = {}
+    for k, v in sup.items():
+        t = drought.get(k)
+        if t is None:
+            out[k] = v
+        elif t == 0:
+            out[k] = v + registry.realization_direction_beta
+        else:
+            out[k] = v * (registry.realization_direction_gamma ** t)
+    return out
+
+
+def _pair_hysteresis(prev_pair: tuple[str, ...],
+                     ranked: list[str], sup: dict[str, float],
+                     registry: DecisionV2Registry) -> list[str]:
+    """方向切换滞回(P16 复用,δ=``registry.line_switch_theta`` 单一源;
+    锁 #7):support′ 差 < θ 不切换——现方向 top 保持在位(防振荡频率
+    硬上限 1/(2·D_min) 的排序层等价形态)。开关关/prev 不在候选集
+    (已被驱逐等)→ 序不变。"""
+    if not (registry.realization_chain_enabled
+            and registry.realization_direction_enabled):
+        return ranked
+    if not prev_pair or prev_pair[0] not in ranked:
+        return ranked
+    if sup[ranked[0]] - sup[prev_pair[0]] < registry.line_switch_theta:
+        return [prev_pair[0]] + [k for k in ranked if k != prev_pair[0]]
+    return ranked
+
+
 def p1_early_pair(state: GameState,
                   ist: IntentionState | None) -> tuple[str, ...]:
     """P1 早期新件买入门的配方对读口(W179/ADR-0372;只读,不落字段)。
@@ -589,6 +678,21 @@ def p1_early_pair(state: GameState,
     ranked = [k for k in sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
               if k not in exclude]
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
+
+
+def _bond_members(bond: str) -> set[str]:
+    """单羁绊成员名集(阵营∪流派全成员口径,与 ``_pair_members`` 同式;
+    希儿系=希儿∪两放大器阵营成员)。方向侧供给衰减的在店判据单一源。"""
+    if bond == SEELE_SYSTEM:
+        bonds: set[str] = {'量子同频', '贝洛伯格'}
+        out: set[str] = {'希儿'}
+    else:
+        bonds = {bond}
+        out = set()
+    for name, c in CHARACTERS.items():
+        if (set(c.factions) | set(c.flows)) & bonds:
+            out.add(name)
+    return out
 
 
 def _pair_members(pair: tuple[str, ...]) -> set[str]:
@@ -945,6 +1049,8 @@ def update_intention(state: GameState, ist: IntentionState,
     # R3 断供驱逐(ADR-0465):每 game-round 恰一次的体系级断供计数
     # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
     _update_pair_drought(state, ist, visible)
+    # 方向侧供给衰减计数(W802;开关关恒不动——零漂移)
+    _update_supply_decay(state, ist, registry)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
     revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
     # 「意向降级为弱意向……直至新信号」= 新信号指下一轮起的信号;同轮撤+锁会让
@@ -1070,7 +1176,10 @@ def update_intention(state: GameState, ist: IntentionState,
         # W166/ADR-0367:①锁局过渡对随资产重派生(同 p1_pair 语义——
         # 「变体按来牌选」[20],支持度只增,非 pivot;[23] 冻结语义辖
         # 终局线,不辖过渡副方向)。配方锁局(phase='unlocked')不进本支。
-        pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted))
+        pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted),
+                               registry=registry,
+                               drought=ist.supply_drought,
+                               prev_pair=tuple(ist.transition_pair or ()))
         if pair != ist.transition_pair:
             ist.transition_pair = pair
             ist.last_event = ('lock_pair:' + '+'.join(pair)) \
@@ -1099,7 +1208,10 @@ def update_intention(state: GameState, ist: IntentionState,
         if state.plane == 1:
             sigs = [s for s in sigs
                     if _direct_line_qualified(state, s.comp_name)]
-            pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted))
+            pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted),
+                                   registry=registry,
+                                   drought=ist.supply_drought,
+                                   prev_pair=tuple(ist.p1_pair or ()))
             if pair != ist.p1_pair:
                 ist.p1_pair = pair
                 ist.last_event = ('p1_pair:' + '+'.join(pair)) \

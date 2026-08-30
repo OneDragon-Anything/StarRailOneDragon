@@ -580,4 +580,47 @@ def _deploy_candidates(state: GameState, session: StrategySession,
             breakdown_hint={'name': bc.char_id,
                             'sort_key': registry.deploy_sort_key},
         ))
+    # 兑现链·部署侧(W802;④-a 锁定线新增强件显影,修断点③-c/④-a):
+    # 锁定线 2★ bench 件(合成新产物最典型)在 cap 未满且未被围栏序
+    # 采纳时,必含于部署候选集(锁 #9;cap 满走既有 SwapDeploy 臂,
+    # 不新造换位机制)。置于围栏候选之前=显影语义;deploy_legal
+    #(同名禁双)由 char_id ∉ deployed_cids 保证。
+    if registry.realization_chain_enabled \
+            and registry.realization_deploy_enabled:
+        from sr_od.application.currency_war.decision.decision_v2.realization import (
+            _ist as _rc_ist,
+        )
+        from sr_od.application.currency_war.kernel.cw_intention import (
+            locked_buy_scope,
+        )
+        _scope = None
+        _rci = _rc_ist(session)
+        if _rci is not None:
+            _scope = locked_buy_scope(_rci)
+        if _scope:
+            _picked_idx = {c.action.bench_idx for c in out}
+            _cap_left = (state.max_units()
+                         - deployed_occupied(state.deployed or []))
+            for _i in _occ_idx:
+                if _cap_left <= 0:
+                    break
+                _bc = state.bench[_i]
+                if _bc is None or _i in _picked_idx:
+                    continue
+                if (getattr(_bc, 'star', 1) or 1) < 2:
+                    continue
+                if (_bc.char_id or '') not in _scope:
+                    continue
+                if _bc.char_id in deployed_cids:
+                    continue   # 同名禁双(5.1.7;合成产物留待同名下场窗)
+                out.insert(0, Candidate(
+                    action=DeployMove(bench_idx=_i,
+                                      to_row=_bc.position_pref or 'back',
+                                      faction=_bc.faction or '?'),
+                    tag='deploy', source='rc_deploy',
+                    breakdown_hint={'name': _bc.char_id,
+                                    'rc_deploy_showcase': True},
+                ))
+                _picked_idx.add(_i)
+                _cap_left -= 1
     return out

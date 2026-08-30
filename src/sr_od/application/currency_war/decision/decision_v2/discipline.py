@@ -1271,7 +1271,9 @@ def sell_priority_key(bc, state: GameState,
        redundancy,          # 0=冗余最弱(超上限/absent_mergeable,
                             #   carry_gate ④ 同档),1=常态
        expected_loss,       # 再遇代价×终局贯穿率(点5 键;静态近似)
-       net0_rank,           # 净0 件(1星/1费,全额退)置 0 最先
+       net0,                # 净0 件(1星/1费,全额退)置 0 最先
+       [income],            # 兑现链 D1(开关 realization_d1_enabled,
+                            #   默认关不出现):卖出回金+装备残值升序
        cost, star)          # 同档按费升序/星升序(确定性兜底)
 
     守卫(复用既有谓词,不重定义;任一命中 → None):
@@ -1317,6 +1319,15 @@ def sell_priority_key(bc, state: GameState,
     redundancy = 0 if (cp > 3 or absent_mergeable) else 1
     loss = _sell_expected_loss(cost, reg)
     net0 = 0 if star == 1 else 1
+    # 兑现链 D1(W802;ADR-0327 选件序输入修正):income(卖出回金+
+    # 装备残值代理)作升序分量入键——席满腾席取最弱价值件,局 6
+    # p2r7「卖含装备 2★ 留 1★ 散件」反向消失;开关关键结构逐位旧行为。
+    from sr_od.application.currency_war.decision.decision_v2.realization import (
+        sell_income_component,
+    )
+    income = sell_income_component(bc, reg)
+    if income is not None:
+        return (in_protect, redundancy, loss, net0, income, cost, star)
     return (in_protect, redundancy, loss, net0, cost, star)
 
 

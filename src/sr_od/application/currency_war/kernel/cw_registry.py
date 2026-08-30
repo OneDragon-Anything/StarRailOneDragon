@@ -1191,6 +1191,80 @@ class DecisionV2Registry:
     #: 定义值(非判据输出,零决策消费点)。
     p2_spend_auth_line_band_floor: int = 45
 
+    # ===== 锁线后兑现链 v2(W802 实施批;设计单一源=
+    # ===== .debug/temp/currency_war/w795_realization_design/REPORT.md v2/v3
+    # ===== + 同目录 PREREG_兑现链A_B.md v3)=====
+    #: 伞开关+七子旗标,生命周期第 1 态:默认关+零漂移锚(策略开关的
+    #: 生命周期,唯一合法理由=行为输入未就绪:κ/γ/β/Δp_tier/R_min/时点
+    #: 项权重全部占位值,不做生产决策)。**开臂判据挂账 = PREREG
+    #: 兑现链A_B v3 主判据 M1-M4 + 机制判 G1-G7**(n≥500/臂+池指纹);
+    #: A/B 数据齐即跑,不过则删码留 ADR(第 4 态),禁悬置默认关。
+    #: 开臂翻默认时必须盘点「断言开关关闭行为」的锁组语义(第 3 态义务,
+    #: test_cw_realization_chain 每锁带 off 臂零漂移断言)。
+    #: 伞开关=True 且对应子旗标=True 才接线该侧机制;观测硬依赖
+    #(board_next_tier/bench_full_flag/ADR-0474 遥测键)归 W793 后继批,
+    #: 阻塞标定批清偿、不阻塞开臂(W796 复核 N2 措辞)。
+    realization_chain_enabled: bool = False
+    #: 搜牌侧:缺件感知定向刷新(设计侧一;修断点①-b)——锁定帧缺件
+    #: 清单驱动刷新评分加项 Δp_tier·P(本刷出缺件);金水位辖域门
+    #(花完仍≥息线,P5 自洽)+ 有效域=3-4 费缺件;低费死支不落
+    #(等级只升不降,W796 面 2)。
+    realization_search_enabled: bool = False
+    #: 买入侧(设计侧二;修断点②-a/②-b):off-lock 罚分常数改机会成本
+    #: 比例折扣制(val>0 部分乘 (1−κ);κ 占位)+ P29 羁绊感知囤牌
+    #: 优先级(hp≥报警线 ∨ R_rest≥R_min 事前辖域门,含反向锁;bench
+    #: 挤占用≥容量−1 禁囤定性门)。
+    realization_buy_enabled: bool = False
+    #: 合成时点侧(设计侧三;修断点③-a 重述):merge 候选排序加「合成
+    #: 时点价值」项(非新豁免——ADR-0437/0438 豁免通道现行默认开不动,
+    #: 防双计声明继续辖);档位未满守卫与星级守卫(合成产物与 deployed
+    #: 同名不可上场 → 零时点价值)与搜牌缺件判据同一单一源;时点项
+    #: 权重占位,**开臂前置=V(1★→2★) 条件 Δp 标定批**(PREREG 锁 #1:
+    #: 标定前不把未证不等式钉进排序锁)。
+    realization_merge_timing_enabled: bool = False
+    #: 上阵/部署侧(设计侧四 ④-a;修断点③-c/④-a):锁定线 2★ bench 件
+    #: cap 未满时部署候选必含(部署显影;cap 满走既有 SwapDeploy 臂
+    #: 不新造)。
+    realization_deploy_enabled: bool = False
+    #: 方向侧(设计侧四 ④-b;修断点④-b):γ 衰减供给感知支持度
+    #: support′ = γ^t·support + β·[成员在店],t=连续零在店轮数;γ 量级带
+    #: [0.7,0.8] 经验锚(sim 扫描标定挂账,非「断供 5 轮等效」推导);
+    #: 切换滞回复用 P16(δ=line_switch_theta 单一源)。G6 该翻不翻/
+    #: G7 息基保住为开臂机制判(PREREG v3 §3)。
+    realization_direction_enabled: bool = False
+    #: D1 腾席选件弱序(W797 并入;修 ADR-0327 选件序输入反):腾席 sell
+    #: 统一弱序键补 income(卖出回金+装备残值代理)升序分量——席满
+    #: 腾席取最弱价值件,局 6 p2r7 卖高价值件留 1★ 散件反向消失。
+    realization_d1_enabled: bool = False
+    #: D2 跨位面入口帧转化授权(W797 并入;辖域协调:窗口判定归本设计、
+    #: 分配账式复用 ADR-0474 死亡窗分配器(不造第二分配器)、报警源
+    #: 消费既有应急带同一状态源):入口帧(round==1)hp 落死亡带 ∧
+    #: 携金>息线 → 并入分配器 DEATH 域辖域,一次性转化授权由分配器
+    #: 出清产生。
+    realization_d2_enabled: bool = False
+    #: —— 占位参数组(**占位值,不做生产决策**——伞开关默认关;全部
+    #: 开臂前 sim 扫描标定,PREREG §6 挂账;出处=设计 REPORT v2 §2
+    #: 如实占位纪律)——
+    #: off-lock 比例折扣系数 κ(占位 0.5;P11 下界/P12 拒绝域推不出
+    #: 点估计,v1「由 P11/P12 推出」表述已撤回)。
+    realization_off_lock_kappa: float = 0.5
+    #: Δp_tier 档位进度单位值(占位;P29 卡点=档位分解标定,标定批
+    #: 前置依赖 board_next_tier 观测键)。
+    realization_delta_p_tier: float = 1.0
+    #: P29 辖域门 R_rest 下限(占位 3;先验带 [3,5]=hp 40 报警线下剩余
+    #: 战斗轮数保守下限,设计 v2 §2 侧二)。
+    realization_p29_r_min: int = 3
+    #: 缺件定向刷新的有效费用域(3-4 费;p(lv7,3)=0.40 档,低费死支
+    #: 已删除,W796 面 2)。
+    realization_member_cost_band: frozenset[int] = frozenset({3, 4})
+    #: 合成时点项权重单位(占位;开臂前置=V(1★→2★) 条件 Δp 标定)。
+    realization_merge_timing_unit: float = 1.0
+    #: 方向衰减系数 γ(占位 0.75,经验带 [0.7,0.8];对应零供给超越时距
+    #: 6.5-11 轮,与断供驱逐同一量级带——量级锚非等效推导,W796 面 5)。
+    realization_direction_gamma: float = 0.75
+    #: 方向供给项系数 β(占位;窗口 W 的 ρ 项权重,β/λ/W 同批标定)。
+    realization_direction_beta: float = 0.3
+
     # ===== P1→P2 接口机制五开关——定谳清理,删码留档(ADR-0487)=====
     #: 曾以 p1_iface_{lockline_v2,carry_equip,hardnode_prep,lossstreak_
     #: flow,blood_bands}_enabled 五开关 + swing_degrade_n/swing_loss_n/
