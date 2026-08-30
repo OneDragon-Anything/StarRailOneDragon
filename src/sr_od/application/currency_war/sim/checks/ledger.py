@@ -35,25 +35,29 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
     """局62 指纹(r387 回灌断言;ADR-0249 执行层代理)。
 
     指纹:开局轮后(plane1 r2-r9,首轮系统卡未定排除)deployed
-    数 < cap 且 bench 有可上件(≥1 张)——r387 修前形态(配方
-    围栏无条件拦散牌,cap=3 只上 1 人空槽白丢血)。r390 执行层
-    代理落地后 sim 内可达(deployed=真实围栏输出);变异探针
-    实证:关 cap_roomy 守卫 → loss≤2 0.017→0.117 涌现
+    数 < cap 且**围栏认可件未上 ≥2**(= 账本统一口径
+    ``sim.deploy_lag_units``,补部署后重放围栏的残余可上件数,
+    W716 设计 §四-2:skip/非 skip 轮统一计算)——r387 修前形态
+    (配方围栏无条件拦散牌,cap=3 只上 1 人空槽白丢血)。r390
+    执行层代理落地后 sim 内可达(deployed=真实围栏输出);变异
+    探针实证:关 cap_roomy 守卫 → loss≤2 0.017→0.117 涌现
     (本检查=该差异的常态化拦截)。
 
     窗口口径:原 r2-r4 是 ADR-0253 时代的窗口先验,W716 F1 实证
     欠载形态系统性发生在 r4-r8(合成/换阵密集期;W714 三例全在
-    旧窗外)→ 扩到 P1 全段 r2-r9。判据本身零改(增长豁免/可上货
-    口径/连续 2 轮门照旧)。
+    旧窗外)→ 扩到 P1 全段 r2-r9。
 
-    边界:bench 空(没牌可上)不报;**差 1 以内的贴 cap 不报**
-    (配方围栏+cap 紧张是合法形态——r387 修的是「富余仍拦」);
-    **同名副本不算「可上货」**(r404-A2:5.1.7 同角色在场只 1,
-    第二张同名留 bench 是 3合1 素材的合法囤积,不是围栏拦截);
-    **跨轮持续性门**(连续 2 轮 deployed≤cap-2 才报):sim 代理
-    在决策前生成、同轮买入后不刷新——单轮差 2 常是「买了还没
-    重新部署」的过渡态(game14 实证:r2 4/6→r3 6/6),连续 2 轮
-    才是围栏系统性拦截的指纹;
+    「有货」口径单一源(W748/W767 两波归因收敛):原「非在场同名
+    副本」计数是**围栏判据外的近似**——跨线散牌被配方底线/非
+    roomy 规则合法 held 时(换阵过渡期,643567 r5-r8 四轮连锁
+    取证:lag=0 而旧口径可上货 ≥3)会误报;改吃 ``deploy_lag_units``
+    (同一围栏纯函数的认可残余),检查器与部署行为零口径差。
+
+    边界:**差 1 以内的贴 cap 不报**(配方围栏+cap 紧张是合法
+    形态——r387 修的是「富余仍拦」);**在场同名素材/保留集件
+    不算「有货」**(r404-A2 + W748 收窄:素材交围栏 dedup,天然
+    不进 lag);**跨轮持续性门**(连续 2 轮才报):单轮差 2 常是
+    「买了还没重新部署」的过渡态(game14 实证:r2 4/6→r3 6/6);
     **增长豁免**(ADR-0260):连续 2 轮短缺但 deployed 在**增长**
     不报——deploy 代理先于买入跑,每轮都买入新可上件时,账本
     快照恒见「上轮买、未部署」滞后一拍的形态(engine_seed 放行
@@ -73,12 +77,10 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
         cap = st.get('cap')
         if deployed is None or not cap:
             continue
-        bench = st.get('bench') or []
-        # r404-A2:可上货=非同名副本(在场名单外的名字)
-        dep_names = {d.get('char_id') for d in deployed}
-        usable = [b for b in bench
-                  if b.get('char_id') not in dep_names]
-        if len(usable) + len(deployed) <= cap:
+        # 「有货」= 围栏认可件未上(账本统一 lag 口径;见 docstring
+        # W748/W767 口径单一源裁决)——旧「非在场同名」计数废弃
+        lag = int((row.get('sim') or {}).get('deploy_lag_units') or 0)
+        if lag < 2:
             continue
         if len(deployed) < cap - 1:
             _short_rounds.append((rn, len(deployed)))
@@ -87,7 +89,7 @@ def check_deploy_fills_cap(rows: list[dict]) -> list[str]:
         if b - a == 1 and db <= da:   # ADR-0260 增长豁免
             out.append(
                 f"p1r{a}-r{b}: deployed 连续 ≤cap-2"
-                f"(bench 有货,围栏系统性拦截空槽——r387 修前形态)")
+                f"(围栏认可件未上,围栏系统性拦截空槽——r387 修前形态)")
     return out
 
 
