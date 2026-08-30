@@ -106,7 +106,10 @@ def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
       本函数与决策帧列并列,读端一眼区分「决策时」vs「执行后」。
     - 取值时机:输入 = 该轮决策迹流内**最晚 ts 帧**的 state(该轮备战执行后、
       战斗前);战斗不改板面,故该帧板面 = 该轮战后终态。取帧在装配端
-      (match_archive._last_decision_frame),本函数只做计数。
+      (match_archive._last_decision_frame),本函数只做计数。⚠️ 边界(w943
+      审计 P2-5):步进帧记录于动作执行前,异常出口收口的轮最晚帧滞后一个
+      动作——可信度由档案逐轮 terminal_closure 区分(start_battle=执行后
+      定型 / mid_prep=执行前末观察),本函数不判收口。
     - 坐标系:deployed_count = state.deployed 定长槽位表占用数(None 剔除,
       ADR-0392 紧缩口径);bench_count = state.bench 槽位表占用数(ADR-0316);
       equips_worn = Σ deployed[].equips 件数(已穿上身);equips_owned =
@@ -121,9 +124,14 @@ def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
     dep = st.get('deployed')
     if isinstance(dep, list):
         out['deployed_count'] = sum(1 for d in dep if d is not None)
-        out['equips_worn'] = sum(
-            len(d.get('equips') or []) if isinstance(d, dict) else 0
-            for d in dep if d is not None)
+        # worn 计数下探元素内字段类型(w943 审计 P3-6):残缺帧的 equips
+        # 可能是标量——非 list/dict 计 0(str 不得按字符数计,len(int) 不炸)。
+        for d in dep:
+            if d is None or not isinstance(d, dict):
+                continue
+            eq = d.get('equips')
+            if isinstance(eq, (list, dict)):
+                out['equips_worn'] += len(eq)
     bench = st.get('bench')
     if isinstance(bench, list):
         out['bench_count'] = sum(1 for b in bench if b is not None)
@@ -300,8 +308,10 @@ class DecisionTrace:
     # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission';
     # 'crisis'=危机金出口臂 ADR-0503,判读兑换率分域勿漏此值)。
     sess_release_reason: str | None = None
-    # 当轮 release 实际消费(金;session.v3_release_spent 透传,
-    # authorize_release_refresh 逐笔扣账的真实花销,每轮入口清零)。
+    # 当轮 release 帧实际消费(金;session.v3_release_spent 透传,每轮
+    # 入口清零)。全渠道口径:刷新经 authorize_release_refresh 授权逐笔
+    # 扣账;买牌/升级经仲裁收尾回执汇总裁(_accrue_release_frame_spend,
+    # 决策帧值为轮内截至采样时点累计)。
     # ADR-0503 开臂判据②的「实花面分项账」数据源:危机帧兑换按本字段计,
     # sess_release_budget 记账面(预算许可)不作兑现证据。
     sess_release_spent: int | None = None

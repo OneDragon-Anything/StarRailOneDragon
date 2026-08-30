@@ -38,11 +38,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from one_dragon.utils import log_utils
 from sr_od.application.currency_war.telemetry.query import (
     HP_CONF_TRUSTED,
     read_jsonl,
 )
 from sr_od.application.currency_war.telemetry.schema import terminal_state_summary
+
+log = log_utils.log
 
 #: 档案 schema 版本(字段变更时递增;消费端按版本分支)
 #: v2(match archive 二期批):+rounds[].decision_detail(v3_intention/
@@ -55,7 +58,13 @@ from sr_od.application.currency_war.telemetry.schema import terminal_state_summa
 #: 「把决策帧当战后板面读」的时序误读。terminal = 该轮决策迹流内最晚 ts
 #: 帧的板面计数(schema.terminal_state_summary 单一源),装配端派生、
 #: 零新运行时写入,故对存量档案同样生效。
-SCHEMA_VERSION: int = 3
+#: v4(w943 审计 P2-5 返修):+rounds[].terminal_closure(收口类型):
+#: 'start_battle'=末帧动作含出战(该帧观察=全部备战动作执行后的定型帧,
+#: terminal 可信为执行后账面)/'mid_prep'=末帧为普通备战动作(轮经强制
+#: 出战/bail/停机等异常出口收口,terminal 滞后一个动作=执行前末观察,
+#: 判读须降权)。旧档案缺此键 → load_archive 版本检查自动重装配补齐
+#:(P2-4 返修:版本迁移读端不再静默缺列)。
+SCHEMA_VERSION: int = 4
 
 #: 档案子目录(replay/matches/)
 MATCHES_DIRNAME: str = 'matches'
@@ -200,6 +209,9 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
       帧值是 bot tracking 账面(与决策帧列同认知地位,非画面重读);
       同轮中途的 tracking 翻转噪声按「以最晚帧为准」收敛。
     - ts 并列取流内后见者(同秒多帧 = 执行步进密集,后见者更晚)。
+      「流内序 = 文件序」依赖 decisions.jsonl **单调追加**这一未成文不变量
+      (w943 审计 P3-7 在此显式声明):append-only jsonl 下二者等价;若未来
+      出现段间回写/乱序合并,本函数需改为显式按 (ts, 文件序) 双键排序。
     """
     best: dict[str, Any] | None = None
     for d in dec_rows:
@@ -212,6 +224,26 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
         if best is None or _row_ts(d) >= _row_ts(best):
             best = d
     return best
+
+
+def _terminal_closure(last_frame: dict[str, Any] | None) -> str | None:
+    """终态收口类型(w943 审计 P2-5):末帧动作计划是否含出战。
+
+    - 步进帧的记录时点 = 动作**执行前**的最近观察(prep_director
+      ``_decide_port`` → ``_record_step(acct['last_obs'], …)``)。末帧动作
+      含 StartBattle ⇒ 该帧观察在全部备战动作执行之后(出战决策以定型
+      观察为输入)→ terminal 可信为执行后账面('start_battle');
+      末帧是普通备战动作 ⇒ 轮经强制出战/bail/停机等**异常出口**收口
+      (出战没走 decide 记录)→ terminal 滞后一个动作('mid_prep')。
+    - 判据 = 末帧 actions 的 ``__type__`` 字符串匹配(serialize_action
+      产物);装配端纯读判定,零运行时改动。None = 无末帧(仅结算行轮)。
+    """
+    if last_frame is None:
+        return None
+    for a in last_frame.get('actions') or []:
+        if isinstance(a, dict) and a.get('__type__') == 'StartBattle':
+            return 'start_battle'
+    return 'mid_prep'
 
 
 def _hp_entry(dec_frame: dict[str, Any] | None,
@@ -370,6 +402,9 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'terminal_ts': _row_ts(last_frame) if last_frame else None,
             'terminal_source': ('last_decision_frame' if last_frame
                                 else 'none'),
+            # 收口类型(v4):start_battle=执行后定型帧可信 / mid_prep=
+            # 异常出口,terminal 滞后一个动作须降权(语义见函数注)。
+            'terminal_closure': _terminal_closure(last_frame),
             'outcome': outcome,
             'evidence': _evidence_links(replay_dir, key),
         })
@@ -478,13 +513,36 @@ def archive_path(replay_dir: Path | str, game_id: str) -> Path:
     return matches_dir(replay_dir) / f'match_{game_id}.json'
 
 
-def load_archive(replay_dir: Path | str, game_id: str) -> dict[str, Any] | None:
-    """读单局档案;不存在 → None。"""
-    p = archive_path(replay_dir, game_id)
+def load_archive(replay_dir: Path | str, game_id: str,
+                 *, auto_rebuild: bool = True) -> dict[str, Any] | None:
+    """读单局档案;不存在 → None。
+
+    版本迁移读端(w943 审计 P2-4 返修):档案 ``schema_version`` < 当前
+    SCHEMA_VERSION 时默认**就地重装配一次**(``assemble_game``:从 replay
+    源流重派生加法字段并原子写回)——存量 v2/v3 档案经 ``--match`` 读出
+    不再静默缺 terminal 族键。重装配失败(源 jsonl 已清/游戏分组不存在)
+    → 退回旧档案并 log 警告(消费端显式知道列可能缺,不猜)。
+    ``auto_rebuild=False`` 关闭自动迁移(纯只读审计场景)。
+    """
+    rd = Path(replay_dir)
+    p = archive_path(rd, game_id)
     if not p.exists():
         return None
     with p.open('r', encoding='utf-8') as f:
-        return json.load(f)
+        archive = json.load(f)
+    try:
+        stale = int(archive.get('schema_version') or 0) < SCHEMA_VERSION
+    except (TypeError, ValueError):
+        stale = True
+    if stale and auto_rebuild:
+        rebuilt = assemble_game(rd, game_id)
+        if rebuilt is not None:
+            return rebuilt
+        log.warning(
+            '[cw][archive] 档案 %s schema_version=%s < %s 且源流缺失无法'
+            '重装配——terminal 族键可能缺列,判读按旧 schema 口径',
+            game_id, archive.get('schema_version'), SCHEMA_VERSION)
+    return archive
 
 
 def rebuild_index(replay_dir: Path | str) -> None:
