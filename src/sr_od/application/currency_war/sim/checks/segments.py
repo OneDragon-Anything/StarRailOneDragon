@@ -814,6 +814,74 @@ def seg_check_untrusted_hp_levelup(rows: list[dict]) -> list[dict]:
 
 
 
+def seg_check_p2_bleed_gold_stack(rows: list[dict]) -> list[dict]:
+    """[17] 位面2 延伸:血线下降段金堆积(连续 ≥2 轮报警)。
+
+    出处:2026-08-30 三实机局 P2 线已锁定、hp 连败、带金 86-113 堆积
+    死亡,段级检查只辖 P1 全程零标红(跨局复盘立案A;检查器接线批
+    落地,ADR-0479)。判据与复盘口径一致:「hp 在掉 ∧ 金未泄 ∧ 溢余
+    在手」——
+    - plane≥2 决策轮,决策时点金 > interest_floor+``_OVERFLOW_TOLERANCE``
+      (带宽与 P1 [17] 同源,ADR-0478);
+    - 金较上一轮**未下降**:买入支出被收入盖过 = 溢余在堆积——
+      「有买」不豁免(实机局2 P2 小买 2-3 张不改 86→112 堆积趋势,
+      按「零花费动作」判会漏报);
+    - hp 较上一轮下降:血在掉是本检查的合法性判别器——血线稳定/上行的
+      P2 攒息不辖;formed_stop **不豁免**([13] 成型停手是 P1 过渡段
+      语义,P2 质量期带血攒息正是病理本体);
+    - 连续 ≥2 轮才报:单轮持息是灰区,连续堆积才是病理量级
+      (对偶门 = 防恒触发,sim-testing §6)。
+    只读报警:事件走 defect 通道供判读,不触发任何决策动作。
+    hp 可信位口径(实机接线实测修正):生产行 hp_readable=False = 本帧
+    未读到、字段为 ``last_hp_real`` 沿用值(ADR-0282)——沿用值只在
+    真读时变化,**下降必是真读**,血线下降判据可用;沿用值停滞只可能
+    造成漏报(保守向),不造成误报,故不做可读位硬门(sim 行恒真读
+    零命中;开局无真值的 100 兜底只在 P1 出现,不入 P2 段)。金不可读
+    帧跳过且断 streak(溢余判据直接吃金值,不可信金不猜)。
+    """
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
+    out: list[dict] = []
+    prev_gold: int | None = None
+    prev_hp: int | None = None
+    streak = 0
+    for row in rows:
+        if (row.get('plane') or 1) < 2:
+            prev_gold = prev_hp = None
+            streak = 0
+            continue
+        gold = row.get('gold')
+        hp = row.get('hp')
+        # 金不可读 = 不可信,跳过并断链(溢余判据直接吃金值,不猜);
+        # hp 沿用值口径见 docstring(False = last_hp_real 沿用,下降必真读)
+        if not isinstance(gold, int) or row.get('gold_readable') is False \
+                or not isinstance(hp, int):
+            prev_gold = prev_hp = None
+            streak = 0
+            continue
+        overflow = gold > DEFAULT_REGISTRY.interest_floor() \
+            + _OVERFLOW_TOLERANCE
+        stacking = prev_gold is not None and gold >= prev_gold
+        bleeding = prev_hp is not None and hp < prev_hp
+        if overflow and stacking and bleeding:
+            streak += 1
+            if streak >= 2:
+                out.append({
+                    'plane': 2, 'round_num': row.get('round_num'),
+                    'detail': f'P2 血线下降段金堆积第 {streak} 连轮:'
+                              f' 金 {prev_gold}→{gold} 未泄、hp '
+                              f'{prev_hp}→{hp} 在掉——[17] 溢余该定向花'
+                              '([18] 最小必要支出止损)',
+                    'gold_before': gold, 'prev_gold': prev_gold,
+                    'hp': hp, 'prev_hp': prev_hp, 'streak': streak,
+                })
+        else:
+            streak = 0
+        prev_gold, prev_hp = gold, hp
+    return out
+
+
 #: 段级检查表(名字 → fn(rows)->list[event_dict];与 _BATCH_CHECKS
 #: 平行,输出粒度不同——事件带定位,见本节头注释)。
 _SEGMENT_CHECKS = {
@@ -828,6 +896,7 @@ _SEGMENT_CHECKS = {
     'seg_p1_blood_budget_levelup': seg_check_p1_blood_budget_levelup,
     'seg_p1_blood_budget_refresh': seg_check_p1_blood_budget_refresh,
     'seg_untrusted_hp_levelup': seg_check_untrusted_hp_levelup,
+    'seg_p2_bleed_gold_stack': seg_check_p2_bleed_gold_stack,
     'seg_terminal_release_ledger': seg_terminal_release_ledger,
 }
 

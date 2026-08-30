@@ -184,6 +184,118 @@ def check_summary_write_path_coverage(replay_dir: Path, recent: int = 10) -> lis
 
 
 
+#: 段级生产检查集(生产决策帧合并行可判的段级检查子集):
+# - seg_overflow_idle_spend(P1 [17]):判据只吃 gold/actions/state formed_stop
+#   /engines 代理,生产合并行同构;
+# - seg_p2_bleed_gold_stack(P2 [17] 延伸,ADR-0479):只吃 gold/hp 及其
+#   可读位。
+# 其余段级检查消费 sim 专有键(shop_waves 牌面波/income/spend 分解),
+# 生产决策迹无同构数据源,接入即失明或误报,不在本子集(缺口已声明,
+# 待 shop_snapshots join 通路后再扩)。
+_PRODUCTION_SEGMENT_CHECKS = (
+    'seg_overflow_idle_spend',
+    'seg_p2_bleed_gold_stack',
+)
+
+_SPEND_ACTION_TYPES = ('BuyCard', 'LevelUp', 'RefreshShop')
+
+
+def merge_round_rows(rows: list[dict]) -> list[dict]:
+    """生产决策帧(一帧一行,一轮多帧)→ 轮合并行(ledger 同构形状)。
+
+    段级检查的输入口径 = 一轮一行(sim 账本);生产 decisions.jsonl
+    一轮 5-12 帧(pre-refresh/post-refresh/buy/deploy/equip 各一帧,
+    每帧 gold 是决策时点金)。合并口径:
+    - gold/hp/gold_readable/hp_readable = 本轮**首帧**(决策时点;
+      与段级 ``_seg_gold0``「首波 gold」同口径——末帧 gold 已含本轮
+      花销,拿去判「溢余未泄」会系统性偏小);
+    - actions = 全帧**花费类**动作并集(BuyCard/LevelUp/RefreshShop;
+      生产 wrapper 动作 RunBuyPhase/RunDeploy/StartBattle 等非花费,
+      不入——段级 ``_seg_spent`` 按 __type__ 白名单判,混入无害但
+      并集只留花费类更省);
+    - formed_stop = 全帧或;
+    - state = 首帧 state 派生:board→board_factions(engines 代理的
+      生产同构键;生产 GameState 快照无 board_factions 键)、
+      deployed/bench/level/cap 照抄;
+    - sim.bench_full_skipped_buys = 任一帧 state.bench_full_flag 置 1
+      (bench 满想买买不了的段级豁免面,生产无 sim 计数键,用旗标
+      作保守镜像——旗标在 = 该轮存在满栏语境,宁豁免不误报)。
+    排序按 (plane, round, ts);纯读,不改输入行。
+    """
+    merged: dict[tuple, dict] = {}
+    for d in sorted(rows, key=lambda r: ((r.get('plane') or 0),
+                                         (r.get('round_num') or 0),
+                                         (r.get('ts') or ''))):
+        pl = d.get('plane') or 1
+        rn = d.get('round_num') or 0
+        key = (pl, rn)
+        st = d.get('state') or {}
+        if key not in merged:
+            merged[key] = {
+                'plane': pl, 'round_num': rn,
+                'gold': d.get('gold'),
+                'gold_readable': d.get('gold_readable', True),
+                'hp': d.get('hp'),
+                'hp_readable': d.get('hp_readable', True),
+                'formed_stop': bool(d.get('formed_stop')),
+                'actions': [], 'target_comp': d.get('target_comp') or '',
+                'state': {
+                    'board_factions': dict(st.get('board') or {}),
+                    'deployed': st.get('deployed') or [],
+                    'bench': st.get('bench') or [],
+                    'level': st.get('level'),
+                    'cap': st.get('deploy_cap'),
+                },
+                'sim': {
+                    'node': st.get('node_type') or '',
+                    'bench_full_skipped_buys':
+                        1 if st.get('bench_full_flag') else 0,
+                },
+            }
+        else:
+            m = merged[key]
+            m['formed_stop'] = m['formed_stop'] or bool(d.get('formed_stop'))
+            if d.get('target_comp'):
+                m['target_comp'] = d['target_comp']
+            if st.get('bench_full_flag'):
+                m['sim']['bench_full_skipped_buys'] = 1
+        merged[key]['actions'].extend(
+            a for a in d.get('actions') or []
+            if a.get('__type__') in _SPEND_ACTION_TYPES)
+    return [merged[k] for k in sorted(merged)]
+
+
+def run_production_segment_checks(rows: list[dict]) -> list[str]:
+    """对单局轮合并行跑段级生产子集 → 判读行(⚠ 事件 / ✓ 无违规)。
+
+    只读观测报警:检查器事件走 defect 通道供判读消费,**不触发任何
+    决策动作、不自动停线**(立案A 边界:检查器补覆盖只动 telemetry/
+    sim 检查栈,决策层零触碰)。开销 = 纯 dict 扫描,百帧局毫秒级;
+    挂在判读 CLI(checks)按需跑,对局运行时零开销。
+    """
+    from sr_od.application.currency_war.sim.checks.segments import (
+        run_segment_checks,
+    )
+    merged = merge_round_rows(rows)
+    rep = run_segment_checks([merged], seed_base=0)
+    events: list[tuple[str, dict]] = []
+    for name in _PRODUCTION_SEGMENT_CHECKS:
+        for ev in rep.get(name, {}).get('events', []):
+            events.append((name, ev))
+    rid = rows[0].get('run_id', '?') if rows else '?'
+    if not events:
+        return [f'{rid}: [段级] ✓ 无违规']
+    counts = {n: sum(1 for nm, _ in events if nm == n)
+              for n in _PRODUCTION_SEGMENT_CHECKS}
+    head = f'{rid}: [段级] ⚠ {len(events)} 条(' \
+           + ', '.join(f'{n}={c}' for n, c in counts.items() if c) + ')'
+    lines = [head]
+    for name, ev in events:
+        lines.append(f'    [{name}] p{ev.get("plane")}r{ev.get("round_num")}'
+                     f' {ev.get("detail")}')
+    return lines
+
+
 def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
     """生产遥测接 checks(决策项 1):对最近 N 局跑栈适配的检查集。
 
@@ -230,6 +342,10 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
         _dead = check_strategy_live_streak(all_rows)
         if _dead:
             lines.append(f'{rid}: [策略失活] ⚠ {"; ".join(_dead)}')
+        # 段级检查生产接线(ADR-0479):栈无关([17] 族是口述判据非栈
+        # 语义),任何栈的局都跑;只读报警,见
+        # run_production_segment_checks docstring。
+        lines.extend(run_production_segment_checks(all_rows))
         # 判栈:strategy_id 字段优先,退开局 reason 词表(逐行)
         sid = next((d.get('strategy_id') for d in all_rows
                     if d.get('strategy_id')), '')
