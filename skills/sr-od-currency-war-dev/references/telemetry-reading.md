@@ -98,11 +98,11 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 - **阵容质量 = 三维**(羁绊档位 × 角色构成 × 装备分配)——只看羁绊 = 空壳盲判(羁绊够但核心不在场/装备乱用都看不见;数据在 state.deployed[].star/equips 里,别被视图边界限制)。
 - 改动效果对照:改策略后下一局 `--recent 5` 并列对比(测试绿≠实跑行为对)。
 - **sim 批次同法可查**:sim 局产出与遥测 jsonl 同构(判读 CLI 加 `--sim-batch`,详见 [sim-testing.md](sim-testing.md) §6)——本文全部判读手法对 sim 批次同样成立。
-- 判读定位的策略行为病**必须回灌 sim**(检查项/单帧锁),闭环纪律见 [sim-testing.md](sim-testing.md) §6;需要锁死的确定行为固化成单帧锁,见 [strategy-work.md](strategy-work.md) §4。
+- 判读定位的策略行为病**必须固化 sim**(检查项/单帧锁),闭环纪律见 [sim-testing.md](sim-testing.md) §6;需要锁死的确定行为固化成单帧锁,见 [strategy-work.md](strategy-work.md) §4。
 
 ## 数据侧纪律(先查档,再动手)
 
-- **数据源注释 > 采样凑证**:任何「X 是什么/有没有 Y」的疑问,**先查注册表/常量文件的 docstring 与采集溯源注释**(如 `cw_shop_odds.REFRESH_PROB` 的 docstring 写明「游戏内概率表实机 OCR,无位面维度」),答案已在则直接引用——**不要**先跑采样/派 worker/提「待实机核实」。历次批间互证的同类事故:①真值表早已在档仍派 worker 重采白跑;②本可 docstring 一步出答案的疑问,先跑了两局采样凑证吻合;③机制归因未先查 docstring,压测官自查后自纠。**消费侧对偶**:派单规格里的每个「现状是 Y」断言、压测报告的每个「待核实」建议,同样先过 docstring 这道门。
+- **数据源注释 > 采样凑证**:任何「X 是什么/有没有 Y」的疑问,**先查注册表/常量文件的 docstring 与采集溯源注释**(如 `cw_shop_odds.REFRESH_PROB` 的 docstring 写明「游戏内概率表实机 OCR,无位面维度」),答案已在则直接引用——**不要**先跑采样/派 worker/提「待实机核实」。历次批间互证的同类事故:①真值表早已在档仍派 worker 重采白跑;②本可 docstring 一步出答案的疑问,先跑了两局采样凑证吻合;③机制归因未先查 docstring,sim 测试角色自查后自纠。**消费侧对偶**:派单规格里的每个「现状是 Y」断言、压测报告的每个「待核实」建议,同样先过 docstring 这道门。
 - **数据治理**(发现旧数据是错的——用户定调:能修复就修复,不能修复就删掉,免得误导未来):
   1. 先定界污染窗口(从采集 bug 引入的第一局起,不是发现日);
   2. 判修复/删除——真值可从别的源重算(如 decisions 逐轮行重算终值/日志回填)→ 修复;真值从未被捕获 → 删除;判不了先隔离标注,别在判读里裸奔;

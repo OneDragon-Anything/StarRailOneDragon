@@ -15,7 +15,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 出策略方案 / 策略分歧裁决 / 疑问该问谁 | strategy-work「疑问/分歧的裁决」(三滤网) | strategy-work |
 | 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据+strategy-work §2) | telemetry-reading |
 | 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
-| sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「sim 改动 checklist」(池指纹/回放对拍/变异探针) | sim-testing |
+| sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「找问题三步+边界」(A/B 归 strategy-work §4) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | compo-knowledge(证据三层;先读再动) | compo-knowledge |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | 事件驱动模式 = od-dev-agent-autonomous-mode(公共 skill);CW 叠加细则 → autonomous-loop.md,各域交付按所属域 checklist 验收 | autonomous-loop |
@@ -29,7 +29,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 要什么 | 去哪 |
 |---|---|
 | **策略工作统一说明**(思路/核心骨架/改前必做/验证与单帧锁/疑问三滤网) | [references/strategy-work.md](references/strategy-work.md);改策略前的必读文档面(全目录+阅读顺序)→ `docs/game/currency_war/research/README.md`「策略相关文档」节 |
-| **模拟测试说明**(sim 能信什么/武器库/压测官/分诊与回灌) | [references/sim-testing.md](references/sim-testing.md) |
+| **模拟测试说明**(sim 能信什么/测试手段/sim 测试角色/分诊与固化) | [references/sim-testing.md](references/sim-testing.md) |
 | **测试分层**(L1 快速集 `uv run pytest @sr-od-test/cw_quick.txt` ~3min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/` ~5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 各域 checklist 消费;策略验证阶梯单一源 = strategy-work §4 |
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
 | **单局复盘协议**(局终深度复盘:阅读理解→逐节点玩家对拍→位面三问;实机监控局终派单执行,45min 策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
