@@ -29,6 +29,9 @@
 - 出口:回备战屏(X 点击后验位面详情 id_mark 消失=真转移);采集结果经
   ``ctx.cw_plane_bosses``/``cw_plane_affixes`` 中转(与 ``cw_briefing_*``
   同模式;消费接线批待做,本 op 只负责采集)。
+  失败语义分层(W901):详情条静止读不出 = **该位面**情报不可得(记 None
+  推进下一位面),不整场失败;仅备战侧读不出/详情开不成/动画超宽上限
+  才 op 级失败(留给调用方重试账)。
 
 节点图:两节点,round 语义驱动(同 HandleBriefing 形态):
 - ``采集``(start):入口核对(备战→点节点图标开详情 / 已在详情续采;点
@@ -267,17 +270,23 @@ class CollectPlaneIntel(SrOperation):
                   self._cur_plane + 1, name, good)
         return name
 
-    def _nonclean_read_gate(self, reason: str) -> OperationRoundResult:
-        """非clean帧等待门:节点条读不出时分流两路——
+    def _nonclean_read_gate(self, reason: str,
+                            conclude_plane: bool = False) -> OperationRoundResult:
+        """非clean帧等待门:节点条读不出时分流三路——
 
         ① 帧在变(真动画:位面转换/加载)→ 间隔重读等动画窗,超宽上限
            (:data:`_NODE_BAR_WAIT_CAP_S`)才真失败(原始设计,2026-08-27 过场帧
            实证:动画窗远长于短窗连读);
-        ② 帧静止(连续 :data:`_GATE_STATIC_FAIL_FRAMES` 帧零变化)→ 非动画,
-           读不出是渲染态问题(变暗条/特效遮蔽),等下去不会变 clean →
-           **提前放弃**(2026-08-30 哨兵实证:变暗静态条被当「切卡动画中」
-           硬等 90s,采集从未通过此门;静止帧判定让此类失败从 90s 收敛到
-           ~一个重读间隔)。
+        ② 帧静止(连续 :data:`_GATE_STATIC_FAIL_FRAMES` 帧零变化)且
+           ``conclude_plane=False``(备战入口路径)→ 非动画,读不出是渲染态
+           问题,等下去不会变 clean → **op 级提前放弃**(备战侧读不出 = 连详情
+           都开不了,没有"下一位面"可推进,op 级失败留给调用方重试账;
+           2026-08-30 哨兵实证:变暗静态条被当「切卡动画中」硬等 90s);
+        ③ 帧静止且 ``conclude_plane=True``(位面详情采集循环路径)→
+           **位面级结论**(:meth:`_conclude_plane_unreadable`):静止只证明
+           「这一位面这一帧的情报不可得」,不升格为整场采集失败(W901 治本:
+           局13/16 三现的「2 伪重试烧光 + 整场无情报」根因 = 部分失败被
+           round_fail 升格;同 conclude_plane_boss 徽章态记 None 的语义线)。
 
         clean 判定语义不变(读出即 clean);上限与静止判定都是墙钟/帧序
         计时,与 round retry 账解耦——因此 ``采集`` 节点的 retry 预算须
@@ -300,11 +309,16 @@ class CollectPlaneIntel(SrOperation):
                 self._gate_static_streak = 0
             self._gate_prev_thumb = thumb
             if self._gate_static_streak + 1 >= _GATE_STATIC_FAIL_FRAMES:
+                _static_frames = self._gate_static_streak + 1
                 self._nonclean_wait_start = None
+                self._gate_prev_thumb = None
+                self._gate_static_streak = 0
+                if conclude_plane:
+                    return self._conclude_plane_unreadable(reason)
                 self._best_effort_close_detail()
                 return self.round_fail(
                     f'节点条非clean({reason})但画面已静止'
-                    f'(连续{self._gate_static_streak + 1}帧零变化,非动画;'
+                    f'(连续{_static_frames}帧零变化,非动画;'
                     f'变暗/渲染态读不出)——提前放弃,不等'
                     f'{_NODE_BAR_WAIT_CAP_S:.0f}s')
         if now - self._nonclean_wait_start > _NODE_BAR_WAIT_CAP_S:
@@ -329,6 +343,33 @@ class CollectPlaneIntel(SrOperation):
                 if x is not None:
                     self.ctx.controller.click(x)
                     time.sleep(1.5)
+
+    def _conclude_plane_unreadable(self, reason: str) -> OperationRoundResult:
+        """位面级「情报不可得」结论(详情侧静止非clean的出口,W901 治本)。
+
+        语义:已确在位面详情(调用方守卫)+ 节点条静止读不出(等不会变
+        clean)⇒ 只结论「该位面情报不可得」(记 None,同徽章态语义线),
+        推进下一位面,不整场 round_fail——三现根因 = 部分失败被升格为
+        全场失败,调用方 2 次重试无退避同窗烧光。
+        守卫:若此刻已不在位面详情(详情没开成/被弹回,如半开备战帧),
+        静止结论不成立 → 维持 op 级失败,留给调用方在后续稳定帧重试。
+        """
+        screen = self.screenshot()
+        if not self.round_by_find_area(screen, _PD_SCREEN, '标识-位面详情标题',
+                                       crop_first=False).is_success:
+            self._best_effort_close_detail()
+            return self.round_fail(
+                f'节点条非clean({reason})且画面已静止,且不在位面详情'
+                f'(详情未开成)——放弃采集,待稳定帧重试')
+        plane_no = self._cur_plane + 1
+        self._plane_bosses[self._cur_plane] = None
+        _log.info('[cw-plane-intel] 位面%d 节点条静止不可读(%s;在详情内,等不会变'
+                  'clean)→ 结论=该位面情报不可得(记 None),推进下一位面',
+                  plane_no, reason)
+        self._cur_plane += 1
+        return self.round_wait(
+            f'位面{plane_no} 节点条静止不可读({reason}),结论=情报不可得,'
+            f'推进下一位面')
 
     # ---- 节点图(round 语义驱动,同 HandleBriefing 形态) -----------------
 
@@ -490,7 +531,8 @@ class CollectPlaneIntel(SrOperation):
                                   self._cur_plane + 1, _dv)
         boss_pt = self._boss_node_center(_detail_slots)
         if boss_pt is None:
-            return self._nonclean_read_gate('切卡动画中')
+            # 详情侧(已开详情)→ 静止非clean 走位面级结论,不整场失败(W901)
+            return self._nonclean_read_gate('切卡动画中', conclude_plane=True)
         self._nonclean_wait_start = None   # 读出=clean,重置等待账
         self.ctx.controller.click(boss_pt)
         time.sleep(1.5)
