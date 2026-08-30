@@ -37,7 +37,6 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 from sr_od.application.currency_war.kernel.cw_state import (
     BuyCard,
     GameState,
-    bench_occupied,
 )
 
 #: 合成候选的持有份数权重(设计侧三:排序权重随持有份数 1/2→2/3
@@ -158,8 +157,13 @@ def p29_priority_term(cand, state: GameState, session: StrategySession,
         return 0.0
     if is_emergency(state, registry):
         return 0.0
-    if bench_occupied(state.bench or []) >= registry.bench_capacity - 1:
-        return 0.0   # bench 挤占:临近满栏禁囤([34] 定性先行)
+    from sr_od.application.currency_war.decision.decision_v2.spend_gate import (
+        bench_front_full,
+    )
+    if bench_front_full(state, registry):
+        return 0.0   # bench 挤占:临近满栏禁囤([34] 定性先行;判据单一
+                     # 实现=支出门 D3 同谓词 spend_gate.bench_front_full,
+                     # W829 §3.2 上提,禁第二处)
     from sr_od.application.currency_war.decision.decision_v2.ev import (
         battles_left_plane,
     )

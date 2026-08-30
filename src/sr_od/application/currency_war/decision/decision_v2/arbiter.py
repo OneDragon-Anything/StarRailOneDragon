@@ -501,6 +501,16 @@ def _check_constraint(name: str, cand: Candidate,
                 return RejectReason('deploy_cap', 'slot', 1,
                                     f'上阵满 cap({working.max_units()})')
         return None
+    if name == 'spend_gate':
+        # 支出门·买侧收门(W829 v3;伞默认关=零漂移):D1 真破息/D2
+        # 血线/D3 bench 前瞻,逐笔拒因(d1_interest/d2_blood/d3_bench)。
+        # 链尾位置 = 既有守卫先到先记(§3.2 去重规则);门拒为纪律型
+        # (resource 空,不进回连——门是否决谓词,不造金/槽缺口)。
+        from sr_od.application.currency_war.decision.decision_v2.spend_gate import (
+            spend_gate_verdict,
+        )
+        return spend_gate_verdict(cand, working, state, session, registry,
+                                  auth=auth)
     # (约束名 'p1_iface_gate' 已随五开关定谳清理删除,ADR-0487;
     #  arbiter_matrix 检查按 constraints 清单锁,历史约束名不保留。)
     return None    # 未知约束名:放行(审计表锁名存在)
@@ -926,6 +936,13 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             if cand.tag == 'copy_press':
                 session.v2_round_press_copy = (
                     getattr(session, 'v2_round_press_copy', 0) + 1)
+            # W829 支出门·压库豁免采纳计数(帧内 ≤ N 张;评估只判余量,
+            # 消耗登记在采纳处,ADR-0434 E2 轮内计数同模式)
+            if auth_note.get('sg_press'):
+                from sr_od.application.currency_war.decision.decision_v2.spend_gate import (
+                    register_press_buy,
+                )
+                register_press_buy(state, session)
             # ADR-0328:采纳即登记(r408 同轮簿记在动作采纳处完成——
             # 同趟后续 SELL/BUY 同名候选的守卫立即可见,不再等
             # decide_prep 尾部统一回写)。

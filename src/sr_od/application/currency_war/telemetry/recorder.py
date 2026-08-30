@@ -193,6 +193,10 @@ class TelemetryRecorder:
                 trace.sess_release_budget = _w611_int('v3_release_budget')
                 _rs = getattr(_sess, 'v3_release_reason', None)
                 trace.sess_release_reason = None if _rs is None else str(_rs)
+                # W829 支出门拒因枚举计数(session.v3_sg_block 透传;
+                # 写入端=spend_gate._block,伞关无写点恒 None)
+                _sg = getattr(_sess, 'v3_sg_block', None)
+                trace.sess_spend_gate_block = dict(_sg) if _sg else None
                 # (位面 2 支出授权 sess_p2_auth_intercept/water 写入面已随
                 # 定谳清理删除,ADR-0492;schema 字段按历史数据只读口径保留,
                 # 新数据恒 None。)

@@ -1882,6 +1882,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 同名同位;invest 注入写 session.active_env,cw_replay
                 # 回读消费。空串 = 未注入/无环境——机制性缺省,非缺口)
                 'sess_active_env': str(getattr(sess, 'active_env', '') or ''),
+                # W829 支出门拒因枚举计数(生产 decisions 行
+                # sess_spend_gate_block 同名同位;伞关/零拒因恒 None)
+                'sess_spend_gate_block': (
+                    dict(getattr(sess, 'v3_sg_block', None) or {}) or None),
                 'actions': _acts,
                 'sim': {
                     'node': nodes[rn - 1], 'delta': delta,

@@ -1389,6 +1389,27 @@ class DecisionV2Registry:
     #: w42 26.3%/w43 5.5%)入 §8 武装序判读清单。
     below_floor_spend_gate_enabled: bool = False
 
+    # ===== 支出门·买侧收门(W829 v3 设计落码;伞+两子旗标默认关 =
+    # 生命周期第 1 态零漂移锚)=====
+    #: 设计单一源 = .debug/temp/currency_war/w829_spend_gate_design/
+    #: REPORT.md v3(§1.4 判据/§3 落码规格/§4 辖界切分);机制落点 =
+    #: decision_v2.spend_gate(arbiter 约束链新增一节,拒因枚举
+    #: d1_interest/d2_blood/d3_bench)。
+    #: D1 息线臂 = 真破息(花后 < 息线 ∧ ⌊g/10⌋ 下降)拒,豁免
+    #: E-a 合成完备 / E-b 锁定线缺档成员∧hp>应急线(内联判据,不引
+    #: P29 项)/ E-c 人口位(门不辖升级);D2 血线臂不设旗标(消费
+    #: 既有血线常量单一源,零新参数零新状态源,随伞);D3 位置臂 =
+    #: bench 占用 ≥ 容量−1 拒非合成非当轮可部署,挤占判据单一实现
+    #: (= P29 消费同一函数)。
+    #: 开臂判据挂账(不执行):同目录 PREREG_v4.md(判前锁,三臂
+    #: off / on+gate / gate-only;主门 = 清账门 ∧ 传导格 ∧ 护栏),
+    #: 数据齐即跑,不过走定谳清理(第 4 态删码留 ADR),禁悬置默认关。
+    spend_gate_enabled: bool = False
+    #: D1 息线臂子旗标(G7 归因消融用)
+    spend_gate_interest_enabled: bool = False
+    #: D3 位置臂子旗标(G4 归因消融用)
+    spend_gate_bench_enabled: bool = False
+
     # ===== DirectorV2 备战循环(`w606_stage2_batch3/` 阶段2批③落件;`w620_migration_b1/` 迁移迁移批 1(守卫分区)(守卫分区)升正)=====
     #: `w620_migration_b1/` 迁移迁移批 1(守卫分区)(守卫分区)(蓝图 §7 迁移迁移批 1(守卫分区)(守卫分区) 行):DirectorV2 接线升正,新环 = 唯一生产
     #: 路径——无开关 directive(蓝图 §8),``director_v2_prep_enabled`` 随
@@ -1412,6 +1433,10 @@ class DecisionV2Registry:
                                # 起 boss 禁令臂已删,[32] 节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
         # ('p1_iface_gate' 已随五开关定谳清理删除,ADR-0487)
+        'spend_gate',          # 支出门·买侧收门(W829;伞默认关=零漂移。
+                               # 置于链尾:既有守卫先到先记,守卫已拒的
+                               # 候选门不求值不产生门拒因;d3_bench 只记
+                               # 「未满栏但前瞻挤占」)
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
     #: interest_floor 字段已删(D3 双源清偿,`w628_migration_b2/`):息线单一源 =
@@ -1488,11 +1513,13 @@ class DecisionV2Registry:
             # (资源维, 回合态维) → (约束名...) 或 ('none', 原因)
             # ('catchup' 列已随 `w126_b_arm/`/ADR-0349 追赶态退场改为 'mode' 常态列)
             ('gold', 'boss'): ('gold_floor', 'interest_rule'),
-            ('gold', 'emergency'): ('gold_floor',),
-            ('gold', 'mode'): ('gold_floor', 'interest_rule'),
+            # ('gold', 'boss') / ('bench', 'boss') 格不含 spend_gate:
+            # 门在 boss 窗让位(W774⑤ 同仲裁语义)。
+            ('gold', 'emergency'): ('gold_floor', 'spend_gate'),
+            ('gold', 'mode'): ('gold_floor', 'interest_rule', 'spend_gate'),
             ('bench', 'boss'): ('bench_capacity',),
-            ('bench', 'emergency'): ('bench_capacity',),
-            ('bench', 'mode'): ('bench_capacity',),
+            ('bench', 'emergency'): ('bench_capacity', 'spend_gate'),
+            ('bench', 'mode'): ('bench_capacity', 'spend_gate'),
             # 血预算停手门只辖升级(全回合态生效——emergency 态内同样
             # 拒,设计件 12 §5.3「不是第五种覆盖态」;ADR-0448)
             ('slot', 'boss'): ('blood_budget_stop', 'boss_levelup_ban'),

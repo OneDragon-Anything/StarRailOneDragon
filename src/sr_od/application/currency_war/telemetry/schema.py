@@ -225,6 +225,11 @@ class DecisionTrace:
     # rounds}。
     sess_p2_auth_intercept: str | None = None
     sess_p2_auth_water: dict | None = None
+    # 支出门·买侧收门拒因枚举计数(W829;session.v3_sg_block 透传,
+    # 写入端=spend_gate._block,键=拒因枚举 d1_interest/d2_blood/
+    # d3_bench,值=本备战帧内拒因次数,轮键惰性重置)。None=无 match
+    # 注册(离线/测试);{}=门开但本帧零拒因;伞关恒 None(无写点)。
+    sess_spend_gate_block: dict | None = None
 
 
 
