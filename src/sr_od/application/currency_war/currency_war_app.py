@@ -6,12 +6,16 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import currency_war_const
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.currency_war_run_record import CurrencyWarRunRecord
 from sr_od.application.currency_war.operations.battle_loop import CurrencyWarRunLoop
 from sr_od.application.currency_war.operations.entry.enter_currency_war import (
     EnterCurrencyWar,
+)
+from sr_od.application.currency_war.operations.entry.exit_currency_war_match import (
+    ExitCurrencyWarMatch,
 )
 from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
     StartCurrencyWarMatch,
@@ -52,6 +56,13 @@ class CurrencyWarApp(SrApplication):
     # 不再靠事后补关键词(每漏一个新屏 = enter 链「返回普通大世界」死循环 ~8min)。
     # 关键词保留为 fallback(id_mark 未全中的半开/过渡帧)。
     _CW_PREFIX: ClassVar[str] = '货币战争-'
+
+    # 启动恢复态预检锚(局10/11 实证):上局中途停机后客户端可能停在「战斗暂停/
+    # 关卡信息」面板(进度保留态,含 撤退/重新挑战/继续战斗)。识别用「战斗暂停」
+    # 独有文本锚 —— 同屏的「关卡信息」与 敌人信息浮层 的标识文本撞车(2026-08-30
+    # 离线 analyze 实证:暂停面板帧被精准匹配为 货币战争-敌人信息浮层),不能作判据。
+    PAUSE_SCREEN: ClassVar[str] = '货币战争-战斗暂停'
+    PAUSE_MARK: ClassVar[str] = '标识-战斗暂停'
     _LOBBY_STATE_SCREENS: ClassVar[frozenset[str]] = frozenset({
         '货币战争-大厅', '货币战争-模式选择',
         '货币战争-攻略列表', '货币战争-攻略详情', '货币战争-攻略图例',
@@ -119,9 +130,29 @@ class CurrencyWarApp(SrApplication):
         # ② 关键词 fallback(历史行为保留):真在对局时这些锚点 OCR 干净 4/4 命中。
         return any(self.round_by_ocr(screen, kw, lcs_percent=0.8).is_success for kw in self._IN_MATCH_KEYWORDS)
 
+    def _recover_if_paused(self, screen) -> OperationRoundResult | None:
+        """启动恢复态预检:命中「战斗暂停」面板 → 走退局链回大厅再正常起跑。
+
+        恢复链委托 ExitCurrencyWarMatch(撤退 → 中断挑战弹窗「放弃并结算」→
+        失败结算页「下一步」→ 大厅锚确认;编排者手动实机验证过的范式,op 内
+        r279/r302 实测同链)。该 op 的成功出口唯一 = 大厅锚命中,回大厅确认由
+        它承担;成功后回到调用节点的常规判定继续启动流。未命中返回 None(零
+        额外动作,正常启动只多一次小区域 OCR 查找)。
+        """
+        if not self.round_by_find_area(screen, self.PAUSE_SCREEN, self.PAUSE_MARK).is_success:
+            return None
+        log.info('[cw-app] 启动预检:命中战斗暂停面板(上局残留恢复态)→ 走退局链回大厅')
+        op = ExitCurrencyWarMatch(self.ctx)
+        return self.round_by_op_result(op.execute())
+
     @operation_node(name='进入货币战争大厅', is_start_node=True)
     def _enter_lobby(self) -> OperationRoundResult:
         screen = self.last_screenshot
+        # 预检必须在 _in_match 之前:战斗暂停屏带 货币战争- 前缀,会被 _in_match
+        # 判成「已在对局中」跳过 enter/start 交 loop,而 loop 不识该面板(局10/11 死因)。
+        recover_result = self._recover_if_paused(screen)
+        if recover_result is not None:
+            return recover_result
         if self._at_lobby(screen) or self._in_match(screen):
             return self.round_success('已在 CW(大厅/对局中),跳过 enter')
         op = EnterCurrencyWar(self.ctx)
@@ -131,6 +162,15 @@ class CurrencyWarApp(SrApplication):
     @operation_node(name='开始对局到备战阶段')
     def _start_match(self) -> OperationRoundResult:
         screen = self.last_screenshot
+        # 同 _enter_lobby:面板残留时的防御性预检(_enter_lobby 截图后画面才
+        # 落到暂停面板的边缘情形),未命中零开销。
+        recover_result = self._recover_if_paused(screen)
+        if recover_result is not None:
+            if recover_result.is_success:
+                # 不直落 success 边(下一节点是 loop,而此刻人在大厅)—— round_wait
+                # 重跑本节点,走大厅 → StartCurrencyWarMatch 正常起跑链。
+                return self.round_wait(status='恢复完成已回大厅,重走 start 链')
+            return recover_result
         if self._in_match(screen):
             return self.round_success('已在对局中,跳过 start 交 loop')
         op = StartCurrencyWarMatch(self.ctx)
