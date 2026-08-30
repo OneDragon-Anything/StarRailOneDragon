@@ -189,6 +189,11 @@ class TelemetryRecorder:
                 trace.sess_release_budget = _w611_int('v3_release_budget')
                 _rs = getattr(_sess, 'v3_release_reason', None)
                 trace.sess_release_reason = None if _rs is None else str(_rs)
+                # 位面 2 支出授权·拦断面普查(ADR-0481):枚举透传;
+                # 无写点(default 栈/离线)= None 缺省,schema 不破坏。
+                _pai = getattr(_sess, 'v3_p2_auth_intercept', None)
+                trace.sess_p2_auth_intercept = (
+                    None if _pai is None else str(_pai))
             _led = getattr(_sess, 'xp_expect_ledger', None)
             if _led is not None and is_dataclass(_led):
                 with contextlib.suppress(Exception):

@@ -215,6 +215,12 @@ class DecisionTrace:
     sess_release_budget: int | None = None
     # 义务来源(''/'flip'/'third_path'/'reserve_admission';判读兑现率分域)。
     sess_release_reason: str | None = None
+    # 位面 2 支出授权·拦断面普查(W757 v3 设计 §3.5;ADR-0481):金堆积
+    # 候选帧逐帧拦截原因枚举(session.v3_p2_auth_intercept 透传;取值
+    # ''/t1_locked/t2_form/no_t3/t4_gold/v6_active/authorized/
+    # hoard_invalid;''=开关关或非 P2 无授权语义)。协议 M0 分层归因
+    # 唯一数据源;None=无 decide_prep 写点(离线/测试/default 栈)。
+    sess_p2_auth_intercept: str | None = None
 
 
 

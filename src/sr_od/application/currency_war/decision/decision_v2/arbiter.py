@@ -189,10 +189,12 @@ def _check_constraint(name: str, cand: Candidate,
         cost = _cost_of(cand, working)
         if cost <= 0:
             return None
-        # 位面 2 支出授权(W757 v2 落码;ADR-0480):授权帧内授权目标
-        # 买/定向刷新按层预算带放行金地板(常授权=花完仍≥息线;加急=
-        # 花完≥保留金占位)。授权帧为 None(开关关/条件不合/接管帧/
-        # 末窗/覆盖纪律态)时本臂恒假=零漂移;升级永不在辖(模块内拒)。
+        # 位面 2 支出授权·加急预算放宽(W757 v3.1;ADR-0480/0481):
+        # 授权帧加急层(通道 A 加急/通道 B 止血共档)内授权目标买/定向
+        # 刷新按保留金下限放行金地板([18] 止损机械化)。v3 预算带对齐:
+        # 常授权层恒 False=既有地板逻辑全权裁决(「与既有门同判」,
+        # 不叠加独立地板,G1-A 破息反降的收门面已废除);本臂只做额外
+        # 放行从不拒绝,False 即逐位回落既有裁决=零漂移。升级永不在辖。
         from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (  # noqa: E501
             p2_spend_auth_spend_authorized,
         )
@@ -356,11 +358,12 @@ def _check_constraint(name: str, cand: Candidate,
             if auth is not None:
                 auth['ev_auth'] = round(ev, 1)   # 授权依据 trace(放行)
             return None    # EV 授权放行(含破息)
-        # 位面 2 支出授权(W757 v2 落码;ADR-0480):加急授权层(T3 命中)
-        # 内授权目标买/定向 D 允许破息至保留金下限([18] 止损落点;下限
-        # 即 [22]④ 息差账的机械化,P25 待证标注见 registry 挂账注释)。
-        # 常授权层在此不可达放行:花完仍≥息线的买已被上方 early-return,
-        # 贴线带 [45,息线) EV≤0 维持拒(P25 占位期保守=不买,零漂移)。
+        # 位面 2 支出授权·加急破息豁免(W757 v3.1;ADR-0480/0481):
+        # 加急授权层(T3 命中)内授权目标买/定向 D 允许破息至保留金下限
+        # ([18] 止损落点;[31]②「保血急救」合法用途的机械化,P25 待证
+        # 标注见 registry 挂账注释)。常授权层恒 False:花完仍≥息线的买
+        # 已被上方 early-return,贴线带/破息带 EV≤0 维持既有 EV 裁决
+        # (v2 的授权层自设门槛收门面已废除——「只开门不收门」)。
         from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (  # noqa: E501
             p2_spend_auth_spend_authorized,
         )
@@ -817,13 +820,13 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             # 约束链照常辖,金可行性(g_after≥R*)在 gold_floor 的 o1
             # 地板加深处辖。
             _o1_ok = cand.tag == 'o1_bench_fill'
-            # 位面 2 支出授权·优先级 1 必买(W757 v2 落码;ADR-0480;
-            # [31]② 目标件刷新出现=唯一最高优先级):授权帧内锁定线核心卡
-            # 买候选凭授权越过非正分门(评分零维/低分不再结构性拦住
-            # 「见了核心卡不买」病灶;局3 希儿型弃购的反向锁)。豁免≠
-            # 必采纳:金地板/息账门按授权层预算带辖(p2_spend_auth 门臂),
-            # bench/copies_cap 照常;只辖核心名(优先级 2-4 不凭本豁免,
-            # 各自按既有判据独立过门)。开关关/授权帧 None=恒假零漂移。
+            # 位面 2 支出授权·优先级 1 必买(W757 v3.1;ADR-0480/0481;
+            # [31]② 目标件刷新出现=唯一最高优先级):授权帧(通道 A 或
+            # 通道 B)内锁定线核心卡买候选凭授权越过非正分门(局3 希儿型
+            # 弃购的反向锁)。豁免≠必采纳:v3 预算带对齐后本豁免不做预算
+            # 预判,金地板/息账门按「与既有门同判」辖(加急层的破息放宽
+            # 在门侧授权臂),bench/copies_cap 照常;只辖核心名(优先级
+            # 2-4 不凭本豁免)。开关关/授权帧 None=恒假零漂移。
             _p2_auth_ok = p2_spend_auth_core_must_buy(
                 cand, working, state, session, registry)
             if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok

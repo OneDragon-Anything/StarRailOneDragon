@@ -373,6 +373,15 @@ class DecisionV2Strategy(CwStrategy):
             getattr(_directive, 'reason', '') or '')
         # ADR-0348 ↺:扑满节点识别遥测(识别≠授权;每轮入口采样)
         session.v3_piggy_reward = reward_node_is_battle(state)
+        # 位面 2 支出授权·拦断面普查(W757 v3 设计 §3.5;ADR-0481):
+        # 金堆积候选帧逐帧拦截原因枚举写 session 披露键(telemetry 决策
+        # 迹统一接出;协议 M0 分层归因数据源)。纯观测零决策行为;开关关
+        # 时枚举恒 ''(无授权语义,零漂移)。
+        from sr_od.application.currency_war.decision.decision_v2.p2_spend_auth import (
+            p2_spend_auth_intercept,
+        )
+        session.v3_p2_auth_intercept = p2_spend_auth_intercept(
+            state, session, registry)
         # `w224_handoff/`/ADR-0399:P2 承接快照(纯观测,零行为;设计件 08 §4.2
         # Phase 0)——plane>=2 本位面首帧算一次写 session.v3_handoff
         # (派生量模式,同 v3_phase;session 丢→下轮入口现算,天然免疫)。
