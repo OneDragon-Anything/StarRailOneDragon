@@ -66,6 +66,16 @@ class EnterCurrencyWar(SrOperation):
     def wait_lobby(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
+        # 列车补给每日弹窗(纵深挂点:弹窗可盖在指南页/朝露公馆入口任意一帧上,
+        # 不接住则下方「前往参与」/F 分支全部落空 → 节点预算耗尽)。共享助手见
+        # start_currency_war_match 模块级函数。
+        from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
+            try_handle_train_supply_popup,
+        )
+        popup = try_handle_train_supply_popup(self, screen)
+        if popup is not None:
+            return popup
+
         # 到达大厅:左菜单「创业指南」(大厅独有锚点;lobby screen_info area 判定,替代全屏 ocr)。
         # 不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配。
         if self.round_by_find_area(screen, EnterCurrencyWar.LOBBY_SCREEN, '标识-创业指南').is_success:

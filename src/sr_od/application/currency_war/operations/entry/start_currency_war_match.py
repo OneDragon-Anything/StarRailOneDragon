@@ -3,6 +3,7 @@ import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.base.operation.operation import Operation
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -18,6 +19,34 @@ from sr_od.application.currency_war.operations.handlers.handle_invest_env import
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+
+def try_handle_train_supply_popup(
+        op: Operation, screen) -> OperationRoundResult | None:
+    """列车补给每日弹窗处理(入局链共享助手,app/enter/start 三层挂点)。
+
+    游戏语义(2026-08-31 建档实锤):全屏领取弹窗,「点击领取今日补给」= 点任意处/
+    中央徽章即领取,**无 X 关闭钮**——补贴为免费领取无消耗,领取优先;
+    领取点击未落地时弹窗仍在,round_wait 重跑本分支再点同点位(自愈重试,
+    吃节点自身 retry 预算,不会无限空转)。弹窗盖在**大世界之上**,早于 CW
+    入口首段导航(match2 实锤 2026-08-31:弹窗帧在 app 首节点即被误判,
+    执行流到不了 start op 内层挂点),故挂点前移到 app `_enter_lobby` 首节点;
+    内层 start op 两挂点保留作纵深(识别到弹窗的任何一步都接得住)。
+    离线建档声明:点击落地后的画面回落未实机验证(现场保活禁点击),
+    待下一局实机复核。
+
+    op:Operation 基类(SrOperation/SrApplication 共同祖先,round_by_* 同源)。
+    未命中返回 None(零开销旁路),命中返回 round_wait(等领取动画回落)。
+    """
+    if not op.round_by_find_area(
+            screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '标识-列车补给',
+            crop_first=False).is_success:
+        return None
+    _log.info('[cw-entry] 列车补给每日弹窗 → 领取今日补贴(点中央徽章)')
+    op.round_by_find_and_click_area(
+        screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '按钮-领取补贴',
+        success_wait=2, crop_first=False)
+    return op.round_wait(wait=3)
 
 
 class StartCurrencyWarMatch(SrOperation):
@@ -86,25 +115,8 @@ class StartCurrencyWarMatch(SrOperation):
         return self.round_by_find_area(screen, StartCurrencyWarMatch.PREP_SCREEN, '备战标识-购买经验', crop_first=False).is_success
 
     def _handle_train_supply_popup(self, screen) -> OperationRoundResult | None:
-        """列车补给每日弹窗处理:命中 → 点中央徽章领取 → round_wait 等动画回落。
-
-        游戏语义(2026-08-31 建档实锤):全屏领取弹窗,「点击领取今日补给」= 点任意处/
-        中央徽章即领取,**无 X 关闭钮**——补贴为免费领取无消耗,领取优先;
-        领取点击未落地时弹窗仍在,round_wait 重跑本分支再点同点位(自愈重试,
-        吃节点自身 retry 预算,不会无限空转)。挡在入局链最前面(大世界/大厅
-        之上),故「点开始」「推进到备战阶段」两节点入口都先走本分支。
-        离线建档声明:点击落地后的画面回落未实机验证(现场保活禁点击),
-        待下一局实机复核。
-        """
-        if not self.round_by_find_area(
-                screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '标识-列车补给',
-                crop_first=False).is_success:
-            return None
-        _log.info('[cw-entry] 列车补给每日弹窗 → 领取今日补贴(点中央徽章)')
-        self.round_by_find_and_click_area(
-            screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '按钮-领取补贴',
-            success_wait=2, crop_first=False)
-        return self.round_wait(wait=3)
+        """列车补给每日弹窗处理(本 op 两节点挂点,共享助手见模块级函数)。"""
+        return try_handle_train_supply_popup(self, screen)
 
     @operation_node(name='点开始', is_start_node=True)
     def click_start(self) -> OperationRoundResult:

@@ -68,6 +68,11 @@ class CurrencyWarApp(SrApplication):
         '货币战争-攻略列表', '货币战争-攻略详情', '货币战争-攻略图例',
         '货币战争-攻略码输入弹窗', '货币战争-保存阵容弹窗',
         '货币战争-装备追踪弹窗', '货币战争-阵容编辑',
+        # 列车补给每日弹窗:盖在大世界之上、早于 CW 入口首段导航的**非对局屏**。
+        # 必须显式排除——in_match_screen_names 按 货币战争- 前缀自动收屏(match2
+        # 实锤 2026-08-31:弹窗帧被误判「已在对局中」→ 跳过 enter/start 直交
+        # loop → 未知态钩子 33s 停机)。
+        '货币战争-列车补给弹窗',
     })
 
     @classmethod
@@ -148,6 +153,14 @@ class CurrencyWarApp(SrApplication):
     @operation_node(name='进入货币战争大厅', is_start_node=True)
     def _enter_lobby(self) -> OperationRoundResult:
         screen = self.last_screenshot
+        # 列车补给每日弹窗最先接(match2 实锤 2026-08-31):弹窗盖在大世界上,
+        # 早于一切 CW 导航识别——不接住则 _in_match/enter 链全部识别不到已知态。
+        from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
+            try_handle_train_supply_popup,
+        )
+        popup = try_handle_train_supply_popup(self, screen)
+        if popup is not None:
+            return popup
         # 预检必须在 _in_match 之前:战斗暂停屏带 货币战争- 前缀,会被 _in_match
         # 判成「已在对局中」跳过 enter/start 交 loop,而 loop 不识该面板(局10/11 死因)。
         recover_result = self._recover_if_paused(screen)
