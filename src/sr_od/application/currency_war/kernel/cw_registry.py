@@ -1204,6 +1204,47 @@ class DecisionV2Registry:
     #: 方向供给项系数 β(占位;窗口 W 的 ρ 项权重,β/λ/W 同批标定)。
     realization_direction_beta: float = 0.3
 
+    # ===== P1 档位推进目标函数(W803 实施批)=====
+    #: 伞开关+三子旗标(gate/deadline/r6_budget,仅 A/B 归因必需),
+    #: 生命周期第 1 态:默认关+零漂移锚。设计单一源 =
+    #: .debug/temp/currency_war/w803_tier_push_design/REPORT.md v2;
+    #: **开臂判据挂账 = 同目录 PREREG_tier_push_AB.md v2 主判据 M1-M3
+    #: + 机制判 G0-G5**(n=1000/臂+池指纹+零漂移锚);A/B 数据齐即跑,
+    #: 不过则删码留 ADR(第 4 态),禁悬置默认关。决策 why=ADR-0494。
+    #: 占位参数组(W(r) 形状/V_tier 线分权/报警线/压库豁免上界)不做
+    #: 生产决策,开臂前 sim 标定批消偿(设计 §6/§8 挂账)。
+    p1_tier_push_enabled: bool = False
+    #: 散装板硬门(设计 §3④;r4 起 max_bond_tier<2 帧拒纯散件买入,
+    #: 豁免=缺口前进判据同一 dist 函数/压库 ≤2 费+每帧 ≤2 张)。
+    p1_tier_push_gate_enabled: bool = False
+    #: r7 死线权重 W(r)(设计 §3②;r1-r5 平缓/r6 陡升/r7+ boss 残差
+    #: 坍缩;关=恒 1.0 纯缺口差分,消融归因)。
+    p1_tier_push_deadline_enabled: bool = False
+    #: r6 建档轮预算承诺(设计 §3⑤;EV 门式授权+血线辖域门最小实现)。
+    p1_tier_push_r6_budget_enabled: bool = False
+    #: —— 占位参数组(全部开臂前 sim 扫描标定;出处=设计 REPORT v2
+    #: §3①② 如实占位纪律)——
+    #: W(r) r1-r5 平缓段权重(占位)。
+    tier_push_w_early: float = 0.2
+    #: W(r) r6 陡升段权重(占位;掉血帧 71% 集中 r7+r9 的方向性非自由
+    #: 参数,陡度标定挂账)。
+    tier_push_w_r6: float = 1.0
+    #: W(r) r7+ boss 残差坍缩权重(占位;坍缩到平缓段之下=PREREG v2
+    #: §5 锁 #3 的 r3>r8 序,新增档位只经 r8-r9 购买窗)。
+    tier_push_w_late: float = 0.1
+    #: V_tier 仙舟线锚定值(+19 血当量,P32.2 boss 帧单帧下界;占位)。
+    tier_push_v_anchor: float = 19.0
+    #: V_tier 列车/DOT 线降权系数(占位 0.5;2 人档线增量小,设计 §1.2)。
+    tier_push_v_train_dot_scale: float = 0.5
+    #: V_tier 希儿系最低权系数(占位 0.25;伤害在希儿技能层,设计 §1.2)。
+    tier_push_v_seele_scale: float = 0.25
+    #: 散装门生效起始轮(r4;r1-r3 空窗期豁免,[31]①)。
+    tier_push_gate_min_round: int = 4
+    #: 压库豁免费用档硬上界([34] 费用档判据 ≤2 费)。
+    tier_push_press_cost_max: int = 2
+    #: 压库豁免每帧张数上限(设计 §3④ 收口)。
+    tier_push_press_round_cap: int = 2
+
     # ===== P1→P2 接口机制五开关——定谳清理,删码留档(ADR-0487)=====
     #: 曾以 p1_iface_{lockline_v2,carry_equip,hardnode_prep,lossstreak_
     #: flow,blood_bands}_enabled 五开关 + swing_degrade_n/swing_loss_n/

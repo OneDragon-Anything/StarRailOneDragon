@@ -936,8 +936,18 @@ def score_candidate(cand: Candidate, state: GameState,
         _rc_search = refresh_search_term(state, session, registry)
         if _rc_search:
             val += _rc_search
+        # P1 档位推进·刷新超几何项(W803;缺档成员 Δp_tier·P·W(r),
+        # 沿 W795 侧一机制+金水位辖域门同款;伞关恒 0 零漂移)。
+        # bd['tp_refresh'] 记加项判读。
+        from sr_od.application.currency_war.decision.decision_v2.tier_push import (
+            refresh_term as _tp_refresh_fn,
+        )
+        _tp_refresh = _tp_refresh_fn(state, session, registry)
+        if _tp_refresh:
+            val += _tp_refresh
         return val, {'base': base, 'after': None, 'refresh_ev': val,
-                     'int_emb': 0.0, 'rc_search': _rc_search}
+                     'int_emb': 0.0, 'rc_search': _rc_search,
+                     'tp_refresh': _tp_refresh}
     after_state = apply_for_score(cand, state, session)
     if after_state is None:
         return 0.0, {'base': base, 'after': None, 'int_emb': 0.0}
@@ -1055,6 +1065,18 @@ def score_candidate(cand: Candidate, state: GameState,
     _rc_merge = merge_timing_term(cand, state, session, registry)
     if _rc_merge:
         val += _rc_merge
+    # P1 档位推进目标函数·缺口差分项(W803;伞开关默认关恒 0 零漂移):
+    # 逐帧存量差分 ΔG·W(r)·V_tier,买/升级/部署共用(设计 §3①②;
+    # 决策 why=ADR-0494)。加在 off-lock 降级**之前**:线外候选的本项
+    # 随既有 W802 κ 折扣通道被比例折扣(降级非禁绝,零新增罚分机制
+    # ——off-lock 罚分本体 = W802 单一实现,本项只消费)。bd['tp_gap']
+    # 记加项判读。
+    from sr_od.application.currency_war.decision.decision_v2.tier_push import (
+        candidate_gap_term,
+    )
+    _tp_gap = candidate_gap_term(cand, state, after_state, session, registry)
+    if _tp_gap:
+        val += _tp_gap
     # `w150_buy_lock/`/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
     # forming_bias 等偏置先行计入,本约束最后收口,防
     # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
@@ -1074,6 +1096,8 @@ def score_candidate(cand: Candidate, state: GameState,
             val -= registry.off_lock_buy_penalty
     out_bd = {'base': base, 'after': after, 'int_emb': int_emb,
               'form_gold': round(form_gold, 3)}
+    if _tp_gap:
+        out_bd['tp_gap'] = round(_tp_gap, 4)
     if _rc_p29:
         out_bd['rc_p29'] = round(_rc_p29, 4)
     if _rc_merge:

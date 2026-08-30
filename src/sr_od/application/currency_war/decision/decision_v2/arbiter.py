@@ -191,6 +191,17 @@ def _check_constraint(name: str, cand: Candidate,
         # (P1→P2 接口机制·③遭遇备战/④连败金流授权臂已随五开关定谳清理
         # 删除,ADR-0487:W793 A/B 触发面全开火仍主判据双败,确认无效。)
         floor = _active_floor(state, session, registry)
+        # P1 档位推进·r6 建档轮预算承诺授权(W803;伞+r6 子旗标默认关
+        # =零漂移;设计 §3⑤,决策 why=ADR-0494):EV 门式放行建档支出
+        # 击穿地板——V 含缺口差分项(与买侧 V 同单一源),血线恶化段
+        #(hp<报警线)授权否决(最小实现,消费存活 state.hp+hp 可信位
+        # 单一守卫)。授权依据 trace auth['tier_push_r6'] 进执行 log。
+        from sr_od.application.currency_war.decision.decision_v2.tier_push import (
+            r6_budget_authorized as _tp_r6_auth,
+        )
+        if _tp_r6_auth(cand, working, state, session, registry,
+                       val=val, bd=bd, auth=auth):
+            return None
         if cand.tag == 'o1_bench_fill':
             # W611 O1 备战空位填补(ADR-0463):逐笔花后金 ≥R*——只花
             # 溢余段,不吃排程升级储蓄(DESIGN §1.2 量上限的逐笔口径;

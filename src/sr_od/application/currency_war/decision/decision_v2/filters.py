@@ -429,4 +429,29 @@ def filter_candidates(cands: list[Candidate], state: GameState,
                 else:
                     still.append(c2)
             kept = still
+    if kept:
+        # 散装板硬门(W803;伞+门子旗标默认关=零漂移;设计 §3④,决策
+        # why=ADR-0494):r4 起 max_bond_tier(deployed)<2 帧拒「对任何
+        # 意向线缺口零增量」的纯散件买入。判定序:过滤链上游(成型停
+        # 手/C1/配方围栏)先判,本门最后——豁免不穿透 bench 挤占门
+        # (needs_slot 候选不获压库豁免;bench_capacity 约束照常辖);
+        # 豁免判据与缺口差分同一 dist 函数(单一源)。删因链日志行
+        # entry['tier_push_gate']。
+        from sr_od.application.currency_war.decision.decision_v2.tier_push import (
+            gate_active as _tp_gate_active,
+        )
+        if _tp_gate_active(state, session, registry):
+            from sr_od.application.currency_war.decision.decision_v2.tier_push import (
+                gate_verdict as _tp_gate_verdict,
+            )
+            still = []
+            for i, c2 in enumerate(kept):
+                ok2, why = _tp_gate_verdict(c2, state, session, registry)
+                if not ok2:
+                    entry = log[kept_pos[i]]
+                    entry['kept'] = False
+                    entry['tier_push_gate'] = why
+                else:
+                    still.append(c2)
+            kept = still
     return kept, log
