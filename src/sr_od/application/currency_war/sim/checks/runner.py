@@ -42,6 +42,7 @@ from sr_od.application.currency_war.sim.checks.ledger import (
     check_levelup_flat4_ledger_lock,
     check_levelup_interest_engine_gate,
     check_no_same_round_buy_sell,
+    check_observation_keys_live,
     check_oscillation_xp_cap,
     check_overflow_gold_zero_buy_streak,
     check_phantom_equip_no_wear,
@@ -101,6 +102,9 @@ _BATCH_CHECKS = {
     'overflow_gold_zero_buy_streak': check_overflow_gold_zero_buy_streak,
     # 观测态补齐哨兵(观测态补齐批):P1 带符号 streak 传播断线=死输入
     'streak_propagation_live': check_streak_propagation_live,
+    # 观测硬依赖键面哨兵(W793 后继批):bench_full_flag/board_next_tier/
+    # alloc_frame 三键写端断线=判读死输入(锁#10/#11 与 Δp_tier 标定)
+    'observation_keys_live': check_observation_keys_live,
     'buys_at_full_bench': check_buys_at_full_bench,
     'oscillation_xp_cap': check_oscillation_xp_cap,
     'levelup_flat4_lock': check_levelup_flat4_ledger_lock,

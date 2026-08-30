@@ -22,6 +22,7 @@ from sr_od.application.currency_war.data.cw_battle_tables import (
     P2CombatCalib,
 )
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 
 # 血预算停手·终止分支账本决策位(设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469)——
@@ -130,6 +131,24 @@ if TYPE_CHECKING:
     # P2ReplayEntry 仅作注解引用(future annotations 下运行期零依赖);
     # 模块级反向 import 会与 engine_p2→engine_p1 构成环,故挂 TYPE_CHECKING。
     from sr_od.application.currency_war.sim.engine_p2 import P2ReplayEntry
+
+
+def _board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
+    """板面各阵营「下档阈值」观测键(生产 ``GameState.board_next_tier``
+    的 sim 同构面;语义 = 左面板 "X/Y" 的 Y)。
+
+    判据单一源 = ``FACTIONS[].tiers``:取 >当前人数 的最小档,无更高档
+    不计入(与 obs/cw_observation computed 支同一式,禁第二份推导)。
+    消费方 = Δp_tier 档位分解标定批(registry.realization_delta_p_tier
+    的标定前置依赖;W802 边界声明:标定批前置,不阻塞开臂)。
+    """
+    out: dict[str, int] = {}
+    for _f, _c in board_factions.items():
+        _tiers = FACTIONS[_f].tiers if _f in FACTIONS else ()
+        _nt = next((t for t in _tiers if t > _c), 0)
+        if _nt:
+            out[_f] = _nt
+    return out
 
 START_BENCH_COUNT: int = 4
 
@@ -541,6 +560,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 决策层注册表用 sim 视图(level_max=LEVEL_CAP,见 sim_decision_
     # registry):满级帧决策层不再发起升级,执行层拒付层保留作防线。
     strat = strategy or DecisionV2Strategy(registry=sim_decision_registry())
+    # 观测键评估用的注册表(降格触发面等纯谓词;注入桩策略无 registry
+    # 属性时回退 sim 视图——与默认策略同源,不依赖被测对象形状)
+    _obs_registry = (getattr(strat, 'registry', None)
+                     or sim_decision_registry())
     if _p2_entry is not None:
         # `w193_p2sim/`/ADR-0377 案 b 臂:P1 段与开局 bench 采样跳过,直接从
         # 真值进场态起跑(rng 不耗 nodes/bench 采样——进场态是外生
@@ -785,6 +808,38 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 不进 streak,OR 只会多豁免「全轮零买且曾成型」的轮=停手线
             # 语义正确辖域)
             _round_formed_stop = False
+            # ===== 观测硬依赖键·决策入口快照(W793 后继批;取**决策时点**
+            # 值而非轮末——席满/下档判读须与腾席/刷新动作同帧对齐,生产
+            # decisions 行同口径)**=====
+            # - bench_full_flag:满栏旗标(消费 = 锁#10 D1 弱序量产对账,
+            #   PREREG 兑现链 v3 判读;生产读端 merge_round_rows 按
+            #   state.bench_full_flag 消费,sim 侧自此有真值源——W797
+            #   不可测项「恒 null」的 sim 收口)。轮内 OR 聚合(生产
+            #   merge 同式:「任一决策帧满栏」;bench 在轮内买入段才
+            #   填满,轮入口快照会系统性漏亮)。sim 满观测无 OCR 缺读,
+            #   恒 bool(生产 bool|None 的 None 态在 sim 不存在)。
+            _round_bench_full = False
+            # - board_next_tier:各阵营下档阈值(消费 = Δp_tier 档位分解
+            #   标定批,registry.realization_delta_p_tier 标定前置)。
+            _round_board_next_tier = _board_next_tier_of(
+                _board_factions_of(st.deployed))
+            # - ADR-0474 分配器遥测键(消费 = 锁#11 D2 接管可观测性):
+            #   alloc_frame = 本轮最后一段 decide_prep 的分配器帧位
+            #   (session.v3_alloc_frame 每段覆写,末值 = 轮终帧披露;
+            #   此前该帧位无任何落盘消费面);alloc_active_any = 轮内
+            #   任一段接管过(OR 聚合,与 formed_stop 同式)。
+            _round_alloc_frame = None
+            _round_alloc_active_any = False
+            # - p1_downgrade_active:末窗支出降格触发面(discipline.
+            #   p1_directed_downgrade_active;session=None 裸评估=遥测
+            #   观测面用法,不置位面内闩——禁观测改变决策状态)。
+            #   消费 = W797 不可测项 A5(停付/降格机制零触发样本)的
+            #   sim 触发面对账源。
+            from sr_od.application.currency_war.decision.decision_v2.discipline import (
+                p1_directed_downgrade_active,
+            )
+            _round_p1_downgrade = p1_directed_downgrade_active(
+                st, _obs_registry)
             # `w227_handoff_gate/`/ADR-0400:P1 末窗承接门缺口观测(轮入口首段快照;
             # formed_stop 承接维/EV 缺口项的判读数据面)
             _round_handoff_gap = 0
@@ -832,10 +887,21 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 本体在轮末升级后执行(见下方「②部署」),目标集也在彼处
             # 从 session 现读(生产语义:买后 update_target 已刷新)。
             for _seg in range(8):
+                # 满栏旗标逐决策段 OR(生产「任一帧置 1」同式;取段入口
+                # 值=该段 decide_prep 的决策语境)
+                _round_bench_full = _round_bench_full or (
+                    bench_occupied(st.bench) >= BENCH_CAPACITY)
                 strat.update_target(st, sess, config)
                 acts = strat.decide_prep(st, sess, config)
                 _round_formed_stop = _round_formed_stop or bool(
                     getattr(sess, 'v3_formed_stop', False))
+                # ADR-0474 分配器帧位轮内采集(每段 decide_prep 覆写
+                # session.v3_alloc_frame,这里逐段留末值 + OR 聚合)
+                _af = getattr(sess, 'v3_alloc_frame', None)
+                if _af is not None:
+                    _round_alloc_frame = _af
+                    _round_alloc_active_any = (_round_alloc_active_any
+                                               or bool(_af.get('active')))
                 if not _phase_snap:
                     _phase_snap = True   # 轮入口首段快照(迁移审计 w114(git 历史) 影子)
                     _round_phase = str(getattr(sess, 'v3_phase', '') or '')
@@ -1797,7 +1863,25 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                           # live 与 replay 对拍的观测面)
                           'streak': st.streak,
                           'hp_readable': bool(st.hp_readable),
-                          'hp_trusted': bool(st.hp_trusted)},
+                          'hp_trusted': bool(st.hp_trusted),
+                          # 观测硬依赖键(决策入口快照,语义见轮入口块
+                          # 注释):bench_full_flag 消费 = 锁#10 D1 对账;
+                          # board_next_tier 消费 = Δp_tier 档位分解标定。
+                          'bench_full_flag': _round_bench_full,
+                          'board_next_tier': dict(_round_board_next_tier),
+                          # 末窗支出降格触发面(语义见轮入口块注释;真值
+                          # 恒披露——生产 OCR trace 267 帧恒 false 的
+                          # sim 对账源)
+                          'p1_downgrade_active': bool(_round_p1_downgrade),
+                          # 轮岗概率条(本备战期真值;未掷中=None 退基线
+                          # 表。生产 OCR 覆盖 21% 的 sim 全量对账源)
+                          'refresh_probs': (
+                              dict(st.refresh_probs)
+                              if st.refresh_probs else None)},
+                # 投资环境名(生产 decisions 行 _extra.sess_active_env
+                # 同名同位;invest 注入写 session.active_env,cw_replay
+                # 回读消费。空串 = 未注入/无环境——机制性缺省,非缺口)
+                'sess_active_env': str(getattr(sess, 'active_env', '') or ''),
                 'actions': _acts,
                 'sim': {
                     'node': nodes[rn - 1], 'delta': delta,
@@ -1895,6 +1979,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 上阵代理(G2):配方件躺 bench 数 / 上阵战力贡献
                     'bench_recipe_pieces': _bench_recipe,
                     'deployed_power': _dep_power,
+                    # ADR-0474 分配器遥测键(消费 = 锁#11 D2 接管可观测
+                    # 性/D2 开臂验收;W797 不可测项「分配器是否接管不可
+                    # 观测,只能金账反推」的收口):frame = 轮终帧分配器
+                    # 帧位披露(active/domain/reason/proposals/chosen/
+                    # alloc_gold;strategy.decide_prep 每帧写
+                    # session.v3_alloc_frame);None = 本轮无决策段。
+                    'alloc_frame': _round_alloc_frame,
+                    'alloc_active_any': _round_alloc_active_any,
                 },
             })
             if st.hp <= 0:

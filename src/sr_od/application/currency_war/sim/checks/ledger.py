@@ -203,7 +203,8 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
 
     **判据(重定义后)**:违规 = lv≥5(追级段)的 LevelUp 发生在时点金
     (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp,
-    static_ev, p2_auth_xp}**。授权依据 = sim 账本 LevelUp 行的 ``auth`` 键
+    static_ev}**('p2_auth_xp' 臂已随位面 2 支出授权定谳清理删除,
+    ADR-0489:W785 sink 分解 XP 0 帧/0 金)。授权依据 = sim 账本 LevelUp 行的 ``auth`` 键
     (LevelUp.auth_basis 观测字段,arbiter 升级门/remediation 补偿臂放行
     时写入,单一源=``ev.levelup_ev_basis``)。
 
@@ -238,8 +239,7 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
                 continue
             basis = a.get('auth', '')
             if prev_level >= 5 and gold0 is not None and gold0 < 50 \
-                    and basis not in ('pop_slot', 'dp', 'static_ev',
-                                      'p2_auth_xp'):
+                    and basis not in ('pop_slot', 'dp', 'static_ev'):
                 out.append(
                     f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"
@@ -445,6 +445,68 @@ def check_streak_propagation_live(rows: list[dict]) -> list[str]:
                        '(带符号 streak 传播断线)')
     return out
 
+
+
+def check_observation_keys_live(rows: list[dict]) -> list[str]:
+    """sim_observation_keys_live(观测硬依赖键面哨兵;W793 后继批)。
+
+    判据(结构锁,非行为锁):P1 段每行账本必须带三个观测硬依赖键,
+    且形状合法——
+    - ``state.bench_full_flag``:bool(满栏旗标;消费 = 锁#10 D1 弱序
+      量产对账;缺键/None = 写端断线,生产 merge_round_rows 读端会
+      静默退 0);
+    - ``state.board_next_tier``:dict[str, int](Δp_tier 档位分解标定
+      前置键;值域 2-12 = FACTIONS tier 阈值域);
+    - ``sim.alloc_frame``:None 或含 active/domain 的 dict,active=True
+      时 domain ∈ {stop_window, death}(ADR-0474 分配器帧位;消费 =
+      锁#11 D2 接管可观测性);
+    - ``sim.alloc_active_any``:bool,且为真时 alloc_frame 必非 None
+      (自洽:OR 聚合源就是帧位)。
+    变异证据:键缺失/形状错在旧账本 100% 命中(旧行无这些键)——
+    去掉 engine 写端即复现,非空转。
+    """
+    out: list[str] = []
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        rn = row.get('round_num')
+        st = row.get('state') or {}
+        sm = row.get('sim') or {}
+        bff = st.get('bench_full_flag', None)
+        if not isinstance(bff, bool):
+            out.append(f'r{rn} state.bench_full_flag 非布尔'
+                       f'({bff!r}——满栏旗标写端断线)')
+        bnt = st.get('board_next_tier', None)
+        if not isinstance(bnt, dict) or not all(
+                isinstance(k, str) and isinstance(v, int)
+                and 2 <= v <= 12 for k, v in bnt.items()):
+            out.append(f'r{rn} state.board_next_tier 形状非法'
+                       f'({bnt!r}——下档阈值键写端断线)')
+        af = sm.get('alloc_frame', None)
+        if af is not None:
+            if not isinstance(af, dict) or 'active' not in af:
+                out.append(f'r{rn} sim.alloc_frame 形状非法({af!r})')
+            elif af.get('active') and af.get('domain') not in (
+                    'stop_window', 'death'):
+                out.append(f'r{rn} sim.alloc_frame.domain 非法'
+                           f'({af.get("domain")!r})')
+        aaa = sm.get('alloc_active_any', None)
+        if not isinstance(aaa, bool):
+            out.append(f'r{rn} sim.alloc_active_any 非布尔({aaa!r})')
+        elif aaa and af is None:
+            out.append(f'r{rn} alloc_active_any=True 但 alloc_frame 缺'
+                       '(自洽破:OR 源即帧位)')
+        dga = st.get('p1_downgrade_active', None)
+        if not isinstance(dga, bool):
+            out.append(f'r{rn} state.p1_downgrade_active 非布尔'
+                       f'({dga!r}——降格触发面写端断线)')
+        rp = st.get('refresh_probs', 'MISSING')
+        if rp == 'MISSING':
+            out.append(f'r{rn} state.refresh_probs 缺键(轮岗概率条'
+                       '披露断线)')
+        elif rp is not None and not isinstance(rp, dict):
+            out.append(f'r{rn} state.refresh_probs 形状非法({rp!r})')
+    return out
 
 
 def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
