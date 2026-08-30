@@ -6,9 +6,10 @@
 ## Context(背景)
 
 W907 sim 找问题批(`.debug/temp/currency_war/w907_sim_hunt/REPORT.md`)实证:危机局
-(907288:r3 起 hp 82→1,此后 6 轮 hp 1-5 徘徊、金 27→180 单调上涨)中
-`reserve_overflow` 逐轮爬升(31/49/80/79/103)而 `release_budget` 恒 0;
-death 域 `alloc_frame` 每轮 active、budget>0、proposal>0 但 `chosen=[]`、
+(907288:r3 起 hp 82→1,此后 6 轮 hp 1-5 徘徊、金 27→180 单调上涨)中,两局
+四个危机帧(907288 r5/r7 + 907106 r7/r8)`reserve_overflow` = 31/80/10/103
+且全部 `release_budget`=0;同局 death 域 `alloc_frame` 的 budget 31→49→80→79
+每轮>0 但 `chosen=[]`、
 `alloc_gold` 全 0——金在死亡门口持续增值、零兑换,存息 posture 不降级。
 
 根因定位(表达式级证据见本批 REPORT §1,单一源
@@ -51,16 +52,26 @@ death 域 `alloc_frame` 每轮 active、budget>0、proposal>0 但 `chosen=[]`、
 显式设计而非笔误,本修法是在其上开例外臂=行为语义变更,须 A/B 裁决(§5)。
 「修缺陷」的成分只有一半:让位前提被 W907 证伪说明设计**过时**,不构成免验理由。
 
-**死亡域分配器不动**:V>0 出清是 P23.4R/ADR-0493 的既定定价设计(模型只按板面
-战力定价,搜索本就不在其辖),候选②随本臂在管线层闭合——release 激活后管线先走,
-分配器只接管「管线没花出去」的帧(allocator_run 单跑道结构)。alloc chosen 残留面
-随 A/B 复测观测。
+## 后果
+
+- **开关关零漂移**:`crisis_release_enabled=False` 时行为与改动前逐位一致
+  (辖域谓词前置短路,零新增数值面)。
+- **死亡域分配器不动**:V>0 出清是 P23.4R/ADR-0493 的既定定价设计(模型只按
+  板面战力定价,搜索本就不在其辖),候选②随本臂在管线层闭合——release 激活后
+  管线先走,分配器只接管「管线没花出去」的帧(allocator_run 单跑道结构)。
+- alloc chosen 残留面随 §验证 的 sim A/B 复测观测。
+- posture 降级复用既有 `evaluate_release → wrap_posture` 路径(tag='release'),
+  未新增姿态状态机;flip 臂辖区结构不变(ADR-0426 辖区不相交维持)。
 
 ## 边界声明
 
-- **hp 可信位**:危机臂消费 `is_emergency`→`state.hp`。实机 100 兜底帧
-  (hp_readable/hp_trusted 皆 False)非应急→臂死(fail-closed,与全部既有应急带
-  消费点同口径);ADR-0428 对 FLIP 末窗投影臂的可信位放宽不随本臂。
+- **hp 可信位**:危机臂消费 `is_emergency`→`state.hp`。实机无真值帧
+  (ADR-0495 后 hp 为 None;旧 100 兜底帧同属无真值形态)非应急→臂死
+  (fail-closed,由 `is_emergency` 的 `hp is not None` 守卫承载,与全部既有
+  应急带消费点同口径)。该口径不覆盖「双 False 但残留 ≤25 假值」的幽灵帧
+  形态(ADR-0457 记载)——`is_emergency` 不查可信位,此类帧与本臂及既有
+  应急带消费点行为一致,不因本臂外溢。ADR-0428 对 FLIP 末窗投影臂的可信位
+  放宽不随本臂。
 - **候选③(核=0 FORM 空转窗口)本批不裁**,按 W907 建议留观测。
 
 ## Considered Options
