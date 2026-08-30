@@ -89,11 +89,13 @@ async def _serve(host: str, port: int) -> None:
         host: 监听地址。
         port: 监听端口。
     """
+    # 日志分流必须在 SrContext() 之前:上下文构造期间(地图数据/实例配置加载)
+    # 就会打框架日志,分流未做时这些行走默认双写 —— console→main_server.log
+    # (stdout 兜底日志混入框架日志,进程身份失真)与共享 log.txt(与 GUI 跨进程
+    # 竞态窗口)。实证:main_server.log 各次重启头部都有一段框架日志泄漏。
+    _configure_server_logging()
     ctx = SrContext()
     backend = SrBackendContext(ctx)
-    # 日志分流必须最先做:后续所有 log.* 的落点由它决定
-    # (切到 mcp_server.log + 关 console;见 _configure_server_logging 注释)。
-    _configure_server_logging()
     # 构建指纹守卫(W596/W593 方案①):启动首行记本进程运行的代码构建
     # (git 短 hash+脏标记;另落盘 .debug/sr_od_mcp/build_fingerprint.txt)。
     # 「改代码必须重启 server 才生效」——旧进程在飞时磁盘代码与行为错位,
