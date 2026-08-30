@@ -21,9 +21,12 @@ REPORT.md`` §8 六条——本模块逐条落点见各符号 docstring 的 §8-
 - **O 目标函数**(分域出清算子,§4-P5):
       V(π) = m_eff(π) × Δp_eff(π) − 机会成本项
   停手窗域机会成本 = c + I(W690 账,I=破息损,ev.interest_cost 单一源);
-  死亡域机会成本 = S0 × (c + I)(W706 §8-5 存活加权成本——参数集内
-  替换,S0=terminal_survival_upper_bound 既有单一源;必然死亡极限下
-  S0≈0 退化为 P23.3 第二账式 V = m_eff × Δp_eff > 0 ⟺ Δp_eff > 0)。
+  死亡域机会成本 = c + I(面值;ADR-0493 重标定——原 P23.4(ii) 的
+  S0×(c+I) 折价前提「金必死」被 W810 死亡域审查反事实实测证伪:
+  死亡域帧携金进 P2 三局 3/3 到达可支出语境、1 局转 +2 轮存活,
+  金的真实边际价值=带金存活增益,不支持任何折扣系数 → S0 加权
+  退役,金按面值计;S0 本体仍辖 discipline.terminal_release 谓词,
+  不在本层改动)。
   出清:V ≤ 0 的提案出局。
 - **D 辖域**(稳态断言,§0 核实降级):辖域谓词(former_stop ∨
   terminal_release)**现值直用,无迟滞**——W703 攻击 4 的振荡前提已被
@@ -71,8 +74,9 @@ ALLOCATOR_ENABLED: bool = True
 
 #: W690 参数集版本(承 P23.2 复判条款/W690 §4-4:参数集版本变更必须
 #: 伴随 Δp 标定来源登记——``ALLOC_PARAM_SET.recheck`` 字段;版本化
-#: 复判的机制化载体,复判登记锁消费)。
-ALLOC_PARAM_SET_VERSION: str = 'P23.2'
+#: 复判的机制化载体,复判登记锁消费)。ADR-0493 死亡域机会成本
+#: 重标定随版本升 P23.4R。
+ALLOC_PARAM_SET_VERSION: str = 'P23.4R'
 
 
 @dataclass(frozen=True)
@@ -95,14 +99,18 @@ class AllocParamSet:
     recheck: str
 
 
-#: 唯一实例(模块级单例;P23.2 定谳参数集)。
+#: 唯一实例(模块级单例;P23.4R = ADR-0493 死亡域机会成本重标定批)。
 ALLOC_PARAM_SET = AllocParamSet(
     version=ALLOC_PARAM_SET_VERSION,
     delta_p_band=(0.03, 0.117),
     ev_band=(-97.0, 19.0),
     recheck=('Δp 单人口边际实采(sim 放开 LEVEL_CAP 臂同池 A/B 反推)返回 '
-             '≥0.35 时 P23.2 重开;标定来源=proofs/p23 符号表(W690 §3);'
-             '弱标定带不固化,复判=参数集版本变更+来源登记'),
+             '≥0.35 时 P23.2 重开;死亡域机会成本折价系数标定来源='
+             'W810 死亡域审查反事实三局对拍(携金进 P2 三局 3/3 到达可'
+             '支出语境、1 局转 +2 轮存活/出口 hp +4,「金必死」前提实测'
+             '证伪 → 现按面值计,系数=1;实测出「带金存活增益<面值」的'
+             '分布证据时可重开下调);标定来源=proofs/p23 符号表(W690 '
+             '§3);弱标定带不固化,复判=参数集版本变更+来源登记'),
 )
 
 
@@ -261,6 +269,23 @@ def _apply_with_pipeline(state: GameState, actions: tuple[Action, ...],
         s = simulate(s, a)
     _deploy_pipeline(s, session)
     return s
+
+
+def _w_only_rejected(state: GameState, after: GameState,
+                     registry: DecisionV2Registry,
+                     domain: AllocDomain) -> bool:
+    """死亡域 w-only 提案拒供(ADR-0493;W810 死亡域审查缺陷②):
+
+    win_eq 饱和面(成型档钳制表顶,`_win_eq` 的 e=min(2,…) 档)上任意
+    动作 dwin≡0,Δp_eff 退化为纯 w——w(连胜金表相邻档差)与「该渠道
+    是否直接出战力」无关,纯 w 支撑的正 V 是「金免费」伪影(W810
+    反事实:该形态三局 0 正 EV、1 局负 EV)。故死亡域出清要求非刷新
+    提案的板面分量 dwin>0 才供给(与 [33] 人口位「当轮战力兑现」
+    语义对齐:模型测不出兑现=不供给);停手窗域不适用——其真实机会
+    成本 c+I 已天然门控纯 w 提案,且 W810 证据面仅覆盖死亡域。"""
+    if domain is not AllocDomain.DEATH:
+        return False
+    return _win_eq(after, registry) - _win_eq(state, registry) <= 0.0
 
 
 def _dpeff_from_states(state: GameState, after: GameState,
@@ -437,6 +462,8 @@ def _supply_impl(state: GameState, session: StrategySession,
             if not _salvage_ok(c, state, registry, session):
                 continue   # 已知不完备面(§4-P4 声明,不假装供给)
             after = _apply_with_pipeline(state, (a,), session)
+            if _w_only_rejected(state, after, registry, domain):
+                continue   # 死亡域 w-only 拒供(ADR-0493)
             props.append(AllocProposal(
                 kind='buy', dpeff=_dpeff_from_states(state, after,
                                                      registry, w, l_c),
@@ -472,11 +499,13 @@ def _supply_impl(state: GameState, session: StrategySession,
                       >= state.max_units())
         if _lu_basis and has_waiter:
             after = _apply_with_pipeline(state, (lu_cand.action,), session)
-            props.append(AllocProposal(
-                kind='levelup', dpeff=_dpeff_from_states(
-                    state, after, registry, w, l_c),
-                m_eff=m_eff, cost=_lu_cost,
-                actions=(lu_cand.action,), name='levelup', bench_slots=0))
+            if not _w_only_rejected(state, after, registry, domain):
+                props.append(AllocProposal(
+                    kind='levelup', dpeff=_dpeff_from_states(
+                        state, after, registry, w, l_c),
+                    m_eff=m_eff, cost=_lu_cost,
+                    actions=(lu_cand.action,), name='levelup',
+                    bench_slots=0))
         # Π_comp:店内目标件 × 升级的前置边闭合(生成期合并,§2.1;
         # 复合含升级,同受白名单门辖)
         if _lu_basis and not has_waiter and _deploy_free(state) < 1 \
@@ -492,6 +521,8 @@ def _supply_impl(state: GameState, session: StrategySession,
                     continue
                 after = _apply_with_pipeline(
                     state, (a, lu_cand.action), session)
+                if _w_only_rejected(state, after, registry, domain):
+                    continue   # 死亡域 w-only 拒供(ADR-0493)
                 props.append(AllocProposal(
                     kind='comp', dpeff=_dpeff_from_states(
                         state, after, registry, w, l_c),
@@ -506,36 +537,53 @@ def _supply_impl(state: GameState, session: StrategySession,
 def _deploy_free_battles(state: GameState, session: StrategySession,
                          registry: DecisionV2Registry) -> float:
     """死亡域截断上限的既名直读(ev.battles_left_plane;P23.3
-    m_eff = min(兑现长, battles_left_plane))。"""
+    m_eff = min(兑现长, battles_left_plane))。
+
+    表缺失保守下界(ADR-0493;W810 死亡域审查缺陷①):表缺失时
+    battles_left_plane 退 registry.battles_left_est(骨架缺省 5)——
+    对死亡域是系统性高估(位面末轮真实剩余战场实测 1-3 场,m_eff
+    虚高 2-5 倍,V 同倍高估,视界截断形同虚设)。表缺失**或本位面
+    剩余窗口为空**(表耗尽,同样只能落骨架回退)时,唯一确知的战场
+    = 当轮本场(备战帧必有其后继战斗节点)→ 保守下界 1.0;表在且
+    有剩余窗口则走真实槽序推导(位面末轮自然得 1-3)。"""
     from sr_od.application.currency_war.decision.decision_v2.ev import (
-        battles_left_plane,
+        NON_BATTLE_NODE_TOKENS,
     )
-    return battles_left_plane(state, session, registry)
+    from sr_od.application.currency_war.kernel.cw_plane_table import (
+        NODES_PER_PLANE,
+    )
+    table = getattr(session, 'plane_node_table', None) or []
+    if table:
+        r = state.round_num
+        window = [str(t) for t in
+                  table[max(0, r - 1):min(len(table), NODES_PER_PLANE)]]
+        if window:
+            return float(sum(
+                1 for t in window if t not in NON_BATTLE_NODE_TOKENS))
+    return 1.0
 
 
 def _opportunity_cost(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry, p: AllocProposal,
                       domain: AllocDomain) -> float:
-    """机会成本项(§4-P5 分域参数集;W706 §8-1/§8-5 落点)。
+    """机会成本项(§4-P5 分域参数集;W706 §8-1 落点;死亡域重标定
+    = ADR-0493)。
 
     - 停手窗域:c + I(W690 账;I = ev.interest_cost,买侧回档折中
       口径与 arbiter.interest_rule 消费同源——recovery_rounds 只对
       买/复合开,刷新保持平面上界,双源互斥条款)。
-    - 死亡域:S0 × (c + I)(存活加权成本,P23.4(ii) 参数集内替换;
-      S0 = terminal_survival_upper_bound 既有单一源,必然死亡极限
-      S0→0 时退化为 P23.3 第二账式)。"""
+    - 死亡域:c + I(面值;ADR-0493 重标定——原 P23.4(ii) 的
+      S0×(c+I) 存活加权折价,其「金必死」前提被 W810 死亡域审查
+      反事实实测证伪:死亡域帧携金进 P2 三局 3/3 到达可支出语境、
+      1 局转 +2 轮存活/出口 hp +4,金的真实边际价值 = 带金存活增益,
+      实测不支持任何折扣系数 → S0 加权退役,金按面值计。S0 本体仍
+      辖 discipline.terminal_release 辖域谓词,不在本层改动)。"""
     from sr_od.application.currency_war.decision.decision_v2.ev import interest_cost
     recovery = registry.interest_recovery_rounds \
         if p.kind in ('buy', 'comp') else None
     i = interest_cost(state.gold or 0, p.cost, state,
                       recovery_rounds=recovery)
-    if domain is AllocDomain.STOP_WINDOW:
-        return float(p.cost) + i
-    from sr_od.application.currency_war.decision.decision_v2.discipline import (
-        terminal_survival_upper_bound,
-    )
-    s0 = terminal_survival_upper_bound(state, session, registry)
-    return s0 * (float(p.cost) + i)
+    return float(p.cost) + i
 
 
 def _feasible(subset: list[AllocProposal], gold_budget: int,
