@@ -1632,13 +1632,20 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                if state.plane is not None and state.round_num is not None
                else None)
     from sr_od.application.currency_war.kernel.cw_reconcile import reconcile_hp
-    # hp 跳过/真读的唯一门 = PHASE_FIELD_SPEC('hp' 在集内才 OCR;ADR-0462,
+    # hp 跳过/真读的门 = PHASE_FIELD_SPEC('hp' 在集内才 OCR;ADR-0462,
     # 收编 6fc1fd4c 先例为规格单一源,不留两处门控):hp 区物理只在 shop 关态
     # 可见——spec 无 'hp' 的阶段(prep_shop_open 开店面板遮挡/battle_or_transit
     # 非备战)OCR 必然 miss,是每帧必付的死读;_hp_opt=None 走 reconcile 沿用
     # (session.last_hp_real 语义不变,帧龄门 _same_node_stale 照常)。
     # prep_clean(关店备战帧)= 真读主路径,两级放大回退在该阶段才有意义。
-    _hp_opt = read_hp_opt(ctx, screen) if (_spec is not None and 'hp' in _spec) else None
+    # phase=None = 全量路径,必须与 prep_clean 同读 hp:全量调用方(director
+    # heavy 环入口 observe_full/对拍 recorder)的帧多为**关店**备战帧,hp 可见;
+    # 曾按 6fc1fd4c 把全量路径也跳过(readable 恒 False),是 2026-08-30 局
+    # 位面2 r1 连续 readable=False 的识别根因——画面可见却从未 OCR(ADR-0490)。
+    # 代价边界:仅 shop 开态的全量帧落 miss 回退(两级小图 OCR ~百毫秒),
+    # 关店常态帧全图 OCR 走帧级缓存零新增。
+    _hp_opt = (read_hp_opt(ctx, screen)
+               if (_spec is None or 'hp' in _spec) else None)
     _sess_hp = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     _had_real = getattr(_sess_hp, 'last_hp_real', None) is not None
     state.hp, state.hp_readable = reconcile_hp(
