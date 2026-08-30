@@ -73,6 +73,50 @@ def _apply_hp(state: GameState, hp_value: int | None,
     state.hp_trusted = trusted
 
 
+# 商店牌行区(1080p)——读卡自愈的两帧一致门与刷新分支(r325)同一 rect,
+# 单一源:指纹基元=cv2_utils.fingerprint_in_rects/same(r324 下沉件)。
+_SHOP_ROW_RECTS = None   # 惰性建(见 _wait_shop_row_stable;Rect 顶层 import 会引入循环依赖面)
+
+
+def _wait_shop_row_stable(op: SrOperation, max_wait_s: float = 2.0) -> bool:
+    """等待商店牌行区「两帧指纹一致」(动画/settle 收敛判据,非 blind sleep)。
+
+    为什么不用固定 sleep:M35 之前未识别停机钩子的防抖重读是 blind
+    sleep(1.0s×2),对「刷新动画/settle 瞬时帧」类 miss 自愈靠猜时长;
+    判据化后读卡前先等牌行区连续两帧指纹一致(与刷新分支 r325 同门同
+    rect),稳定即读,不稳最多等 max_wait_s 后回退(超时回退语义与 r325
+    一致,不阻塞买牌收工)。
+
+    边界:模态覆盖层(如「我来当策划·骇入效果」弹窗)压暗全屏时画面
+    本身稳定,本门会立即放行——该形态不是瞬态帧,重读不会自愈,由调用
+    方的有限次预算耗尽后走停机留证(弹窗处置归弹窗批域,不在此处点)。
+
+    返回 True=观测到稳定帧;False=超时。截图异常按离线契约降级继续等
+    (与刷新分支 r327 同契约:suppress 后继续,循环尽=超时)。
+    """
+    global _SHOP_ROW_RECTS
+    if _SHOP_ROW_RECTS is None:
+        from one_dragon.base.geometry.rectangle import Rect
+        _SHOP_ROW_RECTS = (Rect(300, 228, 1560, 326),)   # 商店牌行
+    from one_dragon.utils import cv2_utils
+    base = None
+    deadline = time.monotonic() + max_wait_s
+    while True:
+        time.sleep(0.25)
+        fp = None
+        try:
+            fp = cv2_utils.fingerprint_in_rects(op.screenshot(), _SHOP_ROW_RECTS)
+        except Exception:   # noqa: BLE001  离线契约(r327 同款)
+            fp = None
+        if fp is not None and base is not None \
+                and cv2_utils.fingerprint_same(fp, base):
+            return True
+        if fp is not None:
+            base = fp
+        if time.monotonic() >= deadline:
+            return False
+
+
 def _r1_retry_read_hp(read_fn) -> int | None:
     """r1 备战 HP 重试读(用户修正前提:r1 血量固定但**不恒为 100**,随当局
     难度/词缀变化——真值源=备战画面显示值,默认 100 兜底在 r1 是错误值)。
@@ -1114,13 +1158,19 @@ class BuyShopCards(SrOperation):
         #   画面跑 analyze_screen + 离线 SIFT 对拍(真实rect 商店牌-1..5)确认真未知 → 建档/补库。
         # M35 防抖(2026-08-16):全槽 unknown 但 Fate 角色全在库 → 判商店开态动画/settle 瞬时读失败
         # (0.3s sleep 偶不够)——停机前重读 2 帧(各 1s),仍 unknown 才真停(真缺模板不会因重读消失)。
+        # W944 治本(2026-08-31,局2 r7「我来当策划」弹窗压暗实锤):blind sleep 改
+        # **判据化自愈**——每次重读前先等牌行区两帧指纹一致(_wait_shop_row_stable,
+        # 与刷新分支 r325 同门同 rect),稳定即读;预算仍 2 次(真缺模板/模态
+        # 弹窗压暗不会因重读消失,预算耗尽才真停)。为什么不是 blind sleep:
+        # 瞬态帧的自愈靠「帧稳定」判据而非猜时长;模态弹窗压暗形态画面本就
+        # 稳定,门秒过 → 预算耗尽真停留证(弹窗处置归弹窗批域,flag 挂账)。
         # f570a76e 审查#1 修:**去 total_buy 门**——「买了≥1 张+仍有未识别槽」
         # 恰是在残缺牌面上做了买牌决策(ADR-0244 裁决理由本尊),原门让它
         # 零留证通过 = 暗门;防抖重读对任何未识别残留都该跑。
         if any(not c.name for c in state.shop):
             _unk = [i + 1 for i, c in enumerate(state.shop) if not c.name]
             for _ in range(2):
-                time.sleep(1.0)
+                _wait_shop_row_stable(self)
                 _reshop = read_shop_cards(self.ctx, self.screenshot())
                 _unk = [i + 1 for i, c in enumerate(_reshop) if not c.name]
                 if not _unk:
