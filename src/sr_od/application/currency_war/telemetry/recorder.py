@@ -194,6 +194,11 @@ class TelemetryRecorder:
                 _pai = getattr(_sess, 'v3_p2_auth_intercept', None)
                 trace.sess_p2_auth_intercept = (
                     None if _pai is None else str(_pai))
+                # 位面 2 支出授权·窗级水位观测(W757 v3.3;协议 V4 M0b
+                # 判读数据源):dict 透传,无写点/非 P2 = None 缺省。
+                _paw = getattr(_sess, 'v3_p2_auth_water', None)
+                trace.sess_p2_auth_water = (
+                    None if _paw is None else _to_jsonable(dict(_paw)))
             _led = getattr(_sess, 'xp_expect_ledger', None)
             if _led is not None and is_dataclass(_led):
                 with contextlib.suppress(Exception):
