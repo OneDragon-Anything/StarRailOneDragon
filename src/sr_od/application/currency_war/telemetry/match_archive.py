@@ -38,7 +38,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.telemetry.query import read_jsonl
+from sr_od.application.currency_war.telemetry.query import (
+    HP_CONF_TRUSTED,
+    read_jsonl,
+)
 
 #: 档案 schema 版本(字段变更时递增;消费端按版本分支)
 SCHEMA_VERSION: int = 1
@@ -49,8 +52,7 @@ MATCHES_DIRNAME: str = 'matches'
 #: 水位线文件名(旧数据不回填的记账锚)
 _WATERMARK_NAME: str = '.watermark.json'
 
-#: 结算屏真值链可信门槛(与 telemetry-reading 可信白名单同口径:conf≥0.9)
-_HP_CONF_TRUSTED: float = 0.9
+# 结算屏真值链可信门槛 = HP_CONF_TRUSTED(query.py,单一源;语义与边界见其注释)
 
 #: 入切片的 jsonl 流(按 run_id 过滤;obs_conflicts 为跨局 journal 不入)
 _SLICE_FILES: tuple[str, ...] = (
@@ -190,7 +192,7 @@ def _hp_entry(dec_frame: dict[str, Any] | None,
         conf = outcome.get('hp_confidence')
         return {'hp': outcome['hp_after'], 'source': 'settlement',
                 'trusted': isinstance(conf, (int, float))
-                and conf >= _HP_CONF_TRUSTED}
+                and conf >= HP_CONF_TRUSTED}
     if dec_frame is not None and dec_frame.get('hp') is not None:
         st = dec_frame.get('state') or {}
         trusted = (dec_frame.get('hp_readable') is True

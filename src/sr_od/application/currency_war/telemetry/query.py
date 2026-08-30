@@ -374,6 +374,22 @@ ABN_GOLD: int = 40     # 金 ≥ 此且该轮 0 买 0 升 = 钱变不成板
 
 ABN_DROP: int = 25     # 单轮掉血 ≥ 此 = 战力断层
 
+# outcomes.hp_confidence 的可信门(档案真值链 match_archive._hp_entry 同一判据,
+# 放本模块因 match_archive 已 import query,反向 import 会成环)。
+# 语义:结算屏 OCR 解析失败行 hp_confidence=0.0,hp_after 落 0 兜底;补给合成行
+# hp 是快照非屏面真值——两类都是 miss 兜底伪值,g_20260830_150029 实证它们
+# 触发假「战力断层」(rounds 链真值仅 -8/-24)。掉血真值单一源 = rounds 链,
+# OCR 值仅辅助,故低于此门的行不入异常判定链。缺字段 = 旧数据(schema 默认
+# 1.0)或 sim 账本行(模拟真值,无 conf 字段),按可信处理。
+HP_CONF_TRUSTED: float = 0.9
+
+
+def _outcome_hp_trusted(outcome: dict[str, Any]) -> bool:
+    """outcome 行的 hp 是否可信(见 HP_CONF_TRUSTED 的判据与边界声明)。"""
+    conf = outcome.get("hp_confidence")
+    return conf is None or (isinstance(conf, (int, float))
+                            and conf >= HP_CONF_TRUSTED)
+
 
 
 def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
@@ -402,6 +418,10 @@ def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
         if run_id and o.get("run_id") != run_id:
             continue
         hp = o.get("hp_after")
+        # OCR miss 伪值过滤:不可信行不产生断层条目,也不推进 prev_hp
+        # (推进了会把后续真值轮的掉血算错,实证同上)
+        if not _outcome_hp_trusted(o):
+            continue
         if prev_hp is not None and hp is not None and prev_hp - hp >= ABN_DROP:
             # 迁移审计 w317(git 历史):断层行带节点类型与词缀(非空才显示;词缀=开局简报
             # 位面级快照,语义见 OutcomeRecord.enemy_affixes)
