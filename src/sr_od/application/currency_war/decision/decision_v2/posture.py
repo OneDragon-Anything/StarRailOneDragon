@@ -31,7 +31,7 @@ class Posture:
     v: float = 0.0
     tag: str = ''
     # —— 预算-回执契约授权包扩展(w921_rd_design DESIGN §1.1-A 批1;
-    # ADR 落点=本批 REPORT 指向的决策记录)——新字段带缺省,既有消费方
+    # ADR 落点=ADR-0504 支出回执契约)——新字段带缺省,既有消费方
     # (arbiter/scoring/posture_release/遥测)接口零改动。
     #: 成立前提枚举(已核真的前提 token;前提不成立的授权在产出侧就
     #: 不发,见 posture_release.attach_spend_authorization):

@@ -16,6 +16,15 @@
 - **消费端**:`cw_economy`(spend_mode 档位经 `get_node_goal` 标量投影,唯一档位源)、`cw_comps`、`cw_state`、`telemetry`(影子记录)、`decision_v2`(arbiter/scoring/posture_release/ev)。
 - **维护红线**:排程/预算判据改动必须走 sim A/B(w630 协议式:升级时机分布为硬守卫);三处共调单一址禁第二实现。
 
+### 1.1 预算-回执契约:授权/回执/对账三段(ADR-0504)
+
+**是什么**:姿态与执行之间的显式契约,把「授权」与「兑现」分离成可对账的两端(姿态算出该花而执行 0 花的断裂,此前只能事后人肉回放归因)。全契约挂独立开关 `registry.spend_receipt_gate_enabled`(缺省关=契约面全旁路,行为零改动;决策 why 见 ADR-0504)。
+
+- **授权包(产出侧)**:`posture_release.attach_spend_authorization`(arbiter 入口调用)对轮缓存姿态就地补三字段——`premises`(前提 token:`'pop_slot'`=升级授权前提 bench 有等待件 ∨ cap 有空位;`'spend_channel'`=刷新授权前提该节点商店执行通道存在,判据 `spend_channel_ok`)、`buy_budget`(奖励帧买侧扩张预算,量级=溢余段,`economy_cycle.overflow` 单一源)、`auth_id`(轮内唯一授权号,对账挂接键)。前提不成立的授权**产出侧拒发**:升级前提不成立 → `level_up=False`;无通道节点 → `refresh_budget=0`;拒发后 tag 回落词汇表既有项 `'存息'`。授权快照写 `session.v3_spend_auth`(对账门授权侧输入)。
+- **执行回执**:`posture_release.build_spend_receipt`(arbiter 段尾)产出 `posture.SpendReceipt`——按渠道(buy/levelup/refresh)汇总采纳支出金;未兑现渠道附枚举原因,优先序 `no_channel`(无执行通道节点)> `no_premise`(执行时点前提复核,覆盖授权发出后 working 态演化的残余面,对应 arbiter 升级门的执行侧复核防线)> `no_candidate`(候选全滤空/无候选,附执行 log Top1 拒因 `top_reject`);`no_budget`(授权面存在但预算 0)为枚举集保留值。回执 dict 写 `session.v3_posture_receipt`。
+- **对账门(记账+降级,不开源不花钱)**:`posture_release.reconcile_spend` 判定「授权 ∧ 未兑现」三选一,**引用不重造**:分配器辖域(`allocator.alloc_domain` 既有谓词)→ 记录交 `allocator_run` 既有接管;危机帧∧溢余(`crisis_release_open` 既有单一源,ADR-0503 臂)→ 记录交该臂;其余常规帧 → 姿态降级 tag=`'存息'` + 显式声明归档 `session.v3_posture_unfulfilled`={auth_id, channel, reason, channels, action}。**不在常规帧新造消费通道**;无通道节点的执行通道接线属行为批,本契约只声明缺口(`_NO_CHANNEL_NODE_TOKENS` 即接口位)。
+- **遥测消费**:`DecisionTrace.posture_unfulfilled`(schema 已就位,可选字段)+ sim 账本行 `posture_unfulfilled`(轮入口快照,与 dp_posture 同语义);生产行落盘的写入端接线状态见 ADR-0504 Consequences。
+
 ## 2. cw_effect_ledger:既持效果台账
 
 「已持有投资卡的效果」结构化三层:现金日程(calendar)/ 机制突变(mutations)/ 免费额度(budgets),按四象限路由(时点金/规则改/选卡权/资产)。消费面 = 经济效果查询(`cw_investments`/`cw_economy`);原 DP 台账注入重解与指纹随 DP 退役。效果分类知识与可建模边界 → [game/research/invest_effects](../../../game/currency_war/research/invest_effects.md);落地与纠错 → ADR-0202/0205。

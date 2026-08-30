@@ -233,6 +233,10 @@ class TelemetryRecorder:
                 # 真实消费,每轮入口清零):ADR-0503 开臂判据②「危机帧实花
                 # 分项账非全零」的生产观测源,记账面(budget)不作兑现证据。
                 trace.sess_release_spent = _w611_int('v3_release_spent')
+                # W937 预算-回执契约(ADR-0504):姿态授权未兑现回执透传
+                # (extra 键不泛化透传,缺此映射行则 shop 端装配静默丢弃)
+                _pu = getattr(_sess, 'v3_posture_unfulfilled', None)
+                trace.posture_unfulfilled = dict(_pu) if _pu else None
                 # W829 支出门拒因枚举计数(session.v3_sg_block 透传;
                 # 写入端=spend_gate._block,伞关无写点恒 None)
                 _sg = getattr(_sess, 'v3_sg_block', None)
