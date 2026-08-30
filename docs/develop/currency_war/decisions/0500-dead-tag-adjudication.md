@@ -5,7 +5,7 @@
 
 ## Context(背景)
 
-W872 攻击发现「死映射」:部分环境词条的 `AFFIX_MECHANIC_MAP → MECHANIC_COUNTERS/SYNERGIES → mechanics_fit` 接线齐全,但 comp 侧 `mechanic_attributes` 零携带对应 tag,求交恒空(评分恒 0.5)——映射行是**空转死重**。W877 对全部死 tag 做「三问分诊」(完整裁决依据 = `.debug/temp/currency_war/w876_deadtag_adjudication/REPORT.md`,本地工作档案,不入 git):
+W872 攻击发现「死映射」:部分环境词条的 `AFFIX_MECHANIC_MAP → MECHANIC_COUNTERS/SYNERGIES → mechanics_fit` 接线齐全,但 comp 侧 `mechanic_attributes` 零携带对应 tag,求交恒空(评分恒 0.5)——映射行是**空转死重**。W877 对全部死 tag 做「三问分诊」(完整裁决依据 = `docs/develop/currency_war/prereg/w876_deadtag_adjudication/REPORT.md`,自 `.debug/temp/` 迁入):
 
 - **Q1 存在性**:该 tag 对应的玩法概念在终局十类 comp 体系(`docs/game/currency_war/research/final_comps/`)里真实存在吗?
 - **Q2 可判性**:comp 侧打 tag 的判据能从现有注册表数据或玩法知识推导吗?

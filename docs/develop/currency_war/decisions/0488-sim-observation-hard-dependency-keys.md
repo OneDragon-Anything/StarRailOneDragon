@@ -2,7 +2,7 @@
 
 ## 背景
 
-兑现链 v2 开关组(设计单一源 = `.debug/temp/currency_war/w795_realization_design/REPORT.md` v2/v3 + `PREREG_兑现链A_B.md` v3)落码后,W802 实施批在 REPORT §观测硬依赖边界声明中登记三项判读数据源缺口,归后继批清偿;W797 假设审计(`.debug/temp/currency_war/w797_assumption_audit/REPORT.md` §5)实测确认三面不可测:
+兑现链 v2 开关组(设计单一源 = `docs/develop/currency_war/prereg/w795_realization_design/REPORT.md` v2/v3 + 同目录 `PREREG_兑现链A_B.md` v3,自 `.debug/temp/` 迁入)落码后,W802 实施批在 REPORT §观测硬依赖边界声明中登记三项判读数据源缺口,归后继批清偿;W797 假设审计(`.debug/temp/currency_war/w797_assumption_audit/REPORT.md` §5,未迁移)实测确认三面不可测:
 
 - `bench_full_flag` 生产决策帧恒 null——席满轮与腾席动作对齐不可评(D1 弱序量产对账依赖,锁 #10);
 - ADR-0474 死亡窗分配器帧位无任何落盘消费面——`session.v3_alloc_frame` 每帧覆写但零披露,D2 接管只能金账反推(锁 #11);

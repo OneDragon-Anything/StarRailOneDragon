@@ -94,5 +94,5 @@ hoard 投影失败帧、[31]② 相容声明、双通道合并语义+血预算�
 ## 关联
 
 - 前序:ADR-0480(v2 落码)/W762 判定报告/W758-v3 攻击复核;
-- 设计单一源:`.debug/temp/currency_war/w757_p2_spend_auth/REPORT.md`
-  v3.1 + `SIM_AB_PREREGISTRATION_V3.md` + P25 单篇。
+- 设计单一源:`docs/develop/currency_war/prereg/w757_p2_spend_auth/REPORT.md`(自 `.debug/temp/` 迁入)
+  v3.1 + 同目录 `SIM_AB_PREREGISTRATION_V3.md` + P25 单篇。

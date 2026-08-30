@@ -74,6 +74,6 @@ ADR-0481 落码的 v3.1 两通道版按预注册协议 v3.1 完成 A/B(W772):M0a
 
 - 前序:ADR-0480(v2 落码)/ADR-0481(v3.1 两通道)/W772 A/B V3 判定
   报告(`.debug/temp/currency_war/w772_sim_ab_v3/REPORT.md`);
-- 设计单一源:`.debug/temp/currency_war/w757_p2_spend_auth/REPORT.md`
-  v3.2(附录 D 对照表)+ `SIM_AB_PREREGISTRATION_V3.md`(v3.2 判据零
+- 设计单一源:`docs/develop/currency_war/prereg/w757_p2_spend_auth/REPORT.md`(自 `.debug/temp/` 迁入)
+  v3.2(附录 D 对照表)+ 同目录 `SIM_AB_PREREGISTRATION_V3.md`(v3.2 判据零
   改动附注)。

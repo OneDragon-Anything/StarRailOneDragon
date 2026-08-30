@@ -7,7 +7,8 @@ carry 裸装进硬节点、遭遇裸进、连败溢余金流向不明、血线�
 W774 设计件给出 v1 后被 W777 攻击复核推 v2(死线强锁废弃/[23] 锚回归/
 板面一致性验证/R 族出手红线/末窗让位仲裁),W777 复核 v2 总评「合格,
 可进实施」。本 ADR 记 v2 的落码决策;设计 why 全量见设计件(本目录
-上层 `.debug/temp/currency_war/w774_p1_interface_design/` 两件,
+上层 `docs/develop/currency_war/prereg/w774_p1_interface_design/` 两件(自
+`.debug/temp/` 迁入),
 v2 + 协议 v2)。
 
 ## 决策

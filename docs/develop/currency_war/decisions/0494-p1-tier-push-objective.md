@@ -4,7 +4,7 @@
 
 W801 七局掉血帧阶跃实证:P1 出口 hp 的决定量是**离散战力档位**(激活羁绊档 ≥3 → 出口 59-72;≤2 → 9-48;≥85% 出口落差归档位),不是线的组成进度。现行 P1 评分主轴(配方完成度+九维板面差分+方向约束)度量「买哪条线」,「买线内件但不上场/不凑档」时与档位维度脱钩。W801 §3 判定既有杠杆族(授权/方向/时机型,含 ADR-0487 删码的 p1_iface 与 ADR-0492 删码的 p2_spend_auth)全部与「档位累积型目标变量」类型错配——缺的是**存量目标型杠杆**:改「花在什么上值多少分」的标尺,不改「让不让花/何时花」的门。
 
-设计单一源 = `.debug/temp/currency_war/w803_tier_push_design/REPORT.md` v2(经 W805 攻击批六条修正+W805v2 复核合格);命题 = `game/currency_war/research/proofs/p32-p1-tier-push-ev.md`(P32:阶跃实证+EV 下界 +19 血当量);判前锁 = 同目录 `PREREG_tier_push_AB.md` v2(M1-M3/G0-G5,n=1000/臂)。
+设计单一源 = `docs/develop/currency_war/prereg/w803_tier_push_design/REPORT.md` v2(经 W805 攻击批六条修正+W805v2 复核合格;自 `.debug/temp/` 迁入);命题 = `game/currency_war/research/proofs/p32-p1-tier-push-ev.md`(P32:阶跃实证+EV 下界 +19 血当量);判前锁 = 同目录 `PREREG_tier_push_AB.md` v2(M1-M3/G0-G5,n=1000/臂)。
 
 ## 决策
 
