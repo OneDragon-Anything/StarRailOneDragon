@@ -1,10 +1,11 @@
 """货币战争 变宝为废·牺牲合成先行(装备合成排序器,决策层)。
 
-**机制单一源** = ``docs/game/currency_war/research/变宝为废-首次合成垃圾化.md``
-(用户口述:词缀「变宝为废」生效时,**第一次装备合成**有几率垃圾化产物;
-先消耗掉任意一次合成,后续合成不再触发)。对策 = 用户建议「牺牲合成先行」:
-高价值合成(核心件进阶)之前,先用场上次要合成对(回收合格 1★ 死库存对,
-不碰主线凑件)做一次牺牲合成,把垃圾化概率消耗掉。
+**机制真值(单一源 = ``data/affix_effects_data.AFFIX_EFFECTS['变宝为废']``,
+游戏内词缀效果原文实采)**:「每个位面开始时,首次合成的进阶装备会有 50% 的
+概率变成垃圾袋」——粒度 = **每位面各一次**(P1/P2/P3 的首次进阶合成各自
+承担 50% 垃圾化风险),产物 = 垃圾袋。对策(用户建议)= 牺牲合成先行:
+每位面的首次进阶合成之前,先用次要合成对(回收合格 1★ 死库存对,不碰
+主线凑件)做一次牺牲合成,把该位面的垃圾化判定消耗掉。
 
 **环境判据(读取链)**:简报词缀(StartCurrencyWarMatch / battle_loop 位面
 简报分支 → ``ctx.cw_briefing_affixes``)∪ 位面详情词缀横条随采
@@ -19,9 +20,12 @@
   推迟一帧上限,防无限等)。
 执行层(operations/prep/equip_all.py 的 drag/验穿链)零改动。
 
-**缺数据项(挂账,禁拍死)**:垃圾化概率值、「第一次」判定粒度(每局/每位面/
-每装备槽)、垃圾化表现形态——均待实机样本(见机制单一源文档挂账节)。本模块
-不引入任何概率常数;推迟上限取口述「推迟一帧」(JUNK_FIRST_DEFER_BUDGET=1)。
+**位面消耗语义**:某位面的首次合成判定一旦消耗(本排序器发射牺牲合成,
+或该位面推迟预算用尽后放行),本位面内不再重排/推迟
+(``session.junk_first_done_plane`` 记录,与 ``state.plane`` 对账;位面
+读不到时退化为整局一次,保守侧)。残余边界:排序器视野外的合成事件
+(如 C6 转移拖拽凑齐配方)会提前消耗位面判定而未被记账——代价仅为
+多保守一帧,不产生错误合成。
 """
 from __future__ import annotations
 
@@ -41,8 +45,12 @@ if TYPE_CHECKING:
 # 环境词缀识别名(画面 OCR 原名;affix_effects_data 注册表同名)
 JUNK_FIRST_AFFIX: str = '变宝为废'
 
-# 推迟一帧上限(整局累计;出处=机制单一源文档对策节「推迟一帧上限,防无限等」)
+# 推迟一帧上限(每位面;依据=机制真值 50% 垃圾化损失 ≫ 一帧推迟成本,
+# 且推迟只在「无牺牲对」时发生;上限防死库存永不到场时无限推迟)
 JUNK_FIRST_DEFER_BUDGET: int = 1
+
+# session=None(离线/旧栈)的「位面已消耗」哨兵:只重排不推迟(保守降级)
+_CONSUMED_UNKNOWN: int = -1
 
 
 def junk_first_env_active(enemy_affixes: list[str] | None) -> bool:
@@ -159,8 +167,8 @@ def apply_junk_first(alloc: list[tuple[str, str]],
     - ``deferred``:无牺牲对且有预算 → 逐个移除高价值合成的完成件直至
       无完成(件留 owned,等死库存对到场;移除一个后重模拟,防同角色
       多对连环完成);
-    - ``budget_exhausted``:无牺牲对且无预算 → 原样返回(接受垃圾化风险;
-      口述对策反向约束「推迟成本 vs 垃圾化损失未量化」,预算上限防无限等)。
+    - ``budget_exhausted``:无牺牲对且无预算 → 原样返回(接受该位面 50%
+      垃圾化风险;预算上限防死库存永不到场时无限推迟)。
     """
     if not env_active or comp is None or not comp.key_equips:
         return list(alloc), 'inactive'
@@ -201,8 +209,10 @@ def junk_first_allocation(session,
 
     - registry 开关关(默认)→ 基分配原样返回(**零漂移锚**);
     - 环境不在场 → 同上;
-    - 推迟计数宿主 = ``session.junk_first_defers_used``(整局累计,上限
-      JUNK_FIRST_DEFER_BUDGET);实际发生推迟才 +1。
+    - **位面消耗**:机制 = 每位面首次合成各判定一次(affix_effects_data
+      真值);当前位面已消耗(session.junk_first_done_plane == state.plane)
+      → 基分配原样。发射牺牲合成或发生推迟后记账当前位面;位面读不到
+      → 退化为整局一次(保守侧,防每帧重复消耗/无限推迟)。
     session/registry 缺失(旧栈/离线)→ 基分配原样(保守降级:
     session=None 时预算按耗尽计,只重排不推迟)。
     """
@@ -215,16 +225,25 @@ def junk_first_allocation(session,
     if not env:
         return base
     worn = worn_basics_by_char(deployed, occupied)
-    if session is not None:
-        used = int(getattr(session, 'junk_first_defers_used', 0) or 0)
+    plane = (getattr(getattr(session, 'last_state', None), 'plane', None)
+             if session is not None else None)
+    done = (getattr(session, 'junk_first_done_plane', None)
+            if session is not None else _CONSUMED_UNKNOWN)
+    if done == _CONSUMED_UNKNOWN:
+        consumed = True    # 位面不可读态下已消耗过 → 整局一次(防无限推迟)
+    elif done is None:
+        consumed = False
+    elif plane is None:
+        consumed = False   # 位面不可读:按新位面保护(防漏保护;消耗后记哨兵)
     else:
-        used = JUNK_FIRST_DEFER_BUDGET
-    new_alloc, action = apply_junk_first(base, worn, comp, env,
-                                         JUNK_FIRST_DEFER_BUDGET - used)
-    if action == 'deferred' and session is not None:
-        session.junk_first_defers_used = used + 1
+        consumed = (done == plane)
+    budget = 0 if (session is None or consumed) else JUNK_FIRST_DEFER_BUDGET
+    new_alloc, action = apply_junk_first(base, worn, comp, env, budget)
+    if action in ('sacrifice_first', 'deferred') and session is not None:
+        session.junk_first_done_plane = (plane if plane is not None
+                                         else _CONSUMED_UNKNOWN)
     if action not in ('inactive', 'no_high_value'):
-        log.info('[cw-equip] 变宝为废牺牲合成: action=%s alloc=%d→%d '
-                 '(缺数据挂账:垃圾化概率/判定粒度未量化,见 research/'
-                 '变宝为废-首次合成垃圾化.md)', action, len(base), len(new_alloc))
+        log.info('[cw-equip] 变宝为废牺牲合成: action=%s plane=%s alloc=%d→%d '
+                 '(机制真值=affix_effects_data:每位面首次进阶合成 50%% 变垃圾袋)',
+                 action, plane, len(base), len(new_alloc))
     return new_alloc

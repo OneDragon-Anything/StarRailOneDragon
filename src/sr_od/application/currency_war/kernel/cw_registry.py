@@ -1566,18 +1566,20 @@ class DecisionV2Registry:
     rust_hoard_damage_share: float = 0.03
     rust_hoard_penalty_cap: int = 10
 
-    # ===== 变宝为废·牺牲合成先行(docs/game/currency_war/research/
-    # 变宝为废-首次合成垃圾化.md;排序器 = kernel/cw_junk_first.py)=====
+    # ===== 变宝为废·牺牲合成先行(机制真值单一源 =
+    # data/affix_effects_data.AFFIX_EFFECTS['变宝为废']游戏内原文实采:
+    # 「每个位面开始时,首次合成的进阶装备会有50%的概率变成垃圾袋」
+    # ——粒度=每位面各一次,概率=50%,产物=垃圾袋;排序器 =
+    # kernel/cw_junk_first.py)=====
     #: 策略开关生命周期第 1 态(默认关+零漂移锚:关=equip_allocation 基分配
     #: 原样,经 junk_first_allocation 包装,执行链零改动)。
-    #: **开臂判据(挂账,双钥匙,由本批拍定阈值)**:
+    #: **开臂判据(挂账,双钥匙,由本批拍定阈值;机制数据已在库,不缺)**:
     #: ① 环境读取通道稳定——实机 ≥2 局含「变宝为废」词缀的局,
     #:   state.enemy_affixes 均读到该词缀(简报/位面详情横条通道零漏采);
     #: ② 牺牲对识别可靠——实机 ≥2 次 cw_junk_first 决策日志中
     #:   sacrifice_first/deferred 动作与画面合成事件对得上,误判 0
     #:   (误判 = 牺牲对吞了主线组件,或该排未排)。
-    #: 两钥匙齐 → A/B 判据后翻默认值;概率/判定粒度缺数据项不阻塞开臂
-    #: (排序语义不依赖概率值,只依赖「有几率垃圾化」的定性口述)。
+    #: 两钥匙齐 → A/B 判据后翻默认值。
     junk_first_sacrifice_enabled: bool = False
 
     # ===== 完备性审计表(ADR-0290 对抗修订④)=====

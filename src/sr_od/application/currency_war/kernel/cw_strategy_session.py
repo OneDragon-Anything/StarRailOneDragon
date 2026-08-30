@@ -256,10 +256,12 @@ class StrategySession:
     # 进度真源 = session.last_state(每回合框架刷新);策略私有 scratch 无消费者)。
     # 简报词缀(对局开始 debuff/boss 词缀;loop __init__ 从 ctx.cw_briefing_affixes copy;mechanics_fit 输入)
     briefing_affixes: list[str] = field(default_factory=list)
-    # 变宝为废·推迟合成已用帧数(kernel/cw_junk_first.py 消费;坐标系=整局
-    # 累计,上限 JUNK_FIRST_DEFER_BUDGET;写入端=junk_first_allocation 实际
-    # 发生推迟时 +1;读不到字段按 0 降级)。
-    junk_first_defers_used: int = 0
+    # 变宝为废·位面首次合成判定消耗记账(kernel/cw_junk_first.py 消费;
+    # 机制真值=affix_effects_data「每个位面开始时,首次合成的进阶装备会有
+    # 50% 的概率变成垃圾袋」→ 每位面判定一次。坐标系=位面序;None=未消耗,
+    # -1=位面不可读态下已消耗(整局一次降级哨兵);写入端 =
+    # junk_first_allocation 发射牺牲合成或推迟后记账当前 state.plane)。
+    junk_first_done_plane: int | None = None
     # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
     # 策略层填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
     selected_difficulty: str = ""

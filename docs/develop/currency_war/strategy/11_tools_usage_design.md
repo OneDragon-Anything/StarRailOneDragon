@@ -60,7 +60,7 @@
 
 **去向登记(实现须回答「拆下来的去哪」)**:每件取下物必须落位之一——①立即重穿给需求向量内的角色(分配器 `equip_allocation` 消费);②回 owned 囤待合成/待发([22] 囤件);找不到去向 = 不拆(拆完散落 owned 无主是负操作)。
 
-**装备合成排序与「变宝为废」环境(ADR-0498)**:分配序即拖拽序即合成事件序。环境词缀「变宝为废」在场(`state.enemy_affixes` contains,读不到=不启用)时,排序器 `kernel/cw_junk_first.py` 对分配序列做纯后处理:有牺牲对(非 core 的回收合格配方对,P14 定理 3 判据,不碰主线凑件)→ 牺牲合成先行消耗"首次合成垃圾化";无牺牲对 → 高价值合成完成件推迟一帧(整局预算 1 帧,耗尽放行)。开关 `junk_first_sacrifice_enabled` 默认关(开臂判据见 ADR);执行链(drag/验穿)零改动。机制细节与缺数据项挂账 = `docs/game/currency_war/research/变宝为废-首次合成垃圾化.md`。
+**装备合成排序与「变宝为废」环境(ADR-0498)**:分配序即拖拽序即合成事件序。环境词缀「变宝为废」在场(`state.enemy_affixes` contains,读不到=不启用;机制真值=affix_effects_data 游戏内原文「每个位面开始时,首次合成的进阶装备会有50%的概率变成垃圾袋」)时,排序器 `kernel/cw_junk_first.py` 对分配序列做纯后处理:有牺牲对(非 core 的回收合格配方对,P14 定理 3 判据,不碰主线凑件)→ 牺牲合成先行消耗**该位面**的首次合成垃圾化判定;无牺牲对 → 高价值合成完成件推迟一帧(每位面预算 1 帧,`session.junk_first_done_plane` 位面记账,耗尽放行)。开关 `junk_first_sacrifice_enabled` 默认关(开臂判据见 ADR);执行链(drag/验穿)零改动。
 
 **何时不用**:
 - 被拆者是当前核心、身上有 key_equips(r70 过渡持有语义,key 命脉件应留在上场的人;〔码〕`equip_all.py:112-124` `_transition_hold_active`);
