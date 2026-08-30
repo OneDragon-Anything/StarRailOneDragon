@@ -1406,6 +1406,29 @@ class DecisionV2Registry:
     #: w42 26.3%/w43 5.5%)入 §8 武装序判读清单。
     below_floor_spend_gate_enabled: bool = False
 
+    # ===== 预算-回执契约(w921_rd_design DESIGN 批1;开关生命周期
+    # 第 1 态默认关 = 行为变更面全关,关臂零漂移锚)=====
+    #: 姿态-执行断裂的统一修法落码(设计单一源 =
+    #: .debug/temp/currency_war/w921_rd_design/DESIGN.md §1.1):
+    #: True = ①授权包装配(premises/auth_id/buy_budget)带前提位——
+    #: 前提不成立的支出授权在产出侧拒发(D1:板满∧bench 空 → 无升级
+    #: 授权,13-2 形态;无商店通道节点 → 无刷新授权,20-5 形态)+
+    #: 执行侧升级前提拒付防线(no_premise);②执行回执(SpendReceipt,
+    #: 四枚举未兑现原因)+ 对账门(授权未兑现帧三选一:分配器辖域帧
+    #: 记录交 allocator_run 既有接管 / 危机帧记录交 crisis release
+    #: 既有臂 / 常规帧姿态降级 tag='存息' + posture_unfulfilled 声明)。
+    #: False = 契约面全部旁路,行为与改动前逐位一致(零漂移锚)。
+    #: 对账门不开源不花钱:常规帧分支只降级+声明,不是消费通道
+    #(DESIGN §4-3);死亡窗/危机替代消费复用 allocator_run 与
+    #: ReleaseDirective 既有通道,不设第二开关、不重造指令通道。
+    #: 开臂判据挂账(strategy-work §3 第 1 态义务):判前预注册
+    #: .debug/temp/currency_war/w937_rd_batch1/PREREG.md——sim A/B
+    #: (n≥300/臂同 seed 配对)主判据=授权未兑现帧占比下降(W932
+    #: 检查器「钱变不成板」类消除)∧ 次要(终局 hp/残金/存活)不劣化;
+    #: 过 → 第 2 态进开臂评审(实机锚点=dp 判花帧滞留金占轮均金比
+    #: 下降);不过 → 第 4 态删码留 ADR。
+    spend_receipt_gate_enabled: bool = False
+
     # ===== 支出门·买侧收门(W829 v3 设计落码;伞+两子旗标默认关 =
     # 生命周期第 1 态零漂移锚;三轮 A/B 终局定性见 ADR-0499)=====
     #: 设计单一源 = docs/develop/currency_war/prereg/w829_spend_gate_design/

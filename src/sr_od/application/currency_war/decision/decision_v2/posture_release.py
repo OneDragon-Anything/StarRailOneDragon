@@ -64,7 +64,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sr_od.application.currency_war.decision.cw_strategy import StrategySession
-from sr_od.application.currency_war.decision.decision_v2.posture import Posture
+from sr_od.application.currency_war.decision.decision_v2.posture import (
+    Posture,
+    SpendReceipt,
+)
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
@@ -436,6 +439,212 @@ def evaluate_release(state: GameState, session: StrategySession,
         session.v3_release_round = key
         return wrap_posture(posture, directive), directive
     return posture, None
+
+
+# ===== 预算-回执契约(姿态→执行的授权-回执-对账闭环;w921_rd_design
+# DESIGN §1.1 批1。设计定位:姿态在现行契约里是「无回执的单向许可」,
+# 本节补「授权包(带前提与买侧预算)→ 执行回执 → 对账门」三段闭环。
+# 引用不重造:死亡窗替代消费交 allocator_run 既有接管、危机帧交
+# crisis_release_open 既有臂(上方 release_directive),本节不设第二
+# 指令通道;常规帧分支只降级+显式声明,不新造消费通道(DESIGN §4-3)。
+# 全部行为面挂 registry.spend_receipt_gate_enabled(默认关=零漂移)。====)
+
+#: 奖励节点 token(买侧扩张预算授权的辖域;与 ev.NON_BATTLE_NODE_
+#: TOKENS 的 reward 子集同词表——中英双词表容错同款)。
+_REWARD_NODE_TOKENS: frozenset[str] = frozenset({'reward', '奖励'})
+
+#: 无商店执行通道节点 token(刷新授权前提的否定域;20-5 形态:
+#: 补给节点无商店消费面。通道接线本体归 R-F 行为批,本契约只声明
+#: no_channel 语义位)。
+_NO_CHANNEL_NODE_TOKENS: frozenset[str] = frozenset({'supply', '补给'})
+
+
+def levelup_premise_ok(state: GameState) -> bool:
+    """升级授权的实体前提(pop_slot;[32] 消费有效性门,DESIGN D1)。
+
+    bench 有可上阵件 ∨ cap 有空位——升级产出可兑现的人口收益;板满
+    ∧ bench 空 → 升级无 slot 可花,授权在产出侧就不发(13-2 p2r4
+    形态)。判据=现读符号(单帧零新常数)。
+    """
+    from sr_od.application.currency_war.kernel.cw_state import (
+        bench_occupied,
+        deployed_occupied,
+    )
+    return (bench_occupied(state.bench or []) > 0
+            or deployed_occupied(state.deployed or []) < state.max_units())
+
+
+def spend_channel_ok(state: GameState) -> bool:
+    """刷新授权的执行通道前提(DESIGN D1;该节点商店循环已接线)。
+
+    无通道节点(补给等)不产支出授权——预算核对任意帧恒有定义
+    (ADR-0465 D0)不等于执行层有消费面;20-5 p1r5 补给帧 dp=spend:level
+    结构性 0 花即此缺位。R-F 行为批接线后此处随通道面更新。
+    """
+    return (state.node_type or '') not in _NO_CHANNEL_NODE_TOKENS
+
+
+def attach_spend_authorization(state: GameState, session: StrategySession,
+                               registry: DecisionV2Registry) -> dict | None:
+    """轮入口授权包装配(开关 spend_receipt_gate_enabled 辖;仲裁前调)。
+
+    对当前轮缓存姿态(session.v3_dp_posture,release 包装后载体)就地
+    补齐授权包三件( premises/auth_id/buy_budget),并对前提不成立的
+    授权做**产出侧拒发**(D1:不发授权而非生成后靠执行侧拒):
+
+    - 升级授权前提 pop_slot 不成立 → level_up=False(板满∧bench 空,
+      13-2 形态);
+    - 刷新授权前提 spend_channel 不成立 → refresh_budget=0(无通道
+      节点,20-5 形态);
+    - 奖励节点(非扑满化)发买侧扩张预算 buy_budget=溢余段
+      (g−R*,reserve_cap 单一源;[1]/[15] 压库语义的授权面,D2 雏形
+      ——量级推导+敏感度扫描归 D2 标定批)。
+
+    返回授权包快照写 ``session.v3_spend_auth``(对账门的授权侧输入);
+    release 帧(tag='release')是替代消费通道自身,不重复授权,返回
+    None。开关关恒 None 且姿态零改动。
+    """
+    if not registry.spend_receipt_gate_enabled:
+        return None
+    from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
+        overflow,
+    )
+    from sr_od.application.currency_war.decision.decision_v2.ev import (
+        RoundPosture,
+        reward_node_is_battle,
+        round_posture,
+    )
+    posture = round_posture(state, session)
+    cached = getattr(session, 'v3_dp_posture', None)
+    if not (isinstance(cached, RoundPosture)
+            and cached.round_key == (state.plane, state.round_num)
+            and cached.posture is posture):
+        posture = None    # 主链未装配(缓存失效帧):不在旁路改授权
+    if posture is None or posture.tag == 'release':
+        session.v3_spend_auth = None
+        return None
+    suppressed: list[str] = []
+    premises: list[str] = []
+    if posture.level_up:
+        if levelup_premise_ok(state):
+            premises.append('pop_slot')
+        else:
+            posture.level_up = False    # 产出侧拒发(13-2 形态)
+            suppressed.append('pop_slot')
+    if posture.refresh_budget > 0:
+        if spend_channel_ok(state):
+            premises.append('spend_channel')
+        else:
+            posture.refresh_budget = 0    # 产出侧拒发(20-5 形态)
+            suppressed.append('spend_channel')
+    buy_budget = 0
+    if ((state.node_type or '') in _REWARD_NODE_TOKENS
+            and not reward_node_is_battle(state)):
+        buy_budget = overflow(state, session, registry)
+    if suppressed:
+        posture.tag = '存息'    # 拒发后词汇表回落(姿态诚实:无有效支出授权)
+    posture.auth_id = f'{state.plane}-{state.round_num}'
+    posture.premises = tuple(premises)
+    posture.buy_budget = buy_budget
+    auth = {'auth_id': posture.auth_id,
+            'level_up': posture.level_up,
+            'refresh_budget': posture.refresh_budget,
+            'buy_budget': buy_budget,
+            'premises': posture.premises,
+            'suppressed': tuple(suppressed)}
+    session.v3_spend_auth = auth
+    return auth
+
+
+def build_spend_receipt(state: GameState, session: StrategySession,
+                        registry: DecisionV2Registry,
+                        actions: list, log_rows: list[dict]) -> SpendReceipt | None:
+    """执行层支出回执(§1.1-B;按渠道汇总采纳支出与未兑现原因)。
+
+    ``actions``=仲裁采纳动作序,``log_rows``=执行 log(候选拒因的
+    Top1 附光)。四枚举映射:no_channel(无通道节点)> no_premise
+    (执行时点前提复核——授权发出后 working 态演化的残余面)>
+    no_candidate(候选全滤空/无候选,附 Top1 拒因)。开关关或无授权
+    快照(release 帧)→ None。
+    """
+    auth = getattr(session, 'v3_spend_auth', None)
+    if auth is None or not registry.spend_receipt_gate_enabled:
+        return None
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BuyCard,
+        LevelUp,
+        RefreshShop,
+    )
+    r = SpendReceipt()
+    for a in actions:
+        if isinstance(a, BuyCard):
+            r.buy_spent += a.card.cost or 3
+        elif isinstance(a, LevelUp):
+            r.levelup_spent += a.cost
+        elif isinstance(a, RefreshShop):
+            r.refresh_spent += a.cost or 2
+    r.top_reject = next((row.get('reject', '') for row in log_rows
+                         if row.get('reject')), '')
+    _no_channel = not spend_channel_ok(state)
+    if auth['level_up'] and r.levelup_spent == 0:
+        if _no_channel:
+            r.levelup_reason = 'no_channel'
+        elif not levelup_premise_ok(state):
+            r.levelup_reason = 'no_premise'    # 执行时点复核(残余面)
+        else:
+            r.levelup_reason = 'no_candidate'
+    if auth['refresh_budget'] > 0 and r.refresh_spent == 0:
+        r.refresh_reason = 'no_channel' if _no_channel else 'no_candidate'
+    if auth['buy_budget'] > 0 and r.buy_spent == 0:
+        r.buy_reason = 'no_candidate'
+    return r
+
+
+def reconcile_spend(state: GameState, session: StrategySession,
+                    registry: DecisionV2Registry,
+                    receipt: SpendReceipt) -> dict | None:
+    """对账门:授权-回执对账(§1.1-C;唯一新增决策机制,记账+降级)。
+
+    判定「授权 ∧ 未兑现」逐授权走三选一(**引用不重造**):
+    - 分配器辖域(停手窗∨死亡域,allocator.alloc_domain 既有谓词)
+      → 记录交分配器(管线未支出帧 allocator_run 本就接管,现路径
+      零改动);
+    - 危机帧 ∧ 溢余 > 0 → 记录交 crisis release 既有臂
+      (crisis_release_open 单一源;臂开臂由其自有开关辖);
+    - 其余帧 → 姿态降级 tag='存息' + 显式声明归档
+      (``session.v3_posture_unfulfilled``);**不在常规帧新造消费
+      通道**(DESIGN §4-3:P13 息律下常规帧强制清仓无命题支持)。
+    无未兑现授权 → None(回执仍由调用方归档)。
+    """
+    if not registry.spend_receipt_gate_enabled:
+        return None
+    channels = (('levelup', receipt.levelup_reason),
+                ('refresh', receipt.refresh_reason),
+                ('buy', receipt.buy_reason))
+    unfulfilled = [(ch, why) for ch, why in channels if why]
+    if not unfulfilled:
+        return None
+    from sr_od.application.currency_war.decision.decision_v2.allocator import (
+        alloc_domain,
+    )
+    if alloc_domain(state, session, registry) is not None:
+        action = 'allocator'    # 辖域帧:交分配器既有接管,只记录
+    elif crisis_release_open(state, session, registry):
+        action = 'crisis_release'    # 危机帧:交既有 crisis 臂,只记录
+    else:
+        action = 'downgrade'
+        posture = getattr(getattr(session, 'v3_dp_posture', None),
+                          'posture', None)
+        if posture is not None:
+            posture.tag = '存息'    # 降级+声明(不在常规帧兜底花钱)
+    un = {'auth_id': (getattr(session, 'v3_spend_auth', None) or {}).get(
+              'auth_id', ''),
+          'channel': unfulfilled[0][0],
+          'reason': unfulfilled[0][1],
+          'channels': dict(unfulfilled),
+          'action': action}
+    session.v3_posture_unfulfilled = un
+    return un
 
 
 def spend_gate_active(session: StrategySession,

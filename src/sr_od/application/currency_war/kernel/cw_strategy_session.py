@@ -299,4 +299,18 @@ class StrategySession:
     # 免 getattr 兜底(pending_buy_expect 同判例)。坐标系/取值时机/写入端 =
     # XpLedger 字段定义注释(prep_director);None = 本局未锚定(账本未建)。
     xp_expect_ledger: 'XpLedger | None' = None       # 同上
+    # —— 预算-回执契约(w921_rd_design DESIGN 批1;开关
+    # spend_receipt_gate_enabled 默认关)——
+    # v3_spend_auth:本帧授权包快照(attached_spend_authorization 写;
+    # {auth_id, level_up, refresh_budget, buy_budget, premises,
+    # suppressed},suppressed=产出侧拒发的前提 token 列表)。开关关恒 None。
+    v3_spend_auth: dict | None = None
+    # v3_posture_receipt:执行层支出回执(SpendReceipt.as_dict;
+    # 每次仲裁收口覆写,轮内多段 last-wins)。开关关恒 None。
+    v3_posture_receipt: dict | None = None
+    # v3_posture_unfulfilled:对账门「授权未兑现」声明({auth_id,
+    # channel, reason, action};action=allocator/crisis_release/
+    # downgrade——分配器辖域/危机帧只记录,常规帧 downgrade=姿态
+    # tag 降级+显式声明)。无未兑现帧=None。开关关恒 None。
+    v3_posture_unfulfilled: dict | None = None
 

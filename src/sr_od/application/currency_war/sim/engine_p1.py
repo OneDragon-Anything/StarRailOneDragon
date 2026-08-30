@@ -873,6 +873,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _round_reserve_overflow = 0
             _round_release_budget = 0
             _round_release_reason = ''
+            _round_posture_unfulfilled: dict | None = None
             _phase_snap = False
             # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
             # RefreshShop 动作后**独立重决策一段**——r270 连刷在
@@ -927,6 +928,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         getattr(sess, 'v3_release_budget', 0) or 0)
                     _round_release_reason = str(
                         getattr(sess, 'v3_release_reason', '') or '')
+                    # 预算-回执契约·对账门声明(轮入口快照,与生产
+                    # decisions 行 posture_unfulfilled 同语义;判前
+                    # 预注册 A/B 主判据的数据源)
+                    _unf = getattr(sess, 'v3_posture_unfulfilled', None)
+                    _round_posture_unfulfilled = dict(_unf) if _unf else None
                     # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
                     _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
                                                 False))
@@ -1811,6 +1817,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'reserve_overflow': _round_reserve_overflow,
                 'release_budget': _round_release_budget,
                 'release_reason': _round_release_reason,
+                'posture_unfulfilled': _round_posture_unfulfilled,
                 'piggy_reward': _round_piggy,
                 # ②carry 装备分配义务帧(键按披露稳定保留;谓词已随五开关
                 # 定谳清理删除,恒 False——历史账本字段只读口径,ADR-0487)

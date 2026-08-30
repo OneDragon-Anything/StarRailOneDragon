@@ -48,9 +48,13 @@ from sr_od.application.currency_war.decision.decision_v2.phase import (
     derive_phase,
 )
 from sr_od.application.currency_war.decision.decision_v2.posture_release import (
+    attach_spend_authorization,
     authorize_release_refresh,
+    build_spend_receipt,
     channel_rank_scope,
+    levelup_premise_ok,
     rank_refresh_vs_upgrade,
+    reconcile_spend,
 )
 from sr_od.application.currency_war.decision.decision_v2.remediation import (
     Rejection,
@@ -457,6 +461,20 @@ def _check_constraint(name: str, cand: Candidate,
         # 检查器名字空间稳定);本金边际由 boss_floor 地板(覆盖态分派臂,
         # b 类保留)继续兜住。
         if isinstance(a, LevelUp):
+            # 预算-回执契约·执行侧前提防线(w921_rd_design DESIGN D1;
+            # 开关 spend_receipt_gate_enabled 默认关=零漂移):授权发出后
+            # working 态演化(前序采纳动作改变 bench/cap)使 pop_slot
+            # 前提失效的残余面在执行时点拒付——板满∧bench 空的升级
+            # 无 slot 可花([32] 消费有效性门;13-2 p2r4 形态),拒因
+            # 可被回执层归入 no_premise。产出侧拒发在授权包装配
+            # (posture_release.attach_spend_authorization),此处是
+            # 纵深防线不是唯一闸。
+            if registry.spend_receipt_gate_enabled \
+                    and not levelup_premise_ok(working):
+                return RejectReason(
+                    'boss_levelup_ban', '', 0,
+                    '升级前提不成立(板满∧bench 空,升级无 slot 可花;'
+                    '[32] 消费有效性门/预算-回执契约 no_premise)')
             # [12] 追级息引擎门 → EV 总账收编(W119/ADR-0347;A1 镜像
             # 与 E6 latch 一并退场,单一裁决点在 ev.levelup_ev_authorized:
             # [33] 人口位 / DP 花费授权(平台未破)/ 静态 EV 平台账)
@@ -751,6 +769,13 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
     floor = _active_floor(state, session, registry)
     coverage = ('emergency' if is_emergency(state, registry)
                 else 'mode')
+    # 预算-回执契约·授权包装配(w921_rd_design DESIGN §1.1-A;开关
+    # spend_receipt_gate_enabled 默认关=零漂移):本帧支出授权就地补
+    # 前提位/授权号/买侧预算,前提不成立的授权产出侧拒发(姿态载体
+    # 就地改写,下方 dp_spend 臂/评分窗读同一缓存=授权面收窄)。
+    # 快照写 session.v3_spend_auth,段尾回执/对账消费(见 arbitrate
+    # 末段)。release 帧(替代消费通道自身)不重复授权,零改动。
+    attach_spend_authorization(state, session, registry)
     working = state.copy()
     ordered = sorted(scored, key=lambda t: -t[1])
     res = ArbiterResult(coverage=coverage, floor=floor)
@@ -1096,6 +1121,16 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
     _steady_levelup_pass(working, state, session, registry, res)
     _run_remediation_pass(working, state, session, registry, res,
                           disc_view)
+    # 预算-回执契约·回执+对账收口(w921_rd_design DESIGN §1.1-B/C;
+    # 开关 spend_receipt_gate_enabled 默认关=零漂移):按渠道汇回执
+    # 写 session.v3_posture_receipt(判读直接归因,禁事后人肉回放),
+    # 授权未兑现走对账门三选一(分配器辖域/危机帧只记录交既有通道,
+    # 常规帧姿态降级+显式声明)。轮内多决策段(re-decide)last-wins。
+    _receipt = build_spend_receipt(working, session, registry, res.actions,
+                                   res.log)
+    if _receipt is not None:
+        session.v3_posture_receipt = _receipt.as_dict()
+        reconcile_spend(state, session, registry, _receipt)
     return res
 
 

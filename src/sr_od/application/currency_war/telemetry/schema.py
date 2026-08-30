@@ -283,6 +283,14 @@ class DecisionTrace:
     # d3_bench,值=本备战帧内拒因次数,轮键惰性重置)。None=无 match
     # 注册(离线/测试);{}=门开但本帧零拒因;伞关恒 None(无写点)。
     sess_spend_gate_block: dict | None = None
+    # 预算-回执契约·对账门声明(w921_rd_design DESIGN §1.1-C;
+    # session.v3_posture_unfulfilled 透传):{auth_id, channel, reason,
+    # channels, action}——授权未兑现帧的显式归档(reason=四枚举
+    # no_premise/no_channel/no_candidate/no_budget;action=allocator/
+    # crisis_release/downgrade)。None=无未兑现帧/开关关/无 match 注册。
+    # 开臂判读主判据「授权未兑现帧占比」的数据源(判前预注册
+    # .debug/temp/currency_war/w937_rd_batch1/PREREG.md)。
+    posture_unfulfilled: dict[str, Any] | None = None
     # (sess_pv_bench_block 已随件价值整机制删除,ADR-0497;存量 runs.jsonl
     #  判读脚本如遇旧键按历史台账读,新数据不再写。)
     # —— w919 R-A 批1 方向重估决策面观测(纯观测零行为;设计=.debug/temp/
