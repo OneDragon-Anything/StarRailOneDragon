@@ -2,6 +2,8 @@
 import time
 from typing import ClassVar
 
+from cv2.typing import MatLike
+
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation import Operation
 from one_dragon.base.operation.operation_edge import node_from
@@ -22,7 +24,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 def try_handle_train_supply_popup(
-        op: Operation, screen) -> OperationRoundResult | None:
+        op: Operation, screen: MatLike) -> OperationRoundResult | None:
     """列车补给每日弹窗处理(入局链共享助手,app/enter/start 三层挂点)。
 
     游戏语义(2026-08-31 建档实锤):全屏领取弹窗,「点击领取今日补给」= 点任意处/
@@ -36,7 +38,8 @@ def try_handle_train_supply_popup(
     待下一局实机复核。
 
     op:Operation 基类(SrOperation/SrApplication 共同祖先,round_by_* 同源)。
-    未命中返回 None(零开销旁路),命中返回 round_wait(等领取动画回落)。
+    未命中=一次全屏 OCR 后按 id_mark area 过滤(crop_first=False,非零开销),
+    返回 None;命中返回 round_wait(等领取动画回落)。
     """
     if not op.round_by_find_area(
             screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '标识-列车补给',
@@ -110,11 +113,11 @@ class StartCurrencyWarMatch(SrOperation):
         )
         self._stale_discarded = discard_stale_match_container(self.ctx, reason)
 
-    def _at_prep(self, screen) -> bool:
+    def _at_prep(self, screen: MatLike) -> bool:
         """是否到达备战阶段(备战独有「购买经验」按钮,screen_info area 判定,替代全屏 ocr)。"""
         return self.round_by_find_area(screen, StartCurrencyWarMatch.PREP_SCREEN, '备战标识-购买经验', crop_first=False).is_success
 
-    def _handle_train_supply_popup(self, screen) -> OperationRoundResult | None:
+    def _handle_train_supply_popup(self, screen: MatLike) -> OperationRoundResult | None:
         """列车补给每日弹窗处理(本 op 两节点挂点,共享助手见模块级函数)。"""
         return try_handle_train_supply_popup(self, screen)
 

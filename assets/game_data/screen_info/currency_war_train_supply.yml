@@ -10,7 +10,9 @@ area_list:
   - 1060
   - 105
   text: 列车补给
-  lcs_percent: 0.8
+  # 0.75 = 4 字标题容 1 字形变(3/4);再低会与同屏其他文本误配(全库扫描
+  # 最接近的重叠文本 LCS=0.5,见 w940 审计 P3-3 对拍)
+  lcs_percent: 0.75
   template_sub_dir: ''
   template_id: ''
   template_match_threshold: 0.7

@@ -5,6 +5,9 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
+    try_handle_train_supply_popup,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guid_choose_tab import GuideChooseTab
 from sr_od.interastral_peace_guide.open_guide import GuideOpen
@@ -69,9 +72,6 @@ class EnterCurrencyWar(SrOperation):
         # 列车补给每日弹窗(纵深挂点:弹窗可盖在指南页/朝露公馆入口任意一帧上,
         # 不接住则下方「前往参与」/F 分支全部落空 → 节点预算耗尽)。共享助手见
         # start_currency_war_match 模块级函数。
-        from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
-            try_handle_train_supply_popup,
-        )
         popup = try_handle_train_supply_popup(self, screen)
         if popup is not None:
             return popup

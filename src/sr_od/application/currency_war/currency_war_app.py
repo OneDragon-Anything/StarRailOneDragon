@@ -2,6 +2,8 @@
 
 from typing import ClassVar
 
+from cv2.typing import MatLike
+
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -19,6 +21,7 @@ from sr_od.application.currency_war.operations.entry.exit_currency_war_match imp
 )
 from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
     StartCurrencyWarMatch,
+    try_handle_train_supply_popup,
 )
 from sr_od.application.currency_war.telemetry import defects, state
 from sr_od.application.sr_application import SrApplication
@@ -108,7 +111,7 @@ class CurrencyWarApp(SrApplication):
             run_record=CurrencyWarRunRecord(ctx.current_instance_idx),
         )
 
-    def _at_lobby(self, screen) -> bool:
+    def _at_lobby(self, screen: MatLike) -> bool:
         """已在货币战争大厅(「创业指南」大厅独有锚点,lobby screen_info area)。"""
         return self.round_by_find_area(screen, EnterCurrencyWar.LOBBY_SCREEN, '标识-创业指南').is_success
 
@@ -155,9 +158,6 @@ class CurrencyWarApp(SrApplication):
         screen = self.last_screenshot
         # 列车补给每日弹窗最先接(match2 实锤 2026-08-31):弹窗盖在大世界上,
         # 早于一切 CW 导航识别——不接住则 _in_match/enter 链全部识别不到已知态。
-        from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
-            try_handle_train_supply_popup,
-        )
         popup = try_handle_train_supply_popup(self, screen)
         if popup is not None:
             return popup

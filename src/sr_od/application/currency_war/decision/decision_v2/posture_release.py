@@ -196,9 +196,13 @@ def crisis_release_open(state: GameState, session: StrategySession,
                         registry: DecisionV2Registry) -> bool:
     """危机金出口臂辖域(ADR-0503):开关 ∧ 应急带 ∧ 溢余段。
 
-    应急让位(ADR-0426)的成立前提是「让位后有承接者接住这笔金」;W907
-    实证观测帧类(商店全离线/板满)承接者全空 → 溢余金零兑换。本谓词
-    只在让位前提失效的帧类放行危机臂,正常 flip 臂辖区结构不动。
+    辖域=满足上式的**全部**应急溢余帧(宽辖域,如实声明)——包括商店在线
+    且有可承接提案的帧(ADR-0426 让位前提仍成立的帧),这些帧的金同样被
+    改道危机臂的刷新搜索。宽辖域是设计意图而非漏编码:W907 已证 hp≤25
+    帧类金的全通道生存价值≈0(板面买/搜索/囤积在 hp≈1 下搜索占优),
+    让位前提在应急带整体失效;sim A/B n=300/臂与开臂后分布(危机帧实花率
+    on 76-82% vs off 47%,非危机面零回归)实证宽辖域无劣化
+    (.debug/temp/currency_war/w939_armed_baseline/REPORT.md)。
     判据全既有单一源符号(开关/应急线/储备线溢余),零新常数。
     """
     if not registry.crisis_release_enabled:
