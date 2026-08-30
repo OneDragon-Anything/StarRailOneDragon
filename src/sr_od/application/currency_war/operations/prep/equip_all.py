@@ -9,11 +9,14 @@ read_equips(thr7)名准+无假阳(D-39,4/4 click 验),覆盖多列(区域 = scre
 (CV diff > 阈值 = 穿[新装或合成都变 icon],不变 = drag 落空)。**robust 合成消耗2件/列reflow/read漏检**
 (count-verify D-41 实测报3实4 失真:合成消耗2件 → column count 扰;avatar below-icon 变化直接观测,免受其扰)。
 
-**已接 cycle**(BattlePrepCycle ③,live A8 实跑):装备量受 bug#1 drag 间歇落空影响 → drag 前 mouse_move + 落空 retry(2026-08-11 live 诊断加)。
+**已接 cycle**(BattlePrepCycle ③,live A8 实跑):装备量受 bug#1 drag 间歇落空影响。
+bug#1 根治(W849 批,台账 6/6「retry 仍败」证明原地 retry 失败相关):拖前稳帧确认
+(``_wait_stable_frame``)+ 落空补救链(``_wear_with_recovery``:坐标现读重定位 + 按压/移动参数逐档升级)。
 
 **前置**:已在「货币战争-备战」,角色详情面板关(出售 不可见 —— 角色详情面板遮 col2;装备详情面板不遮 icon D-37)。
 """
 import time
+from collections.abc import Callable
 from typing import ClassVar
 
 import numpy as np
@@ -48,6 +51,16 @@ from sr_od.operations.sr_operation import SrOperation
 
 # 工具类装备(拆装扳手/冶金炉/随便骰子等,非 drag 穿;D-34 单独处理)
 _TOOL_CATEGORIES: set[str] = {'工具'}
+
+# ===== bug#1 drag 落空根治参数(replay/defect_ledger.jsonl drag 条目实证)=====
+# 台账形态:retry 仍败 6/6 —— 原地 retry 与首拖共用同一帧读出的坐标与同一时序,
+# 失败是**相关**的(首拖因画面未稳/按压未识别落空时,原地同参重拖同样落空),
+# 「retry 一次」的独立性假设不成立 → 治本 = 稳帧确认 + 坐标现读重定位 + 参数升级。
+DRAG_HOLD_TIME: float = 0.5    # 首拖按压保持秒数(拾取识别窗;升级档见 _WEAR_RETRY_PARAMS)
+DRAG_DURATION: float = 1.5     # 首拖移动时长秒数
+# 补救链每档(hold_time, duration):逐档加长按压与移动,对抗拾取识别窗的间歇漏识
+_WEAR_RETRY_PARAMS: list[tuple[float, float]] = [(0.5, 1.5), (0.8, 2.0), (1.1, 2.5)]
+_SETTLE_DIFF_THRESHOLD: float = 2.0   # 稳帧判据:相邻两帧全图像素差均值 < 阈值 = 画面已稳
 
 
 def _owned_wearable_names(hits: list) -> list[str]:
@@ -174,7 +187,7 @@ class EquipAll(SrOperation):
     修原 ``target=FRONT_AVATARS[equipped]`` 按已穿计数索引 → 已穿槽被覆盖)。
     avatar-slot 验穿(R19治本③,替 count-verify):drag 前后对比目标 avatar 下方 mini icon 区 CV-diff,
     变了=穿(新装/合成都变),不变=落空。robust 合成消耗2件/列reflow/read漏检(D-41 count-verify 报3实4 失真)。
-    前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**已接 cycle**(BattlePrepCycle ③);装备量受 bug#1 drag 间歇落空影响 → mouse_move + retry 缓解。
+    前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**已接 cycle**(BattlePrepCycle ③);bug#1 根治 = 拖前稳帧确认 + 落空补救链(坐标现读重定位 + 参数升级)。
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
@@ -231,19 +244,41 @@ class EquipAll(SrOperation):
         log.info(f'[cw-equip] 加载 {len(grays)} 个 cw_equip TM grays(缓存 ctx)')
         return grays
 
+    def _wait_stable_frame(self, interval: float = 0.3,
+                           budget_s: float = 1.2) -> MatLike:
+        """拖前稳帧确认:等相邻两帧全图像素差均值 < 阈值(画面动画收尾)再拖。
+
+        根因关系:drag 坐标来自截图现读;若备战面板入场/上件 reflow 动画未收尾,
+        帧内 icon 位置与终态错位 → 按压抓空(drag 物理落空形态之一)。预算耗尽
+        仍未稳 → 放行返回当前帧(不卡死流程;落空由补救链兜底)。
+        """
+        deadline = time.time() + budget_s
+        prev = self.screenshot()
+        while time.time() < deadline:
+            time.sleep(interval)
+            cur = self.screenshot()
+            diff = float(np.abs(prev.astype(np.int16) - cur.astype(np.int16)).mean())
+            if diff < _SETTLE_DIFF_THRESHOLD:
+                return cur
+            prev = cur
+        return prev
+
     def _drag_equip(self, start: Point, target: Point,
-                    verify_y: int | None = None) -> tuple[bool, float]:
-        """单次 drag 穿戴 + bug#1 mitigation + avatar-slot CV-diff 验穿。返 (是否穿上, diff)。
+                    verify_y: int | None = None,
+                    hold_time: float = DRAG_HOLD_TIME,
+                    duration: float = DRAG_DURATION) -> tuple[bool, float]:
+        """单次 drag 穿戴 + 拖前稳帧确认 + avatar-slot CV-diff 验穿。返 (是否穿上, diff)。
 
         ``verify_y`` = 目标 avatar 的 below-icon 中心 y(默认前排 479;后排按 avatar_to_below
-        = rect.y2+14,ADR-0154 后排支持)。bug#1 缓解(2026-08-11 加,live A8 实跑诊断):drag 前
-        ``mouse_move(start)``(零移动)。CV-diff 验穿(R19):drag 前后对比目标 avatar 下方
-        mini icon 区,变了=穿(robust 合成消耗/reflow,替 count-verify)。
+        = rect.y2+14,ADR-0154 后排支持)。``hold_time``/``duration`` = 按压保持/移动时长
+        (补救链逐档升级,常量 _WEAR_RETRY_PARAMS)。拖前 ``_wait_stable_frame`` 确认画面已稳
+        (动画未收尾时按压抓空 = 落空主形态);稳帧结果直接用作 CV-diff 基准帧。
         """
-        cur = self.screenshot()
+        cur = self._wait_stable_frame()
         self.ctx.controller.mouse_move(start)
         time.sleep(0.2)
-        self.ctx.controller.drag_to(start=start, end=target, duration=1.5, hold_time=0.5)
+        self.ctx.controller.drag_to(start=start, end=target,
+                                    duration=duration, hold_time=hold_time)
         time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
         # 光标 parking(审计 R4):drag 终点=目标 avatar,光标停其上 → Director heavy observe 的
         # read_deployed_chars SIFT 同 rect 读被遮。park 后再验穿截图(diff 裁剪区在 avatar 下方,
@@ -253,6 +288,37 @@ class EquipAll(SrOperation):
         vy = self.BELOW_ICON_Y if verify_y is None else verify_y
         diff = _below_icon_diff(cur, post, target.x, vy, self.BX_HALF, self.BY_HALF)
         return diff > self.BELOW_DIFF_THRESHOLD, diff
+
+    def _wear_with_recovery(self, start: Point, target: Point, verify_y: int | None,
+                            relocate: Callable[[], Point | None]) -> tuple[bool, float]:
+        """单件穿戴 + 落空补救链(bug#1 根治;替原地同参 retry)。
+
+        台账实证(replay/defect_ledger.jsonl drag 条目,6/6 retry 仍败):原地 retry 与
+        首拖共用同一帧坐标/同一时序 → 失败相关。补救链每次重试前:① park 光标
+        ② ``relocate()`` 现读坐标(列 reflow/首读动画帧错位自愈)③ 参数升级
+        (_WEAR_RETRY_PARAMS 逐档)。``relocate`` 返 None = 件已不在 owned(被合成消耗/
+        reflow miss)→ 立即放弃本件(交还主循环 stall 语义,不硬撑)。全档仍败 →
+        (False, 末次 diff),交由主循环停手并进哨兵归因。
+        """
+        cur_start = start
+        diff = 0.0
+        for attempt, (hold, dur) in enumerate(_WEAR_RETRY_PARAMS):
+            if attempt > 0:
+                self.park_cursor(after_wait=0.1)
+                fresh = relocate()
+                if fresh is None:
+                    log.info('[cw-equip] 补救链:件已不在 owned(消耗/reflow)→ 放弃本件')
+                    return False, diff
+                if (fresh.x, fresh.y) != (cur_start.x, cur_start.y):
+                    log.info('[cw-equip] 补救链重定位 (%d,%d)→(%d,%d)',
+                             cur_start.x, cur_start.y, fresh.x, fresh.y)
+                cur_start = fresh
+                log.info('[cw-equip] 补救重试 #%d hold=%.1f dur=%.1f', attempt, hold, dur)
+            landed, diff = self._drag_equip(cur_start, target, verify_y,
+                                            hold_time=hold, duration=dur)
+            if landed:
+                return True, diff
+        return False, diff
 
     def _get_avatar_templates(self):
         """加载立绘 SIFT 模板(ADR-0154 M7 身份用;缓存 ctx.cw_portrait_templates,与 deploy_bench 同源)。"""
@@ -492,8 +558,10 @@ class EquipAll(SrOperation):
                          holder_desc, tname, cc_name)
                 landed, diff = self._drag_equip(src_pt, dst_pt, dst_vy)
                 if not landed:
-                    # below-icon 拖拽起点是近似坐标,可能没抓中 → retry 一次
-                    landed, diff = self._drag_equip(src_pt, dst_pt, dst_vy)
+                    # below-icon 拖拽起点是近似坐标,可能没抓中 → 升参 retry 一次
+                    # (起点无现读通道可重定位,只能参数升级对抗拾取漏识)
+                    landed, diff = self._drag_equip(src_pt, dst_pt, dst_vy,
+                                                    hold_time=0.8, duration=2.0)
                 if landed:
                     log.info('[cw-equip] C6 转移落(%s→%s,diff=%.1f);重读占用', tname, cc_name, diff)
                     _cur = self.screenshot()
@@ -591,9 +659,13 @@ class EquipAll(SrOperation):
                         d_used = d
                         break
                 if target_pv is None:
-                    log.info('[cw-equip] %s 槽位坐标缺失 → 跳过该角色', char_name)
+                    # 日志与行为对齐(593-596 语义修正,原为 break):单角色坐标缺失
+                    # 只跳过该分配项,不中断整轮穿戴。同一分配项会反复顶到队首,
+                    # stall 计数防死循环(连续 2 次定位不了 → 出循环交哨兵归因)。
+                    log.info('[cw-equip] %s 槽位坐标缺失 → 跳过该分配项', char_name)
+                    stall += 1
                     _stop_reason = f'{char_name} 槽位坐标缺失'
-                    break
+                    continue
                 entry = next(((n, p) for n, p in wearable if n == want), None)
                 if entry is None:
                     stall += 1   # owned 列 reflow 瞬时 miss → 再读一次
@@ -603,9 +675,20 @@ class EquipAll(SrOperation):
                 log.info('[cw-equip] M7 drag %s @(%d,%d) → %s(%s-%d) [%s]',
                          name, cx, cy, char_name, d_used.position_pref, d_used.slot,
                          'key' if (_tgt_comp and name in _tgt_comp.key_equips) else 'gen')
-                landed, diff = self._drag_equip(Point(cx, cy), target, verify_y)
-                if not landed:
-                    landed, diff = self._drag_equip(Point(cx, cy), target, verify_y)   # bug#1 retry
+
+                def _relocate_item(_want: str = want,
+                                   _tmpl=templates,
+                                   _rect=equip_rect) -> Point | None:
+                    """补救链坐标现读:件被合成消耗/列 reflow 后,首读坐标作废 → 现读。
+
+                    默认参绑定当轮值(ruff B023:闭包不绑循环变量)。
+                    """
+                    _hits = read_equips(self.screenshot(), _tmpl, equip_rect=_rect)
+                    _e = next(((n, p) for n, p, _ in _hits if n == _want), None)
+                    return Point(_e[1][0], _e[1][1]) if _e is not None else None
+
+                landed, diff = self._wear_with_recovery(Point(cx, cy), target,
+                                                        verify_y, _relocate_item)
                 if landed:
                     equipped += 1
                     key = (d_used.position_pref or 'back', int(d_used.slot or 1))
@@ -613,7 +696,9 @@ class EquipAll(SrOperation):
                     stall = 0
                     log.info('[cw-equip] %s → %s 穿了(diff=%.1f)', name, char_name, diff)
                 else:
-                    log.info('[cw-equip] %s retry 仍败(diff=%.1f)→ 停(bug#1 持续 or 后排坐标偏差)',
+                    # stop_reason 字面保持台账历史口径(跨局趋势可比);语义现为
+                    # 「补救链全档(稳帧+重定位+升参)仍败」
+                    log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 停(bug#1 持续 or 后排坐标偏差)',
                              name, diff)
                     _stop_reason = 'drag 落空 retry 仍败(bug#1 持续/坐标偏差)'
                     break
@@ -663,22 +748,29 @@ class EquipAll(SrOperation):
             target = self.FRONT_AVATARS[slot_idx - 1]
             log.info('[cw-equip] drag %s @(%d,%d) → 前排-%d avatar (%d,%d)[空槽] [%s]',
                      name, cx, cy, slot_idx, target.x, target.y, _tag)
-            landed, diff = self._drag_equip(Point(cx, cy), target)
+
+            def _relocate_front(_tmpl=templates, _rect=equip_rect,
+                                _keys=_key_equips) -> Point | None:
+                """补救链坐标现读(旧 front-only 路径):现读 owned 同优先序取最新坐标。
+
+                默认参绑定当轮值(ruff B023:闭包不绑循环变量)。
+                """
+                _hits = read_equips(self.screenshot(), _tmpl, equip_rect=_rect)
+                _wear = [(n, p) for n, p, _ in _hits
+                         if EQUIPMENTS.get(n) is not None
+                         and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+                _wear = _prioritize_wearable(_wear, _keys)
+                return Point(_wear[0][1][0], _wear[0][1][1]) if _wear else None
+
+            landed, diff = self._wear_with_recovery(Point(cx, cy), target, None,
+                                                    _relocate_front)
             if landed:
                 equipped += 1
                 log.info('[cw-equip] %s 穿了(前排-%d below-icon diff=%.1f > %.1f)',
                          name, slot_idx, diff, self.BELOW_DIFF_THRESHOLD)
                 continue
-            # bug#1 间歇落空 → retry 一次(同件同槽;bug#1 随机,retry 可能成,2026-08-11 live A8 诊断)
-            log.info('[cw-equip] %s drag 未变(diff=%.1f ≤ %.1f)→ retry(bug#1?)',
-                     name, diff, self.BELOW_DIFF_THRESHOLD)
-            landed2, diff2 = self._drag_equip(Point(cx, cy), target)
-            if landed2:
-                equipped += 1
-                log.info('[cw-equip] %s retry 穿了(前排-%d diff=%.1f)', name, slot_idx, diff2)
-                continue
-            # retry 仍败 = 真问题(bug#1 持续 / 非穿戴 / 槽满),停(避免空转烧时间)
-            log.info('[cw-equip] %s retry 仍败(diff=%.1f)→ 停(bug#1 持续 or 非穿戴)',
-                     name, diff2)
+            # 补救链全档仍败 = 真问题(bug#1 持续 / 非穿戴 / 槽满),停(避免空转烧时间)
+            log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 停(bug#1 持续 or 非穿戴)',
+                     name, diff)
             break
         return self.round_success(f'装备 {equipped} 件到前排 avatar(空槽 {slots})')
