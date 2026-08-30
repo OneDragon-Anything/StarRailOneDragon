@@ -13,7 +13,7 @@ W907 sim 找问题批(`.debug/temp/currency_war/w907_sim_hunt/REPORT.md`)实证:
 `alloc_gold` 全 0——金在死亡门口持续增值、零兑换,存息 posture 不降级。
 
 根因定位(表达式级证据见本批 REPORT §1,单一源
-`.debug/temp/currency_war/w917_crisis_release/REPORT.md`):
+`docs/develop/currency_war/prereg/w917_crisis_release/REPORT.md`,自 `.debug/temp/` 迁入):
 
 1. **release 恒 0 = 前置门短路**:`posture_release.flip_hit` 与存息准入门
    `release_directive` 都以 `is_emergency(state, registry)`(hp≤25)无条件让位
@@ -95,7 +95,11 @@ W907 sim 找问题批(`.debug/temp/currency_war/w907_sim_hunt/REPORT.md`)实证:
 
 ## 开臂判据(挂账)
 
-1. sim A/B 主判据通过(on>off 且 on 臂非零)+ 次要不劣化;
-2. 实机观察局 ≥2:危机帧出现 release tag 姿态行 + sess_release_budget>0 +
-   泄息去向分项账非全零(ADR-0426 增补二同款实机锚);
+1. sim A/B 主判据通过(on>off 且 on 臂非零)+ 次要不劣化——**判据口径=实花面**
+   (v3_release_spent>0 的真实消费,600 局重放补判:off 22.00%→on 28.33%;
+   budget>0 记账面是构造性通道开火信号,不等于金花出去,「兑换」与病灶「零兑换」
+   不同义,审计 W928 勘正);
+2. 实机观察局 ≥2:危机帧出现 release tag 姿态行 + **实花面**泄息去向分项账非全零
+   (按 v3_release_spent 实际消费计,不按 sess_release_budget 记账面计;
+   ADR-0426 增补二同款实机锚);
 3. 实机危机帧 hp 可信位核对(hp_trusted=True;兜底帧不触发的边界复核)。
