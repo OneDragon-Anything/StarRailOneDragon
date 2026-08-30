@@ -1137,23 +1137,31 @@ class DecisionV2Registry:
     #: 负例/升级三合法判据不动)。
     #: **v3.2 增量(W772 分支 2 后出手面修正;ADR-0483)**:通道 B 方向
     #: 梯级重排 L1 高价值定向(核心卡/2★ 凑档件/线内 3-5 费件)→ L2
-    #: 定向 D(P12 不变)→ L3 低价兜底(仅 L1 全败净支出闸);净支出
-    #: 闭环闸(预期净支出=Σ支出−本轮预期收入≤0 不出手,目标选择器非
-    #: 收门);保留金下限公式化(见下两字段)。触发判据/豁免结构不动
-    #: (M0a 98.4% 实证有效);协议 V3 判据零改动重跑,开关仍第 1 态。
+    #: 定向 D(P12 不变)→ L3 低价兜底;保留金下限公式化(见下两字段)。
+    #: 触发判据/豁免结构不动(M0a 98.4% 实证有效)。
+    #: **v3.3 增量(W779 净支出可行性审计后 sink 供给+判据口径双修)**:
+    #: ①单帧净支出闸废除→窗级水位不升出手计划(W779 审计证单帧净>0
+    #: 在 P2 中后段结构性难达 rn5-7≈0-2%);②L1×L2 耦合(D 后当帧
+    #: 复评 L1,刷后 re-decide 段链承载);③XP sink 授权化(hp>停升级线
+    #: ∧非 P21 濒死带帧买经验至 carry 概率窗,ev.levelup_ev_basis 臂④,
+    #: 血预算门 AND 不动);④L3 量级诚实化(bench 容量封顶,只辅助)。
     #: 总开关:False=现行为逐位一致(零漂移锚,A/B 对照臂)。
-    #: **开臂判据挂账(事前写死,协议 V3 双钥匙缺一不开;策略开关生命
-    #: 周期第 1 态=W762 判定②后调判据重挂,准入理由=通道 B 行为未经
-    #: A/B 验证+T3/保留金占位+P25 Δp 未标定)**:
+    #: **开臂判据挂账(事前写死,协议 V4 双钥匙缺一不开;策略开关生命
+    #: 周期第 1 态=W779 M0b 再败后 sink+判据双修重挂,准入理由=D 解绑/
+    #: XP sink/窗级水位目标为新机制未经合规 A/B+保留金公式参数仍属
+    #: 标定层+P25 Δp 未标定)**:
     #: ① P25 证成(Δp 标定回填,g 分带——全带/贴线带逐点/破息带——各给
     #:    符号结论;单篇=docs/game/currency_war/research/proofs/
-    #:    p25-p2-corecard-purchase-ev.md;采集窗口死线=60 局实机或 1 次
-    #:    sim 注入批先到,到期未证成=按证伪分支当场兑换);
-    #: ② sim A/B 预注册协议 V3 主判据达标且护栏全绿(协议=.debug/temp/
-    #:    currency_war/w757_p2_spend_auth/SIM_AB_PREREGISTRATION_V3.md,
-    #:    n=500/臂配对 McNemar;主判据 = M0a 判定触达≥70% ∧ M0b 出手
-    #:    有效性≥50% ∧ M1-M3;护栏 G1-G6,G1-A 双向对称;三分支归因
-    #:    规则写死:M0a 败/M0b 败→本设计层,M0 双达而 M1-M3 败→上游)。
+    #:    p25-p2-corecard-purchase-ev.md;采集窗口死线=自 v3.3 落码起
+    #:    60 局实机或 1 次 sim 注入批先到,到期未证成=按证伪分支当场
+    #:    兑换);
+    #: ② sim A/B 预注册协议 V4 主判据达标且护栏全绿(协议=.debug/temp/
+    #:    currency_war/w757_p2_spend_auth/SIM_AB_PREREGISTRATION_V4.md,
+    #:    n=500/臂配对 McNemar;主判据 = M0a 判定触达≥70% ∧ **M0b 授权
+    #:    窗水位不升(窗终金≤窗起点金)≥50%**(v3.3 换口径)∧ M1-M3;
+    #:    护栏 G1-G6 沿用,G1-B① 阈值随公式下限;三分支归因规则写死:
+    #:    M0a 败=覆盖失败/M0b 败=sink 解锁失败→本设计层,M0 双达而
+    #:    M1-M3 败→上游)。
     #: 验证不过的出口=删码留 ADR-0480/0481(生命周期第 4 态),禁悬置默认关。
     #: 开臂翻默认时必须盘点「断言授权关闭行为」的锁组语义(第 3 态义务)。
     p2_spend_auth_enabled: bool = False
@@ -1182,6 +1190,39 @@ class DecisionV2Registry:
     #: 既有息账门同判,无独立判定消费本常量);保留作 P25 分带核验的
     #: 定义值(非判据输出,零决策消费点)。
     p2_spend_auth_line_band_floor: int = 45
+
+    # ===== P1→P2 接口机制五开关(W774 v2 设计落码;ADR-0484)=====
+    #: 设计单一源 = .debug/temp/currency_war/w774_p1_interface_design/
+    #: REPORT.md(v2)+ 同目录 SIM_AB_PREREGISTRATION.md(v2);全部辖
+    #: plane==1,与 p2_spend_auth(plane==2)正交(W774 §4)。
+    #: **开臂判据挂账(事前写死,策略开关生命周期第 1 态)**:sim A/B
+    #: 预注册协议 v2 主判据达标——M1(P2 存活轮数中位差 ≥+1.0 且
+    #: Wilcoxon p<0.05)∧ M3 双维(代价门后摇摆 ≤2% ∧ 锁线-出口
+    #: form 交叠 ≥1 局占比 ≥90%)∧ 护栏 G1-G4 全绿;不过的出口=归因树
+    #: (分支 A/D/B/C/R)兑换或删码留 ADR,禁悬置默认关。五开关同批
+    #: 落码为一个设计单元(A/B 主批同开,分臂诊断批①单开归因)。
+    #: ① 锁线 v2:摇摆代价门(degrade≥N ∨ 连败≥N 且未锁 → FALLBACK
+    #:    评估)+ FALLBACK 锁前板面一致性验证(交叠 ≥N 成员才锁)。
+    p1_iface_lockline_v2_enabled: bool = False
+    #: ② carry 装备:硬节点帧意向核心 0 装备必分配 + 禁无接收者的卸装。
+    p1_iface_carry_equip_enabled: bool = False
+    #: ③ 遭遇备战授权:hp−L_node(rung)<emergency_hp 硬节点备战帧授权
+    #: (金下限=rebirth_floor;只开门不收门)。
+    p1_iface_hardnode_prep_enabled: bool = False
+    #: ④ 连败金流:连败≥2∧金>息线∧form 缺口 → 溢余投当场可上场体系件
+    #: ([22]④ 再遇账;仅纯散件不买,[31] 出处)。
+    p1_iface_lossstreak_flow_enabled: bool = False
+    #: ⑤ 血线三带:预警带 40([18] 直引)禁纯囤件 + 应急带 ≤emergency_hp
+    #: 当轮转化豁免(压库不豁免=显式取舍)。
+    p1_iface_blood_bands_enabled: bool = False
+    #: 摇摆代价门·降格事件阈(**占位值,不做生产决策**——开关默认关;
+    #: 新设阈,粒度对齐连败门,挂 A/B M3 计数维标定,W774 §2 阈值清单)。
+    p1_iface_swing_degrade_n: int = 2
+    #: 摇摆代价门·连败阈(沿用:与 ④ 触发面同源,W764 迭代方向)。
+    p1_iface_swing_loss_n: int = 2
+    #: 板面一致性匹配阈=该线成员数(**新设占位**,transition_combos 各
+    #: 体系最低激活档 2-3 人的下界;挂 A/B M3 质量维标定)。
+    p1_iface_board_match_min: int = 2
 
     # ===== C1 资产臂(跨位面资产通道 V_asset)——定谳清理,删码留档 =====
     #: 曾以 c1_asset_channel_enabled(总开关)+c1_asset_m_min(0.5)/
@@ -1305,6 +1346,9 @@ class DecisionV2Registry:
         'boss_levelup_ban',    # 升级 EV 总账门(名字历史遗留;迁移审计 w255(git 历史)/ADR-0410
                                # 起 boss 禁令臂已删,[32] 节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
+        'p1_iface_gate',       # P1→P2 接口机制收门面(W774 v2/ADR-0484:
+                               # ⑤血线三带禁令+④纯散件不买+②卸装禁令;
+                               # 默认关=零漂移,boss/ALL IN 窗豁免)
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
     #: interest_floor 字段已删(D3 双源清偿,`w628_migration_b2/`):息线单一源 =
@@ -1381,8 +1425,11 @@ class DecisionV2Registry:
             # (资源维, 回合态维) → (约束名...) 或 ('none', 原因)
             # ('catchup' 列已随 `w126_b_arm/`/ADR-0349 追赶态退场改为 'mode' 常态列)
             ('gold', 'boss'): ('gold_floor', 'interest_rule'),
-            ('gold', 'emergency'): ('gold_floor',),
-            ('gold', 'mode'): ('gold_floor', 'interest_rule'),
+            # p1_iface_gate:血线三带禁令辖预警带(mode 维)与应急带
+            # (emergency 维);boss 维豁免(W774 §2⑤ boss/ALL IN 零触碰)
+            ('gold', 'emergency'): ('gold_floor', 'p1_iface_gate'),
+            ('gold', 'mode'): ('gold_floor', 'interest_rule',
+                               'p1_iface_gate'),
             ('bench', 'boss'): ('bench_capacity',),
             ('bench', 'emergency'): ('bench_capacity',),
             ('bench', 'mode'): ('bench_capacity',),

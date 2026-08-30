@@ -28,7 +28,6 @@
 3. **过渡体系与战力证据**(P1 怎么活到成型、什么形态能过;按口述条目号展开,故排在纪律后):
    - [transitions.md](transitions.md) — 过渡叙事:开局分级(锁线资格)/ 成型停手线 / 换血点 / 护航(已抛弃史料)
    - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐线定义(引擎池 / 核心池;落码依据)
-   - [power_baseline.md](power_baseline.md) ★ — 形态 × 位面能否过的证据表(bot 敢用白名单)
    - [stage_transitions.md](stage_transitions.md) — P1→P2→P3 阵容演化定量(加法不换件的数据边界)
    - [h3_tier_core_crosstab.md](h3_tier_core_crosstab.md) — 档位 × 核心在场 × 败率交叉(实机语料统计)
 4. **终局阵容**(P2/P3 打什么):
@@ -49,7 +48,6 @@
 | 过渡体系:P1 骨架/过渡成型停手线/换血点/P2 护航(已抛弃史料)/买牌纪律 | [transitions.md](transitions.md) |
 | **过渡阵容逐线定义**(引擎池/核心池/直通族结构;落码依据) | [transition_combos.md](transition_combos.md) ★ |
 | **终局阵容分类**(final comps 分类索引+逐类累积;CARRY/羁绊双维;**单套 comp 打法知识单一源**) | [final_comps/README.md](final_comps/README.md) ★ |
-| **阵容战力基线**(形态×位面能否过的证据表;bot 敢用白名单) | [power_baseline.md](power_baseline.md) ★ |
 | 阵容理解方法论(技能/羁绊/玩法三层怎么读) | [combo_methodology.md](combo_methodology.md) |
 | 玩法方法论 M1-M16:资源入口/核心×弹性/枢纽分级/骨架拼装/升星经济学/装备优先级/站位… | [plaza_methodology.md](plaza_methodology.md) |
 | 策略命题证明(某结论为什么成立/口述直觉的数学保证) | [math_proofs.md](math_proofs.md) 索引 → [proofs/](proofs/) 单篇 |

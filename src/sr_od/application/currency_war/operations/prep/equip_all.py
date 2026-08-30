@@ -562,7 +562,20 @@ class EquipAll(SrOperation):
                     # W607 H2②(ADR-0461):库藏生锈在场,owned 滞留=主动喂敌
                     # (competitors.md:45)→ hold 豁免,分配序列全量穿戴。
                     log.info('[cw-equip] 库藏生锈在场 → hold 豁免(owned 滞留喂敌),全量穿戴')
-                if _transition_hold and not _rust_release:
+                # P1→P2 接口机制·②分配义务(W774 v2;ADR-0484):硬节点
+                # 备战帧 ∧ 意向核心上场 ∧ 0 装备 → duty 豁免 hold(简易
+                # 非组件件必分配,意向核心优先由 equip_allocation carry
+                # 序承载);供给面空自然空转(R-② 归因输入)。开关关恒
+                # False=逐位旧行为(零漂移)。
+                from sr_od.application.currency_war.decision.decision_v2.p1_iface import (  # noqa: E501
+                    p1_iface_carry_duty_active,
+                )
+                _p1_duty = p1_iface_carry_duty_active(
+                    _reg_eq, _st_hold, getattr(_match, 'session', None),
+                    deployed, occupied_m7, [n for n, _ in wearable])
+                if _p1_duty:
+                    log.info('[cw-equip] p1_iface ②分配义务:硬节点帧意向核心裸装 → hold 豁免')
+                if _transition_hold and not _rust_release and not _p1_duty:
                     # 过渡期:过滤掉 gen 兜底项(分配序列中非 key_equips 命中的),只穿命脉件
                     _keys = set(_tgt_comp.key_equips) if _tgt_comp else set()
                     alloc = [a for a in alloc if a[1] in _keys]

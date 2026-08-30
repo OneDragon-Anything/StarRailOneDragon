@@ -273,6 +273,15 @@ class DecisionV2Strategy(CwStrategy):
             # registry 透传(C4 存活轮数门在 v2 换线通道的判据注入,A/B 臂
             # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
             update_intention(state, ist, session, registry=self.registry)
+            # P1→P2 接口机制·①锁线 v2(W774 设计落码;ADR-0484):
+            # 摇摆代价门(degrade≥N ∨ 连败≥N)→ FALLBACK 板面一致性锁;
+            # [23] 锚(信号驱动)是主机制,本后处理只在未锁帧补代价管理。
+            # 与 update_intention 同 key 守卫(每 game-round 恰一次,
+            # 降格转移计数分母=轮)。
+            from sr_od.application.currency_war.decision.decision_v2.p1_iface import (  # noqa: E501
+                p1_iface_lockline_update,
+            )
+            p1_iface_lockline_update(state, ist, session, self.registry)
         comp = get_comp(ist.locked_comp) if ist.locked_comp else None
         # `w578_target_comp_wire/`:P1 配方锁帧物化——ADR-0357 后 locked_comp 在配方锁局恒空,
         # session.target_comp 恒 None → 部署选人/评分管线/投资装备钩子等
@@ -381,6 +390,15 @@ class DecisionV2Strategy(CwStrategy):
             p2_spend_auth_intercept,
         )
         session.v3_p2_auth_intercept = p2_spend_auth_intercept(
+            state, session, registry)
+        # P1→P2 接口机制·拦截枚举(W774 v2 协议 §3 R 族 telemetry 面;
+        # ADR-0484):plane==1 帧逐帧枚举(downgrade_window/no_consistency/
+        # 触发面 ⑤>④>③)写 session 披露键,决策迹统一接出。纯观测零
+        # 决策行为;开关关时枚举恒 ''(零漂移)。
+        from sr_od.application.currency_war.decision.decision_v2.p1_iface import (  # noqa: E501
+            p1_iface_intercept,
+        )
+        session.v3_p1_iface_intercept = p1_iface_intercept(
             state, session, registry)
         # `w224_handoff/`/ADR-0399:P2 承接快照(纯观测,零行为;设计件 08 §4.2
         # Phase 0)——plane>=2 本位面首帧算一次写 session.v3_handoff
