@@ -18,7 +18,7 @@
 
 ### 1.1 预算-回执契约:授权/回执/对账三段(ADR-0504)
 
-**是什么**:姿态与执行之间的显式契约,把「授权」与「兑现」分离成可对账的两端(姿态算出该花而执行 0 花的断裂,此前只能事后人肉回放归因)。全契约挂独立开关 `registry.spend_receipt_gate_enabled`(缺省关=契约面全旁路,行为零改动;决策 why 见 ADR-0504)。
+**是什么**:姿态与执行之间的显式契约,把「授权」与「兑现」分离成可对账的两端(姿态算出该花而执行 0 花的断裂,此前只能事后人肉回放归因)。**无条件生效**(原独立开关 `spend_receipt_gate_enabled` 已随除开关批删除;决策 why 与生效依据见 ADR-0504)。
 
 - **授权包(产出侧)**:`posture_release.attach_spend_authorization`(arbiter 入口调用)对轮缓存姿态就地补三字段——`premises`(前提 token:`'pop_slot'`=升级授权前提 bench 有等待件 ∨ cap 有空位;`'spend_channel'`=刷新授权前提该节点商店执行通道存在,判据 `spend_channel_ok`)、`buy_budget`(奖励帧买侧扩张预算,量级=溢余段,`economy_cycle.overflow` 单一源;**授权≠义务**:buy 渠道为扩张许可 `buy_obligation=False`,奖励帧攒息是设计内行为)、`auth_id`(`f'{plane}-{round}'` 轮标识——跨轮唯一,轮内多决策段共用,回执 last-wins 取末段;对账挂接键)。前提不成立的授权**产出侧拒发**:升级前提不成立 → `level_up=False`;无通道节点 → `refresh_budget=0`;拒发后 tag 回落词汇表既有项 `'存息'`。授权快照写 `session.v3_spend_auth`(对账门授权侧输入)。
 - **执行回执**:`posture_release.build_spend_receipt`(arbiter 段尾)产出 `posture.SpendReceipt`——按渠道(buy/levelup/refresh)汇总采纳支出金;未兑现渠道附枚举原因,优先序 `no_channel`(无执行通道节点)> `no_premise`(执行时点前提复核,覆盖授权发出后 working 态演化的残余面,对应 arbiter 升级门的执行侧复核防线)> `no_candidate`(候选全滤空/无候选,附执行 log Top1 拒因 `top_reject`);`no_budget`(授权面存在但预算 0)为枚举集保留值。回执 dict 写 `session.v3_posture_receipt`。

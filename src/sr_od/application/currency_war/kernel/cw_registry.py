@@ -1691,7 +1691,7 @@ class DecisionV2Registry:
 
     # ===== `w948_transform_arm/` W948 转型臂(停滞评估臂)双开关(开关生命周期第 1 态:默认关)=====
     #: 设计单一源 = .debug/temp/currency_war/w948_transform_design/DESIGN.md §2;
-    #: 决策 why = ADR-0508。机制:锁定态下「线进展」窗级无收敛 + form 未成型 +
+    #: 决策 why = ADR-0509。机制:锁定态下「线进展」窗级无收敛 + form 未成型 +
     #: hp 净降 → 把该线降为弱意向(带 stagnate 证据),复用既有撤销下游
     #(异线信号 + C4 门 + 回锁闩)完成重估——补「锁=当前最优假设(可改判)」
     #: 语义,是 ADR-0429 增补「撤销出口灵敏度独立演进」的进度侧触发面。

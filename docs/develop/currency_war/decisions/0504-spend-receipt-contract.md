@@ -1,6 +1,6 @@
 # ADR-0504 预算-回执契约(姿态授权包 + 执行回执 + 对账门)
 
-- **Status**: accepted(开关 `spend_receipt_gate_enabled` 生命周期第 1 态默认关;开臂判据挂账见尾节)
+- **Status**: 已落地无条件生效(原开关 `spend_receipt_gate_enabled` 已随除开关批删除;依据 = 预注册 A/B v2 渠道级判正 + 同帧集配对零损害 + 生产写入端已接线;用户裁定不做开臂)
 - **Date**: 2026-08-31
 - **实现**: commit 03650f2d(R-D 批1;设计单一源 = 本 ADR Context/Decision 节
   + w921 设计件 `.debug/temp/currency_war/w921_rd_design/DESIGN.md`(临时
@@ -57,8 +57,11 @@ reconcile_spend`,arbiter 入口与段尾调用,`posture.Posture` 三新字段带
    `session.v3_posture_unfulfilled`={auth_id, channel, reason, channels,
    action}。不在常规帧新造消费通道(DESIGN §4-3)。
 
-**开关**:`kernel.cw_registry.spend_receipt_gate_enabled = False`(独立开关,不借用
-`crisis_release_enabled`)。关 = 契约面全旁路,行为与改动前逐位一致。
+**开关(已除名)**:原 `kernel.cw_registry.spend_receipt_gate_enabled`(独立
+开关,第 1 态默认关)已随除开关批删除——契约**无条件生效**(用户裁定不做
+开臂;依据 = 预注册 A/B v1 帧级 + v2 渠道级两轮判正(10.74%→1.89%)+
+同帧集配对零损害 + 生产写入端已接线;W951 除开关批同形态)。registry 留
+墓碑注记。
 
 **遥测面**:`telemetry.schema.DecisionTrace.posture_unfulfilled`(可选字段,不破坏
 schema)+ sim 账本行 `posture_unfulfilled`(`sim/engine_p1.py` 轮入口快照)。
@@ -68,7 +71,9 @@ schema)+ sim 账本行 `posture_unfulfilled`(`sim/engine_p1.py` 轮入口快照)
 
 ## Consequences
 
-- **开关关零漂移**:契约面全旁路(16 seeds ledger digest 逐位一致,w937 REPORT §三)。
+- **无条件生效(除开关批)**:契约三段挂接点(attach/回执/对账)无开关项;
+  原关臂零漂移锚(16 seeds digest 逐位)随开关消亡——激活后的行为位移由
+  A/B v2 与受涉锁组管辖(锁面已改无条件直测)。
 - **生产写入端已接线**(w943_audit5 P3-8 回填,执行记录 da222efb):
   recorder 逐 decision 行直读 session 属性(`v3_posture_unfulfilled`,
   第三路接线,不依赖 shop.py `_extra` 透传键——该键无需落);字段逐帧
@@ -89,21 +94,24 @@ schema)+ sim 账本行 `posture_unfulfilled`(`sim/engine_p1.py` 轮入口快照)
 
 ## 验证
 
-- 新锁 `sr-od-test/test/sr_od/app/currency_war/test_cw_spend_receipt.py` 11 条
-  (授权包装配/产出侧拒发+守卫移除负控/r4 形态锁/四枚举/对账门三选一/开关关零漂移);
-- 关臂零漂移:16 seeds digest 逐位(`PYTHONHASHSEED=0` 钉 seed,stash 前后对拍);
+- 锁 `sr-od-test/test/sr_od/app/currency_war/test_cw_spend_receipt.py`
+  15 条(授权包装配/产出侧拒发+守卫移除红检[monkeypatch 旁路等价形态]/
+  r4 形态锁/四枚举/对账门三选一/帧级复位/奖励义务豁免/reward 通道/免费
+  计数),无条件直测;原「开关关零漂移」锁随开关删除(移除理由:关臂
+  形态已不可达,守卫移除红检由 monkeypatch 旁路锁承接);
+- 关臂零漂移(开关在时):16 seeds digest 逐位(`PYTHONHASHSEED=0`
+  钉 seed,stash 前后对拍)——历史锚,随开关消亡;
 - sim A/B 预注册:判前落盘(`prereg/w937_spend_receipt/PREREG.md`,
   **v2 渠道级口径**)。v1 帧级口径(5.37%→1.89%)存在分子粒度错位与
-  分母共动两洞(w943_audit5 P2-1),原数字降级为历史记录不进开臂量化
-  判断;v2 渠道级主判据 + 同帧集配对无损判据的 A/B 结果见 w937 REPORT
-  返修节。
+  分母共动两洞(w943_audit5 P2-1),原数字降级为历史记录;v2 结果:
+  渠道级未兑现占比 10.74%→1.89%(off→on),同帧集配对两臂逐帧一致
+  (零损害),次要(hp/残金/存活)全不劣化——除开关依据。
 - L1 快速集全绿 + ruff 0 error。
 
-## 开臂判据(挂账,生命周期第 1→2 态)
+## 生效裁决(原「开臂判据」节,已执行)
 
-判前预注册 `docs/develop/currency_war/prereg/w937_spend_receipt/PREREG.md`
-(v2 渠道级口径;`.debug` 工作件副本为临时跑批配套):sim A/B(n≥300/臂
-同 seed 配对)主判据 = 渠道级未兑现占比下降(A)∧ 同帧集配对兑现不劣化(B)
-∧ 次要(hp/残金/存活)不劣化;过 → 第 2 态进开臂评审(实机锚点=dp 判花
-帧滞留金占轮均金比下降),由编排者裁定排期;不过 → 第 4 态删码留本 ADR。
-**本 ADR 记录时不翻默认**。
+用户裁定:**不做开臂,整开关删除,契约无条件生效**。依据 = 预注册 A/B
+v1+v2 两轮判正 + 同帧集配对零损害 + 生产写入端已接线(da222efb)。
+判据本体存档 = `prereg/w937_spend_receipt/PREREG.md` v2(渠道级口径;
+`.debug` 工作件副本为临时跑批配套)。除开关批:registry 字段删(墓碑
+注记)、gate 判据去开关项、锁组改无条件直测、面册(adr0293)条目同步。

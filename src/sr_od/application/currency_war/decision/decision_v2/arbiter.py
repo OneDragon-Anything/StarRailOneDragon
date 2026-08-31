@@ -461,16 +461,14 @@ def _check_constraint(name: str, cand: Candidate,
         # 检查器名字空间稳定);本金边际由 boss_floor 地板(覆盖态分派臂,
         # b 类保留)继续兜住。
         if isinstance(a, LevelUp):
-            # 预算-回执契约·执行侧前提防线(w921_rd_design DESIGN D1;
-            # 开关 spend_receipt_gate_enabled 默认关=零漂移):授权发出后
-            # working 态演化(前序采纳动作改变 bench/cap)使 pop_slot
-            # 前提失效的残余面在执行时点拒付——板满∧bench 空的升级
-            # 无 slot 可花([32] 消费有效性门;13-2 p2r4 形态),拒因
-            # 可被回执层归入 no_premise。产出侧拒发在授权包装配
+            # 预算-回执契约·执行侧前提防线(ADR-0504,无条件生效):
+            # 授权发出后 working 态演化(前序采纳动作改变 bench/cap)使
+            # pop_slot 前提失效的残余面在执行时点拒付——板满∧bench 空
+            # 的升级无 slot 可花([32] 消费有效性门;13-2 p2r4 形态),
+            # 拒因可被回执层归入 no_premise。产出侧拒发在授权包装配
             # (posture_release.attach_spend_authorization),此处是
             # 纵深防线不是唯一闸。
-            if registry.spend_receipt_gate_enabled \
-                    and not levelup_premise_ok(working):
+            if not levelup_premise_ok(working):
                 return RejectReason(
                     'boss_levelup_ban', '', 0,
                     '升级前提不成立(板满∧bench 空,升级无 slot 可花;'
@@ -769,10 +767,9 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
     floor = _active_floor(state, session, registry)
     coverage = ('emergency' if is_emergency(state, registry)
                 else 'mode')
-    # 预算-回执契约·授权包装配(w921_rd_design DESIGN §1.1-A;开关
-    # spend_receipt_gate_enabled 默认关=零漂移):本帧支出授权就地补
-    # 前提位/轮标识/买侧预算,前提不成立的授权产出侧拒发(姿态载体
-    # 就地改写,下方 constraint 各臂——dp_spend 臂/升级前提防线——
+    # 预算-回执契约·授权包装配(ADR-0504,无条件生效):本帧支出授权
+    # 就地补前提位/轮标识/买侧预算,前提不成立的授权产出侧拒发(姿态
+    # 载体就地改写,下方 constraint 各臂——dp_spend 臂/升级前提防线——
     # 读同一缓存=授权面收窄。**辖域声明**:候选评分(scored)在
     # arbitrate 之前生成,评分窗读的是 attach 前缓存,不受拒发约束;
     # 被拒发授权的候选仍参与排序,由 _check_constraint 纵深兜住)。
@@ -1136,11 +1133,10 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
     _steady_levelup_pass(working, state, session, registry, res)
     _run_remediation_pass(working, state, session, registry, res,
                           disc_view)
-    # 预算-回执契约·回执+对账收口(w921_rd_design DESIGN §1.1-B/C;
-    # 开关 spend_receipt_gate_enabled 默认关=零漂移):按渠道汇回执
-    # 写 session.v3_posture_receipt(判读直接归因,禁事后人肉回放),
-    # 授权未兑现走对账门三选一(分配器辖域/危机帧只记录交既有通道,
-    # 常规帧姿态降级+显式声明)。轮内多决策段(re-decide)last-wins。
+    # 预算-回执契约·回执+对账收口(ADR-0504 §1.1-B/C,无条件生效):
+    # 按渠道汇回执写 session.v3_posture_receipt(判读直接归因,禁事后
+    # 人肉回放),授权未兑现走对账门三选一(分配器辖域/危机帧只记录交
+    # 既有通道,常规帧姿态降级+显式声明)。轮内多决策段 last-wins。
     _receipt = build_spend_receipt(working, session, registry, res.actions,
                                    res.log)
     if _receipt is not None:
