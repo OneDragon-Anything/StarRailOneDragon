@@ -2,20 +2,24 @@ import time
 
 import numpy as np
 from cv2.typing import MatLike
-from typing import Optional, List
 
 from one_dragon.base.matcher.match_result import MatchResult
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.base.screen import screen_utils
-from one_dragon.utils import str_utils, cal_utils
+from one_dragon.utils import cal_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.sim_universe import sim_uni_screen_state
 from sr_od.application.sim_universe.operations import sim_uni_move_utils
-from sr_od.application.sim_universe.operations.move_v1.move_to_next_level import MoveToNextLevel
-from sr_od.application.sim_universe.sim_uni_data import SimUniLevelType, SimUniLevelTypeEnum
+from sr_od.application.sim_universe.operations.move_v1.move_to_next_level import (
+    MoveToNextLevel,
+)
+from sr_od.application.sim_universe.sim_uni_data import (
+    SimUniLevelType,
+    SimUniLevelTypeEnum,
+)
 from sr_od.config import game_const
 from sr_od.context.sr_context import SrContext
 from sr_od.context.sr_pc_controller import SrPcController
@@ -75,7 +79,7 @@ class MoveToNextLevelV3(SrOperation):
 
         frame_result = self.ctx.yolo_detector.sim_uni_yolo.run(screen)
 
-        entry_angles: List[float] = []
+        entry_angles: list[float] = []
         for result in frame_result.results:
             delta_angle = sim_uni_move_utils.delta_angle_to_detected_object(result)
             if result.detect_class.class_category == '模拟宇宙下层入口':
@@ -244,7 +248,7 @@ class MoveToNextLevelV3(SrOperation):
             self.move_towards_target(target)
             return self.round_wait(wait=0.1)
 
-    def try_interact(self, screen: MatLike) -> Optional[OperationRoundResult]:
+    def try_interact(self, screen: MatLike) -> OperationRoundResult | None:
         """
         尝试交互
         :param screen:
