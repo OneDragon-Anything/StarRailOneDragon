@@ -77,8 +77,8 @@ uv run ruff check --fix src/你修改的文件.py
 - 配置改动优先落到 YAML 与对应 `YamlConfig` 子类，不要随意散落硬编码配置。
 - 1080p 坐标属于项目既有前提，可以按现有模式硬编码，不要额外做分辨率适配设计。
 - 模型文件（`.onnx` 等）走运行时资源下载，`.gitignore` 已忽略 `models/`，勿 `git add` 模型文件。
-- 结构已知的文本用规则修复识别,例如 x/y 场景的 `/` 会被误识别成 `1`。
-- 优先使用 `one_dragon.utils.str_utils` 相似匹配,避免部分文本 OCR 错误。
+- OCR 结果优先使用 `one_dragon.utils.str_utils` 和目标文本做相似匹配,避免 OCR 精度问题。
+- 识别结构已知的文本,应用规则修复识别结果,例如 x/y 场景的 `/` 会被误识别成 `1`。
 
 ## 注释规范
 
