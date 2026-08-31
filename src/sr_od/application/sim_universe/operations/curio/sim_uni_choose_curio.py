@@ -1,7 +1,7 @@
 import time
+from typing import ClassVar
 
 from cv2.typing import MatLike
-from typing import Optional, ClassVar, List
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.matcher.match_result import MatchResult
@@ -12,8 +12,14 @@ from one_dragon.utils import cv2_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.sim_universe import sim_uni_screen_state
-from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig
-from sr_od.application.sim_universe.sim_uni_data import match_best_curio_by_ocr, SimUniCurio, SimUniCurioEnum
+from sr_od.application.sim_universe.sim_uni_challenge_config import (
+    SimUniChallengeConfig,
+)
+from sr_od.application.sim_universe.sim_uni_data import (
+    SimUniCurio,
+    SimUniCurioEnum,
+    match_best_curio_by_ocr,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.click_dialog_confirm import ClickDialogConfirm
 from sr_od.operations.sr_operation import SrOperation
@@ -21,20 +27,20 @@ from sr_od.operations.sr_operation import SrOperation
 
 class SimUniChooseCurio(SrOperation):
     # 奇物名字对应的框 - 3个的情况
-    CURIO_RECT_3_LIST: ClassVar[List[Rect]] = [
+    CURIO_RECT_3_LIST: ClassVar[list[Rect]] = [
         Rect(315, 280, 665, 320),
         Rect(780, 280, 1120, 320),
         Rect(1255, 280, 1590, 320),
     ]
 
     # 奇物名字对应的框 - 2个的情况
-    CURIO_RECT_2_LIST: ClassVar[List[Rect]] = [
+    CURIO_RECT_2_LIST: ClassVar[list[Rect]] = [
         Rect(513, 280, 876, 320),
         Rect(1024, 280, 1363, 320),
     ]
 
     # 奇物名字对应的框 - 1个的情况
-    CURIO_RECT_1_LIST: ClassVar[List[Rect]] = [
+    CURIO_RECT_1_LIST: ClassVar[list[Rect]] = [
         Rect(780, 280, 1120, 320),
     ]
 
@@ -42,7 +48,9 @@ class SimUniChooseCurio(SrOperation):
 
     CONFIRM_BTN: ClassVar[Rect] = Rect(1500, 950, 1840, 1000)  # 确认选择
 
-    def __init__(self, ctx: SrContext, config: Optional[SimUniChallengeConfig] = None,
+    STATUS_STILL_CURIOS: ClassVar[str] = '仍在选择奇物'
+
+    def __init__(self, ctx: SrContext, config: SimUniChallengeConfig | None = None,
                  skip_first_screen_check: bool = True):
         """
         模拟宇宙中 选择奇物
@@ -56,11 +64,11 @@ class SimUniChooseCurio(SrOperation):
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('选择奇物')))
 
-        self.config: Optional[SimUniChallengeConfig] = config
+        self.config: SimUniChallengeConfig | None = config
         self.skip_first_screen_check: bool = skip_first_screen_check  # 是否跳过第一次的画面状态检查 用于提速
         self.first_screen_check: bool = True  # 是否第一次检查画面状态
 
-    def handle_init(self) -> Optional[OperationRoundResult]:
+    def handle_init(self) -> OperationRoundResult | None:
         """
         执行前的初始化 由子类实现
         注意初始化要全面 方便一个指令重复使用
@@ -70,7 +78,7 @@ class SimUniChooseCurio(SrOperation):
         - 不返回时正常运行本指令
         """
         self.first_screen_check = True
-        self.curio_cnt_type: int = 3  # 奇物数量
+        self.choose_curio_time: float | None = None  # 点确认选择的时间(转场等待窗口起点)
 
         return None
 
@@ -84,44 +92,45 @@ class SimUniChooseCurio(SrOperation):
             if not sim_uni_screen_state.in_sim_uni_choose_curio(screen, self.ctx.ocr):
                 return self.round_retry('未在模拟宇宙-选择奇物页面')
 
-        curio_pos_list: List[MatchResult] = self._get_curio_pos(screen)
+        curio_pos_list: list[MatchResult] = self._get_curio_pos(screen)
         if len(curio_pos_list) == 0:
             return self.round_retry('未识别到奇物', wait=1)
 
-        target_curio_pos: Optional[MatchResult] = self._get_curio_to_choose(curio_pos_list)
+        target_curio_pos: MatchResult | None = self._get_curio_to_choose(curio_pos_list)
         self.ctx.controller.click(target_curio_pos.center)
         time.sleep(0.25)
         self.ctx.controller.click(SimUniChooseCurio.CONFIRM_BTN.center)
+        self.choose_curio_time = time.time()
         return self.round_success(wait=0.1)
 
-    def _get_curio_pos(self, screen: MatLike) -> List[MatchResult]:
+    def _get_curio_pos(self, screen: MatLike) -> list[MatchResult]:
         """
         获取屏幕上的奇物的位置
         :param screen: 屏幕截图
         :return: MatchResult.data 中是对应的奇物 SimUniCurio
         """
         curio_list = self._get_curio_pos_by_rect(screen, SimUniChooseCurio.CURIO_RECT_3_LIST)
-        if len(curio_list) > 0 and self.curio_cnt_type >= 3:
+        if len(curio_list) > 0:
             return curio_list
 
         curio_list = self._get_curio_pos_by_rect(screen, SimUniChooseCurio.CURIO_RECT_2_LIST)
-        if len(curio_list) > 0 and self.curio_cnt_type >= 2:
+        if len(curio_list) > 0:
             return curio_list
 
         curio_list = self._get_curio_pos_by_rect(screen, SimUniChooseCurio.CURIO_RECT_1_LIST)
-        if len(curio_list) > 0 and self.curio_cnt_type >= 1:
+        if len(curio_list) > 0:
             return curio_list
 
         return []
 
-    def _get_curio_pos_by_rect(self, screen: MatLike, rect_list: List[Rect]) -> List[MatchResult]:
+    def _get_curio_pos_by_rect(self, screen: MatLike, rect_list: list[Rect]) -> list[MatchResult]:
         """
         获取屏幕上的奇物的位置
         :param screen: 屏幕截图
         :param rect_list: 指定区域
         :return: MatchResult.data 中是对应的奇物 SimUniCurio
         """
-        curio_list: List[MatchResult] = []
+        curio_list: list[MatchResult] = []
 
         for rect in rect_list:
             title_part = cv2_utils.crop_image_only(screen, rect)
@@ -141,7 +150,7 @@ class SimUniChooseCurio(SrOperation):
 
         return curio_list
 
-    def _get_curio_to_choose(self, curio_pos_list: List[MatchResult]) -> Optional[MatchResult]:
+    def _get_curio_to_choose(self, curio_pos_list: list[MatchResult]) -> MatchResult | None:
         """
         根据优先级选择对应的奇物
         :param curio_pos_list: 奇物列表
@@ -155,7 +164,7 @@ class SimUniChooseCurio(SrOperation):
             return curio_pos_list[target_idx]
 
     @staticmethod
-    def get_curio_by_priority(curio_list: List[SimUniCurio], config: Optional[SimUniChallengeConfig]) -> Optional[int]:
+    def get_curio_by_priority(curio_list: list[SimUniCurio], config: SimUniChallengeConfig | None) -> int | None:
         """
         根据优先级选择对应的奇物
         :param curio_list: 可选的奇物列表
@@ -175,10 +184,14 @@ class SimUniChooseCurio(SrOperation):
 
     @node_from(from_name='选择奇物')
     @node_from(from_name='点击空白处继续')
-    @operation_node(name='确认后画面判断', node_max_retry_times=8)
+    @operation_node(name='确认后等待结束', node_max_retry_times=20)
     def _check_after_confirm(self) -> OperationRoundResult:
         """
-        确认后判断画面
+        选择确认后 轮询等待画面离开【选择奇物】再退出(与祝福的等待结束同构)。
+        本 op 只负责一次选择:确认后 title 在 3s 内消失=选择生效;3s 仍在=
+        选择未生效或连续奇物页,返回 STATUS_STILL_CURIOS 交上层分派再起一轮。
+        确认后的页面收起+转场期为黑屏模糊帧,OCR 读不出(实证:''/i/Si 类乱码
+        连续多轮)——等待而非失败。转场期点空白落空无害,保留原点击防页面残留。
         :return:
         """
         screen = self.last_screenshot
@@ -192,27 +205,16 @@ class SimUniChooseCurio(SrOperation):
             empty_to_close=True)
 
         log.info(f'当前画面状态 {state}')
+        if sim_uni_screen_state.in_sim_uni_choose_curio(screen, self.ctx.ocr):
+            now = time.time()
+            if self.choose_curio_time is not None and now - self.choose_curio_time >= 3:
+                return self.round_success(status=SimUniChooseCurio.STATUS_STILL_CURIOS, wait=0.2)
+            return self.round_wait(status=SimUniChooseCurio.STATUS_STILL_CURIOS, wait=0.2)
         if state is None:
-            # 确认后的页面收起+转场期为黑屏模糊帧,OCR 读不出(实证:''/i/Si 类
-            # 乱码连续多轮)。默认 retry=3 会被转场期烧完误报 FAIL,放宽到 8 轮
-            # 容忍转场;转场期点空白落空无害,保留原点击防页面残留。
+            # 转场黑屏:等待(不烧重试意义不大,见 node_max_retry_times=20 有界)
             self.round_by_click_area('模拟宇宙', '点击空白处关闭')
-            return self.round_retry('未能判断当前页面', wait=1)
-        elif state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
-            # 还在选奇物的画面 说明上一步没有选择到奇物
-            # 只有2个奇物的时候，使用3个奇物的第1个位置 可能会识别到奇物(名字位置重叠) 这时候点击第1个位置是会失败的
-            # 所以每次重试 curio_cnt_type-=1 即重试的时候 需要排除调3个奇物的位置 尝试2个奇物的位置
-            self.curio_cnt_type -= 1
-            if self.curio_cnt_type <= 0:
-                return self.round_fail("点击确认失败")
-            else:
-                return self.round_success(sim_uni_screen_state.ScreenState.SIM_CURIOS.value)
-        elif state in [sim_uni_screen_state.ScreenState.SIM_BLESS.value,
-                       sim_uni_screen_state.ScreenState.SIM_DROP_BLESS.value,
-                       sim_uni_screen_state.ScreenState.SIM_DROP_CURIOS.value]:
-            return self.round_success(state)
-        else:
-            return self.round_success(state)
+            return self.round_wait('未能判断当前页面', wait=0.2)
+        return self.round_success(status=state)
 
     @node_from(from_name='确认后画面判断', status=sim_uni_screen_state.ScreenState.EMPTY_TO_CLOSE.value)
     @operation_node(name='点击空白处继续')
@@ -226,7 +228,7 @@ class SimUniDropCurio(SrOperation):
     DROP_BTN: ClassVar[Rect] = Rect(1024, 647, 1329, 698)  # 确认丢弃
     STATUS_RETRY: ClassVar[str] = '重试其他奇物位置'
 
-    def __init__(self, ctx: SrContext, config: Optional[SimUniChallengeConfig] = None,
+    def __init__(self, ctx: SrContext, config: SimUniChallengeConfig | None = None,
                  skip_first_screen_check: bool = True):
         """
         模拟宇宙中 丢弃奇物
@@ -236,10 +238,10 @@ class SimUniDropCurio(SrOperation):
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('丢弃奇物', 'game')))
 
-        self.config: Optional[SimUniChallengeConfig] = config
+        self.config: SimUniChallengeConfig | None = config
         self.skip_first_screen_check: bool = skip_first_screen_check  # 是否跳过第一次的画面状态检查 用于提速
 
-    def handle_init(self) -> Optional[OperationRoundResult]:
+    def handle_init(self) -> OperationRoundResult | None:
         """
         执行前的初始化 由子类实现
         注意初始化要全面 方便一个指令重复使用
@@ -274,17 +276,17 @@ class SimUniDropCurio(SrOperation):
     def _choose_curio(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
-        curio_pos_list: List[MatchResult] = self._get_curio_pos(screen)
+        curio_pos_list: list[MatchResult] = self._get_curio_pos(screen)
         if len(curio_pos_list) == 0:
             return self.round_retry('未识别到奇物', wait=1)
 
-        target_curio_pos: Optional[MatchResult] = self._get_curio_to_choose(curio_pos_list)
+        target_curio_pos: MatchResult | None = self._get_curio_to_choose(curio_pos_list)
         self.ctx.controller.click(target_curio_pos.center)
         time.sleep(0.25)
         self.ctx.controller.click(SimUniChooseCurio.CONFIRM_BTN.center)
         return self.round_success(wait=1)
 
-    def _get_curio_pos(self, screen: MatLike) -> List[MatchResult]:
+    def _get_curio_pos(self, screen: MatLike) -> list[MatchResult]:
         """
         获取屏幕上的奇物的位置
         :param screen: 屏幕截图
@@ -304,14 +306,14 @@ class SimUniDropCurio(SrOperation):
 
         return []
 
-    def _get_curio_pos_by_rect(self, screen: MatLike, rect_list: List[Rect]) -> List[MatchResult]:
+    def _get_curio_pos_by_rect(self, screen: MatLike, rect_list: list[Rect]) -> list[MatchResult]:
         """
         获取屏幕上的奇物的位置
         :param screen: 屏幕截图
         :param rect_list: 指定区域
         :return: MatchResult.data 中是对应的奇物 SimUniCurio
         """
-        curio_list: List[MatchResult] = []
+        curio_list: list[MatchResult] = []
 
         for rect in rect_list:
             title_part = cv2_utils.crop_image_only(screen, rect)
@@ -331,7 +333,7 @@ class SimUniDropCurio(SrOperation):
 
         return curio_list
 
-    def _get_curio_to_choose(self, curio_pos_list: List[MatchResult]) -> Optional[MatchResult]:
+    def _get_curio_to_choose(self, curio_pos_list: list[MatchResult]) -> MatchResult | None:
         """
         根据优先级选择对应的奇物
         :param curio_pos_list: 奇物列表
@@ -345,7 +347,7 @@ class SimUniDropCurio(SrOperation):
             return curio_pos_list[target_idx]
 
     @staticmethod
-    def get_curio_by_priority(curio_list: List[SimUniCurio], config: Optional[SimUniChallengeConfig]) -> Optional[int]:
+    def get_curio_by_priority(curio_list: list[SimUniCurio], config: SimUniChallengeConfig | None) -> int | None:
         """
         根据优先级选择对应的奇物 要丢弃的应该是优先级最低的
         :param curio_list: 可选的奇物列表
@@ -355,7 +357,7 @@ class SimUniDropCurio(SrOperation):
         if config is None:
             return 0
 
-        opt_priority_list: List[int] = [99 for _ in curio_list]  # 选项的优先级
+        opt_priority_list: list[int] = [99 for _ in curio_list]  # 选项的优先级
         cnt = 0
 
         for curio_enum in SimUniCurioEnum:
@@ -383,8 +385,8 @@ class SimUniDropCurio(SrOperation):
                     opt_priority_list[idx] = cnt
                     cnt += 1
 
-        max_priority: Optional[int] = None
-        max_idx: Optional[int] = None
+        max_priority: int | None = None
+        max_idx: int | None = None
         for idx in range(0, len(opt_priority_list)):
             if max_idx is None or opt_priority_list[idx] > max_priority:
                 max_idx = idx
