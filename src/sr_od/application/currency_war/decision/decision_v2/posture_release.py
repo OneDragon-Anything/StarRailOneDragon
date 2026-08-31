@@ -217,14 +217,16 @@ def crisis_release_open(state: GameState, session: StrategySession,
                                                       registry) > 0
 
 
-def crisis_invariant_lane(session: StrategySession, cost: int,
-                          registry: DecisionV2Registry) -> bool:
+def crisis_invariant_lane(session: StrategySession, cost: int) -> bool:
     """危机帧刷新通道不变式车道(P36-a;判据单一址,消费点两处:
 
     arbiter 刷新收尾预截断门 + 本模块 authorize_release_refresh 截断门
     ——两门必须同址分类,防「预门拒、授权门放行」的分类漂移)。
 
-    判据=开关 ∧ v3_release 是 crisis 指令 ∧ budget_gold>0 ∧ 本帧(轮)
+    **无条件生效**(ADR-0506 升格裁决:P36-a 结构已证零参数,原
+    crisis_refresh_invariant_enabled 开关已整删,不留关臂)。
+
+    判据=v3_release 是 crisis 指令 ∧ budget_gold>0 ∧ 本帧(轮)
     尚无刷新(``v2_round_refreshes`` 轮键计数,decide_prep 轮首重置)
     ∧ 预算仍可负担一刷(spent+cost ≤ budget_gold,买/升入账经
     _accrue_release_frame_spend 已计入)。
@@ -236,7 +238,7 @@ def crisis_invariant_lane(session: StrategySession, cost: int,
     常态截断(不变式只保 n≥1,首刷后行为零漂移);预算门/boss_floor/
     g≥0 三门不在豁免面。
     """
-    if not registry.crisis_refresh_invariant_enabled or cost <= 0:
+    if cost <= 0:
         return False
     directive = getattr(session, 'v3_release', None)
     if directive is None or directive.reason != 'crisis':
@@ -800,7 +802,7 @@ def authorize_release_refresh(session: StrategySession,
     from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         tier_truncated_spend,
     )
-    _essential = crisis_invariant_lane(session, cost, registry)
+    _essential = crisis_invariant_lane(session, cost)
     if tier_truncated_spend(working_gold, cost, essential=_essential) < cost:
         return ''
     if working_gold - cost < registry.boss_floor:

@@ -1,6 +1,9 @@
 # W951 · P36-a 危机帧刷新通道不变式 · A/B 预注册(判前锁)
 
 > 状态:判前锁——本文件在 A/B 跑批**之前**落盘,判读口径禁中途改。
+> 判读结果回填 = §6。后记(2026-09-14):用户升格裁决覆盖开臂裁决——
+> 不变式无条件生效(P36-a 数学单篇已证,A/B 仅作确认),
+> crisis_refresh_invariant_enabled 开关整删,落码面见 ADR-0506。
 > 命题出处 = `w945_strategy_design/DESIGN.md` P-新1-a(B>0⟹n≥1,结构已证零参数)
 > + `w946_p36b_calib/REPORT.md` §3(实机 crisis 帧 RefreshShop p50=0、哑火帧 12/30、
 > p_hit 宽口径 ≥0.94 两源)。机制定位 = `w951_p36a_impl/REPORT.md` §1
@@ -51,3 +54,24 @@
    应急豁免不冲突)。
 5. 禁碰面遵守:operations/、telemetry/、battle_loop.py、handlers/、prep_director.py、
    sim/ 零改动;禁 git commit。
+
+## 6. 判读结果回填(开臂后追加;判读口径未改,只填数)
+
+执行=`w951_p36a_impl/ab_test.py`,n=150/臂,seed 951000..951149,池指纹
+`6400d5d8edeaf68d+eqg1` 两臂一致。数字(w951 REPORT §3 全表):
+
+| # | 判据 | off | on | 裁定 |
+|---|---|---|---|---|
+| M1 | 哑火帧率 | 16.21%(47/290) | **0.71%**(2/281) | **过**(on≈0;残 2 帧属 §3 允许的合法残余面) |
+| M0 | 开火面 smoke | — | 45 帧翻正 | 过 |
+| G1 | 危机帧行动率 | 94.83% | 100.0%(+5.2pp) | 过(≥−2pp 下界) |
+| G2 | final_hp 配对差 | 均值 4.21 | 3.66(diff −0.55,95%CI [−1.29,+0.11]) | 只报数:点估计微负、CI 含零 |
+| S1 | 刷新次数/帧 | 1.81 | 2.23 | on>off 方向成立 |
+
+**§4 兑现**:M1∧M0∧G1 过 → 验证通过,建议翻默认;编排者裁决开臂
+(2026-09-14,crisis_refresh_invariant_enabled 默认 True,随 match 5 重启
+窗口生效)。§4 预案「off 哑火=0 则 sim 非证据域」未触发(off 16.21%)。
+**实机观测挂账(M1 主判据实机面)**:match 5+ 帧级核对——crisis 帧
+(`sess_release_reason='crisis'` ∧ `sess_release_budget>0`)中无 RefreshShop
+的帧占比应→0(基线 12/30≈40%);连续 ≥2 局出现执行缺位型哑火(非预算
+耗尽/非无通道节点)→ 开臂回退评审,归 ADR-0506 §后果。

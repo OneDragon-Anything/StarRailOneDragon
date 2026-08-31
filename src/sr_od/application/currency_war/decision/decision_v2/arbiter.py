@@ -1055,16 +1055,17 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                     tier_truncated_spend,
                 )
 
-                # P36-a 危机帧刷新通道不变式车道(ADR-0506;posture_release
-                # 单一址分类,与 authorize_release_refresh 截断门同址):
-                # 预算>0 的危机帧首刷按 essential 过本预门——否则
-                # gold%10<刷价时预门先拒、授权门未触达 = 通道不变式
-                # B>0⟹n≥1 被截断门作废(实机危机帧持金中位 130 哑火实证)。
+                # P36-a 危机帧刷新通道不变式车道(ADR-0506;无条件生效,
+                # posture_release 单一址分类,与 authorize_release_refresh
+                # 截断门同址):预算>0 的危机帧首刷按 essential 过本预门
+                # ——否则 gold%10<刷价时预门先拒、授权门未触达 = 通道
+                # 不变式 B>0⟹n≥1 被截断门作废(实机危机帧持金中位 130
+                # 哑火实证)。
                 from sr_od.application.currency_war.decision.decision_v2.posture_release import (
                     crisis_invariant_lane,
                 )
                 _cost = cand.action.cost or 2
-                _inv = crisis_invariant_lane(session, _cost, registry)
+                _inv = crisis_invariant_lane(session, _cost)
                 if tier_truncated_spend(working.gold or 0, _cost,
                                         essential=_inv) < _cost:
                     reason = RejectReason(
