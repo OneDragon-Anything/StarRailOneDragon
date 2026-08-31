@@ -106,8 +106,8 @@ uv run ruff check --fix src/你修改的文件.py
 3. **op 流程测试**：`execute()` 包 harness 的 `fast_sleep()`；运行态前置/复位用 `enter_running_state` / `reset_running_state`，别手写 `_run_state` 裸赋值。
 4. **锁契约**：锁结构/回显，不锁分布数值；昂贵计算同次运行内只算一次、多条断言共享；改锁先重推语义——**锁红 ≠ 改动错**，禁为保绿机械跟绿（细则 = README 第 8 条「锁的存在性纪律」）。
 5. **同步更新与提交前验证**：修改代码后同步更新 `sr-od-test/` 测试;提交前① 改常量 / 签名 / 数据字段先 grep 消费点与测试锁值（预判波及面）;② `ruff check` + 直接受影响测试;③ 相关测试全量一次通过才提交。
-
-运行口径：串行为准（`uv run pytest sr-od-test/`）；`-n 8` 仅本机可选、不作规范（并行存在顺序污染红差集，未清）。慢桶：单条 ≥2s 的用例入 `sr-od-test/slow_marks.txt`，L1/L2 带 `-m "not slow"` 跳过慢桶，L3 全量不过滤；名单与细则见验证分层协议 §5。
+6. **运行口径**：串行为准（`uv run pytest sr-od-test/`），`-n 8` 仅本机可选、不作规范。
+7. **慢桶**：单条 ≥2s 的用例入 `sr-od-test/slow_marks.txt`，L1/L2 带 `-m "not slow"` 跳过，L3 全量不过滤；细则见验证分层协议 §5。
 
 ## 提交流程与协作边界
 
