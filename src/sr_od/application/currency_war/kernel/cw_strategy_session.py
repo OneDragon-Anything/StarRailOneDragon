@@ -299,16 +299,15 @@ class StrategySession:
     # 免 getattr 兜底(pending_buy_expect 同判例)。坐标系/取值时机/写入端 =
     # XpLedger 字段定义注释(prep_director);None = 本局未锚定(账本未建)。
     xp_expect_ledger: 'XpLedger | None' = None       # 同上
-    # —— 预算-回执契约(w921_rd_design DESIGN 批1;开关
-    # spend_receipt_gate_enabled 默认关)——
+    # —— 预算-回执契约(ADR-0504,无条件生效;原开关
+    # spend_receipt_gate_enabled 已随除开关批删除)——
     # v3_spend_auth:本帧授权包快照(attach_spend_authorization 写;
     # {auth_id(轮标识,跨轮唯一/轮内多段共用), level_up, refresh_budget,
     # buy_budget, buy_obligation(许可型买授权=False,义务型保留位),
     # premises, suppressed},suppressed=产出侧拒发的前提 token 列表)。
-    # 开关关恒 None。
     v3_spend_auth: dict | None = None
     # v3_posture_receipt:执行层支出回执(SpendReceipt.as_dict;
-    # 每次仲裁收口覆写,轮内多段 last-wins)。开关关恒 None。
+    # 每次仲裁收口覆写,轮内多段 last-wins)。
     v3_posture_receipt: dict | None = None
     # v3_posture_unfulfilled:对账门「授权未兑现」声明({auth_id,
     # channel, reason, channels, action};action=allocator/crisis_release/
@@ -316,6 +315,5 @@ class StrategySession:
     # tag 降级+显式声明)。**帧级全量重算语义**(w943_audit5 P1-1 复位
     # 契约):每次仲裁入口 attach 无条件清 None,段尾 reconcile 覆写
     # ——「无未兑现帧=None」承诺逐帧成立,无跨轮/跨帧滞留。
-    # 开关关恒 None。
     v3_posture_unfulfilled: dict | None = None
 

@@ -239,6 +239,47 @@ class IntentionState:
       asset_thickness/a_min(语义见该分支注释)。
     - 清空时机 = _lock(重锁即证据消费完毕)与冻结驱逐/降格(转移
       不经撤销,证据随之失效)。空 dict = 本局尚无撤销开窗。"""
+    # ===== W948 转型臂状态族(设计件 w948_transform_design/DESIGN.md §2;
+    # registry.intention_stagnation_arm_enabled / p2_entry_weak_target_enabled
+    # 默认关=恒缺省值零漂移;全部消费/写入点在 update_intention 与
+    # hoard_target_set,遥测经 serialize_intention 全量序列化自动携带)=====
+    stagnate_cool: dict[str, int] = field(default_factory=dict)
+    """停滞改判冷却驻留(W948 防振荡;线名 → 触发位面号):每线每位面至多
+    一次停滞降级(事件频率上界=线数,结构性排除逐帧摇摆;位面切换时非当前
+    位面的条目清位面切换段)。写入端 = update_intention 停滞触发分支(唯一)。"""
+    stagnate_plane: int = 0
+    """停滞窗级计数所属位面(坐标系=位面序;0=尚无计数):位面切换时
+    update_intention 入口检测不一致即清全部窗级计数(陈旧进度证据不跨位面)。"""
+    stagnate_rounds_in_window: int = 0
+    """当前评估窗内已计入的驱动轮数(坐标系=窗内轮,分母=registry
+    .stagnate_window_rounds;取值时机=每驱动轮恰一次,update_intention 写)。"""
+    stagnate_windows_hit: int = 0
+    """连续停滞窗数(坐标系=连续窗,分母=registry.stagnate_windows;任一窗
+    判非停滞即归零)。达阈值即触发停滞降级,触发后清零。"""
+    stagnate_gap_ref: int | None = None
+    """窗首帧的锁线采购集缺口快照(gap=锁线 hoard 角色目标件中尚未到手的件数;
+    None=窗首帧未采样)。对照量:窗末 gap 未下降(收敛度不足)=停滞条件之一。"""
+    stagnate_hp_ref: int | None = None
+    """窗首帧 hp 快照(战力侧确证:窗末 hp 净下降才计停滞,防金筹措期误判;
+    None=窗首帧未采样)。"""
+    stagnate_form_ok_all: bool = True
+    """窗内 form_ok 恒 False 贯穿位(当帧谓词逐帧 AND;form_ok 读
+    session.v3_form_ok 最近一次成型判定,缺帧=False=计入未成型)。
+    True=整窗未成型(停滞资格在);窗界评估后清回 True 重开。"""
+    stagnate_weak_rounds: int = 0
+    """stagnate-weak 态持续驱动轮数(含触发轮;坐标系=轮,取值时机=每驱动轮;
+    phase 离开 weak 或证据被消费即清零)。salvage_window_rounds 的对照量。"""
+    stagnate_salvage: bool = False
+    """salvage 续命子模式在效位(W948 出口分支·丙;weak 的子模式,非
+    absorbing——新信号仍可落新线救回)。写入端 = update_intention salvage
+    推导段(唯一);读端 = hoard_target_set(mode='salvage' 采购集转向)。
+    P3 demoted_endgame(absorbing)语义零改动,不进本字段辖域。"""
+    weak_placeholder: str = ''
+    """P2 入口弱目标占位线名(W948 伴生入口·乙;'' =无占位):进 P2 清
+    p1_pair 后仍 unlocked 且无即时信号时,按带入资产(资产最厚,与 P3 强制
+    锁线同判据)派生的初始假设方向。可被任何信号推翻(不进 locked 态,只
+    改 hoard 方向,优先于⑤绯英兜底);读端 = hoard_target_set
+    (mode='p2_weak_target')。坐标系=线名(COMP_LIBRARY 套名)。"""
 
 
 @dataclass(frozen=True)
@@ -248,9 +289,10 @@ class HoardTarget:
     - ``char_targets``:角色件集合(意向线骨架采购集 / 跨线骨架 / 兜底线);
     - ``equip_targets``:装备材料件(意向线 equip_assign 派生,剔除 equip_taboos);
     - ``mode``:'locked' | 'forced' | 'weak' | 'fallback' | 'demoted_endgame'
-      | 'p1_pair' | 'p1_transition'(买侧按 mode 区分囤货语义:意向件照囤/
-      插件台阶/兜底方向/降格满配骨架;P1 两态=配方对成员集/空窗引擎全集,
-      ADR-0357)。
+      | 'p1_pair' | 'p1_transition' | 'salvage' | 'p2_weak_target'(买侧按
+      mode 区分囤货语义:意向件照囤/插件台阶/兜底方向/降格满配骨架/
+      W948 salvage 续命=跨线骨架停线内投入/p2_weak_target 弱占位方向,
+      ADR-0357/ADR-0509)。
     """
 
     char_targets: frozenset[str]
@@ -1016,14 +1058,126 @@ def _switch_gate_open(ist: IntentionState, state: GameState,
     return False
 
 
+def _stagnation_tick(state: GameState, ist: IntentionState,
+                     session: StrategySession | None,
+                     registry: DecisionV2Registry | None) -> bool:
+    """W948 转型臂·停滞评估窗推进与降级触发(设计件
+    w948_transform_design/DESIGN.md §2.1-§2.2;ADR-0509)。
+
+    辖域=仅 P2 锁定态(P1 有自有滞回重派生,P3 有强制锁线/降格既有通道)。
+    判据=过程量「锁线采购集缺口收敛度」(窗界对照 gap_t vs gap_{t-W},
+    gap = 锁线 hoard 角色目标件中尚未到手件数,存量单一源 = _line_hoard;
+    **不升格 form_score 进判据**——ADR-0353 裁定其为纯遥测口径,重新升格
+    = 推翻既有裁决):窗末 gap 未下降(无收敛)∧ hp 净下降(战力侧确证,
+    防「金筹措期」误判)∧ form_ok 恒 False 贯穿评估窗(当帧谓词逐帧 AND,
+    读 session.v3_form_ok 最近一次成型判定)= 一个停滞窗;连续
+    registry.stagnate_windows 个停滞窗 → 触发降级。
+
+    触发动作完全复用撤销出口①的降级形态与 revoke_evidence 字段契约
+    (phase: locked→weak / weak_comp=原线 / prev_lock_layer 暂存),证据
+    kind 独立命名 'stagnate'(进度侧证据,不新增出口①的供给侧证据类型,
+    ADR-0319/0436 划界见 DESIGN §2.7);不走 _switch_gate_open 门拦截路径、
+    不受回锁闩抑制(那是 weak→异线锁的事),撤后当轮不重锁由调用方置
+    revoked 承接(状态机一回合最多一次转移语义不变)。
+
+    防振荡(DESIGN §2.1):单向降级(本函数只做 locked→weak,不反向);
+    冷却驻留 stagnate_cool[线]=位面(同线本位面只改判一次)。
+
+    返回 True=本轮发生停滞降级(调用方据此置 revoked);开关关恒 False
+    且不写任何状态(零漂移)。
+    """
+    reg = registry or DEFAULT_REGISTRY
+    if not reg.intention_stagnation_arm_enabled:
+        return False
+    if state.plane != 2:
+        return False
+    line = ist.locked_comp
+    comp = get_comp(line) if line else None
+    if comp is None:
+        return False
+    if ist.stagnate_cool.get(line) == state.plane:
+        return False   # 冷却驻留:同线本位面至多一次改判
+    ist.stagnate_plane = state.plane   # 计数所属位面(位面切换清零键)
+    gap = len([c for c in _line_hoard(comp)[0] if c not in _owned_chars(state)])
+    hp = state.hp
+    if bool(getattr(session, 'v3_form_ok', False)):
+        ist.stagnate_form_ok_all = False
+    if ist.stagnate_gap_ref is None:   # 窗首帧采样(窗界对照基准)
+        ist.stagnate_gap_ref = gap
+        ist.stagnate_hp_ref = hp
+    ist.stagnate_rounds_in_window += 1
+    if ist.stagnate_rounds_in_window < reg.stagnate_window_rounds:
+        return False
+    # 窗界评估:对照窗首快照;窗末值滚入下窗首(窗间无缝衔接)
+    g0 = ist.stagnate_gap_ref if ist.stagnate_gap_ref is not None else gap
+    h0 = ist.stagnate_hp_ref if ist.stagnate_hp_ref is not None else hp
+    stagnant = gap >= g0 and hp < h0 and ist.stagnate_form_ok_all
+    ist.stagnate_rounds_in_window = 0
+    ist.stagnate_gap_ref = gap
+    ist.stagnate_hp_ref = hp
+    ist.stagnate_form_ok_all = True
+    if not stagnant:
+        ist.stagnate_windows_hit = 0
+        return False
+    ist.stagnate_windows_hit += 1
+    if ist.stagnate_windows_hit < reg.stagnate_windows:
+        return False
+    # 触发:降级 weak(出口①同款字段契约;kind='stagnate')
+    ist.prev_lock_layer = ist.lock_layer
+    ist.phase = 'weak'
+    ist.weak_comp = line
+    ist.locked_comp = ''
+    ist.lock_layer = 0
+    ist.transition_pair = ()   # weak 不辖(W166,同 scope 契约)
+    ist.revoke_evidence = {
+        'kind': 'stagnate',
+        'windows': ist.stagnate_windows_hit,
+        'gap_from': g0,
+        'gap_to': gap,
+        'hp_from': h0,
+        'hp_to': hp,
+        'plane': state.plane,
+    }
+    ist.stagnate_cool[line] = state.plane
+    ist.stagnate_windows_hit = 0
+    ist.stagnate_rounds_in_window = 0
+    ist.stagnate_gap_ref = None
+    ist.stagnate_hp_ref = None
+    ist.last_event = (f'revoke:stagnate:{line}'
+                      f'(gap {g0}->{gap},hp {h0}->{hp})')
+    return True
+
+
+def _p2_entry_weak_target(state: GameState, ist: IntentionState,
+                          visible: set[str]) -> str:
+    """W948 伴生入口·乙:P2 空位的弱占位线派生(设计件
+    w948_transform_design/DESIGN.md §2.1;registry.p2_entry_weak_target_enabled
+    默认关=不派生)。
+
+    判据=带入资产最厚(与 P3 强制锁线同式:候选 = v2 家族 ∖ evicted ∧
+    核心可达;排序 = _asset_thickness 降序,平局取候选序首位——确定性,
+    sim 可锁)。弱占位只是初始假设:不进 locked 态、可被任何信号推翻,
+    停滞臂对它同样辖(经 weak 下游)。
+    """
+    cands = [c for c in _v2_comps()
+             if c.name not in ist.evicted
+             and _core_reachable(c, state, visible)]
+    if not cands:
+        return ''
+    return sorted(cands,
+                  key=lambda c: -_asset_thickness(c, state))[0].name
+
+
 def update_intention(state: GameState, ist: IntentionState,
                      session: StrategySession | None = None,
                      registry: DecisionV2Registry | None = None
                      ) -> IntentionState:
     """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 GameState)。
 
-    序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)→
-    未锁/弱意向解析(新信号锁线,否则⑤兜底方向)→ P3 入口强制锁线。
+    序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号 →
+    停滞评估〔W948 转型臂,registry.intention_stagnation_arm_enabled 辖,
+    ADR-0509〕)→ 未锁/弱意向解析(新信号锁线,否则⑤兜底方向)→
+    P3 入口强制锁线。
     """
     if ist.demoted_endgame:
         return ist   # 降格终局是 absorbing 态(点7 止损序同构,不回弹)
@@ -1047,6 +1201,24 @@ def update_intention(state: GameState, ist: IntentionState,
         for t in ist.tracks.values():
             t.miss_count = 0
         ist.prev_lock_layer = 0
+    # W948 停滞计数位面切换清零(设计件 w948_transform_design/DESIGN.md §2.2
+    # 数据流末条:窗级进度证据与冷却驻留不跨位面;弱占位同理退场。开关关恒
+    # 跳过=零漂移)。
+    _reg948 = registry or DEFAULT_REGISTRY
+    if _reg948.intention_stagnation_arm_enabled \
+            and ist.stagnate_plane not in (0, state.plane):
+        ist.stagnate_plane = 0
+        ist.stagnate_rounds_in_window = 0
+        ist.stagnate_windows_hit = 0
+        ist.stagnate_gap_ref = None
+        ist.stagnate_hp_ref = None
+        ist.stagnate_form_ok_all = True
+        ist.stagnate_salvage = False
+        ist.stagnate_weak_rounds = 0
+        ist.stagnate_cool = {k: v for k, v in ist.stagnate_cool.items()
+                             if v == state.plane}
+    if _reg948.p2_entry_weak_target_enabled and ist.weak_placeholder:
+        ist.weak_placeholder = ''
     # R3 断供驱逐(ADR-0465):每 game-round 恰一次的体系级断供计数
     # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
     _update_pair_drought(state, ist, visible)
@@ -1173,6 +1345,18 @@ def update_intention(state: GameState, ist: IntentionState,
                     revoked = True
                     break   # 「直至新信号」——本轮撤,下轮新信号再锁
 
+        # W948 转型臂:停滞评估与降级触发(设计件 w948_transform_design/
+        # DESIGN.md §2.1;ADR-0509)。锁线的第三种降级转移:不走门拦截路径、
+        # 不受回锁闩抑制(闩辖出口①②,停滞是进度侧证据通道);撤后当轮
+        # 不重锁——与出口①/②同 revoked 语义(状态机一回合最多一次转移)。
+        # 降级后的执行侧消费契约(对账锚=match g_20260831_082322 复盘候选#2
+        # 「evolve 执行线 vs locked_comp 脱节」):本臂只保证 hoard 单一消费面
+        # 即时换面(weak→骨架 / salvage→停线内投入);alloc/evolve 是否跟随
+        # hoard 属分配器/演进域一致性断言,不归本臂辖(裁决=w954 REPORT §5)。
+        if ist.phase == 'locked' and _stagnation_tick(
+                state, ist, session, registry):
+            revoked = True
+
     if ist.phase == 'locked' and state.plane == 1:
         # W166/ADR-0367:①锁局过渡对随资产重派生(同 p1_pair 语义——
         # 「变体按来牌选」[20],支持度只增,非 pivot;[23] 冻结语义辖
@@ -1222,6 +1406,15 @@ def update_intention(state: GameState, ist: IntentionState,
             ist.p1_pair = ()
             ist.last_event = 'p1_pair:exit_p1'
         best = _best_signal(sigs)
+        # W948 伴生入口·乙:P2 空位弱占位(设计件 §2.1;默认关=零漂移)。
+        # 无即时信号的 unlocked 帧按带入资产派生占位方向(只改 hoard 指向,
+        # 不锁线、可被任何信号推翻,优先于⑤绯英兜底);有信号/弱意向/已撤
+        # 帧退场('' =兜底语义回归)。
+        _reg948p = registry or DEFAULT_REGISTRY
+        if _reg948p.p2_entry_weak_target_enabled and state.plane >= 2:
+            ist.weak_placeholder = (
+                _p2_entry_weak_target(state, ist, visible)
+                if ist.phase == 'unlocked' and best is None else '')
         if best is not None:
             # C4 存活轮数门(换线辖域见 _switch_gate_open;门放行才落锁,
             # 被拦=保持弱意向待后续信号,状态机单回合最多一次转移语义不变)
@@ -1259,6 +1452,26 @@ def update_intention(state: GameState, ist: IntentionState,
         elif ist.phase == 'weak':
             ist.last_event = ist.last_event or 'weak:hold'
         # 无信号:保持 unlocked——囤货方向落⑤兜底(hoard_target_set 处理)
+
+    # W948 出口分支·丙:salvage 续命子模式在效位推导(设计件 §2.1;ADR-0509)。
+    # salvage 是 weak 的子模式,**非 absorbing**——新信号仍可照常落新线救回;
+    # P3 入口 demoted_endgame(absorbing)语义零改动,不进本段辖域。
+    # deadline 条件 = 本位面剩余节点 ≤ salvage_deadline_nodes;window 条件 =
+    # stagnate-weak 持续 > salvage_window_rounds 轮仍无新线落锁(计数含触发轮,
+    # 证据被消费/离开 weak 即清)。开关关恒不写(字段缺省 False=零漂移)。
+    _reg948s = registry or DEFAULT_REGISTRY
+    if _reg948s.intention_stagnation_arm_enabled:
+        if ist.phase == 'weak' \
+                and ist.revoke_evidence.get('kind') == 'stagnate':
+            ist.stagnate_weak_rounds += 1
+            ist.stagnate_salvage = bool(
+                plane_remaining_nodes(state, session)
+                <= _reg948s.salvage_deadline_nodes
+                or ist.stagnate_weak_rounds > _reg948s.salvage_window_rounds)
+        else:
+            ist.stagnate_salvage = False
+            if ist.phase != 'weak':
+                ist.stagnate_weak_rounds = 0
 
     # 强制锁线(P3 入口无意向;点0〔修N4〕对象限定)
     if state.plane >= 3 and ist.phase != 'locked':
@@ -1316,7 +1529,10 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
     - P1(W145/ADR-0357):非 comp 锁定局 → 配方方向——体系对成员集
       (p1_pair)/四体系引擎件全集(p1_transition,空窗);绯英⑤兜底
       不再辖 P1(零引擎覆盖,W143 实证 e2 成率 5%);
-    - weak:只囤跨线骨架件(撤销后去向);
+    - weak:只囤跨线骨架件(撤销后去向);salvage(W948,ADR-0509):
+      stagnate-weak 的续命子模式,同骨架采购集但语义=停止线内投入;
+    - P2+ unlocked 弱占位(W948·乙,ADR-0509):无信号空位的弱目标方向,
+      优先于⑤兜底;
     - unlocked 无信号(P2+):⑤兜底 = 绯英档采购集(「无信号时的默认落点」);
     - demoted_endgame:降格终局 = 通用骨架满配(四体系板深强化归点4/点6,不在本模块)。
     """
@@ -1338,7 +1554,23 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
         return HoardTarget(frozenset(members), frozenset(),
                            'p1_pair' if pair else 'p1_transition')
     if ist.phase == 'weak':
+        if ist.stagnate_salvage:
+            # W948 出口分支·丙(ADR-0509):salvage 续命采购集 = 跨线骨架,
+            # 停止购入原线终局件(「停止给死线供血」);金流改道归危机臂按
+            # 其自身判据开火,本分支不授权任何支出数值(DESIGN §2.6 划界)。
+            # 当帧战力散件的散件采购归既有 opportunistic 通道,不经本接口。
+            return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(),
+                               'salvage')
         return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'weak')
+    # W948 伴生入口·乙(ADR-0509):P2+ 空位弱占位方向——优先于⑤兜底
+    #(弱目标=有依据的初始假设,绯英=无信号默认落点;优先级 DESIGN §1.1)。
+    # 开关关恒走原路径(weak_placeholder 恒空=零漂移)。
+    if ist.weak_placeholder:
+        pc = get_comp(ist.weak_placeholder)
+        if pc is not None:
+            chars, equips = _line_hoard(pc)
+            return HoardTarget(frozenset(chars), frozenset(equips),
+                               'p2_weak_target')
     comp = get_comp(FALLBACK_COMP_NAME)
     if comp is None:
         return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'fallback')
