@@ -1,12 +1,17 @@
-from typing import Optional
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from sr_od.application.sim_universe import sim_uni_screen_state
-from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import SimUniChooseBless
-from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import SimUniChooseCurio
-from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig
+from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import (
+    SimUniChooseBless,
+)
+from sr_od.application.sim_universe.operations.curio.sim_uni_choose_curio import (
+    SimUniChooseCurio,
+)
+from sr_od.application.sim_universe.sim_uni_challenge_config import (
+    SimUniChallengeConfig,
+)
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.screen_state import common_screen_state
@@ -15,8 +20,8 @@ from sr_od.screen_state import common_screen_state
 class SimUniWaitLevelStart(SrOperation):
 
     def __init__(self, ctx: SrContext,
-                 config: Optional[SimUniChallengeConfig] = None,
-                 wait_after_success: Optional[int] = None
+                 config: SimUniChallengeConfig | None = None,
+                 wait_after_success: int | None = None
                  ):
         """
         模拟宇宙 等待某一层的开始
@@ -29,8 +34,8 @@ class SimUniWaitLevelStart(SrOperation):
                                       gt('等待楼层加载'))
                              )
 
-        self.config: Optional[SimUniChallengeConfig] = ctx.sim_uni_challenge_config if config is None else config
-        self.wait_after_success: Optional[int] = wait_after_success
+        self.config: SimUniChallengeConfig | None = ctx.sim_uni_challenge_config if config is None else config
+        self.wait_after_success: int | None = wait_after_success
         self.first_bless_chosen = False
 
     @operation_node(name='画面识别', node_max_retry_times=20, is_start_node=True)
