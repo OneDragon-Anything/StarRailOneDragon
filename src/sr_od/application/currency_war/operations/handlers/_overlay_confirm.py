@@ -44,10 +44,14 @@ def safe_click(op, point: Point, *, tag: str = 'cw-overlay') -> None:
 def confirm_and_verify(
     op, *, confirm_point: Point, entry_keyword: str, lcs_percent: float = 0.5,
     confirm_wait: float = 1.0, success_wait: float = 2.0, tag: str = 'cw-overlay',
+    press_time: float = 0.1,
 ) -> OperationRoundResult:
     """点确认按钮(bug#1 ``mouse_move`` 缓解)→ 等 → 验 ``entry_keyword`` 消失 → 没关 ``round_retry``。
 
     - 确认点击带 ``mouse_move``(bug#1 缓解,partner reset 根因同类)。
+    - ``press_time``:按下时长;默认 0.1(框架默认,既有 handler 零影响)。输入管线
+      半死态短按下可能不被采样(prep_actions 出战重发 0.15 人工解锁实证),需要者
+      显式传入(策划事件 match3 连败防御)。
     - 确认后重截屏验 ``entry_keyword`` 消失(overlay 关 = 真推进;见 write-operation「op 出口验转移」)。
     - 仍在 → ``round_retry``(计节点预算兜底退出;**不**盲目 ``round_success`` / ``round_wait`` 致无限 flat-loop)。
       若是隐藏多步 overlay(如伙伴 step2),retry 会重入本节点并重打日志 → 下次 match 日志可见,可再补 handler。
@@ -56,7 +60,7 @@ def confirm_and_verify(
     """
     log.info(f'[{tag}] confirm@{confirm_point} (entry_keyword={entry_keyword!r})')
     op.ctx.controller.mouse_move(confirm_point)
-    op.ctx.controller.click(confirm_point)
+    op.ctx.controller.click(confirm_point, press_time=press_time)
     time.sleep(confirm_wait)
     frame = op.screenshot()
     if op.round_by_ocr(frame, entry_keyword, lcs_percent=lcs_percent).is_success:

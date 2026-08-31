@@ -17,6 +17,7 @@ import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
@@ -29,10 +30,19 @@ class HandlePlannerEvent(SrOperation):
     """银狼策划事件 overlay:OCR 两卡 → 策略选卡 → 确认 → 关详情面板。"""
 
     # 卡身选中点击点(⚠️ 23:33 交互实锤:卡上半部点击=弹「属性详情」((755,400)/
-    # (1225,310) 均触发详情非选中)——**点卡下半部 y≈480 生效选中**(右卡选中+
-    # 确认亮,点确认消费事件成功)。别用卡中心/上部。
-    CARD_LEFT: ClassVar[Point] = Point(755, 480)
-    CARD_RIGHT: ClassVar[Point] = Point(1225, 480)
+    # (1225,310) 均触发详情非选中)——**点卡下半部生效选中**(右卡选中+确认亮)。
+    # 布局漂移修正(match3 实锤 2026-08-31,见 REPORT W944 §8):卡上移后固定点
+    # (1225,480) 落卡外 → 未选中 → 确认无效死循环。改由 area rect 推导:71% 高度
+    # (旧实证点击高度比例)+ 详情钮避让 clamp;rect 单一源在 cw_hacker_planner.yml。
+    CARD_AREA_SCREEN: ClassVar[str] = '货币战争-骇入策划'
+    CARD_AREAS: ClassVar[tuple[str, str]] = ('骇入选项-左卡', '骇入选项-右卡')
+    # 旧实证(755/1225,480 对旧 rect y 280-560)= 卡内 71% 高度。
+    SELECT_Y_RATIO: ClassVar[float] = 0.71
+    # 详情钮带 y 起点(实帧 OCR:详情 y 435-455)- 安全余量:点击 y 不得进入。
+    DETAIL_AVOID_Y: ClassVar[int] = 425
+    # 旧实证 rect(match3 布局实测前为单一源;area 缺失时兜底)。
+    _LEGACY_CARD_RECTS: ClassVar[tuple[tuple[int, int, int, int], ...]] = (
+        (500, 280, 980, 560), (1020, 280, 1500, 560))
     # 卡文字 OCR 过滤带(卡描述在 y~330-370;标题 y~376)
     CARD_TEXT_Y_LO: ClassVar[int] = 300
     CARD_TEXT_Y_HI: ClassVar[int] = 420
@@ -44,6 +54,23 @@ class HandlePlannerEvent(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-策划事件')
+
+    def _card_point(self, idx: int) -> Point:
+        """卡选中点击点 = area rect 推导(中心 x,71% 高度,详情钮避让 clamp)。
+
+        布局再漂移时只更 yml rect,本方法零改;rect 缺失回退旧实证 rect。
+        """
+        area = self.ctx.screen_loader.get_area(
+            HandlePlannerEvent.CARD_AREA_SCREEN,
+            HandlePlannerEvent.CARD_AREAS[idx])
+        if area is not None:
+            rect = area.pc_rect
+        else:
+            lx, ly, rx, ry = HandlePlannerEvent._LEGACY_CARD_RECTS[idx]
+            rect = Rect(lx, ly, rx, ry)
+        y = min(rect.y1 + int(rect.height * HandlePlannerEvent.SELECT_Y_RATIO),
+                HandlePlannerEvent.DETAIL_AVOID_Y)
+        return Point(rect.center.x, y)
 
     @operation_node(name='处理策划事件', is_start_node=True, node_max_retry_times=5)
     def handle(self) -> OperationRoundResult:
@@ -76,7 +103,7 @@ class HandlePlannerEvent(SrOperation):
             _st = _match.session.last_state
         from sr_od.application.currency_war.kernel.cw_state import GameState
         pick = decide_planner(options, _st or GameState(), _tgt)
-        target = self.CARD_LEFT if pick.idx == 0 else self.CARD_RIGHT
+        target = self._card_point(pick.idx)
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24])
@@ -88,7 +115,7 @@ class HandlePlannerEvent(SrOperation):
         # 3. 点卡选中(⚠️ 避开卡内「详情」按钮区 x~880-950/y~420-450——局29 手动点
         # (755,400) 触发详情面板的实证;点卡身上部 y=310)
         self.ctx.controller.mouse_move(target)
-        self.ctx.controller.click(target)
+        self.ctx.controller.click(target, press_time=self.CLICK_PRESS_TIME)
         time.sleep(1.2)   # 等选中动画
         # 3b. 验选中(「已选择」或确认亮);若弹出详情面板(点错区)→ 关掉重试点卡
         screen_m = self.screenshot()
@@ -111,4 +138,5 @@ class HandlePlannerEvent(SrOperation):
         )
         return confirm_and_verify(
             self, confirm_point=self.CONFIRM,
-            entry_keyword='我来当策划', tag='cw-planner')
+            entry_keyword='我来当策划', tag='cw-planner',
+            press_time=self.CLICK_PRESS_TIME)

@@ -33,10 +33,10 @@ area_list:
 - area_name: 骇入选项-左卡
   id_mark: false
   pc_rect:
-  - 500
-  - 280
-  - 980
   - 560
+  - 180
+  - 1030
+  - 455
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
@@ -47,10 +47,10 @@ area_list:
 - area_name: 骇入选项-右卡
   id_mark: false
   pc_rect:
-  - 1020
-  - 280
-  - 1500
-  - 560
+  - 1065
+  - 180
+  - 1545
+  - 455
   text: ''
   lcs_percent: 0.5
   template_sub_dir: ''
