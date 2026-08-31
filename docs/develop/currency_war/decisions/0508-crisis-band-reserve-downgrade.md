@@ -14,9 +14,10 @@ accepted(无条件落地,无开关——依据=P36-a′ 推论证明 + match4 �
 
 ## 决策
 危机臂溢余基降档:应急带内取 g 本身(R*_crisis≡0),判据单一址=
-`posture_release.crisis_overflow(state)`;消费点两处(`crisis_release_open`
-辖域判定 + `release_directive` 危机分支预算式)同址取数。**不动全局
-reserve_cap**——防波及 reward 帧 buy_budget/存息准入门/flip 臂等非应急
+`posture_release.crisis_overflow(state)`;消费点三处(`crisis_release_open`
+辖域判定 + `release_directive` 危机分支预算式 + `reconcile_spend` 第二
+分支对账分类,见「路由面后果」节)同址取数。**不动全局
+reserve_cap**——防波及存息准入门/flip 臂等非应急
 消费面;预算帽形态不变(仍 min(溢余, REFRESH_ROLL_CAP×刷价)),只改
 帽可达性(病灶帧 budget=min(89,12)=12)。
 
@@ -28,8 +29,37 @@ R*>0 使 g≤R* 帧整臂静默=阻断严格劣(P36-a 阻断形态的 R* 形态�
 声明;(iii) 濒死带 P21 已证升级负——储备保护的恰是负 EV 通道,降档反而
 改正;浅带升级授权不经危机预算不受辖。
 
+## 路由面后果(P36-a′ 意图内漂移声明;审计钉护)
+
+降档使 `crisis_release_open` 的辖域从「g>R*」扩为「应急带 g≥1」,两处
+**路由面**随之漂移——均为意图内后果(死亡带金零价值 ⇒ 压库买授权无
+意义、对账归 crisis 记录合理),声明+钉护如下:
+
+- **路由面:奖励帧 buy_budget 短路**。应急带 1≤g≤R* 的奖励帧降档后被
+  crisis 指令接管(posture wrap tag='release'),`attach_spend_authorization`
+  对 release 帧短路(不重复授权),buy_budget 不再进入常规授权包。金额面
+  无损:降档前该域溢余=0,buy_budget 本就为 0;漂移的是授权/回执路由。
+  语义依据:压库买授权([1]/[15])的保护前提是「金有持有价值」,死亡带被
+  P23.4 证伪——买授权让位危机搜索与 P36-a′ 同据。钉护=
+  test_reward_frame_emergency_buy_budget_short_circuit(含非应急对照)。
+- **对账面:reconcile 分类改道**。`crisis_release_open` 实为**三处消费点**
+  (辖域判定/release_directive/reconcile_spend 第二分支)——降档后应急带
+  g≥1 帧的未兑现对账从 downgrade(tag='存息')变为 'crisis_release' 只
+  记录。语义依据:该域帧已由危机臂接管,姿态降级无意义;分类漂移是
+  接管面的对账镜像。钉护=
+  test_reconcile_downgraded_band_hands_to_crisis(非应急 downgrade 语义
+  由既有 no_budget 表锁辖,不变)。
+- **时序约定(P3-①,声明不改码)**:不变式车道的两个轮键态——
+  ``v3_release`` 由 evaluate_release 装配并自带 latch 轮键
+  (v3_release_round=plane,round),``v2_round_refreshes`` 由 decide_prep
+  轮首重置、arbiter 刷新采纳点递增;两者复位/装配同在 decide_prep 轮首
+  段,轮内跨段只增不清,轮键同源 ⇒ 无跨轮残留面。残留失效方向单向:
+  若未来某路径漏复位,残留>0 → 车道判 False → 少刷(不变式欠兑现),
+  **不产生滥刷方向**,故不引入第二轮键复核(复核字段自身也需要复位点,
+  复杂度无净收益)。
+
 ## Considered Options
-1. **危机臂内降档(采纳)**:辖域最小、两消费点单一址、预算帽不放大。
+1. **危机臂内降档(采纳)**:辖域最小、判据单一址、预算帽不放大。
 2. 全局 reserve_cap 应急带降档:波及 reward 帧 buy_budget/存息准入门等
    非危机消费面,行为变化无命题辖域,弃。
 3. R*→刷价×保留刷新次数:反而把预算压低 2n(预算=min(g−R*,12)),与
