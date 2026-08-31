@@ -2,20 +2,23 @@ import time
 
 import numpy as np
 from cv2.typing import MatLike
-from typing import Optional, List
 
 from one_dragon.base.matcher.match_result import MatchResult
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
-from one_dragon.base.screen import screen_utils
-from one_dragon.utils import str_utils, cal_utils
+from one_dragon.utils import cal_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.sim_universe import sim_uni_screen_state
 from sr_od.application.sim_universe.operations import sim_uni_move_utils
-from sr_od.application.sim_universe.operations.move_v1.move_to_next_level import MoveToNextLevel
-from sr_od.application.sim_universe.sim_uni_data import SimUniLevelType, SimUniLevelTypeEnum
+from sr_od.application.sim_universe.operations.move_v1.move_to_next_level import (
+    MoveToNextLevel,
+)
+from sr_od.application.sim_universe.sim_uni_data import (
+    SimUniLevelType,
+    SimUniLevelTypeEnum,
+)
 from sr_od.config import game_const
 from sr_od.context.sr_context import SrContext
 from sr_od.context.sr_pc_controller import SrPcController
@@ -75,7 +78,7 @@ class MoveToNextLevelV3(SrOperation):
 
         frame_result = self.ctx.yolo_detector.sim_uni_yolo.run(screen)
 
-        entry_angles: List[float] = []
+        entry_angles: list[float] = []
         for result in frame_result.results:
             delta_angle = sim_uni_move_utils.delta_angle_to_detected_object(result)
             if result.detect_class.class_category == '模拟宇宙下层入口':
@@ -244,7 +247,7 @@ class MoveToNextLevelV3(SrOperation):
             self.move_towards_target(target)
             return self.round_wait(wait=0.1)
 
-    def try_interact(self, screen: MatLike) -> Optional[OperationRoundResult]:
+    def try_interact(self, screen: MatLike) -> OperationRoundResult | None:
         """
         尝试交互
         :param screen:
@@ -309,10 +312,14 @@ class MoveToNextLevelV3(SrOperation):
         return mm_angle - 270
 
     @node_from(from_name='往图标识别的入口移动')
-    @operation_node(name='确认')
+    @operation_node(name='确认', node_max_retry_times=10)
     def confirm(self) -> OperationRoundResult:
         """
         精英层的确认
+        点击「前往下层-确认」后用 until_not_find_all 等确认按钮消失(弹窗关闭)
+        才算成功——弹出动画期的点击会丢失,点击动作成功≠弹窗已关闭
+        (until 机制:每轮新截图先查按钮消失与否,消失=success;仍在=再点,
+        受 node_max_retry_times 有界)。
         :return:
         """
         self.ctx.controller.stop_moving_forward()
@@ -320,14 +327,12 @@ class MoveToNextLevelV3(SrOperation):
             return self.round_success()
         screen = self.last_screenshot
         if not common_screen_state.is_normal_in_world(self.ctx, screen):
-            click_confirm = screen_utils.find_and_click_area(self.ctx, screen, '模拟宇宙', '前往下层-确认')
-            if click_confirm == screen_utils.OcrClickResultEnum.OCR_CLICK_SUCCESS:
-                return self.round_success(wait=1)
-            elif click_confirm == screen_utils.OcrClickResultEnum.OCR_CLICK_NOT_FOUND:
-                return self.round_success()
-            else:
-                return self.round_retry('点击确认失败', wait=0.25)
+            return self.round_by_find_and_click_area(
+                screen, '模拟宇宙', '前往下层-确认',
+                success_wait=1,
+                until_not_find_all=[('模拟宇宙-离开楼层确认', '按钮-确认')],
+            )
         else:
-            return self.round_retry('在大世界页面')
+            return self.round_success()
 
 
