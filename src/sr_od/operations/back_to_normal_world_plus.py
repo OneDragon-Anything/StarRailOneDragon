@@ -48,6 +48,19 @@ class BackToNormalWorldPlus(SrOperation):
     def check_screen(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
+        # 覆盖层/面板类分支必须在全屏分支之前:半屏面板(如本面板)旁边露出
+        # 大世界背景时,「角色图标」等全屏特征会误命中导致误报 SUCCESS。
+        # 模拟宇宙/差分宇宙的「退出确认」面板(2026-08-31 实证):上一 app 在
+        # 模拟宇宙楼层内异常退出时,本 op 起手点「右上角返回」→ 弹出本面板 →
+        # 角色图标分支误报成功 → app 带着面板继续乱点,循环 40 分钟。
+        # 面板 area 早已建档(sim_uni.yml 菜单-暂离/结束并结算),纯分发表缺条目。
+        # 点「暂离」:保进度退出(下次模拟宇宙 app 从进度续跑,同 2026-08-30 续跑判例)。
+        # round_retry 同判例(点击可能不落地,逐帧重识别)。
+        result = self.round_by_find_area(screen, '模拟宇宙', '菜单-暂离')
+        if result.is_success:
+            self.round_by_find_and_click_area(screen, '模拟宇宙', '菜单-暂离')
+            return self.round_retry('模拟宇宙-退出确认面板', wait=2)
+
         # 先看看左上角是否退出按钮
         result = self.round_by_find_area(screen, '模拟宇宙', '大世界返回按钮')
         if result.is_success:
@@ -166,17 +179,6 @@ class BackToNormalWorldPlus(SrOperation):
         if result.is_success:
             self.round_by_find_and_click_area(screen, '大世界-战斗失败', '点击空白区域继续')
             return self.round_retry('大世界-战斗失败', wait=2)
-
-        # 模拟宇宙/差分宇宙的「退出确认」面板(2026-08-31 实证):上一 app 在
-        # 模拟宇宙楼层内异常退出时,本 op 起手点「右上角返回」→ 弹出本面板 →
-        # 又只认识右上角 X → 关面板又见楼层退出按钮 → 无限循环 40 分钟。
-        # 面板 area 早已建档(sim_uni.yml 菜单-暂离/结束并结算),纯分发表缺条目。
-        # 点「暂离」:保进度退出(下次模拟宇宙 app 从进度续跑,同 2026-08-30 续跑判例),
-        # 比「结束并结算」温和。round_retry 同判例。
-        result = self.round_by_find_area(screen, '模拟宇宙', '菜单-暂离')
-        if result.is_success:
-            self.round_by_find_and_click_area(screen, '模拟宇宙', '菜单-暂离')
-            return self.round_retry('模拟宇宙-退出确认面板', wait=2)
 
         # 货币战争-大厅(2026-08-27 run 46 事故根修):全屏 UI 叠在大世界场景上,
         # 前序分支全不命中,守卫的 INTERACT_RECT 恰罩住大厅右面板静态文字(数据银行/
