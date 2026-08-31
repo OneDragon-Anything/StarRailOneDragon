@@ -1,6 +1,6 @@
-from cv2.typing import MatLike
 from enum import Enum
-from typing import Optional, List
+
+from cv2.typing import MatLike
 
 from one_dragon.base.matcher.match_result import MatchResult
 from one_dragon.base.screen import screen_utils
@@ -8,9 +8,16 @@ from one_dragon.base.screen.screen_utils import FindAreaResultEnum
 from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
-from sr_od.application.sim_universe.sim_uni_data import SimUniLevelType, SimUniLevelTypeEnum
+from sr_od.application.sim_universe.sim_uni_data import (
+    SimUniLevelType,
+    SimUniLevelTypeEnum,
+)
 from sr_od.context.sr_context import SrContext
-from sr_od.screen_state import common_screen_state, fast_recover_screen_state, battle_screen_state
+from sr_od.screen_state import (
+    battle_screen_state,
+    common_screen_state,
+    fast_recover_screen_state,
+)
 
 
 class ScreenState(Enum):
@@ -48,7 +55,7 @@ def _normalize_level_region_name(region_name: str) -> str:
     return region_name.replace('一', '-').replace('·', '').replace(' ', '').replace('/', '-').replace('|', '-')
 
 
-def get_level_type(ctx: SrContext, screen: MatLike) -> Optional[SimUniLevelType]:
+def get_level_type(ctx: SrContext, screen: MatLike) -> SimUniLevelType | None:
     """
     获取当前画面的楼层类型
 
@@ -58,6 +65,11 @@ def get_level_type(ctx: SrContext, screen: MatLike) -> Optional[SimUniLevelType]
     规范化把无歧义形变('-'→'一' 等)归一后,子串全等零误配面。
     (rect 曾把 '区' 切掉致 '域-战斗',已修 rect x1 50→25。)
 
+    子串全等无命中时的兜底(2026-08-31 实证 '区域-战斗' 被读成 '区域-战身',
+    conf≈0.68 的低质量读数会丢「斗」字):取 '-' 后缀与各类型后缀做 difflib
+    取最高分。兄弟类型后缀(战斗/遭遇/休整/事件/交易/历战)互差 ≥2 字,
+    丢单字后与真类型相似度 0.5、与其他类型 0,0.5 阈值无跨类型误配面。
+
     :param ctx: 上下文
     :param screen: 游戏画面
     :return:
@@ -65,14 +77,22 @@ def get_level_type(ctx: SrContext, screen: MatLike) -> Optional[SimUniLevelType]
     area = ctx.screen_loader.get_area('模拟宇宙', '楼层类型')
     part = cv2_utils.crop_image_only(screen, area.rect)
     region_name = _normalize_level_region_name(ctx.ocr.run_ocr_single_line(part))
-    level_type_list: List[SimUniLevelType] = [enum.value for enum in SimUniLevelTypeEnum]
+    level_type_list: list[SimUniLevelType] = [enum.value for enum in SimUniLevelTypeEnum]
     target_list = [gt(level_type.type_name, 'game') for level_type in level_type_list]
     targets = [i for i, w in enumerate(target_list) if w in region_name]
 
     if len(targets) == 0:
-        return None
-    else:
-        return level_type_list[targets[0]]
+        # 丢单字形变兜底:楼层名 '区域-' 前缀固定,比对后缀
+        suffix = region_name.split('-')[-1]
+        if not suffix:
+            return None
+        suffix_list = [w.split('-')[-1] for w in target_list]
+        best_idx = str_utils.find_best_match_by_difflib(suffix, suffix_list, cutoff=0.5)
+        if best_idx is None or best_idx < 0:
+            return None
+        return level_type_list[best_idx]
+
+    return level_type_list[targets[0]]
 
 
 def get_sim_uni_screen_state(
@@ -91,7 +111,7 @@ def get_sim_uni_screen_state(
         fast_recover: bool = False,
         express_supply: bool = False,
         sim_uni: bool = False
-) -> Optional[str]:
+) -> str | None:
     """
     获取模拟宇宙中的画面状态
     :param ctx: 上下文
@@ -232,7 +252,7 @@ def in_sim_uni_event(ctx: SrContext, screen: MatLike) -> bool:
     return common_screen_state.in_secondary_ui(ctx, screen, ScreenState.SIM_EVENT.value)
 
 
-def get_sim_uni_initial_screen_state(ctx: SrContext, screen: MatLike) -> Optional[str]:
+def get_sim_uni_initial_screen_state(ctx: SrContext, screen: MatLike) -> str | None:
     """
     获取模拟宇宙应用开始时的画面
     :param ctx: 上下文
@@ -284,7 +304,7 @@ def in_sim_uni_choose_path(ctx: SrContext, screen: MatLike) -> bool:
     return in_sim_uni_secondary_ui(ctx, screen, ScreenState.SIM_PATH.value)
 
 
-def match_next_level_entry(ctx: SrContext, screen: MatLike, knn_distance_percent: float=0.7) -> List[MatchResult]:
+def match_next_level_entry(ctx: SrContext, screen: MatLike, knn_distance_percent: float=0.7) -> list[MatchResult]:
     """
     获取当前画面中的下一层入口
     MatchResult.data 是对应的类型 SimUniLevelType
@@ -295,7 +315,7 @@ def match_next_level_entry(ctx: SrContext, screen: MatLike, knn_distance_percent
     """
     source_kps, source_desc = cv2_utils.feature_detect_and_compute(screen)
 
-    result_list: List[MatchResult] = []
+    result_list: list[MatchResult] = []
 
     for enum in SimUniLevelTypeEnum:
         level_type: SimUniLevelType = enum.value
