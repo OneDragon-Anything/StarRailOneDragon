@@ -37,6 +37,19 @@ class SimUniWaitLevelStart(SrOperation):
     def check_screen(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
+        # 楼层间传送会弹「仍可在当前区域换取沉浸奖励,是否离开前往下一区域?」
+        # 提示框(与挑战副本提示框同款 UI,复用其 area)。其背景模糊会把左上角
+        # 楼层名盖成 OCR 空白——不处理则本节点 20 轮全空 FAIL,app 整体失败。
+        # 弹窗语义=确认离开前往下一区域 → 点确认后重判。
+        if self.round_by_find_area(screen, '挑战副本', '提示弹框-标题').is_success:
+            result = self.round_by_find_and_click_area(
+                screen, '挑战副本', '提示弹框-确认',
+                success_wait=1.5, retry_wait=1,
+            )
+            if result.is_success:
+                return self.round_wait(wait=1)
+            return result
+
         state = sim_uni_screen_state.get_sim_uni_screen_state(
             self.ctx, screen,
             in_world=True,
