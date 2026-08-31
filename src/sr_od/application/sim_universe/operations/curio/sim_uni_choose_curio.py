@@ -175,7 +175,7 @@ class SimUniChooseCurio(SrOperation):
 
     @node_from(from_name='选择奇物')
     @node_from(from_name='点击空白处继续')
-    @operation_node(name='确认后画面判断')
+    @operation_node(name='确认后画面判断', node_max_retry_times=8)
     def _check_after_confirm(self) -> OperationRoundResult:
         """
         确认后判断画面
@@ -193,7 +193,9 @@ class SimUniChooseCurio(SrOperation):
 
         log.info(f'当前画面状态 {state}')
         if state is None:
-            # 未知情况都先点击一下
+            # 确认后的页面收起+转场期为黑屏模糊帧,OCR 读不出(实证:''/i/Si 类
+            # 乱码连续多轮)。默认 retry=3 会被转场期烧完误报 FAIL,放宽到 8 轮
+            # 容忍转场;转场期点空白落空无害,保留原点击防页面残留。
             self.round_by_click_area('模拟宇宙', '点击空白处关闭')
             return self.round_retry('未能判断当前页面', wait=1)
         elif state == sim_uni_screen_state.ScreenState.SIM_CURIOS.value:
