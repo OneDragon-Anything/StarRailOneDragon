@@ -155,6 +155,18 @@ class BackToNormalWorldPlus(SrOperation):
         if result.is_success:
             return self.round_wait(result.status, wait=2)
 
+        # 大世界-战斗失败(2026-08-30 实证):app 异常退出遗留的战败结算屏。
+        # 该屏无右上角返回按钮,唯一交互是「点击空白区域继续」→ 回各副本的
+        # 战前画面(副本入口/模式首页),由本链既有分支或右上角返回兜底继续。
+        # 此前兜底只会反复点右上角死循环至 FAIL,卡死下一个应用的起手
+        # (现场:.log/mcp_server.log 当日 00:31 段,开拓力 FAIL 遗留战败屏)。
+        # 与上述大厅分支同构:id_mark 正面识别(normal_world_battle_fail.yml)
+        # → area 点击 + round_retry 逐帧重识别(点击可能不落地,同判例拒 WAIT 永动)。
+        result = self.round_by_find_area(screen, '大世界-战斗失败', '标题-战斗失败')
+        if result.is_success:
+            self.round_by_find_and_click_area(screen, '大世界-战斗失败', '点击空白区域继续')
+            return self.round_retry('大世界-战斗失败', wait=2)
+
         # 货币战争-大厅(2026-08-27 run 46 事故根修):全屏 UI 叠在大世界场景上,
         # 前序分支全不命中,守卫的 INTERACT_RECT 恰罩住大厅右面板静态文字(数据银行/
         # 预期收益等)→ 曾被误判为对话态死循环。id_mark 精确命中即正面识别本画面 →
