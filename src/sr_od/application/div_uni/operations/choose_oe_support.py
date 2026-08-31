@@ -26,20 +26,28 @@ class ChooseOeSupport(SrOperation):
         self.found_character: bool = False
         """是否找到支援角色"""
 
+    STATUS_NEED_SUPPORT: ClassVar[str] = '需要支援'
+
     @operation_node(name='点击支援按钮', is_start_node=True)
     def click_support(self) -> OperationRoundResult:
         """
         点击支援按钮
         :return:
         """
-        if self.character_id is None:
+        if self.character_id is None or self.character_id == '':
+            # 无支援请求:直接成功结束。检测替换图标的入边按 status 过滤,
+            # 此处若无出边匹配则 op 就地成功——否则空 character_id 会流进
+            # 支援检测循环(找不到等级)无限重试(2026-08-31 实证)。
             return self.round_success('无需支援')
 
         screen = self.last_screenshot
-        return self.round_by_find_and_click_area(screen, '饰品提取', '按钮-支援',
-                                                 success_wait=1, retry_wait=1)
+        result = self.round_by_find_and_click_area(screen, '饰品提取', '按钮-支援',
+                                                   success_wait=1, retry_wait=1)
+        if result.is_success:
+            return self.round_success(ChooseOeSupport.STATUS_NEED_SUPPORT, wait=1)
+        return result
 
-    @node_from(from_name='点击支援按钮')
+    @node_from(from_name='点击支援按钮', status=STATUS_NEED_SUPPORT)
     @operation_node(name='检测替换图标', node_max_retry_times=10)
     def check_duplicate_replaced(self) -> OperationRoundResult:
         """
