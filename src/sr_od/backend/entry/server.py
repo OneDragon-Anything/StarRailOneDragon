@@ -81,6 +81,12 @@ def _configure_root_logger_single_channel() -> None:
     """
     root = logging.getLogger()
     if root.handlers:
+        # 跳过必须可观测:前置条件若被 import 期第三方 basicConfig 破坏,
+        # 静默跳过=双信道漂移无声回归(与单一信道修所治病同构)。
+        logging.getLogger(__name__).warning(
+            'root logger 已有 handler(%s),跳过单一信道配置——'
+            '出现双信道日志漂移时先查此处',
+            [type(h).__name__ for h in root.handlers])
         return   # root 已被配置(测试预置/未来启动方)时不覆盖,防重复 handler
     logging.basicConfig(
         level=logging.INFO,
