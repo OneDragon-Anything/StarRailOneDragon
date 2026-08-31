@@ -82,7 +82,6 @@ class SimUniChooseCurio(SrOperation):
 
         return None
 
-    @node_from(from_name='确认后画面判断', status=sim_uni_screen_state.ScreenState.SIM_CURIOS.value)
     @operation_node(name='选择奇物', is_start_node=True)
     def _choose_curio(self) -> OperationRoundResult:
         screen = self.last_screenshot
@@ -216,7 +215,7 @@ class SimUniChooseCurio(SrOperation):
             return self.round_wait('未能判断当前页面', wait=0.2)
         return self.round_success(status=state)
 
-    @node_from(from_name='确认后画面判断', status=sim_uni_screen_state.ScreenState.EMPTY_TO_CLOSE.value)
+    @node_from(from_name='确认后等待结束', status=sim_uni_screen_state.ScreenState.EMPTY_TO_CLOSE.value)
     @operation_node(name='点击空白处继续')
     def _click_empty_to_continue(self) -> OperationRoundResult:
         return self.round_by_click_area('模拟宇宙', '点击空白处关闭',
