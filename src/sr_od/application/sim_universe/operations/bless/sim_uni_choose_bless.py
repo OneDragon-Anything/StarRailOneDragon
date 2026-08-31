@@ -1,5 +1,5 @@
 import time
-from typing import ClassVar, List, Optional
+from typing import ClassVar
 
 import cv2
 import numpy as np
@@ -12,11 +12,15 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
-from sr_od.application.sim_universe import sim_uni_collect_hooks  # 临时采集钩子,采证后整段删除(含本行 import)
-from sr_od.application.sim_universe import sim_uni_screen_state
+from sr_od.application.sim_universe import (
+    sim_uni_collect_hooks,  # 临时采集钩子,采证后整段删除(含本行 import)
+    sim_uni_screen_state,
+)
 from sr_od.application.sim_universe.operations.bless import bless_utils
 from sr_od.application.sim_universe.operations.bless.bless_utils import SimUniBlessPos
-from sr_od.application.sim_universe.sim_uni_challenge_config import SimUniChallengeConfig
+from sr_od.application.sim_universe.sim_uni_challenge_config import (
+    SimUniChallengeConfig,
+)
 from sr_od.application.sim_universe.sim_uni_data import SimUniBless
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -31,10 +35,9 @@ class SimUniChooseBless(SrOperation):
     STATUS_STILL_BLESS: ClassVar[str] = '仍在选择祝福'
 
     def __init__(self, ctx: SrContext,
-                 config: Optional[SimUniChallengeConfig] = None,
+                 config: SimUniChallengeConfig | None = None,
                  skip_first_screen_check: bool = True,
-                 before_level_start: bool = False,
-                 fast_back_to_world: bool = False):
+                 before_level_start: bool = False):
         """
         按照优先级选择祝福 如果选择后仍然在选择祝福画面 则继续选择。可能的情况有
         - 连续祝福，例如第一场战斗有两次祝福
@@ -45,16 +48,14 @@ class SimUniChooseBless(SrOperation):
         :param config: 挑战配置
         :param skip_first_screen_check: 是否跳过第一次的画面状态检查
         :param before_level_start: 是否在楼层开始的选择
-        :param fast_back_to_world 需要快速判断返回世界
         """
         SrOperation.__init__(self, ctx, op_name='%s %s' % (gt('模拟宇宙', 'game'), gt('选择祝福')))
 
-        self.config: Optional[SimUniChallengeConfig] = ctx.sim_uni_challenge_config if config is None else config  # 祝福优先级
+        self.config: SimUniChallengeConfig | None = ctx.sim_uni_challenge_config if config is None else config  # 祝福优先级
         self.skip_first_screen_check: bool = skip_first_screen_check  # 是否跳过第一次的画面状态检查 用于提速
         self.before_level_start: bool = before_level_start  # 在真正楼层开始前 即选择开拓祝福时
-        self.fast_back_to_world: bool = fast_back_to_world  # 需要快速判断返回世界
 
-    def handle_init(self) -> Optional[OperationRoundResult]:
+    def handle_init(self) -> OperationRoundResult | None:
         """
         执行前的初始化 由子类实现
         注意初始化要全面 方便一个指令重复使用
@@ -64,7 +65,7 @@ class SimUniChooseBless(SrOperation):
         - 不返回时正常运行本指令
         """
         self.first_screen_check = True
-        self.choose_bless_time: Optional[float] = None  # 选择祝福的时间
+        self.choose_bless_time: float | None = None  # 选择祝福的时间
 
         return None
 
@@ -84,14 +85,21 @@ class SimUniChooseBless(SrOperation):
     def choose(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
-        bless_pos_list: List[SimUniBlessPos] = bless_utils.get_bless_pos(self.ctx, screen)
+        bless_pos_list: list[SimUniBlessPos] = bless_utils.get_bless_pos(self.ctx, screen)
 
         if len(bless_pos_list) == 0:
-            # 采集钩子(临时,采证后整段删除):run48 三轮空识别无现场帧,存图取证,bot 不停
+            # 空列表分两类处理:
+            # ①title 已消失 = 祝福页被游戏关闭(连续祝福选完自动收页/收页动画完成),
+            #   选择流程实际已结束 → 正常返回。残轮对着楼层世界空识别会误报 FAIL
+            #   并让 SimUniEnterFight 带病继续。
+            # ②title 仍在 = 页面在但卡片未渲染完成(战斗结算动画期) → 留证+等待。
+            if not sim_uni_screen_state.in_sim_uni_choose_bless(self.ctx, screen):
+                return self.round_success('祝福页已关闭')
+            # 采集钩子(临时,采证后整段删除):「在页但空」的真异常留证,bot 不停
             sim_uni_collect_hooks.collect_bless_empty(self.ctx, screen, self.node_retry_times)
             return self.round_retry('未识别到祝福', wait=1)
 
-        target_bless_pos: Optional[SimUniBlessPos] = self._get_bless_to_choose(screen, bless_pos_list)
+        target_bless_pos: SimUniBlessPos | None = self._get_bless_to_choose(screen, bless_pos_list)
         if target_bless_pos is None:
             self.ctx.controller.click(SimUniChooseBless.RESET_BTN.center)
             return self.round_wait('重置祝福', wait=2)
@@ -104,6 +112,7 @@ class SimUniChooseBless(SrOperation):
                 target_cn='确认',
             )
             if result.is_success:
+                self.choose_bless_time = time.time()
                 return self.round_success(status=result.status, wait=0.1)
             if self.before_level_start:
                 log.info('选择祝福后未识别到确认 尝试固定位置点击 第一间开始前')
@@ -131,7 +140,7 @@ class SimUniChooseBless(SrOperation):
 
         return str_utils.find_by_lcs(gt('重置祝福', 'ocr'), ocr_result)
 
-    def _get_bless_to_choose(self, screen: MatLike, bless_pos_list: List[SimUniBlessPos]) -> Optional[SimUniBlessPos]:
+    def _get_bless_to_choose(self, screen: MatLike, bless_pos_list: list[SimUniBlessPos]) -> SimUniBlessPos | None:
         """
         根据优先级选择对应的祝福
         :param bless_pos_list: 祝福列表
@@ -146,26 +155,26 @@ class SimUniChooseBless(SrOperation):
             return bless_pos_list[target_idx]
 
     @node_from(from_name='选择祝福')
-    @operation_node(name='选择后等待结束')
+    @operation_node(name='选择后等待结束', node_max_retry_times=20)
     def wait_not_in_bless(self) -> OperationRoundResult:
         """
-        选择祝福后 等待画面不是【选择祝福】再退出
-        这样方便后续指令在选择祝福后立刻做其它事情
-        一段时间后还在选择祝福的话 可能是连续祝福 仍然返回
+        选择祝福后 轮询等待画面离开【选择祝福】(快速返回设计,见
+        docs/develop/sr_od/application/sim_universe.md「快速返回设计」节):
+        title 消失(收祝福动画完成)立即成功返回,让 SimUniEnterFight 尽早恢复
+        攻击判定,避免被怪先手;确认后仍在页超过 3s = 连续祝福页刷新,返回
+        STATUS_STILL_BLESS 交上层分派再起一轮(设计上连续祝福页刷新近乎立即,
+        实际会等满窗口,每连续祝福轮多约 1.5s,换取不与收页动画竞态)。
+        替代旧的固定 1s 等待——动画超 1s 时父 op 会误判仍有祝福再起一轮,
+        对着已关闭页面空识别至 FAIL。
         :return:
         """
-        if self.fast_back_to_world:
+        screen = self.last_screenshot
+        if sim_uni_screen_state.in_sim_uni_choose_bless(self.ctx, screen):
             now = time.time()
-            screen = self.last_screenshot
-            if sim_uni_screen_state.in_sim_uni_choose_bless(self.ctx, screen):
-                if now - self.choose_bless_time >= 2:
-                    return self.round_success(status=SimUniChooseBless.STATUS_STILL_BLESS, wait=0.2)
-                else:
-                    return self.round_wait(status=SimUniChooseBless.STATUS_STILL_BLESS, wait=0.2)
-            else:
-                return self.round_success(status='离开祝福画面')
-        else:
-            return self.round_success(status='等待1秒', wait=1)
+            if self.choose_bless_time is not None and now - self.choose_bless_time >= 3:
+                return self.round_success(status=SimUniChooseBless.STATUS_STILL_BLESS, wait=0.2)
+            return self.round_wait(status=SimUniChooseBless.STATUS_STILL_BLESS, wait=0.2)
+        return self.round_success(status='离开祝福画面')
 
 
 def __debug():
