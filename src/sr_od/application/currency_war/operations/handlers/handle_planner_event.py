@@ -36,6 +36,9 @@ class HandlePlannerEvent(SrOperation):
     # (旧实证点击高度比例)+ 详情钮避让 clamp;rect 单一源在 cw_hacker_planner.yml。
     CARD_AREA_SCREEN: ClassVar[str] = '货币战争-骇入策划'
     CARD_AREAS: ClassVar[tuple[str, str]] = ('骇入选项-左卡', '骇入选项-右卡')
+    # 点卡/确认按住时长(match2 复盘实证 prep_actions 参数;漏定义=live
+    # AttributeError,match3 首局实锤——类属性与引用点同批落码的纪律)
+    CLICK_PRESS_TIME: ClassVar[float] = 0.15
     # 旧实证(755/1225,480 对旧 rect y 280-560)= 卡内 71% 高度。
     SELECT_Y_RATIO: ClassVar[float] = 0.71
     # 详情钮带 y 起点(实帧 OCR:详情 y 435-455)- 安全余量:点击 y 不得进入。
