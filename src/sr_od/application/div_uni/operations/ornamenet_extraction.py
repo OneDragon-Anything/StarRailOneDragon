@@ -280,6 +280,13 @@ class ChallengeOrnamentExtraction(SrOperation):
         :return:
         """
         screen = self.last_screenshot
+
+        # 战败点空白后落到 位面饰品提取 boss 选择页(全屏 UI,无大世界角色图标)
+        # → 先点右上 X 关页回大世界,下一轮重判(点击可能不落地,同 round_retry 判例)
+        if self.round_by_find_area(screen, '饰品提取', '左上角标题-饰品提取').is_success:
+            self.round_by_click_area('饰品提取', '按钮-关闭')
+            return self.round_retry('关闭模式页', wait=1)
+
         result = self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
 
         # 如果未完成指定次数, 则继续打
