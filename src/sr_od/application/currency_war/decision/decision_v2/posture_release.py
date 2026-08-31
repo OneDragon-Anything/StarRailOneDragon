@@ -192,9 +192,24 @@ def _findable_in_shop(state: GameState, session: StrategySession,
                for card in (state.shop or []))
 
 
+def crisis_overflow(state: GameState) -> int:
+    """危机臂溢余基(P36-a′;ADR-0506 后继决策单一址):应急带内取
+    持金 g 本身(R*_crisis≡0)。
+
+    为什么不走全局 ``economy_cycle.overflow``:储备线 R* = 守息线 +
+    窗口内排程升级费,其保护前提(未来升级兑现/息收益)在应急带被
+    P23.4 证伪——金终端价值≈0 时储蓄无保护对象,且 R*>g 帧整臂静默
+    (match4 复盘 p2r1 hp3/金89/R*90 病灶)。降档辖域**只在危机臂**:
+    不动全局 reserve_cap,防波及 reward 帧 buy_budget/存息准入门等
+    非应急消费面;证明=P36-a′(p36 单篇推论,死亡域严格/非死亡带弱、
+    近似方向=支出侧)。"""
+    return max(0, state.gold or 0)
+
+
 def crisis_release_open(state: GameState, session: StrategySession,
                         registry: DecisionV2Registry) -> bool:
-    """危机金出口臂辖域(ADR-0503):开关 ∧ 应急带 ∧ 溢余段。
+    """危机金出口臂辖域(ADR-0503;溢余基降档=P36-a′):开关 ∧ 应急带
+    ∧ 危机溢余段(溢余基=``crisis_overflow``=g,R*_crisis≡0)。
 
     辖域=满足上式的**全部**应急溢余帧(宽辖域,如实声明)——包括商店在线
     且有可承接提案的帧(ADR-0426 让位前提仍成立的帧),这些帧的金同样被
@@ -203,18 +218,13 @@ def crisis_release_open(state: GameState, session: StrategySession,
     让位前提在应急带整体失效;sim A/B n=300/臂与开臂后分布(危机帧实花率
     on 76-82% vs off 47%,非危机面零回归)实证宽辖域无劣化
     (.debug/temp/currency_war/w939_armed_baseline/REPORT.md)。
-    判据全既有单一源符号(开关/应急线/储备线溢余),零新常数。
     """
     if not registry.crisis_release_enabled:
         return False
-    from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
-        overflow,
-    )
     from sr_od.application.currency_war.decision.decision_v2.filters import (
         is_emergency,
     )
-    return is_emergency(state, registry) and overflow(state, session,
-                                                      registry) > 0
+    return is_emergency(state, registry) and crisis_overflow(state) > 0
 
 
 def crisis_invariant_lane(session: StrategySession, cost: int) -> bool:
@@ -359,7 +369,10 @@ def release_directive(state: GameState, session: StrategySession,
             from sr_od.application.currency_war.kernel.cw_economy import (
                 REFRESH_ROLL_CAP,
             )
-            ov = _overflow(state, session, registry)
+            # 溢余基=crisis_overflow(g,P36-a′ 降档 R*_crisis≡0),非全局
+            # R* 溢余——预算帽形态不变(ADR-0503 原式),只改帽可达性
+            # (match4 p2r1 hp3/金89/R*90 帧自此开火,budget=min(89,12)=12)。
+            ov = crisis_overflow(state)
             budget = min(ov, REFRESH_ROLL_CAP * cost)
             return ReleaseDirective(budget_gold=budget,
                                     rolls=budget // cost if cost else 0,
@@ -485,7 +498,8 @@ def evaluate_release(state: GameState, session: StrategySession,
 # 引用不重造:死亡窗替代消费交 allocator_run 既有接管、危机帧交
 # crisis_release_open 既有臂(上方 release_directive),本节不设第二
 # 指令通道;常规帧分支只降级+显式声明,不新造消费通道(DESIGN §4-3)。
-# 全部行为面挂 registry.spend_receipt_gate_enabled(默认关=零漂移)。====)
+# 无条件生效(原开关 spend_receipt_gate_enabled 已随除开关批删除,
+# 决策 why = ADR-0504:预注册 A/B v1+v2 两轮判正+生产写入端已接线)。====)
 
 #: 奖励节点 token(买侧扩张预算授权的辖域;与 ev.NON_BATTLE_NODE_
 #: TOKENS 的 reward 子集同词表——中英双词表容错同款)。
@@ -528,7 +542,7 @@ def spend_channel_ok(state: GameState) -> bool:
 
 def attach_spend_authorization(state: GameState, session: StrategySession,
                                registry: DecisionV2Registry) -> dict | None:
-    """轮入口授权包装配(开关 spend_receipt_gate_enabled 辖;仲裁前调)。
+    """轮入口授权包装配(无条件生效,ADR-0504;仲裁前调)。
 
     对当前轮缓存姿态(session.v3_dp_posture,release 包装后载体)就地
     补齐授权包三件( premises/auth_id/buy_budget),并对前提不成立的
@@ -544,7 +558,7 @@ def attach_spend_authorization(state: GameState, session: StrategySession,
 
     返回授权包快照写 ``session.v3_spend_auth``(对账门的授权侧输入);
     release 帧(tag='release')是替代消费通道自身,不重复授权,返回
-    None。开关关恒 None 且姿态零改动。
+    None。
 
     帧级全量重算语义(复位唯一挂点,开臂判据的遥测正确性前提):
     本函数在每次仲裁入口无条件执行,两个出口都先清
@@ -552,8 +566,6 @@ def attach_spend_authorization(state: GameState, session: StrategySession,
     段尾=本段真值」,与回执 last-wins 同口径;条件写滞留
     (w943_audit5 P1-1)由此根除。
     """
-    if not registry.spend_receipt_gate_enabled:
-        return None
     session.v3_posture_unfulfilled = None    # 帧级复位(P1-1;覆写在 reconcile)
     from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         overflow,
@@ -653,15 +665,15 @@ def build_spend_receipt(state: GameState, session: StrategySession,
     ``actions``=仲裁采纳动作序,``log_rows``=执行 log(候选拒因的
     Top1 附光)。四枚举映射:no_channel(无通道节点)> no_premise
     (执行时点前提复核——授权发出后 working 态演化的残余面)>
-    no_candidate(候选全滤空/无候选,附 Top1 拒因)。开关关或无授权
-    快照(release 帧)→ None。
+    no_candidate(候选全滤空/无候选,附 Top1 拒因)。无授权快照
+    (release 帧)→ None。
     release 帧实花记账(_accrue_release_frame_spend)在授权快照检查之前
     执行——release 帧无授权包(回执契约对 release 帧返回 None 是既有
     语义),记账分支与之独立,两契约互不辖。
     """
     _accrue_release_frame_spend(session, actions)
     auth = getattr(session, 'v3_spend_auth', None)
-    if auth is None or not registry.spend_receipt_gate_enabled:
+    if auth is None:
         return None
     from sr_od.application.currency_war.kernel.cw_state import (
         BuyCard,
@@ -721,8 +733,6 @@ def reconcile_spend(state: GameState, session: StrategySession,
       通道**(DESIGN §4-3:P13 息律下常规帧强制清仓无命题支持)。
     无未兑现授权 → None(回执仍由调用方归档)。
     """
-    if not registry.spend_receipt_gate_enabled:
-        return None
     channels = (('levelup', receipt.levelup_reason),
                 ('refresh', receipt.refresh_reason),
                 ('buy', receipt.buy_reason))
