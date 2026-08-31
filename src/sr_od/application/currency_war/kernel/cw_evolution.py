@@ -779,9 +779,15 @@ def propose_upgrades(state: GameState, session=None) -> list[UpgradeOption]:
     - Comp(C4):每套主档各羁绊,在手人数 ≥2 且板面档 < 目标档 → 机会;
     - 当前板:板上已有羁绊在手人数 > 当前板档 → 升 1 档机会(加深)。
     session.target_comp(意向同向)作 tie-break 加权,非一票否决(C2 语义)。
+    线名来源收口(W956 DESIGN §2;W954 契约「执行侧只读意向层权威状态」):
+    tie-break 读 ``cw_recipe.decision_target``(意向单一入口,双轨期返回
+    配方伪 comp)——只换数据来源,加权语义不变。
     """
     opts: list[UpgradeOption] = []
     owned = _owned_names(state)
+    from sr_od.application.currency_war.kernel.cw_recipe import decision_target
+    _intent_target = decision_target(session, state) if session is not None \
+        else None
 
     def _mk(kind: str, faction: str, target: int, comp_name: str,
             source: str) -> None:
@@ -792,8 +798,7 @@ def propose_upgrades(state: GameState, session=None) -> list[UpgradeOption]:
         score = _effect_score(state, faction, target,
                               core_in_hand, engine_complete,
                               _window_pieces(state, faction, target))
-        if session is not None and getattr(session, 'target_comp', None) \
-                is not None and comp_name == session.target_comp.name:
+        if _intent_target is not None and comp_name == _intent_target.name:
             score += _TIER_WEIGHT   # 意向同向 tie-break(C2:非一票否决)
         opts.append(UpgradeOption(kind, faction, target, score,
                                   core_in_hand, comp_name, source))
@@ -1075,6 +1080,19 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         new_label = comp.name if comp is not None \
             else f'{opt.faction}{opt.target_tier}'
     reason = f'evolve:{old_label}→{new_label}'
+    # alloc 一致性断言(W956 DESIGN §2/W954 契约;纯观察零拦截):
+    # 演进目标 ∉ 意向权威锁定体系集时记报警日志——reason 线名与
+    # locked_comp 脱节的帧级观测面(实机档案 match g_20260831_082322
+    # p2r1 型病灶的复现锚)。
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        alloc_reason_consistency,
+    )
+    _flag = alloc_reason_consistency(
+        session, opt.faction,
+        opt.comp_name if opt.source == 'comp' else '')
+    if _flag:
+        log.warning('[cw!][ev][alloc-consistency] 演进目标与意向权威脱节'
+                    '(%s,reason=%s)——断言观察,不拦截', _flag, reason)
     if not deploy_entries and not undeploy_idx and not sell_entries:
         return []   # 无替换内容(纯加深/纯填位)→ 非演进步,归常规通道(围栏/空位规则)
     if memory is not None:
