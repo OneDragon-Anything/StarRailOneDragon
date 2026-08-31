@@ -42,10 +42,15 @@ class HandlePlannerEvent(SrOperation):
     # 点卡/确认按住时长(match2 复盘实证 prep_actions 参数;漏定义=live
     # AttributeError,match3 首局实锤——类属性与引用点同批落码的纪律)
     CLICK_PRESS_TIME: ClassVar[float] = 0.15
-    # 旧实证(755/1225,480 对旧 rect y 280-560)= 卡内 71% 高度。
+    # 选中点击高度比例:旧实证 (755/1225,480) 对旧 rect y 280-560 = 卡内 71%
+    # (⚠️ 迁移样本 n=1,08-20 局29 单次交互实证;半区经验值非充分统计)。
     SELECT_Y_RATIO: ClassVar[float] = 0.71
-    # 详情钮带 y 起点(实帧 OCR:详情 y 435-455)- 安全余量:点击 y 不得进入。
-    DETAIL_AVOID_Y: ClassVar[int] = 425
+    # 详情钮避让 = **rect 底缘上移固定比例**(W952 审计 P1-1/P2-1 返修):实帧
+    # 详情钮带贴卡底(高 20-28px ≈ 卡高 8-10%,含余量取 11%)。绝对 y 常数对
+    # 多布局不成立(单帧耦合:弹窗整体下移 >46px 即被压回详情危险半区,
+    # legacy 兜底 478 会被压成 425 落 (755,400) 型危险带);相对几何下布局
+    # 再漂移恢复「只更 yml」承诺。clamp 语义 = 详情钮在其上方。
+    DETAIL_MARGIN_RATIO: ClassVar[float] = 0.11
     # 旧实证 rect(match3 布局实测前为单一源;area 缺失时兜底)。
     _LEGACY_CARD_RECTS: ClassVar[tuple[tuple[int, int, int, int], ...]] = (
         (500, 280, 980, 560), (1020, 280, 1500, 560))
@@ -62,9 +67,13 @@ class HandlePlannerEvent(SrOperation):
         SrOperation.__init__(self, ctx, op_name='货币战争-策划事件')
 
     def _card_point(self, idx: int) -> Point:
-        """卡选中点击点 = area rect 推导(中心 x,71% 高度,详情钮避让 clamp)。
+        """卡选中点击点 = area rect 相对几何推导(中心 x,71% 高度)。
 
+        详情钮避让 = rect 底缘上移 DETAIL_MARGIN_RATIO(相对几何,W952 返修
+        ——绝对 y 常数对多布局不成立,见类属性注释)。两比例皆 rect 相对,
         布局再漂移时只更 yml rect,本方法零改;rect 缺失回退旧实证 rect。
+        确认钮动画/多步 overlay 零覆盖声明:本方法只产选中点,确认收尾的
+        失败语义归 confirm_and_verify 验关(动画期误判可能仍开)。
         """
         area = self.ctx.screen_loader.get_area(
             HandlePlannerEvent.CARD_AREA_SCREEN,
@@ -75,7 +84,7 @@ class HandlePlannerEvent(SrOperation):
             lx, ly, rx, ry = HandlePlannerEvent._LEGACY_CARD_RECTS[idx]
             rect = Rect(lx, ly, rx, ry)
         y = min(rect.y1 + int(rect.height * HandlePlannerEvent.SELECT_Y_RATIO),
-                HandlePlannerEvent.DETAIL_AVOID_Y)
+                rect.y2 - int(rect.height * HandlePlannerEvent.DETAIL_MARGIN_RATIO))
         return Point(rect.center.x, y)
 
     @operation_node(name='处理策划事件', is_start_node=True, node_max_retry_times=5)
