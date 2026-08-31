@@ -199,5 +199,26 @@ class RunSupplyNode(RunNode):
         time.sleep(0.6)
         # 确认(supply 按钮-确认 area;T#103 area 化)
         self.round_by_find_and_click_area(self.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
+        # 补给轮决策帧(w941 判定:备战采集 detour 整局一次 → 后续补给轮
+        # 恒零 decisions 行,轮窗边界模糊)。选卡确认后补记一帧合成快照:
+        # 确认成功时点 overlay 已消 → 帧面=干净备战帧(read_game_state
+        # prep_clean 同 detour 形态)。phase='supply_pick' = 本帧来源标注
+        # (decisions 行无 source 字段——source='synthetic_supply' 是结算行
+        # 词汇,telemetry/schema.py 本批禁碰;读端按 phase 分型)。
+        # gold_point=False:gold_trajectory 每回合一采样,首补给轮 detour 帧已
+        # 采过,本帧不重复入轨。观测失败不阻塞对局。
+        try:
+            _post_screen = self.screenshot()
+            _post_state = read_game_state(self.ctx, _post_screen, phase='prep_clean')
+            cw_telemetry.record_decision(
+                _post_state, target_comp='', candidate_scores={}, eval_breakdown={},
+                actions=[], gold_point=False,
+                extra={'phase': 'supply_pick'})
+            log.info('[cw-supply] 选卡确认后快照已落盘 p%sr%s hp=%s gold=%s',
+                     getattr(_post_state, 'plane', '?'),
+                     getattr(_post_state, 'round_num', '?'),
+                     getattr(_post_state, 'hp', '?'), getattr(_post_state, 'gold', '?'))
+        except Exception as e:   # noqa: BLE001  观测不阻塞对局
+            log.warning('[cw-supply] 选卡确认后快照记录失败(不阻塞): %s', e)
 
 

@@ -8,6 +8,7 @@
 import argparse
 import asyncio
 import contextlib
+import logging
 import sys
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,7 @@ import uvicorn
 
 from one_dragon.utils.log_utils import (
     LoggerConfig,
+    SafeTimedRotatingFileHandler,
     configure_logger,
     get_log_file_path,
 )
@@ -59,6 +61,39 @@ def _configure_server_logging() -> None:
     )
 
 
+def _configure_root_logger_single_channel() -> None:
+    """root logger 抢先落到 ``mcp_server.log``(单一信道修)。
+
+    根因:FastMCP.__init__(mcp 1.28)经 mcp.server.fastmcp.utilities.logging
+    .configure_logging → ``logging.basicConfig(level=INFO, format='%(message)s',
+    handlers=[StreamHandler(stderr)])`` 给 root 挂**裸 stderr handler**。本进程
+    内所有 ``logging.getLogger(__name__)`` 型业务 logger(如
+    collect_plane_intel,无自有 handler,记录上传 root)会以裸格式写 stderr,
+    被 daemon 重定向进 .debug/sr_od_mcp/main_server.log;而框架 logger('OneDragon',
+    propagate=False)走 .log/mcp_server.log —— 同一子系统的日志按「模块抓哪个
+    logger」分裂进两个文件,即哨兵观测的双信道漂移。
+
+    修法:在 FastMCP 构造**之前**给 root 挂同文件 handler。①之后 FastMCP 的
+    basicConfig 见 root 已有 handler 即 no-op(basicConfig 语义),裸 stderr
+    handler 不再出现;②子 logger 记录统一落 mcp_server.log,单一信道。同文件
+    双 handler(框架 logger 一个 + root 一个)的轮转互斥由 SafeTimedRotating
+    FileHandler 的进程内同路径锁表保证。
+    """
+    root = logging.getLogger()
+    if root.handlers:
+        return   # root 已被配置(测试预置/未来启动方)时不覆盖,防重复 handler
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=[SafeTimedRotatingFileHandler(
+            get_log_file_path(default_name=MCP_SERVER_LOG_FILE_NAME),
+            when='midnight', interval=1, backupCount=3,
+            encoding='utf-8', delay=True)],
+        format='[%(asctime)s.%(msecs)03d] [%(name)s %(filename)s %(lineno)d]'
+               ' [%(levelname)s]: %(message)s',
+        datefmt='%H:%M:%S',
+    )
+
+
 def create_app(backend: SrBackendContext) -> "Starlette":
     """装配应用：同一 FastMCP 同时挂 MCP tool 与 ``/game/*`` custom_route。
 
@@ -94,6 +129,9 @@ async def _serve(host: str, port: int) -> None:
     # (stdout 兜底日志混入框架日志,进程身份失真)与共享 log.txt(与 GUI 跨进程
     # 竞态窗口)。实证:main_server.log 各次重启头部都有一段框架日志泄漏。
     _configure_server_logging()
+    # root 单一信道(见函数 docstring)也必须在 SrContext/FastMCP 构造前:
+    # SrContext init 期间已有 getLogger(__name__) 型日志,晚了这段会走裸 stderr。
+    _configure_root_logger_single_channel()
     ctx = SrContext()
     backend = SrBackendContext(ctx)
     # 构建指纹守卫(W596/W593 方案①):启动首行记本进程运行的代码构建
