@@ -40,7 +40,7 @@ class DecisionV2Registry:
     buy_tag_priority: tuple[str, ...] = (
         'line_carry', 'line_opportunistic', 'bridge_core',
         'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
-        'bond_fallback', 'carry_gate',
+        'bond_fallback', 'carry_gate', 'crisis_fallback',
     )
     #: 3合1 合成候选:标记位(不占标签序——第三张副本买入即合成,
     #: Candidate.merge=True;覆盖全部目标类买入)
@@ -88,6 +88,15 @@ class DecisionV2Registry:
     bond_fallback_max_cost: int = 2
     #: [31] 降级触发回合门(P3 边界:r1-r2 无战斗买件纯付息损)
     bond_fallback_min_round: int = 3
+    #: W956 危机帧购买兜底集:成本上限(任意 ≤ 此费店卡可作兜底买;
+    #: 设计单一源 = .debug/temp/currency_war/w956_death_allocator/
+    #: DESIGN.md §2 方案 B,归属裁决 = W954 §5 移交;病灶 = match
+    #: g_20260831_082322 p2r2「5 卡全拒 0 执行」)
+    crisis_fallback_max_cost: int = 2
+    #: W956 危机帧购买兜底集开关(策略开关生命周期第 1 态:默认关=
+    #: A/B 注入态;预注册判据 = .debug/temp/currency_war/w956_death_allocator/
+    #: PREREG.md,判正后翻默认开并删此注释中的 A/B 语句)
+    crisis_fallback_enabled: bool = False
     #: [32] carry_gate 腾位买的轮界(r≤7;r8-r9 终局段买入不影响结算)
     carry_gate_max_round: int = 7
 
@@ -1418,28 +1427,10 @@ class DecisionV2Registry:
     #: w42 26.3%/w43 5.5%)入 §8 武装序判读清单。
     below_floor_spend_gate_enabled: bool = False
 
-    # ===== 预算-回执契约(w921_rd_design DESIGN 批1;开关生命周期
-    # 第 1 态默认关 = 行为变更面全关,关臂零漂移锚)=====
-    #: 姿态-执行断裂的统一修法落码(设计单一源 =
-    #: .debug/temp/currency_war/w921_rd_design/DESIGN.md §1.1):
-    #: True = ①授权包装配(premises/auth_id/buy_budget)带前提位——
-    #: 前提不成立的支出授权在产出侧拒发(D1:板满∧bench 空 → 无升级
-    #: 授权,13-2 形态;无商店通道节点 → 无刷新授权,20-5 形态)+
-    #: 执行侧升级前提拒付防线(no_premise);②执行回执(SpendReceipt,
-    #: 四枚举未兑现原因)+ 对账门(授权未兑现帧三选一:分配器辖域帧
-    #: 记录交 allocator_run 既有接管 / 危机帧记录交 crisis release
-    #: 既有臂 / 常规帧姿态降级 tag='存息' + posture_unfulfilled 声明)。
-    #: False = 契约面全部旁路,行为与改动前逐位一致(零漂移锚)。
-    #: 对账门不开源不花钱:常规帧分支只降级+声明,不是消费通道
-    #(DESIGN §4-3);死亡窗/危机替代消费复用 allocator_run 与
-    #: ReleaseDirective 既有通道,不设第二开关、不重造指令通道。
-    #: 开臂判据挂账(strategy-work §3 第 1 态义务):判前预注册
-    #: .debug/temp/currency_war/w937_rd_batch1/PREREG.md——sim A/B
-    #: (n≥300/臂同 seed 配对)主判据=授权未兑现帧占比下降(W932
-    #: 检查器「钱变不成板」类消除)∧ 次要(终局 hp/残金/存活)不劣化;
-    #: 过 → 第 2 态进开臂评审(实机锚点=dp 判花帧滞留金占轮均金比
-    #: 下降);不过 → 第 4 态删码留 ADR。
-    spend_receipt_gate_enabled: bool = False
+    # ===== (spend_receipt_gate_enabled 已删:预算-回执契约无条件生效,
+    # ===== 决策 why = ADR-0504;行为面 = decision_v2.posture_release
+    # ===== 三函数。除开关批在飞期该字段曾被并行恢复过一次,本轮按
+    # ===== 终局裁决完成删码,死旋钮不复留。=====
 
     # ===== 支出门·买侧收门(W829 v3 设计落码;伞+两子旗标默认关 =
     # 生命周期第 1 态零漂移锚;三轮 A/B 终局定性见 ADR-0499)=====
@@ -1721,6 +1712,11 @@ class DecisionV2Registry:
     #: 持续超此轮数仍无新线落锁 → 同上(与 deadline 或门)。
     stagnate_windows: int = 2
     stagnate_window_rounds: int = 2
+    #: form 假绿判定阈(W957 sim 支B 形态修正:form_ok=True 只证阵容档位成型,
+    #: 意向核心未到 2★ 当量=锁线战力未兑现——core 单副本+每战大负 Δ 仍 form
+    #: 恒绿实证;停滞判据的「未成型」谓词须把假绿计入,否则 P2 触发面被假绿
+    #: 恒短路)。意向核心到手 star 当量 < 此值 ∧ form_ok=True → 计未成型。
+    stagnate_core_min_copies: int = 2
     salvage_deadline_nodes: int = 2
     salvage_window_rounds: int = 3
 

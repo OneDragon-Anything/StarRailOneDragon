@@ -263,8 +263,9 @@ class IntentionState:
     """窗首帧 hp 快照(战力侧确证:窗末 hp 净下降才计停滞,防金筹措期误判;
     None=窗首帧未采样)。"""
     stagnate_form_ok_all: bool = True
-    """窗内 form_ok 恒 False 贯穿位(当帧谓词逐帧 AND;form_ok 读
-    session.v3_form_ok 最近一次成型判定,缺帧=False=计入未成型)。
+    """窗内「未成型」贯穿位(逐帧 AND;未成型谓词 = form_ok False〔假红〕∨
+    form_ok True ∧ 意向核心到手 star 当量 < stagnate_core_min_copies〔假绿〕;
+    form_ok 读 session.v3_form_ok 最近一次成型判定,缺帧=False=计入未成型)。
     True=整窗未成型(停滞资格在);窗界评估后清回 True 重开。"""
     stagnate_weak_rounds: int = 0
     """stagnate-weak 态持续驱动轮数(含触发轮;坐标系=轮,取值时机=每驱动轮;
@@ -1100,7 +1101,16 @@ def _stagnation_tick(state: GameState, ist: IntentionState,
     ist.stagnate_plane = state.plane   # 计数所属位面(位面切换清零键)
     gap = len([c for c in _line_hoard(comp)[0] if c not in _owned_chars(state)])
     hp = state.hp
-    if bool(getattr(session, 'v3_form_ok', False)):
+    # 「未成型」谓词(W957 sim 支B 形态修正):假红=form_ok False(form 锁死
+    # 板混填充形态);假绿=form_ok True 但意向核心未到 2★ 当量(form 绿只证
+    # 阵容档位成型,锁线战力未兑现)。两者都计入,否则 P2 触发面被假绿恒短路。
+    form_weak = not bool(getattr(session, 'v3_form_ok', False))
+    if not form_weak:
+        core = intention_core(comp)
+        copies = sum(bc.star for bc in list(state.bench) + list(state.deployed)
+                     if bc is not None and bc.char_id == core)
+        form_weak = copies < reg.stagnate_core_min_copies
+    if not form_weak:
         ist.stagnate_form_ok_all = False
     if ist.stagnate_gap_ref is None:   # 窗首帧采样(窗界对照基准)
         ist.stagnate_gap_ref = gap
