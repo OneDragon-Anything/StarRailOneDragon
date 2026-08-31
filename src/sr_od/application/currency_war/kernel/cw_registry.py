@@ -876,18 +876,11 @@ class DecisionV2Registry:
     #: 实花分项账非全零 + hp 可信位)为**确认门**,非开臂门,进行中
     #: 挂账 ADR-0503 §开臂判据(尾注)。
     crisis_release_enabled: bool = True
-    #: 危机帧刷新通道不变式(P36-a;设计决策单一源=ADR-0506,命题=
-    #: 「B>0⟹n≥1」结构证明 + 实机标定:crisis 帧 RefreshShop p50=0、
-    #: 哑火帧 12/30,机制=息档截断门把危机首刷按 essential=False 裁、
-    #: gold%10<刷价时确定性拒)。True=预算>0 的危机帧首刷走 essential
-    #: 车道(息档截断门豁免,执行侧保底 ≥1 次 RefreshShop;首刷后恢复
-    #: 常态截断,预算门/boss_floor/g≥0 三门照辖);False=现状(截断门
-    #: 全域适用,零漂移锚)。默认 False=开关生命周期第 1 态。开臂判据
-    #: 挂账=A/B(prereg=docs/develop/currency_war/prereg/
-    #: w951_p36a_invariant_prereg.md)主判据哑火帧率 on≈0 且 off 基线
-    #: 显著、次要实花面/hp 不劣化;通过翻默认,不过删码留 ADR,禁悬置。
-    #: 危机族子臂:父臂 crisis_release_enabled 关则本臂无从触发。
-    crisis_refresh_invariant_enabled: bool = False
+    # (危机帧刷新通道不变式 crisis_refresh_invariant_enabled 字段已随
+    #  ADR-0506 升格裁决整开关删除:不变式无条件生效——依据=P36-a 单篇
+    #  结构证明(B>0⟹n≥1,零参数)+ prereg A/B 仅作确认;判据单一址=
+    #  posture_release.crisis_invariant_lane,行为面与实机确认门挂账见
+    #  该 ADR。删字段须同步移除面册锁条目=面册锁文法的反向操作。)
     #: 设计决策单一源=ADR-0426(谱系节含设计稿索引与两轮对抗修订记录)。**符号不稳参数一律默认值+标定接口,不拍死**:
     #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
     #: (总开关 release_enabled 已随 ADR-0426 增补 D 第 4 态清理:被经济
@@ -1294,49 +1287,12 @@ class DecisionV2Registry:
     #: 压库豁免每帧张数上限(设计 §3④ 收口)。
     tier_push_press_round_cap: int = 2
 
-    # ===== R-B 三信号商店件定价(W920 设计件批B)=====
-    #: 伞开关,生命周期第 1 态:默认关=评分行为逐位零漂移锚。设计单一源
-    #: = .debug/temp/currency_war/w920_rb_design/DESIGN.md(病灶四样本
-    #: F1/F2/F3/13-4 同判据面两向失败;判据面=商店件定价全件,线内囤牌
-    #: +线外件,DESIGN §2-D1)。三信号各自独立披露(bd['rb_s1/s2/s3']),
-    #: 禁加权黑盒总量(piece_value 死因,ADR-0497/W902 终裁;禁复活任
-    #: 何 piece_value 符号)。**开臂判据挂账 = docs/develop/currency_war/
-    #: prereg/w947_rb_signal_pricing_prereg.md 主判据 M1 + 守门 G1/G2**
-    #: (n≥300/臂同 seed 配对;不过则删码留 ADR,禁悬置默认关——开关
-    #: 生命周期)。
-    rb_signal_pricing_enabled: bool = False
-    #: S3 子旗标(批C 拆臂用;仅伞开时生效):W947 v1 合臂 A/B 判负后
-    #: 开火面归因显示 S3 开火 43.3 万次绝对主导(s1 4602/s2 1.8 万),
-    #: 拆臂判前锁 = docs/develop/currency_war/prereg/
-    #: w947c_rb_split_prereg.md(S3 关/S1+S2 开臂)。默认 True=与 v1
-    #: 合臂语义逐位一致;复测兑换按生命周期三选一,不留悬案。
-    rb_s3_enabled: bool = True
-    #: S1 凑档激活单位值(分/跨档)。推导:P20 倍数带下缘 2.6(激活
-    #: e0→1 次战边际 vs 散件升星,proofs/p20-transition-activation-vs-
-    #: starup.md)× 档位步分值单位 0.75(单一源=realization_delta_p_tier
-    #: 同标尺);占位,sim A/B 内扫(prereg §1 挂账)。
-    rb_s1_unit: float = 1.95
-    #: S2 贯穿留存阈值(Q1 E→F 口径)。DESIGN §3-D3 S2 建议带 0.85/0.90
-    #: 下缘;扫描带 [0.80,0.90] sim A/B 挂账。
-    rb_s2_threshold: float = 0.85
-    #: S2 贯穿正价单位值(分;实际加项=本值×留存率)。占位量级与 S1
-    #: 单位同阶,sim A/B 内扫(prereg §1 挂账)。
-    rb_s2_unit: float = 1.0
-    #: S3 再遇窗口期权单位值(分;实际加项=本值×窗口占比×计次衰减)。
-    #: P4 教训对齐(W908 F8:压库增益 ≤1.0pp,不为压库花息)→ 上限应
-    #: 小(DESIGN §3-D3 S3);占位,sim A/B 内扫。
-    rb_s3_unit: float = 0.5
-    #: 逐卡贯穿度(Q1 E→F 留存率,数据字段化非手写名单——DESIGN §5-3
-    #: 防名单腐化)。数据单一源 = docs/game/currency_war/research/
-    #: stage_transitions.md Q1 逐卡表(815 帖,总体 E→F 列);姬子·启行
-    #: 0.88 取 w920 考证报告 §1.2 引 Q1 的复算值(逐卡表未列)。表外
-    #: 卡无字段 → S2=0 不猜。分线留存(DOT 线卡芙卡 0.92 等)未字段化,
-    #: S2 按全库留存口径(w920 报告 §1.1 同口径)。
-    rb_retention_q1: dict[str, float] = field(default_factory=lambda: {
-        '千冶·刃': 0.95, '姬子·启行': 0.88, '花火': 0.81,
-        '三月七': 0.80, '星期日': 0.66, '藿藿': 0.44, '卡芙卡': 0.35,
-        '爻光': 0.41, '丹恒·饮月': 0.32, '椒丘': 0.26, '艾丝妲': 0.05,
-    })
+    # (R-B 三信号商店件定价七字段(rb_signal_pricing_enabled/s3_enabled/
+    #  s1_unit/s2_threshold/s2_unit/s3_unit/rb_retention_q1)已随 W947
+    #  A/B 两轮判负整机制删码:合臂形态达标率 -3.00pp 显著负、拆臂
+    #  S1+S2 隔离复测 -0.33pp 噪声带内零疗效(两轮判前锁与判读=
+    #  docs/develop/currency_war/prereg/w947*_rb_*.md)。删码留档
+    #  ADR-0507;复活条件见该 ADR。)
 
     # (件价值模型 Phase 1 八字段(piece_value_enabled/buy/keep/merge/
     #  w_activation/w_retention/bench_gate_enabled/bench_reserve_cap)已随
@@ -1732,6 +1688,41 @@ class DecisionV2Registry:
     #: ②强化角色机制效果语义确认(改 run_megastar_node 接执行面前必须先做);
     #: ③执行面接通后 sim/实机 A/B 正向 → 翻默认值;验证不过 → 删码留 ADR。
     megastar_enhance_enabled: bool = False
+
+    # ===== `w948_transform_arm/` W948 转型臂(停滞评估臂)双开关(开关生命周期第 1 态:默认关)=====
+    #: 设计单一源 = .debug/temp/currency_war/w948_transform_design/DESIGN.md §2;
+    #: 决策 why = ADR-0508。机制:锁定态下「线进展」窗级无收敛 + form 未成型 +
+    #: hp 净降 → 把该线降为弱意向(带 stagnate 证据),复用既有撤销下游
+    #(异线信号 + C4 门 + 回锁闩)完成重估——补「锁=当前最优假设(可改判)」
+    #: 语义,是 ADR-0429 增补「撤销出口灵敏度独立演进」的进度侧触发面。
+    #: 开臂判据挂账(DESIGN §2.4,跑前写死):
+    #: ① 观测批:sim n≥300 开关关,统计形态 A(锁后 form_ok 恒 False 达多轮、
+    #:    每战掉血、零重估)跨局占比存照(已立基线=W951 sim form 存照:
+    #:    形态 A 1.7% / 形态 B 0%);占比不足则概念数据否决,直接清理;
+    #: ② A/B(同池指纹):P2 存活轮数分布与达标占比改善,且换线次数/摇摆
+    #:    形态占比不升(防振荡验收线);
+    #: ③ 门闩零漂移锚:off 臂与现行 off 臂逐位相等。
+    #: 停滞臂总开关(False=零漂移对照臂;salvage 是它的出口分支,随本开关,
+    #: 无独立开关——非独立行为变更)。
+    intention_stagnation_arm_enabled: bool = False
+    #: P2 入口弱目标占位(DESIGN §2.1 伴生入口·乙):进 P2 清 p1_pair 后仍
+    #: unlocked 且无即时信号 → 按带入资产派生弱占位方向接管⑤兜底,使方向门
+    #: 不空转。弱占位 = 可被任何信号推翻的初始假设(不进 locked 态,天然无
+    #: 承诺语义);优先级:弱目标先于绯英兜底。开臂判据挂账:A/B——P2 前 3 轮
+    #: 方向字段非空率与早期买入有效性改善,且 dir_c 空转局(形态 B 画像)占比
+    #: 下降;与停滞臂正交性锚(乙 off × 甲 on 两臂)复验。
+    p2_entry_weak_target_enabled: bool = False
+    #: 停滞判据阈值族(DESIGN §2.5 诚实声明:sim 校准常量,本批不授权数值——
+    #: 初值为设计推断,终值须实机 gap/HP 读数口径下校准,sim 读数不可互换)。
+    #: stagnate_windows N = 判定停滞所需的连续停滞评估窗数;
+    #: stagnate_window_rounds W = 每评估窗的轮数(窗界对照 gap/hp 快照);
+    #: salvage_deadline_nodes = stagnate-weak 态下本位面剩余节点 ≤ 此值 →
+    #: salvage 采购集(「停止给死线供血」);salvage_window_rounds = stagnate-weak
+    #: 持续超此轮数仍无新线落锁 → 同上(与 deadline 或门)。
+    stagnate_windows: int = 2
+    stagnate_window_rounds: int = 2
+    salvage_deadline_nodes: int = 2
+    salvage_window_rounds: int = 3
 
     def __post_init__(self) -> None:
         """开臂约束构造期校验(策略开关生命周期纪律,非行为分支)。

@@ -1084,21 +1084,9 @@ def score_candidate(cand: Candidate, state: GameState,
     _tp_gap = candidate_gap_term(cand, state, after_state, session, registry)
     if _tp_gap:
         val += _tp_gap
-    # R-B 三信号商店件定价(W920 设计件批B;伞开关默认关恒 0 零漂移):
-    # S1 凑档(P20)/S2 贯穿(Q1 留存)/S3 再遇窗口期权(P1/P16)。加项
-    # 落在本位(tp_gap 之后、off_lock 降级之前)——线外候选随既有 κ
-    # 折扣通道比例折扣(与 tp_gap 同位先例);三信号独立披露,禁加权
-    # 黑盒总量(整机制死因,ADR-0497,不复活)。bd['rb_s1/s2/s3']
-    # 记披露键。设计单一源 = .debug/temp/currency_war/w920_rb_design/
-    # DESIGN.md §3;判前锁 = docs/develop/currency_war/prereg/
-    # w947_rb_signal_pricing_prereg.md。
-    from sr_od.application.currency_war.decision.decision_v2.rb_pricing import (
-        rb_offpiece_term,
-    )
-    _rb_val, _rb_keys = rb_offpiece_term(cand, state, after_state, session,
-                                         registry)
-    if _rb_val:
-        val += _rb_val
+    # (R-B 三信号商店件定价已随 W947 A/B 两轮判负整机制删码:合臂
+    #  形态达标率 -3.00pp 显著负;拆臂 S1+S2 隔离复测 -0.33pp 噪声带
+    #  内零疗效——删码留档 ADR-0507。)
     # (件价值模型 Phase 1 买侧加项块已随整机制定谳删除,删码留档 ADR-0497;
     #  W902 终裁=活性但零疗效。)
     # `w150_buy_lock/`/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
@@ -1122,7 +1110,6 @@ def score_candidate(cand: Candidate, state: GameState,
               'form_gold': round(form_gold, 3)}
     if _tp_gap:
         out_bd['tp_gap'] = round(_tp_gap, 4)
-    out_bd.update(_rb_keys)
     if _rc_p29:
         out_bd['rc_p29'] = round(_rc_p29, 4)
     if _rc_merge:
