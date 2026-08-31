@@ -19,7 +19,6 @@ from cv2.typing import MatLike
 
 from one_dragon.utils import cv2_utils
 from one_dragon.utils.log_utils import log
-from sr_od.application.sim_universe import sim_uni_screen_state
 from sr_od.context.sr_context import SrContext
 
 # 本模块在 src/sr_od/application/sim_universe/,parents[4]=仓库根;样本存 .debug/(已 gitignore)
@@ -53,10 +52,24 @@ def collect_bless_empty(ctx: SrContext, screen: MatLike, retry_times: int) -> No
     :param screen: 当前游戏截图(RGB)
     :param retry_times: 节点重试次数(轮次上下文,进文件名便于区分同一次 op 内第几轮)
     """
-    # 前置门:不在选择祝福页(title 未命中)时空列表是过渡帧伪信号,跳过
-    if not sim_uni_screen_state.in_sim_uni_choose_bless(ctx, screen):
-        return
+    # 无前置门(2026-08-31 实证修正):曾用 in_sim_uni_choose_bless(title OCR)
+    # 作前置门,但暗转场/暗主题下 title 与卡片一起 OCR 失效——真信号恰好被
+    # 门挡掉,两天零留证。调用点已在 choose() 空列表分支内,分支本身即天然锚
+    # (同 collect_next_floor_miss 的「调用点即锚」模式);过渡帧伪信号由哈希去重兜底。
     _shot_unique(screen, f'bless_empty_retry{retry_times}')
+
+
+def collect_level_type_fail(screen: MatLike, retry_times: int) -> None:
+    """采集钩子③:「识别楼层类型」返回 None 时存现场截图。
+
+    2026-08-31 实证:祝福 FAIL 后流程带病推进,新楼层识别连续失败
+    (匹配楼层类型失败 ×4),现场帧缺失。调用点在 _check_level_type 的
+    level_type=None 分支内,分支本身即天然锚。
+
+    :param screen: 当前游戏截图(RGB)
+    :param retry_times: 节点重试次数(轮次上下文)
+    """
+    _shot_unique(screen, f'level_type_fail_r{retry_times}')
 
 
 def collect_next_floor_miss(screen: MatLike, move_times: int, retry_times: int) -> None:

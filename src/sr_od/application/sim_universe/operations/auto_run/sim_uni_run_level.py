@@ -5,7 +5,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
-from sr_od.application.sim_universe import sim_uni_screen_state
+from sr_od.application.sim_universe import sim_uni_collect_hooks, sim_uni_screen_state
 from sr_od.application.sim_universe.operations.auto_run.reset_sim_uni_level import ResetSimUniLevel
 from sr_od.application.sim_universe.operations.auto_run.sim_uni_wait_level_start import SimUniWaitLevelStart
 from sr_od.application.sim_universe.operations.move_v1.move_to_next_level import MoveToNextLevel
@@ -113,6 +113,8 @@ class SimUniRunLevel(SrOperation):
         self.level_type = sim_uni_screen_state.get_level_type(self.ctx, screen)
 
         if self.level_type is None:
+            # 采集钩子(临时,采证后整段删除):楼层识别空轮无现场帧,存图取证,bot 不停
+            sim_uni_collect_hooks.collect_level_type_fail(screen, self.node_retry_times)
             return self.round_retry('匹配楼层类型失败', wait=1)
         else:
             return self.round_success()
