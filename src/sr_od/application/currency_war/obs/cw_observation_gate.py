@@ -31,6 +31,7 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_overlay_registry import derive_clearable
 
 if TYPE_CHECKING:
     from sr_od.operations.sr_operation import SrOperation
@@ -149,17 +150,16 @@ PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
     PHASE_BATTLE_OR_TRANSIT: frozenset({'phase_round'}),
 }
 
-#: P0 清场段:环入口可一键关闭的 overlay 注册表(画面名 → 关闭按钮 area 名;
-#: area 全部已建档于 assets/game_data/screen_info,锚判定走现有 screen 体系)。
-#: 只收「无决策语义的弹窗/面板」;投资环境/投资策略/选择伙伴/盛会之星/祈愿试炼
-#: 等交互 overlay 有专属 handler 消化(关闭即丢决策内容),不进本表,仍走既有
-#: event_overlay bail → 外环 handler 路径。
+#: P0 清场段:环入口可一键关闭的 overlay 注册表(画面名 → 关闭按钮 area 名)。
+#: **A 面切换后 = 注册表派生桥接**(单一源 =
+#: ``cw_overlay_registry.derive_clearable()``,激活 ∧ closable;消费方
+#: ``prep_director._clear_entry_overlays`` 遍历本映射,循环逻辑未变):
+#: 只收「无决策语义的弹窗/面板」——星徽秘典/补给已 decision 化(关闭即丢
+#: 决策内容,C1 红线;设计定案 5),从清场集消失,改走 event_overlay bail
+#: → 0i 选卡 / RunSupplyNode 消化;投资环境/投资策略/选择伙伴/盛会之星/
+#: 祈愿试炼等交互 overlay 同理,不进派生集。
 ENTRY_OVERLAY_CLOSE: dict[str, str] = {
-    '货币战争-武装箱弹窗': '按钮-关闭',
-    '货币战争-补给': '按钮-返回备战界面',
-    '货币战争-积分奖励': '按钮-关闭',
-    '货币战争-星徽秘典弹窗': '按钮-关闭',
-    '货币战争-中断挑战弹窗': '按钮-关闭',
+    spec.screen_name: spec.close_area for spec in derive_clearable()
 }
 #: 清场轮数上限(每轮:逐屏锚探 → 命中点关闭 → settle;无命中即出)。
 ENTRY_OVERLAY_CLEAR_ROUNDS: int = 4

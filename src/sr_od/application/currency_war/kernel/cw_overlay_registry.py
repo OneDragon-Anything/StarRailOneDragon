@@ -6,11 +6,13 @@ UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要�
 结构性缺口(ADR-0269 病灶;设计单一源 = 设计收口终版五条定案,
 .debug/temp/currency_war/w884_overlay_p2_final/DESIGN_FINAL.md)。
 
-**当前交付态(Phase 2 子批 1-2 + B 面)**:注册表 + 一致性断言就绪;B 面
-(director bail 扫描,prep_director 事件 overlay 检测)已切换为消费
-``derive_decision()``;其余消费面(P0 清场 / battle_loop 分支 / 退出链)
-尚未切换,A/C/D 逐面切换归子批 3/5/6。全部切换完成前,本表对未切换面是
-「声明 + 锁」,不是运行时唯一判定源。
+**当前交付态(Phase 2 子批 1-2 + B 面 + A 面)**:注册表 + 一致性断言就绪;
+B 面(director bail 扫描,prep_director 事件 overlay 检测)已切换为消费
+``derive_decision()``;A 面(P0 清场)已切换为消费 ``derive_clearable()``
+(桥接点 = ``cw_observation_gate.ENTRY_OVERLAY_CLOSE``,派生映射,消费循环
+未变);其余消费面(battle_loop 分支 / 退出链)尚未切换,C/D 逐面切换归
+子批 5/6。全部切换完成前,本表对未切换面是「声明 + 锁」,不是运行时唯一
+判定源。
 
 C1 红线(机器化于测试仓 ``test_cw_overlay_registry.py``):
 ``semantic='decision'`` ⇒ ``closable is False``——关闭即丢决策内容的交互
@@ -162,7 +164,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         bail_tag='megastar',
     ),
     # display/system 交替段(声明序对齐 UPPER_SCREENS 派生段)
-    # 展示型奖励总览:环入口可一键关(现 ENTRY_OVERLAY_CLOSE 成员)
+    # 展示型奖励总览:环入口可一键关(清场派生集成员,A 面消费)
     OverlaySpec(
         screen_name='货币战争-积分奖励',
         anchor_area='标识-积分奖励',
@@ -230,7 +232,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-商店刷新概率表',
         anchor_area='标识-刷新概率表',
         semantic=SEMANTIC_DISPLAY,
-        # 不进清场派生集(现 ENTRY_OVERLAY_CLOSE 无此条,零行为前提);
+        # 不进清场派生集(非 closable,零行为前提);
         # close_point 载荷供 battle_loop 0e2 / 恢复链复用
         close_action=CLOSE_ACTION_POINT,
         # × 位置 VLM 定位(实测坐标);无关闭按钮 area
@@ -248,8 +250,8 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         recovery_exit=RECOVERY_CLOSE,
     ),
     # 星徽秘典弹窗:decision 化(设计定案 5)——有选卡价值(0i 阵营匹配选卡),
-    # 「关闭即丢决策内容」;closable=False ⇒ A 面切换后从清场派生集消失
-    # (环入口不再一键关,改由 0i 选卡消化;行为断言门挂子批 3)。
+    # 「关闭即丢决策内容」;closable=False ⇒ 不在清场派生集(环入口不再
+    # 一键关,改由 0i 选卡消化;行为断言门随 A 面切换批落地)。
     # handler_id 待 C 面切换把 0i ``_handle_star_tome_pick`` 收拢为
     # HandleStarTome 类(挂账见 PENDING_HANDLER_IDS)。
     OverlaySpec(
@@ -273,11 +275,12 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         bail_tag='bookcard',
     ),
     # 补给:节点级选卡(RunSupplyNode 生命周期 owner)。语义 decision ⇒
-    # C1 红线 closable=False ⇒ A 面切换后从清场派生集消失——补给 modal
-    # 不再被环入口「返回备战界面」一键离场,改走 bail → RunSupplyNode
-    # 消化(与星徽秘典同型「严格不劣」论证:少丢一次补给选择)。
-    # ⚠️ 这是注册表化相对现 ENTRY_OVERLAY_CLOSE 的第二处清场集成员变化
-    # (第一处 = 星徽秘典,设计定案 5 明示),A 面切换批须过行为断言门。
+    # C1 红线 closable=False ⇒ 不在清场派生集——补给 modal 不被环入口
+    # 「返回备战界面」一键离场,改走 bail → RunSupplyNode 消化(与星徽
+    # 秘典同型「严格不劣」论证:少丢一次补给选择;RunSupplyNode._in_node
+    # = 标识-补给阶段 area 命中,覆盖非节点期弹出场景)。
+    # ⚠️ 注册表化相对迁移前手写清场表的两处清场集成员变化之一
+    # (另一处 = 星徽秘典,设计定案 5 明示),A 面切换批行为断言门锁定。
     OverlaySpec(
         screen_name='货币战争-补给',
         anchor_area='标识-补给阶段',
