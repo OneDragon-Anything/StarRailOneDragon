@@ -55,6 +55,17 @@ uv run ruff check --fix src/你修改的文件.py
 - 操作链基于 `Operation` 编排；业务流程由 `SrApplication` 与各 `XxxAppFactory` 组装。
 - ONNX session 的异步调用必须通过 `one_dragon.utils.gpu_executor.submit`，不要并发直调多个 session。
 
+## 画面识别
+
+- 代码中画面判定基于画面建档(`assets/game_data/screen_info/<screen_id>.yml`)，`id_mark` area 全命中 = `is_precise` 精准匹配。
+- MCP `analyze_screen` 是匹配已建档画面，主要使用 opencv 和 OCR 识别。
+- 陌生/未建档画面先走 `od-dev-screen-onboarding`。
+- 视觉大模型负责画面理解，辅助新画面建档以及对已建档内容纠错。
+- **坐标系统一**:框架提供的截图、画面识别、鼠标点击等，均统一至 1920×1080。唯一例外:离线分析外部传入的非 1080p 图片时,返回坐标是该图的像素空间。
+- **坐标单一真相源**:所有识别、点击的坐标区域都要使用 screen_info 保存、获取,避免代码中硬编码。
+- **修改 screen_info 一律走 MCP 工具**(`upsert_screen_area` / `delete_screen_area` 等),工具自动合并缓存(`_od_merged.yml`)。
+- **模板资产**:框架 `cv2_utils` 全 RGB,存图走 `save_image`(别 `cv2.imencode`,BGR 假设会存反 R/B);裁模板用原始 PNG(别用 webp 有损归档)。
+
 ## 开发硬约束
 
 - 所有函数签名、类成员变量都要有类型注解；使用 `list[str]`、`X | Y`。
