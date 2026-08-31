@@ -88,7 +88,7 @@ class SimUniChooseCurio(SrOperation):
 
         if not self.first_screen_check or not self.skip_first_screen_check:
             self.first_screen_check = False
-            if not sim_uni_screen_state.in_sim_uni_choose_curio(screen, self.ctx.ocr):
+            if not sim_uni_screen_state.in_sim_uni_choose_curio(self.ctx, screen):
                 return self.round_retry('未在模拟宇宙-选择奇物页面')
 
         curio_pos_list: list[MatchResult] = self._get_curio_pos(screen)
@@ -204,7 +204,7 @@ class SimUniChooseCurio(SrOperation):
             empty_to_close=True)
 
         log.info(f'当前画面状态 {state}')
-        if sim_uni_screen_state.in_sim_uni_choose_curio(screen, self.ctx.ocr):
+        if sim_uni_screen_state.in_sim_uni_choose_curio(self.ctx, screen):
             now = time.time()
             if self.choose_curio_time is not None and now - self.choose_curio_time >= 3:
                 return self.round_success(status=SimUniChooseCurio.STATUS_STILL_CURIOS, wait=0.2)
