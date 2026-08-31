@@ -9,10 +9,10 @@ class OcrText:
 
     Attributes:
         text: 识别出的文本内容。
-        x: 文本框左上角横坐标（像素）。
-        y: 文本框左上角纵坐标（像素）。
-        width: 文本框宽度（像素）。
-        height: 文本框高度（像素）。
+        x: 文本框左上角横坐标(1080p 游戏空间像素)。
+        y: 文本框左上角纵坐标(1080p 游戏空间像素)。
+        width: 文本框宽度(1080p 游戏空间像素)。
+        height: 文本框高度(1080p 游戏空间像素)。
     """
 
     text: str
@@ -70,7 +70,8 @@ class WindowStatus:
             勿据 win_title 是否非空判断。
         is_win_valid: 窗口句柄是否有效。
         is_win_active: 窗口当前是否处于激活状态。
-        is_win_scale: 窗口缩放比例是否符合基准（1.0）。
+        is_win_scale: 窗口是否处于非标准尺寸(客户区 ≠ 1920×1080;True=已缩放,
+            截图仍会被归一到标准分辨率)。
         x: 窗口左上角横坐标；不可用时为 None。
         y: 窗口左上角纵坐标；不可用时为 None。
         width: 窗口客户区宽度；不可用时为 None。

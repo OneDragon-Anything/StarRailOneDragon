@@ -224,14 +224,14 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
             ``error`` / ``screenshot_path`` / ``vision_hint`` / ``extras`` / ``extras_doc``。
             决策优先看 ``screens``(精准命中 1 个 ``is_precise=True``;否则 top_n 个候选)。
 
-            ⚠️ **两套坐标系,别混用**:
-            - ``pc_rect``(unmatched_areas 里)与点击坐标 = **1080p 游戏空间**,
-              ``click_game`` 用这套;
-            - ``ocr_texts[]`` 与 ``screens[].areas[]`` 的 x/y/width/height = **截图绝对像素**
-              (随窗口实际分辨率变),只用于定位/参考,不直接喂 click_game。
+            **坐标系:统一 1920×1080 游戏空间**——``ocr_texts[]``、``screens[].areas[]``
+            的 x/y/width/height 与 ``unmatched_areas`` 的 ``pc_rect``、``click_game`` 点击
+            坐标同源,可直接互喂(controller 截图统一缩放到 1080p 后才做 OCR/匹配)。
+            **例外**:离线传入(``screenshot`` 参数)的**非 1080p 图片**未经缩放,返回坐标
+            是该图自身像素空间,别当游戏坐标直接喂点击。
 
             嵌套结构:
-            - ``ocr_texts[]``: ``{text, x, y, width, height}`` (截图像素坐标);
+            - ``ocr_texts[]``: ``{text, x, y, width, height}`` (1080p 游戏坐标);
               **默认空列表**,``include_ocr=True`` 才返回全量散落 OCR(未归类到任何
               area 的文本;读屏幕零散文字/校对文字区时开)。
             - ``screens[]``: ``{screen_name(中文), is_precise, areas[], unmatched_areas[]}``;
@@ -239,7 +239,7 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
               无 OCR/模板,带 pc_rect 可点击) / ``sub_state``(有识别方法但当前不可见的
               子态区,带 text/template_id,用于判断当前子态);模糊候选恒为空。
             - ``areas[]``(命中详情): ``{area_name, area_type('text'|'template'), x, y,
-              width, height(截图像素), text(仅文本区,实际命中文本), confidence(文本=OCR
+              width, height(1080p 游戏坐标), text(仅文本区,实际命中文本), confidence(文本=OCR
               score / 模板=匹配度)}``。
 
             ``vision_hint``(success 时):本结果与视觉判读的分工提醒(本工具=识别对账;
@@ -389,8 +389,8 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
 
         复用 op 层 round_by_goto_screen 的同一套路由图:识别当前画面 → 查
         Floyd 路由 → 逐边点击对应 area。报「无路径」= 两画面间 goto 边未建档
-        (补 area 的 goto_list,别硬试坐标)。不可逆/消耗类画面(战斗确认/抽卡/
-        删除)由建档 goto_list 是否含其边决定 —— 建档时别把危险出口接进路由。
+        (补 area 的 goto_list,别硬试坐标)。goto_list 如实记录跳转(含不可逆/
+        消耗类出口,不做安全过滤);本工具会自动点击沿途边,路径安全由调用方负责。
 
         Returns:
             dict: ``{success, current_screen, target_screen, steps[每步 画面--area-->画面], error}``。
