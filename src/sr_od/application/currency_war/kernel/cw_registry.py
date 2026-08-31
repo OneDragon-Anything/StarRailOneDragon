@@ -1680,45 +1680,11 @@ class DecisionV2Registry:
     #: ③执行面接通后 sim/实机 A/B 正向 → 翻默认值;验证不过 → 删码留 ADR。
     megastar_enhance_enabled: bool = False
 
-    # ===== `w948_transform_arm/` W948 转型臂(停滞评估臂)双开关(开关生命周期第 1 态:默认关)=====
-    #: 设计单一源 = .debug/temp/currency_war/w948_transform_design/DESIGN.md §2;
-    #: 决策 why = ADR-0509。机制:锁定态下「线进展」窗级无收敛 + form 未成型 +
-    #: hp 净降 → 把该线降为弱意向(带 stagnate 证据),复用既有撤销下游
-    #(异线信号 + C4 门 + 回锁闩)完成重估——补「锁=当前最优假设(可改判)」
-    #: 语义,是 ADR-0429 增补「撤销出口灵敏度独立演进」的进度侧触发面。
-    #: 开臂判据挂账(DESIGN §2.4,跑前写死):
-    #: ① 观测批:sim n≥300 开关关,统计形态 A(锁后 form_ok 恒 False 达多轮、
-    #:    每战掉血、零重估)跨局占比存照(已立基线=W951 sim form 存照:
-    #:    形态 A 1.7% / 形态 B 0%);占比不足则概念数据否决,直接清理;
-    #: ② A/B(同池指纹):P2 存活轮数分布与达标占比改善,且换线次数/摇摆
-    #:    形态占比不升(防振荡验收线);
-    #: ③ 门闩零漂移锚:off 臂与现行 off 臂逐位相等。
-    #: 停滞臂总开关(False=零漂移对照臂;salvage 是它的出口分支,随本开关,
-    #: 无独立开关——非独立行为变更)。
-    intention_stagnation_arm_enabled: bool = False
-    #: P2 入口弱目标占位(DESIGN §2.1 伴生入口·乙):进 P2 清 p1_pair 后仍
-    #: unlocked 且无即时信号 → 按带入资产派生弱占位方向接管⑤兜底,使方向门
-    #: 不空转。弱占位 = 可被任何信号推翻的初始假设(不进 locked 态,天然无
-    #: 承诺语义);优先级:弱目标先于绯英兜底。开臂判据挂账:A/B——P2 前 3 轮
-    #: 方向字段非空率与早期买入有效性改善,且 dir_c 空转局(形态 B 画像)占比
-    #: 下降;与停滞臂正交性锚(乙 off × 甲 on 两臂)复验。
-    p2_entry_weak_target_enabled: bool = False
-    #: 停滞判据阈值族(DESIGN §2.5 诚实声明:sim 校准常量,本批不授权数值——
-    #: 初值为设计推断,终值须实机 gap/HP 读数口径下校准,sim 读数不可互换)。
-    #: stagnate_windows N = 判定停滞所需的连续停滞评估窗数;
-    #: stagnate_window_rounds W = 每评估窗的轮数(窗界对照 gap/hp 快照);
-    #: salvage_deadline_nodes = stagnate-weak 态下本位面剩余节点 ≤ 此值 →
-    #: salvage 采购集(「停止给死线供血」);salvage_window_rounds = stagnate-weak
-    #: 持续超此轮数仍无新线落锁 → 同上(与 deadline 或门)。
-    stagnate_windows: int = 2
-    stagnate_window_rounds: int = 2
-    #: form 假绿判定阈(W957 sim 支B 形态修正:form_ok=True 只证阵容档位成型,
-    #: 意向核心未到 2★ 当量=锁线战力未兑现——core 单副本+每战大负 Δ 仍 form
-    #: 恒绿实证;停滞判据的「未成型」谓词须把假绿计入,否则 P2 触发面被假绿
-    #: 恒短路)。意向核心到手 star 当量 < 此值 ∧ form_ok=True → 计未成型。
-    stagnate_core_min_copies: int = 2
-    salvage_deadline_nodes: int = 2
-    salvage_window_rounds: int = 3
+    # (W948 转型臂字段族 intention_stagnation_arm_enabled /
+    #  p2_entry_weak_target_enabled / p2_promote_enabled / stagnate_windows /
+    #  stagnate_window_rounds / stagnate_core_min_copies /
+    #  salvage_deadline_nodes / salvage_window_rounds 已随 sim A/B 判负整机制
+    #  删码(开关生命周期第 4 态);决策 why、负结果数据与复活条件 = ADR-0509。)
 
     def __post_init__(self) -> None:
         """开臂约束构造期校验(策略开关生命周期纪律,非行为分支)。

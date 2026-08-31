@@ -2,7 +2,7 @@
 
 ## 状态(Status)
 
-accepted(落码,双开关默认关=开关生命周期第 1 态;开臂判据挂账见 §决策)
+rejected→cleaned(开关生命周期第 4 态:sim A/B 判负,整机制删码;决策 why、负结果与复活条件保留本件)
 
 ## 背景(Context)
 
@@ -57,8 +57,25 @@ stagnate-weak 持续超 `salvage_window_rounds` 轮(或位面剩余节点 ≤ `s
 ## 判据与验证(Evidence)
 
 - 判据 = DESIGN §0 代码级核对三条 + §1 三候选评估 + §2 正式设计;实证锚 = 复盘 g_20260831_053546 + W951 sim form 存照(形态 A 1.7%/形态 B 0%)。
-- 验证 = `test_cw_w948_transform_arm.py` 17 锁全绿(判据单帧锁×4/触发链×1/防振荡×3/salvage×3/弱占位×3/关臂零漂移锚+registry 字段面×2)+ 守卫移除红检(去门→零漂移锚红→还原绿)+ 邻锁(w611×2/w633/w917/w935†/w951/form_gates)绿 + ruff;†w935 与 w614 digest 锚当次红/收集错归**并行除开关批在飞改动**(worktree registry 已删 spend_receipt_gate_enabled 而 w935 测试仍构造之;HEAD 内核换入复跑 digest 仍红=与本批无关,单变量归因留并行批收口)。
+- 验证 = `test_cw_w948_transform_arm.py` 17 锁全绿(判据单帧锁×4/触发链×1/防振荡×3/salvage×3/弱占位×3/关臂零漂移锚+registry 字段面×2)+ 守卫移除红检(去门→零漂移锚红→还原绿)+ 邻锁(w611×2/w633/w917/w935†/w951/form_gates)绿 + ruff;†w935 与 w614 digest 锚当次红/收集错归**并行除开关批在飞改动**(worktree registry 已删 spend_receipt_gate_enabled 而 w935 测试仍构造之;HEAD 内核换入复跑 digest 仍红=与本批无关)——**已结案(除开关批收口)**:契约无条件生效(ADR-0504)后 w935 收集面改无条件语义、w614 锚重钉 d0051d19…(复合窗口位移如实声明+锚有效性以各批 A/B 判据为前提,见该锚注释)。
 - 增补(sim n=300×2 深挖批证据):P2 主死亡形态的 form 读数为**假绿**(form_ok 恒 1.00 ∧ 意向核心单副本 ∧ 板面冻结),原「form_ok 恒 False」伴随条件在 P2 被假绿恒短路=触发面定向空洞。修订:「未成型」谓词扩为 `form_ok False ∨ (form_ok ∧ 意向核心到手 star 当量 < stagnate_core_min_copies)`——假红/假绿都计入;三合取其余项与状态机/下游零改动;触发面洞对账全文= `.debug/temp/currency_war/w954_transform_impl/CHECKPOINT_w957_reconcile.md`。降级后半程(向 P2 终局 comp 升格)立独立批(开关 `p2_promote_enabled`,prereg=w954/w958 两份预注册)。
+- 联合 A/B 负结果(sim n=300×3 同 seed 配对,详 `.debug/temp/currency_war/w954_transform_impl/REPORT.md` §6/§8):判据修正后触发面治好(33 例降级全带证据),但 P2 存活/死局攥金无改善;升格派生通道触发面为空(真实③信号占满 weak 帧);且 33 例降级中 12 例次帧被同线豁免回锁原线——**信号层同线豁免与假设失效评估存在语义层冲突**(判死的线被自家信号复活)。
+
+## 清理记录(Cleanup)
+
+清理批(编排者兑换裁决,开关生命周期第 4 态)删除范围:
+- registry 字段族 8 项:`intention_stagnation_arm_enabled`/`p2_entry_weak_target_enabled`/`p2_promote_enabled`/`stagnate_windows`/`stagnate_window_rounds`/`stagnate_core_min_copies`/`salvage_deadline_nodes`/`salvage_window_rounds`(原位留墓碑注记);
+- cw_intention:`_stagnation_tick`/`_p2_promote_candidate`/IntentionState 停滞状态族(stagnate_cool…weak_placeholder)/update_intention 停滞触发、升格、占位、salvage 推导四段/hoard `salvage`+`p2_weak_target` 分支(模块头留墓碑);
+- 锁组 `test_cw_w948_transform_arm.py`(21 锁)随码退场;面册(adr0293)代登记条目移除(文法反向操作);strategy/README 终局意向行还原并留本 ADR 指针;
+- 验证:邻锁(w611/w633/w917/w951/form_gates 等)+L1 快速集(2007P 基线)+ruff 全绿。
+
+## 复活条件(Revival)
+
+重启本机制须依次满足:
+1. **先解信号层失效记忆问题**(前置硬门):同线豁免让已判死原线被自家③信号复活(33 例降级中 12 例次帧回锁)——需在信号层/豁免语义上裁决「失效假设的记忆与排除」(如冷却对同线豁免路径同样生效,或失效期内信号过滤),未解前任何方向侧改判机制(含 P1 pair 假设生命周期)在信号高频域结构性失效;
+2. 重推触发面:sim 中**真实信号占满 weak 帧**,「无信号才升格」的派生通道无 firing surface——重启形态应为「失效评估优先于信号解析」或在信号解析层加失效过滤,而非独立派生通道;
+3. 重新回答 G2:方向改判对 P2 存活的杠杆未经证实(sim 三臂持平)——重启前先在 replay/实机数据证实「换到更强线」的局确实活得久(支B 归因再下钻),否则属杠杆错配;
+4. P1 侧命题(pair 假设生命周期,独立小批)不受本判负牵连,但其设计必须引用复活条件 1(同一信号层冲突同样卡它)。
 
 ## 边界(Constraints)
 
