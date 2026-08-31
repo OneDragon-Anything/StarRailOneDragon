@@ -1202,6 +1202,8 @@ class Operation(OperationBase):
         for ocr_result, mrl in ocr_result_map.items():
             if mrl.max is None:
                 continue
+            if ocr_result is None:  # OCR 服务偶发产出无文本词条,进 difflib 会 len(None) 崩
+                continue
             ocr_result_list.append(ocr_result)
             mrl_list.append(mrl)
 
