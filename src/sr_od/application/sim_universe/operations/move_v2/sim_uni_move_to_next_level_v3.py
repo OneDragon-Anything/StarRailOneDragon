@@ -309,10 +309,14 @@ class MoveToNextLevelV3(SrOperation):
         return mm_angle - 270
 
     @node_from(from_name='往图标识别的入口移动')
-    @operation_node(name='确认')
+    @operation_node(name='确认', node_max_retry_times=10)
     def confirm(self) -> OperationRoundResult:
         """
         精英层的确认
+        点击「前往下层-确认」后不直接成功:弹出动画期的点击会丢失(点击动作
+        成功≠弹窗已关闭,实证:确认后弹窗常驻,楼层名被 backdrop 模糊盖成
+        OCR 空白,下游等加载 20 轮全空 FAIL)。重入本节点三分支收敛:
+        弹窗还在 → 再点;传送加载中/已回大世界 → 成功交棒。
         :return:
         """
         self.ctx.controller.stop_moving_forward()
@@ -322,12 +326,15 @@ class MoveToNextLevelV3(SrOperation):
         if not common_screen_state.is_normal_in_world(self.ctx, screen):
             click_confirm = screen_utils.find_and_click_area(self.ctx, screen, '模拟宇宙', '前往下层-确认')
             if click_confirm == screen_utils.OcrClickResultEnum.OCR_CLICK_SUCCESS:
-                return self.round_success(wait=1)
+                # 点到了:重入验证弹窗是否真的关闭(动画期点击可能丢失)
+                return self.round_retry('已点确认待验证', wait=1)
             elif click_confirm == screen_utils.OcrClickResultEnum.OCR_CLICK_NOT_FOUND:
+                # 找不到按钮:弹窗已关闭(确认生效,传送加载中) → 成功交棒
                 return self.round_success()
             else:
                 return self.round_retry('点击确认失败', wait=0.25)
         else:
-            return self.round_retry('在大世界页面')
+            # 已在大世界:下层加载完成(或弹窗被取消回层) → 成功交棒
+            return self.round_success()
 
 
