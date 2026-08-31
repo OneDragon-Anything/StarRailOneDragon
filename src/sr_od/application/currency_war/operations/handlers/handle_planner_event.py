@@ -21,6 +21,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -103,21 +104,24 @@ class HandlePlannerEvent(SrOperation):
             if not (self.CARD_TEXT_Y_LO <= cy <= self.CARD_TEXT_Y_HI):
                 continue
             (left_text if cx < 960 else right_text).append(text)
-        from sr_od.application.currency_war.kernel.cw_events import (
-            PlannerOption,
-            decide_planner,
-        )
+        from sr_od.application.currency_war.kernel.cw_events import PlannerOption
         options = [PlannerOption(idx=0, text=' '.join(left_text)),
                    PlannerOption(idx=1, text=' '.join(right_text))]
-        # 2. 策略模块决策(r104 用户定调:由策略模块定,handler 不写死)
-        _match = getattr(self.ctx, 'cw_match', None)
-        _tgt = None
-        _st = None
-        if _match is not None:
-            _tgt = _match.session.target_comp
-            _st = _match.session.last_state
+        # 2. 策略层决策(W953 批1 接线:唯一入口=策略对象,handler 禁 kernel 直调;
+        # 见 .debug/temp/currency_war/w953_overlay_strategy/DESIGN.md §3.4)。
+        # DecisionV2Strategy.decide_planner 委托同一 kernel 纯函数(kernel 版保底,
+        # 本批零行为变化;局面感知升级归批4)。kernel 直调仅保留无 match 防御路径
+        # (局外独立跑;规约=沿用 handle_invest_env 同款写法)。
         from sr_od.application.currency_war.kernel.cw_state import GameState
-        pick = decide_planner(options, _st or GameState(), _tgt)
+        _match = getattr(self.ctx, 'cw_match', None)
+        if _match is not None:
+            _st = _match.session.last_state
+            _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
+            pick = _match.strategy.decide_planner(
+                options, _st or GameState(), _match.session, _cfg)
+        else:
+            from sr_od.application.currency_war.kernel.cw_events import decide_planner
+            pick = decide_planner(options, GameState(), None)
         target = self._card_point(pick.idx)
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',
