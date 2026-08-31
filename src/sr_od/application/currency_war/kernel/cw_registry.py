@@ -876,6 +876,18 @@ class DecisionV2Registry:
     #: 实花分项账非全零 + hp 可信位)为**确认门**,非开臂门,进行中
     #: 挂账 ADR-0503 §开臂判据(尾注)。
     crisis_release_enabled: bool = True
+    #: 危机帧刷新通道不变式(P36-a;设计决策单一源=ADR-0506,命题=
+    #: 「B>0⟹n≥1」结构证明 + 实机标定:crisis 帧 RefreshShop p50=0、
+    #: 哑火帧 12/30,机制=息档截断门把危机首刷按 essential=False 裁、
+    #: gold%10<刷价时确定性拒)。True=预算>0 的危机帧首刷走 essential
+    #: 车道(息档截断门豁免,执行侧保底 ≥1 次 RefreshShop;首刷后恢复
+    #: 常态截断,预算门/boss_floor/g≥0 三门照辖);False=现状(截断门
+    #: 全域适用,零漂移锚)。默认 False=开关生命周期第 1 态。开臂判据
+    #: 挂账=A/B(prereg=docs/develop/currency_war/prereg/
+    #: w951_p36a_invariant_prereg.md)主判据哑火帧率 on≈0 且 off 基线
+    #: 显著、次要实花面/hp 不劣化;通过翻默认,不过删码留 ADR,禁悬置。
+    #: 危机族子臂:父臂 crisis_release_enabled 关则本臂无从触发。
+    crisis_refresh_invariant_enabled: bool = False
     #: 设计决策单一源=ADR-0426(谱系节含设计稿索引与两轮对抗修订记录)。**符号不稳参数一律默认值+标定接口,不拍死**:
     #: k(hp)/Δhp/boss 税由 sim 批网格标定后锁值(DESIGN §⑥ EV 参数门)。
     #: (总开关 release_enabled 已随 ADR-0426 增补 D 第 4 态清理:被经济
@@ -1281,6 +1293,50 @@ class DecisionV2Registry:
     tier_push_press_cost_max: int = 2
     #: 压库豁免每帧张数上限(设计 §3④ 收口)。
     tier_push_press_round_cap: int = 2
+
+    # ===== R-B 三信号商店件定价(W920 设计件批B)=====
+    #: 伞开关,生命周期第 1 态:默认关=评分行为逐位零漂移锚。设计单一源
+    #: = .debug/temp/currency_war/w920_rb_design/DESIGN.md(病灶四样本
+    #: F1/F2/F3/13-4 同判据面两向失败;判据面=商店件定价全件,线内囤牌
+    #: +线外件,DESIGN §2-D1)。三信号各自独立披露(bd['rb_s1/s2/s3']),
+    #: 禁加权黑盒总量(piece_value 死因,ADR-0497/W902 终裁;禁复活任
+    #: 何 piece_value 符号)。**开臂判据挂账 = docs/develop/currency_war/
+    #: prereg/w947_rb_signal_pricing_prereg.md 主判据 M1 + 守门 G1/G2**
+    #: (n≥300/臂同 seed 配对;不过则删码留 ADR,禁悬置默认关——开关
+    #: 生命周期)。
+    rb_signal_pricing_enabled: bool = False
+    #: S3 子旗标(批C 拆臂用;仅伞开时生效):W947 v1 合臂 A/B 判负后
+    #: 开火面归因显示 S3 开火 43.3 万次绝对主导(s1 4602/s2 1.8 万),
+    #: 拆臂判前锁 = docs/develop/currency_war/prereg/
+    #: w947c_rb_split_prereg.md(S3 关/S1+S2 开臂)。默认 True=与 v1
+    #: 合臂语义逐位一致;复测兑换按生命周期三选一,不留悬案。
+    rb_s3_enabled: bool = True
+    #: S1 凑档激活单位值(分/跨档)。推导:P20 倍数带下缘 2.6(激活
+    #: e0→1 次战边际 vs 散件升星,proofs/p20-transition-activation-vs-
+    #: starup.md)× 档位步分值单位 0.75(单一源=realization_delta_p_tier
+    #: 同标尺);占位,sim A/B 内扫(prereg §1 挂账)。
+    rb_s1_unit: float = 1.95
+    #: S2 贯穿留存阈值(Q1 E→F 口径)。DESIGN §3-D3 S2 建议带 0.85/0.90
+    #: 下缘;扫描带 [0.80,0.90] sim A/B 挂账。
+    rb_s2_threshold: float = 0.85
+    #: S2 贯穿正价单位值(分;实际加项=本值×留存率)。占位量级与 S1
+    #: 单位同阶,sim A/B 内扫(prereg §1 挂账)。
+    rb_s2_unit: float = 1.0
+    #: S3 再遇窗口期权单位值(分;实际加项=本值×窗口占比×计次衰减)。
+    #: P4 教训对齐(W908 F8:压库增益 ≤1.0pp,不为压库花息)→ 上限应
+    #: 小(DESIGN §3-D3 S3);占位,sim A/B 内扫。
+    rb_s3_unit: float = 0.5
+    #: 逐卡贯穿度(Q1 E→F 留存率,数据字段化非手写名单——DESIGN §5-3
+    #: 防名单腐化)。数据单一源 = docs/game/currency_war/research/
+    #: stage_transitions.md Q1 逐卡表(815 帖,总体 E→F 列);姬子·启行
+    #: 0.88 取 w920 考证报告 §1.2 引 Q1 的复算值(逐卡表未列)。表外
+    #: 卡无字段 → S2=0 不猜。分线留存(DOT 线卡芙卡 0.92 等)未字段化,
+    #: S2 按全库留存口径(w920 报告 §1.1 同口径)。
+    rb_retention_q1: dict[str, float] = field(default_factory=lambda: {
+        '千冶·刃': 0.95, '姬子·启行': 0.88, '花火': 0.81,
+        '三月七': 0.80, '星期日': 0.66, '藿藿': 0.44, '卡芙卡': 0.35,
+        '爻光': 0.41, '丹恒·饮月': 0.32, '椒丘': 0.26, '艾丝妲': 0.05,
+    })
 
     # (件价值模型 Phase 1 八字段(piece_value_enabled/buy/keep/merge/
     #  w_activation/w_retention/bench_gate_enabled/bench_reserve_cap)已随

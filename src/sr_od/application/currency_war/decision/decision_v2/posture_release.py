@@ -217,6 +217,38 @@ def crisis_release_open(state: GameState, session: StrategySession,
                                                       registry) > 0
 
 
+def crisis_invariant_lane(session: StrategySession, cost: int,
+                          registry: DecisionV2Registry) -> bool:
+    """危机帧刷新通道不变式车道(P36-a;判据单一址,消费点两处:
+
+    arbiter 刷新收尾预截断门 + 本模块 authorize_release_refresh 截断门
+    ——两门必须同址分类,防「预门拒、授权门放行」的分类漂移)。
+
+    判据=开关 ∧ v3_release 是 crisis 指令 ∧ budget_gold>0 ∧ 本帧(轮)
+    尚无刷新(``v2_round_refreshes`` 轮键计数,decide_prep 轮首重置)
+    ∧ 预算仍可负担一刷(spent+cost ≤ budget_gold,买/升入账经
+    _accrue_release_frame_spend 已计入)。
+
+    辖域语义:命中时本帧**首刷**按 essential 车道过息档截断门——
+    截断门前提(息档 0.1/轮值得保护)在危机带被 ADR-0503/W907 证伪
+    (P23.4:死亡域金终端价值≈0),哑火帧实证=实机危机帧持金贴近 10 的
+    倍数时预截断门先拒、预算门未触达(ADR-0506 §背景)。首刷兑现后恢复
+    常态截断(不变式只保 n≥1,首刷后行为零漂移);预算门/boss_floor/
+    g≥0 三门不在豁免面。
+    """
+    if not registry.crisis_refresh_invariant_enabled or cost <= 0:
+        return False
+    directive = getattr(session, 'v3_release', None)
+    if directive is None or directive.reason != 'crisis':
+        return False
+    if directive.budget_gold <= 0:
+        return False
+    if getattr(session, 'v2_round_refreshes', 0) > 0:
+        return False    # 首刷已兑现:不变式只辖 n≥1,后续刷新走常态门
+    spent = getattr(session, 'v3_release_spent', 0)
+    return spent + cost <= directive.budget_gold
+
+
 def release_directive(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry, phase_value: str,
                       posture: Posture) -> ReleaseDirective | None:
@@ -762,11 +794,14 @@ def authorize_release_refresh(session: StrategySession,
     # 息档边界截断门(W645 提案 E-v2 消费点 2):本门放行的都是非必要
     # 溢余支出(负分搜索刷新,essential=False)——花后不跨息档才放行,
     # 残差不足一刷的余量结转下轮(义务逐帧重算,零成本)。essential=True
-    # 车道(M-A 定向授权/正账买牌)不经本门,截断辖域天然不含。
+    # 车道(M-A 定向授权/正账买牌/P36-a 危机首刷不变式)不经本门,截断
+    # 辖域天然不含(危机车道分类单一址=crisis_invariant_lane,与 arbiter
+    # 预截断门同址分类,防两门漂移)。
     from sr_od.application.currency_war.decision.decision_v2.economy_cycle import (
         tier_truncated_spend,
     )
-    if tier_truncated_spend(working_gold, cost, essential=False) < cost:
+    _essential = crisis_invariant_lane(session, cost, registry)
+    if tier_truncated_spend(working_gold, cost, essential=_essential) < cost:
         return ''
     if working_gold - cost < registry.boss_floor:
         return ''
