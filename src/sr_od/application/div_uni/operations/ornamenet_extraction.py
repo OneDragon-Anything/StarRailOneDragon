@@ -289,8 +289,19 @@ class ChallengeOrnamentExtraction(SrOperation):
 
         result = self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
 
+        if not result.is_success:
+            return result
+
+        # 失败过多 → op FAIL(有界退出)。饰品提取战败不耗体力,若无此出口,
+        # 打不过的组合会无限「重进→败→回大世界」循环(战败路径的体力门控失效)。
+        # FAIL 后由外层开拓力计划的重试语义接手,最终有界中止。
+        if self.battle_fail_times >= 5:
+            return self.round_fail('战斗失败过多')
+
         # 如果未完成指定次数, 则继续打
-        if result.is_success and self.battle_fail_times < 5 and self.battle_success_times < self.run_times:
+        if self.battle_success_times < self.run_times:
             return self.round_success('重新选择次数')
+
+        # 次数已完成 → 正常成功结束
         return result
 
