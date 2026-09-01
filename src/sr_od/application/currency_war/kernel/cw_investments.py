@@ -118,6 +118,15 @@ class EconomyEffect:
     gold_per_3star_merge: int = 0         # 星星相印:每合 3 星 +金
     refresh_per_compose: int = 0          # 武力刷新:合成装备时得免费刷
     sell_price_mult: float = 1.0          # 大裁员/降本增效:卖价 ×2(配合全场出售动作)
+    # —— 机制修改器审计 F1/F2/F3 补建(已裁修复项12,2026-08-31;数值=效果原文,plaza API)——
+    refresh_free_chance: float = 0.0      # 概率事件(棱彩):每次刷新 45% 概率免费
+                                          # → 消费侧折算期望刷价 = 基准 2×(1−0.45)=1.1
+                                          # (MechanismMutation.refresh_price_mult 通道)
+    xp_buy_hp_cost: int = 0               # 奋斗协议(棱彩):购经验每击耗 6 血非金
+                                          # (成本币种切换;首领战结束回 50 血=行为段,
+                                          # 不入经济账,仅本注释留档)
+    refresh_shop_rewrite_every_3cost: int = 0  # 市场干预(银):下一次和每 4 次刷新全 3 费面
+                                          # (池构成族突变旗标字段;5 次免费刷走 free_refresh_burst)
 
 
 @dataclass(frozen=True)
@@ -245,6 +254,17 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '星星相印': EconomyEffect(gold_per_3star_merge=5),
     '武力刷新': EconomyEffect(refresh_per_compose=2),
     '降本增效': EconomyEffect(sell_price_mult=2.0),
+    # —— 机制修改器审计 F1/F2/F3 补建(已裁修复项12,2026-08-31;效果原文=cw_invest_data
+    #    plaza API 逐字:概率事件 300401/奋斗协议 301801/市场干预 102201)——
+    '概率事件': EconomyEffect(refresh_free_chance=0.45),
+    # ↑ 「刷新时有45%概率获得一次免费刷新」——消费侧经 EffectLedger 折期望刷价
+    #   2×0.55=1.1(MechanismMutation.refresh_price_mult=0.55)
+    '奋斗协议': EconomyEffect(xp_buy_hp_cost=6),
+    # ↑ 「购买经验值消耗6点小队生命值而非金币。首领战斗结束时回复50点小队生命值」——
+    #   金侧成本置 0(血本位),IMPL §6.2 血本位安全带按 rate=6 直读本字段;回血段=行为流不建模
+    '市场干预': EconomyEffect(free_refresh_burst=5, refresh_shop_rewrite_every_3cost=4),
+    # ↑ 「下一次和每4次商店刷新都将是全3费角色。获得5次刷新」——池构成族突变旗标
+    #   (v_c/a_c 池面改写;消费规范见设计总纲注记,修复项14)
 }
 
 
@@ -592,6 +612,14 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
             gold_next_nodes_count=max(eff.gold_next_nodes_count, e.gold_next_nodes_count),
             gold_per_level_up=eff.gold_per_level_up + e.gold_per_level_up,
             gold_per_20hp_lost=eff.gold_per_20hp_lost + e.gold_per_20hp_lost,
+            # 修复项12 新字段:血本币/池改写取并持更宽者(唯一持有时即生效,同 cap 取 max 精神);
+            # 免刷概率按补集合成(1−∏(1−ci),多张概率事件叠加口径)
+            xp_buy_hp_cost=eff.xp_buy_hp_cost or e.xp_buy_hp_cost,
+            refresh_shop_rewrite_every_3cost=(
+                min(eff.refresh_shop_rewrite_every_3cost, e.refresh_shop_rewrite_every_3cost)
+                if (eff.refresh_shop_rewrite_every_3cost and e.refresh_shop_rewrite_every_3cost)
+                else (eff.refresh_shop_rewrite_every_3cost or e.refresh_shop_rewrite_every_3cost)),
+            refresh_free_chance=1.0 - (1.0 - eff.refresh_free_chance) * (1.0 - e.refresh_free_chance),
         )
         if e.interest_cap_override is not None:
             caps.append(e.interest_cap_override)

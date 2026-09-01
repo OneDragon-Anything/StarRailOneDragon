@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from sr_od.application.currency_war.kernel.cw_plane_table import DEFAULT_PLANE_LENGTHS
+
 
 @dataclass(frozen=True)
 class AggregateEffect:
@@ -29,7 +31,7 @@ class AggregateEffect:
                                    # | 'interest_cap' | 'xp_click_delta' | 'win_mult' | 'free_refresh'
                                    # | 'free_refresh_burst' | 'surprise_every' | 'gold_per_three_5cost'
                                    # | 'xp_per_refresh' | 'xp_per_node' | 'plane_start_gold'
-                                   # | 'refresh_discount_after'
+                                   # | 'refresh_discount_after' | 'refresh_price_mult' | 'xp_click_hp_cost'
     value: float = 0.0
     remaining_nodes: int = 0       # next_nodes 类的余期;plane_start_gold 类的位面号
 
@@ -50,6 +52,11 @@ class MechanismMutation:
     xp_per_node: float = 0.0            # 每节点 +经验(买断制)
     refresh_price_after: int | None = None   # 长线利好:30 刷后刷新价 1(环境侧)
     refresh_discount_at: int = 0             # 解锁刷次线(与 38 号 DISCOUNT_AT_REFRESH 同源)
+    # —— 机制修改器审计 F1/F2 补字段(已裁修复项12,2026-08-31)——
+    refresh_price_mult: float = 1.0     # 期望刷价乘子(概率事件:45% 免刷 → 0.55,
+                                        # 基准价 2 → 期望 1.1;消费=refresh 面参数替换 P40 变体)
+    xp_click_hp_cost: int = 0           # 购经验血本币价(奋斗协议 6 血/击;金侧成本置 0,
+                                        # IMPL §6.2 血本位安全带 rate 直读本字段)
 
 
 @dataclass
@@ -63,20 +70,35 @@ class EffectLedger:
         return self.calendar.get(t, 0.0)
 
 
-def build_ledger(effects: list[AggregateEffect]) -> EffectLedger:
-    """聚合效果 → 三类结构(四象限路由)。"""
+def build_ledger(effects: list[AggregateEffect],
+                 plane_lengths: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> EffectLedger:
+    """聚合效果 → 三类结构(四象限路由)。
+
+    节点锚派生(已裁修复项13,2026-08-31;审计 F6):boss 槽锚/位面起始槽/总节点数一律由
+    ``plane_lengths`` 派生(cw_plane_table.plane_end_slots/plane_offsets),**禁写死 (8,17,26)/×9**
+    ——P2 真值 7 槽(ADR-0366/0368)下写死锚会把 boss 金/位面晶矿日程错位。生产调用方应传
+    ``cw_plane_table.schedule_of(session)`` 实际长度;缺省 (9,9,9) 先验仅为裸调用/测试兼容。
+    """
+    from sr_od.application.currency_war.kernel.cw_plane_table import (
+        plane_end_slots,
+        plane_offsets,
+    )
+    pl = tuple(plane_lengths)
+    total_nodes = sum(pl)
+    boss_slots = plane_end_slots(pl)
+    offs = plane_offsets(pl)
     led = EffectLedger()
     m = led.mutations
     for e in effects:
         if e.kind == 'per_node':
             # 每节点确定收入:全节点日程(剩余期未知时按全程;精确余期由 state 注入)
-            for t in range(27):
+            for t in range(total_nodes):
                 led.calendar[t] = led.calendar.get(t, 0.0) + e.value
         elif e.kind == 'next_nodes':
             for t in range(max(1, e.remaining_nodes)):
                 led.calendar[t] = led.calendar.get(t, 0.0) + e.value
         elif e.kind == 'boss_node':
-            for t in (8, 17, 26):    # boss 位粗锚(节点序列标注挂批次)
+            for t in sorted(boss_slots):   # 各位面末槽(boss 奖金槽),由日程派生非写死
                 led.calendar[t] = led.calendar.get(t, 0.0) + e.value
         elif e.kind == 'level_up':
             led.calendar[-1] = led.calendar.get(-1, 0.0) + e.value   # 等级计划联解挂 DP 批次
@@ -101,14 +123,20 @@ def build_ledger(effects: list[AggregateEffect]) -> EffectLedger:
         elif e.kind == 'xp_per_node':
             m.xp_per_node += e.value
         elif e.kind == 'plane_start_gold':
-            # 环境侧:增发货币(位面开始 6/8/12 金)→ 位面首节点日程
+            # 环境侧:增发货币(位面开始 6/8/12 金)→ 位面首节点日程(槽偏移由日程派生)
             plane = int(e.remaining_nodes) if e.remaining_nodes else 1
-            t = (min(plane, 3) - 1) * 9
+            t = offs[min(plane, len(offs)) - 1]
             led.calendar[t] = led.calendar.get(t, 0.0) + e.value
         elif e.kind == 'refresh_discount_after':
             # 环境侧:长线利好(30 刷后刷新价 1)——与 38 号会话的跨线投资联动
             m.refresh_discount_at = int(e.value)
             m.refresh_price_after = 1
+        elif e.kind == 'refresh_price_mult':
+            # 概率事件(修复项12):期望刷价乘子(45% 免刷 → 0.55)
+            m.refresh_price_mult *= e.value
+        elif e.kind == 'xp_click_hp_cost':
+            # 奋斗协议(修复项12):血本币购经验价(并持取更宽=非零者,金侧成本消费端置 0)
+            m.xp_click_hp_cost = m.xp_click_hp_cost or int(e.value)
     return led
 
 
@@ -187,6 +215,12 @@ def effects_from_strategies(strategy_names: list[str]) -> list[AggregateEffect]:
             out.append(AggregateEffect(name, 'xp_per_refresh', float(e.xp_per_refresh)))
         if e.xp_per_node:
             out.append(AggregateEffect(name, 'xp_per_node', float(e.xp_per_node)))
+        # 修复项12 新字段路由(概率事件/奋斗协议;市场干预的 burst 已有通道,池改写旗标
+        # 属 cw_shop_odds 池面辖域,不进台账数值路由)
+        if e.refresh_free_chance:
+            out.append(AggregateEffect(name, 'refresh_price_mult', 1.0 - float(e.refresh_free_chance)))
+        if e.xp_buy_hp_cost:
+            out.append(AggregateEffect(name, 'xp_click_hp_cost', float(e.xp_buy_hp_cost)))
         # v2 新字段
         if e.interest_flat_per_node:
             # 固定息:每节点平金流,与 cap 息并行

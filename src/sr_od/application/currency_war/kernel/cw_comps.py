@@ -61,7 +61,8 @@ class EquipChoice:
 
     - ``fixed``:首选装备(choices 单元素或多件固定);
     - ``pool``:候选池(黄泉第四件类——平缓分散非双峰,按优先序全候选都是关键件)。
-    教义来源:comp_definitions_v2「第四件=池(黄泉平缓分散)」。
+    教义来源:final_comps/final_huangquan_debuff.md 装备公式「第四件=池(平缓分散)」
+    (comp_definitions_v2 已作废,ghost-教义引用统一改指 final_comps,comp 审计修复项9,2026-08-31)。
     """
     kind: str                       # 'fixed' | 'pool'
     choices: tuple[str, ...]        # fixed: 固定件;pool: 候选池按优先序
@@ -116,7 +117,7 @@ class Comp:
 
     # ===== v2 字段扩(迁移审计 w25(git 历史),C4 契约 + 契约包六矛盾·leader 裁决;2026-08-25)=====
     # 字段语义冻结;各套填值草案级(流派统计刷新可再改)。教义级内容(禁忌/铁三角/替班不卖)
-    # 逐条对 comp_definitions_v2.md / comp_elements_and_plugins.md 原文,不自创。
+    # 逐条对 final_comps 各篇(research/final_comps/)原文,不自创(comp_definitions_v2 已作废,修复项9)。
     form_tiers_max: dict[str, int] = field(default_factory=dict)
     """区间档上限(裁决 5:form_tiers **保 int=下限**,旧窄消费零破坏)。
     键 ⊆ form_tiers 键;某键缺省 = 上限即 form_tiers 值(单点档)。
@@ -429,7 +430,8 @@ def effective_mechanic_attributes(comp: Comp,
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
 # 自动写入采到的新词缀/校准)。本文件不 import 该注册表(迁移审计 w266(git 历史) 勘误:旧注释称「顶部 import 重导出」
 # 与事实不符,mechanics_fit 亦不消费);消费方为 cw_briefing_obs.load_affix_effects_from_file(ast 提取)。
-# comp.countered_by_bosses 俗称→规范公司名对齐是 task#73 剩余,boss_fit 暂永不命中,待实机核对)。
+# comp.countered_by_bosses 已按 BOSS_NICKNAMES 归一规范公司名(comp 审计修复项7,2026-08-31;
+# boss_fit 双侧 normalize_boss_name 接通 ADR-0160 后俗称键可命中,但规范名直写消除双名空间)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
 # 累积型角色强环境机制 tag 集(`w607_affix_consumption/` H1 锁线环境判据的数据层):
@@ -449,11 +451,14 @@ STRONG_ENV_MECHS: dict[str, frozenset[str]] = {
 RUST_AFFIX_NAME: str = '库藏生锈'
 
 
-# ===== 中期护航三套(ADR-0140;难度攻略 22-34:6 级正式构筑,无需本体+极低造价+P2 稳定连胜)=====
+# ===== 中期护航三套(ADR-0140)——**已退役**(2026-08-24 抛弃裁定;comp 审计修复项6,2026-08-31)=====
+# 退役口径:生产消费点已清零(全仓 grep 仅本文件自引用+test_cw_affix_megastar 的 serves 词汇
+# 对照与 test_cw_decisions 的 escort_for 单测);数据保留仅为 C5 兼容与词汇对照,**禁止新增消费点**,
+# 后续清理批可整段删除。难度攻略 22-34:6 级正式构筑,无需本体+极低造价+P2 稳定连胜。
 # 护航 = 中期临时 comp:服务真主 C(target),护到 2-7/3-1 结单退役;不适合成长型 comp(万敌/狼队/夜神/学者)。
 @dataclass(frozen=True)
 class EscortComp:
-    """中期护航阵容(过渡到真主 C 成型的中期战力;ADR-0140)。"""
+    """中期护航阵容(**deprecated**,2026-08-24 抛弃裁定;见模块节注记,禁新消费)。"""
     name: str
     factions: dict[str, int]        # 羁绊 → 需求人数(如 {"战技点":4,"仙舟":3})
     serves: list[str]              # 服务的 target 机制属性(mechanic_attributes 匹配)
@@ -462,6 +467,7 @@ class EscortComp:
 
 
 ESCORT_COMPS: list[EscortComp] = [
+    # deprecated(2026-08-24 抛弃裁定,修复项6):数据保活零消费,禁新消费点
     EscortComp(name="龙丹护航", factions={"战技点": 4, "仙舟": 3},
                serves=["高倍率单核", "量子拉条", "幸运一击"]),   # 直伤系(速8找火花/速9红A)
     EscortComp(name="灵砂护航", factions={"击破": 4},
@@ -472,7 +478,10 @@ ESCORT_COMPS: list[EscortComp] = [
 
 
 def escort_for(target: Comp | None) -> EscortComp | None:
-    """按 target 的机制属性选护航套(ADR-0140;serves 匹配;成长型 comp 返 None 不护航)。"""
+    """按 target 的机制属性选护航套(ADR-0140;serves 匹配;成长型 comp 返 None 不护航)。
+
+    **deprecated**(2026-08-24 抛弃裁定,修复项6):生产消费点已清零,仅测试词汇对照在引用;
+    禁新增调用方,后续清理批随 ESCORT_COMPS 一并删除。"""
     if target is None:
         return None
     GROWTH_MECHANICS = {"燃血", "欢愉叠层"}   # 成长型不护航(攻略:需叠被动从头到场,护航打断节奏)
@@ -612,14 +621,19 @@ def skeleton_factions() -> set[str]:
         if ch.cost <= 2:
             for f in ch.factions:
                 cheap[f] = cheap.get(f, 0) + 1
+    # 狼狩剔除(2026-08-24 四体系封闭裁定;comp 审计修复项5,2026-08-31):狼狩体系随封闭裁定
+    # 封存(同 cw_bridge_pool ADR-0350 前注),不再作为过渡骨架判据候选——判据筛选合格也不入集。
+    _SEALED_SKELETON_FACTIONS: frozenset[str] = frozenset({'狼狩'})
     return {name for name, info in FACTIONS.items()
-            if (info.tiers and min(info.tiers) <= 3 and cheap.get(name, 0) >= 2)}
+            if (info.tiers and min(info.tiers) <= 3 and cheap.get(name, 0) >= 2)
+            and name not in _SEALED_SKELETON_FACTIONS}
 
 
 # ===== COMP_LIBRARY(起步 roster;V4.4 估值,待实玩校准)=====
 # (旧 comp_library.md doc 已删 2026-08-18,本注册表单一源。)form_tiers 用 FACTIONS tier 设"成型"里程碑;data 待实玩精确。
 
-# v2 家族键(comp_definitions_v2:9 家族 14 套;迁移审计 w25(git 历史) 归并标注用)——长尾套 family='legacy' 保活(C5 兼容不删)。
+# v2 家族键(9 家族;迁移审计 w25(git 历史) 归并标注用;家族打法知识单一源=final_comps 各篇,
+# comp_definitions_v2 已作废——修复项9,2026-08-31)——长尾套 family='legacy' 保活(C5 兼容不删)。
 V2_FAMILIES: tuple[str, ...] = (
     "万敌燃血", "希儿量子", "DOT卡芙卡", "姬子列车", "黄泉减益",
     "欢愉族", "圣杯双C", "大黑塔群攻", "白厄反甲",
@@ -735,8 +749,11 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="绯英欢愉", factions=["欢愉", "能量"], core_chars=["绯英", "瓦尔特", "爻光", "开拓者·欢愉", "符玄"],
-        form_tiers={"欢愉": 4, "能量": 3}, strength="A", form_difficulty="medium", early_power="中",
+        # 主羁绊修正(comp 审计已裁修复项2,2026-08-31;依据=final_feiying_joy.md 类结构三处一致:
+        # 「欢愉4-7 + 星间旅人(25/25 双100%)……星间旅人2-3 + 仙舟3/能量3 挂件」)——能量降挂件
+        # (进 flex),星间旅人升主羁绊(下限 2 档,成员=绯英本人在 core 即可达成)。
+        name="绯英欢愉", factions=["欢愉", "星间旅人"], core_chars=["绯英", "瓦尔特", "爻光", "开拓者·欢愉", "符玄"],
+        form_tiers={"欢愉": 4, "星间旅人": 2}, strength="A", form_difficulty="medium", early_power="中",
         # ↑ 迁移审计 w55(git 历史)(R2 §1 区间收口):欢愉下限 3→4——v2 教义「欢愉 4-6 档(≤4 档即主流)」,旧 3 是
         #   plaza 校准残留(v2 前 form_tiers 值);上限侧 form_tiers_max=6 不变,区间=4-6 对齐 v2
         # V4.4 评级(76807134):绯英 = A 级;攻略(76806732):绯英大招永久+2%伤害(无限成长),3欢愉+3能量+2量子+2减益
@@ -749,10 +766,12 @@ COMP_LIBRARY: list[Comp] = [
         # ===== v2(迁移审计 w25(git 历史)):欢愉族家族·绯英档(资源锚 6 级;无信号时的默认落点)=====
         family="欢愉族", branch_key="绯英档(资源锚 6 级;无信号默认落点)", branch_of="狼尊欢愉",
         bond_signal="欢愉",   # ②类信号:绯英/银狼两档共用主体
-        form_tiers_max={"欢愉": 6},   # v2:欢愉 4-6 档(≤4 档即主流)
+        form_tiers_max={"欢愉": 5},   # A3 定谳(2026-09-01,米游社图鉴 API 重采,content_id=7333):欢愉档位=3/4/5/7 **无 6 档**,
+        # 旧上限 6 系代码错(v2 教义「4-6 档」系连续区间误写);改 5=4-5 主流带(final_feiying「不到 7 也成型」,
+        # 7 特权化属银狼档语义)。证据档=.debug/temp/currency_war/redesign/A3_TRAIT_EVIDENCE.md(羁绊分级效果原文逐字)。
         equip_assign={"绯英": ["火力风暴潮", "永动机"], "爻光": ["冷笑话引擎"], "瓦尔特": ["高周波电锯"]},
         # ↑ v2 教义:绯英=永动机(天赋装备化)+风暴潮;全队皮靴(本批恒等约束下未单列,拆分批放开)
-        flex_factions=["星间旅人", "仙舟", "治疗", "量子同频", "战技点"],
+        flex_factions=["能量", "仙舟", "治疗", "量子同频", "战技点"],   # 能量降挂件(修复项2,final_feiying 挂件层),
         plaza_carry="绯英",
         level_plan={  # 评审🟡2:labels 6级搜牌 19/25=76%(全场最集中)→ 6级停 roll,旧 5/6/7 全 level_up 缺停留
             4: LevelGoal("roll", target_cost=1, target_chars=["绯英", "爻光"]),
@@ -764,24 +783,39 @@ COMP_LIBRARY: list[Comp] = [
         },
     ),
     Comp(
-        name="希儿量子", factions=["量子同频", "贝洛伯格"], core_chars=["希儿", "瓦尔特", "知更鸟", "布洛妮娅", "花火", "符玄", "缇宝"],
+        name="希儿量子", factions=["量子同频", "贝洛伯格"],
+        # core 修正(comp 审计已裁修复项1,2026-08-31;依据=final_seele_quantum.md「构造机理」
+        # n=67 槽位构造):引擎核心组=希儿/花火/符玄/缇宝/刻律德菈;插件层=千冶·刃(掩体生成枪)/
+        # 布洛妮娅/杰帕德/娜塔莎/佩拉(贝2 凑数+辅助);知更鸟/瓦尔特移出 core(P3 补位件,留 shared)。
+        core_chars=["希儿", "花火", "符玄", "缇宝", "刻律德菈"],
         form_tiers={"量子同频": 4, "贝洛伯格": 2}, strength="A", form_difficulty="medium", early_power="高",
         # V4.4 评级(76807134):希儿 = A 级(A8-50 最强轮椅);攻略(76802749 直读纠正):4量子+贝城(2贝=原4贝,引擎拉条)
         # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
-        key_equips=["火力风暴潮", "高周波电锯", "火力风暴潮·特权", "战场进化手册"],   # 评审🟡4:plaza 风暴潮68>电锯36 顺序倒置修正
-        countered_by_bosses=["剧目", "蕉研组"],   # 攻略:剧目/蕉研组 boss 希儿难度大
+        # 装备公式(final_seele_quantum §装备公式/§5,38 篇统计):希儿=风暴潮×2-3+电锯(唯一公式),
+        # B 套=特权版风暴潮(plaza 实证 特权风暴潮三件);战场进化手册**不是本套件**(是小黑塔星级
+        # 装备,comp 审计已裁修复项3 归位至大黑塔条目;旧值把它错挂在布洛妮娅)。
+        key_equips=["火力风暴潮", "高周波电锯", "火力风暴潮·特权"],
+        # boss 键规范名(comp 审计已裁修复项7:俗称键经 BOSS_NICKNAMES 归位规范公司名,
+        # 与 state.plane_bosses 同名字空间;出处=final_seele_quantum counter 节「蕉研组 boss」)
+        countered_by_bosses=["造梦兄弟影业", "造梦互动娱乐"],
         # 单属性队:量子同频4 属性型羁绊主档 ≥4(final_comps README D3「希儿怕量子熄火」,
         # plaza 希儿聚类 36/38 篇核心羁绊=量子同频)——量子熄火局对本套是主输出瘫痪级 counter。
         # 成型羁绊队:量子同频/贝洛伯格档位乘区。两者均为 w878 复活 tag(开关见 W878_GATED_TAGS)。
-        mechanic_attributes=["量子拉条", "单属性队", "成型羁绊队"], shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
-        transition_chars=["刃", "符玄"], typical_form_round=6,   # v2 迁移(迁移审计 w25(git 历史)):希儿是 core 非打工,移出 transition
+        mechanic_attributes=["量子拉条", "单属性队", "成型羁绊队"],
+        # 知更鸟/瓦尔特= P3 补位件(n=67 非核心组,旧 core 误收);插件层五人(千冶·刃/布洛妮娅/
+        # 杰帕德/娜塔莎/佩拉)为终局插件购买件,不入 core/shared(comp 审计已裁修复项1)
+        shared_chars=["知更鸟", "布洛妮娅", "瓦尔特"],
+        transition_chars=["刃"], typical_form_round=6,   # v2 迁移:希儿是 core 非打工;符玄升 core(修复项1),移出 transition
         # ===== v2(迁移审计 w25(git 历史)):希儿量子家族(五线最收敛,无流派)=====
         family="希儿量子", branch_key="无流派(五线最收敛)",
         form_tiers_max={"贝洛伯格": 4},   # v2:贝洛伯格 2-4(双修不分离)
         free_slots=[{"row": "back", "tags": ["量子同频", "贝洛伯格"], "说明": "量子槽:缇宝/符玄/花火凑到哪个算哪个"}],
-        equip_assign={"希儿": ["火力风暴潮", "高周波电锯"], "布洛妮娅": ["火力风暴潮·特权", "战场进化手册"]},
-        # ↑ v2 教义:希儿=风暴潮(92%)+电锯(81%);全队皮靴(贝拉条循环,恒等约束下未单列)
+        equip_assign={"希儿": ["火力风暴潮", "高周波电锯", "火力风暴潮·特权"]},
+        # ↑ 装备归位(comp 审计已裁修复项3/审计 A4,2026-08-31):旧值把 特权风暴潮+战场进化手册
+        #   错挂布洛妮娅——特权三件实为希儿 B 套(final_seele_quantum §5「B 套=特权版风暴潮」),
+        #   手册是小黑塔星级装备(归位至大黑塔条目);布洛妮娅降插件层后无专属装备条目
+        #   (n=67 插件层定位=贝成员/增益,装备优先级让渡引擎组)。恒等:key_equips=派生投影
         flex_factions=["战技点", "治疗", "盛会之星", "列车同行"],
         plaza_carry="希儿",
         level_plan={
@@ -803,7 +837,10 @@ COMP_LIBRARY: list[Comp] = [
         flex_factions=["击破", "治疗", "追击", "量子同频"],
         plaza_carry="黄泉",
         key_equips=["高周波电锯", "火力风暴潮", "光速螺旋桨", "永动机"],
-        countered_by_bosses=["单体boss"],   # 攻略:单体 boss 黄泉输出乏力
+        # 「单体boss」是 boss 原型描述非公司名(BOSS_NICKNAMES 不含,永不命中;且占位会
+        # 屏蔽 matchup 结构层兜底)——按修复项7 清空,单体乏力由 mechanic_attributes
+        # 走 cw_enemy_data.matchup 的 single_burst 结构通道表达。
+        countered_by_bosses=[],   # 攻略:单体 boss 黄泉输出乏力(原俗称键「单体boss」零效,修复项7 清空)
         mechanic_attributes=["减益", "成型羁绊队"], shared_chars=["刃", "乱破", "符玄"],   # 成型羁绊队:巡海4+减益4 档乘区(w878)
         transition_chars=["刃", "椒丘", "桑博"], typical_form_round=7,
         # ===== v2(迁移审计 w25(git 历史)):黄泉减益家族(无流派;第四件=装备池)=====
@@ -873,7 +910,7 @@ COMP_LIBRARY: list[Comp] = [
         # 过渡:体系牌+花火/凛(做3圣杯任务);7-8级找3星Saber或闪闪→上9挂杨叔
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "反重力皮靴"],   # 评审🟡4:Saber 风暴潮56/永动机44/冷笑话36/电锯31(皮靴13 降位)
         # ↑ 迁移审计 w55(git 历史)(R2 §1 闪闪条):「高周波电锯」→「反重力皮靴」——v2 教义 闪闪=**反重力皮靴**(41%,
-        #   锁轴速度载体;comp_definitions_v2 圣杯A);电锯是旧平铺残件
+        #   锁轴速度载体;final_grail_dual.md 圣杯A);电锯是旧平铺残件
         mechanic_attributes=["连携高频开大", "成型羁绊队"], shared_chars=["吉尔伽美什", "Saber", "瓦尔特", "符玄"],   # 成型羁绊队:能量5 硬约束+圣杯任务链=档位乘区(w878)
         transition_chars=["花火", "刃"], typical_form_round=7,   # v2 迁移(迁移审计 w25(git 历史)):远坂凛是 core(1 星即够),移出 transition
         # ===== v2(迁移审计 w25(git 历史)):圣杯双C家族·B Saber 能量线(~25%)=====
@@ -897,9 +934,15 @@ COMP_LIBRARY: list[Comp] = [
         # 羁绊(唯一有效应=旅人转职,1转职章=43.2%幸运暴伤);6战技点不提升 → 带银狼/符玄凑3量子;
         # 前期龙丹战技点护航;上8大D找2星花火,3星质变;爻光三鞋(跑条供R回合)。
         # 怕正当防卫;极速制冷不怕(R时刻解控)。好运令牌给阿雅(装备最顶级)勿给花火/爻光。
-        name="火花星间旅人", factions=["星间旅人", "欢愉"],
+        name="火花星间旅人", factions=["欢愉"],
         core_chars=["花火", "爻光", "开拓者·欢愉", "银狼LV.999"],
-        form_tiers={"星间旅人": 4, "欢愉": 3}, strength="A", form_difficulty="medium",
+        # 名义 core 羁绊不可达修正(comp 审计已裁修复项8,2026-08-31):旧 form_tiers 星间4,
+        # 但 core+flex 里星间成员=0(注册表口径:花火=盛会之星+战技点/量子同频,非星间;星间成员
+        # =火花/桑博/瓦尔特/罗刹/银枝/绯英/真理医生)——星间4 从本套 roster 不可构造。
+        # 可达成形态:欢愉3(core 爻光+开拓者·欢愉+银狼LV.999 全欢愉成员);星间旅人降 flex
+        # (final_yinlang_joy 构造机理:星间 3-7 是欢愉队**顺手开出来的第二增益源**,非构造目标,
+        # 62/68 Final 实证)。
+        form_tiers={"欢愉": 3}, strength="A", form_difficulty="medium",
         early_power="高",
         # V4.0 A级(BV1vVcLzXEN8 2026-02 转录):花火主C(吃点巧普攻+幻语记,倍率随花火等级)+星间旅人
         # 羁绊(唯一有效应=旅人转职,1转职章=43.2%幸运暴伤);6战技点不提升 → 带银狼/符玄凑3量子;
@@ -909,11 +952,11 @@ COMP_LIBRARY: list[Comp] = [
         # 星间21 并列,量子仅 flex 位 → 核心改 星间+欢愉(花火=欢愉阵营);core 补 开拓者·欢愉(20/25 在场,
         # 欢愉形态保留不换记忆)与银狼LV.999(17/25)。
         key_equips=["火力风暴潮", "高周波电锯", "碎星斩舰刀", "动能激发剑"],   # 花火1风暴潮+暴击刀;爻光三鞋
-        countered_by_bosses=[], mechanic_attributes=["幸运一击", "成型羁绊队"],   # 成型羁绊队:星间转职章+欢愉档乘区(w878)
+        countered_by_bosses=[], mechanic_attributes=["幸运一击", "成型羁绊队"],   # 成型羁绊队:欢愉档乘区(w878;星间降 flex,修复项8)
         shared_chars=["银狼", "符玄", "丹恒·饮月"], transition_chars=["丹恒·饮月", "银枝"],
         typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;花火线)",
-        flex_factions=["战技点", "列车同行", "量子同频", "星核猎手"],
+        flex_factions=["星间旅人", "战技点", "列车同行", "量子同频", "星核猎手"],   # 星间=顺手增益源(修复项8)
         plaza_carry="火花",
         level_plan={   # 前期龙丹护航 → 上8大D 2星花火 → 有机会追3必试(质变);评审🟡6:花火 2费/饮月 2费
             5: LevelGoal("roll", target_cost=2, target_chars=["丹恒·饮月"]),
@@ -931,16 +974,18 @@ COMP_LIBRARY: list[Comp] = [
         form_tiers={"银河学者": 4, "群攻": 3}, strength="A", form_difficulty="medium", early_power="中",
         # plaza:大黑塔 3星率 0.82(4费);5级搜牌 20/38 篇(小黑塔 1费 5级 D 干);装备 电锯29/永动机20/蓄能帆17/电光履16
         # 记忆主必拿(「记忆主一定要拿,后台花火防战技点不足」);后期可上花火补战技点。
-        key_equips=["高周波电锯", "永动机", "蓄能帆", "电光履"],
+        key_equips=["高周波电锯", "永动机", "蓄能帆", "电光履", "战场进化手册"],
+        # ↑ 战场进化手册归位(comp 审计已裁修复项3,2026-08-31):小黑塔星级装备(星级→强度),
+        # 旧值误挂希儿量子·布洛妮娅,按 v2 教义(下条注释)归本条;恒等约束同步扩入。
         mechanic_attributes=["追击", "成型羁绊队"], shared_chars=["黑塔", "缇宝", "翡翠"],   # 成型羁绊队:学者档=星级总量成长乘区(w878)
         transition_chars=["艾丝妲", "丹恒·腾荒"], typical_form_round=6,   # v2 迁移(迁移审计 w25(git 历史)):黑塔(小黑塔)是 core/替班C,移出 transition
         # ===== v2(迁移审计 w25(git 历史)):大黑塔群攻家族(档位=连续深度谱,非流派)=====
         family="大黑塔群攻", branch_key="档位=连续深度谱(群攻3+学者2 众数 29% → 完全体群攻5+学者4 仅 19%,低档通关是常态)",
         bond_signal="银河学者",   # ②类信号:星级总量成长
         form_tiers_max={"群攻": 5, "银河学者": 4},
-        equip_assign={"大黑塔": ["高周波电锯"], "黑塔": ["永动机", "蓄能帆", "电光履"]},
-        # ↑ v2 教义:大黑塔=电锯+风暴潮;小黑塔=战场进化手册(星级装备)+充能三件套
-        # (电光履/永动机/蓄能帆:强化战技→人偶追击循环)——手册不在旧表,拆分批补
+        equip_assign={"大黑塔": ["高周波电锯"], "黑塔": ["战场进化手册", "永动机", "蓄能帆", "电光履"]},
+        # ↑ v2 教义:大黑塔=电锯+风暴潮;小黑塔=战场进化手册(星级装备,修复项3 自希儿量子归位)+充能三件套
+        # (电光履/永动机/蓄能帆:强化战技→人偶追击循环)——手册已随修复项3 归位入表
         substitute_plan=[
             {"替班者": "黑塔", "顶位": "大黑塔主C(大黑塔 9-10 级到前)", "身份": "小黑塔当 C(备战席囤星级=喂学者档一石二鸟);本线小黑塔也追星(与辅助 2★ 通则相反)", "分岔点": "大黑塔 9-10 级接 C"},
         ],
@@ -964,7 +1009,8 @@ COMP_LIBRARY: list[Comp] = [
         # ⚠️ ADR-0152 评审🔴(注册表对拍):银枝=**星间旅人** 2费,非贝洛伯格(24 篇银枝帖贝洛伯格激活 0 次)
         # —— 旧 factions[贝洛伯格+群攻] 错;核心只有群攻,星间旅人/公司/盛会之星(翡翠/知更鸟)是 flex。
         key_equips=["火力风暴潮", "冷笑话引擎", "绝对热量"], mechanic_attributes=["群攻", "成型羁绊队"],   # 成型羁绊队:群攻档乘区+大招驱动的羁绊协同型(w878)
-        countered_by_bosses=["单体长战"], shared_chars=["翡翠", "知更鸟"],
+        countered_by_bosses=[],   # 原俗称键「单体长战」零效(修复项7 同型:非公司名,清空走 matchup 结构层)
+        shared_chars=["翡翠", "知更鸟"],
         transition_chars=["椒丘", "星期日", "刃"], typical_form_round=7,
         family="legacy", branch_key="v2 未单列(长尾保活;群攻族并归大黑塔线)",
         flex_factions=["星间旅人", "公司", "盛会之星", "列车同行"],
@@ -986,7 +1032,9 @@ COMP_LIBRARY: list[Comp] = [
         # comp 靠 core_char(白厄)+ equip_fit(以牙还牙甲)+ mechanics(高频低单次 反伤);
         # form_progress 恒 0 → 不靠 form commit(轮数兜底要求 fp>0,fp=0 不触发),select_comp 候选但 progress 低。
         key_equips=["以牙还牙甲", "高周波电锯", "以牙还牙甲·特权", "热血沸腾拳"],   # meta:反甲流需 3 以牙还牙甲
-        countered_by_bosses=["红绿灯", "酒杯怪", "琥珀王", "死龙"],
+        # boss 键规范名(修复项7,BOSS_NICKNAMES:酒杯怪=造梦兄弟影业/琥珀王=铁盾安保集团/
+        # 死龙=灰手生命科技;「红绿灯」经用户确认是小怪非 boss(2026-08-17),移除不建模)
+        countered_by_bosses=["造梦兄弟影业", "铁盾安保集团", "灰手生命科技"],
         # 依赖合成装备:以牙还牙甲×3 反甲链+掩体生成枪=胜利条件本身(final_baie_reflect 明文
         # 「反甲装备流」);装备依赖词条(变宝为废)的选型侧降分载体(合成侧由 junk_first 处理,
         # 两半互补)。羁绊维判非成型羁绊队:factions/form_tiers 空,装备流例外。
