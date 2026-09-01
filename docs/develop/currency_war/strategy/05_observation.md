@@ -1,6 +1,6 @@
 # 05 观测、对账与遥测
 
-> 「读画面→GameState→对账→反馈→落盘」的观测闭环。本篇:obs 模块家族 / cw_reconcile / cw_performance / cw_telemetry / 日志格式。核心哲学:观测驱动非预测驱动(README §哲学)。
+> 「读画面→GameState→对账→反馈→落盘」的观测闭环。本篇:obs 模块家族 / cw_reconcile / cw_performance / telemetry 包(决策迹采集) / 日志格式。核心哲学:观测驱动非预测驱动(README §哲学)。
 
 ## 1. 观测模块家族(按屏分工)
 
@@ -40,11 +40,11 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 - **comp_viability**(评已 commit 阵容):先验(成型度/装备/机制)× 先验权重 + 观测 × obs_weight(随观测轮次上升);评 candidate 用纯先验 comp_prior(双签名,02 §2)。
 - **死局检测**:HP 低 + trend 高 + 下节点锁不住血三门。
 
-## 4. cw_telemetry:决策迹采集
+## 4. telemetry 包:决策迹采集(`telemetry/`)
 
 三路 jsonl(`.debug/temp/currency_war/replay/`):**outcomes**(每节点结算;含板深快照 board_before/bench_count,r339)、**decisions**(每决策点 state 快照 + 候选分 + 选择 + 理由;live 扩容字段:active_strategies / dp_posture 影子 / ledger_fingerprint / megastar·encounter·supply pick)、**runs**(局摘要,含免费窗口登记字段与策略版本戳两列 `code_commit`/`registry_fingerprint`——局终写时点打戳,单一源 `telemetry/version_stamp`,ADR-0486 附录;旧记录缺列读端容忍)。默认 `enabled=False` 门控,config `debug_telemetry` 一开全收。外生事件(节点转换/弹窗)与执行失败事件各自落盘(能力画像/预案触发频率语料)。
 
-**查询端(判读单一源,CLI)**:`python -m sr_od.application.currency_war.cw_telemetry query --recent N [--run ID] --view rounds|supply|anomalies|tiers|planexec|hp|economy|all`——rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买(配方件标★,refresh 波不丢);tiers=羁绊激活档+角色构成(星级)+装备分配三维同屏(ADR-0229);anomalies=异常标记(金滞留/单轮掉血过深/plan_error;阈值常量 `ABN_*` 见 cw_telemetry);hp=掉血×板深分解(与 sim hp_events 同构,r339);economy=金轨迹/滞留轮标记。**`checks` 子命令**(ADR-0245):`cw_telemetry checks --recent N`——生产局秒级自检(栈判别:v2 栈跑 coldstart 检查,default 栈跳过;违规带 run_id 溯源)。**`--sim-batch BATCH`**:查 sim 批次账本(目录结构与生产 replay 同构,视图零分叉;board 系字段恒空、ts=轮序号等 sim 语义差异见 `--help`)。复盘新需求 = 新视图/查询参数,不写一次性脚本。**判读方法论(看什么/三维/保真位先行)单一源 = `sr-od-currency-war-dev` skill 的 telemetry-reading。**
+**查询端(判读单一源,CLI)**:`python -m sr_od.application.currency_war.telemetry.cli query --recent N [--run ID] --view rounds|supply|anomalies|tiers|planexec|hp|economy|all`——rounds=逐轮 hp/gold/买/board;supply=全波牌面 vs 购买(配方件标★,refresh 波不丢);tiers=羁绊激活档+角色构成(星级)+装备分配三维同屏(ADR-0229);anomalies=异常标记(金滞留/单轮掉血过深/plan_error;阈值常量 `ABN_*` 见 telemetry/query.py);hp=掉血×板深分解(与 sim hp_events 同构,r339);economy=金轨迹/滞留轮标记。**`checks` 子命令**(ADR-0245):`telemetry.cli checks --recent N`——生产局秒级自检(栈判别:v2 栈跑 coldstart 检查,default 栈跳过;违规带 run_id 溯源)。**`--sim-batch BATCH`**:查 sim 批次账本(目录结构与生产 replay 同构,视图零分叉;board 系字段恒空、ts=轮序号等 sim 语义差异见 `--help`)。复盘新需求 = 新视图/查询参数,不写一次性脚本。**判读方法论(看什么/三维/保真位先行)单一源 = `sr-od-currency-war-dev` skill 的 telemetry-reading。**
 
 **采集器分工**:decisions/outcomes/runs 三路 jsonl 由 telemetry 采集(plan 视角);`cw_match_recorder` = **画面真值旁路采集器**(识别器视角:bot 实跑/人类手打对局的关键帧结构化提取,OCR 锚词门控+内容哈希去重;人类演示对拍语料与「计划 vs 实际」对拍用,§5)。
 

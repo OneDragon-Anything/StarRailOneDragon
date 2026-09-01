@@ -1,7 +1,7 @@
 # W947-C · R-B 拆臂复测(S3 关/S1+S2 开)· 预注册判前锁
 
 > 状态:判前锁——批C 复测跑批**之前**落盘,判读口径禁中途改。
-> 背景:W947 v1 合臂 A/B 判负(形态达标率 −3.00pp CI[−5.0,−1.33],`not_merged_keep_default_off`);开火面归因 s3=432906 次绝对主导(s1=4602/s2=18277),编排者批准唯一一次拆臂重测。设计单一源不变 = `.debug/temp/currency_war/w920_rb_design/DESIGN.md`;v1 判前锁 = 同目录 `w947_rb_signal_pricing_prereg.md`。
+> 背景:W947 v1 合臂 A/B 判负(形态达标率 −3.00pp CI[−5.0,−1.33],`not_merged_keep_default_off`);开火面归因 s3=432906 次绝对主导(s1=4602/s2=18277),编排者批准唯一一次拆臂重测。设计单一源不变 = `docs/develop/currency_war/prereg/w920_rb_design/DESIGN.md`;v1 判前锁 = 同目录 `w947_rb_signal_pricing_prereg.md`。
 
 ## 1. 臂设计(单因子)
 

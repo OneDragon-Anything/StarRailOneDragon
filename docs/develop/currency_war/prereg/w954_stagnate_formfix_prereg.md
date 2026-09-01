@@ -1,6 +1,6 @@
 # PREREG:W954 停滞臂 form 假绿修正(sim A/B 预注册)
 
-> 状态=判前写死,批跑前不得改线。设计出处=ADR-0509 修订节 + `.debug/temp/currency_war/w954_transform_impl/CHECKPOINT_w957_reconcile.md`;证据底座=`w957_sim_hunt4/REPORT.md` §3.2(支B:form_ok 恒 1.00 假绿、core_count=1、板面冻结、死时攥金中位 87)。
+> 状态=判前写死,批跑前不得改线。设计出处=ADR-0509 修订节 + `docs/develop/currency_war/prereg/w954_transform_impl/CHECKPOINT_w957_reconcile.md`;证据底座=`w957_sim_hunt4/REPORT.md` §3.2(支B:form_ok 恒 1.00 假绿、core_count=1、板面冻结、死时攥金中位 87)。
 
 ## 命题
 

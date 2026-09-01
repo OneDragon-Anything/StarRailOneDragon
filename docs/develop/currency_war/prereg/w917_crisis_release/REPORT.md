@@ -1,7 +1,7 @@
 # W917 危机态（hp≈1）存息 posture 不降级：根因定位与修法批
 
 > 批性质=治本修复（W907 病灶实证的候选①②）。检查点交付：根因+修法设计先行落盘（§1-§4），动码在 §5 之后。
-> 病灶输入=`.debug/temp/currency_war/w907_sim_hunt/REPORT.md`（907288 r3-r8 / 907106 r7-r8）。
+> 病灶输入=`docs/develop/currency_war/prereg/w907_sim_hunt/REPORT.md`（907288 r3-r8 / 907106 r7-r8）。
 > 语义权威=ADR-0463（存息准入门 E1）+ ADR-0445（义务模型）+ ADR-0426（应急让位设计）。
 
 ## 1. 根因定位（表达式级证据）

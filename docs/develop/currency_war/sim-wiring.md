@@ -8,13 +8,14 @@
 > 对账:**已接 18(批前 13 + ADR-0271 接入 board + ADR-0276 接入
 > node_type/streak[session 口径]+ ADR-0286 接入 xp_progress/
 > refresh_probs/deploy_cap[宝钻通道参数化,默认频率 0]+ 契约包 C1
-> 接入 action_log[动作 v2 账本])+ 必须接线 12 + 观测冗余豁免 5 +
-> 结构未建 5 = 40**。(任务书原锁 13+3+3+13=32 与字段总数不符,按实测
+> 接入 action_log[动作 v2 账本])+ 必须接线 12 + 观测冗余豁免 6 +
+> 结构未建 5 = 41**。(任务书原锁 13+3+3+13=32 与字段总数不符,按实测
 > 归类对账;批前「已接 13」与任务书口径一致;ADR-0286 新增 deploy_cap
 > 字段 → 总数 36→37;批㉖ F1 新增 enemy_difficulty_live、契约包 C1
 > 新增 action_log → 37→39;ADR-0428 新增 hp_trusted → 39→40,入
 > 观测冗余豁免档——决策消费经 `hp_readable or hp_trusted`,sim 帧
-> readable=True 短路,行为逐位等价。)
+> readable=True 短路,行为逐位等价;M2 obs 修复新增 level_readable →
+> 40→41,入同档。)
 >
 > 优先级:P1 = 影响当期 sim A/B 结论有效性;P2 = 决策消费存在但当前
 > 栈(decision_v2)影响面小;P3 = 随依赖结构建设顺带接入。
@@ -59,7 +60,7 @@
 | focus_factions | 恒 None | update_target 写入(ADR-0209);evaluate 消费 | 未接(同上) | P3 |
 | enemy_difficulty | 恒 None | 左上难度 OCR(常空);cw_events 选卡难度罚 | 未接(生产亦常空,决策安全降级) | P3 |
 
-## 三、观测冗余豁免(5;保真位,sim 完美观测假设下无决策语义)
+## 三、观测冗余豁免(6;保真位,sim 完美观测假设下无决策语义)
 
 | 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
 |---|---|---|---|---|
@@ -68,6 +69,7 @@
 | gold_readable | 恒默认 True | gold 是否真读到(同上) | 豁免(同上) | — |
 | board_readable | 恒默认 True | board 是否真读到(空 dict 双义标注) | 豁免(同上) | — |
 | enemy_difficulty_live | 恒默认 False | 难度值是否逐帧真读(批㉖ F1 保真位;判读过滤用,决策不用) | 豁免(sim 假设完美观测;生产亦仅判读侧消费) | — |
+| level_readable | 恒默认 True | level 是否真读到(False=纯 _expected_level 启发式兜底帧;判读过滤用,决策不用) | 豁免(同上) | — |
 
 ## 四、结构未建(5;依赖的事件/画面层 sim 未建模)
 
