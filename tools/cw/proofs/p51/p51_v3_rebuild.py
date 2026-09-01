@@ -14,6 +14,16 @@
 # top-2 格/语料访问率锚全部按 PL 键重做。位面维单调方向=位面↑危↑(候选评估期曾借用
 # 板面负方向池化,主表按正方向重拟)。
 #
+# v3.3(F1 血带轴方向修复,2026-09,依据=IMPL_LAMBDA_ATTACK_R3):血带维 dims 自 v3.0 起
+# 误写 up=True(hp 升序下标 ⇒ 约束为「血↑危↑」),与全链文档语义(P51 证明件/脚本表头/
+# Part 8 支配偏序的「血↓危↑」)相反——D0×P1×noncombat 三格拟合=列合并均值 0.316 系方向
+# 反转的算术实锤。v3.3 起血带维改 up=False(HP 序=['hp<=15','hp15-40','hp>40'] 升序下,
+# up=False ⇒ λ(hp≤15)≥λ(hp15-40)≥λ(hp>40)=血↓危↑),全部键形态(板面键存档/PL 键主表/
+# Part 9 对比)同步修正;monotone_fit_generic 增拟合后方向断言护栏(防再翻转)。
+# 连带:F2(R31-6 #T distinct 口径界+n 次键落脚本)/F3(位面方向违反格受污注+监督计数)/
+# F4(空格 P1 经验流量披露);旧「hp≤15 低估/D0×hp>40 抬高」受污标签体系随方向修复作废,
+# 改数据驱动的池化偏移注(按新表重判)。
+#
 # 运行(Windows PowerShell):
 #   $env:PYTHONPATH='src'; $env:PYTHONIOENCODING='utf-8'
 #   uv run python tools/cw/proofs/p51/p51_v3_rebuild.py
@@ -274,12 +284,46 @@ def main() -> None:
 
     raw = raw_rates(cells)
 
+    def _assert_monotone_dirs(cur, dims):
+        """方向断言护栏(v3.3,F1):拟合完成后逐轴逐列校验单调方向,违反即抛错终止。
+
+        血带维(hp 升序下标)约束=非增(血↓危↑);其余约束轴按 dims 声明方向核验。
+        缘由:血带维曾以 up=True(hp 升序 ⇒「血↑危↑」)静默运行至 v3.2,与全链文档语义
+        相反,主表数值面整体翻案(攻击第三轮 F1)——本断言使任何方向回退在跑批时即失败,
+        不再依赖文档对账才被发现。
+        """
+        nax = len(dims)
+        for axis, (size, up) in enumerate(dims):
+            if up is None:
+                continue
+            others = [i for i in range(nax) if i != axis]
+            for combo in product(*[range(dims[i][0]) for i in others]):
+                seq = []
+                for v in range(size):
+                    key = [0] * nax
+                    for pos, i in enumerate(others):
+                        key[i] = combo[pos]
+                    key[axis] = v
+                    if tuple(key) in cur:
+                        seq.append(cur[tuple(key)])
+                for a, b in zip(seq, seq[1:], strict=False):
+                    # 容差 1e-4:循环坐标 PAV 收敛后仍留 ~1e-6 量级的跨轴浮点残差,
+                    # 真方向违反(历史 bug 量级 ≥0.1)在此容差下必然命中。
+                    if up and a > b + 1e-4:
+                        raise AssertionError(
+                            f'方向护栏:轴{axis} 应沿下标非降,违反 {a:.4f}>{b:.4f}')
+                    if (not up) and a < b - 1e-4:
+                        raise AssertionError(
+                            f'方向护栏:轴{axis} 应沿下标非增(血带=血↓危↑),违反 {a:.4f}<{b:.4f}')
+
     def monotone_fit_generic(cells_, dims, n_iter=60):
         """边缘回fitting PAV:dims=[(维长, 方向up/None)] 逐轴池化;方向 None 的轴只作切片。
 
         v3.2 泛化:板面键(对照存档)与 PL 键(主表)共用同一拟合器,只换 dims——
         位面维方向=up(位面↑危↑),修复候选评估期(旧 Part 9)借用板面负方向池化
         位面维的近似(彼时仅为候选对比的权宜,主表按正方向重拟)。
+        v3.3:血带维(hp 升序下标)方向=down(血↓危↑),修复自 v3.0 起的反向约束;
+        拟合后经 _assert_monotone_dirs 逐轴核验(方向护栏)。
         """
         cur = {}
         for c, (rate, _n) in raw_rates(cells_).items():
@@ -303,11 +347,12 @@ def main() -> None:
                     _pool(cur, nmap, cs, up=up)
             if all(abs(cur[c] - before[c]) < 1e-9 for c in cur):
                 break
+        _assert_monotone_dirs(cur, dims)
         return cur
 
-    # 板面键(对照存档):难度↑危↑ / 血带↑危↑ / 板面↑危↓ / 节点=切片
+    # 板面键(对照存档):难度↑危↑ / 血↓危↑(v3.3 方向修复) / 板面↑危↓ / 节点=切片
     def monotone_fit(cells_, n_iter=60):
-        return monotone_fit_generic(cells_, [(ND, True), (3, True), (NB, False), (4, None)], n_iter)
+        return monotone_fit_generic(cells_, [(ND, True), (3, False), (NB, False), (4, None)], n_iter)
 
     def _pool(cur, nmap, cs, up=True):
         idx = [c for c in cs if c in cur]
@@ -388,7 +433,7 @@ def main() -> None:
     # 同构;板面键表(Part 3A,上文)降为对照存档,标签 B0/B1/B2 保留防撞名。
     NPL = 2
     PL = ['P1', 'P2+']
-    print('\n== Part 3M(v3.2 主表). PL 键(位面键)λ3(视界 3 轮;单调:血↓危↑/难度↑危↑/位面↑危↑)==')
+    print('\n== Part 3M(v3.3 主表). PL 键(位面键)λ3(视界 3 轮;单调:血↓危↑[v3.3 方向修复]/难度↑危↑/位面↑危↑)==')
     print(f'格子全集:{ND}难度带 × 3血带 × {NPL}位面(P1/P2+) × 4节点 = {ND*3*NPL*NN} 格')
 
     def cellPL(r):
@@ -400,9 +445,9 @@ def main() -> None:
         pl_cells.setdefault(cellPL(r), []).append(r)
     raw_pl = raw_rates(pl_cells)
 
-    # PL 键(主表)单调拟合:难度↑/血带↑/位面↑ 均=危↑
+    # PL 键(主表)单调拟合:难度↑危↑ / 血↓危↑(v3.3 方向修复) / 位面↑危↑
     def monotone_fit_pl(cells_, n_iter=60):
-        return monotone_fit_generic(cells_, [(ND, True), (3, True), (NPL, True), (4, None)], n_iter)
+        return monotone_fit_generic(cells_, [(ND, True), (3, False), (NPL, True), (4, None)], n_iter)
 
     fit_pl = monotone_fit_pl(pl_cells)
 
@@ -665,7 +710,7 @@ def main() -> None:
     # 下游(设计件 §2.0-3 规格① 的 |C|、§5.2 验收级锚)引用。
     # R31-1 对齐:本处置表三分类(有界外推/濒死转语义/守息)=设计件 §1 状态机第四态
     # 「空格回退格」的表侧权威编码,与域外(无行)/损坏(槽位 None)两态显式区分。
-    print('\n== Part 8(v3.2). PL 键(主表)空格回退处置 + 逐格消费标签(可消费/仅方向/禁用)==')
+    print('\n== Part 8(v3.3). PL 键(主表)空格回退处置 + 逐格消费标签(可消费/仅方向/禁用)==')
     empty_cells = [(d, h, p, nn) for d in range(ND) for h in range(3) for p in range(NPL)
                    for nn in range(4) if (d, h, p, nn) not in fit_pl]
 
@@ -688,6 +733,16 @@ def main() -> None:
             fb = '守息(非濒死,维持)'
         print(f'  D{c[0]} {HB[c[1]]} {PL[c[2]]} {nn_names[c[3]]}: {fb}')
     print(f'计数:有界外推 {n_extrap} / 濒死转语义 {n_conv} / 守息 {n_hold}')
+    # v3.3(F4):空格经验流量披露——空格全部在 P1 且语料 P1 无 hp≤15 决策行(濒死行只在
+    # P2+ 出现)⇒ 第四态濒死分支(转化优先)经验触发面≈0;会实际走到的是 P1×hp15-40 的
+    # 守息格与外推格。规格层闭合(R2 反向病已治)但经验层零流量,如实降格声明。
+    p1_empty = [c for c in empty_cells if c[2] == 0]
+    p1_lowhp_rows = sum(1 for r in rows if r['pband'] == 0 and r['hband'] == 'hp<=15')
+    print(f'空格经验流量披露(F4):空格 P1 占 {len(p1_empty)}/{len(empty_cells)};'
+          f'语料 P1×hp<=15 决策行={p1_lowhp_rows} 行(战斗类濒死行全在 P2+,P1 濒死行只落'
+          f' noncombat 薄禁用格)——第四态濒死分支'
+          f'(转化优先)经验触发面≈0,规格闭合/经验零流量(P1 空格 {len(p1_empty)} 格;'
+          f'语料扩窗后 P1 濒死行出现时该分支自然激活,结构上保留)')
     print('论证:①濒死空格回退守息把「最需要转化止损的区域」推向错误默认(P51 §7-1 '
           '濒死转化优先),方向冲突是结构性的(v3.1-2 同款);②有界外推只在单调约束本身'
           '成立的偏序内借幅,上界=支配格现值,不引入新参数;③外推值只作「敞口上界」消费'
@@ -696,10 +751,25 @@ def main() -> None:
           '(无行)≠损坏(槽位 None)——本处置表产物系表侧权威回退,显式豁免「禁实现层'
           '外推」禁令(回退值≠表值≠外推消费)。')
 
-    # 逐格消费标签(PL 键):禁用(n<5)> 仅方向(hp≤15 单调低估 / D0×hp>40 池化抬高)
-    # > 可消费。板面维进程混杂标签(B0/B2)随板面维出键消失——进程混杂由位面维本身承载。
-    print('\n逐格消费标签(PL 键主表;受污类=hp≤15 单调低估 / D0×hp>40 池化抬高):')
+    # 逐格消费标签(PL 键,v3.3):旧受污类「hp≤15 单调低估 / D0×hp>40 池化抬高」系血带轴
+    # 方向反转 bug 的产物(方向修复后 hp≤15 不被压低、hp>40 不被拖高),随 F1 作废——
+    # 改为数据驱动的池化偏移注:|拟合−原始|≥0.15 记「仅方向(池化偏移)」(如实报告实际
+    # 池化方向与幅度,不再预设有两类病因);位面方向违反格(F3)=同(难度,血,节点)内
+    # P2+ 原始率 < P1 原始率(双侧 n≥5)的 P2+ 格,加受污注并入重估监督项计数。
+    print('\n逐格消费标签(PL 键主表;受污注=池化偏移 |Δfit−raw|≥0.15 / 位面方向违反[P2+ raw<P1]):')
+    plane_viol_cells = set()
+    n_plane_viol_pairs = 0
+    for d in range(ND):
+        for h in range(3):
+            for nn in range(NN):
+                c1 = (d, h, 0, nn)
+                c2 = (d, h, 1, nn)
+                if c1 in raw_pl and c2 in raw_pl and min(raw_pl[c1][1], raw_pl[c2][1]) >= 5:
+                    if raw_pl[c2][0] < raw_pl[c1][0]:
+                        plane_viol_cells.add(c2)
+                        n_plane_viol_pairs += 1
     disp_stat = {'可消费': 0, '仅方向': 0, '禁用': 0, '空格': 0}
+    n_pool_note = n_plane_note = 0
     labels_pl = {}
     for d in range(ND):
         for h in range(3):
@@ -715,23 +785,33 @@ def main() -> None:
                     if n < 5:
                         lab = '禁用(n<5 外推畸形;CI 伪精度)' + ('[CI锁死]' if ci_deg else '')
                         disp_stat['禁用'] += 1
-                    elif h == 0:
-                        lab = '仅方向(hp≤15 单调低估)'
-                        disp_stat['仅方向'] += 1
-                    elif h == 2 and d == 0:
-                        lab = '仅方向(D0×hp>40 池化抬高)'
-                        disp_stat['仅方向'] += 1
                     else:
-                        k = round(rate * n)
-                        lab = ('可消费(n≥20)' if n >= 20
-                               else f'可消费(薄 n={n},CI 下限强制 Wilson={wilson_lo(k, n):.3f})')
-                        disp_stat['可消费'] += 1
+                        shift = fit_pl[c] - rate
+                        if abs(shift) >= 0.15:
+                            lab = f'仅方向(池化偏移 Δ={shift:+.3f})'
+                            disp_stat['仅方向'] += 1
+                            n_pool_note += 1
+                        else:
+                            k = round(rate * n)
+                            lab = ('可消费(n≥20)' if n >= 20
+                                   else f'可消费(薄 n={n},CI 下限强制 Wilson={wilson_lo(k, n):.3f})')
+                            disp_stat['可消费'] += 1
+                        if c in plane_viol_cells:
+                            lab += ' ⚠位面方向违反(P2+ 原始率<P1)'
+                            n_plane_note += 1
                     if n < 20:
                         lab += ' ⚠n<20'
                     labels_pl[c] = lab
                     print(f'  D{d} {HB[h]} {PL[p]} {nn_names[nn]}: n={n} 原始={rate:.3f} '
                           f'单调={fit_pl[c]:.3f} → {lab}')
-    print(f'标签汇总:{disp_stat}')
+    print(f'标签汇总:{disp_stat};池化偏移注 {n_pool_note} 格;'
+          f'位面方向违反 {n_plane_viol_pairs} 对/{n_plane_note} 格'
+          f'(重估监督项:方向违反计数,语料扩窗后复跑对照)')
+    # 池化偏移分布(受污面全量披露,供重估监督:0.05≤|Δ|<0.15 的轻偏移不换标签但计数)
+    n_shift_5_15 = sum(1 for c in labels_pl
+                       if c in fit_pl and c in raw_pl and 0.05 <= abs(fit_pl[c] - raw_pl[c][0]) < 0.15)
+    print(f'池化偏移监督:|Δ|≥0.15(换标签){n_pool_note} 格 / 0.05≤|Δ|<0.15(轻偏移,不换标签)'
+          f'{n_shift_5_15} 格 / 位面方向违反 {n_plane_viol_pairs} 对')
 
     # C 集合(可消费格)枚举 + top-2 λ_U 格 + 语料访问率锚(R29-2 枚举的 PL 键重做版;
     # 消费位=设计件 §2.0-3 规格① 的 k∈C 谓词与 §5.2 验收级锚)
@@ -751,24 +831,38 @@ def main() -> None:
         rate, n = raw_pl[c]
         print(f'  #{i} D{c[0]}×{HB[c[1]]}×{PL[c[2]]}×{nn_names[c[3]]}: '
               f'n={n} 单调={fit_pl[c]:.3f} λ_U(CI上端)={ci_upper_pl(c):.3f}')
-    top2 = sorted(c_set, key=lambda c: (ci_upper_pl(c), fit_pl[c]), reverse=True)[:2]
+    # v3.3(F2,R31-6 落地):#T 界改 λ_U 去重 distinct 值口径——k_max = 位置口径界 +
+    # (最大并列组大小−1);排序次键=n 大者优先(λ_U 并列时确定性打破,可复现);
+    # 并列度一行入重估监督(旧位置口径在 λ_U=1.000 并列组下不是上界)。
+    def lam_u_sort_key(c):
+        _, n = raw_pl[c]
+        return (ci_upper_pl(c), n, fit_pl[c])
+
+    top2 = sorted(c_set, key=lam_u_sort_key, reverse=True)[:2]
     visits = sum(len(pl_cells[c]) for c in top2 if c in pl_cells)
     n_rows = len(rows)
     print('top-2 λ_U 格:' + ';'.join(
         f' D{c[0]}×{HB[c[1]]}×{PL[c[2]]}×{nn_names[c[3]]}(λ_U={ci_upper_pl(c):.3f})'
         for c in top2))
-    # 稳健锚:T(p)⊆top-k_max(λ_U 序),k_max=|C|−⌈0.90·|C|⌉+1=带内最宽触发格数——
-    # 上界不依赖 λ_U 并列打破(boss 薄格 bootstrap 上端打满 1.000 时 top-2 选择不稳)。
     n_c = len(c_set)
-    k_max = n_c - _ceil_frac(0.80 * n_c) + 1  # 带内最宽:p 下端 0.80 处 ⌈p·|C|⌉ 最小
-    topk = sorted(c_set, key=lambda c: (ci_upper_pl(c), fit_pl[c]), reverse=True)[:k_max]
+    lu_seq = sorted((ci_upper_pl(c) for c in c_set), reverse=True)
+    tie_cnt = {}
+    for v in lu_seq:
+        tie_cnt[round(v, 6)] = tie_cnt.get(round(v, 6), 0) + 1
+    n_distinct = len(tie_cnt)
+    max_tie = max(tie_cnt.values())
+    k_pos = n_c - _ceil_frac(0.80 * n_c) + 1  # 位置口径界(p 带下端 0.80)
+    k_max = k_pos + (max_tie - 1)             # distinct 口径界(R31-6)
+    topk = sorted(c_set, key=lam_u_sort_key, reverse=True)[:k_max]
     visits_k = sum(len(pl_cells[c]) for c in topk if c in pl_cells)
-    print(f'带内最宽触发格数 k_max={k_max}(|C|={n_c},p 带下端 0.80 ⇒ ⌈0.80·{n_c}⌉='
-          f'{_ceil_frac(0.80 * n_c)},带内 #T≤{k_max};上端 0.90 ⇒ #T≤'
-          f'{n_c - _ceil_frac(0.90 * n_c) + 1});top-{k_max} 并集=' + ';'.join(
+    print(f'#T 并列界(R31-6 distinct 口径):|C|={n_c},λ_U distinct 值 {n_distinct} 个,'
+          f'最大并列组大小 {max_tie} ⇒ k_max={k_pos}+({max_tie}−1)={k_max}'
+          f'(位置口径界 {k_pos} 在并列组下不是上界,禁单独引用);'
+          f'λ_U 全序={[round(v, 3) for v in lu_seq]}(重估监督项:并列度超限同步重算)')
+    print(f'带内最宽触发格数 k_max={k_max}(distinct 口径);top-{k_max} 并集=' + ';'.join(
               f'D{c[0]}×{HB[c[1]]}×{PL[c[2]]}×{nn_names[c[3]]}' for c in topk))
     print(f'语料访问率锚:top-2 格访问行数={visits}/{n_rows}≈{visits / n_rows:.1%};'
-          f'top-{k_max} 并集(稳健上界口径)={visits_k}/{n_rows}≈{visits_k / n_rows:.1%}'
+          f'top-{k_max} 并集(稳健上界口径,distinct 界)={visits_k}/{n_rows}≈{visits_k / n_rows:.1%}'
           '(行=逐 (plane,round) 末帧决策行,与 §5.2 门的帧口径单位不同——R30-6 口径声明:'
           '行≈12.8 行/局系逐轮末帧行,非备战期决策帧;门的帧占比分母须换算或声明同单位)')
     print('n<20 合并规则(v3.1 口径随主表继承):薄格报告值=单调池化值(PAV 已向单调相邻格'
@@ -783,7 +877,7 @@ def main() -> None:
     # (leave-one-match-out)log-loss/Brier + binomial AIC(k=非空格数)。
     # v3.2 修正:PL 键的拟合 dims=位面↑危↑——候选期(旧 Part 9)借用板面负方向池化
     # 位面维系评估近似,主表与对比均按正方向重拟(数字相对 v3.1 存档有变化,如实重报)。
-    print('\n== Part 9(v3.2). 键形态对比(PL 键(位面键)=难度×血×位面×节点·主表 / A=板面键·对照存档 / B2=板面残差化)==')
+    print('\n== Part 9(v3.3). 键形态对比(PL 键(位面键)=难度×血×位面×节点·主表 / A=板面键·对照存档 / B2=板面残差化;血带维均按 v3.3 方向修复重拟)==')
     import math as _m
 
     # 位面带:P1 / P2+(P2 并 P3,P3 n 极薄);pband 已在行组装段定义
@@ -857,8 +951,8 @@ def main() -> None:
               f'LOO log-loss={ll / cnt:.4f} Brier={br / cnt:.4f} | AIC={aic:.0f}(dev={dev:.0f},k={k})')
         return {'tag': tag, 'k': k, 'ho': ho, 'loo_ll': ll / cnt, 'brier': br / cnt, 'aic': aic}
 
-    dims_board = [(ND, True), (3, True), (NB, False), (4, None)]
-    dims_pl = [(ND, True), (3, True), (NPL, True), (4, None)]
+    dims_board = [(ND, True), (3, False), (NB, False), (4, None)]  # v3.3:血带维 down
+    dims_pl = [(ND, True), (3, False), (NPL, True), (4, None)]     # v3.3:血带维 down
     eval_form(cellA, 'A(板面键 B0/B1/B2·对照存档)', dims_board)
     eval_form(cellB1, 'PL 键(位面键)·主表', dims_pl)
     eval_form(cellB2, 'B2(难度×血×板面残差×节点·对照)', dims_board)

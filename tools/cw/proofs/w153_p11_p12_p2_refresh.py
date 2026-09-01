@@ -16,11 +16,11 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..',
                                 '..', 'src'))
 
-from sr_od.application.currency_war.cw_horizon import interest  # noqa: E402
-
+# cw_horizon 已并入 kernel(拆分重构);interest 闭式单一源随迁 cw_plane_table
 from sr_od.application.currency_war.data.cw_shop_odds import (  # noqa: E402
     expected_refreshes_for_card,
 )
+from sr_od.application.currency_war.kernel.cw_plane_table import interest  # noqa: E402
 from sr_od.application.currency_war.kernel.cw_registry import (  # noqa: E402
     DecisionV2Registry,
 )
