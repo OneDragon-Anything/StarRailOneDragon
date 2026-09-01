@@ -23,7 +23,7 @@
   发放牌频实证粗估(几十张牌含「随机简易装备/简易武装箱」字样),标注假设;
 - 发放池:均匀 8 件基础件(标准 7+光能电池;光能电池是否入池待实测,
   equipment_mechanics 待实测边角同源);
-- metallurgy replacement:有放回/无放回双分支(已证 ≤0.6pp 不敏感);
+- metallurgy replacement:有放回/无放回双分支(已证 ≤0.8pp@m=4,k=3 不敏感);
 - R(c):角色四件推荐进阶表——注册表无结构化数据,**待实测**。
 
 用法: uv run python tools/cw/proofs/equip_expectation.py [--H 名,名 --K comp名 --g --r]
@@ -45,8 +45,6 @@ while not (ROOT / 'pyproject.toml').exists():
     ROOT = ROOT.parent
 sys.path.insert(0, str(ROOT / 'src'))
 
-from sr_od.application.currency_war.cw_horizon import TOTAL_NODES  # noqa: E402
-
 from sr_od.application.currency_war.data.cw_equipment_data import (  # noqa: E402
     EQUIPMENTS,
 )
@@ -56,6 +54,9 @@ from sr_od.application.currency_war.data.cw_synthesis import (  # noqa: E402
     self_base,
 )
 from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY  # noqa: E402
+from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
+    TOTAL_NODES,
+)
 
 # ===== 参数(显式不确定项;默认=主表口径,敏感性另跑) =====
 ADV_POOL_SIZE: int = 36                    # 进阶池件数(K8 闭合全量)
@@ -114,9 +115,15 @@ def wait_rounds_for_demand(demand: dict[str, int], lam: float = LAMBDA_DEFAULT,
     if not demand:
         return 0.0
     ks = [demand[b] for b in demand]
-    scale = max(k for k in ks) / rate          # 积分上界:均值最大分量的 ~3 倍覆盖
-    total, h = 0.0, scale / 20000
-    for i in range(20000):
+    # 积分上界必须充分覆盖 E[max_i T_i] 的支撑:max ≤ ΣT_i 且各 T_i 均值 k/rate,
+    # 取「Σ均值的 6 倍」作上界——各生存函数在该处已 e^{-12} 级衰减,截断+离散误差
+    # <1e-4 相对(P14 修订批 2026-09-01:旧上界 max(k)/rate 系统性截断,低估
+    #  1.4-1.8×,两处可行性判定翻转;3× 余量实测仍留 ~0.3% 残差,故取 6×;
+    #  闭式基准:交叉件 12/λ、自配件 16/λ,三路互证见 p14_check.py)。
+    scale = 6.0 * sum(ks) / rate
+    steps = 60000
+    total, h = 0.0, scale / steps
+    for i in range(steps):
         t = (i + 0.5) * h
         p_all_done = 1.0
         for k in ks:
@@ -251,7 +258,7 @@ def main() -> None:
             print(f'  m={m} k={k} | 有放回 {wr["P_至少一件"]:.4f} | 无放回 {wo["P_至少一件"]:.4f} '
                   f'| E[命中] {wr["期望命中数"]:.3f}')
     print(f'  无放回 k=3 增益(m=1): {1 - comb(35, 3) / comb(36, 3):.4f} vs 有放回 {(1 - (35 / 36) ** 3):.4f}'
-          '  → 放回差 ≤0.6pp,不敏感')
+          '  → 放回差 ≤0.8pp(m=4,k=3),不敏感')
 
     # —— Q3:回收准入示例(不变)——
     print('\n[Q3] 回收流水线准入(基础件 → 可接受集 A(K)):')

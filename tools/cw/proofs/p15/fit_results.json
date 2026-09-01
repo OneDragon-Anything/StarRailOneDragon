@@ -1,0 +1,890 @@
+{
+  "generated_at": "2026-09-01T02:19:24.795817+00:00",
+  "source_glob": "D:\\code\\workspace\\StarRailOneDragon\\.debug\\temp\\currency_war\\replay\\matches\\match_g_*.json",
+  "n_games": 66,
+  "n_battle_class_rows": 427,
+  "n_loss_rows": 344,
+  "n_loss_censored": 97,
+  "corpus_sha256": "7f5fd74e2d7ae089bac2c780c971c54188aaa4d8ddd151c74f1e9fc622d826ba",
+  "games_provenance": [
+    {
+      "game_id": "g_20260827_002018",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260827_010212",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260827_020557",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260827_082230",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260827_090534",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260827_100114",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260827_105606",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260827_113459",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260827_120008",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260827_131010",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260827_134411",
+      "strategy_version": null,
+      "n_rounds": 17
+    },
+    {
+      "game_id": "g_20260827_145303",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260827_154155",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260827_164218",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260827_173032",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260827_194456",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260827_212659",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260827_224649",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260827_235025",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260828_011222",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260828_022921",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260828_031008",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260828_040618",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260828_045116",
+      "strategy_version": null,
+      "n_rounds": 17
+    },
+    {
+      "game_id": "g_20260828_060339",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260828_064926",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260828_074721",
+      "strategy_version": null,
+      "n_rounds": 18
+    },
+    {
+      "game_id": "g_20260828_085000",
+      "strategy_version": null,
+      "n_rounds": 17
+    },
+    {
+      "game_id": "g_20260828_095249",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260828_103147",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260828_111327",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260828_115859",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260828_123935",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260828_131618",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260828_134350",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260828_143203",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260828_152301",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260828_161135",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260828_170239",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260828_173537",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260828_191254",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260829_020420",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260829_025301",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260829_034523",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260829_044238",
+      "strategy_version": null,
+      "n_rounds": 9
+    },
+    {
+      "game_id": "g_20260829_054008",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260829_112619",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260829_130420",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260830_071711",
+      "strategy_version": null,
+      "n_rounds": 3
+    },
+    {
+      "game_id": "g_20260830_073750",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260830_083542",
+      "strategy_version": null,
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260830_094754",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260830_103601",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260830_113824",
+      "strategy_version": null,
+      "n_rounds": 17
+    },
+    {
+      "game_id": "g_20260830_125824",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260830_140843",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260830_150029",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260830_161240",
+      "strategy_version": null,
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260830_181106",
+      "strategy_version": null,
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260830_185805",
+      "strategy_version": null,
+      "n_rounds": 13
+    },
+    {
+      "game_id": "g_20260830_194803",
+      "strategy_version": null,
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260831_032006",
+      "strategy_version": {
+        "code_commit": "8541907e",
+        "registry_fingerprint": "e91a3200e267"
+      },
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260831_053705",
+      "strategy_version": {
+        "code_commit": "da222efb",
+        "registry_fingerprint": "e4a2f97c83ac"
+      },
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260831_082322",
+      "strategy_version": {
+        "code_commit": "ec2d785b",
+        "registry_fingerprint": "e4a2f97c83ac"
+      },
+      "n_rounds": 11
+    },
+    {
+      "game_id": "g_20260831_091650",
+      "strategy_version": {
+        "code_commit": "538738b2",
+        "registry_fingerprint": "e4a2f97c83ac"
+      },
+      "n_rounds": 14
+    },
+    {
+      "game_id": "g_20260831_101653",
+      "strategy_version": {
+        "code_commit": "3fdcf5a9",
+        "registry_fingerprint": "9a43e6e1aec2"
+      },
+      "n_rounds": 16
+    }
+  ],
+  "censoring_rule": "败局 hp_after<=1 判删失(死亡/败北地板,观测 |Δhp|=hp_before 仅下界);主估计弃删失,all_observed=按观测值计入的下界口径;两口径同向下偏",
+  "bootstrap": "game-cluster percentile, n=2000, seed=20260908",
+  "rung_source": "engines_count(outcome.board_before, round.deployed char_ids) — _settle_rung 同源式",
+  "by_plane_node": {
+    "(1, 'battle')": {
+      "n": 78,
+      "n_censored": 0,
+      "mean_uncensored": 10.35,
+      "ci95_uncensored": [
+        9.43,
+        11.18
+      ],
+      "mean_all_observed": 10.35,
+      "ci95_all_observed": [
+        9.43,
+        11.18
+      ]
+    },
+    "(1, 'boss')": {
+      "n": 63,
+      "n_censored": 11,
+      "mean_uncensored": 27.17,
+      "ci95_uncensored": [
+        24.62,
+        29.65
+      ],
+      "mean_all_observed": 26.81,
+      "ci95_all_observed": [
+        24.52,
+        29.0
+      ]
+    },
+    "(1, 'encounter')": {
+      "n": 60,
+      "n_censored": 0,
+      "mean_uncensored": 12.48,
+      "ci95_uncensored": [
+        10.6,
+        14.53
+      ],
+      "mean_all_observed": 12.48,
+      "ci95_all_observed": [
+        10.6,
+        14.53
+      ]
+    },
+    "(2, 'battle')": {
+      "n": 118,
+      "n_censored": 66,
+      "mean_uncensored": 16.23,
+      "ci95_uncensored": [
+        15.32,
+        17.14
+      ],
+      "mean_all_observed": 9.47,
+      "ci95_all_observed": [
+        8.28,
+        10.59
+      ]
+    },
+    "(2, 'boss')": {
+      "n": 7,
+      "n_censored": 6,
+      "mean_uncensored": 23.0,
+      "ci95_uncensored": [],
+      "mean_all_observed": 22.14,
+      "ci95_all_observed": [
+        11.0,
+        34.43
+      ]
+    },
+    "(2, 'encounter')": {
+      "n": 12,
+      "n_censored": 8,
+      "mean_uncensored": 29.5,
+      "ci95_uncensored": [
+        16.0,
+        43.0
+      ],
+      "mean_all_observed": 16.08,
+      "ci95_all_observed": [
+        8.17,
+        25.17
+      ]
+    },
+    "(3, 'battle')": {
+      "n": 6,
+      "n_censored": 6,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 1.0,
+      "ci95_all_observed": [
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "by_plane_node_round": {
+    "(1, 'battle', 3)": {
+      "n": 38,
+      "n_censored": 0,
+      "mean_uncensored": 10.45,
+      "ci95_uncensored": [
+        9.37,
+        11.45
+      ],
+      "mean_all_observed": 10.45,
+      "ci95_all_observed": [
+        9.37,
+        11.45
+      ]
+    },
+    "(1, 'battle', 4)": {
+      "n": 40,
+      "n_censored": 0,
+      "mean_uncensored": 10.25,
+      "ci95_uncensored": [
+        9.35,
+        11.2
+      ],
+      "mean_all_observed": 10.25,
+      "ci95_all_observed": [
+        9.35,
+        11.2
+      ]
+    },
+    "(1, 'boss', 'late')": {
+      "n": 63,
+      "n_censored": 11,
+      "mean_uncensored": 27.17,
+      "ci95_uncensored": [
+        24.62,
+        29.65
+      ],
+      "mean_all_observed": 26.81,
+      "ci95_all_observed": [
+        24.52,
+        29.0
+      ]
+    },
+    "(1, 'encounter', 'late')": {
+      "n": 60,
+      "n_censored": 0,
+      "mean_uncensored": 12.48,
+      "ci95_uncensored": [
+        10.6,
+        14.53
+      ],
+      "mean_all_observed": 12.48,
+      "ci95_all_observed": [
+        10.6,
+        14.53
+      ]
+    },
+    "(2, 'battle', 'early')": {
+      "n": 95,
+      "n_censored": 43,
+      "mean_uncensored": 16.23,
+      "ci95_uncensored": [
+        15.32,
+        17.14
+      ],
+      "mean_all_observed": 11.11,
+      "ci95_all_observed": [
+        9.37,
+        12.69
+      ]
+    },
+    "(2, 'battle', 'late')": {
+      "n": 23,
+      "n_censored": 23,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 2.74,
+      "ci95_all_observed": [
+        1.52,
+        4.7
+      ]
+    },
+    "(2, 'boss', 'late')": {
+      "n": 7,
+      "n_censored": 6,
+      "mean_uncensored": 23.0,
+      "ci95_uncensored": [],
+      "mean_all_observed": 22.14,
+      "ci95_all_observed": [
+        11.0,
+        34.43
+      ]
+    },
+    "(2, 'encounter', 'late')": {
+      "n": 12,
+      "n_censored": 8,
+      "mean_uncensored": 29.5,
+      "ci95_uncensored": [
+        16.0,
+        43.0
+      ],
+      "mean_all_observed": 16.08,
+      "ci95_all_observed": [
+        8.17,
+        25.17
+      ]
+    },
+    "(3, 'battle', 'early')": {
+      "n": 6,
+      "n_censored": 6,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 1.0,
+      "ci95_all_observed": [
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "by_plane_node_rung": {
+    "(1, 'battle', 0)": {
+      "n": 59,
+      "n_censored": 0,
+      "mean_uncensored": 11.46,
+      "ci95_uncensored": [
+        10.59,
+        12.2
+      ],
+      "mean_all_observed": 11.46,
+      "ci95_all_observed": [
+        10.59,
+        12.2
+      ]
+    },
+    "(1, 'battle', 1)": {
+      "n": 18,
+      "n_censored": 0,
+      "mean_uncensored": 6.94,
+      "ci95_uncensored": [
+        5.87,
+        7.85
+      ],
+      "mean_all_observed": 6.94,
+      "ci95_all_observed": [
+        5.87,
+        7.85
+      ]
+    },
+    "(1, 'battle', 2)": {
+      "n": 1,
+      "n_censored": 0,
+      "mean_uncensored": 6.0,
+      "ci95_uncensored": [],
+      "mean_all_observed": 6.0,
+      "ci95_all_observed": []
+    },
+    "(1, 'boss', 0)": {
+      "n": 9,
+      "n_censored": 3,
+      "mean_uncensored": 27.0,
+      "ci95_uncensored": [
+        18.0,
+        35.33
+      ],
+      "mean_all_observed": 24.33,
+      "ci95_all_observed": [
+        17.89,
+        30.89
+      ]
+    },
+    "(1, 'boss', 1)": {
+      "n": 27,
+      "n_censored": 6,
+      "mean_uncensored": 28.95,
+      "ci95_uncensored": [
+        24.95,
+        32.19
+      ],
+      "mean_all_observed": 28.37,
+      "ci95_all_observed": [
+        25.11,
+        31.15
+      ]
+    },
+    "(1, 'boss', 2)": {
+      "n": 25,
+      "n_censored": 2,
+      "mean_uncensored": 26.91,
+      "ci95_uncensored": [
+        23.3,
+        30.3
+      ],
+      "mean_all_observed": 27.2,
+      "ci95_all_observed": [
+        23.64,
+        30.32
+      ]
+    },
+    "(1, 'boss', 3)": {
+      "n": 2,
+      "n_censored": 0,
+      "mean_uncensored": 12.0,
+      "ci95_uncensored": [
+        11.0,
+        13.0
+      ],
+      "mean_all_observed": 12.0,
+      "ci95_all_observed": [
+        11.0,
+        13.0
+      ]
+    },
+    "(1, 'encounter', 0)": {
+      "n": 18,
+      "n_censored": 0,
+      "mean_uncensored": 15.06,
+      "ci95_uncensored": [
+        10.78,
+        19.33
+      ],
+      "mean_all_observed": 15.06,
+      "ci95_all_observed": [
+        10.78,
+        19.33
+      ]
+    },
+    "(1, 'encounter', 1)": {
+      "n": 30,
+      "n_censored": 0,
+      "mean_uncensored": 12.43,
+      "ci95_uncensored": [
+        10.0,
+        15.13
+      ],
+      "mean_all_observed": 12.43,
+      "ci95_all_observed": [
+        10.0,
+        15.13
+      ]
+    },
+    "(1, 'encounter', 2)": {
+      "n": 12,
+      "n_censored": 0,
+      "mean_uncensored": 8.75,
+      "ci95_uncensored": [
+        6.75,
+        11.83
+      ],
+      "mean_all_observed": 8.75,
+      "ci95_all_observed": [
+        6.75,
+        11.83
+      ]
+    },
+    "(2, 'battle', 0)": {
+      "n": 10,
+      "n_censored": 7,
+      "mean_uncensored": 15.33,
+      "ci95_uncensored": [
+        14.0,
+        17.0
+      ],
+      "mean_all_observed": 6.9,
+      "ci95_all_observed": [
+        3.0,
+        11.11
+      ]
+    },
+    "(2, 'battle', 1)": {
+      "n": 48,
+      "n_censored": 28,
+      "mean_uncensored": 17.25,
+      "ci95_uncensored": [
+        15.75,
+        18.6
+      ],
+      "mean_all_observed": 10.19,
+      "ci95_all_observed": [
+        7.96,
+        12.41
+      ]
+    },
+    "(2, 'battle', 2)": {
+      "n": 48,
+      "n_censored": 25,
+      "mean_uncensored": 16.17,
+      "ci95_uncensored": [
+        14.5,
+        17.73
+      ],
+      "mean_all_observed": 9.58,
+      "ci95_all_observed": [
+        7.45,
+        11.56
+      ]
+    },
+    "(2, 'battle', 3)": {
+      "n": 12,
+      "n_censored": 6,
+      "mean_uncensored": 13.5,
+      "ci95_uncensored": [
+        11.0,
+        15.67
+      ],
+      "mean_all_observed": 8.33,
+      "ci95_all_observed": [
+        4.91,
+        10.93
+      ]
+    },
+    "(2, 'boss', 0)": {
+      "n": 2,
+      "n_censored": 2,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 23.0,
+      "ci95_all_observed": [
+        5.0,
+        41.0
+      ]
+    },
+    "(2, 'boss', 1)": {
+      "n": 2,
+      "n_censored": 2,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 31.5,
+      "ci95_all_observed": [
+        15.0,
+        48.0
+      ]
+    },
+    "(2, 'boss', 2)": {
+      "n": 1,
+      "n_censored": 0,
+      "mean_uncensored": 23.0,
+      "ci95_uncensored": [],
+      "mean_all_observed": 23.0,
+      "ci95_all_observed": []
+    },
+    "(2, 'boss', 3)": {
+      "n": 2,
+      "n_censored": 2,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 11.5,
+      "ci95_all_observed": [
+        3.0,
+        20.0
+      ]
+    },
+    "(2, 'encounter', 0)": {
+      "n": 2,
+      "n_censored": 1,
+      "mean_uncensored": 44.0,
+      "ci95_uncensored": [],
+      "mean_all_observed": 24.0,
+      "ci95_all_observed": [
+        4.0,
+        44.0
+      ]
+    },
+    "(2, 'encounter', 1)": {
+      "n": 2,
+      "n_censored": 0,
+      "mean_uncensored": 29.5,
+      "ci95_uncensored": [
+        17.0,
+        42.0
+      ],
+      "mean_all_observed": 29.5,
+      "ci95_all_observed": [
+        17.0,
+        42.0
+      ]
+    },
+    "(2, 'encounter', 2)": {
+      "n": 4,
+      "n_censored": 4,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 11.0,
+      "ci95_all_observed": [
+        1.25,
+        29.75
+      ]
+    },
+    "(2, 'encounter', 3)": {
+      "n": 4,
+      "n_censored": 3,
+      "mean_uncensored": 15.0,
+      "ci95_uncensored": [],
+      "mean_all_observed": 10.5,
+      "ci95_all_observed": [
+        6.0,
+        15.0
+      ]
+    },
+    "(3, 'battle', 0)": {
+      "n": 2,
+      "n_censored": 2,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 1.0,
+      "ci95_all_observed": [
+        1.0,
+        1.0
+      ]
+    },
+    "(3, 'battle', 1)": {
+      "n": 2,
+      "n_censored": 2,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 1.0,
+      "ci95_all_observed": [
+        1.0,
+        1.0
+      ]
+    },
+    "(3, 'battle', 2)": {
+      "n": 1,
+      "n_censored": 1,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 1.0,
+      "ci95_all_observed": []
+    },
+    "(3, 'battle', 3)": {
+      "n": 1,
+      "n_censored": 1,
+      "mean_uncensored": null,
+      "ci95_uncensored": [],
+      "mean_all_observed": 1.0,
+      "ci95_all_observed": []
+    }
+  }
+}
