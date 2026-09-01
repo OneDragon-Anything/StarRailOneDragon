@@ -8,6 +8,13 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils import cv2_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war import cw_screen_state
+from sr_od.application.currency_war.operations.entry.exit_currency_war_match import (
+    ExitCurrencyWarMatch,
+)
+from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
+    try_handle_train_supply_popup,
+)
 from sr_od.application.sim_universe import sim_uni_screen_state
 from sr_od.application.sim_universe.operations.bless.sim_uni_choose_bless import (
     SimUniChooseBless,
@@ -202,6 +209,30 @@ class BackToNormalWorldPlus(SrOperation):
             self.round_by_find_and_click_area(screen, '货币战争-大厅', '按钮-关闭')
             return self.round_retry('货币战争-大厅', wait=2)
 
+        # 货币战争-对局中画面(2026-09-01 孤儿对局事故根修):孤儿对局 = 上一
+        # CW app 被 stop 后残留的对局画面(如备战),一条龙各应用开场的本 op
+        # 既有分支全不认识它 → 落兜底点「菜单-右上角返回」(CW 画面无此控件,
+        # 点击不改变画面)→ round_retry×20 有界 FAIL,9 个应用全部速挂。
+        # 用户裁定修法:识别到货币战争对局画面,都走货币战争的退出 op
+        # (ExitCurrencyWarMatch:放弃+结算 3 页回大厅,支持备战/战斗中/
+        # 事件 overlay/结算全入口)。判定单一源 = cw_screen_state.in_match_screen_names,
+        # 与 CurrencyWarApp._in_match 第①层(screen_info 画面匹配)同源,
+        # 新对局画面建档即自动生效。成功出口=大厅,大厅 → 大世界由上方
+        # 「货币战争-大厅」分支(点右上角关闭 X)接管——链路天然衔接,
+        # 下一轮逐帧重识别命中大厅分支。
+        cw_match_screen = cw_screen_state.get_in_match_screen_name(self.ctx, screen)
+        if cw_match_screen is not None:
+            log.info('[返回普通大世界] 命中货币战争对局画面 %s → 委托退出对局 op', cw_match_screen)
+            return self.cw_exit()
+
+        # 列车补给每日弹窗(盖在大厅/大世界之上,无 X 关闭钮,点中央徽章领取):
+        # 被白名单排除在 cw_screen_state 对局中判定之外,须在此单独接——
+        # 不接住则退大厅/大世界后弹窗仍盖着,其余分支全不命中落兜底死循环。
+        # 复用 CW 入口链共享助手(单一源:app/enter/start与本链同一实现)。
+        popup_result = try_handle_train_supply_popup(self, screen)
+        if popup_result is not None:
+            return popup_result
+
         # 无名勋礼购买推广页 / 等级加速弹窗 / 主面板(2026-08-27):
         # 版本更新(2026-08-26 周期)后周期内第一次进无名勋礼,先落在整屏「购买推广页」
         # (用户口述裁决:点「开启无名勋礼」是查看/继续语义,**不会付费**)。实证退出链
@@ -305,6 +336,21 @@ class BackToNormalWorldPlus(SrOperation):
 
         # 无告别词:交互区文字不构成对话态证据(run 46 大厅误判根因),返回 None 落回原兜底。
         return None
+
+    def cw_exit(self) -> OperationRoundResult:
+        """委托货币战争退出对局 op(仿 sim_uni_exit 既有范式)。
+
+        成功=已回货币战争大厅(该 op 的唯一成功出口)→ round_wait 让下一轮
+        逐帧重识别,由「货币战争-大厅」分支点右上角关闭 X 接管;失败(如
+        对局画面不识别)→ round_retry 保留在分支内重试(计入节点 retry 预算,
+        有界 FAIL 不永动)。
+        """
+        op = ExitCurrencyWarMatch(self.ctx)
+        op_result = op.execute()
+        if op_result.success:
+            return self.round_wait(wait=1)
+        else:
+            return self.round_retry(wait=1)
 
     def sim_uni_exit(self, is_in_x: bool) -> OperationRoundResult:
         op = SimUniExit(self.ctx, is_in_x, temporarily_leave=True)
