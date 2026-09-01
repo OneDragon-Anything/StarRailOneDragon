@@ -320,9 +320,12 @@ class DeployBench(SrOperation):
         except Exception as e:   # noqa: BLE001  纠正失败不阻塞部署
             log.debug('[cw-deploy] 换排纠正失败(不阻塞): %s', e)
 
-        # ⚠️ 拖完整队等待(用户 2026-08-16 实证):末次 drag 的羁绊特效/升星 overlay(盛会之星/
-        # 圣杯/银狼升级)可能仍在播 → 后续读(heavy state/SIFT/equip)被遮挡污染。等 1.5s 稳定。
-        time.sleep(1.5)
+        # ⚠️ 拖完整队等待:末次 drag 的羁绊特效/升星 overlay(盛会之星/
+        # 圣杯/银狼升级)可能仍在播 → 后续读(heavy state/SIFT/equip)被遮挡污染。
+        # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
+        # #10,2026-09-02):拖动触发羁绊阶段变更时角色头顶徽章动画 ~2s
+        #(2026-08-16 口述的 1.5s 是低估;最后一个动作是拖动 → 等满 2s 再识别)。
+        time.sleep(2.0)
         log.info('[cw-deploy] 拖完')
 
         # r132 装备遥测采集(穿戴侧盲区修复):decisions.jsonl 的 deployed.equips 恒空

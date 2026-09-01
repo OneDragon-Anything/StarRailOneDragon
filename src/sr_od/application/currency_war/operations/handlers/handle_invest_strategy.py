@@ -105,6 +105,14 @@ class HandleInvestStrategy(SrOperation):
         if not self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
             return self.round_fail('非投资策略屏')
 
+        # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
+        # #11,2026-09-02):「请选择投资策略」标题出现 1s 后画面(三卡)才稳定
+        # (流转 = 备战 → 金币过场动画 → overlay 自动弹出)——入口帧可能在
+        # 稳定期内,立即读刷新次数/卡名有读缺风险。等 1s 重截稳定帧再读
+        # (与 handle_invest_env #3 修复同型)。
+        time.sleep(1.0)
+        screen = self.screenshot()
+
         # ADR-0146 刷新流(生产依赖):OCR「刷新次数N」→ 记次数 + 文本锚(_try_click_refresh
         # 动态定位刷新圆钮用)。原临时采集钩子已删(结论已达成:样本 574 张归档
         # refresh_ui_samples.jsonl,2026-08-17 标结论;jsonl 落盘与整屏 cw_shot_unique 移除)。

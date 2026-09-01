@@ -259,40 +259,34 @@ class PrepActionExecutor:
     # ===== 奖励域 =====
 
     def _click_spheres(self, action: ClickSpheres) -> tuple[bool, str]:
-        """逐球点击(大球优先)→ 只计**验证消失**的球;掉箱即停(下步 OpenBox 统筹,v5 定);席满停。
+        """批式点球(大球优先):一次全点 → 等满动画 → 一次截图统一验证。
 
-        review H-3:progressed 只认真进展 —— 每次点击后重读,球数减少才 verified+1;
-        点击落空(球没少 = 席满/遮挡)不计进展 → 返 False 走环的 fail/恢复路径(§13.2)。
+        2026-09-02 用户指导(screen_flow_timing.md #16):奖励球飞行动画
+        最长 ~2s(去向 = 备战/商店/装备栏),原逐球「点击 + 1.2s 验证」×N
+        慢(且实证日志有同 step 重复发球)。权衡(用户裁定):席满时部分球
+        可能没点开——由后续 heavy 观察自然回补(球仍在 → 下轮再派)。
+        review H-3 语义保留:progressed = 验证球数减少 > 0;全没消失 =
+        席满点不动 → False 走环的 fail/恢复路径(§13.2)。
         """
-        clicked = 0
-        verified = 0
         budget = min(action.max_k, PrepActionExecutor.SPHERE_MAX_CLICKS)
         screen = self._op.screenshot()
-        if not read_reward_spheres(self._ctx, screen):
+        spheres = read_reward_spheres(self._ctx, screen)
+        if not spheres:
             return True, '无球(观察-执行竞态,无事可做)'   # LOW-2:不计验证失败
-        while clicked < budget:
-            spheres = read_reward_spheres(self._ctx, screen)
-            if not spheres:
-                break
-            before = len(spheres)
-            color, center, r = max(spheres, key=lambda t: t[2])   # 大球优先(gold r~44 > blue ~32 > gray ~18)
+        clicked = 0
+        for _color, center, _r in sorted(spheres, key=lambda t: t[2], reverse=True)[:budget]:
             self._ctx.controller.mouse_move(center)   # bug#1 缓解
             self._ctx.controller.click(center)
             clicked += 1
-            # 光标 parking(审计 R5):点球后光标停在奖励区内,同区域 HoughCircles 重读会被
-            # 光标遮邻球 → 误判「球数未减」中断。park 后再读。
-            self._op.park_cursor(before_wait=1.2, after_wait=0.1)
-            screen = self._op.screenshot()
-            after = read_reward_spheres(self._ctx, screen)
-            if len(after) < before:
-                verified += 1   # 真进展:球消失(入账/落席)
-            if read_supply_boxes(self._ctx, screen):
-                log.info('[cw][sphere] 点球掉箱 → 停回环(下步 OpenBox 统筹,v5 定)')
-                break
-            if len(after) >= before:
-                log.info(f'[cw][sphere] 球数未减({before}→{len(after)}) → 疑席满点不动,停')
-                break
-        detail = f'点球 {clicked}/{budget} 验证消失 {verified}'
+            self._op.park_cursor(after_wait=0.1)
+        # 用户口径:飞行动画最长 ~2s → 等满再一次观察(非逐球等待)
+        time.sleep(2.0)
+        screen = self._op.screenshot()
+        after = read_reward_spheres(self._ctx, screen)
+        verified = max(0, len(spheres) - len(after))
+        detail = f'点球 {clicked}/{budget} 验证消失 {verified}(剩 {len(after)})'
+        if read_supply_boxes(self._ctx, screen):
+            detail += ' 掉箱→下步 OpenBox 统筹'
         log.info(f'[cw][sphere] {detail}')
         return verified > 0, detail
 
@@ -433,6 +427,9 @@ class PrepActionExecutor:
         ok = drag_bench_to_sell(self._op, self._ctx, action.slot - 1)
         if ok:
             self._track_remove_bench(action.slot)
+            # 用户口述口径(screen_flow_timing.md #21,2026-09-02):卖出金币
+            # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
+            time.sleep(1.0)
         return ok, f'卖备战槽{action.slot} {"✓" if ok else "拖3次源槽未变"}'
 
     def _sell_deployed(self, action: SellDeployed) -> tuple[bool, str]:
@@ -443,6 +440,7 @@ class PrepActionExecutor:
         ok = self._drag(src, sell_point(self._ctx))
         if ok:
             self._track_remove_deployed(action.row, action.slot)
+            time.sleep(1.0)   # 同上 #21 口径:卖出动画 1s
         return ok, f'卖{action.row}排{action.slot} {"✓" if ok else "拖3次源槽未变"}'
 
     def _deploy_move(self, action: DeployMove) -> tuple[bool, str]:
@@ -453,6 +451,23 @@ class PrepActionExecutor:
         ok = self._drag(src, dst)
         if ok:
             self._track_move_deployed(action.from_slot, action.to_row, action.to_slot)
+            # 用户口述口径(screen_flow_timing.md #10,2026-09-02):拖动触发
+            # 羁绊阶段变更时角色头顶徽章动画 ~2s——拖完立即返回会让批尾
+            # heavy 观察打在徽章动画帧上(SIFT/对账读脏,「对账纠漂」日志
+            # 噪声源之一)。按「都等 2s」简单方案落(批尾/中间的区分不做)。
+            time.sleep(2.0)
+            # 用户口述口径(#24,2026-09-02):羁绊达标触发的 overlay(盛会之星
+            # 等)在徽章动画后再 ~2s 才弹出——固定等待覆盖不住。执行端等待后
+            # 快查一次触发型 overlay 锚(模板毫秒级),命中 → detail 标注(拖拽
+            # 本身已成功);批尾 heavy 的 event_overlay 检测将看到它并 bail 交
+            # 外环 handler——防「decide 的下一步动作打在 overlay 上」。清单
+            # 可扩(圣杯/银狼升星等实测出现时加锚)。
+            _post = self._op.screenshot()
+            if self._op.round_by_find_area(
+                    _post, '货币战争-盛会之星', '标识-盛会之星',
+                    crop_first=False).is_success:
+                log.info('[cw][deploy] 拖后检出盛会之星 overlay(羁绊达标触发)')
+                return True, '部署✓ 但盛会之星 overlay 弹出(外环接管)'
         return ok, f'部署槽{action.from_slot}→{action.to_row}{action.to_slot} {"✓" if ok else "拖3次源槽未变"}'
 
     def _drag(self, src: Point, dst: Point) -> bool:

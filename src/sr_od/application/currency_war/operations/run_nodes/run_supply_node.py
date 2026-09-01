@@ -202,7 +202,11 @@ class RunSupplyNode(RunNode):
         if refresh_target is not None:
             self.ctx.controller.mouse_move(refresh_target)
             self.ctx.controller.click(refresh_target)
-            time.sleep(0.6)   # 等重掷动画;下一轮 loop 重新读选项
+            # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
+            # #19,2026-09-02):补给屏刷新后 2s 画面稳定——原 0.6s 依赖「下一轮
+            # wait 1.5s」合计 2.1s,余量仅 0.1s,重掷动画尾帧可能被读(选项读缺
+            # → 决策建立在残缺选项上)。等满 2s 再返回。
+            time.sleep(2.0)
             return
         self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target)

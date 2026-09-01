@@ -33,8 +33,11 @@ from sr_od.application.currency_war.obs.cw_resume_lock import (
     resume_candidate,
 )
 from sr_od.application.currency_war.obs.cw_settlement_obs import (
+    parse_progress_fill_ratio,
+    parse_settlement_progress,
     parse_settlement_round,
     read_round_outcome,
+    read_settle_damage_breakdown,
 )
 from sr_od.application.currency_war.operations.handlers.handle_armory_box import (
     HandleArmoryBoxDialog,
@@ -105,6 +108,12 @@ class CurrencyWarRunLoop(SrOperation):
     #: 分钟级;残留屏在首帧即命中,实测 <2s)。该行 outcome 打 source='recovered'
     #: 并按屏面「X-Y」解析真实轮次,防 r6/r7 结算被错记成 r1(迁移审计 w23(git 历史) 两例实锤)。
     RELAUNCH_SETTLE_GRACE_S: ClassVar[float] = 30.0
+    #: 结算页1 掉血说明 tooltip 渲染延迟门:面板进页 ~2-4s 才出现(遥测验证批
+    #: h_013/h_014 成对帧实证:进页 ~2s 无面板,~4s 完整出现;离线复跑同帧解析
+    #: 全对 → 漏读纯系时序)。效率批「点空白加速」把页1 驻留压到 ~1-2s,读点帧
+    #: 落在渲染前 → damage 捕获 0/15。门语义:面板 visible 或自页1 首见超时本值
+    #: 才放行推进(点空白/补录);超时兜底覆盖胜轮(面板整块不出现,帧实证)。
+    SETTLE_PANEL_WAIT_S: ClassVar[float] = 4.0
     # 点空白区(加速战斗 / 关叠层;避开中央内容)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
     # 结算"前进"按钮(前往结算/下一页/返回货币战争)恒在底部中央,文案随页变。
@@ -631,6 +640,7 @@ class CurrencyWarRunLoop(SrOperation):
                 if _st1.get('damage_breakdown_visible'):
                     _obs.damage_breakdown_visible = True
             self._settle_page1_settle = None
+            self._settle_p1_ts = None   # 面板延迟门计时随本轮暂存一并清(下轮新值)
             if not telemetry_only:
                 self.ctx.cw_match.strategy.on_round_end(
                     GameState(), _session, self._cw_config, _obs)
@@ -829,6 +839,14 @@ class CurrencyWarRunLoop(SrOperation):
         #       boss → ctx 位面序真值槽,ADR-0397 勘误——经 LCS 清洗,由
         #       __init__ copy 进 session)。
         if self.round_by_find_area(screen, '货币战争-简报', '标识-本场对局首领', crop_first=False).is_success:
+            # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
+            # 「用户口述过场动画时序」#1,2026-09-02):「本场对局首领」出现
+            # (=本锚命中)后 ~1s 简报动画才完结——锚命中帧是动画中帧,立即
+            # 采集会读缺词缀/首领,立即点「下一步」可能按钮未定型 → miss →
+            # round_retry(2s/次)。等 1s 动画完结后重截稳定帧,采集与点击
+            # 都在稳定帧上做。
+            time.sleep(1.0)
+            screen = self.screenshot()
             # 简报读数采集:词缀/难度是本局真值(→ ctx,下游 mechanics_fit/
             # 难度);boss 是位面序真值(ADR-0397 勘误节,用户 2026-08-28 裁决;
             # 读侧统一走 clean_boss_names_by_lcs 清洗——P2/P3 简报在 loop 内,
@@ -1055,6 +1073,24 @@ class CurrencyWarRunLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-备战-专家邀请函', '标识-专家邀请函', crop_first=False).is_success:
             HandleBookcard(self.ctx).execute()
             return self.round_wait(wait=2)
+
+        # 0m. 备战「锁定」暗色子态族(2026-09-02 建档+接线,用户口述时序 #12/#20):
+        #     overlay 点「返回备战界面」→ 备战画面带暗色蒙层,右上「返回XX选择」
+        #     可回对应 overlay。⚠️ 此态下备战双锚(购买经验/出战)仍精准命中
+        #     (用户截图 analyze 实测 is_precise)——不先分流会被当正常备战操作
+        #     (读暗牌/暗 gold)。命中即点对应按钮回 overlay(0e 系/0c 分支接管);
+        #     备战分支内旧 OCR 兜底(双锚后)保留作双保险。
+        #     通用规则单一源 = screen_flow_timing.md #18(暗色态判别锚=右上按钮)。
+        for _lock_screen, _lock_area in (
+                ('货币战争-备战-策略锁定', '按钮-返回投资策略选择'),
+                ('货币战争-备战-遭遇锁定', '按钮-返回遭遇选择'),
+        ):
+            if self.round_by_find_area(screen, _lock_screen, _lock_area, crop_first=False).is_success:
+                _sl = self.round_by_find_and_click_area(
+                    screen, _lock_screen, _lock_area, success_wait=1.5)
+                log.info('[cw-loop] 暗色锁定态(%s)→ 点返回按钮(success=%s)',
+                         _lock_screen, _sl.is_success)
+                return self.round_wait(wait=1.5)
 
         # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档):出战时前台空被
         #     游戏拒(cap 满角色留 bench / 前排保证未触发的边缘)。处理:点确认关弹窗 → 下轮
@@ -1385,6 +1421,18 @@ class CurrencyWarRunLoop(SrOperation):
                 settle_frame_collect,
             )
             settle_frame_collect(screen)
+            # 面板渲染延迟门(见 SETTLE_PANEL_WAIT_S 注;1f 是失败结算页主通道,
+            # 过早补录 = damage 全 None——遥测验证批败轮行全 None 同根因)。只门
+            # 页1(「点击空白加速」在场);后续「下一页/返回」页无面板,直接放行。
+            _pnl = read_settle_damage_breakdown(self.ctx, screen)
+            if (self.round_by_ocr(screen, '点击空白加速').is_success
+                    and not _pnl['visible']):
+                _now = time.monotonic()
+                if getattr(self, '_settle_p1_ts', None) is None:
+                    self._settle_p1_ts = _now
+                if _now - self._settle_p1_ts < CurrencyWarRunLoop.SETTLE_PANEL_WAIT_S:
+                    return self.round_wait(wait=0.5)
+            self._settle_p1_ts = None
             # 败局 outcome 补录(1f 是失败结算页主通道,此前从不落行;见
             # _record_loss_page 根因注)。翻页前记,同屏指纹防重。
             self._record_loss_page(screen)
@@ -1422,8 +1470,8 @@ class CurrencyWarRunLoop(SrOperation):
             return self.round_wait(wait=1.5)
 
         # 2. 点击空白加速 / 点击空白处继续 → 点空白
-        if (self.round_by_ocr(screen, '点击空白加速').is_success
-                or self.round_by_ocr(screen, '点击空白处继续').is_success):
+        _accel_hit = self.round_by_ocr(screen, '点击空白加速')
+        if _accel_hit.is_success or self.round_by_ocr(screen, '点击空白处继续').is_success:
             # 临时采集钩子(同分支3:C1/C2 需要页1 动画页时序帧,清单完成后一并删)
             from sr_od.application.currency_war.operations.settle_collect_hooks import (
                 settle_frame_collect,
@@ -1432,37 +1480,46 @@ class CurrencyWarRunLoop(SrOperation):
             # r68 结算第一页暂存(progress 真值页):「挑战进度 ±N」只在第一页(点击空白加速
             # 帧);outcome 记录在第二页(按钮-继续挑战帧) → 第一页 progress 丢失(r135318
             # 实证 outcome 全 progress=None 而屏上有 +2)。此处读出暂存,分支3 记录时合并。
+            # 独立 try:progress OCR 异常不连带面板读取(原整块 except pass 是
+            # 遥测验证批疑似漏读源之二)。
             try:
                 _texts1 = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
                     image=screen, rect=None, crop_first=False)]
-                from sr_od.application.currency_war.obs.cw_settlement_obs import (
-                    parse_settlement_progress,
-                )
                 _pg1 = parse_settlement_progress(_texts1)
                 if _pg1 is not None:
                     self._settle_page1_progress = _pg1
-                # 结算三项遥测页1 暂存(SETTLE_OCR_DESIGN §1.5):掉血说明 tooltip 是
-                # 进页瞬态子件(2s 后 0 命中),页1 帧 = 唯一捕获窗口;胜轮 outcome 记录
-                # 在页2(tooltip 已离屏)→ 此处读出暂存,记录时合并(同 progress 合并法)。
-                # 进度条填充率同帧读(条在页1 顶部,页2 帧大多读不到)。best-effort:
-                # miss 字段不覆盖已暂存值(同轮多帧连读取首个非 None)。
-                from sr_od.application.currency_war.obs.cw_settlement_obs import (
-                    parse_progress_fill_ratio,
-                    read_settle_damage_breakdown,
-                )
-                _st = read_settle_damage_breakdown(self.ctx, screen)
+            except Exception as e:   # noqa: BLE001  暂存 best-effort
+                log.warning('[cw-loop] 结算页1 progress 暂存失败(不阻塞): %s', e)
+            # 结算三项遥测页1 暂存(SETTLE_OCR_DESIGN §1.5):掉血说明 tooltip 是
+            # 进页延迟渲染件(SETTLE_PANEL_WAIT_S 注),页1 帧 = 捕获窗口;胜轮 outcome
+            # 记录在页2(tooltip 已离屏)→ 此处读出暂存,记录时合并(同 progress 合并法)。
+            # 进度条填充率同帧读(条在页1 顶部,页2 帧大多读不到)。best-effort:
+            # miss 字段不覆盖已暂存值(同轮多帧连读取首个非 None)。
+            _panel_now = None
+            try:
+                _panel_now = read_settle_damage_breakdown(self.ctx, screen)
                 _fr = parse_progress_fill_ratio(screen)
                 _stash = getattr(self, '_settle_page1_settle', None) or {}
-                for _k, _v in (('damage_base', _st['damage_base']),
-                               ('damage_unfinished_progress', _st['damage_unfinished_progress']),
+                for _k, _v in (('damage_base', _panel_now['damage_base']),
+                               ('damage_unfinished_progress', _panel_now['damage_unfinished_progress']),
                                ('progress_fill_ratio', _fr)):
                     if _stash.get(_k) is None and _v is not None:
                         _stash[_k] = _v
-                if _st['visible']:
+                if _panel_now['visible']:
                     _stash['damage_breakdown_visible'] = True
                 self._settle_page1_settle = _stash
-            except Exception:   # noqa: BLE001  暂存 best-effort
-                pass
+            except Exception as e:   # noqa: BLE001  暂存 best-effort
+                log.warning('[cw-loop] 结算页1 三项遥测暂存失败(不阻塞): %s', e)
+            # 面板渲染延迟门(SETTLE_PANEL_WAIT_S 注):只门结算页1(「点击空白加速」
+            # 在场);横幅页(「点击空白处继续」)无面板,照旧立即推进。放行条件 =
+            # 面板本帧 visible(提前放行)或自页1 首见超时(胜轮面板整块不出现的兜底)。
+            if _accel_hit.is_success and not (_panel_now is not None and _panel_now['visible']):
+                _now = time.monotonic()
+                if getattr(self, '_settle_p1_ts', None) is None:
+                    self._settle_p1_ts = _now
+                if _now - self._settle_p1_ts < CurrencyWarRunLoop.SETTLE_PANEL_WAIT_S:
+                    return self.round_wait(wait=0.5)
+            self._settle_p1_ts = None
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
             # wait=1.5→0.8(实机效率批,跑局批报告 REAL_MACHINE_COLLECTION_1.md ⑥):
             # 本分支点空白 = 跳过页1 动画/强敌来袭横幅/位面过渡,游戏在 ~1s 内
@@ -1482,6 +1539,16 @@ class CurrencyWarRunLoop(SrOperation):
                 settle_frame_collect,
             )
             settle_frame_collect(screen)
+            # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
+            # 「用户口述过场动画时序」#6/#25,2026-09-02):「继续挑战」按钮出现
+            # 后金币奖励等结算数据才显示(初测 0.5s,用户复核裁定 **1.5s 更稳**)
+            # ——锚命中帧立即读 = 打在空面板上(交接文件
+            # REAL_MACHINE_EFFICIENCY_HANDOFF.md 遥测 damage 0/15 事故的时序
+            # 根因;页1 有 SETTLE_PANEL_WAIT_S 渲染延迟门,本页此前无同款保护)。
+            # 等 1.5s + 重截,读点落在数据已渲染帧;采集钩子仍抓首见帧(时序
+            # 价值在动画帧)。
+            time.sleep(1.5)
+            screen = self.screenshot()
             self._record_round_outcome(screen)  # P1.5: 结算屏(挑战成功)→ read_round_outcome → on_round_end
             # C-1(r2 review,2026-08-16):计数锚点 = 新结算帧(非命中帧)——结算屏点击不生效循环 k 轮时,
             # 旧行为每轮 +1 → rounds_done 虚增 → max_rounds=N>1 时提前停备战。改:同屏指纹(结果文本行)

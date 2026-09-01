@@ -72,7 +72,10 @@ class HandleInvestEnv(SrOperation):
         log.info(f'[cw-env] 建议刷新(剩余={self._refresh_count})→ 圆钮@({target.x},{target.y})(文本锚定)')
         self.ctx.controller.mouse_move(target)   # bug#1 缓解
         self.ctx.controller.click(target)
-        time.sleep(1.5)
+        # 用户口述口径(screen_flow_timing.md #4,2026-09-02):刷新动画
+        # ~2s 新卡渐变完结——原 1.5s 会在渐变中帧截图,OCR 读半渲染卡名
+        # 污染「刷新生效」判断与决策。2.2 = 口述 2s + 余量。
+        time.sleep(2.2)
         return True
 
     def _read_options(self, screen) -> list[tuple[str, int]]:
@@ -100,6 +103,13 @@ class HandleInvestEnv(SrOperation):
         if not _hit:
             return self.round_fail('非投资环境屏')
 
+        # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
+        # 「用户口述过场动画时序」#3,2026-09-02):「投资环境」标题出现后
+        # 1s 内三卡才渲染稳定——入口帧可能在稳定期内,立即 OCR 读卡名有
+        # 读缺/读半字风险(空候选 → fallback 盲点屏中)。等 1s 重截稳定帧
+        # 再读再决策(与简报 0a0b 修复同型)。
+        time.sleep(1.0)
+        screen = self.screenshot()
         opts = self._read_options(screen)
 
         # ADR-0146 刷新流(生产依赖):OCR「剩余次数:N」→ 记次数 + 文本锚(刷新圆钮动态定位)。

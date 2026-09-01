@@ -891,7 +891,10 @@ class BuyShopCards(SrOperation):
                 elif isinstance(action, LevelUp):
                     self.ctx.controller.click(level_btn)
                     log.info(f'[cw-shop] LevelUp click @({level_btn.x},{level_btn.y})')
-                    time.sleep(0.6)   # 升级动画/扣金
+                    # 用户口述口径(screen_flow_timing.md #22,2026-09-02):
+                    # 购买经验动画 ~1s;光标遮挡由下一波循环顶 park_cursor 防
+                    #(波内路径)——本 sleep 只对齐动画时长(原 0.6s 不足)。
+                    time.sleep(1.0)
                     total_level += 1
                     _spend_executed += action.cost
                 elif isinstance(action, RefreshShop):

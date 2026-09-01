@@ -177,7 +177,10 @@ ENTRY_OVERLAY_SETTLE_S: float = 1.0
 #: 用户裁定决策周期压缩,核减依据=低估不致误读——基线取在
 #: 特效中间帧时,下一 poll 指纹变化即重置重 poll,仅多付一次
 #: poll 成本,正确性由指纹机制保证)。
-_OP_SETTLE_S: float = 1.2
+#: 1.0s(2026-09-02 二次核减):用户口述口径(screen_flow_timing.md
+#: #15)商店收起过场动画 ~1s 即备战画面稳定——预等对齐动画时长,
+#: 动画尾帧仍由指纹重 poll 兜(低估安全论证同上)。
+_OP_SETTLE_S: float = 1.0
 
 #: 最近一次 op_settle 预估等待的时长(测试内省 seam;None=本进程
 #: 未走过 op_settle 段)。

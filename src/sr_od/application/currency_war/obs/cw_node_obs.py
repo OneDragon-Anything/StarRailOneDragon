@@ -15,6 +15,7 @@ import re
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     MegastarOption,
@@ -72,6 +73,36 @@ def read_encounter_options(ctx: SrContext, screen: MatLike) -> list[EncounterOpt
             rewards=[nearest] if nearest else [],
         ))
     return opts
+
+
+# 「剩余次数：N」(底行,「选择」按钮左侧;其左的圆箭头图标 = 分支刷新按钮)。分支刷新 =
+# 优势布局「分支刷新」授予的能力(每局 1 次,重置两卡难度与奖励;bwiki 优势布局表,
+# docs/game/currency_war/data/advantage_layouts.md;competitors.md 节点表同口径)。
+# 未激活该布局时此行是否显示未采证 → 读不到按无刷新处理(失败安全)。
+_REMAIN_RE = re.compile(r'剩余次数\s*[：:]\s*(\d+)')
+# 计数行 OCR 带(归档帧 sr-od-test/screens/货币战争-遭遇节点/default.webp:文本 ≈(730-845,900)。
+# x 上界收到 1000:避开「选择」按钮文本区;正则本身已滤非「剩余次数」文本,带只是省 OCR 量)。
+_REMAIN_RECT = Rect(300, 840, 1000, 960)
+
+
+def read_encounter_refresh_count(ctx: SrContext, screen: MatLike) -> tuple[int, tuple[int, int]] | None:
+    """OCR「剩余次数:N」→ ``(剩余次数, 文本中心点)``;读不到 → ``None``。
+
+    文本中心供 handler **文本锚定**分支刷新圆钮(圆钮 = 文本左侧固定偏移,与投资策略
+    ``_try_click_refresh`` 同模式——单帧证据不足判文本位置漂移形态,固定 area 不可行)。
+    全角/半角冒号都认(OCR 渲染不一)。纯读。
+    """
+    ocr_map = ctx.ocr_service.get_ocr_result_map(
+        image=screen, rect=_REMAIN_RECT, color_range=None, crop_first=False,
+    )
+    for text, mrl in ocr_map.items():
+        if mrl.max is None:
+            continue
+        m = _REMAIN_RE.search(text)
+        if m is None:
+            continue
+        return int(m.group(1)), (int(mrl.max.center.x), int(mrl.max.center.y))
+    return None
 
 
 # 巨星候选标题「盛会之星一X先生/女士!」→ X = 角色名(花火/星期日…)。实测 OCR 核实(2026-08-07 cw_megastar)。
