@@ -16,3 +16,174 @@ area_list:
   template_match_threshold: 0.7
   color_range: null
   goto_list: []
+- area_name: 按钮-关闭
+  id_mark: false
+  pc_rect:
+  - 1830
+  - 30
+  - 1885
+  - 95
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 菜单
+- area_name: 标签-指南TAB
+  id_mark: false
+  pc_rect:
+  - 298
+  - 180
+  - 428
+  - 248
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 指南-每日实训
+- area_name: 标签-生存索引TAB
+  id_mark: false
+  pc_rect:
+  - 428
+  - 180
+  - 545
+  - 248
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list:
+  - 指南-生存索引
+- area_name: 活跃度-当前值
+  id_mark: false
+  pc_rect:
+  - 305
+  - 320
+  - 385
+  - 375
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 礼物-100档
+  id_mark: false
+  pc_rect:
+  - 597
+  - 278
+  - 677
+  - 355
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 礼物-200档
+  id_mark: false
+  pc_rect:
+  - 841
+  - 278
+  - 921
+  - 355
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 礼物-300档
+  id_mark: false
+  pc_rect:
+  - 1084
+  - 278
+  - 1164
+  - 355
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 礼物-400档
+  id_mark: false
+  pc_rect:
+  - 1342
+  - 278
+  - 1422
+  - 355
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 礼物-500档
+  id_mark: false
+  pc_rect:
+  - 1571
+  - 278
+  - 1651
+  - 355
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 任务卡-首卡按钮
+  id_mark: false
+  pc_rect:
+  - 280
+  - 790
+  - 545
+  - 865
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 任务卡-滚动区
+  id_mark: false
+  pc_rect:
+  - 230
+  - 395
+  - 1660
+  - 890
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
+- area_name: 文本-刷新时间
+  id_mark: false
+  pc_rect:
+  - 1300
+  - 900
+  - 1640
+  - 945
+  text: ''
+  lcs_percent: 0.5
+  template_sub_dir: ''
+  template_id: ''
+  template_match_threshold: 0.7
+  color_range: null
+  goto_list: []
