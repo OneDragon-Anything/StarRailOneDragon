@@ -96,6 +96,12 @@ class CurrencyWarRunLoop(SrOperation):
     # 临时随机态停机钩子(方案 D):连续 N 轮未识别画面 → stop_running 保画面待 AI 建档。建档后删本钩子。
     # 15 轮 ≈ 30s 纯卡(过渡帧 1-2 轮内被上面分支接走,不累计);远 < MAX_ITER,快速捕 novel 随机态。
     UNKNOWN_STOP_THRESHOLD: ClassVar[int] = 15
+    #: 未知帧重试退避封顶(秒)。连续未识别帧的重试间隔按 2s 起步每连续一次翻倍,
+    #: 封顶本值——旧实现恒 2s 立即重试,战斗特效长动画/未建档画面期每 2s 打一次
+    #: 全量截图+OCR 空转(重试无退避缺陷)。阈值触达总时长由 ≈30s 放宽到 ≈2min,
+    #: 换取停机钩子触发前画面有充分自愈窗口(若真是过渡帧,长动画期 2s 恒重试
+    #: 只烧预算不推进)。
+    UNKNOWN_RETRY_BACKOFF_CAP_S: ClassVar[float] = 10.0
     # r119 停滞 watchdog 参数:每 5 iter 采一次指纹(≈5-10s),连续 6 次相同
     # (≈1-2min 同屏)→ 哨兵。战斗态(指纹含「战斗/胜利/挑战」关键词)豁免。
     STALL_SNAPSHOT_EVERY: ClassVar[int] = 5
@@ -1766,7 +1772,18 @@ class CurrencyWarRunLoop(SrOperation):
                 log.warning('[cw-loop] unknown stop 钩子失败(不阻塞): %s', e)
             self.ctx.run_context.stop_running(reason='hook:battle_unknown_screen')
             return self.round_fail(status='持久未识别画面,停机待建档')
-        return self.round_retry(wait=2)
+        # 连续未知帧退避(重试无退避缺陷修复):等待随 _unknown_streak 翻倍封顶;
+        # 画面被任何分支接走 → streak 归 1,退避自动复位(见 UNKNOWN_RETRY_BACKOFF_CAP_S 注)。
+        return self.round_retry(wait=self._unknown_backoff_wait(self._unknown_streak))
+
+    @staticmethod
+    def _unknown_backoff_wait(streak: int) -> float:
+        """连续未识别帧第 ``streak`` 次(≥1,连续计数,归零复位)重试的等待秒数。
+
+        2s 起步每连续一次翻倍、封顶 ``UNKNOWN_RETRY_BACKOFF_CAP_S``;纯函数便于锁测。
+        """
+        return min(2.0 * (2 ** (max(streak, 1) - 1)),
+                   CurrencyWarRunLoop.UNKNOWN_RETRY_BACKOFF_CAP_S)
 
 
 # ===== B4(ADR-0170):跨局分配器进程级单例 + 终局 update =====
