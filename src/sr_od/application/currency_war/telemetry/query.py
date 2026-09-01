@@ -416,7 +416,15 @@ def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
         # 迁移审计 w317(git 历史):节点类型进标签(与 rounds 视图 [tag] 风格一致)
         _nt = (d.get("state") or {}).get("node_type") or ""
         _tag = f"[{_nt}] " if _nt else ""
-        if (d.get("gold") or 0) >= ABN_GOLD and buys == 0 and lvs == 0:
+        # 补给节点豁免「0买0升」检查:补给轮无商店消费面,空过(拒绝补给选择)合法。
+        # 机制出处 = docs/game/currency_war/research/economy.md「奖励/补给节点不花钱」
+        # + 复盘实证(补给轮无 shop 快照,节点设计如此);同语义先例 =
+        # decision_v2/posture_release._NO_CHANNEL_NODE_TOKENS 仅含 {supply,补给}。
+        # 奖励轮不豁免:奖励轮有消费面且历史复盘无 reward 误报记录,口径维持从严。
+        # 豁免判据=双语 token 集(先例同款含 {supply,补给};node_type 缺失 None
+        # 保持从严仍查——误报 vs 漏报的显式权衡,见上「奖励轮不豁免」注)
+        if (_nt not in ("supply", "补给")
+                and (d.get("gold") or 0) >= ABN_GOLD and buys == 0 and lvs == 0):
             abn.append(f"p{k[0]}r{k[1]} {_tag}金{d.get('gold')} 0买0升(钱变不成板)")
         if (d.get("eval_breakdown") or {}).get("plan_error"):
             abn.append(f"p{k[0]}r{k[1]} {_tag}plan_error(决策崩溃,见 log)")
@@ -723,7 +731,12 @@ def plan_gold_flow(plan_actions: list[dict[str, Any]],
             card = a.get('card') or {}
             cost = int(card.get('cost') or 0)
             spend += cost
-            items.append({'type': t, 'target': str(card.get('name') or f"x{card.get('x')}"),
+            # 归因名优先平铺 char_id(M2 增强批:serialize_action 顶层富化,
+            # 注册表规范名)→ 跨流对账(spend_ledger/补给行/char_id 侧)
+            # 不再吃 OCR 原名;旧记录无此键回退 card.name,再退 x 序号。
+            target = str(a.get('char_id') or card.get('name')
+                         or f"x{card.get('x')}")
+            items.append({'type': t, 'target': target,
                           'cost': cost, 'direction': 'spend'})
         elif t == 'LevelUp':
             cost = int(a.get('cost') or 0)

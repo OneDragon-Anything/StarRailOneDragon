@@ -68,3 +68,4 @@ docs/superpowers/
 
 # 装备图标采集调试标注(临时,不入库)
 assets/template/cw_equip/_debug/cw_dev/
+.coverage
