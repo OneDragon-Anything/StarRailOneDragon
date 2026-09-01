@@ -357,6 +357,12 @@ class TelemetryRecorder:
             damage_dealt=outcome.damage_dealt, killed=outcome.killed,
             progress_delta=outcome.progress_delta,
             streak=outcome.streak,
+            # 结算三项遥测透传(SETTLE_OCR_DESIGN §3 落点 2:recorder 字段白名单式
+            # 构造,此处是 outcomes.jsonl 新字段的唯一写入口)
+            progress_fill_ratio=getattr(outcome, 'progress_fill_ratio', None),
+            damage_base=getattr(outcome, 'damage_base', None),
+            damage_unfinished_progress=getattr(outcome, 'damage_unfinished_progress', None),
+            damage_breakdown_visible=getattr(outcome, 'damage_breakdown_visible', False),
             board_before=_board, bench_count=_bench,
             source=source,
             boss_names=_bosses, selected_difficulty=_diff,

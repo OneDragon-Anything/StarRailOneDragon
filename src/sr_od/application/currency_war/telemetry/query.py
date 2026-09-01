@@ -867,6 +867,26 @@ def _match_conflict(conflicts: list[dict[str, Any]], plane: int, round_num: int,
 
 
 
+def resolve_unit_gold_close(unit_row: dict[str, Any] | None,
+                            conflicts: list[dict[str, Any]],
+                            plane: int, round_num: int,
+                            ts: str) -> int | None:
+    """购买单元关店金解析(纯函数;安灯钩子与离线视图共用单一源)。
+
+    取值序:spend_ledger 单元行自身 gold_close 优先(每单元必写、带
+    run_id/plane/round/unit_seq 身份键,shop.py 关店对拍点经暂存槽填充);
+    仅旧行(行内无 gold_close 字段,gold_close 槽挂上前的历史局)才回退
+    obs_conflicts 冲突行 join——那是「仅 mismatch 才写 + (plane,round)+ts
+    窗」的陈旧行风险面,同轮上一单元的行会被吃进来(局 run_20260901_180236
+    p3r1 安灯误停根因,EXEC_FAIL_P3R1 诊断修法①,ADR-0514)。新行读失败以
+    None 形态返回(进分类器记 unknown 不猜),**不回退冲突行**。
+    """
+    if unit_row is not None and 'gold_close' in unit_row:
+        return unit_row.get('gold_close')
+    conf = _match_conflict(conflicts, plane, round_num, ts)
+    return (conf or {}).get('new')
+
+
 def _spend_unit_row(replay_dir: Path, run_id: str, plane: int,
                     round_num: int, unit_seq: int) -> dict[str, Any] | None:
     """spend_ledger 本单元最新行(按 run/plane/round/unit_seq 定位;纯读)。
@@ -931,13 +951,11 @@ def query_spend_ledger(replay_dir: Path, run_id: str) -> list[str]:
         pr, rnd = int(r.get('plane') or 0), int(r.get('round_num') or 0)
         plan_row = plans.get((pr, rnd))
         conf = _match_conflict(conflicts, pr, rnd, r.get('ts') or '')
-        # 关店实读金取值序:行内 gold_close(shop 关店对拍点无条件落)优先;
-        # 旧行(钩子挂上前)恒 None → 回退冲突行。两者同源同读,回退不是
-        # 第二口径;都缺 → unknown 不猜(读失败也以行内 None+trusted=False
-        # 形态留痕,与「对拍通过」可分)。
-        gold_close = r.get('gold_close')
-        if gold_close is None:
-            gold_close = (conf or {}).get('new')
+        # 关店实读金解析:单元行 gold_close 优先,仅旧行(无该字段)回退
+        # 冲突行 join(resolve_unit_gold_close 单一源;陈旧行风险面见其
+        # docstring——新行读失败记 unknown 不猜,不回退)。
+        gold_close = resolve_unit_gold_close(r, conflicts, pr, rnd,
+                                             r.get('ts') or '')
         cls = classify_spend_unit(
             (plan_row or {}).get('actions') or [],
             (plan_row or {}).get('gold'), gold_close,

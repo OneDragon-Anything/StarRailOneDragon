@@ -41,6 +41,16 @@ _NODES_OF_PLANE_WARNED: set[str] = set()
 DEFAULT_PLANE_LENGTHS: tuple[int, int, int] = (
     NODES_PER_PLANE, NODES_PER_PLANE, NODES_PER_PLANE)
 
+#: schedule_of 未揭晓位面的回退先验(逐面):(9, 7, 9)。
+#: P2 回退=语料定谳值 7(W157 16 局语料 boss@r7,与 session 表真值同源)——
+#: 未揭晓期即用真值级先验,P1 期窗口的 P2 分量平移(+2)由此消除;P3 零语料,
+#: 回退 9 保持(=脏表上界,回退事件即 P3 真值未知期的记档通道)。
+#: 与 DEFAULT_PLANE_LENGTHS(几何缺省,裸调用/测试兼容口径 9,9,9)分立——
+#: 后者只作 plane_offsets/plane_end_slots/build_ledger 的参数缺省,生产调用方
+#: 应显式传 schedule_of(session) 实际长度,两者禁互替。
+PLANE_FALLBACK_PRIORS: tuple[int, int, int] = (
+    NODES_PER_PLANE, 7, NODES_PER_PLANE)
+
 
 def plane_offsets(pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> tuple[int, ...]:
     """日程 → 各位面起始槽(累计偏移;(9,9,9)→(0,9,18))。"""
@@ -63,13 +73,15 @@ def schedule_of(session) -> tuple[int, int, int]:
 
     真值源 = ``session.plane_lengths_seen``(prep_director 每位面首帧随
     plane_node_table 记录的「本局已揭晓位面轮数」序列,P3 进表即自适应);
-    未揭晓位面回退 9 先验。脏表守卫:每位面长度夹 [1, NODES_PER_PLANE]
+    未揭晓位面回退 ``PLANE_FALLBACK_PRIORS`` 逐面先验(P1/P3=9、P2=语料
+    定谳值 7——未揭晓 P2 用真值级先验,消 P1 期窗口 +2 平移分量)。
+    脏表守卫:每位面长度夹 [1, NODES_PER_PLANE]
     (同 ADR-0366 超长脏表封顶语义)。duck-typed 读 session。
     """
     seen = getattr(session, 'plane_lengths_seen', None) or []
     out = []
     for i in range(3):
-        length = int(seen[i]) if i < len(seen) else NODES_PER_PLANE
+        length = int(seen[i]) if i < len(seen) else PLANE_FALLBACK_PRIORS[i]
         out.append(min(max(length, 1), NODES_PER_PLANE))
     return tuple(out)
 

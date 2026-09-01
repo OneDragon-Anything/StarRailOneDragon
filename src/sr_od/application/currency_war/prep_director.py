@@ -344,8 +344,10 @@ class PrepDirector(SrOperation):
         self._cached_deployed: list[BenchChar] = []
         self._cached_vacancy: int = 0
         self._cached_gold_trusted: bool = False
-        # W494 spend_ledger:购买单元记账态(纯观测;unit_seq 本局序,run() 清零)
+        # W494 spend_ledger:购买单元记账态(纯观测;unit_seq 轮内序,
+        # 按 _spend_unit_key=(plane, round) 重计,见 _spend_unit_open)
         self._spend_unit_seq: int = 0
+        self._spend_unit_key: tuple[int, int] | None = None
         self._unit_meta: dict | None = None
         self._exec_fail_hook_fired: bool = False   # 安灯:每局最多停一次
 
@@ -1115,8 +1117,11 @@ class PrepDirector(SrOperation):
         self._cached_deployed = []
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
-        self._spend_unit_seq = 0   # W494:购买单元序按局重置
-        self._unit_meta = None
+        # W494:购买单元序不再在环入口清——run() 节点会被外环重派重入(局47
+        # 死循环修复后重入是常态),入口清零导致同轮多单元恒 seq=1(p1r1/p2r1
+        # 双单元撞键实测,EXEC_FAIL_P3R1 诊断附带发现)。改为按 (plane, round)
+        # 键在 _spend_unit_open 内重计;此处仅清轮键开新局。
+        self._spend_unit_key = None
         self._exec_fail_hook_fired = False
         # r297(P0③):_probe_node_type 迁至 EnsureShopClosed 后
         #(原 run() 入口调用已删;曾同挂点的 _probe_node_reward
@@ -1656,14 +1661,25 @@ class PrepDirector(SrOperation):
         st = obs.state
         sess = self._session()
         ls = getattr(sess, 'last_state', None) if sess is not None else None
-        self._spend_unit_seq += 1
+        plane = int(getattr(ls, 'plane', 0) or 0)
+        rnd = int(getattr(ls, 'round_num', 0) or 0)
+        # 同轮多单元序号恒递增:序只在 (plane, round) 变化(或新局清键)时
+        # 重置为 1——run() 环节点重入不清序,消除同轮双单元撞 unit_seq=1
+        #(EXEC_FAIL_P3R1 诊断附带发现,ADR-0514:任何按 (round, unit_seq)
+        # 对拍的消费方都会撞键,_spend_unit_row 靠「取最后一行」侥幸取对)。
+        key = (plane, rnd)
+        if key != self._spend_unit_key:
+            self._spend_unit_key = key
+            self._spend_unit_seq = 1
+        else:
+            self._spend_unit_seq += 1
         self._unit_meta = {
             'seq': self._spend_unit_seq,
             't0': time.monotonic(),
             'gold': getattr(st, 'gold', None) if st is not None else None,
             'gold_trusted': bool(obs.state_gold_trusted),
-            'plane': int(getattr(ls, 'plane', 0) or 0),
-            'round': int(getattr(ls, 'round_num', 0) or 0),
+            'plane': plane,
+            'round': rnd,
         }
 
     def _spend_unit_close(self, progressed: bool, detail: str = '',
@@ -1707,9 +1723,17 @@ class PrepDirector(SrOperation):
         """安灯判定+触发(内部方法;谓词与 flag 写入是模块级纯函数,离线可测)。
 
         数据源:decisions.jsonl 本轮 shop plan 行(plan/开店金,shop 开态可信)
-        + obs_conflicts.jsonl 本轮 gold_delta 行(关店实读金,mismatch 形态下
-        shop 审计必落行:金没动而计划花费>2 → gap>2)。任一缺失 = 分类器
-        unknown = 不停(不猜)。
+        + spend_ledger.jsonl 本单元行的 gold_close(shop.py 关店对拍点无条件
+        暂存、落账时消费填充——每单元必写、带 run_id/plane/round/unit_seq
+        单元身份)。历史局旧行(无 gold_close 字段)→ 回退 obs_conflicts
+        gold_delta 冲突行 + ts 邻近窗 join 兼容路径;新行读失败以 None 进
+        分类器 = unknown = 不停(不猜)。
+
+        为什么主源必须是单元行:冲突行是「仅 mismatch 才写」的条件性 journal、
+        行内无 run_id/unit_seq,(plane,round)+ts 窗 join 会吃到同轮上一单元的
+        陈旧行(局 run_20260901_180236 p3r1 误停:健康第二单元 join 到 86 秒前
+        第一单元的 new=51,金差算 0 → not_effective → 误停;EXEC_FAIL_P3R1
+        诊断,推荐修法①,ADR-0514)。单元行身份键天然完整,一举消掉两个病根。
         """
         run_id = state.current_run_id()
         if not run_id:
@@ -1719,18 +1743,10 @@ class PrepDirector(SrOperation):
             replay_dir, run_id).get((meta['plane'], meta['round']))
         if plan_row is None:
             return
-        import datetime as _dt
-        conf = query._match_conflict(
-            query._read_conflict_gold_delta(replay_dir),
-            meta['plane'], meta['round'],
-            _dt.datetime.now().isoformat(timespec='seconds'))
-        plan_actions = plan_row.get('actions') or []
-        gold_open = plan_row.get('gold')
-        gold_close = (conf or {}).get('new')
-        # W577(ADR-0456):数据源补 spend_ledger 单元行的执行侧「计划≠尝试」
-        # 字段(与 plan 行/gold_delta 行同一 replay join 面)——硬墙跳过/
-        # 截断的单元分流 plan_truncated 豁免(局22 误停根因),不再被当
-        # 「点击落空」误停。行缺失 → executed=None,退回 W494 原语义。
+        # W577(ADR-0456):spend_ledger 单元行的执行侧「计划≠尝试」字段
+        #(与 plan 行同一 replay join 面,run_id+unit_seq 定位,无陈旧风险)
+        # ——硬墙跳过/截断的单元分流 plan_truncated 豁免(局22 误停根因),
+        # 不再被当「点击落空」误停。行缺失 → executed=None,退回 W494 原语义。
         unit_row = query._spend_unit_row(
             replay_dir, run_id, meta['plane'], meta['round'], meta['seq'])
         executed = None
@@ -1740,6 +1756,16 @@ class PrepDirector(SrOperation):
                 'refresh_attempted': unit_row.get('refresh_attempted'),
                 'refresh_board_changed': unit_row.get('refresh_board_changed'),
             }
+        plan_actions = plan_row.get('actions') or []
+        gold_open = plan_row.get('gold')
+        # 关店金解析(query.resolve_unit_gold_close 单一源,与离线视图同口径):
+        # 单元行自身 gold_close 优先(身份键完整、每单元必写);旧行无该字段
+        # 才回退冲突行 join。读失败以 None 形态进入分类器 → unknown 不停。
+        import datetime as _dt
+        gold_close = query.resolve_unit_gold_close(
+            unit_row, query._read_conflict_gold_delta(replay_dir),
+            meta['plane'], meta['round'],
+            _dt.datetime.now().isoformat(timespec='seconds'))
         if not exec_fail_should_stop(plan_actions, gold_open, gold_close,
                                      boundary=boundary, executed=executed):
             return

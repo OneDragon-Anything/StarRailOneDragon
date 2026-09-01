@@ -413,6 +413,15 @@ class OutcomeRecord:
     killed: bool | None = None
     progress_delta: int | None = None   # 结算屏「挑战进度 ±N」(2026-08-18:胜负+扣血真值,输轮也记)
     streak: int | None = None           # 连胜/连败带符号(r68:RoundOutcome 有此字段但序列化丢弃 → 补)
+    # —— 结算三项遥测(SETTLE_OCR_DESIGN §3;镜像 cw_performance.RoundOutcome 同名字段)——
+    # progress_fill_ratio:挑战进度条填充率 [0,1](幅度绝对值;±N 在 progress_delta);
+    # damage_base/damage_unfinished_progress:掉血说明 tooltip 两分量(tooltip 进页瞬态,
+    # miss=None=删失显式可辨);damage_breakdown_visible:tooltip 在场与否(区分
+    # 「不在场」vs「在场解析失败」)。旧记录缺字段,读取端 .get 容忍。
+    progress_fill_ratio: float | None = None
+    damage_base: int | None = None
+    damage_unfinished_progress: int | None = None
+    damage_breakdown_visible: bool = False
     # —— r339 板深快照(板深→胜率模型校准数据源;复盘发现 sim
     # 天花板 8%>=60 vs 实机 3/3 达标的矛盾根因=模型缺板深机制,
     # 而逐轮板面×掉血对就是拟合数据):战前板面+上阵深度。
@@ -538,7 +547,7 @@ class SpendUnitRecord:
     run_id: str = ""
     plane: int = 0
     round_num: int = 0
-    unit_seq: int = 0               # 本局单元序(1 起;director run() 重入清零)
+    unit_seq: int = 0               # 轮内单元序(1 起;按 (plane,round) 键重计,run() 重入不清——同轮多单元恒递增)
     boundary: str = "closed"        # closed=执行返回 / failed=执行返回但未进展 / aborted=执行抛异常
     progressed: bool = False        # executor.execute 的进展判定
     duration_s: float = 0.0         # execute 耗时(秒)

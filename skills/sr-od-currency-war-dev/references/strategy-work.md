@@ -2,6 +2,7 @@
 
 > CW skill 的策略专属说明。读者 = 智能体。入口:SKILL.md 分诊表「策略工作」行。
 > **本文只记录两件事**:怎么修改策略(§1 策略是什么与骨架 / §2 改前 / §3 开关落地 / §5 锁纪律);怎么验收效果(§4 验证阶梯 / §5 单帧锁)。玩法知识在 game docs,sim 用法在 sim-testing,判读流程在 telemetry-reading,单局复盘在 match-review——不归本文。
+> **改任何 λ_death/危险信号/战力建模相关内容前,必先读 [lambda-risk-philosophy.md](lambda-risk-philosophy.md)**(核心观点+指针;全文=docs/develop/currency_war/lambda-risk-philosophy.md)。
 
 ## 1. 策略是什么
 

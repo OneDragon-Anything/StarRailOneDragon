@@ -618,6 +618,19 @@ class CurrencyWarRunLoop(SrOperation):
                     _obs.progress_delta = _pg1
                     log.info('[cw-loop] progress 合并(第一页暂存):%s', _pg1)
                 self._settle_page1_progress = None
+            # 结算三项遥测页1 暂存合并(同上 progress 合并法):页1 帧是三项真值页
+            # ——离线对帧实证(window_batch 回放)页2 帧的进度条首帧可能是上一状态
+            # 的过渡值(满条残影,窗内 0.98→0.17 两帧反转实锤)→ 暂存值**优先于**
+            # 页2 同帧读数(与 progress 的「只填 None」相反);tooltip 页1 捕获值
+            # 同理。用后清(下轮新值)。
+            _st1 = getattr(self, '_settle_page1_settle', None)
+            if _st1:
+                for _k in ('progress_fill_ratio', 'damage_base', 'damage_unfinished_progress'):
+                    if _st1.get(_k) is not None:
+                        setattr(_obs, _k, _st1[_k])
+                if _st1.get('damage_breakdown_visible'):
+                    _obs.damage_breakdown_visible = True
+            self._settle_page1_settle = None
             if not telemetry_only:
                 self.ctx.cw_match.strategy.on_round_end(
                     GameState(), _session, self._cw_config, _obs)
@@ -1366,6 +1379,12 @@ class CurrencyWarRunLoop(SrOperation):
             # 假 win 守卫(M70 事故):见过战败结算屏的 run 绝不判 win(即使 last_state.plane
             # 因 OCR 毒化显示 3)。
             self._saw_defeat_settlement = True
+            # 临时采集钩子(败局链帧,C4 战败布局缺口——跑局批实证局3 的 2-3/2-4 败局
+            # 结算零 h_ 帧:钩子原只挂分支2/3,失败链不走;采集完成后随钩子族一起删)
+            from sr_od.application.currency_war.operations.settle_collect_hooks import (
+                settle_frame_collect,
+            )
+            settle_frame_collect(screen)
             # 败局 outcome 补录(1f 是失败结算页主通道,此前从不落行;见
             # _record_loss_page 根因注)。翻页前记,同屏指纹防重。
             self._record_loss_page(screen)
@@ -1405,6 +1424,11 @@ class CurrencyWarRunLoop(SrOperation):
         # 2. 点击空白加速 / 点击空白处继续 → 点空白
         if (self.round_by_ocr(screen, '点击空白加速').is_success
                 or self.round_by_ocr(screen, '点击空白处继续').is_success):
+            # 临时采集钩子(同分支3:C1/C2 需要页1 动画页时序帧,清单完成后一并删)
+            from sr_od.application.currency_war.operations.settle_collect_hooks import (
+                settle_frame_collect,
+            )
+            settle_frame_collect(screen)
             # r68 结算第一页暂存(progress 真值页):「挑战进度 ±N」只在第一页(点击空白加速
             # 帧);outcome 记录在第二页(按钮-继续挑战帧) → 第一页 progress 丢失(r135318
             # 实证 outcome 全 progress=None 而屏上有 +2)。此处读出暂存,分支3 记录时合并。
@@ -1417,10 +1441,35 @@ class CurrencyWarRunLoop(SrOperation):
                 _pg1 = parse_settlement_progress(_texts1)
                 if _pg1 is not None:
                     self._settle_page1_progress = _pg1
+                # 结算三项遥测页1 暂存(SETTLE_OCR_DESIGN §1.5):掉血说明 tooltip 是
+                # 进页瞬态子件(2s 后 0 命中),页1 帧 = 唯一捕获窗口;胜轮 outcome 记录
+                # 在页2(tooltip 已离屏)→ 此处读出暂存,记录时合并(同 progress 合并法)。
+                # 进度条填充率同帧读(条在页1 顶部,页2 帧大多读不到)。best-effort:
+                # miss 字段不覆盖已暂存值(同轮多帧连读取首个非 None)。
+                from sr_od.application.currency_war.obs.cw_settlement_obs import (
+                    parse_progress_fill_ratio,
+                    read_settle_damage_breakdown,
+                )
+                _st = read_settle_damage_breakdown(self.ctx, screen)
+                _fr = parse_progress_fill_ratio(screen)
+                _stash = getattr(self, '_settle_page1_settle', None) or {}
+                for _k, _v in (('damage_base', _st['damage_base']),
+                               ('damage_unfinished_progress', _st['damage_unfinished_progress']),
+                               ('progress_fill_ratio', _fr)):
+                    if _stash.get(_k) is None and _v is not None:
+                        _stash[_k] = _v
+                if _st['visible']:
+                    _stash['damage_breakdown_visible'] = True
+                self._settle_page1_settle = _stash
             except Exception:   # noqa: BLE001  暂存 best-effort
                 pass
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
-            return self.round_wait(wait=1.5)
+            # wait=1.5→0.8(实机效率批,跑局批报告 REAL_MACHINE_COLLECTION_1.md ⑥):
+            # 本分支点空白 = 跳过页1 动画/强敌来袭横幅/位面过渡,游戏在 ~1s 内
+            # 翻到下一静态页;点空白本身幂等(过渡半开帧多点一次无害),短 wait
+            # 只让 loop 早一轮识别下一页。每场战斗结算链 ~2 次命中(页1+横幅),
+            # 每局 ~9 场合计省 ~12-15s,零决策面改动。
+            return self.round_wait(wait=0.8)
 
         # 3. 挑战成功/结束 → P1.5 结算屏读 hp(on_round_end 观测回路)→ 继续挑战
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
@@ -1428,6 +1477,11 @@ class CurrencyWarRunLoop(SrOperation):
             # 结束的可判事件。「战斗结束→备战画面」切段用它做起点,备战 gate 的
             # 「备战相位进入」日志做终点——screen_flow_timing.md ①尾部从此可切。
             log.info('[cw-loop][battle_end] 结算屏首见(战斗结束锚点)')
+            # 临时采集钩子(C1-C6 结算屏时序帧,清单完成后删整段,含 settle_collect_hooks.py)
+            from sr_od.application.currency_war.operations.settle_collect_hooks import (
+                settle_frame_collect,
+            )
+            settle_frame_collect(screen)
             self._record_round_outcome(screen)  # P1.5: 结算屏(挑战成功)→ read_round_outcome → on_round_end
             # C-1(r2 review,2026-08-16):计数锚点 = 新结算帧(非命中帧)——结算屏点击不生效循环 k 轮时,
             # 旧行为每轮 +1 → rounds_done 虚增 → max_rounds=N>1 时提前停备战。改:同屏指纹(结果文本行)
@@ -1459,11 +1513,13 @@ class CurrencyWarRunLoop(SrOperation):
                 # ⚠️ 场景切换过渡等待(用户 2026-08-16 实证):结算→下一场景时**备战先渲染、
                 # 事件 overlay(投资策略/遭遇等)后弹出**(M47 22:34:43 帧同屏并存实锤)——旧
                 # wait=2 时 loop 可能在 overlay 半开帧进备战分支动手(点球乱操作)。
-                # wait=3→1.5(实机效率批 w781):半开帧防护主防线 = 备战分支双锚 +
-                # PREP_SETTLE_S 3s 稳定门 + 0e 系分支前置,本 wait 只是首拍缓冲;
-                # overlay 若已弹,0e 分支先于备战分支接管,语义不变。
-                return self.round_wait(wait=1.5)
-            return self.round_wait(wait=1.5)
+                # wait=3→1.5(实机效率批 w781)→1.0(实机效率批,跑局批报告 ⑥):半开帧
+                # 防护主防线 = 备战分支双锚 + PREP_SETTLE_S 3s 稳定门 + 0e 系分支前置,
+                # 本 wait 只是首拍缓冲;overlay 若已弹,0e 分支先于备战分支接管,语义不变。
+                # 点击未生效路径(下方 return)同步核减:settle_stay 计数靠轮次累计,
+                # 早一轮重试 = 早一轮触发长按兜底。
+                return self.round_wait(wait=1.0)
+            return self.round_wait(wait=1.0)
         self._settle_stay = 0   # 离开结算屏重置
 
         # 3b. 对局结束结算(前往结算→下一页→返回货币战争)→ 逐页点回大厅。结算"前进"按钮恒在底部中央。
@@ -1489,6 +1545,13 @@ class CurrencyWarRunLoop(SrOperation):
                     self._last_outcome_hp = 0
                     self._saw_defeat_settlement = True
                     log.info('[cw-loop] 战败结算屏 → hp=0 补录 outcomes 真值源')
+                # 临时采集钩子(败局终局链帧,C4 缺口——团灭后「挑战失败」多页链原
+                # 无钩子(局3 h_067 后断流实证);每页点前采一帧,采集完成后随钩子
+                # 族一起删)
+                from sr_od.application.currency_war.operations.settle_collect_hooks import (
+                    settle_frame_collect,
+                )
+                settle_frame_collect(screen)
                 self.ctx.controller.click(CurrencyWarRunLoop.SETTLEMENT_NEXT)
                 # 光标 parking(审计 R6):点击点正落在「下一页」文本框内,多页结算每页按钮同带
                 # → 光标压当页按钮文字 → OCR miss → unknown streak 停机。点完 park。
@@ -1563,7 +1626,9 @@ class CurrencyWarRunLoop(SrOperation):
         if (self.round_by_ocr(screen, '总伤害').is_success   # 缺帧待采:现存归档帧(win/ended/位面过渡/settlement_damage)均未见「总伤害」label,无法离线建档;已有 标识-数据统计 area 兜底该分支
                 or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
             self.ctx.controller.click(CurrencyWarRunLoop.BLANK.center)
-            return self.round_wait(wait=1.5)
+            # wait=1.5→1.0(实机效率批,跑局批报告 ⑥):与分支 2 同语义——点空白
+            # 幂等,静态统计页早一轮重识别无风险。
+            return self.round_wait(wait=1.0)
         # 兜底(M43-resume 修复 2026-08-16):所有分支不命中 → 停机钩子(streak 累计/保画面停机)。
         # 此前钩子代码被 _allocator_update 插错位置卷进方法体(从未执行)→ loop 隐式返 None。
         return self._handle_unknown_fallback()
