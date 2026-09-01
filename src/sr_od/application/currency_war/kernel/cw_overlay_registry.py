@@ -3,16 +3,14 @@
 每个 overlay 一条 :class:`OverlaySpec` 声明(识别锚/语义类/退场动作/派发序),
 五个消费面(P0 清场 / director bail / battle_loop 派发 / 退出恢复链 /
 UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要手工同步多处」的
-结构性缺口(ADR-0269 病灶;设计单一源 = 设计收口终版五条定案,
-.debug/temp/currency_war/w884_overlay_p2_final/DESIGN_FINAL.md)。
+结构性缺口(ADR-0269 病灶;设计单一源 = 设计收口终版五条定案)。
 
-**当前交付态(Phase 2 子批 1-2 + B 面 + A 面)**:注册表 + 一致性断言就绪;
+**切换状态**:注册表 + 一致性断言就绪;
 B 面(director bail 扫描,prep_director 事件 overlay 检测)已切换为消费
 ``derive_decision()``;A 面(P0 清场)已切换为消费 ``derive_clearable()``
 (桥接点 = ``cw_observation_gate.ENTRY_OVERLAY_CLOSE``,派生映射,消费循环
-未变);其余消费面(battle_loop 分支 / 退出链)尚未切换,C/D 逐面切换归
-子批 5/6。全部切换完成前,本表对未切换面是「声明 + 锁」,不是运行时唯一
-判定源。
+未变);其余消费面(battle_loop 分支 / 退出链)尚未切换。全部切换完成前,
+本表对未切换面是「声明 + 锁」,不是运行时唯一判定源。
 
 C1 红线(机器化于测试仓 ``test_cw_overlay_registry.py``):
 ``semantic='decision'`` ⇒ ``closable is False``——关闭即丢决策内容的交互
@@ -65,7 +63,7 @@ class OverlaySpec:
     # ── 语义 ──
     # 'decision' | 'display' | 'system'(SEMANTIC_* 常量)
     semantic: str
-    # 第二锚(可选;双锚防误派,0a0/0a3 经验;非空 = 同帧双命中才派发)
+    # 第二锚(可选;双锚防误派;非空 = 同帧双命中才派发)
     anchor_area_alt: str = ''
     # 专属 handler 类名;decision 恒非空;'' = 无(清场/兜底消化)
     handler_id: str = ''
@@ -79,16 +77,15 @@ class OverlaySpec:
     # close_action='point' 时必填(1080p 界内,一致性测试校验)
     close_point: tuple[int, int] | None = None
     # ── 派发与计数 ──
-    # C 面派发优先序(全表唯一,一致性测试断言;值 = 迁移时 battle_loop
-    # 0 系分支注释序转数据,非 C 面消费的 gate/退局-only 条目排在所有
-    # 分支条目之后)
+    # C 面派发优先序(全表唯一,一致性测试断言;非 C 面消费的 gate/退局-only
+    # 条目排在所有分支条目之后)
     dispatch_priority: int = 0
     # 恢复/退局面动作:'esc'|'back_button'|'handle'|'close'(RECOVERY_* 常量)
     recovery_exit: str = RECOVERY_CLOSE
     # director bail 同因键后缀('事件overlay:' 前缀由消费方拼;decision 类
     # 必填且全表唯一,一致性测试断言)
     bail_tag: str = ''
-    # 未建档条目 = False(0e3/0f modal 待 Phase 2 子批 0 实机建档后置 True
+    # 未建档条目 = False(实机建档后置 True
     # 并补 screen_name/anchor_area 终值);False 条目不参与任何派生
     # (UPPER_SCREENS/清场集/bail 扫描集),一致性测试豁免其建档断言
     active: bool = True
@@ -115,7 +112,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         handler_id='HandleWishTrial',
         close_action=CLOSE_ACTION_HANDLE,
         # 派发序:必须在道具详情(19,未激活)之前——祈愿选项名含「聘用书」,
-        # 曾被道具详情分支截胡(r31 死循环实锤);序提前后负条件即不需要
+        # 曾被道具详情分支截胡(实机死循环实锤);序提前后负条件即不需要
         dispatch_priority=11,
         recovery_exit=RECOVERY_HANDLE,
         bail_tag='wish_trial',
@@ -251,9 +248,9 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     ),
     # 星徽秘典弹窗:decision 化(设计定案 5)——有选卡价值(0i 阵营匹配选卡),
     # 「关闭即丢决策内容」;closable=False ⇒ 不在清场派生集(环入口不再
-    # 一键关,改由 0i 选卡消化;行为断言门随 A 面切换批落地)。
-    # handler_id 待 C 面切换把 0i ``_handle_star_tome_pick`` 收拢为
-    # HandleStarTome 类(挂账见 PENDING_HANDLER_IDS)。
+    # 一键关,改由 0i 选卡消化)。
+    # handler_id 挂账:battle_loop 0i ``_handle_star_tome_pick`` 收拢为
+    # HandleStarTome 类前不可 import(见 PENDING_HANDLER_IDS)。
     OverlaySpec(
         screen_name='货币战争-星徽秘典弹窗',
         anchor_area='标识-星徽秘典',
@@ -279,8 +276,6 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 「返回备战界面」一键离场,改走 bail → RunSupplyNode 消化(与星徽
     # 秘典同型「严格不劣」论证:少丢一次补给选择;RunSupplyNode._in_node
     # = 标识-补给阶段 area 命中,覆盖非节点期弹出场景)。
-    # ⚠️ 注册表化相对迁移前手写清场表的两处清场集成员变化之一
-    # (另一处 = 星徽秘典,设计定案 5 明示),A 面切换批行为断言门锁定。
     OverlaySpec(
         screen_name='货币战争-补给',
         anchor_area='标识-补给阶段',
@@ -302,7 +297,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         dispatch_priority=18,
         recovery_exit=RECOVERY_HANDLE,
     ),
-    # ── 未激活条目(active=False,待 Phase 2 子批 0 实机建档)──
+    # ── 未激活条目(active=False,待实机建档)──
     # 道具详情弹窗(聘用书类 modal):现 battle_loop 0e3 裸 OCR 分支;建档后
     # screen_name/anchor_area 取建档终值(id_mark 用独有标题行),判定坍缩
     # 为单 area 锚。派发序必须在祈愿试炼(11)之后(祈愿选项名含「聘用书」)。
@@ -330,7 +325,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     ),
 )
 
-#: handler 收拢挂账:C 面切换(子批 3-6)把 battle_loop inline 逻辑收拢为
+#: handler 收拢挂账:battle_loop inline 逻辑收拢为
 #: handler 类前,这些 handler_id 尚不可 import;一致性测试对此集合豁免
 #: handler 存在性断言(集合必须 ⊆ registry 引用集,防挂账集腐化)。
 PENDING_HANDLER_IDS: frozenset[str] = frozenset({'HandleStarTome'})

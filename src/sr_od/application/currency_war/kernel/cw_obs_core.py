@@ -113,8 +113,8 @@ UPPER_SCREENS_NON_OVERLAY: tuple[str, ...] = (
     '货币战争-模式选择',
 )
 
-#: 上层屏名单 = overlay 注册表派生段 + 非 overlay 残余段(成员集与迁移前
-#: 手写常量完全一致;两段拼接使残余屏移到段尾——逐屏判定的布尔结果与
+#: 上层屏名单 = overlay 注册表派生段 + 非 overlay 残余段(两段拼接使残余屏
+#: 移到段尾——逐屏判定的布尔结果与
 #: 顺序无关,行为不变,消费方 is_prep_like_frame 零改动。防回归断言
 #: 「常量 = 派生值」在测试仓 test_cw_overlay_registry.py)。
 #: **逐个**判定,不能把名单与备战屏合并成一次 get_match_screen_name
@@ -132,14 +132,14 @@ _GOLD_INFO_ANCHOR_TEXT: str = '金币说明'
 
 def is_prep_like_frame(ctx: SrContext, screen: MatLike) -> bool:
     """帧态判据(ADR-0269 两段式):**先**遍历 ``UPPER_SCREENS`` 逐屏
-    get_match_screen_name,任一命中 → False(上层画面在场 = 非备战帧,局72
-    伙伴误拖实锤:上层不排除时选择伙伴帧被放行);**全部未命中后**再判
+    get_match_screen_name,任一命中 → False(上层画面在场 = 非备战帧;
+    上层不排除时曾发生选择伙伴帧被放行误拖实锤);**全部未命中后**再判
     备战/开商店双屏(id_mark 体系,框架 screen_utils)→ True;过渡帧/结算/
     事件/动画帧 → False。
 
     用途:**采集·停机钩子自检**——埋在 reader 深处的钩子
     (summon/bookcard/layout/star)任何调用路径下先过本判据,
-    过渡帧不触发(防误采/误停;局35 类动画帧实证形态)。
+    过渡帧不触发(防误采/误停;动画帧实证形态)。
     OCR 成本:上层判定与备战判定同帧复用全图 OCR 缓存(crop_first=False),
     对抗报告已证成本可忽略。best-effort:识别异常 → False(保守,不触发钩子)。
     """

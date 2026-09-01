@@ -1,10 +1,8 @@
 """货币战争 过渡配方/引擎阵营 常量单一源。
 
-两份子代理审查(2026-08-23)共同点名的头号双源:
-- 配方四阵营(仙舟/持续伤害/列车同行/护盾)在旧 line_strategy
-  (ADR-0336 已删)是函数局部 set(刷门/判据 ×3 处),
-  deploy_bench 是模块 frozenset(纪律同源);配方基础档一边
-  具名(_RECIPE_BASE=5)一边字面;
+收敛曾经的头号双源:
+- 配方四阵营(仙舟/持续伤害/列车同行/护盾)与配方基础档此前在
+  line_strategy(ADR-0336 已删)与 deploy_bench 两处各写一份;
 - 引擎三阵营(_ENGINE_FACTIONS)手抄两份且可从 BRIDGE_POOL 派生。
 
 本模块 = 单一源;消费方一律 import,不再本地定义。
@@ -17,9 +15,9 @@ from sr_od.application.currency_war.kernel.cw_bridge_pool import (
     BRIDGE_POOL,
 )
 
-# ⚠️ 以下配方常量已迁移(处死计划):权威副本 = knowledge/cw_line_facts
-# (RECIPE_FACTIONS/RECIPE_BASE/recipe_tier);本副本仅为 sim/旧判据未迁消费点
-# 保留,随处死计划收尾 随文件删除;勿新增消费。
+# ⚠️ 迁移挂账(docs/develop/currency_war/redesign/03_legacy_cleanup_plan.md):
+# 权威副本 = knowledge/cw_line_facts(RECIPE_FACTIONS/RECIPE_BASE/recipe_tier);
+# 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 # 过渡配方阵营(基础 3仙舟+2DOT + 渐进 列车/护盾;攻略[20])
 RECIPE_FACTIONS: frozenset[str] = frozenset(
     {'仙舟', '持续伤害', '列车同行', '护盾'})
@@ -30,14 +28,14 @@ ENGINE_FACTIONS: frozenset[str] = frozenset(
     bond for combo in BRIDGE_POOL for bond in combo.engine_bonds)
 
 
-# ⚠️ 已迁移(处死计划):权威副本 = knowledge/cw_line_facts.recipe_tier;
-# 本副本仅为 sim/旧判据未迁消费点保留,随处死计划收尾 随文件删除;勿新增消费。
+# ⚠️ 迁移挂账(同上):权威副本 = knowledge/cw_line_facts.recipe_tier;
+# 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 def recipe_tier(board: dict[str, int]) -> int:
     """板面的配方档数(board 里 ∈ RECIPE_FACTIONS 的档位和)。"""
     return sum(v for k, v in board.items() if k in RECIPE_FACTIONS)
 
 
-# ===== W72(ADR-0333):板面体系集中度度量(新 sim 指标先建后用) =====
+# ===== 板面体系集中度度量(ADR-0333;新 sim 指标先建后用) =====
 # 语义单一源 = user_playstyle [20](过渡是配方不是散买):过渡配方=体系内
 # 加法(DOT2→仙舟3→列车2 混挂→列车4),每步都是配方件不是任意正分件。
 # 本组函数是 sim 过程指标的纯函数原语(输入 board dict,无状态,可单帧锁),
@@ -152,12 +150,12 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
 
     消费方:sim 账本 core_count、Δ池扩核心键先验(按线分桶)。
     跨线不可比:核心定义随 target 切换(桥名单→线 carry),
-    时间序列判读注意换线轮语义突变(审查#6)。
+    时间序列判读注意换线轮语义突变。
     """
     if not target:
         return core_trio_count(board_names)
     line_id = target[3:] if target.startswith('v2:') else target   # 'v2:' 是 3 字符(off-by-one 曾致 izi_train 查空)
-    # 桥池(P1+P2;直接属性访问——审查#3:getattr 链会在改名时
+    # 桥池(P1+P2;直接属性访问——getattr 链会在改名时
     # 静默错路由,AttributeError 即暴露)
     from sr_od.application.currency_war.kernel.cw_bridge_pool import (
         BRIDGE_POOL,
@@ -171,10 +169,10 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
     return core_trio_count(board_names)
 
 
-# ===== P1 阶段目标形态检查点(策略架构反思 B)=====
-# 局38-44 七败的结构性判读:决策系统对「成型进度」无感知、对
+# ===== P1 阶段目标形态检查点 =====
+# 动机(多局七连败的结构性判读):决策系统对「成型进度」无感知、对
 # 「成型 deadline」无响应——各局在不同 seed 下投影出不同表层
-# 卡点(七局七根因=发散信号)。本表 = 缺失的控制变量。
+# 卡点(发散信号)。本表 = 缺失的控制变量。
 # 口径:V4.0 过渡框架(transitions.md §1)+ 用户节奏(user_playstyle
 # [2][12][13]):r3 桥雏形 / r6 配方 5 档 / r8 成型锁方向。
 # ⚠️ 用户点题「不只是看羁绊,要看羁绊里的角色」):
@@ -192,8 +190,8 @@ _P1_FORMATION_ROUND_EDGES: tuple[int, int, int] = (3, 6, 8)
 
 #: 核心三人组(combo_methodology 终版:功能链不可拆;
 # 数据单一源 = 桥池 xianzhou_dot 的 fixed+core 交集)
-# ⚠️ 已迁移(处死计划):权威副本 = knowledge/cw_line_facts._CORE_TRIO;
-# 本副本仅为 sim/旧判据未迁消费点保留,随处死计划收尾 随文件删除;勿新增消费。
+# ⚠️ 迁移挂账(同上):权威副本 = knowledge/cw_line_facts._CORE_TRIO;
+# 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 _CORE_TRIO: frozenset[str] = frozenset({'爻光', '藿藿', '丹恒·饮月'})
 #: 核心池三人组的达标数(到齐=3)
 _CORE_TRIO_TARGET: int = 3
@@ -221,7 +219,7 @@ def p1_formation_target(round_num: int,
 
     ⚠ board_names=None/空集 = tracked 身份 miss(review A 守卫):
     无法判核心在场 → **不折扣**(按纯档位算)——空集打折会把
-    SIFT 全 miss 的局恒判「未成型」(修复前陷阱)。
+    SIFT 全 miss 的局恒判「未成型」。
 
     阶段判据(V4.0 过渡节奏 + 核心角色维):
     - r≤3(bridge2):桥雏形 = 板面引擎阵营中 ≥2 档的阵营数 ≥2;

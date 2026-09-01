@@ -54,7 +54,7 @@ class OpenBox(PrepAction):
 class OpenTome(PrepAction):
     """开秘密典籍(点槽两次:选中→开启 → 弹星徽四选一;开典籍即腾席+loop 0i 接管选卡)。
 
-    2026-08-16 M45 建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
+    建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
     选卡决策在 loop 0i handler(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
     """
     slot: int | None = None
@@ -130,9 +130,9 @@ PREP_ACTION_TYPES: tuple = (
     EnsureShopOpen, EnsureShopClosed, StartBattle,
     RunBuyPhase, RunDeploy, RunEquip,
 )
-# ⚠️ OpenTome 曾遗漏于此(fc888bc1 加动作时漏登记)——validate 拒「未知动作
-# 类型」→ OpenTome 从未真正执行(M55 414 次全是 F3 拒绝非执行失败)。教训:**新增 PrepAction
-# 必须同步登记本白名单**(F3 校验是最后防线,登记是入口门)。
+# ⚠️ 教训:**新增 PrepAction 必须同步登记本白名单**——漏登记时 validate 拒
+# 「未知动作类型」,动作从未真正执行(OpenTome 曾漏登记,数百次 F3 拒绝
+# 被误读为执行失败;F3 校验是最后防线,登记是入口门)。
 
 
 def action_key(action: PrepAction) -> str:
@@ -161,7 +161,7 @@ class PrepObservation:
     """
     state: GameState | None = None        # heavy 重读;gold 仅 shop_open 时可信
     state_gold_trusted: bool = False      # state.gold 是否可信(= heavy 时 shop 开)
-    # r333(批次3):子态可读性(observe_full 产出;heavy 刷新/
+    # 子态可读性(observe_full 产出;heavy 刷新/
     # light 沿用)——node_seq/shop_cards 本帧是否可读(按子态
     # 尽力读,跨步拼装全面性)。
     substate: dict = field(default_factory=dict)
@@ -180,7 +180,7 @@ class PrepObservation:
     back_size: int = 6
     overlay_state: str | None = None    # P5
     # 事件 overlay 检测(盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即 BailToOuter
-    # 交外环分支 handler;live 2026-08-15 实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
+    # 交外环分支 handler;实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
     event_overlay: str | None = None
     overlay_options: list | None = None # P5
     shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)

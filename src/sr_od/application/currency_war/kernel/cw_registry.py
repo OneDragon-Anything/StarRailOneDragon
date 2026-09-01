@@ -24,7 +24,7 @@ kernel 与 decision_v2 必须共享**同一** registry 实例(A/B 注入契约:�
 成对修正使 P1 出口金约 +6.6 金/局(无反馈静态重放量化)——凡以 sim
 经济轨迹为输入的历史门结论(典型:粗模型 vs Δ池的 P2 进场率差恰在
 门界、零余量的门 1a)在新口径下须 regate(修正口径重跑基线臂)后才能
-引用;本批只落码不改判据,regate 与基线重锚一并挂账待执行。
+引用;regate 与基线重锚一并挂账待执行。
 """
 from __future__ import annotations
 
@@ -82,7 +82,6 @@ class DecisionV2Registry:
     #: core2≥1 进场率 +20.67pp 显著;守卫全净(真破息 +0.33pp 不显著/
     #: hp0 −2.0pp 不显著/bench 满帧占比不升/出口金不降);差一张桶
     #: −6.86pp 方向对不显著(桶主体由 ②生成通道与 EV 约束链共同消化)。
-    #: **默认开**;False=回退非正分拒(代码留作回退通道)。
     #: **默认开**;False=回退非正分拒(代码留作回退通道)。
     merge_completion_exempt: bool = True
     #: [31] 凑档降级的成本带上限(1-2 费=P1 过渡带)
@@ -289,7 +288,7 @@ class DecisionV2Registry:
     phase_fallback_min_engines: int = 2
     #: FORM 相位地板=保险丝(迁移审计 w113(git 历史) Q1 已裁决:决策器=EV 授权,FORM_FLOOR
     #: 只防收益端估乐观时花光本金;初值 20=沿用应急保底语义,**Q1 四档
-    #: sim 对照(不设/10/20/30)待校准,本批只接线不标定**)
+    #: sim 对照(不设/10/20/30)待校准**)
     form_floor: int = 20
     #: boss 破息窗 node_type 缺读兜底轮(迁移审计 w119(git 历史)/ADR-0347 统一口径:
     #: boss 窗主判据=节点图 node_type∈boss_round_node_types,轮数口径
@@ -400,8 +399,7 @@ class DecisionV2Registry:
     #: 账方向上调」的方向修正,量级未标定,不得引用「P2 胜率≈0」类
     #: 论证抬升(损失侧条件口径必须配同 regime 胜率,P15 精神)。
     #: encounter 16.67(n=3 样本极小不采)/boss 桶零样本(沿用 26.71)
-    #: 不进本标量;普通战斗为 P2 主导节点型。旧值 16.0 系实测带拍值,
-    #: 无标定依据,已重校。
+    #: 不进本标量;普通战斗为 P2 主导节点型。
     vd_p2_loss: float = 20.05
     #: P2 穿 50 段回档轮上界(P11 成本侧:P2 收入 13-19/轮 → 回档 ≤2.31 轮;
     #: C_dec 的 Δinterest × min(R, 此值))
@@ -741,20 +739,17 @@ class DecisionV2Registry:
     #: 的定向找件是 V_D 的本体场景,不再需要独立常量通道))
 
     # ===== `w227_handoff_gate/`/ADR-0400 P1 末窗承接门(设计件 08 §4.2 Phase 1)=====
-    #: ADR-0411 flag 家族清理(2026-09-03):承接门自本批起**无条件启用**
-    #: ——历史 handoff_gate_enabled 布尔字段删除。验证史:`w247_joint_full/`/迁移审计 w254(git 历史)-R
-    #: 两轮复核 gate 单开 outcome 无正方向(迁移审计 w254(git 历史) 判边际为负),但门是
-    #: star/refresh 两通道授权的判据语境(gap 单一源),行为面随其一并
-    #: 转正;裁决与四通道验证结论单一源 = ADR-0411。
+    #: 承接门无条件启用(历史 handoff_gate_enabled 布尔字段已删;裁决与
+    #: 四通道验证结论单一源 = ADR-0411):门是 star/refresh 两通道授权的
+    #: 判据语境(gap 单一源),行为面随其一并转正。
     #: 行为语义:P1 末窗(r>=handoff_gate_min_round)投影承接档位
     #: (handoff.handoff_gate_gap 单一源)未达标:①成型停手线不停手
     #: (filters.formed_stop_active 承接维,[18] 位面末 ALL IN 的承接
     #: 扩展);②interest_rule 买侧破息 EV 账加缺口项
     #: (handoff_ev_gap_bonus×缺口)。只辖 P1 末窗(P1 非末窗零漂移
     #: 门的结构前提)。量级常量保留供调优。
-    #: 末窗下界。原初值 8 口径=`w227_handoff_gate/`/ADR-0400「P1 r8-r9(boss 窗)」。
-    #: **`w288_gate_landing/`/ADR-0418 前移 8→6**(`w275_knob_ab/` 三映射兑换:「方向对、量级待
-    #: 实机定标」类常量调整):合资格授权窗加宽到 {r6..r9},承接门家族
+    #: 末窗下界(前移裁决=`w288_gate_landing/`/ADR-0418):合资格授权窗
+    #: {r6..r9},承接门家族
     #: (filters 成型停手承接维/arbiter 缺口项/candidates 副本放行/M-A
     #: 定向刷新窗)整体提前点火。证据链(`w275_knob_ab/` 四臂配对 AB,n=200,v11
     #: 冻结池 7af81977 同 seed):core2≥1 进场率 12.17%→18.85%(配对
@@ -778,9 +773,8 @@ class DecisionV2Registry:
     handoff_ev_gap_bonus: float = 5.0
 
     # ===== 迁移审计 w238(git 历史)/ADR-0403 承接门 hp 维 boss 投影(设计件 09 §3.1)=====
-    #: ADR-0411 flag 家族清理:投影自本批起**无条件启用**——历史
-    #: handoff_boss_project 布尔字段删除(曾默认关:迁移审计 w238(git 历史) 三臂 A/B 后
-    #: 未解锁;转正裁决见 ADR-0411——量级问题非行为开关)。语义:
+    #: 投影无条件启用(历史 handoff_boss_project 布尔字段已删;转正裁决
+    #: 见 ADR-0411——量级问题非行为开关)。语义:
     #: handoff_gate_gap 末窗投影的 hp 维由「当前 hp(boss 前)」换
     #: 「boss 后投影 hp」:
     #: hp_proj = hp + 2(r8 奖励胜,设计件 09 §1.1 五局恒 +2) −
@@ -825,11 +819,10 @@ class DecisionV2Registry:
 
     # ===== `w242_star_directed/`/ADR-0405 末窗星级定向授权(`w232_filler_star/` 挂账 C 项;设计件 08
     # §4.2 Phase 1b 星级投资方向)=====
-    #: ADR-0411 flag 家族清理:末窗星级定向授权自本批起**无条件启用**
-    #: ——历史 handoff_star_directed 布尔字段删除。验证史:`w242_star_directed/` 四臂
-    #: A/B 行为面强正(core2≥1 进场率 +150%)但单独不改变结局;转正
-    #: 依据 = star 是 `w231_star_diag/`「评分结构性拒副本」病灶的正解且 sim 无挤出
-    #: (量级不足属参数调优非行为开关,裁决见 ADR-0411)。行为语义:
+    #: 末窗星级定向授权无条件启用(历史 handoff_star_directed 布尔字段
+    #: 已删):依据 = star 是 `w231_star_diag/`「评分结构性拒副本」病灶的
+    #: 正解且 sim 无挤出(量级不足属参数调优非行为开关,裁决见
+    #: ADR-0411)。行为语义:
     #: P1 末窗(r>=handoff_gate_min_round)承接缺口 gap>=1
     #: (handoff.handoff_gate_gap 单一源)对**同名副本买入**给定向授权
     #: ——candidates 层放行副本候选生成(r410 守卫+方向门,`w232_filler_star/` A/B
@@ -839,11 +832,10 @@ class DecisionV2Registry:
     #: 防双计)**;地板族/copies_cap/r408 同轮守卫/bench 容量照常辖。
 
     # ===== `w252_ma_directed_refresh/`/ADR-0409 M-A 定向 D 牌授权窗(`w249_core2_reach/` 诊断修法)=====
-    #: ADR-0411 flag 家族清理:M-A 定向刷新自本批起**无条件启用**
-    #: ——历史 handoff_refresh_directed 布尔字段删除。验证史:`w252_ma_directed_refresh/`
-    #: 三臂 AB merges +47%/hp0 改善但 cap6≈半跳量级;转正依据 = M-A
-    #: 是 `w249_core2_reach/`「策略从不支付搜索成本」病灶的对症修法且方向为正
-    #: (量的解锁归 cap 提升独立批,裁决见 ADR-0411)。行为语义:P1
+    #: M-A 定向刷新无条件启用(历史 handoff_refresh_directed 布尔字段
+    #: 已删):依据 = M-A 是 `w249_core2_reach/`「策略从不支付搜索成本」
+    #: 病灶的对症修法且方向为正(量的解锁归 cap 提升独立批,裁决见
+    #: ADR-0411)。行为语义:P1
     #: 末窗承接缺口 gap>0(handoff.handoff_gate_gap 单一源复用)**且**
     #: 存在追名 peak≥2 的目标件(锁定采购目标名集内某名 star 加权在
     #: 手副本 ∈[2,3),距 3合1 只差最后一张)时,向刷新(RefreshShop)
@@ -1045,7 +1037,7 @@ class DecisionV2Registry:
     #: **开臂 A/B 判据挂账(不执行)**:按 `w371_recal_attack/` M4 口径——姿态面为主
     #(P2 生存/濒死带时长/换线拦截率过程指标),n=300/臂(合计 600)
     #: 之前不允许率差当主判据;姿态面过才翻 True。
-    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进sim A/B 批 sim A/B 批,与
+    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进 sim A/B 批,与
     #: line_switch_survival_gate_enabled 同臂组(2×2 正交或分臂,由sim A/B 批
     #: 任务书定);姿态面不过 → 删码留 ADR。
     rounds_two_state_enabled: bool = False
@@ -1148,7 +1140,7 @@ class DecisionV2Registry:
     #: 成本侧账独立成立),其开臂由两臂 A/B「基线 vs C1 本体」对照独立
     #: 裁决(判据=出口 hp 与 boss 胜率不降+删因逐笔可复算,事前预写见
     #: ADR-0443 Decision 3),不因破息否决受波及。
-    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进sim A/B 批 sim A/B 批;
+    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进 sim A/B 批;
     #: 不过 → 删码留 ADR-0443。
     c1_directed_spend_enabled: bool = False
 
@@ -1200,7 +1192,7 @@ class DecisionV2Registry:
     realization_direction_enabled: bool = False
     #: D1 腾席选件弱序(W797 并入;修 ADR-0327 选件序输入反):腾席 sell
     #: 统一弱序键补 income(卖出回金+装备残值代理)升序分量——席满
-    #: 腾席取最弱价值件,局 6 p2r7 卖高价值件留 1★ 散件反向消失。
+    #: 腾席取最弱价值件(实机局实证:曾卖高价值件留 1★ 散件,反向消失)。
     realization_d1_enabled: bool = False
     #: D2 跨位面入口帧转化授权(W797 并入;辖域协调:窗口判定归本设计、
     #: 分配账式复用 ADR-0474 死亡窗分配器(不造第二分配器)、报警源
@@ -1361,7 +1353,7 @@ class DecisionV2Registry:
     #: 开臂判据挂账(不执行):sim 同池 A/B n≥300 形态达标率 >0 ∧ 息基
     #: 保住率不劣于基线臂 2pp(判据只收台账可测项);
     #: 验证不过的出口=删码留 ADR-0432。
-    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进sim A/B 批 sim A/B 批,且为本组
+    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进 sim A/B 批,且为本组
     #: **第一个跑**的开关(形态达标率是当期头号缺项,sim 0%/实机 10%);
     #: 不过 → 删码留 ADR-0432。
     recipe_fence_enabled: bool = False
@@ -1430,8 +1422,7 @@ class DecisionV2Registry:
 
     # ===== (spend_receipt_gate_enabled 已删:预算-回执契约无条件生效,
     # ===== 决策 why = ADR-0504;行为面 = decision_v2.posture_release
-    # ===== 三函数。除开关批在飞期该字段曾被并行恢复过一次,本轮按
-    # ===== 终局裁决完成删码,死旋钮不复留。=====
+    # ===== 三函数,死旋钮不复留。=====
 
     # ===== 支出门·买侧收门(W829 v3 设计落码;伞+两子旗标默认关 =
     # 生命周期第 1 态零漂移锚;三轮 A/B 终局定性见 ADR-0499)=====
@@ -1448,8 +1439,7 @@ class DecisionV2Registry:
     #: (= P29 消费同一函数)。
     #: 开臂判据(已执行,ADR-0499):PREREG_v4 三臂判前锁三轮 A/B
     #: (W840/W848)定谳 = 清账门绿 ∧ 传导格三度双败 → 维持关保留
-    #(语义按清账已证+传导归实机锚,禁第四态删码——W851 旧注释
-    #: 「不过走第 4 态」措辞已废)。恢复开臂前置=实机锚量化判据
+    #(语义按清账已证+传导归实机锚,禁第四态删码)。恢复开臂前置=实机锚量化判据
     #: (未定,见 ADR-0499 遗留挂账)。
     spend_gate_enabled: bool = False
     #: D1 息线臂子旗标(G7 归因消融用)
@@ -1457,13 +1447,13 @@ class DecisionV2Registry:
     #: D3 位置臂子旗标(G4 归因消融用)
     spend_gate_bench_enabled: bool = False
 
-    # ===== DirectorV2 备战循环(`w606_stage2_batch3/` 阶段2批③落件;`w620_migration_b1/` 迁移迁移批 1(守卫分区)(守卫分区)升正)=====
-    #: `w620_migration_b1/` 迁移迁移批 1(守卫分区)(守卫分区)(蓝图 §7 迁移迁移批 1(守卫分区)(守卫分区) 行):DirectorV2 接线升正,新环 = 唯一生产
+    # ===== DirectorV2 备战循环(`w606_stage2_batch3/` 阶段2批③落件;`w620_migration_b1/` 迁移批 1(守卫分区)升正)=====
+    #: `w620_migration_b1/` 迁移批 1(守卫分区)(蓝图 §7 迁移批 1(守卫分区) 行):DirectorV2 接线升正,新环 = 唯一生产
     #: 路径——无开关 directive(蓝图 §8),``director_v2_prep_enabled`` 随
     #: 接线完成删除(存在理由消失);回退 = git revert。
     #: 影子比对开关(纯诊断工具,sim/离线对拍用;不改任何游戏动作):
     #: True 时旧环每步 decide 后同帧跑适配器影子决策并逐位对照(异常全
-    #: 隔离计数留证)。采集完成即回 False;旧环随迁移迁移批 3(ADR-0465)(ADR-0465) 退役时生产分支一并删。
+    #: 隔离计数留证)。采集完成即回 False;旧环随迁移批 3(ADR-0465) 退役时生产分支一并删。
     director_v2_shadow_compare: bool = False
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
@@ -1514,8 +1504,8 @@ class DecisionV2Registry:
     # ===== `w607_affix_consumption/` 词缀消费面三开关(`w628_migration_b2/` 清偿)=====
     # 设计单一源=设计件「词缀消费面」(.debug/temp/currency_war/w607_affix_consumption/DESIGN.md
     # §3);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释。
-    # 清偿记录(H1 已物理删字段;H2②/H3 行为无条件化、字段物理删除随迁移迁移批 3(ADR-0465)(ADR-0465)
-    # ——读端在 operations/prep/equip_all.py,该文件迁移迁移批 3(ADR-0465)(ADR-0465) 在飞故本批禁碰,
+    # 清偿记录(H1 已物理删字段;H2②/H3 行为无条件化、字段物理删除随迁移批 3(ADR-0465)
+    # ——读端在 operations/prep/equip_all.py,该文件迁移批 3(ADR-0465) 在飞故本批禁碰,
     # 显式战术权衡,证据归 w628_migration_b2/STATUS):
     #: (H1 line_env_gate_enabled 已删:行为无条件化,cw_intention 锁线信号
     #: 过滤恒在;sim A/B 与单帧锁证据见 w607_affix_consumption/AB_REPORT.md)
@@ -1650,7 +1640,7 @@ class DecisionV2Registry:
     #: 当前无模拟/实机输入,悬置默认关);
     #: ③成型羁绊队开臂前须补验「判非 3 套(红A/万敌单C/反甲白厄)在形单影只局的
     #: 伤害档位方向」——判非理由「羁绊不满也有战力」与词条罚的「伤害倍率出口」不同维,
-    #: 万敌单C方向存疑(死 tag 裁决攻击批形单影只角度)。
+    #: 万敌单C方向存疑(死 tag 裁决形单影只角度)。
     #: ⚠️ 两旗标禁独立开臂:w878_synth_equip_dep_enabled(选型侧 -0.25 降分)与
     #: junk_first_sacrifice_enabled(执行侧牺牲合成防护)是同一机制的两面——选型惩罚叠
     #: 已有防护疑过反应,开臂须两侧联动评审(junk+tag 对照),构造期校验禁选型侧单独开
@@ -1692,8 +1682,8 @@ class DecisionV2Registry:
 
         w878_synth_equip_dep_enabled 禁独立开臂:选型侧 -0.25 降分与执行侧
         junk_first 牺牲合成防护是同一机制(变宝为废)的两面,选型惩罚叠已有防护
-        属未对照的过反应风险——须两侧联动评审后同开(出处 = 死 tag 裁决攻击批
-        旗标交互角度)。junk_first 侧单独开合法(防护先行、选型侧观望)。
+        属未对照的过反应风险——须两侧联动评审后同开(出处 = 死 tag 裁决
+        的旗标交互角度)。junk_first 侧单独开合法(防护先行、选型侧观望)。
         """
         if self.w878_synth_equip_dep_enabled and not self.junk_first_sacrifice_enabled:
             raise ValueError(

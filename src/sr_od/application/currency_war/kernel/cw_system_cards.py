@@ -1,4 +1,4 @@
-"""货币战争 P1 体系卡+组合规则(契约包 C2,步 4 第一批;判断层手编;2026-08-25)。
+"""货币战争 P1 体系卡+组合规则(契约包 C2;判断层手编)。
 
 **单一源**:
 - 教义 = 「P1 体系卡定义」深度研读笔记(体系卡四张/
@@ -7,21 +7,21 @@
 - tier 阈值单一源 = ``cw_factions.FACTIONS``(仙舟 3 档/持续伤害 2 档/列车同行 2 档/
   量子同频 2 档/贝洛伯格 2 档均取 ``tiers[0]``,不在本文件重复硬编码);
 - 铁三角名单 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(爻光+藿藿+丹恒·饮月,
-  W26 测试锚;本文件只 import 不复制)。
+  测试锚;本文件只 import 不复制)。
 
-**契约偏差声明(C2 落地时点)**:
-1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— **已换源
-   (W38,C6 落地,偏差①闭环)**:``_faction_count`` 身份口径改读
-   ``cw_board_by_row.board_by_row(deployed)`` 全板合计视图(全仓按排聚合单一源);
-   判据语义零变化(仍取 max(board OCR, 身份计数));``card_active`` 入口签名
-   保持 ``GameState``(C2 落地批任务规格,BoardByRow 经由内部消费);
-2. C2 伪码返回 ``EngineState`` —— 本批按任务规格返回 ``bool``(缺件审计走
-   ``engine_missing``;EngineState 包装留给 decision_v2 接线批,非本批接口面);
-3. C2 伪码 ``pick_card_combination(cards_state, intent, affixes)`` —— 本批按任务
-   规格直接接 ``GameState``(CardState 在函数内组装后参与打分,类型已建)。
+**契约偏差声明(相对 C2 伪码)**:
+1. C2 伪码签名 ``card_active(card, board_by_row: BoardByRow)`` —— ``_faction_count``
+   身份口径改读
+   ``cw_board_by_row.board_by_row(deployed)`` 全板合计视图(全仓按排聚合单一源;
+   C6 契约);判据语义零变化(仍取 max(board OCR, 身份计数));``card_active`` 入口签名
+   保持 ``GameState``(BoardByRow 经由内部消费);
+2. C2 伪码返回 ``EngineState`` —— 本模块按规格返回 ``bool``(缺件审计走
+   ``engine_missing``;EngineState 包装留给 decision_v2 接线面);
+3. C2 伪码 ``pick_card_combination(cards_state, intent, affixes)`` —— 本模块
+   直接接 ``GameState``(CardState 在函数内组装后参与打分,类型已建)。
 
-消费方(后续批接线):decision_v2/candidates 层1 目标集换源、体系判定(board_rung
-口径重接)、空窗期买门。**本批不接线任何消费点**(纯查询面 + 锁测试)。
+消费方:decision_v2/candidates 层1 目标集换源、体系判定(board_rung
+口径重接)、空窗期买门。
 
 词条吃怕表(数据字段 ``affix_likes``/``affix_fears``):词缀名与
 ``affix_effects_data``/竞品 data 对齐(DOT 吃敌方频动=忍无可忍/同步行动/应激反应,
@@ -39,8 +39,8 @@ from sr_od.application.currency_war.kernel.cw_state import (
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
 
-# 符号解耦(处死计划):铁三角权威副本迁 knowledge/cw_line_facts,
-# 不再依赖 kernel/cw_line_defs(死刑判据文件)
+# 符号解耦:铁三角权威副本在 knowledge/cw_line_facts,
+# 不再依赖 kernel/cw_line_defs(迁移挂账文件)
 from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
 
 # ===== 判据常量(tier 阈值派生自 FACTIONS,单一源)=====
@@ -83,9 +83,8 @@ class SystemCard:
     - ``engine_required``:引擎件(仙舟=铁三角三人;其余空);
     - ``star_goal``:星级目标(仙舟铁三角 2★;希儿 3★;其余不追);
     - ``judge_factions``:判据阵营元组(希儿系双元组=('量子同频','贝洛伯格');
-      其余单元组)——**卡→阵营映射的单一数据源**(W47 统一化:原先在
-      ``_card_factions``/``card_active``/``cw_evolution._CARD_FACTION_TIER``
-      三处各写一遍,加第五张卡要改三处 → 字段化后零散 if 消除);
+      其余单元组)——**卡→阵营映射的单一数据源**(字段化防多处手抄漂移,
+      加卡零改动);
     - ``affix_likes``/``affix_fears``:词条吃怕表(数据字段;输入=
       ``pick_card_combination(affixes=...)`` 的敌方词缀名,逐条命中计数)。
     """
@@ -214,8 +213,8 @@ def _faction_count(state: GameState, faction: str) -> int:
 
     deployed 与 board 应一致(cw_state 头注);单侧 miss(OCR 漏/重建缺身份)时
     取 max 容错——**判激活侧非计费侧**,漏判激活比多判更伤(体系卡是 P1 战力主体)。
-    身份口径 = C6 ``board_by_row`` 全板合计视图(全仓按排聚合单一源,W38 换源
-    闭环契约偏差①;口径与旧内联版逐字一致:CHARACTERS[char_id] 羁绊全集,
+    身份口径 = C6 ``board_by_row`` 全板合计视图(全仓按排聚合单一源;
+    口径:CHARACTERS[char_id] 羁绊全集,
     多羁绊角色每系都计)。
     """
     cnt_board = state.board.get(faction, 0)
@@ -272,7 +271,7 @@ def engine_missing(card: SystemCard, owned: set[str]) -> list[str]:
 def _card_factions(card: SystemCard) -> tuple[str, ...]:
     """该体系卡的判据阵营(希儿系双分支;其余单阵营)。
 
-    W47 统一化:映射本体已字段化为 ``SystemCard.judge_factions``
+    映射本体已字段化为 ``SystemCard.judge_factions``
     (本函数保留为兼容视图,行为=原样返回字段)。
     """
     return card.judge_factions
@@ -281,8 +280,7 @@ def _card_factions(card: SystemCard) -> tuple[str, ...]:
 def engine_char_names() -> frozenset[str]:
     """四体系卡的引擎件名全集(铁三角三人组+希儿;点3 见即买名单)。
 
-    W47 统一化:原 ``decision_v2/discipline.engine_char_names`` 的函数体
-    上移到本模块(注册表旁,单一源);discipline 侧改为 import 本函数,
+    单一源在注册表旁;decision_v2/discipline 侧 import 本函数,
     对外签名/消费点零变化。
     """
     out: set[str] = set()
@@ -294,8 +292,7 @@ def engine_char_names() -> frozenset[str]:
 def system_judge_factions() -> frozenset[str]:
     """体系卡判据阵营并集(仙舟/持续伤害/列车同行/量子同频/贝洛伯格)。
 
-    W47 统一化:``decision_v2/scoring._shop_has_engine_card`` 原手抄这五家
-    阵营(ADR-0301 找件判据),第五张体系卡加入时不传导 → 改读本 helper。
+    五家阵营的单一源(ADR-0301 找件判据等消费;第五张体系卡加入时自动传导)。
     """
     out: set[str] = set()
     for card in SYSTEM_CARDS.values():

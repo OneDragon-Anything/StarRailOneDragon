@@ -1,8 +1,8 @@
-"""备战执行器 PrepDirector(自 prep_director 拆出期望/运行态段后的本体,分包期6)。
+"""备战执行器 PrepDirector:画面执行 / 对账接线 / 商店 obs 依赖面
+(refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
 
-期望态计算与对账纯函数已迁 kernel/cw_prep_expect(共享给 decision);
-exec_fail 停机旗标族迁 run_state;本文件保留画面执行/对账接线/商店
-obs 依赖面(refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
+期望态计算与对账纯函数在 kernel/cw_prep_expect(共享给 decision);
+exec_fail 停机旗标族在 run_state。
 """
 
 from __future__ import annotations
@@ -111,15 +111,13 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
-    """开局帧槽序表的**每位面首帧**写入(ADR-0368,W169)。
+    """开局帧槽序表的**每位面首帧**写入(ADR-0368)。
 
-    旧 write-once 守卫(``not plane_node_table``)使 P1 的 9 槽表整局滞留:
-    生产进 P2 后 7 槽真值永不落盘 → nodes_of_plane / battles_left_p2 /
-    位面日程真值(cw_plane_table.schedule_of;原 DP 期生产 P2 读陈旧 P1 表恒 9 的已知问题随 DP 退役
-    (连表缺回退告警都不发——表「在」但是错的)。修:按
-    ``plane_node_table_plane`` 锚定,位面变更即重写(位面内恒定语义不变,
-    同位面多次 probe 不覆写);同时 append ``plane_lengths_seen``
-    (DP 位面日程真值序列,P3 进表即自适应)。
+    write-once 守卫会使 P1 的 9 槽表整局滞留:进 P2 后 7 槽真值永不落盘 →
+    nodes_of_plane / battles_left_p2 / 位面日程真值(cw_plane_table.schedule_of)
+    全读错(表「在」但是错的)。按 ``plane_node_table_plane`` 锚定,位面变更即
+    重写(位面内恒定语义不变,同位面多次 probe 不覆写);同时 append
+    ``plane_lengths_seen``(位面长度真值序列,P3 进表即自适应)。
 
     返回是否写入(供调用方记日志)。纯 session 写入,无画面依赖,可单测。
     """
@@ -197,7 +195,7 @@ def _save_buy_evidence(evidence_dir: str, file_tag: str, expect: BuyExpect,
 
 
 
-# ===== 商店打开态对账(W564:cw_shop_obs 接线;纯记账+对账,零决策行为变更)=====
+# ===== 商店打开态对账(cw_shop_obs 接线;纯记账+对账,零决策行为变更)=====
 
 #: 台账 surface/kind(商店通道;复现计数按 (surface, kind, expected) 分档)。
 _SHOP_DEFECT_SURFACE = 'shop'
@@ -215,7 +213,7 @@ def _shop_pool_inputs(st: GameState) -> tuple[list[tuple[str, int]], int]:
 
     参评 = 有身份牌 ``(name, cost)``;未识别牌(name 空,SIFT miss 占位,
     cost=0)不进 check_shop_pool——空名+0 费会成 invalid_cost 假票,且
-    「识别失败」已由 W512 置信通道管辖,此处只计数随 refs 披露。
+    「识别失败」已由置信度通道管辖,此处只计数随 refs 披露。
     """
     shop = list(getattr(st, 'shop', None) or [])
     cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
@@ -233,10 +231,10 @@ def _merge_preview_inputs(st: GameState) -> tuple[dict[int, bool], dict[int, boo
       单一源 = merge_mechanics.md §2.7:✦ 数 = 已持同名同星副本份数;商店牌
       恒 1★,star 兜 1)。bench/deployed 取 state(由 session tracked 播种,
       与卡池票同帧一致)。
-    - det:该牌 merge_preview > 0(W600 激活评估定的语义映射;0 是「无副本 ∨
+    - det:该牌 merge_preview > 0(语义映射:0 是「无副本 ∨
       读不到」双义,映射为 False,our_suspect 祇当对账率归因,不逐票判死)。
     - 未识别牌(name 空,SIFT miss)两侧都算不出 → 不进 compare,只计数
-      (同 _shop_pool_inputs 口径:识别失败归 W512 置信通道,此处不评)。
+      (同 _shop_pool_inputs 口径:识别失败归置信度通道,此处不评)。
     """
     our: dict[int, bool] = {}
     det: dict[int, bool] = {}
@@ -261,7 +259,7 @@ def build_refresh_expect(gold: int | None,
                          round_num: int) -> tuple[RefreshExpect, int, int] | None:
     """刷新动作发出点 → 期望增量(纯函数;producer 契约,None 口径单一源)。
 
-    刷价输入契约(W577,ADR-0456):调用方传 ``cw_state.REFRESH_COST_BASE``
+    刷价输入契约(ADR-0456):调用方传 ``cw_state.REFRESH_COST_BASE``
     基价常量——实付恒基价 2,「文本-刷新金币数」rect 是面板徽标(利息数值)
     非刷价,期望=实付,refresh_expect_mismatch 缺陷类随之归零。签名保留
     ``refresh_cost: int | None``:None 仍返回 None 跳过对账(gold 失读同理),
@@ -284,7 +282,7 @@ def build_refresh_expect(gold: int | None,
 def refresh_reconcile_mismatches(expect: RefreshExpect,
                                  gold_after_obs: int | None,
                                  cards_named: int) -> list[dict[str, str]]:
-    """刷新期望 vs 实读对账判据(纯函数;W556 口径:只硬验金差+有牌)。
+    """刷新期望 vs 实读对账判据(纯函数;口径:只硬验金差+有牌)。
 
     - 金腿:``gold_after_obs`` None = 失读不评(宁缺勿造);不等 = 一票
       (期望侧 gold_after 由 build_refresh_expect 保证基于波前现读,
@@ -305,8 +303,8 @@ def refresh_reconcile_mismatches(expect: RefreshExpect,
 
 
 
-#: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:r80 审计 c)实锤
-#: PrepDirector 每备战环重建(battle_loop loop 内构造),实例属性跨环零存活 → 300s 窗
+#: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:PrepDirector 每备战环重建
+#: (battle_loop loop 内构造),实例属性跨环零存活 → 300s 窗
 #: 失效(同 idx 每环各采一张,内容哈希对帧微变不设防)。
 _NODE_ICON_SHOT_TS: dict[int, float] = {}
 
@@ -317,7 +315,7 @@ class PrepDirector(SrOperation):
 
     单「决策环」节点 + 内部 while;环级预算 MAX_STEPS(步数)与 STALL_LIMIT(零进展)
     兜底强制出战(F5);ping-pong 由外环 MAX_ITER=2000 承担(勿引 node_max_retry —— round_wait
-    不消耗 node 重试预算,operation.py:453-461 仅 RETRY 递增;strategy/03(原 doc 15§7) v7 M-1)。
+    不消耗 node 重试预算,operation.py:453-461 仅 RETRY 递增;strategy/03 §7)。
     """
 
     # 环级预算(§7 环级:步数>60 或 stall≥5 且恢复已试尽 → 强制 StartBattle;实跑校准 §10)
@@ -338,13 +336,13 @@ class PrepDirector(SrOperation):
         self._recovery_closed_known: dict[str, bool] = {}   # 恢复时是否关过已知弹层(分型用)
         self._recovery_tried: bool = False          # 本环恢复原语是否已试(强制出战门)
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
-        # light 步沿用的 heavy 缓存(观察分层,review H-1)
+        # light 步沿用的 heavy 缓存(观察分层)
         self._cached_state: GameState | None = None
         self._cached_bench: list[BenchChar] = []
         self._cached_deployed: list[BenchChar] = []
         self._cached_vacancy: int = 0
         self._cached_gold_trusted: bool = False
-        # W494 spend_ledger:购买单元记账态(纯观测;unit_seq 轮内序,
+        # 购买单元记账态(纯观测;unit_seq 轮内序,
         # 按 _spend_unit_key=(plane, round) 重计,见 _spend_unit_open)
         self._spend_unit_seq: int = 0
         self._spend_unit_key: tuple[int, int] | None = None
@@ -357,7 +355,7 @@ class PrepDirector(SrOperation):
         """组装备战观察。heavy=True(环入口 + 每个执行过的游戏动作后):SIFT 身份 + GameState
         + cap 全重读;False(控制流/拒绝步后):只现读轻字段,heavy 字段沿用缓存。
 
-        screen 传入时(r344:gate 末帧)复用该帧不重截——gate 稳定帧的全图 OCR 已
+        screen 传入时(gate 末帧)复用该帧不重截——gate 稳定帧的全图 OCR 已
         按 id(image) 缓存,本方法所有 crop_first=False 读取(id_mark 判定/
         observe_full)全部缓存命中,heavy 观察的 OCR 成本归零;且观察的就是
         「已验证稳定」的那一帧(gate 语义),而非稳定后又隔一拍的帧。
@@ -406,17 +404,16 @@ class PrepDirector(SrOperation):
                              if slot_occupied(screen, int(p.x), int(p.y))}
         # 重:身份/星级/GameState/cap(环入口 + 结构变化 = 每个执行过的游戏动作)
         if heavy:
-            # r331(批次1 收尾:observe_full 接线,终审最大缺口):
             # 可重定位读取(身份/gold==0 重读/substate)进组装层
-            # 单一源;director 保留副作用编排(session 写/审计/
-            # 缓存——单写者原则,批次3 全收敛)。
+            # 单一源(observe_full);director 保留副作用编排(session 写/审计/
+            # 缓存——单写者原则)。
             from sr_od.application.currency_war.obs.cw_observe_full import (
                 observe_full,
             )
             _of = observe_full(self.ctx, screen, tier='heavy',
                                source='director', op=self,
-                               shop_open=obs.shop_open)   # r334:F2 门
-            templates = ensure_portrait_templates(self.ctx)   # M-2:复用单一源(路径+缓存)
+                               shop_open=obs.shop_open)   # F2 门
+            templates = ensure_portrait_templates(self.ctx)   # 复用单一源(路径+缓存)
             if templates is not None:
                 obs.bench_chars = _of.get('bench_chars') or []
                 obs.deployed_chars = _of.get('deployed_chars') or []
@@ -426,7 +423,7 @@ class PrepDirector(SrOperation):
                 obs.deployed_chars = list(self._cached_deployed)
             st = _of['state']
             session = self._session()
-            # r7 review P0-①:shop 关态帧节点行可读 → node_type 真值写 session(商店开态被遮恒 None,
+            # shop 关态帧节点行可读 → node_type 真值写 session(商店开态被遮恒 None,
             # plan 路径 boss 判定全死码的根因);仿 last_hp 模式。
             if session is not None and st.node_type:
                 session.last_node_type = st.node_type
@@ -437,14 +434,13 @@ class PrepDirector(SrOperation):
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
             if not obs.state_gold_trusted:
                 log.debug('[cw][director] heavy 读 state 于 shop 关态 → gold 不可信')
-            # MED-2 gold==0 重读已在 observe_full 内(r331 收敛
-            # 双源:此处不再重复——终审「双源易漏同步」风险)
+            # gold==0 重读已在 observe_full 内(单一源,防双源易漏同步)
             if session is not None:
-                # r333(批次3:单写者语义——hp 双源收口):写
+                # 单写者语义(hp 双源收口):写
                 # last_state 前过 gated_hp(与 shop.py 同门同
-                # 单源 helper)——修「director 写 32(gated)→
-                # shop 写 100(现读)」反向翻转(r68 comp churn
-                # 主燃料;终审 D-4)。两写者保留(各有上下文)
+                # 单源 helper)——防「director 写门控值 →
+                # shop 写现读值」反向翻转(两写者保留
+                # (各有上下文)
                 # 但**写出的 hp 同源**:结算真值优先,新鲜度
                 # 门拒绝陈值。
                 _st_t = ((st.plane - 1) * 9 + st.round_num) \
@@ -456,14 +452,14 @@ class PrepDirector(SrOperation):
                             current_readable=bool(
                                 getattr(st, 'hp_readable', True)))
                 session.last_state = st
-            # r333(批次3:substate 消费)——observe_full 的可读性
+            # substate 消费:observe_full 的可读性
             # 标注落 PrepObservation(下游对账/日志可判;轻步
             # 沿用缓存,同 _cached_state 语义)。
             obs.substate = _of.get('substate') or {}
-            # ⚠ r334(review 第4条):以下 cap/双源审计用 heavy 段
+            # ⚠ 以下 cap/双源审计用 heavy 段
             # 开头的旧 screen,而 st 可能来自 gold 重读的 0.3-0.9s
             # 后异帧——跨帧对拍在轮转动画窗内可假分歧(低概率,
-            # 留证非阻塞);r334 后重读仅在 shop 开态,窗口缩小。
+            # 留证非阻塞);重读仅在 shop 开态,窗口缩小。
             cap = read_deploy_cap(self.ctx, screen)
             # 观察冲突审计 #15(2026-08-16;⚠ 2026-08-22 两段反转,ADR-0220+用户点题;
             # 2026-08-23 ADR-0281 再适配):财富宝钻官方效果「拥有即可使团队规模
@@ -475,8 +471,6 @@ class PrepDirector(SrOperation):
                 from sr_od.application.currency_war.kernel.cw_observe import (
                     obs_conflict,
                 )
-                # hook审计 L9(r351):verdict 补处理步骤——r350b 只补了
-                # unverified 分支,这半还是裸的(deploy_cap 案例同款)
                 obs_conflict('deploy_cap_vs_level', st.level, cap, screen,
                              verdict=('留证-cap<level不可能(cap或level读错;'
                                       '处理:看截图读「区域-部署数」X/Y 原文核 X>Y guard '
@@ -485,11 +479,11 @@ class PrepDirector(SrOperation):
                                       '单次按 OCR 噪声忽略,复现 ≥3 次才排期)'),
                              source='paddle_cap')
             elif cap is not None:
-                # W209/ADR-0385:cap>level(宝钻/钻石叠加)不再只是经济信息——口述
+                # ADR-0385:cap>level(宝钻/钻石叠加)不只
+                # 是经济信息——口述
                 # 公式「后台格数 = 6+(cap−level)」使 cap 差直接驱动布局选档
-                # (cw_back_layout.select_back_layout,含 7 格未建档留证);
-                # 旧 lv6 待采留证(note_pending_7slots)随 level 驱动模型作废删除。
-                # review-L1(r353b):cap==level 是常态(无宝钻),别打
+                # (cw_back_layout.select_back_layout,含 7 格未建档留证)。
+                # cap==level 是常态(无宝钻),别打
                 # "宝钻×0"误导判读;仅真叠加(cap>level)才记
                 if cap > st.level:
                     log.debug('[cw][obs] cap=%d(宝钻×%d 叠加,合法;后排扩展 +%d 格)',
@@ -499,14 +493,12 @@ class PrepDirector(SrOperation):
                 obs.deploy_vacancy = max(0, cap - dep_n)
             else:
                 obs.deploy_vacancy = self._cached_vacancy
-            # 观察冲突审计 #9(2026-08-16):deployed 总数三源对拍(同帧全齐)——
-            # board OCR 阵营计数和 vs paddle X(读 deployed_count)vs CV 占用(front+back)。
-            # ⚠️ 语义修正(2026-08-17 r3 live):sum(board.values()) ≠ 部署角色数——
-            # 一个角色贡献多阵营(藿藿=仙舟+治疗,4 人可贡献 11 阵营次),board 的 X 是
-            # 「该阵营在场人数」非「角色数」→ board_sum 系统性 ≥ 部署数,拿它对拍恒分歧
-            # (live M 实测 board_ocr=11/paddle=4/cv=4 的"分歧"全是本语义错,非 reader 毒化)。
-            # 修:board 源改「独立羁绊外的最大单阵营计数」也不对(同阵营多角色)——board
-            # 根本给不出角色数,**移出三源对拍**,对拍改双源(paddle X vs CV 占用)。
+            # deployed 总数双源对拍(同帧全齐):paddle X(读 deployed_count)
+            # vs CV 占用(front+back)。
+            # ⚠️ board 的 X 是「该阵营在场人数」非「角色数」——
+            # 一个角色贡献多阵营(藿藿=仙舟+治疗,4 人可贡献 11 阵营次),
+            # board_sum 系统性 ≥ 部署数,board 根本给不出角色数 →
+            # **移出对拍**,对拍保持双源(paddle X vs CV 占用)。
             _cv_occ = len(obs.front_occupied) + len(obs.back_occupied)
             if dep_n is not None:
                 _spread = abs(dep_n - _cv_occ)
@@ -514,7 +506,6 @@ class PrepDirector(SrOperation):
                     from sr_od.application.currency_war.kernel.cw_observe import (
                         obs_conflict,
                     )
-                    # hook审计 L8(r351):verdict 补处理步骤(原只列根因无指引)
                     obs_conflict('deployed_count_2src',
                                  {'paddle_x': dep_n, 'cv_occupied': _cv_occ},
                                  'spread>1', screen,
@@ -531,7 +522,7 @@ class PrepDirector(SrOperation):
             self._cached_vacancy = obs.deploy_vacancy
             self._cached_gold_trusted = obs.state_gold_trusted
         else:
-            # light:heavy 字段沿用缓存(上次真读值;review H-1 — 不再恒默认导致永动机)
+            # light:heavy 字段沿用缓存(上次真读值;不恒默认防永动机)
             obs.state = self._cached_state
             obs.state_gold_trusted = self._cached_gold_trusted   # MED-1:trusted 位随缓存 state
             obs.bench_chars = list(self._cached_bench)
@@ -543,11 +534,9 @@ class PrepDirector(SrOperation):
                             screen=None) -> None:
         """环入口对账(§3:read≠tracking 漂移是既有 bug 源 → SIFT 真值重置 tracking)。
 
-        继任宿主:deploy_bench._reconcile_tracking + battle_prep._verify_recognition(P1 挂载
-        切换搬入;star 用 read_star 实机金星,同 D-12 语义)。read 失败(templates None)不动。
-        漂移 = 需关注([cw!] + 截图存证,继承 _verify_recognition 语义,review L-1)。
-        2026-08-16(观察冲突审计 #11):改调公共 ``cw_reconcile.reconcile_tracking`` ——
-        与 deploy_bench 版同语义统一(空读守卫/漂移留证/obs_conflict JSONL 单一实现)。
+        统一走公共 ``cw_reconcile.reconcile_tracking``(空读守卫/漂移留证/
+        obs_conflict JSONL 单一实现,star 用 read_star 实机金星)。read 失败
+        (templates None)不动。漂移 = 需关注([cw!] + 截图存证)。
         """
         session = self._session()
         if session is None:
@@ -684,7 +673,7 @@ class PrepDirector(SrOperation):
         finally:
             expect.crops = None   # 对账完成即释放裁片拷贝(内存,~125KB/张)
 
-# ===== 经验期望态账本(W552;纯记账+对账,零决策行为变更)=====
+# ===== 经验期望态账本(纯记账+对账,零决策行为变更)=====
 
     def _xp_ledger(self) -> XpLedger | None:
         """会话级账本取存(动态属性挂 StrategySession——pending_buy_expect
@@ -870,7 +859,7 @@ class PrepDirector(SrOperation):
         自带收起锚门返空,天然跳过;state.shop 即 read_game_state 内
         read_shop_cards 现读链,零新增 SIFT)。pool_state:无池追踪账
         (cw_state 只有我方 tracked 持有,池内剩余无人建账)→ 传 None =
-        只查 tier 门,池守恒查如实降级(W556 口径),refs 披露。
+        只查 tier 门,池守恒查如实降级(无池账口径),refs 披露。
         tier_locked = 该费用档在当前等级概率为 0(REFRESH_PROB 单一源)
         = 牌识别错或等级读错的强证据。节奏 = 与 _reconcile_xp_expect
         同款 heavy 定型帧消费,全程 best-effort。
@@ -919,12 +908,12 @@ class PrepDirector(SrOperation):
         帧 = obs.shop_open 且 state.shop 非空(与卡池票同门)。our =
         ``_merge_preview_inputs`` 按同名同星持有折算;det = 商店快照逐牌
         merge_preview>0(reader = cw_identity_obs.read_merge_preview,已
-        在产线;激活依据 = W600 批B 评估:136 组同刻重复读数 0 分歧/15
+        在产线;激活依据 = 激活评估:136 组同刻重复读数 0 分歧/15
         非零事件 8 例精确相符)。our_suspect/game_extra 均开票留证——
         our_suspect = 我方合成计算嫌疑(单向罚则唯一对象),game_extra =
         我方漏算(不判罚只计数);our_suspect 祇当「持有 ≥1 副本但同刻
-        重复读数恒 0」的系统性形态才是暗相漏检证据(回退采帧解锁条件见
-        W600 报告),单票不判死。节奏 = 同款 heavy 定型帧消费,best-effort。
+        重复读数恒 0」的系统性形态才是暗相漏检证据(激活评估报告有
+        回退采帧解锁条件),单票不判死。节奏 = 同款 heavy 定型帧消费,best-effort。
         """
         try:
             st = obs.state
@@ -968,13 +957,13 @@ class PrepDirector(SrOperation):
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] merge_preview reconcile skip: {e}')
 
-    # ===== 装备期望态对账(W543;纯记账+对账,零决策行为变更)=====
+    # ===== 装备期望态对账(纯记账+对账,零决策行为变更)=====
     # 语义单一源 = docs/game/currency_war/research/equipment_mechanics.md §1.1
     # (两件简易必合成无共存 28/28 配方实证 / 角色装备上限 3 件 / 合成落点 =
     # 角色最左简易槽 / 装备不堆叠每格一件 / 卖角色=装备全量回装备区;
     # 唯一件=待确认项,本批不建模)。合成规则单一源 = cw_synthesis
     # (synthesize_target/self_advance,图谱派生自注册表,勿自造第二套)。
-    # 架构与买牌(W536)/拖动(W530)/经验(W552)通道同构:动作意图 →
+    # 架构与买牌/拖动/经验通道同构:动作意图 →
     # 期望增量(纯函数)→ heavy 定型帧实读(read_equip_grid 逐格三态)比对
     # → 不一致落缺陷台账;一致/不可评不打扰。遮挡格按三态如实跳过
     # (不评不算错);穿戴侧(read_equipped_below)精度未验证,按不评口径
@@ -1098,10 +1087,9 @@ class PrepDirector(SrOperation):
         session = match.session
         session.defer_count = 0
         session.prep_phase = 0
-        # r366b(review A1 修,实证驱动):free_bench_gold_wait **不在环入口清**——
-        # 局47 死循环实际路径 = run() 环入口 bench-full 分支 round_wait 后外环
-        # 重派 Director 重入 run()(每次重入环入口清零 → 计数永不到 2 →
-        # EnsureShopOpen 无限重发,修复失效)。改:**警告解除时清**(下方
+        # free_bench_gold_wait **不在环入口清**:环入口 bench-full 分支 round_wait 后外环
+        # 会重派 Director 重入 run()(每次重入环入口清零 → 计数永不到 2 →
+        # EnsureShopOpen 无限重发)。改:**警告解除时清**(下方
         # read_bench_full False 分支)——警告持续期间计数跨 run() 重入存活。
         session.prep_phase_retry = 0
         self._executor = PrepActionExecutor(self, self.ctx)
@@ -1117,15 +1105,13 @@ class PrepDirector(SrOperation):
         self._cached_deployed = []
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
-        # W494:购买单元序不再在环入口清——run() 节点会被外环重派重入(局47
-        # 死循环修复后重入是常态),入口清零导致同轮多单元恒 seq=1(p1r1/p2r1
-        # 双单元撞键实测,EXEC_FAIL_P3R1 诊断附带发现)。改为按 (plane, round)
-        # 键在 _spend_unit_open 内重计;此处仅清轮键开新局。
+        # 购买单元序不在环入口清——run() 节点会被外环重派重入(重入是常态),
+        # 入口清零导致同轮多单元恒 seq=1(双单元撞键,ADR-0514)。
+        # 改为按 (plane, round) 键在 _spend_unit_open 内重计;此处仅清轮键开新局。
         self._spend_unit_key = None
         self._exec_fail_hook_fired = False
-        # r297(P0③):_probe_node_type 迁至 EnsureShopClosed 后
-        #(原 run() 入口调用已删;曾同挂点的 _probe_node_reward
-        # 采集钩子 W284 判读完成后曾删,W307 按 r314 原样重挂)。
+        # _probe_node_type 挂点 = EnsureShopClosed 执行成功后(店确定关的可靠
+        # 时点;见 _run_loop while 内说明)。
         return self._run_loop(match)
 
     def _clear_entry_overlays(self) -> None:
@@ -1178,8 +1164,7 @@ class PrepDirector(SrOperation):
         以收紧超时等关店态 stable,直接进本轮,不再 round_retry;
         见 _run_loop 环入口注释;首探 miss 后环入口会在有限窗内
         重试本探针,覆盖「自动开商店晚于首探」的时序竞争);② gate
-        超时后的容忍探测(兜底:收起 + round_retry 重进,r346 语义
-        保留)。
+        超时后的容忍探测(兜底:收起 + round_retry 重进)。
 
         HP/gold 读取语义本要求关态(shop.py 同款收起逻辑)。
         离线契约:探测/点击异常 → False(放行,等价旧探针 except
@@ -1208,24 +1193,14 @@ class PrepDirector(SrOperation):
         # 帧读 = 污染。环入口先截一帧探「备战标识」,miss(被特效遮)→ 等 1s 重试,最多 3 次
         # 让特效播完再观察(非交互 overlay 播完即走;交互型由下方 event_overlay 检测 bail)。
         # 探针 best-effort(截图/识别异常不阻塞 —— 离线 mock 测试无真画面)。
-        # r297(审查 P0①:单锚过弱实锤 16:42:35 deployed 6人读成
-        # 1人——「购买经验」按钮在 shop 开/关两态均可见,特效
-        # 盖舞台不盖底部按钮时门照样放行;全日志消化门 0 触发
-        # 而污染证据 370+682 次):①锚改「备战屏(shop 关)专属
-        # 的舞台锚(按钮-出战)」——shop 开态帧不再放行(该帧
-        # SIFT 本就不可信);②探 3 次仍不 clean 也**不再
-        # fall-through 盲 observe**,bail 重试(外环重进消化)。
-        # r347(旧路径删除,用户定调「几个节点没问题后删」):对拍
-        # 验证已过(局38 r1-r3 新路径 3 节点干净+path=old 恒 0),
-        # gate_director 无条件化——删 flag 分支与旧 3 探针循环。
-        # ⚠️ 特效消化等待(用户 2026-08-16 实证)语义保留:gate 的
-        # 时间稳定窗就是消化门;离线契约(截图异常 raise)=放行
-        # _observe(None→自截图,行为同旧探针 except break)。
-        # r310(ADR-0213 批次1)原接线说明:gate_director flag on 时
-        # 走 wait_stable_frame;off 保持旧路径(对拍期)——对拍期
-        # 已结束,r347 起只有新路径。
-        # r346:开商店容忍路径(gate 超时先探合法开态,收起重进;
-        # 真特效/overlay 才 bail 3-strike)。
+        # 稳定门语义:单锚「购买经验」过弱(该按钮在 shop 开/关两态均可见,特效
+        # 盖舞台不盖底部按钮时门照样放行)——①锚改用「备战屏(shop 关)专属
+        # 的舞台锚(按钮-出战)」,shop 开态帧不再放行;②探 3 次仍不 clean
+        # 也**不 fall-through 盲 observe**,bail 重试(外环重进消化)。
+        # gate_director 已无条件化(无旧路径/无开关);离线契约(截图异常
+        # raise)= 放行 _observe(None→自截图)。
+        # 开商店容忍路径:gate 超时先探合法开态,收起重进;
+        # 真特效/overlay 才 bail 3-strike。
         _gate_frame = None
         _gate_err = False
         # P0 清场前置段(ADR-0462「先清场、再识别、后动作」):先把可一键
@@ -1240,18 +1215,17 @@ class PrepDirector(SrOperation):
             )
             log.info('[cw][gate] path=new(director 环入口)')
             # 战后首环开店态预收:战斗胜利后新回合游戏常自动开商店,
-            # 此时直接等关店态锚(PROFILE_CLOSED)永不命中,旧路径每轮
-            # 必打满 12s 超时才走「收起重进」(实机单局 16 轮 × ~12s
+            # 此时直接等关店态锚(PROFILE_CLOSED)永不命中,
+            # 每轮必打满 12s 超时才走「收起重进」(实机单局 16 轮 × ~12s
             # 纯等;依据实机单局耗时深挖报告
             # .debug/temp/currency_war/w358_time_depth/REPORT.md
-            # 可压缩清单 #1)。修:入口先探开商店态——开 → 收起后以
+            # 可压缩清单 #1)。入口先探开商店态——开 → 收起后以
             # 收紧超时(GATE_POST_COLLAPSE_TIMEOUT_S,实测收起后 ~2s
             # 即关店态 stable)直接等本轮 gate 帧,省掉超时 + 重进往返;
             # 未开(含特效帧/新位面首环)走原 12s 完整门,行为不变。
             # ADR-0264 终裁:环入口(节点结束段/battle 后新备战相位)
             # 走融合默认路径——锚命中即进指纹快 poll(骨架加速器①,
             # 不做纯信任放行),指纹双轮窗真实测量。
-            # 未开(含特效帧/新位面首环)走原 12s 完整门,行为不变。
             # 时序竞争修复(预收探针重试):自动开商店可能发生在首探
             # **之后**(探不到「按钮-收起」≠ 本轮不会开)——首探 miss
             # 不立即进完整门,先在有限窗内按 PRECOLLAPSE_RETRY_S 间隔
@@ -1288,20 +1262,18 @@ class PrepDirector(SrOperation):
                 _gate_err = True
                 log.debug('[cw][gate] 环入口兜底 gate 异常(离线契约)→ 放行')
         if _gate_frame is None and not _gate_err:
-            # r346:先探开商店态(合法稳定态,收起重进);非开态才是
+            # 先探开商店态(合法稳定态,收起重进);非开态才是
             # 真特效/overlay → bail 交外环(3-strike 聚合)。
             if self._try_collapse_open_shop():
                 return self.round_retry('环入口商店开,已收起重进')
             return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
-        # r344:gate 末帧透传 _observe——OCR 缓存贯穿(gate 全图
+        # gate 末帧透传 _observe——OCR 缓存贯穿(gate 全图
         # OCR 一次,observe 的 id_mark 判定/observe_full 全命中),
-        # 且观察对象=已验证稳定帧;旧路径(gate off/异常)None=
-        # _observe 自截图,行为不变。
+        # 且观察对象=已验证稳定帧;None(异常路径)=
+        # _observe 自截图。
         obs = self._observe(heavy=True, screen=_gate_frame)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')
-        # r287→r292:钩子挂点迁至 EnsureShopClosed 执行成功后
-        #(见 _run_loop while 内;此处保留说明,原调用已删)。
         # ADR-0136(M16 死循环 86min 根因):「备战席已满」警告模态下游戏**拒绝一切拖拽/出战** ——
         # Director 若无视警告继续发 DeployMove/StartBattle,全部"源槽未变/未落地"连环失败 → stall
         # 死循环。环入口感知警告(read_bench_full)→ 立即走腾席链破警告(优先升级扩容;点不起 → 卖最弱),
@@ -1316,8 +1288,8 @@ class PrepDirector(SrOperation):
                 session.free_bench_gold_wait = 0
         if _bench_full_now:
             log.warning('[cw!][director] 备战席已满警告(模态挡拖拽/出战)→ 破警告优先(腾席链)')
-            # r2 review#1(P0):曾用 type() 造假 obs(缺 tomes 等字段)→ 策略一读即 AttributeError
-            # 炸环。改 dataclasses.replace 从真 obs 派生(全字段保真,仅覆写腾席相关)。
+            # 破墙 obs 用 dataclasses.replace 从真 obs 派生
+            # (全字段保真,仅覆写腾席相关)——伪造残缺 obs 会炸策略读取。
             import dataclasses
             bf_obs = dataclasses.replace(
                 obs, box_overlay_open=False, boxes=[], spheres=[],
@@ -1327,18 +1299,17 @@ class PrepDirector(SrOperation):
             action = match.strategy.decide_prep_action(bf_obs, session, config)
             progressed, detail = self._executor.execute(action)
             log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
-            # r11 review #2(盲节点可观测性):破墙路径此前零遥测——M55 r3 的 59 金+双跳级全发生在
-            # decisions.jsonl 外(复盘盲区)。破墙动作也记一条(类名带 BenchFull 前缀,审计可辨)。
-            # r1 review#4:曾传 type() 造假对象(非 dataclass)→ serialize_action TypeError 被吞
-            # → 破墙遥测从未落盘。改 exec_events 通道(本就为执行事件设计)。
+            # 破墙动作也记一条 exec_events(类名带 BenchFull 前缀,审计可辨
+            # ——破墙花费不落账即复盘盲区)。
             try:
 
                 if obs.state is not None:
                     _bf_rid = state.current_run_id() or '-'
                     if _bf_rid == '-' and self.ctx.cw_match is not None:
                         _bf_rid = f'match:{id(self.ctx.cw_match) & 0xffff:x}'   # 与 _record_exec_obs 兜底一致
-                    # r98 类型 gate 抓真 bug:record_exec_event 是 TelemetryRecorder 类方法,
-                    # 模块级直调 = AttributeError(此前被 except 吞 → 破墙遥测从未落盘)。
+                    # record_exec_event 是 TelemetryRecorder 类方法,
+                    # 须走 get_recorder() 实例调用(模块级直调 = AttributeError
+                    # 且会被 except 吞 → 遥测静默丢失)。
                     state.get_recorder().record_exec_event(
                         run_id=_bf_rid,
                         round_num=obs.state.round_num,
@@ -1348,12 +1319,11 @@ class PrepDirector(SrOperation):
             except Exception:   # noqa: BLE001  遥测 best-effort
                 pass
             return self.round_wait(status=f'备战席已满,已试破警告({type(action).__name__})', wait=1.0)
-        # MED-4:战略层 update_target 环入口调一次(strategy/03(原 doc 15§6);RunBuyPhase 内 shop.py:166 仍会
+        # MED-4:战略层 update_target 环入口调一次(strategy/03 §6;RunBuyPhase 内 shop.py 仍会
         # 调 = P1 允许的双调)。失败不炸环(沿用上轮 target 继续步级决策)。
-        # ⚖️ r68 review:**入口先过 HP 新鲜度门再调**(cw_strategy.gated_hp,与 shop.py 同门)——
-        # 旧版 obs.state.hp 常是 shop 开态 100 兜底 → maybe_pivot 在假 hp 上做信号1涌现判定,
-        # 10s 后 shop 侧真 hp 又触发信号3保命反向换线(r68 实证:hp=100 转红A → hp=26 转DOT队,
-        # 同节点两次方向相反 pivot = comp churn 主燃料)。
+        # ⚖️ 入口先过 HP 新鲜度门再调**(cw_strategy.gated_hp,与 shop.py 同门)——
+        # shop 开态兜底的 obs.state.hp 常是假 100 → maybe_pivot 在假 hp 上做信号1涌现判定,
+        # 真 hp 读到后又触发信号3保命反向换线(同节点两次方向相反 pivot = comp churn 主燃料)。
         if obs.state is not None:
             from sr_od.application.currency_war.decision.cw_strategy import gated_hp
             from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
@@ -1361,7 +1331,7 @@ class PrepDirector(SrOperation):
                 drive_intention,
             )
             _os = obs.state
-            # 批 2 方向层接管(P7 驱动点契约):意向状态机每 game-round 恰
+            # 方向层接管(P7 驱动点契约):意向状态机每 game-round 恰
             # 一次,锚定 = 环入口(update_target 之前);段级重入守卫 =
             # v3_intention_key(与 decision_v2 栈共享键面,双驱动幂等)。
             # registry 缺省 = DEFAULT_REGISTRY(缺省栈无注入臂;A/B 注入
@@ -1370,8 +1340,8 @@ class PrepDirector(SrOperation):
                 drive_intention(_os, session)
             except Exception as e:  # noqa: BLE001  方向驱动失败不阻塞步级决策
                 log.warning(f'[cw!][director] 意向驱动异常(沿用旧方向): {e}')
-            # r73 RC3:dual 态拷回(读端 = R1 唯一合法读端 committed_from;
-            # 批 2 起读端内部 = cw_intention 权威派生,消费端同 commit 面
+            # dual 态拷回(读端 = R1 唯一合法读端 committed_from;
+            # 读端内部 = cw_intention 权威派生,消费端同 commit 面
             # 换源,session 侧双轨字段已无读点)
             _os.dual_track_phase = not committed_from(session, _os)
             _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
@@ -1381,19 +1351,15 @@ class PrepDirector(SrOperation):
             match.strategy.update_target(obs.state or GameState(), session, config)
         except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
             log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
-        # W620 批 1(蓝图 §7 批 1 行):DirectorV2 接线升正——新环 = 唯一
-        # 生产路径(无开关 directive,`director_v2_prep_enabled` 已删;回退
-        # = git revert)。共享前置(gate/bench-full 破警告/gated_hp/
-        # update_target)全在此前,新旧环共用零重写。
+        # DirectorV2 = 唯一生产路径(无开关;回退 = git revert)。共享前置
+        # (gate/bench-full 破警告/gated_hp/update_target)全在此前,新旧环共用零重写。
         return self._run_prep_loop_v2(match, session, config)
 
-        # ---- 旧环主体(生产不再可达;保留至批 3 退役,蓝图 §5 批 1 行
-        # 「旧 prep_director 并行一窗口后退役」。期间仅离线/影子对照复用)----
+        # ---- 旧环主体(生产不再可达;保留供离线/影子对照复用)----
         while True:
-            # ⚖️ W209j 刹车语义(run 27 停机事故第三层实证,ADR-0388):停机标志
-            # 设置后本循环曾继续发 StartBattle——14:09:08 Deploy 钩子 stop_running
-            # → 14:09:14「出战成功」(log 32489/32504/32514),CW 备战不自动出战,
-            # 出战必是 bot 点的 = **停 bot 后执行流仍在落地动作**。环顶每步先查
+            # ⚖️ 停机刹车语义(ADR-0388):停机标志设置后若继续发动作 =
+            # 停 bot 后执行流仍在落地动作——CW 备战不自动出战,
+            # 出战必是 bot 点的。环顶每步先查
             # 「运行中被停」(last_run_result 非空——run_state STOP 是 idle 初始态,
             # 不能直接用;last_run_result 在 start_running 清 None/stop 时写入,
             # 是「本次运行被请求停止」的精确判据),已停 → 立即收口不再发任何
@@ -1417,7 +1383,7 @@ class PrepDirector(SrOperation):
                 log.warning(f'[cw!][director] 策略输出非 PrepAction: {type(action).__name__}')
                 return self.round_fail(status='策略输出非 PrepAction(F3)')
             self._record_step(obs, action)
-            # W606 影子比对(协议门1;开关默认关):旧环当权后同帧影子
+            # 影子比对(协议门1;开关默认关):旧环当权后同帧影子
             # 决策逐位对照。全隔离——影子路径任何异常只计数留证,绝不
             # 影响本步动作与现役决策(adapter.shadow_compare_step 承诺)。
             from sr_od.application.currency_war.decision_assembly import (
@@ -1458,12 +1424,12 @@ class PrepDirector(SrOperation):
                 continue
 
             # —— 执行(验证失败路径:计 fail;异常自然上抛 = 本环 fail)——
-            # W494:RunBuyPhase = 一个购买单元(开店→买/升/刷→关店),执行边界
+            # RunBuyPhase = 一个购买单元(开店→买/升/刷→关店),执行边界
             # 记账(纯观测);失败/异常同样关单元,判定门在读端(boundary)。
             _unit_open = isinstance(action, RunBuyPhase)
             if _unit_open:
                 self._spend_unit_open(obs)
-            # W512(观测自检设计 §2.3/§5-B5 动作级板面对拍,前读):部署/卖出
+            # 观测自检设计 §2.3/§5-B5 动作级板面对拍(前读):部署/卖出
             # 执行前读一帧 paddle X(read_deployed_count 区域 OCR,毫秒级;部署
             # 动作本身秒级,占比可忽略)。后读复用下方 heavy 重观察帧,零新增
             # 截图。仅 DeployMove(期望 +1)/ SellDeployed(期望 −1);其余动作
@@ -1477,7 +1443,7 @@ class PrepDirector(SrOperation):
             if isinstance(action, (SellBench, DeployMove)):
                 _drag_expect = compute_drag_expect(
                     action, obs.bench_chars, obs.deployed_chars)
-            # 期望态层·装备(W543):卖上阵角色 = 已穿装备全量回装备区
+            # 期望态层·装备:卖上阵角色 = 已穿装备全量回装备区
             # (equipment_mechanics §1.1),期望在动作发出点从穿戴快照导出
             # (纯函数;失读/空读不评)。None=无法建真值 → 后续不评。
             _equip_expect = None
@@ -1503,27 +1469,19 @@ class PrepDirector(SrOperation):
                 log.warning(f'[cw!][director] 执行异常 {key}: {e} → 本环 fail')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
             log.info(f'[cw][director] step{self._steps} {key} → {"✓" if progressed else "✗"} {detail}')
-            # 期望态层·经验(W552):购买经验意图 → 账本推进(零决策记账;
+            # 期望态层·经验:购买经验意图 → 账本推进(零决策记账;
             # 仅 progressed 分支——执行失败=未购买,期望不适用)。
             if progressed and isinstance(action, LevelUp):
                 self._xp_apply_levelup()
             elif progressed and isinstance(action, RunBuyPhase):
                 self._xp_apply_buy_clicks(detail)
 
-            # r292+P0③(r297):EnsureShopClosed 执行成功后=店确定关
-            # 的可靠时点,**_probe_node_type 挂点**(审查 P0③:原挂
-            # run() 入口一次性读,skip 69%——shop 开态帧读不了节点行,
-            # 与已删 reward 钩子 r280-294 四次静默同病根)。
-            # r314(ADR-0213 批次1)+r347(旧路径删除):前置
-            # wait_stable_frame 无条件化(原 gate_hook flag 分支删;
-            # 超时=放行——离线契约);2s 预估等待兼作操作段基线重置点
+            # EnsureShopClosed 执行成功后 = 店确定关
+            # 的可靠时点,**_probe_node_type 挂点**(shop 开态帧读不了节点行,
+            # 入口一次性读会大量 skip)。
+            # 前置 wait_stable_frame 无条件化
+            #(超时=放行——离线契约);2s 预估等待兼作操作段基线重置点
             # (ADR-0264 终裁加速器②)。
-            # W284:曾同挂点的 _probe_node_reward 采集钩子(临时,
-            # r280 用户交办)判读完成曾删整段——连胜四档表 + 基础奖励
-            # 真值已固化(economy.md「基础奖励」行);W307 重挂采集
-            # 1-3~1-8,经取证定谳挂点失活(关店已入 RunBuyPhase 内部,
-            # EnsureShopClosed 路径零执行)且 1-6=5 封顶点已采,销案
-            # 删整段(取证报告=.debug/temp/currency_war/w587_cw_reward_verdict/REPORT.md)。
             if 'EnsureShopClosed' in key and progressed:
                 try:
                     from sr_od.application.currency_war.obs.cw_observation_gate import (
@@ -1553,7 +1511,7 @@ class PrepDirector(SrOperation):
                     return bail
             # 再观察:执行过的游戏动作一律 heavy(结构变化,review H-1);控制流走 light(上方)
             obs = self._observe(heavy=True)
-            # W512(观测自检设计 §2.3/§5-B5 动作级板面对拍,后读):heavy 重观察帧
+            # 观测自检设计 §2.3/§5-B5 动作级板面对拍(后读):heavy 重观察帧
             # 上再读 paddle X,执行成功时期望 = 前读 ±1;不等 = 部署/卖出未生效
             #(点击落空/对账链双源都错)。纯留证零决策行为——与 deployed_align 的
             # 区别:那是跟踪表 vs paddle 的自动纠漂(裁决已自动恒 L2),本对拍是
@@ -1583,7 +1541,7 @@ class PrepDirector(SrOperation):
             if progressed and _drag_expect is not None:
                 self._reconcile_drag_expect(_drag_expect)
             _drag_expect = None
-            # 期望态层·买牌(W536):RunBuyPhase 单元的购买期望由 shop.py 买入
+            # 期望态层·买牌:RunBuyPhase 单元的购买期望由 shop.py 买入
             # 点写入 session.pending_buy_expect(StrategySession 正式字段,
             # 见 cw_strategy 字段定义);此处在本轮 heavy 定型帧上消费对账
             # (bench/buy_expect_mismatch)。零决策记账:不一致不重买不改
@@ -1593,22 +1551,22 @@ class PrepDirector(SrOperation):
                 session.pending_buy_expect = None
                 if progressed:
                     self._reconcile_buy_expect(_pending_buy)
-            # 期望态层·经验(W552):同帧对账(锚定/轮界重锚/段内对账;
+            # 期望态层·经验:同帧对账(锚定/轮界重锚/段内对账;
             # 内部 best-effort,异常不阻塞环)。
             self._reconcile_xp_expect(obs)
             # 羁绊显示对账(cw_faction_obs 接线):同帧消费——computed=tracked
             # 全集 vs 面板 OCR,mismatch 落缺陷台账(kind=faction_display_mismatch,
             # 零决策不纠漂;内部 best-effort)。
             self._reconcile_faction_display(obs)
-            # 商店打开态对账(W564):同帧消费——商店打开 heavy 帧(腾席链
+            # 商店打开态对账:同帧消费——商店打开 heavy 帧(腾席链
             # EnsureShopOpen 后)上五牌卡池一致性票(shop_pool_violation;
             # 零决策记账,内部 best-effort;关店帧自带锚门空跳)。
             self._reconcile_shop_pool(obs)
-            # 合成预览对账(W601 激活,W600 批B 评估裁定):同帧消费——
+            # 合成预览对账(compare_merge_preview 接线):同帧消费——
             # compare_merge_preview 接线(merge_preview_mismatch;零决策
             # 记账,内部 best-effort;关店帧/无持有帧自带空跳)。
             self._reconcile_merge_preview(obs)
-            # 期望态层·装备(W543):卖角色「装备全量回装备区」期望在本轮
+            # 期望态层·装备:卖角色「装备全量回装备区」期望在本轮
             # heavy 定型帧上消费对账(equip/equip_expect_mismatch;零决策
             # 记账:不一致不重拖不改行为;不可评口径已在构建端丢弃)。
             if progressed and _equip_expect is not None:
@@ -1618,11 +1576,11 @@ class PrepDirector(SrOperation):
                 return self._bail(match, f'事件overlay:{obs.event_overlay}')
 
     def _record_exec_obs(self, key: str, event: str, reason: str = '') -> None:
-        """观测钩子(常驻,27 号能力画像):执行事件落 exec_events.jsonl。
+        """观测钩子(常驻):执行事件落 exec_events.jsonl。
 
         run_id 兜底:current_run_id → match 短 id。动作族:key 是动作 repr → 取首
         `(` 前类名;bail 类事件 key 是 reason 字符串 → 族归 'bail'。round_num 用
-        游戏 轮次(r2#5:环步数重入清零且重复,与 decisions/outcomes 无法对齐;
+        游戏 轮次(环步数重入清零且重复,与 decisions/outcomes 无法对齐;
         last_state.round_num 才是 join key)。best-effort。
         """
         try:
@@ -1649,7 +1607,7 @@ class PrepDirector(SrOperation):
         except Exception:   # noqa: BLE001  观测 best-effort
             pass
 
-    # ===== 购买单元记账(W494 spend_ledger;纯观测,零行为变更)=====
+    # ===== 购买单元记账(spend_ledger;纯观测,零行为变更)=====
 
     def _spend_unit_open(self, obs: PrepObservation) -> None:
         """开购买单元(RunBuyPhase 执行前):记时点与单元开时点 gold 观测。
@@ -1665,7 +1623,7 @@ class PrepDirector(SrOperation):
         rnd = int(getattr(ls, 'round_num', 0) or 0)
         # 同轮多单元序号恒递增:序只在 (plane, round) 变化(或新局清键)时
         # 重置为 1——run() 环节点重入不清序,消除同轮双单元撞 unit_seq=1
-        #(EXEC_FAIL_P3R1 诊断附带发现,ADR-0514:任何按 (round, unit_seq)
+        #(ADR-0514:任何按 (round, unit_seq)
         # 对拍的消费方都会撞键,_spend_unit_row 靠「取最后一行」侥幸取对)。
         key = (plane, rnd)
         if key != self._spend_unit_key:
@@ -1709,7 +1667,8 @@ class PrepDirector(SrOperation):
                 gold_before_trusted=meta['gold_trusted'])
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] spend_ledger skip: {e}')
-        # [停机钩子·临时采证,安灯式;见模块头钩子段声明] 判定与记账同点:
+        # [停机钩子·临时采证,安灯式] 采够/问题闭环后整段删除(钩子纪律:不留开关)。
+        # 判定与记账同点:
         # 命中 mismatch → 哨兵(截图+flag)→ stop_running → 不再点击保画面。
         # 每局最多停一次;判定复用分类器,数据源与离线读端同一套
         #(shop 关店对拍的冲突行在本单元返回前已同步落盘 journal)。
@@ -1731,9 +1690,9 @@ class PrepDirector(SrOperation):
 
         为什么主源必须是单元行:冲突行是「仅 mismatch 才写」的条件性 journal、
         行内无 run_id/unit_seq,(plane,round)+ts 窗 join 会吃到同轮上一单元的
-        陈旧行(局 run_20260901_180236 p3r1 误停:健康第二单元 join 到 86 秒前
-        第一单元的 new=51,金差算 0 → not_effective → 误停;EXEC_FAIL_P3R1
-        诊断,推荐修法①,ADR-0514)。单元行身份键天然完整,一举消掉两个病根。
+        陈旧行(实机误停例:健康第二单元 join 到 86 秒前
+        第一单元的 new=51,金差算 0 → not_effective → 误停;
+        见 ADR-0514)。单元行身份键天然完整,一举消掉两个病根。
         """
         run_id = state.current_run_id()
         if not run_id:
@@ -1743,10 +1702,11 @@ class PrepDirector(SrOperation):
             replay_dir, run_id).get((meta['plane'], meta['round']))
         if plan_row is None:
             return
-        # W577(ADR-0456):spend_ledger 单元行的执行侧「计划≠尝试」字段
+        # ADR-0456:spend_ledger 单元行的执行侧「计划≠尝试」字段
         #(与 plan 行同一 replay join 面,run_id+unit_seq 定位,无陈旧风险)
-        # ——硬墙跳过/截断的单元分流 plan_truncated 豁免(局22 误停根因),
-        # 不再被当「点击落空」误停。行缺失 → executed=None,退回 W494 原语义。
+        # ——硬墙跳过/截断的单元分流 plan_truncated 豁免(防误停),
+        # 不再被当「点击落空」误停。行缺失 → executed=None,退回无
+        # executed 字段的原语义。
         unit_row = query._spend_unit_row(
             replay_dir, run_id, meta['plane'], meta['round'], meta['seq'])
         executed = None
@@ -1832,7 +1792,7 @@ class PrepDirector(SrOperation):
             if not isinstance(action, StartBattle):
                 self._blocked.add(key)
                 self._record_exec_obs(key, 'blocked', '恢复无效-状态类')
-                # r93 审计 46336415:DeployMove 被屏蔽 = 落点被游戏拒(同名在场/行限制等)
+                # 审计 46336415:DeployMove 被屏蔽 = 落点被游戏拒(同名在场/行限制等)
                 # → 写 session.deploy_fail_counts,策略腾席链跳过该角色(防下轮同卡重提案;
                 # 第14局 r9 藿藿 5 连败实证)。备战场面变化后 heavy 对账自然换候选。
                 try:
@@ -1849,7 +1809,7 @@ class PrepDirector(SrOperation):
             if isinstance(action, ClickSpheres):
                 match.session.defer_count = max(match.session.defer_count, 2)
             if isinstance(action, OpenTome):
-                # r15 review P0-②:defer 门对 OpenTome 曾是死码(defer 只由 DeferSpheres/
+                # defer 门对 OpenTome 原不生效(defer 只由 DeferSpheres/
                 # ClickSpheres 置位)——失败置 defer 让策略侧门(规则 2)真正生效。
                 match.session.defer_count = max(match.session.defer_count, 2)
             log.warning(f'[cw!][director] {key} 恢复(无弹层)后仍连败 → 本环屏蔽(策略须换路)')
@@ -1867,7 +1827,7 @@ class PrepDirector(SrOperation):
         if n >= PrepDirector.BAIL_SAME_REASON_DIAG:
             # MED-7:同因 bail≥3 = 外环 3 次未消化该弹层(bail↔重入 ping-pong,MAX_ITER 兜底
             # 需多小时)→ 升级停机钩子(方案 D):存证 + stop_running 保画面待 AI 建档/排查。
-            # hook审计 S4(r351):补 sentinel flag 三要素——接管者从 status=stopped +
+            # 补 sentinel flag 三要素——接管者从 status=stopped +
             # 本 flag 即知谁停的/怎么处理/钩子分类,不走「不知道谁停的」四层排查。
             import time as _t
             log.warning(f'[cw!][director] 同因 bail ×{n}: {reason} → 升级停机(ping-pong,保画面建档)')
@@ -1908,11 +1868,11 @@ class PrepDirector(SrOperation):
             return self.round_success(f'强制出战({why})', wait=3)
         return self.round_fail(status=f'强制出战失败({why}): {detail}')
 
-    # ===== DirectorV2 接线(W606 阶段2批③;设计单一源 =
+    # ===== DirectorV2 接线(设计单一源 =
     # .debug/temp/currency_war/w606_stage2_batch3/DIRECTOR_ADAPTER_DESIGN.md §5/§6)=====
 
     def _run_prep_loop_v2(self, match, session, config) -> OperationRoundResult:
-        """DirectorV2 备战循环(W620 批 1 起 = 唯一生产路径;端口全部复用现役件)。
+        """DirectorV2 备战循环(唯一生产路径;端口全部复用现役件)。
 
         端口映射:decide/execute = adapter.DecideAdapter(经 prep_brain
         装配点管线,现役决策核 + 现役执行器 F3 验证链);observe = 本类
@@ -1924,7 +1884,7 @@ class PrepDirector(SrOperation):
         端口,同帧对账族在 heavy 观察端口——旧环在循环体里逐帧消费的
         记账面(paddle 审计/买牌·拖动·装备·经验·羁绊·商店池·合成预览
         对账)经 ``_v2_post_frame_accounting`` 在新环 heavy 定型帧上等时
-        消费,含 W536 买牌期望上报通道转正(蓝图 §7 批 1 行)。
+        消费,含买牌期望上报通道(蓝图 §7)。
         """
         from sr_od.application.currency_war.decision.decision_v2.director_v2 import (
             DirectorV2,
@@ -2007,14 +1967,14 @@ class PrepDirector(SrOperation):
                                        boundary='closed' if progressed else 'failed')
             acct['progressed'] = progressed
             log.info(f'[cw][director-v2] step {key} → {"✓" if progressed else "✗"} {detail}')
-            # 期望态层·经验(W552;仅 progressed 分支,旧环同款)
+            # 期望态层·经验(仅 progressed 分支,旧环同款)
             if progressed and isinstance(action, LevelUp):
                 self._xp_apply_levelup()
             elif progressed and isinstance(action, RunBuyPhase):
                 self._xp_apply_buy_clicks(detail)
-            # r292+P0③:EnsureShopClosed 执行成功后 = 店确定关的可靠时点
+            # EnsureShopClosed 执行成功后 = 店确定关的可靠时点
             #(节点行探针挂点;前置 wait_stable_frame 无条件化,离线契约放行)
-            # w781:gate 稳定帧透传探针(复用帧 + 全图 OCR 缓存,省一次截图/OCR)
+            # gate 稳定帧透传探针(复用帧 + 全图 OCR 缓存,省一次截图/OCR)
             if 'EnsureShopClosed' in key and progressed:
                 _probe_frame = None
                 try:
@@ -2097,7 +2057,7 @@ class PrepDirector(SrOperation):
 
         输入 = 本帧 obs + acct(最近一步动作记账状态);每通道内部
         best-effort,异常不阻塞环。覆盖:paddle 审计 / 拖动期望 / 买牌
-        期望(W536 上报通道转正,蓝图 §7 批 1 行)/ 经验 / 羁绊显示 /
+        期望(买牌期望上报通道,蓝图 §7)/ 经验 / 羁绊显示 /
         商店池 / 合成预览 / 卖角色装备期望。
         """
         import contextlib
@@ -2108,7 +2068,7 @@ class PrepDirector(SrOperation):
 
         key = acct.get('key')
         progressed = bool(acct.get('progressed'))
-        # W512 动作级板面对拍(后读;期望不等 = 未生效证据,纯留证)
+        # 动作级板面对拍(后读;期望不等 = 未生效证据,纯留证)
         if acct.get('dep_pre') is not None:
             with contextlib.suppress(Exception):
                 _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
@@ -2127,7 +2087,7 @@ class PrepDirector(SrOperation):
         with contextlib.suppress(Exception):
             if progressed and acct.get('drag_expect') is not None:
                 self._reconcile_drag_expect(acct['drag_expect'])
-        # 期望态层·买牌(W536 上报通道转正):RunBuyPhase 单元购买期望由
+        # 期望态层·买牌:RunBuyPhase 单元购买期望由
         # shop.py 买入点写入 session.pending_buy_expect;本帧消费对账。
         with contextlib.suppress(Exception):
             _pending_buy = session.pending_buy_expect
@@ -2178,9 +2138,9 @@ class PrepDirector(SrOperation):
     def _probe_node_type(self, screen: MatLike | None = None) -> None:
         """[观测] 备战入场读节点行序列(read_node_sequence)→ log。
 
-        自 battle_prep._probe_node_type 搬入(P1 挂载切换,doc §7 L1)。read_node_sequence =
+        read_node_sequence =
         HoughCircles 动态定圆 + HSV 三态 + Hu 匹配 + OCR(见 cw_node_reader)。
-        screen 传入时(实机效率批 w781:EnsureShopClosed 后的 gate 稳定帧透传)复用该帧
+        screen 传入时(EnsureShopClosed 后的 gate 稳定帧透传)复用该帧
         不重截——gate 稳定帧的全图 OCR 已按 id(image) 缓存,节点行 OCR 读缓存命中,
         省一次截图 + 全图 OCR;None=自截图(旧行为,离线/其他调用点兼容)。
         未识别图标采集钩子(版本前哨,保留):未来圆 hu_dist > 阈值 → 裁图标存盘。
@@ -2211,9 +2171,9 @@ class PrepDirector(SrOperation):
             # (每备战观察帧整帧哈希去重+节流收圣杯任务瞬时帧,零决策影响)。
             # from sr_od.application.currency_war.operations.grail_collect_hooks import grail_passive_collect
             # grail_passive_collect(screen)
-            # r265:current 槽类型写 session(battle_loop on_round_end 消费——
+            # current 槽类型写 session(battle_loop on_round_end 消费——
             # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)。
-            # r266(current 恒 None 修复):current 高亮态 Hu 不匹配(模板只对
+            # current 高亮态 Hu 不匹配(模板只对
             # future 生效)+OCR 标签错位守卫 → current 直读恒 None。
             # 修:**last-known upcoming**——上一备战帧 upcoming[i] 就是本轮
             # current(节点行固定序列左移);本帧 upcoming 同时存下轮用。
@@ -2221,8 +2181,8 @@ class PrepDirector(SrOperation):
                 _sess = (self.ctx.cw_match.session
                          if self.ctx.cw_match is not None else None)
                 if _sess is not None:
-                    # r363(审计 P0-1/P0-2):首帧(r1 或重启后)写开局
-                    # 槽序表——r362 的 battle_loop 兜底此前**无写入者**
+                    # 首帧(r1 或重启后)写开局
+                    # 槽序表——battle_loop 兜底此前**无写入者**
                     # (审计实锤死读);plane_node_table = 本帧全部槽
                     # (current+upcoming+past 按 idx)的类型序。
                     _all = sorted(slots, key=lambda s: s.idx)
@@ -2234,16 +2194,15 @@ class PrepDirector(SrOperation):
                     if store_plane_table(_sess, _seq, _plane_now):
                         log.info('[cw-director][nodeseq] 槽序表存 p%s %d 槽:%s',
                                  _plane_now, len(_seq), _seq)
-                    # r290(current 覆盖链改左移优先):OCR 标签
-                    # 位置门(r80)拦不住相邻同类标签(局20 实证:
-                    # r3 结算屏「战斗」vs current 读 reward——
-                    # reward 标签恰在 current 下方 x 对上)→
+                    # current 覆盖链左移优先:OCR 标签
+                    # 位置门拦不住相邻同类标签(reward 标签恰在
+                    # current 下方 x 对上时误读)→
                     # current 直读不可信。改:**左移推断优先**
-                    # (上帧 upcoming[0],r266 已有),OCR 标签
+                    # (上帧 upcoming[0]),OCR 标签
                     # 只在左移无值时兜底(开局首帧)。
-                    # r363(审计 P0-2 修):左移**锚定轮次**——同轮
+                    # 左移**锚定轮次**——同轮
                     # 多次 probe(开店/关店/重开)时 upcoming 还是本轮
-                    # 的,旧代码会把 current 写成下一节点(超前一位)。
+                    # 的,会把 current 写成下一节点(超前一位)。
                     # 只在上次 probe 是更早轮次时才左移;同轮保持原值。
                     _anchor = (_st_now.plane, _st_now.round_num) \
                         if _st_now is not None else None
@@ -2266,7 +2225,7 @@ class PrepDirector(SrOperation):
                         s.node_type for s in sorted(
                             (x for x in slots if x.state == 'upcoming'),
                             key=lambda x: x.idx) if s.node_type]
-                    # r306(用户指路,方向修正):
+                    # 实时识别权威(用户裁定方向):
                     # **实时识别是权威**——每备战帧读节点行,
                     # 应对 invest-env 等策略对节点的改变;
                     # 开局帧的完整槽序存 plane_node_table 只作
@@ -2283,8 +2242,9 @@ class PrepDirector(SrOperation):
 
         仅 upcoming 槽(判态已修 V 门,变暗过去节点不再混入);RGB 裁剪存盘(颜色信息保留,
         模板同样 RGB——2026-08-16 用户指导)。
-        r80(审计 P1-3):**同 idx 300s 时间窗防抖** —— 内容哈希去重防不住备战帧微变
-        (光标/金币动画/抗锯齿 → 哈希必新),同 idx 每帧重采刷屏(2-7 实证 idx4/5 连发);
+        同 idx 300s 时间窗防抖 —— 内容哈希去重防不住备战帧微变
+        (光标/金币动画/抗锯齿 → 哈希必新),同 idx 每帧重采刷屏
+        (2-7 实证 idx4/5 连发);
         已知误报源是远距小图标 Hu 漂移(61 张复盘),300s 窗足够人工/离线跟进,新类型
         (真未识别)首采不受影响。
         """
@@ -2299,7 +2259,7 @@ class PrepDirector(SrOperation):
             if s.state != 'upcoming' or s.hu_dist is None or s.hu_dist <= hu_threshold:
                 continue
             if now - _NODE_ICON_SHOT_TS.get(s.idx, 0.0) < 300:
-                continue   # 同 idx 时间窗内已采过(帧微变哈希必新,内容哈希去重失效;r80 审计c:module-level 跨环存活)
+                continue   # 同 idx 时间窗内已采过(帧微变哈希必新,内容哈希去重失效;module-level 跨环存活)
             yc0, yc1 = max(0, s.cy - icon_r), s.cy + icon_r
             xc0, xc1 = max(0, s.cx - icon_r), s.cx + icon_r
             fn = cw_shot_unique(row[yc0:yc1, xc0:xc1], f'node_unknown_{s.idx}')
@@ -2314,7 +2274,6 @@ class PrepDirector(SrOperation):
             _sess = self._session()
             if st is not None:
                 st = st.copy()
-                # W222 遥测缺口①同源(shop record 点已补,本处是步进行):
                 # obs.state 是 OCR 现读态(equips 恒空),从 session owned 快照
                 # 补拷。copy 后再写——cw_comps 装备权重读 state.equips,
                 # 原地写会污染 director 后续决策输入(观测链修复禁越界)。
@@ -2327,7 +2286,7 @@ class PrepDirector(SrOperation):
                 candidate_scores={},
                 eval_breakdown={'prep_step': float(self._steps)},
                 actions=[action],   # type: ignore[list-item]  PrepAction 与旧 Action 并存(P2 归一)
-                gold_point=False,   # r68 review:步进记录不进 gold_trajectory(每回合一采样,shop 侧采)
+                gold_point=False,   # 步进记录不进 gold_trajectory(每回合一采样,shop 侧采)
                 extra={'formed_stop': bool(getattr(
                     _sess, 'v3_formed_stop', False)),  # ADR-0343 豁免联动
                     # P1 配方对平铺观测(P1 备战帧判读「终局线何时锁」的

@@ -1,10 +1,9 @@
 """腾席判据函数族 + deploy 全局不变量(kernel 单一源)。
 
-自 strategy_v1(cw_plan/cw_evaluate)语义保持平移(买层接管批段 0,ADR-0477):
+自 strategy_v1 语义保持平移(ADR-0477):
 decision_v2 腾席链(/部署/升级门)消费的判据不再经 strategy_v1 豁免边,
 统一消费本模块;strategy_v1 整桶退役后本模块是这些符号的唯一源。
-迁移为逐字符语义保持(函数体零改动,仅 import 面收拢到 kernel/data 合法向);
-等价性证据 = 平移前后同参 fuzz 对照(见 ADR-0477;对照记录随迁移批存档,git 历史可溯)。
+等价性证据 = 平移前后同参 fuzz 对照(见 ADR-0477)。
 """
 from __future__ import annotations
 
@@ -51,9 +50,9 @@ def _card_hits_target(name: str, faction: str, target: Comp,
     True:name ∈ target.core_chars **或** 全羁绊(``_char_synergies`` + faction 兜底)∩ 目标阵营集非空。
     faction 兜底:name 未识别时用 OCR 的 card.faction(虽只阵营,聊胜于空)。
 
-    ⚠️ 取代旧 ``card.faction in target.factions``(只阵营,流派主派 comp 的过渡/补充角色被误判 off-target:
-    实跑 DOT 队 P1 输根因 —— 艾丝妲/椒丘等持续伤害流派角色 card.faction=银河学者/空 ∉ DOT.factions
-    [持续伤害,星核猎手] → commit 后被 prefilter 跳过 → 凑不出 2DOT 过渡)。
+    ⚠️ 全羁绊而非只阵营匹配:只阵营时流派主派 comp 的过渡/补充角色被误判 off-target
+    (实跑 DOT 队 P1 输根因 —— 艾丝妲/椒丘等持续伤害流派角色 card.faction=银河学者/空
+    ∉ DOT.factions[持续伤害,星核猎手] → 被 prefilter 跳过 → 凑不出 2DOT 过渡)。
 
     ADR-0152(评审🔴1)``include_flex`` 两档语义:
     - **False(默认,严格 = 核心阵营)**:deploy-swap 卖出候选 / bench 核心计数用 —— flex 单位是合法
@@ -105,11 +104,11 @@ def _dep_activates_tier(bc: BenchChar, state: GameState) -> bool:
 
 
 def deploy_legal(bc: BenchChar, deployed_names: set[str]) -> bool:
-    """⚖️ 全局不变量守卫(单一源,r94):**场上同名禁双**(游戏规则 5.1.7 实测,ADR-0125)。
+    """⚖️ 全局不变量守卫(单一源):**场上同名禁双**(游戏规则 5.1.7 实测,ADR-0125)。
 
     **一切「把角色放上场」的路径必须过本守卫**——买后 deploy / 腾席链 / 换位 /
-    任何新 deploy 路径。历史上散在三处内联,第 4 处新路径(腾席链 a,r93)漏写 →
-    藿藿被拖 5 次全拒实证。收口单一函数后新路径只需调用,不再依赖"记得写"。
+    任何新 deploy 路径。散在各路径内联守卫会漏写(腾席链曾漏 →
+    藿藿被拖 5 次全拒实证)。收口单一函数后新路径只需调用,不再依赖"记得写"。
     同名在场 → False(留 bench 待 3合1 合并,合并域=全场)。
     单一源现址 = 本模块(kernel;自 strategy_v1 平移,ADR-0477)。
     """
@@ -166,9 +165,9 @@ def _bench_sell_value(bc: BenchChar, character_priority: list[str], close_factio
 
 def _weakest_bench_idx(state: GameState, character_priority: list[str],
                        target_comp: Comp | None = None) -> int | None:
-    """最弱可卖 bench 下标(腾席链 c 步共用;strategy/03(原 doc 15§5.2c))。
+    """最弱可卖 bench 下标(腾席链 c 步共用;strategy/03 §5.2c)。
 
-    **3合1 重复件保护**(strategy/03(原 doc 15§4.1) 待加项,2026-08-14 P1 落地):bench 内同名 ≥2 张 =
+    **3合1 重复件保护**(strategy/03 §4.1):bench 内同名 ≥2 张 =
     3合1 进行中(再买 1 张即自动升星,价值远超残值)→ 保护不卖;全被保护 → 返回 None
     (无可卖,调用方走 DeferSpheres/留置)。
     返回值坐标系:state.bench 的下标(0 基,含 None 槽位),执行期现读快照。
@@ -176,7 +175,7 @@ def _weakest_bench_idx(state: GameState, character_priority: list[str],
     if bench_occupied(state.bench) == 0:
         return None
     from collections import Counter
-    # 按 (char_id, star) 计数(review L-5):3合1 只合并同名同星,同名不同星不构成进度 → 不保护
+    # 按 (char_id, star) 计数:3合1 只合并同名同星,同名不同星不构成进度 → 不保护
     _counts = Counter((bc.char_id, bc.star) for bc in state.bench
                       if bc is not None and bc.char_id)
     _protected = {i for i, bc in enumerate(state.bench)
@@ -199,7 +198,7 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
 
     **final 件条件窗口**(663 帖攻略精读 #243/#245/#249:final 件买而囤 bench,
     等窗口才上场 —— 用户定性「凑 final 不是问题,让它上场却取不了胜利才是」):
-    双轨期(P1 未定型)target 件**不再即买即上**(旧直 True = P1 板长成 final
+    双轨期(P1 未定型)target 件**不再即买即上**(即买即上会把 P1 板长成 final
     散件打不过过渡阵容,第9局四线散板实证)。P1 的板 = 过渡框架;final 件囤 bench,
     上场窗口(任一):
     - ①非双轨(定型信号 ready / 进 P2)→ 无条件上;
@@ -229,9 +228,9 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
         # 口径对齐:三侧统一「当先框架非 drop + 通用件」——
         # 散件 drop(艾丝妲/佩拉)不自动上(应急件,op 侧同口径);通用 carry
         # (千冶·刃 29%→64%)三侧都认。框架由 session 单一源。
-        # 白名单从 FRAMEWORKS 单一源派生(此前版本加量子时硬编码
-        # 遗漏 → 希儿/缇宝/符玄双轨期囤 bench 不上场,量子同频 trait 型连
-        # 底部兜底都接不住)。
+        # 白名单从 FRAMEWORKS 单一源派生——硬编码白名单在加体系时易漏
+        # (量子同频曾因硬编码遗漏接不住 → 希儿/缇宝/符玄双轨期囤
+        # bench 不上场,连底部兜底都接不住)。
         from sr_od.application.currency_war.kernel.cw_transition import (
             FRAMEWORKS as _FWS,
         )
@@ -267,19 +266,19 @@ def _pick_deploy_row(state: GameState, bc: BenchChar,
 
 def level_up_gate(state: GameState, target_comp: Comp | None = None,
                   committed: bool | None = None) -> bool:
-    """买经验硬门(腾席链 b 步与 sim 侧共用单一源;strategy/03(原 doc 15§5.2b) / §4.1;ADR-0129)。
+    """买经验硬门(腾席链 b 步与 sim 侧共用单一源;strategy/03 §5.2b / §4.1;ADR-0129)。
 
     条件 = level<10 + 该买经验(_want_level_up)+ 存金允许(扣单击价后不破 _xp_gold_floor)。
-    旧门要求 gold≥整级大金(36-60)→ 实际每击仅 4-8 金 → 过度保守 → 升级滞后(M15 live 实锤)。
+    整级大金(36-60)门槛过度保守(实际每击仅 4-8 金)→ 升级滞后(live 实锤)。
     ⚠️ gold 前置:shop 关态 gold 读空 —— 调用方须在 shop 开态的 fresh state 上判
-    (EnsureShopOpen 后重读;strategy/03(原 doc 15§5.2b) M2)。
+    (EnsureShopOpen 后重读;strategy/03 §5.2b)。
 
-    committed 显式传参(退役批(ADR-0466/0467/0469) C5 换源,ADR-0456 后设计件;蓝图 §4.3-R1):
+    committed 显式传参(ADR-0466/0467/0469;蓝图 §4.3-R1):
     None=挂账层旧口径(读 GameState 双轨标志);step 级调用方(dv 腾席链 b)
     从 prep_brain.committed_from 取权威值传入——fresh 帧装配边界不再靠
     双轨标志回填,堵「漏回填=恒按已定型激进化放升级」病理。
 
-    **溢出金 XP 放行(r85,用户 50 金息律「>50 的每一分都无存钱意义,该升级就升级」)**:
+    **溢出金 XP 放行(用户 50 金息律「>50 的每一分都无存钱意义,该升级就升级」)**:
     金 ≥ INTEREST_THRESHOLD + 单击价 时(息满溢出区),_want_level_up 的 False
     (DP 攒息姿态压 target_level)不再拦 —— 溢出部分买经验不损息档地板 50,
     白嫖人口进度;姿态的「攒息」目的此时已达成,不矛盾。P1 末 60-70 金闲置

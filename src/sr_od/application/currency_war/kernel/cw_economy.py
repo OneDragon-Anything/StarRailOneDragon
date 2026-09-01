@@ -1,6 +1,4 @@
 """货币战争 经济 / 等级 / 节奏骨架模型(纯函数:金 / 经验 / 息 / 刷新成本,ADR-0131 EconomyEffect 消费 + 0129 单击经验模型 + 0142 重复性效果折算;node_plan 节点×等级节奏骨架,14 §2 —— 三层共享底层,economy/evaluate/plan 均消费)。
-
-自 cw_decisions.py 一次性拆分而来(ADR-0145;纯移动零行为变化,函数名/签名不变)。
 """
 from __future__ import annotations
 
@@ -37,7 +35,7 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分。2026-08-04 提权(2→4):bot 不攒金 → 升不起级
+INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分(权重算账见下方注释块)
 
 
 STREAK_GOLD_TABLE: tuple[int, ...] = (1, 1, 2, 2, 2, 3, 4)
@@ -47,17 +45,16 @@ STREAK_GOLD_TABLE: tuple[int, ...] = (1, 1, 2, 2, 2, 3, 4)
 
 
 def streak_gold(streak: int) -> int:
-    """连胜奖励金(真值源=奖励弹窗 VLM 判读 2026-08-23,r305;表化 ADR-0262)。
+    """连胜奖励金(真值源=奖励弹窗 VLM 判读;表化 ADR-0262)。
 
     查 STREAK_GOLD_TABLE,越界(连胜 6+)取表尾。
-    单一源:sim 收入模型(cw_sim)与决策 EV(旧 line_strategy r307,
-    ADR-0336 已删;现 decision_v2 经 sim/plan 共用)
+    单一源:sim 收入模型(cw_sim)与决策 EV(decision_v2 经 sim/plan 共用)
     都 import 此函数,防双表漂移。"""
     idx = max(0, min(streak, len(STREAK_GOLD_TABLE) - 1))
     return STREAK_GOLD_TABLE[idx]
 
 
-#: 每节点基础收入的近似常量(单一源:cw_sim 收入模型消费;原 DP 日程收入消费面已随 DP 退役删除,防双源漂移条款保留)。
+#: 每节点基础收入的近似常量(单一源:cw_sim 收入模型消费)。
 #: 边界:基础奖励实际随节点变(VLM 判读 1-1=3/1-2=4,见 docs/game/currency_war/research/economy.md
 #: 「基础奖励」行;守卫测试 sr-od-test test_cw_r305_reward_data)——5 是统一近似值,奖励采集成表后替换为查表。
 BASE_INCOME: int = 5
@@ -84,12 +81,13 @@ ECONOMY_CALIB_VERSION: int = 2
 #: 数值见 engine_p1.EVENT_GOLD_BY_ROUND 注释;v1 旧表(奖励球残差近似)
 #: 批次与本版不可比,跨批对照须 economy_calib_version 一致。
 
-# (gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。原 2.0:息 delta(50vs0)=10 = 牌 synergy 10 → bot
-# 无差别→买不攒。提 4.0:息 delta=20 > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论。
+# 息权重算账(gold 0-15 < 升级 cost 36-48)→ 卡低 level → 弱 comp。息 delta(50vs0)=20
+# > 牌 synergy 10 → bot 攒到 50(息引擎)+ 花超额买/升级 = 经济统一论(若只取 2.0,息 delta=10
+# = 牌 synergy 10 → bot 无差别 → 买不攒)。
 # streak 经济(C 杠杆 2;fixture 核实 2026-08-11 结算「连胜×N」前缀=方向 → streak 接线):
 # ⚖️ **单边**(ADR-0128 #1,2026-08-15:货币战争无连败补偿,vs TFT)——只计连胜方向,
 # 连败 0 分(旧「对称取 magnitude」描述已废,行为自 0128 起就是单边;economy_score:306 同源)。
-STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,阶段 6 实玩校准)
+STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,待实玩校准)
 
 STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 ≤5 档)
 
@@ -97,18 +95,18 @@ STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 �
 # streak 带符号(连胜 + / 连败 −,结算源 session.last_streak 方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b)。
 WIN_STREAK_BREAK_INTEREST: int = 2    # 连胜 ≥2 破息(阈值历史源 auto-chess 常识,货币战争档金真值未核——见 plan 层 _refresh_cap 处破息-保息抉择注释)
 
-# r89b 连胜-保息抉择(攻略专题「连胜与卖血抉择」三变量模型,663 帖精读实证):
+# 连胜-保息抉择(攻略专题「连胜与卖血抉择」三变量模型,663 帖精读实证):
 # 攻略明文两分支 —— 已连胜→破息保连(#205「如果连胜就多D几个,利息保3」息档降到 30;
 # #46「小搜争取连胜,不顺果断存钱」);未连胜+血安全→保息(#151「卡满50利息,大不了先输着先」;
 # #145「优先留着吃利息,前期掉点血没事」)。「来牌顺」= 商店有可买战力件(shop_supply,无牌破息也无处花)。
-# ⚠️ 用户修正(定性,2026-08-20):**攻略的「卖血不低于40」不是急救触发线,是运营质量的
+# ⚠️ 用户定调(定性):**攻略的「卖血不低于40」不是急救触发线,是运营质量的
 # 报警线** —— 血低于它 = 前面破息决策已经错了;此时花光挺节点是「给前面的策略失败擦屁股」,
 # 断息后经济可能永远撑不起整局(死亡螺旋:血低→花光→息断→板半成型→又掉血→又花光)。
 # **目标是长期通关,不是苟住多少个节点**。故血低的正确响应 = 最小必要支出止损 + 息引擎
 # 尽量保住,真 ALL IN 只留给「位面末最后一战」(赢了带血/板进下位面,不存在后续经济问题)。
 # 该常量语义 = 运营质量报警线(策略层诊断/复盘用),不是 spending 触发器。
 HP_QUALITY_ALARM: int = 40            # 运营质量报警线(血低于此 = 前面破息决策错;诊断用)
-#: 攒息门 hp 急救分位(代码审计:×0.5 匿名魔法数提成具名常量)——血低于 职级阈值×此分位
+#: 攒息门 hp 急救分位——血低于 职级阈值×此分位
 #: = 真活不下去(急救通道 _phase_weights 接管);中危带(此线与阈值之间)按用户定调
 #: 「血低是报警非触发」维持攒息,不在此门破息(观察点:中危带持续漏买的场景留回放核)。
 HP_DISTRESS_FRAC: float = 0.5
@@ -184,8 +182,8 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
     ADR-0128(用户节奏 §7-7「不无脑停概率最高级,也不无脑推级」):comp 对**当前级**显式给了
     roll/stable(= 停留本级 D 核心)→ comp 停留意图压过 node 地板 —— 钱该花在 D 牌不是经验;
     未给(走通用曲线)才按 node 地板推。例:列车同行 lv7 roll 3星姬子(攻略 列车:53)→ 不推 8。
-    ADR-0149 评审R3(用户 §7-12「连50金都没凑到,为什么要急着升级?」):P1 金 < INTEREST_THRESHOLD
-    非boss/非锁血 → 不追级 —— 息引擎未立时追级 = 挤占买牌本金(M22 r7-r9 实证金≤35 全程追级
+    ADR-0149(用户 §7-12「连50金都没凑到,为什么要急着升级?」):P1 金 < INTEREST_THRESHOLD
+    非boss/非锁血 → 不追级 —— 息引擎未立时追级 = 挤占买牌本金(实机实证金≤35 全程追级
     零息)。boss/锁血节点豁免(节奏窗口 > 息纪律)。
     """
     if state.level >= 10:
@@ -197,10 +195,10 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
     # 缺省 False → committed 恒 True → fresh 帧按已定型激进化放升级」的病理。
     if committed is None:
         committed = not getattr(state, 'dual_track_phase', False)
-    # ADR-0149 P1 追级抑制(评审R3):息引擎未立**不追级**(金<INTEREST_THRESHOLD 时不再攒金
-    # 买经验 —— M22 r7-r9 金≤35 全程追级零息病理)。⚠️ 语义边界(M31 实证修正):只拦「攒金
+    # ADR-0149 P1 追级抑制:息引擎未立**不追级**(金<INTEREST_THRESHOLD 时不再攒金
+    # 买经验 —— 实机实证金≤35 全程追级零息病理)。⚠️ 语义边界(实机实证修正):只拦「攒金
     # 追级」(金 < 单击价+10 = 连一次有效点击都做不了还想攒),**金够单击+保命地板(10)放行** ——
-    # 升级本身是人口投资,金 12-14 点一次 XP 是正确节奏非泄金(M31 死因:旧 +20 地板把 lv4
+    # 升级本身是人口投资,金 12-14 点一次 XP 是正确节奏非泄金(实机实证:旧 +20 地板把 lv4
     # 卡到 P2)。lv<5 不拦(开场人口等级);boss/锁血豁免。
     if (state.plane == 1 and state.level >= 5
             and state.gold < INTEREST_THRESHOLD
@@ -225,7 +223,7 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
                 # 防「spend 攒息/xp 追级」门间对拉)。
                 # 急救 hp 门(HP_LOSS_FULL=30)——hp<30 濒死时买牌/合星是急救,
                 # 追级是远水(实证:P2r2 hp=1 金 35 被 P2 硬地板吸走 24g 买经验,死)。
-                # 修正(审计 cc119c14,第3局实锤):hp<30 **进位面首 2 轮不拦** ——
+                # 修正(审计 cc119c14):hp<30 **进位面首 2 轮不拦** ——
                 # hp1 进 P2 → 全量拦 → 升 8 永解锁不了 → 6 人应战到死(实机局团灭实证)。
                 # 保命要靠升 7/8 填人口(carry 位),不是永远 6 人;上述案例的病理是
                 # 「金 35 全烧经验」,由 XP 单击量控(花后地板)兜,非全量禁。
@@ -269,7 +267,7 @@ def _xp_gold_floor(state: GameState, want_level: bool) -> int:
 SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
 
 
-# 通用升级曲线(task#18 经济统一论):COMP_LIBRARY 未填 level_plan 时用。
+# 通用升级曲线(经济统一论):COMP_LIBRARY 未填 level_plan 时用。
 # auto-chess meta:前期(2-4)roll 找低费核心 → 中期(5-7)level_up 推等级(解锁高费刷新率 + 出战位)
 # → lv8 roll 找 5 费核心 → lv9+ stable。comp 自带 level_plan(如列车同行)优先于此(见 _resolve_level_goal)。
 _DEFAULT_LEVEL_GOAL: dict[int, LevelGoal] = {
@@ -402,7 +400,7 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     """经济健康度:利息(存金到 50)+ 等级合适度 + streak 档位金(C 杠杆 2)。
 
     economy_mode 只调利息项(rush_level 弱化守息、interest_first 强化守息),等级项不变。
-    阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理(A3)。
+    阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理。
     streak 单边计分(ADR-0128 #1:货币战争无连败补偿,只计连胜;连败 0 分);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate);方向驱动「保连胜」半(连胜维持>吃息)已接 plan:``_should_save_for_interest`` 连胜≥``WIN_STREAK_BREAK_INTEREST`` 破息(C 杠杆 3,R2-4b)。
     """
     # ADR-0131(投资策略效果进经济分):利息上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)+

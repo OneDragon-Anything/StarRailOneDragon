@@ -78,7 +78,6 @@ class EconomyEffect:
     - gold_next_nodes_amount/count: 「现在及接下来 count 次进节点每次 amount 金」(长期主义系;分期金)
     - gold_per_level_up: 每次升级给金(节节高升;P1 约 7 次升级,P2 再 2 次)
     - gold_per_20hp_lost: 每损 20HP 给金(保险;**故意不进经济分** —— 损血换钱是反向激励,仅建档)
-    (ADR-0142:9 条曾错装一次性 instant_gold 的重复性效果,按效果原文归位)
     """
     instant_gold: int = 0
     gold_per_node: int = 0
@@ -118,7 +117,7 @@ class EconomyEffect:
     gold_per_3star_merge: int = 0         # 星星相印:每合 3 星 +金
     refresh_per_compose: int = 0          # 武力刷新:合成装备时得免费刷
     sell_price_mult: float = 1.0          # 大裁员/降本增效:卖价 ×2(配合全场出售动作)
-    # —— 机制修改器审计 F1/F2/F3 补建(已裁修复项12,2026-08-31;数值=效果原文,plaza API)——
+    # —— 机制修改器审计 F1/F2/F3(数值=效果原文,plaza API)——
     refresh_free_chance: float = 0.0      # 概率事件(棱彩):每次刷新 45% 概率免费
                                           # → 消费侧折算期望刷价 = 基准 2×(1−0.45)=1.1
                                           # (MechanismMutation.refresh_price_mult 通道)
@@ -156,7 +155,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '买断制': EconomyEffect(instant_gold=15, interest_cap_override=0, xp_per_node=4),
     '淘金客': EconomyEffect(xp_per_refresh=2),
     '伟大征服': EconomyEffect(win_reward_mult=3.0, difficulty_per_streak=1, xp_instant=12),
-    # ↑ 纠错(ADR-0205):注册表曾只建 ×3,漏「敌人难度+N(N=连胜)」与 +12XP(API 原文)
+    # ↑ 按 API 原文全额建模:×3 连胜奖励 + 敌人难度+N(N=连胜)+ +12XP(ADR-0205)
     '商业间谍': EconomyEffect(xp_buy_cost_discount=1),
     '返利+': EconomyEffect(instant_gold=6, gold_per_three_5cost=3),
     '采购专员·金': EconomyEffect(refresh_surprise_every=7),
@@ -168,8 +167,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '搜打撤': EconomyEffect(free_refresh_per_node=1),
     '远见': EconomyEffect(instant_gold=15, future_quality_upgrade='prism',
                           difficulty_inflation_exempt=True),
-    # ↑ 纠错(ADR-0205):曾只建 +15 金,漏「后续策略节点→随机棱彩(不可刷)」
-    # +「不增加敌人难度」两大效果(API 原文;期权/难度侧由 33/36 号消费)
+    # ↑ 全额建模:「后续策略节点→随机棱彩(不可刷)」+「不增加敌人难度」(API 原文;
+    # 期权/难度侧由 33/36 号消费)
     '贸易专家:停云': EconomyEffect(instant_gold=10),
     '佩佩驾到': EconomyEffect(instant_gold=8),
     '控制规模': EconomyEffect(instant_gold=40),
@@ -198,7 +197,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '长期主义+': EconomyEffect(gold_next_nodes_amount=9, gold_next_nodes_count=3),
     '长期主义': EconomyEffect(gold_next_nodes_amount=7, gold_next_nodes_count=3),
     '大裁员': EconomyEffect(free_refresh_burst=5, sell_price_mult=2.0),
-    # ↑ 刷(旧)+ 卖价×2(合成/出售族轮并入)
+    # ↑ 免费刷 + 卖价×2
     '嘴硬': EconomyEffect(instant_gold=6),
     '秘密典籍+': EconomyEffect(instant_gold=12),
     '秘密典籍': EconomyEffect(instant_gold=8),
@@ -234,9 +233,9 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # 时点日程族
     '超发货币': EconomyEffect(gold_at_node=70, gold_at_node_offset=5),
     # ↑ 负债部分(失去现有全部金)由消费端按持有金处理,数值侧只记回流 +70
-    '固定理财': EconomyEffect(xp_per_node=0, free_refresh_burst=2),   # 位面开始部分(见下)
+    '固定理财': EconomyEffect(xp_per_node=0, free_refresh_burst=2),   # 即时段(位面开始段见下,待建模)
     '固定理财+': EconomyEffect(free_refresh_burst=3),
-    # ↑ 「现在+每位置面开始 4/6XP+2/3 刷」——v0 只建即时刷;位面日程挂台账批次
+    # ↑ 「现在+每位置面开始 4/6XP+2/3 刷」——此处只建即时刷;位面开始段待建模
     '经验到账': EconomyEffect(xp_instant=10),
     '孪生素数': EconomyEffect(xp_instant=0),   # 首购计数器(2/3/5/7/11)——行为条件流,消费端计数
     # 动态/血金互兑族
@@ -254,7 +253,7 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '星星相印': EconomyEffect(gold_per_3star_merge=5),
     '武力刷新': EconomyEffect(refresh_per_compose=2),
     '降本增效': EconomyEffect(sell_price_mult=2.0),
-    # —— 机制修改器审计 F1/F2/F3 补建(已裁修复项12,2026-08-31;效果原文=cw_invest_data
+    # —— 机制修改器审计 F1/F2/F3(效果原文=cw_invest_data
     #    plaza API 逐字:概率事件 300401/奋斗协议 301801/市场干预 102201)——
     '概率事件': EconomyEffect(refresh_free_chance=0.45),
     # ↑ 「刷新时有45%概率获得一次免费刷新」——消费侧经 EffectLedger 折期望刷价
@@ -763,8 +762,8 @@ def get_strategy(name: str) -> InvestmentStrategy | None:
 
 # ===== ADR-0143 选卡价值基准分(全量评估表派生)=====
 # 评估口径:value_class 七分类 + quantizable 三档 + pick_priority 0-100(读 effect 原文逐条判定;
-# 无上下文基准分,comp 匹配/HP 分档在 decide_event 消费侧调)。表与注册表对拍:315/315 命中
-# (curated+ingested;ADR-0150 后注册表 = plaza base 335,键经 canon 归一对齐)。
+# 无上下文基准分,comp 匹配/HP 分档在 decide_event 消费侧调)。注册表 = plaza base 335,
+# 键经 canon 归一对齐(ADR-0150)。
 PICK_VALUE: dict[str, int] = {
     "鲜血阶梯": 75,
     "打通上下游·彩": 72,
@@ -1094,7 +1093,7 @@ SURVIVAL_PICKS: frozenset[str] = frozenset({
     '奋斗协议', '退化', '简单模式', '难度修改器',
 })
 
-# r255(P2 断崖装备缺失,11 局实锤):装备流策略——P2r1 的
+# P2 断崖装备缺失(11 局实锤):装备流策略——P2r1 的
 # 掉血(-14~-41)与板面弱相关,五局 P2 板面 equips 全空
 # (裸件打仗);军火类策略(每节点刷装备)是 P2 生存的
 # 关键补强通道。decide_event 在 P2 给这类 +25。

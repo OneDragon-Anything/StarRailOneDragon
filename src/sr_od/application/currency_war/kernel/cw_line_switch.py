@@ -12,7 +12,7 @@ p̄ 同超几何模型(cw_shop_odds P5 表实值;同 ``ev_proto.p_at_least_one``
 目标,m)/C(同费总,m))。**p̄ 乐观偏差**:理论满池值未扣 NPC 消耗/争夺,
 系统性偏乐观 10-20%——判据先修偏再比较:双线 E_rounds 同乘 (1+δ)
 (registry.line_switch_debias_delta,默认 0.15),θ(registry.line_switch_theta,
-默认 1.0 轮)只承载去偏后的剩余噪声(DESIGN §③修订 1-2)。
+默认 1.0 轮)只承载去偏后的剩余噪声(DESIGN §③)。
 
 切换条件(滞回 + 驻留):
 
@@ -176,7 +176,7 @@ def should_switch_e(e_cur: float, e_alt: float, dwell_rounds: int,
 
 
 #: P2 位面节点模板(economy.md §10.2;表缺/位面锚不符时的投影回退):
-#: [战斗, 战斗, 遭遇, 奖励, 遭遇, 奖励, 战斗, boss]——r7 实测表为「?」
+#: [战斗, 战斗, 遭遇, 奖励, 遭遇, 奖励, 战斗, boss]——实测表第 7 节点为「?」
 #: 占位,按保守规则转战斗+normal 档(未知多算一的一场损失=存活估计更
 #: 短=门更紧,保守方向显式声明,多局开局帧复核后改)。
 _P2_NODE_TEMPLATE: list[str] = ['battle', 'battle', 'encounter', 'reward',
@@ -222,8 +222,7 @@ def rounds_alive(state: GameState,
                  session: StrategySession,
                  registry: DecisionV2Registry | None = None) -> int:
     """存活轮数:剩余节点序列逐节点投影(设计=
-    C3/C4 重设计件 §3.2;
-    旧 ceil(hp/等权均值) 除数口径已废除——两个期望时钟必须同一把尺,
+    C3/C4 重设计件 §3.2;两个期望时钟必须同一把尺,
     本函数与 E_rounds 同按日历轮计量)。
 
     语义=「从当前节点起、按日历轮走,到 hp 耗尽为止还能行动的节点数」:
@@ -310,8 +309,8 @@ def gate_counterfactual(state: GameState, session: StrategySession,
         return False
     if not math.isfinite(e_alt):
         # E=inf = 新线永不完成,门不等式右端 inf,R≥inf 恒假 → 拦是判据
-        # 式的直接读出(v3 R-E:拦截归属唯一化到本门;旧「上游已拦」
-        # 该声明经对抗审查核实为假——v2 通道不调 should_switch_e)
+        # 式的直接读出(v3 R-E:拦截归属唯一化到本门——v2 通道不调
+        # should_switch_e,上游并不拦)
         return True
     return rounds_alive(state, session, reg) \
         < gate_need(state, session, e_alt, reg)
@@ -334,8 +333,8 @@ def survival_gate(state: GameState, session: StrategySession,
 
     辖域 plane==2(v3 R-G 收窄:损血表为 P2 标定,P1 不适用;P3 帧消费
     P2 表 → R 高估门偏松 FM-12,P3 扩辖待 p3_cond_loss_table 标定);
-    开关关/辖域外 → 放行(零漂移)。e_alt=inf(v3 R-E 勘误,原「上游
-    should_switch_e 已拦」声明经对抗审查核实为假——v2 通道不调该函数):
+    开关关/辖域外 → 放行(零漂移)。e_alt=inf(v3 R-E:v2 通道不调
+    should_switch_e,上游并不拦):
     新线永不完成,门不等式右端 inf → **拦**('alt_inf'),拦截归属
     唯一化到本门,p̄=0 线由信号胜出不再落锁。
     """

@@ -56,11 +56,10 @@ from sr_od.application.currency_war.kernel.cw_system_cards import (
     card_pieces,
 )
 
-# 体系卡 →(判据阵营, 目标档);ADR-0320 统一化:card→faction 映射改从
-# ``SystemCard.judge_factions`` 字段派生(第三处重复消除;原先本表/
-# cw_system_cards._card_factions/card_active 三处各写一遍),tier 阈值
+# 体系卡 →(判据阵营, 目标档);ADR-0320:card→faction 映射从
+# ``SystemCard.judge_factions`` 字段派生,tier 阈值
 # 仍派生自 FACTIONS 注册表(单一源,版本更新自动传导;希儿系双分支取
-# judge_factions 首位=量子侧作演进目标锚,与原值一致)。
+# judge_factions 首位=量子侧作演进目标锚)。
 _CARD_FACTION_TIER: dict[str, tuple[str, int]] = {
     card.card_id: (card.judge_factions[0],
                    FACTIONS[card.judge_factions[0]].tiers[0])
@@ -119,8 +118,8 @@ class EvolutionState:
     last_reason: str = ''
     # ADR-0360 件2(提案去重退避):被拒事务的提案签名 → (plane,
     # round) 拒绝时点;``_backoff_active`` 消费(同 plane 且 2 轮内不
-    # 重提同签名提案——迁移期 sim 实证:rejected 死循环 34 局,同因(duplicate_
-    # on_board)重提零清障,迁移期 sim 实证:连续三轮原样重提)。
+    # 重提同签名提案——迁移期 sim 实证:rejected 死循环 34 局,同因
+    # (duplicate_on_board)重提零清障)。
     reject_backoff: dict[tuple, tuple[int, int]] = field(default_factory=dict)
     # ADR-0382 保护集分级的缺口持续追踪:缺口体系键 →
     # (plane, first_round, last_round)。同 plane 连续轮(间隔 ≤1)累
@@ -779,7 +778,7 @@ def propose_upgrades(state: GameState, session=None) -> list[UpgradeOption]:
     - Comp(C4):每套主档各羁绊,在手人数 ≥2 且板面档 < 目标档 → 机会;
     - 当前板:板上已有羁绊在手人数 > 当前板档 → 升 1 档机会(加深)。
     session.target_comp(意向同向)作 tie-break 加权,非一票否决(C2 语义)。
-    线名来源收口(prereg/w956_death_allocator/DESIGN.md §2;prereg/w954_transform_impl 消费契约「执行侧只读意向层权威状态」):
+    线名来源收口(意向层消费契约「执行侧只读意向层权威状态」):
     tie-break 读 ``cw_recipe.decision_target``(意向单一入口,双轨期返回
     配方伪 comp)——只换数据来源,加权语义不变。
     """
@@ -1080,7 +1079,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         new_label = comp.name if comp is not None \
             else f'{opt.faction}{opt.target_tier}'
     reason = f'evolve:{old_label}→{new_label}'
-    # alloc 一致性断言(prereg/w956_death_allocator/DESIGN.md §2/prereg/w954_transform_impl 消费契约;纯观察零拦截):
+    # alloc 一致性断言(意向层消费契约;纯观察零拦截):
     # 演进目标 ∉ 意向权威锁定体系集时记报警日志——reason 线名与
     # locked_comp 脱节的帧级观测面(实机档案 match g_20260831_082322
     # p2r1 型病灶的复现锚)。
@@ -1252,8 +1251,8 @@ def fill_gap_after(tx: CompTransaction, state: GameState,
                 continue
             cost = card.cost or 3
             if state.gold < cost:
-                # S7(可观测性,不变行为):金不足跳过某件 → 留 log 行(此前静默
-                # 留空,判读侧看不见「为什么缺口没填满」);格式对照 discipline
+                # S7(可观测性,不变行为):金不足跳过某件 → 留 log 行,
+                # 判读侧看得见「为什么缺口没填满」;格式对照 discipline
                 # 的 [cw][d2][liquidity] 行。
                 log.info('[cw][d2][fill-skip] 金不足 %s(费%d 现金%d)',
                          card.name, cost, state.gold)
@@ -1374,9 +1373,8 @@ def evolution_step(state: GameState, session=None,
         mem.paused = False
     # 冻结扩到遭遇前:不启动新替换(pending 记下,恢复时重校验)
     frozen = state.node_type in _ENCOUNTER_NODES
-    # ADR-0363 件2 / ADR-0366 口径修正:位面末窗(剩 ≤1 轮,
-    # round_num ≥ 本位面轮数-1;P1=9→r8-9、P2=7→r6-7——旧版按全局
-    # NODES_PER_PLANE=9 判,P2 冻结窗是空集的口径断层由 ADR-0366 定案)
+    # ADR-0363 件2 / ADR-0366 口径:位面末窗(剩 ≤1 轮,
+    # round_num ≥ 本位面轮数-1;P1=9→r8-9、P2=7→r6-7)
     final_window = False
     if final_freeze:
         from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
@@ -1477,9 +1475,8 @@ def evolution_step(state: GameState, session=None,
                                  '未过豁免复核(%s)——末窗不发射',
                                  state.round_num, tx_c.reason)
                 if applied and freeze_ok:
-                    # 观测定案:undeploy 追加下场名单(角色名 list,空则 [])——
-                    # 承接判读遗留:只记计数时补完保护锚点(ADR-0375
-                    # 「undeploy 不含希儿系」)无法核到名单级。索引按事务前
+                    # 观测含 undeploy 下场名单(角色名 list,空则 []),可核
+                    # 补完保护锚点(ADR-0375「undeploy 不含希儿系」)。索引按事务前
                     # state.deployed 解析(契约口径;本行发射于执行前,state
                     # 未变,槽位即生成期槽位;空槽防御性滤 None,ADR-0392)。
                     _und_names = [d.char_id for d in

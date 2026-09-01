@@ -1,6 +1,4 @@
 """货币战争 事件节点决策:投资策略/环境 3 选 1(decide_event;ADR-0143/0144 pick_value)+ 遭遇(decide_encounter)+ 补给(decide_supply)+ 巨星/伙伴选项类型。
-
-自 cw_decisions.py 一次性拆分而来(ADR-0145;纯移动零行为变化,函数名/签名不变)。
 """
 from __future__ import annotations
 
@@ -39,11 +37,11 @@ INVESTMENT_STRATEGIES_KEYS: list[str] = list(INVESTMENT_STRATEGIES)
 
 
 # ===== 事件 =====
-# decide_boss_priority(阵营降权)已删(2026-08-12):boss 克制是 comp-vs-boss 机制级(走 boss_fit/
-# comp.countered_by_bosses + task#73 机制建模),非阵营级。原 faction 降权是错模型 + 从不派发的死代码。
+# 设计注:boss 克制是 comp-vs-boss 机制级(走 boss_fit/
+# comp.countered_by_bosses + 机制建模),非阵营级——不做阵营降权。
 
 def _option_rarity(opt: str) -> str:
-    """投资策略选项的品质(ADR-0141 复查 #6):注册表精确查 → LCS 相似兜底(ADR-0138 通道);未知返 ''。
+    """投资策略选项的品质(ADR-0141):注册表精确查 → LCS 相似兜底(ADR-0138 通道);未知返 ''。
 
     品质→敌难度(核心机制 38-40):金 +3 / 棱彩 +6 —— 高品质 = 高风险高回报,难度惩罚项的输入。
     """
@@ -66,7 +64,7 @@ def _opt_counters_dot(opt: str) -> bool:
     名 → ``AFFIX_MECHANIC_MAP`` 机制 tag → ``MECHANIC_COUNTERS`` 克制属性,与「净化身心」
     同类的任意 anti-DoT 词缀/环境都覆盖(不止单点名);子串包含匹配保留旧 OCR 容错语义
     (旧 config dot_punish_envs 名单已删 —— 游戏客观数据非用户偏好,版本全量一致)。
-    未知名(不在映射)→ False(不惩罚)。W875 补全包词缀按开关并表(全关=基表零漂移)。
+    未知名(不在映射)→ False(不惩罚)。包词缀按开关并表(全关=基表零漂移)。
     """
     affix_map, counters, _ = merged_mechanic_tables()
     for affix, tag in affix_map.items():
@@ -174,14 +172,14 @@ def decide_event(options: list[str], config, state: GameState,
         if (state.hp is not None and state.hp < 40
                 and _st is not None and _st.name in SURVIVAL_PICKS):
             score += 15.0
-        # r255(P2 断崖装备缺失):P2 期装备流策略 +25——
+        # P2 断崖装备缺失(P2 期装备流策略 +25):
         # 11 局实锤 P2 板面 equips 全空(裸件打仗,首战
         # -14~-41);军火类(每节点刷装备)是 P2 生存关键
         # 通道,P1 期不加(P1 板面成型优先)。
         if (state.plane >= 2 and _st is not None
                 and _st.name in EQUIP_FLOW_PICKS):
             score += 25.0
-        # ADR-0141(复查 #6):品质→敌难度(核心机制 38-40:金+3/棱彩+6)—— 高品质策略提升敌人难度,
+        # ADR-0141:品质→敌难度(核心机制 38-40:金+3/棱彩+6)—— 高品质策略提升敌人难度,
         # A8 高难下难度膨胀追不平强度 → 按当前难度动态惩罚:棱彩 -12 / 金 -6(Hp 危险时加倍;难度可从
         # state.enemy_difficulty 读但选卡时常空,用 A8 常态先验)。银/未知不罚。
         # env 无品质分级(图鉴亦无,ADR-0144 评估实证)→ 不吃品质难度惩罚(否则 _option_rarity
@@ -202,7 +200,9 @@ def decide_event(options: list[str], config, state: GameState,
                      reason=f"{best_reason} score={best_score:.0f}" + ("|suggest-refresh" if _want_refresh else ""))
 
 
-# ===== 遭遇节点(decide_encounter,design 08;✅ 已接 HandleEncounter:55 + read_encounter_options)=====
+# ===== 遭遇节点(decide_encounter;design 08)。✅ 已接:``HandleEncounter`` 调本函数 +
+# ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
+# (选项 UI 不显词缀,战后才显)。=====
 
 @dataclass
 
@@ -243,7 +243,7 @@ def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> floa
 
 
 def _reward_value(rewards: list[str]) -> float:
-    """奖励文本 → 价值分 0..1(2026-08-17 用户指路「看奖励」接进选档)。
+    """奖励文本 → 价值分 0..1(用户指路「看奖励」接进选档)。
 
     OCR 奖励带已读(read_encounter_options rewards);文本启发:
     - 棱彩/金装备类关键词 > 银类 > 无文本(OCR 漏/无奖励带);
@@ -265,7 +265,7 @@ def _reward_value(rewards: list[str]) -> float:
     return 0.5
 
 
-# 敌方血量随难度缩放:base × 1.052^d(🟡 米游社拟合,competitors.md;19 号 D≥E 不等式地基)。
+# 敌方血量随难度缩放:base × 1.052^d(🟡 米游社拟合,competitors.md;D≥E 不等式地基)。
 # 遭遇选档用:档差 → 血量比 → 相对斩杀压力。
 _ENEMY_HP_GROWTH: float = 1.052
 
@@ -278,9 +278,9 @@ def _difficulty_hp_ratio(tier_delta: int) -> float:
 
 def decide_encounter(options: list[EncounterOption], state: GameState,
                      target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
-    """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``HandleEncounter``(L55 调本函数)+
+    """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``HandleEncounter`` 调本函数 +
     ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
-    (选项 UI 不显词缀,战后才显)。原 docstring「handler 待阶段5 接」过期(2026-08-12 代码核实已接)。
+    (选项 UI 不显词缀,战后才显)。
 
     决策(观测驱动 + comp 相关,debuff=buff):
     1. **未成型**(deployed 不足 / target 成型度低)→ 偏低难度(生存优先)。
@@ -302,7 +302,7 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
         return EncounterPick(idx=options[0].idx, refresh=True,
                              reason=f"全分支词缀克 comp(mech_max={max(mechs):.2f}),刷新换批")
 
-    # 评分:词缀契合(利 comp 加分)+ 难度档定价(P9 接 36 号账本:场合三态替代固定 ±0.3)
+    # 评分:词缀契合(利 comp 加分)+ 难度档定价(P9 接难度账本:场合三态替代固定 ±0.3)
     def _score(o: EncounterOption, m: float) -> float:
         from sr_od.application.currency_war.kernel.cw_survey19_hooks import (
             encounter_tier_score,
@@ -310,11 +310,11 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
         s = m
         # 0..1 clamp(难度 1→0、3→1;「其四」=4 越界 1.5 → 钳回,ADR-0130)
         diff_norm = min(max((o.difficulty - 1) / 2.0, 0.0), 1.0)
-        # 奖励价值(2026-08-17 用户指路;OCR 奖励带已读)——与难度联动:
+        # 奖励价值(用户指路;OCR 奖励带已读)——与难度联动:
         # 只有「敢难」时奖励差才兑现,不敢难时好奖励也白搭(不独立加分)
         rv = _reward_value(o.rewards)
         if state.plane == 3:
-            # ADR-0130(复查 #3):P3 永避高难遭遇(一次 -70 血无回报,成型也不赌)。
+            # ADR-0130:P3 永避高难遭遇(一次 -70 血无回报,成型也不赌)。
             s -= 0.5 * diff_norm
             s -= 0.1 * (1.0 - rv)   # P3 不为奖励冒险,仅轻微 tiebreak
         else:
@@ -335,21 +335,20 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
 
 
 
-# ===== 补给节点(decide_supply,design 07/08;✅ 已接 run_supply_node:56 + read_supply_options)=====
+# ===== 补给节点(decide_supply,design 07/08)。✅ 已接 run_supply_node + read_supply_options =====
 
 # 通用装备价值(V4.4 meta 先验;**值在代码单一源,不进 strategy doc**;实玩校准)。
 # 设计原则:带钻 > 鞋(找鞋战争;速度 comp 命脉)> 电池 > 花/通用。具体值随版本。
-# ADR-0298(批㉛ F2 数据债清偿):键必须 ⊆ EQUIPMENT_ROSTER(注册表单一源)——
-# 旧表 3 死名已核游戏语料裁决为表残留删除(超级电池=超充站 buff 词非装备/
+# ADR-0298:键必须 ⊆ EQUIPMENT_ROSTER(注册表单一源)——
+# 死名不入表(表残留经游戏语料核裁删除:超级电池=超充站 buff 词非装备/
 # 能量饮料=全语料零出现/翁瓦克=局外遗器名被 ADR-0130 误收);翁瓦克 4 分
-# 按功能对位转投蓄能帆(行动值回能,同为充能系;0 分→4 分)。
+# 按功能对位转投蓄能帆(行动值回能,同为充能系)。
 _EQUIP_VALUE: dict[str, int] = {
     "反重力皮靴": 5, "轮滑鞋": 4,
     "永动机": 4, "光能电池": 3,
     "物质分解液": 3, "绝对热量": 2, "蓄能帆": 4,
-    # ADR-0130(复查 #7,各阵容装备段 + 核心机制:56):核心输出装补缺 —— 旧表缺失 = 全 0 分 →
+    # ADR-0130(各阵容装备段 + 核心机制):核心输出装补缺 —— 缺失 = 全 0 分 →
     # 补给/装备决策系统性低估 core 装备(火力风暴潮 = 伤害征服核心乘区,最高优先)。
-    # (ADR-0298:本行原含「翁瓦克」= 局外遗器死名,已删,见表头注释。)
     "火力风暴潮": 6, "高周波电锯": 5, "冷笑话引擎": 4,
 }
 
@@ -386,8 +385,8 @@ def _equip_value(equip: str) -> int:
 
 def decide_supply(options: list[SupplyOption], state: GameState,
                   target_comp: Comp | None, config, refresh_used: bool = False) -> SupplyPick:
-    """补给节点选装备 + 是否刷新(纯逻辑,design 07/08)。✅ 已接:``run_supply_node``:56 调本函数 +
-    ``read_supply_options``(cw_node_obs,OCR 每列角色+装备)。原「handler 待阶段5 接」过期(2026-08-12 核实)。
+    """补给节点选装备 + 是否刷新(纯逻辑,design 07/08)。✅ 已接:``run_supply_node`` 调本函数 +
+    ``read_supply_options``(cw_node_obs,OCR 每列角色+装备)。
 
     决策(comp 相关 + 钻优先):
     1. **带钻**(红/蓝)→ 选它(拿到基本赢,碾压)。
@@ -418,7 +417,7 @@ def decide_supply(options: list[SupplyOption], state: GameState,
     return SupplyPick(idx=best.idx, reason=f"equip={best.equip or '?'} key_fit={best.equip in key_equips}")
 
 
-# ===== 巨星节点(decide_megastar;✅ 已派发 run_megastar_node:75,按 target.core_chars 选;⚠️ 候选 char_id OCR 限时 fallback idx0)=====
+# ===== 巨星节点(decide_megastar;✅ 已派发 run_megastar_node,按 target.core_chars 选;⚠️ 候选 char_id OCR 限时 fallback idx0)=====
 
 @dataclass
 
@@ -445,7 +444,7 @@ class MegastarPick:
     enhance_char_id: str | None = None
 
 
-# ===== 选择伙伴节点(decide_partner;✅ 已派发 handle_select_partner:96,T#99;⚠️ 候选只立绘 char_id=label→多 idx0,真接需 SIFT 立绘)=====
+# ===== 选择伙伴节点(decide_partner;✅ 已派发 handle_select_partner;⚠️ 候选只立绘 char_id=label→多 idx0,真接需 SIFT 立绘)=====
 
 @dataclass
 
@@ -489,9 +488,9 @@ class PlannerPick:
 
 def decide_planner(options: list[PlannerOption], state: GameState,
                    target_comp: Comp | None = None) -> PlannerPick:
-    """银狼「我来当策划」二选一策略(r104)。
+    """银狼「我来当策划」二选一策略。
 
-    用户定调(2026-08-20):**必接策略模块由它定**(handler 不写死默认),虽结论
+    用户定调:**必接策略模块由它定**(handler 不写死默认),虽结论
     几乎总是升费——打分走通用原则,让「何时升费不是最优」可被策略表达:
 
     - **升费卡**(「提升费用」):银狼成长滚动投资前提(升费→新费档刷商店→3星5费

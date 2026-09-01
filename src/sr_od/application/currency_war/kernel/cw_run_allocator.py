@@ -1,8 +1,8 @@
-"""跨局分配层 v0(05 号提案;ADR-0170;2026-08-16):RunAllocator Thompson 采样 + 必死局回收。
+"""跨局分配层 v0(ADR-0170):RunAllocator Thompson 采样 + 必死局回收。
 
-**诊断(05 号)**:所有已落组件都是**局内优化器**,没人回答「数据本身从哪来、分配对不对」
+**诊断**:所有已落组件都是**局内优化器**,没人回答「数据本身从哪来、分配对不对」
 ——bot 集中玩当前最强 comp → telemetry 窄分布 → 学习组件外推失真 → 更不敢选 = 死锁
-(05 自诊断的 CRITICAL-for-convergence)。必死局的剩余动作是**免费实验预算**被白白输掉。
+(提案自诊断的 CRITICAL-for-convergence)。必死局的剩余动作是**免费实验预算**被白白输掉。
 
 **v0 落地**(纯函数,离线可测;telemetry 接线/漂移闭环为 v1):
 - ``StrategyArm``:臂 = comp 家族(v1 再拆节奏维);Beta 后验;
@@ -90,7 +90,7 @@ class ThompsonAllocator:
         """终局更新:分级奖励 × 遵从度加权 + 指数遗忘(γ 缩旧样本再加分母)。"""
         a = self.arms.get(arm_id)
         if a is None or not (0.0 <= reward <= 1.0):
-            # 拒绝必须留日志(57-A1 型断线哨兵——update 静默 no-op 时生产不可见)
+            # 拒绝必须留日志(断线哨兵——update 静默 no-op 时生产不可见)
             from one_dragon.utils.log_utils import log
             log.warning('[cw-alloc] update 拒绝:arm=%r 不在臂表 或 reward=%r 越界 [0,1]', arm_id, reward)
             return

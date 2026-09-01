@@ -43,7 +43,7 @@ def material_value(name: str) -> int:
 # ===== 拖动期望态对账(期望态层·逻辑版本)=====
 # 架构原则(用户 2026-08-28 裁决):指令发出时用纯函数从动作意图计算
 # 「执行后世界应有的增量」;动作完成后的定型帧实读逐槽对账;不一致落
-# 缺陷台账(复现升 L0,停线由 迁移审计(git 历史) 分级安灯承接),一致不打扰,零决策
+# 缺陷台账(复现升 L0,停线由分级安灯承接),一致不打扰,零决策
 # 行为变更。同族先例=观测自检框架设计 §2.2 买牌落位对拍
 # (观察审计设计件)。
 # 边界:本对账只辖 prep_director 直发链的拖动动作(SellBench/DeployMove)。
@@ -90,7 +90,7 @@ def compute_drag_expect(action: PrepAction,
     - 源槽身份未识别(上次 heavy SIFT 无该槽条目);
     - deploy_move 目标槽为**同名**占用——merge_mechanics.md §3 恒成立约束
       「场上同名同星 ≤1」+ 部署链 5.1.7 不变量「同角色在场只 1」下该动作
-      不可达(游戏拒绝),期望态不定义(原「语义未核实」口径按该档收口)。
+      不可达(游戏拒绝),期望态不定义。
     """
     if isinstance(action, SellBench):
         ident = next((bc.char_id for bc in bench_chars
@@ -109,7 +109,7 @@ def compute_drag_expect(action: PrepAction,
         if tgt is None:
             tk, ti = 'place', ''
         elif tgt.char_id == ident:
-            return None   # 同名占位:游戏语义未核实,不发明期望
+            return None   # 同名占位:该动作不可达(游戏拒绝),期望态不定义
         else:
             tk, ti = 'swap', tgt.char_id
         return DragExpect(kind='deploy_move', identity=ident,
@@ -291,7 +291,7 @@ def compare_buy_expect(expect: BuyExpect,
                        deployed_read: list[BenchChar]) -> list[dict[str, str]]:
     """买牌期望态 vs 定型帧实读逐槽比对(纯函数;仅评增量槽位)。
 
-    判据(槽位级身份+星级比对,迁移审计(git 历史) 同款宁缺勿造):实读中该槽无条目
+    判据(槽位级身份+星级比对,同款宁缺勿造):实读中该槽无条目
     (SIFT 未识别/空读)= 无法建真值 → 跳过不评,不算一致也不算不一致;
     期望空槽而实读有身份 = 不一致(合成腾槽未发生/多买散牌证据)。
     返回不一致项列表(空列表=全部可比项一致)。
@@ -332,7 +332,7 @@ def compare_buy_expect(expect: BuyExpect,
 
 
 
-# ===== 经验期望态账本(迁移审计(git 历史):XP/等级期望态对账;架构同 迁移审计(git 历史) 买牌/迁移审计(git 历史) 拖动)=====
+# ===== 经验期望态账本(XP/等级期望态对账;架构同买牌/拖动期望态)=====
 
 #: 台账 surface/kind(经验通道;复现计数按 (surface, kind, expected) 分档)。
 _XP_DEFECT_SURFACE = 'xp'
@@ -479,7 +479,7 @@ def compute_equip_drag_expect(intent: EquipDragIntent,
       实证),A/B 消耗、产物落 B 位(位置语义「合成落点」的栏内对应;
       网格对账按计数,产物占哪格不评);配对不可合(非法对/非简易/
       未知名)→ None 不评;
-    - wear(简易→角色未穿简易):穿戴即离栏,网格 −1(角色侧本批不评
+    - wear(简易→角色未穿简易):穿戴即离栏,网格 −1(角色侧不评
       —— read_equipped_below 精度未验证,按不评口径);
     - wear_synth(简易→角色已穿简易):两简易不能共存必合成(§1.1),
       产物落角色最左简易槽;拖入件离栏(网格 −1),已穿件在角色侧消耗、
@@ -489,7 +489,7 @@ def compute_equip_drag_expect(intent: EquipDragIntent,
       equipped_names 空(未穿/穿戴读失读)= 无可评增量 → None 不评。
 
     不堆叠语义(§1.1):装备区每格一件,计数=格数;row1 材料堆叠件
-    (扳手等,非合成图谱)不进本批期望。source_name 空(sell_char 除外)
+    (扳手等,非合成图谱)不进期望。source_name 空(sell_char 除外)
     → None。
     """
     src = intent.source_name

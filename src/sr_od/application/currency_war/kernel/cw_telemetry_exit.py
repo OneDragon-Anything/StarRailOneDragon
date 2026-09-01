@@ -1,4 +1,4 @@
-"""货币战争 telemetry 上行出口钩子位(kernel;分包期 4,DESIGN §3.3-④)。
+"""货币战争 telemetry 上行出口钩子位(kernel;DESIGN §3.3-④)。
 
 kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块的钩子位,
 三桶零直依 telemetry(分包目标矩阵 §3.2;单一测量源=scan_v3):

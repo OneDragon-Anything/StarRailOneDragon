@@ -5,8 +5,8 @@
 - **数据**(哪些策略是什么效果)在 ``cw_investments.STRATEGY_EFFECTS`` overlay——
   与 ``STRATEGY_ECONOMY`` 同键空间同构建校验,防两套手维护面漂移;
 - 生产与 sim 同一实现(sim 结算效果时同步维护 inventory;效果规格契约);
-- **零决策行为**:骨架批任何决策路径不消费本模块产出——查表接入是后续
-  姿态面/执行预判面的事。
+- **零决策行为**:任何决策路径不消费本模块产出——查表接入归后续
+  姿态面/执行预判面。
 
 **EffectSpec 四元组**(每条策略 = 一条效果规格):
 触发时机(trigger)× 持续期(duration)× 效果类型(category)× bot 待办(duties),
@@ -14,7 +14,7 @@ payload 承载效果数值/战场语义;经济/状态类复用 ``cw_investments.
 同一实例(单一源,不复制字段)。
 
 **与 cw_effect_ledger 的关系**:ledger(``cw_effect_ledger.py``)是消费端派生视图
-(从 EconomyEffect 聚合出 DP 日程/突变结构),本模块是其上游;本批不改 ledger。
+(从 EconomyEffect 聚合出 DP 日程/突变结构),本模块是其上游。
 """
 from __future__ import annotations
 
@@ -68,13 +68,13 @@ class DutyFlags:
 
 @dataclass(frozen=True)
 class BattlefieldEffect:
-    """战场改变族 payload(本批只建类型;数值随条目按官方原文填,不猜)。"""
+    """战场改变族 payload(只建类型;数值随条目按官方原文填,不猜)。"""
     shop_rewrite: bool = False              # 商店改写(采购专员同费面/市场干预 3 费面)
     steal_on_level_up: int = 0              # 升级时偷商店最贵 N 张(商业间谍=3)
     auto_buy_owned: bool = False            # 自动购买场上已有角色(Gemi狸)
     free_refresh_on_node_enter: int = 0     # 进节点免费刷 N 次(Gemi狸=2)
     board_rewrite: str = ''                 # 板面重写语义('upgrade_all_cost+1'/'sell_all'/…)
-    bench_reroll: str = ''                  # 备战席区间重掷(乱成一锅粥族;本批未建条目)
+    bench_reroll: str = ''                  # 备战席区间重掷(乱成一锅粥族;未建条目)
     counter_every: int = 0                  # 每 N 次刷新计数门槛(采购专员金 7/彩 5)
 
 
@@ -139,9 +139,9 @@ class ActiveEffect:
 class ActiveEffectInventory:
     """session 级在场效果清单。纯数据 + 读端/追踪端;零 import 包内模块(可离线单测)。
 
-    写端(挂点调用)现状:仅第四挂点「升级事件」已接生产
+    写端(挂点调用)现状:仅「升级事件」已接生产
     (prep_actions._level_up 成功返回处,on_level_up);选卡/进节点/结算三挂点的
-    register/tick 接线归后续批(证据 = 骨架期挂点接线盘点记录)。
+    register/tick 接线未接。
     """
 
     def __init__(self) -> None:
@@ -160,7 +160,7 @@ class ActiveEffectInventory:
         self.entries.append(entry)
         return entry
 
-    # —— 查表端(P0 保证形状;决策消费归后续批)——
+    # —— 查表端(形状保证;决策消费归后续)——
     def by_category(self, category: EffectKind) -> list[ActiveEffect]:
         return [e for e in self.entries if e.spec.category == category]
 
@@ -215,14 +215,14 @@ class ActiveEffectInventory:
         self._events[_EVENT_LEVEL_UP] = self._events.get(_EVENT_LEVEL_UP, 0) + 1
 
     def on_battle_end(self) -> None:
-        """战斗结算事件标记(挂点候选 = strategy.on_round_end 回调;本批未接)。"""
+        """战斗结算事件标记(挂点候选 = strategy.on_round_end 回调;未接)。"""
         self._events[_EVENT_BATTLE_END] = self._events.get(_EVENT_BATTLE_END, 0) + 1
 
     def event_count(self, kind: str) -> int:
         return self._events.get(kind, 0)
 
     def bump(self, spec_id: str, key: str, n: int = 1) -> None:
-        """计数器自增(刷新/购买等动作侧调用;本批未接动作点)。"""
+        """计数器自增(刷新/购买等动作侧调用;未接动作点)。"""
         e = self.first(spec_id)
         if e is not None:
             e.counters[key] = e.counters.get(key, 0) + n

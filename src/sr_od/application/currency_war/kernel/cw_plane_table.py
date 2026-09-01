@@ -1,12 +1,11 @@
 """节点日程与标定表模块(纯常量/纯函数;零 DP、零 session 写端)。
 
-ADR-0465 起,本模块是原 DP 模块(git prior art)中被生产路径消费的**真值/标定面**
-的保留归属(预算收权迁移前预验尸 D3 契约:真值消费者迁保留表函数模块,禁内联常量置换——
+ADR-0465 起,本模块是生产路径消费的**真值/标定面**
+的保留归属(D3 契约:真值消费者迁保留表函数模块,禁内联常量置换——
 ``nodes_of_plane`` 是会话自适应真值(P1=9/P2=7/P3 进表自适应,ADR-0366),
 ``p_win_p2`` 是两态胜率函数(BLUEPRINT §3.1 N4 继续消费),内联任一处
-= ADR-0366 修掉的 P2 计 9 病灶成批回流)。原模块的日程感知 DP 规划器
-(求解/姿态/节点目标接缝)已按 BLUEPRINT §3 裁决退出生产
-路径并整文件删除,git 历史为 prior art。
+= ADR-0366 修掉的 P2 计 9 病灶成批回流)。日程感知 DP 规划器
+已按 BLUEPRINT §3 裁决退出生产路径,不在本模块。
 
 承载面(按消费面划定的最小集):
 - 位面日程几何:NODES_PER_PLANE/TOTAL_NODES/DEFAULT_PLANE_LENGTHS/
@@ -25,7 +24,7 @@ from __future__ import annotations
 
 from sr_od.application.currency_war.kernel.cw_state import XP_PER_BUY, XP_TO_NEXT_LEVEL
 
-# ===== 日程/经济先验(原 DP 模块常量平移,消费面逐位一致) =====
+# ===== 日程/经济先验 =====
 NODES_PER_PLANE: int = 9
 TOTAL_NODES: int = NODES_PER_PLANE * 3
 GOLD_CAP_INTEREST: int = 50   # 息封顶(10 金 1 息、5 档封顶)
@@ -35,14 +34,14 @@ XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价先验(ADR-0129 实测 4-8 
 #: nodes_of_plane 表缺回退告警的一次性指纹(防每帧刷屏;同 [cw!] 可 grep 纪律)
 _NODES_OF_PLANE_WARNED: set[str] = set()
 
-# ===== 位面日程(槽序排布;ADR-0368,迁移审计记录见 git 历史) =====
+# ===== 位面日程(槽序排布;ADR-0368) =====
 #: 日程先验:(位面1, 位面2, 位面3) 各自轮数。P1=9 结构已知;P2 真值 7
 #: 但以 session 表为准(生产自适应);P3 未知期保持 9 先验。
 DEFAULT_PLANE_LENGTHS: tuple[int, int, int] = (
     NODES_PER_PLANE, NODES_PER_PLANE, NODES_PER_PLANE)
 
 #: schedule_of 未揭晓位面的回退先验(逐面):(9, 7, 9)。
-#: P2 回退=语料定谳值 7(W157 16 局语料 boss@r7,与 session 表真值同源)——
+#: P2 回退=语料定谳值 7(16 局语料 boss@r7,与 session 表真值同源)——
 #: 未揭晓期即用真值级先验,P1 期窗口的 P2 分量平移(+2)由此消除;P3 零语料,
 #: 回退 9 保持(=脏表上界,回退事件即 P3 真值未知期的记档通道)。
 #: 与 DEFAULT_PLANE_LENGTHS(几何缺省,裸调用/测试兼容口径 9,9,9)分立——
@@ -87,7 +86,7 @@ def schedule_of(session) -> tuple[int, int, int]:
 
 
 def nodes_of_plane(session) -> int:
-    """本位面轮数真值(ADR-0366,迁移审计口径断层修复的单一源)。
+    """本位面轮数真值(ADR-0366,单一源)。
 
     真值源 = ``session.plane_node_table``(开局帧实读槽序表,
     prep_director 每位面首帧写、位面内恒定):P1=9 槽、P2=7 槽(16 局

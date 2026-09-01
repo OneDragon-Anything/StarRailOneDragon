@@ -1,4 +1,4 @@
-"""tracking 对账公共层(观察冲突审计 P0 #12,2026-08-16)。
+"""tracking 对账公共层(观察冲突审计 P0 #12)。
 
 两处对账实现(deploy_bench._reconcile_tracking / prep_director._reconcile_tracking)同语义
 但强弱不一 —— director 版有空读守卫(M14 实锤)+截图留证,deploy_bench 版直接覆盖(过渡帧
@@ -30,12 +30,12 @@ def set_merge_effect_gate(fn) -> None:
 
 
 def _merge_equips(old_list, new_list) -> list:
-    """对账合并语义(ADR-0387 追加,对账覆盖装备的断点修法):char_id 续接保留 equips。
+    """对账合并语义(ADR-0387,对账覆盖装备):char_id 续接保留 equips。
 
-    断点(run 26 实锤):旧版 ``session.tracked_deployed = list(deployed)``
-    整批替换,新读对象 equips=[] 默认 → ``deploy_bench._snapshot_equips_into_
-    tracking`` 写入的装备在下次对账即被冲(run 26 布局错乱→纠漂狂刷→反复
-    清零,decisions.jsonl 希儿装备闪烁实证:round6 三条快照仅一条有装备)。
+    断点实锤:整批替换 ``session.tracked_deployed = list(deployed)``
+    时新读对象 equips=[] 默认 → ``deploy_bench._snapshot_equips_into_
+    tracking`` 写入的装备在下次对账即被冲(decisions.jsonl 希儿装备闪烁
+    实证:round6 三条快照仅一条有装备)。
 
     修法:按 char_id 把**旧 tracking 的 equips 续接到新读对象**(同名多副本
     逐个配对消耗,次序无关);新读自带的非空 equips(画面真值,如 deploy_bench
@@ -87,11 +87,11 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     """
     if session is None:
         return False
-    _pending_evidence: list[tuple] = []   # r336:留证队列(对账位统一消费)
-    # W68 根修(ADR-0316 形状契约):tracked_bench_chars 在买牌后被
+    _pending_evidence: list[tuple] = []   # 留证队列(对账位统一消费)
+    # 形状契约(ADR-0316):tracked_bench_chars 在买牌后被
     # mutate_bench_deployed→pad_bench 就地 pad 成定长 9 槽**含 None**
-    # (槽位表语义写入端)——本消费端假设紧凑无 None 是双写冲突,曾致
-    # 验证局 206 次 AttributeError 崩溃-重派循环(2026-08-25 实录)。
+    # (槽位表语义写入端)——本消费端若假设紧凑无 None 即双写冲突
+    # (曾致验证局数百次 AttributeError 崩溃-重派循环)。
     # 守卫:跳过 None 槽(空槽在对账语义里=无信息,不是冲突)。
     old_b = [(bc.char_id, bc.star) for bc in session.tracked_bench_chars
              if bc is not None]
@@ -104,24 +104,24 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         return False
     new_b = [(bc.char_id, bc.star) for bc in (bench or [])]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or [])]
-    # star 回退留证(观察冲突审计 #13,2026-08-16):同名 star 下降(如 2★读回 1★)= read_star
+    # star 回退留证(观察冲突审计 #13):同名 star 下降(如 2★读回 1★)= read_star
     # 漏金星 或 卖后重买边缘场景;不保旧(审计:保旧不安全)只留证统计毒化率。
     _old_stars = {(n, s) for n, s in old_b + old_d if n}
     _new_stars = {(n, s) for n, s in new_b + new_d if n}
     _reg = dict(getattr(session, 'star_regression_count', {}) or {})
-    # ⚖️ star 回退防抖(2026-08-18 离线复现实证治本):274 张存证全量重放 —— 回退角色
-    # 40/40 在场且 36/40 **同图重读为 2★**(live 读 1★)→ 真根因 = 3合1 合成动画窗口
-    # 识别(read_star 在特效期读 1,存证帧在动画后半段星已显)——**推翻早期「SIFT 身份
-    # 错配」结论**。旧版回退即采新写回 → 动画窗 1★ 毒化 tracking,下一帧又纠回(往返抖;
-    # 停机钩子有同款防抖所以停机侧无误触,但对账侧漏了)。修:首次回退不写回
-    # (该角色 star 保旧),**连续第二次仍回退**才确认(真卖后重买/真识别问题)。
+    # ⚖️ star 回退防抖(274 张存证全量重放实证:回退角色 40/40 在场且
+    # 36/40 **同图重读为 2★**(live 读 1★)→ 真根因 = 3合1 合成动画窗
+    # 识别(read_star 在特效期读 1,存证帧在动画后半段星已显),非 SIFT
+    # 身份错配)。回退即采新写回 → 动画窗 1★ 毒化 tracking,下一帧又纠回
+    # (往返抖)。修法:首次回退不写回(该角色 star 保旧),**连续第二次
+    # 仍回退**才确认(真卖后重买/真识别问题)。
     _pend = dict(getattr(session, 'star_pending_regression', {}) or {})
     for _n, _s in _new_stars:
-        # 同名多星共存时取**最高旧星**(小瑕疵:原实现 set 无序 next() 任意项;
-        # 回退判定应对 max——2★+1★ 共存读回 1★ 是回退 vs 2★,不是 vs 任意)
+        # 同名多星共存时取**最高旧星**(set 无序遍历取项任意,回退判定
+        # 应对 max——2★+1★ 共存读回 1★ 是回退 vs 2★,不是 vs 任意)
         _old_s = max((_os for _on, _os in _old_stars if _on == _n), default=None)
         if _old_s is not None and _s < _old_s:
-            # 61-A1/72-A1 修(银狼升费机制豁免):银狼LV.999 3★拖上场→变4费1★(升费签名
+            # 银狼升费机制豁免:银狼LV.999 3★拖上场→变4费1★(升费签名
             # =2★→1★×2-3 与 3★→2★ 成对同刻,文档记载的正常机制,非识别失败);
             # merge 修复实证不消银狼回退(48条/224局全为机制性),豁免防每2局误停一次
             if _n.startswith('银狼') and _old_s - _s == 1:
@@ -178,19 +178,19 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                     log.warning(f'[cw!][{source}] star 回退确认:{_n} {_old_s}★→{_s}★(连续2次,真回退)')
                     _conflict('star', _old_s, _s, screen, verdict='采新-回退确认(连续2次)',
                               source=source, char=_n)
-                    # ⚖️ star 回退留证(2026-08-18 降级:原停机钩子三度触发阻断实跑——排查结论
-                    # 已存档 cw_dev/live_round11_diagnosis.md;降级为高频留证(每 5 次回退存一张证,
-                    # 不 stop),排查证据流保留,goal 实跑可推进。SIFT 身份修复后本段连同 _star_stop_hook 删)。
-                    # 钩子归位:留证调用从 reconcile 深处
-                    # 改**队列记录**——真正落盘由 director 对账位统一
-                    # 触发(消费统一观察;帧态门在 _star_stop_hook
+                    # ⚖️ star 回退留证(排查结论存档 cw_dev/live_round11_diagnosis.md
+                    # :根因在 SIFT 身份域,非读星;降级为高频留证——每 5 次回退存
+                    # 一张证,不 stop,排查证据流保留。SIFT 身份修复后本段连同
+                    # _star_stop_hook 删)。
+                    # 钩子归位:留证调用经**队列记录**——真正落盘由 director 对账位
+                    # 统一触发(消费统一观察;帧态门在 _star_stop_hook
                     # 内,双层保护)。reconcile 只登记,不做 IO。
                     if _old_s >= 2:
                         _reg[_n] = _reg.get(_n, 0) + 1
                         _pending_evidence.append((_n, _old_s, _s, source))
         elif _n in _pend or _n in _reg:
             _pend.pop(_n, None)   # 读回恢复(或超预估)→ 清防抖(自愈;pop 而非 del——
-            # 名字可能只在 _reg 不在 _pend,原 del 抛 KeyError 打断备战环,实锤 丹恒·饮月)
+            # 名字可能只在 _reg 不在 _pend,del 抛 KeyError 会打断备战环,实锤 丹恒·饮月)
             _reg.pop(_n, None)   # 连续回退计数同步清零(恢复语义)
     # 离场清除 pending(角色卖出/上场后 _pend 残留 → 该角色下次登场时
     # 单次动画误读被误判「连续第二次确认」)。只在两侧都真读(非 None)时清 —— None 侧
@@ -202,7 +202,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     session.star_pending_regression = _pend
     session.star_regression_count = _reg
     # 防抖可能原地改 bench/deployed 副本 star → 纠漂判定与日志必须
-    # 取**防抖后**快照(旧快照记的是改前值,误导排障)。bench/deployed 入参
+    # 取**防抖后**快照(改前快照会误导排障)。bench/deployed 入参
     # 是 SIFT 紧凑列表(无 None),但入参若被上游 pad 过则守卫之(同形状契约)。
     new_b = [(bc.char_id, bc.star) for bc in (bench or []) if bc is not None]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
@@ -319,12 +319,12 @@ def _reject_down(session, old: int, new_hp: int, node_t: int, screen,
 def reconcile_hp(session, new_hp: int | None, screen=None, *,
                  source: str = 'read_game_state',
                  node_t: int | None = None) -> tuple[int | None, bool]:
-    """hp 对账统一入口(ADR-0282,用户三层设计·对账层;run165501 毒化案根治)。
+    """hp 对账统一入口(ADR-0282,用户三层设计·对账层)。
 
     hp 与 bench/deployed 不同源(SIFT 双源),它的「读失败」形态 = shop 开态
     血量区物理为空(read_hp_opt → None)——**None ≠ 漂移是读失败,保旧不写**
-    (复用 ``reconcile_tracking`` 双空读守卫思想,2026-08-03 安全设计「读不到
-    兜底 100」在遥测/决策侧毒化的根治)。
+    (复用 ``reconcile_tracking`` 双空读守卫思想;「读不到兜底 100」会在
+    遥测/决策侧毒化,故废弃兜底)。
 
     三层分工(用户原话要点):
     - **对账层(本函数)**:读不到 → 沿用 ``session.last_hp_real``(保旧不写);
@@ -408,9 +408,9 @@ def _conflict(field: str, old, new, screen, *, verdict: str, source: str,
 
 def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
                     screen, source: str, stop_run: bool = True) -> None:
-    """star 回退留证钩子(用户 2026-08-17 指示;star≥2 回退触发)。
+    """star 回退留证钩子(用户指示;star≥2 回退触发)。
 
-    留证降级(2026-08-18):排查已尽策略侧所能(结论存 cw_dev/live_round11_diagnosis.md:
+    留证模式:排查已尽策略侧所能(结论存 cw_dev/live_round11_diagnosis.md:
     根因在 SIFT 身份域,非读星)——stop_run=False 时只留证截图不停机(证流保留,
     实跑可推进);SIFT 身份修复后本段整删。
     停机保备战画面供排查星级识别(read_star 漏金星?星区被特效/光标遮挡?SIFT 身份错配?)。

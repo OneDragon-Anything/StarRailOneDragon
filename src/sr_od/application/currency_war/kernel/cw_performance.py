@@ -51,7 +51,7 @@ class RoundOutcome:
     # —— 自身侧 ——
     hp_after: int = 0           # 结算后 HP(hp_delta = 本回合 − 上回合,差分)
     hp_confidence: float = 1.0  # OCR 置信度(0-1);<0.7 不进 trend(防 OCR 抖动)
-    # —— 敌方侧(击杀信号;r6 F3)——
+    # —— 敌方侧(击杀信号)——
     enemy_hp_after: int | None = None
     damage_dealt: int | None = None
     killed: bool | None = None
@@ -59,9 +59,19 @@ class RoundOutcome:
     progress_delta: int | None = None   # 结算屏「挑战进度 ±N」带符号(赢 +2 / 输 -22);None=未读到
     # —— streak(连胜/连败;2026-08-11 结算「连胜×N」前缀=方向,fixture 核实)——
     streak: int = 0           # 带符号:+N 连胜 / -N 连败 / 0 无(结算 OCR 读;economy C 杠杆用)
+    # —— 结算三项遥测(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN$3;P15 脱删失/P12 幅度授权真值通道)——
+    # progress_fill_ratio = 挑战进度条填充率 [0,1](幅度绝对值通道;±N 浮字是符号+
+    # 增量真值,两通道同帧并记互为对拍);damage_base/damage_unfinished_progress =
+    # 掉血说明 tooltip 两分量(进页瞬窗内捕获,miss=None 删失显式可辨,勿造假值);
+    # damage_breakdown_visible = tooltip 是否在场(False+两分量 None=不在场,
+    # True+None=在场但解析失败,两态可分)。条不可见/面板不在场 → None。
+    progress_fill_ratio: float | None = None
+    damage_base: int | None = None
+    damage_unfinished_progress: int | None = None
+    damage_breakdown_visible: bool = False
 
 
-# 节点类型 → 预期掉血(相对值;r6 F2 归一化用)。先验,历史 refine。
+# 节点类型 → 预期掉血(相对值;归一化用)。先验,历史 refine。
 # 补 '奖励'/'补给'/'巨星'(结算屏真值可产出,
 # 此前落 .get 默认 1.0 轻微拉高该 comp 预期掉血)。奖励/补给非战斗
 # 节点=期望 0;巨星按强敌档先验 2.0(待实测 refine)。
@@ -69,7 +79,7 @@ EXPECTED_DROP: dict[str, float] = {
     "普通战斗": 1.0, "精英": 1.5, "遭遇": 1.2, "boss": 3.0,
     "奖励": 0.0, "补给": 0.0, "巨星": 2.0,
 }
-HP_CONFIDENCE_THRESHOLD: float = 0.7   # 低于此置信度的 outcome 不进 trend(r5)
+HP_CONFIDENCE_THRESHOLD: float = 0.7   # 低于此置信度的 outcome 不进 trend
 
 # perf_for_comp 归一化:掉这么多(归一化)HP/回合 → perf=0(占位,待实玩校准)
 HP_LOSS_FULL: float = 30.0
@@ -78,10 +88,10 @@ HP_LOSS_FULL: float = 30.0
 class PerformanceTracker:
     """跨回合观测追踪器(掉血 trend → maybe_pivot 信号;comp_viability 观测项)。
 
-    ⚖️ 敌方侧死链已删(2026-08-16 review D4-D7):_update_required_damage(no-op 体)/
+    ⚖️ 敌方侧无生产写端:_update_required_damage(no-op 体)/
     set_required_damage+required_damage(无读者)/boss_kill_signal(无调用)/_last_hp_after
-    (只写)——r6 F3 敌方观测整条从未接通(2026-08-18 二刀:原定归宿 19 号伤害账本
-    cw_damage_ledger 属未接线孤儿批次,已删;伤害真值走结算屏 progress_delta/killed)。
+    (只写)等死链已清——敌方观测整条从未接通,伤害真值走结算屏
+    progress_delta/killed。
     RoundOutcome 敌方三字段(enemy_hp_after/damage_dealt/killed)保留 dataclass 定义
     (telemetry OutcomeRecord 同 schema;enemy_hp/damage 仍未灌值)。
     """

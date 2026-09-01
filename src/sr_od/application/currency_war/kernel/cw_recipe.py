@@ -1,4 +1,4 @@
-"""过渡配方一等公民模型(r100;user_playstyle [20]-[23]/[26] 定稿模型落码)。
+"""过渡配方一等公民模型(user_playstyle [20]-[23]/[26] 定稿模型落码)。
 
 不变量:**P1 双轨期,板面(买/上/卖)只由过渡配方驱动;终局件只囤不上场;
 终局线 P1 内冻结换线(定义型 augment 除外)。**
@@ -22,9 +22,9 @@ from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
 
 # 配方伪 comp 注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
 # ⚠️ core 含 partial(爻光/缇宝/符玄)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追;
-# 瓦尔特/腾荒已从 TRANSITION_PACK 移除,勿引用)。
+# 瓦尔特/腾荒不在 TRANSITION_PACK,勿引用)。
 # form_tiers:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
-#             列车 = 4列车(数据口径主流档);量子 = 3量子+2贝(r102)。
+#             列车 = 4列车(数据口径主流档);量子 = 3量子+2贝。
 _RECIPES: dict[str, Comp] = {
     '仙舟': Comp(
         name='过渡·仙舟配方', factions=['仙舟'],
@@ -32,7 +32,7 @@ _RECIPES: dict[str, Comp] = {
                     if fw == '仙舟' and tier in ('carry', 'partial')],
         form_tiers={'仙舟': 3},
         strength='A', form_difficulty='easy',
-        # 审计必修:过渡期站位(爻光必后台,ADR-0139 规则住在终局 comp,
+        # 过渡期站位(爻光必后台,ADR-0139 规则住在终局 comp,
         # 配方伪 comp 需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
         char_positions={'爻光': 'back'},
     ),
@@ -43,7 +43,7 @@ _RECIPES: dict[str, Comp] = {
         form_tiers={'列车同行': 4},
         strength='A', form_difficulty='easy',
     ),
-    # 量子框架(希儿线统一化:walkin 特例通道删除,量子=第三过渡配方;
+    # 量子框架(量子=第三过渡配方;
     # 「过渡=终局雏形」由统一公式自然表达——转变成本 0,定型时恒等衔接)
     '量子': Comp(
         name='过渡·量子配方', factions=['量子同频', '贝洛伯格'],
@@ -70,17 +70,13 @@ def recipe_char_wanted(char_id: str, framework: str) -> bool:
     return fw == framework or fw == '通用'
 
 
-# 统一化(用户定调):walkin 特例通道**整体删除**——希儿量子并入第三过渡配方
-# (量子),「过渡=终局雏形」由统一公式自然表达:框架计数(量子件持有)决定配方选择,
-# 策略/环境加分统一走 env/augment affinity,定型时转变成本≈0 → 恒等衔接。
-# 删除物:WALKIN_ALLOWED_COMPS 白名单 / _cheap_carry_walkin 判据 / walkin_latched
-# 滞回 / decision_target 优先级分支——全部是为特例服务的复杂度。
-# (r100f/g/h 教训留 git 历史:特例通道引入触发面失控(局21 散板)、滞回缺失
-# (拆雏形)两个 bug 各修一轮——统一框架一次性消解。)
+# 统一化(用户定调):希儿量子并入第三过渡配方(量子),「过渡=终局雏形」
+# 由统一公式自然表达:框架计数(量子件持有)决定配方选择,策略/环境加分
+# 统一走 env/augment affinity,定型时转变成本≈0 → 恒等衔接。
 
 
 def decision_target(session, state: GameState) -> Comp | None:
-    """决策中心取 target 的**单一入口**(r100;消费方零改动)。
+    """决策中心取 target 的**单一入口**(消费方零改动)。
 
     用法:update_target/decide_prep 处把 ``session.target_comp`` 的直接读换成本函数
     (仅决策路径;遥测/结算 tag 仍读原 target_comp 记终局线名)。
@@ -89,11 +85,11 @@ def decision_target(session, state: GameState) -> Comp | None:
     pick_framework 按持有计数+portal 偏置选);无框架 → 终局 comp(散件口径)。
     非双轨(定型/P2+):终局 comp。
 
-    r102:量子配方=希儿线的过渡形态;终局衔接走统一公式——CommitSignals 定型时,
+    量子配方=希儿线的过渡形态;终局衔接走统一公式——CommitSignals 定型时,
     量子板面→希儿量子 final 转变成本≈0(板面即雏形),env/augment 的量子向加分
     (量子契约/量子星徽/贝概念股)同时抬高配方选择与终局选择。
 
-    退役批(ADR-0466/0467/0469) 换源:双轨期判定从 GameState 双轨标志直读改为
+    换源(ADR-0466/0467/0469):双轨期判定取
     ``committed_from`` 权威派生(与 adapter/prep_director/deploy_bench 同一
     读端)——消除「装配边界漏回填时缺省 False=恒按定型」的静默
     劣化面。零漂移依据:decision_v2 生产路径 ``transition_framework`` 恒 ''

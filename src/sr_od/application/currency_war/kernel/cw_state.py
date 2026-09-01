@@ -7,10 +7,10 @@
 
 字段多由实机 OCR 填充(见 strategy_design.md §8 接线);未填(None/默认)时决策安全降级。
 
-**board 模型**(2026-08-03 review r1 修正;ADR-0312 W50 口径统一):
+**board 模型**(ADR-0312 口径统一):
 - ``board`` = 已上阵羁绊计数(**全集口径**:factions+flows+independent+星徽装备
   贡献,per-unit 单一源 = ``cw_bond_equips.unit_bond_tags``;对齐实机
-  ``board_from_tracked`` = 游戏左面板真值)。旧主阵营单标签口径已废(W49 Q4)。
+  ``board_from_tracked`` = 游戏左面板真值;口径 = 羁绊全集,非主阵营单标签)。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者应一致(deployed 按羁绊全集聚合 == board)。
 - simulate(DeployMove) 同时更新 deployed(槽位落位 deployed_place,ADR-0392)与 board(_recount_board 重算)。
@@ -24,8 +24,8 @@ from dataclasses import dataclass, field
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 
 # 卖出回金 = 招募费(cost)× 合成倍数,economy_research.md §2(strategy/)。1星=cost 🟢 BWIKI+4399+用户权威;
-# 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」+ 修 §2 内部矛盾,
-# 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。旧 SELL_VALUE{1:1,2:3,3:5} 占位(连1星都没按cost)→ 弃。
+# 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」,
+# 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。
 _SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
 # deployed 槽位语义(ADR-0392):定长 10 槽表——下标 0-3 = 前排槽 1-4、
@@ -152,13 +152,13 @@ class GameState:
     round_num: int = 1     # 位面内轮次 1-6
     node_type: str | None = None   # 当前节点类型(boss/补给/遭遇/巨星/投资/战斗/精英/奖励;顶部标签 OCR;None=未识别)
     enemy_difficulty: int | None = None   # 当前敌人难度(左上角 文本-难度,两级管线读法见 ADR-0449;boss 血量 base×1.052^难度)。None=未读到(补给帧无旗牌/管线未命中;合理带 [20,300] 外拒信)
-    # 难度真伪保真位(批㉖ F1:读链翻转后真读/回退可分,对齐 hp_readable 模式):
+    # 难度真伪保真位(读链翻转后真读/回退可分,对齐 hp_readable 模式):
     # True=当轮逐帧真读(备战「文本-难度」OCR 命中);False=回退简报恒值(session,
     # 开局写死 ≈108 不随轮爬升)或双源皆无。判读侧据此过滤:**False 帧的值别当
-    # 「难度 vs 轮次」爬升曲线样本**(ADR 待 leader 定号,批㉖ F1 裁决)。
+    # 「难度 vs 轮次」爬升曲线样本**。
     enemy_difficulty_live: bool = False
     level: int = 1         # 玩家等级 = 可上阵数上限基准(封顶 10)
-    # level 值来源保真位(对齐 hp_readable 模式;ADR-0482 后继,M2 obs 根因修复):
+    # level 值来源保真位(对齐 hp_readable 模式):
     # True=等级来自真实观测(OCR 直读或 XP 分母反推至少一源可读);False=纯
     # ``_expected_level`` 启发式兜底值(OCR 与 XP 双失读)——遥测上「兜底 4」与
     # 「真读 4」此前不可分,判读侧据此过滤 False 帧的 level 曲线样本。
@@ -167,7 +167,7 @@ class GameState:
     level_readable: bool = True
     # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
     xp_progress: tuple[int, int] | None = None
-    # 部署上限真值(= level + 财富宝钻数,可叠加;D-53/局38 r2 实证)。
+    # 部署上限真值(= level + 财富宝钻数,可叠加;实机局实证)。
     # None=未读到/防抖拒信 → max_units() 兜底 level(ADR-0286)。防抖门在
     # cw_observation.read_deploy_cap_debounced(cap<level 或 |cap-level|>2 重读一帧,仍异拒)。
     deploy_cap: int | None = None
@@ -193,7 +193,7 @@ class GameState:
     # (保守);决策消费=posture_release.flip_hit 假帧守卫(hp_readable or
     # hp_trusted:同节点沿用真值帧可评估,兜底 100 帧仍拒;谓词口径零改)。
     hp_trusted: bool = False
-    # r319(ADR-0213 批次2):gold/board 可读保真位(对齐 hp_readable
+    # gold/board 可读保真位(ADR-0213;对齐 hp_readable
     # 模式——int/dict 契约下动画帧 miss 与真值不可区分;消费方
     # 遥测/对拍用,决策默认不用)。
     gold_readable: bool = True     # gold 是否真读到(False=0 是 miss 兜底)
@@ -234,8 +234,7 @@ class GameState:
     # 商店开态概率条真值 {费用档 1-5: 概率}(轮岗接线:投资环境轮岗每备战阶段随机
     # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
     refresh_probs: dict[int, float] | None = None
-    # ⚖️ node_path + NodeInfo 已删(2026-08-16 review D3:0 写 0 读;节点序列实际由
-    # cw_node_reader.NodeSlot 承载,read_node_sequence 直连消费方)。
+    # 节点序列由 cw_node_reader.NodeSlot 承载(read_node_sequence 直连消费方)。
     match_type: str | None = None            # 标准博弈/超频博弈(模式选择屏;None=未读到)
     plane_modifiers: list[str] = field(default_factory=list)  # 当前位面特殊修正(如「战个痛快」;§13.9 待核各 plane)
     shop_locked: bool = False                # 商店是否锁定
@@ -314,9 +313,9 @@ def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
     0-3=前排/4-9=后排,按 position_pref 路由落槽)→ ``deployed_count()``
     对齐实际阵上数。
 
-    (RC1 fix):旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效。本 helper 从 board
+    旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效,本 helper 从 board
     重建 deployed。
-    ****:max_count(= level)cap —— 多羁绊角色在 board 多阵营计数(大丽花=击破+盛会之星算 2),
+    max_count(= level)cap —— 多羁绊角色在 board 多阵营计数(大丽花=击破+盛会之星算 2),
     sum(board) > 实际 deployed(level)→ deployed_count 虚高 → _saving_for_interest + bench-space 门
     **误触**(board 没满却当满 → 不买 target 到 bench → 被 block)。cap at level = 实际 deployed 上限。
     """
@@ -518,7 +517,7 @@ class SellBench:
     [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316;
     ≠ prep_actions.SellBench.slot 的物理槽位 1-9)。
 
-    r381(交接⑤,sim↔生产账本 income 对齐):sim 侧卖出回金按
+    sim↔生产账本 income 对齐:sim 侧卖出回金按
     ``cost`` 1:1(cw_sim L630);生产真值 = ``sell_refund(star, cost)``
     (2★×3+手续费)。两侧本就不同源——sim 简化只对 1★ 准。补采:
     ``income`` 字段记录**创建时的预期回金**(策略侧算 sell_refund),
@@ -529,7 +528,7 @@ class SellBench:
     提案生成时该槽位指向内容的期望名(char_id)——提案生成→应用之间
     槽位内容可能已变,应用时不符 → no-op + stale_proposal 语义
     (对齐 SellDeployed/SwapDeploy 既有守卫形态)。
-    **防线写入端核查(ADR-0326 §1.7,W57-F5 纪律)**:发射点=
+    **防线写入端核查(ADR-0326 §1.7)**:发射点=
     remediation 两补偿器(_compensate_gold/_compensate_bench,从候选
     生成时 state 快照取名);锁面=test_cw_w52_remediation.py 的
     expect 正反锁(校验被触发,非恒放行)。
@@ -606,7 +605,7 @@ class FillSpec:
     填位候选池 = 迁移(deploy/undeploy/sell)后的 bench 槽位表(deploy/sell
     清槽、undeploy 放回首个空槽),校验/应用端按同一视图解析。
 
-    ``expect``(W43 leader 裁决 2,代际校验;草案级扩字段,默认 ''=不
+    ``expect``(代际校验;草案级扩字段,默认 ''=不
     校验):提案生成时该 idx 指向内容的期望名(bench 源 = char_id,
     shop 源 = card.name)——提案生成→应用之间槽位内容可能已变,应用时
     不符 → 整事务拒绝(stale_proposal),不套用陈旧引用。
@@ -617,7 +616,7 @@ class FillSpec:
     row: str                           # 'front' | 'back'
     expect: str = ''
     # 代际校验期望名(''=不校验;见 docstring)。expect-whitelist: 草案级
-    # 字段(W43 裁决 2 预留)——发射点尚未接线,属「待发射点补赋值」观察位;
+    # 字段——发射点尚未接线,属「待发射点补赋值」观察位;
     # 接线时删本豁免(静态锁 test_expect_fields_have_writers_or_whitelist 督办)
 
 
@@ -660,7 +659,7 @@ class SwapDeploy:
     #             取值时机(两者): 生成期=执行期(槽位表恒稳;expect_* 为
     #             遥测观测字段,ADR-0392 降级——记录生成期期望名供判读)
     reason: str = ''
-    # 遥测观测字段(ADR-0392 降级,原 W43 裁决2 代际校验):跨轮登记的提案
+    # 遥测观测字段(ADR-0392 降级的代际校验):跨轮登记的提案
     # 在槽位表下索引恒稳;名不符仍是跨代际换人提案的拒绝信号。
     expect_deployed: str = ''  # 期望下场者名
     expect_bench: str = ''     # 期望上场者名
@@ -694,12 +693,12 @@ class CompTransaction:
     sell: list[tuple[int, str]]        # [(idx, 'bench'|'deployed')] 直接卖出项
     fill: list[FillSpec] | None = None # 人口缺口填位(第 2 步可同轮或下轮;None=另行走常规填位)
     reason: str = ''                   # 账本(如 'evolve:DOT2→仙舟3'/'branch_pivot')
-    # 代际校验期望名(W43 leader 裁决 2;草案级扩字段,默认 None=不校验):
+    # 代际校验期望名(草案级扩字段,默认 None=不校验):
     # 与 deploy/undeploy/sell 的索引**同序**对齐;应用时 idx 指向内容与
     # 期望不符 → 整事务拒绝(stale_proposal)。空串项跳过该项校验。
-    expect_deploy: list[str] | None = None    # 对齐 deploy 的 bench_idx 序;expect-whitelist:草案级(W43 预留,发射点未接线)
-    expect_undeploy: list[str] | None = None  # 对齐 undeploy 序;expect-whitelist:草案级(W43 预留,发射点未接线)
-    expect_sell: list[str] | None = None      # 对齐 sell 序(按给定序,不分域);expect-whitelist:草案级(W43 预留,发射点未接线)
+    expect_deploy: list[str] | None = None    # 对齐 deploy 的 bench_idx 序;expect-whitelist:草案级(发射点未接线)
+    expect_undeploy: list[str] | None = None  # 对齐 undeploy 序;expect-whitelist:草案级(发射点未接线)
+    expect_sell: list[str] | None = None      # 对齐 sell 序(按给定序,不分域);expect-whitelist:草案级(发射点未接线)
     # ↑ 三者接线时删行内豁免标记(静态锁 test_expect_fields_have_writers_or_whitelist 督办);
     # 事务整批拒语义现由 _resolve_comp_transaction 全量校验承担
 
@@ -748,8 +747,8 @@ def _merge_bench(bench: list[BenchChar | None],
     pools: list[list] = [bench]
     if deployed is not None:
         pools.append(deployed)
-    # 不动点循环(r6 review#1:两轮上限在级联合并 3×1★→2★→…不够;while 直到
-    # 一轮无合并——游戏语义即如此,且级联有限(星≤5)自然终止)
+    # 不动点循环:两轮上限在级联合并(3×1★→2★→…)不够;while 直到
+    # 一轮无合并——游戏语义即如此,且级联有限(星≤5)自然终止
     while True:
         merged_any = False
         occupied = [c for c in bench if c is not None]
@@ -881,7 +880,7 @@ def sell_refund(star: int, cost: int) -> int:
     - 2星 = cost×3、3星 = cost×9、4星 = cost×27(合成成本),**star≥2 且 cost≥2 再 −1 手续费**。
     - **cost=1 exempt(无手续费)**:🟢 2026-08-13 live 实测 2★1费 万敌 出售 = **+3 金**(cost×3,无 −1;
       sell-star 停机钩子 + VLM 读出售按钮「金币+3」)。用户:1费 2星不减、**2费开始才减1**(手续费 cost 相关
-      非纯 star)。故 −1 条件 = ``star>=2 and cost>=2``(旧 ``star>=2`` 一刀切把 1费 也 −1 了,错)。
+      非纯 star)。故 −1 条件 = ``star>=2 and cost>=2``。
     - 🟡 cost≥2 的 −1(2★2费=5)+ 3/4星 仍用户记忆 / 推测,待多 cost live 核;cost=1 各星已定(全额退)。
     """
     refund = max(cost, 1) * _SELL_MULT.get(star, 1)
@@ -962,7 +961,7 @@ def _log_action(s: GameState, action_name: str, result: str,
 
 
 def board_unique_key(bc: BenchChar) -> str | None:
-    """板上同名唯一性判据键(W43 leader 裁决 1:场上同角色仅 1;r404-A2 同源)。
+    """板上同名唯一性判据键(设计裁定:场上同角色仅 1)。
 
     - ``char_id`` 空 = 未知身份 → None(不参与查重——两个未知不是可证明的重复);
     - 开拓者各排形态(char_id 随排切换)归一为同一键(场上同样仅 1 个开拓者);
@@ -1020,7 +1019,7 @@ def _resolve_comp_transaction(
     dep_chars = [(s.bench[i], r) for (i, r) in dep]
     sell_b_chars = [s.bench[i] for i in sell_b]
     sell_d_chars = [s.deployed[i] for i in sell_d]
-    # 代际校验(W43 leader 裁决 2):提案生成→应用之间 bench/deployed 序
+    # 代际校验:提案生成→应用之间 bench/deployed 序
     # 可能已被同批先行动作改变——expect 序列与索引同序对齐,idx 指向
     # 内容与提案不符 → 整事务拒绝(stale_proposal),不套用陈旧引用。
     if tx.expect_deploy is not None:
@@ -1100,10 +1099,10 @@ def _resolve_comp_transaction(
     n_back_final = n_dep_final - n_front_final   # 总终态 − 前排终态
     if n_back_final > s.back_max:
         return f'back_overflow:{n_back_final}>{s.back_max}', {}
-    # 同名唯一性(W43 leader 裁决 1:场上同角色仅 1):终态 deployed 名单
+    # 同名唯一性(场上同角色仅 1):终态 deployed 名单
     # 查重——留下的旧档 + deploy 新上 + fill 填位(bench 源/买后即上)。
     # 任一重复 → 整事务拒绝(reason='duplicate_on_board',进 action_log;
-    # board/factions 虚高的污染源,W43 A/B 实测旧臂 54% 轮同名重复)。
+    # board/factions 虚高的污染源,A/B 实测旧臂 54% 轮同名重复)。
     _gone_d = set(und) | set(sell_d)
     final_keys: set[str] = set()
     _final_units: list[BenchChar | None] = [
@@ -1209,13 +1208,12 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
         _apply_row_to_char(c, row)
         deployed_place(s.deployed, c)   # ADR-0392:按排路由落槽(替代 append)
     post_bench = plan['post_bench']
-    # 索引漂移修复(动作索引五查②③同族):shop fill 按校验期已解析的
+    # 索引漂移防御:shop fill 按校验期已解析的
     # 卡对象消费(``plan['shop_fill_cards']``,与 fill 的 shop 源子序列同序)
     # ——**禁在 fill 循环内按下标现读 ``s.shop[f.idx]`` 再 remove**:前一笔
     # remove 左移列表,后续 f.idx 全部失效 → 买错卡(错档部署)+记错账
-    # (sim ledger_consistency 12/100 金不守恒实证:两笔 2费 fill 被
-    # 读成 2费+4费,Δ−6 vs 记账−4;②a 前 form_floor 保险丝拦住多笔
-    # shop fill 事务,曝光 2/100——步③ 放宽可负担性后升至 12/100)。
+    # (sim ledger_consistency 金不守恒实证:两笔 2费 fill 被
+    # 读成 2费+4费,Δ−6 vs 记账−4)。
     _shop_fills = iter(plan['shop_fill_cards'])
     for f in plan['fill']:
         if f.source == 'bench':
@@ -1383,13 +1381,12 @@ def simulate(state: GameState, action: Action) -> GameState:
                             reason=f'duplicate_on_board:{_k}')
             else:
                 bc = bench_clear(s.bench, action.bench_idx)
-                # 站位记录 + 开拓者换排形态归一(单一源 helper;行为与旧内联版逐字等价)
+                # 站位记录 + 开拓者换排形态归一(单一源 helper)
                 _apply_row_to_char(bc, action.to_row)
                 deployed_place(s.deployed, bc)   # ADR-0392:按排路由落槽
-                # ADR-0312(W50 口径统一):**增量**全集计数——board 可能来自
+                # ADR-0312:**增量**全集计数——board 可能来自
                 # OCR 真值而 deployed 尚空(生产 read_game_state 填充序),
-                # 全量重算会抹掉 OCR 提供的计数;增量 += 与旧 DeployMove
-                # 语义同形,口径升级 = 单位标签从主阵营单标签换 unit_bond_tags
+                # 全量重算会抹掉 OCR 提供的计数;单位标签 = unit_bond_tags
                 # 全集(星徽/卡带贡献在内)。
                 from sr_od.application.currency_war.kernel.cw_bond_equips import (
                     unit_bond_tags,
@@ -1494,7 +1491,7 @@ def simulate(state: GameState, action: Action) -> GameState:
 def mutate_bench_deployed(bench: list[BenchChar | None],
                           deployed: list[BenchChar],
                           action: Action) -> None:
-    """就地应用 action 的 bench/deployed 转移到持久跟踪状态(task#105 运行时同步用;/)。
+    """就地应用 action 的 bench/deployed 转移到持久跟踪状态(运行时同步用)。
 
     与 ``simulate`` 的区别:``simulate`` 返回新 ``GameState`` copy(前瞻语义,含 gold/level/shop 全字段);
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /

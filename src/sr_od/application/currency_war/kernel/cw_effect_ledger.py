@@ -1,9 +1,9 @@
-"""既持效果台账 v0(redesign 53 号;ADR-0202):现金日程+机制突变+免费额度。
+"""既持效果台账 v0(ADR-0202):现金日程+机制突变+免费额度。
 
-**诊断(53 号)**:持有效果的确定性现金流被摊平成等效息——时机信息在表示层就被扔掉;
+**诊断**:持有效果的确定性现金流被摊平成等效息——时机信息在表示层就被扔掉;
 DP effect-blind(买断制照样攒息/连胜 ×3 照 ×1 算);效果表无验证通道。
 
-**v0 落地**(纯函数,离线;53 号 §2.1/§2.2 核心):
+**v0 落地**(纯函数,离线):
 - ``EffectLedger`` 三层:calendar(节点索引确定收入日程)/mutations(对 23 号常量的
   局内覆写:息 cap/单击 XP Δ/胜金乘子)/budgets(免费刷额度);
 - ``build_ledger``:aggregate 语义效果(注入式,测试 mock)→ 三类结构归一化;
@@ -12,8 +12,7 @@ DP effect-blind(买断制照样攒息/连胜 ×3 照 ×1 算);效果表无验证
 - 四象限分类路由(确定性收入→calendar/费率覆写→mutations/统计性→分布参数/
   行为义务→33 号合同台)。
 
-DP 网格约束 D1(金步长 1 或累计跨步入账)挂 DP 改造批次;验证层(守恒对账)挂
-telemetry 批次。
+DP 网格约束 D1(金步长 1 或累计跨步入账)与验证层(守恒对账)为后续挂账。
 """
 from __future__ import annotations
 
@@ -45,14 +44,14 @@ class MechanismMutation:
     win_reward_mult: float = 1.0        # 乘子(伟大征服 ×3)
     free_refresh_per_node: int = 0
     free_refresh_burst: int = 0
-    # —— v1 扩展(2026-08-17 全量效果扫描:overlay 已有字段的路由补全)——
+    # —— v1 扩展字段(全量效果扫描的路由补全)——
     refresh_surprise_every: int = 0     # 每 N 刷同费面(采购专员;38 号会话消费)
     gold_per_three_5cost: int = 0       # 每买 3 张 5 费给金(返利系)
     xp_per_refresh: float = 0.0         # 每刷 +经验(淘金客)
     xp_per_node: float = 0.0            # 每节点 +经验(买断制)
     refresh_price_after: int | None = None   # 长线利好:30 刷后刷新价 1(环境侧)
     refresh_discount_at: int = 0             # 解锁刷次线(与 38 号 DISCOUNT_AT_REFRESH 同源)
-    # —— 机制修改器审计 F1/F2 补字段(已裁修复项12,2026-08-31)——
+    # —— 机制修改器补字段(审计 F1/F2;修复项 12 裁决)——
     refresh_price_mult: float = 1.0     # 期望刷价乘子(概率事件:45% 免刷 → 0.55,
                                         # 基准价 2 → 期望 1.1;消费=refresh 面参数替换 P40 变体)
     xp_click_hp_cost: int = 0           # 购经验血本币价(奋斗协议 6 血/击;金侧成本置 0,
@@ -74,7 +73,7 @@ def build_ledger(effects: list[AggregateEffect],
                  plane_lengths: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> EffectLedger:
     """聚合效果 → 三类结构(四象限路由)。
 
-    节点锚派生(已裁修复项13,2026-08-31;审计 F6):boss 槽锚/位面起始槽/总节点数一律由
+    节点锚派生(修复项 13 裁决;审计 F6):boss 槽锚/位面起始槽/总节点数一律由
     ``plane_lengths`` 派生(cw_plane_table.plane_end_slots/plane_offsets),**禁写死 (8,17,26)/×9**
     ——P2 真值 7 槽(ADR-0366/0368)下写死锚会把 boss 金/位面晶矿日程错位。生产调用方应传
     ``cw_plane_table.schedule_of(session)`` 实际长度;缺省 (9,9,9) 先验仅为裸调用/测试兼容。

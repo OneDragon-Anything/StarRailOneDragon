@@ -26,7 +26,7 @@ _log = log_utils.log
 # 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位(包内禁文件相对层级硬锚)
 _SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
 
-# 默认 replay 账本目录(分包期 3 自 telemetry/cw_telemetry.py 下沉本模块:
+# 默认 replay 账本目录(自 telemetry/cw_telemetry.py 下沉本模块:
 # sim 桶消费它而 sim 禁依 telemetry,观测基础设施归 kernel——telemetry/sim
 # 均可合法上行 import)。值保持原样(相对 Path,cwd 即仓根的运行口径不变)。
 DEFAULT_REPLAY_DIR = Path('.debug/temp/currency_war/replay')
@@ -111,7 +111,7 @@ def current_obs_phase() -> str | None:
 # 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
 _CONFLICT_JOURNAL = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'replay' / 'obs_conflicts.jsonl'
 
-#: 冲突截图节流窗(秒;2026-08-18 治理):同 (field, verdict) 在窗内只存一张截图。
+#: 冲突截图节流窗(秒):同 (field, verdict) 在窗内只存一张截图。
 #: 实证积压 18.8GB 的根因 —— 慢性状态冲突(deployed_align「补齐」每帧触发,board
 #: count 不等、level 乒乓)画面微变(gold 计数/动画帧)→ 内容哈希必新 → 每帧存 1.7MB。
 #: 慢性态一例截图即代表该态,罕见类(新 verdict)不受影响照存;JSONL 证据行不受节流
@@ -156,7 +156,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
             rec['obs_phase'] = _OBS_PHASE   # ADR-0462 噪声判定位:冲突行按阶段分类
         # 补 run_id 归属键(唯一汇点内部自取,调用方零改动;历史行无此键,
         # 读取端按「有键才过滤」容忍)。空串=局外冲突(进程首局前),不写假键。
-        # 分包期 4:run_id 读取经 kernel/cw_telemetry_exit 钩子位(零直依 telemetry)。
+        # run_id 读取经 kernel/cw_telemetry_exit 钩子位(零直依 telemetry)。
         _rid = cw_telemetry_exit.current_run_id()
         if _rid:
             rec['run_id'] = _rid
@@ -182,7 +182,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         # 统一缺陷台账旁路(纯观测):同一冲突归一落 defect_ledger.jsonl
         #(本流=原始证据层保持原样,台账行经 refs 指回本行,不复制数据;
         # 调用方零改动)。外层 try/except 已兜底,旁路失败不影响本流落盘。
-        # 分包期 4:落账经 kernel/cw_telemetry_exit 钩子位(缺省关,生产在
+        # 落账经 kernel/cw_telemetry_exit 钩子位(缺省关,生产在
         # CurrencyWarApp.__init__ 注入真实现)。
         cw_telemetry_exit.bypass_obs_conflict_to_defect(rec)
     except Exception:  # noqa: BLE001  hook best-effort
@@ -199,10 +199,10 @@ def find_running_ctx():
 
     为什么用 gc 扫描:安灯判定在 cw_telemetry 模块级旁路里发生,调用栈
     (obs_conflict / shop 记账)各层签名都不带 ctx,而 ctx 登记点全在
-    本批禁触文件(battle_loop/prep_director);服务进程内 SrContext 恒
+    本模块辖域文件之外的 battle_loop/prep_director);服务进程内 SrContext 恒
     单实例(server.py / GUI 各只建一个),扫描定位无歧义。成本:仅 L0
     停线时刻每局至多一次,百毫秒级,不进常规路径。根治(框架级 ctx
-    注册表)归后续基建批。
+    注册表)另行挂账。
     """
     import gc
 
@@ -243,7 +243,7 @@ def stop_for_l0_andon(payload: dict, ctx=None) -> bool:
         stop_shot = ''
         with contextlib.suppress(Exception):   # 截图失败不拦停机(flag 是主哨兵,同 exec 安灯)
             stop_shot = _save_andon_frame(ctx, payload)
-        # 分包期 4:flag 写入经 kernel/cw_telemetry_exit 安灯出口钩子位
+        # flag 写入经 kernel/cw_telemetry_exit 安灯出口钩子位
         #(缺省未注入=不落 flag 仅停线;生产注入点=CurrencyWarApp.__init__,
         # 与停线执行器注册同点,两槽恒同装)。
         if cw_telemetry_exit.andon_exit_installed():
@@ -268,8 +268,8 @@ def stop_for_l0_andon(payload: dict, ctx=None) -> bool:
         return False
 
 
-# ===== 策略激活对拍暂存槽(分包期 4 自 telemetry/cw_telemetry.py 迁入本模块:
-# 生产者=telemetry.record_invest_cards('strategy')(telemetry→kernel 合法向),
+# ===== 策略激活对拍暂存槽(生产者=telemetry.record_invest_cards('strategy')
+# (telemetry→kernel 合法向),
 # 消费者=obs.cw_observation 构建 state 读 session.active_strategies 处
 # (obs→kernel 合法向)——槽模式与 _OBS_PHASE 同族:生产→消费紧邻、消费即清)=====
 _PENDING_STRATEGY_PICK: str | None = None

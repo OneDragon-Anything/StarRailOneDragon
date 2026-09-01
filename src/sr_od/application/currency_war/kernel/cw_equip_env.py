@@ -52,7 +52,7 @@ class EquipEnvSignals:
 
     ``enemy_affixes`` = state.enemy_affixes(简报∪随采;state 缺失=空集);
     ``plane``/``round_num`` = state 记账/窗口字段(预留:变宝为废位面记账与
-    P1 hold 窗口判定迁入管道时消费;本批 fill3 变体不消费)。
+    P1 hold 窗口判定迁入管道时消费;fill3 变体不消费)。
     """
     enemy_affixes: frozenset[str]
     plane: int | None

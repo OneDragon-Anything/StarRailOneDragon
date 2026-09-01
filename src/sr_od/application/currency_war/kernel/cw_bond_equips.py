@@ -1,4 +1,4 @@
-"""货币战争 羁绊口径单一源(判断层,手维护;W50,ADR-0312;2026-08-25)。
+"""货币战争 羁绊口径单一源(判断层,手维护;ADR-0312)。
 
 **board 口径的 per-unit 标签函数**——三处统计实机/派生/检查共用本函数,
 规则同源(一个函数):
@@ -13,12 +13,12 @@
 - **L1 纯羁绊全集**:factions + flows + independent(独立羁绊行与左面板
   同口径),开拓者按当前排归一形态(前排=记忆/后排=欢愉);
 - **L2 装备羁绊贡献(雏形,本模块落地)**:**星徽 = 额外增加一个羁绊**
-  (add-if-absent;装备者已拥有该羁绊时不重复计数,用户口述 2026-08-28
-  修订 W49 的「无条件+1」口径)/ 欢愉卡带与星核猎手卡带 = **计数 +1**
-  (无条件,可双计)——装备贡献是面板真值的一部分(W49 §2:此前三处全缺
-  → computed_vs_ocr 常态化误报 + 星徽局档位系统性低估);
+  (add-if-absent;装备者已拥有该羁绊时不重复计数,用户口述裁定)/
+  欢愉卡带与星核猎手卡带 = **计数 +1**
+  (无条件,可双计)——装备贡献是面板真值的一部分(缺计会导致
+  computed_vs_ocr 常态化误报 + 星徽局档位系统性低估);
 - L3 全战力(装备 props 强度/投资环境/档位效果数值)**不在本模块**,
-  归 win_model 迭代(W49 裁决 4)。
+  归 win_model 迭代(ADR-0312 分层裁决)。
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ _RX_TAPE_COUNT = re.compile(r'「(.+?)」羁绊计数\+1')
 def _parse_badge(eq) -> tuple[str, ...]:
     """星徽的羁绊贡献 → (羁绊名,) 或 ()。
 
-    **语义(用户口述 2026-08-28,最高权威)**:星徽 = 给装备者**额外增加一个羁绊**
+    **语义(用户口述裁定,最高权威)**:星徽 = 给装备者**额外增加一个羁绊**
     ——只把没有该羁绊的单位变成成员;装备者已是该羁绊成员时**不重复计数**
     (≠ 卡带的「计数+1」)。unit_bond_tags 按 add-if-absent 消费本表。
     """
@@ -89,7 +89,7 @@ _BADGE_BOND_GRANTS: dict[str, tuple[str, ...]] = {
 _TAPE_BOND_GRANTS: dict[str, tuple[str, ...]] = {
     eq.name: _parse_tape(eq) for eq in EQUIPMENTS.values()
 }
-# 并集视图(查询面兼容;W50 起存在,语义分流见上两表)
+# 并集视图(查询面兼容;语义分流见上两表)
 _EQUIP_BOND_GRANTS: dict[str, tuple[str, ...]] = {
     eq.name: _parse_grants(eq) for eq in EQUIPMENTS.values()
 }
@@ -105,8 +105,8 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
 
     - 角色:CHARACTERS 注册表 factions + flows + independent 全集;
       开拓者按 ``position_pref`` 归一形态(前排=记忆/后排=欢愉,
-      与 board_from_tracked/W21 #13 同口径);
-    - 装备分两类语义(用户口述 2026-08-28,最高权威):
+      与 board_from_tracked 同口径);
+    - 装备分两类语义(用户口述裁定,最高权威):
       * **星徽 = 额外增加一个羁绊**(add-if-absent):只把没有该羁绊的
         单位变成成员;装备者已拥有该羁绊(自报或其他装备已授)时**不重复计数**;
       * **卡带(欢愉/星核猎手系)= 计数 +1**(无条件,可双计:成员佩戴者

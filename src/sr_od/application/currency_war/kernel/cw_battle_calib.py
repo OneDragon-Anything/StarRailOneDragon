@@ -1,5 +1,5 @@
-"""货币战争战斗校准与板面聚合函数族(分包期 0b 单元6 自 cw_sim.py 两段式
-下沉,§3.3-②/§4.3;纯移动零行为,等价锚=同 seed 决策序列既有锁面)。
+"""货币战争战斗校准与板面聚合函数族(自 cw_sim.py 下沉;DESIGN §3.3-②/§4.3;
+等价锚=同 seed 决策序列既有锁面)。
 
 下沉闭包 = DESIGN §4.3「校准+聚合族」:回退层胜负面(node_win_p/
 battle_delta/boss_delta/boss_settle_delta/node_delta)、结算成型度键
@@ -55,7 +55,7 @@ def deployed_star_depth(st: GameState) -> int:
     离线回放三面同式)。
 
     消费点:p2_form_key 星级分量(ADR-0401)与 **Δ池 boss 桶键**
-    (迁移审计(git 历史)/ADR-0404,替代 Σboard——修 3合1 升星使 Σboard −2/次键落
+    (ADR-0404,替代 Σboard——修 3合1 升星使 Σboard −2/次键落
     浅桶的方向冲突;净星深下 1★→2★ 合并键 +1 永不落浅桶,买 bench
     副本不扰动)。已知边界:2★→3★ 合并键 −1(3 副本 Σ(star−1)=3 →
     载体 2),仅当键恰为 3 的倍数时跨桶——高级合并当前语料零样本,
@@ -149,7 +149,7 @@ def battle_delta(round_num: int, dir_round: int,
                  rng: random.Random) -> int:
     """普通战斗 HP 变化(校准层回退;ADR-0308)。
 
-    胜负面 = 迁移审计(git 历史) 实测阶梯 ``node_win_p('battle', round_num)``
+    胜负面 = 实机实测阶梯 ``node_win_p('battle', round_num)``
     (n=192;旧方向二元门控「已立→胜」废弃——胜率从未按节点实测,
     语料实测方向已立后战斗胜率仍 ~0.29);胜 → ``WIN_DELTAS``,
     负 → 旧损益幅度层(LOSS_BASE/LOSS_PER_ROUND,25 局轨迹校准,
@@ -181,7 +181,7 @@ def _settle_rung(st: GameState) -> int:
     encounter(v11,ADR-0407)Δ池 rung 分桶的采样键**单一源**)。
 
     口径 = _engines_count(四体系达成数:仙舟3/列车2/DOT2/希儿系),
-    输入 = **board 全集口径**(ADR-0312,迁移审计 w50(git 历史):_recount_board——对齐生产
+    输入 = **board 全集口径**(ADR-0312,口径统一源=_recount_board——对齐生产
     outcomes board_before 的全集+星徽口径;旧 _board_factions_of 输入
     缺星徽贡献,星徽局 rung 系统性偏低落错桶)+上场名单(希儿系单卡判据)。
     """
@@ -194,12 +194,12 @@ def _settle_rung(st: GameState) -> int:
 
 def boss_settle_delta(st: GameState, dir_round: int,
                       rng: random.Random) -> int:
-    """ADR-0308:boss Δ池桶不可达时的回退结算(胜负面=迁移审计(git 历史) 阶梯)。
+    """ADR-0308:boss Δ池桶不可达时的回退结算(胜负面=实测阶梯)。
 
     胜 → ``BOSS_WIN_DELTA`` 小额(掷 ``node_win_p('boss', round)``,
     n=192 实测 0.05);负 → 旧 ``boss_delta`` 档(幅度层保留)。
     旧 rung 条件胜率(ADR-0277/0306 的 0/0/0.25 + rung2 外推)已被
-    迁移审计(git 历史) 实测边际替换——语料是旧策略病局镜像,无条件性可标(成型度
+    实测边际替换——语料是旧策略病局镜像,无条件性可标(成型度
     条件性等新策略语料,见 ``NODE_WIN_P_LADDER`` 注释)。
     仅当 ``live_delta_for`` 返 None(无可及桶)时由调用方使用;
     Δ池可及桶命中时经验分布优先(池是实机真值,sim 规则表是补洞)。
@@ -210,7 +210,7 @@ def boss_settle_delta(st: GameState, dir_round: int,
 
 
 def sample_node_sequence(rng: random.Random) -> list[str]:
-    """P1 节点序列(r306b 实证统计:25 开局帧众数表)。
+    """P1 节点序列(实机实证统计:25 开局帧众数表)。
 
     典型表(每帧读全,用户指路):reward/reward/battle/battle/
     supply/battle/encounter/reward/boss——slot1/2/4/7 全帧
@@ -233,10 +233,10 @@ def node_delta(node: str, round_num: int, dir_round: int,
                rng: random.Random, *, plane: int = 1) -> int:
     """按节点类型的 HP 变化(分层;ADR-0292 起 reward/supply 的
     **池回退档**——Δ池可及时结算侧优先池采样;ADR-0308 起战斗类
-    节点回退档胜负面 = 迁移审计(git 历史) 实测阶梯 ``node_win_p``):
+    节点回退档胜负面 = 实机实测阶梯 ``node_win_p``):
     reward/supply 零战力要求 → 不掉血(回退档 +2 长线作战回血观测,
     池真值同分布);
-    battle → 阶梯掷胜(迁移审计(git 历史):n=192,~0.29),胜 WIN_DELTAS/负旧幅度;
+    battle → 阶梯掷胜(实机实测:n=192,~0.29),胜 WIN_DELTAS/负旧幅度;
     encounter → 阶梯掷胜(0.04),胜 +2/负 boss 档 × ENCOUNTER_MULT
     (档位不可观,均值近似);
     boss → 阶梯掷胜(0.05),胜 +2/负 boss 档。
@@ -281,7 +281,7 @@ def _direction_established(session: StrategySession) -> bool:
 
 
 def _target_comp_label(session: StrategySession) -> str:
-    """账本 ``target_comp`` 字段(迁移审计 w43(git 历史) leader 裁决 3):v3 意向。
+    """账本 ``target_comp`` 字段(leader 裁决):v3 意向。
 
     decision_v2 栈不写 ``locked_line``/``bridge_id``,意向真值在
     ``session.v3_intention.locked_comp``(COMP_LIBRARY 套名;旧 v1
@@ -300,10 +300,10 @@ def _target_comp_label(session: StrategySession) -> str:
 
 
 def _board_factions_of(deployed) -> dict[str, int]:
-    """r394:上场角色的阵营计数(生产 board 口径,flows 并计)。
+    """上场角色的阵营计数(生产 board 口径,flows 并计)。
 
     「过渡阵容凑到没有」的判据输入:recipe_tier(配方档位)/
-    三人组在场上——此前 sim 账本 board 恒空,成型质量不可观测。
+    三人组在场上——sim 账本 board 不可恒空,否则成型质量不可观测。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
     out: dict[str, int] = {}
@@ -325,23 +325,23 @@ board_factions_of = _board_factions_of
 
 
 def _board_counts_of(deployed) -> dict[str, int]:
-    """board 全集计数(ADR-0312,迁移审计 w50(git 历史) 口径统一)。
+    """board 全集计数(ADR-0312,口径统一)。
 
     **= ``cw_state._recount_board`` 本体**(alias import,单一源)——
-    旧「主阵营逐件累加」口径已废:state.board 消费方(recipe 门/
-    在场阵营集合/意向②信号)此前读的是压掉流派/独立羁绊/
+    「主阵营逐件累加」口径不可用:state.board 消费方(recipe 门/
+    在场阵营集合/意向②信号)若读压掉流派/独立羁绊/
     星徽贡献的窄口径,与实机 board_from_tracked(左面板真值)系统性
-    分叉(迁移审计 w49(git 历史) Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
+    分叉(审计项 Q4)。未识别(char_id 空)回退 faction 字段(生产 OCR
     空板同形)。"""
     from sr_od.application.currency_war.kernel.cw_state import _recount_board
     return _recount_board(deployed)
 
 
 def _first_tier_round(res, tier: int) -> int | None:
-    """r394:配方档位首达轮(ledger 的 board_factions 逐轮查
+    """配方档位首达轮(ledger 的 board_factions 逐轮查
     recipe_tier≥tier 的最小轮;查不到=None)。"""
-    # 符号解耦(处死计划):改接 knowledge/cw_line_facts 权威副本,
-    # 不再依赖 kernel/cw_line_defs(死刑判据文件)
+    # 符号解耦:改接 knowledge/cw_line_facts 权威副本,
+    # 不再依赖 kernel/cw_line_defs(迁移挂账文件)
     from sr_od.application.currency_war.knowledge.cw_line_facts import recipe_tier
     for row in res.ledger:
         bf = (row.get('state') or {}).get('board_factions') or {}
@@ -351,9 +351,9 @@ def _first_tier_round(res, tier: int) -> int | None:
 
 
 def _first_trio_round(res, target: int) -> int | None:
-    """r394:核心三人组上场首达轮(deployed∩_CORE_TRIO 计数
+    """核心三人组上场首达轮(deployed∩_CORE_TRIO 计数
     ≥target 的最小轮;查不到=None)。"""
-    # 符号解耦(处死计划):改接 knowledge/cw_line_facts 权威副本
+    # 符号解耦:改接 knowledge/cw_line_facts 权威副本
     from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
     for row in res.ledger:
         dep = (row.get('state') or {}).get('deployed') or []
@@ -369,15 +369,15 @@ def _engines_count(board_factions: dict[str, int],
                    ) -> int:
     """过渡体系达成数(三选几+希儿系;两两组合=过渡成型)。
 
-    迁移审计(git 历史):本体上移 cw_deploy_logic.engines_count(历史单一源);
-    符号解耦(处死计划)后权威副本 = knowledge/cw_engine_facts.engines_count
-    (cw_deploy_logic 死刑,本薄委托改接新家);历史消费点
+    本体 = cw_deploy_logic.engines_count(单一源);
+    符号解耦后权威副本 = knowledge/cw_engine_facts.engines_count
+    (cw_deploy_logic 迁移挂账,本薄委托改接新家);历史消费点
     (decision_v2/cw_evolution/cw_delta_pool_gen 等的懒 import)不动。
-    r399:希儿系=希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
+    希儿系=希儿在场 AND(量子同频≥2 OR 贝洛伯格≥2)——
     与三羁绊同级可组合。
     """
-    # 符号解耦(处死计划):改接 knowledge/cw_engine_facts 权威副本
-    #(机制事实判据,不依赖 kernel/cw_deploy_logic 死刑判据文件)
+    # 符号解耦:改接 knowledge/cw_engine_facts 权威副本
+    #(机制事实判据,不依赖迁移挂账的 kernel/cw_deploy_logic)
     from sr_od.application.currency_war.knowledge.cw_engine_facts import (
         engines_count as _impl,
     )
@@ -397,7 +397,7 @@ def _transition_formed(board_factions: dict[str, int],
 
 
 def _first_engines_round(res, target: int) -> int | None:
-    """r399:过渡体系达成数首达 target 的最小轮。
+    """过渡体系达成数首达 target 的最小轮。
 
     判据走 _engines_count(四体系:仙舟3/列车2/DOT2/希儿系各算一个;
     希儿系需 deployed 含希儿——ledger 的 state.deployed 提供名单);
@@ -432,18 +432,18 @@ def _battles_before_engines(res, target: int = 2) -> int | None:
 
 
 def _deployable_depth(st: GameState) -> int:
-    """板深 = **Σboard(全集口径)**(ADR-0312,迁移审计 w50(git 历史) 桶键统一)。
+    """板深 = **Σboard(全集口径)**(ADR-0312,桶键统一)。
 
     池语料的板深 = decisions 行 state.board 求和(实机全集口径,双标签
-    角色每人贡献 ≥2)——sim 采样键旧用 ``min(level, len(deployed))``
+    角色每人贡献 ≥2)——sim 采样键若用 ``min(level, len(deployed))``
     与池语料不同口径:同一局面在池里落深桶、sim 查询落浅桶,采样系统性
-    偏向低桶/miss(迁移审计 w49(git 历史) Q4「隐患最重的消费端缺陷」)。本函数是 Δ 池采样
+    偏向低桶/miss(审计项 Q4:「隐患最重的消费端缺陷」)。本函数是 Δ 池采样
     键/depth_trail/账本 depth 的单一源,与池语料同口径(Σboard,不加
     level 上限——池侧同样无上限,桶键在 live_delta_for 侧统一分桶)。
     「读 deployed 不数 bench」语义由 board=_recount_board
     (deployed 派生)间接保留。
     **辖域(v11 后)**:reward/supply 桶键与观测面(depth_trail/账本);
-    boss 桶键=净星深(迁移审计(git 历史)/ADR-0404,deployed_star_depth);encounter
+    boss 桶键=净星深(ADR-0404,deployed_star_depth);encounter
     桶键=rung(v11/ADR-0407,_settle_rung 同源;depth 键下期望伤害
     真平——P1 配对实证「主通道断裂」的 encounter 维由扩容+键查证裁决:
     板深维不可兑换,rung 维可辨)。
@@ -452,7 +452,7 @@ def _deployable_depth(st: GameState) -> int:
 
 
 def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:
-    """本备战期轮岗事件(ADR-0286/批㉓ F4):概率 ROTATION_CHANCE 掷中 →
+    """本备战期轮岗事件(ADR-0286;审计项 F4):概率 ROTATION_CHANCE 掷中 →
     随机一档(基线 0<p<0.5 才可能被翻倍)×2 → 完整概率表;
     未掷中/该等级无可翻倍档 → None(基线表,生产「未读到概率条」同态)。
 

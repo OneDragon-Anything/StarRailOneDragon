@@ -1,5 +1,5 @@
-"""决策纪律·卖侧下界/种子年龄判据族(分包期 0b 自 decision_v2.discipline
-下沉,§3.3-①e)。
+"""决策纪律·卖侧下界/种子年龄判据族(自 decision_v2.discipline
+下沉;DESIGN §3.3-①e)。
 
 下沉闭包 = cw_evolution 溢出卖出/种子豁免消费面:
 ``sole_engine_sell_floor_plan``(批量逐笔下界,ADR-0380)及其计数底座
@@ -41,7 +41,7 @@ def sole_engine_sell_floor_plan(bcs: list,
                                 ) -> list[bool]:
     """ADR-0380:同批多笔卖出的逐笔下界判定(批量口径)。
 
-    背景(136 r7 实证):arbitrate 同段可采纳多笔同名 TT 件卖候选——
+    背景(实机实证):arbitrate 同段可采纳多笔同名 TT 件卖候选——
     候选生成对**批前状态**计数(列车在手 3>tier 2),逐笔合法而批内
     聚合 3→1 跌破 tier。``sole_engine_sell_blocked`` 单件口径对同批
     前序卖出不可见——本函数按 ``bcs`` 顺序逐笔评估,**前序判定为
@@ -150,9 +150,9 @@ def seed_age_blocked(bc, state: GameState,
     """ADR-0289 §5:engine_seed 年龄豁免——买入 ≤2 轮且同轮份数 <2 的种子
     不进可卖集(跨轮窗;同轮 ≥2 份=3合1 素材语境豁免)。
 
-    W88(ADR-0339 件3):cnt≥2 豁免加**实际持有对账**(star_weighted_
+    ADR-0339 件3:cnt≥2 豁免加**实际持有对账**(star_weighted_
     copies≥2)——采纳处登记可能在同轮重复计数(采纳后被执行层否决的
-    买入也留痕,seed16 姬子·启行单买 cnt=2 实证),幻影 cnt 会静默解除
+    买入也留痕,单买 cnt=2 实证),幻影 cnt 会静默解除
     种子保护 → 买/卖互踩;以「真持有 ≥2 份」为素材语境判据。
     """
     name = getattr(bc, 'char_id', '')
