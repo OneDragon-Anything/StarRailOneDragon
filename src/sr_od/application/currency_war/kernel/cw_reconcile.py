@@ -30,7 +30,7 @@ def set_merge_effect_gate(fn) -> None:
 
 
 def _merge_equips(old_list, new_list) -> list:
-    """对账合并语义(W209g 断点①修法,ADR-0387 追加):char_id 续接保留 equips。
+    """对账合并语义(ADR-0387 追加,对账覆盖装备的断点修法):char_id 续接保留 equips。
 
     断点(run 26 实锤):旧版 ``session.tracked_deployed = list(deployed)``
     整批替换,新读对象 equips=[] 默认 → ``deploy_bench._snapshot_equips_into_
@@ -71,7 +71,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     read_star 回读更低 = 星级识别可疑(read_star 漏金星/星区被遮挡)——**star≥2 的回退连续
     2 个节点仍现 → 停机保画面排查**(第 1 次可能是升星特效遮挡过渡帧,一节点内消;防抖
     同 M35 shop_unknown 模式)。sentinel 自描述(删钩子位置/排查项),防「孤儿残留」误判
-    (r17-r31 教训:反复出现的 sentinel 必有活生产者,grep 写入者)。
+    (教训:反复出现的 sentinel 必有活生产者,grep 写入者)。
 
     Args:
         session: StrategySession(tracked_bench_chars/tracked_deployed 被写回)
@@ -111,13 +111,13 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     _reg = dict(getattr(session, 'star_regression_count', {}) or {})
     # ⚖️ star 回退防抖(2026-08-18 离线复现实证治本):274 张存证全量重放 —— 回退角色
     # 40/40 在场且 36/40 **同图重读为 2★**(live 读 1★)→ 真根因 = 3合1 合成动画窗口
-    # 识别(read_star 在特效期读 1,存证帧在动画后半段星已显)——**推翻 r17「SIFT 身份
+    # 识别(read_star 在特效期读 1,存证帧在动画后半段星已显)——**推翻早期「SIFT 身份
     # 错配」结论**。旧版回退即采新写回 → 动画窗 1★ 毒化 tracking,下一帧又纠回(往返抖;
-    # r34 停机钩子有同款防抖所以停机侧无误触,但对账侧漏了)。修:首次回退不写回
+    # 停机钩子有同款防抖所以停机侧无误触,但对账侧漏了)。修:首次回退不写回
     # (该角色 star 保旧),**连续第二次仍回退**才确认(真卖后重买/真识别问题)。
     _pend = dict(getattr(session, 'star_pending_regression', {}) or {})
     for _n, _s in _new_stars:
-        # 同名多星共存时取**最高旧星**(r6 review 小瑕疵:set 无序 next() 任意项;
+        # 同名多星共存时取**最高旧星**(小瑕疵:原实现 set 无序 next() 任意项;
         # 回退判定应对 max——2★+1★ 共存读回 1★ 是回退 vs 2★,不是 vs 任意)
         _old_s = max((_os for _on, _os in _old_stars if _on == _n), default=None)
         if _old_s is not None and _s < _old_s:
@@ -130,13 +130,13 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             _seen = _pend.get(_n, 0)
             if _seen == 0:
                 # 首次:疑合成动画窗(特效遮挡第2星)——不写回,star 保旧防毒化;
-                # 下一帧读回正常即自愈(与 r34 停机钩子「连续 2 节点」同语义)。
+                # 下一帧读回正常即自愈(与停机钩子「连续 2 节点」防抖同语义)。
                 _pend[_n] = 1
                 log.info(f'[cw][{source}] star 回退防抖:{_n} {_old_s}★→{_s}★(疑3合1动画窗)'
                          f'→ 本帧保旧 {_old_s}★,下帧确认')
                 _conflict('star', _old_s, _s, screen, verdict='保旧-回退防抖(疑合成动画窗,下帧确认)',
                           source=source, char=_n)
-                # 保旧只抬**一个**副本(r58 review P1:同名多副本共存[2★+1★]时,循环会
+                # 保旧只抬**一个**副本(同名多副本共存[2★+1★]时,循环会
                 # 把所有 star==_s 的副本集体抬到旧最大星 → 真实 1★ 副本变假 2★,污染
                 # merge/卖牌决策;数量守恒 = 只抬第一个命中)。
                 _bumped = False
@@ -149,11 +149,11 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                             _bumped = True
                             break
             else:
-                # W292 帧态门(ADR-0420):采新确认前先判合成特效帧——星爆动画/
+                # 帧态门(ADR-0420):采新确认前先判合成特效帧——星爆动画/
                 # 拖拽过渡窗可持续 ≥2 帧,「连续 2 次」防抖会被窗内第 2 帧假确认
-                # (W285 star 层抽样 2/2 采新帧全错实证)。特效帧 = 物理不可信窗:
+                # (star 层抽样 2/2 采新帧全错实证)。特效帧 = 物理不可信窗:
                 # 保旧同首次分支,**防抖计数冻结不推进**(非清零——动画结束后的
-                # 干净回退帧仍走本分支确认;门漏检时退化为 W292 前防抖行为)。
+                # 干净回退帧仍走本分支确认;门漏检时退化为引入本门前的防抖行为)。
                 _eff = False
                 if screen is not None and _IS_MERGE_EFFECT_FRAME is not None:
                     _eff = _IS_MERGE_EFFECT_FRAME(screen)
@@ -178,21 +178,21 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                     log.warning(f'[cw!][{source}] star 回退确认:{_n} {_old_s}★→{_s}★(连续2次,真回退)')
                     _conflict('star', _old_s, _s, screen, verdict='采新-回退确认(连续2次)',
                               source=source, char=_n)
-                    # ⚖️ star 回退留证(2026-08-18 r17 降级:原停机钩子三度触发阻断实跑——排查结论
+                    # ⚖️ star 回退留证(2026-08-18 降级:原停机钩子三度触发阻断实跑——排查结论
                     # 已存档 cw_dev/live_round11_diagnosis.md;降级为高频留证(每 5 次回退存一张证,
                     # 不 stop),排查证据流保留,goal 实跑可推进。SIFT 身份修复后本段连同 _star_stop_hook 删)。
-                    # r336(批次4:钩子归位):留证调用从 reconcile 深处
+                    # 钩子归位:留证调用从 reconcile 深处
                     # 改**队列记录**——真正落盘由 director 对账位统一
-                    # 触发(消费统一观察;r330 帧态门在 _star_stop_hook
+                    # 触发(消费统一观察;帧态门在 _star_stop_hook
                     # 内,双层保护)。reconcile 只登记,不做 IO。
                     if _old_s >= 2:
                         _reg[_n] = _reg.get(_n, 0) + 1
                         _pending_evidence.append((_n, _old_s, _s, source))
         elif _n in _pend or _n in _reg:
-            _pend.pop(_n, None)   # 读回恢复(或超预估)→ 清防抖(自愈;r79:pop 防抖——
+            _pend.pop(_n, None)   # 读回恢复(或超预估)→ 清防抖(自愈;pop 而非 del——
             # 名字可能只在 _reg 不在 _pend,原 del 抛 KeyError 打断备战环,实锤 丹恒·饮月)
             _reg.pop(_n, None)   # 连续回退计数同步清零(恢复语义)
-    # 离场清除 pending(r58 review P2①:角色卖出/上场后 _pend 残留 → 该角色下次登场时
+    # 离场清除 pending(角色卖出/上场后 _pend 残留 → 该角色下次登场时
     # 单次动画误读被误判「连续第二次确认」)。只在两侧都真读(非 None)时清 —— None 侧
     # 读失败不代表离场。双空读已在上方守卫早退,这里 old 非空 + 双真读 = 真离场。
     if _pend and bench is not None and deployed is not None:
@@ -201,8 +201,8 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
             del _pend[n]
     session.star_pending_regression = _pend
     session.star_regression_count = _reg
-    # 防抖可能原地改 bench/deployed 副本 star(r58 review P2②)→ 纠漂判定与日志必须
-    # 取**防抖后**快照(旧快照记的是改前值,误导排障)。W68:bench/deployed 入参
+    # 防抖可能原地改 bench/deployed 副本 star → 纠漂判定与日志必须
+    # 取**防抖后**快照(旧快照记的是改前值,误导排障)。bench/deployed 入参
     # 是 SIFT 紧凑列表(无 None),但入参若被上游 pad 过则守卫之(同形状契约)。
     new_b = [(bc.char_id, bc.star) for bc in (bench or []) if bc is not None]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
@@ -220,9 +220,9 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                     f' deployed {old_d}→{new_d}')
         _conflict('tracking', f'{old_b}|{old_d}', f'{new_b}|{new_d}', screen,
                   verdict='采新-对账纠漂(SIFT 实读)', source=source)
-    # r336(批次4:钩子归位)——「对账&hook」位统一消费留证
+    # 钩子归位——「对账&hook」位统一消费留证
     # 队列(原 reconcile 深处散调;计数节流每 5 次留一张不变,
-    # _star_stop_hook 内 r330 帧态门保留=双层保护)。
+    # _star_stop_hook 内帧态门保留=双层保护)。
     for _n, _o_s, _s, _src in _pending_evidence:
         if _reg.get(_n, 0) >= 2 and ctx is not None and _reg[_n] % 5 == 0:
             _star_stop_hook(ctx, session, _n, _o_s, _s, screen, _src,
@@ -410,12 +410,12 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
                     screen, source: str, stop_run: bool = True) -> None:
     """star 回退留证钩子(用户 2026-08-17 指示;star≥2 回退触发)。
 
-    r17 降级(2026-08-18):排查已尽策略侧所能(结论存 cw_dev/live_round11_diagnosis.md:
+    留证降级(2026-08-18):排查已尽策略侧所能(结论存 cw_dev/live_round11_diagnosis.md:
     根因在 SIFT 身份域,非读星)——stop_run=False 时只留证截图不停机(证流保留,
     实跑可推进);SIFT 身份修复后本段整删。
     停机保备战画面供排查星级识别(read_star 漏金星?星区被特效/光标遮挡?SIFT 身份错配?)。
-    sentinel 自描述(r17-r31 教训:内容含「这是自己的钩子停的+删除位置」,防误判孤儿/外部拦截)。
-    r330 帧态门:留证/停机只在备战类精准帧(is_prep_like_frame)
+    sentinel 自描述(教训:内容含「这是自己的钩子停的+删除位置」,防误判孤儿/外部拦截)。
+    帧态门:留证/停机只在备战类精准帧(is_prep_like_frame)
     ——动画帧上的星读回退本就常发(升星特效窗),不留证。
     """
     from datetime import datetime
@@ -423,7 +423,7 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
 
     from one_dragon.utils import log_utils
     try:
-        # r330 帧态门:非备战类精准帧直接跳过(动画帧星读回退
+        # 帧态门:非备战类精准帧直接跳过(动画帧星读回退
         # 常发,留证只是噪声)。screen=None(测试/无帧上下文)
         # 不拦——留证本身是离线安全操作。
         if screen is not None:

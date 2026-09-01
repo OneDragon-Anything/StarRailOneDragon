@@ -83,6 +83,7 @@ class DecisionV2Registry:
     #: hp0 −2.0pp 不显著/bench 满帧占比不升/出口金不降);差一张桶
     #: −6.86pp 方向对不显著(桶主体由 ②生成通道与 EV 约束链共同消化)。
     #: **默认开**;False=回退非正分拒(代码留作回退通道)。
+    #: **默认开**;False=回退非正分拒(代码留作回退通道)。
     merge_completion_exempt: bool = True
     #: [31] 凑档降级的成本带上限(1-2 费=P1 过渡带)
     bond_fallback_max_cost: int = 2

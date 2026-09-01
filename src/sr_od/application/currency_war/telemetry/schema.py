@@ -7,22 +7,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRAITS
-from sr_od.application.currency_war.kernel.cw_intention import (
-    SEELE_SYSTEM,
-    _bond_members,
-    _to_jsonable,
-)
 from sr_od.application.currency_war.kernel.cw_state import (
     Action,
+    BuyCard,
     GameState,
     _bench_char_cost,
     sell_refund,
 )
 
+# 符号解耦(处死计划批 0 第 1 项):本模块消费的注册数据/序列化符号权威
+# 副本迁 knowledge/(cw_engine_facts/cw_line_facts/cw_serialize),
+# 不再依赖 kernel/cw_deploy_logic、kernel/cw_intention(死刑判据文件)
+from sr_od.application.currency_war.knowledge.cw_engine_facts import TRANSITION_TRAITS
+from sr_od.application.currency_war.knowledge.cw_line_facts import (
+    SEELE_SYSTEM,
+    _bond_members,
+)
+from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
+
 # 默认 replay 目录单一源已下沉 kernel/cw_observe(分包期 3:sim 桶消费它而
 # sim 禁依 telemetry;本模块经上行 import 取用)。replay 序列化符号
-# (_to_jsonable/serialize_intention)同理下沉 kernel/cw_intention。
+# (_to_jsonable/serialize_intention)权威副本已迁 knowledge/cw_serialize
+# (处死计划批 0)。
 SCHEMA_VERSION: int = 1   # 决策迹 schema 版本(字段名稳定;改 schema 升版本号)
 
 
@@ -47,7 +53,7 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
       占比(P31① 辅通道)。本函数只记**单帧分子计数**;W 窗占比由读端
       按帧聚合,窗口假设不进采集点。消费=理论口径(E_rounds 超几何)
       的对拍与牌池结构变化检出,决策消费主通道不经此。
-    - 成员判定 = ``cw_intention._bond_members``(阵营∪流派全成员;
+    - 成员判定 = ``knowledge.cw_line_facts._bond_members``(阵营∪流派全成员;
       多标签件在各命中体系各计 1,Σ systems 可超 n_shop——与
       OutcomeRecord.board_before 人次口径同判据)。
     - ``pair`` = 当前方向标签(p1_pair 优先次 transition_pair;''=空窗),
@@ -156,9 +162,32 @@ def serialize_state(state: GameState) -> dict[str, Any]:
 
 
 def serialize_action(action: Action) -> dict[str, Any]:
-    """单 Action → JSON-safe dict(带 type 标签,便于复盘识别)。"""
+    """单 Action → JSON-safe dict(带 type 标签,便于复盘识别)。
+
+    BuyCard 决策帧富化(观察层数据移交批,纯观测零行为):顶层平铺
+    ``char_id`` 与 ``cost``——此前买入角色只以 OCR 原名嵌在
+    ``card.name`` 里,跨流对账(spend_ledger 采购账/补给行/ BenzChar
+    char_id 侧)拿不到注册表规范名,费用也要下钻 card 嵌套。
+    - ``char_id`` = ``data.cw_chars.CHARACTERS`` 规范名(OCR 名精确
+      命中注册表才写,未命中/查询失败 = ''——诚实缺省,不猜);
+    - ``cost`` = ``ShopCard.cost`` 平铺(OCR 真值;0 = OCR 失读,
+      消费方按缺口对待,不用注册表值冒充——多源混写是 board_before
+      人次口径已付过的学费)。
+    富化只加键不改既有键:旧读端(下钻 card.* 的 query_supply/
+    query_economy)零波及,旧记录缺键 .get 兼容。
+    """
     d = _to_jsonable(action)
     d["__type__"] = type(action).__name__
+    if isinstance(action, BuyCard):
+        d['cost'] = int(getattr(action.card, 'cost', 0) or 0)
+        d['char_id'] = ''
+        try:
+            from sr_od.application.currency_war.data.cw_chars import get_char
+            _ch = get_char(str(getattr(action.card, 'name', '') or ''))
+            if _ch is not None:
+                d['char_id'] = str(_ch.name)
+        except Exception:   # noqa: BLE001  观测 best-effort,不阻断落盘
+            pass
     return d
 
 
@@ -211,6 +240,7 @@ class DecisionTrace:
     hp_readable: bool = True                      # hp 值来源可读位(True 可信度等同真读:①真读=OCR 备战 HP 区;②结算=结算屏经新鲜度门;False=读不到,ADR-0282/0491:hp=None 即无真值帧(沿用帧例外),100 兜底已废止)
     gold: int = 0                                 # 决策时 gold(冗余,便于 gold 轨迹)
     gold_readable: bool = True                    # gold 真读到?(ADR-0282:prep_director「gold 不可信」日志升级为字段,对齐 hp_readable)
+    level_readable: bool = True                   # level 真读到?(对齐 hp_readable;False=纯 _expected_level 启发式兜底帧——「兜底 4」与「真读 4」判读可分;旧档案缺省 True=按现有判读处理)
     # —— live 观测扩容(strategy/05_observation;全部可选,回放/影子对齐)——
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
     dp_posture: dict[str, Any] = field(default_factory=dict)     # 影子 DP 姿态(tag/level_up/refresh_budget/v)
@@ -353,6 +383,15 @@ class DecisionTrace:
     # 供给衰减坐标透传(ist.supply_drought;体系键→连续零在店轮数 t,
     # support′=γ^t·sup+β·[在店]);None=无意向状态机,{}=尚无观测帧。
     sess_dir_supply_drought: dict | None = None
+    # 补给轮决策行采集(观察层数据移交批):补给节点选卡确认后的合成
+    # 决策帧(extra.phase='supply_pick')携带的选定快照——
+    # {char, equip, has_diamond, refreshed, options:[{char,equip,has_diamond}...],
+    # n_options},形状与 telemetry.state 暂存槽/set_last_supply_pick 一致
+    # (单一形状,不造第二套)。None=非补给帧/兜底点卡路径(决策帧照写,
+    # 读端按 None 分型)。此前决策行只有空壳快照,「补给选了什么/牌面给
+    # 了什么」要等 outcomes 合成行 join 才可读;平铺进决策行后单行自足。
+    # 可选末尾追加字段,旧记录缺省 None 不破坏 schema。
+    supply_pick: dict[str, Any] | None = None
 
 
 

@@ -63,6 +63,53 @@ def check_late_deploy_full(ledgers: list[list[dict]]) -> dict:
 
 
 
+def check_late_board_short_idle(ledgers: list[list[dict]]) -> dict:
+    """F5 断言门(末窗板位缺口的执行侧零动作;缺陷锚 = late_deploy_full
+    85 实例 + 「买到仍缺型」bench 囤积不上板)。
+
+    判据:r≥7 帧 deployed < cap ∧ bench 存在同名禁双合法可上件
+    (char_id 不在 deployed 名册)∧ 帧无 DeployMove → 计入 idle 实例。
+    **披露型**(沿 late_deploy_full 同款生命周期:先观测后定阈)——
+    供给侧修复(F5 top-K 扩展)后首批实测残余 25 局/300,归因 =
+    采纳层(scoring 对弱件部署的非正分门),该层修复后本检查升格
+    断言门(那时 violations 才有意义)。
+    """
+    violations = 0
+    games: list[int] = []
+    for gi, rows in enumerate(ledgers):
+        hit = False
+        for row in rows:
+            if not isinstance(row, dict):
+                continue   # 检查网入参容错:异构行(测试夹具/披露行)跳过
+            if (row.get('round_num') or 0) < 7:
+                continue
+            st = row.get('state') or {}
+            if not isinstance(st, dict):
+                continue
+            dep = st.get('deployed') or []
+            cap = st.get('cap') or 99
+            if len(dep) >= cap:
+                continue
+            dep_names = {(b.get('char_id') or b.get('name'))
+                         if isinstance(b, dict) else b
+                         for b in dep}
+            bench_ok = any(
+                ((b.get('char_id') or b.get('name'))
+                 if isinstance(b, dict) else b) not in dep_names
+                for b in (st.get('bench') or []))
+            if not bench_ok:
+                continue
+            has_deploy = any(isinstance(a, dict)
+                             and a.get('__type__') == 'DeployMove'
+                             for a in row.get('actions') or [])
+            if not has_deploy:
+                violations += 1
+                hit = True
+        if hit:
+            games.append(gi)
+    return {'violations': 0, 'idle_instances': violations, 'games': games}
+
+
 def check_no_streak_buy_freeze(ledgers: list[list[dict]]) -> dict:
     """成型批 no_streak_buy_freeze(连胜期买入冻结观测;披露型)。
 

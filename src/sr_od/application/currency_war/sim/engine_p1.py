@@ -36,12 +36,12 @@ from sr_od.application.currency_war.kernel.cw_battle_calib import (
     _board_factions_of,
     _deployable_depth,
     _direction_established,
-    _roll_rotation,
     _settle_rung,
     _target_comp_label,
     deployed_star_depth,
     node_delta,
     p2_combat_delta,
+    roll_rotation_per_stage,
     sample_node_sequence,
 )
 from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
@@ -530,9 +530,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         构造——跳过 P1 段与开局 bench 采样,直接从真值进场态跑 P2 段。
         共享本函数的 P2 段循环体 = 单一源,迁移审计 w186(git 历史) 设计 §4 的消复制形态)。
     """
-    from sr_od.application.currency_war.decision.decision_v2.strategy import (
-        DecisionV2Strategy,
-    )
     if planes not in (1, 2):
         raise ValueError(
             f'planes 参数非法: {planes}(1=P1 段;2=P1+P2 段,ADR-0362;'
@@ -559,7 +556,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     nodes = sample_node_sequence(rng)   # r260:本局节点序列(9 项)
     # 决策层注册表用 sim 视图(level_max=LEVEL_CAP,见 sim_decision_
     # registry):满级帧决策层不再发起升级,执行层拒付层保留作防线。
-    strat = strategy or DecisionV2Strategy(registry=sim_decision_registry())
+    if strategy is not None:
+        strat = strategy
+    else:
+        from sr_od.application.currency_war.decision.decision_v2.strategy import (
+            DecisionV2Strategy,
+        )
+        strat = DecisionV2Strategy(registry=sim_decision_registry())
     # 观测键评估用的注册表(降格触发面等纯谓词;注入桩策略无 registry
     # 属性时回退 sim 视图——与默认策略同源,不依赖被测对象形状)
     _obs_registry = (getattr(strat, 'registry', None)
@@ -761,7 +764,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 if _pk is not None and _pk not in sess.active_strategies:
                     sess.active_strategies.append(_pk)
                     st.active_strategies = list(sess.active_strategies)
-                    st.gold += economy_effect_of(_pk).instant_gold
+                    _pk_econ = economy_effect_of(_pk)
+                    st.gold += _pk_econ.instant_gold
+                    if _pk_econ.xp_instant > 0:
+                        # 一次性经验选卡时点入账**一次**(接缝面批 S-4:
+                        # xp_instant oneshot 位的生产对位——登记表独立
+                        # 操作数 'xp_instant',禁并入每节点 flow 重复入账;
+                        # 生产由游戏引擎同点入账、决策侧 XP 条读数已含,
+                        # 壳只披露不叠加,防双计)。
+                        xp += _pk_econ.xp_instant
+                        st.xp_progress = (
+                            xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
             _free_r = (_agg_inv.free_refresh_per_node
                        if _agg_inv is not None else 0)
             if _inv is not None:
@@ -770,10 +783,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                            .free_refresh_per_node
                            if st.active_strategies else 0)
             _free_used = 0
-            # ADR-0286(批㉓ F4):轮岗事件——每备战期掷一次,翻倍档概率表
-            # 写 st.refresh_probs(生产「概率条 OCR 真值」同态;未掷中 = None
-            # 退基线表),draw_shop(开态+每次刷新)消费轮岗后表。
-            st.refresh_probs = _roll_rotation(rng, st.level)
+            # ADR-0286(批㉓ F4)轮岗事件——**已勘误重建模**(01 §4.10 概率表族,
+            # DESIGN_FINAL_ATTACK 阻断-2):旧「ROTATION_CHANCE=0.2 无条件掷
+            # 事件」把 replay 观测在场频率误当机制概率。机制语义 = 已选轮岗
+            # 环境后**每备战阶段 100% 重掷翻倍档**(翻倍档 1/5 均匀系建模
+            # 假设,实机待核);未选环境恒基线表(None)。
+            # 条件位 = st.active_env(注入点写 session+state 双处,见上方
+            # _inv 装配;生产 handler 同字段语义)。
+            if (getattr(st, 'active_env', '') or '') == '轮岗':
+                st.refresh_probs = roll_rotation_per_stage(rng, st.level)
+            else:
+                st.refresh_probs = None
             # ADR-0286(迁移审计批 F4):宝钻通道(默认 prob=0 不掷,保 baseline 可配对)
             if diamond_cap_prob > 0 and rng.random() < diamond_cap_prob:
                 _diamonds += 1

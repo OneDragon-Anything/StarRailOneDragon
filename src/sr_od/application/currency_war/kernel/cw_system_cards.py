@@ -1,12 +1,12 @@
 """货币战争 P1 体系卡+组合规则(契约包 C2,步 4 第一批;判断层手编;2026-08-25)。
 
 **单一源**:
-- 教义 = ``.debug/temp/currency_war/cw_dev/deep_read/p1_definition.md``(体系卡四张/
+- 教义 = 「P1 体系卡定义」深度研读笔记(体系卡四张/
   组合规则/升级路径;判据语义逐字对齐);
 - 契约 = 同目录 ``契约包_C1-C7.md`` C2 节(签名冻结级;判据内部权重草案级);
 - tier 阈值单一源 = ``cw_factions.FACTIONS``(仙舟 3 档/持续伤害 2 档/列车同行 2 档/
   量子同频 2 档/贝洛伯格 2 档均取 ``tiers[0]``,不在本文件重复硬编码);
-- 铁三角名单 = ``cw_line_defs._CORE_TRIO`` 注册表真值(爻光+藿藿+丹恒·饮月,
+- 铁三角名单 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(爻光+藿藿+丹恒·饮月,
   W26 测试锚;本文件只 import 不复制)。
 
 **契约偏差声明(C2 落地时点)**:
@@ -34,11 +34,14 @@ from dataclasses import dataclass, field
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
-from sr_od.application.currency_war.kernel.cw_line_defs import _CORE_TRIO
 from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
+
+# 符号解耦(处死计划):铁三角权威副本迁 knowledge/cw_line_facts,
+# 不再依赖 kernel/cw_line_defs(死刑判据文件)
+from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
 
 # ===== 判据常量(tier 阈值派生自 FACTIONS,单一源)=====
 _XIANZHOU_TIER: int = FACTIONS['仙舟'].tiers[0]              # 3(仙舟≥3 激活)

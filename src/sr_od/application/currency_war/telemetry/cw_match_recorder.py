@@ -87,6 +87,8 @@ def extract_frame(ctx, img, templates) -> dict:
             rec.update(gold=st.gold, hp=st.hp, hp_readable=bool(st.hp_readable),
                        gold_readable=bool(getattr(st, 'gold_readable', True)),
                        level=st.level,
+                       # level 保真位透传(False=纯 _expected_level 启发式兜底,非真读)
+                       level_readable=bool(getattr(st, 'level_readable', True)),
                        board=dict(st.board), bench_full=st.bench_is_full())
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] state 提取失败: {e}')

@@ -1,0 +1,8 @@
+sub_dir: currency_war
+template_id: cw_shop_lock_unlocked
+template_name: 待补
+template_shape: rectangle
+auto_mask: true
+point_list:
+- 0, 0
+- 0, 0

@@ -10,12 +10,12 @@
   受击频率高的位(前排/嘲讽)空栏最贵 → 凑 3 的优先对象=前排先于输出位。
 
 两轴同指「提高单人穿满率」,合并为一个 fill-to-3 量变体(设计件
-.debug/temp/currency_war/w880_equip_env_design/DESIGN.md §2/§3.1):
+装备环境设计件 §2/§3.1):
 基分配 ``cw_comps.equip_allocation`` 语义不变(件给谁的 comp 意图),本模块
 只在其产出后做**改派后处理**——把分配序列中非命脉散件改派给「差件凑满 3」
 的角色,凑到阈值为止。
 
-**环境判据(读取链,同 cw_junk_first.W861 语义)**:简报词缀 ∪ 位面详情随采
+**环境判据(读取链,同 cw_junk_first 的环境判据语义)**:简报词缀 ∪ 位面详情随采
 → ``session.briefing_affixes`` → ``state.enemy_affixes``。读取点唯一 =
 ``build_equip_env_signals``(equip_all 决策调用处构造一次打包传递,变体
 函数不再各自摸 state);**读不到(空/None)= 无环境,安全默认不启用**。
@@ -29,7 +29,7 @@
    调用侧以 ``hold_active`` 传入,变体内不重复判 hold。
 
 **执行链零触碰**:本模块是纯决策层(排序器后处理),equip_all 的 drag/验穿
-链(W849)零改动;开关关/环境不在场/hold 在场 → 分配序列逐位原样(零漂移锚)。
+链(拖拽执行链)零改动;开关关/环境不在场/hold 在场 → 分配序列逐位原样(零漂移锚)。
 """
 from __future__ import annotations
 
@@ -163,7 +163,7 @@ def apply_fill3(alloc: list[tuple[str, str]],
                     # 可行性守卫 > 排序轴(ADR-0502 辖域优先链):core 首选被
                     # 守卫淘汰落次选属正常让位;info 披露供实机挂账
                     # 「让位事件频次与差分代价」的数据源(实机运行级=info,
-                    # debug 级收不到=挂账失效,审计 W922-P3)。
+                    # debug 级收不到=挂账失效,对抗审计挂账)。
                     log.info('[cw-equip] fill3 pairing-guard yield: core=%s '
                              'item=%s falls to next candidate', t, item)
                 continue    # 该改派会触发非预期合成 → 换目标/放弃本件

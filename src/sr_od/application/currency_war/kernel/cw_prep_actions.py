@@ -130,7 +130,7 @@ PREP_ACTION_TYPES: tuple = (
     EnsureShopOpen, EnsureShopClosed, StartBattle,
     RunBuyPhase, RunDeploy, RunEquip,
 )
-# ⚠️ r15 review P0:OpenTome 曾遗漏于此(fc888bc1 加动作时漏登记)——validate 拒「未知动作
+# ⚠️ OpenTome 曾遗漏于此(fc888bc1 加动作时漏登记)——validate 拒「未知动作
 # 类型」→ OpenTome 从未真正执行(M55 414 次全是 F3 拒绝非执行失败)。教训:**新增 PrepAction
 # 必须同步登记本白名单**(F3 校验是最后防线,登记是入口门)。
 

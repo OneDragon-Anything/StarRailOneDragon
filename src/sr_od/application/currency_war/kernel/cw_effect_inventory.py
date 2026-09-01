@@ -1,13 +1,12 @@
-"""货币战争 active effect inventory(在场效果清单)——效果模型机制层(W612 骨架批)。
+"""货币战争 active effect inventory(在场效果清单)——效果模型机制层(骨架实现)。
 
-**定位**(设计单一源 = ``.debug/temp/currency_war/w612_effect_inventory/DESIGN.md``,
-框架源 = 同目录 w610_gold_digger_spec/REPORT.md Part 1):
+**定位**(骨架契约经效果清单专项设计评审定稿;框架源 = 淘金客效果规格报告 Part 1):
 - 本文件只放**机制**(类型 + inventory 读端/追踪端纯逻辑);
 - **数据**(哪些策略是什么效果)在 ``cw_investments.STRATEGY_EFFECTS`` overlay——
   与 ``STRATEGY_ECONOMY`` 同键空间同构建校验,防两套手维护面漂移;
-- 生产与 sim 同一实现(sim 结算效果时同步维护 inventory,W610-P1 §1.3-1);
-- **零决策行为**:P0 骨架批任何决策路径不消费本模块产出——查表接入是后续
-  姿态批(W610 P1-1)/执行预判批(P2-2)的事。
+- 生产与 sim 同一实现(sim 结算效果时同步维护 inventory;效果规格契约);
+- **零决策行为**:骨架批任何决策路径不消费本模块产出——查表接入是后续
+  姿态面/执行预判面的事。
 
 **EffectSpec 四元组**(每条策略 = 一条效果规格):
 触发时机(trigger)× 持续期(duration)× 效果类型(category)× bot 待办(duties),
@@ -30,7 +29,7 @@ if TYPE_CHECKING:
 
 
 class TriggerKind(StrEnum):
-    """效果触发时机(语义出处 = W610-P1 §1.0)。"""
+    """效果触发时机(语义出自效果规格设计评审定稿)。"""
     INSTANT = 'instant'            # 选卡当场结算(即时金/全场重写类)
     PLANE_START = 'plane_start'    # 每个位面开始时(固定理财)
     NODE_ENTER = 'node_enter'      # 进入节点时(特战资金/Gemi狸免费刷)
@@ -52,7 +51,7 @@ class DurationKind(StrEnum):
 
 
 class EffectKind(StrEnum):
-    """效果类型四分类(W610-P1 §1.0)。"""
+    """效果类型四分类(效果规格设计评审定纲)。"""
     ECONOMY = 'economy'          # 经济改变(金/XP/刷新/利息流)
     STATE = 'state'              # 状态改变(发给自己的经验/金/血)
     BATTLEFIELD = 'battlefield'  # 战场改变(商店改写/偷牌/板面重掷/自动操作)
@@ -81,7 +80,7 @@ class BattlefieldEffect:
 
 @dataclass(frozen=True)
 class UnitBuffRef:
-    """单位强化引用(官方效果原文;~155 条游戏侧自算,bot 零响应,W610-P1 §1.2-D)。"""
+    """单位强化引用(官方效果原文;~155 条游戏侧自算,bot 零响应;效果规格判读)。"""
     effect_text: str
 
 
@@ -94,7 +93,7 @@ class EffectSpec:
     - payload 类型与 category 的对应:ECONOMY/STATE→EconomyEffect、
       BATTLEFIELD→BattlefieldEffect、UNIT_BUFF→UnitBuffRef(构建层校验)。
     - pending/verdict:效果文本二义条目 pending=True,**不拍死**——verdict 保持
-      None 直到实采定谳(W610-P1 §1.4.1/§1.5);消费端见 pending=True 必须走
+      None 直到实采定谳;消费端见 pending=True 必须走
       notes 声明的保守支。
     """
     id: str                       # plaza 稳定 id(cw_invest_data 主键)
@@ -128,7 +127,7 @@ class ActiveEffect:
     """一条在场效果实例(spec + 来源 + 登记时点 + 余期/计数器)。"""
     spec: EffectSpec
     source: str                # 'strategy' | 'portal' | 'affix'(P0 只产 'strategy',
-                               # 后两值是 W607 环境源/词缀源辖域的 schema 预留)
+                               # 后两值是环境源/词缀源辖域的 schema 预留)
     acquired_t: int | None     # 登记时点;节点序 = (plane-1)*9+round,**基 1**;
                                # 登记期快照(与 battle_loop _now_t 同式)
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
@@ -142,7 +141,7 @@ class ActiveEffectInventory:
 
     写端(挂点调用)现状:仅第四挂点「升级事件」已接生产
     (prep_actions._level_up 成功返回处,on_level_up);选卡/进节点/结算三挂点的
-    register/tick 接线归后续批(证据 = w612_effect_inventory/HOOKS.md)。
+    register/tick 接线归后续批(证据 = 骨架期挂点接线盘点记录)。
     """
 
     def __init__(self) -> None:

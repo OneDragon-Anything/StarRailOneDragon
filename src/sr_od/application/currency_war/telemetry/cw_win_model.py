@@ -24,8 +24,11 @@ from typing import Any
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
-from sr_od.application.currency_war.kernel.cw_line_defs import _CORE_TRIO
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
+
+# 符号解耦(处死计划批 0 第 2 项):铁三角权威副本迁 knowledge/cw_line_facts,
+# 不再依赖 kernel/cw_line_defs(死刑判据文件)
+from sr_od.application.currency_war.knowledge.cw_line_facts import _CORE_TRIO
 from sr_od.application.currency_war.telemetry.cw_win_features import (
     features_from_deployed,
 )
@@ -37,7 +40,7 @@ _META_PATH = _MODEL_DIR / 'w30_meta.json'
 _SHADOW_LOG = _MODEL_DIR / 'shadow_predictions.jsonl'
 
 #: 引擎实体单一源(W47 统一化,原先三组具名字面量改 import/派生):
-#: - 铁三角 = ``cw_line_defs._CORE_TRIO`` 注册表真值(注册表 import 不复制);
+#: - 铁三角 = ``knowledge.cw_line_facts._CORE_TRIO`` 注册表真值(注册表 import 不复制);
 #: - DOT 件池 = ``FACTIONS['持续伤害']`` 成员的 ≤2 费子集(过渡件口径,
 #:   海瑟音4/黑天鹅5 是终局件不进池);
 #: - 希儿 = ``SYSTEM_CARDS['seele'].engine_required``(卡注册表)。

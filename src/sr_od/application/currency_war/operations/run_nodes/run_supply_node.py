@@ -160,6 +160,11 @@ class RunSupplyNode(RunNode):
         target = RunSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
         refresh_target = None
+        # 本轮选定快照(选卡确认后合成决策帧的 extra 载荷;None=兜底点卡
+        # 路径/刷新路径——决策帧照写但不带选择字段,读端按 None 分型)。
+        # 只本地拷贝,不动 _LAST_SUPPLY_PICK 暂存槽(其唯一消费者仍是
+        # battle_loop 合成结算行,提前消费=结算行断粮)。
+        picked: dict | None = None
         if match is not None and opts:
             _state = match.session.last_state or GameState()
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
@@ -179,11 +184,16 @@ class RunSupplyNode(RunNode):
                 # 附**实际识别到的选项清单**(动态列数,不假定结构)——
                 # 合成行与逐列内容对拍/漏读审计数据源。
                 _opt = opts[pick.idx][0]
+                picked = {'char': _opt.char, 'equip': _opt.equip,
+                          'has_diamond': _opt.has_diamond,
+                          'refreshed': _refresh_used,
+                          'options': [{'char': o.char, 'equip': o.equip,
+                                       'has_diamond': o.has_diamond}
+                                      for o, _p in opts],
+                          'n_options': len(opts)}
                 set_last_supply_pick(_opt.char, _opt.equip, _opt.has_diamond,
                                      refreshed=_refresh_used,
-                                     options=[{'char': o.char, 'equip': o.equip,
-                                               'has_diamond': o.has_diamond}
-                                              for o, _p in opts])
+                                     options=picked['options'])
             log.info('[cw-supply] options=%s pick=idx%s %s click@(%d,%d)',
                      [(o.char, o.equip, o.has_diamond) for o, _ in opts], pick.idx, reason, target.x, target.y)
         else:
@@ -210,10 +220,17 @@ class RunSupplyNode(RunNode):
         try:
             _post_screen = self.screenshot()
             _post_state = read_game_state(self.ctx, _post_screen, phase='prep_clean')
+            # 决策帧字段对齐(观察层数据移交批):选定快照进 extra
+            # (supply_pick 键,形状与暂存槽一致)——决策行不再只有
+            # 空壳快照,「这轮补给选了什么/牌面给了什么」单行可读,
+            # 不用等 outcomes 合成行 join。观测失败不阻塞对局。
+            _extra: dict = {'phase': 'supply_pick'}
+            if picked is not None:
+                _extra['supply_pick'] = dict(picked)
             cw_telemetry.record_decision(
                 _post_state, target_comp='', candidate_scores={}, eval_breakdown={},
                 actions=[], gold_point=False,
-                extra={'phase': 'supply_pick'})
+                extra=_extra)
             log.info('[cw-supply] 选卡确认后快照已落盘 p%sr%s hp=%s gold=%s',
                      getattr(_post_state, 'plane', '?'),
                      getattr(_post_state, 'round_num', '?'),

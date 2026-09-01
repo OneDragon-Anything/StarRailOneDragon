@@ -66,7 +66,6 @@ from sr_od.application.currency_war.operations.run_nodes.run_megastar_node impor
 from sr_od.application.currency_war.operations.run_nodes.run_supply_node import (
     RunSupplyNode,
 )
-
 from sr_od.application.currency_war.prep_director import PrepDirector
 from sr_od.application.currency_war.telemetry import defects, query, recorder, state
 from sr_od.context.sr_context import SrContext
@@ -1016,6 +1015,10 @@ class CurrencyWarRunLoop(SrOperation):
         #     bot 卡此 overlay 68min(购买经验透出命中 → BattlePrepCycle 误派 → shop 被遮失败 → 死循环)。
         #     ESC 不关;点卡身选中(金色边框)→ 确认选择 → 关回备战。详见 op。
         if self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼', crop_first=False).is_success:
+            # [激活位·圣杯采集批 B1] 钉屏停机钩子接线行([临时捕获],采集清单建档确认后连本注释整段删):
+            # 激活 = 下面两行取消注释(diff 一次一行);钩子本体在 grail_collect_hooks.grail_pin_stop_hook。
+            # from sr_od.application.currency_war.operations.grail_collect_hooks import grail_pin_stop_hook
+            # return grail_pin_stop_hook(self)
             self._snap('wish_trial')
             HandleWishTrial(self.ctx).execute()
             return self.round_wait(wait=2)

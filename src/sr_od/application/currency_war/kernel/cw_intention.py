@@ -1,6 +1,6 @@
 """货币战争 · 终局意向模块(strategy_v4 点0 实现;纯逻辑,不碰游戏/板上)。
 
-单一规格源:`.debug/temp/currency_war/cw_dev/deep_read/strategy_v4.md` 点0
+单一规格源:strategy_v4 设计件「点0」(迁移期设计,git 历史可考)
 (信号分层①-⑤ / 撤销析取 / 窗口冻结语义 / 强制锁线对象限定 + 降格终局);
 攻略信号数据:`comp_definitions_v2.md` 各套(欢愉族绯英档=⑤兜底、黑塔纪元 65%、
 万敌 1 费开局即在等)。
@@ -22,7 +22,7 @@
 LineV1 载体)与 `cw_line_library_v1` 是旧件,本模块是其 v4 后继——按 COMP_LIBRARY
 v2 家族键工作;旧件随 ADR-0336 删除(不再存在),接线已切换。
 
-**P1 过渡配方锁(W145/ADR-0357)**:位面 1 的锁定产物=过渡配方体系对
+**P1 过渡配方锁(ADR-0357)**:位面 1 的锁定产物=过渡配方体系对
 (transition_combos 两两组合;[20] 过渡是配方不是散买),终局 comp 锁定
 只保留①类资格通道,P2+ 照旧锁 comp。(配方锁行为无条件,F5 清偿见本文件 ADR-0357 落点注释)。
 
@@ -34,7 +34,7 @@ v2 家族键工作;旧件随 ADR-0336 删除(不再存在),接线已切换。
 - ``hoard_target_set(state, ist)``:锁后效果接口——输出囤货目标集合(角色件 +
   装备件),买侧唯一消费面。
 
-数值标注「设计推断,sim 校准」的常量属 strategy_v4「悬而未决·W10 摆动域」,
+数值标注「设计推断,sim 校准」的常量属 strategy_v4「悬而未决·摆动域」,
 不写死语义进文档。
 """
 from __future__ import annotations
@@ -91,7 +91,7 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-# ===== 常量(设计推断,sim 校准;strategy_v4 点0 / W10 摆动域)=====
+# ===== 常量(设计推断,sim 校准;strategy_v4 点0 摆动域)=====
 CORE_MISS_N: int = 6
 """撤销出口①阈值:意向核心 N 轮不可得 → 撤销(设计推断,sim 校准)。
 计数分母 = 该核心刷新窗已开的轮(窗口冻结语义,见 LineTrack)。"""
@@ -108,18 +108,18 @@ FALLBACK_COMP_NAME: str = '绯英欢愉'
 
 # 跨线骨架件(strategy_v4「目标件」定义节 class3)。弱意向态只囤这批
 # (点0:撤销后去向——只囤跨线骨架件)。
-# W50(W47 条2 裁决①):**派生**自 ``cw_plugins.W16_MAJORITY_LINES``
+# (迁移期设计裁决):**派生**自 ``cw_plugins.W16_MAJORITY_LINES``
 # (≥3 线过半 8 张 + 恰 2 家族过半且非线级 carry 的边界 2 张),不再
-# 手写——手写快照的脱锚风险(W45 判定)消除;派生规则与 W16 A2 口径
-# 见 ``cw_plugins.cross_line_skeleton``。快照测试锁派生结果 == 原 10 名
+# 手写——手写快照的脱锚风险消除;派生规则与 ``cw_plugins`` 内
+# 同源裁决口径见 ``cw_plugins.cross_line_skeleton``。快照测试锁派生结果 == 原 10 名
 # (不等 = 数据错)。
 CROSS_LINE_SKELETON: tuple[str, ...] = _cross_line_skeleton()
 
-# (W948 转型臂——停滞评估/降 weak/salvage 续命/P2 弱占位/升格派生——
+# (转型臂——停滞评估/降 weak/salvage 续命/P2 弱占位/升格派生——
 #  已随 sim A/B 判负整机制删码(开关生命周期第 4 态);决策 why、负结果
 #  数据与复活条件 = ADR-0509。)
 
-# ②类专属信号注册表(family → 专属羁绊名)。W47 统一化:原手编 crosswalk
+# ②类专属信号注册表(family → 专属羁绊名)。统一化(迁移期设计):原手编 crosswalk
 # 迁移为 ``Comp.bond_signal`` 数据字段(cw_comps 各条,值从本表原样迁移;
 # 判断层手编数据化——COMP_LIBRARY 演进时随家族条目走,不再双源),本表改为
 # 从 COMP_LIBRARY v2 家族派生。语义注(来源=comp_definitions_v2 各套「核心/副档」栏):
@@ -164,7 +164,7 @@ class LineTrack:
 class IntentionState:
     """锁线/撤销状态机(未锁 unlocked / 锁定 locked / 弱意向 weak)。
 
-    P1(W145/ADR-0357):锁定产物=过渡配方体系对(``p1_pair``)——终局 comp
+    P1(ADR-0357):锁定产物=过渡配方体系对(``p1_pair``)——终局 comp
     锁定只保留①类资格通道;P2+ ``p1_pair`` 恒空,comp 锁定照旧。
     """
 
@@ -180,20 +180,20 @@ class IntentionState:
       (仙舟/列车同行/持续伤害),希儿系=``SEELE_SYSTEM`` 哨兵键
       (与 ``cw_battle_calib._engines_count`` 同口径)。
     - 遥测:``serialize_intention(分包期 3 自 telemetry 下沉)`` 字段全量序列化自动
-      携带(不隐式——单帧锁断言 p1_pair 落 decisions 行,见 W145 测试)。
-    - **后续「通道约束批」(W143 补充判读:决策通道两面孔按锁定目标约束/
+      携带(不隐式——单帧锁测试断言 p1_pair 落 decisions 行)。
+    - **后续「通道约束批」(迁移期补充判读:决策通道两面孔按锁定目标约束/
       末轮禁用)以本字段为约束基准**——opportunistic/bond_fallback 通道
       的「目标/非目标」判定输入 = 本字段(非空时)∪ locked_comp。
     """
     lock_layer: int = 0                # 锁定时信号层(撤销出口②的「更高层级」基准)
     prev_lock_layer: int = 0
-    """被撤线的原锁层暂存(设计件 w665_p2p3_linegate/DESIGN.md §3-3 R-C/FM-11):撤销出口①/②
+    """被撤线的原锁层暂存(换线门设计件 §3-3 R-C/FM-11):撤销出口①/②
     降级 weak 时写入被撤的 lock_layer;门闩一次性回锁时恢复到 lock_layer,
     使出口②撤销面不被回锁信号( layer=1 )收窄。生命周期=回锁消费后保留
     至位面切换(闩清零时一并清零,陈旧值不跨位面);0=无暂存。"""
     lock_plane: int = 0                # 锁定时机(遥测)
     lock_round: int = 0
-    transition_pair: tuple[str, ...] = ()  # ①锁局过渡对副方向(W166/ADR-0367)
+    transition_pair: tuple[str, ...] = ()  # ①锁局过渡对副方向(ADR-0367)
     """**①资格锁定局的过渡对保护副方向(ADR-0367;约束基准契约)**:
 
     - 非空 ⟺ plane==1 ∧ phase=='locked'(此时 P1 的 comp 锁只可能来自
@@ -226,7 +226,7 @@ class IntentionState:
     计数语义同 LineTrack.frozen_rounds——成员在可见面(在店∪到手)
     出现即清零)。"""
     supply_drought: dict[str, int] = field(default_factory=dict)
-    """方向侧供给衰减计数器(W802 兑现链方向侧;体系键 → 连续零在店
+    """方向侧供给衰减计数器(兑现链方向侧设计;体系键 → 连续零在店
     轮数 t,support′ = γ^t·support + β·[成员在店] 的衰减坐标)。
     [坐标系] 键域 = TRANSITION_TRAITS 三羁绊 ∪ SEELE_SYSTEM;取值时机 =
     每 game-round 恰一次由 update_intention._update_supply_decay 现读
@@ -371,7 +371,7 @@ def _direct_line_qualified(state: GameState, comp_name: str) -> bool:
 
 
 def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
-    """累积型线强环境判据(W607 H1;ADR-0461)。
+    """累积型线强环境判据(ADR-0461)。
 
     语义出处:「全局累积型角色越早越好,但需特定环境才强,**无环境不选**」
     (user_playstyle [21] 例外条款)+ accumulator_family §3(万敌强环境=
@@ -406,7 +406,7 @@ def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
     return bool(mech & need)
 
 
-# ===== P1 锁线资格门(W101/ADR-0341)=====
+# ===== P1 锁线资格门(ADR-0341)=====
 # F5 清偿(ADR-0465 后治理蓝图,git 历史):原模块级 flag P1_FINAL_LINE_GATE/P1_RECIPE_LOCK/
 # P1_LOCK_TRANSITION_PAIR 删除,行为无条件化——三门的 sim A/B 已终裁
 # (0341/0357/0367),开臂前置因冻结令消失=第 4 态清理;A/B 基线臂改由
@@ -458,6 +458,8 @@ def _p1_gate_blocks(state: GameState, comp: Comp) -> bool:
 
 #: 希儿系体系键(单卡二元判定,不占羁绊键;与 cw_battle_calib._engines_count
 #: 的希儿系哨兵同口径)。
+# ⚠️ 已迁移(处死计划批 0):权威副本 = knowledge/cw_line_facts.SEELE_SYSTEM;
+# 本副本仅为 sim/旧判据未迁消费点保留,随处死计划批 3 随文件删除;勿新增消费。
 SEELE_SYSTEM: str = '希儿系'
 
 #: P1 配方对平手序 = 激活占比降序(transition_combos 数据附录:
@@ -470,11 +472,11 @@ P1_PAIR_LOCK_MIN_SUPPORT: float = 0.5
 囤货方向落四体系全集(p1_transition)。"""
 
 
-# ===== ①锁局过渡对保护副方向(W166/ADR-0367)=====
-# 诊断来源:W164 §1.3——inject on 口径 strict_mal 0.20 vs off 0.05 的
+# ===== ①锁局过渡对保护副方向(ADR-0367)=====
+# 诊断来源:ADR-0367 判读节——inject on 口径 strict_mal 0.20 vs off 0.05 的
 # 差值 15 局全部来自①资格通道:注入信号 r1 锁终局 comp,其采购集把囤货
 # 方向从过渡引擎引开(engines2_by_r6 0.27→0.15)+ evolve 按 comp 线换档
-# 拆过渡体系(S2 挤出 19/20 mal 局)=W145 主灶(ADR-0357)在①通道的残留。
+# 拆过渡体系(S2 挤出 19/20 mal 局)=ADR-0357 主灶在①通道的残留。
 
 
 def _owned_chars(state: GameState) -> set[str]:
@@ -531,7 +533,7 @@ def _derive_p1_pair(state: GameState,
     ``drought``/``prev_pair``/``registry``:方向侧供给感知支持度
     (``_supply_prime``,γ 衰减)与切换滞回(``_pair_hysteresis``,P16
     δ 复用)的输入;开关关时三项不被消费(排序退纯资产支持度,逐位
-    旧行为——W802 兑现链方向侧零漂移锚)。
+    旧行为——兑现链方向侧设计的零漂移锚)。
     """
     reg = registry or DEFAULT_REGISTRY
     sup = _supply_prime(_p1_system_support(state), drought, reg)
@@ -584,12 +586,12 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
 
 def _update_supply_decay(state: GameState, ist: IntentionState,
                          registry: DecisionV2Registry | None) -> None:
-    """方向侧供给衰减计数(W802 兑现链设计侧四;每 game-round 恰一次,
+    """方向侧供给衰减计数(兑现链方向侧设计件之四;每 game-round 恰一次,
     与断供驱逐同一驱动点)。对 support′ 支持度全体系键:成员在店 →
     清零;零在店 → +1。开关关恒不动(supply_drought 保持空 dict,
     排序侧退纯资产支持度——零漂移)。驱逐计数器(pair_drought)与本
     计数器分域:前者辖 pair 成员资格(硬驱逐),本计数辖所有体系的
-    相对排序(连续单调衰减),作用面不同(W796 面 5「量级相近≠等效」)。
+    相对排序(连续单调衰减),作用面不同(对抗审计裁决「量级相近≠等效」)。
     """
     reg = registry or DEFAULT_REGISTRY
     if not (reg.realization_chain_enabled
@@ -655,7 +657,7 @@ def _pair_hysteresis(prev_pair: tuple[str, ...],
 
 def p1_early_pair(state: GameState,
                   ist: IntentionState | None) -> tuple[str, ...]:
-    """P1 早期新件买入门的配方对读口(W179/ADR-0372;只读,不落字段)。
+    """P1 早期新件买入门的配方对读口(ADR-0372;只读,不落字段)。
 
     与 ``_derive_p1_pair`` 同口径(支持度 top-2 + ``_P1_PAIR_PREF`` 序
     规整),但**未锁形态期同样派生**(无 ``P1_PAIR_LOCK_MIN_SUPPORT``
@@ -684,6 +686,9 @@ def p1_early_pair(state: GameState,
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
 
 
+# ⚠️ 已迁移(处死计划批 0):权威副本 = knowledge/cw_line_facts._bond_members
+# (telemetry/schema ρ 实测消费已改接);本副本仅为旧判据未迁消费点保留,
+# 随处死计划批 3 随文件删除;勿新增消费。
 def _bond_members(bond: str) -> set[str]:
     """单羁绊成员名集(阵营∪流派全成员口径,与 ``_pair_members`` 同式;
     希儿系=希儿∪两放大器阵营成员)。方向侧供给衰减的在店判据单一源。"""
@@ -730,7 +735,7 @@ def _pair_bond_keys(pair: tuple[str, ...]) -> set[str]:
 
 
 def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
-    """体系对 → 配方伪 comp(P1 配方锁帧的 target 载体物化;W578)。
+    """体系对 → 配方伪 comp(P1 配方锁帧的 target 载体物化;ADR-0459)。
 
     语义:ADR-0357 把 P1 意向锁定产物定为体系对(p1_pair)后,
     ``session.target_comp`` 在配方锁帧恒 None——部署选人/评分管线/
@@ -751,9 +756,9 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
       档(量子同频+贝洛伯格,希儿系板面键=量子系,口径同展开)。
       ⚠️ 已知双源分歧:列车同行档桥池=2(train_dot)、cw_recipe
       _RECIPES=4(框架单独成型档,语义不同层)——本函数取桥池;
-      分歧裁决与合流判据见 ADR(W578)。
-      注:桥线平局偏好语义(原 cw_bridge_pool.pick_bridge 的 r253
-      P1 tie-break 偏 xianzhou_dot)已随选桥函数退役,若 v2 需要
+      分歧裁决与合流判据见 ADR-0459。
+      注:桥线平局偏好语义(原 cw_bridge_pool.pick_bridge 的 P1 tie-break
+      偏 xianzhou_dot)已随选桥函数退役,若 v2 需要
       同等平滑性偏好需另行设计。
     - level_plan 不设:升级账退默认(升级通道的息引擎前置是独立
       杠杆,不搭本批车)。
@@ -897,8 +902,8 @@ def core_miss_n_required(core: str, level: int, eps: float) -> int:
 
     推导:P(N 轮未现 | 单轮出现率 q) = (1−q)^N ≤ ε——「核心实际可达
     却连续 N_req 轮缺席」的概率压到 ε 以下,缺席才从噪声升级为断供
-    证据(设计=`.debug/temp/currency_war/w396_r2r3_design/DESIGN.md`
-    R3.1;治 W386 BP1「拍死计数把正常噪声送进撤销」)。ε 取
+    证据(设计=撤销证据闭式设计件 R3 节;治 ADR-0436 载明的
+    「拍死计数把正常噪声送进撤销」病灶)。ε 取
     registry.revoke_miss_tolerance_eps(默认 5%)。实表代入
     (cw_shop_odds):3 费@lv5 q=0.069→N_req=42,3 费@lv7 q=0.135→21,
     1 费@lv5→27——拍死值 CORE_MISS_N=6 的缺席在 q≈0.07 下自然概率
@@ -955,7 +960,7 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
     ist.phase = 'locked'
     ist.locked_comp = sig.comp_name
     ist.p1_pair = ()   # comp 锁定取代配方锁(ADR-0357:①资格通道)
-    # W166/ADR-0367:①锁局(P1∧配方锁开)同时派生过渡对副方向
+    # ADR-0367:①锁局(P1∧配方锁开)同时派生过渡对副方向
     # (与 p1_pair 同口径;P2+ 强制锁线/旧通道 P1 锁均不辖)。
     ist.transition_pair = (
         _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted))
@@ -976,7 +981,8 @@ def _switch_gate_open(ist: IntentionState, state: GameState,
                       sig: IntentionSignal,
                       registry: DecisionV2Registry | None) -> bool:
     """C4 存活轮数门在 v2 换线通道的接线(判据单一源=cw_line_switch
-    .survival_gate;W376 实证 default 栈消费点不在生产 v2 栈后的补线)。
+    .survival_gate;旧栈退役后补线,补线判据=sim 确认 default 栈消费点
+    不在生产 v2 栈)。
 
     辖域=撤销出口①/②降级弱意向后、新信号锁**另一条线**(weak_comp≠
     候选线)——这是 v2 栈语义下的「换线」决策位置;初始锁线(unlocked
@@ -998,7 +1004,7 @@ def _switch_gate_open(ist: IntentionState, state: GameState,
     e_alt = e_rounds(comp, state, registry)
     reg = registry or DEFAULT_REGISTRY
     ok, why = survival_gate(state, session, e_alt, registry)
-    # 决策位记账(设计件 w665_p2p3_linegate/DESIGN.md §3-2/R3,决策位纪律平移(ADR-0470 同款)):拦截位
+    # 决策位记账(换线门设计件 §3-2/R3,决策位纪律平移(ADR-0470 同款)):拦截位
     # 与反事实判定位写 session(帧级;update_intention 每帧入口清零),
     # 检查器只做位一致性核验、禁复算判据式。on 臂=门判定本身即该位,
     # 不重复算(守卫独立性);off 臂=gate_counterfactual 反事实记账。
@@ -1031,15 +1037,15 @@ def update_intention(state: GameState, ist: IntentionState,
     if ist.demoted_endgame:
         return ist   # 降格终局是 absorbing 态(点7 止损序同构,不回弹)
     if state.plane != 1 and ist.transition_pair:
-        # 出 P1:过渡对副方向退场(W166;P2+ 锁定目标=locked_comp 唯一)
+        # 出 P1:过渡对副方向退场(ADR-0367;P2+ 锁定目标=locked_comp 唯一)
         ist.transition_pair = ()
     visible = _visible_chars(state)
-    # 换线门决策位逐帧清零(设计件 w665_p2p3_linegate/DESIGN.md §3-2;帧级坐标系:本轮无
+    # 换线门决策位逐帧清零(换线门设计件 §3-2;帧级坐标系:本轮无
     # 换线辖域评估 → 位=False,防上帧位残留污染账本行)
     if session is not None:
         session.v3_line_gate_blocked = False
         session.v3_line_gate_cf_blocked = False
-    # 门闩位面切换清零(设计件 w665_p2p3_linegate/DESIGN.md §3-3 末条):闩=位面内滞回,
+    # 门闩位面切换清零(换线门设计件 §3-3 末条):闩=位面内滞回,
     # 出位面即清;同步清各线 miss_count(陈旧断供证据不跨位面驱动出口①)
     # 与 prev_lock_layer(暂存已消费,不跨位面残留)。
     if session is not None and getattr(session, 'v3_line_gate_latch', False) \
@@ -1053,7 +1059,7 @@ def update_intention(state: GameState, ist: IntentionState,
     # R3 断供驱逐(ADR-0465):每 game-round 恰一次的体系级断供计数
     # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
     _update_pair_drought(state, ist, visible)
-    # 方向侧供给衰减计数(W802;开关关恒不动——零漂移)
+    # 方向侧供给衰减计数(兑现链方向侧设计;开关关恒不动——零漂移)
     _update_supply_decay(state, ist, registry)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
     revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
@@ -1061,7 +1067,7 @@ def update_intention(state: GameState, ist: IntentionState,
     # 弱意向态不可观测(判读/遥测断档),状态机一回合最多一次转移。
 
     if ist.phase == 'locked':
-        # 门闩存续期(设计件 w665_p2p3_linegate/DESIGN.md §3-3 R-A):同位面闩置位后撤销出口
+        # 门闩存续期(换线门设计件 §3-3 R-A):同位面闩置位后撤销出口
         # ①②抑制——「锁线保生存」吸收态,miss 照涨但无消费(砍断周期环
         # 驱动源,§3-4 轨迹证明闩后零转移)。窗口冻结驱逐(evict)非出口
         # ①②,保留自身语义(刷新窗冻结超限属候选集卫生,非换线裁决)。
@@ -1080,7 +1086,7 @@ def update_intention(state: GameState, ist: IntentionState,
             # 意向回⑤无信号态——**不触发③**(该轮③信号被排除)
             track.frozen_rounds += 1
             # ADR-0366:冻结超限对照量按本位面真值(session 透传,P2=7)
-            # D3 修正(W696 审计):驱逐纳入闩辖——驱逐产生设计外转移
+            # D3 修正(再攻击审计采纳):驱逐纳入闩辖——驱逐产生设计外转移
             # locked→unlocked→同帧可无门落新线,破坏闩「转移冻结」吸收
             # 态(DESIGN v3 §3-3)。裁决=闩存续期驱逐**挂起**(非触发闩
             # 语义合法转移):frozen_rounds 继续累计,位面切换清闩后恢复
@@ -1092,7 +1098,7 @@ def update_intention(state: GameState, ist: IntentionState,
                 ist.phase = 'unlocked'
                 ist.locked_comp = ''
                 ist.lock_layer = 0
-                ist.transition_pair = ()   # 锁撤销 → 副方向随之退场(W166)
+                ist.transition_pair = ()   # 锁撤销 → 副方向随之退场(ADR-0367)
                 ist.revoke_evidence = {}   # 驱逐不经撤销,证据随之失效
                 ist.last_event = f'evict:frozen:{track.frozen_rounds}'
                 sigs = [s for s in sigs if s.layer != 3]   # 不触发③
@@ -1106,7 +1112,7 @@ def update_intention(state: GameState, ist: IntentionState,
                 #   ① miss ≥ max(CORE_MISS_N, N_req)——N_req 由 ε 容忍
                 #     概率闭式推导(证据组 A),CORE_MISS_N 保留为上限保险
                 #     (防牌池数据异常使 N_req 过小);仅达拍死计数不再
-                #     开窗(W386 BP1:门放行噪声换线的病灶在此收窄)。
+                #     开窗(ADR-0436:门放行噪声换线的病灶在此收窄)。
                 #   ② 证据组 B:存在异线 comp 核心可达 ∧ 资产厚度 ≥ A_min
                 #     (registry.revoke_evidence_min_thickness,冻结池
                 #     随机厚度基线 f0 曲线 5% 点测量值,见其注释)。
@@ -1114,7 +1120,7 @@ def update_intention(state: GameState, ist: IntentionState,
                 # 最终成型(form_score 达标)」=纯扰动)与 A/B 判据
                 # (注入臂 n=300/臂、池指纹锚,生产阈值零动):
                 #   a) evidence 臂触发率 >0 且逐例带证据字段(off 臂 ≈0
-                #      与 W379 实测一致;off 臂逐位=零漂移锚);
+                #      实测;off 臂逐位=零漂移锚);
                 #   b) 开窗局中新线成型局 ≥2/3,低于此=证据组 B 分辨力
                 #      不足,回炉 A_min/ε;
                 #   c) 开窗局 P2 存活轮数分布不后移(C3 无效判据口径)→
@@ -1139,7 +1145,7 @@ def update_intention(state: GameState, ist: IntentionState,
                         ist.weak_comp = ist.locked_comp
                         ist.locked_comp = ''
                         ist.lock_layer = 0
-                        ist.transition_pair = ()   # weak 不辖(W166,同 scope 契约)
+                        ist.transition_pair = ()   # weak 不辖(ADR-0367,同 scope 契约)
                         ist.revoke_evidence = {
                             'kind': 'miss',
                             'miss_count': track.miss_count,
@@ -1170,7 +1176,7 @@ def update_intention(state: GameState, ist: IntentionState,
                     ist.weak_comp = ist.locked_comp
                     ist.locked_comp = ''
                     ist.lock_layer = 0
-                    ist.transition_pair = ()   # weak 不辖(W166,同 scope 契约)
+                    ist.transition_pair = ()   # weak 不辖(ADR-0367,同 scope 契约)
                     ist.revoke_evidence = {}   # 出口②非证据组 A/B 通道(字段契约)
                     ist.last_event = f'revoke:higher:{s.comp_name}(L{s.layer})'
                     revoked = True
@@ -1178,7 +1184,7 @@ def update_intention(state: GameState, ist: IntentionState,
 
 
     if ist.phase == 'locked' and state.plane == 1:
-        # W166/ADR-0367:①锁局过渡对随资产重派生(同 p1_pair 语义——
+        # ADR-0367:①锁局过渡对随资产重派生(同 p1_pair 语义——
         # 「变体按来牌选」[20],支持度只增,非 pivot;[23] 冻结语义辖
         # 终局线,不辖过渡副方向)。配方锁局(phase='unlocked')不进本支。
         pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted),
@@ -1193,7 +1199,7 @@ def update_intention(state: GameState, ist: IntentionState,
     if ist.phase in ('unlocked', 'weak') and not revoked:
         # H1 锁线环境判据(行为无条件化;三开关清偿——原
         # registry.line_env_gate_enabled 开关已删,四步清偿证据归
-        # w628_migration_b2/STATUS):累积型线强环境不命中(False)的信号
+        # 迁移批对照报告(git 历史)):累积型线强环境不命中(False)的信号
         # 本轮不锁(缓锁——「无环境不选」只辖**主动选线**,已锁线与判据
         # 不辖(None)/信息缺失帧不拦;观察期=line_env_lock_min_round)。
         # 已锁分支(上方 locked)有意不过此滤:环境缺失不没收已锁线
@@ -1206,7 +1212,7 @@ def update_intention(state: GameState, ist: IntentionState,
             if len(sigs) != _n0:
                 log.info('[cw][intention] 环境判据缓锁 %d→%d 信号(affixes=%s)',
                          _n0, len(sigs), state.enemy_affixes)
-        # P1 过渡配方锁(W145/ADR-0357):P1 的锁定产物=体系对;
+        # P1 过渡配方锁(ADR-0357):P1 的锁定产物=体系对;
         # ②③④信号不再锁终局 comp(终局 comp 锁定移至 P2+)——
         # 只保留①类资格通道(直通终局线资格,ADR-0338/0341 语义零改动)。
         # 方向产物=按手上资产派生的体系对(transition_combos 两两组合)。
@@ -1234,7 +1240,7 @@ def update_intention(state: GameState, ist: IntentionState,
             else:
                 ist.last_event = (f'gate_hold:{ist.weak_comp}'
                                   f'->{best.comp_name}')
-                # 门感知滞回闩(设计件 w665_p2p3_linegate/DESIGN.md §3-3 R-A,取代被再攻击推翻(见设计件 v3 修订块)
+                # 门感知滞回闩(换线门设计件 §3-3 R-A,取代被再攻击推翻(见设计件 v3 修订块)
                 # 的 N=2 计数回锁):本位面首次门拦截置闩 + 闩置位帧一次性
                 # 回锁原线。为什么是闩不是计数:单调性——R<E(alt)+m 首次
                 # 成立后位面内近似单调(§3-3),「后续帧不该再换线」与门
@@ -1318,9 +1324,9 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
     """锁后效果接口:输出「囤货目标集合」供买侧消费([21]:只改囤货方向,不改板上)。
 
     - locked/forced:意向线采购集;
-    - P1(W145/ADR-0357):非 comp 锁定局 → 配方方向——体系对成员集
+    - P1(ADR-0357):非 comp 锁定局 → 配方方向——体系对成员集
       (p1_pair)/四体系引擎件全集(p1_transition,空窗);绯英⑤兜底
-      不再辖 P1(零引擎覆盖,W143 实证 e2 成率 5%);
+      不再辖 P1(零引擎覆盖,迁移期 sim 实证 e2 成率 5%);
     - weak:只囤跨线骨架件(撤销后去向);
     - unlocked 无信号(P2+):⑤兜底 = 绯英档采购集(「无信号时的默认落点」);
     - demoted_endgame:降格终局 = 通用骨架满配(四体系板深强化归点4/点6,不在本模块)。
@@ -1359,7 +1365,7 @@ def committed_authority(state: GameState | None,
       ① ``state.plane >= 2``——P2 起恒定型(语义边界同旧 update_target:
          定型边界=进位面 2,严于文档口径 P2-3);
       ② ``session.v3_intention.phase == 'locked'``——意向状态机已锁线;
-      ③ ``ist.p1_pair`` 非空——P1 配方锁已立(W145/ADR-0357 产物形态)。
+      ③ ``ist.p1_pair`` 非空——P1 配方锁已立(ADR-0357 产物形态)。
     - **缺供给帧 = 保守侧 False**(=双轨=攒息):ist 不可得/字段缺失时
       **禁止**缺省 True——True=已定型=激进侧,攒息门/双轨买门全开
       (供给点清单 D2:拔掉供给探针下必须落保守侧,变异锁钉住)。
@@ -1369,7 +1375,7 @@ def committed_authority(state: GameState | None,
       grep 守卫锁),写端退役随老栈(strategy 层)老栈退役(ADR-0466/0469)。
 
     与旧语义(CommitSignals.ready 合取)的分歧属方向层接管预期区,
-    逐帧对拍产物归 w628_migration_b2 对照报告。
+    逐帧对拍产物归迁移期对照报告(git 历史)。
     """
     if state is not None and getattr(state, 'plane', 1) >= 2:
         return True
@@ -1403,7 +1409,7 @@ def committed_from(session: StrategySession,
 
 
 def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
-    """锁定帧买侧目标约束基准(W150/ADR-0359;W143 补充判读的通道半边)。
+    """锁定帧买侧目标约束基准(ADR-0359;迁移期补充判读的通道半边)。
 
     opportunistic/bond_fallback 买通道「目标/非目标」判定输入 =
     ``p1_pair``(非空时)∪ ``locked_comp`` 采购集(``IntentionState.p1_pair``
@@ -1414,7 +1420,7 @@ def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
     - P1 配方锁定帧 = ``_pair_members(p1_pair)``(体系对两体系全成员,
       含其二体系——对成员集本身即两体系的并);
     - comp 锁定帧(P1①资格通道 / P2+)= ``_line_hoard(comp)`` 角色采购集;
-      **①锁局(P1)∪ 过渡对成员集(W166/ADR-0367)**——二级囤货语义
+      **①锁局(P1)∪ 过渡对成员集(ADR-0367)**——二级囤货语义
       ([22]④):对件免 demote/免 final_fence,但不进 hoard 目标件集
       (comp 主序对副序,主方向与核心件优先级不动);
     - weak(撤销后去向=跨线骨架)/demoted_endgame 不辖:方向已撤或已
@@ -1436,9 +1442,9 @@ def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
 
 
 def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
-    """锁定帧的体系(羁绊键)集(W155/ADR-0360;evolve 提案/部署围栏消费)。
+    """锁定帧的体系(羁绊键)集(ADR-0360;evolve 提案/部署围栏消费)。
 
-    与 ``locked_buy_scope`` 同判据的**阵营口径**版本(W147 归因:off-lock
+    与 ``locked_buy_scope`` 同判据的**阵营口径**版本(迁移期归因:off-lock
     evolve 提案的 target_factions 不含锁定 faction → 锁定目标件被
     execute_replacement 划进 old_line 整档解除——约束需要的是体系键不是
     件名):
@@ -1447,7 +1453,7 @@ def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
       与 ``_pair_members`` 同口径);
     - comp 锁定帧(P1①资格通道 / P2+)= ``locked_comp`` 主/副档键
       (``form_tiers`` ∪ ``sub_tiers``,与 ``_line_hoard`` 档位键同式);
-      **①锁局(P1)∪ 过渡对体系键(W166/ADR-0367,与 ``locked_buy_scope``
+      **①锁局(P1)∪ 过渡对体系键(ADR-0367,与 ``locked_buy_scope``
       同式扩位)**——对体系提案不再按 off-lock 降级/解除,protect 基准
       (cw_evolution 围栏/保留序)同步扩辖(R2:换血可以拆引擎不行);
     - 两者皆空(空窗/weak/降格终局)→ None(无锁定帧,不约束——[31]①
@@ -1478,8 +1484,8 @@ def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
 def alloc_reason_consistency(session, target_faction: str = '',
                              target_comp_name: str = '') -> str:
     """执行侧目标 vs 意向层权威的一致性断言(纯函数,零行为;设计单一源 =
-    ``.debug/temp/currency_war/w956_death_allocator/DESIGN.md`` §2 正式
-    范围,归属裁决 = 转型臂实施批对账移交——执行侧消费只读意向层权威
+    执行分配器设计件 §2 正式
+    范围(迁移期设计,git 历史可考),归属裁决 = 转型臂实施批对账移交——执行侧消费只读意向层权威
     状态,禁读自身缓存线名)。
 
     断言式:执行目标 ∈ 意向权威语义集 = 锁定体系集
@@ -1509,6 +1515,10 @@ def alloc_reason_consistency(session, target_faction: str = '',
 # ===== 遥测序列化下沉(分包期 3:serialize_intention 自 telemetry/cw_telemetry.py
 # 下沉本模块——sim 桶消费它而 sim 禁依 telemetry(分包目标矩阵),序列化的是本模块
 # 的 IntentionState,随符号归位);cw_telemetry 反向 import 本节符号(telemetry→kernel 合法向)。
+# ⚠️ 已迁移(处死计划批 0):权威副本 = knowledge/cw_serialize(_to_jsonable/
+# serialize_intention;telemetry 保留层消费已全部改接)。本节副本仅为 sim
+# (ledger_hooks/engine_p1)/旧判据未迁消费点保留(sim import 处死计划批 0 禁动),
+# 随处死计划批 3 随文件删除;勿新增消费。
 
 def _to_jsonable(obj: Any) -> Any:
     """dataclass / 基础类型 → JSON 可序列化(递归)。"""
@@ -1526,25 +1536,25 @@ def _to_jsonable(obj: Any) -> Any:
 
 
 def serialize_intention(ist: Any) -> dict[str, Any] | None:
-    """v3 意向状态(IntentionState)→ JSON-safe dict(迁移审计 w146(git 历史))。
+    """v3 意向状态(IntentionState)→ JSON-safe dict(迁移期审计,git 历史可考)。
 
     ADR-0336 后锁定真值在 ``session.v3_intention``,但 decisions 行
     只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
     「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
-    全量落遥测(`w145_recipe_lock/` 锁定目标改过渡配方的实机验证依赖它)。
+    全量落遥测(锁定目标改过渡配方(ADR-0357)的实机验证依赖它)。
 
     - ``None`` = session 无意向状态机(default 栈/未初始化)——与
       「有意向未锁」(dict 且 ``phase='unlocked'``)显式区分,消费方
       不用猜;
     - dict 按字段全量序列化(dataclass fields 遍历,set→sorted list,
-      嵌套 LineTrack 同构)——IntentionState 字段演进(如 `w145_recipe_lock/` 调整
+      嵌套 LineTrack 同构)——IntentionState 字段演进(如配方锁设计件调整
       锁定语义)时自动跟上,不改本函数。
 
-    **可变容器深拷贝(`w194_p2line/`/ADR-0378)**:dict/list 字段值经
+    **可变容器深拷贝(ADR-0378)**:dict/list 字段值经
     ``_to_jsonable`` 递归拷贝(嵌套 dataclass 走 asdict=深拷贝)——
     ``tracks: dict[str, LineTrack]`` 是**活引用**,旧版直接把引用
     落进账本行,session 后续轮原地改 LineTrack 会污染**已落账的
-    早期行**(sim P2 段改写同局 P1 行的 tracks,`w193_p2sim/` 对比门曾排除
+    早期行**(sim P2 段改写同局 P1 行的 tracks,P2 谱系分布验证的对比门曾排除
     该字段)。tuple/str 不可变,原样保留(类型不漂移)。
 
     只读不碰 ``cw_intention``(并行批在改);非 dataclass 输入退 None。
@@ -1559,7 +1569,7 @@ def serialize_intention(ist: Any) -> dict[str, Any] | None:
         elif is_dataclass(v):
             out[f.name] = _to_jsonable(v)
         elif isinstance(v, (dict, list)):
-            # `w194_p2line/`/ADR-0378:可变容器深拷贝落账(活引用污染防线,
+            # ADR-0378:可变容器深拷贝落账(活引用污染防线,
             # 见 docstring);tuple 不可变不辖(类型不漂移)
             out[f.name] = _to_jsonable(v)
         else:

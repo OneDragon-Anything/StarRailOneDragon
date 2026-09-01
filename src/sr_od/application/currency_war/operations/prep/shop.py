@@ -42,6 +42,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_game_state,
     read_gold,
     read_gold_opt,
+    read_gold_settled,
     read_shop_cards,
 )
 from sr_od.application.currency_war.obs.cw_observation_gate import (
@@ -312,15 +313,21 @@ def build_post_buy_incremental_state(
     node_type(升级触 level/xp,由调用方 total_level 门拦截,不进本函数);
     gold 用关店帧真读;bench 重播 tracked_bench_chars(执行侧
     mutate_bench_deployed 逐动作同步的权威源,末波垫底 state 的 bench
-    是执行前快照,必须重播)。gold_read=None(失读)→ 返回 None,
-    调用方回退全量 read_game_state(fail-closed,宁全量不造值)。
+    是执行前快照,必须重播)。
+    fail-closed 两维:①gold_read=None(金失读)→ 返回 None,调用方回退
+    全量 read_game_state;②tracked_bench_chars 为空 → 同样返回 None。
+    ②的理由:bench 真空(全部署/合成清空)与跟踪丢失在本构造点不可区分,
+    而垫底 state.bench 是执行前快照——空 tracked 时沿用它会把陈旧 bench
+    当真值喂给 update_target(误读维度造值)。回退全量读后两种情形都得到
+    OCR 真值,代价只是罕见情形多一次整帧读。
     """
     if gold_read is None:
         return None
+    if not tracked_bench_chars:
+        return None   # 空 tracked:真空/丢跟踪不可区分 → fail-closed 回退全量读
     post = deepcopy(last_state)
     post.gold = gold_read
-    if tracked_bench_chars:
-        post.bench = bench_from_compact(deepcopy(tracked_bench_chars))
+    post.bench = bench_from_compact(deepcopy(tracked_bench_chars))
     _apply_hp(post, hp_value, hp_readable, hp_trusted)
     if last_node_type:
         post.node_type = last_node_type
@@ -910,7 +917,10 @@ class BuyShopCards(SrOperation):
 
 
 
-                        from sr_od.application.currency_war.prep_director import build_refresh_expect, refresh_reconcile_mismatches
+                        from sr_od.application.currency_war.prep_director import (
+                            build_refresh_expect,
+                            refresh_reconcile_mismatches,
+                        )
                         # 刷前现读两口径(执行边界压缩·连击共享往返):
                         # - 仅刷新波(_wave_refresh_only,判据单一源 =
                         #   refresh_wave_is_refresh_only):本波无买卡/卖出,
@@ -1051,7 +1061,9 @@ class BuyShopCards(SrOperation):
                                     # GameState 变量,期 6 U3 消费面重写曾把
                                     # telemetry.state 误绑到它(AttributeError
                                     # 被 suppress 吞掉 → 留证/执行事实静默断流)
-                                    from sr_od.application.currency_war.telemetry import state as _cw_tel
+                                    from sr_od.application.currency_war.telemetry import (
+                                        state as _cw_tel,
+                                    )
                                     _free_shot = self.save_screenshot(
                                         prefix='free_refresh_proc')
                                     # 局部 import:仅本证据段使用,不占模块级命名面
@@ -1359,10 +1371,14 @@ class BuyShopCards(SrOperation):
                     # 执行边界压缩·买后验证增量:本单元动作(无升级)只改
                     # gold/bench(plane/round/board 等机制不变量,构造单一源 =
                     # build_post_buy_incremental_state)→ 单区金真读 + tracked
-                    # 重播,替代整帧 OCR;金失读回退全量读(fail-closed)。
+                    # 重播,替代整帧 OCR。fail-closed 双维回退全量读:金失读
+                    # (None)/tracked 空(真空与丢跟踪不可区分,见构造点契约)。
+                    # 金读走稳定门(read_gold_settled):关店帧入账计数器可能
+                    # 仍在跳,单帧会采到入账前旧值(误读维度造值;门=两帧一致
+                    # 才采信,不一致取末帧+留证)。
                     _inc_gold = None
                     with contextlib.suppress(Exception):
-                        _inc_gold = read_gold_opt(self.ctx, self.screenshot())
+                        _inc_gold = read_gold_settled(self.ctx, self.screenshot())
                     if _inc_gold is not None:
                         _post = build_post_buy_incremental_state(
                             state, _inc_gold,

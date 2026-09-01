@@ -14,11 +14,14 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
-from sr_od.application.currency_war.kernel.cw_intention import _to_jsonable
 from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     bench_occupied,
 )
+
+# 符号解耦(处死计划批 0):序列化权威副本迁 knowledge/cw_serialize,
+# 不再依赖 kernel/cw_intention(死刑判据文件)
+from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
 from sr_od.application.currency_war.telemetry.schema import ExogenousEvent
 
 if TYPE_CHECKING:

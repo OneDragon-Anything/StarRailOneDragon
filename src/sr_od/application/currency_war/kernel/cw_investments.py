@@ -248,15 +248,15 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
 }
 
 
-# ===== curated overlay:策略效果规格 EffectSpec(W612 骨架批;手维护,键=注册表规范名)=====
+# ===== curated overlay:策略效果规格 EffectSpec(效果清单骨架实现;手维护,键=注册表规范名)=====
 # 机制 = cw_effect_inventory.py(EffectSpec/ActiveEffectInventory);本 overlay 只放**数据**,
 # 与 STRATEGY_ECONOMY 同键空间同孤儿校验(见 _validate_strategy_effects),防两套 overlay 漂移。
 # 首批 9 条语义全引 cw_invest_data 官方原文;二义条目 pending=True + notes 保守支,不拍死——
-# 定谳后回填 verdict(单一语义以实采为准,W610-P1 §1.4.1/§1.5)。
-# 边界:只产策略源;环境('portal')/词缀('affix')双源注册是 W607 辖域,此处不建其条目。
+# 定谳后回填 verdict(单一语义以实采为准)。
+# 边界:只产策略源;环境('portal')/词缀('affix')双源注册属环境/词缀效果辖域,此处不建其条目。
 STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     # 淘金客:官方「你每次消耗金币刷新商店,都会获得2经验值」;免费刷不产 XP(「消耗金币」
-    # 文本充分;实采复核挂 W610-P1 §1.5-2)。姿态谓词/LevelUp 抑制是 W610 P1-1 辖域,本批不接。
+    # 文本充分;实采复核挂账)。姿态谓词/LevelUp 抑制属淘金客姿态面辖域,本批不接。
     '淘金客': EffectSpec(
         id='301601', name='淘金客', trigger=TriggerKind.ON_REFRESH,
         duration=DurationKind.WHILE_HELD, category=EffectKind.STATE,
@@ -272,7 +272,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         pending=True,
         notes='待采:即时段与位面段是否双发;保守支=PLANE_START 单触发'),
     # 经验就是财富:官方「获得经验时,改为获取等量金币(购买经验除外)。获得4金币」。
-    # 四歧义见 W610-P1 §1.4.1-②(改道是否吞策略给的 XP/转换同事件性/上限/版本变体);
+    # 四歧义(改道是否吞策略给的 XP/转换同事件性/上限/版本变体)见该条目待采挂账;
     # 定谳前保守支=「吞」(组合在场按改道成立处理)。xp 改道算子字段待定谳后补 payload。
     '经验就是财富': EffectSpec(
         id='103601', name='经验就是财富', trigger=TriggerKind.CONDITIONAL,
@@ -320,7 +320,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='board/target 全量失效→update_target 强制重派生是后续批辖域'),
     # 人力重组:官方「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个2星2费
     # 角色和2个2星1费角色」。⚠️ 注册表 STRATEGY_ECONOMY 无此条(经济面未建模,发牌资产
-    # 走战力评估)——语义实为全场出售的板面重写,按 BATTLEFIELD 建模(W610-P1 §1.2-B/D
+    # 走战力评估)——语义实为全场出售的板面重写,按 BATTLEFIELD 建模(效果规格判读
     # 归类同族:全员晋升/人力重组/现金为王=即时全场板面重写/出售)。
     '人力重组': EffectSpec(
         id='102801', name='人力重组', trigger=TriggerKind.INSTANT,
@@ -329,7 +329,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duties=DutyFlags(predict=True),
         notes='全场出售事件;执行时序编排(卖→免费买→狂刷)=W610-P1 M8,本批不接'),
     # 躺平:官方「你无法在商店购买角色和刷新,持续3个节点。在此之后,获得20金币」。
-    # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态是 W610 P2-1 辖域。
+    # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态属姿态面辖域。
     '躺平': EffectSpec(
         id='102001', name='躺平', trigger=TriggerKind.CONDITIONAL,
         duration=DurationKind.N_NODES, category=EffectKind.ECONOMY,
@@ -509,16 +509,16 @@ def normalize_invest_name(name: str) -> str:
 
 
 def refresh_invest_active(state) -> bool:
-    """淘金客族刷新经济投资姿态谓词(单一址;W610 spec 姿态面)。
+    """淘金客族刷新经济投资姿态谓词(单一址;效果规格姿态面)。
 
     判据:任一持有投资策略的可数值化经济效果带刷新增益通道
     (免费刷新/每刷经验——淘金客/加油站/搜打撤族,与 operations.
     prep.shop 免费刷新采证钩子同族判据)。消费面(ADR-0465 预算收权):
-    ① ``economy_cycle.schedule_upgrade``——升级通道退役(W621 实证:
+    ① ``economy_cycle.schedule_upgrade``——升级通道退役(sim 注入臂实证:
     LevelUp 退役是刷驱姿态行为的主驱动,预算式仅是语义显式化);
     ② ``ev.levelup_ev_basis``——升级授权链同步关闭(含人口位臂,
-    与 W621 sim 注入臂的「LevelUp 全抑制」同口径;等级回落预期带
-    见 w630_batch3_ab_protocol §4 出口 9)。
+    与 sim 注入臂的「LevelUp 全抑制」同口径;等级回落预期带
+    见批 3 A/B 验证协议 §4 出口 9)。
     """
     for name in (getattr(state, 'active_strategies', None) or ()):
         eff = STRATEGY_ECONOMY.get(normalize_invest_name(name))
@@ -733,7 +733,7 @@ def get_strategy(name: str) -> InvestmentStrategy | None:
     入参先经 normalize_invest_name 归一分隔符形变,如 `全都要•彩`→`全都要·彩`,run_20260826_004527)。"""
     return INVESTMENT_STRATEGIES.get(normalize_invest_name(name))
 
-# ===== ADR-0143 选卡价值基准分(全量评估表派生;.debug/temp/currency_war/strategy_eval_full.tsv)=====
+# ===== ADR-0143 选卡价值基准分(全量评估表派生)=====
 # 评估口径:value_class 七分类 + quantizable 三档 + pick_priority 0-100(读 effect 原文逐条判定;
 # 无上下文基准分,comp 匹配/HP 分档在 decide_event 消费侧调)。表与注册表对拍:315/315 命中
 # (curated+ingested;ADR-0150 后注册表 = plaza base 335,键经 canon 归一对齐)。
@@ -1094,7 +1094,7 @@ def pick_value_of(name: str) -> int | None:
     return None
 
 
-# ===== ADR-0144 环境选卡价值基准分(83 条全量评估表派生;.debug/temp/currency_war/env_eval_full.tsv)=====
+# ===== ADR-0144 环境选卡价值基准分(83 条全量评估表派生)=====
 # 环境与策略结构倒挂(评估实证):synergy 主导 47/83(阵营定向),economy 16;无品质分级(全 '-')。
 # 量化断层:yes-direct 仅 1 条(蓝海)—— 环境效果全是整局规则(费率覆写/分期/重复触发),EconomyEffect
 # 现有字段结构性装不下(EnvEconomyEffect 扩字段待后续);接线防一次性错装点名 6 条见 TSV notes。

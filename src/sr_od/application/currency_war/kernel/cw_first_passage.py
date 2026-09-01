@@ -56,7 +56,7 @@ def _p2_lcond_mix() -> float:
 def _loss_dist(board_tier: int, plane: int = 1) -> list[tuple[float, float]]:
     """单节点掉血分布(板强档 × 位面 → [(掉血量, 概率)] 三点离散:μ-σ/μ/μ+σ 截非负)。
 
-    μ 标定源合一(ADR-0440,`w370_p2_recalib/` §5-④ 双源退役):P1 = HP_LOSS_MU 现档
+    μ 标定源合一(ADR-0440;双源退役的 P2 重标定):P1 = HP_LOSS_MU 现档
     (P1 零漂移,不走 P2 标定);P2+ = 两态同构 μ(tier)=(1−p(rung(tier)))
     ·L_cond_mix —— 胜率=registry.p_win_p2_by_rung(rung 坐标=board_tier
     0-3 钳 0-2,与 p_win 表 k3 折叠同口径),条件败面=registry.

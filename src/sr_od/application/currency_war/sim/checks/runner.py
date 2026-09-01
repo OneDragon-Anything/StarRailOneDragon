@@ -65,6 +65,7 @@ from sr_od.application.currency_war.sim.checks.runtime import (
     check_formation_gradient_sentinel,
     check_hoard_gold_no_engine,
     check_hp_readable_disclosure,
+    check_late_board_short_idle,
     check_late_deploy_full,
     check_mc_faction_calib,
     check_no_streak_buy_freeze,
@@ -160,6 +161,8 @@ def run_batch_level_checks(ledgers: list[list[dict]],
     """
     out: dict[str, dict] = {
         'late_deploy_full': check_late_deploy_full(ledgers),
+        # F5 部署供给观测(W956;披露型——采纳层修复后升格 _BATCH_CHECKS 断言门)
+        'late_board_short_idle': check_late_board_short_idle(ledgers),
         'no_streak_buy_freeze': check_no_streak_buy_freeze(ledgers),
         'hoard_gold_no_engine': check_hoard_gold_no_engine(ledgers),
         'second_engine_deadline': check_second_engine_deadline(ledgers),

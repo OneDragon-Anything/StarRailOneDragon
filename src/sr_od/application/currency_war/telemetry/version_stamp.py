@@ -19,14 +19,33 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
-#: 仓库根(telemetry/x.py → currency_war → application → sr_od → src → 根)
-_REPO_ROOT: Path = Path(__file__).resolve().parents[4]
+
+def _find_repo_root() -> Path:
+    """仓库根稳健定位(相对本模块向上搜索,不依赖 cwd)。
+
+    锚点 = 含 ``pyproject.toml`` 的最近祖先(src-layout 单一锚点);找到即用,
+    布局变化(目录加深/整体搬迁)自动跟随。找不到(非标准 checkout,如
+    单独拷出 src)退回 src 层 parents[4] —— 此退路下 git 命令大概率失败,
+    code_commit 按 best-effort 契约返回 '',不会串仓版本(退路只损可用性,
+    不产错误值)。
+    """
+    module_path = Path(__file__).resolve()
+    for cand in module_path.parents:
+        if (cand / 'pyproject.toml').is_file():
+            return cand
+    # 兜底:telemetry → currency_war → application → sr_od → src
+    return module_path.parents[4]
+
+
+#: 仓库根(模块相对定位,见 _find_repo_root;禁用 cwd 依赖——server/GUI
+#: 的工作目录不可信)
+_REPO_ROOT: Path = _find_repo_root()
 
 
 def code_commit() -> str:
@@ -45,21 +64,43 @@ def code_commit() -> str:
 def _normalize(o: Any) -> Any:
     """递归规范化为可稳定 JSON 化的结构:dict 键 str 化(JSON 键域限制,
     注册表有 tuple 键的映射)+ 排序(set/frozenset 无序,repr 不稳定;
-    dict 排序键输出)。"""
+    dict 排序键输出)+ dataclass 转 dict。
+
+    dataclass 分支的必要性:asdict 对 set/set 字段只做整体 deepcopy,
+    不递归成员——集合装数据类时 asdict 后成员仍是实例,不在此转 dict
+    就透传到终 json.dumps(无 default)再次炸。
+    """
+    if is_dataclass(o) and not isinstance(o, type):
+        return _normalize(asdict(o))
     if isinstance(o, dict):
         return {str(k): _normalize(v) for k, v in sorted(
             ((str(k), v) for k, v in o.items()), key=lambda kv: kv[0])}
     if isinstance(o, (set, frozenset)):
-        return sorted(_normalize(x) for x in o)
+        # 集合元素规范化后可能是 dict(含 dataclass)/混合类型,Python 原生
+        # sorted 直接比较会 TypeError(炸点在局终写档,runs 行整行丢失)。
+        # 先试原生排序(存量注册表=纯标量集合,输出与旧口径逐位一致,指纹
+        # 值不因本修复跳变);不可比再退 JSON 串排序键(恒全序,default=repr
+        # 兜住透传的任意对象)。
+        elems = [_normalize(x) for x in o]
+        try:
+            return sorted(elems)
+        except TypeError:
+            return sorted(elems, key=lambda x: json.dumps(
+                x, sort_keys=True, ensure_ascii=False, default=repr))
     if isinstance(o, (list, tuple)):
         return [_normalize(x) for x in o]
     return o
 
 
 def registry_fingerprint() -> str:
-    """决策注册表内容指纹(sha256 前 12 位;注册表值变更即变)。"""
+    """决策注册表内容指纹(sha256 前 12 位;注册表值变更即变)。
+
+    终 dumps 挂 default=repr 兜底:_normalize 不识别的任意对象(注册表
+    未来字段的未知形态)序列化为 repr 而非 TypeError——调用点在局终
+    写档且无异常保护,这里炸 = runs 行整行丢失(对局白跑无 summary)。
+    """
     payload = json.dumps(_normalize(asdict(DEFAULT_REGISTRY)),
-                         sort_keys=True, ensure_ascii=False)
+                         sort_keys=True, ensure_ascii=False, default=repr)
     return hashlib.sha256(payload.encode('utf-8')).hexdigest()[:12]
 
 

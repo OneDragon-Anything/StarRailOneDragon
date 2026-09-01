@@ -39,7 +39,7 @@ def sole_engine_sell_floor_plan(bcs: list,
                                 state: GameState,
                                 registry: DecisionV2Registry | None = None,
                                 ) -> list[bool]:
-    """W197/ADR-0380:同批多笔卖出的逐笔下界判定(批量口径)。
+    """ADR-0380:同批多笔卖出的逐笔下界判定(批量口径)。
 
     背景(136 r7 实证):arbitrate 同段可采纳多笔同名 TT 件卖候选——
     候选生成对**批前状态**计数(列车在手 3>tier 2),逐笔合法而批内
@@ -82,7 +82,7 @@ def _sell_floor_counts(state: GameState,
       逐件计,全羁绊 factions∪flows 口径)};
     - '_seele_scope'(辖域开关)/'_seele_core'(希儿在手)/
       '_seele_core_copies'(希儿副本数)/'_seele_amp:{阵营}'(放大阵营
-      在手件数)——希儿系核心条件辖(W192/ADR-0375 判据)。
+      在手件数)——希儿系核心条件辖(ADR-0375 判据)。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         SEELE_AMP_FACTIONS,

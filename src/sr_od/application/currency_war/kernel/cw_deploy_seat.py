@@ -79,14 +79,14 @@ def _bench_faction_counts(state: GameState) -> dict[str, int]:
 
 
 def _dep_activates_tier(bc: BenchChar, state: GameState) -> bool:
-    """r90 C1 上场即激活档:该牌上场后 board 阵营计数命中**此前未达**的激活档。
+    """上场即激活档:该牌上场后 board 阵营计数命中**此前未达**的激活档。
 
     攻略 #245「手上有 4击破 才让白厄上场」的判据形式化:final 件的上场窗口之一 =
     上场本身产生确定羁绊增量(新档激活)。deepen 已达最高档不算(那是深化,归框架件管)。
     ⚠️ 口径:只数场上(board),bench 囤牌不计入激活(游戏正确口径;并入 bench 会误判
     「囤 2 张后第 1 张即激活」提前散上)。本函数只评估**候选卡本身**;「bench 囤的第
     2/3 张同阵营齐档后整组上场」的组合窗口不在此判(靠窗口①定型/②位面末兜底,
-    单卡永不触发③——r90 审计 A.a 记录,接受该简化)。
+    单卡永不触发③——审计记录的已知简化,接受)。
     """
     syn = _char_synergies(bc.char_id) if bc.char_id else set()
     if bc.faction and bc.faction != '?':
@@ -197,7 +197,7 @@ def _weakest_bench_idx(state: GameState, character_priority: list[str],
 def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool:
     """是否 deploy 该角色(L2 deploy cap,防 spread-lock)。
 
-    r90 C1 **final 件条件窗口**(663 帖攻略精读 #243/#245/#249:final 件买而囤 bench,
+    **final 件条件窗口**(663 帖攻略精读 #243/#245/#249:final 件买而囤 bench,
     等窗口才上场 —— 用户定性「凑 final 不是问题,让它上场却取不了胜利才是」):
     双轨期(P1 未定型)target 件**不再即买即上**(旧直 True = P1 板长成 final
     散件打不过过渡阵容,第9局四线散板实证)。P1 的板 = 过渡框架;final 件囤 bench,
@@ -205,10 +205,10 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
     - ①非双轨(定型信号 ready / 进 P2)→ 无条件上;
     - ②位面末变阵窗(round ≥ 8;#243「1-8 奖励关后 d,1-9 变阵」)→ 换 final 上;
     - ③上场即激活阵营档(见 ``_dep_activates_tier``;#245 白厄=4击破齐)→ 即刻兑现;
-    - ④框架在册件(TRANSITION_PACK 非 drop,仙舟/列车/通用)→ 双轨期临时 target 照上(r70)。
+    - ④框架在册件(TRANSITION_PACK 非 drop,仙舟/列车/通用)→ 双轨期临时 target 照上。
     窗口外落回集中判据(阵营 count≥2 深化)。
 
-    ⚖️ r94:本函数顶部统一执行 ``deploy_legal``(场上同名禁双,全局不变量)——
+    ⚖️ 本函数顶部统一执行 ``deploy_legal``(场上同名禁双,全局不变量)——
     所有调用方(腾席链/任何新路径)经此即受保护,内联守卫不再各写。
     deploy 条件(任一,窗口外):
     - target 阵营角色(窗口内,见上)。
@@ -226,10 +226,10 @@ def _should_deploy(bc: BenchChar, state: GameState, target: Comp | None) -> bool
             return True   # ③上场即激活档(确定战力即刻兑现)
         # 双轨期窗口外:final 件囤 bench(stash),落到下方框架/集中判据
     if state.dual_track_phase and bc.char_id:
-        # r72 口径对齐(review #3):三侧统一「当先框架非 drop + 通用件」——
+        # 口径对齐:三侧统一「当先框架非 drop + 通用件」——
         # 散件 drop(艾丝妲/佩拉)不自动上(应急件,op 侧同口径);通用 carry
         # (千冶·刃 29%→64%)三侧都认。框架由 session 单一源。
-        # r107 审计C:白名单从 FRAMEWORKS 单一源派生(r102 加量子时硬编码
+        # 白名单从 FRAMEWORKS 单一源派生(此前版本加量子时硬编码
         # 遗漏 → 希儿/缇宝/符玄双轨期囤 bench 不上场,量子同频 trait 型连
         # 底部兜底都接不住)。
         from sr_od.application.currency_war.kernel.cw_transition import (
@@ -289,7 +289,7 @@ def level_up_gate(state: GameState, target_comp: Comp | None = None,
         return False
     want = _want_level_up(state, target_comp, committed)
     if not want:
-        # r85 溢出区放行:息满 + 够单击 + 花后不破 50 地板 → 姿态压制不拦溢出金
+        # 溢出区放行:息满 + 够单击 + 花后不破 50 地板 → 姿态压制不拦溢出金
         return (state.gold >= INTEREST_THRESHOLD + xp_click_cost(state)
                 and state.gold - xp_click_cost(state) >= INTEREST_THRESHOLD)
     return state.gold - xp_click_cost(state) >= _xp_gold_floor(state, want)

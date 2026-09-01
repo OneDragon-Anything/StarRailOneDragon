@@ -309,21 +309,28 @@ def read_level_raw_opt(ctx: SrContext, screen: MatLike) -> int | None:
     return None
 
 
-def _parse_xp_pair(blob: str) -> tuple[int, int] | None:
+def _parse_xp_pair(blob: str, expected_level: int | None = None) -> tuple[int, int] | None:
     """XP 文本 → ``(cur, next)``;解析不出 → None(纯函数可单测)。
 
     两级解析(字段先验:格式恒为 "X/Y",next ∈ ``XP_TO_NEXT_LEVEL.values()``):
     1. 斜杠误识兜底(D-53 同款):数字间非数字单字符 normalize 成 ``/`` 再正则;
     2. **斜杠被识成数字 '1'**("2/4"→"214"、"4/6"→"416",冲突帧实测):
-       遍历 '1' 位插入 '/' 拆分,仅当两侧皆数字且 next 落在等级表分母集合时采
-       ——表分母 {4,6,20,40,52,72,84} 作强先验,普通 XP 数字串(如真 cur=12 的
-       "12" 开头)不会被误拆成非法分母。
+       遍历 '1' 位插入 '/' 拆分,仅当**分子分母同时合法**(两侧皆数字、cur≤next、
+       next 落在等级表分母集合)且**上下文等级先验一致**时才采信。
+
+    :param expected_level: 上下文等级先验(session.last_level_obs;None=无先验)。
+      仅约束第 2 级 '1' 拆分路径:分母 4 是 lv3 独有分母且与短数字天然易混
+      (真 lv4 帧 OCR 退化成 "34" 之类被拆成 (3,4) → 反推 lv3,是 lv 3↔4
+      乒乓的潜在源),拆分结果反推的等级与先验不一致 → 判失读(返回 None),
+      不采信;无先验(新局 last=0)保持旧行为。第 1 级 normalize 路径有显式
+      '/' 分隔不受此疑,不做先验收紧(XP 纠正 OCR 误读的主权通道,ADR-0129)。
     """
     norm = re.sub(r'(?<=\d)\D(?=\d)', '/', blob)
     m = re.search(r'(\d+)\s*/\s*(\d+)', norm)
     if m:
         return int(m.group(1)), int(m.group(2))
     _valid_next = set(XP_TO_NEXT_LEVEL.values())
+    _denom_to_lv = {v: k for k, v in XP_TO_NEXT_LEVEL.items()}
     for i, ch in enumerate(blob):
         if ch != '1':
             continue
@@ -331,6 +338,9 @@ def _parse_xp_pair(blob: str) -> tuple[int, int] | None:
         if cur_s.isdigit() and nxt_s.isdigit():
             cur, nxt = int(cur_s), int(nxt_s)
             if nxt in _valid_next and cur <= nxt:
+                # 上下文先验一致才采信(分母 4 单数字易混;先验 None=无历史放行)
+                if expected_level is not None and _denom_to_lv.get(nxt) != expected_level:
+                    continue
                 return cur, nxt
     return None
 
@@ -352,7 +362,11 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     v = read_level_raw_opt(ctx, screen)
     if v is not None:
         return v
-    xp = read_xp_progress(ctx, screen)
+    # XP 反推的先验 = session 上次观测等级(与 read_game_state 同源;'1' 拆分
+    # 收紧防 lv 3↔4 乒乓,见 _parse_xp_pair)。无历史(0)→ None 旧行为。
+    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    _prior = getattr(_sess, 'last_level_obs', 0) or None
+    xp = read_xp_progress(ctx, screen, expected_level=_prior)
     if xp is not None:
         from sr_od.application.currency_war.kernel.cw_state import XP_TO_NEXT_LEVEL
         for lv, need in XP_TO_NEXT_LEVEL.items():
@@ -717,16 +731,20 @@ def read_detail_node_type_label(ctx: SrContext, screen: MatLike) -> str | None:
     return t or None
 
 
-def read_xp_progress(ctx: SrContext, screen: MatLike) -> tuple[int, int] | None:
+def read_xp_progress(ctx: SrContext, screen: MatLike,
+                     expected_level: int | None = None) -> tuple[int, int] | None:
     """购买经验进度 ``(cur_xp, xp_to_next_level)``,购买经验按钮下方 "X/Y"(备战字段采集)。
 
     OCR 购买经验(y848)下方 ~y935 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
     level 升级时机决策用(cur 接近 next → 即将升级,影响 level_plan/买经验优先级)。
 
     OCR ``文本-升级所需经验`` 的 "X/Y"(如 "4/20")→ (4, 20)。读不到 / 越界 → None。
+
+    :param expected_level: 上下文等级先验(透传 ``_parse_xp_pair`` 的 '1' 拆分
+      收紧;None=无先验旧行为。先验来源 = session.last_level_obs)。
     """
     blob = ''.join(r.data for r in _ocr_upscaled(ctx, screen, _area_rect(ctx, '文本-升级所需经验')))
-    pair = _parse_xp_pair(blob)
+    pair = _parse_xp_pair(blob, expected_level=expected_level)
     if pair is not None:
         cur, nxt = pair
         if 0 <= cur <= nxt <= 100:      # sanity:cur≤next,XP 上限合理(封顶 10 级,每级 XP 个位~十几)
@@ -1664,7 +1682,15 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         state.node_type = _ledger_t if _ledger_t is not None else _obs_t
         if _ledger_t is not None:
             verify_node_type_votes(ctx, screen, state.plane, state.round_num)
-    state.xp_progress = read_xp_progress(ctx, screen) if _w('xp') else None
+    # session 上次观测等级提前取(XP '1' 拆分收紧的上下文先验 + 等级三源解析共用;
+    # 0=新局无历史)。毒化防线保证 last_level_obs 只在 authoritative 帧写入,
+    # 可作先验。
+    _match = getattr(ctx, 'cw_match', None)
+    _last_lv = 0
+    if _match is not None and _match.session is not None:
+        _last_lv = getattr(_match.session, 'last_level_obs', 0)
+    state.xp_progress = (read_xp_progress(ctx, screen, expected_level=(_last_lv or None))
+                         if _w('xp') else None)
     if _w('level'):
         # 等级三源解析(2026-08-18 治本重构):OCR 直读(无兜底)/XP 分母反推/启发式兜底
         # 经 ``_resolve_level`` 统一仲裁 —— 旧内联链在「OCR 失读 + XP 可读」态每帧乒乓
@@ -1672,12 +1698,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 且把启发式兜底值写回 last_level_obs(毒源)。纯函数语义/事件/防线详见其 docstring。
         _lv_raw = read_level_raw_opt(ctx, screen)
         _xp_lv = _level_from_xp(state.xp_progress)
-        _match = getattr(ctx, 'cw_match', None)
-        _last_lv = 0
-        if _match is not None and _match.session is not None:
-            _last_lv = getattr(_match.session, 'last_level_obs', 0)
         state.level, _lv_events, _lv_authoritative = _resolve_level(
             _lv_raw, _expected_level(state.plane, state.round_num), _xp_lv, _last_lv)
+        # 保真位(对齐 hp_readable;M2 obs 根因修复):False=纯 _expected_level
+        # 启发式兜底(OCR 与 XP 双失读)——「兜底 4」与「真读 4」遥测可分。
+        # 阶段 spec 跳过 level 的帧保留缺省 True(sim 恒真读帧约定,同 hp_readable)。
+        state.level_readable = _lv_authoritative
         for _kind, _old, _new, _verdict, _src in _lv_events:
             _fmt = _LV_LOG_FMT.get(_kind)
             if _fmt is not None:

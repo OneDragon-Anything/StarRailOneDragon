@@ -47,7 +47,7 @@ EQUIPS_CONSISTENCY_ERRORS: tuple[type[BaseException], ...] = (
 
 
 def wear_synthesis_equivalent(ledger: list[str], visible: list[str]) -> bool:
-    """**穿着触发自动合成**的账面↔画面等价判定(W209e 取证实锤,ADR-0387)。
+    """**穿着触发自动合成**的账面↔画面等价判定(取证实锤,ADR-0387)。
 
     游戏机制(run 26 现场):角色**穿着的两件基础件若恰为某进阶配方组件**
     (交叉两件不同/自配同件×2)→ 画面自动合成显示该进阶——
@@ -97,7 +97,7 @@ def assert_equips_consistency(char: BenchChar, visible: list[str] | None,
       单一源 = tracking 账面,直接通过(C6 裁定的本意);
     - ``visible`` 非 None:deployed 侧 below-avatar icon 真读 → 与账面
       ``char.equips`` 多重集比对,不一致 raise(多重集 = 同名装备可重复持有);
-    - **穿着合成等价豁免**(W209e/ADR-0387):多重集不等但
+    - **穿着合成等价豁免**(ADR-0387):多重集不等但
       :func:`wear_synthesis_equivalent`(账面组件经配方替换到达画面)→ 视为
       一致不 raise——调用方的画面真值覆盖逻辑照常把账面纠正为画面形态
       (合成不可逆,画面即最新真值)。

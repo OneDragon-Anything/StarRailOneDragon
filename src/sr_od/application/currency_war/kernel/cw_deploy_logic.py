@@ -1,7 +1,7 @@
-"""deploy 选人纯逻辑(sim 与 DeployBench op 共用单一源;r389/r390)。
+"""deploy 选人纯逻辑(sim 与 DeployBench op 共用单一源)。
 
 背景(2026-08-23 用户定调「这些问题明明都可以模拟发现」):局53-62
-实机暴露的 deploy 侧 bug(r373 桥期 target 真空/r387 cap 富余仍拦
+实机暴露的 deploy 侧 bug(桥期 target 真空/cap 富余仍拦
 散牌)全是 **DeployBench op 的选人围栏**行为——而 sim 的 deployed
 是自动代理(bench 引擎件直进,围栏零覆盖),执行层 bug 天然测不出。
 
@@ -12,8 +12,8 @@ bench/deployed/目标集/围栏集/cap,输出「谁上场」。DeployBench op
 ⚠️ 漂移已对齐(ADR-0261 裁决「1+3 组合」落地,2026-08-24):
 ① DeployBench op `_deploy_deterministic` 排序已补 ignition_gain 首键
 (经本模块 `ignition_gain`,与 select_deployments 同语义);② 本模块
-select_deployments 已补 r288 配方底线门(列车≥2 且仙舟<3 → 列车件
-让位留 bench,与 op 侧 r288 同语义)——sim 从此能测出「引擎件被配方
+select_deployments 已补配方底线门(列车≥2 且仙舟<3 → 列车件
+让位留 bench,与 op 侧同语义)——sim 从此能测出「引擎件被配方
 底线拦」形态(局64 姬子躺 bench 不再是 sim 盲区)。对齐后 op 与本
 函数的行为差异只剩「读屏 vs 内存态」(op 的 SIFT 读身份/槽位坐标/
 drag 验证留在 op)。
@@ -43,17 +43,17 @@ def _bonds_of(bc: BenchChar) -> set[str]:
         return set()
     return set(ch.factions) | set(ch.flows)
 
-# 与 op 侧同源(r357:RECIPE ∪ ENGINE 桥派生集)
+# 与 op 侧同源(RECIPE ∪ ENGINE 桥派生集)
 DEPLOY_FENCE: frozenset[str] = frozenset(RECIPE_FACTIONS | ENGINE_FACTIONS)
 
 
 def cap_roomy_of(front_empty: int, back_empty: int, must_up: int) -> bool:
-    """r387:cap 是否富余(空位 > 必上件数)。富余=散牌填空不稀释。"""
+    """cap 是否富余(空位 > 必上件数)。富余=散牌填空不稀释。"""
     return (front_empty + back_empty) > must_up
 
 
 def tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
-    """r361 补档键:上阵后任一阵营恰达激活档 → 1,否则 0。"""
+    """补档键:上阵后任一阵营恰达激活档 → 1,否则 0。"""
     from sr_od.application.currency_war.data.cw_factions import FACTIONS
     for _f in bonds:
         _now = (deployed_fac.get(_f, 0) or 0) + 1
@@ -62,23 +62,26 @@ def tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
     return 0
 
 
-# r404-A1(四体系判据,与 cw_sim._TRANSITION_TRAITS 同语义;此模块
+# 四体系判据(与 cw_sim._TRANSITION_TRAITS 同语义;此模块
 # 不 import cw_sim——sim 消费本模块,反向 import 成环——sim 侧改为
 # alias import 本常量,两边不再各写一份)。
 # W47 统一化:三羁绊(阵营, 阈值)对改从 SYSTEM_CARDS 派生(排除 seele 卡
 # ——希儿系是 deployed 单卡判定非阵营计数,deploy 排序/形态维无意义,
 # 见 ignition_gain 注);tier 阈值经 FACTIONS 注册表,单一源。
+# ⚠️ 已迁移(处死计划批 0,docs/develop/currency_war/redesign/03_legacy_cleanup_plan.md):
+# 权威副本 = knowledge/cw_engine_facts.TRANSITION_TRAITS(同派生式,零字面双源);
+# 本副本仅为 sim/旧判据未迁消费点保留,随处死计划批 3 随文件删除;勿新增消费。
 TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
     (card.judge_factions[0], FACTIONS[card.judge_factions[0]].tiers[0])
     for card in SYSTEM_CARDS.values() if card.card_id != 'seele'
 )
 
 
-# W192/ADR-0375 守卫辖域体系集:四过渡体系全辖(三羁绊 + 希儿系
+# ADR-0375 守卫辖域体系集:四过渡体系全辖(三羁绊 + 希儿系
 # 单卡判据,tier=1)。辖域语义与 TRANSITION_TRAITS 的 deploy 排序语义
 # **分离**——后者是阵营计数排序维(希儿系单卡判定在 deploy 维无意义,
 # 故排除,历史理由保留),但 ADR-0373 卖侧守卫/ADR-0371 保护集借用
-# 该常量后「四体系」声称只剩三羁绊辖域(W190 巡检两件发现)。守卫/
+# 该常量后「四体系」声称只剩三羁绊辖域(实机巡检发现的辖域漂移)。守卫/
 # 保护类消费改用本集,不再借 TRANSITION_TRAITS(一常量两语义的根修)。
 SEELE_SYSTEM_KEY: str = '希儿系'
 #: 希儿系放大器阵营(量子/贝——伤害在希儿技能层,放大器非独立伤害源,
@@ -92,7 +95,7 @@ GUARD_SYSTEM_TIERS: tuple[tuple[str, int], ...] = (
 def engines_count(board_factions: dict[str, int],
                   deployed_names: frozenset[str] | set[str] = frozenset()
                   ) -> int:
-    """过渡体系达成数(W278 从 cw_battle_calib._engines_count 上移的**单一源**;
+    """过渡体系达成数(由 cw_battle_calib._engines_count 上移而来的**单一源**;
     cw_sim 侧保留同名薄委托,checks 模块经本模块消费——检查网不
     import cw_sim 的架构锁由依赖方向保证)。
 
@@ -110,11 +113,11 @@ def engines_count(board_factions: dict[str, int],
 
 
 def is_seele_system_member(char_id: str, bonds: set[str]) -> bool:
-    """希儿系贡献件判据(单卡 + 放大器;守卫/保护辖域口径,W192)。
+    """希儿系贡献件判据(单卡 + 放大器;守卫/保护辖域口径,ADR-0375)。
 
     希儿本人(单卡)+ 量子同频/贝洛伯格放大器件——与 cw_evolution.
     _engine_systems_formed/_contributes_engine_system/_is_member 的
-    希儿系分支同口径(W174 已有单卡判据先例,此处提为单一源函数)。
+    希儿系分支同口径(此前已有单卡判据先例,此处提为单一源函数)。
     tier=1:希儿系作为四过渡体系之一的档(user_playstyle 四体系封闭
     裁定,transitions.md;希儿系引擎=希儿在场 ∧ 放大器 ≥2,但**恢复
     种子**的辖域口径取贡献件全计——清空任意最后一件贡献件都使该体系
@@ -129,8 +132,8 @@ def ignition_gain(bonds, deployed_fac: dict[str, int]) -> int:
     体系=仙舟3/列车2/DOT2(transition_combos.md 四体系的三羁绊
     部分;希儿系在 deploy 排序无意义——希儿本人是 target 件)。
     增量>0 = 这张是「恰好点火」件(第 tier 人);优先级最高的
-    上场候选——60 局 r6 归因:未成型局 44% =「差1人·bench有货
-    未上」,根因是 r251 排序只看阵营身份不看点火(冗余第4仙舟
+    上场候选——60 局归因:未成型局 44% =「差1人·bench有货
+    未上」,根因是旧排序只看阵营身份不看点火(冗余第4仙舟
     挤掉点火列车2,探针实证)。
     """
 
@@ -160,17 +163,17 @@ def select_deployments(
     """围栏判定:返回 (上场 bench 下标序, 留 bench 下标)。
 
     语义与 DeployBench op 的 deterministic 段逐条对应
-    (ADR-0130 散牌围栏/r361 补档序/r251 引擎对优先/r387 cap 富余
-    填空/r404-A1 点火首键+桶序/r288 配方底线门/板空保底),唯一省略:
+    (ADR-0130 散牌围栏/补档序/引擎对优先/cap 富余
+    填空/点火首键+桶序/配方底线门/板空保底),唯一省略:
     SIFT 未识别(char_id 空)照旧上
     ——调用方传空 char_id 即走该分支。
     cap 语义 = 已 deployed 数 + 本轮上场数 ≤ cap(cap=None 不限,
     调用方传大数)。
 
-    W155/ADR-0360 件4(deploy 围栏兜底,ADR-0226 同型扩位):
+    ADR-0360 件4(deploy 围栏兜底,ADR-0226 同型扩位):
     ``locked_factions`` = 锁定帧体系键(``cw_intention.locked_faction_
     scope``)并入围栏放行集——锁定 comp 的阵营(欢愉/公司等非 RECIPE ∪
-    ENGINE 阵营)不再被配方围栏摁 bench(W147:strict 局挤出后 59% 不回
+    ENGINE 阵营)不再被配方围栏摁 bench(strict 局挤出后 59% 不回
     场,围栏是回场路径;[23] 锁定目标件保护,空窗期无锁定帧不辖)。
     """
     vacancy = front_total + back_total - len(deployed_cids)
@@ -192,7 +195,7 @@ def select_deployments(
         is_tgt = bool(bonds & set(target_factions)) or cid in target_cores \
             or cid in fw_carry
         (tgt_idx if is_tgt else rest).append(i)
-    # r404-A1:tgt 初始序也按点火首键(围栏前的序影响 cap 竞争时
+    # tgt 初始序也按点火首键(围栏前的序影响 cap 竞争时
     # 谁先上;旧版纯 tier_completes)
     tgt_idx.sort(key=lambda i: (
         -ignition_gain(_bonds_of(bench[i]), deployed_fac),
@@ -218,7 +221,7 @@ def select_deployments(
         # 厉害」(P3:e0→e1 +1.4 金/轮);tgt 空集时不存在挤占目标件
         # 位置的问题(tgt 非空时围栏照旧——降级件不挤目标件)。
         _bond_paired = f is not None and pair_counts.get(f, 0) >= 2
-        # W155/ADR-0360 件4:锁定帧体系键(常为流派键——燃血/欢愉等,
+        # ADR-0360 件4:锁定帧体系键(常为流派键——燃血/欢愉等,
         # 而围栏基准键=主阵营)按**全羁绊**匹配放行;未传锁定帧时
         # `not (... & 空)` 恒 True,围栏行为与旧版逐位一致
         if f is not None and f not in DEPLOY_FENCE \
@@ -237,15 +240,15 @@ def select_deployments(
     board_empty = len(deployed_cids) == 0
     if board_empty and not tgt_idx and not rest and held:
         rest.append(held.pop(0))   # 板空保底:上 1 个
-    # r404-A1:点火增量首键——「恰好让某体系凑满 tier 的那张」
-    # 排最前(冗余件/无关件让位)。r251 引擎身份键降为次键
+    # 点火增量首键——「恰好让某体系凑满 tier 的那张」
+    # 排最前(冗余件/无关件让位)。引擎身份键降为次键
     # (探针实证:vacancy=1 时冗余第4仙舟曾挤掉点火列车2)。
     _ENGINE = {'仙舟', '列车同行', '持续伤害'}
     rest.sort(key=lambda i: (
         -ignition_gain(_bonds_of(bench[i]), deployed_fac),
         0 if (bench_fac.get(i) in _ENGINE or
               _bonds_of(bench[i]) & _ENGINE) else 1))
-    # r404-A1:桶序修正——tgt 全体压 rest 的旧序会让「冗余 tgt 件」
+    # 桶序修正——tgt 全体压 rest 的旧序会让「冗余 tgt 件」
     # 挤掉「点火 rest 件」(探针④:第4仙舟压点火三月七)。点火增量
     # >0 的 rest 件先于 ignition=0 的 tgt 件上场(点火=四体系成型
     # 的关键跳变,语义高于 target 身份;tgt 内部序已按点火排)。
@@ -257,7 +260,7 @@ def select_deployments(
     # session.target_comp 注入)提到最前,「同 cap 内先核心后填充」
     # ([21] 变阵窗口语义:锁定线核心在窗口优先上板;对照 [20]:过渡配方
     # 照常占位,但核心不因 cap 竞争被填充件挤掉;不扩 cap)。
-    # 非锁定局 target_cores 空 → 本桶恒空,序不变;r404-A1「点火 >
+    # 非锁定局 target_cores 空 → 本桶恒空,序不变;「点火 >
     # 冗余 target」语义保留(core_tgt 之外的 tgt 仍在 ignite_rest 之后)。
     _core_set = set(target_cores)
     core_tgt = [i for i in tgt_idx
@@ -265,15 +268,15 @@ def select_deployments(
     other_tgt = [i for i in tgt_idx if i not in core_tgt]
     order = core_tgt + ignite_rest + other_tgt + plain_rest
     # cap 截断(动态停语义:超 cap 的留 bench)
-    # r404-A2:同名去重(5.1.7 不变量:同角色在场只 1)扩到
+    # 同名去重(5.1.7 不变量:同角色在场只 1)扩到
     # **本轮已上名单**——旧版只查传入 deployed_cids(实机=开局
     # 一次读取/sim=恒空集),本轮内第二张同名(cid 不在 deployed_
     # cids)照样上——60 局实证 40 局「重复件占位」的直接机制
     # (爻光×3 同场=第2张起对体系零增益白占 cap)。3合1 素材
-    # 留 bench(r383b 囤件语义不受影响:囤的是 bench 不是上场)。
+    # 留 bench(囤件语义不受影响:囤的是 bench 不是上场)。
     up: list[int] = []
     _up_names: set[str] = set()
-    # r288 配方底线门(ADR-0261 裁决选项3,与 deploy_bench op 同语义):
+    # 配方底线门(ADR-0261 裁决选项3,与 deploy_bench op 同语义):
     # 列车≥2 且仙舟<3 → 列车件让位留 bench(仙舟基础线优先,防列车
     # 第 3 人挤占配方深度;局23/24 实锤的既定配方纪律)。op 侧在 drag
     # 循环内逐件动态仲裁(每次成功上场同步阵营档);此处用 running
@@ -283,7 +286,7 @@ def select_deployments(
     # op 的 _bench_fac 同源。
     # 修订3(单一源):门的 2/3 档数值**从 TRANSITION_TRAITS 派生**
     # (列车2/仙舟3 = 过渡体系 tier,同一批数字)——不造第三处硬编码;
-    # op 侧 r288 的历史硬编码点已同步改为本派生引用。
+    # op 侧的历史硬编码点已同步改为本派生引用。
     _tier_of = dict(TRANSITION_TRAITS)
     _train_cap = _tier_of.get('列车同行', 2)
     _xz_base = _tier_of.get('仙舟', 3)
@@ -299,7 +302,7 @@ def select_deployments(
         if bench_fac.get(i) == '列车同行' \
                 and _fac_run.get('列车同行', 0) >= _train_cap \
                 and _fac_run.get('仙舟', 0) < _xz_base:
-            held.append(i)   # r288:列车件让位(仙舟基础线优先)
+            held.append(i)   # 配方底线门:列车件让位(仙舟基础线优先)
             continue
         up.append(i)
         if cid:

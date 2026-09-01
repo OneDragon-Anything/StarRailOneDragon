@@ -466,7 +466,7 @@ class PartnerPick:
     reason: str = ""
 
 
-# ===== 银狼策划事件(decide_planner;r104 用户定调「接入策略模块,由策略模块定」;
+# ===== 银狼策划事件(decide_planner;用户定调「接入策略模块,由策略模块定」;
 #      机制见 docs/game/gameplay/currency_war.md 银狼策划事件节)=====
 
 @dataclass

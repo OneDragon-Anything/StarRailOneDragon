@@ -1,9 +1,9 @@
-"""货币战争 过渡配方/引擎阵营 常量单一源(r271 统一)。
+"""货币战争 过渡配方/引擎阵营 常量单一源。
 
 两份子代理审查(2026-08-23)共同点名的头号双源:
 - 配方四阵营(仙舟/持续伤害/列车同行/护盾)在旧 line_strategy
-  (ADR-0336 已删)是函数局部 set(r268 刷门/r263b 判据 ×3 处),
-  deploy_bench 是模块 frozenset(r263b 纪律);配方基础档一边
+  (ADR-0336 已删)是函数局部 set(刷门/判据 ×3 处),
+  deploy_bench 是模块 frozenset(纪律同源);配方基础档一边
   具名(_RECIPE_BASE=5)一边字面;
 - 引擎三阵营(_ENGINE_FACTIONS)手抄两份且可从 BRIDGE_POOL 派生。
 
@@ -17,6 +17,9 @@ from sr_od.application.currency_war.kernel.cw_bridge_pool import (
     BRIDGE_POOL,
 )
 
+# ⚠️ 以下配方常量已迁移(处死计划):权威副本 = knowledge/cw_line_facts
+# (RECIPE_FACTIONS/RECIPE_BASE/recipe_tier);本副本仅为 sim/旧判据未迁消费点
+# 保留,随处死计划收尾 随文件删除;勿新增消费。
 # 过渡配方阵营(基础 3仙舟+2DOT + 渐进 列车/护盾;攻略[20])
 RECIPE_FACTIONS: frozenset[str] = frozenset(
     {'仙舟', '持续伤害', '列车同行', '护盾'})
@@ -27,6 +30,8 @@ ENGINE_FACTIONS: frozenset[str] = frozenset(
     bond for combo in BRIDGE_POOL for bond in combo.engine_bonds)
 
 
+# ⚠️ 已迁移(处死计划):权威副本 = knowledge/cw_line_facts.recipe_tier;
+# 本副本仅为 sim/旧判据未迁消费点保留,随处死计划收尾 随文件删除;勿新增消费。
 def recipe_tier(board: dict[str, int]) -> int:
     """板面的配方档数(board 里 ∈ RECIPE_FACTIONS 的档位和)。"""
     return sum(v for k, v in board.items() if k in RECIPE_FACTIONS)
@@ -93,7 +98,7 @@ def recipe_char_names() -> frozenset[str]:
 
 
 def recipe_kinds_1cost() -> int:
-    """1 费配方件的种类数(找件刷概率用;r269b 第三处手搓的收口)。"""
+    """1 费配方件的种类数(找件刷概率用;三处手搓的收口)。"""
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     return sum(1 for n, ch in CHARACTERS.items()
                if ch.cost == 1 and (ch.factions or [''])[0]
@@ -101,7 +106,7 @@ def recipe_kinds_1cost() -> int:
 
 
 def classify_buy(card, state) -> str:
-    """买牌**身份**分类单一源(① 账本 reason 与 r368 冷启动门共用)。
+    """买牌**身份**分类单一源(① 账本 reason 与冷启动门共用)。
 
     判卡身份(与购买路径无关;路径语义由各创建点记 BuyCard.reason
     ——line/board_focus/emergency/swap/plan 是**通道**,身份是
@@ -142,7 +147,7 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
     路由(旧 v1 线库 core_cards 随 ADR-0336 删除——decision_v2 的
     target 是 COMP_LIBRARY v2 套名,不消费线库):
     - 桥 id(先查 P1 池,再 P2 池)→ fixed+core 在场数;
-    - 空 target → _CORE_TRIO(旧缺省口径,兼容 r358 语义);
+    - 空 target → _CORE_TRIO(旧缺省口径,兼容语义);
     - 查不到桥的 target(理论态/COMP 名)→ 同退三人组。
 
     消费方:sim 账本 core_count、Δ池扩核心键先验(按线分桶)。
@@ -166,13 +171,13 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
     return core_trio_count(board_names)
 
 
-# ===== r356(策略架构反思 B):P1 阶段目标形态检查点 =====
+# ===== P1 阶段目标形态检查点(策略架构反思 B)=====
 # 局38-44 七败的结构性判读:决策系统对「成型进度」无感知、对
 # 「成型 deadline」无响应——各局在不同 seed 下投影出不同表层
 # 卡点(七局七根因=发散信号)。本表 = 缺失的控制变量。
 # 口径:V4.0 过渡框架(transitions.md §1)+ 用户节奏(user_playstyle
 # [2][12][13]):r3 桥雏形 / r6 配方 5 档 / r8 成型锁方向。
-# ⚠️ r358(用户点题「不只是看羁绊,要看羁绊里的角色」):
+# ⚠️ 用户点题「不只是看羁绊,要看羁绊里的角色」):
 # combo_methodology 终版模型——「仙舟3」没有核心三人组是空壳
 # 档位:核心池 = 饮月(输出/双阵营枢纽/装备优先)+藿藿(仙舟∩
 # 治疗唯一)+爻光(叠段发动机),功能链各占一环不可拆;DOT2
@@ -185,23 +190,25 @@ _P1_FORMATION_TARGETS: dict[str, int] = {
 #: 各 deadline 的轮界(含);r9=boss 决战窗不适用检查点
 _P1_FORMATION_ROUND_EDGES: tuple[int, int, int] = (3, 6, 8)
 
-#: r358:核心三人组(combo_methodology 终版:功能链不可拆;
+#: 核心三人组(combo_methodology 终版:功能链不可拆;
 # 数据单一源 = 桥池 xianzhou_dot 的 fixed+core 交集)
+# ⚠️ 已迁移(处死计划):权威副本 = knowledge/cw_line_facts._CORE_TRIO;
+# 本副本仅为 sim/旧判据未迁消费点保留,随处死计划收尾 随文件删除;勿新增消费。
 _CORE_TRIO: frozenset[str] = frozenset({'爻光', '藿藿', '丹恒·饮月'})
-#: r358:核心池三人组的达标数(到齐=3)
+#: 核心池三人组的达标数(到齐=3)
 _CORE_TRIO_TARGET: int = 3
-#: r363b(review A-5):折扣豁免阈值——核心 ≥2(功能链双枢)即视
+#: 折扣豁免阈值——核心 ≥2(功能链双枢)即视
 #: 档位足额;<2 = 空壳档位打折 -2。与 _CORE_TRIO_TARGET(3=到齐)
 #: 语义不同:折扣判「够不够拆」,target 判「到齐没」。
 _CORE_DISCOUNT_MIN: int = 2
 
 
 def core_trio_count(board_names: set[str] | frozenset[str]) -> int:
-    """r358:核心三人组在场数(board 名单 ∩ 核心池)。
+    """核心三人组在场数(board 名单 ∩ 核心池)。
 
     board_names:在场角色名集合(消费方从 state.deployed/bench
     提取 char_id)。「在场」口径 = deployed(上阵)——核心在
-    bench 不贡献档位(deploy 围栏已放行,r357)。
+    bench 不贡献档位(deploy 围栏已放行)。
     """
     return sum(1 for n in _CORE_TRIO if n in board_names)
 
@@ -210,13 +217,13 @@ def p1_formation_target(round_num: int,
                         board: dict[str, int],
                         board_names: set[str] | frozenset[str] | None = None,
                         ) -> tuple[str, int, int]:
-    """P1 成型进度检查(r356/r358)→ (阶段键, 目标值, 当前值)。
+    """P1 成型进度检查 → (阶段键, 目标值, 当前值)。
 
     ⚠ board_names=None/空集 = tracked 身份 miss(review A 守卫):
     无法判核心在场 → **不折扣**(按纯档位算)——空集打折会把
-    SIFT 全 miss 的局恒判「未成型」(r361b 前的陷阱)。
+    SIFT 全 miss 的局恒判「未成型」(修复前陷阱)。
 
-    阶段判据(V4.0 过渡节奏 + r358 核心角色维):
+    阶段判据(V4.0 过渡节奏 + 核心角色维):
     - r≤3(bridge2):桥雏形 = 板面引擎阵营中 ≥2 档的阵营数 ≥2;
     - r≤6(recipe5):核心三人组在场 ≥2 时档位足额,否则 -2 折扣
       (空壳档位不算数;cur = max(0, recipe_tier - 2));
@@ -227,14 +234,14 @@ def p1_formation_target(round_num: int,
         cur = sum(1 for f, c in board.items()
                   if c >= 2 and f in ENGINE_FACTIONS)
         return 'bridge2', _P1_FORMATION_TARGETS['bridge2'], cur
-    # r361b(review A 守卫):board_names 空集 = tracked 身份全 miss
+    # tracked 身份守卫:board_names 空集 = tracked 身份全 miss
     # → 不折扣(判不了核心在场 ≠ 核心不在场;恒打折会让 SIFT
     # 故障期永走围栏)。None = 老调用兼容(不判核心,足额)。
     core_n = (_CORE_TRIO_TARGET if not board_names
               else core_trio_count(board_names))
     if round_num <= _P1_FORMATION_ROUND_EDGES[1]:
         base = recipe_tier(board)
-        # r358:核心 <_CORE_DISCOUNT_MIN 时档位打折(空壳档位)
+        # 核心 <_CORE_DISCOUNT_MIN 时档位打折(空壳档位)
         cur = base if core_n >= _CORE_DISCOUNT_MIN else max(0, base - 2)
         return 'recipe5', _P1_FORMATION_TARGETS['recipe5'], cur
     if round_num <= _P1_FORMATION_ROUND_EDGES[2]:

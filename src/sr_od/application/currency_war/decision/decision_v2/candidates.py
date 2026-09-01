@@ -252,7 +252,7 @@ def _engine_seed_affinity(card: ShopCard, state: GameState,
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     ch = CHARACTERS.get(card.name)
     if ch is None:
-        return True   # 未识别卡不辖(engine_seed_wants 已挡注册表外)
+        return False  # 未识别卡不辖(engine_seed_wants 已挡注册表外)
     bonds = (set(ch.factions or ()) | set(ch.flows or ())) & set(tiers)
     if not bonds:
         return True   # 非三羁绊体系件(engine_seed 不辖)

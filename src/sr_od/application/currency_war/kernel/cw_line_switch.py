@@ -1,6 +1,6 @@
 """换线判据:E_rounds 比较 + θ 滞回 + D_min 驻留(DESIGN §③)。
 
-设计=唯一规格:`.debug/temp/currency_war/w328_unformed_posture/DESIGN.md` §③。
+设计=唯一规格:无定型姿态设计件 §③。
 核心公式(候选线 c,候选集=过渡引擎池方向):
 
     distance(c) = need(c) − held(c) − shelf(c)   # 需求张数 − 持有 − 货架可见可买
@@ -204,7 +204,7 @@ def _remaining_nodes(session: StrategySession,
                      state: GameState) -> list[str]:
     """本位面从当前轮起到位面末的节点型序列(C4 投影输入)。
 
-    真值源=``session.plane_node_table``(r306 开局帧实读,每备战帧实时
+    真值源=``session.plane_node_table``(开局帧实读,每备战帧实时
     重写为权威;位面锚=``plane_node_table_plane``,ADR-0368);表缺/
     位面锚不符 → 回退 economy §10.2 位面模板(P2,见
     _P2_NODE_TEMPLATE 注释)。"""
@@ -222,7 +222,7 @@ def rounds_alive(state: GameState,
                  session: StrategySession,
                  registry: DecisionV2Registry | None = None) -> int:
     """存活轮数:剩余节点序列逐节点投影(设计=
-    `.debug/temp/currency_war/w373_c3c4_redesign/REDESIGN.md` §3.2;
+    C3/C4 重设计件 §3.2;
     旧 ceil(hp/等权均值) 除数口径已废除——两个期望时钟必须同一把尺,
     本函数与 E_rounds 同按日历轮计量)。
 
@@ -232,7 +232,7 @@ def rounds_alive(state: GameState,
     (ra 先 +1 再判死)。hp≤0 → 0。复杂度 O(剩余节点 ≤9)×O(1) 查表。
     """
     reg = registry or DEFAULT_REGISTRY
-    if state.hp is None or state.hp <= 0:   # None=无真值 → 0 期望轮(fail-closed,W823 None 化)
+    if state.hp is None or state.hp <= 0:   # None=无真值 → 0 期望轮(fail-closed)
         return 0
     # 两态口径(M1b,开关=registry.rounds_two_state_enabled,默认关=
     # 零漂移锚):loss=(1−p_win)·条件败面档;开关关或 rung 缺档按
@@ -241,7 +241,7 @@ def rounds_alive(state: GameState,
     # p2_cond_loss_table,与两态胜率映射(cw_plane_table.p_win_p2)/阈值层同一 registry 标定源,口径
     # 定稿见 ADR-0440;无条件期望表 p2_node_loss_table 是另一 estimand,
     # 消费面=阈值层 _loss_dist)。rung 取样坐标=cw_battle_calib._settle_rung
-    #(与 p_win 表的 W346 Δ池采样键同源,ADR-0279 单一源;deployed
+    #(与 p_win 表的 Δ池采样键同源,ADR-0279 单一源;deployed
     # 全集+星徽,0-2 钳制)——不用 scoring._engines_formed(混合域
     # 加权含 bench 折减项,坐标错位=p_win 偏乐观=门偏松,见
     # registry.p_win_p2_by_rung 注释)。板面过换线延续(引擎四体系
@@ -271,7 +271,7 @@ def gate_need(state: GameState, session: StrategySession,
     """门阈值 need = e_alt×(1+δ) + 兑现余量(+boss CI 半宽,投影路径
     含 boss 节点时)。survival_gate 与反事实判定位(gate_counterfactual)
     的单一公式源——拆出防「门判定式与反事实记账式」双写漂移
-    (W665 DESIGN v2 §2.1/R3:两处必须同一把尺,检查器禁第三处复算)。"""
+    (开臂检查器设计 v2 §2.1/R3:两处必须同一把尺,检查器禁第三处复算)。"""
     reg = registry or DEFAULT_REGISTRY
     need = e_alt * (1.0 + reg.line_switch_debias_delta) \
         + reg.line_switch_survival_margin
@@ -286,17 +286,17 @@ def gate_counterfactual(state: GameState, session: StrategySession,
                         registry: DecisionV2Registry | None = None
                         ) -> bool:
     """反事实判定位 P(f) = [rounds_alive(state) < gate_need(state, e_alt)]
-    (W665 DESIGN v2 R3:开臂机制判「反事实拦截精度」的记账真值源)。
+    (开臂检查器设计 v2 R3:开臂机制判「反事实拦截精度」的记账真值源)。
 
     - off 臂(门关):对每次换线事件由 cw_intention._switch_gate_open
       计算并写 session 决策位落账本行;
     - on 臂(门开):**禁再调本函数**——该位即门判定本身
       (_switch_gate_open 直接取 survival_gate 结果,不重复算,守
-      W659 攻击 6「检查器/记账双源失明」独立性纪律);
+      对抗审查「检查器/记账双源失明」独立性纪律);
     - 消费面 = A/B 批器读账本行算拦截精度,**检查器禁复算本式**
       (cw_sim_checks 只做位一致性核验)。
 
-    规格缺口标注(W683 攻击 3 核实 off 臂可执行,三处定义当前按合理
+    规格缺口标注(对抗审查核实 off 臂可执行,三处定义当前按合理
     选择落码、待 v3 确认):
     - 判定时点 = 换线事件帧的当帧评估(_switch_gate_open 评估点,每个
       换线辖域帧各记一位,账本行取本轮最后一次评估);
@@ -311,7 +311,7 @@ def gate_counterfactual(state: GameState, session: StrategySession,
     if not math.isfinite(e_alt):
         # E=inf = 新线永不完成,门不等式右端 inf,R≥inf 恒假 → 拦是判据
         # 式的直接读出(v3 R-E:拦截归属唯一化到本门;旧「上游已拦」
-        # 声明经 W683 核实为假——v2 通道不调 should_switch_e)
+        # 该声明经对抗审查核实为假——v2 通道不调 should_switch_e)
         return True
     return rounds_alive(state, session, reg) \
         < gate_need(state, session, e_alt, reg)
@@ -323,7 +323,7 @@ def survival_gate(state: GameState, session: StrategySession,
                   ) -> tuple[bool, str]:
     """换线存活轮数门(第三道门;registry.line_switch_survival_gate_enabled)。
 
-    判据(REDESIGN §3.4;W665 DESIGN v2 §2.2 定性=方向性启发+fail-safe
+    判据(重设计件 §3.4;开臂检查器设计 v2 §2.2 定性=方向性启发+fail-safe
     偏紧,非 EV 必要性证明):rounds_alive(剩余节点逐节点投影) ≥
     gate_need(E_rounds(新线))——投影后两边同为日历轮;δ 承载 p̄ 乐观
     先修偏,margin 承载兑现余量与投影近似残差,boss CI 半宽承载借档
@@ -335,7 +335,7 @@ def survival_gate(state: GameState, session: StrategySession,
     辖域 plane==2(v3 R-G 收窄:损血表为 P2 标定,P1 不适用;P3 帧消费
     P2 表 → R 高估门偏松 FM-12,P3 扩辖待 p3_cond_loss_table 标定);
     开关关/辖域外 → 放行(零漂移)。e_alt=inf(v3 R-E 勘误,原「上游
-    should_switch_e 已拦」声明经 W683 核实为假——v2 通道不调该函数):
+    should_switch_e 已拦」声明经对抗审查核实为假——v2 通道不调该函数):
     新线永不完成,门不等式右端 inf → **拦**('alt_inf'),拦截归属
     唯一化到本门,p̄=0 线由信号胜出不再落锁。
     """

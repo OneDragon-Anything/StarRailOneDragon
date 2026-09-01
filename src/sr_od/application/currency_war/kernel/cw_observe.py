@@ -1,6 +1,6 @@
 """货币战争 可观测框架(统一日志 + 截图,CW 各模块共用)。
 
-全局 logger(``log_utils.log``)+ shot_dir(``.debug/temp/currency_war/shots/``),CW 任何模块
+全局 logger(``log_utils.log``)+ shot_dir(运行时截图目录),CW 任何模块
 (纯函数 / op / recognizer)直接调 ``cw_log`` / ``cw_shot`` 记观测,**不需透传 logger/shot_dir 参数**
 (避免每加一个监测点都改签名链 read_equipped_below ← read_row_equipped ← recognizer)。
 
@@ -60,7 +60,7 @@ def cw_log(
 def cw_shot(image: MatLike, name: str) -> str:
     """存截图(crop / 整图,RGB)到 ``shots/<name>.png``,返截图名(供 ``cw_log shot=``)。
 
-    同名覆盖(最新);路径 ``.debug/temp/currency_war/shots/<name>.png``。
+    同名覆盖(最新);路径为运行时截图目录下 ``<name>.png``。
     """
     _SHOT_DIR.mkdir(parents=True, exist_ok=True)
     cv2_utils.save_image(image, str(_SHOT_DIR / f'{name}.png'))
@@ -154,7 +154,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                'field': field, 'old': old, 'new': new, 'verdict': verdict, **ctx}
         if _OBS_PHASE:
             rec['obs_phase'] = _OBS_PHASE   # ADR-0462 噪声判定位:冲突行按阶段分类
-        # W603:补 run_id 归属键(唯一汇点内部自取,调用方零改动;历史行无此键,
+        # 补 run_id 归属键(唯一汇点内部自取,调用方零改动;历史行无此键,
         # 读取端按「有键才过滤」容忍)。空串=局外冲突(进程首局前),不写假键。
         # 分包期 4:run_id 读取经 kernel/cw_telemetry_exit 钩子位(零直依 telemetry)。
         _rid = cw_telemetry_exit.current_run_id()
@@ -167,7 +167,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
             f.write(_json.dumps(rec, ensure_ascii=False) + '\n')
         cw_log('obs', 'conflict', field, attn=True, old=old, new=new,
                verdict=verdict, shot=shot)
-        # gold_delta 分级消费(W489 审计建议,用户裁决落地):|gap|>10 升级为
+        # gold_delta 分级消费(审计建议,用户裁决落地):|gap|>10 升级为
         # warning 告警行(检索锚 ``[cw!][alarm][gold_delta]``,哨兵/监控 grep 本行
         # 即接;≤10 维持留证)。账面期望 vs 实读的大额错位意味着金模型已系统性
         # 漂移,等局后统计才发现会喂错整局的息线/花金判断。
@@ -189,7 +189,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         pass
 
 
-# ===== W515 分级安灯 L0 自动停线·游戏侧执行器 =====
+# ===== 分级安灯 L0 自动停线·游戏侧执行器 =====
 # 判定与闩锁在 cw_telemetry(纯逻辑,不碰游戏);三要素的「截图 + flag +
 # stop_running」需要 ctx/controller,归本模块(可观测框架,exec 失败安灯
 # 先例 = prep_director._exec_fail_hook_check 同款顺序)。

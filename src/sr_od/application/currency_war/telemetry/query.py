@@ -314,7 +314,12 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         # 伪影);0 帧省略,统计口径见 _release_frame_counts
         _rln = _rel.get(k) or 0
         rl_s = f" rl={_rln}" if _rln else ""
-        lines.append(f"  p{k[0]}r{k[1]}{nt_s} hp={_hp_show} g={d.get('gold')} lv={st.get('level')}"
+        # level 保真位显影(对齐 hp 可信位 `?` 惯例):level_readable=False =
+        # 纯 _expected_level 启发式兜底帧(OCR 与 XP 双失读),非真读;旧档案
+        # 无该键(None)不加缀 = 按现有判读处理。
+        _lv_show = f"{st.get('level')}?" if d.get("level_readable") is False \
+            else f"{st.get('level')}"
+        lines.append(f"  p{k[0]}r{k[1]}{nt_s} hp={_hp_show} g={d.get('gold')} lv={_lv_show}"
                       f"{xp_s} {act_s:<10} | {board}{pos_s}{v2_s}{ist_s}{ph_s}{dpp_s}{rl_s}")
     return lines
 
@@ -335,9 +340,11 @@ def query_supply(replay_dir: Path, run_id: str) -> list[str]:
         if run_id and o.get("run_id") != run_id:
             continue
         _out_by_k[(o.get("plane"), o.get("round_num"))] = o
-    # 配方框架(cw_transition;import 失败退空 = 全牌不标)
+    # 配方框架(knowledge/cw_line_facts;import 失败退空 = 全牌不标)
     try:
-        from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
+        from sr_od.application.currency_war.knowledge.cw_line_facts import (
+            TRANSITION_PACK,
+        )
         recipe_names = set(TRANSITION_PACK.keys())
     except Exception:   # noqa: BLE001
         recipe_names = set()
@@ -500,9 +507,12 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
     「金花不出去」异常的量化端:滞留轮(金≥20 且花=0)标 ⚠。
     升级花费逐轮读 decisions.state.level_up_cost(cw_observation.
     read_level_up_cost 的 OCR 真值);该轮未读到(None,旧数据或缺省)
-    时按 XP_CLICK_COST_FALLBACK 兜底常量计入并在 `lv=` 后标 `?`
+    时按 XP_CLICK_COST_FALLBACK 兜底常量计入并在 `luc=` 后标 `?`
     (成本项可能有偏,判读可辨)。升级成本与 gold 并列显示——
     「这轮升得起吗」直接对照,不再需要另开窗口查 decisions.state。
+    列名 `luc=`(level-up cost):曾作 `lv=`——与 rounds 视图
+    `lv=等级` 同名不同义,是「复盘把升级花费恒 4 的兜底显示误读成
+    等级恒 4」的视图侧根因候选之一,改名根治歧义。
     卖回格(迁移审计 w323(git 历史),遥测审计 G2):优先聚合 exogenous kind='sell_income'
     行的实收 gold_delta(shop.py 执行点落盘);该轮有行但 delta=None
     (OCR miss)计 0 并标 `?`;无行(旧数据/sim 局)回退 decisions
@@ -553,7 +563,7 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
         sell_s = (f' 卖+{sell_in}' + ('?' if unknown else '')) \
             if (sell_in or unknown) else ''
         lines.append(
-            f"  p{k[0]}r{k[1]} g={g} lv={luc_s}"
+            f"  p{k[0]}r{k[1]} g={g} luc={luc_s}"
             f" 花={spend}{sell_s} 收={'-' if income is None else income}{flag}")
         prev_gold = g
     return lines

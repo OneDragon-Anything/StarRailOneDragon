@@ -1,6 +1,6 @@
-"""货币战争 阵容演进引擎(契约包 C3,步 4 第一批;2026-08-25 W33)。
+"""货币战争 阵容演进引擎(契约包 C3,步 4 第一批)。
 
-**单一源**:`.debug/temp/currency_war/cw_dev/deep_read/转型讨论.md`(演进法则:
+**单一源**:「转型讨论」深度研读纪要(演进法则:
 替换三条件/统一入口四步/两步解耦/空位规则/中断恢复)+ `strategy_v4.md` 点6/点11。
 本模块是「任何时刻、任何档位规模的阵容替换通用法则」的决策侧实现——
 过渡 1 档换终局 2 档、插件档换副羁绊档、插件换单卡,全部同构走同一入口。
@@ -11,10 +11,10 @@
 CompTransaction,决策在执行前一次敲定)→ ``fill_gap_after``(④-2 数人口缺口,
 按空位规则填位:插件优先/替班核心例外/真核心 bench 等档)。
 
-执行载体 = W26 动作集 v2(``CompTransaction``/``FillSpec``,cw_state 单一源);
+执行载体 = ADR-0319 动作集 v2(``CompTransaction``/``FillSpec``,cw_state 单一源);
 本模块**不**自己迁移状态,全部经 ``cw_state.simulate`` 对拍验证。
 
-W32 依赖(cw_system_cards,C2):**已交付,直连消费**——体系卡注册表
+ADR-0318 依赖(cw_system_cards,C2):**已交付,直连消费**——体系卡注册表
 ``SYSTEM_CARDS``/件数 ``card_pieces``/引擎完备 ``card_engine_complete``;
 卡的判据阵营→目标档映射本模块自持(``_CARD_FACTION_TIER``,tier 阈值派生
 自 FACTIONS 注册表单一源)。
@@ -56,7 +56,7 @@ from sr_od.application.currency_war.kernel.cw_system_cards import (
     card_pieces,
 )
 
-# 体系卡 →(判据阵营, 目标档);W47 统一化:card→faction 映射改从
+# 体系卡 →(判据阵营, 目标档);ADR-0320 统一化:card→faction 映射改从
 # ``SystemCard.judge_factions`` 字段派生(第三处重复消除;原先本表/
 # cw_system_cards._card_factions/card_active 三处各写一遍),tier 阈值
 # 仍派生自 FACTIONS 注册表(单一源,版本更新自动传导;希儿系双分支取
@@ -117,12 +117,12 @@ class EvolutionState:
     last_deployed: list[str] = field(default_factory=list)
     last_retained: list[str] = field(default_factory=list)
     last_reason: str = ''
-    # W155/ADR-0360 件2(提案去重退避):被拒事务的提案签名 → (plane,
+    # ADR-0360 件2(提案去重退避):被拒事务的提案签名 → (plane,
     # round) 拒绝时点;``_backoff_active`` 消费(同 plane 且 2 轮内不
-    # 重提同签名提案——W143 rejected 死循环 34 局:同因(duplicate_
-    # on_board)重提零清障,s26 连续三轮原样重提)。
+    # 重提同签名提案——迁移期 sim 实证:rejected 死循环 34 局,同因(duplicate_
+    # on_board)重提零清障,迁移期 sim 实证:连续三轮原样重提)。
     reject_backoff: dict[tuple, tuple[int, int]] = field(default_factory=dict)
-    # W202/ADR-0382 保护集分级的缺口持续追踪:缺口体系键 →
+    # ADR-0382 保护集分级的缺口持续追踪:缺口体系键 →
     # (plane, first_round, last_round)。同 plane 连续轮(间隔 ≤1)累
     # last;断档/换位面重置——``_engine_completion_tx`` 写,
     # ``_GRADE_PERSIST_ROUNDS`` 门消费(构造期记忆,非遥测)。
@@ -130,7 +130,7 @@ class EvolutionState:
         default_factory=dict)
 
 
-# W155/ADR-0360 件2:退避窗(轮;拒绝后 2 轮内同签名提案不重提)
+# ADR-0360 件2:退避窗(轮;拒绝后 2 轮内同签名提案不重提)
 _REJECT_BACKOFF_ROUNDS: int = 2
 
 
@@ -148,7 +148,7 @@ def _record_reject(memory: EvolutionState, opt: UpgradeOption,
 
 def _record_reject_sig(memory: EvolutionState | None, sig: tuple,
                        state: GameState) -> None:
-    """裸签名版退避登记(W174 补完事务用;清理策略同 _record_reject)。"""
+    """裸签名版退避登记(ADR-0371 补完事务用;清理策略同 _record_reject)。"""
     if memory is None:
         return
     memory.reject_backoff[sig] = (state.plane, state.round_num)
@@ -174,7 +174,7 @@ def _backoff_active(memory: EvolutionState | None, opt: UpgradeOption,
 
 def _backoff_sig_active(memory: EvolutionState | None, sig: tuple,
                         state: GameState) -> bool:
-    """裸签名版退避查询(W174 补完事务用;与 _backoff_active 同窗判据)。"""
+    """裸签名版退避查询(ADR-0371 补完事务用;与 _backoff_active 同窗判据)。"""
     if memory is None:
         return False
     entry = memory.reject_backoff.get(sig)
@@ -184,12 +184,12 @@ def _backoff_sig_active(memory: EvolutionState | None, sig: tuple,
         and state.round_num - entry[1] < _REJECT_BACKOFF_ROUNDS
 
 
-# ===== W174/ADR-0371:引擎补完守卫(own-gap 修法)=====
+# ===== ADR-0371:引擎补完守卫(own-gap 修法)=====
 
 #: 补完事务 reason 前缀(末窗冻结豁免判据;见 _engine_completion_tx)
 _COMPLETION_REASON: str = 'evolve:engine_complete'
 
-#: W202/ADR-0382 保护集分级的缺口持续门:同一缺口体系连续被选中
+#: ADR-0382 保护集分级的缺口持续门:同一缺口体系连续被选中
 #: ≥ 此轮数才允许降级换血。标定(n=300 同池重放,分级序不变):
 #: 门=2 → never2 10→5/mal 24→22 但 benign→mal=[65,119,172](3 局
 #: 坏翻转);门=3 → benign→mal=[119] 残留;**门=4 → 全硬门过**
@@ -233,7 +233,7 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
                            seele_scope: bool = True,
                            seele_core_in_hand: bool = False,
                            ) -> list[BenchChar]:
-    """W202/ADR-0382 保护集分级的降级 undeploy 候选(G0→G1 级内最弱序)。
+    """ADR-0382 保护集分级的降级 undeploy 候选(G0→G1 级内最弱序)。
 
     分级序(依据 [13] 过渡成型≈过 P1 / [23] 终局线由贯穿件锁定 /
     [31] top4 引擎恒方向件——成型引擎 > 锁定线核心 > 非引擎锁定线件,
@@ -246,7 +246,7 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
       已成型引擎,只是延缓该体系(≈「锁定线核心」级);
     - **G2 已成型引擎件**:任何情况下不可动(下了即拆引擎,违反
       ADR-0363/0371「补上不是拆」不变量);pair 成员/希儿系贡献件
-      (W192 核心条件辖)/未识别件同样恒不可动(原保护语义保留)。
+      (ADR-0375 核心条件辖)/未识别件同样恒不可动(原保护语义保留)。
     非引擎非锁定散件本就是常规候选(非保护),不入本表。
     """
     from sr_od.application.currency_war.kernel.cw_battle_calib import _board_factions_of
@@ -282,7 +282,7 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
         fs = _char_factions(d)
         if seele_scope and is_seele_system_member(d.char_id, fs) \
                 and (d.char_id == '希儿' or seele_core_in_hand):
-            continue   # 希儿系守卫辖域(W192)语义保留
+            continue   # 希儿系守卫辖域(ADR-0375)语义保留
         tt = fs & eng_bonds
         if tt:
             if tt & formed:
@@ -300,25 +300,25 @@ def _engine_completion_tx(state: GameState,
                           grade_down: bool = True,
                           deficit_memory: EvolutionState | None = None,
                           ) -> tuple[CompTransaction, str] | None:
-    """W174/ADR-0371 引擎补完事务构造(own-gap 修法主件;
-    W201/ADR-0381 修口径与去重、W202/ADR-0382 修保护集分级,
+    """ADR-0371 引擎补完事务构造(own-gap 修法主件;
+    ADR-0381 修口径与去重、ADR-0382 修保护集分级,
     见各行注)。
 
     触发:pair 体系 owned(bench∪deployed)≥ tier ∧ on-board
     (board_factions 口径)< tier——「拥有已够却从未同时上场」
-    (W173:8/11 never-2 局)。owned 口径(W201/ADR-0381,
+    (ADR-0371 判据 sim 实证:8/11 never-2 局)。owned 口径(ADR-0381,
     ``distinct_owned`` 注入):True=distinct 名单数——同名副本是
     3合1 升星素材非配方件([20] 配方=不同成员,板上同名唯一);
-    False=回 W174 后全羁绊逐件计数(副本凑数也计 owned)。
+    False=回 ADR-0371 后全羁绊逐件计数(副本凑数也计 owned)。
     动作:bench 该体系成员(同名已在场剔除/最高星优先,且
-    **列表内同名去重**——W201 修①,仅剔「已在场」会让 bench
+    **列表内同名去重**——ADR-0381 修①,仅剔「已在场」会让 bench
     两份同名副本同进 deploy 列表被 simulate 拒 duplicate_on_board,
     13/144/204 三局搁浅的实 bug)上场;room 不足 undeploy 最弱
     **非保护**件(保护集 = pair 成员 ∪ 引擎件 ∪ 锁定目标件 ∪
     种子窗,复用既有保护判据);bench 容量不足 sell 最弱非保护
     bench 件腾位;腾不出 → None(落回常规提案)。
-    **保护集分级**(W202/ADR-0382,``grade_down`` 注入):常规
-    undeploy 候选枯竭(全保护,W200 136 型构造闭死)且该缺口体系
+    **保护集分级**(ADR-0382,``grade_down`` 注入):常规
+    undeploy 候选枯竭(全保护,ADR-0382 记档 136 型构造闭死)且该缺口体系
     已连续被选 ≥ ``_GRADE_PERSIST_ROUNDS`` 轮(``deficit_memory``
     追踪)时,按分级序(非引擎锁定线件 G0 → 未成型引擎件 G1 →
     已成型引擎件 G2 恒不可动,``_graded_undeploy_cands``)允许降级
@@ -352,10 +352,10 @@ def _engine_completion_tx(state: GameState,
         return sys_key in _char_factions(bc)
 
     def _owned_cnt(sys_key: str) -> int:
-        # W201/ADR-0381 修②:默认 distinct 口径(同名副本是 3合1 升星
+        # ADR-0381 修②:默认 distinct 口径(同名副本是 3合1 升星
         # 素材非配方件,board 同名唯一 → 副本永远不可上,distinct 缺口
-        # 才是真实缺口;与 W173 判据口径 factions∪flows+distinct 对齐
-        # ——_char_factions 即 factions∪flows)。off=回 W174 全羁绊
+        # 才是真实缺口;与 ADR-0371 判据口径 factions∪flows+distinct 对齐
+        # ——_char_factions 即 factions∪flows)。off=回 ADR-0371 全羁绊
         # 逐件计数(副本凑数也计 owned,227/276 幻影缺口源)。
         if distinct_owned:
             return len({bc.char_id for bc in pool
@@ -381,7 +381,7 @@ def _engine_completion_tx(state: GameState,
         deficits, key=lambda t: (-t[0], list(tier_of).index(t[1])
                                  if t[1] in tier_of else 99))[0]
 
-    # W202/ADR-0382 缺口持续追踪(同体系同 plane 连续轮累 last,
+    # ADR-0382 缺口持续追踪(同体系同 plane 连续轮累 last,
     # 间隔 >1 断档重置——遭遇轮 tx 不被调用不破坏连续性判据的
     # 保守向):降级换血门 = 已持续 ≥ _GRADE_PERSIST_ROUNDS 轮。
     persist_ok = True
@@ -399,10 +399,10 @@ def _engine_completion_tx(state: GameState,
                           >= _GRADE_PERSIST_ROUNDS)
 
     # 上场候选:bench 的该体系成员(同名已在场剔除 = 3合1 素材不上,
-    # W65 语义;最高星优先),取缺口数。**列表内同名去重**(W201 修①,
+    # ADR-0323 语义;最高星优先),取缺口数。**列表内同名去重**(ADR-0381 修①,
     # 无 flag 实 bug 修复):同名只上一份(最高星),另一份留 bench
     # ——旧版只剔「已在场」,bench 两份同名副本同进列表 → simulate
-    # 拒 duplicate_on_board → 退避关窗(W200:13/144/204 三局搁浅)。
+    # 拒 duplicate_on_board → 退避关窗(迁移期 sim 实证:13/144/204 三局搁浅)。
     # 未识别件(char_id 空)不参与折叠(身份未知不敢合并)。
     _seen_ids: set[str] = set()
     _cands_sorted = sorted(
@@ -424,7 +424,7 @@ def _engine_completion_tx(state: GameState,
         return None   # 手握的全是同名副本(合成素材)→ 无可上,归常规通道
 
     # 保护集(undeploy/sell 不碰):pair 全体系成员 ∪ 锁定目标件/引擎件
-    # (W192/ADR-0375:含希儿系贡献件——seele_scope 注入,**核心条件辖**
+    # (ADR-0375:含希儿系贡献件——seele_scope 注入,**核心条件辖**
     # (希儿恒保护;放大器件仅当希儿在手),undeploy 不下希儿系引擎件,
     # 「净效果引擎数不减」的结构保证对四体系成立)
     _seele_core = any(bc.char_id == '希儿' for bc in pool)
@@ -452,7 +452,7 @@ def _engine_completion_tx(state: GameState,
         (d for d in iter_occupied_deployed(state.deployed)
          if d.char_id and not _is_protected(d, _protected_dep)),
         key=_weak_key)[:undeploy_n]
-    # W202/ADR-0382 保护集分级:常规候选枯竭(全保护,W200 136 型
+    # ADR-0382 保护集分级:常规候选枯竭(全保护,ADR-0382 记档 136 型
     # 构造闭死)且缺口已持续 ≥_GRADE_PERSIST_ROUNDS 轮 → 降级换血
     # (G0 非引擎锁定线件 → G1 未成型引擎件;G2 已成型引擎件/
     # pair 成员恒不可动)。off=回 ADR-0371/0381 后不硬拆语义。
@@ -522,9 +522,9 @@ def _completion_freeze_exempt(state: GameState, post,
 
 
 def _off_lock_opt(opt: UpgradeOption, session) -> bool:
-    """W155/ADR-0360 件1:该演进提案是否 off-lock(目标体系 ∉ 锁定体系集)。
+    """ADR-0360 件1:该演进提案是否 off-lock(目标体系 ∉ 锁定体系集)。
 
-    判据(W147 §4):锁定帧(``cw_intention.locked_faction_scope`` 非
+    判据(ADR-0360 定案归因):锁定帧(``cw_intention.locked_faction_scope`` 非
     None)下,提案目标 faction(Comp 来源连主档键一起查)与锁定体系集
     无交集 = off-lock——这类提案的 ``execute_replacement`` 会把锁定
     目标件划进 old_line 整档解除(216 轮次,仙舟3 占 138)。无锁定帧
@@ -551,21 +551,21 @@ def _locked_protected_names(old_line: list[BenchChar],
                             session, seele_scope: bool = True,
                             seele_core_in_hand: bool = False,
                             ) -> set[str]:
-    """W155/ADR-0360 件3:old_line 中的「保护件」名集(保留序种子同级)。
+    """ADR-0360 件3:old_line 中的「保护件」名集(保留序种子同级)。
 
     - 锁定目标件:锁定帧(``locked_buy_scope``)采购集内的件
-      (W147:保护的是锁定目标件,不是一切库存——[23] 终局线贯穿件
+      (ADR-0360 定案:保护的是锁定目标件,不是一切库存——[23] 终局线贯穿件
       锁定语义;weak/降格终局不辖);
     - 引擎件:全羁绊 ∩ 四体系三羁绊(TRANSITION_TRAITS;[31] top4
       恒为方向件,任何模式都保护——与 cw_deploy_logic 引擎判定同源);
-    - 希儿系贡献件(W192/ADR-0375 辖域补全,``seele_scope`` 注入,
+    - 希儿系贡献件(ADR-0375 辖域补全,``seele_scope`` 注入,
       **核心条件辖**——与 discipline.sole_engine_sell_blocked 同判据:
       无条件辖首版 n=300 回归 never2 9→11,回归局全程无希儿,
       transition_combos「没有希儿时量子/贝不能独立当过渡(28 帖全部
       含希儿)」):希儿本人恒保护(单卡依赖体系不可替核心,
       ``seele_scope`` 开即辖);放大器件仅当 ``seele_core_in_hand``
       (希儿在 bench∪deployed,调用方从 state 全池计算)时保护
-      ——W190 洞二形态(希儿系引擎已成型被补完 undeploy 拆)希儿
+      ——ADR-0375 记档的洞二形态(希儿系引擎已成型被补完 undeploy 拆)希儿
       恒在场,条件辖覆盖之。
     """
     out: set[str] = set()
@@ -596,17 +596,17 @@ def _locked_protected_names(old_line: list[BenchChar],
 
 
 def _identity_index(pool: list[BenchChar], target: BenchChar) -> int:
-    """按身份取索引(同名同星 dataclass 值相等会 index 错对象;W26 纪律)。"""
+    """按身份取索引(同名同星 dataclass 值相等会 index 错对象;ADR-0319 纪律)。"""
     return next(i for i, y in enumerate(pool) if y is target)
 
 
-# ===== W160/ADR-0363 件1:引擎下界守卫(观察 helper) =====
+# ===== ADR-0363 件1:引擎下界守卫(观察 helper) =====
 
 def _engine_systems_formed(board_factions: dict[str, int],
                            deployed_names: set[str]) -> set[str]:
     """已成型引擎体系键集(TRANSITION_TRAITS 三羁绊 + 希儿系哨兵键)。
 
-    与 ``cw_battle_calib._engines_count`` 同口径的**键级**版本(W158 度量的
+    与 ``cw_battle_calib._engines_count`` 同口径的**键级**版本(该度量的
     engines_count 即其计数)——守卫需要知道「拆的是哪个体系」,
     计数接口答不了,这里键级展开、计数口径仍单一源在 cw_sim
     (tier 阈值经 TRANSITION_TRAITS 同源派生)。
@@ -630,10 +630,10 @@ def _lost_engine_systems(state: GameState,
     """事务净效果会拆掉的引擎体系键集(守卫触发面)。
 
     仅当事务前引擎数 ≥2 且事务后投影 <2 时非空(engines<2 的局不辖
-    ——那是成型问题不是丢失问题;≥2→≥2 的良性换血同样不辖,W158 §4:
+    ——那是成型问题不是丢失问题;≥2→≥2 的良性换血同样不辖,ADR-0363 定案:
     围栏不能压死良性轮换)。post_deployed = 事务后仍在场的名单投影
     (留场件 + 新上场件)。board 口径 = ``cw_battle_calib._board_factions_of``
-    (生产 board 口径,flows 并计;与 W158 strict 度量同源)。
+    (生产 board 口径,flows 并计;与 strict 引擎度量同源,ADR-0363)。
     """
     from sr_od.application.currency_war.kernel.cw_battle_calib import (
     _board_factions_of,
@@ -727,7 +727,7 @@ def _core_names(opt: UpgradeOption) -> tuple[list[str], list[str]]:
 
 def _engine_complete_of(comp_name: str, source: str,
                         owned: set[str]) -> bool:
-    """引擎完备(空壳判定的对偶):卡=W32 ``card_engine_complete``;Comp=核心全到手。"""
+    """引擎完备(空壳判定的对偶):卡=ADR-0318 ``card_engine_complete``;Comp=核心全到手。"""
     if source == 'card':
         card = SYSTEM_CARDS.get(comp_name)
         return card_engine_complete(card, owned) if card is not None else False
@@ -779,7 +779,7 @@ def propose_upgrades(state: GameState, session=None) -> list[UpgradeOption]:
     - Comp(C4):每套主档各羁绊,在手人数 ≥2 且板面档 < 目标档 → 机会;
     - 当前板:板上已有羁绊在手人数 > 当前板档 → 升 1 档机会(加深)。
     session.target_comp(意向同向)作 tie-break 加权,非一票否决(C2 语义)。
-    线名来源收口(W956 DESIGN §2;W954 契约「执行侧只读意向层权威状态」):
+    线名来源收口(prereg/w956_death_allocator/DESIGN.md §2;prereg/w954_transform_impl 消费契约「执行侧只读意向层权威状态」):
     tie-break 读 ``cw_recipe.decision_target``(意向单一入口,双轨期返回
     配方伪 comp)——只换数据来源,加权语义不变。
     """
@@ -803,7 +803,7 @@ def propose_upgrades(state: GameState, session=None) -> list[UpgradeOption]:
         opts.append(UpgradeOption(kind, faction, target, score,
                                   core_in_hand, comp_name, source))
 
-    # 来源1:C2 体系卡(W32)
+    # 来源1:C2 体系卡(ADR-0318)
     for card in SYSTEM_CARDS.values():
         mapping = _CARD_FACTION_TIER.get(card.card_id)
         if mapping is None:
@@ -903,17 +903,17 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     1-2 轮(点6 谷底预案),bench 溢出才卖)。DOT 同体线自然退化为加深
     (旧档空 → undeploy/sell 空,纯 deploy)。
 
-    W88(ADR-0339 件3):保留优先级里**种子 2 轮窗件最优先**——旧档
+    ADR-0339 件3:保留优先级里**种子 2 轮窗件最优先**——旧档
     换血卖出窗口内 engine_seed 买入(买侧见即买 vs 换血卖侧互踩,seed16
     姬子·启行 r4 买 r5 换血卖);窗口内种子下场进 bench,溢出卖出改吃
     非种子件(窗口 ≤2 轮,延迟卖出有界)。
 
-    W160/ADR-0363 件1:``engine_guard`` True(默认,registry
+    ADR-0363 件1:``engine_guard`` True(默认,registry
     ``evolve_engine_guard_enabled`` 注入)时,事务净效果使过渡引擎数
     从 ≥2 跌破 2 → 被拆引擎体系的 deployed 贡献件获得新线同级留场
     资格(见下方守卫块)。
 
-    W197/ADR-0380 件②:``sell_floor`` True(默认,registry
+    ADR-0380 件②:``sell_floor`` True(默认,registry
     ``sell_floor_exec_guard_enabled`` 注入)时,溢出卖出对「TT 体系
     件在手≤tier」的件不再卖出而改留场(见下方守卫块)。
     """
@@ -938,10 +938,10 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
 
     bench_new = [bc for bc in state.bench
                  if bc is not None and _is_new_line(bc)]
-    # W65 修法1(ADR-0323):部署名单**按名去重**——同名多副本只取最高星一件
+    # 修法1(ADR-0323):部署名单**按名去重**——同名多副本只取最高星一件
     # 上场,其余副本留 bench 作 3合1 合成素材(合成进度,不卖;[22] 囤度内)。
     # 根因:2+ 张同名副本全量进 deploy 名单 → 终态 deployed 同名重复 →
-    # duplicate_on_board 整事务拒(cw_state 同名唯一性;W64 模式 B,seed 81
+    # duplicate_on_board 整事务拒(cw_state 同名唯一性;ADR-0323 记档:seed 81
     # 49 次可执行全拒、每轮刷屏;同 bug 非万敌专属——艾丝妲×2 同被拒)。
     # 去重键 = char_id;未识别(char_id 空)无法判同名,保留原样不折叠。
     _best_new: dict[str, BenchChar] = {}
@@ -960,19 +960,19 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     # 旧档:非新线成员整档解除
     old_line = [d for d in iter_occupied_deployed(state.deployed)
                if not _is_new_line(d)]
-    # W160/ADR-0363 件1:引擎下界守卫——事务净效果使过渡引擎数
+    # ADR-0363 件1:引擎下界守卫——事务净效果使过渡引擎数
     # (cw_battle_calib._engines_count 口径)从 ≥2 跌破 2 时,被拆引擎体系的
     # deployed 贡献件获得新线同级**留场资格**(不划 old_line 下场),
     # 换血可以,拆引擎不行。护的是在场引擎贡献([31] top4 是胜率
     # 保证),不是库存(库存保护=ADR-0360 件3 的保留序,两者互补);
-    # engines<2 局与 ≥2→≥2 的良性换血均不辖(W158 §4:围栏不压
+    # engines<2 局与 ≥2→≥2 的良性换血均不辖(ADR-0363 定案:围栏不压
     # 良性轮换)。留场件挤占 room → 新上场数收紧(bench_new 截断)。
     if engine_guard:
         # 投影用 provisional 截断(守卫改动 deployed_keep 前,按现留场数
         # 估上限内的新上场名单——未截断的 bench_new 会高估事务后引擎数,
-        # 漏掉真丢失)。同名去重先行(W165 巡检 #5):bench_new 与留场件
+        # 漏掉真丢失)。同名去重先行(巡检定案):bench_new 与留场件
         # 同名的卡投影时虚增引擎数(终态 deployed 不重复,同名不会都上场)
-        # → 漏触发守卫;与 L600 的去重同基准,仅在投影侧提前。
+        # → 漏触发守卫;与上方部署名单的同名去重同基准,仅在投影侧提前。
         _proj_names = {d.char_id for d in deployed_keep if d.char_id}
         proj_room = state.max_units() - len(deployed_keep)
         proj_new = [bc for bc in bench_new[:max(0, proj_room)]
@@ -988,11 +988,11 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
                 log.info('[cw][ev][engine-guard] 引擎下界守卫:'
                          '%s 体系贡献件 %d 件留场(engines≥2 不拆)',
                          '/'.join(sorted(lost)), len(keep_extra))
-    # W155/ADR-0360 件2(生成侧守卫,ADR-0317 同型):bench 新线候选与
-    # **留场新线 deployed** 同名 → 剔除(3合1 素材留 bench,同 W65 语义)
-    # ——W65 去重只折叠 bench 内部同名,没查 deployed:留场新线同名 +
+    # ADR-0360 件2(生成侧守卫,ADR-0317 同型):bench 新线候选与
+    # **留场新线 deployed** 同名 → 剔除(3合1 素材留 bench,同 ADR-0323 语义)
+    # ——上方去重只折叠 bench 内部同名,没查 deployed:留场新线同名 +
     # bench 副本进 deploy 名单 → 终态 deployed 同名重复 → duplicate_
-    # on_board 整事务拒(s26 连续三轮同因重提零清障的根因形态)。
+    # on_board 整事务拒(迁移期 sim 实证:连续三轮同因重提零清障的根因形态)。
     # (守卫先于此步:留场引擎件的名字也进同名去重基准。)
     _kept_names = {d.char_id for d in deployed_keep if d.char_id}
     if _kept_names:
@@ -1013,9 +1013,9 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         old_line, session, seele_scope=seele_scope,
         seele_core_in_hand=_seele_core)
     retained = sorted(old_line, key=lambda d: (
-        # W88/ADR-0339 件3:种子窗口件保留最优先(见 docstring)。
-        # W155/ADR-0360 件3(同型扩位):锁定目标件/引擎件与种子窗同级
-        # 最优先——溢出卖出先吃非保护件(W147:60 笔目标件离场 59 笔
+        # ADR-0339 件3:种子窗口件保留最优先(见 docstring)。
+        # ADR-0360 件3(同型扩位):锁定目标件/引擎件与种子窗同级
+        # 最优先——溢出卖出先吃非保护件(ADR-0360 归因:60 笔目标件离场 59 笔
         # 被动;strict 局挤出后 59% 不回场;[23] 锁定目标件/[31] top4
         # 引擎件是保护对象,填充件可回收语义保留([31]④))。
         0 if (_fresh_seed(d, state, session)
@@ -1024,7 +1024,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
                    if CHARACTERS.get(d.char_id) else 0)))
     retained = retained[:max(0, bench_free)]
     sold = [d for d in old_line if not any(d is r for r in retained)]
-    # W197/ADR-0380 件②:溢出卖出下界守卫——bench 满截断保留序时,
+    # ADR-0380 件②:溢出卖出下界守卫——bench 满截断保留序时,
     # rank0 保护件(TT/希儿系引擎件)也会被划进 sold(保留序是相对
     # 优先级不是绝对保证;136 r9 benchOcc=9 卖 deployed 椒丘实证)。
     # 「TT 体系件在手≤tier 不可卖」(ADR-0373 语义)在事务构造点生效:
@@ -1080,7 +1080,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         new_label = comp.name if comp is not None \
             else f'{opt.faction}{opt.target_tier}'
     reason = f'evolve:{old_label}→{new_label}'
-    # alloc 一致性断言(W956 DESIGN §2/W954 契约;纯观察零拦截):
+    # alloc 一致性断言(prereg/w956_death_allocator/DESIGN.md §2/prereg/w954_transform_impl 消费契约;纯观察零拦截):
     # 演进目标 ∉ 意向权威锁定体系集时记报警日志——reason 线名与
     # locked_comp 脱节的帧级观测面(实机档案 match g_20260831_082322
     # p2r1 型病灶的复现锚)。
@@ -1294,7 +1294,7 @@ _ENCOUNTER_NODES = {'遭遇', 'boss'}   # 冻结扩到遭遇前:不启动新替�
 
 
 def _fresh_seed(d, state: GameState, session) -> bool:
-    """W88/ADR-0339 件3:该上场件是否为种子 2 轮窗内的 engine_seed 买入
+    """ADR-0339 件3:该上场件是否为种子 2 轮窗内的 engine_seed 买入
     (seed_age_blocked 同判据;session 缺省/无记录=False)。"""
     if session is None:
         return False
@@ -1327,40 +1327,40 @@ def evolution_step(state: GameState, session=None,
     (``rollback_weakest``),下个非遭遇轮再续,不重演整组合。
     ``memory`` 草案级可选参(缺省每次新建=无记忆;session 挂载归载体批)。
 
-    W155/ADR-0360 件1:``off_lock_penalty`` > 0 时,锁定帧下 off-lock
+    ADR-0360 件1:``off_lock_penalty`` > 0 时,锁定帧下 off-lock
     提案(目标体系 ∉ ``locked_faction_scope``)在最优选择序中降级
     (减分非禁换——全部机会均 off-lock 时照选最优;[20][31] 空窗/降级
     方向语义保留)。件2:被拒事务**不再发射**(旧版 simulate 拒了仍返回
     tx → 每轮原样重提 = rejected 死循环)并登记退避签名。
 
-    W160/ADR-0363:``engine_guard``/``final_freeze``(registry
+    ADR-0363:``engine_guard``/``final_freeze``(registry
     ``evolve_engine_guard_enabled``/``evolve_final_freeze_enabled``
     注入,A/B 通道)——件1 引擎下界守卫透传 execute_replacement;
     件2 位面末窗(剩 ≤1 轮)演进换档(undeploy/sell 非空)冻结不发射,
-    纯加深/填位照旧(与 W150 final_fence 买侧末轮围栏语义对齐)。
+    纯加深/填位照旧(与 ADR-0359 final_fence 买侧末轮围栏语义对齐)。
 
-    W174/ADR-0371:``engine_completion``(registry
+    ADR-0371:``engine_completion``(registry
     ``evolve_engine_completion_enabled`` 注入,A/B 通道)——引擎补完
     守卫:pair 体系(p1_pair ∪ transition_pair)「拥有≥档 ∧ 上场<档」
     时,先于常规提案发补完事务(bench 体系件上场,room 不足换下最弱
     非保护件);末窗豁免复核 = 净效果 pair on-board 与引擎数不减
-    (与件2 防丢语义同向:补上不是拆)。关 = 回 W170 后行为。
-    W201/ADR-0381:``complete_distinct``(registry
+    (与件2 防丢语义同向:补上不是拆)。关 = 回 ADR-0369 后行为。
+    ADR-0381:``complete_distinct``(registry
     ``engine_complete_distinct_owned`` 注入,A/B 通道)——补完
     缺口的 owned 计数改 distinct 名单数(副本是 3合1 素材非配方件,
-    [20] 配方=不同成员);关 = 回 W174 后全羁绊逐件计数。同批修①
+    [20] 配方=不同成员);关 = 回 ADR-0371 后全羁绊逐件计数。同批修①
     (无 flag 实 bug):``_engine_completion_tx`` 的 up_cands 列表内
     同名去重——旧版只剔「同名已在场」,bench 双副本同进 deploy 列表
-    被 simulate 拒 duplicate_on_board 退避关窗(W200:13/144/204)。
+    被 simulate 拒 duplicate_on_board 退避关窗(迁移期 sim 实证:13/144/204)。
 
-    W192/ADR-0375:``seele_scope``(registry ``guard_seele_scope_
+    ADR-0375:``seele_scope``(registry ``guard_seele_scope_
     enabled`` 注入,A/B 通道)——希儿系贡献件并入保护集(``_locked_
     protected_names`` 单点,辖补完 undeploy 与 execute_replacement
-    保留序两面);关 = 回 W188 后行为(辖域=TRANSITION_TRAITS)。
+    保留序两面);关 = 回 ADR-0374 后行为(辖域=TRANSITION_TRAITS)。
 
-    W202/ADR-0382:``grade_down``(registry
+    ADR-0382:``grade_down``(registry
     ``engine_complete_grade_down`` 注入,A/B 通道)——补完 undeploy
-    常规候选枯竭(全保护,W200 136 型构造闭死)且缺口已连续
+    常规候选枯竭(全保护,ADR-0382 记档 136 型构造闭死)且缺口已连续
     ≥``_GRADE_PERSIST_ROUNDS`` 轮时,按分级序(G0 非引擎锁定线件 →
     G1 未成型引擎件;G2 已成型引擎件恒不可动)降级换血;关 = 回
     ADR-0371/0381 后「不硬拆」语义。缺口持续追踪挂 ``memory``
@@ -1374,9 +1374,9 @@ def evolution_step(state: GameState, session=None,
         mem.paused = False
     # 冻结扩到遭遇前:不启动新替换(pending 记下,恢复时重校验)
     frozen = state.node_type in _ENCOUNTER_NODES
-    # W160/ADR-0363 件2 / ADR-0366 口径修正:位面末窗(剩 ≤1 轮,
+    # ADR-0363 件2 / ADR-0366 口径修正:位面末窗(剩 ≤1 轮,
     # round_num ≥ 本位面轮数-1;P1=9→r8-9、P2=7→r6-7——旧版按全局
-    # NODES_PER_PLANE=9 判,P2 冻结窗是空集的口径断层由 W165 #3 定案)
+    # NODES_PER_PLANE=9 判,P2 冻结窗是空集的口径断层由 ADR-0366 定案)
     final_window = False
     if final_freeze:
         from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
@@ -1384,7 +1384,7 @@ def evolution_step(state: GameState, session=None,
 
     def _try(opt: UpgradeOption) -> list[Action]:
         if _backoff_active(mem, opt, state):
-            return []   # W155 件2:退避窗内同签名提案不重提
+            return []   # ADR-0360 件2:退避窗内同签名提案不重提
         verdict = evaluate_upgrade(opt, state)   # 三条件重校验(恢复语义)
         if not verdict.execute:
             return []
@@ -1397,11 +1397,11 @@ def evolution_step(state: GameState, session=None,
         tx = actions[0]
         assert isinstance(tx, CompTransaction)
         if final_window and (tx.undeploy or tx.sell):
-            # W160/ADR-0363 件2:末窗换档拆板冻结——末轮换档天然无
-            # 回场窗(W159 §1:丢失 90% 落 r8-9),加深收益 < 引擎
+            # ADR-0363 件2:末窗换档拆板冻结——末轮换档天然无
+            # 回场窗(ADR-0363 归因:丢失 90% 落 r8-9),加深收益 < 引擎
             # 丢失风险系统性为真;纯加深(deploy-only)不辖。
-            # W228 同型排查件:本行与 engine-complete 同为「只记计数不记
-            # 名单」的部署观测行——一并补下场名单(格式/口径同 W228 注释,
+            # 同型排查定案:本行与 engine-complete 同为「只记计数不记
+            # 名单」的部署观测行——一并补下场名单(格式/口径同 engine-complete 观测行注释,
             # 索引按事务前 state.deployed 解析,冻结支不执行,state 未变)。
             _ff_und_names = [d.char_id for d in
                              (state.deployed[i]
@@ -1415,8 +1415,9 @@ def evolution_step(state: GameState, session=None,
         post = simulate(state, tx)
         if not (post.action_log and
                 post.action_log[-1].get('result') == 'applied'):
-            # W155/ADR-0360 件2:事务被 simulate 拒 → 不发射 + 退避登记
-            # (旧版拒了仍返回 tx,每轮原样重提零清障;W143:34/85 失败局
+            # ADR-0360 件2:事务被 simulate 拒 → 不发射 + 退避登记
+            # (旧版拒了仍返回 tx,每轮原样重提零清障;迁移期 sim 实证:
+            # 34/85 失败局
             # rejected≥5 死循环,典型 reject_reason=duplicate_on_board)。
             log.info('[cw][ev][reject-backoff] 提案 %s%s%d(%s) 被拒(%s),'
                      '本轮不发射,退避 %d 轮',
@@ -1448,7 +1449,7 @@ def evolution_step(state: GameState, session=None,
             mem.pending = best
         return []
 
-    # W174/ADR-0371:引擎补完守卫——「拥有≥门槛 ∧ 上场<门槛」的 pair 体系
+    # ADR-0371:引擎补完守卫——「拥有≥门槛 ∧ 上场<门槛」的 pair 体系
     # 先于常规提案([13] 过渡成型≈过 P1,成型缺口=发令枪级;[20] 件上场
     # 才算配方)。被拒 → 退避登记后落回常规提案,不阻塞本轮流。
     if engine_completion:
@@ -1476,8 +1477,8 @@ def evolution_step(state: GameState, session=None,
                                  '未过豁免复核(%s)——末窗不发射',
                                  state.round_num, tx_c.reason)
                 if applied and freeze_ok:
-                    # W228:undeploy 追加下场名单(角色名 list,空则 [])——
-                    # W220 判读问题⑥:只记计数时补完保护锚点(W192-3
+                    # 观测定案:undeploy 追加下场名单(角色名 list,空则 [])——
+                    # 承接判读遗留:只记计数时补完保护锚点(ADR-0375
                     # 「undeploy 不含希儿系」)无法核到名单级。索引按事务前
                     # state.deployed 解析(契约口径;本行发射于执行前,state
                     # 未变,槽位即生成期槽位;空槽防御性滤 None,ADR-0392)。
@@ -1510,7 +1511,7 @@ def _best_option(state: GameState, session=None,
                  off_lock_penalty: float = 0.0) -> UpgradeOption | None:
     """可执行机会里的最优(选择序降序;无 → None)。
 
-    W155/ADR-0360 件1:``off_lock_penalty`` > 0 且锁定帧时,off-lock 提案
+    ADR-0360 件1:``off_lock_penalty`` > 0 且锁定帧时,off-lock 提案
     的**选择序分** = effect_score − penalty(不改 effect_score 本身,
     evaluate_upgrade 的 2换1 裁决不受辖——降级非禁换);件2:退避窗内
     的提案跳过。
@@ -1565,7 +1566,7 @@ def rollback_weakest(state: GameState,
         b_idx = next(i for i, b in enumerate(state.bench)
                      if b is retained[0])
         memory.paused = True
-        # §1.7 expect 代际校验(W52 r4):expect 从**候选生成时的 state 快照**
+        # §1.7 expect 代际校验:expect 从**候选生成时的 state 快照**
         # 取名(本函数收到的 state 即选件快照,与 d_idx/b_idx 同源),禁止从
         # 执行期 working 取——working 被同批先行动作改变,取名=校验恒过,
         # 防线失效。发射即填,cw_state 侧不符 → stale_proposal 整动作拒。

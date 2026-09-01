@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.kernel.cw_intention import _to_jsonable
 from sr_od.application.currency_war.kernel.cw_observe import (
     DEFAULT_REPLAY_DIR,
     stage_pending_strategy_pick,
@@ -21,6 +20,10 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
     SEVERITY_L2_RECORD,
 )
+
+# 符号解耦(处死计划批 0):序列化权威副本迁 knowledge/cw_serialize,
+# 不再依赖 kernel/cw_intention(死刑判据文件)
+from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
 from sr_od.application.currency_war.sim.ledger_hooks import (
     _regenerate_delta_pool_after_run,
 )
@@ -64,6 +67,11 @@ def _direction_obs_fields(state: GameState, ist: Any) -> dict[str, Any]:
     - 纯函数契约:只读 ist/state;_derive_p1_pair 无副作用(排序派生,
       不改 ist)。调用方负责 best-effort 兜底(采集失败静默跳过)。
     """
+    # 批 0 裁决(处死计划 §3 批 0 第 1 项):_derive_p1_pair 属**决策半部**
+    #(消费 DecisionV2Registry 供给感知/滞回/支持度派生链),不迁——迁则把
+    # 整条意向决策核心拖进知识层,违反知识层禁依赖决策层(01_strategy_layer §1)。
+    # 本函数是决策面观测(观测该决策函数的滞回行为),随 decision 核处死
+    #(处死计划批 1)一并退役;与下方 discipline 懒 import 同命运。
     from sr_od.application.currency_war.kernel.cw_intention import _derive_p1_pair
     cur = tuple(getattr(ist, 'p1_pair', ()) or ()) \
         or tuple(getattr(ist, 'transition_pair', ()) or ())
@@ -152,6 +160,7 @@ class TelemetryRecorder:
             actions=[serialize_action(a) for a in actions],
             hp=_hp_out, hp_readable=bool(getattr(state, 'hp_readable', True)), gold=state.gold,
             gold_readable=bool(getattr(state, 'gold_readable', True)),   # ADR-0282
+            level_readable=bool(getattr(state, 'level_readable', True)),  # level 保真位透传(False=启发式兜底帧)
         )
         if extra:
             trace.active_strategies = list(extra.get('active_strategies', []))
@@ -203,6 +212,10 @@ class TelemetryRecorder:
             trace.handoff = _ho if isinstance(_ho, dict) else None
             # P1 配方对平铺观测(空 extra 时字段保持默认空串)
             trace.sess_p1_pair = str(extra.get('sess_p1_pair', ''))
+            # 补给轮决策行采集:选定快照透传(写入端=RunSupplyNode 合成帧;
+            # 非 dict 缺省 None,旧 schema 不破坏)
+            _spk = extra.get('supply_pick')
+            trace.supply_pick = dict(_spk) if isinstance(_spk, dict) else None
         # `w603_telemetry_wiring/` 披露键统一接出(session 自取,extra 通道外的固定尾巴;
         # 缺 match 注册=离线/测试,字段保持 None 缺省)。
         _m = _telstate._CTX_MATCH_REF[0]

@@ -1,7 +1,7 @@
 """节点日程与标定表模块(纯常量/纯函数;零 DP、零 session 写端)。
 
 ADR-0465 起,本模块是原 DP 模块(git prior art)中被生产路径消费的**真值/标定面**
-的保留归属(`w623_batch3_pre-mortem/` D3:真值消费者迁保留表函数模块,禁内联常量置换——
+的保留归属(预算收权迁移前预验尸 D3 契约:真值消费者迁保留表函数模块,禁内联常量置换——
 ``nodes_of_plane`` 是会话自适应真值(P1=9/P2=7/P3 进表自适应,ADR-0366),
 ``p_win_p2`` 是两态胜率函数(BLUEPRINT §3.1 N4 继续消费),内联任一处
 = ADR-0366 修掉的 P2 计 9 病灶成批回流)。原模块的日程感知 DP 规划器
@@ -18,7 +18,7 @@ ADR-0465 起,本模块是原 DP 模块(git prior art)中被生产路径消费的
   统一的单一源,消费方=cw_first_passage 分布模型);
 - P2 两态胜率映射:p_win_p2(registry.p_win_p2_by_rung 分段线性,
   阈值层与 ADR-0465 排程共用);
-- 概率峰值级查表:peak_refresh_level(目标费用档 → 峰值级,`w615_rules_advocacy/` §1.3
+- 概率峰值级查表:peak_refresh_level(目标费用档 → 峰值级,规则倡导审读 §1.3
   R4 排程判据的查表分量)。
 """
 from __future__ import annotations
@@ -35,7 +35,7 @@ XP_CLICK_COST_FLAT: int = 4   # 购买经验单击价先验(ADR-0129 实测 4-8 
 #: nodes_of_plane 表缺回退告警的一次性指纹(防每帧刷屏;同 [cw!] 可 grep 纪律)
 _NODES_OF_PLANE_WARNED: set[str] = set()
 
-# ===== 位面日程(槽序排布;ADR-0368,迁移审计 w169(git 历史)) =====
+# ===== 位面日程(槽序排布;ADR-0368,迁移审计记录见 git 历史) =====
 #: 日程先验:(位面1, 位面2, 位面3) 各自轮数。P1=9 结构已知;P2 真值 7
 #: 但以 session 表为准(生产自适应);P3 未知期保持 9 先验。
 DEFAULT_PLANE_LENGTHS: tuple[int, int, int] = (
@@ -64,7 +64,7 @@ def schedule_of(session) -> tuple[int, int, int]:
     真值源 = ``session.plane_lengths_seen``(prep_director 每位面首帧随
     plane_node_table 记录的「本局已揭晓位面轮数」序列,P3 进表即自适应);
     未揭晓位面回退 9 先验。脏表守卫:每位面长度夹 [1, NODES_PER_PLANE]
-    (同 `w154_p2d/`/ADR-0366 超长脏表封顶语义)。duck-typed 读 session。
+    (同 ADR-0366 超长脏表封顶语义)。duck-typed 读 session。
     """
     seen = getattr(session, 'plane_lengths_seen', None) or []
     out = []
@@ -75,9 +75,9 @@ def schedule_of(session) -> tuple[int, int, int]:
 
 
 def nodes_of_plane(session) -> int:
-    """本位面轮数真值(ADR-0366,迁移审计 w167(git 历史) 口径断层修复的单一源)。
+    """本位面轮数真值(ADR-0366,迁移审计口径断层修复的单一源)。
 
-    真值源 = ``session.plane_node_table``(r306 开局帧实读槽序表,
+    真值源 = ``session.plane_node_table``(开局帧实读槽序表,
     prep_director 每位面首帧写、位面内恒定):P1=9 槽、P2=7 槽(16 局
     语料实证)、P3 首局进表即自适应。表缺(裸 session/None/sim P1 段/
     开局首帧前)→ 回退 ``NODES_PER_PLANE=9`` 先验并记一次性
@@ -140,12 +140,12 @@ def level_cost(level: int) -> int:
 
 def interest(gold: int) -> int:
     """息闭式:min(g//10, 息帽档数)。截断点=息线(守息线同源派生,
-    `w611_econ_cycle/` §2.2 恒等式:interest_cap×10)。"""
+    经济循环设计 §2.2 恒等式:interest_cap×10)。"""
     return min(gold // 10, GOLD_CAP_INTEREST // 10)
 
 
 def peak_refresh_level(cost: int) -> int:
-    """目标费用档 → 刷新概率峰值级(REFRESH_PROB 表 argmax;`w615_rules_advocacy/` §1.3
+    """目标费用档 → 刷新概率峰值级(REFRESH_PROB 表 argmax;规则倡导审读 §1.3
     R4 排程判据②的查表分量)。并列取高档([7] 口述「允许高一档」:
     峰值平手时高一级的相邻档概率差可忽略,而提前一级到位=多一轮
     峰值窗口)。cost 越界(非 1-5)→ 夹到边界档。"""

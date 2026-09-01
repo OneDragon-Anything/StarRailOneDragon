@@ -107,7 +107,7 @@ _LOSS_FIT: dict[str, dict[int, tuple[float, float, float]]] = {
 
 # P2 层别名声明:P2 未采样 → 全节点显式指向 plane 1 同表(单一取表
 # 入口 _node_table 消费)。已知偏差量化边界(继承的现状,非本结构
-# 引入):W357 regate(池锚 7af81977)——boss 事件均损 +4.57 hp、
+# 引入):regate 重分桶(池锚 7af81977)——boss 事件均损 +4.57 hp、
 # boss 钳制率 P2 段 −38.81 pp、encounter 钳制率 P2 段 −6.19 pp;
 # 未来 P2 语料积累后逐节点换入 plane 2 槽位即收口,不触 P1。
 _P2_ALIAS: dict[str, int] = {'battle': 1, 'encounter': 1, 'boss': 1}
@@ -134,7 +134,7 @@ def _win_cell(node: str, rung: int, plane: int) -> tuple[int, float]:
 
 # boss 败局钳制(按 hp_before 条件化;机制见模块 docstring)
 # 位面维:P1 = 现值;P2 = 别名同值(声明:P2 落入可钳区事件率本身
-# 有 W357 G6-boss 已知偏差,钳制参数层暂随 P1 外推)。
+# 有 G6-boss 已知偏差,钳制参数层暂随 P1 外推)。
 BOSS_CLAMP_HP_CUT: float = 35.0
 BOSS_CLAMP_P_LOW: float = 0.929
 

@@ -95,20 +95,20 @@ STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 �
 
 # C 杠杆 3 winning half(R2-4b;14 §连胜中「2 胜+」):连胜 ≥ 此 → 破息花钱提质量维持连胜(断连胜亏 > 利息亏)。
 # streak 带符号(连胜 + / 连败 −,结算源 session.last_streak 方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b)。
-WIN_STREAK_BREAK_INTEREST: int = 2    # 连胜 ≥2 破息(阈值历史源 auto-chess 常识,货币战争档金真值未核——见 _refresh_cap r63 注)
+WIN_STREAK_BREAK_INTEREST: int = 2    # 连胜 ≥2 破息(阈值历史源 auto-chess 常识,货币战争档金真值未核——见 plan 层 _refresh_cap 处破息-保息抉择注释)
 
 # r89b 连胜-保息抉择(攻略专题「连胜与卖血抉择」三变量模型,663 帖精读实证):
 # 攻略明文两分支 —— 已连胜→破息保连(#205「如果连胜就多D几个,利息保3」息档降到 30;
 # #46「小搜争取连胜,不顺果断存钱」);未连胜+血安全→保息(#151「卡满50利息,大不了先输着先」;
 # #145「优先留着吃利息,前期掉点血没事」)。「来牌顺」= 商店有可买战力件(shop_supply,无牌破息也无处花)。
-# ⚠️ r90 用户修正(定性,2026-08-20):**攻略的「卖血不低于40」不是急救触发线,是运营质量的
+# ⚠️ 用户修正(定性,2026-08-20):**攻略的「卖血不低于40」不是急救触发线,是运营质量的
 # 报警线** —— 血低于它 = 前面破息决策已经错了;此时花光挺节点是「给前面的策略失败擦屁股」,
 # 断息后经济可能永远撑不起整局(死亡螺旋:血低→花光→息断→板半成型→又掉血→又花光)。
 # **目标是长期通关,不是苟住多少个节点**。故血低的正确响应 = 最小必要支出止损 + 息引擎
 # 尽量保住,真 ALL IN 只留给「位面末最后一战」(赢了带血/板进下位面,不存在后续经济问题)。
 # 该常量语义 = 运营质量报警线(策略层诊断/复盘用),不是 spending 触发器。
 HP_QUALITY_ALARM: int = 40            # 运营质量报警线(血低于此 = 前面破息决策错;诊断用)
-#: 攒息门 hp 急救分位(r90 审计:×0.5 匿名魔法数提成具名常量)——血低于 职级阈值×此分位
+#: 攒息门 hp 急救分位(代码审计:×0.5 匿名魔法数提成具名常量)——血低于 职级阈值×此分位
 #: = 真活不下去(急救通道 _phase_weights 接管);中危带(此线与阈值之间)按用户定调
 #: 「血低是报警非触发」维持攒息,不在此门破息(观察点:中危带持续漏买的场景留回放核)。
 HP_DISTRESS_FRAC: float = 0.5
@@ -218,16 +218,16 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
             if _own.action == 'level_up':
                 return True
             if _own.action in ('roll', 'stable'):
-                # r11 review #3:P2+ node 地板是**硬下限**(P2 敌强度跳升,人口不升=硬吃两仗,
-                # M55 P2 冻 lv6 实证)——comp 停留意图只在 P1 压地板;P2+ 落后地板即追级
+                # 攻略评审定则:P2+ node 地板是**硬下限**(P2 敌强度跳升,人口不升=硬吃两仗,
+                # P2 冻 lv6 实证)——comp 停留意图只在 P1 压地板;P2+ 落后地板即追级
                 # (停留 roll 可在追上地板后继续)。
                 # 75-A2 修:committed 全调用点一致(双轨期 xp 门与 spend 门同姿态,
                 # 防「spend 攒息/xp 追级」门间对拉)。
-                # r73 RC1-③:hp 门(HP_LOSS_FULL=30)——hp<30 濒死时买牌/合星是急救,
-                # 追级是远水(RC1 实证:P2r2 hp=1 金 35 被 P2 硬地板吸走 24g 买经验,死)。
-                # r87 H1 修正(审计 cc119c14,第3局实锤):hp<30 **进位面首 2 轮不拦** ——
-                # hp1 进 P2 → 全量拦 → 升 8 永解锁不了 → 6 人应战到死(r4 团灭实证)。
-                # 保命要靠升 7/8 填人口(carry 位),不是永远 6 人;RC1 案例的病理是
+                # 急救 hp 门(HP_LOSS_FULL=30)——hp<30 濒死时买牌/合星是急救,
+                # 追级是远水(实证:P2r2 hp=1 金 35 被 P2 硬地板吸走 24g 买经验,死)。
+                # 修正(审计 cc119c14,第3局实锤):hp<30 **进位面首 2 轮不拦** ——
+                # hp1 进 P2 → 全量拦 → 升 8 永解锁不了 → 6 人应战到死(实机局团灭实证)。
+                # 保命要靠升 7/8 填人口(carry 位),不是永远 6 人;上述案例的病理是
                 # 「金 35 全烧经验」,由 XP 单击量控(花后地板)兜,非全量禁。
                 if (state.hp is not None and state.hp < 30
                         and not (state.plane >= 2 and state.round_num <= 2)):
@@ -253,7 +253,7 @@ def _xp_gold_floor(state: GameState, want_level: bool) -> int:
 
     非追级期(已到核心概率等级、goal 说 roll/stable)→ 50(攒息,零花才点经验);
     追级期 → 20(「偶尔掉到 40/30」精神,保守取 20);HP 危险 → 10(保血优先)。
-    r24 位面末修正:A8 下 P1-r9 血量恒在危险带(六局实证 15-49<阈值)→ 地板恒 10
+    位面末修正:实机六局实证 P1 全程血量恒在危险带(15-49<阈值)→ 地板恒 10
     → boss 前花光 → P2 进场赤贫(gold 5-28,零搜牌窗口,成型无从谈起)。位面末
     回合(round_num≥8,P1/P2 过半位面)保 **20**(P2 首回合一级利息档 + 搜牌本钱);
     hp<30 真濒死仍 10(保命绝对优先)。
@@ -261,7 +261,7 @@ def _xp_gold_floor(state: GameState, want_level: bool) -> int:
     if state.hp is not None and state.hp < 30:
         return 10
     if state.round_num >= 8:
-        return 20   # r24:位面末保本钱进下一位面(非 hp 危险分支的 10)
+        return 20   # 位面末保本钱进下一位面(非 hp 危险分支的 10)
     if state.hp is not None and state.hp < effective_hp_threshold(state):
         return 10
     return 20 if want_level else INTEREST_THRESHOLD
@@ -301,7 +301,7 @@ def _resolve_level_goal(state: GameState, target: Comp | None) -> LevelGoal | No
 
 
 def _expected_level(round_num: int, plane: int) -> int:
-    """阶段期望等级(r90 C4 里程碑刻度,663 帖攻略精读实证)。
+    """阶段期望等级(里程碑刻度,663 帖攻略精读实证)。
 
     P1:1-3 上5 / 1-7 遭遇前6 / boss 前 6-7(7 是 3费C comp 的 level_plan 域,通用曲线取 6)。
     P2:**2-1 即 7**(升7找主C;H1 修复后 bot 进 P2 应带 7)/ 2-5 前留 7 慢D主C三星 /
@@ -328,7 +328,7 @@ class NodeGoal:
                                 # decision_v2.posture_release 经 session 通道;
                                 # 本函数只产 level/adaptive/interest(ADR-0465)
     action_focus: str = ""      # 描述辅(d_search/chase_star/rush_level;指导动作偏好,不直接驱评分)
-    #: DP 授权的可刷次数上界(W332b 三方预算合并:随 NodeGoal 下传,消费侧与
+    #: DP 授权的可刷次数上界(三方预算合并:随 NodeGoal 下传,消费侧与
     #: plan 层 _refresh_cap 合并——合并语义单一源=decision_v2.posture_release
     #: 模块注释:release 是义务(下界),DP/plan 是许可(上界),义务激活时
     #: 义务优先,未激活时许可取交)。None=无 DP 信息(先验 fallback;不参与
@@ -337,10 +337,10 @@ class NodeGoal:
     danger_d: bool = False      # 占位从未被读(见上)
 
 
-# ⚖️ r69(2026-08-18 用户定夺):旧 _DEFAULT_NODE_PLAN 区间表**已删**。
+# ⚖️(2026-08-18 用户定夺):旧 _DEFAULT_NODE_PLAN 区间表**已删**。
 # 历史:V4.4 先验表 → ADR-0126 用 11 局 bot live「校准」(P1末7/P2早8)→ 0126 被三重降级
 # (0127 H4 疑幽灵锚点/0129 等级观测污染/2026-08-18 单局相关≠基准)。ADR-0155 DP 影子接缝
-# 切流(0208)后 live 全部走 DP,该表只剩异常回退一条活路;失败面穷举(r69 对话)仅剩
+# 切流(ADR-0208)后 live 全部走 DP,该表只剩异常回退一条活路;失败面穷举(删除前评审)仅剩
 # MemoryError + 开发期注册表手误(运行时游戏数据不进台账链;未注册策略名静默跳过)→
 # **保留脏表回退比停机更危险**(静默掉回 0126 节奏 = 看着在跑实际在错)。删除;
 # DP 失败/越界 → _expected_level 平滑先验 + adaptive(V4.4 干净先验,非 0126 数值)。
@@ -351,12 +351,12 @@ def get_node_goal(plane: int, round_num: int, *,
                   gold: int | None = None, level: int | None = None, hp: int | None = None,
                   committed: bool = True,
                   strategies: list[str] | None = None) -> NodeGoal:
-    """查 (plane, round) → NodeGoal(预算收权批(ADR-0465):确定性预算核单一供给)。
+    """查 (plane, round) → NodeGoal(ADR-0465:确定性预算核单一供给)。
 
     姿态从预算收权核涌现(原 DP 解供给已退役,BLUEPRINT §3
     裁决;git 历史为 prior art):排程升级 → level/rush_level;刷新预算
     >0 → adaptive/d_search;两者皆无 → interest/hold。供给在任意帧恒有
-    定义(`w623_batch3_pre-mortem/` D0:None 级联面消灭),仅传参不全(迁移漏点)时退
+    定义(预算收权迁移前预验尸 D0 契约:None 级联面消灭),仅传参不全(迁移漏点)时退
     ``_expected_level`` 平滑先验 + adaptive(记 [cw-seam] debug 证据)。
 
     三档 spend_mode 与决策核同源:level/adaptive/interest 的判据单一址
@@ -375,7 +375,7 @@ def get_node_goal(plane: int, round_num: int, *,
         # 标量投影帧:用入参重建最小决策帧(供给核只读经济/板面字段;
         # v1 栈调用面无现成 GameState——旧 DP 接缝同样只收标量)。
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
-        # → h=9−r 常 >0,R* 窗口分量在投影帧**照常储蓄**(`w635_batch3_attack/` F6b 纠偏:
+        # → h=9−r 常 >0,R* 窗口分量在投影帧**照常储蓄**(预算收权攻击审读 F6b 纠偏:
         # 原注释「投影帧不储蓄」与实现不符;方向保守无害)。
         _st = _GS(gold=gold, level=level, plane=plane, round_num=round_num,
                   hp=hp)
@@ -391,10 +391,10 @@ def get_node_goal(plane: int, round_num: int, *,
     return NodeGoal(_expected_level(round_num, plane), "adaptive", "rush_level")
 
 
-# ⚖️ r69(2026-08-18):旧 ADR-0155 影子接缝开关 HORIZON_SEAM_ACTIVE **已删**——切流(ADR-0208)
-# 完成后 DP 是唯一姿态源(r69 连带删除 0126 区间回退表,见 get_node_goal 注释),开关无消费点。
+# ⚖️(2026-08-18):旧 ADR-0155 影子接缝开关 HORIZON_SEAM_ACTIVE **已删**——切流(ADR-0208)
+# 完成后 DP 是唯一姿态源(同一裁决连带删除 0126 区间回退表,见 get_node_goal 注释),开关无消费点。
 # 历史:切流依据(ADR-0208)= 160 局对拍「表 hold→DP level」P1 高金段系统性分歧 + 六局 P1
-# boss 稳定损 20-36 血→P2 残血开局即崩。回滚方式 = git revert r69 提交。
+# boss 稳定损 20-36 血→P2 残血开局即崩。回滚方式 = revert 预算收权迁移提交。
 
 
 
@@ -466,7 +466,7 @@ def roll_affordable(state: GameState, config, target_comp) -> bool:
         refresh_prob,
     )
     _p = (getattr(state, 'refresh_probs', None) or {}).get(cost) \
-        or refresh_prob(state.level, cost)   # r77 轮岗:实读概率条优先(翻倍档期望刷次减半)
+        or refresh_prob(state.level, cost)   # 轮换回退:实读概率条优先(翻倍档期望刷次减半)
     _v = DISTINCT_CARDS_PER_COST.get(cost, 13)
     _a = POOL_COPIES_PER_CARD.get(cost, 9)
     e_refreshes = expected_refreshes(_p, _v, _a, c=0, k=1)
@@ -504,13 +504,13 @@ def _char_synergies(name: str) -> set[str]:
     return syn
 
 
-# ===== 经济循环接缝族(分包期 0b 单元2 自 decision_v2.economy_cycle 下沉;§3.3-①a/①b) =====
+# ===== 经济循环接缝族(自 decision_v2.economy_cycle 下沉;§3.3-①a/①b) =====
 # 原址:decision_v2.economy_cycle(kernel→decision 断环:本文件是 kernel 桶,
 # cw_economy.get_node_goal 标量投影消费两接缝,原函数体内懒 import 决策包
 # 成环)。schedule_upgrade 纯移动;refresh_ev_budget 最小重构——应急谓词
 # is_emergency 一并下沉本文件(一行纯谓词,decision_v2.filters 改 import
 # 重定向,单一源不破),函数体零行为变化(等价锁=sr-od-test
-# test_cw_w695_economy_seam.py + 既有 w633/w332b/w154 桩点重钉)。
+# test_cw_w695_economy_seam.py + 既有经济接缝桩点测试重钉)。
 
 #: 刷新通道容量上界(刷数;原 DP 求解面动作上限 6 刷同源(git prior art),
 #: 不另造第二把尺)。自 economy_cycle 随接缝族同迁(单一源在本文件)。
@@ -536,13 +536,13 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
 
 def schedule_upgrade(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry | None = None) -> bool:
-    """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,预算收权批(ADR-0465))。
+    """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,ADR-0465)。
 
     ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
     必须传**同一个** registry 实例——prep_brain._budget 单源装配);
     缺省落 _registry_of(session) → DEFAULT_REGISTRY。
-    规则集 = `w615_rules_advocacy/` §1.3/§2-R4(机制常量直算,零标定权重);**预告态契约**
-    (`w623_batch3_pre-mortem/` D1):排程只回答「要不要开始攒」,不以当帧可负担为前置——
+    规则集 = 规则倡导审读 §1.3/§2-R4(机制常量直算,零标定权重);**预告态契约**
+    (预算收权迁移前预验尸 D1 契约):排程只回答「要不要开始攒」,不以当帧可负担为前置——
     付不付得起是执行层的事(``ev.levelup_ev_basis`` 可负担性入口门),
     排程判据若收窄成「付得起才排」会造成 R* 塌缩 → 义务花光 → 更排不上
     的自我强化升级迟到循环(DP 无此失败模式:其 level_up 判定不依赖当帧
@@ -557,7 +557,7 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     禁升条件([12]/[32]):息引擎未立不追级(② 的前置即此);空升级
     不升(① 触发本身即「有件可上」,无空升级面;② 是概率抬档语义,
     不涉部署)。
-    **规则文本偏差披露(`w635_batch3_attack/` F2)**:`w615_rules_advocacy/` §2-R4 规则 2 原文有第三合取
+    **规则文本偏差披露(预算收权攻击审读 F2)**:规则倡导审读 §2-R4 规则 2 原文有第三合取
     「花完升级费后 g′ ≥ interest_floor」,与其 §1.3 伪码矛盾(伪码无此
     项);本实现**取伪码侧**(预告态,不设该合取——保留它会让
     g∈[息线, 息线+费) 帧不排程,恰造 D1 塌缩循环)。可负担性/平台未破
@@ -573,7 +573,7 @@ def schedule_upgrade(state: GameState, session: StrategySession,
         refresh_invest_active,
     )
     if refresh_invest_active(state):
-        return False    # 淘金客姿态:升级通道退役(`w621_sim_explore/`;谓词单一址)
+        return False    # 淘金客姿态:升级通道退役(sim 注入臂实证;谓词单一址)
     from sr_od.application.currency_war.kernel.cw_state import (
         deployed_occupied,
     )
@@ -591,9 +591,17 @@ def schedule_upgrade(state: GameState, session: StrategySession,
 
 def _vd_core_of(session: StrategySession) -> str:
     """V_D/V_level 共用的目标核心解析(scoring.vd_target_core 同源;
-    自 decision_v2.ev 下沉(期 0b 单元2,schedule_upgrade 的目标核心解析链
+    自 decision_v2.ev 下沉(schedule_upgrade 的目标核心解析链
     依赖;本模块零 decision 依赖,decision_v2.ev 改 import 重定向)——
-    ev 不 import decision_v2 包内模块的判据复刻惯例随单一源归位终结)"""
+    ev 不 import decision_v2 包内模块的判据复刻惯例随单一源归位终结)
+
+    ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/redesign/
+    03_legacy_cleanup_plan.md):本函数懒 import 的 IntentionState/intention_core
+    属**决策半部**——消费意向锁定状态机的 phase/locked_comp 判定与 comp 核心
+    派生,是 schedule_upgrade(升级排程决策)的目标解析链,不是经济事实
+    (收入/息/卖退金/刷新价)。不迁:该消费点随 decision 核处死(处死计划
+    批 1)一并退役。
+    """
     from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         intention_core,
@@ -626,6 +634,9 @@ def _schedule_target_core(session: StrategySession) -> str:
     """排程目标核心解析(ev._vd_core_of 锁定核单一源;未锁帧落意向
     ⑤兜底 comp 的核心——方向层 FALLBACK_COMP_NAME 单一源;再缺='' →
     调用方缺省 3 费档,供给不断)。"""
+    # ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/redesign/
+    # 03_legacy_cleanup_plan.md):FALLBACK_COMP_NAME 是方向层
+    # 决策常量,属决策半部不迁;本消费点随 decision 核处死(处死计划批 1)一并退役。
     from sr_od.application.currency_war.kernel.cw_intention import (
         FALLBACK_COMP_NAME,
     )
@@ -635,6 +646,9 @@ def _schedule_target_core(session: StrategySession) -> str:
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
     fb = get_comp(FALLBACK_COMP_NAME)
     if fb is not None:
+        # ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/redesign/
+        # 03_legacy_cleanup_plan.md):intention_core 属决策半部
+        # 不迁;本消费点随 decision 核处死(处死计划批 1)一并退役。
         from sr_od.application.currency_war.kernel.cw_intention import intention_core
         return intention_core(fb)
     return ''
@@ -717,22 +731,21 @@ def _find_budget_cap(state: GameState, session: StrategySession,
 
 def refresh_ev_budget(state: GameState, session: StrategySession,
                       registry: DecisionV2Registry | None = None) -> int:
-    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,预算收权批(ADR-0465);
+    """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,ADR-0465;
     概率校准分量=ADR-0475)。
 
     ``registry``:显式注入优先(P6 契约,同 schedule_upgrade);缺省落
     _registry_of(session) → DEFAULT_REGISTRY。
     预算 = min(6, ⌊(g − R*)/刷价⌋, ⌈−ln(1−q)·E_find⌉)——只花溢余
-    (`w615_rules_advocacy/` §2-R3 预算式:刷新后仍守储备线;6 刷帽单一源
+    (规则倡导审读 §2-R3 预算式:刷新后仍守储备线;6 刷帽单一源
     = REFRESH_ROLL_CAP)∧ 有望帧帽按目标可寻性收紧。概率校准两腿
-    (ADR-0475,提案面见 .debug/temp/currency_war/w645_proposal_v2/
-    SPECS.md 提案 B-v2):塌缩带归零(纯金量式与目标可寻性无关的病灶修法;
+    (ADR-0475,采纳自其预研提案 B-v2):塌缩带归零(纯金量式与目标可寻性无关的病灶修法;
     归零的账=塌缩带留金弱占优纯烧)+ 有望帧分位帽;**求值次序=先归零
     后帽**(ρ 归零与 min 帽取交即 0,数值良定);概率单一址=cw_shop_odds
     (与分配器 Π_refresh 估计器同源互指,禁第二概率口径)。
 
-    合法 0 帧契约(`w623_batch3_pre-mortem/` D2,判前锁;**辖域=应急带**,
-    `w635_batch3_attack/` F1 收口;第三类=ADR-0475 扩类):
+    合法 0 帧契约(预算收权迁移前预验尸 D2 契约,判前锁;**辖域=应急带**,
+    预算收权攻击审读 F1 收口;第三类=ADR-0475 扩类):
     - ① 应急帧(``is_emergency`` 单一源,hp≤emergency_hp)→ 0:
       应激通道根本不产指令(release 让位结构,合并无从放大);
     - ② g ≤ R* 常态帧(息线以内/储备段持有,0.1/轮 真实收益)→ 0:这个 0
@@ -745,11 +758,11 @@ def refresh_ev_budget(state: GameState, session: StrategySession,
     依公式照发,停手由 arbiter 拒付层兜底(discipline.
     blood_budget_levelup_blocked 停升级 / blood_budget_refresh_blocked
     搜索型刷新停付)——防线在拒付层不在预算层;原「血预算帧→0」为
-    虚标契约,已随 `w635_batch3_attack/` F1 如实收窄(穿透锁=test_cw_w633_migration_b3)。
+    虚标契约,已随预算收权攻击审读 F1 如实收窄(穿透锁=test_cw_w633_migration_b3)。
     定向刷新授权(directed_refresh_budget)是独立车道(arbiter E2,
     1 次/轮),与本预算不相交、不合并;按 ADR-0475 该车道对塌缩判据
     **同判据辖**(含空帧豁免,两车道逐帧一致)——arbiter 接线点挂账:
-    decision_v2 属分包期 5 在飞面本批禁触,接线留分包期收口后补
+    decision_v2 当时属在飞分包面禁触,接线留分包收口后补
     (判据单一址=本函数的 ``_omega_collapse_zeroed``,届时零新概率口径)。
     """
     reg = registry or _registry_of(session)
@@ -790,12 +803,12 @@ def reserve_cap(state: GameState, session: StrategySession,
     r"""R\*(t) = interest_floor + Σ 窗口内排程升级费(设计 §1.3)。
 
     窗口 h = min(3, 到本位面末节点轮数);只储蓄下一级费用——多级
-    排程在逐帧重算下自愈(升级完成一轮后 R* 自然滚动到下一级;W481
-    A-4:误估最坏=一个升级费量级 ≤50 金,双向有界)。
+    排程在逐帧重算下自愈(升级完成一轮后 R* 自然滚动到下一级;误差有界核算:
+    误估最坏=一个升级费量级 ≤50 金,双向有界)。
     排程判据单一址 = ``schedule_upgrade``(确定性查表核,ADR-0465 预算
     收权;与 arbiter 授权/EV 授权 ② 臂共调同一函数,R4)。
 
-    守息线取 `interest_cap × 10`(息帽同源派生,W611 §2.2 恒等式):
+    守息线取 `interest_cap × 10`(息帽同源派生,经济循环设计 §2.2 恒等式):
     基参数下 5×10=50==interest_floor,行为零漂移;写法保证「守息线
     ≤ 封顶线」结构性成立——两者同源,不可能出现守息线高于持有增益
     归零点(息帽截断点)的态。策略级息帽 override(interest_cap_override)

@@ -208,7 +208,7 @@ def junk_first_allocation(session,
                           ) -> list[tuple[str, str]]:
     """EquipAll 决策入口包装:基分配(语义不变)→ 变宝为废后处理。
 
-    ``base_alloc``:W880 管道接入(设计 §2.2 量→序)——调用方已算好基分配
+    ``base_alloc``:装备环境管道接入(设计 §2.2 量→序)——调用方已算好基分配
     (可经 fill3 量变体改派后)时直传,本函数不再重复计算 equip_allocation;
     None(缺省,含既有测试/旧调用)→ 内部自算,行为逐位不变。
 

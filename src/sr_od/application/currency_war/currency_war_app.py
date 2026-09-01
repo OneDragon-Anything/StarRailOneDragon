@@ -9,7 +9,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war import currency_war_const
+from sr_od.application.currency_war import currency_war_const, cw_screen_state
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.currency_war_run_record import CurrencyWarRunRecord
 from sr_od.application.currency_war.operations.battle_loop import CurrencyWarRunLoop
@@ -58,7 +58,8 @@ class CurrencyWarApp(SrApplication):
     # **screen_info 画面匹配**(货币战争- 前缀 − 大厅态白名单)——新对局画面建档即自动生效,
     # 不再靠事后补关键词(每漏一个新屏 = enter 链「返回普通大世界」死循环 ~8min)。
     # 关键词保留为 fallback(id_mark 未全中的半开/过渡帧)。
-    _CW_PREFIX: ClassVar[str] = '货币战争-'
+    # 对局中画面判定单一源已平移至 cw_screen_state(前缀 + 白名单 + 过滤逻辑),
+    # 本类方法仅委托——供既有测试(经类方法调用)与内部消费保持同一入口。
 
     # 启动恢复态预检锚(局10/11 实证):上局中途停机后客户端可能停在「战斗暂停/
     # 关卡信息」面板(进度保留态,含 撤退/重新挑战/继续战斗)。识别用「战斗暂停」
@@ -66,28 +67,14 @@ class CurrencyWarApp(SrApplication):
     # 离线 analyze 实证:暂停面板帧被精准匹配为 货币战争-敌人信息浮层),不能作判据。
     PAUSE_SCREEN: ClassVar[str] = '货币战争-战斗暂停'
     PAUSE_MARK: ClassVar[str] = '标识-战斗暂停'
-    _LOBBY_STATE_SCREENS: ClassVar[frozenset[str]] = frozenset({
-        '货币战争-大厅', '货币战争-模式选择',
-        '货币战争-攻略列表', '货币战争-攻略详情', '货币战争-攻略图例',
-        '货币战争-攻略码输入弹窗', '货币战争-保存阵容弹窗',
-        '货币战争-装备追踪弹窗', '货币战争-阵容编辑',
-        # 列车补给每日弹窗:盖在大世界之上、早于 CW 入口首段导航的**非对局屏**。
-        # 必须显式排除——in_match_screen_names 按 货币战争- 前缀自动收屏(match2
-        # 实锤 2026-08-31:弹窗帧被误判「已在对局中」→ 跳过 enter/start 直交
-        # loop → 未知态钩子 33s 停机)。
-        '货币战争-列车补给弹窗',
-    })
 
     @classmethod
     def in_match_screen_names(cls, screen_info_list) -> list[str]:
-        """对局中态屏名(screen_info 全集过滤:货币战争- 前缀 − 大厅态白名单)。
-
-        module 级可测;新对局画面建档(命名带前缀)自动进列表——M54 类
-        「新屏漏判 → enter 链死循环」结构性消除。
+        """对局中态屏名。判定单一源 = ``cw_screen_state.in_match_screen_names``
+        (货币战争- 前缀 − 大厅态白名单);本方法仅委托,签名/行为不变
+        (既有测试锁经类方法调用)。
         """
-        return [si.screen_name for si in screen_info_list
-                if si.screen_name.startswith(cls._CW_PREFIX)
-                and si.screen_name not in cls._LOBBY_STATE_SCREENS]
+        return cw_screen_state.in_match_screen_names(screen_info_list)
 
     def __init__(self, ctx: SrContext):
         # L0 安灯停线的生产武装点(显式注册,幂等):停线副作用缺省关、在此

@@ -22,7 +22,7 @@ from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
 
 # 配方伪 comp 注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
 # ⚠️ core 含 partial(爻光/缇宝/符玄)不含 drop(卡芙卡/椒丘 = 应急战力件,买了就上但不追;
-# 瓦尔特/腾荒 r100 已从 TRANSITION_PACK 移除,勿引用)。
+# 瓦尔特/腾荒已从 TRANSITION_PACK 移除,勿引用)。
 # form_tiers:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
 #             列车 = 4列车(数据口径主流档);量子 = 3量子+2贝(r102)。
 _RECIPES: dict[str, Comp] = {
@@ -32,7 +32,7 @@ _RECIPES: dict[str, Comp] = {
                     if fw == '仙舟' and tier in ('carry', 'partial')],
         form_tiers={'仙舟': 3},
         strength='A', form_difficulty='easy',
-        # r100 审计必修②:过渡期站位(爻光必后台,ADR-0139 规则住在终局 comp,
+        # 审计必修:过渡期站位(爻光必后台,ADR-0139 规则住在终局 comp,
         # 配方伪 comp 需自带;漏了 → _pick_deploy_row 落 position_pref 兜底)
         char_positions={'爻光': 'back'},
     ),
@@ -43,7 +43,7 @@ _RECIPES: dict[str, Comp] = {
         form_tiers={'列车同行': 4},
         strength='A', form_difficulty='easy',
     ),
-    # r102 量子框架(希儿线统一化:walkin 特例通道删除,量子=第三过渡配方;
+    # 量子框架(希儿线统一化:walkin 特例通道删除,量子=第三过渡配方;
     # 「过渡=终局雏形」由统一公式自然表达——转变成本 0,定型时恒等衔接)
     '量子': Comp(
         name='过渡·量子配方', factions=['量子同频', '贝洛伯格'],
@@ -70,7 +70,7 @@ def recipe_char_wanted(char_id: str, framework: str) -> bool:
     return fw == framework or fw == '通用'
 
 
-# r102 统一化(用户定调):walkin 特例通道**整体删除**——希儿量子并入第三过渡配方
+# 统一化(用户定调):walkin 特例通道**整体删除**——希儿量子并入第三过渡配方
 # (量子),「过渡=终局雏形」由统一公式自然表达:框架计数(量子件持有)决定配方选择,
 # 策略/环境加分统一走 env/augment affinity,定型时转变成本≈0 → 恒等衔接。
 # 删除物:WALKIN_ALLOWED_COMPS 白名单 / _cheap_carry_walkin 判据 / walkin_latched
@@ -98,7 +98,7 @@ def decision_target(session, state: GameState) -> Comp | None:
     读端)——消除「装配边界漏回填时缺省 False=恒按定型」的静默
     劣化面。零漂移依据:decision_v2 生产路径 ``transition_framework`` 恒 ''
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
-    (`w646_plan_c_attack/` 攻击面 3 实证)。
+    (C 方案对抗报告 攻击面 3 实证)。
     """
     from sr_od.application.currency_war.kernel.cw_intention import (
         committed_from,

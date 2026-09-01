@@ -112,7 +112,7 @@ class ShopCard:
     name: str = ""       # 角色名(OCR);未知 ""
     cost: int = 0        # 费用(OCR);未知 0(eval 按默认 3 估,详见 cw_decisions)
     star: int = 1        # 商店里已是几星
-    # 升星预览✦数(商店牌 art 头顶显影,W104/ADR-0416):= 已持同名同星副本份数,
+    # 升星预览✦数(商店牌 art 头顶显影,ADR-0416):= 已持同名同星副本份数,
     # 买第 3 张即 3合1 升星——bot tracking merge_progress 的视觉印证(观测层冗余信号)。
     # 坐标系 = 商店牌-N area crop 顶部带本地像素(read_merge_preview);取值时机 = 进店帧快照。
     # 0 = 无✦,**双义**(真无副本 ∨ 读不到 fail-silent)——消费方按「未观测」对待,
@@ -158,6 +158,13 @@ class GameState:
     # 「难度 vs 轮次」爬升曲线样本**(ADR 待 leader 定号,批㉖ F1 裁决)。
     enemy_difficulty_live: bool = False
     level: int = 1         # 玩家等级 = 可上阵数上限基准(封顶 10)
+    # level 值来源保真位(对齐 hp_readable 模式;ADR-0482 后继,M2 obs 根因修复):
+    # True=等级来自真实观测(OCR 直读或 XP 分母反推至少一源可读);False=纯
+    # ``_expected_level`` 启发式兜底值(OCR 与 XP 双失读)——遥测上「兜底 4」与
+    # 「真读 4」此前不可分,判读侧据此过滤 False 帧的 level 曲线样本。
+    # 默认 True 仅供 sim 恒真读帧约定与旧档案缺省(按现有判读处理),真读帧由
+    # 读取端(read_game_state)显式写。
+    level_readable: bool = True
     # None = 未读到(shop 态/动画)。level 升级时机决策用(替代纯 _expected_level 估)。
     xp_progress: tuple[int, int] | None = None
     # 部署上限真值(= level + 财富宝钻数,可叠加;D-53/局38 r2 实证)。
@@ -169,7 +176,7 @@ class GameState:
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
-    hp: int | None = None  # 小队生命值(锁血决策用)。**None 化(ADR-0491;W823)**:无真值即 None——读不到且 session 无沿用真值(last_hp_real)时 = None,不再兜底 100(ADR-0282「开局兜底 100」由 ADR-0491 正式废止:r1 开局血量随难度/词缀变不恒 100,兜底值是「看起来像真值」的假值)。读不到但有真值 → 对账层沿用 last_hp_real(int)。消费点对 None 一律保守(血线触发条件不触发/授权位门 fail-closed),hp_readable/hp_trusted 两位语义不变。默认构造 GameState()=未观测态(hp=None;hp_readable 默认 True 仅供 sim 恒真读帧约定,真读帧由读取端显式写)
+    hp: int | None = None  # 小队生命值(锁血决策用)。**None 化(ADR-0491)**:无真值即 None——读不到且 session 无沿用真值(last_hp_real)时 = None,不再兜底 100(ADR-0282「开局兜底 100」由 ADR-0491 正式废止:开局血量随难度/词缀变不恒 100,兜底值是「看起来像真值」的假值)。读不到但有真值 → 对账层沿用 last_hp_real(int)。消费点对 None 一律保守(血线触发条件不触发/授权位门 fail-closed),hp_readable/hp_trusted 两位语义不变。默认构造 GameState()=未观测态(hp=None;hp_readable 默认 True 仅供 sim 恒真读帧约定,真读帧由读取端显式写)
     # hp 值来源可读位(ADR-0282;False=读不到,hp 此时为沿用值/兜底值;遥测保真,决策不用)。
     # 两来源,True 时可信度等同真读:
     # ①真读=OCR 备战 HP 区;②结算=结算屏「小队生命值」经新鲜度门写入。
@@ -213,7 +220,7 @@ class GameState:
     # len(bench)**;迭代一律 ``iter_occupied``(裸 for 会撞 None)。
     bench: list[BenchChar | None] = field(default_factory=list)
     # 3 位面 boss 名(current_boss 派生;strategy/06;session.briefing_bosses 同步)。
-    # 元素 None = 该位面徽章态无身份(W221/ADR-0398,boss_fit 跳过 None 项)
+    # 元素 None = 该位面徽章态无身份(ADR-0398,boss_fit 跳过 None 项)
     plane_bosses: list[str | None] = field(default_factory=list)
     # 开局环境 + 敌人词缀(select_comp / mechanics_fit 用;decide_event 选完写 active_env,实机 OCR 写 enemy_affixes)
     active_env: str = ""                       # 已选投资环境名(如"昼之半神概念股";ENV_COMP_AFFINITY 用)
@@ -224,7 +231,7 @@ class GameState:
     back_max: int = 6
     # OCR「备战席已满」警告(True 时硬门必破;None/False 用 BENCH_CAPACITY 兜底)
     bench_full_flag: bool | None = None
-    # 商店开态概率条真值 {费用档 1-5: 概率}(r77 轮岗接线:投资环境轮岗每备战阶段随机
+    # 商店开态概率条真值 {费用档 1-5: 概率}(轮岗接线:投资环境轮岗每备战阶段随机
     # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
     refresh_probs: dict[int, float] | None = None
     # ⚖️ node_path + NodeInfo 已删(2026-08-16 review D3:0 写 0 读;节点序列实际由
@@ -539,7 +546,7 @@ class SellBench:
 class LevelUp:
     cost: int        # 本次「购买经验」单击花金(ADR-0129:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     auth_basis: str = ''
-    # 授权依据**记录**字段(非指令;检查器判据重定义批/W131,ADR-0354):
+    # 授权依据**记录**字段(非指令;ADR-0354):
     # 放行臂名('pop_slot'=①[33]人口位 / 'dp'=②DP 花费授权 /
     # 'static_ev'=③静态 EV 平台账;''=未过 ev.levelup_ev_authorized 的
     # 旧调用/未接线路径)。由 arbiter 升级门与 remediation 补偿臂在
@@ -800,7 +807,7 @@ def will_merge_on_buy(card: ShopCard, bench: list[BenchChar | None],
     bench∪deployed)==2 且待买为 1★**——买后恰达 3 份触发合并。
     显式**不用星级加权**(1 个 2★ 加权 2 但同星计数=1,不合成交
     bench 净 +1;旧 candidates.will_merge 加权判据的误标例)。
-    消费点:candidates.will_merge(生成侧)。W544(ADR-0453)起满栏
+    消费点:candidates.will_merge(生成侧)。ADR-0453 起满栏
     购买门/执行侧(simulate)改走一般式 merge_buy_completes/merge_buy_k
     (k 可 >1);本函数保留 = k=1 特例的生成侧标记语义。
     """
@@ -841,7 +848,7 @@ def merge_buy_k(name: str, star: int,
     (那由 ``merge_buy_completes`` 判);店内外身份计数共用
     ``same_star_count``/同键过滤,禁消费方各自手搓(双源漂移温床)。
 
-    消费点:candidates/arbiter 满栏购买门(W544)/simulate 满栏多买
+    消费点:candidates/arbiter 满栏购买门(ADR-0453)/simulate 满栏多买
     (执行侧)/shop.py 买入意图记录(执行账 k×单价)。
     """
     star_n = star or 1
@@ -858,7 +865,7 @@ def merge_buy_completes(name: str, star: int,
                         shop: list[ShopCard] | None = None) -> bool:
     """本次点击(买 k = ``merge_buy_k`` 张)是否恰好完成一次合成。
 
-    判据 = 同名同星计数(备战栏+场上)+ 本次购买 ≥ 3(W544 允许条件,
+    判据 = 同名同星计数(备战栏+场上)+ 本次购买 ≥ 3(ADR-0453 允许条件,
     merge_mechanics §2.5);等价于 k == 3 − 已有数 mod 3。不满足 → 满栏
     照旧拒买(ADR-0283 守卫语义保留为兜底)。
     """
@@ -883,10 +890,18 @@ def sell_refund(star: int, cost: int) -> int:
     return max(refund, 0)
 
 
-def _bench_char_cost(bc: BenchChar) -> int:
-    """备战角色的招募费(sell_refund / 经济决策用):char_id 已识别 → 查 CHARACTERS;未知 → 3(中费保守估)。"""
+def bench_char_cost(bc: BenchChar) -> int:
+    """备战角色的招募费(sell_refund / 经济决策用):char_id 已识别 → 查 CHARACTERS;未知 → 3(中费保守估)。
+
+    公共名(跨模块私有符号收敛:跨模块消费统一走本名;
+    下划线旧名保留为别名,存量消费点不破)。"""
     c = CHARACTERS.get(bc.char_id) if getattr(bc, 'char_id', '') else None
     return c.cost if c and c.cost else 3
+
+
+#: 旧内部名别名(存量消费点 = cw_state 模块内 / sim.engine_p1 /
+#: telemetry.schema;接缝面批后新代码一律用公共名 bench_char_cost)
+_bench_char_cost = bench_char_cost
 
 
 def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
@@ -1059,7 +1074,7 @@ def _resolve_comp_transaction(
     for i in sell_b:
         post_bench[i] = None            # 步 1:sell 的 bench 槽清空
     for i in dep_b:
-        post_bench[i] = None            # 步 2:deploy 源清槽(W197/ADR-0380
+        post_bench[i] = None            # 步 2:deploy 源清槽(ADR-0380
         # 件③:先于 undeploy 放回,与 _apply 应用序同式——否则 bench 满
         # 时 undeploy 放回落空,fill 的槽位解析与真实应用错位)
     for c in und_chars:
@@ -1169,7 +1184,7 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
 
     应用序:sell → deploy 源清槽 → undeploy → deploy → fill(填位的 bench
     源按后置 bench 槽位表(plan['post_bench'])解析——ADR-0316 槽位下标,
-    不 pop 不移位;W197/ADR-0380 件③:deploy 源清槽先于 undeploy 放回,
+    不 pop 不移位;ADR-0380 件③:deploy 源清槽先于 undeploy 放回,
     否则 bench 满时保留件被静默丢弃——单位守恒)。
     终态重算 board(_recount_board 单一源)。
     卖出单位的装备回收进 ``state.equips``(owned 池;🟡 游戏侧「卖带装
@@ -1180,7 +1195,7 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
         s.equips.extend(c.equips)
         _bench_clear_by_identity(s.bench, c)
         _deployed_clear_by_identity(s.deployed, c)   # ADR-0392:置 None 不移位
-    # W197/ADR-0380 件③:deploy 源清槽先于 undeploy 放回——旧序
+    # ADR-0380 件③:deploy 源清槽先于 undeploy 放回——旧序
     # (undeploy 先)在 bench 满时 bench_place 无空槽返回 None,保留件
     # 被**静默删除**(无退款/不回池,单位守恒违约;终态容量校验只看
     # 终态看不见中间态溢出)。清槽提前只影响中间态,终态与旧序一致;
@@ -1194,11 +1209,11 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
         _apply_row_to_char(c, row)
         deployed_place(s.deployed, c)   # ADR-0392:按排路由落槽(替代 append)
     post_bench = plan['post_bench']
-    # W126 索引漂移修复(动作索引五查②③同族):shop fill 按校验期已解析的
+    # 索引漂移修复(动作索引五查②③同族):shop fill 按校验期已解析的
     # 卡对象消费(``plan['shop_fill_cards']``,与 fill 的 shop 源子序列同序)
     # ——**禁在 fill 循环内按下标现读 ``s.shop[f.idx]`` 再 remove**:前一笔
     # remove 左移列表,后续 f.idx 全部失效 → 买错卡(错档部署)+记错账
-    # (W126 sim ledger_consistency 12/100 金不守恒实证:两笔 2费 fill 被
+    # (sim ledger_consistency 12/100 金不守恒实证:两笔 2费 fill 被
     # 读成 2费+4费,Δ−6 vs 记账−4;②a 前 form_floor 保险丝拦住多笔
     # shop fill 事务,曝光 2/100——步③ 放宽可负担性后升至 12/100)。
     _shop_fills = iter(plan['shop_fill_cards'])
@@ -1232,7 +1247,7 @@ def effective_hp_threshold(state: GameState) -> int:
     高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
     ADR-0204 从 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
 
-    ⚖️ ADR-0176(r11 #4 桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(ADR-0174 桥),
+    ⚖️ ADR-0176(桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(ADR-0174 桥),
     改由 18 号首达生存模型解出 —— ``plane_hp_ratio``(hp_floor(P_win 地板比),随板强/剩余日程
     变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
     精确零漂移(M57 验证行为保持)。
@@ -1284,7 +1299,7 @@ def simulate(state: GameState, action: Action) -> GameState:
         # 不变——金不扣、牌不下架,整动作 no-op)。
         # S3(ADR-0325):**合并买入**例外——满员也通,新卡临时挂槽位表
         # 尾部参与 _merge_bench(合成后恒被消费置 None),再截回定长 9。
-        # W544(ADR-0453):满栏判据从「买第 3 份同名 1★(k=1)」升级为
+        # ADR-0453:满栏判据从「买第 3 份同名 1★(k=1)」升级为
         # merge_mechanics §2.5 一般式——k = min(店内张数, 3−已有数 mod 3)
         # 张一次买入(游戏自动多买,无价格优惠:金账按 k×单价记全款),
         # 判据单一源 = merge_buy_completes(不满足仍拒,ADR-0283 兜底)。
