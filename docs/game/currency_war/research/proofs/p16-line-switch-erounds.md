@@ -1,7 +1,7 @@
 # P16:换线判据 E_rounds 的超几何口径、滞回稳定性与截断误差界
 
-> 状态:**已证**(口径命题 + 稳定性命题 + 误差界命题;落地=cw_line_switch.py,registry.line_switch_*)
-> 数据源(单一源代码,数值不抄):`cw_shop_odds`(`SHOP_SLOTS=5` L28、`POOL_COPIES_PER_CARD={1:27,2:27,3:9,4:9,5:9}` L33、`DISTINCT_CARDS_PER_COST` L37、`REFRESH_PROB` 表 L44-52,即 P5 实值表)、`cw_chars.CHARACTERS`(标签集)、`cw_state`(`BENCH_CAPACITY`/`bench_occupied`)、decision_v2 registry(`line_switch_theta=1.0`/`line_switch_debias_delta=0.15`/`line_switch_min_dwell=2` L791-796、`interest_floor=50` L812)
+> 状态:**已证**(口径+稳定性+误差界命题;2026-09 修复:p̄ 跨档改精确式、已见牌措辞勘误、registry 行号勘误。**实证面注**:数学命题不需实机背书,但判据 `should_switch_e` 在 `src/` 零生产调用点、三轮 AB 账本换线/门事件 0 起、sim 参数门(检验点 4)从未执行——换线行为实证=无数据,结构性休眠;新设计需接线或显式放弃);落地=cw_line_switch.py,registry.line_switch_*
+> 数据源(单一源代码,数值不抄):`cw_shop_odds`(`SHOP_SLOTS=5` L28、`POOL_COPIES_PER_CARD={1:27,2:27,3:9,4:9,5:9}` L33、`DISTINCT_CARDS_PER_COST` L37、`REFRESH_PROB` 表 L44-52,即 P5 实值表)、`cw_chars.CHARACTERS`(标签集)、`cw_state`(`BENCH_CAPACITY`/`bench_occupied`)、decision_v2 registry(`line_switch_theta=1.0`/`line_switch_debias_delta=0.15`/`line_switch_min_dwell=2`,**L943-948**;原稿引用 L791-796/L812 系行号漂移,已勘误)
 > 实现:`src/sr_od/application/currency_war/kernel/cw_line_switch.py`(`p_bar_faction`/`line_distance`/`e_rounds`/`should_switch_e`)
 > 设计:W328 未成型姿态设计稿 §③(设计裁决承载:ADR-0426;实现:`posture_release.py`/`cw_line_switch.py`)
 > 提出:W345 审查问⑥/C5-②(E_rounds 判据未命题化);证明=本批(W349)
@@ -33,7 +33,19 @@
 
     P(≥1 目标 | cost) = Σ_m B(m; 5, p_cost) × [1 − C(T−A, m)/C(T, m)]
 
-其中 T=v·a(该档池总张数)、A=目标种数×a(目标张数)。这正是超几何「m 抽全空」补事件的精确式——与 `ev_proto.p_at_least_one` 及 cw_shop_odds 内部模型同一构型(实现 p_bar_faction,L83-90,逐项对拍)。费用档互斥(每格恰属一档),故各档概率**可加**:p̄ = Σ_cost P(≥1|cost)。多标签并集按标签独立取 1−∏(1−p̄_f) 是**承认的高估方向**(联合分布高估,DESIGN §附5 诚实列表);注意该偏差方向对 cur 与 alt 双线同施,不影响②的比较结构。已见牌扣除口径:`distance` 的 held/shelf 两项把「已在板面/货架的目标件」从需求中扣除——即已见牌不重复计入 p̄ 期望,等价于按可见库存修正牌池,与 cw_shop_odds 的池模型(池减已购)同口径。证毕。
+其中 T=v·a(该档池总张数)、A=目标种数×a(目标张数)。这正是超几何「m 抽全空」补事件的精确式——与 `ev_proto.p_at_least_one` 及 cw_shop_odds 内部模型同一构型(实现 p_bar_faction,L83-90,逐项对拍)。
+
+**跨档精确式(2026-09 勘误:原稿「费用档互斥,故各档概率可加」论证错误,本节替换;见 P16_VALIDATION 瑕疵 A)**。每格恰属一档(格互斥)推不出「各档 ≥1 目标事件互斥」:同一次刷新可同时在多个费用档各出 ≥1 目标件,故 `Σ_cost P(≥1|cost)` 是**并集上界(union bound)**,不是精确式。精确式:5 格的费用构成 m=(m_1,…,m_5) 服从多项分布 Mult(5; p_1,…,p_5)(p_c 来自 REFRESH_PROB),给定 m 后各档「全空」事件互相独立(不放回抽卡只在同档格间耦合,跨档无耦合),于是
+
+    p̄ = 1 − Σ_m Mult(m; p) × Π_c C(T_c − A_c, m_c)/C(T_c, m_c)     (精确式)
+
+解析下界闭式(逐格 iid 近似,把同档不放回放宽为放回):单格命中概率 q = Σ_c p_c·n_c/v_c(n_c=该档目标种数、v_c=该档种类数),则
+
+    p̄_iid = 1 − (1 − q)^5 ≤ p̄ ≤ Σ_c P(≥1|c)                        (夹逼)
+
+**锚点重算(持续伤害,lv6;档构成 n_c={1费:3, 2费:1, 4费:1},3/5 费无目标件)**:逐档 P(≥1|c) = 0.20583 / 0.12664 / 0.01774,并集上界 **0.35021**(= 原稿/实现锁定值 0.3502,即 union bound);q = 0.30·3/20 + 0.40·1/15 + 0.05·1/14 = 0.075238,iid 闭式 = 1−(1−0.075238)^5 = **0.32368**;精确式 = **0.32406**。独立复核(三法互证,脚本 = `tools/cw/proofs/p16/pbar_exact.py`):逐格 iid 闭式 0.323684 / 多项×超几何全枚举 0.324058 / 蒙特卡洛 50 万次模拟 0.323982(SE≈0.0007),一致;并集上界相对精确值高估 **+8.1%**。**锁定锚点改为精确值 0.3241**(iid 闭式 0.3237 为其解析下界,相差 0.01%;旧锚 0.3502 为并集上界,保留作对照注记)。实现层 `p_bar_faction` 仍是并集上界口径(与旧锚 0.3502 逐位对拍),改精确式属代码批文件面、不在本批;其 +8.1% 高估与「满池乐观」同向,已被 δ=0.15 修偏声明覆盖(改精确式后 δ 的职责回归纯 NPC 消耗项,预算更自洽)。
+
+多标签并集按标签独立取 1−∏(1−p̄_f) 是**承认的高估方向**(联合分布高估,DESIGN §附5 诚实列表);注意该偏差方向对 cur 与 alt 双线同施,不影响②的比较结构。**已见牌扣除口径(2026-09 勘误措辞:原稿「等价于按可见库存修正牌池、与 cw_shop_odds 的池模型同口径」不成立,替换)**:held/shelf 两项只修正**分子** distance(已在板面/货架的目标件从需求中扣除、不重复计入期望),不修正**分母**——`p_bar_faction` 的分母恒用满池 T=v·a,不扣已购/NPC 消耗;而 cw_shop_odds 的池模型(`_refresh_dist` 的 rem_target=a−j)是真减池的。故两者**不是同口径**:「分子修正 + 分母满池」是**保守侧简化**(非等价),满池偏差并入 δ 的修偏声明吸收。证毕。
 
 ### ② 滞回 + 驻留下不存在抖动序列
 
@@ -45,9 +57,9 @@
 
     E(cur)·k + θ < E(alt)·k。
 
-两式相加得 2θ < 0,与 θ=1.0>0(registry L791)矛盾——**同一对 E 值下双向切换条件不相容**,θ-抖动在代数上被排除(δ 同乘两侧不改变此性质)。滞回的经典构造(shifted threshold)由此获得无抖动保证。
+两式相加得 2θ < 0,与 θ=1.0>0(registry L943)矛盾——**同一对 E 值下双向切换条件不相容**,θ-抖动在代数上被排除(δ 同乘两侧不改变此性质)。滞回的经典构造(shifted threshold)由此获得无抖动保证。
 
-**时间维**:即使 E 值逐帧漂移使上述静态矛盾失效(两条线的 E 随局面演化),D_min=2 驻留(`line_switch_min_dwell`,registry L796;`should_switch_e` L173-174)给出时间硬约束:每两次切换之间至少隔 D_min 帧 → 振荡频率 ≤ 1/(2·D_min) 次/轮 = 0.25 次/轮。合取:**不存在帧级抖动序列;有界漂移下的往复频率有硬上界**。退化情形双 inf → 维持原线(实现 `both_inf`/`alt_inf` 分支,L163-164),无穷大不参与比较,无边界奇异。证毕。
+**时间维**:即使 E 值逐帧漂移使上述静态矛盾失效(两条线的 E 随局面演化),D_min=2 驻留(`line_switch_min_dwell`,registry L948;`should_switch_e` L173-174)给出时间硬约束:每两次切换之间至少隔 D_min 帧 → 切换率 ≤ 1/D_min;完整振荡周期(A→B→A)需 2 次切换、≥ 2·D_min 帧 → 振荡频率 ≤ 1/(2·D_min) 次/轮 = 0.25 次/轮。合取:**不存在帧级抖动序列;有界漂移下的往复频率有硬上界**。退化情形双 inf → 维持原线(实现 `both_inf`/`alt_inf` 分支,L163-164),无穷大不参与比较,无边界奇异。证毕。
 
 ### ③ E_rounds 截断的误差界
 
@@ -61,11 +73,11 @@
 
 ## 检验点
 
-1. `p_bar_faction` 对拍:任取 (tag, level),与 `ev_proto.p_at_least_one` 逐位一致;lv6「持续伤害」p̄=0.3502/刷(DESIGN §⑤ 套算值)为锁定锚;
+1. `p_bar_faction` 对拍:任取 (tag, level),与 `ev_proto.p_at_least_one` 逐位一致;lv6「持续伤害」:实现(并集上界口径)=0.3502 复现,**数学锚点=精确式 0.3241**(iid 闭式 0.3237;换算与三法对拍见 `tools/cw/proofs/p16/pbar_exact.py`);
 2. 稳定性锁:构造 (e_cur, e_alt) 对称对断言双向 switch 条件互斥(θ>0);D_min 锁:dwell<D_min 时无论差多大不切;
 3. 单调性锁:E_rounds 对 distance 单调增、对 p̄/rolls 单调减;distance=0→0.0、p̄=0→inf 的边界分支;
 4. sim 参数门(DESIGN §⑥):θ∈{0.5,1,2}×D_min∈{1,2,3}×δ∈{0.10,0.15,0.20} 网格,振荡率与假阴性率双指标(Wilson 95% 上界 ≤15%)——本命题预测:任何网格点振荡率 ≤ 1/(2·D_min) 的局占比上限,违例即命题证伪。
 
 ## 关联
 
-- P5(REFRESH_PROB 同表、禁单次边际口径)、P13(金位回充的收入下界,截断保守侧的机制来源)、P11(溢余段刷金成本下界 0,rolls 的 affordable 口径不含息损项的依据);DESIGN §③(w328);registry L791-812(参数单一源)。
+- P5(REFRESH_PROB 同表、禁单次边际口径)、P13(金位回充的收入下界,截断保守侧的机制来源)、P11(溢余段刷金成本下界 0,rolls 的 affordable 口径不含息损项的依据);DESIGN §③(w328);registry L943-948(参数单一源;原稿 L791-812 行号漂移已勘误)。锚点重算脚本:`tools/cw/proofs/p16/pbar_exact.py`(2026-09 P16 修复批,精确式/iid 闭式/并集上界/蒙特卡洛四口径对拍)。
