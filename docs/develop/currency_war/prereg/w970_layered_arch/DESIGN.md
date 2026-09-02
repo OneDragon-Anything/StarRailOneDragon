@@ -93,6 +93,12 @@ overlay 画面族(投资策略/投资环境/遭遇锁定/补给锁定/补给箱�
 
 ### 4.1 决策接口(按画面拆)
 
+> ⚠️ **Amended by W971 §2.7**(2026-09-02,用户拍板黑板模式):接口签名改为
+> `decide_prep_screen(session, config)` / `decide_shop_screen(session, config)`——
+> 决策统一读 StrategySession(观察 op 直接写 session),**取消 obs 组装子集**;
+> §4.1.2 的字段来源表语义转化为「观察 op 写 session 的字段清单」,仍是迁移规格。
+> 详见 `prereg/w971_flow_layer/DESIGN.md` §2.7。
+
 #### 4.1.1 接口签名与前身
 
 ```
