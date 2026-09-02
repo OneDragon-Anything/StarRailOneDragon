@@ -1,15 +1,13 @@
-from cv2.typing import MatLike
 from typing import ClassVar
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.matcher.match_result import MatchResult
 from one_dragon.base.operation.operation_edge import node_from
-from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_node import operation_node
+from one_dragon.base.operation.operation_notify import NotifyTiming, node_notify
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.i18_utils import gt
-from sr_od.application.support_character import support_character_const
 from sr_od.application.sr_application import SrApplication
+from sr_od.application.support_character import support_character_const
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.back_to_normal_world_plus import BackToNormalWorldPlus
 from sr_od.operations.menu import phone_menu_utils
@@ -59,8 +57,9 @@ class SupportCharacterApp(SrApplication):
     @node_from(from_name='点击漫游签证', status=STATUS_WITH_ALERT)
     @operation_node(name='领取奖励')
     def _click_character(self) -> OperationRoundResult:
-        self.ctx.controller.click(Point(1862, 358))
-        return self.round_success(wait=1)
+        # 领取位走 screen_info area(坐标单一真相源);area 中心(1862,360) 与原
+        # 硬编码 Point(1862,358) 等价(rect [1830,320,1895,400] 即按该点画的框)
+        return self.round_by_click_area('漫游签证', '按钮-支援奖励领取位', success_wait=1)
 
     @node_from(from_name='领取奖励')
     @node_from(from_name='点击省略号', status=STATUS_NO_ALERT)
