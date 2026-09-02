@@ -1184,6 +1184,20 @@ class CurrencyWarRunLoop(SrOperation):
                          self.PREP_SETTLE_S)
             if time.monotonic() - self._prep_entry_ts < self.PREP_SETTLE_S:
                 return self.round_wait(wait=1.0)   # 只观察:等 overlay 弹出/画面定型
+            # 自动开店动画判稳(用户口述 2026-09-02 场景①):结算/补给/投资策略/遭遇
+            # 选择后回备战,商店自动弹出(#14 触发源族)——「备战阶段」文本在面板就位后
+            # 才于建档矩形([250,30,520,120])可读 = 弹出动画稳定。仅结算后首轮查
+            # (标志置位,纯备战轮零增量);面板弹出中未入位 → round_wait 下轮再查。
+            # 注:此处的「备战阶段」是动画稳定标志(面板就位判定),不是画面分支判据
+            # (它两档同址,分支判据见上方双锚 + 「按钮-收起」)。
+            # 过渡实现:W971 §2.11 战斗等待 op 落地后,此判稳收编为该 op 完成判据
+            # (完成判据白名单含「备战阶段」),本标志位段随批 C 退役。
+            if getattr(self, '_post_settle_auto_shop', False):
+                if not self.round_by_find_area(
+                        screen, '货币战争-备战-开商店', '标识-备战阶段').is_success:
+                    return self.round_wait(wait=1.0)
+                self._post_settle_auto_shop = False
+                log.info('[cw-loop] 自动开店面板就位(备战阶段识别)→ 交 Director')
             # 备战被锁(顶部「返回投资策略选择」按钮)→ 点去选策略(check#4 接手)。
             # 2026-08-26 挪位(原在备战判定前全屏扫):用户定性该按钮出现 = 上游
             # 投资策略屏处理失败的 symptom(策略屏点歪才退回备战带此按钮;同族 =
@@ -1687,6 +1701,10 @@ class CurrencyWarRunLoop(SrOperation):
             # REPORT.md「需验证」:每轮结算段固定链)。
             time.sleep(0.2)
             if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=1).is_success:
+                # 自动开店窗口标志(用户口述 2026-09-02 场景①):战斗结算/补给/投资
+                # 策略/遭遇选择后回备战,商店自动弹出(#14 触发源族)——备战分支稳定门
+                # 后按「备战阶段」识别确认面板就位(见备战分支消费点)。
+                self._post_settle_auto_shop = True
                 # 停留计数(M39 实证 2026-08-16,3-1 普通轮结算):「继续挑战」OCR/模板全识别、
                 # 普通 click **不响应**(40min 空转同帧),长按 0.5s @ 底部中央才推进(手动实锤;
                 # 推进后进 P3 投资策略 = 3-1 只是普通关,非终局)。归因未定(焦点/热区偏移/交互
