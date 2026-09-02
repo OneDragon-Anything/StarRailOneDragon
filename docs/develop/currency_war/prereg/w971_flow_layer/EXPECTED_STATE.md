@@ -58,7 +58,7 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 | # | op | 期望态更新 |
 |---|---|---|
 | 6 | **M7 装备拖拽(穿装备)** | `last_owned_equips −1` + `tracked_deployed[角色].equips +1`(**装备分布期望态**——漏项补,复盘 181254 A 条同源路径) |
-| 7 | ~~C6 装备转移~~ **无效实现待删改**(装备不能角色间直拖——机制纠正 2026-09-02;正确流程=扳手拆卸或卖角色→装备回装备区→重穿,拆为 UnEquip+Equip 两原子 op,归属=决策输出) | 装备转移的期望态 = 两段:UnEquip(角色equips−1+owned+1)→Equip(owned−1+新角色equips+1) |
+| 7 | ~~C6 装备转移~~ **无效实现待删改**(装备不能角色间直拖;转移途径=卖角色[免费主力,装备自动回区]或扳手拆[消耗稀缺工具,策略决策]——机制纠正 2026-09-02,用户批评「没看扳手是什么」后修正) | 转移期望态 = 卖角色(deployed−1+owned+装备返还+gold+)→重买/重穿;扳手拆另计「owned 扳手−1」(稀缺资源消耗,策略层决策非免费操作) |
 | 8 | DeployMove | bench 源−1;deployed 空槽+1 或非同名换位;board 阵营计数±1(上阵+1/下场−1)。**拖到场上同名同星槽 = 无效操作**(游戏无响应——合成是凑满 3 自动发生不需要拖,用户纠正 2026-09-02):决策层守卫避免输出该组合,执行层遇无效拖拽按 dd-015 降级 |
 | 9 | SellDeployed | deployed−1;装备全额返还 owned;gold += cw_state.sell_refund(1★=cost 全额/2★=3c/3★=9c/star≥2∧cost≥2 −1 手续费——权威单源,对抗修正 v1「星级×基数」);board 阵营计数−1 |
 | 10 | SellBench | bench−1;owned += 该角色已穿装备(备战角色同样可穿,equipment_mechanics §1/§3——v1「无装备」前提错,对抗修正);gold+售价 |
