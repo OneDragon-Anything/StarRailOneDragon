@@ -321,7 +321,8 @@ class DecisionV2Strategy(CwStrategy):
 
         旧签名 → 写 ``session.shop_state_frame``(黑板写路径)→ 同一决策核
         ``_decide_shop_plan``。**刻意不映射 LevelUpShop**:本入口输出保持
-        迁移前逐字节等价(sim 引擎/存量测试零断链;sim 适配独立批),
+        迁移前逐字节等价(存量测试零断链;sim 已切
+        :meth:`decide_shop_screen`,W971 sim 适配批,不再依赖本入口),
         升级意图仍为基类 ``LevelUp``;商店屏新入口
         :meth:`decide_shop_screen` 才产 ``LevelUpShop``。
         """

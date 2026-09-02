@@ -618,6 +618,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 默认 0 非 None;结算逐轮覆写见下方结算段)。案 b 臂 build_state 已带。
     if st.streak is None:
         st.streak = streak_signed
+    # 期望态离线口径(W971 sim 适配批;EXPECTED_STATE FINAL v3.1 P4):
+    # sim 不经实机识别,无「期望后待实读确认」的条目来源——容器显式置
+    # 空 dict(区别于 None 的「未初始化」态),登记/对账按零挂起期望
+    # 运转;构造侧字段信源取缺省确定值(ShopCard.cost_source='roster',
+    # 费用识别批留的 sim/replay 构造路径缺省),不依赖徽章直读。
+    sess.expected_state = {}
     # `w162_inject/`/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
     # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
     # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
@@ -918,7 +924,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _round_bench_full = _round_bench_full or (
                     bench_occupied(st.bench) >= BENCH_CAPACITY)
                 strat.update_target(st, sess, config)
-                acts = strat.decide_prep(st, sess, config)
+                # W971 sim 适配批:决策调用切黑板新接口(生产/离线同路)。
+                # sim 决策段 = 商店决策核:帧写者 = 本处(shop_state_frame
+                # 写者白名单含 sim 引擎,见 cw_strategy_session 字段注释);
+                # sim 合成态全字段可读(无 OCR 缺读面),帧语义与生产波顶
+                # 融合段同构。decide_shop_screen 出口的升级意图为
+                # LevelUpShop(is-a LevelUp,simulate/执行器零改动,账本
+                # __type__ 仍落 'LevelUp')。帧缺失由接口抛错暴露
+                # (黑板契约),禁静默按空态决策。旧 decide_prep 薄委托
+                # 仅作迁移期兼容,离线主路径不再依赖。
+                sess.shop_state_frame = st
+                acts = strat.decide_shop_screen(sess, config)
                 _round_formed_stop = _round_formed_stop or bool(
                     getattr(sess, 'v3_formed_stop', False))
                 # ADR-0474 分配器帧位轮内采集(每段 decide_prep 覆写

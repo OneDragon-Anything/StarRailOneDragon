@@ -1,7 +1,8 @@
 """决策回放 harness(r98 建立;r359 升级支持 v2 态忠实还原;ADR-0336
 删除 LineStrategy 后仅支持 decision_v2/default 两栈)。
 
-用途:策略改动后,对**历史局的 GameState 快照**重放 decide_prep,秒级看到
+用途:策略改动后,对**历史局的 GameState 快照**重放商店决策
+(decide_shop_screen 黑板接口,W971 sim 适配批起),秒级看到
 「这个改动动了哪些决策、方向对不对」——验证成本从实跑 20-40min 压到秒级,
 "每刀都实跑验证"从此经济可行(bug 无存活空间的前提)。
 
@@ -88,12 +89,13 @@ def _rebuild_state(snap: dict) -> GameState:
 
 
 def _fmt(actions: list) -> str:
+    from sr_od.application.currency_war.kernel.cw_state import LevelUp
     parts = []
     for a in actions:
         t = type(a).__name__
         if t == 'BuyCard':
             parts.append(f"Buy({a.card.name})")
-        elif t == 'LevelUp':
+        elif isinstance(a, LevelUp):   # LevelUpShop(商店屏新词表)同渲染为 LvUp
             parts.append('LvUp')
         elif t == 'RefreshShop':
             parts.append('D')
@@ -123,6 +125,8 @@ def _fmt_json(acts: list) -> str:
 
 def _divergence_kind(new_acts: list, old_acts: list) -> str:
     """分歧分桶(三桶+兜底;意图标注靠人,桶先分好)。"""
+    from sr_od.application.currency_war.kernel.cw_state import LevelUp
+
     def _bag(acts, key):
         from collections import Counter
         return Counter(key(a) for a in acts)
@@ -135,7 +139,8 @@ def _divergence_kind(new_acts: list, old_acts: list) -> str:
     if (sum(1 for a in new_acts if type(a).__name__ == 'RefreshShop')
             != sum(1 for a in old_acts if a.get('__type__') == 'RefreshShop')):
         return '刷vs不刷'
-    if (sum(1 for a in new_acts if type(a).__name__ == 'LevelUp')
+    # LevelUpShop(商店屏新词表,is-a LevelUp)与账本 'LevelUp' 同桶
+    if (sum(1 for a in new_acts if isinstance(a, LevelUp))
             != sum(1 for a in old_acts if a.get('__type__') == 'LevelUp')):
         return '升级分歧'
     return '其他'
@@ -229,7 +234,10 @@ def main() -> None:
         low_conf = (d.get('hp_readable') is False
                     or snap.get('gold_readable') is False)
         try:
-            actions = strat.decide_prep(st, sess, _Cfg())
+            # W971 sim 适配批:回放决策同样切黑板新接口(与 sim 引擎/生产
+            # 同路);帧 = 重建的快照态。LevelUpShop 渲染归一见 _fmt。
+            sess.shop_state_frame = st
+            actions = strat.decide_shop_screen(sess, _Cfg())
             new_s = _fmt(actions)
         except Exception as e:
             new_s = f'⚠ plan 异常: {type(e).__name__}: {e}'

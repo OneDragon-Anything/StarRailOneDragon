@@ -117,7 +117,7 @@
 ## 7. 边界
 
 - battle_loop 结算分支**遥测读点重组细节**归 P4 实施设计(本篇只定归属与红线)。
-- sim 适配独立批(黑板模式使 sim 构造 session 即可喂决策,成本较 W970 预估更低)。
+- sim 适配独立批(**已完成**:引擎决策环 engine_p1/回放 harness cw_replay/检查器 checks.decision_v2 全部切黑板接口 `decide_shop_screen`(帧写者 = sim 引擎,写者白名单见 02-state §4.1);升级意图经商店屏词表 LevelUpShop(is-a LevelUp,执行链零改动);期望态离线口径 = session.expected_state 显式空 dict + ShopCard.cost_source 缺省 'roster'(不依赖实机识别);旧 decide_prep 薄委托仅存迁移期兼容,离线主路径不再依赖)。
 - 观察模块内部重构不做(只改调用时机与写路径归属)。
 - RunDeploy/RunEquip 内部原子化另立批次。
 - gate 模块删除(W970 批 D/本篇 P5)另文。

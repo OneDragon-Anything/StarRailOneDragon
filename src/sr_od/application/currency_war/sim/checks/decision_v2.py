@@ -133,7 +133,8 @@ def check_decision_v2_arbiter_matrix() -> dict:
 def check_decision_v2_telemetry_contract() -> dict:
     """迁移审计批(可解释性遥测)(decision_v2 首超审计·题②):可解释性遥测契约锁。
 
-    判据:``DecisionV2Strategy.decide_prep`` 执行后,
+    判据:``DecisionV2Strategy.decide_shop_screen``(黑板接口;W971 sim
+    适配批自 decide_prep 旧签名切换,决策核同一)执行后,
     ``session.last_candidate_scores`` 必须满足——
     ① 轮次戳新鲜(last_candidate_scores_round == 当前轮);
     ② 键格式可解析(``r<轮>:<标签>:<desc>`` ——遥测判读可用性
@@ -170,7 +171,10 @@ def check_decision_v2_telemetry_contract() -> dict:
     sess = StrategySession()
     strat = DecisionV2Strategy()
     strat.update_target(s, sess, None)
-    acts = strat.decide_prep(s, sess, None)
+    # 黑板契约:先写 shop_state_frame 再调 decide_shop_screen(帧缺失
+    # = 接口抛错,禁静默按空态决策)。
+    sess.shop_state_frame = s
+    acts = strat.decide_shop_screen(sess, None)
     scores = dict(getattr(sess, 'last_candidate_scores', {}) or {})
     violations: list[str] = []
     if getattr(sess, 'last_candidate_scores_round', -1) != s.round_num:
