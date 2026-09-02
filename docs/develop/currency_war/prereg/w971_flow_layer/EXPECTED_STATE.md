@@ -58,14 +58,14 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 | # | op | 期望态更新 |
 |---|---|---|
 | 6 | **M7 装备拖拽(穿装备)** | `last_owned_equips −1` + `tracked_deployed[角色].equips +1`(**装备分布期望态**——漏项补,复盘 181254 A 条同源路径) |
-| 7 | **C6 装备转移** | 角色 A `.equips −件` + 角色 B `.equips +件`(**装备分布期望态**;转移遍 ≤3 件/次,落空即停) |
-| 8 | DeployMove | bench 源−1;deployed 目标+1;board 阵营计数±1(上阵+1/下场−1,对抗补);拖到场上同名同星=合成(升星+装备继承);前后台换位;守卫=场上同名同星≤1 恒成立约束 |
+| 7 | **C6 装备转移**(现役攻略策略逻辑:过渡持有→核心转移;待用户裁决归属=决策输出 TransferEquip 原子 op 或执行器内部) | 角色 A `.equips −件` + 角色 B `.equips +件`(**装备分布期望态**;转移遍 ≤3 件/次,落空即停) |
+| 8 | DeployMove | bench 源−1;deployed 空槽+1 或非同名换位;board 阵营计数±1(上阵+1/下场−1)。**拖到场上同名同星槽 = 无效操作**(游戏无响应——合成是凑满 3 自动发生不需要拖,用户纠正 2026-09-02):决策层守卫避免输出该组合,执行层遇无效拖拽按 dd-015 降级 |
 | 9 | SellDeployed | deployed−1;装备全额返还 owned;gold += cw_state.sell_refund(1★=cost 全额/2★=3c/3★=9c/star≥2∧cost≥2 −1 手续费——权威单源,对抗修正 v1「星级×基数」);board 阵营计数−1 |
 | 10 | SellBench | bench−1;owned += 该角色已穿装备(备战角色同样可穿,equipment_mechanics §1/§3——v1「无装备」前提错,对抗修正);gold+售价 |
 | 11 | LevelUpShop | gold−cost;xp+XP_PER_BUY(xp_expect_ledger 迁入);跨门槛→level+1/cap+1 |
 | 12 | ClickSpheres | 球−1;`expected[pending_reward]='球(待实读)'` |
-| 13 | OpenBox | 箱−1;武装箱选卡 overlay 弹(→C-27) |
-| 14 | OpenTome | 秘典−1;秘典 overlay 弹(→C-31) |
+| 13 | OpenBox | **箱不消失**(仅画面态:武装箱选卡 overlay 弹出——用户纠正 2026-09-02,消耗发生在 Confirm);→C-27 |
+| 14 | OpenTome | **秘典不消失**(仅画面态:秘典 overlay 弹出);→C-31 |
 | 15 | StartBattle | 进战斗(战斗等待 op 接管;hp/gold/streak 由结算屏覆盖) |
 | 16 | EnsureShopClosed | **已退役**(P3b:意图类删除;收起=CloseShopOp)——枚举留痕 |
 | 16a | 穿装备(穿着即自动合成) | owned−件+角色equips+件;**穿着触发配方合成**(两件互为配方自动合成,ADR-0391 守卫根源机制)——期望态含合成链(对抗 P0 补装备家族) |
@@ -86,8 +86,8 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 | 24 | 遭遇 SelectEncounterOption | 暂态无影响 |
 | 25 | 遭遇 ReadEncounterDifficulty | **纯读**(难度预览→决策器输入;无 session 状态变更) |
 | 26 | 遭遇 ConfirmEncounter | 节点难度设定;进遭遇战斗(战斗段接管);难度选择结果归遥测/难度账(决策面) |
-| 27 | 武装箱 SelectBoxCard+Confirm | `owned += 选中装备` |
-| 28 | 秘典 SelectBookCard+ConfirmBook | `owned += 星徽/装备`(星徽含阵营语义→分配守卫联动) |
+| 27 | 武装箱 SelectBoxCard+Confirm | `owned += 选中装备` + **箱消耗**(Select 前物品不消失——用户纠正) |
+| 28 | 秘典 SelectBookCard+ConfirmBook | `owned += 星徽/装备` + **秘典消耗**(同上);星徽含阵营语义→分配守卫联动 |
 | 29 | 巨星 Select+ConfirmMegastar | `chosen_megastar`(session 字段已有);comp 语义变化(决策面) |
 | 30 | 列车同行 Select+ConfirmPartner | `chosen_partner` 更新;产出 = 伙伴**画面特殊位置显示(未识别,不占装备区格子)**——玩家口述 2026-09-02,v1「星徽+1 进 owned」修正删除;board 影响待实机对账 |
 | 31 | 祈愿 Select+ConfirmWish | 效果登记台账(不做 session 推进——单轮即回) |
