@@ -64,7 +64,7 @@
   │    ├ overlay → 对应 overlay op(06-overlays:投资策略/补给/遭遇/巨星/列车同行/
   │    │            武装箱/祈愿/策划/命运/秘典)
   │    ├ 战斗/结算 → 战斗等待op(05-battle:等结算→读数→点继续→白名单判据)
-  │    └ 过渡帧 → 点空白加速(05-battle)
+  │    (过渡帧点空白内嵌战斗等待 op,不设独立分发分支——对抗轮 1 修正误点风险)
   │
   └─ 整局退出(05-battle):ExitCurrencyWarMatch 复用,固定时长
 ```
@@ -91,11 +91,12 @@
 
 ## 5. 迁移路线
 
+**W970 批次映射**:批 A→P1、批 B→P2、批 C→P3(编排切换+随迁全项)、批 D→P5;对抗轮 1 修正批次断层。
 | 阶段 | 内容(吸收 W970 批次) | 验证口径 |
 |---|---|---|
 | P1 商店链原子化(=W970批A) | OpenShopOp/BuyCardsOp/CloseShopOp 拆分(源码锁迁移清单前置);遥测写点随迁;LOCKED_RESUME 删 | 锁按清单更新后绿 + decisions.jsonl 逐决策对拍 + 全量测试 |
 | P2 决策接口+黑板(=W970批B+黑板) | decide_prep_screen/decide_shop_screen(session 签名);观察写路径收编(消灭 ctx 信箱);LevelUpShop 拆分 | 新旧入口决策对拍 + 白名单落地检查 |
-| P3 开局序列+overlay族 | BriefingOp/PlaneTransitionOp/WaitOneOneOp 新建;七 overlay op 统一模式;开局编排接线(主循环瘦身:0a0b/分支6/投资环境段退役) | 实机单局:开局序列走查 + overlay 各触发一次 |
+| P3 开局序列+overlay族+**编排切换**(=W970批C 全项) | BriefingOp/PlaneTransitionOp/WaitOneOneOp 新建;七 overlay op 统一模式;开局编排接线(主循环瘦身:0a0b/分支6/投资环境段退役);**纯分发器接管备战/商店常态编排(W970 批 C 全项:RunBuyPhase 解体、腾席链 b read_only、探针挂点、_handle_bench_full 合流)**;干扰弹窗分支保留 | 实机单局:开局序列走查 + overlay 各触发一次 + 常态编排对照 |
 | P4 战斗段+结算链 | 战斗等待op(结算读点随迁,遥测红线);点空白加速随迁;自动战斗检测(待采集);节点探针挂点随迁 | 实机多局:遥测连续性对照(decisions.jsonl/match_archive)+ rounds 遥测 |
 | P5 收尾 | PREP_SETTLE_S 退役;标志位退役;EnsureShop 意图删除;gate 模块删除(清单清零) | 全量测试 + 实机对照 |
 
