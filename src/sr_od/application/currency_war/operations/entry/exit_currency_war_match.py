@@ -154,6 +154,14 @@ class ExitCurrencyWarMatch(SrOperation):
         # r302:controller.click 需 Point 对象(裸 int 坐标在
         # game2win_pos 坐标转换层炸 'int' has no .x——op 异常+
         # 采集钩子 skip 的共同根因)
+        # 全分支 miss 计数上限(2026-09-03,第三局实录:退出途中落大世界
+        # 角色详情页,「角色详情」OCR 漏读 → 尾部兜底点 X 坐标错位 →
+        # round_wait 死循环 8min+(文件头 141x/444s 同款问题换分支复发)
+        # ——全分支连续 miss 达限 = 帧已非 CW 域,fail 交外层重新导航,
+        # 不再无限 round_wait。
+        self._miss_rounds = getattr(self, '_miss_rounds', 0) + 1
+        if self._miss_rounds >= 10:   # 本次退出尝试内累计 10 次全分支 miss(保守:含穿插命中,仍表明退出受阻)
+            return self.round_fail('退出流程连续 10 轮全分支未命中(帧非 CW 域),交外层重新导航')
         self.ctx.controller.click(Point(1843, 42), pc_alt=True)
         return self.round_wait(wait=1.5)
 
