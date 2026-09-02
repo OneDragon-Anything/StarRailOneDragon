@@ -13,4 +13,5 @@
 | [dd-009](dd-009-legacy-mechanism-eviction.md) | DD-009:旧方案零引用机制整批清退——约 20 族默认关开关+影子比对残留删除 | accepted | 2026-09-02 |
 | [dd-010](dd-010-equip-grid-two-state-fill-order-purify.md) | DD-010:装备区识别重构——两态位移+填充序剪枝+画面守卫外移(识别器纯化) | accepted | 2026-09-02 |
 | [dd-011](dd-011-op-anim-wait-gate-retirement.md) | DD-011:操作完成自等动画规范——稳定门(gate)进入退役 | accepted | 2026-09-02 |
+| [dd-012](dd-012-delta-pool-artifact-purging-p15-refit.md) | DD-012:sim 校准语料伪影治理——Δ池与粗模型直方的结算瞬时 hp=0 伪读数剔除 + p15 重拟合 | accepted | 2026-09-02 |
 | [adr-0431](adr-0431-hp-down-guard-battle-fact.md) | ADR-0431(历史 ADR):hp 下行守卫——「幅度 × 战斗事实」联合判据与复现确认通道;2026-09-02 判据按机制重推导部分取代,见文内修订记录 | accepted(部分取代,见文内修订节) | 2026-08-28 |

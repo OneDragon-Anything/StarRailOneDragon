@@ -82,27 +82,38 @@ _WIN_TABLE: dict[str, dict[int, dict[int, tuple[int, float]]]] = {
 }
 
 # ── 败局伤害直方(节点级离散值;钳制行伤害被截断观测,不入直方)──
-# 位面维同 _WIN_TABLE(P1=现值逐档,P2=别名;含 battle 灾难档 84/88
-# 与负值档,交付口径原样保留)。
+# 位面维同 _WIN_TABLE(P1=现值逐档,P2=别名;含 battle 负值档,交付口径原样保留)。
+# F6 语料治理:剔除伪影档 battle {±42,±43,−64,+46,+84,+88}/
+# encounter {+45,+83}——对局档案真值语料(tools/cw/proofs/p15/,
+# 结算屏遥测,P1 n=290)未删失最大单轮 |Δ|=36、单轮 ±40 量级行
+# 为结算瞬时 hp=0 伪读数的配对产物(同 Δ池毒行同源),非真实伤害。
 _LOSS_HIST: dict[str, dict[int, dict[int, int]]] = {
-    'battle': {1: {-64: 1, -43: 1, -42: 1, 1: 7, 3: 3, 4: 9, 5: 10, 6: 5,
-                   7: 2, 8: 19, 9: 11, 10: 6, 11: 18, 12: 6, 13: 74, 14: 1,
-                   15: 9, 17: 3, 18: 3, 19: 4, 20: 2, 21: 4, 23: 2, 46: 1,
-                   84: 1, 88: 1}},
+    'battle': {1: {1: 7, 3: 3, 4: 9, 5: 10, 6: 5, 7: 2, 8: 19, 9: 11,
+                   10: 6, 11: 18, 12: 6, 13: 74, 14: 1, 15: 9, 17: 3,
+                   18: 3, 19: 4, 20: 2, 21: 4, 23: 2}},
     'encounter': {1: {4: 1, 5: 1, 6: 4, 7: 1, 8: 4, 9: 7, 10: 10, 15: 1,
-                      17: 1, 18: 1, 22: 1, 24: 11, 26: 7, 28: 15, 45: 2,
-                      83: 2}},
+                      17: 1, 18: 1, 22: 1, 24: 11, 26: 7, 28: 15}},
     'boss': {1: {3: 1, 11: 2, 12: 1, 13: 2, 14: 4, 30: 1, 32: 5, 34: 11,
                  36: 8}},
 }
 
-# 败局伤害 rung 线性拟合(聚类稳健):伤害 = intercept + slope·rung;
+# 败局伤害 rung 线性拟合:伤害 = intercept + slope·rung;
 # 均值匹配偏移 = fit(rung) − 直方池均值(boss 斜率 CI 含 0 退常数,
 # 不做均值匹配,直方原样采样)。(intercept, slope, pooled_mean)
 # 位面维同上(P1=现值,P2=别名)。
+# 重拟合(2026-09-02):原 intercept/slope 系已删语料(w324)回归值,
+# 该语料含结算瞬时 hp=0 伪读数(见 dd-012)——旧锁存在性纪律:拟合
+# 依据语料已灭且确认污染,常量不得再以已灭语料为锚。现值改由对局
+# 档案真值语料(tools/cw/proofs/p15/ corpus_battle_loss.jsonl,冻结
+# 入库件;P1 败局非删失行 battle n=82 / encounter n=66)逐行最小
+# 二乘重估:battle (11.48, −4.21)、encounter (15.06, −3.27);
+# pooled_mean = 同语料非删失行均值(battle 10.45 / encounter 12.18,
+# 与直方池均值非同一语料,均值匹配偏移即两语料差的结构性声明)。
+# 边界:battle rung2 仅 n=1,斜率主要由 rung0/1 撑起;boss 无
+# _LOSS_FIT 条目(斜率 CI 含 0 退常数)。
 _LOSS_FIT: dict[str, dict[int, tuple[float, float, float]]] = {
-    'battle': {1: (11.32, -0.37, 11.07)},
-    'encounter': {1: (24.32, -4.53, 20.71)},
+    'battle': {1: (11.48, -4.21, 10.45)},
+    'encounter': {1: (15.06, -3.27, 12.18)},
 }
 
 # P2 层别名声明:P2 未采样 → 全节点显式指向 plane 1 同表(单一取表
@@ -149,7 +160,11 @@ def _boss_clamp_params(plane: int) -> tuple[float, float]:
 # 进 sim 台账 manifest(runner.write_batch_ledger)披露,回归批脚本
 # 头部按本常量断言,防跨版本对比污染。数值重校准(任一 P1 层真值
 # 变动)必须再递增。
-COARSE_CALIB_VERSION: int = 2
+# F6 语料治理递增 2→3:P1 败局直方剔除伪影伤害档(±42/±43/−64/+46/
+# +84/+88/+45/+83;pooled_mean 随之重算)——P1 层数值真值变动。
+# 递增 3→4(2026-09-02,dd-012):P1 _LOSS_FIT intercept/slope 改由
+# 对局档案真值语料重拟合(旧值系已灭且污染的 w324 语料回归值)。
+COARSE_CALIB_VERSION: int = 4
 
 
 def injected_win_p(node: str, rung: int, plane: int = 1) -> float:
