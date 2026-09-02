@@ -67,10 +67,10 @@ _OVERLAY_POLL_TIMEOUT_S: float = 1.8
 #: #15「收起过场动画 ~1s 即备战画面稳定」,用户口述。op 完成后显式等待,替代
 #: 测量驱动 gate——画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
 SHOP_CLOSE_ANIM_S: float = 1.0
-#: 开店完成判据化轮询上界(开向不用固定盲等:开店动画时长无独立口述/实测值,
-#: 判稳标志 = 「标识-备战阶段」文本出现,#7 用户口述;上界只防点击落空死等)。
-SHOP_OPEN_POLL_TIMEOUT_S: float = 4.0
-SHOP_OPEN_POLL_STEP_S: float = 0.25
+#: 开店判稳轮询(用户口述 2026-09-02:自动弹开/手动点开两场景统一判稳标志 =
+#: 「标识-备战阶段」文本出现;识别间隔 1s)。轮数 × 间隔 = 总上界,防点击落空死等。
+SHOP_OPEN_POLL_INTERVAL_S: float = 1.0
+SHOP_OPEN_POLL_ROUNDS: int = 4
 
 
 def _read_level_raw(ctx: SrContext, screen) -> int | None:
@@ -622,19 +622,19 @@ class PrepActionExecutor:
         if want_open:
             if is_open:
                 return True, '商店已开'
-            r = self._op.round_by_find_and_click_area(
-                screen, SCREEN_NAME, '按钮-商店', success_wait=1.5)
-            if not r.is_success:
-                return False, '找不到按钮-商店'
+            # 手动开:点「按钮-商店」。自动开店场景(战斗结算/补给·遭遇选择后返回
+            # 备战,商店自动弹出,#14 触发源族)下该按钮不存在/被弹出面板遮挡——
+            # 点击失败不判负,统一交下方判稳轮询确认。
+            self._op.round_by_find_and_click_area(
+                screen, SCREEN_NAME, '按钮-商店')
             # 光标 parking(审计 R3):点击点在验证矩形正中(0px),不 park 则收起锚验证读被光标压
             self._op.park_cursor(before_wait=0.5, after_wait=0.1)
-            # DD-011 自等动画 + #7 判稳标志:开店完成的稳定标志 = 「标识-备战阶段」
-            # 文本出现(用户口述判稳口径,#7)。判据化轮询(0.25s 步长)替代盲等——
-            # 开店动画时长无独立口述/实测值(文档 #7「~3s」系记录推断,已勘误),
-            # 判稳标志出现即返回;上界防点击落空死等,超时 = 未生效 → 交调用方重试。
+            # DD-011 自等动画 + 统一判稳标志(用户口述 2026-09-02):两种开店来源
+            # (自动弹开/手动点开)均以「标识-备战阶段」文本出现 = 动画稳定;
+            # 轮询间隔 1s(用户口径),上界防死等,超时 = 未生效 → 交调用方重试。
             ok = False
-            for _ in range(int(SHOP_OPEN_POLL_TIMEOUT_S / SHOP_OPEN_POLL_STEP_S)):
-                time.sleep(SHOP_OPEN_POLL_STEP_S)
+            for _ in range(SHOP_OPEN_POLL_ROUNDS):
+                time.sleep(SHOP_OPEN_POLL_INTERVAL_S)
                 if self._op.round_by_find_area(
                         self._op.screenshot(), SHOP_SCREEN_NAME,
                         '标识-备战阶段').is_success:
