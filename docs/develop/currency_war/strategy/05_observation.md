@@ -24,6 +24,8 @@
 
 **升星预览✦(ADR-0416)**:`read_shop_cards` 每张牌附带 `merge_preview`(`cw_identity_obs.read_merge_preview`)——商店牌 art 顶部✦数 = 已持同名同星副本份数(买第 3 张即 3合1),是 bot tracking merge_progress 的视觉印证(观测冗余信号,`ShopCard` 字段注释载语义)。0 为双义(真无副本 ∨ fail-silent 读不到,模板缺失即恒 0),消费方按「未观测」对待;评分层尚未接此信号(decision_v2 merge_progress 走 bot tracking),sim 不建模。
 
+**费用徽章数字识别(DD-018)**:`read_shop_cards` 的 cost/star 信源 = 画面费用徽章直读(`read_shop_card_cost`:screen_info「商店牌-N-费用」area 裁窗 → 白字形二值掩码 → 数字模板 1-4 TM,阈值 `_SHOP_COST_TM_THRESH`),非 roster 查表——徽章数字 = 当前星级实付费用(费用倍数体系见 game 侧 merge_mechanics §2.6),徽章 = 3×roster 费即 2星直出(star=2,`[cw!]` 留证);失读/矛盾退 roster 查表并标 `ShopCard.cost_source='roster_fallback'`(直读='badge',sim/replay 构造路径缺省='roster')。名字未识别但徽章可读的牌:费用信徽章,星级保守 1。数字 5 无模板(样本缺),5费 1★ 经兜底仍读对;多位徽章形态未建模,由矛盾分支兜底。
+
 **合成特效帧态门(ADR-0420)**:star 读数(`read_star`)在 3合1 星爆动画/拖拽合成过渡窗内会采到「已合成」的中间帧——旧值才是真值。`cw_identity_obs.is_merge_effect_frame` 是全帧行为判定门(纯 CV、无 ctx 依赖),双签名任一命中即为特效帧:①星爆粒子签名=前排棋盘带(`_MERGE_EFFECT_FRONT_BAND`)内严橙金窗口(复用升星预览✦的 `_PREVIEW_GOLD_LO/_HI`)连通域面积过 `_MERGE_EFFECT_COMP_MIN_AREA` 者计数达 `_MERGE_EFFECT_GOLD_MIN_COMPS`;②满席警告横幅签名=`_BENCH_FULL_BANNER_RECT` 带内红主导(R−max(G,B) 过 `_BANNER_RED_DOM_DIFF`)占比达 `_BANNER_RED_DOM_MIN`(拖拽合成过渡)。挂点在 `cw_reconcile.reconcile_tracking` 的采新确认分支前置——特效帧保旧读数且防抖计数**冻结不推进**(非清零:门后干净回退帧仍可构成新确认);门漏检退化为无门的原防抖行为,判据异常返 False 不拦。
 
 **deploy_cap 域外双帧一致采信(ADR-0420)**:`read_deploy_cap_debounced` 的防抖域(`|cap−level| ≤ `_CAP_DIFF_MAX`,见 `cw_back_layout`)之外不再一律拒绝——域外值重读一帧,两帧一致且落在绝对上界 `DEPLOY_CAP_ABS_MAX`(前台+后台实拍板面上界)之内即采信并 obs_conflict 留证;恒拒两类:**超绝对上界**、**两帧不一致**(瞬时误读族防线不降级)。cap<level 不再恒拒——域判据的对照集 level 自身可误读/毒化(帧证据:画面 4/4、level 先验 5 把唯一合法候选拒空),同走双帧一致通道采信并留证,cap↔level 一致性由双帧通道终审;解析层同判据(`_parse_paddle_positional` 仅当全部候选只因 y≥level 被拒时,用绝对域重解析一次采回)。域内直采路径不变。
