@@ -1,14 +1,14 @@
 ---
 gameplay_name: 邮件
 app_id: email
-last_updated: 2026-07-29
+last_updated: 2026-09-02
 source: `application/email/` 代码 + phone_menu 邮件子态 area
 involves_screens: [菜单]
 ---
 
 # 邮件(email)
 
-领取系统 / 活动邮件奖励(星琼 / 材料 / 活动发放)。日常收奖励。画面是 **phone_menu 子态**(无独立 screen)。
+领取系统 / 活动邮件奖励(星琼 / 材料 / 活动发放)。日常收奖励。画面为独立屏「邮件」(游戏内标题「邮箱」,2026-08-29 建档,见 [screens/邮件](../screens/邮件.md))。
 
 ## 玩法机制
 

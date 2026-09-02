@@ -1,7 +1,7 @@
 ---
 gameplay_name: 支援角色(漫游签证)
 app_id: support_character
-last_updated: 2026-07-29
+last_updated: 2026-09-02
 source: `application/support_character/` 代码(op_name「支援角色奖励」)+ phone_menu 省略号/漫游签证 area
 involves_screens: [菜单]
 ---
@@ -28,7 +28,7 @@ involves_screens: [菜单]
 
 2026-08-29 起有独立 screen 档(见 [screens/漫游签证](../screens/漫游签证.md) 与 [screens/菜单-更多](../screens/菜单-更多.md));此前挂在 phone_menu 省略号子菜单。要点:
 - 路由:`菜单 --⋯--> 菜单-更多 --漫游签证--> 漫游签证`(goto_screen 实测通)。
-- 识别锚:左上「漫游签证」标题;领奖位已建 area `按钮-支援奖励领取位`(原硬编码 Point(1862,358),代码未迁移)。
+- 识别锚:左上「漫游签证」标题;领奖位走 area `按钮-支援奖励领取位`(2026-09-02 由硬编码 Point(1862,358) 迁移,坐标单一真相源;area 中心与原点等价)。
 - 可领判据:支援角色卡右上角标数字 / 菜单侧红点。
 
 ## 备注 / 待查

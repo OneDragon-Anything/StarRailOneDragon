@@ -1,6 +1,6 @@
 ---
 gameplay_name: 辅助 app 总览(开发工具 + 消耗品购买)
-last_updated: 2026-07-29
+last_updated: 2026-09-02
 source: `application/` 各 app 代码(calibrator / large_map_recorder / buy_xianzhou_parcel / memory_crystal_shard / trick_snack)
 ---
 
@@ -66,4 +66,6 @@ source: `application/` 各 app 代码(calibrator / large_map_recorder / buy_xian
 - **开发工具 vs 玩法**:calibrator / large_map_recorder 是 dev 工具(校准 / 录制),非玩法 —— 建档归类到「开发 / 维护」,日常一条龙不跑。
 - **路由完整性测试**:`sr-od-test/test/sr_od/operations/custom_combine_op/test_custom_combine_op_config.py` —— 校验 shipped 路由的 op / data 形状 / item 枚举解析(改坏路由即暴露)。
 - **消耗品 app 现状**:三个 app 流程已对齐 shipped 路由(见上「shipped 路由」表);路由随游戏版本 / 商店变动时,以 `config/custom_combine_op/` 的 yml 为准。
+- **trick_snack 对话时序(2026-07-30 修复)**:interact NPC 后加 `wait 1.5s` 等 NPC 对话框完全打开再 talk(防 `TalkInteract` 过早点空白推进干扰选项点击;两条购买路线 yml 均有,路线2 的 click(960,980)×2 同理 = 对话页推进)。对话画面机制与 2026-07-30 挂起事故见 [对话](../screens/对话.md);`BackToNormalWorldPlus` 现有 `check_npc_dialog` 告别词守卫兜底(词表 = 告别/离开/再见,不含 trick_snack 的「不打扰你啦」,正常流程用不到它)。
+- **购买 allow_fail 语义**:两条路线的 `buy_store_item` 均 allow_fail(当天已售罄 / 兑换材料不足 → 点取消继续,不算失败)——奇巧零食原料随当日库存浮动,存量够合成即可。
 - **one_dragon_app / notify**:框架级(一条龙总调度 / 通知),非独立玩法,不单独建档。

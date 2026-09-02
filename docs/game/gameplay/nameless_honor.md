@@ -1,14 +1,14 @@
 ---
 gameplay_name: 无名勋礼(战令/大月卡)
 app_id: nameless_honor
-last_updated: 2026-08-27
+last_updated: 2026-09-02
 source: WebSearch 攻略 + `application/nameless_honor/` 代码 + phone_menu 无名勋礼子态 area
 involves_screens: [菜单, 无名勋礼-购买推广页, 无名勋礼-等级加速弹窗, 无名勋礼]
 ---
 
 # 无名勋礼(nameless_honor)
 
-赛季通行证(玩家称「大月卡 / 战令」),每版本一期。完成日常 / 周常 / 版本任务获「无名客的经验」升勋礼等级,解锁奖励。满级 70。解锁:开拓等级 13+。画面是 **phone_menu 子态**(无独立 screen)。
+赛季通行证(玩家称「大月卡 / 战令」),每版本一期。完成日常 / 周常 / 版本任务获「无名客的经验」升勋礼等级,解锁奖励。满级 70。解锁:开拓等级 13+。画面为 **3 个独立屏**(主面板 + 购买推广页 + 等级加速弹窗,2026-08-29 建档,见下「画面」节)。
 
 ## 版本周期首进推广页 [口述+实机实证]
 
@@ -36,16 +36,13 @@ involves_screens: [菜单, 无名勋礼-购买推广页, 无名勋礼-等级加�
 - `back_at_first` / `back_at_last`:首尾返回。
 - **领取后的版本说明弹窗** [口述+实机实证]:点「一键领取」成功后可能弹「无名勋礼等级加速」弹窗(同上节弹窗,关闭手势=点弹窗内「点击空白处关闭」提示位;`_check_screen_after_reward` 已建候选,run 48「未知画面状态」失败实证后补)。
 
-## 画面(phone_menu 无名勋礼子态)
+## 画面(独立屏 ×3,2026-08-29 建档)
 
-无独立 screen —— 委托 UI 在 phone_menu 弹窗态(见 [phone_menu](../screens/phone_menu.md)):
-- `无名勋礼-开启无名勋礼`(新版本开启提示,text)。
-- `无名勋礼-任务-一键领取`(任务 tab 一键领取)。
-- `无名勋礼-奖励-一键领取`(奖励 tab 一键领取)。
-- `无名勋礼-奖励-取消`(领取弹窗取消)。
-- `无名勋礼-点击空白处关闭`(关闭弹窗)。
-- 3 个 tab(顶部横向,`NAMELESS_HONOR_TAB_PART=Rect(810,30,1110,100)`):**奖励**(左,圆心~863)/**任务**(中,~959)/**星海珍藏**(右,~1055),等距 ~96px、y~64。选中态 tab 背景为白色圆形(r~30,可用 CV `HoughCircles` 定位)。
-- tab 切换 `get_nameless_honor_tab_pos`(`nameless_honor_1`=奖励、`nameless_honor_2`=任务、`nameless_honor_3`=星海珍藏 模板,未选中态图标 + Otsu 形状 mask)。
+- **无名勋礼**(主面板):`标识-无名勋礼`(id_mark)/tab-奖励/任务/星海珍藏/按钮-任务-一键领取/按钮-奖励-一键领取/按钮-点击空白处关闭/按钮-关闭/按钮-开启无名勋礼。详见 [screens/无名勋礼](../screens/无名勋礼.md)。
+- **无名勋礼-购买推广页**(版本周期首进整屏广告):双 id_mark(按钮-开启无名勋礼 + 标识-消费提示)。详见 [screens/无名勋礼-购买推广页](../screens/无名勋礼-购买推广页.md)。
+- **无名勋礼-等级加速弹窗**(一键领取后的说明弹窗):独立建档——关闭手势 = 点弹窗内「点击空白处关闭」提示位(≈737,与主屏领取弹窗的 ≈945 不同位)。详见 [screens/无名勋礼-等级加速弹窗](../screens/无名勋礼-等级加速弹窗.md)。
+- **tab 切换**:`get_nameless_honor_tab_pos`(`nameless_honor_1`=奖励、`nameless_honor_2`=任务、`nameless_honor_3`=星海珍藏 模板,未选中态图标 + Otsu 形状 mask——选中态白色圆形背景 match 不到未选中模板属正常)。3 tab 顶部横向:奖励(左,~863)/任务(中,~959)/星海珍藏(右,~1055),等距 ~96px、y~64。
+- **菜单层**:仅图标红点检测(`get_phone_menu_item_pos(NAMELESS_HONOR, alert=True)`)。
 
 ## 备注 / 待查
 
@@ -55,7 +52,7 @@ involves_screens: [菜单, 无名勋礼-购买推广页, 无名勋礼-等级加�
 - **tab1=奖励、tab2=任务**:`nameless_honor_1` 模板=奖励 tab、`nameless_honor_2`=任务 tab(已实拍确认)。代码 `_click_tab_2` 切任务、`_click_tab_1` 切奖励。
 - **星海珍藏(tab3)**:版本更新后新增的第三个 tab(满级光锥自选奖励),`nameless_honor_3` 模板已加(备用);`NamelessHonorApp` 流程只切奖励/任务,暂不涉及星海珍藏。
 - **tab 模板**:`nameless_honor_1/2` 为**未选中态**图标 + Otsu 形状 mask(match 未选中 tab 去点击切换);选中态 tab 有白色圆形背景、match 不到未选中模板属正常。`NAMELESS_HONOR_TAB_PART` 已覆盖 3 tab,无需改。
-- **fixture**:`screens/菜单/无名勋礼-奖励.webp`(奖励 tab,等级轨 19→30,本周经验 3500/8000,0/800,付费轨「无名客的荣勋」未解锁,无红点)。
+- **fixture**:`screens/无名勋礼/`(奖励.webp / 任务.webp / 无名勋礼-奖励.webp / 无名勋礼-任务.webp,2026-08-15 错档迁移后落位)。
 - **付费档判断**:bot 领免费奖励(付费档需用户购买,bot 不处理付费)。
 
 ## 参考来源
