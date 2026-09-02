@@ -12,8 +12,9 @@ ping-pong 停机/W209j 停机刹车),母本 = ``prep_director.py`` 现役六件�
 规则中立:框架只消费 ``AtomOp.op_key``(幂等/屏蔽键)与 ``domain``
 (同域批校验),不解释 op 语义;op 枚举与 prep_actions 动作族对账归批③。
 
-本模块为 prep_director 备战环的执行引擎(W620 批 1 起 = 唯一生产路径,
-接线点 = prep_director._run_prep_loop_v2;端口全部复用现役件)。
+本模块曾为 prep_director 备战环的执行引擎(W620 批 1 接线;⚠️ W971 P3b
+返工定稿:内环整体拆除,生产 = 备战单轮 op(prep_director.run 五段)+
+外循环轮转,本引擎不再被生产实例化,保留供 sim/离线契约)。
 """
 from __future__ import annotations
 

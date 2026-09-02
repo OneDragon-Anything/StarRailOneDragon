@@ -22,15 +22,12 @@ from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_overlay_registry import derive_decision
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     BailToOuter,
-    ClickSpheres,
     DeferSpheres,
     DeployMove,
     LevelUp,
     OpenShop,
-    OpenTome,
     PrepAction,
     PrepObservation,
-    RunBuyPhase,
     SellBench,
     SellDeployed,
     StartBattle,
@@ -137,51 +134,10 @@ def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
 
 
 
-#: 环入口预收探针的重试间隔(秒)。时序竞争背景:战斗胜利后新回合
-#: 游戏自动开商店的时刻**晚于**环入口预收探针——首探探不到
-#: 「按钮-收起」→ 落进 PROFILE_CLOSED 完整门,商店开后关态锚永不
-#: 命中,打满 12s 超时才由容忍探针收起+round_retry 重进(实机每局
-#: 9-25 次,依据单局耗时深挖报告
-#: .debug/temp/currency_war/w417_duration_audit/REPORT.md「确定可压」
-#: 第 1 条)。修法=探针前置重试:窗内对开态持续检测(同一探测原语,
-#: 不新增判据),探到即走既有「收起→收紧超时 gate」路径。
+#: 单轮入口开商店收起探针后的落地等待(秒)。背景:战斗胜利后新回合游戏
+#: 可能自动开商店(时序竞争),单轮入口收起后需等收起动画落地再观察
+#(读互斥:hp/gold 关态可读;原「预收重试窗」随内环 gate 拆除)。
 PRECOLLAPSE_RETRY_S: float = 1.0
-
-
-#: 预收探针重试次数上限(窗 ≈ 次数×间隔+探针自身成本,~4.5s 档)。
-#: 上限的意义:从不自动开商店的轮次(新位面首环/无自动开店)最多
-#: 多付一个窗的探针成本,不引入无界等待;超过窗仍未开 → 走原
-#: 12s 完整门,行为不变。
-PRECOLLAPSE_RETRIES: int = 3
-
-
-#: 环入口「帧不 clean」bail 的同因键(计数键单一源;分诊重置点引用)。
-GATE_UNCLEAN_REASON: str = '环入口帧不clean(特效/overlay未消化)'
-
-#: 环入口已知 overlay 诊断集((标签, screen_info 画面名, 独有锚 area)):
-#: 帧不 clean 时先对帧做已建档 overlay 识别——命中 = 交回主循环按画面分发
-#: (对应 loop 0x 分支/op 接管)并重置同因计数;仅未知帧才计同因(×3 停机
-#: 兜底保留)。背景(实机 P1-r6 bail ping-pong 实锤):遭遇 overlay 在场时
-#: 0c 的 area-OCR 锚偶漏而备战双锚(模板)稳命中,外环直落备战分支重派
-#: director → 环入口逐次 bail 同因 ×3 停机——违背 §2.9「交回循环=重新识别
-#: 分发」。清单 = 已建档屏(loop 0x 分支 + 开局序列/结算横幅),与
-#: battle_loop 分支锚同源,不新增识别面。
-KNOWN_OVERLAY_FRAMES: tuple[tuple[str, str, str], ...] = (
-    ('遭遇', '货币战争-遭遇节点', '标识-遭遇节点'),
-    ('补给', '货币战争-补给', '标识-补给阶段'),
-    ('投资策略', '货币战争-投资策略', '标识-请选择投资策略'),
-    ('巨星', '货币战争-盛会之星', '标识-盛会之星'),
-    ('列车同行', '货币战争-列车同行', '标识-选择伙伴'),
-    ('武装箱选卡', '货币战争-备战-武装箱选择', '标识-请选择'),
-    ('武装箱弹窗', '货币战争-武装箱弹窗', '标识-简易武装箱'),
-    ('祈愿试炼', '货币战争-祈愿试炼', '标识-祈愿试炼'),
-    ('骇入策划', '货币战争-骇入策划', '标识-我来当策划'),
-    ('命运卜者', '货币战争-命运卜者强化', '标识-命运卜者'),
-    ('星徽秘典', '货币战争-星徽秘典弹窗', '标识-星徽秘典'),
-    ('位面简报', '货币战争-简报', '标识-本场对局首领'),
-    ('位面过渡', '货币战争-位面过渡', '提示-点击空白继续'),
-    ('BOSS简报', '货币战争-BOSS简报', '标识-强敌来袭'),
-)
 
 
 
@@ -1117,43 +1073,255 @@ class PrepDirector(SrOperation):
     def _match(self):
         return getattr(self.ctx, 'cw_match', None)
 
-    # ===== 环主体(F1 单步契约;抽普通方法便于离线 mock 测,run 只做入口)=====
+    # ===== 备战单轮 op(W971 P3b 返工定稿:拆内环,op 生命周期五段化)=====
+    # 外循环(battle_loop)是唯一循环:备战画面在 → 外循环每轮调本 op 一轮。
+    # 单轮 = ①数据观察(heavy→写 session)②对账(观察 vs session 历史/上轮
+    # 期望)③决策 ④期望态计算 ⑤执行+结束判定 → 交回外循环。原内环机制
+    # (步数预算/stall 门/连败→恢复→屏蔽/bail 同因计数/ping-pong 停机)随
+    # 内环拆除——稳定性由外循环每轮重识别保证(特效帧/overlay 弹出在轮间
+    # 自然可见);无进展留证归外循环 stall 防线(battle_loop 备战分支)。
 
-    @operation_node(name='备战决策环', is_start_node=True, node_max_retry_times=6)
+    @operation_node(name='备战单轮', is_start_node=True)
     def run(self) -> OperationRoundResult:
         match = self._match()
         if match is None or match.strategy is None:
             return self.round_fail(status='无 cw_match(对局未初始化)')
-        # 环入口:环级计数清零(§4.2b/§7;局级 bail_reason_counts 不清)
         session = match.session
-        session.defer_count = 0
-        session.prep_phase = 0
-        # free_bench_gold_wait **不在环入口清**:环入口 bench-full 分支 round_wait 后外环
-        # 会重派 Director 重入 run()(每次重入环入口清零 → 计数永不到 2 →
-        # EnsureShopOpen 无限重发)。改:**警告解除时清**(下方
-        # read_bench_full False 分支)——警告持续期间计数跨 run() 重入存活。
-        session.prep_phase_retry = 0
         self._executor = PrepActionExecutor(self, self.ctx)
-        self._steps = 0
-        self._stall = 0
-        self._fail_counts = {}
-        self._blocked = set()
-        self._recovered = set()
-        self._recovery_closed_known = {}
-        self._recovery_tried = False
         self._cached_state = None
         self._cached_bench = []
         self._cached_deployed = []
         self._cached_vacancy = 0
         self._cached_gold_trusted = False
-        # 购买单元序不在环入口清——run() 节点会被外环重派重入(重入是常态),
-        # 入口清零导致同轮多单元恒 seq=1(双单元撞键,ADR-0514)。
-        # 改为按 (plane, round) 键在 _spend_unit_open 内重计;此处仅清轮键开新局。
-        self._spend_unit_key = None
-        self._exec_fail_hook_fired = False
-        # _probe_node_type 挂点 = EnsureShopClosed 执行成功后(店确定关的可靠
-        # 时点;见 _run_loop while 内说明)。
-        return self._run_loop(match)
+        # 购买单元序按 (plane, round) 键在 _spend_unit_open 内重计(ADR-0514);
+        from sr_od.application.currency_war.currency_war_config import (
+            CurrencyWarConfig,
+        )
+        config = CurrencyWarConfig(self.ctx.current_instance_idx)
+
+        # —— ① 数据观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
+        self._clear_entry_overlays()
+        self._try_collapse_open_shop()
+        obs = self._observe(heavy=True)
+        if obs.event_overlay is not None:
+            # overlay 在场 → 交回外循环重识别分发(无计数;对应 loop 0x 分支/op 接管)
+            log.info(f'[cw][director] 事件 overlay({obs.event_overlay})→ 交回外循环分发')
+            return self.round_wait(f'事件overlay({obs.event_overlay})交回外循环', wait=0.8)
+        # 接管局补采(W971 §2.1,挂点随单轮观察段平移;详见块内注释)
+        _tk = self._takeover_collect_if_needed(match, session)
+        if _tk is not None:
+            return _tk
+        # —— ② 对账段:本轮 heavy 观察 vs session 历史/上轮期望(acct 空 = 无新执行动作,
+        #      仅消费 pending_buy_expect + 经验/羁绊/商店池/合成预览留证族)
+        self._v2_post_frame_accounting(obs, {'key': None, 'progressed': False,
+                                             'drag_expect': None, 'equip_expect': None,
+                                             'dep_delta': 0, 'dep_pre': None,
+                                             'unit_open': False}, session)
+        # —— 决策前置:席满破墙(M16,保留)→ 方向层/gated_hp/update_target(幂等键守卫)
+        _bf = self._bench_full_break_round(match, session, obs, config)
+        if _bf is not None:
+            return _bf
+        if obs.state is not None:
+            from sr_od.application.currency_war.decision.cw_strategy import gated_hp
+            from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
+                committed_from,
+                drive_intention,
+            )
+            _os = obs.state
+            # 方向层接管(P7 驱动点契约):意向状态机每 game-round 恰一次;
+            # 段级重入守卫 = v3_intention_key(双驱动幂等,单轮每轮调不重复驱动)。
+            try:
+                drive_intention(_os, session)
+            except Exception as e:  # noqa: BLE001  方向驱动失败不阻塞步级决策
+                log.warning(f'[cw!][director] 意向驱动异常(沿用旧方向): {e}')
+            # dual 态拷回(读端 = R1 唯一合法读端 committed_from)
+            _os.dual_track_phase = not committed_from(session, _os)
+            _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
+            _os.hp = gated_hp(_os.hp, session, _os_t,
+                              current_readable=bool(getattr(_os, 'hp_readable', True)))
+        try:
+            match.strategy.update_target(obs.state or GameState(), session, config)
+        except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
+            log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
+        # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 本 op 观察段/破墙派生帧)
+        try:
+            action = match.strategy.decide_prep_screen(session, config)
+        except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
+            log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
+            return self.round_fail(status=f'策略决策异常: {e}')
+        if not isinstance(action, PrepAction):
+            log.warning(f'[cw!][director] 策略输出非 PrepAction: {type(action).__name__}')
+            return self.round_fail(status='策略输出非 PrepAction(F3)')
+        self._record_step(obs, action)
+        # 控制流(词表退役过渡):球留置 = 空动作表达(交回外循环,不计任何内环计数)
+        if isinstance(action, DeferSpheres):
+            session.defer_count += 1
+            log.info(f'[cw][director] DeferSpheres(defer={session.defer_count})→ 交回外循环')
+            return self.round_wait('球留置(空动作),交回外循环', wait=1.0)
+        if isinstance(action, BailToOuter):
+            # 词表已退役(W971 §2.6.1);防御性兜底 = 原样交回(无计数)
+            log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环(词表退役兜底)')
+            return self.round_wait(f'BailToOuter({action.reason}),交回外循环', wait=1.0)
+        # F3 校验(非法:拒绝执行 + 交回留证)
+        err = self._executor.validate(action)
+        key = action_key(action)
+        if err is not None:
+            log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝,交回外循环留证')
+            return self.round_wait(f'参数非法 {key}:{err},交回外循环', wait=1.0)
+        # —— ④ 期望态计算(动作发出点;None=无法建真值不评)+ 执行前置记账
+        _drag_expect = None
+        if isinstance(action, (SellBench, DeployMove)):
+            _drag_expect = compute_drag_expect(
+                action, obs.bench_chars, obs.deployed_chars)
+        _equip_expect = None
+        if isinstance(action, SellDeployed):
+            _equip_expect = self._equip_expect_for_sell(action)
+        _dep_delta = 0
+        _dep_pre: int | None = None
+        if isinstance(action, (DeployMove, SellDeployed)):
+            _dep_delta = 1 if isinstance(action, DeployMove) else -1
+            _dep_frame = getattr(self, 'last_screenshot', None)
+            if _dep_frame is not None:
+                try:
+                    _dep_pre = read_deployed_count(self.ctx, _dep_frame)
+                except Exception:   # noqa: BLE001  观测 best-effort
+                    _dep_pre = None
+        acct: dict = {'last_obs': obs, 'key': key, 'progressed': False,
+                      'drag_expect': _drag_expect, 'equip_expect': _equip_expect,
+                      'dep_delta': _dep_delta, 'dep_pre': _dep_pre, 'unit_open': False}
+        # —— ⑤ 执行 + 结束判定(OpenShop = 流程层商店编排;其余经执行器 F3 验证链)
+        if isinstance(action, OpenShop):
+            _unit = not action.read_only
+            if _unit:
+                self._spend_unit_open(obs)
+            try:
+                progressed, detail = self._open_shop_phase(action, obs)
+            except Exception as e:
+                if _unit:
+                    self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
+                                           boundary='aborted')
+                log.warning(f'[cw!][director] 执行异常 {key}: {e}')
+                return self.round_fail(status=f'执行异常 {key}: {e}')
+            if _unit:
+                self._spend_unit_close(progressed=progressed, detail=detail,
+                                       boundary='closed' if progressed else 'failed')
+            if progressed:
+                self._xp_apply_buy_clicks(detail)
+            log.info(f'[cw][director] {key} → {"✓" if progressed else "✗"} {detail}')
+        else:
+            try:
+                progressed, detail = self._executor.execute(action)
+            except Exception as e:  # noqa: BLE001  执行异常上抛 = 本轮 fail
+                log.warning(f'[cw!][director] 执行异常 {key}: {e}')
+                return self.round_fail(status=f'执行异常 {key}: {e}')
+            log.info(f'[cw][director] {key} → {"✓" if progressed else "✗"} {detail}')
+            if progressed and isinstance(action, LevelUp):
+                self._xp_apply_levelup()
+        acct['progressed'] = progressed
+        # 执行后对账 + 期望态消费(heavy 重观察帧;单轮内一次,交回前完成)
+        _post_obs = self._observe(heavy=True)
+        self._v2_post_frame_accounting(_post_obs, acct, session)
+        # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建;外循环下轮重识别)
+        if isinstance(action, StartBattle) and progressed:
+            return self.round_success('出战(交回外循环战斗分支)', wait=3)
+        if not progressed:
+            # 验证失败:恢复原语一次(关已知弹层)→ 交回外循环(无内环屏蔽/计数;
+            # 连续无进展由外循环 stall 防线留证)
+            try:
+                _prim, _closed = try_recovery(self, self.ctx)
+                log.info(f'[cw][director] {key} 验证失败 → 恢复原语({_prim})→ 交回外循环')
+            except Exception as e:  # noqa: BLE001  恢复异常不阻塞交回
+                log.warning(f'[cw!][director] 恢复原语异常 {key}: {e}')
+            return self.round_wait(f'{key} 验证失败({detail}),已试恢复,交回外循环', wait=1.0)
+        return self.round_wait(f'{key} ✓,交回外循环重识别', wait=1.0)
+
+    def _takeover_collect_if_needed(self, match, session) -> OperationRoundResult | None:
+        """接管局补采(W971 §2.1/01-opening §2.1;单轮化后挂点 = 单轮 op 观察段)。
+
+        触发 = session.briefing_bosses 空(本局尚无位面序真值);可交互门 = 节点条
+        可读;会开/关位面详情画面 → 执行后交回外循环重识别。计数挂 session
+        (单轮 op 每外循环轮次重建,实例属性不存活);成功或 2 次失败后停。
+        """
+        if (getattr(session, 'cw_takeover_collect_done', False)
+                or getattr(session, 'briefing_bosses', None)):
+            return None
+        _tk_slots = None
+        with contextlib.suppress(Exception):
+            _tk_slots = read_node_sequence(self.ctx, self.last_screenshot)
+        if _tk_slots is None:
+            return None   # 节点条不可读(过场/overlay 半开帧)→ 等下轮,不消耗预算
+        _tries = getattr(session, 'cw_takeover_tries', 0) + 1
+        session.cw_takeover_tries = _tries
+        if _tries > 2:
+            session.cw_takeover_collect_done = True
+            log.info('[cw][director] 接管补采两次未成,放弃(boss 缺省中性)')
+            # 放弃也清空两池:残留值会被下局判空误消费(跨局泄漏)
+            self.ctx.cw_plane_bosses = None
+            self.ctx.cw_plane_affixes = None
+            return None
+        from sr_od.application.currency_war.operations.handlers.collect_plane_intel import (
+            CollectPlaneIntel,
+        )
+        log.info('[cw][director] 新局 boss/词缀无实采真值(session 空)'
+                 '→ 位面详情情报采集(可交互备战帧,第%d次)', _tries)
+        _pb_res = CollectPlaneIntel(self.ctx).execute()
+        # 成功取走/失败残留都清空(防泄漏到下局判空;词缀随采结算只在本分支)
+        _names = list(self.ctx.cw_plane_bosses or [])
+        _affixes = list(self.ctx.cw_plane_affixes or [])
+        self.ctx.cw_plane_bosses = None
+        self.ctx.cw_plane_affixes = None
+        if _pb_res is not None and getattr(_pb_res, 'success', False) and _names:
+            session.cw_takeover_collect_done = True
+            # 保位写(ADR-0398):徽章态位面采得 None 原样占 3 槽,
+            # 丢弃会让后续位面名字左移错位(位面序真值变假)。
+            session.briefing_bosses = _names
+            log.info('[cw][director] 开局 boss 实采完成(位面序保位):%s', _names)
+        if _affixes and not getattr(session, 'briefing_affixes', None):
+            session.briefing_affixes = _affixes
+            log.info('[cw][director] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
+        return self.round_wait('接管补采执行,交回外循环重识别', wait=1.0)
+
+    def _bench_full_break_round(self, match, session, obs, config) -> OperationRoundResult | None:
+        """席满破墙单轮(M16,ADR-0136):备战席满警告模态拒绝拖拽/出战 →
+        破墙动作优先(腾席链),执行后交回外循环。None = 无警告,继续正常单轮。"""
+        from sr_od.application.currency_war.obs.cw_observation import read_bench_full
+        _scr_full = getattr(self, 'last_screenshot', None)
+        _bench_full_now = (_scr_full is not None
+                           and read_bench_full(self.ctx, _scr_full))
+        if not _bench_full_now:
+            # r366b(review A1):警告解除 → 等待计数清零(正常态恢复预算)
+            if getattr(session, 'free_bench_gold_wait', 0):
+                session.free_bench_gold_wait = 0
+            return None
+        log.warning('[cw!][director] 备战席已满警告(模态挡拖拽/出战)→ 破警告优先(腾席链)')
+        # 破墙 obs 用 dataclasses.replace 从真 obs 派生(全字段保真,仅覆写腾席相关)
+        import dataclasses
+        bf_obs = dataclasses.replace(
+            obs, box_overlay_open=False, boxes=[], spheres=[],
+            free_bench_slots=0, shop_open=False,
+            # ADR-0136 补修:横幅在时拖放被游戏拒 → vacancy 置 0 强制走 b(升级)/c(卖最弱)
+            deploy_vacancy=0)
+        # 黑板接口:破墙派生帧写 session → decide_prep_screen
+        session.prep_obs_frame = bf_obs
+        action = match.strategy.decide_prep_screen(session, config)
+        progressed, detail = self._executor.execute(action)
+        log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
+        # 破墙动作也记一条 exec_events(类名带 BenchFull 前缀,审计可辨)
+        try:
+            if obs.state is not None:
+                _bf_rid = state.current_run_id() or '-'
+                if _bf_rid == '-' and self.ctx.cw_match is not None:
+                    _bf_rid = f'match:{id(self.ctx.cw_match) & 0xffff:x}'
+                state.get_recorder().record_exec_event(
+                    run_id=_bf_rid,
+                    round_num=obs.state.round_num,
+                    action_family=f'BenchFull_{type(action).__name__}',
+                    screen='battle_prep', event='bench_full_break',
+                    reason='备战席满破墙')
+        except Exception:   # noqa: BLE001  遥测 best-effort
+            pass
+        return self.round_wait(
+            status=f'备战席已满,已试破警告({type(action).__name__}),交回外循环', wait=1.0)
 
     def _clear_entry_overlays(self) -> None:
         """P0 清场前置段(规范入口序列「先清场、再识别、后动作」;ADR-0462):
@@ -1223,543 +1391,6 @@ class PrepDirector(SrOperation):
             return True
         except Exception:   # noqa: BLE001  离线契约
             return False
-
-    def _diagnose_known_overlay(self) -> str | None:
-        """环入口帧 → 已知 overlay 标签(诊断集单一源 = KNOWN_OVERLAY_FRAMES;
-        纯判定,离线锁可桩)。全不命中/截图或识别异常 = 未知帧(None,交同因
-        bail 计数;离线契约:异常不阻塞,落原 bail 语义)。"""
-        try:
-            screen = self.screenshot()
-            for _tag, _scr, _area in KNOWN_OVERLAY_FRAMES:
-                if self.round_by_find_area(
-                        screen, _scr, _area, crop_first=False).is_success:
-                    return _tag
-        except Exception:   # noqa: BLE001  离线契约:识别异常按未知帧处理
-            return None
-        return None
-
-    def _entry_dispatch_or_bail(self, match, session) -> OperationRoundResult:
-        """环入口不 clean 帧分诊(W971 §2.9;实机 P1-r6 bail ping-pong 修复)。
-
-        ①开商店合法稳定态 → 收起重进(round_retry,原语义);
-        ②已知 overlay(KNOWN_OVERLAY_FRAMES 命中)→ 重置「帧不 clean」同因
-          计数 + 交回主循环分发(round_success,外环下轮全分支重判,对应
-          loop 0x 分支/op 接管);
-        ③未知帧 → 同因 bail 计数(×3 停机兜底,常驻钩子语义不变)。
-        防重置失守:已知 overlay 交回本身带**同标签连击**——同一标签连续
-        ≥3 次交回仍回环 = loop 分支接不住(ping-pong 换形态),升级停机
-        留证(三要素同 _bail);标签变化/帧转 clean 即清零。
-        """
-        if self._try_collapse_open_shop():
-            return self.round_retry('环入口商店开,已收起重进')
-        _tag = self._diagnose_known_overlay()
-        if _tag is None:
-            session.cw_entry_diag_last = None   # 未知帧:已知 overlay 连击清零
-            return self._bail(match, GATE_UNCLEAN_REASON)
-        # 命中已知 overlay:重置帧不 clean 同因计数(该因不再累计),
-        # 交回外环全分支重判。
-        if session.bail_reason_counts.pop(GATE_UNCLEAN_REASON, None) is not None:
-            log.info('[cw][director] 环入口分诊:命中已知 overlay(%s),帧不clean 同因计数已重置', _tag)
-        _streak = (getattr(session, 'cw_entry_diag_last', None) == _tag
-                   and getattr(session, 'cw_entry_diag_streak', 0) or 0) + 1
-        session.cw_entry_diag_last = _tag
-        session.cw_entry_diag_streak = _streak
-        if _streak >= PrepDirector.BAIL_SAME_REASON_DIAG:
-            # 同标签 ×3 交回仍回环 = 外环接不住(换形态 ping-pong)→ 停机留证
-            # (三要素同 _bail;证据标签 = overlay 名,建档/修分支方向明确)。
-            log.warning('[cw!][director] 已知 overlay(%s)连续 %d 次交回仍回环 '
-                        '→ 升级停机(loop 分支接不住,保画面排查)', _tag, _streak)
-            with contextlib.suppress(Exception):
-                self.save_screenshot(prefix='entry_overlay_pingpong')
-            import time as _t
-            with contextlib.suppress(Exception):
-                from pathlib import Path as _P
-                _flag = _P('.debug/temp/currency_war/entry_overlay_pingpong_hook.flag')
-                _flag.parent.mkdir(parents=True, exist_ok=True)
-                _flag.write_text(
-                    f'[HOOK-STOP] 环入口已知 overlay 交回 ping-pong 停机(常驻兜底)\n'
-                    f'触发:环入口分诊命中 {_tag!r} 连续 {_streak} 次交回主循环,\n'
-                    f'外环分支仍未消化(0x 分支锚未命中/未接管)。\n'
-                    f'处理:1. 看 .debug/images/entry_overlay_pingpong_* 确认 overlay;\n'
-                    f'   2. grep battle_loop 对应分支为何没接住(锚失效/序位被截胡);\n'
-                    f'   3. 处理完删本 flag 重启对局。\n'
-                    f'ts={_t.strftime("%m-%d %H:%M:%S")}\n', encoding='utf-8')
-            rc = getattr(self.ctx, 'run_context', None)
-            if rc is not None:
-                with contextlib.suppress(Exception):
-                    rc.stop_running(reason='hook:entry_overlay_pingpong')
-            session.cw_entry_diag_streak = 0
-            return self.round_fail(
-                status=f'已知 overlay({_tag})×{_streak} 交回未消化,停机待排查')
-        log.info('[cw][director] 环入口分诊:已知 overlay(%s)→ 交回主循环分发'
-                 '(重入全分支重判,连击 %d)', _tag, _streak)
-        return self.round_success(
-            f'BailToOuter(环入口已知overlay:{_tag},交回外环分发)', wait=0.8)
-
-    def _run_loop(self, match) -> OperationRoundResult:
-        """环循环主体(可离线 mock 测):observe → decide → execute → 再 observe。"""
-        session = match.session
-        from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-        config = CurrencyWarConfig(self.ctx.current_instance_idx)
-        # ⚠️ 特效消化等待(用户 2026-08-16 实证):上一步动作(drag 上场/买卡合成)会触发羁绊
-        # 特效/升星 overlay(盛会之星/圣杯/银狼升级等)遮挡画面 —— heavy 观察(SIFT/OCR)在特效
-        # 帧读 = 污染。环入口先截一帧探「备战标识」,miss(被特效遮)→ 等 1s 重试,最多 3 次
-        # 让特效播完再观察(非交互 overlay 播完即走;交互型由下方 event_overlay 检测 bail)。
-        # 探针 best-effort(截图/识别异常不阻塞 —— 离线 mock 测试无真画面)。
-        # 稳定门语义:单锚「购买经验」过弱(该按钮在 shop 开/关两态均可见,特效
-        # 盖舞台不盖底部按钮时门照样放行)——①锚改用「备战屏(shop 关)专属
-        # 的舞台锚(按钮-出战)」,shop 开态帧不再放行;②探 3 次仍不 clean
-        # 也**不 fall-through 盲 observe**,bail 重试(外环重进消化)。
-        # gate_director 已无条件化(无旧路径/无开关);离线契约(截图异常
-        # raise)= 放行 _observe(None→自截图)。
-        # 开商店容忍路径:gate 超时先探合法开态,收起重进;
-        # 真特效/overlay 才 bail 3-strike。
-        _gate_frame = None
-        _gate_err = False
-        # P0 清场前置段(ADR-0462「先清场、再识别、后动作」):先把可一键
-        # 关闭的 overlay/弹窗清掉,再等关店态 stable 做全量识别——清场失败
-        # 不阻塞(后续 gate/容忍探测/bail 链照旧兜底)。
-        self._clear_entry_overlays()
-        try:
-            from sr_od.application.currency_war.obs.cw_observation_gate import (
-                GATE_POST_COLLAPSE_TIMEOUT_S,
-                PROFILE_CLOSED,
-                wait_stable_frame,
-            )
-            log.info('[cw][gate] path=new(director 环入口)')
-            # 战后首环开店态预收:战斗胜利后新回合游戏常自动开商店,
-            # 此时直接等关店态锚(PROFILE_CLOSED)永不命中,
-            # 每轮必打满 12s 超时才走「收起重进」(实机单局 16 轮 × ~12s
-            # 纯等;依据实机单局耗时深挖报告
-            # .debug/temp/currency_war/w358_time_depth/REPORT.md
-            # 可压缩清单 #1)。入口先探开商店态——开 → 收起后以
-            # 收紧超时(GATE_POST_COLLAPSE_TIMEOUT_S,实测收起后 ~2s
-            # 即关店态 stable)直接等本轮 gate 帧,省掉超时 + 重进往返;
-            # 未开(含特效帧/新位面首环)走原 12s 完整门,行为不变。
-            # ADR-0264 终裁:环入口(节点结束段/battle 后新备战相位)
-            # 走融合默认路径——锚命中即进指纹快 poll(骨架加速器①,
-            # 不做纯信任放行),指纹双轮窗真实测量。
-            # 时序竞争修复(预收探针重试):自动开商店可能发生在首探
-            # **之后**(探不到「按钮-收起」≠ 本轮不会开)——首探 miss
-            # 不立即进完整门,先在有限窗内按 PRECOLLAPSE_RETRY_S 间隔
-            # 重试同一探针(同原语,不新增判据);任一次探到开 → 走
-            # 上方收紧超时路径,省掉 12s 死等+重进往返(实机每局
-            # 9-25 次,依据 .debug/temp/currency_war/w417_duration_audit/
-            # REPORT.md「确定可压」第 1 条);窗内未开 → 原完整门,
-            # 行为不变(重试上限防无界等待)。
-            _collapsed = self._try_collapse_open_shop()
-            if not _collapsed:
-                for _ in range(PRECOLLAPSE_RETRIES):
-                    time.sleep(PRECOLLAPSE_RETRY_S)
-                    if self._try_collapse_open_shop():
-                        _collapsed = True
-                        break
-            if _collapsed:
-                _gate_frame = wait_stable_frame(
-                    self, profile=PROFILE_CLOSED,
-                    timeout_s=GATE_POST_COLLAPSE_TIMEOUT_S)
-            else:
-                _gate_frame = wait_stable_frame(
-                    self, profile=PROFILE_CLOSED)
-        except Exception:   # noqa: BLE001  离线契约:放行(observe 自截图)
-            _gate_err = True   # 异常≠超时:超时走容忍探测,异常直接放行
-            log.debug('[cw][gate] 环入口 gate 异常(离线契约)→ 放行')
-        if _gate_frame is None and not _gate_err:
-            # 预收后的收紧超时未达成 stable(收起动画偶发拖长)→ 有界
-            # 兜底:落回原 12s 完整门;仍未达成才进下方容忍探测
-            # (收起探针/3-strike bail)——不引入无界等待。
-            try:
-                _gate_frame = wait_stable_frame(
-                    self, profile=PROFILE_CLOSED)
-            except Exception:   # noqa: BLE001  离线契约:放行
-                _gate_err = True
-                log.debug('[cw][gate] 环入口兜底 gate 异常(离线契约)→ 放行')
-        if _gate_frame is None and not _gate_err:
-            # 环入口不 clean 分诊(§2.9:交回循环 = 重新识别分发):
-            # ①开商店合法稳定态 → 收起重进;②已知 overlay → 交回主循环分发
-            #(重置同因计数,对应 loop 0x 分支接管);③未知帧才计同因 bail
-            #(×3 停机兜底保留)。
-            return self._entry_dispatch_or_bail(match, session)
-        # gate 末帧透传 _observe——OCR 缓存贯穿(gate 全图
-        # OCR 一次,observe 的 id_mark 判定/observe_full 全命中),
-        # 且观察对象=已验证稳定帧;None(异常路径)=
-        # _observe 自截图。
-        obs = self._observe(heavy=True, screen=_gate_frame)   # 环入口重观察 + 对账
-        if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
-            return self._bail(match, f'事件overlay:{obs.event_overlay}')
-        # 接管局补采(boss+词缀,W971 §2.1/01-opening §2.1):稳定门退役后挂点 =
-        # 干净备战观察(gate 后稳定帧,画面保证在备战)。触发 = session.briefing_bosses
-        # 空(本局尚无位面序真值:①接管局 bot 没走过简报链 ②简报读空兜底)。
-        # 可交互门:节点条可读(过场/overlay 半开帧读不出 → 等下帧,不消耗预算)。
-        # 会开/关位面详情画面 → 执行后 bail 交外环重进(重新识别干净备战)。
-        # 计数挂 session(本 director 实例每备战环重建,实例属性不跨环存活);
-        # 成功或 2 次失败后停(boss 缺省=中性 0.5,失败不阻塞对局)。
-        if (not getattr(session, 'cw_takeover_collect_done', False)
-                and not getattr(session, 'briefing_bosses', None)):
-            _tk_slots = None
-            with contextlib.suppress(Exception):
-                _tk_slots = read_node_sequence(self.ctx, self.last_screenshot)
-            if _tk_slots is not None:
-                _tries = getattr(session, 'cw_takeover_tries', 0) + 1
-                session.cw_takeover_tries = _tries
-                if _tries > 2:
-                    session.cw_takeover_collect_done = True
-                    log.info('[cw][director] 接管补采两次未成,放弃(boss 缺省中性)')
-                    # 放弃也清空两池:残留值会被下局判空误消费(跨局泄漏)
-                    self.ctx.cw_plane_bosses = None
-                    self.ctx.cw_plane_affixes = None
-                else:
-                    from sr_od.application.currency_war.operations.handlers.collect_plane_intel import (
-                        CollectPlaneIntel,
-                    )
-                    log.info('[cw][director] 新局 boss/词缀无实采真值(session 空)'
-                             '→ 位面详情情报采集(可交互备战帧,第%d次)', _tries)
-                    _pb_res = CollectPlaneIntel(self.ctx).execute()
-                    # 成功取走/失败残留都清空(防泄漏到下局判空;词缀随采结算
-                    # 只在本分支,防等待帧空读清池)
-                    _names = list(self.ctx.cw_plane_bosses or [])
-                    _affixes = list(self.ctx.cw_plane_affixes or [])
-                    self.ctx.cw_plane_bosses = None
-                    self.ctx.cw_plane_affixes = None
-                    if _pb_res is not None and getattr(_pb_res, 'success', False) and _names:
-                        session.cw_takeover_collect_done = True
-                        # 保位写(ADR-0398):徽章态位面采得 None 原样占 3 槽,
-                        # 丢弃会让后续位面名字左移错位(位面序真值变假)。
-                        session.briefing_bosses = _names
-                        log.info('[cw][director] 开局 boss 实采完成(位面序保位):%s', _names)
-                    if _affixes and not getattr(session, 'briefing_affixes', None):
-                        session.briefing_affixes = _affixes
-                        log.info('[cw][director] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
-                    return self.round_wait('接管补采执行,重进备战环重新识别', wait=1.0)
-        # ADR-0136(M16 死循环 86min 根因):「备战席已满」警告模态下游戏**拒绝一切拖拽/出战** ——
-        # Director 若无视警告继续发 DeployMove/StartBattle,全部"源槽未变/未落地"连环失败 → stall
-        # 死循环。环入口感知警告(read_bench_full)→ 立即走腾席链破警告(优先升级扩容;点不起 → 卖最弱),
-        # 警告解除后才继续常规决策。每次环入口重判(警告可反复出现)。
-        from sr_od.application.currency_war.obs.cw_observation import read_bench_full
-        _scr_full = getattr(self, 'last_screenshot', None)
-        _bench_full_now = (_scr_full is not None
-                           and read_bench_full(self.ctx, _scr_full))
-        if not _bench_full_now:
-            # r366b(review A1):警告解除 → 等待计数清零(正常态恢复预算)
-            if getattr(session, 'free_bench_gold_wait', 0):
-                session.free_bench_gold_wait = 0
-        if _bench_full_now:
-            log.warning('[cw!][director] 备战席已满警告(模态挡拖拽/出战)→ 破警告优先(腾席链)')
-            # 破墙 obs 用 dataclasses.replace 从真 obs 派生
-            # (全字段保真,仅覆写腾席相关)——伪造残缺 obs 会炸策略读取。
-            import dataclasses
-            bf_obs = dataclasses.replace(
-                obs, box_overlay_open=False, boxes=[], spheres=[],
-                free_bench_slots=0, shop_open=False,
-                # ADR-0136 补修:横幅在时拖放被游戏拒 → vacancy 置 0 强制走 b(升级)/c(卖最弱)
-                deploy_vacancy=0)
-            # 黑板接口迁移(W971 §2,P2):破墙派生帧写 session → decide_prep_screen
-            session.prep_obs_frame = bf_obs
-            action = match.strategy.decide_prep_screen(session, config)
-            progressed, detail = self._executor.execute(action)
-            log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
-            # 破墙动作也记一条 exec_events(类名带 BenchFull 前缀,审计可辨
-            # ——破墙花费不落账即复盘盲区)。
-            try:
-
-                if obs.state is not None:
-                    _bf_rid = state.current_run_id() or '-'
-                    if _bf_rid == '-' and self.ctx.cw_match is not None:
-                        _bf_rid = f'match:{id(self.ctx.cw_match) & 0xffff:x}'   # 与 _record_exec_obs 兜底一致
-                    # record_exec_event 是 TelemetryRecorder 类方法,
-                    # 须走 get_recorder() 实例调用(模块级直调 = AttributeError
-                    # 且会被 except 吞 → 遥测静默丢失)。
-                    state.get_recorder().record_exec_event(
-                        run_id=_bf_rid,
-                        round_num=obs.state.round_num,
-                        action_family=f'BenchFull_{type(action).__name__}',
-                        screen='battle_prep', event='bench_full_break',
-                        reason='备战席满破墙')
-            except Exception:   # noqa: BLE001  遥测 best-effort
-                pass
-            return self.round_wait(status=f'备战席已满,已试破警告({type(action).__name__})', wait=1.0)
-        # MED-4:战略层 update_target 环入口调一次(strategy/03 §6;RunBuyPhase 内 shop.py 仍会
-        # 调 = P1 允许的双调)。失败不炸环(沿用上轮 target 继续步级决策)。
-        # ⚖️ 入口先过 HP 新鲜度门再调**(cw_strategy.gated_hp,与 shop.py 同门)——
-        # shop 开态兜底的 obs.state.hp 常是假 100 → maybe_pivot 在假 hp 上做信号1涌现判定,
-        # 真 hp 读到后又触发信号3保命反向换线(同节点两次方向相反 pivot = comp churn 主燃料)。
-        if obs.state is not None:
-            from sr_od.application.currency_war.decision.cw_strategy import gated_hp
-            from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
-                committed_from,
-                drive_intention,
-            )
-            _os = obs.state
-            # 方向层接管(P7 驱动点契约):意向状态机每 game-round 恰
-            # 一次,锚定 = 环入口(update_target 之前);段级重入守卫 =
-            # v3_intention_key(与 decision_v2 栈共享键面,双驱动幂等)。
-            # registry 缺省 = DEFAULT_REGISTRY(缺省栈无注入臂;A/B 注入
-            # 经策略构造 registry 透传,P6 契约)。
-            try:
-                drive_intention(_os, session)
-            except Exception as e:  # noqa: BLE001  方向驱动失败不阻塞步级决策
-                log.warning(f'[cw!][director] 意向驱动异常(沿用旧方向): {e}')
-            # dual 态拷回(读端 = R1 唯一合法读端 committed_from;
-            # 读端内部 = cw_intention 权威派生,消费端同 commit 面
-            # 换源,session 侧双轨字段已无读点)
-            _os.dual_track_phase = not committed_from(session, _os)
-            _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
-            _os.hp = gated_hp(_os.hp, session, _os_t,
-                              current_readable=bool(getattr(_os, 'hp_readable', True)))
-        try:
-            match.strategy.update_target(obs.state or GameState(), session, config)
-        except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
-            log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
-        # DirectorV2 = 唯一生产路径(无开关;回退 = git revert)。共享前置
-        # (gate/bench-full 破警告/gated_hp/update_target)全在此前,新旧环共用零重写。
-        return self._run_prep_loop_v2(match, session, config)
-
-        # ---- 旧环主体(生产不再可达;保留供离线/影子对照复用)----
-        while True:
-            # ⚖️ 停机刹车语义(ADR-0388):停机标志设置后若继续发动作 =
-            # 停 bot 后执行流仍在落地动作——CW 备战不自动出战,
-            # 出战必是 bot 点的。环顶每步先查
-            # 「运行中被停」(last_run_result 非空——run_state STOP 是 idle 初始态,
-            # 不能直接用;last_run_result 在 start_running 清 None/stop 时写入,
-            # 是「本次运行被请求停止」的精确判据),已停 → 立即收口不再发任何
-            # 动作。同族钩子(star/summon/shop_unknown/battle_unknown 等)经本
-            # 循环的全部受益;op 层直连循环(battle_loop 等)各自节点自查。
-            _rc = getattr(self.ctx, 'run_context', None)
-            if _rc is not None and getattr(_rc, 'last_run_result', None) is not None:
-                log.info('[cw][director] 停机标志已设 → 环收口(不再执行动作,'
-                         'W209j 刹车语义)')
-                return self.round_fail(status='已停止[hook]')
-            self._steps += 1
-            if self._steps > PrepDirector.MAX_STEPS:
-                log.warning(f'[cw!][director] 步数>{PrepDirector.MAX_STEPS} → 强制出战(F5)')
-                return self._force_battle('步数预算耗尽')
-            try:
-                # 黑板接口迁移(W971 §2,P2):旧环(生产不可达,离线/影子复用)
-                # 同步换新入口——obs 帧已由 _observe 写 session(或轻步沿用),
-                # 此处显式重写保证与局部 obs 一致。
-                session.prep_obs_frame = obs
-                action = match.strategy.decide_prep_screen(session, config)
-            except Exception as e:  # noqa: BLE001  策略异常:上抛 = 本环 fail(§13.2 路径 3)
-                log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
-                return self.round_fail(status=f'策略决策异常: {e}')
-            if not isinstance(action, PrepAction):
-                log.warning(f'[cw!][director] 策略输出非 PrepAction: {type(action).__name__}')
-                return self.round_fail(status='策略输出非 PrepAction(F3)')
-            self._record_step(obs, action)
-
-            # —— 控制流(不走 execute 验证链,§4.2b)——
-            if isinstance(action, DeferSpheres):
-                session.defer_count += 1
-                log.info(f'[cw][director] DeferSpheres(defer={session.defer_count})')
-                obs = self._observe(heavy=False)
-                continue
-            if isinstance(action, BailToOuter):
-                return self._bail(match, action.reason or '未注明')
-
-            # —— F3 校验(全集白名单 + 参数;非法:拒绝执行 + stall + 遥测,§13.2 路径 2)——
-            err = self._executor.validate(action)
-            key = action_key(action)
-            if err is not None:
-                log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝 + 计 stall')
-                self._stall += 1
-                gate = self._stall_gate()   # MED-3:拒绝路径也要兜 stall 门(防 55 步空转)
-                if gate is not None:
-                    return gate
-                obs = self._observe(heavy=False)
-                continue
-            # 屏蔽命中:拒绝执行 + stall + 遥测(策略确定性重提案同动作被拒,M-5)
-            if key in self._blocked and not isinstance(action, StartBattle):
-                log.warning(f'[cw!][director] 动作已屏蔽 {key} → 拒绝 + 计 stall(M-5)')
-                self._stall += 1
-                gate = self._stall_gate()   # MED-3:同上
-                if gate is not None:
-                    return gate
-                obs = self._observe(heavy=False)
-                continue
-
-            # —— 执行(验证失败路径:计 fail;异常自然上抛 = 本环 fail)——
-            # RunBuyPhase = 一个购买单元(开店→买/升/刷→关店),执行边界
-            # 记账(纯观测);失败/异常同样关单元,判定门在读端(boundary)。
-            _unit_open = isinstance(action, RunBuyPhase)
-            if _unit_open:
-                self._spend_unit_open(obs)
-            # 观测自检设计 §2.3/§5-B5 动作级板面对拍(前读):部署/卖出
-            # 执行前读一帧 paddle X(read_deployed_count 区域 OCR,毫秒级;部署
-            # 动作本身秒级,占比可忽略)。后读复用下方 heavy 重观察帧,零新增
-            # 截图。仅 DeployMove(期望 +1)/ SellDeployed(期望 −1);其余动作
-            # 不进对拍。
-            _dep_delta = 0
-            _dep_pre: int | None = None
-            # 期望态层(动作发出点):拖动动作从意图导出期望态增量(纯函数,
-            # 架构原则②——期望态由发指令的同一条代码路径计算)。None=无法
-            # 建真值(源槽身份未识别/同名占位语义未定义)→ 后续不评。
-            _drag_expect = None
-            if isinstance(action, (SellBench, DeployMove)):
-                _drag_expect = compute_drag_expect(
-                    action, obs.bench_chars, obs.deployed_chars)
-            # 期望态层·装备:卖上阵角色 = 已穿装备全量回装备区
-            # (equipment_mechanics §1.1),期望在动作发出点从穿戴快照导出
-            # (纯函数;失读/空读不评)。None=无法建真值 → 后续不评。
-            _equip_expect = None
-            if isinstance(action, SellDeployed):
-                _equip_expect = self._equip_expect_for_sell(action)
-            if isinstance(action, (DeployMove, SellDeployed)):
-                _dep_delta = 1 if isinstance(action, DeployMove) else -1
-                _dep_frame = getattr(self, 'last_screenshot', None)
-                if _dep_frame is not None:
-                    try:
-                        _dep_pre = read_deployed_count(self.ctx, _dep_frame)
-                    except Exception:   # noqa: BLE001  观测 best-effort
-                        _dep_pre = None
-            try:
-                progressed, detail = self._executor.execute(action)
-                if _unit_open:
-                    self._spend_unit_close(progressed=progressed, detail=detail,
-                                           boundary='closed' if progressed else 'failed')
-            except Exception as e:  # noqa: BLE001
-                if _unit_open:
-                    self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
-                                           boundary='aborted')
-                log.warning(f'[cw!][director] 执行异常 {key}: {e} → 本环 fail')
-                return self.round_fail(status=f'执行异常 {key}: {e}')
-            log.info(f'[cw][director] step{self._steps} {key} → {"✓" if progressed else "✗"} {detail}')
-            # 期望态层·经验:购买经验意图 → 账本推进(零决策记账;
-            # 仅 progressed 分支——执行失败=未购买,期望不适用)。
-            if progressed and isinstance(action, LevelUp):
-                self._xp_apply_levelup()
-            elif progressed and isinstance(action, RunBuyPhase):
-                self._xp_apply_buy_clicks(detail)
-
-            # EnsureShopClosed 执行成功后 = 店确定关
-            # 的可靠时点,**_probe_node_type 挂点**(shop 开态帧读不了节点行,
-            # 入口一次性读会大量 skip)。
-            # 前置 wait_stable_frame 无条件化
-            #(超时=放行——离线契约);2s 预估等待兼作操作段基线重置点
-            # (ADR-0264 终裁加速器②)。
-            if 'EnsureShopClosed' in key and progressed:
-                try:
-                    from sr_od.application.currency_war.obs.cw_observation_gate import (
-                        PROFILE_CLOSED,
-                        wait_stable_frame,
-                    )
-                    log.info('[cw][gate] path=new(钩子前置)')
-                    wait_stable_frame(
-                        self, profile=PROFILE_CLOSED,
-                        segment='op_settle')
-                except Exception:   # noqa: BLE001  离线契约:放行
-                    pass
-                self._probe_node_type()
-
-            if isinstance(action, StartBattle) and progressed:
-                return self.round_success('出战(环出口)', wait=3)
-            if progressed:
-                self._stall = 0
-                self._fail_counts.pop(key, None)
-            else:
-                try:
-                    bail = self._on_verify_fail(match, action, key)
-                except Exception as e:  # noqa: BLE001  LOW-5:恢复原语点击异常同执行异常路径
-                    log.warning(f'[cw!][director] 失败处理/恢复原语异常 {key}: {e} → 本环 fail')
-                    return self.round_fail(status=f'失败处理异常 {key}: {e}')
-                if bail is not None:
-                    return bail
-            # 再观察:执行过的游戏动作一律 heavy(结构变化,review H-1);控制流走 light(上方)
-            obs = self._observe(heavy=True)
-            # 观测自检设计 §2.3/§5-B5 动作级板面对拍(后读):heavy 重观察帧
-            # 上再读 paddle X,执行成功时期望 = 前读 ±1;不等 = 部署/卖出未生效
-            #(点击落空/对账链双源都错)。纯留证零决策行为——与 deployed_align 的
-            # 区别:那是跟踪表 vs paddle 的自动纠漂(裁决已自动恒 L2),本对拍是
-            # 「动作声称的改变是否真发生」,不可自动纠,分级走 judge_severity
-            #(关键面+计数差≥1,复现自动升 L0 初判;停机接线未启,仅落账标记)。
-            # 任一端失读(None)= 无对拍基准,宁缺勿造跳过(paddle 既有语义)。
-            if _dep_pre is not None:
-                try:
-                    _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
-                    if _dep_post is not None and _dep_post - _dep_pre != _dep_delta:
-                        _gap = _dep_post - _dep_pre
-                        defects.record_defect(
-                            'deployed', 'invariant_break',
-                            expected=f'{key} 执行后 paddle={_dep_pre + _dep_delta}',
-                            observed=f'paddle={_dep_post}',
-                            plane=int(getattr(obs.state, 'plane', 0) or 0),
-                            round_num=int(getattr(obs.state, 'round_num', 0) or 0),
-                            gap=float(_gap), gap_large=True,
-                            reader_source='paddle_action_audit',
-                            note='部署/卖出动作级即时对拍(§2.3;与 deployed_align 自动纠漂分立)')
-                except Exception:   # noqa: BLE001  观测 best-effort
-                    pass
-            # 期望态层(定型帧对账):动作完成且可建期望 → 在本轮 heavy 重观察
-            # 定型帧上逐槽对账;不一致落缺陷台账(复现升 L0 由安灯承接),
-            # 一致/不可评不打扰。仅 progressed 分支——验证失败=动作未发生,
-            # 期望态不适用(该失败由 fail/恢复链管辖)。
-            if progressed and _drag_expect is not None:
-                self._reconcile_drag_expect(_drag_expect)
-            _drag_expect = None
-            # 期望态层·买牌:RunBuyPhase 单元的购买期望由 shop.py 买入
-            # 点写入 session.pending_buy_expect(StrategySession 正式字段,
-            # 见 cw_strategy 字段定义);此处在本轮 heavy 定型帧上消费对账
-            # (bench/buy_expect_mismatch)。零决策记账:不一致不重买不改
-            # 行为;执行失败(未购买单元)期望作废只清不评。
-            _pending_buy = session.pending_buy_expect
-            if _pending_buy is not None:
-                session.pending_buy_expect = None
-                if progressed:
-                    self._reconcile_buy_expect(_pending_buy)
-            # 期望态层·经验:同帧对账(锚定/轮界重锚/段内对账;
-            # 内部 best-effort,异常不阻塞环)。
-            self._reconcile_xp_expect(obs)
-            # 羁绊显示对账(cw_faction_obs 接线):同帧消费——computed=tracked
-            # 全集 vs 面板 OCR,mismatch 落缺陷台账(kind=faction_display_mismatch,
-            # 零决策不纠漂;内部 best-effort)。
-            self._reconcile_faction_display(obs)
-            # 商店打开态对账:同帧消费——商店打开 heavy 帧(腾席链
-            # EnsureShopOpen 后)上五牌卡池一致性票(shop_pool_violation;
-            # 零决策记账,内部 best-effort;关店帧自带锚门空跳)。
-            self._reconcile_shop_pool(obs)
-            # 合成预览对账(compare_merge_preview 接线):同帧消费——
-            # compare_merge_preview 接线(merge_preview_mismatch;零决策
-            # 记账,内部 best-effort;关店帧/无持有帧自带空跳)。
-            self._reconcile_merge_preview(obs)
-            # 期望态层·装备:卖角色「装备全量回装备区」期望在本轮
-            # heavy 定型帧上消费对账(equip/equip_expect_mismatch;零决策
-            # 记账:不一致不重拖不改行为;不可评口径已在构建端丢弃)。
-            if progressed and _equip_expect is not None:
-                self._reconcile_equip_expect(_equip_expect)
-            _equip_expect = None
-            if obs.event_overlay is not None:   # 动作后浮出事件 overlay(mid-prep 弹出)→ bail
-                return self._bail(match, f'事件overlay:{obs.event_overlay}')
-
-    def _record_exec_obs(self, key: str, event: str, reason: str = '') -> None:
-        """观测钩子(常驻):执行事件落 exec_events.jsonl。
-
-        run_id 兜底:current_run_id → match 短 id。动作族:key 是动作 repr → 取首
-        `(` 前类名;bail 类事件 key 是 reason 字符串 → 族归 'bail'。round_num 用
-        游戏 轮次(环步数重入清零且重复,与 decisions/outcomes 无法对齐;
-        last_state.round_num 才是 join key)。best-effort。
-        """
-        try:
-
-            from sr_od.application.currency_war.telemetry.state import (
-                current_run_id,
-                get_recorder,
-            )
-            run_id = current_run_id() or '-'
-            game_round = 0
-            _m = self.ctx.cw_match
-            if _m is not None:
-                run_id = run_id if run_id != '-' else f'match:{id(_m) & 0xffff:x}'
-                _st = getattr(_m.session, 'last_state', None)
-                if _st is not None:
-                    game_round = getattr(_st, 'round_num', 0) or 0
-            family = 'bail' if event == 'bail' else (
-                key.split('(')[0].split(':')[0].strip() or '?')
-            get_recorder().record_exec_event(
-                run_id=run_id, round_num=game_round,
-                action_family=family,
-                screen='battle_prep', event=event, reason=reason or key,
-                retry_count=self._fail_counts.get(key, 0))
-        except Exception:   # noqa: BLE001  观测 best-effort
-            pass
 
     # ===== 购买单元记账(spend_ledger;纯观测,零行为变更)=====
 
@@ -1904,127 +1535,6 @@ class PrepDirector(SrOperation):
         if rc is not None:
             rc.stop_running(reason='hook:exec_fail_mismatch')
 
-    def _stall_gate(self) -> OperationRoundResult | None:
-        """环级强制出战门(§7 H-2b):stall≥5 且恢复已试尽 → 强制 StartBattle(F5)。
-
-        MED-3:所有计 stall 的路径(验证失败/参数非法/屏蔽拒绝)统一走本门 —— 否则屏蔽后
-        策略确定性重提案会 55 步空转到 MAX_STEPS 才兜住。
-        """
-        if self._stall >= PrepDirector.STALL_LIMIT and self._recovery_tried:
-            log.warning(f'[cw!][director] stall≥{PrepDirector.STALL_LIMIT} 且恢复已试尽 → 强制出战(F5)')
-            return self._force_battle('stall+恢复试尽')
-        return None
-
-    def _on_verify_fail(self, match, action: PrepAction, key: str) -> OperationRoundResult | None:
-        """验证失败处理(review H-2 修订):连败 2 → 恢复原语(一次/实例)→ 仍连败 2 → 分型
-        bail(关过已知弹层 = 弹层顽固)/屏蔽(无弹层 = 状态类失败)。返回非 None = 环终止。"""
-        self._fail_counts[key] = self._fail_counts.get(key, 0) + 1
-        fails = self._fail_counts[key]
-        self._stall += 1
-        # 观测钩子(常驻,27 号能力画像数据源):失败计数落盘(原来局终即弃)
-        self._record_exec_obs(key, 'fail', f'fails={fails}')
-        if fails >= PrepDirector.FAIL_TO_RECOVER and key not in self._recovered:
-            # 首次连败门:恢复原语(一次/动作实例),重置计数给恢复后重试窗
-            prim, closed_known = try_recovery(self, self.ctx)
-            self._recovered.add(key)
-            self._recovery_closed_known[key] = closed_known
-            self._recovery_tried = True
-            log.info(f'[cw][director] {key} 连败{fails} → 恢复原语({prim}),重试窗开启')
-            time.sleep(1.0)
-            self._fail_counts[key] = 0
-            return None
-        if fails >= PrepDirector.FAIL_TO_RECOVER and key in self._recovered:
-            # 恢复后仍连败(恢复无效)→ 分型(§7 优先级条落地语义,ADR-0123):
-            # 关过已知弹层仍败 = 弹层顽固/未知 → 环让位(bail 交外环弹层分支/停机钩子);
-            # 无已知弹层(兜底点空白)仍败 = 状态/识别类失败 → 本环屏蔽(策略换路)。
-            # ClickSpheres 特判(live M12 二停):假球点击打开的道具详情弹层被恢复关掉 →
-            # closed_known=True 误走 bail 分支 ×3 停机。收球的恢复无效本质是识别类失败(假球),
-            # 一律走 shield+defer(那个"弹层"是我们自己点出来的,非阻塞弹层)。
-            if self._recovery_closed_known.get(key, False) and not isinstance(action, ClickSpheres):
-                log.warning(f'[cw!][director] {key} 恢复(关弹层)后仍连败 → BailToOuter(弹层顽固)')
-                return self._bail(match, f'恢复无效-弹层:{key}')
-            if not isinstance(action, StartBattle):
-                self._blocked.add(key)
-                self._record_exec_obs(key, 'blocked', '恢复无效-状态类')
-                # 审计 46336415:DeployMove 被屏蔽 = 落点被游戏拒(同名在场/行限制等)
-                # → 写 session.deploy_fail_counts,策略腾席链跳过该角色(防下轮同卡重提案;
-                # 第14局 r9 藿藿 5 连败实证)。备战场面变化后 heavy 对账自然换候选。
-                try:
-                    if isinstance(action, DeployMove):
-                        _bc = (getattr(match.session, 'tracked_bench_chars', None) or [])
-                        _hit = next((b for b in _bc if b.slot == action.from_slot), None)
-                        if _hit is not None and _hit.char_id:
-                            match.session.deploy_fail_counts[_hit.char_id] = (
-                                match.session.deploy_fail_counts.get(_hit.char_id, 0) + 1)
-                            log.info('[cw-director] DeployMove 失败记忆 %s(腾席链将跳过,换下一候选)',
-                                     _hit.char_id)
-                except Exception:   # noqa: BLE001  记忆 best-effort
-                    pass
-            if isinstance(action, ClickSpheres):
-                match.session.defer_count = max(match.session.defer_count, 2)
-            if isinstance(action, OpenTome):
-                # defer 门对 OpenTome 原不生效(defer 只由 DeferSpheres/
-                # ClickSpheres 置位)——失败置 defer 让策略侧门(规则 2)真正生效。
-                match.session.defer_count = max(match.session.defer_count, 2)
-            log.warning(f'[cw!][director] {key} 恢复(无弹层)后仍连败 → 本环屏蔽(策略须换路)')
-            self._fail_counts[key] = 0   # 屏蔽后拒绝走 stall 路径,计数归零防重复触发
-            return None
-        # 环级强制出战门(stall≥5 且恢复已试尽,§7 H-2b)
-        return self._stall_gate()
-
-    def _bail(self, match, reason: str) -> OperationRoundResult:
-        """环让位:交外环处理(§4.2b;外环重入重建 Director 时环级计数全清零)。"""
-        session = match.session
-        self._record_exec_obs(reason, 'bail', '环让位')
-        session.bail_reason_counts[reason] = session.bail_reason_counts.get(reason, 0) + 1
-        n = session.bail_reason_counts[reason]
-        if n >= PrepDirector.BAIL_SAME_REASON_DIAG:
-            # MED-7:同因 bail≥3 = 外环 3 次未消化该弹层(bail↔重入 ping-pong,MAX_ITER 兜底
-            # 需多小时)→ 升级停机钩子(方案 D):存证 + stop_running 保画面待 AI 建档/排查。
-            # 补 sentinel flag 三要素——接管者从 status=stopped +
-            # 本 flag 即知谁停的/怎么处理/钩子分类,不走「不知道谁停的」四层排查。
-            import time as _t
-            log.warning(f'[cw!][director] 同因 bail ×{n}: {reason} → 升级停机(ping-pong,保画面建档)')
-            import contextlib
-            with contextlib.suppress(Exception):
-                self.save_screenshot(prefix='bail_pingpong')
-            with contextlib.suppress(Exception):
-                from pathlib import Path as _P
-                _P('.debug/temp/currency_war/bail_pingpong_hook.flag').write_text(
-                    f'[HOOK-STOP] bail ping-pong 停机钩子(常驻兜底):prep_director._bail\n'
-                    f'触发:同因 BailToOuter ×{n}(reason={reason})——外环 3 次未消化该弹层。\n'
-                    f'处理步骤:1. 看 .debug/images/bail_pingpong_* 截图识别该弹层/overlay;\n'
-                    f'   2. 已建档屏 → battle_loop 分发应有 handler,grep 该屏名查为何没接住\n'
-                    f'      (派发条件/锚点失效?);3. 新画面 → od-dev-screen-onboarding 建档\n'
-                    f'      + 加 handler;4. 合法重复出现 → 确认 _clear_bail_count 为何没清\n'
-                    f'      (handler 成功路径漏调?)。\n'
-                    f'移除条件:本钩子是 ping-pong 安全网,常驻不删;处理完删本 flag\n'
-                    f'+ run_standalone_app 重启对局。ts={_t.strftime("%m-%d %H:%M:%S")}\n',
-                    encoding='utf-8')
-            rc = getattr(self.ctx, 'run_context', None)
-            if rc is not None:
-                with contextlib.suppress(Exception):
-                    rc.stop_running(reason='hook:director_bail_pingpong')
-            return self.round_fail(status=f'同因 bail ×{n}({reason}) 停机待建档')
-        log.info(f'[cw][director] BailToOuter({reason}) → 交外环')
-        return self.round_success(f'BailToOuter({reason})', wait=1)
-
-    def _force_battle(self, why: str) -> OperationRoundResult:
-        """F5 出口兜底:框架强制出战(策略挂了流程不断;StartBattle 豁免屏蔽)。"""
-        if self._executor is None:
-            return self.round_fail(status='无执行器')
-        try:
-            progressed, detail = self._executor.execute(StartBattle())
-        except Exception as e:  # noqa: BLE001  L-4:强制出战异常不裸传(防整环 retry 重跑)
-            log.warning(f'[cw!][director] 强制出战异常({why}): {e}')
-            return self.round_fail(status=f'强制出战异常({why}): {e}')
-        if progressed:
-            return self.round_success(f'强制出战({why})', wait=3)
-        return self.round_fail(status=f'强制出战失败({why}): {detail}')
-
-    # ===== DirectorV2 接线(设计单一源 =
-    # .debug/temp/currency_war/w606_stage2_batch3/DIRECTOR_ADAPTER_DESIGN.md §5/§6)=====
-
     # ===== W970 批 C:流程层商店编排(RunBuyPhase 解体的承接,§4.3.2/§4.3.6,dd-017)=====
 
     def _open_shop_phase(self, action, obs) -> tuple[bool, str]:
@@ -2086,198 +1596,6 @@ class PrepDirector(SrOperation):
         self._probe_node_type()
         return True, f'买牌 {_summary}'
 
-    def _run_prep_loop_v2(self, match, session, config) -> OperationRoundResult:
-        """DirectorV2 备战循环(唯一生产路径;端口全部复用现役件)。
-
-        端口映射:decide/execute = adapter.DecideAdapter(经 prep_brain
-        装配点管线,现役决策核 + 现役执行器 F3 验证链);observe = 本类
-        _observe → snapshot_from_obs;recover = try_recovery(旧环恢复原语,
-        返回「关过已知弹层」bool);force_battle/is_stopped/stop_with_evidence
-        见内联。出口 → 轮次语义映射见 ``_v2_outcome_to_round``。
-
-        动作级记账通道(旧环逐位对齐,零决策):期望态构建/前读在 execute
-        端口,同帧对账族在 heavy 观察端口——旧环在循环体里逐帧消费的
-        记账面(paddle 审计/买牌·拖动·装备·经验·羁绊·商店池·合成预览
-        对账)经 ``_v2_post_frame_accounting`` 在新环 heavy 定型帧上等时
-        消费,含买牌期望上报通道(蓝图 §7)。
-        """
-        from sr_od.application.currency_war.decision.decision_v2.director_v2 import (
-            DirectorV2,
-            _DirectorPorts,
-        )
-        from sr_od.application.currency_war.decision_assembly import (
-            DecideAdapter,
-            snapshot_from_obs,
-        )
-        from sr_od.application.currency_war.kernel.cw_prep_actions import (
-            DeployMove,
-            LevelUp,
-            RunBuyPhase,
-            SellBench,
-            SellDeployed,
-            StartBattle,
-        )
-        from sr_od.application.currency_war.obs.cw_observation import (
-            read_deployed_count,
-        )
-
-        adapter = DecideAdapter(match.strategy, config, self._executor)
-        forced_ok = {'ok': False}   # force_battle 端口结果(出口映射消费)
-        # 动作级记账状态(端口间传递;生命周期 = 单步,每次 execute 重置)
-        acct: dict = {'last_obs': None, 'key': None, 'progressed': False,
-                      'drag_expect': None, 'equip_expect': None,
-                      'dep_delta': 0, 'dep_pre': None, 'unit_open': False}
-
-        def _observe_port(heavy: bool):
-            obs = self._observe(heavy)
-            acct['last_obs'] = obs
-            if heavy:
-                # heavy 定型帧上的同帧对账族(旧环同款时点:动作完成后
-                # heavy 重观察帧;零决策记账,异常不阻塞环)
-                self._v2_post_frame_accounting(obs, acct, session)
-            return snapshot_from_obs(obs, session)
-
-        def _decide_port(snapshot, session_):
-            decision = adapter.decide(snapshot, session_)
-            # F8 步进遥测(旧环 _record_step 同款;obs = 最近观察帧)
-            if acct['last_obs'] is not None and adapter.last_action is not None:
-                self._record_step(acct['last_obs'], adapter.last_action)
-            return decision
-
-        def _execute_port(op) -> tuple[bool, str]:
-            action = adapter.bound_action(op.op_key)
-            if action is None:
-                return False, f'v2适配器:op_key 无绑定 {op.op_key}'
-            obs = acct['last_obs']
-            key = op.op_key
-            # W970 批 C(流程层编排接管):OpenShop = 流程层商店编排
-            # (开店→商店动作循环→CloseShopOp→节点探针;类型分派,不经
-            # 执行器——EnsureShop/RunBuyPhase 意图已退役,探针挂点随迁)。
-            if isinstance(action, OpenShop):
-                _unit = not action.read_only   # 非只读 = 一个购买单元(原 RunBuyPhase 边界)
-                if _unit and obs is not None:
-                    self._spend_unit_open(obs)
-                try:
-                    progressed, detail = self._open_shop_phase(action, obs)
-                except Exception as e:
-                    if _unit:
-                        self._spend_unit_close(progressed=False,
-                                               detail=f'执行异常:{e}',
-                                               boundary='aborted')
-                    raise
-                if _unit:
-                    self._spend_unit_close(
-                        progressed=progressed, detail=detail,
-                        boundary='closed' if progressed else 'failed')
-                acct['progressed'] = progressed
-                log.info(f'[cw][director-v2] step {key} → {"✓" if progressed else "✗"} {detail}')
-                # 期望态层·经验(仅 progressed;detail = 买牌单元摘要,升N次口径同壳)
-                if progressed:
-                    self._xp_apply_buy_clicks(detail)
-                return progressed, detail
-            acct.update(key=key, progressed=False, drag_expect=None,
-                        equip_expect=None, dep_delta=0, dep_pre=None,
-                        unit_open=False)
-            # 期望态构建 + 前读(旧环动作发出点同款;None=无法建真值不评)
-            if isinstance(action, (SellBench, DeployMove)) and obs is not None:
-                acct['drag_expect'] = compute_drag_expect(
-                    action, obs.bench_chars, obs.deployed_chars)
-            if isinstance(action, SellDeployed):
-                acct['equip_expect'] = self._equip_expect_for_sell(action)
-            if isinstance(action, (DeployMove, SellDeployed)):
-                acct['dep_delta'] = 1 if isinstance(action, DeployMove) else -1
-                _dep_frame = getattr(self, 'last_screenshot', None)
-                if _dep_frame is not None:
-                    try:
-                        acct['dep_pre'] = read_deployed_count(self.ctx, _dep_frame)
-                    except Exception:   # noqa: BLE001  观测 best-effort
-                        acct['dep_pre'] = None
-            acct['unit_open'] = isinstance(action, RunBuyPhase)
-            if acct['unit_open'] and obs is not None:
-                self._spend_unit_open(obs)
-            try:
-                progressed, detail = adapter.execute(op)
-            except Exception as e:
-                if acct['unit_open']:
-                    self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
-                                           boundary='aborted')
-                raise
-            if acct['unit_open']:
-                self._spend_unit_close(progressed=progressed, detail=detail,
-                                       boundary='closed' if progressed else 'failed')
-            acct['progressed'] = progressed
-            log.info(f'[cw][director-v2] step {key} → {"✓" if progressed else "✗"} {detail}')
-            # 期望态层·经验(仅 progressed 分支,旧环同款)
-            if progressed and isinstance(action, LevelUp):
-                self._xp_apply_levelup()
-            elif progressed and isinstance(action, RunBuyPhase):
-                self._xp_apply_buy_clicks(detail)
-            # 节点行探针挂点随迁(W970 批 C):EnsureShopClosed 退役,探针改挂
-            # OpenShop 编排内 CloseShopOp 完成后(类型分派,见 _open_shop_phase);
-            # 本处原「'EnsureShopClosed' in key」字符串匹配判据按 §3 退役。
-            return progressed, detail
-
-        def _recover_port() -> bool:
-            _prim, closed_known = try_recovery(self, self.ctx)
-            return closed_known
-
-        def _force_battle_port(_why: str) -> bool:
-            if self._executor is None:
-                return False
-            try:
-                progressed, _d = self._executor.execute(StartBattle())
-            except Exception as e:   # noqa: BLE001  对齐 _force_battle 不裸传
-                log.warning(f'[cw!][director-v2] 强制出战异常({_why}): {e}')
-                return False
-            forced_ok['ok'] = progressed
-            return progressed
-
-        def _is_stopped() -> bool:
-            # W209j 刹车精确判据(旧环同款;现读不缓存)
-            rc = getattr(self.ctx, 'run_context', None)
-            return rc is not None and getattr(rc, 'last_run_result', None) is not None
-
-        def _stop_with_evidence(reason: str) -> None:
-            # 停机留证钩子(方案 D,与 _bail ping-pong 同款三要素)
-            import contextlib
-            with contextlib.suppress(Exception):
-                self.save_screenshot(prefix='v2_evidence_stop')
-            with contextlib.suppress(Exception):
-                from pathlib import Path as _P
-                _P('.debug/temp/currency_war/v2_evidence_stop_hook.flag').write_text(
-                    f'[HOOK-STOP] DirectorV2 留证停机\n触发: {reason}\n'
-                    f'处理:看 .debug/images/v2_evidence_stop_* 截图建档/排查;'
-                    f'处理完删本 flag + 重启对局。\n',
-                    encoding='utf-8')
-            rc = getattr(self.ctx, 'run_context', None)
-            if rc is not None:
-                with contextlib.suppress(Exception):
-                    rc.stop_running(reason='hook:v2_evidence_stop')
-
-        def _record_defect(kind: str, detail: str) -> None:
-            log.warning(f'[cw!][director-v2] 缺陷 {kind}: {detail}')
-            try:
-                rid = state.current_run_id() or '-'
-                state.get_recorder().record_exec_event(
-                    run_id=rid, round_num=0, action_family='DirectorV2',
-                    screen='battle_prep', event=f'defect_{kind}',
-                    reason=detail[:200])
-            except Exception:   # noqa: BLE001  遥测 best-effort
-                pass
-
-        ports = _DirectorPorts(
-            decide=_decide_port,
-            observe=_observe_port,
-            execute=_execute_port,
-            recover=_recover_port,
-            force_battle=_force_battle_port,
-            is_stopped=_is_stopped,
-            stop_with_evidence=_stop_with_evidence,
-            record_defect=_record_defect,
-        )
-        outcome = DirectorV2(ports).run(session)
-        return self._v2_outcome_to_round(outcome, forced_ok['ok'])
-
     def _v2_post_frame_accounting(self, obs, acct: dict,
                                   session) -> None:
         """新环 heavy 定型帧上的动作级对账族(旧环同帧消费逐位对齐;零决策)。
@@ -2336,31 +1654,6 @@ class PrepDirector(SrOperation):
         acct.update(key=None, progressed=False, drag_expect=None,
                     equip_expect=None, dep_delta=0, dep_pre=None,
                     unit_open=False)
-
-    def _v2_outcome_to_round(self, outcome, forced_ok: bool) -> OperationRoundResult:
-        """LoopOutcome → SrOperation 轮次语义(设计 §6 映射表;现役行为锚见行内)。"""
-        from sr_od.application.currency_war.decision.decision_v2.director_v2 import (
-            LoopOutcomeKind,
-        )
-        kind = outcome.kind
-        reason = outcome.reason
-        if kind is LoopOutcomeKind.BATTLE:
-            return self.round_success('出战(环出口)', wait=3)
-        if kind is LoopOutcomeKind.BATTLE_FORCED:
-            if forced_ok:
-                return self.round_success(f'强制出战({reason})', wait=3)
-            return self.round_fail(status=f'强制出战失败({reason})')
-        if kind is LoopOutcomeKind.BAIL:
-            # bail 计数已由引擎 _bail 完成(局级只增不清,ping-pong 在引擎)
-            return self.round_success(f'BailToOuter({reason})', wait=1)
-        if kind is LoopOutcomeKind.PINGPONG_STOP:
-            # 留证已由 stop_with_evidence 端口完成
-            return self.round_fail(status=reason or 'ping-pong 停机')
-        if kind is LoopOutcomeKind.BRAKE_STOPPED:
-            return self.round_fail(status='已停止[hook]')
-        if kind is LoopOutcomeKind.EVIDENCE_STOP:
-            return self.round_fail(status=reason or '留证停机')
-        return self.round_fail(status=reason or 'v2 环失败')
 
     def _probe_node_type(self, screen: MatLike | None = None) -> None:
         """[观测] 备战入场读节点行序列(read_node_sequence)→ log。

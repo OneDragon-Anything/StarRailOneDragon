@@ -142,6 +142,9 @@ class CurrencyWarRunLoop(SrOperation):
     # 原「按最长动画盲等 3s」的门与其 bookkeeping(_frame_is_prep 族)一并删除。
     # 同批退役:_post_settle_auto_shop 标志位(结算后自动开店判稳收编 director
     # 环入口预收探针 + 准备就绪锚,不再跨分支传标志)。
+    #: 备战 stall 留证阈值(W971 03-prep §3 规格最小集:连续 N 轮 session 对账
+    #: 字段族无变化 → 留证;内环拆除后平移外循环。初值 3,校准项)。
+    PREP_STALL_EVIDENCE_ROUNDS: ClassVar[int] = 3
 
     def __init__(self, ctx: SrContext, max_rounds: int | None = None):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
@@ -1063,9 +1066,9 @@ class CurrencyWarRunLoop(SrOperation):
             log.info('[cw-loop] 前台无角色提示 → 确认关闭(下轮 PrepDirector 前排保证重部署)')
             return self.round_wait(wait=1.5)
 
-        # 1. 备战阶段 → PrepDirector 决策环(P1 挂载切换,strategy/03(原 doc 15)/ADR-0123;原 BattlePrepCycle
-        #   固定序列退役为 P3 前可切回的回退路径)。注:遭遇/选择伙伴 等 event overlay 已在
-        #   0b/0c 处理(确认选择/未达上限);遭遇 round 是普通战斗(2026-08-04 视觉大模型确认)。
+        # 1. 备战阶段 → 备战单轮 op(PrepDirector 单轮五段:观察→对账→决策→
+        #    期望态→执行,交回本循环;W971 P3b 返工定稿:内环已拆,外循环是
+        #    唯一循环)。注:遭遇/选择伙伴 等 event overlay 已在 0 系分支处理。
         # 画面判定 = **双锚**(2026-08-26 用户定调「全面的 id mark」):「备战标识-购买经验」
         # (左下,conf 0.9999)+「按钮-出战」(右,跨 shop 开/关子态恒在;单锚在 overlay
         # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
@@ -1073,8 +1076,30 @@ class CurrencyWarRunLoop(SrOperation):
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
             self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
-            # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = director 环入口
-            # 清场 + 自动开店预收探针 +「备战阶段」就绪锚;见类常量注。)
+            # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
+            # 自动开店收起探针;稳定性由外循环每轮重识别保证。)
+            # 备战 stall 防线(W971 03-prep §3 规格最小集,内环拆除后平移外循环):
+            # 连续 N 轮备战画面 session 关键字段无变化 → 留证(log + 存图;
+            # 不停机,哨兵/未知兜底链继续兜)。签名 = prep_obs_frame 的对账字段族
+            #(球/箱数、金、轮次、席位、vacancy;03-prep「对账字段族」口径)。
+            _frame = getattr(self.ctx.cw_match.session, 'prep_obs_frame', None)
+            _st = getattr(self.ctx.cw_match.session, 'last_state', None)
+            _sig = (len(getattr(_frame, 'spheres', None) or []),
+                    len(getattr(_frame, 'boxes', None) or []),
+                    len(getattr(_frame, 'bench_chars', None) or []),
+                    len(getattr(_frame, 'deployed_chars', None) or []),
+                    getattr(_frame, 'deploy_vacancy', None),
+                    getattr(_st, 'gold', None), getattr(_st, 'level', None),
+                    getattr(_st, 'round_num', None))
+            if getattr(self, '_prep_stall_sig', None) == _sig:
+                self._prep_stall_count = getattr(self, '_prep_stall_count', 0) + 1
+            else:
+                self._prep_stall_sig = _sig
+                self._prep_stall_count = 0
+            if self._prep_stall_count >= self.PREP_STALL_EVIDENCE_ROUNDS:
+                _stall_shot = self.save_screenshot(prefix='prep_stall')
+                log.warning('[cw!][loop] 备战连续 %d 轮 session 无变化 → 留证(无进展;'
+                            'sig=%s shot=%s)', self._prep_stall_count, _sig, _stall_shot)
             # 备战被锁(顶部「返回投资策略选择」按钮)→ 点去选策略(check#4 接手)。
             # 2026-08-26 挪位(原在备战判定前全屏扫):用户定性该按钮出现 = 上游
             # 投资策略屏处理失败的 symptom(策略屏点歪才退回备战带此按钮;同族 =
@@ -1543,6 +1568,17 @@ class CurrencyWarRunLoop(SrOperation):
                 # (自动开店窗口标志 _post_settle_auto_shop 已退役,W971 §2.11:
                 # 结算后自动开店判稳由 director 环入口预收探针 +「备战阶段」
                 # 就绪锚承接,不再跨分支传标志。)
+                # 备战相位重置平移外循环(W971 P3b 返工:内环拆除,原环入口
+                # 清零迁至「新备战相位的入口」= 结算点):买→部署→装备→出战
+                # 阶段机每相位重跑一次;defer 门同步复位(球留置按相位计)。
+                if self.ctx.cw_match is not None:
+                    _ps = self.ctx.cw_match.session
+                    if _ps.prep_phase or _ps.prep_phase_retry or _ps.defer_count:
+                        _ps.prep_phase = 0
+                        _ps.prep_phase_retry = 0
+                        _ps.defer_count = 0
+                        log.info('[cw-loop] 新备战相位(结算点)→ 相位机复位'
+                                 '(prep_phase/retry/defer)')
                 # 停留计数(M39 实证 2026-08-16,3-1 普通轮结算):「继续挑战」OCR/模板全识别、
                 # 普通 click **不响应**(40min 空转同帧),长按 0.5s @ 底部中央才推进(手动实锤;
                 # 推进后进 P3 投资策略 = 3-1 只是普通关,非终局)。归因未定(焦点/热区偏移/交互
