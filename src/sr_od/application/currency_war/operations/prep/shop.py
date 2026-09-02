@@ -513,13 +513,18 @@ class BuyShopCards(SrOperation):
                 return self.round_retry('找不到商店/收起按钮', wait=1)
             # r312(ADR-0213 批次1;开向站)+r347→DD-011(2026-09-02):开店等待改
             # 判稳轮询——「按钮-收起」出现 = 开店完成(目标画面独有锚;「备战阶段」
-            # 文本两态同址无判别力,轮 2 复核勘误)。1s 间隔,上界 4 轮防点击落空
-            # 死等;竞速误关场景收起消失 → 超时 → LOCKED_RESUME/重试路径承接。
+            # 文本两态同址无判别力,轮 2 复核勘误)。1s 间隔,上界 4 轮。
+            # 超时 = fail-closed retry(r347 语义延续):静默继续会以「店已开」假设
+            # 读牌面 = 假成功(竞速误关场景的真失败形态,轮 3 收敛复核 β)。
+            _opened = False
             for _ in range(SHOP_OPEN_POLL_ROUNDS):
                 time.sleep(SHOP_OPEN_POLL_INTERVAL_S)
                 if self.round_by_find_area(self.screenshot(), SHOP_SCREEN_NAME,
                                            '按钮-收起').is_success:
+                    _opened = True
                     break
+            if not _opened:
+                return self.round_retry('开店未生效(收起未出现)', wait=1)
             # 迁移审计 w62(git 历史) 件1 加强通道(默认关):点后验「按钮-收起」——零响应连续 2 次 → 判锁定
             if BuyShopCards.LOCKED_RESUME_ENHANCED:
                 _opened_now = self.round_by_find_area(

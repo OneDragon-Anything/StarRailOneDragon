@@ -67,8 +67,8 @@ _OVERLAY_POLL_TIMEOUT_S: float = 1.8
 #: #15「收起过场动画 ~1s 即备战画面稳定」,用户口述。op 完成后显式等待,替代
 #: 测量驱动 gate——画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
 SHOP_CLOSE_ANIM_S: float = 1.0
-#: 开店判稳轮询(用户口述 2026-09-02:自动弹开/手动点开两场景统一判稳标志 =
-#: 「标识-备战阶段」文本出现;识别间隔 1s)。轮数 × 间隔 = 总上界,防点击落空死等。
+#: 开店判稳轮询(判稳标志 = 「按钮-收起」出现——商店开态独有锚;「备战阶段」
+#: 文本两态同址无判别力,轮 2 复核勘误。识别间隔 1s,轮数 = 总上界防死等)。
 SHOP_OPEN_POLL_INTERVAL_S: float = 1.0
 SHOP_OPEN_POLL_ROUNDS: int = 4
 
@@ -634,6 +634,7 @@ class PrepActionExecutor:
             # 标志必须选**目标画面独有锚**(「备战阶段」文本两态同址无判别力;
             # 「按钮-商店/收起」同址,竞速下点击可命中反义按钮,靠轮询目标修正:
             # 误关场景收起按钮消失 → 轮询超时 → 失败 retry,不假成功)。
+            ok = False
             for _ in range(SHOP_OPEN_POLL_ROUNDS):
                 time.sleep(SHOP_OPEN_POLL_INTERVAL_S)
                 if self._op.round_by_find_area(
