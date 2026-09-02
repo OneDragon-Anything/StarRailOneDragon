@@ -11,3 +11,4 @@
 | [dd-007](dd-007-plane-fallback-endpoint-discipline.md) | DD-007:P2 回退先验端点纪律对称化——未揭晓位面回退统一取结构上端(9) | superseded(见文末 SUPERSEDED 节) | |
 | [dd-008](dd-008-cost-tier-star-goal-heuristic-retired.md) | DD-008:费用档星目标启发式废弃——星目标决策权回归成型档显式要求 | accepted | |
 | [dd-009](dd-009-legacy-mechanism-eviction.md) | DD-009:旧方案零引用机制整批清退——约 20 族默认关开关+影子比对残留删除 | accepted | 2026-09-02 |
+| [dd-010](dd-010-equip-grid-two-state-fill-order-purify.md) | DD-010:装备区识别重构——两态位移+填充序剪枝+画面守卫外移(识别器纯化) | accepted | 2026-09-02 |

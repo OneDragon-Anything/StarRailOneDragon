@@ -13,7 +13,9 @@ read_equips(thr7)名准+无假阳(D-39,4/4 click 验),覆盖多列(区域 = scre
 bug#1 根治(W849 批,台账 6/6「retry 仍败」证明原地 retry 失败相关):拖前稳帧确认
 (``_wait_stable_frame``)+ 落空补救链(``_wear_with_recovery``:坐标现读重定位 + 按压/移动参数逐档升级)。
 
-**前置**:已在「货币战争-备战」,角色详情面板关(出售 不可见 —— 角色详情面板遮 col2;装备详情面板不遮 icon D-37)。
+**前置(外层判干净)**:建档画面判定确认「货币战争-备战」(入口 + 每次拖拽循环重入点)。
+面板/浮窗态各有独立建档且盖备战 id_mark(角色详情面板盖右下「出战」)→ 判不出备战
+即非干净,直接停;识别器 read_equip_grid 纯识别,画面状态判断统一在本层。
 """
 import time
 from collections.abc import Callable
@@ -429,10 +431,14 @@ class EquipAll(SrOperation):
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        # 前置:角色详情面板关(出售 可见 = 角色详情面板开,遮 col2;装备详情面板不遮 icon D-37)
-        if self.round_by_ocr(screen, '出售', lcs_percent=0.8).is_success:
-            log.info('[cw-equip] 角色详情面板开(出售可见)→ 停(下轮关时再装)')
-            return self.round_success('角色详情面板开,跳过')
+        # 前置(外层判干净):建档画面判定。面板/浮窗态各有独立建档且盖备战 id_mark
+        # (角色详情面板盖右下「出战」)→ 判不出「货币战争-备战」即非干净,不识别;
+        # 识别器 read_equip_grid 纯识别,画面状态判断统一在本层(单一源)。
+        current = self.check_and_update_current_screen(
+            screen, screen_name_list=[self.SCREEN_NAME])
+        if current != self.SCREEN_NAME:
+            log.info('[cw-equip] 当前画面 %s 非干净备战 → 停(下轮再装)', current)
+            return self.round_success('非干净备战画面,跳过')
         templates = self._get_templates()
         if templates is None:
             return self.round_fail('cw_equip 模板库未加载')
@@ -559,8 +565,10 @@ class EquipAll(SrOperation):
             # ===== r90 C6 装备转移前置遍(攻略装备转移常态;≤3 件/次,落空即停) =====
             # 每件转移后重读两排占用(画面已变);below CV-diff 验落(同主循环验穿)。
             for _ in range(3):
-                if self.round_by_ocr(self.screenshot(), '出售', lcs_percent=0.8).is_success:
-                    log.info('[cw-equip] 转移遍:角色详情面板开 → 停')
+                if self.check_and_update_current_screen(
+                        self.screenshot(),
+                        screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
+                    log.info('[cw-equip] 转移遍:画面漂移(面板/浮窗开)→ 停')
                     break
                 tp = self._transfer_pair(deployed, occupied_m7, _tgt_comp, deployed_by_name)
                 if tp is None:
@@ -592,9 +600,10 @@ class EquipAll(SrOperation):
             _snap_logged = False   # 每次装备只记一遍快照(循环重读不重复记)
             while stall < 2:
                 cur = self.screenshot()
-                if self.round_by_ocr(cur, '出售', lcs_percent=0.8).is_success:
-                    log.info('[cw-equip] 角色详情面板开 → 停')
-                    _stop_reason = '角色详情面板开'
+                if self.check_and_update_current_screen(
+                        cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
+                    log.info('[cw-equip] 画面漂移(面板/浮窗开)→ 停')
+                    _stop_reason = '画面非干净备战'
                     break
                 hits = read_equips(cur, templates, equip_rect=equip_rect)
                 _owned_last = [n for n, _, _ in hits]
@@ -635,14 +644,10 @@ class EquipAll(SrOperation):
                     log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
                     _stop_reason = 'pool_empty(无穿戴候选)'
                     break
-                # 变宝为废牺牲合成排序(kernel/cw_junk_first;决策排序包装,
-                # 开关默认关=基分配原样零漂移;W849 拖拽执行链零触碰——本行
-                # 只换决策函数,输入输出形态不变 list[(char, equip)])
-                # W880 装备环境变体管道(设计 §2.2:门→量→序):基分配
-                # equip_allocation 只算一次;①门=hold/生锈豁免(hold_active
-                # 调用侧传入)②量=fill3(软弱无力/额外打击,开关默认关零漂移)
-                # ③序=变宝为废牺牲合成(吃 signals,行为不变迁移归位)。
-                # 纯决策后处理,执行链(W849 drag/验穿)零触碰。
+                # W880 装备分配入口(kernel/cw_equip_env.apply_equip_env_
+                # variants;fill3 量变体与变宝为废序变体已随各自开关族删除
+                # ——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3,现=基分配
+                # equip_allocation 直通零漂移;W849 拖拽执行链零触碰)。
                 alloc, _env_actions = _apply_env_variants(
                     _equip_signals, _reg_eq, _match.session, _tgt_comp,
                     deployed, [n for n, _ in wearable], occupied_m7,
@@ -740,8 +745,9 @@ class EquipAll(SrOperation):
         equipped = 0
         for slot_idx in slots:
             cur = self.screenshot()
-            if self.round_by_ocr(cur, '出售', lcs_percent=0.8).is_success:
-                log.info('[cw-equip] 角色详情面板开 → 停')
+            if self.check_and_update_current_screen(
+                    cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
+                log.info('[cw-equip] 画面漂移(面板/浮窗开)→ 停')
                 break
             hits = read_equips(cur, templates, equip_rect=equip_rect)
             unknown = [n for n, _, _ in hits if EQUIPMENTS.get(n) is None]

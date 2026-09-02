@@ -15,6 +15,7 @@
 | `cw_settlement_obs` | 结算屏 | 战后小队 HP(观测回路输入;失败屏 hp=0 conf=1.0) |
 | `cw_briefing_obs` | 开局简报屏 | 敌人词缀 + 位面首领 + 基础敌难 |
 | `cw_node_reader` | 备战顶部节点行(纯 CV) | 节点序列类型(奖励/战斗/遭遇/补给/巨星/boss…) |
+| `cw_equipment` | 备战屏右侧装备区 + 头像已穿 | owned 装备堆逐格分类(`read_equips`/`read_equip_grid`)+ 已穿装备 TM(`read_equipped_below`)+ row1 堆叠数量(`read_equip_count`) |
 | `cw_observe` | 可观测框架 | 统一日志 + 截图 |
 
 **读取互斥**:gold 只在 shop 开态、HP 只在关态可读——由 EnsureShopOpen/Closed 动作显式管理,框架校验读取前置态。设计原则:签名 + 失败语义(字段 OCR 失败 → None/上回合值 + confidence=0,不抛错)+ sanity bounds(越界字段本回合作废防级联)。
@@ -28,6 +29,8 @@
 **deploy_cap 域外双帧一致采信(ADR-0420)**:`read_deploy_cap_debounced` 的防抖域(`|cap−level| ≤ `_CAP_DIFF_MAX`,见 `cw_back_layout`)之外不再一律拒绝——域外值重读一帧,两帧一致且落在绝对上界 `DEPLOY_CAP_ABS_MAX`(前台+后台实拍板面上界)之内即采信并 obs_conflict 留证;三类恒拒:**cap<level**、**超绝对上界**、**两帧不一致**(瞬时误读族防线不降级)。域内直采路径不变。
 
 **规范入口序列与逐阶段字段规格(ADR-0462)**:观测按「先清场(P0 零业务识别,环入口 `_clear_entry_overlays` 点关闭注册表 `ENTRY_OVERLAY_CLOSE` 中无决策语义的 overlay)→ 干净备战期(`prep_clean`,全量基线,hp 真读主路径)→ 动作期(`prep_shop_open` 仅买牌决策所需;overlay 帧只读该 overlay 决策内容)」组织;逐字段 gate 单一源 = `cw_observation_gate.PHASE_FIELD_SPEC`(`read_game_state` 的 `phase` 参数;None=全量=无阶段语义;未注册阶段 fail-open 全量+告警)。hp 读取门唯一来源 = spec('hp' ∈ spec 才 OCR,否则 reconcile 沿用,ADR-0282 语义不变);paddle cap/count 在 gate 路径合并单读(`resolve_paddle_pair`,防抖核 `_debounce_cap` 单一源)。冲突证据行带 `obs_phase` 阶段键——判读按阶段分类:清场期/overlay 期来源的冲突行应 ≈0(这些阶段不跑备战识别链),>0 即有调用点在错误阶段跑全量识别。
+
+**装备区识别(DD-010)**:`cw_equipment.read_equip_grid` 纯 CV 逐格分类,裁决面三原则:**①外层判干净**——输入必须是干净备战画面,由调用方建档画面判定保证(备战 id_mark 含右下「出战」,恰被角色详情面板覆盖;角色详情/装备详情/装备浮窗/开商店各有独立建档);识别器内无画面状态判断(`_panel_open` 探针与 occluded 三态已退役, EquipCell 为占用/空两态)。**②位移两态**——「装备追踪中」标签使装备栏整体下移一档;候选档常量 `_EQUIP_DY_CANDIDATES` 逐档分类,对齐判据 = 占用格峰心垂直偏移中位 ≤ `_EQUIP_DY_ALIGN_TOL`(TM 分数不可作对齐判据,归一化互相关平移不变);两档皆不对齐回退 `_detect_zone_dy` 全档扫描兜底并 `[cw!] dy_fallback` 留痕(未知第三布局态信号)。**③填充序剪枝**——扫描按栏内填充序(`_fill_order_slots`:row1 消耗品右→左;装备区右列自上而下、再左列;规律知识档 = equipment_mechanics.md §5),两段独立「首空即停」;row1 只匹配工具模板子集。返回按填充序的占用格列表(空格不产出);漏格/错识别由装备期望态对账(`compare_equip_expect`,w543)暴露。
 
 ## 2. cw_reconcile:对账公共层
 

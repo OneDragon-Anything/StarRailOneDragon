@@ -31,6 +31,14 @@ from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.base.screen.screen_recognizer import ScreenRecognizer
+from sr_od.application.currency_war.data.cw_equipment_data import get_equip
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    A_PHASE,
+    SCREEN_NAME,
+    _area_rect,
+    _ocr,
+)
+from sr_od.application.currency_war.kernel.cw_state import BenchChar
 from sr_od.application.currency_war.obs.cw_equipment import (
     ensure_equip_sift_templates,
     ensure_equip_tm_templates,
@@ -53,14 +61,6 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_level,
     read_streak,
 )
-from sr_od.application.currency_war.data.cw_equipment_data import get_equip
-from sr_od.application.currency_war.kernel.cw_obs_core import (
-    A_PHASE,
-    SCREEN_NAME,
-    _area_rect,
-    _ocr,
-)
-from sr_od.application.currency_war.kernel.cw_state import BenchChar
 
 if TYPE_CHECKING:
     from cv2.typing import MatLike
@@ -191,6 +191,8 @@ class BattlePrepRecognizer(ScreenRecognizer):
             back_line = [c for c in deployed if c.position_pref == 'back'] or None
             bench = bench_chars or None  # 备战席无 below icon → equips 保持默认 []
         # owned 装备栏(右侧 区域-道具装备,read_equips SIFT;装备+消耗品混排,返名+位置,category 区分装备 vs 消耗品)
+        # 前置契约:本 recognizer 仅在「货币战争-备战」画面识别命中后生成 extras,
+        # 输入帧已是干净备战(非干净不识别的判定在外层建档识别),read_equips 无画面守卫。
         sift_templates = ensure_equip_sift_templates(ctx)
         owned_equips: list[dict] | None = None
         if sift_templates is not None:

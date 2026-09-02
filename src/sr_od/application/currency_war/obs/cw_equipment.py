@@ -79,32 +79,34 @@ _EQUIP_SCALES_FAST: tuple[float, ...] = (0.66, 0.70, 0.74)
 _EQUIP_SCALES_FULL: tuple[float, ...] = tuple(round(0.60 + 0.02 * i, 2) for i in range(10))
 # 占用阈值:28 帧真值实测占用格最低 0.659 / 空格最高 0.584,0.62 取中留双向余量
 _EQUIP_OCC_THR: float = 0.62
-# 横幅自适应:「装备追踪」横幅帧全网格整体下移 ~25-30px → δ 扫描取全格响应和最大者(不写死)
+# 横幅两态(DD-010):右上「装备追踪中」标签出现时装备栏整体下移一个定值(存档帧
+# 实测 20/24/28 为同一真实值 ±4px 扫描量化噪声,取 24),无标签帧 δ=0。每帧按候选
+# 档逐档分类、以占用格峰心偏移自验对齐,两档皆不对齐才回退 _detect_zone_dy 全档扫
+# 描兜底——替代旧「每帧 14 档 × 15 格 × 全库」扫描(单帧 ~7-11s 降至常态 1 档分类 ~2s)。
+_EQUIP_DY_CANDIDATES: tuple[int, ...] = (0, 24)
+# 兜底全档扫描(仅在候选档自验全败时触发;覆盖未知第三布局态,真值域实测 -8..+28)
 _EQUIP_DY_SCAN: tuple[int, ...] = tuple(range(-8, 45, 4))
 _EQUIP_DY_SCALE: float = 0.70                          # δ 扫描用单一尺度(降耗;全库模板)
-
-# 详情面板遮挡:面板打开时盖装备区左下(实测 char_detail 帧;probe 区面板态 V~50 / 常态 V≥217)
-_EQUIP_PANEL_PROBE: tuple[int, int, int, int] = (1660, 560, 1740, 640)  # x1,y1,x2,y2(1080p)
-_EQUIP_PANEL_V_THR: float = 120.0                      # probe 区 HSV V 均值低于此 = 面板开
-_EQUIP_PANEL_RECT: tuple[int, int, int, int] = (1620, 350, 1872, 710)   # 面板覆盖区(同源实测)
 
 
 @dataclass
 class EquipCell:
-    """装备区一格的识别结果(15 槽全量返回;占用/空/遮挡三态)。
+    """装备区一格的识别结果(15 槽全量返回;占用/空两态)。
 
     坐标系:``row`` = 物理行,0 = row1 材料堆叠带(带数量数字),1-6 = 其下装备行(自上而下);
     ``col`` = 物理列 0-2(左→右);row1 合法列 = 0/1/2,装备行合法列 = 1/2(左列无格)。
     ``cx/cy`` = 格心 1080p 绝对坐标(TM 峰心,非名义格点)。
+
+    前置契约:输入必须是干净备战画面(调用方经建档画面判定保证,面板遮挡态各有
+    独立建档、不会命中备战)——识别器不做画面状态判断,遮挡帧不进本管线。
     """
     row: int
     col: int
     cx: int
     cy: int
-    name: str | None      # 占用 = 模板规范名;空/遮挡 = None
+    name: str | None      # 占用 = 模板规范名;空 = None
     score: float          # TM 最高响应(TM_CCOEFF_NORMED);占用判定阈 = _EQUIP_OCC_THR
     count: str | None = None  # row1 堆叠数量('1'-'5'/'∞');仅 read_equip_count 填充
-    occluded: bool = False    # 详情面板遮挡格(score 未达占用阈且格落在面板区内)
 
 
 def _equip_slot_centers(dy: int) -> list[tuple[int, int, int, int]]:
@@ -115,6 +117,24 @@ def _equip_slot_centers(dy: int) -> list[tuple[int, int, int, int]]:
         # 装备行列号 1/2(col 0 = 左列,仅 row1 存在;坐标系见 EquipCell)
         out.extend((r + 1, c + 1, x, y) for c, x in enumerate(_EQUIP_COL_EQ))
     return out
+
+
+def _fill_order_slots(dy: int) -> tuple[list[tuple[int, int, int, int]], list[tuple[int, int, int, int]]]:
+    """栏内**填充序**格点,分两段(各段独立做「首空即停」剪枝)。
+
+    填充规律(用户口述·权威,2026-09-02;知识档 equipment_mechanics.md §5):
+    ① row1 消耗品带右→左;② 装备区右列自上而下、再左列自上而下;获得按序 append,
+    栏内无空洞 → 每段扫描遇首空即停(其后必空,剪枝;异常由装备期望态对账暴露)。
+
+    :return: ``(tool_slots, equip_slots)``,各为 ``(row, col, cx, cy)`` 列表。
+    """
+    tool = [(0, c, x, _EQUIP_ROW1_Y + dy)
+            for c, x in sorted(enumerate(_EQUIP_COL_ROW1), key=lambda t: -t[1])]
+    equip = []
+    for c, x in sorted(enumerate(_EQUIP_COL_EQ), key=lambda t: -t[1]):
+        for r in range(_EQUIP_EQ_ROWS):
+            equip.append((r + 1, c + 1, x, _EQUIP_ROW0_EQ_Y + _EQUIP_ROW_STEP * r + dy))
+    return tool, equip
 
 
 def _scaled_template_cache(templates: dict) -> dict[float, list[tuple[str, np.ndarray]]]:
@@ -176,19 +196,6 @@ def _detect_zone_dy(screen: MatLike, scaled: dict[float, list[tuple[str, np.ndar
     return best_dy
 
 
-def _panel_open(screen: MatLike) -> bool:
-    """详情面板是否打开(probe 区 HSV V 均值;面板态平坦深灰 V~50,常态紫蓝纹理 V≥217)。"""
-    x1, y1, x2, y2 = _EQUIP_PANEL_PROBE
-    hsv = cv2.cvtColor(screen[y1:y2, x1:x2], cv2.COLOR_RGB2HSV)
-    return float(hsv[..., 2].mean()) < _EQUIP_PANEL_V_THR
-
-
-def _cell_in_panel(cx: int, cy: int) -> bool:
-    """格整框(±35px)是否落在面板覆盖区内(判定为遮挡格的几何条件)。"""
-    px1, py1, px2, _py2 = _EQUIP_PANEL_RECT
-    return cx + 35 <= px2 and cy - 35 >= py1 and cx - 35 >= px1
-
-
 # 特权变体仲裁:基础/·特权 变体仅框色不同(灰 vs 金),灰度 TM 分不开(实测 随便骰子对:
 # 基础 0.925 vs 特权 0.854 而 GT=特权)。环带饱和度仲裁:金框 S~175 / 其余 ≤92,阈 130。
 _EQUIP_VARIANT_SUFFIX: str = '·特权'
@@ -220,41 +227,97 @@ def _variant_arbitrate(screen: MatLike, cx: int, cy: int, name: str,
     return name
 
 
+# 对齐自验阈:候选档 ±4px 量化域的 2 倍。TM 分数不能作对齐判据(归一化互相关平移
+# 不变,错位 28px 帧部分重叠格仍 0.93+,实测「攻略已应用」δ=0 档);峰心偏移才是
+# 几何对齐的直接测量——对齐档 ≈0,错位档系统偏 ~20-28px。
+_EQUIP_DY_ALIGN_TOL: int = 8
+
+
+def _classify_grid(screen: MatLike, scaled: dict[float, list[tuple[str, np.ndarray]]],
+                   dy: int, tmpl_names: set[str]) -> tuple[list[EquipCell], list[int]]:
+    """按填充序逐格分类,各段首空格即停(剪枝;分段规律见 ``_fill_order_slots``)。
+
+    row1 消耗品带只匹配**工具模板子集**(注册表 category='工具';全库分类与穿戴
+    决策都不涉及消耗品,子集 ~10 模板 vs 全库 157)——owned 全量快照仍含工具
+    (W209g 采集写端契约不变,快照消费 cells 的 name 集合)。
+
+    :return: ``(cells, dy_offs)``;``dy_offs`` = 占用格 TM 峰心垂直偏移绝对值列表
+        (候选档对齐自验用,见 ``_EQUIP_DY_ALIGN_TOL``)。
+    """
+    tool_names = {n for n in tmpl_names
+                  if _registry_category(n.removesuffix(_EQUIP_VARIANT_SUFFIX)) == '工具'}
+    tool_scaled = {s: [tg for tg in scaled[s] if tg[0] in tool_names] for s in scaled}
+    cells: list[EquipCell] = []
+    dy_offs: list[int] = []
+
+    def _scan(slots: list[tuple[int, int, int, int]], pool: dict) -> None:
+        """单段填充序扫描:遇首空停(本段后续格不扫,另段不受影响)。"""
+        for row, col, cx, cy in slots:
+            crop = _gray_crop(screen, cx, cy)
+            name, score, dx, dy2 = _classify_cell(crop, pool, _EQUIP_SCALES_FAST)
+            if score < _EQUIP_OCC_THR:
+                name2, score2, dx2, dy22 = _classify_cell(crop, pool, _EQUIP_SCALES_FULL)
+                if score2 > score:
+                    name, score, dx, dy2 = name2, score2, dx2, dy22
+            occupied = name is not None and score >= _EQUIP_OCC_THR
+            if not occupied:
+                break   # 填充序首空 → 其后必空(剪枝;异常由装备期望态对账暴露)
+            name = _variant_arbitrate(screen, cx, cy, name, tmpl_names)
+            dy_offs.append(abs(dy2))
+            cells.append(EquipCell(
+                row=row, col=col,
+                cx=cx + dx, cy=cy + dy2,
+                name=name, score=float(score),
+            ))
+
+    tool_slots, equip_slots = _fill_order_slots(dy)
+    _scan(tool_slots, tool_scaled)
+    _scan(equip_slots, scaled)
+    return cells, dy_offs
+
+
+def _registry_category(name: str) -> str:
+    """模板名 → 注册表 category(未登记 = 空串;·特权 变体已由调用方去后缀)。"""
+    from sr_od.application.currency_war.data.cw_equipment_data import get_equip
+    eq = get_equip(name)
+    return eq.category if eq is not None else ''
+
+
 def read_equip_grid(screen: MatLike,
                     templates: dict[str, tuple[MatLike, tuple, np.ndarray]]) -> list[EquipCell]:
-    """装备区**逐格分类**:网格几何分格 → 逐格 TM 全库 → 15 槽全量三态(占用/空/遮挡)。
+    """装备区**逐格分类**:网格几何分格 → 按填充序逐格 TM 全库 → 占用格集(至首空格)。
+
+    **前置契约(外层判干净,DD-010)**:输入必须是干净备战画面——无任何面板/浮窗/overlay
+    遮挡,由调用方经建档画面判定保证(``货币战争-备战`` id_mark 含右下「出战」按钮,
+    恰被角色详情面板覆盖,面板态天然识别不成备战;角色详情/装备详情/装备浮窗/
+    开商店各有独立建档)。识别器内不做任何画面状态判断。
 
     同模板多实例问题随逐格独立消失(全域 SIFT 单应只锁一格,是旧实现 62% 召回的根因)。
-    格几何 = 实测等距网格(75px;row1 三列材料带 + 其下六行两列装备列),横幅帧 δ 自适应扫描兜住。
+    格几何 = 实测等距网格(75px;row1 三列材料带 + 其下六行两列装备列);「装备追踪中」
+    标签的两态位移由候选档逐档自验兜住(见 ``_EQUIP_DY_CANDIDATES``);扫描按栏内
+    填充序、首空格即停(填充规律见 ``_fill_order_slots``)。
     占用格低分时全尺度回扫一次(个别渲染态快档 < 阈、慢档过阈;实测 精密拆装扳手 依赖此兜底)。
 
-    :param screen: 备战画面截图(RGB,1080p;``cv2_utils.read_image`` 约定)。
+    :param screen: 干净备战画面截图(RGB,1080p;``cv2_utils.read_image`` 约定)。
     :param templates: ``load_equip_templates`` 结果(只用其 gray,复用同一份缓存)。
-    :return: 15 格 ``EquipCell``(占用格 name/score 有值;空格 name=None;面板遮挡格 occluded=True)。
+    :return: 占用格 ``EquipCell`` 列表(按填充序,至首空格;空格不返回——
+        消费方按 name 计数/遍历,无需空格槽位)。
 
     纯读(不写 session/全局;``_SCALED_CACHE`` 是只读资源缓存),可进 recognizer / op。
     """
     scaled = _scaled_template_cache(templates)
+    tmpl_names = set(templates)
+    for _dy in _EQUIP_DY_CANDIDATES:
+        cells, dy_offs = _classify_grid(screen, scaled, _dy, tmpl_names)
+        # 对齐自验:占用格峰心垂直偏移中位 ≤ 容忍域 = 该档对齐(判据见 _EQUIP_DY_ALIGN_TOL)
+        if dy_offs and sorted(dy_offs)[len(dy_offs) // 2] <= _EQUIP_DY_ALIGN_TOL:
+            return cells
+    # 两档候选皆不对齐:未知第三布局态或装备区真空 → 全档扫描兜底 + [cw!] 留痕
+    # (游戏改布局时从这里第一时间暴露;真空帧输出仍为空,与旧扫描语义一致)
     dy = _detect_zone_dy(screen, scaled)
-    panel = _panel_open(screen)
-    cells: list[EquipCell] = []
-    for row, col, cx, cy in _equip_slot_centers(dy):
-        crop = _gray_crop(screen, cx, cy)
-        name, score, dx, dy2 = _classify_cell(crop, scaled, _EQUIP_SCALES_FAST)
-        if score < _EQUIP_OCC_THR:
-            name2, score2, dx2, dy22 = _classify_cell(crop, scaled, _EQUIP_SCALES_FULL)
-            if score2 > score:
-                name, score, dx, dy2 = name2, score2, dx2, dy22
-        occupied = name is not None and score >= _EQUIP_OCC_THR
-        if occupied:
-            name = _variant_arbitrate(screen, cx, cy, name, set(templates))
-        occluded = (not occupied) and panel and _cell_in_panel(cx, cy)
-        cells.append(EquipCell(
-            row=row, col=col,
-            cx=cx + (dx if occupied else 0), cy=cy + (dy2 if occupied else 0),
-            name=name if occupied else None, score=float(score),
-            occluded=occluded,
-        ))
+    cw_log('read_equip_grid', step='dy_fallback', attn=True,
+           anomaly=f'候选档{_EQUIP_DY_CANDIDATES}皆不对齐 → 全档扫描 δ={dy}')
+    cells, _offs = _classify_grid(screen, scaled, dy, tmpl_names)
     return cells
 
 
