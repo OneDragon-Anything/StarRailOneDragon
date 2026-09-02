@@ -125,6 +125,8 @@ decide_shop_screen(obs_shop, session, config) -> list[ShopScreenAction]
 
 #### 4.1.3 动作词表(对抗轮 1 补全)
 
+> ⚠️ **Amended by W971 §2.8.2**(2026-09-02 用户裁决):商店动作集收缩为 {BuyCard, RefreshShop, CloseShopOp(收尾)}——LevelUpShop/SellBench/SellDeployed 迁**干净备战**接口,CompTransaction 废弃(演进=决策以基本动作跨画面表达)。本节词表为历史版本。
+
 ```
 PrepScreenAction ∈ {DeployMove, SellDeployed, SellBench(腾席链 a2), StartBattle,
                     ClickSpheres, OpenBox, OpenTome,
