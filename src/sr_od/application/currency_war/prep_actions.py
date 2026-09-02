@@ -629,18 +629,19 @@ class PrepActionExecutor:
                 screen, SCREEN_NAME, '按钮-商店')
             # 光标 parking(审计 R3):点击点在验证矩形正中(0px),不 park 则收起锚验证读被光标压
             self._op.park_cursor(before_wait=0.5, after_wait=0.1)
-            # DD-011 自等动画 + 统一判稳标志(用户口述 2026-09-02):两种开店来源
-            # (自动弹开/手动点开)均以「标识-备战阶段」文本出现 = 动画稳定;
-            # 轮询间隔 1s(用户口径),上界防死等,超时 = 未生效 → 交调用方重试。
-            ok = False
+            # DD-011 自等动画 + 判稳标志(用户口述 2026-09-02,轮 2 复核修正):
+            # 手动点开/自动弹开两场景统一以「按钮-收起」出现 = 开店完成——判稳
+            # 标志必须选**目标画面独有锚**(「备战阶段」文本两态同址无判别力;
+            # 「按钮-商店/收起」同址,竞速下点击可命中反义按钮,靠轮询目标修正:
+            # 误关场景收起按钮消失 → 轮询超时 → 失败 retry,不假成功)。
             for _ in range(SHOP_OPEN_POLL_ROUNDS):
                 time.sleep(SHOP_OPEN_POLL_INTERVAL_S)
                 if self._op.round_by_find_area(
                         self._op.screenshot(), SHOP_SCREEN_NAME,
-                        '标识-备战阶段').is_success:
+                        '按钮-收起').is_success:
                     ok = True
                     break
-            return ok, f'开商店 {"✓" if ok else "备战阶段未出现(开店未生效)"}'
+            return ok, f'开商店 {"✓" if ok else "收起未出现(开店未生效)"}'
         if not is_open:
             return True, '商店已关'
         self._op.round_by_find_and_click_area(
