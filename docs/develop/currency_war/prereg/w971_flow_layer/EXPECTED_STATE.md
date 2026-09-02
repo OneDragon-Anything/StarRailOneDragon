@@ -1,6 +1,6 @@
 # W971 · 期望态(Expected State)机制设计
 
-> 状态:DESIGN v1(编排者初稿 2026-09-02,待对抗);上游定稿 = 02-state §4.3(机制定稿/范围裁剪/跨轮链)
+> 状态:**FINAL v3.1(2026-09-02,两轮对抗收敛,复核确认可进 P4)**;上游定稿 = 02-state §4.3(机制定稿/范围裁剪/跨轮链)
 > 依赖:画面 op 生命周期五段(03-prep §1.1);合成规则 = merge_mechanics §2/§2.5/§2.7;装备 = dd-010/dd-015 定谳
 
 ## 1. 机制总述
@@ -133,7 +133,7 @@ merge_simulate(state: {bench, deployed}, buy: (角色, 星级, 张数))
 
 单测要求:merge_mechanics §2 两个例(备战合成/连锁合成落场)逐条断言 + 满栏自动多买 3 例 + 装备继承 1 例。
 
-## 5. 对账(diff 三分类 + 留证)
+## 5. 对账(diff 五分类 + 留证)
 
 覆盖点 reconcile 时,expected vs actual 的 diff:
 
