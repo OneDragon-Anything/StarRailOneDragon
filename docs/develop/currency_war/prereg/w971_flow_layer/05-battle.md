@@ -1,6 +1,11 @@
 # 05 · 战斗等待 op / 自动战斗检测 / 整局退出
 
 > W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
+> 状态(P4):§1 战斗等待 op 已落地 = `operations/cw_flow/battle_wait_op.py`
+> (BattleWaitOp;battle_loop 分支 1f/2/3/3b/5/6 内联收编,状态机随迁
+> SettlementState;委托入口 = 备战环出战出口驻留闩 + 帧锚双入口;3c 收口
+> 留主循环——遥测连续性红线)。§2 自动战斗检测:待实机采集(未做)。
+> §3 整局退出:ExitCurrencyWarMatch 执行体复用(现状不变)。
 
 ## 1. 战斗等待 op
 
