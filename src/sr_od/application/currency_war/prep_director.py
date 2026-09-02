@@ -155,6 +155,35 @@ PRECOLLAPSE_RETRY_S: float = 1.0
 PRECOLLAPSE_RETRIES: int = 3
 
 
+#: 环入口「帧不 clean」bail 的同因键(计数键单一源;分诊重置点引用)。
+GATE_UNCLEAN_REASON: str = '环入口帧不clean(特效/overlay未消化)'
+
+#: 环入口已知 overlay 诊断集((标签, screen_info 画面名, 独有锚 area)):
+#: 帧不 clean 时先对帧做已建档 overlay 识别——命中 = 交回主循环按画面分发
+#: (对应 loop 0x 分支/op 接管)并重置同因计数;仅未知帧才计同因(×3 停机
+#: 兜底保留)。背景(实机 P1-r6 bail ping-pong 实锤):遭遇 overlay 在场时
+#: 0c 的 area-OCR 锚偶漏而备战双锚(模板)稳命中,外环直落备战分支重派
+#: director → 环入口逐次 bail 同因 ×3 停机——违背 §2.9「交回循环=重新识别
+#: 分发」。清单 = 已建档屏(loop 0x 分支 + 开局序列/结算横幅),与
+#: battle_loop 分支锚同源,不新增识别面。
+KNOWN_OVERLAY_FRAMES: tuple[tuple[str, str, str], ...] = (
+    ('遭遇', '货币战争-遭遇节点', '标识-遭遇节点'),
+    ('补给', '货币战争-补给', '标识-补给阶段'),
+    ('投资策略', '货币战争-投资策略', '标识-请选择投资策略'),
+    ('巨星', '货币战争-盛会之星', '标识-盛会之星'),
+    ('列车同行', '货币战争-列车同行', '标识-选择伙伴'),
+    ('武装箱选卡', '货币战争-备战-武装箱选择', '标识-请选择'),
+    ('武装箱弹窗', '货币战争-武装箱弹窗', '标识-简易武装箱'),
+    ('祈愿试炼', '货币战争-祈愿试炼', '标识-祈愿试炼'),
+    ('骇入策划', '货币战争-骇入策划', '标识-我来当策划'),
+    ('命运卜者', '货币战争-命运卜者强化', '标识-命运卜者'),
+    ('星徽秘典', '货币战争-星徽秘典弹窗', '标识-星徽秘典'),
+    ('位面简报', '货币战争-简报', '标识-本场对局首领'),
+    ('位面过渡', '货币战争-位面过渡', '提示-点击空白继续'),
+    ('BOSS简报', '货币战争-BOSS简报', '标识-强敌来袭'),
+)
+
+
 
 def _save_buy_evidence(evidence_dir: str, file_tag: str, expect: BuyExpect,
                        mism: list[dict[str, str]], frame: MatLike | None,
@@ -1195,6 +1224,78 @@ class PrepDirector(SrOperation):
         except Exception:   # noqa: BLE001  离线契约
             return False
 
+    def _diagnose_known_overlay(self) -> str | None:
+        """环入口帧 → 已知 overlay 标签(诊断集单一源 = KNOWN_OVERLAY_FRAMES;
+        纯判定,离线锁可桩)。全不命中/截图或识别异常 = 未知帧(None,交同因
+        bail 计数;离线契约:异常不阻塞,落原 bail 语义)。"""
+        try:
+            screen = self.screenshot()
+            for _tag, _scr, _area in KNOWN_OVERLAY_FRAMES:
+                if self.round_by_find_area(
+                        screen, _scr, _area, crop_first=False).is_success:
+                    return _tag
+        except Exception:   # noqa: BLE001  离线契约:识别异常按未知帧处理
+            return None
+        return None
+
+    def _entry_dispatch_or_bail(self, match, session) -> OperationRoundResult:
+        """环入口不 clean 帧分诊(W971 §2.9;实机 P1-r6 bail ping-pong 修复)。
+
+        ①开商店合法稳定态 → 收起重进(round_retry,原语义);
+        ②已知 overlay(KNOWN_OVERLAY_FRAMES 命中)→ 重置「帧不 clean」同因
+          计数 + 交回主循环分发(round_success,外环下轮全分支重判,对应
+          loop 0x 分支/op 接管);
+        ③未知帧 → 同因 bail 计数(×3 停机兜底,常驻钩子语义不变)。
+        防重置失守:已知 overlay 交回本身带**同标签连击**——同一标签连续
+        ≥3 次交回仍回环 = loop 分支接不住(ping-pong 换形态),升级停机
+        留证(三要素同 _bail);标签变化/帧转 clean 即清零。
+        """
+        if self._try_collapse_open_shop():
+            return self.round_retry('环入口商店开,已收起重进')
+        _tag = self._diagnose_known_overlay()
+        if _tag is None:
+            session.cw_entry_diag_last = None   # 未知帧:已知 overlay 连击清零
+            return self._bail(match, GATE_UNCLEAN_REASON)
+        # 命中已知 overlay:重置帧不 clean 同因计数(该因不再累计),
+        # 交回外环全分支重判。
+        if session.bail_reason_counts.pop(GATE_UNCLEAN_REASON, None) is not None:
+            log.info('[cw][director] 环入口分诊:命中已知 overlay(%s),帧不clean 同因计数已重置', _tag)
+        _streak = (getattr(session, 'cw_entry_diag_last', None) == _tag
+                   and getattr(session, 'cw_entry_diag_streak', 0) or 0) + 1
+        session.cw_entry_diag_last = _tag
+        session.cw_entry_diag_streak = _streak
+        if _streak >= PrepDirector.BAIL_SAME_REASON_DIAG:
+            # 同标签 ×3 交回仍回环 = 外环接不住(换形态 ping-pong)→ 停机留证
+            # (三要素同 _bail;证据标签 = overlay 名,建档/修分支方向明确)。
+            log.warning('[cw!][director] 已知 overlay(%s)连续 %d 次交回仍回环 '
+                        '→ 升级停机(loop 分支接不住,保画面排查)', _tag, _streak)
+            with contextlib.suppress(Exception):
+                self.save_screenshot(prefix='entry_overlay_pingpong')
+            import time as _t
+            with contextlib.suppress(Exception):
+                from pathlib import Path as _P
+                _flag = _P('.debug/temp/currency_war/entry_overlay_pingpong_hook.flag')
+                _flag.parent.mkdir(parents=True, exist_ok=True)
+                _flag.write_text(
+                    f'[HOOK-STOP] 环入口已知 overlay 交回 ping-pong 停机(常驻兜底)\n'
+                    f'触发:环入口分诊命中 {_tag!r} 连续 {_streak} 次交回主循环,\n'
+                    f'外环分支仍未消化(0x 分支锚未命中/未接管)。\n'
+                    f'处理:1. 看 .debug/images/entry_overlay_pingpong_* 确认 overlay;\n'
+                    f'   2. grep battle_loop 对应分支为何没接住(锚失效/序位被截胡);\n'
+                    f'   3. 处理完删本 flag 重启对局。\n'
+                    f'ts={_t.strftime("%m-%d %H:%M:%S")}\n', encoding='utf-8')
+            rc = getattr(self.ctx, 'run_context', None)
+            if rc is not None:
+                with contextlib.suppress(Exception):
+                    rc.stop_running(reason='hook:entry_overlay_pingpong')
+            session.cw_entry_diag_streak = 0
+            return self.round_fail(
+                status=f'已知 overlay({_tag})×{_streak} 交回未消化,停机待排查')
+        log.info('[cw][director] 环入口分诊:已知 overlay(%s)→ 交回主循环分发'
+                 '(重入全分支重判,连击 %d)', _tag, _streak)
+        return self.round_success(
+            f'BailToOuter(环入口已知overlay:{_tag},交回外环分发)', wait=0.8)
+
     def _run_loop(self, match) -> OperationRoundResult:
         """环循环主体(可离线 mock 测):observe → decide → execute → 再 observe。"""
         session = match.session
@@ -1274,11 +1375,11 @@ class PrepDirector(SrOperation):
                 _gate_err = True
                 log.debug('[cw][gate] 环入口兜底 gate 异常(离线契约)→ 放行')
         if _gate_frame is None and not _gate_err:
-            # 先探开商店态(合法稳定态,收起重进);非开态才是
-            # 真特效/overlay → bail 交外环(3-strike 聚合)。
-            if self._try_collapse_open_shop():
-                return self.round_retry('环入口商店开,已收起重进')
-            return self._bail(match, '环入口帧不clean(特效/overlay未消化)')
+            # 环入口不 clean 分诊(§2.9:交回循环 = 重新识别分发):
+            # ①开商店合法稳定态 → 收起重进;②已知 overlay → 交回主循环分发
+            #(重置同因计数,对应 loop 0x 分支接管);③未知帧才计同因 bail
+            #(×3 停机兜底保留)。
+            return self._entry_dispatch_or_bail(match, session)
         # gate 末帧透传 _observe——OCR 缓存贯穿(gate 全图
         # OCR 一次,observe 的 id_mark 判定/observe_full 全命中),
         # 且观察对象=已验证稳定帧;None(异常路径)=

@@ -1262,7 +1262,15 @@ class CurrencyWarRunLoop(SrOperation):
                 self._director_fail_streak = 0
                 # ADR-0250:备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
                 self._battle_ts = time.monotonic()
-            return self.round_wait(wait=2)  # 战斗中,下轮再判
+            # 环让位重入契约(W971 §2.9,实机 P1-r6 bail ping-pong 修复):
+            # director 返回(含环入口分诊交回/事件 overlay bail)后**必经本
+            # return → 下轮 loop 顶全分支重判**(0x overlay 分支先于备战双锚),
+            # 不在同一迭代内直接回备战分支/环。日志留痕 = 重入可观测
+            #(此前 bail↔重派静默,排障无从分辨「没重判」vs「判了没接住」)。
+            _ok_status = getattr(_ok, 'status', '') or ''
+            log.info('[cw-loop] 备战环返回(success=%s status=%s)→ 交回顶层分发'
+                     '(下轮全分支重判)', _ok.success if _ok else None, _ok_status)
+            return self.round_wait(wait=1.0)  # 下轮重新识别分发(战斗中,下轮再判)
 
         # 1b. 详情弹窗(点卡/点角色触发的:"可合成列表"祝福详情 / "角色详情"角色信息)→ ESC 关闭。
         #     lcs_percent=0.8:「角色详情」与 invest env 等屏的「角色」label 共享「角色」(2/4=0.5)→
