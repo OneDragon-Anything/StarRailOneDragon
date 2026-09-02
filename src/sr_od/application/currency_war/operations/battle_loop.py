@@ -38,6 +38,9 @@ from sr_od.application.currency_war.obs.cw_settlement_obs import (
     read_settle_damage_breakdown,
     settle_page1_progress_sign,
 )
+from sr_od.application.currency_war.operations.cw_flow.boss_briefing_op import (
+    BossBriefingOp,
+)
 from sr_od.application.currency_war.operations.cw_flow.opening_sequence import (
     OpeningSequence,
 )
@@ -1065,6 +1068,18 @@ class CurrencyWarRunLoop(SrOperation):
                 screen, '货币战争-提示-前台无角色', '按钮-确认', success_wait=1)
             log.info('[cw-loop] 前台无角色提示 → 确认关闭(下轮 PrepDirector 前排保证重部署)')
             return self.round_wait(wait=1.5)
+
+        # 0p. BOSS 简报(P3b 实机第三局走查补:06-overlays §3 设计有、实现漏;
+        #     #26 建档「标识-强敌来袭」)→ BossBriefingOp(点空白 → 完成承诺 =
+        #     等备战商店开,「按钮-收起」锚+上界兜底)。**分支序锚位 = 先于备战
+        #     双锚**(事故教训:横幅遮挡下双锚模板仍透出命中,无本分支时帧误落
+        #     备战分支空转 598s/SENTINEL-STALL)。
+        if self.round_by_find_area(
+                screen, '货币战争-BOSS简报', '标识-强敌来袭', crop_first=False).is_success:
+            _bb_res = BossBriefingOp(self.ctx).execute()
+            log.info('[cw-loop] BOSS 简报 → BossBriefingOp → %s',
+                     getattr(_bb_res, 'status', ''))
+            return self.round_wait(wait=1.0)
 
         # 1. 备战阶段 → 备战单轮 op(PrepDirector 单轮五段:观察→对账→决策→
         #    期望态→执行,交回本循环;W971 P3b 返工定稿:内环已拆,外循环是
