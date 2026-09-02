@@ -393,8 +393,26 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
     pool: dict = {}
     per_run_rounds: dict[str, int] = {}
     unlabeled_dropped = 0
-    for run, seq in seqs.items():
+    # F6 语料治理:非终局 hp_after==0 行 = 结算瞬时伪读数(结算画面
+    # 过渡帧把血条读成 0,紧随的同轮行血量恢复到真实值,如 84→0→71;
+    # 对局档案真值语料 P1 n=290 未删失最大单轮损 36,单轮 -40 以下
+    # 不存在)。相邻差分把每条伪影拆成 -(hp)/+恢复 两条毒行入桶
+    # (实证:plane1 battle 桶 0 含 -84/+45,桶 1 含 -86/+80/-71/+50)。
+    # 判据:hp=0 只在真终局(run 最后一行)可能为真;非终局 = 伪影,
+    # 剔除后差分跨过它直接配对(84→71=-13 回真实量级)。终局 hp0
+    # 行保留(真死,不入差分对因无后继)。
+    hp0_transient_dropped = 0
+    for run in seqs:
+        seq = seqs[run]
         seq.sort(key=lambda o: (o.get('plane') or 0, o.get('round_num') or 0))
+        cleaned = []
+        for i, o in enumerate(seq):
+            if o['hp_after'] == 0 and i < len(seq) - 1:
+                hp0_transient_dropped += 1
+                continue
+            cleaned.append(o)
+        seqs[run] = cleaned
+    for run, seq in seqs.items():
         per_run_rounds[str(run)] = len(seq)
         for a, b in zip(seq, seq[1:], strict=False):
             raw_nt = b.get('node_type') or ''
@@ -451,7 +469,8 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
                 plane, {}).setdefault(bucket, []).append(delta)
     meta = {'source_dir': str(replay_dir), 'runs': per_run_rounds,
             'skipped_lines': skipped,
-            'unlabeled_dropped': unlabeled_dropped}
+            'unlabeled_dropped': unlabeled_dropped,
+            'hp0_transient_dropped': hp0_transient_dropped}
     return pool, meta
 
 

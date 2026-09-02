@@ -54,9 +54,12 @@ DATA_PY = REPO / 'src/sr_od/application/currency_war/data/cw_delta_pool_data.py'
 WRITABLE_TARGETS = (DATA_PY,)
 
 #: 退役第一步冻结标志(战斗分支切 cw_coarse_battle 后置位):
-#: True = regenerate_snapshot 一律 raise,快照停更。撤销 = 退役回滚
-#: 路径的一部分,须经编排者裁决(不能只翻标志——战斗分支消费已摘)。
-_DELTA_POOL_FROZEN: bool = True
+#: True = regenerate_snapshot 一律 raise,快照停更。
+#: F6 语料治理批(编排者任务书,Δ池 P1 桶重损治理)裁决撤销:
+#: 快照仍辖 reward/supply 池与 delta 对照臂消费,含伪影毒行的旧
+#: 快照必须重生成治理,停更约束随之解除(战斗类主路径消费已摘,
+#: 再生只影响校准数据面,不触策略行为)。
+_DELTA_POOL_FROZEN: bool = False
 
 
 class DeltaPoolFrozen(RuntimeError):
@@ -248,8 +251,22 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
     battle_killed: dict[int, list] = {}   # ADR-0306:battle 逐样本 killed(None=未观测)
     per_run_rounds: dict[str, int] = {}
     unlabeled_dropped = 0
-    for run, seq in seqs.items():
+    # F6 语料治理(与 pool._pool_from_replay 同口径):非终局
+    # hp_after==0 行 = 结算瞬时伪读数(结算画面过渡帧把血条读成 0,
+    # 紧随的同轮行血量恢复到真实值)——相邻差分把每条伪影拆成
+    # -(hp)/+恢复 两条毒行入桶。hp=0 只在真终局(末行)可能为真。
+    hp0_transient_dropped = 0
+    for run in seqs:
+        seq = seqs[run]
         seq.sort(key=lambda o: (o.get('plane') or 0, o.get('round_num') or 0))
+        cleaned = []
+        for i, o in enumerate(seq):
+            if o['hp_after'] == 0 and i < len(seq) - 1:
+                hp0_transient_dropped += 1
+                continue
+            cleaned.append(o)
+        seqs[run] = cleaned
+    for run, seq in seqs.items():
         per_run_rounds[str(run)] = len(seq)
         for a, b2 in zip(seq, seq[1:], strict=False):
             raw_nt = b2.get('node_type') or ''
@@ -313,6 +330,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
         'runs_filter': (sorted(runs_filter) if runs_filter else 'all'),
         'skipped_lines': skipped,
         'unlabeled_dropped': unlabeled_dropped,
+        'hp0_transient_dropped': hp0_transient_dropped,
         # r378b:隔离清单实际命中的 run(没命中=清单过期,该清理)
         'quarantined_hits': sorted(quarantined_hits),
         'depth_bucket_w': DEPTH_BUCKET_W,
@@ -381,7 +399,11 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 '(与 battle 同源 _engines_count;批⑬ F1「样本不足暂缓」'
                 '的解禁——扩容后 r0/r1 主桶 n=23/27 达标且梯度单调显著,'
                 'dep/sd 键下期望伤害真平 p=0.87);boss 净星深/reward/'
-                'supply depth 键不动;池内容变(指纹重算)',
+                'supply depth 键不动;池内容变(指纹重算);'
+                'v12(F6 语料治理,编排者批)非终局 hp_after==0 行'
+                '判定为结算瞬时伪读数(伪影拆出 -84/+71 型毒对;对局'
+                '档案真值语料 P1 未删失最大单轮损 36)——配对前剔除,'
+                '计数 hp0_transient_dropped;池内容变(指纹重算)',
     }
     return pool, meta
 

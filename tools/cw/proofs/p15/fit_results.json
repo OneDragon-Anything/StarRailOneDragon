@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-09-01T02:19:24.795817+00:00",
+  "generated_at": "2026-09-01T15:46:44.559554+00:00",
   "source_glob": "D:\\code\\workspace\\StarRailOneDragon\\.debug\\temp\\currency_war\\replay\\matches\\match_g_*.json",
-  "n_games": 66,
-  "n_battle_class_rows": 427,
-  "n_loss_rows": 344,
-  "n_loss_censored": 97,
-  "corpus_sha256": "7f5fd74e2d7ae089bac2c780c971c54188aaa4d8ddd151c74f1e9fc622d826ba",
+  "n_games": 73,
+  "n_battle_class_rows": 468,
+  "n_loss_rows": 372,
+  "n_loss_censored": 104,
+  "corpus_sha256": "848dc1aa6d8996ad6fe490a528346c1fe58e86f180c995eb05860e89a696e5de",
   "games_provenance": [
     {
       "game_id": "g_20260827_002018",
@@ -351,6 +351,59 @@
         "registry_fingerprint": "9a43e6e1aec2"
       },
       "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260901_004224",
+      "strategy_version": null,
+      "n_rounds": 1
+    },
+    {
+      "game_id": "g_20260901_164431",
+      "strategy_version": {
+        "code_commit": "f9bb28a2",
+        "registry_fingerprint": "9df40518634d"
+      },
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260901_172040",
+      "strategy_version": {
+        "code_commit": "4cbfb64a",
+        "registry_fingerprint": "9df40518634d"
+      },
+      "n_rounds": 10
+    },
+    {
+      "game_id": "g_20260901_180236",
+      "strategy_version": {
+        "code_commit": "4cbfb64a",
+        "registry_fingerprint": "9df40518634d"
+      },
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260901_192146",
+      "strategy_version": {
+        "code_commit": "4cbfb64a",
+        "registry_fingerprint": "9df40518634d"
+      },
+      "n_rounds": 16
+    },
+    {
+      "game_id": "g_20260901_202525",
+      "strategy_version": {
+        "code_commit": "4cbfb64a",
+        "registry_fingerprint": "9df40518634d"
+      },
+      "n_rounds": 12
+    },
+    {
+      "game_id": "g_20260901_214527",
+      "strategy_version": {
+        "code_commit": "4cbfb64a",
+        "registry_fingerprint": "9df40518634d"
+      },
+      "n_rounds": 14
     }
   ],
   "censoring_rule": "败局 hp_after<=1 判删失(死亡/败北地板,观测 |Δhp|=hp_before 仅下界);主估计弃删失,all_observed=按观测值计入的下界口径;两口径同向下偏",
@@ -358,84 +411,84 @@
   "rung_source": "engines_count(outcome.board_before, round.deployed char_ids) — _settle_rung 同源式",
   "by_plane_node": {
     "(1, 'battle')": {
-      "n": 78,
+      "n": 82,
       "n_censored": 0,
-      "mean_uncensored": 10.35,
+      "mean_uncensored": 10.45,
       "ci95_uncensored": [
-        9.43,
-        11.18
+        9.59,
+        11.24
       ],
-      "mean_all_observed": 10.35,
+      "mean_all_observed": 10.45,
       "ci95_all_observed": [
-        9.43,
-        11.18
+        9.59,
+        11.24
       ]
     },
     "(1, 'boss')": {
-      "n": 63,
-      "n_censored": 11,
-      "mean_uncensored": 27.17,
+      "n": 69,
+      "n_censored": 12,
+      "mean_uncensored": 26.79,
       "ci95_uncensored": [
-        24.62,
-        29.65
+        24.25,
+        29.23
       ],
-      "mean_all_observed": 26.81,
+      "mean_all_observed": 26.39,
       "ci95_all_observed": [
-        24.52,
-        29.0
+        24.09,
+        28.51
       ]
     },
     "(1, 'encounter')": {
-      "n": 60,
+      "n": 66,
       "n_censored": 0,
-      "mean_uncensored": 12.48,
+      "mean_uncensored": 12.18,
       "ci95_uncensored": [
-        10.6,
-        14.53
+        10.32,
+        14.24
       ],
-      "mean_all_observed": 12.48,
+      "mean_all_observed": 12.18,
       "ci95_all_observed": [
-        10.6,
-        14.53
+        10.32,
+        14.24
       ]
     },
     "(2, 'battle')": {
-      "n": 118,
-      "n_censored": 66,
-      "mean_uncensored": 16.23,
+      "n": 127,
+      "n_censored": 70,
+      "mean_uncensored": 16.14,
       "ci95_uncensored": [
-        15.32,
-        17.14
+        15.11,
+        17.17
       ],
-      "mean_all_observed": 9.47,
+      "mean_all_observed": 9.5,
       "ci95_all_observed": [
-        8.28,
+        8.33,
         10.59
       ]
     },
     "(2, 'boss')": {
-      "n": 7,
-      "n_censored": 6,
+      "n": 8,
+      "n_censored": 7,
       "mean_uncensored": 23.0,
       "ci95_uncensored": [],
-      "mean_all_observed": 22.14,
+      "mean_all_observed": 20.12,
       "ci95_all_observed": [
-        11.0,
-        34.43
+        10.0,
+        31.38
       ]
     },
     "(2, 'encounter')": {
-      "n": 12,
-      "n_censored": 8,
-      "mean_uncensored": 29.5,
+      "n": 14,
+      "n_censored": 9,
+      "mean_uncensored": 33.2,
       "ci95_uncensored": [
-        16.0,
-        43.0
+        21.2,
+        45.2
       ],
-      "mean_all_observed": 16.08,
+      "mean_all_observed": 20.07,
       "ci95_all_observed": [
-        8.17,
-        25.17
+        11.71,
+        29.14
       ]
     },
     "(3, 'battle')": {
@@ -452,109 +505,109 @@
   },
   "by_plane_node_round": {
     "(1, 'battle', 3)": {
-      "n": 38,
+      "n": 40,
       "n_censored": 0,
-      "mean_uncensored": 10.45,
+      "mean_uncensored": 10.53,
       "ci95_uncensored": [
-        9.37,
+        9.53,
         11.45
       ],
-      "mean_all_observed": 10.45,
+      "mean_all_observed": 10.53,
       "ci95_all_observed": [
-        9.37,
+        9.53,
         11.45
       ]
     },
     "(1, 'battle', 4)": {
-      "n": 40,
+      "n": 42,
       "n_censored": 0,
-      "mean_uncensored": 10.25,
+      "mean_uncensored": 10.38,
       "ci95_uncensored": [
-        9.35,
-        11.2
+        9.48,
+        11.21
       ],
-      "mean_all_observed": 10.25,
+      "mean_all_observed": 10.38,
       "ci95_all_observed": [
-        9.35,
-        11.2
+        9.48,
+        11.21
       ]
     },
     "(1, 'boss', 'late')": {
-      "n": 63,
-      "n_censored": 11,
-      "mean_uncensored": 27.17,
+      "n": 69,
+      "n_censored": 12,
+      "mean_uncensored": 26.79,
       "ci95_uncensored": [
-        24.62,
-        29.65
+        24.25,
+        29.23
       ],
-      "mean_all_observed": 26.81,
+      "mean_all_observed": 26.39,
       "ci95_all_observed": [
-        24.52,
-        29.0
+        24.09,
+        28.51
       ]
     },
     "(1, 'encounter', 'late')": {
-      "n": 60,
+      "n": 66,
       "n_censored": 0,
-      "mean_uncensored": 12.48,
+      "mean_uncensored": 12.18,
       "ci95_uncensored": [
-        10.6,
-        14.53
+        10.32,
+        14.24
       ],
-      "mean_all_observed": 12.48,
+      "mean_all_observed": 12.18,
       "ci95_all_observed": [
-        10.6,
-        14.53
+        10.32,
+        14.24
       ]
     },
     "(2, 'battle', 'early')": {
-      "n": 95,
-      "n_censored": 43,
-      "mean_uncensored": 16.23,
+      "n": 102,
+      "n_censored": 45,
+      "mean_uncensored": 16.14,
       "ci95_uncensored": [
-        15.32,
-        17.14
+        15.11,
+        17.17
       ],
-      "mean_all_observed": 11.11,
+      "mean_all_observed": 11.18,
       "ci95_all_observed": [
-        9.37,
-        12.69
+        9.45,
+        12.79
       ]
     },
     "(2, 'battle', 'late')": {
-      "n": 23,
-      "n_censored": 23,
+      "n": 25,
+      "n_censored": 25,
       "mean_uncensored": null,
       "ci95_uncensored": [],
-      "mean_all_observed": 2.74,
+      "mean_all_observed": 2.68,
       "ci95_all_observed": [
-        1.52,
-        4.7
+        1.48,
+        4.44
       ]
     },
     "(2, 'boss', 'late')": {
-      "n": 7,
-      "n_censored": 6,
+      "n": 8,
+      "n_censored": 7,
       "mean_uncensored": 23.0,
       "ci95_uncensored": [],
-      "mean_all_observed": 22.14,
+      "mean_all_observed": 20.12,
       "ci95_all_observed": [
-        11.0,
-        34.43
+        10.0,
+        31.38
       ]
     },
     "(2, 'encounter', 'late')": {
-      "n": 12,
-      "n_censored": 8,
-      "mean_uncensored": 29.5,
+      "n": 14,
+      "n_censored": 9,
+      "mean_uncensored": 33.2,
       "ci95_uncensored": [
-        16.0,
-        43.0
+        21.2,
+        45.2
       ],
-      "mean_all_observed": 16.08,
+      "mean_all_observed": 20.07,
       "ci95_all_observed": [
-        8.17,
-        25.17
+        11.71,
+        29.14
       ]
     },
     "(3, 'battle', 'early')": {
@@ -571,17 +624,17 @@
   },
   "by_plane_node_rung": {
     "(1, 'battle', 0)": {
-      "n": 59,
+      "n": 63,
       "n_censored": 0,
-      "mean_uncensored": 11.46,
+      "mean_uncensored": 11.52,
       "ci95_uncensored": [
-        10.59,
-        12.2
+        10.69,
+        12.22
       ],
-      "mean_all_observed": 11.46,
+      "mean_all_observed": 11.52,
       "ci95_all_observed": [
-        10.59,
-        12.2
+        10.69,
+        12.22
       ]
     },
     "(1, 'battle', 1)": {
@@ -607,45 +660,45 @@
       "ci95_all_observed": []
     },
     "(1, 'boss', 0)": {
-      "n": 9,
-      "n_censored": 3,
-      "mean_uncensored": 27.0,
+      "n": 11,
+      "n_censored": 4,
+      "mean_uncensored": 28.0,
       "ci95_uncensored": [
-        18.0,
-        35.33
+        18.43,
+        35.14
       ],
-      "mean_all_observed": 24.33,
+      "mean_all_observed": 24.64,
       "ci95_all_observed": [
-        17.89,
-        30.89
+        19.0,
+        30.27
       ]
     },
     "(1, 'boss', 1)": {
-      "n": 27,
+      "n": 28,
       "n_censored": 6,
-      "mean_uncensored": 28.95,
+      "mean_uncensored": 29.0,
       "ci95_uncensored": [
-        24.95,
-        32.19
+        25.27,
+        32.09
       ],
-      "mean_all_observed": 28.37,
+      "mean_all_observed": 28.43,
       "ci95_all_observed": [
-        25.11,
-        31.15
+        25.36,
+        31.14
       ]
     },
     "(1, 'boss', 2)": {
-      "n": 25,
+      "n": 28,
       "n_censored": 2,
-      "mean_uncensored": 26.91,
+      "mean_uncensored": 25.73,
       "ci95_uncensored": [
-        23.3,
-        30.3
+        21.85,
+        29.31
       ],
-      "mean_all_observed": 27.2,
+      "mean_all_observed": 26.07,
       "ci95_all_observed": [
-        23.64,
-        30.32
+        22.43,
+        29.54
       ]
     },
     "(1, 'boss', 3)": {
@@ -663,31 +716,31 @@
       ]
     },
     "(1, 'encounter', 0)": {
-      "n": 18,
+      "n": 20,
       "n_censored": 0,
-      "mean_uncensored": 15.06,
+      "mean_uncensored": 15.2,
       "ci95_uncensored": [
-        10.78,
-        19.33
+        11.1,
+        19.25
       ],
-      "mean_all_observed": 15.06,
+      "mean_all_observed": 15.2,
       "ci95_all_observed": [
-        10.78,
-        19.33
+        11.1,
+        19.25
       ]
     },
     "(1, 'encounter', 1)": {
-      "n": 30,
+      "n": 34,
       "n_censored": 0,
-      "mean_uncensored": 12.43,
+      "mean_uncensored": 11.62,
       "ci95_uncensored": [
-        10.0,
-        15.13
+        9.41,
+        14.15
       ],
-      "mean_all_observed": 12.43,
+      "mean_all_observed": 11.62,
       "ci95_all_observed": [
-        10.0,
-        15.13
+        9.41,
+        14.15
       ]
     },
     "(1, 'encounter', 2)": {
@@ -705,59 +758,59 @@
       ]
     },
     "(2, 'battle', 0)": {
-      "n": 10,
-      "n_censored": 7,
+      "n": 11,
+      "n_censored": 8,
       "mean_uncensored": 15.33,
       "ci95_uncensored": [
         14.0,
         17.0
       ],
-      "mean_all_observed": 6.9,
+      "mean_all_observed": 6.36,
       "ci95_all_observed": [
-        3.0,
-        11.11
+        2.44,
+        10.0
       ]
     },
     "(2, 'battle', 1)": {
-      "n": 48,
-      "n_censored": 28,
-      "mean_uncensored": 17.25,
+      "n": 54,
+      "n_censored": 31,
+      "mean_uncensored": 17.43,
       "ci95_uncensored": [
-        15.75,
-        18.6
+        15.71,
+        19.05
       ],
-      "mean_all_observed": 10.19,
+      "mean_all_observed": 10.31,
       "ci95_all_observed": [
-        7.96,
-        12.41
+        8.28,
+        12.26
       ]
     },
     "(2, 'battle', 2)": {
-      "n": 48,
+      "n": 49,
       "n_censored": 25,
-      "mean_uncensored": 16.17,
+      "mean_uncensored": 15.88,
       "ci95_uncensored": [
-        14.5,
-        17.73
+        14.23,
+        17.48
       ],
-      "mean_all_observed": 9.58,
+      "mean_all_observed": 9.57,
       "ci95_all_observed": [
-        7.45,
-        11.56
+        7.5,
+        11.48
       ]
     },
     "(2, 'battle', 3)": {
-      "n": 12,
+      "n": 13,
       "n_censored": 6,
-      "mean_uncensored": 13.5,
+      "mean_uncensored": 13.14,
       "ci95_uncensored": [
         11.0,
-        15.67
+        15.38
       ],
-      "mean_all_observed": 8.33,
+      "mean_all_observed": 8.54,
       "ci95_all_observed": [
-        4.91,
-        10.93
+        5.5,
+        10.94
       ]
     },
     "(2, 'boss', 0)": {
@@ -772,13 +825,13 @@
       ]
     },
     "(2, 'boss', 1)": {
-      "n": 2,
-      "n_censored": 2,
+      "n": 3,
+      "n_censored": 3,
       "mean_uncensored": null,
       "ci95_uncensored": [],
-      "mean_all_observed": 31.5,
+      "mean_all_observed": 23.0,
       "ci95_all_observed": [
-        15.0,
+        6.0,
         48.0
       ]
     },
@@ -813,28 +866,28 @@
       ]
     },
     "(2, 'encounter', 1)": {
-      "n": 2,
-      "n_censored": 0,
+      "n": 3,
+      "n_censored": 1,
       "mean_uncensored": 29.5,
       "ci95_uncensored": [
         17.0,
         42.0
       ],
-      "mean_all_observed": 29.5,
+      "mean_all_observed": 33.0,
       "ci95_all_observed": [
         17.0,
         42.0
       ]
     },
     "(2, 'encounter', 2)": {
-      "n": 4,
+      "n": 5,
       "n_censored": 4,
-      "mean_uncensored": null,
+      "mean_uncensored": 48.0,
       "ci95_uncensored": [],
-      "mean_all_observed": 11.0,
+      "mean_all_observed": 18.4,
       "ci95_all_observed": [
-        1.25,
-        29.75
+        1.6,
+        37.0
       ]
     },
     "(2, 'encounter', 3)": {
