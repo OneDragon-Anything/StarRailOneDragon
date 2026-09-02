@@ -40,7 +40,7 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 
 | # | op | 期望态更新 |
 |---|---|---|
-| 1 | BuyCard | `gold−费`;`tracked_bench += (角色,星级=卡星级,位=落点)`;**合成引擎**(§4):连锁/落点/装备继承;满栏自动多买(k×单价全款);2星直出 → 金账对账暴露 |
+| 1 | BuyCard | `gold−费`;**xp += XP_PER_BUY(买牌买经验同源+4,ADR-0129/0286——对抗补,漏则 level 失准)**;`tracked_bench += (角色,星级=卡星级,位=落点)`;**合成引擎**(§4):连锁/落点/装备继承;满栏自动多买(k×单价全款);2星直出 → 金账对账暴露 |
 | 2 | RefreshShop | `gold−2`;shop_cards 失效(下轮波顶实读覆盖) |
 | 3 | CloseShopOp | shop_cards/商店族清理;**离开商店窗口** → 未覆盖 expected 携带到备战覆盖点 |
 | 4 | OpenShopOp | 画面态 shop_open=true(实读锚即得,非期望态语义) |
@@ -52,15 +52,18 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 |---|---|---|
 | 6 | **M7 装备拖拽(穿装备)** | `last_owned_equips −1` + `tracked_deployed[角色].equips +1`(**装备分布期望态**——漏项补,复盘 181254 A 条同源路径) |
 | 7 | **C6 装备转移** | 角色 A `.equips −件` + 角色 B `.equips +件`(**装备分布期望态**;转移遍 ≤3 件/次,落空即停) |
-| 8 | DeployMove | bench 源−1;deployed 目标+1;拖到场上同名同星=合成(升星+装备继承);前后台换位 |
-| 9 | SellDeployed | deployed−1;装备全额返还 owned;gold+售价;board 阵营计数−1 |
-| 10 | SellBench | bench−1;gold+售价(bench 件无装备) |
+| 8 | DeployMove | bench 源−1;deployed 目标+1;board 阵营计数±1(上阵+1/下场−1,对抗补);拖到场上同名同星=合成(升星+装备继承);前后台换位;守卫=场上同名同星≤1 恒成立约束 |
+| 9 | SellDeployed | deployed−1;装备全额返还 owned;gold += cw_state.sell_refund(1★=cost 全额/2★=3c/3★=9c/star≥2∧cost≥2 −1 手续费——权威单源,对抗修正 v1「星级×基数」);board 阵营计数−1 |
+| 10 | SellBench | bench−1;owned += 该角色已穿装备(备战角色同样可穿,equipment_mechanics §1/§3——v1「无装备」前提错,对抗修正);gold+售价 |
 | 11 | LevelUpShop | gold−cost;xp+XP_PER_BUY(xp_expect_ledger 迁入);跨门槛→level+1/cap+1 |
 | 12 | ClickSpheres | 球−1;`expected[pending_reward]='球(待实读)'` |
 | 13 | OpenBox | 箱−1;武装箱选卡 overlay 弹(→C-27) |
 | 14 | OpenTome | 秘典−1;秘典 overlay 弹(→C-31) |
 | 15 | StartBattle | 进战斗(战斗等待 op 接管;hp/gold/streak 由结算屏覆盖) |
 | 16 | EnsureShopClosed | **已退役**(P3b:意图类删除;收起=CloseShopOp)——枚举留痕 |
+| 16a | 穿装备(穿着即自动合成) | owned−件+角色equips+件;**穿着触发配方合成**(两件互为配方自动合成,ADR-0391 守卫根源机制)——期望态含合成链(对抗 P0 补装备家族) |
+| 16b | 特殊装备类(扳手/冶金炉/令牌/特权卡) | 冶金炉3件同刷(回收线)/令牌/特权(进阶配对)——按注册表 effect 建模进期望态(对抗 P0 补家族) |
+| 16c | 员工投影仪(备战席造1★复制) | **非BuyCard 的 tracked_bench+1 通道**(对抗 P0):tracked_bench += (被复制角色,1★);佩戴/拆卸=复制时机,建模待实机对账校准 |
 
 ### C. overlay 动作(到账登记区,粗粒度 expected)
 
@@ -121,6 +124,8 @@ merge_simulate(state: {bench, deployed}, buy: (角色, 星级, 张数))
 | diff 类 | 含义 | 处置 |
 |---|---|---|
 | 合成落点/星级不符 | merge_simulate 模型错(落点/连锁/继承规则) | 修引擎 + merge_mechanics 补档 |
+| **op 效果函数自身 bug** | apply_op_effect 推进逻辑实现错(与「模型错」分立:模型=游戏机制认知错;函数=实现错) | 修函数+单测补例 |
+| **非 op 游戏侧自变**(随便骰子每节点自动穿2件/节点切换整店自动刷新——对抗补) | 无 op 触发的状态变化:expected 无记录而 actual 变了 | 白名单登记(覆盖时 diff 免留证)或按机制补「非 op 自变推进」挂节点钩子 |
 | 未建模行为 | 游戏做了模型外的事(隐藏机制/版本变化) | 按证据补建模或登记 |
 | 识别缺陷 | expected 推进正确但实读错(OCR/SIFT) | 修识别(非期望态问题) |
 
