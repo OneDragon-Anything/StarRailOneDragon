@@ -63,11 +63,14 @@ from sr_od.operations.sr_operation import SrOperation
 #: 间隔 0.3s,保证最坏情形覆盖面不缩水。
 _OVERLAY_POLL_TIMEOUT_S: float = 1.8
 
-#: 商店开/关动画时长(DD-011 操作完成自等动画;实测口径 screen_flow_timing
-#: #7 开店 ~3s / #15 收起 ~1s。op 完成后显式等待,替代测量驱动 gate——
-#: 画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
-SHOP_OPEN_ANIM_S: float = 3.0
+#: 商店收起动画时长(DD-011 操作完成自等动画;实测口径 screen_flow_timing
+#: #15「收起过场动画 ~1s 即备战画面稳定」,用户口述。op 完成后显式等待,替代
+#: 测量驱动 gate——画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
 SHOP_CLOSE_ANIM_S: float = 1.0
+#: 开店完成判据化轮询上界(开向不用固定盲等:开店动画时长无独立口述/实测值,
+#: 判稳标志 = 「标识-备战阶段」文本出现,#7 用户口述;上界只防点击落空死等)。
+SHOP_OPEN_POLL_TIMEOUT_S: float = 4.0
+SHOP_OPEN_POLL_STEP_S: float = 0.25
 
 
 def _read_level_raw(ctx: SrContext, screen) -> int | None:
@@ -625,14 +628,19 @@ class PrepActionExecutor:
                 return False, '找不到按钮-商店'
             # 光标 parking(审计 R3):点击点在验证矩形正中(0px),不 park 则收起锚验证读被光标压
             self._op.park_cursor(before_wait=0.5, after_wait=0.1)
-            # DD-011 操作完成自等动画:开店动画 ~3s(screen_flow_timing #7)由 op
-            # 显式等待承担,等待结束 = 画面承诺稳定;开态验证 = 「按钮-收起」出现
-            # (建档 area)。旧 gate(指纹稳定确认)退役。
-            time.sleep(SHOP_OPEN_ANIM_S)
-            ok = self._op.round_by_find_area(
-                self._op.screenshot(), SHOP_SCREEN_NAME,
-                '按钮-收起').is_success
-            return ok, f'开商店 {"✓" if ok else "收起未出现"}'
+            # DD-011 自等动画 + #7 判稳标志:开店完成的稳定标志 = 「标识-备战阶段」
+            # 文本出现(用户口述判稳口径,#7)。判据化轮询(0.25s 步长)替代盲等——
+            # 开店动画时长无独立口述/实测值(文档 #7「~3s」系记录推断,已勘误),
+            # 判稳标志出现即返回;上界防点击落空死等,超时 = 未生效 → 交调用方重试。
+            ok = False
+            for _ in range(int(SHOP_OPEN_POLL_TIMEOUT_S / SHOP_OPEN_POLL_STEP_S)):
+                time.sleep(SHOP_OPEN_POLL_STEP_S)
+                if self._op.round_by_find_area(
+                        self._op.screenshot(), SHOP_SCREEN_NAME,
+                        '标识-备战阶段').is_success:
+                    ok = True
+                    break
+            return ok, f'开商店 {"✓" if ok else "备战阶段未出现(开店未生效)"}'
         if not is_open:
             return True, '商店已关'
         self._op.round_by_find_and_click_area(
