@@ -56,9 +56,9 @@ session 字段按生命周期三分类,**离开产生它的画面时,画面态�
 | 字段 | 生命周期 | 写者(白名单) | 主读者 |
 |---|---|---|---|
 | target_comp / target_drought / stash_comp / commit_signals / commit_flip_pending / focus_factions / transition_framework / dual_track_phase | 持久(轮内刷新) | 决策战略层(update_target / cw_transition) | 买/上/卖判据 / 遥测 |
-| briefing_affixes | 持久 | run loop 信箱吸收(_absorb_ctx_mailbox;→P3 BriefingOp 直写) | decide_encounter(mechanics_fit)/ 遥测 |
-| selected_difficulty / enemy_difficulty | 持久 | 入口 establish_new_match(职级)/ run loop 信箱吸收(→P3 BriefingOp) | 难度账 / read_game_state |
-| briefing_bosses | 持久 | run loop 信箱吸收(→P3 BriefingOp)/ CollectPlaneIntel(实采覆写) | boss_fit / reconcile_briefing_vs_plane_intel(对账双输入之简报侧,**与实采侧不合并**) |
+| briefing_affixes | 持久 | BriefingOp 内联直写(仅空时写;ctx 信箱字段已随 P5 物理删除) | decide_encounter(mechanics_fit)/ 遥测 |
+| selected_difficulty / enemy_difficulty | 持久 | 入口 establish_new_match(职级,经 ctx.cw_selected_difficulty 活通道)/ BriefingOp 直写(难度) | 难度账 / read_game_state |
+| briefing_bosses | 持久 | BriefingOp 直写 / CollectPlaneIntel(实采覆写)/ prep_director 补采 | boss_fit / reconcile_briefing_vs_plane_intel(对账双输入之简报侧,**与实采侧不合并**) |
 | active_env | 持久 | 投资/环境 overlay handler | 投资环境台账 |
 | active_strategies | 持久 | 投资策略/环境 overlay handler | cw_intention / 决策(active_strategies 注入) |
 | effect_inventory | 持久 | 升级挂点(prep_actions._level_up) | 效果清单读端 |

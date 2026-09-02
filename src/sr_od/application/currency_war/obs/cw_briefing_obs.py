@@ -58,7 +58,7 @@ def read_affixes_with_pos(ctx: SrContext, screen: MatLike) -> list[tuple[str, Po
 def read_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     """简报词缀行 → 敌人词缀 OCR 原名列表(``read_affixes_with_pos`` 派生,只取名)。
 
-    保留 ``list[str]`` 签名兼容下游(ctx.cw_briefing_affixes / session / state.enemy_affixes)。
+    保留 ``list[str]`` 签名兼容下游(session / state.enemy_affixes)。
     需要 center 点词缀采效果 → 用 ``read_affixes_with_pos``。
     """
     return [name for name, _ in read_affixes_with_pos(ctx, screen)]

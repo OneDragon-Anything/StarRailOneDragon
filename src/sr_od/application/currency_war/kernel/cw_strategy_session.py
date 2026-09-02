@@ -249,7 +249,7 @@ class StrategySession:
     # (grep 证),本字段是公开随机接口的种子契约锚。
     rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
-    # 简报词缀(对局开始 debuff/boss 词缀;loop __init__ 从 ctx.cw_briefing_affixes copy;mechanics_fit 输入)
+    # 简报词缀(对局开始 debuff/boss 词缀;写入端 = BriefingOp 内联直写(仅空时写);mechanics_fit 输入)
     briefing_affixes: list[str] = field(default_factory=list)
     # (变宝为废·位面首次合成判定消耗记账 junk_first_done_plane 已随
     #  junk_first 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3,
@@ -257,7 +257,7 @@ class StrategySession:
     # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
     # 策略层填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
     selected_difficulty: str = ""
-    # 敌人难度数值(简报「敌人难度N」读 → ctx.cw_enemy_difficulty → loop copy;read_game_state 填 state;3.5.2)
+    # 敌人难度数值(简报「敌人难度N」读 → BriefingOp 直写 session;read_game_state 填 state;3.5.2)
     enemy_difficulty: int | None = None
     # 位面序 boss 真值(3 位面 boss 名;写入端 = battle_loop 首个稳定备战帧 copy 自
     # 简报 LCS 清洗读数(ADR-0397:简报排列=位面序)+ CollectPlaneIntel

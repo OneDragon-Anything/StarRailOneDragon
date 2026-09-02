@@ -1,7 +1,7 @@
 # W971 · CW 流程层重构设计(总纲)
 
 - 日期:2026-09-02;状态:**FINAL(收敛,可实施)**——对抗轮 1(三视角 41 findings + 时序终检 5 项)全部处置;复核轮 1 修订验证通过;复核轮 2 F-1~F-4 清毕,收敛确认。待实机项已挂账(自动战斗检测/暗态帧补采/投资环境仅开局/接管局简报/位面页序)
-- 实施进度:P2(决策接口+黑板)完成——`decide_prep_screen`/`decide_shop_screen` 落地(§2 黑板;观察写 session:prep_obs_frame/shop_state_frame,写者白名单落 02-state §4.1;ctx 信箱双写过渡未删,对抗轮 1 P0 口径);match 建立前移(§2.1,establish_new_match);LevelUpShop 拆分;决策层豁免清点(02-state §4.2)——dd-014;**P3 完成(P3a 建 cw_flow 包 + P3b 接线,dd-017)**——开局编排接线(0a0b 位面简报/位面过渡内联/开局投资环境段三段退役,接管局首帧分流 §2.1)、七 overlay op 分发接管(干扰弹窗分支保留)、ctx 信箱退役(BriefingOp 内联直写 session)、纯分发器接管备战/商店常态编排(W970 批 C 全项,见该文实施进度);P4/P5 未变
+- 实施进度:P2(决策接口+黑板)完成——`decide_prep_screen`/`decide_shop_screen` 落地(§2 黑板;观察写 session:prep_obs_frame/shop_state_frame,写者白名单落 02-state §4.1;ctx 信箱双写过渡未删,对抗轮 1 P0 口径);match 建立前移(§2.1,establish_new_match);LevelUpShop 拆分;决策层豁免清点(02-state §4.2)——dd-014;**P3 完成(P3a 建 cw_flow 包 + P3b 接线,dd-017)**——开局编排接线(0a0b 位面简报/位面过渡内联/开局投资环境段三段退役,接管局首帧分流 §2.1)、七 overlay op 分发接管(干扰弹窗分支保留)、ctx 信箱退役(BriefingOp 内联直写 session)、纯分发器接管备战/商店常态编排(W970 批 C 全项,见该文实施进度);P4 完成(战斗等待 op + 期望态 infra);**P5 进行中**——ctx 信箱字段(`cw_briefing_affixes`/`cw_briefing_bosses`/`cw_enemy_difficulty`)物理删除(读写点已随 P3b/P4 全量退役);gate 模块清点完成:多处活消费(prep_director/run_node/prep 两 op/cw_observation/_overlay_confirm),**保留不删**,剩余消费面清尾随批 D 另文
 - 依据:用户口述架构愿景(2026-09-02,逐段,§2 各节)+ W970(画面分层架构,FINAL+amended)——本篇是 W970 续篇:W970 治「商店链与决策接口」,本篇治「流程层编排与局状态」
 - 结构:总-分。本篇 = 总纲(背景/决策索引/总图/迁移/风险/边界);分篇按画面域:
   - [01-opening.md](01-opening.md) — 简报 op / 开局序列 / 位面切换(§2.2/2.3/2.3.1)
