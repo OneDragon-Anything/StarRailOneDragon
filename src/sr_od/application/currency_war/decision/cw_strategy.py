@@ -113,7 +113,13 @@ class CwStrategy(ABC):
     def decide_prep(self, state: GameState, session: StrategySession,
                     config: CurrencyWarConfig) -> list[Action]:
         """备战 shop 计划(买/升/D牌/deploy/卖)。读 ``session.target_comp`` 作战略导向、
-        ``session.rng`` 作蒙特卡洛。"""
+        ``session.rng`` 作蒙特卡洛。
+
+        ⚠️ **deprecated(兼容期,P2 黑板模式)**:黑板接口 =
+        :meth:`decide_shop_screen`(W971 §2/§4.1 amendment)。本钩子保留为
+        薄委托形态(旧签名 → 写 ``session.shop_state_frame`` → 同一决策核),
+        供 sim/存量测试过渡;调用方迁移完后随 P5 删除。
+        """
 
     @abstractmethod
     def decide_prep_action(self, obs, session: StrategySession,
@@ -125,6 +131,37 @@ class CwStrategy(ABC):
           控制流动作(``DeferSpheres``/``BailToOuter``)是框架信号,不走 execute 验证链。
         - 契约: 无状态策略 —— 跨步意图(defer 计数等)走 ``session``;框架保证每步先观察再决策
           (F1),动作合法性由框架校验(F3),验证失败/stall 屏蔽对策略透明(F4)。
+
+        ⚠️ **deprecated(兼容期,P2 黑板模式)**:黑板接口 =
+        :meth:`decide_prep_screen`(W971 §2)。本钩子保留为薄委托形态
+        (旧签名 → 写 ``session.prep_obs_frame`` → 同一决策核),供存量
+        测试/影子路径过渡;调用方迁移完后随 P5 删除。
+        """
+
+    @abstractmethod
+    def decide_prep_screen(self, session: StrategySession,
+                           config: CurrencyWarConfig):
+        """备战画面黑板决策接口(W971 §2 黑板模式;前身 = ``decide_prep_action``)。
+
+        - 输入:``session`` 唯一数据总线——备战观察结果由观察层写入
+          ``session.prep_obs_frame``;跨步状态(defer 计数/phase 位等)同 session。
+        - 返回:一个 ``PrepAction``(词表与 ``decide_prep_action`` 同)。
+        - 契约:同 ``decide_prep_action``(F1/F3/F4);新增「观察帧缺失即抛错」
+          ——黑板模式下决策读到 None 帧 = 观察层失约,禁静默按空观察决策。
+        """
+
+    @abstractmethod
+    def decide_shop_screen(self, session: StrategySession,
+                           config: CurrencyWarConfig) -> list[Action]:
+        """商店开画面黑板决策接口(W971 §2/§4.1 amendment;前身 = ``decide_prep``)。
+
+        - 输入:``session`` 唯一数据总线——商店融合观察态由商店观察段写入
+          ``session.shop_state_frame``;战略导向 ``session.target_comp`` 同 session。
+        - 返回:动作 list;词表 = {BuyCard, **LevelUpShop**, RefreshShop, SellBench,
+          SellDeployed, CompTransaction}——升级意图用商店屏专用 ``LevelUpShop``
+          (W970 §4.1.3 拆分,LevelUpShop is-a LevelUp,执行器/账本零改动)。
+        - 终止语义:返回空序列 = 决策完成(流程层触发关店)。
+        - 契约:观察帧缺失即抛错(同 ``decide_prep_screen``)。
         """
 
     @abstractmethod

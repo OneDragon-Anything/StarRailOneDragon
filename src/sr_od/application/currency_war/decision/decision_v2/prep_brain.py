@@ -202,14 +202,13 @@ def _select(turn: TurnState, strategy: Any, session: StrategySession,
             config: Any) -> Any:
     """选择层(批 1 = 现役决策核复用;批 2 折叠为私有函数族)。
 
-    输入视图经 adapter.snapshot_to_obs 重建(与旧环同一条 obs 通道,
-    行为等价由构造保证;单帧等价锁钉住该性质)。
+    黑板接口(W971 §2,P2):直接调 ``strategy.decide_prep_screen(session,
+    config)``——输入 = session.prep_obs_frame(备战观察装配点直写,即
+    snapshot 的同一来源 obs 原帧),不再经 snapshot_to_obs 重建视图
+    (重建层原是「快照→旧签名」的兼容 shim;黑板化后观察帧即单一输入,
+    消费字段两者逐项同源)。方向/预算投影仍走 turn(装配点管线不变)。
     """
-    from sr_od.application.currency_war.decision.decision_v2.adapter import (
-        snapshot_to_obs,
-    )
-    return strategy.decide_prep_action(
-        snapshot_to_obs(turn.snap, session), session, config)
+    return strategy.decide_prep_screen(session, config)
 
 
 def decide(turn: TurnState, strategy: Any, session: StrategySession,

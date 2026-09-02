@@ -38,6 +38,47 @@ if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
 
 
+def establish_new_match(ctx: SrContext, config) -> bool:
+    """进对局时建立 match 容器(W971 §2.1「match 生命周期前置」;返回 True=本次新建)。
+
+    为什么前移:原建立点 = CurrencyWarRunLoop.handle_init(run 首帧)——
+    简报观察(BriefingOp,P3)要**直写 session**,而简报屏先于 run loop 出现;
+    session 不存在 = 观察无写目标。现把建立时机前移到入口链的新局确凿信号处
+    (难度确认/模式选择/简报屏,``StartCurrencyWarMatch`` 调用),与本模块
+    ``discard_stale_match_container``(ADR-0419 残留弃置)同址衔接:先弃置
+    残留容器,再建立本局容器。
+
+    - 已有容器(续跑/已建立)→ False 幂等直过(不覆盖,保手动逐轮延续语义);
+    - 职级(ctx.cw_selected_difficulty,难度确认屏先读)就地拷入 session
+      ——策略层 effective_hp_threshold D-32 在简报后即可能消费;
+    - run loop handle_init 的建立分支保留作兜底(绕过入口链直跑 loop 的
+      场景,如 run_operation 单跑),同一 helper 无逻辑分叉。
+
+    Returns: True = 本次新建容器;False = 已存在(幂等直过)。
+    """
+    if getattr(ctx, 'cw_match', None) is not None:
+        return False
+    import random
+
+    from sr_od.application.currency_war.decision.cw_strategy import (
+        CurrencyWarMatch,
+    )
+    _strategy = StrategyManager(
+        ctx, ctx.currency_war_strategy_plugin_dirs).instantiate(
+        config.strategy_id)
+    _session = _strategy.create_session(config)
+    if config.strategy_seed is not None:
+        _session.rng = random.Random(config.strategy_seed)
+    ctx.cw_match = CurrencyWarMatch(_strategy, _session)
+    # 职级就地吸收(难度确认屏先于本调用读存 ctx;取走清空仍归 run loop
+    # 信箱段——简报词缀/boss 读数在本调用之后才产生,由 run loop 统一吸收)。
+    if getattr(ctx, 'cw_selected_difficulty', None):
+        _session.selected_difficulty = ctx.cw_selected_difficulty
+    log.info('[cw-entry] match 容器已建立(进对局前移点,strategy=%s)',
+             config.strategy_id)
+    return True
+
+
 @dataclass
 class StrategyInfo:
     """一个策略的元数据(GUI 下拉展示 + 调试定位;借鉴 ``PluginInfo`` 但加 ``file_path``)。"""

@@ -1,7 +1,7 @@
 # 04 · 商店开画面 / 投资策略 / 再选调研 / 暗态备选
 
 > W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
-> 实施状态:批 A(W970)已落地商店链原子 op(`operations/prep/open_shop.py`/`buy_cards.py`/`close_shop.py` + `shop.py` 编排壳);CloseShopOp 的「商店族字段清理」仅留 TODO 挂点,随本篇批次落地。
+> 实施状态:批 A(W970)已落地商店链原子 op(`operations/prep/open_shop.py`/`buy_cards.py`/`close_shop.py` + `shop.py` 编排壳);P2 已落 `decide_shop_screen`(session 签名,观察写 `session.shop_state_frame` = 波顶融合段;dd-014);CloseShopOp 的「商店族字段清理」仅留 TODO 挂点,随本篇批次落地(将接管 shop_state_frame 清理)。
 
 ## 1. 商店开画面:识别清单
 

@@ -1,4 +1,3 @@
-import random
 import time
 from typing import ClassVar
 
@@ -14,8 +13,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.decision.cw_strategy import CurrencyWarMatch
-from sr_od.application.currency_war.decision.cw_strategy_manager import StrategyManager
+from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 from sr_od.application.currency_war.kernel.cw_performance import (
     HP_CONFIDENCE_THRESHOLD,
     RoundOutcome,
@@ -226,42 +224,58 @@ class CurrencyWarRunLoop(SrOperation):
         self._cw_dead_prev_key: tuple[int, int] | None = None
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
         if self._is_new_match:
-            _strategy = StrategyManager(self.ctx, self.ctx.currency_war_strategy_plugin_dirs).instantiate(
-                self._cw_config.strategy_id)
-            _session = _strategy.create_session(self._cw_config)
-            if self._cw_config.strategy_seed is not None:
-                _session.rng = random.Random(self._cw_config.strategy_seed)
-            self.ctx.cw_match = CurrencyWarMatch(_strategy, _session)
+            # match 建立(兜底分支):正常路径已由 StartCurrencyWarMatch 在
+            # 进对局时经 establish_new_match 前移建立(W971 §2.1,BriefingOp
+            # 直写 session 的时序前提);此处覆盖「绕过入口链直跑 loop」
+            # 的场景(如 run_operation 单跑),同一 helper 无逻辑分叉。
+            from sr_od.application.currency_war.decision.cw_strategy_manager import (
+                establish_new_match,
+            )
+            establish_new_match(self.ctx, self._cw_config)
             # r339b:板深快照注册移**match new 后**(review 预核 A:
             # 原在 start_run 处注册时 cw_match 恒 None——新局
             # 首战快照死)。续跑局在 else 支支注册。
             state.set_ctx_match(self.ctx.cw_match)
-            # 简报词缀(StartCurrencyWarMatch 读存 ctx.cw_briefing_affixes)→ copy 到 session(mechanics_fit 输入)
-            if self.ctx.cw_briefing_affixes:
-                _session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
-                self.ctx.cw_briefing_affixes = None  # 取走清空(防跨局复用)
-            # 本局职级(StartCurrencyWarMatch 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
-            # → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)
-            if self.ctx.cw_selected_difficulty:
-                _session.selected_difficulty = self.ctx.cw_selected_difficulty
-                self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
-            # 敌人难度数值(简报读存 ctx.cw_enemy_difficulty)→ session.enemy_difficulty(3.5.2 接线)
-            if self.ctx.cw_enemy_difficulty is not None:
-                _session.enemy_difficulty = self.ctx.cw_enemy_difficulty
-                self.ctx.cw_enemy_difficulty = None  # 取走清空(防跨局复用)
-            # 简报 boss(StartCurrencyWarMatch/HandleBriefing 读存 ctx.cw_briefing_bosses,
-            # 读侧已经 LCS 清洗归一到规范名)→ copy 到 session(位面序真值,boss_fit 输入)。
-            # 用户 2026-08-28 裁决:简报三卡排列 = 位面序(ADR-0397「排列≠位面序」系
-            # 单条日志孤证误判,已勘误——见该 ADR 文内勘误节),恢复既有 copy 消费链。
-            # 不取走清空:ctx 槽保留作 CollectPlaneIntel 完成后的对账源;跨局残留由
-            # HandleBriefing 每局重读覆写/读空清 None 兜住(见 handle_briefing 读块注释)。
-            if self.ctx.cw_briefing_bosses:
-                _session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
         else:
             # 续跑局:同样注册(r339b——原注册点对续跑局也晚于
             # start_run,统一在两支各自 new/延用后注册)
             state.set_ctx_match(self.ctx.cw_match)
+        # ctx 信箱 copy 段(W971 §2.1「消灭 ctx 信箱」双写过渡,P2;BriefingOp
+        # P3 直写 session 后本段随 ctx 字段一并退役):无条件吸收而非仅新局
+        # ——match 建立已前移到入口链(难度确认屏),而简报词缀/boss 读数
+        # 产生在其**之后**,run 首帧是它们进 session 的现有通道(不删=不断流,
+        # 对抗轮 1 P0 修正)。幂等:三个「取走清空」字段吸收后即 None,
+        # briefing_bosses 保留对账源,重复拷贝同值无副作用。
+        self._absorb_ctx_mailbox(self.ctx.cw_match.session)
         # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
+
+    def _absorb_ctx_mailbox(self, session: StrategySession) -> None:
+        """ctx 信箱 → session 拷贝段(自 handle_init 抽出;双写过渡,P3 删)。
+
+        迁移自原 handle_init 新局分支(行为逐条不变);改无条件调用的原因见
+        调用处注释(match 建立前移后,简报读数晚于建立点)。
+        """
+        # 简报词缀(StartCurrencyWarMatch 读存 ctx.cw_briefing_affixes)→ copy 到 session(mechanics_fit 输入)
+        if self.ctx.cw_briefing_affixes:
+            session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
+            self.ctx.cw_briefing_affixes = None  # 取走清空(防跨局复用)
+        # 本局职级(StartCurrencyWarMatch 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
+        # → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)
+        if self.ctx.cw_selected_difficulty:
+            session.selected_difficulty = self.ctx.cw_selected_difficulty
+            self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
+        # 敌人难度数值(简报读存 ctx.cw_enemy_difficulty)→ session.enemy_difficulty(3.5.2 接线)
+        if self.ctx.cw_enemy_difficulty is not None:
+            session.enemy_difficulty = self.ctx.cw_enemy_difficulty
+            self.ctx.cw_enemy_difficulty = None  # 取走清空(防跨局复用)
+        # 简报 boss(StartCurrencyWarMatch/HandleBriefing 读存 ctx.cw_briefing_bosses,
+        # 读侧已经 LCS 清洗归一到规范名)→ copy 到 session(位面序真值,boss_fit 输入)。
+        # 用户 2026-08-28 裁决:简报三卡排列 = 位面序(ADR-0397「排列≠位面序」系
+        # 单条日志孤证误判,已勘误——见该 ADR 文内勘误节),恢复既有 copy 消费链。
+        # 不取走清空:ctx 槽保留作 CollectPlaneIntel 完成后的对账源;跨局残留由
+        # HandleBriefing 每局重读覆写/读空清 None 兜住(见 handle_briefing 读块注释)。
+        if self.ctx.cw_briefing_bosses:
+            session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
 
     def _snap(self, tag: str) -> None:
         """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。

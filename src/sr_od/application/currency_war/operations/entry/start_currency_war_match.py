@@ -13,6 +13,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # 迁移审计 w222(git 历史) 遥测缺口②同源:裸模块 logger 无 handler(框架日志走 'OneDragon',
 # propagate=False),本文件日志从未落地 → 改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
+from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.operations.handlers.handle_briefing import (
     HandleBriefing,
 )
@@ -112,6 +113,21 @@ class StartCurrencyWarMatch(SrOperation):
             discard_stale_match_container,
         )
         self._stale_discarded = discard_stale_match_container(self.ctx, reason)
+
+    def _establish_match_once(self) -> None:
+        """新局确凿信号处建立本局 match 容器(W971 §2.1 match 生命周期前置)。
+
+        与 ``_discard_stale_once`` 同址衔接(先弃置残留,再建立本局):
+        session 建立时机从 run 首帧 handle_init 前移到进对局——简报观察
+        (P3 起 BriefingOp 直写 session)先于 run loop 出现,session 不存在
+        = 观察无写目标。已有容器(继续进度恢复)幂等直过。
+        """
+        from sr_od.application.currency_war.decision.cw_strategy_manager import (
+            establish_new_match,
+        )
+        establish_new_match(
+            self.ctx,
+            CurrencyWarConfig(self.ctx.current_instance_idx))
 
     def _at_prep(self, screen: MatLike) -> bool:
         """是否到达备战阶段(备战独有「购买经验」按钮,screen_info area 判定,替代全屏 ocr)。"""
@@ -215,6 +231,7 @@ class StartCurrencyWarMatch(SrOperation):
                 screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
                 crop_first=False).is_success:
             self._discard_stale_once('到达难度确认屏=新局开始')
+            self._establish_match_once()
         if self.ctx.cw_selected_difficulty is None and self.round_by_find_area(
                 screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
                 crop_first=False).is_success:
@@ -244,12 +261,14 @@ class StartCurrencyWarMatch(SrOperation):
                 screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 crop_first=False).is_success:
             self._discard_stale_once('到达模式选择屏=新局开始')
+            self._establish_match_once()
         # 简报屏 → HandleBriefing 独立 op(识别简报 id_mark + 读词缀/boss + 点下一步进投资环境)。
         # 入口大 op 只调度(一屏一 op);词缀/boss 链路在 HandleBriefing 内。
         if self.round_by_find_area(
                 screen, StartCurrencyWarMatch.BRIEFING_SCREEN, '标识-本场对局首领',
                 crop_first=False).is_success:
             self._discard_stale_once('到达简报屏=新局开始')
+            self._establish_match_once()
             _log.info('[cw-entry] 到达简报屏 → HandleBriefing(读词缀/boss + 下一步)')
             HandleBriefing(self.ctx).execute()
             return self.round_wait(wait=2)

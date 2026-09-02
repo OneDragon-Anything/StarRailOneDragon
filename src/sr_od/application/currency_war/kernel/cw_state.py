@@ -555,6 +555,20 @@ class LevelUp:
 
 
 @dataclass
+class LevelUpShop(LevelUp):
+    """商店开画面专用升级意图(W970 §4.1.3 / W971 §2.8.2:LevelUp 拆 LevelUpShop)。
+
+    唯一产出者 = ``decide_shop_screen``(商店屏接口);兼容期旧入口
+    ``decide_prep`` 仍产出基类 ``LevelUp``——两入口行为由构造保证等价,
+    类型拆分只为执行器/遥测/对拍**消歧**(商店屏动作 vs 备战屏腾席链
+    升级)。**刻意设计成无新字段的子类**:执行器(shop 买牌循环)与
+    sim/simulate 全部按 ``isinstance(a, LevelUp)`` 消费,子类零改动兼容;
+    对拍口径 = LevelUpShop ≡ LevelUp(同字段逐项全等,类型归一后比较)。
+    """
+
+
+
+@dataclass
 class DeployMove:
     """bench → 上阵(某排)。
 

@@ -48,3 +48,45 @@ session 字段按生命周期三分类,**离开产生它的画面时,画面态�
 ## 4. 字段 × 写者 × 读者白名单
 
 见总纲 §4 表(本篇与总纲 §4 同源,总纲为准;此处不重复)。纪律:新增写入点 = 违反白名单;ctx 信箱字段随 BriefingOp 落地删除。
+
+### 4.1 全量清点表(P2 落地批,脚本化清点 + 人工复核写者指派)
+
+宿主 = `kernel/cw_strategy_session.py`(StrategySession dataclass 85 字段,清点于 P2 批)+ 少量决策私有动态属性(归 §3.1 豁免类目,见 4.2)。`cw_state.py`(GameState)为逐帧新建的快照容器,字段写者 = 观察层组装点,不逐字段列。生命周期分类 = §3 三分类(持久/画面态/新鲜快照);「环级」= Director 环入口清零的子类。
+
+| 字段 | 生命周期 | 写者(白名单) | 主读者 |
+|---|---|---|---|
+| target_comp / target_drought / stash_comp / commit_signals / commit_flip_pending / focus_factions / transition_framework / dual_track_phase | 持久(轮内刷新) | 决策战略层(update_target / cw_transition) | 买/上/卖判据 / 遥测 |
+| briefing_affixes | 持久 | run loop 信箱吸收(_absorb_ctx_mailbox;→P3 BriefingOp 直写) | decide_encounter(mechanics_fit)/ 遥测 |
+| selected_difficulty / enemy_difficulty | 持久 | 入口 establish_new_match(职级)/ run loop 信箱吸收(→P3 BriefingOp) | 难度账 / read_game_state |
+| briefing_bosses | 持久 | run loop 信箱吸收(→P3 BriefingOp)/ CollectPlaneIntel(实采覆写) | boss_fit / reconcile_briefing_vs_plane_intel(对账双输入之简报侧,**与实采侧不合并**) |
+| active_env | 持久 | 投资/环境 overlay handler | 投资环境台账 |
+| active_strategies | 持久 | 投资策略/环境 overlay handler | cw_intention / 决策(active_strategies 注入) |
+| effect_inventory | 持久 | 升级挂点(prep_actions._level_up) | 效果清单读端 |
+| chosen_megastar / chosen_partner | 持久 | 巨星/伙伴 handler | 遥测 / comp 匹配复盘 |
+| megastar_candidate_clicked | handler 内 | RunMegastarNode | handler 幂等 |
+| _supply_refresh_used / _encounter_refresh_used | 持久(每局 1 次门) | 补给/遭遇 handler | 同 handler |
+| last_node_type / node_type_current / upcoming_types / nodeseq_probe_anchor / plane_node_table / plane_node_table_plane / plane_lengths_seen | 持久(位面切换覆写) | 节点探针(prep_director._probe_node_type,CloseShop 后挂点)/ 备战观察 | boss 判定 / 节点分发 / 遥测 |
+| tracked_bench / tracked_bench_chars / tracked_deployed | 新鲜快照+累积 | 备战观察(cw_reconcile.reconcile_tracking)/ 动作登记(mutate_bench_deployed / 买牌 OCR) | 部署 / 卖守卫(sell_guard)/ 评分 |
+| last_owned_equips | 新鲜快照 | EquipAll | _pseudo_state / 遥测 |
+| last_hp / last_hp_t / last_hp_real / last_hp_real_node / hp_suspect | 新鲜快照(新鲜度门) | 结算观测(on_round_end)/ 备战观察(reconcile_hp,gated_hp 单一门) | 两画面决策 hp 链 |
+| last_streak | 新鲜快照 | on_round_end(结算屏) | economy C 杠杆 |
+| last_level_obs | 新鲜快照 | 备战观察 | 等级单调守卫 |
+| last_state | 新鲜快照 | 备战观察(director._observe)/ 商店观察(buy_cards 波顶) | overlay handler 近似 / session 锚 |
+| last_candidate_scores(+round) | 新鲜快照 | 决策核(_decide_shop_plan) | 遥测判读 |
+| deploy_fail_counts | 持久(对账刷新) | 执行器(拖拽失败记忆) | 腾席链 a |
+| launch_dead_streak | 持久 | prep_actions 出战发射 | 停机钩子(cw_launch_dead) |
+| star_regression_count / star_pending_regression | 持久 | 识别防抖钩子 | 停机钩子(star 回退) |
+| bail_reason_counts | 局级 | bail 交回 | ping-pong 诊断 |
+| free_bench_gold_wait | 环级 | 决策(腾席链 b)/ director 环入口清零 | 链 b 等待门 |
+| pending_deploys | 环级 | 旧部署意图组装 | DeployBench |
+| defer_count / prep_phase / prep_phase_retry | 环级(环入口清零) | 决策函数(黑板豁免类目)+ director | 环步状态机 |
+| pending_buy_expect | 单元(消费即清) | shop.py 买牌单元收尾 | PrepDirector 对账 |
+| xp_expect_ledger | 持久 | PrepDirector(XpLedger) | 经验对账 |
+| v3_spend_auth / v3_posture_receipt / v3_posture_unfulfilled | 帧级 | 决策预算核(attach)/ 仲裁收口(reconcile) | 预算-回执对账门 |
+| **prep_obs_frame**(P2 新增) | 新鲜快照(每次备战观察覆写) | 备战观察装配点(prep_director._observe)/ 破警告派生帧 / 兼容期 decide_prep_action 薄委托 | decide_prep_screen(黑板唯一输入) |
+| **shop_state_frame**(P2 新增) | 画面态(进店波顶覆写;CloseShopOp 完成承诺清理随 P3 接管) | 商店观察融合段(buy_cards.run_buy_waves 波顶)/ 兼容期 decide_prep 薄委托 / sim(独立批) | decide_shop_screen(黑板唯一输入) |
+| rng / performance | 局终 | 框架(run loop 种子)/ on_round_end | 复现 / 观测反馈 |
+
+### 4.2 决策私有豁免类目清点(P2 落地)
+
+写者 = 决策接口函数本身(``DecisionV2Strategy`` 族:decide_prep/decide_shop_screen/on_round_end/update_target 及其内核 arbiter/discipline/evolution/intention)。dataclass 正式字段:v2_state / locked_line / bridge_id / v2_ever_full_interest / v2_prev_hp / v2_round_key / v2_round_bought / v2_round_sold / v2_seed_bought / v3_intention / v3_evolution / v3_hoard / v3_core_names / v3_mode / v3_alarm / v3_pending_rollback / v3_prev_hp / v3_last_intention_event / v3_intention_key / v3_blood_budget_rejects / v3_blood_budget_refresh_rejects / v3_terminal_release / v3_terminal_release_plane / v3_handoff / v3_handoff_plane。另有决策函数经 setattr 写的**动态私有属性**(v2_remedy_used / v2_steady_lv_used / v3_formed_stop / v3_steady_lv_abandoned / v3_remedy_abandoned / v3_handoff_gap / v3_handoff_hp_proj / v3_release / v3_release_round / v3_release_spent / v3_phase / v3_form_ok / v3_form_score / v3_dp_posture / v3_reserve_cap / v3_reserve_overflow / v3_release_budget / v3_release_reason / v3_piggy_reward / v3_alloc_frame)——同归本豁免类目(写者=决策函数),不升正式字段(升格归遥测 schema 批)。观察事实字段与决策私有字段的二分判据见 §3.1;禁跨类混写同一字段。

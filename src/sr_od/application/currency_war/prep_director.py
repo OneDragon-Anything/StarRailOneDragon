@@ -528,6 +528,13 @@ class PrepDirector(SrOperation):
             obs.bench_chars = list(self._cached_bench)
             obs.deployed_chars = list(self._cached_deployed)
             obs.deploy_vacancy = self._cached_vacancy
+        # 黑板写路径(W971 §2,P2):备战观察结果直写 session(写者白名单 =
+        # 本装配点;读者 = decide_prep_screen)。离线契约:无 match(局外
+        # 单跑/mock)不写。帧对象原样入 session(实现决策:容器形态,
+        # 逐字段扇出归 P3,见 cw_strategy_session.prep_obs_frame 注)。
+        _sess = self._session()
+        if _sess is not None:
+            _sess.prep_obs_frame = obs
         return obs
 
     def _reconcile_tracking(self, bench: list[BenchChar], deployed: list[BenchChar],
@@ -1298,7 +1305,9 @@ class PrepDirector(SrOperation):
                 free_bench_slots=0, shop_open=False,
                 # ADR-0136 补修:横幅在时拖放被游戏拒 → vacancy 置 0 强制走 b(升级)/c(卖最弱)
                 deploy_vacancy=0)
-            action = match.strategy.decide_prep_action(bf_obs, session, config)
+            # 黑板接口迁移(W971 §2,P2):破墙派生帧写 session → decide_prep_screen
+            session.prep_obs_frame = bf_obs
+            action = match.strategy.decide_prep_screen(session, config)
             progressed, detail = self._executor.execute(action)
             log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
             # 破墙动作也记一条 exec_events(类名带 BenchFull 前缀,审计可辨
@@ -1377,9 +1386,13 @@ class PrepDirector(SrOperation):
                 log.warning(f'[cw!][director] 步数>{PrepDirector.MAX_STEPS} → 强制出战(F5)')
                 return self._force_battle('步数预算耗尽')
             try:
-                action = match.strategy.decide_prep_action(obs, session, config)
+                # 黑板接口迁移(W971 §2,P2):旧环(生产不可达,离线/影子复用)
+                # 同步换新入口——obs 帧已由 _observe 写 session(或轻步沿用),
+                # 此处显式重写保证与局部 obs 一致。
+                session.prep_obs_frame = obs
+                action = match.strategy.decide_prep_screen(session, config)
             except Exception as e:  # noqa: BLE001  策略异常:上抛 = 本环 fail(§13.2 路径 3)
-                log.warning(f'[cw!][director] decide_prep_action 异常: {e}')
+                log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')
             if not isinstance(action, PrepAction):
                 log.warning(f'[cw!][director] 策略输出非 PrepAction: {type(action).__name__}')

@@ -565,8 +565,12 @@ def run_buy_waves(op: SrOperation, match,
         # r95 审计必修②:plan 异常也要留证(run16 模式:7 个买牌回合 record_decision
         # 整体缺席 + 40s 无 op 记录 = decide_prep 抛错被上层吞,事后不可诊断)。
         # 异常时仍写一条 decisions(Error 占位)+ 完整栈到 log,再向上抛(行为不变)。
+        # 黑板写路径(W971 §2,P2):本波融合观察态(牌面现读+hp 覆盖+node_type/
+        # dual/focus 拷入+gold 救援+tracked 播种,上方融合段即组装点)直写
+        # session.shop_state_frame——写者白名单 = 本段;读者 = decide_shop_screen。
+        match.session.shop_state_frame = state
         try:
-            actions = match.strategy.decide_prep(state, match.session, config)
+            actions = match.strategy.decide_shop_screen(match.session, config)
         except Exception:
             import traceback
 

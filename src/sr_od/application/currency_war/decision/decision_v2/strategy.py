@@ -117,6 +117,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     BuyCard,
     CompTransaction,
     GameState,
+    LevelUpShop,
     MatchOutcome,
     PickEvent,
     RefreshShop,
@@ -124,9 +125,28 @@ from sr_od.application.currency_war.kernel.cw_state import (
     simulate,
 )
 
+# 商店屏升级意图(W970 §4.1.3 拆分)。别名导入:本模块名 ``LevelUp`` 已被
+# cw_prep_actions.LevelUp(族 B 备战执行器动作,腾席链 b 升级)占用,两个
+# LevelUp 是不同词表族的同名类(坐标系对照见 cw_state.Action 节约定块)。
+from sr_od.application.currency_war.kernel.cw_state import (
+    LevelUp as _KernelLevelUp,
+)
+
 #: 谷底回滚线(点6:转型中遭遇单场掉血 >15 → 回滚一件最弱替换位;
 #: 与点4 报警线 20/30 分层并存——15 管转型期单场,20/30 管全局累计)
 VALLEY_ROLLBACK_LOSS: int = 15
+
+
+def _shop_screen_action(a):
+    """动作 → 商店屏词表出口映射(W970 §4.1.3 LevelUp→LevelUpShop 拆分)。
+
+    仅升级意图换型(基类 ``_KernelLevelUp`` 实例 → 商店屏专用子类,
+    字段逐项原样);其余动作原样透传(商店词表其余成员本就商店屏专属)。
+    已是 LevelUpShop(重入)→ 原样返回,幂等。
+    """
+    if type(a) is _KernelLevelUp:
+        return LevelUpShop(cost=a.cost, auth_basis=a.auth_basis)
+    return a
 
 
 class DecisionV2Strategy(CwStrategy):
@@ -299,7 +319,37 @@ class DecisionV2Strategy(CwStrategy):
 
     def decide_prep(self, state: GameState, session: StrategySession,
                     config) -> list:
-        """备战 shop 计划(纪律族视图 × 演进显式动作 × 四层)。"""
+        """备战 shop 计划(deprecated 兼容薄委托,W971 §2 黑板模式)。
+
+        旧签名 → 写 ``session.shop_state_frame``(黑板写路径)→ 同一决策核
+        ``_decide_shop_plan``。**刻意不映射 LevelUpShop**:本入口输出保持
+        迁移前逐字节等价(sim 引擎/存量测试零断链;sim 适配独立批),
+        升级意图仍为基类 ``LevelUp``;商店屏新入口
+        :meth:`decide_shop_screen` 才产 ``LevelUpShop``。
+        """
+        session.shop_state_frame = state
+        return self._decide_shop_plan(state, session, config)
+
+    def decide_shop_screen(self, session: StrategySession, config) -> list:
+        """商店开画面黑板决策接口(W971 §2;前身 = decide_prep)。
+
+        输入 = ``session.shop_state_frame``(商店观察融合态,写者白名单 =
+        buy_cards 波顶融合段);决策核与旧入口同一(``_decide_shop_plan``,
+        行为等价由构造保证);出口把升级意图映射为商店屏专用
+        ``LevelUpShop``(is-a LevelUp,执行器/simulate 零改动)。
+        观察帧缺失 = 观察层失约,抛错不静默(黑板契约)。
+        """
+        state = session.shop_state_frame
+        if state is None:
+            raise ValueError(
+                'decide_shop_screen:session.shop_state_frame 为 None'
+                '(黑板模式:商店观察段未写帧,禁静默按空态决策)')
+        actions = self._decide_shop_plan(state, session, config)
+        return [_shop_screen_action(a) for a in actions]
+
+    def _decide_shop_plan(self, state: GameState, session: StrategySession,
+                          config) -> list:
+        """商店决策核(旧 decide_prep 本体原样;纪律族视图 × 演进显式动作 × 四层)。"""
         registry = self.registry
         self._ensure_state(session)
         # r408 同轮已买/已卖集维护(轮变更重置;互斥约束的数据源)
@@ -728,7 +778,17 @@ class DecisionV2Strategy(CwStrategy):
     # ===== 备战决策环步级决策(strategy/03(原 doc 15§5.1-5.3) 参考实现;P1)=====
 
     def decide_prep_action(self, obs, session: StrategySession, config):
-        """备战决策环步级决策 = strategy/03(原 doc 15§5.1-5.3) 参考实现(奖励收取 → 腾席链 → 主流程)。
+        """备战决策环步级决策(deprecated 兼容薄委托,W971 §2 黑板模式)。
+
+        旧签名 → 写 ``session.prep_obs_frame``(黑板写路径)→ 新接口
+        :meth:`decide_prep_screen`(同一决策核,行为等价由构造保证)。
+        规则序 docstring 见新接口。
+        """
+        session.prep_obs_frame = obs
+        return self.decide_prep_screen(session, config)
+
+    def decide_prep_screen(self, session: StrategySession, config):
+        """备战画面黑板决策接口(W971 §2 黑板模式;前身 = decide_prep_action)。
 
         规则序(每步全量重判,先命中先出):
         1. 武装箱 overlay 开 → PickBoxCard(执行器默认选卡,v7 M-3;OpenBox 两步链第二步);
@@ -738,9 +798,17 @@ class DecisionV2Strategy(CwStrategy):
            ADR-0274 口述[32]:卖件优先于升级,boss 轮禁升级);
         5. 球箱皆无 或 defer≥2 → 主流程(买→部署→装备→出战,Run* 组合;P1 过渡)。
 
-        obs P1 恒空字段(overlay_state/overlay_options/shop_cards/owned_equips)不依赖(§13.4);
-        gold 仅 shop_open 且 obs.state fresh 时可信(关态读空,§5.2b M2)。
+        输入 = ``session.prep_obs_frame``(备战观察帧,写者白名单 =
+        prep_director._observe / 破警告派生帧);obs 的 P1 恒空字段
+        (overlay_state/overlay_options/shop_cards/owned_equips)不依赖(§13.4);
+        gold 仅 shop_open 且 state fresh 时可信(关态读空,§5.2b M2)。
+        观察帧缺失 = 观察层失约,抛错不静默(黑板契约)。
         """
+        obs = session.prep_obs_frame
+        if obs is None:
+            raise ValueError(
+                'decide_prep_screen:session.prep_obs_frame 为 None'
+                '(黑板模式:备战观察未写帧,禁静默按空观察决策)')
         step = self._decide_prep_action_impl(obs, session, config)
         # r412(ADR-0274):息引擎 latch 采样(后置,ADR-0266 同款语义)——本笔
         # 决策读「此前」是否曾达满息,决策后置位(首达当轮自家不解锁);

@@ -22,6 +22,7 @@ from sr_od.application.currency_war.kernel.cw_performance import PerformanceTrac
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_prep_actions import PrepObservation
     from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
 
 @dataclass
@@ -291,4 +292,22 @@ class StrategySession:
     # 契约):每次仲裁入口 attach 无条件清 None,段尾 reconcile 覆写
     # ——「无未兑现帧=None」承诺逐帧成立,无跨轮/跨帧滞留。
     v3_posture_unfulfilled: dict | None = None
+    # —— 黑板模式观察帧容器(W971 §2 黑板模式,P2 落地,dd-014)——
+    # prep_obs_frame:备战观察结果(PrepObservation 整帧)。生命周期 =
+    # 新鲜快照(每次备战观察覆写,不清理只覆盖)。写者白名单 =
+    # prep_director._observe(备战观察装配点)/ 破警告派生帧(prep_director
+    # 席满破墙 dataclasses.replace 帧,派生自真 obs)/ 兼容期旧接口
+    # decide_prep_action 的薄委托(签名过渡,P5 旧接口删除时随之收窄)。
+    # 读者 = decide_prep_screen(黑板决策唯一输入源)。容器形态(整帧对象
+    # 而非逐字段扇出)是实现决策:决策核内部视图(腾席链/伪态组装)本就
+    # 整帧消费,逐字段扇出属纯机械改名,归 P3 编排接管时一并做。
+    prep_obs_frame: 'PrepObservation | None' = None   # noqa: F821, UP037
+    # shop_state_frame:商店开画面融合观察态(GameState,波顶融合段产物:
+    # 牌面现读 + hp 关帧覆盖 + node_type/dual/focus session 拷入 + gold
+    # 救援 + tracked bench 播种——即 04-shop §1 识别清单的融合结果)。
+    # 生命周期 = 画面态(每次进商店波循环覆写;商店关闭后残留由下一次
+    # 进店覆写,CloseShopOp 完成承诺清理随 P3 落地时一并接管本字段)。
+    # 写者白名单 = buy_cards.run_buy_waves 波顶融合段 / 兼容期旧接口
+    # decide_prep 薄委托 / sim 引擎(独立批)。读者 = decide_shop_screen。
+    shop_state_frame: 'GameState | None' = None   # noqa: F821, UP037
 

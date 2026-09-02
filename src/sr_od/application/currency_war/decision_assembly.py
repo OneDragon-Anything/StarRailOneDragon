@@ -132,8 +132,9 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
 class DecideAdapter:
     """``decide(snapshot, session) -> Decision`` 的策略具现(现役 = DecisionV2Strategy)。
 
-    - decide:构造 obs-like → 现役 ``strategy.decide_prep_action(obs, session,
-      config)``(r412 latch 采样随原函数继承)→ 控制流/原子映射;
+    - decide:黑板写路径兜底(快照→session.prep_obs_frame,仅无帧时)→
+      现役 ``strategy.decide_prep_screen(session, config)``(r412 latch 采样随
+      原函数继承)→ 控制流/原子映射;
     - execute:按 op_key 查绑定表回放 PrepAction → 现役执行器(F3 验证链
       原样);查无绑定 = 框架缺陷路径(progressed=False,由引擎连败链兜)。
     绑定表实例内、每 decide 覆盖——DirectorV2 单线程逐步消费,无并发面。
@@ -155,6 +156,16 @@ class DecideAdapter:
         from sr_od.application.currency_war.decision.decision_v2 import prep_brain
         if not snapshot.classification.confident:
             raise ValueError('DecideAdapter.decide:非 confident 快照(框架门失守)')
+        # 黑板写路径兜底(W971 §2,P2):黑板决策 decide_prep_screen 读
+        # session.prep_obs_frame。生产路径帧由 prep_director._observe 写
+        # (真 obs 原帧);本装配点兜底 = 快照驱动的离线/测试入口
+        # (无 _observe 参与)按旧映射重建同源视图写入——保证「同快照同
+        # 决策」不变。已有帧(生产/破警告派生帧)不覆盖:帧即最新观察。
+        if getattr(session, 'prep_obs_frame', None) is None:
+            from sr_od.application.currency_war.decision.decision_v2.adapter import (
+                snapshot_to_obs,
+            )
+            session.prep_obs_frame = snapshot_to_obs(snapshot, session)
         # 迁移迁移批 1(守卫分区) 装配点管线:TurnState 一次装配(方向/预算投影)+ _select
         # 复用现役决策核(行为与旧环等价;折叠归迁移迁移批 2(方向层接管))。F3 参数校验经
         # prep_brain validator 钩子(非法 → 空批 stall,旧环拒绝路径同型)。
