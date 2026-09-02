@@ -206,7 +206,17 @@ class BackToNormalWorldPlus(SrOperation):
         # (同本节点兜底分支既有判例);点掉后面下一轮命中「角色图标」分支 SUCCESS。
         result = self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南')
         if result.is_success:
-            self.round_by_find_and_click_area(screen, '货币战争-大厅', '按钮-关闭')
+            # 锁光标恢复态加固:机器重启后游戏直接恢复进本 UI 时光标处于锁定态,
+            # 不带 Alt 的点击全部落空(2026-09-02 一条龙恢复链事故实证:id_mark 命中
+            # 正常、点「按钮-关闭」不带 Alt → round_retry×20 有界 FAIL,6 应用速挂;
+            # 人工带 Alt 点一次即关闭)。框架 round_by_find_and_click_area 用
+            # area.pc_alt(yml 未设即 False,且 MCP 无法设 area 级 pc_alt),故命中后
+            # 取 area 中心显式 pc_alt=True 点击;自由光标下 Alt+点击无害
+            # (check_npc_dialog 点对话选项同款先例)。命中判据与 round_retry
+            # 逐帧重识别结构不变。
+            close_area = self.ctx.screen_loader.get_area('货币战争-大厅', '按钮-关闭')
+            if close_area is not None:
+                self.ctx.controller.click(close_area.center, pc_alt=True)
             return self.round_retry('货币战争-大厅', wait=2)
 
         # 货币战争-对局中画面(2026-09-01 孤儿对局事故根修):孤儿对局 = 上一
@@ -288,14 +298,21 @@ class BackToNormalWorldPlus(SrOperation):
             return dialog_result
 
         # 其他情况 - 均点击右上角触发返回上一级
-        result = self.round_by_click_area('菜单', '右上角返回')
+        # 锁光标恢复态加固(同上方「货币战争-大厅」分支,2026-09-02 事故实证):
+        # 兜底是任何未知态的最后出口,必须按最坏光标态点——机器重启恢复进未知 UI
+        # 时光标可能锁定,不带 Alt 的点击全部落空;自由光标下 Alt+点击无害。框架
+        # round_by_click_area 用 area.pc_alt(默认 False),故取 area 中心显式
+        # pc_alt=True 点击;round_retry 有界语义不变(点击可能不落地,逐帧重识别)。
+        fallback_area = self.ctx.screen_loader.get_area('菜单', '右上角返回')
+        if fallback_area is not None:
+            self.ctx.controller.click(fallback_area.center, pc_alt=True)
         # 兜底分支必须用 round_retry（计入 node_max_retry_times）而非 round_wait：
         # 框架中 WAIT 不消耗 retry（operation.py 循环里 WAIT 直接 continue、且任何非 RETRY
         # 结果会把 node_retry_times 清零），兜底点击无法改变画面时会无限循环
         # （2026-08-24 实跑：战斗结算画面点右上角无效，兜底卡约 2 小时拖垮整条龙）。
         # 正常「连续退多级菜单」不受影响：每退一级后画面变化、check_screen 命中其他
         # 分支返回 WAIT/SUCCESS，node_retry_times 被清零，不会累计到 20 次上限。
-        return self.round_retry(result.status, wait=1)
+        return self.round_retry('右上角返回', wait=1)
 
     def check_npc_dialog(self, screen: MatLike) -> OperationRoundResult | None:
         """

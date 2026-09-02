@@ -8,6 +8,9 @@
 #   ② 结算按钮 OCR 统一收紧 lcs_percent=0.8(与 battle_loop 3b 同款):
 #      「继续挑战」默认 0.5 与战斗暂停屏「继续战斗」ratio=0.75 误匹配
 #      → 点「继续战斗」恢复战斗 → 退局打转 2min(实录 03:59:35-04:01:35)。
+# 锁光标恢复态加固(2026-09-02 一条龙恢复链事故,同 BackToNormalWorldPlus
+#   大厅/兜底分支注释):机器重启后游戏直接恢复进 UI 时光标锁定,不带 Alt 的
+#   点击全部落空——本 op 所有 UI 坐标点击统一带 pc_alt=True(键盘 esc 不受影响)。
 
 """从货币战争对局中退出(放弃+结算)回大厅。
 
@@ -15,12 +18,15 @@
 支持入口:备战阶段 / 战斗中 / **事件 overlay**(投资策略/环境/补给/遭遇/巨星 —— 先 escape 回备战)
 (任何有 Esc 放弃提示的态)→ 放弃并结算 → 结算 3 页 → 大厅。
 """
+import difflib
 import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from one_dragon.utils import str_utils
+from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.context.sr_context import SrContext
@@ -44,7 +50,7 @@ class ExitCurrencyWarMatch(SrOperation):
             return self.round_success(ExitCurrencyWarMatch.STATUS_AT_LOBBY)
 
         # 放弃提示 → 放弃并结算
-        if self.round_by_ocr_and_click(screen, '放弃并结算', success_wait=3).is_success:
+        if self._ocr_click_pc_alt(screen, '放弃并结算'):
             log.info('[cw-exit] 放弃并结算 → 结算页')
             return self.round_wait(wait=2)
 
@@ -54,21 +60,21 @@ class ExitCurrencyWarMatch(SrOperation):
         # 「前往结算」——第三种文案,先试
         # r317:结算按钮 OCR 统一 lcs_percent=0.8(battle_loop 3b 同款)——
         # 防「继续挑战」误匹配战斗暂停屏「继续战斗」(ratio 0.75,默认 0.5 会命中)。
-        if self.round_by_ocr_and_click(screen, '前往结算', success_wait=3, lcs_percent=0.8).is_success:
+        if self._ocr_click_pc_alt(screen, '前往结算', lcs_percent=0.8):
             log.info('[cw-exit] 进度结算屏 → 前往结算')
             return self.round_wait(wait=2)
-        if self.round_by_ocr_and_click(screen, '继续挑战', success_wait=3, lcs_percent=0.8).is_success:
+        if self._ocr_click_pc_alt(screen, '继续挑战', lcs_percent=0.8):
             log.info('[cw-exit] 胜利结算 → 继续挑战')
             return self.round_wait(wait=2)
-        if self.round_by_ocr_and_click(screen, '下一步', success_wait=3, lcs_percent=0.8).is_success:
+        if self._ocr_click_pc_alt(screen, '下一步', lcs_percent=0.8):
             return self.round_wait(wait=2)
 
         # 结算页 2:下一页
-        if self.round_by_ocr_and_click(screen, '下一页', success_wait=3, lcs_percent=0.8).is_success:
+        if self._ocr_click_pc_alt(screen, '下一页', lcs_percent=0.8):
             return self.round_wait(wait=2)
 
         # 结算页 3:返回货币战争
-        if self.round_by_ocr_and_click(screen, '返回货币战争', success_wait=3, lcs_percent=0.8).is_success:
+        if self._ocr_click_pc_alt(screen, '返回货币战争', lcs_percent=0.8):
             return self.round_wait(wait=2)
 
         # 备战/对局中(无放弃提示)→ Esc 弹放弃提示
@@ -105,10 +111,10 @@ class ExitCurrencyWarMatch(SrOperation):
             _confirm = (area_center(self.ctx, '按钮-确认', '货币战争-投资策略')
                         or Point(978, 983))   # 兜底常量 = HandleInvestStrategy.CONFIRM
             self.ctx.controller.mouse_move(Point(460, 475))   # 左卡
-            self.ctx.controller.click(Point(460, 475))
+            self.ctx.controller.click(Point(460, 475), pc_alt=True)
             time.sleep(1.2)
             self.ctx.controller.mouse_move(_confirm)
-            self.ctx.controller.click(_confirm)
+            self.ctx.controller.click(_confirm, pc_alt=True)
             log.info('[cw-exit] 投资策略三选一(退局途中)→ 左卡+确认(area 定位)')
             return self.round_wait(wait=2)
 
@@ -119,7 +125,7 @@ class ExitCurrencyWarMatch(SrOperation):
         # 按钮热区 vs OCR 框中心偏移 ~60px,实录 141x 等待零推进)→ 此处仅处理
         # 非投资策略的事件 overlay(环境等)。lcs_percent=0.8 同 battle_loop 3b
         # (防「返回备战界面」与「返回货币战争」共享子序列 0.5 误匹配)。
-        if self.round_by_ocr_and_click(screen, '返回备战界面', success_wait=2, lcs_percent=0.8).is_success:
+        if self._ocr_click_pc_alt(screen, '返回备战界面', lcs_percent=0.8):
             return self.round_wait(wait=2)
         if (self.round_by_ocr(screen, '补给阶段').is_success
                 or self.round_by_ocr(screen, '遭遇其一').is_success
@@ -135,14 +141,44 @@ class ExitCurrencyWarMatch(SrOperation):
         # 死循环(旧版全分支不命中)。
         if self.round_by_find_area(screen, '货币战争-战斗暂停',
                                    '标识-战斗暂停').is_success:
-            if self.round_by_find_and_click_area(
-                    screen, '货币战争-战斗暂停', '按钮-撤退',
-                    success_wait=2).is_success:
-                log.info('[cw-exit] 战斗暂停→撤退 → 中断挑战弹窗')
-                return self.round_wait(wait=2)
+            # 锁光标恢复态加固:框架 round_by_find_and_click_area 用 area.pc_alt
+            # (默认 False,operation.py 不透传 pc_alt),故命中后取 area 中心
+            # 显式 pc_alt=True 点击(同本文件 _ocr_click_pc_alt 注释)。
+            retreat_area = self.ctx.screen_loader.get_area(
+                '货币战争-战斗暂停', '按钮-撤退')
+            if retreat_area is not None:
+                self.ctx.controller.click(retreat_area.center, pc_alt=True)
+            log.info('[cw-exit] 战斗暂停→撤退 → 中断挑战弹窗')
+            return self.round_wait(wait=2)
         # 战斗中(未暂停态):点右上角 X 弹暂停(实证 2026-08-23)
         # r302:controller.click 需 Point 对象(裸 int 坐标在
         # game2win_pos 坐标转换层炸 'int' has no .x——op 异常+
         # 采集钩子 skip 的共同根因)
-        self.ctx.controller.click(Point(1843, 42))
+        self.ctx.controller.click(Point(1843, 42), pc_alt=True)
         return self.round_wait(wait=1.5)
+
+    def _ocr_click_pc_alt(self, screen, target_cn: str,
+                          lcs_percent: float = 0.5) -> bool:
+        """OCR 找到 target_cn 并以 pc_alt=True 点击其中心;找到且点中返回 True。
+
+        框架 round_by_ocr_and_click 的点击是裸 controller.click(operation.py
+        不透传 pc_alt),锁光标恢复态(机器重启后游戏直接恢复进 UI)下会全部
+        落空(2026-09-02 一条龙恢复链事故,见文件头注释)。匹配逻辑与框架
+        helper 同源:OCR map → difflib 最近匹配 → LCS 阈值 → 点 OCR 框中心;
+        调用方保持既有 round 语义(命中即 round_wait 等画面推进,未命中落
+        下一分支)。
+        """
+        ocr_result_map = self.ctx.ocr_service.get_ocr_result_map(image=screen)
+        # OCR 服务偶发产出无文本词条,进 difflib 会 len(None) 崩(框架同款守卫)
+        ocr_result_list = [k for k in ocr_result_map if k is not None]
+        results = difflib.get_close_matches(
+            gt(target_cn, 'game'), ocr_result_list, n=1)
+        if not results:
+            return False
+        mrl = ocr_result_map.get(results[0])
+        if mrl is None or mrl.max is None:
+            return False
+        if not str_utils.find_by_lcs(
+                gt(target_cn, 'game'), results[0], percent=lcs_percent):
+            return False
+        return self.ctx.controller.click(mrl.max.center, pc_alt=True)
