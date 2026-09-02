@@ -364,6 +364,12 @@ def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
     return out
 
 
+#: 收起商店动画时长(DD-011 操作完成自等动画;实测口径 screen_flow_timing #15
+#: 「收起过场动画 ~1s 即备战画面稳定」。op 完成后显式等待,替代测量驱动 gate——
+#: 画面状态判断已外移建档识别,等待时长归产生动画的操作声明)。
+_SHOP_CLOSE_ANIM_S: float = 1.0
+
+
 class BuyShopCards(SrOperation):
     """备战阶段:开商店 → 决策驱动买牌/升等级 → 关商店。
 
@@ -436,32 +442,12 @@ class BuyShopCards(SrOperation):
         # telemetry plan-time 全 100 即此;2026-08-03 2 图诊断)。gold 相反(shop 开才显示右下)。
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
         if self.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
-            # success_wait=0.2 只等点击反馈;收起动画(~1s,screen_flow_timing #15)
-            # 由紧随 gate 的 op_settle 预等(_OP_SETTLE_S)覆盖——动画窗单一归属,
-            # 不与点击后固定等待重复(旧 1.0 与预睡 1.0 双重等同一动画窗)。
-            self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=0.2)
-            # r335(批次3)+r347(旧路径删除):gate 无条件化——
-            # 超时=fail-closed retry(收起动画未稳,重试整轮);
-            # 异常=放行(离线契约,原 _legacy_poll 轮询已删,
-            # 对拍验证过新路径)。r346(review M1):接收 gate
-            # 稳定帧而非布尔后重截(丢弃帧=OCR 缓存作废+HP 读
-            # 在未验证帧)。
-            from sr_od.application.currency_war.obs.cw_observation_gate import (
-                PROFILE_CLOSED,
-                wait_stable_frame,
-            )
-            log.info('[cw][gate] path=new(shop 买前收起)')
-            # ADR-0264 终裁加速器②:收起动画=操作段(预估等待=指纹基线重置点)
-            try:
-                _gf = wait_stable_frame(
-                    self, profile=PROFILE_CLOSED, segment='op_settle')
-                if _gf is not None:
-                    screen = _gf
-                else:
-                    return self.round_retry('收起后关态未稳定(gate 超时)',
-                                            wait=1)
-            except Exception:   # noqa: BLE001  离线契约:放行
-                pass
+            # DD-011 操作完成自等动画:收起动画时长由 op 显式等待承担(screen_flow_timing
+            # #15 实测 ~1s),等待结束 = 画面承诺稳定;gate(测量驱动)在此退役。
+            # 后继读数动画尾帧风险由既有防线兜:hp 新鲜度门/重读确认循环、round retry。
+            self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起')
+            time.sleep(_SHOP_CLOSE_ANIM_S)
+            screen = self.screenshot()
         # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None 显式化);None 走结算真值链(⚠ r322 修:
         # **带新鲜度门**——陈旧 last_hp 不当真值,防「陈 hp
@@ -1345,21 +1331,12 @@ class BuyShopCards(SrOperation):
                             gap_large=False, refs=_bench_refs,
                             note='观测自检框架设计 §2.2:身份留证不算失败')
 
-        # 关商店(「收起」):success_wait=0.2 只等点击反馈——收起动画(~1s,
-        # screen_flow_timing #15;旧「~3s(r299 实测)」口径已被 #15 修正)
-        # 由紧随 gate 的 op_settle 预等(_OP_SETTLE_S=1.0)覆盖,动画窗单一归属;
-        # 旧「sleep(0.4)+success_wait 1.0+gate 预睡 1.0」三重覆盖同一动画窗。
-        self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起', success_wait=0.2)
-        # r312(ADR-0213 批次1)+r347:gate 无条件化(异常=放行,离线契约);
-        # gate 超时语义 = fail-closed retry(动画未稳,重试整轮)。
-        from sr_od.application.currency_war.obs.cw_observation_gate import (
-            PROFILE_CLOSED,
-            wait_stable_frame,
-        )
-        log.info('[cw][gate] path=new(shop 买后收起)')
-        # r346:contextlib 已模块级(同上,H1 雷)
-        with contextlib.suppress(Exception):   # 离线契约:放行
-            wait_stable_frame(self, profile=PROFILE_CLOSED)
+        # 关商店(「收起」):DD-011 操作完成自等动画——收起动画时长(_SHOP_CLOSE_ANIM_S,
+        # screen_flow_timing #15 实测 ~1s;旧「~3s(r299)」口径已修正)由本 op 显式
+        # 等待承担,等待结束 = 画面承诺稳定;旧「sleep(0.4)+success_wait+gate 预睡」
+        # 三重覆盖已退役。后继重估的金读自带两帧一致门(入账计数器尾帧防线)。
+        self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起')
+        time.sleep(_SHOP_CLOSE_ANIM_S)
         # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
         # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
         # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。
