@@ -566,6 +566,12 @@ class LevelUpShop(LevelUp):
     对拍口径 = LevelUpShop ≡ LevelUp(同字段逐项全等,类型归一后比较)。
     """
 
+    # 显式重声明继承字段:kwarg 签名审计(ast 静态)不追 dataclass 继承链,
+    # 不重声明则 decide_shop_screen 的 LevelUpShop(cost=…, auth_basis=…)
+    # 构造被误判 kwargs 违例(2026-09-02 L3 暴露)。
+    cost: int = 0
+    auth_basis: str = ''
+
 
 
 @dataclass
