@@ -89,7 +89,7 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 | 27 | 武装箱 SelectBoxCard+Confirm | `owned += 选中装备` |
 | 28 | 秘典 SelectBookCard+ConfirmBook | `owned += 星徽/装备`(星徽含阵营语义→分配守卫联动) |
 | 29 | 巨星 Select+ConfirmMegastar | `chosen_megastar`(session 字段已有);comp 语义变化(决策面) |
-| 30 | 列车同行 Select+ConfirmPartner | `chosen_partner`;列车同行星徽+1(产出→owned 期望);board 语义 |
+| 30 | 列车同行 Select+ConfirmPartner | `chosen_partner` 更新;产出 = 伙伴**画面特殊位置显示(未识别,不占装备区格子)**——玩家口述 2026-09-02,v1「星徽+1 进 owned」修正删除;board 影响待实机对账 |
 | 31 | 祈愿 Select+ConfirmWish | 效果登记台账(不做 session 推进——单轮即回) |
 | 32 | 策划 Select+ConfirmPlanner | 规则变化登记(环境/台账语义;不进 session 推进) |
 | 33 | 命运 Select+ConfirmFortune | 强化登记台账 |
@@ -127,9 +127,9 @@ merge_simulate(state: {bench, deployed}, buy: (角色, 星级, 张数))
 1. 同名同星计数:bench+deployed 全场合计;满 3 → 合成升星(**连锁可多级**:2★ 合成产物再与 2★ 凑 3 → 3★);
 2. 落点:**三张全在备战栏 → 取最左**;**含场上 → 落场上那个同星的位置**;
 3. 满栏例外:能触发合成的牌,满栏也买得进;**自动多买**一次买满缺数(min(店内张数, 3 − 已有 mod 3));金账全款;
-4. 装备继承:合成后装备随高星产物(继承规则按实机对账校验);
+4. 装备继承:**三只身上的装备全部继承到升星产物**(玩家口述 2026-09-02 定谳,补备战案空白;与 §1 场上吸收「装备/站位随之继承」一致);
 5. 星徽(阵营装备)不参与星数合成(类别分流,add-if-absent);
-6. 已知建模缺口:合成后 bench 重排(最左落点的后续位移)是否影响其他 tracked 位置——**实机对账项**。
+6. **满栏语境落点 = §1 规则适用**(全备战→最左;含场上→场上位置;玩家确认查文档 2026-09-02)——§2.5「置信低」注保留为实证校准项;已知建模缺口:合成后 bench 重排(最左落点后续位移)是否影响其他 tracked 位置——实机对账项。
 
 单测要求:merge_mechanics §2 两个例(备战合成/连锁合成落场)逐条断言 + 满栏自动多买 3 例 + 装备继承 1 例。
 
@@ -142,7 +142,7 @@ merge_simulate(state: {bench, deployed}, buy: (角色, 星级, 张数))
 | 合成落点/星级不符 | merge_simulate 模型错(落点/连锁/继承规则) | 修引擎 + merge_mechanics 补档 |
 | **op 效果函数自身 bug** | apply_op_effect 推进逻辑实现错(与「模型错」分立:模型=游戏机制认知错;函数=实现错) | 修函数+单测补例 |
 | **非 op 游戏侧自变**(随便骰子每节点自动穿2件/节点切换整店自动刷新——对抗补) | 无 op 触发的状态变化:expected 无记录而 actual 变了 | 白名单登记(覆盖时 diff 免留证)或按机制补「非 op 自变推进」挂节点钩子 |
-| **外生流**(轮界差值:轮间未建模经验流(实测轮间+2、位面过渡更大,来源未定)——对抗 F2) | expected 基准与轮界 actual 的差值 | **吸收进锚点不判罚,累计披露(exogenous_xp)**——XpLedger 轮界重锚语义承载 |
+| **外生流**(轮界差值:轮间未建模经验流(实测轮间+2、位面过渡更大;**来源定谳 2026-09-02 玩家口述:每个节点结束后给的经验,具体数值不能确定**)——对抗 F2) | expected 基准与轮界 actual 的差值 | **吸收进锚点不判罚,累计披露(exogenous_xp)**——XpLedger 轮界重锚语义承载 |
 | 未建模行为 | 游戏做了模型外的事(隐藏机制/版本变化) | 按证据补建模或登记 |
 | 识别缺陷 | expected 推进正确但实读错(OCR/SIFT) | 修识别(非期望态问题) |
 
