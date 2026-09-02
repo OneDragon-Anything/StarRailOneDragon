@@ -7,6 +7,7 @@ exec_fail 停机旗标族在 run_state。
 
 from __future__ import annotations
 
+import contextlib
 import time
 from pathlib import Path
 from typing import ClassVar
@@ -25,6 +26,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     DeferSpheres,
     DeployMove,
     LevelUp,
+    OpenShop,
     OpenTome,
     PrepAction,
     PrepObservation,
@@ -82,6 +84,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
     board_from_tracked,
     read_deploy_cap,
     read_deployed_count,
+    read_node_sequence,
 )
 from sr_od.application.currency_war.obs.cw_shop_obs import (
     RefreshExpect,
@@ -1283,6 +1286,50 @@ class PrepDirector(SrOperation):
         obs = self._observe(heavy=True, screen=_gate_frame)   # 环入口重观察 + 对账
         if obs.event_overlay is not None:   # 事件 overlay 挡操作 → 环让位(交外环 handler)
             return self._bail(match, f'事件overlay:{obs.event_overlay}')
+        # 接管局补采(boss+词缀,W971 §2.1/01-opening §2.1):稳定门退役后挂点 =
+        # 干净备战观察(gate 后稳定帧,画面保证在备战)。触发 = session.briefing_bosses
+        # 空(本局尚无位面序真值:①接管局 bot 没走过简报链 ②简报读空兜底)。
+        # 可交互门:节点条可读(过场/overlay 半开帧读不出 → 等下帧,不消耗预算)。
+        # 会开/关位面详情画面 → 执行后 bail 交外环重进(重新识别干净备战)。
+        # 计数挂 session(本 director 实例每备战环重建,实例属性不跨环存活);
+        # 成功或 2 次失败后停(boss 缺省=中性 0.5,失败不阻塞对局)。
+        if (not getattr(session, 'cw_takeover_collect_done', False)
+                and not getattr(session, 'briefing_bosses', None)):
+            _tk_slots = None
+            with contextlib.suppress(Exception):
+                _tk_slots = read_node_sequence(self.ctx, self.last_screenshot)
+            if _tk_slots is not None:
+                _tries = getattr(session, 'cw_takeover_tries', 0) + 1
+                session.cw_takeover_tries = _tries
+                if _tries > 2:
+                    session.cw_takeover_collect_done = True
+                    log.info('[cw][director] 接管补采两次未成,放弃(boss 缺省中性)')
+                    # 放弃也清空两池:残留值会被下局判空误消费(跨局泄漏)
+                    self.ctx.cw_plane_bosses = None
+                    self.ctx.cw_plane_affixes = None
+                else:
+                    from sr_od.application.currency_war.operations.handlers.collect_plane_intel import (
+                        CollectPlaneIntel,
+                    )
+                    log.info('[cw][director] 新局 boss/词缀无实采真值(session 空)'
+                             '→ 位面详情情报采集(可交互备战帧,第%d次)', _tries)
+                    _pb_res = CollectPlaneIntel(self.ctx).execute()
+                    # 成功取走/失败残留都清空(防泄漏到下局判空;词缀随采结算
+                    # 只在本分支,防等待帧空读清池)
+                    _names = list(self.ctx.cw_plane_bosses or [])
+                    _affixes = list(self.ctx.cw_plane_affixes or [])
+                    self.ctx.cw_plane_bosses = None
+                    self.ctx.cw_plane_affixes = None
+                    if _pb_res is not None and getattr(_pb_res, 'success', False) and _names:
+                        session.cw_takeover_collect_done = True
+                        # 保位写(ADR-0398):徽章态位面采得 None 原样占 3 槽,
+                        # 丢弃会让后续位面名字左移错位(位面序真值变假)。
+                        session.briefing_bosses = _names
+                        log.info('[cw][director] 开局 boss 实采完成(位面序保位):%s', _names)
+                    if _affixes and not getattr(session, 'briefing_affixes', None):
+                        session.briefing_affixes = _affixes
+                        log.info('[cw][director] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
+                    return self.round_wait('接管补采执行,重进备战环重新识别', wait=1.0)
         # ADR-0136(M16 死循环 86min 根因):「备战席已满」警告模态下游戏**拒绝一切拖拽/出战** ——
         # Director 若无视警告继续发 DeployMove/StartBattle,全部"源槽未变/未落地"连环失败 → stall
         # 死循环。环入口感知警告(read_bench_full)→ 立即走腾席链破警告(优先升级扩容;点不起 → 卖最弱),
@@ -1877,6 +1924,67 @@ class PrepDirector(SrOperation):
     # ===== DirectorV2 接线(设计单一源 =
     # .debug/temp/currency_war/w606_stage2_batch3/DIRECTOR_ADAPTER_DESIGN.md §5/§6)=====
 
+    # ===== W970 批 C:流程层商店编排(RunBuyPhase 解体的承接,§4.3.2/§4.3.6,dd-017)=====
+
+    def _open_shop_phase(self, action, obs) -> tuple[bool, str]:
+        """OpenShop 动作的流程层编排(壳直调三 op 调用点自 BuyShopCards 上移)。
+
+        - read_only=True(腾席链 b 取 gold 真值 / 开态清洁面板):OpenShopOp
+          (幂等,已开不点)→ heavy 观察(gold 开态真值进 session)→ **不调
+          商店决策**(M-6 门保持:free=0 不进买牌)→ CloseShopOp → 节点探针
+          → 回备战(W970 §4.3.6;r364 进展保证 = 开店成功即 progressed)。
+        - read_only=False:开店前 hp 三件组取**开店前的备战观察**(商店开态
+          HP 区不可读,W970 §4.3.4 读互斥承接;结算真值链已在 gated_hp 收口,
+          trusted 位 = 本帧可读)→ 商店动作波循环(run_buy_waves:观察 →
+          decide_shop_screen → 执行至首个 RefreshShop → 重判,MAX_REFRESH 硬墙)
+          → CloseShopOp → finalize_buy_phase(买后重估/期望暂存/gold 对拍/
+          执行事实)→ 节点探针。
+
+        节点探针挂点 = CloseShopOp 完成后(店确定关的可靠时点;原
+        EnsureShopClosed 后字符串匹配判据退役,改类型分派)。
+        波循环失败路径不开收(店留着交上层/外环重新识别,同 BuyShopCards 原语义)。
+        """
+        from sr_od.application.currency_war.operations.prep.close_shop import (
+            close_shop,
+        )
+        from sr_od.application.currency_war.operations.prep.open_shop import (
+            open_shop,
+        )
+        match = self._match()
+        if match is None:
+            return False, '无 cw_match(对局未初始化)'
+        _r_open = open_shop(self)
+        if not _r_open.is_success:
+            return False, f'开店未生效({_r_open.status})'
+        if action.read_only:
+            self._observe(heavy=True)   # 开态观察刷新(gold 真值)
+            _r_close = close_shop(self)
+            if not _r_close.is_success:
+                return False, f'read_only 关店未生效({_r_close.status})'
+            self._probe_node_type()
+            return True, 'read_only 开店重读(gold 真值)'
+        st = getattr(obs, 'state', None)
+        hp_value = getattr(st, 'hp', None) if st is not None else None
+        hp_readable = bool(getattr(st, 'hp_readable', False))
+        hp_trusted = hp_readable
+        from sr_od.application.currency_war.operations.prep.buy_cards import (
+            run_buy_waves,
+        )
+        _rr, outcome = run_buy_waves(self, match, hp_value, hp_readable, hp_trusted)
+        if _rr is not None or outcome is None:
+            return (False, f'买牌波循环未完成'
+                    f'({_rr.status if _rr is not None else "无产出"})')
+        _r_close = close_shop(self)
+        if not _r_close.is_success:
+            return False, f'关店未生效({_r_close.status})'
+        from sr_od.application.currency_war.operations.prep.shop import (
+            finalize_buy_phase,
+        )
+        _summary = finalize_buy_phase(self, match, outcome,
+                                      hp_value, hp_readable, hp_trusted)
+        self._probe_node_type()
+        return True, f'买牌 {_summary}'
+
     def _run_prep_loop_v2(self, match, session, config) -> OperationRoundResult:
         """DirectorV2 备战循环(唯一生产路径;端口全部复用现役件)。
 
@@ -1941,6 +2049,31 @@ class PrepDirector(SrOperation):
                 return False, f'v2适配器:op_key 无绑定 {op.op_key}'
             obs = acct['last_obs']
             key = op.op_key
+            # W970 批 C(流程层编排接管):OpenShop = 流程层商店编排
+            # (开店→商店动作循环→CloseShopOp→节点探针;类型分派,不经
+            # 执行器——EnsureShop/RunBuyPhase 意图已退役,探针挂点随迁)。
+            if isinstance(action, OpenShop):
+                _unit = not action.read_only   # 非只读 = 一个购买单元(原 RunBuyPhase 边界)
+                if _unit and obs is not None:
+                    self._spend_unit_open(obs)
+                try:
+                    progressed, detail = self._open_shop_phase(action, obs)
+                except Exception as e:
+                    if _unit:
+                        self._spend_unit_close(progressed=False,
+                                               detail=f'执行异常:{e}',
+                                               boundary='aborted')
+                    raise
+                if _unit:
+                    self._spend_unit_close(
+                        progressed=progressed, detail=detail,
+                        boundary='closed' if progressed else 'failed')
+                acct['progressed'] = progressed
+                log.info(f'[cw][director-v2] step {key} → {"✓" if progressed else "✗"} {detail}')
+                # 期望态层·经验(仅 progressed;detail = 买牌单元摘要,升N次口径同壳)
+                if progressed:
+                    self._xp_apply_buy_clicks(detail)
+                return progressed, detail
             acct.update(key=key, progressed=False, drag_expect=None,
                         equip_expect=None, dep_delta=0, dep_pre=None,
                         unit_open=False)
@@ -1978,22 +2111,9 @@ class PrepDirector(SrOperation):
                 self._xp_apply_levelup()
             elif progressed and isinstance(action, RunBuyPhase):
                 self._xp_apply_buy_clicks(detail)
-            # EnsureShopClosed 执行成功后 = 店确定关的可靠时点
-            #(节点行探针挂点;前置 wait_stable_frame 无条件化,离线契约放行)
-            # gate 稳定帧透传探针(复用帧 + 全图 OCR 缓存,省一次截图/OCR)
-            if 'EnsureShopClosed' in key and progressed:
-                _probe_frame = None
-                try:
-                    from sr_od.application.currency_war.obs.cw_observation_gate import (
-                        PROFILE_CLOSED,
-                        wait_stable_frame,
-                    )
-                    _probe_frame = wait_stable_frame(
-                        self, profile=PROFILE_CLOSED,
-                        segment='op_settle')
-                except Exception:   # noqa: BLE001  离线契约:放行
-                    pass
-                self._probe_node_type(_probe_frame)
+            # 节点行探针挂点随迁(W970 批 C):EnsureShopClosed 退役,探针改挂
+            # OpenShop 编排内 CloseShopOp 完成后(类型分派,见 _open_shop_phase);
+            # 本处原「'EnsureShopClosed' in key」字符串匹配判据按 §3 退役。
             return progressed, detail
 
         def _recover_port() -> bool:

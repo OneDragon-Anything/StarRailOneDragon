@@ -94,12 +94,27 @@ class LevelUp(PrepAction):
 
 @dataclass
 class EnsureShopOpen(PrepAction):
-    """开商店(gold 只在开态可读)。"""
+    """开商店(gold 只在开态可读)。⚠️ W970 批 C 退役(dd-017):生产路径改发
+    :class:`OpenShop`(read_only 变体),本类仅存续于旧环/离线兼容面。"""
 
 
 @dataclass
 class EnsureShopClosed(PrepAction):
-    """关商店(HP 只在关态可读)。"""
+    """关商店(HP 只在关态可读)。⚠️ W970 批 C 退役(dd-017):关店由商店决策空序列
+    触发 CloseShopOp;开态清洁面板场景改发 :class:`OpenShop`(read_only)。"""
+
+
+@dataclass
+class OpenShop(PrepAction):
+    """开商店意图(W970 批 C/§4.3.6,dd-017;EnsureShop 意图退役后的承接形态)。
+
+    read_only=False:显式开店 → 流程层编排商店动作循环(观察→decide_shop_screen
+    →波执行→空序列 CloseShopOp→节点探针)。
+    read_only=True:读数性开店(腾席链 b 取 gold 真值 / 开态清洁面板)→
+    OpenShopOp(幂等:已开不点)→ 商店观察刷新 → **不调商店决策** →
+    CloseShopOp → 回备战(M-6 门保持:free=0 不进买牌)。
+    """
+    read_only: bool = False
 
 
 @dataclass
@@ -128,6 +143,7 @@ PREP_ACTION_TYPES: tuple = (
     DeferSpheres, BailToOuter, ClickSpheres, OpenBox, OpenTome, PickBoxCard,
     SellBench, SellDeployed, DeployMove, LevelUp,
     EnsureShopOpen, EnsureShopClosed, StartBattle,
+    OpenShop,
     RunBuyPhase, RunDeploy, RunEquip,
 )
 # ⚠️ 教训:**新增 PrepAction 必须同步登记本白名单**——漏登记时 validate 拒

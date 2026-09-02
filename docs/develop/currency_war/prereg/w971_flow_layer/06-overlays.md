@@ -1,7 +1,7 @@
 # 06 · 补给 / 遭遇 / BOSS 简报 / 剩余 overlay 族
 
 > W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。数据源统一:结算屏读数(§04-shop 裁决),overlay 内不返回暗态观察。
-> 实施状态:§4 七 overlay op 已建(P3a,`operations/cw_flow/overlay_ops.py`;六 op 薄封装委托现役 handler,BookcardOp 按 loop 0i 现役读法直写);**handler 退役与「点选 + 确认」原子化、接线进主循环归 P3b 待接线**。§1/§2/§3(补给/遭遇/BOSS 简报)op 未建。
+> 实施状态:§4 七 overlay op **已接入主循环分发(P3b,dd-017)**——巨星/列车同行/骇入策划/命运卜者/祈愿试炼/星徽秘典六分支由循环分发 op 接管(六 op 薄封装委托现役 handler,handler「点选+确认」原子化与退役归 overlay 原子化批,dd-017 决策 4);ArmoryBoxOp 待 PickBoxCard 迁 handler 族时接线。§1/§2/§3(补给/遭遇/BOSS 简报)op 未建。
 
 ## 1. 补给 overlay(与投资策略同构)
 

@@ -1,7 +1,7 @@
 # W970 · CW 画面分层架构重构设计(流程层 / 观察层按画面 / 决策层按画面拆 / op 原子化)
 
 - 日期:2026-09-02;状态:FINAL(对抗收敛:轮 1 三视角 30 findings + 轮 2 双视角复核 8 条 + 轮 3 收敛复核 3 条实现级修复,全处置;轮 2 悬置裁决项已决——方案①,dd-011 已 amended)
-- 实施进度:批 A(op 原子化)完成——`OpenShopOp`/`BuyCardsOp`/`CloseShopOp` 抽出(`operations/prep/open_shop.py`/`buy_cards.py`/`close_shop.py`),BuyShopCards 改编排壳,LOCKED_RESUME_ENHANCED 已删;源码锁迁移清单见 ADR 与测试仓对应锁改动;批 B(=W971 P2 黑板接口)完成——`decide_prep_screen`/`decide_shop_screen` 落地(§4.1 经 W971 §2.7 amendment 的 session 签名;旧接口保留为薄委托,sim 适配独立批),LevelUp→LevelUpShop 拆分(dd-014);批 C/D 未开始
+- 实施进度:批 A(op 原子化)完成——`OpenShopOp`/`BuyCardsOp`/`CloseShopOp` 抽出(`operations/prep/open_shop.py`/`buy_cards.py`/`close_shop.py`),BuyShopCards 改编排壳,LOCKED_RESUME_ENHANCED 已删;源码锁迁移清单见 ADR 与测试仓对应锁改动;批 B(=W971 P2 黑板接口)完成——`decide_prep_screen`/`decide_shop_screen` 落地(§4.1 经 W971 §2.7 amendment 的 session 签名;旧接口保留为薄委托,sim 适配独立批),LevelUp→LevelUpShop 拆分(dd-014);**批 C(流程编排接管)完成(W971 P3b,dd-017)**——备战接口输出 `OpenShop/OpenShop(read_only)`、RunBuyPhase 解体为流程层编排(prep_director `_open_shop_phase`)、EnsureShop 意图退役(探针挂点随迁 CloseShopOp 后类型分派/腾席链 b read_only/_handle_bench_full 生产路径合流)、PREP_SETTLE_S 稳定门与 `_post_settle_auto_shop` 标志位退役(W971 §2.6/§2.11);批 D 未开始
 - 依据:用户口述架构愿景(2026-09-02,逐段)+ DD-010(装备区识别纯化)+ DD-011(操作完成自等动画/稳定门退役)
 - 性质:设计文档(先设计后实现);本文只定结构 / 职责 / 接口契约 / 迁移路线,不含行为参数值(值在代码常量,注释带出处)
 - **结论一句话:把「按画面分工」立为架构纪律——流程层识别画面并调度,观察/决策接口按画面拆分(备战接口=现 decide_prep_action 收敛,商店接口=现 decide_prep 收敛),op 原子化且完成后自等动画或等判稳标志;BuyShopCards 复合 op 解体,EnsureShop 条件动作退役(其隐藏挂点与决策语义随迁);分四批迁移,批 A 前置「源码锁迁移清单」。**

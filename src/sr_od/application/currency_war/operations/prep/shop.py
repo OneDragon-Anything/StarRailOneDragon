@@ -41,6 +41,135 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
+def finalize_buy_phase(op: SrOperation, match, outcome,
+                       hp_value: int | None, hp_readable: bool,
+                       hp_trusted: bool) -> str:
+    """买牌单元收尾(W970 批 C 抽出:RunBuyPhase 解体后由流程层
+    ``PrepDirector._open_shop_phase`` 与 sim 兼容壳 BuyShopCards.buy 共用;
+    单一源防双份漂移)。买后重估 / 买牌期望暂存 / gold 对拍 / 执行事实暂存,
+    返回单元摘要字符串(消费方包装成 round status/detail)。"""
+    state = outcome.state
+    config = outcome.config
+    total_buy = outcome.total_buy
+    total_level = outcome.total_level
+    total_refresh = outcome.total_refresh
+    total_sell = outcome.total_sell
+    total_sell_income = outcome.total_sell_income
+    _spend_executed = outcome.spend_executed
+    gold_open = outcome.gold_open
+    _plan_truncated = outcome.plan_truncated
+    _refresh_skipped = outcome.refresh_skipped
+    _refresh_attempted = outcome.refresh_attempted
+    _refresh_board_changed = outcome.refresh_board_changed
+    _buy_purchases = outcome.buy_purchases
+    _buy_has_sell = outcome.buy_has_sell
+    _buy_unidentified = outcome.buy_unidentified
+    _buy_pre_bench = outcome.buy_pre_bench
+    _buy_pre_deployed = outcome.buy_pre_deployed
+    # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
+    # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
+    # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。
+    # 买完用最新 bench 重估一次:桥/锁线当轮生效,紧随的 deploy
+    # 就有方向。幂等(update_target 是纯重估,已锁线不漂移)。
+    try:
+        if match is not None and (total_buy or total_level or total_refresh):
+            _post = None
+            if not total_level:
+                # 执行边界压缩·买后验证增量:本单元动作(无升级)只改
+                # gold/bench(plane/round/board 等机制不变量,构造单一源 =
+                # build_post_buy_incremental_state)→ 单区金真读 + tracked
+                # 重播,替代整帧 OCR。fail-closed 双维回退全量读:金失读
+                # (None)/tracked 空(真空与丢跟踪不可区分,见构造点契约)。
+                # 金读走稳定门(read_gold_settled):关店帧入账计数器可能
+                # 仍在跳,单帧会采到入账前旧值(误读维度造值;门=两帧一致
+                # 才采信,不一致取末帧+留证)。
+                _inc_gold = None
+                with contextlib.suppress(Exception):
+                    _inc_gold = read_gold_settled(op.ctx, op.screenshot())
+                if _inc_gold is not None:
+                    _post = build_post_buy_incremental_state(
+                        state, _inc_gold,
+                        (match.session.tracked_bench_chars
+                         or _tracked_bench_chars(match.session.tracked_bench)),
+                        match.session.last_node_type or None,
+                        hp_value, hp_readable, hp_trusted)
+            if _post is None:
+                _post = read_game_state(op.ctx, op.screenshot(),
+                                        phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
+                _apply_hp(_post, hp_value, hp_readable, hp_trusted)
+                if match.session.last_node_type:
+                    _post.node_type = match.session.last_node_type
+            match.strategy.update_target(_post, match.session, config)
+    except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
+        log.debug('[cw] 买后重估失败(不阻塞): %s', e)
+    # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 PrepDirector 主环在
+    # RunBuyPhase 后的 heavy 定型帧上消费对账(surface='bench',
+    # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建
+    # (见单元头注释);计算失败静默跳过(best-effort,不阻塞买牌)。
+    if match is not None and _buy_purchases \
+            and not _buy_has_sell and not _buy_unidentified:
+        with contextlib.suppress(Exception):
+
+            from sr_od.application.currency_war.kernel.cw_prep_expect import (
+                compute_buy_expect,
+            )
+            _buy_expect = compute_buy_expect(
+                _buy_purchases, _buy_pre_bench, _buy_pre_deployed)
+            if _buy_expect is not None:
+                match.session.pending_buy_expect = _buy_expect
+    # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(逐动作执行时
+    # 累计的 _spend_executed:买价+升级费+当次刷价)vs 关店后实际读数 ——
+    # expected = 开店首读金 − 全程执行花金 + 全程卖入。基线必须取首读快照
+    # 而非末波重读值(后者已净含各波花销,再减全程账 = 跨波重复扣,多波
+    # 刷新场景期望恒偏低,量级=前面各波刷新费合计)。(read_gold stylized
+    # 间歇漏,但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有
+    # 毒(stylized 漏读 / cost 错 / 未观收入),留证统计毒化率;机制核对器
+    # (r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
+    if total_buy or total_level or total_refresh or total_sell:
+        _spend = _spend_executed
+        _final_gold = read_gold(op.ctx, op.screenshot())
+        # 金面收口:关店实读金无条件暂存(无论对拍是否冲突)——director
+        # 单元关闭落账时经 record_spend_unit 消费,填 spend_ledger 预留
+        # 字段 gold_close。此前只有 mismatch 才落冲突行,「对拍通过」与
+        # 「read_gold 失读」离线不可分(三态判定 unknown 面);失读(None)
+        # 照记(trusted=False),unknown 占比降到读失败率。分类器零改动。
+        from sr_od.application.currency_war.telemetry import state as _cw_tel
+        _cw_tel.set_unit_gold_close(_final_gold)
+        # 迁移审计 w62(git 历史) 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
+        # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
+        # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
+        _expected = expected_gold_after_actions(
+            gold_open if gold_open is not None else state.gold,
+            _spend, total_sell_income)
+        if _final_gold is not None and abs(_final_gold - _expected) > 2:
+            from sr_od.application.currency_war.kernel.cw_observe import (
+                obs_conflict as _oc,
+            )
+            _oc('gold_delta', _expected, _final_gold, None,
+                verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
+                source='shop_spend_audit', plane=state.plane, round_num=state.round_num,
+                spend=_spend)
+    # `w577_refresh_fee_and_andon/`:「计划≠尝试」执行事实 → 单元账暂存(director 落账时经模块级
+    # record_spend_unit 消费进 spend_ledger;与 set_unit_gold_close 同槽
+    # 模式)。全缺省不调(免残留噪声);best-effort 不阻塞收工。
+    if _plan_truncated or _refresh_attempted \
+            or _refresh_skipped is not None:
+        with contextlib.suppress(Exception):
+            # 遥测模块显式别名(裸 state=GameState 变量,误绑会被
+            # suppress 吞成执行事实静默断流,同 free_refresh 留证段)
+            from sr_od.application.currency_war.telemetry import state as _cw_tel
+            _cw_tel.set_unit_exec_facts(
+                plan_truncated=_plan_truncated,
+                refresh_skipped=_refresh_skipped,
+                refresh_attempted=_refresh_attempted,
+                refresh_board_changed=_refresh_board_changed)
+    return (
+        f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
+        f'卖{total_sell}张(+{total_sell_income}金,守卫拦{outcome.total_sell_skip}) '
+        f'(gold={state.gold} lv={state.level} plane={state.plane})'
+    )
+
+
 class BuyShopCards(SrOperation):
     """备战阶段:开商店 → 决策驱动买牌/升等级 → 关商店。
 
@@ -231,126 +360,8 @@ class BuyShopCards(SrOperation):
         if not _r_close.is_success:
             return _r_close
 
-        state = outcome.state
-        config = outcome.config
-        total_buy = outcome.total_buy
-        total_level = outcome.total_level
-        total_refresh = outcome.total_refresh
-        total_sell = outcome.total_sell
-        total_sell_income = outcome.total_sell_income
-        _spend_executed = outcome.spend_executed
-        gold_open = outcome.gold_open
-        _plan_truncated = outcome.plan_truncated
-        _refresh_skipped = outcome.refresh_skipped
-        _refresh_attempted = outcome.refresh_attempted
-        _refresh_board_changed = outcome.refresh_board_changed
-        _buy_purchases = outcome.buy_purchases
-        _buy_has_sell = outcome.buy_has_sell
-        _buy_unidentified = outcome.buy_unidentified
-        _buy_pre_bench = outcome.buy_pre_bench
-        _buy_pre_deployed = outcome.buy_pre_deployed
-        # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
-        # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
-        # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。
-        # 买完用最新 bench 重估一次:桥/锁线当轮生效,紧随的 deploy
-        # 就有方向。幂等(update_target 是纯重估,已锁线不漂移)。
-        try:
-            if match is not None and (total_buy or total_level or total_refresh):
-                _post = None
-                if not total_level:
-                    # 执行边界压缩·买后验证增量:本单元动作(无升级)只改
-                    # gold/bench(plane/round/board 等机制不变量,构造单一源 =
-                    # build_post_buy_incremental_state)→ 单区金真读 + tracked
-                    # 重播,替代整帧 OCR。fail-closed 双维回退全量读:金失读
-                    # (None)/tracked 空(真空与丢跟踪不可区分,见构造点契约)。
-                    # 金读走稳定门(read_gold_settled):关店帧入账计数器可能
-                    # 仍在跳,单帧会采到入账前旧值(误读维度造值;门=两帧一致
-                    # 才采信,不一致取末帧+留证)。
-                    _inc_gold = None
-                    with contextlib.suppress(Exception):
-                        _inc_gold = read_gold_settled(self.ctx, self.screenshot())
-                    if _inc_gold is not None:
-                        _post = build_post_buy_incremental_state(
-                            state, _inc_gold,
-                            (match.session.tracked_bench_chars
-                             or _tracked_bench_chars(match.session.tracked_bench)),
-                            match.session.last_node_type or None,
-                            hp_value, _hp_readable, _hp_trusted)
-                if _post is None:
-                    _post = read_game_state(self.ctx, self.screenshot(),
-                                            phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
-                    _apply_hp(_post, hp_value, _hp_readable, _hp_trusted)
-                    if match.session.last_node_type:
-                        _post.node_type = match.session.last_node_type
-                match.strategy.update_target(_post, match.session, config)
-        except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
-            log.debug('[cw] 买后重估失败(不阻塞): %s', e)
-        # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 PrepDirector 主环在
-        # RunBuyPhase 后的 heavy 定型帧上消费对账(surface='bench',
-        # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建
-        # (见单元头注释);计算失败静默跳过(best-effort,不阻塞买牌)。
-        if match is not None and _buy_purchases \
-                and not _buy_has_sell and not _buy_unidentified:
-            with contextlib.suppress(Exception):
-
-                from sr_od.application.currency_war.kernel.cw_prep_expect import (
-                    compute_buy_expect,
-                )
-                _buy_expect = compute_buy_expect(
-                    _buy_purchases, _buy_pre_bench, _buy_pre_deployed)
-                if _buy_expect is not None:
-                    match.session.pending_buy_expect = _buy_expect
-        # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(逐动作执行时
-        # 累计的 _spend_executed:买价+升级费+当次刷价)vs 关店后实际读数 ——
-        # expected = 开店首读金 − 全程执行花金 + 全程卖入。基线必须取首读快照
-        # 而非末波重读值(后者已净含各波花销,再减全程账 = 跨波重复扣,多波
-        # 刷新场景期望恒偏低,量级=前面各波刷新费合计)。(read_gold stylized
-        # 间歇漏,但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有
-        # 毒(stylized 漏读 / cost 错 / 未观收入),留证统计毒化率;机制核对器
-        # (r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
-        if total_buy or total_level or total_refresh or total_sell:
-            _spend = _spend_executed
-            _final_gold = read_gold(self.ctx, self.screenshot())
-            # 金面收口:关店实读金无条件暂存(无论对拍是否冲突)——director
-            # 单元关闭落账时经 record_spend_unit 消费,填 spend_ledger 预留
-            # 字段 gold_close。此前只有 mismatch 才落冲突行,「对拍通过」与
-            # 「read_gold 失读」离线不可分(三态判定 unknown 面);失读(None)
-            # 照记(trusted=False),unknown 占比降到读失败率。分类器零改动。
-            from sr_od.application.currency_war.telemetry import state as _cw_tel
-            _cw_tel.set_unit_gold_close(_final_gold)
-            # 迁移审计 w62(git 历史) 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
-            # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
-            # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
-            _expected = expected_gold_after_actions(
-                gold_open if gold_open is not None else state.gold,
-                _spend, total_sell_income)
-            if _final_gold is not None and abs(_final_gold - _expected) > 2:
-                from sr_od.application.currency_war.kernel.cw_observe import (
-                    obs_conflict as _oc,
-                )
-                _oc('gold_delta', _expected, _final_gold, None,
-                    verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
-                    source='shop_spend_audit', plane=state.plane, round_num=state.round_num,
-                    spend=_spend)
-        # `w577_refresh_fee_and_andon/`:「计划≠尝试」执行事实 → 单元账暂存(director 落账时经模块级
-        # record_spend_unit 消费进 spend_ledger;与 set_unit_gold_close 同槽
-        # 模式)。全缺省不调(免残留噪声);best-effort 不阻塞收工。
-        if _plan_truncated or _refresh_attempted \
-                or _refresh_skipped is not None:
-            with contextlib.suppress(Exception):
-                # 遥测模块显式别名(裸 state=GameState 变量,误绑会被
-                # suppress 吞成执行事实静默断流,同 free_refresh 留证段)
-                from sr_od.application.currency_war.telemetry import state as _cw_tel
-                _cw_tel.set_unit_exec_facts(
-                    plan_truncated=_plan_truncated,
-                    refresh_skipped=_refresh_skipped,
-                    refresh_attempted=_refresh_attempted,
-                    refresh_board_changed=_refresh_board_changed)
-        return self.round_success(
-            f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
-            f'卖{total_sell}张(+{total_sell_income}金,守卫拦{outcome.total_sell_skip}) '
-            f'(gold={state.gold} lv={state.level} plane={state.plane})'
-        )
+        return self.round_success(finalize_buy_phase(
+            self, match, outcome, hp_value, _hp_readable, _hp_trusted))
 
     def _handle_bench_full(self, screen) -> bool:
         """备战席已满 → 升等级 + 循环卖前几个 bench 清警告(位置式,不需角色身份)。

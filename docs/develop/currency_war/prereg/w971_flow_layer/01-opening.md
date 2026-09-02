@@ -1,7 +1,7 @@
 # 01 · 简报 op / 开局序列 / 位面切换
 
 > W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
-> 实施状态:本篇 op 已建(P3a,`operations/cw_flow/`:BriefingOp / PlaneTransitionOp / WaitOneOneOp / OpeningSequence 编排壳含首帧分流骨架);**接线进 battle_loop 主循环归 P3b 待接线**(壳未接入,现役 handler 未退役)。
+> 实施状态:**已接线(P3b,dd-017)**——OpeningSequence 接进主循环开局路径(run 首帧分流,接管局 §2.1 直进常态分发);0a0b 位面简报内联/位面过渡内联/开局投资环境段三段退役;BriefingOp 内联直写 session(HandleBriefing 退役,ctx 信箱删除);位面过渡由循环分发 PlaneTransitionOp。
 
 ## 1. BriefingOp:简报观察收敛为单 op
 

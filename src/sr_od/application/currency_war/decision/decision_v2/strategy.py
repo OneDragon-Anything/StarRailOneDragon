@@ -97,13 +97,11 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     ClickSpheres,
     DeferSpheres,
     DeployMove,
-    EnsureShopClosed,
-    EnsureShopOpen,
     LevelUp,
     OpenBox,
+    OpenShop,
     OpenTome,
     PickBoxCard,
-    RunBuyPhase,
     RunDeploy,
     RunEquip,
     SellBench,
@@ -836,8 +834,11 @@ class DecisionV2Strategy(CwStrategy):
             # live 2026-08-14(1-2 实锤):商店开态奖励面板 [1257,140,1662,493] 与「刷新概率表」
             # 按钮 [945,360,1415,410] 重叠(x1257-1415∩y360-410)——HoughCircles 把按钮图形误检成
             # 假球,点击即开概率表弹窗(遮挡 → bail → 乒乓)。商店开 → 先关店,清洁面板上再收球。
+            # W970 批 C:EnsureShopClosed 退役 → OpenShop(read_only) 编排
+            # (幂等开店[已开不点]→观察刷新→不调商店决策→CloseShopOp→回备战,同收
+            # 「清洁面板」效果)。
             if obs.shop_open:
-                return EnsureShopClosed()
+                return OpenShop(read_only=True)
             # live 2026-08-15(M12 1-9 实锤):owned 装备栏溢出到奖励区 → 道具图标被误检成假球,
             # 点击无效 → 验证失败循环 → bail×3 停机。defer 门扩到收球:反复失败(框架置 defer)后
             # 放弃收球走主流程;下轮环入口 defer 清零重判(真球可再收,自愈)。
@@ -1001,8 +1002,11 @@ class DecisionV2Strategy(CwStrategy):
                 _lk2 = getattr(session, 'free_bench_gold_wait', 0) + 1
                 session.free_bench_gold_wait = _lk2
                 if _lk2 <= 1:
-                    log.info('[cw][prep] 腾席链b:需 gold 真值 → EnsureShopOpen(开态重读)')
-                    return EnsureShopOpen()
+                    # W970 批 C(§4.3.6 腾席链 b 读数性开店):EnsureShopOpen 退役 →
+                    # OpenShop(read_only)——开店成功 = 本轮有进展(r364 进展保证语义
+                    # 由 OpenShopOp 成功承担)。
+                    log.info('[cw][prep] 腾席链b:需 gold 真值 → OpenShop(read_only) 开态重读')
+                    return OpenShop(read_only=True)
                 # r366b(review A3 修,补齐注释宣称的中间态):第 2 次仍无
                 # 真值 = 无进展环 → **先用 stale gold 试算 level_up_gate**
                 # (level_up_cost 缺省 4;金够就升——升级破满席是最优解,
@@ -1060,7 +1064,10 @@ class DecisionV2Strategy(CwStrategy):
                 if not isinstance(step, DeferSpheres):
                     return step
                 return self._main_flow_step(obs, session, config)   # 链全空 → 部署段
-            return RunBuyPhase()
+            # W970 批 C(RunBuyPhase 解体):主流程买牌段改发显式开店意图,
+            # 流程层(prep_director._open_shop_phase)编排 开店→商店动作循环→
+            # CloseShopOp→节点探针;组合壳 BuyShopCards 仅存续于 sim 兼容入口。
+            return OpenShop()
         if session.prep_phase == 1:
             session.prep_phase = 2
             return RunDeploy()

@@ -177,6 +177,8 @@ for _cls, _fam, _dom in [
     ('LevelUp', 'level_up', 'shop'),
     ('EnsureShopOpen', 'ensure_shop_open', 'shop'),
     ('EnsureShopClosed', 'ensure_shop_closed', 'shop'),
+    # W970 批 C:EnsureShop 意图退役后的承接形态(§4.3.6 read_only 变体)
+    ('OpenShop', 'open_shop', 'shop'),
     ('StartBattle', 'start_battle', 'battle'),
     ('RunBuyPhase', 'run_buy_phase', 'shop'),
     ('RunDeploy', 'run_deploy', 'deploy'),

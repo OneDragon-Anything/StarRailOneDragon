@@ -18,4 +18,5 @@
 | [dd-014](dd-014-blackboard-decision-interfaces.md) | DD-014:黑板模式决策接口落地——decide_prep_screen/decide_shop_screen(session 签名)+ 观察写路径收编 + match 建立前移 | accepted | 2026-09-02 |
 | [dd-015](dd-015-equip-drag-failure-degrade.md) | DD-015:装备拖拽失败降级——失败件局内拉黑(≥2 次跨轮记忆)+ 跳过继续不中止整批 + 后排拖点随布局档修正 | accepted | 2026-09-02 |
 | [dd-016](dd-016-residual-fill-deploy-p24.md) | DD-016:cap 空槽补部署——P24 残余补部署支配接线到部署执行层(留置散牌填空,同名禁双/cap 动态门保留) | accepted | 2026-09-02 |
+| [dd-017](dd-017-p3b-orchestration-takeover.md) | DD-017:W971 P3b 编排切换——开局编排接线/overlay 分发接管/纯分发器接管备战商店(EnsureShop·RunBuyPhase 退役→OpenShop 形态)/ctx 信箱退役 | accepted | 2026-09-02 |
 | [adr-0431](adr-0431-hp-down-guard-battle-fact.md) | ADR-0431(历史 ADR):hp 下行守卫——「幅度 × 战斗事实」联合判据与复现确认通道;2026-09-02 判据按机制重推导部分取代,见文内修订记录 | accepted(部分取代,见文内修订节) | 2026-08-28 |

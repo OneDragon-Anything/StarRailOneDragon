@@ -135,19 +135,13 @@ class CurrencyWarRunLoop(SrOperation):
     # 2026-08-04 实测(失败结算屏 OCR):「下一页」x922y882w76h33、「返回货币战争」x885y882w149h31
     # → 中心均 ~(960,898)。原 (900,882) 偏左 22px 落在按钮左边缘外 → 点空 → 结算翻页卡死。
     SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
-    # 子态稳定门(2026-08-18 用户定调「连续3秒子态稳定再分发」):节点结算后游戏**先渲染备战、
-    # 再按下一节点类型弹 overlay**(普通战斗节点=商店面板/奖励=奖励面板/投资类=对应选择屏;
-    # 策略→环境可链式)。半开帧上分发 = 在未定型画面上行动——两类实锤:M47 ClickSpheres 误点
-    # (22:34:46/50)、bench_unidentified 钩子在 overlay 帧误采(11:17 投资策略帧)。
-    # 门语义:备战分支**连续**命中 ≥ 本值才派 PrepDirector;期间只观察(overlay 弹出后 0e 系
-    # 分支先于本分支接管,处理完回备战时门重新计时——链式 overlay 逐个消化)。
-    # ⚖️ ADR-0213 批次4 归属声明(r336):本门是「分支分发层」的
-    # 排程性迁移防御(overlay-after-prep),与 PrepPhase 环内
-    # gate(帧内动画防御)正交——**不迁入 gate 体系**(review
-    # 双方实证:双帧替代丢时间维度会重开 M47);结算屏/事件
-    # overlay 帧的识别走各 handler 自带锚+置信度门,同属
-    # 本层职责(三道防线:锚存在/conf≥0.9/同屏指纹去重)。
-    PREP_SETTLE_S: ClassVar[float] = 3.0
+    # ⚖️ PREP_SETTLE_S 备战稳定门已退役(W971 §2.6/03-prep §1):「识别到什么
+    # 画面,就进入对应的 op」——半开帧/延迟 overlay 防护替身 = ①逐动作回流程层
+    # 确认画面(overlay 弹出当步即见,转入 overlay op)②触发计算式追加等待
+    # (03-prep §3 DeployMove 行)③director 环入口清场+自动开店预收探针。
+    # 原「按最长动画盲等 3s」的门与其 bookkeeping(_frame_is_prep 族)一并删除。
+    # 同批退役:_post_settle_auto_shop 标志位(结算后自动开店判稳收编 director
+    # 环入口预收探针 + 准备就绪锚,不再跨分支传标志)。
 
     def __init__(self, ctx: SrContext, max_rounds: int | None = None):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
@@ -164,12 +158,6 @@ class CurrencyWarRunLoop(SrOperation):
         # None = 现行跑到对局结束/超时(向后兼容)。app 从 config.max_rounds 透传;run_operation 可直传。
         self._max_rounds: int | None = max_rounds
         self._rounds_done: int = 0
-        # 子态稳定门状态(见 PREP_SETTLE_S 注释):_frame_is_prep=本帧是否走备战分支
-        # (迭代开头 shift 到 _prev_frame_prep 后清零,备战分支命中再置);_prep_entry_ts=
-        # 本次备战相位的首命中时刻(连续性断开/新相位 → 重置重计)。
-        self._frame_is_prep: bool = False
-        self._prev_frame_prep: bool = False
-        self._prep_entry_ts: float | None = None
         # r119 停滞 watchdog 状态:画面指纹采样(OCR 关键词 frozenset 哈希)。
         # 每 STALL_SNAPSHOT_EVERY iter 采样一次;连续 STALL_N 次相同 → 哨兵。
         self._stall_last_fp: int | None = None
@@ -215,10 +203,6 @@ class CurrencyWarRunLoop(SrOperation):
         self._cw_resume_candidate: bool = self._is_new_match
         self._cw_locked_resume: bool = False   # 锁定确认(探针零响应)→ 直接出战
         self._cw_locked_round: int = 0         # 锁定确认时的轮次(遥测/日志锚)
-        # 接管局补采(boss+词缀)重试账:成功或 2 次失败后停(过场半开帧首试
-        # 失败实证 22:17);见备战稳定门后采集块。
-        self._cw_takeover_done: bool = False
-        self._cw_takeover_tries: int = 0
         # 「返回投资策略选择」按钮出现计数(症状报警用:出现=上游策略屏处理失败)
         self._cw_back_btn_count: int = 0
         # 迁移审计 w103(git 历史) 件1(ADR-0342):策略失活连击(连续完整轮无 strategy_id 决策行)
@@ -828,19 +812,15 @@ class CurrencyWarRunLoop(SrOperation):
                     recorder.record_exogenous(_st0.round_num, 'resumed_match',
                                                   detail=f'P{_st0.plane}-r{_st0.round_num} 残局续跑',
                                                   state=_st0)
-            # 接管局补采(boss+词缀)迁至**首个稳定备战帧**(备战稳定门后,
-            # 画面保证在备战):首版挂 iter==1,起跑遇战斗/结算时 op 入口
-            # 核对失败且不重来(22:03 实跑漏采实证)。见备战分支 _cw_takeover_collect。
+            # 接管局补采(boss+词缀)挂点 = 干净备战观察(W971 §2.1,PrepDirector
+            # 环入口 gate 后稳定帧执行;稳定门退役后由备战观察承担)。
             self.ctx.cw_match.strategy.on_match_start(
                 _st0, self.ctx.cw_match.session, self._cw_config)
 
-        # 「返回投资策略选择」分支已挪入备战分支(稳定门之后,2026-08-26 用户定性:
+        # 「返回投资策略选择」分支已挪入备战分支(2026-08-26 用户定性:
         # 该按钮出现 = 上游投资策略屏处理失败的 symptom)——确定是备战画面后再
         # 特殊处理,不在备战判定前全屏扫(原位置吞掉策略屏自身 → 点标题死循环)。
-        # 子态稳定门 bookkeeping(见 PREP_SETTLE_S):shift 本帧标志到 prev 后清零 ——
-        # 备战分支命中时置回 True;下迭代 prev=False(非备战/overlay/结算)→ 新相位重计时。
-        self._prev_frame_prep = self._frame_is_prep
-        self._frame_is_prep = False
+        # (原子态稳定门 bookkeeping 随 PREP_SETTLE_S 退役删除,见类常量注。)
 
         # [历史停机钩子已全部建档移除](hook审计 S8/r351 删死代码:循环体
         # `for ... in ():` 永不执行)——r24 教训见 git:钩子停机的前提是该屏
@@ -1091,38 +1071,14 @@ class CurrencyWarRunLoop(SrOperation):
         # 半开帧可从底层透出命中,prep.md §时序)。双锚同帧命中才认备战。
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
-            self._frame_is_prep = True   # 稳定门 bookkeeping(本帧走备战分支)
             self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
-            # ⚖️ 子态稳定门(2026-08-18 用户定调):结算→备战先渲染→节点类型 overlay 后弹
-            # (普通战斗=商店面板/奖励/投资类…;策略→环境链式)—— 半开帧分发 = 未定型画面
-            # 上行动(M47 ClickSpheres 误点 / bench_unidentified overlay 帧误采,两类实锤)。
-            # 门:备战分支连续命中 ≥ PREP_SETTLE_S 才派 Director;期间只观察(round_wait 让
-            # overlay 弹出,弹出后 0e 系分支先于本分支接管,消化完回备战重新计时 —— 链式
-            # overlay 逐个走)。mid-phase 再入(prev=prep,如 Director bail 后重进)不重付。
-            if not self._prev_frame_prep or self._prep_entry_ts is None:
-                self._prep_entry_ts = time.monotonic()
-                log.info('[cw-loop] 备战相位进入 → 稳定门计时 %.1fs(PREP_SETTLE_S)',
-                         self.PREP_SETTLE_S)
-            if time.monotonic() - self._prep_entry_ts < self.PREP_SETTLE_S:
-                return self.round_wait(wait=1.0)   # 只观察:等 overlay 弹出/画面定型
-            # 自动开店动画判稳(用户口述 2026-09-02 场景①):结算/补给/投资策略/遭遇
-            # 选择后回备战,商店自动弹出(#14 触发源族)——「备战阶段」文本在面板就位后
-            # 才于建档矩形([250,30,520,120])可读 = 弹出动画稳定。仅结算后首轮查
-            # (标志置位,纯备战轮零增量);面板弹出中未入位 → round_wait 下轮再查。
-            # 注:此处的「备战阶段」是动画稳定标志(面板就位判定),不是画面分支判据
-            # (它两档同址,分支判据见上方双锚 + 「按钮-收起」)。
-            # 过渡实现:W971 §2.11 战斗等待 op 落地后,此判稳收编为该 op 完成判据
-            # (完成判据白名单含「备战阶段」),本标志位段随批 C 退役。
-            if getattr(self, '_post_settle_auto_shop', False):
-                if not self.round_by_find_area(
-                        screen, '货币战争-备战-开商店', '标识-备战阶段').is_success:
-                    return self.round_wait(wait=1.0)
-                self._post_settle_auto_shop = False
-                log.info('[cw-loop] 自动开店面板就位(备战阶段识别)→ 交 Director')
+            # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
+            # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = director 环入口
+            # 清场 + 自动开店预收探针 +「备战阶段」就绪锚;见类常量注。)
             # 备战被锁(顶部「返回投资策略选择」按钮)→ 点去选策略(check#4 接手)。
             # 2026-08-26 挪位(原在备战判定前全屏扫):用户定性该按钮出现 = 上游
             # 投资策略屏处理失败的 symptom(策略屏点歪才退回备战带此按钮;同族 =
-            # 补给/遭遇屏的「返回XX选择」)→ 先确定是备战画面(双锚+稳定门已过)
+            # 补给/遭遇屏的「返回XX选择」)→ 先确定是备战画面(双锚)
             # 再特殊处理,顺带免掉每帧全屏 OCR。lcs_percent=0.9 保留:防与
             # 「请选择投资策略」共享「选择投资策略」(6/8=0.75=默认阈值之上)误匹配
             # → 投资策略屏被吞(点标题不动作)→ 死循环(2026-08-04 实跑,卡 plane1)。
@@ -1132,79 +1088,8 @@ class CurrencyWarRunLoop(SrOperation):
                 log.warning('[cw!][loop] 返回按钮=上游选择屏处理失败症状(策略屏点歪),第%d次',
                             self._cw_back_btn_count)
                 return self.round_wait(wait=2)
-            # 开局 boss 实采(接管场景重采,ADR-0397 勘误节):触发 = 新 match 且
-            # session.briefing_bosses 空 = 本局尚无位面序真值。开局局简报读得时
-            # __init__ 已把简报真值 copy 进 session(简报排列=位面序,用户
-            # 2026-08-28 裁决),不再触发本块——简报即真值,零额外采集;本块覆盖
-            # ①接管局(bot 没走过简报链,1-1 手开局/MCP 重启丢内存最典型)
-            # ②开局局简报读空的兜底(读数失败仍需真值,位面 2/3 boss_fit 不至于全中性)。
-            # 每次必采(~17s,三卡三点);失败不阻塞对局(boss 缺省=中性 0.5,与
-            # 无数据同形)。在**首个稳定备战帧**执行(画面保证在备战;首版挂 iter==1
-            # 起跑遇战斗结算则 op 入口失败且不重来,22:03 实跑漏采实证)。
-            # CollectPlaneIntel 位面情报采集(三 boss 大图标 SIFT,逐位面
-            # 真值;佩佩局 3/3 实证)+ 词缀随采(位面详情横条;词缀只在
-            # 简报/位面详情/敌人信息浮层三画面,备战无此条——首版
-            # 误判备战常驻空读两轮后用户纠正)。结果进 session
-            # (bosses→state.plane_bosses/boss_fit;affixes→enemy_affixes/
-            # mechanics_fit;read_game_state 每轮从 session 同步,晚接不丢)。
-            # 难度不补(备战「文本-难度」有独立现读通道,用户裁决)。只试一次,
-            # 失败不阻塞对局(boss 缺省=中性 0.5,与无数据同形)。
-            # **可交互门(B 修,22:17/22:22 两轮 12retry 实证)**:稳定门保证
-            # 「是备战画面」≠「详情可点开」——boss 战后位面过场的备战半开帧
-            # id_mark 已命中但节点条是残影(交互无效)。节点条圆 ≥6(读得出
-            # =过场完成,点节点图标才开得了详情)才算可采;read_node_sequence
-            # 每帧本就在跑,此处只判读数,零额外成本。
-            if (self._is_new_match and not self._cw_takeover_done
-                    and not getattr(self.ctx.cw_match.session, 'briefing_bosses', None)):
-                _tk_slots = read_node_sequence(self.ctx, screen)
-                if _tk_slots is None:
-                    pass   # 节点条不可读(过场/overlay)→ 不消耗重试账,等下帧
-                else:
-                    self._cw_takeover_tries += 1
-                    if self._cw_takeover_tries > 2:
-                        self._cw_takeover_done = True
-                        log.info('[cw-loop] 接管补采两次未成,放弃(boss 缺省中性)')
-                        # 放弃也清空两池:残留值会被下局的
-                        # `not getattr(ctx, 'cw_plane_bosses')` 判空误消费(跨局泄漏)
-                        self.ctx.cw_plane_bosses = None
-                        self.ctx.cw_plane_affixes = None
-                    else:
-                        _sess = self.ctx.cw_match.session
-                        from sr_od.application.currency_war.operations.handlers.collect_plane_intel import (
-                            CollectPlaneIntel,
-                        )
-                        log.info('[cw-loop] 新局 boss/词缀无实采真值(session 空)→ 位面详情情报采集(可交互备战帧,第%d次)',
-                                 self._cw_takeover_tries)
-                        _pb = CollectPlaneIntel(self.ctx)
-                        _pb_res = _pb.execute()
-                        if _pb_res.success and getattr(self.ctx, 'cw_plane_bosses', None):
-                            self._cw_takeover_done = True
-                            # 保位写(ADR-0398):徽章态位面采得 None,丢弃 None
-                            # 会让后续位面名字左移错位(位面序真值变假)——原样写 3 槽。
-                            _names = list(self.ctx.cw_plane_bosses)
-                            _sess.briefing_bosses = _names   # 实采真值进 session(消费链:session→state.plane_bosses)
-                            log.info('[cw-loop] 开局 boss 实采完成(位面序保位,None=徽章态位面):%s', _names)
-                            # 对账网:实采真值 vs 简报读数(LCS 清洗后)逐位面比对,
-                            # 落 exogenous 行 + 不一致进 defect 台账(零决策行为,
-                            # 门控 config.briefing_reconcile;ADR-0397 勘误节)。
-                            from sr_od.application.currency_war.obs.cw_briefing_obs import (
-                                reconcile_briefing_vs_plane_intel,
-                            )
-                            reconcile_briefing_vs_plane_intel(
-                                getattr(_sess, 'briefing_bosses', None), _names,
-                                enabled=self._cw_config.briefing_reconcile)
-                        # 词缀随采结算与两池清空**只在本分支**(op 实际执行过):
-                        # 挂在外面会①在 _tk_slots is None 的等待帧执行(词缀池被
-                        # 空帧清掉)②引用未定义的 _sess(放弃/等待分支都没绑定)。
-                        if not getattr(_sess, 'briefing_affixes', None):
-                            _affixes = getattr(self.ctx, 'cw_plane_affixes', None) or []
-                            if _affixes:
-                                _sess.briefing_affixes = list(_affixes)
-                                log.info('[cw-loop] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
-                        # 成功取走/失败残留都清空(防泄漏到下局判空)
-                        self.ctx.cw_plane_bosses = None
-                        self.ctx.cw_plane_affixes = None
-                        screen = self.screenshot()   # op 已关详情回备战;刷新本帧再走备战逻辑
+            # 接管局补采(boss+词缀)已迁 PrepDirector(W971 §2.1/01-opening §2.1:
+            # 稳定门退役后挂点 = 干净备战观察;见 prep_director._run_loop 采集块)。
             # 迁移审计 w103(git 历史) 件1(ADR-0342):策略失活早停——连续 2 个**完整轮**无任何带
             # strategy_id 的决策行(决策层整轮未参与;迁移审计 w98(git 历史) 两局实录:57/61 行恒空、
             # P1 全程 0 买、金囤 91/100,兜底打满 40min 垃圾局)→ 停局重启加载
@@ -1647,10 +1532,9 @@ class CurrencyWarRunLoop(SrOperation):
             # REPORT.md「需验证」:每轮结算段固定链)。
             time.sleep(0.2)
             if self.round_by_find_and_click_area(self.screenshot(), '货币战争-结算', '按钮-继续挑战', success_wait=1).is_success:
-                # 自动开店窗口标志(用户口述 2026-09-02 场景①):战斗结算/补给/投资
-                # 策略/遭遇选择后回备战,商店自动弹出(#14 触发源族)——备战分支稳定门
-                # 后按「备战阶段」识别确认面板就位(见备战分支消费点)。
-                self._post_settle_auto_shop = True
+                # (自动开店窗口标志 _post_settle_auto_shop 已退役,W971 §2.11:
+                # 结算后自动开店判稳由 director 环入口预收探针 +「备战阶段」
+                # 就绪锚承接,不再跨分支传标志。)
                 # 停留计数(M39 实证 2026-08-16,3-1 普通轮结算):「继续挑战」OCR/模板全识别、
                 # 普通 click **不响应**(40min 空转同帧),长按 0.5s @ 底部中央才推进(手动实锤;
                 # 推进后进 P3 投资策略 = 3-1 只是普通关,非终局)。归因未定(焦点/热区偏移/交互
