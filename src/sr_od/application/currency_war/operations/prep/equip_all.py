@@ -19,6 +19,7 @@ bug#1 根治(W849 批,台账 6/6「retry 仍败」证明原地 retry 失败相�
 """
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -792,6 +793,26 @@ class EquipAll(SrOperation):
                     stall = 0
                     log.info('[cw-equip] %s → %s 穿了(diff=%.1f)', name, char_name, diff)
                 else:
+                    # [临时捕获钩子,根因定位后删本段+删flag——分类:临时捕获] 用户裁定
+                    # (2026-09-02):dd-015 残余疑点(6 槽档下拖拽 diff=0.0:拖拽原语
+                    # 落点/拾取识别)离线不可证实,实机首败即停保画面;本钩子存续期间
+                    # dd-015 降级(登记+跳过)被遮蔽,定位修复删除后恢复。
+                    self.save_screenshot(prefix='equip_drag_fail')
+                    _flag_dir = Path('.debug/temp/currency_war')
+                    _flag_dir.mkdir(parents=True, exist_ok=True)
+                    (_flag_dir / 'equip_drag_fail.flag').write_text(
+                        'HOOK-STOP equip_drag_verify_fail @equip_all M7 拖拽验证失败\n'
+                        f'装备={name} 角色={char_name} 拖点=({cx},{cy}) diff={diff:.1f}\n'
+                        '处理:画面=拖拽失败现场(后续件未继续);①对照 select_back_layout '
+                        '档位与 6 槽基线核对拖点落位;②查拖拽原语与拾取识别;'
+                        '③结论回填 dd-015 残余疑点\n'
+                        '删除条件:根因定位并修复后,删本钩子整段+删本flag(dd-015 降级恢复)\n',
+                        encoding='utf-8')
+                    log.warning('[cw!][equip] HOOK-STOP 拖拽验证失败(%s→%s diff=%.1f)'
+                                ' → 停机保画面(现场处理,见 equip_drag_fail.flag)',
+                                name, char_name, diff)
+                    self.ctx.run_context.stop_running()
+                    return self.round_wait(status='装备拖拽验证失败(钩子停机,现场处理)')
                     # dd-015:失败不中止整批——登记失败(≥2 次拉黑该对,跨轮存活),
                     # 跳过继续穿下一件。原 break 语义(复盘 g_20260902_181254 A 条
                     # 实证:单件连败 → 当轮其余 8-10 件全不穿)废弃;真持续失败由
