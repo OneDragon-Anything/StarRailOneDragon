@@ -353,6 +353,24 @@ CW 战斗段单独一个 op:出战 op 交回循环后,循环识别战斗/结算�
 
 最简画面 op:前置 = 循环识别 BOSS 简报(「标识-强敌来袭」,#26 建档);动作 = **点击空白**(推进);完成 = 交回循环重识别(简报消失后下一画面由循环分发,无额外等待声明)。
 
+### 2.16 剩余 overlay 族:一 overlay 一 op(2026-09-02 口述,用户授权枚举)
+
+统一模式:**识别待选项 → 决策 → 原子 op 操作 overlay 内容(点选/确认)→ 完成承诺 = 确认后 overlay 消失回备战,交回循环**(确认后做消失验证再交回,防重复选择;确认动画短等待可内联)。
+
+| overlay op(画面) | 待选项识别 | 决策 | 原子 op |
+|---|---|---|---|
+| **MegastarOp**(货币战争-盛会之星) | 候选立绘(SIFT) | decide_megastar(comp 引擎 × 乘区绑定,选择序 02 §7) | SelectMegastar → ConfirmMegastar |
+| **PartnerOp**(货币战争-列车同行) | 候选立绘(SIFT 立绘库,无角色名——决策输入受限) | core/build_around 命中兜底 | SelectPartner → ConfirmPartner |
+| **ArmoryBoxOp**(武装箱选卡 overlay) | 装备卡卡面 | 执行器默认(key_equips→材料通用性) | SelectBoxCard → ConfirmBox |
+| **WishTrialOp**(祈愿试炼) | 候选卡 | naive 首张 | SelectWishCard → ConfirmWish |
+| **PlannerEventOp**(银狼「我来当策划」) | 选项(PlannerOption) | decide_planner(策略模块,r104) | SelectPlannerOption → ConfirmPlanner |
+| **FortunePickerOp**(命运卜者强化) | 强化卡候选 | 执行器(强化卡选择) | SelectFortune → ConfirmFortune |
+| **BookcardOp**(星徽秘典四选一) | 四张卡 | 待定(现役 loop 0i 接管选卡;策略归口批 B 定) | SelectBookCard → ConfirmBook |
+
+- 全族共性:overlay 内原子 op 只有「点选 + 确认」两型;待选项识别(立绘 SIFT/卡面 OCR)写 session 喂决策;决策一律在策略接口(§2.13 原则,执行器默认类除外——其「决策」是固定规则非策略判断)。
+- 装备拾取(handle_equip_pick)不属选择 overlay(战斗掉落拾取动作),归类待定(战斗段/备战段),实现批定。
+- 中断挑战弹窗/位面详情 overlay:非选择类(流程处理),留主循环兜底分支(位面详情的情报采集职责归 CollectPlaneIntel,§2.11 不变)。
+
 ## 3. 目标架构总图(口述结束后整合:开局编排 + 位面切换 + 备战循环 + 结算链 + 局状态)
 
 ## 4. 局状态字段 × 更新者白名单(整理中)
