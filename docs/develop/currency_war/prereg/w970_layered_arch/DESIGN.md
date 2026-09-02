@@ -129,7 +129,7 @@ decide_shop_screen(obs_shop, session, config) -> list[ShopScreenAction]
 PrepScreenAction ∈ {DeployMove, SellDeployed, SellBench(腾席链 a2), StartBattle,
                     ClickSpheres, OpenBox, OpenTome,
                     PickBoxCard(过渡期,批 C 迁 handler 族),
-                    DeferSpheres, BailToOuter,
+                    DeferSpheres*(退役,W971 §2.6.1), BailToOuter*(退役,W971 §2.6.1),
                     OpenShop, OpenShop(read_only), RunDeploy*, RunEquip*,
                     EnsureShopClosed*(过渡期,批 C 退役)}
 ShopScreenAction ∈ {BuyCard, LevelUpShop, RefreshShop, SellBench(商店侧 d2),
@@ -137,7 +137,7 @@ ShopScreenAction ∈ {BuyCard, LevelUpShop, RefreshShop, SellBench(商店侧 d2)
 ```
 
 - `LevelUp` 拆 `LevelUpShop`(商店侧;现单一意图跨态共用,拆后执行器/遥测/对拍可消歧;备战侧暂无独立升级需求,出现时再增)。
-- 控制流意图(`DeferSpheres`/`BailToOuter`):框架信号,不走 execute 验证链(现状语义保持),由流程层直接消费。
+- 控制流意图(`DeferSpheres`/`BailToOuter`):**退役**(W971 §2.6.1 轮 4 用户质疑成立——新架构流程层每步重新识别分发,op 做完即交回是默认行为非信号;「故意不做」= 序列不含该动作,空序列合法;stall 判定归流程层基于 session 状态变化对账)。
 - `RunDeploy`/`RunEquip` 组合意图:**明确保留**(过渡期复合执行器;其内部原子化另立批次,不在本设计范围——与 RunBuyPhase 解体同思路,单独评估)。
 - 卖动作归属(R2 复核勘误):`SellBench` 为**两接口共用**(商店侧 d2 卖通道 + 备战侧腾席链 a2 卖杂件腾席,decision_v2/strategy.py:899)/`SellDeployed`(备战侧与谷底回滚)/`CompTransaction`(演进替换事务,含卖腿)——同轮已买/已卖集登记点随 decide_shop_screen 输入组装迁移(现 shop.py 波循环顶)。
 - `PickBoxCard`:过渡期仍由备战决策产出(现 strategy.py:759 规则 1),批 C 随补给箱 overlay 归 handler 族,迁出备战词表。
@@ -162,7 +162,7 @@ ShopScreenAction ∈ {BuyCard, LevelUpShop, RefreshShop, SellBench(商店侧 d2)
 
 #### 4.3.1 备战动作执行语义
 
-备战决策返回动作 list = **逐动作回流程层确认画面后执行**(执行器可受托做轻量锚快查,判定权在流程层)。理由:#24 羁绊 overlay 延迟 ~4s 弹出等 mid-run 画面变化必须每步暴露;现行防线(#24 快查锚)保留为实现形态。
+备战决策返回动作 list = **逐动作回流程层确认画面后执行**。理由:#24 羁绊 overlay 延迟 ~4s 弹出等 mid-run 画面变化必须每步暴露。mid-run overlay 的暴露机制(W971 §2.6.1 修正,替代初版「锚快查」):**计算式等待**——DeployMove 按 session.board + 部署 faction 计算触发型羁绊是否达标,会触发则追加 overlay 弹出窗等待,**不做 overlay 识别**,交回外层循环按画面分发(完备性:算「有无触发」不枚举 overlay 种类;执行器零识别)。
 
 #### 4.3.2 商店动作循环(两阶段重判,对抗轮 1 补)
 
