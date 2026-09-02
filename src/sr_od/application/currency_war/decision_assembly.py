@@ -2,7 +2,7 @@
 
 承接分包期 5 前原 decision_v2/adapter.py 的「装配侧」半部:决策具现
 ``DecideAdapter``(策略 decide → 执行器回放绑定)、实机观察 → Snapshot 的
-observe 端口 ``snapshot_from_obs``、旧环当权步影子比对(shadow_compare_*)。
+observe 端口 ``snapshot_from_obs``。
 纯映射半部(Snapshot→PrepObservation/GameState、PrepAction→AtomOp)留在
 decision 桶 ``decision_v2/adapter.py``——它们被决策核(prep_brain)内部消费,
 落 app 会造成 decision→app 反向边。
@@ -10,17 +10,16 @@ decision 桶 ``decision_v2/adapter.py``——它们被决策核(prep_brain)内�
 为何在 app:本模块 import prep_actions/prep_director/obs 执行面词汇,且被
 prep_director(备战环)消费——两侧都在 app 桶,装配边界归 app 是分包矩阵
 (DESIGN 分包 §3.2,app 依一切)的自然落位。
+
+旧环当权步影子比对(shadow_compare_* / SHADOW_STATS / v2_shadow_* 遥测
+事件)已随旧方案清退批删除:ADR-0465 迁移批 3 后旧环无生产者,比对无意义。
 """
 from __future__ import annotations
 
-import contextlib
-import copy
 from typing import Any
 
-from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.decision.decision_v2.adapter import (
     PREP_SUBSTATE_NAME,
-    action_to_atomop,
 )
 from sr_od.application.currency_war.decision.decision_v2.contracts import (
     SNAPSHOT_SCHEMA_VERSION,
@@ -32,10 +31,7 @@ from sr_od.application.currency_war.decision.decision_v2.contracts import (
     SupplyBox,
     Tome,
 )
-from sr_od.application.currency_war.kernel import cw_telemetry_exit
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    BailToOuter,
-    DeferSpheres,
     PrepAction,
     PrepObservation,
 )
@@ -73,11 +69,6 @@ def _registry_of(strategy: Any):
     return getattr(strategy, 'registry', None) or DEFAULT_REGISTRY
 
 
-def shadow_compare_enabled(strategy: Any) -> bool:
-    """影子比对开关(纯诊断工具,sim/离线对拍用;不改任何游戏动作)。"""
-    return bool(getattr(_registry_of(strategy), 'director_v2_shadow_compare', False))
-
-
 # ------------------------------------------------- obs → Snapshot(观察端口)
 
 def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
@@ -98,11 +89,11 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
             name=substate_name, evidence=('prep_director:observe',),
             confident=True),
         plane=(st.plane if st is not None else None)
-        or (last.plane if last is not None else 1),
+            or (last.plane if last is not None else 1),
         round_num=(st.round_num if st is not None else None)
-        or (last.round_num if last is not None else 1),
+            or (last.round_num if last is not None else 1),
         node_type=(st.node_type if st is not None else None)
-        or getattr(session, 'node_type_current', None),
+            or getattr(session, 'node_type_current', None),
         selected_difficulty=(st.selected_difficulty if st is not None else ''),
         gold=(st.gold if (st is not None and st.gold_readable) else None),
         gold_trusted=bool(obs.state_gold_trusted),
@@ -179,96 +170,8 @@ class DecideAdapter:
         return decision
 
     def execute(self, op: AtomOp) -> tuple[bool, str]:
-        """绑定回放执行(op_key → PrepAction → 现役执行器)。"""
+        """绑定回放执行(op_key → 绑定的 PrepAction → 现役执行器)。"""
         action = self._binding.get(op.op_key)
         if action is None:
             return False, f'v2适配器:op_key 无绑定 {op.op_key}'
         return self._executor.execute(action)
-
-
-# ------------------------------------------------- 影子比对(协议门1;§7)
-
-#: 影子比对运行计数(进程内留证;jsonl 为持久留证)。任何影子路径异常
-#: 只计数不影响现役决策(编排者放行条件②:零当权风险)。
-SHADOW_STATS: dict[str, int] = {'steps': 0, 'match': 0, 'divergence': 0,
-                                'error': 0}
-
-
-def shadow_compare_step(director: Any, match: Any, obs: PrepObservation,
-                        session: StrategySession, config: Any,
-                        old_action: PrepAction,
-                        out_dir: str | None = None) -> None:
-    """旧环当权步的影子比对(全隔离 best-effort;异常只计数不留患)。
-
-    隔离三件:①session 深拷贝(旧 decide 的 prep_phase 前移/r412 latch
-    等副作用不重放);②try/except 全包(异常 → error 计数 + log,不上抛);
-    ③零执行——影子只产出决策做逐位对照,不落地任何游戏动作。
-    比对粒度 = AtomOp/控制流标记(类型+op_key 指纹),同帧两次纯函数 decide。
-    """
-    SHADOW_STATS['steps'] += 1
-    record: dict[str, Any] = {}
-    try:
-        sess2 = copy.deepcopy(session)
-        snap = snapshot_from_obs(obs, sess2)
-        adapter = DecideAdapter(match.strategy, config, executor=None)
-        decision = adapter.decide(snap, sess2)
-        if isinstance(old_action, DeferSpheres):
-            old_sig = ('control', 'Defer')
-        elif isinstance(old_action, BailToOuter):
-            old_sig = ('control', 'Bail')
-        else:
-            _op = action_to_atomop(old_action)
-            old_sig = ('op', _op.op_key, _op.domain)
-        if decision.control is not None:
-            new_sig = ('control', type(decision.control).__name__)
-        elif decision.ops:
-            new_sig = ('op', decision.ops[0].op_key, decision.ops[0].domain)
-        else:
-            new_sig = ('op', '<empty>', '<none>')
-        record = {'old': old_sig, 'new': new_sig}
-        if old_sig == new_sig:
-            SHADOW_STATS['match'] += 1
-        else:
-            SHADOW_STATS['divergence'] += 1
-            log.warning(f'[cw][v2-shadow] 决策分歧 step={SHADOW_STATS["steps"]} '
-                        f'old={old_sig} new={new_sig}')
-            _shadow_telemetry(director, 'v2_shadow_divergence',
-                              f'old={old_sig} new={new_sig}')
-        _shadow_record(director, record, out_dir)
-    except Exception as e:   # noqa: BLE001  影子隔离:异常绝不影响现役决策
-        SHADOW_STATS['error'] += 1
-        log.warning(f'[cw][v2-shadow] 影子路径异常(已隔离,计数留证): {e}')
-        _shadow_telemetry(director, 'v2_shadow_error', str(e))
-        with contextlib.suppress(Exception):
-            _shadow_record(director, {'error': str(e)}, out_dir)
-
-
-def _shadow_telemetry(director: Any, event: str, detail: str) -> None:
-    """影子事件落遥测 exec_event(best-effort,失败静默)。
-    分包期 4:落账/run_id 归属键经 kernel/cw_telemetry_exit 出口钩子位
-    (缺省关=不落行;生产武装点=CurrencyWarApp.__init__)。"""
-    with contextlib.suppress(Exception):   # 影子隔离:遥测失败绝不影响现役决策
-        cw_telemetry_exit.record_exec_event(
-            run_id=cw_telemetry_exit.current_run_id() or '-',
-            round_num=0, action_family='V2Shadow', screen='battle_prep',
-            event=event, reason=detail[:200])
-
-
-def _shadow_record(director: Any, record: dict[str, Any],
-                   out_dir: str | None) -> None:
-    """影子步记录追加 jsonl(协议 §7.1;路径可注入供测试落 tmp_path)。"""
-    import json
-    import os
-    if out_dir is None:
-        out_dir = os.path.join('.debug', 'temp', 'currency_war',
-                               'w606_stage2_batch3')
-    os.makedirs(out_dir, exist_ok=True)
-    rid = 'local'
-    with contextlib.suppress(Exception):
-        # 分包期 4:run_id 归属键经 kernel/cw_telemetry_exit 出口钩子位
-        rid = cw_telemetry_exit.current_run_id() or 'local'
-    record['ts_step'] = SHADOW_STATS['steps']
-    record['stats'] = dict(SHADOW_STATS)
-    path = os.path.join(out_dir, f'compare_{rid}.jsonl')
-    with open(path, 'a', encoding='utf-8') as f:
-        f.write(json.dumps(record, ensure_ascii=False, default=str) + '\n')

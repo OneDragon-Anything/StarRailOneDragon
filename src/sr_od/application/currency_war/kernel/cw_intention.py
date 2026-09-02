@@ -61,9 +61,6 @@ from sr_od.application.currency_war.kernel.cw_comps import (
 from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRAITS
 from sr_od.application.currency_war.kernel.cw_line_switch import (
     e_rounds,
-    gate_counterfactual,
-    register_gate_block,
-    survival_gate,
 )
 from sr_od.application.currency_war.kernel.cw_plane_table import (
     NODES_PER_PLANE,
@@ -110,10 +107,6 @@ FALLBACK_COMP_NAME: str = '绯英欢愉'
 # 派生规则与 ``cw_plugins`` 内同源裁决口径见 ``cw_plugins.cross_line_skeleton``。
 # 快照测试锁派生结果(不等 = 数据错)。
 CROSS_LINE_SKELETON: tuple[str, ...] = _cross_line_skeleton()
-
-# (转型臂——停滞评估/降 weak/salvage 续命/P2 弱占位/升格派生——
-#  已随 sim A/B 判负整机制删码(开关生命周期第 4 态);决策 why、负结果
-#  数据与复活条件 = ADR-0509。)
 
 # ②类专属信号注册表(family → 专属羁绊名)。从 COMP_LIBRARY v2 家族派生
 # (``Comp.bond_signal`` 数据字段,cw_comps 各条承载)——COMP_LIBRARY 演进时
@@ -181,11 +174,6 @@ class IntentionState:
       的「目标/非目标」判定输入 = 本字段(非空时)∪ locked_comp。
     """
     lock_layer: int = 0                # 锁定时信号层(撤销出口②的「更高层级」基准)
-    prev_lock_layer: int = 0
-    """被撤线的原锁层暂存(换线门设计件 §3-3 R-C/FM-11):撤销出口①/②
-    降级 weak 时写入被撤的 lock_layer;门闩一次性回锁时恢复到 lock_layer,
-    使出口②撤销面不被回锁信号( layer=1 )收窄。生命周期=回锁消费后保留
-    至位面切换(闩清零时一并清零,陈旧值不跨位面);0=无暂存。"""
     lock_plane: int = 0                # 锁定时机(遥测)
     lock_round: int = 0
     transition_pair: tuple[str, ...] = ()  # ①锁局过渡对副方向(ADR-0367)
@@ -220,13 +208,8 @@ class IntentionState:
     """R3 断供驱逐的体系级断供计数器(体系键 → 连续无新件可见轮数;
     计数语义同 LineTrack.frozen_rounds——成员在可见面(在店∪到手)
     出现即清零)。"""
-    supply_drought: dict[str, int] = field(default_factory=dict)
-    """方向侧供给衰减计数器(兑现链方向侧设计;体系键 → 连续零在店
-    轮数 t,support′ = γ^t·support + β·[成员在店] 的衰减坐标)。
-    [坐标系] 键域 = TRANSITION_TRAITS 三羁绊 ∪ SEELE_SYSTEM;取值时机 =
-    每 game-round 恰一次由 update_intention._update_supply_decay 现读
-    shop 刷新(成员在店清零,零在店 +1);缺键 = 尚无观测帧(排序侧
-    退纯资产支持度,不施加衰减/加项)。开关关恒空 dict(零漂移)。"""
+    # (supply_drought 方向侧供给衰减计数器已随兑现链开关族删除——旧方案
+    #  清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     tracks: dict[str, LineTrack] = field(default_factory=dict)
     last_event: str = ''               # 最近一次状态转移(判读/遥测锚点)
     revoke_evidence: dict[str, object] = field(default_factory=dict)
@@ -247,8 +230,7 @@ class HoardTarget:
     - ``equip_targets``:装备材料件(意向线 equip_assign 派生,剔除 equip_taboos);
     - ``mode``:'locked' | 'forced' | 'weak' | 'fallback' | 'demoted_endgame'
       | 'p1_pair' | 'p1_transition'(买侧按 mode 区分囤货语义:意向件照囤/
-      插件台阶/兜底方向/降格满配骨架;P1 两态=配方对成员集/空窗引擎全集,
-      ADR-0357)。
+      插件台阶/兜底方向/降格满配骨架/配方方向,ADR-0357)。
     """
 
     char_targets: frozenset[str]
@@ -514,8 +496,6 @@ def _p1_system_support(state: GameState) -> dict[str, float]:
 def _derive_p1_pair(state: GameState,
                     exclude: frozenset[str] = frozenset(),
                     registry: DecisionV2Registry | None = None,
-                    drought: dict[str, int] | None = None,
-                    prev_pair: tuple[str, ...] = (),
                     ) -> tuple[str, ...]:
     """P1 配方对派生:支持度 top-2(平手按激活占比序),规整为
     ``_P1_PAIR_PREF`` 序的二元组;最高支持度未达门槛 → ()(空窗不锁)。
@@ -523,17 +503,12 @@ def _derive_p1_pair(state: GameState,
     ``exclude``:R3 断供驱逐的体系键集(移出候选后重派生;蓝图 §4.3-R3)。
     体系对随资产**重派生**([20]「变体按来牌选」——支持度只增,变更
     是来牌选型不是 pivot;[23] 冻结语义辖终局线,不辖 P1 配方)。
-
-    ``drought``/``prev_pair``/``registry``:方向侧供给感知支持度
-    (``_supply_prime``,γ 衰减)与切换滞回(``_pair_hysteresis``,P16
-    δ 复用)的输入;开关关时三项不被消费(排序退纯资产支持度,逐位
-    旧行为——兑现链方向侧设计的零漂移锚)。
+    (兑现链方向侧的供给感知支持度/切换滞回已随旧方案清退批删除——
+    realization_chain 开关族出局,清查报告 OLD_MIX_AUDIT §1.3。)
     """
-    reg = registry or DEFAULT_REGISTRY
-    sup = _supply_prime(_p1_system_support(state), drought, reg)
+    sup = _p1_system_support(state)
     ranked = [k for k in sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
               if k not in exclude]
-    ranked = _pair_hysteresis(prev_pair, ranked, sup, reg)
     if not ranked or sup[ranked[0]] < P1_PAIR_LOCK_MIN_SUPPORT:
         return ()
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
@@ -576,77 +551,6 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
             ist.pair_evicted.add(sys)
             ist.pair_drought[sys] = 0
             ist.last_event = f'evict:pair_drought:{sys}:{n}'
-
-
-def _update_supply_decay(state: GameState, ist: IntentionState,
-                         registry: DecisionV2Registry | None) -> None:
-    """方向侧供给衰减计数(兑现链方向侧设计件之四;每 game-round 恰一次,
-    与断供驱逐同一驱动点)。对 support′ 支持度全体系键:成员在店 →
-    清零;零在店 → +1。开关关恒不动(supply_drought 保持空 dict,
-    排序侧退纯资产支持度——零漂移)。驱逐计数器(pair_drought)与本
-    计数器分域:前者辖 pair 成员资格(硬驱逐),本计数辖所有体系的
-    相对排序(连续单调衰减),作用面不同(对抗审计裁决「量级相近≠等效」)。
-    """
-    reg = registry or DEFAULT_REGISTRY
-    if not (reg.realization_chain_enabled
-            and reg.realization_direction_enabled):
-        return
-    shop_names = {getattr(c, 'name', '') or '' for c in (state.shop or [])}
-    for bond, _t in TRANSITION_TRAITS:
-        if _bond_members(bond) & shop_names:
-            ist.supply_drought[bond] = 0
-        else:
-            ist.supply_drought[bond] = ist.supply_drought.get(bond, 0) + 1
-    if '希儿' in shop_names:
-        ist.supply_drought[SEELE_SYSTEM] = 0
-    else:
-        ist.supply_drought[SEELE_SYSTEM] = \
-            ist.supply_drought.get(SEELE_SYSTEM, 0) + 1
-
-
-def _supply_prime(sup: dict[str, float], drought: dict[str, int] | None,
-                  registry: DecisionV2Registry) -> dict[str, float]:
-    """γ 衰减供给感知支持度 support′(设计侧四;P31① 落码形态):
-
-        support′(s,t) = γ^t·support(s) + β·[成员在店]
-
-    - t = ``supply_drought`` 连续零在店轮数(缺键=尚无观测帧 → 纯资产
-      支持度,不施加衰减也不加项——首帧不造基准偏置);
-    - γ 经验带 [0.7,0.8] 量级锚(注册表 realization_direction_gamma,
-      sim 扫描标定挂账);β = realization_direction_beta(占位);
-    - 「成员在店」= 衰减计数当帧清零(t==0)——ρ 窗口 W 占位 1 帧,
-    β/λ/W 同批标定(PREREG §6)。
-    """
-    if not (registry.realization_chain_enabled
-            and registry.realization_direction_enabled) or not drought:
-        return sup
-    out: dict[str, float] = {}
-    for k, v in sup.items():
-        t = drought.get(k)
-        if t is None:
-            out[k] = v
-        elif t == 0:
-            out[k] = v + registry.realization_direction_beta
-        else:
-            out[k] = v * (registry.realization_direction_gamma ** t)
-    return out
-
-
-def _pair_hysteresis(prev_pair: tuple[str, ...],
-                     ranked: list[str], sup: dict[str, float],
-                     registry: DecisionV2Registry) -> list[str]:
-    """方向切换滞回(P16 复用,δ=``registry.line_switch_theta`` 单一源;
-    锁 #7):support′ 差 < θ 不切换——现方向 top 保持在位(防振荡频率
-    硬上限 1/(2·D_min) 的排序层等价形态)。开关关/prev 不在候选集
-    (已被驱逐等)→ 序不变。"""
-    if not (registry.realization_chain_enabled
-            and registry.realization_direction_enabled):
-        return ranked
-    if not prev_pair or prev_pair[0] not in ranked:
-        return ranked
-    if sup[ranked[0]] - sup[prev_pair[0]] < registry.line_switch_theta:
-        return [prev_pair[0]] + [k for k in ranked if k != prev_pair[0]]
-    return ranked
 
 
 def p1_early_pair(state: GameState,
@@ -968,63 +872,17 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
     ist.last_event = ('forced_lock:' if forced else 'lock:') + sig.comp_name
 
 
-def _switch_gate_open(ist: IntentionState, state: GameState,
-                      session: StrategySession | None,
-                      sig: IntentionSignal,
-                      registry: DecisionV2Registry | None) -> bool:
-    """C4 存活轮数门在 v2 换线通道的接线(判据单一源=cw_line_switch
-    .survival_gate;旧栈退役后补线,补线判据=sim 确认 default 栈消费点
-    不在生产 v2 栈)。
-
-    辖域=撤销出口①/②降级弱意向后、新信号锁**另一条线**(weak_comp≠
-    候选线)——这是 v2 栈语义下的「换线」决策位置;初始锁线(unlocked
-    →lock)、同线重锁(weak_comp==候选线)与 P3 强制锁线(无在先承诺
-    线,兜底语义)均非换线,不辖。门内部自辖 plane≥2 与总开关
-    (line_switch_survival_gate_enabled 关=放行,零漂移);e_alt=候选线
-    E_rounds(cw_line_switch.e_rounds,与 default 栈换线判据同尺);
-    registry 由调用方注入(None=缺省表,与 cw_line_switch 同惯例),
-    DecisionV2Strategy 透传 self.registry 使 A/B 注入臂可达。
-    拦截记账=register_gate_block 线对去重(同对同局只发一次日志,
-    消费侧约定同 default 栈)。
-    """
-    if not (ist.phase == 'weak' and ist.weak_comp
-            and sig.comp_name != ist.weak_comp):
-        return True
-    comp = get_comp(sig.comp_name)
-    if comp is None:
-        return True
-    e_alt = e_rounds(comp, state, registry)
-    reg = registry or DEFAULT_REGISTRY
-    ok, why = survival_gate(state, session, e_alt, registry)
-    # 决策位记账(换线门设计件 §3-2/R3,决策位纪律平移(ADR-0470 同款)):拦截位
-    # 与反事实判定位写 session(帧级;update_intention 每帧入口清零),
-    # 检查器只做位一致性核验、禁复算判据式。on 臂=门判定本身即该位,
-    # 不重复算(守卫独立性);off 臂=gate_counterfactual 反事实记账。
-    if session is not None:
-        session.v3_line_gate_blocked = not ok
-        session.v3_line_gate_cf_blocked = (
-            (not ok) if reg.line_switch_survival_gate_enabled
-            else gate_counterfactual(state, session, e_alt, reg))
-    if ok:
-        return True
-    if session is not None:
-        cnt = register_gate_block(session, ist.weak_comp, sig.comp_name)
-    else:
-        cnt = 1   # 无 session 时无从挂计数,按首拦口径发日志
-    if cnt == 1:
-        log.warning('[cw][d2] 存活轮数门拦换线 %s → %s:%s (hp=%s,新线E=%.2f)',
-                    ist.weak_comp, sig.comp_name, why, state.hp, e_alt)
-    return False
-
-
 def update_intention(state: GameState, ist: IntentionState,
                      session: StrategySession | None = None,
                      registry: DecisionV2Registry | None = None
                      ) -> IntentionState:
     """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 GameState)。
 
-    序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)→
-    未锁/弱意向解析(新信号锁线,否则⑤兜底方向)→ P3 入口强制锁线。
+    序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)
+    → 未锁/弱意向解析(新信号锁线,否则⑤兜底方向)→ P3 入口强制锁线。
+    (C4 存活轮数门接线 _switch_gate_open、门闩与换线门决策位/闩已随
+    旧方案清退批删除,清查报告 OLD_MIX_AUDIT §1.3——默认关开关族出局,
+    换线裁决回归 E_rounds/θ/δ/D_min 主判据。)
     """
     if ist.demoted_endgame:
         return ist   # 降格终局是 absorbing 态(点7 止损序同构,不回弹)
@@ -1032,42 +890,17 @@ def update_intention(state: GameState, ist: IntentionState,
         # 出 P1:过渡对副方向退场(ADR-0367;P2+ 锁定目标=locked_comp 唯一)
         ist.transition_pair = ()
     visible = _visible_chars(state)
-    # 换线门决策位逐帧清零(换线门设计件 §3-2;帧级坐标系:本轮无
-    # 换线辖域评估 → 位=False,防上帧位残留污染账本行)
-    if session is not None:
-        session.v3_line_gate_blocked = False
-        session.v3_line_gate_cf_blocked = False
-    # 门闩位面切换清零(换线门设计件 §3-3 末条):闩=位面内滞回,
-    # 出位面即清;同步清各线 miss_count(陈旧断供证据不跨位面驱动出口①)
-    # 与 prev_lock_layer(暂存已消费,不跨位面残留)。
-    if session is not None and getattr(session, 'v3_line_gate_latch', False) \
-            and getattr(session, 'v3_line_gate_latch_plane', None) \
-            != state.plane:
-        session.v3_line_gate_latch = False
-        session.v3_line_gate_latch_plane = None
-        for t in ist.tracks.values():
-            t.miss_count = 0
-        ist.prev_lock_layer = 0
+    # (原「门闩位面切换清零」分支只在闩置位后生效;门闩删除后默认行为
+    # =位面切换不清 miss_count——维持删除前生产默认,零漂移。)
     # R3 断供驱逐(ADR-0465):每 game-round 恰一次的体系级断供计数
     # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
     _update_pair_drought(state, ist, visible)
-    # 方向侧供给衰减计数(兑现链方向侧设计;开关关恒不动——零漂移)
-    _update_supply_decay(state, ist, registry)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
     revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
     # 「意向降级为弱意向……直至新信号」= 新信号指下一轮起的信号;同轮撤+锁会让
     # 弱意向态不可观测(判读/遥测断档),状态机一回合最多一次转移。
 
     if ist.phase == 'locked':
-        # 门闩存续期(换线门设计件 §3-3 R-A):同位面闩置位后撤销出口
-        # ①②抑制——「锁线保生存」吸收态,miss 照涨但无消费(砍断周期环
-        # 驱动源,§3-4 轨迹证明闩后零转移)。窗口冻结驱逐(evict)非出口
-        # ①②,保留自身语义(刷新窗冻结超限属候选集卫生,非换线裁决)。
-        latch_active = (
-            session is not None
-            and getattr(session, 'v3_line_gate_latch', False)
-            and getattr(session, 'v3_line_gate_latch_plane', None)
-            == state.plane)
         comp = get_comp(ist.locked_comp)
         core = intention_core(comp) if comp else ''
         track = _track(ist, ist.locked_comp)
@@ -1078,14 +911,7 @@ def update_intention(state: GameState, ist: IntentionState,
             # 意向回⑤无信号态——**不触发③**(该轮③信号被排除)
             track.frozen_rounds += 1
             # ADR-0366:冻结超限对照量按本位面真值(session 透传,P2=7)。
-            # 驱逐纳入闩辖:驱逐产生设计外转移
-            # locked→unlocked→同帧可无门落新线,破坏闩「转移冻结」吸收
-            # 态(DESIGN v3 §3-3)。裁决=闩存续期驱逐**挂起**(非触发闩
-            # 语义合法转移):frozen_rounds 继续累计,位面切换清闩后恢复
-            # 既有驱逐路径(下一位面首帧即按累计值正常处置,不跨位面失察)。
-            if latch_active:
-                pass
-            elif track.frozen_rounds > plane_remaining_nodes(state, session):
+            if track.frozen_rounds > plane_remaining_nodes(state, session):
                 ist.evicted.add(ist.locked_comp)
                 ist.phase = 'unlocked'
                 ist.locked_comp = ''
@@ -1120,8 +946,7 @@ def update_intention(state: GameState, ist: IntentionState,
                 reg = registry or DEFAULT_REGISTRY
                 n_req = core_miss_n_required(
                     core, state.level, reg.revoke_miss_tolerance_eps)
-                if not latch_active and \
-                        track.miss_count >= max(CORE_MISS_N, n_req):
+                if track.miss_count >= max(CORE_MISS_N, n_req):
                     ev = _revoke_alt_evidence(
                         state, visible, ist.locked_comp, ist.evicted,
                         reg.revoke_evidence_min_thickness)
@@ -1132,7 +957,6 @@ def update_intention(state: GameState, ist: IntentionState,
                         alt_comp = get_comp(alt_name)
                         e_alt = (e_rounds(alt_comp, state, reg)
                                  if alt_comp is not None else math.inf)
-                        ist.prev_lock_layer = ist.lock_layer   # v3 R-C:原锁层暂存(闩回锁恢复)
                         ist.phase = 'weak'
                         ist.weak_comp = ist.locked_comp
                         ist.locked_comp = ''
@@ -1155,15 +979,13 @@ def update_intention(state: GameState, ist: IntentionState,
                             f'(n_req={n_req},q={q:.3f},alt={alt_name}'
                             f',thk={thk:.1f})')
                         revoked = True
-        if ist.phase == 'locked' and not latch_active:
-            # 撤销出口②:更高层级替代信号 + 可达性对照(层级高≠必换;
-            # 门闩存续期抑制,v3 §3-3)
+        if ist.phase == 'locked':
+            # 撤销出口②:更高层级替代信号 + 可达性对照(层级高≠必换)
             for s in sigs:
                 if s.comp_name == ist.locked_comp or s.layer >= ist.lock_layer:
                     continue
                 new_comp = get_comp(s.comp_name)
                 if new_comp and _core_reachable(new_comp, state, visible):
-                    ist.prev_lock_layer = ist.lock_layer   # v3 R-C:原锁层暂存
                     ist.phase = 'weak'
                     ist.weak_comp = ist.locked_comp
                     ist.locked_comp = ''
@@ -1180,9 +1002,7 @@ def update_intention(state: GameState, ist: IntentionState,
         # 「变体按来牌选」[20],支持度只增,非 pivot;[23] 冻结语义辖
         # 终局线,不辖过渡副方向)。配方锁局(phase='unlocked')不进本支。
         pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted),
-                               registry=registry,
-                               drought=ist.supply_drought,
-                               prev_pair=tuple(ist.transition_pair or ()))
+                               registry=registry)
         if pair != ist.transition_pair:
             ist.transition_pair = pair
             ist.last_event = ('lock_pair:' + '+'.join(pair)) \
@@ -1210,9 +1030,7 @@ def update_intention(state: GameState, ist: IntentionState,
             sigs = [s for s in sigs
                     if _direct_line_qualified(state, s.comp_name)]
             pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted),
-                                   registry=registry,
-                                   drought=ist.supply_drought,
-                                   prev_pair=tuple(ist.p1_pair or ()))
+                                   registry=registry)
             if pair != ist.p1_pair:
                 ist.p1_pair = pair
                 ist.last_event = ('p1_pair:' + '+'.join(pair)) \
@@ -1223,38 +1041,7 @@ def update_intention(state: GameState, ist: IntentionState,
             ist.last_event = 'p1_pair:exit_p1'
         best = _best_signal(sigs)
         if best is not None:
-            # C4 存活轮数门(换线辖域见 _switch_gate_open;门放行才落锁,
-            # 被拦=保持弱意向待后续信号,状态机单回合最多一次转移语义不变)
-            if _switch_gate_open(ist, state, session, best, registry):
-                _lock(ist, state, best)
-            else:
-                ist.last_event = (f'gate_hold:{ist.weak_comp}'
-                                  f'->{best.comp_name}')
-                # 门感知滞回闩(换线门设计件 §3-3 R-A):本位面首次门拦截置闩 + 闩置位帧一次性
-                # 回锁原线。为什么是闩不是计数:单调性——R<E(alt)+m 首次
-                # 成立后位面内近似单调(§3-3),「后续帧不该再换线」与门
-                # 判据一致;计数回锁缺单调性,周期-3 环是结构必然(设计件 v3 修订块引攻击证据)。
-                # 回锁经 _switch_gate_open 同线豁免语义(状态机内单址);
-                # 恢复 prev_lock_layer(FM-11 消解,回锁信号 layer=1 不许
-                # 收窄出口②撤销面)。原线 E=inf 子情形:闩仍置位、状态停
-                # weak——静态不可达原线的跨线骨架囤货/demoted/P3 兜底是
-                # 合法终态(§3-4,行为锁钉住)。闩存续期出口①②抑制(上方
-                # locked 分支),位面切换清零(入口段)。
-                if session is not None and not (
-                        session.v3_line_gate_latch
-                        and session.v3_line_gate_latch_plane == state.plane):
-                    session.v3_line_gate_latch = True
-                    session.v3_line_gate_latch_plane = state.plane
-                    wcomp = get_comp(ist.weak_comp) \
-                        if ist.phase == 'weak' else None
-                    if ist.phase == 'weak' and wcomp is not None \
-                            and math.isfinite(e_rounds(wcomp, state, registry)):
-                        relock_name = ist.weak_comp   # _lock 会清 weak_comp,先取
-                        _lock(ist, state, IntentionSignal(
-                            1, 'gate_relock', relock_name,
-                            '门闩一次性回锁原线(锁线保生存)', 1.0))
-                        ist.lock_layer = ist.prev_lock_layer or 1   # FM-11
-                        ist.last_event = f'gate_relock:{relock_name}'
+            _lock(ist, state, best)
         elif ist.phase == 'weak':
             ist.last_event = ist.last_event or 'weak:hold'
         # 无信号:保持 unlocked——囤货方向落⑤兜底(hoard_target_set 处理)

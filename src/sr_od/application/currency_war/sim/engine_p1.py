@@ -139,8 +139,8 @@ def _board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
 
     判据单一源 = ``FACTIONS[].tiers``:取 >当前人数 的最小档,无更高档
     不计入(与 obs/cw_observation computed 支同一式,禁第二份推导)。
-    消费方 = Δp_tier 档位分解标定批(registry.realization_delta_p_tier
-    的标定前置依赖;W802 边界声明:标定批前置,不阻塞开臂)。
+    消费方 = Δp_tier 档位分解标定批(观测披露面;兑现链开关族已随旧
+    方案清退批删除,清查报告 OLD_MIX_AUDIT §1.3,键保留作判读面)。
     """
     out: dict[str, int] = {}
     for _f, _c in board_factions.items():
@@ -844,8 +844,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             #   填满,轮入口快照会系统性漏亮)。sim 满观测无 OCR 缺读,
             #   恒 bool(生产 bool|None 的 None 态在 sim 不存在)。
             _round_bench_full = False
-            # - board_next_tier:各阵营下档阈值(消费 = Δp_tier 档位分解
-            #   标定批,registry.realization_delta_p_tier 标定前置)。
+            # - board_next_tier:各阵营下档阈值(观测披露面;兑现链开关族
+            #   已随旧方案清退批删除,键保留作判读面)。
             _round_board_next_tier = _board_next_tier_of(
                 _board_factions_of(st.deployed))
             # - ADR-0474 分配器遥测键(消费 = 锁#11 D2 接管可观测性):
@@ -1811,17 +1811,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ledger 消费(禁复算 S0);决策发生在本轮回战斗前,位是
                 # 闩(单调),轮 r 位=真 ⟺ 自本轮回决策起停付已让位
                 'terminal_release': terminal_release_bit(sess, st.plane),
-                # 换线存活门决策位(迁移审计 w665(git 历史) DESIGN v2 §3-2/R3;帧级=本轮
-                # 最后一次意向驱动帧,update_intention 入口清零、
-                # _switch_gate_open 评估点写入):line_gate_blocked=拦截位
-                #(on 臂门判定);line_gate_cf_blocked=反事实判定位
-                # P(f)=[R<need](off 臂反事实记账/on 臂同门判定)。消费=
-                # A/B 批器算反事实拦截精度与 cw_sim_checks 位一致性核验
-                #——检查器禁复算门判据式(迁移审计 w659(git 历史) 攻击 6 纪律)
-                'line_gate_blocked': bool(getattr(
-                    sess, 'v3_line_gate_blocked', False)),
-                'line_gate_cf_blocked': bool(getattr(
-                    sess, 'v3_line_gate_cf_blocked', False)),
+                # (换线存活门决策位 line_gate_blocked/line_gate_cf_blocked
+                #  已随 C4 开关族删除——旧方案清退批,清查报告
+                #  OLD_MIX_AUDIT §1.3;v3_line_gate_* session 字段同批删。)
                 # `w227_handoff_gate/`/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
                 # 触发面;与 formed_stop=False 并读 = 门扣住证据行)
                 'handoff_gap': _round_handoff_gap,
@@ -1915,11 +1907,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 同名同位;invest 注入写 session.active_env,cw_replay
                 # 回读消费。空串 = 未注入/无环境——机制性缺省,非缺口)
                 'sess_active_env': str(getattr(sess, 'active_env', '') or ''),
-                # W829 支出门拒因枚举计数(生产 decisions 行
-                # sess_spend_gate_block 同名同位;伞关/零拒因恒 None)
-                'sess_spend_gate_block': (
-                    dict(getattr(sess, 'v3_sg_block', None) or {}) or None),
-                # (sess_pv_bench_block 已随件价值整机制删除,ADR-0497)
+                # (W829 支出门拒因枚举计数 sess_spend_gate_block 已随
+                #  spend_gate 开关族删除——旧方案清退批,清查报告
+                #  OLD_MIX_AUDIT §1.3;v3_sg_block session 键同批删。)
                 'actions': _acts,
                 'sim': {
                     'node': nodes[rn - 1], 'delta': delta,

@@ -215,23 +215,10 @@ class StrategySession:
     # discipline.terminal_release_bit(单一址),检查器禁复算 S0。
     v3_terminal_release: bool = False
     v3_terminal_release_plane: int | None = None
-    # 换线存活门决策位(帧级:坐标系=本轮意向
-    # 驱动帧,update_intention 每帧入口清零、cw_intention._switch_gate_open
-    # 评估点写入;本轮未做换线辖域评估的帧=False。消费=sim 账本行/
-    # 生产 decisions 行透传,检查器只做位一致性核验、禁复算门判据式):
-    # - v3_line_gate_blocked = 拦截位(门拦=True;仅门开时有「拦」语义)
-    # - v3_line_gate_cf_blocked = 反事实判定位 P(f)=[R<need](off 臂=
-    #   gate_counterfactual 反事实记账;on 臂=门判定本身,不重复算)
-    v3_line_gate_blocked: bool = False
-    v3_line_gate_cf_blocked: bool = False
-    # 换线门滞回闩(门感知滞回):本位面首次门拦截置闩 → 闩置位帧一次性
-    # 回锁原线(恢复 prev_lock_layer)→ 闩存续期(同位面)抑制撤销出口①②
-    #(locked=吸收态,砍断周期环驱动源)。坐标系=位面内闩(与
-    # v3_terminal_release 同型):置位时记 v3_line_gate_latch_plane,
-    # update_intention 入口检测位面切换清零,并同步清 tracks miss_count
-    # 与 ist.prev_lock_layer(陈旧断供证据不跨位面)。
-    v3_line_gate_latch: bool = False
-    v3_line_gate_latch_plane: int | None = None
+    # (换线存活门决策位 v3_line_gate_blocked/cf_blocked 与门闩
+    #  v3_line_gate_latch/latch_plane 四字段已随 C4 开关族删除——旧方案
+    #  清退批,清查报告 OLD_MIX_AUDIT §1.3;line_gate_blocked/
+    #  line_gate_cf_blocked 遥测键同批删。)
     # ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot,
     # 纯观测零行为)——plane>=2 本位面首帧 decide_prep 入口算一次;
     # None=未进 P2/未计算。v3_handoff_plane=已采样位面(同位面不覆写)。
@@ -258,12 +245,9 @@ class StrategySession:
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
     # 简报词缀(对局开始 debuff/boss 词缀;loop __init__ 从 ctx.cw_briefing_affixes copy;mechanics_fit 输入)
     briefing_affixes: list[str] = field(default_factory=list)
-    # 变宝为废·位面首次合成判定消耗记账(kernel/cw_junk_first.py 消费;
-    # 机制真值=affix_effects_data「每个位面开始时,首次合成的进阶装备会有
-    # 50% 的概率变成垃圾袋」→ 每位面判定一次。坐标系=位面序;None=未消耗,
-    # -1=位面不可读态下已消耗(整局一次降级哨兵);写入端 =
-    # junk_first_allocation 发射牺牲合成或推迟后记账当前 state.plane)。
-    junk_first_done_plane: int | None = None
+    # (变宝为废·位面首次合成判定消耗记账 junk_first_done_plane 已随
+    #  junk_first 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3,
+    #  kernel/cw_junk_first.py 同批删。)
     # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
     # 策略层填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
     selected_difficulty: str = ""

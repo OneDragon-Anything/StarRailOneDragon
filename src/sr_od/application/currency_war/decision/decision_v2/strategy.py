@@ -561,29 +561,18 @@ class DecisionV2Strategy(CwStrategy):
                         session: StrategySession, config) -> MegastarPick:
         """巨星选候选:委托 ``cw_comps.select_megastar`` 拿角色名 → 名在 options 命中该 idx;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 匹配恒失败 → idx=0 = 今天盲点左候选,随阶段5)。
-        强化角色维度(``registry.megastar_enhance_enabled``,默认关):追加
-        step2「强化角色」意向 → ``MegastarPick.enhance_char_id`` + reason 后缀
-        (候选 idx 选择不受影响;执行面未接,挂账见开关注释)。"""
+        (强化角色维度已随 megastar_enhance_enabled 开关族删除——旧方案
+        清退批,清查报告 OLD_MIX_AUDIT §1.3;MegastarPick.enhance_char_id
+        字段保留恒 None,兼容既有遥测/执行面读取。)"""
         available = [o.char_id for o in options if o.char_id]
         chosen_name = cw_comps.select_megastar(state, session.target_comp, available)
-        _enhance = ''
-        if self.registry.megastar_enhance_enabled:
-            _e = cw_comps.select_megastar_enhance(state, session.target_comp)
-            if _e:
-                _enhance = _e
         if chosen_name:
             for o in options:
                 if o.char_id == chosen_name:
-                    _reason = f"select_megastar 命中 {chosen_name}"
-                    if _enhance:
-                        _reason += f"; enhance={_enhance}"
-                    return MegastarPick(idx=o.idx, reason=_reason,
-                                        enhance_char_id=_enhance or None)
-        pick = MegastarPick(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
-        if _enhance:
-            pick.enhance_char_id = _enhance
-            pick.reason += f"; enhance={_enhance}"
-        return pick
+                    return MegastarPick(
+                        idx=o.idx,
+                        reason=f"select_megastar 命中 {chosen_name}")
+        return MegastarPick(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
 
     def decide_partner(self, options: list[PartnerOption], state: GameState,
                        session: StrategySession, config) -> PartnerPick:

@@ -40,8 +40,11 @@ class DecisionV2Registry:
     buy_tag_priority: tuple[str, ...] = (
         'line_carry', 'line_opportunistic', 'bridge_core',
         'engine_seed', 'plugin', 'pair', 'copy', 'copy_press',
-        'bond_fallback', 'carry_gate', 'crisis_fallback',
+        'bond_fallback', 'carry_gate',
     )
+    # ('crisis_fallback' 标签已随 W956 危机兜底集开关族整批删除——旧方案
+    #  清退批,清查报告 OLD_MIX_AUDIT §1.3;生成点 _crisis_fallback_candidates
+    #  已删,标签无生产者。)
     #: 3合1 合成候选:标记位(不占标签序——第三张副本买入即合成,
     #: Candidate.merge=True;覆盖全部目标类买入)
     #: 卖候选标签优先序(off_target 最先;free_bench=腾位让位 [32])
@@ -88,15 +91,10 @@ class DecisionV2Registry:
     bond_fallback_max_cost: int = 2
     #: [31] 降级触发回合门(P3 边界:r1-r2 无战斗买件纯付息损)
     bond_fallback_min_round: int = 3
-    #: W956 危机帧购买兜底集:成本上限(任意 ≤ 此费店卡可作兜底买;
-    #: 设计单一源 = .debug/temp/currency_war/w956_death_allocator/
-    #: DESIGN.md §2 方案 B,归属裁决 = W954 §5 移交;病灶 = match
-    #: g_20260831_082322 p2r2「5 卡全拒 0 执行」)
-    crisis_fallback_max_cost: int = 2
-    #: W956 危机帧购买兜底集开关(策略开关生命周期第 1 态:默认关=
-    #: A/B 注入态;预注册判据 = .debug/temp/currency_war/w956_death_allocator/
-    #: PREREG.md,判正后翻默认开并删此注释中的 A/B 语句)
-    crisis_fallback_enabled: bool = False
+    # (W956 危机帧购买兜底集两字段(crisis_fallback_max_cost/
+    #  crisis_fallback_enabled)已随旧方案清退批删除:默认关+预注册判据
+    #  挂账未跑即整体出局,清查报告 OLD_MIX_AUDIT §1.3 裁定随基线退役
+    #  整批删除;生成点 candidates._crisis_fallback_candidates 同批删。)
     #: [32] carry_gate 腾位买的轮界(r≤7;r8-r9 终局段买入不影响结算)
     carry_gate_max_round: int = 7
 
@@ -898,20 +896,15 @@ class DecisionV2Registry:
     #: FLIP 持续兑现臂的低血上沿(非末窗 hp<此值命中;与 discipline
     #: BLOOD_MARGIN_LOW_HP=40 同值口径,registry 注入化)
     blood_margin_low_hp: int = 40
-    #: boss 税 p75 分位锚(DESIGN §②:语料 66 场 P1 boss 战掉血 median=32/
-    #: p75=34/p90=36/max=58/mean=26.7)。末窗投影判据 = hp − 此值 < emergency_hp。
-    #: max=58 肥尾是遗留风险(贴边带当前语料 0 帧);sim 标定时 boss 税以
-    #: 分位锚组进 registry,不做单点(boss_tax_anchor_group)。
-    #: ADR-0441 接线后运行时消费点(posture_release 末窗投影臂)已改读
-    #: boss_tax_p75_by_plane,本标量无运行时消费者——保留原因=sim 标定
-    #: 接口 boss_tax_anchor_group 的 P75 同源值 + 既有零漂移锁底座
-    #: (test_cw_boss_tax_p75_by_plane)与 P1 语料出处引用锚;退役挂账
-    #: sim 标定批裁定(届时锁与 anchor_group 一并迁 by_plane 单一源)。
-    boss_tax_p75: float = 34.0
+    #: (boss 税 p75 单标量 boss_tax_p75 已随旧方案清退批删除:注释自认
+    #:  无运行时消费者(ADR-0441 起消费点改读 by_plane),sim 标定接口的
+    #:  P75 同源值由 boss_tax_anchor_group 承载,清查报告 OLD_MIX_AUDIT
+    #:  §1.3 准僵尸裁定。)
     #: boss 税分位锚组 {P50, P75, P90}(sim 标定接口,非运行时值)
     boss_tax_anchor_group: tuple[float, float, float] = (32.0, 34.0, 36.0)
     #: boss 税 p75 位面锚(消费点按位面取值;键 = GameState.plane,1/2)。
-    #: plane 1 = 现值原样,与 boss_tax_p75 同源(P1 语料标定),零漂移锚;
+    #: plane 1 = 现值原样(P1 语料标定,原 boss_tax_p75 标量同源值
+    #:  34.0——该标量已随旧方案清退批删除,by_plane 为唯一取值口),零漂移锚;
     #: plane 2 槽位已就位但默认仍取现值——sim 侧位面观测
     #: (cw_coarse_battle 标定 manifest 的 hp_events_by_plane:P2 boss
     #: n=90 均损 −21.63 vs P1 −19.54)已给 P2 真值方向,但 P2 槽位换
@@ -971,7 +964,7 @@ class DecisionV2Registry:
     p2_node_loss_table: dict[str, float] = field(default_factory=lambda: {
         'normal': 10.16, 'encounter': 12.00, 'boss': 15.50, 'reward': 0.0})
     #: P2 条件败面损血档(输了战斗这一条件下的期望伤害;两态决策层
-    #: 损血幅度唯一源,消费点=cw_line_switch.rounds_alive 逐节点投影
+    #: 损血幅度唯一源,消费点=阈值层 cw_first_passage._loss_dist 投影
     #: 与两态胜率映射(cw_plane_table.p_win_p2)——E[损血|板强]=(1−p_win(rung))·本表)。
     #: 值=迁移审计 w375(git 历史) 双源重标定条件败面(normal 12.77/encounter 13.33/boss
     #: 15.50,标定叙述见 p2_node_loss_table 段头与 ADR-0440):reward 零损档同上表(奖励/补给零损照走)。
@@ -993,61 +986,15 @@ class DecisionV2Registry:
     #: C3 已定谳清理(ADR-0426 增补节)后随批改中性名,取值与消费
     #: 语义不变。
     directed_refresh_high_cost_floor: int = 4
-    #: C4 存活轮数门总开关:False=现行为逐位一致(零漂移锚;与 drought
-    #: bail 的或-并存结构不变,本门是 E_rounds 主判据的第三道串联门,
-    #: 不造第二换线机制)。True 时 E_rounds 换线裁决通过后加验
-    #: rounds_alive(剩余节点序列逐节点投影)≥ E_rounds(新线)×(1+δ)
-    #: +兑现余量——存活轮数不足=新线到不了兑现点,换线期望 0<驻留
-    #: 旧线(「转进死线」堵门)。辖域 plane≥2(损血表为 P2 标定);
-    #: drought bail 旁路不辖(或-并存结构不变,弃线不是转进)。
-    #: **开臂判据挂账(锐化终版,W665 DESIGN v2 §4;退役批(ADR-0466/0467/0469) 初版挂账)**:
-    #: 与 rounds_two_state_enabled 正交——本门辖「是否验存活轮数」、
-    #: two-state 辖「怎么算存活轮数」(单变量归因,禁 2×2 耦合臂)。
-    #: 主判 = W643 定钉谓词「r6–r8 换线且 ≤3 轮回锁原线」占比 on 相对
-    #: off 降 ≥1/3 且 p<0.05(三窗联合 630000–630199/900000–900099/0–29,
-    #: 窗敏感,单窗不判定)。机制判 = **反事实拦截精度 ≥2/3**:off 臂对
-    #: 每次换线事件记反事实判定位 P(f)=[R(f)<E(alt,f)(1+δ)+m](账本行
-    #: line_gate_cf_blocked;判据单一源=cw_line_switch.gate_counterfactual,
-    #: on 臂即门判定不重复算、检查器禁复算判据式),精度 = P(f)=True 的
-    #: 换线中「≤3 轮回锁原线 ∨ 新线未成型」占比——低于 2/3 = 门在该
-    #: 参数域系统性拦错,回炉 δ/m 而非开臂。「换线拦截率>0」降格为冒烟
-    #: 项(仅验接线正确性);「濒死带时长不劣」保留(方向独立)。A/B 另
-    #: 带中盘分桶机制检查(target_comp 变更率按 r≤4/r5-r9 分桶,
-    #: cw_sim_checks.check_line_switch_midgame_bucket,判前 off 臂定钉
-    #: 基线)与 G4 饿死守卫锚(cw_sim_checks.check_line_gate_starvation_
-    #: anchor:gate_hold 连续 ≥3 帧局占比零容忍)。排期 = W638 修复 A/B
-    #: 批(三窗合计 330/臂 ≥ n≥300/臂口径)。
-    #: **W683→v3 改道终态**:v2 §3-3 的 N=2 计数回锁被推翻(周期-3
-    #: 极限环 + G4 锚自盲)已废弃,饿死纠错改门感知滞回闩(§3-3 R-A:
-    #: 首次拦截置闩+一次性回锁恢复原锁层+闩内存续抑制出口①②;机制
-    #: 载体=cw_intention 门闩分支 + session.v3_line_gate_latch)。门辖域
-    #: 收窄 **plane==2**(R-G/FM-12:P2 损血表不辖 P3;P3 扩辖待
-    #: p3_cond_loss_table 标定);survival_gate 对 E=inf 改拦 'alt_inf'
-    #(R-E/FM-13:拦截归属唯一化,「上游已拦」假前提勘误)。G4 三判据
-    #: 与中盘分桶两桶语义见 cw_sim_checks 两锚函数。禁无限挂起:不过 →
-    #: 删码留 ADR(生命周期第 4 态);开臂翻默认时必须重推「断言
-    #: gate_off 放行」的既有锁组语义(生命周期第 3 态义务)。
-    line_switch_survival_gate_enabled: bool = False
-    #: C4 两态口径总开关(rounds_alive 逐节点投影的 p_win 通道):
-    #: False=现行为逐位一致(零漂移锚)——p_win_p2_by_rung 即使已注入
-    #: 也不消费,投影按损血表条件常数走(M1a);True 时两态口径生效
-    #: (M1b:loss=(1−p_win)·表值,rung 取样坐标见 p_win_p2_by_rung
-    #: 注释)。与 line_switch_survival_gate_enabled 正交:后者辖门
-    #(是否验存活轮数),本开关辖投影口径(怎么算存活轮数)。
-    #: **开臂 A/B 判据挂账(不执行)**:按 `w371_recal_attack/` M4 口径——姿态面为主
-    #(P2 生存/濒死带时长/换线拦截率过程指标),n=300/臂(合计 600)
-    #: 之前不允许率差当主判据;姿态面过才翻 True。
-    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进 sim A/B 批,与
-    #: line_switch_survival_gate_enabled 同臂组(2×2 正交或分臂,由sim A/B 批
-    #: 任务书定);姿态面不过 → 删码留 ADR。
-    rounds_two_state_enabled: bool = False
-    #: C4 兑现余量(轮;新线成型后仍需一轮兑现战斗,取 1=设计内保守下界)。
-    #: 兼承载投影的近似残差(逐节点确定性投影 vs 真分布 E[min(t:ΣL>hp)]
-    #: 的 Jensen 乐观差,REDESIGN §3.5 偏差表首行)。
-    line_switch_survival_margin: float = 1.0
-    #: C4 两态口径 p_win 表(成型度 rung(0-2 钳制)→P2 战斗条件胜率;
-    #: 消费侧缺档=p_win=0=每战全损,loss=表值条件常数,两态退化 M1a;
-    #: 消费开关=rounds_two_state_enabled,默认关=零漂移)。
+    # (C4 换线存活轮数门三参数族(line_switch_survival_gate_enabled/
+    #  rounds_two_state_enabled/line_switch_survival_margin)与投影参数
+    #  (encounter_heal_est/line_switch_boss_ci_halfwidth)已随旧方案清退批
+    #  删除:双开关默认关+开臂判据挂账未跑即整体出局,清查报告
+    #  OLD_MIX_AUDIT §1.3;门机械(cw_line_switch.survival_gate 族)与
+    #  cw_intention._switch_gate_open 接线同批删。损血表与两态 p_win 表
+    #  保留——阈值层(cw_first_passage._loss_dist / cw_plane_table.
+    #  p_win_p2)仍消费,math_proofs P12/P15v2 方向级引用。)
+    #: C4 两态口径 p_win 表(成型度 rung(0-2 钳制)→P2 战斗条件胜率)。
     #: 值出处=`w346_gate_validation/` 门验证批分 rung 胜占比实测(冻结池 Δ池臂,
     #: 战斗 d>0 样本占比):k0=15/936=0.016,k1=879/2129=0.413,
     #: k2+k3 钳制并入=864/1316=0.657(生产 rung 0-2 钳制,k3 桶折叠)。
@@ -1056,23 +1003,11 @@ class DecisionV2Registry:
     #: 单调序列只在 Δ池臂——两态模型前提「p 对成型度单调不减」
     #(REDESIGN §5 条 1)辖下取 Δ池档,本注释为准。
     #: rung 取样坐标单一源=cw_battle_calib._settle_rung(与表坐标同源,ADR-0279
-    #: 采样键;board 全集+星徽,deployed 域,0-4 钳到 0-2)——不用
-    #: scoring._engines_formed(混合域加权,bench×0.35 推高 rung,
-    #: 坐标错位=p_win 偏乐观=损血低估=门偏松)。
+    #: 采样键;board 全集+星徽,deployed 域,0-4 钳到 0-2)。
     #: 证据等级=sim 档(单档 n≈900-2100,无实机 P2 分 rung 样本;
     #: 方向声明=低档 p_win 低估损血高估、存活轮数偏短、门偏紧)。
     p_win_p2_by_rung: dict[int, float] = field(default_factory=lambda: {
         0: 0.016, 1: 0.413, 2: 0.657})
-    #: C4 遭遇节点回血期望(hp;投影对每 encounter 节点加回)。默认 0=
-    #: 0 下界(回血量未标定,禁拍死值;P2 生存实探局 hp=1 后有回血后继
-    #: 观测实证(`w350_p2_survival/` REPORT §1),取 0=低估存活=门偏紧的保守方向);
-    #: 值=该报告后继观测回血量标定后注入。
-    encounter_heal_est: float = 0.0
-    #: C4 boss 档不确定性附加费(轮;投影路径含 boss 节点时 need 加此
-    #: 半宽——借档的不确定性由被比较量显式承担,REDESIGN §4.3)。值=
-    #: 标定产出 |28.24−26.71|(P1 two_state 拟合与借档常数的源距,
-    #: 双源标定台账 boss_bucket_injection,记录=ADR-0440),非魔数。
-    line_switch_boss_ci_halfwidth: float = 1.53
 
     # ===== R3 撤销出口①意图证据(治 `w386_gate_energize/` BP1「门放行噪声换线」;
     # 设计决策=ADR-0436;消费点=cw_intention.core_miss_n_required / _revoke_alt_evidence)=====
@@ -1103,191 +1038,25 @@ class DecisionV2Registry:
     #: 成型 ≥2/3),数据未出前本值按测量结果服役,不调参硬凑。
     revoke_evidence_min_thickness: float = 5.0
 
-    # ===== C1 溢余必花定向优先级(P1 末窗投影安全带;FLIP 正交补集)=====
-    #: 设计决策=ADR-0443(期望账 §谱系与破息分支否决记录)。辖域裁决=与 FLIP 末窗投影臂
-    #: (ADR-0426)同锚两分支的**正交补集**:末窗帧按投影残差
-    #: d = hp − boss_tax_p75 一刀切,d < emergency_hp 归 FLIP 泄息义务
-    #: (既有,不动),d ≥ emergency_hp 归本通道评估——辖域互斥由谓词
-    #: 构造保证,不靠开关序。
-    #: 总开关:False=现行为逐位一致(零漂移锚,A/B 基线臂)。True 时
-    #: P1 末窗(discipline.boss_window_active 统一口径)∧ 投影安全带
-    #: (d ≥ emergency_hp)∧ 溢余段(g > interest_floor,[17])∧ hp
-    #: 可信位(hp_readable or hp_trusted,ADR-0428 同款守卫)帧内,
-    #: 支出候选按 boss 战胜率增量做定向收窄(filters 层2 符号判定,判据
-    #: 复用濒死带同款 Δp_board 逐动作谓词):可部署买/3合1 即时合成买、
-    #: 升完立刻多上件的 LevelUp、店有可买+上名集件的定向刷新放行;
-    #: 零增量支出(纯 hoard 买/盲刷/升完无件可上)删。数学账(规格 §2):
-    #: 溢余段花金零息损(P11 参数无关确定性结论,成本恒 0),收益=
-    #: Δp × E[损血|boss 败] × hp_to_gold 金当量——Δp≤0 的支出确定性
-    #: 零收益;「溢余必花+定向 boss 战力」的优先级语义=零贡献支出让位
-    #: 有增量支出,贡献间的相对排序仍归 EV 评分层单一裁决(禁双判定源,
-    #: 评分末窗权重不在本通道重复)。判据单一源纪律:末窗锚=
-    #: ``posture_release.boss_first_buy_phase``(唯一 latch 所有者经
-    #: discipline 统一口径),filters 不重算末窗谓词;阈值全部复用
-    #: registry 单一源(boss_tax_p75/emergency_hp/interest_floor),
-    #: 不立第二常量(常量即判定源,复刻即双源)。
-    #: **破息分支:概念定谳否决,永不实现(ADR-0443;开关生命周期第 4
-    #: 态定谳注记——分支从未落码,无代码路径/无锁可删,本注释段即清理
-    #: 物)**:破息花 X 金的过账判据要求胜率传导率 k > R̄/133.5
-    #: (13.35 = E[损血|boss 败] 26.7 × hp_to_gold 0.5 的金当量系数;
-    #: 息损 = Δfloor(g/10) × R̄)。E[R̄] 义务已从语料 runs.jsonl 离线
-    #: 标定兑现(标定与对比表证据链=ADR-0443):全部档内破息事件均值
-    #: 2.26 金(95% CI [1.42, 3.22],n=73),刷新密集口径(本分支真实
-    #: 使用形态)条件均值 6.88 金(n=24)——门槛 k* ∈ [0.011, 0.052]/金;
-    #: 可证传导链乐观上界(P17 +8 hp 链)k ≤ 0.012/金,全口径不过账
-    #: (条件口径差 4.3 倍),期望收益为负或至多在乐观界处打平。
-    #: 本开关辖域只含溢余段定向收窄主通道(已落码,默认关零漂移,
-    #: 成本侧账独立成立),其开臂由两臂 A/B「基线 vs C1 本体」对照独立
-    #: 裁决(判据=出口 hp 与 boss 胜率不降+删因逐笔可复算,事前预写见
-    #: ADR-0443 Decision 3),不因破息否决受波及。
-    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进 sim A/B 批;
-    #: 不过 → 删码留 ADR-0443。
-    c1_directed_spend_enabled: bool = False
+    # (C1 溢余必花定向优先级开关 c1_directed_spend_enabled 已随旧方案
+    #  清退批删除:默认关+验证排期挂账未跑即整体出局,清查报告
+    #  OLD_MIX_AUDIT §1.3;filters 谓词与接线同批删。破息分支从未落码
+    # (概念定谳否决,证据链留档 ADR-0443)。)
 
     # (位面 2 支出授权 p2_spend_auth 全机制已随定谳清理删除,ADR-0492:
     # 四轮 A/B(W762/W772/W779/W785)M0b 四口径穷尽 0-4.1%,授权窗内
     # 花费结构性死路;W801 判根因=授权/方向类杠杆与档位累积型目标变量
     # 类型错配。窗前预转换思想由 W795/W803 P29/档位积分/D2 入口转化继承。
 
-    # ===== 锁线后兑现链 v2(W802 实施批;设计单一源=
-    # ===== .debug/temp/currency_war/w795_realization_design/REPORT.md v2/v3
-    # ===== + 同目录 PREREG_兑现链A_B.md v3)=====
-    #: 伞开关+七子旗标,生命周期第 1 态:默认关+零漂移锚(策略开关的
-    #: 生命周期,唯一合法理由=行为输入未就绪:κ/γ/β/Δp_tier/R_min/时点
-    #: 项权重全部占位值,不做生产决策)。**开臂判据挂账 = PREREG
-    #: 兑现链A_B v3 主判据 M1-M4 + 机制判 G1-G7**(n≥500/臂+池指纹);
-    #: A/B 数据齐即跑,不过则删码留 ADR(第 4 态),禁悬置默认关。
-    #: 开臂翻默认时必须盘点「断言开关关闭行为」的锁组语义(第 3 态义务,
-    #: test_cw_realization_chain 每锁带 off 臂零漂移断言)。
-    #: 伞开关=True 且对应子旗标=True 才接线该侧机制;观测硬依赖
-    #(board_next_tier/bench_full_flag/ADR-0474 遥测键)归 W793 后继批,
-    #: 阻塞标定批清偿、不阻塞开臂(W796 复核 N2 措辞)。
-    realization_chain_enabled: bool = False
-    #: 搜牌侧:缺件感知定向刷新(设计侧一;修断点①-b)——锁定帧缺件
-    #: 清单驱动刷新评分加项 Δp_tier·P(本刷出缺件);金水位辖域门
-    #(花完仍≥息线,P5 自洽)+ 有效域=3-4 费缺件;低费死支不落
-    #(等级只升不降,W796 面 2)。
-    realization_search_enabled: bool = False
-    #: 买入侧(设计侧二;修断点②-a/②-b):off-lock 罚分常数改机会成本
-    #: 比例折扣制(val>0 部分乘 (1−κ);κ 占位)+ P29 羁绊感知囤牌
-    #: 优先级(hp≥报警线 ∨ R_rest≥R_min 事前辖域门,含反向锁;bench
-    #: 挤占用≥容量−1 禁囤定性门)。
-    realization_buy_enabled: bool = False
-    #: 合成时点侧(设计侧三;修断点③-a 重述):merge 候选排序加「合成
-    #: 时点价值」项(非新豁免——ADR-0437/0438 豁免通道现行默认开不动,
-    #: 防双计声明继续辖);档位未满守卫与星级守卫(合成产物与 deployed
-    #: 同名不可上场 → 零时点价值)与搜牌缺件判据同一单一源;时点项
-    #: 权重占位,**开臂前置=V(1★→2★) 条件 Δp 标定批**(PREREG 锁 #1:
-    #: 标定前不把未证不等式钉进排序锁)。
-    realization_merge_timing_enabled: bool = False
-    #: 上阵/部署侧(设计侧四 ④-a;修断点③-c/④-a):锁定线 2★ bench 件
-    #: cap 未满时部署候选必含(部署显影;cap 满走既有 SwapDeploy 臂
-    #: 不新造)。
-    realization_deploy_enabled: bool = False
-    #: 方向侧(设计侧四 ④-b;修断点④-b):γ 衰减供给感知支持度
-    #: support′ = γ^t·support + β·[成员在店],t=连续零在店轮数;γ 量级带
-    #: [0.7,0.8] 经验锚(sim 扫描标定挂账,非「断供 5 轮等效」推导);
-    #: 切换滞回复用 P16(δ=line_switch_theta 单一源)。G6 该翻不翻/
-    #: G7 息基保住为开臂机制判(PREREG v3 §3)。
-    realization_direction_enabled: bool = False
-    #: D1 腾席选件弱序(W797 并入;修 ADR-0327 选件序输入反):腾席 sell
-    #: 统一弱序键补 income(卖出回金+装备残值代理)升序分量——席满
-    #: 腾席取最弱价值件(实机局实证:曾卖高价值件留 1★ 散件,反向消失)。
-    realization_d1_enabled: bool = False
-    #: D2 跨位面入口帧转化授权(W797 并入;辖域协调:窗口判定归本设计、
-    #: 分配账式复用 ADR-0474 死亡窗分配器(不造第二分配器)、报警源
-    #: 消费既有应急带同一状态源):入口帧(round==1)hp 落死亡带 ∧
-    #: 携金>息线 → 并入分配器 DEATH 域辖域,一次性转化授权由分配器
-    #: 出清产生。
-    realization_d2_enabled: bool = False
-    #: —— 占位参数组(**占位值,不做生产决策**——伞开关默认关;全部
-    #: 开臂前 sim 扫描标定,PREREG §6 挂账;出处=设计 REPORT v2 §2
-    #: 如实占位纪律)——
-    #: off-lock 比例折扣系数 κ。P11 下界/P12 拒绝域推不出点估计
-    #: (v1「由 P11/P12 推出」表述已撤回);兑现链标定批 sim 扫描
-    #: κ∈[0.5,0.85] 弹性平坦(线外买入占比/金纪律指标无位移——比例
-    #: 折扣不变号,只改排序不改可买性,线外占比缺口是尾金 1 费件
-    #: 的结构性余量非 κ 可达),维持 0.5;W789 Q1 反事实只约束
-    #: 「降级非禁绝」(典型线外件 0.742 分折扣后仍正可买,成立)。
-    realization_off_lock_kappa: float = 0.5
-    #: Δp_tier 档位进度单位值(每完成一次档位步的价值,分/轮口径)。
-    #: 推导:P3 羁绊期望表 e0→e1/e1→e2 ≈1.4-1.6 金/轮 × 锁定后剩余
-    #: 战斗轮中位 8(sim 500 局) ≈ 全档位步 12 金当量;按候选单件
-    #: 「金→分」比率 ~0.65(1-2 费件 0.5-0.8 分)折算 Δp≈0.9±0.15。
-    #: 标定批 sim 扫描 [0.75,2.0]:G3/G7 弹性平坦、G2/G4 金席压力
-    #: 随 Δp 单调升,取推导带下限 0.75(sim 内 hp 侧传导不可测:
-    #: 出口 hp 对档位推进数平坦,实机档位阶跃锚=8 份实机局档案的
-    #: r7 遭遇/r9 boss 税阶跃 ~19 血/档)。
-    realization_delta_p_tier: float = 0.75
-    #: P29 辖域门 R_rest 下限。推导:低血分支(hp<报警线 40)的存活
-    #: 视野=实机对局档案按 P2 进场 hp 分桶的剩余存活轮中位(hp 20-40
-    #: → 5 轮;hp<20 → 2 轮,≥40 → 7 轮),囤牌收益(档位阶跃落在
-    #: 遭遇/boss 帧)需 ≥5 场兑现窗——取 5(先验带 [3,5] 上端)。
-    #: sim 内弹性平坦(锁定集中在 r1,门槛缔合帧 <0.2%;实机晚锁局
-    #: 缔合更紧,弹性以实机判读为准)。
-    realization_p29_r_min: int = 5
-    #: 缺件定向刷新的有效费用域(3-4 费;p(lv7,3)=0.40 档,低费死支
-    #: 已删除,W796 面 2)。
-    realization_member_cost_band: frozenset[int] = frozenset({3, 4})
-    #: 合成时点项权重单位。与 Δp_tier 同语义(同一档位步价值 × 持有
-    #: 份数比 2/3 × 剩余轮),故同值=0.75;标定批合成事件数对 unit
-    #: 无可分辨弹性(sim 合成时点延迟结构性恒 0,M2 归实机锚)。
-    realization_merge_timing_unit: float = 0.75
-    #: 方向衰减系数 γ。标定批 sim 扫描(80-300 局/点):原经验带
-    #: [0.7,0.8] 内任 β 值方向摇摆(G3)均超 off 基线 +60% 量级——
-    #: 摇摆形态 81% 为相邻轮 A↔B 振荡,是「衰减降」×「在店上跳」
-    #: 的轮间拉锯;G3 门(不升)约束下 γ=0.95 回门。代价声明:零
-    #: 供给超越时距 ln(Δsup)/ln(1/γ) 升至 ~21 轮 > 位面长,衰减项
-    #: 位面内近惰性,供给重估主要由 β 在店项承载(P16 滞回防粘死,
-    #: G6 实测不升)。
-    realization_direction_gamma: float = 0.95
-    #: 方向供给项系数 β(窗口 W 的 ρ 项权重)。标定批取 0.05:单轮
-    #: 上跳幅度须低于滞回 θ(line_switch_theta=1.0)的有效分辨差——
-    #: β≥0.2 时在店/不在店的轮间交替即产生越带振荡(G3 摇摆主源,
-    #: 与 γ 无关的下界);β≤0.05 摇摆回 off 水位。
-    realization_direction_beta: float = 0.05
 
-    # ===== P1 档位推进目标函数(W803 实施批)=====
-    #: 伞开关+三子旗标(gate/deadline/r6_budget,仅 A/B 归因必需),
-    #: 生命周期第 1 态:默认关+零漂移锚。设计单一源 =
-    #: .debug/temp/currency_war/w803_tier_push_design/REPORT.md v2;
-    #: **开臂判据挂账 = 同目录 PREREG_tier_push_AB.md v2 主判据 M1-M3
-    #: + 机制判 G0-G5**(n=1000/臂+池指纹+零漂移锚);A/B 数据齐即跑,
-    #: 不过则删码留 ADR(第 4 态),禁悬置默认关。决策 why=ADR-0494。
-    #: 占位参数组(W(r) 形状/V_tier 线分权/报警线/压库豁免上界)不做
-    #: 生产决策,开臂前 sim 标定批消偿(设计 §6/§8 挂账)。
-    p1_tier_push_enabled: bool = False
-    #: 散装板硬门(设计 §3④;r4 起 max_bond_tier<2 帧拒纯散件买入,
-    #: 豁免=缺口前进判据同一 dist 函数/压库 ≤2 费+每帧 ≤2 张)。
-    p1_tier_push_gate_enabled: bool = False
-    #: r7 死线权重 W(r)(设计 §3②;r1-r5 平缓/r6-r7 陡升/r8+ boss 残差
-    #: 坍缩;关=恒 1.0 纯缺口差分,消融归因)。
-    p1_tier_push_deadline_enabled: bool = False
-    #: r6 建档轮预算承诺(设计 §3⑤;EV 门式授权+血线辖域门最小实现)。
-    p1_tier_push_r6_budget_enabled: bool = False
-    #: —— 占位参数组(全部开臂前 sim 扫描标定;出处=设计 REPORT v2
-    #: §3①② 如实占位纪律)——
-    #: W(r) r1-r5 平缓段权重(占位)。
-    tier_push_w_early: float = 0.2
-    #: W(r) r6-r7 陡升段权重(占位;掉血帧 71% 集中 r7+r9 的方向性非自由
-    #: 参数,陡度标定挂账;r7 备战帧购买直接作用于 r7 遭遇战)。
-    tier_push_w_r6: float = 1.0
-    #: W(r) r8+ boss 残差坍缩权重(占位;坍缩到平缓段之下=PREREG v2
-    #: §5 锁 #3 的 r3>r8 序,r7 帧后新增档位只经 r8-r9 购买窗、只对
-    #: r9 boss 兑现)。
-    tier_push_w_late: float = 0.1
-    #: V_tier 仙舟线锚定值(+19 血当量,P32.2 boss 帧单帧下界;占位)。
-    tier_push_v_anchor: float = 19.0
-    #: V_tier 列车/DOT 线降权系数(占位 0.5;2 人档线增量小,设计 §1.2)。
-    tier_push_v_train_dot_scale: float = 0.5
-    #: V_tier 希儿系最低权系数(占位 0.25;伤害在希儿技能层,设计 §1.2)。
-    tier_push_v_seele_scale: float = 0.25
-    #: 散装门生效起始轮(r4;r1-r3 空窗期豁免,[31]①)。
-    tier_push_gate_min_round: int = 4
-    #: 压库豁免费用档硬上界([34] 费用档判据 ≤2 费)。
-    tier_push_press_cost_max: int = 2
-    #: 压库豁免每帧张数上限(设计 §3④ 收口)。
-    tier_push_press_round_cap: int = 2
+
+    # (锁线后兑现链 v2 字段族(W802:伞 realization_chain_enabled + 六子
+    #  旗标 + 七占位参数)与 P1 档位推进目标函数字段族(W803:伞
+    #  p1_tier_push_enabled + 三子旗标 + 八参数)已随旧方案清退批删除:
+    #  两族均为默认关+预注册判据挂账未跑的悬置债,清查报告
+    #  OLD_MIX_AUDIT §1.3 裁定整批删除;decision_v2/realization.py 与
+    #  decision_v2/tier_push.py 模块、scoring/candidates/filters/
+    #  cw_intention 接线同批删。)
 
     # (R-B 三信号商店件定价七字段(rb_signal_pricing_enabled/s3_enabled/
     #  s1_unit/s2_threshold/s2_unit/s3_unit/rb_retention_q1)已随 W947
@@ -1335,28 +1104,6 @@ class DecisionV2Registry:
     #: 非零,方可重新立项。
 
 
-    # ===== 形态达标三方向(设计决策=ADR-0432/0433/0434)=====
-    #: 三开关共同背景:形态达标是双指标(息基×形态)中塌掉的一根——
-    #: before 基线=形态达标率实机 10%/sim 两臂 0%,头号缺项=配方件 2★
-    #: (ADR-0432 判据节)。A/B 统一主判据=形态达标率(口径=配方档≥5
-    #: ∧ 场上一枚配方 2★ ∧ 上场≥5),同池同种子对照先核池指纹。
-
-    #: —— 方向一:购买围栏硬排序(recipe_fence)——
-    #: 语义:未成型期(P1 ∧ form_ok 为假,谓词=filters.recipe_fence_active)
-    #: 同一轮买候选中存在配方件(scoring._cand_system_bonds 名集单一源)
-    #: 时,删除全部非配方件(散件)买候选,删因 'recipe_fence_scatter'
-    #: (filters 层2 第二遍后置步,成型停手/C1 之后——C1 先行;时窗正交
-    #: 声明:C1 只辖 P1 末窗溢余段,本围栏辖 P1 全程未成型段,C1 未删的
-    #: 候选再过本围栏,删因链日志分列记账)。存在性围栏非全禁散件:店为
-    #: 空配方件时散件照旧走原评分链;只重排同一笔预算内「买谁」,不改
-    #: 金账/息账(单一源仍在 arbiter)。
-    #: 开臂判据挂账(不执行):sim 同池 A/B n≥300 形态达标率 >0 ∧ 息基
-    #: 保住率不劣于基线臂 2pp(判据只收台账可测项);
-    #: 验证不过的出口=删码留 ADR-0432。
-    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:排进 sim A/B 批,且为本组
-    #: **第一个跑**的开关(形态达标率是当期头号缺项,sim 0%/实机 10%);
-    #: 不过 → 删码留 ADR-0432。
-    recipe_fence_enabled: bool = False
 
     #: —— 同名牌集中度约束(已定谳清理,删码留档;决策 why=ADR-0437,
     #: 复测与定谳链=ADR-0438 验证节)=====
@@ -1370,91 +1117,30 @@ class DecisionV2Registry:
     #: 约束双开复测专项指标与单豁免臂逐位同,零独立行为面;谓词与开关
     #: 删除,ADR-0437 留完整证据链。
 
-    #: —— 方向二:成型后过渡件不拆(form_break_sell_blocked)——
-    #: 语义:[13] 停手线的卖/下场侧对称口径(ADR-0343 买侧停手 +
-    #: ADR-0363/0373 演进/卖侧引擎守卫同纪律族的辖域缺口,非新守卫族):
-    #: 成型停手激活帧(filters.formed_stop_active 单一源;承接门未达时
-    #: formed_stop 为假,本守卫自动不辖)下,卖出/下场候选的事务净效果
-    #: 使 form_ok(decision_v2.phase 单一源)翻假的,拒。覆盖两型缝隙:
-    #: 配方档 5→4(冗余份=档位构成,ADR-0373「冗余件照旧」不辖的盲区)
-    #: 与上场人数 5→4。挂点面与 ADR-0373 同构:discipline.sell_priority_
-    #: key(carry_gate/两补偿器)+ candidates._sell_tag(三卖 tag 生成
-    #: 过滤)+ arbiter 卖候选采纳点对 working 复检(同批聚合)。卖了不破
-    #: form_ok 的件照旧可卖(腾位/换金通道不堵,[22] 净0 件最先卖的
-    #: 既有弱序保留)。
-    #: 开臂判据挂账(不执行):「中途达过 form_ok 而最终帧不满足」的
-    #: 拆队局改前实机 9 局/sim 同口径 0——sim A/B 已证触发面为零(sim 与
-    #: off 逐位一致:闸全在卖候选采纳,无「中途达 form_ok 后拆队」路径),
-    #: sim 判据结构性永不满足,有效性归实机判读。开臂判据=实机成型局
-    #: 拆队笔数 before-after(改后应为 0)∧ 拆队后 benign→mal 不增 ∧
-    #: strict_mal 不升(ADR-0373 先例:卖侧守卫曾有 benign→mal 回归);
-    #: 验证不过的出口=删码留 ADR-0433。
-    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:可验时点=实机回归战役
-    #(蓝图 §8,前置=sim A/B 批 说服包通过);实机判读量(拆队笔数/形态迁移
-    #: 分账)入 §8 武装序判读清单,防「开臂时无人记得量什么」。
-    form_break_sell_blocked_enabled: bool = False
+    # (形态达标三方向三开关(recipe_fence_enabled/
+    #  form_break_sell_blocked_enabled/below_floor_spend_gate_enabled,
+    #  ADR-0432/0433/0434)与支出门三开关(spend_gate_enabled/
+    #  spend_gate_interest_enabled/spend_gate_bench_enabled,W829/ADR-0499)
+    #  已随旧方案清退批删除:全默认关+验证排期挂账未跑,清查报告
+    #  OLD_MIX_AUDIT §1.3 裁定整批删除;filters/discipline/ev/arbiter
+    #  接线、constraints 'spend_gate' 条目、audit_matrix 各格与
+    #  decision_v2/spend_gate.py 模块同批删。)
 
-    #: —— 方向三:花的时机判据(below_floor_spend_gate)——
-    #: 语义:金 < interest_floor 时升级/刷新默认拒(删因
-    #: 'below_floor_spend'),仅三条例外放行(白名单非加分):
-    #: E1=[33] 人口位(ev.levelup_ev_basis 臂①原样收编,零改语义)/
-    #: E2=[6] 精确化=店内有配方围栏名集件(与方向一共用 scoring.
-    #: _cand_system_bonds 名集尺,不造第二把)→ 刷新放行,上限 1 次/轮
-    #: (定向刷新语义,session.v3_bf_refresh_* 轮内计数)/ E3=[11] 零息
-    #: 损显式化(⌊gold/10⌋ 不变的花/刷在息账上零成本,放行防误拦)。
-    #: 落点:升级=levelup_ev_basis 前置门(花后 < interest_floor 时仅
-    #: E1/E3 可达——② DP 臂本就要求平台未破不动;③ 静态 EV 账在 boss
-    #: 前冲级语境放行过负期望破息花,`w410_p1_process_quality/` 实证 r9 破息笔中位 32 金换
-    #: 2 档息损,胜率传导上界 0.12 < 过账所需 0.30);刷新=arbiter
-    #: gold_floor HOARD 分支收窄(interest_rule 在金<50 时让位 gold_floor,
-    #: 该分支才是息线下刷新的实际裁决点);gate 开时 dp_spend 不再单独
-    #: 授权息线下刷新(三例外白名单收窄)。金账单一源不变,本门是授权
-    #: 边界不是新账。
-    #: 开臂判据挂账(不执行):改前 sim 真破息率 w42 26.3%/w43 5.5%,sim A/B
-    #: 已证触发面为零(sim 与 off 逐位一致——被 never_50 高占比低金语境
-    #: 架空,sim 判据结构性永不满足),有效性归实机判读。开臂判据=实机
-    #: r9 破息升级笔息损分账 before-after(改后破息笔归零)∧ never_50
-    #: ≤基线+2pp ∧ 形态达标不降;验证不过的出口=删码留 ADR-0434。
-    #: **验证排期挂账(退役批(ADR-0466/0467/0469) 补 deadline)**:可验时点=实机回归战役
-    #(蓝图 §8,前置=sim A/B 批 说服包通过);判读量(r9 破息分账,改前基线
-    #: w42 26.3%/w43 5.5%)入 §8 武装序判读清单。
-    below_floor_spend_gate_enabled: bool = False
 
-    # ===== (spend_receipt_gate_enabled 已删:预算-回执契约无条件生效,
-    # ===== 决策 why = ADR-0504;行为面 = decision_v2.posture_release
-    # ===== 三函数,死旋钮不复留。=====
 
-    # ===== 支出门·买侧收门(W829 v3 设计落码;伞+两子旗标默认关 =
-    # 生命周期第 1 态零漂移锚;三轮 A/B 终局定性见 ADR-0499)=====
-    #: 设计单一源 = docs/develop/currency_war/prereg/w829_spend_gate_design/
-    #: REPORT.md v3(§1.4 判据/§3 落码规格/§4 辖界切分;判前锁
-    #: PREREG_v4/v4.1 同目录);终局决策记录 = ADR-0499。机制落点 =
-    #: decision_v2.spend_gate(arbiter 约束链新增一节,拒因枚举
-    #: d1_interest/d2_blood/d3_bench)。
-    #: D1 息线臂 = 真破息(花后 < 息线 ∧ ⌊g/10⌋ 下降)拒,豁免
-    #: E-a 合成完备 / E-b 锁定线缺档成员∧hp>应急线(内联判据,不引
-    #: P29 项)/ E-c 人口位(门不辖升级);D2 血线臂不设旗标(消费
-    #: 既有血线常量单一源,零新参数零新状态源,随伞);D3 位置臂 =
-    #: bench 占用 ≥ 容量−1 拒非合成非当轮可部署,挤占判据单一实现
-    #: (= P29 消费同一函数)。
-    #: 开臂判据(已执行,ADR-0499):PREREG_v4 三臂判前锁三轮 A/B
-    #: (W840/W848)定谳 = 清账门绿 ∧ 传导格三度双败 → 维持关保留
-    #(语义按清账已证+传导归实机锚,禁第四态删码)。恢复开臂前置=实机锚量化判据
-    #: (未定,见 ADR-0499 遗留挂账)。
-    spend_gate_enabled: bool = False
-    #: D1 息线臂子旗标(G7 归因消融用)
-    spend_gate_interest_enabled: bool = False
-    #: D3 位置臂子旗标(G4 归因消融用)
-    spend_gate_bench_enabled: bool = False
+    # ===== (spend_receipt_gate_enabled 已随除开关批删除:预算-回执契约
+    # ===== 无条件生效,决策 why = ADR-0504;行为面见
+    # ===== decision_v2.posture_release 三函数。)=====
+
 
     # ===== DirectorV2 备战循环(`w606_stage2_batch3/` 阶段2批③落件;`w620_migration_b1/` 迁移批 1(守卫分区)升正)=====
     #: `w620_migration_b1/` 迁移批 1(守卫分区)(蓝图 §7 迁移批 1(守卫分区) 行):DirectorV2 接线升正,新环 = 唯一生产
     #: 路径——无开关 directive(蓝图 §8),``director_v2_prep_enabled`` 随
     #: 接线完成删除(存在理由消失);回退 = git revert。
-    #: 影子比对开关(纯诊断工具,sim/离线对拍用;不改任何游戏动作):
-    #: True 时旧环每步 decide 后同帧跑适配器影子决策并逐位对照(异常全
-    #: 隔离计数留证)。采集完成即回 False;旧环随迁移批 3(ADR-0465) 退役时生产分支一并删。
-    director_v2_shadow_compare: bool = False
+    # (影子比对开关 director_v2_shadow_compare 已随旧方案清退批删除:
+    #  ADR-0465 迁移批 3 承诺旧环退役时删除生产分支,旧环已无生产者,
+    #  decision_assembly.shadow_compare_*/prep_director 接线同批删,
+    #  清查报告 OLD_MIX_AUDIT §1.3/§5。)
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====
     #: 执行约束名序(仲裁器按序施加;filters/arbiter 按名映射实现)
@@ -1470,12 +1156,9 @@ class DecisionV2Registry:
                                # 起 boss 禁令臂已删,[32] 节点无关)
         'deploy_cap',          # 上阵数 ≤ max_units
         # ('p1_iface_gate' 已随五开关定谳清理删除,ADR-0487)
-        'spend_gate',          # 支出门·买侧收门(W829;伞默认关=零漂移。
-                               # 置于链尾:既有守卫先到先记,守卫已拒的
-                               # 候选门不求值不产生门拒因;d3_bench 只记
-                               # 「未满栏但前瞻挤占」)
-        # ('pv_bench_reserve' 已随件价值整机制删除,ADR-0497;
-        #  spend_gate 恢复链尾。)
+        # ('spend_gate' 已随支出门开关族删除——旧方案清退批,清查报告
+        #  OLD_MIX_AUDIT §1.3;pv_bench_reserve 已随件价值整机制删除,
+        #  ADR-0497。)
     )
     #: 地板表(金≥地板;覆盖态分派——审计表 gold 行的消费值)
     #: interest_floor 字段已删(D3 双源清偿,`w628_migration_b2/`):息线单一源 =
@@ -1543,41 +1226,12 @@ class DecisionV2Registry:
     rust_hoard_damage_share: float = 0.03
     rust_hoard_penalty_cap: int = 10
 
-    # ===== 变宝为废·牺牲合成先行(机制真值单一源 =
-    # data/affix_effects_data.AFFIX_EFFECTS['变宝为废']游戏内原文实采:
-    # 「每个位面开始时,首次合成的进阶装备会有50%的概率变成垃圾袋」
-    # ——粒度=每位面各一次,概率=50%,产物=垃圾袋;排序器 =
-    # kernel/cw_junk_first.py)=====
-    #: 策略开关生命周期第 1 态(默认关+零漂移锚:关=equip_allocation 基分配
-    #: 原样,经 junk_first_allocation 包装,执行链零改动)。
-    #: **开臂判据(挂账,双钥匙,由本批拍定阈值;机制数据已在库,不缺)**:
-    #: ① 环境读取通道稳定——实机 ≥2 局含「变宝为废」词缀的局,
-    #:   state.enemy_affixes 均读到该词缀(简报/位面详情横条通道零漏采);
-    #: ② 牺牲对识别可靠——实机 ≥2 次 cw_junk_first 决策日志中
-    #:   sacrifice_first/deferred 动作与画面合成事件对得上,误判 0
-    #:   (误判 = 牺牲对吞了主线组件,或该排未排)。
-    #: 两钥匙齐 → A/B 判据后翻默认值。
-    #: ⚠️ 禁独立开臂(联动评审约束):本旗标(执行侧防护)翻默认值前须与选型侧
-    #: w878_synth_equip_dep_enabled 联动评审——同一机制(变宝为废)的两面,
-    #: 防护已覆盖多少风险、选型侧 -0.25 是否过反应,须同批对照拍板,不得各自单独定。
-    junk_first_sacrifice_enabled: bool = False
-
-    # ===== 装备穿满族 fill-to-3(软弱无力+额外打击合并量变体;
-    # 机制真值单一源 = data/affix_effects_data.AFFIX_EFFECTS 游戏内原文实采:
-    # 「没有穿戴3件装备的角色及其忆灵,造成的伤害为原伤害的80%.」/
-    # 「我方队员每有1个空缺装备栏,受到敌人攻击后,额外受到本次攻击伤害8%的
-    # 真实伤害。」——排序器后处理 = kernel/cw_equip_env.py)=====
-    #: 策略开关生命周期第 1 态(默认关+零漂移锚:关=equip_allocation 基分配
-    #: 原样,fill 变体 inactive,执行链零改动)。
-    #: **开臂判据(挂账,设计件 .debug/temp/currency_war/w880_equip_env_design/
-    #: DESIGN.md §4.1)**:① 环境通道:实机 ≥2 局含软弱无力/额外打击零漏采
-    #: (state.enemy_affixes 命中,同 junk_first 判据①);② 行为对:fill 改派
-    #: 日志与画面穿戴事件对得上、误挪 key/主线凑件 0 次;③ sim A/B(同池配对)
-    #: 穿戴覆盖率/损血正向 → 翻默认值 + 同步改写行为锁组(第 3 态义务)。
-    #: 验证不过 → 第 4 态清理(删码留 ADR),不悬置。
-    equip_env_fill3_enabled: bool = False
-    #: 穿满阈值 = 机制常量(真值「穿戴3件装备」的 3;非拍死值,版本变更时改此)。
-    equip_fill_target: int = 3
+    # (变宝为废牺牲合成开关 junk_first_sacrifice_enabled、装备穿满族
+    #  fill-to-3 开关 equip_env_fill3_enabled 与穿满阈值 equip_fill_target
+    #  已随旧方案清退批删除:双钥匙开臂判据挂账未跑即整体出局,清查
+    #  报告 OLD_MIX_AUDIT §1.3;kernel/cw_junk_first.py、kernel/
+    #  cw_equip_env.py 排序器包装与 equip_all 接线同批删——机制真值
+    #(词缀原文)保留在 data/affix_effects_data。)
 
     # ===== 完备性审计表(ADR-0290 对抗修订④)=====
     #: 资源维 × 回合态维矩阵;每格 = constraints 内的约束名,或
@@ -1588,14 +1242,14 @@ class DecisionV2Registry:
             # (资源维, 回合态维) → (约束名...) 或 ('none', 原因)
             # ('catchup' 列已随 `w126_b_arm/`/ADR-0349 追赶态退场改为 'mode' 常态列)
             ('gold', 'boss'): ('gold_floor', 'interest_rule'),
-            # (gold/boss 与 bench/boss 格不含 spend_gate:支出门在 boss
-            # 窗让位,W774⑤ 同仲裁语义;p1_iface_gate 已随定谳清理删除,
+            # (gold/boss 与 bench/boss 格原不含 spend_gate;支出门已随
+            # 开关族删除——旧方案清退批,p1_iface_gate 已随定谳清理删除,
             # ADR-0487;pv_bench_reserve 已随件价值整机制删除,ADR-0497)
-            ('gold', 'emergency'): ('gold_floor', 'spend_gate'),
-            ('gold', 'mode'): ('gold_floor', 'interest_rule', 'spend_gate'),
+            ('gold', 'emergency'): ('gold_floor',),
+            ('gold', 'mode'): ('gold_floor', 'interest_rule'),
             ('bench', 'boss'): ('bench_capacity',),
-            ('bench', 'emergency'): ('bench_capacity', 'spend_gate'),
-            ('bench', 'mode'): ('bench_capacity', 'spend_gate'),
+            ('bench', 'emergency'): ('bench_capacity',),
+            ('bench', 'mode'): ('bench_capacity',),
             # 血预算停手门只辖升级(全回合态生效——emergency 态内同样
             # 拒,设计件 12 §5.3「不是第五种覆盖态」;ADR-0448)
             ('slot', 'boss'): ('blood_budget_stop', 'boss_levelup_ban'),
@@ -1609,67 +1263,15 @@ class DecisionV2Registry:
     audit_resource_dims: tuple[str, ...] = ('gold', 'bench', 'slot', 'round_mutex')
     audit_round_state_dims: tuple[str, ...] = ('boss', 'emergency', 'mode')
 
-    # ===== W875 环境B类评分补全包 + 长线利好刷价参数(开关生命周期第 1 态:默认关)=====
-    #: 生命周期第 1 态纪律(策略开关的唯一合法存在理由 = 行为输入未就绪):
-    #: 关 = 基表/基价零漂移;开臂判据 = sim A/B(同池配对)目标指标正向后翻默认值,
-    #: 同时改写断言旧默认行为的行为锁组(hash 锁之外的锁最易漏)。
-    #: 评分补全包子旗标(逐条独立;死映射防线 = 每行准入前已核查该 tag 的
-    #: counter 值域至少被 1 个 comp 的 mechanic_attributes 携带,W872 攻击口径):
-    #: 能量逃逸(敌受击使攻击者能量 -4,机制原文 affix_effects_data「能量逃逸」)
-    #: → tag 能量削弱,克连携高频开大(Saber 连携队,tag 有载体)。
-    w875_energy_leak_enabled: bool = False
-    #: 同步行动(我方行动提前时敌也提前 20%,机制原文 affix_effects_data「同步行动」)
-    #: → tag 行动喂敌,克速度依赖/量子拉条(阿雅鞋队/希儿量子,tag 均有载体)。
-    #: 「敌多动=DoT 多结算」半边不走本表(cw_system_cards affix_likes 通道已覆盖,防双计)。
-    w875_sync_action_enabled: bool = False
-    #: ===== W878 死 tag 复活 4 批子旗标(开关生命周期第 1 态:默认关)=====
-    #: 复活 4 个零携带死 tag 的 comp 侧载体(裁决依据=死映射三问:概念存在×判据可判×
-    #: 量级匹配 mechanics_fit ±0.25/±0.20 粒度;判型出处见 cw_comps.W878_GATED_TAGS 注记):
-    #: - 单属性队:属性熄火 7 词条(风/火/冰/雷/物理/量子/虚数,敌我方该属性伤害 1 点×4 次)
-    #:   克纯色主档队;载体=希儿量子(量子同频4 属性型羁绊主档)——量子熄火局防错选希儿线。
-    #: - 成型羁绊队:形单影只(1/2/3 个未激活羁绊 → 伤害 85%/60%/30%)利羁绊全的板;
-    #:   载体=羁绊驱动型 comp(战力来自羁绊档位乘区,装备流/单核族不打,逐套判型理由
-    #:   见 cw_comps COMP_LIBRARY 标注注释)——全表最大量级词条(-70%)。
-    #: - 慢速:冻结族 3 词条(极速制冷/坠入陷阱/冷冻冬眠)克拖久+耗点队;
-    #:   载体=DOT 磨血族(叠层×引爆胜利条件,final_dot_kafka)。
-    #: - 依赖合成装备:变宝为废(每位面首次进阶合成 50% 垃圾袋)克全预算砸核心装的流;
-    #:   载体=白厄反甲族(装备即胜利条件,final_baie_reflect);合成侧已由 junk_first
-    #:   排序器处理,本 tag 补选型侧(comp_score 在该词缀下给装备流降分),两半互补不重复。
-    #: 开臂判据挂账(环境恢复后补验):①单帧锁组(test_cw_w878_deadtag_revive)全绿;
-    #: ②含对应词缀的 sim/实机局样本 ≥10 局判读方向一致(样本量恢复后由编排者定谳,
-    #: 当前无模拟/实机输入,悬置默认关);
-    #: ③成型羁绊队开臂前须补验「判非 3 套(红A/万敌单C/反甲白厄)在形单影只局的
-    #: 伤害档位方向」——判非理由「羁绊不满也有战力」与词条罚的「伤害倍率出口」不同维,
-    #: 万敌单C方向存疑(死 tag 裁决形单影只角度)。
-    #: ⚠️ 两旗标禁独立开臂:w878_synth_equip_dep_enabled(选型侧 -0.25 降分)与
-    #: junk_first_sacrifice_enabled(执行侧牺牲合成防护)是同一机制的两面——选型惩罚叠
-    #: 已有防护疑过反应,开臂须两侧联动评审(junk+tag 对照),构造期校验禁选型侧单独开
-    #: (见本类 __post_init__)。junk_first 侧单独开合法(防护先行、选型侧观望)。
-    w878_mono_attribute_enabled: bool = False
-    w878_formed_bond_enabled: bool = False
-    w878_slow_burn_enabled: bool = False
-    w878_synth_equip_dep_enabled: bool = False
-    #: 长线利好刷价参数(机制原文 cw_invest_data id=120:花费刷新 30 次后得 20 金,
-    #: 之后本局刷新只需 1 金)。阈值/折后价单一源在本表,消费点 =
-    #: cw_economy.refresh_cost_effective(刷新 EV 判据参数化接缝)。
-    #: 开臂判据挂账:①局内累计付费刷新计数接线(refresh_count 由调用方注入,
-    #: 现无此观测,缺省 0 → 折后价永不生效);②sim A/B 刷新/经济指标正向。
-    longterm_refresh_discount_enabled: bool = False
-    longterm_refresh_threshold: int = 30
-    longterm_refresh_price: int = 1
-    #: ===== 巨星强化角色决策维度(开关生命周期第 1 态:默认关)=====
-    #: 开 = ``decide_megastar`` 在巨星候选(既有 buff 契合路径,不受影响)之外
-    #: 追加输出「强化角色」意向(``MegastarPick.enhance_char_id``,绑定序 =
-    #: ``cw_comps.select_megastar_enhance``:target.core_chars 前排 → core 后台
-    #: → 首个前排 → None)。注意:本开关只启**决策层意向输出**(落 reason/遥测),
-    #: **执行面(巨星 overlay step2 点强化角色)未接**——巨星 step2 强化角色
-    #: 候选坐标未建档(伙伴 overlay 的中心立绘 (960,300) 只在伙伴屏实机验过,
-    #: 巨星屏无对应 ground truth),且巨星语境下强化角色的机制效果无文档真值
-    #: (docs/game/screens/currency_war_megastar.md:可选步骤,跳过不锁出战)。
-    #: 开臂判据挂账:①巨星 step2 画面建档(候选面/选中态/坐标 ground truth);
-    #: ②强化角色机制效果语义确认(改 run_megastar_node 接执行面前必须先做);
-    #: ③执行面接通后 sim/实机 A/B 正向 → 翻默认值;验证不过 → 删码留 ADR。
-    megastar_enhance_enabled: bool = False
+    # (W875 环境B类评分补全两旗标(w875_energy_leak/sync_action_enabled)、
+    #  W878 死 tag 复活四旗标(w878_mono_attribute/formed_bond/slow_burn/
+    #  synth_equip_dep_enabled)、长线利好刷价三字段
+    #  (longterm_refresh_discount_enabled/threshold/price)与巨星强化角色
+    #  开关 megastar_enhance_enabled 已随旧方案清退批删除:全部默认关+
+    #  开臂判据挂账未跑,清查报告 OLD_MIX_AUDIT §1.3 裁定整批删除;
+    #  cw_comps 的 tag→旗标门控查找、cw_economy.refresh_cost_effective
+    #  折价臂、strategy.decide_megastar 强化意向接线与
+    #  __post_init__ w878/junk_first 联动校验同批删。)
 
     # (W948 转型臂字段族 intention_stagnation_arm_enabled /
     #  p2_entry_weak_target_enabled / p2_promote_enabled / stagnate_windows /
@@ -1677,18 +1279,6 @@ class DecisionV2Registry:
     #  salvage_deadline_nodes / salvage_window_rounds 已随 sim A/B 判负整机制
     #  删码(开关生命周期第 4 态);决策 why、负结果数据与复活条件 = ADR-0509。)
 
-    def __post_init__(self) -> None:
-        """开臂约束构造期校验(策略开关生命周期纪律,非行为分支)。
-
-        w878_synth_equip_dep_enabled 禁独立开臂:选型侧 -0.25 降分与执行侧
-        junk_first 牺牲合成防护是同一机制(变宝为废)的两面,选型惩罚叠已有防护
-        属未对照的过反应风险——须两侧联动评审后同开(出处 = 死 tag 裁决
-        的旗标交互角度)。junk_first 侧单独开合法(防护先行、选型侧观望)。
-        """
-        if self.w878_synth_equip_dep_enabled and not self.junk_first_sacrifice_enabled:
-            raise ValueError(
-                "w878_synth_equip_dep_enabled 禁独立开臂:须与 junk_first_sacrifice_enabled"
-                "联动评审后同开(选型侧 -0.25 与执行侧防护为同一机制两面,禁未对照单独开臂)")
 
     def interest_floor(self) -> int:
         """息线单一源(D3 双源清偿,`w628_migration_b2/`):派生 = interest_cap × 10。

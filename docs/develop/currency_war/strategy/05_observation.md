@@ -35,10 +35,26 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 
 ## 3. cw_performance:观测反馈层
 
-- **RoundOutcome(双侧观测)**:自身侧(hp_after 差分 + 置信度)+ 敌方侧(击杀/伤害,可观测时)+ comp_tag + intentional_fold 标记。
+- **RoundOutcome(双侧观测)**:自身侧(hp_after 差分 + 置信度)+ 敌方侧(击杀/伤害,可观测时)+ comp_tag + intentional_fold 标记。另有**结算三项遥测四字段**(挑战结束屏读;读数策略与删失约定见 §3.1):`progress_fill_ratio`(进度条填充率,与「挑战进度 ±N」浮字两通道同帧并记互为对拍)/ `damage_base`/`damage_unfinished_progress`(掉血说明 tooltip 两分量,miss=None 删失显式可辨)/ `damage_breakdown_visible`(tooltip 在场标记,False+两分量 None=不在场 vs True+None=在场解析失败,两态可分)。
 - **PerformanceTracker**:`recent_hp_loss_trend` = **归一化**掉血趋势(hp_delta / expected_drop(node_type),全部样本进同一条 trend——归一化而非按节点类型完全划分:消除「打 boss 掉得多=我弱」偏差又不丢样本/不震荡);intentional_fold 排除(防故意输污染);comp_tag 过滤(pivot 后旧 comp 降权);低置信不进 trend;冷启动(差分样本不足)→ None,调用方退静态先验。
 - **comp_viability**(评已 commit 阵容):先验(成型度/装备/机制)× 先验权重 + 观测 × obs_weight(随观测轮次上升);评 candidate 用纯先验 comp_prior(双签名,02 §2)。
 - **死局检测**:HP 低 + trend 高 + 下节点锁不住血三门。
+
+### 3.1 结算屏三项遥测:读数策略与删失约定(设计单一源)
+
+三项 = 挑战进度幅度 + 掉血说明面板两伤害分量,读点在挑战结束屏(`cw_settlement_obs` 读数器族;落点 = RoundOutcome 四字段 → outcomes.jsonl)。读数策略三条(均实机帧定谳):
+
+- **页 2 整版布局 = 常驻**:挑战结束屏进入后先有约 2s 掉血动画期,动画结束后完整结算页常驻在屏直至点「继续挑战」——HP 锚(「小队生命值」行 ∨「继续挑战」按钮)可靠,作三项读数的页态门(锚不在 = 动画期/过渡帧,读 None 不算 miss)。
+- **「小队生命值结算说明」tooltip = 瞬态**:两伤害分量所在的悬浮子件只出现在进页瞬窗内——须窗口内捕获(败局链在页 1 即读;胜轮读点在页 2 时 tooltip 大概率已离屏,由 battle_loop 页 1 暂存合并兜底)。
+- **面板延迟渲染的时序约束**:面板要延迟约 2-4s 才渲染,读点早于面板出现即漏读——效率等待与捕获完整性的共存条件是读点对齐「面板已渲染」帧(等待下限或锚点检测)。
+
+**删失约定**:读不到 = None(诚实缺省),禁造假值——面板不在场的 None ≠ 0,「只有基础伤害分量」与「没读到」必须可分(与金币明细的 None/0 分离同判据);值域先验兜 OCR 丢负号(分量行恒 ≤ 0,无符号正值拒信记 None)。
+
+**两通道对拍**:进度幅度走双通道——「挑战进度 ±N」浮字是符号+增量真值,进度条填充率(`progress_fill_ratio`,纯像素列扫描零 OCR)是幅度绝对值通道,两者同帧并记互为对拍;填充率只存 ratio,满条总格数换算由读端在校准后乘(schema 不绑死总格数)。**填充率只对页 1 帧读**(DD-006):真条只在页 1(「点击空白加速」帧)存在,页 2 帧的条矩形罩在 HP 心形图标上会确定性读出假值;页 1 进条有入场动画,页 1 暂存取后帧覆盖(放行点击帧 = 最 settled 值)。
+
+**boss 胜局形态(DD-006)**:boss 胜局页 1(「挑战结束」标题 + 挑战进度条 + 「点击空白加速」,无「继续挑战」)与战败结算页 1 同构,失败页模板分支会误命中——判别语义 = 挑战进度带符号增量 > 0(节点胜利真值,与「扣血=战斗失败」口径同源);判别失效(OCR 偶漏浮字)时由失败页分支内的同款页 1 暂存兜底,三项真值仍达页 2 记录合并。killed 判定序:页 1 进度合并 → 进度符号判定 → hp 对比兜底(仅进度缺席时)——boss 胜局 HP 净降(未达最低进度扣血)≠ 节点失败。**败局闩同源收紧**:失败页分支的「见过败局结算屏」守卫闩只在显式负增量('neg')帧置位——OCR 漏读(None)帧两种形态页都可能出现,拿漏读当败局真值置闩会把 boss 胜局局判废;None 帧走**次级证据裁决**(结算说明面板负分量 hp 净降 ∧ 全局节点序 t≥14 双证据齐才置闩,证据不足不置并留证)。门排除与置闩门消费同一次符号三态读数(`settle_page1_progress_sign`)。
+
+区域坐标不在本文档复述——坐标载体 = `cw_settlement_obs` 读数器常量。
 
 ## 4. telemetry 包:决策迹采集(`telemetry/`)
 
@@ -56,7 +72,7 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 - `cw_weight_search`:CEM 权重搜索(防退化三件套);
 - `cw_divergence_stats`:影子 DP 姿态 vs 生产姿态分歧频率(人机问询触发门数据源);
 - `cw_match_recorder`:对局采集器(§4;离线重放模式可对历史截图目录重跑提取)。历史局审计通道 = decisions.jsonl(写路径在 telemetry recorder;live vs 旧 v1 plan 的对拍器已随 strategy_v1 退役,ADR-0477)。
-- `telemetry/match_archive`:按局存档(ADR-0486)——终局旁路把一个游戏局(可跨多个 run 段,game_id 按段首帧继承)装配为自包含档案 `replay/matches/match_<game_id>.json` + `matches/index.jsonl` 摘要索引。触发 = 局终钩子(battle_loop 调 `assemble_pending`)+ CLI `assemble [--game]` 兜底;查询 CLI `--match <game_id>` 直读档案(切片物化后复用同一套视图函数,输出与 `--run` 一致),`--recent` 读索引;水位线实现旧数据不回填;写盘 tmp+rename 原子。保留策略(记账未实现):index 永久,档案超窗口可删留行、可从 replay 原始流重装配。装配逐轮表含 hp 真值链/刷新波/配对/姿态外,还提该轮最优决策帧的决策明细(`decision_detail`:v3_intention/candidate_scores/eval_breakdown/dp_posture)与 `bench`/`equips`,顶层带 `strategy_version` 版本戳(schema v2,ADR-0486 附录;旧档案=版本未知)。
+- `telemetry/match_archive`:按局存档(ADR-0486)——终局旁路把一个游戏局(可跨多个 run 段,game_id 按段首帧继承)装配为自包含档案 `replay/matches/match_<game_id>.json` + `matches/index.jsonl` 摘要索引。触发 = 局终钩子(battle_loop 调 `assemble_pending`)+ CLI `assemble [--game]` 兜底;查询 CLI `--match <game_id>` 直读档案(切片物化后复用同一套视图函数,输出与 `--run` 一致),`--recent` 读索引;水位线实现旧数据不回填;写盘 tmp+rename 原子。保留策略(契约):index 永久,档案超窗口可删留行、可从 replay 原始流重装配。装配逐轮表含 hp 真值链/刷新波/配对/姿态外,还提该轮最优决策帧的决策明细(`decision_detail`:v3_intention/candidate_scores/eval_breakdown/dp_posture)与 `bench`/`equips`,顶层带 `strategy_version` 版本戳。**schema 版本单一源 = `match_archive.SCHEMA_VERSION`**(加法字段递增,旧档案经 `load_archive` 版本检查自动重装配补齐,版本迁移读端不静默缺列)。顶层 `endgame.final_snapshot` = 局级终局快照(取全局最晚决策迹帧的 state:终局阵容/金/等级/terminal 计数;装配端派生、零新运行时写入)。
 
 ## 6. 日志格式标准(可检索;单一源)
 

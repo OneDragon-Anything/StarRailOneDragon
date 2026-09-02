@@ -175,15 +175,8 @@ def alloc_domain(state: GameState, session: StrategySession,
     from sr_od.application.currency_war.decision.decision_v2.filters import (
         formed_stop_active,
     )
-    from sr_od.application.currency_war.decision.decision_v2.realization import (
-        d2_entry_frame,
-    )
-    # 兑现链 D2(W802;跨位面入口帧转化授权,锁 #11 窗口判定):
-    # 入口帧 hp 落死亡带 ∧ 携金>息线 → 并入 DEATH 域辖域——分配账式
-    # 复用本分配器既有出清(不造第二分配器,W796 §二.2 辖域协调);
-    # 开关关恒不触发(零漂移)。
-    if d2_entry_frame(state, registry):
-        return AllocDomain.DEATH
+    # (兑现链 D2·跨位面入口帧转化授权臂已随 realization_chain 开关族
+    #  删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     if terminal_release(state, session, registry):
         return AllocDomain.DEATH
     if formed_stop_active(state, session, registry):

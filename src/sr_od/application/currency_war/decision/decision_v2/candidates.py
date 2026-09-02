@@ -28,7 +28,6 @@ from sr_od.application.currency_war.decision.decision_v2.discipline import (
     copy_swap_useless,
     engine_char_names,
     engine_seed_wants,
-    form_break_sell_blocked,
     has_same_name_copy,
     in_round_sold,
     observed_probs,
@@ -364,75 +363,9 @@ def _buy_tag(card: ShopCard, state: GameState,
     return 'line_opportunistic' if v3_carrier else 'bridge_core'
 
 
-def _crisis_fallback_candidates(
-        state: GameState, session: StrategySession,
-        registry: DecisionV2Registry,
-        existing: list[Candidate]) -> list[Candidate]:
-    """危机帧购买兜底集(W956 治本方案 B;设计单一源 =
-    ``.debug/temp/currency_war/w956_death_allocator/DESIGN.md`` §2,
-    归属裁决 = W954 §5 移交;注册表开关 ``crisis_fallback_enabled`` 辖,
-    默认关 = A/B 注入态,判据见 w956 目录 ``PREREG.md``):
-
-    - **辖域**:应急带(is_emergency)∧ 危机支出活跃(spend_gate_active
-      = session.v3_release 在场)——即危机臂已接管预算的帧;
-    - **互斥谓词(W954 §5 原文口径)**:目标∪骨架采购集对当前店面
-      非空 ⇒ 兜底不启用(店内有 ``_target_names`` 成员即可走方向采购
-      ——兜底集只在方向集买不到时接手,与目标线选择零重叠);
-    - **集语义**:任意 cost ≤ ``crisis_fallback_max_cost`` 的店卡,
-      可上阵完备式 = [merge ∧ 合成后可上场] ∨ [bench 有空位 ∧ deploy
-      有空位](与 allocator._salvage_ok 同式,单源复用 filters);
-    - **病灶**:match g_20260831_082322 p2r2(hp1/金100,臂开 budget=10,
-      店中 5 卡无一属锁线核心/共享集 → 5 卡全拒 0 执行死时持金 100);
-    - **排序**:可合成 2★(merge)优先、其后费用升序——启发式,数学
-      不可证(W956 §3.3),A/B 判据辖。"""
-    from sr_od.application.currency_war.decision.decision_v2.filters import (
-        _deploy_free,
-        _deploy_free_after_merge,
-        is_emergency,
-    )
-    from sr_od.application.currency_war.decision.decision_v2.posture_release import (
-        spend_gate_active,
-    )
-    if not registry.crisis_fallback_enabled:
-        return []
-    if not is_emergency(state, registry):
-        return []
-    if not spend_gate_active(session, registry):
-        return []
-    # 互斥谓词:目标∪骨架采购集对当前店面非空 ⇒ 兜底不启用
-    if any(card.name in _target_names(state, session)
-           for card in (state.shop or [])):
-        return []
-    out: list[Candidate] = []
-    for card in (state.shop or []):
-        if not card.name:
-            continue
-        if (card.cost or 3) > registry.crisis_fallback_max_cost:
-            continue
-        if star_weighted_copies(card.name, state) >= registry.copies_cap:
-            continue
-        if _copy_swap_blocked(card, state, session, registry):
-            continue
-        will_merge = will_merge_on_buy(card, state.bench, state.deployed)
-        cand = Candidate(
-            action=BuyCard(card, reason=''),
-            tag='crisis_fallback', source='shop',
-            merge=will_merge,
-            breakdown_hint={'cost': card.cost,
-                            'crisis_fallback': True},
-        )
-        # 可上阵完备式(与 allocator._salvage_ok 同式):merge 后可上
-        # ∨ bench 有空位且 deploy 有空位
-        deployable = ((will_merge
-                       and _deploy_free_after_merge(cand, state) >= 1)
-                      or (bench_occupied(state.bench or [])
-                          < registry.bench_capacity
-                          and _deploy_free(state) >= 1))
-        if deployable:
-            out.append(cand)
-    out.sort(key=lambda c: (0 if c.merge else 1,
-                            c.action.card.cost or 3))
-    return out
+# (危机帧购买兜底集生成器 _crisis_fallback_candidates 已随 crisis_
+#  fallback 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;
+#  设计证据链留档 w956_death_allocator/。)
 
 
 def _sell_blocked(bc: BenchChar, state: GameState,
@@ -494,8 +427,8 @@ def _sell_tag(bc: BenchChar, state: GameState,
         return None
     if sole_engine_sell_blocked(bc, state, registry):
         return None   # W184/ADR-0373:唯一体系引擎件不生成卖候选
-    if form_break_sell_blocked(bc, state, session, registry):
-        return None   # 方向二/ADR-0433:成型后拆队卖不生成候选
+    # (方向二/ADR-0433 成型后拆队卖过滤已随 form_break 开关族删除
+    #  ——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     protect = _target_names(state, session)
     name = bc.char_id or ''
     is_target = name in protect
@@ -551,8 +484,8 @@ def generate_candidates(state: GameState, session: StrategySession,
             needs_slot=(tag == 'carry_gate'),
             breakdown_hint={'cost': card.cost},
         ))
-    # --- 危机帧购买兜底集(W956 方案 B;注册表开关辖,默认关)---
-    out.extend(_crisis_fallback_candidates(state, session, registry, out))
+    # (危机帧购买兜底集生成已随 crisis_fallback 开关族删除——旧方案
+    #  清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     # --- 卖(bench 每件;ADR-0316 槽位表——idx=槽位下标,空槽跳过)---
     for idx, bc in enumerate(state.bench or []):
         if bc is None:
@@ -687,47 +620,6 @@ def _deploy_candidates(state: GameState, session: StrategySession,
             breakdown_hint={'name': bc.char_id,
                             'sort_key': registry.deploy_sort_key},
         ))
-    # 兑现链·部署侧(W802;④-a 锁定线新增强件显影,修断点③-c/④-a):
-    # 锁定线 2★ bench 件(合成新产物最典型)在 cap 未满且未被围栏序
-    # 采纳时,必含于部署候选集(锁 #9;cap 满走既有 SwapDeploy 臂,
-    # 不新造换位机制)。置于围栏候选之前=显影语义;deploy_legal
-    #(同名禁双)由 char_id ∉ deployed_cids 保证。
-    if registry.realization_chain_enabled \
-            and registry.realization_deploy_enabled:
-        from sr_od.application.currency_war.decision.decision_v2.realization import (
-            _ist as _rc_ist,
-        )
-        from sr_od.application.currency_war.kernel.cw_intention import (
-            locked_buy_scope,
-        )
-        _scope = None
-        _rci = _rc_ist(session)
-        if _rci is not None:
-            _scope = locked_buy_scope(_rci)
-        if _scope:
-            _picked_idx = {c.action.bench_idx for c in out}
-            _cap_left = (state.max_units()
-                         - deployed_occupied(state.deployed or []))
-            for _i in _occ_idx:
-                if _cap_left <= 0:
-                    break
-                _bc = state.bench[_i]
-                if _bc is None or _i in _picked_idx:
-                    continue
-                if (getattr(_bc, 'star', 1) or 1) < 2:
-                    continue
-                if (_bc.char_id or '') not in _scope:
-                    continue
-                if _bc.char_id in deployed_cids:
-                    continue   # 同名禁双(5.1.7;合成产物留待同名下场窗)
-                out.insert(0, Candidate(
-                    action=DeployMove(bench_idx=_i,
-                                      to_row=_bc.position_pref or 'back',
-                                      faction=_bc.faction or '?'),
-                    tag='deploy', source='rc_deploy',
-                    breakdown_hint={'name': _bc.char_id,
-                                    'rc_deploy_showcase': True},
-                ))
-                _picked_idx.add(_i)
-                _cap_left -= 1
+    # (兑现链·部署侧显影臂已随 realization_chain 开关族删除——旧方案
+    #  清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     return out

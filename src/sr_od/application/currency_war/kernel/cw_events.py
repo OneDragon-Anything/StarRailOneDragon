@@ -436,8 +436,9 @@ class MegastarPick:
     """decide_megastar 返回:选第几个候选 + 原因。
 
     enhance_char_id:巨星 overlay step2「强化角色」意向(我方角色名);
-    None = 未启用(``registry.megastar_enhance_enabled`` 默认关)/无可选——
-    决策意向输出,执行面未接(挂账见该开关注释)。
+    恒 None(强化角色决策意向已随 megastar_enhance_enabled 开关族删除
+    ——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;字段保留兼容既有
+    遥测/执行面读取)。
     """
     idx: int
     reason: str = ""

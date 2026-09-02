@@ -56,7 +56,7 @@
 **R05 · 刷新单价(c_refresh)**
 - 基础值:【源】`cw_economy.SHOP_REFRESH_COST` = 2 / `cw_state.REFRESH_COST_BASE`(建模常量,OCR 徽标误读已裁撤,ADR-0456)。
 - 突变源:
-  - **长线利好**(环境 id 120):累计 30 次付费刷新后本局 1 金/刷,**另一次性 +20 金(30 刷达成时派息——金日程须计入这 20 金)**——【resolved】计数器状态依赖;单一源=`registry.longterm_refresh_threshold/longterm_refresh_price`(现实现 `refresh_cost_effective`,开关默认关=基价零漂移,开臂判据挂账)。
+  - **长线利好**(环境 id 120):累计 30 次付费刷新后本局 1 金/刷,**另一次性 +20 金(30 刷达成时派息——金日程须计入这 20 金)**——【resolved】计数器状态依赖;机制真值在 `cw_invest_data`(运行时注册表,游戏数据单一源),无开关(原 registry 折价接线 `longterm_refresh_threshold/longterm_refresh_price` 已随 dd-009 清退删除,现刷价实现不消费该折价)。
   - **概率事件**(id 300401):45% 概率免费刷 → **期望刷价 1.1**(期望口径,01 §4.10 经济参数族在册例)。
   - **免费刷新额度族**(加油站 200301/存款回报 100501/合并同类项 102901/武力刷新 101801/固定理财/高效决策 301701/市场干预赠 5 刷/搜打撤):每节点/条件 N 次免费——【resolved】`EconomyEffect.free_refresh_per_node` 聚合,add 合成(现实现 `_refresh_cost`/`roll_affordable` 消费)。
 - resolved 语义:第 n+1 次付费刷新实付 = max(0, base ∘ 折价突变) − 免费额度余量折抵;期望口径变体(概率事件)供 EV 层,实付口径供执行层,两口径不得混用。
@@ -272,7 +272,7 @@ resolve_prob_table(state, mutations, observed_probs | None) -> p(level, cost)   
 ## 6. Phase 3 落码注意(汇总)
 
 1. `INVEST_MUTATIONS` 建表时与 `cw_invest_data`(334 策略+83 环境)desc 全量对拍,三分态逐条落位(§2 是起点非终点);战力族/资产发放族条目登记「通道归属」而非数值。
-2. 计数器型突变先查观测供给(现仅长线利好有开关位,refresh_count 无观测);无观测 = 缺省关 + 开臂判据挂账(开关生命周期纪律)。
+2. 计数器型突变先查观测供给(长线利好的 registry 开关位已随 dd-009 清退删除,机制真值归 `cw_invest_data`;`refresh_count` 仍无观测);无观测 = 缺省关 + 开臂判据挂账(开关生命周期纪律)。
 3. 池不变量落码 = 删除/不新建任何「池状态」跟踪字段;`pool_left` 恒为派生函数。
 4. 概率表消费优先级:实读概率条(轮岗帧)> resolved 合成表 > 基线表(退基线必告警)。
 5. 所有血本位被动突变走 R08 安全带;主动选择通道(E1/E2/E15 评分)对血本位卡返回回避。

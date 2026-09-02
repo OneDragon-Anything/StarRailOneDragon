@@ -332,18 +332,8 @@ def levelup_ev_basis(state: GameState, session: StrategySession,
                 b is not None and b.char_id in targets
                 for b in bench):
             return 'pop_slot'
-    # 息线以下支出门(方向三,registry.below_floor_spend_gate_enabled
-    # 默认关=零漂移;ADR-0434):花后 < interest_floor 时默认拒,仅
-    # E1(人口位,臂①已在上方原样返回=收编)与 E3(零息损,⌊gold/10⌋
-    # 不变)可达。② DP 臂本就要求 after≥interest_floor,门下自然不达,
-    # 零改动;收窄的是 ③ 静态 EV 账——它在 boss 前冲级语境放行过负期望
-    # 破息花(`w410_p1_process_quality/` 实证:r9 破息笔中位 32 金换 2 档息损,胜率传导上界
-    # 0.12 < 过账所需 0.30)。前置门位置=臂①之后②之前:E1 优先级最高,
-    # 例外是白名单不是加分。
-    if registry.below_floor_spend_gate_enabled \
-            and after < registry.interest_floor() \
-            and (working_gold - cost) // 10 < working_gold // 10:
-        return ''    # below_floor_spend:息线以下破档升级无例外
+    # (息线以下支出门·方向三的前置拒臂已随 below_floor_spend_gate 开关
+    #  族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     # ② 排程花费授权(平台未破;预算收权批(ADR-0465):确定性查表核单一址,
     # 排程=预告态,可负担性由上方入口门+本行平台判据收口)
     from sr_od.application.currency_war.kernel.cw_economy import (

@@ -935,26 +935,10 @@ def score_candidate(cand: Candidate, state: GameState,
             # 无目标语境(未锁线/核心已齐/窗外/该等级刷不到):
             # D 让位——刷新金只用于找目标件/保血急救([31] 硬约束)
             val = -(cand.action.cost or 2)
-        # 锁线后兑现链·搜牌侧(W802;缺件感知定向刷新,金水位辖域门+
-        # 3-4 费有效域;开关关恒 0 零漂移)。bd['rc_search'] 记加项判读。
-        from sr_od.application.currency_war.decision.decision_v2.realization import (
-            refresh_search_term,
-        )
-        _rc_search = refresh_search_term(state, session, registry)
-        if _rc_search:
-            val += _rc_search
-        # P1 档位推进·刷新超几何项(W803;缺档成员 Δp_tier·P·W(r),
-        # 沿 W795 侧一机制+金水位辖域门同款;伞关恒 0 零漂移)。
-        # bd['tp_refresh'] 记加项判读。
-        from sr_od.application.currency_war.decision.decision_v2.tier_push import (
-            refresh_term as _tp_refresh_fn,
-        )
-        _tp_refresh = _tp_refresh_fn(state, session, registry)
-        if _tp_refresh:
-            val += _tp_refresh
+        # (兑现链·搜牌侧加项与 P1 档位推进·刷新超几何项已随各自开关族
+        #  删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3。)
         return val, {'base': base, 'after': None, 'refresh_ev': val,
-                     'int_emb': 0.0, 'rc_search': _rc_search,
-                     'tp_refresh': _tp_refresh}
+                     'int_emb': 0.0}
     after_state = apply_for_score(cand, state, session)
     if after_state is None:
         return 0.0, {'base': base, 'after': None, 'int_emb': 0.0}
@@ -1057,38 +1041,10 @@ def score_candidate(cand: Candidate, state: GameState,
     # 三窗无一致正方向)、filler_star 期权分与方向门豁免(ADR-0402,
     # `w504_filler_star_adr0402/` 开臂 A/B wash)的评分消费块均已删除,删除清单与证据链见各
     # ADR 定谳/清理节。
-    # 锁线后兑现链·买入/合成时点侧(W802;开关关恒 0 零漂移):
-    # P29 羁绊感知囤牌优先级(事前辖域门含反向锁)与 merge 候选合成
-    # 时点项(非新豁免,ADR-0437/0438 豁免通道不动)。两者只加线内
-    # 候选/merge 候选的分,与末段 off_lock 降级不叠(off_lock 只辖
-    # 线外候选,辖域互斥);bd 记判读键。
-    from sr_od.application.currency_war.decision.decision_v2.realization import (
-        merge_timing_term,
-        p29_priority_term,
-    )
-    _rc_p29 = p29_priority_term(cand, state, session, registry)
-    if _rc_p29:
-        val += _rc_p29
-    _rc_merge = merge_timing_term(cand, state, session, registry)
-    if _rc_merge:
-        val += _rc_merge
-    # P1 档位推进目标函数·缺口差分项(W803;伞开关默认关恒 0 零漂移):
-    # 逐帧存量差分 ΔG·W(r)·V_tier,买/升级/部署共用(设计 §3①②;
-    # 决策 why=ADR-0494)。加在 off-lock 降级**之前**:线外候选的本项
-    # 随既有 W802 κ 折扣通道被比例折扣(降级非禁绝,零新增罚分机制
-    # ——off-lock 罚分本体 = W802 单一实现,本项只消费)。bd['tp_gap']
-    # 记加项判读。
-    from sr_od.application.currency_war.decision.decision_v2.tier_push import (
-        candidate_gap_term,
-    )
-    _tp_gap = candidate_gap_term(cand, state, after_state, session, registry)
-    if _tp_gap:
-        val += _tp_gap
-    # (R-B 三信号商店件定价已随 W947 A/B 两轮判负整机制删码:合臂
-    #  形态达标率 -3.00pp 显著负;拆臂 S1+S2 隔离复测 -0.33pp 噪声带
-    #  内零疗效——删码留档 ADR-0507。)
-    # (件价值模型 Phase 1 买侧加项块已随整机制定谳删除,删码留档 ADR-0497;
-    #  W902 终裁=活性但零疗效。)
+    # (兑现链·买入/合成时点侧(P29 囤牌优先级与 merge 时点项)、P1 档位
+    #  推进目标函数·缺口差分项、off-lock 罚分的兑现链 κ 折扣通道已随
+    #  各自开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;
+    #  off-lock 恢复常数罚分单一实现。)
     # `w150_buy_lock/`/ADR-0359 买侧通道锁定目标约束:末段施加(净降级——
     # forming_bias 等偏置先行计入,本约束最后收口,防
     # 偏置把非目标件重新顶回)。bd['off_lock'] 记降级依据(判读可读)。
@@ -1097,23 +1053,9 @@ def score_candidate(cand: Candidate, state: GameState,
         val = min(val, 0.0) - 1.0   # 末轮围栏:可靠非正分拒(仲裁层
         # 「非正分」收口,log 可见)
     elif off_lock:
-        if registry.realization_chain_enabled \
-                and registry.realization_buy_enabled:
-            # 兑现链·买入侧(W789 Q1 定谳修法):off-lock 罚分常数
-            # 改机会成本比例折扣——只折扣正增量部分(val·(1−κ)),
-            # 负分不被抬升(深负候选的「降级非禁绝」语义不变成
-            # 「洗白」);W789 复算 0.742−3.0=−2.258 的量级失配修正。
-            val -= registry.realization_off_lock_kappa * max(val, 0.0)
-        else:
-            val -= registry.off_lock_buy_penalty
+        val -= registry.off_lock_buy_penalty
     out_bd = {'base': base, 'after': after, 'int_emb': int_emb,
               'form_gold': round(form_gold, 3)}
-    if _tp_gap:
-        out_bd['tp_gap'] = round(_tp_gap, 4)
-    if _rc_p29:
-        out_bd['rc_p29'] = round(_rc_p29, 4)
-    if _rc_merge:
-        out_bd['rc_merge_timing'] = round(_rc_merge, 4)
     if off_lock:
         out_bd['off_lock'] = off_lock
     return val, out_bd

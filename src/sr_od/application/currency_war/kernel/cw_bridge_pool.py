@@ -34,7 +34,9 @@ class BridgeCombo:
     phase: str = 'P1'                     # 主力位面
 
 
-#: 桥线池(按 81 篇攻略 P1 榜验证强度排序;数据底:81/41/31 篇)
+#: 桥线池;池内容=调研数据,顺序无行为面(消费面按键集精确匹配,
+#: 300 局 A/B 逐位零差,heuristic_ab B1;REPORT = .debug/temp/currency_war/
+#: redesign/heuristic_ab/REPORT.md)。数据底:81/41/31 篇
 #: 版本口径(V4.0+ 对齐):V3.7「仙舟+DOT」系桥在 V4.0+ A830+ 下
 #: 不提升羁绊基础伤害 → 怪血翻倍而 DOT 不涨,3 仙舟+2DOT 过渡**不稳**;
 #: V4.0 攻略过渡框架(sources/V4.0-4.4_公共_难度攻略.md §中期过渡):

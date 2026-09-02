@@ -29,8 +29,6 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 from sr_od.application.currency_war.kernel.cw_state import (
     BuyCard,
     GameState,
-    LevelUp,
-    RefreshShop,
 )
 
 
@@ -109,54 +107,8 @@ def _refreshable_names(state: GameState, session: StrategySession,
     return frozenset(names)
 
 
-def c1_directed_active(state: GameState, session: StrategySession,
-                       registry: DecisionV2Registry) -> bool:
-    """C1 溢余必花定向辖域(P1 末窗投影安全带;FLIP 正交补集)。
-
-    设计=唯一规格:`.debug/temp/currency_war/w382_c1_design/DESIGN.md`
-    §2/§3(路线 B);总开关 registry.c1_directed_spend_enabled(默认关
-    =零漂移锚)。五条件缺一不可:
-
-    1. 开关开;
-    2. hp 决策可信位(posture_release.hp_decision_trusted 单一源,与
-       posture_release.flip_hit 同款守卫——兜底 100 帧不评估;shop 开态
-       沿用真值帧放行,ADR-0428);
-    3. P1(本通道批辖域;末窗投影语义的 boss 税锚为 P1 语料标定);
-    4. 末窗=posture_release.boss_first_buy_phase(经 discipline.
-       boss_window_active 统一口径)——**不重算末窗谓词**(ADR-0426
-       死分支教训:下游消费必须挂活判定单一源);
-    5. 投影安全带 d=hp−boss_tax_p75 ≥ emergency_hp ∧ 溢余段
-       g>interest_floor——与 FLIP 末窗投影臂(d<emergency_hp)按 d
-       一刀切互斥(辖域正交,非合并;d≥emergency_hp 时 hp≥59,应急态
-       结构性不可达,无重叠面)。
-
-    溢余段花金零息损(P11,成本恒 0),定向语义的期望账方向=只保留
-    对 boss 战胜率有增量的支出;逐动作判定见 filter_candidates 的 C1 段。
-    判据性质(``w382_c1_design`` DESIGN §2 同款推导,资产臂通道已定谳
-    清理见 ADR-0444):默认配置下为
-    Δp_board 符号谓词(可证明零期望,W373 推导链在本辖域成立;同款判据
-    的首用方 C3 濒死带已定谳清理,否决与清理裁决见 ADR-0426 增补节,
-    C1 辖域内推导链独立成立不受其否决波及)。
-    破息分支(g≤50 跨档)不在本辖域——概念已定谳否决,永不实现
-    (定谳判据与证据链=ADR-0443;registry 留定谳注记)。
-    """
-    if not registry.c1_directed_spend_enabled:
-        return False
-    from sr_od.application.currency_war.decision.decision_v2.posture_release import (
-        boss_first_buy_phase,
-        hp_decision_trusted,
-    )
-    if not hp_decision_trusted(state):
-        return False
-    if state.plane != 1:
-        return False
-    if (state.hp
-            - registry.boss_tax_p75_by_plane[state.plane]) \
-            < registry.emergency_hp:
-        return False    # d<25 投影必入应急带:FLIP 末窗投影臂辖区,C1 让位
-    if (state.gold or 0) <= registry.interest_floor():
-        return False    # 只辖溢余段(必花语义的成本恒 0 前提,P11)
-    return boss_first_buy_phase(state, session, registry)
+# (C1 溢余必花定向辖域谓词 c1_directed_active 已随 c1_directed_spend
+#  开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3。)
 
 
 def formed_stop_active(state: GameState, session: StrategySession,
@@ -220,29 +172,8 @@ def formed_stop_active(state: GameState, session: StrategySession,
     return True
 
 
-def recipe_fence_active(state: GameState, session: StrategySession,
-                        registry: DecisionV2Registry) -> bool:
-    """配方围栏辖域(方向一「购买围栏硬排序」;设计单一源=
-    ``.debug/temp/currency_war/w415_form_design/DESIGN.md`` §1,决策
-    why=ADR-0432;开臂判据挂账见 registry.recipe_fence_enabled 注释)。
-
-    三条件缺一不可:
-    1. 开关 ``registry.recipe_fence_enabled``(默认关=零漂移锚);
-    2. P1(形态达标是 [13]/[28] 的位面 1 语义);
-    3. ``form_ok`` 为假(decision_v2.phase 单一源)——成型后由 ADR-0343
-       成型停手接手,散件自然不买,本围栏自动退出,零重叠(两谓词以
-       form_ok 真假互斥,不存在同帧双辖)。
-
-    动作级规则在 ``filter_candidates``(同轮存在性围栏:存在配方件
-    买候选时删全部散件买候选,删因 'recipe_fence_scatter');与 C1 的
-    正交声明(时窗不相交,C1 先行)见 filter_candidates docstring。
-    """
-    if not registry.recipe_fence_enabled:
-        return False
-    if state.plane != 1:
-        return False
-    from sr_od.application.currency_war.decision.decision_v2.phase import form_ok
-    return not form_ok(state, session, registry)
+# (配方围栏辖域谓词 recipe_fence_active 已随形态达标方向一开关族删除
+#  ——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;证据链留档 ADR-0432。)
 
 
 def crisis_hoard_active(state: GameState,
@@ -307,151 +238,33 @@ def filter_candidates(cands: list[Candidate], state: GameState,
     供遥测行/检查器豁免消费(单次调用=单轮决策,策略主循环唯一入口);
     白名单放行的链日志行带 'formed_stop_exempt'=True。
 
-    C1 溢余必花定向收窄(registry.c1_directed_spend_enabled,默认关
-    =零漂移;辖域=c1_directed_active,P1 末窗投影安全带 d≥emergency_hp
-    ∧ 溢余段,与 FLIP 辖区零交集):命中间内对支出候选做 Δp_board 符号
-    判定(本轮支出后、下一战开打前的上场位增加数;溢余段花金成本恒 0,
-    只删对 boss 战胜率零增量的支出)——BuyCard:有空位可上或 3合1 即时
-    合成且合成后可上(完备式=c.merge ∧ _deploy_free_after_merge≥1:
-    「会发生合成」不等于「Δp≥1」,板满+合成 2★ 落 bench 无位可上仍删)
-    放行,纯 hoard 买删(原因 'c1_hoard_buy');
-    RefreshShop:店内有可买+上的名集件放行定向刷新,否则删(原因
-    'c1_blind_refresh');LevelUp:升完立刻多上 1 件放行,否则删(原因
-    'c1_levelup_no_deploy');卖/部署非支出不辖。链日志行带 'c1_directed'
-    原因。贡献候选间的相对排序仍由 EV 评分层单一裁决,本通道不改分。
-
-    (C1 资产臂/跨位面资产通道 V_asset 已定谳清理,删码留档:
-    开臂前置触发面实测为零——C1 辖域帧上意向从不处于锁线态,m 表结构性
-    无定义,通道构造性恒不激活;决策 why=ADR-0444。)
-
-    配方围栏(方向一,registry.recipe_fence_enabled 默认关=零漂移;
-    辖域=recipe_fence_active,P1 ∧ form_ok 为假;ADR-0432):成型停手/
-    C1 之后的**第二遍动作级后置步**——同轮 survivors 中存在配方件
-    (scoring._cand_system_bonds 名集单一源)买候选时,删除全部非配方件
-    (散件)买候选,删因 'recipe_fence_scatter'(链日志行
-    entry['recipe_fence'])。与 C1 正交声明(DESIGN §1.4):时窗不相交
-    ——C1 只辖 P1 末窗溢余段,本围栏辖 P1 全程未成型段;都开时 C1 先行
-    (上级覆盖态语义,主循环内先评),C1 未删的候选再过本围栏;两开关
-    默认值独立,互不为开臂前提;删因链日志分列(c1_directed 与
-    recipe_fence 独立字段),A/B 分通道记账互不污染。与成型停手零重叠
-    (form_ok 真假互斥)。金账/息账单一源不动,只重排同一笔预算内买谁。
+    (C1 溢余必花定向收窄臂、配方围栏第二遍后置步(方向一)与散装板
+    硬门(tier_push gate)已随各自开关族删除——旧方案清退批,清查
+    报告 OLD_MIX_AUDIT §1.3;C1 资产臂定谳清理见 ADR-0444。)
     """
     allowed, forbidden = _allowed_tags(state, session, registry)
     level = ('emergency' if is_emergency(state, registry)
              else 'mode')   # 追赶态已退场(W126/ADR-0349)
     formed_stop = formed_stop_active(state, session, registry)
     session.v3_formed_stop = formed_stop
-    # 配方围栏帧级预处理(方向一;与成型停手以 form_ok 真假互斥,同帧
-    # 至多其一;动作级规则在主循环后的第二遍后置步)
-    fence = recipe_fence_active(state, session, registry)
-    c1 = c1_directed_active(state, session, registry)
-    refreshable = frozenset()
-    if c1:
-        # C1 辖区的定向刷新存在性名集(存在性判据的评分先验)
-        refreshable = _refreshable_names(state, session, registry)
-    shop_has_play = c1 and _deploy_free(state) >= 1 and any(
-        c.name in refreshable for c in (state.shop or []))
-    bench_n = 0
-    if c1:
-        from sr_od.application.currency_war.kernel.cw_state import bench_occupied
-        bench_n = bench_occupied(state.bench or [])
     kept: list[Candidate] = []
-    kept_pos: list[int] = []   # [索引定义] kept[i] 的链日志下标(log 容器
-    #             0 起;与 kept 同轮同序生成,取值时机=主循环内同步追加)
     log: list[dict] = []
     for c in cands:
         ok = c.tag in allowed and c.tag not in forbidden
         fs_drop = False   # 本行是否被成型停手拦(W255:仅白名单外买)
-        c1_drop = ''   # 本行是否被 C1 定向收窄拦(Δp_board 符号判定)
         if ok and formed_stop and isinstance(c.action, BuyCard):
             if not _formed_stop_buy_allowed(c.action.card.name,
                                             state, session):
                 ok = False   # [13] 停过渡件(白名单外);W255/ADR-0410
                 fs_drop = True
             # 白名单内:目标件照买照囤([21]/[22],放行=行为不变量)
-        if ok and c1:
-            # C1 定向收窄(Δp_board 符号判定):
-            # 溢余段花金成本恒 0(P11),只删对 boss 战胜率零增量的支出。
-            if isinstance(c.action, BuyCard):
-                # Δp_board = 1 if free≥1 或(3合1 即时合成 ∧ 合成后可上)
-                # else 0(合成豁免取完备式:板满+合成落 bench 无位可上
-                # 时 Δp_board=0)
-                if _deploy_free(state) < 1 and not (
-                        c.merge
-                        and _deploy_free_after_merge(c, state) >= 1):
-                    ok = False
-                    c1_drop = 'c1_hoard_buy'
-            elif isinstance(c.action, RefreshShop):
-                # Δp_board = 1 if ∃店牌可本轮买+上 else 0(存在性判据)
-                if not shop_has_play:
-                    ok = False
-                    c1_drop = 'c1_blind_refresh'
-            elif isinstance(c.action, LevelUp):
-                # Δp_board = 1 iff 升完立刻多上 1 件(bench_n≥1 且
-                # free<bench_n)
-                if not (bench_n >= 1 and _deploy_free(state) < bench_n):
-                    ok = False
-                    c1_drop = 'c1_levelup_no_deploy'
         entry = {'tag': c.tag, 'kept': ok, 'level': level,
                  'formed_stop': fs_drop,
                  **({'formed_stop_exempt': True}
                     if (formed_stop and isinstance(c.action, BuyCard)
                         and not fs_drop and c.tag in allowed
                         and c.tag not in forbidden) else {})}
-        if c1_drop:
-            entry['c1_directed'] = c1_drop
         log.append(entry)
         if ok:
             kept.append(c)
-            kept_pos.append(len(log) - 1)
-    if fence and kept:
-        # 配方围栏第二遍后置步(方向一,ADR-0432):同轮存在性围栏——
-        # 过滤链 survivors 中存在配方件买候选(scoring._cand_system_bonds
-        # 名集单一源)时,删除全部非配方件(散件)买候选。存在性按
-        # survivors 计:C1/成型停手已删的候选不计(删无可买=空转面);
-        # 成型停手与本围栏以 form_ok 真假互斥,实际前序只有 C1。
-        # 店为空配方件时散件照旧(空窗期语义 [31]);只重排同一笔预算内
-        # 「买谁」,配方件之间的相对序仍归 EV 层单一裁决。
-        from sr_od.application.currency_war.decision.decision_v2.scoring import (
-            _cand_system_bonds,
-        )
-        has_recipe = any(
-            isinstance(c2.action, BuyCard) and _cand_system_bonds(c2)
-            for c2 in kept)
-        if has_recipe:
-            still: list[Candidate] = []
-            for i, c2 in enumerate(kept):
-                if (isinstance(c2.action, BuyCard)
-                        and not _cand_system_bonds(c2)):
-                    entry = log[kept_pos[i]]
-                    entry['kept'] = False
-                    entry['recipe_fence'] = 'recipe_fence_scatter'
-                else:
-                    still.append(c2)
-            kept = still
-    if kept:
-        # 散装板硬门(W803;伞+门子旗标默认关=零漂移;设计 §3④,决策
-        # why=ADR-0494):r4 起 max_bond_tier(deployed)<2 帧拒「对任何
-        # 意向线缺口零增量」的纯散件买入。判定序:过滤链上游(成型停
-        # 手/C1/配方围栏)先判,本门最后——豁免不穿透 bench 挤占门
-        # (needs_slot 候选不获压库豁免;bench_capacity 约束照常辖);
-        # 豁免判据与缺口差分同一 dist 函数(单一源)。删因链日志行
-        # entry['tier_push_gate']。
-        from sr_od.application.currency_war.decision.decision_v2.tier_push import (
-            gate_active as _tp_gate_active,
-        )
-        if _tp_gate_active(state, session, registry):
-            from sr_od.application.currency_war.decision.decision_v2.tier_push import (
-                gate_verdict as _tp_gate_verdict,
-            )
-            still = []
-            for i, c2 in enumerate(kept):
-                ok2, why = _tp_gate_verdict(c2, state, session, registry)
-                if not ok2:
-                    entry = log[kept_pos[i]]
-                    entry['kept'] = False
-                    entry['tier_push_gate'] = why
-                else:
-                    still.append(c2)
-            kept = still
     return kept, log

@@ -151,66 +151,8 @@ def sole_engine_sell_blocked(bc, state: GameState,
                             _sell_floor_counts(state, reg))
 
 
-def form_break_sell_blocked(bc, state: GameState,
-                            session: StrategySession,
-                            registry: DecisionV2Registry | None = None,
-                            ) -> bool:
-    """成型后过渡件不拆守卫(方向二;设计单一源=
-    ``.debug/temp/currency_war/w415_form_design/DESIGN.md`` §2,决策
-    why=ADR-0433;开臂判据挂账见 registry.form_break_sell_blocked_enabled
-    注释)。
-
-    [13] 停手线的卖/下场侧对称口径——与 ADR-0343 成型停手(买侧)、
-    ADR-0363/0373(演进/卖侧引擎守卫)是同一纪律族在「成型态」下的
-    缺口径,非新守卫族。辖域=卖/下场候选的 SellBench 通道(挂点全在
-    卖候选生成/采纳路径),覆盖 ADR-0373 的两型缝隙:配方档 5→4(冗余
-    份恰是档位构成,0373「owned>tier 冗余件照旧」放行的盲区)与上场
-    人数 5→4(经 SellBench 下场无回场窗)。remediation.SwapDeploy 换
-    下场臂不辖:其换位可改变羁绊构成使 form_ok 翻假而不被拦(当前靠
-    「换位不减员、上场人数缝隙不触发」缓解,配方档 5→4 缝隙经它仍可
-    达);SwapDeploy 接入本守卫须补挂点,开臂前裁决。
-
-    判据(缺一不可):
-    1. 开关 ``registry.form_break_sell_blocked_enabled``(默认关);
-    2. ``filters.formed_stop_active``(单一源,P1 ∧ comp 派生辖轮 ∧
-       form_ok ∧ 承接口 gap=0 全部继承——承接口未达时 formed_stop 为
-       假,本守卫自动不辖,「继续投资」语义天然优先,ADR-0400);
-    3. 事务净效果:把 bc 从 bench/deployed 槽位移除后的状态(阵营计数
-       按 ``cw_state`` 重算底座重算,与 sim 卖出执行同口径)使
-       ``phase.form_ok`` 翻假(decision_v2.phase 单一源,禁第二把成型
-       尺;ADR-0426 死分支教训:下游消费必须挂活判定单一源)。
-
-    例外:卖了不破 form_ok 的件(纯冗余、真垫层)照旧可卖——补偿卖序
-    的腾位/换金通道不堵死([22] 净0 件最先卖的既有弱序保留)。
-    """
-    from sr_od.application.currency_war.kernel.cw_registry import (
-        DEFAULT_REGISTRY,
-    )
-    reg = registry if registry is not None else DEFAULT_REGISTRY
-    if not reg.form_break_sell_blocked_enabled:
-        return False
-    from sr_od.application.currency_war.decision.decision_v2.filters import (
-        formed_stop_active,
-    )
-    if not formed_stop_active(state, session, reg):
-        return False
-    from sr_od.application.currency_war.decision.decision_v2.phase import form_ok
-    from sr_od.application.currency_war.kernel.cw_state import _recount_board
-    s2 = state.copy()
-    s2.bench = [None if b is bc else b for b in (state.bench or [])]
-    s2.deployed = [None if d is bc else d for d in (state.deployed or [])]
-    s2.board = _recount_board(s2.deployed)
-    return not form_ok(s2, session, reg)
-
-
-
-
-
-
-
-
-
-
+# (form_break_sell_blocked 守卫已随形态达标方向二开关族删除——旧方案
+#  清退批,清查报告 OLD_MIX_AUDIT §1.3;设计证据链留档 ADR-0433。)
 
 
 def engine_seed_wants(card, state: GameState,
@@ -1282,8 +1224,6 @@ def sell_priority_key(bc, state: GameState,
                             #   carry_gate ④ 同档),1=常态
        expected_loss,       # 再遇代价×终局贯穿率(点5 键;静态近似)
        net0,                # 净0 件(1星/1费,全额退)置 0 最先
-       [income],            # 兑现链 D1(开关 realization_d1_enabled,
-                            #   默认关不出现):卖出回金+装备残值升序
        cost, star)          # 同档按费升序/星升序(确定性兜底)
 
     守卫(复用既有谓词,不重定义;任一命中 → None):
@@ -1314,8 +1254,8 @@ def sell_priority_key(bc, state: GameState,
         return None
     if sole_engine_sell_blocked(bc, state, reg):
         return None    # W184/ADR-0373:唯一体系引擎件不进任何卖件通道
-    if form_break_sell_blocked(bc, state, session, reg):
-        return None    # 方向二/ADR-0433:成型后拆队卖(净效果破 form_ok)
+    # (方向二/ADR-0433 成型后拆队卖守卫与兑现链 D1 income 分量已随
+    #  各自开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     if star_weighted_copies(name, state) >= 2:
         return None    # 3合1 进行中素材/完整份不卖(AD9-2-3;ADR-0327)
     ch = CHARACTERS.get(name)
@@ -1329,15 +1269,6 @@ def sell_priority_key(bc, state: GameState,
     redundancy = 0 if (cp > 3 or absent_mergeable) else 1
     loss = _sell_expected_loss(cost, reg)
     net0 = 0 if star == 1 else 1
-    # 兑现链 D1(W802;ADR-0327 选件序输入修正):income(卖出回金+
-    # 装备残值代理)作升序分量入键——席满腾席取最弱价值件,局 6
-    # p2r7「卖含装备 2★ 留 1★ 散件」反向消失;开关关键结构逐位旧行为。
-    from sr_od.application.currency_war.decision.decision_v2.realization import (
-        sell_income_component,
-    )
-    income = sell_income_component(bc, reg)
-    if income is not None:
-        return (in_protect, redundancy, loss, net0, income, cost, star)
     return (in_protect, redundancy, loss, net0, cost, star)
 
 

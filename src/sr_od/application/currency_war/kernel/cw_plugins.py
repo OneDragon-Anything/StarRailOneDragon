@@ -57,7 +57,7 @@ _UNIT_PLUGINS: tuple[PluginEntry, ...] = (
     PluginEntry("知更鸟", "unit", "T1", "team", source="三B T1:全体前台立即行动+全体伤害"),
     PluginEntry("符玄", "unit", "T1", "team", source="三B T1:分摊+免死"),
     PluginEntry("瓦尔特", "unit", "T1", "team", frozenset({"姬子列车"}),
-                source="三B T1:推条+延后倒计时;姬子A 反震流必拿(吸仇恨件互斥外的时间死穴解药)"),
+                source="三B T1:推条+延后倒计时;姬子A 反震流必拿(时间死穴解药)"),
     PluginEntry("银狼", "unit", "T1", "team", source="三B T1:全体降防"),
     # plugin_id 必须是注册表规范名「银狼」(cw_chars.CHARACTERS 键,
     #   与升费链 carry「银狼LV.999」是两个条目)——非规范名不在 CHARACTERS,
@@ -83,7 +83,7 @@ _UNIT_PLUGINS: tuple[PluginEntry, ...] = (
     PluginEntry("风堇", "unit", "T3", "team", source="三B T3(万敌线外——万敌线内为第二记录器正料)"),
     PluginEntry("刻律德菈", "unit", "T3", "team", source="三B T3"),
     PluginEntry("赛飞儿", "unit", "T3", "team", source="三B T3"),
-    PluginEntry("杰帕德", "unit", "T3", "team", source="三B T3(⚠️反震流禁用:分受击概率,攻略 #48;盾系→万敌禁用)"),
+    PluginEntry("杰帕德", "unit", "T3", "team", source="三B T3(盾系→万敌禁用)"),
 )
 
 # ===== 小羁绊插件(15 个;三C 定稿版)=====
@@ -185,6 +185,8 @@ PLUGIN_LIBRARY.update({
 })
 
 # ===== 禁用矩阵(硬冲突行,教义手编;判定法=阵容机制原文 × 插件机制原文)=====
+# 行准入口径:官方机制事实留,单帖攻略行删(heuristic_ab B3;REPORT =
+# .debug/temp/currency_war/redesign/heuristic_ab/REPORT.md)。
 # 键 (plugin_id, family|comp名);值 = 机制原因。硬冲突=见了不买;机制不打架但位置/资源
 # 打架的**弱不适配不进本表**(进不进由打分定,如 治疗2×万敌(轻)/量子2×姬子反震(轻))。
 PLUGIN_DISABLE_MATRIX: dict[tuple[str, str], str] = {
@@ -196,10 +198,6 @@ PLUGIN_DISABLE_MATRIX: dict[tuple[str, str], str] = {
     # 三月七是盾系单卡:注册表 三月七 flows=("护盾",) 且效果含「行动护盾」(cw_chars:106)——
     # 按判定法(阵容机制原文×插件机制原文)入盾系×万敌矩阵,防万敌线买进负资产件。
     ("三月七", "万敌燃血"): "盾系单卡×燃血无法获盾(行动护盾,官方原文;R2 §2 漏行补齐)",
-    # 杰帕德 × 吸仇恨流(反震/反甲:吸仇恨件互斥,分受击概率,攻略 #48)
-    ("杰帕德", "姬子列车"): "反震流吸仇恨互斥:与三月七外骨骼分受击概率(攻略 #48)",
-    ("杰帕德", "白厄反甲"): "反甲流吸仇恨互斥(同姬子A,白厄前排法则+外骨骼类吸仇恨)",
-    ("杰帕德", "反甲白厄"): "反甲流吸仇恨互斥(comp 名键,旧读者兼容)",
 }
 
 

@@ -186,8 +186,8 @@ _ZERO_LOSS_NODE_KINDS: frozenset[str] = frozenset({'reward', 'supply'})
 
 
 def node_loss_kind(node_type: str) -> str:
-    """节点型 → 损血档归一(单一源;C4 rounds_alive 投影唯一消费,
-    registry.p2_cond_loss_table 同表分档)。boss/遭遇→同名档;奖励/补给→零损档(投影日历轮照走、
+    """节点型 → 损血档归一(单一源;阈值层投影
+    cw_first_passage._loss_dist 消费,registry.p2_cond_loss_table 同表分档)。boss/遭遇→同名档;奖励/补给→零损档(投影日历轮照走、
     损血 0);其余(普通战斗/精英/缺读/'?' 占位)→ normal 档——未知
     战斗节点按 normal 档(战斗频率最高档)、未知非战斗节点由调用方
     先归零损档,两类缺读不共用一个兜底。"""
@@ -200,170 +200,15 @@ def node_loss_kind(node_type: str) -> str:
     return 'normal'
 
 
-def _remaining_nodes(session: StrategySession,
-                     state: GameState) -> list[str]:
-    """本位面从当前轮起到位面末的节点型序列(C4 投影输入)。
-
-    真值源=``session.plane_node_table``(开局帧实读,每备战帧实时
-    重写为权威;位面锚=``plane_node_table_plane``,ADR-0368);表缺/
-    位面锚不符 → 回退 economy §10.2 位面模板(P2,见
-    _P2_NODE_TEMPLATE 注释)。"""
-    table = getattr(session, 'plane_node_table', None)
-    if table and getattr(session, 'plane_node_table_plane', None) \
-            == state.plane:
-        seq = list(table)
-    else:
-        seq = list(_P2_NODE_TEMPLATE)
-    start = max(0, int(state.round_num) - 1)
-    return seq[start:]
-
-
-def rounds_alive(state: GameState,
-                 session: StrategySession,
-                 registry: DecisionV2Registry | None = None) -> int:
-    """存活轮数:剩余节点序列逐节点投影(设计=
-    C3/C4 重设计件 §3.2;两个期望时钟必须同一把尺,
-    本函数与 E_rounds 同按日历轮计量)。
-
-    语义=「从当前节点起、按日历轮走,到 hp 耗尽为止还能行动的节点数」:
-    战斗节点扣条件损血、奖励/补给零损照走、遭遇节点加回血期望(默认
-    0 下界,registry.encounter_heal_est);死在结算也先行动过这一轮
-    (ra 先 +1 再判死)。hp≤0 → 0。复杂度 O(剩余节点 ≤9)×O(1) 查表。
-    """
-    reg = registry or DEFAULT_REGISTRY
-    if state.hp is None or state.hp <= 0:   # None=无真值 → 0 期望轮(fail-closed)
-        return 0
-    # 两态口径(M1b,开关=registry.rounds_two_state_enabled,默认关=
-    # 零漂移锚):loss=(1−p_win)·条件败面档;开关关或 rung 缺档按
-    # p_win=0=每战全损 → loss=条件败面档常数(M1a)——同一份代码,
-    # 行为由开关+注入切换(REDESIGN §3.3;幅度源=registry.
-    # p2_cond_loss_table,与两态胜率映射(cw_plane_table.p_win_p2)/阈值层同一 registry 标定源,口径
-    # 定稿见 ADR-0440;无条件期望表 p2_node_loss_table 是另一 estimand,
-    # 消费面=阈值层 _loss_dist)。rung 取样坐标=cw_battle_calib._settle_rung
-    #(与 p_win 表的 Δ池采样键同源,ADR-0279 单一源;deployed
-    # 全集+星徽,0-2 钳制)——不用 scoring._engines_formed(混合域
-    # 加权含 bench 折减项,坐标错位=p_win 偏乐观=门偏松,见
-    # registry.p_win_p2_by_rung 注释)。板面过换线延续(引擎四体系
-    # 跨线共享),当前板 rung 即新线起始 rung 下界;投影期内 rung
-    # 演化(成型升档/卖件回落)未建模,静态取样偏差已声明。
-    p_win = 0.0
-    if reg.rounds_two_state_enabled and reg.p_win_p2_by_rung:
-        from sr_od.application.currency_war.kernel.cw_battle_calib import _settle_rung
-        rung = min(2, max(0, _settle_rung(state)))
-        p_win = reg.p_win_p2_by_rung.get(rung, 0.0)
-    h = float(state.hp)
-    ra = 0
-    for raw in _remaining_nodes(session, state):
-        kind = node_loss_kind(raw)
-        h -= (1.0 - p_win) * reg.p2_cond_loss_table.get(kind, 0.0)
-        if kind == 'encounter':
-            h += reg.encounter_heal_est   # 注入前恒 0(0 下界声明)
-        ra += 1            # 日历轮 +1(死在结算也先行动过这一轮)
-        if h <= 0:
-            break
-    return ra              # 走完全表仍 h>0 → ra=剩余节点数(跨位面截断)
-
-
-def gate_need(state: GameState, session: StrategySession,
-              e_alt: float,
-              registry: DecisionV2Registry | None = None) -> float:
-    """门阈值 need = e_alt×(1+δ) + 兑现余量(+boss CI 半宽,投影路径
-    含 boss 节点时)。survival_gate 与反事实判定位(gate_counterfactual)
-    的单一公式源——拆出防「门判定式与反事实记账式」双写漂移
-    (开臂检查器设计 v2 §2.1/R3:两处必须同一把尺,检查器禁第三处复算)。"""
-    reg = registry or DEFAULT_REGISTRY
-    need = e_alt * (1.0 + reg.line_switch_debias_delta) \
-        + reg.line_switch_survival_margin
-    if any(node_loss_kind(r) == 'boss'
-           for r in _remaining_nodes(session, state)):
-        need += reg.line_switch_boss_ci_halfwidth
-    return need
-
-
-def gate_counterfactual(state: GameState, session: StrategySession,
-                        e_alt: float,
-                        registry: DecisionV2Registry | None = None
-                        ) -> bool:
-    """反事实判定位 P(f) = [rounds_alive(state) < gate_need(state, e_alt)]
-    (开臂检查器设计 v2 R3:开臂机制判「反事实拦截精度」的记账真值源)。
-
-    - off 臂(门关):对每次换线事件由 cw_intention._switch_gate_open
-      计算并写 session 决策位落账本行;
-    - on 臂(门开):**禁再调本函数**——该位即门判定本身
-      (_switch_gate_open 直接取 survival_gate 结果,不重复算,守
-      对抗审查「检查器/记账双源失明」独立性纪律);
-    - 消费面 = A/B 批器读账本行算拦截精度,**检查器禁复算本式**
-      (cw_sim_checks 只做位一致性核验)。
-
-    规格缺口标注(对抗审查核实 off 臂可执行,三处定义当前按合理
-    选择落码、待 v3 确认):
-    - 判定时点 = 换线事件帧的当帧评估(_switch_gate_open 评估点,每个
-      换线辖域帧各记一位,账本行取本轮最后一次评估);
-    - 窗口锚 = R/need 全取**当帧** state(含当帧 gold/bench_free 瞬态
-      口径,与 FM-10 敏感带声明一致;近帧中位去敏属重标定挂账);
-    - 估计量 = rounds_alive(M1a 下界投影)+ gate_need 同式,与 on 臂
-      门判定严格同尺。
-    """
-    reg = registry or DEFAULT_REGISTRY
-    if state.plane != 2:
-        return False
-    if not math.isfinite(e_alt):
-        # E=inf = 新线永不完成,门不等式右端 inf,R≥inf 恒假 → 拦是判据
-        # 式的直接读出(v3 R-E:拦截归属唯一化到本门——v2 通道不调
-        # should_switch_e,上游并不拦)
-        return True
-    return rounds_alive(state, session, reg) \
-        < gate_need(state, session, e_alt, reg)
-
-
-def survival_gate(state: GameState, session: StrategySession,
-                  e_alt: float,
-                  registry: DecisionV2Registry | None = None
-                  ) -> tuple[bool, str]:
-    """换线存活轮数门(第三道门;registry.line_switch_survival_gate_enabled)。
-
-    判据(重设计件 §3.4;开臂检查器设计 v2 §2.2 定性=方向性启发+fail-safe
-    偏紧,非 EV 必要性证明):rounds_alive(剩余节点逐节点投影) ≥
-    gate_need(E_rounds(新线))——投影后两边同为日历轮;δ 承载 p̄ 乐观
-    先修偏,margin 承载兑现余量与投影近似残差,boss CI 半宽承载借档
-    不确定性(registry.line_switch_boss_ci_halfwidth)。换线价值兑现在
-    新线成型之后;存活轮数不足=新线永远到不了兑现点,换线期望 0<
-    驻留旧线。与既有 θ 滞回/δ 先修偏/D_min 驻留同族串联,不是第二
-    换线机制;drought bail 旁路不辖(或-并存结构不变)。
-
-    辖域 plane==2(v3 R-G 收窄:损血表为 P2 标定,P1 不适用;P3 帧消费
-    P2 表 → R 高估门偏松 FM-12,P3 扩辖待 p3_cond_loss_table 标定);
-    开关关/辖域外 → 放行(零漂移)。e_alt=inf(v3 R-E:v2 通道不调
-    should_switch_e,上游并不拦):
-    新线永不完成,门不等式右端 inf → **拦**('alt_inf'),拦截归属
-    唯一化到本门,p̄=0 线由信号胜出不再落锁。
-    """
-    reg = registry or DEFAULT_REGISTRY
-    if not reg.line_switch_survival_gate_enabled:
-        return True, 'gate_off'
-    if state.plane != 2:
-        return True, 'gate_off'
-    if not math.isfinite(e_alt):
-        return False, 'alt_inf'
-    ra = rounds_alive(state, session, reg)
-    need = gate_need(state, session, e_alt, reg)
-    if ra >= need:
-        return True, 'ok'
-    return False, f'survival({ra:.0f}<{need:.2f})'
-
-
-def register_gate_block(session: StrategySession, cur_name: str,
-                        alt_name: str) -> int:
-    """拦截日志去重记账(REDESIGN §3.7):按 (当前线,备选线) 线对计
-    同局拦截次数,返回累计次数。消费侧约定=次数为 1 时发日志行,>1
-    只累加计数(防死锁局每轮刷屏);计数挂在 session(局终随会话销毁)。"""
-    seen = getattr(session, 'line_switch_block_counts', None)
-    if seen is None:
-        seen = {}
-        session.line_switch_block_counts = seen
-    key = (cur_name, alt_name)
-    seen[key] = seen.get(key, 0) + 1
-    return seen[key]
+# (C4 换线存活轮数门机械已随旧方案清退批删除——开关族
+#  line_switch_survival_gate_enabled / rounds_two_state_enabled 出局,
+#  清查报告 OLD_MIX_AUDIT §1.3;连同删除 rounds_alive / gate_need /
+#  gate_counterfactual / survival_gate / register_gate_block 与
+#  cw_intention._switch_gate_open 接线、v3_line_gate_* 决策位/闩、
+#  line_gate_blocked/line_gate_cf_blocked 遥测键。损血档归一
+#  node_loss_kind 与 p2_cond_loss_table 保留——阈值层
+#  cw_first_passage._loss_dist 仍消费;两态 p_win 表 p_win_p2_by_rung
+#  保留——cw_plane_table.p_win_p2 阈值层映射仍消费。)
 
 
 def best_alt_line(state: GameState, session: StrategySession, config,

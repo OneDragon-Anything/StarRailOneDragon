@@ -14,11 +14,10 @@
 - 强化角色**可选**(不选也能确认推进)—— 点确认后 overlay 消失回备战出战。套 RunNode 验证
   (overlay 消失=完成)+ 预算(点不动 bail,不再无限烧预算)。
 
-TODO(策略):候选按 target_comp 选(decide_megastar 已接,按 buff 契合);强化角色
-  =决策意向已接(``registry.megastar_enhance_enabled`` 默认关 →
-  ``MegastarPick.enhance_char_id``,绑定序见 ``cw_comps.select_megastar_enhance``),
-  执行面未接(巨星 step2 强化角色候选坐标未建档 + 机制效果无真值,挂账见该
-  开关注释)——本节点维持「选巨星候选 → 确认(跳过 step2)」。
+TODO(策略):候选按 target_comp 选(decide_megastar 已接,按 buff 契合)。
+  (强化角色决策意向已随 megastar_enhance_enabled 开关族删除——旧方案
+  清退批,清查报告 OLD_MIX_AUDIT §1.3;``MegastarPick.enhance_char_id``
+  字段保留恒 None 兼容既有读取。)本节点维持「选巨星候选 → 确认(跳过 step2)」。
 坐标(task#103 化债,W265):候选/确认经 ``cw_obs_core.area_center`` 读 screen_info
   ``currency_war_megastar``(``候选-左/右`` + ``按钮-确认选择``,W265 新建 area);缺失才用兜底常量。
   档案帧(sr-od-test/screens/货币战争-盛会之星/未选择.webp)回验:两个候选名行 OCR center

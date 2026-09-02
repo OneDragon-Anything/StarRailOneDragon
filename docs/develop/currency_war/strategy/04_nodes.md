@@ -5,7 +5,7 @@
 ## 1. cw_events:事件决策函数
 
 - **decide_event(投资策略/环境 3 选 1)**:pick_value 评估(ADR-0143/0144)——经济效果走台账/pick_value、战力效果走选卡分、与 target_comp 的阵营/装备件亲和(`ENV_COMP_AFFINITY`/`AUGMENT_COMP_AFFINITY`,M1「资源入口」);用户 `strategy/env_priority/forbid` 偏好轴参与打分。
-- **decide_encounter(遭遇难度三选)**:评分 = 词缀契合(mechanics_fit,全分支克 comp → 刷新换批)+ 难度档定价(经 `encounter_tier_score` 包装难度账本 `marginal_value` 三态 + P1 尖峰;「阵容足够强才敢难」,碾压敢难白拿奖励 / 边际保守保血 / P3 永避高难 ADR-0130)+ 奖励价值(文本启发分档,与敢难联动)。
+- **decide_encounter(遭遇难度三选)**:评分 = 词缀契合(mechanics_fit,全分支克 comp → 刷新换批)+ 难度档定价(经 `encounter_tier_score` 包装难度账本 `marginal_value` 三态 + P1 尖峰;「阵容足够强才敢难」,碾压敢难白拿奖励 / 边际保守保血 / P3 永避高难 ADR-0130)+ 奖励价值(文本启发分档,与敢难联动)。刷新建议的消费端 = handle_encounter 分支刷新执行链(dd-004):OCR「剩余次数:N」>0 且本局未用 → 点刷新钮 → 重读选项 + `refresh_used=True` 重决策;分支刷新能力由优势布局「分支刷新」授予(每局 1 次)。**触发源缺位(结构性)**:选项词缀的读数通道为敌方信息覆盖层(尚未建档),未建前全克判定不进触发集——裁决与接线计划见 dd-004。
 - **decide_supply(补给选装备)**:决策链 = 带钻(红/蓝/财富宝钻)直选 → 无钻且刷新未用 → 点刷新重掷(P8)→ 刷过按 `target_comp.key_equips` 契合 + 通用装备价值选。钻识别双通道(SIFT 模板主 / OCR 装备名兜底)。
 
 ## 2. cw_difficulty_account:难度账本
@@ -26,7 +26,7 @@
 |---|---|---|
 | 买牌/升/刷/deploy/卖 | plan → decide_prep(复合动作 RunBuyPhase 路径)/ decide_prep_action(环) | PrepDirector + prep_actions |
 | 投资策略/环境 | decide_invest(→decide_event) | handle_invest_strategy / handle_invest_env |
-| 遭遇 | decide_encounter | handle_encounter |
+| 遭遇 | decide_encounter | handle_encounter(含分支刷新流,dd-004) |
 | 补给 | decide_supply | run_supply_node(含刷新流) |
 | 巨星 | decide_megastar | run_megastar_node |
 | 伙伴 | decide_partner | handle_select_partner |

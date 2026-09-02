@@ -1011,9 +1011,9 @@ class PrepDirector(SrOperation):
             ).get(action.slot, [])
             if not equipped:
                 return None   # 未穿/穿戴读失读:无可评增量,不评
+            # 前置契约:帧 = 决策环定型截图(gate stable 已判「货币战争-备战」)。
+            # 干净备战判定在外层画面识别层,read_equip_grid 不再自带遮挡守卫。
             cells = read_equip_grid(frame, templates)
-            if any(c.occluded for c in cells):
-                return None   # before 快照被遮挡污染 → 不评
             before: dict[str, int] = {}
             for c in cells:
                 if c.name is not None:
@@ -1026,8 +1026,10 @@ class PrepDirector(SrOperation):
 
     def _reconcile_equip_expect(self, expect: EquipExpect) -> None:
         """装备期望态对账(heavy 定型帧消费;零决策:不一致仅落缺陷台账,
-        不 return/不重拖)。读法 = read_equip_grid 纯读逐格分类(三态),
+        不 return/不重拖)。读法 = read_equip_grid 纯读逐格分类(占用/空两态),
         复用本轮 heavy 定型帧(last_screenshot,零新增截屏)。全程 best-effort。
+        前置契约:定型帧经 gate stable 判「货币战争-备战」;干净判定在外层画面
+        识别层,read_equip_grid 不再自带遮挡守卫。
         """
         try:
             frame = getattr(self, 'last_screenshot', None)
@@ -1054,8 +1056,8 @@ class PrepDirector(SrOperation):
                 plane=int(getattr(obs_st, 'plane', 0) or 0),
                 round_num=int(getattr(obs_st, 'round_num', 0) or 0),
                 gap_large=True,
-                verdict=('留证-装备拖拽期望态与装备区实读不一致(遮挡格不评;'
-                         '穿戴读精度未验证按不评口径;equip=中决策相关面,'
+                verdict=('留证-装备拖拽期望态与装备区实读不一致(穿戴读精度未验证'
+                         '按不评口径;equip=中决策相关面,'
                          '单次 L2 初判,复现升 L1;本对账零决策行为,'
                          '不 return/不重拖)'),
                 refs=[{'field': k, 'value': v} for k, v in (
@@ -1383,15 +1385,6 @@ class PrepDirector(SrOperation):
                 log.warning(f'[cw!][director] 策略输出非 PrepAction: {type(action).__name__}')
                 return self.round_fail(status='策略输出非 PrepAction(F3)')
             self._record_step(obs, action)
-            # 影子比对(协议门1;开关默认关):旧环当权后同帧影子
-            # 决策逐位对照。全隔离——影子路径任何异常只计数留证,绝不
-            # 影响本步动作与现役决策(adapter.shadow_compare_step 承诺)。
-            from sr_od.application.currency_war.decision_assembly import (
-                shadow_compare_enabled,
-                shadow_compare_step,
-            )
-            if shadow_compare_enabled(match.strategy):
-                shadow_compare_step(self, match, obs, session, config, action)
 
             # —— 控制流(不走 execute 验证链,§4.2b)——
             if isinstance(action, DeferSpheres):
@@ -2169,8 +2162,10 @@ class PrepDirector(SrOperation):
             # [激活位·圣杯采集批 B2] 被动哈希采集接线行([临时采集],采集清单采齐后连本注释整段删):
             # 激活 = 下面两行取消注释(diff 一次一行);钩子本体在 grail_collect_hooks.grail_passive_collect
             # (每备战观察帧整帧哈希去重+节流收圣杯任务瞬时帧,零决策影响)。
-            # from sr_od.application.currency_war.operations.grail_collect_hooks import grail_passive_collect
-            # grail_passive_collect(screen)
+            from sr_od.application.currency_war.operations.grail_collect_hooks import (
+                grail_passive_collect,
+            )
+            grail_passive_collect(screen)
             # current 槽类型写 session(battle_loop on_round_end 消费——
             # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)。
             # current 高亮态 Hu 不匹配(模板只对

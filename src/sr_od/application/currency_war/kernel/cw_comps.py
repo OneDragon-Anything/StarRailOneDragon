@@ -36,7 +36,6 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
 from sr_od.application.currency_war.kernel.cw_investments import INVESTMENT_ENVS
 from sr_od.application.currency_war.kernel.cw_registry import (
-    DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
@@ -76,7 +75,7 @@ class LevelGoal:
     action: str            # "level_up"(攒金升下一级,解锁更高费刷新率)/ "roll"(D 找核心)/ "stable"(稳住吃息)
     target_cost: int = 0   # roll 时重点找几费核心(0=不限;随等级升:前期1费/中期4费/后期5费)
     target_chars: list[str] = field(default_factory=list)   # 这级该找谁(core_chars 子集)
-    star_goals: dict[str, int] = field(default_factory=dict)  # 角色名 → 目标星级(如 1费→3星、5费→2星)
+    star_goals: dict[str, int] = field(default_factory=dict)  # 角色名 → 目标星级(成型档显式要求;无显式要求的卡不设默认启发式目标,按成型档需求走——费用档默认星目标规则已废弃,M6)
 
 
 @dataclass
@@ -271,159 +270,49 @@ AFFIX_MECHANIC_MAP: dict[str, str] = {
     # 均匀影响,无 comp flip),不入表;实机 OCR 按需补
 }
 
-# ===== W875 环境B类评分补全包(开关生命周期第 1 态:默认关,子旗标见 cw_registry)=====
-# 死映射防线(W872 攻击口径:映射存在但 tag 零 comp 携带 = mechanics_fit 恒中性空转):
-# 每行准入前已核查「该 tag 的 counter/synergy 值域至少被 1 个 comp 的 mechanic_attributes
-# 携带」。逐条核查结论(8 条):能量逃逸/同步行动准入(见下);区别对待/霸凌弱者(星级维)、
-# 以人为本(羁绊基础伤害占比维)、挫其锋芒(伤害减免维)——comp 侧无对应 tag 且现有 tag 词汇
-# 无处安放,禁造零携带死映射,挂账待 comp 侧 mechanic_attributes 建模批;应激反应/一鼓作气
-# (敌方多动)的 DoT 受益半边已由 cw_system_cards affix_likes 通道覆盖,评分面无差分 tag;二者
-# 「复用爆发速杀 tag」的下游配方已被 ADR-0500 连带否决(复用零载体 tag = 补行后仍恒 0.5 空转)。
-# 机制真值 = affix_effects_data.py 效果原文逐字。
-W875_AFFIX_MECHANIC_MAP: dict[str, str] = {
-    "能量逃逸": "能量削弱",   # 敌受击使攻击者能量 -4 → 克开大依赖(连携高频开大)
-    "同步行动": "行动喂敌",   # 我方行动提前时敌也提前 20% → 克速度依赖/量子拉条(我方提速喂敌)
-}
-W875_MECHANIC_COUNTERS: dict[str, list[str]] = {
-    "能量削弱": ["连携高频开大"],          # 载体:连携高频开大 comp(cw_comps,Saber 连携队)
-    "行动喂敌": ["速度依赖", "量子拉条"],   # 载体:昼神阿雅(速度依赖)/希儿量子(量子拉条)
-}
-W875_MECHANIC_SYNERGIES: dict[str, list[str]] = {}
-
-# W875 子旗标 → 机制 tag(单一源;开关名与 cw_registry 字段一一对应)
-_W875_TAG_FLAG: dict[str, str] = {
-    "能量削弱": "w875_energy_leak_enabled",
-    "行动喂敌": "w875_sync_action_enabled",
-}
-
-
-def w875_active_tags(registry: DecisionV2Registry | None = None) -> frozenset[str]:
-    """W875 补全包当前放行的机制 tag 集(开关 = registry 子旗标;全关 = 空集 = 基表零漂移)。"""
-    reg = registry if isinstance(registry, DecisionV2Registry) else DEFAULT_REGISTRY
-    return frozenset(tag for tag, flag in _W875_TAG_FLAG.items() if getattr(reg, flag, False))
+# (W875 环境B类评分补全包已随 w875 双旗标开关族删除——旧方案清退批,
+#  清查报告 OLD_MIX_AUDIT §1.3:W875_AFFIX_MECHANIC_MAP/COUNTERS/
+#  SYNERGIES 增表、_W875_TAG_FLAG 与 w875_active_tags 门控删除,
+#  merged_mechanic_tables 退化为基表直通(与全关零漂移行为一致)。
+#  死映射防线核查记录见 w872/w875 目录;其余词缀(区别对待/霸凌弱者/
+#  以人为本/挫其锋芒等)的 comp 侧建模挂账随包退役,复活须重新立项。)
 
 
 def merged_mechanic_tables(registry: DecisionV2Registry | None = None,
                            ) -> tuple[dict[str, str], dict[str, list[str]], dict[str, list[str]]]:
-    """生效机制三元组(词缀映射/克制/受利)= 基表 + W875 放行子集。
+    """生效机制三元组(词缀映射/克制/受利)= 基表直通。
 
-    全关时原样返回基表对象(零分配零漂移);任一子旗标开才做合并拷贝。
-    消费点:mechanics_fit / current_enemy_mechanics / cw_events / cw_intention
-    (缺省栈无注入臂时落 DEFAULT_REGISTRY,与 prep_director 缺省注记同型;
-    sim A/B 注入面 = 传 registry 参数,基表路径行为不变)。
+    (原 W875 开关放行的合并拷贝路径已随开关族删除——旧方案清退批,
+    清查报告 OLD_MIX_AUDIT §1.3;保留本函数签名,消费点
+    mechanics_fit / current_enemy_mechanics / cw_events / cw_intention
+    调用零改。``registry`` 参数保留占位,不再参与取值。)
     """
-    active = w875_active_tags(registry)
-    if not active:
-        return AFFIX_MECHANIC_MAP, MECHANIC_COUNTERS, MECHANIC_SYNERGIES
-    affix_map = dict(AFFIX_MECHANIC_MAP)
-    counters = {k: list(v) for k, v in MECHANIC_COUNTERS.items()}
-    synergies = {k: list(v) for k, v in MECHANIC_SYNERGIES.items()}
-    for affix, tag in W875_AFFIX_MECHANIC_MAP.items():
-        if tag not in active:
-            continue
-        affix_map[affix] = tag
-        for src, dst in ((W875_MECHANIC_COUNTERS, counters),
-                         (W875_MECHANIC_SYNERGIES, synergies)):
-            if tag in src:
-                dst[tag] = list(src[tag])
-    return affix_map, counters, synergies
+    return AFFIX_MECHANIC_MAP, MECHANIC_COUNTERS, MECHANIC_SYNERGIES
 
-# ===== W878 死 tag 复活 4 批(开关生命周期第 1 态:默认关,子旗标见 cw_registry)=====
-# 裁决依据:死映射三问(概念在十类 comp 体系存在 × 判据可从现有数据推导 × 词条量级匹配
-# mechanics_fit ±0.25/±0.20 离散步进);判死/观测桶(爆发速杀/高费低费审美)不在本批复活范围。
-# 与 W875 先例的差异:本批 4 个 tag 的 AFFIX_MECHANIC_MAP/MECHANIC_COUNTERS/SYNERGIES 行
-# 在基表早已存在(属性熄火/装备依赖/成型羁绊利好/冻结),缺的只是 comp 侧载体 —— 因此开关
-# 不走并表,走**载体滤除**:复活的 4 个 tag 的 comp 侧载体分两种形态落码 ——
-# 静态标注(成型羁绊队/慢速/依赖合成装备:COMP_LIBRARY 逐套 mechanic_attributes 打标)
-# 与判据性动态载体(单属性队:effective_mechanic_attributes 按 ATTRIBUTE_TYPE_FACTIONS
-# 判据动态并入,见下);mechanics_fit 经 effective_mechanic_attributes 滤除/注入,
-# 全关 = 基表路径零漂移。
-#
-# 判型出处(逐 tag):
-# - 单属性队:final_comps README D3「希儿怕量子熄火」明文 + plaza 希儿聚类 36/38 篇核心
-#   羁绊=量子同频(属性型羁绊)。判据 = form_tiers 以**属性型羁绊**为主档且档深 ≥4;
-#   当前 COMP_LIBRARY 仅希儿量子命中(静态标注);其余六属性熄火无纯色主档 comp 对应
-#   (恒中性=正确)。载体的判据性动态并入落点 = effective_mechanic_attributes(见下)。
-# - 成型羁绊队:形单影只词条原文(未激活羁绊 → 伤害 85%/60%/30%)+ README B1(羁绊档位
-#   乘区)/C4。判据 = 终局战力主要来自羁绊档位乘区(form_tiers 主档羁绊驱动),排除装备流
-#   (白厄反甲)/单核(命运圣杯红A/万敌单C——攻略明言「夜神燃血也不要凑」,羁绊不满也有
-#   战力);逐套判型理由在各 comp 标注注释,边界套昼神阿雅注记裁断理由。
-# - 慢速:final_dot_kafka(叠层×引爆磨血胜利条件)。判据 = DOT 载体持有(DoT tag);
-#   大招流(姬子等)D 三星一波清不算慢速。
-# - 依赖合成装备:final_baie_reflect(反甲装备流,以牙还牙甲=胜利条件)+ README C4 特权
-#   装备体系。判据 = 装备本体即胜利条件;合成侧处理在 junk_first 排序器(不动),本 tag
-#   只补选型侧,两半互补禁重复建模。
-W878_GATED_TAGS: dict[str, str] = {
-    "单属性队": "w878_mono_attribute_enabled",
-    "成型羁绊队": "w878_formed_bond_enabled",
-    "慢速": "w878_slow_burn_enabled",
-    "依赖合成装备": "w878_synth_equip_dep_enabled",
-}
-
-# 「属性型羁绊」判据载体(单属性队 tag 的判型基;唯一载体枚举锁已按 w882 攻击采纳
-# 改为判据性锁,锁在 test_cw_w878_deadtag_revive):凡 form_tiers 主档 ∈ 本集且档深 ≥4
-# 的 comp 即满足单属性队判据,由 is_mono_attribute_comp 判定、effective_mechanic_attributes
-# 在单属性队臂开启时动态并入「单属性队」携带 —— 新属性 comp(如火纯色线)入表加键后
-# 落档即自动入判,无需改锁改标注。V4.4 全羁绊表仅量子同频按角色属性聚合(量子伤害
-# 体系),其余羁绊按阵营/流派聚合非属性型。
-ATTRIBUTE_TYPE_FACTIONS: frozenset[str] = frozenset({"量子同频"})
-
-# 单属性队判据的档深下限(档位乘区主档;V4.4 量子同频满档=4,希儿量子基线即此值;
-# w882 攻击指出该阈值无独立出处、系倒推希儿单例,按「宁缺勿错」保持 ≥4 收口,
-# 新属性羁绊入表时须按同口径复核)。
-MONO_ATTRIBUTE_MIN_TIER: int = 4
-
-
-def is_mono_attribute_comp(comp: Comp) -> bool:
-    """单属性队判据:form_tiers **主档**(全库最深档)∈ ATTRIBUTE_TYPE_FACTIONS 且档深 ≥4。
-
-    出处:final_comps README D3「希儿怕量子熄火」+ w882 攻击角度1(枚举锁改判据);
-    消费点:effective_mechanic_attributes(单属性队臂开启时动态并入携带)。
-    判型只看 form_tiers(成型档位),flex_factions 的属性羁绊不算 —— 副羁绊宽口径
-    (量子同频在 29 个聚类高频出现)不构成单属性队。
-    「主档」校验(w922 审计 P2-2):属性羁绊须并列全 comp 最深档才算主档——
-    主档为非属性羁绊的形态(如 列车同行5+量子同频4)是羁绊乘区驱动型,不是
-    单属性队,不误收(与「宁缺勿错」收口一致);并列最深档含属性羁绊判真
-    (档位乘区并列 = 双主档形态,与希儿量子 量子同频4+贝洛伯格2 基线不矛盾)。
-    """
-    if not comp.form_tiers:
-        return False
-    main_depth = max(comp.form_tiers.values())
-    if main_depth < MONO_ATTRIBUTE_MIN_TIER:
-        return False
-    return any(f in ATTRIBUTE_TYPE_FACTIONS and t == main_depth
-               for f, t in comp.form_tiers.items())
-
-
-def w878_active_tags(registry: DecisionV2Registry | None = None) -> frozenset[str]:
-    """W878 复活包当前放行的 comp 机械属性 tag 集(开关 = registry 子旗标;全关 = 空集)。"""
-    reg = registry if isinstance(registry, DecisionV2Registry) else DEFAULT_REGISTRY
-    return frozenset(tag for tag, flag in W878_GATED_TAGS.items() if getattr(reg, flag, False))
+# ===== (原 W878 死 tag 复活 4 批已随 w878 四旗标开关族删除——旧方案
+# ===== 清退批,清查报告 OLD_MIX_AUDIT §1.3)=====
+# 复活包的开关门控(w878_active_tags/动态载体判据 is_mono_attribute_
+# comp/ATTRIBUTE_TYPE_FACTIONS/MONO_ATTRIBUTE_MIN_TIER)删除;四个 tag
+# (单属性队/成型羁绊队/慢速/依赖合成装备)按删除前默认关口径**永久
+# 滤除**出评分求交——零漂移;comp 静态标注与基表行保留(结构锁口径:
+# 携带词汇表不动,只不参与评分)。
+_W878_RETIRED_TAGS: frozenset[str] = frozenset({
+    "单属性队", "成型羁绊队", "慢速", "依赖合成装备"})
 
 
 def effective_mechanic_attributes(comp: Comp,
                                   registry: DecisionV2Registry | None = None) -> list[str]:
-    """comp 生效机械属性 = 原属性 − 关臂 W878 tag + 判据性动态载体(单一滤除口;mechanics_fit 消费)。
+    """comp 生效机械属性 = 原属性 − 退役 W878 tag(单一滤除口;mechanics_fit 消费)。
 
-    关臂 tag 仍在携带词汇表内(结构锁口径),只是不参与评分求交 —— 这样开关翻默认值时
-    只动本函数门槛,不动 20 套 comp 标注;全关时若 comp 属性集无 W878 tag 则原列表透传。
+    (原开关门控滤除已改为无条件滤除——W878 复活包随旧方案清退批删除,
+    清查报告 OLD_MIX_AUDIT §1.3;与删除前默认关行为逐位一致。)
     返回值约定(w922 审计 P3):**调用方不可变**——快速路径零分配,直接透传 comp 内部
-    list(恒等性由 test_w878_default_off_effective_attrs_passthrough 锁定),仅触发
-    滤除/并入时才返回新 list;消费点一律只读,禁原地改写返回值。
-    单属性队臂开启时,满足 is_mono_attribute_comp 判据的 comp 动态并入「单属性队」
-    携带(w882 攻击角度1 采纳:载体判据化,新属性 comp 落档即自动入判,无需逐套打标);
-    判据不满足的静态标注原样保留,漂移由判据边界锁拦截。
+    list,仅触发滤除时才返回新 list;消费点一律只读,禁原地改写返回值。
     """
-    active = w878_active_tags(registry)
-    if not active:
-        gated = {t for t in comp.mechanic_attributes if t in W878_GATED_TAGS}
-        if not gated:
-            return comp.mechanic_attributes
-    attrs = [a for a in comp.mechanic_attributes
-             if a not in W878_GATED_TAGS or a in active]
-    if "单属性队" in active and "单属性队" not in attrs and is_mono_attribute_comp(comp):
-        attrs = [*attrs, "单属性队"]
-    return attrs
+    if not any(t in _W878_RETIRED_TAGS for t in comp.mechanic_attributes):
+        return comp.mechanic_attributes
+    return [a for a in comp.mechanic_attributes
+            if a not in _W878_RETIRED_TAGS]
 
 # AFFIX_EFFECTS(词缀→游戏原文效果)见 affix_effects_data.py(单独文件;运行时 write_affix_effects
 # 自动写入采到的新词缀/校准)。本文件不 import 该注册表,mechanics_fit 亦不消费;
@@ -449,47 +338,13 @@ STRONG_ENV_MECHS: dict[str, frozenset[str]] = {
 RUST_AFFIX_NAME: str = '库藏生锈'
 
 
-# ===== 中期护航三套(ADR-0140)——**已退役** =====
-# 退役口径:生产消费点已清零(全仓 grep 仅本文件自引用+test_cw_affix_megastar 的 serves 词汇
-# 对照与 test_cw_decisions 的 escort_for 单测);数据保留仅为 C5 兼容与词汇对照,**禁止新增消费点**,
-# 后续清理批可整段删除。难度攻略 22-34:6 级正式构筑,无需本体+极低造价+P2 稳定连胜。
-# 护航 = 中期临时 comp:服务真主 C(target),护到 2-7/3-1 结单退役;不适合成长型 comp(万敌/狼队/夜神/学者)。
-@dataclass(frozen=True)
-class EscortComp:
-    """中期护航阵容(**deprecated**;见模块节注记,禁新消费)。"""
-    name: str
-    factions: dict[str, int]        # 羁绊 → 需求人数(如 {"战技点":4,"仙舟":3})
-    serves: list[str]              # 服务的 target 机制属性(mechanic_attributes 匹配)
-    retire_plane: int = 2          # 分水岭位面
-    retire_round: int = 7          # 分水岭轮(该节点前未炸单即结单)
-
-
-ESCORT_COMPS: list[EscortComp] = [
-    # deprecated:数据保活零消费,禁新消费点
-    EscortComp(name="龙丹护航", factions={"战技点": 4, "仙舟": 3},
-               serves=["高倍率单核", "量子拉条", "幸运一击"]),   # 直伤系(速8找火花/速9红A)
-    EscortComp(name="灵砂护航", factions={"击破": 4},
-               serves=["击破"]),                                # 击破系(转流萤/波提欧)
-    EscortComp(name="阿雅护航", factions={"昼之半神": 3, "能量": 3},
-               serves=["DoT", "减益"]),                         # 邪修系(DOT 队前期强度需阿雅过渡)
-]
-
-
-def escort_for(target: Comp | None) -> EscortComp | None:
-    """按 target 的机制属性选护航套(ADR-0140;serves 匹配;成长型 comp 返 None 不护航)。
-
-    **deprecated**:生产消费点已清零,仅测试词汇对照在引用;
-    禁新增调用方,后续清理批随 ESCORT_COMPS 一并删除。"""
-    if target is None:
-        return None
-    GROWTH_MECHANICS = {"燃血", "欢愉叠层"}   # 成长型不护航(攻略:需叠被动从头到场,护航打断节奏)
-    if set(target.mechanic_attributes) & GROWTH_MECHANICS:
-        return None
-    for ec in ESCORT_COMPS:
-        if set(ec.serves) & set(target.mechanic_attributes):
-            return ec
-    return None
-
+# ===== 中期护航三套(ADR-0140)——已删除(清退评估批,2026-09) =====
+# EscortComp/ESCORT_COMPS/escort_for(含「成长型不护航」GROWTH_MECHANICS,
+# 仅 escort_for 消费,同链死亡)整段移除:生产消费点早已清零,清查报告
+# OLD_MIX_AUDIT §7.2 裁定随先例(M6 费用档星目标)删除;测试词汇对照
+# (test_cw_affix_megastar serves 对照 / test_cw_decisions escort_for 单测)
+# 同批删除。ADR 留档见 docs/develop/currency_war/decisions/(ADR-0140 原始
+# 引入记录仍在,本注释仅为防复活的墓碑指针)。
 
 # ENV_FACTION_MAP 从投资环境注册表派生(单一真相源:概念股/邀请的 faction 字段;改注册表自动传导)
 ENV_FACTION_MAP: dict[str, list[str]] = {
@@ -654,7 +509,7 @@ COMP_LIBRARY: list[Comp] = [
         # v2 教义 A 流铁三角=三月七 自适应外骨骼(吸仇恨刚需)/姬子 以牙还牙甲×2-3;
         # 恒等约束(多重集不变)下以 A 流首选件(外骨骼)入表。B 流拆分批放开恒等时
         # 姬子侧补 以牙还牙甲×2。
-        countered_by_bosses=[], mechanic_attributes=["治疗护盾", "成型羁绊队"],   # 成型羁绊队:战力=列车同行4 档乘区(w878 判型;开关见 W878_GATED_TAGS)
+        countered_by_bosses=[], mechanic_attributes=["治疗护盾", "成型羁绊队"],   # 成型羁绊队:战力=列车同行4 档乘区(w878 判型;tag 已永久滤除(_W878_RETIRED_TAGS))
         shared_chars=["三月七", "花火", "瓦尔特"], transition_chars=["符玄", "艾丝妲"],
         typical_form_round=5,
         # ===== v2(C4):姬子列车家族(A/B 未拆条——分岔变量=词条前置:敌方多动旺→A 反震/怕词条在→B 输出)=====
@@ -666,7 +521,8 @@ COMP_LIBRARY: list[Comp] = [
         # ↑ v2 教义 A 流:三月七=自适应外骨骼(吸仇恨刚需;甲属姬子 A 流×2-3)。
         # B 流完整配装留 A/B 拆分批落位
         equip_synergy={"铁三角": "自适应外骨骼吸仇恨→以牙还牙甲反伤→皮靴加速,少一件链断(教义:comp_elements 三·3)"},
-        # 吸仇恨件互斥:不要杰帕德(分受击概率,攻略 #48)→ 已入 PLUGIN_DISABLE_MATRIX(cw_plugins.py),此处不重复(防双源)
+        # 吸仇恨互斥的攻略行(不要杰帕德)已随 heuristic_ab B3 删出 PLUGIN_DISABLE_MATRIX
+        # (4/300 局触发、无劣化;官方机制行保留),此处不再指向矩阵防悬空引用
         special_systems={"navigator": {"绑定": "三月七(A 流必绑,85%+ 共识)", "时间函数": "前期保命绑三月,后期可换绑(饮月/星期日)"}},
         substitute_plan=[
             {"替班者": "瓦尔特", "顶位": "姬子·启行 主C(姬子未 3★ 时)", "身份": "2★ 杨叔主C,装备转杨叔", "分岔点": "姬子 3★ 达成即交还"},
@@ -794,7 +650,7 @@ COMP_LIBRARY: list[Comp] = [
         countered_by_bosses=["造梦兄弟影业", "造梦互动娱乐"],
         # 单属性队:量子同频4 属性型羁绊主档 ≥4(final_comps README D3「希儿怕量子熄火」,
         # plaza 希儿聚类 36/38 篇核心羁绊=量子同频)——量子熄火局对本套是主输出瘫痪级 counter。
-        # 成型羁绊队:量子同频/贝洛伯格档位乘区。两者均为 w878 复活 tag(开关见 W878_GATED_TAGS)。
+        # 成型羁绊队:量子同频/贝洛伯格档位乘区。两者均为 w878 复活 tag(tag 已永久滤除(_W878_RETIRED_TAGS))。
         mechanic_attributes=["量子拉条", "单属性队", "成型羁绊队"],
         # 知更鸟/瓦尔特= P3 补位件(n=67 非核心组);插件层五人(千冶·刃/布洛妮娅/
         # 杰帕德/娜塔莎/佩拉)为终局插件购买件,不入 core/shared
@@ -2391,29 +2247,6 @@ def select_megastar(state: GameState, target: Comp | None,
     return available_megastars[0]
 
 
-def select_megastar_enhance(state: GameState, target: Comp | None) -> str | None:
-    """选巨星 overlay step2 的「强化角色」意向(我方角色,决策层纯函数)。
-
-    绑定序(与 select_megastar 同构:comp 引擎载体优先):
-    1. target.core_chars 在前排(deployed)者——强化资源给 carry 是默认假设;
-    2. target.core_chars 在后台(bench)者;
-    3. 首个前排角色(naive 兜底)。
-    无 target / 板上无角色 → None。
-
-    ⚠️ 机制语义**待证假设**(ADR-0482 权威序:未证口述按待证对待):「强化角色 =
-    巨星额外强化的载体、优先给 carry」无文档/实机真值,docs/game/screens/
-    currency_war_megastar.md 只确认该步骤可选、跳过不锁出战。本函数输出只作
-    决策意向(开关 megastar_enhance_enabled,默认关),执行面未接;机制真值
-    采集后重审绑定序。
-    """
-    deployed_names = [bc.char_id for bc in (state.deployed or []) if bc and bc.char_id]
-    if not deployed_names:
-        return None
-    if target is not None:
-        for c in target.core_chars:
-            if c in deployed_names:
-                return c
-        for bc in (state.bench or []):
-            if bc is not None and bc.char_id in target.core_chars:
-                return bc.char_id
-    return deployed_names[0]
+# (select_megastar_enhance「强化角色」意向已随 megastar_enhance_enabled
+#  开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;机制语义
+#  本就是待证假设(ADR-0482),证据链见原函数注释的 git 历史。)

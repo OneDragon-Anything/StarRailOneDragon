@@ -55,41 +55,6 @@ from sr_od.application.currency_war.telemetry.version_stamp import (
 
 # ===== TelemetryRecorder(写 JSONL;门控)=====
 
-def _direction_obs_fields(state: GameState, ist: Any) -> dict[str, Any]:
-    """w919 方向重估决策面观测(纯观测零行为;设计=同批设计件采集点2)。
-
-    - 候选 = ``_derive_p1_pair`` 无滞回重派生(prev_pair=() 使滞回 no-op
-      → support′ 原始序);switch = 原始派生 ≠ 施加滞回后派生(prev_pair=
-      当前 pair 重算 = 决策面实际产物)——不等即滞回正在压着切换(滞回
-      分支只在压着时重排,否则原样返回)。
-      开关关时 drought 空 → support′ 退纯资产支持度,
-      raw==applied(该恒等本身即 A/B 对账锚,观测不被开关门控)。
-    - 纯函数契约:只读 ist/state;_derive_p1_pair 无副作用(排序派生,
-      不改 ist)。调用方负责 best-effort 兜底(采集失败静默跳过)。
-    """
-    # 批 0 裁决(处死计划 §3 批 0 第 1 项):_derive_p1_pair 属**决策半部**
-    #(消费 DecisionV2Registry 供给感知/滞回/支持度派生链),不迁——迁则把
-    # 整条意向决策核心拖进知识层,违反知识层禁依赖决策层(01_strategy_layer §1)。
-    # 本函数是决策面观测(观测该决策函数的滞回行为),随 decision 核处死
-    #(处死计划批 1)一并退役;与下方 discipline 懒 import 同命运。
-    from sr_od.application.currency_war.kernel.cw_intention import _derive_p1_pair
-    cur = tuple(getattr(ist, 'p1_pair', ()) or ()) \
-        or tuple(getattr(ist, 'transition_pair', ()) or ())
-    exclude = frozenset(getattr(ist, 'pair_evicted', ()) or ())
-    drought = dict(getattr(ist, 'supply_drought', {}) or {})
-    raw = _derive_p1_pair(state, exclude=exclude, drought=drought,
-                          prev_pair=())
-    applied = _derive_p1_pair(state, exclude=exclude, drought=drought,
-                              prev_pair=cur) if cur else raw
-    switch: bool | None = None
-    if raw and applied:
-        # 整元组不等 = 滞回真的移动了产物(派生返回值按 _P1_PAIR_PREF 序
-        # 规整,首位不可当支持度 top-1 比;滞回分支只在「压着切换」时
-        # 重排,否则原样返回 → 不等即压着切换,序约定无关)。
-        switch = tuple(raw) != tuple(applied)
-    return {'candidate': '+'.join(str(k) for k in raw),
-            'switch': switch, 'drought': drought}
-
 
 class TelemetryRecorder:
     """三路 JSONL 采集器。enabled=False 时全 no-op(生产默认关)。
@@ -251,20 +216,14 @@ class TelemetryRecorder:
                 # (extra 键不泛化透传,缺此映射行则 shop 端装配静默丢弃)
                 _pu = getattr(_sess, 'v3_posture_unfulfilled', None)
                 trace.posture_unfulfilled = dict(_pu) if _pu else None
-                # W829 支出门拒因枚举计数(session.v3_sg_block 透传;
-                # 写入端=spend_gate._block,伞关无写点恒 None)
-                _sg = getattr(_sess, 'v3_sg_block', None)
-                trace.sess_spend_gate_block = dict(_sg) if _sg else None
-                # (sess_pv_bench_block 透传已随件价值整机制删除,ADR-0497)
-                # w919 方向重估决策面观测(P1 辖域;采集失败静默跳过不炸主链)
-                _ist_live = getattr(_sess, 'v3_intention', None)
-                if int(getattr(state, 'plane', 0) or 0) == 1 \
-                        and _ist_live is not None:
-                    with contextlib.suppress(Exception):
-                        _dobs = _direction_obs_fields(state, _ist_live)
-                        trace.sess_dir_candidate = str(_dobs['candidate'])
-                        trace.sess_dir_switch = _dobs['switch']
-                        trace.sess_dir_supply_drought = _dobs['drought']
+                # (W829 支出门拒因枚举计数 sess_spend_gate_block 透传已随
+                #  spend_gate 开关族删除——旧方案清退批,清查报告
+                #  OLD_MIX_AUDIT §1.3;v3_sg_block session 键同批删。)
+                # (w919 方向重估决策面观测 sess_dir_candidate/switch/
+                #  supply_drought 已随兑现链方向侧开关族删除——旧方案清退
+                #  批,清查报告 OLD_MIX_AUDIT §1.3;_direction_obs_fields
+                #  与 ist.supply_drought 同批删,schema 字段按历史数据
+                #  只读口径保留,新数据恒 None。)
                 # (位面 2 支出授权 sess_p2_auth_intercept/water 写入面已随
                 # 定谳清理删除,ADR-0492;schema 字段按历史数据只读口径保留,
                 # 新数据恒 None。)
@@ -357,7 +316,7 @@ class TelemetryRecorder:
             damage_dealt=outcome.damage_dealt, killed=outcome.killed,
             progress_delta=outcome.progress_delta,
             streak=outcome.streak,
-            # 结算三项遥测透传(SETTLE_OCR_DESIGN §3 落点 2:recorder 字段白名单式
+            # 结算三项遥测透传(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3 落点 2:recorder 字段白名单式
             # 构造,此处是 outcomes.jsonl 新字段的唯一写入口)
             progress_fill_ratio=getattr(outcome, 'progress_fill_ratio', None),
             damage_base=getattr(outcome, 'damage_base', None),

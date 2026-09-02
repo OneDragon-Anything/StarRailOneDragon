@@ -355,11 +355,9 @@ class DecisionTrace:
     # rounds}。
     sess_p2_auth_intercept: str | None = None
     sess_p2_auth_water: dict | None = None
-    # 支出门·买侧收门拒因枚举计数(W829;session.v3_sg_block 透传,
-    # 写入端=spend_gate._block,键=拒因枚举 d1_interest/d2_blood/
-    # d3_bench,值=本备战帧内拒因次数,轮键惰性重置)。None=无 match
-    # 注册(离线/测试);{}=门开但本帧零拒因;伞关恒 None(无写点)。
-    sess_spend_gate_block: dict | None = None
+    # (支出门·买侧收门拒因枚举计数 sess_spend_gate_block 已随
+    #  spend_gate 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT
+    #  §1.3;存量 runs.jsonl 判读脚本按缺键读 None。)
     # 预算-回执契约·对账门声明(w921_rd_design DESIGN §1.1-C;
     # session.v3_posture_unfulfilled 透传):{auth_id, channel, reason,
     # channels, action}——授权未兑现帧的显式归档(reason=四枚举
@@ -374,15 +372,9 @@ class DecisionTrace:
     # currency_war/w919_ra_obs/DESIGN.md 采集点2,P31 方向供给感知批1)——
     # 辖域=plane==1 ∧ 有意向状态机;P2+ 方向=locked_comp 已由 v3_intention
     # 嵌套行携带不重复平铺。缺省 None=无意向/采集失败/旧记录(不破坏 schema)。
-    # 切换候选:无滞回重派生的 support′ 排序 top-2 标签(_derive_p1_pair
-    # prev_pair=() 现算;''=P1 外/未过锁门槛/派生失败)。
-    sess_dir_candidate: str | None = None
-    # 滞回压着切换的信号位:无滞回原始派生 ≠ 施加滞回后派生(滞回分支
-    # 只在压着切换时重排产物,不等即压着);None=一侧为空无法判。
-    sess_dir_switch: bool | None = None
-    # 供给衰减坐标透传(ist.supply_drought;体系键→连续零在店轮数 t,
-    # support′=γ^t·sup+β·[在店]);None=无意向状态机,{}=尚无观测帧。
-    sess_dir_supply_drought: dict | None = None
+    # (w919 方向重估三观测键(sess_dir_candidate/switch/supply_drought)的
+    #  写入面已随兑现链方向侧开关族删除——旧方案清退批,清查报告
+    #  OLD_MIX_AUDIT §1.3;字段按历史数据只读口径保留,新数据恒 None。)
     # 补给轮决策行采集(观察层数据移交批):补给节点选卡确认后的合成
     # 决策帧(extra.phase='supply_pick')携带的选定快照——
     # {char, equip, has_diamond, refreshed, options:[{char,equip,has_diamond}...],
@@ -413,7 +405,7 @@ class OutcomeRecord:
     killed: bool | None = None
     progress_delta: int | None = None   # 结算屏「挑战进度 ±N」(2026-08-18:胜负+扣血真值,输轮也记)
     streak: int | None = None           # 连胜/连败带符号(r68:RoundOutcome 有此字段但序列化丢弃 → 补)
-    # —— 结算三项遥测(SETTLE_OCR_DESIGN §3;镜像 cw_performance.RoundOutcome 同名字段)——
+    # —— 结算三项遥测(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3;镜像 cw_performance.RoundOutcome 同名字段)——
     # progress_fill_ratio:挑战进度条填充率 [0,1](幅度绝对值;±N 在 progress_delta);
     # damage_base/damage_unfinished_progress:掉血说明 tooltip 两分量(tooltip 进页瞬态,
     # miss=None=删失显式可辨);damage_breakdown_visible:tooltip 在场与否(区分

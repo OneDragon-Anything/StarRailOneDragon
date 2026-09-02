@@ -796,13 +796,9 @@ class BuyShopCards(SrOperation):
                 # 恒空,锁定时点/目标只有这里可读;None=无意向状态机)
                 'v3_intention': serialize_intention(
                     getattr(_sess, 'v3_intention', None)),
-                # 换线存活门决策位(sim 账本行同构;W665 DESIGN v2 §3-2/R3:
-                # 帧级位=本轮意向驱动帧,update_intention 入口清零;off 臂
-                # cf 位=反事实记账,检查器禁复算判据式)
-                'line_gate_blocked': bool(getattr(
-                    _sess, 'v3_line_gate_blocked', False)),
-                'line_gate_cf_blocked': bool(getattr(
-                    _sess, 'v3_line_gate_cf_blocked', False)),
+                # (换线存活门决策位 line_gate_blocked/cf_blocked 已随
+                #  C4 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT
+                #  §1.3;v3_line_gate_* session 字段同批删。)
                 # `w224_handoff/`/ADR-0399:P2 承接快照(纯观测;plane>=2 位面首帧
                 # decide_prep 写 session.v3_handoff,此处透传——仅 P2
                 # 首轮行非空,与 sim SimResult.p2_handoff 同源同构)
