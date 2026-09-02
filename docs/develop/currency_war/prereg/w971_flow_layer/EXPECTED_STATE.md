@@ -31,43 +31,71 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 | 结算屏(战斗等待 op) | 每场战斗结算 | hp(真值链)/ gold / streak / level+xp |
 | 节点探针 | CloseShopOp 后 | node_type/节点表 |
 
-## 3. 原子 op × 期望态更新全枚举(核心表)
+## 3. 原子 op × 期望态更新全枚举(全集 41 条;每条必有定义或「不更新」理由)
 
-> 精确建模范围(02-state §4.3 裁剪):**商店多轮窗口**必须全准;单轮即回的 overlay 按「到账」语义登记(粗粒度 expected,实读覆盖即可,不深建模)。
-> 星徽阵营语义(dd-015 定谳):星徽 add-if-absent,给已自报同阵营角色 = 装备不上(分配守卫已拦)。
+> 铁律:**无例外枚举**——不需要更新期望态的 op 也必须写理由(review 与后续翻看的证据)。
+> 分组:A 商店窗口(精确区)/ B 备战窗口(精确区)/ C overlay 动作(到账登记)/ D 流程与系统(理由区)。
 
-### 3.1 商店窗口 op(精确建模区)
+### A. 商店窗口(精确建模区)
 
-| op | 期望态推进(字段:变化) |
-|---|---|
-| **BuyCard** | `gold -= 费`;`tracked_bench += (角色, 星级=卡星级, 位=落点)`;**合成引擎触发**(§4):同名同星凑 3 → 升星(连锁/落点/装备继承)——bench/deployed/星级按引擎输出推进;满栏自动多买:一次点击买 min(店内张数, 3−已有 mod 3) 张,金账按 k×单价记全款 |
-| **RefreshShop** | `gold -= 2`;shop_cards 失效(下一轮波顶实读覆盖) |
-| **LevelUpShop** | `gold -= cost`;`xp += XP_PER_BUY`(xp_expect_ledger 迁入);xp 跨门槛 → `level += 1` + `cap 可能+1`(期望态);实读对账:期望升级未发生 = xp 口径错 |
-| **OpenShopOp** | shop_open=true(画面态,非期望态语义——实读锚即得) |
-| **CloseShopOp** | shop_cards/商店族字段清理(§3 生命周期);**离开商店窗口** → 待覆盖的 expected 携带到备战观察覆盖点 |
+| # | op | 期望态更新 |
+|---|---|---|
+| 1 | BuyCard | `gold−费`;`tracked_bench += (角色,星级=卡星级,位=落点)`;**合成引擎**(§4):连锁/落点/装备继承;满栏自动多买(k×单价全款);2星直出 → 金账对账暴露 |
+| 2 | RefreshShop | `gold−2`;shop_cards 失效(下轮波顶实读覆盖) |
+| 3 | CloseShopOp | shop_cards/商店族清理;**离开商店窗口** → 未覆盖 expected 携带到备战覆盖点 |
+| 4 | OpenShopOp | 画面态 shop_open=true(实读锚即得,非期望态语义) |
+| 5 | OpenShop(read_only) | 同 4,纯观察变体:开+观察刷新+收起——**零游戏状态变更**(无期望态更新) |
 
-### 3.2 备战窗口 op(精确建模区)
+### B. 备战窗口(精确建模区)
 
-| op | 期望态推进 |
-|---|---|
-| **DeployMove** | `tracked_bench 源位 -=1`;`tracked_deployed 目标位 += (角色,星级)`;**拖到场上同名同星 = 合成**(升星:星级 +1,装备继承——已穿装备随人,位置=场上原位);前后台换位:位置字段推进 |
-| **SellDeployed** | `tracked_deployed -=1`;`last_owned_equips += 该角色已穿装备(全额返还)`;`gold += 售价(星级×基数)`;board 该角色阵营计数 −1 |
-| **SellBench** | `tracked_bench -=1`;`gold += 售价`(bench 件无装备) |
-| **ClickSpheres** | 球消失;奖励内容未知 → `expected[pending_reward] = '球(类型待实读)'` 覆盖点实读对账 |
-| **OpenBox / OpenTome** | 候选物 −1;对应 overlay 弹出(交 handler;产出见 §3.3) |
-| **StartBattle** | 进入战斗(战斗等待 op 接管;hp/gold/streak 由结算屏覆盖) |
+| # | op | 期望态更新 |
+|---|---|---|
+| 6 | **M7 装备拖拽(穿装备)** | `last_owned_equips −1` + `tracked_deployed[角色].equips +1`(**装备分布期望态**——漏项补,复盘 181254 A 条同源路径) |
+| 7 | **C6 装备转移** | 角色 A `.equips −件` + 角色 B `.equips +件`(**装备分布期望态**;转移遍 ≤3 件/次,落空即停) |
+| 8 | DeployMove | bench 源−1;deployed 目标+1;拖到场上同名同星=合成(升星+装备继承);前后台换位 |
+| 9 | SellDeployed | deployed−1;装备全额返还 owned;gold+售价;board 阵营计数−1 |
+| 10 | SellBench | bench−1;gold+售价(bench 件无装备) |
+| 11 | LevelUpShop | gold−cost;xp+XP_PER_BUY(xp_expect_ledger 迁入);跨门槛→level+1/cap+1 |
+| 12 | ClickSpheres | 球−1;`expected[pending_reward]='球(待实读)'` |
+| 13 | OpenBox | 箱−1;武装箱选卡 overlay 弹(→C-27) |
+| 14 | OpenTome | 秘典−1;秘典 overlay 弹(→C-31) |
+| 15 | StartBattle | 进战斗(战斗等待 op 接管;hp/gold/streak 由结算屏覆盖) |
+| 16 | EnsureShopClosed | **已退役**(P3b:意图类删除;收起=CloseShopOp)——枚举留痕 |
 
-### 3.3 overlay 动作(到账登记区,粗粒度)
+### C. overlay 动作(到账登记区,粗粒度 expected)
 
-| 动作 | 到账登记(expected,实读覆盖即可) |
-|---|---|
-| 补给/武装箱选卡 | `last_owned_equips += 选中装备名`(**选卡时已知**——非未知) |
-| 秘典选卡 | owned += 星徽/装备(选时已知) |
-| 列车同行选人 | chosen_partner;列车同行星徽 +1(产出);board 语义变化 |
-| 投资策略选卡 | `active_strategies += 卡`;**效果到账走台账**(金/XP 按节点流 → 延时到账由实读覆盖;不逐卡硬编码 session 推进——范围裁剪) |
-| 投资环境选卡 | active_env(全局,不进字段推进) |
-| 祈愿/策划/命运 | 各自效果登记(台账面;不做 session 推进) |
-| 遭遇确认 | 进入遭遇战斗(战斗段接管) |
+| # | op | 期望态更新 |
+|---|---|---|
+| 17 | 补给 SelectSupplyCard | 暂态无影响(未确认) |
+| 18 | 补给 ConfirmSupply | `owned += 选中装备名`(选卡时已知) |
+| 19 | 补给 RefreshSupplyCard | 候选重掷;`_supply_refresh_used` 门(次数态;决策器内,无 session 状态字段变更) |
+| 20 | 投资 RefreshStrategyCard | 候选重掷;次数门(决策器内) |
+| 21 | 投资 SelectStrategyCard | 暂态无影响 |
+| 22 | 投资 ConfirmStrategy | `active_strategies += 卡`;效果**走台账不进 session 推进**(范围裁剪 §4.3) |
+| 23 | 遭遇 RefreshEncounter | 候选刷新;`_encounter_refresh_used` 门 |
+| 24 | 遭遇 SelectEncounterOption | 暂态无影响 |
+| 25 | 遭遇 ReadEncounterDifficulty | **纯读**(难度预览→决策器输入;无 session 状态变更) |
+| 26 | 遭遇 ConfirmEncounter | 节点难度设定;进遭遇战斗(战斗段接管);难度选择结果归遥测/难度账(决策面) |
+| 27 | 武装箱 SelectBoxCard+Confirm | `owned += 选中装备` |
+| 28 | 秘典 SelectBookCard+ConfirmBook | `owned += 星徽/装备`(星徽含阵营语义→分配守卫联动) |
+| 29 | 巨星 Select+ConfirmMegastar | `chosen_megastar`(session 字段已有);comp 语义变化(决策面) |
+| 30 | 列车同行 Select+ConfirmPartner | `chosen_partner`;列车同行星徽+1(产出→owned 期望);board 语义 |
+| 31 | 祈愿 Select+ConfirmWish | 效果登记台账(不做 session 推进——单轮即回) |
+| 32 | 策划 Select+ConfirmPlanner | 规则变化登记(环境/台账语义;不进 session 推进) |
+| 33 | 命运 Select+ConfirmFortune | 强化登记台账 |
+| 34 | BOSS 简报点空白 | 画面推进(交回循环);无状态变更 |
+| 35 | BriefingOp 点下一步 | 简报字段已在观察段写入 session;推进由画面流转(无额外期望态) |
+
+### D. 流程与系统(理由区)
+
+| # | op | 理由(不更新期望态) |
+|---|---|---|
+| 36 | PlaneTransitionOp(点空白) | **位面推进**:plane+1 为期望语义,但节点表/位面实采由 CollectPlaneIntel+探针覆盖——跳过中间态标记,登记即可 |
+| 37 | WaitOneOneOp | 纯等待(锚=1-1 就绪);无状态变更 |
+| 38 | 自动战斗自愈(开关点击) | 游戏 UI 态,非局状态字段 |
+| 39 | 干扰弹窗关闭(概率表/道具详情/消耗品) | 纯 UI 关闭,无状态后果 |
+| 40 | OpenShop 探针/收起重进(容忍路径) | 画面态周转,终态由 CloseShopOp/开态锚承载 |
+| 41 | ExitCurrencyWarMatch(整局退出) | 局终:expected_state 随局级清空(机制边界) |
 
 ## 4. 合成引擎(merge_simulate,纯函数离线可测)
 
