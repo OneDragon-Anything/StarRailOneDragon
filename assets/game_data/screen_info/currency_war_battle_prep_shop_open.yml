@@ -189,7 +189,7 @@ area_list:
   pc_rect:
   - 577
   - 284
-  - 609
+  - 639
   - 322
   text: ''
   lcs_percent: 0.5
@@ -203,7 +203,7 @@ area_list:
   pc_rect:
   - 846
   - 284
-  - 878
+  - 908
   - 322
   text: ''
   lcs_percent: 0.5
@@ -217,7 +217,7 @@ area_list:
   pc_rect:
   - 1115
   - 284
-  - 1147
+  - 1177
   - 322
   text: ''
   lcs_percent: 0.5
@@ -231,7 +231,7 @@ area_list:
   pc_rect:
   - 1385
   - 284
-  - 1417
+  - 1447
   - 322
   text: ''
   lcs_percent: 0.5
@@ -245,7 +245,7 @@ area_list:
   pc_rect:
   - 1650
   - 284
-  - 1682
+  - 1712
   - 322
   text: ''
   lcs_percent: 0.5

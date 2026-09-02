@@ -1475,10 +1475,11 @@ def read_board_next_tier(ctx: SrContext, screen: MatLike) -> dict[str, int]:
 
 
 # ===== 商店牌费用徽章数字识别(2星直出缺口闭环,DD-018;merge_mechanics §2.6/§2.7)=====
-# 依据:商店每张牌底部名字条右端有金色费用徽章,徽章内白色单字数字 = 该牌当前
-# 星级的实付费用(1★=roster 原费、2★=×3,费用倍数体系 merge_mechanics §2.6)。
-# 旧链 cost 从 roster 查表派生 → 2星直出(同角色高星版)按 1星费记错星级;
-# 改读画面数字即可闭环(§2.7 识别缺口条,2026-09-02 落地)。
+# 依据:商店每张牌底部名字条右端有金色费用徽章,徽章内白色数字(1-3 位) =
+# 该牌当前星级的实付费用(费用倍数体系 merge_mechanics §2.6:费用 = 原费用 ×
+# 3^(星级−1),1★=原费、2★=×3、3★=×9;用户 2026-09-02 定稿:数字可为两位,
+# 如饮月 2★=6、4费2★=12)。旧链 cost 从 roster 查表派生 → 2星/3星直出按 1星
+# 记错星级;改读画面数字即可闭环(§2.7 识别缺口条,2026-09-02 落地)。
 #: 数字模板目录(assets/template/ 下子路径)。
 _SHOP_COST_TMPL_DIR: str = 'currency_war/shop_cost'
 #: 费用 area 名后缀(screen_info「货币战争-备战-开商店」屏,商店牌-N-费用)。
@@ -1487,9 +1488,17 @@ _SHOP_COST_AREA_SUFFIX: str = '-费用'
 #: 窄,抗锯齿边像素波动大)、错误数字最高 0.59(13 帧 65 槽离线对拍,
 #: 产物 .debug/temp/cw_cost_badges/);0.60 居中,两侧余量 ≥0.19。
 _SHOP_COST_TM_THRESH: float = 0.60
-#: 费用倍数体系(merge_mechanics §2.6):2星 = 3 × 1星费。徽章数字 = 3×roster 费
-#: → 2星直出实锤;两值均不是 → 疑多位徽章(如 4费2★=12)等未建模形态 → 兜底。
-_SHOP_COST_2STAR_MULT: int = 3
+#: 费用倍数 → 星级(费用倍数体系,merge_mechanics §2.6;用户定稿:星级 =
+#: 读数 ÷ roster 原费,倍数 ∈ {1,3,9} → 1/2/3★)。
+_SHOP_COST_MULT_TO_STAR: dict[int, int] = {1: 1, 3: 2, 9: 3}
+#: 徽章数字合理域上界(3★ 顶格 = 9×5费 = 45,两位数;99 留余量滤 OCR 噪声)。
+_SHOP_COST_MAX: int = 99
+#: 字形分割过滤:数字字形高 ≥12(实测 22-24)、面积 ≥30(剔白字抗锯齿噪声/
+#: 徽章高光残点);低于阈值的连通域不进识别。
+_SHOP_COST_GLYPH_MIN_H: int = 12
+_SHOP_COST_GLYPH_MIN_AREA: int = 30
+#: OCR 二级路径的放大倍数(小裁片 det 天花板,同 ``_ocr_upscaled`` 手法)。
+_SHOP_COST_OCR_SCALE: int = 4
 #: 数字模板模块级缓存(dict[digit] → 0/255 灰度掩码;None=未加载,{}=目录缺)。
 _COST_DIGIT_TEMPLATES: dict[int, MatLike] | None = None
 
@@ -1498,14 +1507,15 @@ COST_SOURCE_ROSTER_FALLBACK: str = 'roster_fallback'
 
 
 def _load_cost_digit_templates() -> dict[int, MatLike]:
-    """加载费用数字模板 1-4(模块级缓存;目录缺 → {})。
+    """加载费用数字模板(模块级缓存;目录缺 → {})。
 
     模板 = 白色数字字形的二值掩码(白 ≥235 全通道,最大连通域紧裁),从存档
     开商店帧原 PNG 裁(来源与裁法见 assets/template/currency_war/shop_cost/;
-    字体固定,跨帧位置稳定)。**数字 5 无样本**(5费牌档在存档 13 帧全未出现,
-    商店基础概率 ~5%):读不到 5 时走 roster 兜底——5费 1★ 卡仍读对(查表即
-    真值),仅 5费 2星直出(mult 后为多位数,本就非单字数字形态)维持旧缺口,
-    由金账对账兜底。版本更新改徽章美术时重裁模板(同目录覆盖)。
+    字体固定,跨帧位置稳定)。**样本覆盖 = 数字 1-4**(存档 13 帧徽章数字
+    只出现过 1/2/3/4;5-9 无样本):字形模板只作**一级快路**(全部字形皆
+    1-4 可分类时直出),模板外的字形组合走二级 OCR(见 ``read_shop_card_cost``)
+    ——多位数徽章(6/9/12/15/18/27)与数字 5-9 均由二级覆盖,不依赖补模板。
+    实机采到新数字字形后可重裁扩充模板目录(一级命中率随之升高)。
     """
     global _COST_DIGIT_TEMPLATES
     if _COST_DIGIT_TEMPLATES is None:
@@ -1528,17 +1538,74 @@ def _white_glyph_mask(crop: MatLike) -> MatLike:
     return ((crop.min(axis=2) >= 235) * 255).astype(np.uint8)
 
 
-def read_shop_card_cost(ctx: SrContext, screen: MatLike, slot: int) -> int | None:
-    """商店牌 ``slot``(1-5)费用徽章数字 → 1-4 | None(失读)。
+def _classify_glyph_digits(mask: MatLike) -> list[int | None]:
+    """白字形掩码 → 逐字形数字分类(纯函数可测;x 序)。
 
-    裁 screen_info「商店牌-{slot}-费用」area(名字条右端数字窗,坐标单一源)
-    → 白字形掩码 → 对数字模板 1-4 逐个 TM,取最高分;低于
-    ``_SHOP_COST_TM_THRESH`` 或模板未加载 → None(调用方走 roster 兜底)。
-    空槽(牌区无卡)掩码全黑 → 各模板分数 ≤0 → None,天然安全。
+    连通域分割(过滤 h<``_SHOP_COST_GLYPH_MIN_H``/area<``_SHOP_COST_GLYPH_MIN_AREA``
+    的噪声)→ 每字形紧裁对数字模板 TM,≥``_SHOP_COST_TM_THRESH`` 记该数字、
+    否则 None(= 模板外字形,如 5-9)。全 None 前置(掩码空/模板缺)→ []。
+    调用方语义:**列表含 None 或为空 = 一级路径不采信,走二级 OCR**;全数字
+    且 1-3 个 → 拼接成费用读数(多位数支持,'1'+'2' → 12)。
     """
     tmpls = _load_cost_digit_templates()
-    if not tmpls:
+    if not tmpls or mask.size == 0 or not mask.any():
+        return []
+    n, _lab, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    glyphs = [tuple(int(v) for v in stats[i])
+              for i in range(1, n)
+              if stats[i][3] >= _SHOP_COST_GLYPH_MIN_H
+              and stats[i][4] >= _SHOP_COST_GLYPH_MIN_AREA]
+    glyphs.sort(key=lambda g: g[0])                     # x 序
+    out: list[int | None] = []
+    for x, y, w, h, _area in glyphs:
+        local = mask[max(0, y - 1):y + h + 1, max(0, x - 1):x + w + 1]
+        best: int | None = None
+        best_v = -1.0
+        for d, t in tmpls.items():
+            if local.shape[0] < t.shape[0] or local.shape[1] < t.shape[1]:
+                continue
+            v = float(cv2.matchTemplate(local, t, cv2.TM_CCOEFF_NORMED).max())
+            if v > best_v:
+                best, best_v = d, v
+        out.append(best if best_v >= _SHOP_COST_TM_THRESH else None)
+    return out
+
+
+def _ocr_cost_digits(ctx: SrContext, crop: MatLike) -> int | None:
+    """费用裁片二级 OCR:白字形掩码反转(黑字白底)→ 放大 → OCR 取整数。
+
+    服务一级模板路径覆盖不到的形态:多位数徽章(6/9/12/15/18/27)、模板外
+    数字字形(5-9 无样本)。黑字白底是 paddle rec 的稳态输入(同
+    ``_ocr_difficulty_binarized`` 反转先例);二值图无背景干扰,4x 放大破
+    小目标 det 天花板。读不到/域外(>``_SHOP_COST_MAX``)→ None。
+    """
+    if crop.size == 0:
         return None
+    mask = _white_glyph_mask(crop)
+    if not mask.any():
+        return None
+    up = cv2.resize(mask, (mask.shape[1] * _SHOP_COST_OCR_SCALE,
+                           mask.shape[0] * _SHOP_COST_OCR_SCALE),
+                    interpolation=cv2.INTER_NEAREST)
+    inv = cv2.cvtColor(255 - up, cv2.COLOR_GRAY2RGB)
+    v = _first_int([r.data for r in ctx.ocr_service.get_ocr_result_list(image=inv)])
+    if v is None or not (1 <= v <= _SHOP_COST_MAX):
+        return None
+    return v
+
+
+def read_shop_card_cost(ctx: SrContext, screen: MatLike, slot: int) -> int | None:
+    """商店牌 ``slot``(1-5)费用徽章读数 → 1-``_SHOP_COST_MAX`` | None(失读)。
+
+    裁 screen_info「商店牌-{slot}-费用」area(名字条右端数字窗,坐标单一源)
+    → 两级管线:
+    1. **字形模板快路**:白字形连通域分割逐字形对模板(数字 1-4 有样本,
+       单/多位数同权——'1'+'2' 两字形即 12);全部字形可分类 → 拼接直出;
+    2. **OCR 慢路**:快路不采信(掩码空返 None;含模板外字形/模板缺)→
+       掩码反转黑字白底放大 OCR(覆盖 5-9 与未采样的多位数渲染)。
+    两级皆失读 → None(调用方走 roster 兜底)。空槽(牌区无卡)掩码全黑
+    → 快路 [] 慢路即时返 None,零 OCR 成本。
+    """
     rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{slot}{_SHOP_COST_AREA_SUFFIX}',
                       SHOP_SCREEN_NAME)
     if rect is None or screen is None:
@@ -1546,37 +1613,29 @@ def read_shop_card_cost(ctx: SrContext, screen: MatLike, slot: int) -> int | Non
     crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
     if crop.size == 0:
         return None
-    mask = _white_glyph_mask(crop)
-    best: int | None = None
-    best_v = -1.0
-    for d, t in tmpls.items():
-        if mask.shape[0] < t.shape[0] or mask.shape[1] < t.shape[1]:
-            continue
-        v = float(cv2.matchTemplate(mask, t, cv2.TM_CCOEFF_NORMED).max())
-        if v > best_v:
-            best, best_v = d, v
-    return best if best_v >= _SHOP_COST_TM_THRESH else None
+    digits = _classify_glyph_digits(_white_glyph_mask(crop))
+    if digits and all(d is not None for d in digits) and len(digits) <= 3:
+        return int(''.join(str(d) for d in digits))
+    return _ocr_cost_digits(ctx, crop)
 
 
 def resolve_cost_star(badge_cost: int | None, roster_cost: int) -> tuple[int, int, str]:
-    """徽章数字 + roster 1星费 → ``(cost, star, cost_source)``(纯函数可单测)。
+    """徽章读数 + roster 1星费 → ``(cost, star, cost_source)``(纯函数可单测)。
 
-    语义(费用倍数体系,merge_mechanics §2.6):
+    语义(费用倍数体系,merge_mechanics §2.6;用户定稿:星级 = 读数 ÷ 原费):
     - badge 缺失 / roster_cost≤0(名字未识别)→ roster 查表兜底,
       cost_source='roster_fallback';
-    - badge == roster_cost → 1★,徽章直读;
-    - badge == 3×roster_cost → **2星直出实锤**(star=2,cost=徽章值即 2★ 实付);
-    - 其余(badge 与两值均不符,如多位徽章 4费2★=12 的 '1' 误单字命中)→
-      兜底 roster(保守 1★),cost_source='roster_fallback',调用方留证。
-    名字未识别但徽章可读的牌(上两分支不适用)由调用方特判:费用信徽章
-    (徽章 = 实付价真值),星级保守 1。
+    - badge = roster_cost × 倍数,倍数 ∈ {1,3,9} → star 1/2/3,cost = 读数
+      (实付价真值;2/3星直出实锤由调用方 `[cw!]` 留证);
+    - 倍数 ∉ {1,3,9}(含 ×27=4★ 超 CW 星级域、非整数倍 = 疑误读)→ 兜底
+      roster(按原费用记 1★),cost_source='roster_fallback',调用方留证。
     """
     if badge_cost is None or roster_cost <= 0:
         return roster_cost, 1, COST_SOURCE_ROSTER_FALLBACK
-    if badge_cost == roster_cost:
-        return badge_cost, 1, 'badge'
-    if badge_cost == roster_cost * _SHOP_COST_2STAR_MULT:
-        return badge_cost, 2, 'badge'
+    star = _SHOP_COST_MULT_TO_STAR.get(badge_cost // roster_cost) \
+        if badge_cost % roster_cost == 0 else None
+    if star is not None:
+        return badge_cost, star, 'badge'
     return roster_cost, 1, COST_SOURCE_ROSTER_FALLBACK
 
 
@@ -1657,21 +1716,26 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
                 pass
         name = resolve_char_name(avatar_id) if avatar_id else ''
         ch = get_char(name) if name else None
-        # 费用信源(2星直出闭环):画面费用徽章数字优先(模板匹配,read_shop_card_cost);
-        # 失读/与 roster 费用矛盾 → roster 查表兜底并标 cost_source='roster_fallback'
-        # (金账对账可区分信源)。徽章 = 实付费用真值;徽章=3×roster 费 → 2星直出
-        # (star=2,[cw!] 留证,merge_mechanics §2.6 费用倍数体系)。
+        # 费用信源(2星/3星直出闭环):画面费用徽章读数优先(read_shop_card_cost,
+        # 模板快路+OCR 慢路两级);失读/倍数推不出 → roster 查表兜底(按原费用
+        # 记 1★)并标 cost_source='roster_fallback'(金账对账可区分信源)。
+        # 读数 ÷ roster 费 = 倍数 ∈ {1,3,9} → 星级 1/2/3(费用倍数体系,
+        # merge_mechanics §2.6;×27=4★ 超 CW 星级域,留证兜底)。
         _badge = read_shop_card_cost(ctx, screen, i)
         if ch is not None:
             cost, star, cost_src = resolve_cost_star(_badge, ch.cost)
             if _badge is not None and cost_src == COST_SOURCE_ROSTER_FALLBACK:
-                # 徽章可读但与 roster 费/3倍均不符:疑多位徽章被单字模板误命中
-                # (如 4费2★=12)或新形态 → 留证不采信,保守退 roster。
-                log.warning('[cw!] 商店牌%d 费用徽章=%s 与 roster 费 %s(及其3倍)均不符'
-                            ' → roster 兜底(疑多位徽章/新形态,复现则扩模板)', i, _badge, ch.cost)
-            elif star == 2:
-                log.warning('[cw!] 商店牌%d 费用徽章=%s ≠ roster 1星费 %s → 2星直出实锤'
-                            '(费用=星级倍数,merge_mechanics §2.6)', i, _badge, ch.cost)
+                if _badge == ch.cost * 27:
+                    log.warning('[cw!] 商店牌%d 费用读数=%s = roster 费 %s 的 27 倍(=4★,'
+                                '超 CW 3★ 星级域)→ roster 兜底留证(复现即 gameplay 异常信号)',
+                                i, _badge, ch.cost)
+                else:
+                    log.warning('[cw!] 商店牌%d 费用读数=%s 非 roster 费 %s 的 1/3/9 倍'
+                                '(疑误读)→ roster 兜底留证', i, _badge, ch.cost)
+            elif star >= 2:
+                log.warning('[cw!] 商店牌%d 费用读数=%s ÷ roster 费 %s = %d 倍 → %d星直出'
+                            '实锤(费用=星级倍数,merge_mechanics §2.6)',
+                            i, _badge, ch.cost, _badge // ch.cost, star)
         else:
             # 名字未识别:徽章可读时费用信徽章(实付价真值),星级保守 1
             # (2星直出+未知名字的形态待实机样本,金账对账兜底)。

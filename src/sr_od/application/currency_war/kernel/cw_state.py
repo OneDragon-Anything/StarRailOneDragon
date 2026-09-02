@@ -119,9 +119,10 @@ class ShopCard:
     # 不得当「确认无副本」做否定性决策;sim 不建模(恒 0,视觉信号离线无源)。
     merge_preview: int = 0
     # cost 的信源(费用徽章数字识别批,2026-09-02):'badge'=画面费用徽章直读
-    # (费用数字模板匹配命中);'roster'=roster 查表(sim/replay 构造路径缺省);
-    # 'roster_fallback'=徽章失读/与 roster 费用矛盾,退回 roster 查表。
-    # 供金账对账区分「徽章直读」与「查表派生」(2星直出识别缺口闭环,
+    # (费用读数=实付价,星级=读数÷roster 费的倍数 {1,3,9}→1/2/3★);
+    # 'roster'=roster 查表(sim/replay 构造路径缺省);
+    # 'roster_fallback'=徽章失读/倍数推不出,退回 roster 查表按原费用记 1★。
+    # 供金账对账区分「徽章直读」与「查表派生」(2星/3星直出识别缺口闭环,
     # merge_mechanics §2.6/§2.7)。
     cost_source: str = 'roster'
 
