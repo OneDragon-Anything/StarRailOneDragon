@@ -1,6 +1,6 @@
 # W971 · CW 流程层重构设计(总纲)
 
-- 日期:2026-09-02;状态:DRAFT(对抗轮 1 进行中——三视角并行)
+- 日期:2026-09-02;状态:DRAFT(对抗轮 1 三视角 41 条 findings 修订完成;复核轮 1 修订验证通过+时序终检进行中)
 - 依据:用户口述架构愿景(2026-09-02,逐段,§2 各节)+ W970(画面分层架构,FINAL+amended)——本篇是 W970 续篇:W970 治「商店链与决策接口」,本篇治「流程层编排与局状态」
 - 结构:总-分。本篇 = 总纲(背景/决策索引/总图/迁移/风险/边界);分篇按画面域:
   - [01-opening.md](01-opening.md) — 简报 op / 开局序列 / 位面切换(§2.2/2.3/2.3.1)
@@ -34,7 +34,7 @@
 | 干净备战 op(20 项识别) | 03-prep | 观察写 session → decide_prep_screen → 逐动作原子 op |
 | 流程信号意图退役 | 03-prep | DeferSpheres/BailToOuter 删(交回是默认行为;空序列合法;stall 归状态对账) |
 | 商店画面收缩 | 04-shop | 动作集只剩 BuyCard/RefreshShop;整理类全移备战;CompTransaction 废弃 |
-| 投资策略流程 | 04-shop | 路 2 结算屏读数采纳(暗态观察删除,备选保留 §2.12.1);原子 op 3 个 |
+| 投资策略流程 | 04-shop | 路 2 结算屏读数采纳(暗态观察删除,备选保留 04-shop §5);原子 op 3 个 |
 | 再选效果调研 | 04-shop | 417 条全查命中 8 张;A 立即再选=循环天然处理;B 延迟再选=日程账本 |
 | 遭遇 overlay | 06-overlays | 决策读难度预览(词缀是全局);确认后回备战+商店自动开 |
 | 补给 overlay | 06-overlays | 与投资策略同构;决策域=宝钻+契合;决策归策略接口原则 |
@@ -55,7 +55,7 @@
   │      → WaitOneOneOp(~10s,1-1 不自动开店特例)
   │      → 1-1 备战就绪
   │
-  ├─ 顶层循环(纯分发器,02-state §循环;判定序:暗色锁定态→商店开锚→备战双锚→…):
+  ├─ 顶层循环(纯分发器;判定序:沿用现役优先序框架+W971 扩锚,暗色锁定态→商店开锚→备战双锚→…):
   │    识别画面 → 分发:
   │    ├ 备战 → 干净备战op:观察20项写session → decide_prep_screen(session)
   │    │         → 逐动作原子op(部署/卖/点球/开箱/典籍/OpenShop[read_only]/出战)
@@ -95,7 +95,7 @@
 | 阶段 | 内容(吸收 W970 批次) | 验证口径 |
 |---|---|---|
 | P1 商店链原子化(=W970批A) | OpenShopOp/BuyCardsOp/CloseShopOp 拆分(源码锁迁移清单前置);遥测写点随迁;LOCKED_RESUME 删 | 锁按清单更新后绿 + decisions.jsonl 逐决策对拍 + 全量测试 |
-| P2 决策接口+黑板(=W970批B+黑板) | decide_prep_screen/decide_shop_screen(session 签名);观察写路径收编(消灭 ctx 信箱);LevelUpShop 拆分 | 新旧入口决策对拍 + 白名单落地检查 |
+| P2 决策接口+黑板(=W970批B+黑板) | decide_prep_screen/decide_shop_screen(session 签名);观察写路径收编(ctx 信箱双写过渡,P3 删——对抗轮 1 批次修正);LevelUpShop 拆分 | 新旧入口决策对拍 + 白名单落地检查 |
 | P3 开局序列+overlay族+**编排切换**(=W970批C 全项) | BriefingOp/PlaneTransitionOp/WaitOneOneOp 新建;七 overlay op 统一模式;开局编排接线(主循环瘦身:0a0b/分支6/投资环境段退役);**纯分发器接管备战/商店常态编排(W970 批 C 全项:RunBuyPhase 解体、腾席链 b read_only、探针挂点、_handle_bench_full 合流)**;干扰弹窗分支保留 | 实机单局:开局序列走查 + overlay 各触发一次 + 常态编排对照 |
 | P4 战斗段+结算链 | 战斗等待op(结算读点随迁,遥测红线);点空白加速随迁;自动战斗检测(待采集);节点探针挂点随迁 | 实机多局:遥测连续性对照(decisions.jsonl/match_archive)+ rounds 遥测 |
 | P5 收尾 | PREP_SETTLE_S 退役;标志位退役;EnsureShop 意图删除;gate 模块删除(清单清零) | 全量测试 + 实机对照 |
