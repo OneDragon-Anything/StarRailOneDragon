@@ -22,6 +22,8 @@
 | 控制流 | DeferSpheres(球留置,环级计数)/ BailToOuter |
 | 组合(过渡) | RunBuyPhase(BuyShopCards)/ RunDeploy(DeployBench)/ RunEquip(EquipAll) |
 
+**商店链结构**(`operations/prep/`;分层架构设计见 `prereg/w970_layered_arch/DESIGN.md`):`BuyShopCards` = 编排壳(前置守卫/HP 关帧读链/编排三原子 op/关店后重估与 gold 对拍),商店动作本体按画面拆三个原子 op——`open_shop`(幂等开店:已开(「按钮-收起」可见)即成功,未开点「按钮-商店」→ 固定等待 `SHOP_OPEN_ANIM_S` → 收起锚 fail-closed 验证)、`buy_cards`(`run_buy_waves` 波循环:读牌面 → `decide_prep` → 执行至首个 RefreshShop → 刷新重判,MAX_REFRESH 硬墙;买/卖/刷/升执行与观测自检网在此)、`close_shop`(点「按钮-收起」→ 固定等待 `SHOP_CLOSE_ANIM_S` → 「收起消失」验证;商店族字段清理挂点留 TODO 待流程层批)。壳以宿主直调原子核心(非子 op 实例),保证读屏次序与替身行为等价;三个 op 类均可 `run_operation` 独立跑。
+
 **注意分层**:买牌内的刷新(RefreshShop)与买入(BuyCard)是 `cw_state` 的 **sim/决策层 Action**(决策层产出、`decision_v2`/`sim` 消费),由 RunBuyPhase(BuyShopCards op)在执行层落地,不是 prep_actions 类;穿戴/合成同理——装备执行走 RunEquip(EquipAll op,§6),合成决策在 `cw_synthesis`(op 层暂无独立动作)。
 
 组合动作保留四项板上行为(DeployBench 内:换血/同角色去重/前排保证/cap 门)——`_should_deploy`+`_pick_deploy_row` 不足以复现,全原子切换会静默回归。部署槽位上限实测读取(财富宝钻 +1 随环境变,不硬编码)。**deploy 围栏**(配方饥饿期非过渡件留 bench)= `_DEPLOY_FENCE` = RECIPE∪ENGINE 桥派生单一源(ADR-0226)。⚠️ 已知漂移(ADR-0261):op 侧 `_deploy_deterministic` 与 `cw_deploy_logic.select_deployments` 纯函数非同源——op 无 ignition 排序首键、且多 r288 配方底线门(列车≥2 且仙舟<3 拦列车件;纯函数无此门=sim 盲区),引擎件存量躺 bench 的生产机制在此,修复待裁决。
