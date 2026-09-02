@@ -20,16 +20,23 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 
 字段本体照常更新(expected 推进值直接写入);`expected_state` 只记「哪些路径尚未被实读确认」——覆盖点 reconcile 后移除条目。
 
-**统一现有雏形**:`pending_buy_expect`(买牌对账)/`xp_expect_ledger`(经验对账)/`tracked_*` 动作登记——全部迁入本机制(向后兼容:迁移批一次性收编,旧字段退役)。
+**寻址与组确认(对抗 F4)**:①ExpectedEntry 增**身份寻址维度**——tracked 族比对键现实=身份+星级元组(非纯槽位路径):path=槽位、value 含身份、**比对按身份匹配豁免位移**;②deployed 声明**单一坐标系**=deployed_idx 0-9 槽位表(row+排内槽经 deployed_from_compact 适配换算),produced_by 与 reconcile 同系;③合成链=**多槽重写组条目**(一次 BuyCard 产生一组互相依赖的槽位变更,打包一个条目、组确认清账——禁止逐 path 独立清账产生「半确认」中间态)。
+
+**雏形收编 = 载体统一、语义分道(对抗 F1/F2/F3 修订,禁一刀切)**:
+- **buy 通道**:保留 `BuyExpect` 对象载体(全槽快照+增量槽集+crops+low_confidence)与 **DD-005 快照前提失效降级**(读全局实读上下文的降级裁决——逐 path diff 会把「实体落进真实空槽」误报不一致,安灯 p2r2 停线事故原始形态)与「消费即清+progressed 门」——expected_state 仅统一**载体挂载点**(kind=buy_expect,条目=整段 BuyExpect);
+- **xp 通道**:保留锚点(anchored 门)+轮界重锚(round_key 吸收外生经验流)——对账基准随轮界重锚;§5 增设「外生流」diff 类(轮界差值吸收,不判罚);
+- **tracked 族**:reconcile **裁决器可插拔**(采新/保旧/防抖——双空读守卫/star 回退防抖/合成特效帧态门/银狼升费豁免,274 张存证实证防线)——tracked 族沿用 reconcile_tracking 现行裁决器;expected_state overlay 只接管「登记+清账」簿记,不改裁决语义(保旧分支的「读被拒」= expected 条目**保留不清**,由裁决器生命周期管理)。
 
 ## 2. 覆盖点(实读 merge 点,全枚举)
 
-| 覆盖点 | 时机 | 覆盖字段族 |
-|---|---|---|
-| **备战观察**(最大覆盖点) | 备战单轮 op 观察段 | tracked_bench_chars / tracked_deployed(身份+星级+装备)/ last_owned_equips / gold / level+xp / board / bench 占位 |
-| 商店波顶(shop_state_frame) | 商店 op 观察段 | gold / shop_cards / 备战席占位(**星级身份不可见**——期望态存活的主场景) |
-| 结算屏(战斗等待 op) | 每场战斗结算 | hp(真值链)/ gold / streak / level+xp |
-| 节点探针 | CloseShopOp 后 | node_type/节点表 |
+| 覆盖点 | 时机 | 覆盖字段族 | 可信门(对抗 F5) |
+|---|---|---|---|
+| **备战观察**(最大覆盖点) | 备战单轮 op 观察段 | tracked_bench_chars / tracked_deployed(身份+星级+装备)/ last_owned_equips / level+xp / board / bench 占位。**gold 不在此覆盖**(F2 可信门:关店态 gold 读空不可信,obs.state_gold_trusted=shop_open——不可信读数不清 expected/不写 actual) | shop 关态:gold 不可信,其余可信 |
+| 商店波顶(shop_state_frame) | 商店 op 观察段 | **gold(可信源)** / shop_cards / 备战席占位(星级身份不可见——期望态存活主场景) | shop 开态全可信 |
+| **买后增量读**(read_gold_settled,对抗 F5 补) | 波内每笔买后 | gold(增量提前确认,与 build_post_buy_incremental_state 同源) | 开态可信 |
+| 结算屏(战斗等待 op) | 每场战斗结算 | hp(真值链)/ gold / streak / level+xp | 结算屏全可信 |
+| **HP 关态读链**(对抗 F6 补,shop.py 新鲜度门/结算真值/r1 重试) | 备战单轮 op 观察段 | hp(gated_hp 单源门位保留——防双写者翻转,收编后序不变) | 门控 |
+| 节点探针(CloseShopOp 后)+ 备战观察 heavy + 关店重估(**三写点,对抗 F5 补**) | 各自时机 | node_type——**优先级:关态帧真值优先,探针兜底**(双写点 winner 声明) | 关态帧可读即覆盖 |
 
 ## 3. 原子 op × 期望态更新全枚举(全集 41 条;每条必有定义或「不更新」理由)
 
@@ -144,5 +151,6 @@ merge_simulate(state: {bench, deployed}, buy: (角色, 星级, 张数))
 
 - 备战单轮 op 的「对账段」(生命周期②)= 本机制覆盖点的 reconcile 执行处;
 - 商店 op 波顶观察 = 商店覆盖点;
-- 原子 op 执行器:每 op 执行完 → `apply_op_effect`(期望态推进)——执行器调,逻辑在 kernel 纯函数;
+- **apply_op_effect 挂 dispatch 层双执行面(对抗 F8)**:`prep_actions.PrepActionExecutor.execute` + `decision_assembly.execute(AtomOp)` 各自接线**同一 kernel 纯函数**(漏一面=该面动作全部漏登记);**组合动作**(RunBuyPhase/RunDeploy/RunEquip 经 _run_composite)=「子动作效果列表上抛」(波内逐动作精确推进,非单元级粗粒度——波内登记现役点 buy_cards mutate_bench_deployed/shop pending_buy_expect 暂存);**显式不建模盲区**:`_handle_bench_full` 席满急救(买经验×10+卖前几槽,不经执行器)——留证声明而非遗漏;P4 验收清单加「两执行面 × 动作类型 × apply 覆盖矩阵」;
+- **条目绑覆盖点(对抗 F7)**:每条 ExpectedEntry 声明其确认覆盖点(shop 族条目在备战观察点**不可确认**——星级身份不可见);不可确认条目**不计入 stall 判定**的「长期未覆盖」时钟;reconcile 入口按当前帧可信门过滤字段族(F5);
 - stall 判定(外循环)消费 expected_state 的轮次戳(「字段长期 expected 未被覆盖」= 停留在不可识别画面过久 → 线索)。
