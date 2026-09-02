@@ -440,6 +440,51 @@ class PrepDirector(SrOperation):
                             current_readable=bool(
                                 getattr(st, 'hp_readable', True)))
                 session.last_state = st
+                # 期望态覆盖点·备战观察(EXPECTED_STATE §2 最大覆盖点):
+                # tracked/xp/owned 族实读确认清账;可信门(F5)= gold 仅 shop
+                # 开态可信(obs.state_gold_trusted),不可信读数不进 actual →
+                # 期望条目保留不清账。hp 族归 reconcile_hp 单源门(不在此列)。
+                # 全程 best-effort,失败不阻塞环。
+                try:
+                    from sr_od.application.currency_war.kernel.cw_expected_state import (
+                        reconcile_expected,
+                    )
+                    _ids = ' | '.join(
+                        f'{bc.char_id}@{bc.star}★'
+                        for bc in (obs.bench_chars or [])
+                        if getattr(bc, 'char_id', ''))
+                    _dids = ' | '.join(
+                        f'{bc.char_id}@{bc.star}★'
+                        for bc in (obs.deployed_chars or [])
+                        if getattr(bc, 'char_id', ''))
+                    _act: dict = {}
+                    for _p, _e in list(
+                            (getattr(session, 'expected_state', None)
+                             or {}).items()):
+                        if _e.confirm_point != 'prep_obs':
+                            continue   # 条目绑覆盖点(F7):不可确认点透传
+                        if _e.kind in ('tracked', 'merge_group'):
+                            _act[_p] = (f'{_ids}|{_dids}', True)
+                        elif _e.kind == 'gold':
+                            if obs.state_gold_trusted:
+                                _act[_p] = (getattr(st, 'gold', None),
+                                            getattr(st, 'gold', None) is not None)
+                        elif _e.kind == 'xp_ledger':
+                            _xp = getattr(st, 'xp_progress', None)
+                            _lv = int(getattr(st, 'level', 0) or 0)
+                            _act[_p] = (f'lv{_lv} xp{(_xp[0] if _xp else 0)}',
+                                        bool(_xp) and _lv > 0)
+                        elif _e.kind == 'owned':
+                            _name = (_p[len('owned['):-1]
+                                     if _p.startswith('owned[') else '')
+                            _own = getattr(session, 'last_owned_equips',
+                                           None) or []
+                            _act[_p] = (_name, _name in _own)
+                        elif _e.kind == 'pending_reward':
+                            _act[_p] = ('sphere' if obs.spheres else 'gone', True)
+                    reconcile_expected(session, 'prep_obs', _act)
+                except Exception as _e:  # noqa: BLE001  观测面不阻塞环
+                    log.debug(f'[cw-director] expected reconcile skip: {_e}')
             # substate 消费:observe_full 的可读性
             # 标注落 PrepObservation(下游对账/日志可判;轻步
             # 沿用缓存,同 _cached_state 语义)。

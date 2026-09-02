@@ -569,6 +569,23 @@ def run_buy_waves(op: SrOperation, match,
         # dual/focus 拷入+gold 救援+tracked 播种,上方融合段即组装点)直写
         # session.shop_state_frame——写者白名单 = 本段;读者 = decide_shop_screen。
         match.session.shop_state_frame = state
+        # 期望态覆盖点·商店波顶(EXPECTED_STATE §2:gold 可信源 + 备战席占位
+        # ——星级身份不可见,期望态存活主场景):gold 族条目可信读清账;tracked
+        # 族条目绑 prep_obs 覆盖点,此处透传不确认(F7)。best-effort。
+        try:
+            from sr_od.application.currency_war.kernel.cw_expected_state import (
+                reconcile_expected,
+            )
+            _store = getattr(match.session, 'expected_state', None) or {}
+            _act = {}
+            for _p, _e in list(_store.items()):
+                if _e.confirm_point != 'shop_wave_top':
+                    continue
+                _act[_p] = (getattr(state, 'gold', None),
+                            getattr(state, 'gold_readable', True))
+            reconcile_expected(match.session, 'shop_wave_top', _act)
+        except Exception as _e:  # noqa: BLE001  观测面不阻塞波循环
+            log.debug(f'[cw-shop] expected reconcile skip: {_e}')
         try:
             actions = match.strategy.decide_shop_screen(match.session, config)
         except Exception:

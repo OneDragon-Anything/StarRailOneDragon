@@ -51,8 +51,14 @@ def install_obs_ports() -> None:
 
     同点接通 kernel 侧合成特效帧态门(``cw_reconcile`` 注入槽,分包矩阵禁
     kernel→obs 直依;缺省关 = 门放行走既有连续 2 次确认防抖主干)。
+
+    同点接通期望态留证 sink(``cw_expected_state.set_evidence_sink``,追加
+    ``expected_reconcile.jsonl``;缺省关 = 只 log 不落盘,测试零真实 IO)。
     """
     from sr_od.application.currency_war.decision.cw_strategy import set_obs_reset_hook
+    from sr_od.application.currency_war.kernel.cw_expected_state import (
+        set_evidence_sink,
+    )
     from sr_od.application.currency_war.kernel.cw_reconcile import set_merge_effect_gate
     from sr_od.application.currency_war.obs.cw_identity_obs import (
         is_merge_effect_frame,
@@ -62,6 +68,21 @@ def install_obs_ports() -> None:
     )
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
+
+    def _expected_reconcile_sink(row: dict) -> None:
+        # expected_reconcile.jsonl 追加(EXPECTED_STATE §5 留证;复用对账
+        # 通道形态目录)。失败不阻塞对局(观测面)。
+        import json
+        from pathlib import Path
+        try:
+            p = Path('.debug/temp/currency_war/expected_reconcile.jsonl')
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with p.open('a', encoding='utf-8') as f:
+                f.write(json.dumps(row, ensure_ascii=False, default=str) + '\n')
+        except Exception:  # noqa: BLE001  留证 best-effort
+            pass
+
+    set_evidence_sink(_expected_reconcile_sink)
 
 
 def _registry_of(strategy: Any):
@@ -181,7 +202,13 @@ class DecideAdapter:
         return decision
 
     def execute(self, op: AtomOp) -> tuple[bool, str]:
-        """绑定回放执行(op_key → 绑定的 PrepAction → 现役执行器)。"""
+        """绑定回放执行(op_key → 绑定的 PrepAction → 现役执行器)。
+
+        期望态登记(EXPECTED_STATE §6 对抗 F8)随执行器同源覆盖:本面委托
+        ``PrepActionExecutor.execute``,登记钩子挂在那里(单一挂点 = 两执行面
+        一次覆盖、零双写);回归锁 = test_cw_expected_state.py 的 assembly 面
+        登记 invariants。
+        """
         action = self._binding.get(op.op_key)
         if action is None:
             return False, f'v2适配器:op_key 无绑定 {op.op_key}'

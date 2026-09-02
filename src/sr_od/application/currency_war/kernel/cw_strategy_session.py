@@ -315,4 +315,13 @@ class StrategySession:
     # 写者白名单 = buy_cards.run_buy_waves 波顶融合段 / 兼容期旧接口
     # decide_prep 薄委托 / sim 引擎(独立批)。读者 = decide_shop_screen。
     shop_state_frame: 'GameState | None' = None   # noqa: F821, UP037
+    # —— 期望态容器(W971 EXPECTED_STATE.md FINAL v3.1,P4)——
+    # expected_state:尚未被实读覆盖确认的期望态条目表(path → ExpectedEntry)。
+    # 语义 = 字段本体照常推进(expected 值直接写 session/last_state),本容器只
+    # 记「哪些路径尚未被实读确认」;覆盖点 reconcile 后清账。条目结构/寻址维度
+    # (身份+组确认)/覆盖点绑定 = ExpectedEntry 字段定义注释(kernel/cw_expected_
+    # state);写者 = apply_op_effect(两执行面同源)+ 到账登记登记口;读者 =
+    # reconcile_expected(覆盖点)+ 外循环 stall 判定(轮次戳消费,待接线)。
+    expected_state: 'dict[str, ExpectedEntry] | None' = None   # noqa: F821, UP037
+    # None = 未初始化(惰性建,兼容旧回放构造);正式容器由登记口置 dict。
 

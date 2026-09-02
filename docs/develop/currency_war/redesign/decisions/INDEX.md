@@ -21,3 +21,4 @@
 | [dd-017](dd-017-p3b-orchestration-takeover.md) | DD-017:W971 P3b 编排切换——开局编排接线/overlay 分发接管/纯分发器接管备战商店(EnsureShop·RunBuyPhase 退役→OpenShop 形态)/ctx 信箱退役 | accepted | 2026-09-02 |
 | [adr-0431](adr-0431-hp-down-guard-battle-fact.md) | ADR-0431(历史 ADR):hp 下行守卫——「幅度 × 战斗事实」联合判据与复现确认通道;2026-09-02 判据按机制重推导部分取代,见文内修订记录 | accepted(部分取代,见文内修订节) | 2026-08-28 |
 | [dd-018](dd-018-shop-cost-badge-digit.md) | DD-018:商店牌费用徽章数字识别——cost 信源 roster 查表→画面直读翻转,2星/3星直出缺口闭环(倍数 {1,3,9} 推星级;多位数两级管线,文内修订节载用户费用体系澄清后的修正) | accepted | 2026-09-02 |
+| [dd-019](dd-019-p4-battle-wait-op-expected-state.md) | DD-019:W971 P4 战斗等待 op 收编(battle_loop 1f/2/3/3b/5/6 → BattleWaitOp,状态机随迁,3c 收口留主循环)+ 期望态 infra 落地(expected_state 容器/apply_op_effect 两执行面同源/覆盖点 reconcile 留证/merge_simulate 引擎/雏形分道收编) | accepted | 2026-09-02 |

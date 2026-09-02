@@ -155,3 +155,5 @@ merge_simulate(state: {bench, deployed}, buy: (角色, 星级, 张数))
 - **apply_op_effect 挂 dispatch 层双执行面(对抗 F8)**:`prep_actions.PrepActionExecutor.execute` + `decision_assembly.execute(AtomOp)` 各自接线**同一 kernel 纯函数**(漏一面=该面动作全部漏登记);**组合动作**(RunBuyPhase/RunDeploy/RunEquip 经 _run_composite)=「子动作效果列表上抛」(波内逐动作精确推进,非单元级粗粒度——波内登记现役点 buy_cards mutate_bench_deployed/shop pending_buy_expect 暂存);**显式不建模盲区**:`_handle_bench_full` 席满急救(买经验×10+卖前几槽,不经执行器)——留证声明而非遗漏;P4 验收清单加「两执行面 × 动作类型 × apply 覆盖矩阵」;
 - **条目绑覆盖点(对抗 F7)**:每条 ExpectedEntry 声明其确认覆盖点(shop 族条目在备战观察点**不可确认**——星级身份不可见);不可确认条目**不计入 stall 判定**的「长期未覆盖」时钟;reconcile 入口按当前帧可信门过滤字段族(F5);
 - stall 判定(外循环)消费 expected_state 的轮次戳(「字段长期 expected 未被覆盖」= 停留在不可识别画面过久 → 线索)。
+
+> 状态(P4 落地 2026-09-02,DD-019):§1 容器/§4 merge_simulate/§5 覆盖点 reconcile 已实现(kernel/cw_expected_state.py + cw_merge_simulate.py);两执行面同源接线 = PrepActionExecutor.execute;覆盖点接线 = prep_obs(备战观察)/shop_wave_top(波顶)/settlement(战斗等待 op)。雏形分道:buy 通道 BuyExpect 载体保留、xp 通道 XpLedger 保留、tracked 族 reconcile_tracking 裁决器保留——expected_state 只接管登记+清账簿记。接线缺口(handler 侧到账登记/装备分布/stall 消费)见 DD-019 后果节。

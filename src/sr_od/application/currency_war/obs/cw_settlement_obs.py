@@ -115,6 +115,36 @@ def parse_settlement_hp(ocr_texts: list[str]) -> int | None:
 _STAT_COL_RECT = (1130, 580, 1310, 860)
 
 
+def parse_settlement_assets(ocr_texts: list[str]) -> dict[str, int | None]:
+    """结算屏金币存量/等级/经验读数 → {'gold','level','xp_cur','xp_next'}
+    (纯函数,可单测;W971 05-battle §1「结算屏 hp/gold/level 写 session」的
+    gold/level 读口,期望态结算覆盖点消费)。
+
+    证据口径(EXPECTED_STATE.md §1 节引 win 帧亲读):结算页含「金币总览
+    <获得>」与「存量 <当前>」两组金币数——**存量**才是当前金币(总览=本
+    节点获得量);等级形「Lv.5」,经验形「4/20」。失败结算页无等级/经验
+    (败局链读数口径,05-battle §1)→ 对应键 None。全部 best-effort:
+    读不到 = None(宁缺勿造,不冒认)。
+    """
+    out: dict[str, int | None] = {'gold': None, 'level': None,
+                                  'xp_cur': None, 'xp_next': None}
+    for t in ocr_texts:
+        if out['gold'] is None:
+            m = re.search(r'存量\s*[:：]?\s*(\d+)', t)
+            if m:
+                out['gold'] = int(m.group(1))
+        if out['level'] is None:
+            m = re.search(r'Lv\.?\s*(\d{1,2})', t)
+            if m:
+                out['level'] = int(m.group(1))
+        if out['xp_cur'] is None:
+            m = re.search(r'(\d{1,3})\s*/\s*(\d{1,3})', t)
+            if m and out['level'] is not None:
+                out['xp_cur'] = int(m.group(1))
+                out['xp_next'] = int(m.group(2))
+    return out
+
+
 def parse_streak(ocr_texts: list[str]) -> int:
     """结算屏「连胜×N」/「连败×N」→ 带符号 streak(连胜 + / 连败 − / 未读到 0;纯函数可单测)。
 

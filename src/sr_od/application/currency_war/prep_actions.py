@@ -233,6 +233,28 @@ class PrepActionExecutor:
             log.info('[cw][battle] 停机标志已设 → 拒绝执行 %s'
                      '(W209j 刹车,ADR-0388)', type(action).__name__)
             return False, '已停止[W209j刹车]'
+        ok, detail = self._execute_dispatch(action)
+        # 期望态推进(EXPECTED_STATE §6 对抗 F8:两执行面同源接线)——
+        # 本执行器是 PrepActionExecutor.execute 与 decision_assembly.execute
+        # 的共同底层(decision 面经绑定回放委托到这里),登记挂本入口 = 两面
+        # 一次覆盖、零双写。progressed 才登记(失败=未执行,无逻辑后果);
+        # 登记失败不阻塞执行(观测面,best-effort)。
+        if ok:
+            try:
+                from sr_od.application.currency_war.kernel.cw_expected_state import (
+                    apply_op_effect,
+                )
+                match = self._ctx.cw_match
+                session = match.session if match is not None else None
+                if session is not None:
+                    apply_op_effect(session, action, detail=detail,
+                                    produced_by=type(self).__name__)
+            except Exception as e:  # noqa: BLE001  登记失败不阻塞执行
+                log.warning('[cw][expect] apply_op_effect 失败(不阻塞): %s', e)
+        return ok, detail
+
+    def _execute_dispatch(self, action: PrepAction) -> tuple[bool, str]:
+        """动作分派(原 execute 主体;期望态钩子在其上层 execute)。"""
         if isinstance(action, ClickSpheres):
             return self._click_spheres(action)
         if isinstance(action, OpenBox):
