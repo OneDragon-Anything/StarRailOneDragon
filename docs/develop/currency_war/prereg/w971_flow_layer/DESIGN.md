@@ -396,14 +396,85 @@ CW 战斗段单独一个 op:出战 op 交回循环后,循环识别战斗/结算�
 
 对局结束(通关/终局结算)后的退出回正常世界:**等待方式用固定时间**(用户口径)。现役 `ExitCurrencyWarMatch`(放弃+结算 3 页+大厅,r279/r302/r303/r317 多轮实战验证,含锁光标 pc_alt 加固)作为退出执行体复用;自然终局与主动放弃共用该执行体,等待口径统一固定时长。
 
-## 3. 目标架构总图(口述结束后整合:开局编排 + 位面切换 + 备战循环 + 结算链 + 局状态)
+## 3. 目标架构总图
 
-## 4. 局状态字段 × 更新者白名单(整理中)
+```
+进对局(StartCurrencyWarMatch)
+  │
+  ├─ 开局编排(独立于主循环,§2.3):
+  │    BriefingOp(观察→写session→点下一步)
+  │      → PlaneTransitionOp(点空白)
+  │      → InvestEnvOp(3选1,含刷新)
+  │      → WaitOneOneOp(~10s,1-1 不自动开店特例)
+  │      → 1-1 备战就绪
+  │
+  ├─ 顶层循环(纯分发器,§2.9;判定序 §2.2:暗色锁定态→商店开锚→备战双锚→…):
+  │    识别画面 → 分发:
+  │    ├ 备战 → 干净备战op:观察20项写session → decide_prep_screen(session)
+  │    │         → 逐动作原子op(部署/卖/点球/开箱/典籍/OpenShop[read_only]/出战)
+  │    ├ 商店开 → 商店op:读牌面 → decide_shop_screen(session)
+  │    │         → BuyCard/RefreshShop 波循环 → 空序列 → CloseShopOp(含字段清理)
+  │    ├ overlay → 对应 overlay op(§2.12-2.16:投资策略/补给/遭遇/巨星/列车同行/
+  │    │            武装箱/祈愿/策划/命运/秘典)
+  │    ├ 战斗/结算 → 战斗等待op(§2.11:等结算→读数→点继续→白名单判据)
+  │    └ 过渡帧 → 点空白加速(§2.11)
+  │
+  └─ 整局退出(§2.17):ExitCurrencyWarMatch 复用,固定时长
+```
 
-## 5. 迁移路线(整理中,待口述完)
+## 4. 局状态字段 × 更新者白名单(黑板模式,§2.7)
 
-## 6. 风险与防线(整理中)
+生命周期三分类(§2.7.1):持久知识 / 画面态 / 新鲜快照。主字段族(核心消费面;完整清单以 cw_state.py 为准,本表管「写路径收编」):
 
-## 7. 边界(整理中)
+| 字段族 | 写者(白名单) | 清理 | 主读者 |
+|---|---|---|---|
+| briefing_affixes / briefing_bosses / enemy_difficulty | **BriefingOp**(位面详情兜底=其重试形态) | 局终 | decide_encounter / 难度账 / 遥测 |
+| gold | 备战观察 / 商店观察 / 战斗等待op(结算屏) | 每轮覆写 | 全部决策 / 遥测 / 台账 |
+| hp(+readable/trusted/last_hp_t) | 备战观察(关帧)/ 战斗等待op(结算屏) | 每轮覆写+新鲜度门 | decide_prep_screen / decide_shop_screen(融合) |
+| level / xp / level_up_cost | 备战观察 | 每轮覆写 | 升级决策 / 台账 |
+| board(羁绊计数) | 备战观察(徽标;暗态不读 §2.12) | 每轮覆写 | decide_prep_screen / DeployMove 触发计算 |
+| bench / deployed / tracked_bench_chars | 备战观察(SIFT)/ 装备与部署动作登记 | 每轮覆写+累积 | decide_shop_screen(sell_guard) / 部署 |
+| shop_cards / 刷新花费 | 商店观察 | **CloseShopOp 完成承诺清理**(§2.7.1) | decide_shop_screen |
+| refresh_probs | 商店观察(read_refresh_probs) | 不清理(等级函数) | decide_shop_screen / 经济账 |
+| node_type / 节点台账(seq_by_plane) | 节点探针(CloseShopOp 后,类型分派)/ 备战观察节点行 | 位面切换覆写 | 节点分发 / boss 判定 / 难度账 |
+| 投资日程账本(新增,§2.12.1 延迟再选) | 投资策略op(选卡登记) | 局终 | 流程层日程调度 |
+| 敢难相关(难度账/marginal_value 输入) | decide_encounter / 战果记录 | 局终 | decide_encounter |
+
+纪律:新增写入点 = 违反白名单;ctx 信箱字段(cw_briefing_*)随 BriefingOp 落地删除。
+
+## 5. 迁移路线
+
+| 阶段 | 内容(吸收 W970 批次) | 验证口径 |
+|---|---|---|
+| P1 商店链原子化(=W970批A) | OpenShopOp/BuyCardsOp/CloseShopOp 拆分(源码锁迁移清单前置);遥测写点随迁;LOCKED_RESUME 删 | 锁按清单更新后绿 + decisions.jsonl 逐决策对拍 + 全量测试 |
+| P2 决策接口+黑板(=W970批B+§2.7) | decide_prep_screen/decide_shop_screen(session 签名);观察写路径收编(消灭 ctx 信箱);LevelUpShop 拆分 | 新旧入口决策对拍 + 白名单落地检查 |
+| P3 开局序列+overlay族(§2.3/§2.16) | BriefingOp/PlaneTransitionOp/WaitOneOneOp 新建;七 overlay op 统一模式;开局编排接线(主循环瘦身:0a0b/分支6/投资环境段退役) | 实机单局:开局序列走查 + overlay 各触发一次 |
+| P4 战斗段(§2.10/§2.11)+结算链 | 战斗等待op(结算读点随迁,遥测红线);点空白加速随迁;自动战斗检测(待采集);节点探针挂点随迁 | 实机多局:遥测连续性对照(decisions.jsonl/match_archive 行数与字段完整性)+ rounds 遥测 |
+| P5 收尾 | PREP_SETTLE_S 退役;标志位退役(§2.11 已收编);EnsureShop 意图删除;gate 模块删除(清单清零) | 全量测试 + 实机对照 |
+
+每阶段:`ruff` + 受影响测试 + 全量 CW 测试;commit 前三同步(ADR/AS-BUILT/注释)。
+
+## 6. 风险与防线
+
+| 风险 | 防线 |
+|---|---|
+| 结算链迁移打断遥测(decisions.jsonl/match_archive) | P4 红线:读点随迁清单 + 实机遥测连续性对照 |
+| 暗态/画面态识别错数据进 session | 字段可信位 + ADR-0417「暗态不裁不覆」语义(身份/徽标暗态不读) |
+| 黑板模式脏读(陈旧字段) | 生命周期三分类 + CloseShopOp 式清理者白名单 |
+| 链式选择(8 张再选卡)漏处理 | 顶层循环重识别天然分发;日程账本管延迟再选 |
+| 白名单外写入回流 | code review 按 §4 表;违例 = obs_conflict 留证 |
+| 判稳标志选错(共用元素) | 独有锚纪律(DD-011 amended)+ 判据白名单集中定义 |
+
+## 7. 边界
+
+- battle_loop 结算分支的**遥测读点重组细节**归 P4 实施设计(本篇只定归属与红线)。
+- sim 适配独立批(决策接口签名定稿后;黑板模式使 sim 构造 session 即可喂决策,适配成本较 W970 预估更低)。
+- 观察模块内部重构不做(只改调用时机与写路径归属)。
+- RunDeploy/RunEquip 内部原子化另立批次。
+- gate 模块删除(W970 批 D/本篇 P5)另文。
+
+## 8. 口述记录
+
+全部口述内容已直接落入 §2(2.1-2.17,2026-09-02 逐段确认);对抗与修订记录见后续追加。
 
 ## 8. 口述记录(逐段追加)
