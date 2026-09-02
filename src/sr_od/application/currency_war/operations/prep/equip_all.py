@@ -53,6 +53,46 @@ from sr_od.operations.sr_operation import SrOperation
 # 工具类装备(拆装扳手/冶金炉/随便骰子等,非 drag 穿;D-34 单独处理)
 _TOOL_CATEGORIES: set[str] = {'工具'}
 
+# ===== 拖拽失败降级(dd-015;复盘 g_20260902_181254 修复项 A)=====
+# 实证形态:同一(源件→目标)拖拽 diff=0.0 连败 4 轮,每轮整个装备步骤
+# 中止(~18s/轮)且无跨轮记忆。修法三件:失败计数登记(session 级,跨轮
+# 存活)→ 连败达限拉黑该(件,角色)对;单件失败跳过继续穿下一件(不再
+# break 中止整批);拖点坐标错配修正见 ``EquipAll._slot_drag_point``。
+DRAG_FAIL_BLACKLIST_LIMIT: int = 2   # 同一对连败达此次数 → 拉黑
+_EQUIP_MAX_WEAR_ITERS: int = 20      # 穿戴主循环硬上限(防异常态空转;量级=owned 件数×2)
+
+
+def equip_drag_key(item_name: str, char_name: str) -> tuple[str, str]:
+    """装备拖拽失败记忆键(纯函数):(装备名, 角色名)。
+
+    粒度取「件×角色」而非「件×槽位」:角色在场槽位一轮内稳定,而
+    分配候选(alloc)只携带 角色+件名,槽位要到拖拽前才解析——键与
+    过滤面同构才能在 alloc 生成后立即过滤拉黑对。
+    """
+    return (item_name, char_name)
+
+
+def register_equip_drag_failure(counts: dict, key: tuple[str, str]) -> bool:
+    """登记一次拖拽失败 → 返回是否已达拉黑线(纯函数,dd-015)。
+
+    ``counts`` = session.equip_drag_fail_counts(局级持久,跨轮累积);
+    同一对达 ``DRAG_FAIL_BLACKLIST_LIMIT`` 后恒返回 True(幂等拉黑)。
+    """
+    counts[key] = counts.get(key, 0) + 1
+    return counts[key] >= DRAG_FAIL_BLACKLIST_LIMIT
+
+
+def filter_alloc_blacklisted(alloc: list, counts: dict) -> list:
+    """分配序列剔除已拉黑的(件→角色)对(纯函数,dd-015)。
+
+    ``alloc`` 元素 = (角色名, 件名)(``equip_allocation`` 产出口径);
+    拉黑对按 ``equip_drag_key`` 命中且计数达 ``DRAG_FAIL_BLACKLIST_LIMIT``
+    才剔除——失败 1 次的对保留(补救链重试一次,再败才拉黑)。
+    """
+    return [pair for pair in alloc
+            if counts.get(equip_drag_key(pair[1], pair[0]), 0)
+            < DRAG_FAIL_BLACKLIST_LIMIT]
+
 # ===== bug#1 drag 落空根治参数(replay/defect_ledger.jsonl drag 条目实证)=====
 # 台账形态:retry 仍败 6/6 —— 原地 retry 与首拖共用同一帧读出的坐标与同一时序,
 # 失败是**相关**的(首拖因画面未稳/按压未识别落空时,原地同参重拖同样落空),
@@ -341,12 +381,27 @@ class EquipAll(SrOperation):
         前排用实测常量 FRONT_AVATARS(D-36 验,y350)+ BELOW_ICON_Y=479(D-41 验);
         后排从 screen_info rect 推导:drag_y = rect.y1+21(前排 329→350 校准外推),
         verify_y = rect.y2+14(avatar_to_below 同式,前排 467→481≈479 互证)。
+
+        dd-015 排障修正:后排 area 前缀原硬编码「后排」(6 槽档),而占用读侧
+        (M7 ``_row_specs``)与部署侧均走 ``select_back_layout`` 档位前缀
+        (「后排7槽」/「后排8槽」,ADR-0385)——布局非 6 槽时槽号→rect 错配
+        半个槽位,拖点落在邻槽(装备穿到别人身上/落空,diff 恒 0.0 假失败,
+        复盘 g_20260902_181254 A 条「back-3 拖点坐标可疑」的坐标侧根因)。
+        修正 = 与占用读侧同源(布局选档单一入口);读档失败退 6 槽基线。
         """
         if row == 'front':
             if 1 <= slot <= len(self.FRONT_AVATARS):
                 return self.FRONT_AVATARS[slot - 1], self.BELOW_ICON_Y
             return None
-        slots = _ctx_slots(self.ctx, '后排', 10)
+        _pfx = '后排'
+        try:
+            from sr_od.application.currency_war.obs.cw_back_layout import (
+                select_back_layout as _sel_bl,
+            )
+            _pfx = _sel_bl(self.ctx, self.screenshot())[1] or _pfx
+        except Exception:   # noqa: BLE001  选档失败退 6 槽基线(旧行为)
+            pass
+        slots = _ctx_slots(self.ctx, _pfx, 10)
         for idx, r in slots:
             if idx == slot:
                 return Point((r.x1 + r.x2) // 2, r.y1 + 21), r.y2 + 14
@@ -595,10 +650,17 @@ class EquipAll(SrOperation):
                     break
             equipped = 0
             stall = 0
+            _wear_iters = 0   # dd-015:穿戴硬上限计数(失败继续后 stall 不再兜底中止)
             _stop_reason = ''   # 零穿戴哨兵(W596)归因字段:本轮为何停手
             _owned_last: list[str] = []   # 哨兵输入:循环内最后一次 owned 全量快照
             _snap_logged = False   # 每次装备只记一遍快照(循环重读不重复记)
-            while stall < 2:
+            # dd-015:拖拽失败记忆(session 级,跨轮累积;无 session 时局部 dict
+            # ——单轮内拉黑仍生效,只是不跨轮)
+            _fail_counts: dict = {}
+            if (_match is not None and _match.session is not None):
+                _fail_counts = _match.session.equip_drag_fail_counts
+            while stall < 2 and _wear_iters < _EQUIP_MAX_WEAR_ITERS:
+                _wear_iters += 1
                 cur = self.screenshot()
                 if self.check_and_update_current_screen(
                         cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
@@ -675,6 +737,14 @@ class EquipAll(SrOperation):
                              _empty_reason, [n for n, _ in wearable])
                     _stop_reason = f'分配方案空:{_empty_reason}'
                     break
+                # dd-015:剔除已拉黑(件→角色)对后再取队首(失败 1 次的保留,
+                # 补救链重试一次;再败即拉黑,不再进后续轮次的 alloc)
+                alloc = filter_alloc_blacklisted(alloc, _fail_counts)
+                if not alloc:
+                    log.info('[cw-equip] 分配对全部拉黑(拖拽连败,dd-015)→ 停;'
+                             ' 拉黑集=%s', sorted(_fail_counts))
+                    _stop_reason = '分配对全部拉黑(drag 连败,dd-015)'
+                    break
                 char_name, want = alloc[0]
                 ds = deployed_by_name.get(char_name) or []
                 target_pv: tuple[Point, int] | None = None
@@ -722,16 +792,32 @@ class EquipAll(SrOperation):
                     stall = 0
                     log.info('[cw-equip] %s → %s 穿了(diff=%.1f)', name, char_name, diff)
                 else:
-                    # stop_reason 字面保持台账历史口径(跨局趋势可比);语义现为
-                    # 「补救链全档(稳帧+重定位+升参)仍败」
-                    log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 停(bug#1 持续 or 后排坐标偏差)',
-                             name, diff)
-                    _stop_reason = 'drag 落空 retry 仍败(bug#1 持续/坐标偏差)'
+                    # dd-015:失败不中止整批——登记失败(≥2 次拉黑该对,跨轮存活),
+                    # 跳过继续穿下一件。原 break 语义(复盘 g_20260902_181254 A 条
+                    # 实证:单件连败 → 当轮其余 8-10 件全不穿)废弃;真持续失败由
+                    # 拉黑过滤自然收敛(全部拉黑 → 上分支停),硬上限 _EQUIP_MAX_
+                    # WEAR_ITERS 兜底防异常态空转。
+                    _bl = register_equip_drag_failure(
+                        _fail_counts, equip_drag_key(name, char_name))
+                    if _bl:
+                        log.warning('[cw!][equip] %s → %s 拖拽连败 %d 次 → 拉黑(dd-015,'
+                                    ' diff=%.1f;后排拖点已随布局档修正)',
+                                    name, char_name,
+                                    _fail_counts[equip_drag_key(name, char_name)], diff)
+                    else:
+                        log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 跳过继续下一件(dd-015)',
+                                 name, diff)
+                    _stop_reason = 'drag 落空(失败继续,dd-015)'
                     break
             # 零穿戴哨兵(W596/W593 方案②;纯观测,不停机零行为变更)
             self._zero_wear_sentinel(equipped, _owned_last, _stop_reason)
             return self.round_success(f'M7 装备 {equipped} 件(角色级分配)')
         # ===== 旧 front-only 流程(身份读失败 fallback;原 ADR-0101 key_equips 优先)=====
+        # dd-015:回退路径失败记忆(session 级;键=(件名,''),与主路径键空间不交——
+        # 两路径互斥,M7 要求 deployed 身份可读,回退路径恰是其读失败分支)。
+        _fail_counts_fb: dict = {}
+        if _match is not None and _match.session is not None:
+            _fail_counts_fb = _match.session.equip_drag_fail_counts
         occupied = read_row_equipped(self.ctx, screen, tmpl_grays, '前排', len(self.FRONT_AVATARS))
         if occupied:
             log.info('[cw-equip] 前排已穿槽(跳过不覆盖): %s',
@@ -770,6 +856,14 @@ class EquipAll(SrOperation):
             # comp 驱动穿戴(ADR-0101):优先穿 target_comp.key_equips 命脉件,替 naive wearable[0]。
             _key_equips = (_tgt_comp.key_equips if _tgt_comp is not None else None)
             wearable = _prioritize_wearable(wearable, _key_equips)
+            # dd-015:回退路径同主路径纪律——拉黑件不重试,失败继续下一槽。
+            # 回退路径无角色身份(拖点=空槽 avatar),拉黑键取 (件名, '')。
+            wearable = [(n, p) for n, p in wearable
+                        if _fail_counts_fb.get(equip_drag_key(n, ''), 0)
+                        < DRAG_FAIL_BLACKLIST_LIMIT]
+            if not wearable:
+                log.info('[cw-equip] 回退路径候选全拉黑(dd-015)→ 停')
+                break
             name, (cx, cy) = wearable[0]
             _tag = 'key_equip优先' if (_key_equips and name in _key_equips) else '通用'
             target = self.FRONT_AVATARS[slot_idx - 1]
@@ -796,8 +890,13 @@ class EquipAll(SrOperation):
                 log.info('[cw-equip] %s 穿了(前排-%d below-icon diff=%.1f > %.1f)',
                          name, slot_idx, diff, self.BELOW_DIFF_THRESHOLD)
                 continue
-            # 补救链全档仍败 = 真问题(bug#1 持续 / 非穿戴 / 槽满),停(避免空转烧时间)
-            log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 停(bug#1 持续 or 非穿戴)',
-                     name, diff)
-            break
+            # dd-015:失败不中止——登记(≥2 次拉黑该件,回退键=(件名,'')),
+            # 继续下一空槽。真持续失败由拉黑过滤收敛(候选全拉黑 → 上分支停)。
+            _bl_fb = register_equip_drag_failure(_fail_counts_fb,
+                                                 equip_drag_key(name, ''))
+            if _bl_fb:
+                log.warning('[cw!][equip] %s 拖拽连败 → 拉黑(dd-015 回退路径, diff=%.1f)',
+                            name, diff)
+            else:
+                log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 继续下一槽(dd-015)', name, diff)
         return self.round_success(f'装备 {equipped} 件到前排 avatar(空槽 {slots})')

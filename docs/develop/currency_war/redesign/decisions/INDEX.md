@@ -16,4 +16,6 @@
 | [dd-012](dd-012-delta-pool-artifact-purging-p15-refit.md) | DD-012:sim 校准语料伪影治理——Δ池与粗模型直方的结算瞬时 hp=0 伪读数剔除 + p15 重拟合 | accepted | 2026-09-02 |
 | [dd-013](dd-013-remove-locked-resume-enhanced.md) | DD-013:删除 LOCKED_RESUME_ENHANCED 锁死续跑逃生机制——静默假成功事故面,由 open_shop fail-closed 验证取代 | accepted | 2026-09-02 |
 | [dd-014](dd-014-blackboard-decision-interfaces.md) | DD-014:黑板模式决策接口落地——decide_prep_screen/decide_shop_screen(session 签名)+ 观察写路径收编 + match 建立前移 | accepted | 2026-09-02 |
+| [dd-015](dd-015-equip-drag-failure-degrade.md) | DD-015:装备拖拽失败降级——失败件局内拉黑(≥2 次跨轮记忆)+ 跳过继续不中止整批 + 后排拖点随布局档修正 | accepted | 2026-09-02 |
+| [dd-016](dd-016-residual-fill-deploy-p24.md) | DD-016:cap 空槽补部署——P24 残余补部署支配接线到部署执行层(留置散牌填空,同名禁双/cap 动态门保留) | accepted | 2026-09-02 |
 | [adr-0431](adr-0431-hp-down-guard-battle-fact.md) | ADR-0431(历史 ADR):hp 下行守卫——「幅度 × 战斗事实」联合判据与复现确认通道;2026-09-02 判据按机制重推导部分取代,见文内修订记录 | accepted(部分取代,见文内修订节) | 2026-08-28 |

@@ -72,6 +72,50 @@ def _cap_roomy_of(front_empty: int, back_empty: int, must_up: int) -> bool:
     return front_empty + back_empty > must_up
 
 
+def residual_fill_plan(held: list, front_empty: list, back_empty: list,
+                       bench_pos: dict, bench_cid: dict,
+                       deployed_cids: set, cap: int | None,
+                       deployed_count: int) -> list[tuple[int, str, int]]:
+    """P24 残余补部署计划(纯函数,可离线测;dd-016)。
+
+    主排序循环结束后空槽仍存在(cap 未满)且散牌留置(``_held``)非空时,
+    对留置散牌生成补部署计划——判据 = P24 残余补部署支配定理:空 cap 槽上
+    任意合法单位 ΔEV≥0(「有羁绊的板 > 空槽」;复盘 g_20260902_181254
+    修复项 E 的部署层落点)。ADR-0130 散牌留 bench 与配方围栏辖「选谁优先」
+    语义,不支配「空槽 vs 空板」。
+
+    返回 ``[(bench_idx, to_row, slot_idx)]``——``slot_idx`` = 对应排行点位列表
+    的 0-based 下标(主循环 ``front_empty``/``back_empty`` 同域,执行侧
+    ``row_pts[slot_idx]`` 取拖点、``slot_idx+1`` 即物理槽号)。守卫照搬主循环:
+    - 同名禁双(5.1.7):``bench_cid[i]`` 已在 ``deployed_cids`` → 跳过
+      (游戏拒收同名,局14 藿藿 5 连败实证——dup 是 3合1 素材不是可上阵件);
+    - cap 动态:``deployed_count`` + 已计划数达 ``cap`` → 停(cap=None 不设门,
+      拖到游戏拒即真值,同主循环 5.1.8 口径);
+    - 选排按 ``bench_pos``(position_pref),首选排无空槽 fallback 另一排,
+      两排皆满停。
+    """
+    plan: list[tuple[int, str, int]] = []
+    fe = list(front_empty)
+    be = list(back_empty)
+    for i in held:
+        cid = bench_cid.get(i)
+        if cid and cid in deployed_cids:
+            continue   # 同名禁双(dup 留 bench 待 3合1)
+        if cap is not None and cap > 0 and deployed_count + len(plan) >= cap:
+            break   # cap 满,动态停(同主循环)
+        pref = bench_pos.get(i, 'back')
+        row = pref
+        slot = next((s for s in (fe if pref == 'front' else be)), None)
+        if slot is None:
+            row = 'back' if pref == 'front' else 'front'
+            slot = next((s for s in (be if pref == 'front' else fe)), None)
+            if slot is None:
+                break   # 两排皆满
+        (fe if row == 'front' else be).remove(slot)
+        plan.append((i, row, slot))
+    return plan
+
+
 def _tier_completes(bonds: 'frozenset[str] | set[str] | tuple[str, ...]',
                     deployed_fac: dict[str, int]) -> int:
     """r361 补档键:该角色上阵后任一阵营计数**恰达激活档** → 1,否则 0。
@@ -834,6 +878,34 @@ class DeployBench(SrOperation):
                     with contextlib.suppress(Exception):
                         self.save_screenshot(prefix=f'deploy_fail_slot{bi + 1}')
                     chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
+        # P24 残余补部署(dd-016):主排序完成后空槽仍在(cap 未满)且散牌
+        # 留置非空 → 按计划补上。判据 = P24 残余补部署支配定理(空 cap 槽上
+        # 任意合法单位 ΔEV≥0;复盘 g_20260902_181254 修复项 E:r2-r4 板 3/4
+        # 空槽不上人)。计划 = 纯函数 residual_fill_plan(同名禁双/cap 门/
+        # 选排 fallback 守卫与其内注释同源);执行侧每拖前 fresh 复查占用
+        # (主循环同款,防起始帧假阳)。
+        if _held:
+            _fill_plan = residual_fill_plan(
+                _held, front_empty, back_empty, _bench_pos, _bench_cid,
+                _deployed_cids, _cap,
+                (len(front) - len(front_empty)) + (len(back) - len(back_empty)))
+            for _fi, _frow, _fslot in _fill_plan:
+                _fpts = front if _frow == 'front' else back
+                if _fslot >= len(_fpts):
+                    continue   # 计划越界防御(布局档中途变化)
+                if not slot_occupied(self.screenshot(), int(bench[_fi].x), int(bench[_fi].y)):
+                    _skipped += 1
+                    continue   # fresh 复查空(已上阵/假阳),同主循环语义
+                if DragCwChar.drag_char(self, bench[_fi], _fpts[_fslot]):
+                    placed += 1
+                    _fcid = _bench_cid.get(_fi)
+                    if _fcid:
+                        _deployed_cids.add(_fcid)
+                    time.sleep(1.2)   # 拖后特效等待(主循环同款)
+                    log.info(f'[cw-deploy] 补部署(dd-016/P24): bench槽{_fi + 1} → '
+                             f'{"前" if _frow == "front" else "后"}排{_fslot + 1} ✓')
+                else:
+                    log.info(f'[cw-deploy] 补部署(dd-016): bench槽{_fi + 1} 拖3次源槽未变,跳过')
         # r349(局38 判读):合法跳过(去重/配方底线/源槽已空)≠ 上阵失败——
         # 旧 `placed < len(order)` 把「target 已在场,bench 同名拷贝被去重」
         # 误报 [cw!] 假警报(placed=0/2,局38 01:29 实证)。分母扣除跳过数。

@@ -108,6 +108,11 @@ class StrategySession:
     # 游戏拒(同名在场/行限制等预检漏网的落点)→ 重试同目标 = 白烧环步;
     # 失败过的角色跳过,优先下一个候选(拖失败本身不消费 bench,下轮还在)。
     deploy_fail_counts: dict = field(default_factory=dict)
+    # 装备拖拽失败记忆((装备名, 角色名) → 失败计数;dd-015)。同一(源件→目标)
+    # 拖拽连续失败 ≥2 次 = 该落点对拉黑,EquipAll 不再重试(复盘 g_20260902_
+    # 181254 修复项 A 实证:同一动作 4 轮连败各烧 ~18s)。局级持久(跨轮存活);
+    # 拉黑粒度 = 件×角色对,穿戴成功不在此计数(成功的件已离场)。
+    equip_drag_fail_counts: dict = field(default_factory=dict)
     # 出战发射连败计数(prep_actions._start_battle 写;**跨环重入存活** —— 环级计数随
     # Director 重建清零,挡不住 round_fail → 外环重入的僵尸循环)。只计「未落地」型
     # 失败(激活窗口重发后仍不落地 = 窗口输入通道死);发射成功清零。达
