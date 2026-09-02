@@ -14,8 +14,8 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # propagate=False),本文件日志从未落地 → 改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.operations.handlers.handle_briefing import (
-    HandleBriefing,
+from sr_od.application.currency_war.operations.cw_flow.briefing_op import (
+    BriefingOp,
 )
 from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
     HandleInvestEnv,
@@ -262,15 +262,15 @@ class StartCurrencyWarMatch(SrOperation):
                 crop_first=False).is_success:
             self._discard_stale_once('到达模式选择屏=新局开始')
             self._establish_match_once()
-        # 简报屏 → HandleBriefing 独立 op(识别简报 id_mark + 读词缀/boss + 点下一步进投资环境)。
-        # 入口大 op 只调度(一屏一 op);词缀/boss 链路在 HandleBriefing 内。
+        # 简报屏 → BriefingOp(W971 P3b:观察直写 session,HandleBriefing 已退役;
+        # 一屏一 op 调度不变)。
         if self.round_by_find_area(
                 screen, StartCurrencyWarMatch.BRIEFING_SCREEN, '标识-本场对局首领',
                 crop_first=False).is_success:
             self._discard_stale_once('到达简报屏=新局开始')
             self._establish_match_once()
-            _log.info('[cw-entry] 到达简报屏 → HandleBriefing(读词缀/boss + 下一步)')
-            HandleBriefing(self.ctx).execute()
+            _log.info('[cw-entry] 到达简报屏 → BriefingOp(读词缀/boss 写 session + 下一步)')
+            BriefingOp(self.ctx).execute()
             return self.round_wait(wait=2)
         # 1b) 「继续进度」(恢复保存局弹窗,暂无 screen_info)→ ocr;4 字独有,LCS 风险低
         if self.round_by_ocr_and_click(screen, '继续进度', success_wait=2).is_success:

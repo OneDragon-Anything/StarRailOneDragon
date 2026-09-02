@@ -156,8 +156,10 @@ class TakeoverCollectPlaneIntel(SrOperation):
                 reconcile_briefing_vs_plane_intel,
             )
             _gate = CurrencyWarConfig(self.ctx.current_instance_idx).briefing_reconcile
+            # 简报读数源 = session(P3b ctx 信箱退役:简报真值唯一写点 =
+            # BriefingOp 写 session.briefing_bosses,ctx 槽不再承载)。
             reconcile_briefing_vs_plane_intel(
-                getattr(self.ctx, 'cw_briefing_bosses', None), names, enabled=_gate)
+                getattr(sess, 'briefing_bosses', None), names, enabled=_gate)
 
         # 取走即清(防跨局残留被下局 `not getattr(ctx,...)` 判空误消费)
         self.ctx.cw_plane_bosses = None

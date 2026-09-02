@@ -38,6 +38,20 @@ from sr_od.application.currency_war.obs.cw_settlement_obs import (
     read_settle_damage_breakdown,
     settle_page1_progress_sign,
 )
+from sr_od.application.currency_war.operations.cw_flow.opening_sequence import (
+    OpeningSequence,
+)
+from sr_od.application.currency_war.operations.cw_flow.overlay_ops import (
+    BookcardOp,
+    FortunePickerOp,
+    MegastarOp,
+    PartnerOp,
+    PlannerEventOp,
+    WishTrialOp,
+)
+from sr_od.application.currency_war.operations.cw_flow.plane_transition_op import (
+    PlaneTransitionOp,
+)
 from sr_od.application.currency_war.operations.handlers.handle_armory_box import (
     HandleArmoryBoxDialog,
 )
@@ -50,20 +64,8 @@ from sr_od.application.currency_war.operations.handlers.handle_deploy_not_full i
 from sr_od.application.currency_war.operations.handlers.handle_encounter import (
     HandleEncounter,
 )
-from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
-    HandleInvestEnv,
-)
 from sr_od.application.currency_war.operations.handlers.handle_invest_strategy import (
     HandleInvestStrategy,
-)
-from sr_od.application.currency_war.operations.handlers.handle_select_partner import (
-    HandleSelectPartner,
-)
-from sr_od.application.currency_war.operations.handlers.handle_wish_trial import (
-    HandleWishTrial,
-)
-from sr_od.application.currency_war.operations.run_nodes.run_megastar_node import (
-    RunMegastarNode,
 )
 from sr_od.application.currency_war.operations.run_nodes.run_supply_node import (
     RunSupplyNode,
@@ -240,42 +242,24 @@ class CurrencyWarRunLoop(SrOperation):
             # 续跑局:同样注册(r339b——原注册点对续跑局也晚于
             # start_run,统一在两支各自 new/延用后注册)
             state.set_ctx_match(self.ctx.cw_match)
-        # ctx 信箱 copy 段(W971 §2.1「消灭 ctx 信箱」双写过渡,P2;BriefingOp
-        # P3 直写 session 后本段随 ctx 字段一并退役):无条件吸收而非仅新局
-        # ——match 建立已前移到入口链(难度确认屏),而简报词缀/boss 读数
-        # 产生在其**之后**,run 首帧是它们进 session 的现有通道(不删=不断流,
-        # 对抗轮 1 P0 修正)。幂等:三个「取走清空」字段吸收后即 None,
-        # briefing_bosses 保留对账源,重复拷贝同值无副作用。
-        self._absorb_ctx_mailbox(self.ctx.cw_match.session)
+        # 入口链 ctx 中转吸收(P3b 收缩:仅剩职级难度——难度确认屏读存
+        # ctx.cw_selected_difficulty,非简报信箱域)。简报词缀/boss/敌人难度
+        # 的 ctx 信箱已退役(W971 §2.1「消灭 ctx 信箱」P3 批口径):唯一写点 =
+        # BriefingOp 直写 session,本段不再吸收。
+        self._absorb_selected_difficulty(self.ctx.cw_match.session)
         # else 续跑:延用 self.ctx.cw_match(上轮留下),仅刷新 _cw_config(用户可能改 max_rounds 等运行时配置)
 
-    def _absorb_ctx_mailbox(self, session: StrategySession) -> None:
-        """ctx 信箱 → session 拷贝段(自 handle_init 抽出;双写过渡,P3 删)。
+    def _absorb_selected_difficulty(self, session: StrategySession) -> None:
+        """入口链职级难度 ctx 中转 → session(自原 _absorb_ctx_mailbox 收缩)。
 
-        迁移自原 handle_init 新局分支(行为逐条不变);改无条件调用的原因见
-        调用处注释(match 建立前移后,简报读数晚于建立点)。
+        迁移自原 handle_init 新局分支(行为不变);简报三字段吸收段已随
+        ctx 信箱退役删除(W971 §2.1 P3 批口径,见调用处注释)。
         """
-        # 简报词缀(StartCurrencyWarMatch 读存 ctx.cw_briefing_affixes)→ copy 到 session(mechanics_fit 输入)
-        if self.ctx.cw_briefing_affixes:
-            session.briefing_affixes = list(self.ctx.cw_briefing_affixes)
-            self.ctx.cw_briefing_affixes = None  # 取走清空(防跨局复用)
         # 本局职级(StartCurrencyWarMatch 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
         # → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)
         if self.ctx.cw_selected_difficulty:
             session.selected_difficulty = self.ctx.cw_selected_difficulty
             self.ctx.cw_selected_difficulty = None  # 取走清空(防跨局复用)
-        # 敌人难度数值(简报读存 ctx.cw_enemy_difficulty)→ session.enemy_difficulty(3.5.2 接线)
-        if self.ctx.cw_enemy_difficulty is not None:
-            session.enemy_difficulty = self.ctx.cw_enemy_difficulty
-            self.ctx.cw_enemy_difficulty = None  # 取走清空(防跨局复用)
-        # 简报 boss(StartCurrencyWarMatch/HandleBriefing 读存 ctx.cw_briefing_bosses,
-        # 读侧已经 LCS 清洗归一到规范名)→ copy 到 session(位面序真值,boss_fit 输入)。
-        # 用户 2026-08-28 裁决:简报三卡排列 = 位面序(ADR-0397「排列≠位面序」系
-        # 单条日志孤证误判,已勘误——见该 ADR 文内勘误节),恢复既有 copy 消费链。
-        # 不取走清空:ctx 槽保留作 CollectPlaneIntel 完成后的对账源;跨局残留由
-        # HandleBriefing 每局重读覆写/读空清 None 兜住(见 handle_briefing 读块注释)。
-        if self.ctx.cw_briefing_bosses:
-            session.briefing_bosses = list(self.ctx.cw_briefing_bosses)
 
     def _snap(self, tag: str) -> None:
         """初期接触玩法:关键决策点存 debug 截图 + 全量 OCR 日志(定位问题用,验证后去掉)。
@@ -295,6 +279,21 @@ class CurrencyWarRunLoop(SrOperation):
             log.info(f'[cw-snap] {tag} iter={self._iter} shot={path} ocr={texts[:15]}')
         except Exception as e:  # noqa: BLE001  debug 路径,失败不阻塞对局
             log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
+
+    #: 开局序列画面判定集(W971 P3b,01-opening §2.1 首帧分流门):
+    #: (screen_info 画面名, 独有 id_mark/锚 area)。命中任一 = 首帧仍在开局
+    #: 序列段 → 交 OpeningSequence;全不命中 = 常态画面/未知帧 → 跳过序列。
+    OPENING_SEQUENCE_FRAMES: ClassVar[tuple[tuple[str, str], ...]] = (
+        ('货币战争-简报', '标识-本场对局首领'),
+        ('货币战争-位面过渡', '提示-点击空白继续'),
+        ('货币战争-投资环境', '标识-投资环境'),
+    )
+
+    def _frame_in_opening_sequence(self, screen) -> bool:
+        """首帧是否仍在开局序列段(纯判定,便于离线锁测;集单一源 = 类常量)。"""
+        return any(
+            self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success
+            for _scr, _area in CurrencyWarRunLoop.OPENING_SEQUENCE_FRAMES)
 
     @staticmethod
     def _watch_in_battle_grace(battle_ts: float | None, now: float) -> bool:
@@ -375,43 +374,6 @@ class CurrencyWarRunLoop(SrOperation):
         _m = self.ctx.cw_match
         if _m is not None and getattr(_m.session, 'bail_reason_counts', None):
             _m.session.bail_reason_counts.pop(reason, None)
-
-    def _handle_star_tome_pick(self, screen) -> None:
-        """星徽秘典四选一(2026-08-16 建档;r104 接入策略模块 decide_star_tome)。
-
-        卡名 OCR 在卡头带(四个卡名 y≈277 行,卡 x 中心 ≈ 660/950/1240/1530);「XX星徽」名去
-        「星徽」后缀即阵营名。策略层打分:target 阵营/board 已有/配方框架;无命中 fallback 卡1。
-        实测点卡即选(无需确认按钮),弹窗自关。
-        """
-        try:
-            _match = self.ctx.cw_match
-            ocr = self.ctx.ocr_service.get_ocr_result_list(screen, crop_first=False)
-            cards: list[tuple[str, int]] = []   # (阵营名, x中心)
-            for o in ocr:
-                t = o.data.strip()
-                if t.endswith('星徽') and len(t) > 2:
-                    faction = t[:-2]
-                    cards.append((faction, o.x + o.w // 2))
-            cards.sort(key=lambda c: c[1])
-            pick_x = 660   # fallback 卡1
-            pick_name = '(fallback卡1)'
-            if cards and _match is not None:
-                from sr_od.application.currency_war.kernel.cw_state import GameState
-                _st = _match.session.last_state or GameState()
-                _cfg = getattr(_match, 'config', None)
-                idx = _match.strategy.decide_star_tome(
-                    [c[0] for c in cards], _st, _match.session, _cfg)
-                if 0 <= idx < len(cards):
-                    pick_x, pick_name = cards[idx][1], cards[idx][0]
-            self.ctx.controller.click(Point(pick_x, 300))
-            log.info('[cw-loop] 星徽秘典四选一: 候选=%s → 选 %s @(%s,300)',
-                     [c[0] for c in cards] or 'OCR未读到', pick_name, pick_x)
-        except Exception as e:   # noqa: BLE001  选卡失败不阻塞(下轮重试或停机钩子接)
-            log.warning('[cw-loop] 星徽秘典选卡异常(不阻塞): %s', e)
-            self.ctx.controller.click(Point(660, 300))
-
-        # (44 号战斗帧观测钩子已删,迁移审计 w106(git 历史) 裁决:观测使命由结算遥测覆盖,产物
-        #  battle_frames/ 10778 文件 24.39GB 零消费者;删钩子纪律=使命完成删整段)
 
     def _last_true_hp(self, fallback_hp: int | None) -> int | None:
         """summary final_hp 真值源(r3 live 修):outcomes 内存轨迹的末条真 hp。
@@ -899,93 +861,36 @@ class CurrencyWarRunLoop(SrOperation):
                 self._clear_bail_count('事件overlay:equip_pick')
             return self.round_wait(wait=2)
 
-        # 0a0b. 位面简报屏(r374,局54 哨兵实锤 30 iter stall):P2/P3 开局前
-        #       的简报(三 boss+词缀+「下一步」)。屏已建档(货币战争-简报,
-        #       按钮area「按钮-下一步」)但**位面过渡后的 loop 首见帧**走不到
-        #       尾部分支 5——该屏全屏 OCR 耗时 3s+(文字密集),一帧多次全屏
-        #       OCR 查询把 iter 拖到 10s+;更早的结算帧分支 6 点空白加速后,
-        #       过渡到简报的半开帧反复 round_wait。修:0x 头部 find_area 优先
-        #       命中即点按钮 area(单次区域查询,绕开全屏 OCR 依赖),并采简报
-        #       读数(词缀/难度 → ctx 真值槽,与 StartCurrencyWarMatch 同槽;
-        #       boss → ctx 位面序真值槽,ADR-0397 勘误——经 LCS 清洗,由
-        #       __init__ copy 进 session)。
-        if self.round_by_find_area(screen, '货币战争-简报', '标识-本场对局首领', crop_first=False).is_success:
-            # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
-            # 「用户口述过场动画时序」#1,2026-09-02):「本场对局首领」出现
-            # (=本锚命中)后 ~1s 简报动画才完结——锚命中帧是动画中帧,立即
-            # 采集会读缺词缀/首领,立即点「下一步」可能按钮未定型 → miss →
-            # round_retry(2s/次)。等 1s 动画完结后重截稳定帧,采集与点击
-            # 都在稳定帧上做。
-            time.sleep(1.0)
-            screen = self.screenshot()
-            # 简报读数采集:词缀/难度是本局真值(→ ctx,下游 mechanics_fit/
-            # 难度);boss 是位面序真值(ADR-0397 勘误节,用户 2026-08-28 裁决;
-            # 读侧统一走 clean_boss_names_by_lcs 清洗——P2/P3 简报在 loop 内,
-            # 就地清洗保证 0a0b 覆写槽位与开局读侧同口径)。
-            try:
-                from sr_od.application.currency_war.obs.cw_briefing_obs import (
-                    clean_boss_names_by_lcs,
-                    read_affixes,
-                    read_bosses,
-                )
-                _aff = read_affixes(self.ctx, screen)
-                if _aff:
-                    self.ctx.cw_briefing_affixes = _aff
-                _bs = read_bosses(self.ctx, screen)
-                if _bs:
-                    self.ctx.cw_briefing_bosses = clean_boss_names_by_lcs(_bs)
-            except Exception:   # noqa: BLE001  采集 best-effort
-                pass
-            _nx = self.round_by_find_and_click_area(
-                screen, '货币战争-简报', '按钮-下一步', success_wait=2)
-            if _nx.is_success:
-                log.info('[cw-loop] 位面简报 → 点下一步(词缀/首领已采集)')
-                # r378b(测量链 review B1):exogenous 生产端补 briefing——
-                # schema 声明的 kind 此前零写入(死链同构),简报词缀是
-                # 22 号预案频率统计的输入。
-                with contextlib.suppress(Exception):   # 遥测 best-effort
-                    recorder.record_exogenous(
-                        0, 'briefing',
-                        detail=f'affixes={getattr(self.ctx, "cw_briefing_affixes", None)}'
-                               f' bosses={getattr(self.ctx, "cw_briefing_bosses", None)}')
-                return self.round_wait(wait=1.5)
-            return self.round_retry(wait=2)
-
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
-        #     → HandleSelectPartner(点 stage 立绘 + 确认选择,详见 op)。
+        #     → PartnerOp(W971 P3b overlay 分发接管;委托现役 handler,详见 op)。
         #     用 screen_info 标题 area(标识-选择伙伴)位置区分,非全屏 LCS:「选择伙伴」与「请选择投资策略」
         #     共享「选择」(2/4=0.5=默认阈值)会误匹配全屏 LCS → 投资策略屏被误派发(2026-08-04 snap 实测)。
         #     area 位置不同(选择伙伴 overlay 标题在 top-center id_mark rect)→ 不命中(同 0d/0e area 化理由)。
         if self.round_by_find_area(screen, '货币战争-列车同行', '标识-选择伙伴', crop_first=False).is_success:
             self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
-            _r = HandleSelectPartner(self.ctx).execute()
+            _r = PartnerOp(self.ctx).execute()
             if _r is not None and getattr(_r, 'success', False):
                 self._clear_bail_count('事件overlay:partner')   # review M2:仅成功才清(失败保计数=ping-pong 安全网)
             return self.round_wait(wait=2)
 
         # 0a2. 银狼「我来当策划」策划事件 overlay(r103,局29 P2r6 41min 卡死实证;
-        #      机制见 docs/game/gameplay/currency_war.md 银狼策划事件节):二选一卡,
-        #      首次升2星=升费 vs 其他(默认升费——成长滚动投资前提);5费升2星=两卡
-        #      全装备(无升费,任选)。选卡后可能弹「属性详情」面板 → handler 内关。
+        #      机制见 docs/game/gameplay/currency_war.md 银狼策划事件节)→ PlannerEventOp
+        #      (W971 P3b overlay 分发接管;二选一卡,首次升2星=升费 vs 其他,默认升费;
+        #      选卡后可能弹「属性详情」面板 → handler 内关)。
         #      ⚠️ 必须在 0a 后/备战(1)前:overlay 盖备战屏,loop 不认它就反复空读。
         if self.round_by_find_area(screen, '货币战争-骇入策划', '标识-我来当策划', crop_first=False).is_success:
-            from sr_od.application.currency_war.operations.handlers.handle_planner_event import (
-                HandlePlannerEvent,
-            )
-            _r2 = HandlePlannerEvent(self.ctx).execute()
+            _r2 = PlannerEventOp(self.ctx).execute()
             if _r2 is not None and getattr(_r2, 'success', False):
                 self._clear_bail_count('事件overlay:planner')
                 return self.round_wait(wait=2)
             return self.round_retry(wait=2)
 
         # 0a3. 命运卜者「强化效果三选一」overlay(r115,局32 P2r2 卡死 30min 实证;
-        #      策划系事件族:标题+三卡+Q详情+确认,布局同策划事件)。P2 强化关。
+        #      策划系事件族:标题+三卡+Q详情+确认,布局同策划事件)→ FortunePickerOp
+        #      (W971 P3b overlay 分发接管)。P2 强化关。
         if (self.round_by_find_area(screen, '货币战争-命运卜者强化', '标识-命运卜者', crop_first=False).is_success
                 and self.round_by_find_area(screen, '货币战争-命运卜者强化', '标识-请选择强化效果', crop_first=False).is_success):
-            from sr_od.application.currency_war.operations.handlers.handle_fortune_picker import (
-                HandleFortunePicker,
-            )
-            _r3 = HandleFortunePicker(self.ctx).execute()
+            _r3 = FortunePickerOp(self.ctx).execute()
             if _r3 is not None and getattr(_r3, 'success', False):
                 self._clear_bail_count('事件overlay:fortune')
                 return self.round_wait(wait=2)
@@ -1017,7 +922,7 @@ class CurrencyWarRunLoop(SrOperation):
         #     独有标题「盛会之星」更直接(独有标题位置区分,无需依赖分支先后)。
         if self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
-            _r = RunMegastarNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
+            _r = MegastarOp(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
             if _r is not None and getattr(_r, 'success', False):
                 self._clear_bail_count('事件overlay:megastar')   # 合法 bail 清计数(live M11 误停机;M2:仅成功才清)
             return self.round_wait(wait=2)
@@ -1053,10 +958,9 @@ class CurrencyWarRunLoop(SrOperation):
             self._snap('invest_strategy')
             HandleInvestStrategy(self.ctx).execute()
             return self.round_wait(wait=2)
-        if self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境', crop_first=False).is_success:
-            self._snap('invest_env')
-            HandleInvestEnv(self.ctx).execute()
-            return self.round_wait(wait=2)
+        # 开局投资环境段已退役(W971 P3b,01-opening §2):投资环境仅开场一次
+        # (#11:开场 1-1 前弹,1-3 后局中只弹投资策略,两画面不同 handler),
+        # 开局段由 OpeningSequence 统一编排( InvestEnvOp 步),主循环不再分发。
         if self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success:
             self._snap('supply')
             _rs = RunSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail
@@ -1112,29 +1016,32 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.click(Point(626, 250))
             return self.round_wait(wait=1.5)
 
-        # 0h. 祈愿试炼 overlay(节点级 quest 选择:选1试炼 → 完 objective 得奖励)→ HandleWishTrial
-        #     (点第1卡 + 确认选择)。叠备战上挡备战分支 → 必须在备战(1)前检测。2026-08-08 实跑发现:
-        #     bot 卡此 overlay 68min(购买经验透出命中 → BattlePrepCycle 误派 → shop 被遮失败 → 死循环)。
-        #     ESC 不关;点卡身选中(金色边框)→ 确认选择 → 关回备战。详见 op。
+        # 0h. 祈愿试炼 overlay(节点级 quest 选择:选1试炼 → 完 objective 得奖励)→ WishTrialOp
+        #     (W971 P3b overlay 分发接管;点第1卡 + 确认选择)。叠备战上挡备战分支 →
+        #     必须在备战(1)前检测。2026-08-08 实跑发现:bot 卡此 overlay 68min(购买经验
+        #     透出命中 → BattlePrepCycle 误派 → shop 被遮失败 → 死循环)。ESC 不关;
+        #     点卡身选中(金色边框)→ 确认选择 → 关回备战。
         if self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼', crop_first=False).is_success:
             # 钉屏停机钩子接线行([临时捕获],采集清单建档确认后连本注释整段删):
             # 当前为激活态(钩子本体 = grail_collect_hooks.grail_pin_stop_hook)。
             from sr_od.application.currency_war.operations.grail_collect_hooks import (
                 grail_pin_stop_hook,
             )
-            return grail_pin_stop_hook(self)
-            self._snap('wish_trial')
-            HandleWishTrial(self.ctx).execute()
+            _hook_r = grail_pin_stop_hook(self)
+            if _hook_r is not None:
+                return _hook_r
+            _rw = WishTrialOp(self.ctx).execute()
+            if _rw is not None and getattr(_rw, 'success', False):
+                self._clear_bail_count('事件overlay:wish_trial')
             return self.round_wait(wait=2)
 
         # 0i. 星徽秘典四选一(2026-08-16 M45 完整建档,用户指导):备战席「秘密典籍」道具
-        #     (投资策略给,类补给箱占席)开启后弹四选一星徽。旧处理「点X保守关」(M33 只见过
-        #     误开)升级为选卡:OCR 四卡名 → 选与 board 阵营匹配的(板上已有阵营优先,星徽
-        #     阵营计数+1);无匹配 → fallback 卡1。选完弹窗自关回备战、槽腾空、星徽入 owned。
-        #     判据(review P2 加固):id_mark 命中即接管 —— 提示词 OCR miss 时也进 handler
-        #     (fallback 卡1),**不放行到备战分支**(弹窗盖备战 → 误派 PrepDirector ping-pong)。
+        #     开启后弹四选一星徽 → BookcardOp(W971 P3b overlay 分发接管,选卡读法按
+        #     原内联 _handle_star_tome_pick 直写进 op)。判据(review P2 加固):id_mark
+        #     命中即接管 —— 提示词 OCR miss 时也进 handler(fallback 卡1),**不放行到
+        #     备战分支**(弹窗盖备战 → 误派 PrepDirector ping-pong)。
         if self.round_by_find_area(screen, '货币战争-星徽秘典弹窗', '标识-星徽秘典', crop_first=False).is_success:
-            self._handle_star_tome_pick(screen)
+            BookcardOp(self.ctx).execute()
             return self.round_wait(wait=2)
 
         # 0k. 专家邀请函弹窗(2026-08-30 建档):备战席「书册卡」点开后的五选一
@@ -1284,7 +1191,7 @@ class CurrencyWarRunLoop(SrOperation):
                                 reconcile_briefing_vs_plane_intel,
                             )
                             reconcile_briefing_vs_plane_intel(
-                                getattr(self.ctx, 'cw_briefing_bosses', None), _names,
+                                getattr(_sess, 'briefing_bosses', None), _names,
                                 enabled=self._cw_config.briefing_reconcile)
                         # 词缀随采结算与两池清空**只在本分支**(op 实际执行过):
                         # 挂在外面会①在 _tk_slots is None 的等待帧执行(词缀池被
@@ -1603,6 +1510,8 @@ class CurrencyWarRunLoop(SrOperation):
             # r378b(测量链 review B1):exogenous 生产端补 popup——
             # 误触弹窗是外生事件高频源(bug#2 ESC 三次实锤),22 号
             # 预案的「弹窗干扰频率」此前零数据。
+            # 局部条件 import 不保证本分支前已绑定(UnboundLocal 防御)
+            import contextlib
             with contextlib.suppress(Exception):   # 遥测 best-effort
                 recorder.record_exogenous(0, 'popup', detail='中断挑战dialog误触')
             _btn = self.round_by_find_and_click_area(
@@ -1614,9 +1523,32 @@ class CurrencyWarRunLoop(SrOperation):
             self.ctx.controller.esc()
             return self.round_wait(wait=1.5)
 
-        # 2. 点击空白加速 / 点击空白处继续 → 点空白
+        # 开局编排接线(W971 P3b,01-opening §2/§2.1):run 首帧若仍在开局序列
+        # 画面(简报/位面过渡/投资环境)→ OpeningSequence 首帧分流从该步续走;
+        # 首帧已是常态画面(备战/战斗/结算)→ 跳过直接进顶层循环分发(接管局,
+        # §2.1)。干净开局时入口链已推进到备战,本分支天然不触发。
+        if (self._iter == 1 and self._is_new_match
+                and self._frame_in_opening_sequence(screen)):
+            _os = OpeningSequence(self.ctx)
+            _os_res = _os.execute()
+            log.info('[cw-loop] 开局编排执行 → %s(交回顶层循环分发)',
+                     getattr(_os_res, 'status', ''))
+            screen = self.screenshot()   # 序列后画面已推进,刷新本帧再分发
+
+        # 位面切换(W971 P3b,01-opening §3):「点击空白处继续」= 位面过渡提示
+        # (简报下一步后 / boss 结算后各一次;位面简报不在切换链——用户裁决,
+        # 只在入场出现)→ PlaneTransitionOp(点空白 + 验提示消失,原内联点空白退役)。
+        if self.round_by_ocr(screen, '点击空白处继续', lcs_percent=0.8).is_success:
+            _pt = PlaneTransitionOp(self.ctx)
+            _pt_res = _pt.execute()
+            log.info('[cw-loop] 位面过渡 → PlaneTransitionOp → %s',
+                     getattr(_pt_res, 'status', ''))
+            return self.round_wait(wait=1.0)
+
+        # 2. 点击空白加速(结算页1/强敌来袭横幅;位面过渡已上移 PlaneTransitionOp
+        #    分支,不再与本分支混点)→ 点空白
         _accel_hit = self.round_by_ocr(screen, '点击空白加速')
-        if _accel_hit.is_success or self.round_by_ocr(screen, '点击空白处继续').is_success:
+        if _accel_hit.is_success:
             # 临时采集钩子(同分支3:C1/C2 需要页1 动画页时序帧,清单完成后一并删)
             from sr_od.application.currency_war.operations.settle_collect_hooks import (
                 settle_frame_collect,

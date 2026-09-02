@@ -175,7 +175,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-简报',
         anchor_area='标识-本场对局首领',
         semantic=SEMANTIC_SYSTEM,
-        handler_id='HandleBriefing',
+        handler_id='BriefingOp',
         close_action=CLOSE_ACTION_HANDLE,
         # P2/P3 开局位面简报(三 boss+词缀+下一步),0 系最前消化(全屏 OCR
         # 密集屏,头部 find_area 优先命中绕开全屏 OCR 依赖)
