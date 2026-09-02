@@ -102,6 +102,10 @@ class CurrencyWarRunLoop(SrOperation):
     #: 换取停机钩子触发前画面有充分自愈窗口(若真是过渡帧,长动画期 2s 恒重试
     #: 只烧预算不推进)。
     UNKNOWN_RETRY_BACKOFF_CAP_S: ClassVar[float] = 10.0
+    #: P4R:0j「前台无角色」恢复链的验证重部署重试上限(本 run 累计;出战
+    #: 真转移后复位)。超限 round_fail 交未知画面兜底链——不再无限 round_wait
+    #(1-1 事故 5h 死循环返工)。
+    FRONTLESS_REDEPLOY_LIMIT: ClassVar[int] = 2
     # r119 停滞 watchdog 参数:每 5 iter 采一次指纹(≈5-10s),连续 6 次相同
     # (≈1-2min 同屏)→ 哨兵。战斗态(指纹含「战斗/胜利/挑战」关键词)豁免。
     STALL_SNAPSHOT_EVERY: ClassVar[int] = 5
@@ -737,16 +741,67 @@ class CurrencyWarRunLoop(SrOperation):
                          _lock_screen, _sl.is_success)
                 return self.round_wait(wait=1.5)
 
-        # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档):出战时前台空被
-        #     游戏拒(cap 满角色留 bench / 前排保证未触发的边缘)。处理:点确认关弹窗 → 下轮
-        #     备战分支 PrepDirector 重新部署(前排保证会把 bench 角色强转前排);若再次出战仍
-        #     拒(部署失败边缘)会再弹本窗,15 streak 停机兜底(不至于死循环)。
+        # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档)。
+        #     P4R 升级(1-1 事故 5h 死循环返工):确认关闭 → **带落点验证的
+        #     重部署**(DeployBench,落点 CV 已收编)→ 验 deployed 前排 ≥1 →
+        #     本迭代内再出战;重试上限 FRONTLESS_REDEPLOY_LIMIT,超限
+        #     round_fail 交未知画面兜底链(旧「确认关闭→等下轮 PrepDirector
+        #     → StartBattle 假成功」形态 = 无限 round_wait,根因见弹窗污染
+        #     守卫 prep_actions.POST_LAUNCH_BLOCKERS)。
         if self.round_by_find_area(
                 screen, '货币战争-提示-前台无角色', '标识-无角色提示', crop_first=False).is_success:
             _ok_pt = self.round_by_find_and_click_area(
                 screen, '货币战争-提示-前台无角色', '按钮-确认', success_wait=1)
-            log.info('[cw-loop] 前台无角色提示 → 确认关闭(下轮 PrepDirector 前排保证重部署)')
-            return self.round_wait(wait=1.5)
+            self._frontless_redeploy = getattr(self, '_frontless_redeploy', 0) + 1
+            if self._frontless_redeploy > CurrencyWarRunLoop.FRONTLESS_REDEPLOY_LIMIT:
+                log.error('[cw!] [loop] 前台无角色:验证重部署 %d 次仍前台空 → '
+                          'round_fail 交兜底链(不再无限重试)',
+                          CurrencyWarRunLoop.FRONTLESS_REDEPLOY_LIMIT)
+                return self.round_fail('前台无角色重部署超限(前台仍空)')
+            log.info('[cw-loop] 前台无角色提示 → 确认关闭(%d/%d)→ 带验证重部署',
+                     self._frontless_redeploy,
+                     CurrencyWarRunLoop.FRONTLESS_REDEPLOY_LIMIT)
+            from sr_od.application.currency_war.operations.prep.deploy_bench import (
+                DeployBench,
+            )
+            _rd = DeployBench(self.ctx).execute()
+            log.info('[cw-loop] 前台无角色重部署 → %s',
+                     getattr(_rd, 'status', '') or ('成功' if getattr(_rd, 'success', False) else '失败'))
+            # 出口判据:deployed 前排 ≥1(独立于 DeployBench 返回值——
+            # 假成功已在 deploy 侧落点验证收编,此处再验一层作 0j 出口承诺)。
+            from sr_od.application.currency_war.kernel.cw_obs_core import (
+                slot_occupied as _slot_occ,
+            )
+            from sr_od.application.currency_war.prep_actions import (
+                row_area_centers as _row_centers,
+            )
+            time.sleep(1.0)   # 部署动画/特效窗(落点 CV 稳定)
+            _scr = self.screenshot()
+            _front_ok = any(
+                _slot_occ(_scr, int(p.x), int(p.y))
+                for p in _row_centers(self.ctx, '前排'))
+            if not _front_ok:
+                log.warning('[cw!] [loop] 前台无角色重部署后前排仍空 → 交回重判'
+                            '(下轮再入本分支计重试)')
+                return self.round_wait(wait=1.5)
+            # 前排已有角色 → 本迭代内直接再出战(不再依赖下轮 PrepDirector
+            # 重派——旧链的假成功正是发生在这段间隙)。
+            from sr_od.application.currency_war.kernel.cw_prep_actions import (
+                StartBattle as _StartBattle,
+            )
+            from sr_od.application.currency_war.prep_actions import (
+                PrepActionExecutor as _PAE,
+            )
+            _sb_ok, _sb_detail = _PAE(self, self.ctx).execute(_StartBattle())
+            if _sb_ok:
+                self._frontless_redeploy = 0   # 出战真转移 → 重试预算复位
+                self._battle_ts = time.monotonic()
+                self._battle_wait_active = True
+                log.info('[cw-loop] 前台无角色恢复链:重部署+验前排 ✓ → 出战成功')
+                return self.round_wait(wait=3)
+            log.warning('[cw!] [loop] 前台无角色恢复链:重部署后出战未落地(%s)→ retry',
+                        _sb_detail)
+            return self.round_retry(wait=2)
 
         # 0p. BOSS 简报(P3b 实机第三局走查补:06-overlays §3 设计有、实现漏;
         #     #26 建档「标识-强敌来袭」)→ BossBriefingOp(点空白 → 完成承诺 =
@@ -980,6 +1035,9 @@ class CurrencyWarRunLoop(SrOperation):
                     return self.round_fail('PrepDirector 连续失败(停滞)')
             else:
                 self._director_fail_streak = 0
+                # 正常备战环跑完一轮 = 部署链健康 → 0j 恢复链重试预算复位
+                #(预算只辖「前台无角色→重部署」连续失败窗,非整局总量)。
+                self._frontless_redeploy = 0
                 # ADR-0250:备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
                 self._battle_ts = time.monotonic()
                 # 环出口含出战 → 战斗窗口驻留闩置位(下轮委托 BattleWaitOp;

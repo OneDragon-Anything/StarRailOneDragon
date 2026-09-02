@@ -165,6 +165,12 @@ class PrepActionExecutor:
     CONFIRM_FALLBACK: ClassVar[Point] = Point(1159, 653)  # 未达上限确认兜底(同 battle_prep)
     CHECKBOX_FALLBACK: ClassVar[Point] = Point(912, 589)   # 本局不再提示勾选兜底(ADR-0136;同 HandleDeployNotFull)
     LAUNCH_DEAD_LIMIT: ClassVar[int] = 3   # 出战未落地连败停机阈值(session 级计数;两局实证环重入 ~2min/次)
+    #: P4R:出战后「转移成功」的拦截弹窗白名单(锚 = 已建档 id_mark)。
+    #: 出战按钮点击后备战标识消失但下列弹窗在场 = 出战被游戏拒(1-1 事故
+    #: 「前台区域无角色」确认弹窗盖标识 = 旧判据假成功)。新弹窗建档后追加。
+    POST_LAUNCH_BLOCKERS: ClassVar[tuple[tuple[str, str], ...]] = (
+        ('货币战争-提示-前台无角色', '标识-无角色提示'),
+    )
 
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
         self._op = op
@@ -763,7 +769,16 @@ class PrepActionExecutor:
                 time.sleep(1.0)
                 continue
             if not self._op.round_by_find_area(scr, SCREEN_NAME, '备战标识-购买经验').is_success:
-                log.info('[cw][battle] 出战成功 → 备战标识消失')
+                # P4R 弹窗污染守卫(1-1 事故):备战标识消失 ≠ 出战成功——
+                # 「前台区域无角色」等确认弹窗同样盖掉标识(实锤:假成功 →
+                # 交回外循环 → 「确认关闭→重部署」无限 round_wait 死循环)。
+                # 出战被拒弹窗在场 = 失败,交上层「带验证的重部署 → 再出战」链。
+                time.sleep(0.6)   # 弹窗渲染窗(标识消失帧可能早于弹窗)
+                _post = self._op.screenshot()
+                for _bscr, _banchor in PrepActionExecutor.POST_LAUNCH_BLOCKERS:
+                    if self._op.round_by_find_area(_post, _bscr, _banchor).is_success:
+                        return False, f'出战被拒:弹窗 {_banchor}(标识消失为弹窗污染,非转移)'
+                log.info('[cw][battle] 出战成功 → 备战标识消失(无拦截弹窗)')
                 return True, '出战成功'
         return False, '出战 click 未落地(6×0.5s 轮询+失焦守卫后仍在备战)'
 

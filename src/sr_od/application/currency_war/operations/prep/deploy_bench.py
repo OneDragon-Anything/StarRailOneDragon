@@ -749,7 +749,17 @@ class DeployBench(SrOperation):
         placed = 0
         _skipped = 0   # 合法跳过(去重/配方底线/源槽已空)≠ 上阵失败
         _cap_stopped = False
-        for bi in order:
+        # P4R 返工(1-1 事故):主循环原为 `for bi in order`,而「前排保证
+        # (重排)」分支在迭代中 order.remove/insert 后 continue——for 迭代器
+        # 语义是**前进**,被移到已过下标的元素永远不会被 yield(零日志、
+        # 零 skipped、分母不变 = 「placed=2/6(跳过0) 且后续件无尝试日志」
+        # 的静默跳过形态)。改下标显式推进 + 重排后**原地重处理当前位**
+        #(原注释假设的重处理语义只有下标循环才成立)。
+        _pending = list(order)
+        _oi = 0
+        while _oi < len(_pending):
+            bi = _pending[_oi]
+            _oi += 1
             # live 2026-08-15(match5 根因终定位):起始 cap 检查只做一次 —— 循环中途 deployed 达 cap 后
             # 游戏拒收后续 drag(单位弹回 = 「源槽未变」连环假失败 + 每槽 3×2s 白烧)。每槽动态复查。
             if _cap is not None and _cap > 0:
@@ -807,18 +817,18 @@ class DeployBench(SrOperation):
             # 修正:前排全空时**先重排**(剩余 order 中 pref=front 角色提到当前位前),无 front
             # 候选才强转当前 back 角色。
             if pref == 'back' and len(front_empty) == len(front):
-                _pos = order.index(bi)
                 _later_front = next(
-                    (j for j in order[_pos + 1:]
+                    (j for j in _pending[_oi:]
                      if _bench_pos.get(j, 'back') == 'front'
                      and _bench_cid.get(j) not in _deployed_cids),
                     None)
                 if _later_front is not None:
-                    order.remove(_later_front)
-                    order.insert(_pos, _later_front)
+                    _pending.remove(_later_front)
+                    _pending.insert(_oi - 1, _later_front)
+                    _oi -= 1   # 原地重处理当前位(现在是真 front;下标循环才有的语义)
                     log.info(f'[cw-deploy] 前排保证(重排): 真front槽{_later_front + 1} 提前'
                              f'(当前槽{bi + 1}为back不强转)')
-                    continue   # 重排后重处理当前位置(现在是真 front)
+                    continue
                 pref = 'front'
                 log.info(f'[cw-deploy] 前排保证:bench槽{bi+1}(pref=back)→ 强制前排(前排空且队列无front候选)')
             if pref == 'front':
@@ -827,7 +837,14 @@ class DeployBench(SrOperation):
                 chosen, chosen_pts, fallback, fallback_pts = back_empty, back, front_empty, front
             if not chosen:
                 if not fallback:
-                    break   # 两排皆满,无槽可拖
+                    # P4R 返工:原静默 break(1-1 事故「3-6 件无尝试日志」的
+                    # 排查盲点之一)——终止必须带证据日志,否则无法与迭代器
+                    # 跳过/白拖失败区分。
+                    log.warning(f'[cw!] [deploy] 两排皆满,无槽可拖 → 终止'
+                                f'(未处理 {[s + 1 for s in _pending[_oi:]]};'
+                                f'front占={len(front) - len(front_empty)}'
+                                f'/back占={len(back) - len(back_empty)})')
+                    break
                 chosen, chosen_pts = fallback, fallback_pts
             ti = chosen.pop(0)
             dst = chosen_pts[ti]
@@ -838,39 +855,74 @@ class DeployBench(SrOperation):
             # mouseDown;drag=按下+移动;左上小圆是星标非头像)。**拖拽统一走 ``DragCwChar.drag_char``**(中心拖
             # + hold0 + retry + 验源槽像素变),本处不再内联 drag_to。
             if DragCwChar.drag_char(self, src, dst):
-                placed += 1
-                # 5.1.7 补(2026-08-13):同轮 drag 成功 → 刚 deploy 的角色入去重集,
-                # 防 bench 同角色 2 张时第 2 张重复 drag(场上已有该角色 → 上场失败)。
-                if _cid:
-                    _deployed_cids.add(_cid)
-                # r288:成功上场同步阵营档(配方底线仲裁的状态源)
-                # r363b(review B-2 修):增量口径对齐初始快照——该角色
-                # **全部**羁绊(factions+flows)各 +1(旧只计第一阵营,
-                # 多阵营角色上阵后与真实板面漂移,r288 门错判风险)。
-                _bonds_all = (_bench_id.get(bi) or ())
-                for _f2 in _bonds_all:
-                    _deployed_fac[_f2] = _deployed_fac.get(_f2, 0) + 1
-                if _match is not None and getattr(_match, 'bench_slot_map', None):
-                    _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
-                    if _gone is not None:
-                        del _match.bench_slot_map[_gone]
-                # ⚠️ 拖后特效等待(用户 2026-08-16 实证):拖上场会触发羁绊特效/升星 overlay
-                # (盛会之星/圣杯/银狼升级等)遮挡画面 —— 紧跟的下个 drag/CV 验槽/SIFT 读全被
-                # 污染。每个成功 drag 后等 1.2s 让特效播完/overlay 稳定(下轮 loop/director
-                # 的事件 overlay 检测再接管真正的交互型 overlay)。
-                time.sleep(1.2)
-                _fb = ' (fallback)' if (pref == 'front') != (_row_cn == '前') else ''
-                log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1} ✓{_fb}'
-                         f' (CV 验源槽变)')
+                # P4R 落点验证(1-1 事故「前排1 ✓」假成功根因):源槽像素变
+                # ≠ 上阵成功——拖拽可能实际落后台/无效位(游戏拒收弹回或落
+                # 点无效),出战即「前台区域无角色」。目标槽 ~2s 内出现占用
+                # 才计 placed;未验出 = 无效拖拽,回收目标槽 + 存证。
+                if self._wait_slot_occupied(dst, 2.0):
+                    placed += 1
+                    # 5.1.7 补(2026-08-13):同轮 drag 成功 → 刚 deploy 的角色入去重集,
+                    # 防 bench 同角色 2 张时第 2 张重复 drag(场上已有该角色 → 上场失败)。
+                    if _cid:
+                        _deployed_cids.add(_cid)
+                    # r288:成功上场同步阵营档(配方底线仲裁的状态源)
+                    # r363b(review B-2 修):增量口径对齐初始快照——该角色
+                    # **全部**羁绊(factions+flows)各 +1(旧只计第一阵营,
+                    # 多阵营角色上阵后与真实板面漂移,r288 门错判风险)。
+                    _bonds_all = (_bench_id.get(bi) or ())
+                    for _f2 in _bonds_all:
+                        _deployed_fac[_f2] = _deployed_fac.get(_f2, 0) + 1
+                    if _match is not None and getattr(_match, 'bench_slot_map', None):
+                        _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
+                        if _gone is not None:
+                            del _match.bench_slot_map[_gone]
+                    # ⚠️ 拖后特效等待(用户 2026-08-16 实证):拖上场会触发羁绊特效/升星 overlay
+                    # (盛会之星/圣杯/银狼升级等)遮挡画面 —— 紧跟的下个 drag/CV 验槽/SIFT 读全被
+                    # 污染。每个成功 drag 后等 1.2s 让特效播完/overlay 稳定(下轮 loop/director
+                    # 的事件 overlay 检测再接管真正的交互型 overlay)。
+                    time.sleep(1.2)
+                    _fb = ' (fallback)' if (pref == 'front') != (_row_cn == '前') else ''
+                    log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1} ✓{_fb}'
+                             f' (落点已验)')
+                else:
+                    import contextlib
+                    with contextlib.suppress(Exception):
+                        self.save_screenshot(
+                            prefix=f'deploy_landing_fail_slot{bi + 1}')
+                    chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
+                    log.warning(f'[cw!] [deploy] deterministic: bench槽{bi+1} → '
+                                f'{_row_cn}排{ti+1} 源槽已变但落点 2s 未验出占用'
+                                f' → 判无效拖拽(1-1 事故形态;失败帧已存证)')
             else:
                 # live 2026-08-15(match4 根因):drag_char 的 before 帧取自 retry 循环外,成功验证可滞后;
                 # 失败后 fresh 复查源槽 —— 已空 = 实际拖成(验证滞后)计 placed;仍占 = 真失败。
+                # P4R 落点验证补:源空 + 落点也未占用 = 无效拖拽(单位丢失/弹回,
+                # 同 1-1 事故形态)→ 不计 placed,存证。
                 time.sleep(0.3)
                 if not slot_occupied(self.screenshot(), int(src.x), int(src.y)):
-                    placed += 1
-                    if _cid:
-                        _deployed_cids.add(_cid)
-                    log.info(f'[cw-deploy] deterministic: bench槽{bi+1} fresh 复查源槽已空 → 判拖成(验证滞后)')
+                    if self._wait_slot_occupied(dst, 2.0):
+                        placed += 1
+                        if _cid:
+                            _deployed_cids.add(_cid)
+                        _bonds_all = (_bench_id.get(bi) or ())
+                        for _f2 in _bonds_all:
+                            _deployed_fac[_f2] = _deployed_fac.get(_f2, 0) + 1
+                        if _match is not None and getattr(_match, 'bench_slot_map', None):
+                            _gone = next((n for n, s in _match.bench_slot_map.items() if s == bi + 1), None)
+                            if _gone is not None:
+                                del _match.bench_slot_map[_gone]
+                        time.sleep(1.2)   # 拖后特效等待(同上)
+                        log.info(f'[cw-deploy] deterministic: bench槽{bi+1} fresh 复查源槽已空'
+                                 f' + 落点已验 → 判拖成(验证滞后)')
+                    else:
+                        import contextlib
+                        with contextlib.suppress(Exception):
+                            self.save_screenshot(
+                                prefix=f'deploy_landing_fail_slot{bi + 1}')
+                        chosen.insert(0, ti)
+                        log.warning(f'[cw!] [deploy] deterministic: bench槽{bi+1} 源槽已空'
+                                    f' 但落点未验出占用 → 判无效拖拽(源变≠上阵;'
+                                    f'失败帧已存证)')
                 else:
                     log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1}'
                              f' 拖3次源槽未变,跳过(失败帧存证)')
@@ -896,24 +948,46 @@ class DeployBench(SrOperation):
                 if not slot_occupied(self.screenshot(), int(bench[_fi].x), int(bench[_fi].y)):
                     _skipped += 1
                     continue   # fresh 复查空(已上阵/假阳),同主循环语义
-                if DragCwChar.drag_char(self, bench[_fi], _fpts[_fslot]):
+                if DragCwChar.drag_char(self, bench[_fi], _fpts[_fslot]) \
+                        and self._wait_slot_occupied(_fpts[_fslot], 2.0):
                     placed += 1
                     _fcid = _bench_cid.get(_fi)
                     if _fcid:
                         _deployed_cids.add(_fcid)
                     time.sleep(1.2)   # 拖后特效等待(主循环同款)
                     log.info(f'[cw-deploy] 补部署(dd-016/P24): bench槽{_fi + 1} → '
-                             f'{"前" if _frow == "front" else "后"}排{_fslot + 1} ✓')
+                             f'{"前" if _frow == "front" else "后"}排{_fslot + 1} ✓(落点已验)')
+                elif DragCwChar.drag_char(self, bench[_fi], _fpts[_fslot]):
+                    # 第一段 drag 真、落点未验出 → 与主循环同款判无效(不计 placed)
+                    log.warning(f'[cw!] [deploy] 补部署(dd-016): bench槽{_fi + 1} 落点'
+                                f'未验出占用 → 判无效拖拽(源变≠上阵)')
                 else:
                     log.info(f'[cw-deploy] 补部署(dd-016): bench槽{_fi + 1} 拖3次源槽未变,跳过')
         # r349(局38 判读):合法跳过(去重/配方底线/源槽已空)≠ 上阵失败——
         # 旧 `placed < len(order)` 把「target 已在场,bench 同名拷贝被去重」
         # 误报 [cw!] 假警报(placed=0/2,局38 01:29 实证)。分母扣除跳过数。
+        # P4R:警告附未处理件枚举(1-1 事故「3-6 件无尝试日志」的排障盲点补齐)。
         if placed + _skipped < len(order) and not _cap_stopped:
             log.warning(f'[cw!] [deploy] 上阵不全: placed={placed}/'
                         f'{len(order) - _skipped}(跳过{_skipped};失败帧已存证)')
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order) - _skipped}'
                  f'(跳过{_skipped})')
+
+    def _wait_slot_occupied(self, pt: Point, timeout_s: float = 2.0) -> bool:
+        """落点验证原语(P4R 返工):目标槽 ~timeout_s 内出现占用 = 上阵落地。
+
+        判据 = drag 后对比**目标槽**占用(旧判据只验 bench 源槽像素变——
+        1-1 事故:源槽已变、单位实际落后台/无效位 → 「前排1 ✓」假成功 →
+        出战被游戏拒「前台区域无角色」)。事件驱动轮询(od-dev-write-operation
+        「点了≠成了」),命中即返;超时 False(调用方判无效拖拽)。
+        """
+        deadline = time.monotonic() + timeout_s
+        while True:
+            if slot_occupied(self.screenshot(), int(pt.x), int(pt.y)):
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.3)
 
     def _get_templates(self) -> AvatarTemplates | None:
         """加载 avatar SIFT 模板(缓存到 ctx.cw_avatar_templates,首次 load 后复用)。"""
