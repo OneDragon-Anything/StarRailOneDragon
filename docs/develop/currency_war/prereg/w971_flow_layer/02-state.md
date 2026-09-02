@@ -1,6 +1,6 @@
 # 02 · 局状态收编 / 黑板模式 / 字段生命周期
 
-> W971 分篇。总纲见 [../DESIGN.md](../DESIGN.md)。
+> W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
 
 ## 1. 局状态 = 收编现役 StrategySession(用户拍板)
 

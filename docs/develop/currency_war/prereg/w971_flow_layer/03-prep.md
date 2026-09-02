@@ -1,6 +1,6 @@
 # 03 · 备战循环 / 干净备战 op / 原子 op
 
-> W971 分篇。总纲见 [../DESIGN.md](../DESIGN.md)。
+> W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
 
 ## 1. 稳定门退役
 

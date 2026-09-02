@@ -1,6 +1,6 @@
 # 04 · 商店开画面 / 投资策略 / 再选调研 / 暗态备选
 
-> W971 分篇。总纲见 [../DESIGN.md](../DESIGN.md)。
+> W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
 
 ## 1. 商店开画面:识别清单
 
@@ -36,7 +36,10 @@
 ① 读策略卡(3 张:名/效果文本,overlay 上识别)
 ② 决策 decide_invest(读 session 新值估值,ADR-0143/0144)→ 动作序列
 ③ 执行:RefreshStrategyCard(若刷)→ SelectStrategyCard → ConfirmStrategy(末位)
-完成承诺 = **确认后固定 1.0s 交回循环**(链式选择由循环重识别自然处理)
+完成承诺 = **确认后等备战商店开画面出现 ∪ 再选选择 overlay 出现**(场景①判稳锚 =
+「按钮-收起」独有锚;链式再选卡[阿哈大悦/独家代言/白银/黄金投资]确认后弹的是
+再选 overlay 而非商店开,故双候选;**等待上界兜底**:超上界未现 = 异常,bail 交
+循环留证),交回循环
 ```
 
 决策原子 op(3 个):RefreshStrategyCard(**每卡独立次数**,实拍各 1 次,非全局重掷;再选类卡[白银/黄金投资]自带 **3 次**——次数随卡变,非固定值)/ SelectStrategyCard(3 选 1)/ ConfirmStrategy(末位契约)。

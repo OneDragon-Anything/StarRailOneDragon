@@ -1,6 +1,6 @@
 # 06 · 补给 / 遭遇 / BOSS 简报 / 剩余 overlay 族
 
-> W971 分篇。总纲见 [../DESIGN.md](../DESIGN.md)。数据源统一:结算屏读数(§04-shop 裁决),overlay 内不返回暗态观察。
+> W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。数据源统一:结算屏读数(§04-shop 裁决),overlay 内不返回暗态观察。
 
 ## 1. 补给 overlay(与投资策略同构)
 

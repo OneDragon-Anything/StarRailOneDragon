@@ -1,6 +1,6 @@
 # 01 · 简报 op / 开局序列 / 位面切换
 
-> W971 分篇。总纲见 [../DESIGN.md](../DESIGN.md)。
+> W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
 
 ## 1. BriefingOp:简报观察收敛为单 op
 
