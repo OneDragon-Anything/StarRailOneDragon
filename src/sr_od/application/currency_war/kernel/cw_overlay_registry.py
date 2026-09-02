@@ -96,7 +96,7 @@ class OverlaySpec:
 OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # ── decision(9 条;= 现 director bail 清单成员,C1 红线 closable=False)──
     OverlaySpec(
-        screen_name='货币战争-选择伙伴',
+        screen_name='货币战争-列车同行',
         anchor_area='标识-选择伙伴',
         semantic=SEMANTIC_DECISION,
         handler_id='HandleSelectPartner',

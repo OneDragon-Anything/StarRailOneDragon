@@ -233,7 +233,7 @@ class DeployBench(SrOperation):
         # live 2026-08-15:事件 overlay(盛会之星等)挡 drag —— 拖全灭(源槽未变连环)+ 空场上阵
         # HP 82→1。overlay 在 → 跳过部署(success 态交还上层,Director 观察会 bail 交外环 handler)。
         for _scr, _area in (('货币战争-盛会之星', '标识-盛会之星'),
-                            ('货币战争-选择伙伴', '标识-选择伙伴'),
+                            ('货币战争-列车同行', '标识-选择伙伴'),
                             ('货币战争-祈愿试炼', '标识-祈愿试炼')):
             if self.round_by_find_area(self.last_screenshot, _scr, _area, crop_first=False).is_success:
                 log.warning(f'[cw-deploy] 事件 overlay({_scr})在,跳过部署(交主循环 handler)')

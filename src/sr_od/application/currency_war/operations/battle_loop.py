@@ -942,7 +942,7 @@ class CurrencyWarRunLoop(SrOperation):
         #     用 screen_info 标题 area(标识-选择伙伴)位置区分,非全屏 LCS:「选择伙伴」与「请选择投资策略」
         #     共享「选择」(2/4=0.5=默认阈值)会误匹配全屏 LCS → 投资策略屏被误派发(2026-08-04 snap 实测)。
         #     area 位置不同(选择伙伴 overlay 标题在 top-center id_mark rect)→ 不命中(同 0d/0e area 化理由)。
-        if self.round_by_find_area(screen, '货币战争-选择伙伴', '标识-选择伙伴', crop_first=False).is_success:
+        if self.round_by_find_area(screen, '货币战争-列车同行', '标识-选择伙伴', crop_first=False).is_success:
             self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
             _r = HandleSelectPartner(self.ctx).execute()
             if _r is not None and getattr(_r, 'success', False):

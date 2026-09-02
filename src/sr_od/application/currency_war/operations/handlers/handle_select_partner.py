@@ -44,7 +44,7 @@ class HandleSelectPartner(SrOperation):
     _EXCLUDE: ClassVar[set[str]] = {'选择伙伴', '攻略', '确认选择', '详情', '角色', '装备'}
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-选择伙伴')
+        SrOperation.__init__(self, ctx, op_name='货币战争-列车同行')
 
     def _read_candidates(self, screen) -> list[tuple[str, int, int]]:
         """OCR 候选 ``(阵营名, label center-x, label center-y)``,按 label 行 y 过滤 + 左→右排序。
@@ -116,7 +116,7 @@ class HandleSelectPartner(SrOperation):
     @operation_node(name='选择伙伴', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        if not self.round_by_find_area(screen, '货币战争-选择伙伴', '标识-选择伙伴').is_success:
+        if not self.round_by_find_area(screen, '货币战争-列车同行', '标识-选择伙伴').is_success:
             return self.round_fail('非选择伙伴屏')
         if not self.round_by_ocr(screen, '已选择').is_success:
             cands = self._read_candidates(screen)
@@ -181,7 +181,7 @@ class HandleSelectPartner(SrOperation):
                     self.ctx.controller.mouse_move(confirm2)
                     self.ctx.controller.click(confirm2)
                     time.sleep(1.0)
-                if self.round_by_find_area(self.screenshot(), '货币战争-选择伙伴', '标识-选择伙伴').is_success:
+                if self.round_by_find_area(self.screenshot(), '货币战争-列车同行', '标识-选择伙伴').is_success:
                     log.info('[cw-partner] step2 后 overlay 仍在 → round_retry')
                     return self.round_retry(wait=1)
                 log.info('[cw-partner] step2 完成 → overlay 关')
