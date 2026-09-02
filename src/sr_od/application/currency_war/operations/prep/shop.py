@@ -436,7 +436,10 @@ class BuyShopCards(SrOperation):
         # telemetry plan-time 全 100 即此;2026-08-03 2 图诊断)。gold 相反(shop 开才显示右下)。
         # 故:若 shop 开着先「收起」关 → 关闭帧读 hp 真值 → 再开 shop 读 gold/shop/board。
         if self.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success:
-            self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
+            # success_wait=0.2 只等点击反馈;收起动画(~1s,screen_flow_timing #15)
+            # 由紧随 gate 的 op_settle 预等(_OP_SETTLE_S)覆盖——动画窗单一归属,
+            # 不与点击后固定等待重复(旧 1.0 与预睡 1.0 双重等同一动画窗)。
+            self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=0.2)
             # r335(批次3)+r347(旧路径删除):gate 无条件化——
             # 超时=fail-closed retry(收起动画未稳,重试整轮);
             # 异常=放行(离线契约,原 _legacy_poll 轮询已删,
@@ -448,7 +451,7 @@ class BuyShopCards(SrOperation):
                 wait_stable_frame,
             )
             log.info('[cw][gate] path=new(shop 买前收起)')
-            # ADR-0264 终裁加速器②:收起动画=操作段(2s 基线重置点)
+            # ADR-0264 终裁加速器②:收起动画=操作段(预估等待=指纹基线重置点)
             try:
                 _gf = wait_stable_frame(
                     self, profile=PROFILE_CLOSED, segment='op_settle')
@@ -1342,14 +1345,13 @@ class BuyShopCards(SrOperation):
                             gap_large=False, refs=_bench_refs,
                             note='观测自检框架设计 §2.2:身份留证不算失败')
 
-        # 关商店(「收起」)
-        time.sleep(0.4)
-        self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
-        # r312(ADR-0213 批次1;买后收起站)+r347(旧路径删除):
-        # 现状买后零等待——click+~1.4s 即 read_game_state(L466
-        # 重估)+read_gold(L484 差值对拍),而关店动画 ~3s(r299
-        # 实测)→ 重估与对拍读在半开帧(与局31 买前同构)。
-        # gate 无条件化(异常=放行,离线契约)。
+        # 关商店(「收起」):success_wait=0.2 只等点击反馈——收起动画(~1s,
+        # screen_flow_timing #15;旧「~3s(r299 实测)」口径已被 #15 修正)
+        # 由紧随 gate 的 op_settle 预等(_OP_SETTLE_S=1.0)覆盖,动画窗单一归属;
+        # 旧「sleep(0.4)+success_wait 1.0+gate 预睡 1.0」三重覆盖同一动画窗。
+        self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起', success_wait=0.2)
+        # r312(ADR-0213 批次1)+r347:gate 无条件化(异常=放行,离线契约);
+        # gate 超时语义 = fail-closed retry(动画未稳,重试整轮)。
         from sr_od.application.currency_war.obs.cw_observation_gate import (
             PROFILE_CLOSED,
             wait_stable_frame,
