@@ -324,7 +324,7 @@ def collect_gold_detail_hook(screen: MatLike, ocr_texts: list[str], items: list,
 
 
 # ===== 结算屏三项遥测读数器(挑战进度填充率 / 基础伤害 / 未完成进度伤害) =====
-# 设计出处 = .debug/temp/currency_war/redesign/SETTLE_OCR_DESIGN.md §1.5/§2/§3(离线设计批,
+# 设计出处 = docs/develop/currency_war/strategy/05_observation.md §3.1(持久落点;迭代工作原稿=SETTLE_OCR_DESIGN §1.5/§2/§3(离线设计批,
 # 坐标为帧实测提案,窗口标定 C1-C6 待实机复核)。
 # 背景:λ 基座攻击点名「OCR 前置零进展」——P15 脱删失 / P12 幅度授权需要结算屏
 # 三项真值(进度幅度绝对值 + 伤害两分量),本段建真值通道;读不到 = None(删失
@@ -343,6 +343,40 @@ _SETTLE_PROGRESS_BAR_RECT = Rect(710, 422, 1210, 444)
 _PROGRESS_COL_FILL_RATIO = 0.3
 
 
+def settle_page1_progress_sign(ocr_texts: list[str]) -> str | None:
+    """结算页 1「挑战进度 ±N」符号三态('pos'/'neg'/None=OCR 未读到;纯函数;DD-006)。
+
+    三用途:① boss 胜局页1 判别(='pos',见 ``is_boss_win_settle_page1``);
+    ② 失败页分支置闩门(='neg' 显式负增量才认败局——None 是 OCR 偶漏,两种
+    形态页都可能漏,拿漏读当败局真值置闩会把 boss 胜局 run 判废,真通关永不
+    判 win);③ 页1 暂存消费方自读。调用方要几种判定就自己拿 sign 比较,勿按
+    bool 再读一遍 OCR。
+
+    符号论域边界(审计补:为何无 'zero' 态):``parse_settlement_progress``
+    的正则语法上允许 0(``[+-]\\d+`` 可匹配 '+0'/'-0'),但游戏进度 UI **只
+    渲染增量绝对值 ≥1 的带符号行**——0 变化不渲染增量行,屏上不存在 '±0'
+    形态可被 OCR 读到,故 0 归入 neg 桶无实际触发面;None(整行漏读)已单列,
+    是唯一真实存在的「非 pos 非 neg」态。
+    """
+    _pg = parse_settlement_progress(ocr_texts)
+    if _pg is None:
+        return None
+    return 'pos' if _pg > 0 else 'neg'
+
+
+def is_boss_win_settle_page1(ocr_texts: list[str]) -> bool:
+    """结算页 1 的 boss 胜局形态判定(纯函数;DD-006)。
+
+    boss 胜局页 1 与战败结算页 1 同构(「挑战结束」标题 + 挑战进度条 +
+    「点击空白加速」,均无「继续挑战」按钮)——失败链分支 1f 的模板门在
+    boss 胜局页 1 误命中(夜间语料批 3 局实证),把页 1 从分支 2(三项
+    遥测暂存通道)整条抢走。判别语义 = **挑战进度带符号增量 > 0**:节点
+    胜利进度 +N(实跑 token 形态 ['挑战进度','+2']),战败为负增量或读不
+    到;OCR 漏读 '+' 时退化为 None → 判 False(回旧行为,不劣化)。
+    """
+    return settle_page1_progress_sign(ocr_texts) == 'pos'
+
+
 def parse_settle_damage_breakdown(items: list) -> dict:
     """掉血说明 tooltip 三行 → 结算伤害分量(纯函数,可单测)。
 
@@ -355,7 +389,7 @@ def parse_settle_damage_breakdown(items: list) -> dict:
     - 值 = 同行右侧最近带符号数字 token(行判据 y 中心差 ≤ 20px,帧实测行距 ~33px)
       或同 token 粘连(「基础伤害-10」);
     - 值域先验:基础伤害/未完成进度伤害恒 ≤ 0(负=扣血)——无符号正值 = OCR
-      丢负号 → 拒信记 None(SETTLE_OCR_DESIGN §3);「0」裸数字合法(进度打满
+      丢负号 → 拒信记 None(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3);「0」裸数字合法(进度打满
       游戏可显 0);长线作战为正(回血);
     - visible = 标题「结算说明」命中 ∨ 任一行标签命中(标题偶 garble,行标签
       在场即面板在场;False = 面板不在场,可分「不在场」vs「在场解析失败」);
@@ -404,7 +438,7 @@ def _signed_value(sign: str, digits: str, allow_positive: bool) -> int | None:
     """带符号数字 token → int(值域先验守卫;纯函数)。
 
     ``allow_positive=False`` 的行(基础伤害/未完成进度伤害)应恒 ≤ 0:显式
-    '-' → 负值;无符号正数 = OCR 丢负号 → 拒信 None(SETTLE_OCR_DESIGN §3);
+    '-' → 负值;无符号正数 = OCR 丢负号 → 拒信 None(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3);
     显式 '+' 同拒(游戏该行不显正);裸「0」合法。
     """
     v = int(digits)
@@ -441,6 +475,11 @@ def parse_progress_fill_ratio(screen: MatLike | None) -> float | None:
     占全槽宽比(进度条为**连续填充**(C2 定谳:连续条,总长=位面节点数),
     前缀列扫描对刻度分隔免疫)。红 = RGB 通道 R 显著高于 G/B(条体为红填充,
     槽底为暗色)。条不可见(红像素质量过低)/帧缺 → None,不冒认 0。
+
+    **只对页 1 帧调用**(DD-006):进度条只在页 1(「点击空白加速」帧)存在;
+    页 2 帧的同一矩形罩在 HP 心形图标上,橙金色像素满足红色判据 → 恒定假值
+    (夜间语料批 3 局 boss 行同读 0.392 = 页 2 心形的确定性读数)。调用方
+    (``read_round_outcome``)用页 1 标记词「点击空白加速」做帧态门。
     """
     if screen is None:
         return None
@@ -467,7 +506,7 @@ def parse_settle_hp_anchor(ocr_texts: list[str]) -> bool:
 
     用途:三项读数的页态门——锚在 = 结算常驻页(读数有效);锚不在 =
     动画期/过渡帧(读数帧态不成立,读 None 不算 miss)。锚判据出处 =
-    SETTLE_OCR_DESIGN §1.5(HP 锚可靠,页 2 整版布局常驻)。
+    docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §1.5(HP 锚可靠,页 2 整版布局常驻)。
     """
     return any(('小队生命值' in t or '命值' in t or '继续挑战' in t) for t in ocr_texts)
 
@@ -518,11 +557,14 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     # 规则区判读完成(docs/game/currency_war/research/economy_truth.md),
     # 弹窗底部即完整规则表(与对局状态无关),无需再攒结算屏样本。
     _streak_after = parse_streak(ocr_texts)   # 结算「连胜×N」前缀=方向(C 杠杆 2/3;fixture 核实 2026-08-11)
-    # 结算三项遥测(SETTLE_OCR_DESIGN §3):挑战进度填充率(纯像素列扫描,零 OCR 成本)
-    # + 伤害两分量(tooltip 区域裁剪 OCR)。本函数读点 = 调用帧:败局链(1f/3b)在
+    # 结算三项遥测(docs/develop/.../05_observation.md §3.1):挑战进度填充率(纯像素列扫描,
+    # 零 OCR 成本)+ 伤害两分量(tooltip 区域裁剪 OCR)。填充率**只对页 1 帧读**
+    # (DD-006):页 2 帧矩形罩在 HP 心形上会恒定读出假值(0.392 三局同值实证)
+    # ——「点击空白加速」是页 1 帧态标记词。本函数读点 = 调用帧:败局链(1f/3b)在
     # 挑战结束页1 调 → tooltip 瞬窗内可捕获;胜轮在页2 调 → tooltip 大概率已离屏,
     # None 由 battle_loop 页1 暂存合并兜底(_settle_page1_settle,同 progress 合并法)。
-    _fill = parse_progress_fill_ratio(screen)
+    _fill = (parse_progress_fill_ratio(screen)
+             if any('点击空白加速' in t for t in ocr_texts) else None)
     _panel = read_settle_damage_breakdown(ctx, screen)
     # W414 金币明细采集(临时钩子,见本文件头部钩子段生命周期声明;best-effort 零行为影响):
     # 消费同一帧 OCR(零额外截图/零行为变更),明细行解析 + 整屏去重落盘。

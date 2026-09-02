@@ -294,22 +294,93 @@ def compare_buy_expect(expect: BuyExpect,
     判据(槽位级身份+星级比对,同款宁缺勿造):实读中该槽无条目
     (SIFT 未识别/空读)= 无法建真值 → 跳过不评,不算一致也不算不一致;
     期望空槽而实读有身份 = 不一致(合成腾槽未发生/多买散牌证据)。
-    返回不一致项列表(空列表=全部可比项一致)。
+
+    真实空槽优先降级(DD-005;安灯 p2r2 停线根因修复):游戏买牌落点
+    契约 = 放进板面「真实空槽」;期望态的落点前提 = 购买前 tracked 快照
+    的空槽表,该表可能相对真实板面过期(tracked 缺某槽占用时模型把被占
+    槽当空槽,存量漂移归 reconcile_tracking 既有通道)。因此槽位级不一致
+    先做两条「快照前提失效」降级(不评,不算一致也不算不一致):
+    - 期望实体(买入牌/合成产物,含星级)在实读**其他**槽位出现 →
+      游戏把它放进了真实空槽,模型空槽表过期(停线事故形态:期望
+      卡芙卡@槽9、实读槽9=快照缺读的旧牌、卡芙卡在槽1-8 某真实空槽);
+    - 实读身份属于本期望态的**终态新实体**(增量槽位期望实体集:落位
+      买入牌/合成产物/升星形态;不含被合并消耗的原始购买名——否则
+      「合成腾槽未发生」证据形态恒被降级吞掉) → 游戏把新牌放进了模型
+      以为被占/应腾空的槽,同因。
+    剩余不可降级形态照旧落不一致:期望实体全场缺席(买牌丢失)、
+    期望空槽被占且非终态新实体(合成未发生——实读=同名 1★ 原始购买
+    名不降级,保留该证据形态)、星级不符(2★直出)。
+    边界:①同名同星重复购入时「实体在别处出现」可能被购买前同名旧牌
+    满足 → 该子案检测力降为名字在场级,接受(宁缺勿造口径,损失面 =
+    重复购入且新牌真丢失的检测,频率远低于快照过期误停线);②「快照
+    过期 ∨ 合成未发生」并发且槽位级无区分特征的角落子案不降级(停线
+    敏感性保留,两因无判据可分,宁停不吞)。
+
+    返回不一致项列表(空列表=全部可比项一致或降级不评)。
     """
+    bench_eff = [c for c in bench_read if c.char_id]
+    deployed_eff = [c for c in deployed_read if c.char_id]
+    # 本期望态引入/变更的新实体集(买入牌 + 合成产物/升星后形态)
+    placed: set[tuple[str, int]] = set()
+    for slot in expect.changed_bench:
+        # 槽号系 1 基画面槽位,bench_after 是 0 基列表;越界=期望态与实读画面
+        # 槽数不一致(快照过期极端形态),跳过该槽不评(与 deployed 侧同款防护,
+        # 防遥测校验路径 IndexError 被外层吞成静默丢比对)
+        if not 1 <= slot <= len(expect.bench_after):
+            continue
+        e = expect.bench_after[slot - 1]
+        if e is not None:
+            placed.add((e.char_id, e.star))
+    for idx in expect.changed_deployed:
+        # 与 bench 侧同款完整区间防护:负 idx 会经 Python 负下标静默取尾元素,
+        # 污染 placed 降级集合(错误降级=吞掉真不一致)
+        e = expect.deployed_after[idx] \
+            if 0 <= idx < len(expect.deployed_after) else None
+        if e is not None:
+            placed.add((e.char_id, e.star))
+
+    def _found_elsewhere(key: tuple[str, int],
+                         exclude_bench_slot: int | None = None,
+                         exclude_dep_key: tuple[str, int] | None = None) -> bool:
+        # 真实空槽降级第一判:实体出现在被评槽之外的任一实读槽位
+        if any((c.char_id, c.star) == key for c in bench_eff
+               if c.slot != exclude_bench_slot):
+            return True
+        return any((c.char_id, c.star) == key for c in deployed_eff
+                   if (c.position_pref, c.slot) != exclude_dep_key)
+
     mism: list[dict[str, str]] = []
 
     def _add(domain: str, slot: int | str, want: str, got: str) -> None:
         mism.append({'domain': domain, 'slot': str(slot),
                      'expected': want, 'observed': got})
 
+    def _snapshot_premise_broken(exp: BenchChar | None, got: BenchChar,
+                                 exclude_bench_slot: int | None = None,
+                                 exclude_dep_key: tuple[str, int] | None
+                                 = None) -> bool:
+        # 真实空槽降级汇总判(DD-005):期望实体在别处出现 ∨ 实读是新实体
+        exp_key = (exp.char_id, exp.star) if exp is not None else None
+        if exp_key is not None \
+                and _found_elsewhere(exp_key, exclude_bench_slot,
+                                     exclude_dep_key):
+            return True
+        got_key = (got.char_id, got.star)
+        return got_key in placed and got_key != exp_key
+
     for slot in expect.changed_bench:
+        # 槽号 1 基画面槽位 vs bench_after 0 基列表:越界=期望态/实读画面槽数
+        # 不一致(快照过期极端形态),跳过不评(与 placed 构造侧同款防护)
+        if not 1 <= slot <= len(expect.bench_after):
+            continue
         exp = expect.bench_after[slot - 1]
-        got = next((c for c in bench_read
-                    if c.slot == slot and c.char_id), None)
+        got = next((c for c in bench_eff if c.slot == slot), None)
         if got is None:
             continue   # 实读无条目:不评
         want_id = exp.char_id if exp is not None else ''
         if got.char_id != want_id or _slot_diff(exp, got):
+            if _snapshot_premise_broken(exp, got, exclude_bench_slot=slot):
+                continue   # 快照空槽表过期:降级不评(DD-005)
             _add('bench', slot,
                  f'{want_id or "空"}{f"/{exp.star}星" if exp is not None else ""}',
                  f'{got.char_id}/{got.star}星')
@@ -318,13 +389,15 @@ def compare_buy_expect(expect: BuyExpect,
             else None
         row = 'front' if idx < 4 else 'back'
         slot_no = deployed_slot_no(idx)
-        got = next((c for c in deployed_read
-                    if c.position_pref == row and c.slot == slot_no
-                    and c.char_id), None)
+        got = next((c for c in deployed_eff
+                    if c.position_pref == row and c.slot == slot_no), None)
         if got is None:
             continue
         want_id = exp.char_id if exp is not None else ''
         if got.char_id != want_id or _slot_diff(exp, got):
+            if _snapshot_premise_broken(exp, got,
+                                        exclude_dep_key=(row, slot_no)):
+                continue   # 同款降级(场吸收落点同理)
             _add(f'deployed.{row}', slot_no,
                  f'{want_id or "空"}{f"/{exp.star}星" if exp is not None else ""}',
                  f'{got.char_id}/{got.star}星')
@@ -544,14 +617,13 @@ def compare_equip_expect(expect: EquipExpect,
     """期望态 vs 装备区逐格实读比对(纯函数;cells = read_equip_grid 结果)。
 
     判据:deltas 涉及的每个名字,期望格数 = owned_before + delta,
-    实读格数 = 非遮挡占用格计数;不等 = 不一致。遮挡格(详情面板盖住)
-    实读 name=None——存在遮挡格时该名字可能正躺在遮挡格里,计数不可信
-    → 整体跳过不评(不算一致也不算不一致,宁缺勿造)。实读中 deltas
+    实读格数 = 占用格计数;不等 = 不一致。实读中 deltas
     未涉及的名字 = 存量漂移(归 reconcile_tracking 既有通道),不进本对账。
-    返回不一致项列表(空列表=全部可比项一致或整体不评)。
+    返回不一致项列表(空列表=全部可比项一致)。
+
+    前置契约:cells 来自干净备战帧(非干净不识别是识别器上游的建档判定职责,
+    本函数不再有遮挡跳过分支——三态时代的 occluded 已随面板守卫上移外层而退役)。
     """
-    if any(c.occluded for c in cells):
-        return []   # 遮挡格三态如实跳过(不评不算错)
     observed: dict[str, int] = {}
     for c in cells:
         if c.name is not None:

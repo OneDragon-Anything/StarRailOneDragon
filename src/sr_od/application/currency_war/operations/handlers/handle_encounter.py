@@ -59,10 +59,9 @@ class HandleEncounter(SrOperation):
     # 底部「选择」按钮中心(未选中卡时灰置禁用,选中后才可点)。常量=兜底;首选 area_center('按钮-选择')。
     SELECT_BTN: ClassVar[Point] = Point(1082, 898)
     # 分支刷新圆钮 = 「剩余次数:N」文本左侧固定偏移(dd-004)。归档帧
-    # sr-od-test/screens/货币战争-遭遇节点/default.webp 实测:圆钮 ≈(674,900)、
-    # 文本中心 ≈(784,900) → 偏移 ≈-110px。⚠️ 单帧目测值,**待实机 CV 复核精化**
-    # (投资策略同模式 -88px 为 CV 实测值);偏移错 → 验效失败走失败安全分支(照常选卡)。
-    _REFRESH_BTN_DX: ClassVar[int] = -110
+    # sr-od-test/screens/货币战争-遭遇节点/default.webp CV 双法实测:圆钮 ≈(671,899)、
+    # 文本锚中心 ≈(771,899) → 偏移 = -100px;偏移错 → 验效失败走失败安全分支(照常选卡)。
+    _REFRESH_BTN_DX: ClassVar[int] = -100
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-遭遇节点')

@@ -64,7 +64,10 @@ log = log_utils.log
 #: 出战/bail/停机等异常出口收口,terminal 滞后一个动作=执行前末观察,
 #: 判读须降权)。旧档案缺此键 → load_archive 版本检查自动重装配补齐
 #:(P2-4 返修:版本迁移读端不再静默缺列)。
-SCHEMA_VERSION: int = 4
+#: v5(M2 遥测增强批 ③):+endgame.final_snapshot(局级终局快照列:
+#: 终局阵容/金/等级取全局最晚决策迹帧的 state,装配端派生、零新运行时
+#: 写入;旧档案经 load_archive 版本检查自动重装配补齐)。加法字段。
+SCHEMA_VERSION: int = 5
 
 #: 档案子目录(replay/matches/)
 MATCHES_DIRNAME: str = 'matches'
@@ -192,7 +195,24 @@ def _best_decision_frame(dec_rows: list[dict[str, Any]],
         if (best is None
                 or len(d.get('actions') or []) > len(best.get('actions') or [])
                 or (len(d.get('actions') or []) == len(best.get('actions') or [])
-                    and _row_ts(d) > _row_ts(best))):
+                    and _row_ts(d) >= _row_ts(best))):
+            # 同 ts 取流内后行(追加写序即时钟;前提 = decisions.jsonl
+            # 单调追加,同 _last_decision_frame 的显式声明)
+            best = d
+    return best
+
+
+def _latest_ts_frame(dec_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """全集取 ts 最晚一帧(「ts 最晚行」扫描单一源,DD-006 批审计消双源)。
+
+    ts 并列取流内后行(追加写序即时钟;前提 = decisions.jsonl **单调追加**,
+    同 ``_last_decision_frame`` 的显式声明);零行 → None。防漂移说明:本环
+    原在 ``_last_decision_frame``/``_final_snapshot`` 各抄一份,一处改阈值
+    另一处忘改即静默分叉,故收拢于此;键过滤版(同轮)经调用方先滤后传。
+    """
+    best: dict[str, Any] | None = None
+    for d in dec_rows:
+        if best is None or _row_ts(d) >= _row_ts(best):
             best = d
     return best
 
@@ -213,17 +233,15 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
       (w943 审计 P3-7 在此显式声明):append-only jsonl 下二者等价;若未来
       出现段间回写/乱序合并,本函数需改为显式按 (ts, 文件序) 双键排序。
     """
-    best: dict[str, Any] | None = None
+    rows: list[dict[str, Any]] = []
     for d in dec_rows:
         try:
             k = (int(d.get('plane') or 0), int(d.get('round_num') or 0))
         except (TypeError, ValueError):
             continue
-        if k != key:
-            continue
-        if best is None or _row_ts(d) >= _row_ts(best):
-            best = d
-    return best
+        if k == key:
+            rows.append(d)
+    return _latest_ts_frame(rows)
 
 
 def _terminal_closure(last_frame: dict[str, Any] | None) -> str | None:
@@ -484,6 +502,10 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                     'rounds_survived': (last_summary or {}).get('rounds_survived'),
                     'final_hp': (last_summary or {}).get('final_hp'),
                     'difficulty': (last_summary or {}).get('difficulty'),
+                    # 局级终局快照(M2 增强批 ③;None=零决策迹局):
+                    # 终局阵容/金/等级,取值口径见 _final_snapshot。
+                    'final_snapshot': _final_snapshot(
+                        slice_rows['decisions.jsonl']),
                     'segment_summaries': seg_summaries},
         'slices': slice_rows,
     }
@@ -504,6 +526,41 @@ def _build_opening(slice_rows: dict[str, list[dict[str, Any]]],
                        if r.get('kind') == 'env' and r.get('chosen')],
         'chosen_strategies': [r.get('name') for r in invest
                               if r.get('kind') == 'strategy' and r.get('chosen')],
+    }
+
+
+def _final_snapshot(dec_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """局级终局快照(M2 增强批 ③:endgame.final_snapshot 单一源;纯读派生)。
+
+    - 取值 = 本局全部决策迹行中 **ts 最晚**的一帧的 state(终局阵容/金/
+      等级快照列)。与逐轮 terminal 同口径家族:决策帧列是「决策时」,
+      terminal 是「该轮执行后」,本列是「全局限最晚帧」——非收尾战斗帧,
+      与 endgame.final_hp(结算屏真值)并列可读,判读终局板面以此列为准、
+      勿再上翻逐轮表。
+    - 时序边界(与 terminal_state_summary 的 w943 P2-5 边界同判):最晚帧
+      若是普通备战动作(mid_prep 收口),快照滞后一个动作;可信度随附
+      closure(start_battle=执行后定型 / mid_prep=执行前末观察降权)。
+    - 字段:deployed/bench/board 终局阵容三维 + gold(_readable)+
+      level(_readable, False=启发式兜底帧「兜底 4」非真读)+
+      terminal(板面计数)+ ts/closure/source。None = 本局零决策迹行
+      (仅结算行局,旧数据容忍)。
+    """
+    best = _latest_ts_frame(dec_rows)
+    if best is None:
+        return None
+    st = best.get('state') or {}
+    return {
+        'ts': _row_ts(best),
+        'source': 'last_decision_frame',
+        'closure': _terminal_closure(best),
+        'deployed': st.get('deployed'),
+        'bench': st.get('bench'),
+        'board': st.get('board'),
+        'gold': best.get('gold'),
+        'gold_readable': best.get('gold_readable'),
+        'level': st.get('level'),
+        'level_readable': best.get('level_readable'),
+        'terminal': terminal_state_summary(st),
     }
 
 
