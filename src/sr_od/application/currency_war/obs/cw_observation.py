@@ -937,11 +937,19 @@ def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
 # plane=4 lv=9 后过渡帧读成 plane=1 lv=4 兜底)。跨局由 reset_phase_round_cache 清空。
 _last_phase_round: tuple[int, int] | None = None
 
+#: 回退修正确认态({'value': (plane, round), 'count': n});语义见 read_phase_round
+#: 回退分支注释。reset_phase_round_cache 随 last-known-good 一并清(防跨局复用)。
+_phase_round_suspect: dict | None = None
+#: 回退修正确认帧数。依据:hp 下行复现确认(HP_SUSPECT_CONFIRM_FRAMES=2)与
+#: star 回退防抖「连续 2 次」同族先例;复现压单帧噪声。
+_PHASE_ROUND_CONFIRM_FRAMES: int = 2
+
 
 def reset_phase_round_cache() -> None:
     """新对局开始时清空 last-known-good(防跨局复用上局 plane/round)。"""
-    global _last_phase_round
+    global _last_phase_round, _phase_round_suspect
     _last_phase_round = None
+    _phase_round_suspect = None
 
 
 def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
@@ -979,9 +987,31 @@ def read_phase_round(ctx: SrContext, screen: MatLike) -> tuple[int, int]:
     if new is not None:
         if _last_phase_round is not None and (new[0] < _last_phase_round[0]
                                               or (new[0] == _last_phase_round[0] and new[1] < _last_phase_round[1])):
+            # 回退修正确认通道(分诊 F 根修):单调守卫只锁「非机制性跳变」
+            #(单帧倒退=OCR 噪声),不锁「修正」——前帧错读过守卫被缓存后,
+            # 真值每帧被拒 = 错读固化(分诊 §2:9/10 冲突帧同 [x,6]→[x,5] 模式)。
+            # 判据:连续 _PHASE_ROUND_CONFIRM_FRAMES 帧读到**同一**倒退值才采新
+            #(依据:hp 下行复现确认 HP_SUSPECT_CONFIRM_FRAMES=2 与 star 回退
+            # 防抖「连续 2 次」同族先例;复现压单帧噪声)。前进/正常读自愈清挂起。
+            global _phase_round_suspect
+            sus = _phase_round_suspect
+            if sus is not None and sus.get('value') == new:
+                sus['count'] = int(sus.get('count', 0)) + 1
+            else:
+                sus = {'value': new, 'count': 1}
+                _phase_round_suspect = sus
+            if sus['count'] >= _PHASE_ROUND_CONFIRM_FRAMES:
+                obs_conflict('phase_round', _last_phase_round, new, screen,
+                             verdict='采新-回退修正确认(连续2帧同值倒退,前值疑错读固化)',
+                             source='ocr')
+                _last_phase_round = new
+                _phase_round_suspect = None
+                return _last_phase_round
             obs_conflict('phase_round', _last_phase_round, new, screen,
-                         verdict='保旧-单调守卫(plane/round 倒退=OCR假阳)', source='ocr')
+                         verdict='保旧-回退防抖(单帧倒退疑OCR噪声,连续2帧同值才修正)',
+                         source='ocr')
             return _last_phase_round
+        _phase_round_suspect = None   # 倒退消失(前进/正常读)→ 挂起自愈
         _last_phase_round = new
         return _last_phase_round
     # OCR 失败(过渡帧/错源单数字)→ 返回上次成功值,避免 (1,1) 误导 level_plan
@@ -1139,6 +1169,21 @@ def _parse_paddle_positional(crop: MatLike, ocr_results: list, level: int | None
                                          text_has_slash='/' in blob)
     if x is not None:
         return x, y
+    # level 先验修正通道(分诊 C 根修;帧证据 obs_conflict_deploy_paddle__d9f64136:
+    # 画面 4/4、字形干净,level 先验 ≥5 时 y≥level 把唯一合法候选拒空)。level 来自
+    # 三源解析(自身可误读/毒化),不该让间接先验一票否决直接几何读——全部候选仅
+    # 因 y≥level 被拒时,用绝对域(x≤y,1≤y≤13)重解析一次,采回 + 留证(cap 侧
+    # 与 level 的一致性由 _debounce_cap 双帧通道终审,判据同 ADR-0420)。
+    if level is not None:
+        x, y, cands = _resolve_paddle_digits(text_digits, digit_n, slash_idx, None,
+                                             text_has_slash='/' in blob)
+        if x is not None:
+            if screen is not None:
+                obs_conflict('deploy_paddle', None, {'text': blob, 'candidates': cands},
+                             screen, verdict=('采-y<level(唯一合法候选被 level 先验拒;'
+                                              '对照 level 疑毒化,修正不锁,cap 侧双帧终审)'),
+                             source='paddle_positional')
+            return x, y
     if screen is not None:
         obs_conflict('deploy_paddle', None, {'text': blob, 'candidates': cands},
                      screen, verdict=('拒-位置感知解析约束不过(斜杠丢失/图标混入后'
@@ -1229,7 +1274,8 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike,
 # resolve_back_slots diff=0 退 6 槽基线在 9 格板上跑 = 迁移审计 w285(git 历史) 指认的「6 槽降级
 # 错误兜底」。现:域外值重读一帧,**两帧一致且在绝对板面上界内 → 采信**(瞬时
 # 误读族仍被「重读不等」拦住——12槽误档事故 8a56db39 是单帧读数,无两帧一致
-# 实证);留证不消失(采信也留,判读可见)。cap<level 仍恒拒(物理不可能)。
+# 实证);留证不消失(采信也留,判读可见)。cap<level 同走双帧一致通道
+# (对照 level 先验疑毒化分支,见 _debounce_cap 注)。
 DEPLOY_CAP_MAX_DIFF: int = 2
 #: cap 绝对板面上界(实拍上限:前台 4 + 后台 9 = 13,e4972b43;超界即使两帧
 #: 一致也拒——OCR 结构性误读如「8/8→12」级别前缀噪声可能跨帧复现)
@@ -1254,14 +1300,19 @@ def _debounce_cap(ctx: SrContext, screen: MatLike, cap: int | None,
     if cap2 is not None and level <= cap2 <= level + DEPLOY_CAP_MAX_DIFF:
         return cap2
     if (cap2 is not None and cap2 == cap
-            and level <= cap2 <= DEPLOY_CAP_ABS_MAX):
-        # 域外双帧一致:真实高档采信(瞬时误读被「两帧一致」概率压住;
-        # 留证让判读侧可见本次采信,复现异常高频则回头收紧)
+            and 1 <= cap2 <= DEPLOY_CAP_ABS_MAX):
+        # 域外双帧一致采信(上下两向同判据,ADR-0420 判据镜像):瞬时误读被
+        # 「两帧一致」概率压住;留证让判读侧可见本次采信,复现异常高频则回头收紧。
+        # 下向(cap<level)不再恒拒——域判据的对照集 level 自身可误读/毒化
+        #(帧证据 obs_conflict_deploy_paddle__d9f64136:画面 4/4、level 先验 5,
+        # 旧恒拒把真值锁死;cap=level+宝钻机制里 cap<level 的唯一现实来源就是
+        # level 读错,采真值比拒信退 level 兜底更接近画面事实)。
         obs_conflict('deploy_cap_domain', cap, cap2, screen,
-                     verdict=('采信-域外双帧一致(真实高档,迁移审计 w292(git 历史)/ADR-0420:'
-                              'e4972b43 实拍 diff=5 真档,旧域拒信致 6 槽'
-                              '降级在 9 格板上跑;本行供判读核对 paddle X/Y'
-                              ' 与经验面板等级;复现高频则回查读链)'),
+                     verdict=('采信-域外双帧一致('
+                              + ('cap<level:对照 level 先验疑毒化' if cap2 < level
+                                 else '真实高档,迁移审计 w292(git 历史)/ADR-0420:e4972b43 实拍 diff=5 真档')
+                              + ';本行供判读核对 paddle X/Y 与经验面板等级;'
+                                '复现高频则回查读链)'),
                      source='paddle_cap_debounce')
         return cap2
     obs_conflict('deploy_cap_domain', cap, cap2, screen,
@@ -1632,7 +1683,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         """本阶段是否读该字段(None 阶段=全量恒 True)。"""
         return _spec is None or key in _spec
 
-    if phase is not None:
+    if _spec is not None:
+        # 只有注册阶段才置位:未注册阶段名(fail-open 探针)置位会把本次全量读取
+        # 产生的证据行打上假阶段名。实证:fail-open 探针经共享 obs_conflict 账本
+        # 写入 282 行 obs_phase=no_such_phase(分诊报告 §1.3)。
         _obs_mod.set_obs_phase(phase)   # 冲突证据行带阶段(噪声判定位,ADR-0462)
     state = GameState()
     # 金读走稳定门(read_gold_settled):开店帧收入计数器可能在跳,单帧读拿
