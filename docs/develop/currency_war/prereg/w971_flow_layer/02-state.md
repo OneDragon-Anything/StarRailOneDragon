@@ -89,4 +89,33 @@ session 字段按生命周期三分类,**离开产生它的画面时,画面态�
 
 ### 4.2 决策私有豁免类目清点(P2 落地)
 
+### 4.3 期望态与 session 统一(2026-09-02 用户定稿;P4/P3b 遵照)
+
+**问题**:操作 op 会触发识别面之外的游戏自动变化(典型:商店购买触发 3合1 升星——合成改变前台/后台角色星级与位置,而商店开态只识别备战席占位,星级不可见)。
+
+**机制**:操作 op 执行后,**按逻辑规则更新 session 对应字段并标记为期望态(expected)**;下次实际画面识别到该字段时,覆盖期望态为实机态(actual),**覆盖时做对账**(expected ≠ actual = 未建模游戏行为/识别缺陷/合成落点模型错——当场留证)。
+
+**原子 op × session 影响 × 期望态清单**(全 op;「期望态字段」= 操作后按逻辑推进、待实读覆盖的字段):
+
+| 原子 op | 直接影响 | 期望态字段 |
+|---|---|---|
+| BuyCard(买牌) | gold −费;bench +1(角色×星级=卡星级) | bench;**合成链**(同名同星凑3 → 升星:连锁/落点/满栏自动多买,merge_mechanics §2/§2.5);2星直出 → 金账对账暴露 |
+| DeployMove(上阵/换位) | bench 源 −1;deployed 目标 +1;**拖到场上同名同星 = 合成**(星级升,装备继承) | bench/deployed/星级/已穿装备随人 |
+| SellDeployed(卖上阵) | deployed −1;装备返还 owned(全额);gold +售价;board 计数 −1 | deployed/owned/gold/board |
+| SellBench(卖备战) | bench −1;gold +售价(bench 件无装备) | bench/gold |
+| LevelUpShop(购买经验) | gold −cost;xp +XP_PER_BUY;xp 满 → level+1(cap 可能 +1) | gold/level/xp/cap |
+| RefreshShop | gold −2;shop_cards 全换(旧牌失效) | gold/shop_cards |
+| ClickSpheres(奖励球) | 球消失;奖励内容未知(装备/金) | owned 或 gold 标「+奖励(待实读)」 |
+| OpenBox / 补给/武装箱选卡 | 箱 −1;装备区 +1(选中装备) | owned |
+| OpenTome / 秘典选卡 | 秘典 −1;+星徽/装备 | owned(星徽含阵营语义 → 分配守卫联动) |
+| 列车同行星徽穿着 | 目标角色 +列车同行羁绊(add-if-absent;**同阵营装备不上**,dd-015 定谳) | board/角色羁绊标签 |
+| 投资策略选卡 | 效果按 invest_effects 分类:金/XP 流→台账;机制突变→mutations;日程类(期货/联席)→日程账本 | 台账/日程账本 |
+| 投资环境选卡 | 全局环境(概率/经济) | 环境登记 |
+| 遭遇确认 | 进入遭遇战斗 | (战斗段由战斗等待 op 接管) |
+| CloseShopOp | 商店族字段清理 | shop_cards 等(§3) |
+
+- **批内期望态链**:同一批的后续原子 op,决策读到的 = 前序 op 的期望态推进值(非批前观察)——逐 op 按逻辑推进,批间实读覆盖。
+- **对账三用途**:①合成落点模型校验;②未建模游戏行为发现;③识别缺陷暴露。
+- **实现挂账**:期望态标记与覆盖的对账 infra(标 expected 的字段结构/实读覆盖点/diff 留证)随 P4 建机制,ops 逐个接。
+
 写者 = 决策接口函数本身(``DecisionV2Strategy`` 族:decide_prep/decide_shop_screen/on_round_end/update_target 及其内核 arbiter/discipline/evolution/intention)。dataclass 正式字段:v2_state / locked_line / bridge_id / v2_ever_full_interest / v2_prev_hp / v2_round_key / v2_round_bought / v2_round_sold / v2_seed_bought / v3_intention / v3_evolution / v3_hoard / v3_core_names / v3_mode / v3_alarm / v3_pending_rollback / v3_prev_hp / v3_last_intention_event / v3_intention_key / v3_blood_budget_rejects / v3_blood_budget_refresh_rejects / v3_terminal_release / v3_terminal_release_plane / v3_handoff / v3_handoff_plane。另有决策函数经 setattr 写的**动态私有属性**(v2_remedy_used / v2_steady_lv_used / v3_formed_stop / v3_steady_lv_abandoned / v3_remedy_abandoned / v3_handoff_gap / v3_handoff_hp_proj / v3_release / v3_release_round / v3_release_spent / v3_phase / v3_form_ok / v3_form_score / v3_dp_posture / v3_reserve_cap / v3_reserve_overflow / v3_release_budget / v3_release_reason / v3_piggy_reward / v3_alloc_frame)——同归本豁免类目(写者=决策函数),不升正式字段(升格归遥测 schema 批)。观察事实字段与决策私有字段的二分判据见 §3.1;禁跨类混写同一字段。
