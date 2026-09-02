@@ -63,6 +63,12 @@ from sr_od.operations.sr_operation import SrOperation
 #: 间隔 0.3s,保证最坏情形覆盖面不缩水。
 _OVERLAY_POLL_TIMEOUT_S: float = 1.8
 
+#: 商店开/关动画时长(DD-011 操作完成自等动画;实测口径 screen_flow_timing
+#: #7 开店 ~3s / #15 收起 ~1s。op 完成后显式等待,替代测量驱动 gate——
+#: 画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
+SHOP_OPEN_ANIM_S: float = 3.0
+SHOP_CLOSE_ANIM_S: float = 1.0
+
 
 def _read_level_raw(ctx: SrContext, screen) -> int | None:
     """OCR 直读等级数字(「文本-等级」区,**无 _expected_level 兜底**;review MED-8)。
@@ -619,40 +625,24 @@ class PrepActionExecutor:
                 return False, '找不到按钮-商店'
             # 光标 parking(审计 R3):点击点在验证矩形正中(0px),不 park 则收起锚验证读被光标压
             self._op.park_cursor(before_wait=0.5, after_wait=0.1)
-            from sr_od.application.currency_war.obs.cw_observation_gate import (
-                PROFILE_OPEN,
-                wait_stable_frame,
-            )
-            log.info('[cw][gate] path=new(ensure_shop 开向)')
-            # ADR-0264 终裁加速器②:开店动画=操作段(2s 基线重置点)
-            try:
-                ok = wait_stable_frame(
-                    self._op, profile=PROFILE_OPEN,
-                    segment='op_settle') is not None
-            except Exception:   # noqa: BLE001  离线:走旧验证
-                ok = self._op.round_by_find_area(
-                    self._op.screenshot(), SHOP_SCREEN_NAME,
-                    '按钮-收起').is_success
+            # DD-011 操作完成自等动画:开店动画 ~3s(screen_flow_timing #7)由 op
+            # 显式等待承担,等待结束 = 画面承诺稳定;开态验证 = 「按钮-收起」出现
+            # (建档 area)。旧 gate(指纹稳定确认)退役。
+            time.sleep(SHOP_OPEN_ANIM_S)
+            ok = self._op.round_by_find_area(
+                self._op.screenshot(), SHOP_SCREEN_NAME,
+                '按钮-收起').is_success
             return ok, f'开商店 {"✓" if ok else "收起未出现"}'
         if not is_open:
             return True, '商店已关'
         self._op.round_by_find_and_click_area(
-            screen, SHOP_SCREEN_NAME, '按钮-收起', success_wait=1.0)
+            screen, SHOP_SCREEN_NAME, '按钮-收起')
         self._op.park_cursor(before_wait=0.5, after_wait=0.1)   # 同 R3:验证「收起消失」前 park
-        from sr_od.application.currency_war.obs.cw_observation_gate import (
-            PROFILE_CLOSED,
-            wait_stable_frame,
-        )
-        log.info('[cw][gate] path=new(ensure_shop 关向)')
-        # ADR-0264 终裁加速器②:收起动画=操作段(2s 基线重置点)
-        try:
-            ok = wait_stable_frame(
-                self._op, profile=PROFILE_CLOSED,
-                segment='op_settle') is not None
-        except Exception:   # noqa: BLE001  离线:走旧验证
-            ok = not self._op.round_by_find_area(
-                self._op.screenshot(), SHOP_SCREEN_NAME,
-                '按钮-收起').is_success
+        # DD-011:收起动画 ~1s(#15)自等;关态验证 = 「收起消失」(建档 area)。
+        time.sleep(SHOP_CLOSE_ANIM_S)
+        ok = not self._op.round_by_find_area(
+            self._op.screenshot(), SHOP_SCREEN_NAME,
+            '按钮-收起').is_success
         return ok, f'关商店 {"✓" if ok else "收起仍在"}'
 
     # ===== 战斗域 =====

@@ -49,7 +49,10 @@ from sr_od.application.currency_war.obs.cw_observation_gate import (
     PHASE_PREP_CLEAN,
     PHASE_PREP_SHOP_OPEN,
 )
-from sr_od.application.currency_war.prep_actions import sell_point
+from sr_od.application.currency_war.prep_actions import (
+    SHOP_CLOSE_ANIM_S,
+    sell_point,
+)
 from sr_od.application.currency_war.telemetry import defects, recorder
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -364,12 +367,6 @@ def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
     return out
 
 
-#: 收起商店动画时长(DD-011 操作完成自等动画;实测口径 screen_flow_timing #15
-#: 「收起过场动画 ~1s 即备战画面稳定」。op 完成后显式等待,替代测量驱动 gate——
-#: 画面状态判断已外移建档识别,等待时长归产生动画的操作声明)。
-_SHOP_CLOSE_ANIM_S: float = 1.0
-
-
 class BuyShopCards(SrOperation):
     """备战阶段:开商店 → 决策驱动买牌/升等级 → 关商店。
 
@@ -446,7 +443,7 @@ class BuyShopCards(SrOperation):
             # #15 实测 ~1s),等待结束 = 画面承诺稳定;gate(测量驱动)在此退役。
             # 后继读数动画尾帧风险由既有防线兜:hp 新鲜度门/重读确认循环、round retry。
             self.round_by_find_and_click_area(screen, SHOP_SCREEN_NAME, '按钮-收起')
-            time.sleep(_SHOP_CLOSE_ANIM_S)
+            time.sleep(SHOP_CLOSE_ANIM_S)
             screen = self.screenshot()
         # r317(ADR-0213 批次2):read_hp 裸调用迁 read_hp_opt
         # (miss→None 显式化);None 走结算真值链(⚠ r322 修:
@@ -1331,12 +1328,12 @@ class BuyShopCards(SrOperation):
                             gap_large=False, refs=_bench_refs,
                             note='观测自检框架设计 §2.2:身份留证不算失败')
 
-        # 关商店(「收起」):DD-011 操作完成自等动画——收起动画时长(_SHOP_CLOSE_ANIM_S,
+        # 关商店(「收起」):DD-011 操作完成自等动画——收起动画时长(SHOP_CLOSE_ANIM_S,
         # screen_flow_timing #15 实测 ~1s;旧「~3s(r299)」口径已修正)由本 op 显式
         # 等待承担,等待结束 = 画面承诺稳定;旧「sleep(0.4)+success_wait+gate 预睡」
         # 三重覆盖已退役。后继重估的金读自带两帧一致门(入账计数器尾帧防线)。
         self.round_by_find_and_click_area(self.screenshot(), SHOP_SCREEN_NAME, '按钮-收起')
-        time.sleep(_SHOP_CLOSE_ANIM_S)
+        time.sleep(SHOP_CLOSE_ANIM_S)
         # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
         # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
         # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。
