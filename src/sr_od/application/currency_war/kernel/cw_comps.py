@@ -1796,6 +1796,19 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
         """基础件 basic 发给 char 是否安全(判定单源在模块级 ``_pairing_guard_ok``)。"""
         return _pairing_guard_ok(worn_basics, char, basic, _key_set, _core_set, _rq)
 
+    def _emblem_ok(char: str, item: str) -> bool:
+        """阵营星徽 → 排除已自报同阵营角色(复盘 g_20260902_181254 定谳)。
+
+        星徽 = add-if-absent 羁绊授予(equipment_mechanics §6),给已自报
+        同阵营角色时游戏装备不上(拖拽 diff=0,四轮连败实证)。星徽命名
+        统一「X星徽」→ X = 授予阵营;非星徽件恒 True。
+        """
+        if not item.endswith('星徽') or len(item) <= 2:
+            return True
+        from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+        _info = CHARACTERS.get(char)
+        return _info is None or item[:-2] not in _info.factions
+
     def _assign(char: str, item: str) -> None:
         out.append((char, item))
         capacity[char] -= 1
@@ -1820,6 +1833,8 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                     # ADR-0391:key 豁免的基础件同样过配对守卫(防非预期合成)
                     if _is_basic(w) and not _pairing_ok(r, w):
                         continue
+                    if not _emblem_ok(r, w):
+                        continue    # 阵营星徽 → 同阵营角色 = 装备不上,换目标
                     pool.remove(w)
                     _assign(r, w)
             if not pool:
@@ -1864,7 +1879,8 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                 # unknown 漂移由此而来;违背上方「跳过=留 owned」注释与本
                 # 函数 docstring「发不完留在 owned 囤着」,缺陷语义修复)。
                 _k = next((i for i, e in enumerate(pool)
-                           if not (_is_basic(e) and not _pairing_ok(cn, e))),
+                           if not (_is_basic(e) and not _pairing_ok(cn, e))
+                           and _emblem_ok(cn, e)),
                           None)
                 if _k is None:
                     break   # 该 core 对整池都被守卫拦 → 一件不取,整池留 owned
@@ -1874,7 +1890,8 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
             n = d.char_id
             if pool and capacity.get(n, 0) > 0:
                 idx = next((i for i, e in enumerate(pool)
-                            if not (_is_basic(e) and not _pairing_ok(n, e))), None)
+                            if not (_is_basic(e) and not _pairing_ok(n, e))
+                            and _emblem_ok(n, e)), None)
                 if idx is not None:
                     _assign(n, pool.pop(idx))
         return out
@@ -1892,7 +1909,8 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                 # 下一个人),不 pop 丢弃——否则一个有残留件的人会把整池
                 # 吃光,后面的人一件分不到。
                 _k = next((i for i, e in enumerate(pool)
-                           if not (_is_basic(e) and not _pairing_ok(n, e))),
+                           if not (_is_basic(e) and not _pairing_ok(n, e))
+                           and _emblem_ok(n, e)),
                           None)
                 if _k is None:
                     continue    # 该人对整池都被拦 → 跳过此人(件留 pool)
