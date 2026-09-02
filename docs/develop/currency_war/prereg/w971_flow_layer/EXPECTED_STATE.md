@@ -20,12 +20,12 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 
 字段本体照常更新(expected 推进值直接写入);`expected_state` 只记「哪些路径尚未被实读确认」——覆盖点 reconcile 后移除条目。
 
-**寻址与组确认(对抗 F4)**:①ExpectedEntry 增**身份寻址维度**——tracked 族比对键现实=身份+星级元组(非纯槽位路径):path=槽位、value 含身份、**比对按身份匹配豁免位移**;②deployed 声明**单一坐标系**=deployed_idx 0-9 槽位表(row+排内槽经 deployed_from_compact 适配换算),produced_by 与 reconcile 同系;③合成链=**多槽重写组条目**(一次 BuyCard 产生一组互相依赖的槽位变更,打包一个条目、组确认清账——禁止逐 path 独立清账产生「半确认」中间态)。
+**寻址与组确认(对抗 F4)**:①ExpectedEntry 增**身份寻址维度**——tracked 族比对键现实=身份+星级元组(非纯槽位路径):path=槽位、value 含身份、**比对按身份匹配豁免位移**;②deployed 声明**单一坐标系 = row+排内槽**(动作侧经 deployed_slot_no 适配——BuyExpect 索引注释同口径:deployed_after 0-3=前排排内槽 1-4、4-9=后排排内槽 1-6),produced_by 与 reconcile 同系;③合成链=**多槽重写组条目**(一次 BuyCard 产生一组互相依赖的槽位变更,打包一个条目、组确认清账——禁止逐 path 独立清账产生「半确认」中间态)。
 
 **雏形收编 = 载体统一、语义分道(对抗 F1/F2/F3 修订,禁一刀切)**:
 - **buy 通道**:保留 `BuyExpect` 对象载体(全槽快照+增量槽集+crops+low_confidence)与 **DD-005 快照前提失效降级**(读全局实读上下文的降级裁决——逐 path diff 会把「实体落进真实空槽」误报不一致,安灯 p2r2 停线事故原始形态)与「消费即清+progressed 门」——expected_state 仅统一**载体挂载点**(kind=buy_expect,条目=整段 BuyExpect);
 - **xp 通道**:保留锚点(anchored 门)+轮界重锚(round_key 吸收外生经验流)——对账基准随轮界重锚;§5 增设「外生流」diff 类(轮界差值吸收,不判罚);
-- **tracked 族**:reconcile **裁决器可插拔**(采新/保旧/防抖——双空读守卫/star 回退防抖/合成特效帧态门/银狼升费豁免,274 张存证实证防线)——tracked 族沿用 reconcile_tracking 现行裁决器;expected_state overlay 只接管「登记+清账」簿记,不改裁决语义(保旧分支的「读被拒」= expected 条目**保留不清**,由裁决器生命周期管理)。
+- **tracked 族**:reconcile **裁决器可插拔**(采新/保旧/防抖——双空读守卫/star 回退防抖/合成特效帧态门/银狼升费豁免,274 张存证实证防线)——tracked 族沿用 reconcile_tracking 现行裁决器;expected_state overlay 只接管「登记+清账」簿记,不改裁决语义(保旧分支的「读被拒」= expected 条目**保留不清**,由裁决器生命周期管理)。 读被拒(防抖窗/帧态门内)**expected 条目保留、stall 时钟暂停**(防抖窗内不算滞留,防误报停机)。
 
 ## 2. 覆盖点(实读 merge 点,全枚举)
 
@@ -142,6 +142,7 @@ merge_simulate(state: {bench, deployed}, buy: (角色, 星级, 张数))
 | 合成落点/星级不符 | merge_simulate 模型错(落点/连锁/继承规则) | 修引擎 + merge_mechanics 补档 |
 | **op 效果函数自身 bug** | apply_op_effect 推进逻辑实现错(与「模型错」分立:模型=游戏机制认知错;函数=实现错) | 修函数+单测补例 |
 | **非 op 游戏侧自变**(随便骰子每节点自动穿2件/节点切换整店自动刷新——对抗补) | 无 op 触发的状态变化:expected 无记录而 actual 变了 | 白名单登记(覆盖时 diff 免留证)或按机制补「非 op 自变推进」挂节点钩子 |
+| **外生流**(轮界差值:轮间未建模经验流(实测轮间+2、位面过渡更大,来源未定)——对抗 F2) | expected 基准与轮界 actual 的差值 | **吸收进锚点不判罚,累计披露(exogenous_xp)**——XpLedger 轮界重锚语义承载 |
 | 未建模行为 | 游戏做了模型外的事(隐藏机制/版本变化) | 按证据补建模或登记 |
 | 识别缺陷 | expected 推进正确但实读错(OCR/SIFT) | 修识别(非期望态问题) |
 
