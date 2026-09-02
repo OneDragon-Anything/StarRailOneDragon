@@ -78,5 +78,5 @@
 ③ 点备战顶部「返回投资策略选择」→ 回 overlay → 决策 → 执行
 ```
 
-- 验证依据:样本 `sr-od-test/screens/货币战争-备战/prep_dark_state_1.webp`(无暗化遮罩,亮度同普通备战);prep_clean 全量对拍标量字段全可靠;降级项 = 徽标计数/角色身份 SIFT。对拍表:`.debug/temp/w971_dark_state_investigation.md`。
+- 验证依据:样本 `sr-od-test/screens_research/货币战争-备战-策略锁定/prep_dark_state_1.webp`(研究样本,已移出 screens 判定遍历——暗态与备战在 id_mark 层面天然两可)(无暗化遮罩,亮度同普通备战);prep_clean 全量对拍标量字段全可靠;降级项 = 徽标计数/角色身份 SIFT。对拍表:`.debug/temp/w971_dark_state_investigation.md`。
 - 相比主方案多一次往返(返回→观察→返回),故列为备选。
