@@ -16,7 +16,6 @@ import numpy as np
 from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
-from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import HP_MAX, HP_MIN
 from sr_od.context.sr_context import SrContext
@@ -208,37 +207,72 @@ def parse_settlement_damage(items: list) -> int | None:
     return total if hit else None
 
 
-# ===== W414 结算屏金币明细采集钩子(capture-only,临时,采够删整段) =====
-# 采集目标:钉死败轮收入残差成分——败轮发金 2/4 里「基础奖励」与「连胜」分量各占多少
-# (评估依据 = .debug/temp/currency_war/w409_streak_calib_eval/REPORT.md §4,支撑 sim
-# 收入口径修正批)。主方案 = read_round_outcome 既有 OCR 帧同帧解析明细行(零额外截图);
-# 兜底 = 整屏 cw_shot_unique 落盘(内容哈希去重),OCR 解析失败帧离线判读可修复 reader。
-# 生命周期(W409 预估 ~30-50 局可读明细钉死):无条件触发、零行为影响(best-effort,
-# 异常全吞);**采够后删整段**——从本注释块起,含 _GOLD_DETAIL_JOURNAL /
-# _gold_last_row_key / parse_settlement_gold_detail / collect_gold_detail_hook 与
-# read_round_outcome 内 collect 调用行(全局搜 collect_gold_detail_hook 定位),不留
-# 开关/flag/参数(与 r63 streak_gold 钩子同删法,见下方原删除点注释)。
-#: 旁路台账(jsonl,逐轮一行;与 replay/outcomes.jsonl 按 (run_id, plane, round_num) 对拍)
-_GOLD_DETAIL_JOURNAL = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'replay' / 'gold_detail.jsonl'
-#: 结算停留防重:分支3 在结算屏停留期每轮循环都调 read_round_outcome,同帧只落一行
-_gold_last_row_key: tuple | None = None
+# ===== 结算屏金币明细三分量解析(纯函数形态保留) =====
+# 口径权威 = STREAK_GOLD_TABLE/REWARD_BASE_GOLD_BY_ROUND(cw_economy)+ ADR-0439
+# (败轮金走下一轮轮首补发,败轮结算屏无收入面板为预期形态);视觉抽检定谳档案
+# = .debug/temp/currency_war/w414_gold_detail_conclusion.md。本函数是该口径的
+# 可执行规格与未来复采的阅读器:生产链已无调用方(每结算屏帧的采集触发段已删,
+# 按 SR 约定整段不留开关/flag;回归锁在 sr-od-test/test_cw_telemetry_collect.py
+# 纯函数节),保留纯函数+测试形态。台账 streak 数值列带解析偏差,消费须按
+# STREAK_GOLD_TABLE[计数] 重算,不得直读(见定谳档案 §2.2)。
+
+
+def _gold_token_cy(it: object) -> float:
+    """OCR token 中心 y(纯函数辅助)。
+
+    生产 items 是 ``OcrMatchResult``(字段名 ``w``/``h``),测试桩常用
+    ``width``/``height``——两套字段名都支持,取不到按 0 退化为顶边 y。
+    历史 bug 教训:只写 ``height`` 时生产路径恒 getattr 默认 0,行对齐
+    实际在比 token 顶边而非中心,静默劣化同行数值的命中判断。
+    """
+    h = getattr(it, 'h', None)
+    if h is None:
+        h = getattr(it, 'height', 0) or 0
+    return it.y + h / 2  # type: ignore[attr-defined]
+
+
+def _gold_token_cx(it: object) -> float:
+    """OCR token 中心 x(字段名兼容同 ``_gold_token_cy``)。"""
+    w = getattr(it, 'w', None)
+    if w is None:
+        w = getattr(it, 'width', 0) or 0
+    return it.x + w / 2  # type: ignore[attr-defined]
+
+
+#: 明细金额列 x 下缘(1080p 实测):右列数值 token x∈[1040,1070](总览行与三分量行)。
+#: 金额候选中心必须落在该列——把「计数列」(标签 token 右侧 x≈645,粘连拆分形态
+#: 「连胜×」+「3」)与金额列定位分离,计数数字永不被当金额落账。
+_GOLD_VAL_COL_MIN_X = 1000
+
+#: 分量金额值域守卫(画面实况先验,来自 2026-09 结算金币明细 10 帧视觉抽检):
+#: 利息恒 2-9(208 行读取分布);连胜金额 1-9(×0/×1=1、×2/×3=2 实证,n≥4 未见
+#: 可信帧但游戏显示必为个位);基础奖励维持 0-99 宽守(实测恒 3/5,无收紧依据)。
+#: 连胜**计数**不设值域门——计数只喂 ×0/×1 口径规则,不当金额消费。
+_GOLD_AMT_RANGE = {'base': (0, 99), 'streak': (1, 9), 'interest': (2, 9)}
+
+#: 「连胜×0/×1」行画面金额恒为 1(视觉抽检 ×0 4/4 帧、×1 1 帧实证)——右列
+#: 金额漏读时按此口径落账(记录的是画面实况,非公式猜测)。计数 ≥2 的金额
+#: 公式未钉死(×2/×3→2 实证,但 floor(n/2)+1 与 min(n,2) 不可分,n≥4 无帧):
+#: 右列读不到 → None(宁缺勿造,禁拿计数顶账)。
+_GOLD_STREAK_PINNED = {0: 1, 1: 1}
 
 
 def parse_settlement_gold_detail(items: list) -> dict[str, int | None]:
     """结算屏「获得金币总览」明细 → {'base'/'streak'/'interest': int|None}(纯函数,可单测)。
 
-    屏面 token 形态(sr-od-test win.webp 实测帧 + docs/game/screens/currency_war_settlement.md
-    识别快照):标签在左列(``基础奖励``/``利息``/``连胜×0``,x≈530),数值在右列同 y 行的
-    独立 token(x≈1042-1058);偶同 token 粘连(``连胜×N`` 本身即含值)。解析:
+    屏面 token 形态(实盘 shot 离线 OCR 实测):标签在左列(``基础奖励``/``利息G``
+    (↻ 图标偶被 OCR 读成 G/C)/``连胜×N``,x≈524-642),金额在右列金额位独立
+    token(x≈1040-1070);计数列(x≈645)与金额列定位分离。解析:
     ① 定位「总览」标题 token 作锚(标题区唯一,无歧义词);
     ② 锚**下方**逐标签找标签 token(下方守卫排除头部「火热连胜×N」词缀——那是连胜方向
        显示,parse_streak 消费,不是明细行);
-    ③ 取值优先级:同 token 粘连(``标签\\s*[×xX*]?\\s*(\\d+)``)> 同行右侧最近纯数字 token
-       (行判据 = 中心 y 差 ≤ 25px,1080p 实测行高 ~28px);
-    ④ 值域守卫 0-99(两位数上限 = 明细分量的格式先验;越界/缺 token → None)。
+    ③ 取值:基础奖励/利息的同 token 粘连(``基础奖励5``)可直读金额;连胜 token
+       上的数字(含 × 粘连与粘连拆分)一律是**计数**,不是金额。金额统一取
+       同行右列金额位最近纯数字 token(行判据 = 中心 y 差 ≤ 25px + 金额列 x 门);
+    ④ 值域守卫按分量分设(见 ``_GOLD_AMT_RANGE``);右列读不到时:连胜计数
+       ∈{0,1} → 1(画面实况钉死口径),其余 → None。
     读不到置 None 不硬猜 0——0 与「没读到」语义必须分开(残差归因靠三分量真值,
-    假 0 会把「明细区被折叠/OCR 漏」误记成「该分量为 0 金」)。OCR 形变按分层规则:
-    标签词历史上无系统性形变,不做 LCS;数字走值域守卫即够。
+    假值会把「OCR 漏」误记成「该分量为 0/计数值金」)。
     """
     out: dict[str, int | None] = {'base': None, 'streak': None, 'interest': None}
     _anchor = next((it for it in items if '总览' in (getattr(it, 'data', '') or '')), None)
@@ -251,76 +285,39 @@ def parse_settlement_gold_detail(items: list) -> dict[str, int | None]:
                      and getattr(it, 'y', 0) >= _anchor.y), None)
         if _lab is None:
             continue
-        # ①同 token 粘连分层:基础奖励5=金额直连可消费;「连胜×N」的 N 是
-        # 连胜计数、金额在同行右侧金额位(败轮实证:×0 行付 1)——×粘连
-        # 先记计数再落 ② 取右列;② 空且计数在场则回退用计数(胜局粘连行
-        # 无右列金额的历史行为兼容)
+        _lab_txt = getattr(_lab, 'data', '') or ''
+        # 同 token 粘连分层:基础奖励5=金额直连;「连胜×N」/「连胜N」的数字是
+        # 连胜**计数**(金额在同行右侧金额位)——计数只喂 ×0/×1 钉死口径。
         _count: int | None = None
-        _count_m = re.search(re.escape(label) + r'\s*[×xX*]\s*(\d{1,2})',
-                             getattr(_lab, 'data', '') or '')
-        if _count_m:
-            _count = int(_count_m.group(1))
+        if key == 'streak':
+            _count_m = re.search(re.escape(label) + r'\s*[×xX*]?\s*(\d{1,2})', _lab_txt)
+            if _count_m:
+                _count = int(_count_m.group(1))
         else:
-            m = re.search(re.escape(label) + r'\s*(\d{1,2})',
-                          getattr(_lab, 'data', '') or '')
+            m = re.search(re.escape(label) + r'\s*(\d{1,2})', _lab_txt)
             if m:
                 out[key] = int(m.group(1))
                 continue
-        # ②同行右侧最近纯数字 token
-        _lcy = _lab.y + (getattr(_lab, 'height', 0) or 0) / 2
-        _lcx = _lab.x + (getattr(_lab, 'width', 0) or 0) / 2
+        # 同行右列金额位最近纯数字 token(行 = 中心 y 差 ≤25px + 金额列 x 门)
+        _lcy = _gold_token_cy(_lab)
+        _lcx = _gold_token_cx(_lab)
+        _lo, _hi = _GOLD_AMT_RANGE[key]
         _cands = []
         for it in items:
             t = (getattr(it, 'data', '') or '').strip()
             if not re.fullmatch(r'\d{1,2}', t):
                 continue
-            _cy = it.y + (getattr(it, 'height', 0) or 0) / 2
-            _cx = it.x + (getattr(it, 'width', 0) or 0) / 2
-            if abs(_cy - _lcy) <= 25 and _cx > _lcx:
+            _cy = _gold_token_cy(it)
+            _cx = _gold_token_cx(it)
+            if abs(_cy - _lcy) <= 25 and _cx >= _GOLD_VAL_COL_MIN_X:
                 _cands.append((_cx - _lcx, int(t)))
         if _cands:
-            out[key] = min(_cands)[1]
-        elif _count is not None:
-            out[key] = _count
+            _v = min(_cands)[1]
+            if _lo <= _v <= _hi:   # 值域守卫:越界(OCR 误读)→ None,不落账
+                out[key] = _v
+        elif key == 'streak' and _count in _GOLD_STREAK_PINNED:
+            out[key] = _GOLD_STREAK_PINNED[_count]
     return out
-
-
-def collect_gold_detail_hook(screen: MatLike, ocr_texts: list[str], items: list, *,
-                             plane: int, round_num: int, node_type: str,
-                             streak_after: int) -> None:
-    """金币明细采集(旁路 jsonl + 整屏去重截图;best-effort,异常全吞不碰对局)。
-
-    :param streak_after: 结算屏带符号连胜(parse_streak 产物,与明细行「连胜」分量对拍用)。
-    """
-    global _gold_last_row_key
-    try:
-        _key = (plane, round_num, tuple(ocr_texts))
-        if _key == _gold_last_row_key:
-            return   # 结算停留期同帧重复读:只落一行
-        _gold_last_row_key = _key
-        _detail = parse_settlement_gold_detail(items)
-        # 分包期 4:run_id 归属键读取经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
-        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-            current_run_id,
-        )
-        try:
-            _run_id = current_run_id() or '-'
-        except Exception:   # noqa: BLE001  run id 拿不到不阻塞落行
-            _run_id = '-'
-        from sr_od.application.currency_war.kernel.cw_observe import cw_shot_unique
-        _shot = cw_shot_unique(screen, 'cw_settle') if screen is not None else None
-        import datetime
-        import json as _json
-        rec = {'ts': datetime.datetime.now().isoformat(timespec='seconds'),
-               'run_id': _run_id, 'plane': plane, 'round_num': round_num,
-               'node_type': node_type, 'streak_after': streak_after,
-               'base': _detail['base'], 'streak': _detail['streak'],
-               'interest': _detail['interest'], 'shot': _shot}
-        _GOLD_DETAIL_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
-        with _GOLD_DETAIL_JOURNAL.open('a', encoding='utf-8') as f:
-            f.write(_json.dumps(rec, ensure_ascii=False) + '\n')
-    except Exception:   # noqa: BLE001  采集钩子零行为影响
-        pass
 
 
 # ===== 结算屏三项遥测读数器(挑战进度填充率 / 基础伤害 / 未完成进度伤害) =====
@@ -566,11 +563,6 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     _fill = (parse_progress_fill_ratio(screen)
              if any('点击空白加速' in t for t in ocr_texts) else None)
     _panel = read_settle_damage_breakdown(ctx, screen)
-    # W414 金币明细采集(临时钩子,见本文件头部钩子段生命周期声明;best-effort 零行为影响):
-    # 消费同一帧 OCR(零额外截图/零行为变更),明细行解析 + 整屏去重落盘。
-    collect_gold_detail_hook(screen, ocr_texts, _items, plane=plane,
-                             round_num=round_num, node_type=node_type,
-                             streak_after=_streak_after)
     return RoundOutcome(
         round_num=round_num, plane=plane, node_type=node_type, comp_tag=comp_tag,
         hp_after=hp if hp is not None else 0,

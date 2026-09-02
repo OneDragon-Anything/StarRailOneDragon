@@ -94,8 +94,10 @@ class CurrencyWarRunLoop(SrOperation):
     # 2026-08-04 实跑:500 不够 —— reactive 弱阵战斗慢,plane2 r5 打「蚕食者之影」时 iter 撞 500
     # →「对局循环超时」失败(bot 一直在推进,非逻辑 bug,是迭代预算耗尽)。bump 到 2000(≈66min 预算)。
     # 待优化:MAX_ITER 应只计「动作迭代」(备战/事件/结算),不计战斗 round_wait(战斗长短不该吃预算)。
-    # 临时随机态停机钩子(方案 D):连续 N 轮未识别画面 → stop_running 保画面待 AI 建档。建档后删本钩子。
-    # 15 轮 ≈ 30s 纯卡(过渡帧 1-2 轮内被上面分支接走,不累计);远 < MAX_ITER,快速捕 novel 随机态。
+    # 未知画面常驻兜底钩子(方案 D):连续 N 轮未识别画面 → stop_running 保画面待 AI 建档。
+    # 常驻安全网——兜一切未知态,不是点名某态的临时捕获;移除条件 = 该类未知态全部建档,
+    # 实际不可达(实现见本类 _handle_unknown_fallback)。
+    # 15 轮 ≈ 30s 纯卡(过渡帧 1-2 轮内被上面分支接走,不累计);远 < MAX_ITER。
     UNKNOWN_STOP_THRESHOLD: ClassVar[int] = 15
     #: 未知帧重试退避封顶(秒)。连续未识别帧的重试间隔按 2s 起步每连续一次翻倍,
     #: 封顶本值——旧实现恒 2s 立即重试,战斗特效长动画/未建档画面期每 2s 打一次
@@ -1101,8 +1103,8 @@ class CurrencyWarRunLoop(SrOperation):
         #     bot 卡此 overlay 68min(购买经验透出命中 → BattlePrepCycle 误派 → shop 被遮失败 → 死循环)。
         #     ESC 不关;点卡身选中(金色边框)→ 确认选择 → 关回备战。详见 op。
         if self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼', crop_first=False).is_success:
-            # [激活位·圣杯采集批 B1] 钉屏停机钩子接线行([临时捕获],采集清单建档确认后连本注释整段删):
-            # 激活 = 下面两行取消注释(diff 一次一行);钩子本体在 grail_collect_hooks.grail_pin_stop_hook。
+            # 钉屏停机钩子接线行([临时捕获],采集清单建档确认后连本注释整段删):
+            # 当前为激活态(钩子本体 = grail_collect_hooks.grail_pin_stop_hook)。
             from sr_od.application.currency_war.operations.grail_collect_hooks import (
                 grail_pin_stop_hook,
             )
