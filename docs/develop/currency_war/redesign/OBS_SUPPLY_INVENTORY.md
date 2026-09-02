@@ -81,7 +81,7 @@
 | N4 plane/round | ✅ | `read_phase_round`(cw_observation L912,缓存+阶段门) | 无 |
 | N5 节点序列 | ✅ | `read_node_sequence`(cw_observation L476)+ `cw_node_reader`(Hu 模板分类/圆检测 L198/280);位面详情 `read_plane_detail_nodes` L656;session 台账制 + 三票校验 L1652-1666 | invest-env 改写节点后重读已覆盖(`cw_node_validate.py` 注释 L10-50) |
 | N6 node_type | ✅ | 同上台账制(L1661-1666);`gate_node_type` L396 | 无 |
-| N7 deploy_cap | ✅ | `read_deploy_cap_debounced`(cw_observation L1240,防抖 cap<level 拒信);`max_units()` 单点收口(cw_state L265) | 无 |
+| N7 deploy_cap | ✅ | `read_deploy_cap_debounced`(cw_observation,域外双帧一致采信,cap<level 不再恒拒——level 对照可毒化,见 strategy/05_observation.md);`max_units()` 单点收口(cw_state L265) | 无 |
 | N8 bench 满 | ✅ | `read_bench_full`(cw_observation L1485,OCR 警告)+ 定长 9 槽占用数(`bench_is_full` cw_state L287) | 无 |
 | N9 刷价/概率表 | ✅(刷价为常量) | 刷价 = `REFRESH_COST_BASE=2`(cw_state L53,ADR-0456:OCR rect 读的是利息徽标,已退链);概率条真值 `read_refresh_probs`(cw_observation L197)→ state.refresh_probs | 无 |
 | N10 sell_refund | ✅(机制常量) | `cw_state.sell_refund` L870(cost=1 各星已实测定谳;cost≥2 的 −1 与 3/4 星 🟡 待实机核,L876-878) | 小:多 cost 档实机核对手续费 |
