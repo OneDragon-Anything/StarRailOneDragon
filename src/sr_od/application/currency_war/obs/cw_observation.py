@@ -223,20 +223,37 @@ def read_hp_opt(ctx: SrContext, screen: MatLike) -> int | None:
     安全设计(不触发保血),但遥测记录里「真 100」与「读不到兜底 100」不可区分 → 复盘误判
     (M19 曾误读「P1 零损」)。遥测/复盘侧用本函数区分。
 
-    miss → 小目标两级放大回退(3x CUBIC 起步,与金/等级/XP 读链同款
-    ``_ocr_upscaled``;读空再 ``_ocr_upscaled_binarized`` 第二级):hp 是
-    最后一个未接放大手法的文本 reader,低血小数值(≤16,窄字形首数字 1)
-    原生分辨率 det 漏检——局21 P2 r4 画面实显 16、全图 rect 内零检测框,
-    裁片 3x 放大即恢复(离线对拍)。常路径(全图命中)零新增开销。
+    两通道对账(原生 + 3x 放大,不一致以放大通道为准并留证):
+    hp 数字为美术字,笔画断续时**原生分辨率 det/rec 偶发丢十位**(如 47 读成 4、
+    12 读成 2;2026-09-02 obs_conflict 分诊帧 40e3354a/e4746213 离线复现实证:
+    同帧原生读 4/2、3x CUBIC 放大读 47/12,均与画面真值一致)。旧实现「原生命中
+    即短路」让这类错值直接采信——掉十位把健康读成濒死,且错值恰落在下行守卫的
+    拒信/复现通道里制造证据噪声。修法:放大通道**常开**作第二读,两通道一致才
+    静默;不一致 → obs_conflict 留证并采放大值。放大通道更可信的依据 = 本函数
+    既有失明回退先例(低血小数值原生 det 漏检、3x 放大即恢复,局21 P2 r4 离线
+    对拍)+ 上述掉十位帧的离线复现。代价:每真值帧多一次小裁片(90×80)放大
+    OCR,百毫秒级。
     """
     rect = _area_rect(ctx, '文本-剩余血量')
-    v = _first_int([r.data for r in _ocr(ctx, screen, rect)])
-    if v is None or not (HP_MIN <= v <= HP_MAX):
-        v = _first_int([r.data for r in _ocr_upscaled(ctx, screen, rect)])
+    v_native = _first_int([r.data for r in _ocr(ctx, screen, rect)])
+    if v_native is not None and not (HP_MIN <= v_native <= HP_MAX):
+        v_native = None
+    v_up = _first_int([r.data for r in _ocr_upscaled(ctx, screen, rect)])
+    if v_up is not None and not (HP_MIN <= v_up <= HP_MAX):
+        v_up = None
+    if v_native is not None and v_up is not None and v_native != v_up:
+        obs_conflict('hp', v_native, v_up, screen,
+                  verdict=('采新-双通道对账采放大值(原生/放大不一致:hp 美术字笔画'
+                           '断续,原生通道偶发丢十位,放大通道离线复现全对;'
+                           '处理:采放大值,频发→查原生通道遮挡形态)'),
+                  source='hp_dual_pass')
+        log.warning(f'[cw!] hp 双通道不一致:原生={v_native} 放大={v_up} → 采放大值')
+        return v_up
+    v = v_native if v_up is None else v_up
+    if v is None:
+        v = _first_int([r.data for r in _ocr_upscaled_binarized(ctx, screen, rect)])
         if v is None or not (HP_MIN <= v <= HP_MAX):
-            v = _first_int([r.data for r in _ocr_upscaled_binarized(ctx, screen, rect)])
-            if v is None or not (HP_MIN <= v <= HP_MAX):
-                return None
+            return None
     return v
 
 

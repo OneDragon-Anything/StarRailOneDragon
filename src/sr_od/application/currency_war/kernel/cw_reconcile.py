@@ -236,24 +236,32 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
 HP_REAL_JUMP_CONFLICT: int = 30
 
 
-def _battle_fact_between(session, node_t: int,
-                         node_lo: int | None) -> tuple[str, str | None]:
-    """查「上一真值帧 → 本帧」窗内最新已观测战斗事实(ADR-0431)。
+def _battle_facts_between(session, node_t: int,
+                          node_lo: int | None) -> tuple[object | None, object | None]:
+    """查「上一真值帧 → 本帧」窗内已观测战斗事实(ADR-0431;2026-09-02 细分)。
 
     事实源 = ``session.performance.history``(RoundOutcome 行,结算屏观测
-    回路写入)。返回 (fact, node_type):fact ∈ 'win'(killed=True,v5 权威
-    口径)/ 'zero'(零损节点型:奖励/补给,无战斗损血机制)/ 'loss'
-    (有战斗、非胜)/ 'none'(窗内无已观测战斗行)。节点型未标定不在此
-    分类,由调用方按无标定处理。
+    回路写入)。返回 (窗内最新 loss 行, 窗内最新任意 outcome 行):
+    - **最新 loss 行单列**:扣血只发生在战败(机制,user_playstyle [27]:
+      掉血=战斗失败;gameplay.md:未在行动值内取胜扣血)——窗内存在 loss
+      行,下行就有机制背书;幅度核对抗该 loss 行的节点型谱,不对
+      「窗内最新行」(旧实现只看最新行:真值帧跨多个节点时,
+      loss 后又打了一局胜战,最新行=win 会把机制合法的下行误判为无背书,
+      实证帧 0d42c300 等 5/6 合法下行被拒即此族)。
+    - 最新任意行用于「窗内打没打仗、打的结果是什么」判定(胜战/零损 =
+      无损血机制事实)。
+    - 两返回都可为 None(结算漏采/telemetry 断/shop 开态 OCR 恢复 = 观察缺口,
+      不等于没发生战斗)。
 
     node_lo = 上一真值帧节点号(session.last_hp_real_node);None = 旧真值
-    无节点锚(升级过渡),窗口放宽为「≤ 本帧的任意 outcome 行」——保守向
-    采信分支倾斜(不把真掉血误判为无战斗事实),残留面由复现通道兜底。
+    无节点锚(升级过渡),窗口放宽为「≤ 本帧的任意 outcome 行」。
     """
     perf = getattr(session, 'performance', None)
     hist = getattr(perf, 'history', None) or []
-    best = None
+    latest = None
+    latest_loss = None
     best_t = -1
+    best_loss_t = -1
     for o in hist:
         t_o = (int(getattr(o, 'plane', None) or 1) - 1) * 9 \
             + int(getattr(o, 'round_num', None) or 0)
@@ -262,15 +270,18 @@ def _battle_fact_between(session, node_t: int,
         if node_lo is not None and t_o <= node_lo:
             continue
         if t_o >= best_t:
-            best, best_t = o, t_o
-    if best is None:
-        return 'none', None
-    nt = getattr(best, 'node_type', None)
-    if nt in HP_ZERO_LOSS_NODE_TYPES:
-        return 'zero', nt
-    if getattr(best, 'killed', None) is True:
-        return 'win', nt
-    return 'loss', nt
+            latest, best_t = o, t_o
+        if getattr(o, 'killed', None) is not True \
+                and getattr(o, 'node_type', None) not in HP_ZERO_LOSS_NODE_TYPES \
+                and t_o >= best_loss_t:
+            latest_loss, best_loss_t = o, t_o
+    return latest_loss, latest
+
+
+def _outcome_is_no_loss(o: object) -> bool:
+    """单行是否「无损失结局」:胜战(killed=True)或零损节点型(奖励/补给)。"""
+    return getattr(o, 'killed', None) is True \
+        or getattr(o, 'node_type', None) in HP_ZERO_LOSS_NODE_TYPES
 
 
 def _reject_down(session, old: int, new_hp: int, node_t: int, screen,
@@ -330,9 +341,9 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
     - **对账层(本函数)**:读不到 → 沿用 ``session.last_hp_real``(保旧不写);
       真值帧(非 None)才写回 last_hp_real(=「session 更新只在关态真值帧」,
       shop 开态读不到自然不写);新读非 None 且同域大幅上行(HP 只降不升)
-      → obs_conflict 留证;真值帧下行须过「幅度 × 战斗事实」联合守卫
-      (ADR-0431:win/零损帧下行一律拒信,loss 帧按损血谱 p100 分档采信,
-      无战斗事实帧拒信+复现确认通道 ≤2 节点自愈)。
+      → obs_conflict 留证;真值帧下行须过「节点内恒定 × 战斗事实」机制守卫
+      (判据详见下方下行守卫分支注释:同节点/胜战零损/超谱下行拒信,有
+      loss 背书或观察缺口的跨节点下行采新留证)。
     - **决策层**:消费本函数返回的(决策用 hp, 是否真读)——沿用真值比假 100
       安全(低血先验触发保血方向对);全无真值(开局)→ None(诚实未知;
       ADR-0282 兜底 100 由 ADR-0491 废止,GameState.hp None 化)。
@@ -367,26 +378,55 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
                   verdict=('留证-同域大幅上行(HP只降不升,疑OCR误读/特殊回复;'
                            '处理:采新现读真值帧;频发→查血量区遮挡/误读)'),
                   source=source, node_t=node_t)
-    # —— 下行守卫(ADR-0431:幅度 × 战斗事实联合判据)——
-    # HP 的合法下行只有「帧间发生了败战且幅度在损血谱内」一种物理来源;
-    # 误读读低不属于任何合法类。node_t=None(离线/旧调用方)守卫不介入,
-    # 既有行为逐位零漂移;上行/持平帧不经本分支。
+    # —— 下行守卫(ADR-0431;2026-09-02 判据重推导)——
+    # 机制依据(判据的锚,非拍脑袋):扣血只发生在节点结算的战败
+    #(user_playstyle [27] 最高权威口述「掉血=战斗失败」+ gameplay.md
+    #「未在行动值内取胜扣血」),即 hp 在节点内恒定、只在跨节点结算时变化。
+    # 故守卫锁的是「机制不可能的下行」,不是下行方向本身:
+    # 1) 同节点下行:节点内 hp 恒定,任何下行必为误读 → 拒信+复现通道
+    #    (ADR-0431 原保护面,遮挡/掉十位误读的挡板);
+    # 2) 跨节点 + 窗内最新结局为胜战/零损:胜战不扣血是机制事实,下行无
+    #    背书 → 拒信+复现通道;
+    # 3) 跨节点 + 窗内有 loss 行:下行有机制背书。幅度超已标定谱 p100 →
+    #    仍拒信(超物理上界疑误读,ADR-0431 原判据);谱内静默采新;
+    #    节点型未标定不拍值 → 采新+留证攒标定;
+    # 4) 跨节点 + 窗内无任何 outcome(结算漏采/telemetry 断):观察缺口 ≠
+    #    没发生战斗,下行方向机制合法 → 采新+留证。旧实现此处拒信,把
+    #    观察回路的缺口惩罚在读数上,每个合法下行都固化旧值再等 2 帧复现
+    #    —— 2026-09-02 分诊实证 hp post-ADR 冲突暴涨(抽样 5/6 帧合法下行
+    #    被拒)的主源即此臂,修订为留证。
+    # node_t=None(离线/旧调用方)守卫不介入,既有行为逐位零漂移;
+    # 上行/持平帧不经本分支。
     if session is not None and old is not None and new_hp < old \
             and node_t is not None:
-        fact, fact_nt = _battle_fact_between(
-            session, node_t, getattr(session, 'last_hp_real_node', None))
-        _delta = old - new_hp
-        _allow = False
-        if fact in ('win', 'zero'):
-            _allow = False   # 胜战/零损节点不损血是机制事实,任何下行都无背书
-        elif fact == 'loss':
-            _cap = HP_LOSS_CAP_P100_BY_NODE.get(fact_nt)
-            # 节点型未标定(精英/巨星等,无 p100 谱)→ 不拍值,走拒信+复现通道
-            _allow = _cap is not None and _delta <= _cap
-        # fact == 'none'(结算漏采/telemetry 断/shop 开态 OCR 恢复):
-        # 物理上不存在合法下行,无幅度豁免;真掉血经复现通道 ≤2 节点自愈。
-        if not _allow:
+        _last_node = getattr(session, 'last_hp_real_node', None)
+        if _last_node is not None and node_t <= _last_node:
+            # 同节点:hp 恒定是机制事实,任何下行都是误读
             return _reject_down(session, old, new_hp, node_t, screen, source)
+        _loss_o, _latest_o = _battle_facts_between(session, node_t, _last_node)
+        _delta = old - new_hp
+        if _loss_o is not None:
+            _cap = HP_LOSS_CAP_P100_BY_NODE.get(getattr(_loss_o, 'node_type', None))
+            if _cap is not None and _delta > _cap:
+                return _reject_down(session, old, new_hp, node_t, screen, source)
+            if _cap is None:
+                # 节点型未标定(精英/巨星等,无 p100 谱)不拍值:下行有
+                # loss 背书即采信,幅度留证攒标定(旧实现拒信,把标定缺口
+                # 惩罚在读数上,同属噪声环臂)
+                _conflict('hp', old, new_hp, screen,
+                          verdict=('采新-loss已观测·节点型未标定(下行有战败背书;'
+                                   '幅度留证攒标定,不拍值)'),
+                          source=source, node_t=node_t, direction='down')
+        elif _latest_o is not None and _outcome_is_no_loss(_latest_o):
+            # 窗内打的是胜战/零损:不扣血是机制事实,下行无背书 → 拒信
+            return _reject_down(session, old, new_hp, node_t, screen, source)
+        else:
+            # 窗内无任何已观测战斗行(观察缺口):下行方向机制合法,采新+留证
+            _conflict('hp', old, new_hp, screen,
+                      verdict=('采新-跨节点下行·战斗事实缺观测(扣血只发生在节点'
+                               '结算战败,下行方向机制合法;结算漏采不固话旧值;'
+                               '频发→查结算观测回路)'),
+                      source=source, node_t=node_t, direction='down')
     if session is not None:
         session.last_hp_real = new_hp
         session.last_hp_real_node = node_t
