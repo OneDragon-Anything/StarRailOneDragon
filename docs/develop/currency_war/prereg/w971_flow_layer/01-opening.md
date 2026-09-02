@@ -1,6 +1,7 @@
 # 01 · 简报 op / 开局序列 / 位面切换
 
 > W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
+> 实施状态:本篇 op 已建(P3a,`operations/cw_flow/`:BriefingOp / PlaneTransitionOp / WaitOneOneOp / OpeningSequence 编排壳含首帧分流骨架);**接线进 battle_loop 主循环归 P3b 待接线**(壳未接入,现役 handler 未退役)。
 
 ## 1. BriefingOp:简报观察收敛为单 op
 
