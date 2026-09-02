@@ -4,7 +4,6 @@ from PySide6.QtCore import Signal, QObject, QTimer, QEvent
 from PySide6.QtGui import QMouseEvent
 from qfluentwidgets import PlainTextEdit, isDarkTheme
 from one_dragon.utils.log_utils import log as od_log
-from one_dragon.yolo.log_utils import log as yolo_log
 import re
 
 class LogSignal(QObject):
@@ -55,8 +54,11 @@ class LogDisplayCard(PlainTextEdit):
 
         # 初始化接收器
         self.receiver = LogReceiver()
+        # 只挂框架根 logger ``OneDragon``:yolo 子 logger(``OneDragon.YOLO``)
+        # propagate=True,记录经层级传播到本 logger 后命中同一 handler 恰一次;
+        # 若同时在子 logger 上再挂本 receiver,同一条 yolo 日志会被收两次
+        # (logging 传播不去重,同一 handler 实例挂两处各收一遍)。
         od_log.addHandler(self.receiver)
-        yolo_log.addHandler(self.receiver)
 
         # 初始化定时器
         self.update_timer = QTimer()

@@ -777,10 +777,25 @@ class PrepActionExecutor:
             log.warning('[cw!][battle] 出战未落地连败 %s/%s', streak,
                         PrepActionExecutor.LAUNCH_DEAD_LIMIT)
             return None
-        # 停机留证三要素(截图 + 自描述 flag + stop_running;与 bail ping-pong 同款)
+        # 停机留证三要素(截图 + 自描述 flag + stop_running;与 bail ping-pong 同款)。
+        # 截图走显式通道不落 suppress(2026-09-02 夜间语料批局1实证:last 帧
+        # 通道在停机时刻静默缺失,被 bare suppress 吞掉无日志线索)——失败
+        # 必须 log.error 留痕,且 last 帧缺失时用独立现帧兜底(同 L0 安灯
+        # _save_andon_frame 通道,不污染 op 循环帧缓存)。
         import contextlib
-        with contextlib.suppress(Exception):
-            self._op.save_screenshot(prefix='launch_dead')
+        stop_shot = ''
+        try:
+            stop_shot = self._op.save_screenshot(prefix='launch_dead')
+        except Exception:
+            log.error('[cw!][battle] launch_dead 取证截图失败(last 帧通道)', exc_info=True)
+        if not stop_shot:
+            try:
+                _ts, _img = self._ctx.controller.screenshot(independent=True)
+                if _img is not None:
+                    from one_dragon.utils import debug_utils
+                    stop_shot = debug_utils.save_debug_image(_img, prefix='launch_dead')
+            except Exception:
+                log.error('[cw!][battle] launch_dead 取证截图失败(独立现帧兜底通道)', exc_info=True)
         with contextlib.suppress(Exception):
             import time as _t
             from pathlib import Path as _P

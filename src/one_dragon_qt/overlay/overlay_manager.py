@@ -21,11 +21,6 @@ from one_dragon_qt.overlay.panels.state_panel import StatePanel
 from one_dragon_qt.overlay.panels.timeline_panel import TimelinePanel
 from one_dragon_qt.overlay.utils import win32_utils
 
-try:
-    from one_dragon.yolo.log_utils import log as yolo_log
-except Exception:
-    yolo_log = None
-
 
 class _OverlaySignalBridge(QObject):
     log_received = Signal(object)
@@ -936,9 +931,11 @@ class OverlayManager(QObject):
 
         self._log_handler = OverlayLogHandler(self.ctx)
         self._log_handler.setLevel(logging.DEBUG)
+        # 只挂框架根 logger ``OneDragon``:yolo 子 logger(``OneDragon.YOLO``)
+        # propagate=True,记录经层级传播到本 logger 后命中同一 handler 恰一次;
+        # 若同时在子 logger 上再挂本 handler,同一条 yolo 日志会被收两次
+        # (logging 传播不去重,同一 handler 实例挂两处各收一遍)。
         log.addHandler(self._log_handler)
-        if yolo_log is not None:
-            yolo_log.addHandler(self._log_handler)
 
     def _uninstall_log_handler(self) -> None:
         if self._log_handler is None:
@@ -948,11 +945,5 @@ class OverlayManager(QObject):
             log.removeHandler(self._log_handler)
         except Exception:
             pass
-
-        if yolo_log is not None:
-            try:
-                yolo_log.removeHandler(self._log_handler)
-            except Exception:
-                pass
 
         self._log_handler = None

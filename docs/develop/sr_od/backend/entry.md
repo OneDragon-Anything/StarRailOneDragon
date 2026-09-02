@@ -53,7 +53,7 @@ GUI 的「开发工具 -> MCP 服务」页面提供本机 server 管理：
 - 探测：请求 `http://127.0.0.1:<port>/health`。
 - 启动：在项目根目录执行 `uv run python -m sr_od.backend.entry.server --port <port>`；如果项目根目录存在 `.env`，会自动补上 `--env-file .env`。
 - 停止 / 重启：查找并管理 `sr_od.backend.entry.server` 进程。
-- 日志：`.debug/sr_od_mcp/main_server.log`，默认关闭 uvicorn access log，避免状态轮询刷屏。
+- 日志：`.debug/sr_od_mcp/main_server.log`，默认关闭 uvicorn access log;uvicorn logger 族经 log_config=None 不自配 handler,统一归 .log/mcp_server.log 单一信道，避免状态轮询刷屏。
 - MCP 地址：`http://127.0.0.1:<port>/mcp`。
 - 当前运行状态：请求 `http://127.0.0.1:<port>/game/status`。
 

@@ -3,7 +3,6 @@ from abc import abstractmethod
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import cached_property
 from threading import Lock
-from typing import Optional
 
 from one_dragon.base.conditional_operation.atomic_op import AtomicOp
 from one_dragon.base.conditional_operation.execution_info import ExecutionInfo
@@ -11,9 +10,12 @@ from one_dragon.base.conditional_operation.loader import ConditionalOperatorLoad
 from one_dragon.base.conditional_operation.operation_def import OperationDef
 from one_dragon.base.conditional_operation.operation_executor import (
     OperationExecutor,
+    StopRunInterrupted,
 )
 from one_dragon.base.conditional_operation.scene import Scene
-from one_dragon.base.conditional_operation.state_record_service import StateRecordService
+from one_dragon.base.conditional_operation.state_record_service import (
+    StateRecordService,
+)
 from one_dragon.base.conditional_operation.state_recorder import StateRecord
 from one_dragon.thread.atomic_int import AtomicInt
 from one_dragon.utils import thread_utils
@@ -52,7 +54,7 @@ class ConditionalOperator(ConditionalOperatorLoader):
         self.current_execution_info: ExecutionInfo | None = None  # 当前的执行信息
         self.running_executor: OperationExecutor | None = None  # 正在运行的任务
         self.running_executor_cnt: AtomicInt = AtomicInt()  # 统计有
-        
+
         self._inited: bool = False
         self._task_lock: Lock = Lock()
 
@@ -137,7 +139,7 @@ class ConditionalOperator(ConditionalOperatorLoader):
                 continue
 
             # log.debug('开始等待新的主循环')
-            to_sleep: Optional[float] = None
+            to_sleep: float | None = None
 
             # 上锁后确保运行状态不会被篡改
             with self._task_lock:
@@ -210,9 +212,7 @@ class ConditionalOperator(ConditionalOperatorLoader):
             if self.running_executor is not None:
                 old_priority = self.current_execution_info.priority
                 new_priority = new_execution_info.priority
-                if old_priority is None:  # 当前运行场景可随意打断
-                    can_interrupt = True
-                elif new_priority is not None and new_priority > old_priority:  # 新触发场景优先级更高
+                if old_priority is None or new_priority is not None and new_priority > old_priority:  # 当前运行场景可随意打断
                     can_interrupt = True
             else:
                 can_interrupt = True
@@ -259,22 +259,40 @@ class ConditionalOperator(ConditionalOperatorLoader):
         if self.running_executor is not None:
             finish = self.running_executor.stop()  # stop之前是否已经完成所有op
             if not finish:
-                # 如果 finish=True 则计数器已经在 _on_task_done 减少了 这里就不减了
-                # 如果 finish=False 则代表还有操作在继续。在这里要减少计数器而不是等_on_task_done 让无触发器场景尽早运行
+                # finish=True:_run 已收口,_on_task_done 三路统一 dec 覆盖。
+                # finish=False:任务仍在收尾,这里**提前** dec 让无触发器场景
+                # 尽早运行(不等回调);与之后到达的 _on_task_done dec 构成
+                # 已知双减(过度调度,安全侧;见 _on_task_done 计数器契约)。
                 self.running_executor_cnt.dec()
             self.running_executor = None
 
     def _on_task_done(self, future: Future) -> None:
         """
         一系列指令任务完成后
+
+        计数器契约:每个 inc(主循环/_trigger_scene 提交处)对应本回调恰好
+        一次 dec,**三路统一无条件递减**——``_run()`` 因 stop 打断而 break →
+        ``return False`` 是停止场景的最常见正常返回,旧实现 ``if result`` 在
+        该路径漏 dec → 计数器永不清零 → 主循环 ``cnt > 0`` 分支永等、场景
+        不再调度(泄漏=永久停摆)。
+        已知不对称(_stop_running_task 的 finish=False 早 dec 与本回调可能
+        双减):多减只会让主循环更早放行(过度调度,executor max_workers=4
+        本就容忍 2 个并发),欠减才是停摆方向——安全侧取舍。
         """
         with self._task_lock:  # 上锁 保证_running_trigger_cnt安全
             try:
-                result = future.result()
-                if result:  # 顺利执行完毕
-                    self.running_executor_cnt.dec()
+                future.result()
+            except StopRunInterrupted:
+                # 防御位:executor._run 内层 future.result 已按名 catch 并
+                # break 转正常返回,异常几乎不会到这;保留是防 _run 在内层
+                # 等待环之前抛出(BaseException 泛型兜底接不住)。
+                log.info('任务被停机守卫中断,收口递减计数器')
+                self.running_executor_cnt.dec()
             except Exception:  # run_async里有callback打印日志
-                pass
+                self.running_executor_cnt.dec()
+            else:
+                # 无论 result True/False 都递减(见 docstring 计数器契约)
+                self.running_executor_cnt.dec()
 
     @cached_property
     def usage_states(self) -> set[str]:
@@ -305,8 +323,8 @@ class ConditionalOperator(ConditionalOperatorLoader):
         if not self.is_running:
             return
 
-        top_priority_scene: Optional[Scene] = None
-        top_priority_state: Optional[str] = None
+        top_priority_scene: Scene | None = None
+        top_priority_state: str | None = None
 
         for state_record in state_records:
             state_name = state_record.state_name
@@ -322,9 +340,7 @@ class ConditionalOperator(ConditionalOperatorLoader):
                 continue
 
             replace = False
-            if top_priority_scene is None:
-                replace = True
-            elif top_priority_scene.priority is None:  # 可随意打断
+            if top_priority_scene is None or top_priority_scene.priority is None:
                 replace = True
             elif scene.priority is None:  # 可随意打断
                 pass

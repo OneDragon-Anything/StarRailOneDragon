@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
 
-class StopRunInterrupted(Exception):
+class StopRunInterrupted(BaseException):
     """运行被停止信号中断。
 
     停机守卫(controller 层)在任何游戏输入动作(click/drag/按键/滚轮/输入/
@@ -18,6 +18,15 @@ class StopRunInterrupted(Exception):
     异常穿透所有嵌套 ``Operation.execute``(不在中间 op 层被吞成普通失败——
     否则父链会像 ADR-0388 实证的 director 环一样继续发下一步动作),由顶层
     (``ApplicationRunContext.run_application`` / backend op 槽)收口为「已停止」。
+
+    继承 BaseException 而非 Exception(2026-09-02 夜间语料批局1实证:停机
+    信号后局仍推进约 3 分钟):玩法运行路径上大量 best-effort 包装
+    (``contextlib.suppress(Exception)`` / ``except Exception: 兜底``)恰好
+    覆盖输入调用段,Exception 子类会被它们吞掉、转化成「本次尝试失败 →
+    重试/继续」,守卫在最需要拦截的代码区域失效。改挂 BaseException 后
+    泛型 Exception 处理器不再捕获它,语义对齐 KeyboardInterrupt(用户级
+    中断不属于可兜底的业务异常);显式 ``except StopRunInterrupted`` 的
+    收口点(operation.execute / run_application / backend op 槽)不受影响。
     """
 
 

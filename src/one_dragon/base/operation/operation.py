@@ -665,6 +665,9 @@ class Operation(OperationBase):
             str: 保存截图的文件路径。
         """
         if self.last_screenshot is None:
+            # 无帧可存时显式警告:调用方(尤其停机钩子的取证留证)依赖返回值
+            # 非空判断落盘成功,静默空串会让证据缺失不可见。
+            log.warning('%s save_screenshot 无 last_screenshot 可存(取证证据缺失风险)', self.display_name)
             return ''
         if prefix is None:
             prefix = self.__class__.__name__
@@ -859,13 +862,50 @@ class Operation(OperationBase):
         Args:
             wait: 等待时间（秒）。默认为None。
             wait_round_time: 等待直到轮次时间达到此值，如果设置了wait则忽略。默认为None。
+
+        等待期间以切片睡眠检查停机信号(2026-09-02 夜间语料批局1实证:
+        stop 后剩余 wait 的整段 sleep 是停机延迟的组成段),停机即提前返回,
+        由 execute 循环顶收口。
         """
         if wait is not None and wait > 0:
-            time.sleep(wait)
+            self._interruptible_sleep(wait)
         elif wait_round_time is not None and wait_round_time > 0:
             to_wait = wait_round_time - (time.time() - self.round_start_time)
             if to_wait > 0:
-                time.sleep(to_wait)
+                self._interruptible_sleep(to_wait)
+
+    def _interruptible_sleep(self, seconds: float) -> None:
+        """停机可中断的睡眠:按切片睡,每片前查停机信号。
+
+        切片粒度 0.5s = 停机响应上限(轮间等待场景下,长于一次画面轮询周期
+        无收益)。暂停不在此处理(暂停语义由 execute 循环顶统一接管)。
+        中断判据用 ``is_stop_interrupted`` 闩而非 ``is_context_stop``:STOP
+        也是 idle 初始态(application_run_context 自注),不经 start_running
+        的直接 op 调试路径(debug.bat / 未来工具)用后者会把所有 round_wait
+        静默零等待;闩只在「运行中/暂停中被 stop_running 打断」时置位,
+        精确对应「本次运行收到停机信号」。
+        用 getattr 容错:测试替身 ctx 可能不带 run_context,此时退化为
+        普通切片睡眠(不影响等待语义)。
+        切片后校验墙钟是否推进:测试加速环境(流程测试把模块级 time.sleep
+        换成 no-op 记录,墙钟不走)下 deadline 永不到期会死循环——发现
+        时间未推进即按加速环境语义直接返回(等待本来就该被跳过)。
+        边界:POSIX 信号中断 sleep 属「提前唤醒但时间已推进」形态,与本校验
+        (时间未推进)不同,不会被误判;本项目 Windows-only 无该形态,可接受。
+        """
+        deadline = time.time() + seconds
+        while True:
+            run_context = getattr(self.ctx, 'run_context', None)
+            if (run_context is not None
+                    and getattr(run_context, 'is_stop_interrupted', False)):
+                return
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                return
+            slice_seconds = min(remaining, 0.5)
+            before = time.time()
+            time.sleep(slice_seconds)
+            if time.time() - before < slice_seconds * 0.5:
+                return
 
     def round_by_op_result(self, op_result: OperationResult, status: str | None = None, retry_on_fail: bool = False,
                            wait: float | None = None, wait_round_time: float | None = None) -> OperationRoundResult:

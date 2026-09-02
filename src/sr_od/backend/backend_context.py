@@ -1029,6 +1029,12 @@ class SrBackendContext:
                 time.sleep(1.5)  # 等转场动画,下一轮截图再识别(同 op 层 success_wait 口径)
             return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
                     'steps': steps, 'error': f'超过 max_steps={max_steps} 步未到达 {target_screen_name}(路由可能成环)'}
+        except StopRunInterrupted:
+            # 停机守卫穿透(异常为 BaseException,泛型 except Exception 接不住):
+            # run 收口期调用 goto_screen 属被拦场景,按本工具的错误契约返回
+            # 结构化失败,不把异常漏给 MCP 请求层。
+            return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
+                    'steps': steps, 'error': '运行已被停机中断(守卫拦截本次导航点击)'}
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'success': False, 'current_screen': current, 'target_screen': target_screen_name,
                     'steps': steps, 'error': str(e)}

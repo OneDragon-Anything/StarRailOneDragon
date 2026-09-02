@@ -100,6 +100,33 @@ def _configure_root_logger_single_channel() -> None:
     )
 
 
+def _route_uvicorn_logs_to_mcp_log() -> None:
+    """显式兜底 uvicorn logger 族的路由(不依赖 root 传播默认)。
+
+    实证(2026-09-02 tmp 日志探针):主路径下 root 单一信道 handler +
+    uvicorn logger ``propagate=True`` 默认 → 启动行经 root 落 mcp_server.log,
+    不失明。脆弱点 = ``_configure_root_logger_single_channel`` 的跳过分支
+    (root 已被外来 basicConfig 占位,如测试预置)——uvicorn 行随 propagate
+    落外来 handler,mcp_server.log 缺启动块。本函数在该分支兜底:把同路径
+    文件 handler 直接挂到 uvicorn logger 族并关 propagate(单目的地);同
+    路径双 handler 的轮转互斥由 SafeTimedRotatingFileHandler 进程内锁表
+    保证(见模块 docstring)。主路径(root 已挂本文件 handler)不重复挂——
+    handler 叠加会让每行双写。
+    """
+    root_handlers = logging.getLogger().handlers
+    if root_handlers and not any(
+        isinstance(h, SafeTimedRotatingFileHandler) for h in root_handlers
+    ):
+        for name in ('uvicorn', 'uvicorn.error', 'uvicorn.access'):
+            lg = logging.getLogger(name)
+            if not lg.handlers:
+                lg.addHandler(SafeTimedRotatingFileHandler(
+                    get_log_file_path(default_name=MCP_SERVER_LOG_FILE_NAME),
+                    when='midnight', interval=1, backupCount=3,
+                    encoding='utf-8', delay=True))
+                lg.propagate = False
+
+
 def create_app(backend: SrBackendContext) -> "Starlette":
     """装配应用：同一 FastMCP 同时挂 MCP tool 与 ``/game/*`` custom_route。
 
@@ -138,6 +165,9 @@ async def _serve(host: str, port: int) -> None:
     # root 单一信道(见函数 docstring)也必须在 SrContext/FastMCP 构造前:
     # SrContext init 期间已有 getLogger(__name__) 型日志,晚了这段会走裸 stderr。
     _configure_root_logger_single_channel()
+    # uvicorn logger 族路由兜底(见函数 docstring):主路径靠 root 传播即达,
+    # 跳过分支(root 被外来 basicConfig 占位)时这里显式挂文件 handler。
+    _route_uvicorn_logs_to_mcp_log()
     ctx = SrContext()
     backend = SrBackendContext(ctx)
     # 构建指纹守卫(W596/W593 方案①):启动首行记本进程运行的代码构建
@@ -151,7 +181,17 @@ async def _serve(host: str, port: int) -> None:
         await backend.start()
         app = create_app(backend)
         # GUI 会主动轮询 /health 和 /game/status；关闭 access log，避免日志被访问记录刷屏。
-        config = uvicorn.Config(app, host=host, port=port, log_level="info", access_log=False)
+        # log_config=None 的真实因果(2026-09-02 tmp 日志探针实证):uvicorn 缺省
+        # log_config 会给自己的 logger 族挂 stderr StreamHandler,每次重启的启动块
+        # (Started server process/Uvicorn running 等)都写进被 daemon 重定向的
+        # main_server.log —— 该文件 mtime 每次重启都会一度变新,哨兵按「两候选
+        # mtime 最新」选活性信道时随之来回切换(日志信道漂移的另一写端)。
+        # None = uvicorn 不自配 logging,其 logger 族保持默认 propagate=True →
+        # 经 root 的 mcp_server.log 文件 handler 落盘(探针实证主路径不失明;
+        # root 被外来占位的脆弱分支由 _route_uvicorn_logs_to_mcp_log 兜底),
+        # 单一信道不破,main_server.log 保持 stdout 兜底职责。
+        config = uvicorn.Config(app, host=host, port=port, log_level="info",
+                                access_log=False, log_config=None)
         server = uvicorn.Server(config)
         framework_log.info(f"SR 后端监听: http://{host}:{port}/mcp 与 /game/*")
         await server.serve()

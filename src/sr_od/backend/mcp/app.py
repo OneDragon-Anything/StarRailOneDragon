@@ -24,6 +24,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
+from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from one_dragon.utils.log_utils import log
 from sr_od.backend.backend_context import SrBackendContext, _save_screenshot
 from sr_od.backend.mcp.config_app import (
@@ -397,6 +398,11 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """
         try:
             return backend.goto_screen(target_screen_name, max_steps)
+        except StopRunInterrupted:
+            # 同 click_game:BaseException 按名收口,防穿透 ASGI(防御纵深;
+            # backend 层另有按名收口,双保险)。
+            return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
+                    'steps': [], 'error': '运行已被停机中断(守卫拦截本次导航点击)'}
         except Exception as e:  # noqa: BLE001 工具层统一兜底
             return {'success': False, 'current_screen': None, 'target_screen': target_screen_name,
                     'steps': [], 'error': str(e)}
@@ -414,6 +420,9 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """
         try:
             msg = backend.close_game()
+        except StopRunInterrupted:
+            # 同 click_game:BaseException 按名收口,防穿透 ASGI(防御纵深)。
+            return {'success': False, 'error': '运行已被停机中断(守卫拦截本次操作)'}
         except Exception as e:  # noqa: BLE001 工具层兜底(BackendNotReadyError 等)
             return {'success': False, 'error': str(e)}
         return {'success': True, 'result': msg}
@@ -443,6 +452,15 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """
         try:
             return backend.click_game(x, y, press_time, pc_alt)
+        except StopRunInterrupted:
+            # 停机守卫异常是 BaseException,下方泛型 except Exception 接不住;
+            # 不按名收口会穿透 FastMCP → Starlette ServerErrorMiddleware
+            # (同样只接 Exception)→ ASGI 层错误 + 连接断,客户端拿不到
+            # 结构化错误。正常路径不应到达此处(手动端点在 backend 层已
+            # stop_guard_exemption 豁免)——本兜底是防御纵深:未来新增端点
+            # 忘记豁免时,客户端仍拿到可读错误而非连接断。
+            return {'success': False, 'x': x, 'y': y, 'in_window': False, 'pc_alt': pc_alt,
+                    'error': '运行已被停机中断(守卫拦截本次输入)'}
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'success': False, 'x': x, 'y': y, 'in_window': False, 'pc_alt': pc_alt, 'error': str(e)}
 
@@ -468,6 +486,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """
         try:
             return backend.key_tap(key, press_time)
+        except StopRunInterrupted:
+            # 同 click_game:BaseException 按名收口,防穿透 ASGI(防御纵深)。
+            return {'success': False, 'key': key, 'press_time': press_time,
+                    'error': '运行已被停机中断(守卫拦截本次输入)'}
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'success': False, 'key': key, 'press_time': press_time, 'error': str(e)}
 
@@ -490,6 +512,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """
         try:
             return backend.drag(x1, y1, x2, y2, duration)
+        except StopRunInterrupted:
+            # 同 click_game:BaseException 按名收口,防穿透 ASGI(防御纵深)。
+            return {'success': False, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'duration': duration,
+                    'error': '运行已被停机中断(守卫拦截本次输入)'}
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'success': False, 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'duration': duration, 'error': str(e)}
 
@@ -507,6 +533,10 @@ def create_mcp_server(backend: SrBackendContext, name: str = "sr_od") -> FastMCP
         """
         try:
             return backend.input_text(text, use_clipboard)
+        except StopRunInterrupted:
+            # 同 click_game:BaseException 按名收口,防穿透 ASGI(防御纵深)。
+            return {'success': False, 'method': None, 'masked_text': None,
+                    'error': '运行已被停机中断(守卫拦截本次输入)'}
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'success': False, 'method': None, 'masked_text': None, 'error': str(e)}
 

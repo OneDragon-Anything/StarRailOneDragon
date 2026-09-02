@@ -4,6 +4,7 @@ from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from threading import Lock
 
 from one_dragon.base.conditional_operation.atomic_op import AtomicOp
+from one_dragon.base.controller.stop_guard import StopRunInterrupted
 from one_dragon.utils import thread_utils
 from one_dragon.utils.log_utils import log
 
@@ -63,6 +64,12 @@ class OperationExecutor:
                     future.result(timeout=0.05)
                 except TimeoutError:
                     continue
+                except StopRunInterrupted:
+                    # 停机守卫异常为 BaseException(穿透 best-effort 包装):
+                    # 子 op 被停机中断属预期终态,安静收口跳出循环,不按
+                    # 「指令执行出错」记 ERROR,也不打死本执行线程。
+                    log.info('指令被停机守卫中断,中止本串指令')
+                    break
                 except Exception:
                     log.error('指令执行出错', exc_info=True)
                     break
