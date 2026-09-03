@@ -104,6 +104,51 @@ _WEAR_RETRY_PARAMS: list[tuple[float, float]] = [(0.5, 1.5), (0.8, 2.0), (1.1, 2
 _SETTLE_DIFF_THRESHOLD: float = 2.0   # 稳帧判据:相邻两帧全图像素差均值 < 阈值 = 画面已稳
 
 
+def register_equip_worn(session, item_name: str, char_name: str,
+                        row: str, slot: int,
+                        produced_by: str = 'CwOpEquipAll') -> None:
+    """装备分布期望态(§3 B-6 行 M7 装备拖拽;DD-019 后果节「装备分布」缺口)。
+
+    落点已验(avatar-slot CV-diff 判穿)后调:``last_owned_equips`` −1 件 +
+    ``tracked_deployed`` 目标角色 equips +1 件(字段本体推进)+ 两条目登记
+    (owned 减/角色 equips 增;值带「待实读」= prep_obs 覆盖点可信读只清账
+    不 diff)。槽位坐标系:deployed 槽位表下标 = 前排 slot−1 / 后排
+    DEPLOYED_FRONT_CAPACITY+slot−1(与 apply_op_effect SellDeployed 同式)。
+    best-effort:session 缺失 / infra 异常不阻塞穿戴主循环。
+    """
+    if session is None:
+        return
+    try:
+        from sr_od.application.currency_war.kernel.cw_expected_state import (
+            ExpectedEntry,
+            expected_round_key,
+            register_expected,
+        )
+        from sr_od.application.currency_war.kernel.cw_state import (
+            DEPLOYED_FRONT_CAPACITY,
+        )
+        owned = list(getattr(session, 'last_owned_equips', None) or [])
+        if item_name in owned:
+            owned.remove(item_name)
+            session.last_owned_equips = owned
+        idx = (slot - 1 if row == 'front'
+               else DEPLOYED_FRONT_CAPACITY + slot - 1)
+        dep = list(getattr(session, 'tracked_deployed', None) or [])
+        if 0 <= idx < len(dep) and dep[idx] is not None:
+            dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
+                + [item_name]
+        at_round = expected_round_key(session)
+        register_expected(session, ExpectedEntry(
+            path=f'owned[{item_name}]', value='−1(穿戴,待实读)',
+            produced_by=produced_by, at_round=at_round, kind='owned'))
+        register_expected(session, ExpectedEntry(
+            path=f'tracked_deployed[{idx}]',
+            value=f'{char_name} 穿{item_name}(待实读)',
+            produced_by=produced_by, at_round=at_round, kind='tracked'))
+    except Exception as e:  # noqa: BLE001  观测面不阻塞穿戴
+        log.info('[cw-equip] 装备分布期望登记跳过: %s', e)
+
+
 def _owned_wearable_names(hits: list) -> list[str]:
     """read_equips 命中 → 穿戴类 owned 名单(工具类过滤;ADR-0358 搬运链写端)。
 
@@ -721,6 +766,11 @@ class CwOpEquipAll(SrOperation):
                     key = (d_used.position_pref or 'back', int(d_used.slot or 1))
                     occupied_m7.setdefault(key, []).append(name)
                     stall = 0
+                    # 装备分布期望态(§3 B-6;落点已验后才登记)
+                    if _match is not None and _match.session is not None:
+                        register_equip_worn(_match.session, name, char_name,
+                                            d_used.position_pref or 'back',
+                                            int(d_used.slot or 1))
                     log.info('[cw-equip] %s → %s 穿了(diff=%.1f)', name, char_name, diff)
                 else:
                     # dd-015:失败不中止整批——登记失败(≥2 次拉黑该对,跨轮存活),
@@ -822,6 +872,10 @@ class CwOpEquipAll(SrOperation):
                                                     _relocate_front)
             if landed:
                 equipped += 1
+                # 装备分布期望态(§3 B-6;回退路径无角色身份,槽=前排空槽序号)
+                if _match is not None and _match.session is not None:
+                    register_equip_worn(_match.session, name, '',
+                                        'front', slot_idx)
                 log.info('[cw-equip] %s 穿了(前排-%d below-icon diff=%.1f > %.1f)',
                          name, slot_idx, diff, self.BELOW_DIFF_THRESHOLD)
                 continue

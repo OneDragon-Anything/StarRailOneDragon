@@ -134,3 +134,13 @@ class CwScreenMegastar(SrOperation):
             self.ctx.controller.mouse_move(confirm)
             self.ctx.controller.click(confirm)
             time.sleep(0.9)
+        # 到账登记(§3.3 #29 ConfirmMegastar):chosen_megastar 更新(粗粒度
+        # expected;本体已在候选选中时写 session,此处按确认动作落地登记)。
+        _cid = (getattr(_match.session, 'chosen_megastar', '')
+                if _match is not None else '')
+        if _cid:
+            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+                register_confirm_arrival,
+            )
+            register_confirm_arrival(_match.session, 'ConfirmMegastar', _cid,
+                                     produced_by='CwScreenMegastar')

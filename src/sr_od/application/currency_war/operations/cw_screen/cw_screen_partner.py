@@ -165,6 +165,18 @@ class CwScreenPartner(SrOperation):
         self.ctx.controller.mouse_move(confirm)
         self.ctx.controller.click(confirm)
         time.sleep(1.0)
+        # 到账登记(§3.3 #30 ConfirmPartner):chosen_partner 更新(粗粒度
+        # expected;本体在候选选中时已写 session,产出=画面特殊位置显示,
+        # 不占装备区格子 → 无 owned 语义,不登记装备)。retry 轮重登记同
+        # path 覆盖(last-wins),无副作用。
+        _pid = getattr(getattr(self.ctx, 'cw_match', None).session,
+                       'chosen_partner', '') if self.ctx.cw_match is not None else ''
+        if _pid:
+            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+                register_confirm_arrival,
+            )
+            register_confirm_arrival(self.ctx.cw_match.session, 'ConfirmPartner',
+                                     _pid, produced_by='CwScreenPartner')
         if self.round_by_ocr(self.screenshot(), '选择伙伴').is_success:
             # T#98:step 2「请选择强化角色」→ 点 stage 角色(前排-1)→ 确认(partner overlay 两步;
             # 旧码只做 step 1 select candidate → confirm,step 2 select strengthen target 缺 → flat-loop)。

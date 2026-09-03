@@ -113,6 +113,15 @@ class CwScreenSupply(SrOperation):
         if self.round_by_ocr(self.screenshot(), '武装箱', lcs_percent=0.5).is_success:
             log.info('[cw-box] 选卡后 overlay 仍在 → retry')
             return self.round_retry(wait=1)
+        # 到账登记(§3.3 #27 ConfirmBox):owned += 选中装备(粗粒度 expected,
+        # 回备战覆盖点实读清账;点卡即确认,验关通过 = 确认落地)。
+        if chosen and chosen != '(no-ocr)':
+            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+                register_confirm_arrival,
+            )
+            _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+            register_confirm_arrival(_sess, 'ConfirmBox', chosen,
+                                     produced_by='CwScreenSupply')
         log.info(f'[cw-box] 开箱完成({chosen}) → 箱槽腾空')
         return self.round_success(wait=1.5)
 

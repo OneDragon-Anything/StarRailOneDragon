@@ -236,6 +236,15 @@ class CwScreenSupplyNode(SrOperation):
         time.sleep(0.6)
         # 确认(supply 按钮-确认 area;T#103 area 化)
         self.round_by_find_and_click_area(self.screenshot(), '货币战争-补给', '按钮-确认', success_wait=1.5)
+        # 到账登记(§3.3 #18 ConfirmSupply):owned += 选中装备名(粗粒度
+        # expected,单轮即回备战覆盖点实读清账;equip 未读到 = 无 item 不登记)。
+        if match is not None and picked is not None and picked.get('equip'):
+            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+                register_confirm_arrival,
+            )
+            register_confirm_arrival(match.session, 'ConfirmSupply',
+                                     picked['equip'],
+                                     produced_by='CwScreenSupplyNode')
         # 补给轮决策帧(w941 判定:备战采集 detour 整局一次 → 后续补给轮
         # 恒零 decisions 行,轮窗边界模糊)。选卡确认后补记一帧合成快照:
         # 确认成功时点 overlay 已消 → 帧面=干净备战帧(read_game_state

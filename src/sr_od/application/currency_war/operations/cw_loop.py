@@ -88,6 +88,22 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
+def prep_stall_pending_expected(session) -> tuple[str, ...]:
+    """stall 线索:prep_obs 覆盖点可确认的滞留期望条目(路径@轮次,排序稳定)。
+
+    条目绑覆盖点口径(EXPECTED_STATE §6/对抗 F7,DD-019 后果节「stall 消费」
+    缺口):绑其他覆盖点(shop_wave_top/settlement)的条目在备战覆盖点**不可
+    确认** → 不计入(防把正常透传误当滞留);tracked 族防抖窗内条目由裁决器
+    保留,其登记/清账变化会刷新 stall 签名,恒定滞留才与「字段长期未覆盖」
+    同现。返回值进备战 stall 签名与留证行 = 「字段长期 expected 未覆盖」的
+    结构化线索(停留在不可识别画面过久)。
+    """
+    store = getattr(session, 'expected_state', None) or {}
+    return tuple(sorted(f'{e.path}@{e.at_round}'
+                        for e in store.values()
+                        if e.confirm_point == 'prep_obs'))
+
+
 class CwLoop(SrOperation):
     """货币战争 对局内主循环:反复「备战单轮 + 轮间过渡」直到对局结束 / 超时。
 
@@ -912,13 +928,18 @@ class CwLoop(SrOperation):
             #(球/箱数、金、轮次、席位、vacancy;03-prep「对账字段族」口径)。
             _frame = getattr(self.ctx.cw_match.session, 'prep_obs_frame', None)
             _st = getattr(self.ctx.cw_match.session, 'last_state', None)
+            # 期望态轮次戳消费(EXPECTED_STATE §6;DD-019 后果节缺口件3):
+            # 仅 prep_obs 可确认条目进签名(绑其他覆盖点不计,见函数注)。
+            _pending_exp = prep_stall_pending_expected(
+                self.ctx.cw_match.session)
             _sig = (len(getattr(_frame, 'spheres', None) or []),
                     len(getattr(_frame, 'boxes', None) or []),
                     len(getattr(_frame, 'bench_chars', None) or []),
                     len(getattr(_frame, 'deployed_chars', None) or []),
                     getattr(_frame, 'deploy_vacancy', None),
                     getattr(_st, 'gold', None), getattr(_st, 'level', None),
-                    getattr(_st, 'round_num', None))
+                    getattr(_st, 'round_num', None),
+                    _pending_exp)
             if getattr(self, '_prep_stall_sig', None) == _sig:
                 self._prep_stall_count = getattr(self, '_prep_stall_count', 0) + 1
             else:
@@ -927,7 +948,9 @@ class CwLoop(SrOperation):
             if self._prep_stall_count >= self.PREP_STALL_EVIDENCE_ROUNDS:
                 _stall_shot = self.save_screenshot(prefix='prep_stall')
                 log.warning('[cw!][loop] 备战连续 %d 轮 session 无变化 → 留证(无进展;'
-                            'sig=%s shot=%s)', self._prep_stall_count, _sig, _stall_shot)
+                            'sig=%s pending_expected=%s shot=%s)',
+                            self._prep_stall_count, _sig,
+                            list(_pending_exp) or '无', _stall_shot)
             # 备战被锁(顶部「返回投资策略选择」按钮)→ 点去选策略(check#4 接手)。
             # 2026-08-26 挪位(原在备战判定前全屏扫):用户定性该按钮出现 = 上游
             # 投资策略屏处理失败的 symptom(策略屏点歪才退回备战带此按钮;同族 =

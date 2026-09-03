@@ -110,6 +110,53 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
+def prep_obs_actual_for(session, entry, st, obs,
+                        bench_ids: str, deployed_ids: str) -> tuple | None:
+    """prep_obs 覆盖点单条目实读构造(纯函数,EXPECTED_STATE §2 最大覆盖点;
+    缺口件1配套:到账登记区条目的「可信读即清账不 diff」语义在此承载)。
+
+    返回 ``(实读值, 可信)``;None = 该条目本帧不读(不进 actual → 保留)。
+    - tracked/merge_group:身份串(比对按身份匹配豁免位移,裁决器语义不变);
+    - gold:仅 shop 开态可信(F2/F5 可信门),关态不读;
+    - owned / strategy(到账登记区粗粒度条目,值 = 「+N(...)」「已选…」推进
+      描述):字段本体确认到账 → 回填条目自身值走相等清账(§3 C 区只清账
+      不 diff);本体缺失 → 保留不清(宁缺勿造);
+    - pending_reward / xp_ledger:既有口径原样。
+    """
+    p, kind = entry.path, entry.kind
+    if kind in ('tracked', 'merge_group'):
+        return (f'{bench_ids}|{deployed_ids}', True)
+    if kind == 'gold':
+        if not getattr(obs, 'state_gold_trusted', False):
+            return None
+        g = getattr(st, 'gold', None)
+        return (g, g is not None)
+    if kind == 'xp_ledger':
+        _xp = getattr(st, 'xp_progress', None)
+        _lv = int(getattr(st, 'level', 0) or 0)
+        return (f'lv{_lv} xp{(_xp[0] if _xp else 0)}',
+                bool(_xp) and _lv > 0)
+    if kind == 'owned':
+        name = (p[len('owned['):-1] if p.startswith('owned[') else '')
+        own = getattr(session, 'last_owned_equips', None) or []
+        present = name in own
+        if '−1' in str(entry.value):
+            # 减量条目(穿戴消耗,§3 B-6):登记时件已在场,件消失 = 到账。
+            return (entry.value, not present)
+        return (entry.value if present else name, present)
+    if kind == 'pending_reward':
+        return ('sphere' if getattr(obs, 'spheres', None) else 'gone', True)
+    if kind == 'strategy':
+        # 投资策略确认(active_strategies[N])与巨星/伙伴 chosen_* 本体读。
+        if p.startswith('active_strategies['):
+            nm = p[len('active_strategies['):-1]
+            has = nm in (getattr(session, 'active_strategies', None) or [])
+            return (entry.value if has else nm, has)
+        v = getattr(session, p, '')
+        return (entry.value, bool(v))
+    return None
+
+
 def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
     """开局帧槽序表的**每位面首帧**写入(ADR-0368)。
 
@@ -463,25 +510,10 @@ class CwScreenPrep(SrOperation):
                              or {}).items()):
                         if _e.confirm_point != 'prep_obs':
                             continue   # 条目绑覆盖点(F7):不可确认点透传
-                        if _e.kind in ('tracked', 'merge_group'):
-                            _act[_p] = (f'{_ids}|{_dids}', True)
-                        elif _e.kind == 'gold':
-                            if obs.state_gold_trusted:
-                                _act[_p] = (getattr(st, 'gold', None),
-                                            getattr(st, 'gold', None) is not None)
-                        elif _e.kind == 'xp_ledger':
-                            _xp = getattr(st, 'xp_progress', None)
-                            _lv = int(getattr(st, 'level', 0) or 0)
-                            _act[_p] = (f'lv{_lv} xp{(_xp[0] if _xp else 0)}',
-                                        bool(_xp) and _lv > 0)
-                        elif _e.kind == 'owned':
-                            _name = (_p[len('owned['):-1]
-                                     if _p.startswith('owned[') else '')
-                            _own = getattr(session, 'last_owned_equips',
-                                           None) or []
-                            _act[_p] = (_name, _name in _own)
-                        elif _e.kind == 'pending_reward':
-                            _act[_p] = ('sphere' if obs.spheres else 'gone', True)
+                        _r = prep_obs_actual_for(session, _e, st, obs,
+                                                 _ids, _dids)
+                        if _r is not None:
+                            _act[_p] = _r
                     reconcile_expected(session, 'prep_obs', _act)
                 except Exception as _e:  # noqa: BLE001  观测面不阻塞环
                     log.debug(f'[cw-director] expected reconcile skip: {_e}')

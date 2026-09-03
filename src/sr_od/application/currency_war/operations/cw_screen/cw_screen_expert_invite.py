@@ -171,4 +171,14 @@ class CwScreenExpertInvite(SrOperation):
             log.info('[cw-bookcard] 选卡后弹窗仍在 → round_retry')
             return self.round_retry(wait=1)
         log.info('[cw-bookcard] 弹窗关 → 收案(专家入商店,交正常商店逻辑)')
+        # 到账登记(§3.3 对照):「现金为王」= gold +4(待实读,绑 shop_wave_top
+        # gold 可信源覆盖点);选角色分支 = 专家入商店由正常商店逻辑接管,
+        # 无 session 局状态字段变更 → 不登记(§3 C 区无对应行,理由区口径)。
+        if idx < 0:
+            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+                register_confirm_arrival,
+            )
+            _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+            register_confirm_arrival(_sess, 'ConfirmExpertCash', '现金为王',
+                                     produced_by='CwScreenExpertInvite')
         return self.round_success(wait=2)

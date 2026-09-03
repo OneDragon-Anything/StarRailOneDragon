@@ -208,5 +208,15 @@ class CwScreenInvestStrategy(SrOperation):
         # (partner reset 根因同类;write-operation「点了≠成了」;本 op docstring 已记「点名 540+ 次不选中→卡死 18min」)。
         # 确认 center 从 screen_info 读,缺失兜底。
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestStrategy.SCREEN_NAME) or CwScreenInvestStrategy.CONFIRM
-        return confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资策略',
-                                  tag='cw-strat')
+        _rr = confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资策略',
+                                 tag='cw-strat')
+        # 到账登记(§3.3 #22 ConfirmStrategy):active_strategies += 卡(粗粒度
+        # expected;本体追加在上方既有写入点,效果走台账不进 session 推进)。
+        # 仅确认落地成功登记(round_retry = 确认未发生)。
+        if _rr.is_success and match is not None and chosen != '?':
+            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+                register_confirm_arrival,
+            )
+            register_confirm_arrival(match.session, 'ConfirmStrategy', chosen,
+                                     produced_by='CwScreenInvestStrategy')
+        return _rr

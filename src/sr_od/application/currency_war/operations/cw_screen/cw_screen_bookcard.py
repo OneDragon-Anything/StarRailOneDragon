@@ -11,11 +11,11 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
-    CW_OVERLAY_SETTLE_S,
-)
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
+    CW_OVERLAY_SETTLE_S,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -93,5 +93,15 @@ class CwScreenBookcard(SrOperation):
                 self.screenshot(), self.SCREEN_NAME, self.MARK_AREA,
                 crop_first=False).is_success:
             return self.round_retry('选卡后秘典弹窗仍在')
+        # 到账登记(§3.3 #28 ConfirmBook):owned += 星徽。装备名与注册表对齐
+        # 「X星徽」(OCR 卡名已去「星徽」后缀作阵营名,回拼;已是全名则原样)。
+        if pick_name and pick_name != '(fallback卡1)':
+            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+                register_confirm_arrival,
+            )
+            _eq_name = pick_name if pick_name.endswith('星徽') else f'{pick_name}星徽'
+            _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+            register_confirm_arrival(_sess, 'ConfirmTome', _eq_name,
+                                     produced_by='CwScreenBookcard')
         return self.round_success('星徽秘典选卡完成', wait=CW_OVERLAY_SETTLE_S)
 

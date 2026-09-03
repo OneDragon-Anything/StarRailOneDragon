@@ -63,9 +63,13 @@ flat loop 里(1f 败局页/2 点空白加速/3 结算读点/3b 前往结算链/5
   battle_loop 净删 ~600 行内联分支。
 - 期望态登记面对 `_handle_bench_full` 席满急救**显式不建模**(不经执行器,
   留证声明而非遗漏,EXPECTED_STATE §6)。
-- 已知接线缺口(后续批):overlay 到账登记区的 handler 侧调用(dict 形态
-  apply_op_effect 已实现,handler 接线随 overlay op 化批);装备分布期望态
-  (RunEquip 子动作效果);外循环 stall 判定消费 expected_state 轮次戳。
+- 已知接线缺口(已勾销,接线批 2026-09):~~overlay 到账登记区的 handler 侧调用~~
+  (已接:`_overlay_confirm.register_confirm_arrival` 按 §3.3 分道接入七个确认
+  落地点,prep_obs reader 到账清账语义 = `cw_screen_prep.prep_obs_actual_for`);
+  ~~装备分布期望态(RunEquip 子动作效果)~~(已接:`cw_op_equip_all.register_equip_worn`,
+  M7 落点已验后 owned−1/角色 equips+1);~~外循环 stall 判定消费 expected_state
+  轮次戳~~(已接:`cw_loop.prep_stall_pending_expected`,仅 prep_obs 可确认条目
+  计入 stall 签名与留证线索)。
 - 已知建模校准项:满栏语境合成落点(EXPECTED_STATE §P2 批注 2/6)与溢出件
   落点归位槽号——列对账优先观察项,由 expected_reconcile 实证修正。
 
