@@ -166,6 +166,9 @@ def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
       ``actions`` = 同轮**全部帧动作按流内序合并**(计划口径:载体帧的
       非商店动作天然不参与买/升/刷计数;跨波 re-plan 理论上可重复计同一
       买牌,是「计划总量」口径的有偏显示,判读结合 planexec 视图)。
+    - ``_frames`` 键 = 同轮全部帧按 ts 升序(含原始 actions/gold)。唯一
+      消费方 = query_economy 的备战批量升级金差括号(见其 docstring);
+      其他视图只读合并后 ``actions``/代表帧字段,不受影响。
     """
     best: dict = {}
     frames: dict = {}
@@ -181,9 +184,11 @@ def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
             best[k] = d
     for k, d in best.items():
         merged: list = []
-        for f in frames[k]:
+        seq = sorted(frames[k], key=lambda f: f.get("ts") or '')
+        for f in seq:
             merged.extend(f.get("actions") or [])
         d["actions"] = merged
+        d["_frames"] = seq
     return best
 
 
@@ -560,6 +565,24 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
     行的实收 gold_delta(shop.py 执行点落盘);该轮有行但 delta=None
     (OCR miss)计 0 并标 `?`;无行(旧数据/sim 局)回退 decisions
     actions 的 SellBench.income 口径(与 sim 账本一致,不回归)。
+    升级费腿分两通道计费(g_20260904_010335 专项②定谳:三处「一帧
+    批量点击只入账单击 4 金」的根不在读端乘法——合并流与按实例计数
+    都在——而在**发射流本身**:商店通道 m3_batch 逐击发射 LevelUpShop
+    实例,备战通道 mandate M3 只发 1 个裸 LevelUp、执行器
+    prep_actions._level_up「循环点至 level+1」批量展开,动作流天然
+    1:N 欠表达):
+    - 商店通道(LevelUpShop 实例):逐实例 ×luc(发射即逐击,计数忠实);
+    - 备战通道(裸 LevelUp 载体帧,strategy_id='' 单动作帧 = director
+      逐动作执行留痕):批费 = 载体帧 gold − 同轮下一帧 gold(载体帧
+      gold 是批前现读,下一帧是批后首个重观察帧;连发载体帧并作一批,
+      防相邻括号重叠双计)。括号无效(无后帧/金不可读/差值 < 单击价,
+      含 sim 局单帧多实例形)回退逐实例 ×luc 并在花值后标 `?`(金差
+      与 OCR 噪声同量级时不可判,判读可辨)。
+      已知边界:载体帧与下一帧之间若夹 SellBench(卖回入金)括号被
+      收入污染,该形态按无效回退(花值带 `?`),不静默错账。
+    计划帧( strategy_id 非空)内的裸 LevelUp 实例:同轮存在备战载体帧
+    时跳过(执行已被载体帧括号计费,防计划+载体双计);无载体帧
+    (sim/旧数据)保持逐实例 ×luc(每实例=单击,sim 账本语义)。
     """
     best = _load_decisions_rounds(replay_dir, run_id)
     # 迁移审计 w323(git 历史):执行点实收卖回聚合(键 = (plane, round),与 decisions 主键同坐标系)
@@ -586,10 +609,56 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
                     for a in acts if isinstance(a, dict)
                     and a.get("__type__") == "BuyCard")
         luc = (d.get("state") or {}).get("level_up_cost")
+        luc_eff = luc or XP_CLICK_COST_FALLBACK
         luc_s = f"{luc}" if luc else f"{XP_CLICK_COST_FALLBACK}?"
-        spend += (luc or XP_CLICK_COST_FALLBACK) * sum(
-            1 for a in acts
-            if isinstance(a, dict) and a.get("__type__") in _LEVELUP_TYPES)
+        # —— 升级费腿:商店通道逐实例 ×luc;备战通道载体帧金差括号 ——
+        seq = d.get("_frames") or []
+
+        def _is_bare_carrier(f: dict) -> bool:
+            """备战批量升级载体帧:director 逐动作执行留痕(sid='' 单裸 LevelUp)。"""
+            fa = f.get("actions") or []
+            return ((f.get("strategy_id") or '') == '' and len(fa) == 1
+                    and isinstance(fa[0], dict)
+                    and fa[0].get("__type__") == 'LevelUp')
+
+        carrier_idx = {i for i, f in enumerate(seq) if _is_bare_carrier(f)}
+        shop_clicks = sum(1 for a in acts if isinstance(a, dict)
+                          and a.get("__type__") == 'LevelUpShop')
+        plan_bare = sum(1 for a in acts if isinstance(a, dict)
+                        and a.get("__type__") == 'LevelUp')
+        if carrier_idx:
+            # 计划帧裸实例与载体帧同轮并存:执行已被括号计费,撤计划口径防双计
+            plan_bare = 0
+        spend += luc_eff * shop_clicks
+        spend += luc_eff * plan_bare
+        batch_fallback = False
+        prev_carrier = False
+        for i, f in enumerate(seq):
+            if i not in carrier_idx:
+                prev_carrier = False
+                continue
+            if prev_carrier:
+                continue   # 连发载体帧并入前一批(防括号重叠双计)
+            prev_carrier = True
+            before = f.get("gold")
+            after: int | None = None
+            bracket_bad = False
+            for g in seq[i + 1:]:
+                if _is_bare_carrier(g):
+                    continue   # 连发载体帧:同一批
+                if any(isinstance(a, dict)
+                       and a.get("__type__") == 'SellBench'
+                       for a in (g.get("actions") or [])):
+                    bracket_bad = True   # 括号被卖回收入污染 → 无效
+                after = g.get("gold")
+                break
+            if (not bracket_bad and isinstance(before, int)
+                    and isinstance(after, int) and before - after >= luc_eff):
+                spend += before - after
+            else:
+                spend += luc_eff   # 括号无效回退:按单击计(保旧口径下限)
+                batch_fallback = True
+        batch_q = '?' if batch_fallback else ''
         spend += sum((a.get("cost") or 0) for a in acts
                      if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
         # 卖牌回金(迁移审计 w323(git 历史) 前口径⑤:漏计——含卖轮的 income 系统性偏负)。
@@ -607,7 +676,7 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
             if (sell_in or unknown) else ''
         lines.append(
             f"  p{k[0]}r{k[1]} g={g} luc={luc_s}"
-            f" 花={spend}{sell_s} 收={'-' if income is None else income}{flag}")
+            f" 花={spend}{batch_q}{sell_s} 收={'-' if income is None else income}{flag}")
         prev_gold = g
     return lines
 
