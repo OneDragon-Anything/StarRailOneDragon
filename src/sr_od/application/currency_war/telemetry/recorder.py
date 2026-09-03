@@ -181,6 +181,14 @@ class TelemetryRecorder:
             # 非 dict 缺省 None,旧 schema 不破坏)
             _spk = extra.get('supply_pick')
             trace.supply_pick = dict(_spk) if isinstance(_spk, dict) else None
+        # 决策时点挂起期望态快照(期望态 infra 遥测批;session 自取 = w603
+        # 汇点先例,全部决策面一次覆盖:备战步进行/买牌行/补给合成行/sim 行)。
+        # 恒写([] = 无挂起);旧行无此键 = 迁移前数据(读端三态,schema 注)。
+        # 离线/无 match 注册 = session None → []。
+        with contextlib.suppress(Exception):   # 观测 best-effort
+            _em = _telstate._CTX_MATCH_REF[0]
+            _esess = getattr(_em, 'session', None) if _em is not None else None
+            trace.expected_paths = snapshot_expected_paths(_esess)
         # `w603_telemetry_wiring/` 披露键统一接出(session 自取,extra 通道外的固定尾巴;
         # 缺 match 注册=离线/测试,字段保持 None 缺省)。
         _m = _telstate._CTX_MATCH_REF[0]
@@ -469,6 +477,33 @@ class TelemetryRecorder:
             confidence=confidence)
         self._append("defect_ledger.jsonl", _to_jsonable(rec))
 
+
+
+def snapshot_expected_paths(session) -> list[dict[str, Any]]:
+    """决策时点挂起期望态摘要(W971 期望态 infra 遥测批;读 infra 接口,
+    本函数不修改期望态本体)。
+
+    session.expected_state = 未确认条目表(kernel/cw_expected_state.
+    ExpectedEntry);摘要 = path/value/produced_by/at_round/kind(kind 供判读
+    分型:merge_group=合成链模型错 / tracked=识别缺陷 等,五分类语义见
+    cw_expected_state.reconcile_expected)。value 非标量(BuyExpect 载体等)
+    str 化防序列化炸;无容器/空表 = []。sim 引擎与生产 decisions 行共用本
+    单一源(sim/runner.py 落盘与 recorder.record_decision 同构)。"""
+    out: list[dict[str, Any]] = []
+    store = getattr(session, 'expected_state', None) or {}
+    for path, e in store.items():
+        try:
+            v = getattr(e, 'value', None)
+            if not isinstance(v, (int, float, bool, str, type(None))):
+                v = str(getattr(v, 'summary', None) or v)
+            out.append({'path': str(getattr(e, 'path', path) or path),
+                        'value': v,
+                        'produced_by': str(getattr(e, 'produced_by', '')),
+                        'at_round': str(getattr(e, 'at_round', '')),
+                        'kind': str(getattr(e, 'kind', ''))})
+        except Exception:  # noqa: BLE001  单条目异常不拖垮整行快照
+            continue
+    return out
 
 
 def record_decision(state: GameState, target_comp: str,

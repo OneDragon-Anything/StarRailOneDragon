@@ -275,6 +275,15 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         # ADR-0348 ↺:扑满节点识别标记
         if d.get("piggy_reward"):
             dpp_s += " P=扑满"
+        # 决策时点挂起期望态(期望态 infra 遥测批;归因「决策错=基于错误期望
+        # 推进 vs 实读错」的直读维度)。容缺省:旧行无键 = 迁移前数据不显示;
+        # [] = 无挂起不显示;非空 = exp=N 首条 path(完整清单查行内
+        # expected_paths)。buy=前缀 = 挂起来自买牌合成链(商店窗口典型态)。
+        _ep = d.get("expected_paths")
+        if isinstance(_ep, list) and _ep:
+            _e0 = _ep[0] if isinstance(_ep[0], dict) else {}
+            dpp_s += (f" exp={len(_ep)}({_e0.get('produced_by', '')}:"
+                      f"{_e0.get('path', '')})")
         # r358c(用户定调「复盘要全面」):xp 进度/站位(前排数)入 rounds 主视图
         # ——升级节奏与站位分流的直读维度(旧视图不可见,须直查 jsonl)。
         # ⚠️ 判读语义(迁移审计 w229(git 历史) 分型,勿再误判为「前排未满编」缺陷):

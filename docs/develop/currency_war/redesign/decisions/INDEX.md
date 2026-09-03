@@ -24,4 +24,6 @@
 | [adr-0431](adr-0431-hp-down-guard-battle-fact.md) | ADR-0431(历史 ADR):hp 下行守卫——「幅度 × 战斗事实」联合判据与复现确认通道;2026-09-02 判据按机制重推导部分取代,见文内修订记录 | accepted(部分取代,见文内修订节) | 2026-08-28 |
 | [dd-018](dd-018-shop-cost-badge-digit.md) | DD-018:商店牌费用徽章数字识别——cost 信源 roster 查表→画面直读翻转,2星/3星直出缺口闭环(倍数 {1,3,9} 推星级;多位数两级管线,文内修订节载用户费用体系澄清后的修正) | accepted | 2026-09-02 |
 | [dd-019](dd-019-p4-battle-wait-op-expected-state.md) | DD-019:W971 P4 战斗等待 op 收编(battle_loop 1f/2/3/3b/5/6 → BattleWaitOp,状态机随迁,3c 收口留主循环)+ 期望态 infra 落地(expected_state 容器/apply_op_effect 两执行面同源/覆盖点 reconcile 留证/merge_simulate 引擎/雏形分道收编) | accepted | 2026-09-02 |
+| [dd-020](dd-020-series-decision-contract.md) | DD-020:序列决策契约——动作发射接口统一升序列/次(备战 decide_prep_screen 单动作→list 同构商店)+ fail-stop/帧稳定截断/空批与控制流冻结;裸 list 形状,Decision/AtomOp 层留 sim/离线 | accepted | 2026-09-03 |
 | [dd-021](dd-021-board-count-underestimate-fix.md) | DD-021:board 阵营计数系统性低估修复——计数源五级优先(徽标>XY>斜杠容错>徽标小格重读>身份底座),next_tier 改基于合并后计数+注册表推导 | accepted | 2026-09-03 |
+| [dd-022](dd-022-decisions-expected-paths.md) | DD-022:decisions.jsonl 期望态标记——expected_paths 字段(决策时点挂起期望摘要,recorder 汇点 session 自取全决策面一次覆盖;读端三态:旧行无键/[]=无挂起/非空=有挂起;match_archive 聚合二期挂账) | accepted | 2026-09-03 |

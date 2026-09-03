@@ -384,6 +384,14 @@ class DecisionTrace:
     # 了什么」要等 outcomes 合成行 join 才可读;平铺进决策行后单行自足。
     # 可选末尾追加字段,旧记录缺省 None 不破坏 schema。
     supply_pick: dict[str, Any] | None = None
+    # —— 决策时点挂起期望态快照(W971 期望态 infra 遥测批,用户确认推进)——
+    # 快照 = 本 record 调用时点 session.expected_state 未确认条目摘要
+    # [{path, value, produced_by, at_round, kind}](接出点 = recorder 统一自
+    # _CTX_MATCH_REF session 自取,w603 汇点先例;归因 = 决策错可分型「基于
+    # 错误期望推进 vs 实读错」)。读端三态:旧行无此键 = 迁移前数据(不修复);
+    # 新行 [] = 无挂起期望;新行非空 = 决策基于含期望推进值的画面。可选末尾
+    # 追加字段,旧记录缺省 None 不破坏 schema。
+    expected_paths: list[dict[str, Any]] | None = None
 
 
 

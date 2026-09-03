@@ -87,6 +87,9 @@ from sr_od.application.currency_war.sim.cw_sim_invest import (
     SimInvestProfile,
     sample_invest_profile,
 )
+from sr_od.application.currency_war.telemetry.recorder import (
+    snapshot_expected_paths as _expected_paths_snapshot,
+)
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4
@@ -753,9 +756,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _streak_amt = LOSS_GOLD_BY_NODE[_prev_node]
             else:
                 _streak_amt = streak_gold(streak)
+            # 利息 flat 分量(前置缺陷 R92-4,IMPL_DESIGN §2.12 前置缺陷清单):
+            # 狸财经狸 interest_flat_per_node=每节点固定息,**与 interest_cap 无关**
+            # (EconomyEffect 字段注释语义)——量值与存在性单一源 = cw_investments
+            # 注册表(STRATEGY_ECONOMY),sim 侧不另设常量。无持卡/flat=0 时 +0,
+            # 主路径逐位零漂移(与既有 interest_cap_override 消费同构)。
+            _flat = (_agg_inv.interest_flat_per_node
+                     if _agg_inv is not None else 0)
             _inc = {'base': (REWARD_BASE_GOLD_BY_ROUND.get(rn, BASE_INCOME)
                              if _node == 'reward' else BASE_INCOME),
-                    'interest': min(_icap, st.gold // 10),
+                    'interest': min(_icap, st.gold // 10) + _flat,
                     'streak': _streak_amt,
                     'event': _inc_event}
             if _agg_inv is not None and _agg_inv.gold_per_node:
@@ -1840,6 +1850,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'phase': _round_phase,
                 'form_ok': _round_form_ok,
                 'form_score': _round_form_score,
+                # 决策时点挂起期望态快照(期望态 infra 遥测批;sim 引擎未接
+                # 期望态推进,sess.expected_state 缺省 None → 恒 [];与生产
+                # decisions 行同构,读端三态同口径)
+                'expected_paths': _expected_paths_snapshot(sess),
                 'dp_posture': _round_dp_posture,
                 # `w611_econ_cycle/` 储备/义务披露(轮入口快照;生产 decisions 行 sess_* 同语义)
                 'reserve_cap': _round_reserve_cap,
