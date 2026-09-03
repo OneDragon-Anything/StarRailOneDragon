@@ -1,14 +1,14 @@
 # 03 战术执行(备战层)
 
-> 备战画面内「下一步做什么」的执行架构:观察驱动单步决策环(PrepDirector,ADR-0123)+ 战术规划(decision_v2 备战四层)。框架与策略分离:环是框架(不含玩法判断),「下一步做什么」全部是策略(CwStrategy 钩子,07)。
+> 备战画面内「下一步做什么」的执行架构:观察驱动单步决策环(CwScreenPrep,ADR-0123)+ 战术规划(decision_v2 备战四层)。框架与策略分离:环是框架(不含玩法判断),「下一步做什么」全部是策略(CwStrategy 钩子,07)。
 
-## 1. prep_director:备战决策环(框架)
+## 1. cw_screen_prep:备战决策环(框架)
 
-两层环的内环(外环 = battle_loop 屏幕级路由)。循环:`observe(轻/重分层) → strategy.decide_prep_action(obs) → execute(带完成验证) → 再观察`;环出口 = StartBattle(执行且验证成功)。替代历史固定流水线(收球→买牌→部署→装备)——腾席/收球/事件时序由观察驱动。
+两层环的内环(外环 = cw_loop 屏幕级路由)。循环:`observe(轻/重分层) → strategy.decide_prep_action(obs) → execute(带完成验证) → 再观察`;环出口 = StartBattle(执行且验证成功)。替代历史固定流水线(收球→买牌→部署→装备)——腾席/收球/事件时序由观察驱动。
 
 **框架不变式(F1-F8,策略可依赖)**:单步契约 / 观察真实(reader 产出,shop 开关互斥由框架校验)/ 动作合法域校验 / 验证与防护对策略透明 / 出口兜底(策略失能强制出战)/ 环不污染策略实例(跨步意图走 session)/ 可换策略 / obs+action 落 telemetry。
 
-**防死循环三层**:动作验证失败 → 同动作连败达 `PrepDirector.FAIL_TO_RECOVER` 触发恢复原语(按已知弹层分型)→ 恢复无效 BailToOuter(环让位外环)或本环屏蔽该动作实例;环级连续零进展且恢复试尽 → 强制出战;外环由对局步数预算兜底。`cw_reconcile` 在环入口对账 tracking。
+**防死循环三层**:动作验证失败 → 同动作连败达 `CwScreenPrep.FAIL_TO_RECOVER` 触发恢复原语(按已知弹层分型)→ 恢复无效 BailToOuter(环让位外环)或本环屏蔽该动作实例;环级连续零进展且恢复试尽 → 强制出战;外环由对局步数预算兜底。`cw_reconcile` 在环入口对账 tracking。
 
 ## 2. prep_actions:原子动作全集(以 `prep_actions` 代码为单一源)
 
@@ -20,13 +20,13 @@
 | 战斗 | StartBattle(含未达上限确认勾选) |
 | 观察管理 | EnsureShopOpen / EnsureShopClosed(gold 只在开态、HP 只在关态可读) |
 | 控制流 | DeferSpheres(球留置,环级计数)/ BailToOuter |
-| 组合(过渡) | RunDeploy(DeployBenchOp)/ RunEquip(EquipAllOp)(RunBuyPhase 组合已随 BuyShopCards 壳退役删除,决策核只发显式开店意图) |
+| 组合(过渡) | RunDeploy(CwOpDeploy)/ RunEquip(CwOpEquipAll)(RunBuyPhase 组合已随 BuyShopCards 壳退役删除,决策核只发显式开店意图) |
 
-**商店链结构**(`operations/prep/`;分层架构设计见 `prereg/w970_layered_arch/DESIGN.md`):`BuyShopCards` = 编排壳(前置守卫/HP 关帧读链/编排三原子 op/关店后重估与 gold 对拍),商店动作本体按画面拆三个原子 op——`open_shop`(幂等开店:已开(「按钮-收起」可见)即成功,未开点「按钮-商店」→ 固定等待 `SHOP_OPEN_ANIM_S` → 收起锚 fail-closed 验证)、`buy_cards`(`run_buy_waves` 波循环:读牌面 → `decide_prep` → 执行至首个 RefreshShop → 刷新重判,MAX_REFRESH 硬墙;买/卖/刷/升执行与观测自检网在此)、`close_shop`(点「按钮-收起」→ 固定等待 `SHOP_CLOSE_ANIM_S` → 「收起消失」验证;商店族字段清理挂点留 TODO 待流程层批)。壳以宿主直调原子核心(非子 op 实例),保证读屏次序与替身行为等价;三个 op 类均可 `run_operation` 独立跑。
+**商店链结构**(`operations/cw_op/`;分层架构设计见 `prereg/w970_layered_arch/DESIGN.md`):商店动作按画面拆三个原子 op——`cw_op_open_shop`(幂等开店:已开(「按钮-收起」可见)即成功,未开点「按钮-商店」→ 固定等待 `SHOP_OPEN_ANIM_S` → 收起锚 fail-closed 验证)、`cw_op_buy_cards`(`run_buy_waves` 波循环:读牌面 → `decide_prep` → 执行至首个 RefreshShop → 刷新重判,MAX_REFRESH 硬墙;买/卖/刷/升执行与观测自检网在此)、`cw_op_close_shop`(点「按钮-收起」→ 固定等待 `SHOP_CLOSE_ANIM_S` → 「收起消失」验证;商店族字段清理挂点留 TODO 待流程层批)。原 `BuyShopCards` 编排壳已退役删除(2026-09-03 命名迁移+退役删除批):决策核只发显式开店意图;三个 op 类均可 `run_operation` 独立跑。
 
-**注意分层**:买牌内的刷新(RefreshShop)与买入(BuyCard)是 `cw_state` 的 **sim/决策层 Action**(决策层产出、`decision_v2`/`sim` 消费),由 RunBuyPhase(BuyShopCards op)在执行层落地,不是 prep_actions 类;穿戴/合成同理——装备执行走 RunEquip(EquipAllOp op,§6),合成决策在 `cw_synthesis`(op 层暂无独立动作)。
+**注意分层**:买牌内的刷新(RefreshShop)与买入(BuyCard)是 `cw_state` 的 **sim/决策层 Action**(决策层产出、`decision_v2`/`sim` 消费),由商店三原子 op(CwOpOpenShop/CwOpBuyCards/CwOpCloseShop)在执行层落地(RunBuyPhase/BuyShopCards 组合壳已退役删除),不是 prep_actions 类;穿戴/合成同理——装备执行走 RunEquip(CwOpEquipAll op,§6),合成决策在 `cw_synthesis`(op 层暂无独立动作)。
 
-组合动作保留四项板上行为(DeployBenchOp 内:换血/同角色去重/前排保证/cap 门)——`_should_deploy`+`_pick_deploy_row` 不足以复现,全原子切换会静默回归。部署槽位上限实测读取(财富宝钻 +1 随环境变,不硬编码)。**deploy 围栏**(配方饥饿期非过渡件留 bench)= `_DEPLOY_FENCE` = RECIPE∪ENGINE 桥派生单一源(ADR-0226)。⚠️ 已知漂移(ADR-0261):op 侧 `_deploy_deterministic` 与 `cw_deploy_logic.select_deployments` 纯函数非同源——op 无 ignition 排序首键、且多 r288 配方底线门(列车≥2 且仙舟<3 拦列车件;纯函数无此门=sim 盲区),引擎件存量躺 bench 的生产机制在此,修复待裁决。
+组合动作保留四项板上行为(CwOpDeploy 内:换血/同角色去重/前排保证/cap 门)——`_should_deploy`+`_pick_deploy_row` 不足以复现,全原子切换会静默回归。部署槽位上限实测读取(财富宝钻 +1 随环境变,不硬编码)。**deploy 围栏**(配方饥饿期非过渡件留 bench)= `_DEPLOY_FENCE` = RECIPE∪ENGINE 桥派生单一源(ADR-0226)。⚠️ 已知漂移(ADR-0261):op 侧 `_deploy_deterministic` 与 `cw_deploy_logic.select_deployments` 纯函数非同源——op 无 ignition 排序首键、且多 r288 配方底线门(列车≥2 且仙舟<3 拦列车件;纯函数无此门=sim 盲区),引擎件存量躺 bench 的生产机制在此,修复待裁决。
 
 ## 3. 备战动作规划(decision_v2;旧 cw_plan 已退役)
 
@@ -99,13 +99,13 @@ registry;末段施加,降级非禁绝——[31]④ 填充不变量保留,填充�
 
 影子接缝形态已随 strategy_v1 退役(ADR-0477);决策 why 见 ADR-0156,现役买候选估值 = decision_v2 四层。
 
-## 6. 装备执行(EquipAllOp)
+## 6. 装备执行(CwOpEquipAll)
 
-装备机制 = 拖拽(装备区 owned → 角色槽;点「装备推荐」只弹列表非一键穿)。EquipAllOp 按 `key_equips` 有序优先分配(carry 先拿,合成优先级 = 合成首选数据);狼狩线受穿戴纪律约束(物品栏真积压报警,不为狼狩牺牲合成规划,M16 用户修正版);拆装扳手/冶金炉/投影仪等工具域动作在动作全集但决策函数按需实现。P1 阶段**合成保留组件不入穿戴池**(`cw_synthesis.RESERVED_COMPONENTS` 单一源,key_equips 豁免;组件留 owned 待合成,ADR-0265)。
+装备机制 = 拖拽(装备区 owned → 角色槽;点「装备推荐」只弹列表非一键穿)。CwOpEquipAll 按 `key_equips` 有序优先分配(carry 先拿,合成优先级 = 合成首选数据);狼狩线受穿戴纪律约束(物品栏真积压报警,不为狼狩牺牲合成规划,M16 用户修正版);拆装扳手/冶金炉/投影仪等工具域动作在动作全集但决策函数按需实现。P1 阶段**合成保留组件不入穿戴池**(`cw_synthesis.RESERVED_COMPONENTS` 单一源,key_equips 豁免;组件留 owned 待合成,ADR-0265)。
 
 分配准入接 P14 期望模型(ADR-0391):**防误合成配对守卫**(全 plane)——同角色互为配方的两基础件拒发(穿着触发自动合成不可逆),例外=产物 ∈ key_equips 且穿者 core(快路径)或两件均回收合格且穿者非 core(回收线有意 2合1);**死库存回收去向**(P2/P3)——回收合格基础件(`cw_synthesis.recycle_qualified`,P14 定理 3)优先发非 core 工具人 ≤2 件/人,发不完留 owned 囤着,core 不吃死库存。遥测:每轮备战首次读板记 owned 快照与「缺什么囤什么」差集(`[cw!][grant]`/`[cw!][hoard]` 日志行;λ 标定与判读锚点数据源)。
 
-过渡期/opening 装备 hold 的辖域修饰(ADR-0461,开关与名单单一源 = `decision_v2.registry` W607 字段块,默认关=零漂移):**opening hold 收窄**(`opening_hold_battle_gate_enabled`)——P1 r≤2 的 hold 仅当当前节点非战斗类(`opening_hold_battle_nodes`,节点真值 = `GameState.node_type`,缺省回查节点序列台账 `ledger_node_type`;观察缺失维持 hold 的保守降级);**库藏生锈穿戴豁免**(`rust_wear_release_enabled`)——词条(`cw_comps.RUST_AFFIX_NAME`,机制语义 = docs/game/currency_war/data/competitors.md「库藏生锈」行)在场时豁免 hold 的「只穿 key_equips」过滤,分配序列全量穿戴(每件 owned 滞留 = 敌方双向增益,滞留代价随件数单调)。两修饰在 EquipAllOp 调用侧组合,`_transition_hold_active` 本体语义不变。
+过渡期/opening 装备 hold 的辖域修饰(ADR-0461,开关与名单单一源 = `decision_v2.registry` W607 字段块,默认关=零漂移):**opening hold 收窄**(`opening_hold_battle_gate_enabled`)——P1 r≤2 的 hold 仅当当前节点非战斗类(`opening_hold_battle_nodes`,节点真值 = `GameState.node_type`,缺省回查节点序列台账 `ledger_node_type`;观察缺失维持 hold 的保守降级);**库藏生锈穿戴豁免**(`rust_wear_release_enabled`)——词条(`cw_comps.RUST_AFFIX_NAME`,机制语义 = docs/game/currency_war/data/competitors.md「库藏生锈」行)在场时豁免 hold 的「只穿 key_equips」过滤,分配序列全量穿戴(每件 owned 滞留 = 敌方双向增益,滞留代价随件数单调)。两修饰在 CwOpEquipAll 调用侧组合,`_transition_hold_active` 本体语义不变。
 
 ## 7. 边界
 

@@ -18,7 +18,7 @@
 
 **生命周期**:`create_session`(每局)/ `on_match_start` / `on_round_end(obs)`(默认 `performance.record`——观测驱动回路)/ `on_match_end(outcome)`。
 
-**决策**:`update_target`(战略,写 session.target_comp;框架在环入口调)/ **`decide_shop_screen(session, config)(黑板;原 decide_prep 已退役)`**(备战整段计划——复合动作 RunBuyPhase 路径的决策口,返回动作列表;decision_v2 的四象限/应急/决战窗在此,03 §3)/ **`decide_prep_action(obs, session, config)`**(备战单步——PrepDirector 环的决策口,03 §1;两个备战口并存:环走单步、复合走整段)/ `decide_invest` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_planner`(策划事件选项,银狼命运卜者类,r104 接策略模块)(事件节点,04;overlay 态经 decide_prep_action 内部委托)。
+**决策**:`update_target`(战略,写 session.target_comp;框架在环入口调)/ **`decide_shop_screen(session, config)(黑板;原 decide_prep 已退役)`**(备战整段计划——复合动作 RunBuyPhase 路径的决策口,返回动作列表;decision_v2 的四象限/应急/决战窗在此,03 §3)/ **`decide_prep_action(obs, session, config)`**(备战单步——CwScreenPrep 环的决策口,03 §1;两个备战口并存:环走单步、复合走整段)/ `decide_invest` / `decide_supply` / `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_planner`(策划事件选项,银狼命运卜者类,r104 接策略模块)(事件节点,04;overlay 态经 decide_prep_action 内部委托)。
 
 **state 供给契约**:框架在调 `update_target` 前产出与生产一致的 state(shop 关闭帧 hp 覆盖 → 开 shop 读 gold/board/shop),策略不自己截图。
 

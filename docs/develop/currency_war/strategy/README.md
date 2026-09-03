@@ -21,12 +21,12 @@ v1 的四个假设被 784 篇投稿深读(r167-r187)与用户系列裁定(r149-r
 ## 每回合决策链(数据流)
 
 ```
-battle_loop(主循环,屏幕级路由)
+cw_loop(主循环,屏幕级路由)
   ├─ 观测层:各屏 reader(OCR/SIFT/CV)→ GameState(06_input_model)
   ├─ 对账:cw_reconcile(tracking vs 读到的真值;05_observation)
   ├─ 策略钩子(CwStrategy,07_plugin):
   │    update_target(选/转阵容,02_comp)
-  │    decide_prep_action(备战单步动作 → PrepDirector 环执行,03_tactics)
+  │    decide_prep_action(备战单步动作 → CwScreenPrep 环执行,03_tactics)
   │    decide_invest/encounter/supply/megastar/partner(事件节点,04_nodes)
   ├─ 战术层:plan(硬门贪心+蒙特卡洛D牌)/ evaluate(阶段键控)/ bundle(联合束)
   │    —— 花钱节奏(升/刷/攒)由 DP 姿态统一回答(01_posture)
@@ -58,7 +58,7 @@ battle_loop(主循环,屏幕级路由)
 | 终局意向 | `cw_intention` | 意向分层纯逻辑:信号五层/锁线撤销析取两出口(miss-N 窗口冻结逐出 / 高层信号过可达对照)/降格终局 absorbing(换线存活轮数门 C4 已清退,dd-009;换线落锁直接经撤销出口与信号门槛);锁后只输出囤货目标集合写 v3_hoard(买侧唯一消费面,不改板上)(ADR-0319;「锁线=可评估假设」的方向侧机制〔停滞评估/升格〕已随 sim A/B 判负清理,语义、负结果与复活条件=ADR-0509;判死记忆契约 falsified 缓期挂账=ADR-0511,随首个判死写入端批次落地) | [02 §11](02_comp.md)+[0429](../decisions/0429-gate-v2-line-switch-wiring.md)+[0509](../decisions/0509-stagnation-transform-arm.md)+[0511](../decisions/0511-signal-layer-falsified-memory.md) |
 | 战术 | `kernel/cw_deploy_seat`(腾席判据+deploy 不变量)/`decision_v2`(备战四层) | 备战动作规划/腾席与升级门判据(`kernel/cw_junk_first` 变宝为废牺牲合成排序已清退删除,dd-009;装备分配走 `kernel/cw_equip_env` 基分配直通) | [03](03_tactics.md) |
 | 节点决策 | `cw_events`/`cw_survey19_hooks`/`cw_difficulty_account` | 投资卡/遭遇/补给/巨星/伙伴选择;难度账本 | [04](04_nodes.md) |
-| 执行 | `prep_director`/`prep_actions`/`operations/`(cw_loop+cw_entry+cw_screen+cw_flow+prep+handlers+run_nodes) | 备战决策环、原子动作执行器、op 层;商店链 = `operations/prep/shop.py`(编排壳:前置守卫/HP 关帧读链/关店后重估与对拍)+ `open_shop`/`buy_cards`/`close_shop` 三原子 op(开店幂等/波循环决策执行/关店验证,壳以宿主直调保读屏次序) | [03](03_tactics.md) |
+| 执行 | `cw_screen_prep`/`prep_actions`/`operations/`(cw_loop+cw_entry+cw_screen+cw_flow+cw_op) | 备战决策环、原子动作执行器、op 层;商店链 = `operations/cw_op/` 三原子 op `cw_op_open_shop`/`cw_op_buy_cards`/`cw_op_close_shop`(开店幂等/波循环决策执行/关店验证;原 `shop.py` 编排壳已随 2026-09-03 命名迁移+退役删除批退役) | [03](03_tactics.md) |
 | 观测 | `cw_observation`/`cw_obs_core`/`cw_identity_obs`/`cw_node_obs`/`cw_settlement_obs`/`cw_briefing_obs`/`cw_node_reader`/`cw_reconcile`/`cw_performance`/`telemetry.state`+`recorder`+`defects`(决策迹) | 读屏→GameState;对账;观测反馈;决策迹 | [05](05_observation.md) |
 | sim/回放基建 | `sim/pool`+`sim/engine_p1`+`sim/engine_p2`+`sim/runner`(P1 全流程模拟器四模块:真代码层同源+校准层可注入+实机 Δ 池重放,ADR-0218/0242)/`sim/checks/`八模块(账本检查,实机学费回灌载体;池新鲜度报警 ADR-0344)/`cw_delta_pool_data`(Δ 池快照,生成勿手编)/`cw_delta_pool_gen`(池生成核心+局终自动再生管线,ADR-0344;CLI 壳 tools/cw/gen_delta_pool_snapshot.py)/`cw_replay`(决策回放 harness)/`cw_match_recorder`(对局采集器,decisions.jsonl 写路径) | 策略迭代的秒级反馈链(sim 批量 → 回放对拍 → 实机最后一步);不进生产执行链 | [05 §5](05_observation.md) |
 | 插件 | `cw_strategy`/`cw_strategy_manager`/`strategies/decision_v2_strategy`(现行生产 v2;旧 line_strategy 已删 ADR-0336,default_strategy 已删 ADR-0466) | 可替换决策大脑(第三方策略/比赛) | [07](07_plugin.md) |
@@ -68,7 +68,7 @@ battle_loop(主循环,屏幕级路由)
 
 - [01 姿态与经济](01_posture.md)—— DP 求解器、效果台账、息引擎与例外窗口、目标函数
 - [02 阵容选择](02_comp.md)—— COMP_LIBRARY、select_comp/pivot/commit、双轨过渡、审判层、跨局分配
-- [03 战术执行](03_tactics.md)—— PrepDirector 环、动作全集、plan/evaluate/bundle、部署与装备
+- [03 战术执行](03_tactics.md)—— CwScreenPrep 环、动作全集、plan/evaluate/bundle、部署与装备
 - [10 成型停手与 boss 族裁决](10_formed_stop_boss_mech.md)—— formed_stop 目标件白名单语义、boss 轮特殊机制族 a/b/c 裁决表(单一源)
 - [11 工具使用策略](11_tools_usage_design.md)—— 工具 7 件何时用/不用判据(**需求定义件**:实现未落地,落地后应改写 as-built;机制事实在 game/research/equipment_mechanics.md)
 - [04 节点决策](04_nodes.md)—— 投资/遭遇/补给/巨星/伙伴、难度账本

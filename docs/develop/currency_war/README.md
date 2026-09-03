@@ -10,7 +10,7 @@
 - [README](strategy/README.md) —— 总览:为什么有策略 v2 + 每回合决策链 + 模块地图 + 核心哲学 + 边界 + 旧编号对照(v2 重设计定稿 redesign.md 已砍除归档,ADR-0365;裁定史 ADR-0227)
 - [01 姿态与经济](strategy/01_posture.md) —— DP 求解器(花钱节奏单一姿态源)/ 效果台账 / 息引擎 / 目标函数
 - [02 阵容选择](strategy/02_comp.md) —— COMP_LIBRARY / select_comp·pivot·commit / 双轨过渡 / 审判层 / 跨局分配
-- [03 战术执行](strategy/03_tactics.md) —— PrepDirector 决策环 / 动作全集 / plan·evaluate·bundle / 部署与装备
+- [03 战术执行](strategy/03_tactics.md) —— CwScreenPrep 决策环 / 动作全集 / plan·evaluate·bundle / 部署与装备
 - [04 节点决策](strategy/04_nodes.md) —— 投资 / 遭遇 / 补给 / 巨星 / 伙伴 + 难度账本
 - [05 观测与遥测](strategy/05_observation.md) —— reader 家族 / 对账 / PerformanceTracker / telemetry / 日志格式
 - [06 信息模型](strategy/06_input_model.md) —— GameState 语义 / 注册表地图

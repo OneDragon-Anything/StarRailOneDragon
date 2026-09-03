@@ -32,7 +32,7 @@ v0 形态已随 strategy_v1 退役(ADR-0477);决策 why 见 ADR-0171。现役换
 
 ## 6. cw_run_allocator:跨局分配层
 
-「这局打哪个臂(策略/阵容方向)」的跨局回答(ADR-0170):各臂 Beta 后验(先验来自 plaza 伪计数,封顶防幸存者偏差)+ Thompson 采样选择;`forbid` 方向盘 + forced 豁免;update 按位面进度分级奖励 × adherence 加权;**必死局回收**(P(win)<ε 时选方差最大可达臂采数据);指数遗忘。P(win) 供给 = `cw_first_passage`(01 §6)。`battle_loop` 每局开始消费。
+「这局打哪个臂(策略/阵容方向)」的跨局回答(ADR-0170):各臂 Beta 后验(先验来自 plaza 伪计数,封顶防幸存者偏差)+ Thompson 采样选择;`forbid` 方向盘 + forced 豁免;update 按位面进度分级奖励 × adherence 加权;**必死局回收**(P(win)<ε 时选方差最大可达臂采数据);指数遗忘。P(win) 供给 = `cw_first_passage`(01 §6)。`cw_loop` 每局开始消费。
 
 ## 7. 巨星选择(select_megastar)
 

@@ -50,7 +50,7 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 三项 = 挑战进度幅度 + 掉血说明面板两伤害分量,读点在挑战结束屏(`cw_settlement_obs` 读数器族;落点 = RoundOutcome 四字段 → outcomes.jsonl)。读数策略三条(均实机帧定谳):
 
 - **页 2 整版布局 = 常驻**:挑战结束屏进入后先有约 2s 掉血动画期,动画结束后完整结算页常驻在屏直至点「继续挑战」——HP 锚(「小队生命值」行 ∨「继续挑战」按钮)可靠,作三项读数的页态门(锚不在 = 动画期/过渡帧,读 None 不算 miss)。
-- **「小队生命值结算说明」tooltip = 瞬态**:两伤害分量所在的悬浮子件只出现在进页瞬窗内——须窗口内捕获(败局链在页 1 即读;胜轮读点在页 2 时 tooltip 大概率已离屏,由 battle_loop 页 1 暂存合并兜底)。
+- **「小队生命值结算说明」tooltip = 瞬态**:两伤害分量所在的悬浮子件只出现在进页瞬窗内——须窗口内捕获(败局链在页 1 即读;胜轮读点在页 2 时 tooltip 大概率已离屏,由 cw_loop 页 1 暂存合并兜底)。
 - **面板延迟渲染的时序约束**:面板要延迟约 2-4s 才渲染,读点早于面板出现即漏读——效率等待与捕获完整性的共存条件是读点对齐「面板已渲染」帧(等待下限或锚点检测)。
 
 **删失约定**:读不到 = None(诚实缺省),禁造假值——面板不在场的 None ≠ 0,「只有基础伤害分量」与「没读到」必须可分(与金币明细的 None/0 分离同判据);值域先验兜 OCR 丢负号(分量行恒 ≤ 0,无符号正值拒信记 None)。
@@ -77,7 +77,7 @@ tracking(内存 dead-reckoning)vs 读到的真值,多层校准(L0 内存跟踪 �
 - `cw_weight_search`:CEM 权重搜索(防退化三件套);
 - `cw_divergence_stats`:影子 DP 姿态 vs 生产姿态分歧频率(人机问询触发门数据源);
 - `cw_match_recorder`:对局采集器(§4;离线重放模式可对历史截图目录重跑提取)。历史局审计通道 = decisions.jsonl(写路径在 telemetry recorder;live vs 旧 v1 plan 的对拍器已随 strategy_v1 退役,ADR-0477)。
-- `telemetry/match_archive`:按局存档(ADR-0486)——终局旁路把一个游戏局(可跨多个 run 段,game_id 按段首帧继承)装配为自包含档案 `replay/matches/match_<game_id>.json` + `matches/index.jsonl` 摘要索引。触发 = 局终钩子(battle_loop 调 `assemble_pending`)+ CLI `assemble [--game]` 兜底;查询 CLI `--match <game_id>` 直读档案(切片物化后复用同一套视图函数,输出与 `--run` 一致),`--recent` 读索引;水位线实现旧数据不回填;写盘 tmp+rename 原子。保留策略(契约):index 永久,档案超窗口可删留行、可从 replay 原始流重装配。装配逐轮表含 hp 真值链/刷新波/配对/姿态外,还提该轮最优决策帧的决策明细(`decision_detail`:v3_intention/candidate_scores/eval_breakdown/dp_posture)与 `bench`/`equips`,顶层带 `strategy_version` 版本戳。**schema 版本单一源 = `match_archive.SCHEMA_VERSION`**(加法字段递增,旧档案经 `load_archive` 版本检查自动重装配补齐,版本迁移读端不静默缺列)。顶层 `endgame.final_snapshot` = 局级终局快照(取全局最晚决策迹帧的 state:终局阵容/金/等级/terminal 计数;装配端派生、零新运行时写入)。
+- `telemetry/match_archive`:按局存档(ADR-0486)——终局旁路把一个游戏局(可跨多个 run 段,game_id 按段首帧继承)装配为自包含档案 `replay/matches/match_<game_id>.json` + `matches/index.jsonl` 摘要索引。触发 = 局终钩子(cw_loop 调 `assemble_pending`)+ CLI `assemble [--game]` 兜底;查询 CLI `--match <game_id>` 直读档案(切片物化后复用同一套视图函数,输出与 `--run` 一致),`--recent` 读索引;水位线实现旧数据不回填;写盘 tmp+rename 原子。保留策略(契约):index 永久,档案超窗口可删留行、可从 replay 原始流重装配。装配逐轮表含 hp 真值链/刷新波/配对/姿态外,还提该轮最优决策帧的决策明细(`decision_detail`:v3_intention/candidate_scores/eval_breakdown/dp_posture)与 `bench`/`equips`,顶层带 `strategy_version` 版本戳。**schema 版本单一源 = `match_archive.SCHEMA_VERSION`**(加法字段递增,旧档案经 `load_archive` 版本检查自动重装配补齐,版本迁移读端不静默缺列)。顶层 `endgame.final_snapshot` = 局级终局快照(取全局最晚决策迹帧的 state:终局阵容/金/等级/terminal 计数;装配端派生、零新运行时写入)。
 
 ## 6. 日志格式标准(可检索;单一源)
 
@@ -90,7 +90,7 @@ CW 实机运行/识别加结构化日志,**两族前缀**(识别/观测层走 he
 
 字段:`[op]` 模块(read_equipped/read_equips/deploy/equip_all/recognize 等)/ `[step]` 节点 / `[target]` 对象(slot=前排-1 / screen=备战 / char=飞霄);状态标记 `MISS=[名(val)]`(漏检)/ `UNKNOWN screen=`(未建档)/ `FOUND=`(找到);`| shot=<名>` 配对截图(定位画面)。打点直接调全局 `cw_log` / `cw_shot`(`cw_observe`),**不透传 logger 参数**。
 
-**B 族(执行/策略流程层,模块内直打)**:`[cw-<tag>]` 前缀,一模块一 tag——`[cw-deploy]`(deploy_bench)/`[cw-equip]`(equip_all)/`[cw-loop]`(battle_loop)/`[cw-pivot]`·`[cw-target]`(策略选线)/`[cw-director]`·`[cw-prep]`(备战编排)/`[cw-shop]`·`[cw-plan]`(买牌规划)/`[cw-entry]`·`[cw-exit]`(进出对局)/ handler 各自 tag(`[cw-partner]`/`[cw-env]`/`[cw-strat]`/`[cw-box]`/`[cw-sphere]`/`[cw-briefing]`/`[cw-wish]`/`[cw-megastar]`/`[cw-supply]`/`[cw-encounter]`/`[cw-armbox]`/`[cw-clean]`)及基建 tag(`[cw-hook]`/`[cw-alloc]`/`[cw-strategy]`/`[cw-drag]`/`[cw-settle]`/`[cw-snap]`)。普通用 info;**需关注用 `log.warning`**(同前缀)。
+**B 族(执行/策略流程层,模块内直打)**:`[cw-<tag>]` 前缀,一模块一 tag——`[cw-deploy]`(deploy_bench)/`[cw-equip]`(equip_all)/`[cw-loop]`(cw_loop)/`[cw-pivot]`·`[cw-target]`(策略选线)/`[cw-director]`·`[cw-prep]`(备战编排)/`[cw-shop]`·`[cw-plan]`(买牌规划)/`[cw-entry]`·`[cw-exit]`(进出对局)/ handler 各自 tag(`[cw-partner]`/`[cw-env]`/`[cw-strat]`/`[cw-box]`/`[cw-sphere]`/`[cw-briefing]`/`[cw-wish]`/`[cw-megastar]`/`[cw-supply]`/`[cw-encounter]`/`[cw-armbox]`/`[cw-clean]`)及基建 tag(`[cw-hook]`/`[cw-alloc]`/`[cw-strategy]`/`[cw-drag]`/`[cw-settle]`/`[cw-snap]`)。普通用 info;**需关注用 `log.warning`**(同前缀)。
 
 **检索口径**(方括号在 grep 里是字符类,须转义或用前缀匹配):
 
