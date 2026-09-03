@@ -82,6 +82,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_deploy_cap,
     read_deployed_count,
     read_node_sequence,
+    read_phase_round,
 )
 from sr_od.application.currency_war.obs.cw_shop_obs import (
     RefreshExpect,
@@ -1379,7 +1380,15 @@ class CwScreenPrep(SrOperation):
         )
         log.info('[cw][director] 新局 boss/词缀无实采真值(session 空)'
                  '→ 位面详情情报采集(可交互备战帧,第%d次)', _tries)
-        _pb_res = CwScreenPlaneIntel(self.ctx).execute()
+        # 起始采集位面(2026-09-03 用户裁决:时序反过来——进详情之前先在
+        # 备战帧识别当前节点得当前位面,详情内只采当前及之后的位面);
+        # 读不到保持 0 = 子 op 内部再试/全采回退。
+        _start_plane = 0
+        with contextlib.suppress(Exception):
+            _pp = read_phase_round(self.ctx, self.last_screenshot)
+            if _pp and _pp[0]:
+                _start_plane = int(_pp[0])
+        _pb_res = CwScreenPlaneIntel(self.ctx, start_plane=_start_plane).execute()
         # 成功取走/失败残留都清空(防泄漏到下局判空;词缀随采结算只在本分支)
         _names = list(self.ctx.cw_plane_bosses or [])
         _affixes = list(self.ctx.cw_plane_affixes or [])

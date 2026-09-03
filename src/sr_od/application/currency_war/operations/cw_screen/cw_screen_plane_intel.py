@@ -26,6 +26,11 @@
   ⚠️ 必须是**定型备战帧**——boss 战后位面过场的半开备战帧点不开详情
   (22:17/22:22 两轮实跑 12 retry 全空证);调用方(cw_loop 接管补采)
   自带 2 次重试账,过场帧首试失败后下个稳定备战帧再试。
+- **起始位面裁剪**(2026-09-03 用户裁决,接管时序修正):接管链在进详情
+  **之前**先在备战帧识别当前节点(顶栏 X-Y,如 2-2)得当前位面,经
+  ``start_plane`` 构造参数传入(或本 op 备战入口现读);详情内只采当前
+  及之后的位面,之前的位面跳过(已通过节点变暗 ⇒ 详情条识别退化是
+  正常态,不是「动画中」)。起始位面全程未取得 → 回退全量采集(保底)。
 - 出口:回备战屏(X 点击后验位面详情 id_mark 消失=真转移);采集结果经
   ``ctx.cw_plane_bosses``/``cw_plane_affixes`` 中转(与 ``cw_briefing_*``
   同模式;消费接线批待做,本 op 只负责采集)。
@@ -75,6 +80,12 @@ _LABEL_AREA: str = '文本-节点类型名'
 # 间隔重读给动画时间,超宽上限才真失败(覆盖最慢加载)。
 _NODE_BAR_READ_INTERVAL_S: float = 2.0   # 两次重读的间隔(给转换/加载动画时间)
 _NODE_BAR_WAIT_CAP_S: float = 90.0       # 非clean 总等待上限,超限才真失败
+
+# 用户定值等待(2026-09-03 第六局接管时序裁决):
+# - 进位面详情的开屏等待 ~3s(点节点图标 → 详情开 + 动画落定);
+# - 详情内点**位面卡切换**后等 2s 即读,不足再排查识别效率(不在此预加等待)。
+_DETAIL_OPEN_WAIT_S: float = 3.0
+_PLANE_SWITCH_WAIT_S: float = 2.0
 
 # 静止帧提前放弃(2026-08-30 哨兵 20:22:36 实证:变暗静态条被判「切卡动画中」
 # 硬等 90s 后放弃,采集从未通过此门)。区分信号=帧稳定性:真动画(位面转换/
@@ -150,29 +161,25 @@ def node_seq_cross_mismatch(prep_seq: list[str | None],
     return mism if compared else None
 
 
-def decide_plane_skip(plane_no: int, session_plane: int | None,
-                      ledger_seq: list[str | None] | None) -> tuple[bool, str]:
+def decide_plane_skip(plane_no: int,
+                      start_plane: int | None) -> tuple[bool, str]:
     """单位面「是否跳过采集」判据(纯函数,可单测)。
 
-    语义(实机观察实证:P2 采集时逐位面全量重采,位面 1 已变暗=过去时,
-    重采浪费且变暗渲染下节点条识别退化导致长时间停留):
-    - ``session_plane`` 有真值且 ``plane_no < session_plane``(过去位面):
-      台账已有该位面值 → 跳过(台账值 = 过去位面进位面时代已写入,不覆写
-      不重采);台账**缺值** → 不跳,降级补采一次(变暗态低置信,记日志)。
-    - 当前/未来位面(>= session_plane)→ 正常采集。
-    - ``session_plane`` 无真值(None)→ 不跳全量采集(无真值不发明跳过)。
+    语义(2026-09-03 用户裁决,DD-023;第六局接管实证):时序反过来——进位面详情
+    **之前**先在备战画面识别当前节点(如 2-2)得当前位面,由此裁剪采集范围:
+    **当前位面之前的位面一律跳过**(已通过节点变暗导致详情节点条识别退化
+    是正常态,不是「动画中」,重采浪费且低置信;session 侧这些位面本来就该
+    有旧数据或不可知)。当前及之后位面正常采集;起始位面无真值(None/0)
+    → 不跳,回退全量采集(备战识别失败的保底语义)。
 
-    :param ledger_seq: 节点台账该位面序列(``PlaneNodeLedger.seq_by_plane``;
-        None/空/全 None 位 = 缺值)。注意全 None 与缺值同判——全 None 的行
-        对查表方(:func:`cw_state.ledger_node_type`)等价于没有。
-    :return: ``(skip, note)``;skip=True 时 note 说明跳过原因,skip=False 时
-        note 为空串或降级补采标注(仅作日志用途)。
+    :param start_plane: 起始采集位面(1-based;None/0 = 未取得,全采回退)。
+        来源优先级:调用方传入(接管链备战帧现读)> 本 op 备战帧现读 >
+        位面详情顶栏 OCR;全无 = 全采。
+    :return: ``(skip, note)``;skip=True 时 note 说明跳过原因,否则为空串。
     """
-    if session_plane is None or plane_no >= session_plane:
+    if not start_plane or plane_no >= start_plane:
         return False, ''
-    if not ledger_seq or all(v is None for v in ledger_seq):
-        return False, 'past位面缺值,降级补采(变暗态低置信)'
-    return True, '跳过(已完成,台账保留,不覆写)'
+    return True, f'跳过(位面{plane_no}<起始位面{start_plane},已通过位面不重采)'
 
 
 class CwScreenPlaneIntel(SrOperation):
@@ -181,10 +188,17 @@ class CwScreenPlaneIntel(SrOperation):
 
     SCREEN_NAME: ClassVar[str] = _PD_SCREEN
 
-    def __init__(self, ctx: SrContext):
+    def __init__(self, ctx: SrContext, start_plane: int = 0):
+        """``start_plane``:起始采集位面(1-based;0=未知 → 全采回退)。
+
+        来源 = 接管链在进详情**之前**的备战帧现读(2026-09-03 用户裁决:
+        时序反过来,先识别当前节点得当前位面再进详情);调用方没算出时
+        本 op 在备战入口自行现读,仍无则全量采集(保底)。
+        """
         SrOperation.__init__(self, ctx, op_name='货币战争-位面情报采集')
         self._plane_bosses: list[str | None] = [None, None, None]   # 位面1..3
         self._cur_plane: int = 0          # 0-based 当前采集位面索引
+        self._start_plane: int = max(0, int(start_plane))   # 1-based;0=未知全采
         self._affixes: list[str] = []     # 词缀横条(位面详情屏,随 boss 同开读取)
         self._nonclean_wait_start: float | None = None   # 非clean帧等待起点(time.monotonic 时刻;None=未在等)
         # 节点序列互证输入(观测自检框架设计 §1 行11/§5-B5):备战帧的节点类型
@@ -270,27 +284,25 @@ class CwScreenPlaneIntel(SrOperation):
                   self._cur_plane + 1, name, good)
         return name
 
-    def _nonclean_read_gate(self, reason: str,
-                            conclude_plane: bool = False) -> OperationRoundResult:
-        """非clean帧等待门:节点条读不出时分流三路——
+    def _nonclean_read_gate(self, reason: str) -> OperationRoundResult:
+        """非clean帧等待门(**仅备战入口路径**;详情侧不走此门)。
 
-        ① 帧在变(真动画:位面转换/加载)→ 间隔重读等动画窗,超宽上限
-           (:data:`_NODE_BAR_WAIT_CAP_S`)才真失败(原始设计,2026-08-27 过场帧
+        ① 帧在变(真动画:过场/加载)→ 间隔重读等动画窗,超宽上限
+           (:data:`_NODE_BAR_WAIT_CAP_S`)才 op 级失败(2026-08-27 过场帧
            实证:动画窗远长于短窗连读);
-        ② 帧静止(连续 :data:`_GATE_STATIC_FAIL_FRAMES` 帧零变化)且
-           ``conclude_plane=False``(备战入口路径)→ 非动画,读不出是渲染态
-           问题,等下去不会变 clean → **op 级提前放弃**(备战侧读不出 = 连详情
-           都开不了,没有"下一位面"可推进,op 级失败留给调用方重试账;
-           2026-08-30 哨兵实证:变暗静态条被当「切卡动画中」硬等 90s);
-        ③ 帧静止且 ``conclude_plane=True``(位面详情采集循环路径)→
-           **位面级结论**(:meth:`_conclude_plane_unreadable`):静止只证明
-           「这一位面这一帧的情报不可得」,不升格为整场采集失败(W901 治本:
-           局13/16 三现的「2 伪重试烧光 + 整场无情报」根因 = 部分失败被
-           round_fail 升格;同 conclude_plane_boss 徽章态记 None 的语义线)。
+        ② 帧静止(连续 :data:`_GATE_STATIC_FAIL_FRAMES` 帧零变化)→ 非动画,
+           读不出是渲染态问题,等下去不会变 clean → op 级提前放弃(备战侧
+           读不出 = 连详情都开不了,没有"下一位面"可推进,op 级失败留给
+           调用方重试账;2026-08-30 哨兵实证:变暗静态条被当「切卡动画中」
+           硬等 90s)。
+
+        详情侧(采集循环内)的「节点条读不出」**不经此门**:2026-09-03
+        用户裁决——已通过节点变暗=正常态,直接位面级结论记 None 推进,
+        不再间隔重试(见 :meth:`_conclude_plane_unreadable`)。
 
         clean 判定语义不变(读出即 clean);上限与静止判定都是墙钟/帧序
-        计时,与 round retry 账解耦——因此 ``采集`` 节点的 retry 预算须
-        ≥ 上限/间隔(node_max_retry_times=60),否则预算先耗尽。
+        计时,与 round retry 账解耦——备战入口重试预算须 ≥ 上限/间隔
+        (node_max_retry_times=60),否则预算先耗尽。
         """
         now = time.monotonic()
         if self._nonclean_wait_start is None:
@@ -313,8 +325,6 @@ class CwScreenPlaneIntel(SrOperation):
                 self._nonclean_wait_start = None
                 self._gate_prev_thumb = None
                 self._gate_static_streak = 0
-                if conclude_plane:
-                    return self._conclude_plane_unreadable(reason)
                 self._best_effort_close_detail()
                 return self.round_fail(
                     f'节点条非clean({reason})但画面已静止'
@@ -345,10 +355,11 @@ class CwScreenPlaneIntel(SrOperation):
                     time.sleep(1.5)
 
     def _conclude_plane_unreadable(self, reason: str) -> OperationRoundResult:
-        """位面级「情报不可得」结论(详情侧静止非clean的出口,W901 治本)。
+        """位面级「情报不可得」结论(详情侧节点条读不出的唯一出口,W901 治本;
+        2026-09-03 起采集循环读不出即直接进此结论,不经等待门重试)。
 
-        语义:已确在位面详情(调用方守卫)+ 节点条静止读不出(等不会变
-        clean)⇒ 只结论「该位面情报不可得」(记 None,同徽章态语义线),
+        语义:已确在位面详情(调用方守卫)+ 节点条读不出(变暗/渲染态,
+        等不会变 clean)⇒ 只结论「该位面情报不可得」(记 None,同徽章态语义线),
         推进下一位面,不整场 round_fail——三现根因 = 部分失败被升格为
         全场失败,调用方 2 次重试无退避同窗烧光。
         守卫:若此刻已不在位面详情(详情没开成/被弹回,如半开备战帧),
@@ -407,6 +418,12 @@ class CwScreenPlaneIntel(SrOperation):
                         _pp = read_phase_round(self.ctx, screen)
                         if _pp and _pp[0]:
                             self._prep_plane = int(_pp[0])
+                    # 起始采集位面(2026-09-03 用户裁决:时序反过来——进详情
+                    # 之前先由备战帧定当前位面,详情内只采当前及之后的位面)。
+                    # 调用方已传(更早的备战帧)则不覆盖;备战识别失败(顶栏
+                    # 也没读出)保持 0 = 全采回退。
+                    if not self._start_plane and self._prep_plane:
+                        self._start_plane = self._prep_plane
                     # 台账写点①·备战行源(两源之一):备战节点行先按位合并进表
                     # (详情条源稍后整面覆盖;合并语义=None 位保旧,见 ledger_update_plane)。
                     with contextlib.suppress(Exception):
@@ -431,7 +448,7 @@ class CwScreenPlaneIntel(SrOperation):
                 r = _area_rect(self.ctx, '区域-节点条', _PREP_SCREEN)
                 ox, oy = (r.x1, r.y1) if r is not None else (544, 24)
                 self.ctx.controller.click(Point(cur.cx + ox, cur.cy + oy))
-                time.sleep(1.5)   # MCP click 异步 ~1s + 开屏动画
+                time.sleep(_DETAIL_OPEN_WAIT_S)   # 用户定值 ~3s:开屏动画落定再读
                 return self.round_wait('已点节点图标,等位面详情开')
             return self.round_retry('非备战非位面详情,等画面')
 
@@ -451,8 +468,9 @@ class CwScreenPlaneIntel(SrOperation):
                 _log.info('[cw-plane-intel] 位面%s boss 未取得(徽章态/读取失败),'
                           'boss_fit 对应位面走中性(尽力采披露)', ','.join(_miss))
             return self.round_success('三位面采集完')
-        # 会话位面真值:优先入口备战帧快照,无则位面详情屏顶栏 OCR 读一次
-        # (read_phase_round 自带 last-known-good + 单调守卫);读不到保持 0。
+        # 会话位面真值(日志语境用):优先入口备战帧快照,无则位面详情屏
+        # 顶栏 OCR 读一次(read_phase_round 自带 last-known-good + 单调守卫);
+        # 读不到保持 0。**跳过判据不用它**,用 _start_plane(备战帧定,见上)。
         if self._session_plane == 0:
             if self._prep_plane:
                 self._session_plane = self._prep_plane
@@ -464,28 +482,20 @@ class CwScreenPlaneIntel(SrOperation):
                     _sp = read_phase_round(self.ctx, screen)
                     if _sp and _sp[0]:
                         self._session_plane = int(_sp[0])
+        # 起始位面兜底:调用方与备战帧都没拿到 → 详情顶栏 OCR 补一次;
+        # 仍无(=0)→ decide_plane_skip 不跳,全采回退。
+        if not self._start_plane and self._session_plane:
+            self._start_plane = self._session_plane
         plane_no = self._cur_plane + 1
-        # skip 过滤(判据=:func:`decide_plane_skip`;跳过位面不点卡不重采,
-        # 台账保留其进位面时代已写的值 —— close_and_report 只落 _detail_seqs
-        # 里实际采过的位面,跳过位面自然不覆写)。
-        _ledger_seq: list[str | None] | None = None
-        with contextlib.suppress(Exception):
-            from sr_od.application.currency_war.kernel.cw_state import (
-                get_node_ledger,
-            )
-            _ledger = get_node_ledger(
-                getattr(getattr(self.ctx, 'cw_match', None), 'session', None))
-            if _ledger is not None:
-                _ledger_seq = _ledger.seq_by_plane.get(plane_no)
-        _skip, _note = decide_plane_skip(plane_no, self._session_plane or None,
-                                         _ledger_seq)
+        # skip 过滤(判据=:func:`decide_plane_skip`,备战帧定的起始位面;
+        # 跳过位面不点卡不重采,close_and_report 只落 _detail_seqs 里实际
+        # 采过的位面,跳过位面自然不覆写台账)。
+        _skip, _note = decide_plane_skip(plane_no, self._start_plane or None)
         if _skip:
-            _log.info('[cw-plane-intel] 位面%d:%s(session_plane=%d)',
-                      plane_no, _note, self._session_plane)
+            _log.info('[cw-plane-intel] 位面%d:%s(start_plane=%d)',
+                      plane_no, _note, self._start_plane)
             self._cur_plane += 1
-            return self.round_wait(f'位面{plane_no}跳过(已完成),下一位面')
-        if _note:   # 降级补采路径(past 缺值),日志标注低置信
-            _log.info('[cw-plane-intel] 位面%d:%s', plane_no, _note)
+            return self.round_wait(f'位面{plane_no}跳过(已通过位面),下一位面')
         # 逐位面计时起点(retry 重入同位面不重置——耗时含 retry 空转,正要暴露)
         if self._plane_start is None or self._plane_start_plane != plane_no:
             self._plane_start = time.monotonic()
@@ -496,7 +506,7 @@ class CwScreenPlaneIntel(SrOperation):
             self._best_effort_close_detail()
             return self.round_fail(f'位面卡 area 缺失:{_PLANE_CARD_AREAS[self._cur_plane]}')
         self.ctx.controller.click(card)
-        time.sleep(1.5)
+        time.sleep(_PLANE_SWITCH_WAIT_S)   # 用户定值 2s:切卡动画短,等 2s 即读
         # ② 点该位面 boss 节点(动态定位;节点带随选中位面变)
         screen = self.screenshot()
         from sr_od.application.currency_war.obs.cw_observation import (
@@ -531,8 +541,11 @@ class CwScreenPlaneIntel(SrOperation):
                                   self._cur_plane + 1, _dv)
         boss_pt = self._boss_node_center(_detail_slots)
         if boss_pt is None:
-            # 详情侧(已开详情)→ 静止非clean 走位面级结论,不整场失败(W901)
-            return self._nonclean_read_gate('切卡动画中', conclude_plane=True)
+            # 已通过节点变暗=正常态(2026-09-03 用户裁决),等 2s 后仍读不出
+            # ⇒ 该位面情报不可得,直接位面级结论记 None 推进——不进等待门
+            # 间隔重试(第六局实证:切卡动画重试等待烧 7s 后才放弃)。
+            return self._conclude_plane_unreadable(
+                '节点条读不出(已通过节点变暗为正常态)')
         self._nonclean_wait_start = None   # 读出=clean,重置等待账
         self.ctx.controller.click(boss_pt)
         time.sleep(1.5)

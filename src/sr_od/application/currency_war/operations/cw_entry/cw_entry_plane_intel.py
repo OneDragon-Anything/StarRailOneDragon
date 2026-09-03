@@ -98,8 +98,21 @@ class CwEntryPlaneIntel(SrOperation):
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_plane_intel import (
             CwScreenPlaneIntel,
         )
-        _log.info('[cw-takeover] session 无位面序真值 → 委派 CwScreenPlaneIntel 实采')
-        sub = CwScreenPlaneIntel(self.ctx)
+        # 起始采集位面(2026-09-03 用户裁决:时序反过来——备战帧先识别当前
+        # 节点得当前位面,详情内只采当前及之后的位面;读不到保持 0 = 子 op
+        # 内部再试/全采回退)。仅备战屏可现读;已在位面详情屏交给子 op 兜底。
+        _start_plane = 0
+        if in_prep:
+            with contextlib.suppress(Exception):
+                from sr_od.application.currency_war.obs.cw_observation import (
+                    read_phase_round,
+                )
+                _pp = read_phase_round(self.ctx, self.last_screenshot)
+                if _pp and _pp[0]:
+                    _start_plane = int(_pp[0])
+        _log.info('[cw-takeover] session 无位面序真值 → 委派 CwScreenPlaneIntel 实采'
+                  '(start_plane=%d)', _start_plane)
+        sub = CwScreenPlaneIntel(self.ctx, start_plane=_start_plane)
         return self.round_by_op_result(sub.execute(), status='位面详情实采')
 
     @node_from(from_name='补采')
