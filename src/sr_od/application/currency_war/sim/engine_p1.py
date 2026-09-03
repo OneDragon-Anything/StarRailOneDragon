@@ -819,7 +819,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             st.shop = cards_pool.draw_shop(st.level, probs=st.refresh_probs)
             _waves = [{'event': 'offer', 'gold': st.gold,
                        'cards': [{'name': c.name, 'faction': c.faction,
-                                  'cost': c.cost} for c in st.shop]}
+                                  'cost': c.cost} for c in st.shop],
+                       # 拒因串逐波留档位(None=本波无决策段:8 段上限
+                       # 截断等;决策段覆写,见轮决策循环)
+                       'rejects': None}
                       ]   # ① 账本:牌面波(supply 视图;gold=该波时点金)
             # ① 账本:轮内聚合(段结构折叠,花销/买入逐笔记)
             _spend = {'buys': {}, 'levelup': 0, 'refresh': 0, 'sell_income': 0}
@@ -911,6 +914,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _round_release_reason = ''
             _round_posture_unfulfilled: dict | None = None
             _phase_snap = False
+            # 商店波未买牌拒因串(轮内逐决策段覆写=末波口径;sim/实机
+            # 同源生产端=cw4/shop.shop_unbought_reasons,落账本行顶层
+            # shop_rejects——「线内核心在售未买」的供给空缺 vs 闸门拒绝
+            # 判据,消费=R4 报告 §3 类复盘归因)
+            _round_shop_rejects: dict[str, str] = {}
             # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
             # RefreshShop 动作后**独立重决策一段**——r270 连刷在
             # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
@@ -945,6 +953,28 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 仅作迁移期兼容,离线主路径不再依赖。
                 sess.shop_state_frame = st
                 acts = strat.decide_shop_screen(sess, config)
+                # 拒因遥测透传(纯观测,零行为面:sim 决策走 decision_v2
+                # 栈,不调 cw4 决策核,故由引擎在每决策段直调生产端函数
+                # ——同一输入同一映射,双栈无第二实现)。口径=段帧首静态
+                # 快照(与生产 decide_shop_wave 同语义):state=段入口态,
+                # actions=本段原始决策(sim 不走生产截断器,差异如实声明
+                # ——被截断器丢弃的买在 sim 无对应面)。逐波留档进
+                # sim.shop_waves 对应波(键 rejects,与该波 cards/gold 同
+                # 位对齐),顶层 shop_rejects=末波 last-wins(生产 decisions
+                # 行 session 单槽同语义)。K 空窗时 target_comp=None,
+                # 生产端 comp=None 分支统一归 non_line,同源。
+                from sr_od.application.currency_war.decision.cw4.shop import (
+                    shop_unbought_reasons,
+                )
+                from sr_od.application.currency_war.decision.cw4.statefn import (
+                    predicates as _rej_predicates,
+                )
+                _k_comp = getattr(sess, 'target_comp', None)
+                _seg_rejects = shop_unbought_reasons(
+                    st, _k_comp, _rej_predicates.line_members(_k_comp), acts)
+                _round_shop_rejects = _seg_rejects
+                if _waves:
+                    _waves[-1]['rejects'] = dict(_seg_rejects)
                 _round_formed_stop = _round_formed_stop or bool(
                     getattr(sess, 'v3_formed_stop', False))
                 # ADR-0474 分配器帧位轮内采集(每段 decide_prep 覆写
@@ -1045,7 +1075,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _waves.append(
                             {'event': 'refresh', 'gold': st.gold,
                              'cards': [{'name': c.name, 'faction': c.faction,
-                                        'cost': c.cost} for c in st.shop]})
+                                        'cost': c.cost} for c in st.shop],
+                             # 拒因串留档位(下一段决策覆写;段上限截断
+                             # 时保持 None=无决策段)
+                             'rejects': None})
                         progressed = True
                         break          # 刷后立即 re-decide(见新店)
                     if isinstance(a, BuyCard):
@@ -1954,6 +1987,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 #  spend_gate 开关族删除——旧方案清退批,清查报告
                 #  OLD_MIX_AUDIT §1.3;v3_sg_block session 键同批删。)
                 'actions': _acts,
+                # 商店波未买牌拒因串(末波 last-wins;生产端
+                # cw4/shop.shop_unbought_reasons,实机 DecisionTrace.
+                # shop_rejects 同键同值枚举;逐波明细=sim.shop_waves[].rejects)
+                'shop_rejects': dict(_round_shop_rejects),
                 'sim': {
                     'node': nodes[rn - 1], 'delta': delta,
                     # 合成执行链事件(本轮装备栏内合成的成品名;默认关恒空)
