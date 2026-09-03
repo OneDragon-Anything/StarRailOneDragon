@@ -9,7 +9,7 @@ read_equips(thr7)名准+无假阳(D-39,4/4 click 验),覆盖多列(区域 = scre
 (CV diff > 阈值 = 穿[新装或合成都变 icon],不变 = drag 落空)。**robust 合成消耗2件/列reflow/read漏检**
 (count-verify D-41 实测报3实4 失真:合成消耗2件 → column count 扰;avatar below-icon 变化直接观测,免受其扰)。
 
-**已接 cycle**(BattlePrepCycle ③,live A8 实跑):装备量受 bug#1 drag 间歇落空影响。
+**已接 cycle**(PrepDirector 备战单轮 ③,live A8 实跑):装备量受 bug#1 drag 间歇落空影响。
 bug#1 根治(W849 批,台账 6/6「retry 仍败」证明原地 retry 失败相关):拖前稳帧确认
 (``_wait_stable_frame``)+ 落空补救链(``_wear_with_recovery``:坐标现读重定位 + 按压/移动参数逐档升级)。
 
@@ -228,7 +228,7 @@ class EquipAllOp(SrOperation):
     修原 ``target=FRONT_AVATARS[equipped]`` 按已穿计数索引 → 已穿槽被覆盖)。
     avatar-slot 验穿(R19治本③,替 count-verify):drag 前后对比目标 avatar 下方 mini icon 区 CV-diff,
     变了=穿(新装/合成都变),不变=落空。robust 合成消耗2件/列reflow/read漏检(D-41 count-verify 报3实4 失真)。
-    前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**已接 cycle**(BattlePrepCycle ③);bug#1 根治 = 拖前稳帧确认 + 落空补救链(坐标现读重定位 + 参数升级)。
+    前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**已接 cycle**(PrepDirector 备战单轮 ③);bug#1 根治 = 拖前稳帧确认 + 落空补救链(坐标现读重定位 + 参数升级)。
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'

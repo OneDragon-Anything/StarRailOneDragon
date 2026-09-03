@@ -37,7 +37,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
 
 @dataclass
 class RoundPosture:
-    """轮姿态轮缓存载体(decide_prep 每轮写 session.v3_dp_posture)。
+    """轮姿态轮缓存载体(decide_shop_screen 每轮写 session.v3_dp_posture)。
 
     round_key=(plane, round_num)——轮键不匹配即失效(策略主循环
     每轮决策入口重算;sim 一轮多决策段共享同轮首查询)。
@@ -168,11 +168,11 @@ def build_round_posture(state: GameState, session: StrategySession,
 
 
 def round_posture(state: GameState, session: StrategySession) -> Posture:
-    """轮内缓存版姿态(decide_prep 每轮算一次写 session;仲裁层各 gate
+    """轮内缓存版姿态(decide_shop_screen 每轮算一次写 session;仲裁层各 gate
     读同一姿态——一轮内多个 gate 消费同一次预算核算,既省重算也保证
     同轮口径一致)。确定性核恒有定义,本函数不再返回 None。
 
-    辖域声明(`w635_batch3_attack/` F6c):缓存命中 = decide_prep 写入的 **release 包装后**
+    辖域声明(`w635_batch3_attack/` F6c):缓存命中 = decide_shop_screen 写入的 **release 包装后**
     姿态;缓存 miss(测试/回放直调)现算返回**未包装**的裸预算核姿态
     ——release 包装(latch/预算合并)唯一所有者 = 生产主链每轮入口的
     ``posture_release.evaluate_release``,本函数不做二级包装(防第二

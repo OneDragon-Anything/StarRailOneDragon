@@ -528,7 +528,7 @@ class BloodAlarmTracker:
         return len(losses) >= 5 and sum(losses) >= 30
 
 
-# ===== 纪律族评估(decide_prep 每轮入口消费)=====
+# ===== 纪律族评估(decide_shop_screen 每轮入口消费)=====
 
 
 @dataclass(frozen=True)
@@ -1180,7 +1180,7 @@ def carry_gate_actions(state: GameState, session: StrategySession,
     log.info('[cw][d2][carry-gate] r%d 腾位:降保护集卖 %s 买意向核心 %s',
              state.round_num, weakest.char_id, carry)
     register_round_sold([weakest.char_id], state, session)   # r408 对称臂
-    # ADR-0328:腾位买即登记同轮已买集(登记点=动作采纳处,非 decide_prep
+    # ADR-0328:腾位买即登记同轮已买集(登记点=动作采纳处,非 decide_shop_screen
     # 尾)——carry_gate 先于 arbitrate 执行,不登记则同趟 arbitrate 内
     # SELL carry(段首旧副本)候选的 r408 守卫仍读空已买集,双双过。
     register_round_bought([carry], state, session)
@@ -1310,7 +1310,7 @@ def register_round_bought(names, state: GameState,
                           session: StrategySession) -> None:
     """买入件入同轮已买集(r408 主臂;带轮键自校验,防跨轮误写)。
 
-    ADR-0328 时序修复:登记点从 decide_prep 尾部(arbitrate 之后)
+    ADR-0328 时序修复:登记点从 decide_shop_screen 尾部(arbitrate 之后)
     前移到**动作采纳处**(同一事务域)——同趟 arbitrate 内先采纳
     BUY X 后,后续 SELL X(段首旧副本)候选的守卫立即可见
     (no_same_round_buy_sell 回归 96/400 的根因:r408 守卫读的是

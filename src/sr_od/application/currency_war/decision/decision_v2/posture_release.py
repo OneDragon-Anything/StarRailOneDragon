@@ -49,7 +49,7 @@ slot 守卫与 rush_level 的同轮裁决(DESIGN §②规则1-3):
    ``release_budget = max(溢余, 排程预算×刷价)``(已有授权时不
    缩水,纯 level_up 帧取溢余),预算>0 → 姿态强制输出 release。
 
-消费点:``strategy.decide_prep``(每轮入口装配预算核姿态并包装写 session)→
+消费点:``strategy.decide_shop_screen``(每轮入口装配预算核姿态并包装写 session)→
 ``arbiter`` 刷新收尾块(release 义务预算的有界放行)→ 活栈消费门
 ``spend_gate_active``(decision_v2.scoring 息 EV 中性 / candidates 凑息向
 卖候选抑制,判据单一源=本模块读 ``session.v3_release``)。
@@ -237,7 +237,7 @@ def crisis_invariant_lane(session: StrategySession, cost: int) -> bool:
     crisis_refresh_invariant_enabled 开关已整删,不留关臂)。
 
     判据=v3_release 是 crisis 指令 ∧ budget_gold>0 ∧ 本帧(轮)
-    尚无刷新(``v2_round_refreshes`` 轮键计数,decide_prep 轮首重置)
+    尚无刷新(``v2_round_refreshes`` 轮键计数,decide_shop_screen 轮首重置)
     ∧ 预算仍可负担一刷(spent+cost ≤ budget_gold,买/升入账经
     _accrue_release_frame_spend 已计入)。
 

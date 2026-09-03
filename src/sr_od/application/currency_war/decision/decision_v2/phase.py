@@ -6,7 +6,7 @@
 与覆盖态不再双 gate 并存)。
 
 **W114 影子期已结束(步② 切授权)**:相位/form_ok/form_score 仍是每轮
-decide_prep 入口计算一次的派生量(不落跨轮存储),但自 W119 起被决策
+decide_shop_screen 入口计算一次的派生量(不落跨轮存储),但自 W119 起被决策
 消费——地板族(``arbiter._active_floor`` 相位驱动)与成型停手
 (``filters.formed_stop_active`` 消费 form_ok)读它。
 

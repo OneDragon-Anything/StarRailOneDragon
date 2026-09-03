@@ -124,7 +124,7 @@ class StartBattle(PrepAction):
 
 @dataclass
 class RunBuyPhase(PrepAction):
-    """组合(P1 过渡):整段买牌 = BuyShopCards(P2 溶解为原子)。"""
+    """组合(P1 过渡):整段买牌 = RunBuyPhase(执行器组合分支已随 BuyShopCards 壳退役删除;动作类型保留供期望态/对账兼容)。"""
 
 
 @dataclass

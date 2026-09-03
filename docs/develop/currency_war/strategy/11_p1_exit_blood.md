@@ -222,7 +222,7 @@ r9 boss 期望 −26.3(p≥20 深亏 76%);**11% 局呈现 run38/39 特征签名*
   p(hp_tier0 或签名群)> 20%)。**分布改善的主证据 = 帧回放锁 + 实机
   配对局**(阶梯终点),sim 数字不作成败判。
 - 帧回放验收(§1.3 落地点):`decisions.jsonl` 真值重放 run38/39 进
-  decide_prep,断言 r8/r9 备战 actions 含 BuyCard('blood_protect')/
+  decide_shop_screen,断言 r8/r9 备战 actions 含 BuyCard('blood_protect')/
   Deployed 类动作(HEAD 行为零买入 = 打回证据),r9 refresh ≤per-round cap,
   非末窗轮零漂移。
 - hp_tier 迁移预期(实机配对期):触 发群出口 hp_tier0 占比显著下降

@@ -12,7 +12,7 @@
 > **Phase 0 已落地(ADR-0399,2026-09-01)**:观测层(快照纯函数 +
 > sim/生产双侧字段 + 档位离线标定)已实现,语义 as-built 见 §4.2
 > Phase 0 条与 §5 表;标定结论、口径收窄(core2 = 上场件全量
-> star≥2;时点 = 首轮 decide_prep 入口,gold 含 P2 r1 收入)与数据
+> star≥2;时点 = 首轮 decide_shop_screen 入口,gold 含 P2 r1 收入)与数据
 > 边界的单一源 = ADR-0399。
 >
 > **Phase 1 已落地(ADR-0400,2026-09-02)**:P1 末窗承接门
@@ -91,7 +91,7 @@ P1 末态 hp/gold/board/bench/deployed/equips/意向原样带过),生产侧等�
 
 ### 3.2 承接质量指标候选(向量定义,Phase 0 全部落快照)
 
-P1 出口时点(P2 r1 首次决策前,即 sim 进场继承块后/生产 P2 首轮 decide_prep 入口):
+P1 出口时点(P2 r1 首次决策前,即 sim 进场继承块后/生产 P2 首轮 decide_shop_screen 入口):
 
 | 维度 | 指标 | 现有数据源 | 备注 |
 |---|---|---|---|

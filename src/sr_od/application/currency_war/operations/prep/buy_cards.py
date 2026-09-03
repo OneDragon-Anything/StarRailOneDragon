@@ -418,7 +418,7 @@ def run_buy_waves(op: SrOperation, match,
                   hp_value: int | None, hp_readable: bool,
                   hp_trusted: bool) -> tuple[OperationRoundResult | None,
                                              BuyCardsOutcome | None]:
-    """买牌波循环主体(W970 批 A 原子化:原 BuyShopCards.buy 内段随迁)。
+    """买牌波循环主体(W970 批 A 原子化:原 BuyCardsOp 波循环随迁)。
 
     读牌面 → d2 决策(decide_prep)→ 执行至首个 RefreshShop(含)→
     刷新重判,MAX_REFRESH 硬墙;含 gold 融合读救援/d2 卖通道/遥测写点

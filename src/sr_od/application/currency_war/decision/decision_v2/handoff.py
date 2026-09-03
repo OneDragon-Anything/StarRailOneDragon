@@ -1,7 +1,7 @@
 """P2 承接快照(W224 Phase 0,ADR-0399;设计件 08_p2_handoff §3.2/§4.2)。
 
 **Phase 0 = 纯观测层,零行为变更**:``handoff_snapshot`` 是纯函数——
-P1→P2 切换时点(plane>=2 本位面首轮 decide_prep 入口)对带入 P2 的
+P1→P2 切换时点(plane>=2 本位面首轮 decide_shop_screen 入口)对带入 P2 的
 资产状态算一次七维向量,写 ``session.v3_handoff``(派生量模式,同
 ``v3_phase``:每局现算、不落跨轮存储、免疫 session 丢失);sim 侧同
 函数经 ``session.v3_handoff`` 采样进 ``SimResult.p2_handoff``(与
@@ -45,7 +45,7 @@ from sr_od.application.currency_war.kernel.cw_state import GameState
 class HandoffSnapshot:
     """P1→P2 承接快照(七维向量 + 派生档位;纯观测,零行为消费)。
 
-    取值时机 = P2 本位面首轮 decide_prep 入口(进场继承完成后、
+    取值时机 = P2 本位面首轮 decide_shop_screen 入口(进场继承完成后、
     任何 P2 决策/动作前);sim 案 b 臂 = 真值进场态起跑的首轮。
     """
 
@@ -118,8 +118,8 @@ def handoff_snapshot(state: GameState,
     纯函数契约:不写 state/session、不耗 rng、可在历史 outcomes 重建态
     上离线复算(设计 §4.4)——因此维度全部取自 state 或可缺省的
     session 只读字段。挂载点(生产/sim 共用)= decision_v2.strategy
-    decide_prep 入口的位面首帧块(P2 首轮算一次写 session.v3_handoff)。
-    **时点语义**:进场继承完成后**首轮 decide_prep 入口**——hp/board/
+    decide_shop_screen 入口的位面首帧块(P2 首轮算一次写 session.v3_handoff)。
+    **时点语义**:进场继承完成后**首轮 decide_shop_screen 入口**——hp/board/
     deployed 域同「P1 出口」;gold 已含 P2 r1 轮收入(生产/sim 同构,
     亦与离线标定语料同口径——标定读的 decisions 行即此时点)。
     """

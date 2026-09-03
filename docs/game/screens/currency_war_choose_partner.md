@@ -16,7 +16,7 @@ source_image: screens/货币战争-选择伙伴/select_partner.webp
 - **step 2 选强化目标**:step1 确认后 overlay 转为「请选择强化角色」(选我方哪名角色复制装备效果)→ 点中心立绘(我方角色 portrait,~960,300)→ 点「确认选择」→ overlay 关,回备战。
 - **出口**:step2 确认 → overlay 消失 → 回备战(节点完成,进下回合)。
 
-⚠️ **dispatch 时序坑(2026-08-13 实跑)**:本 overlay 可能在**备战 round-start 检测之后**才出现( round-start OCR 见干净备战 → Loop 走备战分支 → BattlePrepCycle → 出战 click 被 overlay 挡 → 出战 retry×3 失败停机)。Loop 0a 分支(`round_by_find_area('货币战争-选择伙伴','标识-选择伙伴')`)在 round-start 单次检测,overlay 后出则漏 → 需 BattlePrepCycle 出战前复查 overlay 或 Loop 出战失败后回检(待修)。
+⚠️ **dispatch 时序坑(2026-08-13 实跑)**:本 overlay 可能在**备战 round-start 检测之后**才出现( round-start OCR 见干净备战 → Loop 走备战分支 → BattlePrepCycle → 出战 click 被 overlay 挡 → 出战 retry×3 失败停机)。Loop 0a 分支(`round_by_find_area('货币战争-选择伙伴','标识-选择伙伴')`)在 round-start 单次检测,overlay 后出则漏 → 需 备战分支出战前复查 overlay 或 Loop 出战失败后回检(待修)。
 
 ## 识别特征(稳定锚点)
 
@@ -57,6 +57,6 @@ source_image: screens/货币战争-选择伙伴/select_partner.webp
 - **id_mark(2026-08-13 定型)**:选择伙伴 = 「购买经验」+ 标题「选择伙伴」(组合,两个都中才算精准匹配,组合比单标记更不易误命中)。**备战 = 购买经验 + 前台区域 + 后台区域**——前台区域是备战棋盘前排标签,本弹窗盖住它 → 弹窗帧上备战凑不齐(缺前台区域)→ 备战不是 is_precise → 两个画面各只一个 is_precise,**不撞车,无需测试豁免**(2026-08-13 测试 + live 双确认)。
 - **同类中心 overlay**(巨星/祈愿):同此模型(overlay id_mark = 购买经验 + 自己标题;备战 id_mark 含被盖的前台区域 → overlay 帧备战不 is_precise)。**补给/投资策略/投资环境**:疑似独立屏(盖住底部购买经验、有「返回备战」按钮),非备战 overlay —— battle_loop 停机钩子已埋,待建档排查。
 - **候选无角色名**:流派 label(护盾/能量)非角色名 → `decide_partner` 无法按 `target_comp.core_chars` 选(多 idx0);真接决策需 SIFT 立绘识别(后续子项,候选位置视觉不稳需 CV 卡框/多样本定网格)。
-- **dispatch 时序坑**(见「何时出现」):overlay 后出 round-start 检测漏 → 出战 retry 失败停机。修法待定(BattlePrepCycle 出战前复查 overlay / Loop 出战失败回检)。
+- **dispatch 时序坑**(见「何时出现」):overlay 后出 round-start 检测漏 → 出战 retry 失败停机。修法待定(备战分支出战前复查 overlay / Loop 出战失败回检)。
 - **step2 用巨星 screen_info 的 area**:handler step2 检 `货币战争-巨星强化` 的 `按钮-请选择强化角色`(partner step2 共用此 prompt)—— 跨屏 area 引用,fragile,待 partner 自建 step2 area。
 - fixture 已归档 `sr-od-test/screens/货币战争-选择伙伴/select_partner.webp`(2026-08-13,step2 态)。

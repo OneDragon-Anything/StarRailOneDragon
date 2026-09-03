@@ -106,20 +106,8 @@ class CwStrategy(ABC):
     @abstractmethod
     def update_target(self, state: GameState, session: StrategySession,
                       config: CurrencyWarConfig) -> None:
-        """战略层:选/转型 target_comp。框架在每个备战回合 ``decide_prep`` **之前**调一次。
+        """战略层:选/转型 target_comp。框架在每个备战回合 ``decide_shop_screen`` **之前**调一次。
         实现写 ``session.target_comp``(首轮选;其后按信号 pivot;无强信号保持)。"""
-
-    @abstractmethod
-    def decide_prep(self, state: GameState, session: StrategySession,
-                    config: CurrencyWarConfig) -> list[Action]:
-        """备战 shop 计划(买/升/D牌/deploy/卖)。读 ``session.target_comp`` 作战略导向、
-        ``session.rng`` 作蒙特卡洛。
-
-        ⚠️ **deprecated(兼容期,P2 黑板模式)**:黑板接口 =
-        :meth:`decide_shop_screen`(W971 §2/§4.1 amendment)。本钩子保留为
-        薄委托形态(旧签名 → 写 ``session.shop_state_frame`` → 同一决策核),
-        供 sim/存量测试过渡;调用方迁移完后随 P5 删除。
-        """
 
     @abstractmethod
     def decide_prep_action(self, obs, session: StrategySession,

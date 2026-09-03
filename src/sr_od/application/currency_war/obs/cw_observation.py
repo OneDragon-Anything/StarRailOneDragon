@@ -1653,7 +1653,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     (SIFT 读不了文字标签;**board OCR 仍是阵营计数权威**)。**faction 语义(2026-08-17)**:
     ``'?'``=未知(name 空/不在注册表);``''``=已知无阵营(白厄「救世主」类)。立绘库经
     ``ensure_portrait_templates`` 按需加载
-    (buy 在 deploy 前,BattlePrepCycle: buy→deploy,故不依赖 deploy 才加载的缓存)。
+    (buy 在 deploy 前,PrepDirector 备战单轮: buy→deploy,故不依赖 deploy 才加载的缓存)。
     """
     templates = ensure_portrait_templates(ctx)
     # 商店开态前置门(M37/M38 误停机根因,2026-08-16):read_shop_cards 无脑裁牌区 rect 做 SIFT,

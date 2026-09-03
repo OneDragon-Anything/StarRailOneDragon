@@ -911,7 +911,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 读 state.deployed——sim 不建模 deployed 恒空 → 核心恒 0/2 →
             # 档位折扣恒触发(r5+ 恒走围栏,sim 行为与实机分叉)。
             # ADR-0287(批㉘ F1-F5,deploy_after_buy_semantics):部署块
-            # 从轮首移到**买/升级之后**(生产序对齐:battle_prep.py 备战
+            # 从轮首移到**买/升级之后**(生产序对齐:cw_loop 备战分支
             # 单轮 ⓪收球→①买牌→②部署→③装备→④出战)。旧轮首序让当轮
             # 买的件/当轮升级腾出的 cap 滞后一轮上板(n=300 观测 33.0%
             # 轮存在「当轮可上未上」,1124 件次),结算键(rung/depth)读

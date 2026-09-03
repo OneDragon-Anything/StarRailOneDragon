@@ -65,7 +65,7 @@ class CwEntryStart(SrOperation):
 
     前置:已在货币战争大厅(CwEntryEnter 之后)。到达备战后返回 STATUS_AT_PREP。
 
-    注:备战阶段的「买牌 + 部署到前台 + 出战」循环由 ``BattlePrepCycle`` 负责;装备识别经
+    注:备战阶段的「买牌 + 部署到前台 + 出战」循环由 ``PrepDirector 备战单轮`` 负责;装备识别经
     cw_equip SIFT(D-27/D-28,非 OCR-only —— 旧「视觉大模型 看不到图标位置」判断已破,
     cw_equip 154 模板 SIFT 识别装备区 owned icon)。deploy 需拖拽角色图标(装备拖拽机制 D-18,待 live 验证)。
     """

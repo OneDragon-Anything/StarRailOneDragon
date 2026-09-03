@@ -668,7 +668,7 @@ def allocate(proposals: list[AllocProposal], gold_budget: int,
 def allocator_run(state: GameState, session: StrategySession,
                   registry: DecisionV2Registry,
                   pipeline_spent: bool = False) -> AllocResult:
-    """分配器帧入口(策略接线唯一消费面;每 decide_prep 调一次)。
+    """分配器帧入口(策略接线唯一消费面;每 decide_shop_screen 调一次)。
 
     非辖域帧 / 开关关 / 常规管线本帧已支出(``pipeline_spent``)→
     不接管(frame 披露原因),支出分配由既有四层管线全权——分配器

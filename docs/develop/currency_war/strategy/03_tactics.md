@@ -20,7 +20,7 @@
 | 战斗 | StartBattle(含未达上限确认勾选) |
 | 观察管理 | EnsureShopOpen / EnsureShopClosed(gold 只在开态、HP 只在关态可读) |
 | 控制流 | DeferSpheres(球留置,环级计数)/ BailToOuter |
-| 组合(过渡) | RunBuyPhase(BuyShopCards)/ RunDeploy(DeployBenchOp)/ RunEquip(EquipAllOp) |
+| 组合(过渡) | RunDeploy(DeployBenchOp)/ RunEquip(EquipAllOp)(RunBuyPhase 组合已随 BuyShopCards 壳退役删除,决策核只发显式开店意图) |
 
 **商店链结构**(`operations/prep/`;分层架构设计见 `prereg/w970_layered_arch/DESIGN.md`):`BuyShopCards` = 编排壳(前置守卫/HP 关帧读链/编排三原子 op/关店后重估与 gold 对拍),商店动作本体按画面拆三个原子 op——`open_shop`(幂等开店:已开(「按钮-收起」可见)即成功,未开点「按钮-商店」→ 固定等待 `SHOP_OPEN_ANIM_S` → 收起锚 fail-closed 验证)、`buy_cards`(`run_buy_waves` 波循环:读牌面 → `decide_prep` → 执行至首个 RefreshShop → 刷新重判,MAX_REFRESH 硬墙;买/卖/刷/升执行与观测自检网在此)、`close_shop`(点「按钮-收起」→ 固定等待 `SHOP_CLOSE_ANIM_S` → 「收起消失」验证;商店族字段清理挂点留 TODO 待流程层批)。壳以宿主直调原子核心(非子 op 实例),保证读屏次序与替身行为等价;三个 op 类均可 `run_operation` 独立跑。
 

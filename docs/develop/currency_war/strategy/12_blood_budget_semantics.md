@@ -254,7 +254,7 @@ W516 结论②的「P2 花金义务」(死时攥 119 金=机制性断供)是本�
 
 ### 5.1 信号读取(零新字段)
 
-- 血预算全部由既有 state 派生:`state.hp`(decide_prep 入口既有)、
+- 血预算全部由既有 state 派生:`state.hp`(decide_shop_screen 入口既有)、
   `boss_projected_hp` / `handoff_hp_tier`(handoff.py Phase 0 已落地的
   纯函数快照)、节点类型(备战顶部节点条,既有观测)。不新增 GameState
   字段、不落跨轮存储(与 phase/handoff 同型的派生量模式,ADR-0346)。

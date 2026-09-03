@@ -120,7 +120,7 @@ class StrategySession:
     launch_dead_streak: int = 0
     # level 单调守卫(read_level OCR 间歇误读 5/6→4;等级局内只升不降,读出<上次=误读用上次)。新局默认 0。
     last_level_obs: int = 0
-    # 防 new RunMegastarNode instance 重置 instance flag → re-click toggle 反选 → confirm 无候选 → 卡死)。
+    # 防 new CwScreenMegastar instance 重置 instance flag → re-click toggle 反选 → confirm 无候选 → 卡死)。
     megastar_candidate_clicked: bool = False
     # 已持有投资策略(局中选,可多张;宿主 = session 持久,read_game_state
     # 拷贝到 state 供 _refresh_cap 等消费)。
@@ -313,7 +313,7 @@ class StrategySession:
     # 生命周期 = 画面态(每次进商店波循环覆写;商店关闭后残留由下一次
     # 进店覆写,CloseShopOp 完成承诺清理随 P3 落地时一并接管本字段)。
     # 写者白名单 = buy_cards.run_buy_waves 波顶融合段 / 兼容期旧接口
-    # decide_prep 薄委托 / sim 引擎(独立批)。读者 = decide_shop_screen。
+    # sim 引擎(独立批)。读者 = decide_shop_screen。
     shop_state_frame: 'GameState | None' = None   # noqa: F821, UP037
     # —— 期望态容器(W971 EXPECTED_STATE.md FINAL v3.1,P4)——
     # expected_state:尚未被实读覆盖确认的期望态条目表(path → ExpectedEntry)。

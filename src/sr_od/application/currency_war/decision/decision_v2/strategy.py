@@ -211,7 +211,7 @@ class DecisionV2Strategy(CwStrategy):
         session.v2_round_press_exempt = 0   # `w300_dup_ruling/`/V-B8:[11] 豁免臂轮笔数
         session.v2_round_press_copy = 0     # `w300_dup_ruling/`/V-B8:press 候选轮笔数
         # 迁移审计 w114(git 历史)/ADR-0346 相位观测(自 迁移审计 w119(git 历史) 起被消费)+ 迁移审计 w119(git 历史)/ADR-0347
-        # DP 姿态轮缓存载体:初始化(每轮 decide_prep 重算)
+        # DP 姿态轮缓存载体:初始化(每轮 decide_shop_screen 重算)
         session.v3_phase = 'FORM'
         session.v3_form_ok = False
         session.v3_form_score = 0.0
@@ -224,7 +224,7 @@ class DecisionV2Strategy(CwStrategy):
         # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 披露(ADR-0411 起投影无条件启用,
         # 末窗 handoff_gate_gap 写;None=非末窗,判读「boss 后投影 hp」面)
         session.v3_handoff_hp_proj = None
-        # W332b:release 泄息指令(每轮 decide_prep 重算)与轮内累计花费
+        # W332b:release 泄息指令(每轮 decide_shop_screen 重算)与轮内累计花费
         session.v3_release = None
         session.v3_release_round = None
         session.v3_release_spent = 0
@@ -314,20 +314,6 @@ class DecisionV2Strategy(CwStrategy):
         session.v3_last_intention_event = ist.last_event
 
     # ===== 备战计划:纪律族 + 演进 + 四层 =====
-
-    def decide_prep(self, state: GameState, session: StrategySession,
-                    config) -> list:
-        """备战 shop 计划(deprecated 兼容薄委托,W971 §2 黑板模式)。
-
-        旧签名 → 写 ``session.shop_state_frame``(黑板写路径)→ 同一决策核
-        ``_decide_shop_plan``。**刻意不映射 LevelUpShop**:本入口输出保持
-        迁移前逐字节等价(存量测试零断链;sim 已切
-        :meth:`decide_shop_screen`,W971 sim 适配批,不再依赖本入口),
-        升级意图仍为基类 ``LevelUp``;商店屏新入口
-        :meth:`decide_shop_screen` 才产 ``LevelUpShop``。
-        """
-        session.shop_state_frame = state
-        return self._decide_shop_plan(state, session, config)
 
     def decide_shop_screen(self, session: StrategySession, config) -> list:
         """商店开画面黑板决策接口(W971 §2;前身 = decide_prep)。
@@ -1067,7 +1053,7 @@ class DecisionV2Strategy(CwStrategy):
                 return self._main_flow_step(obs, session, config)   # 链全空 → 部署段
             # W970 批 C(RunBuyPhase 解体):主流程买牌段改发显式开店意图,
             # 流程层(prep_director._open_shop_phase)编排 开店→商店动作循环→
-            # CloseShopOp→节点探针;组合壳 BuyShopCards 仅存续于 sim 兼容入口。
+            # CloseShopOp→节点探针;组合壳 BuyShopCards 已随退役批删除(决策核只发显式开店意图)。
             return OpenShop()
         if session.prep_phase == 1:
             session.prep_phase = 2
