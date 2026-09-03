@@ -42,6 +42,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_performance import (
     HP_CONFIDENCE_THRESHOLD,
 )
@@ -79,6 +80,8 @@ class SettlementState:
     - settle_p1_ts = 结算页1 面板渲染延迟门计时(SETTLE_PANEL_WAIT_S);
     - settle_stay = 结算屏停留计数(M39 长按兜底触发器,≥3 长按);
     - last_settle_fp / last_loss_fp = 同屏指纹防重(C-1 计数/败局行防重);
+    - auto_off_first_ts = 自动战斗未开检测首见时刻(连续 ~5s 待操作双锚命中
+      才判未开并点击开关;防技能演出相似视觉单帧误判);
     - first_settlement_seen / run_start_ts / is_new_match = relaunch 残留
       结算屏判据三件(迁移审计 w28;run_start_ts/is_new_match 由 RunLoop
       handle_init 注入);
@@ -96,6 +99,7 @@ class SettlementState:
     settle_stay: int = 0
     last_settle_fp: tuple | None = None
     last_loss_fp: tuple | None = None
+    auto_off_first_ts: float | None = None   # 自动未开检测首见时刻(见类头字段表)
     first_settlement_seen: bool = False
     run_start_ts: float = 0.0
     is_new_match: bool = True
@@ -639,9 +643,38 @@ class CwScreenBattleWait(SrOperation):
             self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
             return self.round_wait(wait=1.0)
 
-        # ①段:等待结算画面出现。战斗进行中 = 合法静止(ADR-0250 宽限);
-        # 自动战斗检测消费点(见 _in_battle_grace 注,本批不做)。
+        # ①段:等待结算画面出现。战斗进行中 = 合法静止(ADR-0250 宽限)。
         if self._in_battle_grace(time.monotonic()):
+            # 自动战斗检测(P4 挂账落地;2026-09-03 实机建档):「我方行动
+            # 待操作」双锚(单攻+回复技能按钮)**连续 ~5s** 命中 = 自动未开
+            # (战斗在我方回合停住等操作)→ 鼠标点击右上自动战斗开关开启
+            # (点击而非按键:开关为画面按钮,键盘对窗口焦点敏感)。单帧
+            # 命中可能是技能演出相似视觉,故连续计时防误判;开关动作后
+            # wait=2 覆盖切换生效窗。锚 rect 建档于 currency_war_battle.yml。
+            _auto_pending = (
+                self.round_by_find_area(
+                    screen, '货币战争-战斗', '标识-我方行动待操作',
+                    crop_first=False).is_success
+                and self.round_by_find_area(
+                    screen, '货币战争-战斗', '标识-回复技能',
+                    crop_first=False).is_success)
+            _now = time.monotonic()
+            if _auto_pending:
+                if self._st.auto_off_first_ts is None:
+                    self._st.auto_off_first_ts = _now
+                    log.info('[cw-bwait] 自动战斗疑似未开(我方行动待操作首见)')
+                elif _now - self._st.auto_off_first_ts >= 5.0:
+                    log.info('[cw-bwait] 连续 %.0fs 我方行动待操作 → 点击自动战斗开关',
+                             _now - self._st.auto_off_first_ts)
+                    self._st.auto_off_first_ts = None
+                    _toggle = area_center(self.ctx, '按钮-自动战斗开关',
+                                          '货币战争-战斗')
+                    if _toggle is not None:
+                        self.ctx.controller.mouse_move(_toggle)
+                        self.ctx.controller.click(_toggle)
+                    return self.round_wait(wait=2)
+            else:
+                self._st.auto_off_first_ts = None
             return self.round_wait(wait=2)
         # 节点作用域预算:宽限外连续未知帧 → 留证 + bail 交主循环未知画面分支
         # (W971 05-battle §1 超时兜底;不停机——兜底链裁决权留外循环)。
