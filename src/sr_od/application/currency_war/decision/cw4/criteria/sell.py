@@ -7,6 +7,8 @@ R13-5 支付支撑通道,两臂同开、mandate=false+funding_support=true)。
 fail 方向(§2.2.1 唯一权威规格):不可逆卖面缺输入(λ 表损坏/域外/
 第四态无载/sell_refund 损坏)⇒ 不评不卖;u/V_ms🔴 ⇒ line_switch_sell
 比较臂无载 ⇒ 不卖 + 出口确定性关闭(proof.should_switch 前置门同构)。
+凑息卖自 T1 语义重写批(设计 13_buy_face_design §2.2)起 = 回拉发射位
+(金位触发+目标量止盈,函数 docstring 单一源),无 fail-closed 输入面。
 """
 from __future__ import annotations
 
@@ -66,20 +68,49 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
                       cap_resolved: int,
                       k_members: tuple[str, ...],
                       state: GameState | None = None,
+                      *,
+                      prefer_names: tuple[str, ...] = (),
+                      counters: dict | None = None,
                       ) -> tuple[list[int], str]:
-    """凑息档 EV 面(R20-1 资格谓词:仅桶不动件)。
+    """凑息卖·回拉发射位(T1 语义重写;设计 13_buy_face_design §2.2)。
 
-    对象 = 1★ ∧ 无后台效果 ∧ 与锁线零重叠(R17-2 零参数桶判断;
-    挂后台效果资格谓词 = predicates.bench_effect_qualified,语境经
-    ``predicates.bench_effect_context(state, unit, k_members)`` 共享
-    装配现读——IMPL_ADV_R200 症3:三卖面通道统一消费,禁各通道自拼;
-    ``state=None``(旧调用面)按装配函数缺省保守端处置)。
-    V_comp 表生成失败(T_SEARCH_A🔴)⇒ 不卖(fail-closed)。
-    升档器触发帧 F7 禁令消费位在 entry(顾问信号位)——本函数不自带段判断。
+    语义重写三项(R2-N4,取代旧「T_SEARCH_A 注入态资格全集无差别全发」):
+    ① **金位触发(缺口驱动)**:买/花后投影金 ``gold`` < 息线
+       g* = saturation_line(cap_resolved) 才发射,缺口 = g* − gold;
+       非缺口帧零发射(返回 'not_needed',与 funding_support 触发形态同构);
+    ② **目标量止盈**:remaining 递减贪心(funding_support ``remaining``
+       模板同构移植,零待证依赖;任意确定序贪心都能卖够,序只影响效率
+       ——p49 ⑤ 每金序/[11] 最小化为效率升级项,非本位前件),
+       Σrefund ≥ 缺口即止,不多卖一张;
+    ③ **槽位布尔门退役**:T_SEARCH_A 裸布尔检查退出本消费位(窗口数值
+       链归 P57 裁决,与本重写分账)。
+
+    资格谓词不变(1★ ∧ 零重叠 ∧ 无后台效果,与 funding_support_sell 同一;
+    语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三通道
+    统一,``state=None`` 按装配缺省保守端处置)。序:``prefer_names``
+    (刚买件名集合,R2-N1 发射约束:首卖刚买件使连带卖出损失=0;帧投影
+    架构下刚买件尚未入 bench,按名匹配同资格在册件)优先,其余按
+    (star, slot) 升序(funding_support 同款序)。
+
+    分键遥测(R3-R5 四字段,设计 §3.2;counters=None 时不记):
+    ``t1_interest_emit_frames``(发射帧数)/``t1_interest_gap_total``(缺口
+    累计)与 ``t1_interest_sellback_total``(实际卖回累计,两者之比=覆盖
+    缺口率)/``t1_pullback_gold_ge_gstar``(回拉后投影金 ≥ g* 帧数=金位
+    轨迹)。
     """
-    if provisional.is_none('T_SEARCH_A'):
-        return [], 't_search_unavailable'
-    out: list[int] = []
+    from sr_od.application.currency_war.decision.cw4.statefn.interest import (
+        saturation_line,
+    )
+    g_star = saturation_line(cap_resolved)
+    gap = g_star - int(gold or 0)
+    if gap <= 0:
+        return [], 'not_needed'
+
+    def _count(key: str, n: int = 1) -> None:
+        if counters is not None:
+            counters[key] = counters.get(key, 0) + n
+
+    qualified: list[BenchChar] = []
     for b in bench:
         name = b.char_id or ''
         if b.star != 1:
@@ -89,7 +120,28 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         if predicates.bench_effect_qualified(
                 name, predicates.bench_effect_context(state, b, k_members)):
             continue
+        qualified.append(b)
+    # 序:刚买件优先(R2-N1),其余 (star, slot) 升序(确定性)
+    prefer = set(prefer_names)
+    qualified.sort(key=lambda b: (0 if (b.char_id or '') in prefer else 1,
+                                  b.star, b.slot))
+    out: list[int] = []
+    remaining = gap
+    sellback = 0
+    for b in qualified:
         out.append(b.slot)
+        # 1★ 卖回净额 = sell_refund(1, 注册表 cost)(与 funding_support
+        # 同款:bench_char_cost 未知名保守估 3,禁字面量双源)
+        refund = sell_refund(1, bench_char_cost(b))
+        remaining -= refund
+        sellback += refund
+        if remaining <= 0:
+            break
+    _count('t1_interest_emit_frames')
+    _count('t1_interest_gap_total', gap)
+    _count('t1_interest_sellback_total', sellback)
+    if sellback >= gap:
+        _count('t1_pullback_gold_ge_gstar')
     return out, ''
 
 

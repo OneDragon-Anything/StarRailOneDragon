@@ -15,7 +15,8 @@ SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店波经济决策(买/卖/升/刷
    取 ``p1_early_pair_members`` top-2 方向;P2+ 带取 ``hoard_target_set``
    分带兜底(绯英⑤/跨线骨架/降格满配)。非 None 期行为不变;
 2. 预算投影:cap_resolved 现读 → 守息线 g* = 10×cap_resolved(R70-1 参数化)
-   + S 预留(b_target 结构组装)+ 逐动作金/席位静态投影(帧稳定域的前序
+   + S 预留(P56 可变现息线下界 s_reserve := g* − Σ活期退金投影,设计
+   13_buy_face_design §2.2)+ 逐动作金/席位静态投影(帧稳定域的前序
    累积静态推出,契约 §2);
 3. criteria 七面发射(§4.2.1 臂①旁路集:骨架面[M2/M3/M4/dominance/M6
    存在性]两臂同开,真 EV 发射面[ev_buy/付费刷新/凑息档]臂①旁路;
@@ -95,7 +96,11 @@ from sr_od.application.currency_war.decision.cw4.statefn.interest import (
     loss_exact,
     saturation_line,
 )
-from sr_od.application.currency_war.decision.cw4.statefn.s_line import b_target
+from sr_od.application.currency_war.decision.cw4.statefn.vbar import (
+    DEFAULT_VBAR_READING,
+    VBAR_READINGS,
+    window_vbar,
+)
 from sr_od.application.currency_war.decision.cw4.statefn.vopt import (
     refund_full_star_ok,
 )
@@ -116,6 +121,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     SellBench,
     SellDeployed,
     SwapDeploy,
+    bench_char_cost,
     sell_refund,
 )
 
@@ -356,22 +362,42 @@ def truncate_shop_frame_stable(actions: list[Action],
     return out
 
 
-def _t_search_active(level: int) -> frozenset[int]:
-    """活跃窗口档(T_SEARCH_A 注入形态;None ⇒ 空集=fail-closed)。
+def _frame_search_windows(session: StrategySession, state: GameState,
+                          registry, reading: str,
+                          counters: dict) -> tuple[frozenset[int],
+                                                   frozenset[int]]:
+    """帧级搜索窗口(T1 短路径;设计 13_buy_face_design §2.3/§3.2)。
 
-    档级消费位(M6 压库/支配面)窗口=运行时确定性查表(CALIB_REPORT_V2
-    §2.3 读法甲,``statefn/odds.tier_search_window`` 单一源):等级现读
-    REFRESH_PROB、V̄ 现读 provisional V_MS、c_eff=REFRESH_COST_BASE——
-    零新自由参数,禁硬编码窗口集合(常数窗口系「读法×等级×带端」三元
-    状态量,不可标定,IMPL_ADV_R200 症5①②)。V_MS 缺读 ⇒ 空集。
+    T_SEARCH_A 布尔门退役出窗口消费位:V̄ 改接 ``vbar.v_bar_net`` 帧级
+    现算链(修 A 单一源,p53;与 R1 刷新门比较项同链同帧——r =
+    ``horizon.r_remaining`` 本帧现算一次,禁两次现算各读各的),零新
+    自由参数。读法 = P57 双读法参数化(``vbar.window_vbar``;生产默认
+    读法② frame_horizon,sim 双臂经 config.cw4_vbar_reading 切换)。
+    P57 窗口集指纹(分键遥测 R3-R5,零额外跑批):两读法窗口集不同的
+    帧计数,档级/单卡两族分键。空集语义 = 真无窗口帧(等级无合格档时
+    V̄ 链自然给出空集,非门控)。
     """
-    from sr_od.application.currency_war.decision.cw4.audit import provisional
     from sr_od.application.currency_war.decision.cw4.statefn.odds import (
+        card_search_window,
         tier_search_window,
     )
-    if provisional.is_none('T_SEARCH_A'):
-        return frozenset()
-    return tier_search_window(level)
+    level = int(state.level or 1)
+    rounds = horizon.r_remaining(session, int(state.plane or 1),
+                                 int(state.round_num or 1))
+    v_step = window_vbar(registry, rounds, 'per_step')
+    v_frame = window_vbar(registry, rounds, 'frame_horizon')
+    tier_step = tier_search_window(level, v_step)
+    tier_frame = tier_search_window(level, v_frame)
+    card_step = card_search_window(level, v_step)
+    card_frame = card_search_window(level, v_frame)
+    if tier_step != tier_frame:
+        counters['p57_tier_window_diff_frames'] = \
+            counters.get('p57_tier_window_diff_frames', 0) + 1
+    if card_step != card_frame:
+        counters['p57_card_window_diff_frames'] = \
+            counters.get('p57_card_window_diff_frames', 0) + 1
+    v = v_step if reading == 'per_step' else v_frame
+    return tier_search_window(level, v), card_search_window(level, v)
 
 
 def decide_shop_wave(state: GameState, session: StrategySession,
@@ -463,7 +489,22 @@ def decide_shop_wave(state: GameState, session: StrategySession,
     # ---- ② 预算投影 ----
     cap_resolved = mandate._cap_of(session)
     g_star = saturation_line(cap_resolved)
-    s_reserve = b_target(0, 0, 0)   # S 预留下界(P48 整买目标;b_target 单一源)
+    # P56 可变现息线下界(设计 13_buy_face_design §2.2;dd-026 姊妹缺口
+    # 收口):s_reserve := g* − Σ活期退金投影——discretionary 买面(EV/M6)
+    # 金约束 gold − cost ≥ s_reserve ⇔ gold − cost + Σrefund ≥ g*
+    # (p48 命题 3 可变现口径的同构引用)。活期卡资格谓词与 funding_
+    # support_sell 同一 = ``mandate.fuel_sell_candidates`` 单一源。
+    # 旧值 b_target(0,0,0)=0(P48 零参退化)使买面可任意跌破息线
+    # (floor 对称面缺失,设计 §1.2 定谳)。无 ρ 项防双计:买面支出 x
+    # 即刷新门 ρ 预留所指的那笔买入,重复预留=双计(设计 §2.2 同构性
+    # 检讨)。帧级静态投影让渡:活期集合以帧首快照计,M4 卖出的活期件
+    # 即时从投影扣减(见 M4 段);帧内其余卖出(回拉/支付支撑)发生在
+    # 全部买入之后,不进本帧任何金约束比较。Σ=0(无活期卡)时约束退化
+    # 为裸金 ≥ g*(保守端,无声洞)。
+    liquid_refund = sum(sell_refund(1, bench_char_cost(b))
+                        for b in mandate.fuel_sell_candidates(
+                            bench, k_members, state=state))
+    s_reserve = g_star - liquid_refund
     # R2 预算门预留(P40 R2 规范口径落码,修 R2 批;证明单一源 =
     # p54-r2-interest-floor + dd-026-r2-interest-floor):
     # reserve = 息线 g* + Σ预留卡价 ρ —— 与 P40 溢余段刷窗式
@@ -475,11 +516,31 @@ def decide_shop_wave(state: GameState, session: StrategySession,
     # EV 买面/M6 的 S 预留消费位语义不同(P48 S 线),本批不动(挂账)。
     r2_reserve = g_star + _r2_card_reserve(k_members, bench, deployed,
                                            state)
+    # P57 双读法参数化(设计 §2.3/§3.2):读法经 config.cw4_vbar_reading,
+    # 生产默认读法② frame_horizon;脏值回落缺省(不放大为行为分叉)。
+    _reading = getattr(config, 'cw4_vbar_reading', DEFAULT_VBAR_READING)
+    if _reading not in VBAR_READINGS:
+        _reading = DEFAULT_VBAR_READING
+    # registry 缺省兜底(与 r1 段同先例;本链锚字段在两视图同值——sim
+    # 视图只覆写 level_max)。窗口帧级现算一次,M6/EV 两消费位共用同帧
+    # 同源(禁各消费位各算各的)。
+    _reg = registry
+    if _reg is None:
+        from sr_od.application.currency_war.kernel.cw_registry import (
+            DEFAULT_REGISTRY,
+        )
+        _reg = DEFAULT_REGISTRY
+    tier_w, card_w = _frame_search_windows(session, state, _reg, _reading,
+                                           counters)
     gold = int(state.gold or 0)
     bench_free = BENCH_CAPACITY - len(bench)
     out: list[mandate.Emitted] = []
     used_cards: set[int] = set()      # 已发射店槽(identity;防同槽再提案)
     bought_target = False
+    # 本帧已发射买入件名集合(T1 回拉 R2-N1 发射约束的 prefer_names 输入:
+    # 首卖刚买件使连带卖出损失=0;帧投影架构下刚买件未入 bench,按名
+    # 匹配同资格在册件)
+    bought_names: list[str] = []
     # 同槽去重防线(R197 症3,与 prep 侧 sold_slots 同型):pre-wave 共享
     # 同一 bench 快照的卖面(M4/sell_for_interest/funding_support)对同
     # bench_idx 双 SellBench = 执行侧第二笔 progressed=False 触发
@@ -507,6 +568,10 @@ def decide_shop_wave(state: GameState, session: StrategySession,
                 bench_free += 1
                 if income:
                     gold += income
+                # P56 投影同步:卖出的活期件从 Σ活期退金投影扣减(帧首
+                # 快照的重复计入会让买面金约束偏松——非保守方向,即时修正)
+                liquid_refund -= sell_refund(1, bench_char_cost(victim))
+                s_reserve = g_star - liquid_refund
         else:
             _count('m2_retry_exhausted')
 
@@ -613,8 +678,9 @@ def decide_shop_wave(state: GameState, session: StrategySession,
         if not ok2:
             _count('m6_bench_full')
         else:
-            t_search = _t_search_active(int(state.level or 1))
-            if not t_search:
+            # 窗口 = 帧级现算(T1 后 T_SEARCH_A 门退役;空集=真无窗口帧,
+            # 语义不变:不买 + 溢余滞留遥测)
+            if not tier_w:
                 _count('m6_overflow_strand')
             else:
                 # 契约核验(§4.2.2):S 预留辖域前提=目标线成型(先例①),
@@ -628,9 +694,12 @@ def decide_shop_wave(state: GameState, session: StrategySession,
                     cost = card.cost if card.cost else 3
                     okm, _mkey = crit_stockpile.stockpile_buy(
                         gold, s_reserve, bench_free, cost,
-                        card.star or 1, t_search) if _stock_ok \
+                        card.star or 1, tier_w) if _stock_ok \
                         else (False, '')
                     if not okm:
+                        # P56 拒因分键(R3-R5):s_reserve 拒买帧计数
+                        if _mkey == 's_reserve':
+                            _count('m6_s_reserve_reject')
                         continue
                     ok1, _ = mandate.check_affordable(gold, cost)
                     if not ok1:
@@ -639,6 +708,7 @@ def decide_shop_wave(state: GameState, session: StrategySession,
                         BuyCard(card=card, reason='m6_stockpile'),
                         True, 'm6_stockpile'))
                     used_cards.add(id(card))
+                    bought_names.append(card.name or '')
                     gold -= cost
                     bench_free -= 1
 
@@ -652,7 +722,8 @@ def decide_shop_wave(state: GameState, session: StrategySession,
                 contracts.ContractCtx(k_members=k_members), counters):
             cands, ckey = crit_buy.ev_buy_candidates(
                 gold, s_reserve, state.shop, k_members,
-                level=int(state.level or 1))
+                level=int(state.level or 1), window=card_w,
+                counters=counters)
             if ckey:
                 _count(f'shop_ev_{ckey}')  # shop_domain / u_unavailable
             elif cands:
@@ -675,6 +746,7 @@ def decide_shop_wave(state: GameState, session: StrategySession,
                     out.append(mandate.Emitted(
                         BuyCard(card=card, reason='ev_buy'), False, 'ev_buy'))
                     used_cards.add(id(card))
+                    bought_names.append(card.name or '')
                     gold -= cand.cost
                     bench_free -= 1
                     emitted_ev += 1
@@ -767,13 +839,20 @@ def decide_shop_wave(state: GameState, session: StrategySession,
                     RefreshShop(cost=int(state.shop_refresh_cost
                                          or REFRESH_COST_BASE)),
                     False, 'r1_paid_refresh'))
-        # 凑息档 EV 面(卖回凑息;T_SEARCH🔴 ⇒ fail-closed 不卖)。
-        # 契约核验(§4.2.2):前提恒真(None 登记),违例路径仅剩未登记键
+        # 凑息卖·回拉发射位(T1 语义重写,设计 13_buy_face_design §2.2;
+        # dd-026 姊妹缺口收口):金位触发(买/花后投影金 < g* 才发射)+
+        # 目标量止盈(remaining 递减贪心,Σrefund ≥ 缺口即止,不多卖一张)
+        # + T_SEARCH_A 布尔门退役——语义单一源 = criteria/sell.
+        # sell_for_interest(函数 docstring);prefer_names = 刚买件(R2-N1
+        # 发射约束,首卖刚买件连带损失=0)。分键遥测四字段在判据内随
+        # counters 落键(R3-R5)。契约核验(§4.2.2):前提恒真(None 登记),
+        # 违例路径仅剩未登记键
         if contracts.ensure_contract(
                 ('sell', 'sell_for_interest'),
                 contracts.ContractCtx(gold=gold), counters):
             _slots, skey = crit_sell.sell_for_interest(
-                gold, bench, cap_resolved, k_members, state=state)
+                gold, bench, cap_resolved, k_members, state=state,
+                prefer_names=tuple(bought_names), counters=counters)
         else:
             _slots, skey = [], 'contract_abstain'
         if not skey:

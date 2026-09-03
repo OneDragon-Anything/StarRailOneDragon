@@ -68,4 +68,29 @@ def v_bar_net(registry: DecisionV2Registry, r_remaining: int) -> float:
         * max(0, int(r_remaining))
 
 
-__all__ = ['per_battle_value', 'streak_floor_gold', 'v_bar_net']
+#: P57 窗口门 V̄ 读法全集(设计出处 = strategy/13_buy_face_design §2.3/§3.2):
+#: - ``per_step`` 读法① 单步兑现价值 = 链斜率(rung 流+胜率流的每轮价值,
+#:   P53 锚 ~4.9/轮);
+#: - ``frame_horizon`` 读法② 帧级视界价值 = v_bar_net(r_remaining)
+#:   (r=5 时=24.7=旧静态注入连续性锚)。
+#: 生产默认 = 读法②(先验偏向:决策帧视界是分布不是单值,与修 A 哲学
+#: 一致);两读法裁决 = sim A/B(P57,证据来源=经验,strategy-work §3 档 2)。
+VBAR_READINGS: tuple[str, ...] = ('per_step', 'frame_horizon')
+DEFAULT_VBAR_READING: str = 'frame_horizon'
+
+
+def window_vbar(registry: DecisionV2Registry, r_remaining: int,
+                reading: str = DEFAULT_VBAR_READING) -> float:
+    """窗口门 V̄ 取值(P57 双读法参数化;零新自由参数)。
+
+    读法① = ``v_bar_net(reg, 1)``:链在 r=1 的取值即斜率本身(单步兑现
+    价值);读法② = ``v_bar_net(reg, r)``:帧级视界价值。未知读法按缺省
+    读法②回落(配置桩脏值不放大为行为面分叉,回落计入消费位申报)。
+    """
+    if reading == 'per_step':
+        return v_bar_net(registry, 1)
+    return v_bar_net(registry, r_remaining)
+
+
+__all__ = ['DEFAULT_VBAR_READING', 'VBAR_READINGS', 'per_battle_value',
+           'streak_floor_gold', 'v_bar_net', 'window_vbar']

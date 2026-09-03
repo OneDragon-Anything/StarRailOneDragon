@@ -69,35 +69,42 @@ def _v_ms_value() -> float | None:
     return cv.value
 
 
-def tier_search_window(level: int) -> frozenset[int]:
+def tier_search_window(level: int, vbar: float | None = None) -> frozenset[int]:
     """档级搜索窗口(读法甲,档级消费位:压库/凑息/M6;P49 档匹配)。
 
     门式 = CALIB_REPORT_V2 §2.3 读法甲(p40 单步 EV 门 V* = c_eff/P ≤ V̄
-    的档级退化:p(L,c) ≥ c_eff/V̄):等级现读 REFRESH_PROB,V̄ 现读
-    provisional V_MS,c_eff = REFRESH_COST_BASE——零新自由参数,窗口是
-    「读法×等级×带端」三元状态量(两读法逐级矛盾系物理事实,非缺陷)。
-    V_MS None ⇒ 空集(fail-closed,不造常数窗口)。表值对拍锚=
-    calib_v2_analysis.json ``tier_level_gate.e2_24.7``(V̄=24.7 全表)。"""
-    vbar = _v_ms_value()
-    if vbar is None:
+    的档级退化:p(L,c) ≥ c_eff/V̄):等级现读 REFRESH_PROB,c_eff =
+    REFRESH_COST_BASE——零新自由参数,窗口是「读法×等级×带端」三元状态量
+    (两读法逐级矛盾系物理事实,非缺陷)。表值对拍锚=
+    calib_v2_analysis.json ``tier_level_gate.e2_24.7``(V̄=24.7 全表)。
+
+    V̄ 取值(T1 短路径,设计 13_buy_face_design §2.3):生产消费位传帧级
+    现算值(``vbar.window_vbar``,P57 双读法;T_SEARCH_A 布尔门已退役出
+    窗口消费位);``vbar=None`` 保留旧调用面 = provisional V_MS 槽位现读
+    (None ⇒ 空集 fail-closed,不造常数窗口)。
+    """
+    v = vbar if vbar is not None else _v_ms_value()
+    if v is None or v <= 0:
         return frozenset()
-    thr = REFRESH_COST_BASE / vbar
+    thr = REFRESH_COST_BASE / v
     return frozenset(
         c for c in (1, 2, 3, 4, 5) if refresh_prob(level, c) >= thr)
 
 
-def card_search_window(level: int) -> frozenset[int]:
+def card_search_window(level: int, vbar: float | None = None) -> frozenset[int]:
     """单卡搜索窗口(读法乙,单卡消费位:ev_buy 追件;p40/p41 追特定卡)。
 
     门式 = CALIB_REPORT_V2 §2.3 读法乙(P_shop=1−(1−p/v)^5 满池,p41 ①
     退化式;窗口(c) ⟺ c_eff/P_shop ≤ V̄):P_shop 满池 j=0/taken_c=0
     经本模块 ``p_shop`` 同一实现(单一源);其余同 ``tier_search_window``。
     对拍锚 = calib_v2_analysis.json ``card_level_gate.e2_24.7``(V̄=24.7
-    全表;L7 读法甲 {1,2,3,4} vs 读法乙 {2,3} 即两读法分立锁例)。"""
-    vbar = _v_ms_value()
-    if vbar is None:
+    全表;L7 读法甲 {1,2,3,4} vs 读法乙 {2,3} 即两读法分立锁例)。
+    V̄ 取值同 ``tier_search_window`` 的 T1 参数化申报。
+    """
+    v = vbar if vbar is not None else _v_ms_value()
+    if v is None or v <= 0:
         return frozenset()
-    thr = REFRESH_COST_BASE / vbar
+    thr = REFRESH_COST_BASE / v
     return frozenset(
         c for c in (1, 2, 3, 4, 5) if p_shop(level, c, 0, 0) >= thr)
 

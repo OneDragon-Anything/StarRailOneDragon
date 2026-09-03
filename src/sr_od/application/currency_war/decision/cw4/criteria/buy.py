@@ -32,6 +32,9 @@ class BuyCandidate:
 def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
                       k_members: tuple[str, ...],
                       level: int = 1,
+                      *,
+                      window: frozenset[int] | None = None,
+                      counters: dict | None = None,
                       ) -> tuple[list[BuyCandidate], str]:
     """EV 买候选生成(发射面前半)。
 
@@ -39,13 +42,17 @@ def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
     - ``shop_cards`` 无(商店线辖外/pick 帧域)⇒ 空候选 + 'shop_domain';
     - u/U_X 未标定(None)⇒ 序 3-5 消费无载 ⇒ 空候选 + 'u_unavailable'
       (对称 fail-closed:买面缺输入 = 不放行,§2.1 E_rev 镜像);
-    - 金 < cost + S 预留(检查点③辖 EV 买面)⇒ 过滤。
+    - 金 < cost + S 预留(检查点③辖 EV 买面;P56 批起 s_reserve =
+      可变现息线下界 g* − Σ活期退金投影,语义单一源 = shop.py 预算投影段)
+      ⇒ 过滤 + 'ev_buy_s_reserve_reject' 分键计数(R3-R5 分键遥测)。
     候选第三类(R8-6 收窄):活跃窗口档内 ∧ 1★(refund_full)——
     2★+ 档内单无 EV 背书不发射。**单卡消费位窗口**(IMPL_ADV_R200 症5①:
-    硬编码 {1,2,3} 占位删除)= 运行时确定性查表 CALIB_REPORT_V2 §2.3
-    读法乙(``statefn/odds.card_search_window``:等级现读 REFRESH_PROB、
-    V̄ 现读 provisional V_MS、c_eff=REFRESH_COST_BASE,零新自由参数;
-    V_MS 缺读 ⇒ 空集 fail-closed)。
+    硬编码 {1,2,3} 占位删除)= 确定性查表(CALIB_REPORT_V2 §2.3 读法乙,
+    ``statefn/odds.card_search_window``:等级现读 REFRESH_PROB、c_eff=
+    REFRESH_COST_BASE,零新自由参数)。T_SEARCH_A 布尔门已退役出本消费位
+    (T1 短路径,设计 13_buy_face_design §2.3):生产消费位传帧级现算
+    ``window``(vbar 链,P57 双读法;空集=真无窗口帧,非门控);
+    ``window=None`` 保留旧调用面(V_MS 槽读 + T_SEARCH_A 门,缺读空集)。
     """
     if not shop_cards:
         return [], 'shop_domain'
@@ -55,9 +62,12 @@ def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
         card_search_window,
     )
     out: list[BuyCandidate] = []
-    t_search: frozenset[int] = frozenset()   # T_SEARCH_A None ⇒ 活跃窗口空(fail-closed)
-    if not provisional.is_none('T_SEARCH_A'):
-        t_search = card_search_window(level)  # 单卡消费位:读法乙确定性查表
+    if window is not None:
+        t_search: frozenset[int] = window
+    elif not provisional.is_none('T_SEARCH_A'):
+        t_search = card_search_window(level)  # 单卡消费位:读法乙(旧调用面)
+    else:
+        t_search = frozenset()   # T_SEARCH_A None ⇒ 活跃窗口空(fail-closed)
     for i, card in enumerate(shop_cards):
         name = getattr(card, 'char_id', '') or ''
         cost = int(getattr(card, 'cost', 0) or 0)
@@ -69,7 +79,11 @@ def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
         if not refund_full_star_ok(star, cost):
             continue            # R11-2:发射背书仅 1★
         if gold - cost < s_reserve:
-            continue            # 检查点③:S 预留
+            # 检查点③(P56 可变现下界):拒因分键计数(R3-R5)
+            if counters is not None:
+                counters['ev_buy_s_reserve_reject'] = \
+                    counters.get('ev_buy_s_reserve_reject', 0) + 1
+            continue
         out.append(BuyCandidate(name, cost, star, i))
     return out, ''
 

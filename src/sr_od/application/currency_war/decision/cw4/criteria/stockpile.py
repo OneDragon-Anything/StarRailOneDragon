@@ -2,7 +2,6 @@
 statefn/vopt,R4-F4——判据函数只消费,防臂①旁路误拆 M6 买入口)。"""
 from __future__ import annotations
 
-from sr_od.application.currency_war.decision.cw4.audit import provisional
 from sr_od.application.currency_war.decision.cw4.statefn.vopt import (
     refund_full_star_ok,
     tier_match,
@@ -16,12 +15,13 @@ def stockpile_buy(gold: int, s_reserve: int, bench_free: int,
     """EV 追加压库买入(P49;§2.5 三段辖域统一形态)。
 
     发射限定(R11-2/R12-3):档匹配 ∧ refund_full_star_ok(1★ 全额
-    可退);T_search🔴 未标定期 fail-closed 不买(+溢余滞留遥测归
-    mandate M6 侧);席位:free≥2 直过,free=1 过 V_slot 净门
+    可退);席位:free≥2 直过,free=1 过 V_slot 净门
     (V_slot🔴 ⇒ 保守端 0 代入,R12-5)。金约束:cost+S 预留(检查点③)。
+    T_SEARCH_A 布尔门已退役出本消费位(T1 短路径,设计 13_buy_face_design
+    §2.3):``t_search`` 窗口由消费位帧级现算传入(vbar 链,P57 双读法),
+    空集=真无窗口帧(非门控),判 'not_in_tier' 不买(溢余滞留遥测归
+    mandate M6 侧)。
     """
-    if provisional.is_none('T_SEARCH_A'):
-        return False, 't_search_unavailable'
     if not tier_match(card_cost, t_search):
         return False, 'not_in_tier'
     if not refund_full_star_ok(card_star, card_cost):
