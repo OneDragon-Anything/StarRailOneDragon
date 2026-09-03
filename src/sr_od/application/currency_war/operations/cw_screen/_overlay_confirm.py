@@ -118,12 +118,7 @@ def confirm_and_verify(
         log.info(f'[{tag}] 确认后 {entry_keyword!r} 仍在 → round_retry(确认未落地 bug#1 / 或隐藏多步 overlay)')
         return op.round_retry(wait=1)
     log.info(f'[{tag}] {entry_keyword!r} 已消失 → overlay 关,推进')
-    # ADR-0264 方案 B:overlay 关闭后的首帧(= 验关帧)预置为关态
-    # 稳定基线——外层回备战分支的 gate 跳过「从零等 2 轮」;gate 仍
-    # 须过一次「锚命中+指纹一致」确认(不裸跳)。best-effort。
-    from sr_od.application.currency_war.obs.cw_observation_gate import (
-        PROFILE_CLOSED,
-        preset_stable_baseline,
-    )
-    preset_stable_baseline(frame, profile=PROFILE_CLOSED)
+    # (gate 清尾批 2026-09-03:原此处向已退役的 gate 稳定门预置基线;
+    #  wait_stable_frame 在 旧内环拆除后已无生产调用方,基线写端
+    #  无读端 → 调用删除。外循环重判兜底,等待语义不变。)
     return op.round_success(wait=success_wait)

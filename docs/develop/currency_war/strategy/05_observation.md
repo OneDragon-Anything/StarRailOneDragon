@@ -8,7 +8,6 @@
 |---|---|---|
 | `cw_observation` | 备战屏 | `read_game_state` → GameState(gold/hp/level/board/shop/bench/deployed…) |
 | `cw_obs_core` | 共享基础设施 | screen_info 区域读取 + OCR helper |
-| `cw_observation_gate` | 稳定门原语(ADR-0213) | `wait_stable_frame`:时间稳定窗(屏判定+per-area 像素指纹首尾一致)+ 三 profile(关态/开态/弹窗态);gate 是「等画面稳定」的单一实现(旧 sleep/单锚/轮询 已删,ADR-0216);末帧供调用方复用(全图 OCR 按 id(image) 缓存贯穿);提速=融合终裁(ADR-0264):骨架 `fast_confirm`(锚命中后确认轮纯 CV 只比指纹、变化即回锚定,min_stable_s 真实测量;False 回退旧完整门)+ 加速器(segment='op_settle' 操作段 2s 预估等待=指纹基线重置点,再快 poll 确认窗)+ `preset_stable_baseline`(overlay 验关成功帧预置基线,首锚消费,仍须锚+指纹一致);不做纯信任放行 |
 | `cw_observe_full` | 组装层(ADR-0213) | `observe_full`:一次全面识别(state/board/bench/deployed/hp/gold/节点行/shop;含 substate 与 gold==0 重读),director 与 recognizer 共源 |
 | `cw_identity_obs` | 备战屏视觉身份(SIFT,非 OCR) | bench/deployed 角色身份 |
 | `cw_node_obs` | 节点选项 overlay | EncounterOption/SupplyOption/MegastarOption/PartnerOption |
@@ -30,7 +29,9 @@
 
 **deploy_cap 域外双帧一致采信(ADR-0420)**:`read_deploy_cap_debounced` 的防抖域(`|cap−level| ≤ `_CAP_DIFF_MAX`,见 `cw_back_layout`)之外不再一律拒绝——域外值重读一帧,两帧一致且落在绝对上界 `DEPLOY_CAP_ABS_MAX`(前台+后台实拍板面上界)之内即采信并 obs_conflict 留证;恒拒两类:**超绝对上界**、**两帧不一致**(瞬时误读族防线不降级)。cap<level 不再恒拒——域判据的对照集 level 自身可误读/毒化(帧证据:画面 4/4、level 先验 5 把唯一合法候选拒空),同走双帧一致通道采信并留证,cap↔level 一致性由双帧通道终审;解析层同判据(`_parse_paddle_positional` 仅当全部候选只因 y≥level 被拒时,用绝对域重解析一次采回)。域内直采路径不变。
 
-**规范入口序列与逐阶段字段规格(ADR-0462)**:观测按「先清场(P0 零业务识别,环入口 `_clear_entry_overlays` 点关闭注册表 `ENTRY_OVERLAY_CLOSE` 中无决策语义的 overlay)→ 干净备战期(`prep_clean`,全量基线,hp 真读主路径)→ 动作期(`prep_shop_open` 仅买牌决策所需;overlay 帧只读该 overlay 决策内容)」组织;逐字段 gate 单一源 = `cw_observation_gate.PHASE_FIELD_SPEC`(`read_game_state` 的 `phase` 参数;None=全量=无阶段语义;未注册阶段 fail-open 全量+告警)。hp 读取门唯一来源 = spec('hp' ∈ spec 才 OCR,否则 reconcile 沿用,ADR-0282 语义不变);paddle cap/count 在 gate 路径合并单读(`resolve_paddle_pair`,防抖核 `_debounce_cap` 单一源)。冲突证据行带 `obs_phase` 阶段键,**仅注册阶段置位**(未注册阶段名 fail-open 全量+告警但不打阶段键,防假阶段名污染判读分类)——判读按阶段分类:清场期/overlay 期来源的冲突行应 ≈0(这些阶段不跑备战识别链),>0 即有调用点在错误阶段跑全量识别。
+**规范入口序列与逐阶段字段规格(ADR-0462)**:观测按「先清场(P0 零业务识别,环入口 `cw_screen_prep._clear_entry_overlays` 点关闭注册表 `ENTRY_OVERLAY_CLOSE`(常量随 gate 清尾批迁驻消费方,单一源仍 = `cw_overlay_registry.derive_clearable()` 派生)中无决策语义的 overlay)→ 干净备战期(`prep_clean`,全量基线,hp 真读主路径)→ 动作期(`prep_shop_open` 仅买牌决策所需;overlay 帧只读该 overlay 决策内容)」组织;逐字段 gate 单一源 = `cw_observation.PHASE_FIELD_SPEC`(2026-09-03 gate 清尾批随 read_game_state 迁驻;`phase` 参数;None=全量=无阶段语义;未注册阶段 fail-open 全量+告警)。hp 读取门唯一来源 = spec('hp' ∈ spec 才 OCR,否则 reconcile 沿用,ADR-0282 语义不变);paddle cap/count 在 gate 路径合并单读(`resolve_paddle_pair`,防抖核 `_debounce_cap` 单一源)。冲突证据行带 `obs_phase` 阶段键,**仅注册阶段置位**(未注册阶段名 fail-open 全量+告警但不打阶段键,防假阶段名污染判读分类)——判读按阶段分类:清场期/overlay 期来源的冲突行应 ≈0(这些阶段不跑备战识别链),>0 即有调用点在错误阶段跑全量识别。
+>
+> **稳定门(gate)退役(2026-09-03,dd-024)**:`cw_observation_gate.wait_stable_frame`(ADR-0213/0216/0264 的时间稳定窗)在 W971 内环拆除后已无生产调用方——等待语义由三通道接管:① op 内判据化等待(如 `_wait_shop_row_stable` 帧稳定轮询);② 外循环逐轮重识别兜底(单轮不内等,稳定由「下一轮重新观察」保证);③ screen_info 建档锚分发(is_prep_like_frame / get_match_screen_name)。`preset_stable_baseline` 基线预置随模块消亡(写端无读端)。
 
 **装备区识别(DD-010)**:`cw_equipment.read_equip_grid` 纯 CV 逐格分类,裁决面三原则:**①外层判干净**——输入必须是干净备战画面,由调用方建档画面判定保证(备战 id_mark 含右下「出战」,恰被角色详情面板覆盖;角色详情/装备详情/装备浮窗/开商店各有独立建档);识别器内无画面状态判断(`_panel_open` 探针与 occluded 三态已退役, EquipCell 为占用/空两态)。**②位移两态**——「装备追踪中」标签使装备栏整体下移一档;候选档常量 `_EQUIP_DY_CANDIDATES` 逐档分类,对齐判据 = 占用格峰心垂直偏移中位 ≤ `_EQUIP_DY_ALIGN_TOL`(TM 分数不可作对齐判据,归一化互相关平移不变);两档皆不对齐回退 `_detect_zone_dy` 全档扫描兜底并 `[cw!] dy_fallback` 留痕(未知第三布局态信号)。**③填充序剪枝**——扫描按栏内填充序(`_fill_order_slots`:row1 消耗品右→左;装备区右列自上而下、再左列;规律知识档 = equipment_mechanics.md §5),两段独立「首空即停」;row1 只匹配工具模板子集。返回按填充序的占用格列表(空格不产出);漏格/错识别由装备期望态对账(`compare_equip_expect`,w543)暴露。
 

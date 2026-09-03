@@ -19,7 +19,10 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
-from sr_od.application.currency_war.kernel.cw_overlay_registry import derive_decision
+from sr_od.application.currency_war.kernel.cw_overlay_registry import (
+    derive_clearable,
+    derive_decision,
+)
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     BailToOuter,
     DeferSpheres,
@@ -109,6 +112,21 @@ from sr_od.application.currency_war.telemetry import (
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+# ===== P0 清场段:环入口可一键关闭的 overlay 注册表(2026-09-03 自
+# cw_observation_gate 随清尾批迁入,唯一消费方 = 本文件 _clear_entry_overlays;
+# 单一源仍是 ``cw_overlay_registry.derive_clearable()`` 派生桥接)=====
+#: 只收「无决策语义的弹窗/面板」——星徽秘典/补给已 decision 化(关闭即丢
+#: 决策内容,C1 红线),从清场集消失,改走 event_overlay bail → 0i 选卡 /
+#: CwScreenSupplyNode 消化;投资环境/投资策略/选择伙伴/盛会之星/祈愿试炼
+#: 等交互 overlay 同理,不进派生集。
+ENTRY_OVERLAY_CLOSE: dict[str, str] = {
+    spec.screen_name: spec.close_area for spec in derive_clearable()
+}
+#: 清场轮数上限(每轮:逐屏锚探 → 命中点关闭 → settle;无命中即出)。
+ENTRY_OVERLAY_CLEAR_ROUNDS: int = 4
+#: 点关闭后的画面过渡等待(秒)。
+ENTRY_OVERLAY_SETTLE_S: float = 1.0
 
 
 def prep_obs_actual_for(session, entry, st, obs,
@@ -456,7 +474,8 @@ class CwScreenPrep(SrOperation):
             )
             _of = observe_full(self.ctx, screen, tier='heavy',
                                source='director', op=self,
-                               shop_open=obs.shop_open)   # F2 门
+                               shop_open=obs.shop_open,   # F2 门
+                               session=self._session())   # P4R4:SIFT 三层漏斗(session 优先匹配)
             templates = ensure_portrait_templates(self.ctx)   # 复用单一源(路径+缓存)
             if templates is not None:
                 obs.bench_chars = _of.get('bench_chars') or []
@@ -1456,19 +1475,15 @@ class CwScreenPrep(SrOperation):
 
     def _clear_entry_overlays(self) -> None:
         """P0 清场前置段(规范入口序列「先清场、再识别、后动作」;ADR-0462):
-        环入口先逐屏探可一键关闭的 overlay(注册表 = ``cw_observation_gate.
-        ENTRY_OVERLAY_CLOSE``,锚判定走现有 screen 体系),命中即点其关闭按钮,
-        拿干净备战画面再进 gate/全量识别——识别与 overlay 状态交织是死读与
-        冲突噪声的共同根。只收「无决策语义的弹窗/面板」;投资环境/策略等
-        交互 overlay 有专属 handler,关闭即丢决策内容,不进注册表、仍走既有
-        event_overlay bail → 外环消化路径。fail-open:截图/识别/点击任一异常
-        静默返回(=现行为,gate 的帧态门继续兜底)。"""
+        环入口先逐屏探可一键关闭的 overlay(注册表 = ``ENTRY_OVERLAY_CLOSE``,
+        单一源 = ``cw_overlay_registry.derive_clearable()`` 派生桥接,
+        2026-09-03 自 cw_observation_gate 随清尾批迁入;锚判定走现有 screen
+        体系),命中即点其关闭按钮,拿干净备战画面再进全量识别——识别与
+        overlay 状态交织是死读与冲突噪声的共同根。只收「无决策语义的弹窗/
+        面板」;投资环境/策略等交互 overlay 有专属 handler,关闭即丢决策
+        内容,不进注册表、仍走既有 event_overlay bail → 外环消化路径。
+        fail-open:截图/识别/点击任一异常静默返回(=现行为,外循环重判兜底)。"""
         from one_dragon.base.screen import screen_utils
-        from sr_od.application.currency_war.obs.cw_observation_gate import (
-            ENTRY_OVERLAY_CLEAR_ROUNDS,
-            ENTRY_OVERLAY_CLOSE,
-            ENTRY_OVERLAY_SETTLE_S,
-        )
         for _ in range(ENTRY_OVERLAY_CLEAR_ROUNDS):
             try:
                 frame = self.screenshot()
@@ -1956,11 +1971,11 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
     单一源防双份漂移)。买后重估 / 买牌期望暂存 / gold 对拍 / 执行事实暂存,
     返回单元摘要字符串(消费方包装成 round status/detail)。"""
     from sr_od.application.currency_war.obs.cw_observation import (
+        PHASE_PREP_CLEAN,
         read_game_state,
         read_gold,
         read_gold_settled,
     )
-    from sr_od.application.currency_war.obs.cw_observation_gate import PHASE_PREP_CLEAN
     from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
         _apply_hp,
         _tracked_bench_chars,

@@ -28,3 +28,4 @@
 | [dd-021](dd-021-board-count-underestimate-fix.md) | DD-021:board 阵营计数系统性低估修复——计数源五级优先(徽标>XY>斜杠容错>徽标小格重读>身份底座),next_tier 改基于合并后计数+注册表推导 | accepted | 2026-09-03 |
 | [dd-022](dd-022-decisions-expected-paths.md) | DD-022:decisions.jsonl 期望态标记——expected_paths 字段(决策时点挂起期望摘要,recorder 汇点 session 自取全决策面一次覆盖;读端三态:旧行无键/[]=无挂起/非空=有挂起;match_archive 聚合二期挂账) | accepted | 2026-09-03 |
 | [dd-023](dd-023-plane-intel-start-plane-timing.md) | DD-023:位面情报采集时序修正——接管链备战帧先定起始位面(start_plane 裁剪,已通过位面跳过)+ 详情侧读不出直接位面级结论(删切卡动画重试等待)+ 用户定值等待(开屏 3s/切卡 2s) | accepted | 2026-09-03 |
+| [dd-024](dd-024-gate-module-retirement.md) | DD-024:gate 模块退役——消费清零后删除 cw_observation_gate(活常量迁驻 cw_observation/cw_screen_prep,死基线写删;等待语义=判据化等待+外循环重判) | accepted | 2026-09-03 |

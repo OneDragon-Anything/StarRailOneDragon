@@ -1952,6 +1952,38 @@ _LV_LOG_FMT: dict[str, str] = {
 }
 
 
+# ===== 规范入口序列:阶段键 + 每阶段字段规格(ADR-0462)=====
+# 「先清场、再识别、后动作」:P0 清场期零业务识别 → P1 干净备战期全量基线 →
+# P2 动作期(开店/overlay)只读该动作决策所需。字段规格 = read_game_state 的
+# 逐字段门单一源(2026-09-03 自 cw_observation_gate 随清尾批迁入,gate 模块
+# 退役;键域与 Snapshot SubstateClassification.name 对齐,W583 快照契约)。
+
+#: P1 干净备战期(关店备战帧):全量识别基线,含 hp 真读主路径(shop 关帧血量区
+#: 可见)。shop_cards/refresh_probs 属开店面板,必空不读。
+PHASE_PREP_CLEAN: str = 'prep_clean'
+#: P2a 开店动作期:仅买牌决策所需;hp/node_type 结构必空
+#: (6fc1fd4c 先例 + shop.py session 拷贝),cap/deployed/难度/连胜以 P1 基线为准。
+PHASE_PREP_SHOP_OPEN: str = 'prep_shop_open'
+#: 战斗/过渡帧:仅位面轮次(恢复对局检测消费面只有 plane/round)。
+PHASE_BATTLE_OR_TRANSIT: str = 'battle_or_transit'
+
+#: 每阶段可读字段集(read_game_state 逐段门;phase=None=全量=现行为)。
+#: 字段键与 read_game_state 内各识别段一一对应;hp 段特殊:在集内=真读
+#: (read_hp_opt),不在=对账沿用(reconcile,零 OCR)。
+PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
+    PHASE_PREP_CLEAN: frozenset({
+        'gold', 'phase_round', 'hp', 'node_type', 'xp', 'level',
+        'deploy_cap', 'deployed_count', 'enemy_difficulty',
+        'level_up_cost', 'streak', 'board', 'bench_full',
+    }),
+    PHASE_PREP_SHOP_OPEN: frozenset({
+        'gold', 'phase_round', 'xp', 'level', 'level_up_cost',
+        'board', 'shop_cards', 'refresh_probs', 'bench_full',
+    }),
+    PHASE_BATTLE_OR_TRANSIT: frozenset({'phase_round'}),
+}
+
+
 def read_game_state(ctx: SrContext, screen: MatLike,
                     phase: str | None = None) -> GameState:
     """备战屏截图 → GameState(喂 plan;逐字段 gate 单一源 = PHASE_FIELD_SPEC)。
@@ -1968,9 +2000,6 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     deploy 走 CwOpDeploy)。
     """
     from sr_od.application.currency_war.kernel import cw_observe as _obs_mod
-    from sr_od.application.currency_war.obs.cw_observation_gate import (
-        PHASE_FIELD_SPEC,
-    )
     _spec = PHASE_FIELD_SPEC.get(phase) if phase is not None else None
     if phase is not None and _spec is None:
         # fail-open:未知阶段名不猜 → 全量 + 告警(拼错阶段名立即暴露,不静默)

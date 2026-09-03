@@ -35,15 +35,13 @@ from sr_od.application.currency_war.kernel.cw_state import (
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
+    PHASE_PREP_SHOP_OPEN,
     ensure_portrait_templates,
     new_bench_slots,
     read_game_state,
     read_gold,
     read_gold_opt,
     read_shop_cards,
-)
-from sr_od.application.currency_war.obs.cw_observation_gate import (
-    PHASE_PREP_SHOP_OPEN,
 )
 from sr_od.application.currency_war.telemetry import defects, recorder
 from sr_od.context.sr_context import SrContext

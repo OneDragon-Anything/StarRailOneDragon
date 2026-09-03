@@ -8,8 +8,9 @@ UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要�
 **切换状态**:注册表 + 一致性断言就绪;
 B 面(director bail 扫描,cw_screen_prep 事件 overlay 检测)已切换为消费
 ``derive_decision()``;A 面(P0 清场)已切换为消费 ``derive_clearable()``
-(桥接点 = ``cw_observation_gate.ENTRY_OVERLAY_CLOSE``,派生映射,消费循环
-未变);其余消费面(cw_loop 分支 / 退出链)尚未切换。全部切换完成前,
+(桥接点 = ``cw_screen_prep.ENTRY_OVERLAY_CLOSE``,派生映射,消费循环
+未变;2026-09-03 gate 清尾批随消费方迁址——gate 模块已退役);其余消费面
+(cw_loop 分支 / 退出链)尚未切换。全部切换完成前,
 本表对未切换面是「声明 + 锁」,不是运行时唯一判定源。
 
 C1 红线(机器化于测试仓 ``test_cw_overlay_registry.py``):

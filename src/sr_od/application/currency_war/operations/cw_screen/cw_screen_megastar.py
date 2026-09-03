@@ -71,14 +71,9 @@ class CwScreenMegastar(SrOperation):
         screen = self.last_screenshot
         # 验证完成:已不在本节点画面 = overlay 消失 / 进了下一节点 → 节点完成,交还外层。
         if not self._in_node(screen):
-            # ADR-0264 方案 B:overlay 关闭验证帧预置为关态稳定基线(外层回
-            # 备战分支 gate 跳过「从零等 2 轮」;仍须过一次锚+指纹确认,不裸跳)。
-            # best-effort(离线 mock 帧不阻塞)。
-            from sr_od.application.currency_war.obs.cw_observation_gate import (
-                PROFILE_CLOSED,
-                preset_stable_baseline,
-            )
-            preset_stable_baseline(screen, profile=PROFILE_CLOSED)
+            # (gate 清尾批 2026-09-03:原此处向已退役的 gate 稳定门预置基线;
+            #  wait_stable_frame 在 旧内环拆除后已无生产调用方,基线写端
+            #  无读端 → 调用删除。外循环重判兜底,等待语义不变。)
             return self.round_success('巨星节点完成(已离开本节点画面)',
                                       wait=CW_OVERLAY_SETTLE_S)
         # 仍在节点内 → 做一个动作;round_retry 重跑本节点(计预算,超 → FAIL bail)。
