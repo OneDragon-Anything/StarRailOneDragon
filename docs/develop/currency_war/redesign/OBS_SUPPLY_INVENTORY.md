@@ -1,5 +1,7 @@
 # CW 新决策层 · obs 供给面盘点(OPEN-2 收口件)
 
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期预登记设计记录,类名保持当时事实,未改)。
+
 > 独立调查员产出(2026-09)。需求侧单一源 = `docs/develop/currency_war/redesign/01_strategy_layer.md`(下称 v3 设计)+ `docs/develop/currency_war/comp-selection.md`(下称 comp-sel);供给侧以 `src/sr_od/application/currency_war/{obs,kernel,operations}` 与 `assets/game_data/screen_info/currency_war_*.yml` 实读为准。每行结论带来源;未确证处显式标注。
 > 图例:✅ 现成且生产在跑 | 🟡 部分(已建模但有已知缺陷/覆盖不全) | ❌ 无供给。
 

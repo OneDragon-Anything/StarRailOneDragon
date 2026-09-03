@@ -1,5 +1,7 @@
 # W884 · overlay Phase 2 设计收口终版(五条定案)
 
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期预登记设计记录,类名保持当时事实,未改)。
+
 - 日期:2026-09-11;性质:离线只读设计收口(未跑测试/未触实机;写入限本目录)。
 - 输入:W839 报告(`w839_overlay_lifecycle/REPORT.md`,OverlaySpec 字段/五消费面切换表/§2.3 星徽秘典双语义)、W865 B-1 五条补充(`w865_doc_plan_review/REPORT.md`)、现状代码实读(`cw_obs_core.py:95-128` / `cw_observation_gate.py:152-167` / `prep_director.py:386-404` / `battle_loop.py:955-1052`)、W842 零漂移报告(`w842_zerodrift_verdict/REPORT.md`)、W859 复验产物(`w859_pv_reverify/judge_w859.json`)。
 - 红线(不变):decision 语义 overlay ⇒ `closable=False`,由注册表一致性测试机器化(C1 红线)。

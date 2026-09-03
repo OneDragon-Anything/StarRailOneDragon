@@ -1,5 +1,7 @@
 # W970 · CW 画面分层架构重构设计(流程层 / 观察层按画面 / 决策层按画面拆 / op 原子化)
 
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期预登记设计记录,类名保持当时事实,未改)。
+
 - 日期:2026-09-02;状态:FINAL(对抗收敛:轮 1 三视角 30 findings + 轮 2 双视角复核 8 条 + 轮 3 收敛复核 3 条实现级修复,全处置;轮 2 悬置裁决项已决——方案①,dd-011 已 amended)
 - 实施进度:批 A(op 原子化)完成——`OpenShopOp`/`BuyCardsOp`/`CloseShopOp` 抽出(`operations/prep/open_shop.py`/`buy_cards.py`/`close_shop.py`),BuyShopCards 改编排壳,LOCKED_RESUME_ENHANCED 已删;源码锁迁移清单见 ADR 与测试仓对应锁改动;批 B(=W971 P2 黑板接口)完成——`decide_prep_screen`/`decide_shop_screen` 落地(§4.1 经 W971 §2.7 amendment 的 session 签名;旧接口保留为薄委托,sim 适配独立批),LevelUp→LevelUpShop 拆分(dd-014);**批 C(流程编排接管)完成(W971 P3b,dd-017)**——备战接口输出 `OpenShop/OpenShop(read_only)`、RunBuyPhase 解体为流程层编排(prep_director `_open_shop_phase`)、EnsureShop 意图退役(探针挂点随迁 CloseShopOp 后类型分派/腾席链 b read_only/_handle_bench_full 生产路径合流)、PREP_SETTLE_S 稳定门与 `_post_settle_auto_shop` 标志位退役(W971 §2.6/§2.11);批 D 未开始
 - 依据:用户口述架构愿景(2026-09-02,逐段)+ DD-010(装备区识别纯化)+ DD-011(操作完成自等动画/稳定门退役)

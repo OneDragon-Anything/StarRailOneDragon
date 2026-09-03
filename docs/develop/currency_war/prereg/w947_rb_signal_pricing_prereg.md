@@ -1,5 +1,7 @@
 # W947 · R-B 三信号定价 批B · A/B 预注册(判前锁)
 
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期预登记设计记录,类名保持当时事实,未改)。
+
 > 状态:判前锁——本文件在批B任何动码**之前**落盘,判读口径禁中途改。
 > 设计单一源 = `docs/develop/currency_war/prereg/w920_rb_design/DESIGN.md`(§3 落点表/§4-2 判据);命题 = P20/P1/P16/P13/P33(stage_transitions Q1 数据)。
 > 执行批 = `.debug/temp/currency_war/w947_rb_batchb/`(跑批脚本 run_w947.py / 判读脚本 judge_w947.py,判前冻结)。

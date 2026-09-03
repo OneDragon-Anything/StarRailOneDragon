@@ -1,5 +1,7 @@
 # dd-013:删除 LOCKED_RESUME_ENHANCED 锁死续跑逃生机制
 
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期决策记录,类名保持当时事实,未改)。
+
 - Status: accepted(2026-09-02,W970 批 A 实施时落;设计出处 = `docs/develop/currency_war/prereg/w970_layered_arch/DESIGN.md` §5 批 A「LOCKED_RESUME 删」)
 - 关联: DD-011(操作完成自等动画规范)、W971(流程层重构,04-shop)
 

@@ -1,5 +1,7 @@
 # dd-014:黑板模式决策接口落地——decide_prep_screen/decide_shop_screen(session 签名)+ 观察写路径收编 + match 建立前移
 
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期决策记录,类名保持当时事实,未改)。
+
 - Status: accepted(2026-09-02,W971 P2 实施时落;设计出处 = `prereg/w971_flow_layer/DESIGN.md` §2 + `02-state.md` §2/§3/§4 + W970 §4.1 amendment)
 - 关联: W970 §4.1(被本 ADR 对应的 W971 §2.7 amendment 取代 obs 组装签名)、DD-011、dd-013
 

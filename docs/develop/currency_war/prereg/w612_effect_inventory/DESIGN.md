@@ -1,4 +1,5 @@
 # W612 · active effect inventory 骨架 — 设计增量(两段式第一段,零 src 改动)
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期记录,类名保持当时事实,未改)。
 
 > 性质:DESIGN 增量。单一框架源 = `.debug/temp/currency_war/w610_gold_digger_spec/REPORT.md` Part 1(下称 W610-P1)。
 > 本批只做**策略源**的 P0 骨架;环境(`source='portal'`)与词缀(`source='affix'`)双源注册是 W607 辖域,本批只在 schema 里预留 `source` 枚举值,不写其数据、不建其管道。

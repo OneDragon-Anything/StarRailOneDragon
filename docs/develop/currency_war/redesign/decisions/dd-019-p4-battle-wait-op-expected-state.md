@@ -1,5 +1,7 @@
 # DD-019 · W971 P4 战斗等待 op 与期望态 infra 落地
 
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期决策记录,类名保持当时事实,未改)。
+
 - 状态:accepted
 - 日期:2026-09-02
 - 关联:W971 `prereg/w971_flow_layer/05-battle.md`、`EXPECTED_STATE.md`(FINAL v3.1)、`02-state.md` §4.3;DD-011(判稳标志纪律)、DD-014(黑板决策接口)
