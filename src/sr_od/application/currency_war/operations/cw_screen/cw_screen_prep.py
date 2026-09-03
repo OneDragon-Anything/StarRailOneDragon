@@ -1208,6 +1208,11 @@ class CwScreenPrep(SrOperation):
         if match is None or match.strategy is None:
             return self.round_fail(status='无 cw_match(对局未初始化)')
         session = match.session
+        # 环级无进展守卫的动作批签名(消费方 = cw_loop 备战分支):先清 None
+        # (本轮尚未决策),决策出口(主段/破墙段)写入动作类型序列。early
+        # return(overlay 交回/接管补采/策略异常)保持 None → cw_loop 不计数,
+        # 防跨环误延。写在 session(单轮 op 每环重建,实例属性不跨环存活)。
+        session.last_prep_action_sig = None
         self._executor = PrepActionExecutor(self, self.ctx)
         self._cached_state = None
         self._cached_bench = []
@@ -1277,6 +1282,10 @@ class CwScreenPrep(SrOperation):
             log.warning(f'[cw!][director] 策略输出非 list[PrepAction]: '
                         f'{type(actions).__name__}')
             return self.round_fail(status='策略输出非 list[PrepAction](F3)')
+        # 动作批签名(环级无进展守卫的动作腿,消费方 = cw_loop 备战分支):
+        # 动作类型序列;空批 = 空元组(连续空批+状态冻结同样计无进展)
+        session.last_prep_action_sig = tuple(
+            type(a).__name__ for a in actions)
         if not actions:
             # 空批合法(契约 §4:本帧无动作可发,策略器禁用空批表达控制流)
             # → 交回外循环重观察;连续空批的 stall 兜底归外循环防线。
@@ -1464,6 +1473,9 @@ class CwScreenPrep(SrOperation):
         # /dd-020:返回 list[PrepAction];本破墙段逐动作执行,fail-stop 同主段)
         session.prep_obs_frame = bf_obs
         actions = match.strategy.decide_prep_screen(session, config)
+        # 破墙段动作批签名(守卫动作腿):破墙环重复零变换同样计无进展
+        session.last_prep_action_sig = tuple(
+            type(a).__name__ for a in actions)
         _last_name = '-'
         for action in actions:
             _last_name = type(action).__name__

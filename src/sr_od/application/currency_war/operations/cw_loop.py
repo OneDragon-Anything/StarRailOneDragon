@@ -95,13 +95,78 @@ def prep_stall_pending_expected(session) -> tuple[str, ...]:
     缺口):绑其他覆盖点(shop_wave_top/settlement)的条目在备战覆盖点**不可
     确认** → 不计入(防把正常透传误当滞留);tracked 族防抖窗内条目由裁决器
     保留,其登记/清账变化会刷新 stall 签名,恒定滞留才与「字段长期未覆盖」
-    同现。返回值进备战 stall 签名与留证行 = 「字段长期 expected 未覆盖」的
-    结构化线索(停留在不可识别画面过久)。
+    同现。返回值进环级无进展守卫的触发留证行 = 「字段长期 expected 未覆盖」
+    的结构化线索(停留在不可识别画面过久)。
     """
     store = getattr(session, 'expected_state', None) or {}
     return tuple(sorted(f'{e.path}@{e.at_round}'
                         for e in store.values()
                         if e.confirm_point == 'prep_obs'))
+
+
+def prep_no_progress_state_fingerprint(session) -> tuple:
+    """备战环状态指纹(环级无进展守卫的状态腿;只读 observe 现成字段,
+    零新增识别)。
+
+    任一分量变化 = 状态有推进:plane/round_num(轮次)、last_node_type
+    (节点序推进,CwScreenPrep 观察段写)、gold(买牌/卖牌/刷新必变;
+    关店态不可信读恒 None——None 对 None 不构成假推进,买牌经开店必有
+    开店帧把真值写进 last_state)、bench/deployed 身份串(部署/装备/
+    合成必变;deploy_count 用身份串而非计数,防「同数换人」漏检)。
+    故意比旧留证线的对账字段族窄的部分(球/箱/vacancy)不再进指纹:
+    它们由动作签名腿覆盖(动作批相同 ⇒ 对这些的意图相同),收窄只为
+    防识别抖动(球体检测闪烁)误计数。
+    """
+    _st = getattr(session, 'last_state', None)
+    _frame = getattr(session, 'prep_obs_frame', None)
+    _ids = lambda chars: tuple(  # noqa: E731  身份串(零新识别,读 heavy 观察现成字段)
+        getattr(bc, 'char_id', '') for bc in (chars or []))
+    return (
+        getattr(_st, 'plane', None),
+        getattr(_st, 'round_num', None),
+        getattr(session, 'last_node_type', None),
+        getattr(_st, 'gold', None),
+        _ids(getattr(_frame, 'bench_chars', None)),
+        _ids(getattr(_frame, 'deployed_chars', None)),
+    )
+
+
+def prep_no_progress_tick(prev_sig: tuple | None, prev_count: int,
+                          sig: tuple) -> tuple[tuple | None, int]:
+    """守卫计数纯函数:同签名累加,异签名归零(便于三历史重放/健康序列锁测)。
+
+    sig=None(本轮备战环无动作批:overlay 交回/策略异常/破墙前)不累计——
+    防跨环误延;调用方须先判 None 再进来。
+    """
+    if sig == prev_sig:
+        return prev_sig, prev_count + 1
+    return sig, 0
+
+
+def no_progress_flag_path():
+    """守卫停机 flag 落点(与 stall_watch.flag/unknown_state.flag 同目录族)。"""
+    return (get_project_root() / '.debug' / 'temp' / 'currency_war'
+            / 'prep_no_progress.flag')
+
+
+def write_no_progress_flag(count: int, sig: tuple, shot: str,
+                           path=None) -> str:
+    """守卫存证 flag(签名序列+计数+截图路径+处理指引;测试传 tmp_path)。"""
+    p = path if path is not None else no_progress_flag_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(
+        f'[HOOK-STOP] 环级无进展守卫触发:连续 {count} 个备战环'
+        f'「同签名动作批 ∧ 状态零推进」\n'
+        f'签名(动作批, 状态指纹)=(plane,round,node,gold,bench_ids,deployed_ids):\n'
+        f'{sig}\n'
+        f'处理流程:\n'
+        f'1. 看动作批:同批动作反复发射而板面/金/轮次不动 = 执行面变换失败'
+        f'(遮罩挡拖拽/点击落空/闩漏网活锁)→ 按截图判当前画面:\n'
+        f'   未建档 overlay → od-dev-screen-onboarding 建档 + cw_loop 0x 分支\n'
+        f'   加 handler;已建档 → 查该动作执行链为何零变换;\n'
+        f'2. 处理完删本 flag + 重启 MCP server。\n'
+        f'shot={shot}', encoding='utf-8')
+    return str(p)
 
 
 class CwLoop(SrOperation):
@@ -158,9 +223,12 @@ class CwLoop(SrOperation):
     # 原「按最长动画盲等 3s」的门与其 bookkeeping(_frame_is_prep 族)一并删除。
     # 同批退役:_post_settle_auto_shop 标志位(结算后自动开店判稳收编 director
     # 环入口预收探针 + 准备就绪锚,不再跨分支传标志)。
-    #: 备战 stall 留证阈值(W971 03-prep §3 规格最小集:连续 N 轮 session 对账
-    #: 字段族无变化 → 留证;内环拆除后平移外循环。初值 3,校准项)。
-    PREP_STALL_EVIDENCE_ROUNDS: ClassVar[int] = 3
+    #: 环级无进展守卫阈值(架构反思三卡死批防线①,「第 5 局放行硬门」):
+    #: 连续 N 个备战环「同签名动作批 ∧ 状态零推进」→ 存证(截图+flag)→
+    #: stop_running。取代旧备战 stall 留证线(只留证不停机的 state-only
+    #: 计数)——单一计数单一签名,不留两套并行;N 沿用旧值 3。
+    #: 三起实机卡死(8-34 分钟人工发现)在 3 环(≈1 分钟)内自动停机留证。
+    PREP_NO_PROGRESS_ROUNDS: ClassVar[int] = 3
 
     #: 主循环全部分支判定锚 ``画面名.area名``(分发预检枚举源,dd-029)。
     #: 运行时画面加载只读 _od_merged.yml;分文件改名后 merged 漏再生时,分支
@@ -1006,35 +1074,56 @@ class CwLoop(SrOperation):
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
             # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
             # 自动开店收起探针;稳定性由外循环每轮重识别保证。)
-            # 备战 stall 防线(W971 03-prep §3 规格最小集,内环拆除后平移外循环):
-            # 连续 N 轮备战画面 session 关键字段无变化 → 留证(log + 存图;
-            # 不停机,哨兵/未知兜底链继续兜)。签名 = prep_obs_frame 的对账字段族
-            #(球/箱数、金、轮次、席位、vacancy;03-prep「对账字段族」口径)。
-            _frame = getattr(self.ctx.cw_match.session, 'prep_obs_frame', None)
-            _st = getattr(self.ctx.cw_match.session, 'last_state', None)
-            # 期望态轮次戳消费(EXPECTED_STATE §6;DD-019 后果节缺口件3):
-            # 仅 prep_obs 可确认条目进签名(绑其他覆盖点不计,见函数注)。
-            _pending_exp = prep_stall_pending_expected(
-                self.ctx.cw_match.session)
-            _sig = (len(getattr(_frame, 'spheres', None) or []),
-                    len(getattr(_frame, 'boxes', None) or []),
-                    len(getattr(_frame, 'bench_chars', None) or []),
-                    len(getattr(_frame, 'deployed_chars', None) or []),
-                    getattr(_frame, 'deploy_vacancy', None),
-                    getattr(_st, 'gold', None), getattr(_st, 'level', None),
-                    getattr(_st, 'round_num', None),
-                    _pending_exp)
-            if getattr(self, '_prep_stall_sig', None) == _sig:
-                self._prep_stall_count = getattr(self, '_prep_stall_count', 0) + 1
+            # 环级无进展守卫(架构反思三卡死批防线①,取代旧 stall 留证线——
+            # 单一计数勿留两套):连续 PREP_NO_PROGRESS_ROUNDS 个备战环
+            # 「同签名动作批 ∧ 状态零推进」→ 存证(截图+flag)→ stop_running。
+            # 动作批签名 = CwScreenPrep 上一环 decide 输出的动作类型序列
+            #(session.last_prep_action_sig,备战单轮 op 写);None(overlay
+            # 交回/策略异常/破墙派生帧前)不累计。不误伤依据:
+            # ①战斗等待期不进本分支(备战双锚不命中),且回备战时 round 必变
+            #  → 指纹变 → 归零;
+            # ②正常多帧部署:每次成功动作改变 bench/deployed 身份或 gold
+            #  → 指纹变 → 归零;
+            # ③闩跳过帧:闩抑制重发 → 动作批不同 → 签名变 → 归零。
+            _np_actions = getattr(self.ctx.cw_match.session,
+                                  'last_prep_action_sig', None)
+            if _np_actions is None:
+                self._prep_np_sig = None
+                self._prep_np_count = 0
             else:
-                self._prep_stall_sig = _sig
-                self._prep_stall_count = 0
-            if self._prep_stall_count >= self.PREP_STALL_EVIDENCE_ROUNDS:
-                _stall_shot = self.save_screenshot(prefix='prep_stall')
-                log.warning('[cw!][loop] 备战连续 %d 轮 session 无变化 → 留证(无进展;'
-                            'sig=%s pending_expected=%s shot=%s)',
-                            self._prep_stall_count, _sig,
-                            list(_pending_exp) or '无', _stall_shot)
+                _np_sig = (_np_actions,
+                           prep_no_progress_state_fingerprint(
+                               self.ctx.cw_match.session))
+                self._prep_np_sig, self._prep_np_count = prep_no_progress_tick(
+                    getattr(self, '_prep_np_sig', None),
+                    getattr(self, '_prep_np_count', 0), _np_sig)
+                if self._prep_np_count >= self.PREP_NO_PROGRESS_ROUNDS:
+                    try:
+                        _np_shot = self.save_screenshot(prefix='prep_no_progress')
+                    except Exception:  # noqa: BLE001  留证失败不拦停机(flag 是主哨兵)
+                        _np_shot = ''
+                    try:
+                        write_no_progress_flag(
+                            self._prep_np_count, _np_sig, _np_shot)
+                    except Exception as e:  # noqa: BLE001  flag 失败仍停机(日志留证)
+                        log.warning('[cw-loop] 无进展守卫 flag 写入失败: %s', e)
+                    log.error('[cw!][loop] 环级无进展守卫:连续 %d 个备战环同签名'
+                              '动作批 %s ∧ 状态零推进 → 停机留证'
+                              '(flag=prep_no_progress.flag shot=%s)',
+                              self._prep_np_count, list(_np_actions), _np_shot)
+                    _pend = prep_stall_pending_expected(
+                        self.ctx.cw_match.session)
+                    log.error('[cw!][loop] 环级无进展守卫:连续 %d 个备战环同签名'
+                              '动作批 %s ∧ 状态零推进 → 停机留证'
+                              '(pending_expected=%s flag=prep_no_progress.flag '
+                              'shot=%s)',
+                              self._prep_np_count, list(_np_actions),
+                              list(_pend) or '无', _np_shot)
+                    self.ctx.run_context.stop_running(
+                        reason='hook:prep_no_progress')
+                    return self.round_fail(
+                        status='备战环无进展守卫触发(同签名动作批连续'
+                               f'{self._prep_np_count}环零推进),停机留证')
             # 备战被锁(顶部「返回投资策略选择」按钮)→ 点去选策略(check#4 接手)。
             # 2026-08-26 挪位(原在备战判定前全屏扫):用户定性该按钮出现 = 上游
             # 投资策略屏处理失败的 symptom(策略屏点歪才退回备战带此按钮;同族 =
