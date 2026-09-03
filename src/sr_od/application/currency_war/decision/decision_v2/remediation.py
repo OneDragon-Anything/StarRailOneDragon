@@ -274,6 +274,18 @@ def _compensate_gold(working: GameState, state: GameState,
                 and disc_view is not None
                 and getattr(disc_view, 'allow_refresh_in_war', False)):
             return []
+        # 血预算停手·搜索型刷新停付(设计件 12 §2.3-P1-c/§3.2;ADR-0451):
+        # 补偿趟的刷新尾是「卖件凑刷新费」的搜索型支出通道,与 arbiter
+        # 刷新收尾/分配器刷新臂消费同一谓词(单一源,豁免——ALL IN/终止
+        # /应急急救——在谓词内保持);否则危机带帧「主通道被停手线拦、
+        # 金拒补偿把刷新借回来」= 停付防线旁路(sim 连刷分布对照批定谳
+        # 的唯一残余刷新发射点,`.debug/temp/currency_war/
+        # search_refresh_stopline/REPORT.md`)。
+        from sr_od.application.currency_war.decision.decision_v2.discipline import (
+            blood_budget_refresh_blocked,
+        )
+        if blood_budget_refresh_blocked(state, session, registry):
+            return []
         cost = a.cost or 2
         buy = None
     else:
