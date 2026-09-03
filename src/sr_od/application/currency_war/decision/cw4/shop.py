@@ -83,7 +83,11 @@ from sr_od.application.currency_war.decision.cw4.criteria import (
 from sr_od.application.currency_war.decision.cw4.criteria import (
     stockpile as crit_stockpile,
 )
-from sr_od.application.currency_war.decision.cw4.statefn import horizon, predicates
+from sr_od.application.currency_war.decision.cw4.statefn import (
+    horizon,
+    predicates,
+    vbar,
+)
 from sr_od.application.currency_war.decision.cw4.statefn.income import (
     net_income,
 )
@@ -155,7 +159,7 @@ def _shop_sell_refund(bc: BenchChar) -> int | None:
 def _r1_member_accounts(k_members: tuple[str, ...],
                         bench: list, deployed: list,
                         state: GameState, session: StrategySession,
-                        ) -> list[float]:
+                        rounds: int) -> list[float]:
     """R1 承诺账装配侧(P40 ①/②;k=1 单卡代表形态)。
 
     合格集 E = 未达 2★ 的线成员(目标阵容件,P40 A4);逐成员账 =
@@ -169,13 +173,13 @@ def _r1_member_accounts(k_members: tuple[str, ...],
       q)」——q 低估 ⇒ E 高估 ⇒ 同上保守向);
     - Ī = ``income.net_income(round_num, streak_pre=0)``(streak 下界
       ⇒ L 上界 ⇒ 账高估 = 保守向;R09 收入三表现算,非 i_bar 常量);
+    - ``rounds`` = 决策帧 R_剩余(horizon.r_remaining 现算,消费位传入
+      ——与门侧 V̄_net(r) 同帧同源,禁两次现算各读各的);
     - 该级不出此费(refresh_prob≤0)或 E=inf 的成员不可追,剔除
       (账 inf 由判据侧 isfinite 过滤 = R0-1 合格集空特例)。
     """
     level = int(state.level or 1)
     c_eff = int(state.shop_refresh_cost or REFRESH_COST_BASE)
-    rounds = horizon.r_remaining(session, int(state.plane or 1),
-                                 int(state.round_num or 1))
     ibar = net_income(int(state.round_num or 1), 0)
     accounts: list[float] = []
     for m in k_members:
@@ -683,12 +687,32 @@ def decide_shop_wave(state: GameState, session: StrategySession,
             _r1_ok = contracts.ensure_contract(
                 ('refresh', 'r1_commitment_account'),
                 contracts.ContractCtx(ev_slot=v_gap), counters)
-            ok_r1, rkey = (
-                crit_refresh.r1_commitment_account(
-                    v_gap.value,
+            if _r1_ok:
+                # 比较项 = V̄_net(r) 帧级现算(修 A 批;P53/
+                # REFRESH_CFO_REPORT §6):rung 流 + 胜率流 × 决策帧
+                # R_剩余(horizon.r_remaining,schedule_of 单一源)——
+                # 取代「rung_value[2]×rounds_left_est=5 常数」静态链
+                # (常数 5 低估被拦帧真实视界中位 12,512/512 拒刷的
+                # 主因;零新自由参数,链与 calib_vuh_v1 同源)。V_GAP
+                # 槽位保持 fail-closed 开闸通道语义(None ⇒ r1 闭),
+                # 槽位数值不再是比较项(其带 [16.7,24.7] = 本链 r=5
+                # 特例的历史标定带,披露用途)。registry 缺省兜底
+                # DEFAULT_REGISTRY(与 entry 同先例;本链锚字段在两
+                # 视图同值——sim 视图只覆写 level_max)。
+                _reg = registry
+                if _reg is None:
+                    from sr_od.application.currency_war.kernel.cw_registry import (
+                        DEFAULT_REGISTRY,
+                    )
+                    _reg = DEFAULT_REGISTRY
+                _rounds = horizon.r_remaining(session, int(state.plane or 1),
+                                              int(state.round_num or 1))
+                ok_r1, rkey = crit_refresh.r1_commitment_account(
+                    vbar.v_bar_net(_reg, _rounds),
                     _r1_member_accounts(k_members, bench, deployed, state,
-                                        session)) if _r1_ok
-                else (False, 'contract_abstain'))
+                                        session, rounds=_rounds))
+            else:
+                ok_r1, rkey = (False, 'contract_abstain')
         if not ok_r1:
             _count(f'shop_r1_{rkey}')      # ev_unavailable / account_over_vgap / no_chaseable_member
         elif contracts.ensure_contract(

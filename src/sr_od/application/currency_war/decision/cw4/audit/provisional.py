@@ -47,7 +47,9 @@ _SLOTS: dict[str, _Slot] = {
     'V_GAP': _Slot('§3.3 #2b V_gap【拟·未标定】;消费位=criteria/refresh.'
                    'r1_start 的 EV 输入(经 shop.py 付费刷新发射位接线,'
                    '2026-09-03 零刷新修复批);None 期 r1 fail-closed 零刷新;'
-                   '与 V_MS 同源单标定;不在封印清单(R10-2)'),
+                   '与 V_MS 同源单标定;不在封印清单(R10-2)。修 A 批(dd-025/'
+                   'p53)起比较项=帧级现算 V̄_net(r)(statefn/vbar),本槽'
+                   '保持开闸通道语义,槽位数值/CI 仅作标定带披露'),
     'W_POP': _Slot('§3.3 #3 w 人口位战力当量(臂一只用 w>0,不需精确值)'),
     'RHO_IMPUTE': _Slot('§3.3 #4 ρ 摊派口径(A7);均匀摊保守首版'),
     'NBAR_ESTIMATOR': _Slot('§3.3 #5 n̄ 估计器(实估,误差二阶 A3)'),
