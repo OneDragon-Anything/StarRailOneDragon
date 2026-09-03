@@ -165,12 +165,23 @@ class BattleWaitOp(SrOperation):
 
     def _hit_completion_anchor(self, screen) -> bool:
         """完成判据白名单任一命中(纯判定)。备战用单锚(宽到达判定;
-        「按钮-出战」双锚精判是循环备战分支的职责,此处重复即双源)。"""
+        「按钮-出战」双锚精判是循环备战分支的职责,此处重复即双源)。
+        P4R3:BOSS简报项补「强敌」片段 OCR 兜底(area 锚可被误读击穿,
+        「强敌来袭」→「强敌米」实测帧);位面过渡项加 boss 排他——共享
+        文案「点击空白处继续」不作跨画面判据(判别单一源见 boss_briefing_op)。"""
         for _scr, _area in BattleWaitOp.COMPLETION_ANCHORS:
             if self.round_by_find_area(screen, _scr, _area,
                                        crop_first=False).is_success:
                 return True
-        # 位面过渡锚(boss 局每位面开始出现一次;不在切换链上的位面简报不列)
+        from sr_od.application.currency_war.operations.cw_flow.boss_briefing_op import (
+            is_boss_briefing_texts,
+            read_ocr_texts,
+        )
+        _texts = read_ocr_texts(self.ctx, screen)
+        if is_boss_briefing_texts(_texts):
+            return True   # boss 简报帧(含 area 锚误读形态)→ 交回循环 0p 接管
+        # 位面过渡锚(boss 局每位面开始出现一次;不在切换链上的位面简报不列;
+        # boss 简报帧已在上方排他——共享文案不误判为本白名单项)
         return self.round_by_ocr(screen, '点击空白处继续',
                                  lcs_percent=0.8).is_success
 

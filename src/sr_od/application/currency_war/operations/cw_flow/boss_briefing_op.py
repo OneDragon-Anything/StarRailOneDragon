@@ -33,6 +33,31 @@ def _monotonic() -> float:
     return time.monotonic()
 
 
+# ===== 两画面判别单一源(P4R3 返工,第五局 1-9 实锤)=====
+#
+# boss 简报与位面过渡**共享「点击空白处继续」交互文案**(共享文案不作判据,
+# od-dev-screen-onboarding「判别锚必须是画面专属特征」);而 0p 旧锚
+# 「标识-强敌来袭」(OCR+LCS)被误读形态击穿——09:04:39 帧全帧 OCR 把
+# 「强敌来袭」读成「强敌米」(来袭→米)→ 0p 不接管 → 0q 位面过渡误分发
+# → fail 每 2s 无限循环。判别单一源 = 「强敌」二字高区分片段(前缀,
+# 「强敌米」/「强敌来袭」/「强敌」三形态全命中;纯函数可单测),0p 锚
+# 加固 / 0q 排他 / BattleWaitOp 完成白名单三处消费同源。
+
+#: 「强敌」判别片段(误读鲁棒;勿改回全词「强敌来袭」——来袭二字可误读)。
+BOSS_BRIEFING_TOKEN: str = '强敌'
+
+
+def is_boss_briefing_texts(texts: list[str]) -> bool:
+    """全帧 OCR 文本 → 是否 boss 简报画面(纯函数;判别单一源)。"""
+    return any(BOSS_BRIEFING_TOKEN in (t or '') for t in texts)
+
+
+def read_ocr_texts(ctx, screen) -> list[str]:
+    """全帧 OCR 文本(共享判别用;同帧多次读由 ocr_service 按 image 缓存)。"""
+    return [r.data for r in ctx.ocr_service.get_ocr_result_list(
+        image=screen, rect=None, color_range=None, crop_first=False)]
+
+
 class BossBriefingOp(SrOperation):
     """BOSS 简报:识别「强敌来袭」→ 点空白 → 等备战商店开(按钮-收起锚)。"""
 
@@ -60,6 +85,10 @@ class BossBriefingOp(SrOperation):
             return self.round_success('BOSS 简报推进完成(商店开)')
         banner_hit = self.round_by_find_area(
             screen, self.SCREEN_NAME, self.MARK_AREA, crop_first=False).is_success
+        if not banner_hit:
+            # P4R3 锚加固:area 锚(LCS)会被 OCR 误读击穿(「强敌来袭」→
+            # 「强敌米」实测帧)→ 片段判别兜底(判别单一源,见模块头)。
+            banner_hit = is_boss_briefing_texts(read_ocr_texts(self.ctx, screen))
         if not banner_hit:
             # 横幅已退、商店锚未现 = 转场进行中(round_wait 轮询,不耗重试预算;
             # 超时兜底:上界内锚必现,否则异常留证 fail 交循环)。

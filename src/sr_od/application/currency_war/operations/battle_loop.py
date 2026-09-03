@@ -49,7 +49,7 @@ from sr_od.application.currency_war.operations.cw_flow.overlay_ops import (
 from sr_od.application.currency_war.operations.cw_flow.plane_transition_op import (
     PlaneTransitionOp,
 )
-from sr_od.application.currency_war.operations.handlers.handle_armory_box import (
+from sr_od.application.currency_war.operations.handlers.handle_armory_box_dialog import (
     HandleArmoryBoxDialog,
 )
 from sr_od.application.currency_war.operations.handlers.handle_bookcard import (
@@ -106,6 +106,10 @@ class CurrencyWarRunLoop(SrOperation):
     #: 真转移后复位)。超限 round_fail 交未知画面兜底链——不再无限 round_wait
     #(1-1 事故 5h 死循环返工)。
     FRONTLESS_REDEPLOY_LIMIT: ClassVar[int] = 2
+    #: P4R3:0q 位面过渡误分发型 fail 上限(连续计;0p 接管/过渡成功清零)。
+    #: 超限 round_fail 交未知画面兜底链——第五局实锤:boss 简报帧误分发
+    #: PlaneTransitionOp(「提示未出现」fail)每 2s 无限循环。
+    PLANE_MISDISPATCH_LIMIT: ClassVar[int] = 3
     # r119 停滞 watchdog 参数:每 5 iter 采一次指纹(≈5-10s),连续 6 次相同
     # (≈1-2min 同屏)→ 哨兵。战斗态(指纹含「战斗/胜利/挑战」关键词)豁免。
     STALL_SNAPSHOT_EVERY: ClassVar[int] = 5
@@ -743,7 +747,7 @@ class CurrencyWarRunLoop(SrOperation):
 
         # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档)。
         #     P4R 升级(1-1 事故 5h 死循环返工):确认关闭 → **带落点验证的
-        #     重部署**(DeployBench,落点 CV 已收编)→ 验 deployed 前排 ≥1 →
+        #     重部署**(DeployBenchOp,落点 CV 已收编)→ 验 deployed 前排 ≥1 →
         #     本迭代内再出战;重试上限 FRONTLESS_REDEPLOY_LIMIT,超限
         #     round_fail 交未知画面兜底链(旧「确认关闭→等下轮 PrepDirector
         #     → StartBattle 假成功」形态 = 无限 round_wait,根因见弹窗污染
@@ -762,12 +766,12 @@ class CurrencyWarRunLoop(SrOperation):
                      self._frontless_redeploy,
                      CurrencyWarRunLoop.FRONTLESS_REDEPLOY_LIMIT)
             from sr_od.application.currency_war.operations.prep.deploy_bench import (
-                DeployBench,
+                DeployBenchOp,
             )
-            _rd = DeployBench(self.ctx).execute()
+            _rd = DeployBenchOp(self.ctx).execute()
             log.info('[cw-loop] 前台无角色重部署 → %s',
                      getattr(_rd, 'status', '') or ('成功' if getattr(_rd, 'success', False) else '失败'))
-            # 出口判据:deployed 前排 ≥1(独立于 DeployBench 返回值——
+            # 出口判据:deployed 前排 ≥1(独立于 DeployBenchOp 返回值——
             # 假成功已在 deploy 侧落点验证收编,此处再验一层作 0j 出口承诺)。
             from sr_od.application.currency_war.kernel.cw_obs_core import (
                 slot_occupied as _slot_occ,
@@ -808,23 +812,55 @@ class CurrencyWarRunLoop(SrOperation):
         #     等备战商店开,「按钮-收起」锚+上界兜底)。**分支序锚位 = 先于备战
         #     双锚**(事故教训:横幅遮挡下双锚模板仍透出命中,无本分支时帧误落
         #     备战分支空转 598s/SENTINEL-STALL)。
-        if self.round_by_find_area(
-                screen, '货币战争-BOSS简报', '标识-强敌来袭', crop_first=False).is_success:
+        #     P4R3 锚加固(第五局 1-9 实锤):area 锚被 OCR 误读击穿(「强敌
+        #     来袭」读成「强敌米」)→ 分发改共享判别单一源 is_boss_briefing_
+        #     texts(「强敌」片段,误读形态鲁棒;BossBriefingOp 内部同源兜底)。
+        from sr_od.application.currency_war.operations.cw_flow.boss_briefing_op import (
+            is_boss_briefing_texts as _is_boss_frame,
+        )
+        from sr_od.application.currency_war.operations.cw_flow.boss_briefing_op import (
+            read_ocr_texts as _frame_texts,
+        )
+        if (self.round_by_find_area(
+                screen, '货币战争-BOSS简报', '标识-强敌来袭',
+                crop_first=False).is_success
+                or _is_boss_frame(_frame_texts(self.ctx, screen))):
             _bb_res = BossBriefingOp(self.ctx).execute()
+            # 0q 排他生效 = 误分发流恢复 → 计数清零
+            self._plane_mis_streak = 0
             log.info('[cw-loop] BOSS 简报 → BossBriefingOp → %s',
                      getattr(_bb_res, 'status', ''))
             return self.round_wait(wait=1.0)
 
         # 0q. 位面过渡(P4R2 序位返工:原在备战分支之后——「浮层叠备战」家族
         #     审计中唯一的序位漏项;全浮层序位纪律 = 先于备战双锚,序锁矩阵
-        #     test_cw_dispatch_order_matrix.py 逐一钉死)。「点击空白处继续」=
-        #     位面过渡提示(简报下一步后 / boss 结算后各一次;位面简报不在
-        #     切换链——用户裁决,只在入场出现)→ PlaneTransitionOp(点空白 +
-        #     验提示消失)。BattleWaitOp 完成白名单亦含此锚(交回循环后本分支
-        #     承接,两消费点同锚不分叉)。
+        #     test_cw_dispatch_order_matrix.py 逐一钉死)。
+        #     P4R3 两画面排他(第五局 1-9 实锤):boss 简报画面**也含**「点击
+        #     空白处继续」(共享交互文案不作判据)——「强敌」特征在场 = boss
+        #     简报帧,不进位面过渡(留给 0p);误分发型 fail(过渡提示不在)
+        #     连续达上限 → round_fail 交未知兜底链(不再 2s 无限循环)。
         if self.round_by_ocr(screen, '点击空白处继续', lcs_percent=0.8).is_success:
+            if _is_boss_frame(_frame_texts(self.ctx, screen)):
+                log.info('[cw-loop] boss 简报帧含共享文案「点击空白处继续」→ '
+                         '排他,留 0p(不误分发位面过渡)')
+                return self.round_wait(wait=1.0)
             _pt = PlaneTransitionOp(self.ctx)
             _pt_res = _pt.execute()
+            _pt_ok = bool(_pt_res is not None
+                          and getattr(_pt_res, 'success', False))
+            if _pt_ok:
+                self._plane_mis_streak = 0
+            else:
+                self._plane_mis_streak = getattr(self, '_plane_mis_streak', 0) + 1
+                if self._plane_mis_streak >= CurrencyWarRunLoop.PLANE_MISDISPATCH_LIMIT:
+                    try:
+                        _shot = self.save_screenshot(prefix='plane_misdispatch')
+                    except Exception:  # noqa: BLE001  留证失败不阻塞
+                        _shot = ''
+                    log.error('[cw!] [loop] 位面过渡连续 %d 次 fail(疑误分发/'
+                              '误读)→ round_fail 交兜底链(shot=%s)',
+                              self._plane_mis_streak, _shot)
+                    return self.round_fail('位面过渡连续 fail 超上限(交兜底链)')
             log.info('[cw-loop] 位面过渡 → PlaneTransitionOp → %s',
                      getattr(_pt_res, 'status', ''))
             return self.round_wait(wait=1.0)
