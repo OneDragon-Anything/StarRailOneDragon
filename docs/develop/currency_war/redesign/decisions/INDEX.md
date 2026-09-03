@@ -27,3 +27,4 @@
 | [dd-020](dd-020-series-decision-contract.md) | DD-020:序列决策契约——动作发射接口统一升序列/次(备战 decide_prep_screen 单动作→list 同构商店)+ fail-stop/帧稳定截断/空批与控制流冻结;裸 list 形状,Decision/AtomOp 层留 sim/离线 | accepted | 2026-09-03 |
 | [dd-021](dd-021-board-count-underestimate-fix.md) | DD-021:board 阵营计数系统性低估修复——计数源五级优先(徽标>XY>斜杠容错>徽标小格重读>身份底座),next_tier 改基于合并后计数+注册表推导 | accepted | 2026-09-03 |
 | [dd-022](dd-022-decisions-expected-paths.md) | DD-022:decisions.jsonl 期望态标记——expected_paths 字段(决策时点挂起期望摘要,recorder 汇点 session 自取全决策面一次覆盖;读端三态:旧行无键/[]=无挂起/非空=有挂起;match_archive 聚合二期挂账) | accepted | 2026-09-03 |
+| [dd-023](dd-023-plane-intel-start-plane-timing.md) | DD-023:位面情报采集时序修正——接管链备战帧先定起始位面(start_plane 裁剪,已通过位面跳过)+ 详情侧读不出直接位面级结论(删切卡动画重试等待)+ 用户定值等待(开屏 3s/切卡 2s) | accepted | 2026-09-03 |
