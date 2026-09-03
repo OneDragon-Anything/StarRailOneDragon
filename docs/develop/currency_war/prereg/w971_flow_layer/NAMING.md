@@ -61,7 +61,21 @@
 | cw_flow/opening_sequence.py(OpeningSequence) | §1 拆解裁决:四步画面 op 由外循环自然流转 |
 | cw_flow/overlay_ops.py 薄封装族 | 随 CwScreen* 合并(§2 注) |
 
-**不参与命名(保留现名)**:battle_loop.py / CurrencyWarRunLoop(外循环)、entry/(StartCurrencyWarMatch/ExitCurrencyWarMatch/EnterCurrencyWar/TakeoverCollectPlaneIntel 整局与入口级)。
+## 4.1 入口/整局/外循环级迁移映射(用户裁决 2026-09-03 追加:也统一)
+
+| 新文件 | 新类名 | 旧文件 | 旧类名 |
+|---|---|---|---|
+| cw_loop.py(operations/ 根) | CwLoop | battle_loop.py | CurrencyWarRunLoop |
+| cw_entry_start.py | CwEntryStart | entry/start_currency_war_match.py | StartCurrencyWarMatch |
+| cw_entry_exit.py | CwEntryExit | entry/exit_currency_war_match.py | ExitCurrencyWarMatch |
+| cw_entry_enter.py | CwEntryEnter | entry/enter_currency_war.py | EnterCurrencyWar |
+| cw_screen_plane_intel.py | CwScreenPlaneIntel(与 CollectPlaneIntel 合并,参数化入口;合并风险大则拆 cw_entry_plane_intel.py) | entry/takeover_collect_plane_intel.py | TakeoverCollectPlaneIntel |
+
+注意:CwEntryStart 被 app 层(GUI/ApplicationFactory/一条龙链)消费——grep 波及面含 operations/ 之外,逐处迁移。
+
+## 4.2 不参与命名(保留现名)
+
+prep_director 交回原语等核心语义名若迁移后仍语义完整可保留(如 CwScreenPrep 已覆盖)。
 
 ## 5. 实施注意
 
