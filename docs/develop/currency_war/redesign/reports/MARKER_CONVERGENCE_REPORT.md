@@ -29,7 +29,7 @@ A 类分布:证明件 p38/p39/p40/p41/p42/p43/p46/p47/p48/p49/p50 全部清零(�
 | p38 变等级混合探针 ≤0.4pp | `tools/cw/proofs/p38_check.py` | **补断言**(偏差 ≤0.4pp + 保守向;实测 −0.32pp/−0.01pp),验证全绿 |
 | p48 截断反例(Ī=1,T=7:T1 序 10.0 vs T2 序 19.5) | `tools/cw/proofs/p48_check.py` | **补截断反例用例断言**(数值从正文抄写),验证全绿 |
 
-## 3. C 类新决策件清单(docs/develop/currency_war/redesign/decisions/)
+## 3. C 类新决策件清单(docs/develop/currency_war/decisions/)
 
 | 决策件 | 裁决 | 引用改指处 |
 |---|---|---|

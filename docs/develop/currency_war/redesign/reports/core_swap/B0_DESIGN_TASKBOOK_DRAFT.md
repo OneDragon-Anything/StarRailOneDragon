@@ -9,7 +9,7 @@
 
 ## 输入(全读)
 
-1. `.debug/temp/currency_war/redesign/IMPL_DESIGN.md`(对象本体)
+1. `.debug/temp/currency_war/design/IMPL_DESIGN.md`(对象本体)
 2. `.debug/temp/currency_war/core_swap/CONTRACT_SERIES_DECISION.md`(序列契约 v1 草案)
 3. `.debug/temp/currency_war/core_swap/BATCH0_RESLICE_INPUT.md`(免做/改造/新建三档底账 + ④-1..④-5 分歧清单)
 4. `.debug/temp/currency_war/core_swap/FIXPOOL_EMITTER_DIGEST.md`(14+1 项发射器需求 + 四共根组)

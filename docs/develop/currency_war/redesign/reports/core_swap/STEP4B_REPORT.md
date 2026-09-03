@@ -1,7 +1,7 @@
 # CW 换核 步4b 商店线 criteria 接线批 交付报告(mandate_v1.decide_shop_screen)
 
-> 规格单一源:`redesign/IMPL_DESIGN.md` §6.4-R(§4.2 发射面/§4.2.1 旁路集/
-> R189-5 修复池落点表)+ `redesign/CONTRACT_SERIES_DECISION.md` **v2 已冻结**
+> 规格单一源:`design/IMPL_DESIGN.md` §6.4-R(§4.2 发射面/§4.2.1 旁路集/
+> R189-5 修复池落点表)+ `design/CONTRACT_SERIES_DECISION.md` **v2 已冻结**
 > (§3.1 商店线域截断表+§3.3 fail-closed;词表=cw_state.Action 族)+ `core_swap/
 > SIM_CONSUMPTION_MAP.md`(sim 消费=engine_p1:937 decide_shop_screen;rng 中立/
 > registry/零漂移门先于 A/B)+ `core_swap/FIXPOOL_EMITTER_DIGEST.md` §3(商店面
@@ -17,7 +17,7 @@
 | 3 | bridge 接线:`MandateV1Strategy.decide_shop_screen` 覆写为 cw4 商店波(黑板=session.shop_state_frame 唯一输入;缺帧抛错);**update_target=透传声明**(规格未给 cw4 战略层新形态——证明层线选择在 prep 三遍内、sim 消费的战略层钩子沿用 decision_v2 意向状态机;继承即透传禁自创,R189-1 ④-2② 基线零改动同款);pick 族/生命周期钩子缺省透传 | `decision/cw4/bridge.py` | 契约 §1/§5;SIM_CONSUMPTION_MAP Q1(sim 消费=update_target+decide_shop_screen 两钩子);任务书第 3 项 |
 | 4 | sim 可驱动性:零局内 rng 消费(test_rng_neutral 直测 getstate 恒等);registry 属性继承自带(Q3 坑位①);ev_arm=config 字段读取(非法值回落 full,R1-1) | shop.py/bridge.py | SIM_CONSUMPTION_MAP ③-1/③-5 |
 | 5 | A/B 门组(`sim/ab_core_swap.py` 重写):`baseline_self_pairing_gate`(decision_v2 自配对 n≥20 ledger 逐位相等——透传拆除后基线臂零污染证明)+ `arm_diff_probe`(小 n 双臂相异存在性证明+ledger 可读性锚);旧 `zero_drift_gate`(两臂逐位相等)随透传拆除**不适用新核**,删除并在 docstring 声明 | `sim/ab_core_swap.py` | SIM_CONSUMPTION_MAP ③-2/③-3;任务书验收④⑤;runner.py 让路(并行未提交改动,harness 维持本模块零侵入) |
-| 6 | 遥测键登记:design_telemetry 键节加 9 键(shop_ev_u_unavailable/shop_ev_shop_domain/shop_ev_no_candidate/shop_ev_all_vetoed/shop_r1_ev_unavailable/shop_wave_idle_gold/shop_hard_node_gate_open/shop_drought_reset_on_buy/shop_merge_trigger_truncate)+索引行同步(22→31 节) | `redesign/design_telemetry.md`(仅加键行) | 契约 v2 §3.3(键名归遥测登记纪律,契约禁成第二登记源) |
+| 6 | 遥测键登记:design_telemetry 键节加 9 键(shop_ev_u_unavailable/shop_ev_shop_domain/shop_ev_no_candidate/shop_ev_all_vetoed/shop_r1_ev_unavailable/shop_wave_idle_gold/shop_hard_node_gate_open/shop_drought_reset_on_buy/shop_merge_trigger_truncate)+索引行同步(22→31 节) | `design/design_telemetry.md`(仅加键行) | 契约 v2 §3.3(键名归遥测登记纪律,契约禁成第二登记源) |
 | 7 | 测试 32+2 用例(新 32 快速+2 慢桶;旧 TestZeroDriftGate 锁重推为基线自配对,锁的存在性纪律) | `sr-od-test/.../test_cw4_shop_line.py`(新)+`test_cw4_mandate_v1.py`(改 1 类) | 任务书验收①-⑥ |
 
 ## 2. 修复池商店面经济项核销(R189-5 落点表商店面项,验收判据=FIXPOOL §3)

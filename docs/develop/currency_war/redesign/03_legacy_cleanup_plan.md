@@ -117,7 +117,7 @@ kernel 判据族小计:6,476 行(含两个拆解/接口件)。
   5. `cw_system_cards`/`cw_battle_calib` 对 `cw_line_defs`/`cw_deploy_logic` 的注册表消费迁入保留侧或数据注册表。
   完成判据:telemetry/ops 对死刑文件 import 边归零,sim 全量测试仍绿。
 
-- **批 1(decision 核,11,623 行)**:`decision/decision_v2/` 全部 + `decision/cw_strategy.py` + `cw_strategy_manager.py` + `decision_assembly.py` + `strategies/decision_v2_strategy.py`。前置:新策略包(Phase 3 绿地)提供 CwStrategy 等价接口 + sim 被测体替换;`sr_context.cw_match`、`currency_war_app` 装配、`prep_director` 改接新接口;ops `battle_loop`/`start_currency_war_match`/`shop` 的决策调用点改接新接口。注意 `decision/cw_strategy.py` 的 ABC 钩子面是框架合同,其形状在新设计 01 已重定义——删旧前新接口必须先落。**⚠️ 执行门(裁决记录:docs/develop/currency_war/redesign/decisions/dd-001-ab-baseline-gate.md;01 §7 时序细化):批 1 拆两段——批 1a=改接新接口+新旧双被测体并存 selectable(不删,旧包作 A/B 基线);批 1b=「sim A/B 过线(新层不劣)」裁决后物理删除**。
+- **批 1(decision 核,11,623 行)**:`decision/decision_v2/` 全部 + `decision/cw_strategy.py` + `cw_strategy_manager.py` + `decision_assembly.py` + `strategies/decision_v2_strategy.py`。前置:新策略包(Phase 3 绿地)提供 CwStrategy 等价接口 + sim 被测体替换;`sr_context.cw_match`、`currency_war_app` 装配、`prep_director` 改接新接口;ops `battle_loop`/`start_currency_war_match`/`shop` 的决策调用点改接新接口。注意 `decision/cw_strategy.py` 的 ABC 钩子面是框架合同,其形状在新设计 01 已重定义——删旧前新接口必须先落。**⚠️ 执行门(裁决记录:docs/develop/currency_war/decisions/dd-001-ab-baseline-gate.md;01 §7 时序细化):批 1 拆两段——批 1a=改接新接口+新旧双被测体并存 selectable(不删,旧包作 A/B 基线);批 1b=「sim A/B 过线(新层不劣)」裁决后物理删除**。
 
 - **批 2(kernel 判据族·低耦合,~2,100 行)**:`cw_evolution`(唯一 src 消费者已在批 1 死)、`cw_recipe`、`cw_line_switch`、`cw_transition`。前置:`cw_first_passage`(待判归属)、`cw_deploy_seat`、ops `deploy_bench`、sim `cw_replay`/`engine_p1` 的对应消费点迁移。
 

@@ -47,7 +47,7 @@
 
 ### A3(低)design_latch L5 观察键指针陈旧——指向「IMPL_DESIGN.md §5.2」,该节重组后已是指针节,键行实体在 design_telemetry
 
-**证据**:latch L5 原文「两观察键(`.debug/temp/currency_war/redesign/IMPL_DESIGN.md` §5.2)」;IMPL_DESIGN.md L447 §5.2 标题=「预期指标与观察键全集——现行口径已迁 design_telemetry.md(逐键节)」。指针链仍可解析(一跳),但 latch 文写于重组后、却用了重组前的介质锚,与其自身头部「判定项引用格式 [现行=RN-x]」的现行态定位不符。
+**证据**:latch L5 原文「两观察键(`.debug/temp/currency_war/design/IMPL_DESIGN.md` §5.2)」;IMPL_DESIGN.md L447 §5.2 标题=「预期指标与观察键全集——现行口径已迁 design_telemetry.md(逐键节)」。指针链仍可解析(一跳),但 latch 文写于重组后、却用了重组前的介质锚,与其自身头部「判定项引用格式 [现行=RN-x]」的现行态定位不符。
 
 **修法建议**:latch L5 指针改指 design_telemetry.md 对应两键节;顺手同查 latch 全文其余 §5.2 指针(L4 引 [现行=R92-3] 键处同型)。
 

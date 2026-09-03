@@ -1,9 +1,9 @@
 # CW 换核迁移序 步1:序列契约接线批 报告
 
 > 任务 = §6.4-R R189-6 步1(R190 修注后口径)。规格单一源 =
-> `.debug/temp/currency_war/redesign/IMPL_DESIGN.md` §6.4-R(R189-1 ④-1
+> `.debug/temp/currency_war/design/IMPL_DESIGN.md` §6.4-R(R189-1 ④-1
 > R190 重编号改造件清单①③④ + R189-6 步1 R190 修注② 两域验收);
-> 契约 = `.debug/temp/currency_war/redesign/CONTRACT_SERIES_DECISION.md`
+> 契约 = `.debug/temp/currency_war/design/CONTRACT_SERIES_DECISION.md`
 > v1(已冻结,2026-09-03 用户批准;决策记录 dd-020)。
 > 「Decision.ops 多元素化」按 R190 修注**不属本批**(降级为离线装配路径
 > 序列化,未实施)。

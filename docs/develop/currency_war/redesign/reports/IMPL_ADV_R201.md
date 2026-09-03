@@ -51,7 +51,7 @@
 
 ### 症6(任务书锚点勘误,呈报编排者)· 审查对象清单「decisions/(dd-020 等)」物理路径不存在于 redesign/ 下
 
-- **证据**:`.debug/temp/currency_war/redesign/decisions/` 目录不存在(亲验 Test-Path=False);dd-020 实际位于 `docs/develop/currency_war/redesign/decisions/dd-020-series-decision-contract.md`(CONTRACT_SERIES_DECISION.md L6 指针;进度账本根 进度.md L5/L7 亦引 docs/develop 侧 dd-004/dd-022)。
+- **证据**:`.debug/temp/currency_war/decisions/` 目录不存在(亲验 Test-Path=False);dd-020 实际位于 `docs/develop/currency_war/decisions/dd-020-series-decision-contract.md`(CONTRACT_SERIES_DECISION.md L6 指针;进度账本根 进度.md L5/L7 亦引 docs/develop 侧 dd-004/dd-022)。
 - **定性**:非文档缺陷;本轮按辖域未审 docs/develop 侧 decisions/ 族。任务书物理范围应更正,或明示扩辖。
 
 ## ③ 通过面(独立复核为真的关键声明,附复算式)

@@ -3,7 +3,7 @@
 > 审查者=独立 review agent,无前提纪律执行:修复批报告的自评一律不采信,
 > 「全绿/对拍一致」处亲跑才算数;独立发现与报告结论矛盾者优先报。
 > 开工令已执行:先读 `sr-od-currency-war-dev` skill(strategy-work「锁的存在性
-> 纪律/验证/零调参」节),通读 `redesign/IMPL_DESIGN.md` §6.4-R 与上游症状
+> 纪律/验证/零调参」节),通读 `design/IMPL_DESIGN.md` §6.4-R 与上游症状
 > 单一源 `redesign/IMPL_ADV_R200.md`、`core_swap/REWORK_REVIEW_20260903.md`
 > 后动工。零生产代码改动、零 git。
 >

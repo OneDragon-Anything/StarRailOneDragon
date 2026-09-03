@@ -28,7 +28,7 @@
 
 ### 症2(中)EV pass 冲突处理宣称与实现零对应——`ev_conflict_dropped` 遥测与「先到先得丢弃」均未实现,同序列重复 SellBench 可达
 
-- **三元组**:`decision/cw4/entry.py` L275-276(docstring:「冲突处理:EV 项与已发射骨架动作冲突(如席位)⇒ 先到先得丢弃 + 记遥测(`ev_conflict_dropped`)」)+L279-298(`_criteria_pass` 本体:line_switch_sell/funding_support_sell 结果**直接 append,无任何与骨架 out 的冲突检测、无 ev_conflict_dropped 计数**);检验式=①`grep ev_conflict_dropped src/` 亲跑=仅 entry.py L276 注释一处命中,零计数代码;②`grep ev_conflict_dropped .debug/temp/currency_war/redesign/design_telemetry.md`=零命中(**键节未登记**,违「design_telemetry 键节=遥测键单一登记源」纪律);③可达构造=骨架 M4 已发射 `SellBench(slot=s)`(mandate.py L262)后,EV pass `funding_support_sell`(sell.py L87 按 star/slot 排序全 bench 扫描,不感知已发射集)对同槽再发 `SellBench(slot=s)`(entry.py L297)——同序列重复卖同槽,第二笔执行必 `progressed=False` 触发 fail-stop 丢弃余下动作(契约 §2),整序列后半被一帧废动作截断。
+- **三元组**:`decision/cw4/entry.py` L275-276(docstring:「冲突处理:EV 项与已发射骨架动作冲突(如席位)⇒ 先到先得丢弃 + 记遥测(`ev_conflict_dropped`)」)+L279-298(`_criteria_pass` 本体:line_switch_sell/funding_support_sell 结果**直接 append,无任何与骨架 out 的冲突检测、无 ev_conflict_dropped 计数**);检验式=①`grep ev_conflict_dropped src/` 亲跑=仅 entry.py L276 注释一处命中,零计数代码;②`grep ev_conflict_dropped .debug/temp/currency_war/design/design_telemetry.md`=零命中(**键节未登记**,违「design_telemetry 键节=遥测键单一登记源」纪律);③可达构造=骨架 M4 已发射 `SellBench(slot=s)`(mandate.py L262)后,EV pass `funding_support_sell`(sell.py L87 按 star/slot 排序全 bench 扫描,不感知已发射集)对同槽再发 `SellBench(slot=s)`(entry.py L297)——同序列重复卖同槽,第二笔执行必 `progressed=False` 触发 fail-stop 丢弃余下动作(契约 §2),整序列后半被一帧废动作截断。
 - **修法方向**:`_criteria_pass` 增加与骨架已发射槽位/动作的冲突过滤+分键计数;或删注释宣称(两取一,禁注释宣称无实现)。
 
 ### 症3(中)升档器 λ/血线影子遥测计数对象与登记规格错位——λ 影子键无触发谓词求值恒全帧计数、真键 `advisor_lambda_armed` 零载体、血线影子键 `advisor_bloodline_shadow_armed` 零载体
@@ -38,7 +38,7 @@
 
 ### 症4(中低)`bench_full_buy_abandon` 双失联——mandate docstring 声明产键但代码零计数,且键节未登记
 
-- **三元组**:`decision/cw4/mandate.py` L199-201(docstring:「计数键(session.cw4_counters……):m2_retry_exhausted / dominance_bench_wait / m6_bench_full / m6_overflow_strand / **bench_full_buy_abandon**」)+L270-271(M2 腾席失败路径唯一计数=`m2_retry_exhausted`);检验式=①`grep bench_full_buy_abandon src/`=仅 mandate.py L201 一处(零计数代码);②`grep bench_full_buy_abandon .debug/temp/currency_war/redesign/design_telemetry.md`=零命中(键节/索引均无);③结果=宣称的「bench 满拒买」第三通道计数不可观测,R102-N1 三通道分键判读在实现侧缺一臂。
+- **三元组**:`decision/cw4/mandate.py` L199-201(docstring:「计数键(session.cw4_counters……):m2_retry_exhausted / dominance_bench_wait / m6_bench_full / m6_overflow_strand / **bench_full_buy_abandon**」)+L270-271(M2 腾席失败路径唯一计数=`m2_retry_exhausted`);检验式=①`grep bench_full_buy_abandon src/`=仅 mandate.py L201 一处(零计数代码);②`grep bench_full_buy_abandon .debug/temp/currency_war/design/design_telemetry.md`=零命中(键节/索引均无);③结果=宣称的「bench 满拒买」第三通道计数不可观测,R102-N1 三通道分键判读在实现侧缺一臂。
 - **修法方向**:与 telemetry 键节对齐——或补计数+登记(走登记纪律),或删 docstring 宣称归并 `m2_retry_exhausted` 分键语义。
 
 ### 症5(中)截断器与契约 v2 §3.2 逐类判三处不一致——ClickSpheres「条件」实现为恒截断、条件续类零复检、BailToOuter 判型标签漂移

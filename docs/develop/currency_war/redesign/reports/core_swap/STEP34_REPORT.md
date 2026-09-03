@@ -1,8 +1,8 @@
 # CW 换核迁移序 步3+步4 合并批 交付报告(mandate_v1 新核本体落码)
 
-> 规格单一源:`redesign/IMPL_DESIGN.md` §6.4-R(R189-6 步3[R191 修注:statefn
+> 规格单一源:`design/IMPL_DESIGN.md` §6.4-R(R189-6 步3[R191 修注:statefn
 > 输入缝挂 mandate_v1 内部,不加生产接线步]+步4[R189-4 结构签名/R189-5 修复池
-> 落点表/④-3 四函数位]);`redesign/CONTRACT_SERIES_DECISION.md` **v2 已冻结**
+> 落点表/④-3 四函数位]);`design/CONTRACT_SERIES_DECISION.md` **v2 已冻结**
 > (2026-09-03 用户批准;§3.2 备战线域 17 类逐类表+§3.3 fail-closed);
 > `core_swap/FIXPOOL_EMITTER_DIGEST.md`(14+1 项)、`BATCH0_RESLICE_INPUT.md`、
 > `SIM_CONSUMPTION_MAP.md`(A/B 约束)。cw4 步2 件(statefn 8+audit 3)本批
@@ -24,7 +24,7 @@
 | 9 | config strategy_id 值域扩 {'decision_v2','mandate_v1'}(构造期校验+save 持久化)+ev_arm 开发字段({'skeleton_only','full'},R1-1) | `currency_war_config.py` | §4.1;R189-2 改造① |
 | 10 | manager 校验文案(合法值=decision_v2/mandate_v1) | `decision/cw_strategy_manager.py` | 同上 |
 | 11 | ev_arm 遥测:DecisionTrace.ev_arm 字段(schema 末尾追加可选)+recorder extra pickup+ledger_hooks 判栈改 **(strategy_id, ev_arm) 二元组**(mandate_v1 分栈 `mandate[skeleton_only/full]`;ADR-0245 新栈不盲跑 coldstart) | `telemetry/schema.py`/`recorder.py`/`sim/ledger_hooks.py` | R1-1;§4.1;任务书第 5 项 |
-| 12 | 遥测键登记(design_telemetry 键节仅加键行):新登 7 键——ev_arm/switchline_event/emitter_unknown_action_truncated/m2_retry_exhausted/dominance_bench_wait/m6_overflow_strand/signal_arm_direct(theta_unavailable/switchline_skipped/switchline_exit_blocked/advisor 族已在册零重登);索引行同步 | `redesign/design_telemetry.md` | 契约 v2 §3.3(键名归遥测登记纪律,契约禁成第二登记源) |
+| 12 | 遥测键登记(design_telemetry 键节仅加键行):新登 7 键——ev_arm/switchline_event/emitter_unknown_action_truncated/m2_retry_exhausted/dominance_bench_wait/m6_overflow_strand/signal_arm_direct(theta_unavailable/switchline_skipped/switchline_exit_blocked/advisor 族已在册零重登);索引行同步 | `design/design_telemetry.md` | 契约 v2 §3.3(键名归遥测登记纪律,契约禁成第二登记源) |
 | 13 | A/B 接线:双臂工厂 `make_core_swap_arms`(两臂同 `sim_decision_registry()` 派生,新核 registry 属性带上)+零漂移门 `zero_drift_gate`(同 seed 同池 SimResult.ledger 逐位相等) | `sim/ab_core_swap.py`(新) | SIM_CONSUMPTION_MAP ③/Q3(rng 中立/环境恒等/零漂移门先于 A/B);任务书第 7 项 |
 | 14 | 测试(验收①-⑥ 全项) | `sr-od-test/test/sr_od/app/currency_war/test_cw4_mandate_v1.py`(38 用例;零漂移门入慢桶) | §6.4-R 步4 验收行 |
 

@@ -2,6 +2,8 @@
 
 > **状态**:Phase 2 已冻结(2026-08-31,条件式——见 Phase 表);Phase 3 准备中。本目录 = 策略层彻底重建的唯一设计家园;旧 `strategy/` 目录是 v2 as-built(死刑名单内,不再维护)。
 > **授权**:用户 2026-09 裁定——「做一次真正的重构,完全推翻现有代码做新的设计,所有的证明都要重新做,所有的 ADR 都不作数」;边界确认:「彻底重构,不用局限于已有的代码和 ADR」。
+>
+> **目录终态说明(2026-09-03 重组)**:新核(mandate_v1)现行设计已提升至 `docs/develop/currency_war/design/`(设计四件+契约+NMF+MANDATE_LAYER+LEMMA);ADR 库在 `docs/develop/currency_war/decisions/`;预注册在 `prereg/`。**本目录自此承载=重构工程史**:旧核分层设计(01/02/03)+过程报告族(`reports/`,含 IMPL_ADV_*/P 系配套/core_swap)+HISTORY+覆盖映射——换核完成后随旧核归档冻结,现行权威一律看 `design/`。
 
 ## 0. 为什么前几次重构失败(病理,防止复发)
 

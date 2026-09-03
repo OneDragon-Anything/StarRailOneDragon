@@ -143,7 +143,7 @@
 ## 5. 参考件索引(本报告引用)
 
 - 证明件:`docs/game/currency_war/research/proofs/` p38-completion-probability / p16-line-switch-erounds / p39-levelup-ev / p46-spend-gate-rejection-ev / p48-batch-xp-banking-ev / p49-pool-compression-ev / p41-hoard-sell-ev / p24-residual-fill-dominance / p51-waiting-cost-lemma
-- 设计件:`.debug/temp/currency_war/redesign/NEW_MATH_FRAMEWORK.md`(总纲 §1/§2/§5)、`DESIGN_MANDATE_LAYER.md`(§3.2 M1-M7)、`IMPL_DESIGN.md`(§1 line_selector/§2.7)、`COMP_KNOWLEDGE_AUDIT.md`(Q10)、`MECHANIC_MUTATORS_AUDIT.md`(修法 #5/#14)
+- 设计件:`.debug/temp/currency_war/design/NEW_MATH_FRAMEWORK.md`(总纲 §1/§2/§5)、`DESIGN_MANDATE_LAYER.md`(§3.2 M1-M7)、`IMPL_DESIGN.md`(§1 line_selector/§2.7)、`COMP_KNOWLEDGE_AUDIT.md`(Q10)、`MECHANIC_MUTATORS_AUDIT.md`(修法 #5/#14)
 - 正文设计:`docs/develop/currency_war/redesign/01_strategy_layer.md`(§3 状态机/§4.1 六序/§4.2 证据门/§4.4 消解协议/§4.10 突变层)
 - 知识件:`docs/game/currency_war/research/final_comps/final_daheita_aoe.md`(直通线机制/备战席经济学/压等级节奏)、`transition_combos.md`(直通线信号谱)
 - 注册表:`src/sr_od/application/currency_war/data/cw_invest_data.py` L357(黑塔纪元效果原文)
