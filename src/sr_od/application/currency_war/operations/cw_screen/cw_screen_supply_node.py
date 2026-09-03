@@ -1,18 +1,23 @@
 
-"""货币战争 补给节点 RunNode(从 ``HandleSupply`` 升级为节点生命周期 owner)。
+"""货币战争 补给节点画面 op(旧补给节点执行器退役批内联)。
 
 补给阶段 = 动态 N 选 1 装备 + 确认(通常 4 选 1;「全都要」类效果减 2 列、「人身意外险」类
 加补给阶段可增列,augment 改写下实测 3-5 不等——历史「3 选 1」「实测 5」均为特例表述,
-列数以 read_supply_options 实际识别为准,禁写死)。RunNode 化后:每轮**验证**"还在补给屏?"
-(关键词在)→ 点卡身 +
-确认 → ``round_retry``;overlay 消失(关键词没了)= 节点完成 → ``round_success``;超预算(点不动)
-→ FAIL bail(**不无限烧**,旧 HandleSupply 盲单发失败也回 success → flat loop 无限 round_wait 烧预算)。
+列数以 read_supply_options 实际识别为准,禁写死)。**完成验证模型 = op 内验证 + 节点预算**
+(NAMING.md §6 选型判据「多步序列/每步可独立失败/历史卡死」侧):每轮**验证**"还在补给屏?"
+(关键词在)→ 点卡身 + 确认 → ``round_retry``;overlay 消失(关键词没了)= 节点完成 →
+``round_success``;超预算(点不动)→ FAIL bail(**不无限烧**,旧 HandleSupply 盲单发失败
+也回 success → flat loop 无限 round_wait 烧预算)。
 
 动作(T#99 已接 decide_supply):``read_supply_options`` OCR 每列(角色+装备)→ ``decide_supply`` 按
 target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡身 + 确认。读不到选项 → CARD_BODY 兜底。
 钻(红/蓝=基本赢)视觉判定 + has_diamond 待补;supply 无刷新按钮(decide_supply 传 refresh_used=True)。
 
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
+
+**行为等价红线(旧节点基类退役批)**:补给节点流转(节点屏↔补给屏)/committed-but-verifying
+语义/node_max_retry_times=8 预算/ADR-0264 关态稳定基线预置,全部原样平移(原基类
+_run_node 循环内联进 handle,零行为变更)。
 """
 import time
 from typing import ClassVar
@@ -25,13 +30,13 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
 from sr_od.application.currency_war.obs.cw_observation import read_game_state
-from sr_od.application.currency_war.operations.run_nodes.run_node import RunNode
 from sr_od.application.currency_war.telemetry import recorder as cw_telemetry
 from sr_od.application.currency_war.telemetry.state import set_last_supply_pick
 from sr_od.context.sr_context import SrContext
+from sr_od.operations.sr_operation import SrOperation
 
 
-class RunSupplyNode(RunNode):
+class CwScreenSupplyNode(SrOperation):
     """补给节点:点卡身选中 + 确认,**验证 overlay 消失**才完成。
 
     选定+确认时点经 cw_telemetry.set_last_supply_pick 暂存选择快照
@@ -39,7 +44,7 @@ class RunSupplyNode(RunNode):
     cw_loop 合成 supply 遥测行消费(synthetic_supply 合成行)。
 
     **主流程 = 采集 detour 完整循环(坐标 2026-08-27 实机冻结画面实测)**:
-    识别补给画面(_in_node 前置门)→ 点「返回备战界面」(货币战争-补给/
+    识别补给画面(完成验证锚前置门)→ 点「返回备战界面」(货币战争-补给/
     按钮-返回备战界面,实测有效)→ 备战画面等待快照管线采集(1-2 帧;显式
     phase='supply_detour'+actions=[] 非购买轮语义)→ 点「按钮-返回补给阶段」
     (货币战争-备战,实测有效)重进 overlay(重试 3 次+OCR 文本兜底枪)→
@@ -63,12 +68,31 @@ class RunSupplyNode(RunNode):
     REENTER_TRIES: ClassVar[int] = 3
 
     def __init__(self, ctx: SrContext):
-        RunNode.__init__(self, ctx, op_name='货币战争-补给节点')
+        SrOperation.__init__(self, ctx, op_name='货币战争-补给节点')
         self._refresh_used = False   # r1 review#1:节点实例态(只刷一次;游戏规则补给可刷 1 次)
 
     @operation_node(name='补给节点', is_start_node=True, node_max_retry_times=8)
     def handle(self) -> OperationRoundResult:
-        return self._run_node()
+        """committed-but-verifying 节点循环(旧基类逻辑内联,零行为变更)。
+
+        每轮:验证完成(已离开本节点画面)→ success;否则做一动作 → round_retry(计预算,超 → FAIL)。
+        """
+        screen = self.last_screenshot
+        # 验证完成:已不在本节点画面 = overlay 消失 / 进了下一节点 → 节点完成,交还外层。
+        if not self._in_node(screen):
+            # ADR-0264 方案 B:overlay 关闭(已离开本节点画面)的验证帧
+            # 预置为关态稳定基线——外层回备战分支的 gate 跳过「从零等
+            # 2 轮」;gate 仍须过一次「锚命中+指纹一致」确认(不裸跳)。
+            # best-effort(离线 mock 帧不阻塞)。
+            from sr_od.application.currency_war.obs.cw_observation_gate import (
+                PROFILE_CLOSED,
+                preset_stable_baseline,
+            )
+            preset_stable_baseline(screen, profile=PROFILE_CLOSED)
+            return self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)')
+        # 仍在节点内 → 做一个动作;round_retry 重跑本节点(计 node_max_retry_times 预算,超 → FAIL bail)。
+        self._do_action(screen)
+        return self.round_retry(wait=1.5)
 
     def _in_node(self, screen) -> bool:
         # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
@@ -101,7 +125,7 @@ class RunSupplyNode(RunNode):
         if rs is None or not rs.is_success:
             log.warning('[cw-supply] detour:「返回备战界面」点击 miss → 放弃本次采集')
             return False
-        time.sleep(RunSupplyNode.TO_PREP_SETTLE_S)
+        time.sleep(CwScreenSupplyNode.TO_PREP_SETTLE_S)
         # ② 显式采集性返回快照(标记 phase='supply_detour';actions=[] 非购买轮)
         try:
             _snap_screen = self.screenshot()
@@ -119,27 +143,26 @@ class RunSupplyNode(RunNode):
         # ③ 重进 overlay(实测:已选择/剩余次数状态重进后保留;备战屏「按钮-返回补给
         #    阶段」area 已建 + 实测有效;过渡 ~2s。area 全 miss 再用全屏 OCR 文本兜
         #    一枪——lcs_percent=0.8 防与「返回货币战争」误匹配)
-        for i in range(RunSupplyNode.REENTER_TRIES):
+        for i in range(CwScreenSupplyNode.REENTER_TRIES):
             rr = self.round_by_find_and_click_area(
                 self.screenshot(), '货币战争-备战', '按钮-返回补给阶段',
                 success_wait=1.5)
-            time.sleep(RunSupplyNode.REENTER_SETTLE_S)
+            time.sleep(CwScreenSupplyNode.REENTER_SETTLE_S)
             if rr is not None and rr.is_success and self._in_node(self.screenshot()):
                 log.info('[cw-supply] detour 完成:回到补给界面(第 %d 次尝试)', i + 1)
                 self._mark_supply_detour(match)
                 return True
-            if i == RunSupplyNode.REENTER_TRIES - 1:
+            if i == CwScreenSupplyNode.REENTER_TRIES - 1:
                 self.round_by_ocr_and_click(self.screenshot(), '返回补给阶段',
                                             success_wait=1.5, lcs_percent=0.8)
-                time.sleep(RunSupplyNode.REENTER_SETTLE_S)
+                time.sleep(CwScreenSupplyNode.REENTER_SETTLE_S)
                 if self._in_node(self.screenshot()):
                     log.info('[cw-supply] detour 完成:OCR 文本兜底回到补给界面')
                     self._mark_supply_detour(match)
                     return True
         log.warning('[cw!][cw-supply] detour:area×%d + OCR 兜底均未回到补给界面'
-                    '(下轮重试;若持续=节点预算耗尽 FAIL bail)', RunSupplyNode.REENTER_TRIES)
+                    '(下轮重试;若持续=节点预算耗尽 FAIL bail)', CwScreenSupplyNode.REENTER_TRIES)
         return False
-
 
     def _do_action(self, screen) -> None:
         # T#99 接 decide_supply:OCR 补给选项(每列=角色+装备,动态列数)→ 策略按
@@ -153,11 +176,11 @@ class RunSupplyNode(RunNode):
                 return
             screen = self.screenshot()
         opts = read_supply_options(self.ctx, screen)
-        # r2 review#2:实例态在外环每次新建 RunSupplyNode 下失效 → 挂 match.session
+        # r2 review#2:实例态在外环每次新建 op 下失效 → 挂 match.session
         # (正式字段,非 Optional)读;r10 review#3:getattr 兜底删(拼错字段名会静默
         # False 掩盖接线错误)。无 match 退实例态(测试/离线路径)。
         _refresh_used = match.session._supply_refresh_used if match is not None else self._refresh_used
-        target = RunSupplyNode.CARD_BODY
+        target = CwScreenSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
         refresh_target = None
         # 本轮选定快照(选卡确认后合成决策帧的 extra 载荷;None=兜底点卡
@@ -172,7 +195,7 @@ class RunSupplyNode(RunNode):
                 [o for o, _ in opts], _state, match.session, _cfg,
                 refresh_used=_refresh_used)
             if pick.refresh and not _refresh_used:   # 只刷一次(r1#1+r2#2:session 级)
-                refresh_target = RunSupplyNode.REFRESH_BTN
+                refresh_target = CwScreenSupplyNode.REFRESH_BTN
                 self._refresh_used = True
                 match.session._supply_refresh_used = True
                 reason = pick.reason
@@ -241,5 +264,3 @@ class RunSupplyNode(RunNode):
                      getattr(_post_state, 'hp', '?'), getattr(_post_state, 'gold', '?'))
         except Exception as e:   # noqa: BLE001  观测不阻塞对局
             log.warning('[cw-supply] 选卡确认后快照记录失败(不阻塞): %s', e)
-
-
