@@ -2,6 +2,8 @@
 
 > 状态:**FINAL v3.1(2026-09-02,两轮对抗收敛,复核确认可进 P4)**;上游定稿 = 02-state §4.3(机制定稿/范围裁剪/跨轮链)
 > 依赖:画面 op 生命周期五段(03-prep §1.1);合成规则 = merge_mechanics §2/§2.5/§2.7;装备 = dd-010/dd-015 定谳
+> 类名注:本文类名/文件名已随 2026-09-03 命名迁移更替为新名,映射对照 = [NAMING.md](NAMING.md)。
+
 
 ## 1. 机制总述
 
@@ -36,7 +38,7 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 | **买后增量读**(read_gold_settled,对抗 F5 补) | 波内每笔买后 | gold(增量提前确认,与 build_post_buy_incremental_state 同源) | 开态可信 |
 | 结算屏(战斗等待 op) | 每场战斗结算 | hp(真值链)/ gold / streak / level+xp | 结算屏全可信 |
 | **HP 关态读链**(对抗 F6 补,shop.py 新鲜度门/结算真值/r1 重试) | 备战单轮 op 观察段 | hp(gated_hp 单源门位保留——防双写者翻转,收编后序不变) | 门控 |
-| 节点探针(CloseShopOp 后)+ 备战观察 heavy + 关店重估(**三写点,对抗 F5 补**) | 各自时机 | node_type——**优先级:关态帧真值优先,探针兜底**(双写点 winner 声明) | 关态帧可读即覆盖 |
+| 节点探针(CwOpCloseShop 后)+ 备战观察 heavy + 关店重估(**三写点,对抗 F5 补**) | 各自时机 | node_type——**优先级:关态帧真值优先,探针兜底**(双写点 winner 声明) | 关态帧可读即覆盖 |
 
 ## 3. 原子 op × 期望态更新全枚举(全集 41 条;每条必有定义或「不更新」理由)
 
@@ -49,8 +51,8 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 |---|---|---|
 | 1 | BuyCard | `gold−费`;**xp += XP_PER_BUY(买牌买经验同源+4,ADR-0129/0286——对抗补,漏则 level 失准)**;`tracked_bench += (角色,星级=卡星级,位=落点)`;**合成引擎**(§4):连锁/落点/装备继承;满栏自动多买(k×单价全款);2星直出 → 金账对账暴露 |
 | 2 | RefreshShop | `gold−2`;shop_cards 失效(下轮波顶实读覆盖) |
-| 3 | CloseShopOp | shop_cards/商店族清理;**离开商店窗口** → 未覆盖 expected 携带到备战覆盖点 |
-| 4 | OpenShopOp | 画面态 shop_open=true(实读锚即得,非期望态语义) |
+| 3 | CwOpCloseShop | shop_cards/商店族清理;**离开商店窗口** → 未覆盖 expected 携带到备战覆盖点 |
+| 4 | CwOpOpenShop | 画面态 shop_open=true(实读锚即得,非期望态语义) |
 | 5 | OpenShop(read_only) | 同 4,纯观察变体:开+观察刷新+收起——**零游戏状态变更**(无期望态更新) |
 
 ### B. 备战窗口(精确建模区)
@@ -67,7 +69,7 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 | 13 | OpenBox | **箱不消失**(仅画面态:武装箱选卡 overlay 弹出——用户纠正 2026-09-02,消耗发生在 Confirm);→C-27 |
 | 14 | OpenTome | **秘典不消失**(仅画面态:秘典 overlay 弹出);→C-31 |
 | 15 | StartBattle | 进战斗(战斗等待 op 接管;hp/gold/streak 由结算屏覆盖) |
-| 16 | EnsureShopClosed | **已退役**(P3b:意图类删除;收起=CloseShopOp)——枚举留痕 |
+| 16 | EnsureShopClosed | **已退役**(P3b:意图类删除;收起=CwOpCloseShop)——枚举留痕 |
 | 16a | 穿装备(穿着即自动合成) | owned−件+角色equips+件;**穿着触发配方合成**(两件互为配方自动合成,ADR-0391 守卫根源机制)——期望态含合成链(对抗 P0 补装备家族) |
 | 16b | 特殊装备类(扳手/冶金炉/令牌/特权卡) | 冶金炉3件同刷(回收线)/令牌/特权(进阶配对)——按注册表 effect 建模进期望态(对抗 P0 补家族) |
 | 16c | 员工投影仪(备战席造1★复制) | **非BuyCard 的 tracked_bench+1 通道**(对抗 P0):tracked_bench += (被复制角色,1★);佩戴/拆卸=复制时机,建模待实机对账校准 |
@@ -94,18 +96,18 @@ ExpectedEntry = {path: 字段路径, value: 推进值, produced_by: op 名, at_r
 | 32 | 策划 Select+ConfirmPlanner | 规则变化登记(环境/台账语义;不进 session 推进) |
 | 33 | 命运 Select+ConfirmFortune | 强化登记台账 |
 | 34 | BOSS 简报点空白 | 画面推进(交回循环);无状态变更 |
-| 35 | BriefingOp 点下一步 | 简报字段已在观察段写入 session;推进由画面流转(无额外期望态) |
+| 35 | CwScreenBriefing 点下一步 | 简报字段已在观察段写入 session;推进由画面流转(无额外期望态) |
 
 ### D. 流程与系统(理由区)
 
 | # | op | 理由(不更新期望态) |
 |---|---|---|
-| 36 | PlaneTransitionOp(点空白) | **位面推进**:plane+1 为期望语义,但节点表/位面实采由 CollectPlaneIntel+探针覆盖——跳过中间态标记,登记即可 |
-| 37 | WaitOneOneOp | 纯等待(锚=1-1 就绪);无状态变更 |
+| 36 | CwScreenPlaneTransition(点空白) | **位面推进**:plane+1 为期望语义,但节点表/位面实采由 CwScreenPlaneIntel+探针覆盖——跳过中间态标记,登记即可 |
+| 37 | CwScreenWaitOneOne | 纯等待(锚=1-1 就绪);无状态变更 |
 | 38 | 自动战斗自愈(开关点击) | 游戏 UI 态,非局状态字段 |
 | 39 | 干扰弹窗关闭(概率表/道具详情/消耗品) | 纯 UI 关闭,无状态后果 |
-| 40 | OpenShop 探针/收起重进(容忍路径) | 画面态周转,终态由 CloseShopOp/开态锚承载 |
-| 41 | ExitCurrencyWarMatch(整局退出) | 局终:expected_state 随局级清空(机制边界) |
+| 40 | OpenShop 探针/收起重进(容忍路径) | 画面态周转,终态由 CwOpCloseShop/开态锚承载 |
+| 41 | CwEntryExit(整局退出) | 局终:expected_state 随局级清空(机制边界) |
 
 ### P2 批注(对抗轮补注,随实现批逐项落)
 
@@ -152,7 +154,7 @@ merge_simulate(state: {bench, deployed}, buy: (角色, 星级, 张数))
 
 - 备战单轮 op 的「对账段」(生命周期②)= 本机制覆盖点的 reconcile 执行处;
 - 商店 op 波顶观察 = 商店覆盖点;
-- **apply_op_effect 挂 dispatch 层双执行面(对抗 F8)**:`prep_actions.PrepActionExecutor.execute` + `decision_assembly.execute(AtomOp)` 各自接线**同一 kernel 纯函数**(漏一面=该面动作全部漏登记);**组合动作**(RunBuyPhase/RunDeploy/RunEquip 经 _run_composite)=「子动作效果列表上抛」(波内逐动作精确推进,非单元级粗粒度——波内登记现役点 buy_cards mutate_bench_deployed/shop pending_buy_expect 暂存);**显式不建模盲区**:`_handle_bench_full` 席满急救(买经验×10+卖前几槽,不经执行器)——留证声明而非遗漏;P4 验收清单加「两执行面 × 动作类型 × apply 覆盖矩阵」;
+- **apply_op_effect 挂 dispatch 层双执行面(对抗 F8)**:`prep_actions.PrepActionExecutor.execute` + `decision_assembly.execute(AtomOp)` 各自接线**同一 kernel 纯函数**(漏一面=该面动作全部漏登记);**组合动作**(RunBuyPhase/RunDeploy/RunEquip 经 _run_composite)=「子动作效果列表上抛」(波内逐动作精确推进,非单元级粗粒度——波内登记现役点 cw_op_buy_cards mutate_bench_deployed/shop pending_buy_expect 暂存);**显式不建模盲区**:`_handle_bench_full` 席满急救(买经验×10+卖前几槽,不经执行器)——留证声明而非遗漏;P4 验收清单加「两执行面 × 动作类型 × apply 覆盖矩阵」;
 - **条目绑覆盖点(对抗 F7)**:每条 ExpectedEntry 声明其确认覆盖点(shop 族条目在备战观察点**不可确认**——星级身份不可见);不可确认条目**不计入 stall 判定**的「长期未覆盖」时钟;reconcile 入口按当前帧可信门过滤字段族(F5);
 - stall 判定(外循环)消费 expected_state 的轮次戳(「字段长期 expected 未被覆盖」= 停留在不可识别画面过久 → 线索)。
 

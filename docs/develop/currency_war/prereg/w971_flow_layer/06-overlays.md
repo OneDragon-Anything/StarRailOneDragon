@@ -2,6 +2,8 @@
 
 > W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。数据源统一:结算屏读数(§04-shop 裁决),overlay 内不返回暗态观察。
 > 实施状态:§4 七 overlay op **已接入主循环分发(P3b,dd-017)**——巨星/列车同行/骇入策划/命运卜者/祈愿试炼/星徽秘典六分支由循环分发 op 接管(六 op 薄封装委托现役 handler,handler「点选+确认」原子化与退役归 overlay 原子化批,dd-017 决策 4);ArmoryBoxOp 待 PickBoxCard 迁 handler 族时接线。§1/§2/§3(补给/遭遇/BOSS 简报)op 未建。
+> 类名注:本文类名/文件名已随 2026-09-03 命名迁移更替为新名,映射对照 = [NAMING.md](NAMING.md)。
+
 
 ## 1. 补给 overlay(与投资策略同构)
 
@@ -15,7 +17,7 @@
 ③ 原子 op 执行 → 完成承诺 = **等备战商店开画面出现**(场景①判稳锚 = 「按钮-收起」独有锚,DD-011 amended 纪律;**等待上界兜底**:超上界未现 = 异常,bail 交循环留证——与 05-battle 超时兜底同款),交回循环
 ```
 
-- 原子 op:RefreshSupplyCard(次数约束 P8;**结束等待 = 刷新动画口径**——现役 handle_invest_env 已修的 1s/2s/2.2s 刷新等待值随 op 迁移,防口径丢失)/ SelectSupplyCard / ConfirmSupply(末位契约)。
+- 原子 op:RefreshSupplyCard(次数约束 P8;**结束等待 = 刷新动画口径**——现役 cw_screen_invest_env 已修的 1s/2s/2.2s 刷新等待值随 op 迁移,防口径丢失)/ SelectSupplyCard / ConfirmSupply(末位契约)。
 - **决策归策略接口原则**(用户确认):所有 overlay 决策一律在策略层函数(现役 cw_events 族),执行器/编排层零内嵌决策。
 
 ## 2. 遭遇 overlay
@@ -55,14 +57,14 @@
 | **WishTrialOp**(祈愿试炼) | 候选卡 | naive 首张 | SelectWishCard → ConfirmWish |
 | **PlannerEventOp**(银狼「我来当策划」) | 选项(PlannerOption) | decide_planner(策略模块,r104) | SelectPlannerOption → ConfirmPlanner |
 | **FortunePickerOp**(命运卜者强化) | 强化卡候选 | 执行器(强化卡选择) | SelectFortune → ConfirmFortune |
-| **BookcardOp**(星徽秘典四选一) | 四张卡 | 待定(现役 loop 0i 接管选卡;策略归口批 B 定) | SelectBookCard → ConfirmBook |
+| **CwScreenBookcard**(星徽秘典四选一) | 四张卡 | 待定(现役 loop 0i 接管选卡;策略归口批 B 定) | SelectBookCard → ConfirmBook |
 
 - 全族共性:overlay 内原子 op 只有「点选 + 确认」两型;待选项识别写 session 喂决策;决策一律在策略接口(执行器默认类除外——固定规则非策略判断)。
-- **handler 差异点显式化**(对抗轮 1 代码现实 P1):现役 handler 中超出「点选+确认」的逻辑随 op 化显式迁移——handle_invest_env 的节点台账重读+变异窗+采集、handle_encounter 的验证消失+bail 语义、各 handler 的 bail 计数族(defer/bail 计数器)列入退役/迁移清单(批 B 实施时逐个落)。
+- **handler 差异点显式化**(对抗轮 1 代码现实 P1):现役 handler 中超出「点选+确认」的逻辑随 op 化显式迁移——cw_screen_invest_env 的节点台账重读+变异窗+采集、cw_screen_encounter 的验证消失+bail 语义、各 handler 的 bail 计数族(defer/bail 计数器)列入退役/迁移清单(批 B 实施时逐个落)。
 - **干扰弹窗族**(对抗轮 1 P1 补,均有死循环实锤修复史):商店概率表(0e2)/道具详情(0e3)/消耗品弹层(0f)/阿哈装备选择/专家邀请函/试用揭示卡——**不入 §2.16 选择 op 枚举**(非决策选择),由循环判定序识别后按既有处理分支关闭/跳过;分支清单随主循环瘦身**保留**(不退役),防静默丢弃退避停机。
-- 装备拾取(handle_equip_pick)不属选择 overlay(战斗掉落拾取动作),归类待定(实现批定)。
+- 装备拾取(cw_screen_equip_pick)不属选择 overlay(战斗掉落拾取动作),归类待定(实现批定)。
 - **暗色锁定态族归属**(对抗轮 1 终检 P2 补):策略锁定/遭遇锁定档(顶部「返回XX选择」按钮态)由**主循环判定序的暗色锁定态前置分支**承载(现役语义保留),不属选择 op——非选择流程处理类,与中断挑战弹窗/位面详情同列兜底分支。
-- 中断挑战弹窗/位面详情 overlay:非选择类(流程处理),留主循环兜底分支(位面详情的情报采集职责归 CollectPlaneIntel,不变)。
+- 中断挑战弹窗/位面详情 overlay:非选择类(流程处理),留主循环兜底分支(位面详情的情报采集职责归 CwScreenPlaneIntel,不变)。
 
 ## 5. 完成承诺两口径总表(用户强调)
 

@@ -1,9 +1,11 @@
 # 01 · 简报 op / 开局序列 / 位面切换
 
 > W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
-> 实施状态:**已接线(P3b,dd-017)**——OpeningSequence 接进主循环开局路径(run 首帧分流,接管局 §2.1 直进常态分发);0a0b 位面简报内联/位面过渡内联/开局投资环境段三段退役;BriefingOp 内联直写 session(HandleBriefing 退役,ctx 信箱删除);位面过渡由循环分发 PlaneTransitionOp。
+> 实施状态:**已接线(P3b,dd-017)**——OpeningSequence 接进主循环开局路径(run 首帧分流,接管局 §2.1 直进常态分发);0a0b 位面简报内联/位面过渡内联/开局投资环境段三段退役;CwScreenBriefing 内联直写 session(HandleBriefing 退役,ctx 信箱删除);位面过渡由循环分发 CwScreenPlaneTransition。
+> 类名注:本文类名/文件名已随 2026-09-03 命名迁移更替为新名,映射对照 = [NAMING.md](NAMING.md)。
 
-## 1. BriefingOp:简报观察收敛为单 op
+
+## 1. CwScreenBriefing:简报观察收敛为单 op
 
 简报画面(货币战争-简报,含 P1 开局简报与 P2/P3 位面简报同族)唯一入口:
 
@@ -12,24 +14,24 @@
 - 动作:点「下一步」;完成承诺 = DD-011(固定时长或判稳标志,#1 口述「锚出现后 ~1s 动画完结」);
 - 兜底补采(session 空时位面详情补采)并入本 op 重试形态,不再散落第二写入点;
 - 简报 vs 位面详情对账(reconcile_briefing_vs_plane_intel)保留,消费局状态;
-- **词缀效果采集职责随迁**(对抗轮 1 代码现实补):现役 HandleBriefing 的逐词缀点采 OCR 效果、与注册表比对新名收集,是 BriefingOp 内建步骤之一——采集仍为 best-effort(失败不阻塞点「下一步」),新词收集落既有通道不变。
+- **词缀效果采集职责随迁**(对抗轮 1 代码现实补):现役 HandleBriefing 的逐词缀点采 OCR 效果、与注册表比对新名收集,是 CwScreenBriefing 内建步骤之一——采集仍为 best-effort(失败不阻塞点「下一步」),新词收集落既有通道不变。
 - 遥测:exogenous briefing 事件随 op 迁移,语义不变。
 
 ## 2. 开局序列独立于主循环
 
-**1-1 之前的整段固定流程拉出 battle_loop 主循环**,作为独立的开局编排单元——跑完(1-1 备战就绪)才交常态循环。battle_loop 瘦掉开局分支(位面简报 0a0b、位面过渡点空白、开局投资环境段),只保留本职:常态循环(备战决策 ↔ 战斗 ↔ 结算)+ 局中不定时 overlay 的按画面分发(遭遇/补给/巨星/伙伴/投资策略——节点类型决定出现时机,必须留 loop)。
+**1-1 之前的整段固定流程拉出 cw_loop 主循环**,作为独立的开局编排单元——跑完(1-1 备战就绪)才交常态循环。cw_loop 瘦掉开局分支(位面简报 0a0b、位面过渡点空白、开局投资环境段),只保留本职:常态循环(备战决策 ↔ 战斗 ↔ 结算)+ 局中不定时 overlay 的按画面分发(遭遇/补给/巨星/伙伴/投资策略——节点类型决定出现时机,必须留 loop)。
 
 ```
 开局编排(P1,进对局后一次性):
-BriefingOp(简报观察+写局状态+点下一步;#1 锚后 ~1s)
-  → PlaneTransitionOp(位面过渡,点空白;#2 提示出现即点)
-  → InvestEnvOp(投资环境 3 选 1;现 handle_invest_env)
-  → WaitOneOneOp(特殊:1-1 开局动画等待 ~10s)
-  → 1-1 备战 → 交备战循环(PrepDirector)
+CwScreenBriefing(简报观察+写局状态+点下一步;#1 锚后 ~1s)
+  → CwScreenPlaneTransition(位面过渡,点空白;#2 提示出现即点)
+  → InvestEnvOp(投资环境 3 选 1;现 cw_screen_invest_env)
+  → CwScreenWaitOneOne(特殊:1-1 开局动画等待 ~10s)
+  → 1-1 备战 → 交备战循环(CwScreenPrep)
 ```
 
 - **顺序依据**(screen_flow_timing #1→#2→#3,#5/#29):简报点「下一步」→ 位面过渡(#2「点击空白处继续」提示出现 = 完结)→ 投资环境(#3 标题出现 1s 内三卡稳定)→ 进 1-1(**触发开局补给,动画长且无结束标志 → 用户裁定特殊等待 ~10s,值待校准**;1-1 **不自动开商店**)→ 1-1 备战。
-- **WaitOneOneOp 形态**(对抗轮 1 修正):主判据 = 轮询「备战阶段」文本出现(1-1 备战就绪的建档锚,锚定化);固定 ~10s(用户口径,待校准)仅作**超时兜底**(锚一直不现 = 异常,留证交循环)。不给备战循环加「现在是 1-1」的特殊状态参数。
+- **CwScreenWaitOneOne 形态**(对抗轮 1 修正):主判据 = 轮询「备战阶段」文本出现(1-1 备战就绪的建档锚,锚定化);固定 ~10s(用户口径,待校准)仅作**超时兜底**(锚一直不现 = 异常,留证交循环)。不给备战循环加「现在是 1-1」的特殊状态参数。
 - **投资环境仅开场一次**(#11:开场 1-1 前弹投资环境,1-3 后起局中弹投资策略,两画面不同 handler)——InvestEnvOp 只在开局编排;局中投资策略 = overlay handler 由 loop 按画面分发。出现规律不需精确建模:画面识别分发,出现即处理。
 
 ## 2.1 接管局 / resume 入口(对抗轮 1 P0 补)
@@ -49,6 +51,6 @@ boss 结算后位面简报与位面过渡的**先后顺序存在表述矛盾**(�
 
 - **位面过渡:每个位面开始时出现一次**(用户确认)。
 - **位面简报:只在货币战争入场时出现一次**(用户裁决 2026-09-02;旧记录「局54 哨兵 30 iter stall = P2/P3 出现过简报屏」系当年错误归因,已删除)。接管未结束对局时是否出现**待验证**(接管局实测观察)。
-- 编排:boss 结算完成 → PlaneTransitionOp(位面过渡,点空白)→ 2-1 自动开商店 → 交备战循环。打完 boss 后没有投资环境。
-- 与 1-1 的差异:2-1/3-1 **自动开商店**(无 WaitOneOneOp;开店完成判定按 DD-011 两形态,场景①口径)。
-- 现有 handler op(handle_invest_env/invest_strategy/encounter/supply/megastar/partner)保留为画面 op 纳入编排;**位面过渡/开局补给补 op**。
+- 编排:boss 结算完成 → CwScreenPlaneTransition(位面过渡,点空白)→ 2-1 自动开商店 → 交备战循环。打完 boss 后没有投资环境。
+- 与 1-1 的差异:2-1/3-1 **自动开商店**(无 CwScreenWaitOneOne;开店完成判定按 DD-011 两形态,场景①口径)。
+- 现有 handler op(cw_screen_invest_env/invest_strategy/encounter/supply/megastar/partner)保留为画面 op 纳入编排;**位面过渡/开局补给补 op**。

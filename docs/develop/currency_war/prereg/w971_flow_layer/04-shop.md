@@ -1,7 +1,7 @@
 # 04 · 商店开画面 / 投资策略 / 再选调研 / 暗态备选
 
 > W971 分篇。总纲见 [DESIGN.md](DESIGN.md)。
-> 实施状态:批 A(W970)已落地商店链原子 op(`operations/prep/open_shop.py`/`buy_cards.py`/`close_shop.py` + `shop.py` 编排壳);P2 已落 `decide_shop_screen`(session 签名,观察写 `session.shop_state_frame` = 波顶融合段;dd-014);CloseShopOp 的「商店族字段清理」仅留 TODO 挂点,随本篇批次落地(将接管 shop_state_frame 清理)。
+> 实施状态:批 A(W970)已落地商店链原子 op(`operations/cw_op/cw_op_open_shop.py`/`cw_op_buy_cards.py`/`cw_op_close_shop.py`;原 `shop.py` 编排壳已随 2026-09-03 退役删除批删除);P2 已落 `decide_shop_screen`(session 签名,观察写 `session.shop_state_frame` = 波顶融合段;dd-014);CwOpCloseShop 的「商店族字段清理」仅留 TODO 挂点,随本篇批次落地(将接管 shop_state_frame 清理)。
 
 ## 1. 商店开画面:识别清单
 
@@ -16,15 +16,15 @@
 
 ## 2. 商店开原子 op(用户裁决:整理类动作全部移备战,商店只做花金消费)
 
-**动作集 = {BuyCard, RefreshShop, CloseShopOp}**。裁决迁移:LevelUpShop/SellBench/SellDeployed → 干净备战;CompTransaction **废弃**(演进意图由决策以基本动作跨画面表达)。
+**动作集 = {BuyCard, RefreshShop, CwOpCloseShop}**。裁决迁移:LevelUpShop/SellBench/SellDeployed → 干净备战;CompTransaction **废弃**(演进意图由决策以基本动作跨画面表达)。
 
 | 原子 op | 结束等待 |
 |---|---|
 | BuyCard | 验证式:落位 pixel-diff/备战席变化 |
 | RefreshShop | 验证式:两帧一致门(牌行区指纹,0.25s 步长上限 2s,#9) |
-| CloseShopOp | 固定 1.0s(#15)+ 「收起消失」验证;**完成承诺含商店族字段清理** |
+| CwOpCloseShop | 固定 1.0s(#15)+ 「收起消失」验证;**完成承诺含商店族字段清理** |
 
-商店循环 = W970 §4.3.2(每执行至 RefreshShop 重观察重判;空序列 → CloseShopOp)。
+商店循环 = W970 §4.3.2(每执行至 RefreshShop 重观察重判;空序列 → CwOpCloseShop)。
 
 **决策层适配项(批 B/C,行为变更)**:①d2 卖通道输出迁移(经济时序:同轮先买后卖 → 备战先卖回金再开店买);②ADR-0328 同轮买卖互斥记账重审;③M-6 门简化(腾席在备战完成,开店时 free 已保证);④演进能力由决策以基本动作序列表达。
 
@@ -67,6 +67,8 @@
 ## 5. 暗态备选方案(保留备档;**superseded:当前裁决为路 2 结算屏读数**)
 
 > ⚠️ 历史调研结论(路 1 验证「降级可行」)已被 2026-09-02 路 2 裁决**取代**;本节保留仅为回退路径(实机证明结算屏读数不可行时启用,免重新讨论)。两段「裁决」字样以本节标注为准:**当前有效裁决 = 路 2**。
+> 类名注:本文类名/文件名已随 2026-09-03 命名迁移更替为新名,映射对照 = [NAMING.md](NAMING.md)。
+
 
 **当前裁决:路 2 结算屏读数采纳(更简更快),本备选暂不启用;若实机证明结算屏读数不可行(败局中间态结构问题、字段缺失),回退本方案,免重新讨论。**
 
