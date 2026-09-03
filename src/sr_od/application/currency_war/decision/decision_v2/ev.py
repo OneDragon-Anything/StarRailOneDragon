@@ -112,7 +112,7 @@ def battles_left_plane(state: GameState, session: StrategySession,
     P2 口径,math_proofs P15 立确定性命题)。
 
     推导源=``session.plane_node_table``(开局帧槽序表:**每位面一张**,
-    prep_director 位面首帧重写、位面内恒定,ADR-0368;P1=9 槽/P2=7 槽,
+    cw_screen_prep 位面首帧重写、位面内恒定,ADR-0368;P1=9 槽/P2=7 槽,
     ADR-0366)——从当前轮起数非战斗 token(reward/supply/奖励/补给)
     之外的剩余槽位数(未知 token 按战斗计:每个节点默认是战斗,
     reward/supply 才是例外;表只辖本位面槽,越界槽不数)。

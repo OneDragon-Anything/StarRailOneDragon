@@ -1193,9 +1193,13 @@ def _resource_blocked(a: Action, working: GameState, state: GameState,
     """单动作资源型三约束检查(补偿动作重验用;只查 gold/bench/slot)。
 
     理论不发生(补偿器构造已守卫),兜底闸(§1.2 伪码)禁散写。
+    同轮互斥(ADR-0267)在此一并兜底、不信任「构造已守卫」假设:卖
+    通道的豁免/兜底路径(腾位补偿的种子死锁豁免)可能绕过构造器守卫
+    链,兜底闸按 working 实卖目标统一拦(0 容忍不变量的收口点;
+    seed 181 p1r6 补偿组卖刚买种子实证)。
     """
     probe = Candidate(action=a, tag='remedy', source='remedy')
-    for cname in _RESOURCE_CONSTRAINTS:
+    for cname in ('same_round_mutex',) + _RESOURCE_CONSTRAINTS:
         r = _check_constraint(cname, probe, working, state, session,
                               registry)
         if r is not None:

@@ -97,7 +97,7 @@ def _resolve_card_bonds(ctx: SrContext, screen, card_area: str) -> str | None:
     return None
 
 
-class HandleBookcard(SrOperation):
+class CwScreenExpertInvite(SrOperation):
     """书册卡处理链:开卡 → 邀请函选卡(默认策略)→ 验弹窗关。
 
     两个入口态都收敛到本 op(备战环检测到书册卡 / 外环撞见已开的邀请函弹窗)。

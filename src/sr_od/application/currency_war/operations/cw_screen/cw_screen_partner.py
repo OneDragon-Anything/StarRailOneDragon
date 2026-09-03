@@ -1,4 +1,4 @@
-# live-verified 2026-08-13:HandleSelectPartner 端到端跑通(step1 候选 click 早前实测;step2 点中心立绘
+# live-verified 2026-08-13:CwScreenPartner 端到端跑通(step1 候选 click 早前实测;step2 点中心立绘
 # (960,300)→「已选择」→ 确认 → overlay 关,live 验)。原自主推进期代码,已 review + live 验,可信。
 
 # r104(2026-08-20):SIFT 立绘识别接入(portrait_plaza 库)——候选真身喂 decide_partner,
@@ -25,7 +25,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandleSelectPartner(SrOperation):
+class CwScreenPartner(SrOperation):
     """选择伙伴 overlay:OCR 候选 → 点候选立绘选中 → 确认选择。"""
 
     # 候选阵营标签行 y 过滤带(候选 label 在 y~362;排除标题 64 / 指令 130 / 详情 445 / 确认 582)。
@@ -60,9 +60,9 @@ class HandleSelectPartner(SrOperation):
                 continue
             cx = mrl.max.center.x
             cy = mrl.max.center.y
-            if (HandleSelectPartner.LABEL_CY_LO <= cy <= HandleSelectPartner.LABEL_CY_HI
-                    and HandleSelectPartner.LABEL_CX_LO <= cx <= HandleSelectPartner.LABEL_CX_HI
-                    and 2 <= len(text) <= 4 and text not in HandleSelectPartner._EXCLUDE):
+            if (CwScreenPartner.LABEL_CY_LO <= cy <= CwScreenPartner.LABEL_CY_HI
+                    and CwScreenPartner.LABEL_CX_LO <= cx <= CwScreenPartner.LABEL_CX_HI
+                    and 2 <= len(text) <= 4 and text not in CwScreenPartner._EXCLUDE):
                 opts.append((text, cx, cy))
         opts.sort(key=lambda t: t[1])
         return opts
@@ -146,9 +146,9 @@ class HandleSelectPartner(SrOperation):
                 match.session.chosen_partner = options[idx].char_id or ''
             if cands and 0 <= idx < len(cands):
                 _name, cx, cy = cands[idx]
-                portrait = Point(cx, cy - HandleSelectPartner.PORTRAIT_DY_ABOVE_LABEL)
+                portrait = Point(cx, cy - CwScreenPartner.PORTRAIT_DY_ABOVE_LABEL)
             else:
-                portrait = HandleSelectPartner.FALLBACK_PORTRAIT
+                portrait = CwScreenPartner.FALLBACK_PORTRAIT
             self.ctx.controller.mouse_move(portrait)
             self.ctx.controller.click(portrait)
             time.sleep(0.7)

@@ -9,7 +9,7 @@ source_image: screens/货币战争-选择伙伴/select_partner.webp
 
 ## 何时出现 + 状态流转
 
-对局内**位面推进中**随机出现的「选择伙伴」节点(非每轮必有;出现时机由肉鸽地图节点决定)。玩家从 1-N 个候选角色里**选 1 名**加入其流派羁绊 + 复制其首件装备效果,选完回备战。**两步确认流程**(实测 + handler `HandleSelectPartner`):
+对局内**位面推进中**随机出现的「选择伙伴」节点(非每轮必有;出现时机由肉鸽地图节点决定)。玩家从 1-N 个候选角色里**选 1 名**加入其流派羁绊 + 复制其首件装备效果,选完回备战。**两步确认流程**(实测 + handler `CwScreenPartner`):
 
 - **入口**:备战 → (地图节点为「选择伙伴」时)→ 本 overlay(叠在备战上,备战 id_mark 仍透出可见)。
 - **step 1 选伙伴**:点候选立绘选中(选中态 = 「已选择」文字出现 + 立绘高亮边框)→ 点「确认选择」。
@@ -53,7 +53,7 @@ source_image: screens/货币战争-选择伙伴/select_partner.webp
 
 ## 备注 / 待查
 
-- **screen_info 现状**:`currency_war_partner.yml` —— `标识-选择伙伴` + `备战标识-购买经验`(**组合 id_mark=true**)+ `按钮-确认选择`。handler `HandleSelectPartner` + `decide_partner` 已接(候选 OCR + idx0 兜底)。
+- **screen_info 现状**:`currency_war_partner.yml` —— `标识-选择伙伴` + `备战标识-购买经验`(**组合 id_mark=true**)+ `按钮-确认选择`。handler `CwScreenPartner` + `decide_partner` 已接(候选 OCR + idx0 兜底)。
 - **id_mark(2026-08-13 定型)**:选择伙伴 = 「购买经验」+ 标题「选择伙伴」(组合,两个都中才算精准匹配,组合比单标记更不易误命中)。**备战 = 购买经验 + 前台区域 + 后台区域**——前台区域是备战棋盘前排标签,本弹窗盖住它 → 弹窗帧上备战凑不齐(缺前台区域)→ 备战不是 is_precise → 两个画面各只一个 is_precise,**不撞车,无需测试豁免**(2026-08-13 测试 + live 双确认)。
 - **同类中心 overlay**(巨星/祈愿):同此模型(overlay id_mark = 购买经验 + 自己标题;备战 id_mark 含被盖的前台区域 → overlay 帧备战不 is_precise)。**补给/投资策略/投资环境**:疑似独立屏(盖住底部购买经验、有「返回备战」按钮),非备战 overlay —— battle_loop 停机钩子已埋,待建档排查。
 - **候选无角色名**:流派 label(护盾/能量)非角色名 → `decide_partner` 无法按 `target_comp.core_chars` 选(多 idx0);真接决策需 SIFT 立绘识别(后续子项,候选位置视觉不稳需 CV 卡框/多样本定网格)。

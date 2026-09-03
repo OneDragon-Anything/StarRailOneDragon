@@ -1139,7 +1139,7 @@ class DecisionV2Registry:
     #: 接线完成删除(存在理由消失);回退 = git revert。
     # (影子比对开关 director_v2_shadow_compare 已随旧方案清退批删除:
     #  ADR-0465 迁移批 3 承诺旧环退役时删除生产分支,旧环已无生产者,
-    #  decision_assembly.shadow_compare_*/prep_director 接线同批删,
+    #  decision_assembly.shadow_compare_*/cw_screen_prep 接线同批删,
     #  清查报告 OLD_MIX_AUDIT §1.3/§5。)
 
     # ===== 层4:预算仲裁(约束清单——一处定义,全部候选受辖)=====

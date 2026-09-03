@@ -7,7 +7,7 @@ DD-011 常量仍在 ``prep_actions``(SHOP_CLOSE_ANIM_S / SHOP_OPEN_ANIM_S)。
 """
 from __future__ import annotations
 
-#: 简报:点「下一步」离锚(简报标识消失,BriefingOp 出口已验)后的固定时长
+#: 简报:点「下一步」离锚(简报标识消失,CwScreenBriefing 出口已验)后的固定时长
 #: (W971 01-opening §1,#1 口述「锚出现后 ~1s 动画完结」)。
 BRIEFING_SETTLE_S: float = 1.0
 

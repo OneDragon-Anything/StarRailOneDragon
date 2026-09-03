@@ -38,7 +38,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class BriefingOp(SrOperation):
+class CwScreenBriefing(SrOperation):
     """简报:识别简报 → 读词缀/boss/难度直写 session → 词缀效果采集 → 点下一步(出口验真转移)。"""
 
     #: screen_info 画面(currency_war_briefing.yml):id_mark 标识-本场对局首领

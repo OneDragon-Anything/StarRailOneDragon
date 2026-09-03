@@ -37,6 +37,7 @@ from sr_od.application.currency_war.decision.decision_v2.discipline import (
     _line_protect_set,
     engine_char_names,
     register_round_sold,
+    round_sell_blocked,
     seed_age_blocked,
     sell_priority_key,
     star_weighted_copies,
@@ -420,6 +421,12 @@ def _compensate_bench(working: GameState, state: GameState,
         # 统一弱序(S5/ADR-0327):r408/加权副本≥2(AD9-2-3)/未识别由键
         # 统一挡;种子单列兜底(唯一可卖=种子时豁免,防买死锁,同 carry)
         if seed_age_blocked(b, state, session):
+            # 同轮已买禁卖(ADR-0267 0 容忍)对种子兜底路径同辖:本趟
+            # arbitrate 刚采纳的 engine_seed 买入(age 窗必命中)不得经
+            # 「唯一可卖=种子」死锁豁免卖回——买→卖同轮振荡(白花 1 金
+            # +退金差,seed 181 p1r6 实证);死锁由整组放弃闭环。
+            if round_sell_blocked(b, state, session):
+                continue
             cp = star_weighted_copies(b.char_id, state)
             key = (1, 0 if cp > 3 else 1, cp, ch.cost, star)
             seed_cands.append((key, i, refund))

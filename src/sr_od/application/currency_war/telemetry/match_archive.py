@@ -247,7 +247,7 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
 def _terminal_closure(last_frame: dict[str, Any] | None) -> str | None:
     """终态收口类型(w943 审计 P2-5):末帧动作计划是否含出战。
 
-    - 步进帧的记录时点 = 动作**执行前**的最近观察(prep_director
+    - 步进帧的记录时点 = 动作**执行前**的最近观察(cw_screen_prep
       ``_decide_port`` → ``_record_step(acct['last_obs'], …)``)。末帧动作
       含 StartBattle ⇒ 该帧观察在全部备战动作执行之后(出战决策以定型
       观察为输入)→ terminal 可信为执行后账面('start_battle');
@@ -298,7 +298,7 @@ def _action_counts(actions: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def _evidence_links(replay_dir: Path, key: tuple[int, int]) -> list[str]:
-    """buy_expect 留证 webp 按轮索引(prep_director 只在对账不一致时落盘,
+    """buy_expect 留证 webp 按轮索引(cw_screen_prep 只在对账不一致时落盘,
     文件名 tag=p{plane}-r{round},落 replay 根;可选证据,缺 = 空列表)。"""
     tag = f'p{key[0]}-r{key[1]}_'
     base = Path(replay_dir)

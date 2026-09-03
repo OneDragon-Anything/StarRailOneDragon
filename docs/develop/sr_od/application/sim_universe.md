@@ -1,6 +1,6 @@
 ---
 app_id: sim_universe
-last_updated: 2026-08-01
+last_updated: 2026-08-31
 source: application/sim_universe/ 代码(@operation_node 节点链)
 ---
 
@@ -86,6 +86,28 @@ source: application/sim_universe/ 代码(@operation_node 节点链)
 - **move_v2/**:`sim_uni_run_combat_route_v2`、`sim_uni_run_elite_route_v2`、`sim_uni_run_event_route_v2`、`sim_uni_run_respite_route_v2`、`sim_uni_run_route_base_v2`、`sim_uni_move_to_next_level_v3`。
 - **auto_run/**:`sim_uni_run_world`、`sim_uni_run_level`、`reset_sim_uni_level`、`sim_uni_wait_level_start`。
 - **根**:`sim_uni_exit`(退出结算)、`sim_uni_enter_fight`(进战斗)、`sim_uni_event`、`sim_uni_move_utils`。
+
+## 祝福选择:SimUniChooseBless(`bless/sim_uni_choose_bless.py`)
+
+调用方:`SimUniEnterFight._handle_not_in_world`(战斗结束后画面分派,识别为 `SIM_BLESS` 才调用)、`SimUniChoosePath` / `SimUniEvent` 等流程尾部的连续祝福。
+
+节点链:`等待画面 → 选择祝福 → 选择后等待结束`。
+
+- **等待画面**:`in_sim_uni_choose_bless` = 左上角标题**裁剪 OCR**(通用画面/左上角标题 area,非全图)对「选择祝福」做 LCS≥0.55 匹配(LCS=最长公共子序列,相似度=长度占比,对 OCR 局部误字鲁棒);`skip_first_screen_check=True` 时跳过(调用方已确认画面)。
+- **选择祝福**:全图 OCR(`bless_utils.get_bless_pos`)——祝福名与库(`SimUniBlessEnum`)difflib 匹配,且须与卡片正下方的命途词(毁灭/记忆/巡猎…)**配对成功**才算识别成功(防非祝福词误配);选卡按 `SimUniChallengeConfig` 优先级,无优先级可满足时点重置祝福换一批。
+- **选择后等待结束**(快速返回设计,见下节)。
+
+### 快速返回设计(攻击尽早开始)
+
+**设计约束(游戏机制)**:模拟宇宙楼层内战斗结束后怪物不消失,祝福选择期间队伍处于可被攻击的暴露状态;祝福选择流程的收尾耗时直接换算成受击风险。
+
+**设计响应(as-built)**:选择确认后尽快让「进入战斗」(`SimUniEnterFight`)恢复攻击判定——
+
+- `choose` 点确认后仅 0.1s 即交棒;
+- `wait_not_in_bless` 单一轮询分支(0.2s 步长):title 裁剪 OCR 读到「选择祝福」消失(收祝福动画完成)立即成功返回,让 `SimUniEnterFight` 尽早恢复攻击判定;确认后仍在页超过 **3s**(自 `choose_bless_time` 起算)= 连续祝福页刷新,返回 `STATUS_STILL_BLESS` 交上层分派再起一轮(每连续祝福轮多约 1.5s,换取不与收页动画竞态)。采用轮询而非固定时长等待:动画超 1s 时固定时长会使父 op 误判仍有祝福再起一轮,对着已关闭页面空识别至 FAIL(边界见下)。
+- `SimUniEnterFight._choose_bless`:op 成功 → `round_wait()` 零等待立刻回到攻击判定。
+
+**边界**:默认分支的固定 1s 与收祝福动画时长存在竞态——动画超过 1s 时,`SimUniEnterFight` 下一轮的标题裁剪 OCR 仍读到「选择祝福」,误判「仍有祝福要选」而再起一轮 `ChooseBless`;该轮对着已关闭的页面空识别至 FAIL(非致命:失败后流程继续,但产生误报失败与噪音)。轮询分支等「真实状态」而非固定时长,不存在该竞态。
 
 ## 配置 / 数据
 

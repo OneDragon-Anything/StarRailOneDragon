@@ -107,7 +107,7 @@ class TelemetryRecorder:
         extra(strategy/05 live 观测):dp_posture/active_strategies/ledger_fingerprint
         等扩容字段(便捷函数自动填;直接调方可传 None 走旧 schema)。
         gold_point(r68 review):是否作为 ``gold_trajectory`` 采样点 —— 语义是**每回合**
-        gold(经济复盘),每回合一采样;PrepDirector 逐步记录(_record_step)传 False
+        gold(经济复盘),每回合一采样;CwScreenPrep 逐步记录(_record_step)传 False
         防每回合混入 N 条步进值拉歪轨迹。
         """
         # hp None 化(W823,ADR-0491):对账层已不再产 100 兜底——无真值帧
@@ -422,7 +422,7 @@ class TelemetryRecorder:
                           refresh_board_changed: bool | None = None) -> None:
         """记购买单元账框架行(spend_ledger.jsonl;纯观测零行为)。
 
-        字段语义见 SpendUnitRecord;调用方 = prep_director 的 RunBuyPhase
+        字段语义见 SpendUnitRecord;调用方 = cw_screen_prep 的 RunBuyPhase
         执行边界。gold_close 来自 shop.py 关店对拍点暂存(模块级便捷入口
         消费填充;未挂钩的调用路径恒 None,读端记 unknown 不猜)。
         plan_truncated/refresh_* 来自 shop.py 执行循环暂存(同槽模式)。
@@ -635,7 +635,7 @@ def record_spend_unit(plane: int, round_num: int, unit_seq: int,
                       gold_before_trusted: bool = False) -> None:
     """便捷:用 current_run_id 记购买单元账框架行(spend_ledger.jsonl)。
 
-    生产者 = prep_director 的 RunBuyPhase 执行边界。run_id 空直接 no-op
+    生产者 = cw_screen_prep 的 RunBuyPhase 执行边界。run_id 空直接 no-op
     (与 record_exogenous 同门控);best-effort 由调用方 try/except 兜底。
     gold_close 在此消费 shop 关店对拍点的暂存实读金(消费即清;无暂存
     = 该单元 shop 未挂钩/未走到关店对拍段,恒 None 不猜)。

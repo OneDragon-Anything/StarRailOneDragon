@@ -6,7 +6,7 @@ UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要�
 结构性缺口(ADR-0269 病灶;设计单一源 = 设计收口终版五条定案)。
 
 **切换状态**:注册表 + 一致性断言就绪;
-B 面(director bail 扫描,prep_director 事件 overlay 检测)已切换为消费
+B 面(director bail 扫描,cw_screen_prep 事件 overlay 检测)已切换为消费
 ``derive_decision()``;A 面(P0 清场)已切换为消费 ``derive_clearable()``
 (桥接点 = ``cw_observation_gate.ENTRY_OVERLAY_CLOSE``,派生映射,消费循环
 未变);其余消费面(cw_loop 分支 / 退出链)尚未切换。全部切换完成前,
@@ -99,7 +99,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-列车同行',
         anchor_area='标识-选择伙伴',
         semantic=SEMANTIC_DECISION,
-        handler_id='HandleSelectPartner',
+        handler_id='CwScreenPartner',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=2,
         recovery_exit=RECOVERY_HANDLE,
@@ -109,7 +109,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-祈愿试炼',
         anchor_area='标识-祈愿试炼',
         semantic=SEMANTIC_DECISION,
-        handler_id='HandleWishTrial',
+        handler_id='CwScreenWishTrial',
         close_action=CLOSE_ACTION_HANDLE,
         # 派发序:必须在道具详情(19,未激活)之前——祈愿选项名含「聘用书」,
         # 曾被道具详情分支截胡(实机死循环实锤);序提前后负条件即不需要
@@ -121,7 +121,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-遭遇节点',
         anchor_area='标识-遭遇节点',
         semantic=SEMANTIC_DECISION,
-        handler_id='HandleEncounter',
+        handler_id='CwScreenEncounter',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=4,
         # 退局链现状走 Esc(恢复面恢复口径)
@@ -132,7 +132,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-投资策略',
         anchor_area='标识-请选择投资策略',
         semantic=SEMANTIC_DECISION,
-        handler_id='HandleInvestStrategy',
+        handler_id='CwScreenInvestStrategy',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=6,
         recovery_exit=RECOVERY_HANDLE,
@@ -142,7 +142,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-投资环境',
         anchor_area='标识-投资环境',
         semantic=SEMANTIC_DECISION,
-        handler_id='HandleInvestEnv',
+        handler_id='CwScreenInvestEnv',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=7,
         # 退局链现状 = 点「返回备战界面」
@@ -153,7 +153,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-盛会之星',
         anchor_area='标识-盛会之星',
         semantic=SEMANTIC_DECISION,
-        handler_id='RunMegastarNode',
+        handler_id='CwScreenMegastar',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=3,
         # 退局链现状走 Esc
@@ -175,7 +175,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-简报',
         anchor_area='标识-本场对局首领',
         semantic=SEMANTIC_SYSTEM,
-        handler_id='BriefingOp',
+        handler_id='CwScreenBriefing',
         close_action=CLOSE_ACTION_HANDLE,
         # P2/P3 开局位面简报(三 boss+词缀+下一步),0 系最前消化(全屏 OCR
         # 密集屏,头部 find_area 优先命中绕开全屏 OCR 依赖)
@@ -198,7 +198,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-未达上限警告',
         anchor_area='标识-未达上限警告',
         semantic=SEMANTIC_SYSTEM,
-        handler_id='HandleDeployNotFull',
+        handler_id='CwScreenDeployNotFull',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=5,
         recovery_exit=RECOVERY_HANDLE,
@@ -219,7 +219,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-武装箱弹窗',
         anchor_area='标识-简易武装箱',
         semantic=SEMANTIC_SYSTEM,
-        handler_id='HandleArmoryBoxDialog',
+        handler_id='CwScreenArmoryBox',
         closable=True,
         close_area='按钮-关闭',
         dispatch_priority=9,
@@ -265,22 +265,22 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         screen_name='货币战争-备战-专家邀请函',
         anchor_area='标识-专家邀请函',
         semantic=SEMANTIC_DECISION,
-        handler_id='HandleBookcard',
+        handler_id='CwScreenExpertInvite',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=13,
         recovery_exit=RECOVERY_HANDLE,
         bail_tag='bookcard',
     ),
-    # 补给:节点级选卡(RunSupplyNode 生命周期 owner)。语义 decision ⇒
+    # 补给:节点级选卡(CwScreenSupplyNode 生命周期 owner)。语义 decision ⇒
     # C1 红线 closable=False ⇒ 不在清场派生集——补给 modal 不被环入口
-    # 「返回备战界面」一键离场,改走 bail → RunSupplyNode 消化(与星徽
-    # 秘典同型「严格不劣」论证:少丢一次补给选择;RunSupplyNode._in_node
+    # 「返回备战界面」一键离场,改走 bail → CwScreenSupplyNode 消化(与星徽
+    # 秘典同型「严格不劣」论证:少丢一次补给选择;CwScreenSupplyNode._in_node
     # = 标识-补给阶段 area 命中,覆盖非节点期弹出场景)。
     OverlaySpec(
         screen_name='货币战争-补给',
         anchor_area='标识-补给阶段',
         semantic=SEMANTIC_DECISION,
-        handler_id='RunSupplyNode',
+        handler_id='CwScreenSupplyNode',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=8,
         recovery_exit=RECOVERY_HANDLE,

@@ -26,11 +26,11 @@ source_image: screens/货币战争-投资环境/default.webp
 - 「确认」按钮:底部,screen_info ``按钮-确认`` center ≈ (1082,982)。
 - 「剩余次数：N」(本场 N=1,左下)。
 
-> screen_info ``currency_war_invest_env``:``标识-投资环境``(id_mark 标题锚点)+ ``区域-卡牌描述行``(给选中 Y=450)+ ``按钮-确认``。op ``handle_invest_env`` 经 ``cw_observation.area_center`` 读(screen_info 缺失才用兜底常量)。
+> screen_info ``currency_war_invest_env``:``标识-投资环境``(id_mark 标题锚点)+ ``区域-卡牌描述行``(给选中 Y=450)+ ``按钮-确认``。op ``cw_screen_invest_env`` 经 ``cw_observation.area_center`` 读(screen_info 缺失才用兜底常量)。
 
 ## 关键数据(策略相关)
 
-> bot 已接 ``decide_event``(``handle_invest_env``):OCR 3 卡名 → 按事件白名单 + 克制打分 → 点最优卡 + 确认(2026-08-04)。投资环境 overlay 时 board 不可读 → decide_event 用空 board stub(白名单主策略不依赖 board)。
+> bot 已接 ``decide_event``(``cw_screen_invest_env``):OCR 3 卡名 → 按事件白名单 + 克制打分 → 点最优卡 + 确认(2026-08-04)。投资环境 overlay 时 board 不可读 → decide_event 用空 board stub(白名单主策略不依赖 board)。
 
 - **3 选项(本场实例)**:
   1. **昼之半神概念股** — 开局得【昼之半神】角色 + 初始简易装备,昼之半神角色刷新率提高。(阵营 buff)

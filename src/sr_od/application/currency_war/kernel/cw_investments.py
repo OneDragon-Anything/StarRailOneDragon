@@ -497,7 +497,7 @@ _validate_strategy_effects()
 # ===== 派生:ENV_FACTION_MAP(投资环境 → 加成阵营;从 INVESTMENT_ENVS 派生,单一真相源)=====
 # ===== OCR 分隔符归一(查找边界单一源;AGENTS.md「OCR 文本匹配与修复」②无歧义形变先规范化)=====
 # 实机缺陷链(run_20260826_004527):OCR 把间隔号 `·`(U+00B7)误读为圆点 `•`(U+2022)——
-# handle_invest_strategy L216 告警 `'全都要•彩'` 注册表 miss → 原始 OCR 名 append 进
+# cw_screen_invest_strategy L216 告警 `'全都要•彩'` 注册表 miss → 原始 OCR 名 append 进
 # session.active_strategies → cw_economy 按名聚合经济效果精确查 miss → **策略经济效果被
 # 静默丢弃**(真金影响);cw_events 品质查同样先吃 miss。
 # 先例:cw_chars_data L5「规范名:• 已统一为·」(数据层手改);本函数是查找层归一
@@ -566,7 +566,7 @@ def get_env(name: str) -> InvestmentEnv | None:
 def is_known_env(name: str) -> bool:
     """投资环境名是否在注册表内(识别完整性信号;OCR 命中注册表外的名字 → 数据缺口,应 log warn)。
 
-    用于 handle_invest_env 把「未建模环境」从静默中性 fallback 变成可见信号(防假绿,
+    用于 cw_screen_invest_env 把「未建模环境」从静默中性 fallback 变成可见信号(防假绿,
     见 od-dev-gameplay-automation 完成判据反馈)。注册表外的名字可能是:① 赛季新增未收录;
     ② OCR 误识;③ 锁定未命名环境(数据银行 ??? 无法收录)。
     """

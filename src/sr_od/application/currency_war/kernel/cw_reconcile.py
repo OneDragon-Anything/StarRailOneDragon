@@ -1,6 +1,6 @@
 """tracking 对账公共层(观察冲突审计 P0 #12)。
 
-两处对账实现(deploy_bench._reconcile_tracking / prep_director._reconcile_tracking)同语义
+两处对账实现(deploy_bench._reconcile_tracking / cw_screen_prep._reconcile_tracking)同语义
 但强弱不一 —— director 版有空读守卫(M14 实锤)+截图留证,deploy_bench 版直接覆盖(过渡帧
 双空读会污染 tracking)→ bug 温床。本模块抽公共 helper:统一守卫 + obs_conflict 证据链。
 """

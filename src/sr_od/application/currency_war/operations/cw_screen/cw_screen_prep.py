@@ -1,4 +1,4 @@
-"""备战执行器 PrepDirector:画面执行 / 对账接线 / 商店 obs 依赖面
+"""备战执行器 CwScreenPrep:画面执行 / 对账接线 / 商店 obs 依赖面
 (refresh 期望态依赖 obs.cw_shop_obs,留 app 合法向)。
 
 期望态计算与对账纯函数在 kernel/cw_prep_expect(共享给 decision);
@@ -255,7 +255,7 @@ def build_refresh_expect(gold: int | None,
     **禁把面板徽标读数当刷价传入**。
 
     挂账(producer 集成点):期望必须在**刷新波内**构建——波前金与波前
-    面板费都是单元内部现读;prep_director 持有的 RunBuyPhase 前后帧均为
+    面板费都是单元内部现读;cw_screen_prep 持有的 RunBuyPhase 前后帧均为
     关店帧(F2 下金不可信、五格牌不可读),无合法评估窗。集成点 =
     ``operations/prep/shop.py`` 刷新波现读处(先例 = pending_buy_expect
     同文件暂存、本环 heavy 帧消费);消费判据 = refresh_reconcile_mismatches
@@ -291,15 +291,15 @@ def refresh_reconcile_mismatches(expect: RefreshExpect,
 
 
 
-#: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:PrepDirector 每备战环重建
+#: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:CwScreenPrep 每备战环重建
 #: (cw_loop loop 内构造),实例属性跨环零存活 → 300s 窗
 #: 失效(同 idx 每环各采一张,内容哈希对帧微变不设防)。
 _NODE_ICON_SHOT_TS: dict[int, float] = {}
 
 
 
-class PrepDirector(SrOperation):
-    """备战决策环:观察驱动单步决策,替代 PrepDirector 备战单轮 固定序列(P1)。
+class CwScreenPrep(SrOperation):
+    """备战决策环:观察驱动单步决策,替代 CwScreenPrep 备战单轮 固定序列(P1)。
 
     单「决策环」节点 + 内部 while;环级预算 MAX_STEPS(步数)与 STALL_LIMIT(零进展)
     兜底强制出战(F5);ping-pong 由外环 MAX_ITER=2000 承担(勿引 node_max_retry —— round_wait
@@ -1304,7 +1304,7 @@ class PrepDirector(SrOperation):
             self.ctx.cw_plane_bosses = None
             self.ctx.cw_plane_affixes = None
             return None
-        from sr_od.application.currency_war.operations.cw_flow.cw_screen_plane_intel import (
+        from sr_od.application.currency_war.operations.cw_screen.cw_screen_plane_intel import (
             CwScreenPlaneIntel,
         )
         log.info('[cw][director] 新局 boss/词缀无实采真值(session 空)'
@@ -1866,7 +1866,7 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
                        hp_value: int | None, hp_readable: bool,
                        hp_trusted: bool) -> str:
     """买牌单元收尾(W970 批 C 抽出:RunBuyPhase 解体后由流程层
-    ``PrepDirector._open_shop_phase`` 与 sim 兼容壳 BuyShopCards.buy 共用;
+    ``CwScreenPrep._open_shop_phase`` 与 sim 兼容壳 BuyShopCards.buy 共用;
     单一源防双份漂移)。买后重估 / 买牌期望暂存 / gold 对拍 / 执行事实暂存,
     返回单元摘要字符串(消费方包装成 round status/detail)。"""
     from sr_od.application.currency_war.obs.cw_observation import (
@@ -1935,7 +1935,7 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
             match.strategy.update_target(_post, match.session, config)
     except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
         log.debug('[cw] 买后重估失败(不阻塞): %s', e)
-    # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 PrepDirector 主环在
+    # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 CwScreenPrep 主环在
     # RunBuyPhase 后的 heavy 定型帧上消费对账(surface='bench',
     # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建
     # (见单元头注释);计算失败静默跳过(best-effort,不阻塞买牌)。

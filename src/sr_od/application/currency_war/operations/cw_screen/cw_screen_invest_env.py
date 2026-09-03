@@ -34,7 +34,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandleInvestEnv(SrOperation):
+class CwScreenInvestEnv(SrOperation):
     """投资环境 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡底 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
@@ -68,7 +68,7 @@ class HandleInvestEnv(SrOperation):
         _pt = self._refresh_text_pt
         if _pt is None:
             return False
-        target = Point(int(_pt.x + HandleInvestEnv._REFRESH_BTN_DX), int(_pt.y))
+        target = Point(int(_pt.x + CwScreenInvestEnv._REFRESH_BTN_DX), int(_pt.y))
         log.info(f'[cw-env] 建议刷新(剩余={self._refresh_count})→ 圆钮@({target.x},{target.y})(文本锚定)')
         self.ctx.controller.mouse_move(target)   # bug#1 缓解
         self.ctx.controller.click(target)
@@ -89,8 +89,8 @@ class HandleInvestEnv(SrOperation):
             if mrl.max is None:
                 continue
             cy = mrl.max.center.y
-            if (HandleInvestEnv.NAME_CY_LO <= cy <= HandleInvestEnv.NAME_CY_HI
-                    and 2 <= len(text) <= 8 and text not in HandleInvestEnv._EXCLUDE):
+            if (CwScreenInvestEnv.NAME_CY_LO <= cy <= CwScreenInvestEnv.NAME_CY_HI
+                    and 2 <= len(text) <= 8 and text not in CwScreenInvestEnv._EXCLUDE):
                 opts.append((text, mrl.max.center.x))
         opts.sort(key=lambda t: t[1])
         return opts
@@ -185,7 +185,7 @@ class HandleInvestEnv(SrOperation):
                   for t, m in (self._ocr_map or {}).items() if m.max is not None]
         _anchors = [(i, x) for i, (_n, x) in enumerate(opts)]
         _buckets = schema.bucket_card_texts(_anchors, _items,
-                                                  HandleInvestEnv.NAME_CY_HI, 900)
+                                                  CwScreenInvestEnv.NAME_CY_HI, 900)
         _cards = [{"idx": i, "name": n, "x": x,
                    "effect_text": " | ".join(_buckets.get(i, [])), "chosen": n == chosen}
                   for i, (n, x) in enumerate(opts)]
@@ -193,8 +193,8 @@ class HandleInvestEnv(SrOperation):
 
         # 点最优卡底(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。
-        _sel = area_center(self.ctx, '区域-卡牌描述行', HandleInvestEnv.SCREEN_NAME)
-        _click_y = _sel.y if _sel is not None else HandleInvestEnv.CARD_CLICK_Y
+        _sel = area_center(self.ctx, '区域-卡牌描述行', CwScreenInvestEnv.SCREEN_NAME)
+        _click_y = _sel.y if _sel is not None else CwScreenInvestEnv.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
         safe_click(self, target, tag='cw-env')
         time.sleep(0.7)
@@ -206,18 +206,18 @@ class HandleInvestEnv(SrOperation):
             from sr_od.application.currency_war.kernel.cw_state import get_node_ledger
             _ledger = get_node_ledger(getattr(getattr(self.ctx, 'cw_match', None), 'session', None))
             if _ledger is not None:
-                _ledger.env_grace_until = time.monotonic() + HandleInvestEnv.ENV_GRACE_S
+                _ledger.env_grace_until = time.monotonic() + CwScreenInvestEnv.ENV_GRACE_S
         except Exception:   # noqa: BLE001  观测面 best-effort
             pass
 
         # 确认 + 验关(投资环境 消失 = overlay 关)。原「点了就 success」不验 → bug#1/卡未选中/隐藏多步 flat-loop
         # (partner reset 根因同类;write-operation「点了≠成了」)。确认 center 从 screen_info 读,缺失兜底。
-        _confirm = area_center(self.ctx, '按钮-确认', HandleInvestEnv.SCREEN_NAME) or HandleInvestEnv.CONFIRM
+        _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestEnv.SCREEN_NAME) or CwScreenInvestEnv.CONFIRM
         _result = confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资环境',
                                      tag='cw-env')
         # 台账写点②:环境选择完成(overlay 真关)→ 重读备战节点行刷新权威表
         # (环境可能增删/改节点,表必须反映变异后序列)。失败不重试阻塞——
-        # prep_director 每备战帧仍会逐帧识别,此处 miss 只延迟表刷新。
+        # cw_screen_prep 每备战帧仍会逐帧识别,此处 miss 只延迟表刷新。
         if _result.is_success:
             self._refresh_node_ledger()
         return _result

@@ -54,7 +54,7 @@ def pick_box_card(ctx: 'SrContext', names: list[str]) -> str | None:
     return max(names, key=material_value, default=None)
 
 
-class HandleSupplyBox(SrOperation):
+class CwScreenSupply(SrOperation):
     """开补给箱:点箱槽「开启」→ 武装箱 4 选 1 → 按策略点卡 → 验 overlay 关。"""
 
     BOX_SCREEN: ClassVar[str] = '货币战争-备战-武装箱选择'
@@ -71,7 +71,7 @@ class HandleSupplyBox(SrOperation):
         if not boxes:
             return self.round_success('无补给箱(无需开箱)')
         _slot, box_center = boxes[0]
-        open_point = Point(box_center.x, box_center.y + HandleSupplyBox.OPEN_TEXT_DY)
+        open_point = Point(box_center.x, box_center.y + CwScreenSupply.OPEN_TEXT_DY)
         log.info(f'[cw-box] 开箱:槽{_slot} 箱({box_center.x},{box_center.y}) → 点开启({open_point.x},{open_point.y})')
         # bug#1 缓解(mouse_move 先,同 safe_click;自写因还要验弹层)
         self.ctx.controller.mouse_move(open_point)
@@ -80,14 +80,14 @@ class HandleSupplyBox(SrOperation):
 
         # 验武装箱 overlay 弹出(标识-请选择;没弹 = 点击落空/箱已被开 → retry 重读箱)
         overlay = self.screenshot()
-        if not self.round_by_find_area(overlay, HandleSupplyBox.BOX_SCREEN, '标识-请选择').is_success:
+        if not self.round_by_find_area(overlay, CwScreenSupply.BOX_SCREEN, '标识-请选择').is_success:
             log.info('[cw-box] 武装箱 overlay 未弹 → retry(重读箱位置)')
             return self.round_retry(wait=1)
 
         # OCR 4 卡名(区域-卡名行)→ 选卡 → 点卡
         overlay = self.screenshot()
         from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect, _ocr
-        rect = _area_rect(self.ctx, '区域-卡名行', HandleSupplyBox.BOX_SCREEN)
+        rect = _area_rect(self.ctx, '区域-卡名行', CwScreenSupply.BOX_SCREEN)
         names: list[tuple[str, int]] = []
         if rect is not None:
             for r in _ocr(self.ctx, overlay, rect):

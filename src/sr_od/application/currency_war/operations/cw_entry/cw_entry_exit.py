@@ -106,10 +106,10 @@ class CwEntryExit(SrOperation):
             # 对 stylized 按钮静默失配(验证局清场 748s 卡行;手动
             # (460,475)+(978,984) 两击解锁,(978,984) = screen_info
             # 「按钮-确认」area 中心)→ 改用 area 中心点击,与生产路径
-            # HandleInvestStrategy 同源(同屏同按钮 area 中心,实机验证可靠);
+            # CwScreenInvestStrategy 同源(同屏同按钮 area 中心,实机验证可靠);
             # 点击带 bug#1 mouse_move 缓解(partner reset 根因同类)。
             _confirm = (area_center(self.ctx, '按钮-确认', '货币战争-投资策略')
-                        or Point(978, 983))   # 兜底常量 = HandleInvestStrategy.CONFIRM
+                        or Point(978, 983))   # 兜底常量 = CwScreenInvestStrategy.CONFIRM
             self.ctx.controller.mouse_move(Point(460, 475))   # 左卡
             self.ctx.controller.click(Point(460, 475), pc_alt=True)
             time.sleep(1.2)

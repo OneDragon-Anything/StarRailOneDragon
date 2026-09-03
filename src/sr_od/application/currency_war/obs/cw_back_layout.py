@@ -200,7 +200,7 @@ def _layout_prefixes() -> dict[int, str]:
 def back_slots_from_cap_diff(diff: int) -> int:
     """口述公式:后台格数 = 6 + (cap − level)(纯函数,布局选档锁的测试面)。
 
-    - diff < 0(cap<level 读错族,prep_director 另有 obs_conflict 留证)按 0;
+    - diff < 0(cap<level 读错族,cw_screen_prep 另有 obs_conflict 留证)按 0;
     - diff > 2(``DEPLOY_CAP_MAX_DIFF`` 域外)按 2 —— diff>2 已有真实高档
       实拍(e4972b43 diff=5 后台 9 格,W292/ADR-0420),但公式对召唤物局
       本身存疑(见下),封顶 8 格超集是保守面,9 格闭合待 ADR-0420 待办;
@@ -312,7 +312,9 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
     """
     try:
         if level is None or level <= 0:
-            from sr_od.application.currency_war.obs.cw_identity_obs import _session_level
+            from sr_od.application.currency_war.obs.cw_identity_obs import (
+                _session_level,
+            )
             level = _session_level(ctx)
         if cap is None:
             # W218(ADR-0395):cap 瞬态误读(过渡帧旧值残影,run 27 型)会直接改

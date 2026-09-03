@@ -116,7 +116,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
         severity=sev, verdict=verdict, shot=shot, refs=refs,
         reader_source=reader_source, note=note, confidence=confidence)
     # `w515_l0_andon/` 分级安灯 L0 自动停线(用户裁决「确认缺陷即停实机」;先例=
-    # prep_director 执行失败安灯钩子)。只认显式判级 == L0_andon(零误停
+    # cw_screen_prep 执行失败安灯钩子)。只认显式判级 == L0_andon(零误停
     # 偏置:judge_severity 已辖 auto_resolved→L2,不在此双保险改语义);
     # 台账行已在上一行落盘,停线不改变缺陷记录的数据形状(旧消费者不破)。
     if sev == SEVERITY_L0_ANDON:
@@ -133,7 +133,7 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
 
 # ===== `w515_l0_andon/` 分级安灯 L0 自动停线(观测缺陷面;纯判定在本模块,游戏侧
 # 三要素执行在 cw_observe.stop_for_l0_andon——本模块「纯逻辑不碰游戏」
-# 的分层边界,与 prep_director 执行失败安灯「判定与执行同文件」不同)=====
+# 的分层边界,与 cw_screen_prep 执行失败安灯「判定与执行同文件」不同)=====
 
 #: L0 安灯哨兵 flag 相对路径(锚仓根;.debug/ 不入 git;与 exec_fail
 #: 钩子 flag 分文件,值班者按文件名即知是观测面停线还是执行失败停线)。
@@ -186,7 +186,7 @@ def write_l0_andon_flag(flag_path: Path, *, run_id: str, surface: str,
                         refs: list[dict[str, str]] | None = None,
                         defect_shot: str | None = None,
                         stop_shot: str = '') -> str:
-    """写安灯哨兵 flag(纯 IO 可单测;三要素规范同 prep_director 执行失败
+    """写安灯哨兵 flag(纯 IO 可单测;三要素规范同 cw_screen_prep 执行失败
     安灯 flag——HOOK-STOP 特征行 + 发生了什么 + 处理步骤 + 删除条件,
     值班者不看代码即知发生了什么)。返回写入内容(测试断言用)。
     """
@@ -299,7 +299,7 @@ def bypass_exec_event_to_defect(rec: dict) -> None:
     """record_exec_event 写入点旁路:失败类执行事件归一落 defect_ledger。
 
     仅 fail/blocked/bail 进台账(执行缺陷);success_uncharged 非缺陷不进。
-    写端 severity 恒初判 L2 留证——执行失败的分级安灯由既有 prep_director
+    写端 severity 恒初判 L2 留证——执行失败的分级安灯由既有 cw_screen_prep
     判定钩子承载(行为不变),台账先收口证据口径,分级升级属后续期。
     """
     if str(rec.get('event') or '') not in ('fail', 'blocked', 'bail'):

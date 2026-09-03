@@ -200,7 +200,7 @@ def decide_event(options: list[str], config, state: GameState,
                      reason=f"{best_reason} score={best_score:.0f}" + ("|suggest-refresh" if _want_refresh else ""))
 
 
-# ===== 遭遇节点(decide_encounter;design 08)。✅ 已接:``HandleEncounter`` 调本函数 +
+# ===== 遭遇节点(decide_encounter;design 08)。✅ 已接:``CwScreenEncounter`` 调本函数 +
 # ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
 # (选项 UI 不显词缀,战后才显)。=====
 
@@ -278,7 +278,7 @@ def _difficulty_hp_ratio(tier_delta: int) -> float:
 
 def decide_encounter(options: list[EncounterOption], state: GameState,
                      target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
-    """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``HandleEncounter`` 调本函数 +
+    """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``CwScreenEncounter`` 调本函数 +
     ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
     (选项 UI 不显词缀,战后才显)。
 
@@ -445,7 +445,7 @@ class MegastarPick:
     enhance_char_id: str | None = None
 
 
-# ===== 选择伙伴节点(decide_partner;✅ 已派发 handle_select_partner;⚠️ 候选只立绘 char_id=label→多 idx0,真接需 SIFT 立绘)=====
+# ===== 选择伙伴节点(decide_partner;✅ 已派发 cw_screen_partner;⚠️ 候选只立绘 char_id=label→多 idx0,真接需 SIFT 立绘)=====
 
 @dataclass
 

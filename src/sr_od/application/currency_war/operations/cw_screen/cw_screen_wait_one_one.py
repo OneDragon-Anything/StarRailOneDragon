@@ -1,4 +1,4 @@
-"""货币战争 等待 1-1 备战 op(W971 P3a;01-opening §2 WaitOneOneOp 形态)。
+"""货币战争 等待 1-1 备战 op(W971 P3a;01-opening §2 CwScreenWaitOneOne 形态)。
 
 投资环境确认后进 1-1:开局补给动画长且无结束标志(用户裁定特殊等待)。
 主判据 = 轮询「备战阶段」文本出现(备战屏建档锚 ``标识-备战阶段``——该文本
@@ -25,7 +25,7 @@ def _monotonic() -> float:
     return time.monotonic()
 
 
-class WaitOneOneOp(SrOperation):
+class CwScreenWaitOneOne(SrOperation):
     """等待 1-1 备战就绪:轮询「备战阶段」锚;超上界留证 fail 交循环。"""
 
     PREP_SCREEN: ClassVar[str] = '货币战争-备战'

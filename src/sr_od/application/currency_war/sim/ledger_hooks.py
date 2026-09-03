@@ -11,18 +11,18 @@ from datetime import datetime
 from pathlib import Path
 
 from sr_od.application.currency_war.kernel.cw_intention import _to_jsonable
+from sr_od.application.currency_war.telemetry import state as _telstate
 from sr_od.application.currency_war.telemetry.query import (
     _list_runs,
     check_strategy_live_streak,
     read_jsonl,
 )
 from sr_od.application.currency_war.telemetry.schema import RunSummary, append_jsonl
-from sr_od.application.currency_war.telemetry import state as _telstate
 from sr_od.application.currency_war.telemetry.state import log
 
 # ===== 局终 summary 多路径兜底(ADR-0273;批⑧ F2 runs.jsonl 断流)=====
 # 写端三路径:① 3c 回大厅(正常终局 win/loss);② 迁移审计 w75(git 历史) after_operation_done
-# 收口(停止/超时/异常退出 result='stopped'/'abandoned',battle_loop.py 类注);
+# 收口(停止/超时/异常退出 result='stopped'/'abandoned',cw_loop.py 类注);
 # ③ 本兜底(进程崩溃/重启杀局,start_run 每局起点补 source='recovered')。
 # r363 曾在 loop() 顶查 is_context_stop —— 但 operation.execute() 每轮前
 # (operation.py:408)先查 stop,stop 到达后 loop() 不再被调,原检查几乎永不

@@ -1215,7 +1215,7 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
     官方效果原文「拥有宝钻可以使团队规模上限+1,无论是否被角色穿戴」
     (cw_equipment_data)= 按拥有计数非按穿戴(局38 r2 实证 cap5/lv3=两宝钻)。
     ⚠️ 旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废;旧「+1 封顶」
-    假设同废(叠加无上界,消费端域检查见 prep_director 审计#15 已反转)。
+    假设同废(叠加无上界,消费端域检查见 cw_screen_prep 审计#15 已反转)。
 
     零重帧原则:解析失败只返 (None, None) 并留证,不在解析层重截帧;
     重帧仍归 ``read_deploy_cap_debounced`` 的域外防抖(瞬时误读须跨帧才能识别,
@@ -1653,7 +1653,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
     (SIFT 读不了文字标签;**board OCR 仍是阵营计数权威**)。**faction 语义(2026-08-17)**:
     ``'?'``=未知(name 空/不在注册表);``''``=已知无阵营(白厄「救世主」类)。立绘库经
     ``ensure_portrait_templates`` 按需加载
-    (buy 在 deploy 前,PrepDirector 备战单轮: buy→deploy,故不依赖 deploy 才加载的缓存)。
+    (buy 在 deploy 前,CwScreenPrep 备战单轮: buy→deploy,故不依赖 deploy 才加载的缓存)。
     """
     templates = ensure_portrait_templates(ctx)
     # 商店开态前置门(M37/M38 误停机根因,2026-08-16):read_shop_cards 无脑裁牌区 rect 做 SIFT,
@@ -2116,12 +2116,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 旧不填 deployed → 恒 [] → deployed_count() 恒 0 → _saving_for_interest 永不触发(不攒息散买 gold→0)
     # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 DeployBenchOp SIFT 处理)。
     # 不破坏):tracked 漂移时(sell 位置式 / deploy SIFT char_id='?' 未识别)截断多的 / 补 rebuild 无身份差额。
-    # active_strategies:session(持久宿主,handle_invest_strategy 写)→ state(_refresh_cap 等消费;
+    # active_strategies:session(持久宿主,cw_screen_invest_strategy 写)→ state(_refresh_cap 等消费;
     # live 修复 2026-08-15,原接线只加 GameState 字段无来源恒空)。
     if _match is not None and _match.session is not None:
         state.active_strategies = list(_match.session.active_strategies)
         # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
-        # handle_invest_strategy 落卡时暂存的「声明选中名」在此消费——写链
+        # cw_screen_invest_strategy 落卡时暂存的「声明选中名」在此消费——写链
         # 已先于暂存发生(handler 先 append session 再 record_invest_cards),
         # 故本时点声明名应已在持卡列表;不在 = 写链断或选择落空 → 台账留证
         #(中相关面,默认 L2;离线按复现分级)。消费即清,不串轮;无暂存
@@ -2175,7 +2175,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # (read_deployed_count)——舞台指示几何上只数已上阵角色,不含底部商店行/备战栏。
     # 旧目标 ``min(sum(state.board.values()), level)`` 把**羁绊计数**当部署数(多阵营
     # 角色重复计 + 徽标 OCR 误读放大),再驱动补齐/截断 → 幻影部署(迁移审计 w285(git 历史) deployed_align
-    # 3/6 误判 + 5aa9ce34 board_ocr=17 严重误计实证;prep_director r3 同判早已把 board
+    # 3/6 误判 + 5aa9ce34 board_ocr=17 严重误计实证;cw_screen_prep r3 同判早已把 board
     # 移出三源对拍,本处是漏改的最后一处)。paddle 读不到 = 本帧无对齐基准 → 跳过对齐
     # (宁缺勿造:补齐/截断都是用猜的数改写 tracking)。
     # 阶段 gate 路径:deployed_count 已随 cap 合并单读(见上方 resolve_paddle_pair);

@@ -784,7 +784,7 @@ class DecisionV2Strategy(CwStrategy):
         5. 球箱皆无 或 defer≥2 → 主流程(买→部署→装备→出战,Run* 组合;P1 过渡)。
 
         输入 = ``session.prep_obs_frame``(备战观察帧,写者白名单 =
-        prep_director._observe / 破警告派生帧);obs 的 P1 恒空字段
+        cw_screen_prep._observe / 破警告派生帧);obs 的 P1 恒空字段
         (overlay_state/overlay_options/shop_cards/owned_equips)不依赖(§13.4);
         gold 仅 shop_open 且 state fresh 时可信(关态读空,§5.2b M2)。
         观察帧缺失 = 观察层失约,抛错不静默(黑板契约)。
@@ -1052,7 +1052,7 @@ class DecisionV2Strategy(CwStrategy):
                     return step
                 return self._main_flow_step(obs, session, config)   # 链全空 → 部署段
             # W970 批 C(RunBuyPhase 解体):主流程买牌段改发显式开店意图,
-            # 流程层(prep_director._open_shop_phase)编排 开店→商店动作循环→
+            # 流程层(cw_screen_prep._open_shop_phase)编排 开店→商店动作循环→
             # CloseShopOp→节点探针;组合壳 BuyShopCards 已随退役批删除(决策核只发显式开店意图)。
             return OpenShop()
         if session.prep_phase == 1:
@@ -1115,7 +1115,7 @@ class DecisionV2Strategy(CwStrategy):
         # 面特征可见;空快照=默认 [] 语义不变)。
         st.equips = list(session.last_owned_equips)
         # r412(ADR-0274):node_type 补拷——腾席链 b 的 boss 轮禁升判定需要;
-        # 权威源 = 备战节点行(prep_director 存 session.node_type_current),
+        # 权威源 = 备战节点行(cw_screen_prep 存 session.node_type_current),
         # 退化 last_state.node_type。
         st.node_type = (getattr(session, 'node_type_current', None)
                         or (session.last_state.node_type if session.last_state is not None else '')

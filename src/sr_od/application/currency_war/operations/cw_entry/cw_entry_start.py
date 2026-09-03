@@ -14,11 +14,11 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # propagate=False),本文件日志从未落地 → 改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.operations.cw_flow.briefing_op import (
-    BriefingOp,
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_briefing import (
+    CwScreenBriefing,
 )
-from sr_od.application.currency_war.operations.handlers.handle_invest_env import (
-    HandleInvestEnv,
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_invest_env import (
+    CwScreenInvestEnv,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -65,7 +65,7 @@ class CwEntryStart(SrOperation):
 
     前置:已在货币战争大厅(CwEntryEnter 之后)。到达备战后返回 STATUS_AT_PREP。
 
-    注:备战阶段的「买牌 + 部署到前台 + 出战」循环由 ``PrepDirector 备战单轮`` 负责;装备识别经
+    注:备战阶段的「买牌 + 部署到前台 + 出战」循环由 ``CwScreenPrep 备战单轮`` 负责;装备识别经
     cw_equip SIFT(D-27/D-28,非 OCR-only —— 旧「视觉大模型 看不到图标位置」判断已破,
     cw_equip 154 模板 SIFT 识别装备区 owned icon)。deploy 需拖拽角色图标(装备拖拽机制 D-18,待 live 验证)。
     """
@@ -119,7 +119,7 @@ class CwEntryStart(SrOperation):
 
         与 ``_discard_stale_once`` 同址衔接(先弃置残留,再建立本局):
         session 建立时机从 run 首帧 handle_init 前移到进对局——简报观察
-        (P3 起 BriefingOp 直写 session)先于 run loop 出现,session 不存在
+        (P3 起 CwScreenBriefing 直写 session)先于 run loop 出现,session 不存在
         = 观察无写目标。已有容器(继续进度恢复)幂等直过。
         """
         from sr_od.application.currency_war.decision.cw_strategy_manager import (
@@ -262,36 +262,36 @@ class CwEntryStart(SrOperation):
                 crop_first=False).is_success:
             self._discard_stale_once('到达模式选择屏=新局开始')
             self._establish_match_once()
-        # 简报屏 → BriefingOp(W971 P3b:观察直写 session,HandleBriefing 已退役;
+        # 简报屏 → CwScreenBriefing(W971 P3b:观察直写 session,HandleBriefing 已退役;
         # 一屏一 op 调度不变)。
         if self.round_by_find_area(
                 screen, CwEntryStart.BRIEFING_SCREEN, '标识-本场对局首领',
                 crop_first=False).is_success:
             self._discard_stale_once('到达简报屏=新局开始')
             self._establish_match_once()
-            _log.info('[cw-entry] 到达简报屏 → BriefingOp(读词缀/boss 写 session + 下一步)')
-            BriefingOp(self.ctx).execute()
+            _log.info('[cw-entry] 到达简报屏 → CwScreenBriefing(读词缀/boss 写 session + 下一步)')
+            CwScreenBriefing(self.ctx).execute()
             return self.round_wait(wait=2)
         # 1b) 「继续进度」(恢复保存局弹窗,暂无 screen_info)→ ocr;4 字独有,LCS 风险低
         if self.round_by_ocr_and_click(screen, '继续进度', success_wait=2).is_success:
             return self.round_wait(wait=1)
-        # 2) 投资环境 3 选 1 → HandleInvestEnv(OCR 3 卡名 + decide_event 白名单打分 + 点最优卡底
+        # 2) 投资环境 3 选 1 → CwScreenInvestEnv(OCR 3 卡名 + decide_event 白名单打分 + 点最优卡底
         #    + 确认)。统一开局与主循环的投资环境处理(原 hardcoded
         #    盲点中卡 + 无策略,已下沉到 handler)。handler 内有 round_by_ocr('投资环境') 入口日志。
         if self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境').is_success:
-            _log.info('[cw-entry] 到达投资环境 → HandleInvestEnv(3 选 1 + 确认)')
-            HandleInvestEnv(self.ctx).execute()
+            _log.info('[cw-entry] 到达投资环境 → CwScreenInvestEnv(3 选 1 + 确认)')
+            CwScreenInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
-        # 2b) 投资策略 3 选 1 → HandleInvestStrategy(M41 实机修复 2026-08-16:开局流程
+        # 2b) 投资策略 3 选 1 → CwScreenInvestStrategy(M41 实机修复 2026-08-16:开局流程
         #     「简报→投资环境→投资策略→备战」,本屏在推进窗口出现但无分支 → 干等超时 196s
         #     [日志实锤:OCR 反复读到「请选择投资策略」+三卡名,advance 无命中]。handler
         #     内含打分(STRATEGY_BINDINGS)+确认;此前只在 prep 主循环内被调度。
         if self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
-            _log.info('[cw-entry] 到达投资策略屏 → HandleInvestStrategy(3 选 1 + 确认)')
-            from sr_od.application.currency_war.operations.handlers.handle_invest_strategy import (
-                HandleInvestStrategy,
+            _log.info('[cw-entry] 到达投资策略屏 → CwScreenInvestStrategy(3 选 1 + 确认)')
+            from sr_od.application.currency_war.operations.cw_screen.cw_screen_invest_strategy import (
+                CwScreenInvestStrategy,
             )
-            HandleInvestStrategy(self.ctx).execute()
+            CwScreenInvestStrategy(self.ctx).execute()
             return self.round_wait(wait=2)
         # 3) 位面教程叠层 → 点空白
         if self.round_by_ocr(screen, '点击空白处继续').is_success:

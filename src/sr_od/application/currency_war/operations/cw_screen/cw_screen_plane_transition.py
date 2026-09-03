@@ -16,7 +16,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class PlaneTransitionOp(SrOperation):
+class CwScreenPlaneTransition(SrOperation):
     """位面过渡:识别「点击空白处继续」→ 点空白 → 验提示消失。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-位面过渡'

@@ -27,11 +27,11 @@ source_image: screens/货币战争-投资策略/default.webp
 - 「刷新次数：N」:每卡底部 y≈841。
 - 「返回备战界面」:(1717,44)右上(取消回备战)。
 
-> screen_info ``currency_war_invest_strategy``:``标识-请选择投资策略``(id_mark)+ ``区域-卡牌描述行``(给选中 Y=545)+ ``按钮-确认``。op ``handle_invest_strategy`` 经 ``cw_observation.area_center`` 读(screen_info 缺失才用兜底常量)。
+> screen_info ``currency_war_invest_strategy``:``标识-请选择投资策略``(id_mark)+ ``区域-卡牌描述行``(给选中 Y=545)+ ``按钮-确认``。op ``cw_screen_invest_strategy`` 经 ``cw_observation.area_center`` 读(screen_info 缺失才用兜底常量)。
 
 ## 关键数据(策略相关)
 
-> bot 已接 ``decide_event``(``handle_invest_strategy``):OCR 3 卡名 → 按事件白名单打分 → 点最优卡 + 确认(2026-08-04)。overlay 时 board 不可读 → 空 board stub。
+> bot 已接 ``decide_event``(``cw_screen_invest_strategy``):OCR 3 卡名 → 按事件白名单打分 → 点最优卡 + 确认(2026-08-04)。overlay 时 board 不可读 → 空 board stub。
 
 - **3 选项(本场实例)**:
   1. **幸运星祝福** — 得【幸运星】;小队 +15% 幸运一击率 + 5% 速度。

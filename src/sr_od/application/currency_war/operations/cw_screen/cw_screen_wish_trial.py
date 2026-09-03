@@ -1,4 +1,4 @@
-# 已接入 cw_loop:255(2026-08-08 实测:bot 卡此 overlay 68min 后接入检测 + HandleWishTrial 点卡+确认+验关;出战不再被 overlay 卡,D-87~89 闭环)。
+# 已接入 cw_loop:255(2026-08-08 实测:bot 卡此 overlay 68min 后接入检测 + CwScreenWishTrial 点卡+确认+验关;出战不再被 overlay 卡,D-87~89 闭环)。
 # r104(2026-08-20):选卡接入策略模块 decide_wish_trial(用户定调「所有 overlay 选择都接策略」)——
 # OCR 各卡 objective 文字 → 策略打分(金币/阵营相关/操作向)→ 点选中卡。OCR 失败 fallback 第 1 张。
 
@@ -23,7 +23,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandleWishTrial(SrOperation):
+class CwScreenWishTrial(SrOperation):
     """祈愿试炼 overlay:OCR objective → decide_wish_trial 策略选卡 → 确认 → 验关。"""
 
     CARD_Y: ClassVar[int] = 340
@@ -58,7 +58,7 @@ class HandleWishTrial(SrOperation):
         if not self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼').is_success:
             return self.round_fail('非祈愿试炼屏')
         # 策略决策(r104):OCR objective → decide_wish_trial → 对应卡
-        target = HandleWishTrial.FIRST_CARD
+        target = CwScreenWishTrial.FIRST_CARD
         pick_desc = 'fallback第1张'
         objs: list[str] | None = None   # 策略分支外的兜底路径也留选项面(None=未读到)
         pick_idx = 0
@@ -71,7 +71,7 @@ class HandleWishTrial(SrOperation):
                 idx = _match.strategy.decide_wish_trial(
                     objs, _st, _match.session, getattr(_match, 'config', None))
                 if 0 <= idx < len(self.CARD_XS):
-                    target = Point(self.CARD_XS[idx], HandleWishTrial.CARD_Y)
+                    target = Point(self.CARD_XS[idx], CwScreenWishTrial.CARD_Y)
                     pick_idx = idx
                     pick_desc = f'卡{idx + 1}({objs[idx][:20] or "OCR空"})'
             except Exception as e:   # noqa: BLE001  策略失败 fallback 第1张

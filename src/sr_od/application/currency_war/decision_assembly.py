@@ -7,8 +7,8 @@ observe 端口 ``snapshot_from_obs``。
 decision 桶 ``decision_v2/adapter.py``——它们被决策核(prep_brain)内部消费,
 落 app 会造成 decision→app 反向边。
 
-为何在 app:本模块 import prep_actions/prep_director/obs 执行面词汇,且被
-prep_director(备战环)消费——两侧都在 app 桶,装配边界归 app 是分包矩阵
+为何在 app:本模块 import prep_actions/cw_screen_prep/obs 执行面词汇,且被
+cw_screen_prep(备战环)消费——两侧都在 app 桶,装配边界归 app 是分包矩阵
 (DESIGN 分包 §3.2,app 依一切)的自然落位。
 
 旧环当权步影子比对(shadow_compare_* / SHADOW_STATS / v2_shadow_* 遥测
@@ -107,7 +107,7 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
     return Snapshot(
         schema_version=SNAPSHOT_SCHEMA_VERSION,
         classification=SubstateClassification(
-            name=substate_name, evidence=('prep_director:observe',),
+            name=substate_name, evidence=('cw_screen_prep:observe',),
             confident=True),
         plane=(st.plane if st is not None else None)
             or (last.plane if last is not None else 1),
@@ -178,7 +178,7 @@ class DecideAdapter:
         if not snapshot.classification.confident:
             raise ValueError('DecideAdapter.decide:非 confident 快照(框架门失守)')
         # 黑板写路径兜底(W971 §2,P2):黑板决策 decide_prep_screen 读
-        # session.prep_obs_frame。生产路径帧由 prep_director._observe 写
+        # session.prep_obs_frame。生产路径帧由 cw_screen_prep._observe 写
         # (真 obs 原帧);本装配点兜底 = 快照驱动的离线/测试入口
         # (无 _observe 参与)按旧映射重建同源视图写入——保证「同快照同
         # 决策」不变。已有帧(生产/破警告派生帧)不覆盖:帧即最新观察。

@@ -114,7 +114,7 @@ def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOptio
     """OCR 巨星节点候选 → ``MegastarOption`` 列表(char_id 从「盛会之星一X先生/女士!」解析)。
 
     巨星候选 = 盛会之星 bond(花火/星期日…)给全队 buff。按候选名 center-x 左→右排序 → ``idx``。
-    候选名位置 = 点击位置(实测 RunMegastarNode 点 (822,333) 命中花火;名 = 卡身选中区)。decide_megastar
+    候选名位置 = 点击位置(实测 CwScreenMegastar 点 (822,333) 命中花火;名 = 卡身选中区)。decide_megastar
     按 target.core_chars 选(含盛会之星 → 绑该角色;否则 buff 契合)。读不到 → [](handler 退默认 idx0)。
     """
     ocr_map = ctx.ocr_service.get_ocr_result_map(
@@ -139,7 +139,7 @@ def read_megastar_options(ctx: SrContext, screen: MatLike) -> list[MegastarOptio
 # (最近下方元素「已选择/确认」在 y≥920,余量充足);①布局帧放宽前后结果逐一相同。
 _SUPPLY_CHAR_Y: tuple[int, int] = (500, 600)
 _SUPPLY_EQUIP_Y: tuple[int, int] = (640, 780)
-_SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 RunSupplyNode.CARD_BODY;点卡身不开对话直接选中)
+_SUPPLY_CARD_CLICK_Y: int = 550   # 卡身选中 y(沿用 CwScreenSupplyNode.CARD_BODY;点卡身不开对话直接选中)
 _SUPPLY_COL_X_TOL: int = 150      # 角色-装备同列 x 容差(配对用)
 # 钻装备名集合(文本兜底;主通道 = SIFT——用户 2026-08-17:装备图已采集,SIFT 稳,
 # OCR 艺术字有形变史,钻价值极高,漏判丢钻/误判浪费刷新,代价不对称)。

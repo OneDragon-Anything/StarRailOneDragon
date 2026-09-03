@@ -24,7 +24,7 @@ source_image: screens/货币战争-祈愿试炼/祈愿试炼.webp
 
 | 元素 | 位置 | 行为 |
 |---|---|---|
-| 试炼卡 1 body | (660,340)(HandleWishTrial.FIRST_CARD) | 选中第 1 张(MVP;候选卡数随节点变) |
+| 试炼卡 1 body | (660,340)(CwScreenWishTrial.FIRST_CARD) | 选中第 1 张(MVP;候选卡数随节点变) |
 | 按钮-确认选择 | (1448,625 附近) | 确认后关 overlay 回备战 |
 
 ## automation 要读信息
@@ -34,4 +34,4 @@ source_image: screens/货币战争-祈愿试炼/祈愿试炼.webp
 ## 识别快照
 
 - fixture:`screens/货币战争-祈愿试炼/祈愿试炼.webp`(2026-08-13 采)。
-- handler:HandleWishTrial(D-87~89 闭环,2026-08-08 live 验证)。
+- handler:CwScreenWishTrial(D-87~89 闭环,2026-08-08 live 验证)。

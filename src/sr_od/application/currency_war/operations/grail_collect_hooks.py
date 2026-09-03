@@ -12,7 +12,7 @@
 
 生命周期(SR 约定,无开关无参数):
 - **不激活态**:本文件只提供函数,调用点接线行以注释形式放在 cw_loop 0h 分支(B1)
-  与 prep_director 备战观察帧(B2),取消注释即激活(diff 一次一行);
+  与 cw_screen_prep 备战观察帧(B2),取消注释即激活(diff 一次一行);
 - **收尾**:采集清单(试炼卡选中态/tooltip/完成提示/奖励帧/契约计数器)建档或采齐后,
   删本文件整段 + 删两处接线行注释 + 删产物(`.debug/temp/currency_war/` 下 flag 与
   shots),不留任何开关位;
@@ -37,7 +37,7 @@ _FLAG_PATH = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'grail_pi
 
 # B2 节流下限(秒):备战帧微变(金币动画/光标/抗锯齿)会让原图字节哈希必新,
 # 纯去重挡不住慢性刷屏(同源教训 = cw_observe.obs_conflict 截图节流与
-# prep_director._capture_unrecognized_node_icons 的 300s 防抖)。20s = 瞬时提示
+# cw_screen_prep._capture_unrecognized_node_icons 的 300s 防抖)。20s = 瞬时提示
 # (通常存活数秒)首现必被采到,最坏速率 ~180 帧/小时封顶,采集批 1-2 局可承受。
 _MIN_INTERVAL_S: float = 20.0
 
@@ -48,7 +48,7 @@ _LAST_SHOT_TS: dict[str, float] = {}
 def grail_pin_stop_hook(op: CwLoop):
     """B1 钉屏停机钩子([临时捕获] 分类,建档确认后删整段)。
 
-    调用点:cw_loop 0h 分支「标识-祈愿试炼」命中后、HandleWishTrial 派发前。
+    调用点:cw_loop 0h 分支「标识-祈愿试炼」命中后、CwScreenWishTrial 派发前。
     触发即:sentinel 截图(主帧 + 0.8s 后补一帧,防动画过渡帧单帧失真)→ 写 flag
     (三要素:触发定位 / 可执行处理步骤 / 删除条件)→ 直调 stop_running(不经 MCP)
     → 返回 round_wait 不点击,overlay 原样保持,下一轮 loop 顶见 STOP 退出。
@@ -90,7 +90,7 @@ def grail_pin_stop_hook(op: CwLoop):
 def grail_passive_collect(screen: MatLike | None) -> str | None:
     """B2 被动哈希采集钩子([临时采集] 分类,采集清单采齐后删整段)。
 
-    调用点:正常决策环的备战观察帧(prep_director),每帧传入当前截图。目标 =
+    调用点:正常决策环的备战观察帧(cw_screen_prep),每帧传入当前截图。目标 =
     一闪而过的圣杯任务相关瞬时帧(完成提示 / 奖励发放弹窗 / 契约计数器 / L3+ 档
     overlay 差异帧)——这些态无 reader 无法点名识别,整帧哈希去重兜「不漏不重」,
     离线按文件名哈希视觉分拣。零决策影响:只存图,不读不动不阻塞。

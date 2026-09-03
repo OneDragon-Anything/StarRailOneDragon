@@ -104,7 +104,7 @@ PROFILE_POPUP: dict = {
     'fast_confirm': True,            # ADR-0264 终裁骨架(同 CLOSED 注)
 }
 
-#: 战后收起商店后的关店态 stable 等待超时(prep_director 环入口
+#: 战后收起商店后的关店态 stable 等待超时(cw_screen_prep 环入口
 #: 「预收开商店」专用,其余 gate 调用不用)。背景:战斗胜利后新回合
 #: 游戏常自动开商店,环入口若直接等关店态锚会永不命中、打满
 #: PROFILE_CLOSED 的 12s 超时(实机每局 16 轮 × ~12s 纯等;依据
@@ -153,10 +153,10 @@ PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
 #: P0 清场段:环入口可一键关闭的 overlay 注册表(画面名 → 关闭按钮 area 名)。
 #: **A 面切换后 = 注册表派生桥接**(单一源 =
 #: ``cw_overlay_registry.derive_clearable()``,激活 ∧ closable;消费方
-#: ``prep_director._clear_entry_overlays`` 遍历本映射,循环逻辑未变):
+#: ``cw_screen_prep._clear_entry_overlays`` 遍历本映射,循环逻辑未变):
 #: 只收「无决策语义的弹窗/面板」——星徽秘典/补给已 decision 化(关闭即丢
 #: 决策内容,C1 红线;设计定案 5),从清场集消失,改走 event_overlay bail
-#: → 0i 选卡 / RunSupplyNode 消化;投资环境/投资策略/选择伙伴/盛会之星/
+#: → 0i 选卡 / CwScreenSupplyNode 消化;投资环境/投资策略/选择伙伴/盛会之星/
 #: 祈愿试炼等交互 overlay 同理,不进派生集。
 ENTRY_OVERLAY_CLOSE: dict[str, str] = {
     spec.screen_name: spec.close_area for spec in derive_clearable()

@@ -239,7 +239,7 @@ class DecisionTrace:
     hp: int | None = 0                            # 决策时 HP(冗余于 state,便于快速筛;r1 备战帧读失败=None 诚实未知——r1 血量固定但不恒 100,默认 100 兜底在 r1 是错误值,写入口径见 recorder.record_decision)
     hp_readable: bool = True                      # hp 值来源可读位(True 可信度等同真读:①真读=OCR 备战 HP 区;②结算=结算屏经新鲜度门;False=读不到,ADR-0282/0491:hp=None 即无真值帧(沿用帧例外),100 兜底已废止)
     gold: int = 0                                 # 决策时 gold(冗余,便于 gold 轨迹)
-    gold_readable: bool = True                    # gold 真读到?(ADR-0282:prep_director「gold 不可信」日志升级为字段,对齐 hp_readable)
+    gold_readable: bool = True                    # gold 真读到?(ADR-0282:cw_screen_prep「gold 不可信」日志升级为字段,对齐 hp_readable)
     level_readable: bool = True                   # level 真读到?(对齐 hp_readable;False=纯 _expected_level 启发式兜底帧——「兜底 4」与「真读 4」判读可分;旧档案缺省 True=按现有判读处理)
     # —— live 观测扩容(strategy/05_observation;全部可选,回放/影子对齐)——
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
@@ -273,7 +273,7 @@ class DecisionTrace:
     form_ok: bool = False
     form_score: float = 0.0
     # ADR-0343 成型停手态(层2 写;检查器豁免/判读锚点)——补挂
-    # DecisionTrace 字段:shop/prep_director 均已在 extra 传
+    # DecisionTrace 字段:shop/cw_screen_prep 均已在 extra 传
     # 'formed_stop',但 recorder 映射缺失导致该键被静默丢弃
     # (迁移审计 w114(git 历史) 影子批接线时发现的既有缺口,随批补上;旧记录缺省 False)
     formed_stop: bool = False
@@ -323,7 +323,7 @@ class DecisionTrace:
     # 注入臂行不带此语义保证,判读按 strategy_id 分栈)。None=现算失败/
     # 依赖缺失。
     p1_downgrade_active: bool | None = None
-    # 经验期望账本快照(session.xp_expect_ledger=prep_director.XpLedger 正式
+    # 经验期望账本快照(session.xp_expect_ledger=cw_screen_prep.XpLedger 正式
     # 字段,此处平铺 dict 便于判读;None=未锚定/无账本)。
     xp_expect_ledger: dict[str, Any] | None = None
     # —— `w611_econ_cycle/` 储备/义务披露(经济循环总模型;ADR-0445 实机验证队列
@@ -485,7 +485,7 @@ class RunSummary:
 class ExecEvent:
     """执行事件(exec_events.jsonl;27 号能力画像数据源,2026-08-17)。
 
-    prep_director 的 _fail_counts/_blocked/bail 原因本来局终即弃——落盘后跨局聚合
+    cw_screen_prep 的 _fail_counts/_blocked/bail 原因本来局终即弃——落盘后跨局聚合
     出「动作族×画面×失败率」画像(能力层:实现缺陷 vs 固有难度分型)。
     """
     ts: str = ""

@@ -1,8 +1,8 @@
 ---
 gameplay_name: 饰品提取
 app_id: ornamenet_extraction
-last_updated: 2026-07-29
-source: WebSearch 攻略 + screen_info `ornamenet_extraction`(15 area)+ `application/div_uni/operations/ornamenet_extraction` 代码
+last_updated: 2026-09-02
+source: WebSearch 攻略 + screen_info `ornamenet_extraction`(16 area)+ `application/div_uni/operations/ornamenet_extraction` 代码
 involves_screens: [饰品提取, 队伍, 战斗画面]
 ---
 
@@ -25,7 +25,9 @@ involves_screens: [饰品提取, 队伍, 战斗画面]
 - `choose_oe_file`(选套装存档 / 档案 1-4)→ `choose_oe_support`(选支援角色)→ 挑战(战斗)。
 - 由 `trailblaze_power` app 按计划调度(execute_plan)。
 
-## 画面(`ornamenet_extraction` screen_info,15 area,pc_alt=false)
+## 画面(`ornamenet_extraction` screen_info,16 area,pc_alt=false)
+
+`按钮-关闭`(右上 X,[1838,38,1888,88])=饰品提取进行中遮罩的关闭入口。左上标题区 rect [105,56,280,88]:该屏无 id_mark,画面匹配全依赖文本区,OCR 命中率劣化时优先复查此区。
 
 - **标题**:左上角标题-饰品提取 / 左上角标题-存档管理。
 - **存档选择**(套装预设):按钮-切换存档入口 / 确认 / 存档使用中;**档案-1/2/3/4**(4 个套装存档槽)。

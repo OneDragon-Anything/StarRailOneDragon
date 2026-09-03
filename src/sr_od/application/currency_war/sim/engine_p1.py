@@ -691,10 +691,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 自动清(cw_intention,ADR-0357),策略层零改动。
             st.plane = _seg_plane
             res.p2_entered = True
-            # 生产语义对齐:开局帧槽序表写 session(prep_director
+            # 生产语义对齐:开局帧槽序表写 session(cw_screen_prep
             # 首帧写;battles_left_p2 消费,ADR-0361)
             sess.plane_node_table = list(nodes)
-            # ADR-0368(迁移审计 w169(git 历史)):位面日程真值序列(生产=prep_director 每位面
+            # ADR-0368(迁移审计 w169(git 历史)):位面日程真值序列(生产=cw_screen_prep 每位面
             # 首帧 append;sim P1 段不写表 → 进场补记 P1 真值 9,保
             # seen 序=位面序;cw_plane_table.schedule_of 消费)
             sess.plane_node_table_plane = _seg_plane
@@ -712,7 +712,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _ts += 1
             st.round_num = rn
             # 批⑤ F4(ADR-0276):决策前写 session.node_type_current——
-            # 生产语义 = prep_director 备战期存下一节点类型(r308 保连胜
+            # 生产语义 = cw_screen_prep 备战期存下一节点类型(r308 保连胜
             # 门/节点感知消费读 session);sim 旧不写 → 门在 sim 恒盲
             # (300 局「地板降 5」0 次)。词表与 sim nodes 同源
             # (battle/encounter/boss/…)。
@@ -762,7 +762,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _inc['invest'] = _agg_inv.gold_per_node
             st.gold += sum(_inc.values())
             # `w162_inject/`/ADR-0364:本轮策略选卡注入(overlay 在备战期出现 → 收入
-            # 结算后、决策前;实机写点 = handle_invest_strategy 的 session
+            # 结算后、决策前;实机写点 = cw_screen_invest_strategy 的 session
             # append+去重)。instant_gold 在选卡时点入账(生产游戏引擎同点)。
             # 免费刷额度在选卡后按当前持卡聚合重算(当轮选的卡当轮生效)。
             if _inv is not None:

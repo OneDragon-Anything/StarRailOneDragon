@@ -90,7 +90,7 @@ def decision_target(session, state: GameState) -> Comp | None:
     (量子契约/量子星徽/贝概念股)同时抬高配方选择与终局选择。
 
     换源(ADR-0466/0467/0469):双轨期判定取
-    ``committed_from`` 权威派生(与 adapter/prep_director/deploy_bench 同一
+    ``committed_from`` 权威派生(与 adapter/cw_screen_prep/deploy_bench 同一
     读端)——消除「装配边界漏回填时缺省 False=恒按定型」的静默
     劣化面。零漂移依据:decision_v2 生产路径 ``transition_framework`` 恒 ''
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp

@@ -689,7 +689,7 @@ def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
 # 背景(根缺出处:.debug/temp/currency_war/w489_sim_real_gap/REPORT.md §1.3):
 # 高金购买单元无法区分「策略裁掉不买」vs「动作发出但没生效」——缺单元级
 # 完整账。本段三件:纯函数 plan_gold_flow(逐项期望金差)/ classify_spend_unit
-# (三态判定)/ query_spend_ledger(读端视图)。写端 = prep_director 的
+# (三态判定)/ query_spend_ledger(读端视图)。写端 = cw_screen_prep 的
 # RunBuyPhase 执行边界(record_spend_unit),只记单元框架;plan 与金真值
 # join 自 decisions.jsonl(shop plan 行)与 obs_conflicts.jsonl(gold_delta
 # 冲突行)——复用既有链,不建第二套金读数。
@@ -904,7 +904,7 @@ def _spend_unit_row(replay_dir: Path, run_id: str, plane: int,
                     round_num: int, unit_seq: int) -> dict[str, Any] | None:
     """spend_ledger 本单元最新行(按 run/plane/round/unit_seq 定位;纯读)。
 
-    消费方 = prep_director 安灯钩子(_exec_fail_hook_check):读执行侧
+    消费方 = cw_screen_prep 安灯钩子(_exec_fail_hook_check):读执行侧
     「计划≠尝试」事实字段(plan_truncated/refresh_*)作分类器 executed 输入。
     行缺失(历史局/未挂钩)→ None,分类器退回 `w494_spend_ledger/` 原语义不停。
     """
@@ -926,7 +926,7 @@ def _spend_unit_row(replay_dir: Path, run_id: str, plane: int,
 def _shop_plan_rows(replay_dir: Path, run_id: str) -> dict[tuple[int, int], dict[str, Any]]:
     """decisions.jsonl 的 shop plan 行(同轮取最后;纯读)。
 
-    判别式:shop.py plan 行的 eval_breakdown 无 'prep_step' 键,prep_director
+    判别式:shop.py plan 行的 eval_breakdown 无 'prep_step' 键,cw_screen_prep
     步进行带 'prep_step'(现成判别式,零 schema 改动)。
     """
     plans: dict[tuple[int, int], dict[str, Any]] = {}

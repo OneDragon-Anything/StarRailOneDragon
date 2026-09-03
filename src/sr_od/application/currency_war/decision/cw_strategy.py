@@ -168,7 +168,7 @@ class CwStrategy(ABC):
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
                          session: StrategySession, config: CurrencyWarConfig,
                          refresh_used: bool = False) -> EncounterPick:
-        """遭遇难度选(其一易/其四难 二选一)。✅ 已接 ``HandleEncounter``(L55 调)+ ``cw_events.decide_encounter``
+        """遭遇难度选(其一易/其四难 二选一)。✅ 已接 ``CwScreenEncounter``(L55 调)+ ``cw_events.decide_encounter``
         (非平凡:未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新换批)+ ``read_encounter_options``
         (OCR 卡标题→difficulty)。affix 分支 N/A(选项 UI 不显词缀,战后才显)。原「dormant 无选项UI」过期(2026-08-12 核实)。"""
 
@@ -251,7 +251,7 @@ def gated_hp(current_hp: int | None, session: StrategySession,
       + r6 现读失败 → 旧 gap==1 判陈旧回退 100 假值喂 pivot);窗口 3 外(结算连失,
       如 boss conf=0 冻结场景)仍拒 → 保持兜底值。
 
-    消费点:shop.py(buy 前)+ prep_director(环入口,传 obs.state.hp_readable)+
+    消费点:shop.py(buy 前)+ cw_screen_prep(环入口,传 obs.state.hp_readable)+
     策略层 ``_pseudo_state`` —— 同门,否则先调方用假 hp 判 pivot、后调方真 hp
     反向 pivot,同节点两次方向相反换线(r68 实证)。
     """

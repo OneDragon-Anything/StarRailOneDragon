@@ -7,7 +7,7 @@
 """货币战争 选择装备三选一(r129):OCR 卡名 → 策略选卡 → 点卡。
 
 误派发根因:选择伙伴屏的 标识-选择伙伴(文本「请选择1个」)在本屏
-也命中(装备选择同文案)→ HandleSelectPartner 被误派发找不到确认按钮
+也命中(装备选择同文案)→ CwScreenPartner 被误派发找不到确认按钮
 → 失败循环(哨兵 09:45 推送实证)。修:本屏建档(标识-选择装备 id_mark
 优先)+ 本 handler + loop 分支在选择伙伴**之前**(双 id_mark:装备标题
 + 请选择1个都命中才算)。
@@ -26,7 +26,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandleEquipPick(SrOperation):
+class CwScreenEquipPick(SrOperation):
     """选择装备三选一:OCR 卡名 → 策略选卡(点卡即选,出战按钮由主流程点)。"""
 
     CARD_XS: ClassVar[tuple[int, ...]] = (780, 1070, 1380)

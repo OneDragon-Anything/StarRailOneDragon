@@ -64,7 +64,7 @@ def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
 
     [字段定义] level = 游戏玩家等级 1-10(整局单调,坐标系 = 游戏 XP 条);
     xp_cur = 当前级已攒经验;取值时机 = 意图应用时纯推算(非执行期现读);
-    写入端 = PrepDirector XP 期望态账本。clicks ≤ 0 → 原值返回(无意图零推进)。
+    写入端 = CwScreenPrep XP 期望态账本。clicks ≤ 0 → 原值返回(无意图零推进)。
     """
     if clicks <= 0 or level >= 10:
         return level, xp_cur   # 封顶/零意图:购买经验无效,零推进(live 语义)
@@ -83,7 +83,7 @@ def xp_clicks_to_level(level: int, xp_cur: int,
     """当前级攒到**恰升 1 级**所需的最少购买经验次数(纯函数)。
 
     = ceil((need − cur) / xp_per_buy);cur 已达门槛 → 1(再点一次即升)。
-    消费端 = PrepDirector 直接 LevelUp 动作(腾席链「循环点至 level+1、
+    消费端 = CwScreenPrep 直接 LevelUp 动作(腾席链「循环点至 level+1、
     首次验证成功即停」通道):progressed=True 时实际击数 = 本值。
     已升满 10 级 → 0(点击无效,调用方零推进)。
     """
@@ -1648,7 +1648,7 @@ class PlaneNodeLedger:
     #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
     #: ``seq[round_num - 1]``。
     #: 写入端:①位面详情采集(CwScreenPlaneIntel,进位面时的两源互证产物);
-    #: ②投资环境选择完成后重读备战节点行(HandleInvestEnv,变异窗后的权威刷新)。
+    #: ②投资环境选择完成后重读备战节点行(CwScreenInvestEnv,变异窗后的权威刷新)。
     seq_by_plane: dict[int, list[str | None]] = field(default_factory=dict)
 
     #: 每序列的写入来源('plane_detail' = 位面详情采集 / 'prep_row' = 备战节点行),
@@ -1662,7 +1662,7 @@ class PlaneNodeLedger:
     #: 投资环境变异窗豁免截止(time.monotonic 时刻;0.0 = 无窗)。窗内查表与
     #: 逐帧校验的不一致**不落**缺陷台账——环境选择到节点行重读之间节点行
     #: 正在合法变异(用户口述:投资环境是唯一变异源),不一致是预期而非识别错误。
-    #: 写入端:HandleInvestEnv 确认前开窗、重读刷新台账后关窗(置 0)。
+    #: 写入端:CwScreenInvestEnv 确认前开窗、重读刷新台账后关窗(置 0)。
     env_grace_until: float = 0.0
 
     #: 已落过缺陷的 (plane, round) 键集(逐帧校验每帧都会跑,同一不一致只落一行)。

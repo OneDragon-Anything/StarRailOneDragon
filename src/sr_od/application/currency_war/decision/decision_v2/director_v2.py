@@ -2,7 +2,7 @@
 
 快照驱动执行环:``decide(snapshot, session) -> Decision`` 契约的框架侧循环 +
 生命周期六件套(步数预算/stall 门/连败→恢复→屏蔽/defer 计数/bail 计数与
-ping-pong 停机/W209j 停机刹车),母本 = ``prep_director.py`` 现役六件套;
+ping-pong 停机/W209j 停机刹车),母本 = ``cw_screen_prep.py`` 现役六件套;
 **逐件清零时机单一源 = ADR-0458**(锁 = sr-od-test test_cw_w588_director_v2
 时机锁两条)。
 
@@ -12,8 +12,8 @@ ping-pong 停机/W209j 停机刹车),母本 = ``prep_director.py`` 现役六件�
 规则中立:框架只消费 ``AtomOp.op_key``(幂等/屏蔽键)与 ``domain``
 (同域批校验),不解释 op 语义;op 枚举与 prep_actions 动作族对账归批③。
 
-本模块曾为 prep_director 备战环的执行引擎(W620 批 1 接线;⚠️ W971 P3b
-返工定稿:内环整体拆除,生产 = 备战单轮 op(prep_director.run 五段)+
+本模块曾为 cw_screen_prep 备战环的执行引擎(W620 批 1 接线;⚠️ W971 P3b
+返工定稿:内环整体拆除,生产 = 备战单轮 op(cw_screen_prep.run 五段)+
 外循环轮转,本引擎不再被生产实例化,保留供 sim/离线契约)。
 """
 from __future__ import annotations
@@ -73,7 +73,7 @@ class _DirectorPorts:
 class DirectorV2:
     """备战决策循环引擎(纯逻辑,可离线驱动;生命周期六件套所有者)。
 
-    六件套计数载体与清零时机(权威表 = ADR-0458,与 prep_director 现役逐件对照):
+    六件套计数载体与清零时机(权威表 = ADR-0458,与 cw_screen_prep 现役逐件对照):
     1 步数预算 ``_steps``:环入口清零;2 stall ``_stall``:环入口清 + 任一 op
     progressed 即清;3 连败链 ``_fail_counts/_blocked/_recovered``:环入口重建 +
     恢复发放/屏蔽落定各清 fail_counts[key](recovered/blocked 环内存活);
@@ -83,7 +83,7 @@ class DirectorV2:
     双查点(环顶每步 + execute 前)现读 ``is_stopped`` 端口。
     """
 
-    # 环级预算常量(值与现役 prep_director 同源;批③切换前旧值为单一源,本处
+    # 环级预算常量(值与现役 cw_screen_prep 同源;批③切换前旧值为单一源,本处
     # 复制并在此注明;CONF_RETRY_LIMIT = 分类有界重试上限,对齐 gate 3-strike)。
     MAX_STEPS: int = 60
     STALL_LIMIT: int = 5

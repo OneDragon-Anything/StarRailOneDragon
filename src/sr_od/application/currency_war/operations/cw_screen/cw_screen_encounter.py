@@ -48,7 +48,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandleEncounter(SrOperation):
+class CwScreenEncounter(SrOperation):
     """遭遇节点二选一:decide_encounter 选卡(必要时先分支刷新)→ 点卡选中 + 选择确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-遭遇节点'   # screen_info 画面(currency_war_encounter.yml)
@@ -79,7 +79,7 @@ class HandleEncounter(SrOperation):
         卡面碰巧同签名也认);②卡面签名变化(次数读失败时的兜底)。双输 = 未生效
         (点偏/无布局)→ 调用方按原评分选(失败安全,不重试)。
         """
-        target = Point(text_pt[0] + HandleEncounter._REFRESH_BTN_DX, text_pt[1])
+        target = Point(text_pt[0] + CwScreenEncounter._REFRESH_BTN_DX, text_pt[1])
         log.info(f'[cw-encounter] 建议刷新 → 圆钮@({target.x},{target.y})(文本锚定)')
         self.ctx.controller.mouse_move(target)   # bug#1 缓解
         self.ctx.controller.click(target)
@@ -105,7 +105,7 @@ class HandleEncounter(SrOperation):
         screen = self.last_screenshot
         # live 2026-08-15:改 id_mark area(标识-遭遇节点)—— OCR「遭遇其一」在截断帧(「遭遇其」)miss;
         # 独立屏实锤(返回备战界面右上,同补给/投资策略)。
-        if not self.round_by_find_area(screen, HandleEncounter.SCREEN_NAME,
+        if not self.round_by_find_area(screen, CwScreenEncounter.SCREEN_NAME,
                                        '标识-遭遇节点', crop_first=False).is_success:
             return self.round_fail('非遭遇节点屏')
         # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
@@ -164,9 +164,9 @@ class HandleEncounter(SrOperation):
                              for o in options],
                             idx, reason)
         # 卡身/选择坐标从 screen_info 读;缺失走历史实测兜底常量。
-        card_left = area_center(self.ctx, '遭遇卡-其一', HandleEncounter.SCREEN_NAME) or HandleEncounter.CARD_LEFT
-        card_right = area_center(self.ctx, '遭遇卡-其二', HandleEncounter.SCREEN_NAME) or HandleEncounter.CARD_RIGHT
-        select_btn = area_center(self.ctx, '按钮-选择', HandleEncounter.SCREEN_NAME) or HandleEncounter.SELECT_BTN
+        card_left = area_center(self.ctx, '遭遇卡-其一', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_LEFT
+        card_right = area_center(self.ctx, '遭遇卡-其二', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_RIGHT
+        select_btn = area_center(self.ctx, '按钮-选择', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.SELECT_BTN
         card = card_left if idx == 0 else card_right
         safe_click(self, card, tag='cw-encounter')
         time.sleep(0.8)

@@ -103,7 +103,7 @@ class SettlementState:
     saw_settlement: bool = False
 
 
-class BattleWaitOp(SrOperation):
+class CwScreenBattleWait(SrOperation):
     """战斗等待 op:等结算 → 结算处理 → 白名单完成判据 / 团灭终局分叉。"""
 
     #: 结算页1 掉血说明 tooltip 渲染延迟门(随迁自 cw_loop,注释原文见
@@ -149,7 +149,7 @@ class BattleWaitOp(SrOperation):
         宽限 → 合法静止,不进未知帧计数。"""
         return (not self._st.saw_settlement
                 and self._st.battle_ts is not None
-                and now - self._st.battle_ts < BattleWaitOp.BATTLE_WATCH_GRACE_S)
+                and now - self._st.battle_ts < CwScreenBattleWait.BATTLE_WATCH_GRACE_S)
 
     # ===== ③段:完成判据白名单(W971 05-battle §1 裁决集)=====
     # 白名单语义 = 「已回备战系画面」的到达判定(宽;面板就位判定由循环
@@ -168,12 +168,12 @@ class BattleWaitOp(SrOperation):
         「按钮-出战」双锚精判是循环备战分支的职责,此处重复即双源)。
         P4R3:BOSS简报项补「强敌」片段 OCR 兜底(area 锚可被误读击穿,
         「强敌来袭」→「强敌米」实测帧);位面过渡项加 boss 排他——共享
-        文案「点击空白处继续」不作跨画面判据(判别单一源见 boss_briefing_op)。"""
-        for _scr, _area in BattleWaitOp.COMPLETION_ANCHORS:
+        文案「点击空白处继续」不作跨画面判据(判别单一源见 cw_screen_boss_briefing)。"""
+        for _scr, _area in CwScreenBattleWait.COMPLETION_ANCHORS:
             if self.round_by_find_area(screen, _scr, _area,
                                        crop_first=False).is_success:
                 return True
-        from sr_od.application.currency_war.operations.cw_flow.boss_briefing_op import (
+        from sr_od.application.currency_war.operations.cw_screen.cw_screen_boss_briefing import (
             is_boss_briefing_texts,
             read_ocr_texts,
         )
@@ -387,7 +387,7 @@ class BattleWaitOp(SrOperation):
         if _lst is not None and getattr(_lst, 'plane', None) \
                 and getattr(_lst, 'round_num', None):
             _t = (_lst.plane - 1) * 9 + _lst.round_num
-        _min_t = BattleWaitOp.SETTLE_DEFEAT_LATCH_MIN_T
+        _min_t = CwScreenBattleWait.SETTLE_DEFEAT_LATCH_MIN_T
         if _neg and _t is not None and _t >= _min_t:
             self._st.saw_defeat_settlement = True
             log.info('[cw-bwait] 败局闩次级证据:面板负分量 + t=%s≥%s → 置闩'
@@ -400,7 +400,7 @@ class BattleWaitOp(SrOperation):
         """relaunch 残留结算屏判据(迁移审计 w28,随迁;只标记不改行为)。"""
         _res = (not self._st.first_settlement_seen and self._st.is_new_match
                 and time.monotonic() - self._st.run_start_ts
-                < BattleWaitOp.RELAUNCH_SETTLE_GRACE_S)
+                < CwScreenBattleWait.RELAUNCH_SETTLE_GRACE_S)
         self._st.first_settlement_seen = True
         return _res
 
@@ -480,11 +480,11 @@ class BattleWaitOp(SrOperation):
                         log.info('[cw-bwait] 新备战相位(结算点)→ 相位机复位')
                 # M39:停留 ≥3 轮 = 点击未生效 → 长按兜底推进 + 留证观察
                 self._st.settle_stay += 1
-                if self._st.settle_stay >= BattleWaitOp.SETTLE_STAY_LONG_PRESS:
+                if self._st.settle_stay >= CwScreenBattleWait.SETTLE_STAY_LONG_PRESS:
                     log.info('[cw-bwait] 结算屏停留 %s 轮(点击未生效)→ 长按 '
                              '(960,898) 兜底推进', self._st.settle_stay)
                     self.ctx.controller.click(
-                        BattleWaitOp.SETTLEMENT_NEXT, press_time=0.5)
+                        CwScreenBattleWait.SETTLEMENT_NEXT, press_time=0.5)
                     self.park_cursor(after_wait=0.1)
                     self._st.settle_stay = 0
                 return self.round_wait(wait=1.0)
@@ -525,7 +525,7 @@ class BattleWaitOp(SrOperation):
                 _now = time.monotonic()
                 if self._st.settle_p1_ts is None:
                     self._st.settle_p1_ts = _now
-                if _now - self._st.settle_p1_ts < BattleWaitOp.SETTLE_PANEL_WAIT_S:
+                if _now - self._st.settle_p1_ts < CwScreenBattleWait.SETTLE_PANEL_WAIT_S:
                     return self.round_wait(wait=0.5)
             self._st.settle_p1_ts = None
             if _1f_sign is None:
@@ -557,10 +557,10 @@ class BattleWaitOp(SrOperation):
             self._record_loss_page(screen, pre_fp=_pre_fp)
             for _btn in ('前往结算', '下一页', '下一步', '返回货币战争'):
                 if self.round_by_ocr(screen, _btn, lcs_percent=0.8).is_success:
-                    self.ctx.controller.click(BattleWaitOp.SETTLEMENT_NEXT)
+                    self.ctx.controller.click(CwScreenBattleWait.SETTLEMENT_NEXT)
                     self.park_cursor(after_wait=0.1)
                     return self.round_wait(wait=1)
-            self.ctx.controller.click(BattleWaitOp.BLANK.center)
+            self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
             self.park_cursor(after_wait=0.1)
             return self.round_wait(wait=1)
 
@@ -602,10 +602,10 @@ class BattleWaitOp(SrOperation):
                 _now = time.monotonic()
                 if self._st.settle_p1_ts is None:
                     self._st.settle_p1_ts = _now
-                if _now - self._st.settle_p1_ts < BattleWaitOp.SETTLE_PANEL_WAIT_S:
+                if _now - self._st.settle_p1_ts < CwScreenBattleWait.SETTLE_PANEL_WAIT_S:
                     return self.round_wait(wait=0.5)
             self._st.settle_p1_ts = None
-            self.ctx.controller.click(BattleWaitOp.BLANK.center)
+            self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
             return self.round_wait(wait=0.8)
 
         # ②段:前往结算链(分支 3b 随迁:轮败/位面结束/团灭多页 → 逐页点进;
@@ -628,7 +628,7 @@ class BattleWaitOp(SrOperation):
                     settle_frame_collect,
                 )
                 settle_frame_collect(screen)
-                self.ctx.controller.click(BattleWaitOp.SETTLEMENT_NEXT)
+                self.ctx.controller.click(CwScreenBattleWait.SETTLEMENT_NEXT)
                 self.park_cursor(after_wait=0.1)
                 return self.round_wait(wait=1)
 
@@ -636,7 +636,7 @@ class BattleWaitOp(SrOperation):
         if (self.round_by_ocr(screen, '总伤害').is_success
                 or self.round_by_find_area(screen, '货币战争-结算', '标识-数据统计').is_success):
             self._unknown_streak = 0
-            self.ctx.controller.click(BattleWaitOp.BLANK.center)
+            self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
             return self.round_wait(wait=1.0)
 
         # ①段:等待结算画面出现。战斗进行中 = 合法静止(ADR-0250 宽限);
@@ -646,7 +646,7 @@ class BattleWaitOp(SrOperation):
         # 节点作用域预算:宽限外连续未知帧 → 留证 + bail 交主循环未知画面分支
         # (W971 05-battle §1 超时兜底;不停机——兜底链裁决权留外循环)。
         self._unknown_streak += 1
-        if self._unknown_streak >= BattleWaitOp.UNKNOWN_BAIL_N:
+        if self._unknown_streak >= CwScreenBattleWait.UNKNOWN_BAIL_N:
             try:
                 _shot = self.save_screenshot(prefix='battle_wait_bail')
                 _ev = (get_project_root() / '.debug' / 'temp' / 'currency_war'

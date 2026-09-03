@@ -24,7 +24,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandleFortunePicker(SrOperation):
+class CwScreenFortune(SrOperation):
     """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。"""
 
     # 三卡卡身(选中点击点=卡下半部,避详情按钮 y~430-462;同策划事件教训)

@@ -70,7 +70,7 @@ def plane_end_slots(pl: tuple[int, ...] = DEFAULT_PLANE_LENGTHS) -> frozenset[in
 def schedule_of(session) -> tuple[int, int, int]:
     """位面日程真值(ADR-0368,单一源)。
 
-    真值源 = ``session.plane_lengths_seen``(prep_director 每位面首帧随
+    真值源 = ``session.plane_lengths_seen``(cw_screen_prep 每位面首帧随
     plane_node_table 记录的「本局已揭晓位面轮数」序列,P3 进表即自适应);
     未揭晓位面回退 ``PLANE_FALLBACK_PRIORS`` 逐面先验(9, 9, 9)——端点纪律
 对称化:未揭晓真值不可判,统一取语料分布上端(位面长度上限 9)。
@@ -89,7 +89,7 @@ def nodes_of_plane(session) -> int:
     """本位面轮数真值(ADR-0366,单一源)。
 
     真值源 = ``session.plane_node_table``(开局帧实读槽序表,
-    prep_director 每位面首帧写、位面内恒定):P1=9 槽、P2=7 槽(16 局
+    cw_screen_prep 每位面首帧写、位面内恒定):P1=9 槽、P2=7 槽(16 局
     语料实证)、P3 首局进表即自适应。表缺(裸 session/None/sim P1 段/
     开局首帧前)→ 回退 ``NODES_PER_PLANE=9`` 先验并记一次性
     ``[cw!][plane_table]`` 告警(P3 真值未知期,回退事件即记档通道)。

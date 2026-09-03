@@ -99,7 +99,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 - **补给箱槽位**(`read_supply_boxes`,2026-08-14):奖励球掉箱落备战席 → TM 匹配 `cw_supply/补给箱.png` → [(slot, 开启 center)]。已进 recognizer `extras.supply_boxes`(开箱 op 用)。
 
 **未接(需图标库 或 bot 跟踪)**:
-- `Unit.equips`(角色身上装备,纯图标)、`inventory.available_equips`(区域-道具装备)、`node_path`(顶部节点行图标序列)、**投资环境效果**(按钮-投资环境 overlay,策略 input;live 验 2026-08-11)。~~`active_strategies`~~ → **已接**(2026-08-14:`handle_invest_strategy` 选时写 session,非读图标;备战右面板图标纯显示)。
+- `Unit.equips`(角色身上装备,纯图标)、`inventory.available_equips`(区域-道具装备)、`node_path`(顶部节点行图标序列)、**投资环境效果**(按钮-投资环境 overlay,策略 input;live 验 2026-08-11)。~~`active_strategies`~~ → **已接**(2026-08-14:`cw_screen_invest_strategy` 选时写 session,非读图标;备战右面板图标纯显示)。
 
 ## 识别快照
 

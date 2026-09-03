@@ -192,14 +192,14 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
 # ===== 分级安灯 L0 自动停线·游戏侧执行器 =====
 # 判定与闩锁在 cw_telemetry(纯逻辑,不碰游戏);三要素的「截图 + flag +
 # stop_running」需要 ctx/controller,归本模块(可观测框架,exec 失败安灯
-# 先例 = prep_director._exec_fail_hook_check 同款顺序)。
+# 先例 = cw_screen_prep._exec_fail_hook_check 同款顺序)。
 
 def find_running_ctx():
     """进程内定位 SrContext(安灯停线专用)。
 
     为什么用 gc 扫描:安灯判定在 cw_telemetry 模块级旁路里发生,调用栈
     (obs_conflict / shop 记账)各层签名都不带 ctx,而 ctx 登记点全在
-    本模块辖域文件之外的 cw_loop/prep_director);服务进程内 SrContext 恒
+    本模块辖域文件之外的 cw_loop/cw_screen_prep);服务进程内 SrContext 恒
     单实例(server.py / GUI 各只建一个),扫描定位无歧义。成本:仅 L0
     停线时刻每局至多一次,百毫秒级,不进常规路径。根治(框架级 ctx
     注册表)另行挂账。

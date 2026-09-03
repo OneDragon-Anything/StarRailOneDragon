@@ -23,7 +23,6 @@ SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立�
 """
 from __future__ import annotations
 
-
 import cv2
 import numpy as np
 from cv2.typing import MatLike
@@ -31,15 +30,15 @@ from cv2.typing import MatLike
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
+from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
+from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+from sr_od.application.currency_war.kernel.cw_state import BenchChar
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
     identify_character,
     load_avatar_templates,
 )
 from sr_od.application.currency_war.obs.cw_equipment import read_equipped_below
-from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
-from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
-from sr_od.application.currency_war.kernel.cw_state import BenchChar
 from sr_od.config.character_const import get_character_by_id
 from sr_od.context.sr_context import SrContext
 
@@ -795,14 +794,14 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         # **变体渲染**,find_supply_boxes/find_tomes/宽松互斥全没认出 → 漏到本钩子。
         # r100k:书册卡已建档(find_bookcards)进 _obj_slots → 本钩子不再拦它。
         # 书册卡开启语义已确认(2026-08-30 实机:点槽 → 「专家邀请函」五选一),
-        # 原确认停机钩子退役,自动处理链见 operations/handlers/handle_bookcard.py
+        # 原确认停机钩子退役,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
         # (备战环预清场 + loop 0k 弹窗分支接线)。
         _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
         _obj_slots: set[int] = {i for i, _p in find_supply_boxes(screen, _bench_slots9)}
         _obj_slots |= {i for i, _p in find_tomes(screen, _bench_slots9)}
         _obj_slots |= {i for i, _p in find_bookcards(screen, _bench_slots9)}   # r100k 书册卡
         # 试用角色揭示卡(summon 钩子首捕建档):发光金卡点开即免费得 2★ 试用角色,
-        # 揭示动作由备战环派发前统一做(battle_loop 备战分支接线)→ 本钩子视其为
+        # 揭示动作由备战环派发前统一做(cw_loop 备战分支接线)→ 本钩子视其为
         # 已知物品,不再落 unknown 停机(否则免费增益反成停机源)。
         _obj_slots |= {i for i, _p in find_trial_reveal_cards(screen, _bench_slots9)}
         _item_tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
@@ -911,7 +910,7 @@ _tome_loaded: bool = False
 # 书册卡(r100k 建档,2026-08-20):青蓝卡片+白色书册/文件夹 icon+底部「开启」,
 # 占备战席 1 槽。四帧实测 TM 0.975-1.0(模板=停机帧 slot1 裁剪);与典籍/补给箱
 # 互撞 0.505/0.462(分离度足够)。开启语义已确认(2026-08-30 实机:点槽 →
-# 「专家邀请函」五选一,选后专家入商店;处理链 = handle_bookcard.py)。模板名
+# 「专家邀请函」五选一,选后专家入商店;处理链 = cw_screen_expert_invite.py)。模板名
 # 「书册卡_未知」为历史占位,改名需同步 _get_bookcard_gray 路径与测试锁,暂保留。
 _bookcard_gray: MatLike | None = None
 _bookcard_loaded: bool = False
@@ -1134,7 +1133,7 @@ def find_trial_reveal_cards(screen: MatLike, slots: list[tuple[int, Rect]]) -> l
     """纯 CV 核心:槽位内检测试用角色揭示卡(双通道 OR)→ ``[(slot_idx, 槽 center)]``。
 
     点该中心即揭示(免费得 2★ 试用角色,原地变普通角色卡 → 自然被 SIFT 识别,
-    无需后续处理;揭示动作由备战环派发前统一做,见 battle_loop 备战分支接线)。
+    无需后续处理;揭示动作由备战环派发前统一做,见 cw_loop 备战分支接线)。
     可离线硬编码 rect 测(同 ``find_supply_boxes`` 分层约定)。
     """
     tm = _get_trial_reveal_gray()

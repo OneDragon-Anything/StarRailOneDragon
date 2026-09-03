@@ -3,7 +3,7 @@
 
 通关奖励节点后备战右侧面板出球形奖励(read_reward_spheres HoughCircles 识别,
 color=gold/blue/gray)。点球即开启:金币/装备即时入账;角色或补给箱落备战席占 1 槽;
-**备战席满时球点不动**(点空 click 无效果,球保留)→ 必须先开箱/腾席(HandleSupplyBox 在前)。
+**备战席满时球点不动**(点空 click 无效果,球保留)→ 必须先开箱/腾席(CwScreenSupply 在前)。
 
 流程:开箱(若有)→ 逐球点击(大球优先)→ 每球重读验消失;掉箱则开箱续收;
 球数不减 → 本轮中断(席满或识别漂;外层腾席后下轮再收,防死循环点空球)。
@@ -17,8 +17,8 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_reward_spheres,
     read_supply_boxes,
 )
-from sr_od.application.currency_war.operations.handlers.handle_supply_box import (
-    HandleSupplyBox,
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_supply import (
+    CwScreenSupply,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -36,7 +36,7 @@ class CollectRewardSpheres(SrOperation):
     @operation_node(name='奖励球收取', is_start_node=True, node_max_retry_times=6)
     def handle(self) -> OperationRoundResult:
         # 0) 有补给箱先开箱腾席(席满是点球硬阻塞;开箱后席位 +1)
-        HandleSupplyBox(self.ctx).execute()
+        CwScreenSupply(self.ctx).execute()
         clicked = 0
         screen = self.screenshot()
         while clicked < CollectRewardSpheres.MAX_CLICKS:
@@ -57,7 +57,7 @@ class CollectRewardSpheres(SrOperation):
             # 点球掉箱 → 弹武装箱链:开箱(腾席+得装备)后继续收剩余球
             if read_supply_boxes(self.ctx, screen):
                 log.info('[cw-sphere] 掉补给箱 → 开箱后继续收球')
-                HandleSupplyBox(self.ctx).execute()
+                CwScreenSupply(self.ctx).execute()
                 screen = self.screenshot()
                 continue
             if len(after_spheres) >= before:

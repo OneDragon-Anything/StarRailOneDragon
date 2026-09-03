@@ -4,7 +4,7 @@
 输入名字/数值,输出期望价值,零识别零点击零包外依赖。
 
 为何落在 kernel:同一条估值曲线同时喂给武装箱选卡策略(decision_v2.decide_box_card)
-与 app 侧 handler 的旧内联回落(handle_supply_box.pick_box_card),归 kernel 是
+与 app 侧 handler 的旧内联回落(cw_screen_supply.pick_box_card),归 kernel 是
 分包依赖矩阵(DESIGN 分包 §3.2)下唯一同时合法的方向。
 """
 
@@ -46,7 +46,7 @@ def material_value(name: str) -> int:
 # 缺陷台账(复现升 L0,停线由分级安灯承接),一致不打扰,零决策
 # 行为变更。同族先例=观测自检框架设计 §2.2 买牌落位对拍
 # (观察审计设计件)。
-# 边界:本对账只辖 prep_director 直发链的拖动动作(SellBench/DeployMove)。
+# 边界:本对账只辖 cw_screen_prep 直发链的拖动动作(SellBench/DeployMove)。
 # 买牌期望态走独立通道:购买意图在 shop.py 买入点记录(compute_buy_expect,
 # 落点规则单一源 = cw_state._merge_bench),由本环在 RunBuyPhase 后的 heavy
 # 定型帧上消费对账(_reconcile_buy_expect,台账 kind=buy_expect_mismatch);
@@ -427,7 +427,7 @@ class XpLedger:
     [字段定义] level/xp_cur/xp_next = 计算侧期望的 (等级, 当前级已攒经验,
     当前级门槛)——坐标系 = 游戏 XP 条整局语义(门槛表 = XP_TO_NEXT_LEVEL
     单一源);取值时机 = 锚点帧读数或购买意图经 xp_apply_clicks 纯推算,
-    **非执行期现读**;写入端 = PrepDirector._xp_* 三方法(单写者)。
+    **非执行期现读**;写入端 = CwScreenPrep._xp_* 三方法(单写者)。
     anchored = 对局首帧锚定是否完成(锚定前不对账——纯推算的起点必须是
     真实读数,否则整段账失真)。
     round_key = 本对账段 (plane, round_num)——**轮界即重锚点**:轮间存在

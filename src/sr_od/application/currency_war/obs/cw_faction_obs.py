@@ -19,7 +19,7 @@
 
 对账纯函数 :func:`compare_factions`:逐名三态(一致/不一致/显示侧不可判);
 OCR 失读条目跳过并计数(不算不一致);computed 有而显示没有 = 截断嫌疑,
-单独计数不判错。接线:prep_director 主环 heavy 帧调 ``compare_factions``
+单独计数不判错。接线:cw_screen_prep 主环 heavy 帧调 ``compare_factions``
 并经 :func:`report_faction_reconcile` 落台账(对账网家族羁绊子网)。
 """
 from __future__ import annotations
@@ -309,7 +309,7 @@ def compare_factions(computed: dict[str, int],
 def report_faction_reconcile(result: FactionReconcileResult, **kwargs) -> int:
     """把 mismatch 行落缺陷台账(kind=``faction_display_mismatch``)。
 
-    已接线:生产调用方 = prep_director 羁绊对账段(与 ``compare_factions``
+    已接线:生产调用方 = cw_screen_prep 羁绊对账段(与 ``compare_factions``
     串同一链路;行为锁见测试仓 faction_reconcile/faction_wire 两锁文件)。
     函数本身保持纯转发:
     逐 mismatch 调 ``record_defect``(kernel/cw_telemetry_exit 出口钩子位,

@@ -1,5 +1,7 @@
 # DD-004:遭遇分支刷新执行链接线——决策建议字段长期无消费端,接线并登记触发源缺位
 
+> 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期决策记录,类名保持当时事实,未改)。
+
 > 状态:已落地(2026-09-01;受影响测试全绿)。
 
 ## 背景
@@ -44,3 +46,10 @@ competitors.md 节点表同口径「可刷新 1 次重置分支难度/奖励」)
   `docs/game/screens/currency_war_encounter.md`;
 - 同构先例:投资策略刷新流 ADR-0146(handle_invest_strategy._try_click_refresh)、
   补给刷新流(run_supply_node,session `_supply_refresh_used` 单次标志)。
+
+## 现状注(2026-09-02,覆盖层建档后回写;上文裁决第 3 条按此核读)
+
+「触发源缺位」的前提已部分失效:敌方信息覆盖层**已建档**(`assets/game_data/screen_info/currency_war_enemy_info.yml`,
+备战/遭遇双入口;遭遇版词缀 chips OCR 实测可读——`docs/game/screens/currency_war_encounter.md` §敌方信息覆盖层、
+`docs/game/screens/货币战争-敌人信息浮层.md`)。「开火前提」剩半边 = 词缀 → `EncounterOption.affixes`
+读数通道的接线消费;接线完成前本执行链仍不开火(「接线期间零行为变化」结论维持)。

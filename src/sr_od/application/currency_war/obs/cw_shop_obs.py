@@ -1,7 +1,7 @@
 """货币战争 商店开态对账纯函数(W556):卡池一致性 / 合成预览交叉验证 / 刷新期望。
 
 形态同 ``cw_faction_obs`` 的「识别器+对账纯函数」分层:判定与落账分离,
-接线点在 ``prep_director``(卡池票/合成预览)与 ``shop.py`` 刷新波
+接线点在 ``cw_screen_prep``(卡池票/合成预览)与 ``shop.py`` 刷新波
 (刷新期望 producer),均已接线;各函数 docstring 登记消费点与口径。
 
 三个对账点:
@@ -13,7 +13,7 @@
    §2.7:合成预览 = 我方可算,游戏 UI 只作对账信号)。**单向验证**:
    我方算 True 而游戏识别无星 = 我方合成计算嫌疑。识别端
    ``cw_identity_obs.read_merge_preview`` 已在产线运行(商店快照
-   merge_preview 字段),消费点 = ``prep_director`` 商店对账段
+   merge_preview 字段),消费点 = ``cw_screen_prep`` 商店对账段
    (``_reconcile_merge_preview``);``preview_detected=None`` 仍合法
    (登记/测试形态,全行 pending)。
 3. :func:`refresh_expect` —— 刷新动作的期望增量(金 −refresh_cost、
@@ -144,7 +144,7 @@ def compare_merge_preview(our_merge_flags: dict[int, bool],
     ``.debug/temp/currency_war/w600_batch_b_assessment/REPORT.md``:reader
     ``cw_identity_obs.read_merge_preview`` 产线 136 组同刻重复读数 0 分歧、
     15 非零事件 8 例与持有台账精确相符,原「多帧闪烁采样」合格线作废)。
-    消费点 = ``prep_director._reconcile_merge_preview``(商店打开 heavy 帧):
+    消费点 = ``cw_screen_prep._reconcile_merge_preview``(商店打开 heavy 帧):
     our_merge_flags 由 tracked 持有按 ``cw_state.same_star_count`` 折算
     (>0 = True),preview_detected 由商店快照逐牌 ``merge_preview > 0``
     映射;mismatch 落缺陷台账 kind=merge_preview_mismatch(零决策)。

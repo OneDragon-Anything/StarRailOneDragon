@@ -5,7 +5,7 @@
 等 kernel 判据层以类型注解消费本类,放 decision 桶会成 kernel→decision
 断环边。类体逐字段无 app 引用——本模块
 运行时 import 面仅 cw_effect_inventory/cw_performance(kernel 桶);
-BuyExpect/XpLedger(PrepDirector,app 桶)仅注解引用,TYPE_CHECKING 承载,
+BuyExpect/XpLedger(CwScreenPrep,app 桶)仅注解引用,TYPE_CHECKING 承载,
 不拖入运行时。
 
 """
@@ -74,7 +74,7 @@ class StrategySession:
     # shop 关态 heavy 读到时写此;shop.py 喂决策前拷入 —— 仿 last_hp 模式。
     last_node_type: str | None = None
     # 节点行 current 槽的识别类型(read_node_sequence: Hu 模板+OCR 标签,
-    # 备战画面权威源)——prep_director 每次备战读节点行时写;cw_loop
+    # 备战画面权威源)——cw_screen_prep 每次备战读节点行时写;cw_loop
     # on_round_end 消费(节点类型分层的遥测/复盘输入)。None=未读到(退普通战斗)。
     node_type_current: str | None = None
     # 上帧 upcoming 槽类型序列(idx 升序)——current 高亮态 Hu 不匹配
@@ -85,7 +85,7 @@ class StrategySession:
     # 建「位面典型节点表」进 sim 骨架/策略知识)+ 左移兜底参照。
     # 决策主源 = 实时识别(每备战帧读节点行,应对策略改节点)。
     # cw_loop 首节点兜底消费此表;写入端
-    # 在 prep_director._probe_node_type 首帧。
+    # 在 cw_screen_prep._probe_node_type 首帧。
     plane_node_table: list[str] | None = None
     # ADR-0368:plane_node_table 是哪位面的表(每位面首帧重写时更新;
     # 同位面内不覆写)。None=尚未写过。修生产 write-once 守卫使 P2 的 7 槽
@@ -136,7 +136,7 @@ class StrategySession:
     # state.equips → decisions 遥测可见,补「持有面有读点、无写链、决策/遥测全盲」
     # (实证:历史上 decisions 里 state.equips 全空)。
     last_owned_equips: list[str] = field(default_factory=list)
-    # —— 备战决策环(PrepDirector,doc 15 / ADR-0123)计数宿主 ——
+    # —— 备战决策环(CwScreenPrep,doc 15 / ADR-0123)计数宿主 ——
     # defer_count:奖励球留置计数(环级 —— **Director 每次环入口清零**,非局级;球留置是本轮决定。
     # 策略/框架经 DeferSpheres +1;门=2(§5.1 规则 3 防规则 2↔3 空转环)。)
     defer_count: int = 0
@@ -249,7 +249,7 @@ class StrategySession:
     # (grep 证),本字段是公开随机接口的种子契约锚。
     rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
-    # 简报词缀(对局开始 debuff/boss 词缀;写入端 = BriefingOp 内联直写(仅空时写);mechanics_fit 输入)
+    # 简报词缀(对局开始 debuff/boss 词缀;写入端 = CwScreenBriefing 内联直写(仅空时写);mechanics_fit 输入)
     briefing_affixes: list[str] = field(default_factory=list)
     # (变宝为废·位面首次合成判定消耗记账 junk_first_done_plane 已随
     #  junk_first 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3,
@@ -257,7 +257,7 @@ class StrategySession:
     # 本局职级(A1..A8;CwEntryStart 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
     # 策略层填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
     selected_difficulty: str = ""
-    # 敌人难度数值(简报「敌人难度N」读 → BriefingOp 直写 session;read_game_state 填 state;3.5.2)
+    # 敌人难度数值(简报「敌人难度N」读 → CwScreenBriefing 直写 session;read_game_state 填 state;3.5.2)
     enemy_difficulty: int | None = None
     # 位面序 boss 真值(3 位面 boss 名;写入端 = cw_loop 首个稳定备战帧 copy 自
     # 简报 LCS 清洗读数(ADR-0397:简报排列=位面序)+ CwScreenPlaneIntel
@@ -270,16 +270,16 @@ class StrategySession:
     tracked_bench: list[str] = field(default_factory=list)
     tracked_bench_chars: list[BenchChar] = field(default_factory=list)
     tracked_deployed: list[BenchChar] = field(default_factory=list)
-    # 买牌单元期望态(prep_director.BuyExpect)。坐标系 = 哪次购买:
+    # 买牌单元期望态(cw_screen_prep.BuyExpect)。坐标系 = 哪次购买:
     # 一次 RunBuyPhase 单元的购买意图经 compute_buy_expect 建的「单元执行后
     # 应然态」(bench/deployed 槽位表)。取值时机 = 购买意图落账——shop.py
-    # 单元收尾(含卖出/未识别牌则不建,保持 None)写入;消费 = PrepDirector
+    # 单元收尾(含卖出/未识别牌则不建,保持 None)写入;消费 = CwScreenPrep
     # 主环下一轮 heavy 定型帧对账(buy_expect_mismatch)后立即清回 None,
     # 跨单元不残留。None = 无挂起期望。
-    pending_buy_expect: 'BuyExpect | None' = None   # noqa: F821, UP037 (注解字符串;app 桶 prep_director 类型,kernel 零 app import)
-    # 经验期望账本(prep_director.XpLedger;纯记账+对账,零决策)。
+    pending_buy_expect: 'BuyExpect | None' = None   # noqa: F821, UP037 (注解字符串;app 桶 cw_screen_prep 类型,kernel 零 app import)
+    # 经验期望账本(cw_screen_prep.XpLedger;纯记账+对账,零决策)。
     # 坐标系/取值时机/写入端 =
-    # XpLedger 字段定义注释(prep_director);None = 本局未锚定(账本未建)。
+    # XpLedger 字段定义注释(cw_screen_prep);None = 本局未锚定(账本未建)。
     xp_expect_ledger: 'XpLedger | None' = None       # noqa: F821, UP037 (同上)
     # —— 预算-回执契约(ADR-0504,无条件生效)——
     # v3_spend_auth:本帧授权包快照(attach_spend_authorization 写;
@@ -300,7 +300,7 @@ class StrategySession:
     # —— 黑板模式观察帧容器(W971 §2 黑板模式,P2 落地,dd-014)——
     # prep_obs_frame:备战观察结果(PrepObservation 整帧)。生命周期 =
     # 新鲜快照(每次备战观察覆写,不清理只覆盖)。写者白名单 =
-    # prep_director._observe(备战观察装配点)/ 破警告派生帧(prep_director
+    # cw_screen_prep._observe(备战观察装配点)/ 破警告派生帧(cw_screen_prep
     # 席满破墙 dataclasses.replace 帧,派生自真 obs)/ 兼容期旧接口
     # decide_prep_action 的薄委托(签名过渡,P5 旧接口删除时随之收窄)。
     # 读者 = decide_prep_screen(黑板决策唯一输入源)。容器形态(整帧对象

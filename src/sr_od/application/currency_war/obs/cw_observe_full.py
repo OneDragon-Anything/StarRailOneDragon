@@ -4,7 +4,7 @@
 - 签名 ``observe_full(ctx, frame, *, tier, source)``——tier=
   heavy/light;source='director'/'deploy_bench'(reconcile
   审计归因保留);
-- **替换范围=_observe 的 heavy 段(prep_director L209-277)**;
+- **替换范围=_observe 的 heavy 段(cw_screen_prep L209-277)**;
   轻字段读留 _observe(每步现读);
 - 副作用归属:session 写留 director;MED-2 gold==0 重读进
   本层(帧稳定≠OCR 稳定);_cached_* 回填留 director;

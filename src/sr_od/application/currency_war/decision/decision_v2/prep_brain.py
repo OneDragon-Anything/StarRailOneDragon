@@ -44,7 +44,7 @@ def drive_intention(state: Any, session: StrategySession,
                     registry: DecisionV2Registry | None = None) -> None:
     """意向状态机驱动点(P7 契约,批 2 方向层接管):每 game-round 恰一次。
 
-    - 锚定 = 决策环入口(prep_director 环入口 update_target 之前调用);
+    - 锚定 = 决策环入口(cw_screen_prep 环入口 update_target 之前调用);
       驱动键 = (plane, round_num),段级重入守卫 = session.v3_intention_key
       (与 decision_v2 栈的 update_target 驱动共享同一键面——双驱动并存
       天然幂等,同轮重入不重复计数,miss/冻结分母 = 轮不膨胀);

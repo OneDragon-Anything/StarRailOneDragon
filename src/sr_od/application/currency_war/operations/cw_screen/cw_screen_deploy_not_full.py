@@ -21,7 +21,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandleDeployNotFull(SrOperation):
+class CwScreenDeployNotFull(SrOperation):
     """出战人数未达上限弹窗:勾本局不再提示 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-未达上限警告'   # screen_info 画面(currency_war_deploy_not_full.yml)
@@ -37,10 +37,10 @@ class HandleDeployNotFull(SrOperation):
         screen = self.last_screenshot
         # 用 screen_info id_mark area(标识-未达上限警告)位置区分,非全屏 LCS:防「能量上限」(投资策略描述)
         # 与「未达上限」共享「上限」(2/4=0.5)误匹配(见 cw_loop 0d)。area 位置不同 → 不命中。
-        if not self.round_by_find_area(screen, HandleDeployNotFull.SCREEN_NAME, '标识-未达上限警告').is_success:
+        if not self.round_by_find_area(screen, CwScreenDeployNotFull.SCREEN_NAME, '标识-未达上限警告').is_success:
             return self.round_fail('非未达上限弹窗')
-        _check = area_center(self.ctx, '勾选-本局不再提示', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.CHECKBOX_NO_PROMPT
-        _confirm = area_center(self.ctx, '按钮-确认', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.BTN_CONFIRM
+        _check = area_center(self.ctx, '勾选-本局不再提示', CwScreenDeployNotFull.SCREEN_NAME) or CwScreenDeployNotFull.CHECKBOX_NO_PROMPT
+        _confirm = area_center(self.ctx, '按钮-确认', CwScreenDeployNotFull.SCREEN_NAME) or CwScreenDeployNotFull.BTN_CONFIRM
         safe_click(self, _check, tag='cw-deploywarn')
         time.sleep(0.3)
         # 确认 + 验关(未达上限 消失 = 弹窗关)。原「点了就 success」不验 → bug#1/勾选未生效 flat-loop

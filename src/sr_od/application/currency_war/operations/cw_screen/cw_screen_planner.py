@@ -27,7 +27,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandlePlannerEvent(SrOperation):
+class CwScreenPlanner(SrOperation):
     """银狼 2 星奖励画面(用户 2026-08-31 定名;弹窗标题「我来当策划」,银狼升
     2★ 时触发——非随机事件):OCR 两卡 → 策略选卡 → 确认 → 关详情面板。
     两选项=扑满病毒(敌人变扑满)vs 银狼LV.999(费用升至 4,变 1 星银狼
@@ -77,15 +77,15 @@ class HandlePlannerEvent(SrOperation):
         失败语义归 confirm_and_verify 验关(动画期误判可能仍开)。
         """
         area = self.ctx.screen_loader.get_area(
-            HandlePlannerEvent.CARD_AREA_SCREEN,
-            HandlePlannerEvent.CARD_AREAS[idx])
+            CwScreenPlanner.CARD_AREA_SCREEN,
+            CwScreenPlanner.CARD_AREAS[idx])
         if area is not None:
             rect = area.pc_rect
         else:
-            lx, ly, rx, ry = HandlePlannerEvent._LEGACY_CARD_RECTS[idx]
+            lx, ly, rx, ry = CwScreenPlanner._LEGACY_CARD_RECTS[idx]
             rect = Rect(lx, ly, rx, ry)
-        y = min(rect.y1 + int(rect.height * HandlePlannerEvent.SELECT_Y_RATIO),
-                rect.y2 - int(rect.height * HandlePlannerEvent.DETAIL_MARGIN_RATIO))
+        y = min(rect.y1 + int(rect.height * CwScreenPlanner.SELECT_Y_RATIO),
+                rect.y2 - int(rect.height * CwScreenPlanner.DETAIL_MARGIN_RATIO))
         return Point(rect.center.x, y)
 
     @operation_node(name='处理策划事件', is_start_node=True, node_max_retry_times=5)
@@ -111,7 +111,7 @@ class HandlePlannerEvent(SrOperation):
         # 见 .debug/temp/currency_war/w953_overlay_strategy/DESIGN.md §3.4)。
         # DecisionV2Strategy.decide_planner 委托同一 kernel 纯函数(kernel 版保底,
         # 本批零行为变化;局面感知升级归批4)。kernel 直调仅保留无 match 防御路径
-        # (局外独立跑;规约=沿用 handle_invest_env 同款写法)。
+        # (局外独立跑;规约=沿用 cw_screen_invest_env 同款写法)。
         from sr_od.application.currency_war.kernel.cw_state import GameState
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:

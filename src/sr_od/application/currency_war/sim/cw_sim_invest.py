@@ -1,7 +1,7 @@
 """货币战争 sim 投资策略/环境注入(W162/ADR-0364)。
 
 背景缺口(W161 裁决):cw_sim 全文不建模 ``active_strategies``/``active_env``
-——实机这两者由 handle_invest_strategy/handle_invest_env 局中采集并进 session
+——实机这两者由 cw_screen_invest_strategy/cw_screen_invest_env 局中采集并进 session
 (消费面:意向层①资格通道[ADR-0338 直通线锁定]、economy 聚合、cw_events 打分)。
 W145(ADR-0357)后 P1 锁 comp 仅剩①资格通道 → sim 缺输入 = ①通道永不点火 →
 P1 永不锁 comp → V_D 目标恒空 → sim 一切含 D 的 P1 结论零外推力
@@ -16,9 +16,9 @@ P1 永不锁 comp → V_D 目标恒空 → sim 一切含 D 的 P1 结论零外�
   分隔符差异[全角冒号等]在 ``_canon`` 归一)。
 
 注入语义与实机 handler 对齐(单一源参照):
-- 环境:开局选 1 张,写 ``session.active_env``(handle_invest_env L197);
+- 环境:开局选 1 张,写 ``session.active_env``(cw_screen_invest_env L197);
 - 策略:按日程逐张选,append 进 ``session.active_strategies``(去重防重选,
-  handle_invest_strategy L200-202);session→state 的每帧同步在生产由
+  cw_screen_invest_strategy L200-202);session→state 的每帧同步在生产由
   cw_observation 完成,sim 侧由 cw_sim 在注入点直写两处(等价语义)。
 
 注入后 sim 经济聚合生效的字段子集(其余字段不建模,见 ADR-0364 排除表):

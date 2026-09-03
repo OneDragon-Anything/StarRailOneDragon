@@ -2,7 +2,7 @@
 
 框架层:本模块**不含玩法判断**(何时收球/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_action),
 只负责「执行一个动作 + 完成验证」。三失败路径(§13.2):
-- 验证失败 → execute 返回 progressed=False(PrepDirector 计 fail/屏蔽);
+- 验证失败 → execute 返回 progressed=False(CwScreenPrep 计 fail/屏蔽);
 - 参数非法 → validate 返回错误串(Director 拒绝执行 + 该步计 stall + telemetry);
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
 
@@ -87,7 +87,7 @@ def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
     """从 screen_info「货币战争-备战」读全部 prefix-N 区域中心(N 升序)。
 
     同 DeployBenchOp._row_centers 逻辑(读全不硬编码,后排 >6 时 screen_info 补区后自动跟上);
-    prep_actions 执行器 / prep_director 观察共用。
+    prep_actions 执行器 / cw_screen_prep 观察共用。
     """
     si = ctx.screen_loader.get_screen(SCREEN_NAME)
     if si is None:
@@ -150,19 +150,19 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> bool:
 class PrepActionExecutor:
     """备战原子/组合动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
-    宿主 op = PrepDirector(SrOperation);所有验证经 op.round_by_find_area / OCR,
+    宿主 op = CwScreenPrep(SrOperation);所有验证经 op.round_by_find_area / OCR,
     拖拽统一走 DragCwChar.drag_char(中心拖 + hold0,2026-08-13 实测验证)。
     """
 
     SELL_POINT: ClassVar[Point] = Point(70, 846)      # 出售区(左下,同 deploy_bench/_handle_bench_full)
     BOX_SCREEN: ClassVar[str] = '货币战争-备战-武装箱选择'
-    BOX_OPEN_DY: ClassVar[int] = 41                   # 「开启」文字区 = 箱 icon 下方偏移(handle_supply_box 实测)
+    BOX_OPEN_DY: ClassVar[int] = 41                   # 「开启」文字区 = 箱 icon 下方偏移(cw_screen_supply 实测)
     CARD_Y: ClassVar[int] = 290                       # 武装箱卡身点击 y(点卡名下方一点避「查看详情」)
     LEVEL_MAX_CLICKS: ClassVar[int] = 12              # 升级单动作最多买经验次数(同 _handle_bench_full 量级)
     SPHERE_MAX_CLICKS: ClassVar[int] = 12             # 单动作点球硬上限(防识别抖动死循环)
     BATTLE_FALLBACK: ClassVar[Point] = Point(1817, 749)   # 出战按钮兜底(同 battle_prep)
     CONFIRM_FALLBACK: ClassVar[Point] = Point(1159, 653)  # 未达上限确认兜底(同 battle_prep)
-    CHECKBOX_FALLBACK: ClassVar[Point] = Point(912, 589)   # 本局不再提示勾选兜底(ADR-0136;同 HandleDeployNotFull)
+    CHECKBOX_FALLBACK: ClassVar[Point] = Point(912, 589)   # 本局不再提示勾选兜底(ADR-0136;同 CwScreenDeployNotFull)
     LAUNCH_DEAD_LIMIT: ClassVar[int] = 3   # 出战未落地连败停机阈值(session 级计数;两局实证环重入 ~2min/次)
     #: P4R:出战后「转移成功」的拦截弹窗白名单(锚 = 已建档 id_mark)。
     #: 出战按钮点击后备战标识消失但下列弹窗在场 = 出战被游戏拒(1-1 事故
@@ -442,7 +442,7 @@ class PrepActionExecutor:
                     return names[idx]
             except Exception:   # noqa: BLE001  策略失败回落旧逻辑
                 pass
-        from sr_od.application.currency_war.operations.handlers.handle_supply_box import (
+        from sr_od.application.currency_war.operations.cw_screen.cw_screen_supply import (
             _material_value,
         )
         if match is not None and match.session.target_comp is not None:
@@ -753,7 +753,7 @@ class PrepActionExecutor:
             if self._op.round_by_find_area(scr, '货币战争-未达上限警告', '标识-未达上限警告').is_success:
                 # M16 死循环根因修复(ADR-0136):只点确认不勾「本局不再提示」→ 人口不足时**每次**出战
                 # 都弹此窗;确认后若弹窗未消(点击落空/动画)轮询重进 → 外层判"仍在备战"=fail → 死循环 86min。
-                # 对齐 HandleDeployNotFull 完整行为:勾选(幂等,已勾无害)→ 确认 → 下轮验消失。
+                # 对齐 CwScreenDeployNotFull 完整行为:勾选(幂等,已勾无害)→ 确认 → 下轮验消失。
                 check = (area_center(self._ctx, '勾选-本局不再提示', '货币战争-未达上限警告')
                          or PrepActionExecutor.CHECKBOX_FALLBACK)
                 self._ctx.controller.mouse_move(check)

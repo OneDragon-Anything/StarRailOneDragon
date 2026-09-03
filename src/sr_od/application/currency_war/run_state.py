@@ -1,4 +1,4 @@
-"""备战/对局运行态旗标:执行失败停机钩子(exec_fail)族(自 prep_director 拆出,分包期6)。
+"""备战/对局运行态旗标:执行失败停机钩子(exec_fail)族(自 cw_screen_prep 拆出,分包期6)。
 
 停机钩子语义:write_exec_fail_flag 在观测到执行失败时落旗,下一局起点
 exec_fail_should_stop 消费分类结论决定是否停线(消费 cw_telemetry.query
@@ -59,7 +59,7 @@ def write_exec_fail_flag(flag_path: Path, *, run_id: str, plane: int,
     删除条件(临时捕获类 = 根因修完删整段钩子)。返回写入内容(测试断言用)。
     """
     content = (
-        '[HOOK-STOP] 执行失败停机钩子(临时采证,安灯式;prep_director 购买单元记账边界)\n'
+        '[HOOK-STOP] 执行失败停机钩子(临时采证,安灯式;cw_screen_prep 购买单元记账边界)\n'
         f'触发:购买单元关闭时分类器判 mismatch(计划花费>0 且金差≈0 = 动作发出但金没动;'
         f'partial/unknown 不停)。\n'
         f'定位:run_id={run_id} p{plane}r{round_num} unit_seq={unit_seq} '
@@ -70,7 +70,7 @@ def write_exec_fail_flag(flag_path: Path, *, run_id: str, plane: int,
         f'处理步骤:1. 看截图核购买单元画面;2. 对拍 replay 三流(spend_ledger 单元行/'
         f'decisions shop plan 行/obs_conflicts gold_delta 行)确认是执行未生效'
         f'(点击落空/被拦)还是口径失配;3. 修失败模式并验证后,删本 flag + 删整段钩子'
-        f'(prep_director 安灯段)+ 重启载入代码的进程。\n'
+        f'(cw_screen_prep 安灯段)+ 重启载入代码的进程。\n'
         f'删除条件:临时采证钩子——失败模式根因修完并验证后删整段,不留开关。\n'
     )
     flag_path.parent.mkdir(parents=True, exist_ok=True)

@@ -95,7 +95,7 @@ class CwEntryPlaneIntel(SrOperation):
             _log.info('[cw-takeover] %s:%s', self.STATUS_SKIP, sess.briefing_bosses)
             return self.round_success(self.STATUS_SKIP)
 
-        from sr_od.application.currency_war.operations.cw_flow.cw_screen_plane_intel import (
+        from sr_od.application.currency_war.operations.cw_screen.cw_screen_plane_intel import (
             CwScreenPlaneIntel,
         )
         _log.info('[cw-takeover] session 无位面序真值 → 委派 CwScreenPlaneIntel 实采')
@@ -157,7 +157,7 @@ class CwEntryPlaneIntel(SrOperation):
             )
             _gate = CurrencyWarConfig(self.ctx.current_instance_idx).briefing_reconcile
             # 简报读数源 = session(P3b ctx 信箱退役:简报真值唯一写点 =
-            # BriefingOp 写 session.briefing_bosses,ctx 槽不再承载)。
+            # CwScreenBriefing 写 session.briefing_bosses,ctx 槽不再承载)。
             reconcile_briefing_vs_plane_intel(
                 getattr(sess, 'briefing_bosses', None), names, enabled=_gate)
 

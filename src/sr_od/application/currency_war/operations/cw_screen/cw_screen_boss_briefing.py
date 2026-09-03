@@ -41,7 +41,7 @@ def _monotonic() -> float:
 # 「强敌来袭」读成「强敌米」(来袭→米)→ 0p 不接管 → 0q 位面过渡误分发
 # → fail 每 2s 无限循环。判别单一源 = 「强敌」二字高区分片段(前缀,
 # 「强敌米」/「强敌来袭」/「强敌」三形态全命中;纯函数可单测),0p 锚
-# 加固 / 0q 排他 / BattleWaitOp 完成白名单三处消费同源。
+# 加固 / 0q 排他 / CwScreenBattleWait 完成白名单三处消费同源。
 
 #: 「强敌」判别片段(误读鲁棒;勿改回全词「强敌来袭」——来袭二字可误读)。
 BOSS_BRIEFING_TOKEN: str = '强敌'
@@ -58,7 +58,7 @@ def read_ocr_texts(ctx, screen) -> list[str]:
         image=screen, rect=None, color_range=None, crop_first=False)]
 
 
-class BossBriefingOp(SrOperation):
+class CwScreenBossBriefing(SrOperation):
     """BOSS 简报:识别「强敌来袭」→ 点空白 → 等备战商店开(按钮-收起锚)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-BOSS简报'

@@ -37,7 +37,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class HandleInvestStrategy(SrOperation):
+class CwScreenInvestStrategy(SrOperation):
     """投资策略 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资策略'   # screen_info 画面(currency_war_invest_strategy.yml)
@@ -75,7 +75,7 @@ class HandleInvestStrategy(SrOperation):
         _pt = getattr(self, '_refresh_text_pt', None)
         if _pt is None:
             return False
-        target = Point(int(_pt.x + HandleInvestStrategy._REFRESH_BTN_DX), int(_pt.y))
+        target = Point(int(_pt.x + CwScreenInvestStrategy._REFRESH_BTN_DX), int(_pt.y))
         log.info(f'[cw-strat] 建议刷新(次数={self._refresh_count})→ 圆钮@({target.x},{target.y})(文本锚定)')
         self.ctx.controller.mouse_move(target)   # bug#1 缓解
         self.ctx.controller.click(target)
@@ -93,8 +93,8 @@ class HandleInvestStrategy(SrOperation):
             if mrl.max is None:
                 continue
             cy = mrl.max.center.y
-            if (HandleInvestStrategy.NAME_CY_LO <= cy <= HandleInvestStrategy.NAME_CY_HI
-                    and 2 <= len(text) <= 8 and text not in HandleInvestStrategy._EXCLUDE):
+            if (CwScreenInvestStrategy.NAME_CY_LO <= cy <= CwScreenInvestStrategy.NAME_CY_HI
+                    and 2 <= len(text) <= 8 and text not in CwScreenInvestStrategy._EXCLUDE):
                 opts.append((text, mrl.max.center.x, cy))
         opts.sort(key=lambda t: t[1])
         return opts
@@ -109,7 +109,7 @@ class HandleInvestStrategy(SrOperation):
         # #11,2026-09-02):「请选择投资策略」标题出现 1s 后画面(三卡)才稳定
         # (流转 = 备战 → 金币过场动画 → overlay 自动弹出)——入口帧可能在
         # 稳定期内,立即读刷新次数/卡名有读缺风险。等 1s 重截稳定帧再读
-        # (与 handle_invest_env #3 修复同型)。
+        # (与 cw_screen_invest_env #3 修复同型)。
         time.sleep(1.0)
         screen = self.screenshot()
 
@@ -158,7 +158,7 @@ class HandleInvestStrategy(SrOperation):
                     pick = decide_event(names, config, GameState())
             else:
                 # 验证失败但次数减了 = 刷新生效但新三张碰巧同名(罕见);只 log 不停
-                # (原停机钩子已删,定谳见 handle_invest_env 同位注释)。
+                # (原停机钩子已删,定谳见 cw_screen_invest_env 同位注释)。
                 import re as _re2
                 _cnt2 = None
                 for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
@@ -188,7 +188,7 @@ class HandleInvestStrategy(SrOperation):
                   for t, m in (self._ocr_map or {}).items() if m.max is not None]
         _anchors = [(i, x) for i, (_n, x, _y) in enumerate(opts)]
         _buckets = schema.bucket_card_texts(_anchors, _items,
-                                                  HandleInvestStrategy.NAME_CY_HI, 835)
+                                                  CwScreenInvestStrategy.NAME_CY_HI, 835)
         _cards = [{"idx": i, "name": n, "x": x,
                    "effect_text": " | ".join(_buckets.get(i, [])), "chosen": n == chosen}
                   for i, (n, x, _y) in enumerate(opts)]
@@ -199,14 +199,14 @@ class HandleInvestStrategy(SrOperation):
 
         # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;缺失兜底 CARD_CLICK_Y=474)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。
-        _sel = area_center(self.ctx, '区域-卡名行', HandleInvestStrategy.SCREEN_NAME)
-        _click_y = _sel.y if _sel is not None else HandleInvestStrategy.CARD_CLICK_Y
+        _sel = area_center(self.ctx, '区域-卡名行', CwScreenInvestStrategy.SCREEN_NAME)
+        _click_y = _sel.y if _sel is not None else CwScreenInvestStrategy.CARD_CLICK_Y
         target = Point(choose_x, _click_y)
         safe_click(self, target, tag='cw-strat')
         time.sleep(0.7)
         # 确认 + 验关(投资策略 消失 = overlay 关)。原「点了就 success」不验 → bug#1/卡未选中/隐藏多步 flat-loop
         # (partner reset 根因同类;write-operation「点了≠成了」;本 op docstring 已记「点名 540+ 次不选中→卡死 18min」)。
         # 确认 center 从 screen_info 读,缺失兜底。
-        _confirm = area_center(self.ctx, '按钮-确认', HandleInvestStrategy.SCREEN_NAME) or HandleInvestStrategy.CONFIRM
+        _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestStrategy.SCREEN_NAME) or CwScreenInvestStrategy.CONFIRM
         return confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资策略',
                                   tag='cw-strat')

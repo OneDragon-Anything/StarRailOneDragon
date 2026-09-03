@@ -478,7 +478,7 @@ def run_buy_waves(op: SrOperation, match,
     _buy_baseline = op.screenshot()
     # `w536_merge_expect/`(merge_mechanics §4 消费点):买牌期望态基座。期望 = 购买意图
     # 经落点规则的纯函数(compute_buy_expect;合成落点单一源 =
-    # cw_state._merge_bench),由 PrepDirector 主环在 RunBuyPhase 后的
+    # cw_state._merge_bench),由 CwScreenPrep 主环在 RunBuyPhase 后的
     # heavy 定型帧上对账(零决策记账)。本单元含卖出/未识别牌 → 期望
     # 不建(宁缺勿造:卖出使追踪基线与纯意图模型错位;缺身份必成片
     # 假不一致),这些动作仍走既有对账通道。
@@ -778,7 +778,7 @@ def run_buy_waves(op: SrOperation, match,
                     _refresh_skipped = 'max_cap'
                     continue   # 硬墙:不再刷新(本轮当未刷新 → 收工)
                 _refresh_attempted = True
-                # 刷新期望对账 producer(契约单一源=prep_director.
+                # 刷新期望对账 producer(契约单一源=cw_screen_prep.
                 # build_refresh_expect docstring;唯一合法评估窗=本波内
                 # ——director 只持关店帧,无「刷新后开店帧」;先例=下方
                 # pending_buy_expect 同型惰性 import)。
@@ -793,7 +793,7 @@ def run_buy_waves(op: SrOperation, match,
 
 
 
-                    from sr_od.application.currency_war.prep_director import (
+                    from sr_od.application.currency_war.operations.cw_screen.cw_screen_prep import (
                         build_refresh_expect,
                         refresh_reconcile_mismatches,
                     )

@@ -4,7 +4,7 @@
 PrepObservation/GameState(decision 核内部输入视图)、PrepAction → AtomOp
 (动作 → 原子记账键)。装配半部(DecideAdapter/影子比对/observe 端口
 snapshot_from_obs/影子开关)落 app 桶 ``decision_assembly.py``:那些代码
-import prep_actions/prep_director 执行面词汇,留 decision 会构成
+import prep_actions/cw_screen_prep 执行面词汇,留 decision 会构成
 decision→app 反向边(分包依赖矩阵:decision 只可依 kernel/data)。
 
 映射语义单一源 = ``.debug/temp/currency_war/w606_stage2_batch3/

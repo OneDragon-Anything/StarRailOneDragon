@@ -1,7 +1,7 @@
 import time
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from one_dragon.base.operation.application.plugin_info import PluginSource
 from one_dragon.base.operation.one_dragon_context import OneDragonContext
@@ -69,12 +69,12 @@ if TYPE_CHECKING:
 class TeamInfo:
 
     def __init__(self,
-                 character_list: Optional[List[Character]] = None,
+                 character_list: list[Character] | None = None,
                  current_active: int = 0):
         """
         当前组队信息
         """
-        self.character_list: List[Character] = character_list
+        self.character_list: list[Character] = character_list
         self.current_active: int = current_active  # 当前使用的是第几个角色
 
     @property
@@ -123,10 +123,10 @@ class TeamInfo:
             return False
         return self.character_list[self.current_active].technique_type  == TECHNIQUE_BUFF_ATTACK_DISAPPEAR
 
-    def update_character_list(self, new_character_list: List[Character]):
+    def update_character_list(self, new_character_list: list[Character]):
         self.character_list = new_character_list
 
-    def same_as_current(self, new_character_list: List[Character]):
+    def same_as_current(self, new_character_list: list[Character]):
         """
         是否跟当前配队一致
         :param new_character_list:
@@ -134,19 +134,13 @@ class TeamInfo:
         """
         if self.character_list is None and new_character_list is None:
             return True
-        elif self.character_list is None:
-            return False
-        elif new_character_list is None:
-            return False
-        elif self.character_list is not None and len(self.character_list) != len(new_character_list):
+        elif self.character_list is None or new_character_list is None or self.character_list is not None and len(self.character_list) != len(new_character_list):
             return False
         else:
             for i in range(len(self.character_list)):
                 if self.character_list[i] is None and new_character_list[i] is None:
                     return True
-                elif self.character_list[i] is None or new_character_list[i] is None:
-                    return False
-                elif self.character_list[i].id != new_character_list[i].id:
+                elif self.character_list[i] is None or new_character_list[i] is None or self.character_list[i].id != new_character_list[i].id:
                     return False
             return True
 
@@ -195,7 +189,7 @@ class SrContext(OneDragonContext):
     def __init__(self):
         OneDragonContext.__init__(self)
 
-        self.controller: Optional[SrPcController] = None
+        self.controller: SrPcController | None = None
         self.is_pc: bool = True
         self.record_coordinate: bool = True  # 记录坐标
 
@@ -209,10 +203,10 @@ class SrContext(OneDragonContext):
         self.sim_uni_info = SimUniInfo()
         self.detect_info: DetectInfo = DetectInfo()
 
-        # 货币战争对局运行时态(策略插件,D-34):CurrencyWarRunLoop.__init__ 每局创建 CurrencyWarMatch
+        # 货币战争对局运行时态(策略插件,D-34):CwLoop.__init__ 每局创建 CurrencyWarMatch
         # 挂此,局终置 None 防跨局污染。None = 不在对局中。reload_instance_config 也重置(同 pos_info 模式)。
         self.cw_match: 'CurrencyWarMatch | None' = None  # noqa: UP037  字符串注解免运行时 import cw_strategy
-        # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏 read_selected_difficulty 读 → loop __init__
+        # 本局职级(A1..A8;CwEntryStart 难度确认屏 read_selected_difficulty 读 → loop __init__
         # copy 到 session.selected_difficulty → 策略层填 state → effective_hp_threshold D-32;3.5.1)
         self.cw_selected_difficulty: str | None = None
 
@@ -360,7 +354,7 @@ class SrContext(OneDragonContext):
         self.init_controller()
 
     @property
-    def sim_uni_challenge_config(self) -> Optional[SimUniChallengeConfig]:
+    def sim_uni_challenge_config(self) -> SimUniChallengeConfig | None:
         if self.sim_uni_info.world_num == 0 or self.sim_uni_config is None:
             return None
         else:
