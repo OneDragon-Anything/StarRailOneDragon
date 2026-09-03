@@ -29,4 +29,6 @@
 | [dd-022](dd-022-decisions-expected-paths.md) | DD-022:decisions.jsonl 期望态标记——expected_paths 字段(决策时点挂起期望摘要,recorder 汇点 session 自取全决策面一次覆盖;读端三态:旧行无键/[]=无挂起/非空=有挂起;match_archive 聚合二期挂账) | accepted | 2026-09-03 |
 | [dd-023](dd-023-plane-intel-start-plane-timing.md) | DD-023:位面情报采集时序修正——接管链备战帧先定起始位面(start_plane 裁剪,已通过位面跳过)+ 详情侧读不出直接位面级结论(删切卡动画重试等待)+ 用户定值等待(开屏 3s/切卡 2s) | accepted | 2026-09-03 |
 | [dd-024](dd-024-gate-module-retirement.md) | DD-024:gate 模块退役——消费清零后删除 cw_observation_gate(活常量迁驻 cw_observation/cw_screen_prep,死基线写删;等待语义=判据化等待+外循环重判) | accepted | 2026-09-03 |
-| [dd-025](dd-025-frame-horizon-vgap.md) | DD-025:R1 刷新门 V̄ 比较项换帧级 horizon 现算(修 A)——rounds_left_est=5 常数退役出 cw4 消费链,旧静态注入 24.7=r=5 特例;cw_registry 共享字段零触碰(decision_v2 冻结基线) | accepted | 2026-09-12 |
+| [dd-025](dd-025-frame-horizon-vgap.md) | DD-025:R1 刷新门 V̄ 比较项换帧级 horizon 现算(修 A)——rounds_left_est=5 常数退役出 cw4 消费链,旧静态注入 24.7=r=5 特例;cw_registry 共享字段零触碰(decision_v2 冻结基线) | accepted | 2026-09-04 |
+| [dd-026](dd-026-r2-interest-floor.md) | DD-026:R2 预算门息线 floor 落码(修 R2)——刷新门预留组装补位 P40 规范口径(g*+ρ),b_target 零参退化退役出刷新消费位;跨档破线刷无 L 旁路(生存面硬下界) | accepted | 2026-09-04 |
+| [dd-027](dd-027-m7-equip-emission-gate.md) | DD-027:M7 装备转移发射门——持有面谓词换变换面谓词(m7_wearable_exists,owned 全量含工具件致非空即发永真)+ 备战期装备闩 cw4_m7_equipped_phase(实机 1-6 RunEquip 备战环活锁 204 帧定谳;空批出口 StartBattle 封死根因) | accepted | 2026-09-04 |

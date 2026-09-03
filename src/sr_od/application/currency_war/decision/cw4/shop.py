@@ -201,6 +201,35 @@ def _r1_member_accounts(k_members: tuple[str, ...],
     return accounts
 
 
+def _r2_card_reserve(k_members: tuple[str, ...],
+                     bench: list, deployed: list,
+                     state: GameState) -> int:
+    """R2 预算门 Σ预留卡价 ρ = 合格集最低费卡价(修 R2 批)。
+
+    证明单一源 = p54-r2-interest-floor §②(零新自由参数:ρ 锚
+    CHARACTERS 注册表 cost,非字面量)。可追过滤与 ``_r1_member_
+    accounts`` 同一(该级出此费 refresh_prob>0 ∧ 无 2★)——语义
+    单一源不复制。单卡下界口径(P54 A2:P40 待标定清单「最低费卡价
+    × 期望命中数」在单刷波粒度下的整数下界;多命中超出部分 = 下一波
+    R2 重估补足的显式让渡,非破线刷新)。合格集空 ⇒ 0:该帧 R1 必先
+    以 no_chaseable_member 关闭,R2 不可达,兜底值不进任何可达比较。
+    """
+    level = int(state.level or 1)
+    costs: list[int] = []
+    for m in k_members:
+        ch = CHARACTERS.get(m)
+        if ch is None or not ch.cost:
+            continue
+        if refresh_prob(level, ch.cost) <= 0.0:
+            continue
+        copies = [c for c in list(bench) + list(deployed)
+                  if (getattr(c, 'char_id', '') or '') == m]
+        if any((getattr(c, 'star', 1) or 1) >= 2 for c in copies):
+            continue
+        costs.append(int(ch.cost))
+    return min(costs) if costs else 0
+
+
 def truncate_shop_frame_stable(actions: list[Action],
                                state: GameState,
                                session: StrategySession | None = None,
@@ -435,6 +464,17 @@ def decide_shop_wave(state: GameState, session: StrategySession,
     cap_resolved = mandate._cap_of(session)
     g_star = saturation_line(cap_resolved)
     s_reserve = b_target(0, 0, 0)   # S 预留下界(P48 整买目标;b_target 单一源)
+    # R2 预算门预留(P40 R2 规范口径落码,修 R2 批;证明单一源 =
+    # p54-r2-interest-floor + dd-026-r2-interest-floor):
+    # reserve = 息线 g* + Σ预留卡价 ρ —— 与 P40 溢余段刷窗式
+    # ⌊(g−g*−ρ)/c_eff⌋ ≥ 1 逐位等价(P54 §①,判据本体零改动)。
+    # 旧值 b_target(0,0,0)=0(P48 零参退化)使门退化为 gold≥2:
+    # 金刷穿 0-4、买入链饿死(修 A 后 b1 对拍病灶,P53 §④ 申报 1)。
+    # g* = saturation_line(cap_resolved)(守息线同源派生);
+    # ρ = 合格集最低费卡价(单卡下界,P54 A2)。辖域:只入刷新门——
+    # EV 买面/M6 的 S 预留消费位语义不同(P48 S 线),本批不动(挂账)。
+    r2_reserve = g_star + _r2_card_reserve(k_members, bench, deployed,
+                                           state)
     gold = int(state.gold or 0)
     bench_free = BENCH_CAPACITY - len(bench)
     out: list[mandate.Emitted] = []
@@ -717,10 +757,10 @@ def decide_shop_wave(state: GameState, session: StrategySession,
             _count(f'shop_r1_{rkey}')      # ev_unavailable / account_over_vgap / no_chaseable_member
         elif contracts.ensure_contract(
                 ('refresh', 'r2_budget'),
-                contracts.ContractCtx(gold=gold, reserve=s_reserve),
+                contracts.ContractCtx(gold=gold, reserve=r2_reserve),
                 counters):
             ok_r2 = crit_refresh.r2_budget(
-                gold, s_reserve,
+                gold, r2_reserve,
                 int(state.shop_refresh_cost or REFRESH_COST_BASE))
             if ok_r2:
                 out.append(mandate.Emitted(

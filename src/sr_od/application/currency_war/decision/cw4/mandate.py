@@ -223,7 +223,8 @@ def run_mandate(frame: MandateFrame,
     满放弃买入帧的「bench 满拒买」事件计数,与 m2_retry_exhausted 的
     环终止计数分键——前者量事件帧,后者量重试环耗竭)/
     shop_latch_skip_dominance_buy / shop_latch_skip_m2_buy /
-    shop_latch_skip_m6_stock(备战期开店闩跳过计数,分站记)。
+    shop_latch_skip_m6_stock(备战期开店闩跳过计数,分站记)/
+    equip_latch_skip_m7(装备期闩跳过计数,dd-027 门②)。
 
     备战期开店闩(``session.cw4_shopped_phase``):同一备战期内开店意图
     只发一次。为什么是决策的推论而非限制:①商店域决策发生在店内一次
@@ -393,11 +394,51 @@ def run_mandate(frame: MandateFrame,
                 _emit_open_shop('m6_stock')
 
     # M7 装备转移(常态:关键装备穿上场单位;D-B 释放门 =
-    # criteria/equipment.wear_release 消费;基础载体 = RunEquip)
-    if getattr(session, 'last_owned_equips', None):
-        out.append(Emitted(RunEquip(), True, 'm7_equip_transfer'))
+    # criteria/equipment.wear_release 消费;基础载体 = RunEquip)。
+    # 发射门 = 变换可能性两件套(dd-027,2026-09-03 实机 RunEquip 备战环
+    # 活锁定谳修法):
+    # ①可穿存在性(m7_wearable_exists):owned 快照里有注册表已登记且非
+    #   工具类的件。旧「last_owned_equips 非空即发」是持有面谓词,而快照
+    #   按 ADR-0387 全量含工具件(扳手/冶金炉等不可穿)——工具-only 库存
+    #   谓词永真 ⇒ 每帧重发 RunEquip 且 0 穿 ⇒ 空批出口(StartBattle)
+    #   永不可达,备战环活锁(实机 1-6 卡死,签名「序列完成(RunEquip)」)。
+    # ②备战期闩(cw4_m7_equipped_phase):同 (plane, round) 备战期只发一次
+    #   ——执行侧一次完整穿戴 pass 信息完备(内含补救链/拉黑/分配归因,
+    #   cw_op_equip_all),期内重开输入不变结果不变(与开店闩同构论证);
+    #   位面/轮次推进=新键自动失效(新发放件重评)。发射时才置闩。
+    if getattr(session, 'last_owned_equips', None) \
+            and m7_wearable_exists(session.last_owned_equips):
+        if getattr(session, 'cw4_m7_equipped_phase', None) == phase:
+            _count('equip_latch_skip_m7')
+        else:
+            session.cw4_m7_equipped_phase = phase
+            out.append(Emitted(RunEquip(), True, 'm7_equip_transfer'))
 
     return out
+
+
+EQUIP_TOOL_CATEGORY: str = '工具'
+"""注册表装备分类学里的「工具」类名(不可 drag 穿戴,只能拖到装备/角色上
+消耗使用)。分类全集单一源 = ``cw_equipment_data.Equipment.category`` 字段
+注释;穿戴类过滤的执行侧平行消费 = ``cw_op_equip_all._TOOL_CATEGORIES``
+(同值,文件面不含该文件,单一源化归后续批)。"""
+
+
+def m7_wearable_exists(owned: list[str]) -> bool:
+    """M7 发射门①:owned 存在穿戴类件(注册表已登记 ∧ 非工具类)。
+
+    为什么不是「owned 非空」:快照写端按 ADR-0387 全量含工具件,持有面
+    非空 ≠ 存在可穿件;谓词必须是变换面(穿上会改变装备分布)存在性。
+    未登记名(识别对齐缺失)按不可穿保守侧处理——与执行侧 wearable 过滤
+    同口径(EQUIPMENTS.get 命中才进穿戴决策)。
+    """
+    from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIPMENTS,
+    )
+    return any(
+        (eq := EQUIPMENTS.get(n)) is not None
+        and eq.category != EQUIP_TOOL_CATEGORY
+        for n in owned)
 
 
 def _cap_of(session: StrategySession) -> int:
