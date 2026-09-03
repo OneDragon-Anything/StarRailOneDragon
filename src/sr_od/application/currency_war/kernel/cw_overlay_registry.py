@@ -1,7 +1,7 @@
 """货币战争交互 overlay 生命周期注册表(单一枚举点)。
 
 每个 overlay 一条 :class:`OverlaySpec` 声明(识别锚/语义类/退场动作/派发序),
-五个消费面(P0 清场 / director bail / battle_loop 派发 / 退出恢复链 /
+五个消费面(P0 清场 / director bail / cw_loop 派发 / 退出恢复链 /
 UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要手工同步多处」的
 结构性缺口(ADR-0269 病灶;设计单一源 = 设计收口终版五条定案)。
 
@@ -9,7 +9,7 @@ UPPER_SCREENS 帧态门派生段)按字段派生消费,消灭「新增画面要�
 B 面(director bail 扫描,prep_director 事件 overlay 检测)已切换为消费
 ``derive_decision()``;A 面(P0 清场)已切换为消费 ``derive_clearable()``
 (桥接点 = ``cw_observation_gate.ENTRY_OVERLAY_CLOSE``,派生映射,消费循环
-未变);其余消费面(battle_loop 分支 / 退出链)尚未切换。全部切换完成前,
+未变);其余消费面(cw_loop 分支 / 退出链)尚未切换。全部切换完成前,
 本表对未切换面是「声明 + 锁」,不是运行时唯一判定源。
 
 C1 红线(机器化于测试仓 ``test_cw_overlay_registry.py``):
@@ -230,14 +230,14 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         anchor_area='标识-刷新概率表',
         semantic=SEMANTIC_DISPLAY,
         # 不进清场派生集(非 closable,零行为前提);
-        # close_point 载荷供 battle_loop 0e2 / 恢复链复用
+        # close_point 载荷供 cw_loop 0e2 / 恢复链复用
         close_action=CLOSE_ACTION_POINT,
         # × 位置 VLM 定位(实测坐标);无关闭按钮 area
         close_point=(1501, 263),
         dispatch_priority=10,
         recovery_exit=RECOVERY_CLOSE,
     ),
-    # 星徽详情浮窗:纯展示(点星徽弹详情),无 battle_loop 消费分支
+    # 星徽详情浮窗:纯展示(点星徽弹详情),无 cw_loop 消费分支
     OverlaySpec(
         screen_name='货币战争-星徽详情',
         anchor_area='标识-流派星徽',
@@ -249,7 +249,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 星徽秘典弹窗:decision 化(设计定案 5)——有选卡价值(0i 阵营匹配选卡),
     # 「关闭即丢决策内容」;closable=False ⇒ 不在清场派生集(环入口不再
     # 一键关,改由 0i 选卡消化)。
-    # handler_id 挂账:battle_loop 0i ``_handle_star_tome_pick`` 收拢为
+    # handler_id 挂账:cw_loop 0i ``_handle_star_tome_pick`` 收拢为
     # HandleStarTome 类前不可 import(见 PENDING_HANDLER_IDS)。
     OverlaySpec(
         screen_name='货币战争-星徽秘典弹窗',
@@ -286,7 +286,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         recovery_exit=RECOVERY_HANDLE,
         bail_tag='supply',
     ),
-    # 难度确认:开局难度确认弹窗,长尾——无 battle_loop 消费分支、无专属
+    # 难度确认:开局难度确认弹窗,长尾——无 cw_loop 消费分支、无专属
     # handler(设计定案未单独裁决);声明为 system + 推进按钮载荷挂账,
     # 待出现消费需求时再定语义/接 handler
     OverlaySpec(
@@ -298,7 +298,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         recovery_exit=RECOVERY_HANDLE,
     ),
     # ── 未激活条目(active=False,待实机建档)──
-    # 道具详情弹窗(聘用书类 modal):现 battle_loop 0e3 裸 OCR 分支;建档后
+    # 道具详情弹窗(聘用书类 modal):现 cw_loop 0e3 裸 OCR 分支;建档后
     # screen_name/anchor_area 取建档终值(id_mark 用独有标题行),判定坍缩
     # 为单 area 锚。派发序必须在祈愿试炼(11)之后(祈愿选项名含「聘用书」)。
     OverlaySpec(
@@ -306,13 +306,13 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         anchor_area='',
         semantic=SEMANTIC_DISPLAY,
         close_action=CLOSE_ACTION_POINT,
-        # × 位置 VLM 定位(battle_loop 0e3 现值)
+        # × 位置 VLM 定位(cw_loop 0e3 现值)
         close_point=(1862, 65),
         dispatch_priority=19,
         recovery_exit=RECOVERY_CLOSE,
         active=False,
     ),
-    # 消耗品详情浮层:现 battle_loop 0f(esc)裸 OCR 双条件分支;「拖动到」
+    # 消耗品详情浮层:现 cw_loop 0f(esc)裸 OCR 双条件分支;「拖动到」
     # 只出现在消耗品详情 modal(天然独有 id_mark 候选),建档后单锚收编
     OverlaySpec(
         screen_name='货币战争-消耗品详情浮层',
@@ -325,7 +325,7 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     ),
 )
 
-#: handler 收拢挂账:battle_loop inline 逻辑收拢为
+#: handler 收拢挂账:cw_loop inline 逻辑收拢为
 #: handler 类前,这些 handler_id 尚不可 import;一致性测试对此集合豁免
 #: handler 存在性断言(集合必须 ⊆ registry 引用集,防挂账集腐化)。
 PENDING_HANDLER_IDS: frozenset[str] = frozenset({'HandleStarTome'})

@@ -199,7 +199,7 @@ def find_running_ctx():
 
     为什么用 gc 扫描:安灯判定在 cw_telemetry 模块级旁路里发生,调用栈
     (obs_conflict / shop 记账)各层签名都不带 ctx,而 ctx 登记点全在
-    本模块辖域文件之外的 battle_loop/prep_director);服务进程内 SrContext 恒
+    本模块辖域文件之外的 cw_loop/prep_director);服务进程内 SrContext 恒
     单实例(server.py / GUI 各只建一个),扫描定位无歧义。成本:仅 L0
     停线时刻每局至多一次,百毫秒级,不进常规路径。根治(框架级 ctx
     注册表)另行挂账。

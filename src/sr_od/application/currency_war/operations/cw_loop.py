@@ -73,7 +73,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class CurrencyWarRunLoop(SrOperation):
+class CwLoop(SrOperation):
     """货币战争 对局内主循环:反复「备战单轮 + 轮间过渡」直到对局结束 / 超时。
 
     状态机(每轮截图后按优先级匹配):
@@ -84,7 +84,7 @@ class CurrencyWarRunLoop(SrOperation):
     5. 「下一步」等前进按钮 → 点。
 
     naive 策略(买全部 + 填位 deploy);对局从已进入的备战开始跑(开对局由
-    ``StartCurrencyWarMatch`` 负责,本 op 只跑对局内循环)。MAX_ITER 防失控。
+    ``CwEntryStart`` 负责,本 op 只跑对局内循环)。MAX_ITER 防失控。
     """
 
     MAX_ITER: ClassVar[int] = 2000  # 整局 3 位面多轮(备战+战斗+多类事件);战斗 round_wait 占大量迭代。
@@ -155,7 +155,7 @@ class CurrencyWarRunLoop(SrOperation):
         # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
         # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 写端已接 2026-08-16)。
-        # difficulty:ctx.cw_selected_difficulty(StartCurrencyWarMatch 难度确认屏读存;此时**尚未**被
+        # difficulty:ctx.cw_selected_difficulty(CwEntryStart 难度确认屏读存;此时**尚未**被
         # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
         state.start_run(difficulty=_diff_for_telemetry)
@@ -209,7 +209,7 @@ class CurrencyWarRunLoop(SrOperation):
             run_start_ts=time.monotonic(), is_new_match=self._is_new_match)
         self._battle_wait = BattleWaitOp(self.ctx, self._settle, self._cw_config)
         if self._is_new_match:
-            # match 建立(兜底分支):正常路径已由 StartCurrencyWarMatch 在
+            # match 建立(兜底分支):正常路径已由 CwEntryStart 在
             # 进对局时经 establish_new_match 前移建立(W971 §2.1,BriefingOp
             # 直写 session 的时序前提);此处覆盖「绕过入口链直跑 loop」
             # 的场景(如 run_operation 单跑),同一 helper 无逻辑分叉。
@@ -238,7 +238,7 @@ class CurrencyWarRunLoop(SrOperation):
         迁移自原 handle_init 新局分支(行为不变);简报三字段吸收段已随
         ctx 信箱退役删除(W971 §2.1 P3 批口径,见调用处注释)。
         """
-        # 本局职级(StartCurrencyWarMatch 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
+        # 本局职级(CwEntryStart 难度确认屏读存 ctx.cw_selected_difficulty)→ session.selected_difficulty
         # → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)
         if self.ctx.cw_selected_difficulty:
             session.selected_difficulty = self.ctx.cw_selected_difficulty
@@ -276,14 +276,14 @@ class CurrencyWarRunLoop(SrOperation):
         """首帧是否仍在开局序列段(纯判定,便于离线锁测;集单一源 = 类常量)。"""
         return any(
             self.round_by_find_area(screen, _scr, _area, crop_first=False).is_success
-            for _scr, _area in CurrencyWarRunLoop.OPENING_SEQUENCE_FRAMES)
+            for _scr, _area in CwLoop.OPENING_SEQUENCE_FRAMES)
 
     @staticmethod
     def _watch_in_battle_grace(battle_ts: float | None, now: float) -> bool:
         """战斗窗口宽限判定(纯函数,ADR-0250):``battle_ts`` 非空且未超
         ``BATTLE_WATCH_GRACE_S`` → True(watch 不计数)。None/超时 → False。"""
         return (battle_ts is not None
-                and now - battle_ts < CurrencyWarRunLoop.BATTLE_WATCH_GRACE_S)
+                and now - battle_ts < CwLoop.BATTLE_WATCH_GRACE_S)
 
     def _stall_watch_tick(self, screen) -> None:
         """r119 停滞 watchdog:同屏指纹连续相同 → 哨兵(不停机,日志+flag 双通道)。
@@ -294,7 +294,7 @@ class CurrencyWarRunLoop(SrOperation):
         后删)。设计:采集哨兵非停机(bot 可能只是慢,停机代价>等待代价;
         od-dev-stop-hooks 采集/停机分流判据)。
         """
-        if self._iter % CurrencyWarRunLoop.STALL_SNAPSHOT_EVERY != 0:
+        if self._iter % CwLoop.STALL_SNAPSHOT_EVERY != 0:
             return
         # ADR-0250(战斗窗口宽限,局54 哨兵误报复盘):出战后的战斗进行期是
         # 合法静止(实测 4-5.5min > watch 阈值 ≈2.5min),且战斗 HUD 关键词
@@ -327,24 +327,24 @@ class CurrencyWarRunLoop(SrOperation):
             self._stall_count = 0
             self._stall_last_fp = fp
             self._stall_flag_written = False   # 画面动了 → 哨兵可再次触发(新一轮停滞)
-        if self._stall_count >= CurrencyWarRunLoop.STALL_N and not self._stall_flag_written:
+        if self._stall_count >= CwLoop.STALL_N and not self._stall_flag_written:
             _shot = self.save_screenshot(prefix='cw_stall')
             _sentinel = (get_project_root() / '.debug' / 'temp'
                          / 'currency_war' / 'stall_watch.flag')
             _sentinel.parent.mkdir(parents=True, exist_ok=True)
             _sentinel.write_text(
                 f'停滞 watchdog:iter={self._iter} 同屏指纹连续 {self._stall_count} 次'
-                f'(≈{self._stall_count * CurrencyWarRunLoop.STALL_SNAPSHOT_EVERY} iter)\n'
+                f'(≈{self._stall_count * CwLoop.STALL_SNAPSHOT_EVERY} iter)\n'
                 f'OCR 关键词: {sorted(texts)[:12]}\n'
                 f'处理流程:\n'
                 f'1. 看关键词/截图:疑似事件 overlay(未建档 handler)→ 按\n'
-                f'   od-dev-screen-onboarding 建档 + battle_loop 0x 分支加 handler;\n'
+                f'   od-dev-screen-onboarding 建档 + cw_loop 0x 分支加 handler;\n'
                 f'2. 处理完删本 flag。bot 未停机(可能只是慢),处理完可继续跑。\n'
                 f'shot={_shot}', encoding='utf-8')
             log.warning('[cw!][watch] 停滞哨兵:同屏 %s 次(≈%s iter)关键词=%s '
                         'shot=%s —— 疑似未处理 overlay/操作循环,详见 stall_watch.flag',
                         self._stall_count,
-                        self._stall_count * CurrencyWarRunLoop.STALL_SNAPSHOT_EVERY,
+                        self._stall_count * CwLoop.STALL_SNAPSHOT_EVERY,
                         sorted(texts)[:8], _shot)
             self._stall_flag_written = True   # 只写一次,画面变化后可重置重写
 
@@ -457,7 +457,7 @@ class CurrencyWarRunLoop(SrOperation):
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:
         self._iter += 1
-        if self._iter > CurrencyWarRunLoop.MAX_ITER:
+        if self._iter > CwLoop.MAX_ITER:
             return self.round_fail(status='对局循环超时')
         # 迁移审计 w75(git 历史)(ADR-0335):stop 路径 runs summary 收口已从 loop 顶迁到
         # ``after_operation_done`` —— r363 在 loop() 顶检查 is_context_stop,
@@ -757,14 +757,14 @@ class CurrencyWarRunLoop(SrOperation):
             _ok_pt = self.round_by_find_and_click_area(
                 screen, '货币战争-提示-前台无角色', '按钮-确认', success_wait=1)
             self._frontless_redeploy = getattr(self, '_frontless_redeploy', 0) + 1
-            if self._frontless_redeploy > CurrencyWarRunLoop.FRONTLESS_REDEPLOY_LIMIT:
+            if self._frontless_redeploy > CwLoop.FRONTLESS_REDEPLOY_LIMIT:
                 log.error('[cw!] [loop] 前台无角色:验证重部署 %d 次仍前台空 → '
                           'round_fail 交兜底链(不再无限重试)',
-                          CurrencyWarRunLoop.FRONTLESS_REDEPLOY_LIMIT)
+                          CwLoop.FRONTLESS_REDEPLOY_LIMIT)
                 return self.round_fail('前台无角色重部署超限(前台仍空)')
             log.info('[cw-loop] 前台无角色提示 → 确认关闭(%d/%d)→ 带验证重部署',
                      self._frontless_redeploy,
-                     CurrencyWarRunLoop.FRONTLESS_REDEPLOY_LIMIT)
+                     CwLoop.FRONTLESS_REDEPLOY_LIMIT)
             from sr_od.application.currency_war.operations.prep.deploy_bench import (
                 DeployBenchOp,
             )
@@ -852,7 +852,7 @@ class CurrencyWarRunLoop(SrOperation):
                 self._plane_mis_streak = 0
             else:
                 self._plane_mis_streak = getattr(self, '_plane_mis_streak', 0) + 1
-                if self._plane_mis_streak >= CurrencyWarRunLoop.PLANE_MISDISPATCH_LIMIT:
+                if self._plane_mis_streak >= CwLoop.PLANE_MISDISPATCH_LIMIT:
                     try:
                         _shot = self.save_screenshot(prefix='plane_misdispatch')
                     except Exception:  # noqa: BLE001  留证失败不阻塞
@@ -1026,7 +1026,7 @@ class CurrencyWarRunLoop(SrOperation):
                 self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
                 log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 RunSupplyNode)')
                 return self.round_wait(wait=2)
-            # r332(批次3/终审①③:battle_loop 消费返回值——
+            # r332(批次3/终审①③:cw_loop 消费返回值——
             # 旧版忽略 execute() 结果 → director 失败后下轮
             # 无条件重派新实例(实例计数清零)= 无限 ping-pong
             # (Y-1c/D-2.3 七轮 review 实证)。修:连续 N 次失败
@@ -1314,7 +1314,7 @@ class CurrencyWarRunLoop(SrOperation):
         else:
             self._unknown_streak = 1
         self._unknown_last_iter = self._iter
-        if self._unknown_streak >= CurrencyWarRunLoop.UNKNOWN_STOP_THRESHOLD:
+        if self._unknown_streak >= CwLoop.UNKNOWN_STOP_THRESHOLD:
             try:
                 _shot = self.save_screenshot(prefix='cw_unknown')
                 _sentinel = (get_project_root() / '.debug' / 'temp'
@@ -1322,12 +1322,12 @@ class CurrencyWarRunLoop(SrOperation):
                 _sentinel.parent.mkdir(parents=True, exist_ok=True)
                 _sentinel.write_text(
                     f'[HOOK-STOP] 持久未识别画面停机钩子([常驻兜底] loop 尾安全网):'
-                    f'battle_loop._handle_unknown_fallback iter={self._iter} '
+                    f'cw_loop._handle_unknown_fallback iter={self._iter} '
                     f'streak={self._unknown_streak}\n'
                     f'处理流程(r100k 补,别跳过):\n'
                     f'1. 用截图离线分析:analyze_screen(screenshot=<shot 路径>) 看已建档命中;\n'
                     f'2. 未命中 → 按元素语义判断:新画面/弹窗 → od-dev-screen-onboarding 建档\n'
-                    f'   + battle_loop 0x 分支加 handler;战斗特效帧(OCR 乱码)→ **先确认\n'
+                    f'   + cw_loop 0x 分支加 handler;战斗特效帧(OCR 乱码)→ **先确认\n'
                     f'   非新画面(analyze_screen 为准)才可**加大 UNKNOWN_STOP_THRESHOLD\n'
                     f'   或加等待,不是新画面;\n'
                     f'3. 建档完删本 flag + 重启 MCP server;若判断为瞬时帧误触发 → 删 flag\n'
@@ -1351,7 +1351,7 @@ class CurrencyWarRunLoop(SrOperation):
         2s 起步每连续一次翻倍、封顶 ``UNKNOWN_RETRY_BACKOFF_CAP_S``;纯函数便于锁测。
         """
         return min(2.0 * (2 ** (max(streak, 1) - 1)),
-                   CurrencyWarRunLoop.UNKNOWN_RETRY_BACKOFF_CAP_S)
+                   CwLoop.UNKNOWN_RETRY_BACKOFF_CAP_S)
 
 
 # ===== B4(ADR-0170):跨局分配器进程级单例 + 终局 update =====

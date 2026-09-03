@@ -129,7 +129,7 @@ class ActiveEffect:
     source: str                # 'strategy' | 'portal' | 'affix'(P0 只产 'strategy',
                                # 后两值是环境源/词缀源辖域的 schema 预留)
     acquired_t: int | None     # 登记时点;节点序 = (plane-1)*9+round,**基 1**;
-                               # 登记期快照(与 battle_loop _now_t 同式)
+                               # 登记期快照(与 cw_loop _now_t 同式)
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
                                  # 挂点(tick_node)现读递减
     remaining_uses: int | None   # 次数类余量(免战牌×2 等);挂点现读递减

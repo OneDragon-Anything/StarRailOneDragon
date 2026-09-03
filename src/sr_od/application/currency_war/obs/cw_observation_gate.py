@@ -12,7 +12,7 @@
 - None 返回语义 per-callsite(director=同因 bail 计数/
   shop=round_retry/钩子=skip+log);
 - 消化门失败走既有 _bail 3-strike(session 计数),不引入
-  round_fail 路径(battle_loop 忽略返回值→ping-pong)。
+  round_fail 路径(cw_loop 忽略返回值→ping-pong)。
 
 flag(终审③文档漂移修→r347 已删):gate 曾以
 gate_director / gate_shop_close / gate_shop_open / gate_hook

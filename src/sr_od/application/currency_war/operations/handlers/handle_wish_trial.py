@@ -1,4 +1,4 @@
-# 已接入 battle_loop:255(2026-08-08 实测:bot 卡此 overlay 68min 后接入检测 + HandleWishTrial 点卡+确认+验关;出战不再被 overlay 卡,D-87~89 闭环)。
+# 已接入 cw_loop:255(2026-08-08 实测:bot 卡此 overlay 68min 后接入检测 + HandleWishTrial 点卡+确认+验关;出战不再被 overlay 卡,D-87~89 闭环)。
 # r104(2026-08-20):选卡接入策略模块 decide_wish_trial(用户定调「所有 overlay 选择都接策略」)——
 # OCR 各卡 objective 文字 → 策略打分(金币/阵营相关/操作向)→ 点选中卡。OCR 失败 fallback 第 1 张。
 

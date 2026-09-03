@@ -36,7 +36,7 @@ class HandleDeployNotFull(SrOperation):
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
         # 用 screen_info id_mark area(标识-未达上限警告)位置区分,非全屏 LCS:防「能量上限」(投资策略描述)
-        # 与「未达上限」共享「上限」(2/4=0.5)误匹配(见 battle_loop 0d)。area 位置不同 → 不命中。
+        # 与「未达上限」共享「上限」(2/4=0.5)误匹配(见 cw_loop 0d)。area 位置不同 → 不命中。
         if not self.round_by_find_area(screen, HandleDeployNotFull.SCREEN_NAME, '标识-未达上限警告').is_success:
             return self.round_fail('非未达上限弹窗')
         _check = area_center(self.ctx, '勾选-本局不再提示', HandleDeployNotFull.SCREEN_NAME) or HandleDeployNotFull.CHECKBOX_NO_PROMPT

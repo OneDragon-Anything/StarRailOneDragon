@@ -82,12 +82,12 @@ class CurrencyWarConfig(YamlConfig):
         self.strategy_id: str = strategy_id
         self.strategy_seed: int | None = self.get('strategy_seed', None)
         # 可控轮数(单/多轮验证 + 采样本):跑完 N 轮停备战屏。None=跑到对局结束。
-        # app._run_loop 透传给 CurrencyWarRunLoop。
+        # app._run_loop 透传给 CwLoop。
         _mr = self.get('max_rounds', None)
         self.max_rounds: int | None = int(_mr) if _mr not in (None, '', 0) else None
-        # 简报 vs 实采对账开关(CollectPlaneIntel 采集完成后,逐位面 LCS 比对存证,
+        # 简报 vs 实采对账开关(CwScreenPlaneIntel 采集完成后,逐位面 LCS 比对存证,
         # 不一致进 defect 台账;零决策行为)。默认开 = 验证期积累「简报 vs 真值」
-        # 配对证据;稳态后可 yml 关掉。消费端 = battle_loop 实采块 + takeover 写回。
+        # 配对证据;稳态后可 yml 关掉。消费端 = cw_loop 实采块 + takeover 写回。
         self.briefing_reconcile: bool = self.get('briefing_reconcile', True)
         # r347(旧路径删除):gate_* 4 flag 已删(对拍验证过,观测
         # gate 无条件化——ADR-0216 对拍期结束;yml 残留键无害,

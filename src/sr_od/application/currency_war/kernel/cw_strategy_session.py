@@ -74,7 +74,7 @@ class StrategySession:
     # shop 关态 heavy 读到时写此;shop.py 喂决策前拷入 —— 仿 last_hp 模式。
     last_node_type: str | None = None
     # 节点行 current 槽的识别类型(read_node_sequence: Hu 模板+OCR 标签,
-    # 备战画面权威源)——prep_director 每次备战读节点行时写;battle_loop
+    # 备战画面权威源)——prep_director 每次备战读节点行时写;cw_loop
     # on_round_end 消费(节点类型分层的遥测/复盘输入)。None=未读到(退普通战斗)。
     node_type_current: str | None = None
     # 上帧 upcoming 槽类型序列(idx 升序)——current 高亮态 Hu 不匹配
@@ -84,7 +84,7 @@ class StrategySession:
     # 开局帧完整槽序——**离线统计源**(跨局累积
     # 建「位面典型节点表」进 sim 骨架/策略知识)+ 左移兜底参照。
     # 决策主源 = 实时识别(每备战帧读节点行,应对策略改节点)。
-    # battle_loop 首节点兜底消费此表;写入端
+    # cw_loop 首节点兜底消费此表;写入端
     # 在 prep_director._probe_node_type 首帧。
     plane_node_table: list[str] | None = None
     # ADR-0368:plane_node_table 是哪位面的表(每位面首帧重写时更新;
@@ -244,7 +244,7 @@ class StrategySession:
     # (原 default_factory=random.Random 无参构造 = 每次构造取 urandom,裸
     # 构造点得到不可复现流)。现 default=固定种子 0 的独立实例:确定
     # 性由构造保证;真实随机面由消费方显式注入——生产 run loop 按
-    # cw_config.strategy_seed 覆盖(operations/battle_loop.py),sim 引擎
+    # cw_config.strategy_seed 覆盖(operations/cw_loop.py),sim 引擎
     # 从局 seed 派生(sim/engine_p1.py)。当前决策层无 rng 消费点
     # (grep 证),本字段是公开随机接口的种子契约锚。
     rng: random.Random = field(default_factory=lambda: random.Random(0))
@@ -254,13 +254,13 @@ class StrategySession:
     # (变宝为废·位面首次合成判定消耗记账 junk_first_done_plane 已随
     #  junk_first 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3,
     #  kernel/cw_junk_first.py 同批删。)
-    # 本局职级(A1..A8;StartCurrencyWarMatch 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
+    # 本局职级(A1..A8;CwEntryStart 难度确认屏读 → ctx.cw_selected_difficulty → loop copy 到此;
     # 策略层填 state.selected_difficulty → effective_hp_threshold D-32 保血阈值;3.5.1 接线)
     selected_difficulty: str = ""
     # 敌人难度数值(简报「敌人难度N」读 → BriefingOp 直写 session;read_game_state 填 state;3.5.2)
     enemy_difficulty: int | None = None
-    # 位面序 boss 真值(3 位面 boss 名;写入端 = battle_loop 首个稳定备战帧 copy 自
-    # 简报 LCS 清洗读数(ADR-0397:简报排列=位面序)+ CollectPlaneIntel
+    # 位面序 boss 真值(3 位面 boss 名;写入端 = cw_loop 首个稳定备战帧 copy 自
+    # 简报 LCS 清洗读数(ADR-0397:简报排列=位面序)+ CwScreenPlaneIntel
     # 实采(接管场景重采/对账真值源);boss_fit 输入。
     # 元素可为 None = 该位面徽章态采不到身份(ADR-0398)——**保位勿滤**,
     # 滤掉会让后续位面名字左移错位)

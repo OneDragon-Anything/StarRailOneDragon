@@ -5,7 +5,7 @@
 #      「选卡+确认」(area 定位,手动实证有效);若先走 :73「返回备战界面」
 #      全屏 OCR 点击,该按钮热区与 OCR 框中心偏移(~60px)→ 点击落空 →
 #      round_wait 死循环 141x/444s(2026-08-25 实录),且短路 :78 正确分支;
-#   ② 结算按钮 OCR 统一收紧 lcs_percent=0.8(与 battle_loop 3b 同款):
+#   ② 结算按钮 OCR 统一收紧 lcs_percent=0.8(与 cw_loop 3b 同款):
 #      「继续挑战」默认 0.5 与战斗暂停屏「继续战斗」ratio=0.75 误匹配
 #      → 点「继续战斗」恢复战斗 → 退局打转 2min(实录 03:59:35-04:01:35)。
 # 锁光标恢复态加固(2026-09-02 一条龙恢复链事故,同 BackToNormalWorldPlus
@@ -33,7 +33,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class ExitCurrencyWarMatch(SrOperation):
+class CwEntryExit(SrOperation):
     """放弃当前货币战争对局,返回大厅。"""
 
     STATUS_AT_LOBBY: ClassVar[str] = '已返回货币战争大厅'
@@ -47,7 +47,7 @@ class ExitCurrencyWarMatch(SrOperation):
 
         # 已在大厅 → 完成
         if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南').is_success:
-            return self.round_success(ExitCurrencyWarMatch.STATUS_AT_LOBBY)
+            return self.round_success(CwEntryExit.STATUS_AT_LOBBY)
 
         # 放弃提示 → 放弃并结算
         if self._ocr_click_pc_alt(screen, '放弃并结算'):
@@ -58,7 +58,7 @@ class ExitCurrencyWarMatch(SrOperation):
         # 按钮文案是「继续挑战」——先试它,再「下一步」
         # r309b(局31 卡点):「结算-失败」屏(挑战进度屏)按钮是
         # 「前往结算」——第三种文案,先试
-        # r317:结算按钮 OCR 统一 lcs_percent=0.8(battle_loop 3b 同款)——
+        # r317:结算按钮 OCR 统一 lcs_percent=0.8(cw_loop 3b 同款)——
         # 防「继续挑战」误匹配战斗暂停屏「继续战斗」(ratio 0.75,默认 0.5 会命中)。
         if self._ocr_click_pc_alt(screen, '前往结算', lcs_percent=0.8):
             log.info('[cw-exit] 进度结算屏 → 前往结算')
@@ -123,7 +123,7 @@ class ExitCurrencyWarMatch(SrOperation):
         # r317 顺序修正:本分支**必须在投资策略分支之后**(投资策略屏也是独立屏,
         # 右上角同有「返回备战界面」按钮文字;全屏 OCR 点击其 OCR 框中心落空——
         # 按钮热区 vs OCR 框中心偏移 ~60px,实录 141x 等待零推进)→ 此处仅处理
-        # 非投资策略的事件 overlay(环境等)。lcs_percent=0.8 同 battle_loop 3b
+        # 非投资策略的事件 overlay(环境等)。lcs_percent=0.8 同 cw_loop 3b
         # (防「返回备战界面」与「返回货币战争」共享子序列 0.5 误匹配)。
         if self._ocr_click_pc_alt(screen, '返回备战界面', lcs_percent=0.8):
             return self.round_wait(wait=2)

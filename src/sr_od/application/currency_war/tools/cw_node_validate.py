@@ -40,7 +40,7 @@ P2 模板(§10.2 仅 1 开局帧,待多局复核)不启用校验:
 from typing import Any
 
 #: P1 众数节点模板(economy.md §10.2;r9 首领按位置判,词表 = outcomes.jsonl
-#: 的中文标准词,经 battle_loop._normalize_node_type 出口)。
+#: 的中文标准词,经 cw_loop._normalize_node_type 出口)。
 P1_NODE_TEMPLATE: list[str] = [
     '奖励', '奖励', '普通战斗', '普通战斗', '补给',
     '普通战斗', '遭遇', '奖励', 'boss',

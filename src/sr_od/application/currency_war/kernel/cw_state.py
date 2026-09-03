@@ -1647,7 +1647,7 @@ class PlaneNodeLedger:
     #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
     #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
     #: ``seq[round_num - 1]``。
-    #: 写入端:①位面详情采集(CollectPlaneIntel,进位面时的两源互证产物);
+    #: 写入端:①位面详情采集(CwScreenPlaneIntel,进位面时的两源互证产物);
     #: ②投资环境选择完成后重读备战节点行(HandleInvestEnv,变异窗后的权威刷新)。
     seq_by_plane: dict[int, list[str | None]] = field(default_factory=dict)
 
@@ -1740,7 +1740,7 @@ def ledger_update_plane(session: object, plane: int, seq: list[str | None],
 def fill_boss_by_position(seq: list[str | None]) -> list[str | None]:
     """序列副本的最右 None 位回填 'boss'(位置先验:首领 = 位面最后节点)。
 
-    只在 boss 位经详情条「首领节点」标签验证过的写入端调用(CollectPlaneIntel);
+    只在 boss 位经详情条「首领节点」标签验证过的写入端调用(CwScreenPlaneIntel);
     备战行重读等未经标签验证的写入端不回填(boss 位在备战行为 past 态,
     回填无依据)。原序列不动,返回副本。
     """

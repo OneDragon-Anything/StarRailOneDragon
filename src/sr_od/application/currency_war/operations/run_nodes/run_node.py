@@ -23,7 +23,7 @@ RunNode 改 **committed-but-verifying + 节点作用域预算**:
   - ``_do_action(screen) -> None``:本节点一个动作(选 / 点 / 确认;子类特定)。
   - ``@operation_node`` 装饰的入口方法(设 name + ``node_max_retry_times``=节点预算)调 ``self._run_node()``。
 
-职责边界:外层 ``CurrencyWarRunLoop`` 仍负责"**分类**进哪种节点 → **委派** RunNode";RunNode 只管
+职责边界:外层 ``CwLoop`` 仍负责"**分类**进哪种节点 → **委派** RunNode";RunNode 只管
 "**把这节点跑到完**(验证完成才 success,超预算 bail)"。永久卡死的节点(如巨星待修机制)会反复
 bail —— 需外层升级(连续 bail → 弃局)或修节点机制,非本基类职责。
 """

@@ -39,7 +39,7 @@ log = log_utils.log
 
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
 # telemetry 是横切关注点,用模块级 recorder + current_run_id,避免给 BuyShopCards / loop
-# 线程传参。CurrencyWarRunLoop 在 __init__ 调 start_run(生成 run_id),BuyShopCards 用
+# 线程传参。CwLoop 在 __init__ 调 start_run(生成 run_id),BuyShopCards 用
 # current_run_id() 取,loop 在战斗后 record_outcome、局终 record_run_summary。
 # 默认 enabled=True(用户 2026-08-03 要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
 _RECORDER: TelemetryRecorder | None = None
@@ -49,12 +49,12 @@ _CURRENT_RUN_ID: str = ""
 _CURRENT_DIFFICULTY: str = ""
 
 # r339:ctx.cw_match 弱引用槽(record_outcome 板深快照源;
-# battle_loop 启动 run 时注册,None=离线/测试容错)
+# cw_loop 启动 run 时注册,None=离线/测试容错)
 _CTX_MATCH_REF: list = [None]
 
 
 # —— 迁移审计 w306(git 历史):补给节点选择暂存槽(生产者=RunSupplyNode 选定/确认时;消费者=
-# battle_loop._record_supply_outcome 合成行落账时一次消费)。
+# cw_loop._record_supply_outcome 合成行落账时一次消费)。
 # 为什么是模块槽而不是 session 字段:StrategySession(cw_strategy.py,归属他批禁触)
 # 无法加正式字段;OperationRoundResult 状态串传 dict 是解析层凑合。单线程 op 链内
 # 生产→消费紧邻(选卡确认 → overlay 消失即合成),无并发风险;消费即清=残留不串轮。

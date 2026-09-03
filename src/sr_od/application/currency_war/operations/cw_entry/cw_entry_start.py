@@ -43,17 +43,17 @@ def try_handle_train_supply_popup(
     返回 None;命中返回 round_wait(等领取动画回落)。
     """
     if not op.round_by_find_area(
-            screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '标识-列车补给',
+            screen, CwEntryStart.TRAIN_SUPPLY_SCREEN, '标识-列车补给',
             crop_first=False).is_success:
         return None
     _log.info('[cw-entry] 列车补给每日弹窗 → 领取今日补贴(点中央徽章)')
     op.round_by_find_and_click_area(
-        screen, StartCurrencyWarMatch.TRAIN_SUPPLY_SCREEN, '按钮-领取补贴',
+        screen, CwEntryStart.TRAIN_SUPPLY_SCREEN, '按钮-领取补贴',
         success_wait=2, crop_first=False)
     return op.round_wait(wait=3)
 
 
-class StartCurrencyWarMatch(SrOperation):
+class CwEntryStart(SrOperation):
     """从货币战争大厅开始/恢复一局,推进到「备战阶段」。
 
     统一用「点前进按钮直到备战」循环,兼容两条路径的所有中间画面:
@@ -63,7 +63,7 @@ class StartCurrencyWarMatch(SrOperation):
     - 残留大厅:上局结束「回大厅」的死按钮态 → 点「按钮-关闭」退出到朝露公馆
       世界入口 → F 交互重进新鲜大厅 → 正常开始。
 
-    前置:已在货币战争大厅(EnterCurrencyWar 之后)。到达备战后返回 STATUS_AT_PREP。
+    前置:已在货币战争大厅(CwEntryEnter 之后)。到达备战后返回 STATUS_AT_PREP。
 
     注:备战阶段的「买牌 + 部署到前台 + 出战」循环由 ``BattlePrepCycle`` 负责;装备识别经
     cw_equip SIFT(D-27/D-28,非 OCR-only —— 旧「视觉大模型 看不到图标位置」判断已破,
@@ -131,7 +131,7 @@ class StartCurrencyWarMatch(SrOperation):
 
     def _at_prep(self, screen: MatLike) -> bool:
         """是否到达备战阶段(备战独有「购买经验」按钮,screen_info area 判定,替代全屏 ocr)。"""
-        return self.round_by_find_area(screen, StartCurrencyWarMatch.PREP_SCREEN, '备战标识-购买经验', crop_first=False).is_success
+        return self.round_by_find_area(screen, CwEntryStart.PREP_SCREEN, '备战标识-购买经验', crop_first=False).is_success
 
     def _handle_train_supply_popup(self, screen: MatLike) -> OperationRoundResult | None:
         """列车补给每日弹窗处理(本 op 两节点挂点,共享助手见模块级函数)。"""
@@ -141,14 +141,14 @@ class StartCurrencyWarMatch(SrOperation):
     def click_start(self) -> OperationRoundResult:
         screen = self.last_screenshot
         if self._at_prep(screen):
-            return self.round_success(StartCurrencyWarMatch.STATUS_AT_PREP)
+            return self.round_success(CwEntryStart.STATUS_AT_PREP)
         popup = self._handle_train_supply_popup(screen)
         if popup is not None:
             return popup
         # lobby screen_info area(按钮-开始货币战争)替代全屏 ocr(根治 LCS 误匹配)。
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         return self.round_by_find_and_click_area(
-            screen, StartCurrencyWarMatch.LOBBY_SCREEN, '按钮-开始货币战争',
+            screen, CwEntryStart.LOBBY_SCREEN, '按钮-开始货币战争',
             retry_wait=1, success_wait=2, crop_first=False,
         )
 
@@ -157,7 +157,7 @@ class StartCurrencyWarMatch(SrOperation):
     def advance_to_prep(self) -> OperationRoundResult:
         screen = self.last_screenshot
         if self._at_prep(screen):
-            return self.round_success(StartCurrencyWarMatch.STATUS_AT_PREP)
+            return self.round_success(CwEntryStart.STATUS_AT_PREP)
         # 列车补给每日弹窗优先于一切推进分支(全屏遮罩挡死下面全部前进按钮)。
         popup = self._handle_train_supply_popup(screen)
         if popup is not None:
@@ -171,34 +171,34 @@ class StartCurrencyWarMatch(SrOperation):
         # 大厅锚 = 「点开始」未产生画面转移 → 残留态;连续多轮锚命中才判定
         # (防转场动画帧误判)。若 BackToNormalWorldPlus 已处理残留,本分支不触发。
         if self.round_by_find_area(
-                screen, StartCurrencyWarMatch.LOBBY_SCREEN, '标识-创业指南',
+                screen, CwEntryStart.LOBBY_SCREEN, '标识-创业指南',
                 crop_first=False).is_success:
             self._lobby_anchor_rounds += 1
-            if self._lobby_anchor_rounds < StartCurrencyWarMatch.LOBBY_RESIDUAL_CONFIRM_ROUNDS:
+            if self._lobby_anchor_rounds < CwEntryStart.LOBBY_RESIDUAL_CONFIRM_ROUNDS:
                 return self.round_retry(wait=1)
             if not self._residual_closed:
                 _log.info('[cw-entry] 大厅残留态(点开始无转移)→ 点「按钮-关闭」退出到世界入口')
                 self._residual_closed = True
                 self.round_by_find_and_click_area(
-                    screen, StartCurrencyWarMatch.LOBBY_SCREEN, '按钮-关闭',
+                    screen, CwEntryStart.LOBBY_SCREEN, '按钮-关闭',
                     success_wait=2, crop_first=False)
                 return self.round_wait(wait=2)
             if not self._residual_reentered:
                 # 关闭点击未落地 / 转场未完成(大厅层还在)→ 继续点关闭
                 return self.round_by_find_and_click_area(
-                    screen, StartCurrencyWarMatch.LOBBY_SCREEN, '按钮-关闭',
+                    screen, CwEntryStart.LOBBY_SCREEN, '按钮-关闭',
                     retry_wait=1, crop_first=False)
             # 关闭 + F 重进后的大厅 = 新鲜大厅,开始按钮可点 → 重新点开始。
             # 本节点无 success 出边,必须 round_wait 自环续推(返回 helper 的
             # round_success 会让 op 在模式选择前假成功结束)。
             _log.info('[cw-entry] 残留逃逸后重回大厅 → 重新点「按钮-开始货币战争」')
             self.round_by_find_and_click_area(
-                screen, StartCurrencyWarMatch.LOBBY_SCREEN, '按钮-开始货币战争',
+                screen, CwEntryStart.LOBBY_SCREEN, '按钮-开始货币战争',
                 success_wait=2, crop_first=False)
             return self.round_wait(wait=2)
 
         # 逃逸中途落在大世界朝露公馆入口(关闭后露出的场景):按 F 重进大厅
-        # (与 EnterCurrencyWar.wait_lobby 的 F 分支同手势;带 lcs 0.7 防任务
+        # (与 CwEntryEnter.wait_lobby 的 F 分支同手势;带 lcs 0.7 防任务
         # 追踪文本「请前往…」与「前往参与」的子序列假阳性饿死本分支)。
         if (self._residual_closed and not self._residual_reentered
                 and self.round_by_ocr(screen, '货币战争', lcs_percent=0.7).is_success
@@ -209,10 +209,10 @@ class StartCurrencyWarMatch(SrOperation):
             return self.round_wait(wait=2)
 
         self._advance_steps += 1
-        if self._advance_steps > StartCurrencyWarMatch.MAX_ADVANCE_STEPS:
+        if self._advance_steps > CwEntryStart.MAX_ADVANCE_STEPS:
             return self.round_fail(status='推进到备战阶段超时')
 
-        # 0) 详情弹窗(点卡触发的"可合成列表")→ ESC(同 battle_loop)
+        # 0) 详情弹窗(点卡触发的"可合成列表")→ ESC(同 cw_loop)
         if self.round_by_ocr(screen, '可合成列表').is_success:
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=1.5)
@@ -228,12 +228,12 @@ class StartCurrencyWarMatch(SrOperation):
         # 迁移审计 w289(git 历史)/ADR-0419:难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
         # 见屏即弃置上一局残留 match 容器。
         if self.round_by_find_area(
-                screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
+                screen, CwEntryStart.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
                 crop_first=False).is_success:
             self._discard_stale_once('到达难度确认屏=新局开始')
             self._establish_match_once()
         if self.ctx.cw_selected_difficulty is None and self.round_by_find_area(
-                screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
+                screen, CwEntryStart.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
                 crop_first=False).is_success:
             from sr_od.application.currency_war.obs.cw_observation import (
                 read_selected_difficulty,
@@ -243,29 +243,29 @@ class StartCurrencyWarMatch(SrOperation):
                 self.ctx.cw_selected_difficulty = _diff
                 _log.info('[cw-entry] 本局职级: %s', _diff)
         if self.round_by_find_and_click_area(
-                screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '按钮-返回最高职级',
+                screen, CwEntryStart.DIFFICULTY_SCREEN, '按钮-返回最高职级',
                 success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=2)
         if self.round_by_find_and_click_area(
-                screen, StartCurrencyWarMatch.DIFFICULTY_SCREEN, '按钮-开始对局',
+                screen, CwEntryStart.DIFFICULTY_SCREEN, '按钮-开始对局',
                 success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=2)
         # 1a) 有 screen_info 的前进按钮 → area 点击(替代全屏 ocr,根治 LCS 误匹配)。
         #     「开始对局」已在上面难度确认段单独处理(因要先判「返回最高职级」切最高难度)。
         if self.round_by_find_and_click_area(
-                screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
+                screen, CwEntryStart.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=1)
         # 模式选择屏可见 = 新局确凿信号(迁移审计 w289(git 历史)/ADR-0419;点击未中也不丢信号)
         if self.round_by_find_area(
-                screen, StartCurrencyWarMatch.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
+                screen, CwEntryStart.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 crop_first=False).is_success:
             self._discard_stale_once('到达模式选择屏=新局开始')
             self._establish_match_once()
         # 简报屏 → BriefingOp(W971 P3b:观察直写 session,HandleBriefing 已退役;
         # 一屏一 op 调度不变)。
         if self.round_by_find_area(
-                screen, StartCurrencyWarMatch.BRIEFING_SCREEN, '标识-本场对局首领',
+                screen, CwEntryStart.BRIEFING_SCREEN, '标识-本场对局首领',
                 crop_first=False).is_success:
             self._discard_stale_once('到达简报屏=新局开始')
             self._establish_match_once()
@@ -295,7 +295,7 @@ class StartCurrencyWarMatch(SrOperation):
             return self.round_wait(wait=2)
         # 3) 位面教程叠层 → 点空白
         if self.round_by_ocr(screen, '点击空白处继续').is_success:
-            self.ctx.controller.click(StartCurrencyWarMatch.BLANK_CLICK.center)
+            self.ctx.controller.click(CwEntryStart.BLANK_CLICK.center)
             return self.round_wait(wait=1)
         # 3b) 积分奖励页(2026-08-17 M58 停机建档:局末积分达标自动弹的活动奖励;bot 推进
         #     到备战不认识此屏 → 干等超时 196s)。处理:一键领取(有达标奖励)→ 等结算动画 →

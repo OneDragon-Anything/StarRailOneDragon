@@ -1193,7 +1193,7 @@ class DecisionV2Registry:
     #: (H1 line_env_gate_enabled 已删:行为无条件化,cw_intention 锁线信号
     #: 过滤恒在;sim A/B 与单帧锁证据见 w607_affix_consumption/AB_REPORT.md)
     #: H1 环境判据的最小生效轮(位面内轮次,1-based;防位面切换首帧词缀窗口
-    #: 误判的观察期)。简报词缀在位面切换即读得(battle_loop 位面简报分支),
+    #: 误判的观察期)。简报词缀在位面切换即读得(cw_loop 位面简报分支),
     #: 无窗口误判实证,默认 1=判据全程在辖;如实机判读发现位面首帧词缀滞后,
     #: 经判读锚点标定后上调(标定通道,非拍死值)。
     line_env_lock_min_round: int = 1

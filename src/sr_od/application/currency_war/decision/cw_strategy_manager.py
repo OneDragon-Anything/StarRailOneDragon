@@ -41,10 +41,10 @@ if TYPE_CHECKING:
 def establish_new_match(ctx: SrContext, config) -> bool:
     """进对局时建立 match 容器(W971 §2.1「match 生命周期前置」;返回 True=本次新建)。
 
-    为什么前移:原建立点 = CurrencyWarRunLoop.handle_init(run 首帧)——
+    为什么前移:原建立点 = CwLoop.handle_init(run 首帧)——
     简报观察(BriefingOp,P3)要**直写 session**,而简报屏先于 run loop 出现;
     session 不存在 = 观察无写目标。现把建立时机前移到入口链的新局确凿信号处
-    (难度确认/模式选择/简报屏,``StartCurrencyWarMatch`` 调用),与本模块
+    (难度确认/模式选择/简报屏,``CwEntryStart`` 调用),与本模块
     ``discard_stale_match_container``(ADR-0419 残留弃置)同址衔接:先弃置
     残留容器,再建立本局容器。
 

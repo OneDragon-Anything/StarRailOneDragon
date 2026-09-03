@@ -548,7 +548,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     RunBuyPhase 下 EnsureShopClosed 零执行,node_type 生产链全死,传参恒回退普通战斗);
     解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
 
-    ✅ 已接线(2026-08-07 起):battle_loop._record_round_outcome(分支3)每轮胜结算屏调用 →
+    ✅ 已接线(2026-08-07 起):cw_loop._record_round_outcome(分支3)每轮胜结算屏调用 →
     strategy.on_round_end → performance.record + telemetry.record_outcome(2026-08-16 补)。
     """
     from sr_od.application.currency_war.kernel.cw_performance import RoundOutcome
@@ -562,7 +562,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     damage = parse_settlement_damage(_items)
     # r366(ADR-0239):结算屏头部类型词 = 节点类型权威源(读时点=记录时点,
     # 零跨帧状态;首节点/备战流变化均免疫)。解析出即覆盖传参。
-    # r366b(review B3):传参='boss'(battle_loop 专项 OCR '首领',证据更强)
+    # r366b(review B3):传参='boss'(cw_loop 专项 OCR '首领',证据更强)
     # 不被屏面解析降级覆盖——屏面误读'战斗'会把 boss 3.0 期望拉到 1.0。
     _st_node = parse_settlement_node_type(ocr_texts)
     if (_st_node is not None and _st_node != node_type
@@ -589,7 +589,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     # (DD-006):页 2 帧矩形罩在 HP 心形上会恒定读出假值(0.392 三局同值实证)
     # ——「点击空白加速」是页 1 帧态标记词。本函数读点 = 调用帧:败局链(1f/3b)在
     # 挑战结束页1 调 → tooltip 瞬窗内可捕获;胜轮在页2 调 → tooltip 大概率已离屏,
-    # None 由 battle_loop 页1 暂存合并兜底(_settle_page1_settle,同 progress 合并法)。
+    # None 由 cw_loop 页1 暂存合并兜底(_settle_page1_settle,同 progress 合并法)。
     _fill = (parse_progress_fill_ratio(screen)
              if any('点击空白加速' in t for t in ocr_texts) else None)
     _panel = read_settle_damage_breakdown(ctx, screen)

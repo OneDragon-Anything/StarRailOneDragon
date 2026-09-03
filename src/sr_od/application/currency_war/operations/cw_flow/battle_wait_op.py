@@ -13,7 +13,7 @@ decisions/dd-019)。
 未知帧 bail 上界 + 出战宽限(ADR-0250)收编。外循环只回答「在不在战斗窗口」
 (驻留闩 + 帧锚双入口),不进单元内部分类。
 
-收编来源(battle_loop 分支随迁;语义逐条保真,遥测写端调用原样平移):
+收编来源(cw_loop 分支随迁;语义逐条保真,遥测写端调用原样平移):
 - 分支 1f(失败结算页:进度符号闩/面板延迟门/页1 三项暂存/败局补录/翻页);
 - 分支 2(「点击空白加速」页1 动画帧:progress/三项暂存 + 点空白加速);
 - 分支 3(挑战成功结算:读点前等 1.5s(#25 用户裁定)/C-1 新帧计数/
@@ -23,7 +23,7 @@ decisions/dd-019)。
 - 分支 6(战斗/过场屏总伤害/数据统计 → 点空白推进)。
 
 遥测连续性红线(W971 05-battle §1):decisions.jsonl / outcomes / match_archive
-的写入调用自 battle_loop 原样平移(见各方法注),字段面零变更。
+的写入调用自 cw_loop 原样平移(见各方法注),字段面零变更。
 
 自动战斗检测(W971 05-battle §2):**本批不做**(采集未完成)。接口预留 =
 本 op ①段(等结算画面)轮询中消费「自动战斗未开启」信号(画面右下角
@@ -62,7 +62,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 @dataclass
 class SettlementState:
-    """战斗/结算链跨迭代状态机(原 battle_loop 散挂属性收拢;随迁不改语义)。
+    """战斗/结算链跨迭代状态机(原 cw_loop 散挂属性收拢;随迁不改语义)。
 
     [字段定义] 生命周期 = 每局(handle_init 随 RunLoop 新建),不是每场战斗
     ——页间暂存/防重指纹都是「本局内跨场」语义(残留屏判定/败局页防重按局
@@ -106,14 +106,14 @@ class SettlementState:
 class BattleWaitOp(SrOperation):
     """战斗等待 op:等结算 → 结算处理 → 白名单完成判据 / 团灭终局分叉。"""
 
-    #: 结算页1 掉血说明 tooltip 渲染延迟门(随迁自 battle_loop,注释原文见
+    #: 结算页1 掉血说明 tooltip 渲染延迟门(随迁自 cw_loop,注释原文见
     #: 该处 git 历史):面板进页 ~2-4s 才出现;门语义 = 面板 visible 或超时
     #: 才放行推进。超时兜底覆盖胜轮(面板整块不出现,帧实证)。
     SETTLE_PANEL_WAIT_S: ClassVar[float] = 4.0
     #: 败局闩次级证据裁决的轮次下限(DD-006 裁决 5 二轮审计,随迁):
     #: t = (plane-1)*9+round 过中位 + 面板负分量 双证据才置闩。
     SETTLE_DEFEAT_LATCH_MIN_T: ClassVar[int] = 14
-    #: relaunch 残留结算屏判据宽限(随迁自 battle_loop RELAUNCH_SETTLE_GRACE_S)。
+    #: relaunch 残留结算屏判据宽限(随迁自 cw_loop RELAUNCH_SETTLE_GRACE_S)。
     RELAUNCH_SETTLE_GRACE_S: ClassVar[float] = 30.0
     #: M39 长按兜底(2026-08-16 3-1 实证):「继续挑战」点击不响应 → 结算屏
     #: 停留 ≥3 轮 → 长按 (960,898) 兜底推进。
@@ -124,9 +124,9 @@ class BattleWaitOp(SrOperation):
     #: 画面分支,W971 05-battle §1 超时兜底)。战斗特效长帧期宽限已由
     #: BATTLE_WATCH_GRACE_S 挡在计数外,本值只辖「结算后卡死」形态。
     UNKNOWN_BAIL_N: ClassVar[int] = 10
-    # 点空白区(加速战斗/关叠层;避开中央内容;随迁自 battle_loop.BLANK)
+    # 点空白区(加速战斗/关叠层;避开中央内容;随迁自 cw_loop.BLANK)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
-    # 结算「前进」按钮恒在底部中央(随迁自 battle_loop.SETTLEMENT_NEXT,
+    # 结算「前进」按钮恒在底部中央(随迁自 cw_loop.SETTLEMENT_NEXT,
     # 坐标出处见该处 git 历史:下一页/返回货币战争实测中心)。
     SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
 
@@ -185,12 +185,12 @@ class BattleWaitOp(SrOperation):
         return self.round_by_ocr(screen, '点击空白处继续',
                                  lcs_percent=0.8).is_success
 
-    # ===== 结算链遥测(自 battle_loop 原样平移;写端调用零变更)=====
+    # ===== 结算链遥测(自 cw_loop 原样平移;写端调用零变更)=====
 
     def _record_round_outcome(self, screen, telemetry_only: bool = False) -> None:
         """P1.5 观测回路:结算屏 → read_round_outcome → strategy.on_round_end。
 
-        (自 battle_loop._record_round_outcome 平移;方法级注释与判定链逐条
+        (自 cw_loop._record_round_outcome 平移;方法级注释与判定链逐条
         保真,详见原处 git 历史。差异仅两处载体:循环态挂 SettlementState、
         ADR-0250 窗口关由 saw_settlement 承载。)
         """
@@ -359,7 +359,7 @@ class BattleWaitOp(SrOperation):
 
     def _record_loss_page(self, screen, pre_fp: tuple | None = None) -> None:
         """失败结算页 → telemetry-only 补一行 outcome + 同屏指纹防重
-        (自 battle_loop._record_loss_page 平移,逻辑零变更)。"""
+        (自 cw_loop._record_loss_page 平移,逻辑零变更)。"""
         try:
             if pre_fp is not None:
                 _fp = pre_fp

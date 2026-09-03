@@ -59,7 +59,7 @@ from sr_od.application.currency_war.telemetry.version_stamp import (
 class TelemetryRecorder:
     """三路 JSONL 采集器。enabled=False 时全 no-op(生产默认关)。
 
-    用法(阶段 4-5 OCR 接线后,在 battle_loop 关键决策点调):
+    用法(阶段 4-5 OCR 接线后,在 cw_loop 关键决策点调):
         rec = TelemetryRecorder(replay_dir, enabled=config.debug_telemetry)
         rec.start_run(run_id, difficulty)
         # 每回合:
@@ -528,7 +528,7 @@ def record_outcome(outcome, source: str = "",
 def record_exogenous(round_num: int, kind: str, detail: str = '',
                      state: GameState | None = None,
                      choice: dict[str, Any] | None = None) -> None:
-    """便捷:用 current_run_id 记一条外生事件(r1 review#3:此前 battle_loop 调用
+    """便捷:用 current_run_id 记一条外生事件(r1 review#3:此前 cw_loop 调用
     模块级函数但只有类方法 → AttributeError 被吞,exogenous.jsonl 生产侧静默死)。
 
     注意签名与类方法不同(无 run_id 首参——模块级自动取 current_run_id)。

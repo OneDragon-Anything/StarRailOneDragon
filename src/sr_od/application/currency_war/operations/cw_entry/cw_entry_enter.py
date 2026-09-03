@@ -5,7 +5,7 @@ from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
+from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
     try_handle_train_supply_popup,
 )
 from sr_od.context.sr_context import SrContext
@@ -14,7 +14,7 @@ from sr_od.interastral_peace_guide.open_guide import GuideOpen
 from sr_od.operations.sr_operation import SrOperation
 
 
-class EnterCurrencyWar(SrOperation):
+class CwEntryEnter(SrOperation):
     """从大世界进入「货币战争」大厅(入口流程 M1)。
 
     路径:打开指南(星际和平指南)→ 旷宇纷争 TAB → (货币战争分类默认选中)→ 前往参与
@@ -71,16 +71,16 @@ class EnterCurrencyWar(SrOperation):
 
         # 列车补给每日弹窗(纵深挂点:弹窗可盖在指南页/朝露公馆入口任意一帧上,
         # 不接住则下方「前往参与」/F 分支全部落空 → 节点预算耗尽)。共享助手见
-        # start_currency_war_match 模块级函数。
+        # cw_entry_start 模块级函数。
         popup = try_handle_train_supply_popup(self, screen)
         if popup is not None:
             return popup
 
         # 到达大厅:左菜单「创业指南」(大厅独有锚点;lobby screen_info area 判定,替代全屏 ocr)。
         # 不用「开始「货币战争」」——会与旷宇纷争页「货币战争」分类文本 LCS 误匹配。
-        if self.round_by_find_area(screen, EnterCurrencyWar.LOBBY_SCREEN, '标识-创业指南').is_success:
+        if self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-创业指南').is_success:
             log.info('[cw-entry] 到达货币战争大厅')
-            return self.round_success(EnterCurrencyWar.STATUS_AT_LOBBY)
+            return self.round_success(CwEntryEnter.STATUS_AT_LOBBY)
 
         # 仍在指南页(「前往参与」还在 = 上个节点的 transport click 没落地,仍在加载)→ 重点击。
         # 否则停在指南页(「货币战争」分类 + 「前往参与」按钮都在)→ 下方 F 分支(NOT 前往参与)被跳过
@@ -94,7 +94,7 @@ class EnterCurrencyWar(SrOperation):
 
         # 「点击空白处关闭」类弹窗(如新内容解禁)→ 点空白
         if self.round_by_ocr(screen, '点击空白处关闭').is_success:
-            self.ctx.controller.click(EnterCurrencyWar.BLANK_CLICK.center)
+            self.ctx.controller.click(CwEntryEnter.BLANK_CLICK.center)
             return self.round_retry(wait=1)
 
         # 版本公告轮播(「贪饕」侵蚀,2026-08-26 版本,W301):游戏级公告弹窗可盖在

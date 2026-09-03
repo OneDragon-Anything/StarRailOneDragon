@@ -79,7 +79,7 @@ class DirectorV2:
     恢复发放/屏蔽落定各清 fail_counts[key](recovered/blocked 环内存活);
     4 ``session.defer_count``:环入口清、步间不清、失败链 ``max`` 抬升;
     5 ``session.bail_reason_counts``:**只增不清**(局级,唯一清零点 = 外环
-    handler 成功消化,职责在 battle_loop,本模块不迁);6 W209j 刹车:非计数,
+    handler 成功消化,职责在 cw_loop,本模块不迁);6 W209j 刹车:非计数,
     双查点(环顶每步 + execute 前)现读 ``is_stopped`` 端口。
     """
 
@@ -287,7 +287,7 @@ class DirectorV2:
     def _bail(self, session: StrategySession, reason: str) -> LoopOutcome:
         """环让位:同因计数只增不清(局级);同因 ≥3 = 外环 3 次未消化该因
         (bail↔重入 ping-pong)→ 留证停机接口位(ping-pong 安全网,常驻语义;
-        清零唯一时点 = 外环 handler 成功消化,职责在 battle_loop 不在本模块)。"""
+        清零唯一时点 = 外环 handler 成功消化,职责在 cw_loop 不在本模块)。"""
         counts = session.bail_reason_counts
         counts[reason] = counts.get(reason, 0) + 1
         n = counts[reason]

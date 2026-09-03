@@ -16,7 +16,7 @@
 
 为什么需要(ADR-0397 勘误节):
 - **接管场景重采**:对局进行中但 session 无位面序真值(MCP 重启丢内存 / bot 未走
-  过简报链)时,位面详情实采是唯一补真值通道(battle_loop 备战稳定帧触发 + 独立
+  过简报链)时,位面详情实采是唯一补真值通道(cw_loop 备战稳定帧触发 + 独立
   takeover 入口)。简报读数本身即位面序真值(用户 2026-08-28 裁决,ADR-0397 原结论
   已勘误),开局局简报读得时不走本 op;本 op 采集结果兼作**对账真值源**——采集完成
   后与简报读数逐位面 LCS 比对存证(``cw_briefing_obs.reconcile_briefing_vs_plane_intel``)。
@@ -24,7 +24,7 @@
 入口/出口契约:
 - 入口:备战屏(检测 id_mark 备战标识-购买经验);由调用方在备战态调起。
   ⚠️ 必须是**定型备战帧**——boss 战后位面过场的半开备战帧点不开详情
-  (22:17/22:22 两轮实跑 12 retry 全空证);调用方(battle_loop 接管补采)
+  (22:17/22:22 两轮实跑 12 retry 全空证);调用方(cw_loop 接管补采)
   自带 2 次重试账,过场帧首试失败后下个稳定备战帧再试。
 - 出口:回备战屏(X 点击后验位面详情 id_mark 消失=真转移);采集结果经
   ``ctx.cw_plane_bosses``/``cw_plane_affixes`` 中转(与 ``cw_briefing_*``
@@ -175,7 +175,7 @@ def decide_plane_skip(plane_no: int, session_plane: int | None,
     return True, '跳过(已完成,台账保留,不覆写)'
 
 
-class CollectPlaneIntel(SrOperation):
+class CwScreenPlaneIntel(SrOperation):
     """位面详情:一次采集位面情报(三 boss 大图标 SIFT + 词缀横条 + 节点带;
     接管局补采主通道,亦开局校准通用)。"""
 

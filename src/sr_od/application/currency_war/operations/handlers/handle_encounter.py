@@ -1,5 +1,5 @@
 
-"""货币战争 遭遇节点 二选一处理 op(从主循环 ``CurrencyWarRunLoop`` 拆出)。
+"""货币战争 遭遇节点 二选一处理 op(从主循环 ``CwLoop`` 拆出)。
 
 检测「遭遇其一」+ 底部「选择」→ ``decide_encounter`` 选卡 → 点卡身选中 + 点选择确认。
 2026-08-04 实测交互模型(见 ``docs/game/screens/currency_war_encounter.md``):

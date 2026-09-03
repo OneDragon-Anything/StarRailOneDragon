@@ -12,17 +12,17 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import currency_war_const, cw_screen_state
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.currency_war_run_record import CurrencyWarRunRecord
-from sr_od.application.currency_war.operations.battle_loop import CurrencyWarRunLoop
-from sr_od.application.currency_war.operations.entry.enter_currency_war import (
-    EnterCurrencyWar,
+from sr_od.application.currency_war.operations.cw_entry.cw_entry_enter import (
+    CwEntryEnter,
 )
-from sr_od.application.currency_war.operations.entry.exit_currency_war_match import (
-    ExitCurrencyWarMatch,
+from sr_od.application.currency_war.operations.cw_entry.cw_entry_exit import (
+    CwEntryExit,
 )
-from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
-    StartCurrencyWarMatch,
+from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
+    CwEntryStart,
     try_handle_train_supply_popup,
 )
+from sr_od.application.currency_war.operations.cw_loop import CwLoop
 from sr_od.application.currency_war.telemetry import defects, state
 from sr_od.application.sr_application import SrApplication
 from sr_od.context.sr_context import SrContext
@@ -31,8 +31,8 @@ from sr_od.context.sr_context import SrContext
 class CurrencyWarApp(SrApplication):
     """货币战争应用。纯代码自主打完整局(无 LLM,实机验证):
 
-    大世界 → 货币战争大厅(`EnterCurrencyWar`)→ 开始对局到备战(`StartCurrencyWarMatch`)
-    → 对局循环到结束(`CurrencyWarRunLoop`:备战 买/升等级/deploy/出战 + 多类事件 + 结算回大厅)。
+    大世界 → 货币战争大厅(`CwEntryEnter`)→ 开始对局到备战(`CwEntryStart`)
+    → 对局循环到结束(`CwLoop`:备战 买/升等级/deploy/出战 + 多类事件 + 结算回大厅)。
 
     **中间态接手(,2026-08-04)**:app 不再总从大世界线性起 —— 各入口 op 先检测当前态,
     已在 CW(大厅/对局中)就跳过 enter/start、直接进 loop。故 bot crash/重启/手动接管后,
@@ -42,7 +42,7 @@ class CurrencyWarApp(SrApplication):
     打赢更高难度需 Strategy 精修(羁绊/经济/deploy 智能化,见 design.md)。
     """
 
-    STATUS_AT_LOBBY: ClassVar[str] = EnterCurrencyWar.STATUS_AT_LOBBY
+    STATUS_AT_LOBBY: ClassVar[str] = CwEntryEnter.STATUS_AT_LOBBY
 
     # 对局中态 OCR 锚点(备战 / 事件 overlay / 战斗 / 结算)—— 命中任一 = 已在对局里,跳过 enter+start
     _IN_MATCH_KEYWORDS: ClassVar[tuple[str, ...]] = (
@@ -100,7 +100,7 @@ class CurrencyWarApp(SrApplication):
 
     def _at_lobby(self, screen: MatLike) -> bool:
         """已在货币战争大厅(「创业指南」大厅独有锚点,lobby screen_info area)。"""
-        return self.round_by_find_area(screen, EnterCurrencyWar.LOBBY_SCREEN, '标识-创业指南').is_success
+        return self.round_by_find_area(screen, CwEntryEnter.LOBBY_SCREEN, '标识-创业指南').is_success
 
     def _in_match(self, screen) -> bool:
         """已在货币战争对局中(备战/事件/战斗/结算任一态)。
@@ -128,7 +128,7 @@ class CurrencyWarApp(SrApplication):
     def _recover_if_paused(self, screen) -> OperationRoundResult | None:
         """启动恢复态预检:命中「战斗暂停」面板 → 走退局链回大厅再正常起跑。
 
-        恢复链委托 ExitCurrencyWarMatch(撤退 → 中断挑战弹窗「放弃并结算」→
+        恢复链委托 CwEntryExit(撤退 → 中断挑战弹窗「放弃并结算」→
         失败结算页「下一步」→ 大厅锚确认;编排者手动实机验证过的范式,op 内
         r279/r302 实测同链)。该 op 的成功出口唯一 = 大厅锚命中,回大厅确认由
         它承担;成功后回到调用节点的常规判定继续启动流。未命中返回 None(零
@@ -137,7 +137,7 @@ class CurrencyWarApp(SrApplication):
         if not self.round_by_find_area(screen, self.PAUSE_SCREEN, self.PAUSE_MARK).is_success:
             return None
         log.info('[cw-app] 启动预检:命中战斗暂停面板(上局残留恢复态)→ 走退局链回大厅')
-        op = ExitCurrencyWarMatch(self.ctx)
+        op = CwEntryExit(self.ctx)
         return self.round_by_op_result(op.execute())
 
     @operation_node(name='进入货币战争大厅', is_start_node=True)
@@ -155,7 +155,7 @@ class CurrencyWarApp(SrApplication):
             return recover_result
         if self._at_lobby(screen) or self._in_match(screen):
             return self.round_success('已在 CW(大厅/对局中),跳过 enter')
-        op = EnterCurrencyWar(self.ctx)
+        op = CwEntryEnter(self.ctx)
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='进入货币战争大厅')
@@ -168,17 +168,17 @@ class CurrencyWarApp(SrApplication):
         if recover_result is not None:
             if recover_result.is_success:
                 # 不直落 success 边(下一节点是 loop,而此刻人在大厅)—— round_wait
-                # 重跑本节点,走大厅 → StartCurrencyWarMatch 正常起跑链。
+                # 重跑本节点,走大厅 → CwEntryStart 正常起跑链。
                 return self.round_wait(status='恢复完成已回大厅,重走 start 链')
             return recover_result
         if self._in_match(screen):
             return self.round_success('已在对局中,跳过 start 交 loop')
-        op = StartCurrencyWarMatch(self.ctx)
+        op = CwEntryStart(self.ctx)
         return self.round_by_op_result(op.execute())
 
     @node_from(from_name='开始对局到备战阶段')
     @operation_node(name='对局循环到结束')
     def _run_loop(self) -> OperationRoundResult:
         _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
-        op = CurrencyWarRunLoop(self.ctx, max_rounds=_cfg.max_rounds)
+        op = CwLoop(self.ctx, max_rounds=_cfg.max_rounds)
         return self.round_by_op_result(op.execute())

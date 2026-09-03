@@ -3,7 +3,7 @@
 「点击空白处继续」提示出现即点空白(简报下一步后 / 每个 boss 位面开始时各一次)。
 完成 = 提示消失(真转移)交回循环;提示未现 = 该步不适用(编排壳按步分流)。
 识别与点击坐标均走 screen_info(``currency_war_plane_transition``:
-提示 text area + 区域-空白点击,battle_loop 实证空白点建档)。
+提示 text area + 区域-空白点击,cw_loop 实证空白点建档)。
 """
 import time
 from typing import ClassVar

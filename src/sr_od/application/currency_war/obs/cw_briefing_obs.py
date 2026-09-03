@@ -71,7 +71,7 @@ def read_detail_affixes(ctx: SrContext, screen: MatLike) -> list[str]:
     (2026-08-26 21:5x 实证:1-1 及之后备战底带=备战席卡槽,VLM 确认;
     首版误以为备战常驻,read_prep_affixes 空读两轮后用户纠正)。横条 =
     位面详情屏「区域-词缀横条」(y965-1015,含「敌人难度108」前缀段)。
-    ``CollectPlaneIntel`` 开位面详情采集时同帧调用(零额外交互)。
+    ``CwScreenPlaneIntel`` 开位面详情采集时同帧调用(零额外交互)。
     滤噪同 ``read_affixes_with_pos``(中文 2-7 字滤数字;难度段含数字自然滤)。
     OCR 名 vs 数据名映射差异透传(同简报口径,AFFIX_MECHANIC_MAP 处理)。
     读不到 / area 缺 → []。
@@ -123,7 +123,7 @@ def read_bosses(ctx: SrContext, screen: MatLike) -> list[str]:
     (滤数字/符号/短噪声/「阵营」2 字 label)。**排列 = 位面序**(用户 2026-08-28 裁决:
     ADR-0397 的「排列≠位面序」结论系单条日志孤证误判,予以勘误——简报读数经 LCS 清洗后
     按序写 ``session.briefing_bosses`` 作 ``plane_bosses`` 真值,消费链 boss_fit;勘误详见
-    ADR-0397 文内勘误节)。``CollectPlaneIntel`` 位面详情实采保留为**接管场景重采**通道
+    ADR-0397 文内勘误节)。``CwScreenPlaneIntel`` 位面详情实采保留为**接管场景重采**通道
     (对局中内存丢失时补采)+ 对账真值源(ADR-0397 勘误节)。
 
     读不到 / area 缺 → []。
@@ -213,7 +213,7 @@ def reconcile_briefing_vs_plane_intel(briefing: list[str] | None,
                                       truth: list[str | None],
                                       round_num: int = 0,
                                       enabled: bool = True) -> None:
-    """简报读数 vs 位面详情实采真值的对账存证(CollectPlaneIntel 采集完成后调,零决策行为)。
+    """简报读数 vs 位面详情实采真值的对账存证(CwScreenPlaneIntel 采集完成后调,零决策行为)。
 
     每位面配对(:func:`briefing_reconcile_pairs`)落 exogenous 行(kind=``briefing_reconcile``,
     口径对齐 briefing 存证先例:round 0 / detail f-string / best-effort);不一致位面进

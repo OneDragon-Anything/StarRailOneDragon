@@ -292,7 +292,7 @@ def refresh_reconcile_mismatches(expect: RefreshExpect,
 
 
 #: 未识别节点图标采集防抖(idx → 上次采集时刻)。module-level:PrepDirector 每备战环重建
-#: (battle_loop loop 内构造),实例属性跨环零存活 → 300s 窗
+#: (cw_loop loop 内构造),实例属性跨环零存活 → 300s 窗
 #: 失效(同 idx 每环各采一张,内容哈希对帧微变不设防)。
 _NODE_ICON_SHOT_TS: dict[int, float] = {}
 
@@ -1119,12 +1119,12 @@ class PrepDirector(SrOperation):
         return getattr(self.ctx, 'cw_match', None)
 
     # ===== 备战单轮 op(W971 P3b 返工定稿:拆内环,op 生命周期五段化)=====
-    # 外循环(battle_loop)是唯一循环:备战画面在 → 外循环每轮调本 op 一轮。
+    # 外循环(cw_loop)是唯一循环:备战画面在 → 外循环每轮调本 op 一轮。
     # 单轮 = ①数据观察(heavy→写 session)②对账(观察 vs session 历史/上轮
     # 期望)③决策 ④期望态计算 ⑤执行+结束判定 → 交回外循环。原内环机制
     # (步数预算/stall 门/连败→恢复→屏蔽/bail 同因计数/ping-pong 停机)随
     # 内环拆除——稳定性由外循环每轮重识别保证(特效帧/overlay 弹出在轮间
-    # 自然可见);无进展留证归外循环 stall 防线(battle_loop 备战分支)。
+    # 自然可见);无进展留证归外循环 stall 防线(cw_loop 备战分支)。
 
     @operation_node(name='备战单轮', is_start_node=True)
     def run(self) -> OperationRoundResult:
@@ -1304,12 +1304,12 @@ class PrepDirector(SrOperation):
             self.ctx.cw_plane_bosses = None
             self.ctx.cw_plane_affixes = None
             return None
-        from sr_od.application.currency_war.operations.handlers.collect_plane_intel import (
-            CollectPlaneIntel,
+        from sr_od.application.currency_war.operations.cw_flow.cw_screen_plane_intel import (
+            CwScreenPlaneIntel,
         )
         log.info('[cw][director] 新局 boss/词缀无实采真值(session 空)'
                  '→ 位面详情情报采集(可交互备战帧,第%d次)', _tries)
-        _pb_res = CollectPlaneIntel(self.ctx).execute()
+        _pb_res = CwScreenPlaneIntel(self.ctx).execute()
         # 成功取走/失败残留都清空(防泄漏到下局判空;词缀随采结算只在本分支)
         _names = list(self.ctx.cw_plane_bosses or [])
         _affixes = list(self.ctx.cw_plane_affixes or [])
@@ -1738,7 +1738,7 @@ class PrepDirector(SrOperation):
                 grail_passive_collect,
             )
             grail_passive_collect(screen)
-            # current 槽类型写 session(battle_loop on_round_end 消费——
+            # current 槽类型写 session(cw_loop on_round_end 消费——
             # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)。
             # current 高亮态 Hu 不匹配(模板只对
             # future 生效)+OCR 标签错位守卫 → current 直读恒 None。
@@ -1749,7 +1749,7 @@ class PrepDirector(SrOperation):
                          if self.ctx.cw_match is not None else None)
                 if _sess is not None:
                     # 首帧(r1 或重启后)写开局
-                    # 槽序表——battle_loop 兜底此前**无写入者**
+                    # 槽序表——cw_loop 兜底此前**无写入者**
                     # (审计实锤死读);plane_node_table = 本帧全部槽
                     # (current+upcoming+past 按 idx)的类型序。
                     _all = sorted(slots, key=lambda s: s.idx)

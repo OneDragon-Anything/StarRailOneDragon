@@ -55,7 +55,7 @@ def strategy_round_live(run_id: str, key: tuple[int, int]) -> bool:
 def dead_streak_transition(prev_key: tuple[int, int] | None,
                            key: tuple[int, int],
                            streak: int, live: bool) -> int:
-    """策略失活连击状态机(迁移审计 w103(git 历史) 件1;纯函数,battle_loop 消费)。
+    """策略失活连击状态机(迁移审计 w103(git 历史) 件1;纯函数,cw_loop 消费)。
 
     语义:进入新 round key 时对**上一轮** prev_key 的 live 结果结算——
     本轮的决策行还没写(检查点在备战入口,决策发生在本相位内),查本轮

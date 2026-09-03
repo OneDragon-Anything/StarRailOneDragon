@@ -9,7 +9,7 @@
 
 生命周期(SR 约定,无开关无参数):
 - 采集清单完成(结论写入 redesign/REAL_MACHINE_COLLECTION_1.md)后:删本文件
-  整段 + 删 battle_loop 分支 3 内一行接线 + 删产物
+  整段 + 删 cw_loop 分支 3 内一行接线 + 删产物
   fixtures/settle_ocr/window_batch/h_*.png,不留任何开关位;
 - best-effort:钩子任何异常不阻塞对局推进;帧总数封顶防磁盘刷爆。
 """
@@ -37,7 +37,7 @@ _FRAME_COUNT = 0
 def settle_frame_collect(screen: MatLike | None) -> str | None:
     """结算屏时序帧采集([临时采集] 分类,清单完成后删整段)。
 
-    调用点:battle_loop 分支 2「点击空白加速/处继续」、分支 3「按钮-继续挑战」、
+    调用点:cw_loop 分支 2「点击空白加速/处继续」、分支 3「按钮-继续挑战」、
     分支 1f 失败结算页、分支 3b 终局结算链(前往结算/下一页/下一步/返回货币战争,
     每页点前一帧)。1f/3b 为败局链补采分支(C4 战败布局缺口,跑局批实证败局
     零 h_ 帧)——即每个结算屏停留轮/每页各存一帧,不做哈希去重(要保留面板

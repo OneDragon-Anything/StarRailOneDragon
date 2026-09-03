@@ -68,7 +68,7 @@ def _configure_root_logger_single_channel() -> None:
     .configure_logging → ``logging.basicConfig(level=INFO, format='%(message)s',
     handlers=[StreamHandler(stderr)])`` 给 root 挂**裸 stderr handler**。本进程
     内所有 ``logging.getLogger(__name__)`` 型业务 logger(如
-    collect_plane_intel,无自有 handler,记录上传 root)会以裸格式写 stderr,
+    cw_screen_plane_intel,无自有 handler,记录上传 root)会以裸格式写 stderr,
     被 daemon 重定向进 .debug/sr_od_mcp/main_server.log;而框架 logger('OneDragon',
     propagate=False)走 .log/mcp_server.log —— 同一子系统的日志按「模块抓哪个
     logger」分裂进两个文件,即哨兵观测的双信道漂移。

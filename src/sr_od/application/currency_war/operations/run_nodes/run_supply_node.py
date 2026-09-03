@@ -36,7 +36,7 @@ class RunSupplyNode(RunNode):
 
     选定+确认时点经 cw_telemetry.set_last_supply_pick 暂存选择快照
     (char/equip/has_diamond/refreshed + 实际识别选项清单),供 overlay 消失后
-    battle_loop 合成 supply 遥测行消费(synthetic_supply 合成行)。
+    cw_loop 合成 supply 遥测行消费(synthetic_supply 合成行)。
 
     **主流程 = 采集 detour 完整循环(坐标 2026-08-27 实机冻结画面实测)**:
     识别补给画面(_in_node 前置门)→ 点「返回备战界面」(货币战争-补给/
@@ -163,7 +163,7 @@ class RunSupplyNode(RunNode):
         # 本轮选定快照(选卡确认后合成决策帧的 extra 载荷;None=兜底点卡
         # 路径/刷新路径——决策帧照写但不带选择字段,读端按 None 分型)。
         # 只本地拷贝,不动 _LAST_SUPPLY_PICK 暂存槽(其唯一消费者仍是
-        # battle_loop 合成结算行,提前消费=结算行断粮)。
+        # cw_loop 合成结算行,提前消费=结算行断粮)。
         picked: dict | None = None
         if match is not None and opts:
             _state = match.session.last_state or GameState()
@@ -180,7 +180,7 @@ class RunSupplyNode(RunNode):
                 target = opts[pick.idx][1]
                 reason = pick.reason
                 # 选定+确认时点暂存选择快照(角色/装备/钻;refreshed=刷新
-                # 是否已用),供 overlay 消失后 battle_loop 合成 supply 行消费。
+                # 是否已用),供 overlay 消失后 cw_loop 合成 supply 行消费。
                 # 附**实际识别到的选项清单**(动态列数,不假定结构)——
                 # 合成行与逐列内容对拍/漏读审计数据源。
                 _opt = opts[pick.idx][0]

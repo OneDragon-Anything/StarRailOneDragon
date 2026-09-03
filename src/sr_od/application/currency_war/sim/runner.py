@@ -754,7 +754,7 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                     'sim': {'delta': row['sim']['delta'],
                             'depth': row['sim']['depth'],
                             # killed 语义同产线=**胜**(击杀敌方;
-                            # settlement_obs _won / battle_loop
+                            # settlement_obs _won / cw_loop
                             # hp_after>=prev_hp——审查 major:killed
                             # 极性反转会把败场读成胜场)
                             'killed': row['sim']['delta'] >= 0},

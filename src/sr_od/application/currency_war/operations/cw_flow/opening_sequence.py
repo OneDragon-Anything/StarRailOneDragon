@@ -2,7 +2,7 @@
 
 开局序列 = BriefingOp → PlaneTransitionOp → InvestEnvOp → WaitOneOneOp,
 跑完(1-1 备战就绪)交常态循环。本批只建壳与分流骨架,**接线进主循环归 P3b**
-(battle_loop 开局分支不动)。
+(cw_loop 开局分支不动)。
 
 步骤分流语义(01-opening §2.1):
 - 干净开局:首帧 = 简报 → 从第 0 步顺序走;

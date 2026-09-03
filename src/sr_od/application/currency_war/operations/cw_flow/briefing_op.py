@@ -96,7 +96,7 @@ class BriefingOp(SrOperation):
                 log.info('简报敌人难度读得(写 session): %s', _diff)
 
         # 遥测存证(W518):开局简报三读数落 exogenous(kind='briefing',轮次 0 =
-        # 简报在 loop 前;口径对齐原 battle_loop 位面简报分支/HandleBriefing 先例)。
+        # 简报在 loop 前;口径对齐原 cw_loop 位面简报分支/HandleBriefing 先例)。
         with contextlib.suppress(Exception):   # 遥测 best-effort
             cw_telemetry.record_exogenous(
                 0, 'briefing',

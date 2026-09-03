@@ -9,10 +9,10 @@ from one_dragon.utils import cv2_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war import cw_screen_state
-from sr_od.application.currency_war.operations.entry.exit_currency_war_match import (
-    ExitCurrencyWarMatch,
+from sr_od.application.currency_war.operations.cw_entry.cw_entry_exit import (
+    CwEntryExit,
 )
-from sr_od.application.currency_war.operations.entry.start_currency_war_match import (
+from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
     try_handle_train_supply_popup,
 )
 from sr_od.application.sim_universe import sim_uni_screen_state
@@ -224,7 +224,7 @@ class BackToNormalWorldPlus(SrOperation):
         # 既有分支全不认识它 → 落兜底点「菜单-右上角返回」(CW 画面无此控件,
         # 点击不改变画面)→ round_retry×20 有界 FAIL,9 个应用全部速挂。
         # 用户裁定修法:识别到货币战争对局画面,都走货币战争的退出 op
-        # (ExitCurrencyWarMatch:放弃+结算 3 页回大厅,支持备战/战斗中/
+        # (CwEntryExit:放弃+结算 3 页回大厅,支持备战/战斗中/
         # 事件 overlay/结算全入口)。判定单一源 = cw_screen_state.in_match_screen_names,
         # 与 CurrencyWarApp._in_match 第①层(screen_info 画面匹配)同源,
         # 新对局画面建档即自动生效。成功出口=大厅,大厅 → 大世界由上方
@@ -362,7 +362,7 @@ class BackToNormalWorldPlus(SrOperation):
         对局画面不识别)→ round_retry 保留在分支内重试(计入节点 retry 预算,
         有界 FAIL 不永动)。
         """
-        op = ExitCurrencyWarMatch(self.ctx)
+        op = CwEntryExit(self.ctx)
         op_result = op.execute()
         if op_result.success:
             return self.round_wait(wait=1)

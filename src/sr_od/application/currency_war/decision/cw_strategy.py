@@ -199,7 +199,7 @@ class CwStrategy(ABC):
 class CurrencyWarMatch:
     """运行时持有 strategy + session 的轻容器,挂 ``ctx.cw_match``(子 op 都拿得到 ``self.ctx``)。
 
-    生命周期:``CurrencyWarRunLoop.__init__`` 每局创建 → 挂 ctx → 每个钩子收到的 session 就是它 →
+    生命周期:``CwLoop.__init__`` 每局创建 → 挂 ctx → 每个钩子收到的 session 就是它 →
     局终置 ``ctx.cw_match = None``(防跨局污染)。
     """
     strategy: CwStrategy
@@ -222,10 +222,10 @@ def set_obs_reset_hook(reset_phase_round_cache: Callable[[], None]) -> None:
 def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
     """上一局残留的 match 容器在**新局开始信号**处丢弃(迁移审计 w289(git 历史)/ADR-0419)。
 
-    背景(迁移审计 w285(git 历史) 抽样判读):正常流程局终回大厅会置 ``ctx.cw_match = None``(battle_loop
+    背景(迁移审计 w285(git 历史) 抽样判读):正常流程局终回大厅会置 ``ctx.cw_match = None``(cw_loop
     分支 3c),下一局 ``RunLoop.handle_init`` 见 None 新建 session —— 状态天然全新。但
     **异常路径**(run 被停机/崩溃在上局对局中、进程未重启)残留非 None 的旧容器;此时
-    下一次入口链 ``StartCurrencyWarMatch`` 开的是一局**新对局**,而
+    下一次入口链 ``CwEntryStart`` 开的是一局**新对局**,而
     ``handle_init`` 的续跑判定(``ctx.cw_match is None``)会把旧 session 整体延用:
     level 单调守卫拿上局 ``last_level_obs=5`` 打新局 plane1 的真读(迁移审计 w285(git 历史) cap_vs_level
     抽样 4/4 实证)、tracked 角色/streak/hp 对账锚全部跨局带毒——obs_conflict 三层

@@ -7,7 +7,7 @@
 现役 handler 的完整逻辑(读法 + 策略函数 decide_megastar / core 兜底 / 执行器默认 /
 naive / decide_planner)本批不改:六 op 薄封装委托现役 handler op,handler 退役与
 「点选 + 确认」原子两步化归 P3b。例外:星徽秘典(BookcardOp)现役逻辑内联在
-battle_loop 0i 分支(无独立 op),本批按其现役读法直写(决策待定 = 沿用
+cw_loop 0i 分支(无独立 op),本批按其现役读法直写(决策待定 = 沿用
 decide_star_tome + fallback 卡1,策略归口批 B 定)。
 """
 import time
@@ -143,7 +143,7 @@ class FortunePickerOp(CwOverlayOp):
 class BookcardOp(SrOperation):
     """星徽秘典四选一:OCR 卡名 → decide_star_tome 选卡(点卡即选,弹窗自关)。
 
-    现役逻辑内联在 battle_loop 0i 分支(无独立 handler op),本批按现役读法直写:
+    现役逻辑内联在 cw_loop 0i 分支(无独立 handler op),本批按现役读法直写:
     全屏 OCR 取「XX星徽」名 → 策略打分(target 阵营/board 已有/配方框架),
     无命中 fallback 卡1(06-overlays §4:决策待定,策略归口批 B 定)。
     点击坐标走 screen_info 星徽卡-1..4 area(OCR x 近邻匹配 area,不硬编码)。

@@ -11,7 +11,7 @@
   内容哈希去重收一闪而过的瞬时帧,bot 继续跑,不改变任何决策行为。
 
 生命周期(SR 约定,无开关无参数):
-- **不激活态**:本文件只提供函数,调用点接线行以注释形式放在 battle_loop 0h 分支(B1)
+- **不激活态**:本文件只提供函数,调用点接线行以注释形式放在 cw_loop 0h 分支(B1)
   与 prep_director 备战观察帧(B2),取消注释即激活(diff 一次一行);
 - **收尾**:采集清单(试炼卡选中态/tooltip/完成提示/奖励帧/契约计数器)建档或采齐后,
   删本文件整段 + 删两处接线行注释 + 删产物(`.debug/temp/currency_war/` 下 flag 与
@@ -30,7 +30,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_observe import cw_shot_unique
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.operations.battle_loop import CurrencyWarRunLoop
+    from sr_od.application.currency_war.operations.cw_loop import CwLoop
 
 # 产物统一落点(项目两级约定:临时文件 → .debug/temp/ → 玩法工作区 .debug/temp/currency_war/)
 _FLAG_PATH = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'grail_pin.flag'
@@ -45,15 +45,15 @@ _MIN_INTERVAL_S: float = 20.0
 _LAST_SHOT_TS: dict[str, float] = {}
 
 
-def grail_pin_stop_hook(op: CurrencyWarRunLoop):
+def grail_pin_stop_hook(op: CwLoop):
     """B1 钉屏停机钩子([临时捕获] 分类,建档确认后删整段)。
 
-    调用点:battle_loop 0h 分支「标识-祈愿试炼」命中后、HandleWishTrial 派发前。
+    调用点:cw_loop 0h 分支「标识-祈愿试炼」命中后、HandleWishTrial 派发前。
     触发即:sentinel 截图(主帧 + 0.8s 后补一帧,防动画过渡帧单帧失真)→ 写 flag
     (三要素:触发定位 / 可执行处理步骤 / 删除条件)→ 直调 stop_running(不经 MCP)
     → 返回 round_wait 不点击,overlay 原样保持,下一轮 loop 顶见 STOP 退出。
 
-    :param op: CurrencyWarRunLoop 实例(用其 save_screenshot / last_screenshot /
+    :param op: CwLoop 实例(用其 save_screenshot / last_screenshot /
         ctx.run_context / round_wait;类型仅注解,不 import 具体类防环)
     :return: op.round_wait(...) 结果(路由语义与 0h 分支原返回一致)
     """
@@ -67,7 +67,7 @@ def grail_pin_stop_hook(op: CurrencyWarRunLoop):
             shot2 = ''
         _FLAG_PATH.parent.mkdir(parents=True, exist_ok=True)
         _FLAG_PATH.write_text(
-            f'[HOOK-STOP] 圣杯任务采集·钉屏停机钩子([临时捕获] battle_loop 0h 分支,\n'
+            f'[HOOK-STOP] 圣杯任务采集·钉屏停机钩子([临时捕获] cw_loop 0h 分支,\n'
             f'标识-祈愿试炼 命中 → 钉屏保 overlay 不点击;grail_collect_hooks.grail_pin_stop_hook)\n'
             f'时间: {time.strftime("%Y-%m-%d %H:%M:%S")}\n'
             f'主帧: {shot}\n补帧: {shot2}\n'
@@ -77,7 +77,7 @@ def grail_pin_stop_hook(op: CurrencyWarRunLoop):
             f'   祈愿试炼选中态 / 试炼卡 objective 奖励文本带 / L3+ 档差异帧(建档走\n'
             f'   od-dev-screen-onboarding,补 area 走 MCP upsert_screen_area);\n'
             f'3. 采集清单建档确认后:删本 flag + 删 grail_collect_hooks.grail_pin_stop_hook\n'
-            f'   整段 + 删 battle_loop 0h 接线行 → 重启 MCP server → relaunch。\n'
+            f'   整段 + 删 cw_loop 0h 接线行 → 重启 MCP server → relaunch。\n'
             f'删除条件: [临时捕获] 采集清单建档确认后删整段,不留开关。',
             encoding='utf-8')
         log.info('[cw-grail] 祈愿试炼 overlay → 钉屏停机采集 shot=%s flag=%s', shot, _FLAG_PATH.name)

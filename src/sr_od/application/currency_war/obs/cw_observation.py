@@ -698,7 +698,7 @@ def read_plane_detail_nodes(ctx: SrContext, screen: MatLike) -> list | None:
       位面卡,每选中一张调本函数,boss 槽 SIFT 认该位面 boss;
       ⚠️ 选中**过去位面**(位面号 < 会话当前位面)时节点全部变暗(灰态),
       本读法在该渲染下识别可能退化(实机 P2 采位面 1 长停留实证)——
-      消费方 CollectPlaneIntel 按 ``decide_plane_skip`` 跳过过去位面,
+      消费方 CwScreenPlaneIntel 按 ``decide_plane_skip`` 跳过过去位面,
       仅台账缺值时降级补采一次;
     - clean 门同 ``_MIN_CLEAN_CIRCLES``。
     返回 None:模板未加载 / 非该画面 / 圆数不足(坏帧)。
@@ -738,7 +738,7 @@ def read_detail_node_type_label(ctx: SrContext, screen: MatLike) -> str | None:
     (run29 型,大图标 SIFT 可认)与徽章态(run30 型:最右节点=通用金色徽章、
     详情条=「首领节点」+通用描述,本屏无身份信息)。类型名稳定可 OCR
     (run30 实锺「首领节点」全字命中),作「点到的确是 boss 节点」验证 +
-    徽章态分流依据(消费方 ``collect_plane_intel.conclude_plane_boss``)。
+    徽章态分流依据(消费方 ``cw_screen_plane_intel.conclude_plane_boss``)。
     读不到 → None(过渡帧/OCR 失败,调用方 retry,勿当徽章态)。
     """
     rect = _area_rect(ctx, '文本-节点类型名', '货币战争-位面详情')
@@ -925,8 +925,8 @@ def read_selected_difficulty(ctx: SrContext, screen: MatLike) -> str:
 
     AX label 在画面左上(x~87,y~305,紧邻「财富造物主」)。A8 高难 → ``effective_hp_threshold``
     保血阈值调高(D-32;cw_state.DIFFICULTY_HP_TABLE 代码常量,ADR-0204)。读不到 → ""(回退默认)。
-    接线已通(3.5.1,d841d1a1):StartCurrencyWarMatch 难度确认段调本函数 → ctx.cw_selected_difficulty
-    → battle_loop copy session → 策略层填 state → effective_hp_threshold D-32 激活。
+    接线已通(3.5.1,d841d1a1):CwEntryStart 难度确认段调本函数 → ctx.cw_selected_difficulty
+    → cw_loop copy session → 策略层填 state → effective_hp_threshold D-32 激活。
     """
     rect = _area_rect(ctx, '标识-当前难度职级', _DIFFICULTY_CONFIRM_SCREEN)
     texts = [r.data for r in _ocr(ctx, screen, rect)]
