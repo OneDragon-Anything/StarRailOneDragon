@@ -249,13 +249,13 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     # 星徽秘典弹窗:decision 化(设计定案 5)——有选卡价值(0i 阵营匹配选卡),
     # 「关闭即丢决策内容」;closable=False ⇒ 不在清场派生集(环入口不再
     # 一键关,改由 0i 选卡消化)。
-    # handler_id 挂账:cw_loop 0i ``_handle_star_tome_pick`` 收拢为
-    # HandleStarTome 类前不可 import(见 PENDING_HANDLER_IDS)。
+    # handler_id:CwScreenBookcard(原挂账 HandleStarTome 已清——秘典实现
+    # 经命名迁移落 CwScreenBookcard,0i 分发同源)。
     OverlaySpec(
         screen_name='货币战争-星徽秘典弹窗',
         anchor_area='标识-星徽秘典',
         semantic=SEMANTIC_DECISION,
-        handler_id='HandleStarTome',
+        handler_id='CwScreenBookcard',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=12,
         recovery_exit=RECOVERY_HANDLE,
@@ -325,10 +325,10 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
     ),
 )
 
-#: handler 收拢挂账:cw_loop inline 逻辑收拢为
-#: handler 类前,这些 handler_id 尚不可 import;一致性测试对此集合豁免
-#: handler 存在性断言(集合必须 ⊆ registry 引用集,防挂账集腐化)。
-PENDING_HANDLER_IDS: frozenset[str] = frozenset({'HandleStarTome'})
+#: handler 收拢挂账集(历史:HandleStarTome 挂账已随命名迁移清账——
+#: 秘典实现落 CwScreenBookcard)。当前为空集;机制保留:新 handler_id
+#: 先挂此集豁免 import 断言,收拢落地后移除(集合必须 ⊆ registry 引用集)。
+PENDING_HANDLER_IDS: frozenset[str] = frozenset()
 
 
 def derive_upper_screens() -> tuple[str, ...]:
