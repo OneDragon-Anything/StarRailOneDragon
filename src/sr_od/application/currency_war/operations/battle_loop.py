@@ -815,6 +815,20 @@ class CurrencyWarRunLoop(SrOperation):
                      getattr(_bb_res, 'status', ''))
             return self.round_wait(wait=1.0)
 
+        # 0q. 位面过渡(P4R2 序位返工:原在备战分支之后——「浮层叠备战」家族
+        #     审计中唯一的序位漏项;全浮层序位纪律 = 先于备战双锚,序锁矩阵
+        #     test_cw_dispatch_order_matrix.py 逐一钉死)。「点击空白处继续」=
+        #     位面过渡提示(简报下一步后 / boss 结算后各一次;位面简报不在
+        #     切换链——用户裁决,只在入场出现)→ PlaneTransitionOp(点空白 +
+        #     验提示消失)。BattleWaitOp 完成白名单亦含此锚(交回循环后本分支
+        #     承接,两消费点同锚不分叉)。
+        if self.round_by_ocr(screen, '点击空白处继续', lcs_percent=0.8).is_success:
+            _pt = PlaneTransitionOp(self.ctx)
+            _pt_res = _pt.execute()
+            log.info('[cw-loop] 位面过渡 → PlaneTransitionOp → %s',
+                     getattr(_pt_res, 'status', ''))
+            return self.round_wait(wait=1.0)
+
         # 1. 备战阶段 → 备战单轮 op(PrepDirector 单轮五段:观察→对账→决策→
         #    期望态→执行,交回本循环;W971 P3b 返工定稿:内环已拆,外循环是
         #    唯一循环)。注:遭遇/选择伙伴 等 event overlay 已在 0 系分支处理。
@@ -1103,6 +1117,9 @@ class CurrencyWarRunLoop(SrOperation):
         # 画面(简报/位面过渡/投资环境)→ OpeningSequence 首帧分流从该步续走;
         # 首帧已是常态画面(备战/战斗/结算)→ 跳过直接进顶层循环分发(接管局,
         # §2.1)。干净开局时入口链已推进到备战,本分支天然不触发。
+        # (序位纪律:本分支有 `_iter==1 ∧ 新 match` 双门,只在 run 首帧生效,
+        # 不存在「叠备战被吞」形态——序锁矩阵豁免项,见
+        # test_cw_dispatch_order_matrix.py。)
         if (self._iter == 1 and self._is_new_match
                 and self._frame_in_opening_sequence(screen)):
             _os = OpeningSequence(self.ctx)
@@ -1110,16 +1127,6 @@ class CurrencyWarRunLoop(SrOperation):
             log.info('[cw-loop] 开局编排执行 → %s(交回顶层循环分发)',
                      getattr(_os_res, 'status', ''))
             screen = self.screenshot()   # 序列后画面已推进,刷新本帧再分发
-
-        # 位面切换(W971 P3b,01-opening §3):「点击空白处继续」= 位面过渡提示
-        # (简报下一步后 / boss 结算后各一次;位面简报不在切换链——用户裁决,
-        # 只在入场出现)→ PlaneTransitionOp(点空白 + 验提示消失,原内联点空白退役)。
-        if self.round_by_ocr(screen, '点击空白处继续', lcs_percent=0.8).is_success:
-            _pt = PlaneTransitionOp(self.ctx)
-            _pt_res = _pt.execute()
-            log.info('[cw-loop] 位面过渡 → PlaneTransitionOp → %s',
-                     getattr(_pt_res, 'status', ''))
-            return self.round_wait(wait=1.0)
 
         # 战斗/结算窗口 → BattleWaitOp(W971 05-battle §1:原 1f/2/3/3b/5/6
         # 内联分支收编;三段式 = 等结算画面 / 结算处理(遥测读点 + 点继续挑战)
