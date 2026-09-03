@@ -1,7 +1,7 @@
 ---
 gameplay_name: 忘却之庭(逐光捡金)
 app_id: treasures_lightward
-last_updated: 2026-07-29
+last_updated: 2026-09-02
 source: WebSearch 攻略 + screen_info `treasures_light`(32 area)+ `application/treasures_lightward/` 代码
 involves_screens: [逐光捡金, 挑战副本, 战斗画面, 队伍]
 ---
@@ -9,6 +9,15 @@ involves_screens: [逐光捡金, 挑战副本, 战斗画面, 队伍]
 # 忘却之庭 / 逐光捡金(treasures_lightward)
 
 逐光捡金系列常驻高难挑战。三大玩法**交替轮换**(~42 天/期):**忘却之庭·混沌回忆**(FH) / **虚构叙事**(PC,Pure Fiction) / **末日幻影**(Apo)。每期最高星琼×800。进入后断开外界(不能换队伍 / 光锥 / 遗器)。`pc_alt=false`。
+
+## ⚠️ bot 现状:app 不可运行(2026-09-02 核实)
+
+`application/treasures_lightward/` 是**旧架构遗产**(重构前代码:引用已删除的 `basic.*` / `sr.app.*` / `sr.operation.*` 模块 + 旧 `StateOperationNode` API):
+
+- **import 直接失败**(`ModuleNotFoundError: No module named 'basic'`),app 不可运行;
+- **未注册**:无 factory,`src` 内无任何外部引用(17 文件自引用孤儿),一条龙套件不含它;
+- **建档资产有效**:画面侧(treasures_light 32 area + fixtures)是 2026-08-29 按新框架建的,与旧代码无关;
+- **路径**:按 `od-dev-gameplay-automation` 重写为新框架 app(玩法复杂:期次记录 / 星数检测 / 配队模块匹配 / 循环挑战),或继续搁置。重写前下文「bot 流程」节仅作旧实现规格参考。
 
 ## 玩法机制(攻略)
 
