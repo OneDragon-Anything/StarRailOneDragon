@@ -38,7 +38,8 @@ from sr_od.application.currency_war.obs.cw_observation import (
 
 
 def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
-                 source: str, op=None, shop_open: bool = False) -> dict:
+                 source: str, op=None, shop_open: bool = False,
+                 session=None) -> dict:
     """对已稳定 frame 做全面识别(heavy 段组装;dict 形态过渡)。
 
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
@@ -55,13 +56,26 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
     (source 已传入,star 防抖/obs_conflict 由 director 在回填
     时调用——避免组装层持 session 双写)。
     (r331:import 提模块级——测试 monkeypatch 按模块属性打桩。)
+    session(P4R4 漏斗批):传入局 session 时 bench/deployed 身份识别
+    走三层漏斗(session 优先匹配;状态挂 session,不引入全局);
+    None = 旧全库路径(离线/测试零变化)。
     """
     out: dict = {'tier': tier, 'source': source, 'gold_reread': False}
     if tier == 'heavy':
         templates = ensure_portrait_templates(ctx)
         if templates is not None:
-            out['bench_chars'] = read_bench_chars(ctx, frame, templates)
-            out['deployed_chars'] = read_deployed_chars(ctx, frame, templates)
+            if session is not None:
+                from sr_od.application.currency_war.obs.cw_identity_obs import (
+                    read_bench_chars_tiered,
+                    read_deployed_chars_tiered,
+                )
+                out['bench_chars'] = read_bench_chars_tiered(
+                    session, ctx, frame, templates)
+                out['deployed_chars'] = read_deployed_chars_tiered(
+                    session, ctx, frame, templates)
+            else:
+                out['bench_chars'] = read_bench_chars(ctx, frame, templates)
+                out['deployed_chars'] = read_deployed_chars(ctx, frame, templates)
         else:
             out['bench_chars'] = None
             out['deployed_chars'] = None

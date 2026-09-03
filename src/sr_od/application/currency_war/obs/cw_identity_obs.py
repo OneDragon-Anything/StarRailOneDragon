@@ -374,6 +374,7 @@ def identify_slots(
     min_inliers: int = 10,
     live_only: bool = False,
     center_gate: bool = False,
+    variant_keys: set[str] | None = None,
 ) -> list[BenchChar]:
     """纯 CV:按槽位裁切 → SIFT 识别 → BenchChar 列表(离线可测,无 ctx 依赖)。
 
@@ -420,7 +421,12 @@ def identify_slots(
     hits: list[tuple[int, BenchChar, int]] = []   # (slot_idx, char, inliers) 去重用
     _has_variant: set[str] | None = None
     if live_only:
-        _has_variant = {k.split('#')[0] for k in templates if '#' in k}
+        # P4R4 漏斗批:变体主档集可由调用方注入(全库口径)——漏斗传的是
+        # 缩小子集模板字典,子集内推导会漏「主档在子集、变体不在」的拒收
+        # 判定 → live_only 语义必须恒基于全库(默认 None = 从传入 templates
+        # 推导,旧调用零变化)。
+        _has_variant = variant_keys if variant_keys is not None else \
+            {k.split('#')[0] for k in templates if '#' in k}
     for slot_idx, rect in slots:
         if center_gate:
             crop, avatar_id, inliers = _identify_center_gated(
@@ -886,6 +892,150 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass
     return chars
+
+
+# ===== SIFT 三层漏斗(session 优先匹配;P4R4 heavy 性能批) =====
+#
+# cProfile 实证(离线 shop_open 帧,10 槽 deployed):findHomography(RANSAC)
+# 284ms(48%)+ ratio/knnMatch 239ms(40%)——center_gate 路径每槽对全库
+# ~36 个候选假设全量跑 RANSAC,其中注定不命中的候选占绝大多数。漏斗 =
+# 按局内先验缩搜索空间,**每层门槛不降**(min_inliers/live_only/中心门/
+# 歧义比全部原样,只缩候选集):
+#   L1 位置连续性:该槽上帧识别结果(棋盘角色位置连续性强先验);
+#   L2 本局已见集:本局出现过的角色(小候选集,覆盖槽位换位/换人);
+#   L3 全库兜底:新角色首次上场(= 旧全库路径)。
+# 状态读取与写回均挂 session(``cw_idfunnel_last``/``cw_idfunnel_seen``),
+# 不引入模块级全局;无 session(离线/测试)→ 直接 L3 全库,行为等价。
+# 实现手法 = **传缩小后的 templates 子字典**:门槛与裁决代码零改动,
+# 子集内裁决只会「拒绝下探」,不会误收(误收须过全部门槛)。
+
+#: 漏斗 session 状态字段名(session 上动态挂;对象由本层独占读写)。
+_FUNNEL_LAST: str = 'cw_idfunnel_last'
+_FUNNEL_SEEN: str = 'cw_idfunnel_seen'
+
+
+def _funnel_state(session) -> tuple[dict, set]:
+    """读漏斗状态(缺容器惰性建);返回 (last 映射, seen 集合)。"""
+    last = getattr(session, _FUNNEL_LAST, None)
+    if last is None:
+        last = {}
+        setattr(session, _FUNNEL_LAST, last)
+    seen = getattr(session, _FUNNEL_SEEN, None)
+    if seen is None:
+        seen = set()
+        setattr(session, _FUNNEL_SEEN, seen)
+    return last, seen
+
+
+def _sub_templates(templates: AvatarTemplates,
+                   names: set[str] | list[str]) -> AvatarTemplates:
+    """全库 → 子集字典(主档名 + 其全部 '#' 现场变体键;live_only 语义由
+    identify_slots 的 variant_keys 全库注入保障,不靠子集推导)。"""
+    names = set(names)
+    return {k: v for k, v in templates.items() if k.split('#')[0] in names}
+
+
+def _full_variant_keys(templates: AvatarTemplates) -> set[str]:
+    """全库变体主档集(子集模板下 live_only 判定的正确口径)。"""
+    return {k.split('#')[0] for k in templates if '#' in k}
+
+
+def identify_slots_tiered(
+    session,
+    screen: MatLike,
+    templates: AvatarTemplates,
+    slots: list[tuple[int, Rect]],
+    row: str,
+    min_inliers: int = 10,
+    live_only: bool = False,
+    center_gate: bool = False,
+) -> list[BenchChar]:
+    """三层漏斗识别(门槛与全库完全一致,只缩候选集;见模块漏斗注释)。
+
+    :param session: 局 session(漏斗状态挂载点);None = 直接全库(行为等价旧路径)。
+    :return: 同 :func:`identify_slots`;命中结果同步写回漏斗状态。
+    """
+    if session is None:
+        return identify_slots(screen, templates, slots, row,
+                              min_inliers=min_inliers, live_only=live_only,
+                              center_gate=center_gate)
+    last, seen = _funnel_state(session)
+    variant_keys = _full_variant_keys(templates) if live_only else None
+    out: list[BenchChar] = []
+    for slot_idx, rect in slots:
+        ch: BenchChar | None = None
+        row_key = (row or '', slot_idx)
+        # L1:该槽上帧识别结果(单模板快配)
+        prev = last.get(row_key)
+        if prev:
+            sub = _sub_templates(templates, [prev])
+            if sub:
+                hits = identify_slots(screen, sub, [(slot_idx, rect)], row,
+                                      min_inliers=min_inliers,
+                                      live_only=live_only, center_gate=center_gate,
+                                      variant_keys=variant_keys)
+                if hits:
+                    ch = hits[0]
+        # L2:本局已见集(排除 L1 已试候选)
+        if ch is None and seen:
+            l2 = sorted(seen - ({prev} if prev else set()))
+            sub = _sub_templates(templates, l2)
+            if sub:
+                hits = identify_slots(screen, sub, [(slot_idx, rect)], row,
+                                      min_inliers=min_inliers,
+                                      live_only=live_only, center_gate=center_gate,
+                                      variant_keys=variant_keys)
+                if hits:
+                    ch = hits[0]
+        # L3:全库兜底(新角色首次上场;= 旧路径原样)
+        if ch is None:
+            hits = identify_slots(screen, templates, [(slot_idx, rect)], row,
+                                  min_inliers=min_inliers, live_only=live_only,
+                                  center_gate=center_gate)
+            if hits:
+                ch = hits[0]
+        if ch is not None:
+            out.append(ch)
+            last[row_key] = ch.char_id
+            seen.add(ch.char_id)
+        else:
+            last.pop(row_key, None)   # 上帧占用本帧消失(卖出/合成)→ 失效
+    return out
+
+
+def read_deployed_chars_tiered(session, ctx: SrContext, screen: MatLike,
+                               templates: AvatarTemplates,
+                               level: int | None = None) -> list[BenchChar]:
+    """:func:`read_deployed_chars` 的漏斗版(签名多 session;布局解析/
+    留证钩子/系统单位自检全部复用旧实现,仅 front/back 识别走三层漏斗)。"""
+    from sr_od.application.currency_war.obs.cw_back_layout import (
+        back_row_slot_rects_ctx,
+        fallback_back_slots,
+        resolve_back_slots,
+    )
+    _lay = resolve_back_slots(ctx, screen, level=level)
+    back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
+    front = identify_slots_tiered(session, screen, templates,
+                                  _ctx_slots(ctx, '前排', 4), 'front',
+                                  min_inliers=_DEPLOYED_MIN_INLIERS,
+                                  live_only=_DEPLOYED_LIVE_ONLY,
+                                  center_gate=_DEPLOYED_CENTER_GATE)
+    back = identify_slots_tiered(session, screen, templates, back_slots, 'back',
+                                 min_inliers=_DEPLOYED_MIN_INLIERS,
+                                 live_only=_DEPLOYED_LIVE_ONLY,
+                                 center_gate=_DEPLOYED_CENTER_GATE)
+    check_system_unit_layout(screen, back, back_slots, templates,
+                             source='read_deployed_chars')
+    return front + back
+
+
+def read_bench_chars_tiered(session, ctx: SrContext, screen: MatLike,
+                            templates: AvatarTemplates) -> list[BenchChar]:
+    """:func:`read_bench_chars` 的漏斗版(识别走三层漏斗;召唤物停机钩子
+    等 best-effort 尾巴复用旧实现——tiered 不改变「识别不出」的语义)。"""
+    return identify_slots_tiered(session, screen, templates,
+                                 _ctx_slots(ctx, '备战栏', 9), '',
+                                 min_inliers=10)
 
 
 # ===== 补给箱识别(备战栏槽位;2026-08-14 首见实机) =====
