@@ -1130,7 +1130,7 @@ def run_buy_waves(op: SrOperation, match,
             return op.round_fail(status=f'shop 未识别卡槽{_unk},停机留证'), None
 
     # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
-    # ⚖️ pending_deploys 写入已删(2026-08-16 review D16/TOP4:0 读者,DeployBench 实读
+    # ⚖️ pending_deploys 写入已删(2026-08-16 review D16/TOP4:0 读者,DeployBenchOp 实读
     # last_state.board;只写不读 = 腐化名单)。留日志行(计划可见性)。
 
     # → 新占槽 = bought 卡落点(left-to-right = buy 顺序,bench 从左到右填)。**两帧同 shop-OPEN 状态**

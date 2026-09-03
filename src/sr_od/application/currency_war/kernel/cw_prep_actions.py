@@ -129,13 +129,13 @@ class RunBuyPhase(PrepAction):
 
 @dataclass
 class RunDeploy(PrepAction):
-    """组合(P1 过渡):整体部署 = DeployBench(v7 H-2:保 D-10 换血/同角色去重/前排保证/cap 门
+    """组合(P1 过渡):整体部署 = DeployBenchOp(v7 H-2:保 D-10 换血/同角色去重/前排保证/cap 门
     四项板上行为,P3 原子化时上移策略)。"""
 
 
 @dataclass
 class RunEquip(PrepAction):
-    """组合(P1 过渡):全员装备 = EquipAll(P3 溶解为 WearEquip)。"""
+    """组合(P1 过渡):全员装备 = EquipAllOp(P3 溶解为 WearEquip)。"""
 
 
 # 动作全集白名单(F3 membership 校验;新动作加入全集时同步此处)

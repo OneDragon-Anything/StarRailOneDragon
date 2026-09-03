@@ -280,7 +280,7 @@ def apply_op_effect(session, action: PrepAction | dict, *,
         # - OpenShop(含 read_only)/EnsureShop*:画面态周转,零局状态变更;
         # - StartBattle:进战斗,hp/gold/streak 由结算屏覆盖点接管;
         # - RunDeploy/RunEquip:组合动作,子动作效果经各自原子通道登记;
-        #   (RunEquip 装备分布期望态:EquipAll 逐件穿戴的 owned/角色 equips
+        #   (RunEquip 装备分布期望态:EquipAllOp 逐件穿戴的 owned/角色 equips
         #   推进待装备分布接线批——本批登记缺口已记实现决策。)
         pass
     return effects

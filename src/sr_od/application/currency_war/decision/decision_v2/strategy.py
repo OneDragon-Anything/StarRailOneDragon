@@ -1124,7 +1124,7 @@ class DecisionV2Strategy(CwStrategy):
             committed_from,
         )
         st.dual_track_phase = not committed_from(session, st)
-        # 迁移审计 w148(git 历史)(ADR-0358,迁移审计 w92(git 历史) 修法 A):owned 穿戴池搬运链读端——EquipAll 写的
+        # 迁移审计 w148(git 历史)(ADR-0358,迁移审计 w92(git 历史) 修法 A):owned 穿戴池搬运链读端——EquipAllOp 写的
         # session 快照拷入决策 state.equips(decisions 遥测携带,win_model 持有
         # 面特征可见;空快照=默认 [] 语义不变)。
         st.equips = list(session.last_owned_equips)

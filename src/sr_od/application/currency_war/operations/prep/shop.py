@@ -184,7 +184,7 @@ class BuyShopCards(SrOperation):
 
     接线范围(见 ``docs/develop/currency_war/strategy/05_observation.md``):
     - 执行 ``BuyCard``(点牌)/ ``LevelUp``(点「购买经验」)/ ``RefreshShop``(点「刷新」,两阶段 plan)。
-    - **跳过** ``DeployMove`` —— deploy 走 ``DeployBench``(deploy-all,游戏按等级封顶;
+    - **跳过** ``DeployMove`` —— deploy 走 ``DeployBenchOp``(deploy-all,游戏按等级封顶;
       避开 plan 的 bench_idx→物理槽映射复杂度)。
     - **D牌两阶段(r6 F8)**:plan emit RefreshShop 后,simulate 不换牌 → 其后的 BuyCard 是旧 shop
       失效决策。故每轮执行**至首个 RefreshShop(含)**,刷新后重 OCR shop + 重 plan(MAX_REFRESH 硬墙)。

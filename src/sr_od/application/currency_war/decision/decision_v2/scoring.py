@@ -335,7 +335,7 @@ def _deploy_pipeline(state: GameState,
                      session: StrategySession) -> None:
     """轻量 apply 的部署管线:围栏序把 bench 可上件推到 cap(就地)。
 
-    与生产 DeployBench/sim 部署块同一源(select_deployments);
+    与生产 DeployBenchOp/sim 部署块同一源(select_deployments);
     只服务评分(改 deployed/board 维),不产生动作。
     """
     from sr_od.application.currency_war.kernel import cw_deploy_logic as dl

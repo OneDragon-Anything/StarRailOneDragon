@@ -8,11 +8,11 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.operations.handlers.handle_reward_sphere import (
+from sr_od.application.currency_war.operations.handlers.collect_reward_spheres import (
     CollectRewardSpheres,
 )
-from sr_od.application.currency_war.operations.prep.deploy_bench import DeployBench
-from sr_od.application.currency_war.operations.prep.equip_all import EquipAll
+from sr_od.application.currency_war.operations.prep.deploy_bench import DeployBenchOp
+from sr_od.application.currency_war.operations.prep.equip_all import EquipAllOp
 from sr_od.application.currency_war.operations.prep.shop import BuyShopCards
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -22,11 +22,11 @@ class BattlePrepCycle(SrOperation):
     """货币战争 备战单轮自动化:买牌 → 部署 → 装备 → 出战。
 
     把四个子 op 串成单轮:``BuyShopCards``(开商店 → ``match.strategy.decide_prep`` 驱动买卡/升等级/刷新)→
-    ``DeployBench``(SIFT 身份 + 策略驱动部署 target 优先)→ ``EquipAll``(read_equips owned → 过滤工具 →
+    ``DeployBenchOp``(SIFT 身份 + 策略驱动部署 target 优先)→ ``EquipAllOp``(read_equips owned → 过滤工具 →
     drag 穿戴类 → 空槽,P0-2 占位检测)→ 点「出战」进自动战斗。
 
-    注:DeployBench 已接 SIFT 身份(D-8 立绘库)+ 策略驱动部署(D-7 CV 确定性 + D-10 卖 off-target
-    + D-12 观测回路纠 tracking 漂),非 v1 naive 填位。EquipAll 接入 cycle(D-77:supply 装备自动穿,
+    注:DeployBenchOp 已接 SIFT 身份(D-8 立绘库)+ 策略驱动部署(D-7 CV 确定性 + D-10 卖 off-target
+    + D-12 观测回路纠 tracking 漂),非 v1 naive 填位。EquipAllOp 接入 cycle(D-77:supply 装备自动穿,
     无穿戴 no-op;P0-2 占位 D-58 + 假阳修 D-62)。
     """
 
@@ -54,14 +54,14 @@ class BattlePrepCycle(SrOperation):
     @operation_node(name='部署')
     def deploy(self) -> OperationRoundResult:
         # 且每轮 +12s 拖慢)。clean op 代码留(clean_offtarget.py)待 late-game(target 充足)重接。
-        log.info('[cw-prep] 备战单轮 ② 部署(DeployBench)')
-        return self.round_by_op_result(DeployBench(self.ctx).execute())
+        log.info('[cw-prep] 备战单轮 ② 部署(DeployBenchOp)')
+        return self.round_by_op_result(DeployBenchOp(self.ctx).execute())
 
     @node_from(from_name='部署')
     @operation_node(name='装备')
     def equip(self) -> OperationRoundResult:
-        log.info('[cw-prep] 备战单轮 ③ 装备(EquipAll)')
-        _r = self.round_by_op_result(EquipAll(self.ctx).execute())
+        log.info('[cw-prep] 备战单轮 ③ 装备(EquipAllOp)')
+        _r = self.round_by_op_result(EquipAllOp(self.ctx).execute())
         return _r
 
     @node_from(from_name='装备')

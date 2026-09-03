@@ -109,7 +109,7 @@ class StrategySession:
     # 失败过的角色跳过,优先下一个候选(拖失败本身不消费 bench,下轮还在)。
     deploy_fail_counts: dict = field(default_factory=dict)
     # 装备拖拽失败记忆((装备名, 角色名) → 失败计数;dd-015)。同一(源件→目标)
-    # 拖拽连续失败 ≥2 次 = 该落点对拉黑,EquipAll 不再重试(复盘 g_20260902_
+    # 拖拽连续失败 ≥2 次 = 该落点对拉黑,EquipAllOp 不再重试(复盘 g_20260902_
     # 181254 修复项 A 实证:同一动作 4 轮连败各烧 ~18s)。局级持久(跨轮存活);
     # 拉黑粒度 = 件×角色对,穿戴成功不在此计数(成功的件已离场)。
     equip_drag_fail_counts: dict = field(default_factory=dict)
@@ -131,7 +131,7 @@ class StrategySession:
     # 决策路径当前不读本字段(交付门约束)。
     effect_inventory: ActiveEffectInventory = field(
         default_factory=lambda: ActiveEffectInventory())
-    # owned 穿戴池快照(ADR-0358):EquipAll 每轮 read_equips 后写
+    # owned 穿戴池快照(ADR-0358):EquipAllOp 每轮 read_equips 后写
     # (仅穿戴类,工具类过滤同 equip_all._TOOL_CATEGORIES);_pseudo_state 拷入决策
     # state.equips → decisions 遥测可见,补「持有面有读点、无写链、决策/遥测全盲」
     # (实证:历史上 decisions 里 state.equips 全空)。
@@ -266,7 +266,7 @@ class StrategySession:
     # 滤掉会让后续位面名字左移错位)
     briefing_bosses: list[str | None] = field(default_factory=list)
     active_env: str = ""
-    # deploy/sell 同步待补(deploy=DeployBench 位置式 / sell=_handle_bench_full 位置式,后续接)。
+    # deploy/sell 同步待补(deploy=DeployBenchOp 位置式 / sell=_handle_bench_full 位置式,后续接)。
     tracked_bench: list[str] = field(default_factory=list)
     tracked_bench_chars: list[BenchChar] = field(default_factory=list)
     tracked_deployed: list[BenchChar] = field(default_factory=list)

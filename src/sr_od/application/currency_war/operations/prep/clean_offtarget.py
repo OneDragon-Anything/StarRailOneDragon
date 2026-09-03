@@ -28,7 +28,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class CleanDeployedOffTarget(SrOperation):
+class CleanOffTarget(SrOperation):
     """备战阶段:点 deployed 头像 → 详情面板 → sell 阵营 ∌ target 的 off-target()。
 
     前置:已在「货币战争-备战」(shop 关)。target_comp 由 session 给(同源);无 target → 不清

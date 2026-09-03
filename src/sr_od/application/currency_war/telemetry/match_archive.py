@@ -222,7 +222,7 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
     """同轮取 ts 最晚的决策迹帧(含执行步进帧)——「战后终态」的取帧端。
 
     - 为什么不是 ``_best_decision_frame``:后者按「actions 最多、并列取
-      晚」选**决策帧**(计划动作最全的时点,先于 DeployBench/EquipAll
+      晚」选**决策帧**(计划动作最全的时点,先于 DeployBenchOp/EquipAllOp
       执行);终态要的恰是**执行后**的最晚账面,故只按 ts 取最晚帧。
     - 取值时机边界:最晚帧落在本轮备战执行后、战斗前;战斗不改板面
       (部署/装备/买卖只发生在备战期),故该帧板面 = 该轮战后终态。
@@ -411,7 +411,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'target_comp': (frame or {}).get('target_comp'),
             'board': st.get('board'),
             # 以下 deployed/bench/equips/board 三四列 = **决策帧**快照
-            # (_best_decision_frame:决策时点,先于 DeployBench/EquipAll
+            # (_best_decision_frame:决策时点,先于 DeployBenchOp/EquipAllOp
             # 执行)——判读「执行后板面」必须并读 terminal 列,勿把本列
             # 当战后实况(w936_deploy_fill 移交①:g_20260831_032006 r9
             # 决策帧 4/6 被误读为部署停驻,实机已填到 6/6)。

@@ -206,7 +206,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
     return not (bonds & _DEPLOY_FENCE)
 
 
-class DeployBench(SrOperation):
+class DeployBenchOp(SrOperation):
     """备战阶段:bench 角色 → 舞台空槽(CV 占用 + SIFT 身份 + position_pref 选排;拖拽走 DragCwChar.drag_char)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
@@ -224,7 +224,7 @@ class DeployBench(SrOperation):
         ``_back_row_centers`` 选档(cap 差公式,ADR-0385;**别假设
         「后排-」只有 6 个**——档前缀由调用方传入)。
         """
-        si = self.ctx.screen_loader.get_screen(DeployBench.SCREEN_NAME)
+        si = self.ctx.screen_loader.get_screen(DeployBenchOp.SCREEN_NAME)
         if si is None:
             return []
         pts: list[tuple[int, Point]] = []
@@ -270,10 +270,10 @@ class DeployBench(SrOperation):
 
     @operation_node(name='部署备战栏角色', is_start_node=True)
     def deploy(self) -> OperationRoundResult:
-        si = self.ctx.screen_loader.get_screen(DeployBench.SCREEN_NAME)
+        si = self.ctx.screen_loader.get_screen(DeployBenchOp.SCREEN_NAME)
         if si is None:
             log.warning('[cw-deploy] 未加载「货币战争-备战」screen_info,跳过部署')
-            return self.round_fail(status=DeployBench.STATUS_NO_SCREEN)
+            return self.round_fail(status=DeployBenchOp.STATUS_NO_SCREEN)
         # live 2026-08-15:事件 overlay(盛会之星等)挡 drag —— 拖全灭(源槽未变连环)+ 空场上阵
         # HP 82→1。overlay 在 → 跳过部署(success 态交还上层,Director 观察会 bail 交外环 handler)。
         for _scr, _area in (('货币战争-盛会之星', '标识-盛会之星'),
@@ -293,7 +293,7 @@ class DeployBench(SrOperation):
         back = self._back_row_centers()
         if len(bench) == 0:
             log.info('[cw-deploy] 备战栏无槽坐标,跳过')
-            return self.round_success(DeployBench.STATUS_NO_BENCH)
+            return self.round_success(DeployBenchOp.STATUS_NO_BENCH)
 
         # deployed-lock(doc gameplay:78)是误判,deployed 可卖(用户实机确认 gold 增加)。
         _match = self.ctx.cw_match
@@ -382,7 +382,7 @@ class DeployBench(SrOperation):
         except Exception as e:   # noqa: BLE001  采集失败不影响部署
             log.debug('[cw-deploy] equips 采集失败(不阻塞): %s', e)
 
-        return self.round_success(DeployBench.STATUS_DEPLOYED, wait=1)
+        return self.round_success(DeployBenchOp.STATUS_DEPLOYED, wait=1)
 
     def _fix_misplaced_rows(self, front: list, back: list,
                             templates: AvatarTemplates | None) -> None:
