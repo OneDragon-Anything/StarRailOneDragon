@@ -19,5 +19,5 @@ involves_screens: [版本公告轮播]
 
 ## 对自动化的影响
 
-- 任何长时间运行的流程都可能被它打断:返回大世界的兜底 op(`BackToNormalWorldPlus`)与 CW 入口流程(`EnterCurrencyWar.wait_lobby`)均已建分支——识别公告屏 → 第 1 页翻页 / 第 2 页点关闭(零 ESC 键输入,项目规则)。
+- 任何长时间运行的流程都可能被它打断:返回大世界的兜底 op(`BackToNormalWorldPlus`)与 CW 入口流程(`CwEntryEnter.wait_lobby`)均已建分支——识别公告屏 → 第 1 页翻页 / 第 2 页点关闭(零 ESC 键输入,项目规则)。
 - 版本更替后公告主题变化,标题 id_mark(「贪饕」侵蚀)会失配:新版本首跑前需按新公告 fixture 补锚。

@@ -37,5 +37,5 @@ source_image: screens/货币战争-战斗暂停/paused.webp
 
 ## bot 处理策略
 
-- **启动恢复预检**(`CurrencyWarApp._recover_if_paused`):app 起跑入口命中本面板 → 委托 `ExitCurrencyWarMatch` 走 撤退 → 放弃并结算 → 下一步 → 大厅 恢复链,回大厅后正常起跑(局10/11 死因治本;此处「放弃并结算」是恢复语境的主动弃局,与中断挑战弹窗 doc 里「对局中 bot 永不点」的对局中策略分属两个语境)。
-- 退局 op(`ExitCurrencyWarMatch` 分支③):战斗中退局经 右上角 X → 本面板 → 撤退 接中断弹窗分支。
+- **启动恢复预检**(`CurrencyWarApp._recover_if_paused`):app 起跑入口命中本面板 → 委托 `CwEntryExit` 走 撤退 → 放弃并结算 → 下一步 → 大厅 恢复链,回大厅后正常起跑(局10/11 死因治本;此处「放弃并结算」是恢复语境的主动弃局,与中断挑战弹窗 doc 里「对局中 bot 永不点」的对局中策略分属两个语境)。
+- 退局 op(`CwEntryExit` 分支③):战斗中退局经 右上角 X → 本面板 → 撤退 接中断弹窗分支。
