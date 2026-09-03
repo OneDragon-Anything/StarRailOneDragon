@@ -1,6 +1,6 @@
 # P19:unit_bond_tags 的羁绊计数语义(星徽 add-if-absent 幂等 / 卡带双计 / 计数上界)
 
-> 状态:**①上界已证 ②星徽幂等性部分证伪(equips 序依赖缺口)③卡带双计边界已证**
+> 状态:**①上界已证 ②星徽幂等性部分证伪(equips 序依赖缺口;缺口已闭环 2026-09-04——两遍法修法落地 cw_bond_equips.py:134-144,反序/三阶组合锁 test_cw_early_kernel.py:1443-1448,独立重推抽检一致,见 redesign/PROOF_RECHECK.md P19 节)③卡带双计边界已证**
 > 对象:`cw_bond_equips.unit_bond_tags`(三侧唯一计数函数:实机
 > `cw_observation.board_from_tracked` / sim·派生 `cw_state._recount_board` /
 > 检查镜像 `cw_sim_checks._board_agg_of_deployed_row`)。
