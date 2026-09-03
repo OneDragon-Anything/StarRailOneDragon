@@ -52,7 +52,7 @@
 | cw_op_collect_spheres.py | CwOpCollectSpheres | handlers/handle_reward_sphere.py | CollectRewardSpheres |
 | cw_op_sell_off_target.py | CwOpSellOffTarget | prep/clean_offtarget.py | CleanDeployedOffTarget |
 
-## 4. 退役清单(删除,不迁移)
+## 4. 退役清单(删除,不迁移)——**用户裁决 2026-09-03:本轮直接执行**(与命名迁移同批交付,commit 分段)
 
 | 旧 | 理由 |
 |---|---|
