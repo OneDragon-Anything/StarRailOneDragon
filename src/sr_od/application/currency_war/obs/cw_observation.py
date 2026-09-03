@@ -1353,48 +1353,152 @@ def resolve_paddle_pair(ctx: SrContext, screen: MatLike,
     return x, _debounce_cap(ctx, screen, cap, level)
 
 
-def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9) -> tuple[dict[str, tuple[int, int]], bool]:
+#: 徽标列右界(1080p):阵营图标旁计数徽标 x≈66-102,名称列/档位链 x≥104
+#(证据帧 obs_conflict_board__f1173e2d 离线 OCR 实测:徽标"3"@x=73,链"2/4/6"@x=107)。
+_BOARD_BADGE_X_MAX = 104
+
+
+def _board_rescue_xy(faction: str, data: str, max_count: int) -> tuple[int, int] | None:
+    """斜杠丢失容错:OCR 把 "X/Y" 的 '/' 误读丢/误读成 '1'("2/3"→"213"、"2/4"→"24")时还原 (X, Y)。
+
+    还原方式 = 原串直拆 + 删一个 '1' 后拆两数,X∈[1,max_count] 且 Y 必须是该阵营
+    注册表 tiers 中的某个更高激活档(Y∈tiers 是防裸数字/档位链误配的硬校验;
+    档位链如持续伤害 "2/4/6"→"21416"/"246" 拆不出合法对 → 自然拒绝)。
+    """
+    if not data.isdigit() or len(data) < 2:
+        return None
+    tiers = FACTIONS[faction].tiers if faction in FACTIONS else ()
+    candidates = [data] + [data[:i] + data[i + 1:] for i, ch in enumerate(data) if ch == '1']
+    for trimmed in candidates:
+        for k in range(1, len(trimmed)):
+            a, b = trimmed[:k], trimmed[k:]
+            if not (a.isdigit() and b.isdigit()):
+                continue
+            x, y = int(a), int(b)
+            if 1 <= x <= max_count and y in tiers and y > x:
+                return x, y
+    return None
+
+
+def _read_badge_cell(ctx: SrContext, screen: MatLike | None, row_y: float) -> int | None:
+    """单个阵营行的徽标小格放大重读 → count;失读 → None。
+
+    第四级兜底:整面板原生分辨率 OCR 常漏读小徽标(证据帧 3db91784:持续伤害
+    徽标"3"整体失读,仅档位链 "21416" 可读)。徽标几何 = 名称行下方固定偏移
+    (f1173e2d 实测:徽标框 y≈名称行+21..+48、x≈66-108,白字深色圆底)。
+    小格裁切 + 3x 放大复用 ``_ocr_upscaled`` 的 det 天花板手法(3db91784 实帧
+    对拍:3x 读 '3' conf=1.0);3x 空读再试 5x。纯数字 1-12 之外按失读处理。
+    screen=None(测试注入态,无像素)→ None。
+    """
+    if screen is None:
+        return None
+    cell = Rect(66, int(row_y) + 10, 108, int(row_y) + 58)
+    for scale in (3, 5):
+        for r in _ocr_upscaled(ctx, screen, cell, scale=scale):
+            data = (r.data or '').strip()
+            if data.isdigit():
+                v = int(data)
+                if 1 <= v <= 12:
+                    return v
+    return None
+
+
+def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9,
+                 expected: dict[str, int] | None = None) -> tuple[dict[str, tuple[int, int]], bool]:
     """OCR 左面板 → ({阵营: (count, next_tier)}, honest)。
 
     聚焦裁切 OCR 才稳读 "X/Y"(全屏把 "2/3" 误读 "213"→ 旧 read_board 显脆,实为全屏密度问题;
     区域裁切可读对)。next_tier 未解析到 → 记 0(未知,read_board_next_tier 滤掉)。
 
-    r319(ADR-0213 批次2):第二返回值 honest=**至少一行 X/Y 真解析**——
-    有阵营行但全走 count=1 兜底(动画期只显 tier 链)= 帧不可信
-    (board_readable 消费);dict 契约不变(键仍在,值是兜底)。
+    count 优先级(board 计数系统性低估修复,DD-021;证据帧 obs_conflict_board__f1173e2d/
+    3db91784/86ce9fd1:徽标"3"+链"2/4/6" 被旧链读成 1~2、"2/3" 斜杠丢失读成 1):
+    ① 图标旁徽标数字(画面事实:纯数字 token 且位于名称列左侧,``_BOARD_BADGE_X_MAX``);
+    ② "X/Y" 正则的 X(斜杠读全时);
+    ③ 斜杠丢失容错还原(``_board_rescue_xy``);
+    ④ 徽标小格放大重读(``_read_badge_cell``,仅兜底行触发);
+    ⑤ expected(身份 computed 底座;档位链阵营徽标整体失读时 OCR 侧证据穷尽,
+       恒 1 兜底是低估最后一环——此时无画面事实反证,身份推算即最优估计;
+       证据帧 86ce9fd1:持续伤害/护盾 徽标失读真值 2,旧链恒 1)。
+    ①-④ 全 miss 且无 expected → count=1 兜底(动画期只显档位链,至少 1 人在场)。
+
+    r319(ADR-0213 批次2):第二返回值 honest=**至少一行 OCR 真解析**(①-④)——
+    全靠兜底 = 帧不可信(board_readable 消费);dict 契约不变(键仍在,值是兜底)。
     """
     results = _ocr(ctx, screen, _area_rect(ctx, A_BOARD))
     results.sort(key=lambda r: r.center.y)
     pairs: dict[str, tuple[int, int]] = {}
+    fallback_rows: list[tuple[str, float, int | None]] = []   # (阵营, 名称行 y, expected 兜底值|None)
     honest = False
     for i, r in enumerate(results):
         faction = next((f for f in FACTIONS if f in (r.data or '')), None)
         if faction is None or faction in pairs:
             continue
+        badge_cnt: int | None = None
         xy: tuple[int, int] | None = None
+        rescued: tuple[int, int] | None = None
         for r2 in results[i + 1:]:
             dy = r2.center.y - r.center.y
             if dy > 45:
                 break
             if dy <= 0:
                 continue
-            # count 显示为 "X/Y"(X=在场人数,Y=下个 tier 阈值,如 仙舟"1/3");取 X=count + Y=next_tier。
-            # 裸数字(无斜杠)多是 tier 链残留(如燃血 "2/4/6/8" → OCR "8")或邻行资源数,不当 count → skip。
-            m_xy = re.search(r'(\d+)\s*/\s*(\d+)', r2.data or '')
-            if m_xy:
-                xy = (int(m_xy.group(1)), int(m_xy.group(2)))
-                break
-        if xy is not None:
+            data = (r2.data or '').replace(' ', '')
+            # 徽标计数:纯数字小 token 且在名称列左侧(徽标恒在图标右、名称列左的固定列)
+            if (badge_cnt is None and data.isdigit() and len(data) <= 2
+                    and getattr(r2, 'x', r2.center.x) < _BOARD_BADGE_X_MAX):
+                v = int(data)
+                if 1 <= v <= max(max_count, 1):
+                    badge_cnt = v
+                continue
+            # count 显示为 "X/Y"(X=在场人数,Y=下个 tier 阈值,如 仙舟"1/3")
+            if xy is None:
+                m_xy = re.search(r'(\d+)\s*/\s*(\d+)', r2.data or '')
+                if m_xy:
+                    xy = (int(m_xy.group(1)), int(m_xy.group(2)))
+                    continue
+                # 斜杠丢失容错(仅 X/Y 正则未命中时尝试;注册表 tiers 校验)
+                if rescued is None:
+                    rescued = _board_rescue_xy(faction, data, max_count)
+        if badge_cnt is not None:
+            cnt = badge_cnt
             honest = True
-            cnt, nt = xy
-            # sanity:count 1-max_count(默认 9;read_game_state 传 level —— faction count ≤ deployed ≤ level,
-            # count>level 必是 OCR 误读,如 狼狩:7@lv4);next_tier 1-12。越界 → 兜底 count=1。
-            cnt = cnt if 1 <= cnt <= max(max_count, 1) else 1
-            nt = nt if 1 <= nt <= 12 else 0
-            pairs[faction] = (cnt, nt)
+        elif xy is not None:
+            cnt = xy[0]
+            honest = True
+        elif rescued is not None:
+            honest = True
+            pairs[faction] = rescued
+            continue
         else:
-            # 无 "X/Y"(动画期只显 tier 链等)→ count 默认 1(至少 1 人在场才显示该阵营),无 next_tier。
-            pairs[faction] = (1, 0)
+            # OCR 侧证据穷尽(徽标失读/动画帧)→ expected(身份 computed)兜底,恒 1 是
+            # 低估最后一环(见 docstring ⑤);徽标小格重读(④)在后统一翻案。
+            exp = expected.get(faction) if expected else None
+            if exp is not None and 1 <= exp <= max(max_count, 1):
+                nt_exp = next((t for t in FACTIONS[faction].tiers if t > exp), 0) \
+                    if faction in FACTIONS else 0
+                pairs[faction] = (exp, nt_exp)
+            else:
+                exp = None
+                pairs[faction] = (1, 0)
+            fallback_rows.append((faction, r.center.y, exp))
+            continue
+        # sanity:count 1-max_count(默认 9;read_game_state 传 level —— faction count ≤ deployed ≤ level,
+        # count>level 必是 OCR 误读,如 狼狩:7@lv4);next_tier 1-12。越界 → 兜底 count=1。
+        cnt = cnt if 1 <= cnt <= max(max_count, 1) else 1
+        nt = xy[1] if (xy is not None and 1 <= xy[1] <= 12) else 0
+        if nt == 0 and faction in FACTIONS:
+            # 徽标/容错源无 Y → 注册表 tiers 推下一档(>count 的最小档;无更高档 → 0)
+            nt = next((t for t in FACTIONS[faction].tiers if t > cnt), 0)
+        pairs[faction] = (cnt, nt)
+    # 第四级:逐兜底行徽标小格放大重读,只翻兜底行的案(有徽标/X/Y/容错行的帧零额外开销)。
+    if fallback_rows:
+        for faction, row_y, _exp in fallback_rows:
+            badge = _read_badge_cell(ctx, screen, row_y)
+            if badge is not None:
+                nt = next((t for t in FACTIONS[faction].tiers if t > badge), 0) \
+                    if faction in FACTIONS else 0
+                pairs[faction] = (badge, nt)
+                honest = True
     return pairs, honest
 
 
@@ -2062,7 +2166,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # spec 无 board 的阶段(battle_or_transit)跳过面板 OCR:空 OCR 侧 + honest=False
     # → 有 tracked 时保 computed 底座、无 tracked 时空板(与「OCR 全 miss」同语义)。
     _bp, _board_honest = (
-        _board_pairs(ctx, screen, state.level) if _w('board') else ({}, False))
+        _board_pairs(ctx, screen, state.level, expected=_computed)
+        if _w('board') else ({}, False))
     state.board_readable = _board_honest   # r319:动画帧(count=1 兜底)显式标注
     _ocr_board = {f: c for f, (c, _nt) in _bp.items()}
     if _computed is not None:
@@ -2103,9 +2208,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                                                   '保 computed 底座,留等备战帧再裁'),
                                  source='computed_vs_ocr', faction=_f)
         state.board = _merged
-        # next_tier 从注册表 tier 表算(>count 的最小 tier;无更高档 → 0)
+        # next_tier 从注册表 tier 表算(>count 的最小 tier;无更高档 → 0)。
+        # 基于 _merged(徽标裁决后的最终计数)而非 computed 底座——否则徽标纠正
+        # 上行时 next_tier 仍按旧计数停在前一档(低估修复,DD-021,见 _board_pairs)。
         state.board_next_tier = {}
-        for _f, _c in _computed.items():
+        for _f, _c in _merged.items():
             _tiers = FACTIONS[_f].tiers if _f in FACTIONS else ()
             _nt = next((t for t in _tiers if t > _c), 0)
             if _nt:
