@@ -122,6 +122,10 @@ def _acquire_lock() -> bool:
 _REPLAY_DIR = Path(os.environ.get('CW_SENTINEL_REPLAY_DIR', r'D:\code\workspace\StarRailOneDragon\.debug\temp\currency_war\replay'))
 RUNS_JSONL = Path(os.environ.get('CW_SENTINEL_RUNS', str(_REPLAY_DIR / 'runs.jsonl')))
 OUTCOMES_JSONL = Path(os.environ.get('CW_SENTINEL_OUTCOMES', str(_REPLAY_DIR / 'outcomes.jsonl')))
+# v4.1 活跃局判定第 4 条:活跃局每备战环落决策帧,decisions 新鲜=局在跑。
+DECISIONS_JSONL = Path(os.environ.get(
+    'CW_SENTINEL_DECISIONS', str(_REPLAY_DIR / 'decisions.jsonl')))
+DECISIONS_FRESH_SEC = int(os.environ.get('CW_SENTINEL_DECISIONS_FRESH', 600))
 
 # v2 原样:只报需介入的事件(第一版把对账纠漂/MISS 例行也报了,噪声淹没真警报)
 PATTERNS = (
@@ -226,7 +230,12 @@ def _run_ended() -> bool:
     判定链(任一命中「活跃」即返回 False):
       1. runs.jsonl 尾行无 result(终局记录缺失/文件不可读)→ 可能有局在跑;
       2. outcomes.jsonl 尾行 run_id ≠ runs 尾行 run_id → 更新的局已产出回合记录;
-      3. outcomes.jsonl 近 OUTCOME_FRESH_SEC 内有更新(新局开局初期未写终局记录)。
+      3. outcomes.jsonl 近 OUTCOME_FRESH_SEC 内有更新(新局开局初期未写终局记录);
+      4. decisions.jsonl 近 DECISIONS_FRESH_SEC 内有更新(v4.1,2026-09-03
+         实证缺陷:runs 行局终才写,旧局尾行 result 在位+outcomes 同 id
+         陈旧 ⇒ 整个新对局期间被误判「已终局」,LOOP 报警整局被 suppress
+         ——备战环卡死 26 分钟零报警;活跃局备战环每轮落决策帧,
+         mtime 新鲜即可靠区分)。
     12:51 误报场景:runs 尾行 = run_20260825_115418 result=loss(已终局),
     outcomes 尾行同 run_id 且 mtime 陈旧 → 判 ended → IDLE 优雅退出。
     """
@@ -242,6 +251,11 @@ def _run_ended() -> bool:
                 return False  # 回合记录刚更新过 → 活跃(开局初期兜底)
         except OSError:
             pass
+    try:
+        if time.time() - DECISIONS_JSONL.stat().st_mtime < DECISIONS_FRESH_SEC:
+            return False  # 决策帧刚更新 → 活跃局(v4.1,见判定链 4)
+    except OSError:
+        pass
     return True
 
 
