@@ -16,6 +16,7 @@ cw_screen_prep(备战环)消费——两侧都在 app 桶,装配边界归 app �
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from sr_od.application.currency_war.decision.decision_v2.adapter import (
@@ -69,20 +70,36 @@ def install_obs_ports() -> None:
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
 
-    def _expected_reconcile_sink(row: dict) -> None:
-        # expected_reconcile.jsonl 追加(EXPECTED_STATE §5 留证;复用对账
-        # 通道形态目录)。失败不阻塞对局(观测面)。
-        import json
-        from pathlib import Path
+    set_evidence_sink(_expected_reconcile_sink_for_test(
+        _reconcile_dir()))
+
+
+def _reconcile_dir() -> Path:
+    """expected_reconcile.jsonl 目录(项目根锚定绝对路径;P4R4 缺陷②:
+    旧相对路径依赖 server cwd,cwd 漂移进程把追加写去别处 = 主文件
+    「零新增」假截断)。"""
+    from one_dragon.utils.file_utils import get_project_root
+    return (get_project_root() / '.debug' / 'temp' / 'currency_war')
+
+
+def _expected_reconcile_sink_for_test(base_dir: Path):
+    """sink 工厂(注入点可测形态):返回按 base_dir 追加写的 sink 闭包。
+
+    打开模式恒 'a'(跨进程/跨重启追加不截断——第六局复盘缺陷②,单测
+    锁定 append 语义防回退);失败静默(观测面)。生产 = 工厂(项目根
+    .debug/temp/currency_war),由 install_obs_ports 装配。"""
+    import json
+
+    def _sink(row: dict) -> None:
         try:
-            p = Path('.debug/temp/currency_war/expected_reconcile.jsonl')
+            p = Path(base_dir) / 'expected_reconcile.jsonl'
             p.parent.mkdir(parents=True, exist_ok=True)
             with p.open('a', encoding='utf-8') as f:
                 f.write(json.dumps(row, ensure_ascii=False, default=str) + '\n')
         except Exception:  # noqa: BLE001  留证 best-effort
             pass
 
-    set_evidence_sink(_expected_reconcile_sink)
+    return _sink
 
 
 def _registry_of(strategy: Any):

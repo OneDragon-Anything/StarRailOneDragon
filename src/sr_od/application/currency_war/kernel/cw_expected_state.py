@@ -72,6 +72,10 @@ class ExpectedEntry:
     kind: str
     confirm_point: str = 'prep_obs'
     group_id: str = ''
+    # diff 已上报标记(第六局复盘缺陷③去重):同条目只留证一次——重复
+    # diff(清账失败/覆盖点多次经过)静默清账不再写 expected_reconcile;
+    # 条目被 apply_op_effect 重新登记(last-wins 新对象)即复位 → 可重报。
+    reported: bool = False
 
 
 def register_expected(session, entry: ExpectedEntry) -> None:
@@ -362,9 +366,18 @@ def reconcile_expected(session, coverage_point: str,
         if value is None:
             continue
         if not _values_match(entry, value):
+            # P4R4 缺陷③去重(第六局复盘):同条目只留证一次——重复 diff
+            # (上一版漏了「diff 后清账」→ 下轮同覆盖点重报)静默清账;
+            # 重新登记(last-wins 新对象 reported=False)即可重报。
+            if getattr(entry, 'reported', False):
+                confirmed.append(path)
+                continue
             diffs.append(_record_diff(session, entry, value, op, coverage_point))
-        else:
-            confirmed.append(path)
+            entry.reported = True
+        # P4R4 缺陷③主修:留证后同样清账(旧版只把一致项加 confirmed,
+        # mismatch 条目滞留 → 下轮同覆盖点重复 diff)。实读是更新的事实,
+        # 保留只会反复报同一 diff(对账是证据流,不是重试流)。
+        confirmed.append(path)
     if confirmed:
         clear_expected(session, confirmed)
     return diffs

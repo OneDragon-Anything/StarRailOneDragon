@@ -140,9 +140,17 @@ def prep_obs_actual_for(session, entry, st, obs,
         name = (p[len('owned['):-1] if p.startswith('owned[') else '')
         own = getattr(session, 'last_owned_equips', None) or []
         present = name in own
+        # P4R4 缺陷①(第六局复盘 §六⑤):装备到手即被穿(EquipAll 把
+        # owned 移到角色 equips),只查 owned 会让「+1」条目永不确认 →
+        # 跨轮挂账不清(p2r2 拖到 p2r4 实证)。已穿在任意上阵角色身上
+        # 同样视为到账确认。
+        worn = any(name in (getattr(d, 'equips', None) or [])
+                   for d in (getattr(obs, 'deployed_chars', None) or []))
         if '−1' in str(entry.value):
             # 减量条目(穿戴消耗,§3 B-6):登记时件已在场,件消失 = 到账。
             return (entry.value, not present)
+        if worn:
+            return (entry.value, True)   # 已穿 = 到账,清账不 diff
         return (entry.value if present else name, present)
     if kind == 'pending_reward':
         return ('sphere' if getattr(obs, 'spheres', None) else 'gone', True)
@@ -1221,96 +1229,126 @@ class CwScreenPrep(SrOperation):
         except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
             log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
         # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 本 op 观察段/破墙派生帧)
+        # 序列契约 v1(dd-020):返回 list[PrepAction],执行序 = 列表序;
+        # fail-stop/控制流/空批语义归本流程侧(契约 §2/§4)。
         try:
-            action = match.strategy.decide_prep_screen(session, config)
+            actions = match.strategy.decide_prep_screen(session, config)
         except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
             log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
             return self.round_fail(status=f'策略决策异常: {e}')
-        if not isinstance(action, PrepAction):
-            log.warning(f'[cw!][director] 策略输出非 PrepAction: {type(action).__name__}')
-            return self.round_fail(status='策略输出非 PrepAction(F3)')
-        self._record_step(obs, action)
-        # 控制流(词表退役过渡):球留置 = 空动作表达(交回外循环,不计任何内环计数)
-        if isinstance(action, DeferSpheres):
-            session.defer_count += 1
-            log.info(f'[cw][director] DeferSpheres(defer={session.defer_count})→ 交回外循环')
-            return self.round_success('球留置(空动作),交回外循环', wait=1.0)
-        if isinstance(action, BailToOuter):
-            # 词表已退役(W971 §2.6.1);防御性兜底 = 原样交回(无计数)
-            log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环(词表退役兜底)')
-            return self.round_success(f'BailToOuter({action.reason}),交回外循环(词表退役兜底)', wait=1.0)
-        # F3 校验(非法:拒绝执行 + 交回留证)
-        err = self._executor.validate(action)
-        key = action_key(action)
-        if err is not None:
-            log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝,交回外循环留证')
-            return self.round_success(f'参数非法 {key}:{err},交回外循环留证', wait=1.0)
-        # —— ④ 期望态计算(动作发出点;None=无法建真值不评)+ 执行前置记账
-        _drag_expect = None
-        if isinstance(action, (SellBench, DeployMove)):
-            _drag_expect = compute_drag_expect(
-                action, obs.bench_chars, obs.deployed_chars)
-        _equip_expect = None
-        if isinstance(action, SellDeployed):
-            _equip_expect = self._equip_expect_for_sell(action)
-        _dep_delta = 0
-        _dep_pre: int | None = None
-        if isinstance(action, (DeployMove, SellDeployed)):
-            _dep_delta = 1 if isinstance(action, DeployMove) else -1
-            _dep_frame = getattr(self, 'last_screenshot', None)
-            if _dep_frame is not None:
-                try:
-                    _dep_pre = read_deployed_count(self.ctx, _dep_frame)
-                except Exception:   # noqa: BLE001  观测 best-effort
-                    _dep_pre = None
-        acct: dict = {'last_obs': obs, 'key': key, 'progressed': False,
-                      'drag_expect': _drag_expect, 'equip_expect': _equip_expect,
-                      'dep_delta': _dep_delta, 'dep_pre': _dep_pre, 'unit_open': False}
-        # —— ⑤ 执行 + 结束判定(OpenShop = 流程层商店编排;其余经执行器 F3 验证链)
-        if isinstance(action, OpenShop):
-            _unit = not action.read_only
-            if _unit:
-                self._spend_unit_open(obs)
-            try:
-                progressed, detail = self._open_shop_phase(action, obs)
-            except Exception as e:
+        if (not isinstance(actions, list)
+                or not all(isinstance(a, PrepAction) for a in actions)):
+            log.warning(f'[cw!][director] 策略输出非 list[PrepAction]: '
+                        f'{type(actions).__name__}')
+            return self.round_fail(status='策略输出非 list[PrepAction](F3)')
+        if not actions:
+            # 空批合法(契约 §4:本帧无动作可发,策略器禁用空批表达控制流)
+            # → 交回外循环重观察;连续空批的 stall 兜底归外循环防线。
+            # 现役核恒出动作(规则序含 DeferSpheres 兜底),本分支不可达。
+            return self.round_success('空批(本帧无动作),交回外循环重观察', wait=1.0)
+        # —— ④⑤ 序列消费:逐动作 F3 校验/期望态计算/执行/执行后对账。
+        # 帧稳定性(第 i+1 动作不依赖第 i 动作的新观察)由策略器发射时截断
+        # 保证(契约 §3);本侧保守口径 = 每动作落地后 heavy 重观察再续发
+        # (与现役单动作逐轮重观察等价;批尾 heavy 节流待新核序列发射器
+        # 落地后按契约再收紧)。已知画面出口(OpenShop/StartBattle)作序列
+        # 终点——契约 §3 枚举出战=终点;OpenShop 切商店画面非帧稳定,同判。
+        _n_total = len(actions)
+        for _idx, action in enumerate(actions):
+            _rest = _n_total - _idx - 1
+            self._record_step(obs, action)
+            # 控制流(契约 §4:词表内特殊动作,不进 execute 验证链;defer 计数归框架)
+            if isinstance(action, DeferSpheres):
+                session.defer_count += 1
+                _d = f'(余{_rest}动作丢弃)' if _rest else ''
+                log.info(f'[cw][director] DeferSpheres(defer={session.defer_count})'
+                         f'→ 交回外循环{_d}')
+                return self.round_success('球留置(空动作),交回外循环', wait=1.0)
+            if isinstance(action, BailToOuter):
+                # 词表已退役(W971 §2.6.1);防御性兜底 = 原样交回(无计数)
+                _d = f'(余{_rest}动作丢弃)' if _rest else ''
+                log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环'
+                         f'(词表退役兜底){_d}')
+                return self.round_success(f'BailToOuter({action.reason}),交回外循环(词表退役兜底)', wait=1.0)
+            # F3 校验(契约 §2:参数非法与执行失败同型——截断+重观察,
+            # 不进连败链的拒绝路径;拒绝执行 + 交回留证)
+            err = self._executor.validate(action)
+            key = action_key(action)
+            if err is not None:
+                log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝,交回外循环留证')
+                return self.round_success(f'参数非法 {key}:{err},交回外循环留证', wait=1.0)
+            # —— ④ 期望态计算(动作发出点;None=无法建真值不评)+ 执行前置记账
+            _drag_expect = None
+            if isinstance(action, (SellBench, DeployMove)):
+                _drag_expect = compute_drag_expect(
+                    action, obs.bench_chars, obs.deployed_chars)
+            _equip_expect = None
+            if isinstance(action, SellDeployed):
+                _equip_expect = self._equip_expect_for_sell(action)
+            _dep_delta = 0
+            _dep_pre: int | None = None
+            if isinstance(action, (DeployMove, SellDeployed)):
+                _dep_delta = 1 if isinstance(action, DeployMove) else -1
+                _dep_frame = getattr(self, 'last_screenshot', None)
+                if _dep_frame is not None:
+                    try:
+                        _dep_pre = read_deployed_count(self.ctx, _dep_frame)
+                    except Exception:   # noqa: BLE001  观测 best-effort
+                        _dep_pre = None
+            acct: dict = {'last_obs': obs, 'key': key, 'progressed': False,
+                          'drag_expect': _drag_expect, 'equip_expect': _equip_expect,
+                          'dep_delta': _dep_delta, 'dep_pre': _dep_pre, 'unit_open': False}
+            # —— ⑤ 执行 + 结束判定(OpenShop = 流程层商店编排;其余经执行器 F3 验证链)
+            if isinstance(action, OpenShop):
+                _unit = not action.read_only
                 if _unit:
-                    self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
-                                           boundary='aborted')
-                log.warning(f'[cw!][director] 执行异常 {key}: {e}')
-                return self.round_fail(status=f'执行异常 {key}: {e}')
-            if _unit:
-                self._spend_unit_close(progressed=progressed, detail=detail,
-                                       boundary='closed' if progressed else 'failed')
-            if progressed:
-                self._xp_apply_buy_clicks(detail)
-            log.info(f'[cw][director] {key} → {"✓" if progressed else "✗"} {detail}')
-        else:
-            try:
-                progressed, detail = self._executor.execute(action)
-            except Exception as e:  # noqa: BLE001  执行异常上抛 = 本轮 fail
-                log.warning(f'[cw!][director] 执行异常 {key}: {e}')
-                return self.round_fail(status=f'执行异常 {key}: {e}')
-            log.info(f'[cw][director] {key} → {"✓" if progressed else "✗"} {detail}')
-            if progressed and isinstance(action, LevelUp):
-                self._xp_apply_levelup()
-        acct['progressed'] = progressed
-        # 执行后对账 + 期望态消费(heavy 重观察帧;单轮内一次,交回前完成)
-        _post_obs = self._observe(heavy=True)
-        self._v2_post_frame_accounting(_post_obs, acct, session)
-        # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建;外循环下轮重识别)
-        if isinstance(action, StartBattle) and progressed:
-            return self.round_success('出战(交回外循环战斗分支)', wait=3)
-        if not progressed:
-            # 验证失败:恢复原语一次(关已知弹层)→ 交回外循环(无内环屏蔽/计数;
-            # 连续无进展由外循环 stall 防线留证)
-            try:
-                _prim, _closed = try_recovery(self, self.ctx)
-                log.info(f'[cw][director] {key} 验证失败 → 恢复原语({_prim})→ 交回外循环')
-            except Exception as e:  # noqa: BLE001  恢复异常不阻塞交回
-                log.warning(f'[cw!][director] 恢复原语异常 {key}: {e}')
-            return self.round_success(f'{key} 验证失败({detail}),已试恢复,交回外循环', wait=1.0)
-        return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
+                    self._spend_unit_open(obs)
+                try:
+                    progressed, detail = self._open_shop_phase(action, obs)
+                except Exception as e:
+                    if _unit:
+                        self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
+                                               boundary='aborted')
+                    log.warning(f'[cw!][director] 执行异常 {key}: {e}')
+                    return self.round_fail(status=f'执行异常 {key}: {e}')
+                if _unit:
+                    self._spend_unit_close(progressed=progressed, detail=detail,
+                                           boundary='closed' if progressed else 'failed')
+                if progressed:
+                    self._xp_apply_buy_clicks(detail)
+                log.info(f'[cw][director] {key} → {"✓" if progressed else "✗"} {detail}')
+            else:
+                try:
+                    progressed, detail = self._executor.execute(action)
+                except Exception as e:  # noqa: BLE001  执行异常上抛 = 本轮 fail
+                    log.warning(f'[cw!][director] 执行异常 {key}: {e}')
+                    return self.round_fail(status=f'执行异常 {key}: {e}')
+                log.info(f'[cw][director] {key} → {"✓" if progressed else "✗"} {detail}')
+                if progressed and isinstance(action, LevelUp):
+                    self._xp_apply_levelup()
+            acct['progressed'] = progressed
+            # 执行后对账 + 期望态消费(heavy 重观察帧;逐动作一次,续发/交回前完成)
+            _post_obs = self._observe(heavy=True)
+            self._v2_post_frame_accounting(_post_obs, acct, session)
+            # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建;外循环下轮重识别)
+            if isinstance(action, StartBattle) and progressed:
+                return self.round_success('出战(交回外循环战斗分支)', wait=3)
+            if not progressed:
+                # fail-stop(契约 §2):验证失败 → 丢弃余下动作 → 恢复原语一次
+                # (关已知弹层)→ 交回外循环 heavy 重观察(无内环屏蔽/计数;
+                # 连续无进展由外循环 stall 防线留证)
+                try:
+                    _prim, _closed = try_recovery(self, self.ctx)
+                    _d = f',余{_rest}动作丢弃(fail-stop)' if _rest else ''
+                    log.info(f'[cw][director] {key} 验证失败 → 恢复原语({_prim})'
+                             f'{_d} → 交回外循环')
+                except Exception as e:  # noqa: BLE001  恢复异常不阻塞交回
+                    log.warning(f'[cw!][director] 恢复原语异常 {key}: {e}')
+                return self.round_success(f'{key} 验证失败({detail}),已试恢复,交回外循环', wait=1.0)
+            if isinstance(action, OpenShop):
+                # 开店切商店画面(非帧稳定)→ 序列终点,交回外循环重识别
+                return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
+        return self.round_success(
+            f'序列完成({"/".join(type(a).__name__ for a in actions)}),交回外循环重识别', wait=1.0)
 
     def _takeover_collect_if_needed(self, match, session) -> OperationRoundResult | None:
         """接管局补采(W971 §2.1/01-opening §2.1;单轮化后挂点 = 单轮 op 观察段)。
@@ -1378,11 +1416,18 @@ class CwScreenPrep(SrOperation):
             free_bench_slots=0, shop_open=False,
             # ADR-0136 补修:横幅在时拖放被游戏拒 → vacancy 置 0 强制走 b(升级)/c(卖最弱)
             deploy_vacancy=0)
-        # 黑板接口:破墙派生帧写 session → decide_prep_screen
+        # 黑板接口:破墙派生帧写 session → decide_prep_screen(序列契约 v1
+        # /dd-020:返回 list[PrepAction];本破墙段逐动作执行,fail-stop 同主段)
         session.prep_obs_frame = bf_obs
-        action = match.strategy.decide_prep_screen(session, config)
-        progressed, detail = self._executor.execute(action)
-        log.info(f'[cw][director] 破警告动作 {type(action).__name__} → {"✓" if progressed else "✗"} {detail}')
+        actions = match.strategy.decide_prep_screen(session, config)
+        _last_name = '-'
+        for action in actions:
+            _last_name = type(action).__name__
+            progressed, detail = self._executor.execute(action)
+            log.info(f'[cw][director] 破警告动作 {_last_name} → '
+                     f'{"✓" if progressed else "✗"} {detail}')
+            if not progressed:
+                break   # fail-stop(契约 §2):丢弃余下,交回外循环重观察
         # 破墙动作也记一条 exec_events(类名带 BenchFull 前缀,审计可辨)
         try:
             if obs.state is not None:
@@ -1392,13 +1437,13 @@ class CwScreenPrep(SrOperation):
                 state.get_recorder().record_exec_event(
                     run_id=_bf_rid,
                     round_num=obs.state.round_num,
-                    action_family=f'BenchFull_{type(action).__name__}',
+                    action_family=f'BenchFull_{_last_name}',
                     screen='battle_prep', event='bench_full_break',
                     reason='备战席满破墙')
         except Exception:   # noqa: BLE001  遥测 best-effort
             pass
         return self.round_wait(
-            status=f'备战席已满,已试破警告({type(action).__name__}),交回外循环', wait=1.0)
+            status=f'备战席已满,已试破警告({_last_name}),交回外循环', wait=1.0)
 
     def _clear_entry_overlays(self) -> None:
         """P0 清场前置段(规范入口序列「先清场、再识别、后动作」;ADR-0462):
