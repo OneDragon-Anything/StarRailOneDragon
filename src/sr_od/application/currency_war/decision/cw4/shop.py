@@ -448,7 +448,24 @@ def shop_unbought_reasons(state: GameState,
             continue
         if name in k_members:
             if name in owned:
-                out[name] = 'owned'
+                # 合并完成件拒因细分(候选②判读面):已持 2 张同名同星
+                # 1★ 且无 2★ 成件 ⇒ 第三张买入即合成 2★,拒因不再是中性
+                # 「owned」而是「合并买入未发生」的具体门(bench 满/金不足),
+                # 复盘可直接归因(g_20260904_054904 p2r1 判读缺口)。
+                copies = [c for c in bench + deployed
+                          if (c.char_id or '') == name]
+                merge_completable = (len(copies) == 2
+                                     and all((c.star or 1) < 2
+                                             for c in copies))
+                cost = min((c.cost if c.cost else 3)
+                           for c in (state.shop or [])
+                           if (c.name or '') == name)
+                if merge_completable and bench_free <= 0:
+                    out[name] = 'merge_bench_full'
+                elif merge_completable and gold < cost:
+                    out[name] = 'merge_unaffordable'
+                else:
+                    out[name] = 'owned'
                 continue
             cost = min((c.cost if c.cost else 3) for c in (state.shop or [])
                        if (c.name or '') == name)
@@ -640,6 +657,42 @@ def decide_shop_wave(state: GameState, session: StrategySession,
         bench_free -= 1
         bought_target = True
 
+    # M2b 升星合并完成买入(实机复盘 g_20260904_054904 p2r1 候选②:
+    # 千冶·刃 合并件 2g 在店被 owned 拒后无人买,同帧 36g 买经验=优先级
+    # 倒置)。k_members 中已持 2 张同名同星 1★、无 2★ 成件,且第三张在店
+    # affordable ⇒ 买入即合成 2★(游戏规则常数:三张合一,零新自由参数;
+    # dd-032 先例 merge_completion_exempt 同款判读——完成价值在星级阶梯
+    # [P20 e1→e2/P30 ①合成完备购置],评分维对它构造性零增量)。序位=
+    # M2 缺口买入之后(体系激活边际 > 散件升星,P20 辖域)、dominance/M6
+    # (1★ 囤积面)之前;义务通道不走息律门([41] 同 M2)。bench_free ≥ 1
+    # = 买入硬前提(合成投影:买入触合并净席 -1,保守取买入时点可行)。
+    for m in k_members:
+        copies = [c for c in bench + deployed if (c.char_id or '') == m]
+        if len(copies) != 2 or any((c.star or 1) >= 2 for c in copies):
+            continue
+        shop_cands = sorted(
+            (c for c in (state.shop or []) if (c.name or '') == m
+             and id(c) not in used_cards),
+            key=lambda c: (c.cost if c.cost else 3))
+        if not shop_cands:
+            continue
+        if bench_free <= 0:
+            _count('merge_bench_full')
+            continue
+        card = shop_cands[0]
+        cost = card.cost if card.cost else 3
+        ok1, _ = mandate.check_affordable(gold, cost)
+        if not ok1:
+            continue
+        out.append(mandate.Emitted(
+            BuyCard(card=card, reason='m2_merge_completion'),
+            True, 'm2_merge_completion'))
+        used_cards.add(id(card))
+        bought_names.append(card.name or '')
+        gold -= cost
+        bench_free -= 1
+        bought_target = True
+
     # dominance_buy(M2 前置支配买入,mandate 邻位;P24 零参数,两臂同开。
     # 金口径=支出后投影金,R197 症9:同波 M4/M2 支出后 gold——存在性
     # 计数键触发面与后续 check_affordable 同基准;实际支出安全由
@@ -691,7 +744,14 @@ def decide_shop_wave(state: GameState, session: StrategySession,
         contracts.ContractCtx(deploy_cap=_cap_now), counters)
     if _arm1_ok and predicates.arm1_existence(len(deployed), bench_names,
                                               deployed_names, _cap_now):
+        # 候选③危机带经验授权让位(与 mandate M3 同判据同计数键;
+        # 判据单一源 = levelup.level_spend_blocked,见该函数注)。
         if contracts.ensure_contract(
+                ('levelup', 'level_spend_blocked'),
+                contracts.ContractCtx(), counters) \
+                and crit_levelup.level_spend_blocked(state, session, _reg):
+            _count('crisis_level_spend_defer')
+        elif contracts.ensure_contract(
                 ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \
                 and not crit_levelup.lv9_stop(state.level):
             clicks = clicks_to_next_level(state)

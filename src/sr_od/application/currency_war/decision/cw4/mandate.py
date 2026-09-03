@@ -354,7 +354,18 @@ def run_mandate(frame: MandateFrame,
             and _cap_now is not None \
             and predicates.arm1_existence(len(frame.deployed), frame.bench_names,
                                  frame.deployed_names, _cap_now):
-        if contracts.ensure_contract(
+        # 候选③危机带经验授权让位(g_20260904_054904 p2r1:hp=1 帧
+        # 9×LevelUpShop 36g 零本帧收益):血预算停升级门(P21)此前只有
+        # decision_v2 侧消费,cw4 M3 未接 = 双栈语义断层;判据单一源 =
+        # levelup.level_spend_blocked(blood_budget_levelup_blocked ∪
+        # p2_crisis_band,P48 λ>0 段转化优先)。让位=挂起本批经验支出,
+        # 授权面降级由 entry._reconcile_posture_authorization 显式声明。
+        if state is not None and contracts.ensure_contract(
+                ('levelup', 'level_spend_blocked'),
+                contracts.ContractCtx(), counters) \
+                and levelup.level_spend_blocked(state, session):
+            _count('crisis_level_spend_defer')
+        elif contracts.ensure_contract(
                 ('levelup', 'lv9_stop'),
                 contracts.ContractCtx(), counters) \
                 and not levelup.lv9_stop(frame.level):

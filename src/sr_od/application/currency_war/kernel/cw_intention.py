@@ -208,6 +208,14 @@ class IntentionState:
     """R3 断供驱逐的体系级断供计数器(体系键 → 连续无新件可见轮数;
     计数语义同 LineTrack.frozen_rounds——成员在可见面(在店∪到手)
     出现即清零)。"""
+    shop_supply_streak: dict[str, int] = field(default_factory=dict)
+    """候选①供给确认计数器(体系键 → 连续在店轮数):每 game-round
+    对四体系各计一次——有商店语境轮成员在店 +1、不在店清零;无商店
+    语境轮(补给绕行)冻结不重置(窗口未开既非证据也非反驳,与
+    LineTrack.frozen_rounds 冻结语义同款)。消费位 =
+    ``_update_pair_drought`` 的驱逐加速门(现任方向外体系 streak ≥
+    ``PAIR_SUPPLY_CONFIRM_ROUNDS`` ⇒ 驱逐门槛减半)。遥测:
+    serialize_intention 全量序列化自动携带(判读可辨加速触发面)。"""
     # (supply_drought 方向侧供给衰减计数器已随兑现链开关族删除——旧方案
     #  清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     tracks: dict[str, LineTrack] = field(default_factory=dict)
@@ -534,6 +542,16 @@ def _derive_p1_pair(state: GameState,
 #: 不在可见面(在店∪到手)→ 该体系移出 pair 候选、pair 重派生。
 PAIR_DROUGHT_EVICT_ROUNDS: int = 5
 
+#: 供给确认加速阈值(轮;候选①,零新自由参数——从驱逐阈值派生取半:
+#: ⌊PAIR_DROUGHT_EVICT_ROUNDS/2⌋)。推导:确认证据(体系件在售)是
+#: 出现观测,似然按 1/轮 累积;缺席证据按 (1−q)<1/轮 累积——同等
+#: 证据强度所需的出现轮数少于缺席轮数,离散化取缺席阈值的一半。
+#: 语义:在店供给证据落在**现任方向之外**的体系上连续 K 轮 ⇒
+#: 「店在供给、只是绕开现任方向」,断供证据强度升级,现任方向体系的
+#: 驱逐门槛同源减半(实机锚=g_20260904_054904 p1r3-r6:爻光/仙舟件
+#: 三期在店被 non_line 拒,线 r7 驱逐后才切,冻结窗 -9/-11/-28 三战)。
+PAIR_SUPPLY_CONFIRM_ROUNDS: int = PAIR_DROUGHT_EVICT_ROUNDS // 2
+
 
 def _update_pair_drought(state: GameState, ist: IntentionState,
                          visible: set[str]) -> None:
@@ -546,13 +564,34 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
     ``PAIR_DROUGHT_EVICT_ROUNDS`` → 体系入 ``pair_evicted``、计数清零、
     pair 下轮派生自然排除(重派生消费面在 update_intention 的两个
     pair 派生支)。
+
+    候选①供给确认加速:计数前先对**四体系全集**更新 ``shop_supply_
+    streak``(辖域不限于现任方向——证据要回答的是「店在供给谁」);
+    现任方向之外的某体系 streak ≥ ``PAIR_SUPPLY_CONFIRM_ROUNDS`` 时,
+    本轮断供驱逐门槛减半(证据语义见该常量注)。加速只影响**本轮**
+    门槛比较,不改 ``PAIR_DROUGHT_EVICT_ROUNDS`` 本身;驱逐仍经
+    un-evict 可逆(下方),误加速的损害被可逆性兜住。
     """
     if state.plane != 1:
         return
+    shop_names = {getattr(c, 'name', '') or '' for c in (state.shop or [])}
+    all_systems = set(_ENGINE_BOND_KEYS) | {SEELE_SYSTEM}
+    for sys in all_systems:
+        if not shop_names:
+            continue    # 无商店语境轮:冻结(不 +1 不清零)
+        if members_in_shop(sys, shop_names):
+            ist.shop_supply_streak[sys] = \
+                ist.shop_supply_streak.get(sys, 0) + 1
+        else:
+            ist.shop_supply_streak[sys] = 0
     systems = set(ist.p1_pair) | set(ist.transition_pair)
     if not systems:
         return
-    shop_names = {getattr(c, 'name', '') or '' for c in (state.shop or [])}
+    confirm = any(ist.shop_supply_streak.get(s, 0)
+                  >= PAIR_SUPPLY_CONFIRM_ROUNDS
+                  for s in all_systems - systems)
+    evict_at = PAIR_SUPPLY_CONFIRM_ROUNDS if confirm \
+        else PAIR_DROUGHT_EVICT_ROUNDS
     for sys in systems:
         if members_in_shop(sys, shop_names):
             ist.pair_drought[sys] = 0
@@ -569,10 +608,11 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
             continue
         n = ist.pair_drought.get(sys, 0) + 1
         ist.pair_drought[sys] = n
-        if n >= PAIR_DROUGHT_EVICT_ROUNDS:
+        if n >= evict_at:
             ist.pair_evicted.add(sys)
             ist.pair_drought[sys] = 0
-            ist.last_event = f'evict:pair_drought:{sys}:{n}'
+            ist.last_event = (f'evict:pair_drought:{sys}:{n}'
+                              + (':accel' if confirm else ''))
 
 
 def members_in_shop(sys: str, shop_names: set[str]) -> bool:

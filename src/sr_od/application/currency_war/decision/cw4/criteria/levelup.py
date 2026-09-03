@@ -12,7 +12,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
+    from sr_od.application.currency_war.decision.cw_strategy import (
+        StrategySession,
+    )
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DecisionV2Registry,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        GameState,
+    )
 
 # 满级(注册表 LEVEL_CAP 同值;pop_slot/lv9_stop 消费)
 LEVEL_CAP: int = 9
@@ -59,6 +67,52 @@ def batch_form(level: int, target_level: int) -> bool:
 def lv9_stop(level: int) -> bool:
     """满级停(LEVEL_CAP=9;义务侧消费)。"""
     return level >= LEVEL_CAP
+
+
+def level_spend_blocked(state: GameState, session: StrategySession,
+                        registry: DecisionV2Registry | None = None) -> bool:
+    """危机带内整批经验授权让位保命面(实机复盘 g_20260904_054904
+    p2r1 候选③:hp=1 败即死帧 9×LevelUpShop 36g,m3_batch 批授权把
+    67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
+
+    两支,全部单一源判据,零新自由参数:
+    - ``discipline.blood_budget_levelup_blocked``(decision_v2 同源,
+      P21 已证:hp ≤ 停升级线内升级收益到账 ≥1 战之后,EV=−C−I 严格
+      负,敏感网格全负域免 β)——cw4 栈 M3 此前未消费该门,同帧
+      decision_v2 侧已停、cw4 侧照发 = 双栈语义断层(p2r1 实证帧);
+    - P2 危机带 ``discipline.p2_crisis_band``(hp ≤ ceil(2×vd_p2_loss)
+      ≈41 = P21 d=2「到账更慢」档;经验收益兑现链 ≥2 战,与危机带
+      搜索停付同一判据、同一血线单一源——P48 三段管辖 λ>0 段
+      「转化优先、S 线降级」;与 arbiter._crisis_buy_gate_open 同语义
+      族成对:停未来面、开当轮转化面)。
+    ALL IN 豁免(位面末 boss 战花光,[18])两支共享——blood_budget_
+    levelup_blocked 内含,危机支同判让位(末战花光是时机不是血线
+    判断)。hp 不可信帧由 blood_budget 支 fail-closed 拒付(危机会
+    在内)。
+    """
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
+        blood_budget_levelup_blocked,
+        p2_crisis_band,
+    )
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
+    reg = registry if registry is not None else DEFAULT_REGISTRY
+    if blood_budget_levelup_blocked(state, session, reg):
+        return True
+    if _plane_last_battle(state, session):
+        return False    # ALL IN 窗:停手让位(与血预算支同一豁免序)
+    return p2_crisis_band(state, reg)
+
+
+def _plane_last_battle(state: GameState, session: StrategySession) -> bool:
+    """位面末最后一战判定(cw4 消费面;单一源 =
+    decision_v2.discipline.plane_last_battle 的重导出委托,禁第二实现;
+    模块私有——非判据面函数,不入契约/旁路枚举表)。"""
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
+        plane_last_battle as _plb,
+    )
+    return _plb(state, session)
 
 
 def pop_slot(deployed_count: int, deploy_cap: int, gold: int,

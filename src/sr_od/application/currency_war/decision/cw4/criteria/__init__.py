@@ -43,6 +43,8 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '判据/闭式', '不旁路', 'M3 义务侧消费'),
     ('levelup', 'lv9_stop'): (
         '判据/闭式', '不旁路', 'M3 义务侧消费'),
+    ('levelup', 'level_spend_blocked'): (
+        '谓词', '不旁路', '候选③(危机带经验授权让位;M3 两域发射位消费)'),
     ('levelup', 'pop_slot'): (
         '判据/闭式', '不旁路', 'D-lv7(OPEN 检查点;决策迹理由显式)'),
     ('levelup', 'saturation_floor'): (

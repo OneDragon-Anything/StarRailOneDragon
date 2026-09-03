@@ -186,6 +186,10 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None, '批量成型判据(M3 义务侧消费)', 'IMPL_DESIGN §2.3'),
     ('levelup', 'lv9_stop'): Contract(
         None, '满级停(LEVEL_CAP=9;义务侧消费)', 'IMPL_DESIGN §2.3'),
+    ('levelup', 'level_spend_blocked'): Contract(
+        None, '危机带经验授权让位(候选③;判据自带 ALL IN 豁免与 '
+        'hp 不可信 fail-closed,前提恒真)',
+        'g_20260904_054904 候选③+P21/P48 λ>0 段(discipline 单一源)'),
     ('levelup', 'pop_slot'): Contract(
         None, 'D-lv7 OPEN 检查点(满编+富金+候补升 cap)', 'IMPL_DESIGN D-lv7'),
     # —— criteria/refresh ——

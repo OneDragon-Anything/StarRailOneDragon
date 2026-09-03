@@ -43,6 +43,9 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.decision.cw4 import mandate, proof
 from sr_od.application.currency_war.decision.cw4.criteria import contracts
+from sr_od.application.currency_war.decision.cw4.criteria import (
+    levelup as crit_levelup,
+)
 from sr_od.application.currency_war.decision.cw4.criteria import sell as crit_sell
 from sr_od.application.currency_war.decision.cw4.statefn import predicates
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
@@ -520,6 +523,30 @@ def _reconcile_posture_authorization(session: StrategySession,
         return None
     if any(isinstance(e.action, LevelUp) for e in emitted):
         return None
+    # 候选③:危机带经验授权让位 = 显式降级而非「未兑现故障」——
+    # M3 发射位(mandate/shop)被 level_spend_blocked 挂起时,授权面
+    # 按 crisis_yield 声明(P48 λ>0 段转化优先;判据单一源同 M3 消费位),
+    # 不落逐门故障定位(那些门本轮根本未被求值)。
+    if state is not None and contracts.ensure_contract(
+            ('levelup', 'level_spend_blocked'),
+            contracts.ContractCtx(), getattr(session, 'cw4_counters',
+                                             None) or {}) \
+            and crit_levelup.level_spend_blocked(state, session):
+        un = {'auth_id': f'{state.plane}-{state.round_num}',
+              'channel': 'levelup',
+              'reason': 'crisis_level_spend_blocked',
+              'channels': {'levelup': 'crisis_level_spend_blocked'},
+              'action': 'crisis_yield'}
+        session.v3_posture_unfulfilled = un
+        counters = getattr(session, 'cw4_counters', None)
+        if isinstance(counters, dict):
+            counters['posture_crisis_level_defer'] = \
+                counters.get('posture_crisis_level_defer', 0) + 1
+        log.info('[cw][cw4] posture level 授权危机让位 '
+                 '(hp=%s, plane=%s r%s): %s',
+                 state.hp, state.plane, state.round_num,
+                 un['reason'])
+        return un
     # 逐门定位未兑现原因(与 run_mandate M3 链同序同判据,复用判据本体
     # 禁第二实现;M3 未发射时这些门的求值是纯函数,零副作用)。
     from sr_od.application.currency_war.decision.cw4.criteria import levelup
