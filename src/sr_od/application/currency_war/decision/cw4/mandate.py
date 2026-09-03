@@ -221,7 +221,23 @@ def run_mandate(frame: MandateFrame,
     m2_retry_exhausted / dominance_bench_wait / m6_bench_full /
     m6_overflow_strand / bench_full_buy_abandon(R196 症4 落地:M2 bench
     满放弃买入帧的「bench 满拒买」事件计数,与 m2_retry_exhausted 的
-    环终止计数分键——前者量事件帧,后者量重试环耗竭)。
+    环终止计数分键——前者量事件帧,后者量重试环耗竭)/
+    shop_latch_skip_dominance_buy / shop_latch_skip_m2_buy /
+    shop_latch_skip_m6_stock(备战期开店闩跳过计数,分站记)。
+
+    备战期开店闩(``session.cw4_shopped_phase``):同一备战期内开店意图
+    只发一次。为什么是决策的推论而非限制:①商店域决策发生在店内一次
+    访问内闭环(买/升/刷/卖四字段=店内决策输出,刷新后当场再评估),
+    骨架不二次发店;②期内重开无信息量——输入逐项不可变:店面五张
+    (无店内刷新则恒定)、金(店外只因 M3 买经验减少不会增加,候选集
+    单调变小决策不可能翻新)、席位(M4 卖席只在 M2 同帧)、K 线(换线
+    下一备战期生效);同一帧状态重发同一动作=备战环活锁(2026-09-03
+    实机首局 1-1 卡死根因:M2 每帧重燃 OpenShop 截断点,StartBattle
+    永不可达;sim 每回合单次决策,该活环只在实机多帧备战环可见)。
+    边界:发射时才置闩——店未开成(席位失败/燃料耗竭,本帧无 OpenShop
+    发射)不置闩,下帧照常重试;位面/轮次推进=新键自动失效(新店内容
+    重新决策)。旧核 step1 RunBuyPhase 的每备战期一次店内完整决策与本
+    闩同构,佐证非理由。
     """
     counters = getattr(session, 'cw4_counters', None)
     if not isinstance(counters, dict):
@@ -230,6 +246,19 @@ def run_mandate(frame: MandateFrame,
 
     def _count(key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
+
+    # 备战期键(位面,轮次):state 缺 plane 时退化为 (None, round)。
+    phase = (getattr(state, 'plane', None), frame.round_num)
+    shopped = getattr(session, 'cw4_shopped_phase', None) == phase
+
+    def _emit_open_shop(tag: str) -> None:
+        """开店意图发射位(备战期闩消费点):闩命中=跳过+分站计数;
+        首发置闩。见本函数 docstring「备战期开店闩」节。"""
+        if shopped:
+            _count(f'shop_latch_skip_{tag}')
+            return
+        session.cw4_shopped_phase = phase
+        out.append(Emitted(OpenShop(read_only=False), True, tag))
 
     out: list[Emitted] = []
     k = frame.k_members
@@ -256,8 +285,7 @@ def run_mandate(frame: MandateFrame,
             if ok3:
                 # 支配买对象(店面 1★ 燃料/可退件)在商店域:prep 帧载体 =
                 # OpenShop 意图(截断点,序列在此收口,商店线执行候选评估)
-                out.append(Emitted(OpenShop(read_only=False), True,
-                                   'dominance_buy'))
+                _emit_open_shop('dominance_buy')
             else:
                 _count('dominance_bench_wait')
         else:
@@ -266,7 +294,9 @@ def run_mandate(frame: MandateFrame,
     # M2 线成员买入(+M2→M4 重试环 R8-8)
     missing = [m for m in k
                if m not in set(frame.bench_names) | set(frame.deployed_names)]
-    if missing and not frame.stop_flag:
+    if shopped and missing and not frame.stop_flag:
+        _count('shop_latch_skip_m2_buy')
+    if missing and not frame.stop_flag and not shopped:
         ok, _why = check_seats(frame.bench_free, frame.deploy_vacancy,
                                needs_bench=True, needs_board=False,
                                name='', deployed_names=frame.deployed_names)
@@ -295,11 +325,11 @@ def run_mandate(frame: MandateFrame,
                 _count('m2_retry_exhausted')
                 _count('bench_full_buy_abandon')   # 环终止仍满 ⇒ 事件帧
             else:
-                out.append(Emitted(OpenShop(read_only=False), True, 'm2_buy'))
+                _emit_open_shop('m2_buy')
         else:
             ok1, _ = check_affordable(frame.gold, cheapest_member_cost(frame))
             if ok1:
-                out.append(Emitted(OpenShop(read_only=False), True, 'm2_buy'))
+                _emit_open_shop('m2_buy')
             # 金不足侧:funding_support 变现通道在 EV pass(criteria/sell)
 
     # M1 同帧部署(买入完成后立即评估成对上阵;P24 零支出补部署严格支配)
@@ -360,7 +390,7 @@ def run_mandate(frame: MandateFrame,
             if provisional.is_none('T_SEARCH_A'):
                 _count('m6_overflow_strand')
             else:
-                out.append(Emitted(OpenShop(read_only=False), True, 'm6_stock'))
+                _emit_open_shop('m6_stock')
 
     # M7 装备转移(常态:关键装备穿上场单位;D-B 释放门 =
     # criteria/equipment.wear_release 消费;基础载体 = RunEquip)
