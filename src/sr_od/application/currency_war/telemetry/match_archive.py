@@ -396,7 +396,8 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             detail = {'v3_intention': frame.get('v3_intention'),
                       'candidate_scores': frame.get('candidate_scores'),
                       'eval_breakdown': frame.get('eval_breakdown'),
-                      'dp_posture': frame.get('dp_posture') or None}
+                      'dp_posture': frame.get('dp_posture') or None,
+                      'shop_rejects': frame.get('shop_rejects') or None}
         # 战后终态取帧:该轮最晚 ts 决策迹帧(执行后;口径见函数注)
         last_frame = _last_decision_frame(dec, key)
         _terminal = (terminal_state_summary(last_frame.get('state'))

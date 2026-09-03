@@ -129,6 +129,9 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.decision.cw_strategy import (
         StrategySession,
     )
+    from sr_od.application.currency_war.kernel.cw_comps import (
+        Comp,
+    )
     from sr_od.application.currency_war.kernel.cw_state import (
         Action,
         BenchChar,
@@ -398,6 +401,68 @@ def _frame_search_windows(session: StrategySession, state: GameState,
             counters.get('p57_card_window_diff_frames', 0) + 1
     v = v_step if reading == 'per_step' else v_frame
     return tier_search_window(level, v), card_search_window(level, v)
+
+
+def shop_unbought_reasons(state: GameState,
+                          comp: Comp | None,
+                          k_members: tuple[str, ...],
+                          actions: list[Action]) -> dict[str, str]:
+    """商店波未买牌拒因串(决策帧遥测字段 ``shop_rejects`` 的生产端)。
+
+    为什么:复盘 g_20260904_031925 把在售 transition 件「花火」误读成
+    线内核心件「火花」(花火≠火花:花火=2费盛会之星辅助,cw_chars 注册
+    表 source=6401;火花=4费星间旅人、绯英欢愉 shared 成员,source=7001
+    )——当时决策帧只有 fp 值、无任何 per-card 分类,判读者只能猜「哪道
+    门拒了」。本函数对店面每张未买牌给一个归属/拒因标签,让「线内未买
+    (哪道门拒)」与「线外归属(刻意不买)」在决策帧内可辨:
+
+    - 线内缺口件(K 想买而未买):``missing_unaffordable``(金不足)/
+      ``missing_bench_full``(席满且无可腾燃料件)/ ``missing_no_path``
+      (金席俱足仍未发射 = 异常态:发射被截断丢弃等,须查);
+    - 线内已持有:``owned``;
+    - transition_chars(打工后卖、刻意不入线——单一源 = cw_comps 注册表
+      + ``predicates.line_members`` 只取 core∪shared):``transition_char``;
+    - 其余:``non_line``。
+
+    口径 = 帧首静态快照:金按本帧已发射 BuyCard 总价投影扣减;拒因串是
+    判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
+    comp 为 None(K 空窗回退带)时 transition 分类不可得,统一 ``non_line``。
+    """
+    bench = [b for b in (state.bench or []) if b is not None]
+    deployed = [d for d in (state.deployed or []) if d is not None]
+    owned = ({b.char_id or '' for b in bench}
+             | {d.char_id or '' for d in deployed})
+    gold = int(state.gold or 0)
+    bench_free = BENCH_CAPACITY - len(bench)
+    for a in actions:
+        if isinstance(a, BuyCard):
+            gold -= a.card.cost if a.card.cost else 3
+    trans = (set(getattr(comp, 'transition_chars', []) or [])
+             if comp is not None else set())
+    bought_names = {a.card.name or '' for a in actions
+                    if isinstance(a, BuyCard)}
+    out: dict[str, str] = {}
+    for card in (state.shop or []):
+        name = card.name or ''
+        if not name or name in out or name in bought_names:
+            continue
+        if name in k_members:
+            if name in owned:
+                out[name] = 'owned'
+                continue
+            cost = min((c.cost if c.cost else 3) for c in (state.shop or [])
+                       if (c.name or '') == name)
+            if bench_free <= 0:
+                out[name] = 'missing_bench_full'
+            elif gold < cost:
+                out[name] = 'missing_unaffordable'
+            else:
+                out[name] = 'missing_no_path'
+        elif name in trans:
+            out[name] = 'transition_char'
+        else:
+            out[name] = 'non_line'
+    return out
 
 
 def decide_shop_wave(state: GameState, session: StrategySession,
@@ -945,5 +1010,10 @@ def decide_shop_wave(state: GameState, session: StrategySession,
         _count('shop_wave_idle_gold')
 
     actions: list[Action] = [e.action for e in out]
-    return truncate_shop_frame_stable(actions, state, session)
+    actions = truncate_shop_frame_stable(actions, state, session)
+    # 拒因遥测(截断后口径:被截断器丢弃的买 = missing_no_path,可辨):
+    # session 汇点(recorder 固定尾巴按 w603 先例自取),sim/实机同源。
+    session.cw4_shop_rejects = shop_unbought_reasons(
+        state, k, k_members, actions)
+    return actions
 

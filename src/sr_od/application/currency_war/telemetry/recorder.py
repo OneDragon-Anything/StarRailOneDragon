@@ -200,6 +200,10 @@ class TelemetryRecorder:
                     getattr(_sess, 'v3_blood_budget_rejects', 0) or 0)
                 trace.sess_blood_budget_refresh_rejects = int(
                     getattr(_sess, 'v3_blood_budget_refresh_rejects', 0) or 0)
+                # 商店波未买牌拒因串(生产端=cw4/shop.shop_unbought_reasons
+                # 经 session 汇点;session 汇点先例=w603,全部决策面一次覆盖)
+                trace.shop_rejects = dict(
+                    getattr(_sess, 'cw4_shop_rejects', {}) or {})
                 # 血预算停手·终止分支决策位(R4 记账;ADR-0469)
                 from sr_od.application.currency_war.decision.decision_v2.discipline import (
                     terminal_release_bit,  # 延迟 import 防 模块环

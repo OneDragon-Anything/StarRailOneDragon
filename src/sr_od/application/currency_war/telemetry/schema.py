@@ -317,6 +317,7 @@ class DecisionTrace:
     level_readable: bool = True                   # level 真读到?(对齐 hp_readable;False=纯 _expected_level 启发式兜底帧——「兜底 4」与「真读 4」判读可分;旧档案缺省 True=按现有判读处理)
     # —— live 观测扩容(strategy/05_observation;全部可选,回放/影子对齐)——
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
+    shop_rejects: dict[str, str] = field(default_factory=dict)   # 商店波未买牌拒因串({牌名: 拒因};生产端=cw4/shop.shop_unbought_reasons,旧行缺省空 dict)
     dp_posture: dict[str, Any] = field(default_factory=dict)     # 影子 DP 姿态(tag/level_up/refresh_budget/v)
     ledger_fingerprint: str = ""                  # 台账指纹(效果感知解回放对齐)
     # —— r101 session 态快照(redesign/102 前提改造:回放 harness/快照回归库需要完整
