@@ -77,7 +77,7 @@
 
 ## 四、索引变更
 
-`docs/game/currency_war/research/math_proofs.md`:命题索引表新增「代码支持」列(50 行全覆盖);使用说明补一列语义说明。证明件本体零改动(未动任何单篇结论)。
+`docs/develop/currency_war/proofs/math_proofs.md`:命题索引表新增「代码支持」列(50 行全覆盖);使用说明补一列语义说明。证明件本体零改动(未动任何单篇结论)。
 
 ## 五、残留挂账(下一批候选)
 

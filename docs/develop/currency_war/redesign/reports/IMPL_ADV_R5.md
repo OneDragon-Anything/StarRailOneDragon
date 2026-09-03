@@ -1,7 +1,7 @@
 # IMPL_ADV_R5 · 实现方案设计件对抗式审查(R5 轮)
 
 > 审查对象:`IMPL_DESIGN.md`(含 R3/R4 修复落位后的终稿)+ `IMPL_FIX_LEMMAS.md`(修复引理登记表,证明本体一并攻)。
-> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/game/currency_war/research/math_proofs.md`(证明终态索引,P51 行已直读核对)。
+> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/develop/currency_war/proofs/math_proofs.md`(证明终态索引,P51 行已直读核对)。
 > 纪律:只读禁改;每条 = 位置 + 缺陷 + 为什么错(数学/逻辑论证)+ 修法方向;无实质缺陷的攻击面列入末节「零新问题」。
 
 ## 结论摘要

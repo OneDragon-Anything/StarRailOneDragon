@@ -1,6 +1,6 @@
 # PREREG · P1 档位推进目标函数 A/B 预注册协议 v2(判前锁)
 
-> 设计件 = 同目录 REPORT.md **v2**;命题 = `docs/game/currency_war/research/proofs/p32-p1-tier-push-ev.md`(P32)。
+> 设计件 = 同目录 REPORT.md **v2**;命题 = `docs/develop/currency_war/proofs/p32-p1-tier-push-ev.md`(P32)。
 > v1 → v2:按 W805 攻击批面 2/3/4/5/6 修正清单同步(对照表见设计件头部):M2/H2 过程量口径、G0 判定力声明、M1 门 +8→+5 + 效应实现折扣预核算、Wilcoxon 零差约定、n 500→1000/臂、G-RC 加人口项、G3 加压库豁免观测、散装门生效域/豁免判据与设计件 v2 §3④ 单一源。
 > 纪律沿 W774/W793 预注册范式:本文件在落码与跑批**之前**定稿,跑批后零改动零偏离重跑;偏离须另立文件声明。
 

@@ -1,7 +1,7 @@
 # IMPL_DESIGN 对抗式审查报告(R3)
 
 > 审查对象:`.debug/temp/currency_war/design/IMPL_DESIGN.md`(下称「设计件」,含 R1-x/R2-x 修订标记的当前版)。
-> 对照件:NEW_MATH_FRAMEWORK.md(「总纲」)、DESIGN_MANDATE_LAYER.md(「骨架层」)、`docs/game/currency_war/research/math_proofs.md`(终态索引)、P51 单篇、生产代码(`cw_plane_table.py`/`ledger_hooks.py`/`cw_strategy_manager.py`)、TUNING_INVENTORY.md。
+> 对照件:NEW_MATH_FRAMEWORK.md(「总纲」)、DESIGN_MANDATE_LAYER.md(「骨架层」)、`docs/develop/currency_war/proofs/math_proofs.md`(终态索引)、P51 单篇、生产代码(`cw_plane_table.py`/`ledger_hooks.py`/`cw_strategy_manager.py`)、TUNING_INVENTORY.md。
 > 纪律:只读未改任何被审文件;每问题=位置+缺陷+论证+修法方向;风格意见不入列。
 > 代码侧核证:cw3 在 `src/` 已无引用(物理删除属实);`p47_check.loss_exact(g, spend, rounds, net_income)` 存在;`p16/pbar_exact.py`、`ab_judge.py`、PREREG v5 均在位;config 合法值当前确为 `{'decision_v2'}`(设计件的扩域步骤成立)。
 

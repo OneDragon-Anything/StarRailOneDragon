@@ -1,7 +1,7 @@
 # IMPL_ADV_R6 · 货币战争实现方案第六轮对抗式设计审查
 
 > 审查对象:`IMPL_DESIGN.md`(R5 落位后形态)+ `IMPL_FIX_LEMMAS.md`(R3/R4/R5 修复证明单一源)。
-> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/game/currency_war/research/math_proofs.md` 索引 + `proofs/p51-waiting-cost-lemma.md` 全文(λ/Φ/§5-11 前提逐条核对)。
+> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/develop/currency_war/proofs/math_proofs.md` 索引 + `proofs/p51-waiting-cost-lemma.md` 全文(λ/Φ/§5-11 前提逐条核对)。
 > 纪律:每条问题 = 位置 + 缺陷 + 数学/逻辑论证 + 修法方向;只读禁改;无实质缺陷的角度列入文末「攻过未成立」清单。
 
 ---

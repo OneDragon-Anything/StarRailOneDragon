@@ -3,7 +3,7 @@
 > **v2 修订依据**:W777 攻击复核(`../w777_p1_iface_attack/REPORT.md`)总评「需修正后可用」——①⑤推翻成立、②③④部分成立、横切成立。本版按其 §8 六条修正方向 + 开工令四点重点全部落修;v1 内容与 v2 冲突处以本版为准(v1 全文见本文件 git 历史/会话存档)。
 > 基线:主仓 HEAD `8c1839c7`(支出授权 v3.1,默认关;本设计与开关默认值无关,是设计批)。
 > 任务背景:W764 五项病灶 + W772 裁决的**上游病灶设计**——位面 1 阶段没有为位面 2 留接口。
-> 文件面(本批全部写入物):本目录 REPORT.md + SIM_AB_PREREGISTRATION.md(v2)+ `docs/game/currency_war/research/proofs/p26/p27/p28` 三篇命题(p27 含 v2 修订注;索引已回填 math_proofs.md)。**src 零触碰**。
+> 文件面(本批全部写入物):本目录 REPORT.md + SIM_AB_PREREGISTRATION.md(v2)+ `docs/develop/currency_war/proofs/p26/p27/p28` 三篇命题(p27 含 v2 修订注;索引已回填 math_proofs.md)。**src 零触碰**。
 > 已读基线:strategy-work §2/§4/数学先行/开关生命周期 + research/ 全部(按 README 玩家理解序)+ data/ 全部未建模文档 + 四件证据(w764/w772/w754/user_playstyle)+ 决策代码骨架面 + W777 攻击报告全文。
 
 ---

@@ -250,7 +250,7 @@ resolve_prob_table(state, mutations, observed_probs | None) -> p(level, cost)   
 
 ## 5. 与证明的对照表
 
-每个 resolved 量被哪条证明消费(p 编号;状态单一源 = [math_proofs 索引](../../../game/currency_war/research/math_proofs.md),旧树 P1-P37 仅参考,新树 P38+ 为准):
+每个 resolved 量被哪条证明消费(p 编号;状态单一源 = [math_proofs 索引](../../../develop/currency_war/proofs/math_proofs.md),旧树 P1-P37 仅参考,新树 P38+ 为准):
 
 | resolved 量 | 消费证明 | 消费面 |
 |---|---|---|

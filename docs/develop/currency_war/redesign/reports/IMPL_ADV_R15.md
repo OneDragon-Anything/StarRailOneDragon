@@ -1,7 +1,7 @@
 # IMPL_ADV_R15 · 对抗式设计审查报告(R15 轮)
 
 > 审查对象:`IMPL_DESIGN.md`(R1-R14+直通线并入批已落位态)+ `IMPL_FIX_LEMMAS.md`(含 R14 对照表)。
-> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/game/currency_war/research/math_proofs.md` 索引口径。
+> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/develop/currency_war/proofs/math_proofs.md` 索引口径。
 > 纪律:问题=位置+缺陷+论证+修法方向;风格不算;只读禁改。
 > 结论先行:**新发现 6 项**(高 3 / 中 3);其中高-1 是证明本体代数错误,高-2 是 R13-2/R14-1 与 R5-7/R6-4/R2-8 的接口收口内部矛盾,高-3 是验证计划里「开闸事件无构造性到达路径」的漏洞(与 R14-2 刚消灭的病同型)。
 

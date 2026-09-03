@@ -1,7 +1,7 @@
 # IMPL_DESIGN 对抗式设计审查 · 第 1 轮报告
 
 > 审查对象:`IMPL_DESIGN.md`(实现方案设计件)。
-> 对照源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/game/currency_war/research/math_proofs.md`(证明终态索引)、P42 单篇、`TUNING_INVENTORY.md`、`sim/ledger_hooks.py`(注册表/代码直调复核)。
+> 对照源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/develop/currency_war/proofs/math_proofs.md`(证明终态索引)、P42 单篇、`TUNING_INVENTORY.md`、`sim/ledger_hooks.py`(注册表/代码直调复核)。
 > 纪律:每条 = 位置 + 缺陷 + 论证 + 修法方向;只读未改任何文件。
 
 ## 问题清单(按严重级排序)

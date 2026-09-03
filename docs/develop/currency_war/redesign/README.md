@@ -75,4 +75,4 @@
 | (承接)`docs/develop/currency_war/comp-selection.md` | 阵容选择与承诺机器设计(14 条裁定,本设计的子件,被 01 引用) | 已过 6 轮对抗 |
 | (承接)`docs/develop/currency_war/sim-power-model.md` | 战力模型(仅限 sim) | 已过 12 轮对抗 |
 
-> 证明件落 `docs/game/currency_war/research/proofs/`(游戏侧数学,与实现无关);实现侧决策进本目录。
+> 证明件落 `docs/develop/currency_war/proofs/`(游戏侧数学,与实现无关);实现侧决策进本目录。

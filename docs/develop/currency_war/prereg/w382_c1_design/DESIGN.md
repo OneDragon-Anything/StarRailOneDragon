@@ -28,7 +28,7 @@ W377 §5 已裁:「花保连胜」不立(连胜局无额外投入,投入产出�
 Hp_gain(X) = Δp(X) × E[损血 | boss 败]
 ```
 
-- **E[损血 | boss 败]**:registry `boss_tax` 组(P1 语料 66 场掉血事件;掉血只在败场发生,组内即条件口径——落码时须复核此点,见 §5 缺口②)。代入 mean=26.7 hp。按 P15 纪律必须配**条件**胜率:Δp 定义为「同板面、花 X 与不花 X 的条件胜率差」,禁用无条件均值与 Δp 双计(P15 口径命题,`docs/game/currency_war/research/proofs/p15-p1-vd-benefit-calibration.md`)。
+- **E[损血 | boss 败]**:registry `boss_tax` 组(P1 语料 66 场掉血事件;掉血只在败场发生,组内即条件口径——落码时须复核此点,见 §5 缺口②)。代入 mean=26.7 hp。按 P15 纪律必须配**条件**胜率:Δp 定义为「同板面、花 X 与不花 X 的条件胜率差」,禁用无条件均值与 Δp 双计(P15 口径命题,`docs/develop/currency_war/proofs/p15-p1-vd-benefit-calibration.md`)。
 - **后继链**:省下的 hp 带进 P2 → 折金按单一源 `hp_to_gold`=0.5 金/血(registry;W377 §1 同源引用)。链价值 = Hp_gain × 0.5 金。**注意这是收益折算口径,不是「hp 值多少钱」的绝对声明**(P17 教训:末端量只作度量仪读数)。
 
 ```

@@ -1,6 +1,6 @@
 # 实现者导航:01 章节结构 × 证明件映射
 
-> **定位**:Phase 3 实现者的导航件——从 01_strategy_layer.md 的每个章节出发,查它消费哪条证明的哪个结论。证明状态与结论细节的**单一源 = `docs/game/currency_war/research/math_proofs.md` 索引**(逐件跳转 `proofs/pNN-*.md` 单篇);本文件只做章节↔证明的映射,不复制结论。
+> **定位**:Phase 3 实现者的导航件——从 01_strategy_layer.md 的每个章节出发,查它消费哪条证明的哪个结论。证明状态与结论细节的**单一源 = `docs/develop/currency_war/proofs/math_proofs.md` 索引**(逐件跳转 `proofs/pNN-*.md` 单篇);本文件只做章节↔证明的映射,不复制结论。
 > **冻结声明**:本文件是组织/导航层,不含语义;与 01 正文冲突时以 01 为准并回报 README 作者。
 
 ## 0. 阅读顺序建议

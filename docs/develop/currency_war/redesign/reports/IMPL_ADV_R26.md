@@ -1,7 +1,7 @@
 # IMPL_ADV_R26 · 对抗式设计审查报告(R26 轮)
 
 > 审查对象:`IMPL_DESIGN.md`(R1-R25 落位后态)+ `IMPL_FIX_LEMMAS.md`(R25 后态)。
-> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲,含尾部基座攻击结论/用户三裁定/安全带架构裁定)、`DESIGN_MANDATE_LAYER.md`、`docs/game/currency_war/research/math_proofs.md`(终态索引)、`P51_V3_REBUILD.md`(v3/v3.1 重建件,按需直读)、代码注册表直调(`cw_plane_table`/`cw_state`/`BENCH_CAPACITY`)。
+> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲,含尾部基座攻击结论/用户三裁定/安全带架构裁定)、`DESIGN_MANDATE_LAYER.md`、`docs/develop/currency_war/proofs/math_proofs.md`(终态索引)、`P51_V3_REBUILD.md`(v3/v3.1 重建件,按需直读)、代码注册表直调(`cw_plane_table`/`cw_state`/`BENCH_CAPACITY`)。
 > 纪律:问题=位置+缺陷+为什么错(数学/逻辑论证)+修法方向;只读禁改;无实质缺陷的角度列「攻过无新问题」。
 
 ## 结论概要

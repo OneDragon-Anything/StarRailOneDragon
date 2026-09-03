@@ -3,7 +3,7 @@
 > 定位:**统一决策体系总纲**——把已站住的证明族(P38 起新树)整合成一套可实现的决策框架,是实现方案的前置件。
 > 本文件只做整合,不改任何证明/代码;每条判据引用具体证明件编号,无证明支撑的决策面显式标「无数学,待立项」。
 > 结论强度纪律:每条论断 = 论断 + 证据链(证明件编号 / 注册表 / 玩家裁定),取最弱一环。
-> 输入面:`docs/game/currency_war/research/math_proofs.md`(终态索引)+ 16 件核心已证件全文 + `DESIGN_MANDATE_LAYER.md`(骨架层设计)+ 公理栈五条 + 玩家裁定三条。
+> 输入面:`docs/develop/currency_war/proofs/math_proofs.md`(终态索引)+ 16 件核心已证件全文 + `DESIGN_MANDATE_LAYER.md`(骨架层设计)+ 公理栈五条 + 玩家裁定三条。
 > 注:本纲 ADR-NNNN 编号指 2026-09-01 前旧决策树(已整树归档于迭代支撑目录),仅作历史出处指针。
 > 直通线注记并入批(2026-09,DIRECT_LINE_MATH_CHECK §4):λ_death 桶定义补 bench 前后台强度维(§2 λ 行/§3.3 #11)【R178 supersede 标(IMPL_ADV_R178 症2,打标不删史):本头注「桶定义补 bench 前后台强度维」系 R26-H1 前口径活文字——现行权威=IMPL_DESIGN §1 lambda_death 行「板面/bench 维**不入键**(PL 键实证…)」(亲读);桶定义 bench 维已随 PL 键时代退役(本纲 §2 λ_death 行裁定一/R26-H1 supersede 标在案);本位系 R63-4「总纲物理打标挂账下批」(IMPL_DESIGN §1 lambda_death 行 R63-4 标)的逃逸位——挂账仅在 §2 行本位兑现,头注/#11 漏扫;登记=design_telemetry.md 文末 R178 节】;直通线入口七条注记、状态机 S0→S3 信号直锁边、M5 开局形态分流的单一收录源=IMPL_DESIGN §2.7.1,本纲不重复(防双源)。
 

@@ -1,7 +1,7 @@
 # IMPL_DESIGN 对抗式审查报告(R2)
 
 > 审查对象:`.debug/temp/currency_war/design/IMPL_DESIGN.md`(下称「设计件」)。
-> 对照件:NEW_MATH_FRAMEWORK.md(「总纲」)、DESIGN_MANDATE_LAYER.md(「骨架层」)、`docs/game/currency_war/research/math_proofs.md`(终态索引)。
+> 对照件:NEW_MATH_FRAMEWORK.md(「总纲」)、DESIGN_MANDATE_LAYER.md(「骨架层」)、`docs/develop/currency_war/proofs/math_proofs.md`(终态索引)。
 > 纪律:只读未改任何被审文件;每问题=位置+缺陷+论证+修法方向;风格意见不入列。
 
 ## 问题清单(严重级降序)

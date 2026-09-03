@@ -15,7 +15,7 @@
 
 > 设计对象:线锁定后从「锁定了」到「兑现了」的断链。三输入:实机三局复盘(兑现链断裂实证,`.debug/temp/currency_war/w791_review_g567/REPORT.md`)、P1 决策层两疑点核查(机制病灶,`.debug/temp/currency_war/w789_p1_doubts/REPORT.md`)、用户提案(进度流水 2026-08-30 提案节:囤牌羁绊感知 P29 + 摇摆探索期形式化秤)。
 > 基线:主仓 HEAD;本批=设计+命题+判据预写,零落码,禁改 src(已守:src 只读核查)。
-> 产出配套:命题单篇 `docs/game/currency_war/research/proofs/p29|p30|p31-*.md` + 索引行(math_proofs.md)+ 预注册协议 `PREREG_兑现链A_B.md`(本目录)。
+> 产出配套:命题单篇 `docs/develop/currency_war/proofs/p29|p30|p31-*.md` + 索引行(math_proofs.md)+ 预注册协议 `PREREG_兑现链A_B.md`(本目录)。
 
 ---
 
@@ -117,7 +117,7 @@
 | P31① | 衰减支持度 → 零供给挂轮上界=ln(差)/ln(1/γ) | 粘性上界已证 | γ 经验带 [0.7,0.8]+sim 扫描标定(非「等效」推导) |
 | P31②③ | 切换滞回(P16 复用)+摇摆秤(form 差距+λ·供给) | 待证明(参数化) | β/λ/δ/W 标定 |
 
-单篇证明:`research/proofs/p29-bond-aware-hoard-ev.md` / `p30-merge-completing-purchase-ev.md` / `p31-direction-supply-reattach-ev.md`;索引已回填 math_proofs.md。
+单篇证明:`proofs/p29-bond-aware-hoard-ev.md` / `p30-merge-completing-purchase-ev.md` / `p31-direction-supply-reattach-ev.md`;索引已回填 math_proofs.md。
 
 ---
 

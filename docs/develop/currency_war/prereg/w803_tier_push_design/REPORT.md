@@ -14,7 +14,7 @@
 
 > 事实与需求源(全读):W801(七局 21 掉血帧阶跃实证)+ W791(兑现链三局证据)+ W789(P1 机制底图)+ W793(五项类型错配实证)+ W795 v2(兑现链设计,κ/Δp_tier 标定声明)+ W805(攻击批,本 v2 输入)+ 用户提案 P29。
 > 基线:主仓 HEAD(p1_iface 已删码,ADR-0487;**W802 侧二 κ 折扣已实施落库,开关默认关回常数罚**)。**本批 = 设计+命题+判据预写,零落码,禁改 src**(已守;文件面 = 本目录 + proofs/p32 + math_proofs.md 索引行)。
-> 配套:`PREREG_tier_push_AB.md` v2(本目录,判前锁)+ `docs/game/currency_war/research/proofs/p32-p1-tier-push-ev.md`(命题 P32,索引已回填)。
+> 配套:`PREREG_tier_push_AB.md` v2(本目录,判前锁)+ `docs/develop/currency_war/proofs/p32-p1-tier-push-ev.md`(命题 P32,索引已回填)。
 
 ---
 

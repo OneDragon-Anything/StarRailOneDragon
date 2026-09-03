@@ -54,7 +54,7 @@
 
 ### 2.4 方法一致性交叉验证
 
-A_e0→1 净 +37.0pp vs P3 已证阶梯 +27.7pp(`docs/game/currency_war/research/proofs/p03-form-streak-interest-ev.md`,成型度分档观测口径)——同一方向、同数量级;本批口径(逐事件+分层对照)与 P3 口径(按档分桶)独立,互证通过。
+A_e0→1 净 +37.0pp vs P3 已证阶梯 +27.7pp(`docs/develop/currency_war/proofs/p03-form-streak-interest-ev.md`,成型度分档观测口径)——同一方向、同数量级;本批口径(逐事件+分层对照)与 P3 口径(按档分桶)独立,互证通过。
 
 ## 3. 裁决(按预注册判据,CALIB_DESIGN §2)
 

@@ -105,7 +105,7 @@ W779 观测:L1 选中集 0 帧、L1 净正 0——「等店内自然上架贵货
 
 ## 二、待证明命题(数学先行)
 
-立 **P25**(待证明,单篇 `docs/game/currency_war/research/proofs/p25-p2-corecard-purchase-ev.md`,索引已回填):
+立 **P25**(待证明,单篇 `docs/develop/currency_war/proofs/p25-p2-corecard-purchase-ev.md`,索引已回填):
 
 > 位面 2 中段(线已锁定∧形态缺口∧溢余段),锁定线核心卡出现即买的期望净值为正且持息严格更劣。
 

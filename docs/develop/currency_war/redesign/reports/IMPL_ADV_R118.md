@@ -30,7 +30,7 @@
 | design_economy L26 | R115-症2 supersede 标内原字面留档(「λ>0 让渡 P51」) |
 | design_economy L43 | 本批 R117 标内(被引权威句+被翻 carve-out) |
 | IMPL_DESIGN L143 | 权威句(宣告全部退役) |
-| docs/game/currency_war/research/math_proofs.md L57、proofs/p48-batch-xp-banking-ev.md L14/L205 | **族外三命中**(game 侧证明集/证明件):描述的是 P48 花钱/囤钱判据(§2.3 spend/levelup 侧)定理原文的三段管辖条件陈述,非刷新模块;**无任何文本支持「刷新模块三段管辖框架豁免/未退役」**——不构成 R112 carve-out 的反证 |
+| docs/develop/currency_war/proofs/math_proofs.md L57、proofs/p48-batch-xp-banking-ev.md L14/L205 | **族外三命中**(game 侧证明集/证明件):描述的是 P48 花钱/囤钱判据(§2.3 spend/levelup 侧)定理原文的三段管辖条件陈述,非刷新模块;**无任何文本支持「刷新模块三段管辖框架豁免/未退役」**——不构成 R112 carve-out 的反证 |
 
 结论:设计文档现行态四文档族内「让渡 P51」=3 命中,全部为标内留档/权威句;**全目录无一处文本支持 carve-out**,「族内零支撑」主张经独立重跑成立。R117 翻案的判定基础真实。族外 game 侧三命中登记为跨树同步观察(见④观察),不立新症(证明集描述定理条件陈述,非现行态行为指令;game 侧与 develop 侧分层判据不同判)。
 

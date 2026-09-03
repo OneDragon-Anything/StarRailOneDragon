@@ -78,7 +78,7 @@
 
 ### 2.2 R1 启动门总账裁决(诊断 §6.2 张力收口)
 
-- **规格原文**(docs/game/currency_war/research/proofs/p40-refresh-ev.md ②):
+- **规格原文**(docs/develop/currency_war/proofs/p40-refresh-ev.md ②):
   「R1 完成门(启动判据)——追缺口是不可分投资……启动 iff
   `c_eff·E[refreshes|j] + Σ卡费 + L(g, spend, R_全局, Ī) ≤ V_gap`」。
 - **裁决**:**带总账(=「带预算上限」形态)**,非「开闸即放行进 r2」。

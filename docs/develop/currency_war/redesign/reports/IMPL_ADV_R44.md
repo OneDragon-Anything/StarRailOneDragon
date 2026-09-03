@@ -1,7 +1,7 @@
 # IMPL_ADV_R44 · 对抗式设计审查报告(R44 轮,全新上下文)
 
 > 审查对象:`IMPL_DESIGN.md`(R43 后态)+ `IMPL_FIX_LEMMAS.md`(R43 对照表后态)。
-> 对照单一源:NEW_MATH_FRAMEWORK.md(总纲,含裁定/挂账/语料依赖面全景)、DESIGN_MANDATE_LAYER.md(骨架层)、docs/game/currency_war/research/math_proofs.md(证明终态索引)。
+> 对照单一源:NEW_MATH_FRAMEWORK.md(总纲,含裁定/挂账/语料依赖面全景)、DESIGN_MANDATE_LAYER.md(骨架层)、docs/develop/currency_war/proofs/math_proofs.md(证明终态索引)。
 > 纪律:问题=位置+缺陷+数学/逻辑论证+修法方向;只读禁改(本报告为唯一新增产物)。R1-R43 已修项不重复攻击;与修复引理矛盾处逐条给推导。
 
 ---

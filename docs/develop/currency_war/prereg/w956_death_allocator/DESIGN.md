@@ -1,7 +1,7 @@
 # W956 · death 域分配器治本设计(数学/设计先行,零代码)
 
 > 任务=death/emergency 帧分配器结构性出清失败的根因形式化 + 修法方向候选 + 数学先行判定 + 与在飞臂职责矩阵。
-> 证据链输入:W933 §3「并联缺位」裁决、W951 hunt3 §3(951322:death alloc budget 41/47 chosen=[] 恒空)、W955 §3(955102:同构,频次 7→15/300 上行)、复盘 `g_20260831_082322.md`(p2r2 臂开 5 卡全拒 0 执行 + release↔interest 振荡)、**W954 §5/§6 对账移交(alloc 一致性断言 + 危机购买兜底集归本域批;转型臂开臂排期依赖本批先行件,编排者补充令)**、P23 证明篇(`docs/game/currency_war/research/proofs/p23-death-window-allocation-ev.md`)、ADR-0493/0503/0506 结论面。
+> 证据链输入:W933 §3「并联缺位」裁决、W951 hunt3 §3(951322:death alloc budget 41/47 chosen=[] 恒空)、W955 §3(955102:同构,频次 7→15/300 上行)、复盘 `g_20260831_082322.md`(p2r2 臂开 5 卡全拒 0 执行 + release↔interest 振荡)、**W954 §5/§6 对账移交(alloc 一致性断言 + 危机购买兜底集归本域批;转型臂开臂排期依赖本批先行件,编排者补充令)**、P23 证明篇(`docs/develop/currency_war/proofs/p23-death-window-allocation-ev.md`)、ADR-0493/0503/0506 结论面。
 > 代码面通读:`decision_v2/allocator.py` 全文、`posture_release.py`(crisis_overflow/crisis_release_open/crisis_invariant_lane)、`realization.d2_entry_frame`、`filters.is_emergency`、`cw_intention` W948 状态族签名面。
 > **本文件纯设计:零代码改动、零实机触碰、未 git commit。**
 

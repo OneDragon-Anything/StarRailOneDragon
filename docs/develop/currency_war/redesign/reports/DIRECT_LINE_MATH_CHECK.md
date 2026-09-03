@@ -2,7 +2,7 @@
 
 > 任务:核查「直通线(开局信号即定线,不走四体系过渡)」的处理是否与「过渡流(四体系过渡→证据门锁线→终局)」不同,现有数学(P38 起新树 + 骨架 M1-M7)是否需要重弄。
 > 用户疑虑拆成三问:①逐证明是否有「阶段假设」(只在过渡流语境下才真);②骨架义务是否覆盖直通线开局形态;③结论=原样成立 / 需变体补注 / 需重推。
-> 核查对象证明件全文逐份亲读:`docs/game/currency_war/research/proofs/` 下 p38/p16/p39/p46/p48/p49/p41/p24/p51;设计件:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架)、`IMPL_DESIGN.md`、`docs/develop/currency_war/redesign/01_strategy_layer.md`;知识件:`final_comps/final_daheita_aoe.md`、`COMP_KNOWLEDGE_AUDIT.md`、`MECHANIC_MUTATORS_AUDIT.md`;注册表:`cw_invest_data.py` 黑塔纪元原文直读。
+> 核查对象证明件全文逐份亲读:`docs/develop/currency_war/proofs/` 下 p38/p16/p39/p46/p48/p49/p41/p24/p51;设计件:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架)、`IMPL_DESIGN.md`、`docs/develop/currency_war/redesign/01_strategy_layer.md`;知识件:`final_comps/final_daheita_aoe.md`、`COMP_KNOWLEDGE_AUDIT.md`、`MECHANIC_MUTATORS_AUDIT.md`;注册表:`cw_invest_data.py` 黑塔纪元原文直读。
 > 禁改任何文件——本报告只登记结论。
 
 ## 0. 总结论(先答用户)
@@ -142,7 +142,7 @@
 
 ## 5. 参考件索引(本报告引用)
 
-- 证明件:`docs/game/currency_war/research/proofs/` p38-completion-probability / p16-line-switch-erounds / p39-levelup-ev / p46-spend-gate-rejection-ev / p48-batch-xp-banking-ev / p49-pool-compression-ev / p41-hoard-sell-ev / p24-residual-fill-dominance / p51-waiting-cost-lemma
+- 证明件:`docs/develop/currency_war/proofs/` p38-completion-probability / p16-line-switch-erounds / p39-levelup-ev / p46-spend-gate-rejection-ev / p48-batch-xp-banking-ev / p49-pool-compression-ev / p41-hoard-sell-ev / p24-residual-fill-dominance / p51-waiting-cost-lemma
 - 设计件:`.debug/temp/currency_war/design/NEW_MATH_FRAMEWORK.md`(总纲 §1/§2/§5)、`DESIGN_MANDATE_LAYER.md`(§3.2 M1-M7)、`IMPL_DESIGN.md`(§1 line_selector/§2.7)、`COMP_KNOWLEDGE_AUDIT.md`(Q10)、`MECHANIC_MUTATORS_AUDIT.md`(修法 #5/#14)
 - 正文设计:`docs/develop/currency_war/redesign/01_strategy_layer.md`(§3 状态机/§4.1 六序/§4.2 证据门/§4.4 消解协议/§4.10 突变层)
 - 知识件:`docs/game/currency_war/research/final_comps/final_daheita_aoe.md`(直通线机制/备战席经济学/压等级节奏)、`transition_combos.md`(直通线信号谱)

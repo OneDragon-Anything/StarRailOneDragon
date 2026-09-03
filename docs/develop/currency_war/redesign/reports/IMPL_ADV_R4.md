@@ -1,7 +1,7 @@
 # IMPL_ADV_R4 · 实现方案设计件对抗式审查(R4 轮)
 
 > 审查对象:`IMPL_DESIGN.md`(含 R3 五项修复落位)+ `IMPL_FIX_LEMMAS.md`(修复引理登记表,证明本体一并攻)。
-> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/game/currency_war/research/math_proofs.md`(证明终态索引,含 P39/P41/P48 关键行直读)。
+> 对照单一源:`NEW_MATH_FRAMEWORK.md`(总纲)、`DESIGN_MANDATE_LAYER.md`(骨架层)、`docs/develop/currency_war/proofs/math_proofs.md`(证明终态索引,含 P39/P41/P48 关键行直读)。
 > 纪律:每条 = 位置 + 缺陷 + 为什么错(数学/逻辑论证)+ 修法方向;只读禁改;无实质缺陷的角度列「已攻无新问题」。
 > 本轮共 **10 项发现**:3 高(全部落在引理证明本体,⑧ 类)、3 中、4 低。R3 修复主体方向(Φ 反号更正 / schedule_of 单一源 / cap 参数化)本轮均未推翻。
 
