@@ -11,6 +11,7 @@ from one_dragon.base.screen.screen_area import ScreenArea
 from one_dragon.base.screen.screen_info import ScreenInfo
 from one_dragon.utils import cv2_utils, str_utils
 from one_dragon.utils.i18_utils import gt
+from one_dragon.utils.log_utils import log
 
 if TYPE_CHECKING:
     from one_dragon.base.operation.one_dragon_context import OneDragonContext
@@ -51,6 +52,14 @@ def find_area(
         bool: 是否可以匹配到指定区域
     """
     area: ScreenArea = ctx.screen_loader.get_area(screen_name, area_name)
+    if area is None:
+        # 运行时 screen_loader 只加载 _od_merged.yml;代码引用的画面/区域名若
+        # 未随 merged 再生(改名后未重生成),get_area 静默 None → 分发分支被
+        # 当成「未命中」跳过(dd-029 第三起实机卡死根因)。显式告警区分
+        # 「配置缺失」与「画面上没找到」。
+        log.warning('区域未配置(画面名或 area 名不在运行时 screen_info 中): %s.%s',
+                    screen_name, area_name)
+        return FindAreaResultEnum.AREA_NO_CONFIG
     return find_area_in_screen(ctx, screen, area, crop_first)
 
 
@@ -76,6 +85,10 @@ def find_area_binary(
         FindAreaResultEnum: 是否可以匹配到指定区域
     """
     area: ScreenArea = ctx.screen_loader.get_area(screen_name, area_name)
+    if area is None:
+        log.warning('区域未配置(画面名或 area 名不在运行时 screen_info 中): %s.%s',
+                    screen_name, area_name)
+        return FindAreaResultEnum.AREA_NO_CONFIG
     return find_area_in_screen_binary(ctx, screen, area, binary_threshold, crop_first)
 
 
@@ -250,6 +263,8 @@ def find_and_click_area(
     """
     area: ScreenArea = ctx.screen_loader.get_area(screen_name, area_name)
     if area is None:
+        log.warning('区域未配置(画面名或 area 名不在运行时 screen_info 中): %s.%s',
+                    screen_name, area_name)
         return OcrClickResultEnum.AREA_NO_CONFIG
     if area.is_text_area:
         ocr_result_list = ctx.ocr_service.get_ocr_result_list(

@@ -32,3 +32,4 @@
 | [dd-025](dd-025-frame-horizon-vgap.md) | DD-025:R1 刷新门 V̄ 比较项换帧级 horizon 现算(修 A)——rounds_left_est=5 常数退役出 cw4 消费链,旧静态注入 24.7=r=5 特例;cw_registry 共享字段零触碰(decision_v2 冻结基线) | accepted | 2026-09-04 |
 | [dd-026](dd-026-r2-interest-floor.md) | DD-026:R2 预算门息线 floor 落码(修 R2)——刷新门预留组装补位 P40 规范口径(g*+ρ),b_target 零参退化退役出刷新消费位;跨档破线刷无 L 旁路(生存面硬下界) | accepted | 2026-09-04 |
 | [dd-027](dd-027-m7-equip-emission-gate.md) | DD-027:M7 装备转移发射门——持有面谓词换变换面谓词(m7_wearable_exists,owned 全量含工具件致非空即发永真)+ 备战期装备闩 cw4_m7_equipped_phase(实机 1-6 RunEquip 备战环活锁 204 帧定谳;空批出口 StartBattle 封死根因) | accepted | 2026-09-04 |
+| [dd-029](dd-029-screen-rename-merged-regen.md) | DD-029:画面改名只改分文件漏再生 merged——运行时加载源漂移致「选择伙伴」遮罩下部署死局(merged 新鲜度锁 + AREA_NO_CONFIG 显式告警[框架层,编排者预批准] + cw_loop 分发锚 iter1 预检 + 事故帧路由 fixture;handler 归属澄清=CwScreenPartner 非专家邀请函) | accepted | 2026-09-04 |
