@@ -569,6 +569,244 @@ def self_test_v5() -> list[str]:
     return failures
 
 
+# ---------------- v6 三臂判读(判读器迁移;IMPL_DESIGN §5.1 行 1/2) ----------------
+
+# v6 被测体叙述(R9 次要):三臂 = 单被测体两因子
+# strategy_id∈{decision_v2, mandate_v1} × ev_arm∈{skeleton_only, full},
+# 取三格:③=decision_v2 基线 / ①=mandate_v1+skeleton_only / ②=mandate_v1+full。
+# 对照结构 = 预指定主对照 ②−①(EV 增量,命题 B,按锁内阈值门判读)+
+# 次对照 ①-③(命题 A 非劣参照,仅描述性报告、不进门)——判读后禁
+# 增删/更换对照(多重比较以预指定单门承载)。
+ARM_FACTORS: dict[str, dict] = {
+    '①': {'strategy_id': 'mandate_v1', 'ev_arm': 'skeleton_only'},
+    '②': {'strategy_id': 'mandate_v1', 'ev_arm': 'full'},
+    '③': {'strategy_id': 'decision_v2', 'ev_arm': None},
+}
+#: headline 措辞限定(CALIB_REPORT_V2 §3 裁决附条件②):U_X/T_SEARCH_A
+#: 豁免 ⇒ 五面两臂恒等关闭,B1/B2 含共同降级分量——不得读作全量
+#: 处理效应;归因域=sim 测量域=shop 决策面(IMPL_ADV_R200 症7)。
+V6_HEADLINE_NOTE = ('headline=已开闸面处理效应 + 共同降级分量(披露计数)'
+                    '显式分离:B1/B2 不得读作全量处理效应;归因域=shop '
+                    '决策面(prep 面 sim 不可达)')
+
+
+def _require_formal_ab_prereg(manifest: dict, label: str) -> dict:
+    """症4 判读器侧防线:formal 批 manifest 必须携带 prereg 块且全绿。
+
+    块由 ``sim/ab_core_swap.formal_ab_prereg_manifest()`` 产出(跑批侧
+    序列化进 manifest):v6 检查单 + V_GAP 注入态 + 显式豁免批文 +
+    活性守卫豁免快照。缺块 / v6 未绿 / V_GAP=None 且无豁免批文 ⇒
+    拒读(零刷新事故形态复演必须红;与 ab_core_swap.require 双防线)。
+    """
+    blk = manifest.get('formal_ab_prereg')
+    if not isinstance(blk, dict):
+        raise SystemExit(
+            f'formal A/B 批({label})manifest 缺 formal_ab_prereg 块,'
+            '拒绝判读(判前锁 v6 硬前置;IMPL_ADV_R200 症4——跑批侧须经 '
+            'ab_core_swap.require_v6_green_for_formal_ab 并把 '
+            'formal_ab_prereg_manifest() 落进 manifest)')
+    if not blk.get('v6_ok'):
+        raise SystemExit(f'formal A/B 批({label})prereg 块 v6 未全绿,拒绝判读')
+    if blk.get('vgap_state') == 'none' and not blk.get('formal_ab_exemptions'):
+        raise SystemExit(
+            f'formal A/B 批({label})V_GAP=None 且无显式豁免批文——'
+            '零刷新事故形态,拒绝判读(IMPL_ADV_R200 症4 行 17)')
+    return blk
+
+
+def judge_v6(arm_dirs: dict[str, Path], *, planes: int,
+             planned_rounds: int) -> dict:
+    """PREREG v6 判读:三臂单被测体两因子;预指定主对照 ②−① 进门,
+    次对照 ①-③ 仅描述性;强制披露 + headline 措辞限定。
+
+    ``arm_dirs`` = {'①': path, '②': path, '③': path}(键词表见
+    ARM_FACTORS)。主对照复用 v5 三闸主门(p17 结构,+0 容差)与
+    S1–S3 硬哨兵;次对照只报 Δ 与 CI,不产 verdict。每臂 manifest 须
+    携带 formal_ab_prereg 块(症4)与 cw4_disclosure 块(披露①)。
+    """
+    if set(arm_dirs) != set(ARM_FACTORS):
+        raise SystemExit(f'v6 判读需三臂目录 {sorted(ARM_FACTORS)},'
+                         f'得 {sorted(arm_dirs)}')
+    data: dict[str, tuple[dict[int, dict], dict]] = {}
+    preregs: dict[str, dict] = {}
+    disclosures: dict[str, dict] = {}
+    fp: str | None = None
+    for label, d in arm_dirs.items():
+        gm, mf = load_batch(d)
+        preregs[label] = _require_formal_ab_prereg(mf, label)
+        disc = mf.get('cw4_disclosure')
+        if not isinstance(disc, dict):
+            raise SystemExit(
+                f'formal A/B 批({label})manifest 缺 cw4_disclosure 块,'
+                '拒绝判读(预注册①:CALIB_REPORT_V2 §3.2 强制披露清单——'
+                '跑批侧按 ab_core_swap.cw4_disclosure_from_session 逐局聚合)')
+        disclosures[label] = disc
+        f = mf.get('pool_fingerprint', '')
+        if not f or (fp is not None and f != fp):
+            raise SystemExit(f'三臂 pool_fingerprint 不一致或缺档({label}):'
+                             f'{f!r} vs {fp!r}')
+        fp = f if fp is None else fp
+        data[label] = (gm, mf)
+    seeds = sorted(set(data['①'][0]) & set(data['②'][0]) & set(data['③'][0]))
+    if not seeds:
+        raise SystemExit('三臂无共同 seed,无法配对')
+
+    def _metrics(label: str) -> dict[int, dict]:
+        return {s: game_metrics_v5(data[label][0][s], planes=planes,
+                                   planned_rounds=planned_rounds)
+                for s in seeds}
+
+    m1, m2, m3 = _metrics('①'), _metrics('②'), _metrics('③')
+    # 预指定主对照 ②−①(进门):v5 三闸主门 + 硬哨兵
+    mains: dict[str, dict] = {}
+    for mid, spec in V5_MAIN_METRICS.items():
+        r = judge_main(mid, [m2[s][mid] for s in seeds],
+                       [m1[s][mid] for s in seeds], spec=spec)
+        r['contrast'] = '②−①(预指定主对照,EV 增量)'
+        mains[mid] = {'name': spec['name'], **r}
+    v1_sent = judge_sentinels(m2, m1, load_summary(arm_dirs['②']),
+                              load_summary(arm_dirs['①']))
+    hard_sentinels = {k: v1_sent[k] for k in ('S1', 'S2', 'S3')}
+    # 次对照 ①-③(仅描述性,不进门):只报 Δ 与 CI,无 verdict
+    secondary: dict[str, dict] = {}
+    for mid, spec in V5_MAIN_METRICS.items():
+        diff = [m1[s][mid] - m3[s][mid] for s in seeds]
+        mean = sum(diff) / len(diff)
+        sd = (statistics.stdev(diff) if len(diff) > 1 and
+              statistics.stdev(diff) else 0.0)
+        secondary[mid] = {
+            'name': spec['name'], 'delta_1m3': mean,
+            'ci_lo_normal': mean - 1.96 * sd / (len(diff) ** 0.5),
+            'note': '次对照 ①-③(命题 A 非劣参照):仅描述性,不进门'
+                    '(v6 多重比较声明:预指定主对照单门)'}
+    main_all_pass = all(mains[m]['verdict'] in ('PASS', 'BORDERLINE')
+                        for m in mains)
+    any_tripped = any(v['tripped'] for v in hard_sentinels.values())
+    return {
+        'prereg': 'PREREG_cw3_vs_legacy_AB.md v6(三臂单被测体两因子;'
+                  '预指定主对照 ②−①;判读器迁移=v6 词表/对照结构落地)',
+        'arm_factors': {k: dict(v) for k, v in ARM_FACTORS.items()},
+        'pool_fingerprint': fp,
+        'n_pairs': len(seeds),
+        'headline_note': V6_HEADLINE_NOTE,
+        'main_gates': mains,
+        'secondary_descriptive': secondary,
+        'sentinels_hard': hard_sentinels,
+        'disclosure': disclosures,
+        'formal_ab_prereg': preregs,
+        'verdict': ('FAIL' if any_tripped
+                    else 'PASS' if main_all_pass else 'FAIL'),
+        'verdict_reason': (
+            '哨兵越线:' + '/'.join(k for k, v in hard_sentinels.items()
+                                   if v['tripped']) if any_tripped
+            else '预指定主对照 ②−① 三闸全过(+0 容差)' if main_all_pass
+            else '主对照未全过:' + '/'.join(
+                k for k, v in mains.items()
+                if v['verdict'] not in ('PASS', 'BORDERLINE'))),
+    }
+
+
+def render_human_v6(res: dict) -> str:
+    lines = ['== CW sim A/B 判读(判据 = PREREG v6,三臂两因子)==',
+              f"指纹 {res['pool_fingerprint'][:8]} | 配对 {res['n_pairs']} 对"
+              f" | 总判 **{res['verdict']}**({res['verdict_reason']})",
+              f"⚠ headline 措辞限定:{res['headline_note']}"]
+    lines.append('\n-- 主对照 ②−①(预指定,进门;Δ=②−①;+0 容差) --')
+    for mid, r in res['main_gates'].items():
+        if r['verdict'] == 'INSUFFICIENT':
+            lines.append(f'  {mid} {r["name"]}: INSUFFICIENT({r.get("note", "")})')
+            continue
+        ci = f"CI[{r['ci_lower']:.4f}, {r['ci_upper']:.4f}]"
+        lines.append(f'  {mid} {r["name"]}: Δ={r["delta"]:+.4f} {ci} '
+                     f'→ {r["verdict"]}')
+    lines.append('\n-- 次对照 ①-③(仅描述性,不进门) --')
+    for mid, r in res['secondary_descriptive'].items():
+        lines.append(f'  {mid} {r["name"]}: Δ={r["delta_1m3"]:+.4f}'
+                     f'(CI_lo {r["ci_lo_normal"]:+.4f};{r["note"]})')
+    lines.append('\n-- 硬哨兵 S1–S3(主对照 ② vs ①;任一越线=FAIL) --')
+    for sid, r in res['sentinels_hard'].items():
+        kv = ' | '.join(f'{k}={v}' for k, v in r.items()
+                        if k not in ('tripped', 'redline'))
+        lines.append(f'  {sid}: {"越线" if r["tripped"] else "OK"}({kv})')
+    lines.append('\n-- 强制披露计数(共同降级分量;随 headline) --')
+    for label, disc in res['disclosure'].items():
+        kv = ' | '.join(f'{k}={v}' for k, v in sorted(disc.items())) or '(空)'
+        lines.append(f'  臂{label}: {kv}')
+    return '\n'.join(lines)
+
+
+def self_test_v6() -> list[str]:
+    """v6 自测:①缺 prereg 块拒读(零刷新事故形态)②V_GAP=None 无豁免
+    拒读 ③全件齐备判读通过(主对照进门/次对照描述性/披露渲染)。"""
+    import shutil
+    tmp = Path(tempfile.mkdtemp(prefix='ab_judge_v6_selftest_'))
+    failures: list[str] = []
+    fp = 'deadbeef' * 8
+    games = [{'seed': s} for s in range(40)]
+    arms = {}
+    for label in ('①', '②', '③'):
+        d = tmp / f'arm{label}'
+        _make_batch(d, [dict(g) for g in games], fp)
+        arms[label] = d
+
+    # 场景 W-A:manifest 无 prereg 块 ⇒ 拒读(症4 事故形态)
+    try:
+        judge_v6(dict(arms), planes=2, planned_rounds=16)
+        failures.append('W-A 缺 prereg 块应 SystemExit')
+    except SystemExit:
+        pass
+
+    def _patch_manifest(label: str, blk: dict | None, disc: dict | None,
+                        v6_ok: bool = True) -> None:
+        p = arms[label] / 'manifest.json'
+        m = {'pool_fingerprint': fp}
+        if blk is not None:
+            m['formal_ab_prereg'] = blk
+        if disc is not None:
+            m['cw4_disclosure'] = disc
+        p.write_text(json.dumps(m, ensure_ascii=False), encoding='utf-8')
+
+    def _blk(v6_ok: bool = True, vgap: str = 'injected',
+             exempt: dict | None = None) -> dict:
+        return {'v6_rows': [], 'v6_ok': v6_ok, 'vgap_state': vgap,
+                'formal_ab_exemptions': exempt or {},
+                'liveness_exempt_disclosure': {}}
+
+    # 场景 W-B:prereg 块在但 V_GAP=none 且无豁免 ⇒ 拒读(行 17 判读侧)
+    for label in arms:
+        _patch_manifest(label, _blk(vgap='none'),
+                        {'shop_ev_u_unavailable': 3})
+    try:
+        judge_v6(dict(arms), planes=2, planned_rounds=16)
+        failures.append('W-B V_GAP=none 无豁免应 SystemExit')
+    except SystemExit:
+        pass
+
+    # 场景 W-C:全件齐备(V_GAP 注入态)⇒ 判读通过;主对照全贴线
+    # BORDERLINE(两侧同分布)、次对照带描述性注记、披露渲染、措辞限定在。
+    for label in arms:
+        _patch_manifest(label, _blk(),
+                        {'shop_ev_u_unavailable': 2, 'shop_r1_ev_unavailable': 5})
+    r = judge_v6(dict(arms), planes=2, planned_rounds=16)
+    if r['verdict'] != 'PASS':
+        failures.append(f'W-C 总判应 PASS(同分布贴线),得 {r["verdict"]}')
+    if not all('仅描述性' in s['note']
+               for s in r['secondary_descriptive'].values()):
+        failures.append('W-C 次对照应仅描述性')
+    if any('verdict' in s for s in r['secondary_descriptive'].values()):
+        failures.append('W-C 次对照不得带 verdict(不进门)')
+    human = render_human_v6(r)
+    if '不得读作全量处理效应' not in human:
+        failures.append('W-C headline 措辞限定缺失')
+    if 'shop_r1_ev_unavailable=5' not in human:
+        failures.append('W-C 披露计数未随 headline 渲染')
+    if 'mandate_v1' not in json.dumps(r['arm_factors']):
+        failures.append('W-C 三臂词表(mandate_v1/ev_arm)缺失')
+
+    shutil.rmtree(tmp, ignore_errors=True)
+    return failures
+
+
 # ---------------- 总判读 ----------------
 
 
@@ -848,9 +1086,15 @@ def main() -> None:
     ap.add_argument('--planned-rounds', type=int, default=0,
                     help='批配置单局计划轮数(S3 分母;缺省 = 9+7×(planes−1))')
     ap.add_argument('--out', default='', help='机器可读结论 JSON 落盘路径')
-    ap.add_argument('--prereg', choices=['v1', 'v5'], default='v1',
+    ap.add_argument('--prereg', choices=['v1', 'v5', 'v6'], default='v1',
                     help='判前锁版本:v1=原 6 主指标+5 哨兵;v5=用户裁定修正'
-                         '(5 主指标+通关率降尾部参考,修订表 v5 行)')
+                         '(5 主指标+通关率降尾部参考,修订表 v5 行);'
+                         'v6=三臂单被测体两因子(①mandate_v1/skeleton '
+                         '②mandate_v1/full ③decision_v2;预指定主对照 '
+                         '②−①;强制 prereg/披露块)')
+    ap.add_argument('--arm1', default='', help='v6 臂①目录(mandate_v1 skeleton)')
+    ap.add_argument('--arm2', default='', help='v6 臂②目录(mandate_v1 full)')
+    ap.add_argument('--arm3', default='', help='v6 臂③目录(decision_v2 基线)')
     ap.add_argument('--self-test', action='store_true',
                     help='合成样本自测(不读真实数据;v1+v5 两套)')
     args = ap.parse_args()
@@ -864,15 +1108,31 @@ def main() -> None:
             for f in fails:
                 print(' -', f)
             sys.exit(1)
+        fails_v6 = self_test_v6()
+        if fails_v6:
+            print('v6 自测失败:')
+            for f in fails_v6:
+                print(' -', f)
+            sys.exit(1)
         print('v5 自测通过:V-A 同分布主门全过+度量仪 hp 差=0 / V-B G1a 成型推迟 '
               'FAIL / V-C G1b 成型塌 FAIL / V-D G2 带金占比两分支(低→FAIL,'
               '同分布→非FAIL)/ V-E G3 未进P2 FAIL / V-F S3 红线仍生效+度量仪无'
               '越线位,全部命中已知答案。')
+        print('v6 自测通过:W-A 缺 prereg 块拒读 / W-B V_GAP=none 无豁免拒读'
+              '(症4 事故形态复演红)/ W-C 全件齐备判读(主对照进门+次对照'
+              '描述性+披露随 headline+措辞限定)。')
         sys.exit(0)
     if not (args.new and args.old):
         ap.error('需 --new/--old 批次目录对,或 --self-test')
     planned = args.planned_rounds or (P1_ROUNDS + P2_ROUNDS * (args.planes - 1))
-    if args.prereg == 'v5':
+    if args.prereg == 'v6':
+        if not (args.arm1 and args.arm2 and args.arm3):
+            ap.error('v6 判读需 --arm1/--arm2/--arm3 三臂目录')
+        res = judge_v6({'①': Path(args.arm1), '②': Path(args.arm2),
+                        '③': Path(args.arm3)},
+                       planes=args.planes, planned_rounds=planned)
+        human = render_human_v6(res)
+    elif args.prereg == 'v5':
         res = judge_v5(Path(args.new), Path(args.old), planes=args.planes,
                        planned_rounds=planned)
         human = render_human_v5(res)

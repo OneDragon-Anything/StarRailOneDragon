@@ -909,7 +909,7 @@ def sell_refund(star: int, cost: int) -> int:
       sell-star 停机钩子 + VLM 读出售按钮「金币+3」)。用户:1费 2星不减、**2费开始才减1**(手续费 cost 相关
       非纯 star)。故 −1 条件 = ``star>=2 and cost>=2``。
     - 🟡 cost≥2 的 −1(2★2费=5)+ 3/4星 仍用户记忆 / 推测,待多 cost live 核;cost=1 各星已定(全额退)。
-      (该置信度分层已在设计件登记并处置:.debug/temp/currency_war/redesign/IMPL_FIX_LEMMAS.md 头注数值锚点行
+      (该置信度分层已在设计件登记并处置:docs/develop/currency_war/redesign/IMPL_FIX_LEMMAS.md 头注数值锚点行
       置信度标 + IMPL_DESIGN.md §2.2 line_switch_sell 卖面保守端取值;live 核定检查项=同设计件 §5.4 实机验证阶梯。)
     """
     refund = max(cost, 1) * _SELL_MULT.get(star, 1)

@@ -493,6 +493,21 @@ def _p1_system_support(state: GameState) -> dict[str, float]:
     return sup
 
 
+def p1_gap_window(state: GameState) -> bool:
+    """P1 空窗期判定(只读):bench∪deployed 四体系最高支持度 <
+    ``P1_PAIR_LOCK_MIN_SUPPORT``。
+
+    消费位=cw4 商店线方向 pass 的 K 空窗回退门(2026-09-03 第三病灶
+    裁定,SEEDS_EMPTY_LEDGER_DIAG §4 第一案):``target_comp`` 值域
+    全集含 None,空窗期 K 投影回退 ``hoard_target_set``(本模块,
+    单一源)。判定数学与 ``_derive_p1_pair`` 的不锁分支同源(同一
+    ``_p1_system_support`` + 同一门槛常数,禁另造支持度算式)。
+    边界:空板面恒 True(0<0.5);P2+ 调用面约定不辖(空窗系 P1 概念)。
+    """
+    sup = _p1_system_support(state)
+    return max(sup.values(), default=0.0) < P1_PAIR_LOCK_MIN_SUPPORT
+
+
 def _derive_p1_pair(state: GameState,
                     exclude: frozenset[str] = frozenset(),
                     registry: DecisionV2Registry | None = None,
@@ -582,6 +597,22 @@ def p1_early_pair(state: GameState,
     ranked = [k for k in sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
               if k not in exclude]
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
+
+
+def p1_early_pair_members(state: GameState,
+                          ist: IntentionState | None) -> frozenset[str]:
+    """P1 锁线过渡带的囤货成员集(只读;FIX_REVIEW_20260903 R3① 单一源)。
+
+    辖域 = P1 ∧ 支持度已达锁线门槛但 pair 尚未锁帧(``update_intention``
+    逐 game-round 跑,商店波内滞后)——该带旧核有 ``p1_early_pair`` 方向
+    (无门槛 top-2),新核商店线 K 投影经本函数取成员集,禁在消费位
+    复制 top-2/成员集推导。成员投影 = ``_pair_members(p1_early_pair(...))``
+    (与 hoard_target_set P1 分支同一成员投影算子);pair 派生为空
+    (如 pair_evicted 全驱逐)⇒ 空集,消费位自行链 hoard_target_set
+    空窗全集兜底。P1 外恒空集(``p1_early_pair`` 同辖域)。
+    """
+    pair = p1_early_pair(state, ist)
+    return frozenset(_pair_members(pair)) if pair else frozenset()
 
 
 # ⚠️ 权威副本 = knowledge/cw_line_facts._bond_members(telemetry/schema ρ 实测

@@ -1,0 +1,415 @@
+{
+ "meta": {
+  "table": "lambda_death_pl",
+  "version": "v3.3",
+  "source": "P51_V3_REBUILD.md v3.3 节运行产物 p51_v33_run.txt(Part 3M 主表 + Part 8 标签/空格处置)",
+  "key_dims": [
+   "难度带(D0/D1,界 108)",
+   "血带(hp<=15/hp15-40/hp>40)",
+   "位面(P1/P2+)",
+   "节点(battle/encounter/boss/noncombat)"
+  ],
+  "horizon": "λ3 = 3 轮窗累积危险率",
+  "notes": [
+   "空格=表状态机第四态(空格≠域外≠损坏),fallback=表侧权威回退处置",
+   "薄格 CI 下限已强制取该格原始 n 的 Wilson 下限(工件 Part 8 标签行;生成器 gen_pl_v33_json.py)",
+   "旧 v3.1/v3.2 板面键表系对照存档,禁再被消费位引用"
+  ]
+ },
+ "cells": {
+  "D0|hp<=15|P1|battle": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "转化优先段语义(P51 §7-1,非守息)"
+  },
+  "D0|hp<=15|P1|encounter": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "转化优先段语义(P51 §7-1,非守息)"
+  },
+  "D0|hp<=15|P1|boss": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "转化优先段语义(P51 §7-1,非守息)"
+  },
+  "D0|hp<=15|P1|noncombat": {
+   "n": 2,
+   "raw": 0.5,
+   "mono": 0.727,
+   "ci_lo": 0.524,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D0|hp<=15|P2+|battle": {
+   "n": 71,
+   "raw": 0.901,
+   "mono": 0.901,
+   "ci_lo": 0.79,
+   "ci_hi": 0.99,
+   "label": "可消费"
+  },
+  "D0|hp<=15|P2+|encounter": {
+   "n": 9,
+   "raw": 0.889,
+   "mono": 0.917,
+   "ci_lo": 0.565,
+   "ci_hi": 1.0,
+   "label": "可消费"
+  },
+  "D0|hp<=15|P2+|boss": {
+   "n": 2,
+   "raw": 1.0,
+   "mono": 0.867,
+   "ci_lo": 0.625,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D0|hp<=15|P2+|noncombat": {
+   "n": 7,
+   "raw": 1.0,
+   "mono": 0.9,
+   "ci_lo": 0.646,
+   "ci_hi": 1.0,
+   "label": "可消费"
+  },
+  "D0|hp15-40|P1|battle": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "守息(非濒死,维持)"
+  },
+  "D0|hp15-40|P1|encounter": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "有界外推:λ≤0.722(支配邻居上确界)"
+  },
+  "D0|hp15-40|P1|boss": {
+   "n": 17,
+   "raw": 0.706,
+   "mono": 0.706,
+   "ci_lo": 0.469,
+   "ci_hi": 0.882,
+   "label": "可消费"
+  },
+  "D0|hp15-40|P1|noncombat": {
+   "n": 20,
+   "raw": 0.75,
+   "mono": 0.727,
+   "ci_lo": 0.522,
+   "ci_hi": 0.884,
+   "label": "可消费"
+  },
+  "D0|hp15-40|P2+|battle": {
+   "n": 29,
+   "raw": 0.759,
+   "mono": 0.759,
+   "ci_lo": 0.533,
+   "ci_hi": 0.931,
+   "label": "可消费"
+  },
+  "D0|hp15-40|P2+|encounter": {
+   "n": 3,
+   "raw": 1.0,
+   "mono": 0.917,
+   "ci_lo": 0.75,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D0|hp15-40|P2+|boss": {
+   "n": 2,
+   "raw": 1.0,
+   "mono": 0.867,
+   "ci_lo": 0.683,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D0|hp15-40|P2+|noncombat": {
+   "n": 4,
+   "raw": 1.0,
+   "mono": 0.9,
+   "ci_lo": 0.778,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D0|hp>40|P1|battle": {
+   "n": 172,
+   "raw": 0.407,
+   "mono": 0.407,
+   "ci_lo": 0.274,
+   "ci_hi": 0.534,
+   "label": "可消费"
+  },
+  "D0|hp>40|P1|encounter": {
+   "n": 65,
+   "raw": 0.492,
+   "mono": 0.492,
+   "ci_lo": 0.354,
+   "ci_hi": 0.623,
+   "label": "可消费"
+  },
+  "D0|hp>40|P1|boss": {
+   "n": 38,
+   "raw": 0.553,
+   "mono": 0.553,
+   "ci_lo": 0.375,
+   "ci_hi": 0.699,
+   "label": "可消费"
+  },
+  "D0|hp>40|P1|noncombat": {
+   "n": 231,
+   "raw": 0.277,
+   "mono": 0.277,
+   "ci_lo": 0.197,
+   "ci_hi": 0.366,
+   "label": "可消费"
+  },
+  "D0|hp>40|P2+|battle": {
+   "n": 27,
+   "raw": 0.667,
+   "mono": 0.6,
+   "ci_lo": 0.4,
+   "ci_hi": 0.797,
+   "label": "可消费"
+  },
+  "D0|hp>40|P2+|encounter": {
+   "n": 3,
+   "raw": 0.667,
+   "mono": 0.5,
+   "ci_lo": 0.394,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D0|hp>40|P2+|boss": {
+   "n": 1,
+   "raw": 1.0,
+   "mono": 0.867,
+   "ci_lo": 0.704,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D0|hp>40|P2+|noncombat": {
+   "n": 1,
+   "raw": 1.0,
+   "mono": 0.5,
+   "ci_lo": 0.333,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D1|hp<=15|P1|battle": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "转化优先段语义(P51 §7-1,非守息)"
+  },
+  "D1|hp<=15|P1|encounter": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "转化优先段语义(P51 §7-1,非守息)"
+  },
+  "D1|hp<=15|P1|boss": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "转化优先段语义(P51 §7-1,非守息)"
+  },
+  "D1|hp<=15|P1|noncombat": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "转化优先段语义(P51 §7-1,非守息)"
+  },
+  "D1|hp<=15|P2+|battle": {
+   "n": 33,
+   "raw": 0.97,
+   "mono": 0.97,
+   "ci_lo": 0.92,
+   "ci_hi": 1.0,
+   "label": "可消费"
+  },
+  "D1|hp<=15|P2+|encounter": {
+   "n": 2,
+   "raw": 1.0,
+   "mono": 1.0,
+   "ci_lo": 1.0,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D1|hp<=15|P2+|boss": {
+   "n": 1,
+   "raw": 0.0,
+   "mono": 0.889,
+   "ci_lo": 0.667,
+   "ci_hi": 0.979,
+   "label": "禁用"
+  },
+  "D1|hp<=15|P2+|noncombat": {
+   "n": 8,
+   "raw": 0.75,
+   "mono": 0.9,
+   "ci_lo": 0.409,
+   "ci_hi": 1.0,
+   "label": "可消费"
+  },
+  "D1|hp15-40|P1|battle": {
+   "n": 0,
+   "raw": null,
+   "mono": null,
+   "ci_lo": null,
+   "ci_hi": null,
+   "label": "空格",
+   "fallback": "守息(非濒死,维持)"
+  },
+  "D1|hp15-40|P1|encounter": {
+   "n": 3,
+   "raw": 0.667,
+   "mono": 0.722,
+   "ci_lo": 0.5,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D1|hp15-40|P1|boss": {
+   "n": 5,
+   "raw": 0.8,
+   "mono": 0.833,
+   "ci_lo": 0.376,
+   "ci_hi": 1.0,
+   "label": "可消费"
+  },
+  "D1|hp15-40|P1|noncombat": {
+   "n": 6,
+   "raw": 0.833,
+   "mono": 0.833,
+   "ci_lo": 0.436,
+   "ci_hi": 1.0,
+   "label": "可消费"
+  },
+  "D1|hp15-40|P2+|battle": {
+   "n": 24,
+   "raw": 0.958,
+   "mono": 0.958,
+   "ci_lo": 0.85,
+   "ci_hi": 1.0,
+   "label": "可消费"
+  },
+  "D1|hp15-40|P2+|encounter": {
+   "n": 1,
+   "raw": 1.0,
+   "mono": 1.0,
+   "ci_lo": 1.0,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D1|hp15-40|P2+|boss": {
+   "n": 1,
+   "raw": 1.0,
+   "mono": 0.889,
+   "ci_lo": 0.767,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D1|hp15-40|P2+|noncombat": {
+   "n": 1,
+   "raw": 1.0,
+   "mono": 0.9,
+   "ci_lo": 0.8,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D1|hp>40|P1|battle": {
+   "n": 66,
+   "raw": 0.561,
+   "mono": 0.561,
+   "ci_lo": 0.374,
+   "ci_hi": 0.739,
+   "label": "可消费"
+  },
+  "D1|hp>40|P1|encounter": {
+   "n": 15,
+   "raw": 0.733,
+   "mono": 0.708,
+   "ci_lo": 0.48,
+   "ci_hi": 0.889,
+   "label": "可消费"
+  },
+  "D1|hp>40|P1|boss": {
+   "n": 13,
+   "raw": 0.846,
+   "mono": 0.833,
+   "ci_lo": 0.578,
+   "ci_hi": 1.0,
+   "label": "可消费"
+  },
+  "D1|hp>40|P1|noncombat": {
+   "n": 20,
+   "raw": 0.55,
+   "mono": 0.543,
+   "ci_lo": 0.3,
+   "ci_hi": 0.778,
+   "label": "可消费"
+  },
+  "D1|hp>40|P2+|battle": {
+   "n": 18,
+   "raw": 0.5,
+   "mono": 0.6,
+   "ci_lo": 0.29,
+   "ci_hi": 0.905,
+   "label": "可消费"
+  },
+  "D1|hp>40|P2+|encounter": {
+   "n": 1,
+   "raw": 0.0,
+   "mono": 0.708,
+   "ci_lo": 0.467,
+   "ci_hi": 0.875,
+   "label": "禁用"
+  },
+  "D1|hp>40|P2+|boss": {
+   "n": 1,
+   "raw": 1.0,
+   "mono": 0.889,
+   "ci_lo": 0.75,
+   "ci_hi": 1.0,
+   "label": "禁用"
+  },
+  "D1|hp>40|P2+|noncombat": {
+   "n": 3,
+   "raw": 0.333,
+   "mono": 0.543,
+   "ci_lo": 0.368,
+   "ci_hi": 0.778,
+   "label": "禁用"
+  }
+ }
+}

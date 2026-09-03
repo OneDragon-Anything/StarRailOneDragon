@@ -1,6 +1,6 @@
 # λ 基座与风险架构哲学(CW 策略核心约束,2026-09-01 定谳)
 
-> 地位:与 math_proofs 同级的核心资产。**任何修改 λ_death 表、危险信号、战力建模相关内容的批次,动工前必读本篇**。全文级记录在 `.debug/temp/currency_war/redesign/NEW_MATH_FRAMEWORK.md` 用户裁定节 + `IMPL_LAMBDA_FOUNDATION_ATTACK.md` / `IMPL_LAMBDA_ATTACK_R2.md` / `DEATH_POSTMORTEM.md` / `P51_V3_REBUILD.md`;本篇是持久摘要与约束单一源。
+> 地位:与 math_proofs 同级的核心资产。**任何修改 λ_death 表、危险信号、战力建模相关内容的批次,动工前必读本篇**。全文级记录在 `docs/develop/currency_war/redesign/NEW_MATH_FRAMEWORK.md` 用户裁定节 + `IMPL_LAMBDA_FOUNDATION_ATTACK.md` / `IMPL_LAMBDA_ATTACK_R2.md` / `DEATH_POSTMORTEM.md` / `P51_V3_REBUILD.md`(后四件仍在 `.debug/temp/currency_war/redesign/`);本篇是持久摘要与约束单一源。
 
 ## 1. λ_death 是什么:不是最重要的参数,是唯一"错了就出局"的参数
 
