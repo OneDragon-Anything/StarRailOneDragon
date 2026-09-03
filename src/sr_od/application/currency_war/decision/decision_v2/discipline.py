@@ -698,6 +698,56 @@ def blood_budget_levelup_blocked(state: GameState, session: StrategySession,
 # (设计件 12 §2.3-P1-a/P1-c、§3.2;ADR-0451)
 
 
+# ===== P2 危机带(转化优先/搜索停付共域谓词;R2 存活面批)=====
+# 语义单一源 = P48 三段管辖的 λ>0 段(「转化优先、S 线降级为目标缓存」)
+# 在 P2 的操作化;证据锚 = R2 批最重局 s21(0 hp 终局:P2 危机段搜索型
+# 刷新失控[p2r2-r4 单轮 4-8 连刷零拦截] + 危机态目标件在售零买入[hp17
+# 金 101,买候选全被「非正分」评 0 拒])——`.debug/temp/currency_war/
+# sim_findings/R2/REPORT_STATS_R2.md` §2/§3。
+
+
+def p2_crisis_stop_hp(registry: DecisionV2Registry) -> int:
+    """P2 危机带血线 = ceil(2 × vd_p2_loss)≈41 血(零新自由参数)。
+
+    推导链(输入全为既有注册表/常数,无新拍定值):
+    - **血预算语义**:hp ≤ 2×L_c = 剩余吸收不足两次条件败局——「双失
+      缓冲」算术与 ``emergency_hp`` 推导链同款(registry emergency_hp
+      注:应急线下界 = 2×L_c 吸收上界);L_c = registry.vd_p2_loss
+      (P12 收益侧条件败局伤害,20.05,单一源禁第二份);
+    - **P21 到账延迟形式**:h > d·L_c 判据中 d=2 是设计件 12 §3.1
+      步骤 3 已登记的「到账更慢」档(原注:"d=2 时为 41 血");搜索型
+      刷新的收益到账链 = 刷出→买入→(第二张合成[merge_mechanics:三张
+      合一,副本不成三零战力 P48 A1 Leontief]或槽位腾挪)→再下一战兑现,
+      最短诚实延迟 2 战;ceil(2×20.05)=41 与血预算读数同值互证;
+    - **P21 敏感网格覆盖**:网格 d∈{0,1,2} 全负域 ⇒ 结论在 β≤0.30
+      与 β 无关(设计件 12 §3.1 步骤 1)——本线不消费 β,不挂 β 门。
+    边界声明:该线是**血预算带分界**(带内行为=转化优先/搜索停付),
+    不是存活保证——与 p1_exit_blood_target 的「期望预算线非存活保证」
+    同款口径(W524 审计)。
+    """
+    import math
+    return math.ceil(2 * registry.vd_p2_loss)
+
+
+def p2_crisis_band(state: GameState, registry: DecisionV2Registry) -> bool:
+    """P2 危机带谓词(plane≥2 ∧ hp 真值 ∧ hp ≤ 危机带线)。
+
+    两个行为面的共域判据(消费点各取所需,谓词单一源):
+    - ``blood_budget_refresh_blocked`` P2 臂:带内搜索型刷新停付;
+    - arbiter 危机买入闸门(``_crisis_buy_gate_open``):带内目标件
+      买候选越过非正分门/息律门(P48 λ>0 段转化优先)。
+    应急带(hp≤emergency_hp)不属本带语义管辖:应急覆盖态
+    (层2 emergency_tags/危机囤金)自有一套处置,本谓词不重复触发
+    (消费点在应急豁免**之后**取值,天然不含);hp 不可信/None 帧返回
+    False(与 P1 末窗线同款:血预算未知时不判带——误放代价=血预算
+    未知帧多付一次搜索/少买一件,有金地板与 refresh 预算兜底;误拦
+    代价=危机帧失去转化通道,非对称取不拦)。
+    """
+    return (state.plane >= 2
+            and state.hp is not None
+            and state.hp <= p2_crisis_stop_hp(registry))
+
+
 def p1_exit_blood_short(state: GameState,
                         registry: DecisionV2Registry) -> bool:
     """P1 末窗血预算不足谓词(设计件 12 §2.2/§6;ADR-0451):
@@ -758,10 +808,13 @@ def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
     血预算不足帧同样停,M-A 定向刷新预算不消耗);非第五种覆盖态。
 
     **数值停刷新线不在本谓词**:收益项=Δp×β 不可算,挂 β 开臂判据
-    (设计件 12 §3.2/§4.1),标定前只落结构不落数值。P2 辖域在标定前
-    为空:P2 血危机带(应急带)已在急救豁免面,非应急 P2 帧的血预算
-    判据无数值——P1 辖域=末窗血预算不足([31]④ 硬约束归位,血预算
-    不足局不为找件付刷新费;锁线判定本身不动,只挡搜索型支出)。
+    (设计件 12 §3.2/§4.1),标定前只落结构不落数值。P1 辖域=末窗血
+    预算不足([31]④ 硬约束归位,血预算不足局不为找件付刷新费;锁线
+    判定本身不动,只挡搜索型支出)。P2 辖域(R2 存活面批收口):原
+    「标定前为空」的空洞按血预算带分界补齐—— crisis 带内搜索停付的
+    依据是 P21 网格(d=2 档全负域,免 β)而非 β 点估计,见
+    ``p2_crisis_band``/``p2_crisis_stop_hp`` 注;β 点估计落定后本臂
+    阈值不随其重标(P21 网格结论与 β 独立)。
     消费点:arbiter refresh 收尾裁决(拒付计数=session.v3_blood_budget_
     refresh_rejects,披露模式对齐 blood_budget_levelup_rejects)。
 
@@ -772,6 +825,13 @@ def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
     (EV 对比式);板满帧双门关维持停付(战力兑现延到次战之后,防
     无效购买形态)。**停升级门不在终止豁免辖内**(P21 数学:濒死升级
     EV=−C−I 严格为负,与金是否零价值无关;适用边界见设计 v2 R5)。
+
+    P2 危机带臂(R2 存活面批;谓词单一源=``p2_crisis_band``):P2 旧辖域
+    「标定前为空」的空洞(原注见上)按血预算带分界收口——带 (应急带,
+    危机线] 内搜索型刷新停付(收益到账链 d=2,P21 网格全负域免 β);
+    应急带刷新仍走急救豁免(本谓词序在其后,天然保留);ALL IN/终止
+    豁免照常在前。依据与证据锚见 ``p2_crisis_band`` 注。hp 不可信帧
+    不拦(与 P1 末窗线同款不对称口径,见谓词注)。
     """
     if not registry.blood_budget_refresh_stop_enabled:
         return False
@@ -782,6 +842,8 @@ def blood_budget_refresh_blocked(state: GameState, session: StrategySession,
         return False    # 终止豁免(v2 §3.1;当轮转化双门,板满帧不辖)
     if state.hp is not None and state.hp <= registry.emergency_hp:
         return False    # 急救型保留(应急带=搜牌补板当轮转化豁免面)
+    if state.plane >= 2:
+        return p2_crisis_band(state, registry)   # P2 危机带搜索停付
     return p1_exit_blood_short(state, registry)
 
 

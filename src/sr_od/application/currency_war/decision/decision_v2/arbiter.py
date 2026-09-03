@@ -658,6 +658,47 @@ def _p2_core_firstpiece_exempt(cand: Candidate, working: GameState,
     return True
 
 
+def _crisis_buy_gate_open(cand: Candidate, name: str,
+                          state: GameState, session: StrategySession,
+                          registry: DecisionV2Registry,
+                          ) -> bool:
+    """P2 危机带买入闸门(R2 存活面批;病灶二修复位)。
+
+    危机带(``discipline.p2_crisis_band``:hp ≤ ceil(2×vd_p2_loss)≈41,
+    非应急带)内,**目标件/合成完成件**的买候选越过非正分门——
+    依据 = P48 三段管辖 λ>0 段「转化优先、S 线降级」:血预算吸收不足
+    两次条件败局时,死亡通道敞口非可忽略,金的第一用途是当轮/次战
+    转化(买活命件),不是息律最优。证据锚 = R2 最重局 s21 p2r5
+    (hp17 金 101,目标件在售全买得起仍零买入——买候选被评 0 分在本门
+    结构性拒,同帧负分刷新反而获泄息预算放行:激励倒置)。
+
+    辖域(收窄到转化面,防语义外溢):
+    - 只辖 BuyCard(卖/拖拽/刷新不辖);
+    - 名集 = 目标件(意向 char_targets∪引擎件,``_target_names`` 单一源)
+      ∨ ``cand.merge``(第三张买入即合成 2★ 的完成素材——完成价值在
+      星级阶梯,评分维构造性零增量,merge_completion_exempt 同款判读);
+    - 应急带(hp≤emergency_hp)不在本带(覆盖态 emergency_tags 自有
+      处置);hp 不可信帧不触发(谓词内 hp None → False)。
+
+    越过本门 ≠ 必买:约束链照常辖,仅 gold_floor/interest_rule 两道
+    息纪律让位(P48 λ>0 段让渡;可负担性 gold−cost≥0 与 bench 容量
+    保留,见约束循环的危机跳过臂)。floor 兼容:刷新通道 floor 语义
+    (p54)零触碰,危机买入走义务让渡辖域(p54 A3/[41] 先例)。
+    """
+    from sr_od.application.currency_war.decision.decision_v2.discipline import (
+        p2_crisis_band,
+    )
+    if not isinstance(cand.action, BuyCard):
+        return False
+    if not p2_crisis_band(state, registry):
+        return False
+    from sr_od.application.currency_war.decision.decision_v2.candidates import (
+        _target_names,
+    )
+    return (name in _target_names(state, session)
+            or bool(cand.merge))
+
+
 def _register_accepted(a: Action, state: GameState,
                        session: StrategySession) -> None:
     """采纳动作的同轮簿记(ADR-0328):登记点=动作采纳处(同一事务域),
@@ -793,7 +834,17 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
             _o1_ok = cand.tag == 'o1_bench_fill'
             # (位面 2 支出授权·优先级 1 核心必买豁免已随定谳清理删除,
             # ADR-0492:窗口内花费结构性死路,概念被数据否决。)
-            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok):
+            # P2 危机带买入闸门(R2 存活面批)与被删先例的两点分界:
+            # ①触发域不同=血预算带(hp≤危机线)非金位窗口;②配对面
+            # 不同=同批落搜索停付(危机带内刷新停付),金从搜索改道转化
+            # 而非净增支出——ADR-0492 否决的是「孤立开买闸」(金在带内
+            # 本就花不出去),本闸门是「停搜索+开转化」成对语义的一半。
+            _crisis_ok = False
+            if isinstance(cand.action, BuyCard):
+                _crisis_ok = _crisis_buy_gate_open(
+                    cand, cand.action.card.name, state, session, registry)
+            if not (_copy_ok or _dir_ok or _rel_ok or _merge_ok or _o1_ok
+                    or _crisis_ok):
                 res.log.append({'tag': cand.tag, 'score': val,
                                 'desc': _describe(cand, state),
                                 'accepted': False, 'reject': '非正分',
@@ -835,7 +886,20 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         # (方向二/ADR-0433 成型后拆队卖采纳点复检已随 form_break 开关族
         #  删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3。)
         auth_note: dict = {}
+        # 危机买入的息纪律让位臂(R2 存活面批):危机闸门放行的买候选,
+        # gold_floor/interest_rule 两道息纪律让位(P48 三段管辖 λ>0 段
+        # 「转化优先、S 线降级为目标缓存」的操作化;义务让渡先例=p54 A3/
+        # [41] 义务不走息律门)。让位≠无界:可负担性(hard 下界 gold−cost
+        # ≥0,买后金非负)在此显式保留——P56 买面下界的兼容面=刷新通道
+        # floor(p54)零触碰,买入侧走义务让渡辖域并受 hard 下界封底。
+        _crisis_buy = (isinstance(cand.action, BuyCard)
+                       and _crisis_buy_gate_open(cand, cand.action.card.name,
+                                                 state, session, registry)
+                       and (working.gold or 0) - (cand.action.card.cost or 0)
+                       >= 0)
         for cname in registry.constraints:
+            if _crisis_buy and cname in ('gold_floor', 'interest_rule'):
+                continue    # 危机转化优先:两道息纪律门让位(见上)
             reason = _check_constraint(
                 cname, cand, working, state, session, registry,
                 val=val, bd=bd, auth=auth_note)
@@ -848,6 +912,11 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
                     res.rejections.append(Rejection(reason, cand, val))
                 break
         accepted = not verdicts
+        if accepted and _crisis_buy:
+            # 危机买入授权 trace(A/B 分键遥测:危机带转化买入可归因)
+            auth_note['crisis_buy'] = (
+                f'P2 危机带转化优先放行(hp{state.hp}'
+                f'≤危机线,息纪律让位;P48 λ>0 段)')
         if accepted and cand.tag in ('off_target', 'for_gold', 'free_bench'):
             if sells_accepted >= registry.sell_top_k:
                 accepted = False
@@ -915,12 +984,21 @@ def arbitrate(scored: list[tuple[Candidate, float, dict]],
         if blood_budget_refresh_blocked(state, session, registry):
             session.v3_blood_budget_refresh_rejects = getattr(
                 session, 'v3_blood_budget_refresh_rejects', 0) + 1
+            if state.plane >= 2:
+                # P2 危机带臂拒因(R2 存活面批):判据域与 P1 末窗不同,
+                # 拒因文本分开,防判读把 P2 拒付误读成 P1 末窗线
+                from sr_od.application.currency_war.decision.decision_v2.discipline import (
+                    p2_crisis_stop_hp,
+                )
+                _why = (f'hp{state.hp}≤危机线{p2_crisis_stop_hp(registry)}'
+                        ';P48 λ>0 段搜索让位转化')
+            else:
+                _why = (f'hp{state.hp}'
+                        f'<{registry.p1_exit_blood_target} 末窗;[31]④/W516')
             reason = RejectReason(
                 'blood_budget_refresh_stop', '', 0,
                 f'血预算停手·搜索型刷新停拒(plane{state.plane} '
-                f'r{state.round_num} hp{state.hp}'
-                f'<{registry.p1_exit_blood_target} 末窗;[31]④/W516,'
-                'ADR-0451)')
+                f'r{state.round_num} {_why};ADR-0451)')
         # M-A 预算消耗裁决(W252/ADR-0409):非正分刷新能到这里说明已在
         # 非正分门凭预算豁免越过——收尾逐笔扣预算并**取代两道息纪律门**
         # (gold_floor 的 HOARD 攒息拒 / interest_rule 的 EV≤0 拒):

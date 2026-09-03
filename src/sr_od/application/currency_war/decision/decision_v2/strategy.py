@@ -85,6 +85,7 @@ from sr_od.application.currency_war.kernel.cw_evolution import (
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
     hoard_target_set,
+    p1_early_pair,
     pair_target_comp,
     update_intention,
 )
@@ -304,8 +305,18 @@ class DecisionV2Strategy(CwStrategy):
         # 把已锁配方对物化为伪 comp(单一口径=cw_intention.pair_target_comp
         # docstring);①锁局 locked_comp 优先,本分支不辖;P2+/空对不物化
         # (不越 ADR-0357 辖域)。
-        if comp is None and state.plane == 1 and ist.p1_pair:
-            comp = pair_target_comp(tuple(ist.p1_pair))
+        if comp is None and state.plane == 1:
+            # P1 目标不空窗(经济冻结批):配方对退场帧(支持度掉出锁门槛/
+            # 断供驱逐重派生为空)不落 None——按 p1_early_pair 无门槛 top-2
+            # 方向物化(单一源=cw_intention.p1_early_pair,ADR-0372 买入门
+            # 同款读法:空窗期同样有方向,不该因为不够锁而没方向)。旧形态
+            # None → 消费者(部署/评分/准备域引擎)全盲,0 买 0 刷经济冻结
+            # (实机局 g_20260904_042657 p1r7-r9)。P1 外不辖(维持旧辖域:
+            # P2+ 终局线走 locked_comp / 强制 assignment 通道)。
+            pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
+                or p1_early_pair(state, ist)
+            if pair:
+                comp = pair_target_comp(pair)
         session.target_comp = comp
         hoard = hoard_target_set(state, ist)
         session.v3_hoard = hoard
