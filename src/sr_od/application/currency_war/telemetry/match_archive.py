@@ -354,6 +354,17 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
     prev_hp: int | None = None
     for key in sorted(keys):
         frame = _best_decision_frame(dec, key)
+        # 同轮全帧动作合并(流内序;口径同 query._load_decisions_rounds):
+        # 代表帧只承载字段展示,动作计数不能只看代表帧——载体帧与决策帧
+        # 同为单动作时「并列取末帧」让载体帧胜出,该轮买/升/刷全计 0
+        # (实证 g_20260903_232823 p1r1/r2;计划口径边界同 query 侧 docstring)。
+        round_actions: list[dict[str, Any]] = []
+        for d in dec:
+            try:
+                if (int(d.get('plane') or 1), int(d.get('round_num') or 0)) == key:
+                    round_actions.extend(d.get('actions') or [])
+            except (TypeError, ValueError):
+                continue
         outcome = out_by_key.get(key)
         st = (frame or {}).get('state') or {}
         hp_e = _hp_entry(frame, outcome)
@@ -362,7 +373,6 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             delta = int(hp_e['hp']) - int(prev_hp)
         if hp_e['hp'] is not None:
             prev_hp = int(hp_e['hp'])
-        actions = (frame or {}).get('actions') or []
         # 姿态:该轮 decision_v2 决策帧的 dp_posture 标签集(载体帧是
         # str(dict) 形态天然不命中,与 _release_frame_counts 同口径)
         dp_tags: list[str] = []
@@ -402,7 +412,8 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'gold_readable': (frame or {}).get('gold_readable'),
             'level': st.get('level'),
             'xp_progress': st.get('xp_progress'),
-            'actions': actions, 'action_counts': _action_counts(actions),
+            'actions': round_actions,
+            'action_counts': _action_counts(round_actions),
             'shop_snapshots': snap_by_key.get(key, []),
             'sess_p1_pair': (frame or {}).get('sess_p1_pair'),
             'dp_postures': sorted(set(dp_tags)),

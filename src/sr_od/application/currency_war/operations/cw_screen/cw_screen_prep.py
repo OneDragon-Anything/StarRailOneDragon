@@ -372,6 +372,23 @@ _NODE_ICON_SHOT_TS: dict[int, float] = {}
 
 
 
+def faction_display_ok_debug_line(row_count: int, ocr_skip_count: int,
+                                  suspects: list[str],
+                                  computed_missing_count: int) -> str:
+    """羁绊显示对账 ok 分支的 debug 行(纯函数,零决策)。
+
+    疑截断行名非空时随行附列——纯计数留不下「哪几行被疑」,mismatch=0
+    的稳定态行名不可考(复盘 g_20260903_232823 §4:恒 4 行疑截断无档)。
+    只在非空时附带,空列表保持旧行形(计数后无括号段)。
+    """
+    return (f'[cw][director] faction_display reconcile: '
+            f'ok({row_count}行) '
+            f'ocr_skip={ocr_skip_count} '
+            f'trunc_suspect={len(suspects)}'
+            + (f'({",".join(suspects)})' if suspects else '')
+            + f' computed_missing={computed_missing_count}')
+
+
 class CwScreenPrep(SrOperation):
     """备战决策环:观察驱动单步决策,替代 CwScreenPrep 备战单轮 固定序列(P1)。
 
@@ -918,13 +935,12 @@ class CwScreenPrep(SrOperation):
             round_num = int(getattr(st, 'round_num', 0) or 0)
             if result.mismatch_count <= 0:
                 # 不一致为零也留一条 debug(含不评口径计数),频率统计靠台账
-                # 数据说话,不在此落账
-                log.debug(f'[cw][director] faction_display reconcile: '
-                          f'ok({len(result.rows)}行) '
-                          f'ocr_skip={len(result.ocr_skipped)} '
-                          f'trunc_suspect={len(result.truncation_suspects)} '
-                          f'computed_missing='
-                          f'{sum(1 for r in result.rows if r.verdict == "computed_missing")}')
+                # 数据说话,不在此落账;行名并入见 faction_display_ok_debug_line
+                log.debug(faction_display_ok_debug_line(
+                    len(result.rows), len(result.ocr_skipped),
+                    list(result.truncation_suspects),
+                    sum(1 for r in result.rows
+                        if r.verdict == "computed_missing")))
                 return
             refs = [
                 {'field': 'ocr_skipped', 'value': ','.join(result.ocr_skipped)},

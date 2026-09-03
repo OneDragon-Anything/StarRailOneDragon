@@ -143,23 +143,47 @@ def join_decisions_outcomes(replay_dir: Path | str) -> list[dict[str, Any]]:
 # 用法:
 #   uv run python -m sr_od.application.currency_war.telemetry.cw_telemetry query [--run ID] [--recent N] [--view rounds|supply|anomalies|tiers|planexec|hp|economy|exogenous|execevents|invest|conflicts|all]
 
-def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
-    """该 run 的 decisions 按 (plane,round) 取 actions 最多的一条(plan 真值)。
+# 升级动作类型口径(读端统一桶):生产 serialize_action 落具体类名
+# ``LevelUpShop``(W970 §4.1.3 商店屏拆分,is-a LevelUp;schema.py
+# ``__type__=type(action).__name__``),sim 账本与旧数据落基类名
+# ``'LevelUp'``(engine_p1 显式注释「账本 __type__ 仍落 'LevelUp'」)。
+# 读端两型同桶,单一源 = 本常量(实证 g_20260903_232823 p1r2/r4:
+# LevelUpShop 已发而视图 升/花 全 0)。
+_LEVELUP_TYPES: tuple[str, ...] = ('LevelUp', 'LevelUpShop')
 
-    r363(审计 P1-8):并列(同 action 数)时取 **ts 最晚**(末帧)——
-    旧严格大于让最早的行胜出,轮末 state(买后 board/gold)被首帧
-    (空板)代表,收入/执行判读失真。
+
+def _load_decisions_rounds(replay_dir: Path, run_id: str) -> dict:
+    """该 run 的 decisions 按 (plane,round) 取代表帧 + 合并全帧动作。
+
+    - **代表帧**(r363 审计 P1-8):actions 最多的一条;并列取 ts 最晚
+      (旧严格大于让最早的行胜出)。承载 state/gold/hp 等**字段展示**——
+      取末帧 = 轮末账面(买后 board/gold),是刻意语义。
+    - **动作合并**(复盘 g_20260903_232823 p1r1/r2 定谳):代表帧不能
+      承载动作计数——备战期载体帧(ClickSpheres/OpenShop/StartBattle 等,
+      strategy_id='')与决策帧各只发 1 个动作时,「并列取末帧」让载体帧
+      胜出,该轮 买/升/刷 全计 0(实证:r1 决策迹有 BuyCard,rounds/supply
+      记「买0」;r2 发 LevelUpShop,economy 记「花=0」)。故返回行的
+      ``actions`` = 同轮**全部帧动作按流内序合并**(计划口径:载体帧的
+      非商店动作天然不参与买/升/刷计数;跨波 re-plan 理论上可重复计同一
+      买牌,是「计划总量」口径的有偏显示,判读结合 planexec 视图)。
     """
     best: dict = {}
+    frames: dict = {}
     for d in read_jsonl(replay_dir / "decisions.jsonl"):
         if run_id and d.get("run_id") != run_id:
             continue
         k = (d.get("plane"), d.get("round_num"))
         n = len(d.get("actions") or [])
+        frames.setdefault(k, []).append(d)
         if k not in best or n > len(best[k].get("actions") or []) or (
                 n == len(best[k].get("actions") or [])
                 and (d.get("ts") or '') > (best[k].get("ts") or '')):
             best[k] = d
+    for k, d in best.items():
+        merged: list = []
+        for f in frames[k]:
+            merged.extend(f.get("actions") or [])
+        d["actions"] = merged
     return best
 
 
@@ -232,7 +256,8 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
         st = d.get("state") or {}
         acts = d.get("actions") or []
         buys = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "BuyCard")
-        lvs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "LevelUp")
+        lvs = sum(1 for a in acts if isinstance(a, dict)
+                  and a.get("__type__") in _LEVELUP_TYPES)
         rfs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
         board = " ".join(f"{k2}×{v}" for k2, v in (st.get("board") or {}).items()) or "(空)"
         # sim 批次:board 恒空 → 显示账本代理维度(深/核;判读不断档)
@@ -421,7 +446,8 @@ def query_anomalies(replay_dir: Path, run_id: str) -> list[str]:
         d = best[k]
         acts = d.get("actions") or []
         buys = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "BuyCard")
-        lvs = sum(1 for a in acts if isinstance(a, dict) and a.get("__type__") == "LevelUp")
+        lvs = sum(1 for a in acts if isinstance(a, dict)
+                  and a.get("__type__") in _LEVELUP_TYPES)
         # 迁移审计 w317(git 历史):节点类型进标签(与 rounds 视图 [tag] 风格一致)
         _nt = (d.get("state") or {}).get("node_type") or ""
         _tag = f"[{_nt}] " if _nt else ""
@@ -563,7 +589,7 @@ def query_economy(replay_dir: Path, run_id: str) -> list[str]:
         luc_s = f"{luc}" if luc else f"{XP_CLICK_COST_FALLBACK}?"
         spend += (luc or XP_CLICK_COST_FALLBACK) * sum(
             1 for a in acts
-            if isinstance(a, dict) and a.get("__type__") == "LevelUp")
+            if isinstance(a, dict) and a.get("__type__") in _LEVELUP_TYPES)
         spend += sum((a.get("cost") or 0) for a in acts
                      if isinstance(a, dict) and a.get("__type__") == "RefreshShop")
         # 卖牌回金(迁移审计 w323(git 历史) 前口径⑤:漏计——含卖轮的 income 系统性偏负)。
@@ -675,7 +701,7 @@ def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
                 t = a.get('__type__')
                 if t == 'BuyCard':
                     buys += 1
-                elif t == 'LevelUp':
+                elif t in _LEVELUP_TYPES:
                     lvl += 1
                 elif t == 'RefreshShop':
                     rf += 1
@@ -747,7 +773,7 @@ def plan_gold_flow(plan_actions: list[dict[str, Any]],
                          or f"x{card.get('x')}")
             items.append({'type': t, 'target': target,
                           'cost': cost, 'direction': 'spend'})
-        elif t == 'LevelUp':
+        elif t in _LEVELUP_TYPES:
             cost = int(a.get('cost') or 0)
             spend += cost
             items.append({'type': t, 'target': 'level_up', 'cost': cost, 'direction': 'spend'})
