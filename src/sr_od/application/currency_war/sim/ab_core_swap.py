@@ -510,8 +510,9 @@ def _v6_row_specs() -> list[dict[str, Any]]:
              'detail': '锚批/判读批分离(拆半方案预注册)'},
         {'row': 5, 'kind': 'mark',
              'detail': '激活率门验收口径重开+预注册(非窗口相位)'},
-        {'row': 6, 'kind': 'mark',
-             'detail': 'P3 fallback 9→CI 上端治本落地事件入变更记录'},
+        {'row': 6, 'kind': 'deferred_mark',
+             'detail': 'P3 fallback 9→CI 上端治本落地事件入变更记录'
+                       '(批边界约束,非落地前置——R43-3 治本异步化)'},
         {'row': 7, 'kind': 'text',
              'detail': 'f7_contingency_armed 置位/复位事件进判读记录格式'
                     '(telemetry schema 含该键)',
@@ -536,16 +537,21 @@ def _v6_row_specs() -> list[dict[str, Any]]:
              'detail': 'f7_exempt_emission 观察键(telemetry schema 含该键)',
              'ok': lambda: 'f7_exempt_emission' in _text_of(
                  'src/sr_od/application/currency_war/telemetry/schema.py')},
-        {'row': 14, 'kind': 'mark',
-             'detail': 'P2 段档位登记批 ≤ P2_IDLE_SWITCH_W 激活'},
-        {'row': 15, 'kind': 'mark',
+        {'row': 14, 'kind': 'deferred_mark',
+             'detail': 'P2 段档位登记批 ≤ P2_IDLE_SWITCH_W 激活'
+                       '(W=None 期判据=判读报告含 FM-1 敞口声明段,'
+                       'R81-1 原文)'},
+        {'row': 15, 'kind': 'deferred_mark',
              'detail': '01 §4.4 [41] S 公式物理补指针(落码批验收)'},
-        {'row': 16, 'kind': 'mark',
+        {'row': 16, 'kind': 'deferred_mark',
              'detail': '01 §4.1 [17] 息律三处字面参数化核读(落码批验收)'},
         {'row': 17, 'kind': 'calib',
              'detail': 'formal A/B ⟹ V_GAP 注入态(或显式豁免批文落档)'
                        '(IMPL_ADV_R200 症4:零刷新事故防护)',
-             'ok': lambda: (not _vgap_is_none()) or bool(_FORMAL_AB_EXEMPTIONS)},
+             # 豁免须绑定 V_GAP 槽位(V6_CLEANUP_REVIEW F2:对无关槽位
+             # 登记批文不得解锁本行——判前锁防蓄意误用)。
+             'ok': lambda: (not _vgap_is_none())
+                 or ('V_GAP' in _FORMAL_AB_EXEMPTIONS)},
     ]
 
 
@@ -608,7 +614,10 @@ def v6_checklist() -> list[dict[str, Any]]:
     批操作者 ``record_v6_landing(row, evidence)`` 显式申报且 **evidence
     非空**(FIX_REVIEW_20260903 v6 硬化:空/纯空白证据=行红,入口侧
     raise+本侧复验双防线;证据文本随行输出供审计);order 行按
-    R94-6 类条款——事件未到期读「未到期(不阻塞)」,已到期则验序。
+    R94-6 类条款——事件未到期读「未到期(不阻塞)」,已到期则验序;
+    deferred_mark 行(6/14/15/16)同属 R94-6 类条款镜像(判据=未来批
+    事件/W=None 期披露义务,详见 checklist 分支注释)——未申报读
+    「未到期(不阻塞)」,判读侧按 PREREG 披露义务消费其现状态。
     """
     rows: list[dict[str, Any]] = []
     for spec in _v6_row_specs():
@@ -628,6 +637,22 @@ def v6_checklist() -> list[dict[str, Any]]:
                 row['evidence'] = ev
             if 'hint' in spec and not landed:
                 row['hint_pass'] = bool(spec['hint']())
+        elif spec['kind'] == 'deferred_mark':
+            # R94-6 类条款镜像补全(2026-09-03 编排者裁决,A/B 重跑
+            # preflight 红行暴露):行 6/14/15/16 的落地判据系未来批事件
+            # 或 W=None 期披露义务,设计原文均非 v6 声明时点硬前置——
+            # 行 6=批边界约束(事件若发生不落判读批中途,R43-3 异步化);
+            # 行 14=W=None 期判据=判读报告含 FM-1 敞口声明段(R81-1
+            # 原文),W 激活后才验登记批时间戳序;行 15/16=R94-6/R99
+            # 明文入类(落码批验收)。有 landing evidence=已落地;
+            # 无=未到期(不阻塞,checklist 可见供判读披露)。
+            ev = _load_v6_landings_from_disk().get(spec['row'])
+            if ev is None:
+                ev = _V6_LANDINGS.get(spec['row'])
+            landed = bool(ev and ev.strip())
+            row['status'] = '已落地' if landed else '未到期(类条款,不阻塞)'
+            if ev:
+                row['evidence'] = ev
         elif spec['kind'] == 'calib':
             # 行 17(症4):运行时标定注入态判据——V_GAP 非 None 或显式
             # 豁免批文在档;两读皆缺 = 未落地(零刷新事故形态,红)

@@ -71,15 +71,25 @@ class CurrencyWarConfig(YamlConfig):
         # —— 开发/实验字段(ADR-0204 降级;不进未来 GUI,仅供 yml 调试)——
         # strategy_seed:策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
         # ⚠️ 只种子化策略内部蒙特卡洛 D 牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
-        # strategy_id 合法值域(default 栈退役后唯一合法值;构造期前置校验,
-        # 禁「运行拼错才炸」——存量 yml 写 'default' 会在配置加载时报错并给出迁移提示)
+        # strategy_id 合法值域(§6.4-R 换核:值域扩 {'decision_v2','mandate_v1'};
+        # 构造期前置校验,禁「运行拼错才炸」——存量 yml 写 'default' 会在配置
+        # 加载时报错并给出迁移提示)
         strategy_id: str = self.get('strategy_id', 'decision_v2')
-        if strategy_id != 'decision_v2':
+        if strategy_id not in ('decision_v2', 'mandate_v1'):
             raise ValueError(
                 f"currency_war.yml strategy_id='{strategy_id}' 非法:"
-                "default 栈已退役,唯一合法值=decision_v2;"
-                "请把实例配置里的 strategy_id 改为 decision_v2")
+                "default 栈已退役,合法值=decision_v2/mandate_v1"
+                "(新核 cw4);请把实例配置里的 strategy_id 改为合法值")
         self.strategy_id: str = strategy_id
+        # ev_arm 臂位(R1-1;§4.2 三臂 A/B:mandate_v1 臂内实验因子——
+        # skeleton_only=臂① EV 发射面旁路 / full=臂② 全开)。开发/实验
+        # 字段(不进 GUI,仅 yml 调试);legacy 臂(decision_v2)不写该字段。
+        ev_arm: str = self.get('ev_arm', 'full')
+        if ev_arm not in ('skeleton_only', 'full'):
+            raise ValueError(
+                f"currency_war.yml ev_arm='{ev_arm}' 非法:"
+                "合法值=skeleton_only/full(仅 mandate_v1 消费)")
+        self.ev_arm: str = ev_arm
         self.strategy_seed: int | None = self.get('strategy_seed', None)
         # 可控轮数(单/多轮验证 + 采样本):跑完 N 轮停备战屏。None=跑到对局结束。
         # app._run_loop 透传给 CwLoop。
@@ -108,6 +118,7 @@ class CurrencyWarConfig(YamlConfig):
             'env_forbid': self.env_forbid,
             'strategy_id': self.strategy_id,
             'strategy_seed': self.strategy_seed,
+            'ev_arm': self.ev_arm,
             # max_rounds(review C 附加发现 2026-08-16):save() 此前不含 → GUI 保存静默抹掉
             # 手写 yml 值(单/多轮验证配置丢失)。None 也要持久化(显式清空语义)。
             'max_rounds': self.max_rounds,

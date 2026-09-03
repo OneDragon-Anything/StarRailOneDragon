@@ -207,8 +207,22 @@ def _select(turn: TurnState, strategy: Any, session: StrategySession,
     snapshot 的同一来源 obs 原帧),不再经 snapshot_to_obs 重建视图
     (重建层原是「快照→旧签名」的兼容 shim;黑板化后观察帧即单一输入,
     消费字段两者逐项同源)。方向/预算投影仍走 turn(装配点管线不变)。
+
+    序列契约 v1(dd-020;R192 症2 包装形态)后接口目标形态 =
+    ``list[PrepAction]``,由包装子类(``DecisionV2SeriesAdapter``)承载;
+    冻结基线 ``DecisionV2Strategy`` 本体保持单动作返回(IMPL_DESIGN §4.1
+    「不改一行」)。本路径(离线/测试装配链,非生产消费点)按**单元素批**
+    消费——DecideAdapter 绑定表单键现状(其多元素序列化是独立离线改造件,
+    不在序列契约接线批);过渡期两形态并存,此处归一后取单动作。
+    空批在此路径不支持(现役核恒出动作)。
     """
-    return strategy.decide_prep_screen(session, config)
+    out = strategy.decide_prep_screen(session, config)
+    if isinstance(out, list):
+        if not out:
+            raise ValueError('_select:决策序列为空(离线装配路径单元素批,'
+                             '空批不支持;现役核恒长度 1)')
+        return out[0]
+    return out
 
 
 def decide(turn: TurnState, strategy: Any, session: StrategySession,

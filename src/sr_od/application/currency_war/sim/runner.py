@@ -605,6 +605,179 @@ def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
 
 
 
+def _first_ledger_diff(ledger_a: list[dict],
+                       ledger_b: list[dict]) -> dict:
+    """两账本流首个差异行描述(零漂移门定位锚;无差异返回 {})。
+
+    逐行扫到第一处不等行,报行号/轮次/该行内取值不同的键集;行数不等
+    时报长度差(短的前缀相等 = 差异在追加/缺失行)。只报定位信息不报
+    全量值——hp 类数值会随环境重拟合漂移,锁的是「同环境同输入下逐位
+    相等」这个事实本身,不是任何具体数字。
+    """
+    if len(ledger_a) != len(ledger_b):
+        # 前缀仍可能有行内差异,先扫公共前缀
+        common = min(len(ledger_a), len(ledger_b))
+    else:
+        common = len(ledger_a)
+    for idx in range(common):
+        row_a, row_b = ledger_a[idx], ledger_b[idx]
+        if row_a == row_b:
+            continue
+        changed = sorted(k for k in set(row_a) | set(row_b)
+                         if row_a.get(k) != row_b.get(k))
+        return {'row_idx': idx,
+                'round_num': row_a.get('round_num'),
+                'changed_keys': changed}
+    if len(ledger_a) != len(ledger_b):
+        return {'len_a': len(ledger_a), 'len_b': len(ledger_b),
+                'note': '公共前缀逐位相等,差异在行数'}
+    return {}
+
+
+def simulate_core_ab(old_strategy_factory=None,
+                     new_strategy_factory=None,
+                     n: int = 100, *,
+                     pool: str | Path = 'snapshot',
+                     seed_base: int = 0, planes: int = 1,
+                     use_refresh: bool = True,
+                     invest: SimInvestProfile | bool = False,
+                     p2_combat: P2CombatCalib | None = None,
+                     synthesis_chain: bool = False,
+                     equip_wear_effect: float = 0.0) -> dict:
+    """策略对象双臂换核 A/B harness(换核对拍基建;纯新增入口)。
+
+    双臂 = 同 seed_base/同池(核对 ``pool_fingerprint``,含 simulate_p1
+    内追加的 ``+eqgN`` 位)/同 planes/同 invest/p2_combat/
+    synthesis_chain/equip_wear_effect/use_refresh,唯一差异 = 注入的
+    策略对象。``*_strategy_factory`` 为无参可调用,返回策略对象;
+    **传 None = 该臂走 simulate_p1 默认构造**(不传 strategy 参数,
+    即每局在引擎内新造
+    ``DecisionV2Strategy(registry=sim_decision_registry())``)。
+
+    设计约束(违反任一 = 对拍不公平,见 sim 决策接口消费面测绘
+    §③「公平对拍判据」,`.debug/temp/currency_war/core_swap/
+    SIM_CONSUMPTION_MAP.md`):
+
+    - **工厂每局各调一次**(而非整臂复用单例):与 simulate_p1 默认
+      分支「每局新构造」对齐——若策略对象持有跨局可变状态,复用
+      单例的臂会与默认构造臂产生与「核差异」无关的行为差,污染
+      零漂移门。工厂本身必须确定性、不消费局内 rng 流(会话流
+      派生是 seed 契约,simulate_p1 内 StrategySession rng 从
+      ``f'sim-p1-{seed}'`` 派生)。
+    - **两臂注册表视图由调用方保证同源**(建议均从
+      ``sim_decision_registry()`` 派生,sim 环境 level_max 语义);
+      注入策略无 ``registry`` 属性时引擎观测键回退 sim 视图,行为
+      不受影响但观测口径混。
+    - 聚合口径:B1(planes=1)= avg_final_hp/hp_ge_60/avg_refreshes;
+      B2(planes=2)= p2_hp0_rate 等 p2_* 族,分母 = 进场局
+      (``p2_entered``),与 sim 基线 v3(``.debug/temp/currency_war/
+      sim_baseline_20260902_v3/SUMMARY.md``)的指标定义一致。
+    - 零漂移门(换核 A/B 前置):``old`` 臂 = 现役核工厂、``new``
+      臂传 None(直接默认构造),同 seed 配对逐局比 ``ledger``
+      逐位相等——先例 = simulate_p1 docstring 的 planes=1 回归门
+      (同 seed 同池 diff={})。红了 = 注入路径引入额外 rng 消耗/
+      调用时点漂移,先修 harness 再谈 A/B。
+    - 噪声带:配对 final_hp 差过 ``check_ab_resolution_floor``
+      (n<30 不判);|Δavg| < 95% 底 = 噪声带内,不得叙述方向性
+      结论(simulate_p1_ab 同款纪律)。
+    """
+    import logging
+    import statistics
+
+    from sr_od.application.currency_war.sim.checks.calib import (
+        check_ab_resolution_floor,
+    )
+    logging.disable(logging.CRITICAL)   # 批量跑静音(决策日志逐段刷屏)
+    try:
+
+        def _run_arm(factory) -> list[SimResult]:
+            results: list[SimResult] = []
+            for i in range(n):
+                if factory is None:
+                    results.append(simulate_p1(
+                        seed_base + i, pool=pool, planes=planes,
+                        use_refresh=use_refresh, invest=invest,
+                        p2_combat=p2_combat,
+                        synthesis_chain=synthesis_chain,
+                        equip_wear_effect=equip_wear_effect))
+                else:
+                    results.append(simulate_p1(
+                        seed_base + i, pool=pool, planes=planes,
+                        use_refresh=use_refresh, invest=invest,
+                        p2_combat=p2_combat,
+                        synthesis_chain=synthesis_chain,
+                        equip_wear_effect=equip_wear_effect,
+                        strategy=factory()))
+            return results
+
+        res_a = _run_arm(old_strategy_factory)
+        res_b = _run_arm(new_strategy_factory)
+    finally:
+        logging.disable(logging.NOTSET)
+
+    fps = ({r.pool_fingerprint for r in res_a}
+           | {r.pool_fingerprint for r in res_b})
+    if len(fps) != 1:
+        raise RuntimeError(
+            f'双臂池指纹不一致(对拍不公平): {sorted(fps)}')
+
+    def _headline(results: list[SimResult]) -> dict:
+        entered = [r for r in results if r.p2_entered]
+        combat_t = sum(r.p2_combat_total for r in entered)
+        return {
+            'avg_final_hp': round(statistics.mean(
+                [r.final_hp for r in results]), 2),
+            'hp_ge_60': sum(1 for r in results
+                            if r.final_hp >= 60) / len(results),
+            'avg_refreshes_p1': round(statistics.mean(
+                [r.refreshes for r in results]), 2),
+            'p2_entered_rate': len(entered) / len(results),
+            'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
+                            / len(entered) if entered else None),
+            'p2_win_rate': (round(sum(r.p2_combat_wins
+                                      for r in entered) / combat_t, 4)
+                            if combat_t else None),
+            'avg_p2_rounds': (round(statistics.mean(
+                [r.p2_rounds for r in entered]), 2) if entered else None),
+            'avg_p2_refreshes': (round(statistics.mean(
+                [r.p2_refreshes for r in entered]), 2)
+                if entered else None),
+        }
+
+    # 零漂移门读数:逐局 ledger 逐位比(行序敏感)+ 全字段恒等对计数
+    # (自配对校验:同工厂双臂应 identical=n)。
+    diff_pairs = 0
+    first_diff: dict | None = None
+    for ra, rb in zip(res_a, res_b, strict=True):
+        if ra.ledger == rb.ledger:
+            continue
+        diff_pairs += 1
+        if first_diff is None:
+            first_diff = {'seed': ra.seed}
+            first_diff.update(
+                _first_ledger_diff(ra.ledger, rb.ledger))
+    identical_pairs = sum(1 for ra, rb
+                          in zip(res_a, res_b, strict=True) if ra == rb)
+    hps_a = [r.final_hp for r in res_a]
+    hps_b = [r.final_hp for r in res_b]
+    return {
+        'n': n, 'planes': planes,
+        'pool_fingerprint': res_a[0].pool_fingerprint,
+        'headline_a': _headline(res_a),
+        'headline_b': _headline(res_b),
+        'avg_hp_a': round(statistics.mean(hps_a), 2),
+        'avg_hp_b': round(statistics.mean(hps_b), 2),
+        # 配对差值 + 噪声带判定(check_ab_resolution_floor:n<30 不判)
+        'hp_resolution_floor': check_ab_resolution_floor(hps_a, hps_b),
+        # 零漂移门:ledger 逐位相等的配对数(=n 即过门)
+        'ledger_diff_pairs': diff_pairs,
+        'ledger_first_diff': first_diff,
+        # 自配对校验:SimResult 全字段(dataclass eq)恒等的配对数
+        'identical_result_pairs': identical_pairs,
+    }
+
+
+
 # ---- `w227_handoff_gate/`/迁移审计 w238(git 历史) 承接门 A/B 批 harness(simulate_handoff_ab)已随
 # ---- ADR-0411 flag 家族清理删除(四臂 off/gate/proj/proj_only 的对照
 # ---- 结构建在已删除的 registry 布尔字段上);验证史数字见 ADR-0400/

@@ -346,9 +346,20 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
         # 语义),任何栈的局都跑;只读报警,见
         # run_production_segment_checks docstring。
         lines.extend(run_production_segment_checks(all_rows))
-        # 判栈:strategy_id 字段优先,退开局 reason 词表(逐行)
+        # 判栈:strategy_id 字段优先,退开局 reason 词表(逐行)。
+        # 判栈二元组(R1-1,§6.4-R 步4):mandate_v1 按 (strategy_id, ev_arm)
+        # 分栈——ev_arm=skeleton_only/full(DecisionTrace.ev_arm,mandate_v1
+        # 写/legacy 恒空);臂①② 分栈可辨识是 A/B「EV 增量(臂②−①)」
+        # 判读的载体(统计设计缺陷封死,§4.1)。
         sid = next((d.get('strategy_id') for d in all_rows
                     if d.get('strategy_id')), '')
+        if sid == 'mandate_v1':
+            ev_arm = next((d.get('ev_arm') for d in all_rows
+                           if d.get('ev_arm')), '')
+            lines.append(f'{rid}: [mandate[{ev_arm or "?"}] 栈] coldstart '
+                         '跳过(ADR-0245:新栈不盲跑;(strategy_id, ev_arm) '
+                         '二元组判栈已分栈)')
+            continue
         early_buys = [a for d in rows for a in (d.get('actions') or [])
                       if a.get('__type__') == 'BuyCard']
         early_reasons = {(a.get('reason') or '') for a in early_buys}

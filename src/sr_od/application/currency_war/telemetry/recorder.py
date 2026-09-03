@@ -144,6 +144,7 @@ class TelemetryRecorder:
             trace.sess_commit_scores = dict(extra.get('sess_commit_scores', {}))
             trace.sess_active_env = str(extra.get('sess_active_env', ''))
             trace.strategy_id = str(extra.get('strategy_id', ''))
+            trace.ev_arm = str(extra.get('ev_arm', ''))
             trace.v2_mode = str(extra.get('v2_mode', ''))
             trace.v2_locked_line = str(extra.get('v2_locked_line', ''))
             trace.v2_bridge = str(extra.get('v2_bridge', ''))

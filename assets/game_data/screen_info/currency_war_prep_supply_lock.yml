@@ -3,7 +3,7 @@ screen_name: 货币战争-备战-补给锁定
 pc_alt: false
 area_list:
 - area_name: 按钮-返回补给阶段
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 1715
   - 49

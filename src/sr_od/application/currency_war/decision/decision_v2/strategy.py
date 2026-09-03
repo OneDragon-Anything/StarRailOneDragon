@@ -216,6 +216,9 @@ class DecisionV2Strategy(CwStrategy):
         session.v3_form_ok = False
         session.v3_form_score = 0.0
         session.v3_dp_posture = None
+        # 镜像族轮键戳(写者=write_shop_mirrors 单一源;None=本轮未写,
+        # sim 引擎缺写守卫消费——见 write_shop_mirrors docstring)
+        session.v3_mirror_key = None
         # `w224_handoff/`/ADR-0399:P2 承接快照(观测层;None=未进 P2/未计算)
         session.v3_handoff = None
         session.v3_handoff_plane = None
@@ -332,40 +335,28 @@ class DecisionV2Strategy(CwStrategy):
         actions = self._decide_shop_plan(state, session, config)
         return [_shop_screen_action(a) for a in actions]
 
-    def _decide_shop_plan(self, state: GameState, session: StrategySession,
-                          config) -> list:
-        """商店决策核(旧 decide_prep 本体原样;纪律族视图 × 演进显式动作 × 四层)。"""
+    def write_shop_mirrors(self, state: GameState,
+                           session: StrategySession) -> None:
+        """轮入口镜像族写点(单一源;sim 引擎消费前的共用缝隙)。
+
+        写 ``v3_phase``/``v3_form_ok``/``v3_form_score``/``v3_dp_posture``/
+        储备披露族/``v3_piggy_reward``/(P2 首帧)``v3_handoff``,并以
+        ``v3_mirror_key``(=当前轮键)标注「本轮已写」。判据本体
+        (``derive_phase``/``form_ok``/``form_score`` 等)从 state/session
+        现算,与策略路径无关——写点曾埋在 ``_decide_shop_plan`` 私有实现
+        内,覆写 ``decide_shop_screen`` 的策略核(如 mandate_v1)绕过该
+        路径 ⇒ 镜像族恒为 ``on_match_start`` 初值,sim 判读 form_ok 假
+        阴性(度量断链,非行为缺陷)。本方法是该写点的唯一实现:旧核
+        ``_decide_shop_plan`` 入口调用;sim 引擎轮首决策段按键戳判缺写
+        后补写(engine_p1 缺写守卫)——两路共用同一实现,禁在策略核内
+        另复制一份(双源)。
+
+        对旧核本方法非纯观测:仲裁层/过滤层同轮读 ``v3_phase``/
+        ``v3_dp_posture`` 等缓存(消费方见各写点行注);键戳只表
+        「本轮已写」,不参与任何判据。
+        """
         registry = self.registry
-        self._ensure_state(session)
-        # r408 同轮已买/已卖集维护(轮变更重置;互斥约束的数据源)
         key = (state.plane, state.round_num)
-        if session.v2_round_key != key:
-            session.v2_round_key = key
-            session.v2_round_bought = set()
-            session.v2_round_sold = set()
-            # 迁移审计 w52(git 历史)(ADR-0326):v2_remedy_used 轮键重置——每轮至多一批补偿
-            # (防环 §1.5-1);随同轮簿记一并清零。
-            session.v2_remedy_used = False
-            # `w194_p2line/`/ADR-0378:稳态多击组轮键重置(每轮至多一组,
-            # 刷后 re-decide 段链不连发)
-            session.v2_steady_lv_used = False
-            # 迁移审计 w122(git 历史) F-01/迁移审计 w120(git 历史) P8:扑满节点刷新豁免的轮计数器(轮键重置;
-            # arbiter 刷新采纳处递增,scoring 豁免门消费)
-            session.v2_round_refreshes = 0
-            # `w179_gate/`/ADR-0372:早期买入门单轮笔数(轮键重置;arbiter
-            # gold_floor 放行采纳处递增)
-            session.v2_round_p1_early = 0
-            # `w194_p2line/`/ADR-0378 件3:P2 核心首件门单轮笔数(同上)
-            session.v2_round_p2_core = 0
-            # `w300_dup_ruling/`/V-B8:press 通道两臂单轮笔数([11] 豁免臂/press 候选
-            # 采纳;arbiter 采纳处递增)
-            session.v2_round_press_exempt = 0
-            session.v2_round_press_copy = 0
-            # W332b:release 泄息预算的轮内累计花费(预算逐轮清零;boss 窗
-            # 单轮 latch 单位,无跨轮语义)
-            session.v3_release_spent = 0
-        # (迁移审计 w119(git 历史)/ADR-0347:v2_ever_full_interest 采样随 E6 latch 退场删除
-        # ——decision_v2 不再消费;default 栈仍读写该字段,冻结不动)
         # 迁移审计 w114(git 历史)/ADR-0346 相位观测 + 迁移审计 w119(git 历史) 切授权:每轮决策入口计算一次
         # 相位+form_ok+form_score 写 session 供遥测;**自本批起被消费**
         # (arbiter._active_floor 相位地板/filters.formed_stop)。
@@ -428,6 +419,47 @@ class DecisionV2Strategy(CwStrategy):
             )
             session.v3_handoff_plane = state.plane
             session.v3_handoff = handoff_snapshot(state, session, registry)
+        # 键戳收尾:全部镜像写完才标「本轮已写」(engine 缺写守卫的消费面)
+        session.v3_mirror_key = key
+
+    def _decide_shop_plan(self, state: GameState, session: StrategySession,
+                          config) -> list:
+        """商店决策核(旧 decide_prep 本体原样;纪律族视图 × 演进显式动作 × 四层)。"""
+        registry = self.registry
+        self._ensure_state(session)
+        # r408 同轮已买/已卖集维护(轮变更重置;互斥约束的数据源)
+        key = (state.plane, state.round_num)
+        if session.v2_round_key != key:
+            session.v2_round_key = key
+            session.v2_round_bought = set()
+            session.v2_round_sold = set()
+            # 迁移审计 w52(git 历史)(ADR-0326):v2_remedy_used 轮键重置——每轮至多一批补偿
+            # (防环 §1.5-1);随同轮簿记一并清零。
+            session.v2_remedy_used = False
+            # `w194_p2line/`/ADR-0378:稳态多击组轮键重置(每轮至多一组,
+            # 刷后 re-decide 段链不连发)
+            session.v2_steady_lv_used = False
+            # 迁移审计 w122(git 历史) F-01/迁移审计 w120(git 历史) P8:扑满节点刷新豁免的轮计数器(轮键重置;
+            # arbiter 刷新采纳处递增,scoring 豁免门消费)
+            session.v2_round_refreshes = 0
+            # `w179_gate/`/ADR-0372:早期买入门单轮笔数(轮键重置;arbiter
+            # gold_floor 放行采纳处递增)
+            session.v2_round_p1_early = 0
+            # `w194_p2line/`/ADR-0378 件3:P2 核心首件门单轮笔数(同上)
+            session.v2_round_p2_core = 0
+            # `w300_dup_ruling/`/V-B8:press 通道两臂单轮笔数([11] 豁免臂/press 候选
+            # 采纳;arbiter 采纳处递增)
+            session.v2_round_press_exempt = 0
+            session.v2_round_press_copy = 0
+            # W332b:release 泄息预算的轮内累计花费(预算逐轮清零;boss 窗
+            # 单轮 latch 单位,无跨轮语义)
+            session.v3_release_spent = 0
+        # (迁移审计 w119(git 历史)/ADR-0347:v2_ever_full_interest 采样随 E6 latch 退场删除
+        # ——decision_v2 不再消费;default 栈仍读写该字段,冻结不动)
+        # 轮入口镜像族写点(相位/form_ok/姿态/储备披露):单一源 =
+        # self.write_shop_mirrors(见其 docstring——曾内联于此,策略核
+        # 覆写 decide_shop_screen 绕过本方法时镜像族断链,度量假阴性)。
+        self.write_shop_mirrors(state, session)
         actions: list = []
         # ① 谷底回滚待发动作(上轮结算登记;显式动作优先)
         if session.v3_pending_rollback is not None:

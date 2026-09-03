@@ -278,14 +278,15 @@ class StrategyManager:
         """按 id 实例化策略(``cls()`` 无参)。未注册 id → 显式报错(禁静默回退)。
 
         旧「回退 DefaultCwStrategy」分支已随 default 本体退役删除:静默回退会
-        把配置拼错降级成「跑另一个栈」,值域错必须前置暴露(合法值域唯一 =
-        ``decision_v2``,config 构造期同校验)。
+        把配置拼错降级成「跑另一个栈」,值域错必须前置暴露(合法值域 =
+        ``decision_v2``/``mandate_v1``(cw4 新核,§6.4-R 换核),config
+        构造期同校验)。
         """
         cls = self.get_strategy_class(strategy_id)
         if cls is None:
             raise ValueError(
                 f"未注册的货币战争策略 strategy_id='{strategy_id}'"
-                f"(合法值=decision_v2;已注册:"
+                f"(合法值=decision_v2/mandate_v1;已注册:"
                 f"{sorted(self._classes)};存量 yml 里的 'default' 已随"
-                f"default 栈退役,请改为 decision_v2)")
+                f"default 栈退役,请改为 decision_v2 或 mandate_v1)")
         return cls()

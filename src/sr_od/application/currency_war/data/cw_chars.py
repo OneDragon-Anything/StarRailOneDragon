@@ -29,6 +29,13 @@ class Character:
     flows: tuple[str, ...]      # 流派羁绊(击破/燃血/…;无则空)
     independent: str = ""       # 独立羁绊名(挚爱之人/救世主/大守护者…;无则 "")
     source: str = ""            # 米游社 content_id
+    # 「挂后台效果」单位级载体(cw4 前置半步 0,R32-中⑤):该单位坐备战席
+    # 即生效的效果族标签(空串=无,纯燃料/战力件)。当前在册:'星级供强'
+    # (黑塔:备战席小黑塔星级合计供给大黑塔前后台强度,final_daheita_aoe §1
+    # 备战席经济学)。消费=decision/cw4/statefn/predicates.
+    # bench_effect_qualified(例外①②在谓词内显式枚举;本字段缺载时禁按
+    # 类级默认放行例外件——静默放行=载体缺口,R32-中⑤ 病灶本体)。
+    bench_effect: str = ""
 
     def position_pref(self) -> str:
         """部署站位偏好 → "front"/"back"(flex 默认 back,可被 comp formation 覆盖)。"""
@@ -73,13 +80,14 @@ def is_trailblazer(name: str) -> bool:
 
 
 def _ch(name: str, cost: int, position: str, char_type: str,
-        factions: str = "", flows: str = "", independent: str = "", source: str = "") -> Character:
+        factions: str = "", flows: str = "", independent: str = "", source: str = "",
+        bench_effect: str = "") -> Character:
     """构造助手:阵营/流派用"、"分隔的字符串 → tuple。空串 → 空 tuple。"""
     return Character(
         name=name, cost=cost, position=position, char_type=char_type,
         factions=tuple(f for f in factions.split("、") if f) if factions else (),
         flows=tuple(f for f in flows.split("、") if f) if flows else (),
-        independent=independent, source=source,
+        independent=independent, source=source, bench_effect=bench_effect,
     )
 
 
@@ -90,7 +98,8 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     _ch("乱破", 1, "front", "输出", "巡海游侠", "击破", source="6551"),
     _ch("大丽花", 1, "flex", "输出", "盛会之星", "击破", source="6999"),
     _ch("艾丝妲", 1, "front", "辅助", "银河学者", "持续伤害", source="6536"),
-    _ch("黑塔", 1, "flex", "输出", "银河学者", "群攻", source="6535"),
+    _ch("黑塔", 1, "flex", "输出", "银河学者", "群攻", source="6535",
+         bench_effect="星级供强"),
     _ch("青雀", 1, "front", "输出", "仙舟", "战技点", source="6534"),
     _ch("飞霄", 1, "front", "输出", "狼狩", "追击", source="6373"),
     _ch("椒丘", 1, "front", "治疗、辅助", "狼狩", "持续伤害、减益", source="6531"),  # trait 对齐 plaza:+狼狩(characters.md 阵营速查早已有,注册表漏,2026-08-15)

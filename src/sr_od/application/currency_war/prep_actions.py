@@ -824,8 +824,15 @@ class PrepActionExecutor:
                 log.error('[cw!][battle] launch_dead 取证截图失败(独立现帧兜底通道)', exc_info=True)
         with contextlib.suppress(Exception):
             import time as _t
-            from pathlib import Path as _P
-            _P('.debug/temp/currency_war/launch_dead_hook.flag').write_text(
+
+            # flag 路径锚项目根(与 defects.l0_andon_flag_path 同口径):相对路径
+            # 会把 flag 落在进程 cwd 下——pytest(仓根 cwd)复现本钩子时会误写
+            # 真 flag,值班者误判实机停线(2026-09-03 停机现场实证)。
+            from one_dragon.utils.file_utils import get_project_root
+            _flag = (get_project_root()
+                     / '.debug/temp/currency_war/launch_dead_hook.flag')
+            _flag.parent.mkdir(parents=True, exist_ok=True)
+            _flag.write_text(
                 f'[HOOK-STOP] 出战发射连败停机(常驻安全网,无激活自愈——用户裁定)\n'
                 f'触发:出战 click 未落地 ×{streak}(原样重发仍败)——根因未定,\n'
                 f'头号候选=真前台被其他进程抢占(SendInput 落点非游戏)/游戏侧输入管线挂起。\n'

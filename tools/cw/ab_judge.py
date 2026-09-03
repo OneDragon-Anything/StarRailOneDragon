@@ -74,10 +74,23 @@ V5_MAIN_METRICS: dict[str, dict] = {
     # 主门 2:位面末携金>50 的局占比(息基纪律直接读数)不低于旧
     'G2': {'name': '带金占比(位面末>50)', 'kind': 'rate', 'delta': 0.0,
            'worse': 'low'},
-    # 结果位:P1 通过率 = r9 boss 击败率(战斗结果,非 hp 量)
-    'G3': {'name': 'P1通过率(r9首领击败)', 'kind': 'rate', 'delta': 0.0,
-           'worse': 'low'},
+    # 结果位:P1 通过率 = r9 首领结算 killed 率(战斗结算符号,非 hp 量);
+    # killed 是校准层代理(sim.runner 写入 = 结算 delta>=0),非真击败判定
+    'G3': {'name': 'P1通过率(r9首领delta≥0代理)', 'kind': 'rate',
+           'delta': 0.0, 'worse': 'low'},
 }
+
+#: G3 门语义披露(呈报口径,随判读输出强制携带;判据结构不变——只修
+#: 措辞与披露,不改判定算式)。两事实来源:sim.runner 写 killed =
+#: 结算 delta>=0(校准层符号代理,战斗校准下非真击败判定);sim 位面
+#: 推进不以 boss 击败为门。逐局 0/1 率上门的绝对水平低时判别力弱:
+#: ±1 局翻转即换判——G3 红/差只构成「扰动存在」证据,不构成臂间
+#: 优劣证据。绝对水平不写死数值(单一源=本批数据现算,判读输出带
+#: 各臂绝对率)。
+G3_SEMANTICS_NOTE = (
+    'killed=结算delta≥0校准层代理(非真boss击败;sim进位不以击败为门),'
+    '逐局0/1门判别力弱:绝对率低时±1局翻转即换判——本门读数只构成'
+    '扰动存在证据,不构成臂间优劣证据')
 
 # ---------------- 数据装配 ----------------
 
@@ -333,8 +346,11 @@ def game_metrics_v5(g: dict, *, planes: int, planned_rounds: int) -> dict:
                 plane_last[p] = ((r.get('round_num') or 0), float(r['gold']))
     m['G2'] = (sum(1 for _, gv in plane_last.values() if gv > 50)
                / len(plane_last)) if plane_last else float('nan')
-    # 结果位:P1 通过率 = P1 首领(r9)结算 sim.killed=true;账本无首领行时
-    # 兜底 = 进入 P2(boss 被击败是进位的充要前提)
+    # 结果位:P1 通过率 = P1 首领(r9)结算 sim.killed=true;killed 语义 =
+    # 校准层代理(sim.runner 写入 = 结算 delta>=0,非真击败判定);
+    # sim 位面推进不以 boss 击败为门(未击败也可能进 P2),账本无首领行
+    # 时兜底 = M2(进 P2 率,同代理族口径)——不是「击败是进位充要前提」。
+    # 呈报披露见 G3_SEMANTICS_NOTE(随 judge_v5/v6 输出携带)。
     p1_boss = [r for r in out if (r.get('plane') or 0) < 2
                and r.get('node_type') == '首领']
     m['G3'] = (float(any((r.get('sim') or {}).get('killed') is True
@@ -376,6 +392,8 @@ def judge_v5(new_dir: Path, old_dir: Path, *, planes: int,
             r['new_median'] = _median([new_m[s][mid] for s in seeds])
             r['old_median'] = _median([old_m[s][mid] for s in seeds])
         mains[mid] = {'name': spec['name'], **r}
+    # G3 门语义披露(呈报口径修正:绝对率随输出携带、代理语义随 headline)
+    mains['G3']['semantics'] = G3_SEMANTICS_NOTE
     # 尾部参考:通关率(两侧只观察;v5 裁定不计判)
     tail = {
         'clear_rate': {side: sum(m[s]['clear_rate_ref'] for s in seeds)
@@ -453,6 +471,8 @@ def render_human_v5(res: dict) -> str:
                else ', ?]')
         lines.append(f'  {mid} {r["name"]}: Δ={r["delta"]:+.4f} {ci} '
                      f'δ={r["delta_limit"]} → {r["verdict"]}({ref})')
+        if mid == 'G3':
+            lines.append(f'    ⚠ 语义披露:{r.get("semantics", "")}')
     tr = res['tail_reference']['clear_rate']
     lines.append(f"\n-- 尾部参考(不计判) --\n  通关率:新 {tr['new']:.3f}"
                  f" / 旧 {tr['old']:.3f}({res['tail_reference']['note']})")
@@ -540,7 +560,8 @@ def self_test_v5() -> list[str]:
             ['main_gates']['G2']['verdict'] not in ('PASS', 'BORDERLINE'):
         failures.append('V-D-good G2 应非 FAIL')
 
-    # 场景 V-E:结果位 P1 通过率 FAIL(4 局未进 P2 = 未击败 r9 boss)
+    # 场景 V-E:结果位 P1 通过率 FAIL(4 局未进 P2 → 无首领行,兜底走
+    # M2;sim 语义=进位不以击败为门,兜底是同代理族口径非充要前提)
     e_new = tmp / 'VE_new'
     e_old = tmp / 'VE_old'
     _make_batch(e_old, [dict(g) for g in games], fp)
@@ -607,10 +628,13 @@ def _require_formal_ab_prereg(manifest: dict, label: str) -> dict:
             'formal_ab_prereg_manifest() 落进 manifest)')
     if not blk.get('v6_ok'):
         raise SystemExit(f'formal A/B 批({label})prereg 块 v6 未全绿,拒绝判读')
-    if blk.get('vgap_state') == 'none' and not blk.get('formal_ab_exemptions'):
+    if blk.get('vgap_state') == 'none' and 'V_GAP' not in (
+            blk.get('formal_ab_exemptions') or {}):
         raise SystemExit(
-            f'formal A/B 批({label})V_GAP=None 且无显式豁免批文——'
-            '零刷新事故形态,拒绝判读(IMPL_ADV_R200 症4 行 17)')
+            f'formal A/B 批({label})V_GAP=None 且无 V_GAP 显式豁免批文'
+            '(对无关槽位的批文不构成本行豁免)——'
+            '零刷新事故形态,拒绝判读(IMPL_ADV_R200 症4 行 17;'
+            'V6_CLEANUP_REVIEW F2 槽位绑定)')
     return blk
 
 
@@ -663,7 +687,13 @@ def judge_v6(arm_dirs: dict[str, Path], *, planes: int,
         r = judge_main(mid, [m2[s][mid] for s in seeds],
                        [m1[s][mid] for s in seeds], spec=spec)
         r['contrast'] = '②−①(预指定主对照,EV 增量)'
+        # 绝对率随门输出(度量诚实:v6 曾只报 Δ/CI,报告侧绝对率无单一
+        # 源可回对 → 手填数不可复现;现由本判读器从同批账本现算)
+        if spec['kind'] == 'rate':
+            r['②_rate'] = sum(m2[s][mid] for s in seeds) / max(len(seeds), 1)
+            r['①_rate'] = sum(m1[s][mid] for s in seeds) / max(len(seeds), 1)
         mains[mid] = {'name': spec['name'], **r}
+    mains['G3']['semantics'] = G3_SEMANTICS_NOTE
     v1_sent = judge_sentinels(m2, m1, load_summary(arm_dirs['②']),
                               load_summary(arm_dirs['①']))
     hard_sentinels = {k: v1_sent[k] for k in ('S1', 'S2', 'S3')}
@@ -679,6 +709,11 @@ def judge_v6(arm_dirs: dict[str, Path], *, planes: int,
             'ci_lo_normal': mean - 1.96 * sd / (len(diff) ** 0.5),
             'note': '次对照 ①-③(命题 A 非劣参照):仅描述性,不进门'
                     '(v6 多重比较声明:预指定主对照单门)'}
+        if spec['kind'] == 'rate':
+            # ③ 基线绝对率(G3 判别力披露的参照面:绝对水平低 → ±1 局
+            # 翻转即换判,与 G3_SEMANTICS_NOTE 并读)
+            secondary[mid]['③_rate'] = (sum(m3[s][mid] for s in seeds)
+                                        / max(len(seeds), 1))
     main_all_pass = all(mains[m]['verdict'] in ('PASS', 'BORDERLINE')
                         for m in mains)
     any_tripped = any(v['tripped'] for v in hard_sentinels.values())
@@ -717,12 +752,18 @@ def render_human_v6(res: dict) -> str:
             lines.append(f'  {mid} {r["name"]}: INSUFFICIENT({r.get("note", "")})')
             continue
         ci = f"CI[{r['ci_lower']:.4f}, {r['ci_upper']:.4f}]"
+        ref = (f" | 率 ②{r.get('②_rate', float('nan')):.3f}"
+               f"/①{r.get('①_rate', float('nan')):.3f}"
+               if '②_rate' in r else '')
         lines.append(f'  {mid} {r["name"]}: Δ={r["delta"]:+.4f} {ci} '
-                     f'→ {r["verdict"]}')
+                     f'→ {r["verdict"]}{ref}')
+        if mid == 'G3':
+            lines.append(f'    ⚠ 语义披露:{r.get("semantics", "")}')
     lines.append('\n-- 次对照 ①-③(仅描述性,不进门) --')
     for mid, r in res['secondary_descriptive'].items():
+        ref = (f" | ③率 {r['③_rate']:.3f}" if '③_rate' in r else '')
         lines.append(f'  {mid} {r["name"]}: Δ={r["delta_1m3"]:+.4f}'
-                     f'(CI_lo {r["ci_lo_normal"]:+.4f};{r["note"]})')
+                     f'(CI_lo {r["ci_lo_normal"]:+.4f}{ref};{r["note"]})')
     lines.append('\n-- 硬哨兵 S1–S3(主对照 ② vs ①;任一越线=FAIL) --')
     for sid, r in res['sentinels_hard'].items():
         kv = ' | '.join(f'{k}={v}' for k, v in r.items()

@@ -656,6 +656,13 @@ def run_buy_waves(op: SrOperation, match,
             # v2_* 恒空串/None,字段保留作历史 schema 兼容;
             # decision_v2 的模式/意向走 v3_* 字段)
             'strategy_id': getattr(config, 'strategy_id', 'decision_v2'),
+            # 臂位遥测(IMPL_DESIGN §4.1 R1-1;§6.4-R 步4):ledger_hooks 判栈按
+            # (strategy_id, ev_arm) 二元组——mandate_v1 行缺 ev_arm 会退化为
+            # 「mandate[?]」且臂①②不可辨识。仅 mandate_v1 写(legacy 恒空,
+            # schema 缺省),禁两臂混读。
+            'ev_arm': (getattr(config, 'ev_arm', '')
+                       if getattr(config, 'strategy_id', '') == 'mandate_v1'
+                       else ''),
             'v2_mode': (_sess.v2_state[0] if _sess.v2_state else ''),
             'v2_locked_line': _sess.locked_line or '',
             'v2_bridge': _sess.bridge_id or '',

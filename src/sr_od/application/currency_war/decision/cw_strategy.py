@@ -45,6 +45,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_prep_actions import PrepAction
     from sr_od.context.sr_context import SrContext
 
 # 注解中的 ``CurrencyWarConfig`` 刻意不 import 真类型:config 属 app 桶,本模块
@@ -123,19 +124,39 @@ class CwStrategy(ABC):
         ⚠️ **deprecated(兼容期,P2 黑板模式)**:黑板接口 =
         :meth:`decide_prep_screen`(W971 §2)。本钩子保留为薄委托形态
         (旧签名 → 写 ``session.prep_obs_frame`` → 同一决策核),供存量
-        测试/影子路径过渡;调用方迁移完后随 P5 删除。
+        测试/影子路径过渡;调用方迁移完后随 P5 删除。**序列契约 v1
+        (dd-020)后**:委托目标返回 ``list[PrepAction]``,本钩子解包首元素
+        返回单动作(现役核经长度 1 适配器,解包恒可达;见实现处注释)。
         """
 
     @abstractmethod
     def decide_prep_screen(self, session: StrategySession,
-                           config: CurrencyWarConfig):
-        """备战画面黑板决策接口(W971 §2 黑板模式;前身 = ``decide_prep_action``)。
+                           config: CurrencyWarConfig) -> list[PrepAction]:
+        """备战画面黑板决策接口——**序列契约 v1**(dd-020 序列决策契约,
+        2026-09-03 冻结;前身 = ``decide_prep_action`` 单动作,W971 §2 黑板模式)。
 
         - 输入:``session`` 唯一数据总线——备战观察结果由观察层写入
           ``session.prep_obs_frame``;跨步状态(defer 计数/phase 位等)同 session。
-        - 返回:一个 ``PrepAction``(词表与 ``decide_prep_action`` 同)。
-        - 契约:同 ``decide_prep_action``(F1/F3/F4);新增「观察帧缺失即抛错」
+        - 返回:``list[PrepAction]``,**执行序 = 列表序**(契约 §1;与商店线
+          ``decide_shop_screen`` 同构的裸 list,Decision/AtomOp 层不进生产接口)。
+          序列语义(契约 §2/§3/§4):
+          - **帧稳定域**:序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;
+            发射时逐动作判「执行后画面状态能否静态推出」,推不出即在该动作处
+            截断(该动作可作序列最后一个动作发出)。截断规则初始枚举 = 契约 §3。
+          - **fail-stop 归流程侧**:任一动作未落地 → 流程侧丢弃余下动作并
+            heavy 重观察后重调本接口;参数非法(F3 拒绝)与执行失败同型。
+          - **逐动作验证保留**:期望态对账/执行验证照跑(执行侧记账,不依赖
+            重新决策)。
+          - **空序列合法** = 「本帧无动作可发」;备战线空批处理归流程侧框架
+            (重观察,stall 兜底由流程侧定义),策略器**禁用空批表达控制流**。
+          - 控制流走词表内特殊动作(``DeferSpheres`` 族;defer 计数归框架),
+            不进 execute 验证链。
+          - 生命周期机制(幂等键 ``action_key``/连败→恢复→屏蔽/stall 门/强制
+            出战)归框架,策略器不自实现。
+        - 契约:同 ``decide_prep_action``(F1/F3/F4);「观察帧缺失即抛错」
           ——黑板模式下决策读到 None 帧 = 观察层失约,禁静默按空观察决策。
+        - 迁移期并行使能(契约 §1):现役单动作核包一层**长度 1 序列**的适配器,
+          行为与现状逐动作重决策等价;新核 = 同接口替换,切换前后对流程侧零感知。
         """
 
     @abstractmethod

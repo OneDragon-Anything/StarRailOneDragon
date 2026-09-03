@@ -381,7 +381,7 @@ def _residual_fill_deploy(
     - 零支出零破息约束:上场动作仅 bench→空槽(pop-append),不买、不卖、
       不刷新、不 swap——金账恒等式(gold_before+inc−buys−levelup−refresh
       +income)不含本动作,任何 Δp>0 受益在 C=I=0 下严格非负(P-F1,
-      docs/game/currency_war/research/proofs/p24-residual-fill-dominance.md)。
+      docs/develop/currency_war/proofs/p24-residual-fill-dominance.md)。
     - 显式保留集(消解互斥的本意 = 防「同一部署通道双写」):显式通道
       **刻意**留在 bench 的件,即 final 买而不上件——session 持有名单
       (v3_hoard)在 locked/forced 模式的 char_targets([21] 窗口语义:
@@ -956,6 +956,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                                or bool(_af.get('active')))
                 if not _phase_snap:
                     _phase_snap = True   # 轮入口首段快照(迁移审计 w114(git 历史) 影子)
+                    # 镜像族缺写守卫(度量修复):覆写 decide_shop_screen 的
+                    # 策略核(如 mandate_v1)不经旧核商店决策核,镜像族
+                    # (phase/form_ok/form_score/dp_posture/储备披露)无写者
+                    # → 下方快照恒读初值(form_ok 假阴性)。轮键戳
+                    # v3_mirror_key(写者=DecisionV2Strategy.write_shop_
+                    # mirrors 单一源)标「本轮已写」:旧核每决策段自写、
+                    # 键戳恒盖 → 守卫不触发(旧核路径零漂移);缺写且策略
+                    # 带该钩子时在此补写(新核路径,判据同源无第二实现)。
+                    if getattr(sess, 'v3_mirror_key', None) \
+                            != (st.plane, st.round_num):
+                        _wsm = getattr(strat, 'write_shop_mirrors', None)
+                        if callable(_wsm):
+                            _wsm(st, sess)
                     _round_phase = str(getattr(sess, 'v3_phase', '') or '')
                     _round_form_ok = bool(getattr(sess, 'v3_form_ok', False))
                     _round_form_score = round(float(

@@ -586,7 +586,18 @@ def economy_effect_of(name: str) -> EconomyEffect:
 def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     """聚合多策略经济效果(ADR-0131):加法字段求和;interest_cap_override 取**最大**(更宽上限赢,
     买断制 0 单独持有时生效 —— 与其它利息策略并持时游戏取宽值,保守建模取 max 非 min);
-    win_reward_mult 取**最大**(不叠乘)。"""
+    win_reward_mult 取**最大**(不叠乘)。
+
+    五族枚举补全(design_economy §E6 分型登记形态;前置缺陷 R83-1/R85-3):
+    interest_flat_per_node / gold_at_node 族 / gold_at_level 族 /
+    xp_click_discount_from_level 族此前在重建枚举中缺席,经 cw_economy
+    聚合消费链静默丢值。分型语义=**数值字段加法求和 + 触发配对字段守卫
+    min 并宽**(哨兵 0,最早触发位代表聚合时点)。边界:标量载体对
+    「多条目不同触发位」有损(两笔不同等级/时点的触发被折叠到最早位)——
+    精确多条目消费走 cw_effect_ledger 逐策略路径(gold_at_level_effect /
+    conditional_effects_at,不经本聚合)。聚合语义机器可读单一源 =
+    测试位分型表(test_cw_economy_aggregate_typing,§E6 裁决:代码即载体)。
+    """
     eff = EconomyEffect()
     caps: list[int] = []
     mults: list[float] = []
@@ -619,6 +630,25 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
                 if (eff.refresh_shop_rewrite_every_3cost and e.refresh_shop_rewrite_every_3cost)
                 else (eff.refresh_shop_rewrite_every_3cost or e.refresh_shop_rewrite_every_3cost)),
             refresh_free_chance=1.0 - (1.0 - eff.refresh_free_chance) * (1.0 - e.refresh_free_chance),
+            # —— 五族枚举补全(R83-1/R85-3;分型=数值求和 + 触发位守卫 min 并宽,
+            # 哨兵 0;语义与边界见函数 docstring)——
+            interest_flat_per_node=eff.interest_flat_per_node + e.interest_flat_per_node,
+            gold_at_node=eff.gold_at_node + e.gold_at_node,
+            gold_at_node_offset=(
+                min(eff.gold_at_node_offset, e.gold_at_node_offset)
+                if (eff.gold_at_node_offset and e.gold_at_node_offset)
+                else (eff.gold_at_node_offset or e.gold_at_node_offset)),
+            gold_at_level=eff.gold_at_level + e.gold_at_level,
+            gold_at_level_target=(
+                min(eff.gold_at_level_target, e.gold_at_level_target)
+                if (eff.gold_at_level_target and e.gold_at_level_target)
+                else (eff.gold_at_level_target or e.gold_at_level_target)),
+            xp_click_discount_from_level=(
+                eff.xp_click_discount_from_level + e.xp_click_discount_from_level),
+            xp_click_discount_from_level_at=(
+                min(eff.xp_click_discount_from_level_at, e.xp_click_discount_from_level_at)
+                if (eff.xp_click_discount_from_level_at and e.xp_click_discount_from_level_at)
+                else (eff.xp_click_discount_from_level_at or e.xp_click_discount_from_level_at)),
         )
         if e.interest_cap_override is not None:
             caps.append(e.interest_cap_override)

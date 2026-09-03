@@ -72,6 +72,80 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
 
 
 
+# ===== F7 / D_ε 判读面观察键(判前锁 v6 挂账行 7/11/13;单一源=
+# docs/develop/currency_war/design/IMPL_DESIGN.md §5.1 行 7/11/13 原文
+# + docs/develop/currency_war/design/design_telemetry.md 对应键节)=====
+# 本段是**判读面键名声明**(v6 text 行判据=键名在本文件可检索),
+# 非记录端接线:三键的行为面/计数端载体分别在 decision 层计数器与
+# audit/provisional.py 槽位(判读批只产建议事件,编排器/人工单点注入),
+# 判读器与本文件只消费键名与语义,禁自造第二语义。
+
+F7_CONTINGENCY_ARMED: str = 'f7_contingency_armed'
+"""F7 应急中间姿态独立分键(§5.1 行 7)。
+
+- 语义:应急期 F7 恢复需求的行为耦合开关——置位=「验收级门红事件
+  [速率门∨有效性门] ∧ 归因批未结案」的机械判据,归因结案自动复位;
+  与 `advisor_lambda_shadow_armed` 影子键分键上报,禁复用。
+- 行为面载体 = audit/provisional.py 槽位(与开臂判据同槽);判读批只
+  产出置位/复位**建议事件**(报告字段),置位/复位由编排器/人工经
+  该槽位单点注入——判读器直写生产控制态=跨层耦合,禁。
+- sim 判读批与实机生产批共用同一槽位,两侧置位语义不分叉。
+"""
+
+DEPSILON_ADVISOR_VIOLATION: str = 'depsilon_advisor_violation'
+"""D_ε 顾问违例键 = 实现漂移哨兵(§5.1 行 11;R56-2 定谳)。
+
+- 语义:键 >0 ⇔ 门/检测两路实现漂移(检测侧=对遥测快照独立重评检测域
+  的瞬时谓词重算,非共享单条谓词函数)。合法态下非豁免族顾问动作发射
+  ⇒ 门 latch off ⇒ 本帧瞬时乘积 >η ⇒ 不落瞬时检测域 ⇒ 键=0;故
+  阈=0 即红=完全检出力。键≡0 只证两路一致,不证约束满足(约束满足
+  的 1−α 命题由成因④第七通道账承载)。
+- 计数对象(现行,R59-1 收窄)= 非豁免族顾问动作发射
+  [canonical (a) arm2 延迟/(b) 守息提前;(c) F7 排除] ∧ 瞬时检测域;
+  F7 豁免发射帧不计入本键,走 `f7_exempt_emission`。signal-only 帧单
+  独分键 `depsilon_signal_only`(观察级),与本键禁合并判读。
+- 本键退出验收门三面合取红判据腿;三面合取结构=「速率面+有效性面+
+  漂移哨兵(健康性)」。
+"""
+
+F7_EXEMPT_EMISSION: str = 'f7_exempt_emission'
+"""F7 豁免发射计量观察键(§5.1 行 13;R59-1)。
+
+- 计数对象 = 真濒死帧[R40-1 三支完备式,含其与 D_ε 交]上 F7 越过
+  D_ε 门的动作发射,分键含真濒死∧D_ε 子态。= R58-1 授权账已追认
+  (2026-09-02,用户裁定)条目的观测载体(R41-2 确认条件内容可辨的
+  计量面)。
+- 观察级不进门;禁复用 `depsilon_advisor_violation`/
+  `f7_uncovered_interest_sell`/`f7_contingency_armed`——三者分别系
+  恒 0 实现漂移哨兵/默认姿态未覆盖帧凑息卖出计数/应急中间姿态开关,
+  均非豁免发射计数(R59-1 分键纪律)。
+- 行为锚:豁免发射帧 `depsilon_advisor_violation` 不计而本键 +1
+  (§6.4⑱(e));授权账追认判读报告含其频度/量级字段。
+"""
+
+F7_DEPSILON_OBS_KEYS: tuple[str, ...] = (
+    F7_CONTINGENCY_ARMED,
+    DEPSILON_ADVISOR_VIOLATION,
+    F7_EXEMPT_EMISSION,
+)
+"""F7/D_ε 判读面观察键域(v6 挂账行 7/11/13 的 text 锚对象)。"""
+
+F7_CONTINGENCY_ARMED_EVENT_FIELDS: tuple[str, ...] = (
+    'gate_red_event_id',
+    'attribution_batch_id',
+    'ts',
+)
+"""f7_contingency_armed 置位/复位事件判前锁记录格式字段单一源
+(§5.1 行 7「置位/复位事件进判前锁记录格式(门红事件 id+归因批
+id+时间戳)」;design_telemetry.md 键 f7_contingency_armed 节)。
+
+- 置位事件 = {gate_red_event_id[速率门∨有效性门],
+  attribution_batch_id, ts};复位事件 = {结案结论, (a)-(d) 处置分支}
+  (字段名异于置位三件,复位不带本元组)。判读批报告须含置位/复位
+  事件字段(行 7 落地判据)。
+"""
+
+
 # ===== 序列化(dataclass → JSON-safe dict)=====
 
 def salvageable_1star_value(state: GameState) -> int:
@@ -79,7 +153,7 @@ def salvageable_1star_value(state: GameState) -> int:
     件的卖出回金和。
 
     - 口径出处:P10④「出口『财富』= 袋子金 + 可回收 1★ 值」——
-      ``docs/game/currency_war/research/proofs/p10-exit-gold-floor.md``
+      ``docs/develop/currency_war/proofs/p10-exit-gold-floor.md``
       §④ 与「对实现的检验点」3(判读防「袋穷板富」误读:出口金低但
       本值高 → 钱在卡上,非经济病;两字段必须并读)。
     - 计算式:Σ ``cw_state.sell_refund(1, cost)``。1★ 卖出全额退、无
@@ -258,6 +332,7 @@ class DecisionTrace:
     # —— 策略 v2(LineStrategy)字段(r226;redesign §6 遥测扩展:
     # 模式/锁线/桥——AB 对拍与三层置信的数据源)——
     strategy_id: str = ""                          # 本局策略 id(B2:分组键)
+    ev_arm: str = ""                               # 臂位(R1-1:skeleton_only/full;仅 mandate_v1 写,legacy 恒空——判栈二元组 (strategy_id, ev_arm) 第二维)
     v2_mode: str = ""                             # economy/war(滞回当前模式)
     v2_locked_line: str = ""                      # 锁定线 id(""=未锁)
     v2_bridge: str = ""                           # 当前桥线 id(""=无)

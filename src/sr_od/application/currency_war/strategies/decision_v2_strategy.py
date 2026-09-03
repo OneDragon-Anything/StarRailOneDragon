@@ -18,13 +18,20 @@
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.decision.decision_v2.strategy import (
-    DecisionV2Strategy,
+from sr_od.application.currency_war.decision.decision_v2.series_adapter import (
+    DecisionV2SeriesAdapter,
 )
 
 
-class DecisionV2Live(DecisionV2Strategy):
+class DecisionV2Live(DecisionV2SeriesAdapter):
     """decision_v2 生产注册壳:零逻辑复制,全部行为继承 ``DecisionV2Strategy``。
+
+    序列契约 v1(dd-020;R192 症2 包装形态):基类链 =
+    ``DecisionV2Live → DecisionV2SeriesAdapter → DecisionV2Strategy``——
+    生产 ``match.strategy`` 经本桥拿到**包装实例**(decide_prep_screen 返回
+    长度 1 ``list[PrepAction]``),冻结基线 ``DecisionV2Strategy`` 本体零改动
+    (IMPL_DESIGN §4.1 冻结;A/B 基线臂保持单动作原状)。
+    ``strategy_id='decision_v2'`` 语义不变。
 
     类属性重申仅为注册面自描述(GUI 显示/StrategyInfo 元数据);
     实现单一源在 ``decision_v2/strategy.py``,改行为去那边,别在此加逻辑。

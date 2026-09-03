@@ -123,7 +123,7 @@ def self_advance(base: str) -> str | None:
 
 
 # ===== 装备策略接入(P14 期望模型的生产化;ADR-0391)=====
-# P14(docs/game/currency_war/research/proofs/p14-equipment-acquisition-ev.md)
+# P14(docs/develop/currency_war/proofs/p14-equipment-acquisition-ev.md)
 # 已证结论在此从证明脚本晋升为生产纯函数——装备分配准入/判读锚点消费;
 # 证明脚本与本文档共享图谱单一源(本模块),数值改动自动传导。
 

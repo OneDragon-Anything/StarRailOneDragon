@@ -1,6 +1,6 @@
 """死亡窗支出分配器(W684 v6 正式模型落码;设计单一源 =
 ``.debug/temp/currency_war/w684_p1_v3_design/DESIGN.md`` v6 §2-§3,
-数学基础 = ``docs/game/currency_war/research/proofs/p23-death-window-
+数学基础 = ``docs/develop/currency_war/proofs/p23-death-window-
 allocation-ev.md``(P23.1/P23.2 停手窗域 + P23.3/P23.4 死亡域),
 终审瑕疵清单 = ``.debug/temp/currency_war/w706_allocator_attack_final/
 REPORT.md`` §8 六条——本模块逐条落点见各符号 docstring 的 §8-N 标注)。

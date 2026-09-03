@@ -398,8 +398,166 @@ def check_decision_v2_supply_label_consistency() -> dict:
                     '未被 copies_cap/copy_swap 豁免;红 = 直通门回归'}
 
 
+# --- 序列契约接线批(dd-020):备战线序列形状契约锁 + 长度 1 适配器等价门 --------------------
+
+def check_prep_series_contract() -> dict:
+    """序列决策契约 v1(dd-020,2026-09-03 冻结):``decide_prep_screen`` 返回
+    ``list[PrepAction]``,包装输出与冻结基线单动作核逐帧恒等。
+
+    判据(离线 prep 帧探针语料,手搓帧模式同本文件既有探针):
+    ① **形状**:包装返回必须是 list 且元素全为 ``PrepAction``;
+    ② **等价门(核心)**:对每个探针帧,``包装输出 == [冻结基线
+       ``_decide_prep_action_impl`` 输出]`` 逐帧逐元素恒等(类型 + dataclass
+       字段)——包装只许包壳,不许改决策(冻结基线本体零改动,
+       IMPL_DESIGN §4.1);
+    ③ **长度 1**:现役核(= 换核 A/B 基线臂)每帧恰 1 动作;
+    ④ **deprecated 别名单动作**:包装的 ``decide_prep_action`` 返回单动作
+       (== 包装序列首元素)。
+
+    探针语料覆盖(每族 ≥2 帧):主流程阶段位(买 OpenShop/部署 RunDeploy/
+    装备 RunEquip/出战 StartBattle)、腾席链 a(DeployMove)、腾席链 c
+    (SellBench)、球留置(DeferSpheres)。空批在现役核不可达(规则序恒出
+    动作,含 DeferSpheres 兜底)——无探针可构造,登记为注记非违规。
+    """
+    import dataclasses
+    from types import SimpleNamespace
+
+    from sr_od.application.currency_war.decision.cw_strategy import StrategySession
+    from sr_od.application.currency_war.decision.decision_v2.series_adapter import (
+        DecisionV2SeriesAdapter,
+    )
+    from sr_od.application.currency_war.decision.decision_v2.strategy import (
+        DecisionV2Strategy,
+    )
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        PrepAction,
+        PrepObservation,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
+
+    cfg = SimpleNamespace(
+        faction_priority=['贝洛伯格', '仙舟', '巡海游侠'],
+        character_priority=['阿格莱雅'],
+        character_build_around=[],
+        strategy_id='decision_v2', strategy_seed=None)
+
+    def _obs(**kw) -> PrepObservation:
+        o = PrepObservation()
+        for k, v in kw.items():
+            setattr(o, k, v)
+        return o
+
+    def _bc(slot, char_id, faction='?', star=1):
+        return BenchChar(slot=slot, char_id=char_id, faction=faction,
+                         star=star, position_pref='back')
+
+    def _chain_a(slots_free_hint):
+        """腾席链 a:有球无空席 + deploy 空位 + bench 有同阵营 count≥2 件 → DeployMove。"""
+        bench = [_bc(slots_free_hint, '阿格莱雅', '贝洛伯格'),
+                 _bc(2, '路人', '?')]
+        sess_kw = {
+            'tracked_bench_chars': bench,
+            'tracked_deployed': [_bc(1, 'x', '贝洛伯格')],
+            'last_state': GameState(level=6), 'last_level_obs': 6}
+        obs = _obs(spheres=[('gold', None, 40)], free_bench_slots=0,
+                   deploy_vacancy=1, bench_chars=bench,
+                   front_occupied={1}, back_occupied=set(),
+                   front_size=4, back_size=6)
+        return obs, sess_kw
+
+    def _chain_c(bench_seed):
+        """腾席链 c:满席 + level 10 + 无金 → 卖最弱 SellBench。"""
+        bench = [_bc(1, f'路人甲{bench_seed}', '?'), _bc(2, '路人乙', '?')]
+        st = GameState(level=10)
+        sess_kw = {'tracked_bench_chars': bench, 'tracked_deployed': [],
+                       'last_state': st, 'last_level_obs': 10}
+        obs = _obs(spheres=[('gold', None, 40)], free_bench_slots=0,
+                   deploy_vacancy=0, bench_chars=bench, shop_open=True,
+                   state=GameState(level=10, gold=0))
+        return obs, sess_kw
+
+    def _defer(n_spheres):
+        """球留置:满席 + level 10 + 全是 3合1 保护件 → DeferSpheres。"""
+        bench = [_bc(1, '飞霄', '?'), _bc(2, '飞霄', '?'),
+                 _bc(3, '三月七', '?'), _bc(4, '三月七', '?')]
+        sess_kw = {'tracked_bench_chars': bench, 'tracked_deployed': [],
+                       'last_state': GameState(level=10), 'last_level_obs': 10}
+        obs = _obs(spheres=[('gold', None, 40)] * n_spheres,
+                   free_bench_slots=0, deploy_vacancy=0, bench_chars=bench,
+                   shop_open=True, state=GameState(level=10, gold=0))
+        return obs, sess_kw
+
+    # 语料:scenario = (标签, [(obs, session 补丁)] 按序驱动;阶段位族经
+    # 同帧反复调接口推进 prep_phase,覆盖 买/部署/装备/出战 四形态)
+    scenarios: list[tuple[str, list[tuple[PrepObservation, dict]]]] = [
+        ('main_flow_free1', [(_obs(free_bench_slots=1, spheres=[]), {})] * 4),
+        ('main_flow_free2', [(_obs(free_bench_slots=2), {})] * 4),
+        ('chain_a', [_chain_a(1), _chain_a(5)]),
+        ('chain_c', [_chain_c(0), _chain_c(7)]),
+        ('defer', [_defer(1), _defer(3)]),
+    ]
+    violations: list[str] = []
+    frames_checked = 0
+    family_hits: dict[str, int] = {}
+    for tag, frames in scenarios:
+        strat_old = DecisionV2Strategy()
+        strat_new = DecisionV2SeriesAdapter()   # 受检对象 = 包装输出(R192 症2)
+        sess_old = StrategySession()
+        sess_new = StrategySession()
+        for fi, (obs, sess_kw) in enumerate(frames):
+            for k, v in sess_kw.items():
+                setattr(sess_old, k, v)
+                setattr(sess_new, k, v)
+            old_act = strat_old._decide_prep_action_impl(obs, sess_old, cfg)  # noqa: SLF001
+            sess_new.prep_obs_frame = obs
+            new_out = strat_new.decide_prep_screen(sess_new, cfg)
+            frames_checked += 1
+            family_hits[type(old_act).__name__] = (
+                family_hits.get(type(old_act).__name__, 0) + 1)
+            if not isinstance(new_out, list) or not all(
+                    isinstance(a, PrepAction) for a in new_out):
+                violations.append(f'{tag}[{fi}] 输出非 list[PrepAction]:'
+                                  f'{type(new_out).__name__}')
+                continue
+            if len(new_out) != 1:
+                violations.append(f'{tag}[{fi}] 长度≠1(现役核长度 1 适配器):'
+                                  f'{len(new_out)}')
+            same = (len(new_out) == 1
+                    and type(new_out[0]) is type(old_act)
+                    and dataclasses.asdict(new_out[0]) == dataclasses.asdict(old_act))
+            if not same:
+                violations.append(
+                    f'{tag}[{fi}] 适配器输出 ≠ [旧核单动作输出]:'
+                    f'new={type(new_out[0]).__name__ if new_out else "∅"}'
+                    f' vs old={type(old_act).__name__}')
+            if fi == 0:
+                _alias_sess = StrategySession()
+                for k, v in sess_kw.items():
+                    setattr(_alias_sess, k, v)
+                alias = strat_new.decide_prep_action(obs, _alias_sess, cfg)
+                if not (type(alias) is type(old_act)
+                        and dataclasses.asdict(alias) == dataclasses.asdict(old_act)):
+                    violations.append(f'{tag}[{fi}] deprecated 别名单动作与包装首元素不等')
+    # 语料覆盖门:spec 族(普通买/部署/卖/装备/出战/DeferSpheres)各 ≥2 帧
+    need = {'OpenShop': '普通买', 'DeployMove': '部署(拖拽)', 'SellBench': '卖',
+            'RunEquip': '装备', 'StartBattle': '出战', 'DeferSpheres': '球留置'}
+    for cls, label in need.items():
+        if family_hits.get(cls, 0) < 2:
+            violations.append(f'语料覆盖不足:{label}({cls}) 仅 '
+                              f'{family_hits.get(cls, 0)} 帧(<2)')
+    return {'violations': len(violations), 'detail': violations,
+            'frames_checked': frames_checked,
+            'family_hits': dict(sorted(family_hits.items())),
+            'note': '空批在现役核不可达(规则序恒出动作)——注记非违规;'
+                    'RunDeploy 亦被主流程语料覆盖(family_hits 可见)'}
+
+
 # (换线存活门三检查器 check_line_gate_decision_bits /
 #  check_line_switch_midgame_bucket / check_line_gate_starvation_anchor
 #  已随 C4 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3;
 #  消费端 line_gate_blocked/cf_blocked 账本位与 gate_hold/
 #  gate_relock 事件随门机械同批退役。)
+
+
+
+
