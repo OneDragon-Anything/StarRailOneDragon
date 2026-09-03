@@ -404,34 +404,51 @@ class CwLoop(SrOperation):
         self._write_terminal_summary_if_needed()
 
     def _write_terminal_summary_if_needed(self) -> None:
-        """局终/中止 summary 补写(幂等:_summary_written 守卫 + 假局守卫)。
+        """局终/中止 summary 补写(幂等:_summary_written 守卫)。
 
-        正常终局(3c 回大厅)已写 → 跳过;开局失败/无对局数据(假局)不写
-        (镜像 3c 的 r10 守卫:无任何 round_outcome 却回大厅 = 开局失败,
-        不拼假 loss 污染分母)。停止/超时/异常 → 取最后已知值补写。
+        正常终局(3c 回大厅)已写 → 跳过。停止/超时/异常 → 取最后已知值补写。
+        P4R4 假局守卫语义修正(run_20260903_004418 超时 fail / run_20260903_
+        204908 stop 两实例 runs 缺行定位):旧守卫「零 outcome = 假局不写」
+        把**部署死循环等零结算阶段的真局**也吞了(2 小时 400 轮循环、备战
+        观察全程活动,却因无战斗/补给结算行被当成开局失败)——runs 缺行根因。
+        新判定:**「从未观察到对局态」才算假局**(last_state 缺失 ∧ 零
+        outcome = 开局即失败,镜像 3c 守卫;此时拼 stopped 行才有污染分母
+        之嫌);只要观察过对局态或有过任一结算行,就是真局,必落终局行
+        (result=stopped/abandoned,hp/plane/round 取最后已知值)。
         """
         if self._summary_written:
             return
-        if self._settle.last_outcome_hp is None and self._settle.rounds_done == 0:
-            return   # 假局守卫(镜像 3c):无 outcome 数据不写假 summary
         _m = self.ctx.cw_match
-        _st = _m.session.last_state if _m is not None else None
-        if _st is None:
-            return   # 无最后已知态(理论上不可达:有 outcome 必有 state)
+        _st = (getattr(_m.session, 'last_state', None)
+               if _m is not None and _m.session is not None else None)
+        _has_outcome = not (self._settle.last_outcome_hp is None
+                            and self._settle.rounds_done == 0)
+        if _st is None and not _has_outcome:
+            return   # 真假局:从未观察到对局态也无结算痕迹(开局即失败)
         try:
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
-            _final_hp = self._last_true_hp(_st.hp if _st.hp is not None else 0)
+            _final_hp = self._last_true_hp(_st.hp if _st is not None
+                                           and _st.hp is not None else 0)
             state.record_run_summary(
                 result='stopped' if _stopped else 'abandoned',
-                plane_reached=_st.plane,
-                rounds_survived=_st.round_num,
-                final_hp=_final_hp,
+                plane_reached=_st.plane if _st is not None else 1,
+                rounds_survived=_st.round_num if _st is not None else 1,
+                final_hp=int(_final_hp or 0),
                 notes=('stopped:operation 收口(W75)' if _stopped
                        else 'abandoned:operation 异常收口(W75)'))
             self._summary_written = True
             log.info('[cw][loop] 局终 summary 收口:%s p%s-r%s hp=%s',
                      'stopped' if _stopped else 'abandoned',
-                     _st.plane, _st.round_num, _final_hp)
+                     _st.plane if _st is not None else 1,
+                     _st.round_num if _st is not None else 1, _final_hp)
+            # 按局存档装配随补写收口(P4R4:非正常终局此前只在 3c 装配,
+            # 补写的 runs 行没有装配机会 → 对局档案缺该局;失败不阻塞)。
+            try:
+                from sr_od.application.currency_war.telemetry import match_archive
+                match_archive.assemble_pending(
+                    state.get_recorder().replay_dir)
+            except Exception as e:   # noqa: BLE001  观测旁路,best-effort
+                log.warning('[cw][loop] 局终装配失败(不阻塞): %s', e)
         except Exception as e:   # noqa: BLE001  遥测 best-effort,不阻塞退出
             log.warning('[cw][loop] 局终 summary 收口失败(不阻塞): %s', e)
 
