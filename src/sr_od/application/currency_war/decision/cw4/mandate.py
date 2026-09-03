@@ -414,6 +414,27 @@ def run_mandate(frame: MandateFrame,
             session.cw4_m7_equipped_phase = phase
             out.append(Emitted(RunEquip(), True, 'm7_equip_transfer'))
 
+    # M7 发射序回排(dd-027 修订;实机局 g_20260904_010335 1-6/1-7 漏发
+    # 定谳):M7 在执行序末位评估,发射落在同帧开店意图(OpenShop=帧稳定
+    # 契约 §3.2 截断点)之后 ⇒ 截断器 truncate_frame_stable 其后必截,
+    # RunEquip 被静默丢弃而门②闩已在发射位消耗——同帧「开店 ∧ 可穿件」
+    # 形态下装备滞留整个备战期(闩挡死后续帧重评,1-8 无开店面才首穿)。
+    # 修法 = 发射组织面回排:RunEquip 系可续类(conditional,装备 pass
+    # 画面零迁移),插到首个截断点/终点之前,两动作均保留、执行序
+    # (先穿后开店)与发射序一致;门①谓词与闩置位时机(发射=置闩,
+    # 回排后发射必可达截断)不变。分类单一源 = entry.classify_frame_
+    # stability(函数内延迟 import 防模块环)。
+    if any(isinstance(e.action, RunEquip) for e in out):
+        from sr_od.application.currency_war.decision.cw4.entry import (
+            classify_frame_stability,
+        )
+        equips = [e for e in out if isinstance(e.action, RunEquip)]
+        rest = [e for e in out if not isinstance(e.action, RunEquip)]
+        cut = next((i for i, e in enumerate(rest)
+                    if classify_frame_stability(e.action)
+                    in ('truncation', 'terminal')), len(rest))
+        out = rest[:cut] + equips + rest[cut:]
+
     return out
 
 
