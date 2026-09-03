@@ -13,7 +13,7 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     confirm_and_verify,
     safe_click,
 )

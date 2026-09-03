@@ -40,16 +40,16 @@
 
 六委托薄封装(Megastar/Partner/ArmoryBox/WishTrial/Planner/Fortune 的 CwOverlayOp 子类)随对应 CwScreen* 合并(委托壳→实现内联,或保留薄封装+实现改名,实施者按最小扰动定,报告说明)。
 
-## 3. 动作 op 迁移映射(7)
+## 3. 动作 op 迁移映射(7)——已完成(cw_op/ 落位,全量 CW 绿)
 
 | 新文件(cw_op/) | 新类名 | 旧文件 | 旧类名 |
 |---|---|---|---|
-| cw_op_open_shop.py | CwOpOpenShop | prep/open_shop.py | OpenShopOp |
-| cw_op_close_shop.py | CwOpCloseShop | prep/close_shop.py | CloseShopOp |
-| cw_op_buy_cards.py | CwOpBuyCards | prep/buy_cards.py | BuyCardsOp(含 BuyCardsOutcome dataclass) |
-| cw_op_deploy.py | CwOpDeploy | prep/deploy_bench.py | DeployBench |
-| cw_op_equip_all.py | CwOpEquipAll | prep/equip_all.py | EquipAll |
-| cw_op_collect_spheres.py | CwOpCollectSpheres | handlers/handle_reward_sphere.py | CollectRewardSpheres |
+| cw_op_open_shop.py | CwOpOpenShop | cw_op/cw_op_open_shop.py | CwOpOpenShop |
+| cw_op_close_shop.py | CwOpCloseShop | cw_op/cw_op_close_shop.py | CwOpCloseShop |
+| cw_op_buy_cards.py | CwOpBuyCards | cw_op/cw_op_buy_cards.py | CwOpBuyCards(含 BuyCardsOutcome dataclass) |
+| cw_op_deploy.py | CwOpDeploy | cw_op/cw_op_deploy.py | DeployBench |
+| cw_op_equip_all.py | CwOpEquipAll | cw_op/cw_op_equip_all.py | EquipAll |
+| cw_op_collect_spheres.py | CwOpCollectSpheres | handlers/handle_reward_sphere.py | CwOpCollectSpheres |
 | cw_op_sell_off_target.py | CwOpSellOffTarget | prep/clean_offtarget.py | CleanDeployedOffTarget |
 
 ## 4. 退役清单(删除,不迁移)——**用户裁决 2026-09-03:本轮直接执行**(与命名迁移同批交付,commit 分段)

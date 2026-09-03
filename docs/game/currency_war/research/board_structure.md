@@ -67,6 +67,6 @@
   2026-08-26:公式通道 `6+(cap−level)` + CV 通道槽位 std 签名实测
   (`cv_back_slots`),对账一致用公式值/不一致采 CV 实测值+留证两值
   /CV 不可判退公式;7 格档未建档保守 8 格超集 + 留证采集);
-- `deploy_bench.py` 布局选档 / `cw_observation.read_deployed_chars` 槽位读取
+- `cw_op_deploy.py` 布局选档 / `cw_observation.read_deployed_chars` 槽位读取
   (均已改经 `select_back_layout` 双通道入口,ADR-0385);
 - 判读一局时的板面口径(几人上场/几格空位的真值基准)。

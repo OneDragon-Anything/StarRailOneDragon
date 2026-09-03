@@ -388,7 +388,7 @@ def _residual_fill_deploy(
       「与在场(deployed)同名」的素材副本由围栏 dedup(r404-A2/5.1.7
       在场唯一)自然 held,无需保留集;**bench 内同名对(无在场同名)
       不保留**——3合1 合并域是全场(bench∪deployed),部署一对之一不
-      破坏合成进度,且生产 DeployBenchOp 围栏同语义会上(首版把 bench 对
+      破坏合成进度,且生产 CwOpDeploy 围栏同语义会上(首版把 bench 对
       整对保留是过宽:642763/642795 实证 dep 停滞 4/7、5/7 而检查器
       「可上货」口径(非在场同名)全数命中,即本缺失的 W748 重现根因;
       cw_plan 同名对保护辖的是卖出不是部署)。
@@ -610,7 +610,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         streak = 0
         streak_signed = 0
     # hp 决策可信位对齐生产真读帧口径(sim 无识别过程 = 恒真值帧;生产
-    # 真读帧两位皆 True,写入点语义 = operations/prep/shop.py `_apply_hp`
+    # 真读帧两位皆 True,写入点语义 = operations/cw_op/cw_op_buy_cards.py `_apply_hp`
     # 真读分支。hp_readable 本就恒 True,本位对齐后 hp_decision_trusted
     # 读数不变,纯口径一致化零行为漂移)。
     st.hp_trusted = True
@@ -1320,7 +1320,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, xp or 4))
             # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
             # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
-            # (cw_deploy_logic.select_deployments 纯函数,与 DeployBenchOp op
+            # (cw_deploy_logic.select_deployments 纯函数,与 CwOpDeploy op
             # 同一源)——r373/r387 类执行层 bug sim 可发现。target 集从
             # session **买后**现读(生产:买牌段 update_target 已刷新,
             # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
@@ -1640,7 +1640,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # r393(装备层执行代理):supply 节点 = 3 选 1 装备——
             # decide_supply(纯逻辑,与 run_supply_node 同源)选 →
             # 入 st.equips(owned 池);equip_allocation(纯逻辑,与
-            # EquipAllOp 同源)分配给 deployed → 账本 equipped 字段。
+            # CwOpEquipAll 同源)分配给 deployed → 账本 equipped 字段。
             # 装备获取采样(供给重校准后):池结构见 EQUIP_GRANT_CALIB_VERSION
             # 模块常量注;带钻概率 15%(实机简报词缀影响的粗估,校准点)。
             # r388 类 bug(开局乱穿)从此 sim 可见。

@@ -37,9 +37,9 @@ source_image: screens/货币战争-备战/equip_detail_roller.webp
 
 ## automation 要读信息
 
-- **装备属性**(速度增幅 等):评估装备价值(策略用,EquipAllOp 穿戴决策)。
+- **装备属性**(速度增幅 等):评估装备价值(策略用,CwOpEquipAll 穿戴决策)。
 - **可合成列表**:合成路径规划(哪些装备能合什么)。
-- 当前 bot 未读这些(EquipAllOp 按 target_comp.key_equips 优先穿戴,不读详情面板);建档供后续策略增强。
+- 当前 bot 未读这些(CwOpEquipAll 按 target_comp.key_equips 优先穿戴,不读详情面板);建档供后续策略增强。
 
 ## 识别快照
 

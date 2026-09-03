@@ -114,8 +114,8 @@
 
 | 码点 | 内容 | 性质 |
 |---|---|---|
-| `operations/prep/equip_all.py:45` | `_TOOL_CATEGORIES = {'工具'}` | 过滤口径常量 |
-| `equip_all.py:49-57` | `_owned_wearable_names`:read_equips 命中 → 非「工具」类才是穿戴候选(ADR-0358 搬运链写端复用同口径) | 穿戴**决策**过滤 |
+| `operations/cw_op/cw_op_cw_op_equip_all.py:45` | `_TOOL_CATEGORIES = {'工具'}` | 过滤口径常量 |
+| `cw_op_equip_all.py:49-57` | `_owned_wearable_names`:read_equips 命中 → 非「工具」类才是穿戴候选(ADR-0358 搬运链写端复用同口径) | 穿戴**决策**过滤 |
 | `equip_all.py:406-408`(M7 主流程)、`:523-524`(front-only fallback) | `wearable` 列表构建,同过滤;工具不进 drag 序列 | 同上 |
 | `equip_all.py:512-521` 注释块(front-only 内) | ⚠️ 历史:旧版把过滤后列表写 `session.last_owned_equips` 快照 → 冶金炉/扳手从不进决策快照(run 26 两件工具躺着无人知);W209g 断点②(ADR-0387)修正为**写端全量 hits 含工具**,过滤只辖穿戴决策 | 采集已含工具 |
 | `equip_all.py:416-428` | `[cw!][grant]` λ 标定埋点:每轮备战首次读板记 owned 全量(含工具)计数 | 遥测已有工具可见性 |

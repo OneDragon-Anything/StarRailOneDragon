@@ -11,10 +11,10 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.operations.cw_flow.cw_flow_const import (
+from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
 )
-from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     safe_click,
 )
 from sr_od.context.sr_context import SrContext

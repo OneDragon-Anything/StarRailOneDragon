@@ -747,7 +747,7 @@ class CwLoop(SrOperation):
 
         # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档)。
         #     P4R 升级(1-1 事故 5h 死循环返工):确认关闭 → **带落点验证的
-        #     重部署**(DeployBenchOp,落点 CV 已收编)→ 验 deployed 前排 ≥1 →
+        #     重部署**(CwOpDeploy,落点 CV 已收编)→ 验 deployed 前排 ≥1 →
         #     本迭代内再出战;重试上限 FRONTLESS_REDEPLOY_LIMIT,超限
         #     round_fail 交未知画面兜底链(旧「确认关闭→等下轮 CwScreenPrep
         #     → StartBattle 假成功」形态 = 无限 round_wait,根因见弹窗污染
@@ -765,13 +765,13 @@ class CwLoop(SrOperation):
             log.info('[cw-loop] 前台无角色提示 → 确认关闭(%d/%d)→ 带验证重部署',
                      self._frontless_redeploy,
                      CwLoop.FRONTLESS_REDEPLOY_LIMIT)
-            from sr_od.application.currency_war.operations.prep.deploy_bench import (
-                DeployBenchOp,
+            from sr_od.application.currency_war.operations.cw_op.cw_op_deploy import (
+                CwOpDeploy,
             )
-            _rd = DeployBenchOp(self.ctx).execute()
+            _rd = CwOpDeploy(self.ctx).execute()
             log.info('[cw-loop] 前台无角色重部署 → %s',
                      getattr(_rd, 'status', '') or ('成功' if getattr(_rd, 'success', False) else '失败'))
-            # 出口判据:deployed 前排 ≥1(独立于 DeployBenchOp 返回值——
+            # 出口判据:deployed 前排 ≥1(独立于 CwOpDeploy 返回值——
             # 假成功已在 deploy 侧落点验证收编,此处再验一层作 0j 出口承诺)。
             from sr_od.application.currency_war.kernel.cw_obs_core import (
                 slot_occupied as _slot_occ,

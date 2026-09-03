@@ -57,7 +57,7 @@ _TOOL_CATEGORIES: set[str] = {'工具'}
 # 实证形态:同一(源件→目标)拖拽 diff=0.0 连败 4 轮,每轮整个装备步骤
 # 中止(~18s/轮)且无跨轮记忆。修法三件:失败计数登记(session 级,跨轮
 # 存活)→ 连败达限拉黑该(件,角色)对;单件失败跳过继续穿下一件(不再
-# break 中止整批);拖点坐标错配修正见 ``EquipAllOp._slot_drag_point``。
+# break 中止整批);拖点坐标错配修正见 ``CwOpEquipAll._slot_drag_point``。
 DRAG_FAIL_BLACKLIST_LIMIT: int = 2   # 同一对连败达此次数 → 拉黑
 _EQUIP_MAX_WEAR_ITERS: int = 20      # 穿戴主循环硬上限(防异常态空转;量级=owned 件数×2)
 
@@ -122,9 +122,9 @@ def _below_icon_diff(
 ) -> float:
     """drag 前后目标 avatar 下方 mini icon 区的像素差均值(>阈值=穿了;R19 CV-diff 验穿)。
 
-    纯函数(可离线 fixture 测):crop below-icon 区 → 两帧像素绝对差均值。``EquipAllOp`` 用它判 drag
+    纯函数(可离线 fixture 测):crop below-icon 区 → 两帧像素绝对差均值。``CwOpEquipAll`` 用它判 drag
     是否落地穿(robust 合成消耗2件/列reflow/read漏检,替 count-verify D-41)。默认 below_y/bx_half/by_half
-    对齐 ``EquipAllOp`` 类常量(D-41 测 below-icon y=479),测试可直接调。
+    对齐 ``CwOpEquipAll`` 类常量(D-41 测 below-icon y=479),测试可直接调。
 
     实测验证(D-56,飞霄 0→1→2→3 件 fixture):连续态(加 icon)diff 28-41(>>阈值 8.0),同态 0.0。
     """
@@ -149,7 +149,7 @@ def _prioritize_wearable(
 ) -> list[tuple[str, tuple[int, int]]]:
     """穿戴候选按 target_comp.key_equips 优先排序(命脉件在前,其余原序)。
 
-    comp 驱动穿戴(替 naive ``wearable[0]``):EquipAllOp 优先穿 target comp 的关键装备
+    comp 驱动穿戴(替 naive ``wearable[0]``):CwOpEquipAll 优先穿 target comp 的关键装备
     (如反甲流需 3 以牙还牙甲 / 阿雅需 2 反重力皮靴),而非 read_equips 返回的第一个。无 target /
     无 key_equips → 原序(等价旧行为)。``key_equips`` 可含重复 → 按 multiplicity 消费(命中的重复件也优先,
     但不超额)。与 ``equip_fit`` 同源(``comp.key_equips`` 出发,不设通用 equip_score;决策见 ADR-0101)。
@@ -212,7 +212,7 @@ def _rust_release_active(enemy_affixes: list[str] | None, gate: bool) -> bool:
 
     备战席每 1 件未穿装备 → 敌方造成伤害 +3%、受到伤害 -4%,最多 10 件
     (competitors.md:45,游戏内实采)——滞留的边际代价随件数单调上升,
-    「攒给成型核心」的机会成本被压制。纯谓词;消费点=EquipAllOp hold 过滤
+    「攒给成型核心」的机会成本被压制。纯谓词;消费点=CwOpEquipAll hold 过滤
     分支(开关=registry.rust_wear_release_enabled,默认关=零漂移)。
     """
     if not gate:
@@ -220,7 +220,7 @@ def _rust_release_active(enemy_affixes: list[str] | None, gate: bool) -> bool:
     return '库藏生锈' in set(enemy_affixes or [])
 
 
-class EquipAllOp(SrOperation):
+class CwOpEquipAll(SrOperation):
     """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排**空**角色头像(P0-2 占位检测)→ avatar-slot CV-diff 验穿。
 
     装备库区域 = screen_info「区域-道具装备」(多列 x1620-1918,D-40;坐标维护 yml 非硬编码)。

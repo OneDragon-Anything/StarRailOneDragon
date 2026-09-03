@@ -822,7 +822,7 @@ class DecisionV2Strategy(CwStrategy):
             # 按钮 [945,360,1415,410] 重叠(x1257-1415∩y360-410)——HoughCircles 把按钮图形误检成
             # 假球,点击即开概率表弹窗(遮挡 → bail → 乒乓)。商店开 → 先关店,清洁面板上再收球。
             # W970 批 C:EnsureShopClosed 退役 → OpenShop(read_only) 编排
-            # (幂等开店[已开不点]→观察刷新→不调商店决策→CloseShopOp→回备战,同收
+            # (幂等开店[已开不点]→观察刷新→不调商店决策→CwOpCloseShop→回备战,同收
             # 「清洁面板」效果)。
             if obs.shop_open:
                 return OpenShop(read_only=True)
@@ -991,7 +991,7 @@ class DecisionV2Strategy(CwStrategy):
                 if _lk2 <= 1:
                     # W970 批 C(§4.3.6 腾席链 b 读数性开店):EnsureShopOpen 退役 →
                     # OpenShop(read_only)——开店成功 = 本轮有进展(r364 进展保证语义
-                    # 由 OpenShopOp 成功承担)。
+                    # 由 CwOpOpenShop 成功承担)。
                     log.info('[cw][prep] 腾席链b:需 gold 真值 → OpenShop(read_only) 开态重读')
                     return OpenShop(read_only=True)
                 # r366b(review A3 修,补齐注释宣称的中间态):第 2 次仍无
@@ -1053,7 +1053,7 @@ class DecisionV2Strategy(CwStrategy):
                 return self._main_flow_step(obs, session, config)   # 链全空 → 部署段
             # W970 批 C(RunBuyPhase 解体):主流程买牌段改发显式开店意图,
             # 流程层(cw_screen_prep._open_shop_phase)编排 开店→商店动作循环→
-            # CloseShopOp→节点探针;组合壳 BuyShopCards 已随退役批删除(决策核只发显式开店意图)。
+            # CwOpCloseShop→节点探针;组合壳 BuyShopCards 已随退役批删除(决策核只发显式开店意图)。
             return OpenShop()
         if session.prep_phase == 1:
             session.prep_phase = 2
@@ -1110,7 +1110,7 @@ class DecisionV2Strategy(CwStrategy):
             committed_from,
         )
         st.dual_track_phase = not committed_from(session, st)
-        # 迁移审计 w148(git 历史)(ADR-0358,迁移审计 w92(git 历史) 修法 A):owned 穿戴池搬运链读端——EquipAllOp 写的
+        # 迁移审计 w148(git 历史)(ADR-0358,迁移审计 w92(git 历史) 修法 A):owned 穿戴池搬运链读端——CwOpEquipAll 写的
         # session 快照拷入决策 state.equips(decisions 遥测携带,win_model 持有
         # 面特征可见;空快照=默认 [] 语义不变)。
         st.equips = list(session.last_owned_equips)

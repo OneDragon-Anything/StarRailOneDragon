@@ -1245,7 +1245,7 @@ def _read_deploy_paddle(ctx: SrContext, screen: MatLike,
 def read_deployed_count(ctx: SrContext, screen: MatLike) -> int | None:
     """舞台上方中央「X/Y」指示 → X(已部署角色数);读不到 → None。
 
-    DeployBenchOp 用它定位**空位**:d(cap_remaining)+ e(offset)依赖它;读不到 → fallback
+    CwOpDeploy 用它定位**空位**:d(cap_remaining)+ e(offset)依赖它;读不到 → fallback
     → 部分 churn。实现见 ``_read_deploy_paddle``(同时给 cap Y,见 ``read_deploy_cap``)。
     """
     return _read_deploy_paddle(ctx, screen)[0]
@@ -1258,7 +1258,7 @@ def read_deploy_cap(ctx: SrContext, screen: MatLike,
     实机 **cap=level+宝钻数**(D-53 实测核正:无加成时 5 fixture 跨 lv3/4/5/7,Y 恒=level)。
     财富宝钻 +1 团队槽且**可叠加**(官方「拥有即+1 无论穿戴」,局38 r2 实证 cap5/lv3;
     详见 ``_read_deploy_paddle`` docstring)。
-    DeployBenchOp 应用本 Y 非 level 估 cap_remaining。读不到 → 退 level 估(fallback;cap=level 故 fallback 仍准)。
+    CwOpDeploy 应用本 Y 非 level 估 cap_remaining。读不到 → 退 level 估(fallback;cap=level 故 fallback 仍准)。
     旧注「cap≠level(lv4-5 3/3、lv6 5/5)」自主推进期错数据,已废。reader 实现细节/根因见 ``_read_deploy_paddle``。
     ``level`` 提供时参与解析层约束验证(y≥level,cap 只增不减),不改变返回契约。
     """
@@ -1861,7 +1861,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     各字段 OCR 失败 → 安全默认(见各 reader)。level 不可 OCR → ``_expected_level`` 兜底;
     hp 读不到 → ``reconcile_hp`` 对账(ADR-0282:沿用 session.last_hp_real,开局无真值才
     兜底 100)。v1 不读 bench/deployed 身份(buy 决策靠 board+shop+gold;
-    deploy 走 DeployBenchOp)。
+    deploy 走 CwOpDeploy)。
     """
     from sr_od.application.currency_war.kernel import cw_observe as _obs_mod
     from sr_od.application.currency_war.obs.cw_observation_gate import (
@@ -2114,7 +2114,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         state.board = _ocr_board
         state.board_next_tier = {f: nt for f, (_c, nt) in _bp.items() if nt > 0}
     # 旧不填 deployed → 恒 [] → deployed_count() 恒 0 → _saving_for_interest 永不触发(不攒息散买 gold→0)
-    # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 DeployBenchOp SIFT 处理)。
+    # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 CwOpDeploy SIFT 处理)。
     # 不破坏):tracked 漂移时(sell 位置式 / deploy SIFT char_id='?' 未识别)截断多的 / 补 rebuild 无身份差额。
     # active_strategies:session(持久宿主,cw_screen_invest_strategy 写)→ state(_refresh_cap 等消费;
     # live 修复 2026-08-15,原接线只加 GameState 字段无来源恒空)。
@@ -2179,7 +2179,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 移出三源对拍,本处是漏改的最后一处)。paddle 读不到 = 本帧无对齐基准 → 跳过对齐
     # (宁缺勿造:补齐/截断都是用猜的数改写 tracking)。
     # 阶段 gate 路径:deployed_count 已随 cap 合并单读(见上方 resolve_paddle_pair);
-    # spec 无 deployed_count 的阶段(prep_shop_open 部署不发生,关店后 DeployBenchOp
+    # spec 无 deployed_count 的阶段(prep_shop_open 部署不发生,关店后 CwOpDeploy
     # 另读;battle 帧无消费)_paddle_n=None → 对齐跳过/重建退 level 估,同「读不到」语义。
     _paddle_n = _paddle_x if _spec is not None else read_deployed_count(ctx, screen)
     if _tracked_dep:

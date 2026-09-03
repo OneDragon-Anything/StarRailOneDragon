@@ -10,7 +10,7 @@ slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1
 与族 A(cw_state.Action 策略动作)同名类(SellBench/DeployMove/SellDeployed)的坐标系对照:
 族 B 物理槽位 = 族 A 下标 + 1(bench 域);deployed 域两族结构不同(族 B=row+slot
 物理排槽位,族 A=紧缩列表下标)——完整对照表见 cw_state.py Action 节约定块。
-组合动作命名映射(§7 L1):RunDeploy=DeployBenchOp / RunEquip=EquipAllOp(RunBuyPhase 组合已随 shop.py 壳退役删除,W970 批 C 后决策核只发显式开店意图)
+组合动作命名映射(§7 L1):RunDeploy=CwOpDeploy / RunEquip=CwOpEquipAll(RunBuyPhase 组合已随 shop.py 壳退役删除,W970 批 C 后决策核只发显式开店意图)
 (P1 过渡,P2/P3 溶解为原子)。
 """
 from __future__ import annotations
@@ -86,7 +86,7 @@ def _read_level_raw(ctx: SrContext, screen) -> int | None:
 def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
     """从 screen_info「货币战争-备战」读全部 prefix-N 区域中心(N 升序)。
 
-    同 DeployBenchOp._row_centers 逻辑(读全不硬编码,后排 >6 时 screen_info 补区后自动跟上);
+    同 CwOpDeploy._row_centers 逻辑(读全不硬编码,后排 >6 时 screen_info 补区后自动跟上);
     prep_actions 执行器 / cw_screen_prep 观察共用。
     """
     si = ctx.screen_loader.get_screen(SCREEN_NAME)
@@ -283,9 +283,9 @@ class PrepActionExecutor:
         if isinstance(action, StartBattle):
             return self._start_battle()
         if isinstance(action, RunDeploy):
-            return self._run_composite('部署', 'sr_od.application.currency_war.operations.prep.deploy_bench.DeployBenchOp')
+            return self._run_composite('部署', 'sr_od.application.currency_war.operations.cw_op.cw_op_deploy.CwOpDeploy')
         if isinstance(action, RunEquip):
-            return self._run_composite('装备', 'sr_od.application.currency_war.operations.prep.equip_all.EquipAllOp')
+            return self._run_composite('装备', 'sr_od.application.currency_war.operations.cw_op.cw_op_equip_all.CwOpEquipAll')
         if isinstance(action, (DeferSpheres, BailToOuter)):   # 本模块定义,无需导入
             return False, '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)'
         return False, f'未知动作类型 {type(action).__name__}'

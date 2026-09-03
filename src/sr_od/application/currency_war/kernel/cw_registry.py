@@ -1188,7 +1188,7 @@ class DecisionV2Registry:
     # 设计单一源=设计件「词缀消费面」(.debug/temp/currency_war/w607_affix_consumption/DESIGN.md
     # §3);词条语义出处见 cw_comps.STRONG_ENV_MECHS / RUST_AFFIX_NAME 注释。
     # 清偿记录(H1 已物理删字段;H2②/H3 行为无条件化、字段物理删除随迁移批 3(ADR-0465)
-    # ——读端在 operations/prep/equip_all.py,该文件迁移批 3(ADR-0465) 在飞故本批禁碰,
+    # ——读端在 operations/cw_op/cw_op_equip_all.py,该文件迁移批 3(ADR-0465) 在飞故本批禁碰,
     # 显式战术权衡,证据归 w628_migration_b2/STATUS):
     #: (H1 line_env_gate_enabled 已删:行为无条件化,cw_intention 锁线信号
     #: 过滤恒在;sim A/B 与单帧锁证据见 w607_affix_consumption/AB_REPORT.md)

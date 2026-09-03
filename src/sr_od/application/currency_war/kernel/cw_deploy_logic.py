@@ -1,16 +1,16 @@
-"""deploy 选人纯逻辑(sim 与 DeployBenchOp op 共用单一源)。
+"""deploy 选人纯逻辑(sim 与 CwOpDeploy op 共用单一源)。
 
 背景(用户定调「这些问题明明都可以模拟发现」):实机暴露的
 deploy 侧 bug(桥期 target 真空/cap 富余仍拦
-散牌)全是 **DeployBenchOp op 的选人围栏**行为——而 sim 的 deployed
+散牌)全是 **CwOpDeploy op 的选人围栏**行为——而 sim 的 deployed
 是自动代理(bench 引擎件直进,围栏零覆盖),执行层 bug 天然测不出。
 
 本模块把围栏判定提取为**纯函数**(无 ctx/无画面/无 SIFT):输入
-bench/deployed/目标集/围栏集/cap,输出「谁上场」。DeployBenchOp op
+bench/deployed/目标集/围栏集/cap,输出「谁上场」。CwOpDeploy op
 与 cw_sim 都调它——同一份逻辑,实机改=sim 改,漂移不可能。
 
 ⚠️ 对齐语义(ADR-0261 裁决「1+3 组合」):
-① DeployBenchOp op `_deploy_deterministic` 排序含 ignition_gain 首键
+① CwOpDeploy op `_deploy_deterministic` 排序含 ignition_gain 首键
 (经本模块 `ignition_gain`,与 select_deployments 同语义);② 本模块
 select_deployments 含配方底线门(列车≥2 且仙舟<3 → 列车件
 让位留 bench,与 op 侧同语义)。对齐后 op 与本
@@ -160,7 +160,7 @@ def select_deployments(
 ) -> tuple[list[int], list[int]]:
     """围栏判定:返回 (上场 bench 下标序, 留 bench 下标)。
 
-    语义与 DeployBenchOp op 的 deterministic 段逐条对应
+    语义与 CwOpDeploy op 的 deterministic 段逐条对应
     (ADR-0130 散牌围栏/补档序/引擎对优先/cap 富余
     填空/点火首键+桶序/配方底线门/板空保底),唯一省略:
     SIFT 未识别(char_id 空)照旧上

@@ -5,7 +5,7 @@
 1. ``DragCwChar.drag_char``(静态原语,**生产共用**):中心拖一个角色 ``src → dst`` —— ``mouse_move`` 源
    (bug#1 settle:框架截图前把光标移角落,紧接 drag 落空,先 settle 到源)→ ``drag_to(hold_time=0`` **按下即移**
    即拾取,2026-08-13 实测)→ ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)→ 验**源槽
-   像素 diff**(角色离开 / swap 换人都致源槽变)= 生效;retry ``max_retry`` 次。deploy(``DeployBenchOp``)/
+   像素 diff**(角色离开 / swap 换人都致源槽变)= 生效;retry ``max_retry`` 次。deploy(``CwOpDeploy``)/
    sell(``_sell_offtarget_deployed``)/ 本 op 都走它 —— **全仓角色拖拽机制单一源**(不再各处散落 drag_to + avatar 偏移)。
 
 2. ``DragCwChar``(op,开发 / 测试用):``run_operation`` 按 ``(from_row, from_idx) → (to_row, to_idx)`` 拖,

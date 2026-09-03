@@ -10,10 +10,10 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 def close_shop(op: SrOperation) -> OperationRoundResult:
-    """关商店原子核心(W970 批 A 契约 §4.2 ``CloseShopOp``)。
+    """关商店原子核心(W970 批 A 契约 §4.2 ``CwOpCloseShop``)。
 
     ``op`` = 宿主 op(编排壳直调时传壳自身,复用其 round_by_* 判定与
-    测试替身桩;本文件 ``CloseShopOp`` 独立跑时传自身)。
+    测试替身桩;本文件 ``CwOpCloseShop`` 独立跑时传自身)。
 
     点「按钮-收起」→ 固定等待 ``SHOP_CLOSE_ANIM_S``(DD-011 操作完成
     自等动画,screen_flow_timing #15 实测 ~1s)→ 「收起消失」验证
@@ -29,12 +29,12 @@ def close_shop(op: SrOperation) -> OperationRoundResult:
                              '按钮-收起').is_success:
         return op.round_retry('收起未生效(收起按钮仍在)', wait=1)
     # TODO(P2 黑板落地时启用):商店族字段清理挂点——W971 04-shop §2
-    # 「CloseShopOp 完成承诺含商店族字段清理」;字段清理随黑板/流程层
+    # 「CwOpCloseShop 完成承诺含商店族字段清理」;字段清理随黑板/流程层
     # 批次落地,本批只留挂点不实现。
     return op.round_success('商店已收起')
 
 
-class CloseShopOp(SrOperation):
+class CwOpCloseShop(SrOperation):
     """备战-开商店 → 货币战争-备战 原子 op(W970 批 A)。
 
     生产路径由 BuyShopCards 编排壳直调 :func:`close_shop`(宿主 op 复用);

@@ -152,7 +152,7 @@ class CwScreenPlanner(SrOperation):
         # r327(终审 E):验证词用全词「我来当策划」(入场锚同词,
         # cw_hacker_planner.yml:26 live-verified)——短词「策划」
         # 在艺术字漏读时可能假通过。
-        from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+        from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
             confirm_and_verify,
         )
         return confirm_and_verify(

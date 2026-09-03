@@ -552,7 +552,7 @@ def _synthesize_candidates(state: GameState) -> list[Candidate]:
 
 def _deploy_candidates(state: GameState, session: StrategySession,
                        registry: DecisionV2Registry) -> list[Candidate]:
-    """部署候选:围栏序 top-K(与生产 DeployBenchOp/sim 部署块同一源)。
+    """部署候选:围栏序 top-K(与生产 CwOpDeploy/sim 部署块同一源)。
 
     F5 部署供给(设计单一源 = ``.debug/temp/currency_war/w956_death_
     allocator/DESIGN.md`` §1.4;免开关=供给不完备是缺陷语义):板缺

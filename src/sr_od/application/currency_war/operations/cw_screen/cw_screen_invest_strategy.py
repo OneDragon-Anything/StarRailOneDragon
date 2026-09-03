@@ -28,7 +28,7 @@ from sr_od.application.currency_war.kernel.cw_events import decide_event
 from sr_od.application.currency_war.kernel.cw_investments import get_strategy
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_state import GameState
-from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     confirm_and_verify,
     safe_click,
 )

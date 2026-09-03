@@ -79,7 +79,7 @@ class CwScreenFortune(SrOperation):
         # 选卡=safe_click(bug#1 缓解);确认+验关统一走
         # confirm_and_verify(入口关键词=命运卜者;确认落空→
         # overlay 不关→round_retry 计预算兜底,不再无限重点)
-        from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+        from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
             confirm_and_verify,
             safe_click,
         )

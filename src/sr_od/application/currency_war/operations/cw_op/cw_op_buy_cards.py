@@ -384,7 +384,7 @@ def _fmt_action(a) -> str:
 
 @dataclass
 class BuyCardsOutcome:
-    """买牌波循环产出(编排壳消费;W970 批 A §4.3.4「BuyCardsOp 产出」)。
+    """买牌波循环产出(编排壳消费;W970 批 A §4.3.4「CwOpBuyCards 产出」)。
 
     state = 末波融合态;total_* / spend_executed / gold_open = 动作账与
     对拍基线(壳侧 gold 差值对拍消费);plan_truncated / refresh_* 执行
@@ -418,7 +418,7 @@ def run_buy_waves(op: SrOperation, match,
                   hp_value: int | None, hp_readable: bool,
                   hp_trusted: bool) -> tuple[OperationRoundResult | None,
                                              BuyCardsOutcome | None]:
-    """买牌波循环主体(W970 批 A 原子化:原 BuyCardsOp 波循环随迁)。
+    """买牌波循环主体(W970 批 A 原子化:原 CwOpBuyCards 波循环随迁)。
 
     读牌面 → d2 决策(decide_prep)→ 执行至首个 RefreshShop(含)→
     刷新重判,MAX_REFRESH 硬墙;含 gold 融合读救援/d2 卖通道/遥测写点
@@ -427,7 +427,7 @@ def run_buy_waves(op: SrOperation, match,
     :func:`_apply_hp` 值位同写覆盖。
 
     match=None(独立 run_operation 调本 op)→ 临时 match,不挂 ctx
-    (局外不复用)。config 本函数内构造(W970 §4.3.4:BuyCardsOp 产出,
+    (局外不复用)。config 本函数内构造(W970 §4.3.4:CwOpBuyCards 产出,
     壳侧买后重估经 outcome.config 消费)。
 
     返回 (失败 round 结果, 产出)。正常收工 → (None, outcome);
@@ -1112,7 +1112,7 @@ def run_buy_waves(op: SrOperation, match,
                 / 'currency_war' / 'shop_unk.flag'
             _fp.parent.mkdir(parents=True, exist_ok=True)
             _fp.write_text(
-                f'[HOOK-STOP] shop 未识别卡停机钩子(方案D,恢复):operations/prep/buy_cards.py run_buy_waves\n'
+                f'[HOOK-STOP] shop 未识别卡停机钩子(方案D,恢复):operations/cw_op/cw_op_buy_cards.py run_buy_waves\n'
                 f'触发:未购买且商店槽{_unk}未识别(防抖重读 2 帧后仍 miss)——\n'
                 f'   新版本新卡/昔涟诗篇类非角色内容/立绘缺。r34 降级已被用户否决\n'
                 f'   (2026-08-24:未识别不能降级,带病跑错过建档窗口)。\n'
@@ -1130,7 +1130,7 @@ def run_buy_waves(op: SrOperation, match,
             return op.round_fail(status=f'shop 未识别卡槽{_unk},停机留证'), None
 
     # plan() 在最后一轮(无 refresh)的完整 actions 里含 DeployMove —— 取最后一次完整 plan 的 deploy moves。
-    # ⚖️ pending_deploys 写入已删(2026-08-16 review D16/TOP4:0 读者,DeployBenchOp 实读
+    # ⚖️ pending_deploys 写入已删(2026-08-16 review D16/TOP4:0 读者,CwOpDeploy 实读
     # last_state.board;只写不读 = 腐化名单)。留日志行(计划可见性)。
 
     # → 新占槽 = bought 卡落点(left-to-right = buy 顺序,bench 从左到右填)。**两帧同 shop-OPEN 状态**
@@ -1234,7 +1234,7 @@ def run_buy_waves(op: SrOperation, match,
     return None, outcome
 
 
-class BuyCardsOp(SrOperation):
+class CwOpBuyCards(SrOperation):
     """备战-开商店原子 op:执行商店动作波循环(W970 批 A 契约 §4.2)。
 
     生产路径由 BuyShopCards 编排壳直调 :func:`run_buy_waves`(宿主 op 复用,

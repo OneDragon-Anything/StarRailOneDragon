@@ -101,7 +101,7 @@ class EnsureShopOpen(PrepAction):
 @dataclass
 class EnsureShopClosed(PrepAction):
     """关商店(HP 只在关态可读)。⚠️ W970 批 C 退役(dd-017):关店由商店决策空序列
-    触发 CloseShopOp;开态清洁面板场景改发 :class:`OpenShop`(read_only)。"""
+    触发 CwOpCloseShop;开态清洁面板场景改发 :class:`OpenShop`(read_only)。"""
 
 
 @dataclass
@@ -109,10 +109,10 @@ class OpenShop(PrepAction):
     """开商店意图(W970 批 C/§4.3.6,dd-017;EnsureShop 意图退役后的承接形态)。
 
     read_only=False:显式开店 → 流程层编排商店动作循环(观察→decide_shop_screen
-    →波执行→空序列 CloseShopOp→节点探针)。
+    →波执行→空序列 CwOpCloseShop→节点探针)。
     read_only=True:读数性开店(腾席链 b 取 gold 真值 / 开态清洁面板)→
-    OpenShopOp(幂等:已开不点)→ 商店观察刷新 → **不调商店决策** →
-    CloseShopOp → 回备战(M-6 门保持:free=0 不进买牌)。
+    CwOpOpenShop(幂等:已开不点)→ 商店观察刷新 → **不调商店决策** →
+    CwOpCloseShop → 回备战(M-6 门保持:free=0 不进买牌)。
     """
     read_only: bool = False
 
@@ -129,13 +129,13 @@ class RunBuyPhase(PrepAction):
 
 @dataclass
 class RunDeploy(PrepAction):
-    """组合(P1 过渡):整体部署 = DeployBenchOp(v7 H-2:保 D-10 换血/同角色去重/前排保证/cap 门
+    """组合(P1 过渡):整体部署 = CwOpDeploy(v7 H-2:保 D-10 换血/同角色去重/前排保证/cap 门
     四项板上行为,P3 原子化时上移策略)。"""
 
 
 @dataclass
 class RunEquip(PrepAction):
-    """组合(P1 过渡):全员装备 = EquipAllOp(P3 溶解为 WearEquip)。"""
+    """组合(P1 过渡):全员装备 = CwOpEquipAll(P3 溶解为 WearEquip)。"""
 
 
 # 动作全集白名单(F3 membership 校验;新动作加入全集时同步此处)

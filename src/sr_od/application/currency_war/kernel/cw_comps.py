@@ -1732,7 +1732,7 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     3. **剩余通用 owned** 按 deployed 顺序兜底(前排在前 —— 受击/反甲类在前排生效)。
     ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);deployed 元素需带
     char_id/position_pref/slot(BenchChar)。comp=None → 全走 3(通用兜底)。
-    纯函数(可离线测);EquipAllOp 消费(ADR-0154)。
+    纯函数(可离线测);CwOpEquipAll 消费(ADR-0154)。
 
     ADR-0265(穿戴可逆裁决):**穿戴是可逆操作**(卖角色全额返还装备)——穿着既不锁死
     合成路线(组件可取回)也不构成资源损耗(转移成本仅为操作摩擦),

@@ -257,7 +257,7 @@ def build_refresh_expect(gold: int | None,
     挂账(producer 集成点):期望必须在**刷新波内**构建——波前金与波前
     面板费都是单元内部现读;cw_screen_prep 持有的 RunBuyPhase 前后帧均为
     关店帧(F2 下金不可信、五格牌不可读),无合法评估窗。集成点 =
-    ``operations/prep/shop.py`` 刷新波现读处(先例 = pending_buy_expect
+    ``operations/cw_op/cw_op_buy_cards.py`` 刷新波现读处(先例 = pending_buy_expect
     同文件暂存、本环 heavy 帧消费);消费判据 = refresh_reconcile_mismatches
     (本文件,真值表已锁),落台账 kind=refresh_expect_mismatch。
     """
@@ -1585,25 +1585,25 @@ class CwScreenPrep(SrOperation):
     def _open_shop_phase(self, action, obs) -> tuple[bool, str]:
         """OpenShop 动作的流程层编排(壳直调三 op 调用点自 BuyShopCards 上移)。
 
-        - read_only=True(腾席链 b 取 gold 真值 / 开态清洁面板):OpenShopOp
+        - read_only=True(腾席链 b 取 gold 真值 / 开态清洁面板):CwOpOpenShop
           (幂等,已开不点)→ heavy 观察(gold 开态真值进 session)→ **不调
-          商店决策**(M-6 门保持:free=0 不进买牌)→ CloseShopOp → 节点探针
+          商店决策**(M-6 门保持:free=0 不进买牌)→ CwOpCloseShop → 节点探针
           → 回备战(W970 §4.3.6;r364 进展保证 = 开店成功即 progressed)。
         - read_only=False:开店前 hp 三件组取**开店前的备战观察**(商店开态
           HP 区不可读,W970 §4.3.4 读互斥承接;结算真值链已在 gated_hp 收口,
           trusted 位 = 本帧可读)→ 商店动作波循环(run_buy_waves:观察 →
           decide_shop_screen → 执行至首个 RefreshShop → 重判,MAX_REFRESH 硬墙)
-          → CloseShopOp → finalize_buy_phase(买后重估/期望暂存/gold 对拍/
+          → CwOpCloseShop → finalize_buy_phase(买后重估/期望暂存/gold 对拍/
           执行事实)→ 节点探针。
 
-        节点探针挂点 = CloseShopOp 完成后(店确定关的可靠时点;原
+        节点探针挂点 = CwOpCloseShop 完成后(店确定关的可靠时点;原
         EnsureShopClosed 后字符串匹配判据退役,改类型分派)。
         波循环失败路径不开收(店留着交上层/外环重新识别,同 BuyShopCards 原语义)。
         """
-        from sr_od.application.currency_war.operations.prep.close_shop import (
+        from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
             close_shop,
         )
-        from sr_od.application.currency_war.operations.prep.open_shop import (
+        from sr_od.application.currency_war.operations.cw_op.cw_op_open_shop import (
             open_shop,
         )
         match = self._match()
@@ -1623,7 +1623,7 @@ class CwScreenPrep(SrOperation):
         hp_value = getattr(st, 'hp', None) if st is not None else None
         hp_readable = bool(getattr(st, 'hp_readable', False))
         hp_trusted = hp_readable
-        from sr_od.application.currency_war.operations.prep.buy_cards import (
+        from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
             run_buy_waves,
         )
         _rr, outcome = run_buy_waves(self, match, hp_value, hp_readable, hp_trusted)
@@ -1875,7 +1875,7 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
         read_gold_settled,
     )
     from sr_od.application.currency_war.obs.cw_observation_gate import PHASE_PREP_CLEAN
-    from sr_od.application.currency_war.operations.prep.buy_cards import (
+    from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
         _apply_hp,
         _tracked_bench_chars,
         build_post_buy_incremental_state,

@@ -14,7 +14,7 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.obs.cw_node_obs import read_megastar_options
-from sr_od.application.currency_war.operations.cw_flow.cw_flow_const import (
+from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
 )
 from sr_od.application.currency_war.telemetry.recorder import record_event_choice

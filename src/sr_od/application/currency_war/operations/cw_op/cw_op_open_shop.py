@@ -10,10 +10,10 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 def open_shop(op: SrOperation) -> OperationRoundResult:
-    """开商店原子核心(W970 批 A 契约 §4.2 ``OpenShopOp``;幂等开店)。
+    """开商店原子核心(W970 批 A 契约 §4.2 ``CwOpOpenShop``;幂等开店)。
 
     ``op`` = 宿主 op(编排壳直调时传壳自身,复用其 round_by_* 判定与
-    测试替身桩;本文件 ``OpenShopOp`` 独立跑时传自身)。
+    测试替身桩;本文件 ``CwOpOpenShop`` 独立跑时传自身)。
 
     幂等:已开(「按钮-收起」可见)→ 直接成功——自动开店场景点击落空
     不判负(W970 §4.2 F7)。未开 → 点「按钮-商店」→ park_cursor →
@@ -38,7 +38,7 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
     return op.round_success('商店已开')
 
 
-class OpenShopOp(SrOperation):
+class CwOpOpenShop(SrOperation):
     """货币战争-备战 → 备战-开商店 原子 op(W970 批 A)。
 
     生产路径由 BuyShopCards 编排壳直调 :func:`open_shop`(宿主 op 复用);

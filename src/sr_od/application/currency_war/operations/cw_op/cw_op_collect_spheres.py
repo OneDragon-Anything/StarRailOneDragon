@@ -24,7 +24,7 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-class CollectRewardSpheres(SrOperation):
+class CwOpCollectSpheres(SrOperation):
     """收奖励球:开箱(若有)→ 逐球点击 → 每球验消失;席满点不动则停(外层腾席后重试)。"""
 
     # 单轮最多点球数(防识别抖动死循环;正常一节点 ≤8 球)
@@ -39,7 +39,7 @@ class CollectRewardSpheres(SrOperation):
         CwScreenSupply(self.ctx).execute()
         clicked = 0
         screen = self.screenshot()
-        while clicked < CollectRewardSpheres.MAX_CLICKS:
+        while clicked < CwOpCollectSpheres.MAX_CLICKS:
             spheres = read_reward_spheres(self.ctx, screen)
             if not spheres:
                 log.info('[cw-sphere] 奖励面板无球 → 收取完成')

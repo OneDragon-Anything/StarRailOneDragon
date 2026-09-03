@@ -1,7 +1,7 @@
 ---
 gameplay_name: 历战余响(周本)
 app_id: echo_of_war
-last_updated: 2026-07-30
+last_updated: 2026-09-02
 source: WebSearch 攻略 + `application/echo_of_war/` 代码 + `guide` / `challenge_mission` screen_info + check_power fixture + 2026-07-30 实拍(选关/战败)
 involves_screens: [星际和平指南, 挑战副本, 战斗画面, 大世界-战斗失败]
 ---
@@ -63,7 +63,7 @@ involves_screens: [星际和平指南, 挑战副本, 战斗画面, 大世界-战
 - **待补实拍**:历战 boss 战斗过程态 / 挑战成功结算 / 奖励领取(需正常打赢一场)。
 - **周限判断**:`check_task` 读 `run_record.left_times`(本周剩余次数),bot 按周限跑。
 - **体力检查**:`GuideCheckPower`(指南生存索引层 OCR 开拓力,不足则后续 `_use_power` 跳过)。
-- **难度选择**:历战难度 I-VI,bot 按配置跑哪个难度,待确认。
+- **难度选择**:`ChallengeEchoOfWar` **未实现难度选择**(无任何难度侧栏交互,同饰品提取家族缺口)——打的是面板记住的上次难度。当前记住档可胜利(2026-09-01 周本三连胜实证);若游戏侧被手动调到打不过的难度,bot 会连败(参照饰品提取难度Ⅴ 2026-09-01/02 事故)。
 - **3 次后免体力**:bot 是否覆盖(刷成就 / 支援),待确认 —— 通常 bot 只跑奖励次数(3 次)。
 
 ## 参考来源

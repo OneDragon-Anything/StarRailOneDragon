@@ -39,7 +39,7 @@ from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_options,
     read_encounter_refresh_count,
 )
-from sr_od.application.currency_war.operations.handlers._overlay_confirm import (
+from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     confirm_and_verify,
     safe_click,
 )
