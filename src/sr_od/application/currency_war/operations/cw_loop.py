@@ -1139,11 +1139,16 @@ class CwLoop(SrOperation):
                 return self.round_wait(wait=2)
             # 接管局补采(boss+词缀)已迁 CwScreenPrep(W971 §2.1/01-opening §2.1:
             # 稳定门退役后挂点 = 干净备战观察;见 cw_screen_prep._run_loop 采集块)。
-            # 迁移审计 w103(git 历史) 件1(ADR-0342):策略失活早停——连续 2 个**完整轮**无任何带
-            # strategy_id 的决策行(决策层整轮未参与;迁移审计 w98(git 历史) 两局实录:57/61 行恒空、
-            # P1 全程 0 买、金囤 91/100,兜底打满 40min 垃圾局)→ 停局重启加载
-            # 策略。「重大修复待加载=无条件早停」定调的运行期镜像:策略死了,
-            # 继续跑=零信息量局。结算点=备战入口查**上一轮**(本轮决策尚未发生,
+            # 迁移审计 w103(git 历史) 件1(ADR-0342,dd-031 重写判据):策略失活早停——连续 2 个**完整轮**
+            # 无任何策略心跳决策行(心跳 = sid 行或载体行,单一源
+            # query._row_heartbeat;外环停转=整轮零心跳行)→ 停局重启加载
+            # 策略。「重大修复待加载=无条件早停」定调的运行期镜像:外环死了,
+            # 继续跑=零信息量局。dd-031 定谳(g_20260904_022537/010335 误杀局):
+            # sid 行唯一写点在店内决策(cw_op_buy_cards.py:658),mandate 合法
+            # 跳过开店(三开店站全关)时整轮只有载体行(sid='')——旧判据
+            # 「无 sid 行=死」把健康局误杀;辖域收敛为「外环停转」,策略内容
+            # 性死亡(兜底垃圾局)归离线检查网(行面无法区分策略动作与兜底动作)。
+            # 结算点=备战入口查**上一轮**(本轮决策尚未发生,
             # 查本轮恒空会误杀);telemetry 关闭时本检查让位(无数据=无判据)。
             if state.get_recorder().enabled:
                 _dk = read_phase_round(self.ctx, screen)
@@ -1160,13 +1165,13 @@ class CwLoop(SrOperation):
                                 self._cw_strategy_dead_streak, _live))
                         if _dead_key is not None and not _live:
                             log.warning('[cw!][loop] 策略失活轮 P%s-r%s'
-                                        '(streak=%d,该轮无 strategy_id 决策行)',
+                                        '(streak=%d,该轮无任何策略心跳决策行)',
                                         _dead_key[0], _dead_key[1],
                                         self._cw_strategy_dead_streak)
                         self._cw_dead_prev_key = _key
                         if self._cw_strategy_dead_streak >= 2:
                             log.warning('[cw!][loop] 策略失活连击 %d ≥2 → '
-                                        '停局(重启加载策略;ADR-0342)',
+                                        '停局(重启加载策略;ADR-0342/dd-031)',
                                         self._cw_strategy_dead_streak)
                             self.ctx.run_context.stop_running(
                                 reason='cw:strategy_dead_early_stop')

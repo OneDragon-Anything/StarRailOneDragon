@@ -11,21 +11,34 @@ from sr_od.application.currency_war.kernel.cw_state import (
 )
 from sr_od.application.currency_war.telemetry import state as _telstate
 
-# ===== 迁移审计 w103(git 历史) 件1/件2(ADR-0342):策略失活检测 =====
+# ===== 迁移审计 w103(git 历史) 件1/件2(ADR-0342)+ dd-031 判据重写:策略失活检测 =====
 # 病灶实录(迁移审计 w98(git 历史) 两局 run_20260825_003757/011957):崩溃恢复局 decisions
-# 全行 strategy_id='' 且零策略动作族(BuyCard/SellBench/CompTransaction/
-# LevelUp 除 op 层兜底外),观测层活着(EnsureShopClosed 行照写)、店里
-# 明明读到目标件——决策层整局未点火,兜底打满 40min 产出 0 买垃圾局。
+# 全行 strategy_id='' 且零策略动作族,决策层整局未点火,兜底打满 40min。
+# dd-031 定谳(g_20260904_022537 / g_20260904_010335 误杀局):「sid 行唯一写点在
+# 店内决策(cw_op_buy_cards.py:658)」——mandate 合法跳过开店(三开店站全关)时
+# 整轮只有载体行(sid='')→ 旧判据把健康局误判死亡。观察面真相:**兜底态与
+# 健康态在遥测行上都发载体动作(StartBattle 等),行面无法区分「策略选的」
+# 与「兜底发的」——故本探针的辖域收敛为「外环停转」(连载体行都没有 =
+# 整轮零决策行,进程级失活);策略内容性死亡(兜底垃圾局)归离线检查网
+# 与复盘判读,不在运行探针辖域(显式权衡,dd-031 Considered Options)。
+
+#: 策略心跳判定(单一源):一行有非空 strategy_id(店内决策行)或非空
+#: actions(备战载体/步进行,含 prep_step 帧)即心跳。mandate 跳过开店的
+#: 健康轮只有载体行 → 心跳在,不判死(dd-031)。
+def _row_heartbeat(d: dict) -> bool:
+    return bool(d.get('strategy_id')) or bool(d.get('actions'))
+
 
 _STRATEGY_LIVE_CACHE: dict[tuple[str, float], set[tuple[int, int]]] = {}
 
 
 
 def _strategy_live_rounds(run_id: str) -> set[tuple[int, int]]:
-    """该 run 中「存在带非空 strategy_id 决策行」的 (plane, round) 集。
+    """该 run 中「存在策略心跳行」的 (plane, round) 集(dd-031 判据)。
 
-    decisions.jsonl 按 mtime 缓存(每个写入窗口只全文扫一次;跨 run 追加
-    文件随局数线性增长,逐 round 查询不该每次全扫)。
+    心跳判定见 _row_heartbeat。decisions.jsonl 按 mtime 缓存(每个写入
+    窗口只全文扫一次;跨 run 追加文件随局数线性增长,逐 round 查询不该
+    每次全扫)。
     """
     path = _telstate.get_recorder().replay_dir / 'decisions.jsonl'
     try:
@@ -37,7 +50,7 @@ def _strategy_live_rounds(run_id: str) -> set[tuple[int, int]]:
         return _STRATEGY_LIVE_CACHE[ck]
     live: set[tuple[int, int]] = set()
     for d in read_jsonl(path):
-        if d.get('run_id') == run_id and d.get('strategy_id'):
+        if d.get('run_id') == run_id and _row_heartbeat(d):
             live.add((int(d.get('plane') or 1), int(d.get('round_num') or 0)))
     # 缓存只留最新 mtime 条目(防长期运行膨胀)
     _STRATEGY_LIVE_CACHE.clear()
@@ -47,7 +60,7 @@ def _strategy_live_rounds(run_id: str) -> set[tuple[int, int]]:
 
 
 def strategy_round_live(run_id: str, key: tuple[int, int]) -> bool:
-    """(plane, round) 是否有带 strategy_id 的决策行(迁移审计 w103(git 历史) 件1 查询端)。"""
+    """(plane, round) 是否有策略心跳行(ADR-0342 探针查询端;dd-031 重写判据)。"""
     return key in _strategy_live_rounds(run_id)
 
 
@@ -70,19 +83,23 @@ def dead_streak_transition(prev_key: tuple[int, int] | None,
 
 def check_strategy_live_streak(all_rows: list[dict],
                                streak_threshold: int = 3) -> list[str]:
-    """生产检查项(迁移审计 w103(git 历史) 件2;run_checks_on_replay 消费):策略失活局/失活段。
+    """生产检查项(迁移审计 w103(git 历史) 件2;run_checks_on_replay 消费):外环停转局/停转段。
 
-    判据:该 run 的 (plane, round) 全集中,「无任何带 strategy_id 决策行」
-    的连续轮数 ≥ streak_threshold → 违规。迁移审计 w98(git 历史) 两局实录=整局恒空(全程
-    57/61 轮),streak=轮数 → 必报;阈值取 3(整局空与 迁移审计 w98(git 历史) 形态远超;
-    <3 的孤立空轮多为暂态/接管帧,不报警——非 sim 检查,生产局判栈用,
-    与 sim 检查网(cw_sim_checks)分栈:sim 批 strategy 恒在,跑了也是
+    判据(dd-031 重写,与 strategy_round_live 同源 _row_heartbeat):该 run
+    的 (plane, round) 全集中,「存在决策行但全部无心跳(sid 空 ∧ actions
+    空)」的连续轮数 ≥ streak_threshold → 违规。检测边界:decisions 全无行
+    的轮在本数据源上不可见(整轮零行只能靠 outcomes 侧对账),本检查实际
+    辖「决策面只写了哑行(如 plan 异常留证行)」的停转形态,语义相邻。辖域声明:本检查只辖「外环停转」
+    (进程级失活);策略内容性死亡(兜底垃圾局,载体行照发)在行面不可
+    判,归离线判栈/复盘(dd-031 Considered Options)。阈值取 3(整局停转
+    远超;<3 的孤立空轮多为暂态/过渡帧,不报警——非 sim 检查,生产局
+    判栈用,与 sim 检查网(cw_sim_checks)分栈:sim 批外环恒转,跑了也是
     恒绿,不进 _BATCH_CHECKS)。
     """
-    rounds: dict[tuple[int, int], bool] = {}   # key → live
+    rounds: dict[tuple[int, int], bool] = {}   # key → 有心跳行
     for d in all_rows:
         k = (int(d.get('plane') or 1), int(d.get('round_num') or 0))
-        rounds[k] = rounds.get(k, False) or bool(d.get('strategy_id'))
+        rounds[k] = rounds.get(k, False) or _row_heartbeat(d)
     streak = worst = 0
     for k in sorted(rounds):
         if k[0] != 1:
@@ -94,8 +111,8 @@ def check_strategy_live_streak(all_rows: list[dict],
             streak = 0
     if worst >= streak_threshold:
         dead_n = sum(1 for k in rounds if k[0] == 1 and not rounds[k])
-        return [f'P1 策略失活连续 {worst} 轮(共 {dead_n} 轮无 '
-                f'strategy_id 决策行——W98 恢复兜底局形态,ADR-0342)']
+        return [f'P1 外环停转连续 {worst} 轮(共 {dead_n} 轮零决策行,'
+                f'无 sid 行也无载体行——外环停转形态,ADR-0342/dd-031)']
     return []
 
 
