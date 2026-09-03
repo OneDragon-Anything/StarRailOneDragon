@@ -44,12 +44,12 @@ def _monotonic() -> float:
 # 加固 / 0q 排他 / CwScreenBattleWait 完成白名单三处消费同源。
 
 #: 「强敌」判别片段(误读鲁棒;勿改回全词「强敌来袭」——来袭二字可误读)。
-BOSS_BRIEFING_TOKEN: str = '强敌'
-
-
+#: 双形态:简体「强敌」 + 繁首「強敌」——同一横幅标题的 OCR 输出随渲染波动
+#: (实证:一局读「强敌米」,另一局读「強敌来袭」繁首,analyze 实锤)。
+BOSS_BRIEFING_TOKENS: tuple[str, ...] = ('强敌', '強敌')
 def is_boss_briefing_texts(texts: list[str]) -> bool:
     """全帧 OCR 文本 → 是否 boss 简报画面(纯函数;判别单一源)。"""
-    return any(BOSS_BRIEFING_TOKEN in (t or '') for t in texts)
+    return any(tok in (t or "") for t in texts for tok in BOSS_BRIEFING_TOKENS)
 
 
 def read_ocr_texts(ctx, screen) -> list[str]:
