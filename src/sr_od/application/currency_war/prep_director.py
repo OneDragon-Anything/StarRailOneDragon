@@ -1151,7 +1151,7 @@ class PrepDirector(SrOperation):
         if obs.event_overlay is not None:
             # overlay 在场 → 交回外循环重识别分发(无计数;对应 loop 0x 分支/op 接管)
             log.info(f'[cw][director] 事件 overlay({obs.event_overlay})→ 交回外循环分发')
-            return self.round_wait(f'事件overlay({obs.event_overlay})交回外循环', wait=0.8)
+            return self.round_success(f'事件overlay({obs.event_overlay})交回外循环分发', wait=0.8)
         # 接管局补采(W971 §2.1,挂点随单轮观察段平移;详见块内注释)
         _tk = self._takeover_collect_if_needed(match, session)
         if _tk is not None:
@@ -1202,17 +1202,17 @@ class PrepDirector(SrOperation):
         if isinstance(action, DeferSpheres):
             session.defer_count += 1
             log.info(f'[cw][director] DeferSpheres(defer={session.defer_count})→ 交回外循环')
-            return self.round_wait('球留置(空动作),交回外循环', wait=1.0)
+            return self.round_success('球留置(空动作),交回外循环', wait=1.0)
         if isinstance(action, BailToOuter):
             # 词表已退役(W971 §2.6.1);防御性兜底 = 原样交回(无计数)
             log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环(词表退役兜底)')
-            return self.round_wait(f'BailToOuter({action.reason}),交回外循环', wait=1.0)
+            return self.round_success(f'BailToOuter({action.reason}),交回外循环(词表退役兜底)', wait=1.0)
         # F3 校验(非法:拒绝执行 + 交回留证)
         err = self._executor.validate(action)
         key = action_key(action)
         if err is not None:
             log.warning(f'[cw!][director] 参数非法 {key}: {err} → 拒绝,交回外循环留证')
-            return self.round_wait(f'参数非法 {key}:{err},交回外循环', wait=1.0)
+            return self.round_success(f'参数非法 {key}:{err},交回外循环留证', wait=1.0)
         # —— ④ 期望态计算(动作发出点;None=无法建真值不评)+ 执行前置记账
         _drag_expect = None
         if isinstance(action, (SellBench, DeployMove)):
@@ -1277,8 +1277,8 @@ class PrepDirector(SrOperation):
                 log.info(f'[cw][director] {key} 验证失败 → 恢复原语({_prim})→ 交回外循环')
             except Exception as e:  # noqa: BLE001  恢复异常不阻塞交回
                 log.warning(f'[cw!][director] 恢复原语异常 {key}: {e}')
-            return self.round_wait(f'{key} 验证失败({detail}),已试恢复,交回外循环', wait=1.0)
-        return self.round_wait(f'{key} ✓,交回外循环重识别', wait=1.0)
+            return self.round_success(f'{key} 验证失败({detail}),已试恢复,交回外循环', wait=1.0)
+        return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
 
     def _takeover_collect_if_needed(self, match, session) -> OperationRoundResult | None:
         """接管局补采(W971 §2.1/01-opening §2.1;单轮化后挂点 = 单轮 op 观察段)。
@@ -1324,7 +1324,7 @@ class PrepDirector(SrOperation):
         if _affixes and not getattr(session, 'briefing_affixes', None):
             session.briefing_affixes = _affixes
             log.info('[cw][director] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
-        return self.round_wait('接管补采执行,交回外循环重识别', wait=1.0)
+        return self.round_success('接管补采执行,交回外循环重识别', wait=1.0)
 
     def _bench_full_break_round(self, match, session, obs, config) -> OperationRoundResult | None:
         """席满破墙单轮(M16,ADR-0136):备战席满警告模态拒绝拖拽/出战 →
