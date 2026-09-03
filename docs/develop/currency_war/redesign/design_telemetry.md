@@ -2495,7 +2495,7 @@ grep 式=`三选一`,六审查文件全量命中 **13 处**,逐位归类:
 |---|---|---|---|
 | R178-症1(中) | IMPL_DESIGN §5.3 Δ息流对拍锚(R6-8 行)「公式钉死」句钉 cap_resolved 现值式且零打标,与四面现行权威两读:①同格 R63-1④「断言生产式消费 cap_sup 而非决策帧现值 cap_resolved(第二项按现值 cap 实现即红)」(L472 亲读)②canonical 枚举表行 1(design_economy §E4.2 L89「Δ息流̂ 生产式两项(line_switch_sell/增量算子) \| cap_sup」,亲读)③§1 horizon 行镜像注册修正式「Δ息流̂=min(⌈r/10⌉,cap_sup)+cap_sup×max(0,R_截−1)」(IMPL_DESIGN L128,亲读)④同文件 L478 C_stay 锚同族修正本位带「R63-1:cap 随视界上确界,原 cap 现值读法打标作废」标注而本句无——R98 批对齐漏扫本句 | 【工程裁量·错账修正(同步类)】钉死句就地改书 cap_sup 形态(=min(⌈r/10⌉,cap_sup)+cap_sup×max(0,R_截−1)),同句群「复合安全界 cap×R_截」两处+「非复合界 min(⌈r/10⌉,cap)」一处裸 cap 字面随同断言链一并 cap_sup 化(生产式升 cap_sup 后按现值 cap 组装安全界使「生产式 ≤ 安全界」断言在升帽可达局失效);就地追加【R178 同步勘误标】全量记录原句与漏扫成因;冻结邻界申报=对拍锚钉死句系 §5.3 度量面验证装置辖,本修正系口径同步错账(R98-F1d/R64-2 先例通道),非装置变更、零新增断言;零语义发明——形态以四面现行权威亲读推导(canonical 行 1 无条件式 cap_sup+L128 镜像式逐字同构) | IMPL_DESIGN.md L472(行内替换,行号稳定;编辑后亲验:钉死式=cap_sup 双项、勘误标在位) |
 | R178-症1 复扫新增位点(中低,同族第三位) | 复扫(grep 'cap_resolved' IMPL_DESIGN 全文亲跑)发现 §2.2 line_switch_sell 判据式单元格内 Δ息流消费闭式推导链(R8-2→R7-4→R9-3 叙述)载「生产式定谳(R8-2【证明】)=Δ息_1+cap_resolved×max(0,R_截−1),复合安全上界 cap×R_截…」零 supersede 标——R98 对齐六位点(§2.5/§1/§2.7/§3.1/组-端/序数导航,R98 节 L326 亲读)不含 §2.2,同族漏扫 | 【工程裁量·错账修正(核读标)】推导链叙述按史档保留零改写,就地追加【R178 核读标】声明本段 cap_resolved/cap 字面系 R63-1 前口径、落码以 cap_sup 形态核读(canonical 行 1/L128 权威,升帽可达局现值组装=不可逆卖出 fail-open) | IMPL_DESIGN.md L191(行内追加,行号稳定) |
-| R178-症2(中低) | NEW_MATH_FRAMEWORK.md(路径=.debug/temp/currency_war/redesign/NEW_MATH_FRAMEWORK.md,自查确认)两处 bench 维活文字零打标:①头注 L8「λ_death 桶定义补 bench 前后台强度维(§2 λ 行/§3.3 #11)」②§3.3 #11 行 L193「桶定义含 bench 前后台强度维 + 直通线局补标定,详 §2 λ 行注记」——与现行 PL 键权威(IMPL_DESIGN §1 lambda_death 行「板面/bench 维**不入键**(PL 键实证…)」L103 亲读;§2.7.1 注记 6 L267)漂移;R63-4「总纲物理打标挂账下批」(IMPL_DESIGN §1 lambda_death 行 R63-4 标,亲读)仅在 §2 λ_death 行本位兑现(NMF L145 双标=R63-4 标+裁定一/R26-H1 supersede 标,亲读),头注/#11 逃逸 | 【工程裁量·挂账兑现】两位点各就地追加【R178 supersede 标】:声明 bench 维已随 PL 键时代退役、现行权威=IMPL_DESIGN §1 lambda_death 行、本位系 R63-4 物理打标挂账的逃逸位;NMF 系 math_proofs 对照材料,编辑授权=对齐现行权威的挂账兑现(R63-4 先例),零语义发明;#11 位「详 §2 λ 行注记」指针指向已打标行但本位文字独立可读故仍需本位标记(申报在标内) | NEW_MATH_FRAMEWORK.md L8+L193(行内追加,行号稳定;编辑后亲验双标在位) |
+| R178-症2(中低) | NEW_MATH_FRAMEWORK.md(路径=docs/develop/currency_war/redesign/reports/NEW_MATH_FRAMEWORK.md,自查确认)两处 bench 维活文字零打标:①头注 L8「λ_death 桶定义补 bench 前后台强度维(§2 λ 行/§3.3 #11)」②§3.3 #11 行 L193「桶定义含 bench 前后台强度维 + 直通线局补标定,详 §2 λ 行注记」——与现行 PL 键权威(IMPL_DESIGN §1 lambda_death 行「板面/bench 维**不入键**(PL 键实证…)」L103 亲读;§2.7.1 注记 6 L267)漂移;R63-4「总纲物理打标挂账下批」(IMPL_DESIGN §1 lambda_death 行 R63-4 标,亲读)仅在 §2 λ_death 行本位兑现(NMF L145 双标=R63-4 标+裁定一/R26-H1 supersede 标,亲读),头注/#11 逃逸 | 【工程裁量·挂账兑现】两位点各就地追加【R178 supersede 标】:声明 bench 维已随 PL 键时代退役、现行权威=IMPL_DESIGN §1 lambda_death 行、本位系 R63-4 物理打标挂账的逃逸位;NMF 系 math_proofs 对照材料,编辑授权=对齐现行权威的挂账兑现(R63-4 先例),零语义发明;#11 位「详 §2 λ 行注记」指针指向已打标行但本位文字独立可读故仍需本位标记(申报在标内) | NEW_MATH_FRAMEWORK.md L8+L193(行内追加,行号稳定;编辑后亲验双标在位) |
 
 **与 R1-R177 零冲突自查**:
 1. 冻结族零触碰(重点项):症 1 两处编辑落点=§5.3 对拍锚钉死句与 §2.2 判据单元格内的公式同步/核读标(口径向 canonical 行 1/R63-1 既有定谳对齐,R98-F1d/R64-2 错账修正先例通道),非度量面验证装置的本体变更、零新增断言、零新增键;症 2 落点=math_proofs 对照材料挂账兑现,非冻结族任何位点;canonical 表(design_economy §E4.2)三列零编辑。
@@ -2886,7 +2886,7 @@ L530/L532/L537/L538/L556/L560(装配链表述与 decision_assembly 文件名)=R1
 - 症3(附章溯源走样):v2 附章行 3/4/5 恢复裁定指针(R193 症1/症3)、键名/粒度表述、SwapDeploy 现役发射代码锚(remediation.py L687/cw_evolution.py L1581)与核验记录;审查链补 R195 症1·症3。
 - 自检:三症修注全部打标不删史;判语义零改义(症1 为词表事实修正+辖域声明,非判变更——若视为词表变更则属 v2 定稿日内的勘误,随 v2 附章不另起版本);冻结族/冻结残余 11 项零触碰。IMPL_ADV_R195。
 
-## R196 修复批(CW R196 对抗审查「七症+两观察」处置,2026-09;报告原文=IMPL_ADV_R196.md,任务书=编排者 R196 修复批裁决;产出报告=.debug/temp/currency_war/core_swap/R196_FIX_REPORT.md)
+## R196 修复批(CW R196 对抗审查「七症+两观察」处置,2026-09;报告原文=IMPL_ADV_R196.md,任务书=编排者 R196 修复批裁决;产出报告=docs/develop/currency_war/redesign/reports/core_swap/R196_FIX_REPORT.md)
 
 > 攻击对象=cw4 新核已落码件(步3+4 与步4b 均结算,写面空)。文件面=src 侧 cw4/{entry,proof,mandate,bridge,shop 牵连}.py+criteria/sell.py+series_adapter.py+strategies/mandate_v1_strategy.py+本文件(键行+本节)+sr-od-test 两测试件;契约 v1/v2 正文零改动。逐症修注三元组与复验记录=R196_FIX_REPORT.md(单一事实源);本节登记键行与裁量。
 
@@ -2914,7 +2914,7 @@ L530/L532/L537/L538/L556/L560(装配链表述与 decision_assembly 文件名)=R1
 
 **复验记录(全实测)**:①步3+4/4b 既有测试全绿(test_cw4_mandate_v1 61+test_cw4_shop_line 34,含更新后的 17 类判型锁);②双门复跑:baseline_self_pairing_gate n=20 零污染 + arm_diff_probe n=6 相异,3 慢测全绿;③新增行为测试 20 项(换线活/回锁窗/冲突丢弃/截断逐类/影子键/常数单源)全绿;CW L1 全量 2366 passed 零红;ruff 改动文件全过。
 
-## R197 修复批(CW R197 对抗审查「九症+OBS-1 复核」处置,2026-09;报告原文=IMPL_ADV_R197.md,任务书=编排者 R197 修复批裁决[A/B 前最后一道闸];产出报告=.debug/temp/currency_war/core_swap/R197_FIX_REPORT.md)
+## R197 修复批(CW R197 对抗审查「九症+OBS-1 复核」处置,2026-09;报告原文=IMPL_ADV_R197.md,任务书=编排者 R197 修复批裁决[A/B 前最后一道闸];产出报告=docs/develop/currency_war/redesign/reports/core_swap/R197_FIX_REPORT.md)
 
 > 攻击对象=cw4 新核已落码件(步3+4/4b+R196 修复批)。文件面=src 侧 cw4/{entry,proof,bridge,shop}.py+sim/ab_core_swap.py+本文件(键节+索引+本节)+sr-od-test 两测试件;契约 v1/v2 正文零改动;冻结族/冻结残余 11 项/runner.py 零触碰。逐症修注三元组与复验记录=R197_FIX_REPORT.md(单一事实源);本节登记键行、裁决落地与裁量。
 
@@ -2943,7 +2943,7 @@ L530/L532/L537/L538/L556/L560(装配链表述与 decision_assembly 文件名)=R1
 
 **复验记录(全实测)**:①cw4 全测试绿:test_cw4_mandate_v1+test_cw4_shop_line 快集 97 passed(回声测试重写后语义锁)+三门慢测 4 passed(baseline_self_pairing n=20/新臂自配对 n=10/arm_diff n=6/mandate 侧 n=20);②CW L1 全量(``-m "not slow and not legacy_baseline"``)结果见 R197_FIX_REPORT 复验节;ruff 改动文件全过(含 autofix:注解引号/非 Yoda/尾空白)。
 
-## 零刷新修复批(CW 换核 A/B 零刷新事故处置,2026-09-03;诊断=.debug/temp/currency_war/ab_run_20260903/ZERO_REFRESH_DIAG.md,产出报告=.debug/temp/currency_war/core_swap/ZERO_REFRESH_FIX_REPORT.md)
+## 零刷新修复批(CW 换核 A/B 零刷新事故处置,2026-09-03;诊断=.debug/temp/currency_war/ab_run_20260903/ZERO_REFRESH_DIAG.md,产出报告=docs/develop/currency_war/redesign/reports/core_swap/ZERO_REFRESH_FIX_REPORT.md)
 
 > 攻击对象=诊断裁定的两病灶+A/B 量具加固。文件面=src 侧 cw4/{shop,statefn/predicates,mandate,audit/provisional}.py+sim/ab_core_swap.py+sr-od-test 新测试件 test_cw_zero_refresh_fix.py(+slow_marks.txt 补 2 行);契约零改动;冻结族/冻结残余 11 项/runner.py 零触碰(git status 见 runner.py 并行在飞,量具守卫全落 ab_core_swap);诊断的 CASCADE 结论(分析件)不入本批。
 

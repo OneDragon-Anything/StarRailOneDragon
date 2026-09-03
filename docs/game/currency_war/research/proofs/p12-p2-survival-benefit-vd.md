@@ -9,7 +9,7 @@
 
 ## 0. v1 作废声明与重推依据
 
-v1 验尸(`.debug/temp/currency_war/redesign/P12_VALIDATION.md`,五门验证)三根因:
+v1 验尸(`docs/game/currency_war/research/validations/P12_VALIDATION.md`,五门验证)三根因:
 
 1. **收益主分量违纯金流公理**:v1 收益式 `1.6×R + 0.362×lossp×hp_to_gold×battles` 的存活分量(中带 20.3 金)占 benefit 44.3 的 46%,该 `hp_to_gold×L` 形态被 P15v2 §0 明文列为已登记违规形态(P51 v3 口径:「血不入任何账与自变量」)。**剥离检验**:剥掉换算项后 benefit=1.6R=24,j=1 全线转负(lv6 2费 24−32.4=−8.4)——v1「j≥1 翻正」结论整体依赖违规分量。
 2. **Δwin P1 校准越域**:registry 自注「dwin 侧 h3_win_rate 为 P1 校准骨架,P2 分 rung 胜率表未标定——只作方向修正,量级未标定」;v1 的拒绝域移动是幅度结论,恰落入被禁的量级消费。

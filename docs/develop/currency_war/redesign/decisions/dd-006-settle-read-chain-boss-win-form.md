@@ -80,5 +80,5 @@ boss 行同读 **0.392**(疑固定值);boss 行 `killed=False`(节点实为胜�
 - 离线证据:`.debug/temp/currency_war/redesign/fixtures/settle_ocr/`
   (h_092 帧 + probe_boss_frames/probe_fix_verify 输出;生产日志 mcp_server.log
   02:13:02-02:13:07);
-- 批报告:`.debug/temp/currency_war/redesign/REAL_MACHINE_COLLECTION_1.md` ①/④/⑥;
+- 批报告:`docs/develop/currency_war/redesign/reports/REAL_MACHINE_COLLECTION_1.md` ①/④/⑥;
 - 设计单一源:`docs/develop/currency_war/strategy/05_observation.md` §3.1。

@@ -39,7 +39,7 @@ sim 引擎**投资注入处**(`cw_sim_invest.py` 日程逐 (位面,轮) 直注�
 - **确认通道(二级)=精确正则族「最大利息|利息.{0,6}提升至」**:注册表内半边 effect 原文全扫 + 分诊集升帽确认。
 - 辖域分工:本通道辖「文案含『利息』字样」的词形族**内**变体;词形**族外**变体由扣减式正交触发器承接(见 L4,两半边互补无空隙)。
 
-两观察键(design_telemetry.md 键节 `interest_overcap_trigger`/`interest_overcap_check_closed`;【R95-3 指针勘误(IMPL_ADV_R95 A3):原指针 `.debug/temp/currency_war/redesign/IMPL_DESIGN.md` §5.2 系重组前介质锚,该节重组后已是指针节,键行实体在 design_telemetry,打标不删史】):
+两观察键(design_telemetry.md 键节 `interest_overcap_trigger`/`interest_overcap_check_closed`;【R95-3 指针勘误(IMPL_ADV_R95 A3):原指针 `docs/develop/currency_war/redesign/reports/IMPL_DESIGN.md` §5.2 系重组前介质锚,该节重组后已是指针节,键行实体在 design_telemetry,打标不删史】):
 
 1. **`interest_overcap_trigger`**(观察级):扣减式判定证据成立帧/批计数;超标判读=非零即触发核查批。区间外帧归因分键(按核查结论,禁混计):①`r79_3_zero_obs_upcap` 零观测升帽局(核查预期关闭)/②`r79_3_ocr_misread_big` OCR 误读大值(关闭)/③`r79_3_flat_miss_misreport` 误读名 miss 漏减 Σflat 误报(关闭)/④真超息=漏登(不关闭,进注册表补全批)。另登记第五通道(漏报向)`r79_3_fake_append_flathigh`:OCR 假名 append 使 Σflat 虚高、真漏登帧差值压回区间内不触发,配 append 二次读数校验。
 2. **`interest_overcap_check_closed`**(观察级):核查批判定「非升帽」而关闭的核查件数/批。**核查批判定者与节律钉死**:判定者=落码后治理通道的批判读角色;节律=事件触发——`interest_overcap_trigger` 计数>0 的批判读时点开一次核查批,无触发不开批;件=未注册策略身份(归一后同名合并一件,禁按超息值去重,超息值仅披露维);判读者缺席 ⇒ 核查义务挂账至下一个设批判读时点(顺延不悬置)。[现行=R88-2][现行=R90-7][现行=R78-4][现行=R77-1][现行=R79-3]

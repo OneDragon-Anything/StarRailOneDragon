@@ -205,10 +205,10 @@ economy §7 阶段共识:**中期(P2)「稳定 ≥50,用利息升人口为主,�
 
 | 锚 | 持久索引 |
 |---|---|
-| **q_full 实机标定(v2.1 主口径)** | 实机 replay 遥测 154 可判局健康带 465 轮(§2A 转录全部数字);复算脚本=**q_full_corpus.py(已入库 tools/cw/proofs/p37/,v3.1 起含 CI cluster bootstrap,可复跑)**;closure 断言=p37v2_ev_closure.py(数据锁,语料现算);历史:λ 基座攻击批 q_r09_qfull.py(仓外临时目录,仅点估计);攻击报告=.debug/temp/currency_war/redesign/IMPL_LAMBDA_FOUNDATION_ATTACK.md §II-7 |
+| **q_full 实机标定(v2.1 主口径)** | 实机 replay 遥测 154 可判局健康带 465 轮(§2A 转录全部数字);复算脚本=**q_full_corpus.py(已入库 tools/cw/proofs/p37/,v3.1 起含 CI cluster bootstrap,可复跑)**;closure 断言=p37v2_ev_closure.py(数据锁,语料现算);历史:λ 基座攻击批 q_r09_qfull.py(仓外临时目录,仅点估计);攻击报告=docs/develop/currency_war/redesign/reports/IMPL_LAMBDA_FOUNDATION_ATTACK.md §II-7 |
 | 标定批(v2 遗留,q_full 旧口径) | W959 sim 找问题批:HEAD commit 8c07c415 的 `git archive` 档案码流 + seeds 959100-959399 + n=300 + 池指纹 6400d5d8edeaf68d+eqg1——按同指纹同 seed 段可复跑(约 96 s);本篇 §2 已转录全部判读数字,本篇即持久记录。逐条升级事件=upgrade_events.csv(1759 条,随批归档于批产物目录;临时批路径不复引) |
 | λ3 分层表 | P51 v3 §4-B-2(p≤7×battle 0.065 [0.046,0.086];run 级 cluster bootstrap;R=事后量等口径注见 P51 §5-10/§5-11) |
-| 败局伤害带 | P15v2(重证件,.debug/temp/currency_war/redesign/P15v2_REPROOF.md;语料入库 tools/cw/proofs/p15)——仅概率侧/机制叙述消费 |
+| 败局伤害带 | P15v2(重证件,docs/game/currency_war/research/validations/P15v2_REPROOF.md;语料入库 tools/cw/proofs/p15)——仅概率侧/机制叙述消费 |
 | 连胜/败金表 | `cw_economy.py` `STREAK_GOLD_TABLE=(1,1,2,2,2,3,4)` / `LOSS_GOLD_BY_NODE={battle:2,encounter:4,boss:4}`(ADR-0439) |
 | 常量单一源 | `cw_factions.py` `INTEREST_THRESHOLD=50`/`INTEREST_RATE=0.1`;`cw_effect_ledger.py` `interest_with(default_cap=5)`;override 域=`cw_investments.py` `STRATEGY_ECONOMY`(开源节流 9/利息上调 10/买断制 0);息档口径 `ev.interest_cost` |
 | 机制原文 | gameplay.md(等级→可上阵数量)、economy §2.1(升级不刷新商店)、economy §7(阶段共识)、economy §10.1(息律投资四类修正)、user_playstyle [32](人口 cap 当场生效) |

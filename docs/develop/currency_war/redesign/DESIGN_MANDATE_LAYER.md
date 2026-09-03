@@ -1,7 +1,7 @@
 # 骨架行为层(mandate 层)根设计件
 
 > 任务:解释「多代重构次次失败」的架构级根因,并给出骨架行为层设计。
-> 证据面:`.debug/temp/currency_war/redesign/` 下 AB_FAIL_ATTRIBUTION.md(s0 批)、AB_R2_ATTRIBUTION.md(r2 批)、AB_R3_ATTRIBUTION.md(r3 批)、PREREG_cw3_vs_legacy_AB.md;`docs/develop/currency_war/redesign/01_strategy_layer.md`;`docs/game/currency_war/research/user_playstyle.md`(息律簇 [2][6][11][12][17][28][41] 与过渡簇 [13][20][21][22][31][32][33])。
+> 证据面:`docs/develop/currency_war/redesign/reports/` 下(PREREG 件=../prereg/) AB_FAIL_ATTRIBUTION.md(s0 批)、AB_R2_ATTRIBUTION.md(r2 批)、AB_R3_ATTRIBUTION.md(r3 批)、PREREG_cw3_vs_legacy_AB.md;`docs/develop/currency_war/redesign/01_strategy_layer.md`;`docs/game/currency_war/research/user_playstyle.md`(息律簇 [2][6][11][12][17][28][41] 与过渡簇 [13][20][21][22][31][32][33])。
 > 结论强度纪律:每条论断 = 数据证据 + 文档依据链,取最弱一环;无证据支撑的标【待证】。
 > 本文只做设计,不改任何代码。数值一律写常量名不写死值(01 数值纪律)。
 > **【R-SYNC 2026-09 · 骨架层同步审计批】**:本件已与 `IMPL_DESIGN.md`(实现方案设计件,现行态=R1-R31 修复+直通线并入批+R26-H1 λ 消费层姿态架构重写)全文对账,失同步点在正文逐处打【R-SYNC 2026-09】标并指向 IMPL_DESIGN 权威节。**权威方向=IMPL_DESIGN**:本件是三层权限模型与文档依据链的骨架层单一源,判据形态/执行序/落码载体/测试判据以 IMPL_DESIGN 为准,不反向发明。

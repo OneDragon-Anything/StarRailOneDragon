@@ -76,7 +76,7 @@ def make_core_swap_arms() -> tuple[Any, Any]:
 
 
 #: 标定批 V1 注入值(V̄_net;值/出处/方法/状态的单一叙述源 =
-#: .debug/temp/currency_war/core_swap/CALIB_REPORT.md 与 design_telemetry
+#: docs/develop/currency_war/redesign/reports/core_swap/CALIB_REPORT.md 与 design_telemetry
 #: 「标定批」节;此处只做显式注入通道,禁散落第二处数值推导)。
 V_GAP_CALIB_V1: float = 24.7
 V_GAP_CALIB_V1_BAND: tuple[float, float] = (16.7, 24.7)
@@ -502,7 +502,7 @@ def _v6_row_specs() -> list[dict[str, Any]]:
         {'row': 2, 'kind': 'mark',
              'detail': '判读器迁移与 v6 变更均落地(prereg 含 v6 变更记录节)',
              'hint': lambda: 'v6' in _text_of(
-                 '.debug/temp/currency_war/redesign/'
+                 'docs/develop/currency_war/prereg/'
                  'PREREG_cw3_vs_legacy_AB.md')},
         {'row': 3, 'kind': 'order', 'before': 'theta_calib', 'after': 'p_open',
              'detail': '血线阈值标定 ≤ p 开闸(时间戳序)'},

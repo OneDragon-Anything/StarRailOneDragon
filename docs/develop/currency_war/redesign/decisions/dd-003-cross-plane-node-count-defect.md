@@ -1,7 +1,7 @@
 # DD-003:跨位面剩余节点数实现缺陷登记——`total_remaining_nodes` 对全部位面写死 9,L 换轨前必修
 
 > 状态:已登记的实现缺陷(2026-09-01 亲跑证伪;P46_ADV_R3 Z1)。
-> 晋升来源:原裁决记录于 `.debug/temp/currency_war/redesign/P46_ADV_R3*.md`(临时文件,已清理)——本件为其持久化,p46/p40/p47 的「Z1」引用以本件为准。
+> 晋升来源:原裁决记录于 `docs/game/currency_war/research/validations/P46_ADV_R3*.md`(临时文件,已清理)——本件为其持久化,p46/p40/p47 的「Z1」引用以本件为准。
 
 ## 背景
 

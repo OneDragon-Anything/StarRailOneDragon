@@ -1,7 +1,7 @@
 # DD-002:轮岗突变语义勘误——选择后每备战阶段 100% 生效;20% 是观测频率不是机制概率
 
 > 状态:已裁决(2026-08-31 用户方法论裁定「结合游戏效果数据验证」首战命中;DESIGN_FINAL_ATTACK 阻断-2 处置)。
-> 晋升来源:原裁决记录于 `.debug/temp/currency_war/redesign/DESIGN_FINAL_ATTACK.md` 及其补强攻击节(临时文件,已清理)——本件为其持久化。
+> 晋升来源:原裁决记录于 `docs/develop/currency_war/redesign/reports/DESIGN_FINAL_ATTACK.md` 及其补强攻击节(临时文件,已清理)——本件为其持久化。
 
 ## 背景
 

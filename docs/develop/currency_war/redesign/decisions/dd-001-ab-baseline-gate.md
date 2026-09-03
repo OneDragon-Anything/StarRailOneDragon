@@ -1,7 +1,7 @@
 # DD-001:旧决策包删除时序——A/B 过线前不得物理删除(批 1 拆 1a/1b 两段)
 
 > 状态:已裁决(2026-09-01 用户裁定,DESIGN_FINAL_ATTACK 阻断-1 处置)。
-> 晋升来源:原裁决记录于 `.debug/temp/currency_war/redesign/DESIGN_FINAL_ATTACK.md`(临时文件,已清理)——本件为其持久化,redesign 01/03 的引用以本件为准。
+> 晋升来源:原裁决记录于 `docs/develop/currency_war/redesign/reports/DESIGN_FINAL_ATTACK.md`(临时文件,已清理)——本件为其持久化,redesign 01/03 的引用以本件为准。
 
 ## 背景
 
