@@ -183,6 +183,11 @@ class CwLoop(SrOperation):
         self._stall_last_fp: int | None = None
         self._stall_count: int = 0
         self._stall_flag_written: bool = False
+        # 战斗窗口宽限计时起点(monotonic;出战/战斗帧双入口赋值)。接管局首帧
+        # 可直接落战斗窗口(先于任何出战),必须在此初始化——否则 1213 行
+        # ``self._settle.battle_ts = self._battle_ts`` 直接访问未初始化属性
+        # (第八局接管实证:stop 间隙游戏自走进战斗,再起局即崩循环)。
+        self._battle_ts: float | None = None
         # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
         # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 写端已接 2026-08-16)。
