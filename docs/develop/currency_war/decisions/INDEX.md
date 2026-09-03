@@ -34,4 +34,5 @@
 | [dd-027](dd-027-m7-equip-emission-gate.md) | DD-027:M7 装备转移发射门——持有面谓词换变换面谓词(m7_wearable_exists,owned 全量含工具件致非空即发永真)+ 备战期装备闩 cw4_m7_equipped_phase(实机 1-6 RunEquip 备战环活锁 204 帧定谳;空批出口 StartBattle 封死根因) | accepted | 2026-09-04 |
 | [dd-029](dd-029-screen-rename-merged-regen.md) | DD-029:画面改名只改分文件漏再生 merged——运行时加载源漂移致「选择伙伴」遮罩下部署死局(merged 新鲜度锁 + AREA_NO_CONFIG 显式告警[框架层,编排者预批准] + cw_loop 分发锚 iter1 预检 + 事故帧路由 fixture;handler 归属澄清=CwScreenPartner 非专家邀请函) | accepted | 2026-09-04 |
 | [dd-030](dd-030-no-progress-guard.md) | DD-030:备战环无进展守卫——环级活性不变量(连续 3 环同动作签名+状态指纹零推进→存证停机;闩模式升维替代第 4 个逐位闩,替换旧 PREP_STALL 留证线;三历史卡死签名重放全触发) | accepted | 2026-09-04 |
+| [dd-031](dd-031-strategy-live-probe-heartbeat.md) | DD-031:策略失活探针判据重写(误杀修复)——旧判据「轮内无 sid 行=失活」把合法跳过开店的健康局误判死亡连击停机(两局实证);改判据单一源 _row_heartbeat(sid 或 actions 即心跳)三处同修含 sim 检查网;阈值 2 维持,漏报域(兜底垃圾局)显式声明归离线检查网 | accepted | 2026-09-04 |
 | [dd-032](dd-032-p56-t1-buy-face-wiring.md) | DD-032:P56 可变现息线下界 + T1 凑息卖语义重写落码(姊妹缺口收口)——s_reserve:=g*−Σ活期退金投影入买面两消费位;凑息卖改金位触发+目标量止盈,T_SEARCH_A 布尔门退役;P57 双读法参数化生产默认读法②;分键遥测四字段;双读法臂 A/B 三门达+方向预言破线 −23.6% | accepted | 2026-09-04 |
