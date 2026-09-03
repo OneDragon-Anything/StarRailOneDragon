@@ -493,37 +493,13 @@ def decide_shop_wave(state: GameState, session: StrategySession,
     k_band: str | None = None
     _ist = getattr(session, 'v3_intention', None)
     if k is None and _ist is not None:
-        # K 空窗回退(FIX_REVIEW_20260903 R3 扩域:值域全集声明=锁线外
-        # 三带全覆盖,SEEDS_EMPTY_LEDGER_DIAG §4+FIX_REVIEW ②旧核缺口
-        # 1/2/3):战略层产物 target_comp 值域含 None,回退单一源=
-        # cw_intention(禁复制四体系全集/兜底逻辑)——
-        # ① P1 空窗带(支持度 < P1_PAIR_LOCK_MIN_SUPPORT):hoard_
-        #    target_set p1_transition 四体系引擎件全集(消「K 空→零买入
-        #    →支持度永不涨」空窗死锁环);
-        # ② P1 锁线过渡带(支持度 ≥门槛但 pair 未锁帧——update_intention
-        #    逐 game-round 跑,商店波内滞后):p1_early_pair 方向单一源
-        #    (无门槛 top-2;FIX_REVIEW ②缺口2「死带」的正修);pair
-        #    派生空(全驱逐)⇒ 链 hoard 空窗全集兜底;
-        # ③ P2+ 带(plane≥2,target_comp None):hoard_target_set 分带
-        #    (unlocked=绯英⑤兜底/weak=跨线骨架/demoted=骨架满配,
-        #    FIX_REVIEW ②缺口1 的正修)。
-        # 非回退域行为不变(target_comp 非 None ⇒ line_members 原样,
-        # 本分支不辖)。ist 缺失=意向供给缺帧,保守侧不回退(现行 ()
-        # 行为,fail 方向与 committed_authority 缺供给同款)。
-        if getattr(state, 'plane', 1) == 1:
-            if cw_intention.p1_gap_window(state):
-                k_fallback = cw_intention.hoard_target_set(
-                    state, _ist).char_targets
-                k_band = 'shop_k_fallback_p1_gap'
-            else:
-                k_fallback = (
-                    cw_intention.p1_early_pair_members(state, _ist)
-                    or cw_intention.hoard_target_set(state, _ist).char_targets)
-                k_band = 'shop_k_fallback_p1_lock_band'
-        else:
-            k_fallback = cw_intention.hoard_target_set(
-                state, _ist).char_targets
-            k_band = 'shop_k_fallback_p2plus'
+        # K 空窗回退(FIX_REVIEW_20260903 R3 扩域;经济冻结批单一源化):
+        # 派生本体已提为 cw_intention.k_empty_window_fallback(商店域与
+        # 准备域共用,禁第二源);本处只保留消费面(回退采用+计数键)。
+        # ist 缺失=意向供给缺帧,保守侧不回退(现行 () 行为,fail 方向
+        # 与 committed_authority 缺供给同款)。
+        k_fallback, _tok = cw_intention.k_empty_window_fallback(state, _ist)
+        k_band = f'shop_k_fallback_{_tok}'
     # 契约核验(§4.2.2;FIX_REVIEW 防线硬化=可核验派生形态):前提不采信
     # 消费位硬编码声明,核验实解析——k_target=None 且供给在场而回退解析
     # 空集 = 「回退字面量空元组但保留声明」复发形态,违例 ⇒ 不回退

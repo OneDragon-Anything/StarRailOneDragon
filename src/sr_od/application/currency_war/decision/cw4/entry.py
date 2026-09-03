@@ -37,6 +37,7 @@ should_switch/回锁窗/干旱计数全部为影子面(实装接线=过线后批
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -84,6 +85,8 @@ if TYPE_CHECKING:
 
 #: ev_arm 值域(R1-1:skeleton_only=臂① EV 发射面旁路;full=臂② 全开)
 EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
+
+log = logging.getLogger(__name__)
 
 # ===== 帧稳定截断分类(契约 v2 §3.2 备战线域逐类)=====
 
@@ -338,8 +341,27 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                         'event_overlay')]
 
     state = obs.state
+    # 帧级复位(与 posture_release.attach_spend_authorization 同口径):
+    # 每决策段「入口=无声明、段尾=本段真值」,防 posture_unfulfilled 旧值
+    # 跨帧滞留成假信号(病灶②修法的正确性前提)。
+    session.v3_posture_unfulfilled = None
     k = getattr(session, 'target_comp', None)
     k_members = predicates.line_members(k)
+    # K 空窗回退(准备域;经济冻结批病灶①保险层):shop.py 商店域已有
+    # 同款回退,准备域(mandate pass)旧形态 K=None ⇒ k_members=() ⇒
+    # M2 无目标、dominance/M6 停手、引擎只剩 M7,0 买 0 刷经济冻结
+    # (实机局 g_20260904_042657 p1r7-r9)。回退单一源 = cw_intention
+    # (与 shop.py 同源消费,禁复制四体系全集/兜底逻辑);ist 缺失 =
+    # 意向供给缺帧,保守侧不回退(与 shop.py 同款 fail 方向)。
+    if k is None:
+        from sr_od.application.currency_war.kernel import cw_intention
+        _ist = getattr(session, 'v3_intention', None)
+        if _ist is not None and state is not None:
+            _fb, _band = cw_intention.k_empty_window_fallback(state, _ist)
+            if _fb:
+                k_members = tuple(sorted(_fb))
+                session.cw4_counters[f'prep_k_fallback_{_band}'] = \
+                    session.cw4_counters.get(f'prep_k_fallback_{_band}', 0) + 1
     bench = list(obs.bench_chars)
     deployed = list(obs.deployed_chars)
     bench_names = [b.char_id or '' for b in bench]
@@ -452,11 +474,93 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                                       funding_support=True))
     out = _merge_ev_before_frame_end(out, ev_out)
 
+    # ⑤′ 姿态兑现对账(经济冻结批病灶②):预算核姿态(spend_mode='level')
+    # 授权了本轮升级而发射序列无 LevelUp ⇒ posture_unfulfilled 显式置位
+    # + 姿态降级声明 + 计数/日志。旧形态=守卫字段接而不用:授权面
+    # (get_node_goal,确定性预算核单一供给)与执行面(M3:arm1 存在性 +
+    # spend_unified 整批纪律)判定不一致时零对账,session.v3_posture_
+    # unfulfilled 恒 None(实机局 g_20260904_042657 p1r7-r9 posture=
+    # 'level' 全程零 LevelUp)。本对账只声明不兜底花钱(禁重引入「乱花」
+    # 对立面:P56 下界语义零触碰,升级仍由 M3 判据独裁)。
+    _reconcile_posture_authorization(session, state, out)
+
     # ⑥ 无动作 ⇒ 出战(序列终点)
     if not out:
         out.append(Emitted(StartBattle(), True, 'battle'))
     session.cw4_prev_line_name = cur_name   # 下帧 k_switched 判定基准
     return out
+
+
+def _reconcile_posture_authorization(session: StrategySession,
+                                     state: GameState | None,
+                                     emitted: list[Emitted]) -> dict | None:
+    """姿态兑现对账(经济冻结批病灶②;授权面与执行面的唯一仲裁点)。
+
+    授权面 = ``get_node_goal`` 确定性预算核(spend_mode 单一供给,遥测
+    dp_posture 同源);执行面 = M3 升级链(arm1 存在性 → lv9 停 →
+    spend_unified 整批纪律 → 可负担)。spend_mode='level'(本轮授权升级)
+    而发射序列无 LevelUp ⇒ 逐门评估定位未兑现原因,显式声明:
+    - ``session.v3_posture_unfulfilled`` 置位(遥测 posture_unfulfilled
+      消费;形状与 decision_v2.posture_release.reconcile_spend 同构);
+    - 计数键 ``posture_unfulfilled_level``(session.cw4_counters);
+    - log.info(带未兑现原因,判读可直接归因)。
+
+    只声明不兜底:不因授权未兑现而改发射(升级发射仍由 M3 判据独裁,
+    P56 下界语义零触碰)。授权形态非 level / 已发射 LevelUp ⇒ 返回
+    None(且入口帧级复位保证无声明滞留)。state 缺席=无姿态供给,不评。
+    """
+    if state is None:
+        return None
+    from sr_od.application.currency_war.kernel.cw_economy import get_node_goal
+    ng = get_node_goal(state.plane, state.round_num, gold=state.gold,
+                       level=state.level, hp=state.hp,
+                       strategies=list(getattr(state, 'active_strategies',
+                                               []) or []) or None)
+    if getattr(ng, 'spend_mode', '') != 'level':
+        return None
+    if any(isinstance(e.action, LevelUp) for e in emitted):
+        return None
+    # 逐门定位未兑现原因(与 run_mandate M3 链同序同判据,复用判据本体
+    # 禁第二实现;M3 未发射时这些门的求值是纯函数,零副作用)。
+    from sr_od.application.currency_war.decision.cw4.criteria import levelup
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        clicks_to_next_level,
+        xp_click_cost,
+    )
+    cap = state.max_units()
+    if levelup.lv9_stop(state.level):
+        reason = 'lv9_stop'
+    elif cap is None:
+        reason = 'contract_cap_missing'
+    elif not predicates.arm1_existence(
+            len([d for d in state.deployed if d is not None]),
+            [b.char_id or '' for b in state.bench if b is not None],
+            [d.char_id or '' for d in state.deployed
+             if d is not None], cap):
+        reason = 'arm1_board_not_full'
+    else:
+        clicks = clicks_to_next_level(state)
+        cost = xp_click_cost(state)
+        if not levelup.spend_unified(clicks, state.gold, cost):
+            reason = 'spend_unified_batch_unaffordable'
+        elif state.gold < clicks * cost:
+            reason = 'unaffordable'
+        else:
+            reason = 'contract_other'
+    un = {'auth_id': f'{state.plane}-{state.round_num}',
+          'channel': 'levelup',
+          'reason': reason,
+          'channels': {'levelup': reason},
+          'action': 'downgrade'}
+    session.v3_posture_unfulfilled = un
+    counters = getattr(session, 'cw4_counters', None)
+    if isinstance(counters, dict):
+        counters['posture_unfulfilled_level'] = \
+            counters.get('posture_unfulfilled_level', 0) + 1
+    log.info('[cw4][posture] level 授权未兑现(p%sr%s g=%s lv=%s):%s '
+             '(posture_unfulfilled 置位,显式降级,不兜底花钱)',
+             state.plane, state.round_num, state.gold, state.level, reason)
+    return un
 
 
 def _merge_ev_before_frame_end(skeleton: list[Emitted],

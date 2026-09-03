@@ -554,11 +554,18 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
         return
     shop_names = {getattr(c, 'name', '') or '' for c in (state.shop or [])}
     for sys in systems:
-        if sys in ist.pair_evicted:
-            continue
-        members = _pair_members((sys,))
-        if members & shop_names:
+        if members_in_shop(sys, shop_names):
             ist.pair_drought[sys] = 0
+            # 断供证据被驳即撤销驱逐(经济冻结批):驱逐的唯一证据=
+            # 「连续 N 轮不在在店供给面」;成员重新在店 ⇒ 证据失效,
+            # 驱逐必须可逆。单向驱逐(旧形态)= 经济冻结病灶①的根:
+            # 5 轮店干后两体系永久出局,p1_pair 重派生得 (),目标空窗,
+            # 决策引擎无方向空转(实机局 g_20260904_042657 p1r7-r9)。
+            if sys in ist.pair_evicted:
+                ist.pair_evicted.discard(sys)
+                ist.last_event = f'un-evict:pair_supply:{sys}'
+            continue
+        if sys in ist.pair_evicted:
             continue
         n = ist.pair_drought.get(sys, 0) + 1
         ist.pair_drought[sys] = n
@@ -566,6 +573,12 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
             ist.pair_evicted.add(sys)
             ist.pair_drought[sys] = 0
             ist.last_event = f'evict:pair_drought:{sys}:{n}'
+
+
+def members_in_shop(sys: str, shop_names: set[str]) -> bool:
+    """体系成员与在店名集是否相交(``_pair_members`` 口径的供给判定;
+    提为模块级函数供断供计数与单测共用,禁在消费点另写成员展开)。"""
+    return bool(_pair_members((sys,)) & shop_names)
 
 
 def p1_early_pair(state: GameState,
@@ -927,6 +940,18 @@ def update_intention(state: GameState, ist: IntentionState,
     # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
     _update_pair_drought(state, ist, visible)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
+    # 弱面位面过滤(经济冻结批,病灶③):注册表自注 weak_planes 含当前
+    # 位面的线不产锁线信号——单一源=Comp.weak_planes 注册项自注(如
+    # DOT队 weak_planes=(2,)「P2 被抽陀螺,保命 pivot 不选」)。旧形态
+    # 只滤 maybe_pivot 保命路径,③核心卡可见信号(P2r1 卡芙卡在场)绕过
+    # 过滤锁出 P2 弱面线,选线即死路(实机局 g_20260904_042657)。
+    _pre_wp = len(sigs)
+    sigs = [s for s in sigs
+            if state.plane not in (getattr(get_comp(s.comp_name),
+                                            'weak_planes', ()) or ())]
+    if len(sigs) != _pre_wp:
+        log.info('[cw][intention] 弱面过滤 %d→%d 信号(plane=%s)',
+                 _pre_wp, len(sigs), state.plane)
     revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
     # 「意向降级为弱意向……直至新信号」= 新信号指下一轮起的信号;同轮撤+锁会让
     # 弱意向态不可观测(判读/遥测断档),状态机一回合最多一次转移。
@@ -1078,10 +1103,22 @@ def update_intention(state: GameState, ist: IntentionState,
         # 无信号:保持 unlocked——囤货方向落⑤兜底(hoard_target_set 处理)
 
 
-    # 强制锁线(P3 入口无意向;点0〔修N4〕对象限定)
-    if state.plane >= 3 and ist.phase != 'locked':
+    # 强制锁线(位面入口无意向;点0〔修N4〕对象限定)。经济冻结批扩 P2:
+    # P2 开局必须有目标(目标移交/重 assignment)——P1 配方锁在 P2 退场
+    # (p1_pair:exit_p1)后,若信号未锁(unlocked),旧形态落⑤兜底囤货但
+    # target_comp=None,准备域决策引擎无方向空转;现在 P2 unlocked 帧
+    # 按「weak_planes 过滤 ∧ 核心可达 ∧ 资产最厚」强制 assignment(同 P3
+    # 语义)。P3 起维持原辖域(phase!='locked');P2 收窄到 unlocked:
+    # weak 态是撤销机器在册的意向降级,强制锁会踩掉其「直至新信号」语义。
+    # 位面强锁候选同过 weak_planes 过滤(P3 旧分支未滤,同病灶③面)。
+    # P2 无可达候选 ⇒ 保持 unlocked(⑤兜底绯英档方向,位面余量尚在,
+    # 不降格终局;降格=终局不可达判定,归 P3)。
+    _p2_handoff = state.plane == 2 and ist.phase == 'unlocked'
+    if (state.plane >= 3 or _p2_handoff) and ist.phase != 'locked':
         cands = [c for c in _v2_comps()
-                 if c.name not in ist.evicted and _core_reachable(c, state, visible)]
+                 if c.name not in ist.evicted
+                 and state.plane not in (c.weak_planes or ())
+                 and _core_reachable(c, state, visible)]
         if cands:
             best = sorted(
                 cands,
@@ -1089,8 +1126,12 @@ def update_intention(state: GameState, ist: IntentionState,
                                encounter_window_rounds(intention_core(c), state.level)),
             )[0]
             _lock(ist, state, IntentionSignal(1, 'forced', best.name,
-                                              'P3资产最厚', 1.0), forced=True)
-        else:
+                                              '资产最厚', 1.0), forced=True)
+            if _p2_handoff:
+                # 移交锁与 P3 强制锁分事件标签(判读可辨「P2 开局移交」与
+                # 「P3 入口强制」;标签风格同 last_event 'p1_pair:' 族)。
+                ist.last_event = 'handoff_lock:' + best.name
+        elif state.plane >= 3:
             # 全部不可达 → 降格终局:四体系过渡板深档强化+通用骨架满配
             ist.demoted_endgame = True
             ist.phase = 'unlocked'
@@ -1162,6 +1203,30 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
         return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'fallback')
     chars, equips = _line_hoard(comp)
     return HoardTarget(frozenset(chars), frozenset(equips), 'fallback')
+
+
+def k_empty_window_fallback(state: GameState,
+                            ist: IntentionState) -> tuple[frozenset[str], str]:
+    """K 空窗回退单一源(经济冻结批病灶①):target_comp=None 时目标成员
+    集的分带派生,商店域(shop.py)与准备域(cw4/entry.py)共用本函数——
+    禁在任一消费域复制四体系全集/兜底逻辑(第二源)。
+
+    返回 (成员集, 分带 token):分带 token 供消费域拼遥测计数键
+    (shop 侧键名契约 'shop_k_fallback_<token>' 维持历史键名不变)。
+    分带语义与 shop.py 旧内联派生逐款同源:
+    - p1_gap:P1 空窗带(支持度 < 锁门槛)→ hoard 四体系引擎件全集
+      (消「K 空→零买入→支持度永不涨」死锁环);
+    - p1_lock_band:P1 锁线过渡带 → p1_early_pair 无门槛方向,派生空
+      (全驱逐)⇒ 链 hoard 全集兜底;
+    - p2plus:P2+ → hoard 分带(unlocked=绯英⑤兜底/weak=跨线骨架/
+      demoted=骨架满配)。
+    """
+    if state.plane == 1:
+        if p1_gap_window(state):
+            return hoard_target_set(state, ist).char_targets, 'p1_gap'
+        return (p1_early_pair_members(state, ist)
+                or hoard_target_set(state, ist).char_targets), 'p1_lock_band'
+    return hoard_target_set(state, ist).char_targets, 'p2plus'
 
 
 def committed_authority(state: GameState | None,
