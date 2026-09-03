@@ -26,6 +26,12 @@ class OcrCacheEntry:
     crop_first: bool = False  # 先裁剪再识别 用于从连续文本中只提取特定区域的文本
 
 
+#: color_range 裁剪路径的扩边像素(1080p 基准):rect 过滤阈值 70% 允许结果外溢
+#: rect 外 30%,margin 需覆盖此外溢 + det 贴边漏检余量;量值按样本帧对拍校准
+#(2026-09-03,hp/gold/level/board 等现役 color_range 区与全图路径逐 token 一致)。
+_COLOR_CROP_MARGIN = 15
+
+
 class OcrService:
     """
     OCR服务
@@ -40,14 +46,16 @@ class OcrService:
     def __init__(
         self,
         ocr_matcher: OcrMatcher,
-        max_cache_size: int = 5,
+        max_cache_size: int = 32,
     ):
         """
         初始化OCR服务
 
         Args:
             ocr_matcher: OCR匹配器实例
-            max_cache_size: 最大缓存条目数
+            max_cache_size: 最大缓存条目数(color_range 裁剪化后按 (图片, 颜色, 区域)
+                分条,单帧 heavy 可有 4-6 条,原值 5 会同帧自逐出,放大到 32;
+                条目只持图片引用+结果列表,内存代价可忽略)
         """
         self.ocr_matcher = ocr_matcher
         self.max_cache_size = max_cache_size
@@ -119,13 +127,18 @@ class OcrService:
         if cache_list is None:
             return None
 
+        # 缓存 key 含 rect 的两种形态:crop_first(旧);color_range+rect 裁剪化路径
+        # (结果按区域裁剪 OCR,异区结果不同,必须分条,防误命中)。color_range 无 rect
+        # 的全图路径保持跨 rect 复用(同一次全图识别可按不同 rect 过滤)。
+        need_rect_key = crop_first or (color_range is not None and rect is not None)
+
         for cache_entry in cache_list:
             # Python 的列表 == 操作符会自动处理嵌套结构和值的比较 包括None
             if cache_entry.color_range != color_range:
                 continue
             if cache_entry.crop_first != crop_first:
                 continue
-            if crop_first and cache_entry.rect != rect:
+            if need_rect_key and cache_entry.rect != rect:
                 continue
             return cache_entry
 
@@ -142,6 +155,9 @@ class OcrService:
     ) -> list[OcrMatchResult]:
         """
         获取全图OCR结果，优先从缓存获取
+
+        color_range + rect 组合走裁剪化路径(纯性能,对外语义不变):小图过滤+OCR
+        后坐标映射回全图,返回结果与全图路径一致;缓存 key 含 rect(异区不误命中)。
 
         Args:
             image: 输入图片
@@ -170,13 +186,13 @@ class OcrService:
         if cache_entity is not None:
             ocr_result_list = cache_entity.ocr_result_list
         else:
-            # 应用颜色过滤
-            processed_image = self._apply_color_filter(image, color_range)
-
-            # 执行OCR
+            bus = getattr(self.ocr_matcher, 'overlay_debug_bus', None)
             if crop_first and rect is not None:
-                crop_image, crop_rect = cv2_utils.crop_image(processed_image, rect)
-                bus = getattr(self.ocr_matcher, 'overlay_debug_bus', None)
+                # 先裁原图再过滤:inRange 是逐像素算子,先裁后滤与旧「先滤全图再裁」
+                # 结果一致,省全图 inRange(纯性能)。小/紧框裁剪后 det 易漏字是
+                # 调用方自担的既有语义,不在本路径扩边。
+                crop_image, crop_rect = cv2_utils.crop_image(image, rect)
+                processed_image = self._apply_color_filter(crop_image, color_range)
                 if bus is not None:
                     bus.set_crop_offset(crop_rect.x1, crop_rect.y1)
                 ocr_result_list = self.ocr_matcher.ocr(
@@ -188,7 +204,32 @@ class OcrService:
                     bus.reset_crop_offset()
                 for ocr_result in ocr_result_list:
                     ocr_result.add_offset(crop_rect.left_top)
+            elif color_range is not None and rect is not None:
+                # color_range 裁剪化路径(纯性能,语义不变):全图 inRange + 全图 OCR
+                # 换成 rect+margin 小图过滤 + 小图 OCR(10-30ms 级),结果坐标加裁剪
+                # 偏移映射回全图坐标系,对外返回语义与全图路径一致。margin 防贴边
+                # 文字被切(crop_image 自带越界钳制)。
+                crop_image, crop_rect = cv2_utils.crop_image(
+                    image,
+                    Rect(rect.x1 - _COLOR_CROP_MARGIN, rect.y1 - _COLOR_CROP_MARGIN,
+                         rect.x2 + _COLOR_CROP_MARGIN, rect.y2 + _COLOR_CROP_MARGIN))
+                processed_image = self._apply_color_filter(crop_image, color_range)
+                if bus is not None:
+                    bus.set_crop_offset(crop_rect.x1, crop_rect.y1)
+                ocr_result_list = self.ocr_matcher.ocr(
+                    processed_image,
+                    threshold,
+                    merge_line_distance,
+                )
+                if bus is not None:
+                    bus.reset_crop_offset()
+                for ocr_result in ocr_result_list:
+                    ocr_result.add_offset(crop_rect.left_top)
             else:
+                # 应用颜色过滤
+                processed_image = self._apply_color_filter(image, color_range)
+
+                # 执行OCR
                 ocr_result_list = self.ocr_matcher.ocr(processed_image, threshold, merge_line_distance)
 
             # 存储到缓存
