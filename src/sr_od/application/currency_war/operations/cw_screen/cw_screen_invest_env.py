@@ -56,27 +56,6 @@ class CwScreenInvestEnv(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         self._ocr_map: dict | None = None   # ADR-0132:效果采集复用同一帧 OCR
-        self._refresh_count: int = 0        # OCR 到的「剩余次数:N」(刷新流读;ADR-0146)
-        self._refresh_text_pt = None        # 次数文本坐标(刷新圆钮动态锚;2026-08-16 CV 实测)
-
-    # 刷新按钮动态定位(2026-08-16 CV 实测):env 屏刷新圆钮 = 「剩余次数:N」文本左侧 ~100px 同 y
-    # (HoughCircles 实测圆心 (672,983) r24 vs 文本 (772,983));图标按钮 OCR 无文字 → 文本锚定。
-    _REFRESH_BTN_DX: int = -100
-
-    def _try_click_refresh(self) -> bool:
-        """动态定位刷新圆钮(文本锚定;替 yml 固定坐标 VLM 猜测值)。无文本锚 → False。"""
-        _pt = self._refresh_text_pt
-        if _pt is None:
-            return False
-        target = Point(int(_pt.x + CwScreenInvestEnv._REFRESH_BTN_DX), int(_pt.y))
-        log.info(f'[cw-env] 建议刷新(剩余={self._refresh_count})→ 圆钮@({target.x},{target.y})(文本锚定)')
-        self.ctx.controller.mouse_move(target)   # bug#1 缓解
-        self.ctx.controller.click(target)
-        # 用户口述口径(screen_flow_timing.md #4,2026-09-02):刷新动画
-        # ~2s 新卡渐变完结——原 1.5s 会在渐变中帧截图,OCR 读半渲染卡名
-        # 污染「刷新生效」判断与决策。2.2 = 口述 2s + 余量。
-        time.sleep(2.2)
-        return True
 
     def _read_options(self, screen) -> list[tuple[str, int]]:
         """OCR 3 张卡的 ``(名字, 名字 center-x)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -112,18 +91,9 @@ class CwScreenInvestEnv(SrOperation):
         screen = self.screenshot()
         opts = self._read_options(screen)
 
-        # ADR-0146 刷新流(生产依赖):OCR「剩余次数:N」→ 记次数 + 文本锚(刷新圆钮动态定位)。
-        # 原临时采集钩子已删(结论已达成:jsonl 落盘与整屏 cw_shot_unique 移除,按钮=文本左侧
-        # 图标圆钮,2026-08-16 CV 实锤;样本归档 refresh_ui_samples.jsonl)。
-        import re as _re
-
-        for _t, _m in (self._ocr_map or {}).items():
-            _mm = _re.search(r'剩余次数[：:]?\s*(\d+)', _t)
-            if _mm and _m.max is not None:
-                self._refresh_count = int(_mm.group(1))
-                self._refresh_text_pt = Point(int(_m.max.center.x), int(_m.max.center.y))
-                log.info(f'[cw-env] 剩余次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
-                break
+        # 事件面刷新已退役(ADR-0519 C10:decide_event refresh 恒 False,
+        # cw_events.py「refresh 恒 False」注)——原 ADR-0146 刷新流(OCR 剩余次数 +
+        # _try_click_refresh + 刷新重读重选分支)永不可达,整段已删。
 
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _ in opts]
@@ -139,35 +109,9 @@ class CwScreenInvestEnv(SrOperation):
                 # 环境屏 overlay 下 board 不可读,但 HP 分档/持有策略该用真值(空 stub hp=100 恒满血)。
                 pick = match.strategy.decide_invest('env', names, match.session.last_state or GameState(), match.session, config)
             else:
-                pick = decide_event(names, config, GameState(hp=100, hp_readable=True))  # 防御:无 match(局外独立跑)。满血档语义改由构造点显式声明(W823 hp None 化后默认 None;ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段曾致 AttributeError(M19 实锤))
+                pick = decide_event(names, config, GameState(hp=100, hp_readable=True))  # 防御:无 match(局外独立跑)。ADR-0519 C6/C9 后 decide_event 不读 hp/品质惩罚,hp 字段仅为 GameState 构造完整性
         else:
             pick = None
-        # ADR-0146(缺口1):建议刷新且剩余次数>0 → 点刷新 → 重读重选(一次性)。
-        # 原停机钩子已删(按钮坐标已由 CV 实测文本锚定实锤,挂入至删除零触发;
-        # 生命周期定谳:W437 投资钩子审计报告 .debug/temp/currency_war/w437_invest_hooks_audit/)。
-        if (pick is not None and getattr(pick, 'refresh', False)
-                and self._refresh_count > 0
-                and self._try_click_refresh()):
-            _after = self.screenshot()
-            _new = self._read_options(_after)
-            _new_names = [n for n, _x in _new]
-            if _new and _new_names != names:
-                log.info(f'[cw-env] 刷新成功重读: {_new_names}')
-                opts, names = _new, _new_names
-                if match is not None:
-                    pick = match.strategy.decide_invest('env', names, match.session.last_state or GameState(), match.session, config)
-                else:
-                    pick = decide_event(names, config, GameState())
-            else:
-                import re as _re2
-                _cnt2 = None
-                for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
-                        image=_after, crop_first=False).items():
-                    _mm2 = _re2.search(r'剩余次数[：:]\s*(\d+)', _t)   # r315:补全角冒号
-                    if _mm2 and _m.max is not None:
-                        _cnt2 = int(_mm2.group(1))
-                        break
-                log.info('[cw-env] 刷新生效但候选同名(次数 %s→%s),按新决策继续', self._refresh_count, _cnt2)
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x = opts[pick.option_idx]
             reason = pick.reason

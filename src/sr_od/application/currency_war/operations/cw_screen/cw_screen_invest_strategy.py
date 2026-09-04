@@ -57,30 +57,6 @@ class CwScreenInvestStrategy(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资策略')
         self._ocr_map: dict | None = None   # _read_options 存全图 OCR(ADR-0132 效果采集复用,零额外 OCR)
-        self._refresh_count: int = 0        # OCR 到的「刷新次数N」(刷新流读;ADR-0146)
-
-    # 刷新按钮动态定位(2026-08-16 用户指认圆形按钮 + CV 实测):按钮 = 圆形图标,
-    # 位于「刷新次数N」文本**左侧 ~88px** 同 y(r≈24);文本 x 有两种位置(476/974,随屏
-    # 形态漂移)→ 固定 area 不可行,OCR 文本锚定 + 左偏移(HoughCircles 复核圆存在)。
-    _REFRESH_BTN_DX: int = -88
-
-    def _try_click_refresh(self) -> bool:
-        """动态定位刷新圆钮(文本锚定;2026-08-16 CV 实测修正,替 yml 固定坐标 VLM 猜测值)。
-
-        OCR「刷新次数N」文本(已记坐标 self._refresh_text_pt)→ 按钮 = 文本左偏 88px;
-        无文本锚 → False(不点)。⚠️ 未做 HoughCircles 圆复核(review:三帧实测偏移恒定,
-        复核留待多样性本不足时再上)。偏移错时刷新验证失败 → 静默选旧三张照常选
-        (ADR-0146 失败安全设计;该态=需重新 CV 实测锚定的版本变更信号)。
-        """
-        _pt = getattr(self, '_refresh_text_pt', None)
-        if _pt is None:
-            return False
-        target = Point(int(_pt.x + CwScreenInvestStrategy._REFRESH_BTN_DX), int(_pt.y))
-        log.info(f'[cw-strat] 建议刷新(次数={self._refresh_count})→ 圆钮@({target.x},{target.y})(文本锚定)')
-        self.ctx.controller.mouse_move(target)   # bug#1 缓解
-        self.ctx.controller.click(target)
-        time.sleep(1.5)
-        return True
 
     def _read_options(self, screen) -> list[tuple[str, int, int]]:
         """OCR 3 张卡的 ``(名字, center-x, center-y)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -113,20 +89,9 @@ class CwScreenInvestStrategy(SrOperation):
         time.sleep(1.0)
         screen = self.screenshot()
 
-        # ADR-0146 刷新流(生产依赖):OCR「刷新次数N」→ 记次数 + 文本锚(_try_click_refresh
-        # 动态定位刷新圆钮用)。原临时采集钩子已删(结论已达成:样本 574 张归档
-        # refresh_ui_samples.jsonl,2026-08-17 标结论;jsonl 落盘与整屏 cw_shot_unique 移除)。
-        import re as _re
-
-        from one_dragon.base.geometry.rectangle import Rect as _Rect
-        for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
-                image=screen, rect=_Rect(300, 790, 1650, 890), crop_first=False).items():
-            _mm = _re.search(r'刷新次数\s*(\d+)', _t)
-            if _mm and _m.max is not None:
-                self._refresh_count = int(_mm.group(1))
-                self._refresh_text_pt = Point(int(_m.max.center.x), int(_m.max.center.y))
-                log.info(f'[cw-strat] 刷新次数={_mm.group(1)} @({_m.max.center.x:.0f},{_m.max.center.y:.0f})')
-                break
+        # 事件面刷新已退役(ADR-0519 C10:decide_event refresh 恒 False,
+        # cw_events.py「refresh 恒 False」注)——原 ADR-0146 刷新流(OCR 次数 +
+        # _try_click_refresh + 刷新重读重选分支)永不可达,整段已删。
 
         opts = self._read_options(screen)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
@@ -137,37 +102,9 @@ class CwScreenInvestStrategy(SrOperation):
             if match is not None:
                 pick = match.strategy.decide_invest('strategy', names, match.session.last_state or GameState(), match.session, config)  # ADR-0144:真状态替空 stub
             else:
-                pick = decide_event(names, config, GameState(hp=100, hp_readable=True))  # 防御:无 match(局外独立跑)。满血档语义改由构造点显式声明(W823 hp None 化后默认 None;ADR-0141 品质难度惩罚读 state.hp,SimpleNamespace 缺字段会 AttributeError(invest_env 同款已实锤))
+                pick = decide_event(names, config, GameState(hp=100, hp_readable=True))  # 防御:无 match(局外独立跑)。ADR-0519 C6/C9 后 decide_event 不读 hp/品质惩罚,hp 字段仅为 GameState 构造完整性
         else:
             pick = None
-        # ADR-0146(缺口1):decide 建议刷新(PickEvent.refresh = 三张最优 < 50)且 OCR 到次数>0
-        # → 点刷新圆钮(_try_click_refresh 文本锚定)→ 重读重选(一次性)。
-        # 原停机钩子已删(按钮坐标已由 CV 实测文本锚定实锤,挂入至删除零触发;
-        # 生命周期定谳:W437 投资钩子审计报告 .debug/temp/currency_war/w437_invest_hooks_audit/)。
-        if (pick is not None and getattr(pick, 'refresh', False)
-                and self._refresh_count > 0
-                and self._try_click_refresh()):
-            _after = self.screenshot()
-            _new = self._read_options(_after)
-            if _new and [n for n, _x, _y in _new] != names:
-                log.info(f'[cw-strat] 刷新成功重读: {[n for n, _x, _y in _new]}')
-                opts, names = _new, [n for n, _x, _y in _new]
-                if match is not None:
-                    pick = match.strategy.decide_invest('strategy', names, match.session.last_state or GameState(), match.session, config)
-                else:
-                    pick = decide_event(names, config, GameState())
-            else:
-                # 验证失败但次数减了 = 刷新生效但新三张碰巧同名(罕见);只 log 不停
-                # (原停机钩子已删,定谳见 cw_screen_invest_env 同位注释)。
-                import re as _re2
-                _cnt2 = None
-                for _t, _m in self.ctx.ocr_service.get_ocr_result_map(
-                        image=_after, crop_first=False).items():
-                    _mm2 = _re2.search(r'刷新次数\s*(\d+)', _t)
-                    if _mm2 and _m.max is not None:
-                        _cnt2 = int(_mm2.group(1))
-                        break
-                log.info('[cw-strat] 刷新生效但候选同名(次数 %s→%s),按新决策继续', self._refresh_count, _cnt2)
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x, choose_y = opts[pick.option_idx]
             reason = pick.reason
