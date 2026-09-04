@@ -197,7 +197,6 @@ class StrategySession:
     # (新载体 decision_v2 的跨步状态;None=未初始化——旧策略局全空可区分)
     v3_intention: object = None      # cw_intention.IntentionState(锁线/撤销状态机)
     v3_evolution: object = None      # cw_evolution.EvolutionState(中断恢复/谷底回滚)
-    v3_hoard: object = None          # cw_intention.HoardTarget(囤货目标集,买侧唯一消费面)
     v3_core_names: set = field(default_factory=set)   # 意向核心名集(line_carry 标签裁决)
     v3_mode: str = ''                # 本轮模式('economy'|'war';纪律族每轮写)
     v3_alarm: object = None          # discipline.BloodAlarmTracker(掉血三臂)
