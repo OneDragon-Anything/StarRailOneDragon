@@ -93,4 +93,4 @@ spheres ∧ free=0 ∧ defer<2 → _free_bench_step（腾席链）
 
 - ⚠️ **`_is_boss_round` 的 `round_num >= 9` 先验**（`flow.py:542`）：boss 轮判定 = node_type=='boss'（权威源 = 备战节点行）∨ round≥9 先验（supply 例外）。round≥9 是 P1 九节点假设的位面字面量（位面 2 为 7 节点时段内误判），违反宪法第 2 条"位面只作参数"。**修正方向**：节点数表（`cw_plane_table.schedule_of` / NODES_PER_PLANE）作查表键派生位面末节点判定，round 先验退役。
 - ⚠️ **`_levelup_engine_ok` 息引擎门**（`flow.py:559-572`）：lv≥5 要求"本局曾达满息 latch ∨ 升级总成本花完后金≥50"。①与 mandate 现行 arm2 结构守息门 g*=10×cap_resolved（`../strategy-docs/02_mandate_layer.md` §3 M3）不同源 = 双源漂移；②"未达满息局整局禁升"有压制发展嫌疑（宪法第 3 条）。**修正方向**：升级调度门单一源收口到 arm2 g* 门（只延迟不否决语义），v2 形态随退役链删除。
-- ⚠️ **谷底回滚 hp 消费**（`flow.py:118,224-234`，on_round_end 段）：`VALLEY_ROLLBACK_LOSS=15` 单场掉血门触发 `rollback_weakest` 回滚动作——hp 掉量作质量信号驱动动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；且 15 无三形态标注（宪法第 1/4 条）。**修正方向**：过硬闸门逐项用户确认（登记【拟】带 CI + fail-closed）或随 v2 残余退役；hp 归判读域。
+- ⚠️ **谷底回滚 hp 消费**（`flow.py:118,224-234`，on_round_end 段）：`VALLEY_ROLLBACK_LOSS=15` 单场掉血门触发 `rollback_weakest` 回滚动作——hp 掉量作质量信号驱动动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；且 15 无三形态标注（宪法第 1/4 条）。**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**——代码删除随迁移后批次执行。

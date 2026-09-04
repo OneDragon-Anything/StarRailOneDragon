@@ -23,7 +23,7 @@ EV(C) = Δp_prep · G_loss + Δstreak·S_streak − C − I(息损)
 ### L_node 单一源(触发面参数)
 
 - 注册表 `streak_floor_loss_damage`(**均值口径**,w324 冻结语料 417 条,ADR-0424):encounter = 24.32 − 4.53·rung(斜率 SE 2.41 显著)/ boss = 26.71(斜率 CI 含 0 退常数;battle 复用 `vd_p1_loss_*` 单一源)。
-- P15v2 实测带(冻结核 `tools/cw/proofs/p15/fit_results.json`,sha256 可验):P1 battle 10.35 CI[9.43,11.18] / encounter 12.48 / boss 27.17;rung 梯度方向已立(rung0 11.46 vs rung1 6.94 CI 分离)不立系数。
+- P15v2 实测带(冻结核 `tools/cw/proofs/p15/fit_results.json`,sha 848dc1aa,2026-09-04 按现行冻结语料回填):P1 battle 10.45 CI[9.59,11.24] / encounter 12.18 / boss 26.79;rung 梯度方向已立(rung0 11.52 vs rung1 6.94 CI 分离)不立系数。
 - **分位口径(尾部)未标定**——挂采集账(见下),标定前禁写具体分位值。
 
 ## 已证骨架
@@ -62,7 +62,7 @@ EV(C) = Δp_prep · G_loss + Δstreak·S_streak − C − I(息损)
 | # | 判决修正建议 | 本版落点 |
 |---|---|---|
 | ① | 删「42/39 分位已标定」无源数值,锚改注册表均值口径 + 分位回挂采集账 | 「L_node 单一源」节:注册表 24.32−4.53·rung / 26.71;分位显式「未标定挂账」 |
-| ② | P15 已废回归换 P15v2 实测带(battle 10.35/encounter 12.48/boss 27.17 带 CI) | 同节引 P15v2 + `tools/cw/proofs/p15/fit_results.json` 冻结核;rung 只立方向不立系数 |
+| ② | P15 已废回归换 P15v2 实测带(battle 10.45/encounter 12.18/boss 26.79 带 CI,73 局语料 848dc1aa) | 同节引 P15v2 + `tools/cw/proofs/p15/fit_results.json` 冻内核;rung 只立方向不立系数 |
 | ③ | EV 式血量直加金账改道 λ_death 概率侧(敞口比较) | 「量纲闭合声明」节:G_loss=λ_death 销毁敞口,L_node 只辖触发面,禁 hp_to_gold 形态,禁边际引用 |
 | ④ | 门值带按真实 L_node 重算(7-32%) | 「门值带」节三典型场景表,汇总 7-32%,含占位带声明 |
 | ⑤ | P20 引用降级(方向级) | 「已证骨架」:倍数撤回禁引,+11.7pp CI 锚保留 |

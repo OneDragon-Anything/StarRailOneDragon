@@ -117,5 +117,5 @@
 流程层反向规格化同样过宪法四条（`../strategy-docs/00_framework.md` §1）。流程层的主辖域是编排与守卫，本无策略判据；但反向平移中发现下列**现状违例**（详见各篇 ⚠️ 标记）：
 
 1. **位面字面门**：`flow.py:275`（`state.plane == 1` 辖域）、`flow.py:542`（`round_num >= 9` boss 先验）——修正方向：段索引/节点数一律由节点日程（`cw_plane_table.schedule_of`）派生查表，位面只作查表键。
-2. **hp 越权消费**：谷底回滚 `VALLEY_ROLLBACK_LOSS=15`（`flow.py:118,224-234`）——hp 掉量作质量信号触发回滚动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；修正方向：过硬闸门逐项确认或退役，hp 归判读域。
-3. **无标数字**：`VALLEY_ROLLBACK_LOSS=15` 无三形态标注；修正方向：登记【拟】带 CI + fail-closed，或随 2 项一并退役。
+2. **hp 越权消费**：谷底回滚 `VALLEY_ROLLBACK_LOSS=15`（`flow.py:118,224-234`）——hp 掉量作质量信号触发回滚动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**，代码删除随迁移后批次。
+3. **无标数字**：`VALLEY_ROLLBACK_LOSS=15` 无三形态标注；随第 2 项退役一并消失。

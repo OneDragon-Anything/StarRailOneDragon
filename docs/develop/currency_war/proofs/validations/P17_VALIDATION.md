@@ -1,5 +1,7 @@
 # P17 逐件证明验证:「P1 出口 hp」作为 A/B 度量仪的合法性边界
 
+> **版本界碑(2026-09-04)**:本报告为定谳时点冻结记录,文中 P15v2 数值(10.35 [9.43,11.18]/27.17 [24.62,29.65]/11.46)属 66 局旧语料代(sha 7f5fd74e);现行权威 = `P15v2_REPROOF.md` 主表(73 局 848dc1aa 代:10.45 [9.59,11.24]/26.79 [24.25,29.23]/11.52)。本文件下方「换代目标」类指令所引旧值一律以重证件现行值为准执行。
+
 > 验证对象:`docs/game/currency_war/research/proofs/p17-ab-hp-measure-legality.md`(单篇)+ `math_proofs.md` 索引行 P17。只读禁改,本报告为唯一产出。
 > 验证人:逐件证明验证批(P17 专项)。日期:2026-09(重建纪元,P51 v3 之后)。
 > 阅读门声明:已读 game 侧核心文档(gameplay.md / user_playstyle 全文含 [2][18][27][28][39][40] / math_proofs 索引 / P3/P15/P16 单篇与索引 / P51 v3 / P11 索引)+ 注册表直调(`cw_registry.py`:interest_cap=5、hp_to_gold=0.5、boss_tax_p75=34.0)+ P15v2 冻结语料(`tools/cw/proofs/p15/fit_results.json`,66 局/427 战斗行)+ 消费面全链(w328 DESIGN / w920 DESIGN / w947+w947c prereg / w951 prereg 及回填 / w956 prereg)+ strategy-work(skill references)。跳过项:final_comps/、transition_combos 等阵容知识篇——本件为方法论件,不建模任何具体阵容,无交集(声明理由:五门均不消费阵容知识)。
