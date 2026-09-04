@@ -17,6 +17,7 @@ from sr_od.application.currency_war.telemetry.query import (
     query_economy,
     query_exec_events,
     query_exogenous,
+    query_gold_flow,
     query_hp,
     query_invest_cards,
     query_obs_conflicts,
@@ -59,6 +60,9 @@ def _match_view_lines(slice_dir: Path, segments: list[str],
     if view in ('economy', 'all'):
         out.append(('[economy]', [ln for s in segments
                                   for ln in query_economy(slice_dir, s)]))
+    if view in ('goldflow', 'all'):
+        out.append(('[goldflow]', [ln for s in segments
+                                   for ln in query_gold_flow(slice_dir, s)]))
     return out
 
 
@@ -80,7 +84,7 @@ def _cli_main() -> None:
                          '绕过水位线;缺省=只装水位线后的新局)')
     ap.add_argument('--view', default='rounds',
                     choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec',
-                             'hp', 'economy', 'exogenous', 'execevents',
+                             'hp', 'economy', 'goldflow', 'exogenous', 'execevents',
                              'invest', 'conflicts', 'spend', 'all'])
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     ap.add_argument('--sim-batch', default='', metavar='BATCH',
@@ -203,6 +207,9 @@ def _cli_main() -> None:
     if args.view in ('economy', 'all'):
         print('[economy]')
         print('\n'.join(query_economy(replay_dir, rid)))
+    if args.view in ('goldflow', 'all'):
+        print('[goldflow](模态期金去向对账: economy 残差 − modality 逐笔 = 未解释;⚠=未挂钩金变动)')
+        print('\n'.join(query_gold_flow(replay_dir, rid)))
     # 迁移审计 w315(git 历史)(审计 G3)四条旁路流视图
     if args.view in ('exogenous', 'all'):
         print('[exogenous]')

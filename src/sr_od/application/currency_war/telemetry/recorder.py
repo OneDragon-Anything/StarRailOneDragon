@@ -661,6 +661,45 @@ def record_sell_income(state: GameState, slot: int, char_id: str,
 
 
 
+def record_modality_gold(node: str, plane: int, round_num: int,
+                         gold_before: int | None,
+                         gold_after: int | None,
+                         detail: str = '') -> None:
+    """模态期金变动对账行(exogenous.jsonl, kind='modality_gold';纯观测)。
+
+    - 背景(第9局悬案「金 33→0」复盘立案):商店期外的金变动(遭遇/
+      奖励/boss 节点的进账出账)此前无逐笔通道——economy 视图的「收」
+      格是决策帧金差分的残差(利息/连胜/卖回/模态全混在一起),残差
+      异常时无法下钻到具体节点。本行把模态期的可观测金变动按
+      「来源节点 × 轮号 × 前后金」逐笔记账,查询侧 query_gold_flow
+      用它分解 economy 残差(口径同源:同一 exogenous 流、同一
+      (plane, round) join 键,与 sell_income 行同法)。
+    - 生产者 = 模态期金变动可读的操作点(首选 cw_op_collect_spheres
+      奖励球收取:金球点开即入账,备战屏 gold 区全程可读)。overlay
+      事件屏(策划/命运卜者等)金区被覆盖不可读,不设钩——其金效应
+      仍留在 economy 残差里,本通道只承诺「有钩处逐笔、无钩处显残差」。
+    - 参数:
+        node: 来源节点短码(如 'spheres');plane/round_num: 归属轮号
+        (调用方自 session.last_state 取,overlay 期 board 不可读的
+        兜底口径与 record_event_choice 同);gold_before/gold_after:
+        变动前后金读数,任一 miss(OCR 漏)传 None → gold_delta=None
+        (读端按不可信分型,不猜)。
+    - run_id 空直接 no-op(与 record_exogenous 同门控);best-effort:
+    调用方 try/except 兜底,观测失败不阻断业务流。
+    """
+    if not _telstate._CURRENT_RUN_ID:
+        return
+    delta = ((gold_after - gold_before)
+             if (gold_before is not None and gold_after is not None) else None)
+    _telstate.get_recorder().record_exogenous(
+        _telstate._CURRENT_RUN_ID, int(round_num), 'modality_gold',
+        detail=(f'{node} {delta if delta is not None else "?"}金 '
+                f'({gold_before}->{gold_after}){(" " + detail) if detail else ""}'),
+        choice={'node': str(node or ''), 'plane': int(plane or 0),
+                'gold_before': gold_before, 'gold_after': gold_after,
+                'gold_delta': delta})
+
+
 def record_spend_unit(plane: int, round_num: int, unit_seq: int,
                       boundary: str, progressed: bool, duration_s: float,
                       detail: str = "", gold_before: int | None = None,

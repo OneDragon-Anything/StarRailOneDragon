@@ -719,10 +719,21 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     for g in games:
         if (g['end_ts'] or '') <= wm:
             continue
-        if archive_path(rd, g['game_id']).exists():
-            continue   # 已入档(如显式补装过)——不重复写
-        _atomic_write_json(archive_path(rd, g['game_id']),
-                           build_archive(rd, g))
+        p = archive_path(rd, g['game_id'])
+        if p.exists():
+            # schema 过期也重装:装配端修复(如全帧动作合并)落地前生成的
+            # 存量档案若只靠读端 load_archive auto_rebuild 迁移,直读 JSON
+            # 的离线消费端(判读脚本)永远吃到欠列档案——在此随水位线推进
+            # 自愈一次,与「新局装配」同一原子写路径。
+            try:
+                with p.open('r', encoding='utf-8') as f:
+                    stale = (int(json.load(f).get('schema_version') or 0)
+                             < SCHEMA_VERSION)
+            except (OSError, json.JSONDecodeError, TypeError, ValueError):
+                stale = False   # 损坏档案不在此竞修(原子写使其概率极低),交读端报错
+            if not stale:
+                continue   # 已入档且版本最新(如显式补装过)——不重复写
+        _atomic_write_json(p, build_archive(rd, g))
         done.append(g['game_id'])
     if done:
         rebuild_index(rd)

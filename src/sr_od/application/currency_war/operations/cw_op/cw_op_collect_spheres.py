@@ -17,9 +17,11 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_reward_spheres,
     read_supply_boxes,
 )
+from sr_od.application.currency_war.obs.cw_observation import read_gold_settled
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_supply import (
     CwScreenSupply,
 )
+from sr_od.application.currency_war.telemetry.recorder import record_modality_gold
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -33,16 +35,39 @@ class CwOpCollectSpheres(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-奖励球收取')
 
+    def _modality_round_key(self) -> tuple[int, int]:
+        """归属轮号 (plane, round_num):session.last_state 快照(奖励面板属
+        上次战斗节点,overlay 态 board 不可读的兜底口径与 record_event_choice
+        同);无 match/离线 = (0, 0),遥测行由 run_id 门控自然缺席。"""
+        _m = getattr(self.ctx, 'cw_match', None)
+        _st = getattr(getattr(_m, 'session', None), 'last_state', None)
+        return (int(getattr(_st, 'plane', 0) or 0),
+                int(getattr(_st, 'round_num', 0) or 0))
+
+    def _record_gold(self, gold_before: int | None,
+                     gold_after: int | None) -> None:
+        """收取前后金括号落账(模态期金去向通道;best-effort 不阻断业务)。"""
+        try:
+            plane, rnd = self._modality_round_key()
+            record_modality_gold('spheres', plane, rnd,
+                                 gold_before, gold_after)
+        except Exception as e:   # noqa: BLE001  观测 best-effort,不阻断收取
+            log.debug(f'[cw-sphere] 金括号落账失败(不阻断): {e}')
+
     @operation_node(name='奖励球收取', is_start_node=True, node_max_retry_times=6)
     def handle(self) -> OperationRoundResult:
         # 0) 有补给箱先开箱腾席(席满是点球硬阻塞;开箱后席位 +1)
         CwScreenSupply(self.ctx).execute()
         clicked = 0
         screen = self.screenshot()
+        # 模态期金去向通道:收取前金基线(金球点开即入账;None=OCR miss,
+        # 落账 delta=None 读端按不可信分型,不猜)
+        gold_before: int | None = read_gold_settled(self.ctx, screen)
         while clicked < CwOpCollectSpheres.MAX_CLICKS:
             spheres = read_reward_spheres(self.ctx, screen)
             if not spheres:
                 log.info('[cw-sphere] 奖励面板无球 → 收取完成')
+                self._record_gold(gold_before, read_gold_settled(self.ctx, self.screenshot()))
                 return self.round_success(wait=1)
             before = len(spheres)
             # 大球优先(gold r~44 > blue r~32 > gray r~18;高价值先收防中断丢失)
@@ -63,5 +88,7 @@ class CwOpCollectSpheres(SrOperation):
             if len(after_spheres) >= before:
                 # 球数不减:席满点不动(机制)或识别漂 → 停,交外层腾席后下轮重试
                 log.info(f'[cw-sphere] 球数未减({before}→{len(after_spheres)}) → 疑席满,中断本轮')
+                self._record_gold(gold_before, read_gold_settled(self.ctx, screen))
                 return self.round_success('球点不动(疑席满),腾席后下轮再收', wait=1)
+        self._record_gold(gold_before, read_gold_settled(self.ctx, self.screenshot()))
         return self.round_success(wait=1)
