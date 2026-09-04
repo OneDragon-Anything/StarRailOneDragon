@@ -735,7 +735,7 @@ def vd_refresh_score(state: GameState, session: StrategySession,
         #                × battles_left_plane(state 推导,非缺省 5)
         #   C_dec(g,s) = Δinterest × min(R, recovery_rounds_p2)
         #                + ρ × s        —— 替换批口径面值 spend(P11:
-        #   溢余段金堆到死,面值成本高估 ≥20×;[17] 溢余即花)
+        #   溢余段金堆到死,面值成本高估 ≥19.5×,最坏帧实算下界;[17] 溢余即花)
         # 预算硬界必须在(P11 推论):C_dec→0 后 EV 不再是约束,约束移到
         # 预算层——批口径期望刷金 s ≤ g − boss_floor,防「C=0 无限刷」。
         from sr_od.application.currency_war.decision.decision_v2.ev import (
