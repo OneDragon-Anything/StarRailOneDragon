@@ -178,6 +178,49 @@ def has_deployable(
     return bool(up)
 
 
+def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
+    """已上场角色全羁绊计数(factions+flows 逐项 +1;r361b 全羁绊口径)。
+
+    消费面 = ``has_deployable`` 发射侧装配与 CwOpDeploy 执行侧的
+    ``_deployed_fac``(两侧计数同循环同口径,单一源;未注册名不计
+    ——无名可判即无阵营信号,件本身的去重/fail-open 由
+    select_deployments 的 cid 分支管)。
+    """
+    out: dict[str, int] = {}
+    for cid in deployed_cids:
+        ch = CHARACTERS.get(cid) if cid else None
+        if ch is None:
+            continue
+        for f in tuple(ch.factions or ()) + tuple(ch.flows or ()):
+            out[f] = out.get(f, 0) + 1
+    return out
+
+
+def deploy_target_sets(target_comp: object | None,
+                       transition_framework: str = '',
+                       ) -> tuple[set[str], set[str]]:
+    """deploy 围栏 target 集装配(r70 双轨口径单一源)。
+
+    返回 ``(target_factions, fw_carry)``:comp 阵营 ∪ 过渡框架阵营;
+    fw_carry = 框架(或通用)非 drop 件(先框架非 drop + 通用 carry,
+    散件 drop 不认)。消费面 = CwOpDeploy 执行侧与 mandate 发射侧
+    ``select_deployments``/``has_deployable`` 的同参装配——发射侧
+    抑制谓词(dd-037)接线后两侧各写一份即双源,禁复制。
+    """
+    tgt = set(getattr(target_comp, 'factions', None) or ())
+    fw = transition_framework or ''
+    fw_carry: set[str] = set()
+    if fw:
+        from sr_od.application.currency_war.kernel.cw_transition import (
+            FRAMEWORK_FACTIONS,
+            TRANSITION_PACK,
+        )
+        tgt |= set(FRAMEWORK_FACTIONS.get(fw, ()))
+        fw_carry = {n for n, (f, t) in TRANSITION_PACK.items()
+                    if (f == fw or f == '通用') and t != 'drop'}
+    return tgt, fw_carry
+
+
 def select_deployments(
     bench: list[BenchChar],
     deployed_cids: set[str],

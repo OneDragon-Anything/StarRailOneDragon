@@ -560,25 +560,18 @@ class CwOpDeploy(SrOperation):
             return 0, True
         _match = self.ctx.cw_match
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
-        _tgt = (set(_sess.target_comp.factions)
-                if (_sess is not None and _sess.target_comp is not None) else set())
         # r70 过渡框架并进 deploy target 集(双轨期):框架牌 = 当前阶段的「临时 target」,
         # 否则保血资产(三月七/藿藿/饮月)被判 off-target 散牌留 bench → 白板挨打
         # (r70 审计「买了→不上场→被卖」三侧断裂的 deploy 侧)。定型后 framework 已清空,
-        # 集合退化为原 target-only 行为。
-        _fw = getattr(_sess, 'transition_framework', '') if _sess is not None else ''
-        if _fw:
-            from sr_od.application.currency_war.kernel.cw_transition import (
-                FRAMEWORK_FACTIONS,
-                TRANSITION_PACK,
-            )
-            _tgt = _tgt | set(FRAMEWORK_FACTIONS.get(_fw, ()))
-            # r72 口径对齐(review #3):与 plan._should_deploy 同口径 ——
-            # 当先框架非 drop + 通用件(散件 drop 不认;通用 carry 千冶·刃认)。
-            _fw_carry = {n for n, (f, t) in TRANSITION_PACK.items()
-                         if (f == _fw or f == '通用') and t != 'drop'}
-        else:
-            _fw_carry = set()
+        # 集合退化为原 target-only 行为。装配单一源 = kernel.deploy_target_sets
+        # (发射侧 mandate._deployable 同款消费,dd-037 禁两侧各写一份)。
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            deploy_target_sets as _deploy_target_sets,
+        )
+        _tgt, _fw_carry = _deploy_target_sets(
+            (_sess.target_comp if _sess is not None else None),
+            (getattr(_sess, 'transition_framework', '')
+             if _sess is not None else ''))
         # 5.1.8 deploy_cap(live 发现 drag 白拖根因 = cap 满,2026-08-12):deployed(CV front_occ+back_occ 实测阵上)
         # ≥ level(cap,D-19「cap=level」)→ 板满,bench 角色上不了 → 不拖(留 bench;防 drag 被拒源槽占 placed=0 白拖
         # + 用户 live 观察 bug4「未考虑上限」)。CV 实测 deployed 优于 state.deployed_count(board 重建可能虚高)。
@@ -655,15 +648,13 @@ class CwOpDeploy(SrOperation):
                 log.info(f'[cw-deploy] deployed 身份(5.1.7 去重):{sorted(_deployed_cids)}')
             # 已上场角色的阵营档(多阵营角色每阵营 +1,同板面 OCR 口径)
             # r361b(review B 修:口径统一):补 flows——_tier_completes
-            # 的补档键按 factions+flows 全羁绊判档,而此处只累 factions
-            # → 流派补档件(击破2→3)在生产永不优先,锁测试锁了个
-            # 生产走不到的路径。同口径修复(板面 OCR 含流派行)。
-            from sr_od.application.currency_war.data.cw_chars import CHARACTERS as _CH
-            for _dc in _deployed_cids:
-                _dch = _CH.get(_dc)
-                if _dch:
-                    for _f in ((_dch.factions or ()) + (_dch.flows or ())):
-                        _deployed_fac[_f] = _deployed_fac.get(_f, 0) + 1
+            # 的补档键按 factions+flows 全羁绊判档。计数单一源 =
+            # kernel.deployed_bond_counts(与发射侧 mandate._deployable
+            # 同款装配)。
+            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                deployed_bond_counts as _deployed_bond_counts,
+            )
+            _deployed_fac = _deployed_bond_counts(_deployed_cids)
         # dd-037:选人/围栏/排序单一源 = kernel.select_deployments。此前 op 内
         # 复写一份 tgt/rest 切分 + 散牌围栏 + 点火排序(_deployment_order),与
         # kernel 纯函数双源——run 20260904_28xx 局11 停机形态:配方底线规则只在

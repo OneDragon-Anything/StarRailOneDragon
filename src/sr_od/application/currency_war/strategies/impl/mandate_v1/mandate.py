@@ -23,7 +23,7 @@ pass 归属单一语义)。
 D-C44(共根组 1):部署/买入意图的输入契约 = **买入结算后 bench/cap/
 dup 黑板全量现读**——本执行器每帧从 PrepObservation 现读重建,不以
 跨帧快照/旧集为输入(与 dd-016 执行守卫互补:守卫管动作,估值管判断,
-D-dup 谓词 = vopt.dup_power_qualified)。
+D-dup 谓词 = kernel.cw_deploy_logic.has_deployable 同源去重,dd-037 单一源)。
 """
 from __future__ import annotations
 
@@ -54,9 +54,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
     saturation_line,
-)
-from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
-    dup_power_qualified,
 )
 
 if TYPE_CHECKING:
@@ -273,7 +270,8 @@ def run_mandate(frame: MandateFrame,
     # K 直通线开局配方归 TRANSITION_SYSTEMS 第五类,本批载体 = RunDeploy
     # 现读重建[D-C44])
     deploy_intent_emitted = False
-    if frame.round_num <= 1 and not frame.deployed and frame.bench:
+    if (frame.round_num <= 1 and not frame.deployed and frame.bench
+            and _deployable(frame, session, state)):
         out.append(Emitted(RunDeploy(), True, 'm5_opening_board'))
         deploy_intent_emitted = True
 
@@ -338,7 +336,7 @@ def run_mandate(frame: MandateFrame,
 
     # M1 同帧部署(买入完成后立即评估成对上阵;P24 零支出补部署严格支配)
     if (not deploy_intent_emitted and frame.deploy_vacancy > 0
-            and _deployable(frame)):
+            and _deployable(frame, session, state)):
         out.append(Emitted(RunDeploy(), True, 'm1_deploy'))
 
     # M3 升级整批(触发信号 = arm1_existence(statefn/predicates);
@@ -385,7 +383,7 @@ def run_mandate(frame: MandateFrame,
 
     # M1′(M3 后新人口位补部署;R6-6/R8-1:迭代至不动点——RunDeploy
     # 执行侧现读重建输入(D-C44),发射即覆盖升级增量空位的部署重评)
-    if frame.deploy_vacancy > 0 and _deployable(frame):
+    if frame.deploy_vacancy > 0 and _deployable(frame, session, state):
         has_levelup = any(isinstance(e.action, LevelUp) for e in out)
         if has_levelup:
             out.append(Emitted(RunDeploy(), True, 'm1_prime_redeploy'))
@@ -525,20 +523,49 @@ def cheapest_member_cost(frame: MandateFrame) -> int:
     return 3
 
 
-def _deployable(frame: MandateFrame) -> bool:
-    """可部署候选存在(board 空位 ∧ bench 件非场上 dup[D-dup 估值修正]
-    ∧ 同名禁双)。"""
-    deployed_names = set(frame.deployed_names)
-    for b in frame.bench:
-        name = b.char_id or ''
-        if not name:
-            continue
-        if name in deployed_names:
-            continue    # 场上 dup ≠ 可部署战力(游戏拒同名上阵)
-        if not dup_power_qualified(name, 0):
-            continue
-        return True
-    return False
+def _deployable(frame: MandateFrame, session: StrategySession,
+                state: GameState | None = None) -> bool:
+    """RunDeploy 提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
+
+    谓词单一源 = ``kernel.cw_deploy_logic.has_deployable``(dd-037):
+    与执行方 CwOpDeploy 计划构造(select_deployments)同源同参语义
+    ——围栏/去重/cap/配方底线全在谓词内。计划空(含「候选全被规则
+    留 bench」形态)⇒ False,不提案 RunDeploy(序内取下一动作)。
+
+    事件语义(本守卫触发形态):2026-09-06 实机首局(单动作架构,
+    ADR-0518)00:08:25 备战环无进展守卫以「连续 3 环同签名动作批
+    ['RunDeploy'] ∧ 零推进」停机留证——决策核每轮提案 RunDeploy,
+    执行方计划空报 no-op 成功,RunDeploy 投影未建模(保守回退)交回
+    外循环,重进再提案,3 环零推进。守卫行为正确,根因 = 本发射位
+    漏接抑制谓词。禁第二实现:判空一律走 kernel;本函数只做输入装配
+    (与 CwOpDeploy 同款,经 kernel deploy_target_sets /
+    deployed_bond_counts 单一源)。
+    """
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        deploy_target_sets,
+        deployed_bond_counts,
+        has_deployable,
+    )
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        locked_faction_scope,
+    )
+    _comp = getattr(session, 'target_comp', None)
+    _tgt, _fw_carry = deploy_target_sets(
+        _comp, getattr(session, 'transition_framework', '') or '')
+    _cids = {d.char_id for d in frame.deployed if d.char_id}
+    return has_deployable(
+        frame.bench,
+        deployed_cids=_cids,
+        deployed_fac=deployed_bond_counts(_cids),
+        board=dict(getattr(state, 'board', None) or {}),
+        cap=(frame.deploy_cap if frame.deploy_cap and frame.deploy_cap > 0
+             else 10 ** 6),
+        target_factions=_tgt,
+        target_cores=set(getattr(_comp, 'core_chars', None) or ()),
+        fw_carry=_fw_carry,
+        locked_factions=(locked_faction_scope(
+            getattr(session, 'v3_intention', None)) or frozenset()),
+    )
 
 
 def _state_view(frame: MandateFrame, session: StrategySession) -> object:
