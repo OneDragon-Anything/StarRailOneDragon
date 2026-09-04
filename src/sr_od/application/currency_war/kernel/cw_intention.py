@@ -1570,19 +1570,26 @@ def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
 
 
 def locked_buy_membership(ist: IntentionState | None) -> frozenset[str] | None:
-    """锁定帧(locked_comp 非空)买侧 line membership 的正典口径(P0-1
-    双源对齐;消费域=mandate_v1 商店线买入判定链)。
+    """锁定帧(locked_comp 非空)买侧 line membership 的正典口径
+    (消费域 = mandate_v1 商店线买入判定链:买入义务集 + 拒因遥测;
+    卖免面/刷新账不辖,见消费域的买面/卖免面拆分注释)。
 
     双源断裂机制:锁定帧的买入 membership 旧按
     ``predicates.line_members(target_comp)``(comp core∪shared)判,而
-    锁线语义的采购集权威 = ``locked_buy_scope``(comp 锁定帧经
-    ``_line_hoard``,含 form_tiers∪sub_tiers 档位键的阵营∪流派全集成员,
-    W65 修法2 同口径)——实机 g_20260905_035710 p2r1 锁「列车同行」后,
-    同阵营成员(开拓者·欢愉/丹恒·饮月等,非该 comp core∪shared)在
-    shop_rejects 被判 ``non_line``、M2 义务买入被跳过,锁定帧自相矛盾
-    (M2 骨架义务「锁线成员照买」,策略审查 20260905-0520 定性 = 实现
-    断裂非设计缺口)。修复 = 锁定帧买入判定统一消费本函数,单一源 =
-    ``locked_buy_scope``,购买侧与锁定侧同源。
+    锁线语义的采购集权威 = ``_line_hoard``(含 form_tiers∪sub_tiers
+    档位键的阵营∪流派全集成员,W65 修法2 同口径)——实机对局
+    g_20260905_035710 锁「列车同行」后,同阵营成员(开拓者·欢愉/
+    丹恒·饮月,非该 comp core∪shared)被判 ``non_line``、M2 骨架义务
+    买入被跳过,锁定帧自相矛盾(M2「锁线成员照买」,审查定性 = 实现
+    断裂非设计缺口)。修复 = 锁定帧买入判定统一消费本函数,购买侧与
+    锁定侧同源。
+
+    集合构成 = ``p1_pair`` 成员(若设)+ ``locked_comp`` 采购集;**刻意
+    不含 ``transition_pair``**(与 ``locked_buy_scope`` 的唯一差异):
+    对件在 ADR-0367 分层里是二级囤货——免 demote/fence 的机会性囤货
+    (受息律/预算辖),不是 M2 骨架义务(无条件照买),升格即越分层,
+    故本函数不复用 ``locked_buy_scope`` 直取。需要完整约束基准(对件
+    免 demote/fence 面)的消费方仍用 ``locked_buy_scope``。
 
     触发条件 = ``locked_comp`` 非空(锁线状态已建立)。未锁帧(P1 配方
     锁帧 locked_comp 恒空,ADR-0357;空窗/weak/降格)→ 返回 None,
@@ -1591,7 +1598,14 @@ def locked_buy_membership(ist: IntentionState | None) -> frozenset[str] | None:
     """
     if ist is None or not getattr(ist, 'locked_comp', ''):
         return None
-    return locked_buy_scope(ist)
+    scope: set[str] = set()
+    if getattr(ist, 'p1_pair', ()):
+        scope |= _pair_members(tuple(ist.p1_pair))
+    comp = get_comp(ist.locked_comp)
+    if comp is not None:
+        chars, _equips = _line_hoard(comp)
+        scope |= chars
+    return frozenset(scope) if scope else None
 
 
 def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:

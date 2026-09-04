@@ -431,15 +431,22 @@ def decide_shop_action(state: GameState, session: StrategySession,
             counters) and k_fallback:
         k_members = tuple(sorted(k_fallback))
         _count(k_band)
-    # P0-1 双源对齐:锁定帧(locked_comp 非空)买入 membership 切换到
-    # 锁定口径——单一源 = cw_intention.locked_buy_membership(即
-    # locked_buy_scope 采购集,含锁定 comp 的阵营∪流派成员),购买侧与
-    # 锁定侧同源,锁内成员经 M2 义务买入、不再落 non_line 拒因(实机
-    # g_20260905_035710 p2r1 锁「列车同行」后锁内成员被拒的断裂修复)。
-    # 未锁帧返回 None ⇒ 维持 line_members 口径,P1 无锁态零变化。
-    _lock_members = cw_intention.locked_buy_membership(_ist)
-    if _lock_members:
-        k_members = tuple(sorted(_lock_members))
+    # 锁定帧(locked_comp 非空)买面口径拆分(买面/卖免面/刷新账三面
+    # 分参数,单一源 = cw_intention.locked_buy_membership):
+    # - 买入义务集 ``buy_members``(M2 缺员循环、M2b 合并完成买入、拒因
+    #   遥测)= 锁定采购集(含锁定 comp 的阵营∪流派成员)——购买侧与
+    #   锁定侧同源,锁内成员经 M2 义务买入、不再落 non_line 拒因(实机
+    #   对局 g_20260905_035710 锁「列车同行」后锁内阵营成员被拒的
+    #   双源断裂修复);
+    # - ``k_members`` 保持 comp core∪shared 口径(M4 fuel_sell_candidates/
+    #   funding_support_sell 的 zero_overlap 卖免判定、R1/R2 刷新账合格集
+    #   P40 A4「目标阵容件」口径)——锁定全集若灌入卖免面,bench 被
+    #   hoard 低星成员塞满后腾席候选空集、缺员买不进(滞留换拍复发);
+    #   灌入刷新账则判据行为翻转无数学重推背书。两处均按「无证明重推
+    #   不翻转」维持原口径。
+    # 未锁帧两集相等(locked_buy_membership 返回 None),P1 无锁态零变化。
+    _buy_members = cw_intention.locked_buy_membership(_ist)
+    buy_members = tuple(sorted(_buy_members)) if _buy_members else k_members
     bench = [b for b in (state.bench or []) if b is not None]
     deployed = [d for d in (state.deployed or []) if d is not None]
     bench_names = [b.char_id or '' for b in bench]
@@ -476,8 +483,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 即真值,actions 传空——买走牌已由 project 从 state.shop 摘除)。
     with contextlib.suppress(Exception):
         session.cw4_shop_rejects = shop_unbought_reasons(
-            state, k, k_members, [])
-    missing = [m for m in k_members if m not in owned]
+            state, k, buy_members, [])
+    missing = [m for m in buy_members if m not in owned]
 
     def _shop_candidates(m: str):
         return sorted(
@@ -534,7 +541,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 已持 2 张同名同星 1★、无 2★ 成件,第三张在店 affordable ⇒ 买入即
     # 合成 2★。义务通道不走息律门([41] 同 M2);bench_free ≥ 1 = 买入
     # 硬前提(合成投影:买入触合并净席 -1,保守取买入时点可行)。
-    for m in k_members:
+    for m in buy_members:
         copies = [c for c in bench + deployed if (c.char_id or '') == m]
         if len(copies) != 2 or any((c.star or 1) >= 2 for c in copies):
             continue
@@ -641,8 +648,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
         if contracts.ensure_contract(
                 ('buy', 'ev_buy_candidates'),
                 contracts.ContractCtx(k_members=k_members), counters):
+            # EV 排除集 = 买入义务集(buy_members):义务面成员「走 M2,
+            # 非 EV 域」——与买面同口径;非卖免面,不吃锁定全集收窄裁。
             cands, ckey = crit_buy.ev_buy_candidates(
-                gold, s_reserve, state.shop, k_members,
+                gold, s_reserve, state.shop, buy_members,
                 level=int(state.level or 1), window=card_w,
                 counters=counters)
             if ckey:
