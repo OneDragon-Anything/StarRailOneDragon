@@ -1,0 +1,104 @@
+# 外层循环（outer_loop）
+
+> 反向规格化来源 = `operations/cw_loop.py`（CwLoop，1595 行）。职责：对局内唯一循环——每轮截图后按优先级匹配画面分支，把控制权交给对应画面 op / 直接处理弹窗；驱动轮次推进（备战→出战→战斗→结算→回备战）；承载停机与遥测钩子。路径根 = `src/sr_od/application/currency_war/`。
+> 数字三形态：本篇数字多为流程预算/阈值（框架常量，非策略判据），不进决策门，按"常量名 = 代码单一源"纪律书写；涉策略语义的数字标三形态。
+
+## 1. 循环骨架
+
+```
+loop()（@operation_node，node_max_retry_times=400；cw_loop.py:620-624）
+  ├─ _iter += 1；> MAX_ITER=2000（≈66min 预算）→ round_fail('对局循环超时')（cw_loop.py:186-189,622-624）
+  ├─ iter1：分发锚可解析预检（§2.2）
+  ├─ 停滞 watchdog tick（guards.md §2）
+  ├─ 每 10 iter：窗口焦点防线（失焦 → 主动激活；cw_loop.py:652-658）
+  ├─ iter1 ∧ 新局：read_game_state(phase='battle_or_transit') 最小读
+  │   ├─ round>1 ∨ plane>1 → 恢复对局标记（遥测 record_exogenous；cw_loop.py:661-675）
+  │   └─ strategy.on_match_start(...)（cw_loop.py:678-679）
+  ├─ 分支序匹配（§2）→ 命中即执行并 round_wait 返回
+  └─ 全不命中 → _handle_unknown_fallback()（guards.md §4）
+```
+
+run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loop.py:335-394`）：plane/round 缓存清零、`_is_new_match = ctx.cw_match is None`（续跑支持：cw_match 已存在则延用，手动逐轮验证靠此跨 run 延续 match）、职级难度 ctx 中转吸收（取走清空防跨局复用）、SettlementState/CwScreenBattleWait 实例化、新局兜底 `establish_new_match`。
+
+## 2. 画面识别与路由（分支序 = 优先级，序位纪律）
+
+### 2.1 判定原语
+
+- 画面锚 = `画面名.area名`（screen_info 建档；`round_by_find_area(..., crop_first=False)`）。全部分支判定锚登记在 `DISPATCH_AREA_ANCHORS`（`cw_loop.py:240-271`），iter1 预检可解析性——缺失逐条 log.error，把"配置缺失"在第一轮炸到日志面（dd-029，防 merged 漏再生的静默跳过）。
+- 兜底 OCR 判定（`round_by_ocr`）必须带收紧的 `lcs_percent` 并优先改 area 化——历史误匹配事故（投资策略屏被未达上限分支吞等）均源于全屏 LCS 共享子序列。
+
+### 2.2 分支序（浮层先于备战双锚；序位漏项 = 实机事故源，锁测试钉死）
+
+| 序 | 分支 | 判定 | 处理 |
+|---|---|---|---|
+| 0a0 | 选择装备 overlay | 双 id_mark 门（标题+副题） | CwScreenEquipPick；**必须先于 0a**（副题同为"请选择1个"） |
+| 0a | 选择伙伴 | id_mark | CwScreenPartner |
+| 0a2 | 银狼策划事件 | id_mark | CwScreenPlanner（失败 round_retry） |
+| 0a3 | 命运卜者强化 | 双 id_mark | CwScreenFortune |
+| 0a4 | 位面详情 | 标题锚 | 点关闭键 + 验消失 |
+| 0b | 巨星强化（盛会之星） | 独有标题 | CwScreenMegastar |
+| 0c | 遭遇节点 | id_mark | CwScreenEncounter |
+| 0d | 未达上限警告 | id_mark | CwScreenDeployNotFull |
+| 0e | 投资策略三选一 | id_mark | CwScreenInvestStrategy |
+| 0e1 | 补给阶段 | id_mark | CwScreenSupplyNode；成功 → `_record_supply_outcome`（补给是唯一无结算屏节点，合成 outcome 行，source='synthetic_supply'；`cw_loop.py:581-618`） |
+| 0f | 武装箱弹窗 | id_mark | CwScreenArmoryBox |
+| 0e2 | 商店刷新概率表弹窗 | id_mark | 点 ×(1501,263) 关闭 |
+| 0e3 | 道具详情弹窗（聘用书类） | OCR'聘用书' ∧ 非祈愿屏 | 点 ×(1862,65) |
+| 0f' | 消耗品详情浮层 | OCR'消耗品'∧'拖动到' 双条件 | ESC 关 |
+| 0g | 阿哈装备选择 | 备战屏'标识-简易装备' | 点第 1 装备 |
+| 0h | 祈愿试炼 | id_mark | 停机钩子（grail_pin_stop_hook）→ CwScreenWishTrial |
+| 0i | 星徽秘典四选一 | id_mark（命中即接管，不放行备战分支） | CwScreenBookcard |
+| 0k | 专家邀请函 | id_mark（同上） | CwScreenExpertInvite |
+| 0m | 备战暗色锁定子态族 | 右上"返回XX选择"按钮锚 | 点返回按钮回 overlay |
+| 0j | 前台无角色提示 | id_mark | 确认 → 带落点验证重部署 → 验前排≥1 → 本迭代内再出战；重试上限 FRONTLESS_REDEPLOY_LIMIT=2（`cw_loop.py:916-976`） |
+| 0p | BOSS 简报 | area 锚 ∨ 共享判别 `is_boss_briefing_texts`（误读鲁棒） | CwScreenBossBriefing；**先于备战双锚**（横幅遮挡下双锚仍透出命中） |
+| 0q | 位面过渡 | OCR'点击空白处继续' ∧ 非 boss 帧（两画面排他） | CwScreenPlaneTransition；误分发型 fail 连续 PLANE_MISDISPATCH_LIMIT=3 → round_fail（`cw_loop.py:1003-1034`） |
+| 0r | 位面简报 | id_mark | CwScreenBriefing |
+| 0s | 投资环境（开场/接管局） | id_mark | CwScreenInvestEnv → CwScreenWaitOneOne（等备战锚就绪） |
+| **1** | **备战** | **双锚**：'备战标识-购买经验' ∧ '按钮-出战' 同帧命中 | 见 §3 |
+| 1b/1d/1g | 详情弹窗族（可合成列表/角色详情/星徽详情/中断挑战） | OCR/area | ESC / 点 X 关闭；中断挑战绝不点"放弃并结算" |
+| 战斗窗 | `_battle_wait_active`（出战驻留闩）∨ 帧锚 `_frame_in_battle_window`（`cw_loop.py:1495-1516`） | CwScreenBattleWait（三段式：等结算→结算处理→白名单完成；团灭终局分叉交回 3c） |
+| 3c | 回大厅（'标识-创业指南'） | area | 局终收口（§5） |
+| 5 | 前进按钮 | OCR'下一步' | 点击 |
+| 兜底 | 全不命中 | — | `_handle_unknown_fallback`（guards.md §4） |
+
+overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"会透出命中，先查备战会误派（多处实机事故，见各分支注释）。
+
+## 3. 备战分支（分支 1）的进入序（cw_loop.py:1065-1337）
+
+双锚命中后按序：
+
+1. `_battle_ts = None`（战斗窗口关，watch 恢复）；
+2. **环级无进展守卫**计数（guards.md §1；`cw_loop.py:1077-1126`）；
+3. "返回投资策略选择"按钮在 → 点去选策略（上游策略屏处理失败 symptom，计数报警）；
+4. **策略失活早停**检查（查上一轮心跳；guards.md §5）；
+5. **恢复局（locked-resume）检测**：候选 = 新 match ∧ 首个备战相位 round>1；商店探针（点商店→验收起）区分锁定/未锁；锁定态跳过全部备战交互直接出战，出战成功即解除（`cw_loop.py:1180-1238`）；
+6. 可控轮数：`max_rounds` 已跑满 → round_success 停备战屏（单/多轮验证）；
+7. 补给节点分流：nodeseq current=supply → 点"返回补给阶段"进补给屏（用节点类型判，非按钮——battle 节点也有该按钮）；
+8. 预清场：试用角色揭示卡（≤3 轮，免费 2★，非策略决策不进 director）+ 书册卡（≤2 轮，CwScreenExpertInvite 全链）；
+9. `CwScreenPrep(self.ctx).execute()`——**备战单轮**（prep_visit.md）；
+10. 失败 streak ≥5 → round_fail 交兜底链；成功 → `_battle_ts` 置位 + `_battle_wait_active=True`；
+11. **环让位重入契约**：director 返回（含 overlay bail）后必经 return → 下轮 loop 顶全分支重判，不在同一迭代内直接回备战分支（`cw_loop.py:1329-1337`）。
+
+## 4. 轮次推进
+
+轮 = 一次"备战环 → 出战 → 战斗 → 结算"。推进信号：
+- 出战成功：`_battle_ts = monotonic()`（战斗窗口宽限计时起点，BATTLE_WATCH_GRACE_S=600 覆盖实测 4-5.5min 战斗）+ `_battle_wait_active=True`；
+- 结算：CwScreenBattleWait 完成判据白名单（备战双锚单锚宽判定命中即 success 交回）；`saw_settlement` → `_battle_ts=None`；
+- 轮计数 `_settle.rounds_done`（SettlementState，结算链收编；max_rounds 停点消费）；
+- 节点真值：备战观察段的节点探针写 session（current 左移推断优先 + upcoming 存下轮；`cw_screen_prep.py:1869-1931`）。
+
+## 5. 停机与遥测钩子
+
+| 钩子 | 内容 | 载体 |
+|---|---|---|
+| runs summary 收口 | `after_operation_done` 全路径必达；未写 summary 的对局补写 stopped/abandoned（真假局判定 = "从未观察到对局态"才算假局；`cw_loop.py:517-578`） | `cw_loop.py:517-578` |
+| 局终正常收口（3c） | on_match_end + 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空 | `cw_loop.py:1404-1459` |
+| 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py:1469-1494,1572-1594` |
+| 补给合成 outcome | 见 §2.2 分支 0e1 | `cw_loop.py:581-618` |
+| 关键点快照 `_snap` | 选人/事件屏 debug 截图 + 全量 OCR 日志（验证后去掉；非关键路径 best-effort） | `cw_loop.py:408-425` |
+
+## 6. ⚠️ 现状违宪待改标记（本篇辖内）
+
+- ⚠️ **恢复局判定无位面字面问题**——本篇辖内无位面字面门。boss 简报/位面过渡两画面排他（0p/0q）为画面识别纪律，非机制辖域。
+- ⚠️ **MAX_ITER=2000 计入战斗 round_wait**（`cw_loop.py:189` 待优化注）：迭代预算被战斗时长消耗是已知待办（"MAX_ITER 应只计动作迭代"），非判据违例，登记为流程债。

@@ -102,5 +102,5 @@
 ## 9. 与其他篇的接缝
 
 - 升档器（血线硬地板 + λ 顾问）规格 = 00 §4；其与 M3 的解锁接缝见本篇 §3 M3 行与 [04_survival_budget.md](04_survival_budget.md)。
-- M2 序 1/序 2 的「序」定义与证据门 = [03_strategy_layer.md](03_strategy_layer.md) §4.1/§4.2。
-- 骨架动作的发射载体（序列契约、动作词表、截断规则）= [09_architecture.md](09_architecture.md)。
+- M2 序 1/序 2 的「序」定义 = [11_shop_decisions.md](11_shop_decisions.md) §1；证据门 = [12_line_and_intention.md](12_line_and_intention.md) §1。
+- 骨架动作的发射载体（序列契约、动作词表、截断规则）= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)。

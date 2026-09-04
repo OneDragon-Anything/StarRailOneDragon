@@ -3,6 +3,7 @@
 > 本目录是货币战争（CW）**策略设计的唯一现行家**。它是对分散在 `archive/design/`、`archive/redesign/`、`strategy/` 三棵文档树中的碎片化策略权威的塌缩重刻（依据：设计评审裁定书 B 档执行清单，`.debug/temp/currency_war/design_review/REVIEW.md` §4.1-4.3）。
 > 本批为纯文档写作，零代码改动。
 > 读者 = 无会话历史的工程师/智能体。术语首次出现时给定义。
+> **职责分界（用户裁定）**：本目录只管"每个画面结合哪些数学证明、怎么产出决策"；**流程控制（画面路由/访问相位/动作发射/守卫）单独立文档 = `../flow/`**。
 
 ## 1. 这套文档回答什么问题
 
@@ -12,33 +13,41 @@
 - 每个进决策门的数字带**三形态标注**：【注】游戏定义值（注册表直读）/【推】已证推导（引命题号）/【拟】观测估计（必须带置信区间 + fail-closed 退路 + 标定义务 owner 与期限）；无标注数字不得进决策门；
 - 每条论断可回溯（命题号 P1-P57 → `proofs/math_proofs.md` 索引 → 单篇证明；或「文件:节」出处）。
 
-## 2. 阅读顺序（00→09，即依赖序）
+## 2. 阅读顺序（总 00/01/02/04 → 分 10-13 + 08）
+
+### 总纲（依赖序）
 
 | 篇 | 文件 | 一句话 |
 |---|---|---|
 | 00 | [00_framework.md](00_framework.md) | 哲学与约束：发展优先默认、危险信号只升不降、hp/战力辖域硬闸门、约束单一源 |
 | 01 | [01_math_framework.md](01_math_framework.md) | 数学框架（NMF 塌缩）：公理栈五条、七面判据、数字三形态章程、两条总纲级不变量 |
 | 02 | [02_mandate_layer.md](02_mandate_layer.md) | 骨架行为层：三层权限模型、骨架义务 M1-M7、输入缺失按可逆性定向 fail |
-| 03 | [03_strategy_layer.md](03_strategy_layer.md) | 策略层正文：买入六序、证据门与换线、经济引擎、卖出、装备、事件目录、机制突变 |
 | 04 | [04_survival_budget.md](04_survival_budget.md) | 生存预算统一件：血预算数学 h>d·L_c 为唯一模型（12 号件塌缩 + 01 §4.7 重述） |
-| 05 | [05_buy_face.md](05_buy_face.md) | 买面设计：2★ 副本购置 P55、可变现息线下界 P56、V̄ 粒度 P57（13 号件塌缩） |
-| 06 | [06_engine_pool.md](06_engine_pool.md) | 引擎池渐进买进规格（新设计件，补完备性空洞；待对抗审查） |
-| 07 | [07_meta_run.md](07_meta_run.md) | 跨局 meta 域：显式声明出辖（当前无可设计对象，登记为未来立项） |
-| 08 | [08_events.md](08_events.md) | 事件面规格骨架：E1-E15 逐项收录语义、数学判据逐项标「待 derive」 |
-| 09 | [09_architecture.md](09_architecture.md) | 架构统一篇：序列决策契约、策略插件、管理器、四身份分离、单一核 mandate_v1 |
 
-检查点交付：先交 00-03（含本 README），编排者放行后交 04-09。
+### 分篇（按决策点）
+
+| 篇 | 文件 | 一句话 |
+|---|---|---|
+| 10 | [10_prep_decisions.md](10_prep_decisions.md) | 备战画面决策：部署/装备/腾席判据 + 共同地基（机制速查/形式刻画/注册表形态） |
+| 11 | [11_shop_decisions.md](11_shop_decisions.md) | 商店画面决策：买入六序、买面（P55/P56/P57）、引擎池、卖出、刷新、升级、经济引擎、机制突变 |
+| 12 | [12_line_and_intention.md](12_line_and_intention.md) | 换线与意向：生命周期状态机、证据门与通用目标态定义、换线机器四触发 |
+| 13 | [13_pick_family.md](13_pick_family.md) | pick 族薄判据：九接口决策规格 + 事件面目录 E1-E15 |
+| 08 | [08_events.md](08_events.md) | 事件面规格骨架：E1-E15 逐项收录语义、数学判据逐项标「待 derive」（落差登记） |
+| 07 | [07_meta_run.md](07_meta_run.md) | 跨局 meta 域：显式声明出辖（当前无可设计对象，登记为未来立项） |
+
+（原 03/05/06/09 已按决策点重排删除：03/05/06 拆入 10-13；09 架构篇整体迁 `../flow/README.md` §2——策略↔流程契约。）
 
 ## 3. 与既有资产的关系（谁管什么，禁双源）
 
 | 资产 | 角色 | 与本链的关系 |
 |---|---|---|
-| 本目录 `strategy-docs/` | **策略设计**（as-designed 现行权威） | 设计语义唯一现行家 |
-| `docs/develop/currency_war/proofs/`（math_proofs.md 索引 + P 系列单篇） | **定价权威** | 一切「多少算够」的数学证明。本链只消费命题结论与状态，不重推、不改写；命题以索引状态列为准 |
-| `docs/game/currency_war/research/` | **游戏真值** | 与实现无关的游戏机制事实（economy/combat/transition_combos 等）。游戏版本变了它变，本链引用不复制数值 |
+| 本目录 `strategy-docs/` | **策略决策设计**（as-designed 现行权威） | 决策判据设计语义唯一现行家 |
+| `../flow/`（flow/ 六篇） | **流程控制设计** | 画面识别路由/访问相位/动作发射契约/守卫的唯一现行家；策略↔流程契约（四身份分离、17 接口、序列语义）在其 README §2 |
+| `docs/develop/currency_war/proofs/`（math_proofs.md 索引 + P 系列单篇） | **定价权威** | 一切"多少算够"的数学证明。本链只消费命题结论与状态，不重推、不改写；命题以索引状态列为准 |
+| `docs/game/currency_war/research/` | **游戏真值** | 与实现无关的游戏机制事实。游戏版本变了它变，本链引用不复制数值 |
 | 代码注册表（`cw_chars`/`cw_shop_odds`/`cw_state` 等） | **机制数值单一源** | 文档只写常量名与语义，值一律在代码 |
 | `src/sr_od/.../currency_war/` 代码 | **实现** | 本链是设计，代码是实现；行为变更走 ADR + 三同步（见 sr-od-currency-war-dev skill「文档同步」） |
-| `archive/design/`、`archive/redesign/`、`strategy/` 旧树 | **素材·仅史实** | 本链的塌缩素材来源，只读。旧树不再承载现行语义；其中的 R 标链/勘误史不搬入本链（本链正文无修复批标注形态，变更走版本化修订） |
+| `archive/design/`、`archive/redesign/`、`strategy/` 旧树 | **素材·仅史实** | 本链的塌缩素材来源，只读。旧树不再承载现行语义；其中的 R 标链/勘误史不搬入本链 |
 | `.debug/progress/` 当前迭代 + `decisions/`（ADR） | 进度与决策 why | 进度不进共享文档；一决策一 ADR |
 
 ## 4. 宪法：用户四条裁定（每篇都要过）
