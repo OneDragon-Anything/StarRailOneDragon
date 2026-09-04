@@ -537,8 +537,9 @@ COMP_LIBRARY: list[Comp] = [
                          star_goals={"姬子·启行": 3}),
             8: LevelGoal("roll", target_cost=0, target_chars=["姬子·启行", "花火", "瓦尔特"],
                          star_goals={"姬子·启行": 3, "花火": 2}),
-            # 缺 lv9 → 落 _DEFAULT_LEVEL_GOAL[9]=stable(零 D),在 62% 效率等级
-            # 上想 D 姬子却被判「停留零 D」;补 lv9 roll(5费概率高,找 瓦尔特/花火 升星,姬子顺带)。
+            # (旧注「缺 lv9 → 落通用曲线 stable 零 D」的回退已随 _DEFAULT_LEVEL_
+            # GOAL 退役(ADR-0519),lv9 无 plan 时仅节点地板辖;显式 lv9 roll
+            # 保留:5费概率高,找 瓦尔特/花火 升星,姬子顺带。)
             9: LevelGoal("roll", target_cost=5, target_chars=["姬子·启行", "花火", "瓦尔特"],
                          star_goals={"姬子·启行": 3, "花火": 2}),
         },

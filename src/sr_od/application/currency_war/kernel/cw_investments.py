@@ -8,7 +8,8 @@
   - ``STRATEGY_ECONOMY``(ADR-0131 可数值化经济效果);
   - ``ENV_CATEGORY``/``ENV_FACTION``(环境 7 类分类 + 阵营绑定,ENV_FACTION_MAP 派生源);
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
-  - ``PICK_VALUE``/``ENV_PICK_VALUE``/``SURVIVAL_PICKS``(ADR-0143/0144 选卡评估分)。
+  - ``PICK_VALUE``/``ENV_PICK_VALUE``(ADR-0143/0144 选卡评估分;SURVIVAL_PICKS
+    等事件面钩子已退役,ADR-0519)。
 - **合并层**:base × overlay → 注册表,构建时做孤儿校验(overlay 引用了 base 没有的键 →
   import 即炸,防版本更新后静默失联)。
 
@@ -1117,21 +1118,10 @@ if _PICK_ORPHANS:
 for _n, _v in PICK_VALUE.items():
     INVESTMENT_STRATEGIES[_n] = replace(INVESTMENT_STRATEGIES[_n], pick_value=_v)
 
-# HP<40 生存类(评估表 notes 钩子:恢复/免战/降难度;decide_event 低血 +15)
-SURVIVAL_PICKS: frozenset[str] = frozenset({
-    '健康充值', '成本控制', '星际和平保险', '藏一手', '免战牌', '保险',
-    '奋斗协议', '退化', '简单模式', '难度修改器',
-})
-
-# P2 断崖装备缺失(11 局实锤):装备流策略——P2r1 的
-# 掉血(-14~-41)与板面弱相关,五局 P2 板面 equips 全空
-# (裸件打仗);军火类策略(每节点刷装备)是 P2 生存的
-# 关键补强通道。decide_event 在 P2 给这类 +25。
-EQUIP_FLOW_PICKS: frozenset[str] = frozenset({
-    '公司军火更新·彩', '公司军火更新·金', '公司军火更新·银',
-    '军火贸易', '军火贸易+', '轮回不止', '装备方案A',
-    '军备供应链', '武器批发商', '采购专员·彩', '采购专员·金',
-})
+# (事件面经验加减分族已退役 2026-09-04,ADR-0519「未证即退役」,保守缺省 0:
+# - SURVIVAL_PICKS(HP<40 生存类策略集,decide_event 低血 +15 钩子);
+# - EQUIP_FLOW_PICKS(P2 断崖装备流策略集,decide_event plane≥2 +25 钩子,
+#   11 局实锤经验拟合——辖域与幅度双未证,重立须按板面装备存量观测参数化。)
 
 
 def pick_value_of(name: str) -> int | None:
@@ -1249,5 +1239,5 @@ for _n, _v in ENV_PICK_VALUE.items():
 # 阵营定向类 comp 匹配条件分下限(评估表条件白名单:概念股→78 / 邀请→70 / 契约 66-78 取 72;
 # faction ∩ target_comp.factions 时 score 提到下限,未匹配吃裸基准分)
 ENV_FACTION_MATCH_FLOOR: dict[str, float] = {'概念股': 78.0, '邀请': 70.0, '契约': 72.0}
-# HP<40 钩子(评估表 notes:白银时代/敌后破坏 +15 降难度求稳;人身意外险 +10 补给补强)
-ENV_SURVIVAL_BONUS: dict[str, float] = {'白银时代': 15.0, '敌后破坏': 15.0, '人身意外险': 10.0}
+# (旧 ENV_SURVIVAL_BONUS = {白银时代 15, 敌后破坏 15, 人身意外险 10} 已退役
+# 2026-09-04,ADR-0519「未证即退役」:低血环境钩子保守缺省 0,消费分支同批删除。)

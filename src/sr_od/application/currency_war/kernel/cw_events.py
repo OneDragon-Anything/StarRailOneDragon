@@ -13,10 +13,6 @@ from sr_od.application.currency_war.kernel.cw_comps import (
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_FACTION_MATCH_FLOOR,
-    ENV_SURVIVAL_BONUS,
-    EQUIP_FLOW_PICKS,
-    INVESTMENT_STRATEGIES,
-    SURVIVAL_PICKS,
     EconomyEffect,
     get_env,
     get_strategy,
@@ -31,27 +27,20 @@ from sr_od.application.currency_war.kernel.cw_state import (
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
 
-# 注册表名列表缓存(ADR-0141 _option_rarity LCS 兜底用;模块级避免每选项重建)
-INVESTMENT_STRATEGIES_KEYS: list[str] = list(INVESTMENT_STRATEGIES)
-
-
-
 # ===== 事件 =====
 # 设计注:boss 克制是 comp-vs-boss 机制级(走 boss_fit/
 # comp.countered_by_bosses + 机制建模),非阵营级——不做阵营降权。
 
-def _option_rarity(opt: str) -> str:
-    """投资策略选项的品质(ADR-0141):注册表精确查 → LCS 相似兜底(ADR-0138 通道);未知返 ''。
+# 用户转向轴(投资策略/环境;develop config.md §3):priority 软加分 + forbid 重罚。
+# (用户偏好配置,宪法允许面:分值是用户语义的载体非策略经验量,ADR-0519 边界声明。)
+STEERING_PRIORITY_BONUS: float = 30.0     # soft:倾向选,可被 comp-hit(65-110)/增强定义(120)压过
+STEERING_FORBID_PENALTY: float = 10000.0  # hard−:有替代永不选
 
-    品质→敌难度(核心机制 38-40):金 +3 / 棱彩 +6 —— 高品质 = 高风险高回报,难度惩罚项的输入。
-    """
-    s = get_strategy(opt)
-    if s is not None:
-        return s.rarity
-    from one_dragon.utils.str_utils import find_best_match_by_lcs
-    names = list(INVESTMENT_STRATEGIES_KEYS) if INVESTMENT_STRATEGIES_KEYS else []
-    idx = find_best_match_by_lcs(opt, names, lcs_percent_threshold=0.6)
-    return INVESTMENT_STRATEGIES[names[idx]].rarity if idx is not None else ''
+# (品质→敌难度机制 = 游戏定义:金 +3 / 棱彩 +6(核心机制 38-40)。旧选卡
+# 难度惩罚 棱彩−12/−24、金−6/−12 已退役 2026-09-04,ADR-0519「未证即退役」:
+# 机制方向是游戏文本,但惩罚幅度无游戏定义或证明出处,选卡侧无法从定义量
+# 推出「难度+3 值多少分」——幅度退役置 0。连同退役:_option_rarity LCS
+# 品质兜底与 INVESTMENT_STRATEGIES_KEYS 缓存(唯一消费 = 该惩罚)。)
 
 
 # 「克 DoT/减益」的机制属性集合(与 MECHANIC_COUNTERS 值域对齐;ADR-0203)
@@ -74,30 +63,30 @@ def _opt_counters_dot(opt: str) -> bool:
 
 
 
-# 建议刷新的分数下限(ADR-0146:低于此 = 烂手牌,免费刷新期望为正;tuning 候选)
-EVENT_REFRESH_SCORE_FLOOR: float = 50.0
-
-# 用户转向轴(投资策略/环境;develop config.md §3):priority 软加分 + forbid 重罚。
-STEERING_PRIORITY_BONUS: float = 30.0     # soft:倾向选,可被 comp-hit(65-110)/增强定义(120)压过
-STEERING_FORBID_PENALTY: float = 10000.0  # hard−:有替代永不选;全被禁 → 分数落刷新阈值下自然建议刷新
-
+# (事件面经验加减分族已退役 2026-09-04,ADR-0519「未证即退役」,保守缺省
+# 全部置 0/移除,墓碑注逐项:
+# - 旧 EVENT_REFRESH_SCORE_FLOOR=50(≈评估分中位估计)→ refresh 建议恒
+#   False(免费刷新的换手期望无证明,保守 = 不弃当前手牌);
+# - 旧低血生存钩子:策略 SURVIVAL_PICKS +15 / env ENV_SURVIVAL_BONUS
+#   {白银时代+15,敌后破坏+15,人身意外险+10} → 0(hp 语义可标不可定价);
+# - 旧 P2 装备流 EQUIP_FLOW_PICKS plane≥2 +25(11 局实锤)→ 0(经验
+#   拟合,辖域+幅度双未证;若重立须按观测参数化,见 ADR-0519 重derive 节)。)
 
 def decide_event(options: list[str], config, state: GameState,
                   target_comp=None) -> PickEvent:
     """事件选项打分(投资策略/环境 3 选 1)。
 
-    分值来源优先级表(每项只在**高于当前分**时覆盖;ADR-0143/0144/0144b 后的完整语义):
+    分值来源优先级表(每项只在**高于当前分**时覆盖;ADR-0143/0144/0144b 语义;
+    ADR-0519 后事件面经验加减分族全退役,剩纯注册表评估体系):
     1. comp 命中(45×N+20,双命中 110):选项绑定∩target_comp(策略侧;成型加速压倒一切)
     2. 策略评估分 pick_value(12-75,ADR-0143;替裸品质先验,「分数为纲」)
        / 品质先验回落(50/30/10+economy20,仅未评估卡)
     3. eval-lcs(策略 OCR 形变裸分;**env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)
     4. env 分支(_st is None 且 env 命中):env 裸分(28-72)/ 阵营 floor(概念股 78/邀请 70/契约 72)
-       / HP 钩子(+15/+10);**env 无品质不吃难度惩罚**(0144b)
-    叠加项(全部之后):品质难度惩罚(-12/-6,HP<40 加倍;仅策略)/ 机制克制惩罚(-100 档,
-    MECHANIC_COUNTERS 单一源,ADR-0203)/ 用户转向轴(策略/环境 priority +30 soft、forbid −10000
-    hard−,config.md §3)/ 生存钩子(+15,仅策略 SURVIVAL_PICKS)。未注册非 env = 0 分。
-    (原 config event_whitelist 恒最高 boost 已删,ADR-0204:priority/forbid 覆盖用户语义,
-    「指定具体分值」是引擎调参非用户偏好。)
+    叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源,ADR-0203)/
+    用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
+    未注册非 env = 0 分。(原 config event_whitelist 已删 ADR-0204;品质难度
+    惩罚/低血生存钩子/P2 装备流加分/刷新建议阈值已退役,见模块墓碑注与 ADR-0519。)
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
@@ -145,7 +134,7 @@ def decide_event(options: list[str], config, state: GameState,
             # 精确名 miss 但 LCS 命中评估表(OCR 形变)→ 裸评估分(comp/economy 修饰不可靠)
             score, reason = float(_pv), 'eval-lcs'
         # ADR-0144(环境侧评估分):env 名不在策略注册表(原恒 0 分 → fallback 恒选第一张);
-        # 基准分 + 阵营定向条件分(概念股/邀请/契约 faction ∩ target_comp)+ HP 钩子。
+        # 基准分 + 阵营定向条件分(概念股/邀请/契约 faction ∩ target_comp)。
         # OCR 形变的 env 名(如 尾彩•变体)不进策略 LCS(上方 _env 精确查 miss 时仍可能污染 ——
         # 但 OCR 只出现在 handler 层归一名后才进决策,形变 env 名实际不达此处;守卫以精确查为准)。
         if _st is None and _env is not None:
@@ -155,8 +144,6 @@ def decide_event(options: list[str], config, state: GameState,
                 _floor = ENV_FACTION_MATCH_FLOOR.get(_env.category, 70.0)
                 if _floor > score:
                     score, reason = _floor, f'env-faction:{_env.faction}'
-            if state.hp is not None and state.hp < 40:
-                score += ENV_SURVIVAL_BONUS.get(_env.name, 0.0)
         # 用户转向轴(develop config.md §3):投资策略/环境 priority 软加分 + forbid 重罚。
         # 选项归属:env 注册表命中走 env 轴,其余(策略/未注册)走 strategy 轴 —— env 名经 handler
         # 归一后才进决策(ADR-0144b),未注册项按事件主流(投资策略)处理。子串匹配与白名单一致(OCR 容错)。
@@ -168,36 +155,16 @@ def decide_event(options: list[str], config, state: GameState,
         if any(p in opt for p in _forbid):
             score -= STEERING_FORBID_PENALTY
             reason = 'user-forbid'
-        # ADR-0143 HP 分档:低血(<40)生存类 +15(评估表 notes 钩子:恢复/免战/降难度)
-        if (state.hp is not None and state.hp < 40
-                and _st is not None and _st.name in SURVIVAL_PICKS):
-            score += 15.0
-        # P2 断崖装备缺失(P2 期装备流策略 +25):
-        # 11 局实锤 P2 板面 equips 全空(裸件打仗,首战
-        # -14~-41);军火类(每节点刷装备)是 P2 生存关键
-        # 通道,P1 期不加(P1 板面成型优先)。
-        if (state.plane >= 2 and _st is not None
-                and _st.name in EQUIP_FLOW_PICKS):
-            score += 25.0
-        # ADR-0141:品质→敌难度(核心机制 38-40:金+3/棱彩+6)—— 高品质策略提升敌人难度,
-        # A8 高难下难度膨胀追不平强度 → 按当前难度动态惩罚:棱彩 -12 / 金 -6(Hp 危险时加倍;难度可从
-        # state.enemy_difficulty 读但选卡时常空,用 A8 常态先验)。银/未知不罚。
-        # env 无品质分级(图鉴亦无,ADR-0144 评估实证)→ 不吃品质难度惩罚(否则 _option_rarity
-        # 的 LCS 兜底会让 env 名误中策略品质,列车同行概念股→列车同行星徽棱彩→-12 污染)。
-        _rar = _st.rarity if _st is not None else ('' if _env is not None else _option_rarity(opt))
-        if _rar == '棱彩':
-            score -= 12.0 if (state.hp is not None and state.hp >= 40) else 24.0
-        elif _rar == '金':
-            score -= 6.0 if (state.hp is not None and state.hp >= 40) else 12.0
         if on_dot and _opt_counters_dot(opt):
             score -= penalty
         if score > best_score:
             best_score, best_idx, best_reason = score, i, reason
-    # ADR-0146(缺口1):三张最优 < 阈值 → 建议刷新(免费次数;handler 读「刷新次数N」决定真刷否)。
-    # 阈值 50 ≈ 评估分中位(12-75;白名单 78+/comp-hit 65+ 天然不触发)—— 烂手牌换新期望。
-    _want_refresh = best_score < EVENT_REFRESH_SCORE_FLOOR
-    return PickEvent(option_idx=best_idx, refresh=_want_refresh,
-                     reason=f"{best_reason} score={best_score:.0f}" + ("|suggest-refresh" if _want_refresh else ""))
+    # (旧 ADR-0146 刷新建议已随 EVENT_REFRESH_SCORE_FLOOR 退役,ADR-0519;
+    # refresh 恒 False,handler 不再触发事件面刷新。)
+    return PickEvent(option_idx=best_idx, refresh=False,
+                     reason=f"{best_reason} score={best_score:.0f}")
+
+
 
 
 # ===== 遭遇节点(decide_encounter;design 08)。✅ 已接:``CwScreenEncounter`` 调本函数 +
@@ -243,36 +210,16 @@ def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> floa
 
 
 def _reward_value(rewards: list[str]) -> float:
-    """奖励文本 → 价值分 0..1(用户指路「看奖励」接进选档)。
+    """奖励文本 → 价值分(ADR-0519 后恒中性 0.5)。
 
-    OCR 奖励带已读(read_encounter_options rewards);文本启发:
-    - 棱彩/金装备类关键词 > 银类 > 无文本(OCR 漏/无奖励带);
-    - 经验/金币给基础分(量小);
-    - 无奖励文本 → 0.5 中性(不因 OCR 漏惩罚该档)。
-    实玩校准点;先验表在代码单一源。
+    旧先验阶梯(棱彩/特权 1.0 > 进阶 0.8 > 简易/银 0.65 > 经验/金币/装备
+    0.6 > 无文本 0.5,自注「实玩校准点」)属经验拟合,「未证即退役」——
+    奖励稀有度序(棱彩>金>银)是游戏定义,但序到分的映射无推导;保守
+    缺省 = 恒中性:遭遇选档不因奖励文本冒险(P3 tiebreak 项随之恒定)。
+    稀有度不再识别:关键词识别整段已删,reason 回显只会打 0.50,
+    无任何稀有度信号,判读勿据此归因。
     """
-    if not rewards:
-        return 0.5
-    text = ''.join(rewards)
-    if any(k in text for k in ('棱彩', '特权')):
-        return 1.0
-    if any(k in text for k in ('进阶', '黄金', '宝钻')):
-        return 0.8
-    if any(k in text for k in ('简易', '白银', '银')):
-        return 0.65
-    if any(k in text for k in ('经验', '金币', '装备')):
-        return 0.6
     return 0.5
-
-
-# 敌方血量随难度缩放:base × 1.052^d(🟡 米游社拟合,competitors.md;D≥E 不等式地基)。
-# 遭遇选档用:档差 → 血量比 → 相对斩杀压力。
-_ENEMY_HP_GROWTH: float = 1.052
-
-
-def _difficulty_hp_ratio(tier_delta: int) -> float:
-    """档位差 → 敌方血量比(d 高 2 档 ≈ ×1.107 血)。"""
-    return _ENEMY_HP_GROWTH ** tier_delta
 
 
 
@@ -497,7 +444,8 @@ def decide_planner(options: list[PlannerOption], state: GameState,
     - **升费卡**(「提升费用」):银狼成长滚动投资前提(升费→新费档刷商店→3星5费
       滚强度)。基础 100;target 银狼线(狼尊欢愉/量子系)再 +30;**例外降权**:
       target 不含银狼线且银狼确定不在场(board 有信息但无银狼)→ -60(投资无处兑现)。
-    - **弱化类**(「弱化」/「降低敌人」):全场即时战力,基础 55;HP<40 +20。
+    - **弱化类**(「弱化」/「降低敌人」):全场即时战力,基础 55(原低血
+      +20 钩子已随 ADR-0519 C15 退役)。
     - **装备类**(其余):_equip_value 回落(装备注册表);target key_equip 命中 +15。
     - 未识别文字:0 分(idx 顺序兜底)。
     """
@@ -525,10 +473,9 @@ def decide_planner(options: list[PlannerOption], state: GameState,
                 score -= 60.0
                 reason += '-银狼不在场无处兑现'
         elif '弱化' in t or '降低敌人' in t:
+            # 低血加分(+20「+低血保命」)已随 ADR-0519 C15 退役:hp 可标
+            # 不可定价,经验加分无推导(与 C6/C7 同型)。
             score, reason = 55.0, '全场弱化(即时战力)'
-            if state.hp is not None and state.hp < 40:
-                score += 20.0
-                reason += '+低血保命'
         else:
             score = float(_equip_value(t)) if t else 0.0
             reason = f'装备({t[:8]})' if t else '未识别'

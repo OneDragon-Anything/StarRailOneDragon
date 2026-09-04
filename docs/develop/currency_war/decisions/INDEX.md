@@ -376,6 +376,7 @@
 | [0516-vbar-retirement-path-ledger.md](0516-vbar-retirement-path-ledger.md) | 0516 - V̄ 链退役 + 刷新/升级决策改路径总账比较(形式二;禁胜率建模,三修正) |
 | [0517-single-action-screen-op.md](0517-single-action-screen-op.md) | 0517 - 画面 op 单动作循环架构(入口观察+逐动作决策循环+终结 op;玩家十条裁定,accepted) |
 | [0518-single-action-implementation.md](0518-single-action-implementation.md) | 0518 - 单动作循环实施批(ADR-0517 迁移落码:处置表/测试重锚/w614 新哨兵锚/备战投影验证阶梯) |
+| [0519-empirical-scores-retirement.md](0519-empirical-scores-retirement.md) | 0519 - 组3-7 幸存经验量清账(「未证即退役」:意图族/事件面加减分族/经济干支 C 退役+B 改注+P58 骨架,accepted) |
 
 ## dd 系决策
 

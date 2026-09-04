@@ -94,12 +94,14 @@ if TYPE_CHECKING:
 CORE_MISS_N: int = 6
 """撤销出口①阈值:意向核心 N 轮不可得 → 撤销(设计推断,sim 校准)。
 计数分母 = 该核心刷新窗已开的轮(窗口冻结语义,见 LineTrack)。"""
-SKELETON_ASSET_WEIGHT: float = 0.5
-"""资产最厚度量的骨架件系数(设计推断,sim 校准;strategy_v4〔修N5〕口径:
-厚度 = 终局件数(副本计星级当量)+ 骨架件数 × 本系数)。"""
+# (SKELETON_ASSET_WEIGHT=0.5 已退役 2026-09-04,ADR-0519:设计推断无标定链,
+# 「未证即退役」;保守缺省 0 = 资产厚度只数终局件星级当量,纯游戏定义计数。)
 FAMILY_BOND_MIN_COUNT: int = 2
-"""②类专属羁绊信号阈值:板上+bench 该羁绊计数 ≥ 此值 → 家族信号
-(设计推断,sim 校准;取 2 = 「开局即战力档」下限,DOT2/护盾2 同口径)。"""
+"""②类专属羁绊信号阈值:板上+bench 该羁绊计数 ≥ 此值 → 家族信号。
+
+【注】游戏定义量:信号族专属羁绊(银河学者/夜之半神/列车同行等)的
+羁绊首档均为 2 人(cw_factions 注册表 counts[0]),阈值 = 信号族最小
+激活档,非经验拟合(ADR-0519 组4-B 复核)。"""
 
 # ⑤无信号兜底线(comp_definitions_v2 欢愉族·绯英档:「门槛全游戏最低,
 # 6 级搜绯英三星,无信号时的默认落点」)。四体系顺来牌支归点2,P1 侧不在本模块。
@@ -209,24 +211,15 @@ class IntentionState:
     demoted_endgame: bool = False      # 降格终局标记(全不可达;「赢不了就少输」)
     evicted: set[str] = field(default_factory=set)        # 冻结超限移出候选集的线
     pair_evicted: set[str] = field(default_factory=set)
-    """R3 断供驱逐(配方对域):断供超限移出候选的**体系键**集(ADR-0465;
-    蓝图 §4.3-R3 冻结驱逐语义从 LineTrack 推广到配方对)。与 ``evicted``
-    分域:本集辖体系键(TRANSITION_TRAITS ∪ SEELE_SYSTEM),不与
-    comp 套名混淆;驱逐后 pair 重派生时排除(消费面 = ``_derive_p1_pair``
-    /``p1_early_pair`` 的 exclude 参数)。局级重置随 ist 族(每局新建
-    StrategySession,跨局零残留)。"""
+    """R3 断供驱逐集(配方对域;**已退役恒空**,ADR-0519:断供驱逐分支
+    随未证阈值退役,本字段仅留序列化兼容与派生 exclude 参数占位)。"""
     pair_drought: dict[str, int] = field(default_factory=dict)
-    """R3 断供驱逐的体系级断供计数器(体系键 → 连续无新件可见轮数;
-    计数语义同 LineTrack.frozen_rounds——成员在可见面(在店∪到手)
-    出现即清零)。"""
+    """体系级断供计数器(体系键 → 连续无新件在店轮数;成员在店即清零,
+    无商店语境轮冻结)。ADR-0519 后仅遥测,不再触发驱逐。"""
     shop_supply_streak: dict[str, int] = field(default_factory=dict)
-    """候选①供给确认计数器(体系键 → 连续在店轮数):每 game-round
-    对四体系各计一次——有商店语境轮成员在店 +1、不在店清零;无商店
-    语境轮(补给绕行)冻结不重置(窗口未开既非证据也非反驳,与
-    LineTrack.frozen_rounds 冻结语义同款)。消费位 =
-    ``_update_pair_drought`` 的驱逐加速门(现任方向外体系 streak ≥
-    ``PAIR_SUPPLY_CONFIRM_ROUNDS`` ⇒ 驱逐门槛减半)。遥测:
-    serialize_intention 全量序列化自动携带(判读可辨加速触发面)。"""
+    """体系级在店供给计数器(体系键 → 连续在店轮数;不在店清零,无商店
+    语境轮冻结)。ADR-0519 后仅遥测(旧「驱逐加速门」已随驱逐退役)。
+    serialize_intention 全量序列化自动携带。"""
     # (supply_drought 方向侧供给衰减计数器已随兑现链开关族删除——旧方案
     #  清退批,清查报告 OLD_MIX_AUDIT §1.3。)
     tracks: dict[str, LineTrack] = field(default_factory=dict)
@@ -459,14 +452,22 @@ def _p1_gate_blocks(state: GameState, comp: Comp) -> bool:
 # 未迁消费点保留(迁移完成后随文件删除);勿新增消费。
 SEELE_SYSTEM: str = '希儿系'
 
-#: P1 配方对平手序 = 激活占比降序(transition_combos 数据附录:
-#: 列车 .360 > DOT .329 > 仙舟 .292;希儿系垫底=单卡依赖)。
-_P1_PAIR_PREF: tuple[str, ...] = ('列车同行', '持续伤害', '仙舟', SEELE_SYSTEM)
+#: P1 配方对平手序 = 注册表声明序(TRANSITION_TRAITS 声明序 + 希儿系垫底
+#: 单卡系)。旧「激活占比降序(列车 .360 > DOT .329 > 仙舟 .292,transition_
+#: combos 数据附录)」社区统计平手序已退役 2026-09-04(ADR-0519「未证即退役」;
+#: 平手 tiebreak 仅定确定性,不载经验排序)。
+_P1_PAIR_PREF: tuple[str, ...] = tuple(
+    b for b, _t in TRANSITION_TRAITS) + (SEELE_SYSTEM,)
 
-P1_PAIR_LOCK_MIN_SUPPORT: float = 0.5
-"""配方对锁定门槛:最高体系支持度 ≥ 此值才锁(=三羁绊系 ≥1 件或
-希儿在手;设计推断,sim 校准)。空窗期([31]① 开局常态)不锁,
-囤货方向落四体系全集(p1_transition)。"""
+P1_PAIR_LOCK_MIN_SUPPORT: float = 1.0
+"""配方对锁定门槛(ADR-0519 后口径):最高体系支持度 ≥ 此值才锁。
+
+【注】游戏定义激活当量:支持度 = 该体系羁绊计数 / 体系档(TRANSITION_
+TRAITS),1.0 = 体系羁绊满员(羁绊档可完整凑齐)——锁线证据回到游戏
+定义计数。旧值 0.5(「三羁绊系 ≥1 件或希儿在手」,设计推断 sim 校准)
+与希儿系 0.6+0.2+0.2 放大器权重已按「未证即退役」退役;希儿系为单卡
+体系,支持度 = 希儿在手二元(1.0/0.0)。保守方向:锁线门槛更严 →
+P1 空窗期(囤跨线骨架件)更长,方向承诺不提前。"""
 
 
 # ===== ①锁局过渡对保护副方向(ADR-0367)=====
@@ -488,8 +489,8 @@ def _p1_system_support(state: GameState) -> dict[str, float]:
     与 ``cw_battle_calib._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
 
     三羁绊系 = 羁绊计数 / 体系档(仙舟3/列车2/DOT2,TRANSITION_TRAITS
-    单一源);希儿系 = 希儿在手 0.6 基础分(3费单卡即战力)+ 量2/贝2
-    各 0.2(放大器点火;transition_combos 希儿线节)。
+    单一源);希儿系 = 希儿在手二元 1.0(单卡体系,到手即完整;旧
+    0.6+量2/贝2 各 0.2 放大器权重已随 ADR-0519 退役)。
     """
     counts: dict[str, int] = {}
     for bc in list(state.bench) + list(state.deployed):
@@ -503,14 +504,7 @@ def _p1_system_support(state: GameState) -> dict[str, float]:
         for f in set(ch.factions) | set(ch.flows):
             counts[f] = counts.get(f, 0) + 1
     sup = {b: counts.get(b, 0) / t for b, t in TRANSITION_TRAITS}
-    if '希儿' in _owned_chars(state):
-        sup[SEELE_SYSTEM] = (
-            0.6
-            + (0.2 if counts.get('量子同频', 0) >= 2 else 0.0)
-            + (0.2 if counts.get('贝洛伯格', 0) >= 2 else 0.0)
-        )
-    else:
-        sup[SEELE_SYSTEM] = 0.0
+    sup[SEELE_SYSTEM] = 1.0 if '希儿' in _owned_chars(state) else 0.0
     return sup
 
 
@@ -550,40 +544,29 @@ def _derive_p1_pair(state: GameState,
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
 
 
-#: R3 断供驱逐阈值(轮;保守先验 ≥5,同老栈 DROUGHT_BAIL 同族先验;
-#: 探针批标定挂账=说服包 R3 断供探针)。语义:某体系成员连续 N 轮
-#: 不在可见面(在店∪到手)→ 该体系移出 pair 候选、pair 重派生。
-PAIR_DROUGHT_EVICT_ROUNDS: int = 5
+#: R3 断供驱逐已退役(2026-09-04,ADR-0519「未证即退役」):旧
+#: PAIR_DROUGHT_EVICT_ROUNDS=5 为「保守先验」,探针批标定挂账未兑现,
+#: 任何实证引用无效——驱逐(换向动作)不再由未证阈值触发。断供/供给
+#: 计数器保留作遥测与撤销证据输入,不再写 pair_evicted;缺口披露:
+#: 断供死方向不再被计数驱逐,逃逸改由撤销出口①/③(证据机器)承载。
+#: (经济冻结病灶①的根是单向驱逐,本退役连同 un-evict 语义一并失去
+#: 载体;pair_evicted 字段保留为空集兼容序列化。)
 
-#: 供给确认加速阈值(轮;候选①,零新自由参数——从驱逐阈值派生取半:
-#: ⌊PAIR_DROUGHT_EVICT_ROUNDS/2⌋)。推导:确认证据(体系件在售)是
-#: 出现观测,似然按 1/轮 累积;缺席证据按 (1−q)<1/轮 累积——同等
-#: 证据强度所需的出现轮数少于缺席轮数,离散化取缺席阈值的一半。
-#: 语义:在店供给证据落在**现任方向之外**的体系上连续 K 轮 ⇒
-#: 「店在供给、只是绕开现任方向」,断供证据强度升级,现任方向体系的
-#: 驱逐门槛同源减半(实机锚=g_20260904_054904 p1r3-r6:爻光/仙舟件
-#: 三期在店被 non_line 拒,线 r7 驱逐后才切,冻结窗 -9/-11/-28 三战)。
-PAIR_SUPPLY_CONFIRM_ROUNDS: int = PAIR_DROUGHT_EVICT_ROUNDS // 2
+#: 供给确认阈值(轮)。原 = 驱逐阈值取半派生,驱逐退役后唯一残消费 =
+#: 撤销出口③的证据合取项(线内在店断供 ≥ 此值 ∧ G ≤ ε 才允许降级)。
+#: 【拟】经验阈值待证(ADR-0519 登记);保守向 = 合取更严 → 撤销更难,
+#: 降级仍可逆(不写 evicted),与出口③「防误杀」设计同向。
+PAIR_SUPPLY_CONFIRM_ROUNDS: int = 2
 
 
 def _update_pair_drought(state: GameState, ist: IntentionState,
                          visible: set[str]) -> None:
-    """R3 断供驱逐计数器(每 game-round 恰一次,由 update_intention 驱动)。
+    """R3 断供供给计数器(每 game-round 恰一次,由 update_intention 驱动)。
 
-    辖域 = P1 ∧ 有 pair 方向(p1_pair ∪ transition_pair);对 pair 内每
-    体系:成员集(``_pair_members``)与**在店新件**(shop——「补不进的
-    新件」量的是供给渠道,到手资产不救供给,蓝图 §4.3-R3 原文语义)
-    无交集 → 连续断供 +1,有交集清零;断供 ≥
-    ``PAIR_DROUGHT_EVICT_ROUNDS`` → 体系入 ``pair_evicted``、计数清零、
-    pair 下轮派生自然排除(重派生消费面在 update_intention 的两个
-    pair 派生支)。
-
-    候选①供给确认加速:计数前先对**四体系全集**更新 ``shop_supply_
-    streak``(辖域不限于现任方向——证据要回答的是「店在供给谁」);
-    现任方向之外的某体系 streak ≥ ``PAIR_SUPPLY_CONFIRM_ROUNDS`` 时,
-    本轮断供驱逐门槛减半(证据语义见该常量注)。加速只影响**本轮**
-    门槛比较,不改 ``PAIR_DROUGHT_EVICT_ROUNDS`` 本身;驱逐仍经
-    un-evict 可逆(下方),误加速的损害被可逆性兜住。
+    ADR-0519 后仅计数不驱逐:对四体系全集维护 ``shop_supply_streak``
+    (在店供给连续轮)与现任 pair 方向的 ``pair_drought``(断供连续轮),
+    供遥测与撤销证据链消费;写 ``pair_evicted`` 的驱逐分支已随未证阈值
+    退役(见上方常量注)。
     """
     if state.plane != 1:
         return
@@ -600,32 +583,11 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
     systems = set(ist.p1_pair) | set(ist.transition_pair)
     if not systems:
         return
-    confirm = any(ist.shop_supply_streak.get(s, 0)
-                  >= PAIR_SUPPLY_CONFIRM_ROUNDS
-                  for s in all_systems - systems)
-    evict_at = PAIR_SUPPLY_CONFIRM_ROUNDS if confirm \
-        else PAIR_DROUGHT_EVICT_ROUNDS
     for sys in systems:
         if members_in_shop(sys, shop_names):
             ist.pair_drought[sys] = 0
-            # 断供证据被驳即撤销驱逐(经济冻结批):驱逐的唯一证据=
-            # 「连续 N 轮不在在店供给面」;成员重新在店 ⇒ 证据失效,
-            # 驱逐必须可逆。单向驱逐(旧形态)= 经济冻结病灶①的根:
-            # 5 轮店干后两体系永久出局,p1_pair 重派生得 (),目标空窗,
-            # 决策引擎无方向空转(实机局 g_20260904_042657 p1r7-r9)。
-            if sys in ist.pair_evicted:
-                ist.pair_evicted.discard(sys)
-                ist.last_event = f'un-evict:pair_supply:{sys}'
-            continue
-        if sys in ist.pair_evicted:
-            continue
-        n = ist.pair_drought.get(sys, 0) + 1
-        ist.pair_drought[sys] = n
-        if n >= evict_at:
-            ist.pair_evicted.add(sys)
-            ist.pair_drought[sys] = 0
-            ist.last_event = (f'evict:pair_drought:{sys}:{n}'
-                              + (':accel' if confirm else ''))
+        else:
+            ist.pair_drought[sys] = ist.pair_drought.get(sys, 0) + 1
 
 
 def members_in_shop(sys: str, shop_names: set[str]) -> bool:
@@ -858,20 +820,17 @@ def detect_signals(state: GameState) -> list[IntentionSignal]:
 
 
 def _asset_thickness(comp: Comp, state: GameState) -> float:
-    """候选线资产厚度(点0〔修N5〕口径,勿动):
+    """候选线资产厚度(ADR-0519 后口径):
 
-    板上+bench 中该线终局件数(副本计星级当量:每副本按其 star 计)+ 骨架件数 ×
-    SKELETON_ASSET_WEIGHT。终件 = core_chars;骨架件 = 跨线骨架名单 ∩ (core∪shared)。
-    """
+    板上+bench 中该线终局件数(副本计星级当量:每副本按其 star 计)。
+    终件 = core_chars。骨架件折算项已退役(旧 SKELETON_ASSET_WEIGHT=0.5
+    设计推断无标定,「未证即退役」→ 保守缺省不计;跨线骨架件仍是囤货
+    对象,只是不再抬高本线厚度——撤销出口③的替代证据因此更严)。"""
     pool = list(iter_occupied_deployed(state.deployed)) \
         + [b for b in state.bench if b is not None]
     star_of = {bc.char_id: bc.star for bc in pool
                if bc is not None and bc.char_id}
-    final_pieces = sum(star_of.get(name, 0) for name in comp.core_chars)
-    skeleton = (set(CROSS_LINE_SKELETON)
-                & (set(comp.core_chars) | set(comp.shared_chars)))
-    skeleton_pieces = sum(1 for name in skeleton if name in star_of)
-    return float(final_pieces) + skeleton_pieces * SKELETON_ASSET_WEIGHT
+    return float(sum(star_of.get(name, 0) for name in comp.core_chars))
 
 
 def _core_miss_q(core: str, level: int) -> float:
@@ -1117,7 +1076,8 @@ def update_intention(state: GameState, ist: IntentionState,
     # (原「门闩位面切换清零」分支只在闩置位后生效;门闩删除后默认行为
     # =位面切换不清 miss_count——维持删除前生产默认,零漂移。)
     # R3 断供驱逐(ADR-0465):每 game-round 恰一次的体系级断供计数
-    # (pair 方向在场时辖;驱逐写入 pair_evicted,下方两派生支消费)。
+    # (pair 方向在场时辖;断供计数写 pair_drought,驱逐分支已退役
+    # ADR-0519,pair_evicted 恒空集——派生 exclude 参数留兼容)。
     _update_pair_drought(state, ist, visible)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
     # 弱面位面过滤(经济冻结批,病灶③):注册表自注 weak_planes 含当前

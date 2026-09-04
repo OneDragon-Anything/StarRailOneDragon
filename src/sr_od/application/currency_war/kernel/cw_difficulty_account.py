@@ -87,8 +87,8 @@ def marginal_value(d_now: float, d_delta: float, gap: float, *,
     # 钟形:g(|gap|),边际处峰值
     bell = max(0.0, 1.0 - abs(gap) / 30.0) ** 2
     v = -d_delta * bell       # 降难度(d_delta<0)在边际局正价值
-    if plane == 1 and d_delta < 0:
-        v *= 1.5              # P1 尖峰:一层遭遇常比 boss 凶,压低类放大
+    # (旧 P1 尖峰 ×1.5 放大已退役 2026-09-04,ADR-0519「未证即退役」:
+    # 「一层最凶」定性有实证但系数 1.5 拍定,保守缺省 = 不放大。)
     # 地板:压到 0 以下无增益
     if d_delta < 0 and d_now + d_delta < DIFFICULTY_FLOOR:
         over = DIFFICULTY_FLOOR - (d_now + d_delta)

@@ -164,7 +164,9 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
 # → 最晚 P2-3 投资策略/环境(最后一次有经济量转型的节点,之后锁死)。
 # 权重 = 该信号对 comp 强度的证据量(词缀克制/定义型 augment 是强证据)。
 
-#: 信号源 → 权重(mechanics_fit 的词缀 counter 是 0-1 负分,定义型 affinity≥0.9)
+#: 信号源 → 权重(**仅遥测/诊断**,ADR-0519:信号定型门已退役,累积分
+# 只进 sess_commit_scores 遥测与 leader 囤牌倾向参考,禁作决策门消费;
+# 权重为相对证据强度的经验排序,未证——不进任何行为判据)。
 SIGNAL_WEIGHTS: dict[str, float] = {
     'briefing_affix': 1.5,      # 开局词缀(克制/加成直接改 comp 强度;mechanics_fit 主分)
     'invest_strategy': 2.0,     # 投资策略(定义型如黑塔纪元 affinity≥0.9 = 资源入口级)
@@ -178,41 +180,27 @@ SIGNAL_WEIGHTS: dict[str, float] = {
     'bonus_reward': 0.4,        # 奖励节点随机产出(最弱证据)
 }
 
-#: 定型阈值:累积信号分超过此值 → 最终线定型(early 双轨期结束,卖过渡换最终)。
-#: 阈值取 5.0 = 词缀+策略+环境+供给的持续积累(单靠两源不够;更低阈值会让
-#: r1-r2 即定型、双轨期形同虚设,live 实锤反甲白厄 r2 定型)。
-COMMIT_SIGNAL_THRESHOLD: float = 5.0
-
-#: 最早定型轮门:t<COMMIT_MIN_T 不允许信号定型(P1 早期证据不足,
-#: 强制双轨观察;deadline 仍兜底)。
-COMMIT_MIN_T: int = 7
-
-#: 定型边界:**进位面 2 即定型**(t=10,P2-r1;消费方
-#: 策略层定型判定的 ``state.plane >= 2``;ADR-0209「双轨期 = P1 且未定型」
-#: 的原始设计,live 验证)。
-#: 文档口径「P2-3 是最后转型节点」仍成立:P2-r1 定型早于 P2-3,满足同一约束。
+# (信号定型门已退役 2026-09-04,ADR-0519「未证即退役」:旧
+# COMMIT_SIGNAL_THRESHOLD=5.0 / COMMIT_MIN_T=7 为拍死值(原注释只证了
+# 「不能更低」),且 ready() 全库零生产消费(定型权威 =
+# cw_intention.committed_authority:plane≥2 / 意向状态机 locked /
+# p1_pair 非空)。连同退役:t_of 全局轮序换算(唯一消费 = 已删 ready 的
+# 轮门,P2=7 节点按 9 计的量纲失真一并消失)。CommitSignals 保留为
+# 遥测累积器,SIGNAL_WEIGHTS 见上注。)
 
 #: P1 过渡期人口上限(用户指导 + plaza 实证:Early 上场 79% = 5 人,中位/众数 5;
 #: 本质 = 低人口省升级金,尽快 50 金吃满息;等级在定型时才拉)。
 EARLY_POP_CAP: int = 5
 
 
-def t_of(plane: int, round_num: int) -> int:
-    """全局节点序号(plane*9 + round 的简化;与 horizon 的 t 同构)。"""
-    return (min(plane, 3) - 1) * 9 + max(1, min(round_num, 9))
-
-
 class CommitSignals:
-    """最终线定型信号累积器(局级,挂 StrategySession;定型信号双轨架构,信号源覆盖全部节点产出)。
+    """选卡信号累积器(局级,挂 StrategySession;ADR-0209 接线残留的
+    遥测载体,ADR-0519 后**无决策消费**)。
 
     各信号源到达时调 ``add``(源名 + 该源的 comp 分贡献),累积到每条线;
-    ``leader`` 给当前倾向,``ready`` 判是否达定型阈值。双轨期买牌用
-    ``leader`` 囤牌(bench 存最终线核心,场上仍打过渡包);``ready`` 或
-    过 deadline → 定型(卖过渡换最终)。
-
-    信号全景(用户口径「当前局的整体观察」):开局词缀 → P1 投资策略/环境
-    → 商店供给(持续)→ **节点随机产出**(补给角色/装备、遭遇选卡、奖励节点)
-    ——凡「本局拿到了什么」都是选线证据,不是只有商店和投资。
+    ``leader`` 给当前倾向(仅遥测/判读参考)。定型权威 =
+    ``cw_intention.committed_authority``(plane≥2 / 意向状态机 locked /
+    p1_pair 非空),本类不参与定型判定(旧信号定型门已退役,见模块注)。
     """
 
     def __init__(self) -> None:
@@ -228,19 +216,11 @@ class CommitSignals:
             self.scores[comp] = self.scores.get(comp, 0.0) + w * (s / mx)
 
     def leader(self) -> tuple[str, float] | None:
-        """当前信号领先的线(名, 分);空返 None。"""
+        """当前信号领先的线(名, 分);空返 None。仅遥测。"""
         if not self.scores:
             return None
         comp, sc = max(self.scores.items(), key=lambda kv: kv[1])
         return comp, sc
-
-    def ready(self, t: int = 0) -> bool:
-        """达定型条件:领先线信号分 ≥ 阈值 **且** t ≥ COMMIT_MIN_T(轮门防
-        r1-r2 证据不足即锁;早轮双轨强制观察)。t=0(缺省)不设门(兼容)。"""
-        if t and t < COMMIT_MIN_T:
-            return False
-        lead = self.leader()
-        return lead is not None and lead[1] >= COMMIT_SIGNAL_THRESHOLD
 
 
 def transition_score(char_id: str, faction: str, framework: str = '') -> float:

@@ -354,42 +354,39 @@ def _xp_gold_floor(state: GameState, want_level: bool) -> int:
         return 10
     return 20 if want_level else INTEREST_THRESHOLD
 
-SHOP_REFRESH_COST: int = 2   # 刷新商店花费(粗估,实机校准)
+SHOP_REFRESH_COST: int = 2   # 刷新基价【注】游戏定义真值:实付恒 2 金,不随金位/次数/等级变(ADR-0456 三流对账定谳)
 
 
-# 通用升级曲线(经济统一论):COMP_LIBRARY 未填 level_plan 时用。
-# auto-chess meta:前期(2-4)roll 找低费核心 → 中期(5-7)level_up 推等级(解锁高费刷新率 + 出战位)
-# → lv8 roll 找 5 费核心 → lv9+ stable。comp 自带 level_plan(如列车同行)优先于此(见 _resolve_level_goal)。
-_DEFAULT_LEVEL_GOAL: dict[int, LevelGoal] = {
-    2: LevelGoal("roll", target_cost=2),
-    3: LevelGoal("roll", target_cost=3),
-    4: LevelGoal("roll", target_cost=3),
-    5: LevelGoal("level_up"),
-    6: LevelGoal("level_up"),
-    7: LevelGoal("level_up"),
-    8: LevelGoal("roll", target_cost=5),
-    9: LevelGoal("stable"),
-}
-
+# (通用升级曲线 _DEFAULT_LEVEL_GOAL 已退役 2026-09-04,ADR-0519「未证即退役」:
+# 旧值 = auto-chess meta 社区先验(前期 roll 找低费核心→中期 5-7 level_up→
+# lv8 roll 找 5 费→lv9 stable),无游戏定义或证明出处。保守缺省:comp 未填
+# level_plan 时不再退回通用曲线(_resolve_level_goal 返 None),升级压力仅由
+# 节点地板(get_node_goal,预算收权核)+ 淘金客姿态等已证判据辖。)
 
 
 def _resolve_level_goal(state: GameState, target: Comp | None) -> LevelGoal | None:
-    """当前等级该做什么(comp 自带 level_plan 优先;无则通用曲线 _DEFAULT_LEVEL_GOAL)。
+    """当前等级该做什么(comp 自带 level_plan 优先;无则 None)。
 
     level_plan 是**花费指令**(经济统一论):说 ``level_up`` → plan() 硬 gate 升级;
-    ``roll`` → D 找核心;``stable`` → 吃息。comp 未填 level_plan(多数 comp)时退回通用曲线,
-    保证所有 comp 都有合理经济行为(不再依赖每 comp 手填曲线)。
+    ``roll`` → D 找核心;``stable`` → 吃息。comp 未填 level_plan(多数 comp)时
+    返 None——消费端(_want_level_up)落节点地板路径;旧「通用 meta 曲线」
+    回退已随 ADR-0519 退役(见上墓碑注)。
     """
     if target is not None:
         g = target.level_plan.get(state.level)
         if g is not None:
             return g
-    return _DEFAULT_LEVEL_GOAL.get(state.level)
+    return None
 
 
 
 def _expected_level(round_num: int, plane: int) -> int:
     """阶段期望等级(里程碑刻度,663 帖攻略精读实证)。
+
+    【拟】ADR-0519 组5-A:本曲线属社区先验,处置 = 立证明骨架
+    (docs/develop/currency_war/proofs/p58-expected-level-schedule.md 草案,
+    由游戏定义量——XP 费用表/收入日程/出战位解锁/商店刷率峰值级——
+    派生等级日程),证明完成前数值维持现状;届时按证明输出重derive 或退役。
 
     P1:1-3 上5 / 1-7 遭遇前6 / boss 前 6-7(7 是 3费C comp 的 level_plan 域,通用曲线取 6)。
     P2:**2-1 即 7**(升7找主C;H1 修复后 bot 进 P2 应带 7)/ 2-5 前留 7 慢D主C三星 /
