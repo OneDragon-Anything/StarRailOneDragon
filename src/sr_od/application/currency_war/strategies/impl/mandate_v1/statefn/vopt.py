@@ -202,16 +202,9 @@ def delta_v_streak(s: int, rounds: int, delta_p: float, p: float,
     return v_win[min(s + 1, _SMAX)][0] - v_base[min(s + 1, _SMAX)][0]
 
 
-def dup_power_qualified(name: str, same_name_on_board: int) -> bool:
-    """D-dup 可部署战力谓词(修复池落点表 D-dup 行 → statefn/vopt):场上
-    同名副本的战力估值修正——第二副本起不按全额战力入估值(合成前的重复
-    持有不贡献边际战力)。与 dd-016 执行守卫互补:守卫管动作,估值管判断。"""
-    return same_name_on_board == 0
-
-
 __all__ = [
     'SCEN_KJ', 'a7_lower_bound', 'delta_p_hat', 'delta_v_streak',
-    'dup_power_qualified', 'gap_depth', 'p_complete', 'p_miss',
+    'gap_depth', 'p_complete', 'p_miss',
     'refund_full_star_ok', 'tier_match', 'v_comp_marginal', 'v_comp_table',
     'v_opt', 'v_slot',
 ]
