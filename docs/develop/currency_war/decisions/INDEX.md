@@ -420,3 +420,4 @@
 | [dd-037-deploy-launch-exec-contract-seam.md](dd-037-deploy-launch-exec-contract-seam.md) | DD-037: 部署「发射×执行」契约接缝——发射门与执行器共用单一源谓词,no-op 状态可区分 |
 | [dd-038-decision-v2-package-deletion.md](dd-038-decision-v2-package-deletion.md) | DD-038: decision/ 整包删除(42 文件)+ mandate_v1 单核直替 + 注册面封闭集(用户裁定 2026-09-04,b94e9cfb;回溯建档) |
 | [0520-openshop-seed-fork-retirement.md](0520-openshop-seed-fork-retirement.md) | ADR-0520: OpenShop 播种层双源分叉治本——tracked_bench 旧账退役+播种期对账接线+守卫两属消息分离(第二局双 HIT 定谳) |
+| [0521-p2-locked-buy-membership.md](0521-p2-locked-buy-membership.md) | ADR-0521: P2 锁线购买口径切换——locked_comp 建立后买入 membership 单一源切换锁定采购集,锁内成员不再被拒 non_line(第四局七轮 0 买实证;策略审查 0545 打回补档) |
