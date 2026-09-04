@@ -20,7 +20,9 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes,
     refresh_prob,
 )
-from sr_od.application.currency_war.kernel.cw_state import REFRESH_COST_BASE
+from sr_od.application.currency_war.kernel.cw_plane_table import (
+    peak_refresh_level,
+)
 
 
 def slot_q(level: int, cost: int, j: int, taken_c: int) -> float:
@@ -57,58 +59,67 @@ def p_shop(level: int, cost: int, j: int = 0, taken_c: int = 0) -> float:
     return 1.0 - (1.0 - q) ** SHOP_SLOTS
 
 
-def _v_ms_value() -> float | None:
-    """V̄ 现读(provisional V_MS 槽位值;None=未标定,fail-closed)。
+def _collapse_window_threshold(omega: float | None) -> float:
+    """塌缩带比值线 ω 解析(缺省 = DEFAULT_REGISTRY.omega_collapse_ratio,
+    ADR-0475 同源单一值;窗口判据重锚 = ADR-0516)。
 
-    开门判据端点=CALIB_REPORT_V2 §2.3 门式:V̄ 取值即 CalibValue.value
-    (=带的上沿,如注入形态 24.7);敏感臂判读用带(消费方另取端)。"""
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
-        provisional,
-    )
-    cv = provisional.get('V_MS')
-    if cv is None or cv.value <= 0:
-        return None
-    return cv.value
-
-
-def tier_search_window(level: int, vbar: float | None = None) -> frozenset[int]:
-    """档级搜索窗口(读法甲,档级消费位:压库/凑息/M6;P49 档匹配)。
-
-    门式 = CALIB_REPORT_V2 §2.3 读法甲(p40 单步 EV 门 V* = c_eff/P ≤ V̄
-    的档级退化:p(L,c) ≥ c_eff/V̄):等级现读 REFRESH_PROB,c_eff =
-    REFRESH_COST_BASE——零新自由参数,窗口是「读法×等级×带端」三元状态量
-    (两读法逐级矛盾系物理事实,非缺陷)。表值对拍锚=
-    calib_v2_analysis.json ``tier_level_gate.e2_24.7``(V̄=24.7 全表)。
-
-    V̄ 取值(T1 短路径,设计 11_shop_decisions §6):生产消费位传帧级
-    现算值(``vbar.window_vbar``,P57 双读法;T_SEARCH_A 布尔门已退役出
-    窗口消费位);``vbar=None`` 保留旧调用面 = provisional V_MS 槽位现读
-    (None ⇒ 空集 fail-closed,不造常数窗口)。
+    ω 处置申报【拟】:ω 是策略阈值参数,非游戏定义量——现值为 ADR-0475
+    refresh_ev_budget 归零腿的复用值(未独立标定),登记待证形态、不扩
+    辖域(判据输入全游戏定义量纪律不破:表值/峰值查表皆游戏定义量,
+    ω 仅作窗口比值阈值);fail-closed 语义 = ω 越大窗口越窄。
     """
-    v = vbar if vbar is not None else _v_ms_value()
-    if v is None or v <= 0:
-        return frozenset()
-    thr = REFRESH_COST_BASE / v
-    return frozenset(
-        c for c in (1, 2, 3, 4, 5) if refresh_prob(level, c) >= thr)
+    if omega is None:
+        from sr_od.application.currency_war.kernel.cw_registry import (
+            DEFAULT_REGISTRY,
+        )
+        omega = DEFAULT_REGISTRY.omega_collapse_ratio
+    return omega
 
 
-def card_search_window(level: int, vbar: float | None = None) -> frozenset[int]:
-    """单卡搜索窗口(读法乙,单卡消费位:ev_buy 追件;p40/p41 追特定卡)。
+def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]:
+    """档级搜索窗口(档级消费位:压库/凑息/M6;P49 档匹配)。
 
-    门式 = CALIB_REPORT_V2 §2.3 读法乙(P_shop=1−(1−p/v)^5 满池,p41 ①
-    退化式;窗口(c) ⟺ c_eff/P_shop ≤ V̄):P_shop 满池 j=0/taken_c=0
-    经本模块 ``p_shop`` 同一实现(单一源);其余同 ``tier_search_window``。
-    对拍锚 = calib_v2_analysis.json ``card_level_gate.e2_24.7``(V̄=24.7
-    全表;L7 读法甲 {1,2,3,4} vs 读法乙 {2,3} 即两读法分立锁例)。
-    V̄ 取值同 ``tier_search_window`` 的 T1 参数化申报。
+    判据(ADR-0516 重锚,承 ADR-0475 塌缩带归零线):费档 c 在搜索窗内
+    ⟺ refresh_prob(level,c) ≥ ω×refresh_prob(峰值级(c),c)——等级现读
+    REFRESH_PROB,峰值级 = cw_plane_table.peak_refresh_level 查表 argmax,
+    ω 见 ``_collapse_window_threshold``。全游戏定义量(概率表 + 峰值查表
+    + 注册表 ω 字段),零胜率/零标定带数值。旧 V̄ 门式(p ≥ c_eff/V̄,
+    P57 双读法参数化)已随 V̄ 链退役(ADR-0516;statefn/vbar 墓碑),
+    读法分歧问题随之消解;对拍锚(calib_v2_analysis.json 的 V̄=24.7 全表)
+    同批作废。空集语义 = 该级全部费档塌缩(真无窗口帧,非门控)。
     """
-    v = vbar if vbar is not None else _v_ms_value()
-    if v is None or v <= 0:
-        return frozenset()
-    thr = REFRESH_COST_BASE / v
-    return frozenset(
-        c for c in (1, 2, 3, 4, 5) if p_shop(level, c, 0, 0) >= thr)
+    thr = _collapse_window_threshold(omega)
+    out: set[int] = set()
+    for c in (1, 2, 3, 4, 5):
+        p = refresh_prob(level, c)
+        if p <= 0:
+            continue
+        peak = peak_refresh_level(c)
+        p_peak = refresh_prob(peak, c)
+        if p_peak > 0 and p >= thr * p_peak:
+            out.add(c)
+    return frozenset(out)
+
+
+def card_search_window(level: int, omega: float | None = None) -> frozenset[int]:
+    """单卡搜索窗口(单卡消费位:ev_buy 追件;p40/p41 追特定卡)。
+
+    判据同 ``tier_search_window`` 的塌缩带锚(ADR-0516),概率口径换
+    单店命中 ``p_shop``(满池 j=0/taken_c=0,经本模块同一实现——单一源):
+    费档 c 在窗内 ⟺ p_shop(level,c) ≥ ω×p_shop(峰值级(c),c)。
+    空集语义与作废对拍锚声明同 ``tier_search_window``。
+    """
+    thr = _collapse_window_threshold(omega)
+    out: set[int] = set()
+    for c in (1, 2, 3, 4, 5):
+        p = p_shop(level, c, 0, 0)
+        if p <= 0:
+            continue
+        peak = peak_refresh_level(c)
+        p_peak = p_shop(peak, c, 0, 0)
+        if p_peak > 0 and p >= thr * p_peak:
+            out.add(c)
+    return frozenset(out)
 
 
 def _char_has_tag(ch: object, tag: str) -> bool:

@@ -14,6 +14,9 @@ W_flow 数值模块私有、类型上不对外暴露**(R5-7/R6-4 收口)——Φ
 from __future__ import annotations
 
 from sr_od.application.currency_war.kernel.cw_plane_table import (
+    r_global,
+    r_remaining,
+    r_remaining_in_plane,
     schedule_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import proof_consts
@@ -21,29 +24,10 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest 
     INTEREST_CAP_SUP,
 )
 
-
-def r_remaining_in_plane(node_in_plane: int, plane_length: int) -> int:
-    """本位面剩余节点数(含当前节点;node_in_plane 为 1 基槽序)。"""
-    return max(0, plane_length - (node_in_plane - 1))
-
-
-def r_global(session: object, plane: int, node_in_plane: int) -> int:
-    """R_全局 = 当前节点 + 后续位面按**实际长度**求和(NMF §2「R_全局」行)。
-
-    长度全部来自 ``schedule_of(session)``(启动必载真值);dd-003 旧缺陷
-    (cross_plane_remaining_nodes 写死 9)在此修复——禁任何路径引用
-    NODES_PER_PLANE 先验替代 session 表。金跨位面继承 ⇒ 视界跨位面求和。
-    """
-    lengths = schedule_of(session)
-    total = r_remaining_in_plane(node_in_plane, lengths[plane - 1])
-    for i in range(plane, len(lengths)):
-        total += lengths[i]
-    return total
-
-
-def r_remaining(session: object, plane: int, node_in_plane: int) -> int:
-    """R_剩余(到局终的总剩余轮数;Φ̂=Ī×R_剩余 的组成因子,R2-8)。"""
-    return r_global(session, plane, node_in_plane)
+# R_剩余族(r_global/r_remaining/r_remaining_in_plane)实现已下沉
+# kernel/cw_plane_table(ADR-0516:kernel 判据消费 R_剩余,保持桶依赖
+# 矩阵 kernel 禁 import strategies);本模块经 import 重定向保留调用面,
+# 消费方零改——单一源在 kernel,与 schedule_upgrade 下沉同款先例。
 
 
 def r_trunc() -> int:

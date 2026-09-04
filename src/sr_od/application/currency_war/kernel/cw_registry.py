@@ -302,9 +302,9 @@ class DecisionV2Registry:
     # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
     #: 【退役 2026-09-04,增量 B/宪法第一条清退】rung_value 档位金/轮值
     #: (P3 经验拟合)——收入三元分解中无任何 rung 确定函数(息律=存金
-    #: 函数边际 0;连胜流已由 win_rate_dp_by_plane×单战价值通道计账,
-    #: 再立档位流=双计)。V̄_net 链已改胜率流单通道(vbar.py);
-    #: 史料=ADR-0515。
+    #: 函数边际 0;连胜流已由胜率流通道计账,再立档位流=双计)。
+    #: V̄_net 链后随 ADR-0516 整链退役(禁胜率建模,刷新决策改
+    #: 路径总账);史料=ADR-0515。
     # rung_value(已删;旧值 {0:0.0,1:1.4,2:3.0})
     #: 【退役 2026-09-04,同上】h3_win_rate H3 胜率阶梯(P1 校准、无位面
     #: 维、rung2 n=9)——被 win_rate_dp_by_plane(分位面实测)取代;
@@ -313,29 +313,23 @@ class DecisionV2Registry:
     #: 【退役 2026-09-04,同上】rounds_left_est(P1 中段估值,自注未标定)
     #: ——消费端随 decision_v2 scoring 死亡,零活读者。
     # rounds_left_est(已删;旧值 5.0)
-    #: 成型档条件胜率边际 Δp(e0→e1),分位面(battle-only,killed 结算屏
-    #: 权威口径)。【推】p15 冻结语料(73 局,sha 848dc1aa)局聚类
-    #: bootstrap(n=2000,seed=20260910):P1 Δp=0.450 [0.274,0.612]
-    #: (rung0 胜率 0.250 n=84 / rung1 0.700 n=60);P2 点估计 −0.197
-    #: [−0.498,0.091](rung0 0.312 n=16 / rung1 0.115 n=61,薄桶且 CI
-    #: 含 0)→ **fail-closed 钳 0**(禁负值进账;P1/P2 CI 不重叠=
-    #: 必须分位面,P2 追档门实质关闭,与 economy「P2 少刷吃息」同向)。
-    #: P2 重derive 死线:P2 battle 语料扩至 n≥40/桶后重拟。
-    win_rate_dp_by_plane: dict[int, float] = field(
-        default_factory=lambda: {1: 0.450, 2: 0.0})
-    #: V̄_net 单战价值 hp 分量(P15v2 P1 battle 条件败局伤害 CI 下缘)。
-    #: 【注·过渡口径】承 P21 1 HP≡1 金(P35_VALIDATION:116 通道:
-    #: 须经 λ_death 重锚或声明过渡——本字段=过渡声明,重锚债挂账);
-    #: 数值单一源=tools/cw/proofs/p15/fit_results.json(848dc1aa 代)
-    #: by_plane_node["(1,'battle')"].ci95_uncensored 下缘=9.59。
-    vbar_hp_value_transitional: float = 9.59
+    #: 【退役 2026-09-04,ADR-0516】win_rate_dp_by_plane(分位面成型档条件
+    #: 胜率边际 Δp)与 vbar_hp_value_transitional(单战价值 hp 分量)
+    #: ——V̄_net 链整链退役:用户裁定禁胜率建模(两字段均统计拟合量,
+    #: 非游戏定义量),刷新决策改路径总账比较(形式二,R1 门 =
+    #: c_eff·E(D|L*)+Σ卡费+L ≤ g−g*,全游戏定义量;P57 搜索窗重锚
+    #: 塌缩带 ω)。墓碑=statefn/vbar;史料=ADR-0515(前批因子清退)+
+    #: ADR-0516(本批链退役)。
+    # win_rate_dp_by_plane(已删;旧值 {1:0.450, 2:0.0},P1 CI [0.274,0.612]
+    #   /P2 fail-closed 钳 0,p15 冻结语料 848dc1aa)
+    # vbar_hp_value_transitional(已删;旧值 9.59,P15v2 CI 下缘×P21 过渡口径)
     #: 剩余战斗节点估计(V_D P1 收益侧的**缺省兜底**:plane_node_table
     #: 槽序表缺失/裸 session 时退此值;有表时由 ev.battles_left_plane
     #: 逐轮推导,ADR-0425;层3 score_state 的 power 视界仍用本值)
     battles_left_est: float = 5.0
     #: 【退役 2026-09-04,增量 B/宪法第一条清退】expected_battle_loss
-    #: (10.0,自注未标定)与 hp_to_gold(0.5,P3 溯源已废)——V̄_net 的
-    #: hp 分量已换 vbar_hp_value_transitional(P15v2 锚+P21 过渡口径);
+    #: (10.0,自注未标定)与 hp_to_gold(0.5,P3 溯源已废);其 V̄_net hp
+    #: 分量后继字段 vbar_hp_value_transitional 也已随 ADR-0516 退役。
     #: V_D 收益侧此前已换 vd_p1_loss_*(ADR-0425),双源并存病就此清。
     # expected_battle_loss(已删;旧值 10.0)
     # hp_to_gold(已删;旧值 0.5)
@@ -413,7 +407,7 @@ class DecisionV2Registry:
     #: 三源对照:语料条件 20.05 / 实机存活局事件均值 −15.3(59 事件,
     #: `w350_p2_survival/` REPORT §4)/ sim coarse 分 rung 条件伤 ~11——取语料上沿的
     #: 理由=删失剔除 hp≤1 死亡行 → 低估方向。
-    #: **benefit 项量级声明**:dwin 侧历史注:原 h3_win_rate(P1 校准骨架阶梯,已退役 2026-09-04 增量 B;P2 分 rung 胜率已由 win_rate_dp_by_plane 部分覆盖,完整阶梯重derive 挂账),
+    #: **benefit 项量级声明**:dwin 侧历史注:原 h3_win_rate(P1 校准骨架阶梯,已退役 2026-09-04 增量 B;其 P2 分 rung 胜率后继表 win_rate_dp_by_plane 亦已随 ADR-0516 退役,完整阶梯重derive 挂账),
     #: P2 分 rung 胜率表未标定(挂账)——本项只作「P2 掉血更贵 → 找件
     #: 账方向上调」的方向修正,量级未标定,不得引用「P2 胜率≈0」类
     #: 论证抬升(损失侧条件口径必须配同 regime 胜率,P15 精神)。
@@ -1201,7 +1195,8 @@ class DecisionV2Registry:
     #: 第二波数学裁决(证明锁 test_cw_w607_h2o_verdict):每件滞留金当量
     #: = 本份额 × expected_battle_loss × battles_left_est × hp_to_gold
     #: = 0.75(定谳时点历史推导;式中所用旧字段已于 2026-09-04 增量 B
-    #: 退役,翻案重评时按现行 vbar_hp_value_transitional 口径重算)
+    #: 退役;胜率/伤害折算链已随 ADR-0516 一并退役,翻案重评时须按
+    #: 路径总账口径全新重算)
     #: < 补给 key_fit 边际 10、< 策划面装备类与升费/弱化的分差 19 →
     #: 现有动作空间无翻转点,H2① 行为分支不合入(无效→不合入,
     #: strategy-work §4 兑换纪律)。重评触发器=该证明锁翻红,或 `w612_effect_inventory/`

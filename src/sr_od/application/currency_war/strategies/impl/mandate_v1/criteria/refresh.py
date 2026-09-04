@@ -28,35 +28,42 @@ def r0_stop(no_qualifying_set: bool, budget_exhausted: bool) -> bool:
 
 def r1_start(ev_positive: bool | None) -> tuple[bool, str]:
     """付费刷新发射位(r1)。EV 正性判据输入 None(V̄ 封印/未标定)
-    ⇒ 不刷(fail-closed)。"""
+    ⇒ 不刷(fail-closed)。
+
+    墓碑纪律标注(ADR-0516):生产消费者已随 V̄ 链退役——R1 启动门
+    现行判据 = ``r1_commitment_account`` 路径总账(装配在 shop.py),
+    本函数零调用面。保留 = 四函数位完备集(r0_stop/r1_start/r2_budget/
+    crisis_refresh_invariant,R10-3 缺行封死),禁按旧 EV 正性语义
+    复活接线(旧 V̄_net 比较项属已退役的胜率建模链)。
+    """
     if ev_positive is None:
         return False, 'ev_unavailable'
     return ev_positive, ''
 
 
-def r1_commitment_account(v_gap: float,
-                           member_accounts: list[float]) -> tuple[bool, str]:
-    """R1 启动门总账判定(P40 ② R1 承诺账形态;标定批落码)。
+def r1_commitment_account(total_ledger: float, budget: int) -> tuple[bool, str]:
+    """R1 启动门·形式二可负担性判定(ADR-0516;路径总账判据)。
 
-    形态(k=1 单卡代表):``member_accounts`` = 合格集 E 中每个可追成员
-    的承诺账 ``c_eff·E[refreshes|j] + L(g, spend, R_剩余, Ī)``——Σ卡费项
-    在 k=1 与 ``V_gap(k=1) = V̄_net + 同成员卡价`` 两侧同成员相消,装配侧
-    (shop.py)不再计入;启动 iff ``min(member_accounts) ≤ v_gap``。
-    出处:P40-refresh-ev.md ②「R1 完成门(启动判据)」;V_gap 标定带
-    [16.7, 24.7](calib_vuh_v1 合成价值链,k≥2 线性外推无标定出处 ⇒ 只
-    k=1 形态可落码,cw3 calibration.py V1 同源声明)。
-    边界:``member_accounts`` 空/全 inf(无可追成员:E=∅ 或该级不出此费)
-    ⇒ 不启动——P40 R0-1「合格集空 ⇒ EV 恒负」的刷新侧特例;多类合格集
-    的 E[refreshes] 推广系 P40 结论待办,本门以「逐成员单卡账取 min」
-    为其可落码下界(独立近似偏紧向,P40 ①表注)。
+    刷新启动 iff ``c_eff·E(D|L*) + Σ卡费 + L(g, spend, R_剩余, Ī)
+    ≤ 可用预算 = g − g*``(g* = saturation_line(cap_resolved)
+    = 10×cap_resolved)。装配侧(shop.py)算总账并选 L*(形式二等级
+    选择输出:留级账 T_stay vs 升一级账 T_up 取小,升级账含 U_L 及其
+    息损);本函数只做比较。输入全为游戏定义量(REFRESH_PROB 池参数/
+    XP 表/息律),零胜率建模(用户裁定 2026-09-04;旧 V̄_net 比较项
+    已随 V̄ 链退役,statefn/vbar 墓碑)。
+
+    边界:``total_ledger`` 非有限(无可追成员:E=∅ 或该级不出此费)
+    ⇒ 不启动——P40 R0-1「合格集空 ⇒ EV 恒负」的刷新侧特例;
+    ``budget ≤ 0``(金在息线 g* 及以下)⇒ 恒不启动——息线双侧修正
+    (ADR-0516 修正③:停级买牌也压金破息,两侧都过 g* 账)由比较式
+    结构承载,不另设门。
     """
     import math
 
-    finite = [a for a in member_accounts if math.isfinite(a)]
-    if not finite:
+    if not math.isfinite(total_ledger):
         return False, 'no_chaseable_member'
-    best = min(finite)
-    return (True, '') if best <= v_gap else (False, 'account_over_vgap')
+    return ((True, '') if total_ledger <= budget
+            else (False, 'account_over_budget'))
 
 
 def r2_budget(gold: int, reserve: int, refresh_cost: int) -> bool:

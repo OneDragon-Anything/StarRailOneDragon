@@ -111,7 +111,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
     horizon,
     predicates,
-    vbar,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.income import (
     net_income,
@@ -119,11 +118,6 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.income im
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
     loss_exact,
     saturation_line,
-)
-from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vbar import (
-    DEFAULT_VBAR_READING,
-    VBAR_READINGS,
-    window_vbar,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
     refund_full_star_ok,
@@ -169,71 +163,79 @@ def _shop_sell_refund(bc: BenchChar) -> int | None:
     return sell_refund(bc.star, ch.cost)
 
 
-def _r1_member_accounts(k_members: tuple[str, ...],
-                        bench: list, deployed: list,
-                        state: GameState, session: StrategySession,
-                        rounds: int) -> list[float]:
-    """R1 承诺账装配侧(P40 ①/②;k=1 单卡代表形态)。
+def _r1_ledger_terms(k_members: tuple[str, ...],
+                     bench: list, deployed: list,
+                     level: int) -> tuple[float, int]:
+    """R1 总账装配侧(ADR-0516 形式二):返回 (E(D|level), Σ卡费)。
 
-    合格集 E = 未达 2★ 的线成员(目标阵容件,P40 A4);逐成员账 =
-    ``c_eff·expected_refreshes_for_card(level, cost, star=2, j)
-    + L(gold, ⌈c_eff·E⌉, R_剩余, Ī)``。口径申报(出处→边界):
+    合格集 E = 未达 2★ 的线成员(目标阵容件,P40 A4);E(D|L) =
+    Σ成员 expected_refreshes_for_card(L, cost, target_star=2, owned=j)
+    (k=3 完成档;3★=9 与下一张=1 档在文档判据面声明,代码消费位与
+    P40 ② 单卡代表形态同辖域取 2★ 档)。口径申报(出处→边界):
     - j = bench∪deployed 中该成员 1★ 副本数(star≥2 = 成型即出域;
-      与 decision_v2 ``_vd_core_copies`` 的 len 口径同源;2★ 卡=3 基础
-      副本的折叠不展开——j 低估 ⇒ k−j 高估 ⇒ E 高估 ⇒ 账高估 = 门收紧
-      向,保守端申报);
-    - c_taken=0(P40 待标定清单「c_taken 现场读数:缺则 0(保守低估
-      q)」——q 低估 ⇒ E 高估 ⇒ 同上保守向);
-    - Ī = ``income.net_income(round_num, streak_pre=0)``(streak 下界
-      ⇒ L 上界 ⇒ 账高估 = 保守向;R09 收入三表现算,非 i_bar 常量);
-    - ``rounds`` = 决策帧 R_剩余(horizon.r_remaining 现算,消费位传入
-      ——与门侧 V̄_net(r) 同帧同源,禁两次现算各读各的);
-    - 该级不出此费(refresh_prob≤0)或 E=inf 的成员不可追,剔除
-      (账 inf 由判据侧 isfinite 过滤 = R0-1 合格集空特例)。
+      j 低估 ⇒ E 高估 ⇒ 账高估 = 门收紧向,保守端申报);
+    - c_taken=0(P40 待标定清单「缺则 0」;q 低估 ⇒ E 高估,同上
+      保守向);
+    - 该级不出此费(refresh_prob≤0)成员在该级不可追,E 记 inf
+      (判据侧 isfinite 过滤 = R0-1 合格集空特例);
+    - Σ卡费 = Σ合格成员 (k−j)×cost(k=3 完成档张数):完成路径真实卡费
+      与 E 的 (k−j) 张折算同档——旧单张 cost 口径与 E 口径不一致已修齐
+      (单成员 j=2 帧两口径相消,j<2 帧旧口径低估总账)。
+    返回 (e_sum, card_fees);e_sum=inf 表示该级无可追成员(合格集空
+    ——k_members 空/全部 2★ 成型/该级全不可追 ⇒ inf,P40 R0-1 刷新侧
+    特例由判据 isfinite 过滤承载)。
     """
-    level = int(state.level or 1)
-    c_eff = int(state.shop_refresh_cost or REFRESH_COST_BASE)
-    ibar = net_income(int(state.round_num or 1), 0)
-    accounts: list[float] = []
+    e_sum = 0.0
+    card_fees = 0
+    qualified_any = False
     for m in k_members:
         ch = CHARACTERS.get(m)
         if ch is None or not ch.cost:
             continue
-        if refresh_prob(level, ch.cost) <= 0.0:
-            continue                      # 该级不出此费:不可追(P40 R0)
         copies = [c for c in list(bench) + list(deployed)
                   if (getattr(c, 'char_id', '') or '') == m]
         if any((getattr(c, 'star', 1) or 1) >= 2 for c in copies):
-            continue                      # 已 2★:成员成型,出合格集
+            continue                      # 已 2★:成员成型,出合格集(先于
+                                          # 可追性判定——成型件不受该级
+                                          # 出牌面辖制,禁污染其余成员账)
+        if refresh_prob(level, ch.cost) <= 0.0:
+            e_sum = float('inf')
+            continue                      # 该级不出此费:不可追(P40 R0)
+        qualified_any = True
         j = len(copies)
-        e = expected_refreshes_for_card(level, ch.cost, target_star=2,
-                                        owned=j)
-        spend = int(math.ceil(c_eff * e))
-        l_val = loss_exact(int(state.gold or 0), spend, rounds, ibar)
-        accounts.append(c_eff * e + l_val)
-    return accounts
+        e_sum += expected_refreshes_for_card(level, ch.cost, target_star=2,
+                                             owned=j)
+        card_fees += max(0, 3 - j) * int(ch.cost)   # (k−j)×cost,k=3 完成档
+    if not qualified_any:
+        return float('inf'), 0
+    return e_sum, card_fees
 
 
 def _r2_card_reserve(k_members: tuple[str, ...],
                      bench: list, deployed: list,
-                     state: GameState) -> int:
+                     state: GameState,
+                     level: int | None = None) -> int:
     """R2 预算门 Σ预留卡价 ρ = 合格集最低费卡价(修 R2 批)。
 
+    可追过滤等级:缺省=当前级;R2 消费位在 R1 选定 L* 之后,调用方
+    (decide_shop_wave R1 段)按 L* 重估传入——R1 已选等级的出牌面辖
+    R2 预留卡价,量级=一张卡价(用当前级过滤会在 L*≠当前级帧错档)。
+
     证明单一源 = p54-r2-interest-floor §②(零新自由参数:ρ 锚
-    CHARACTERS 注册表 cost,非字面量)。可追过滤与 ``_r1_member_
-    accounts`` 同一(该级出此费 refresh_prob>0 ∧ 无 2★)——语义
+    CHARACTERS 注册表 cost,非字面量)。可追过滤与 ``_r1_ledger_
+    terms`` 同一(该级出此费 refresh_prob>0 ∧ 无 2★)——语义
     单一源不复制。单卡下界口径(P54 A2:P40 待标定清单「最低费卡价
     × 期望命中数」在单刷波粒度下的整数下界;多命中超出部分 = 下一波
     R2 重估补足的显式让渡,非破线刷新)。合格集空 ⇒ 0:该帧 R1 必先
     以 no_chaseable_member 关闭,R2 不可达,兜底值不进任何可达比较。
     """
-    level = int(state.level or 1)
+    level_now = int(state.level or 1) if level is None else int(level)
     costs: list[int] = []
     for m in k_members:
         ch = CHARACTERS.get(m)
         if ch is None or not ch.cost:
             continue
-        if refresh_prob(level, ch.cost) <= 0.0:
+        if refresh_prob(level_now, ch.cost) <= 0.0:
             continue
         copies = [c for c in list(bench) + list(deployed)
                   if (getattr(c, 'char_id', '') or '') == m]
@@ -370,43 +372,26 @@ def truncate_shop_frame_stable(actions: list[Action],
 
 
 def _frame_search_windows(session: StrategySession, state: GameState,
-                          registry, reading: str,
-                          counters: dict) -> tuple[frozenset[int],
-                                                   frozenset[int]]:
-    """帧级搜索窗口(T1 短路径;设计 13_buy_face_design §2.3/§3.2)。
+                          registry, counters: dict) -> tuple[frozenset[int],
+                                                            frozenset[int]]:
+    """帧级搜索窗口(T1;设计 13_buy_face_design §2.3/§3.2)。
 
-    T_SEARCH_A 布尔门退役出窗口消费位:V̄ 改接 ``vbar.v_bar_net`` 帧级
-    现算链(修 A 单一源,p53;与 R1 刷新门比较项同链同帧——r =
-    ``horizon.r_remaining`` 本帧现算一次,禁两次现算各读各的),零新
-    自由参数。读法 = P57 双读法参数化(``vbar.window_vbar``;生产默认
-    读法② frame_horizon,sim 双臂经 config.cw4_vbar_reading 切换)。
-    P57 窗口集指纹(分键遥测 R3-R5,零额外跑批):两读法窗口集不同的
-    帧计数,档级/单卡两族分键。空集语义 = 真无窗口帧(等级无合格档时
-    V̄ 链自然给出空集,非门控)。
+    窗口判据重锚(ADR-0516 形式二;V̄ 链退役):旧 V̄ 门式
+    (``vbar.window_vbar`` 帧级现算 + P57 双读法参数化)随 V̄ 比较项
+    一并退役,窗口改为塌缩带锚——费档在窗内 ⟺ 该级命中率 ≥ ω×峰值级
+    命中率(``statefn/odds.tier/card_search_window``,ω 锚与
+    ADR-0475 refresh_ev_budget 归零腿同源),全游戏定义量(REFRESH_PROB
+    表 + 峰值查表 + 注册表 ω 字段)。空集语义 = 真无窗口帧(该级全部
+    费档塌缩),非门控。P57 读法分歧随单一判据消解(文档面声明)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.odds import (
         card_search_window,
         tier_search_window,
     )
     level = int(state.level or 1)
-    rounds = horizon.r_remaining(session, int(state.plane or 1),
-                                 int(state.round_num or 1))
-    v_step = window_vbar(registry, rounds, 'per_step',
-                         plane=int(state.plane or 1))
-    v_frame = window_vbar(registry, rounds, 'frame_horizon',
-                          plane=int(state.plane or 1))
-    tier_step = tier_search_window(level, v_step)
-    tier_frame = tier_search_window(level, v_frame)
-    card_step = card_search_window(level, v_step)
-    card_frame = card_search_window(level, v_frame)
-    if tier_step != tier_frame:
-        counters['p57_tier_window_diff_frames'] = \
-            counters.get('p57_tier_window_diff_frames', 0) + 1
-    if card_step != card_frame:
-        counters['p57_card_window_diff_frames'] = \
-            counters.get('p57_card_window_diff_frames', 0) + 1
-    v = v_step if reading == 'per_step' else v_frame
-    return tier_search_window(level, v), card_search_window(level, v)
+    omega = registry.omega_collapse_ratio
+    return (tier_search_window(level, omega),
+            card_search_window(level, omega))
 
 
 def shop_unbought_reasons(state: GameState,
@@ -601,22 +586,17 @@ def decide_shop_wave(state: GameState, session: StrategySession,
     # EV 买面/M6 的 S 预留消费位语义不同(P48 S 线),本批不动(挂账)。
     r2_reserve = g_star + _r2_card_reserve(k_members, bench, deployed,
                                            state)
-    # P57 双读法参数化(设计 §2.3/§3.2):读法经 config.cw4_vbar_reading,
-    # 生产默认读法② frame_horizon;脏值回落缺省(不放大为行为分叉)。
-    _reading = getattr(config, 'cw4_vbar_reading', DEFAULT_VBAR_READING)
-    if _reading not in VBAR_READINGS:
-        _reading = DEFAULT_VBAR_READING
     # registry 缺省兜底(与 r1 段同先例;本链锚字段在两视图同值——sim
     # 视图只覆写 level_max)。窗口帧级现算一次,M6/EV 两消费位共用同帧
-    # 同源(禁各消费位各算各的)。
+    # 同源(禁各消费位各算各的)。判据=塌缩带锚(ADR-0516 重锚,
+    # 见 _frame_search_windows docstring)。
     _reg = registry
     if _reg is None:
         from sr_od.application.currency_war.kernel.cw_registry import (
             DEFAULT_REGISTRY,
         )
         _reg = DEFAULT_REGISTRY
-    tier_w, card_w = _frame_search_windows(session, state, _reg, _reading,
-                                           counters)
+    tier_w, card_w = _frame_search_windows(session, state, _reg, counters)
     gold = int(state.gold or 0)
     bench_free = BENCH_CAPACITY - len(bench)
     out: list[mandate.Emitted] = []
@@ -882,79 +862,68 @@ def decide_shop_wave(state: GameState, session: StrategySession,
                     _count('shop_ev_all_vetoed')   # D-P2idle:「全拒」可辨
             else:
                 _count('shop_ev_no_candidate')     # D-P2idle:「无候选」可辨
-        # 付费刷新(r1 发射位)。V_GAP 槽位接线(2026-09-03 零刷新修复批,
-        # ZERO_REFRESH_DIAG §4.1 实现缺口闭合):此前 EV 输入是字面量
-        # None——标定注入后行为不变(开闸路径不可达)。现读
-        # audit/provisional V_GAP(NMF §3.3 #2b;V̄ 系 R10-2 封印族恒 None,
-        # 不入此门):槽位 None ⇒ 与旧实现逐字同 fail-closed 零刷新
-        # (零漂移)。
-        # R1 门形态(标定批落码,零刷新修复批登记欠账的闭合):有值 ⇒
-        # **P40 R1 启动门总账**判据求值(c_eff·E[refreshes|j] + L ≤ V_gap,
-        # k=1 单卡代表形态,判据本体=criteria/refresh.r1_commitment_account)
-        # ——取代接线批的「有值即放行进 r2」过渡形态(该形态下刷新唯一
-        # 约束是 r2 预算门,注入形态刷新量 ≈ 反事实 C 的 60+,EV 门无
-        # 约束力,ZERO_REFRESH_FIX_REPORT §1 呈报项;diag §6.2 回归判据
-        # 「0<refreshes≪60+」由本总账结构承载)。发射粒度=每商店波至多
-        # 1 次刷新(RefreshShop 截断点),故总账逐波以现 state 重算——
-        # 波边界=新的启动决策(j/gold 均已更新),期中续刷不建模
-        # (sim 波粒度边界,如实申报)。
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
-            provisional,
-        )
-        v_gap = provisional.get('V_GAP')
-        # 契约核验(§4.2.2;FIX_REVIEW 防线硬化=可核验派生形态+R2 消费位
-        # 补齐):r1 两形态各经本键核验,前提不采信硬编码声明而核验
-        # ``ev_slot`` 运行类型(None=None 期 fail-closed / CalibValue=
-        # 槽位现读;裸 float 字面量=复发形态违例)——
-        # - None 期:r1_start(None) 逐字同旧实现零刷新(零漂移);
-        # - 有值期:R1 门形态=P40 启动门总账(标定批落码,零刷新修复批
-        #   登记欠账的闭合),判据本体=criteria/refresh.
-        #   r1_commitment_account(k=1 单卡代表形态,装配=_r1_member_
-        #   accounts)——取代接线批「有值即放行进 r2」过渡形态(该形态
-        #   刷新量 ≈ 反事实 C 的 60+,EV 门无约束力,ZERO_REFRESH_FIX_
-        #   REPORT §1 呈报项;diag §6.2 回归判据「0<refreshes≪60+」由
-        #   本总账结构承载)。发射粒度=每商店波至多 1 次刷新(RefreshShop
-        #   截断点),故总账逐波以现 state 重算——波边界=新的启动决策
-        #   (j/gold 均已更新),期中续刷不建模(sim 波粒度边界,如实申报)。
-        # r2 前提=金−预留语境(先例②,现读金与预留均在场)
-        if v_gap is None:
-            _r1_ok = contracts.ensure_contract(
-                ('refresh', 'r1_start'),
-                contracts.ContractCtx(ev_slot=None), counters)
-            ok_r1, rkey = (crit_refresh.r1_start(None) if _r1_ok
-                           else (False, 'contract_abstain'))
-        else:
-            _r1_ok = contracts.ensure_contract(
+        # 付费刷新(r1 发射位)。R1 门形态(ADR-0516 形式二可负担性,
+        # V̄ 链退役):刷新启动 iff
+        # ``c_eff·E(D|L*) + Σ卡费 + L(g, spend, R_剩余, Ī) ≤ g − g*``
+        # (g* = saturation_line(cap_resolved) = 10×cap_resolved;判据本体
+        # = criteria/refresh.r1_commitment_account,装配 = _r1_ledger_
+        # terms)。输入全为游戏定义量(REFRESH_PROB 池参数/XP 表/息律),
+        # 零胜率建模(用户裁定 2026-09-04;旧 V̄_net/V_GAP 槽位比较项
+        # 退役,statefn/vbar 墓碑)。L* = 形式二等级选择输出:留级账
+        # T_stay vs 升一级账 T_up(含 U_L = clicks×单价 与其息损)取小
+        # ——贪心序不总优的反例(双卡 123<135)由两侧枚举承载(ADR-0516
+        # 修正②)。发射粒度=每商店波至多 1 次刷新(RefreshShop 截断点),
+        # 故总账逐波以现 state 重算——波边界=新的启动决策(j/gold 均已
+        # 更新),期中续刷不建模(sim 波粒度边界,如实申报)。P40 R2
+        # 息线熔断保留原语义(下方 r2_budget,语义单一源不动)。
+        # 契约核验(§4.2.2):前提恒真登记(游戏定义量输入,无标定槽位
+        # 依赖),违例路径仅剩未登记键。
+        if contracts.ensure_contract(
                 ('refresh', 'r1_commitment_account'),
-                contracts.ContractCtx(ev_slot=v_gap), counters)
-            if _r1_ok:
-                # 比较项 = V̄_net(r) 帧级现算(修 A 批;P53/
-                # REFRESH_CFO_REPORT §6):rung 流 + 胜率流 × 决策帧
-                # R_剩余(horizon.r_remaining,schedule_of 单一源)——
-                # 取代「rung_value[2]×rounds_left_est=5 常数」静态链
-                # (常数 5 低估被拦帧真实视界中位 12,512/512 拒刷的
-                # 主因;零新自由参数,链与 calib_vuh_v1 同源)。V_GAP
-                # 槽位保持 fail-closed 开闸通道语义(None ⇒ r1 闭),
-                # 槽位数值不再是比较项(其带 [16.7,24.7] = 本链 r=5
-                # 特例的历史标定带,披露用途)。registry 缺省兜底
-                # DEFAULT_REGISTRY(与 entry 同先例;本链锚字段在两
-                # 视图同值——sim 视图只覆写 level_max)。
-                _reg = registry
-                if _reg is None:
-                    from sr_od.application.currency_war.kernel.cw_registry import (
-                        DEFAULT_REGISTRY,
-                    )
-                    _reg = DEFAULT_REGISTRY
-                _rounds = horizon.r_remaining(session, int(state.plane or 1),
-                                              int(state.round_num or 1))
-                ok_r1, rkey = crit_refresh.r1_commitment_account(
-                    vbar.v_bar_net(_reg, _rounds, int(state.plane or 1)),
-                    _r1_member_accounts(k_members, bench, deployed, state,
-                                        session, rounds=_rounds))
+                contracts.ContractCtx(), counters):
+            _c_eff = int(state.shop_refresh_cost or REFRESH_COST_BASE)
+            _ibar = net_income(int(state.round_num or 1), 0)
+            # R1 发射位在波尾(先买后刷):金基准 = 买后投影金(同波已
+            # 发射买入扣减、卖出回金入账的帧累积投影变量),与 R2 消费位
+            # 同基准——用帧首金 state.gold 会高估预算
+            _g0 = gold
+            _rounds = horizon.r_remaining(session, int(state.plane or 1),
+                                          int(state.round_num or 1))
+            _lvl = int(state.level or 1)
+            # 留级账 T_stay
+            _e_stay, _fees = _r1_ledger_terms(k_members, bench, deployed,
+                                              _lvl)
+            if _e_stay == float('inf'):
+                _t_stay = float('inf')
             else:
-                ok_r1, rkey = (False, 'contract_abstain')
+                _t_stay = _c_eff * _e_stay + _fees + loss_exact(
+                    _g0, int(math.ceil(_c_eff * _e_stay)) + _fees,
+                    _rounds, _ibar, cap_resolved)
+            # 升一级账 T_up(U_L = 升级金 + 其息损并入 spend 侧)
+            _t_up = float('inf')
+            _clicks = clicks_to_next_level(state)
+            if _clicks > 0:
+                _u_gold = _clicks * xp_click_cost(state)
+                _e_up, _fees_up = _r1_ledger_terms(k_members, bench,
+                                                   deployed, _lvl + 1)
+                if _e_up != float('inf'):
+                    _t_up = _c_eff * _e_up + _fees_up + _u_gold + loss_exact(
+                        _g0,
+                        int(math.ceil(_c_eff * _e_up)) + _fees_up + _u_gold,
+                        _rounds, _ibar, cap_resolved)
+            _ledger = min(_t_stay, _t_up)
+            # L* = 形式二等级选择输出;R2 预留的可追过滤同步改用 L* 级
+            # (R1 已选等级的出牌面辖 R2 预留卡价——量级=一张卡价)
+            _lvl_star = _lvl if _t_stay <= _t_up else _lvl + 1
+            r2_reserve = g_star + _r2_card_reserve(k_members, bench,
+                                                   deployed, state,
+                                                   level=_lvl_star)
+            ok_r1, rkey = crit_refresh.r1_commitment_account(
+                _ledger, _g0 - g_star)
+        else:
+            ok_r1, rkey = (False, 'contract_abstain')
         if not ok_r1:
-            _count(f'shop_r1_{rkey}')      # ev_unavailable / account_over_vgap / no_chaseable_member
+            _count(f'shop_r1_{rkey}')      # no_chaseable_member / account_over_budget
         elif contracts.ensure_contract(
                 ('refresh', 'r2_budget'),
                 contracts.ContractCtx(gold=gold, reserve=r2_reserve),

@@ -43,13 +43,17 @@ class _Slot:
 _SLOTS: dict[str, _Slot] = {
     # —— NMF §3.3 清单(13 编号行 → 13 槽;批时快照)——
     'U_X': _Slot('§3.3 #1 u_x/H_x 使用概率/需要时距;分槽/带序逐格(R17-4)'),
-    'V_MS': _Slot('§3.3 #2a V_ms 成型边际价值;与 V_GAP 系同一条 #2 拆槽,同源单标定禁双源'),
-    'V_GAP': _Slot('§3.3 #2b V_gap【拟·未标定】;消费位=criteria/refresh.'
-                   'r1_start 的 EV 输入(经 shop.py 付费刷新发射位接线,'
-                   '2026-09-03 零刷新修复批);None 期 r1 fail-closed 零刷新;'
-                   '与 V_MS 同源单标定;不在封印清单(R10-2)。修 A 批(dd-025/'
-                   'p53)起比较项=帧级现算 V̄_net(r)(statefn/vbar),本槽'
-                   '保持开闸通道语义,槽位数值/CI 仅作标定带披露'),
+    'V_MS': _Slot('§3.3 #2a V_ms 成型边际价值;值消费端已随 V̄ 链退役清零'
+                  '(ADR-0516,旧读者=statefn/odds 窗口门);None 性消费端='
+                  'proof.py 换线出口前置与 criteria/sell.line_switch_sell'
+                  ' 的 is_none 检查(换线塌缩出口 fail-closed)——注入即'
+                  '解锁该出口,禁随意注入;槽位保留登记'),
+    'V_GAP': _Slot('§3.3 #2b V_gap【拟·未标定】;值消费端已随 V̄ 链退役清零'
+                   '(ADR-0516:R1 门改形式二可负担性,判据本体='
+                   'criteria/refresh.r1_commitment_account,无标定槽位依赖);'
+                   'None 性消费端仅剩 sim 判前锁注入态守卫(ab_core_swap '
+                   'v6 行 17)——注入只翻转守卫读数、不开任何行为面;'
+                   '槽位保留登记(史料披露用)'),
     'W_POP': _Slot('§3.3 #3 w 人口位战力当量(臂一只用 w>0,不需精确值)'),
     'RHO_IMPUTE': _Slot('§3.3 #4 ρ 摊派口径(A7);均匀摊保守首版'),
     'NBAR_ESTIMATOR': _Slot('§3.3 #5 n̄ 估计器(实估,误差二阶 A3)'),

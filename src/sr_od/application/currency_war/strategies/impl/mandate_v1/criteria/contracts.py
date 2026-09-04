@@ -202,10 +202,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '(V̄ 封印族恒 None 不入此门;None 期 fail-closed 属判据语义)',
         'ZERO_REFRESH_DIAG §4.1 实现缺口+§6 修法 2'),
     ('refresh', 'r1_commitment_account'): Contract(
-        _ev_input_from_slot,
-        'R1 启动门总账(标定批落码):前提=V_GAP 槽位现读(与 r1_start '
-        '同消费位同前提;k=1 承诺账 c_eff·E[refreshes|j]+L ≤ V_gap)',
-        'P40-refresh-ev.md ②「R1 完成门」+CALIB_REPORT 标定批'),
+        None,
+        'R1 启动门·形式二可负担性(ADR-0516):总账 c_eff·E(D|L*) + Σ卡费 '
+        '+ L ≤ g − g*,输入全为游戏定义量(REFRESH_PROB/XP 表/息律),'
+        '无标定槽位依赖(旧 V_GAP 槽位比较项已随 V̄ 链退役)',
+        'ADR-0516(裁决=用户裁定禁胜率建模;形式二规格=P40/P47/P56 复用)'),
     ('refresh', 'r2_budget'): Contract(
         _gold_minus_reserve_ctx,
         '付费刷新预算门:前提=金−预留语境(现读金与预留均在场;'

@@ -156,10 +156,16 @@ def interest(gold: int) -> int:
 
 
 def peak_refresh_level(cost: int) -> int:
-    """目标费用档 → 刷新概率峰值级(REFRESH_PROB 表 argmax;规则倡导审读 §1.3
-    R4 排程判据②的查表分量)。并列取高档([7] 口述「允许高一档」:
-    峰值平手时高一级的相邻档概率差可忽略,而提前一级到位=多一轮
-    峰值窗口)。cost 越界(非 1-5)→ 夹到边界档。"""
+    """目标费用档 → 刷新概率峰值级(REFRESH_PROB 表 Lv1-9 段 argmax;
+    规则倡导审读 §1.3 R4 排程判据②的查表分量)。并列取高档([7] 口述
+    「允许高一档」:峰值平手时高一级的相邻档概率差可忽略,而提前一级
+    到位=多一轮峰值窗口)。cost 越界(非 1-5)→ 夹到边界档。
+    lv10 显式排除:峰值搜索域 = 1-9——lv10 是满级终端态,「要不要停
+    在 lv9 不冲 lv10」由 lv9→10 特档单独辖(摊还账闭式,P35:标定带内
+    停手窗恒负);若把 lv10 计入峰值级,排程判据②会用「峰值级>当前级」
+    绕过该特档门,与既裁停手结论打架(表内 lv10 的 5费概率 0.25 高于
+    lv9 的 0.10,不做排除即会命中此形态)。
+    """
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
     c = min(5, max(1, int(cost)))
     best_l, best_p = 1, -1.0
@@ -168,3 +174,32 @@ def peak_refresh_level(cost: int) -> int:
         if p >= best_p:
             best_p, best_l = p, lv
     return best_l
+
+
+# ===== 视界层 R_剩余族(自 strategies statefn/horizon 下沉单一源,ADR-0516:
+# ===== kernel 判据(schedule_upgrade 的 U_L 阈值检验)消费 R_剩余,下沉
+# ===== 保持「kernel 禁 import strategies」桶依赖矩阵;statefn/horizon 改
+# ===== import 重定向,消费方调用零改——与 schedule_upgrade 下沉同款先例)=====
+
+
+def r_remaining_in_plane(node_in_plane: int, plane_length: int) -> int:
+    """本位面剩余节点数(含当前节点;node_in_plane 为 1 基槽序)。"""
+    return max(0, plane_length - (node_in_plane - 1))
+
+
+def r_global(session: object, plane: int, node_in_plane: int) -> int:
+    """R_全局 = 当前节点 + 后续位面按**实际长度**求和(NMF §2「R_全局」行)。
+
+    长度全部来自 ``schedule_of(session)``(启动必载真值);金跨位面继承
+    ⇒ 视界跨位面求和;禁任何路径引用 NODES_PER_PLANE 先验替代 session 表。
+    """
+    lengths = schedule_of(session)
+    total = r_remaining_in_plane(node_in_plane, lengths[plane - 1])
+    for i in range(plane, len(lengths)):
+        total += lengths[i]
+    return total
+
+
+def r_remaining(session: object, plane: int, node_in_plane: int) -> int:
+    """R_剩余(到局终的总剩余轮数;Φ̂=Ī×R_剩余 的组成因子,R2-8)。"""
+    return r_global(session, plane, node_in_plane)

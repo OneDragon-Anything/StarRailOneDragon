@@ -17,6 +17,10 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
     aggregate_economy,
 )
+from sr_od.application.currency_war.kernel.cw_plane_table import (
+    GOLD_CAP_INTEREST,
+    r_remaining,
+)
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
@@ -52,6 +56,105 @@ def streak_gold(streak: int) -> int:
     都 import 此函数,防双表漂移。"""
     idx = max(0, min(streak, len(STREAK_GOLD_TABLE) - 1))
     return STREAK_GOLD_TABLE[idx]
+
+
+# ===== 息账/收入日程(自 strategies statefn/interest+income 下沉单一源,
+# ===== ADR-0516:kernel 判据(schedule_upgrade 的 U_L 阈值检验)消费
+# ===== loss_exact/net_income,下沉保持「kernel 禁 import strategies」桶
+# ===== 依赖矩阵;statefn 两模块改 import 重定向,消费方调用零改——
+# ===== 与 schedule_upgrade 下沉同款先例)=====
+
+#: 默认息帽档数 = 息封顶金位/10(cw_plane_table.GOLD_CAP_INTEREST=50 的
+#: 结构派生,【注】机制真值;禁在本模块另写裸 5)
+DEFAULT_INTEREST_CAP: int = GOLD_CAP_INTEREST // 10
+
+#: cap 视界上确界(注册表 interest_cap 值域上界 10;消费位按 canonical
+#: 枚举表(design_economy §E4.2)一律消费 cap_sup 而非决策帧现值
+#: cap_resolved(R63-1)。
+INTEREST_CAP_SUP: int = 10
+
+
+def interest(gold: int, cap: int = DEFAULT_INTEREST_CAP) -> int:
+    """利息 = min(g//10, cap);g<0 按 0 计(防负金越界,p47 A1 同源)。"""
+    return min(max(gold, 0) // 10, cap)
+
+
+def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
+    """resolved 息帽(语境修正开关单一源 = cw_investments.STRATEGY_ECONOMY
+    overlay 登记 + MechanismMutation 运行时突变视图,NMF §2 末行)。
+
+    override=None(默认局/无突变)→ DEFAULT_INTEREST_CAP;买断制 0/息律 10/
+    开源节流 9 由调用方传注册表 override 值——本函数只做「无突变回默认」的
+    单点归一,禁在判据侧内联 cap 字面量(E4.0 第 1 条)。
+    """
+    if interest_cap_override is None:
+        return DEFAULT_INTEREST_CAP
+    return max(0, int(interest_cap_override))
+
+
+def cap_resolved_of_session(session: StrategySession | None) -> int:
+    """cap_resolved 现读(session resolved 链;ADR-0516 cap 三源归一)。
+
+    注入面 = ``session.cw4_cap_override``(int 覆写)经 ``interest_cap_
+    resolved`` 归一,缺省回 DEFAULT_INTEREST_CAP。消费位 = 商店线 R1/R2
+    的 g* 装配(mandate._cap_of 重定向至此)、schedule_upgrade ② 前置
+    息线、U_L 阈值检验的 loss_exact cap 参数——三处共用本式,禁再内联
+    ``interest_cap×10`` 或 loss_exact 裸缺省 cap(息律投资 cap=10 局,
+    裸缺省 5 会低估 C_int)。边界:本链不读 registry.interest_cap
+    (A/B 旋钮辖 decision_v2 预算面,不辖本链)。
+    """
+    override = getattr(session, 'cw4_cap_override', None)
+    return interest_cap_resolved(
+        override if isinstance(override, int) else None)
+
+
+def saturation_line(cap_resolved: int) -> int:
+    """息律饱和线 g* = 10×cap_resolved(守息门/arm2 金下限同源派生)。"""
+    return 10 * cap_resolved
+
+
+def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
+               cap: int = DEFAULT_INTEREST_CAP) -> int:
+    """金位 gold 花 spend 金后未来 rounds 轮的精确期望息损(P47 命题 2)。
+
+    双轨迹对照:基线 B(不花,守饱和线,溢余即花)vs A(花后守线);每轮息损
+    = interest(B) − interest(A),两轨迹同收入演化。截断视界 R=rounds 由
+    horizon 层供给(schedule_of 实际长度,禁写死,§6.1)。溢金域先实金扣
+    再守线截断(IMPL_ADV_R194 症2);gold<0 钳 0。
+    """
+    gold_cap = 10 * cap
+    g0 = max(gold, 0)
+    b = min(g0, gold_cap)
+    a = max(g0 - spend, 0)
+    total = 0
+    for _ in range(rounds):
+        ib, ia = interest(b, cap), interest(a, cap)
+        total += ib - ia
+        b = min(b + net_income + ib, gold_cap)
+        a = min(a + net_income + ia, gold_cap)
+    return total
+
+
+def round_base_income(round_num: int) -> int:
+    """基础奖励金:1-1 轮 3 / 1-2 轮 4 / 其余 BASE_INCOME(R09 表一;
+    REWARD_BASE_GOLD_BY_ROUND 单一源)。"""
+    return REWARD_BASE_GOLD_BY_ROUND.get(round_num, BASE_INCOME)
+
+
+def net_income(round_num: int, streak_pre: int,
+               lost_node_type: str | None = None) -> int:
+    """逐节点净收入 Ī(NMF §2「Ī」行;R09 收入三表现算,非 i_bar 常量)。
+
+    - ``round_num``:日程轮号(1 基;开局两轮基础金折半段);
+    - ``streak_pre``:**决策前相**连胜数(进轮连胜,奖励轮照发不动计数,
+      ADR-0439 引擎口径);
+    - ``lost_node_type``:上一轮若为败掉的战斗类节点,其败轮底金在本轮轮首
+      补发(battle/encounter/boss → LOSS_GOLD_BY_NODE);非败轮接续传 None。
+    """
+    inc = round_base_income(round_num) + streak_gold(streak_pre)
+    if lost_node_type is not None:
+        inc += LOSS_GOLD_BY_NODE.get(lost_node_type, 0)
+    return inc
 
 
 #: 每节点基础收入的近似常量(单一源:cw_sim 收入模型消费)。
@@ -519,13 +622,91 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
     return reg if isinstance(reg, DecisionV2Registry) else DEFAULT_REGISTRY
 
 
+def _upgrade_ul_threshold_ok(state: GameState,
+                             session: StrategySession) -> bool:
+    """② 臂 U_L 阈值检验(ADR-0516 形式二修正①;裸直觉补检验)。
+
+    升级 iff ``c_eff·(E(D|L) − E(D|L+1)) + ΔV_pop > U_L + C_int``——
+    全部游戏定义量:c_eff=刷价现读;E(D|L)=expected_refreshes_for_card
+    (目标核心 2★ 完成档,owned=j 折算,REFRESH_PROB 池参数);U_L=
+    clicks_to_next_level×xp_click_cost(XP 表/OCR 实读);C_int=息损
+    P47 L 递推(loss_exact,gold 支 U_L 后 R_剩余 轮,Ī=收入日程现算;
+    cap 参数 = cap_resolved_of_session 现读——裸缺省 5 在息律投资
+    cap=10 局会低估 C_int,ADR-0516 cap 三源归一)。
+    ΔV_pop 按 P39 式 = w·1[板满 ∧ bench 有 2★ 等待件](w 待标定禁计值
+    → 指示=1 时视为翻转项,方向门;指示=0 时纯概率账须独自过阈)。
+    反例锚(ADR-0516):希儿 lv7 省刷费 28 < 升级金 40,纯概率账亏 12,
+    靠人口位翻转——缺本检验的裸「峰值级>当前级」会在该带过度升级。
+    R_剩余视界=r_remaining(决策帧现算,禁写死;本模块下沉实现)。
+
+    单核代表降级申报(ADR-0516):规格的 E 为缺件集 ΣE_i(strategy-docs
+    11 篇 §3);本实现取单目标核心代表——缺件集成员装配需 strategies
+    侧 line_members,违背「kernel 禁 import strategies」桶边界,故申报
+    降级而非静默偏差。保守性边界:多成员同受升级受益帧 benefit 低估
+    → 检验偏严(保守向);成员在 L+1 概率回落(E 恶化)帧单核可能
+    高估净受益(非保守端,边界注)。
+
+    ΔV_pop 指示项谓词(板满 ∧ bench 有 2★ 等待件)与 schedule_upgrade
+    ①臂**有意复制**——两处是同一 P39 指示项在「检验内翻转分量」与
+    「排程触发①」两个消费位的落点,语义单一源 = P39 修订式;改任一处
+    须同步另一处(同步锚对:本函数 / schedule_upgrade ① 臂)。
+    """
+    import math as _math
+
+    from sr_od.application.currency_war.data.cw_shop_odds import (
+        expected_refreshes_for_card,
+    )
+
+    # ΔV_pop 指示项(P39 修订式;与 schedule_upgrade ①臂谓词成同步锚对,
+    # 见 docstring 末段——改谓词两处同改)
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
+    )
+    if deployed_occupied(state.deployed or []) >= state.max_units() \
+            and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
+                    for b in (state.bench or [])):
+        return True
+
+    level = int(state.level or 1)
+    core, cost = _target_core_cost(session)
+    j = _owned_core_copies(state, core) if core else 0
+    e_l = expected_refreshes_for_card(level, cost, target_star=2, owned=j)
+    e_l1 = expected_refreshes_for_card(level + 1, cost, target_star=2,
+                                       owned=j)
+    # 显式守卫:升级后反不可追(e_l1==0 且 e_l>0)⇒ False。前提声明:
+    # 现行 REFRESH_PROB 表满足「一旦出牌永不消失」的单调性(低级不出
+    # 的费档升级后才出现,不反向),故该形态在现表下不可达、守卫不
+    # 触发;池突变使表整体重生成(§8 resolved input)或换表后若失去
+    # 该单调性,此守卫生效,防止把「升级后 E 归零」误读成无穷收益。
+    if e_l1 == 0.0 and e_l > 0.0:
+        return False
+    if not (_math.isfinite(e_l) and _math.isfinite(e_l1)):
+        return e_l <= 0.0 < e_l1     # 当前级不可追而上级可追:纯解锁收益
+    benefit = (state.shop_refresh_cost or SHOP_REFRESH_COST) * (e_l - e_l1)
+    if benefit <= 0:
+        return False                 # 概率不升反降(内峰回落档):无收益面
+    u_gold = clicks_to_next_level(state) * xp_click_cost(state)
+    if u_gold <= 0:
+        return True                  # 满级/零费边界:成本侧空,收益即过
+    rounds = r_remaining(session, int(state.plane or 1),
+                         int(state.round_num or 1))
+    ibar = net_income(int(state.round_num or 1), 0)
+    c_int = loss_exact(int(state.gold or 0), u_gold, rounds, ibar,
+                       cap=cap_resolved_of_session(session))
+    return benefit > u_gold + c_int
+
+
 def schedule_upgrade(state: GameState, session: StrategySession,
                      registry: DecisionV2Registry | None = None) -> bool:
     """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,ADR-0465)。
 
     ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
     必须传**同一个** registry 实例——prep_brain._budget 单源装配);
-    缺省落 _registry_of(session) → DEFAULT_REGISTRY。
+    缺省落 _registry_of(session) → DEFAULT_REGISTRY。**cap 归一注**
+    (ADR-0516):本函数的 ② 前置息线与 U_L 检验息损 cap 已归一到
+    ``cap_resolved_of_session``(session resolved 链)单一源,registry
+    注入不再移动这两处——registry 仍辖同链其余接缝(refresh_ev_budget/
+    reserve_cap 的预算面)。
     规则集 = 规则倡导审读 §1.3/§2-R4(机制常量直算,零标定权重);**预告态契约**
     (预算收权迁移前预验尸 D1 契约):排程只回答「要不要开始攒」,不以当帧可负担为前置——
     付不付得起是执行层的事(``ev.levelup_ev_basis`` 可负担性入口门),
@@ -538,7 +719,10 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     ① 人口位([33]):cap 满 ∧ bench 有成型件(2★)等上场——升级后能
        立即部署,当轮兑现战力,为最高义务;
     ② 概率级([3]/[7]):目标核心概率峰值级 > 当前级 ∧ 息引擎已立
-       (g ≥ 息线,[12] 息引擎前置)。
+       (g ≥ 息线,[12] 息引擎前置)∧ **U_L 阈值检验**(ADR-0516 形式二
+       修正①:``c_eff·(E(D|L)−E(D|L+1)) + ΔV_pop > U_L + C_int``,
+       装配=``_upgrade_ul_threshold_ok``;裸直觉缺此检验会在小移位带
+       过度升级——希儿 lv7 反例,见该函数 docstring)。
     禁升条件([12]/[32]):息引擎未立不追级(② 的前置即此);空升级
     不升(① 触发本身即「有件可上」,无空升级面;② 是概率抬档语义,
     不涉部署)。
@@ -562,16 +746,25 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     from sr_od.application.currency_war.kernel.cw_state import (
         deployed_occupied,
     )
-    reg = registry or _registry_of(session)
-    # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a))
+    # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a));
+    # 谓词与 _upgrade_ul_threshold_ok 的 ΔV_pop 指示项**成同步锚对**
+    # (同一 P39 指示项两个消费位,改谓词两处同改——见该函数 docstring)
     if deployed_occupied(state.deployed or []) >= state.max_units() \
             and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
                     for b in (state.bench or [])):
         return True
-    # ② 概率级:息引擎已立 ∧ 目标峰值级在当前级之上
-    if (state.gold or 0) < reg.interest_cap * 10:
+    # ② 概率级:息引擎已立 ∧ 目标峰值级在当前级之上 ∧ U_L 阈值检验
+    # (ADR-0516 形式二修正①:升级 iff c_eff·ΔE + ΔV_pop > U_L + C_int;
+    # 裸「峰值级>当前级」直觉缺此检验会在小移位带过度升级——希儿 lv7
+    # 省 28 < 升 40 反例,纯概率亏 12)
+    # 息线口径 = cap_resolved_of_session(session resolved 链)单一源
+    # (ADR-0516 cap 三源归一:旧 reg.interest_cap×10 与 session 链
+    # 不同源——A/B 旋钮辖 decision_v2 预算面,不辖本前置)
+    if (state.gold or 0) < saturation_line(cap_resolved_of_session(session)):
         return False
-    return _target_peak_level(state, session) > (state.level or 1)
+    if _target_peak_level(state, session) <= (state.level or 1):
+        return False
+    return _upgrade_ul_threshold_ok(state, session)
 
 
 def _vd_core_of(session: StrategySession) -> str:

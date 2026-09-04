@@ -54,22 +54,28 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
 #: 标定批 V1 注入值(V̄_net;值/出处/方法/状态的单一叙述源 =
 #: docs/develop/currency_war/archive/redesign/reports/core_swap/CALIB_REPORT.md 与 design_telemetry
 #: 「标定批」节;此处只做显式注入通道,禁散落第二处数值推导)。
+#: 墓碑纪律(ADR-0516):V_GAP/V_MS 槽位的**行为面已随 V̄ 链退役**
+#: (值消费端清零)——本注入通道仅存 = 历史标定批形态的复现口径,
+#: formal AB 双臂已无行为差;注入改动的只有 sim 判前锁守卫的读数
+#: (v6 行 17 注入态判据)与换线出口的 None 性解锁(proof/sell 侧,
+#: 详见 provisional.py 槽注),禁当开闸通道使用。
 V_GAP_CALIB_V1: float = 24.7
 V_GAP_CALIB_V1_BAND: tuple[float, float] = (16.7, 24.7)
 
 
 def apply_core_swap_calibration() -> None:
-    """标定批 V1 注入(V_GAP/V_MS;④-2 分臂纪律的唯一开闸通道)。
+    """标定批 V1 注入(V_GAP/V_MS;④-2 分臂纪律的历史开闸通道)。
 
-    值 = V̄_net 24.7 金(calib_vuh_v1 合成价值链:rung 流 15.0 +
-    胜率流 9.7,全部锚 = cw_registry 既有字段零新自由参数;标定带
-    [16.7, 24.7] 恰括 P40 S1 边界——e2 变体[合格集条件语义,transition
-    凑档命题支持]为注入值,e1 变体 16.7 为敏感带下沿)。V_MS 同值同源
-    注入:provisional #2a/#2b 拆槽「同源单标定禁双源」——V_MS 消费面
-    均另有 U_X/T_SEARCH_A 前置仍 fail-closed,本注入不改变其行为面。
-    状态申报:``injected_form=True``(sim/A-B 驱动专用;生产开闸须标定
-    批 CI 验收五件套,provisional.py 模块 docstring 纪律)。正式 A/B
-    入口/活性守卫前调用本函数;重注入前 ``provisional.reset()`` 清场。
+    **墓碑纪律(ADR-0516)**:V_GAP/V_MS 的行为面已随 V̄ 链退役,注入
+    仅存 = 历史标定批形态——formal AB 双臂已无行为差(值消费端清零),
+    本函数不再构成任何判据的开闸。注入仍然**非中性**:它解锁 proof.py/
+    sell.py 换线出口的 None 性 fail-closed 并翻转 v6 行 17 注入态读数
+    ——故保留「正式 A/B 入口调用 + 重注入前 ``provisional.reset()``」
+    的纪律,禁随意注入。值 = V̄_net 24.7 金(calib_vuh_v1 合成价值链:
+    rung 流 15.0 + 胜率流 9.7,全部锚 = cw_registry 既有字段零新自由
+    参数;标定带 [16.7, 24.7] 恰括 P40 S1 边界;e1 变体 16.7 为敏感带
+    下沿)。状态申报:``injected_form=True``(sim/A-B 驱动专用;生产
+    开闸须标定批 CI 验收五件套,provisional.py 模块 docstring 纪律)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
         provisional,
@@ -144,10 +150,14 @@ ACTION_FAMILY_TYPES: dict[str, tuple[str, ...]] = {
 
 #: 动作族 → 其发射路径消费的 provisional 槽位(豁免推导输入)。
 #: 仅登记「该族的**全部**发射路径都 fail-closed 于该槽位」的依赖:
-#: refresh 族唯一发射位 r1 的 EV 输入=V_GAP(None ⇒ 构造性零刷新);
 #: buy/sell 族含骨架义务路径(M2 线成员买入 / M4 腾席+支付支撑),
 #: levelup 族触发信号 arm1 系结构谓词(板面可观测量,非 EV 槽位)——
 #: 三者恒不豁免,饥饿即结构性病灶信号。
+#: 墓碑纪律注(ADR-0516):refresh 行的 V_GAP 依赖登记已过期——r1
+#: 判据本体改形式二可负担性(criteria/refresh.r1_commitment_account,
+#: 无标定槽位依赖),V_GAP 值消费端清零;保留该行 = 偏保守的历史标定
+#: 批形态(None 期 refresh 族零发射不判饥饿),饥饿检出灵敏度低于
+#: 现判据形态,如实申报。
 FAMILY_PROVISIONAL_DEPS: dict[str, tuple[str, ...]] = {
     'refresh': ('V_GAP',),
     'levelup': (),
