@@ -1,6 +1,6 @@
 # P2 逐件证明验证报告(五门)
 
-> 验证日:2026-09-01 · 验证人:数学验证工程师(逐件批) · 章程:`docs/develop/currency_war/redesign/README.md` + `MATH_REVALIDATION_PLAN.md` v3(五门/一件一批一案一判)
+> 验证日:2026-09-01 · 验证人:数学验证工程师(逐件批) · 章程:`docs/develop/currency_war/archive/redesign/README.md` + `MATH_REVALIDATION_PLAN.md` v3(五门/一件一批一案一判)
 
 ## 0. 验证对象声明(编号撞车防呆,先例六起)
 

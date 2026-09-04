@@ -4,36 +4,34 @@
 > **本目录 = 自动化实现设计**(bot 流程 / 策略 / 决策 / why,代码改才变;依据 `od-dev-gameplay-automation` ADR-0008:docs/game/ 只放游戏玩法,自动化归 docs/develop/)。
 > 文档纪律:**as-built 无状态**(结构/语义/数据流/边界;值在代码、why 在 ADR、进度在本地进度树——方法论 ADR-0210,已入 AGENTS.md)。
 
-## 目录结构(复杂 app 拆分,依据 ADR-0003;2026-09-03 终态重组)
+## 目录结构(复杂 app 拆分,依据 ADR-0003;2026-09-03 终态重组,2026-09 文档树重画批执行归档)
 
-### [design/](design/) —— 新核现行设计(mandate_v1,换核后的现行权威)
-- 设计四件:IMPL_DESIGN(总纲)/ design_economy(经济判据)/ design_latch(锁存族)/ design_telemetry(观察键全集)
-- 序列决策契约(正文+历史档)/ NEW_MATH_FRAMEWORK(数学框架)/ DESIGN_MANDATE_LAYER(义务层)/ IMPL_FIX_LEMMAS(证明与修复登记)
-- lambda-risk-philosophy(λ 基座与风险架构约束)/ comp-selection(阵容选择裁定,设计前提)
+> **哪代文档现行、哪代只归档,唯一裁决表 = [AUTHORITY.md](AUTHORITY.md)**;本节只列结构。
+
+### [AUTHORITY.md](AUTHORITY.md) —— 权威声明(代际裁决表/数字三形态章程/现行语义信谁)
+### [strategy/](strategy/) —— 策略设计正文(唯一现行语义家;01-11 v2 as-built + 12 血预算/13 买面现行设计件)
+- [README](strategy/README.md) —— 总览:为什么有策略 v2 + 每回合决策链 + 模块地图 + 核心哲学 + 边界 + 旧编号对照
+- [01 姿态与经济](strategy/01_posture.md) / [02 阵容](strategy/02_comp.md) / [03 战术执行](strategy/03_tactics.md) / [04 节点决策](strategy/04_nodes.md) / [05 观测与遥测](strategy/05_observation.md) / [06 信息模型](strategy/06_input_model.md) / [07 策略插件](strategy/07_plugin.md) / [08 承接](strategy/08_p2_handoff.md) / [09 boss](strategy/09_boss_hp.md) / [10 成型停手](strategy/10_formed_stop_boss_mech.md) / [11 P1 保血](strategy/11_p1_exit_blood.md) / [11 工具使用](strategy/11_tools_usage_design.md)
+- [12 血预算语义](strategy/12_blood_budget_semantics.md) / [13 买面设计](strategy/13_buy_face_design.md) —— 现行设计件(锚定新核 cw4)
 
 ### [proofs/](proofs/) —— 证明体系(策略判据的数学背书,系统设计依据)
 - [math_proofs](proofs/math_proofs.md) —— 命题索引(P1-P51 状态与重建纪元)
 - 命题本体 50 件(p08 扑满 EV/p24 残位填补支配性/p37 迟转成本/p41 囤卖 EV/p51 等待成本引理等)
 - [validations/](proofs/validations/) —— 命题验证报告 56 件(五门验证/重推判决)
 
-### [strategy/](strategy/) —— 旧核策略设计正文(decision_v2 as-built;换核后随旧核退役冻结)
-- [README](strategy/README.md) —— 总览:为什么有策略 v2 + 每回合决策链 + 模块地图 + 核心哲学 + 边界 + 旧编号对照(v2 重设计定稿 redesign.md 已砍除归档,ADR-0365;裁定史 ADR-0227)
-- [01 姿态与经济](strategy/01_posture.md) —— DP 求解器(花钱节奏单一姿态源)/ 效果台账 / 息引擎 / 目标函数
-- [02 阵容选择](strategy/02_comp.md) —— COMP_LIBRARY / select_comp·pivot·commit / 双轨过渡 / 审判层 / 跨局分配
-- [03 战术执行](strategy/03_tactics.md) —— CwScreenPrep 决策环 / 动作全集 / plan·evaluate·bundle / 部署与装备
-- [04 节点决策](strategy/04_nodes.md) —— 投资 / 遭遇 / 补给 / 巨星 / 伙伴 + 难度账本
-- [05 观测与遥测](strategy/05_observation.md) —— reader 家族 / 对账 / PerformanceTracker / telemetry / 日志格式
-- [06 信息模型](strategy/06_input_model.md) —— GameState 语义 / 注册表地图
-- [07 策略插件](strategy/07_plugin.md) —— CwStrategy ABC / 发现机制 / replay 语义
+### [sim/](sim/) —— sim 设计文档(战斗结算层)
+- [sim-power-model](sim/sim-power-model.md) —— 战力模型设计件(需求定义,唯一消费者=sim 战斗结算层,ADR-0512)
+- [sim-wiring](sim/sim-wiring.md) —— GameState ↔ sim 引擎接线对照表(as-built 底账)
 
 ### [prereg/](prereg/) —— A/B 判读预注册(三臂对照/主次对照/披露清单;跨新旧核)
-
-### [redesign/](redesign/) —— 重构工程史(换核工程的章程/旧核分层设计/对抗与验证报告族 313 件)
-- 现行权威一律看 design/ 与 proofs/;本目录换核完成后随旧核归档冻结
 
 ### [decisions/](decisions/) —— 决策日志(ADR)
 - [INDEX](decisions/INDEX.md) —— 决策索引(Status + 一句话)
 - 一个决策一文件(`00NN-<slug>.md`,NN = 原 D-NN 号可追溯)。记 why + 备选(防重复扯皮);**bug 修 / 诊断 / 取代的旧条目不进 ADR**。
+
+### [archive/](archive/) —— 历史档案(只读性质,不承载现行语义;各子目录来历见 AUTHORITY.md §2)
+- [archive/redesign/](archive/redesign/) —— 重构工程史原树(章程/旧核分层设计/对抗与验证报告族 313 件,整体迁入)
+- [archive/design/](archive/design/) —— 旧 design/ 原树(设计本意件 6 件+判据/锁存/遥测登记件;三个巨型堆叠件 IMPL_DESIGN/IMPL_FIX_LEMMAS/design_telemetry 在此,只读)
 
 ### [config.md](config.md) —— 用户配置设计(配置语义单一源)
 - 目标用户画像(日常玩家 + 成就刷取)→ 配置面(角色/投资策略/投资环境 × 禁用/优先 + strategy_id)

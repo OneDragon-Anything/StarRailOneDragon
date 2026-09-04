@@ -8,8 +8,8 @@
 
 - `docs/game/currency_war/research/math_proofs.md` 索引全 37 行(P1-P43、P46-P51)逐行扫过,**无 P45 行,亦无 P44 行**;`proofs/` 目录 51 个文件中**无任何 p45 文件**;`src/` 全树 grep "P45" 零命中。
 - 这不是遗漏而是**有意的撤并**:三处独立文档互证同一撤并链——
-  1. `docs/develop/currency_war/redesign/01_strategy_layer.md` §6 数学需求清单 L242:`| p45 | ~~压库 EV~~ | —— | **并入 p49**(已全量交付:线性律/激活门/[34] 数学化/2★ tradeoff/卖回档序) |`;
-  2. `docs/develop/currency_war/redesign/NAVIGATION.md` L36:`P45 已并入 P49(见 01 §6 表)`,且十一件新树证明清单 = P38/P39/P40/P41/P42/P43/P46/P47/P48/P49/P50,无 P45;
+  1. `docs/develop/currency_war/archive/redesign/01_strategy_layer.md` §6 数学需求清单 L242:`| p45 | ~~压库 EV~~ | —— | **并入 p49**(已全量交付:线性律/激活门/[34] 数学化/2★ tradeoff/卖回档序) |`;
+  2. `docs/develop/currency_war/archive/redesign/NAVIGATION.md` L36:`P45 已并入 P49(见 01 §6 表)`,且十一件新树证明清单 = P38/P39/P40/P41/P42/P43/P46/P47/P48/P49/P50,无 P45;
   3. `.debug/temp/currency_war/redesign/MATH_REVALIDATION_PLAN.md` L115 索引核对注:`50 件 = 旧树 37 + 新树 13(P44/P45 编号未用)`。
 - **按主题定位**:p45 在设计队列中的命题主题 = 「压库 EV」(01 §6),其全部内容由 **P49(压库 EV,`proofs/p49-pool-compression-ev.md`)全量承载**——p45 从未独立立项,在收口前直接并入 p49,编号空置。本报告下文即对 **P49 作为 p45 主题的实际承载件** 执行五门(其既有专案验证 = `P49_VALIDATION.md`,本次独立复核 + 关键面亲跑)。
 

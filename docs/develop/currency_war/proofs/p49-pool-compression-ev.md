@@ -3,7 +3,7 @@
 > 状态:**已推导(卖回档序=每金目标函数并翻转、槽价口径引 p41 规范版、r=3 收口 2026-08-31;数值自检通过——演示锚点三组命中、二维表全格断言、档序翻转断言;sim 对拍挂账)**
 > 数据源(单一源代码/文档,引用处逐一注明):`cw_shop_odds`(`expected_refreshes` 的 taken 参数=精确超几何 DP / `REFRESH_PROB` / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生 1费20/2费15/3费14/4费14/5费9)、`cw_state.sell_refund`(退金,ADR-0121)、`cw_economy.SHOP_REFRESH_COST`=2(经 p40 转引)、economy.md §1(牌池/卖回还池条)/§2(D 牌超几何模型)/§3(免费牌池操纵)/§2.1(节点切换=自动刷新)、user_playstyle [1][11][22][31][32][34];前置证明 = p41(V_opt/V_slot)、p40(E[refreshes] 消费/单步门 V*)、p46(否决域 + [11] 挂起注)、p38(完成概率日程)。**池参数 = 注册表基线;resolved 口径**(专家顾问族/黑塔纪元/人才下沉/援军等池构成族突变改 v_c/a_c → 概率表/压缩表整体重生成;设计 §4.10 resolved input;economy §1 二次确认版)——本篇全表在 resolved 池上须重算后方可消费
 > 数值自检脚本:`tools/cw/proofs/p49_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p49_check.py`)
-> 提出:CW 策略重构·压库命题(redesign/01 §4.1 六序第 4 类「压库件」的 EV 单一源;2026-09);证明 = 本批
+> 提出:CW 策略重构·压库命题(archive/redesign/01 §4.1 六序第 4 类「压库件」的 EV 单一源;2026-09);证明 = 本批
 > ⚠️ 本篇为**自含推导**(同域旧证明 p04 未读未引;演示期锚点对拍曾用一次性临时脚本,其 5费行参数传错,本篇为正确参数补算——持久自检以 `tools/cw/proofs/p49_check.py` 为准)
 
 ## 命题

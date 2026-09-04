@@ -20,7 +20,7 @@
 | 注册表直调:`cw_state.sell_refund`(:877-890)、`cw_shop_odds`(POOL_COPIES_PER_CARD :33 / expected_refreshes :146-193 / SHOP_SLOTS)、`cw_factions`(tiers 激活阈值) | ✓ |
 | 实证存档直调:`.debug/temp/currency_war/w791_review_g567/REPORT.md`、`docs/develop/currency_war/prereg/w795_realization_design/`(PREREG+REPORT) | ✓ |
 | 锚点件现行状态:P1/P3/P4/P11/P20 各自索引行 + 已有验证报告(P1_VALIDATION / P20_VALIDATION) | ✓ |
-| 重推队列:`docs/develop/currency_war/redesign/01_strategy_layer.md` §6(p38-p49 表) | ✓ |
+| 重推队列:`docs/develop/currency_war/archive/redesign/01_strategy_layer.md` §6(p38-p49 表) | ✓ |
 | **声明跳过**:`data/characters/` 75 篇、`final_comps/` 十类、`transitions*`/`combat.md`/`invest_effects.md` 全文、`h3_tier_core_crosstab.md`——理由:P29 不消费任何角色个体数值/终局阵容知识/掉血标定/投资效果(其 EV 式的输入只有羁绊档位收益、退金、池参数、轮数,均已由上表覆盖;羁绊档语义经 `cw_factions` 注释与 P20_VALIDATION §3 机制层核对) | 跳过(声明理由如左) |
 
 **前置公理栈**(零调参/参数溯源/超额收益隔离/纯金流)已按门⑤逐项判定(§5)。

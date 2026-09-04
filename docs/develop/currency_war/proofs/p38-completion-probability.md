@@ -4,7 +4,7 @@
 > 数据源(全部真实表值,引用处逐一注明):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费 权威表 / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生自 `cw_chars`,当前 1费20/2费15/3费14/4费14/5费9)、`cw_chars`(`CHARACTERS` 注册表:每卡费用与阵营/流派标签——合格集的来源)、`cw_comps`(`COMP_LIBRARY`:`form_tiers`/`core_chars`——缺口件的来源;等级日程不由注册表供给,见 A4)、`cw_economy`(`SHOP_REFRESH_COST`=2)、economy.md §10.1(收入公式:基础奖励分段 3/4/5 + 连胜四档 1/2/3/4 + 利息 min(g//10, 5))
 > 数值自检脚本:`tools/cw/proofs/p38_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p38_check.py`)
 > 提出:策略重构批(证据门 score = 完成概率 × 权重,本文推导「完成概率」因子)
-> 前置:概率/池口径=`cw_shop_odds` 注册表(机制事实单一源;P5 域的新树重推件=p39/p40);**P13 域(守50息账)的重推件 p47 已收口(L 联动批落地:⑤层息流简化换逐位面常数);P1 域(弃购再遇账)重推件=p41 已收口(R3)——本篇对其残差引用按已证消费**(redesign/01 §6;推翻则 O4 联动复算——已随五方联动批核验闭环)
+> 前置:概率/池口径=`cw_shop_odds` 注册表(机制事实单一源;P5 域的新树重推件=p39/p40);**P13 域(守50息账)的重推件 p47 已收口(L 联动批落地:⑤层息流简化换逐位面常数);P1 域(弃购再遇账)重推件=p41 已收口(R3)——本篇对其残差引用按已证消费**(archive/redesign/01 §6;推翻则 O4 联动复算——已随五方联动批核验闭环)
 
 ## 命题
 

@@ -4,7 +4,7 @@
 - 状态:accepted(2026-09-02 判据部分取代,见文末修订记录)
 - 谱系:实机反例帧「误读 60→20 被采新 → 毒值进全谓词」(ADR-0426 FLIP 应急清仓/C3 濒死带/C1 消费链受害;ADR-0428 的守卫放宽把错误真值作用面从零放大到全谓词)→ 对账层缺口补全
 - 关联:ADR-0282(hp 三层对账,母设计——本 ADR 补全其对账层的下行缺口)、ADR-0426(L_cap boss 档与 boss 税同源的谱系)、ADR-0428(hp_trusted 位;其 Decision 4 论证按分态重写见该 ADR 增补节)
-- 存放说明:旧决策树整树归档后本篇自归档件(`.debug/progress/2026-08-31-currency-war-redesign/支撑/adr_archive_20260901/`)恢复进现行权威目录 `docs/develop/currency_war/redesign/decisions/`;正文历史不改,修订以追加节记。
+- 存放说明:旧决策树整树归档后本篇自归档件(`.debug/progress/2026-08-31-currency-war-redesign/支撑/adr_archive_20260901/`)恢复进现行权威目录 `docs/develop/currency_war/archive/redesign/decisions/`;正文历史不改,修订以追加节记。
 
 ## Context(为什么)
 
