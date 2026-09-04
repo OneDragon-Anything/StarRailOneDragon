@@ -73,7 +73,7 @@
 
 | 实体 | 增量属性(人维护) | 消费点 |
 |---|---|---|
-| **投资策略/环境**(`cw_investments`) | `EconomyEffect` 27 字段(给金/免费刷/利息覆写/难度Δ/连胜倍率/合成触发族…,ADR-0131/0142/0205/0211 四轮);`PICK_VALUE`/`ENV_PICK_VALUE`/`SURVIVAL_PICKS` 选卡分;`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定 | decide_event 选卡/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
+| **投资策略/环境**(`cw_investments`) | `EconomyEffect` 27 字段(给金/免费刷/利息覆写/难度Δ/连胜倍率/合成触发族…,ADR-0131/0142/0205/0211 四轮);`PICK_VALUE`/`ENV_PICK_VALUE` 选卡分(旧低血生存选卡分已随 ADR-0519 C6 退役为常数 0 钩子删除,勿再增录);`ENV_CATEGORY` 七类+`ENV_FACTION` 阵营绑定 | decide_event 选卡/`_refresh_cost`/`_refresh_cap`/利息引擎/难度账本/env 亲和 |
 | **角色**(`cw_chars`) | char_type/f 流派阵营两分/independent/开拓者形态映射(按排归一) | 部署站位/羁绊计数/压缩牌库 |
 | **羁绊**(`cw_factions`) | category 四分类(combat/economy/support/independent)/tiers/note 人判注记 | 评分/成型判定/骨架派生 |
 | **comp**(`cw_comps`) | 核心/弹性二分/form_tiers/key_equips(可重复)/countered_by_bosses/mechanic_attributes(词缀双向)/shared_chars(转型成本)/char_positions(comp 级站位覆盖)/LevelGoal 曲线(等级→动作+星目标) | select_comp/maybe_pivot/装备分配/mechanics_fit/boss_fit |
