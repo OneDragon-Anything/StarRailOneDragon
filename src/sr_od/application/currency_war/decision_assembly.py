@@ -1,44 +1,35 @@
-"""货币战争 v2 决策装配边界(app 桶)。
+"""货币战争 决策装配边界·观察端口半部(app 桶;统一迁移批 ② 后形态)。
 
-承接分包期 5 前原 decision_v2/adapter.py 的「装配侧」半部:决策具现
-``DecideAdapter``(策略 decide → 执行器回放绑定)、实机观察 → Snapshot 的
-observe 端口 ``snapshot_from_obs``。
-纯映射半部(Snapshot→PrepObservation/GameState、PrepAction→AtomOp)留在
-decision 桶 ``decision_v2/adapter.py``——它们被决策核(prep_brain)内部消费,
-落 app 会造成 decision→app 反向边。
+实机观察 → Snapshot 的 observe 端口 ``snapshot_from_obs``(生产消费方 =
+strategies 注册壳 MandateV1Live 的装配缝;与 sim 合成器共享字段映射语义)。
+离线装配链 ``DecideAdapter``→prep_brain.decide 已随 v2 退役链删除(底稿
+MAP ⓪ A10;唯一外部消费 test_cw_expected_state 同批退役);纯映射半部
+单一源 = strategies/impl/mandate_v1/adapter.py。
 
 为何在 app:本模块 import prep_actions/cw_screen_prep/obs 执行面词汇,且被
 cw_screen_prep(备战环)消费——两侧都在 app 桶,装配边界归 app 是分包矩阵
 (DESIGN 分包 §3.2,app 依一切)的自然落位。
-
-旧环当权步影子比对(shadow_compare_* / SHADOW_STATS / v2_shadow_* 遥测
-事件)已随旧方案清退批删除:ADR-0465 迁移批 3 后旧环无生产者,比对无意义。
 """
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from sr_od.application.currency_war.decision.decision_v2.adapter import (
+from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    PrepObservation,
+)
+from sr_od.application.currency_war.kernel.cw_state import snapshot_copy
+from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
+from sr_od.application.currency_war.strategies.impl.mandate_v1.adapter import (
     PREP_SUBSTATE_NAME,
 )
-from sr_od.application.currency_war.decision.decision_v2.contracts import (
+from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     SNAPSHOT_SCHEMA_VERSION,
-    AtomOp,
-    Decision,
     RewardSphere,
     Snapshot,
     SubstateClassification,
     SupplyBox,
     Tome,
 )
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    PrepAction,
-    PrepObservation,
-)
-from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
-from sr_od.application.currency_war.kernel.cw_state import snapshot_copy
-from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
 # ------------------------------------------------------- obs 读口注入(期5 ⑦)
 
@@ -56,7 +47,6 @@ def install_obs_ports() -> None:
     同点接通期望态留证 sink(``cw_expected_state.set_evidence_sink``,追加
     ``expected_reconcile.jsonl``;缺省关 = 只 log 不落盘,测试零真实 IO)。
     """
-    from sr_od.application.currency_war.decision.cw_strategy import set_obs_reset_hook
     from sr_od.application.currency_war.kernel.cw_expected_state import (
         set_evidence_sink,
     )
@@ -66,6 +56,9 @@ def install_obs_ports() -> None:
     )
     from sr_od.application.currency_war.obs.cw_observation import (
         reset_phase_round_cache,
+    )
+    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        set_obs_reset_hook,
     )
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
@@ -100,11 +93,6 @@ def _expected_reconcile_sink_for_test(base_dir: Path):
             pass
 
     return _sink
-
-
-def _registry_of(strategy: Any):
-    """策略携带的注册表(DecisionV2Strategy 有 .registry;default 栈退缺省表)。"""
-    return getattr(strategy, 'registry', None) or DEFAULT_REGISTRY
 
 
 # ------------------------------------------------- obs → Snapshot(观察端口)
@@ -163,70 +151,3 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
         hp=(st.hp if (st is not None and st.hp_readable) else None),
         hp_readable=bool(st.hp_readable) if st is not None else False,
     )
-
-
-# ------------------------------------------------------- decide 适配器(§5)
-
-class DecideAdapter:
-    """``decide(snapshot, session) -> Decision`` 的策略具现(现役 = DecisionV2Strategy)。
-
-    - decide:黑板写路径兜底(快照→session.prep_obs_frame,仅无帧时)→
-      现役 ``strategy.decide_prep_screen(session, config)``(r412 latch 采样随
-      原函数继承)→ 控制流/原子映射;
-    - execute:按 op_key 查绑定表回放 PrepAction → 现役执行器(F3 验证链
-      原样);查无绑定 = 框架缺陷路径(progressed=False,由引擎连败链兜)。
-    绑定表实例内、每 decide 覆盖——DirectorV2 单线程逐步消费,无并发面。
-    """
-
-    def __init__(self, strategy: Any, config: Any, executor: Any) -> None:
-        self._strategy = strategy
-        self._config = config
-        self._executor = executor
-        self._binding: dict[str, PrepAction] = {}
-        self.last_action: PrepAction | None = None   # 最近一步底层动作(遥测/记账消费)
-
-    def bound_action(self, op_key: str) -> PrepAction | None:
-        """op_key → 绑定的 PrepAction(执行侧记账/回放消费;查无 = None)。"""
-        return self._binding.get(op_key)
-
-    def decide(self, snapshot: Snapshot,
-               session: StrategySession) -> Decision:
-        from sr_od.application.currency_war.decision.decision_v2 import prep_brain
-        if not snapshot.classification.confident:
-            raise ValueError('DecideAdapter.decide:非 confident 快照(框架门失守)')
-        # 黑板写路径兜底(W971 §2,P2):黑板决策 decide_prep_screen 读
-        # session.prep_obs_frame。生产路径帧由 cw_screen_prep._observe 写
-        # (真 obs 原帧);本装配点兜底 = 快照驱动的离线/测试入口
-        # (无 _observe 参与)按旧映射重建同源视图写入——保证「同快照同
-        # 决策」不变。已有帧(生产/破警告派生帧)不覆盖:帧即最新观察。
-        if getattr(session, 'prep_obs_frame', None) is None:
-            from sr_od.application.currency_war.decision.decision_v2.adapter import (
-                snapshot_to_obs,
-            )
-            session.prep_obs_frame = snapshot_to_obs(snapshot, session)
-        # 迁移迁移批 1(守卫分区) 装配点管线:TurnState 一次装配(方向/预算投影)+ _select
-        # 复用现役决策核(行为与旧环等价;折叠归迁移迁移批 2(方向层接管))。F3 参数校验经
-        # prep_brain validator 钩子(非法 → 空批 stall,旧环拒绝路径同型)。
-        turn = prep_brain.assemble(
-            snapshot, session, registry=_registry_of(self._strategy))
-        decision, action = prep_brain.decide(
-            turn, self._strategy, session, self._config,
-            validator=(getattr(self._executor, 'validate', None)
-                       if self._executor is not None else None))
-        self.last_action = action
-        if decision.ops:
-            self._binding[decision.ops[0].op_key] = action
-        return decision
-
-    def execute(self, op: AtomOp) -> tuple[bool, str]:
-        """绑定回放执行(op_key → 绑定的 PrepAction → 现役执行器)。
-
-        期望态登记(EXPECTED_STATE §6 对抗 F8)随执行器同源覆盖:本面委托
-        ``PrepActionExecutor.execute``,登记钩子挂在那里(单一挂点 = 两执行面
-        一次覆盖、零双写);回归锁 = test_cw_expected_state.py 的 assembly 面
-        登记 invariants。
-        """
-        action = self._binding.get(op.op_key)
-        if action is None:
-            return False, f'v2适配器:op_key 无绑定 {op.op_key}'
-        return self._executor.execute(action)

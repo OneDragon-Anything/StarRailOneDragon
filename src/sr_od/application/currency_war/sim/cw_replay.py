@@ -186,11 +186,12 @@ def main() -> None:
         else:
             i += 1
 
-    if strategy == 'decision_v2':
-        from sr_od.application.currency_war.decision.decision_v2.strategy import (
-            DecisionV2Strategy,
+    if strategy in ('mandate_v1', 'decision_v2'):
+        # decision_v2 字符串 = 历史档案别名(语料 strategy_id 语义),重放走活核 mandate_v1
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
+            MandateV1Strategy,
         )
-        strat = DecisionV2Strategy()
+        strat = MandateV1Strategy()
         sess = strat.create_session(_Cfg())
     else:
         # default 栈本体已退役:旧语料(default 栈时代 decisions.jsonl)回放

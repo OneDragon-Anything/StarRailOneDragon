@@ -73,8 +73,8 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
 
 
 # ===== F7 / D_ε 判读面观察键(判前锁 v6 挂账行 7/11/13;单一源=
-# docs/develop/currency_war/design/IMPL_DESIGN.md §5.1 行 7/11/13 原文
-# + docs/develop/currency_war/design/design_telemetry.md 对应键节)=====
+# docs/develop/currency_war/archive/design/IMPL_DESIGN.md §5.1 行 7/11/13 原文
+# + docs/develop/currency_war/archive/design/design_telemetry.md 对应键节)=====
 # 本段是**判读面键名声明**(v6 text 行判据=键名在本文件可检索),
 # 非记录端接线:三键的行为面/计数端载体分别在 decision 层计数器与
 # audit/provisional.py 槽位(判读批只产建议事件,编排器/人工单点注入),

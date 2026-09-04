@@ -496,10 +496,8 @@ def check_observation_keys_live(rows: list[dict]) -> list[str]:
         elif aaa and af is None:
             out.append(f'r{rn} alloc_active_any=True 但 alloc_frame 缺'
                        '(自洽破:OR 源即帧位)')
-        dga = st.get('p1_downgrade_active', None)
-        if not isinstance(dga, bool):
-            out.append(f'r{rn} state.p1_downgrade_active 非布尔'
-                       f'({dga!r}——降格触发面写端断线)')
+        # (p1_downgrade_active 可信位检查已随 v2 退役链删除——统一迁移批
+        #  ② 引擎账本位退役,MAP A7/B 类;键不再入必检集。)
         rp = st.get('refresh_probs', 'MISSING')
         if rp == 'MISSING':
             out.append(f'r{rn} state.refresh_probs 缺键(轮岗概率条'
@@ -1223,7 +1221,6 @@ def check_directed_refresh_game_cap(rows: list[dict]) -> list[str]:
         return [f'定向刷新全局 {total} 次 > 局帽 {cap}'
                 f'(directed_refresh_game_cap,M-A 授权链失效)']
     return []
-
 
 
 

@@ -525,7 +525,7 @@ class CwScreenPrep(SrOperation):
                 # 门拒绝陈值。
                 _st_t = ((st.plane - 1) * 9 + st.round_num) \
                     if (st.plane and st.round_num) else None
-                from sr_od.application.currency_war.decision.cw_strategy import (
+                from sr_od.application.currency_war.strategies.impl.cw_strategy import (
                     gated_hp as _gh,
                 )
                 st.hp = _gh(st.hp, session, _st_t,
@@ -1248,10 +1248,12 @@ class CwScreenPrep(SrOperation):
         if _bf is not None:
             return _bf
         if obs.state is not None:
-            from sr_od.application.currency_war.decision.cw_strategy import gated_hp
-            from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
+            from sr_od.application.currency_war.kernel.cw_intention import (
                 committed_from,
                 drive_intention,
+            )
+            from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+                gated_hp,
             )
             _os = obs.state
             # 方向层接管(P7 驱动点契约):意向状态机每 game-round 恰一次;

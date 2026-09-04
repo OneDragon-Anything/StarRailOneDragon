@@ -1547,6 +1547,35 @@ def committed_from(session: StrategySession,
     return committed_authority(getattr(session, 'last_state', None), session)
 
 
+def drive_intention(state: GameState, session: StrategySession,
+                    registry: DecisionV2Registry | None = None) -> None:
+    """意向状态机驱动点(P7 契约,批 2 方向层接管):每 game-round 恰一次。
+
+    - 锚定 = 决策环入口(ops 环入口 update_target 之前调用);驱动键 =
+      (plane, round_num),段级重入守卫 = session.v3_intention_key
+      (与策略栈 update_target 的驱动共享同一键面——双驱动并存天然幂等,
+      同轮重入不重复计数,miss/冻结分母 = 轮不膨胀);
+    - ist 归属(session 保留清单裁决,P4):``v3_intention`` 是跨轮状态机
+      计数器族(miss_count/frozen_rounds/evicted/tracks),显式归 session
+      保留清单;局级重置由「每局新建 StrategySession」保证,跨局零残留
+      (行为锁 test_cw_w628);
+    - registry 显式参数(P6):撤销阈值/门判据注入面直达状态机,禁在
+      折叠后静默落缺省表——缺省 None 只用于无注入臂的缺省栈。
+
+    (自 decision_v2.prep_brain 迁入意向域单一源;prep_brain 本名保留
+    re-export,消费方调用零改。)
+    """
+    ist = getattr(session, 'v3_intention', None)
+    if not isinstance(ist, IntentionState):
+        ist = IntentionState()
+        session.v3_intention = ist
+    key = (getattr(state, 'plane', 1), getattr(state, 'round_num', 1))
+    if getattr(session, 'v3_intention_key', None) == key:
+        return   # 同轮已驱动:幂等出口(重入只保派生视图刷新,不计数)
+    session.v3_intention_key = key
+    update_intention(state, ist, session, registry=registry)
+
+
 def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
     """锁定帧买侧目标约束基准(ADR-0359)。
 

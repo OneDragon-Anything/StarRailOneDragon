@@ -30,53 +30,29 @@ prep 线(``decide_prep_screen``/prep_obs_frame)在 sim 全程零覆盖
 对象)。门组的确定性/零漂移/归因结论辖域同此收窄;B1/B2 headline
 不得把 shop 面结论外推为全决策面处理效应。
 
-门组(步4b 后形态;R197 症5 补新臂对称门+池指纹守卫;**辖域=shop
-决策面——sim 测量域只有商店波,prep 线零覆盖,IMPL_ADV_R200 症7**):
-- ``baseline_self_pairing_gate``:**基线臂零漂移复跑**(透传拆除后,
-  证明本批没污染 decision_v2 臂)——decision_v2 vs decision_v2 同 seed
-  同池 SimResult.ledger 逐位相等(n≥20)。零漂移门(旧形态=两臂逐位
-  相等)随步4b 透传拆除而**不适用新核**(新核商店线有自有行为,臂间
-  diff 系设计内形态,由 ``arm_diff_probe`` 承载存在性证明)。
-- ``new_core_self_pairing_gate``(R197 症5 补):**新臂零漂移自配对门**
-  ——mandate_v1 同工厂双臂同 seed 同池 ledger 逐位相等(n≥10;确定性
-  自检)。红 = 新核存在非确定性(或意外消费局内 rng 流),步6 配对差
-  会把噪声混入处理效应且无门可红——与基线门对称。
-- ``arm_diff_probe``:**双臂相异实证**(小 n 存在性证明,非正式 A/B):
-  decision_v2 vs mandate_v1 同 seed 配对,报告 ledger 差异对数与首例
-  差异摘要(ledger 可读性=非空且含动作行);diff_pairs>0 即 A/B 有
-  测量对象。正式 A/B=步6 判读批(判前锁 v6 前置)。**池指纹守卫**
-  (R197 症5,对齐 runner.simulate_core_ab 同款):双臂指纹集非单元素
-  ⇒ raise(对拍不公平,显式失败优于静默对比)。
+门组(统一迁移批 ② 后形态;**辖域=shop 决策面——sim 测量域只有商店波,
+prep 线零覆盖,IMPL_ADV_R200 症7**):
+- ``new_core_self_pairing_gate``:**单臂零漂移自配对门**——mandate_v1
+  同工厂双臂同 seed 同池 ledger 逐位相等(n≥10;确定性自检)。红 = 存在
+  非确定性(或意外消费局内 rng 流)。基线自配对门(``baseline_self_
+  pairing_gate``)与双臂相异探针(``arm_diff_probe``)已随基线臂退役
+  删除(A9 裁决);**池指纹守卫**保留(指纹集非单元素 ⇒ raise)。
 """
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.decision.cw4.bridge import (
-    MandateV1Strategy,
-)
-from sr_od.application.currency_war.decision.decision_v2.strategy import (
-    DecisionV2Strategy,
-)
 from sr_od.application.currency_war.sim.engine_p1 import (
     sim_decision_registry,
     simulate_p1,
 )
-
-
-def make_core_swap_arms() -> tuple[Any, Any]:
-    """双臂工厂:现役核(基线臂)vs 新核(mandate_v1)。
-
-    两臂均自 ``sim_decision_registry()`` 派生构造(环境恒等,③-1);
-    新核 ``registry`` 属性天然携带(继承 DecisionV2Strategy 构造语义)。
-    """
-    reg = sim_decision_registry()
-    return DecisionV2Strategy(registry=reg), MandateV1Strategy(registry=reg)
-
+from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
+    MandateV1Strategy,
+)
 
 #: 标定批 V1 注入值(V̄_net;值/出处/方法/状态的单一叙述源 =
-#: docs/develop/currency_war/redesign/reports/core_swap/CALIB_REPORT.md 与 design_telemetry
+#: docs/develop/currency_war/archive/redesign/reports/core_swap/CALIB_REPORT.md 与 design_telemetry
 #: 「标定批」节;此处只做显式注入通道,禁散落第二处数值推导)。
 V_GAP_CALIB_V1: float = 24.7
 V_GAP_CALIB_V1_BAND: tuple[float, float] = (16.7, 24.7)
@@ -95,7 +71,7 @@ def apply_core_swap_calibration() -> None:
     批 CI 验收五件套,provisional.py 模块 docstring 纪律)。正式 A/B
     入口/活性守卫前调用本函数;重注入前 ``provisional.reset()`` 清场。
     """
-    from sr_od.application.currency_war.decision.cw4.audit import (
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
         provisional,
     )
 
@@ -104,32 +80,6 @@ def apply_core_swap_calibration() -> None:
         ci_hi=V_GAP_CALIB_V1_BAND[1], injected_form=True)
     provisional.inject('V_GAP', val)
     provisional.inject('V_MS', val)
-
-
-def baseline_self_pairing_gate(n: int = 20, seed_base: int = 0,
-                               **sim_kwargs: Any) -> dict:
-    """基线臂零漂移门(自配对;decision_v2 臂未被本批污染的实证)。
-
-    逐 seed 跑两遍 decision_v2(同 seed 同池同注册表视图),比对
-    ``SimResult.ledger`` 逐位相等。红 = 基线臂行为非确定或被共享面
-    改动污染——先修再谈 A/B。
-    """
-    mismatches: list[int] = []
-    fps: set[str] = set()
-    for i in range(n):
-        seed = seed_base + i
-        reg = sim_decision_registry()
-        r_a = simulate_p1(seed, strategy=DecisionV2Strategy(registry=reg),
-                          **sim_kwargs)
-        reg = sim_decision_registry()
-        r_b = simulate_p1(seed, strategy=DecisionV2Strategy(registry=reg),
-                          **sim_kwargs)
-        fps.update({r_a.pool_fingerprint, r_b.pool_fingerprint})
-        if r_a.ledger != r_b.ledger:
-            mismatches.append(seed)
-    _require_single_fingerprint(fps, '基线臂自配对')
-    return {'n': n, 'mismatches': mismatches, 'ok': not mismatches,
-            'pool_fingerprint': sorted(fps)[0] if fps else None}
 
 
 def new_core_self_pairing_gate(n: int = 10, seed_base: int = 0,
@@ -172,50 +122,6 @@ def _require_single_fingerprint(fps: set[str], ctx: str) -> None:
     if len(fps) != 1:
         raise RuntimeError(
             f'{ctx}池指纹不一致(对拍不公平): {sorted(fps)}')
-
-
-def arm_diff_probe(n: int = 8, seed_base: int = 0,
-                   **sim_kwargs: Any) -> dict:
-    """双臂相异实证(存在性证明,非正式 A/B;步6 前的测量对象证明)。
-
-    逐 seed 配对跑 decision_v2 vs mandate_v1,报告:
-    ``n`` / ``diff_pairs``(ledger 不同的 seed 数)/ ``ok``(diff_pairs>0
-    =A/B 有测量对象)/ ``ledger_probe``(首对差异 seed 的两侧 ledger
-    长度与动作类型计数——ledger 可读性锚)。池指纹守卫(R197 症5,
-    对齐 runner.simulate_core_ab):双臂指纹集非单元素 ⇒ raise。
-    """
-    diff_seeds: list[int] = []
-    ledger_probe: dict | None = None
-    fps: set[str] = set()
-    for i in range(n):
-        seed = seed_base + i
-        baseline, new_core = make_core_swap_arms()
-        r_old = simulate_p1(seed, strategy=baseline, **sim_kwargs)
-        r_new = simulate_p1(seed, strategy=new_core, **sim_kwargs)
-        fps.update({r_old.pool_fingerprint, r_new.pool_fingerprint})
-        if r_old.ledger != r_new.ledger:
-            diff_seeds.append(seed)
-            if ledger_probe is None:
-                def _summary(res: Any) -> dict:
-                    # ledger 可读性锚:行数 + 嵌套动作类型计数
-                    # (SimResult.ledger = 逐轮 dict,动作在 row['actions'])
-                    ledger = getattr(res, 'ledger', None) or []
-                    types: dict[str, int] = {}
-                    for row in ledger:
-                        for act in (row.get('actions') or []
-                                    if isinstance(row, dict) else []):
-                            t = str(act.get('__type__', '?')) \
-                                if isinstance(act, dict) else type(act).__name__
-                            types[t] = types.get(t, 0) + 1
-                    return {'rows': len(ledger), 'action_types': types}
-
-                ledger_probe = {'seed': seed,
-                                'baseline': _summary(r_old),
-                                'new_core': _summary(r_new)}
-    _require_single_fingerprint(fps, '双臂')
-    return {'n': n, 'diff_pairs': len(diff_seeds), 'diff_seeds': diff_seeds,
-            'ok': len(diff_seeds) > 0, 'ledger_probe': ledger_probe,
-            'pool_fingerprint': sorted(fps)[0] if fps else None}
 
 
 # ===== 零刷新修复批(2026-09-03)新增:正式 A/B 前置守卫组 =====
@@ -274,13 +180,12 @@ def action_family_liveness_gate(n: int = 10, seed_base: int = 0,
     边界:存在性证明而非分布断言(≥1 次不保证量级健康,量级归判前锁);
     池指纹守卫同其它门(非单元素 raise)。
     """
-    from sr_od.application.currency_war.decision.cw4.audit import (
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
         provisional,
     )
 
     arms: list[tuple[str, Any]] = [
-        ('baseline', DecisionV2Strategy(registry=sim_decision_registry())),
-        ('new_core', MandateV1Strategy(registry=sim_decision_registry())),
+        ('mandate_v1', MandateV1Strategy(registry=sim_decision_registry())),
     ]
     fps: set[str] = set()
     starved: list[str] = []
@@ -557,7 +462,7 @@ def _v6_row_specs() -> list[dict[str, Any]]:
 
 
 def _vgap_is_none() -> bool:
-    from sr_od.application.currency_war.decision.cw4.audit import (
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
         provisional,
     )
 

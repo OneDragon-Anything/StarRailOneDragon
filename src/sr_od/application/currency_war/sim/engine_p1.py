@@ -23,14 +23,6 @@ from sr_od.application.currency_war.data.cw_battle_tables import (
 )
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
-from sr_od.application.currency_war.decision.cw_strategy import StrategySession
-
-# 血预算停手·终止分支账本决策位(设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469)——
-# 账本行 'terminal_release' 键的单一记账址。discipline 模块级无 cw_sim
-# 环(scoring→cw_sim 只在函数体内延迟 import),模块级引入安全。
-from sr_od.application.currency_war.decision.decision_v2.discipline import (  # noqa: E402
-    terminal_release_bit,
-)
 from sr_od.application.currency_war.kernel.cw_battle_calib import (
     _board_counts_of,
     _board_factions_of,
@@ -87,6 +79,7 @@ from sr_od.application.currency_war.sim.cw_sim_invest import (
     SimInvestProfile,
     sample_invest_profile,
 )
+from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 from sr_od.application.currency_war.telemetry.recorder import (
     snapshot_expected_paths as _expected_paths_snapshot,
 )
@@ -562,10 +555,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     if strategy is not None:
         strat = strategy
     else:
-        from sr_od.application.currency_war.decision.decision_v2.strategy import (
-            DecisionV2Strategy,
+        # sim 默认被测体 = mandate_v1 单臂(统一迁移批 A9 裁决:与实机同源)
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
+            MandateV1Strategy,
         )
-        strat = DecisionV2Strategy(registry=sim_decision_registry())
+        strat = MandateV1Strategy(registry=sim_decision_registry())
     # 观测键评估用的注册表(降格触发面等纯谓词;注入桩策略无 registry
     # 属性时回退 sim 视图——与默认策略同源,不依赖被测对象形状)
     _obs_registry = (getattr(strat, 'registry', None)
@@ -874,16 +868,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             #   任一段接管过(OR 聚合,与 formed_stop 同式)。
             _round_alloc_frame = None
             _round_alloc_active_any = False
-            # - p1_downgrade_active:末窗支出降格触发面(discipline.
-            #   p1_directed_downgrade_active;session=None 裸评估=遥测
-            #   观测面用法,不置位面内闩——禁观测改变决策状态)。
-            #   消费 = W797 不可测项 A5(停付/降格机制零触发样本)的
-            #   sim 触发面对账源。
-            from sr_od.application.currency_war.decision.decision_v2.discipline import (
-                p1_directed_downgrade_active,
-            )
-            _round_p1_downgrade = p1_directed_downgrade_active(
-                st, _obs_registry)
             # `w227_handoff_gate/`/ADR-0400:P1 末窗承接门缺口观测(轮入口首段快照;
             # formed_stop 承接维/EV 缺口项的判读数据面)
             _round_handoff_gap = 0
@@ -963,10 +947,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 位对齐),顶层 shop_rejects=末波 last-wins(生产 decisions
                 # 行 session 单槽同语义)。K 空窗时 target_comp=None,
                 # 生产端 comp=None 分支统一归 non_line,同源。
-                from sr_od.application.currency_war.decision.cw4.shop import (
+                from sr_od.application.currency_war.strategies.impl.mandate_v1.shop import (
                     shop_unbought_reasons,
                 )
-                from sr_od.application.currency_war.decision.cw4.statefn import (
+                from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
                     predicates as _rej_predicates,
                 )
                 _k_comp = getattr(sess, 'target_comp', None)
@@ -1877,13 +1861,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'gold': st.gold, 'hp': st.hp,
                 # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
                 'formed_stop': _round_formed_stop,
-                # 血预算停手·终止分支决策位(设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469):
-                # 谓词闩位经 discipline.terminal_release_bit 单一址记账,
-                # 检查器 seg_p1_blood_budget_refresh/seg_terminal_release_
-                # ledger 消费(禁复算 S0);决策发生在本轮回战斗前,位是
-                # 闩(单调),轮 r 位=真 ⟺ 自本轮回决策起停付已让位
-                'terminal_release': terminal_release_bit(sess, st.plane),
-                # (换线存活门决策位 line_gate_blocked/line_gate_cf_blocked
+                # (terminal_release 账本位已随 v2 退役链删除——统一迁移批
+                #  ② MAP B 类「terminal_release 三函数」随删;检查器
+                #  seg_terminal_release_ledger 同件删除。)
                 #  已随 C4 开关族删除——旧方案清退批,清查报告
                 #  OLD_MIX_AUDIT §1.3;v3_line_gate_* session 字段同批删。)
                 # `w227_handoff_gate/`/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
@@ -1970,11 +1950,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                           # board_next_tier 消费 = Δp_tier 档位分解标定。
                           'bench_full_flag': _round_bench_full,
                           'board_next_tier': dict(_round_board_next_tier),
-                          # 末窗支出降格触发面(语义见轮入口块注释;真值
-                          # 恒披露——生产 OCR trace 267 帧恒 false 的
-                          # sim 对账源)
-                          'p1_downgrade_active': bool(_round_p1_downgrade),
-                          # 轮岗概率条(本备战期真值;未掷中=None 退基线
+                          # (p1_downgrade_active 账本位已随 v2 退役链退役——统一迁移批
+                          #  ② MAP A7/B 类;新数据恒缺省。)
                           # 表。生产 OCR 覆盖 21% 的 sim 全量对账源)
                           'refresh_probs': (
                               dict(st.refresh_probs)
@@ -2186,7 +2163,5 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # `w162_inject/`/ADR-0364:注入观测(实际持有序 = session 真值,含去重)
         res.invest_strategies = tuple(sess.active_strategies)
     return res
-
-
 
 

@@ -71,14 +71,14 @@ class CurrencyWarConfig(YamlConfig):
         # —— 开发/实验字段(ADR-0204 降级;不进未来 GUI,仅供 yml 调试)——
         # strategy_seed:策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
         # ⚠️ 只种子化策略内部蒙特卡洛 D 牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
-        # strategy_id 合法值域(§6.4-R 换核:值域扩 {'decision_v2','mandate_v1'};
+        # strategy_id 合法值域(统一迁移批 ②:decision_v2 栈删除,值域收缩={'mandate_v1'};
         # 构造期前置校验,禁「运行拼错才炸」——存量 yml 写 'default' 会在配置
         # 加载时报错并给出迁移提示)
-        strategy_id: str = self.get('strategy_id', 'decision_v2')
-        if strategy_id not in ('decision_v2', 'mandate_v1'):
+        strategy_id: str = self.get('strategy_id', 'mandate_v1')
+        if strategy_id != 'mandate_v1':
             raise ValueError(
                 f"currency_war.yml strategy_id='{strategy_id}' 非法:"
-                "default 栈已退役,合法值=decision_v2/mandate_v1"
+                "decision_v2 栈已随统一迁移批 ② 删除,合法值=mandate_v1(存量 yml 请改)"
                 "(新核 cw4);请把实例配置里的 strategy_id 改为合法值")
         self.strategy_id: str = strategy_id
         # ev_arm 臂位(R1-1;§4.2 三臂 A/B:mandate_v1 臂内实验因子——

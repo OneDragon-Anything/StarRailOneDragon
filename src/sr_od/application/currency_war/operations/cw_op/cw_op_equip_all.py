@@ -539,7 +539,7 @@ class CwOpEquipAll(SrOperation):
         # 内部 = cw_intention 权威派生);本处旧形为 last_state 通道裸直读
         # 双轨字段(在「session 读点」守卫措辞之外,W623 D3 活证据),随本批
         # 并入守卫辖域(state 通道 grep 锁,test_cw_w620/w628)。
-        from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
+        from sr_od.application.currency_war.kernel.cw_intention import (
             committed_from as _committed_from,
         )
         _dual = (not _committed_from(_match.session,

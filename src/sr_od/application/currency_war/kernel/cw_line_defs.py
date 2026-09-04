@@ -15,7 +15,7 @@ from sr_od.application.currency_war.kernel.cw_bridge_pool import (
     BRIDGE_POOL,
 )
 
-# ⚠️ 迁移挂账(docs/develop/currency_war/redesign/03_legacy_cleanup_plan.md):
+# ⚠️ 迁移挂账(docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md):
 # 权威副本 = knowledge/cw_line_facts(RECIPE_FACTIONS/RECIPE_BASE/recipe_tier);
 # 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 # 过渡配方阵营(基础 3仙舟+2DOT + 渐进 列车/护盾;攻略[20])

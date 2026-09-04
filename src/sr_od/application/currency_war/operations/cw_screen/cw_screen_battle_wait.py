@@ -4,7 +4,7 @@
 点「继续挑战」)→ 完成判据白名单任一出现(备战系/补给/遭遇/投资策略/强敌来袭/
 位面过渡锚)→ round_success 交回主循环分发;「前往结算」链的团灭终局(多页 →
 返回货币战争 → 大厅)= 第三出口,round_success(status='terminal_lobby') 交整局
-退出(主循环 3c 收口)。决策记录 = DD-019(docs/develop/currency_war/redesign/
+退出(主循环 3c 收口)。决策记录 = DD-019(docs/develop/currency_war/archive/redesign/
 decisions/dd-019)。
 
 结构判据(od-dev-write-operation「循环驱动玩法」):本 op = node-per-op 的

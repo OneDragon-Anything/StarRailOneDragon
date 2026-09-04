@@ -1,6 +1,6 @@
 """货币战争 过渡引擎体系注册事实(自 kernel 死刑判据文件迁入的权威副本)。
 
-迁入出处:`docs/develop/currency_war/redesign/03_legacy_cleanup_plan.md` 批 0
+迁入出处:`docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md` 批 0
 第 1/5 项——telemetry/schema 与 kernel/cw_battle_calib 消费的**数据半部**
 符号(TRANSITION_TRAITS 注册数据 + engines_count 机制事实判据)迁出
 cw_deploy_logic(部署决策半部,处死计划批 3 处死)。

@@ -171,3 +171,225 @@ def seed_age_blocked(bc, state: GameState,
     # cnt≥2:素材语境豁免仅当**真持有** ≥2 份;幻影计数(登记重复/
     # 执行层否决留痕)不解除保护
     return star_weighted_copies(name, state) < 2
+
+
+# ===== 血预算停手/危机带判据族(自 decision_v2.discipline 下沉,迁移底稿
+# MAP ⓪ A3:mandate_v1 判据级消费的唯一 v2 import 收编进 kernel;discipline
+# 本名保留 re-export,消费方调用零改)。闭包 = 判据 1-2 层依赖:
+# nodes_of_plane(plane_last_battle 轮维)/hp_decision_trusted(可信位单一源,
+# 自 posture_release 下沉——posture_release 余部留 decision 桶经本模块消费)。
+
+from collections import deque  # noqa: E402
+from dataclasses import dataclass, field  # noqa: E402
+
+from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
+    nodes_of_plane,
+)
+
+
+def hp_decision_trusted(state: GameState) -> bool:
+    """hp 决策可信位(单一源):``state.hp_readable or state.hp_trusted``。
+
+    同模块(及跨模块引用点)禁再手写双位判定(W393 A1.1 单一源纪律):
+    语义=ADR-0282 对账层「沿用真值帧放行 vs 兜底假值帧拒」(ADR-0428
+    收紧口径)——100 兜底帧(开局全无真值,两位皆 False)不评估,
+    shop 开态沿用 last_hp_real 的帧(hp_readable=False ∧ hp_trusted=True)
+    放行。新增 hp 守卫消费点一律走本 helper。
+    """
+    return state.hp_readable or state.hp_trusted
+
+
+def plane_last_battle(state: GameState, session) -> bool:
+    """位面末最后一战([18]):当前节点=boss 且轮=位面节点数(真值源
+    ``nodes_of_plane``——P2 boss@r7 判正;旧按 9 计 P2 永不触发,
+    ADR-0366 口径断层修复)。"""
+    node = getattr(session, 'node_type_current', None) or state.node_type or ''
+    return node in ('boss',) and state.round_num >= nodes_of_plane(session)
+
+
+def p2_levelup_stop_hp(registry: DecisionV2Registry) -> int:
+    """P2 停升级线(设计件 12 §6 参数表 P2_LEVELUP_STOP_L_C)
+    = ceil(blood_budget_stop_d × vd_p2_loss)。d=1、vd_p2_loss=20.05
+    → 21 血。L_c 口径=registry.vd_p2_loss(P12 收益侧条件败局伤害);
+    W375 双源重标定后的条件败面档(p2_cond_loss_table normal=12.77)
+    与本线的口径取舍 = 设计件 12 §5.4-1 标定核对项——重推裁决前本线
+    以设计定稿的 vd_p2_loss 为单一源,禁散写第二份数值。"""
+    import math
+    return math.ceil(registry.blood_budget_stop_d * registry.vd_p2_loss)
+
+
+def p1_levelup_stop_hp(registry: DecisionV2Registry) -> int:
+    """P1 停追级线(设计件 12 §6 参数表 P1_LEVELUP_STOP_L_C)
+    = ceil(d × L_c),L_c = vd_p1_loss_intercept + vd_p1_loss_slope_rung
+    × p1_levelup_stop_rung(d=1、rung2 代表帧 ≈10.58 → 11 血)。
+    完备性条款(设计件 12 §2.3):线很深、预期触发少——堵死「1 血局
+    仍升级」的角案,主杠杆在 P1-a/P1-c(未在本批辖域)。"""
+    import math
+    l_c = max(0.0, registry.vd_p1_loss_intercept
+              + registry.vd_p1_loss_slope_rung * registry.p1_levelup_stop_rung)
+    return math.ceil(registry.blood_budget_stop_d * l_c)
+
+
+def blood_budget_levelup_blocked(state: GameState, session,
+                                 registry: DecisionV2Registry) -> bool:
+    """血预算停手·停升级门(设计件 12 §3.1 P2 / §2.3-P1-b;ADR-0448)。
+
+    P21 已证:存活到账判据 h > d·L_c 在 h ≤ d·L_c 域内恒假 → 升级收益
+    恒 0、EV=−C−I 严格为负,且敏感网格 (p,Δp,d,c) 全负域——结论与
+    β 标定无关。备战帧 hp ≤ 停升级线(P1/P2 各自线)时拒绝购买经验。
+
+    接缝语义(设计件 12 §5.2/§5.3,实现形态裁决):
+    - **授权通道前置拒付过滤**,与息线门是独立谓词取 AND(血线胜)——
+      不是第五种覆盖态,discipline 覆盖序不动,emergency 态内同样生效
+      (应急梯度给「怎么花」,停手给「不许为未来花」);
+    - 唯一豁免 = ``plane_last_battle`` ALL IN 清零窗(位面末最后一战
+      是损失最小的花光时机,[18];停手让位)。
+    消费点:cw4 M3 升级门(criteria/levelup.level_spend_blocked)/
+    arbiter 约束 'blood_budget_stop'(候选通道)/remediation 稳态多击组
+    与 deploy_cap 补偿臂①(授权通道旁路——两臂的升级收益同在 ≥1 战
+    之后才兑现,同辖;拒付计数=session.v3_blood_budget_rejects,披露
+    模式对齐 sim 执行层 level_cap_rejects)。
+
+    消费层可信位门(ADR-0448 血线谓词唯一收口,W580):
+    ``hp_decision_trusted`` 不过的帧((hp_readable, hp_trusted)=(False,
+    False):开局兜底 100 帧/shop 覆盖丢位帧)fail-closed 按血线内处理
+    (拒付升级)——线内升级 EV=−C−I 严格负(本函数数学),证据缺失时
+    禁令保持有效与误放的非对称代价(误放=血线内追级,误拦=少升一级)
+    同型于 ADR-0428 兜底假值帧拒语义。不降姿态/不维持上次决策:谓词
+    逐帧无状态且被三面共享,引入跨帧记忆=新状态机不成比例;只封
+    LevelUp 通道,买牌/刷新各有其门。置于 ALL IN 豁免之后:豁免语义
+    =「末战花光是时机不是血线判断」,在不可信帧上仍生效。
+    """
+    if not registry.blood_budget_stop_enabled:
+        return False
+    if plane_last_battle(state, session):
+        return False    # ALL IN 窗:停手让位([18] 唯一清零地板路径)
+    if not hp_decision_trusted(state):
+        return True     # 不可信 hp 帧:fail-closed 按血线内处理(拒升级)
+    if state.hp is None:
+        # hp 无真值帧 fail-closed(ADR-0495 消费点对 None 一律保守):
+        # GameState() 缺省 hp_readable=True(sim 恒真读帧约定)会骗过上面的
+        # 可信位门,但 hp=None 时停升级线无法判「线内/线外」——误放(线内
+        # 追级)与误拦(少升一级)代价非对称,按线内处理拒升级。
+        return True
+    if state.plane == 2:
+        return state.hp <= p2_levelup_stop_hp(registry)
+    if state.plane == 1:
+        return state.hp <= p1_levelup_stop_hp(registry)
+    return False
+
+
+def p2_crisis_stop_hp(registry: DecisionV2Registry) -> int:
+    """P2 危机带血线 = ceil(2 × vd_p2_loss)≈41 血(零新自由参数)。
+
+    推导链(输入全为既有注册表/常数,无新拍定值):
+    - **血预算语义**:hp ≤ 2×L_c = 剩余吸收不足两次条件败局——「双失
+      缓冲」算术与 ``emergency_hp`` 推导链同款(registry emergency_hp
+      注:应急线下界 = 2×L_c 吸收上界);L_c = registry.vd_p2_loss
+      (P12 收益侧条件败局伤害,20.05,单一源禁第二份);
+    - **P21 到账延迟形式**:h > d·L_c 判据中 d=2 是设计件 12 §3.1
+      步骤 3 已登记的「到账更慢」档(原注:"d=2 时为 41 血");搜索型
+      刷新的收益到账链 = 刷出→买入→(第二张合成[merge_mechanics:三张
+      合一,副本不成三零战力 P48 A1 Leontief]或槽位腾挪)→再下一战兑现,
+      最短诚实延迟 2 战;ceil(2×20.05)=41 与血预算读数同值互证;
+    - **P21 敏感网格覆盖**:网格 d∈{0,1,2} 全负域 ⇒ 结论在 β≤0.30
+      与 β 无关(设计件 12 §3.1 步骤 1)——本线不消费 β,不挂 β 门。
+    边界声明:该线是**血预算带分界**(带内行为=转化优先/搜索停付),
+    不是存活保证——与 p1_exit_blood_target 的「期望预算线非存活保证」
+    同款口径(W524 审计)。
+    """
+    import math
+    return math.ceil(2 * registry.vd_p2_loss)
+
+
+def p2_crisis_band(state: GameState, registry: DecisionV2Registry) -> bool:
+    """P2 危机带谓词(plane≥2 ∧ hp 真值 ∧ hp ≤ 危机带线)。
+
+    两个行为面的共域判据(消费点各取所需,谓词单一源):
+    - ``blood_budget_refresh_blocked`` P2 臂:带内搜索型刷新停付;
+    - arbiter 危机买入闸门(``_crisis_buy_gate_open``):带内目标件
+      买候选越过非正分门/息律门(P48 λ>0 段转化优先);
+    - cw4 M3 危机让位(criteria/levelup.level_spend_blocked 危机支)。
+    应急带(hp≤emergency_hp)不属本带语义管辖:应急覆盖态
+    (层2 emergency_tags/危机囤金)自有一套处置,本谓词不重复触发
+    (消费点在应急豁免**之后**取值,天然不含);hp 不可信/None 帧返回
+    False(与 P1 末窗线同款:血预算未知时不判带——误放代价=血预算
+    未知帧多付一次搜索/少买一件,有金地板与 refresh 预算兜底;误拦
+    代价=危机帧失去转化通道,非对称取不拦)。
+    """
+    return (state.plane >= 2
+            and state.hp is not None
+            and state.hp <= p2_crisis_stop_hp(registry))
+
+
+@dataclass
+class BloodAlarmTracker:
+    """掉血三臂判据的跨步记忆(挂 session.v3_alarm;重启丢 session 保守重置)。
+
+    - ``recent_losses``:(全局节点号, 战斗净掉血)滚动窗——窗口单位=
+      **连续战斗节点**(W51 语义修复:战斗节点计数器,非日历轮;点4
+      「3 轮内」按战斗语义读作「最近 3 个战斗节点」);②最近 3 个
+      战斗节点累计 ≥20(急性)/③最近 5 个战斗节点累计 ≥30(慢性漂移);
+      **跨位面重置**(慢性臂横跨整个位面的按轮漂移根修);
+    - ``consec_battle_fails``:①连续 2 场战斗失败;
+    - ``alarm_battles``:处置梯度计时——报警激活期间累计喂入的战斗
+      节点数(=1 → ①自然补强窗内;>1 → 窗耗尽未达标;报警解除清零);
+    - 非战斗节点:不入窗、不清臂(点4 冻结语义)。
+
+    写者 = 策略生命周期 on_round_end(结算真值喂入;两栈共享)。
+    """
+
+    recent_losses: deque = field(default_factory=lambda: deque(maxlen=5))
+    consec_battle_fails: int = 0
+    alarm_battles: int = 0
+    plane: int | None = None
+
+    _BATTLE_NODES: frozenset[str] = frozenset(
+        {'battle', '普通战斗', 'boss', '精英', '遭遇'})
+
+    def record(self, node_type: str, hp_before: int, hp_after: int,
+               t: int, plane: int | None = None) -> None:
+        """on_round_end 喂入(结算真值;hp_after 为空帧跳过)。
+
+        ``plane`` 传入时做跨位面重置判定(位面变更 → 三臂全清,
+        不带旧位面的掉血趋势进新位面)。
+        """
+        if plane is not None and plane != self.plane:
+            self.plane = plane
+            self.recent_losses.clear()
+            self.consec_battle_fails = 0
+            self.alarm_battles = 0
+        if node_type not in self._BATTLE_NODES:
+            return   # 非战斗节点不计入也不重置任何一臂
+        loss = max(0, hp_before - hp_after)
+        self.recent_losses.append((t, loss))
+        # ①连续失败代理:单场净掉血 ≥10 = 该场伤害达到条件败局期望量级,
+        # 记为结构性打输。阈值依据=math_proofs P15 条件败局伤害
+        # L_c(rung)=11.32−0.37·rung(registry.vd_p1_loss_* 单一源):
+        # rung 全域 0-8 的代表值——中点 rung4=9.84、代表帧 rung2=10.58,
+        # 取整 10。胜利恒 +2(口述 [27],user_playstyle.md)永不入档;
+        # 敌血近清空的小伤害败局(P 项小,同 [27])视为波动不计数。
+        if loss >= 10:
+            self.consec_battle_fails += 1
+        else:
+            self.consec_battle_fails = 0
+        # 处置梯度①计时(S4 上界 1 轮):报警激活期间累计的战斗节点数
+        if self.alarm_active():
+            self.alarm_battles += 1
+        else:
+            self.alarm_battles = 0
+
+    def alarm_active(self) -> bool:
+        """三臂并集:①连续 2 场战斗失败;②最近 3 个战斗节点累计 ≥20;
+        ③最近 5 个战斗节点累计 ≥30。累计阈值的持久依据=条件败局伤害
+        期望的整数倍(math_proofs P15:L_c(rung)=11.32−0.37·rung,
+        registry.vd_p1_loss_*;代表帧 rung2 → L_c≈10.6):
+        ②20≈2×L_c(21.2)=3 节点窗吞两次满额败局(容 1 个良性节点,
+        急性);③30≈3×L_c(31.7)=5 节点窗三次满额败局(慢性多数败
+        漂移);①连续 2 败与②同账——2×L_c 分摊到相邻两场。"""
+        if self.consec_battle_fails >= 2:
+            return True
+        losses = [loss for _t, loss in self.recent_losses]
+        if len(losses) >= 3 and sum(losses[-3:]) >= 20:
+            return True
+        return len(losses) >= 5 and sum(losses) >= 30

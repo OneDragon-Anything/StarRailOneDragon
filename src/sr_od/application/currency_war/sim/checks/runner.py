@@ -8,15 +8,6 @@ from sr_od.application.currency_war.sim.checks.calib import (
 from sr_od.application.currency_war.sim.checks.corpus import (
     check_anchor_lowchannel_registry,
     check_anchor_seed_portability_n600,
-    check_w300_press_channel_probe,
-)
-from sr_od.application.currency_war.sim.checks.decision_v2 import (
-    check_decision_v2_arbiter_matrix,
-    check_decision_v2_candidate_coverage,
-    check_decision_v2_crisis_gold_hoard,
-    check_decision_v2_remedy_loop,
-    check_decision_v2_supply_label_consistency,
-    check_decision_v2_telemetry_contract,
 )
 from sr_od.application.currency_war.sim.checks.ledger import (
     check_bench_capacity_invariant,
@@ -197,24 +188,7 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         'shop_cost_conformance': check_shop_cost_conformance(ledgers),
         'boss_round_real_actions':
             check_boss_round_real_actions(ledgers),
-        # ADR-0291(决策框架 v2 骨架批):候选覆盖面 + 审计表完备性
-        'decision_v2_candidate_coverage':
-            check_decision_v2_candidate_coverage(ledgers),
-        'decision_v2_arbiter_matrix':
-            check_decision_v2_arbiter_matrix(),
-        # 迁移审计批(可解释性遥测)(首超审计):可解释性遥测契约 + 危机囤金哨兵
-        'decision_v2_telemetry_contract':
-            check_decision_v2_telemetry_contract(),
-        'decision_v2_crisis_gold_hoard':
-            check_decision_v2_crisis_gold_hoard(ledgers),
-        # 迁移审计 w52(git 历史)(ADR-0326 §1.5-3):补偿连续放弃轮 ≥3(容量不足信号)
-        'decision_v2_remedy_loop':
-            check_decision_v2_remedy_loop(ledgers),
-        # 迁移审计批(供给-标签一致性)(供给 vs 标签审计):直通门标签-候选一致性不变式
-        'decision_v2_supply_label_consistency':
-            check_decision_v2_supply_label_consistency(),
-        # `w300_dup_ruling/` press 通道探针(压库副本两臂产出 + E05 反例)
-        'w300_press_channel_probe': check_w300_press_channel_probe(),
+        # (v2 四层/press/供给标签六检查项已随 decision_v2 退役链删除——统一迁移批 ② MAP B 类/A9。)
     }
     if pool_map is not None:
         out['encounter_rung_sample_budget'] = \
@@ -225,4 +199,3 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         out['anchor_lowchannel_registry'] = \
             check_anchor_lowchannel_registry(report)
     return out
-

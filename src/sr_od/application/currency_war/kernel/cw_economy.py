@@ -580,7 +580,7 @@ def _vd_core_of(session: StrategySession) -> str:
     依赖;本模块零 decision 依赖,decision_v2.ev 改 import 重定向)——
     ev 不 import decision_v2 包内模块的判据复刻惯例随单一源归位终结)
 
-    ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/redesign/
+    ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/archive/redesign/
     03_legacy_cleanup_plan.md):本函数懒 import 的 IntentionState/intention_core
     属**决策半部**——消费意向锁定状态机的 phase/locked_comp 判定与 comp 核心
     派生,是 schedule_upgrade(升级排程决策)的目标解析链,不是经济事实
@@ -619,7 +619,7 @@ def _schedule_target_core(session: StrategySession) -> str:
     """排程目标核心解析(ev._vd_core_of 锁定核单一源;未锁帧落意向
     ⑤兜底 comp 的核心——方向层 FALLBACK_COMP_NAME 单一源;再缺='' →
     调用方缺省 3 费档,供给不断)。"""
-    # ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/redesign/
+    # ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/archive/redesign/
     # 03_legacy_cleanup_plan.md):FALLBACK_COMP_NAME 是方向层
     # 决策常量,属决策半部不迁;本消费点随 decision 核处死(处死计划批 1)一并退役。
     from sr_od.application.currency_war.kernel.cw_intention import (
@@ -631,7 +631,7 @@ def _schedule_target_core(session: StrategySession) -> str:
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
     fb = get_comp(FALLBACK_COMP_NAME)
     if fb is not None:
-        # ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/redesign/
+        # ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/archive/redesign/
         # 03_legacy_cleanup_plan.md):intention_core 属决策半部
         # 不迁;本消费点随 decision 核处死(处死计划批 1)一并退役。
         from sr_od.application.currency_war.kernel.cw_intention import intention_core

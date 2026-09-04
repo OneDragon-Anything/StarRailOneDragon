@@ -145,19 +145,6 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
 
 
 
-def _seg_transition_cost_max() -> int:
-    """过渡带成本带上限(`w300_dup_ruling/`/V-A2 单一源化):import 买家侧
-    ``discipline.press_channel_max_band()``(=press_band(max_level),
-    当前推导恒 {1,2})取 max——[30] 过渡阵容羁绊件基本在 1-2 费带的
-    口述锚由 press_band 的 {1,2} 覆盖规则承载,检查器侧不再独立持有
-    数值(消灭两处漂移可能)。"""
-    from sr_od.application.currency_war.decision.decision_v2.discipline import (
-        press_channel_max_band,
-    )
-    return max(press_channel_max_band())
-
-
-
 def _seg_target_roster(target_label: str) -> set[str]:
     """锁定目标名册代理(与 seg_check_formed_still_buying_transition
     的 _is_target_piece 同口径:bridge 框架件 ∪ COMP_LIBRARY 该 comp
@@ -186,180 +173,6 @@ def _seg_offered_cards(row: dict) -> list[dict]:
         for c in w.get('cards') or []:
             seen[c.get('name') or ''] = c
     return list(seen.values())
-
-
-
-def seg_check_lossless_buy_missed(rows: list[dict]) -> list[dict]:
-    """[11] 无损购买(段级):金<20 的同一息档内,店里有该买的过渡带件
-    却没买(被攒息错误拦截)。
-
-    判据对齐口述精确口径:「购买后仍在同一息档(不跨 10 的倍数)才
-    零息损」——候选卡须满足 ``(g//10)==((g−cost)//10)``;「该买的
-    过渡带件」代理 = 费用 ∈ press_band(level)(`w300_dup_ruling/`/V-A2 单一源,
-    [_seg_transition_cost_max])且阵营 ∈ 引擎过渡体系(cw_line_defs.
-    ENGINE_FACTIONS 单一源;[30] 过渡羁绊件基本在 1-2 费带)。
-    例外面:成型后停手合法([13]);跨档购买最多损 1 金属 [11]
-    「凑息账」灰区不断言(只锁零息损形态);bench 满 = 想买买不了
-    (``bench_full_skipped_buys``>0 豁免)。
-
-    **副本形态四分类**(`w300_dup_ruling/` design §4.2 + V-B9 双域;is_dup 拆
-    deployed/held 两域——买家守卫 copy_swap_useless 只扫 deployed
-    同名,bench-only 同名未买的原因可能是金/相位/评分,判真拦是
-    归因错误):
-    - C-A 目标内副本未买(is_target ∧ is_dup)→ 真拦(现行语义,
-      [21][22] 目标件照囤);
-    - C-B 压库带副本未买(¬is_target ∧ **is_dup_deployed** ∧ cost∈band
-      ∧ bench 未满)→ 仅 press 通道开(registry.press_channel_enabled)
-      时真拦(转正=买家被授权买);通道关=非违规,转披露事件
-      ``copy_press_channel_closed``(见 seg_copy_press_disclosure);
-    - bench-only 同名(is_dup_held 而非 deployed)→ 披露
-      ``copy_bench_only_skipped``,不进真拦分子(V-B9.3);
-    - C-D 非重复散件未买(¬is_dup_held)→ 真拦(现行语义保持)。
-    """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.decision.decision_v2.discipline import (
-        press_band,
-    )
-    from sr_od.application.currency_war.kernel.cw_line_defs import (
-        ENGINE_FACTIONS,
-    )
-    from sr_od.application.currency_war.kernel.cw_registry import (
-        DEFAULT_REGISTRY,
-    )
-    out: list[dict] = []
-    for row in rows:
-        if (row.get('plane') or 1) != 1:
-            continue
-        if row.get('formed_stop'):
-            continue
-        sim = row.get('sim') or {}
-        if (sim.get('bench_full_skipped_buys') or 0) > 0:
-            continue
-        g0 = _seg_gold0(row)
-        if g0 is None or g0 >= 20 or _seg_spent(row):
-            continue
-        if _seg_engines(row) >= 2:
-            continue
-        st = row.get('state') or {}
-        level = int(st.get('level') or 0)
-        band = press_band(level, None, DEFAULT_REGISTRY)
-        dep_names = {d.get('char_id') for d in (st.get('deployed') or [])}
-        bench_names = {b.get('char_id') for b in (st.get('bench') or [])}
-        bench_full = len(st.get('bench') or []) >= DEFAULT_REGISTRY.bench_capacity
-        roster = _seg_target_roster(row.get('target_comp') or '')
-        for c in _seg_offered_cards(row):
-            cost = c.get('cost') or 0
-            if cost < 1 or cost not in band:
-                continue   # 带外件不在本检查代理辖(V-B9 C-C 走披露)
-            if g0 // 10 != (g0 - cost) // 10:
-                continue   # 跨档 → 有息损,[11] 只豁免同档无损购买
-            ch = CHARACTERS.get(c.get('name') or '')
-            bonds = set((ch.factions if ch else ()) or ()) | \
-                set((ch.flows if ch else ()) or ())
-            if not (bonds & set(ENGINE_FACTIONS)):
-                continue
-            name = c.get('name') or ''
-            is_dup_dep = name in dep_names
-            is_dup_held = is_dup_dep or name in bench_names
-            if name in roster and is_dup_held:
-                pass    # C-A:目标内副本未买 → 真拦(下方统一发射)
-            elif is_dup_dep and not bench_full:
-                # C-B(V-B9 deployed 域):通道开=该买真拦;关=披露
-                if DEFAULT_REGISTRY.press_channel_enabled:
-                    out.append({
-                        'plane': 1, 'round_num': row.get('round_num'),
-                        'detail': f'金 {g0}<20 店有压库带副本 {name}'
-                                  f'(cost {cost},deployed 同名,购后仍同息档)'
-                                  f'未买——[11]×`w300_dup_ruling/` press 通道',
-                        'gold_before': g0, 'candidate': name,
-                        'candidate_cost': cost, 'class': 'C-B',
-                    })
-                    break   # 一轮一条足够定位
-                continue    # 通道关:非违规(披露面记数)
-            elif is_dup_held:
-                continue    # bench-only 同名:披露面记数(V-B9.3)
-            out.append({
-                'plane': 1, 'round_num': row.get('round_num'),
-                'detail': f'金 {g0}<20 店有过渡带件 {name}'
-                          f'(cost {cost},购后仍同息档)未买——[11] 无损'
-                          f'购买被攒息拦截',
-                'gold_before': g0, 'candidate': name,
-                'candidate_cost': cost,
-                'class': 'C-A' if (name in roster and is_dup_held) else 'C-D',
-            })
-            break   # 一轮一条足够定位
-    return out
-
-
-
-def seg_copy_press_disclosure(rows: list[dict]) -> list[dict]:
-    """`w300_dup_ruling/`/V-B9 副本形态披露键(只计数不判违规;披露键保留纪律=
-    归零可证收口生效,防变异探针盲区,sim-testing §6):
-    - ``copy_press_channel_closed``:deployed 同名压库带副本未买且
-      press 通道关——通道开通后应转 C-B 真拦或归零(买家买了);
-    - ``copy_bench_only_skipped``:bench-only 同名副本未买(非买家
-      守卫辖区,归因域外);
-    - ``copy_out_of_band_skipped``:带外副本未买(〔`w300_dup_ruling/` 口述〕
-      「完全没必要买」合法面;检查器不许再当候选发射违规)。
-    """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.decision.decision_v2.discipline import (
-        press_band,
-    )
-    from sr_od.application.currency_war.kernel.cw_line_defs import (
-        ENGINE_FACTIONS,
-    )
-    from sr_od.application.currency_war.kernel.cw_registry import (
-        DEFAULT_REGISTRY,
-    )
-    out: list[dict] = []
-    for row in rows:
-        if (row.get('plane') or 1) != 1:
-            continue
-        if row.get('formed_stop'):
-            continue
-        sim = row.get('sim') or {}
-        if (sim.get('bench_full_skipped_buys') or 0) > 0:
-            continue
-        g0 = _seg_gold0(row)
-        if g0 is None or g0 >= 20 or _seg_spent(row):
-            continue
-        if _seg_engines(row) >= 2:
-            continue
-        st = row.get('state') or {}
-        level = int(st.get('level') or 0)
-        band = press_band(level, None, DEFAULT_REGISTRY)
-        dep_names = {d.get('char_id') for d in (st.get('deployed') or [])}
-        bench_names = {b.get('char_id') for b in (st.get('bench') or [])}
-        for c in _seg_offered_cards(row):
-            name = c.get('name') or ''
-            cost = c.get('cost') or 0
-            ch = CHARACTERS.get(name)
-            bonds = set((ch.factions if ch else ()) or ()) | \
-                set((ch.flows if ch else ()) or ())
-            if not (bonds & set(ENGINE_FACTIONS)):
-                continue
-            if g0 // 10 != (g0 - cost) // 10:
-                continue
-            is_dup_dep = name in dep_names
-            is_dup_held = is_dup_dep or name in bench_names
-            kind = None
-            if is_dup_dep and cost in band:
-                if not DEFAULT_REGISTRY.press_channel_enabled:
-                    kind = 'copy_press_channel_closed'
-            elif is_dup_held:
-                kind = 'copy_bench_only_skipped'
-            elif cost not in band and 1 <= cost <= _seg_transition_cost_max():
-                kind = 'copy_out_of_band_skipped'
-            if kind:
-                out.append({
-                    'plane': 1, 'round_num': row.get('round_num'),
-                    'kind': kind, 'candidate': name,
-                    'candidate_cost': cost, 'gold_before': g0,
-                    'detail': f'披露 {kind}:{name}(cost {cost})',
-                })
-                break   # 一轮一条足够定位
-    return out
 
 
 
@@ -712,55 +525,6 @@ def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
 
 
 
-def seg_terminal_release_ledger(rows: list[dict]) -> list[dict]:
-    """终止分支决策位一致性检查(段级;设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469)。
-
-    与消费门两层分工(先例=seg_check_untrusted_hp_levelup「检查显形、
-    门拒付」):门在 decision 层放行/拒付,本检查在 checks 层验「账本
-    终止位与刷新行为一致」。**禁复算 S0**(守卫与被测同源 → S0 实现
-    有缺陷时检查器在同批误放帧同样豁免 → A/B 段级守卫对最危险失败
-    模式完全失明);S0 公式正确性由测试仓单帧锁(闭式对拍)在 L1 层
-    承载。两条:
-
-    ① 非终止位帧出现搜索型刷新 → 违规(=seg_p1_blood_budget_refresh
-       的辖域,不重复报;本检查只辖②)。
-    ② 终止位帧刷新拒付与账本位矛盾:行位=真 ∧
-       sim.blood_budget_refresh_rejects>0 ∧ 当轮转化双门按行内
-       state 快照可开(bench 空槽 ∧(deploy 空位 ∨ 存在 1★ 板面件))
-       → 账本错位违规——位说已释放、门却拒付,且资源门不构成拒付
-       理由(门与位脱钩的显形;双门关的拒付帧是合法辖内拒付,不出
-       事件)。双门复算只用行内槽位真值(非 S0),与 R4 禁令不冲突。
-    """
-    from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY
-    out: list[dict] = []
-    for row in rows:
-        if (row.get('plane') or 1) != 1 or not row.get('terminal_release'):
-            continue
-        rejects = int((row.get('sim') or {})
-                      .get('blood_budget_refresh_rejects', 0) or 0)
-        if rejects <= 0:
-            continue
-        st = row.get('state') or {}
-        bench_n = len(st.get('bench') or [])     # 占用序紧缩数组(非空槽)
-        dep = st.get('deployed') or []
-        cap = int(st.get('cap') or 0)
-        bench_ok = bench_n < BENCH_CAPACITY
-        conv_open = bench_ok and (len(dep) < cap
-                                  or any(int(d.get('star', 1) or 1) == 1
-                                         for d in dep))
-        if conv_open:
-            out.append({
-                'plane': 1, 'round_num': int(row.get('round_num') or 0),
-                'detail': f'终止位=真帧刷新拒付×{rejects} 且当轮转化双门'
-                          '按行内快照可开——账本位与刷新门矛盾(账本错位;'
-                          'ADR-0469 R4 一致性检查)',
-                'rejects': rejects, 'bench': bench_n, 'cap': cap,
-                'deployed': len(dep),
-            })
-    return out
-
-
-
 def seg_check_untrusted_hp_levelup(rows: list[dict]) -> list[dict]:
     """不可信 hp 帧发 LevelUp = 违规(段级;`w580_hp_trust_defense/` DESIGN 测试计划组5)。
 
@@ -889,8 +653,6 @@ def seg_check_p2_bleed_gold_stack(rows: list[dict]) -> list[dict]:
 _SEGMENT_CHECKS = {
     'seg_gold_identity': seg_check_gold_identity,
     'seg_overflow_idle_spend': seg_check_overflow_idle_spend,
-    'seg_lossless_buy_missed': seg_check_lossless_buy_missed,
-    'seg_copy_press_disclosure': seg_copy_press_disclosure,
     'seg_break_interest_exception': seg_check_break_interest_exception,
     'seg_formed_still_buying_transition': seg_check_formed_still_buying_transition,
     'seg_unjustified_levelup': seg_check_unjustified_levelup,
@@ -899,7 +661,6 @@ _SEGMENT_CHECKS = {
     'seg_p1_blood_budget_refresh': seg_check_p1_blood_budget_refresh,
     'seg_untrusted_hp_levelup': seg_check_untrusted_hp_levelup,
     'seg_p2_bleed_gold_stack': seg_check_p2_bleed_gold_stack,
-    'seg_terminal_release_ledger': seg_terminal_release_ledger,
 }
 
 

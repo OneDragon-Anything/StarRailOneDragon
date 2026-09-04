@@ -29,7 +29,7 @@ from __future__ import annotations
 # 过渡功能(保留率分档只在满足前者后才有意义——保留率暴涨可能是反向
 # 指标=纯终局核心,如瓦尔特 5费 Early 0.2% 等级锁刷不出;娜塔莎/佩拉/
 # 腾荒 Early 出现率不足,无过渡资格,不在包)。
-# ⚠️ 迁移挂账(docs/develop/currency_war/redesign/03_legacy_cleanup_plan.md):
+# ⚠️ 迁移挂账(docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md):
 # 权威副本 = knowledge/cw_line_facts.TRANSITION_PACK(telemetry/query 消费已改接);
 # 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 TRANSITION_PACK: dict[str, tuple[str, str]] = {

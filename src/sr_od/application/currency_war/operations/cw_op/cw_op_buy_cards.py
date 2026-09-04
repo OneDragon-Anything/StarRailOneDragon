@@ -435,14 +435,14 @@ def run_buy_waves(op: SrOperation, match,
     config = CurrencyWarConfig(op.ctx.current_instance_idx)
     if match is None:
         # 防御:无对局态(独立 run_operation 调本 op)→ 临时 match,不挂 ctx(局外不复用)
-        # (default 栈退役后,防御具现改用唯一策略载体 decision_v2)
-        from sr_od.application.currency_war.decision.cw_strategy import (
+        # (防御具现 = 活策略核 mandate_v1,与生产注册面同源;统一迁移批重指向)
+        from sr_od.application.currency_war.strategies.impl.cw_strategy import (
             CurrencyWarMatch,
         )
-        from sr_od.application.currency_war.decision.decision_v2.strategy import (
-            DecisionV2Strategy,
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
+            MandateV1Strategy,
         )
-        _def = DecisionV2Strategy()
+        _def = MandateV1Strategy()
         match = CurrencyWarMatch(_def, _def.create_session(config))
 
     # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。target 由 strategy.update_target 管理(下方)。
@@ -517,7 +517,7 @@ def run_buy_waves(op: SrOperation, match,
         # (遥测指纹:每轮首条 True、循环内全 False)。修:dual 态单一源挂 session
         # (cw_strategy),循环态每轮拷贝(仿 hp/node_type 同法);读端 =
         # R1 唯一合法读端 committed_from(蓝图 §4.3,禁 session 直读散落)。
-        from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
+        from sr_od.application.currency_war.kernel.cw_intention import (
             committed_from,
         )
         state.dual_track_phase = not committed_from(match.session)
@@ -655,7 +655,7 @@ def run_buy_waves(op: SrOperation, match,
             # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:
             # v2_* 恒空串/None,字段保留作历史 schema 兼容;
             # decision_v2 的模式/意向走 v3_* 字段)
-            'strategy_id': getattr(config, 'strategy_id', 'decision_v2'),
+            'strategy_id': getattr(config, 'strategy_id', 'mandate_v1'),
             # 臂位遥测(IMPL_DESIGN §4.1 R1-1;§6.4-R 步4):ledger_hooks 判栈按
             # (strategy_id, ev_arm) 二元组——mandate_v1 行缺 ev_arm 会退化为
             # 「mandate[?]」且臂①②不可辨识。仅 mandate_v1 写(legacy 恒空,
@@ -1038,7 +1038,7 @@ def run_buy_waves(op: SrOperation, match,
                     # 决策层已在动作采纳处登记(arbiter/carry_gate/补偿器),此处
                     # 执行侧幂等加固——执行成功是卖出事实的权威(register_round_sold
                     # 带轮键自校验,跨轮误写防御)。
-                    from sr_od.application.currency_war.decision.decision_v2.discipline import (
+                    from sr_od.application.currency_war.kernel.cw_round_ledger import (
                         register_round_sold,
                     )
                     register_round_sold([_expected], state, match.session)

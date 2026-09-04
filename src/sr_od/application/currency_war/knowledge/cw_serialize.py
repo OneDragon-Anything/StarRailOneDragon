@@ -1,6 +1,6 @@
 """货币战争 遥测序列化纯函数(自 kernel/cw_intention 迁入的权威副本)。
 
-迁入出处:`docs/develop/currency_war/redesign/03_legacy_cleanup_plan.md` 批 0
+迁入出处:`docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md` 批 0
 第 1 项——telemetry 保留层消费的序列化符号迁出死刑判据文件,作为
 「telemetry → kernel 死刑文件 import 边归零」的解耦前置。
 

@@ -204,12 +204,10 @@ class TelemetryRecorder:
                 # 经 session 汇点;session 汇点先例=w603,全部决策面一次覆盖)
                 trace.shop_rejects = dict(
                     getattr(_sess, 'cw4_shop_rejects', {}) or {})
-                # 血预算停手·终止分支决策位(R4 记账;ADR-0469)
-                from sr_od.application.currency_war.decision.decision_v2.discipline import (
-                    terminal_release_bit,  # 延迟 import 防 模块环
-                )
-                trace.sess_terminal_release = terminal_release_bit(
-                    _sess, int(state.plane))
+                # (血预算停手·终止分支决策位 trace 字段 sess_terminal_release
+                #  写入面已随 v2 退役链退役——terminal_release 在 mandate_v1
+                #  无对应实现;schema 字段按历史数据只读口径保留,新数据恒
+                #  缺省(统一迁移批,底稿 MAP ⓪ A7)。)
                 # `w611_econ_cycle/` 储备/义务披露(v3_* 为 decide_prep 每轮写;default
                 # 栈帧无写点 → attr 缺省 None,字段保持 None 语义)
                 def _w611_int(attr: str) -> int | None:
@@ -245,17 +243,11 @@ class TelemetryRecorder:
                 with contextlib.suppress(Exception):
                     trace.xp_expect_ledger = _to_jsonable(asdict(_led))
         with contextlib.suppress(Exception):
-            # 延迟 import:discipline 是 decision_v2 域,模块级引入会造成
-            # import 环(telemetry 被 ops/策略两面引用);调用点 import 无环。
-            from sr_od.application.currency_war.decision.decision_v2.discipline import (
-                p1_directed_downgrade_active,
-            )
-            from sr_od.application.currency_war.kernel.cw_registry import (
-                DEFAULT_REGISTRY,
-            )
-            trace.p1_downgrade_active = bool(
-                p1_directed_downgrade_active(state, DEFAULT_REGISTRY,
-                                             session=_sess))
+            # (P1 末窗支出降格 trace 字段 p1_downgrade_active 写入面已随
+            #  v2 退役链退役——mandate_v1 无对应实现,统一迁移批按底稿
+            #  MAP ⓪ A7 退役;schema 字段按历史数据只读口径保留,新数据
+            #  恒缺省。)
+            pass
         if self.enabled:
             # r363(审计 P1-7:gold_point 只修了一半):调用方(shop 循环
             # 每次迭代)默认 True → 每轮 3-11 个采样拉歪轨迹。改

@@ -309,7 +309,7 @@ class CwOpDeploy(SrOperation):
         # 人口硬扛)。修:双轨期走 decision_target 单一入口(=配方伪 comp),
         # 框架件成为部署一等公民——与买/卖两侧 r72「三侧单一源」对齐(deploy
         # 侧此前是缺口)。
-        from sr_od.application.currency_war.decision.decision_v2.prep_brain import (
+        from sr_od.application.currency_war.kernel.cw_intention import (
             committed_from,
         )
         from sr_od.application.currency_war.kernel.cw_recipe import (

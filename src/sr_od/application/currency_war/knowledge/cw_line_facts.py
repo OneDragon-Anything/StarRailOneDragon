@@ -1,6 +1,6 @@
 """货币战争 线/过渡包注册事实(自 kernel 死刑判据文件迁入的权威副本)。
 
-迁入出处:`docs/develop/currency_war/redesign/03_legacy_cleanup_plan.md` 批 0
+迁入出处:`docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md` 批 0
 第 1/3/5 项——telemetry 保留层(schema/cw_win_model/query)与 kernel 保留件
 (cw_system_cards/cw_battle_calib)消费的**数据半部**符号迁出死刑文件;
 这些符号是攻略/实盘数据锚(出处逐条随行注明),不是决策拍值,归知识层。

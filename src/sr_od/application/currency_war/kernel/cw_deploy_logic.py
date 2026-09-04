@@ -66,7 +66,7 @@ def tier_completes(bonds, deployed_fac: dict[str, int]) -> int:
 # 三羁绊(阵营, 阈值)对从 SYSTEM_CARDS 派生(排除 seele 卡
 # ——希儿系是 deployed 单卡判定非阵营计数,deploy 排序/形态维无意义,
 # 见 ignition_gain 注);tier 阈值经 FACTIONS 注册表,单一源。
-# ⚠️ 迁移挂账(docs/develop/currency_war/redesign/03_legacy_cleanup_plan.md):
+# ⚠️ 迁移挂账(docs/develop/currency_war/archive/redesign/03_legacy_cleanup_plan.md):
 # 权威副本 = knowledge/cw_engine_facts.TRANSITION_TRAITS(同派生式,零字面双源);
 # 本副本仅为 sim/旧判据未迁消费点保留,按该计划随文件删除;勿新增消费。
 TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(

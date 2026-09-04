@@ -13,7 +13,6 @@ from pathlib import Path
 from sr_od.application.currency_war.data.cw_battle_tables import (
     P2CombatCalib,
 )
-from sr_od.application.currency_war.decision.cw_strategy import StrategySession
 
 # 血预算停手·终止分支账本决策位(设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469)——
 # 账本行 'terminal_release' 键的单一记账址。discipline 模块级无 cw_sim
@@ -29,6 +28,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     deployed_from_compact,
 )
+from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4

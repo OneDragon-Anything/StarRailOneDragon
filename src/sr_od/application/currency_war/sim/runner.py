@@ -71,7 +71,6 @@ from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402,F40
     streak_gold,
 )
 from sr_od.application.currency_war.sim.engine_p1 import (  # noqa: E402
-    sim_decision_registry,
     simulate_p1,
 )
 from sr_od.application.currency_war.sim.pool import (  # noqa: E402
@@ -524,83 +523,6 @@ def simulate_p1_ab(n: int = 300, *, pool: str | Path = 'snapshot',
         'hp_ge_60_a': sum(1 for h in hps_a if h >= 60) / n,
         'hp_ge_60_b': sum(1 for h in hps_b if h >= 60) / n,
         'ab_resolution_floor': check_ab_resolution_floor(hps_a, hps_b),
-    }
-
-
-
-def simulate_p2_ab(n: int = 100, *, pool: str | Path = 'snapshot',
-                   seed_base: int = 0,
-                   planes: int = 2) -> dict:
-    """P2 段 vd_p2_enabled A/B 对照(`w157_p2/`/ADR-0362;ADR-0361 预留通道)。
-
-    A 臂=vd_p2_enabled 开(`w154_p2d/` 口径:DP 窗授权+机会成本 C_dec+
-    存活收益口径)/B 臂=关(迁移审计 w153(git 历史) 前行为:P2 窗二分断死);同池同
-    seed 配对,planes=2(进场继承 + P2 七轮段)。**同进程 flag
-    对照**(`w154_p2d/` 记档:并行期唯一安全 sim A/B 法——跨时点对照会被
-    在飞批/池重生成污染)。
-
-    headline 四联(存活轮/胜率/hp0 率/D 次数)+ D 方向对拍:
-    预期 **D 次数 on>off**(`w154_p2d/` 四局回放 6/14 帧翻正在分布面的
-    体现——翻正帧=「差一张」找件通道打开);hp 类观测项如实报
-    (P2 回退层掉血带口径,hp0 率是观测不是验收)。
-    """
-    import dataclasses
-    import logging
-    import statistics
-
-    from sr_od.application.currency_war.decision.decision_v2.strategy import (
-        DecisionV2Strategy,
-    )
-    logging.disable(logging.CRITICAL)   # 批量跑静音(决策日志逐段刷屏)
-    try:
-        # 两臂注册表都从 sim 视图派生(level_max 对齐 LEVEL_CAP;
-        # 见 sim_decision_registry)——A/B 臂与主路径同环境语义。
-        _reg_sim = sim_decision_registry()
-        _strat_on = DecisionV2Strategy(registry=_reg_sim)
-        _strat_off = DecisionV2Strategy(
-            registry=dataclasses.replace(_reg_sim, vd_p2_enabled=False))
-        res_a = [simulate_p1(seed_base + i, pool=pool, planes=planes,
-                             strategy=_strat_on) for i in range(n)]
-        res_b = [simulate_p1(seed_base + i, pool=pool, planes=planes,
-                             strategy=_strat_off) for i in range(n)]
-    finally:
-        logging.disable(logging.NOTSET)
-
-    def _headline(results: list[SimResult]) -> dict:
-        entered = [r for r in results if r.p2_entered]
-        combat_t = sum(r.p2_combat_total for r in entered)
-        return {
-            'p2_entered_rate': len(entered) / len(results),
-            'avg_p2_rounds': round(statistics.mean(
-                [r.p2_rounds for r in entered]), 2) if entered else None,
-            'p2_win_rate': (round(sum(r.p2_combat_wins for r in entered)
-                                  / combat_t, 4) if combat_t else None),
-            'p2_hp0_rate': (sum(1 for r in entered if r.p2_hp0)
-                            / len(entered) if entered else None),
-            'total_p2_refreshes': sum(r.p2_refreshes for r in entered),
-        }
-
-    d_a = [r.p2_refreshes for r in res_a]
-    d_b = [r.p2_refreshes for r in res_b]
-    return {
-        'n': n, 'planes': planes,
-        'pool_fingerprint': res_a[0].pool_fingerprint,
-        'headline_on': _headline(res_a),
-        'headline_off': _headline(res_b),
-        # D 次数对拍(配对计数;on>off 的局数 = `w154_p2d/` 翻正预测的
-        # 分布面证据;方向计数不含平局)
-        'refresh_direction': {
-            'on_gt_off': sum(
-                1 for a, b in zip(d_a, d_b, strict=True) if a > b),
-            'off_gt_on': sum(
-                1 for a, b in zip(d_a, d_b, strict=True) if b > a),
-            'tie': sum(
-                1 for a, b in zip(d_a, d_b, strict=True) if a == b),
-        },
-        'avg_hp_on': round(statistics.mean(
-            [r.final_hp for r in res_a]), 2),
-        'avg_hp_off': round(statistics.mean(
-            [r.final_hp for r in res_b]), 2),
     }
 
 
@@ -1082,13 +1004,13 @@ def synthesize_snapshot(st: GameState,
     import copy
     from types import MappingProxyType
 
-    from sr_od.application.currency_war.decision.decision_v2.contracts import (
+    from sr_od.application.currency_war.kernel.cw_state import (
+        DEPLOYED_FRONT_CAPACITY,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
         SNAPSHOT_SCHEMA_VERSION,
         Snapshot,
         SubstateClassification,
-    )
-    from sr_od.application.currency_war.kernel.cw_state import (
-        DEPLOYED_FRONT_CAPACITY,
     )
 
     bench = tuple(copy.deepcopy(b) for b in st.bench)
@@ -1135,4 +1057,3 @@ def synthesize_snapshot(st: GameState,
 
 if __name__ == '__main__':
     _cli_main()
-
