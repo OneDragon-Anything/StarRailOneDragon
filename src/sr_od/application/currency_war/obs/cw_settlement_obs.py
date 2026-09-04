@@ -17,7 +17,6 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.log_utils import log
-from one_dragon.utils.str_utils import find_in_list_with_fuzzy
 from sr_od.application.currency_war.kernel.cw_obs_core import HP_MAX, HP_MIN
 from sr_od.context.sr_context import SrContext
 
@@ -236,94 +235,6 @@ def parse_settlement_damage(items: list) -> int | None:
             total += int(round(float(m.group(1)) * 10000))
             hit = True
     return total if hit else None
-
-
-def parse_settlement_damage_rows(items: list) -> list[dict] | None:
-    """结算屏「数据统计」面板逐角色伤害行(纯函数;ΔV_2★ 主动采集批)。
-
-    设计出处 = ``.debug/temp/currency_war/delta_v2star_active/DESIGN.md``
-    §2(schema 口径)/§3(触发与生命周期)。**临时采集钩子,删留条件:
-    P55 阶段 2 的 ΔV_2★ 判据解锁或采样被判结构性不足后删整段**(本函数 +
-    ``RoundOutcome.damage_rows`` + telemetry 透传链 + 回归锁一并删,样本
-    归档;求和字段 ``parse_settlement_damage`` 是既有生产观测,不在删除
-    范围)——见 DESIGN.md §3。
-
-    与 ``parse_settlement_damage`` 消费**同一帧**全图 OCR items(零新增
-    截图/OCR 调用/点击),逐行是纯解析层扩展。判据:
-
-    - 行锚 = 「<数字>万」形 token(继承 ``parse_settlement_damage`` 双守卫:
-      万形 + 检测框中心落 ``_STAT_COL_RECT`` 列),按行 y 自上而下排序;
-    - 同行判据 = 中心 y 差 ≤25px(复用 ``parse_settlement_gold_detail``
-      的行对齐手法;实测行距 ~77px(2026-09 结算帧离线 OCR 抽检),
-      25px 门不会跨行吸附);
-    - 每行产出 {name_raw, name, is_trial, damage}:
-      ``name_raw`` = 伤害值 token 同行左侧最近文本 token 原文
-      (限定右列区内,cx ≥ 1130,把左侧金币标签列物理隔开;「试用」/万形/
-      纯数字 token 不作名字候选;OCR 常漏读角色名/试用徽标——立绘渲染,
-      实帧抽检多帧仅伤害值可读——此时 name_raw='' name=None is_trial=False,
-      **诚实删失不冒认**);``name`` = roster 相似匹配(str_utils;匹配不上
-      = None,离线端可按 name_raw 二次匹配);``is_trial`` = 同行「试用」
-      徽标 token 在场(试用角色星级语义存疑,单列不禁用,DESIGN §2.3);
-      ``damage`` = 「396.3万」→ 3963000。
-    - fail-closed:面板不可见/无万形 token/解析异常 → 整体返回 None
-      (诚实删失,禁冒认 0;不中断结算记录链,与 ``damage_dealt`` 读不到
-      返 None 同款语义,DESIGN §3)。
-    """
-    try:
-        x1, y1, x2, y2 = _STAT_COL_RECT
-        _DMG_RE = re.compile(r'(\d+(?:\.\d+)?)万')
-        # 行锚候选:万形 + 双守卫(同 parse_settlement_damage)
-        anchors = []
-        for it in items:
-            t = (getattr(it, 'data', '') or '').strip()
-            m = _DMG_RE.fullmatch(t)
-            if not m:
-                continue
-            cx = _gold_token_cx(it)
-            cy = _gold_token_cy(it)
-            if x1 <= cx <= x2 and y1 <= cy <= y2:
-                anchors.append((cy, cx, int(round(float(m.group(1)) * 10000)), it))
-        if not anchors:
-            return None   # 面板不可见/OCR 未读 → None,不冒认 0
-        # 同行文本候选(只取右列区内非试用、非万形、非纯数字的 token;
-        # roster 含拉丁名(如 Archer),不作中文限定)
-        _texts = []
-        for it in items:
-            t = (getattr(it, 'data', '') or '').strip()
-            if (not t or '试用' in t or _DMG_RE.fullmatch(t)
-                    or re.fullmatch(r'\d+', t)):
-                continue
-            cx = _gold_token_cx(it)
-            cy = _gold_token_cy(it)
-            if x1 <= cx <= x2 and y1 <= cy <= y2:
-                _texts.append((cy, cx, t, it))
-        _trials = []
-        for it in items:
-            t = (getattr(it, 'data', '') or '').strip()
-            if '试用' in t:
-                cx = _gold_token_cx(it)
-                cy = _gold_token_cy(it)
-                if x1 <= cx <= x2 and y1 <= cy <= y2:
-                    _trials.append((cy, cx))
-        from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER
-        _roster = sorted(CHARACTER_ROSTER)
-        rows: list[dict] = []
-        for cy, cx, dmg, _it in sorted(anchors, key=lambda a: a[0]):
-            # name_raw:同行左侧最近文本 token;无 → ''(诚实缺省,不造名)
-            _cands = [(tcx, t) for tcy, tcx, t, _ in _texts
-                      if abs(tcy - cy) <= 25 and tcx < cx]
-            name_raw: str = max(_cands)[1] if _cands else ''
-            # roster 匹配:精确优先,兜底 difflib 相似;匹配不上 = None
-            name: str | None = None
-            if name_raw:
-                _idx = find_in_list_with_fuzzy(name_raw, _roster, cutoff=0.6)
-                name = _roster[_idx] if _idx is not None else None
-            is_trial = any(abs(tcy - cy) <= 25 for tcy, _tcx in _trials)
-            rows.append({'name_raw': name_raw, 'name': name,
-                         'is_trial': is_trial, 'damage': dmg})
-        return rows
-    except Exception:   # noqa: BLE001  采集钩子 fail-closed:解析异常不断结算链
-        return None
 
 
 # ===== 结算屏金币明细三分量解析(纯函数形态保留) =====
@@ -649,11 +560,6 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     # 面板就在结算屏本体右侧列,同一帧全图 OCR 即可解析(坐标在 items 里),
     # 无需点开子面板/额外截图。读不到(面板被遮/OCR 漏)→ None 保持旧锁。
     damage = parse_settlement_damage(_items)
-    # ΔV_2★ 逐角色伤害行(临时采集钩子,无条件触发;.debug/temp/currency_war/
-    # delta_v2star_active/DESIGN.md §3)——同一帧 OCR items 上解析,零点击
-    # 零额外截图;面板不可见/解析失败 → None 诚实删失(禁冒认 0),不中断
-    # 结算记录链。删留条件见该 DESIGN §3 与 parse_settlement_damage_rows。
-    _damage_rows = parse_settlement_damage_rows(_items)
     # r366(ADR-0239):结算屏头部类型词 = 节点类型权威源(读时点=记录时点,
     # 零跨帧状态;首节点/备战流变化均免疫)。解析出即覆盖传参。
     # r366b(review B3):传参='boss'(cw_loop 专项 OCR '首领',证据更强)
@@ -695,7 +601,6 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
         killed=_won,
         progress_delta=parse_settlement_progress(ocr_texts),
         damage_dealt=damage,   # W40:数据统计面板伤害求和(同帧;读不到 None)
-        damage_rows=_damage_rows,   # ΔV_2★ 逐角色行(临时钩子;读不到 None)
         progress_fill_ratio=_fill,   # 结算三项遥测:进度条填充率(读不到 None,不冒认 0)
         damage_base=_panel['damage_base'],
         damage_unfinished_progress=_panel['damage_unfinished_progress'],

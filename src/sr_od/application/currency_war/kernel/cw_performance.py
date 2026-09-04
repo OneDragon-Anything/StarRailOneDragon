@@ -69,15 +69,6 @@ class RoundOutcome:
     damage_base: int | None = None
     damage_unfinished_progress: int | None = None
     damage_breakdown_visible: bool = False
-    # —— 逐角色伤害行(ΔV_2★ 临时采集钩子;出处=.debug/temp/currency_war/
-    # delta_v2star_active/DESIGN.md §2/§3)——
-    # list[{name_raw, name, is_trial, damage}],粒度 = 每场战斗 × 每个上场
-    # 角色;Σdamage 与 damage_dealt 同帧互为对拍。**None = 面板不可见/解析
-    # 失败,诚实删失,禁冒认 0**。删留条件:临时采集钩子,P55 阶段 2 判据
-    # 解锁或采样被判结构性不足后删整段(本字段 + 逐行解析函数 + telemetry
-    # 透传链 + 回归锁一并删;求和字段 damage_dealt 是既有生产观测,不在
-    # 删除范围)——详见 DESIGN.md §3。
-    damage_rows: list[dict] | None = None
 
 
 # 节点类型 → 预期掉血(相对值;归一化用)。先验,历史 refine。
