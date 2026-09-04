@@ -13,7 +13,7 @@
 
 ### [flow/](flow/) —— 流程控制设计(执行骨架:怎么驱动策略产出决策)
 - [README](flow/README.md) —— 总纲:四层图(外层循环→画面指挥→策略步进→动作执行)+ 策略↔流程契约(CwStrategy 17 接口/四身份分离)+ 守卫总览
-- [outer_loop](flow/outer_loop.md)(画面路由/轮次推进/停机钩子) / [prep_visit](flow/prep_visit.md)(备战访问相位机) / [shop_visit](flow/shop_visit.md)(商店波次) / [action_exec](flow/action_exec.md)(三态发射契约) / [guards](flow/guards.md)(G3 守卫/降级链)
+- [outer_loop](flow/outer_loop.md)(画面路由/轮次推进/停机钩子) / [prep_visit](flow/prep_visit.md)(备战访问相位机) / [shop_visit](flow/shop_visit.md)(商店波次) / [action_exec](flow/action_exec.md)(三态发射契约) / [guards](flow/guards.md)(G3 守卫/降级链) / [screen_op](flow/screen_op.md)(画面 op 统一规范·ADR-0517 目态)
 
 ### [proofs/](proofs/) —— 证明体系(策略判据的数学背书,一切「多少算够」的定价权威)
 - [math_proofs](proofs/math_proofs.md) —— 命题索引(P1-P57 状态与重建纪元);命题本体与 [validations/](proofs/validations/) 验证报告

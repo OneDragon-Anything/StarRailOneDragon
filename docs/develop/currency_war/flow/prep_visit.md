@@ -17,7 +17,7 @@ run()
  │    ├─ 席满破墙 _bench_full_break_round（M16：备战席满警告模态 → 破墙动作优先，见 §5）
  │    ├─ 意向驱动 drive_intention（每 game-round 恰一次，v3_intention_key 段级重入守卫；失败沿用旧方向）
  │    └─ update_target（异常沿用旧 target，不阻塞步级决策）
- ├─ ③决策：actions = strategy.decide_prep_screen(session, config)
+ ├─ ③决策：actions = strategy.decide_prep_screen(session, config)【待 ADR-0517 迁移：序列返回 + 逐动作消费在目标态改单动作循环，prep_phase 相位机已随 mandate_v1 接线退出 live（§2.1 死码标注；screen_op.md §8.2）】
  │    ├─ 异常 → round_fail（外循环 retry 链兜）
  │    ├─ 输出非 list[PrepAction] → round_fail（F3）
  │    ├─ session.last_prep_action_sig = 动作类型元组（守卫动作腿）
@@ -42,9 +42,19 @@ run()
 
 heavy 帧消费：tracking 对账（SIFT 真值重置 session tracking，漂移留证）、期望态覆盖点 `prep_obs` 清账（条目绑覆盖点，gold 仅可信读清账）、cap<level 留证、deployed 双源对拍。期望态族（买/拖/经验/羁绊/商店池/合成预览/装备）细则 = `cw_screen_prep.py:666-1188`（动作级对账在动作完成后同帧消费）。全部 best-effort，不阻塞环。
 
-## 2. 备战相位机（prep_phase，`flow.py:794-849` `_main_flow_step`）
+## 2. 备战决策核：live 链（mandate_v1）
 
-阶段位在**出动作时**前移（策略看不到执行结果；失败由框架 fail/恢复链兜住）：
+**live 决策链（as-built，亲验）**：`cw_screen_prep.py:1278/1477`（主流程/破墙段）→ `strategies/impl/mandate_v1/bridge.py:80 decide_prep_screen`（黑板读 `session.prep_obs_frame`，缺失即抛错）→ `bridge.py:146 decide_from_turn`（纯函数：调 emit 后做帧稳定截断）→ `entry.py:325 emit`（决策入口三遍编排）。
+
+`entry.emit` 编排序（docstring 与代码体一致）：① prep 实体面（boxes→OpenBox / tomes→OpenTome / spheres→ClickSpheres / event_overlay→BailToOuter，优先于三遍）→ ② 证明 pass（信号臂/K/stop_flag/线级状态机/换线）→ ③ 升档器求值位 → ④ 骨架 pass（M1-M7，`mandate.py`）→ ⑤ EV pass（criteria，臂①旁路）→ ⑥ 无动作 ⇒ StartBattle（序列终点 = 备战环正常出口）。动作词表 = emit/adapter 自有的 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle 等（`adapter.py:173-187`），输出 `list[PrepAction]`（执行序 = 列表序，帧稳定截断见 `README.md` §2.2）。
+
+### 2.1 死码簇：旧备战骨架（`flow.py`，零生产调用，挂收敛批）
+
+以下旧骨架在 live 链上无入口（`_decide_prep_action_impl` 仅测试直调；其余成员互相调用闭环），随死码收敛批裁决去留——as-built 如下如实保留，**不再是现行机制**：
+
+### 2.2 备战相位机（prep_phase，`flow.py:794-849` `_main_flow_step`）【死码】
+
+阶段位在**出动作时**前移（策略看不到执行结果；失败由框架 fail/恢复链兜住）。prep_phase 唯一写点即本段（`flow.py:801-845`），live 无消费（仅 battle_wait 复位，`cw_screen_battle_wait.py:480-482`）：
 
 | prep_phase | 进入条件 | 发射 | 语义 |
 |---|---|---|---|
@@ -53,7 +63,7 @@ heavy 帧消费：tracking 对账（SIFT 真值重置 session tracking，漂移�
 | 2→3 | 部署段返回 | `RunEquip()` | 全员装备（M7 骨架地板） |
 | 3 | 装备段返回 | **空板出战守卫**：deployed=0 ∧ bench>0 ∧ retry<2 → prep_phase=1 回部署段重试；否则 `StartBattle()` | 板上 0 人 = 部署失败（空板出战在强节点掉 24-29 血，r23 实证） |
 
-### 2.1 步级决策序（`_decide_prep_action_impl`，`flow.py:501-530`；序列核逐动作消费同序）
+### 2.3 步级决策序（`_decide_prep_action_impl`，`flow.py:501-530`）【死码：仅测试直调】
 
 ```
 box_overlay_open → PickBoxCard（P1 执行器默认选卡）
@@ -67,7 +77,7 @@ spheres ∧ free=0 ∧ defer<2 → _free_bench_step（腾席链）
 否则 → _main_flow_step（相位机）
 ```
 
-## 3. 腾席链（`flow.py:601-723` `_free_bench_step`；bench 满时按序尝试）
+## 3. 腾席链（`flow.py:601-723` `_free_bench_step`；bench 满时按序尝试）【死码：属 §2.1 死码簇，零生产调用】
 
 | 链 | 动作 | 判据 |
 |---|---|---|

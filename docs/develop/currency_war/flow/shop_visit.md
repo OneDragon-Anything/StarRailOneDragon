@@ -16,6 +16,8 @@ OpenShop 动作两形态（`kernel/cw_prep_actions.py:108-117`）：
 
 ## 2. 波循环（`cw_op_buy_cards.py:415-1239` `run_buy_waves`）
 
+> 【待 ADR-0517 迁移】本篇 §2-§3 整体为波批形态：波循环 → 单动作循环（`screen_op.md` §1）、执行至首个 RefreshShop 的截断 → 终结 op 吸收（§3）、空序列离店 → 策略器主动选关店终结 op、波顶读序 → 入口单次观察。实现未动，以下 as-built 如实。
+
 ```
 for _ in range(MAX_REFRESH + 1):          # MAX_REFRESH=4 硬墙（cw_op_buy_cards.py:365）
   ├─ 波顶 settle：非连击续刷波 sleep 0.3s（board 面板动画防 OCR 误读）+ park_cursor

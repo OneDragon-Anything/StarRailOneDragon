@@ -55,7 +55,7 @@
 | 画面(op) | 动作(单动作粒度) | 终结动作 | 适配判注 |
 |---|---|---|---|
 | 商店(`operations/cw_op/cw_op_buy_cards.py` 波循环,obs=`cw_shop_obs`) | 买一张(BuyCard)/卖一张(SellBench/SellDeployed)/升一级(LevelUpShop,clicks 拆为逐 op)/刷新(RefreshShop) | 刷新、关店(CwOpCloseShop) | **规范原生画面**,迁移首选 |
-| 备战(`cw_screen_prep`,决策 = flow.py `_decide_prep_action_impl`/`_main_flow_step`) | 开典籍/开箱/收球/部署拖拽/升级/卖件/开店(OpenShop)/装备(RunEquip) | 开店(跳画面)、开战(StartBattle) | 适配;注意 prep_phase 相位机(flow.py:801)是隐式状态,迁移时相位语义要并进期望态或显式化 |
+| 备战(`cw_screen_prep`,决策 = live 链 `cw_screen_prep.py:1278/1477` → `mandate_v1/bridge.py:80 decide_prep_screen` → `bridge.py:146 decide_from_turn` → `entry.py:325 emit` 三遍编排,自有动作词表 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle;`flow.py` `_decide_prep_action_impl`/`_main_flow_step` = 零生产调用死码簇,挂收敛批,清单见 flow/prep_visit.md §2.1) | 开典籍/开箱/收球/部署拖拽/升级/卖件/开店(OpenShop)/装备(RunEquip) | 开店(跳画面)、开战(StartBattle) | 适配;prep_phase 相位机(flow.py:801)已随 mandate_v1 接线退出 live,其归属降格为死码清理与 session 字段处置(flow/screen_op.md §8.2),不再是迁移阻碍 |
 | 备战·整档替换(`CompTransaction`,cw_state.py:696-714) | 整档替换事务 = **一个宏动作 op**(复合动作类,见下节) | 无固有终结(归属备战终结集:开店/开战) | 复合动作类:原子投影 + C1 前置合法性,不拆为逐子步 op |
 | 事件单选族(invest_strategy/invest_env/planner/megastar/partner/wish_trial/bookcard/expert_invite/boss_briefing) | 选卡(每候选一个动作) | 确认离开 | 形式兼容(单动作循环退化为一步:选即终结),无增量收益但也无成本;统一规范时按「选卡 = 唯一动作 + 确认 = 终结」建档 |
 | 补给(supply/supply_node) | 选装备/出钻/刷新 | 确认离开 | 适配(刷新是否终结 op 按商店同款:补给刷新同样引入新事实) |
@@ -103,7 +103,7 @@
 ## 开放问题(本文推导,留 flow 实施批裁)
 
 1. **无决策画面的规范边界**:遭遇/战斗等待/位面切换(盘点表「暂不适合」行)在统一规范推进到时,是建档为「空动作空间 + 恒可用终结」的形式画面,还是保持外循环直管——按成本裁。
-2. **prep_phase 相位机的归属(对抗轮 1 深化)**:根本差异在**相位如何更新**——现行相位「出动作时前移、不读执行结果」(flow.py:795-798 docstring:「阶段位在出动作时前移(策略看不到执行结果)」),新架构期望态**由动作结果更新**;两者对「动作失败后相位是否回退」给出不同答案。候选处置:(a) 相位并入期望态作派生字段(动作结果驱动);(b) 显式化为画面子态(期望态外独立状态机)。判据 = **哪个不改判据层签名**(判据零改动是本 ADR 硬约束,处置不得迫使判据函数增加相位参数)。留 flow 实施批裁。
+2. **prep_phase 相位机的归属(对抗轮 1 深化;flow 轮 8 重述)**:**as-built 事实(flow 轮 8 代码体核)**——prep_phase 相位机已随 mandate_v1 接线退出 live:唯一写点在死码 `_main_flow_step` 体内(flow.py:801-845),live 仅 battle_wait 复位无消费;live 备战决策链 = `cw_screen_prep.py:1278/1477` → `mandate_v1/bridge.py:80/146` → `entry.emit`(entry.py:325,三遍编排,自有动作词表)。故本开放问题**降格为死码清理与 session 字段处置**(prep_phase 及 `_LAST_*` 暂存字段随死码批裁决);单动作化对备战的**真实影响面 = entry.emit 的三遍编排序改单动作选择序**(其动作词表即动作空间,判据层零改动硬约束不受影响)。留 flow 实施批裁。
 3. **补给画面刷新的终结语义**:补给刷新同样引入新事实(新装备面),按「刷新 = 唯一引入新事实的动作」原则应为终结 op,但补给刷新是否消耗资源/是否可循环,待建档核实后定。
 4. **contract ctx 字段的逐动作取值语义(对抗轮 1 补)**:契约核验 `contracts.ensure_contract` 的 `ContractCtx`(gold/bench 等字段)在单动作循环下**逐动作取值**,其语义须显式定义——两粒度(波批帧首一次 vs 单动作逐次)下同一字段在前提判定中取到**不同值**(gold = 帧首快照 vs 动作后真值),这是契约核验频次变化之外的**语义面**,不定义则契约遥测在新旧结构间不可比。定义落点 = 迁移步 1(契约核验挂单动作决策入口时同步声明)。
 

@@ -37,7 +37,9 @@
 - 判据：连续 **2 个完整轮**无任何策略心跳决策行（心跳 = sid 行或载体行，单一源 `query._row_heartbeat`；外环停转 = 整轮零心跳行）→ 停局重启加载策略（"重大修复待加载 = 无条件早停"的运行期镜像：外环死了继续跑 = 零信息量局）。
 - dd-031 定谳辖域收敛：sid 行唯一写点在店内决策；mandate 合法跳过开店（三开店站全关）时整轮只有载体行——旧判据"无 sid 行=死"把健康局误杀。结算点 = 备战入口查**上一轮**（本轮决策尚未发生，查本轮恒空会误杀）；telemetry 关闭时本检查让位。
 
-## 6. 执行失败安灯（`cw_screen_prep.py:631-641,1642-1712`；分类器在 `run_state.py`）
+## 6. 执行失败安灯（`cw_screen_prep.py:1604-1640` `_spend_unit_close`（判定与记账同点：购买单元收尾，钩子调用 `:1636-1640`）+ `:1642-1712` `_exec_fail_hook_check`（安灯判定+触发）；分类器在 `run_state.py`）
+
+> 【待 ADR-0517 迁移】本节消费面为波级契约表述（本轮 shop plan 行 / plan_truncated 截断申报）：单动作循环下「计划≠尝试」的截断语义消失，安灯分类器输入与豁免通道的重锚面见 `screen_op.md` §8.5（输入改逐动作事件流；豁免按单动作「跳过≠失败」语义重推）。实现未动，以下 as-built 如实。
 
 - 判定与记账同点：购买单元收尾时跑分类器 `exec_fail_should_stop`——数据源 = decisions.jsonl 本轮 shop plan 行（plan/开店金，shop 开态可信）+ spend_ledger.jsonl 本单元行 gold_close（身份键完整；旧行回退 obs_conflicts join 兼容路径；读失败 None 进分类器 = unknown 不停，不猜）。
 - "计划≠尝试"分流（ADR-0456）：plan_truncated（硬墙跳过/截断丢弃）豁免防误停；refresh_attempted/board_changed 进三态判定。
@@ -52,7 +54,7 @@
 | 场景 | 降级行为 | 为什么 fail-closed |
 |---|---|---|
 | gold 失读（shop 关态） | 指纹 None 对 None 不构成假推进；链 b 先开 read_only 店取真值，同环第 2 次仍无 → stale 试算（gate 拒落链 c） | 宁可用保守试算 + 游戏侧 gate 拒绝，不死等（局47 死循环修） |
-| 卖前对拍不符 | 整笔跳过（stale_proposal），下轮重 plan | 不卖错件（卖出不可逆） |
+| 卖前对拍不符 | 整笔跳过（stale_proposal），下轮重 plan | 不卖错件（卖出不可逆）。守卫本体 = 两条内存账对拍（策略侧快照 vs 执行侧 tracked，`cw_op_buy_cards.py:163-173,993-1008`），零读屏；迁移两属拆分见 `screen_op.md` §2.3 |
 | 全保护死锁（链 c） | 等待超限 → 强制卖首个非在场件 | 保护是优化不是死锁理由 |
 | 部署 cap 失读 | 单调链 max 兜底；全源失读 → 不设板满门（拖到游戏拒即真值） | 低读阻塞上阵（贵）> 高读白拖一次（便宜） |
 | 空计划 RunDeploy | 发射门抑制（不发射）+ 执行侧 STATUS_NOOP | 空计划 ✓ = 假成功，G3 守卫停机形态 |

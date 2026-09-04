@@ -40,10 +40,12 @@
 
 ## 4. 商店动作执行（波内；`cw_op_buy_cards.py:702-1070`）
 
+> 【待 ADR-0517 迁移】本节为波批形态的执行面：卖前对拍守卫、x 去重等防线的存在前提是「整波共享帧快照」，目标态按守卫断言重定位（`screen_op.md` §2.3）。其中 `sell_guard_ok` 机制改真 = 两条**内存账对拍**（策略侧 `state.bench` 帧首快照 vs 执行侧 `tracked_bench_chars`，`cw_op_buy_cards.py:163-173,993-1008`），零读屏；迁移两属拆分——proposal-vs-expected 断言（策略器算术 bug）单动作下保留，expected-vs-tracked 双账断言（投影建模 bug 的唯一在环检测器）建议由执行侧 tracked 账承接，详见 `screen_op.md` §2.3。刷新的刷前 pre-shot 现读/刷后重读通道的处置候选见 `screen_op.md` §6。实现未动，以下 as-built 如实。
+
 - **BuyCard**：x 去重（plan 不从 shop 摘已买牌，执行侧防重复 emit）→ 点击牌位（click_pts 从 screen_info 读，缺失兜底字面量）→ 动画窗 0.4s → 记账（total_buy / `_spend_executed` += cost / tracked 追加名 / 裁片证据）→ 满栏自动多买补差（k = `merge_buy_k` 单一源，总价 = k×单价）。
 - **LevelUp**：点购买经验 → 1.0s 动画（光标遮挡由下波 park 防）→ 记账。
 - **RefreshShop**：硬墙（shop_visit.md §2）；点击后**两帧指纹一致门**等牌行稳定（非 blind sleep；W952 最短观察窗 ≥1.0s 防冻结帧骗过）。
-- **SellBench**：**卖前对拍守卫** `sell_guard_ok`（生成期快照 vs 执行期 tracked 现槽名；不符 = stale_proposal 整笔跳过不卖错件）→ 拖拽（3 次源槽未变 = 失败）→ tracking 同步（置 None 不紧缩，多笔任意发射序零漂移）+ `register_round_sold`（同轮不回买，执行侧幂等加固）+ 卖出入账实收观测。
+- **SellBench**：**卖前对拍守卫** `sell_guard_ok`（两条内存账对拍：策略侧 `state.bench` 帧首快照 vs 执行侧 tracked 现槽名，`cw_op_buy_cards.py:163-173,993-1008`，零读屏；不符 = stale_proposal 整笔跳过不卖错件；残余 = 不防 tracked 名字本身错，OCR 误读属跟踪保真度）→ 拖拽（3 次源槽未变 = 失败）→ tracking 同步（置 None 不紧缩，多笔任意发射序零漂移）+ `register_round_sold`（同轮不回买，执行侧幂等加固）+ 卖出入账实收观测。
 
 ## 5. 部署执行（CwOpDeploy，`cw_op_deploy.py`）
 
