@@ -21,7 +21,7 @@
 
 ## 2. 门①:内部推导
 
-P20 单篇的五条证据链(方向/量级/机制层/成本层/反例锚)与其数据源 `docs/develop/currency_war/prereg/w454_g1_calib/REPORT.md` 逐项核对:**数字全部一致**(激活净 +17.8pp / e0→1 +37.0pp / 散件 +6.1~6.8pp / A−S 差 +11.7pp CI[+1.4,+22.0] / 倍数 2.63–2.91×);辖域限 e<2、e≥1 转移边界、hp 口径 CI 含 0 只判量级阶——推导与声明自洽。
+P20 单篇的五条证据链(方向/量级/机制层/成本层/反例锚)与其数据源 `docs/develop/currency_war/prereg/w454_g1_calib/REPORT.md[已删·git 84370361 可溯]` 逐项核对:**数字全部一致**(激活净 +17.8pp / e0→1 +37.0pp / 散件 +6.1~6.8pp / A−S 差 +11.7pp CI[+1.4,+22.0] / 倍数 2.63–2.91×);辖域限 e<2、e≥1 转移边界、hp 口径 CI 含 0 只判量级阶——推导与声明自洽。
 
 **但存在一个 P20 自己「口径与边界」节未覆盖的结构缺陷**(本验证发现,详门④):sim 的胜负面 = `sample_battle_delta(node, rung, hp)` 查表(`cw_coarse_battle.py:186-200`),**星级(star)不进任何胜率通道**(rung=`_settle_rung`=四体系达成数,`cw_battle_calib.py:179-189`;难度乘子默认关闭 `DIFFICULTY_MULT_ENABLED=False`)。因此:
 

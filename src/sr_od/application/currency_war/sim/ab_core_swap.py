@@ -501,9 +501,10 @@ def _v6_row_specs() -> list[dict[str, Any]]:
                             for t in ('mandate_v1', 'ev_arm'))},
         {'row': 2, 'kind': 'mark',
              'detail': '判读器迁移与 v6 变更均落地(prereg 含 v6 变更记录节)',
-             'hint': lambda: 'v6' in _text_of(
-                 'docs/develop/currency_war/prereg/'
-                 'PREREG_cw3_vs_legacy_AB.md')},
+             # 原锚文档 2026-09 用户裁定删除(prereg 目录,主仓 84370361);
+             # hint 不再读文件——判读器迁移的机器锚由行 1 承担,本行
+             # 申报照常走 record_v6_landing,原文以 git 历史为准
+             'hint': lambda: 'prereg 文档已删,git 历史 84370361 可溯'},
         {'row': 3, 'kind': 'order', 'before': 'theta_calib', 'after': 'p_open',
              'detail': '血线阈值标定 ≤ p 开闸(时间戳序)'},
         {'row': 4, 'kind': 'mark',

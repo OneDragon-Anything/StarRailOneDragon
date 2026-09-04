@@ -3,7 +3,7 @@
 > 状态:**P36-a 已证(结构不变式,零自由参数;现状满足性=实证挂账,证明与实证分开陈述);P36-b 方向已证 + p_hit(d) 两源标定、q_conv 缺口如实(数值阶梯挂账,解锁条件=30 局开臂局);P36-c 仅命题化(机制参数未标定,不进判据)。**
 > 命题来源:w945 策略设计批 P-新1 草案(病灶=两局复盘,局号见「数据源声明」);定号=P36(索引行已登记)。
 > 标定数据:W946 离线标定批(纯账本读取,sim n=300 + 实机 31 局;全部判读数字已转录进本篇,原始数据按「数据源声明」的持久索引可复跑;临时批目录不复引)。
-> 实施状态:不变式**已无条件落地**(初版开关 `crisis_refresh_invariant_enabled` 经用户升格裁决整删;判据单一址=`posture_release.crisis_invariant_lane`);A/B 确认=预注册 `docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md`(M1 哑火帧占比 off 16.21%→on 0.71%);决策单一源=ADR-0506。
+> 实施状态:不变式**已无条件落地**(初版开关 `crisis_refresh_invariant_enabled` 经用户升格裁决整删;判据单一址=`posture_release.crisis_invariant_lane`);A/B 确认=预注册 `docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md[已删·git 84370361 可溯]`(M1 哑火帧占比 off 16.21%→on 0.71%);决策单一源=ADR-0506。
 > 组件引用:P23.4(死亡域金零值近似 + 攥金优势引理)、P23.1(统一 EV 门)、P16(超几何口径)、P21(濒死升级负判,反向护栏)、P34-b(q 先验机制同构)、ADR-0503(危机臂预算式)、ADR-0468(息档截断门)。
 
 ## 符号与建模假设
@@ -114,7 +114,7 @@ P21 濒死升级负判是反向护栏:预算阶梯不含升级通道的数值授
   `authorize_release_refresh`)同址分类,防「预门拒、授权门放行」的分类漂移。
   初版开关 `crisis_refresh_invariant_enabled` 经用户升格裁决整删——不变式
   无条件生效,无注入面。
-- **确认判据**(预注册判前锁,持久位=`docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md`):
+- **确认判据**(预注册判前锁,持久位=`docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md[已删·git 84370361 可溯]`):
   **M1 主判据=哑火帧占比**(crisis 帧 ∧ budget>0 中无 RefreshShop 动作的帧占比;
   配对差 on−off + bootstrap 95% CI),达标=on 臂 ≈0 且配对差 <0 显著;M0 开火面
   smoke(≥1 帧哑火翻正,否则输入死中止);G1 实花面守门(CI 下界 ≥ −2pp);
@@ -220,7 +220,7 @@ P36-c 只作结构与采集方向背书,不作数值授权**(ADR-0482:未证按�
 | 实机 replay 语料 | 仓库根 `replay/` 目录(`decisions.jsonl` / `shop_snapshots.jsonl` / `outcomes.jsonl` / `spend_ledger.jsonl`;样本口径=应急带 178 帧/31 局,crisis 通道 30 帧,refresh 快照 127 帧——W946 §0) |
 | sim 基线批 | W939 开臂基线(seed 939100-939399,n=300,池指纹 6400d5d8+eqg1;批运行记录见其 REPORT 副本;原始 runs 目录可按同指纹 seed 段重生成,约 3 分钟) |
 | 标定批 | W946 离线标定(纯账本读取;全部数字已转录进本篇,本篇即持久记录;复跑脚本随批归档,分析口径见 §P36-b 各表头声明) |
-| 预注册 | `docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md`(判前锁,持久位) |
+| 预注册 | `docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md[已删·git 84370361 可溯]`(判前锁,持久位) |
 | 常量单一源 | `cw_economy.py` `REFRESH_ROLL_CAP=6`;`cw_state.py` `REFRESH_COST_BASE=2`;预算式 min(溢余, 6×2)=12(ADR-0503;`posture_release.py` 消费点) |
 | 决策记录 | ADR-0503(危机臂与预算式)、ADR-0468(息档截断门 essential 分类)、ADR-0482(未证命题纪律)、ADR-0436/0319(锁线语义,病灶二件背景) |
 

@@ -8,7 +8,7 @@
 
 ## 0. 阅读门与公理栈(前置合规声明)
 
-已读:proofs/p36 单篇全文、math_proofs.md P36 索引行与重建纪元头注、user_playstyle [39]/[40](HP 裁定与血账本)、MATH_REVALIDATION_PLAN.md §2.6/§3(五门定义与 P36 预判行)、`docs/develop/currency_war/strategy/06_input_model.md` §3(注册表地图,锚点直调导航)、`docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md`(判前锁+回填)、ADR-0503/0506/0508(INDEX 行全文)、ADR-0468 消费面(discipline.py 急救型豁免)、`docs/game/currency_war/data/gameplay.md` 经济/商店节(机制原文)、代码锚点直调(kernel/cw_economy.py、kernel/cw_state.py、kernel/cw_registry.py、decision_v2/posture_release.py、decision_v2/arbiter.py)。
+已读:proofs/p36 单篇全文、math_proofs.md P36 索引行与重建纪元头注、user_playstyle [39]/[40](HP 裁定与血账本)、MATH_REVALIDATION_PLAN.md §2.6/§3(五门定义与 P36 预判行)、`docs/develop/currency_war/strategy/06_input_model.md` §3(注册表地图,锚点直调导航)、`docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md[已删·git 84370361 可溯]`(判前锁+回填)、ADR-0503/0506/0508(INDEX 行全文)、ADR-0468 消费面(discipline.py 急救型豁免)、`docs/game/currency_war/data/gameplay.md` 经济/商店节(机制原文)、代码锚点直调(kernel/cw_economy.py、kernel/cw_state.py、kernel/cw_registry.py、decision_v2/posture_release.py、decision_v2/arbiter.py)。
 **跳过声明**:final_comps/*、characters/* 等 100+ 文件与 P36-a 无交集(阵容/角色数据面),按「无交集可跳过」条款跳过;P23/P21/P5/P16 单篇未逐字重读——P23.4 引理只按 P36 单篇与 math_proofs P23 索引行核对陈述一致性,其内部重验归 P23 自己的件(波次分工),本件不越界复判。
 公理栈对照:零调参(⑤门逐常数溯源,见 §5)/参数溯源(同)/超额收益隔离(P36-a 不涉收益上限主张,不适用)/纯金流(不变式辖金支出通道,不读 hp 数值入账——触发谓词问题见 §6)。
 
@@ -39,7 +39,7 @@
 | emergency_hp | =25(应急带谓词) | `kernel/cw_registry.py:180` ✓;`cw_economy.py:526` 单一源谓词 ✓ | 过 |
 | crisis_invariant_lane | 判据单一址、消费点两处同址 | `posture_release.py:230-261`(定义)+ `arbiter.py:1062-1065`(预截断门)+ `posture_release.py:810-815`(authorize 内门)✓ 两处确实同函数引用 | 过 |
 | crisis_overflow | =g(R*_crisis≡0,a′) | `posture_release.py:195-206` `max(0, state.gold)` ✓ | 过 |
-| A/B 数字 | off 16.21%(47/290)→on 0.71%(2/281) | `prereg/w951_...md` §3 回填行逐字一致;ADR-0506 INDEX 行一致 | 过 |
+| A/B 数字 | off 16.21%(47/290)→on 0.71%(2/281) | `prereg/w951_...md[已删·git 84370361 可溯]` §3 回填行逐字一致;ADR-0506 INDEX 行一致 | 过 |
 
 **如实声明**:W946 的 p_hit 两表/哑火 12/30/spent-budget 0.33 未亲跑 replay 复算(复跑脚本随批归档、口径=批内冻结样本);本件以「prereg 判前锁+回填、ADR INDEX、单篇三处交叉一致」采信,残余风险=批内口径错误会同污三处(低)。
 
@@ -54,7 +54,7 @@
 
 ## 4. 门④ 实证 vs 账本 —— **过(两条声明)**
 
-- 可证伪预测已兑现:判前锁 prereg(M1 哑火帧占比,配对差+bootstrap CI,B=2000)→ A/B off 16.21%→on 0.71%(≈0,残 2 帧属声明过的合法残余面)/M0 翻正 45 帧/G1 行动率 94.8%→100% 过/G2 hp 只报不判(p17 合规姿态)。三判据过,数字三处(单篇/prereg/ADR-0506)一致。
+- 可证伪预测已兑现:判前锁 prereg(M1 哑火帧占比,配对差+bootstrap CI,B=2000)→ A/B off 16.21%→on 0.71%(≈0,残 2 帧属声明过的合法残余面)/M0 翻正 45 帧/G1 行动率 94.8%→100% 过/G2 hp 只报不判(p17 合规姿态)。三判据过,数字三处(单篇/prereg/ADR-0506[已删·git 84370361 可溯])一致。
 - 「现状不满足」实证(哑火 12/30、p50=0/p90=1、机制锚 replay p2r4/g105·p2r6/g130 预截断先拒)与 ADR-0506 病灶陈述一致;证明与实证分开陈述的纪律执行到位(现状满足性不入证明)。
 - 声明①:实机确认门(match 5+ 帧级 M1→0)仍挂账 ADR-0506——sim 是有效证据域(off 基线 16.21% 非零),但实机面未闭。
 - 声明②:p_hit/q_conv 表属 P36-b 域数字,本门不采作 P36-a 判据(见 §6 边界)。

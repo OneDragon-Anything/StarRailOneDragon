@@ -1062,7 +1062,7 @@ class DecisionV2Registry:
     #  s1_unit/s2_threshold/s2_unit/s3_unit/rb_retention_q1)已随 W947
     #  A/B 两轮判负整机制删码:合臂形态达标率 -3.00pp 显著负、拆臂
     #  S1+S2 隔离复测 -0.33pp 噪声带内零疗效(两轮判前锁与判读=
-    #  docs/develop/currency_war/prereg/w947*_rb_*.md)。删码留档
+    #  docs/develop/currency_war/prereg/w947*_rb_*.md[已删·git 84370361 可溯])。删码留档
     #  ADR-0507;复活条件见该 ADR。)
 
     # (件价值模型 Phase 1 八字段(piece_value_enabled/buy/keep/merge/

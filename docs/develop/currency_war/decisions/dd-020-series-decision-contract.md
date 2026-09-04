@@ -3,7 +3,7 @@
 > 类名/路径已随 2026-09-03 命名迁移与流程重构持续更替,本文代码锚为批时快照(2026-09-03),漂移按「契约占位」处理不立案。
 
 - Status: accepted(2026-09-03,用户整包批准三裁决点;正文权威 = `.debug/temp/currency_war/redesign/CONTRACT_SERIES_DECISION.md` v1,汇合点后 as-built 归 `strategy/07_plugin.md` 更新承接)
-- 关联: dd-014(黑板接口前身)、dd-017(P3b 编排切换)、`prereg/w971_flow_layer/DESIGN.md`
+- 关联: dd-014(黑板接口前身)、dd-017(P3b 编排切换)、`prereg/w971_flow_layer/DESIGN.md[已删·git 84370361 可溯]`
 
 ## 背景
 

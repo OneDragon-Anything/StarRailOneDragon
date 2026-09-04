@@ -1,7 +1,7 @@
 # P20:体系激活 vs 散件升星的边际战力(方向严格证成 + 量级阶标定)
 
 > 状态:**已证(量级阶)**——方向严格证成 + 倍数带不确定度;证据等级与 P3 同层(观测性数据 + 一阶偏差对消,非随机对照)。
-> 数据:W454 G1 标定(docs/develop/currency_war/prereg/w454_g1_calib/,n400×2 sim 逐帧台账离线复算,零实机成本;脚本 `w454_g1_calib.py` 同目录可重跑;自 `.debug/temp/` 迁入)。
+> 数据:W454 G1 标定(docs/develop/currency_war/prereg/w454_g1_calib/[已删·git 84370361 可溯],n400×2 sim 逐帧台账离线复算,零实机成本;脚本 `w454_g1_calib.py` 同目录可重跑;自 `.debug/temp/` 迁入)。
 > 提出:W451 P1 设计 §2(提案);标定兑现 = W454。
 
 ## 命题

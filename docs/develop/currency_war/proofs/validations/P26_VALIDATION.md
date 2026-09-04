@@ -12,7 +12,7 @@
 - 单篇 = `docs/game/currency_war/research/proofs/p26-hardnode-prep-ev.md`(32 行)
 - 索引状态 = **待证明(参数化)**;卡点=Δp_prep 未标定
 - 消费设计 = `p1_iface_hardnode_prep` / `p1_iface_carry_equip`(W774 设计批 §2③)
-- 出处锚 = `docs/develop/currency_war/prereg/w774_p1_interface_design/REPORT.md` §2③/§6
+- 出处锚 = `docs/develop/currency_war/prereg/w774_p1_interface_design/REPORT.md[已删·git 84370361 可溯]` §2③/§6
 
 本报告首节即声明:P26 实际命题与索引行、单篇、W774 REPORT 三处**一致无撞车**(P26 ≠ P25/P27/P28,主题互斥)。
 

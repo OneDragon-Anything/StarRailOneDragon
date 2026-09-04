@@ -2,7 +2,7 @@
 
 > 类名已随 2026-09-03 命名迁移更替,对照 NAMING.md(本文为带日期决策记录,类名保持当时事实,未改)。
 
-- Status: accepted(2026-09-02,W971 P2 实施时落;设计出处 = `prereg/w971_flow_layer/DESIGN.md` §2 + `02-state.md` §2/§3/§4 + W970 §4.1 amendment)
+- Status: accepted(2026-09-02,W971 P2 实施时落;设计出处 = `prereg/w971_flow_layer/DESIGN.md[已删·git 84370361 可溯]` §2 + `02-state.md` §2/§3/§4 + W970 §4.1 amendment)
 - 关联: W970 §4.1(被本 ADR 对应的 W971 §2.7 amendment 取代 obs 组装签名)、DD-011、dd-013
 
 ## 背景

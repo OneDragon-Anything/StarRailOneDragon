@@ -7,7 +7,7 @@
 
 - 全量 `docs/game/currency_war/`:README/research 证明集(P5/P17/P28/P31/P35/P36 等 P16 关联篇)/economy.md §1-2(牌池/刷新机制)/data/gameplay.md/gameplay 职级节;`docs/develop/currency_war/strategy/06_input_model.md` §3 注册表地图(cw_shop_odds 行:REFRESH_PROB+POOL_COPIES+expected_refreshes,来源=实机 OCR ADR-0091 + V3.7 必修二 ADR-0109)。
 - 注册表直调:`cw_shop_odds.py`(L28 SHOP_SLOTS=5、L33 POOL_COPIES_PER_CARD={1:27,2:27,3:9,4:9,5:9}、L37 DISTINCT_CARDS_PER_COST、L42-53 REFRESH_PROB)、`cw_chars.CHARACTERS`(标签集)、`cw_line_switch.py` 全文、`cw_registry.py` L940-948、`cw_intention.py` L641-655/L1004/L1141/L1262(消费点)。
-- 设计链:W328 DESIGN §③/§⑥/附5(`docs/develop/currency_war/prereg/w328_unformed_posture/DESIGN.md`)、W345 审查记录索引(ADR-0426 引)、AB 账本三轮(AB_cw3/AB_legacy_v2 × n40 s0/r2/r3)、w597_switch_ab、w665/w670/w683/w684/w696/w703/w706(换线门/振荡谱系)。
+- 设计链:W328 DESIGN §③/§⑥/附5(`docs/develop/currency_war/prereg/w328_unformed_posture/DESIGN.md[已删·git 84370361 可溯]`)、W345 审查记录索引(ADR-0426 引)、AB 账本三轮(AB_cw3/AB_legacy_v2 × n40 s0/r2/r3)、w597_switch_ab、w665/w670/w683/w684/w696/w703/w706(换线门/振荡谱系)。
 - 无交集声明:无(`docs/game/currency_war/sources/` 外部攻略冻结原文与本案数值锚点无交集,未逐篇重读;`docs/game/gameplay/currency_war.md` 职级节已读,与本案无冲突)。
 
 ## 1. 五门判定

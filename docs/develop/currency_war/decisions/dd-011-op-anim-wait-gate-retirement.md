@@ -54,7 +54,7 @@
 | prep_director heavy 定型帧(2 处) | gate stable | 同上(对账帧质量依赖) | 末批 |
 
 迁移编排与批次的后续规划归 W970 分层架构设计
-(`docs/develop/currency_war/prereg/w970_layered_arch/DESIGN.md`,FINAL)。
+(`docs/develop/currency_war/prereg/w970_layered_arch/DESIGN.md[已删·git 84370361 可溯]`,FINAL)。
 
 补充口径(用户口述 2026-09-02,两场景分流;⚠️ 判稳锚勘误 2026-09-02 对抗轮 1:
 「备战阶段」文本两档同址无判别力,判稳锚更正为**「按钮-收起」独有锚**):

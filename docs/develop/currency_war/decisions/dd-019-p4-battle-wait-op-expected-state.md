@@ -4,7 +4,7 @@
 
 - 状态:accepted
 - 日期:2026-09-02
-- 关联:W971 `prereg/w971_flow_layer/05-battle.md`、`EXPECTED_STATE.md`(FINAL v3.1)、`02-state.md` §4.3;DD-011(判稳标志纪律)、DD-014(黑板决策接口)
+- 关联:W971 `prereg/w971_flow_layer/05-battle.md[已删·git 84370361 可溯]`、`EXPECTED_STATE.md`(FINAL v3.1)、`02-state.md` §4.3;DD-011(判稳标志纪律)、DD-014(黑板决策接口)
 
 ## 背景与问题
 

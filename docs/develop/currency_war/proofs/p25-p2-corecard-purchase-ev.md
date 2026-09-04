@@ -94,7 +94,7 @@ V_a > ρ·(C_buy/Ī) + L(g, C_buy, R, Ī) + ΔW_trunc(a)
 
 ## 关联
 
-- 设计消费:docs/develop/currency_war/prereg/w757_p2_spend_auth/REPORT.md §三(支出优先级第 1 级的数学依据位);
+- 设计消费:docs/develop/currency_war/prereg/w757_p2_spend_auth/REPORT.md[已删·git 84370361 可溯] §三(支出优先级第 1 级的数学依据位);
 - 判据骨架:P48(统一囤钱/支出判据)/P51(λ_death 生成与消费口径);
 - 方向证据:P11(成本下界)/P1+[22]③(再遇账,4-5 费域)/stage_transitions Q4(桶迁移方向);
 - 验尸:P25_VALIDATION(`docs/game/currency_war/research/validations/P25_VALIDATION.md`,2026-09-01)。
