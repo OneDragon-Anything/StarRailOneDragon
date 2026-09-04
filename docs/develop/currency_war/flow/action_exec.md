@@ -30,22 +30,23 @@
 | 商店编排 | `_open_shop_phase -> (progressed, detail)`；read_only 开店成功即 progressed（读数目标达成） |
 | 序列消费 | `StartBattle ∧ progressed` 才是出战完成；not progressed 一律 fail-stop 交回 |
 
-配套的**发射门**（发射方与执行方同源谓词，防空计划发射）：部署段发射前用 kernel `select_deployments` 现算候选，空则不发 RunDeploy（`flow.py:725-792,819-833`；dd-037）。
+配套的**发射门**（发射方与执行方同源谓词，防空计划发射）：部署候选单一源 = kernel `select_deployments` 现算（`cw_deploy_logic`；dd-037——旧 flow.py 发射门 `_deploy_up_candidates` 已随 ADR-0517 迁移批死码清理删除,ADR-0518）。
 
-## 3. 备战序列消费（`cw_screen_prep.py:1296-1398`）
+## 3. 备战单动作消费（`cw_screen_prep.py` 备战单轮）
 
-逐动作：`_record_step`（obs+action 落遥测）→ 控制流类短路 → F3 `validate(action)`（参数非法 = 拒绝执行 + 交回留证，与执行失败同型不进连败链）→ 期望态计算（SellBench/DeployMove → drag_expect；SellDeployed → equip_expect；部署/卖出 → deployed 计数前后拍）→ 执行 → 执行后 heavy 重观察 + `_v2_post_frame_accounting`（动作级对账族：paddle 审计/拖动期望/买牌期望/经验/羁绊/商店池/合成预览/装备期望）→ 结束判定（StartBattle/OpenShop = 终点；not progressed = fail-stop）。
+逐动作（单动作决策循环取首项,ADR-0517/0518）：`_record_step`（obs+action 落遥测）→ 控制流类短路 → F3 `validate(action)`（参数非法 = 拒绝执行 + 交回留证，与执行失败同型不进连败链）→ 期望态计算（SellBench/DeployMove → drag_expect；SellDeployed → equip_expect；部署/卖出 → deployed 计数前后拍）→ 执行 → acct 暂存 `session.cw_prep_pending_accts`（对账归**下一入口 heavy**时点统一消费,`_v2_post_frame_accounting` 动作级对账族：paddle 审计/拖动期望/买牌期望/经验/羁绊/商店池/合成预览/装备期望——per-action heavy 重观察契约已灭）→ 结束判定（StartBattle/OpenShop = 终结 op;not progressed = fail-stop）。
 
-**恢复原语** `try_recovery`（关已知弹层，一次/动作实例）：fail-stop 时先试恢复再交回外循环（`cw_screen_prep.py:1382-1393`）。
+**恢复原语** `try_recovery`（关已知弹层，一次/动作实例）：fail-stop 时先试恢复再交回外循环。
 
-## 4. 商店动作执行（波内；`cw_op_buy_cards.py:702-1070`）
+## 4. 商店动作执行（动作 op；`cw_shop_action_ops.py`,ADR-0517/0518）
 
-> 【待 ADR-0517 迁移】本节为波批形态的执行面：卖前对拍守卫、x 去重等防线的存在前提是「整波共享帧快照」，目标态按守卫断言重定位（`screen_op.md` §2.3）。其中 `sell_guard_ok` 机制改真 = 两条**内存账对拍**（策略侧 `state.bench` 帧首快照 vs 执行侧 `tracked_bench_chars`，`cw_op_buy_cards.py:163-173,993-1008`），零读屏；迁移两属拆分——proposal-vs-expected 断言（策略器算术 bug）单动作下保留，expected-vs-tracked 双账断言（投影建模 bug 的唯一在环检测器）建议由执行侧 tracked 账承接，详见 `screen_op.md` §2.3。刷新的刷前 pre-shot 现读/刷后重读通道的处置候选见 `screen_op.md` §6。实现未动，以下 as-built 如实。
+> 波批执行面的防线已按守卫断言语义重定位（`screen_op.md` §2.3 落定）：**proposal-vs-expected 断言**（`guard_proposal_vs_expected`——提案对象在期望态存在且未被消费,炸出 = 策略器算术 bug）与 **expected-vs-tracked 双账断言**（`guard_expected_vs_tracked`——投影建模 bug 的唯一在环检测器,满栏买入豁免:tracked 的 bench_place 满栏丢件 vs simulate §2.5 k 张分支不同构,对账重挂点 = 下一入口观察）。旧 `sell_guard_ok` 波级对拍与 x 去重随「整波共享帧快照」前提消失而退役（单动作下第一笔动作后期望态已更新,第二笔提案自然不指向已卖槽）。执行侧观测通道三件（卖回金实收/刷新有效性/免费刷新证据）走候选 (a) = 动作 op execute 实现层遥测（ADR-0518 处置表）。
 
-- **BuyCard**：x 去重（plan 不从 shop 摘已买牌，执行侧防重复 emit）→ 点击牌位（click_pts 从 screen_info 读，缺失兜底字面量）→ 动画窗 0.4s → 记账（total_buy / `_spend_executed` += cost / tracked 追加名 / 裁片证据）→ 满栏自动多买补差（k = `merge_buy_k` 单一源，总价 = k×单价）。
-- **LevelUp**：点购买经验 → 1.0s 动画（光标遮挡由下波 park 防）→ 记账。
-- **RefreshShop**：硬墙（shop_visit.md §2）；点击后**两帧指纹一致门**等牌行稳定（非 blind sleep；W952 最短观察窗 ≥1.0s 防冻结帧骗过）。
-- **SellBench**：**卖前对拍守卫** `sell_guard_ok`（两条内存账对拍：策略侧 `state.bench` 帧首快照 vs 执行侧 tracked 现槽名，`cw_op_buy_cards.py:163-173,993-1008`，零读屏；不符 = stale_proposal 整笔跳过不卖错件；残余 = 不防 tracked 名字本身错，OCR 误读属跟踪保真度）→ 拖拽（3 次源槽未变 = 失败）→ tracking 同步（置 None 不紧缩，多笔任意发射序零漂移）+ `register_round_sold`（同轮不回买，执行侧幂等加固）+ 卖出入账实收观测。
+- **BuyCardOp**：点击牌位（click_pts 从 screen_info 读，缺失兜底字面量）→ 动画窗 0.4s → 记账（total_buy / spend_executed += cost / tracked 追加名 / 买前裁片证据）→ 满栏自动多买补差（k = `merge_buy_k` 单一源,总价 = k×单价,执行账补差 (k−1)×单价）→ `project` = `simulate` 单一源。
+- **LevelUpOp**：点购买经验单击 → 1.0s 动画（光标遮挡由段顶 park 防）→ 记账（clicks 序列 = 动作内部步骤,决策循环逐帧重组）。
+- **RefreshShopOp**（终结）：硬墙（shop_visit.md §2,visit 级）；刷前现读两口径 → 点击后**两帧指纹一致门**等牌行稳定（非 blind sleep）→ 刷后重读三通道（遥测,候选 a）。
+- **SellBenchOp**：拖前 gold 基数（实收遥测）→ 拖拽（3 次源槽未变 = 失败,**不投影**——两侧都不动保持双账一致）→ tracking 同步（置 None 不紧缩）+ `register_round_sold`（同轮不回买，执行侧幂等加固）+ 卖出入账实收观测。
+- **CloseShopOp**（终结恒可用）：动作 op 内 no-op,关店点击由编排壳 CwOpCloseShop 承担。**CompTransactionOp**（终结,复合动作类）：执行即访问结束交回重观察（终结邻接 fallback）。
 
 ## 5. 部署执行（CwOpDeploy，`cw_op_deploy.py`）
 

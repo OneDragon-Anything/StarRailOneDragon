@@ -602,6 +602,20 @@ class RefreshShop:
 
 
 @dataclass
+class CloseShop:
+    """关店终结动作(ADR-0517 决策 4/5/6:商店画面的恒可用终结 op)。
+
+    单动作架构(ADR-0517)下「无动作可做」的表达 = 策略器主动选关店终结
+    op,取代旧「空序列 = 决策完成」契约;全函数契约(决策 5)要求动作空间
+    至少含一个恒可用终结(决策 6)——本类即商店画面的该终结。执行侧语义
+    = 本画面 op 结束、交回外循环(关店点击由编排壳 CwOpCloseShop 承担,
+    与旧「空序列触发关店」同一落点);``simulate`` 对其 no-op(期望态随
+    终结作废,由下一次入口观察重建)。
+    """
+    reason: str = ''   # 账本 reason(''=默认)
+
+
+@dataclass
 class PickEvent:
     """选事件选项(投资环境/策略/遭遇/补给)。
 
@@ -730,8 +744,9 @@ class CompTransaction:
     # 事务整批拒语义现由 _resolve_comp_transaction 全量校验承担
 
 
-Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | PickEvent
-          | SellDeployed | SwapDeploy | CompTransaction)   # 动作集 v2(契约包 C1,步2)
+Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | CloseShop
+          | PickEvent | SellDeployed | SwapDeploy | CompTransaction)
+# 动作集 v2(契约包 C1,步2)+ CloseShop 终结动作(ADR-0517 商店恒可用终结)
 
 
 @dataclass

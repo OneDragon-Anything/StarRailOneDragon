@@ -126,8 +126,10 @@ class CwStrategy(ABC):
         :meth:`decide_prep_screen`(W971 §2)。本钩子保留为薄委托形态
         (旧签名 → 写 ``session.prep_obs_frame`` → 同一决策核),供存量
         测试/影子路径过渡;调用方迁移完后随 P5 删除。**序列契约 v1
-        (dd-020)后**:委托目标返回 ``list[PrepAction]``,本钩子解包首元素
-        返回单动作(现役核经长度 1 适配器,解包恒可达;见实现处注释)。
+        (dd-020)后**:委托目标返回 ``list[PrepAction]``,**基类实现直传
+        完整 list**(实际返回类型 = list;live 覆写
+        ``mandate_v1/bridge.py`` 才做单动作解包——空批以 DeferSpheres
+        承载,见覆写处 docstring)。
         """
 
     @abstractmethod
@@ -170,7 +172,12 @@ class CwStrategy(ABC):
         - 返回:动作 list;词表 = {BuyCard, **LevelUpShop**, RefreshShop, SellBench,
           SellDeployed, CompTransaction}——升级意图用商店屏专用 ``LevelUpShop``
           (W970 §4.1.3 拆分,LevelUpShop is-a LevelUp,执行器/账本零改动)。
-        - 终止语义:返回空序列 = 决策完成(流程层触发关店)。
+        - 终止语义(ADR-0517 迁移后):本接口 = 单动作核
+          (:meth:`CwFlowStrategy.decide_shop_action`)的**序列兼容驱动器**
+          (sim/回放/序列锁消费);生产执行侧直接走单动作循环。驱动器逐帧
+          调单动作核并以 ``cw_state.simulate`` 纯投影推进期望态,终结动作
+          (RefreshShop/CompTransaction)截停、``CloseShop`` 收尾不入序列——
+          旧「空序列 = 决策完成触发关店」契约由 CloseShop 终结动作取代。
         - 契约:观察帧缺失即抛错(同 ``decide_prep_screen``)。
         """
 

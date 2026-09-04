@@ -6,7 +6,7 @@
 
 ## 0. 共同形态
 
-- pick 族返回 PickEvent 系载体（选项决策，不进截断表；控制流归画面 op）。
+- pick 族返回 PickEvent 系载体（选项决策；控制流归画面 op——单选族形态：选卡即动作、确认 = 终结 op，ADR-0517 / flow/screen_op.md §7）。
 - 新事件面优先评估归并进既有 pick 钩子或走契约改版，禁旁路自造接口（遭遇分支刷新的 pick.refresh 旗标泄漏 = 已登记的后续收编候选）。
 - OCR 未就绪位（选项 char_id 空）的钩子按 fallback（idx=0）执行并标注——供给面升级属 P4/阶段 5，不改变判据形态。
 - 权重常量单一源 = `strategies/impl/pick_bias.PICK_BIAS`（值在代码；本篇只写常量名）。

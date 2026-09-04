@@ -98,9 +98,6 @@ class StrategySession:
     # 左移推断的轮次锚——同轮多次 probe 不重做
     # 左移(防 current 超前一位写下一节点类型)。
     nodeseq_probe_anchor: tuple | None = None
-    # 腾席链 b 的 gold 真值等待计数(>1 次无
-    # 进展 → 放弃等待落链 c;环入口清零)。
-    free_bench_gold_wait: int = 0
     # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」写)。给下回合 economy C 杠杆读
     # (连胜保连胜 / 连败 fold;fixture 核实 2026-08-11:语义在前缀,备战 read_streak 无方向 → 用结算源)。
     last_streak: int = 0
@@ -140,9 +137,9 @@ class StrategySession:
     # defer_count:奖励球留置计数(环级 —— **Director 每次环入口清零**,非局级;球留置是本轮决定。
     # 策略/框架经 DeferSpheres +1;门=2(§5.1 规则 3 防规则 2↔3 空转环)。)
     defer_count: int = 0
-    # prep_phase:默认策略主流程推进位(0=买牌前/1=买完/2=部署完/3=装备完→出战;环级,Director
-    # 环入口清零,同 defer_count 宿主模式 —— 策略无状态,主流程阶段只能住 session,F6)。
-    prep_phase: int = 0
+    # (prep_phase/prep_phase_retry/free_bench_gold_wait 三个旧备战骨架暂存
+    #  字段已随 ADR-0517 迁移批死码清理删除——写点全在 flow.py 死码簇,
+    #  live 仅残留复位无消费,flow/screen_op.md §8.2 裁决。)
     # 动态 setattr 升正式字段(asdict/repr 完整;getattr 兜底随之可删)
     # 遥测接线(ADR-0229 缺口):选择类 handler 写 → read_game_state
     # 回写 state 同名字段(复盘维度:巨星绑定/伙伴选择与 comp 匹配)。
@@ -230,8 +227,6 @@ class StrategySession:
     # None=未进 P2/未计算。v3_handoff_plane=已采样位面(同位面不覆写)。
     v3_handoff: object = None
     v3_handoff_plane: int | None = None
-    # 空板出战守卫重试计数(部署持续失败时防 phase 循环;≥2 放行交 Director stall 兜底)
-    prep_phase_retry: int = 0
     # star 回退停机钩子计数(用户 2026-08-17:star2/3 识别担心;char → 连续回退次数;
     # 连续 2 节点回退 = 真识别问题(特效遮挡过渡帧一节点内消)→ 停机保画面排查;读回恢复即清零)
     star_regression_count: dict[str, int] = field(default_factory=dict)

@@ -914,7 +914,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 拒因遥测透传(纯观测,零行为面:sim 决策走 decision_v2
                 # 栈,不调 cw4 决策核,故由引擎在每决策段直调生产端函数
                 # ——同一输入同一映射,双栈无第二实现)。口径=段帧首静态
-                # 快照(与生产 decide_shop_wave 同语义):state=段入口态,
+                # 快照(与生产 decide_shop_action 单动作循环的段入口态同
+                # 语义):state=段入口态,
                 # actions=本段原始决策(sim 不走生产截断器,差异如实声明
                 # ——被截断器丢弃的买在 sim 无对应面)。逐波留档进
                 # sim.shop_waves 对应波(键 rejects,与该波 cards/gold 同

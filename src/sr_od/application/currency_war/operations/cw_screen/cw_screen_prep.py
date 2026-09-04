@@ -328,12 +328,14 @@ def build_refresh_expect(gold: int | None,
     供测试与未来免费 proc 建模(届时按「基价−免费抵扣」在此处计)传参;
     **禁把面板徽标读数当刷价传入**。
 
-    挂账(producer 集成点):期望必须在**刷新波内**构建——波前金与波前
+    挂账(producer 集成点):期望必须在**刷新动作内**构建——波前金与波前
     面板费都是单元内部现读;cw_screen_prep 持有的 RunBuyPhase 前后帧均为
     关店帧(F2 下金不可信、五格牌不可读),无合法评估窗。集成点 =
-    ``operations/cw_op/cw_op_buy_cards.py`` 刷新波现读处(先例 = pending_buy_expect
-    同文件暂存、本环 heavy 帧消费);消费判据 = refresh_reconcile_mismatches
-    (本文件,真值表已锁),落台账 kind=refresh_expect_mismatch。
+    ``operations/cw_op/cw_shop_action_ops.py`` RefreshShopOp 刷新分支现读处
+    (ADR-0517 迁移后消费时点 = 刷新动作的执行实现层,刷后现读帧即对账帧;
+    旧「本环 heavy 帧消费」时点随 per-action heavy 契约退役归并于此);
+    消费判据 = refresh_reconcile_mismatches(本文件,真值表已锁),落台账
+    kind=refresh_expect_mismatch。
     """
     if gold is None or refresh_cost is None:
         return None
@@ -403,6 +405,9 @@ class CwScreenPrep(SrOperation):
     # 同动作验证连败 2 → 恢复原语(一次/动作实例)→ 恢复后仍连败 2 → 分型 bail/屏蔽(§7)
     FAIL_TO_RECOVER: ClassVar[int] = 2
     BAIL_SAME_REASON_DIAG: ClassVar[int] = 3   # 同因 bail ≥3 → [cw!] 升诊断(局级计数)
+    # 单动作访问动作数上限(ADR-0517:防御上界——决策循环不收敛 = 投影或
+    # 策略 bug,到顶交回外循环由 stall 防线接管,不静默续跑)
+    VISIT_ACTION_CAP: ClassVar[int] = 16
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-备战决策环')
@@ -431,17 +436,19 @@ class CwScreenPrep(SrOperation):
     # ===== 观察(F2:只由现成 reader 产出)=====
 
     def _observe(self, heavy: bool, screen: MatLike | None = None) -> PrepObservation:
-        """组装备战观察。heavy=True(环入口 + 每个执行过的游戏动作后):SIFT 身份 + GameState
-        + cap 全重读;False(控制流/拒绝步后):只现读轻字段,heavy 字段沿用缓存。
+        """组装备战观察(ADR-0517 迁移后:heavy = 画面 op 入口单次——期望态
+        重建的唯一读屏点,即对账;调用点 = 单轮入口 / OpenShop(read_only)
+        开态 gold 真值刷新)。旧「每个执行过的游戏动作后必调 heavy」契约已
+        随单动作循环退役:逐动作零读屏,期望态由 ``_project_prep_obs`` 纯计算
+        推进,动作后首读的光标 parking 职责随之迁移(入口观察 park 一次;
+        执行侧读数性通道——卖出回金遥测等——的局部 park 由动作实现层自理)。
+        light 分支保留为兼容形态(现生产无调用方)。
 
         screen 传入时(gate 末帧)复用该帧不重截——gate 稳定帧的全图 OCR 已
         按 id(image) 缓存,本方法所有 crop_first=False 读取(id_mark 判定/
         observe_full)全部缓存命中,heavy 观察的 OCR 成本归零;且观察的就是
         「已验证稳定」的那一帧(gate 语义),而非稳定后又隔一拍的帧。
         """
-        # 光标 parking(审计 P0,2026-08-16,用户指示):上个动作(买牌点购买经验/拖拽停目标/
-        # 点球)后光标停在点击处,与识别区重叠 → OCR/SIFT 污染(M38 level 毒化根因链)。
-        # F1 契约:heavy 在每个执行过的游戏动作后必调 → 此处 park 覆盖全部动作后首读。
         if heavy:
             self.park_cursor()
         screen = screen if screen is not None else self.screenshot()
@@ -647,6 +654,75 @@ class CwScreenPrep(SrOperation):
             _sess.prep_obs_frame = obs
         return obs
 
+    def _project_prep_obs(self, action: PrepAction,
+                          obs: PrepObservation) -> PrepObservation | None:
+        """执行后期望态投影(ADR-0517 决策 7/10;纯计算零读屏)。
+
+        返回投影后的 obs(黑板推进给下一动作决策);**None = 该动作的画面
+        后果未建模 → 保守回退:本访问终结交回外循环重观察**(重观察语境,
+        禁猜——与商店线 CompTransaction 终结邻接 fallback 同款纪律)。
+
+        已建模面(确定性 UI 消耗/腾席;保真申报按分支区分):
+        - OpenBox/OpenTome:开一件即腾席,boxes/tomes 按 ``action.slot``
+          摘对应槽的件(slot=None = 首件,与发射形态对齐——发射侧未指
+          定槽即点第一件);
+        - ClickSpheres:执行器内验早停(掉箱即停),残球数不可静态精确
+          预测 ⇒ 保守清空(下轮入口对账重建;多残球的收敛由重观察承担);
+        - SellBench:该物理槽位件离席(bench_chars 摘除 +
+          free_bench_slots+1)+ state 侧金账 ``gold += sell_refund(star,
+          bench_char_cost)``——与 ``cw_state.simulate`` 卖出分支同式
+          (单一源公式;state 为 None 的观察帧跳过金账,保守侧=低估回金,
+          下一 heavy 重读对账)。保真边界:gold 可信位
+          (``state_gold_trusted``)不随投影翻转——投影金是账面值,可信
+          位语义(heavy 真读)保持不变,消费端按位判读。
+
+        未建模面(保守回退,读屏量与旧 per-action heavy 持平、决策面更准):
+        DeployMove/SellDeployed(deployed 占用集合的物理落位规则未建模)、
+        LevelUp(xp/cap 推进)、RunDeploy/RunEquip(组合流程动作,结构性
+        大变更 = 新事实,终结后外循环重观察正落在重建点)。"""
+        import dataclasses
+
+        from sr_od.application.currency_war.kernel.cw_prep_actions import (
+            ClickSpheres,
+            OpenBox,
+            OpenTome,
+        )
+        if isinstance(action, OpenBox):
+            _boxes = list(getattr(obs, 'boxes', None) or [])
+            if _boxes:
+                _drop = action.slot if action.slot is not None else _boxes[0][0]
+                _boxes = [b for b in _boxes if b[0] != _drop]
+            return dataclasses.replace(obs, boxes=_boxes)
+        if isinstance(action, OpenTome):
+            _tomes = list(getattr(obs, 'tomes', None) or [])
+            if _tomes:
+                _drop = action.slot if action.slot is not None else _tomes[0][0]
+                _tomes = [t for t in _tomes if t[0] != _drop]
+            return dataclasses.replace(obs, tomes=_tomes)
+        if isinstance(action, ClickSpheres):
+            return dataclasses.replace(obs, spheres=[])
+        if isinstance(action, SellBench):
+            _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
+                      if bc is None or getattr(bc, 'slot', None) != action.slot]
+            _gold_delta = 0
+            _sold = next((bc for bc in (getattr(obs, 'bench_chars', None) or [])
+                          if bc is not None
+                          and getattr(bc, 'slot', None) == action.slot), None)
+            _state = getattr(obs, 'state', None)
+            if _sold is not None and _state is not None:
+                from sr_od.application.currency_war.kernel.cw_state import (
+                    bench_char_cost,
+                    sell_refund,
+                )
+                _gold_delta = sell_refund(_sold.star or 1,
+                                          bench_char_cost(_sold))
+                _state = dataclasses.replace(
+                    _state, gold=int(_state.gold or 0) + _gold_delta)
+            return dataclasses.replace(
+                obs, bench_chars=_bench, state=_state,
+                free_bench_slots=(getattr(obs, 'free_bench_slots', 0) or 0) + 1)
+        return None
+
     def _reconcile_tracking(self, bench: list[BenchChar], deployed: list[BenchChar],
                             screen=None) -> None:
         """环入口对账(§3:read≠tracking 漂移是既有 bug 源 → SIFT 真值重置 tracking)。
@@ -664,14 +740,15 @@ class CwScreenPrep(SrOperation):
         reconcile_tracking(session, bench, deployed, screen, source='director', ctx=self.ctx)
 
     def _reconcile_drag_expect(self, expect: DragExpect) -> None:
-        """拖动期望态对账(动作完成后调用;零决策行为变更:不一致仅落台账)。
+        """拖动期望态对账(零决策行为变更:不一致仅落台账)。
 
-        读法:复用动作后 heavy 重观察的定型帧(``last_screenshot``,零新增
-        截屏);身份读走 identify_slots 纯读组合(**不经 read_bench_chars**
-        ——后者内置召唤物/书册卡停机钩子,动画帧误触停机即违背本对账零
-        行为约束;先例=观测自检框架 §2.2 身份回读)。deployed 排复用
-        read_deployed_chars(其挂点均为留证级非停机,且后排布局选档单一源)。
-        全部 best-effort:任一环节失败静默跳过(宁缺勿造)。
+        读法:复用**下一入口 heavy 定型帧**(ADR-0517 迁移后对账归入口时点,
+        ``_v2_post_frame_accounting`` 消费暂存 acct 时 ``self.last_screenshot``
+        即入口帧,零新增截屏);身份读走 identify_slots 纯读组合(**不经
+        read_bench_chars**——后者内置召唤物/书册卡停机钩子,动画帧误触停机
+        即违背本对账零行为约束;先例=观测自检框架 §2.2 身份回读)。deployed
+        排复用 read_deployed_chars(其挂点均为留证级非停机,且后排布局选档
+        单一源)。全部 best-effort:任一环节失败静默跳过(宁缺勿造)。
         """
         try:
             frame = getattr(self, 'last_screenshot', None)
@@ -1197,7 +1274,9 @@ class CwScreenPrep(SrOperation):
     # ===== 备战单轮 op(W971 P3b 返工定稿:拆内环,op 生命周期五段化)=====
     # 外循环(cw_loop)是唯一循环:备战画面在 → 外循环每轮调本 op 一轮。
     # 单轮 = ①数据观察(heavy→写 session)②对账(观察 vs session 历史/上轮
-    # 期望)③决策 ④期望态计算 ⑤执行+结束判定 → 交回外循环。原内环机制
+    # 期望)③-⑤ 单动作决策循环(决策→执行→投影,循环内零读屏;终结 op
+    # 交回外循环)——ADR-0517 迁移批:per-action heavy 重读契约已灭,期望态
+    # 投影承载逐动作推进。原内环机制
     # (步数预算/stall 门/连败→恢复→屏蔽/bail 同因计数/ping-pong 停机)随
     # 内环拆除——稳定性由外循环每轮重识别保证(特效帧/overlay 弹出在轮间
     # 自然可见);无进展留证归外循环 stall 防线(cw_loop 备战分支)。
@@ -1237,8 +1316,16 @@ class CwScreenPrep(SrOperation):
         _tk = self._takeover_collect_if_needed(match, session)
         if _tk is not None:
             return _tk
-        # —— ② 对账段:本轮 heavy 观察 vs session 历史/上轮期望(acct 空 = 无新执行动作,
-        #      仅消费 pending_buy_expect + 经验/羁绊/商店池/合成预览留证族)
+        # —— ② 对账段:本轮入口 heavy 观察 vs session 历史/上轮期望(acct 空 = 无新执行动作,
+        #      仅消费 pending_buy_expect + 经验/羁绊/商店池/合成预览留证族)。
+        #      ADR-0517 迁移批:上一访问逐动作暂存的期望态记账(acct 族)在此
+        #      时点统一消费——入口观察即对账(决策 8),per-action heavy 重读
+        #      契约已灭(逐动作零读屏,期望态投影承载;投影建模分叉由本对账
+        #      在下一入口暴露,错卖类不可逆损害窗口的收窄手段 = 执行侧
+        #      tracked 账随动,同商店线双账口径)。
+        for _pend in list(getattr(session, 'cw_prep_pending_accts', None) or []):
+            self._v2_post_frame_accounting(obs, _pend, session)
+        session.cw_prep_pending_accts = []
         self._v2_post_frame_accounting(obs, {'key': None, 'progressed': False,
                                              'drag_expect': None, 'equip_expect': None,
                                              'dep_delta': 0, 'dep_pre': None,
@@ -1271,53 +1358,53 @@ class CwScreenPrep(SrOperation):
             match.strategy.update_target(obs.state or GameState(), session, config)
         except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
             log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
-        # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 本 op 观察段/破墙派生帧)
-        # 序列契约 v1(dd-020):返回 list[PrepAction],执行序 = 列表序;
-        # fail-stop/控制流/空批语义归本流程侧(契约 §2/§4)。
-        try:
-            actions = match.strategy.decide_prep_screen(session, config)
-        except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
-            log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
-            return self.round_fail(status=f'策略决策异常: {e}')
-        if (not isinstance(actions, list)
-                or not all(isinstance(a, PrepAction) for a in actions)):
-            log.warning(f'[cw!][director] 策略输出非 list[PrepAction]: '
-                        f'{type(actions).__name__}')
-            return self.round_fail(status='策略输出非 list[PrepAction](F3)')
-        # 动作批签名(环级无进展守卫的动作腿,消费方 = cw_loop 备战分支):
-        # 动作类型序列;空批 = 空元组(连续空批+状态冻结同样计无进展)
-        session.last_prep_action_sig = tuple(
-            type(a).__name__ for a in actions)
-        if not actions:
-            # 空批合法(契约 §4:本帧无动作可发,策略器禁用空批表达控制流)
-            # → 交回外循环重观察;连续空批的 stall 兜底归外循环防线。
-            # 现役核恒出动作(规则序含 DeferSpheres 兜底),本分支不可达。
-            return self.round_success('空批(本帧无动作),交回外循环重观察', wait=1.0)
-        # —— ④⑤ 序列消费:逐动作 F3 校验/期望态计算/执行/执行后对账。
-        # 帧稳定性(第 i+1 动作不依赖第 i 动作的新观察)由策略器发射时截断
-        # 保证(契约 §3);本侧保守口径 = 每动作落地后 heavy 重观察再续发
-        # (与现役单动作逐轮重观察等价;批尾 heavy 节流待新核序列发射器
-        # 落地后按契约再收紧)。已知画面出口(OpenShop/StartBattle)作序列
-        # 终点——契约 §3 枚举出战=终点;OpenShop 切商店画面非帧稳定,同判。
-        _n_total = len(actions)
-        for _idx, action in enumerate(actions):
-            _rest = _n_total - _idx - 1
+        # —— ③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 +
+        #      每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次
+        #      建期望态 → 逐动作「决策(黑板=投影态)→ F3 校验 → 期望态计算 →
+        #      执行 → 投影」循环,循环内零读屏;三遍编排序保持(决策核输出
+        #      逐帧取首项 = 单动作选择序,输出等价系条件命题——帧级锁按锁
+        #      纪律重推)。已知画面出口(OpenShop/StartBattle)与控制流
+        #      (DeferSpheres/BailToOuter)= 终结 op,执行即本访问结束交回
+        #      外循环(下次入口重观察)。投影未建模的动作同判保守回退。
+        _visit_acts: list[str] = []
+        actions: list = []
+        for _vi in range(self.VISIT_ACTION_CAP):
+            # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 入口观察/
+            #      循环投影步;首帧 = 入口 heavy,后续 = 投影态)
+            try:
+                actions = match.strategy.decide_prep_screen(session, config)
+            except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
+                log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
+                return self.round_fail(status=f'策略决策异常: {e}')
+            if (not isinstance(actions, list)
+                    or not all(isinstance(a, PrepAction) for a in actions)):
+                log.warning(f'[cw!][director] 策略输出非 list[PrepAction]: '
+                            f'{type(actions).__name__}')
+                return self.round_fail(status='策略输出非 list[PrepAction](F3)')
+            if not actions:
+                # 空批合法(契约 §4:本帧无动作可发,策略器禁用空批表达控制流)
+                # → 交回外循环重观察;连续空批的 stall 兜底归外循环防线。
+                return self.round_success('空批(本帧无动作),交回外循环重观察', wait=1.0)
+            # 单动作选择序:取决策核输出首项(词表逐帧取首项)
+            action = actions[0]
+            # 动作批签名(环级无进展守卫的动作腿,消费方 = cw_loop 备战分支):
+            # 累计本访问已执行动作类型 + 当前提案。
+            session.last_prep_action_sig = tuple(
+                _visit_acts + [type(action).__name__])
             self._record_step(obs, action)
             # 控制流(契约 §4:词表内特殊动作,不进 execute 验证链;defer 计数归框架)
             if isinstance(action, DeferSpheres):
                 session.defer_count += 1
-                _d = f'(余{_rest}动作丢弃)' if _rest else ''
                 log.info(f'[cw][director] DeferSpheres(defer={session.defer_count})'
-                         f'→ 交回外循环{_d}')
+                         '→ 交回外循环')
                 return self.round_success('球留置(空动作),交回外循环', wait=1.0)
             if isinstance(action, BailToOuter):
                 # 词表已退役(W971 §2.6.1);防御性兜底 = 原样交回(无计数)
-                _d = f'(余{_rest}动作丢弃)' if _rest else ''
                 log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环'
-                         f'(词表退役兜底){_d}')
+                         '(词表退役兜底)')
                 return self.round_success(f'BailToOuter({action.reason}),交回外循环(词表退役兜底)', wait=1.0)
-            # F3 校验(契约 §2:参数非法与执行失败同型——截断+重观察,
-            # 不进连败链的拒绝路径;拒绝执行 + 交回留证)
+            # F3 校验(契约 §2:参数非法与执行失败同型——交回重观察,不进
+            # 连败链的拒绝路径;拒绝执行 + 交回留证)
             err = self._executor.validate(action)
             key = action_key(action)
             if err is not None:
@@ -1373,29 +1460,41 @@ class CwScreenPrep(SrOperation):
                 if progressed and isinstance(action, LevelUp):
                     self._xp_apply_levelup()
             acct['progressed'] = progressed
-            # 执行后对账 + 期望态消费(heavy 重观察帧;逐动作一次,续发/交回前完成)
-            _post_obs = self._observe(heavy=True)
-            self._v2_post_frame_accounting(_post_obs, acct, session)
-            # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建;外循环下轮重识别)
+            _visit_acts.append(type(action).__name__)
+            # 期望态记账暂存(ADR-0517:对账归下一入口时点;per-action heavy
+            # 重观察契约退役,对账族消费帧 = 下次入口 heavy)
+            if not hasattr(session, 'cw_prep_pending_accts') \
+                    or session.cw_prep_pending_accts is None:
+                session.cw_prep_pending_accts = []
+            session.cw_prep_pending_accts.append(acct)
+            # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建)
             if isinstance(action, StartBattle) and progressed:
                 return self.round_success('出战(交回外循环战斗分支)', wait=3)
             if not progressed:
-                # fail-stop(契约 §2):验证失败 → 丢弃余下动作 → 恢复原语一次
-                # (关已知弹层)→ 交回外循环 heavy 重观察(无内环屏蔽/计数;
-                # 连续无进展由外循环 stall 防线留证)
+                # fail-stop(契约 §2):验证失败 → 恢复原语一次(关已知弹层)
+                # → 交回外循环 heavy 重观察(连续无进展由外循环 stall 防线留证)
                 try:
                     _prim, _closed = try_recovery(self, self.ctx)
-                    _d = f',余{_rest}动作丢弃(fail-stop)' if _rest else ''
                     log.info(f'[cw][director] {key} 验证失败 → 恢复原语({_prim})'
-                             f'{_d} → 交回外循环')
+                             ' → 交回外循环')
                 except Exception as e:  # noqa: BLE001  恢复异常不阻塞交回
                     log.warning(f'[cw!][director] 恢复原语异常 {key}: {e}')
                 return self.round_success(f'{key} 验证失败({detail}),已试恢复,交回外循环', wait=1.0)
             if isinstance(action, OpenShop):
-                # 开店切商店画面(非帧稳定)→ 序列终点,交回外循环重识别
+                # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
                 return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
+            # —— 投影(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算推进;
+            #      未建模动作 → None = 保守回退:本访问终结交回外循环重观察)
+            _proj = self._project_prep_obs(action, obs)
+            if _proj is None:
+                return self.round_success(
+                    f'{key} ✓(投影未建模,访问终结交回外循环重观察)', wait=1.0)
+            obs = _proj
+            session.prep_obs_frame = obs   # 黑板推进(下一动作决策读投影态)
+        # 访问动作数上限(防御:决策循环不收敛 = 投影或策略 bug,交回外循环
+        # 由 stall 防线接管——不静默续跑)
         return self.round_success(
-            f'序列完成({"/".join(type(a).__name__ for a in actions)}),交回外循环重识别', wait=1.0)
+            f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
 
     def _takeover_collect_if_needed(self, match, session) -> OperationRoundResult | None:
         """接管局补采(W971 §2.1/01-opening §2.1;单轮化后挂点 = 单轮 op 观察段)。
@@ -1459,9 +1558,8 @@ class CwScreenPrep(SrOperation):
         _bench_full_now = (_scr_full is not None
                            and read_bench_full(self.ctx, _scr_full))
         if not _bench_full_now:
-            # r366b(review A1):警告解除 → 等待计数清零(正常态恢复预算)
-            if getattr(session, 'free_bench_gold_wait', 0):
-                session.free_bench_gold_wait = 0
+            # (r366b 的 free_bench_gold_wait 清零随 ADR-0517 迁移批死码清理
+            #  删除——字段唯一写点在 flow.py 死码腾席链,live 复位已无对象)
             return None
         log.warning('[cw!][director] 备战席已满警告(模态挡拖拽/出战)→ 破警告优先(腾席链)')
         # 破墙 obs 用 dataclasses.replace 从真 obs 派生(全字段保真,仅覆写腾席相关)
@@ -1722,8 +1820,8 @@ class CwScreenPrep(SrOperation):
           → 回备战(W970 §4.3.6;r364 进展保证 = 开店成功即 progressed)。
         - read_only=False:开店前 hp 三件组取**开店前的备战观察**(商店开态
           HP 区不可读,W970 §4.3.4 读互斥承接;结算真值链已在 gated_hp 收口,
-          trusted 位 = 本帧可读)→ 商店动作波循环(run_buy_waves:观察 →
-          decide_shop_screen → 执行至首个 RefreshShop → 重判,MAX_REFRESH 硬墙)
+          trusted 位 = 本帧可读)→ 商店单动作循环(run_buy_waves:入口观察 →
+          decide_shop_action 逐动作循环+投影,终结 op 交回;MAX_REFRESH 硬墙)
           → CwOpCloseShop → finalize_buy_phase(买后重估/期望暂存/gold 对拍/
           执行事实)→ 节点探针。
 

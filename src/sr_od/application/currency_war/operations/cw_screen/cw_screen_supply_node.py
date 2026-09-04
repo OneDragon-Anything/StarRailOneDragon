@@ -11,7 +11,16 @@
 
 动作(T#99 已接 decide_supply):``read_supply_options`` OCR 每列(角色+装备)→ ``decide_supply`` 按
 target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡身 + 确认。读不到选项 → CARD_BODY 兜底。
-钻(红/蓝=基本赢)视觉判定 + has_diamond 待补;supply 无刷新按钮(decide_supply 传 refresh_used=True)。
+钻(红/蓝=基本赢)视觉判定 + has_diamond 待补;刷新按钮实存(REFRESH_BTN 图标式,
+decide_supply 规则 2「全无钻+刷新未用→刷新找钻」消费)。
+
+**ADR-0517 适配申报(§8.4 裁决建议按建议落)**:本节点已按单动作架构语义
+运转——每轮 ``handle`` = 入口重观察(``_in_node`` 验证 + ``read_supply_options``
+现读)→ 单动作决策(``decide_supply`` 一选)→ 执行;**刷新 = 终结 op**(点击
+后本动作即返回,``round_retry`` 重进节点 = 入口重建,新装备面由重进后的
+选项现读承载——「节点内刷后重读再选」的循环形态与「终结→外循环重进→
+入口重建」语义连续)。节点内至多刷 1 次的硬限制由 ``_supply_refresh_used``
+session 实态承载(carried 融合:跨外环重建存活,§8.4 与商店 §3.1 对称)。
 
 T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点击点由 read_supply_options 按列返回。
 

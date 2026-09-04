@@ -3,7 +3,7 @@
 > 本目录是货币战争（CW）**流程控制的唯一现行设计家**，由流程层代码反向规格化而成（本批为纯文档，零代码改动）。原 `strategy-docs/09_architecture.md`（契约/插件/管理器/注册壳/三臂）已删除，其内容全部收编入本 README §2。
 > 职责分界（用户裁定）：**策略文档（`../strategy-docs/`）只管"每个画面结合哪些数学证明、怎么产出决策"；流程控制单独立文档（本目录）**——画面识别与路由、访问相位推进、动作发射契约、守卫与停机。
 > 读者 = 无会话历史的工程师/智能体。术语首次出现给定义。引用格式 = `文件:行号`（路径根 = `src/sr_od/application/currency_war/`）。
-> **⚠️ 波批形态 = 待迁移态（单处声明，不逐篇重复）**：本目录各篇描述的商店决策「波批形态」（一次观察算整波动作、截断器、波级契约）已被 [ADR-0517](../decisions/0517-single-action-screen-op.md)（画面 op 单动作循环，proposed）裁定为目标架构的**替换对象**——目标态规格见 [screen_op.md](screen_op.md)，实现未动，各篇 as-built 描述加「待 ADR-0517 迁移」标注处即迁移面。
+> **单动作循环架构 = 已迁移（ADR-0517 accepted,实施 ADR-0518,2026-09-06 落码）**：商店决策波批形态（一次观察算整波动作、截断器、波级契约）已被单动作循环（入口观察→逐动作决策循环→终结 op）替换;备战 per-action heavy 重读契约已灭（入口单次 + 逐动作投影 + 未建模面保守回退）;旧备战骨架死码（flow.py 10 方法 + kernel/cw_deploy_seat + prep_phase 族 session 字段）已物理删除。目标态规格 = [screen_op.md](screen_op.md)（as-designed 与 as-built 对齐维护）;各篇 as-built 描述即为现行实现。波批时代的 §2.2 序列契约保留为历史注（见该节）。
 
 ## 1. 四层结构总图
 
@@ -12,22 +12,25 @@
 │ 画面识别 → 分支路由（overlay 0x 系 → 备战 1 → 战斗窗 → 大厅 3c）│
 │ 轮次推进（备战环 → 出战 → 战斗等待 → 结算 → 回备战）            │
 │ 停机/遥测钩子（守卫、runs summary、分配器、对局存档）           │
-├─ 画面指挥（cw_screen_prep.py = 备战单轮五段）─────────────────┤
-│ ①观察(heavy/light) ②对账 ③决策调接口 ④期望态计算 ⑤执行+结束判定 │
-│ 商店编排（_open_shop_phase：开店→波循环→关店→finalize→节点探针）│
+├─ 画面指挥（cw_screen_prep.py = 备战单轮：入口 heavy 观察+对账+单动作决策循环）─────────────────┤
+│ ①入口观察(heavy) ②对账(暂存记账入口消费) ③-⑤单动作循环:决策取 │
+ │ 首项→期望态计算→执行→投影(零读屏);终结 op 交回外循环            │
+│ 商店编排（_open_shop_phase：开店→单动作循环→关店→finalize→节点探针）│
 ├─ 策略步进（mandate_v1：bridge.py 决策入口 + entry.py 三遍编排）┤
 │ 备战决策 live 链 = bridge.decide_prep_screen → decide_from_turn   │
 │   → entry.emit（①prep实体面→②证明→③升档器→④骨架M1-M7→⑤EV→       │
-│   ⑥无动作⇒StartBattle，自有动作词表）；flow.py 旧备战骨架         │
-│   （相位机/腾席链）= 死码待收敛（prep_visit.md §2.1）；            │
+│   ⑥无动作⇒StartBattle，自有动作词表,单动作循环逐帧取首项）;商店决策│
+│   = decide_shop_action 单动作接口(ADR-0517/0518);flow.py 旧备战骨架 │
+│   （相位机/腾席链等 10 方法+session 字段）已删（prep_visit.md §2.1）│
 │   pick 族 9 钩子与生命周期钩子仍由 flow.py 中间 ABC 承载          │
 ├─ 动作执行（kernel/cw_prep_actions.py 词表 + prep_actions.py 执行器│
-│ + cw_op_buy_cards.py 商店波 + cw_op_deploy.py 部署）───────────┤
+│ + cw_op_buy_cards.py 循环壳 + cw_shop_action_ops.py 商店动作 op    │
+ │ (execute+project) + cw_op_deploy.py 部署）────────────────────┤
 │ 三态发射契约（NOOP/失败/成功可区分）、重试/恢复原语、观测复查   │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-分层判据：**外层循环管"现在是哪个画面、交给谁"；画面指挥管"一次访问内观察→决策→执行的编排"；策略步进管"给一帧观察出什么动作序列"（骨架 + 委托 mandate_v1 判据）；动作执行管"一个动作怎么落地、怎么验证"**。策略判据（买/卖/升/刷的数学）一律不在本目录，见 `../strategy-docs/11_shop_decisions.md` 等篇。
+分层判据：**外层循环管"现在是哪个画面、交给谁"；画面指挥管"一次访问内观察→决策→执行的编排"；策略步进管"给一帧期望态提什么动作"（骨架 + 委托 mandate_v1 判据,单动作选择序）；动作执行管"一个动作怎么落地、怎么验证"**。策略判据（买/卖/升/刷的数学）一律不在本目录，见 `../strategy-docs/11_shop_decisions.md` 等篇。
 
 ## 2. 策略↔流程契约（吸收原 strategy-docs/09_architecture.md）
 
@@ -38,8 +41,8 @@
 | 身份 | 载体 | 职责 | 禁止 |
 |---|---|---|---|
 | **契约** | `strategies/impl/cw_strategy.py` 的 `CwStrategy` ABC（17 钩子，全 abstract） | 定义策略器与流程侧之间的全部接口（§2.2） | ABC 自身零内置逻辑（纯接口；`cw_strategy.py:59-72`） |
-| **管理器** | `strategies/impl/cw_strategy_manager.py`（StrategyManager） | 按 config.strategy_id 实例化/选择策略；值域 = {decision_v2, mandate_v1} | 不承载判据；不知策略内部结构 |
-| **实现** | `strategies/impl/mandate_v1/`（单一核）+ `strategies/impl/decision_v2/`（A/B 冻结基线）+ `strategies/impl/flow.py`（`CwFlowStrategy` 中间辅助 ABC：生命周期/意向/pick 族/备战骨架，`_abstract=True` 不注册，`flow.py:121-135`） | 决策本体 | 禁自实现生命周期机制（幂等键/连败恢复/屏蔽/stall 门——归流程侧）；禁绕契约自造接口 |
+| **管理器** | `strategies/impl/cw_strategy_manager.py`（StrategyManager） | 按实例化/选择策略；注册面封闭集 = {mandate_v1}（decision_v2 已随 dd-038 删除） | 不承载判据；不知策略内部结构 |
+| **实现** | `strategies/impl/mandate_v1/`（单一核）+ `strategies/impl/flow.py`（`CwFlowStrategy` 中间辅助 ABC：生命周期/意向/pick 族/商店单动作接口委托，`_abstract=True` 不注册；旧备战骨架已删,ADR-0517/0518） | 决策本体 | 禁自实现生命周期机制（幂等键/连败恢复/屏蔽/stall 门——归流程侧）；禁绕契约自造接口 |
 | **注册壳** | `strategies/mandate_v1_strategy.py`（MandateV1Live） | 把实现包注册进策略扫描器 | 壳内零判据逻辑 |
 
 ### 2.2 17 接口（钩子全景；`cw_strategy.py:85-205` + `flow.py`）
@@ -53,22 +56,24 @@
 | `on_round_end(state, session, config, obs)` | 每场战斗结算观测后 | performance 记录 + streak/HP 真值喂入 + 谷底回滚判（`flow.py:203-235`；HP 仅过 `gated_hp` 新鲜度门进 session，`cw_strategy.py:263-287`） |
 | `on_match_end(session, config, outcome)` | 回大厅收口（`cw_loop.py:1433-1434`） | no-op（P1；`flow.py:241-243`） |
 
-**战略 1**：`update_target(state, session, config)`——意向状态机驱动 + P1 配方对物化，写 `session.target_comp`。调用点 = 每个备战回合 `decide_shop_screen` 之前（备战单轮观察段，`cw_screen_prep.py:1271`；商店波首波，`cw_op_buy_cards.py:509`；买后重估，`cw_screen_prep.py:2066`）。决策语义 = `../strategy-docs/12_line_and_intention.md`。
+**战略 1**：`update_target(state, session, config)`——意向状态机驱动 + P1 配方对物化，写 `session.target_comp`。调用点 = 每个备战回合 `decide_shop_screen` 之前（备战单轮观察段，`cw_screen_prep.py`；商店访问首段入口观察，`cw_op_buy_cards.py`；买后重估，`cw_screen_prep.py`）。决策语义 = `../strategy-docs/12_line_and_intention.md`。
 
 **序列决策 3**：
 
-| 钩子 | 输入（黑板） | 返回 | 三态语义 |
+| 钩子 | 输入（黑板） | 返回 | 语义 |
 |---|---|---|---|
-| `decide_prep_screen(session, config)` | `session.prep_obs_frame`（备战观察帧；写者 = CwScreenPrep 观察段/破墙派生帧，`cw_screen_prep.py:641-648`） | `list[PrepAction]`，执行序 = 列表序 | 空序列合法 = 本帧无动作（交回外循环重观察；`cw_screen_prep.py:1291-1295`）；**观察帧缺失即抛错**（禁静默按空观察决策） |
-| `decide_shop_screen(session, config)` | `session.shop_state_frame`（商店融合观察态；写者 = 商店波循环顶融合段，`cw_op_buy_cards.py:569`） | `list[Action]`（词表 = BuyCard/LevelUpShop/RefreshShop/SellBench/SellDeployed/CompTransaction） | **空序列 = 决策完成触发关店**（`cw_screen_prep.py:_open_shop_phase` 波循环 + `cw_op_buy_cards.py:1069` 收工） |
-| `decide_prep_action(obs, session, config)` | 旧单动作签名 | deprecated 兼容薄委托：写黑板 → 委托序列核（基类 `flow.py:491-499` 直传完整 list；live 覆写 `mandate_v1/bridge.py:110-122` 解包首元素、空批→DeferSpheres；调用方迁移完随 P5 删除） |
+| `decide_prep_screen(session, config)` | `session.prep_obs_frame`（备战观察帧；写者 = CwScreenPrep 入口观察段/破墙派生帧/循环投影步） | `list[PrepAction]`，单动作循环取**首项**消费（逐帧取首项 = 单动作选择序,ADR-0517/0518） | 空序列合法 = 本帧无动作（交回外循环重观察）；**观察帧缺失即抛错**（禁静默按空观察决策） |
+| `decide_shop_screen(session, config)` | `session.shop_state_frame`（期望态;写者 = 入口观察段/单动作投影步/sim 引擎） | `list[Action]`（词表 = BuyCard/LevelUpShop/RefreshShop/SellBench/SellDeployed/CompTransaction） | **序列兼容驱动器**（`mandate_v1/bridge.py:124`）——sim 引擎/回放/既有序列锁消费;CloseShop 收尾不入序列。生产执行侧不走本接口（见下注） |
+| `decide_prep_action(obs, session, config)` | 旧单动作签名 | deprecated 兼容薄委托：写黑板 → 委托序列核（基类 `flow.py` 直传完整 list；live 覆写 `mandate_v1/bridge.py` 解包首元素、空批→DeferSpheres；调用方迁移完随 P5 删除） |
 
-**序列语义（冻结条款，反向自 `cw_strategy.py:134-161` 与 `cw_screen_prep.py:1296-1398`）**【待 ADR-0517 迁移：本小节序列契约（整波返回/帧稳定域/截断/空批终止）是波批形态的流程侧表述，目标态由终结 op 与单动作循环取代，见 [screen_op.md](screen_op.md) §3；迁移前以本节 as-built 为准】：
-- **帧稳定域**：序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察；发射时逐动作判"执行后画面状态能否静态推出"，推不出即截断。流程侧保守口径 = 每动作落地后 heavy 重观察再续发（`cw_screen_prep.py:1297-1301`）；OpenShop/StartBattle 作序列终点。
-- **fail-stop**：任一动作未落地 → 丢弃余下动作 → 恢复原语（关已知弹层，`prep_actions.try_recovery`）→ 交回外循环 heavy 重观察重调接口（`cw_screen_prep.py:1382-1393`）。参数非法（F3 拒绝）与执行失败同型。
-- **逐动作验证保留**：期望态对账/执行验证照跑，不依赖重决策（`cw_screen_prep.py:1376-1378`）。
-- **控制流走词表内特殊动作**（DeferSpheres 族；defer 计数归框架，`cw_screen_prep.py:1307-1312`）；策略器禁用空批表达控制流。
-- **生命周期机制归流程侧**：幂等键 `action_key`、连败→恢复→屏蔽、stall 门、强制出战。
+注（ADR-0517/0518）：**生产执行侧的商店决策接口 = `decide_shop_action(session, config)`**——ABC 具现（`flow.py`，本体 `mandate_v1/shop.py:355`）,全函数恰返回一个动作,「无动作可做」= `CloseShop` 恒可用终结（取代旧「空序列 = 决策完成」通道）;契约核验挂本入口,取动作后真值;`run_buy_waves` 单动作循环逐帧调用。上表的 `decide_shop_screen` 驱动器内部即逐帧调它 + `cw_state.simulate` 纯投影推进。
+
+**序列语义（历史注——波批时代的冻结条款,反向自 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段）**【ADR-0517/0518 迁移后本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结 op 与单动作循环取代（[screen_op.md](screen_op.md) §3）,本节保留作旧序列锁与历史 ADR 的解读钥匙——现行 fail-stop/控制流/生命周期机制条款仍有效】：
+- **帧稳定域**（历史）：序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察；发射时逐动作判"执行后画面状态能否静态推出"，推不出即截断——截断器已退役,截断点语义由终结 op 吸收;流程侧保守口径（每动作落地后 heavy 重观察）已由「入口单次 heavy + 逐动作投影」取代。OpenShop/StartBattle 现为终结 op。
+- **fail-stop**（现行有效）：任一动作未落地 → 恢复原语（关已知弹层，`prep_actions.try_recovery`）→ 交回外循环 heavy 重观察重调接口。参数非法（F3 拒绝）与执行失败同型。
+- **逐动作验证保留**（现行有效）：期望态对账/执行验证照跑，不依赖重决策（对账时点 = 下一入口,经 `cw_prep_pending_accts` 暂存）。
+- **控制流走词表内特殊动作**（现行有效;DeferSpheres 族；defer 计数归框架）；策略器禁用空批表达控制流（商店侧空批通道已由 CloseShop 终结取代）。
+- **生命周期机制归流程侧**（现行有效）：幂等键 `action_key`、连败→恢复→屏蔽、stall 门、强制出战。
 
 **pick 族 9**（选项决策；动作编排归画面 op，不进序列契约辖内；`flow.py:298-487`）：
 `decide_invest`（E1/E2 投资三选一）、`decide_supply`（E4 补给）、`decide_encounter`（E3 遭遇）、`decide_megastar`（E7 巨星）、`decide_partner`（E6 伙伴/领航员）、`decide_planner`（银狼策划）、`decide_star_tome`（星徽典籍四选一）、`decide_wish_trial`（圣杯试炼二选一）、`decide_box_card`（武装箱选卡）。返回 PickEvent 系载体。决策规格 = `../strategy-docs/13_pick_family.md`。
@@ -99,9 +104,9 @@
 | 篇 | 一句话 |
 |---|---|
 | [outer_loop.md](outer_loop.md) | 外层循环：画面识别分支序、路由、轮次推进、停机/遥测钩子 |
-| [screen_op.md](screen_op.md) | **画面 op 统一规范（ADR-0517 目标态，as-designed 未落码）**：单动作决策循环、动作基类 execute+project、终结 op 集、期望态生命周期、复合动作类、观测通道归属、开放问题裁决建议 |
-| [prep_visit.md](prep_visit.md) | 备战访问：单轮五段、备战决策 live 链（mandate_v1）与死码旧骨架标注、腾席链（死码）、完成判定与交还外循环 |
-| [shop_visit.md](shop_visit.md) | 商店访问：波循环、读序、执行至首个刷新、离店条件与收尾 |
+| [screen_op.md](screen_op.md) | **画面 op 统一规范（ADR-0517 规格,ADR-0518 已落码）**：单动作决策循环、动作基类 execute+project、终结 op 集、期望态生命周期、复合动作类、观测通道归属、开放问题落点 |
+| [prep_visit.md](prep_visit.md) | 备战访问：单轮形态（入口 heavy + 单动作决策循环 + 投影/保守回退）、备战决策 live 链（mandate_v1）、旧骨架删除注、完成判定与交还外循环 |
+| [shop_visit.md](shop_visit.md) | 商店访问：单动作循环（入口观察→逐动作→终结 op）、visit 级刷新硬墙、离店条件与收尾 |
 | [action_exec.md](action_exec.md) | 复合动作执行：词表、发射契约三态、重试/恢复语义、观测复查 |
 | [guards.md](guards.md) | 守卫总册：G3 环级无进展守卫、停滞/未知/失活防线、降级链、fail-closed 行为 |
 
@@ -121,6 +126,6 @@
 
 流程层反向规格化同样过宪法四条（`../strategy-docs/00_framework.md` §1）。流程层的主辖域是编排与守卫，本无策略判据；但反向平移中发现下列**现状违例**（详见各篇 ⚠️ 标记）：
 
-1. **位面字面门**：`flow.py:275`（`state.plane == 1` 辖域）、`flow.py:542`（`round_num >= 9` boss 先验）——修正方向：段索引/节点数一律由节点日程（`cw_plane_table.schedule_of`）派生查表，位面只作查表键。
-2. **hp 越权消费**：谷底回滚 `VALLEY_ROLLBACK_LOSS=15`（`flow.py:118,224-234`）——hp 掉量作质量信号触发回滚动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**，代码删除随迁移后批次。
+1. **位面字面门**：`flow.py`（`state.plane == 1` 辖域，update_target 段）——修正方向：段索引/节点数一律由节点日程（`cw_plane_table.schedule_of`）派生查表，位面只作查表键。（另一处 `round_num >= 9` boss 先验随 ADR-0517 迁移批死码清理消失——载体 `_is_boss_round` 已删。）
+2. **hp 越权消费**：谷底回滚 `VALLEY_ROLLBACK_LOSS=15`（`flow.py` on_round_end 段）——hp 掉量作质量信号触发回滚动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**，代码删除随迁移后批次。
 3. **无标数字**：`VALLEY_ROLLBACK_LOSS=15` 无三形态标注；随第 2 项退役一并消失。

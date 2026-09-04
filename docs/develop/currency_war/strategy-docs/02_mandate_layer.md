@@ -79,7 +79,7 @@
 
 ## 7. 与决策机器的关系（权限划界）
 
-落地方式（现行态）= **mandate_v1 单核直替**：设计期「decision/cw4 与 decision_v2 并存跑三臂 A/B、过线 = 删除旧包触发门」的过渡方案已终结——decision/ 整包（含 decision_v2 各模块）已随统一迁移批删除（dd-038/b94e9cfb），注册面为封闭集 = {mandate_v1}（decision_v2 注册壳同批删除，`strategies/impl/cw_strategy_manager.py` 强制注册 mandate_v1 为唯一活策略核）。策略变更的验证方式 = **sim 侧代码版本对照**（同 seed 跑新旧代码版本、输出对照披露），A/B 对照**无裁决权**——验证权归数学证明与预注册判据（01 §3.4 同口径）。权限划界（原八台机器的处置语义，仍是权威）：
+落地方式（现行态）= **mandate_v1 单核直替**：设计期「decision/cw4 与 decision_v2 并存跑三臂 A/B、过线 = 删除旧包触发门」的过渡方案已终结——decision/ 整包（含 decision_v2 各模块）已随统一迁移批删除（dd-038/b94e9cfb），注册面为封闭集 = {mandate_v1}（decision_v2 注册壳同批删除，`strategies/impl/cw_strategy_manager.py` 强制注册 mandate_v1 为唯一活策略核）。策略变更的验证方式 = **sim 侧代码版本对照**（同 seed 跑新旧代码版本、输出对照披露），A/B 对照**无裁决权**——验证权归数学证明与预注册判据（01 §3.4 同口径）。装配形态 = **单动作画面 op 架构**（ADR-0517 规格 + [ADR-0518](../decisions/0518-single-action-implementation.md) 实施落码,as-built）：骨架/EV 动作不做整波发射，由策略器逐动作提案——**策略器 = 全函数**（f(期望态) → 动作，永不返回 None；「无动作可做」的表达 = 直接选终结 op），**只读期望态**（入口观察生成、逐动作纯计算投影更新，循环内零读屏）；**优先级序 = 单动作选择序**（本篇 §3 的 M 序与 [11_shop_decisions.md](11_shop_decisions.md) §1 六序不变，逐帧取最优首项）。权限划界（原八台机器的处置语义，仍是权威）：
 
 | 机器 | 处置 |
 |---|---|
@@ -103,4 +103,4 @@
 
 - 升档器（血线硬地板 + λ 顾问）规格 = 00 §4；其与 M3 的解锁接缝见本篇 §3 M3 行与 [04_survival_budget.md](04_survival_budget.md)。
 - M2 序 1/序 2 的「序」定义 = [11_shop_decisions.md](11_shop_decisions.md) §1；证据门 = [12_line_and_intention.md](12_line_and_intention.md) §1。
-- 骨架动作的发射载体（序列契约、动作词表、截断规则）= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)。
+- 骨架动作的发射载体（单动作选择序、动作词表、终结 op 集）= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)；装配形态 = 单动作画面 op 架构（ADR-0517 + [ADR-0518](../decisions/0518-single-action-implementation.md) 已落码,as-built：整波发射与截断器已退役，截断点语义由终结 op 吸收；执行载体 = `cw_shop_action_ops.py` 动作基类 execute+project + `run_buy_waves` 单动作循环）。

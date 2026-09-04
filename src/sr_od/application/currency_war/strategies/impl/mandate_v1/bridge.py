@@ -13,10 +13,12 @@ strategy_id 双被测体;config 切 strategy_id 即换核)。实现体分两层:
   快照纪律保持;生产路径保持「cw_screen_prep 只写黑板+调一个 decide」,
   契约 §5 职责分界,**不加生产接线步**,R191 裁决)。
 
-商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现):
-``decide_shop_screen`` = cw4 商店波决策(``cw4/shop.decide_shop_wave``,
-黑板=``session.shop_state_frame``,criteria 七面商店形态+契约 v2 §3.1
-截断)——sim A/B 证明面=商店波(SIM_CONSUMPTION_MAP Q1)自此有行为载体。
+商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现;ADR-0517 迁移批
+后形态):
+``decide_shop_screen`` = 序列兼容驱动器(循环调 ``shop.decide_shop_action``
+单动作核,黑板=``session.shop_state_frame``;生产执行侧入口 =
+``decide_shop_action``,由 cw_op_buy_cards.run_buy_waves 单动作循环消费)
+——sim A/B 证明面=商店波(SIM_CONSUMPTION_MAP Q1)自此有行为载体。
 ``update_target`` = **透传声明**(规格未给 cw4 战略层新形态:证明层线
 选择在 decide_prep_screen 三遍内承载,contract/sim 消费的战略层钩子沿用
 decision_v2 的意向状态机——继承即透传,禁自创,R189-1 ④-2 ② 同款
@@ -123,24 +125,43 @@ class MandateV1Strategy(CwFlowStrategy):
 
     def decide_shop_screen(self, session: StrategySession,
                            config: CurrencyWarConfig) -> list:
-        """商店开画面黑板决策(契约 v1/v2 商店线;步4b 接线)。
+        """商店序列兼容驱动器(ADR-0517 迁移批:单动作核循环化)。
 
-        输入 = ``session.shop_state_frame``(黑板唯一写者=商店观察段/
-        sim 引擎);决策本体 = ``cw4/shop.decide_shop_wave``(方向/预算
-        投影 → criteria 七面发射 → 截断/排序,§4.2 发射面规格);输出
-        ``list[Action]``(词表=cw_state.Action 族,截断=契约 v2 §3.1
-        商店线域+§3.3 fail-closed)。观察帧缺失 = 观察层失约,抛错
-        (禁静默按空态决策)。rng 中立:零局内 rng 消费。
+        生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
+        ``cw_op_buy_cards.run_buy_waves``);本接口保留给 sim 引擎/回放/既有序列锁——
+        驱动 = 逐帧调单动作核 + ``cw_state.simulate`` 纯投影推进期望态,
+        终结动作(RefreshShop/CompTransaction)截停序列、CloseShop 收尾
+        不入序列(与旧截断器的输出形态对齐)。与旧波批的输出等价是
+        条件命题(波批投影无残差时逐位一致;投影残差史见 ADR-0517
+        §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推语义。
+        观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。rng 中立。
         """
-        from sr_od.application.currency_war.strategies.impl.mandate_v1 import shop
+        from sr_od.application.currency_war.kernel import cw_state
         state = session.shop_state_frame
         if state is None:
             raise ValueError(
                 'mandate_v1.decide_shop_screen: session.shop_state_frame '
                 '缺失(黑板契约:商店观察段是唯一写者;None=观察层失约,'
                 '禁静默按空态决策)')
-        return shop.decide_shop_wave(state, session, config,
-                                     registry=self.registry)
+        # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好;驱动器在循环
+        # 内登记,与生产执行侧同一载体)。
+        session.cw4_visit_bought_names = []
+        out: list = []
+        for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
+            a = self.decide_shop_action(session, config)
+            if isinstance(a, cw_state.CloseShop):
+                return out
+            if isinstance(a, (cw_state.BuyCard,)):
+                session.cw4_visit_bought_names.append(a.card.name or '')
+            out.append(a)
+            if isinstance(a, (cw_state.RefreshShop, cw_state.CompTransaction)):
+                return out      # 终结 op:序列到止(重观察语境)
+            state = cw_state.simulate(state, a)
+            session.shop_state_frame = state
+        raise RuntimeError(
+            'decide_shop_screen 驱动器 512 帧未收敛(策略器 bug:'
+            f'末态 gold={state.gold} '
+            f'bench={cw_state.bench_occupied(state.bench)})')
 
 
 def decide_from_turn(obs: PrepObservation, turn: TurnState,
