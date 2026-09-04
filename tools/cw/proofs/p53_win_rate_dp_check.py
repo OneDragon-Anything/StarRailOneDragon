@@ -60,9 +60,7 @@ def main() -> int:
         w0, w1 = sum(f0) / len(f0), sum(f1) / len(f1)
         dp = w1 - w0
 
-        def dp_of(sample: list[str], _b: dict | None = None) -> float | None:
-            bb = buckets if _b is None else _b
-
+        def dp_of(sample: list[str], bb: dict) -> float | None:
             def wr(rung: int) -> float | None:
                 vals = [v for g in sample for v in bb[rung].get(g, ())]
                 return sum(vals) / len(vals) if vals else None
@@ -70,7 +68,8 @@ def main() -> int:
             return None if a is None or b_ is None else b_ - a
 
         rng = random.Random(SEED)
-        diffs = sorted(d for d in (dp_of([rng.choice(gids) for _ in gids])
+        diffs = sorted(d for d in (dp_of([rng.choice(gids) for _ in gids],
+                                         buckets)
                                    for _ in range(N_BOOT)) if d is not None)
         lo = diffs[int(0.025 * len(diffs))]
         hi = diffs[int(0.975 * len(diffs)) - 1]
