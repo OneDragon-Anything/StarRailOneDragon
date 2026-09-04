@@ -357,7 +357,6 @@ def sim_decision_registry():
 
 def _residual_fill_deploy(
     st: GameState,
-    sess: object,
     target_factions: frozenset[str],
     target_cores: frozenset[str],
     fw_carry: frozenset[str],
@@ -369,55 +368,31 @@ def _residual_fill_deploy(
     ——演进事务密集轮每轮必有 applied CompTransaction,换阵撤回/3合1 吞
     副本造成的板面空槽连续过夜,欠载打仗掉血(F1 病理;样本 640247
     r5-r7 缩退 6→3→2)。修法 = 把互斥辖域从「轮级」收窄到「通道级」:
-    skip 轮轮末对「围栏认可 ∖ 显式保留集」执行 bench→空槽补部署。
+    skip 轮轮末对「围栏认可」执行 bench→空槽补部署。
 
     - 零支出零破息约束:上场动作仅 bench→空槽(pop-append),不买、不卖、
       不刷新、不 swap——金账恒等式(gold_before+inc−buys−levelup−refresh
       +income)不含本动作,任何 Δp>0 受益在 C=I=0 下严格非负(P-F1,
       docs/develop/currency_war/proofs/p24-residual-fill-dominance.md)。
-    - 显式保留集(消解互斥的本意 = 防「同一部署通道双写」):显式通道
-      **刻意**留在 bench 的件,即 final 买而不上件——session 持有名单
-      (v3_hoard)在 locked/forced 模式的 char_targets([21] 窗口语义:
-      羁绊组齐才替换上场;P1 过渡模式(p1_pair/p1_transition/weak/
-      fallback)的囤货集是买侧方向,不构成部署保留——否则 F1 修复面
-      被囤货全集吞掉)。
-      「与在场(deployed)同名」的素材副本由围栏 dedup(r404-A2/5.1.7
-      在场唯一)自然 held,无需保留集;**bench 内同名对(无在场同名)
-      不保留**——3合1 合并域是全场(bench∪deployed),部署一对之一不
-      破坏合成进度,且生产 CwOpDeploy 围栏同语义会上(首版把 bench 对
-      整对保留是过宽:642763/642795 实证 dep 停滞 4/7、5/7 而检查器
-      「可上货」口径(非在场同名)全数命中,即本缺失的 W748 重现根因;
-      cw_plan 同名对保护辖的是卖出不是部署)。
-    - 补部署候选 = select_deployments(非保留 bench,行动后 deployed/board/
-      cap,目标集同围栏主趟)的 up 集;与主趟同一纯函数(单一源)。
-    - 统一 lag 口径:补部署后再重放围栏(输入剔除保留集——保留件是
-      「刻意不上」不是 lag),残余可上件数即 deploy_lag_units,消除
-      skip 轮 lag 恒 0 的检查器失明面(设计 §四-2)。
+    - 显式保留集投影已随 v3_hoard 通道退役删除(A6 裁决;dd-038
+      统一迁移批 / commit b94e9cfb,2026-09-04 用户裁定清理)——
+      写端已亡,保留集恒空;「与在场(deployed)同名」的素材副本
+      仍由围栏 dedup(r404-A2/5.1.7 在场唯一)自然 held(ADR-0473
+      增补/W748 收窄后唯一存留面)。
+    - 补部署候选 = select_deployments(bench 占用全集,行动后 deployed/
+      board/cap,目标集同围栏主趟)的 up 集;与主趟同一纯函数(单一源)。
+    - 统一 lag 口径:补部署后再重放围栏,残余可上件数即
+      deploy_lag_units,消除 skip 轮 lag 恒 0 的检查器失明面(设计 §四-2)。
 
-    返回 (residual_deployed 补上场件数, residual_held 被保留集扣下的
-    up 候选件数, deploy_lag_units 补部署后残余可上件数)。
+    返回 (residual_deployed 补上场件数, residual_held 恒 0——保留集
+    投影已随 v3_hoard 通道退役删除(见上),字段保留仅为账本 schema
+    兼容, deploy_lag_units 补部署后残余可上件数)。
     """
     from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
 
-    # —— 保留集:final 买而不上件(locked 持有名单);素材副本交围栏
-    # dedup(在场同名自然 held,见 docstring 的 W748 收窄裁决)——
-    _hold_names: frozenset[str] = frozenset()
-    _hoard = getattr(sess, 'v3_hoard', None)
-    if _hoard is not None \
-            and getattr(_hoard, 'mode', '') in ('locked', 'forced'):
-        _hold_names = frozenset(
-            getattr(_hoard, 'char_targets', ()) or [])
-
-    def _reserved(bc: BenchChar) -> bool:
-        if not bc.char_id:
-            return False   # 未识别:围栏照旧上,保留集不管
-        return bc.char_id in _hold_names
-
     _occ = [(i, bc) for i, bc in enumerate(st.bench) if bc is not None]
-    _keep = [(i, bc) for i, bc in _occ if not _reserved(bc)]
-    # residual_held = 被保留集扣下的件数(保留件不进围栏输入,故不能
-    # 取 select_deployments 的 held 桶——那是围栏自身拦截,非保留集扣除)
-    _res_held = len(_occ) - len(_keep)
+    _keep = _occ
+    _res_held = 0   # 保留集恒空(v3_hoard 写端已亡),如实恒 0
     _res_up = 0
     # 不动点循环:每次上场改变 board/dep_fac 阵营计数后,「成对/点火」
     # 判据可能使此前 held 的件转为可上(生产 op 侧 = drag 循环逐件动态
@@ -453,9 +428,8 @@ def _residual_fill_deploy(
             break
         st.board = _board_counts_of(st.deployed)
         _keep = [(i, bc) for i, bc in _keep if st.bench[i] is not None]
-    # 统一 lag:补部署后残余(剔除保留集——刻意不上 ≠ 围栏认可未上)
-    _lag_keep = [bc for i, bc in _occ
-                 if st.bench[i] is not None and not _reserved(bc)]
+    # 统一 lag:补部署后残余(围栏认可未上件)
+    _lag_keep = [bc for i, bc in _occ if st.bench[i] is not None]
     _lag = 0
     if _lag_keep:
         _lag_idx, _ = _dl.select_deployments(
@@ -1413,7 +1387,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _res_held = 0
             if _explicit_deploy_seen:
                 _res_up, _res_held, _deploy_lag_units = \
-                    _residual_fill_deploy(st, sess, _tf, _tc, _fw, _lf)
+                    _residual_fill_deploy(st, _tf, _tc, _fw, _lf)
                 _acts.append({
                     '__type__': 'skip_fence',
                     'reason': ('explicit_action_v2+residual_fill'
@@ -2036,8 +2010,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 未上;检查项 deploy_after_buy_semantics /
                     # ledger_deploy_lag_disclosure 的数据源)
                     'deploy_lag_units': _deploy_lag_units,
-                    # 迁移审计 w716(git 历史) F1 修复:skip 轮残余补部署披露(上几件/保留集扣
-                    # 几件;非 skip 轮恒 0——补部署只在 skip 分支)
+                    # 迁移审计 w716(git 历史) F1 修复:skip 轮残余补部署披露
+                    # (上几件;residual_held 恒 0——保留集投影已随 v3_hoard
+                    # 通道退役删除,字段保留仅为账本 schema 兼容;非 skip 轮
+                    # 恒 0——补部署只在 skip 分支)
                     'residual_deployed': _res_up,
                     'residual_held': _res_held,
                     # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过

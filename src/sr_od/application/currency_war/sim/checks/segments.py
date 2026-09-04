@@ -411,7 +411,9 @@ _P2_LEVELUP_STOP_HP: int = 21   # ceil(1×registry.vd_p2_loss=20.05)
 _P1_LEVELUP_STOP_HP: int = 11   # ceil(1×(11.32−0.37×2)=10.58)
 
 # 血预算停手·第二波镜像(设计件 12 §6;ADR-0451):P1_EXIT_BLOOD_TARGET
-# (期望预算线,`w524_audit_60line/` 审计后语义)+ 末窗起点 handoff_gate_min_round +
+# (期望预算线,`w524_audit_60line/` 审计后语义)+ 末窗起点(ADR-0418
+# 定窗 r6..r9;原 registry 旋钮已随承接门家族死链删除,2026-09-04
+# 用户裁定清理)+
 # 应急带下限 emergency_hp(急救型豁免面;检查域=两者开区间)
 _P1_EXIT_BLOOD_TARGET: int = 60
 
@@ -481,7 +483,8 @@ def seg_check_p1_blood_budget_levelup(rows: list[dict]) -> list[dict]:
 def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
     """血预算停手·末窗搜索型刷新停付(段级;设计件 12 §2.3-P1-c/§3.2;
     ADR-0451;终止豁免改账本位判据=迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469):P1 末窗
-    (轮≥handoff_gate_min_round)∧ 血预算不足带(emergency_hp < 决策帧
+    (轮≥6,末窗起点=ADR-0418 定窗;原 handoff_gate_min_round 旋钮已随
+    承接门家族死链删除,2026-09-04 用户裁定清理)∧ 血预算不足带(emergency_hp < 决策帧
     hp < P1_EXIT_BLOOD_TARGET——应急带内刷新=急救型豁免面,ALL IN 窗
     让位)出现 RefreshShop ∧ 账本终止位非真 = 搜索型停付未生效,违规。
 
