@@ -1,32 +1,40 @@
-"""V̄ 合成价值链·帧级 horizon 现算(修 A 批;证明单一源 = p53-frame-horizon-vgap)。
+"""V̄ 合成价值链·帧级 horizon 现算(增量 B 重推导,2026-09-04;证明修订
+单一源 = p53-frame-horizon-vgap 修订单)。
 
-R1 刷新门的比较项 ``V̄_net(r)`` 不再用「一次性合成 + rounds_left_est=5
-常数」的静态标定值(REFRESH_CFO_REPORT §3/§5 定谳:常数 5 低估决策帧
-真实剩余视界——被拦帧 R_剩余 中位 12——系统性压小 V_GAP,P1 过渡带
-512/512 帧全拒刷),改为**决策帧现算**:
+R1 刷新门的比较项 ``V̄_net(r)`` 为**决策帧现算**(修 A 批确立的形态;
+增量 B 按宪法第一条「策略不依赖战力建模」+用户裁定「未证即退役/
+A-B 无裁决权」重接地全部因子):
 
 ::
 
-    V̄_net(r) = (rung_value[2] + Δp(e0→e1) × 单战价值) × r
+    V̄_net(r, plane) = Δp[plane] × 单战价值 × r
 
-零新自由参数(全部锚 = cw_registry / cw_economy 已收字段,与
-``tools/cw/calibration/calib_vuh_v1.py``「V̄ 合成价值链」同链):
+    Δp = win_rate_dp_by_plane[plane]
+       (成型档条件胜率边际,分位面【推】;P2 fail-closed 钳 0)
+    单战价值 = vbar_hp_value_transitional(P15v2 P1 battle CI 下缘,
+               P21 1:1 过渡口径) + 连胜金下界(2,表值【注】)
 
-- ``rung_value[2]``:e2 变体(合格集条件凑档累计,CALIB_REPORT §2.1
-  注入语义沿用);
-- ``Δp(e0→e1) = h3_win_rate[1] − h3_win_rate[0]``:注册表胜率阶梯的
-  跨档边际;
-- ``单战价值 = expected_battle_loss × hp_to_gold + 连胜金下界``
-  (连胜金下界 = ``cw_economy.STREAK_GOLD_TABLE`` 连胜 2-4 档弹窗金
-  取 min,下界口径——高连胜不计);
-- ``r = horizon.r_remaining(session, plane, node)``:schedule_of 单一源
-  (本模块不接 session,由消费位现算后传入——纯数函数保持可单测)。
+因子处置史(增量 B,2026-09-04):
+- ``rung_value`` 档位流(P3 经验拟合)——**退役**:收入三元分解中无
+  rung 确定函数(息律边际 0;连胜流已由 Δp 通道计账,再立=双计);
+  史料=ADR-0515。
+- ``h3_win_rate`` 阶梯(P1 校准/无位面维/rung2 n=9)——被分位面实测
+  ``win_rate_dp_by_plane`` 取代:P1 Δp=0.450 [0.274,0.612](冻结语料
+  73 局 sha 848dc1aa,局聚类 bootstrap n=2000 seed=20260910;battle-only
+  +killed 结算屏权威口径);P2 点估计 −0.197 [−0.498,0.091] 薄桶
+  CI 含 0 → fail-closed 钳 0(P1/P2 CI 不重叠=必须分位面;P2 追档
+  门实质关闭,与 economy「P2 少刷吃息」共识同向;P2 语料扩至
+  n≥40/桶后重拟)。
+- ``expected_battle_loss×hp_to_gold``(10.0 未标定×0.5 P3 废溯源)——
+  换 ``vbar_hp_value_transitional``(9.59,P15v2 锚+P21 过渡口径,
+  λ_death 重锚债挂账,P35_VALIDATION:116 通道;先例=strategy-docs/
+  04 §2 收益侧)。
 
-连续性锚:r=5 时本式逐位等于 calib_vuh_v1 的 ``v_bar_e2=24.7``
-(旧静态注入值即本链在 r=5 的特例,修 A 只换 horizon 口径不换链)。
-**共享面申报**:`cw_registry.rounds_left_est` 本身不动——decision_v2
-scoring(层3 板面查表评分)仍消费该字段,属冻结基线;修 A 只移除 cw4
-R1 门对该常数的依赖(臂②域内变更,两臂共享字段零触碰)。
+行为差(与旧链 slope=rung_value[2]+Δp×7.0=4.939 对照):P1 新 slope
+=0.450×11.59=5.22(CI [3.18,7.10] 覆盖旧值,决策温和变);P2 slope=0
+(旧链凭空多记 3 金/轮档位收益+正 Δp,P2 刷新/凑档门收紧关闭——
+方向正确的清退)。**旧 P53 连续性锚「r=5 ⇒ 24.70」随 slope 变化作废**
+(见 p53 修订单)。
 """
 from __future__ import annotations
 
@@ -41,8 +49,10 @@ if TYPE_CHECKING:
         DecisionV2Registry,
     )
 
-#: 连胜金下界的连胜档窗(连胜 2-4 档;P53 单战价值组成声明,表值真源
-# = cw_economy.STREAK_GOLD_TABLE,禁在本模块复制表值)
+#: 连胜金下界的连胜档窗(连胜 2-4 档;表值真源
+#: = cw_economy.STREAK_GOLD_TABLE,禁在本模块复制表值)。
+#: 窗口下界论证:连胜 0-1 档无弹窗金(不计);5+ 档金更高(排除=
+#: 低估方向);取窗内 min=连胜金流的保守下界口径(P53 组成声明沿用)。
 _STREAK_FLOOR_WINDOW = slice(2, 5)
 
 
@@ -52,35 +62,33 @@ def streak_floor_gold() -> int:
 
 
 def per_battle_value(registry: DecisionV2Registry) -> float:
-    """单战斗节点的金价值(胜率流组成;calib_vuh_v1「单战价值」同式)。"""
-    return (registry.expected_battle_loss * registry.hp_to_gold
-            + streak_floor_gold())
+    """单战斗节点的金价值(胜率流组成;hp 分量=过渡口径,见模块 docstring)。"""
+    return registry.vbar_hp_value_transitional + streak_floor_gold()
 
 
-def v_bar_net(registry: DecisionV2Registry, r_remaining: int) -> float:
-    """V̄_net 帧级现算(r=决策帧剩余视界;连续性锚 r=5 ⇔ 旧注入 24.7)。
+def v_bar_net(registry: DecisionV2Registry, r_remaining: int,
+              plane: int) -> float:
+    """V̄_net 帧级现算(r=决策帧剩余视界;plane=当前位面,分位面 Δp)。
 
     边界:``r_remaining ≤ 0``(局终帧)⇒ 0——视界耗尽即无跨期价值,
     门自然关(r1 总账恒不过),与 P40 ⑤「本期刷窗用尽即停」同向。
+    P2 的 Δp 在注册表已 fail-closed 钳 0(薄桶负点估计禁进账,见
+    win_rate_dp_by_plane 注释),本函数不重复钳制。
     """
-    dp = registry.h3_win_rate[1] - registry.h3_win_rate[0]
-    return (registry.rung_value[2] + dp * per_battle_value(registry)) \
-        * max(0, int(r_remaining))
+    dp = registry.win_rate_dp_by_plane.get(plane, 0.0)
+    return dp * per_battle_value(registry) * max(0, int(r_remaining))
 
 
-#: P57 窗口门 V̄ 读法全集(设计出处 = strategy/13_buy_face_design §2.3/§3.2):
-#: - ``per_step`` 读法① 单步兑现价值 = 链斜率(rung 流+胜率流的每轮价值,
-#:   P53 锚 ~4.9/轮);
-#: - ``frame_horizon`` 读法② 帧级视界价值 = v_bar_net(r_remaining)
-#:   (r=5 时=24.7=旧静态注入连续性锚)。
-#: 生产默认 = 读法②(先验偏向:决策帧视界是分布不是单值,与修 A 哲学
-#: 一致);两读法裁决 = sim A/B(P57,证据来源=经验,strategy-work §3 档 2)。
+#: P57 窗口门 V̄ 读法全集(设计出处 = 11_shop_decisions §6;两读法裁决
+#: 原=sim A/B(P57),按用户裁定「A/B 无裁决权」降级为**读法②默认+
+#: 读法①登记待证**——A/B 结果仅作实现验证不作裁决)。
 VBAR_READINGS: tuple[str, ...] = ('per_step', 'frame_horizon')
 DEFAULT_VBAR_READING: str = 'frame_horizon'
 
 
 def window_vbar(registry: DecisionV2Registry, r_remaining: int,
-                reading: str = DEFAULT_VBAR_READING) -> float:
+                reading: str = DEFAULT_VBAR_READING,
+                plane: int = 1) -> float:
     """窗口门 V̄ 取值(P57 双读法参数化;零新自由参数)。
 
     读法① = ``v_bar_net(reg, 1)``:链在 r=1 的取值即斜率本身(单步兑现
@@ -88,8 +96,8 @@ def window_vbar(registry: DecisionV2Registry, r_remaining: int,
     读法②回落(配置桩脏值不放大为行为面分叉,回落计入消费位申报)。
     """
     if reading == 'per_step':
-        return v_bar_net(registry, 1)
-    return v_bar_net(registry, r_remaining)
+        return v_bar_net(registry, 1, plane)
+    return v_bar_net(registry, r_remaining, plane)
 
 
 __all__ = ['DEFAULT_VBAR_READING', 'VBAR_READINGS', 'per_battle_value',

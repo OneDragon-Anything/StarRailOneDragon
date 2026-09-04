@@ -1,7 +1,7 @@
 # P53 V̄ 合成价值链的帧级 horizon 现算(R1 刷新门比较项的视界口径修正)
 
-> 状态:**已推导(链式代数恒等 + 单调性 + 连续性锚;开门形态与 P40 ⑤ S1 自检一致的反事实重放已复算,sim 对拍=mandate 臂 B1 修前/修后同池同 seed)**
-> 数据源(单一源代码,数值不抄):`cw_registry`(`rung_value`/`h3_win_rate`/`expected_battle_loss`/`hp_to_gold`)、`cw_economy.STREAK_GOLD_TABLE`、`cw_plane_table.schedule_of`(经 `horizon.r_remaining`);机制面 = P40 ①/②/⑤、CALIB_REPORT §2.1/§2.2
+> 状态:**已推导(链式代数恒等 + 单调性 + 连续性锚;开门形态与 P40 ⑤ S1 自检一致的反事实重放已复算,sim 对拍=mandate 臂 B1 修前/修后同池同 seed)。修订单 R1(2026-09-04,增量 B)生效——结构存活(帧级现算形态/单调性/r≤0 边界),因子 provenance 全部重接地,见文末「修订单 R1」节**
+> 数据源(单一源代码,数值不抄):`cw_registry`(`rung_value`/`h3_win_rate`/`expected_battle_loss`/`hp_to_gold`)、`cw_economy.STREAK_GOLD_TABLE`、`cw_plane_table.schedule_of`(经 `horizon.r_remaining`);机制面 = P40 ①/②/⑤、CALIB_REPORT §2.1/§2.2(**修订单 R1 后:前四字段已退役,现行因子=win_rate_dp_by_plane/vbar_hp_value_transitional,见文末**)
 > 依据(修 A 的实证出处):REFRESH_CFO_REPORT(`.debug/temp/currency_war/ab_run_20260903_r2/`)§3/§5/§6——被拦帧 R_剩余 中位 12 vs 常数 5,512/512 拒刷定谳为系统性错误
 > 计算脚本:`tools/cw/proofs/p53_frame_horizon_vgap_check.py`(入库可重跑)
 > 提出:付费刷新拒刷复盘修 A 批(2026-09);证明 = 本篇
@@ -105,3 +105,32 @@ V̄_net(r) = (rung_value[2] + Δp(e0→e1) × 单战价值) × r
 - CALIB_REPORT §2.1/§2.2(链的静态版与卡价相消裁决——A2 的出处);
 - REFRESH_CFO_REPORT §3/§5/§6(修 A 的实证依据与反事实表);
 - ADR-dd-025(决策记录);代码:`cw4/statefn/vbar.py` + `cw4/shop.py` r1 消费位。
+
+## 修订单 R1(2026-09-04,增量 B——因子 provenance 重接地)
+
+**触发**:宪法第一条(策略不依赖战力建模)+ 用户裁定(未证即退役/A-B 无裁决权)。原 §①「零新自由参数」声明**作废**——其因子表把 cw_registry 当出处,而 registry 装的是三个经验拟合(rung_value=P3 拟合 / h3_win_rate=P1 校准且无位面维且 rung2 n=9 / expected_battle_loss×hp_to_gold=未标定×P3 废溯源),循环论证。
+
+**结构存活**:帧级现算形态(V̄ 随 r 现算,禁常数视界)、单调性、r≤0 边界、R1 门形态——不变。
+
+**因子重接地后的现行链**:
+
+```
+V̄_net(r, plane) = Δp[plane] × 单战价值 × r
+  Δp = win_rate_dp_by_plane[plane]【推】p15 冻结语料(73 局,sha 848dc1aa)
+       局聚类 bootstrap(n=2000,seed=20260910;battle-only,killed 结算屏
+       权威口径):P1 Δp=0.450 [0.274,0.612](rung0 胜率 0.250 n=84/
+       rung1 0.700 n=60);P2 点估计 −0.197 [−0.498,0.091](n=16/61,
+       薄桶 CI 含 0)→ fail-closed 钳 0(P1/P2 CI 不重叠=必须分位面;
+       P2 重derive 死线=语料扩至 n≥40/桶)
+  单战价值 = vbar_hp_value_transitional(9.59,P15v2 P1 battle CI 下缘,
+             P21 1:1 过渡口径,λ_death 重锚债挂账,P35_VALIDATION:116
+             通道;先例=strategy-docs/04 §2 收益侧)
+           + 连胜金下界(2,STREAK_GOLD_TABLE[2:5] min【注】;窗口下界
+             论证:0-1 档无弹窗金、5+ 档金更高被排除=min=保守下界)
+```
+
+**因子处置**:rung_value 档位流退役(收入三元分解中无 rung 确定函数:息律=存金函数边际 0;连胜流已由 Δp 通道计账,再立=双计;史料=ADR-0515);h3_win_rate 被 win_rate_dp_by_plane 取代(旧 rung0=0.139 比 P1 实测 0.250 低约 44%);expected_battle_loss/hp_to_gold/rounds_left_est 随消费端死亡一并退役。
+
+**连续性锚作废**:原 §②「r=5 ⇒ 24.70=旧注入」随 slope 变化(4.939→P1 5.22)失效——旧值是旧因子组的特例,不再具锚地位;新 P1 锚 r=5 ⇒ 26.08(锁=test_cw_vgap_frame_horizon)。
+
+**行为差**:P1 slope=0.450×11.59=5.22(CI [3.18,7.10] 覆盖旧值 4.939,决策温和);P2 slope=0(门实质关闭,与 economy「P2 少刷吃息」共识同向)。生产默认 V_GAP=None ⇒ R1 门 fail-closed 关闭不变,行为影响待 V_GAP 标定注入后兑现。

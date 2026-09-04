@@ -80,7 +80,7 @@ def tier_search_window(level: int, vbar: float | None = None) -> frozenset[int]:
     (两读法逐级矛盾系物理事实,非缺陷)。表值对拍锚=
     calib_v2_analysis.json ``tier_level_gate.e2_24.7``(V̄=24.7 全表)。
 
-    V̄ 取值(T1 短路径,设计 13_buy_face_design §2.3):生产消费位传帧级
+    V̄ 取值(T1 短路径,设计 11_shop_decisions §6):生产消费位传帧级
     现算值(``vbar.window_vbar``,P57 双读法;T_SEARCH_A 布尔门已退役出
     窗口消费位);``vbar=None`` 保留旧调用面 = provisional V_MS 槽位现读
     (None ⇒ 空集 fail-closed,不造常数窗口)。

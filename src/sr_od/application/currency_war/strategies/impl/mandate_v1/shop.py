@@ -391,8 +391,10 @@ def _frame_search_windows(session: StrategySession, state: GameState,
     level = int(state.level or 1)
     rounds = horizon.r_remaining(session, int(state.plane or 1),
                                  int(state.round_num or 1))
-    v_step = window_vbar(registry, rounds, 'per_step')
-    v_frame = window_vbar(registry, rounds, 'frame_horizon')
+    v_step = window_vbar(registry, rounds, 'per_step',
+                         plane=int(state.plane or 1))
+    v_frame = window_vbar(registry, rounds, 'frame_horizon',
+                          plane=int(state.plane or 1))
     tier_step = tier_search_window(level, v_step)
     tier_frame = tier_search_window(level, v_frame)
     card_step = card_search_window(level, v_step)
@@ -946,7 +948,7 @@ def decide_shop_wave(state: GameState, session: StrategySession,
                 _rounds = horizon.r_remaining(session, int(state.plane or 1),
                                               int(state.round_num or 1))
                 ok_r1, rkey = crit_refresh.r1_commitment_account(
-                    vbar.v_bar_net(_reg, _rounds),
+                    vbar.v_bar_net(_reg, _rounds, int(state.plane or 1)),
                     _r1_member_accounts(k_members, bench, deployed, state,
                                         session, rounds=_rounds))
             else:

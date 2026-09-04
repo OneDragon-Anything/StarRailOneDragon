@@ -300,23 +300,45 @@ class DecisionV2Registry:
     piggy_refresh_round_cap: int = 1
 
     # ===== 层3:板面查表评分(初版=档位×P3 + 息律 EV + H3 插值)=====
-    #: 档位累计值(金/轮;P3 边际 e0→e1 +1.4 / e1→e2 +1.6 累计)
-    rung_value: dict[int, float] = field(
-        default_factory=lambda: {0: 0.0, 1: 1.4, 2: 3.0})
-    #: H3 战力阶梯(battle 胜率;rung 插值键,x>2 取 2)
-    h3_win_rate: dict[int, float] = field(
-        default_factory=lambda: {0: 0.139, 1: 0.416, 2: 0.778})
-    #: 档值折算的剩余轮数估计(P1 9 节点骨架的中段估值;未标定)
-    rounds_left_est: float = 5.0
+    #: 【退役 2026-09-04,增量 B/宪法第一条清退】rung_value 档位金/轮值
+    #: (P3 经验拟合)——收入三元分解中无任何 rung 确定函数(息律=存金
+    #: 函数边际 0;连胜流已由 win_rate_dp_by_plane×单战价值通道计账,
+    #: 再立档位流=双计)。V̄_net 链已改胜率流单通道(vbar.py);
+    #: 史料=ADR-0515。
+    # rung_value(已删;旧值 {0:0.0,1:1.4,2:3.0})
+    #: 【退役 2026-09-04,同上】h3_win_rate H3 胜率阶梯(P1 校准、无位面
+    #: 维、rung2 n=9)——被 win_rate_dp_by_plane(分位面实测)取代;
+    #: 旧值 {0:0.139,1:0.416,2:0.778} 的 rung0 比 P1 实测低约 3 倍。
+    # h3_win_rate(已删)
+    #: 【退役 2026-09-04,同上】rounds_left_est(P1 中段估值,自注未标定)
+    #: ——消费端随 decision_v2 scoring 死亡,零活读者。
+    # rounds_left_est(已删;旧值 5.0)
+    #: 成型档条件胜率边际 Δp(e0→e1),分位面(battle-only,killed 结算屏
+    #: 权威口径)。【推】p15 冻结语料(73 局,sha 848dc1aa)局聚类
+    #: bootstrap(n=2000,seed=20260910):P1 Δp=0.450 [0.274,0.612]
+    #: (rung0 胜率 0.250 n=84 / rung1 0.700 n=60);P2 点估计 −0.197
+    #: [−0.498,0.091](rung0 0.312 n=16 / rung1 0.115 n=61,薄桶且 CI
+    #: 含 0)→ **fail-closed 钳 0**(禁负值进账;P1/P2 CI 不重叠=
+    #: 必须分位面,P2 追档门实质关闭,与 economy「P2 少刷吃息」同向)。
+    #: P2 重derive 死线:P2 battle 语料扩至 n≥40/桶后重拟。
+    win_rate_dp_by_plane: dict[int, float] = field(
+        default_factory=lambda: {1: 0.450, 2: 0.0})
+    #: V̄_net 单战价值 hp 分量(P15v2 P1 battle 条件败局伤害 CI 下缘)。
+    #: 【注·过渡口径】承 P21 1 HP≡1 金(P35_VALIDATION:116 通道:
+    #: 须经 λ_death 重锚或声明过渡——本字段=过渡声明,重锚债挂账);
+    #: 数值单一源=tools/cw/proofs/p15/fit_results.json(848dc1aa 代)
+    #: by_plane_node["(1,'battle')"].ci95_uncensored 下缘=9.59。
+    vbar_hp_value_transitional: float = 9.59
     #: 剩余战斗节点估计(V_D P1 收益侧的**缺省兜底**:plane_node_table
     #: 槽序表缺失/裸 session 时退此值;有表时由 ev.battles_left_plane
     #: 逐轮推导,ADR-0425;层3 score_state 的 power 视界仍用本值)
     battles_left_est: float = 5.0
-    #: 单场战斗典型掉血(层3 power 视界骨架值,V_D P1 收益侧已改用
-    #: vd_p1_loss_* 遥测拟合+state 推导,ADR-0425;本值仍辖层3 power)
-    expected_battle_loss: float = 10.0
-    #: HP→金换算(P3:4.4HP≈2.2金 → 0.5 金/HP)
-    hp_to_gold: float = 0.5
+    #: 【退役 2026-09-04,增量 B/宪法第一条清退】expected_battle_loss
+    #: (10.0,自注未标定)与 hp_to_gold(0.5,P3 溯源已废)——V̄_net 的
+    #: hp 分量已换 vbar_hp_value_transitional(P15v2 锚+P21 过渡口径);
+    #: V_D 收益侧此前已换 vd_p1_loss_*(ADR-0425),双源并存病就此清。
+    # expected_battle_loss(已删;旧值 10.0)
+    # hp_to_gold(已删;旧值 0.5)
     #: 利息封顶档([17]:50 金息律,5 金/轮)
     interest_cap: int = 5
     #: 息 EV 折算轮数(与 rounds_left_est 同源口径)
@@ -1178,7 +1200,8 @@ class DecisionV2Registry:
     #: 10 件,2026-08-28 游戏内实采)。**只承载账面单一源,无行为分支**——
     #: 第二波数学裁决(证明锁 test_cw_w607_h2o_verdict):每件滞留金当量
     #: = 本份额 × expected_battle_loss × battles_left_est × hp_to_gold
-    #: = 0.75(保守=只建模敌伤面,−4% 减伤面不映射=不猜),封顶 7.5
+    #: = 0.75(定谳时点历史推导;式中所用旧字段已于 2026-09-04 增量 B
+    #: 退役,翻案重评时按现行 vbar_hp_value_transitional 口径重算)
     #: < 补给 key_fit 边际 10、< 策划面装备类与升费/弱化的分差 19 →
     #: 现有动作空间无翻转点,H2① 行为分支不合入(无效→不合入,
     #: strategy-work §4 兑换纪律)。重评触发器=该证明锁翻红,或 `w612_effect_inventory/`
