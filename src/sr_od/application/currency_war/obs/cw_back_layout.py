@@ -19,11 +19,15 @@
    「钻石局检测」由此消解(无需识别钻石图标,两 OCR 读数相减即扩展量)。
 2. **CV 通道**::func:`cv_back_slots` 画面实测——后排 y 带槽位存在性签名
    (空槽暗框 vs 无格背景的灰度 std 判别,标定见 :data:`_CV_SLOT_STD_MIN`)。
-3. **对账语义**(口述裁决):一致 → 公式值;**不一致 → CV 实测值**
-   (画面事实 > 推导——公式依赖的两个 OCR 读数可能错)+
-   ``obs_conflict('back_layout_channel_conflict')`` 留证(带两值,便于判读);
-   CV 不可判(帧越界/锚缺失,如 overlay 遮挡/非备战帧)→ 退公式值
-   (公式 = CV 偶发失效时的兜底 + 低成本快速路径)。
+3. **对账语义**(口述裁决 + 布局档对账批修订):一致 → 公式值;
+   **不一致 → 先经占用一致性仲裁**(``_occupancy_consistency_arbitrate``:
+   paddle X − 前排占用 = 后排期望人数,逐候选档读中心占用取最一致者;
+   依据 = CV 端点探针在「N 档端点被占」时结构性高估为 N+1 档——实机
+   停机局实证真板 7 格读 8,旧规「采 CV」致裁切错位 SIFT 漏认 4/6),
+   仲裁不可判(paddle 失读/并列/缺档)→ 退「采 CV 实测值」旧规
+   (画面事实 > 推导)+ ``obs_conflict('back_layout_channel_conflict')``
+   留证(带两值,便于判读);CV 不可判(帧越界/锚缺失,如 overlay 遮挡/
+   非备战帧)→ 退公式值(公式 = CV 偶发失效时的兜底 + 低成本快速路径)。
 4. 7 格档已建档(2026-08-26 佩佩局,用户口述真值 + 点击面板/拖拽交互实锤 +
    246 覆盖拖测)→ diff==1 直读 7 格。**未建档新档位**(diff≥3 域外/CV 新
    观察)→ 8 格超集运行(读全扩展带;拖到不存在格被游戏拒 = 廉价
@@ -292,6 +296,53 @@ def _cv_confirm_readings(ctx, screen, first_cv: int, formula_n: int) -> list[int
     return readings
 
 
+def _expected_back_population(ctx, screen, paddle_x: int) -> int | None:
+    """后排应有人数 = paddle X(前后排总数,游戏计数器真值)− 前排占用
+    (槽中心 CV 现读)。任一环读不到 → None(调用方不仲裁,保旧规)。"""
+    try:
+        from sr_od.application.currency_war.obs.currency_war_cv import (
+            slot_occupied,
+        )
+        from sr_od.application.currency_war.obs.cw_identity_obs import _ctx_slots
+        front = 0
+        for _i, r in _ctx_slots(ctx, '前排', 4):
+            if slot_occupied(screen, (r.x1 + r.x2) // 2, (r.y1 + r.y2) // 2):
+                front += 1
+        return paddle_x - front
+    except Exception:   # noqa: BLE001  读失败 = 不仲裁(保旧规,声明边界)
+        return None
+
+
+def _occupancy_consistency_arbitrate(ctx, screen, candidates: list[int],
+                                     expected_back: int | None) -> int | None:
+    """占用一致性仲裁(纯读):逐候选档读槽中心占用数,|占用 − 期望后排|
+    最小且**唯一**者胜;并列/期望 None/档坐标缺档 → None(不仲裁)。
+
+    标定(实机停机哨兵帧,真板 7 格 6 人):7 档中心占用 6(=期望,差 0)
+    / 8 档中心占用 8(差 2)/ 6 档 6(与 7 档并列场景由候选集限于
+    公式∩CV 两档规避;公式通道另有防抖与单调链防线)。"""
+    if expected_back is None or expected_back < 0:
+        return None
+    from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
+    scores: dict[int, int] = {}
+    for n in dict.fromkeys(candidates):   # 去重保序
+        prefix = _LAYOUT_PREFIX.get(n)
+        if prefix is None:
+            continue
+        slots = back_row_slot_rects_ctx(ctx, prefix)
+        if len(slots) != n:
+            continue   # 档坐标缺档/不完整 → 该候选不可判
+        occ = sum(1 for _i, r in slots
+                  if slot_occupied(screen, (r.x1 + r.x2) // 2,
+                                   (r.y1 + r.y2) // 2))
+        scores[n] = abs(occ - expected_back)
+    if not scores:
+        return None
+    best = min(scores.values())
+    winners = [n for n, s in scores.items() if s == best]
+    return winners[0] if len(winners) == 1 else None
+
+
 def resolve_back_slots(ctx, screen, level: int | None = None,
                        cap: int | None = None) -> dict:
     """双通道对账全量解析(ADR-0385;选档与钩子共用的单一判定源)→ dict:
@@ -333,6 +384,7 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
     formula_n = back_slots_from_cap_diff(diff)    # 映射后(7 → 8 格超集)
     cv_n = cv_back_slots(screen) if screen is not None else None
     cv_readings: list[int | None] | None = None
+    _arb_n: int | None = None   # 占用一致性仲裁胜出档(None=未仲裁/保旧规)
     if cv_n is not None and cv_n != formula_n:
         # 对账不一致:CV 实测优先(画面事实>推导,ADR-0385)+ 留证两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
@@ -360,7 +412,39 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
                 except Exception:   # noqa: BLE001
                     pass
                 cv_n = None   # 退公式(下游 n_raw = 公式真值)
-        n_raw = cv_n if cv_n is not None else formula_raw
+        # 占用一致性仲裁(布局档对账批;实机停机局实证:真板 7 格、公式 7、
+        # CV 读 8 → 旧规「采 CV」→ 8 格 rect 裁切错位 → SIFT 漏认 4/6 后排
+        # → 换阵卖出候选集残缺死锁)。机理:CV 端点探针的 std 分不开
+        # 「N+1 档端点有格」与「N 档端点被占」——occupied 立绘把探针窗顶过
+        # 阈值(ADR-0420 已在案「外缘探针受占用态干扰,单帧不可标」),即
+        # CV 通道在端点占用帧**结构性高估**。判别器 = 占用一致性:paddle X
+        #(游戏计数器,构造上真值)减前排占用 = 后排应有人数;逐候选档读
+        # 槽中心占用,|占用 − 期望| 最小者胜。双档并列/任一读数不可得
+        #(paddle 失读/ctx 缺/front 失读)→ 不仲裁,保持「采 CV」旧规
+        #(声明边界:公式档本身错且恰与 CV 错读数并列时不可救,依赖
+        # paddle/level 防抖读的既有防线)。
+        # 边界:cv_n 未建档(∉ _LAYOUT_PREFIX,走上方防抖/8 格超集语义)时
+        # 不仲裁——仲裁只能在「两个已建档档」之间选,不得把未建档超集读数
+        # 静默收敛回已建档档(那会跳过留证采集钩子)。
+        if cv_n is not None and cv_n != formula_n and cv_n in _LAYOUT_PREFIX:
+            try:
+                from sr_od.application.currency_war.obs.cw_observation import (
+                    read_deployed_count,
+                )
+                _paddle_x = read_deployed_count(ctx, screen)
+                if _paddle_x is not None:
+                    _expected = _expected_back_population(ctx, screen, _paddle_x)
+                    _arb_n = _occupancy_consistency_arbitrate(
+                        ctx, screen, [formula_n, cv_n], _expected)
+            except Exception:   # noqa: BLE001  仲裁 best-effort,失败保旧规
+                _arb_n = None
+            if _arb_n is not None and _arb_n != cv_n:
+                from one_dragon.utils.log_utils import log
+                log.info('[cw][layout] 通道冲突占用一致性仲裁: %d 格胜出'
+                         '(公式 %s/cv %s;期望后排 %s 人)——CV 端点占用高估'
+                         '嫌疑,采仲裁值', _arb_n, formula_n, cv_n, _expected)
+        n_raw = (_arb_n if _arb_n is not None
+                 else (cv_n if cv_n is not None else formula_raw))
     else:
         n_raw = formula_raw
     n = n_raw if n_raw in _LAYOUT_PREFIX else 8   # 未建档新档位 → 8 格超集(模块 docstring 条4)
@@ -377,7 +461,7 @@ def resolve_back_slots(ctx, screen, level: int | None = None,
     except Exception:   # noqa: BLE001
         pass
     return {'formula_raw': formula_raw, 'formula_n': formula_n, 'cv_n': cv_n,
-            'cv_readings': cv_readings,
+            'cv_readings': cv_readings, 'arb_n': _arb_n,
             'n_raw': n_raw, 'n': n, 'prefix': p, 'cap': cap, 'level': level,
             'diff': diff}
 
