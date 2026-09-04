@@ -86,16 +86,17 @@ pivot 重叠度(`pivot_overlap` = 共享角色重合度)调制转型信号阈值
 - ④ 资源:升费链角色到手作资源到位代理(升费资源暂无 GameState 字段);**P1 资格门(ADR-0341)与③同辖**(④与③同为「卡/资源到手」证据类);
 - ⑤ 兜底线:`FALLBACK_COMP_NAME`(欢愉族绯英档,无信号默认落点)——**不在 detect_signals 产出**,信号列表为空时解析侧落兜底。
 
-**锁线/撤销状态机**(`IntentionState`:unlocked / locked / weak,`update_intention` 每回合驱动;一回合最多一次转移——撤销后当轮不重锁,防弱意向态不可观测):锁定后撤销**只有两个出口(析取)**:
+**锁线/撤销状态机**(`IntentionState`:unlocked / locked / weak,`update_intention` 每回合驱动;一回合最多一次转移——撤销后当轮不重锁,防弱意向态不可观测):锁定后撤销**有三个出口(析取)**:
 
 1. **出口① 断供证据(三条件合取,ADR-0436)**:开窗须同时满足——① 意向核心连续 miss ≥ max(`CORE_MISS_N`, `N_req`) 轮不可得,N_req 由容忍概率 ε(`revoke_miss_tolerance_eps`)从再遇窗口期望闭式推导(`core_miss_n_required` = ⌈ln ε/ln(1−q)⌉,随核心费用/当前等级自适应;拍死值 `CORE_MISS_N` 保留为上限保险);② 存在异线 comp 核心可达(与出口②同一把可达对照尺);③ 该异线资产厚度 ≥ A_min(`revoke_evidence_min_thickness`,冻结池随机厚度基线曲线 5% 点测量值)——「另一条线正在实际生长」是换线意图与断供噪声的区分变量。计数带**窗口冻结语义**(`LineTrack`):分母只计刷新窗已开的轮(窗口未开时「买不到」是结构性的,不是不可达证据,计 `frozen_rounds` 不计 `miss_count`);冻结累计超位面剩余节点 → 该线**逐出**候选集(`evicted`,移出后不再产信号),意向回无信号态且当轮不触发③。开窗帧携带证据快照(`IntentionState.revoke_evidence`:miss_count/n_req/q/异线名/e_alt/厚度/A_min,落遥测;误开窗判据与回炉口径见 ADR-0436);
 2. **出口② 高层替代**:更高层级信号(层级低于锁定层)且过**可达性对照**(再遇窗口期望轮数 `encounter_window_rounds` ≤ 全局剩余节点数)——层级高 ≠ 必换。
+3. **出口③ 供给不可行降级(dd-035,P2 辖域)**:可行性门先验判「这条线还等不等得到」——`line_completion_feasibility` 的 G(核心缺件在有效视界 H=`p2_supply_horizon` 内全部现身的概率,供给概率×剩余轮×血预算三维,零新参数)压不进容忍带(ε=`revoke_miss_tolerance_eps`)时,该线属「出口①的证据门槛在其视界内不可达」的先验不可行。已锁线 P2 开窗撤销须**三证据合取**:G_locked ≤ ε ∧ 线内在店断供 ≥ `PAIR_SUPPLY_CONFIRM_ROUNDS`(观测证据,`LineTrack.member_drought`)∧ 存在已验证可达的替代线(G_alt > ε ∧ 替代线意向核心在店/在手)。可逆降级:不写 `evicted`,证据落 `revoke_evidence{kind:'supply_infeasible'}`,次轮经 P2 移交重锁可行线。同一 G 量还辖两个锁线准入面:P2 移交强锁候选须 G > ε(全不可行保持 unlocked ⑤兜底)、P2 ①②类信号核心不在店 ∧ G ≤ ε 时缓锁本轮(核心在店的信号不辖)。可行性差 ≠ 不锁线:全线不可行时不换线(维持现任),线内件买入义务零触碰。
 
 分数涌现劣势换线**不在本模块**(终局线由贯穿件锁定,不是 pivot)。**强制锁线**(P3 入口仍无意向):候选按资产厚度(终局件星级当量 + 骨架件折算)择最优锁;全部不可达 → **降格终局**(`demoted_endgame`,「赢不了就少输」),为 absorbing 态(不回弹)。
 
 **换线存活轮数门(C4;ADR-0429)——已清退(dd-009)**:旧机制为「撤销后弱意向态的新信号对另一条线落锁前,串联存活轮数投影门(`cw_line_switch.survival_gate`;registry `line_switch_survival_gate_enabled`/`rounds_two_state_enabled` 双开关默认关;`rounds_alive` 逐节点投影口径)」。全族经 A/B 零行为证据后判负,双开关、`rounds_alive` 投影代码与消费接线已按开关生命周期第 4 态整批删除(registry 位置留墓碑注释);换线落锁现直接经撤销出口与信号门槛完成,无存活门。0 触发教训与复活条件见 ADR-0429 增补节,清退 why 见 dd-009。
 
-**锁线环境判据(W607 H1;ADR-0461)**:累积型线(`Comp.global_accumulators` 含 `hp_charge_stack`)的锁线信号在 `update_intention` 落锁前过强环境判定 `_line_env_qualified`——词缀经 `AFFIX_MECHANIC_MAP` 归一后与强环境机制集(`cw_comps.STRONG_ENV_MECHS`,语义出处 = final_comps/accumulator_family §3)求交;三态语义 = 不命中(`False`)缓锁(信号不进当轮锁线候选)、不辖/词缀可信位缺失(`None`)放行(ADR-0107 动态剔除同款,不猜)、命中照常落锁。开关 `line_env_gate_enabled` 已删(dd-009 清退链,行为无条件化——判定恒执行,注册表 L1193 墓碑);观察期参数 `line_env_lock_min_round`(默认 1)保留;**只辖主动选线**——已锁线不经此滤(环境缺失不没收已锁线,撤销仍走既有两出口);P1 资格门(③/④)的拦截与本判据正交(前者辖时机,后者辖环境要件)。
+**锁线环境判据(W607 H1;ADR-0461)**:累积型线(`Comp.global_accumulators` 含 `hp_charge_stack`)的锁线信号在 `update_intention` 落锁前过强环境判定 `_line_env_qualified`——词缀经 `AFFIX_MECHANIC_MAP` 归一后与强环境机制集(`cw_comps.STRONG_ENV_MECHS`,语义出处 = final_comps/accumulator_family §3)求交;三态语义 = 不命中(`False`)缓锁(信号不进当轮锁线候选)、不辖/词缀可信位缺失(`None`)放行(ADR-0107 动态剔除同款,不猜)、命中照常落锁。开关 `line_env_gate_enabled` 已删(dd-009 清退链,行为无条件化——判定恒执行,注册表 L1193 墓碑);观察期参数 `line_env_lock_min_round`(默认 1)保留;**只辖主动选线**——已锁线不经此滤(环境缺失不没收已锁线,撤销仍走既有三出口);P1 资格门(③/④)的拦截与本判据正交(前者辖时机,后者辖环境要件)。
 
 **锁后效果接口**(`hoard_target_set` → `HoardTarget`):输出囤货目标集合 = 角色件(char_targets:意向线采购集,core/shared/替班/羁绊成员)+ 装备件(equip_targets:意向线 equip_assign 派生,剔具名 equip_taboos)+ mode('locked'/'forced'/'weak'/'fallback'/'demoted_endgame',买侧按 mode 区分囤货语义)。生产载体 = decision_v2 的 `update_target` 每轮把它写进 `session.v3_hoard`,是**买侧唯一消费面**——意向模块不产出任何上场/换人动作(意向管方向、演进管换档)。弱意向态撤销后去向 = 只囤跨线骨架件(`CROSS_LINE_SKELETON`,从 W16 过半统计派生,ADR-0312)。
 
