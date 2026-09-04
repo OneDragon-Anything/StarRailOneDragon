@@ -227,7 +227,7 @@ def run_mandate(frame: MandateFrame,
     equip_latch_skip_m7(装备期闩跳过计数,dd-027 门②)。
 
     备战期开店闩(``session.cw4_shopped_phase``):同一备战期内开店意图
-    只发一次。为什么是决策的推论而非限制:①商店域决策发生在店内一次
+    只消费一次。为什么是决策的推论而非限制:①商店域决策发生在店内一次
     访问内闭环(买/升/刷/卖四字段=店内决策输出,刷新后当场再评估),
     骨架不二次发店;②期内重开无信息量——输入逐项不可变:店面五张
     (无店内刷新则恒定)、金(店外只因 M3 买经验减少不会增加,候选集
@@ -235,8 +235,16 @@ def run_mandate(frame: MandateFrame,
     下一备战期生效);同一帧状态重发同一动作=备战环活锁(2026-09-03
     实机首局 1-1 卡死根因:M2 每帧重燃 OpenShop 截断点,StartBattle
     永不可达;sim 每回合单次决策,该活环只在实机多帧备战环可见)。
-    边界:发射时才置闩——店未开成(席位失败/燃料耗竭,本帧无 OpenShop
-    发射)不置闩,下帧照常重试;位面/轮次推进=新键自动失效(新店内容
+    边界:闩置位在**商店决策访问位**(mandate_v1/shop.decide_shop_action
+    入口=开店动作真执行、商店域决策已发生的时点),不在发射位——
+    备战环是单动作环,同发射列表里 dd-027 回排后的 RunEquip(可续类)
+    先执行即投影未建模终结本环,发射列表中其后的 OpenShop 意图未执行;
+    若发射即置闩,闩烧而店未开,后续环重跑 mandate 被闩挡死 ⇒ 空批
+    StartBattle(2026-09-05 实机局 run_20260905_024059 备战环连续三轮
+    经济冻结实证,诊断归档
+    .debug/temp/currency_war/20260905_noprogress_stop_diag/report.md C3;
+    dd-027 修发射序回排后本闩置位时机是同型残留)。闩未置时发射位
+    照常重发(下帧重试);位面/轮次推进=新键自动失效(新店内容
     重新决策)。旧核 step1 RunBuyPhase 的每备战期一次店内完整决策与本
     闩同构,佐证非理由。
     """
@@ -254,11 +262,12 @@ def run_mandate(frame: MandateFrame,
 
     def _emit_open_shop(tag: str) -> None:
         """开店意图发射位(备战期闩消费点):闩命中=跳过+分站计数;
-        首发置闩。见本函数 docstring「备战期开店闩」节。"""
+        闩未命中=发射但不置闩——置闩在商店决策访问位
+        (mandate_v1/shop.decide_shop_action,开店动作真执行时点),
+        理由见本函数 docstring「备战期开店闩」节边界段。"""
         if shopped:
             _count(f'shop_latch_skip_{tag}')
             return
-        session.cw4_shopped_phase = phase
         out.append(Emitted(OpenShop(read_only=False), True, tag))
 
     out: list[Emitted] = []
