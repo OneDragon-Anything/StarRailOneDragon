@@ -1,6 +1,6 @@
 # 货币战争战力模型设计(sim 战斗结算层专用)
 
-> 性质:**设计件(需求定义,未实施)**——落地后按 as-built 改写(先例:[strategy/11_tools_usage_design.md](strategy/11_tools_usage_design.md))。
+> 性质:**设计件(需求定义,未实施)**——落地后按 as-built 改写(判据规格化先例=同需求定义形态的 strategy-docs/10 §2.1 工具使用判据)。
 > 裁定:[ADR-0512](decisions/0512-power-model-scope-sim-only.md)(范围:唯一消费者=sim 战斗结算层)。
 > 读者 = 脱离任何会话的开发/策略 agent。数值一律不落本文,单一源将来在代码注册表/校准表。
 
