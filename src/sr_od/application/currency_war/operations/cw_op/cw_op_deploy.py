@@ -193,7 +193,10 @@ def exclude_system_units(chars: list) -> list:
 
 def offtarget_sell_allowed(char_id: str, bonds: set[str],
                            target_factions: set[str],
-                           target_cores: set[str]) -> bool:
+                           target_cores: set[str], *,
+                           fenced_offline_sellable: bool = False,
+                           protect_names: frozenset[str] = frozenset()
+                           ) -> bool:
     """W209/ADR-0386:off-target 卖出候选判据(纯函数,锁测试面)。
 
     run 26 实锤(崩坏根因②):P2 定型后 deploy 侧只按终局 ``target_comp`` 判
@@ -204,13 +207,34 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
     围栏同源)恒不卖**——deploy 自己都把它们当围栏件不许留 bench,卖出判定不得
     同源反向。真要换血走演进层显式 SellDeployed/CompTransaction(有保护集分级,
     ADR-0382),不归 deploy 的机会性腾位通道管。
+
+    换阵卖出义务臂(板满换阵死锁修复;第七局 r9 实证):
+    ``fenced_offline_sellable=True`` 时,off-line 的引擎/配方件(**bonds ∌
+    target、∉ protect_names**)让位可卖。依据:熔断防的振荡前提 =「买/演进层
+    仍在买入该体系件」;线已成型(fp=1.00,单一源 ``cw_comps.form_progress``)
+    后买侧对旧线 fenced 件已无需求,保留保护只剩闭死腾位通道的副作用
+    (艾丝妲=旧线持续伤害/黑塔被护 → sold 0/2 → RunDeploy 单签名守卫停机)。
+    ``protect_names`` = 新线 core∪shared(禁卖护栏不因换阵解除,P41②口径;
+    core 件本就被 ``target_cores`` 挡,shared 件经本参显式兜住)。target 单位
+    判定(阵营/流派交集)在两臂下都不变。
     """
-    if char_id and char_id in target_cores:
-        return False   # core_char 辅助保留(live 花火误卖根由)
+    if char_id and (char_id in target_cores or char_id in protect_names):
+        return False   # core/新线 core∪shared 保留(live 花火误卖根由;P41②)
     if bonds & target_factions:
         return False   # target 单位,保留
+    if fenced_offline_sellable:
+        return True    # 换阵卖出义务臂:off-line 引擎/配方件让位(线已成型)
     # 引擎/配方体系件恒不卖(W209 振荡熔断,ADR-0386)
     return not (bonds & _DEPLOY_FENCE)
+
+
+def fenced_swap_arm_of(fp: float, board_count: int,
+                       front_n: int, back_n: int) -> bool:
+    """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
+    单一源 ``cw_comps.form_progress``)∧ 板面满(deployed 计 ≥ 前后排
+    槽位总数)。两条件并存 = 熔断的振荡防护前提(买/演进层仍要 fenced 件)
+    消失、且 bench target 无空槽可进——此时 off-line fenced 件让位。"""
+    return fp >= 1.0 and board_count >= front_n + back_n
 
 
 def _note_deployed_count_divergence(ctx: SrContext, screen: MatLike, source: str,
@@ -398,8 +422,39 @@ class CwOpDeploy(SrOperation):
 
             _bench_tgt_n = sum(1 for _bc in _bench_chars if _is_tgt_char(_bc.char_id))
             if _bench_tgt_n > 0:
-                _n = self._sell_offtarget_deployed(front, back, _target_factions, templates,
-                                                   max_sell=_bench_tgt_n, target_cores=_target_cores)
+                # 换阵卖出义务臂(板满换阵死锁修复;第七局 r9 实证:线成型
+                # fp=1.00 后 W209 熔断仍护旧线 fenced 件——艾丝妲=旧线持续
+                # 伤害/黑塔 → sold 0/2 → RunDeploy 单签名三环守卫停机):
+                # 触发条件 = 线已成型(fp≥1.00,单一源 form_progress)∧ 板满
+                #(deployed 计 ≥ 前后排槽位总数)——两条件成立时买/演进层对
+                # 旧线 fenced 件已无需求,熔断的振荡防护前提消失,off-line
+                # fenced 件让位给换阵卖出义务。未成型/未满板帧保持熔断
+                #(双轨期预囤框架件仍受保护,原语义零变化)。新线 core∪shared
+                # 经 protect_names 继续保护(P41②禁卖护栏不因换阵解除)。
+                _fenced_arm = False
+                _protect: frozenset[str] = frozenset()
+                if _tgt_comp is not None and _match.session.last_state is not None:
+                    from sr_od.application.currency_war.kernel.cw_comps import (
+                        form_progress,
+                    )
+                    _fp_now = form_progress(_tgt_comp, _match.session.last_state)
+                    _board_n = (sum((_board or {}).values())
+                                if isinstance(_board, dict)
+                                else len(_board or []))
+                    _fenced_arm = fenced_swap_arm_of(_fp_now, _board_n,
+                                                     len(front), len(back))
+                    _protect = frozenset(
+                        set(_tgt_comp.core_chars)
+                        | set(getattr(_tgt_comp, 'shared_chars', []) or ()))
+                if _fenced_arm:
+                    log.info('[cw-deploy] 换阵卖出义务臂开启:线成型 fp=1.00 ∧ 板满 '
+                             f'∧ bench target={_bench_tgt_n} → off-line 引擎/配方件'
+                             '让位可卖(新线 core∪shared 仍保护)')
+                _n = self._sell_offtarget_deployed(
+                    front, back, _target_factions, templates,
+                    max_sell=_bench_tgt_n, target_cores=_target_cores,
+                    fenced_offline_sellable=_fenced_arm,
+                    protect_names=_protect)
                 log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
                          f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
             else:
@@ -1077,7 +1132,9 @@ class CwOpDeploy(SrOperation):
 
     def _sell_offtarget_deployed(self, front: list[Point], back: list[Point],
                                  target_factions: set[str], templates: AvatarTemplates | None,
-                                 max_sell: int = 99, target_cores: set[str] | None = None) -> int:
+                                 max_sell: int = 99, target_cores: set[str] | None = None,
+                                 fenced_offline_sellable: bool = False,
+                                 protect_names: frozenset[str] = frozenset()) -> int:
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
 
         SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
@@ -1100,9 +1157,12 @@ class CwOpDeploy(SrOperation):
                 continue   # 系统单位(cost==0)已在入口剔除(ADR-0281 件4)
             bonds = set(ch.factions) | set(ch.flows)
             if not offtarget_sell_allowed(d.char_id, bonds, target_factions,
-                                          target_cores or set()):
+                                          target_cores or set(),
+                                          fenced_offline_sellable=fenced_offline_sellable,
+                                          protect_names=protect_names):
                 if bonds & _DEPLOY_FENCE:
-                    # W209/ADR-0386 振荡熔断:引擎/配方体系件保留(与围栏同源反向禁卖)
+                    # W209/ADR-0386 振荡熔断:引擎/配方体系件保留(与围栏同源反向禁卖;
+                    # 换阵卖出义务臂开启时 off-line fenced 件已让位,走不到这里)
                     log.info(f'[cw-deploy] off-target 卖出熔断(W209):{d.char_id}'
                              f'({sorted(bonds & _DEPLOY_FENCE)}) 是引擎/配方体系件'
                              f' → 保留(买/演进层目标源与终局 target 分歧时禁互踩)')
