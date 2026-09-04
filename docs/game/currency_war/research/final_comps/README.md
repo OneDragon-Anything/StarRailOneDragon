@@ -45,7 +45,7 @@
   **反向:全试用可玩的类=DOT/绯英/大黑塔(38篇全试用)——低门槛首选档**
   (redesign 注,2026-08-31:新证据门按**软通道**消费本条——COMP_LIBRARY
   external_deps 登记位扣减而非硬过滤,保排名回升可见性;见
-  docs/develop/currency_war/redesign/01_strategy_layer.md §4.2)
+  docs/develop/currency_war/archive/redesign/01_strategy_layer.md §4.2)
 - **A2 自动战斗适配**(r182):自动化注定自动战斗。多篇独立报告同一
   缺陷才排除(当前无);观察级:圣杯拉条目标(#14 类)。
   **正向档(挂机/轮椅标记 50 篇):盾反姬子/万敌/白厄/DOT——
