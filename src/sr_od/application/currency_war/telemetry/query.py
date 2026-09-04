@@ -819,6 +819,19 @@ def query_plan_vs_exec(replay_dir: Path, run_id: str) -> list[str]:
 #: 行内无 run_id,同 (plane, round) 跨局复现——按 ts 邻近消歧。
 _SPEND_CONFLICT_TS_WINDOW_S: int = 600
 
+#: sim 局 ts=轮序号(int)时的邻近窗(轮):同 (plane, round) 过滤后
+#: 仅剩同轮/邻轮行,窗取 1 即够;与实机秒窗语义不同源,勿混用。
+_SPEND_CONFLICT_SEQ_WINDOW: int = 1
+
+
+def _ts_sort_key(v: Any) -> tuple[int, float, str]:
+    """ts 排序键(两形态可互排,不崩):int/float 轮序号 → (0, 数值, '');
+    ISO 串/缺省 → (1, 0, 串)。sim 局 ts=轮序号 int,直接 `or ''` 会在
+    ts=0 与 int 混排时比较崩 TypeError——此处收口 spend 视图链路。"""
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return (0, float(v), '')
+    return (1, 0.0, str(v) or '')
+
 
 #: 大额失配清单门槛(金):`w489_sim_real_gap/` 感知面大额漂移 16-40 金量级,>10 报清单。
 _SPEND_LARGE_GAP: int = 10
@@ -975,28 +988,47 @@ def _read_conflict_gold_delta(replay_dir: Path) -> list[dict[str, Any]]:
 
 
 def _match_conflict(conflicts: list[dict[str, Any]], plane: int, round_num: int,
-                    ts: str) -> dict[str, Any] | None:
-    """按 (plane, round) + ts 邻近窗匹配关店实读金冲突行(就近取;纯函数)。"""
-    try:
-        from datetime import datetime as _dt
-        t0 = _dt.fromisoformat(ts) if ts else None
-    except ValueError:
-        t0 = None
+                    ts: str | int | float) -> dict[str, Any] | None:
+    """按 (plane, round) + ts 邻近窗匹配关店实读金冲突行(就近取;纯函数)。
+
+    ts 两形态:实机局 = ISO 时间串,走秒窗(``_SPEND_CONFLICT_TS_WINDOW_S``);
+    sim 局 = 轮序号(int),走轮序号窗(``_SPEND_CONFLICT_SEQ_WINDOW``)——
+    fromisoformat 只收 str,sim int ts 直传曾在 query.py 旧版崩 TypeError,
+    非 str 分支在此收口。跨形态不互配(ISO 行 vs int ts 互跳过),行为不猜。
+    """
+    from datetime import datetime as _dt
+    t0_dt: _dt | None = None
+    t0_seq: int | None = None
+    if isinstance(ts, str):
+        try:
+            t0_dt = _dt.fromisoformat(ts) if ts else None
+        except ValueError:
+            t0_dt = None
+    elif isinstance(ts, (int, float)) and not isinstance(ts, bool):
+        t0_seq = int(ts)
     best = None
-    best_dt = None
+    best_d = None
     for r in conflicts:
         if (r.get('plane'), r.get('round_num')) != (plane, round_num):
             continue
-        if t0 is None:
+        if t0_dt is None and t0_seq is None:
             best = r
             break
-        try:
-            from datetime import datetime as _dt2
-            d = abs((_dt2.fromisoformat(r.get('ts') or '') - t0).total_seconds())
-        except (ValueError, TypeError):
-            continue
-        if d <= _SPEND_CONFLICT_TS_WINDOW_S and (best_dt is None or d < best_dt):
-            best, best_dt = r, d
+        r_ts = r.get('ts')
+        d: float | None = None
+        if t0_seq is not None and isinstance(r_ts, (int, float)) \
+                and not isinstance(r_ts, bool):
+            if abs(int(r_ts) - t0_seq) <= _SPEND_CONFLICT_SEQ_WINDOW:
+                d = abs(int(r_ts) - t0_seq)
+        elif t0_dt is not None and isinstance(r_ts, str) and r_ts:
+            try:
+                d = abs((_dt.fromisoformat(r_ts) - t0_dt).total_seconds())
+            except (ValueError, TypeError):
+                d = None
+            if d is not None and d > _SPEND_CONFLICT_TS_WINDOW_S:
+                d = None
+        if d is not None and (best_d is None or d < best_d):
+            best, best_d = r, d
     return best
 
 
@@ -1004,7 +1036,7 @@ def _match_conflict(conflicts: list[dict[str, Any]], plane: int, round_num: int,
 def resolve_unit_gold_close(unit_row: dict[str, Any] | None,
                             conflicts: list[dict[str, Any]],
                             plane: int, round_num: int,
-                            ts: str) -> int | None:
+                            ts: str | int | float) -> int | None:
     """购买单元关店金解析(纯函数;安灯钩子与离线视图共用单一源)。
 
     取值序:spend_ledger 单元行自身 gold_close 优先(每单元必写、带
@@ -1081,7 +1113,7 @@ def query_spend_ledger(replay_dir: Path, run_id: str) -> list[str]:
     plans = _shop_plan_rows(replay_dir, run_id)
     conflicts = _read_conflict_gold_delta(replay_dir)
     units: list[dict[str, Any]] = []
-    for r in sorted(ledger, key=lambda x: x.get('ts') or ''):
+    for r in sorted(ledger, key=lambda x: _ts_sort_key(x.get('ts'))):
         pr, rnd = int(r.get('plane') or 0), int(r.get('round_num') or 0)
         plan_row = plans.get((pr, rnd))
         conf = _match_conflict(conflicts, pr, rnd, r.get('ts') or '')
