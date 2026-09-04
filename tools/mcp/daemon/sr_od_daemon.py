@@ -181,11 +181,21 @@ def start_sr_od_mcp_server(port: int = MCP_SERVER_PORT) -> str:
                     break
                 time.sleep(2)
             if process.poll() is None and _listen_ok:
-                return f"[SUCCESS] 主 MCP server 启动成功 (PID: {process.pid})\n端口: {port}\n日志: {log_path}"
+                # 运行日志单一源 = src/sr_od/backend/entry/server.py MCP_SERVER_LOG_FILE_NAME
+                # (.log/mcp_server.log,op/框架日志唯一信道);本进程重定向的
+                # log_path 只是 stdout 兜底——单一信道修后正常启动零写入,
+                # 把它标成「日志」会误导排障方向(2026-09-04 第10局实证:
+                # 排障者按此提示查死文件,而活日志在另一候选)。
+                return (f"[SUCCESS] 主 MCP server 启动成功 (PID: {process.pid})\n"
+                        f"端口: {port}\n"
+                        f"运行日志: {PROJECT_ROOT / '.log' / 'mcp_server.log'}(op/框架日志唯一信道,判读看这里)\n"
+                        f"stdout 兜底: {log_path}(仅收 print/未捕获 traceback,静默属常态)")
             _hint = ('' if _listen_ok else
                      f'\n[提示] 端口 {port} 未监听——若被旧进程占用,先 taskkill /PID <旧pid> /T /F 清理再 start')
             return (f"[ERROR] 启动失败(返回码 {process.returncode},"
-                    f"端口监听={_listen_ok}){_hint}\n日志: {log_path}")
+                    f"端口监听={_listen_ok}){_hint}\n"
+                    f"stdout/traceback: {log_path}(启动失败先看这里)\n"
+                    f"运行日志: {PROJECT_ROOT / '.log' / 'mcp_server.log'}")
 
         except Exception as e:
             return f"[ERROR] 启动异常: {e}"

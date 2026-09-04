@@ -216,7 +216,10 @@ def restart_server(skip: bool, restart_wait: float) -> bool:
         return False
     _log(f'[3/5] daemon 返回: {" | ".join(ln.strip() for ln in out.splitlines() if ln.strip())}')
     if not wait_server_up(restart_wait):
-        _log(f'[3/5] ❌ 重启后 {restart_wait:.0f}s 内主 server 未应答,中止。查 .debug/sr_od_mcp/main_server.log')
+        # 排障入口=运行日志单一信道(op/框架日志,单一源=server.py MCP_SERVER_LOG_FILE_NAME);
+        # main_server.log 只是 daemon 重定向的 stdout 兜底,仅收 traceback,静默属常态。
+        _log(f'[3/5] ❌ 重启后 {restart_wait:.0f}s 内主 server 未应答,中止。查运行日志 .log/mcp_server.log'
+             '(stdout 兜底 .debug/sr_od_mcp/main_server.log 仅在有 traceback 时才有内容)')
         return False
     return True
 
