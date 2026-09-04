@@ -1350,8 +1350,8 @@ def arbitrate_deployed_count(paddle_n: int | None,
     **规则(无新阈值;两条依据)**:
     1. 两源都可读 → **取低值 min**(fail-closed 向「板未满」侧)。依据 =
        代价不对称(本仓既有 r60/r64 取舍口径):计数偏高 → 「板满」假判 →
-       合法化 no-op → 零推进死锁(实证:2026-09-05 备战 r9 停机,CV 虚高
-       5 vs paddle 真值 3,``deployed_count_2src`` 留证三连);计数偏低 →
+       合法化 no-op → 零推进死锁(实证:备战环 CV 幻影占用合法化 no-op 的
+       实机停机局,``deployed_count_2src`` 留证三连);计数偏低 →
        多试一次拖拽被游戏拒(源槽弹回,廉价可观测)。取 min 恒落在廉价侧,
        单调规则不依赖任何拍定分界。
     2. 分歧告警带沿用既有留证判据 |paddle−cv|>1(spread≤1 属两源合法
@@ -1359,7 +1359,13 @@ def arbitrate_deployed_count(paddle_n: int | None,
        调用方须留证 + 记 ``telemetry.defects.DEFECT_KIND_DEPLOYED_COUNT_2SRC``
        分键(防静默;不一致率按该 kind 计数)。
 
-    单源缺席 → 返另一源(无仲裁语义,divergent=False);双缺席 → (None, False)。
+    **单源缺席(显式申报的退化语义;注意与主方向相反)**:
+    一源缺失时无仲裁语义,返另一源——**paddle 缺席时退化 = 按 CV 行动 =
+    向「板满」侧 fail**(与 min 的廉价方向相反;两害相权:此帧改「放行」
+    会把「真板满 ∧ OCR 抖动」变成白拖耗环)。调用方契约:paddle 缺席帧
+    **必须**先重读一帧(stylized 数字 det 单帧间歇漏在案)仍失读才接受
+    退化,且**必须**记 ``DEPLOYED_COUNT_2SRC`` 分键申报(不得静默)。
+    双缺席 → (None, False)。
     """
     if paddle_n is None and cv_n is None:
         return None, False

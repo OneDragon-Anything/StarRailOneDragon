@@ -17,6 +17,8 @@
 import time
 from typing import ClassVar
 
+from cv2.typing import MatLike
+
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -211,10 +213,13 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
     return not (bonds & _DEPLOY_FENCE)
 
 
-def _note_deployed_count_divergence(ctx: SrContext, screen, source: str,
-                                    paddle_n: int, cv_n: int) -> None:
-    """deployed 计数双源分歧留证 + 分键(板满门仲裁触发时;best-effort 不抛)。
+def _note_deployed_count_divergence(ctx: SrContext, screen: MatLike, source: str,
+                                    paddle_n: int | None, cv_n: int) -> None:
+    """deployed 计数双源分歧/失读退化留证 + 分键(板满门仲裁触发时;best-effort 不抛)。
 
+    两类事件同键计数:
+    - 结构性分歧(paddle 与 CV 差 >1,已取低值仲裁);
+    - paddle 失读退化帧(``paddle_n=None``,单源 CV 向板满侧行动,申报防静默)。
     证据层(obs_conflicts 原始行)+ 裁决事件层(defect 台账独立分键
     ``DEFECT_KIND_DEPLOYED_COUNT_2SRC``,不一致率按该 kind 计数)。
     """
@@ -222,15 +227,24 @@ def _note_deployed_count_divergence(ctx: SrContext, screen, source: str,
         from sr_od.application.currency_war.kernel.cw_observe import (
             obs_conflict,
         )
-        obs_conflict(
-            'deployed_count_2src',
-            {'paddle_x': paddle_n, 'cv_occupied': cv_n},
-            'spread>1', screen,
-            verdict=('已仲裁-取低值(paddle X=游戏计数器真值 vs CV 占用;'
-                     '规则见 cw_observation.arbitrate_deployed_count;'
-                     '2026-09-05 备战停机实证 CV 幻影占用合法化 no-op;'
-                     '同局 ≥3 次排期修 CV 占用源/后排布局档)'),
-            source=source)
+        if paddle_n is not None:
+            obs_conflict(
+                'deployed_count_2src',
+                {'paddle_x': paddle_n, 'cv_occupied': cv_n},
+                'spread>1', screen,
+                verdict=('已仲裁-取低值(paddle X=游戏计数器真值 vs CV 占用;'
+                         '规则见 cw_observation.arbitrate_deployed_count;'
+                         '实机停机局实证 CV 幻影占用合法化 no-op;'
+                         '同局 ≥3 次排期修 CV 占用源/后排布局档)'),
+                source=source)
+        else:
+            obs_conflict(
+                'deployed_count_2src',
+                {'paddle_x': None, 'cv_occupied': cv_n},
+                'paddle 失读', screen,
+                verdict=('退化申报-paddle 双帧失读,单源 CV 行动(向板满侧;'
+                         '仲裁语义失效,重读一帧未救回;频发则排期修 paddle 读链)'),
+                source=source)
     except Exception:   # noqa: BLE001  留证 best-effort,不阻塞部署
         pass
     try:
@@ -586,31 +600,13 @@ class CwOpDeploy(SrOperation):
         CV 验源槽空同时覆盖 place + swap(swap 时被换下角色回 bench,源槽仍空)。
         """
         scr = self.screenshot()
-        bench_occ = [i for i, c in enumerate(bench) if slot_occupied(scr, int(c.x), int(c.y))]
-        front_empty = [i for i, c in enumerate(front) if not slot_occupied(scr, int(c.x), int(c.y))]
-        back_empty = [i for i, c in enumerate(back) if not slot_occupied(scr, int(c.x), int(c.y))]
-        if not bench_occ or (not front_empty and not back_empty):
-            log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} front空={len(front_empty)} back空={len(back_empty)}'
-                     f' → {"无 bench 角色" if not bench_occ else "板满无空槽(swap 待身份)"}')
-            return 0, True
         _match = self.ctx.cw_match
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
-        # r70 过渡框架并进 deploy target 集(双轨期):框架牌 = 当前阶段的「临时 target」,
-        # 否则保血资产(三月七/藿藿/饮月)被判 off-target 散牌留 bench → 白板挨打
-        # (r70 审计「买了→不上场→被卖」三侧断裂的 deploy 侧)。定型后 framework 已清空,
-        # 集合退化为原 target-only 行为。装配单一源 = kernel.deploy_target_sets
-        # (发射侧 mandate._deployable 同款消费,dd-037 禁两侧各写一份)。
-        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            deploy_target_sets as _deploy_target_sets,
-        )
-        _tgt, _fw_carry = _deploy_target_sets(
-            (_sess.target_comp if _sess is not None else None),
-            (getattr(_sess, 'transition_framework', '')
-             if _sess is not None else ''))
         # 5.1.8 deploy_cap(live 发现 drag 白拖根因 = cap 满,2026-08-12):deployed(CV front_occ+back_occ 实测阵上)
         # ≥ level(cap,D-19「cap=level」)→ 板满,bench 角色上不了 → 不拖(留 bench;防 drag 被拒源槽占 placed=0 白拖
-        # + 用户 live 观察 bug4「未考虑上限」)。⚠️ CV 占用可幻影虚高(2026-09-05 停机)——
-        # deployed 计数现走双源仲裁(见下方 arbitrate_deployed_count 注),不再直采 CV。
+        # + 用户 live 观察 bug4「未考虑上限」)。⚠️ CV 占用可幻影虚高(实机停机局实证:备战环
+        # CV 幻影占用合法化 no-op → 同签名零推进,DD-030 停机)——deployed 计数现走双源仲裁
+        #(见下方 arbitrate_deployed_count 注),不再直采 CV。
         # cap 真值优先 read_deploy_cap(OCR X/Y 的 Y,含宝钻/诅咒加成);读不到 fallback level(D-19 cap≈level)。
         # ⚠️ level≠cap 场景(诅咒-1 / 宝钻+1):用 level 会误判 cap 未满 → 白拖(D-53 注 level=cap 无加成,但加成时偏)。
         # r60(2026-08-18 用户实锤「明明随便上填空位也可以」):cap 低读 = 部署阻塞(lv5 真值被
@@ -629,6 +625,10 @@ class CwOpDeploy(SrOperation):
         # W209/ADR-0385:入场帧(收起商店 1s 过渡)选档可能按旧帧退基线;此处
         # fresh 帧按 **cap 差公式** 重建 back 布局(select_back_layout 单一入口,
         # cap 复用上面现读值——口述「后台格数=6+(cap−level)」)。
+        # ⚠️ 重绑**必须先于**下方占用采样(布局档对账批):后排槽坐标按所选档
+        # 变化,旧序「back_empty 按旧档采样 → len(back) 按新档」混两套坐标系,
+        # CV 占用计数系统性偏移 = 后排幻影占用的候选机制。全部占用读数统一在
+        # **最终布局**上采。
         from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
         )
@@ -647,28 +647,67 @@ class CwOpDeploy(SrOperation):
                          f' 取 max={_cap}(低读阻塞上阵 > 高读白拖,r60/r64)')
             else:
                 log.info('[cw-deploy] cap 全源失读 → None(不设板满门,拖到游戏拒即真值)')
+        bench_occ = [i for i, c in enumerate(bench) if slot_occupied(scr, int(c.x), int(c.y))]
+        front_empty = [i for i, c in enumerate(front) if not slot_occupied(scr, int(c.x), int(c.y))]
+        back_empty = [i for i, c in enumerate(back) if not slot_occupied(scr, int(c.x), int(c.y))]
+        if not bench_occ:
+            log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} → 无 bench 角色')
+            return 0, True
         # deployed 计数双源仲裁(观测仲裁批):CV 占用(front+back 实测)
-        # 只是像素推断源,「板满」是高危读→行动点——2026-09-05 备战 r9
-        # 停机实证:CV 虚高 5(后排 2 空槽幻影占用)≥ cap=5 → 合法化
-        # no-op → 同签名零推进停机;paddle X 同帧真值 3(留证
-        # ``deployed_count_2src`` 三连)。仲裁规则与代价不对称依据 =
+        # 只是像素推断源,「板满」是高危读→行动点(本函数内**全部**板满早退
+        # 都必须经仲裁值,含下方两道)。仲裁规则与代价不对称依据 =
         # ``cw_observation.arbitrate_deployed_count``(取低值 fail-closed
         # 向部署侧;分歧告警带沿用 spread>1 留证判据,不拍新阈值)。
-        # cv 源恒可算(int)→ 仲裁值恒为 int;下游板满门/P24 补部署/动态停
-        # 统一消费本值,不再各自直读 CV。
+        # paddle 单帧漏读在案(stylized 数字 det 间歇漏,同 gold 读链救援先例)
+        # → 重截一帧重读一次;仍失读 = 退化帧(CV 单源,向板满侧行动),
+        # 不静默:留证分键(见 note helper)。
         _deployed_cv = (len(front) - len(front_empty)) + (len(back) - len(back_empty))
         _paddle_x = read_deployed_count(self.ctx, scr)
+        if _paddle_x is None:
+            try:
+                _paddle_x = read_deployed_count(self.ctx, self.screenshot())
+            except Exception:   # noqa: BLE001  重截失败按失读处理
+                _paddle_x = None
         _deployed, _count_divergent = arbitrate_deployed_count(
             _paddle_x, _deployed_cv)
         if _count_divergent and _paddle_x is not None:
             _note_deployed_count_divergence(
                 self.ctx, scr, 'deploy_cap_gate', _paddle_x, _deployed_cv)
+        elif _paddle_x is None:
+            # paddle 失读退化帧:仲裁语义失效(单源=CV,向板满侧行动),
+            # 显式申报防静默(P3;重读一次后仍失读才到此)。
+            log.info('[cw-deploy] deployed paddle 双帧失读 → 退化单源 CV 计数'
+                     f'({_deployed_cv});板满门按 CV 行动(向板满侧 fail,'
+                     '留证分键申报)')
+            _note_deployed_count_divergence(
+                self.ctx, scr, 'deploy_cap_gate_paddle_missing', None, _deployed_cv)
         if _cap is not None and _cap > 0:
             if _deployed >= _cap:
                 log.info(f'[cw-deploy] 板满 cap:deployed={_deployed}(双源仲裁) '
                          f'≥ cap={_cap}(level,5.1.8)'
                          f' front空={len(front_empty)} back空={len(back_empty)} → bench 角色留 bench(不白拖)')
                 return 0, True
+        if not front_empty and not back_empty:
+            # 幻影满板矛盾帧(P1 闭死):CV 采样占满全部槽但仲裁值未达 cap
+            #(或 cap 失读)= 采样结构性失真。无空槽可拖,拖拽循环必然空转
+            # → 合法稳态 no-op 交回外环(分歧留证已由上方仲裁分支落账,
+            # DD-030 兜底持续零推进)。
+            log.info(f'[cw-deploy] deterministic: CV 采样无空槽但仲裁值 '
+                     f'deployed={_deployed}(cv={_deployed_cv})未达板满 → '
+                     f'疑幻影满板,留证后留 bench(不空转拖拽)')
+            return 0, True
+        # r70 过渡框架并进 deploy target 集(双轨期):框架牌 = 当前阶段的「临时 target」,
+        # 否则保血资产(三月七/藿藿/饮月)被判 off-target 散牌留 bench → 白板挨打
+        # (r70 审计「买了→不上场→被卖」三侧断裂的 deploy 侧)。定型后 framework 已清空,
+        # 集合退化为原 target-only 行为。装配单一源 = kernel.deploy_target_sets
+        # (发射侧 mandate._deployable 同款消费,dd-037 禁两侧各写一份)。
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            deploy_target_sets as _deploy_target_sets,
+        )
+        _tgt, _fw_carry = _deploy_target_sets(
+            (_sess.target_comp if _sess is not None else None),
+            (getattr(_sess, 'transition_framework', '')
+             if _sess is not None else ''))
         # D-8:bench 身份走 SIFT(read_bench_chars,plaza 官方立绘库可靠)→ 真实羁绊(target 排序)+ position_pref
         # (5.1.6 选排)。两者都从 get_char 注册表查(SIFT 只给 char_id,BenchChar.position_pref 默认 "back"
         # 不可信 → 必查注册表)。无 target 也要读身份(选排需要),不再 _tgt gate。

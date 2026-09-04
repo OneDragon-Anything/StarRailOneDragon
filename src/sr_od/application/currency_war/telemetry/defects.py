@@ -77,20 +77,42 @@ AUTO_RESOLVED_OBS_FIELDS: frozenset[str] = frozenset(
 #: 仲裁规则与依据 = ``cw_observation.arbitrate_deployed_count`` docstring。
 DEFECT_KIND_DEPLOYED_COUNT_2SRC: str = 'deployed_count_2src_divergence'
 
+#: 同局分歧**持续显影阈值**(逐次行数达此值再落一条 L1 升级行——真结构性
+#: CV 坏死要响铃不只留痕)。取值依据 = 留证 verdict 既有口径「同局 ≥3 次
+#: 排期修源」的代码化,非新拍阈值。
+DEPLOYED_COUNT_2SRC_SUSTAINED_N: int = 3
 
-def record_deployed_count_2src_divergence(paddle_n: int, cv_n: int,
+#: 分歧持续显影升级行 kind(与逐次行分键:逐次行 = 每次仲裁事件恒 L2;
+#: 升级行 = 每局至多一条的「持续」状态事件 L1,判读侧不合并计数)。
+DEFECT_KIND_DEPLOYED_COUNT_2SRC_SUSTAINED: str = 'deployed_count_2src_sustained'
+
+#: 分歧逐次计数器(模块级全局;run_id → 本局已记逐次行数)。测试须经
+#: monkeypatch 清空(测试纪律:被测路径含模块级全局时 setup 一并桩化)。
+_DEPLOYED_2SRC_RUN_COUNTS: dict[str, int] = {}
+
+
+def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
                                           source: str) -> None:
     """记一条 deployed 计数双源分歧分键行(best-effort;run_id 缺省 no-op)。
 
-    仲裁已在本侧完成(取低值),本行只承载不一致率遥测,恒 L2 留证
-    (auto_resolved=True,不进安灯);证据层(obs_conflicts 原始行)由
-    调用方的 obs_conflict 留证并行承载,本行 refs 指认来源便于归因。
+    仲裁已在本侧完成(取低值),逐次行恒 L2 留证(auto_resolved=True,
+    不进安灯——决策面已不消费污染源);**同局逐次行数达
+    ``DEPLOYED_COUNT_2SRC_SUSTAINED_N`` 再落一条 L1 升级行**(持续显影:
+    真结构性 CV 坏死要响铃;每局至多一条,升级行不进逐次计数)。
+    证据层(obs_conflicts 原始行)由调用方的 obs_conflict 留证并行承载,
+    本行 refs 指认来源便于归因。``paddle_n=None`` = paddle 失读退化帧
+    (单源 CV 行动,向板满侧),与真分歧同键计数(共占不一致率口径)。
     """
+    rid = _telstate._CURRENT_RUN_ID
+    if not rid:
+        return
+    gap = float(int(cv_n)) - (float(int(paddle_n)) if paddle_n is not None else 0.0)
     record_defect(
         'deployed', DEFECT_KIND_DEPLOYED_COUNT_2SRC,
-        expected=f'paddle_x={int(paddle_n)}',
+        expected=(f'paddle_x={int(paddle_n)}' if paddle_n is not None
+                  else 'paddle_x=失读'),
         observed=f'cv_occupied={int(cv_n)}',
-        gap=float(int(cv_n) - int(paddle_n)), gap_large=True,
+        gap=gap, gap_large=abs(gap) > 1,
         auto_resolved=True,
         verdict=('留证-deployed 计数双源分歧,已按取低值仲裁'
                  '(规则与依据见 cw_observation.arbitrate_deployed_count;'
@@ -99,6 +121,26 @@ def record_deployed_count_2src_divergence(paddle_n: int, cv_n: int,
         reader_source=str(source or ''),
         note='deployed 计数双源仲裁分键(裁决事件层;证据层见 obs_conflicts '
              'deployed_count_2src 行)')
+    _DEPLOYED_2SRC_RUN_COUNTS[rid] = _DEPLOYED_2SRC_RUN_COUNTS.get(rid, 0) + 1
+    if _DEPLOYED_2SRC_RUN_COUNTS[rid] == DEPLOYED_COUNT_2SRC_SUSTAINED_N:
+        log.warning(
+            '[cw!][obs] deployed 计数双源分歧本局已 %d 次(逐次已仲裁取低值,'
+            '决策未消费污染源)→ 持续显影升 L1:CV 占用源结构性漂移嫌疑,'
+            '排期修源/后排布局档', DEPLOYED_COUNT_2SRC_SUSTAINED_N)
+        record_defect(
+            'deployed', DEFECT_KIND_DEPLOYED_COUNT_2SRC_SUSTAINED,
+            expected=f'本局分歧行数 <{DEPLOYED_COUNT_2SRC_SUSTAINED_N}',
+            observed=(f'本局分歧行数 ={_DEPLOYED_2SRC_RUN_COUNTS[rid]}'
+                      f'(最近一次 paddle_x={paddle_n} cv_occupied={cv_n})'),
+            gap=gap, gap_large=abs(gap) > 1,
+            severity=SEVERITY_L1_ALERT,
+            verdict=('持续显影-同局分歧达阈值(逐次行恒 L2 因仲裁已消化决策面,'
+                     '但 CV 占用源结构性漂移要响铃;处置=哨兵帧对拍 CV 占用'
+                     '实数与 paddle X,修 CV 阈值/遮挡误漏或后排布局档)'),
+            refs=[{'stream': 'arbitration',
+                   'key': f'sustained_n={DEPLOYED_COUNT_2SRC_SUSTAINED_N}'}],
+            reader_source=str(source or ''),
+            note='分歧持续显影升级行(每局至多一条;逐次明细见逐次行)')
 
 
 

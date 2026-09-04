@@ -239,6 +239,24 @@ class PrepActionExecutor:
                      '(W209j 刹车,ADR-0388)', type(action).__name__)
             return False, '已停止[W209j刹车]'
         ok, detail = self._execute_dispatch(action)
+        if ok and isinstance(action, RunEquip):
+            # M7 备战期装备闩置位(执行位,唯一写点 = mandate.mark_equip_
+            # pass_executed;发射位只读不写):本入口在 RunEquip 组合 op
+            # 成功返回时记账「本期穿戴 pass 已完整执行」——单动作备战环
+            # 下发射列表中 RunEquip 之前的可续动作先执行即终结本环,
+            # 发射即置闩会闩烧而装备未穿(与开店闩置位时机修复同型,
+            # 依据 = mandate.mark_equip_pass_executed docstring)。
+            try:
+                from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+                    mark_equip_pass_executed,
+                )
+                _m = self._ctx.cw_match
+                _sess = _m.session if _m is not None else None
+                if _sess is not None:
+                    mark_equip_pass_executed(
+                        _sess, getattr(_sess, 'last_state', None))
+            except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
+                log.warning('[cw][equip-latch] 置位失败(不阻塞): %s', e)
         # 期望态推进(EXPECTED_STATE §6 对抗 F8:两执行面同源接线)——
         # 本执行器是 PrepActionExecutor.execute 与 decision_assembly.execute
         # 的共同底层(decision 面经绑定回放委托到这里),登记挂本入口 = 两面

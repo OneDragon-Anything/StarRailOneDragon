@@ -240,9 +240,8 @@ def run_mandate(frame: MandateFrame,
     备战环是单动作环,同发射列表里 dd-027 回排后的 RunEquip(可续类)
     先执行即投影未建模终结本环,发射列表中其后的 OpenShop 意图未执行;
     若发射即置闩,闩烧而店未开,后续环重跑 mandate 被闩挡死 ⇒ 空批
-    StartBattle(2026-09-05 实机局 run_20260905_024059 备战环连续三轮
-    经济冻结实证,诊断归档
-    .debug/temp/currency_war/20260905_noprogress_stop_diag/report.md C3;
+    StartBattle(2026-09-05 单动作备战环实机停机局的扩展诊断定谳:同局
+    备战环连续三轮经济冻结后空批出战,「闩置位在发射位而非执行位」;
     dd-027 修发射序回排后本闩置位时机是同型残留)。闩未置时发射位
     照常重发(下帧重试);位面/轮次推进=新键自动失效(新店内容
     重新决策)。旧核 step1 RunBuyPhase 的每备战期一次店内完整决策与本
@@ -426,13 +425,17 @@ def run_mandate(frame: MandateFrame,
     # ②备战期闩(cw4_m7_equipped_phase):同 (plane, round) 备战期只发一次
     #   ——执行侧一次完整穿戴 pass 信息完备(内含补救链/拉黑/分配归因,
     #   cw_op_equip_all),期内重开输入不变结果不变(与开店闩同构论证);
-    #   位面/轮次推进=新键自动失效(新发放件重评)。发射时才置闩。
+    #   位面/轮次推进=新键自动失效(新发放件重评)。闩置位在**执行位**
+    #   (mark_equip_pass_executed,唯一写点由 prep_actions 执行入口在
+    #   RunEquip 组合 op 成功返回时调用),不在发射位——发射位只读不写,
+    #   理由与本函数 docstring「备战期开店闩」节同型(单动作环下发射
+    #   列表中 RunEquip 之前的可续类动作先执行即终结本环,RunEquip
+    #   意图未执行,发射即置闩会让闩烧而装备未穿、后续环被闩挡死)。
     if getattr(session, 'last_owned_equips', None) \
             and m7_wearable_exists(session.last_owned_equips):
         if getattr(session, 'cw4_m7_equipped_phase', None) == phase:
             _count('equip_latch_skip_m7')
         else:
-            session.cw4_m7_equipped_phase = phase
             out.append(Emitted(RunEquip(), True, 'm7_equip_transfer'))
 
     # M7 发射序回排(dd-027 修订;实机局 g_20260904_010335 1-6/1-7 漏发
@@ -442,9 +445,10 @@ def run_mandate(frame: MandateFrame,
     # 形态下装备滞留整个备战期(闩挡死后续帧重评,1-8 无开店面才首穿)。
     # 修法 = 发射组织面回排:RunEquip 系可续类(conditional,装备 pass
     # 画面零迁移),插到首个截断点/终点之前,两动作均保留、执行序
-    # (先穿后开店)与发射序一致;门①谓词与闩置位时机(发射=置闩,
-    # 回排后发射必可达截断)不变。分类单一源 = entry.classify_frame_
-    # stability(函数内延迟 import 防模块环)。
+    # (先穿后开店)与发射序一致;门①谓词不变。闩置位时机已移执行位
+    # (mark_equip_pass_executed,与开店闩置位时机修复同批)——回排
+    # 语义仍保证 RunEquip 落在执行序前段、先于截断点被消费。分类单一
+    # 源 = entry.classify_frame_stability(函数内延迟 import 防模块环)。
     if any(isinstance(e.action, RunEquip) for e in out):
         from sr_od.application.currency_war.strategies.impl.mandate_v1.entry import (
             classify_frame_stability,
@@ -457,6 +461,28 @@ def run_mandate(frame: MandateFrame,
         out = rest[:cut] + equips + rest[cut:]
 
     return out
+
+
+def mark_equip_pass_executed(session: StrategySession,
+                             state: GameState | None) -> None:
+    """M7 备战期装备闩唯一写点(置位=执行位)。
+
+    调用点 = 执行入口(prep_actions.PrepActionExecutor.execute)在
+    RunEquip 组合 op 成功返回时——「一次完整穿戴 pass 已落地」的记账
+    时点(含 0 穿完成态:候选全拉黑/hold 过滤后的完成 pass 信息完备,
+    dd-027 门②论证不变)。为什么不在发射位:备战环是单动作环,发射
+    列表中排在 RunEquip 之前的可续类动作(RunDeploy 等)先执行即投影
+    未建模终结本环,RunEquip 意图未执行而闩已烧 → 后续环
+    equip_latch_skip 挡死,装备滞留整个备战期(与开店闩置位时机修复
+    同型,见 run_mandate docstring「备战期开店闩」节)。键式与
+    run_mandate 的 phase 同构(同一 state 读出,含缺省退化)。执行
+    失败(ok=False)不经本函数=不置闩,下帧照常重发;意图持续不落地
+    由 DD-030 环级守卫兜底,非本闩职责。
+    """
+    if session is None:
+        return
+    session.cw4_m7_equipped_phase = (getattr(state, 'plane', None),
+                                     getattr(state, 'round_num', 1))
 
 
 def m7_wearable_exists(owned: list[str]) -> bool:
