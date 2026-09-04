@@ -335,6 +335,9 @@ class TelemetryRecorder:
             damage_base=getattr(outcome, 'damage_base', None),
             damage_unfinished_progress=getattr(outcome, 'damage_unfinished_progress', None),
             damage_breakdown_visible=getattr(outcome, 'damage_breakdown_visible', False),
+            # ΔV_2★ 逐角色伤害行透传(临时采集钩子;.debug/temp/currency_war/
+            # delta_v2star_active/DESIGN.md §2/§3;getattr 容忍旧 RoundOutcome 构造方)
+            damage_rows=getattr(outcome, 'damage_rows', None),
             board_before=_board, bench_count=_bench,
             source=source,
             boss_names=_bosses, selected_difficulty=_diff,

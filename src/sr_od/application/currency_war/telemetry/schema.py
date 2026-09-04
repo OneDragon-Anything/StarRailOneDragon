@@ -29,7 +29,7 @@ from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
 # sim 禁依 telemetry;本模块经上行 import 取用)。replay 序列化符号
 # (_to_jsonable/serialize_intention)权威副本已迁 knowledge/cw_serialize
 # (处死计划批 0)。
-SCHEMA_VERSION: int = 1   # 决策迹 schema 版本(字段名稳定;改 schema 升版本号)
+SCHEMA_VERSION: int = 2   # 决策迹 schema 版本(字段名稳定;改 schema 升版本号;v2=加法 +OutcomeRecord.damage_rows 逐角色伤害行,ΔV_2★ 采集钩子)
 
 
 
@@ -533,7 +533,15 @@ class OutcomeRecord:
     # (动态探测,通常 4/augment 3-5,逐列内容不假定结构;漏读审计与对拍源)。
     # dict 键缺失容忍(兜底点卡路径无 options → 只有 gold);None=非补给行/旧记录。
     supply_pick: dict[str, Any] | None = None
-
+    # —— ΔV_2★ 逐角色伤害行(临时采集钩子;出处=.debug/temp/currency_war/
+    #  delta_v2star_active/DESIGN.md §2/§3;镜像 cw_performance.RoundOutcome.
+    #  damage_rows)——list[{name_raw, name, is_trial, damage}],粒度 = 每场
+    #  战斗 × 每个上场角色;Σdamage 与 damage_dealt 同帧互为对拍。
+    #  **None = 面板不可见/解析失败,诚实删失,禁冒认 0**。加法字段:
+    #  旧记录缺键读端容忍(cw_replay_reader.from_dict 只取 dataclass 已知
+    #  字段,缺省 None,不破坏 schema)。删留条件:见 DESIGN §3(P55 阶段 2
+    #  判据解锁或采样被判结构性不足后,连同解析函数与本透传链删整段)。
+    damage_rows: list[dict[str, Any]] | None = None
 
 
 @dataclass
