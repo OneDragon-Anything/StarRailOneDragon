@@ -1,5 +1,7 @@
 # ADR-0177: 机制常数核对器完整落地(redesign 23 号处置)——首份审计报告 + 实测升级
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 ## Status
 
 Accepted(2026-08-17,策略优化会话;23 号 J2 判据兑现)

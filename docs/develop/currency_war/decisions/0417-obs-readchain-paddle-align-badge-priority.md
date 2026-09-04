@@ -1,5 +1,7 @@
 # ADR-0417: 观测读链修复——部署对齐以 paddle X 为准 + board 裁决徽标优先(W287)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 背景
 
 W285 分层抽样(`.debug/temp/currency_war/w285_obs_conflict_sampling.md`,4258 张 obs_conflict 实证)判明读链两大病灶族(合计外推 ~2938 张,69%):

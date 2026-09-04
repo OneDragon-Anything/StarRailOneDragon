@@ -1,5 +1,7 @@
 # ADR-0433:成型后过渡件不拆——[13] 停手线的卖/下场侧缺口径(方向二)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 - 日期:2026-09-06
 - 状态:accepted(默认关,开臂判据挂账)
 - 谱系:形态达标三方向落码批(设计单一源=`docs/develop/currency_war/prereg/w415_form_design/DESIGN.md` §2);实证基线=同 0432(「中途达过成型而最终帧不满足」拆队局实机 9 局)

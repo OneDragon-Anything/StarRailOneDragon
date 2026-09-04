@@ -1,5 +1,7 @@
 # ADR-0349:切调度——V_D 批口径 + V_level k 放大 + 三通道接线 + 追赶态退场 + refresh 附庸闸清偿(经济循环总模型步③)
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 - 状态:accepted(2026-08-26,W126)
 - 判据:W113 经济循环总模型设计稿 R2 版 §3.2(c)⟲R2/§3.3 通道表(R2)/§3.4 处置表(F6/F11 删除行)/§8-7 追赶退场清单;P5 刷新-升级选择定理(`docs/game/currency_war/research/proofs/p05-refresh-vs-levelup.md` 主定理+边界 a/b+⑤口径注记);口述 [3](概率级决定刷新/升级+保 50 前提)/[17](50 息律该 D 就 D)/[31](刷新金只用于找目标件)/[33](升级为阵容服务)
 - 影响:decision_v2 全栈——scoring(refresh 候选改 `vd_refresh_score` 批口径金账+扑满 P8 账;删饥饿折扣/危机 max 分支/成型找件通道消费)、ev(`levelup_refresh_saving` 新增;`levelup_ev_authorized` 可负担性入口门+人口位保险丝修订+③臂加省刷金项;`interest_cost` 口径注释落码)、arbiter(gold_floor 对 levelup 整体让位 ev 单一裁决;refresh_budget 约束删除;追赶覆盖序退场)、filters/discipline/phase(追赶态退场)、registry(删 refresh 附庸闸十一参+追赶到四参;增 `piggy_refresh_ev`;war_tags 增 refresh;审计表 catchup 列改 mode);**default 栈零改动(冻结)**;旁路(三臂/应急/ALL IN)逐位不动

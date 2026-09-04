@@ -1,5 +1,7 @@
 # ADR-0500 死 tag 判死清理(爆发速杀)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 - **Status**: accepted(判死清理批;复活项归另一批)
 - **Date**: 2026-09-11(清理落地)
 

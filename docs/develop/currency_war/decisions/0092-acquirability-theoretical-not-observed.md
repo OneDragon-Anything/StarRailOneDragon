@@ -1,5 +1,7 @@
 # 0092. select_comp 可得性用理论概率(refresh_prob)非观察(shop_supply)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:旧 `strategy/0*` 树 → `strategy-docs/`(未承接者已亡,见 git 历史)。文内出现处按此对照读取。
+
 - **Status**: accepted
 - **Date**: 2026-08-11
 - **原编号**: D-92

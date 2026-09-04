@@ -1,5 +1,7 @@
 # ADR 0098 · comp_viability 加 star 维度(star_achievement)
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 - **Status**: accepted
 - **日期**: 2026-08-11
 - **关联**: review round-4 HIGH-1(星级进 comp_viability);ADR 0097(streak/transition 等接线轮);commit `672aa838`(read_star);`cw_performance.comp_viability`

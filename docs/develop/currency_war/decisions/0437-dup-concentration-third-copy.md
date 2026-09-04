@@ -1,5 +1,7 @@
 # ADR-0437:同名牌集中度约束——差一张时散买让位(第三张硬优先)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 日期:2026-09-06
 - 状态:定谳清理(删码留档)——开关与 `filters.dup_concentration_active` 已删,本 ADR 留完整证据链
 - 谱系:配方供给链逐帧分析钉死的决策缺口(供给链四环节拆解报告=`.debug/temp/currency_war/w425_recipe_supply/REPORT.md`;W425 为纯离线分析批,本条是其§6 杠杆 1 的落码)

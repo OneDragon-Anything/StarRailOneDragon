@@ -1,5 +1,7 @@
 # 0447 sim 经济校准:事件金状态分布总闸重整定 + delta 臂回退接粗模型(W493)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 状态: accepted
 - 日期: 2026-08-28
 - 来源: W493(sim 经济/收入模型校准,治「穷模拟」);Phase 1 审计 `.debug/temp/currency_war/w493_income_calib/`(CALIB_DESIGN.md/PRE_REGISTRATION.md)

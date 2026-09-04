@@ -1,5 +1,7 @@
 # ADR-0435:环入口 gate 12s 满超时的时序竞争修复——预收探针前置重试
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 日期:2026-08-28
 - 状态:accepted(攻击来源:`.debug/temp/currency_war/w417_duration_audit/REPORT.md`「确定可压」第 1 条)
 - 关联:W358(gate 死等修复,未覆盖本场景)、ADR-0264(gate 快确认)、runtime-ops.md(哨兵)

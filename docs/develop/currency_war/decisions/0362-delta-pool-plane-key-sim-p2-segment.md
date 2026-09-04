@@ -1,5 +1,7 @@
 # 0362 Δ池 plane 维键化 + sim P2 位面段(案 a 最小可用)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 日期:2026-08-28
 - 状态:accepted(直接落地)
 - 关联:W156 设计评估(`.debug/temp/currency_war/cw_dev/deep_read/W156_报告.md`,

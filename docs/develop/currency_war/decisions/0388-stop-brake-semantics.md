@@ -1,5 +1,7 @@
 # 0388 停机刹车语义:stop_running 后执行流不得再落地动作(跨钩子族根修)
 
+> **存活指针**:停机守卫语义已下沉 one_dragon 框架层(controller_base/operation_executor),CW 侧无符号属预期。
+
 - 状态: accepted
 - 日期: 2026-08-26
 - 来源: run 27 停机事故第三层取证(用户点破真根因:「bot 停了还能点出战」;

@@ -1,5 +1,8 @@
 # ADR-0412 M-A 追名判据扩展:未锁线并入当前活跃过渡组合成员名(W260/W263)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;旧 `strategy/0*` 树 → `strategy-docs/`(未承接者已亡,见 git 历史)。文内出现处按此对照读取。
+> **半亡注**:文中 v3_hoard 通道已删(b94e9cfb A6)。
+
 - 日期:2026-08-27
 - 状态:accepted
 - 谱系:ADR-0409(M-A 原设计,判据条件 3 追名 peak≥2)修订;W260 根因定位文档(`.debug/temp/currency_war/w260_ma_ignition.md`)触发;任务 W263

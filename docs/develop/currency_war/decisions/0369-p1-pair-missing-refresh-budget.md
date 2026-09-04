@@ -1,5 +1,7 @@
 # ADR-0369:P1 体系对缺件找牌预算(候选 b:pair 缺件驱动)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 日期:2026-08-29
 - 状态:accepted
 - 批:W170(设计报告 `.debug/temp/currency_war/cw_dev/deep_read/W170_报告.md`)

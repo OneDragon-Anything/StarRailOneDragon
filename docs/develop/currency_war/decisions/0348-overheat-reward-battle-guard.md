@@ -1,5 +1,7 @@
 # ADR-0348:扑满守卫——「经济过热」类环境 reward 节点按「奖励型战斗」处理(轻投入凑羁绊,禁深花保血)
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 - 状态:accepted(2026-08-26,W119;↺ 修正 2026-08-26——初版「按战斗节点处理→深花保血」方向推翻,见下方「↺ 修正」节)
 - 判据:**用户口述定谒 [16](2026-08-26,最高权威)**——扑满关**不掉血**(扑满关自身机制,与 0hp 保底无因果,两条独立机制),真损失是**打不过就没奖励**(损失很大);正确处理=**凑羁绊刷伤害拿奖励,明确不是深花保血**——boss/遭遇窗的深花授权(boss_floor 下探/保血 EV 加权)对扑满**全部不适用**。附:math_proofs P8 参数化证明(s<ΔP×R≈0.277R,深花远超正期望界);W113 §8-5(E1——其「奖励节点变战斗」命名是初版走偏方向的来源:**识别**按战斗≠**授权**按战斗)
 - 影响:decision_v2 新增 ev.REWARD_BATTLE_ENVS/reward_node_is_battle;scoring refresh 轮界豁免×**P8 上限**(registry.piggy_refresh_round_cap=1/节点);遥测 piggy_reward 字段(decisions/sim 账本/rounds 视图);单帧锁(test_cw_w119 ⑥ 负向断言);**地板不降**(discipline._hard_node 不辖扑满)

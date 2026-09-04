@@ -1,5 +1,7 @@
 # ADR-0502: 装备合成发放辖域优先链——可行性守卫 > 承伤序 > core-first > 集中度
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 状态
 accepted
 

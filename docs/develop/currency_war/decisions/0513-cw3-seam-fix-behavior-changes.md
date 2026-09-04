@@ -1,5 +1,7 @@
 # 0513 - cw3 接缝修复批行为变更(供给-消费接缝五点 + 多刷×段上限口径收敛)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - Status: accepted(2026-09-01 批次落码,2026-09-15 补档;验收=20 锁复跑绿 + 151 cw3 锁绿,记录见 `.debug/progress/2026-08-31-currency-war-redesign/流水-20260901.jsonl` 收账行 2026-09-01T04:42:55)
 - 影响层: `cw3/strategy_shell.py`(帧装配 + 发射序)/ `cw3/strategy/refresh.py`(p40 预算门)/ `cw3/knowledge/invest_mutations.py`(激活集反查防线)/ `kernel/cw_strategy_session.py`(字段正式化)/ `sim/engine_p1.py` 与 `operations/prep/shop.py`(计数写点)/ `operations/prep_director.py`(节点行供给)
 - 关联: 依据审计 = `.debug/temp/currency_war/redesign/CODE_AUDIT_SEAMS.md`(S-1…S-13)与 `.debug/temp/currency_war/redesign/CODE_AUDIT_MACHINES.md`(M8);归因依据 = `.debug/temp/currency_war/redesign/AB_FAIL_ATTRIBUTION.md`(323 笔买入推迟案);供给位契约 = ADR-0276(`node_type_current`);满栏拒买守卫 = ADR-0283;腾席判据 = [32]/p41

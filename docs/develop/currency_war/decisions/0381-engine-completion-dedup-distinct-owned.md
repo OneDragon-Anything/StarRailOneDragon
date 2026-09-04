@@ -1,5 +1,7 @@
 # 0381 — 补完修法①②:deploy 列表同名去重(实 bug)+ owned 口径 distinct
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;旧 `strategy/0*` 树 → `strategy-docs/`(未承接者已亡,见 git 历史)。文内出现处按此对照读取。
+
 - 日期: 2026-09-01
 - 状态: accepted (采纳)
 - 关联: ADR-0371(本批修订其 owned 缺口口径与 up_cands 去重语义)、W200(证据基准:广义搁浅 8 局四机制分类)、W173(判据口径 factions∪flows+distinct)、ADR-0374/0376(门/评分谱系已探尽=never-2 地板的既有裁决)

@@ -1,5 +1,7 @@
 # ADR-0434:花的时机判据——息线以下支出门与三例外(方向三)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 - 日期:2026-09-06
 - 状态:accepted(默认关,开臂判据挂账)
 - 谱系:形态达标三方向落码批(设计单一源=`docs/develop/currency_war/prereg/w415_form_design/DESIGN.md` §3);实证基线=同 0432(升级真破息 w42 26.3%——其中 100 次在第 9 轮 boss 前、破息笔中位 32 金换 2 档息损;刷新真破息压到 5.5% 但 never_50 涨到 28.7%,破息禁令把花光行为推到息线以下——花的时机判据缺失才是根)

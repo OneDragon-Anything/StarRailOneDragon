@@ -1,5 +1,7 @@
 # ADR-0451: 血预算停手·第二波(P1 末窗支出降格 + 搜索型刷新停付)进决策层(W532)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 背景
 
 设计件 12(`docs/develop/currency_war/strategy/12_blood_budget_semantics.md`)

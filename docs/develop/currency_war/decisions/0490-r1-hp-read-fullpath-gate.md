@@ -1,5 +1,7 @@
 # ADR-0490: read_game_state 全量路径(phase=None)恢复 hp 真读——r1 备战帧 hp_readable 恒 False 的识别根因修复
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 背景(Status: accepted, 2026-08-30)
 
 实机局 run_20260830_140843 位面2 r1 多帧遥测 `hp_readable=False`/`hp_trusted=False`,

@@ -1,5 +1,7 @@
 # 0268 Δ池防饥饿守卫 + 快照补样 + 池标定检查(批③ F1;r409)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 状态: accepted
 - 日期: 2026-08-24
 - 来源: sim 压测批③ F1(`.debug/temp/currency_war/cw_dev/sim_压测_批③_2026-08-23.md`);worker 任务「Δ池防饥饿守卫+快照补样」

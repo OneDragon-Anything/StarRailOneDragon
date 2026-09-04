@@ -1,5 +1,7 @@
 # 0363 — evolve 换档的引擎下界守卫与末轮演进冻结(S1 型修法)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;旧 `strategy/0*` 树 → `strategy-docs/`(未承接者已亡,见 git 历史)。文内出现处按此对照读取。
+
 - 日期: 2026-08-28
 - 状态: accepted (采纳)
 - 关联: ADR-0360(evolve 换血保护四件,本批补其「在场」盲区)、ADR-0359(final_fence 末轮围栏,语义对齐)、ADR-0357(P1 配方锁)

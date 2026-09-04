@@ -1,5 +1,7 @@
 # ADR-0262: streak_gold 连胜金换实测真值表(表化 + 边界锁)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - **Status**: accepted
 - **Date**: 2026-08-24
 

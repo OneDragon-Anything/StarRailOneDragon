@@ -1,5 +1,7 @@
 # 0398 CollectPlaneIntel boss 节点定位改特征判:详情条「首领」标签验证 + 徽章态分流(W221)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 状态: accepted
 - 日期: 2026-08-27
 - 关联: ADR-0397(W219 实采通道,本 ADR 修其定位/结论环节)、test_cw_node_boss.py

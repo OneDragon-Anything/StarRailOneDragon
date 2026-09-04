@@ -1,5 +1,8 @@
 # 0406 停机守卫手动端点本地豁免:run 收口期不再清全局停机闩(W243,W241 A1b)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+> **存活指针**:停机守卫语义已下沉 one_dragon 框架层(controller_base/operation_executor),CW 侧无符号属预期。
+
 - 状态:accepted
 - 日期:2026-08-27
 - 关联:0396(停机守卫 as-built)、0388(CW 局部两层刹车,纵深防御共存)

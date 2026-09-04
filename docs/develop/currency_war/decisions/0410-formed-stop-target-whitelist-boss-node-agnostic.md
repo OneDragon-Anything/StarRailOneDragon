@@ -1,5 +1,7 @@
 # ADR-0410: formed_stop 目标件白名单 + boss 轮升级禁令删除([32] 口径定调)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 状态: 已采纳(2026-08-27,W255)
 - 关联: ADR-0343(成型停手初建)/ADR-0400(P1 末窗承接门)/ADR-0347(EV 总账升级授权)/ADR-0354(levelup 检查器判据重定义)/W123 §5.2(static_ev 保守计违规的旧校准)
 - 设计件: `docs/develop/currency_war/strategy/10_formed_stop_boss_mech.md`(裁决表单一源)

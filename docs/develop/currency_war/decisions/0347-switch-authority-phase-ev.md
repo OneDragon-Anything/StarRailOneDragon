@@ -1,5 +1,7 @@
 # ADR-0347:切授权——相位地板 + EV 授权 + [12] 门收编总账 + DP 首次接线(经济循环总模型步②a)
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 - 状态:accepted(2026-08-26,W119)
 - 判据:W113 经济循环总模型设计稿 §3.2(经济期望核算)/§3.4(替换行)/§6 迁移表步②行/§8 审计增补 1/2/3/6/7/11 条;口述 [11](无损购买)/[12](息引擎未立不追级)/[17](50 息律该花就花)/[28](守息过程)/[33](升级为阵容服务)
 - 影响:decision_v2 新增 ev.py(授权总账)、arbiter(gold_floor/interest_rule/boss_levelup_ban/_active_floor 重写)、discipline(boss_window_active/_hard_node/assess_discipline)、filters(formed_stop 收编 form_ok)、phase(兜底门轮数判据)、scoring(bd['int_emb'] 息分量声明)、remediation(A2 镜像清)、strategy(DP 姿态轮缓存 + E6 latch 采样退场)、registry(form_floor/phase_fallback_min_round/boss_window_fallback_round 新增;formed_stop_min_level/levelup_interest_engine_gate 删除);遥测 dp_posture 字段 + 执行 log ev_auth;**default 栈零改动(冻结)**

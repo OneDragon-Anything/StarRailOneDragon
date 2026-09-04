@@ -1,5 +1,7 @@
 # ADR-0432:购买围栏硬排序——配方件存在性围栏(方向一)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 - 日期:2026-09-06
 - 状态:accepted(默认关,开臂判据挂账)
 - 谱系:形态达标三方向落码批(设计单一源=`docs/develop/currency_war/prereg/w415_form_design/DESIGN.md`,唯一规格已审采纳);实证基线=形态达标改善过程质量报告(实机 34 局形态达标 10%、sim 两臂 0/400,头号缺项=配方件 2★,唯一锐利杠杆=买牌配方件占比 0.6 vs 0.4)

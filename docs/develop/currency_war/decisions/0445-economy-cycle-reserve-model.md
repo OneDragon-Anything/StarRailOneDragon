@@ -1,5 +1,7 @@
 # ADR-0445:经济循环总模型(储备制·溢余义务·通道容量)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 - 日期:2026-08-28
 - 状态:accepted(落码;A/B 预注册见 `docs/develop/currency_war/prereg/w482_merged_ab/PRE_REGISTRATION.md`)
 - 谱系:破息追级(ADR-0443 否决)/息晚立/攒金堆积/溢出金定向四次同根 → 跨件半问升级为架构级设计件(W471);与配对完成度信号(ADR-0446)同批合并落码(W482)

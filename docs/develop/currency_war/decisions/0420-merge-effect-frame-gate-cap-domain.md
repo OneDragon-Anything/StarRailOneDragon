@@ -1,5 +1,7 @@
 # 0420 star 合成特效帧态门 + cap 域外双帧一致采信(W292,W285 抽样批3 立项)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 状态: accepted
 - 日期: 2026-09-05
 - 来源: W285 obs_conflict 抽样报告 §三 star 节 + §五批3(`.debug/temp/currency_war/w285_obs_conflict_sampling.md`);关键实拍帧 obs_conflict_star__a61848f0/46d292eb、obs_conflict_deploy_cap_out_of_range__e4972b43

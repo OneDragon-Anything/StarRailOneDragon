@@ -1,5 +1,7 @@
 # 0361 P2 段 V_D 修法(DP 窗授权 + 机会成本口径 + 存活收益口径)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 日期:2026-08-28
 - 状态:accepted(直接落地)
 - 关联:W152 断点解剖(`.debug/temp/currency_war/cw_dev/deep_read/W152_报告.md`)、

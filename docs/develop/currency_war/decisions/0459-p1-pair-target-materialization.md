@@ -1,5 +1,7 @@
 # ADR-0459: P1 配方锁帧 target 载体物化(pair_target_comp)
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 # ADR-0459: P1 配方锁帧 target 载体物化(pair_target_comp)
 
 - **Status**: accepted → **勘误重裁中(2026-08-30,W608 对抗审计)**。审计实证:①兑换引用的「成型标尺首次点亮」系事后判据——预注册 M3 原窗=r5-r7,局22 点亮在 p1r8,窗内仅 0.65;②「⑳+2 从未点亮」被证伪——基线局 run_20260829_025301(旧代码 target_comp 全程空串)p1r9 同样 fs=1.0+formed_stop 且板面同款,form_score 为 deployed 纯观测与补丁无关;③M2「买即上车」系选择性举证——姬子·启行×2 买入后躺 bench 至 p2r7 阵亡 8+ 轮未上板。**重裁协议**:补 1-2 局带补丁配方锁局,按预注册原窗(r5-r7)判 M3,M2 改量化指标「配方件躺 bench 轮数/局」;窗内仍 0 命中且 M2 无方向 → 按预注册 revert 链撤本 commit。commit 暂留依据=107 行纯增量、未被证明有害、物化本身(M1)过硬、判定先于 commit 时序干净。审计=W608(w608_ladder_adversarial/REPORT.md)

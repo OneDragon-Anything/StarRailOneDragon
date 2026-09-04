@@ -1,5 +1,7 @@
 # 0007. deploy 确定性部署(CV 占用 → 拖空槽 → CV 验源槽空)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:旧 `strategy/0*` 树 → `strategy-docs/`(未承接者已亡,见 git 历史)。文内出现处按此对照读取。
+
 > ⚠️ **部分被后续迭代**:「前排优先」被 [ADR-0099](0099-deploy-position-pref.md) 替(按角色 position_pref 选排,2026-08-12);「CV 验源槽空」验证被 [ADR-0120](0120-deploy-center-drag-unified.md) 替(`_src_changed` 验源槽变 + DragCwChar 统一拖拽,2026-08-13)。核心(CV 占用信号确定性部署、只拖空槽)仍有效。
 
 - **Status**: accepted

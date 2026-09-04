@@ -1,5 +1,8 @@
 # ADR-0463:经济循环总模型——O1 备战空位填补通道 + 存息姿态准入门
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+> **半亡注**:posture 准入通道已死(decision_v2/posture.py 删);O1 空位填补语义由 mandate_v1 承接。
+
 - 日期:2026-08-30
 - 状态:accepted(落码;设计单一源=`.debug/temp/currency_war/w611_econ_cycle/DESIGN.md`;sim A/B 预注册见该设计 §6.2,复用 `w482_merged_ab` 同 seed 协议)
 - 谱系:ADR-0445(储备制 A 面)的通道/姿态层扩展。同族病灶第三次复发(局20 支出冻结 → W586 B2 延续 P2 → 局23 g=100+备战空+`spend_mode='interest'` 死守)触发架构级治本;用户 directive(2026-08-30,最高权威):「无目标阵容,随便买也应该填满备战」。

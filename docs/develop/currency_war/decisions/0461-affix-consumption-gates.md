@@ -1,5 +1,7 @@
 # ADR-0461 · 词缀消费面三钩子:锁线环境判据 + 库藏生锈穿戴豁免 + opening hold 收窄
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 ## 背景(Stats,需求/问题)
 
 ⑳+2 三局复盘(W586)定谳「词缀是简报三读数里唯一零消费的读数」,三个病灶同根——敌方/环境信息进了 state 但不进决策:

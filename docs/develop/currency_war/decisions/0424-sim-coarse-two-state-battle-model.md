@@ -1,5 +1,7 @@
 # 0424 sim 战斗类节点切换粗参数胜负模型(两态离散 + plaza 收缩 + 验证门锚定)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 状态: **accepted**
 - 日期: 2026-09-05
 - 来源: 设计提案与冻结语料拟合 `.debug/temp/currency_war/w324_coarse_battle/`(DESIGN.md / fit_coarse_model.py / fit_results.json / corpus/);两轮对抗审计 `.debug/temp/currency_war/w326_adversarial/ATTACK.md` 与 `.debug/temp/currency_war/w334_coarse_second/ATTACK.md`;实现 commit c1288da8;用户裁决链(B 裁决 + 胜侧先验主从裁定)

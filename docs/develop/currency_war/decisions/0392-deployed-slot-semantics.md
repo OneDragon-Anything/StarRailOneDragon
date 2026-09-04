@@ -1,5 +1,7 @@
 # ADR-0392: deployed 槽位语义模型(定长 10 槽,front 0-3 / back 4-9,空槽留 None 不紧缩)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 状态:accepted
 - 日期:2026-09-01
 - 背靠:动作索引约定提案(.debug/temp/action_idx_contract_proposal.md)§4 方案 A

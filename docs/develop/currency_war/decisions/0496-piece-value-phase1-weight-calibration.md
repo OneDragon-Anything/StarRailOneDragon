@@ -1,5 +1,7 @@
 # ADR-0496 · 件价值 Phase 1 权重标定(w_activation=1.0 / w_retention=0.0 定谳;B 分量无可行标定值,位置成本硬门挂账)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 ## 背景与问题
 
 件价值模型 Phase 1(设计单一源 `docs/develop/currency_war/prereg/w831_piece_value_design/REPORT.md` v2;买侧试点 A/B 判据 `docs/develop/currency_war/prereg/w836_piece_value_p1/PREREG.md`)的首次 A/B(`.debug/temp/currency_war/w846_piece_value_p1_ab/REPORT.md`)在单位权重(w_activation=1.0 ∧ w_retention=1.0,标定批未偿时的判前登记点位)下判定 B:**机制工作但剂量不足**——主门病灶②显著下降但效应量 5.5% ≪ 判前下界 30%,护栏 G4 满栏帧差 +11.03pp(cap ≤+2pp)远超红线。PREREG §2 自带分支:回标定批,不开臂。本 ADR 记录标定批(`.debug/temp/currency_war/w852_weight_calibration/REPORT.md`)的方法、结果与定谳。

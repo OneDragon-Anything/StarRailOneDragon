@@ -1,5 +1,7 @@
 # ADR-0488: sim 观测硬依赖键补齐(bench_full_flag / board_next_tier / 分配器帧位披露)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 ## 背景
 
 兑现链 v2 开关组(设计单一源 = `docs/develop/currency_war/prereg/w795_realization_design/REPORT.md` v2/v3 + 同目录 `PREREG_兑现链A_B.md` v3,自 `.debug/temp/` 迁入)落码后,W802 实施批在 REPORT §观测硬依赖边界声明中登记三项判读数据源缺口,归后继批清偿;W797 假设审计(`.debug/temp/currency_war/w797_assumption_audit/REPORT.md` §5,未迁移)实测确认三面不可测:

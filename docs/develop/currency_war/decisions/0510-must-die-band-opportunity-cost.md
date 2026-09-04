@@ -1,5 +1,7 @@
 # ADR-0510 · 必死子带机会成本重定价(死亡域 I 项退役)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 ## 背景
 
 death 域分配器结构性出清失败(W933「并联缺位」裁决;W951/W955 sim

@@ -1,5 +1,7 @@
 # 0049. below-avatar 装备 icon 固定 ~32px(98px 模板 scale 0.33)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:旧 `strategy/0*` 树 → `strategy-docs/`(未承接者已亡,见 git 历史)。文内出现处按此对照读取。
+
 - **Status**: accepted
 - **Date**: 2026-08-10
 - **原编号**: D-49

@@ -1,5 +1,7 @@
 # ADR-0409 M-A 定向 D 牌授权窗(W249 诊断修法:刷新维的搜索成本授权)
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 - 日期:2026-08-27
 - 状态:accepted(默认关;A/B 数字见 Consequences)
 - 谱系:W249 双核心可达性诊断 §4 修法 M-A;ADR-0405(C 项,copy 授权,

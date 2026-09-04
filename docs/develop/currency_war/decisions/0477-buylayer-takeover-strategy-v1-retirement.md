@@ -1,5 +1,7 @@
 # ADR-0477 买层接管:strategy_v1 待删桶退役,腾席判据迁 kernel 单一源
 
+> **版本界碑(2026-09-04 ADR 存量 review;统一迁移批史,与 b94e9cfb 互证)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 ## 状态
 
 accepted

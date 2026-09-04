@@ -1,5 +1,7 @@
 # 0336 - 旧策略栈删除:line_strategy + 配套模块
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 - **Status**: accepted(2026-08-25;ADR-0310 步 5 锁迁移清偿;删除门槛 W66 条件性通过 + W67 no_same 归零后执行;AD8 对抗后维持,附四条件见 Consequences 末)
 - **Context**:ADR-0310 载体批后 decision_v2 为唯一策略载体,旧 `LineStrategy`(line_v2)停用不删作 A/B 对照臂与回退开关。删除门槛(sim A/B 验收通过即删,leader 裁定,不等实机)经 W66 合流总验**条件性通过**:
   - hp 不劣:符号 gap(v1−v2)=+1.52(n=400 配对,95% CI 底 ±2.41);

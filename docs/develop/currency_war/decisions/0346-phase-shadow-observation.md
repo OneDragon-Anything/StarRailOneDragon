@@ -1,5 +1,7 @@
 # ADR-0346:相位影子观测(经济循环总模型步①;FORM/HOARD/SPEND 派生上线,零消费)
 
+> **半亡注**:FORM/HOARD/SPEND 相位面存活载体 = mandate_v1/economy_cycle.py;文中 v2 消费通道已死。
+
 - 状态:accepted(2026-08-26,W114)
 - 判据:W113 经济循环总模型设计稿 §3.1(2026-08-25 用户裁决版:等级不作为独立门槛、核心须上场、追赶态删除)+ §6 迁移路径表步①行;口述 [13](成型三件套)/[17](50 金息律)/[28](守息)/[33](升级为阵容服务)
 - 影响:decision_v2 新增 phase.py(相位派生)、registry 常量 phase_form_score_gate、strategy.decide_prep 影子计算、cw_telemetry 决策迹三字段 + rounds 视图、shop.py/ prep_director 遥测透传、cw_sim 账本三字段;**零决策路径改动**

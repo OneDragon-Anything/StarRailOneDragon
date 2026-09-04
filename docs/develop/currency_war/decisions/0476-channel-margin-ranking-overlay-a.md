@@ -1,5 +1,7 @@
 # ADR-0476: 通道边际排序(溢余义务帧升级/刷新优先级显式化,overlay A)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 背景
 
 posture_release 的 docstring 自述「通道开+预算内按 EV 排序」,但实现只有

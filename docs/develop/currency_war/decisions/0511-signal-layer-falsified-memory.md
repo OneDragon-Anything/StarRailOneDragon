@@ -1,5 +1,8 @@
 # ADR-0511: 信号层判死记忆契约(falsified)——缓期挂账,随首个判死写入端批次落地
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+> **挂账注**:判死记忆写入端尚未接线,落地时参照本件契约。
+
 ## 状态(Status)
 
 deferred(挂账缓期,编排者裁决采纳「方案 1」;交付=零码,本 ADR 即挂账记录)

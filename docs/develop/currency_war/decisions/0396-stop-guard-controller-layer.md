@@ -1,5 +1,7 @@
 # 0396 停机刹车语义框架级重写:controller 层停机守卫(停机后零游戏输入)
 
+> **存活指针**:停机守卫语义已下沉 one_dragon 框架层(controller_base/operation_executor),CW 侧无符号属预期。
+
 - 状态:accepted
 - 日期:2026-09-01
 - 关联:0388(CW 局部两层刹车,第一代补丁)、0395(CV 读数防抖)

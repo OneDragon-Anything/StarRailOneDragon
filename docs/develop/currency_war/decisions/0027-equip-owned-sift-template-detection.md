@@ -1,5 +1,7 @@
 # 0027. 装备 owned icon 检测用 cw_equip SIFT 模板匹配(推翻 VLM 球体误判)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:旧 `strategy/0*` 树 → `strategy-docs/`(未承接者已亡,见 git 历史)。文内出现处按此对照读取。
+
 - **Status**: accepted
 - **Date**: 2026-08-10
 - **原编号**: D-27

@@ -1,5 +1,7 @@
 # ADR-0419: 新局开始全量状态重置(残留 match 容器入口弃置)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 背景
 
 W285 obs_conflict 按字段抽样判读(`.debug/temp/currency_war/w285_obs_conflict_sampling.md` §三)实证:跨局/开局状态残留是冲突三层(level / deploy_cap_vs_level / phase_round,**329 张 = 全量 7.7%**)的共同源——deploy_cap_vs_level 抽样 4/4 画面全是新局 plane1-2、cap=3 正确,旧 `level=5` 全部来自上一局;phase_round 抽样 2/3 画面真 1-9 被上局 [8,8]/[9,9] 的单调守卫打回。

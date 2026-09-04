@@ -1,5 +1,7 @@
 # ADR-0512: 战力模型范围——唯一消费者=sim 战斗结算层,决策层永不消费
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 状态(Status)
 
 accepted(2026-09 战力建模专题讨论轮,用户逐项裁定;设计件=[../sim-power-model.md](../sim-power-model.md))

@@ -1,5 +1,7 @@
 # ADR-0495: GameState.hp None 化(无真值即 None,开局兜底 100 正式废止)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 状态
 accepted (2026-08-30)
 

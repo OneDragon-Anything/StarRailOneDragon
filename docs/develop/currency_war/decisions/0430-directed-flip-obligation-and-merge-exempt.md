@@ -1,5 +1,7 @@
 # ADR-0430:FLIP 义务预算消费定向化与合成豁免完备式——W393 攻击的两处收紧
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 日期:2026-08-28
 - 状态:accepted(编排者裁决;攻击来源 `.debug/temp/currency_war/w393_family_attack2/ATTACK.md` §A1.2/§A4)
 - 关联:ADR-0426(FLIP 辖域与三断点链)、ADR-0428(hp_trusted 位)

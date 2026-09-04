@@ -1,5 +1,7 @@
 # ADR-0438 · 非正分门 merge 完成豁免(第三张副本 3合1 完成素材语义)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 状态:accepted(开臂:两开关默认值随本批 A/B 兑现翻 True)
 - 日期:2026-08-28
 - 批次:W436(定位依据=W431 REPORT `.debug/temp/currency_war/w431_generation_starve/REPORT.md`;复测义务=W429 REPORT)

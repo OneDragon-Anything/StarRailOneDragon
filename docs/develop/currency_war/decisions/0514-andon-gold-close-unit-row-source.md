@@ -1,5 +1,7 @@
 # 0514 - 安灯钩子关店金数据源改 spend_ledger 单元行(exec_fail 误停根治)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - Status: accepted(2026-09-15 落码;依据=离线法证 `.debug/temp/currency_war/redesign/EXEC_FAIL_P3R1_DIAGNOSIS.md`,修法①采纳;重启加载由实机批局间隙执行)
 - 影响层: `operations/prep_director.py`(`_exec_fail_hook_check` 数据源 + `_spend_unit_open` 序号重计)/ `telemetry/query.py`(`resolve_unit_gold_close` 新纯函数 + `query_spend_ledger` 取值序)/ `telemetry/schema.py`(unit_seq 注释)
 - 关联: 诊断 = `EXEC_FAIL_P3R1_DIAGNOSIS.md`(局 `run_20260901_180236` p3r1 误停);同族前案 = ADR-0456(局22 误停,plan_truncated 豁免——「计划≠尝试」口径支);gold_close 无条件落行 = ADR 2e7364de(W505 金面收口)

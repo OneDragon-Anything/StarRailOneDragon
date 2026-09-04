@@ -1,5 +1,7 @@
 # ADR-0508: 危机带储备线降档(P36-a′)
 
+> **半亡注**:危机带判据活(kernel/cw_discipline_rules.p2_crisis_band);储备降档臂已死(registry 死旋钮)。
+
 ## 状态
 accepted(无条件落地,无开关——依据=P36-a′ 推论证明 + match4 复盘病灶
 实证;续 ADR-0506 无开关政策)

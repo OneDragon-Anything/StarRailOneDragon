@@ -1,5 +1,7 @@
 # ADR-0493: 死亡域估值路径三缺陷修复(W810 审查定谳;视界真值/饱和区分度/机会成本面值重标定)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 ## 背景
 
 W810 死亡域审查(`.debug/temp/currency_war/w810_death_domain_review/REPORT.md`)

@@ -1,5 +1,7 @@
 # 0402 产星通道(方案 A filler_star 期权分 + 方案 B 同名副本方向门豁免)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 - 日期:2026-09-02
 - 状态:accepted
 - 前置:W231 诊断(`.debug/temp/currency_war/w231_star_diag/w231_star_diagnosis.md`)、ADR-0340(merge_progress)、ADR-0339(core_star)、ADR-0401(form 星级分量)

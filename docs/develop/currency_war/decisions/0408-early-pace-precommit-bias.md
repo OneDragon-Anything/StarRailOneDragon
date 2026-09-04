@@ -1,5 +1,7 @@
 # ADR-0408 假设 A:r3/r4 投资节奏前置(early_pace 评分偏置)
 
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+
 - 日期:2026-09-04
 - 状态:accepted(默认关;A/B outcome 裁决见验证节;开关已定谳清理
   删除,见文末增补清理节)

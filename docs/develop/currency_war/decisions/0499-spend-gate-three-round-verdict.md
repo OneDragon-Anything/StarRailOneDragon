@@ -1,5 +1,7 @@
 # ADR-0499: 支出门（买侧收门）落码与三轮 A/B 终局定性
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 日期：2026-08-30。状态：已定谳（默认关维持）。
 
 ## 背景

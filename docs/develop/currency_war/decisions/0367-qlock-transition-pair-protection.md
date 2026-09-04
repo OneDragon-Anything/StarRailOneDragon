@@ -1,5 +1,7 @@
 # 0367 — ①资格锁定局的过渡对保护副方向
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR。文内出现处按此对照读取。
+
 - 日期: 2026-08-29
 - 状态: accepted (采纳)
 - 关联: ADR-0357(P1 配方锁,①通道保留 comp 的设计源头)、ADR-0359(买侧锁定目标约束,scope 单一实现)、ADR-0360(evolve 保护四件,消费 locked_faction_scope)、ADR-0363(引擎下界守卫,保护基准扩辖对象)、W164(判读与 R1/R2 裁决原文,`.debug/temp/currency_war/cw_dev/deep_read/W164_报告.md`)

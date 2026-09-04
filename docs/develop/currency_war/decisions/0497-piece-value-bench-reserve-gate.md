@@ -1,5 +1,7 @@
 # ADR-0497 · 件价值买前 bench 容量预检硬门(reserve 推导落码;ADR-0496 开臂前置件)
 
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;`prereg/` → `docs/develop/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
 ## 背景与问题
 
 件价值 Phase 1 标定批(ADR-0496)定谳 w_retention=0.0 的根因是 B 辖域缺位置成本约束:W846 on 臂 G4 满栏帧差 +11pp、B 买入 22.6% 发生在占用=8 的最后空位、合格事件被满栏拒 4,143 次。「买前 bench 容量预检」硬门被评估为对症方向但挂账两项:①消费面逻辑改动超出标定批文件面;②reserve(预留空位数)推导缺位(P29 持位成本 H 未标定)。本 ADR 偿付两项挂账并落码。设计依据链:W852 REPORT(`.debug/temp/currency_war/w852_weight_calibration/REPORT.md` §3)+ W831 v2 §3.3(可加性边界:硬门不进评分,与 Phase 1「E 禁进评分」边界相容)+ W829 支出门 D3(单一实现 `spend_gate.bench_front_full`,禁第二实现)。

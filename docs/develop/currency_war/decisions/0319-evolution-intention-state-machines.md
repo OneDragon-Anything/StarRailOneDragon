@@ -1,5 +1,7 @@
 # ADR-0319: 阵容演进引擎与终局意向的语义定稿(evolution_step 发显式 CompTransaction / 意向锁线只写囤货)
 
+> **半亡注**:v3_hoard 写端已随 b94e9cfb(A6 裁决)删除;存活载体 = kernel/cw_intention(意向锁线)。
+
 - 状态:accepted(补写;行为已随 W33+W34 批 commit,本篇事后落档)
 - 日期:原 commit 2026-08-24(5cb4af2c);补写 2026-08-25
 - 背靠:`转型讨论.md`(演进法则)+ `strategy_v4.md` 点0/点6/点11
