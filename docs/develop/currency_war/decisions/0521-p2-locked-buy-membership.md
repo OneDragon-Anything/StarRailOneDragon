@@ -26,3 +26,7 @@
 ## 验证
 
 ruff 净;六锁(事故帧直译/拒因遥测/单一源对拍/P1 无锁回归/边界)全绿;CW 快速集 2181 passed / 1 skipped(ZeroDriftAnchor 指纹守卫按设计)。
+
+## 修订(2026-09-05,合并审计 F1-F4,d87ae866)
+
+决策 2 的「下游全链参数化自动同源」表述被合并对抗审计推翻并修正:M4 腾席(fuel_sell_candidates)/funding/凑息卖(卖免面)与 R1/R2 刷新账维持 core∪shared 口径,不随锁定采购集翻转——否则锁内 hoard 全集免卖塞满 bench + M2 积极买入 ⇒ 腾席候选空集,「金滞留不买」停滞换拍复发。现口径三面拆分:买面=buy_members(锁定采购集,消费 M2 义务/M2b/拒因遥测/EV 排除);卖免面=k_members(core∪shared);刷新账=P40 A4 目标阵容件。transition_pair 成员维持 ADR-0367 二级囤货定位不升骨架义务。收敛性挂账:锁线 hoard 集换手循环(buy_members≫bench 9 时 M4 每帧卖 1 买 1)的收敛性可证未证,立项候选(结构级命题或 sim 定谳)。
