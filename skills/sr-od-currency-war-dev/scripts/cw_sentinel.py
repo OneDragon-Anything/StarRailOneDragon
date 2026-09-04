@@ -893,8 +893,12 @@ while True:
                     last_line_wall = time.time()
                     _seen_quiet_noted = False
                     _skipped_stale = 0
-        MARKER.write_text(str(pos))  # pos 每轮更新 = 心跳(watchdog 用)
-        if time.time() - last_line_wall > SILENCE_SEC:
+    # 心跳无条件每轮写(2026-09-04 勘误:旧版嵌在 not _lines 分支内,
+    # 局活跃日志有流时水位冻结——runtime-ops「哨兵活性回读」以 pos mtime
+    # 推进判活,冻结被误读成挂死,两个健康实例被杀)。进程活着 = 水位推进,
+    # 与是否读到新行无关;报警路径(上写 _line_end 后 exit)不受影响。
+    MARKER.write_text(str(pos))
+    if time.time() - last_line_wall > SILENCE_SEC:
             # v3.5(12:51 误报修):静默判定前先做「活跃局检查」(离线读
             # replay/runs.jsonl + outcomes.jsonl)。局已自然终局 → 局后空窗
             # 是正常交接状态,IDLE 提示 + 优雅退出,不走 SILENCE 报警;
