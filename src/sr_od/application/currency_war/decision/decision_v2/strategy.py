@@ -1073,6 +1073,75 @@ class DecisionV2Strategy(CwStrategy):
         log.info('[cw][prep] 腾席链d:无可卖/不可升 → DeferSpheres(球留置)')
         return DeferSpheres()
 
+    def _deploy_up_candidates(self, obs, session: StrategySession) -> list[int]:
+        """部署段发射门(dd-037):用与执行方同源的 kernel 纯函数算「谁该上场」。
+
+        单一源 = ``cw_deploy_logic.select_deployments``(围栏/成对/cap/去重/
+        配方底线/板空保底全在其内);本方法只做输入装配,不自持任何判据。
+        输入源 = 观察帧 obs 的 SIFT bench/deployed 身份 + session tracking
+        板面(与 _pseudo_state 同源);cap 用 level 链(cap≈level,D-19;宝钻/
+        诅咒加成的偏差方向 = 发射门可能保守留 bench——留 bench 是合法稳态,
+        比误判「有部署可做」再进死循环便宜)。SIFT 未识别的 bench 件走纯函数
+        的 fail-open(照旧上)→ 门只在「身份可判且全被规则留 bench」时收口。
+        返回 up 下标列表(对 obs.bench_chars 紧凑序);空 = 计划空,不发射。
+        """
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            select_deployments as _sel,
+        )
+        bench = [bc for bc in (obs.bench_chars or []) if bc is not None]
+        if not bench:
+            return []
+        deployed = [d for d in (obs.deployed_chars or []) if d is not None]
+        deployed_cids = {d.char_id for d in deployed if getattr(d, 'char_id', '')}
+        deployed_fac: dict[str, int] = {}
+        from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+        for _d in deployed:
+            _ch = CHARACTERS.get(getattr(_d, 'char_id', ''))
+            if _ch is None:
+                continue
+            for _f in ((_ch.factions or ()) + (_ch.flows or ())):
+                deployed_fac[_f] = deployed_fac.get(_f, 0) + 1
+        st = self._pseudo_state(obs, session)
+        board = dict(st.board)
+        cap = min(10, st.level or 1)
+        target_factions: set[str] = set()
+        target_cores: set[str] = set()
+        fw_carry: set[str] = set()
+        locked_factions: frozenset[str] = frozenset()
+        from sr_od.application.currency_war.kernel.cw_recipe import (
+            decision_target as _dt_fn,
+        )
+        try:
+            _tgt = _dt_fn(session, st)
+            if _tgt is not None:
+                target_factions = set(_tgt.all_factions)
+                target_cores = set(_tgt.core_chars)
+        except Exception:   # noqa: BLE001  目标读失败 → 空集(fail-open 同身份未判)
+            pass
+        _fw = getattr(session, 'transition_framework', '')
+        if _fw:
+            from sr_od.application.currency_war.kernel.cw_transition import (
+                FRAMEWORK_FACTIONS,
+                TRANSITION_PACK,
+            )
+            target_factions |= set(FRAMEWORK_FACTIONS.get(_fw, ()))
+            fw_carry = {n for n, (f, t) in TRANSITION_PACK.items()
+                        if (f == _fw or f == '通用') and t != 'drop'}
+        try:
+            from sr_od.application.currency_war.kernel.cw_intention import (
+                locked_faction_scope as _lfs,
+            )
+            locked_factions = _lfs(getattr(session, 'v3_intention', None)) \
+                or frozenset()
+        except Exception:   # noqa: BLE001  锁定帧读失败 → 空集=回旧行为
+            locked_factions = frozenset()
+        up, _held = _sel(
+            bench, deployed_cids=deployed_cids, deployed_fac=deployed_fac,
+            board=board, cap=cap,
+            target_factions=target_factions, target_cores=target_cores,
+            fw_carry=fw_carry, locked_factions=locked_factions)
+        return up
+
     def _main_flow_step(self, obs, session: StrategySession, config):
         """主流程推进(§5.3;Run* 组合 P1 过渡,阶段位 prep_phase 由 Director 环入口清零)。
 
@@ -1098,8 +1167,38 @@ class DecisionV2Strategy(CwStrategy):
             # 流程层(cw_screen_prep._open_shop_phase)编排 开店→商店动作循环→
             # CwOpCloseShop→节点探针;组合壳 BuyShopCards 已随退役批删除(决策核只发显式开店意图)。
             return OpenShop()
+        if session.prep_phase <= 0:
+            session.prep_phase = 1
+            if obs.free_bench_slots <= 0:
+                # M-6 门:free=0 跳过买牌(防 shop.py 内 _handle_bench_full 位置式卖)。
+                # M24 卡死修(2026-08-16):满席且**无球**时旧逻辑直奔 RunDeploy → deploy-swap 卖
+                # 拖拽失败(bug#1 变体)→ 警告不消 → 死循环;金不够升级时链 b 也不通。修:满席
+                # 一律先过腾席链 a/b/c(deploy 空位/升级扩容/卖最弱 —— _weakest_bench_idx 是保护式
+                # 卖,非位置式卖,与 M-6 门防的不冲突);链 d(DeferSpheres)不入 —— 无球时 defer 无意义,
+                # 落回部署段保持原行为。
+                log.info('[cw][prep] M-6 门:free=0 → 腾席链 a/b/c 破满席(买牌跳过)')
+                step = self._free_bench_step(obs, session, config)
+                if not isinstance(step, DeferSpheres):
+                    return step
+                return self._main_flow_step(obs, session, config)   # 链全空 → 部署段
+            # W970 批 C(RunBuyPhase 解体):主流程买牌段改发显式开店意图,
+            # 流程层(cw_screen_prep._open_shop_phase)编排 开店→商店动作循环→
+            # CwOpCloseShop→节点探针;组合壳 BuyShopCards 已随退役批删除(决策核只发显式开店意图)。
+            return OpenShop()
         if session.prep_phase == 1:
             session.prep_phase = 2
+            # dd-037 单一源谓词门:发射前用与执行方(CwOpDeploy)同源的
+            # ``cw_deploy_logic.has_deployable`` 判「还有没有部署可做」——
+            # 计划为空(全部候选被配方底线/去重/cap 等规则留 bench)时不发射
+            # RunDeploy(bench=1 是合法稳态,交后续段推进),消除「发射方谓词
+            # 与执行方不同源 → 空计划 RunDeploy → 执行方 skip → 环级零推进」
+            # 的死循环形态(run 20260904_28xx 局11,G3 守卫停机实证)。
+            _up = self._deploy_up_candidates(obs, session)
+            if not _up:
+                log.info('[cw][prep] 部署段计划空(候选全被规则留 bench,'
+                         'dd-037)→ bench 稳态,跳 RunDeploy 直入装备段')
+                session.prep_phase = 3
+                return RunEquip()
             return RunDeploy()
         if session.prep_phase == 2:
             session.prep_phase = 3

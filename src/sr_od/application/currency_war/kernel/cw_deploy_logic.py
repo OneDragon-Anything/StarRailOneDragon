@@ -145,6 +145,39 @@ def ignition_gain(bonds, deployed_fac: dict[str, int]) -> int:
     return _sys_count(after) - _sys_count(deployed_fac)
 
 
+def has_deployable(
+    bench: list[BenchChar],
+    deployed_cids: set[str],
+    deployed_fac: dict[str, int],
+    board: dict[str, int],
+    cap: int,
+    front_total: int = 4,
+    back_total: int = 6,
+    target_factions: frozenset[str] | set[str] = frozenset(),
+    target_cores: frozenset[str] | set[str] = frozenset(),
+    fw_carry: frozenset[str] | set[str] = frozenset(),
+    locked_factions: frozenset[str] | set[str] = frozenset(),
+) -> bool:
+    """「是否存在可部署件」的单一源谓词(dd-037)。
+
+    = ``bool(select_deployments(...)[0])``——发射方(决策核准备战段)与
+    执行方(CwOpDeploy)共用同一份围栏/去重/cap/配方底线语义判「还有没有
+    部署可做」。背景(run 20260904_28xx 局11 停机形态):发射方判「bench
+    有货该部署」、执行方按配方底线规则把该件留 bench → RunDeploy 空计划
+    被包装成 ✓「已部署角色」→ 同签名动作批零推进环,环级无进展守卫停机。
+    修后发射方在计划为空时不发射 RunDeploy(bench=1 是合法稳态)。
+
+    语义口径与 ``select_deployments`` 完全一致(含 SIFT 未识别 char_id=''
+    「照旧上」的 fail-open:身份不可判时恒 True,不做激进留 bench)。
+    """
+    up, _held = select_deployments(
+        bench, deployed_cids=deployed_cids, deployed_fac=deployed_fac,
+        board=board, cap=cap, front_total=front_total, back_total=back_total,
+        target_factions=target_factions, target_cores=target_cores,
+        fw_carry=fw_carry, locked_factions=locked_factions)
+    return bool(up)
+
+
 def select_deployments(
     bench: list[BenchChar],
     deployed_cids: set[str],

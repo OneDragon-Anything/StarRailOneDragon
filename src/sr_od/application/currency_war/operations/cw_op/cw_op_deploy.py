@@ -27,9 +27,6 @@ from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS as _ENGINE_FENCE,
 )
 from sr_od.application.currency_war.kernel.cw_line_defs import (
-    RECIPE_BASE as _RECIPE_BASE,
-)
-from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
 )
 from sr_od.application.currency_war.obs.currency_war_char_id import (
@@ -139,6 +136,10 @@ def _deployment_order(tgt_idx: list[int], rest: list[int],
                       deployed_fac: dict[str, int]) -> list[int]:
     """r404-A1/ADR-0258 点火排序(ADR-0261 裁决选项1;模块级可测,锁测试直调)。
 
+    ⚠️ dd-037 起 op 生产路径不再调用(选人/排序单一源 =
+    kernel.cw_deploy_logic.select_deployments,本函数与该纯函数同语义的
+    op 侧副本仅作锁测试对账面保留;勿新增生产消费点)。
+
     与 cw_deploy_logic.select_deployments 的排序**同语义**(单一源
     `ignition_gain`,import 不复制):
     - tgt 序:点火增量首键(-ignition_gain)+ r361 补档键次键
@@ -211,6 +212,7 @@ class CwOpDeploy(SrOperation):
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
     STATUS_DEPLOYED: ClassVar[str] = '已部署角色'
+    STATUS_NOOP: ClassVar[str] = '无部署可做(计划空,bench为合法稳态)'
     STATUS_NO_BENCH: ClassVar[str] = '备战栏无角色'
     STATUS_NO_SCREEN: ClassVar[str] = '未加载货币战争-备战 screen_info'
 
@@ -354,7 +356,7 @@ class CwOpDeploy(SrOperation):
             else:
                 log.info('[cw-deploy] deploy-swap 跳过:bench 无 target 单位(留 off-target bodies;'
                          ' 根因=buy 未买 target / economy 未攒金升级)')
-        self._deploy_deterministic(bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
+        _placed, _plan_empty = self._deploy_deterministic(bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
         self._reconcile_tracking(templates)   # D-12(3.3.2):deploy 后 SIFT 真实身份纠 tracking 漂(观测回路)
         # r241 换排纠正(用户实锤:三月七被兜底强推前排,后续永不被挪回):
         # deploy 只管 bench→场,场内错排(pref=back 在前排/fallback 遗留)无人纠正
@@ -382,6 +384,16 @@ class CwOpDeploy(SrOperation):
         except Exception as e:   # noqa: BLE001  采集失败不影响部署
             log.debug('[cw-deploy] equips 采集失败(不阻塞): %s', e)
 
+        # dd-037 契约硬化:no-op 与真实部署在返回状态上可区分——
+        # ① 计划空且 0 落地 = 合法稳态(bench 留置),STATUS_NOOP(非「已部署角色」,
+        #    不再把空计划伪装成部署成功);② 计划非空但 placed=0 = 真失败,round_fail
+        #    (交框架失败链,不再 ✓ 蒙混);③ placed>0 = 真部署,STATUS_DEPLOYED。
+        if _placed == 0:
+            if _plan_empty:
+                log.info('[cw-deploy] 无部署可做(计划空,候选全被规则留 bench;'
+                         'dd-037:no-op 状态,发射方同源谓词已在本环抑制此形态)')
+                return self.round_success(CwOpDeploy.STATUS_NOOP, wait=1)
+            return self.round_fail('部署未落地(计划非空但 placed=0;失败帧已存证)')
         return self.round_success(CwOpDeploy.STATUS_DEPLOYED, wait=1)
 
     def _fix_misplaced_rows(self, front: list, back: list,
@@ -520,9 +532,13 @@ class CwOpDeploy(SrOperation):
             log.info('[cw-deploy] equips 采集:tracked %d 件写入(决策快照将携带)', _n)
 
     def _deploy_deterministic(self, bench: list[Point], front: list[Point], back: list[Point],
-                              templates: AvatarTemplates | None) -> None:
+                              templates: AvatarTemplates | None) -> tuple[int, bool]:
         """D-7 确定性部署:CV 知占用 → 每个有角色的备战槽按**角色前后台属性**(position_pref)拖到对应排的
         空槽(target 阵营先)→ CV 验「源备战槽空了」=成功。
+
+        返回 ``(placed, plan_empty)``(dd-037 契约):placed = 落点验证过的实际上阵数;
+        plan_empty = 主计划为空(kernel 选人无上场候选)——调用方据此区分
+        no-op(合法稳态)与「计划非空却 0 落地」(真失败),两者返回状态可区分。
 
         **5.1.6(2026-08-12,live 观察 2)**:按 ``Character.position_pref()``(cw_chars 注册表)选排 ——
         前台角色→前排空槽、后台/flex 角色→后排空槽;对应排满才 fallback 另一排(避免不上场)。
@@ -541,7 +557,7 @@ class CwOpDeploy(SrOperation):
         if not bench_occ or (not front_empty and not back_empty):
             log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} front空={len(front_empty)} back空={len(back_empty)}'
                      f' → {"无 bench 角色" if not bench_occ else "板满无空槽(swap 待身份)"}')
-            return
+            return 0, True
         _match = self.ctx.cw_match
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
         _tgt = (set(_sess.target_comp.factions)
@@ -607,7 +623,7 @@ class CwOpDeploy(SrOperation):
             if _deployed >= _cap:
                 log.info(f'[cw-deploy] 板满 cap:deployed={_deployed} ≥ cap={_cap}(level,5.1.8)'
                          f' front空={len(front_empty)} back空={len(back_empty)} → bench 角色留 bench(不白拖)')
-                return
+                return 0, True
         # D-8:bench 身份走 SIFT(read_bench_chars,plaza 官方立绘库可靠)→ 真实羁绊(target 排序)+ position_pref
         # (5.1.6 选排)。两者都从 get_char 注册表查(SIFT 只给 char_id,BenchChar.position_pref 默认 "back"
         # 不可信 → 必查注册表)。无 target 也要读身份(选排需要),不再 _tgt gate。
@@ -648,63 +664,18 @@ class CwOpDeploy(SrOperation):
                 if _dch:
                     for _f in ((_dch.factions or ()) + (_dch.flows or ())):
                         _deployed_fac[_f] = _deployed_fac.get(_f, 0) + 1
-        tgt_idx, rest = [], []
-        # live 2026-08-15:target 优先 = 阵营交集 **或** core_char(_bench_cid;辅助如花火/瓦尔特
-        # 阵营 ∉ comp 阵营,只按 _bonds 判会把核心辅助排到 rest 尾部 → 上场晚/被换血)。
+        # dd-037:选人/围栏/排序单一源 = kernel.select_deployments。此前 op 内
+        # 复写一份 tgt/rest 切分 + 散牌围栏 + 点火排序(_deployment_order),与
+        # kernel 纯函数双源——run 20260904_28xx 局11 停机形态:配方底线规则只在
+        # 执行方 drag 循环里,发射方(决策核)不知道 → 空计划 RunDeploy 被报
+        # ✓「已部署角色」→ 同签名零推进环(G3 守卫停机)。收敛后本 op 只做
+        # 输入装配(SIFT 现读身份)+ 拖拽执行;拖拽循环内的动态守卫(fresh
+        # 复查/动态 cap/逐件 r288 仲裁/落点验证)保留作运行时防线。
         _cores = (_sess.target_comp.core_chars
                   if (_sess is not None and _sess.target_comp is not None) else None) or []
-        for i in bench_occ:
-            _bonds = _bench_id.get(i)
-            _cid0 = _bench_cid.get(i)
-            # r70:框架 carry/partial 也算 target(双轨期临时 target 语义,同 _tgt 并集)
-            _is_tgt = (((_bonds and _bonds & _tgt) or _cid0 in _cores)
-                       if _tgt else False) or _cid0 in _fw_carry
-            (tgt_idx if _is_tgt else rest).append(i)
-        # r361(局46 实锤,tgt 序内补档优先)+ r404-A1/ADR-0258 点火首键
-        # (ADR-0261 裁决选项1):排序统一走 `_deployment_order`(与纯函数
-        # cw_deploy_logic.select_deployments 同语义)——tgt/rest 序均加
-        # ignition_gain 首键 + 桶序修正(点火 rest 件先于 ignition=0 的
-        # tgt 件)。旧版此处只有 r361 tier_completes + r251 引擎身份键,
-        # 无点火键(r404-A1 当时只落了纯函数侧)。
-        # ADR-0130(用户节奏 §7-1「开场买牌囤 bench 不上阵」+ 复查确认 spread 种子):off-target 散牌
-        # 单张**留 bench 不上阵**(对齐 planner `_should_deploy` 语义)—— 上场条件:① target;② 同阵营
-        # 成对(board+bench 计数 ≥2,凑过渡羁绊,「买过渡阵容」人玩节奏);③ SIFT 未识别(无法判,
-        # 照旧上防空板);④ 保底:板完全空且无 target 无对 → 上 1 个(body > 空板)。旧 deploy-all 把
-        # 每个买单张都推上场 = spread 吸引子种子(fp 冻结 0.25 根因,M14/M15 遥测实锤)。
-        _pair_counts: dict[str, int] = {}
-        if _sess is not None and _sess.last_state is not None:
-            _pair_counts.update(_sess.last_state.board)
-        _bench_fac: dict[int, str] = {}
-        for i, _cid0 in _bench_cid.items():
-            _c = get_char(_cid0) if _cid0 else None
-            if _c is not None and _c.factions:
-                _bench_fac[i] = _c.factions[0]
-                _pair_counts[_c.factions[0]] = _pair_counts.get(_c.factions[0], 0) + 1
-        _held: list[int] = []
-        # M18 复盘回归修正(ADR-0130 补):散牌留 bench 是**P1 开局囤牌**语义;P2+ 人口扩展期
-        # (vacancy>2,等级 7-8 撑起的人口)空位本身就是战力,散牌该填位(M18 实测放置 3/18、满员率 76%,
-        # 未达上限弹窗频发 = 留 bench 过严的回归)。门:plane≥2 或 vacancy>2 → 散牌照旧上场。
-        _fill_mode = (len(front_empty) + len(back_empty)) > 2
-        # r263b(配方纪律,局15 鉴别诊断):配方基础未满(<5 档)时,
-        # **非配方件即使成对也不上板**(占槽稀释配方深度)。
-        _board_recipe = sum(
-            v for k, v in (_sess.last_state.board
-                           if _sess is not None
-                           and _sess.last_state is not None
-                           else {}).items()
-            if k in _RECIPE)
-        _recipe_starved = _board_recipe < _RECIPE_BASE
-        # r387(富余=填空):必上件数 = target 候选 + 同阵营成对件(两者必然要上);
-        # 空位扣除必上仍有富余 → 配方围栏放行散牌填空(围栏只在 cap 紧张时拦)。
-        _roomy = _cap_roomy_of(
-            len(front_empty), len(back_empty),
-            len(tgt_idx) + sum(1 for i in rest
-                               if _bench_fac.get(i) is not None
-                               and _pair_counts.get(_bench_fac[i], 0) >= 2))
-        # W155/ADR-0360 件4:锁定帧体系键(cw_intention.locked_faction_scope)
-        # 并入围栏放行集——锁定 comp 的非 RECIPE∪ENGINE 阵营件不再被
-        # 配方围栏摁 bench(与 cw_deploy_logic.select_deployments 同语义;
-        # 无锁定帧/读失败 → 空集=回旧行为)。
+        _board_in = dict(_sess.last_state.board
+                         if (_sess is not None and _sess.last_state is not None)
+                         else {}) or {}
         try:
             from sr_od.application.currency_war.kernel.cw_intention import (
                 locked_faction_scope as _lfs,
@@ -713,38 +684,39 @@ class CwOpDeploy(SrOperation):
                 or frozenset()
         except Exception:   # noqa: BLE001 —— 围栏兜底 best-effort
             _locked_fac = frozenset()
-        for i in list(rest):
-            if i not in _bench_cid:
-                continue   # SIFT 未识别:照旧上(无法判 target/阵营)
-            _f = _bench_fac.get(i)
-            if (_f is not None and _f not in _DEPLOY_FENCE
-                    and not ((_bench_id.get(i) or frozenset()) & _locked_fac)
-                    and _recipe_starved and not _roomy):
-                rest.remove(i)   # 非过渡配方件 + 配方基础未满 + cap 紧张 → 留 bench
-                _held.append(i)
-                continue
-            if _f is not None and _pair_counts.get(_f, 0) >= 2:
-                continue   # 同阵营成对(board+bench ≥2):凑过渡羁绊,上
-            if _fill_mode:
-                continue   # 人口扩展期:空位>2,散牌填位(body>空位,防未达上限弹窗)
-            rest.remove(i)
-            _held.append(i)
-        _board_empty = (len(front_empty) == len(front)) and (len(back_empty) == len(back))
-        if _board_empty and not tgt_idx and not rest:
-            _fallback = _held[:1]
-            if _fallback:
-                rest.extend(_fallback)
-                _held = _held[1:]
-                log.info(f'[cw-deploy] 板空保底:上 1 个散牌(body > 空板):{_fallback}')
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            select_deployments as _sel_dep,
+        )
+        from sr_od.application.currency_war.kernel.cw_state import (
+            BenchChar as _BC,
+        )
+        # 拖拽循环内 r288 动态仲裁仍按主阵营判件(与 kernel 内 bench_fac 同源口径)
+        _bench_fac: dict[int, str] = {}
+        for _bi2, _cid2 in _bench_cid.items():
+            _c2 = get_char(_cid2) if _cid2 else None
+            if _c2 is not None and _c2.factions:
+                _bench_fac[_bi2] = _c2.factions[0]
+        _bench_list: list = []
+        for _bi in bench_occ:
+            _cid_b = _bench_cid.get(_bi, '')
+            _ch_b = get_char(_cid_b) if _cid_b else None
+            _bench_list.append(_BC(
+                slot=_bi + 1, char_id=_cid_b,
+                faction=(_ch_b.factions[0]
+                         if _ch_b is not None and _ch_b.factions else '?'),
+                position_pref=_bench_pos.get(_bi, 'back')))
+        _up_rel, _held_rel = _sel_dep(
+            _bench_list, deployed_cids=set(_deployed_cids),
+            deployed_fac=dict(_deployed_fac), board=_board_in,
+            cap=(_cap if _cap is not None and _cap > 0 else 10 ** 6),
+            target_factions=_tgt, target_cores=set(_cores),
+            fw_carry=_fw_carry, locked_factions=_locked_fac)
+        order = [bench_occ[_k] for _k in _up_rel]
+        _held = [bench_occ[_k] for _k in _held_rel]
         if _held:
-            log.info(f'[cw-deploy] 散牌留 bench(不成对/非 target,ADR-0130):slots={[h + 1 for h in _held]}')
-        # r251 修 B(引擎 pair 优先)+ r404-A1 点火首键(ADR-0261 裁决
-        # 选项1):cap 有限时序竞争——「恰好点火」件(第 tier 人)最优先,
-        # r251 引擎身份键降为次键(纯函数侧探针实证:vacancy=1 时冗余
-        # 第4仙舟曾挤掉点火列车2)。排序体单一源 `_deployment_order`。
-        order = _deployment_order(tgt_idx, rest, _bench_id, _bench_fac,
-                                  _deployed_fac)
-        log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} target先={tgt_idx}'
+            log.info(f'[cw-deploy] 留 bench(kernel 围栏/底线/去重/cap,dd-037):'
+                     f'slots={[bench_occ[_k] + 1 for _k in _held_rel]}')
+        log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} 上场序={order}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
         _skipped = 0   # 合法跳过(去重/配方底线/源槽已空)≠ 上阵失败
@@ -941,6 +913,20 @@ class CwOpDeploy(SrOperation):
                 _held, front_empty, back_empty, _bench_pos, _bench_cid,
                 _deployed_cids, _cap,
                 (len(front) - len(front_empty)) + (len(back) - len(back_empty)))
+            # r288 底线对 fill 段同样辖(dd-037):kernel 留 bench 的列车件
+            # (列车≥2 档 ∧ 仙舟<3 基础线)不得经 P24 补部署绕回上板——
+            # 补部署只覆盖「散牌留 bench」的填位语义,不覆盖配方底线仲裁。
+            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                TRANSITION_TRAITS as _TT_fill,
+            )
+            _tt_fill = dict(_TT_fill)
+            _train_cap_f = _tt_fill.get('列车同行', 2)
+            _xz_base_f = _tt_fill.get('仙舟', 3)
+            _fill_plan = [
+                (_fi, _frow, _fslot) for _fi, _frow, _fslot in _fill_plan
+                if not (_bench_fac.get(_fi) == '列车同行'
+                        and _deployed_fac.get('列车同行', 0) >= _train_cap_f
+                        and _deployed_fac.get('仙舟', 0) < _xz_base_f)]
             for _fi, _frow, _fslot in _fill_plan:
                 _fpts = front if _frow == 'front' else back
                 if _fslot >= len(_fpts):
@@ -972,6 +958,7 @@ class CwOpDeploy(SrOperation):
                         f'{len(order) - _skipped}(跳过{_skipped};失败帧已存证)')
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order) - _skipped}'
                  f'(跳过{_skipped})')
+        return placed, not order
 
     def _wait_slot_occupied(self, pt: Point, timeout_s: float = 2.0) -> bool:
         """落点验证原语(P4R 返工):目标槽 ~timeout_s 内出现占用 = 上阵落地。
