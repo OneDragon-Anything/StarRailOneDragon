@@ -129,7 +129,7 @@ def parse_skeleton() -> list[dict]:
     plaza_path = REPO / ".debug/temp/currency_war/plaza/config_v4.4.json"
     if plaza_path.exists():
         cfg = json.loads(plaza_path.read_text(encoding="utf-8-sig"))
-        cfg = cfg["data"] if "data" in cfg else cfg
+        cfg = cfg.get("data", cfg)
         name_map: dict[str, str] = {}
         for pe in cfg["equipment_list"]:
             nm = pe["name"].replace(chr(0x2022), chr(0x00B7))
@@ -268,7 +268,7 @@ def merge_codex(entries: list[dict]) -> list[dict]:
         import json as _json
 
         pcfg = _json.loads(plaza_cfg.read_text(encoding="utf-8-sig"))
-        pcfg = pcfg["data"] if "data" in pcfg else pcfg
+        pcfg = pcfg.get("data", pcfg)
         plaza_desc = {pe["name"].replace(chr(0x2022), chr(0x00B7)): pe.get("desc") or "" for pe in pcfg["equipment_list"]}
         n_fixed = 0
         for e in entries:
@@ -397,6 +397,14 @@ def _eq(name: str, category: str, effect: str, stacking: bool, source: str = "",
         props: tuple[tuple[str, str], ...] = (), official: str = "") -> Equipment:
     return Equipment(name=name, category=category, effect=effect, stacking=stacking, source=source,
                      recipes=recipes, props=props, official_category=official)
+
+
+EQUIP_TOOL_CATEGORY: str = '工具'
+"""注册表装备分类学里的「工具」类名(不可 drag 穿戴,只能拖到装备/角色上
+消耗使用)。分类全集单一源 = 本文件 ``Equipment.category`` 字段注释;
+穿戴类过滤的策略侧消费 = mandate_v1.mandate(发射门①谓词)、执行侧
+消费 = cw_op_equip_all(工具不进 drag 穿戴循环)——双方均 import 本常量,
+禁再写本地平行定义。"""
 
 
 # ===== EQUIPMENTS 全量注册表(__TOTAL__ 件;__COUNTS__)=====

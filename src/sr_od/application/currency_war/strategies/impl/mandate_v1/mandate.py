@@ -450,22 +450,17 @@ def run_mandate(frame: MandateFrame,
     return out
 
 
-EQUIP_TOOL_CATEGORY: str = '工具'
-"""注册表装备分类学里的「工具」类名(不可 drag 穿戴,只能拖到装备/角色上
-消耗使用)。分类全集单一源 = ``cw_equipment_data.Equipment.category`` 字段
-注释;穿戴类过滤的执行侧平行消费 = ``cw_op_equip_all._TOOL_CATEGORIES``
-(同值,文件面不含该文件,单一源化归后续批)。"""
-
-
 def m7_wearable_exists(owned: list[str]) -> bool:
     """M7 发射门①:owned 存在穿戴类件(注册表已登记 ∧ 非工具类)。
 
     为什么不是「owned 非空」:快照写端按 ADR-0387 全量含工具件,持有面
     非空 ≠ 存在可穿件;谓词必须是变换面(穿上会改变装备分布)存在性。
     未登记名(识别对齐缺失)按不可穿保守侧处理——与执行侧 wearable 过滤
-    同口径(EQUIPMENTS.get 命中才进穿戴决策)。
+    同口径(EQUIPMENTS.get 命中才进穿戴决策)。工具类名单一源 =
+    ``cw_equipment_data.EQUIP_TOOL_CATEGORY``(执行侧同源消费)。
     """
     from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIP_TOOL_CATEGORY,
         EQUIPMENTS,
     )
     return any(

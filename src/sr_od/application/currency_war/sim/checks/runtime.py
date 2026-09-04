@@ -320,6 +320,14 @@ def check_mc_faction_calib(ledgers: list[list[dict]]) -> dict:
     先披露 sim 批次全波卡池的阵营经验分布 vs 注册表期望密度
     (按经验费用构成加权)的逐阵营比值;修复落地后升格判据带
     (比值出 0.9-1.1 即违规)。
+
+    **噪声带注记(不相交 seed 定谳,2026-08-31 迭代账本:172)**:
+    MC 采样方差本身造成 ±10-15% 量级的阵营比值波动——0.9-1.1 带
+    内的偏差属阵营噪声带,禁据此立「某阵营系统性偏差」病灶(定谳:
+    R4/R5 批 5 阵营同向偏差在 n30 不相交 seed 30..59 复算下不成立,
+    注册表无阵营维度 = 原命题范畴错误;出处 = mc_faction_calib_
+    audit/REPORT.md 定谳C + 不相交 seed 收账行)。out_of_band
+    非空仍照常披露,但带内波动不构成违规证据。
     """
     from collections import Counter
 
@@ -357,7 +365,10 @@ def check_mc_faction_calib(ledgers: list[list[dict]]) -> dict:
             'draws': draws, 'ratios': ratios,
             'out_of_band': out_of_band,
             'note': '前置=_sample_shop 修复(批⑭ F1);落地后'
-                    'out_of_band 非空即违规'}
+                    'out_of_band 非空即违规;'
+                    '0.9-1.1 带内波动=阵营噪声带(±10-15%,'
+                    '不相交 seed 定谳,账本:172),'
+                    '禁据此立阵营病灶'}
 
 
 

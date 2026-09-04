@@ -29,6 +29,9 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.data.cw_equipment_data import (
+    EQUIP_TOOL_CATEGORY,
+)
 from sr_od.application.currency_war.kernel.cw_comps import (
     equip_alloc_empty_reason,
 )
@@ -51,7 +54,8 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 # 工具类装备(拆装扳手/冶金炉/随便骰子等,非 drag 穿;D-34 单独处理)
-_TOOL_CATEGORIES: set[str] = {'工具'}
+# 类名单一源 = cw_equipment_data.EQUIP_TOOL_CATEGORY(与策略侧同源,原本地
+# 平行定义 _TOOL_CATEGORIES 已收编)。
 
 # ===== 拖拽失败降级(dd-015;复盘 g_20260902_181254 修复项 A)=====
 # 实证形态:同一(源件→目标)拖拽 diff=0.0 连败 4 轮,每轮整个装备步骤
@@ -158,7 +162,7 @@ def _owned_wearable_names(hits: list) -> list[str]:
     """
     return [n for n, _, _ in hits
             if EQUIPMENTS.get(n) is not None
-            and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+            and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
 
 
 def _below_icon_diff(
@@ -468,7 +472,7 @@ class CwOpEquipAll(SrOperation):
             return
         wearable_owned = [n for n in owned_names
                           if EQUIPMENTS.get(n) is not None
-                          and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+                          and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
         if not wearable_owned:
             return
         from sr_od.application.currency_war.telemetry import defects as cw_telemetry
@@ -647,7 +651,7 @@ class CwOpEquipAll(SrOperation):
                 _owned_last = [n for n, _, _ in hits]
                 wearable = [(n, p) for n, p, _ in hits
                             if EQUIPMENTS.get(n) is not None
-                            and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+                            and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
                 # ADR-0358(W92 修法 A)搬运链写端:owned 持有面快照进 session,
                 # 供 _pseudo_state 拷入决策 state.equips(持有面遥测/特征可见)。
                 # 每次现读都覆写(穿戴后 owned 减少,末次读=最新持有面)。
@@ -831,7 +835,7 @@ class CwOpEquipAll(SrOperation):
             # 写快照,冶金炉/扳手从不进决策快照(owned 恒空实证,run 26 两件
             # 工具躺着无人知)。采集层无权丢数据,消费侧各自过滤。
             wearable = [(n, p) for n, p, _ in hits
-                        if EQUIPMENTS.get(n) is not None and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+                        if EQUIPMENTS.get(n) is not None and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
             # ADR-0358(W92 修法 A)搬运链写端(旧 front-only 路径同链)
             if _match is not None and _match.session is not None:
                 _match.session.last_owned_equips = [n for n, _, _ in hits]
@@ -864,7 +868,7 @@ class CwOpEquipAll(SrOperation):
                 _hits = read_equips(self.screenshot(), _tmpl, equip_rect=_rect)
                 _wear = [(n, p) for n, p, _ in _hits
                          if EQUIPMENTS.get(n) is not None
-                         and EQUIPMENTS[n].category not in _TOOL_CATEGORIES]
+                         and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
                 _wear = _prioritize_wearable(_wear, _keys)
                 return Point(_wear[0][1][0], _wear[0][1][1]) if _wear else None
 

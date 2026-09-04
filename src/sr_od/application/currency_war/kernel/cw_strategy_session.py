@@ -129,7 +129,7 @@ class StrategySession:
     effect_inventory: ActiveEffectInventory = field(
         default_factory=lambda: ActiveEffectInventory())
     # owned 穿戴池快照(ADR-0358):CwOpEquipAll 每轮 read_equips 后写
-    # (仅穿戴类,工具类过滤同 equip_all._TOOL_CATEGORIES);_pseudo_state 拷入决策
+    # (仅穿戴类,工具类名单一源 = cw_equipment_data.EQUIP_TOOL_CATEGORY);_pseudo_state 拷入决策
     # state.equips → decisions 遥测可见,补「持有面有读点、无写链、决策/遥测全盲」
     # (实证:历史上 decisions 里 state.equips 全空)。
     last_owned_equips: list[str] = field(default_factory=list)
