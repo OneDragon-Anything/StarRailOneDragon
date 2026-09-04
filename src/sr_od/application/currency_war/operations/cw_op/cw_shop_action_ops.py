@@ -160,15 +160,26 @@ def _bench_identity_signature(
             for b in (table or []) if b is not None]
 
 
-def guard_expected_vs_tracked(state: GameState, session) -> None:
+def guard_expected_vs_tracked(state: GameState, session,
+                              stage: str = 'project') -> None:
     """expected-vs-tracked 双账断言(ADR-0517 §守卫两属 (ii))。
 
     期望态(project 链 = simulate 维护)vs 执行侧 tracked 账
-    (``tracked_bench_chars`` 经 mutate 随执行更新)的对拍——投影建模
-    bug 的唯一在环检测器:project 错则两账分离当场暴露(错误卖出会实际
-    执行、损害不可逆,ADR-0516 投影口径族史)。零读屏(tracked 纯内存)。
+    (``tracked_bench_chars`` 经 mutate 随执行更新)的对拍——分叉的
+    在环检测器。零读屏(tracked 纯内存)。
 
-    已申报豁免(非投影 bug 的已知建模分叉,豁免帧由调用方判定):
+    两属消息分离(按分叉出现时点归因,ADR-0517 §守卫两属 (ii) 迁移
+    补裁;2026-09-05 OpenShop 事故实证:播种层双源分叉曾被本守卫
+    误标成「project/mutate 模型分叉」,误导排查方向):
+    - stage='seed'(播种后、首动作前调用):分叉 = 入口播种/入口账
+      分叉——期望态的播种源与守卫对拍账不同源(播种 bug),投影链
+      无责。
+    - stage='project'(默认,动作投影后调用):分叉 = project/mutate
+      模型分叉——投影建模 bug 的唯一在环检测器(project 错则两账
+      分离当场暴露;错误卖出会实际执行、损害不可逆,ADR-0516 投影
+      口径族史)。
+
+    已申报豁免(非分叉 bug 的已知建模分叉,豁免帧由调用方判定):
     满栏买入(执行侧 tracked 的 bench_place 在满栏时丢件,simulate 走
     §2.5 自动多买 k 张分支——两模型在满栏语境不同构,对账重挂点 = 下一
     入口观察)。豁免面外的分叉 = 断言炸出。
@@ -179,10 +190,16 @@ def guard_expected_vs_tracked(state: GameState, session) -> None:
     expect_sig = _bench_identity_signature(state.bench)
     tracked_sig = _bench_identity_signature(tracked)
     if expect_sig != tracked_sig:
+        if stage == 'seed':
+            raise AssertionError(
+                '[cw-shop][guard] 播种/入口账与 tracked 双账分离(入口播种 bug?):'
+                f'expected={expect_sig} tracked={tracked_sig}'
+                '(期望态在首动作前即与 tracked 账不同源 = 播种层分叉,'
+                '投影链无责;入口误读由下一入口对账归零)')
         raise AssertionError(
             '[cw-shop][guard] 期望态 vs tracked 双账分离(投影建模 bug?):'
             f'expected={expect_sig} tracked={tracked_sig}'
-            '(ADR-0517 §守卫两属 (ii);入口误读由下一入口对账归零,'
+            '(ADR-0517 §守卫两属 (ii);首动作前另有播种期对账,'
             '此处炸出 = project/mutate 模型分叉)')
 
 
@@ -240,7 +257,6 @@ class BuyCardOp(ShopActionOp):
         ledger.total_buy += 1
         ledger.spend_executed += action.card.cost
         if action.card.name:
-            match.session.tracked_bench.append(action.card.name)
             ledger.bought_names.append(action.card.name)
         mutate_bench_deployed(match.session.tracked_bench_chars,
                               match.session.tracked_deployed, action)

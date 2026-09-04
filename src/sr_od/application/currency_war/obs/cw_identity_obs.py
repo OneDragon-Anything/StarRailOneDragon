@@ -458,7 +458,7 @@ def identify_slots(
         hits.append((slot_idx, BenchChar(
             slot=slot_idx,
             char_id=name,
-            # '?'=未知(名不在注册表);''=已知无阵营(白厄类;与 shop._tracked_bench_chars 同语义)
+            # '?'=未知(名不在注册表);''=已知无阵营(白厄类,复制效果不计阵营人数)
             faction=(ch.factions[0] if (ch is not None and ch.factions)
                      else ('' if ch is not None else '?')),
             star=read_star(crop),            # 立绘底部金星计数(1/2/3 星;见 read_star)

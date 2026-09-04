@@ -261,8 +261,9 @@ class StrategySession:
     # 滤掉会让后续位面名字左移错位)
     briefing_bosses: list[str | None] = field(default_factory=list)
     active_env: str = ""
-    # deploy/sell 同步待补(deploy=CwOpDeploy 位置式 / sell=_handle_bench_full 位置式,后续接)。
-    tracked_bench: list[str] = field(default_factory=list)
+    # (旧名列表 tracked_bench 已退役:仅 BuyCard 追加、无人清理的残账,
+    # 旧回退播种会复活陈旧名 → 2026-09-05 OpenShop 双账分叉事故;单一
+    # 跟踪账 = tracked_bench_chars。)
     tracked_bench_chars: list[BenchChar] = field(default_factory=list)
     tracked_deployed: list[BenchChar] = field(default_factory=list)
     # 买牌单元期望态(cw_screen_prep.BuyExpect)。坐标系 = 哪次购买:

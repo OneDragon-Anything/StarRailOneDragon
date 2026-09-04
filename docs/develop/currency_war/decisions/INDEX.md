@@ -419,3 +419,4 @@
 | [dd-036-settlement-damage-rows-temp-collection.md](dd-036-settlement-damage-rows-temp-collection.md) | dd-036 结算屏逐角色伤害行临时采集链路(ΔV_2★ 数据面)——立撤完整周期 |
 | [dd-037-deploy-launch-exec-contract-seam.md](dd-037-deploy-launch-exec-contract-seam.md) | DD-037: 部署「发射×执行」契约接缝——发射门与执行器共用单一源谓词,no-op 状态可区分 |
 | [dd-038-decision-v2-package-deletion.md](dd-038-decision-v2-package-deletion.md) | DD-038: decision/ 整包删除(42 文件)+ mandate_v1 单核直替 + 注册面封闭集(用户裁定 2026-09-04,b94e9cfb;回溯建档) |
+| [0520-openshop-seed-fork-retirement.md](0520-openshop-seed-fork-retirement.md) | ADR-0520: OpenShop 播种层双源分叉治本——tracked_bench 旧账退役+播种期对账接线+守卫两属消息分离(第二局双 HIT 定谳) |

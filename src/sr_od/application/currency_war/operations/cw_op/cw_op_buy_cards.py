@@ -330,30 +330,6 @@ def _form_progress(comp, state) -> float:
     return form_progress(comp, state)
 
 
-def _tracked_bench_chars(names: list[str]) -> list[BenchChar]:
-    """tracked_bench(buy OCR 的角色名)→ BenchChar 列表(跨轮 seed state.bench)。
-
-    buy 时 ``read_shop_cards`` OCR 的规范名(T#92 验证可靠)持久化,跨轮 seed bench →
-    plan / char_quality / comp core check 知 bot 自有角色。**SIFT 立绘识别现已可行**(plaza
-    官方立绘库,D-8/D-10/D-12 验证)—— deploy op 后用 SIFT 真实身份纠 tracking 漂(deploy_bench
-    ``_reconcile_tracking``,D-12);buy 期 bench 仍用 OCR 名跟踪(buy 改变 bench,SIFT 单帧跟不上)。
-    """
-    from sr_od.application.currency_war.data.cw_chars import get_char
-    out: list[BenchChar] = []
-    for i, n in enumerate(names):
-        if not n:
-            continue
-        ch = get_char(n)
-        # faction 语义(2026-08-17 清理):'?' = 未知(名不在注册表);'' = 已知无阵营(白厄「救世主」类,
-        # 复制效果不计阵营人数)。旧版两者混填 '?',日志无法区分"识别失败"与"本来就无阵营"。
-        out.append(BenchChar(
-            slot=i, char_id=n,
-            faction=(ch.factions[0] if (ch is not None and ch.factions)
-                     else ('' if ch is not None else '?')),
-        ))
-    return out
-
-
 # 「购买经验」按钮(= 买经验升等级)screen_info area 名;中心运行时读(area_center)
 BUY_EXP_AREA: str = '备战标识-购买经验'
 LEVEL_UP_FALLBACK: Point = Point(296, 860)   # screen_info 缺失时兜底
@@ -533,17 +509,19 @@ def run_buy_waves(op: SrOperation, match,
         # 开店首读金快照(仅首段;救援后取值——救援值比假 0 更接近真值)
         if gold_open is None:
             gold_open = state.gold
-        # task#105:优先 tracked_bench_chars(带 star+merge,mutate 同步);空(首轮)退 tracked_bench(旧 star 恒1)。
+        # 播种单一源 = tracked_bench_chars(带 star+merge,mutate/对账全程同步)。
+        # 空 = bench 真空(全部署/合成清空的事实正确态),不回退任何残账——
+        # 旧 tracked_bench 回退分支已退役:单动作架构下「首轮」场景由入口
+        # heavy 读屏重建(ADR-0517 决策 8,入口观察即对账);残账仅 BuyCard
+        # 追加、无人清理,回退会复活陈旧名(实证 = 2026-09-05 OpenShop
+        # 双账分叉事故,诊断档
+        # .debug/temp/currency_war/20260905_openshop_fork_diag/report.md)。
         if match.session.tracked_bench_chars:
             # ADR-0316:tracked 是占用列表(带 1-based slot)→ 槽位表
             state.bench = bench_from_compact(
                 deepcopy(match.session.tracked_bench_chars))  # copy 防下游 plan 污染持久态
             log.info(f'[cw] tracked_bench_chars(seed)='
                      f'{[(c.char_id, c.star) for c in state.bench if c is not None]}')
-        elif match.session.tracked_bench:
-            # ADR-0316:旧 seed 路径同样走槽位表(紧凑→定长 9 含 None)
-            state.bench = bench_from_compact(_tracked_bench_chars(match.session.tracked_bench))
-            log.info(f'[cw] tracked_bench(旧 seed)={match.session.tracked_bench}')
         match.session.last_state = state
         # 黑板写路径(W971 §2,P2):入口观察态(牌面现读+hp 覆盖+node_type/
         # dual/focus 拷入+gold 救援+tracked 播种 + 单动作投影段)直写
@@ -629,6 +607,14 @@ def run_buy_waves(op: SrOperation, match,
                         is not None else None),
         }
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----
+        # 播种期对账(守卫两属消息分离的判定序):首动作前先对一次账,
+        # 分叉在此出现 = 归「播种/入口账分叉」;此后投影后出现的分叉才归
+        # 「project/mutate 模型分叉」(2026-09-05 OpenShop 事故:播种层
+        # 双源分叉曾被投影消息误标,误导排查方向)。
+        from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
+            guard_expected_vs_tracked as _guard_seed,
+        )
+        _guard_seed(state, match.session, stage='seed')
         visit_actions: list = []
         _seg_frames = 0
         while True:

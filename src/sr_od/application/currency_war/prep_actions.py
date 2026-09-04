@@ -527,7 +527,7 @@ class PrepActionExecutor:
         return DragCwChar.drag_char(self._op, src, dst)
 
     def _track_remove_bench(self, slot: int) -> None:
-        """卖出后备势跟踪同步(主跟踪 tracked_bench_chars;tracked_bench 旧名列表无法映射物理槽,不动)。"""
+        """卖出后备势跟踪同步(单一跟踪账 tracked_bench_chars)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return

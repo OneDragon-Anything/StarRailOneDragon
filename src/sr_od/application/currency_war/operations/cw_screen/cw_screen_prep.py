@@ -2106,7 +2106,6 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
     )
     from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
         _apply_hp,
-        _tracked_bench_chars,
         build_post_buy_incremental_state,
         expected_gold_after_actions,
     )
@@ -2151,8 +2150,7 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
                 if _inc_gold is not None:
                     _post = build_post_buy_incremental_state(
                         state, _inc_gold,
-                        (match.session.tracked_bench_chars
-                         or _tracked_bench_chars(match.session.tracked_bench)),
+                        match.session.tracked_bench_chars,
                         match.session.last_node_type or None,
                         hp_value, hp_readable, hp_trusted)
             if _post is None:
