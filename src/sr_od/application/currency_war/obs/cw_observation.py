@@ -1339,6 +1339,37 @@ def read_deploy_cap_debounced(ctx: SrContext, screen: MatLike,
     return _debounce_cap(ctx, screen, cap, level)
 
 
+def arbitrate_deployed_count(paddle_n: int | None,
+                             cv_n: int | None) -> tuple[int | None, bool]:
+    """deployed 计数双源仲裁(纯函数)→ (采信值, 是否结构性分歧)。
+
+    两源:``paddle_n`` = 舞台上方「X/Y」指示的 X(``read_deployed_count``,
+    游戏自带计数器,构造上即真值);``cv_n`` = CV 槽位占用实测
+    (front+back ``slot_occupied`` 计数,像素推断,特效/布局档错位可虚高)。
+
+    **规则(无新阈值;两条依据)**:
+    1. 两源都可读 → **取低值 min**(fail-closed 向「板未满」侧)。依据 =
+       代价不对称(本仓既有 r60/r64 取舍口径):计数偏高 → 「板满」假判 →
+       合法化 no-op → 零推进死锁(实证:2026-09-05 备战 r9 停机,CV 虚高
+       5 vs paddle 真值 3,``deployed_count_2src`` 留证三连);计数偏低 →
+       多试一次拖拽被游戏拒(源槽弹回,廉价可观测)。取 min 恒落在廉价侧,
+       单调规则不依赖任何拍定分界。
+    2. 分歧告警带沿用既有留证判据 |paddle−cv|>1(spread≤1 属两源合法
+       读数差:CV 采样边沿/动画残影,单帧 ±1 不行动);>1 = 结构性分歧,
+       调用方须留证 + 记 ``telemetry.defects.DEFECT_KIND_DEPLOYED_COUNT_2SRC``
+       分键(防静默;不一致率按该 kind 计数)。
+
+    单源缺席 → 返另一源(无仲裁语义,divergent=False);双缺席 → (None, False)。
+    """
+    if paddle_n is None and cv_n is None:
+        return None, False
+    if paddle_n is None:
+        return cv_n, False
+    if cv_n is None:
+        return paddle_n, False
+    return min(paddle_n, cv_n), abs(paddle_n - cv_n) > 1
+
+
 def resolve_paddle_pair(ctx: SrContext, screen: MatLike,
                         level: int) -> tuple[int | None, int | None]:
     """「X/Y」指示**单读** → (deployed_count X, deploy_cap Y)。

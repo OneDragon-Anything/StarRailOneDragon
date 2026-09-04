@@ -69,6 +69,38 @@ AUTO_RESOLVED_OBS_FIELDS: frozenset[str] = frozenset(
      'deploy_cap_vs_level', 'deployed_count_2src'})
 
 
+#: deployed 计数双源分歧**独立分键**(防静默;观测仲裁批新增)。
+#: 语义:paddle X(游戏计数器真值)vs CV 槽位占用,分歧仲裁(取低值)
+#: 触发一次计一行,不一致率 = 本 kind 行数 / 局。与旁路自 obs_conflicts 的通用
+#: ``perception_conflict`` 行分键(通用行是证据层,本键是裁决事件层,
+#: 判读「CV 占用源漂移率」直接查本键,不用下钻证据流行)。
+#: 仲裁规则与依据 = ``cw_observation.arbitrate_deployed_count`` docstring。
+DEFECT_KIND_DEPLOYED_COUNT_2SRC: str = 'deployed_count_2src_divergence'
+
+
+def record_deployed_count_2src_divergence(paddle_n: int, cv_n: int,
+                                          source: str) -> None:
+    """记一条 deployed 计数双源分歧分键行(best-effort;run_id 缺省 no-op)。
+
+    仲裁已在本侧完成(取低值),本行只承载不一致率遥测,恒 L2 留证
+    (auto_resolved=True,不进安灯);证据层(obs_conflicts 原始行)由
+    调用方的 obs_conflict 留证并行承载,本行 refs 指认来源便于归因。
+    """
+    record_defect(
+        'deployed', DEFECT_KIND_DEPLOYED_COUNT_2SRC,
+        expected=f'paddle_x={int(paddle_n)}',
+        observed=f'cv_occupied={int(cv_n)}',
+        gap=float(int(cv_n) - int(paddle_n)), gap_large=True,
+        auto_resolved=True,
+        verdict=('留证-deployed 计数双源分歧,已按取低值仲裁'
+                 '(规则与依据见 cw_observation.arbitrate_deployed_count;'
+                 '本键计数=不一致率,同局 ≥3 次排期修 CV 占用源)'),
+        refs=[{'stream': 'arbitration', 'key': f'source={source}'}],
+        reader_source=str(source or ''),
+        note='deployed 计数双源仲裁分键(裁决事件层;证据层见 obs_conflicts '
+             'deployed_count_2src 行)')
+
+
 
 def judge_severity(surface: str, *, gap_large: bool, reproduced: bool,
                    auto_resolved: bool = False) -> str:

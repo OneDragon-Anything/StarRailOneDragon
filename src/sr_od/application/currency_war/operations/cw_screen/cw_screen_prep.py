@@ -629,8 +629,19 @@ class CwScreenPrep(SrOperation):
                                  verdict=('留证-双源分歧(处理:看截图数前排+后排占用实数,'
                                           '与 paddle X 对拍;哪源对修哪源——paddle 对→CV '
                                           '阈值/遮挡误漏,CV 对→X/Y 拆框;'
+                                          '消费侧板满门已按取低值仲裁'
+                                          '(cw_observation.arbitrate_deployed_count);'
                                           '单次按噪声忽略,同局 ≥3 次排期修)'),
                                  source='director_heavy')
+                    # 不一致率分键(防静默;裁决事件层,与上方证据层行分键)
+                    try:
+                        from sr_od.application.currency_war.telemetry.defects import (
+                            record_deployed_count_2src_divergence,
+                        )
+                        record_deployed_count_2src_divergence(
+                            dep_n, _cv_occ, 'director_heavy')
+                    except Exception:   # noqa: BLE001  遥测 best-effort
+                        pass
             # 更新 light 沿用缓存(trusted 位随 state 缓存,MED-1 —— light 步不重判 shop 态,
             # 缓存 state 生成时的可信度就是它的可信度)
             self._cached_state = st
