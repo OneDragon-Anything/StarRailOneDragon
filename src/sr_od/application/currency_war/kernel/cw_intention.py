@@ -8,11 +8,16 @@
 **教义边界(user_playstyle)**:
 - [21] final 件「买而不上」→ 本模块锁线后**只改囤货方向**(输出「囤货目标集合」
   供买侧消费),不改板上、不产出任何上场/换人动作;
-- [23] 终局线由贯穿件锁定,不是 pivot → 锁定后撤销**只有两个出口**(析取):
+- [23] 终局线由贯穿件锁定,不是 pivot → 锁定后撤销**只有三个出口**
+  (前两个为析取,第三个为 P2 供给可行视界独立通道):
   ①意向核心断供证据(三条件合取:miss ≥ max(CORE_MISS_N, N_req 闭式)
   ∧ 存在异线核心可达 ∧ 异线资产厚度 ≥ A_min——统计证据+替代资产证据,
   只计刷新窗已开的轮,窗口冻结语义);②更高层级替代
-  信号且过可达性对照。分数涌现换线不进本模块。
+  信号且过可达性对照;③P2 线完成率 G ≤ ε(供给概率×剩余轮×血预算,
+  注册表派生零新参数)∧ 线内在店断供 ≥ PAIR_SUPPLY_CONFIRM_ROUNDS
+  (观测证据合取,防误杀活线)且存在可行替代线(先验 G>ε ∧ 替代线
+  核心在店/在手=已验证可达)——降级到 unlocked
+  交 dd-033 P2 移交重锁(可逆,不写 evicted)。分数涌现换线不进本模块。
 - [23]/[21] 的 P1 时序面(ADR-0341):贯穿件 P1 可买可囤([21] bench 等窗口),
   但**终局专属线(锁线方向不含过渡引擎)在 P1 的③/④锁线证据被资格门拦下**——
   资格 = ①类(策略/环境亲和;transitions §1「拿到逆天投资策略才配锁直通线」);
@@ -146,6 +151,12 @@ class LineTrack:
 
     miss_count: int = 0
     frozen_rounds: int = 0
+    member_drought: int = 0
+    """线级在店供给断供计数(出口③证据组;窗口冻结语义同 frozen_rounds):
+    有商店语境轮且 core∪shared 无任何成员在店 +1,有成员在店清零,
+    无商店语境轮冻结。阈值复用 ``PAIR_SUPPLY_CONFIRM_ROUNDS``(出现
+    观测按 1/轮累积、缺席证据按 (1−q)<1/轮 累积的同一离散化推导,
+    dd-034 候选①线级同构)。"""
 
 
 @dataclass
@@ -226,7 +237,9 @@ class IntentionState:
 
     - 写入端 = update_intention 撤销出口①开窗分支(唯一写入点,每次
       开窗整体覆写);keys:kind/miss_count/n_req/q/eps/alt_comp/e_alt/
-      asset_thickness/a_min(语义见该分支注释)。
+      asset_thickness/a_min(语义见该分支注释)。出口③
+      (supply_infeasible)同字段载体:kind/g_locked/alt_comp/g_alt/
+      eps/h_eff/hp(见该分支注释)。
     - 清空时机 = _lock(重锁即证据消费完毕)与冻结驱逐/降格(转移
       不经撤销,证据随之失效)。空 dict = 本局尚无撤销开窗。"""
 
@@ -897,6 +910,133 @@ def core_miss_n_required(core: str, level: int, eps: float) -> int:
     return max(1, math.ceil(math.log(eps) / math.log(1.0 - q)))
 
 
+def p2_supply_horizon(state: GameState,
+                      session: StrategySession | None = None,
+                      registry: DecisionV2Registry | None = None) -> int:
+    """P2 有效供给视界 H = min(位面剩余节点, ⌈hp / vd_p2_loss⌉)。
+
+    三维中「剩余轮 × 血预算」的合取面(供给概率维在
+    ``line_completion_feasibility`` 内取幂)。零新自由参数,两个输入
+    全部是既有单一源:
+    - 位面剩余节点 = ``plane_remaining_nodes``(ADR-0366 本位面真值,P2=7);
+    - 血预算轮数 = ⌈hp / registry.vd_p2_loss⌉——vd_p2_loss=20.05 是
+      P12/P21 已采的 P2 单战期望掉血(registry 单一源),血预算语义与
+      ``decision_v2.discipline.p2_crisis_band``(2×vd_p2_loss)同源:
+      还能承受几次 P2 败战,就还剩几轮「等得到供给」的有效窗口。
+
+    辖域 = P2(vd_p2_loss 是 P2 量,P1/P3 调用面禁用——消费位自守)。
+    hp≤0(濒死帧)→ 0(视界为零,任何线都不可达)。
+    """
+    reg = registry or DEFAULT_REGISTRY
+    plane_left = plane_remaining_nodes(state, session)
+    hp = int(getattr(state, 'hp', 0) or 0)
+    blood_rounds = math.ceil(hp / float(reg.vd_p2_loss)) if hp > 0 else 0
+    return min(plane_left, blood_rounds)
+
+
+def line_completion_feasibility(state: GameState,
+                                comp: Comp | None,
+                                session: StrategySession | None = None,
+                                registry: DecisionV2Registry | None = None,
+                                visible: set[str] | None = None) -> float:
+    """P2 锁线可行性 G = P(线核心缺件在有效视界 H 内全部现身)。
+
+    三维合成(供给概率 × 剩余轮 × 血预算,零新自由参数):
+    - 供给概率:每缺件单轮出现率 q = ``_core_miss_q``(cw_shop_odds
+      refresh_prob × DISTINCT_CARDS_PER_COST 注册表派生,与
+      ``encounter_window_rounds``/``core_miss_n_required`` 同一静态
+      近似,忽略 depletion——设计先例同边界);
+    - 视界 H = ``p2_supply_horizon``(剩余节点 ∧ 血预算轮数);
+    - 单件视界内现身率 F_m = 1−(1−q_m)^H,线完成率 G = ∏ F_m
+      (缺件独立近似,构造性高估面如实声明:共同刷窗正相关使真实
+      G 偏低,判据方向=只用于「不可行」侧的保守开闸,高估方向安全)。
+
+    辖域语义:
+    - 终件口径 = core_chars(与 ``_asset_thickness`` 终件一致);
+      shared/替班不计——可行性回答「这条线的核心能否凑齐」,不是
+      「杂件买得到吗」;
+    - 缺件已到手或在店(visible)→ 该件 F=1(完成路径已兑现;
+      在店件当轮可买, affordability 归花钱层,意向层不双计);
+    - 某缺件该级不出(refresh_prob=0)→ G=0(等级不可达,先验零);
+    - comp 为 None → 0.0。
+
+    消费位(update_intention,全部 plane==2):P2 移交强锁候选门槛 /
+    P2 信号缓锁门 / 已锁线供给不可行降级(出口③)。判据阈值 =
+    registry.revoke_miss_tolerance_eps(ε,既有单一源):G ≤ ε 意即
+    「完成概率压不进证据噪声带以下」的反面——比撤销出口①的证据门槛
+    (miss ≥ N_req,P2 视界内不可达的 21-42 轮)更强的先验不可行。
+    可行性差 ≠ 不锁线(P25 锁线价值辖溢余段核心出现即买):本判据
+    只辖「锁向承诺」的准入与断供降级,不撤线内件买入义务。
+    """
+    if comp is None:
+        return 0.0
+    h_eff = p2_supply_horizon(state, session, registry)
+    if h_eff <= 0:
+        return 0.0
+    vis = _visible_chars(state) if visible is None else visible
+    owned = _owned_chars(state)
+    g = 1.0
+    for m in comp.core_chars:
+        if m in owned or m in vis:
+            continue
+        q = _core_miss_q(m, state.level)
+        if q <= 0.0:
+            return 0.0
+        g *= 1.0 - (1.0 - q) ** h_eff
+        if g <= 0.0:
+            break
+    return g
+
+
+def _best_supply_feasible_alt(state: GameState,
+                              ist: IntentionState,
+                              session: StrategySession | None,
+                              reg: DecisionV2Registry,
+                              visible: set[str],
+                              exclude: str) -> tuple[str, float] | None:
+    """供给可行替代线top-1(出口③的换线目标;与 ``_revoke_alt_evidence``
+    同构的「异线」口径:排除当前线与 evicted,弱面位面过滤同款)。
+
+    **双门槛**(A/B 两轮实证收敛,见 REPORT):
+    1. G > ε(先验可行);
+    2. 替代线意向核心在店/在手([23] 贯穿件语义:锁向承诺只有贯穿件
+       到手才算「已验证可达」——G 略高于 ε 的替代线自己也完成不了,
+       换过去是拿血量赌先验,A/B s3 局实证为净伤害)。
+    可行线集空 → None(全不可行时维持现任锁——任何换线都是 ε 级噪声,
+    P25 锁线价值保留,不折腾)。返回 (线名, G) 或 None。"""
+    best: tuple[str, float] | None = None
+    for c in _v2_comps():
+        if c.name == exclude or c.name in ist.evicted:
+            continue
+        if state.plane in (c.weak_planes or ()):
+            continue
+        core = intention_core(c)
+        if not core or core not in visible:
+            continue
+        g = line_completion_feasibility(state, c, session, reg, visible)
+        if g > reg.revoke_miss_tolerance_eps \
+                and (best is None or g > best[1]):
+            best = (c.name, g)
+    return best
+
+
+def _p2_signal_supply_ok(state: GameState,
+                         sig: IntentionSignal,
+                         session: StrategySession | None,
+                         reg: DecisionV2Registry,
+                         visible: set[str]) -> bool:
+    """P2 信号缓锁门的单信号判据(见 update_intention 消费位注)。
+    核心在店/在手 → 放行;否则 G > ε 才放行。"""
+    comp = get_comp(sig.comp_name)
+    if comp is None:
+        return True
+    core = intention_core(comp)
+    if core and core in visible:
+        return True
+    return line_completion_feasibility(
+        state, comp, session, reg, visible) > reg.revoke_miss_tolerance_eps
+
+
 def _revoke_alt_evidence(state: GameState, visible: set[str],
                          locked_comp: str, evicted: set[str],
                          a_min: float) -> tuple[str, float] | None:
@@ -1018,6 +1158,15 @@ def update_intention(state: GameState, ist: IntentionState,
                 sigs = [s for s in sigs if s.layer != 3]   # 不触发③
         else:
             track.frozen_rounds = 0
+            # 线级在店供给断供计数(出口③证据组):有店轮无任何线内
+            # 成员(core∪shared)在店 +1,有成员清零,无店轮冻结。
+            shop_names = {getattr(c, 'name', '') or '' for c in (state.shop or [])}
+            if shop_names:
+                line_members_seen = bool(
+                    shop_names & (set(comp.core_chars)
+                                  | set(comp.shared_chars))) if comp else False
+                track.member_drought = (0 if line_members_seen
+                                        else track.member_drought + 1)
             if core in visible:
                 track.miss_count = 0
             else:
@@ -1075,6 +1224,56 @@ def update_intention(state: GameState, ist: IntentionState,
                             f'(n_req={n_req},q={q:.3f},alt={alt_name}'
                             f',thk={thk:.1f})')
                         revoked = True
+            # 撤销出口③(P2 供给可行视界降级,锁线可行性批):
+            # 条件 = P2 ∧ 窗开 ∧ 核心不在店/在手 ∧ 线完成率 G ≤ ε ∧
+            # 线内在店断供 ≥ PAIR_SUPPLY_CONFIRM_ROUNDS ∧ 存在 G > ε
+            # 的可行替代线。语义:出口①的证据门槛 N_req(3费@lv7=21 轮)
+            # 在 P2 的 7 轮视界内不可达——死守一条供给空缺线既无法完成
+            # 也无法被证据机器合法放弃(R5 死法族主因:10 死亡局锁线波
+            # 线内件出现率 16.7%,hp0 终持金≥100)。**断供证据合取是
+            # 防误杀的关键**:G ≤ ε 只是先验不可行,引擎线(列车同行等
+            # 成员持续在售)仍可能功能良好,A/B 实证(s3 局)无证据合取
+            # 时会撤掉活线换死线——先验 + 观测断供双证据才构成「线死」。
+            # 降级到 unlocked 让 dd-033 的 P2 移交(handoff_lock)机制
+            # 下一轮确定性地重锁到可行线,换线不绕信号运气。与出口①
+            # 同构的可逆性:降级不写 evicted,现线缺件兑现(买到)/血量
+            # 回升(H 变大)/升级(q 变大)后 G 恢复即可经信号/移交重锁
+            # (un-evict 同款,经济冻结批语义)。核心在店帧不辖(当轮
+            # 可买,缺件集即缩,G 会被低估)。全线不可行(无 G>ε 替代)
+            # 不降级:任何换线都是 ε 级噪声,P25 锁线价值保留。
+            if (not revoked and state.plane == 2 and core
+                    and core not in visible
+                    and track.member_drought >= PAIR_SUPPLY_CONFIRM_ROUNDS):
+                _reg_f = registry or DEFAULT_REGISTRY
+                g_locked = line_completion_feasibility(
+                    state, comp, session, _reg_f, visible)
+                if g_locked <= _reg_f.revoke_miss_tolerance_eps:
+                    alt = _best_supply_feasible_alt(
+                        state, ist, session, _reg_f, visible,
+                        exclude=ist.locked_comp)
+                    if alt is not None:
+                        alt_name, g_alt = alt
+                        _h = p2_supply_horizon(state, session, _reg_f)
+                        ist.phase = 'unlocked'
+                        ist.weak_comp = ist.locked_comp
+                        ist.locked_comp = ''
+                        ist.lock_layer = 0
+                        ist.transition_pair = ()
+                        ist.revoke_evidence = {
+                            'kind': 'supply_infeasible',
+                            'g_locked': round(g_locked, 4),
+                            'alt_comp': alt_name,
+                            'g_alt': round(g_alt, 4),
+                            'eps': _reg_f.revoke_miss_tolerance_eps,
+                            'h_eff': _h,
+                            'hp': int(getattr(state, 'hp', 0) or 0),
+                            'member_drought': track.member_drought,
+                        }
+                        ist.last_event = (
+                            f'revoke:supply_infeasible:{alt_name}'
+                            f'(g={g_locked:.3f},g_alt={g_alt:.3f}'
+                            f',h={_h})')
+                        revoked = True
         if ist.phase == 'locked':
             # 撤销出口②:更高层级替代信号 + 可达性对照(层级高≠必换)
             for s in sigs:
@@ -1105,6 +1304,24 @@ def update_intention(state: GameState, ist: IntentionState,
                 if pair else 'lock_pair:wait'
 
     if ist.phase in ('unlocked', 'weak') and not revoked:
+        # P2 信号供给可行性缓锁门(锁线可行性批):候选信号线的核心
+        # 不在店/在手 ∧ 线完成率 G ≤ ε ⇒ 本轮不锁(与 H1 环境判据同款
+        # 「缓锁」语义,只辖主动选线,已锁线不辖)。核心在店的信号不辖
+        # ——当轮可买,P25「核心出现即买」的锁线价值优先,且买入后
+        # 缺件集即缩。辖域=plane==2(vd_p2_loss 血预算与 7 轮视界都是
+        # P2 量;P1 配方锁/P3 强锁语义不动)。防的是出口③降级后的
+        # 立即重锁死循环与 ①②亲和信号把方向锁进供给空缺线(R5 死亡
+        # 局 5 条不同锁线全部低供给:任何线都可能供给不济,锁前先验
+        # 可达性)。
+        if state.plane == 2:
+            _reg_f2 = registry or DEFAULT_REGISTRY
+            _n0 = len(sigs)
+            sigs = [s for s in sigs
+                    if _p2_signal_supply_ok(state, s, session, _reg_f2,
+                                            visible)]
+            if len(sigs) != _n0:
+                log.info('[cw][intention] P2 供给可行性缓锁 %d→%d 信号',
+                         _n0, len(sigs))
         # H1 锁线环境判据(行为无条件化):累积型线强环境不命中(False)的信号
         # 本轮不锁(缓锁——「无环境不选」只辖**主动选线**,已锁线与判据
         # 不辖(None)/信息缺失帧不拦;观察期=line_env_lock_min_round)。
@@ -1153,12 +1370,26 @@ def update_intention(state: GameState, ist: IntentionState,
     # 位面强锁候选同过 weak_planes 过滤(P3 旧分支未滤,同病灶③面)。
     # P2 无可达候选 ⇒ 保持 unlocked(⑤兜底绯英档方向,位面余量尚在,
     # 不降格终局;降格=终局不可达判定,归 P3)。
-    _p2_handoff = state.plane == 2 and ist.phase == 'unlocked'
+    # P2 移交守卫:撤销当轮(出口①/②/③)不接同一轮的移交重锁——
+    # 「状态机一回合最多一次转移」纪律(revoked 注);下一轮由移交通道
+    # 正常重锁(P3 强锁辖域不受本守卫影响,维持既有语义)。
+    _p2_handoff = (state.plane == 2 and ist.phase == 'unlocked'
+                   and not revoked)
     if (state.plane >= 3 or _p2_handoff) and ist.phase != 'locked':
+        # P2 移交候选补「锁线可行性」门(锁线可行性批):G > ε 才可锁
+        # ——锁线前先验证可达性(供给概率×剩余轮×血预算,注册表派生
+        # 零新参数),不可行线不进强锁候选;全不可行 ⇒ 无候选 ⇒ 保持
+        # unlocked(dd-033 ⑤兜底语义=「降级目标」面,不降格终局)。
+        # P3 分支不动(强锁/降格终局辖域原语义,本批只辖 P2)。
+        _reg_h = registry or DEFAULT_REGISTRY
         cands = [c for c in _v2_comps()
                  if c.name not in ist.evicted
                  and state.plane not in (c.weak_planes or ())
-                 and _core_reachable(c, state, visible)]
+                 and _core_reachable(c, state, visible)
+                 and (state.plane != 2
+                      or line_completion_feasibility(
+                          state, c, session, _reg_h, visible)
+                      > _reg_h.revoke_miss_tolerance_eps)]
         if cands:
             best = sorted(
                 cands,

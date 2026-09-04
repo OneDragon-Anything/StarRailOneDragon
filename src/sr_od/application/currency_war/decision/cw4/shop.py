@@ -424,9 +424,20 @@ def shop_unbought_reasons(state: GameState,
       + ``predicates.line_members`` 只取 core∪shared):``transition_char``;
     - 其余:``non_line``。
 
-    口径 = 帧首静态快照:金按本帧已发射 BuyCard 总价投影扣减;拒因串是
-    判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
+    口径 = 帧首静态快照 + 逐动作累积投影:金按已发射 BuyCard 总价扣减、
+    SellBench/SellDeployed/DeployMove 的席与回金同步投影(修复:旧版只投影
+    金不投影席——M2 波内先买的成员占掉末席后,同波后续线内件被席闸跳过,
+    会被误标成 missing_no_path 而非 missing_bench_full,复盘归因失真)。
+    拒因串是判读线索,非审计账(精确门序以 shop_ev_*/m2_* 各计数键为准)。
     comp 为 None(K 空窗回退带)时 transition 分类不可得,统一 ``non_line``。
+
+    双栈语境声明(sim 判读必读):本函数的拒因语义(「金席俱足仍未发射
+    =异常态」)以 cw4 M2 义务通道为参照系——M2 对线内缺件是义务买入,
+    唯一合法拦截集=金/席硬闸+发射截断。sim 引擎(engine_p1)每决策段用
+    本函数对 **decision_v2 栈**的原始决策打标:decision_v2 的愿买集由候选
+    评分/copies_cap/预算投影(s_reserve 等)决定,线内在售未买多为合法
+    评分裁决而非异常——sim 面的 missing_no_path 须先查 decision_v2 侧
+    拒因(评分/上限/预算),不能按 cw4 义务语义直接定谳「异常态」。
     """
     bench = [b for b in (state.bench or []) if b is not None]
     deployed = [d for d in (state.deployed or []) if d is not None]
@@ -437,6 +448,16 @@ def shop_unbought_reasons(state: GameState,
     for a in actions:
         if isinstance(a, BuyCard):
             gold -= a.card.cost if a.card.cost else 3
+            bench_free -= 1
+        elif isinstance(a, (SellBench, SellDeployed)):
+            # 卖出投影:席释放 + 回金(SellBench.income 缺失按 0 保守——
+            # 金低估只会把拒因推向 unaffordable 侧,不会造假 no_path)
+            bench_free += 1
+            income = getattr(a, 'income', None)
+            if income:
+                gold += income
+        elif isinstance(a, DeployMove):
+            bench_free += 1     # bench→board:席释放(SwapDeploy 一进一出净 0)
     trans = (set(getattr(comp, 'transition_chars', []) or [])
              if comp is not None else set())
     bought_names = {a.card.name or '' for a in actions
