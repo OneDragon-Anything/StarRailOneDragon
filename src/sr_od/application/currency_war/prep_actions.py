@@ -325,8 +325,9 @@ class PrepActionExecutor:
         spheres = read_reward_spheres(self._ctx, screen)
         if not spheres:
             return True, '无球(观察-执行竞态,无事可做)'   # LOW-2:不计验证失败
+        targets = sorted(spheres, key=lambda t: t[2], reverse=True)[:budget]
         clicked = 0
-        for _color, center, _r in sorted(spheres, key=lambda t: t[2], reverse=True)[:budget]:
+        for _color, center, _r in targets:
             self._ctx.controller.mouse_move(center)   # bug#1 缓解
             self._ctx.controller.click(center)
             clicked += 1
@@ -337,10 +338,38 @@ class PrepActionExecutor:
         after = read_reward_spheres(self._ctx, screen)
         verified = max(0, len(spheres) - len(after))
         detail = f'点球 {clicked}/{budget} 验证消失 {verified}(剩 {len(after)})'
+        # 点击后零消失幻检(奖励域防幻检批;实机停机局实证:礼盒幻球点击
+        # 零消失 → 同分支无限重进,DD-030 才是唯一出口):验证期一球未消
+        # 且备战席**有空位**(席满点不动是既有裁定语义 = 真球保留待下轮,
+        # 不可拉黑)→ 点击目标复现在原位 = 幻球,登记会话黑名单 + 分键,
+        # 后续读侧过滤放弃该目标。
+        if verified == 0 and self._bench_has_free_slot():
+            from sr_od.application.currency_war.obs.cw_identity_obs import (
+                note_phantom_sphere,
+            )
+            for _color, center, _r in targets:
+                if any(abs(center.x - a[1].x) <= 18
+                       and abs(center.y - a[1].y) <= 18 for a in after):
+                    note_phantom_sphere(self._ctx, center)
+                    detail += f' 幻球({center.x},{center.y})→黑名单'
         if read_supply_boxes(self._ctx, screen):
             detail += ' 掉箱→下步 OpenBox 统筹'
         log.info(f'[cw][sphere] {detail}')
         return verified > 0, detail
+
+    def _bench_has_free_slot(self) -> bool:
+        """备战席有空位?(幻球拉黑前置:席满点不动 = 真球保留,禁拉黑。)
+        CV 占用现读,便宜;读失败按「无空位」保守(不拉黑,回到重试语义)。"""
+        try:
+            from sr_od.application.currency_war.obs.currency_war_cv import (
+                slot_occupied,
+            )
+            pts = row_area_centers(self._ctx, '备战栏')
+            free = [p for p in pts if not slot_occupied(
+                self._op.screenshot(), int(p.x), int(p.y))]
+            return bool(free)
+        except Exception:   # noqa: BLE001  保守:读失败不拉黑
+            return False
 
     def _poll_transition(self, check, timeout_s: float,
                          interval_s: float = 0.3) -> bool:

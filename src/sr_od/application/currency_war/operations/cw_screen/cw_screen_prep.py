@@ -456,7 +456,18 @@ class CwScreenPrep(SrOperation):
         if not self._bench_pts:
             self._bench_pts = row_area_centers(self.ctx, '备战栏')
         # 轻:球/箱/典籍/overlay/占用(每步现读)
-        obs.spheres = read_reward_spheres(self.ctx, screen)
+        # 球读带两帧持存交叉验证(奖励域防幻检批):瞬态特效假圆下一帧
+        # 即消失,不采信;本帧原始读数(含黑名单过滤)存为下帧 prev
+        #(实例属性跨步存活;CwScreenPrep 每备战环重建 → 跨环不残留,
+        # 语义 = 环内连续帧)。
+        from sr_od.application.currency_war.obs.cw_identity_obs import (
+            filter_persistent_spheres,
+        )
+        _spheres_raw = read_reward_spheres(self.ctx, screen)
+        _prev_spheres = getattr(self, '_prev_spheres_raw', None)
+        obs.spheres = (filter_persistent_spheres(_spheres_raw, _prev_spheres)
+                       if _prev_spheres else _spheres_raw)
+        self._prev_spheres_raw = _spheres_raw
         obs.boxes = read_supply_boxes(self.ctx, screen)
         obs.tomes = cw_identity_obs_read_tomes(self.ctx, screen)
         obs.shop_open = self.round_by_find_area(

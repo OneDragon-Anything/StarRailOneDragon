@@ -1336,13 +1336,137 @@ _REWARD_MAX_R: int = 60
 # 重开本防护(先量装备最左缘再定收窄界),此前保守态维持。
 _REWARD_PANEL_FALLBACK: tuple[int, int, int, int] = (1257, 140, 1662, 493)
 
+# ===== 幻检交叉验证(奖励域读取防幻检批;实机停机局实证:×12 礼盒蝴蝶结/
+# 扣饰被 Hough 幻检为 2 球,点击零消失 → ClickSpheres 同签名死循环,DD-030
+# 停机;同族第 2 件,前件 = W261 装备 icon 越界假圆)=====
+# 三道门全部标定自 18 样本离线对拍(3 真球 fixture reward_spheres_4/5/8 共
+# 16 真球 + 礼盒停机帧 2 幻球;标定脚本口径 = 圆内 r−4 mask 的 Canny 边缘
+# 占比与 HSV V 均值):
+#: 真球内部纹理:16 真球样本 Canny 边缘占比 0.000-0.145(发光平滑球面)
+#: / 礼盒幻球 0.205-0.324(蝴蝶结缎带纹理)。阈值 0.17 双向余量 ≥0.025。
+_SPHERE_EDGE_RATIO_MAX: float = 0.17
+#: 真球亮度:真球为自发光体,16 样本圆内 V 均值 164-252(灰球最暗 ~164)
+#: / 礼盒幻球 112-116(哑光实体)。阈值 140 双向余量 ≥24,与纹理门独立维度。
+_SPHERE_V_MEAN_MIN: float = 140
+#: 真球半径带(2026-08-14 建档:gold~44/blue~32/gray~18);礼盒幻球 r56
+#: 超带。上限 48 = gold 带 +1 呼吸余量;仅作第三道辅助门(纹理/亮度为主门)。
+_SPHERE_R_MAX: int = 48
+#: 两帧持存圆心/半径容差(px;Hough 亚像素抖动 + 发光呼吸效应)。
+_SPHERE_PERSIST_POS_TOL: int = 12
+_SPHERE_PERSIST_R_TOL: int = 6
+#: 点击后幻球黑名单命中容差(px;点击坐标 → 复现检测圆心的匹配带宽)。
+_SPHERE_PHANTOM_MATCH_TOL: int = 18
+
+
+def _sphere_texture_gate(hsv: MatLike, edges: MatLike, ix: int, iy: int,
+                         r: int) -> bool:
+    """单圆幻检门(纯函数):纹理 + 亮度 + 半径三道,任一不过 = 非真球。
+
+    标定数字见上方常量块注释(18 样本:16 真球全过 / 2 礼盒幻球全杀,
+    两主门独立维度双向余量充足)。真球 = 自发光平滑球面;面板内非球实体
+    (礼盒蝴蝶结/装备 icon 等哑光高纹理物)两主门同杀 —— 属 W261 家族
+    通用排除,非单点补丁。
+    """
+    if r > _SPHERE_R_MAX:
+        return False
+    h, w = edges.shape[:2]
+    m = np.zeros((h, w), np.uint8)
+    cv2.circle(m, (ix, iy), max(3, r - 4), 255, -1)
+    n = int((m > 0).sum())
+    if n <= 0:
+        return True   # 退化(圆越界):不因门误杀,交后续逻辑
+    if float((edges[m > 0] > 0).mean()) > _SPHERE_EDGE_RATIO_MAX:
+        return False
+    return float(hsv[:, :, 2][m > 0].mean()) >= _SPHERE_V_MEAN_MIN
+
+
+def filter_persistent_spheres(
+        cur: list[tuple[str, Point, int]],
+        prev: list[tuple[str, Point, int]] | None,
+        pos_tol: int = _SPHERE_PERSIST_POS_TOL,
+        r_tol: int = _SPHERE_PERSIST_R_TOL,
+) -> list[tuple[str, Point, int]]:
+    """两帧持存交叉验证(纯函数):cur 中与 prev 某球同位置同半径的才采信。
+
+    依据:真球在面板停留期间逐帧稳定(位置/半径仅 Hough 抖动级浮动);
+    瞬态特效/动画帧的偶发假圆下一帧即消失。``prev=None``(首帧/无历史)
+    → 原样返回(宁缺勿造的反向:首帧采信由纹理门 + 点击后零消失检测兜底,
+    不因缺历史而漏球)。"""
+    if not prev:
+        return list(cur)
+    out: list[tuple[str, Point, int]] = []
+    for c in cur:
+        _color, pt, r = c
+        if any(abs(pt.x - p.x) <= pos_tol and abs(pt.y - p.y) <= pos_tol
+               and abs(r - pr) <= r_tol for _pc, p, pr in prev):
+            out.append(c)
+    return out
+
+
+def _session_phantom_points(ctx: SrContext) -> list[Point]:
+    """会话幻球黑名单(局级生命周期;读侧过滤用)。无 session(离线/局外)→ 空。"""
+    try:
+        m = ctx.cw_match
+        s = m.session if m is not None else None
+        return getattr(s, 'reward_sphere_phantom_points', None) or []
+    except Exception:   # noqa: BLE001  黑名单读侧 best-effort,缺失 = 不过滤
+        return []
+
+
+def note_phantom_sphere(ctx: SrContext, pt: Point) -> None:
+    """点击后零消失的球登记为幻球(会话黑名单 + 分键留证;best-effort)。
+
+    黑名单 = session 动态挂 ``reward_sphere_phantom_points``(局级生命周期,
+    与漏斗/期望账本同款挂载模式);读侧 ``read_reward_spheres`` 按位置容差
+    过滤 → 后续环不再把该目标派给 ClickSpheres(禁无限循环的唯一出口,
+    DD-030 不再是唯一出路)。重复登记同一位置幂等。"""
+    try:
+        m = ctx.cw_match
+        s = m.session if m is not None else None
+        if s is None:
+            return
+        lst = getattr(s, 'reward_sphere_phantom_points', None)
+        if lst is None:
+            lst = []
+            s.reward_sphere_phantom_points = lst
+        if any(abs(pt.x - q.x) <= _SPHERE_PHANTOM_MATCH_TOL
+               and abs(pt.y - q.y) <= _SPHERE_PHANTOM_MATCH_TOL for q in lst):
+            return
+        lst.append(pt)
+        # telemetry 上行走出口钩子位(kernel;分包桶依赖矩阵 obs 禁直依
+        # telemetry,与 obs_conflict 同款出口形态)
+        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+            SEVERITY_L2_RECORD,
+            record_defect,
+        )
+        record_defect(
+            'reward_sphere', 'reward_sphere_phantom',
+            expected='点击后球消失(真球)',
+            observed=f'点击后同位置仍检出幻球({pt.x},{pt.y})',
+            plane=int(getattr(getattr(s, 'last_state', None), 'plane', 0) or 0),
+            round_num=int(getattr(getattr(s, 'last_state', None), 'round_num', 0) or 0),
+            gap_large=False, severity=SEVERITY_L2_RECORD,
+            verdict=('留证-奖励域幻球(点击零消失):已入会话黑名单,后续读侧'
+                     '过滤放弃该目标;同族=面板内非球物幻检(W261 装备 icon/'
+                     '礼盒蝴蝶结),复现新形态先跑纹理门标定再扩证据'),
+            refs=[{'stream': 'arbitration', 'key': f'point={pt.x},{pt.y}'}],
+            reader_source='click_spheres_verify',
+            note='奖励域幻球分键(幻检无交叉验证家族第 3 道:点击后验证)')
+    except Exception:   # noqa: BLE001  幻球登记 best-effort,不阻塞点球
+        pass
+
 
 def find_reward_spheres(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Point, int]]:
     """纯 CV 核心:奖励面板内 HoughCircles 检球 → ``[(颜色, center, radius)]``(点球用)。
 
     颜色 = 'gold' | 'blue' | 'gray'(圆心 HSV 分类;gold=高价值晶矿)。radius 可辅助优先级
     (金球大)。可离线硬编码 rect 测(同 ``find_supply_boxes`` 分层约定)。
-    """
+
+    **幻检交叉验证**(三道门,标定与依据见常量块注释):纹理(圆内 Canny
+    边缘占比)+ 亮度(圆内 V 均值)+ 半径带 —— 面板内非球实体(礼盒蝴蝶结
+    /装备 icon 等哑光高纹理物)被 Hough 检出的圆在此淘汰;真球 16 fixture
+    样本全过。点击后零消失检测(``note_phantom_sphere`` 黑名单)为第三道
+    独立防线,不在本纯函数(需要点击交互上下文)。"""
     x1, y1, x2, y2 = panel_rect.x1, panel_rect.y1, panel_rect.x2, panel_rect.y2
     panel = screen[y1:y2, x1:x2]
     if panel.size == 0:
@@ -1356,10 +1480,13 @@ def find_reward_spheres(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Po
     if circles is None:
         return []
     hsv = cv2.cvtColor(panel, cv2.COLOR_RGB2HSV)  # RGB 输入必须 RGB2HSV(BGR2HSV 红/蓝 H 错位 → gold 分类失败,2026-08-14 webp fixture 实测)
+    edges = cv2.Canny(gray, 80, 160)   # 幻检纹理门(与 Hough 共用同 blur 灰度)
     out: list[tuple[str, Point, int]] = []
     for cx, cy, r in circles[0]:
         ix, iy = int(cx), int(cy)
         if not (0 <= ix < panel.shape[1] and 0 <= iy < panel.shape[0]):
+            continue
+        if not _sphere_texture_gate(hsv, edges, ix, iy, int(r)):
             continue
         h, s, _v = hsv[iy, ix]
         if 15 <= h <= 35 and s > 80:
@@ -1373,12 +1500,28 @@ def find_reward_spheres(screen: MatLike, panel_rect: Rect) -> list[tuple[str, Po
     return out
 
 
-def read_reward_spheres(ctx: SrContext, screen: MatLike) -> list[tuple[str, Point, int]]:
-    """奖励面板晶矿球(screen_info「区域-奖励」)→ ``[(颜色, center, radius)]``(点球 op 用)。"""
+def read_reward_spheres(ctx: SrContext, screen: MatLike,
+                        prev: list[tuple[str, Point, int]] | None = None,
+                        ) -> list[tuple[str, Point, int]]:
+    """奖励面板晶矿球(screen_info「区域-奖励」)→ ``[(颜色, center, radius)]``(点球 op 用)。
+
+    ``prev`` = 上一帧原始读数(两帧持存交叉验证;None = 首帧单帧采信,
+    语义见 ``filter_persistent_spheres``)。另:会话幻球黑名单
+    (``note_phantom_sphere`` 登记,点击后零消失的坐标)在此读侧过滤 ——
+    黑名单坐标不再进返回值,点球环由此获得「放弃该目标」的出口。"""
     rect = _area_rect(ctx, '区域-奖励')
     if rect is None:
         rect = Rect(*_REWARD_PANEL_FALLBACK)
-    return find_reward_spheres(screen, rect)
+    spheres = find_reward_spheres(screen, rect)
+    if prev is not None:
+        spheres = filter_persistent_spheres(spheres, prev)
+    phantom = _session_phantom_points(ctx)
+    if phantom:
+        spheres = [s for s in spheres
+                   if not any(abs(s[1].x - q.x) <= _SPHERE_PHANTOM_MATCH_TOL
+                              and abs(s[1].y - q.y) <= _SPHERE_PHANTOM_MATCH_TOL
+                              for q in phantom)]
+    return spheres
 
 
 # ===== 穿戴装备识别(below-avatar mini icon;D-45/D-46)=====
