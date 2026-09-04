@@ -308,7 +308,7 @@ class DecisionV2Registry:
     # rung_value(已删;旧值 {0:0.0,1:1.4,2:3.0})
     #: 【退役 2026-09-04,同上】h3_win_rate H3 胜率阶梯(P1 校准、无位面
     #: 维、rung2 n=9)——被 win_rate_dp_by_plane(分位面实测)取代;
-    #: 旧值 {0:0.139,1:0.416,2:0.778} 的 rung0 比 P1 实测低约 3 倍。
+    #: 旧值 {0:0.139,1:0.416,2:0.778} 的 rung0 比 P1 实测低 44%。
     # h3_win_rate(已删)
     #: 【退役 2026-09-04,同上】rounds_left_est(P1 中段估值,自注未标定)
     #: ——消费端随 decision_v2 scoring 死亡,零活读者。
@@ -341,7 +341,7 @@ class DecisionV2Registry:
     # hp_to_gold(已删;旧值 0.5)
     #: 利息封顶档([17]:50 金息律,5 金/轮)
     interest_cap: int = 5
-    #: 息 EV 折算轮数(与 rounds_left_est 同源口径)
+    #: 息 EV 折算轮数(历史口径注释:原与已退役 rounds_left_est 同源;消费面现状见 ev 层)
     interest_rounds: float = 5.0
     #: 档位分数部分(recipe 档 → 小数 rung 的插值系数;未标定)
     rung_frac_per_recipe_tier: float = 0.3
@@ -394,7 +394,7 @@ class DecisionV2Registry:
     #: 连胜 EV 地板胜率表(节点类型×成型档;取**注入后**值 p_injected
     #: =语料实测+plaza 先验只进 rung≥2、share≤0.25,来源同上
     #: 粗模型拟合产物的 win_rate_table_injected)。键域 0-2(消费侧
-    #: 成型档封顶 2,与 h3_win_rate 同法);不与 h3_win_rate 合并
+    #: 成型档封顶 2,与已退役 h3_win_rate 同法);不并入分位面实测表
     #: (h3=battle 骨架插值表辖层3,本表=实测注入表辖连胜地板)。
     streak_floor_win_rate: dict[str, dict[int, float]] = field(
         default_factory=lambda: {
@@ -413,7 +413,7 @@ class DecisionV2Registry:
     #: 三源对照:语料条件 20.05 / 实机存活局事件均值 −15.3(59 事件,
     #: `w350_p2_survival/` REPORT §4)/ sim coarse 分 rung 条件伤 ~11——取语料上沿的
     #: 理由=删失剔除 hp≤1 死亡行 → 低估方向。
-    #: **benefit 项量级声明**:dwin 侧 h3_win_rate 为 P1 校准骨架阶梯,
+    #: **benefit 项量级声明**:dwin 侧历史注:原 h3_win_rate(P1 校准骨架阶梯,已退役 2026-09-04 增量 B;P2 分 rung 胜率已由 win_rate_dp_by_plane 部分覆盖,完整阶梯重derive 挂账),
     #: P2 分 rung 胜率表未标定(挂账)——本项只作「P2 掉血更贵 → 找件
     #: 账方向上调」的方向修正,量级未标定,不得引用「P2 胜率≈0」类
     #: 论证抬升(损失侧条件口径必须配同 regime 胜率,P15 精神)。
@@ -457,13 +457,13 @@ class DecisionV2Registry:
     target_hold_cap_frac: float = 0.8
     #: 引擎分数进度项单位值(ADR-0301 成型攻坚,每满进度引擎)。
     #: 依据:P3 已证 e0→e1 +1.4/e1→e2 +1.6 金/轮——买进度件是
-    #: 正期望期权,但 rung_value 只在整数档跨越(deployed 上场)
+    #: 正期望期权(历史注:rung_value 已退役 2026-09-04 增量 B,跨越语义随链改写)
     #: 显影;deployed=cap 时进度件躺 bench(域折减已随 bench_form_weight
     #: 死链删除),
     #: 混合域阈值不跨越 → 评分恒 0 → 「评分没买」主因(20 局
     #: 诊断 135/171 段引擎买候选评 0.0 被非正分拒)。本项对进度
     #: 小数余量(Σmin(w/tier,1)−整数引擎数)显影,与 rung 整数档
-    #: 互补不双计(跨越时余量清零,值转进 rung_value)。0=关闭。
+    #: 互补不双计(历史注:值转进目标随 rung_value 退役改判,现仅 0=关闭形态有效)。0=关闭。
     #: **双窗网格标定 1.0**(A 窗 hp_ge_60 0→0.167 / B 窗
     #: 0.2→0.233,唯一双窗一致臂;2.0/4.0 过冲在 B 窗翻车——
     #: 高单位下进度件挤掉目标件买入)

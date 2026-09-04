@@ -2,7 +2,7 @@
 
 ## 背景
 
-宪法第一条(策略不依赖战力建模)+ 用户裁定(2026-09-04:「未经数学证明的就退役」「A/B 无裁决权——旧策略也是垃圾」)要求清退 V̄_net 链上的经验拟合因子。架构审计(清单一组1 #1/#2/#3)判定三个 load-bearing 输入违例:rung_value(P3 经验拟合)、h3_win_rate(P1 校准/无位面维/rung2 n=9)、expected_battle_loss×hp_to_gold(未标定×P3 废溯源)。
+宪法第一条(策略不依赖战力建模)+ 用户裁定(2026-09-04:「未经数学证明的就退役」「A/B 无裁决权——旧策略也是垃圾」)要求清退 V̄_net 链上的经验拟合因子。架构审计(2026-09-04 战力建模依赖全库扫描,清单一组1;审计报告 `.debug/temp/currency_war/architecture_audit/AUDIT.md`,git 历史可溯)判定三个 load-bearing 输入违例:rung_value(P3 经验拟合)、h3_win_rate(P1 校准/无位面维/rung2 n=9)、expected_battle_loss×hp_to_gold(未标定×P3 废溯源)。
 
 ## 决策
 
