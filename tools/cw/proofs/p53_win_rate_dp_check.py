@@ -42,7 +42,9 @@ def _flat(buckets: dict[int, dict[str, list[int]]], rung: int) -> list[int]:
 
 def main() -> int:
     sys.stdout.reconfigure(encoding='utf-8')
-    rows = [json.loads(l) for l in CORPUS.read_text(encoding='utf-8').splitlines() if l.strip()]
+    rows = [json.loads(line)
+            for line in CORPUS.read_text(encoding='utf-8').splitlines()
+            if line.strip()]
     problems: list[str] = []
     for plane, reg_dp in ((1, 0.450), (2, -0.197)):
         buckets: dict[int, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
@@ -58,9 +60,11 @@ def main() -> int:
         w0, w1 = sum(f0) / len(f0), sum(f1) / len(f1)
         dp = w1 - w0
 
-        def dp_of(sample: list[str]) -> float | None:
-            def wr(b: int) -> float | None:
-                vals = [v for g in sample for v in buckets[b].get(g, ())]
+        def dp_of(sample: list[str], _b: dict | None = None) -> float | None:
+            bb = buckets if _b is None else _b
+
+            def wr(rung: int) -> float | None:
+                vals = [v for g in sample for v in bb[rung].get(g, ())]
                 return sum(vals) / len(vals) if vals else None
             a, b_ = wr(0), wr(1)
             return None if a is None or b_ is None else b_ - a
@@ -72,7 +76,7 @@ def main() -> int:
         hi = diffs[int(0.975 * len(diffs)) - 1]
         print(f'P{plane} battle: rung0 win={w0:.3f} n={len(f0)} / '
               f'rung1 win={w1:.3f} n={len(f1)} -> dp={dp:.3f} CI=[{lo:.3f},{hi:.3f}]'
-              f' (registry={"%.3f" % reg_dp}{" 钳0" if plane == 2 else ""})')
+              f' (registry={reg_dp:.3f}{" 钳0" if plane == 2 else ""})')
         if abs(dp - reg_dp) > 0.005:
             problems.append(f'P{plane}: 重算 dp={dp:.3f} vs 登记 {reg_dp:.3f}')
     if problems:
