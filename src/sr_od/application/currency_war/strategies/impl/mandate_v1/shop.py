@@ -431,6 +431,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
             counters) and k_fallback:
         k_members = tuple(sorted(k_fallback))
         _count(k_band)
+    # P0-1 双源对齐:锁定帧(locked_comp 非空)买入 membership 切换到
+    # 锁定口径——单一源 = cw_intention.locked_buy_membership(即
+    # locked_buy_scope 采购集,含锁定 comp 的阵营∪流派成员),购买侧与
+    # 锁定侧同源,锁内成员经 M2 义务买入、不再落 non_line 拒因(实机
+    # g_20260905_035710 p2r1 锁「列车同行」后锁内成员被拒的断裂修复)。
+    # 未锁帧返回 None ⇒ 维持 line_members 口径,P1 无锁态零变化。
+    _lock_members = cw_intention.locked_buy_membership(_ist)
+    if _lock_members:
+        k_members = tuple(sorted(_lock_members))
     bench = [b for b in (state.bench or []) if b is not None]
     deployed = [d for d in (state.deployed or []) if d is not None]
     bench_names = [b.char_id or '' for b in bench]
