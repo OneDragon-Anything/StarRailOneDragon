@@ -60,7 +60,7 @@ S0 空窗期 ──四体系任一成型──▶ S1 search 态 ──证据门�
 
 覆盖论证（不等式级，沿用 R78-2 引理通用形态）：三触发在"成型→段边界"窗口构造性沉默（边界触发仅边界帧 / 成型后 CDF 单调改善 / 严格更优在目标态不可评时不可求值）；第四触发时刻 t_f+W 在窗口长 >W 的局上严格提前支出恢复、≤W 的局上不早于段边界触发 ⇒ 覆盖单调 ⪰ 三触发、零新增风险。"不可评"分支 fail-closed 声明：不可评分支 = **观察级**（触发计数遥测），其支出恢复兑现待依赖标定齐备，禁与 ∅ 分支共用"覆盖"语义。
 
-P16 换线判据（E_rounds 超几何精确口径 + θ 滞回 + D_min 驻留，无抖动序列，振荡 ≤1/(2·D_min)）是三/四触发后评估的数学载体；判定 = E(alt)·(1+δ)+θ < E(cur)·(1+δ) ∧ 驻留 ≥ D_min。换线瞬间 P41 卖出不等式自动翻转。实证注（结构性休眠）：`should_switch_e` 生产零调用点 + 三轮 AB 换线事件 0 起——新设计必须接线或显式放弃（接线载体 = 流程契约面，`../flow/README.md` §2.2 update_target）。
+P16 换线判据（E_rounds 超几何精确口径 + θ 滞回 + D_min 驻留，无抖动序列，振荡 ≤1/(2·D_min)）是三/四触发后评估的数学载体；判定 = E(alt)·(1+δ)+θ < E(cur)·(1+δ) ∧ 驻留 ≥ D_min。换线瞬间 P41 卖出不等式自动翻转。实证注（as-built，2026-09-06 核）：`should_switch_e` **已接线**（mandate_v1 证明 pass：`strategies/impl/mandate_v1/entry.py:397` → `proof.should_switch`（`proof.py:222`，内部 :287-288 直调 kernel/cw_line_switch.should_switch_e））；现行休眠机理 = **fail-closed 槽位封印**（θ/U_X/V_ms【拟】缺省全 None ⇒ `theta_unavailable`/`switchline_exit_blocked` 分键短路）——标定齐前换线事件恒 0，非零接线。§4 实现锚未收录该接线属漏记，收编于此。
 
 ## 4. 意向驱动的实现锚（update_target 现行实现语义，反向自 `strategies/impl/flow.py:247-294`）
 

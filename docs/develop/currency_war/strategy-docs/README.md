@@ -1,6 +1,6 @@
 # 货币战争策略设计 · 唯一现行入口（strategy-docs）
 
-> 本目录是货币战争（CW）**策略设计的唯一现行家**。它是对分散在 `archive/design/`、`archive/redesign/`、`strategy/` 三棵文档树中的碎片化策略权威的塌缩重刻（依据：设计评审裁定书 B 档执行清单，`.debug/temp/currency_war/design_review/REVIEW.md` §4.1-4.3）。
+> 本目录是货币战争（CW）**策略设计的唯一现行家**。它是对分散在 `archive/design/`、`archive/redesign/`、`strategy/` 三棵文档树（均已删除，git 历史可溯）中的碎片化策略权威的塌缩重刻（依据：设计评审裁定书 B 档执行清单，`.debug/temp/currency_war/design_review/REVIEW.md` §4.1-4.3）。
 > 本批为纯文档写作，零代码改动。
 > 读者 = 无会话历史的工程师/智能体。术语首次出现时给定义。
 > **职责分界（用户裁定）**：本目录只管"每个画面结合哪些数学证明、怎么产出决策"；**流程控制（画面路由/访问相位/动作发射/守卫）单独立文档 = `../flow/`**。
@@ -11,7 +11,7 @@
 
 - 每个机制规格无歧义（判据、触发、辖域、边界逐条写明）；
 - 每个进决策门的数字带**三形态标注**：【注】游戏定义值（注册表直读）/【推】已证推导（引命题号）/【拟】观测估计（必须带置信区间 + fail-closed 退路 + 标定义务 owner 与期限）；无标注数字不得进决策门；
-- 每条论断可回溯（命题号 P1-P57 → `proofs/math_proofs.md` 索引 → 单篇证明；或「文件:节」出处）。
+- 每条论断可回溯（命题号 → `proofs/math_proofs.md` 索引 → 单篇证明；实际命题集 = P1-P43、P46-P57，P44/P45 编号未用；或「文件:节」出处）。
 
 ## 2. 阅读顺序（总 00/01/02/04 → 分 10-13 + 08）
 
@@ -29,10 +29,10 @@
 | 篇 | 文件 | 一句话 |
 |---|---|---|
 | 10 | [10_prep_decisions.md](10_prep_decisions.md) | 备战画面决策：部署/装备/腾席判据 + 共同地基（机制速查/形式刻画/注册表形态） |
-| 11 | [11_shop_decisions.md](11_shop_decisions.md) | 商店画面决策：买入六序、买面（P55/P56/P57）、引擎池、卖出、刷新、升级、经济引擎、机制突变 |
+| 11 | [11_shop_decisions.md](11_shop_decisions.md) | 商店画面决策：买入六序、买面（P55 阶段 2 已撤史实/P56 现行）、引擎池、卖出、刷新、升级、经济引擎、机制突变 |
 | 12 | [12_line_and_intention.md](12_line_and_intention.md) | 换线与意向：生命周期状态机、证据门与通用目标态定义、换线机器四触发 |
-| 13 | [13_pick_family.md](13_pick_family.md) | pick 族薄判据：九接口决策规格 + 事件面目录 E1-E15 |
-| 08 | [08_events.md](08_events.md) | 事件面规格骨架：E1-E15 逐项收录语义、数学判据逐项标「待 derive」（落差登记） |
+| 13 | [13_pick_family.md](13_pick_family.md) | pick 族薄判据：九接口决策规格 + 事件面目录 E1-E18 |
+| 08 | [08_events.md](08_events.md) | 事件面规格骨架：E1-E18 逐项收录语义、数学判据逐项标「待 derive」（落差登记） |
 | 07 | [07_meta_run.md](07_meta_run.md) | 跨局 meta 域：显式声明出辖（当前无可设计对象，登记为未来立项） |
 
 （原 03/05/06/09 已按决策点重排删除：03/05/06 拆入 10-13；09 架构篇整体迁 `../flow/README.md` §2——策略↔流程契约。）
@@ -47,7 +47,7 @@
 | `docs/game/currency_war/research/` | **游戏真值** | 与实现无关的游戏机制事实。游戏版本变了它变，本链引用不复制数值 |
 | 代码注册表（`cw_chars`/`cw_shop_odds`/`cw_state` 等） | **机制数值单一源** | 文档只写常量名与语义，值一律在代码 |
 | `src/sr_od/.../currency_war/` 代码 | **实现** | 本链是设计，代码是实现；行为变更走 ADR + 三同步（见 sr-od-currency-war-dev skill「文档同步」） |
-| `archive/design/`、`archive/redesign/`、`strategy/` 旧树 | **素材·仅史实** | 本链的塌缩素材来源，只读。旧树不再承载现行语义；其中的 R 标链/勘误史不搬入本链 |
+| `archive/design/`、`archive/redesign/`、`strategy/` 旧树 | **素材·已删除（4e32b2e4 吸收后删除）·git 历史可溯** | 塌缩素材来源仅存于 git 历史，不再承载现行语义；其中的 R 标链/勘误史不搬入本链 |
 | `.debug/progress/` 当前迭代 + `decisions/`（ADR） | 进度与决策 why | 进度不进共享文档；一决策一 ADR |
 
 ## 4. 宪法：用户四条裁定（每篇都要过）

@@ -53,6 +53,7 @@
 | [0131-invest-economy-effect-model.md](0131-invest-economy-effect-model.md) | 0131 投资策略经济效果建模(EconomyEffect;替 REFRESH_DISCOUNT_STRATEGIES 错名单) |
 | [0132-invest-card-effect-collection.md](0132-invest-card-effect-collection.md) | 0132 投资卡效果原文采集(invest_cards.jsonl;ground truth 回流) |
 | [0133-strategy-full-ingest-registry-prior.md](0133-strategy-full-ingest-registry-prior.md) | 0133 投资策略全量 ingest(315)+ decide_event 注册表先验 |
+| [0134-strategy-comp-match.md](0134-strategy-comp-match.md) | 0134 策略选卡 comp 匹配分(strategy_bindings 派生;2026-09-04 存量 review 删除后因活引用恢复) |
 | [0136-m16-deploy-not-full-loop-fix.md](0136-m16-deploy-not-full-loop-fix.md) | 0136 M16 死循环修复(未达上限弹窗勾选缺失 + 备战席已满警告环入口感知) |
 | [0137-codex-new-items-merge.md](0137-codex-new-items-merge.md) | 0137 图鉴采集数据并入注册表(6 策略 + 1 环境;doc 315 外版本新条目) |
 | [0138-ocr-name-lcs-matching.md](0138-ocr-name-lcs-matching.md) | 0138 OCR 名归一用框架 LCS 相似匹配(str_utils,非全等) |
@@ -314,6 +315,7 @@
 | [0453-fullbench-mergebuy-gate.md](0453-fullbench-mergebuy-gate.md) | 0453 满栏合成买:ADR-0283 硬守卫升级为「触发合成则允许」(W544) |
 | [0454-char-detail-split-overlay-gates.md](0454-char-detail-split-overlay-gates.md) | ADR-0454: 角色详情档按形态拆分 + UPPER_SCREENS 扩容(浮窗/提示门漏) |
 | [0455-refresh-streak-upscale-none-semantics.md](0455-refresh-streak-upscale-none-semantics.md) | ADR-0455: 刷新费/连胜读取器对齐放大管线 + 刷新费 None 语义 |
+| [0456-refresh-fee-base-price-andon-plan-attempt.md](0456-refresh-fee-base-price-andon-plan-attempt.md) | ADR-0456: 刷新费基价模型(REFRESH_COST_BASE=2)+ 安灯三态分流(2026-09-04 存量 review 删除后因活引用恢复) |
 | [0457-hp-trust-consumption-gate.md](0457-hp-trust-consumption-gate.md) | ADR-0457: hp 可信位消费门(血线谓词 fail-closed)+ hp 读链放大回退与覆盖值位同写 |
 | [0458-director-v2-loop-lifecycle-six.md](0458-director-v2-loop-lifecycle-six.md) | ADR-0458: DirectorV2 并行循环落地 + 生命周期六件套计数清零时机表(阶段2批②) |
 | [0459-p1-pair-target-materialization.md](0459-p1-pair-target-materialization.md) | ADR-0459: P1 配方锁帧 target 载体物化(pair_target_comp) |
@@ -370,6 +372,8 @@
 | [0512-power-model-scope-sim-only.md](0512-power-model-scope-sim-only.md) | ADR-0512: 战力模型范围——唯一消费者=sim 战斗结算层,决策层永不消费 |
 | [0513-cw3-seam-fix-behavior-changes.md](0513-cw3-seam-fix-behavior-changes.md) | 0513 - cw3 接缝修复批行为变更(供给-消费接缝五点 + 多刷×段上限口径收敛) |
 | [0514-andon-gold-close-unit-row-source.md](0514-andon-gold-close-unit-row-source.md) | 0514 - 安灯钩子关店金数据源改 spend_ledger 单元行(exec_fail 误停根治) |
+| [0515-rung-value-retirement.md](0515-rung-value-retirement.md) | 0515 - rung_value 档位流退役(V̄_net 链因子重接地·增量 B) |
+| [0516-vbar-retirement-path-ledger.md](0516-vbar-retirement-path-ledger.md) | 0516 - V̄ 链退役 + 刷新/升级决策改路径总账比较(形式二;禁胜率建模,三修正) |
 
 ## dd 系决策
 
@@ -411,3 +415,4 @@
 | [dd-035-line-feasibility-supply-infeasible-exit.md](dd-035-line-feasibility-supply-infeasible-exit.md) | dd-035 P2 锁线可行性三维护栏 + 撤销出口③(供给不可行降级) |
 | [dd-036-settlement-damage-rows-temp-collection.md](dd-036-settlement-damage-rows-temp-collection.md) | dd-036 结算屏逐角色伤害行临时采集链路(ΔV_2★ 数据面)——立撤完整周期 |
 | [dd-037-deploy-launch-exec-contract-seam.md](dd-037-deploy-launch-exec-contract-seam.md) | DD-037: 部署「发射×执行」契约接缝——发射门与执行器共用单一源谓词,no-op 状态可区分 |
+| [dd-038-decision-v2-package-deletion.md](dd-038-decision-v2-package-deletion.md) | DD-038: decision/ 整包删除(42 文件)+ mandate_v1 单核直替 + 注册面封闭集(用户裁定 2026-09-04,b94e9cfb;回溯建档) |

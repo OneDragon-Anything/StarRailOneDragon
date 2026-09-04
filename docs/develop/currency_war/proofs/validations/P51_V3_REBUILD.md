@@ -1,8 +1,12 @@
-# P51 v3 λ_death 表重建(候选形态,待用户最终批)
+# P51 v3 λ_death 表重建(候选形态呈报件;钥匙形态已有现行裁定)
 
 > 执行:数学工程批(2026-09-09)。指令源=用户新方向(λ 表换钥匙重估)+基座攻击报告
 > `IMPL_LAMBDA_FOUNDATION_ATTACK.md`(旧表桶可交换性证伪/尾部翻转/hp 禁入钥匙致守息饿死)。
 > **本报告=候选形态呈报,未经用户批准不替换旧表、不改任何下游消费。**
+> **钥匙形态裁定后注(2026-09-04)**:本报告呈报的钥匙含「板面粗档」维;现行裁定一 B1
+> (NMF:333;现行权威声明=strategy-docs 00 §6/01 §5)=**难度带×血带×位面×节点,
+> 2×3×2×4=48 格,板面/bench 维不入键**——math_proofs P51 行已按 B1 更新;本报告
+> 的板面粗档形态为**已判废候选**,仅存推导过程史料,数值面禁按本报告钥匙消费。
 > 脚本(入库,可复跑):`tools/cw/proofs/p51/p51_v3_rebuild.py`
 > (`$env:PYTHONPATH='src'; $env:PYTHONIOENCODING='utf-8'; uv run python tools/cw/proofs/p51/p51_v3_rebuild.py`);
 > 本轮全量输出存档:`.debug/temp/currency_war/redesign/p51_v3_run_final.txt`。
