@@ -203,10 +203,9 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
 
     **判据(重定义后)**:违规 = lv≥5(追级段)的 LevelUp 发生在时点金
     (本轮首波金,=收入后花销前)<50 **且授权依据 ∉ {pop_slot, dp,
-    static_ev}**('p2_auth_xp' 臂已随位面 2 支出授权定谳清理删除,
+    static_ev, m3_batch}**('p2_auth_xp' 臂已随位面 2 支出授权定谳清理删除,
     ADR-0492:W785 sink 分解 XP 0 帧/0 金)。授权依据 = sim 账本 LevelUp 行的 ``auth`` 键
-    (LevelUp.auth_basis 观测字段,arbiter 升级门/remediation 补偿臂放行
-    时写入,单一源=``ev.levelup_ev_basis``)。
+    (LevelUp.auth_basis 观测字段,放行时写入)。
 
     重定义动机(`w123_b_arm/` §3.3/§5.2):旧判据「金<50 且未曾满息即违规」把
     [33] 人口位(`w123_b_arm/` 实测 378 违规中绝大多数,`w126_b_arm/` 后 206)的合法
@@ -216,7 +215,15 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
     ③ static_ev(静态 EV 平台账)——迁移审计 w255(git 历史) 前不在白名单(当时该臂花后
     <50 帧量级 0-1,保守计违规);**迁移审计 w255(git 历史)/ADR-0410 起并入**:boss 窗
     升级禁令删除后,static_ev 臂成为末窗升级的主授权臂(升级是否做=
-    EV 总账问题,[32] 节点无关定调),继续计违规则系统性误报该合法面。
+    EV 总账问题,[32] 节点无关定调),继续计违规则系统性误报该合法面;
+    ④ m3_batch(mandate_v1 换核后的 M3 批量授权臂)——换核批(ba1176c6
+    里程碑)漏更本白名单致预存红,定谳批补入:m3_batch 发射前置 =
+    arm1_existence(板满∧等待件∧边际贡献>0,= [33] 人口位语境,与
+    pop_slot 同语义的现役核表述)∧ spend_unified(P48 整买纪律,一次
+    买齐到下一级)∧ level_spend_blocked 让位(dd-034 危机带停付)∧
+    lv9_stop——授权强度不低于旧三臂,出处 = strategy-docs
+    02_mandate_layer.md §3 M3 行 / ADR-0518(单动作实施,shop.py M3
+    发射位);
     无 auth 键/空值 = 无授权依据(default 栈旧调用/未过账路径)→ 违规
     ——本守卫的退化检测面(授权观测缺失)不受影响。
 
@@ -239,7 +246,8 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
                 continue
             basis = a.get('auth', '')
             if prev_level >= 5 and gold0 is not None and gold0 < 50 \
-                    and basis not in ('pop_slot', 'dp', 'static_ev'):
+                    and basis not in ('pop_slot', 'dp', 'static_ev',
+                                      'm3_batch'):
                 out.append(
                     f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"

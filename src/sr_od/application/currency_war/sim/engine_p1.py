@@ -1207,9 +1207,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         st.gold -= 4
                         _spend['levelup'] += 4
                         # auth=授权依据观测(ADR-0354):LevelUp.auth_basis
-                        # 放行臂名(pop_slot/dp/static_ev;''=default 栈旧调用
-                        # 或未过账)——检查器 levelup_interest_engine_gate
-                        # 判据消费;记录非指令。
+                        # 放行臂名(pop_slot/dp/static_ev/m3_batch;
+                        # ''=default 栈旧调用或未过账)——检查器
+                        # levelup_interest_engine_gate 判据消费;记录非指令。
                         _lv_auth = getattr(a, 'auth_basis', '')
                         _acts.append({'__type__': 'LevelUp', 'cost': 4,
                                       'auth': _lv_auth})
