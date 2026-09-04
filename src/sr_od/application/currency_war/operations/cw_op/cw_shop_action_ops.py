@@ -170,10 +170,13 @@ def guard_expected_vs_tracked(state: GameState, session,
 
     两属消息分离(按分叉出现时点归因,ADR-0517 §守卫两属 (ii) 迁移
     补裁;2026-09-05 OpenShop 事故实证:播种层双源分叉曾被本守卫
-    误标成「project/mutate 模型分叉」,误导排查方向):
-    - stage='seed'(播种后、首动作前调用):分叉 = 入口播种/入口账
-      分叉——期望态的播种源与守卫对拍账不同源(播种 bug),投影链
-      无责。
+    误标成「project/mutate 模型分叉」,误导排查方向;同日对抗审计
+    再修正 seed 档的可达类别——见下):
+    - stage='seed'(播种后、首动作前调用):tracked 非空时本对账按
+      构造恒等(state.bench 即自 tracked 播种),唯一可达场景 =
+      tracked 主账为空而屏幕 bench 非空 ⇒ 跟踪账丢件/识别幻影
+      检测器(播种 bug 形态已随 ADR-0520 旧账退役结构性消失)。
+      投影链无责。
     - stage='project'(默认,动作投影后调用):分叉 = project/mutate
       模型分叉——投影建模 bug 的唯一在环检测器(project 错则两账
       分离当场暴露;错误卖出会实际执行、损害不可逆,ADR-0516 投影
@@ -192,10 +195,12 @@ def guard_expected_vs_tracked(state: GameState, session,
     if expect_sig != tracked_sig:
         if stage == 'seed':
             raise AssertionError(
-                '[cw-shop][guard] 播种/入口账与 tracked 双账分离(入口播种 bug?):'
+                '[cw-shop][guard] tracked 主账为空而屏幕 bench 非空'
+                '(跟踪账丢件/识别幻影嫌疑,非播种错误——播种 bug 形态'
+                '已随 ADR-0520 旧账退役消失):'
                 f'expected={expect_sig} tracked={tracked_sig}'
-                '(期望态在首动作前即与 tracked 账不同源 = 播种层分叉,'
-                '投影链无责;入口误读由下一入口对账归零)')
+                '(期望态在首动作前即与 tracked 账不同源,投影链无责;'
+                '下一入口 heavy 读屏重建可归零)')
         raise AssertionError(
             '[cw-shop][guard] 期望态 vs tracked 双账分离(投影建模 bug?):'
             f'expected={expect_sig} tracked={tracked_sig}'
