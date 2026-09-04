@@ -941,7 +941,7 @@ class CwLoop(SrOperation):
                      getattr(_rd, 'status', '') or ('成功' if getattr(_rd, 'success', False) else '失败'))
             # 出口判据:deployed 前排 ≥1(独立于 CwOpDeploy 返回值——
             # 假成功已在 deploy 侧落点验证收编,此处再验一层作 0j 出口承诺)。
-            from sr_od.application.currency_war.kernel.cw_obs_core import (
+            from sr_od.application.currency_war.obs.currency_war_cv import (
                 slot_occupied as _slot_occ,
             )
             from sr_od.application.currency_war.prep_actions import (
