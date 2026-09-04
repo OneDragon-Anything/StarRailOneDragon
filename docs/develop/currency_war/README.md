@@ -23,7 +23,7 @@
 - [sim-power-model](sim/sim-power-model.md) —— 战力模型设计件(需求定义,唯一消费者=sim 战斗结算层,ADR-0512)
 - [sim-wiring](sim/sim-wiring.md) —— GameState ↔ sim 引擎接线对照表(as-built 底账)
 
-### [prereg/](prereg/) —— A/B 判读预注册(三臂对照/主次对照/披露清单;跨新旧核)
+> 历史注记:本目录曾有 `prereg/`(A/B 判读预注册件,73 个文件)——2026-09 用户裁定为过程件整体删除(git 历史可溯);**A/B 判据/结果一律落 proofs 命题单篇或 ADR 的判据节,不再建独立预注册文件**。
 
 ### [decisions/](decisions/) —— 决策日志(ADR)
 - [INDEX](decisions/INDEX.md) —— 决策索引(Status + 一句话)
