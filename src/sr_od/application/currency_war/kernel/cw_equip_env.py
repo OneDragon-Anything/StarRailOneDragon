@@ -37,8 +37,15 @@ data/affix_effects_data。)
   无分键则锚不可判读);
 - ``evaluate_tool_actions``/``admitted_tool_actions``:工具件消费判据
   (全量收编 10 号稿 §2.1 三道门,本批只落冷启动分支 = 炉准入+扳手闸,
-  其余 fail-closed 带拒因分键)+ G1 发射位准入(执行通道未建档 =
-  不发射,防第四个闩;ARCH_REFLECTION_3STALLS)。
+  其余 fail-closed 带拒因分键)+ G1 发射位准入(防第四个闩;
+  ARCH_REFLECTION_3STALLS)。
+
+工具执行批(ADR-0532)增量——执行通道建成开臂:
+- ``TOOL_EXEC_CHANNEL_READY`` False→True(开臂判据 = UI 建档前置以既有
+  owned 网格建档满足 + cw_op_tools.CwOpTools 落码批交付,常量节注释);
+- 发射位 = mandate_v1 M7.5 工具消费(逐备战帧评估打 ``[cw!][tools]``
+  拒因分键,admitted 非空才发 RunTools,执行位闩 = mark_tools_pass_
+  executed);执行载体 = RunTools 组合动作(CwOpTools)。
 """
 from __future__ import annotations
 
@@ -516,11 +523,16 @@ def resolve_affix_priority_order(comp, deployed: list,
 #: G1 发射位准入(21 号稿 §2.4-2/§3.2;流程:197 常驻锁,ARCH_REFLECTION_
 #: 3STALLS 防第四个闩;ADR-0531):工具动作是**新的执行动作类**,不骑 M7
 #: 穿戴通道。
-#: 执行通道前置 = UI 建档(工具 icon 拖曳交互)+ 工具拖曳 op 落码批
-#: (10 号稿 §2.1.7 准入顺序),两件均未交付 → 本批 fail-closed 不发射。
-#: 开臂判据挂账:工具拖曳 op 落码批交付时翻 True 并随批带准入测试
-#: (合法开关形态 = 行为输入未就绪 + 开臂判据挂账,strategy-work §3.3)。
-TOOL_EXEC_CHANNEL_READY: bool = False
+#: 执行通道前置(开臂判据,两件均随 ADR-0532 工具执行批交付):
+#: ①UI 建档(工具 icon 拖曳交互)——工具 icon 在 owned 多列网格内,与穿戴类
+#:   同一建档(「区域-道具装备」D-40;col2 冶金炉 click 实锤),拖曳目标 =
+#:   同网格另一 icon(炉→死库存件 icon / 特权卡→key 对应进阶成品 icon),
+#:   无新画面 → 建档前置以既有 owned 网格建档满足;
+#: ②工具拖曳 op 落码批 = cw_op_tools.CwOpTools(判据→G1 准入→逐件 drag,
+#:   含 21 号稿 §3.2 工具消耗确认通道)。
+#: 开臂后拒因分键仍分键可见:判据拒原样透传,准入拒仅在通道回关时出现
+#: (对照锁 sr-od-test test_cw_tools_exec_channel.py)。
+TOOL_EXEC_CHANNEL_READY: bool = True
 
 #: 工具拒因分键(21 号稿 §4/§5 遥测:该烧没烧/误烧率/拒因分键)。
 TOOL_REJECT_G1_NOT_ADMITTED: str = 'g1_not_admitted(执行通道未建档)'

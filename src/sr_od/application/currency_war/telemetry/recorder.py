@@ -194,6 +194,18 @@ class TelemetryRecorder:
         # 缺 match 注册=离线/测试,字段保持 None 缺省)。
         _m = _telstate._CTX_MATCH_REF[0]
         _sess = getattr(_m, 'session', None) if _m is not None else None
+        # 刷新触发源分键(g_20260906_021859 起连续两局零产出,接线缺
+        # 证实):sim 账本行键 refresh_trigger = 刷新动作 reason 计数
+        #(engine_p1 轮内累计);生产端本行自 actions 现算(RefreshShop
+        # 已带 reason,如 must_spend_r1_yielded),键语义与 sim 同源、
+        # 空 = 本行无刷新动作(非缺写)。只依赖 actions,置于 session
+        # 汇点块外(离线/无 match 注册行同样产出)。
+        _rt: dict[str, int] = {}
+        for _a in actions:
+            if type(_a).__name__ == 'RefreshShop':
+                _k = str(getattr(_a, 'reason', '') or 'other')
+                _rt[_k] = _rt.get(_k, 0) + 1
+        trace.refresh_trigger = _rt
         if _sess is not None:
             with contextlib.suppress(Exception):   # 观测 best-effort
                 trace.sess_blood_budget_rejects = int(
@@ -204,10 +216,22 @@ class TelemetryRecorder:
                 # 经 session 汇点;session 汇点先例=w603,全部决策面一次覆盖)
                 trace.shop_rejects = dict(
                     getattr(_sess, 'cw4_shop_rejects', {}) or {})
-                # (血预算停手·终止分支决策位 trace 字段 sess_terminal_release
-                #  写入面已随 v2 退役链退役——terminal_release 在 mandate_v1
-                #  无对应实现;schema 字段按历史数据只读口径保留,新数据恒
-                #  缺省(统一迁移批,底稿 MAP ⓪ A7)。)
+                # 末窗终止豁免位透传(sim/checks/segments.terminal_release_bit
+                # docstring 声明的实机遥测透传位;写入侧单一源 = 该谓词,
+                # 禁复算)。旧「写入面随 v2 退役」缺省在此接回——判读面 =
+                # P1 末窗血预算不足带帧是否放行终止,连续缺省零产出恢复。
+                with contextlib.suppress(Exception):
+                    from sr_od.application.currency_war.sim.checks.segments import (
+                        terminal_release_bit as _tr_bit,
+                    )
+                    _tr_st = getattr(_sess, 'last_state', None)
+                    if _tr_st is not None:
+                        trace.sess_terminal_release = bool(
+                            _tr_bit(_sess, _tr_st))
+                # (血预算停手·终止分支 sess_terminal_release 透传已在上方
+                #  接回 sim/checks/segments.terminal_release_bit 单一源——
+                #  旧 v2 决策位写面退役后本键改挂该谓词,接线批恢复产出;
+                #  schema 字段语义不变。)
                 # `w611_econ_cycle/` 储备/义务披露(v3_* 为 decide_prep 每轮写;default
                 # 栈帧无写点 → attr 缺省 None,字段保持 None 语义)
                 def _w611_int(attr: str) -> int | None:

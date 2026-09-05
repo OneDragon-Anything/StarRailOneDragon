@@ -321,7 +321,21 @@ class CwFlowStrategy(CwStrategy):
             RECIPE_BASE,
             recipe_tier,
         )
-        deployed = list(getattr(state, 'deployed', None) or [])
+        deployed = [d for d in
+                    (getattr(state, 'deployed', None) or [])
+                    if d is not None]
+        if not deployed:
+            # 实机落位补缺(g_20260906_021859/034515 两局全帧 0.0 实证):
+            # 商店观察帧(state=shop_state_frame)只播种 bench
+            # (cw_op_buy_cards 入口 tracked_bench_chars 播种段),
+            # ``deployed`` 列表恒空 → engines/frac 恒 0 → form_score 恒 0,
+            # 写者调用点本身已接(decide_shop_action 决策核入口)。回退源 =
+            # session.tracked_deployed(执行记录槽位表,单元素带 char_id,
+            # 与 assembly/cw_observation 同一消费源),空 = 板面真空的
+            # 事实态,照写 0 不虚构。
+            deployed = [d for d in
+                        (getattr(session, 'tracked_deployed', None) or [])
+                        if d is not None]
         bf = board_factions_of(deployed)
         dep_names = frozenset(
             (getattr(d, 'char_id', '') or '') for d in deployed)

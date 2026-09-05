@@ -58,6 +58,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     RunBuyPhase,
     RunDeploy,
     RunEquip,
+    RunTools,
     SellBench,
     SellDeployed,
     StartBattle,
@@ -115,6 +116,7 @@ _CONTINUE: tuple[type, ...] = (LevelUp, DeferSpheres)
 #: R197 症8:独立死常量 _CONDITIONAL_COMPOSITE 已删,分类语义不变)
 _CONDITIONAL: tuple[type, ...] = (
     SellBench, SellDeployed, DeployMove, RunDeploy, RunEquip,
+    RunTools,                             # 组合类(ADR-0532 工具执行批):同组合语义
     ClickSpheres,                          # 条件:常态可续;末批可能掉箱后截断
 )
 

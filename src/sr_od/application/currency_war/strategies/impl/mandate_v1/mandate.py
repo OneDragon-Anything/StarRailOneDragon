@@ -30,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_economy import (
     clicks_to_next_level,
@@ -42,6 +43,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepAction,
     RunDeploy,
     RunEquip,
+    RunTools,
     SellBench,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
@@ -424,7 +426,25 @@ def run_mandate(frame: MandateFrame,
     # L3 必花域第三触发源(20 号稿 §3.1-L3/§3.5,备战栈接入;判定单一源
     # = in_must_spend_zone,与 shop 栈同源禁第二套语义;应-C 偏高必收:
     # 备战必花帧不再被停付线否决——域内让位 = ADR-0528,域外照旧)。
-    _zone_hit = in_must_spend_zone(frame.gold, session) and (
+    # 必花域备战期闩(g_20260906_034515 濒死段门链回放定谳:帧A g56 域内
+    # LevelUp 本可发射、帧B g43 域外被危机带挂起零发射零分键——「花光」
+    # 义务在域边界上蒸发):域豁免原为逐帧瞬时判定,商店域第一笔消费把金
+    # 拉回域内后,同备战期后续 prep 帧(g<G_must)被 P2 危机带常态挂起,
+    # 残金闲置入死战。修法 = 本备战期曾入域(裸金判定,先于 level_
+    # readable 资格闸)即置闩,键式=(plane, round) 与开店闩
+    # cw4_shopped_phase 同构,位面/轮次推进=新键自动失效;闩存续帧让位
+    # 豁免保持(ADR-0528「本备战期必花」语义),闩延命帧分键
+    # must_spend_zone_latch_extend 显影(归因区分「本帧自身域内」与
+    # 「闩延命」)。shop 域帧自辖不写闩——域内帧在本域已全量消费,
+    # 无本域后续帧依赖(prep 闩由 prep 域内帧点燃;单动作架构下开店的
+    # prep 帧先于店内消费帧,闩天然先置)。
+    _zone_raw = in_must_spend_zone(frame.gold, session)
+    if _zone_raw:
+        session.cw4_must_spend_phase = phase
+    _zone_latched = getattr(session, 'cw4_must_spend_phase', None) == phase
+    if _zone_latched and not _zone_raw:
+        _count('must_spend_zone_latch_extend')
+    _zone_hit = (_zone_raw or _zone_latched) and (
         state is None
         or bool(getattr(state, 'level_readable', True)))   # 等级不可信帧 fail 向(资格硬闸)
     _arms_hit = _arm1 or _arm0 or _pop
@@ -454,29 +474,40 @@ def run_mandate(frame: MandateFrame,
                 # 对称):本会停付但被必花域裁定压掉(ADR-0528),归因时
                 # 区分「本来就不该停」与「停付被域裁压掉」。
                 _count('must_spend_zone_defer_overridden')
+            # L3 资格拒分键(拒因落盘缺口治疗,「拒因不可辨」复盘主项):
+            # lv9_stop / spend_unified 拒绝此前零分键零静默,与「零动作+
+            # 计数缺席」不可辨复盘同型。键名对齐复盘申报口径:
+            # level_cap(满级)/ batch_unaffordable(整批买不齐,P48 整买
+            # 纪律拦截)。契约核验失败仍走 ensure_contract 自身的
+            # criteria_contract_violation:<名> 分键,不混桶。
             if contracts.ensure_contract(
                     ('levelup', 'lv9_stop'),
-                    contracts.ContractCtx(), counters) \
-                    and not levelup.lv9_stop(frame.level):
-                clicks = clicks_to_next_level(_state_view(frame, session))
-                cost = xp_click_cost(_state_view(frame, session))
-                if contracts.ensure_contract(
-                        ('levelup', 'spend_unified'),
-                        contracts.ContractCtx(gold=frame.gold), counters) \
-                        and levelup.spend_unified(clicks, frame.gold, cost):
-                    ok1, _ = check_affordable(frame.gold, 0,
-                                              batch_cost=clicks * cost)
-                    if ok1:
-                        # auth_basis 分键(可归因,与商店栈同序 arm1>arm0>pop;
-                        # 三臂全空时 = 必花域触发源,分键 must_spend)
-                        if _arms_hit:
-                            _arm_tag = 'arm1' if _arm1 else (
-                                'arm0' if _arm0 else 'pop')
+                    contracts.ContractCtx(), counters):
+                if levelup.lv9_stop(frame.level):
+                    _count('l3_reject_level_cap')
+                else:
+                    clicks = clicks_to_next_level(
+                        _state_view(frame, session, state))
+                    cost = xp_click_cost(_state_view(frame, session, state))
+                    if contracts.ensure_contract(
+                            ('levelup', 'spend_unified'),
+                            contracts.ContractCtx(gold=frame.gold), counters):
+                        if levelup.spend_unified(clicks, frame.gold, cost):
+                            ok1, _ = check_affordable(frame.gold, 0,
+                                                      batch_cost=clicks * cost)
+                            if ok1:
+                                # auth_basis 分键(可归因,与商店栈同序 arm1>arm0>pop;
+                                # 三臂全空时 = 必花域触发源,分键 must_spend)
+                                if _arms_hit:
+                                    _arm_tag = 'arm1' if _arm1 else (
+                                        'arm0' if _arm0 else 'pop')
+                                else:
+                                    _arm_tag = 'must_spend'
+                                    _count('must_spend_l3_prep_trigger')
+                                out.append(Emitted(LevelUp(), True,
+                                                   f'm3_levelup_batch:{_arm_tag}'))
                         else:
-                            _arm_tag = 'must_spend'
-                            _count('must_spend_l3_prep_trigger')
-                        out.append(Emitted(LevelUp(), True,
-                                           f'm3_levelup_batch:{_arm_tag}'))
+                            _count('l3_reject_batch_unaffordable')
 
     # M1′(M3 后新人口位补部署;R6-6/R8-1:迭代至不动点——RunDeploy
     # 执行侧现读重建输入(D-C44),发射即覆盖升级增量空位的部署重评)
@@ -568,6 +599,38 @@ def run_mandate(frame: MandateFrame,
         else:
             out.append(Emitted(RunEquip(), True, 'm7_equip_transfer'))
 
+    # M7.5 工具消费发射位(工具执行批 ADR-0532;21 号稿 §3.2/10 号稿
+    # §2.1 门 A:到货随机 ⇒ 备战期 owned 快照到达拍评估一次,不进跨轮
+    # 计划)。载体 = RunTools;判据单一源 = kernel/cw_equip_env
+    # evaluate_tool_actions(10 号稿 §2.1 三道门冷启动分支)→
+    # admitted_tool_actions(G1 发射位准入,TOOL_EXEC_CHANNEL_READY,
+    # 流程:197)。发射门两件套(与 M7 dd-027 同构):
+    # ①admitted 非空:usable 件存在才发——判据拒/准入拒经 [cw!][tools]
+    #   日志分键披露(拒因可观测性:该烧没烧/误烧率判读入口,21 号稿 §4
+    #   实机验收锚「炉在 owned ∧ 评估有记录(消费或拒因分键)」);
+    # ②工具期闩(cw4_tools_phase):同 (plane, round) 备战期只发一次,
+    #   置位在执行位(mark_tools_pass_executed,prep_actions 在 RunTools
+    #   组合 op 成功返回时调用;发射位只读不写,理由与 M7 闩同型)。
+    #   位面/轮次推进 = 新键自动失效(新到货工具重评)。
+    from sr_od.application.currency_war.kernel.cw_equip_env import (
+        admitted_tool_actions as _admit_tools,
+    )
+    from sr_od.application.currency_war.kernel.cw_equip_env import (
+        evaluate_tool_actions as _eval_tools,
+    )
+    _owned_snap = list(getattr(session, 'last_owned_equips', None) or [])
+    if _owned_snap:
+        _tool_admitted = _admit_tools(
+            _eval_tools(_owned_snap, getattr(session, 'target_comp', None)))
+        for _ta in _tool_admitted:
+            log.info('[cw!][tools] tool=%s action=%s usable=%s reason=%s',
+                     _ta.tool, _ta.action, _ta.usable, _ta.reason or '-')
+        if any(a.usable for a in _tool_admitted):
+            if getattr(session, 'cw4_tools_phase', None) == phase:
+                _count('tools_latch_skip')
+            else:
+                out.append(Emitted(RunTools(), True, 'm7_5_tool_consume'))
+
     # M7 发射序回排(dd-027 修订;实机局 g_20260904_010335 1-6/1-7 漏发
     # 定谳):M7 在执行序末位评估,发射落在同帧开店意图(OpenShop=帧稳定
     # 契约 §3.2 截断点)之后 ⇒ 截断器 truncate_frame_stable 其后必截,
@@ -579,15 +642,18 @@ def run_mandate(frame: MandateFrame,
     # (mark_equip_pass_executed,与开店闩置位时机修复同批)——回排
     # 语义仍保证 RunEquip 落在执行序前段、先于截断点被消费。分类单一
     # 源 = entry.classify_frame_stability(函数内延迟 import 防模块环)。
-    if any(isinstance(e.action, RunEquip) for e in out):
+    if any(isinstance(e.action, (RunEquip, RunTools)) for e in out):
         from sr_od.application.currency_war.strategies.impl.mandate_v1.entry import (
             classify_frame_stability,
         )
-        equips = [e for e in out if isinstance(e.action, RunEquip)]
-        rest = [e for e in out if not isinstance(e.action, RunEquip)]
+        equips = [e for e in out if isinstance(e.action, (RunEquip, RunTools))]
+        rest = [e for e in out if not isinstance(e.action, (RunEquip, RunTools))]
         cut = next((i for i, e in enumerate(rest)
                     if classify_frame_stability(e.action)
                     in ('truncation', 'terminal')), len(rest))
+        # 组内序:装备先行、工具随后(炉烧死库存与穿戴互不依赖,但
+        # 先穿后烧让确认通道对拍读到的是穿戴后的稳定板面)
+        equips.sort(key=lambda e: 0 if isinstance(e.action, RunEquip) else 1)
         out = rest[:cut] + equips + rest[cut:]
 
     return out
@@ -613,6 +679,22 @@ def mark_equip_pass_executed(session: StrategySession,
         return
     session.cw4_m7_equipped_phase = (getattr(state, 'plane', None),
                                      getattr(state, 'round_num', 1))
+
+
+def mark_tools_pass_executed(session: StrategySession,
+                             state: GameState | None) -> None:
+    """M7.5 备战期工具闩唯一写点(置位=执行位;工具执行批 ADR-0532)。
+
+    调用点 = prep_actions.PrepActionExecutor.execute 在 RunTools 组合 op
+    成功返回时。与 M7 装备闩同型论证(见 mark_equip_pass_executed):
+    备战环是单动作环,发射即置闩会闩烧而工具未消耗,后续环被闩挡死
+    ——置位必须在执行位。执行失败不置闩,下帧照常重发;键式与
+    run_mandate 的 phase 同构(位面/轮次推进 = 新键自动失效)。
+    """
+    if session is None:
+        return
+    session.cw4_tools_phase = (getattr(state, 'plane', None),
+                               getattr(state, 'round_num', 1))
 
 
 def m7_wearable_exists(owned: list[str]) -> bool:
@@ -728,14 +810,24 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     )
 
 
-def _state_view(frame: MandateFrame, session: StrategySession) -> object:
+def _state_view(frame: MandateFrame, session: StrategySession,
+                state: GameState | None = None) -> object:
     """M3 成本计算的 GameState 视图(level/xp 现读;clicks_to_next_level
-    消费面;duck-typed 局部视图,返回 object 注解=不对 kernel 契约撒谎)。"""
+    消费面;duck-typed 局部视图,返回 object 注解=不对 kernel 契约撒谎)。
+
+    xp 现读透传(g_20260906_034515 濒死段回放次生发现):旧实现把
+    ``xp_progress``/``level_up_cost`` 硬置 None——整批成本按 0 进度+
+    兜底单价虚高(lv7 22/52 帧:真 8击×4=32g vs 虚 13击×4=52g),在
+    残金带(真可负担/虚不可负担)构成 spend_unified 假拒的第二个静默
+    拒因面。修法 = state 在场且字段非空时现读透传,缺读帧维持旧兜底
+    (0 进度 + XP_CLICK_COST_FALLBACK,fail 方向不变)。"""
     class _Lv:
         pass
     v = _Lv()
     v.level = frame.level
-    v.xp_progress = None
-    v.level_up_cost = None
+    v.xp_progress = (getattr(state, 'xp_progress', None)
+                     if state is not None else None)
+    v.level_up_cost = (getattr(state, 'level_up_cost', None)
+                       if state is not None else None)
     v.active_strategies = list(getattr(session, 'active_strategies', []) or [])
     return v

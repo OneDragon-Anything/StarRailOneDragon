@@ -431,3 +431,5 @@
 | [ADR-0529-invest-strategy-entry-reprobe.md](ADR-0529-invest-strategy-entry-reprobe.md) | ADR-0529: 投资策略屏入口锚动画帧复探——单探测 round_fail 退役(20/21 局同型失败治本;首探 miss→短窗新截图复探,超窗仍 miss 才 fail),与 cw_loop N5 分发复探同族 | 已实施 |
 | [0530-board-full-swap-redeploy.md](0530-board-full-swap-redeploy.md) | ADR-0530: 板满换阵补部署(M1″)——kernel swap 计划谓词单一源+发射位 seam 门已开闸(M1P_SEAM_VERIFIED=True,5edcf324)+卖出通道统一义务集排除(含 fresh 生产写点接线) | 已实施 |
 | [0531-opening-narrow-tool-consume.md](0531-opening-narrow-tool-consume.md) | ADR-0531: 装备策略残余落码——opening hold 释放门收窄(O1/O2 逐件判定,支配性论证零新参数)+ 工具件消费判据面(冷启动分支炉准入+扳手闸,G1 发射位准入 fail-closed,遥测 row1/row2 分键)(21 号稿) | 已实施 |
+| [0532-tool-exec-channel-open.md](0532-tool-exec-channel-open.md) | ADR-0532: 工具件消费执行通道建成开臂——RunTools 发射位(M7.5,执行位闩)+ CwOpTools 执行 op(炉死库存/特权卡栏内拖法,消耗确认通道三分支)+ TOOL_EXEC_CHANNEL_READY 开臂(拒因分键照可见) | 已实施 |
+| [ADR-0533-must-spend-phase-latch-l3-reject-reasons.md](ADR-0533-must-spend-phase-latch-l3-reject-reasons.md) | ADR-0533: 必花域备战期闩(曾入域豁免保持,治「花光」义务域边界蒸发)+L3 资格拒分键落盘+prep xp 现读透传+form_score 回退源+实机遥测两件接线(三局濒死同构排查修批) | 已实施 |

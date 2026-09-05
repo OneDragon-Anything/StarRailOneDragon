@@ -138,13 +138,20 @@ class RunEquip(PrepAction):
     """组合(P1 过渡):全员装备 = CwOpEquipAll(P3 溶解为 WearEquip)。"""
 
 
+@dataclass
+class RunTools(PrepAction):
+    """组合(工具执行批 ADR-0532):工具消耗 = CwOpTools(G1 准入 admitted
+    工具动作逐件 drag + 21 号稿 §3.2 消耗确认通道;判据单一源 =
+    cw_equip_env.evaluate_tool_actions,执行层禁第二套时机判断)。"""
+
+
 # 动作全集白名单(F3 membership 校验;新动作加入全集时同步此处)
 PREP_ACTION_TYPES: tuple = (
     DeferSpheres, BailToOuter, ClickSpheres, OpenBox, OpenTome, PickBoxCard,
     SellBench, SellDeployed, DeployMove, LevelUp,
     EnsureShopOpen, EnsureShopClosed, StartBattle,
     OpenShop,
-    RunBuyPhase, RunDeploy, RunEquip,
+    RunBuyPhase, RunDeploy, RunEquip, RunTools,
 )
 # ⚠️ 教训:**新增 PrepAction 必须同步登记本白名单**——漏登记时 validate 拒
 # 「未知动作类型」,动作从未真正执行(OpenTome 曾漏登记,数百次 F3 拒绝

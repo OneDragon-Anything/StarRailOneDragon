@@ -43,6 +43,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepAction,
     RunDeploy,
     RunEquip,
+    RunTools,
     SellBench,
     SellDeployed,
     StartBattle,
@@ -258,6 +259,22 @@ class PrepActionExecutor:
                         _sess, getattr(_sess, 'last_state', None))
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][equip-latch] 置位失败(不阻塞): %s', e)
+        if ok and isinstance(action, RunTools):
+            # M7.5 工具期闩置位(工具执行批 ADR-0532;与 RunEquip 闩同型:
+            # 置位在执行位,发射位只读不写——单动作环下发射列表中
+            # RunTools 之前的可续动作先执行即终结本环,发射即置闩会闩烧
+            # 而工具未消耗)。唯一写点 = mandate.mark_tools_pass_executed。
+            try:
+                from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+                    mark_tools_pass_executed,
+                )
+                _m = self._ctx.cw_match
+                _sess = _m.session if _m is not None else None
+                if _sess is not None:
+                    mark_tools_pass_executed(
+                        _sess, getattr(_sess, 'last_state', None))
+            except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
+                log.warning('[cw][tools-latch] 置位失败(不阻塞): %s', e)
         # 期望态推进(EXPECTED_STATE §6 对抗 F8:两执行面同源接线)——
         # 本执行器是 PrepActionExecutor.execute 与 decision_assembly.execute
         # 的共同底层(decision 面经绑定回放委托到这里),登记挂本入口 = 两面
@@ -305,6 +322,8 @@ class PrepActionExecutor:
             return self._run_composite('部署', 'sr_od.application.currency_war.operations.cw_op.cw_op_deploy.CwOpDeploy')
         if isinstance(action, RunEquip):
             return self._run_composite('装备', 'sr_od.application.currency_war.operations.cw_op.cw_op_equip_all.CwOpEquipAll')
+        if isinstance(action, RunTools):
+            return self._run_composite('工具', 'sr_od.application.currency_war.operations.cw_op.cw_op_tools.CwOpTools')
         if isinstance(action, (DeferSpheres, BailToOuter)):   # 本模块定义,无需导入
             return False, '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)'
         return False, f'未知动作类型 {type(action).__name__}'

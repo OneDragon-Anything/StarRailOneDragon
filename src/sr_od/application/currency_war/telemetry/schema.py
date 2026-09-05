@@ -318,6 +318,7 @@ class DecisionTrace:
     # —— live 观测扩容(strategy/05_observation;全部可选,回放/影子对齐)——
     active_strategies: list[str] = field(default_factory=list)   # 持卡(台账/效果解回放)
     shop_rejects: dict[str, str] = field(default_factory=dict)   # 商店波未买牌拒因串({牌名: 拒因};生产端=cw4/shop.shop_unbought_reasons,旧行缺省空 dict)
+    refresh_trigger: dict[str, int] = field(default_factory=dict)  # 刷新触发源分键({reason: 次数};生产端=recorder 自决策行 actions 统计(sim 账本行同名键同语义),'' 归 other 桶;旧行缺省空 dict)
     dp_posture: dict[str, Any] = field(default_factory=dict)     # 影子 DP 姿态(tag/level_up/refresh_budget/v)
     ledger_fingerprint: str = ""                  # 台账指纹(效果感知解回放对齐)
     # —— r101 session 态快照(redesign/102 前提改造:回放 harness/快照回归库需要完整
@@ -390,11 +391,11 @@ class DecisionTrace:
     # 透传;写入端=arbiter refresh 收尾,局首清零)。
     sess_blood_budget_refresh_rejects: int | None = None
     # 血预算停手·终止分支决策位。⚠️ 与 sim 账本行键 terminal_release 同名
-    # 不同体:本 schema 字段全仓无赋值点(recorder 写入面随 v2 退役链退役,
-    # 按历史数据只读口径保留,新数据恒 None);实机的终止豁免位写在 sim
-    # 账本行键 terminal_release(engine_p1 轮入口,判据 =
+    # 不同体(两键口径):本 schema 字段 = recorder 侧实机透传位,写入面已
+    # 接回 terminal_release_bit 单一源(recorder.py;判据 =
     # sim/checks/segments.terminal_release_bit;设计 W659 v2 §5.1 R4;
-    # ADR-0469)。读终止豁免位请读账本行键,勿读本字段。
+    # ADR-0469)。读实机豁免位读本字段;sim 账本行键 terminal_release 为
+    # sim 侧行键(engine_p1 轮入口),判读对账注意两键粒度。
     sess_terminal_release: bool | None = None
     # P1-a 末窗支出降格触发面:取值=本 record 调用时点按 state +
     # DEFAULT_REGISTRY + match session(闩位含位面内触发闩,ADR-0469)
