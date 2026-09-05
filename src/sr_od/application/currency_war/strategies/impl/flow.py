@@ -348,7 +348,8 @@ class CwFlowStrategy(CwStrategy):
         ADR-0134:strategy kind 传 session.target_comp(星徽套组/专属强化对齐 target = 成型加速,
         comp 匹配分压倒品质先验)。ADR-0144 修订:env kind 也传 —— 开局环境屏 comp 未定(None,
         行为同旧,阵营定向走 select_comp env_fit);**局中环境屏**(如 联席决策 2-6 节点)comp 已定,
-        概念股/邀请/契约阵营条件分(ENV_FACTION_MATCH_FLOOR)生效。
+        概念股/邀请/契约阵营匹配定序门(ENV_FACTION_MATCH_FLOOR,ADR-0524 定形:
+        三档值=category 定序档位,禁读基数)生效。
         ADR-0209(接线 1/6):选卡结果喂 CommitSignals(策略 2.0/环境 1.0 权重;
         affinity 表把所选卡映射到 comp 分贡献)。"""
         _tgt = session.target_comp
