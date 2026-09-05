@@ -198,6 +198,7 @@ _PROBE_NONE: str = 'none'
 #: 依据,非拍定行为旋钮)。
 _PROBE_ASYMM_SPLIT: float = 2.5
 #: 探针整窗擦线保守带上界(整窗 ∈ [6.0,12.0) → 不可判退公式;12 = 旧
+#: ``_CV_LEFT_STD_AMBIG_LO`` 同值语义等价恢复,互为对方出处)
 #: 不可判带下界语义等价恢复)。
 _PROBE_AMBIG_WHOLE_MAX: float = 12.0
 
@@ -218,7 +219,7 @@ def _probe_state(screen, cx: int) -> str | None:
     if whole < _PROBE_AMBIG_WHOLE_MAX:
         return None   # 擦线保守带:背景纹理/弱信号不猜,退公式(留证在调用方)
     lo, hi = min(left, right), max(left, right)
-    if lo <= 0.5:
+    if lo <= 0.5:   # 0.5=纯平半窗(std 近零)与「有内容」的分界,哨兵帧实测纯平半窗 std≤0.3
         return _PROBE_SLICE   # 单半窗有内容、另半窗纯平 = 极端切片
     return (_PROBE_FULL if hi / lo < _PROBE_ASYMM_SPLIT
             else _PROBE_SLICE)
