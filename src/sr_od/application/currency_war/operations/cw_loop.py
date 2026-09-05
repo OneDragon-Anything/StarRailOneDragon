@@ -309,6 +309,9 @@ def readiness_admission_report(state, comp) -> dict:
     提案侧预估基于期望态现读;执行时刻以 CwOpDeploy 现读重建为准。
     三元不全/victim 缺失**只显影不拦截**(出战优先;准入是观测面,
     非第二道闸)。
+    **帧对齐说明**:预估读 ``session.last_state``(上一轮决策态),与发射
+    复验帧存在一轮滞后——显影是 best-effort 观测面(非判定门),一轮
+    滞后可接受;精确帧级对齐归观测口径批。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
     from sr_od.application.currency_war.kernel.cw_state import (
@@ -365,7 +368,7 @@ def readiness_battle_launch(op, ctx):
     ——发射核与恢复局面共用 ``launch_prepared_battle``,禁第二套
     StartBattle 发射位。
 
-    **执行时刻新鲜屏态复验**(第十六局实机雷:loop 早前读的备战双锚到
+    **执行时刻新鲜屏态复验**(切屏竞态实测病例·遭遇屏形态:loop 早前读的备战双锚到
     执行时已过期——切屏瞬间误真,9 拖全空挥 placed=0):发射前重截图
     复验备战屏锚(复用既有锚,零新参数);非备战屏 → 放弃本次发射,
     ``readiness_stale_screen`` 分键零静默,屏态过期**非发射失败**(返回
@@ -1392,6 +1395,7 @@ class CwLoop(SrOperation):
                 # 0 系分发锚表(零新参数):备战自身锚以外任一锚命中 = 浮层
                 # 在场 → 本轮不发射,交由浮层接管面(0 系分支)处理;分键
                 # 零静默。
+                _ov_hit = None
                 for _ov_branch, _ov_screen, _ov_area in \
                         CwLoop.DISPATCH_AREA_ANCHORS:
                     if _ov_screen == '货币战争-备战':
@@ -1399,15 +1403,25 @@ class CwLoop(SrOperation):
                     if self.round_by_find_area(
                             screen, _ov_screen, _ov_area,
                             crop_first=False).is_success:
-                        _arm_armed = False
-                        counters = getattr(self.ctx.cw_match.session,
-                                           'cw4_counters', None)
-                        if isinstance(counters, dict):
-                            counters['readiness_overlay_hold'] = \
-                                counters.get('readiness_overlay_hold', 0) + 1
-                        log.info('[cw-loop] 达标臂浮层在场(%s.%s)→ 本轮不发射,'
-                                 '交由浮层接管面', _ov_screen, _ov_area)
+                        _ov_hit = f'{_ov_screen}.{_ov_area}'
                         break
+                if _ov_hit is None and self.round_by_ocr(
+                        screen, '遭遇其一', lcs_percent=0.9).is_success:
+                    # 遭遇选择面板 = 备战屏上的面板(非独立屏;切屏竞态实测病例):双锚仍可见
+                    # 但板面槽区被面板覆盖(切屏竞态实测病例:9 拖落进面板
+                    # 覆盖的中部槽区)——锚表探不到,补既有 OCR 词「遭遇其一」
+                    #(cw_entry_exit 同款复用,零新参数)。面板在场同不发射,
+                    # 交遭遇接管面。
+                    _ov_hit = '遭遇选择面板(OCR:遭遇其一)'
+                if _ov_hit is not None:
+                    _arm_armed = False
+                    counters = getattr(self.ctx.cw_match.session,
+                                       'cw4_counters', None)
+                    if isinstance(counters, dict):
+                        counters['readiness_overlay_hold'] = \
+                            counters.get('readiness_overlay_hold', 0) + 1
+                    log.info('[cw-loop] 达标臂浮层在场(%s)→ 本轮不发射,'
+                             '交由浮层接管面', _ov_hit)
             if _arm_armed:
                 _ok_r, _detail_r = readiness_battle_launch(self, self.ctx)
                 if _detail_r == 'readiness_stale_screen':
