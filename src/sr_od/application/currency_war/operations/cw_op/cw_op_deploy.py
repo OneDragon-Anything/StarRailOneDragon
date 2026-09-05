@@ -14,7 +14,6 @@
 ``_back_row_centers`` → ``cw_back_layout.select_back_layout`` 单一入口;旧 level 驱动已废),
 ``_row_centers`` 自动跟上(读全,不硬编码)。
 """
-import contextlib
 import time
 from typing import ClassVar
 
@@ -1223,17 +1222,18 @@ class CwOpDeploy(SrOperation):
                              f'({sorted(bonds & _DEPLOY_FENCE)}) 是引擎/配方体系件'
                              f' → 保留(买/演进层目标源与终局 target 分歧时禁互踩)')
                     # 撤销操作证据留存(纯观测,零行为变更;复用 defect_ledger)
-                    with contextlib.suppress(Exception):
+                    try:
                         from sr_od.application.currency_war.telemetry.undo_evidence import (
                             record_sell_breaker_preserved,
                         )
                         record_sell_breaker_preserved(
-                            getattr(getattr(self.ctx, 'cw_match', None),
-                                    'session', None),
                             char_id=d.char_id,
                             reason='fence:'
                                    + ','.join(sorted(bonds & _DEPLOY_FENCE)),
                             channel='deploy_offtarget')
+                    except Exception as _ev_err:   # 兜底日志:留证落账失败不拦部署
+                        log.warning(f'[cw-deploy] 卖出熔断留证落账失败(不拦):'
+                                    f'{_ev_err}')
                 continue
             _rank: tuple = (1, 0 if getattr(d, 'star', 1) <= 1 else 1)
             _cands.append((_rank, d, bonds))

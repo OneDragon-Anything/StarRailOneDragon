@@ -19,11 +19,11 @@ from __future__ import annotations
 from sr_od.application.currency_war.telemetry import defects
 
 
-def record_sell_breaker_preserved(session, *, char_id: str, reason: str,
-                                  channel: str) -> None:
+def record_sell_breaker_preserved(*, char_id: str, reason: str,
+                                   channel: str) -> None:
     """W209/ADR-0386 卖出熔断撤销证据(谁/为何/保留了什么;L2 留证)。
 
-    :param session: 对局会话(预留;run 归属由 current_run_id 汇点自取);
+    run 归属由 current_run_id 汇点自取(无需会话入参);
     :param char_id: 被熔断保留的单位(谁);
     :param reason: 保留拒因摘要(为何:fence:体系名 / core / protect);
     :param channel: 触发通道(deploy_offtarget 等,保留了什么语境)。
@@ -38,7 +38,7 @@ def record_sell_breaker_preserved(session, *, char_id: str, reason: str,
         gap_large=False, severity=defects.SEVERITY_L2_RECORD)
 
 
-def record_drought_buy_no_reset(session, *, member: str, system: str,
+def record_drought_buy_no_reset(*, member: str, system: str,
                                 drought: int) -> None:
     """干旱计数器买入不重置证据(L2 留证;解锁流程审计面)。
 
