@@ -19,6 +19,8 @@ CARD_CLICK_Y + 确认坐标进 screen_info(``currency_war_invest_strategy``):``�
 import time
 from typing import ClassVar
 
+from cv2.typing import MatLike
+
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
@@ -86,7 +88,7 @@ class CwScreenInvestStrategy(SrOperation):
         opts.sort(key=lambda t: t[1])
         return opts
 
-    def _entry_anchor_hit(self, screen) -> bool:
+    def _entry_anchor_hit(self, screen: MatLike) -> bool:
         """入口锚探测:screen_info id_mark「标识-请选择投资策略」命中(与
         cw_loop 0e 分发 / cw_entry 2b 分支同锚同源)。"""
         return self.round_by_find_area(
@@ -102,7 +104,9 @@ class CwScreenInvestStrategy(SrOperation):
         for _ in range(CwScreenInvestStrategy.ENTRY_REPROBE_TIMES):
             if hit:
                 return True
-            time.sleep(CwScreenInvestStrategy.ENTRY_REPROBE_WAIT_S)
+            # 复探等待走可中断睡眠:裸 time.sleep 最坏 3.2s 不可停机中断,
+            # 绕过框架停机加固(operation.py 停机延迟实证)。
+            self._interruptible_sleep(CwScreenInvestStrategy.ENTRY_REPROBE_WAIT_S)
             screen = self.screenshot()
             hit = self._entry_anchor_hit(screen)
         # 末次复探结果必须消费:循环内 if 只判上一轮采样,最后一次采样的
