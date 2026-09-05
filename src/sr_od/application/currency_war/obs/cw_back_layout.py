@@ -173,36 +173,55 @@ def _cv_slot_std(screen, cx: int) -> float | None:
     return _cv_band_std(screen, cx - _CV_HALF, cx + _CV_HALF)
 
 
-#: 探针三态(布局档对账批:CV 端点探针占用态门,15 号稿批 B):探针窗内
-#: 「整窗/左半窗/右半窗」三段 std 相对 ``_CV_SLOT_STD_MIN`` 的形态。
-#: 机理标定(y 带内实测,真值帧:后排8槽-狸猫局/满级局/双宝钻局、
-#: deployed_r9_7grid 停机哨兵帧、shop_closed/reward_panel_empty 6 格帧):
-#: - full(整窗+两半窗全 ≥ 阈):该处**整格存在**(8 格档端点;立绘/暗框
-#:   三段全高,实测 min 半窗 40.8-59.3);
-#: - slice(恰一个半窗 ≥ 阈):**邻档端点格的切片**——居中重排几何下 7 格
-#:   档端点格只与探针窗重叠 72px(实测切片半窗 11.3-61.5、背景半窗
-#:   2.1-11.3),即「N 档端点被占」的切片签名;
-#: - none(三段全 < 阈):纯背景。
-#: 阈值复用既有 ``_CV_SLOT_STD_MIN=6.0``,半窗几何 = 探针窗对半
-#: (71px=既有 ``_CV_HALF``)——占用态门零新增自由参数。
+#: 探针三态(布局档对账批:CV 端点探针占用态门,15 号稿批 B;落地审 C1
+#: 修订:半窗判据与整窗判据分离 + 擦线保守带恢复)。每探针测「整窗 std +
+#: 左/右半窗 std」,判定:
+#: - none:整窗 < ``_CV_SLOT_STD_MIN``(6.0)——纯背景(6 格帧整窗实测
+#:   2.1-2.9);
+#: - 不可判(None):整窗 ∈ [6.0, 12.0) 擦线保守带——背景纹理擦线帧不猜
+#:   退公式(等价恢复旧 ``_CV_LEFT_STD_AMBIG_LO=12`` 不可判带语义);
+#: - full:整窗 ≥ 12 ∧ 半窗对称(max/min < 2.5)——整格存在(立绘/暗框
+#:   占满探针窗;8 格档实测对称比 1.0-1.2,含空槽暗框帧 P3 局 1.0);
+#: - slice:整窗 ≥ 12 ∧ 半窗不对称(max/min ≥ 2.5)——**邻档端点格切片**
+#:   (居中重排几何下 7 格档端点格只与探针窗重叠 72px;7 格真帧实测
+#:   不对称比 5.3-30.8)。
+#: 标定分布(6 真值帧):整窗 6 格 2.1-2.9 / 7 格 26.2-51.0 / 8 格 38.8-65.6;
+#: 对称比 6 格 1.0-1.4 / 8 格 1.0-1.2 / 7 格 5.3-30.8。C1 三点闭环:
+#: ①背景半窗擦线不再触发 none→slice(slice 需整窗 ≥12 且不对称,对称擦线
+#: 帧落不可判带);②切片帧不对称比 ≥2.5 恒非 full(full 需对称 <2.5),
+#: 端点高估不可复现;③不可判带以整窗 [6,12) 恢复。
 _PROBE_FULL: str = 'full'
 _PROBE_SLICE: str = 'slice'
 _PROBE_NONE: str = 'none'
+#: full/slice 的半窗**对称比**分界(不对称比 max/min):8 格对称比实测上限
+#: 1.2 与 7 格切片比实测下限 5.3 的对数中点≈2.5(分布带取值,有双侧标定
+#: 依据,非拍定行为旋钮)。
+_PROBE_ASYMM_SPLIT: float = 2.5
+#: 探针整窗擦线保守带上界(整窗 ∈ [6.0,12.0) → 不可判退公式;12 = 旧
+#: 不可判带下界语义等价恢复)。
+_PROBE_AMBIG_WHOLE_MAX: float = 12.0
 
 
 def _probe_state(screen, cx: int) -> str | None:
-    """端点探针三态判定(占用态门;任一段 std 不可读 → None 不可判)。"""
+    """端点探针三态判定(占用态门;任一段 std 不可读 → None 不可判)。
+
+    判定序 = none(整窗 <6)→ 擦线不可判(整窗 <12,保守 None)→
+    按半窗不对称比分 full/slice(标定分布见常量块注释)。"""
     w1, w2 = cx - _CV_HALF, cx + _CV_HALF
     whole = _cv_band_std(screen, w1, w2)
     left = _cv_band_std(screen, w1, cx)
     right = _cv_band_std(screen, cx, w2)
     if None in (whole, left, right):
         return None
-    if min(whole, left, right) >= _CV_SLOT_STD_MIN:
-        return _PROBE_FULL
-    if max(left, right) >= _CV_SLOT_STD_MIN:
-        return _PROBE_SLICE
-    return _PROBE_NONE
+    if whole < _CV_SLOT_STD_MIN:
+        return _PROBE_NONE
+    if whole < _PROBE_AMBIG_WHOLE_MAX:
+        return None   # 擦线保守带:背景纹理/弱信号不猜,退公式(留证在调用方)
+    lo, hi = min(left, right), max(left, right)
+    if lo <= 0.5:
+        return _PROBE_SLICE   # 单半窗有内容、另半窗纯平 = 极端切片
+    return (_PROBE_FULL if hi / lo < _PROBE_ASYMM_SPLIT
+            else _PROBE_SLICE)
 
 
 def cv_back_slots(screen) -> int | None:
