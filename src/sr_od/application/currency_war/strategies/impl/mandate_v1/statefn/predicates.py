@@ -153,7 +153,7 @@ def arm0_need(deployed: list[BenchChar], bench: list[BenchChar],
     = |deployed| + |{ b ∈ bench | b ∈ k_members(predicates core∪shared
     口径)∧ b.name ∉ deployed 名集 }|,bench 内同名去重(集合计)。
 
-    排除口径 = **纯 name**(口径对齐收口,落地审清单 20260905_cp1_landing_review/问题清单.md:与真实部署去重语义对齐——
+    排除口径 = **纯 name**(口径对齐收口,P1消费臂批落地审:与真实部署去重语义对齐——
     check_seats 对象列同名禁上阵 + cw_deploy_logic 按 cid 去重的实际
     规则即「同名不可再上阵」;Y3 的 (名,星) 字面让位于部署真实语义,
     不为凑字面制造虚 need:①同名异星 bench 件按 name 排除后不再虚计
@@ -211,7 +211,7 @@ def p1_blood_floor(state) -> bool:
     (血带结构锚,禁本处字面量第二份)。信任门 = ``hp_decision_trusted``
     (kernel 单一源;P1 hp 读链毒化史,不可信帧/hp 无值帧 fail 向不判线
     ——fail 向 = 本线不触发,各消费面维持既有语义)。
-    **位面域 = 仅 plane 1**(落地审清单应-A,20260905_cp1_landing_review/问题清单.md):解锁包授权族 = P1 血线硬地板
+    **位面域 = 仅 plane 1**(P1消费臂批落地审应-A):解锁包授权族 = P1 血线硬地板
     ——P2 深血线有自己的在产口径(p2_crisis_band ≈41,更宽域更早介入),
     P2 帧 hp≤15 若误开 P1 专属解锁包 = 授权域外搭车,不可接受;域外帧
     fail 向不判线,消费面维持既有语义。

@@ -212,7 +212,7 @@ def locked_resume_sync_and_battle(op, ctx):
     局「商店探针零响应」禁令只辖商店域,部署面不受辖)。
 
     证据位语义(修订出处 = .debug/temp/currency_war/20260905_postresync_audit/
-    问题清单.md R1):**RunDeploy ok=True 才置位**
+    P1消费臂批落地审 R1):**RunDeploy ok=True 才置位**
     ``op._cw_locked_sync_done``——失败(drag 白拖/W209j 刹车/板满门退化)
     不置位,下环重试同步;连续失败达 ``_SYNC_RETRY_LIMIT``(3)后放弃
     (error 告警显影,依据:同步步幂等但与 StartBattle 重试共用 retry 池,
@@ -1390,7 +1390,7 @@ class CwLoop(SrOperation):
                     self._cw_readiness_fail_n = 0
                     return self.round_wait(wait=3)
                 # 发射失败连续计数(防线 C1,出处 = 落地审清单
-                # last_change_review/问题清单.md):fp≥1.00 恒真 + StartBattle
+                # P1消费臂批落地审清单):fp≥1.00 恒真 + StartBattle
                 # 持续失败 + round_wait 不耗 retry = 框架内零防线自旋。
                 # 连续 3 次失败放弃短路,回落守卫链(守卫照常计数,卡死
                 # 仍可停机),分键零静默;成功即复位。
