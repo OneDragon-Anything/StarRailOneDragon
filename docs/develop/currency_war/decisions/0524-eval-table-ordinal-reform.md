@@ -44,3 +44,5 @@ comp-hit「N≥1 域压过基准域」按 16 号稿 §1.4 augment 锚位(「comp
 ## 验证
 
 ruff(改动文件)全过;CW 快速集(`uv run pytest sr-od-test/test/sr_od/app/currency_war -m "not slow and not legacy_baseline"`)两轮全绿。
+
+> 翻转披露补充(落地审):漏锁面低×2,现注册表不可达——①银无经济回落卡 vs 未注册的未来平手口;②回落卡×comp-hit 跨族位次未列名。注册表扩到可达形态时须先补锁再扩表。
