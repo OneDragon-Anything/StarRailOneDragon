@@ -161,10 +161,36 @@ def _bench_identity_signature(
 
 
 def _reseed_bench_layout(state: GameState,
-                         tracked: list[BenchChar | None]) -> None:
+                         tracked: list[BenchChar | None]) -> bool:
     """投影 bench 布局按执行侧 tracked 槽位表就地回写(布局单一源重播种:
-    churn 后 tracked/实况是重排侧真值,投影副本跟随)。"""
+    churn 后 tracked/实况是重排侧真值,投影副本跟随)。
+
+    槽号健康门:tracked 槽号来自 SIFT/对账 churn,属无守卫数据——占用
+    槽号须唯一 ∧ 全在 1..BENCH_CAPACITY,违者**拒绝重播种**维持旧布局
+    (防坏槽号污染投影后进入 M4 卖出链:重播种后两账同源,
+    guard_proposal_vs_expected 对表位置-物理格错位结构性失明,错格拖拽
+    = 卖错人/卖空格),并落 ``bench_slot_unhealthy`` 台账分键留证。
+    返回是否实际重播种。
+    """
+    occupied = [b for b in (tracked or []) if b is not None]
+    slots = [b.slot for b in occupied]
+    healthy = all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
+                  for s in slots) and len(set(slots)) == len(slots)
+    if not healthy:
+        with contextlib.suppress(Exception):
+            defects.record_defect(
+                'bench', defects.DEFECT_KIND_BENCH_SLOT_UNHEALTHY,
+                expected='tracked 占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY',
+                observed=f'slots={sorted(slots)}',
+                verdict=('留证-tracked 槽号不健康,拒绝重播种(维持旧投影'
+                         '布局,坏槽号不进不可逆卖出链;根因=对账 churn '
+                         '槽号无守卫,归观察层仲裁批)'),
+                reader_source='reseed_health_gate',
+                gap_large=True,
+                note='重播种槽号健康门(占用表槽号唯一性与值域校验)')
+        return False
     state.bench[:] = list(tracked)
+    return True
 
 
 def guard_expected_vs_tracked(state: GameState, session,
@@ -179,13 +205,18 @@ def guard_expected_vs_tracked(state: GameState, session,
     - **多集等价(槽位布局漂移,降级不炸)**:成员账对齐、仅槽位排列
       分歧——对账 churn(卖出/合并/换位)后 tracked/实况槽位重排,
       投影副本未跟随重播种,两侧落槽规则一致但「洞在哪」不同源
-      (第八局 OpenShop HIT 实证:expected=[符玄,阮·梅,阮·梅] vs
-      tracked=[阮·梅,符玄,阮·梅],买后守卫炸、环消化局存活)。
-      处置 = WARNING 记「槽位布局漂移」另账 + 按 tracked 真值就地
-      重播种投影 bench(``_reseed_bench_layout``)——回写源选 tracked
+      (OpenShop 双账槽位漂移事故形态:expected=[符玄,阮·梅,阮·梅] vs
+      tracked=[阮·梅,符玄,阮·梅],真实 bench 洞@2、投影副本洞@1)。
+      处置 = WARNING + 台账分键 ``bench_slot_layout_drift`` 留证
+      (判读工具可查)+ 按 tracked 真值就地重播种投影 bench
+      (``_reseed_bench_layout``,含槽号健康门)——回写源选 tracked
       而非 ``match.bench_slot_map`` 的依据:后者只在买组确认后产出
       (守卫炸点在组中,来不及)且只含所购名→槽、不承载 churn 重排
       与洞位;tracked 账纯内存随执行与对账更新,是重排侧,零读屏。
+      根因申报:漂移之根 = simulate 落洞规则基于自身布局副本、不随
+      churn 重排——治本需把对账 churn 事件接进投影链(跨 reconcile/
+      投影两域边界,独立批),本重播种只保本 visit 内存态,属显式
+      声明的症状治理 + 排期,非遗漏。
     - **真多集分歧**:按 stage 两属归因,断言炸出(消息见下)。
       stage='seed'(播种后、首动作前):tracked 非空时本对账按构造
       恒等(state.bench 即自 tracked 播种),唯一可达场景 = tracked 主
@@ -211,6 +242,18 @@ def guard_expected_vs_tracked(state: GameState, session,
                 '[cw-shop][guard] 双账槽位布局漂移(多集等价,降级不炸;'
                 '已按 tracked 重播种投影 bench):expected=%s tracked=%s',
                 expect_sig, tracked_sig)
+            with contextlib.suppress(Exception):
+                defects.record_defect(
+                    'bench', defects.DEFECT_KIND_BENCH_SLOT_LAYOUT_DRIFT,
+                    expected=f'expected={expect_sig}',
+                    observed=f'tracked={tracked_sig}',
+                    verdict=('留证-双账槽位布局漂移(多集等价,仅槽序分歧;'
+                             '降级不炸,已按 tracked 真值重播种投影 bench;'
+                             '根因=simulate 落洞规则不随 churn 重排,'
+                             'churn 事件接投影链为排期治本批)'),
+                    reader_source='guard_expected_vs_tracked',
+                    gap_large=False,
+                    note='双账对拍守卫降级分支(多集等价;真分歧仍 AssertionError)')
             _reseed_bench_layout(state, tracked)
             return
         if stage == 'seed':

@@ -228,13 +228,30 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
     return not (bonds & _DEPLOY_FENCE)
 
 
-def fenced_swap_arm_of(fp: float, board_count: int,
+def swap_arm_deployed_count(board: dict | None,
+                            tracked_deployed: list) -> int:
+    """换阵卖出义务臂「板满」条件的部署数喂入(单一口径)。
+
+    = 占用槽位表计数(``cw_state.deployed_occupied``,数据源 =
+    reconcile_tracking 的 SIFT 真读槽位表)。**禁用
+    ``sum(board.values())``**:board 语义 = 阵营名 → 该阵营在场人数
+    (一人多阵营贡献多次,4 人可贡献 11 阵营次)——把羁绊计数当部署数
+    喂「板满」门 = 建模对象错,板未满即开臂、熔断自线成型起事实失效。
+    """
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
+    )
+    return deployed_occupied(tracked_deployed or [])
+
+
+def fenced_swap_arm_of(fp: float, deployed_n: int,
                        front_n: int, back_n: int) -> bool:
     """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
-    单一源 ``cw_comps.form_progress``)∧ 板面满(deployed 计 ≥ 前后排
-    槽位总数)。两条件并存 = 熔断的振荡防护前提(买/演进层仍要 fenced 件)
-    消失、且 bench target 无空槽可进——此时 off-line fenced 件让位。"""
-    return fp >= 1.0 and board_count >= front_n + back_n
+    单一源 ``cw_comps.form_progress``)∧ 板面满(真部署数 ≥ 前后排
+    槽位总数;喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
+    熔断的振荡防护前提(买/演进层仍要 fenced 件)消失、且 bench target
+    无空槽可进——此时 off-line fenced 件让位。"""
+    return fp >= 1.0 and deployed_n >= front_n + back_n
 
 
 def _note_deployed_count_divergence(ctx: SrContext, screen: MatLike, source: str,
@@ -422,15 +439,16 @@ class CwOpDeploy(SrOperation):
 
             _bench_tgt_n = sum(1 for _bc in _bench_chars if _is_tgt_char(_bc.char_id))
             if _bench_tgt_n > 0:
-                # 换阵卖出义务臂(板满换阵死锁修复;第七局 r9 实证:线成型
-                # fp=1.00 后 W209 熔断仍护旧线 fenced 件——艾丝妲=旧线持续
-                # 伤害/黑塔 → sold 0/2 → RunDeploy 单签名三环守卫停机):
-                # 触发条件 = 线已成型(fp≥1.00,单一源 form_progress)∧ 板满
-                #(deployed 计 ≥ 前后排槽位总数)——两条件成立时买/演进层对
-                # 旧线 fenced 件已无需求,熔断的振荡防护前提消失,off-line
-                # fenced 件让位给换阵卖出义务。未成型/未满板帧保持熔断
-                #(双轨期预囤框架件仍受保护,原语义零变化)。新线 core∪shared
-                # 经 protect_names 继续保护(P41②禁卖护栏不因换阵解除)。
+                # 换阵卖出义务臂(板满换阵死锁修复:线成型 fp=1.00 后 W209
+                # 熔断仍护旧线 fenced 件——旧线阵营件被保留 → sold 0/2 →
+                # RunDeploy 单签名三环守卫停机)。触发条件 = 线已成型
+                #(fp≥1.00,单一源 form_progress)∧ 板满(真部署数 ≥ 前后排
+                # 槽位总数,喂入单一源 = swap_arm_deployed_count)——两条件
+                # 成立时买/演进层对旧线 fenced 件已无需求,熔断的振荡防护
+                # 前提消失,off-line fenced 件让位给换阵卖出义务。未成型/
+                # 未满板帧保持熔断(双轨期预囤框架件仍受保护,原语义零
+                # 变化)。新线 core∪shared 经 protect_names 继续保护(P41②
+                # 禁卖护栏不因换阵解除)。
                 _fenced_arm = False
                 _protect: frozenset[str] = frozenset()
                 if _tgt_comp is not None and _match.session.last_state is not None:
@@ -438,14 +456,19 @@ class CwOpDeploy(SrOperation):
                         form_progress,
                     )
                     _fp_now = form_progress(_tgt_comp, _match.session.last_state)
-                    _board_n = (sum((_board or {}).values())
-                                if isinstance(_board, dict)
-                                else len(_board or []))
-                    _fenced_arm = fenced_swap_arm_of(_fp_now, _board_n,
+                    _deployed_n = swap_arm_deployed_count(
+                        _board, _match.session.tracked_deployed)
+                    _fenced_arm = fenced_swap_arm_of(_fp_now, _deployed_n,
                                                      len(front), len(back))
                     _protect = frozenset(
                         set(_tgt_comp.core_chars)
                         | set(getattr(_tgt_comp, 'shared_chars', []) or ()))
+                _arm_prev = getattr(_match.session, 'cw4_swap_arm_on', None)
+                if _arm_prev is not None and _arm_prev != _fenced_arm:
+                    log.info('[cw-deploy] 换阵卖出义务臂状态变化: %s → %s'
+                             '(fp/部署数逐环重评,开合抖动可观测)',
+                             _arm_prev, _fenced_arm)
+                _match.session.cw4_swap_arm_on = _fenced_arm
                 if _fenced_arm:
                     log.info('[cw-deploy] 换阵卖出义务臂开启:线成型 fp=1.00 ∧ 板满 '
                              f'∧ bench target={_bench_tgt_n} → off-line 引擎/配方件'
