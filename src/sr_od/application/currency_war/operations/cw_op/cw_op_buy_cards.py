@@ -4,6 +4,7 @@ import time
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
@@ -43,6 +44,21 @@ from sr_od.application.currency_war.obs.cw_observation import (
 from sr_od.application.currency_war.telemetry import defects, recorder
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+if TYPE_CHECKING:
+    # cw_shop_action_ops 模块级反向依赖本文件(read_gold_opt 替身缝),
+    # 运行时 import 会成环——仅注解用,字符串注解不求值。
+    from sr_od.application.currency_war.kernel.cw_state import (
+        CloseShop,
+        LevelUpShop,
+    )
+    from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
+        ShopActionOp,
+        ShopVisitLedger,
+    )
+    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        CurrencyWarMatch,
+    )
 
 
 def _apply_hp(state: GameState, hp_value: int | None,
@@ -390,9 +406,15 @@ class BuyCardsOutcome:
     buy_pre_deployed: list[BenchChar]
 
 
-def apply_action_outcome(_aop, action, _ok: bool, _cur: GameState,
-                         match, ledger, visit_actions: list) -> None:
-    """执行结果落地门(调用环单一源;落地审 C1 调用环级锁的承载体)。
+def apply_action_outcome(_aop: 'ShopActionOp',
+                         action: 'BuyCard | RefreshShop | LevelUpShop | CloseShop',
+                         _ok: bool, _cur: GameState,
+                         match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
+                         visit_actions: list) -> None:
+    """执行结果落地门(调用环单一源;落地审 C1 调用环级锁的承载体。
+
+    审清单持久指针:.debug/temp/currency_war/20260905_cp1_landing_review/
+    问题清单.md(C1 = 期望账/tracked 分叉,应修-2 = 已买集无条件追加)。
 
     未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不投影、
     不守卫、不入「已买」集(防检出帧名污染 prefer_names/churn/P60,

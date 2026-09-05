@@ -302,7 +302,8 @@ def buy_click_ineffective(before: MatLike | None, after: MatLike | None,
     """买后同 rect 卡面未变判定(纯函数):灰度差均值 < 阈值 ⇒ 卡未离场
     = 购买未生效(点击落空/试用/被拦)。任一裁片缺失或形状不等 ⇒ False
     = **不可判**(fail-open,保持既有记账;与「判了未生效」可分,执行侧
-    以 skipped 计数分键显影,低-4)。
+    以 skipped 计数分键显影;低-4 = .debug/temp/currency_war/
+    20260905_cp1_landing_review/问题清单.md)。
 
     阈值如实口径:12.0 = 合成帧推导的保守带(未生效形态 ≈ 逐像素全同;
     生效形态 = 整卡替换,均值差大一个量级),**非实机边界标定**——同美术
@@ -356,7 +357,8 @@ class BuyCardOp(ShopActionOp):
                 _after_crop = _after[_hit_rect.y1:_hit_rect.y2,
                                      _hit_rect.x1:_hit_rect.x2].copy()
         if _card_crop is None or _after_crop is None:
-            # 不可判(裁片缺失)与没判可分:skipped 计数分键显影(低-4)。
+            # 不可判(裁片缺失)与没判可分:skipped 计数分键显影
+            # (低-4 清单见 buy_click_ineffective docstring 指针)。
             with contextlib.suppress(Exception):
                 _ct = match.session.cw4_counters
                 _ct['buy_click_verify_skipped'] = \
@@ -381,7 +383,8 @@ class BuyCardOp(ShopActionOp):
             # 基类契约「未落地=False、两侧都不动」:False ⇒ 调用方跳过
             # project()/guard——期望账不得投影未发生的买入(落地审 C1:
             # 旧 return True 使期望账/tracked 分叉,guard 断言当轮炸,
-            # 满栏豁免下假买入还污染下次对账)。
+            # 满栏豁免下假买入还污染下次对账;清单 = .debug/temp/
+            # currency_war/20260905_cp1_landing_review/问题清单.md)。
             return False
         ledger.total_buy += 1
         ledger.spend_executed += action.card.cost

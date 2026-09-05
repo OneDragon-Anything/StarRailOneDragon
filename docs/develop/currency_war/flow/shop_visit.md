@@ -55,6 +55,9 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
        │    SellBench：拖前 gold 基数 → 拖拽卖出（拖 3 次源槽未变 = 失败,不投影——
        │            两侧都不动保持双账一致）→ tracking 同步（置 None 不紧缩）
        │            + register_round_sold（同轮不回买）+ 卖出入账实收观测（前后 gold 差落盘）
+       ├─ 落地门 apply_action_outcome（调用环单一源,cw_op_buy_cards）: execute 返回
+       │    False（未落地,如 BuyCard 检出点击未生效）⇒ 两侧都不动——不投影/不守卫/
+       │    不入已买集（cw4_visit_bought_names,防检出帧名污染对账）;落地且非终结才进投影
        └─ 投影（决策 10:动作 op project = cw_state.simulate 单一源,纯计算零读屏）:
             非终结且落地 → 黑板推进 session.shop_state_frame = project(态)
             → guard_expected_vs_tracked 双账断言（满栏买入豁免——tracked 的 bench_place
