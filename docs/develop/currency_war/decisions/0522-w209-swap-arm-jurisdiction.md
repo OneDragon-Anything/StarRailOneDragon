@@ -31,3 +31,7 @@ ruff 净;test_cw_deploy_ops.py 64 passed(含守卫移除验证=义务臂关闭�
 ## 修订(2026-09-05,三件审计 P1,fbcbe235)
 
 触发门「板满」喂入修正:`sum(board.values())`(羁绊计数总和,一人多阵营 4 人可 11 次)≠部署数——建模对象错误使熔断自线成型起事实失效(过早不可逆卖旧线件)。现口径=`swap_arm_deployed_count`(占用一致性仲裁同源的 SIFT 真读部署数)。教训持久化:测试真值表喂对量掩盖错量——锁的建模对象与公式同等需审(P42 同型第二例)。
+
+## 修订(2026-09-06,P59 定谳回写)
+
+「已登记债务」的 P18 型结构命题已由 `proofs/p59-formed-line-buyset-offline-fenced-disjoint.md` **证伪定谳**:注册表反例 = 黄泉减益×卡芙卡(替班者)——替班者凭 `substitute_plan` 直入买面义务集不经羁绊检查,可对本 comp 整体 off-line ∧ fenced,fp≥1.00 门辖帧内 B∩S≠∅。**预设修法(「触发门改 locked_comp 单一源」)作废**:flow.py 中 target_comp 本就单源于 locked_comp,裂口在成员全集不同构,不在 fp 一致性。治本(本批落地)= 保护域扩为 **core∪shared∪替班者全集**(`protect_names_of`,单一源组装)——依据 = substitute_plan 字段契约原文「替班=『不卖、转副C沉淀』」;防复发锚 = 注册表级静态断言(off-line∧fenced 的 hoard 成员 ⊆ 保护域,全 comp 扫描测试锁)。遗留补裁:「替班者占位 vs bench target 进场」优先级语义归设计批(替班者 1-2/comp,占位代价可控)。

@@ -30,3 +30,7 @@ ruff 净;六锁(事故帧直译/拒因遥测/单一源对拍/P1 无锁回归/边
 ## 修订(2026-09-05,合并审计 F1-F4,d87ae866)
 
 决策 2 的「下游全链参数化自动同源」表述被合并对抗审计推翻并修正:M4 腾席(fuel_sell_candidates)/funding/凑息卖(卖免面)与 R1/R2 刷新账维持 core∪shared 口径,不随锁定采购集翻转——否则锁内 hoard 全集免卖塞满 bench + M2 积极买入 ⇒ 腾席候选空集,「金滞留不买」停滞换拍复发。现口径三面拆分:买面=buy_members(锁定采购集,消费 M2 义务/M2b/拒因遥测/EV 排除);卖免面=k_members(core∪shared);刷新账=P40 A4 目标阵容件。transition_pair 成员维持 ADR-0367 二级囤货定位不升骨架义务。收敛性挂账:锁线 hoard 集换手循环(buy_members≫bench 9 时 M4 每帧卖 1 买 1)的收敛性可证未证,立项候选(结构级命题或 sim 定谳)。
+
+## 修订(2026-09-06,P60 结构级定谳回写)
+
+收敛性挂账由 `proofs/p60-locked-hoard-churn-convergence.md` **证伪定谳**(结构级,帧级构造已充分,sim 定谳不再需要):大 hoard 锁线族(|B|>C,注册表 5 comp)出口 missing=∅ 结构性不可达,且燃料集与买入集相交(Fuel排除集=k ⊊ B)使 Φ 无单调保证——永恒卖 1 买 1 换手(净金≈0 + drought 被买动作重置 = 伪装进展)。治本(本批落地)= **三卖出通道(M4 燃料/凑息卖/支付支撑卖)统一排除 buy_members**(`exclude_names` 注入,与 EV 排除集同款)——Fuel∩B=∅ ⟹ Φ 单调、循环 ≤|B∖k| 次收敛;|B|>C 行为变为诚实停摆(m2_retry_exhausted/bench_full_buy_abandon 计数 + `shop_hoard_over_capacity` 帧级告警)。伪装进展观测面:`shop_churn_pair_buy`(买回近期卖出成员)计数 + drought 重置按来源分键(`shop_drought_reset_on_buy`/`shop_drought_reset_on_churn_buy`)。义务分级候选(M2 义务序收窄 B)仍归设计层待 ADR。
