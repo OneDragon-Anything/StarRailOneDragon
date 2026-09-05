@@ -28,6 +28,8 @@
    (画面事实 > 推导)+ ``obs_conflict('back_layout_channel_conflict')``
    留证(带两值,便于判读);CV 不可判(帧越界/锚缺失,如 overlay 遮挡/
    非备战帧)→ 退公式值(公式 = CV 偶发失效时的兜底 + 低成本快速路径)。
+   仲裁期望基准的独立性边界(前排幻影同源偏置)见
+   ``_expected_back_population`` docstring。
 4. 7 格档已建档(2026-08-26 佩佩局,用户口述真值 + 点击面板/拖拽交互实锤 +
    246 覆盖拖测)→ diff==1 直读 7 格。**未建档新档位**(diff≥3 域外/CV 新
    观察)→ 8 格超集运行(读全扩展带;拖到不存在格被游戏拒 = 廉价
@@ -72,7 +74,14 @@ ADR-0281 幻影档覆辙。闭合路径:实机召唤物局经 MCP 交互(拖角�
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from cv2.typing import MatLike
+
 from one_dragon.base.geometry.rectangle import Rect
+
+if TYPE_CHECKING:
+    from sr_od.context.sr_context import SrContext
 
 #: 槽数 → screen_info 布局前缀(6 槽 = 基线「后排-N」;8 槽 = 「后排8槽-N」;
 #: 7 槽 = 「后排7槽-N」)。7 格几何 = **整排居中重排**(排中心恒 960):
@@ -296,9 +305,20 @@ def _cv_confirm_readings(ctx, screen, first_cv: int, formula_n: int) -> list[int
     return readings
 
 
-def _expected_back_population(ctx, screen, paddle_x: int) -> int | None:
+def _expected_back_population(ctx: SrContext, screen: MatLike,
+                              paddle_x: int) -> int | None:
     """后排应有人数 = paddle X(前后排总数,游戏计数器真值)− 前排占用
-    (槽中心 CV 现读)。任一环读不到 → None(调用方不仲裁,保旧规)。"""
+    (槽中心 CV 现读)。任一环读不到 → None(调用方不仲裁,保旧规)。
+
+    **基准独立性边界(仲裁判档审计 P4)**:期望分母里的「前排占用」与候选
+    档的中心占用读数**同源**(都是 ``slot_occupied`` CV 推断)——前排幻影
+    占用(多检)会把期望后排压低 1 → 判档偏向占用数更低的档;前排漏检
+    (少检)反向。即基准并非独立真值,系统性 CV 偏差会同向偏置仲裁。
+    与既有防线的关系:①paddle X 本身独立于 CV(游戏计数器),是基准中
+    唯一的非 CV 项;②仲裁只在公式/CV 冲突帧触发且需 paddle 可读,单帧
+    偏置不落盘(下帧重判);③错判的下游有显影(身份漏读 → deployed_align
+    留证 / deployed_count_2src 分键);④15 号稿布局三信号(如身份反哺
+    布局)落码后应以更强信号替代本判别器(见移交笔记)。"""
     try:
         from sr_od.application.currency_war.obs.currency_war_cv import (
             slot_occupied,
@@ -313,7 +333,8 @@ def _expected_back_population(ctx, screen, paddle_x: int) -> int | None:
         return None
 
 
-def _occupancy_consistency_arbitrate(ctx, screen, candidates: list[int],
+def _occupancy_consistency_arbitrate(ctx: SrContext, screen: MatLike,
+                                     candidates: list[int],
                                      expected_back: int | None) -> int | None:
     """占用一致性仲裁(纯读):逐候选档读槽中心占用数,|占用 − 期望后排|
     最小且**唯一**者胜;并列/期望 None/档坐标缺档 → None(不仲裁)。
@@ -343,7 +364,8 @@ def _occupancy_consistency_arbitrate(ctx, screen, candidates: list[int],
     return winners[0] if len(winners) == 1 else None
 
 
-def resolve_back_slots(ctx, screen, level: int | None = None,
+def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
+                       level: int | None = None,
                        cap: int | None = None) -> dict:
     """双通道对账全量解析(ADR-0385;选档与钩子共用的单一判定源)→ dict:
 
