@@ -46,8 +46,9 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
-    # 注解专用(cw_shop_action_ops 以函数内 lazy import 消费本文件,
-    # 该惯例保持,注解不经运行时求值;避免新增模块级反向依赖)。
+    # 注解专用。消费关系锚点 = cw_observation.read_gold_opt 经本模块名
+    # 取读的替身缝(monkeypatch 面),cw_shop_action_ops 因此以函数内
+    # lazy import 消费本文件;注解不经运行时求值,不新增模块级反向依赖。
     from sr_od.application.currency_war.kernel.cw_state import (
         CloseShop,
         LevelUpShop,
