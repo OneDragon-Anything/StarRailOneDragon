@@ -829,7 +829,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 七分键零静默:fuel_filler_stall_buy/fenced/precheck_unavailable/
     # fuel_not_on_sale/bench_full/below_reserve(held_postbuy = 部署
     # 执行侧,record_fuel_filler_held_postbuy)。
-    if k is not None and _lvl_readable:
+    # D 支锁线布尔单一源 = ``_ist.locked_comp``(17 号稿 §1.1 应修-8 B-1
+    # 定谳;三审 C1:flow.py 物化段证明 P1 未锁线帧早对物化伪 comp →
+    # ``k is not None`` 恒真,作锁线门会让垫件在未锁线期发射——fail-closed
+    # 破门,ADR-0525 决策 2 辖域)。
+    if (getattr(_ist, 'locked_comp', None)
+            and _lvl_readable):
         # C 支(落后·期望态口径;level 消费 level_readable 可信位)
         if int(state.level or 1) - len(deployed) > 0:
             # A 支(无可追件·不可追支):合格集 = cnt2==0 ∧ 表概率>0;

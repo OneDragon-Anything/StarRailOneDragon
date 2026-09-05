@@ -396,7 +396,8 @@ def _invest_anchor_hit(op, screen) -> bool:
 
 def _invest_ocr_hit(op, screen) -> bool:
     """投资策略浮层 OCR 全短语信号(「请选择投资策略」+ lcs 0.8,承 0e
-    分支既有口径杀「投资环境」交叉误匹配;全屏 OCR,仅穿透形态付)。"""
+    分支既有口径杀「投资环境」交叉误匹配;全屏 OCR,首探与复探各付一次,
+    成本申报见 _invest_overlay_dispatch docstring)。"""
     return op.round_by_ocr(screen, '请选择投资策略',
                            lcs_percent=0.8).is_success
 
