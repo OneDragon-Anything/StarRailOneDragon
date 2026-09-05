@@ -77,6 +77,7 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     can_deploy_single,
     deploy_target_sets,
     deployed_bond_counts,
+    record_fresh_buy,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     clicks_to_next_level,
@@ -96,6 +97,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     RefreshShop,
     SellBench,
     SellDeployed,
+    ShopCard,
     bench_char_cost,
     sell_refund,
 )
@@ -428,6 +430,16 @@ def decide_shop_action(state: GameState, session: StrategySession,
     def _count(key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
+    def _emit_buy(card: ShopCard, reason: str) -> BuyCard:
+        """买入发射位 fresh 排除登记(ADR-0530 开闸批接线;单一载体 =
+        kernel SWAP_FRESH_BUYS_ATTR,禁第二实现)。单动作契约(本函数
+        docstring)下 return 动作被决策循环无条件采纳执行——生产买面无
+        截断丢弃面(刷新硬墙只降级 RefreshShop),故本写入时点 = 买入
+        采纳;发射位逐名写入(漏记 = 卖出环切不断),过度排除方向安全
+        (载体注释口径,拒因 fresh_buy 可追溯)。"""
+        record_fresh_buy(session, state, getattr(card, 'name', '') or '')
+        return BuyCard(card=card, reason=reason)
+
     ev_arm = getattr(config, 'ev_arm', 'full')
     if ev_arm not in entry.EV_ARM_VALUES:
         ev_arm = 'full'
@@ -596,7 +608,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         if not ok1:
             continue
         _on_target_buy(card.name or m)
-        return BuyCard(card=card, reason='m2_line_member')
+        return _emit_buy(card, 'm2_line_member')
 
     # m2_stockpile(臂①囤腿,j=1 第二份;14号稿 §3.2-3.4,发射位次 =
     # M2 主循环之后、M2b 之前,理由键 'm2_stockpile'):
@@ -657,7 +669,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _count('bench_full')
             continue
         _on_target_buy(card.name or m)
-        return BuyCard(card=card, reason='m2_stockpile')
+        return _emit_buy(card, 'm2_stockpile')
 
     # M2b 升星合并完成买入(实机复盘 g_20260904_054904 p2r1 候选②):
     # 已持 2 张同名同星 1★、无 2★ 成件,第三张在店 affordable ⇒ 买入即
@@ -685,7 +697,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         if not ok1:
             continue
         _on_target_buy(card.name or m)
-        return BuyCard(card=card, reason='m2_merge_completion')
+        return _emit_buy(card, 'm2_merge_completion')
 
     # dominance_buy(P24 零参数,两臂同开;金口径 = 期望态现值——单动作下
     # 每帧金即买后真值,R197 症9 的投影口径问题无存在载体)。
@@ -713,7 +725,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             ok1, _ = mandate.check_affordable(gold, cost)
             if not ok1:
                 continue
-            return BuyCard(card=card, reason='dominance_buy')
+            return _emit_buy(card, 'dominance_buy')
 
     # M3 升级(触发信号三臂并联;D-BUYNOTE:P48 整买纪律内嵌)。单动作
     # 粒度:每帧恰发一个「购买经验」单击动作(升一级 = 一个动作 op,
@@ -816,7 +828,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 ok1, _ = mandate.check_affordable(gold, cost)
                 if not ok1:
                     continue
-                return BuyCard(card=card, reason='m6_stockpile')
+                return _emit_buy(card, 'm6_stockpile')
 
     # ---- 出口③(Φ_stall 过渡件垫件出口;17 号稿 §2.3/§7.3-§7.5,消费位
     # = 11 §7.3 垫底级辖域扩展:「未锁线期」→「+ 锁线后 Φ_stall 帧」;
@@ -983,8 +995,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                 session.cw4_fuel_filler_stall_buys = _ff_reg
                             _ff_reg.add(name)   # N3 闭环登记契约
                             _on_target_buy(name)
-                            return BuyCard(card=card,
-                                           reason='fuel_filler_stall')
+                            return _emit_buy(card, 'fuel_filler_stall')
                 # B 支不成立:g ≤ s_reserve(非病灶帧,静默)
 
     # ---- ④ EV pass(臂①旁路集;仅 criteria 真 EV 发射面)----
@@ -1036,12 +1047,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                         if veto:
                             _deferred.append(card)   # 域内:降排序末位
                             continue
-                        return BuyCard(card=card, reason='ev_buy')
+                        return _emit_buy(card, 'ev_buy')
                     if _deferred:
                         # 触发源分键(§3.5 归因纪律):域内 (iii) 类 veto
                         # 降排序后的末位消费,可归因。
                         _count('must_spend_ev_deferred')
-                        return BuyCard(card=_deferred[0], reason='ev_buy')
+                        return _emit_buy(_deferred[0], 'ev_buy')
                     _count('shop_ev_all_vetoed')   # D-P2idle:「全拒」可辨
             else:
                 _count('shop_ev_no_candidate')     # D-P2idle:「无候选」可辨

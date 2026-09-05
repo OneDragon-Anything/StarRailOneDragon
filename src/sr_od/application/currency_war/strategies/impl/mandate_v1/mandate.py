@@ -63,6 +63,14 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
+# M1″ seam 门开关常量(唯一写点的值源;出处 = ADR-0530)。True = 开闸
+# 置位态(现役缺省):两侧输入逐字段对齐证据(发射=决策帧黑板 vs 执行=
+# last_state+SIFT 分轨,14 字段:9 对齐 / 4 分轨有据)+ fresh 生产写点
+# 接线(shop.py 买入发射位 _emit_buy)两项开闸前置义务已兑付。回滚路径
+# = 本常量写回 False——门关回即恢复现役 fail-closed(m1p_input_seam_
+# pending 重新显影),fresh 载体 phase 键式跨轮自动失效,无持久状态。
+M1P_SEAM_VERIFIED: bool = True
+
 # bench 容量 B(R8-8 重试上限;kernel/cw_state.BENCH_CAPACITY 单一源,
 # R196 症6:本地重定义删除,消费=import 符号名——第二源构成快照巧合双源)
 
@@ -264,6 +272,10 @@ def run_mandate(frame: MandateFrame,
     if not isinstance(counters, dict):
         counters = {}
         session.cw4_counters = counters
+
+    # M1″ seam 门唯一写点(session 属性;值源 = M1P_SEAM_VERIFIED 常量,
+    # 出处与回滚路径见该常量注释,ADR-0530)。
+    session.cw4_m1p_seam_verified = M1P_SEAM_VERIFIED
 
     def _count(key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
