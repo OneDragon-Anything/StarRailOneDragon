@@ -528,6 +528,30 @@ def economy_score(state: GameState, economy_mode: str) -> float:
 P2_REBUILD_GOLD_FLOOR: int = 30
 
 
+def effective_refresh_prob(state: GameState, level: int, cost: int) -> float:
+    """轮岗感知的有效刷新概率单一源。
+
+    消费点 = roll 可负担性门(本文件)与 mandate_v1 出口③ A 支对账
+    (shop.py),两处禁第二套对账语义——「bar=0 ∧ 表值>0」形态两消费点
+    曾相反(出口③判确证零/economy 判表值非零),已按本优先级统一。
+    优先级:
+    - refresh_probs 非全 5 键 dict(不可得/解析失败)→ 基线表
+      (read_refresh_probs 契约「读不到 → None 退基线」);
+    - 结构内缺键 → 基线表(缺键禁当确证零);
+    - 键在但 ≤0 → 基线表(轮岗只翻倍不归零,概率条 0 = 采样不可信,
+      同款 `or` 回退);
+    - 键在且 >0 → 实读真值(轮岗翻倍档直用)。
+    """
+    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+    rp = getattr(state, 'refresh_probs', None)
+    if not isinstance(rp, dict):
+        return refresh_prob(level, cost)
+    bar = rp.get(cost)
+    if bar is None or bar <= 0:
+        return refresh_prob(level, cost)
+    return bar
+
+
 def roll_affordable(state: GameState, config, target_comp) -> bool:
     """roll 可负担性门(ADR-0147,评审 f3ab d2):E[刷到 2星核心]×单价 vs 预算金。
 
@@ -548,10 +572,8 @@ def roll_affordable(state: GameState, config, target_comp) -> bool:
         DISTINCT_CARDS_PER_COST,
         POOL_COPIES_PER_CARD,
         expected_refreshes,
-        refresh_prob,
     )
-    _p = (getattr(state, 'refresh_probs', None) or {}).get(cost) \
-        or refresh_prob(state.level, cost)   # 轮换回退:实读概率条优先(翻倍档期望刷次减半)
+    _p = effective_refresh_prob(state, state.level, cost)
     _v = DISTINCT_CARDS_PER_COST.get(cost, 13)
     _a = POOL_COPIES_PER_CARD.get(cost, 9)
     e_refreshes = expected_refreshes(_p, _v, _a, c=0, k=1)

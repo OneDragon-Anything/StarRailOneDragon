@@ -80,6 +80,7 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
     clicks_to_next_level,
+    effective_refresh_prob,
     xp_click_cost,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
@@ -837,43 +838,31 @@ def decide_shop_action(state: GameState, session: StrategySession,
             and _lvl_readable):
         # C 支(落后·期望态口径;level 消费 level_readable 可信位)
         if int(state.level or 1) - len(deployed) > 0:
-            # A 支(无可追件·不可追支):合格集 = cnt2==0 ∧ 表概率>0;
-            # 成因支 = ∃ cnt2==0 ∧ 表概率=0。概率真值对账纪律(存疑-9):
-            # 表值 0 与概率条实读(state.refresh_probs)对账,不一致/不可得
-            # 帧 fail 向不判 A(禁据疑零值发射)。
+            # A 支(无可追件·不可追支):合格集 = cnt2==0 ∧ 有效概率>0;
+            # 成因支 = ∃ cnt2==0 ∧ 有效概率=0。有效概率单一源 =
+            # effective_refresh_prob(轮岗感知:概率条实读优先,不可得/
+            # 缺键/≤0 采样回退基线表;概率条 None = 不可得 fail 向不判 A,
+            # 禁据疑零值发射)。
             _rp = getattr(state, 'refresh_probs', None)
             _causal: list[str] = []
             _chaseable = False
-            for _m in k_members:
-                if _cnt(_m, 2) > 0:
-                    continue   # 排除支:全员 2★ 成件 = 线齐,非病灶
-                _mch = get_char(_m)
-                _mcost = _mch.cost if _mch is not None else None
-                if _mcost is None:
-                    continue
-                if refresh_prob(int(state.level or 1), _mcost) <= 0.0:
-                    _causal.append(_m)
-                else:
-                    _chaseable = True
-            if (_causal and not _chaseable
-                    and isinstance(_rp, dict)):
-                # A 支概率对账(二十四跳:缺键语义与 cw_economy 消费点统一):
-                # parse_prob_bar 契约 = 全 5 键或 None——结构内缺键 = 按
-                # 表值回退(因果支表值 0 ⇒ 回退即确证零,禁当「条读非零」);
-                # 键在且 >0 = 与表值对账不一致 → fail 向不判 A。
-                _confirm_zero = True
-                for _m in _causal:
-                    _m_reg = CHARACTERS.get(_m)
-                    if _m_reg is None:
+            if _rp is None:
+                _chaseable = True   # 概率条不可得:fail 向(视同可追)
+            else:
+                for _m in k_members:
+                    if _cnt(_m, 2) > 0:
+                        continue   # 排除支:全员 2★ 成件 = 线齐,非病灶
+                    _mch = get_char(_m)
+                    _mcost = _mch.cost if _mch is not None else None
+                    if _mcost is None:
                         continue
-                    _bar = _rp.get(_m_reg.cost)
-                    _eff = (refresh_prob(int(state.level or 1), _m_reg.cost)
-                            if _bar is None else _bar)
-                    if _eff:
-                        _confirm_zero = False
-                        break
-                if _confirm_zero:
-                    # B 支(富金;观测条件,调度仍由 arm2 g* 线管辖)
+                    if effective_refresh_prob(
+                            state, int(state.level or 1), _mcost) <= 0.0:
+                        _causal.append(_m)
+                    else:
+                        _chaseable = True
+            if _causal and not _chaseable:
+                # B 支(富金;观测条件,调度仍由 arm2 g* 线管辖)
                     if gold > s_reserve:
                         # 垫件在售 = 非 1★ 直出卡全过滤后仍有候选;资格排除集
                         # ≡ locked_buy_membership(§2.3 第 2 点单一源)
