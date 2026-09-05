@@ -331,12 +331,7 @@ def readiness_battle_launch(op, ctx):
     _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     try:
         _fresh = op.screenshot()
-        _still_prep = (
-            op.round_by_find_area(_fresh, '货币战争-备战',
-                                  '备战标识-购买经验',
-                                  crop_first=False).is_success
-            and op.round_by_find_area(_fresh, '货币战争-备战', '按钮-出战',
-                                      crop_first=False).is_success)
+        _still_prep = _prep_anchors_hit(op, _fresh)   # C3:双锚单一源
     except Exception as e:  # noqa: BLE001  复验不可用不阻塞(保守放行;
         # 放行/放弃之辩归编排者裁,本批只补观测面:分键零静默与 stale 分支对齐)
         log.warning('[cw-loop] 达标臂屏态复验失败(保守放行): %s', e)
@@ -391,14 +386,17 @@ def _prep_anchors_hit(op, screen) -> bool:
                                       crop_first=False).is_success)
 
 
-def _probe_invest_overlay(op, screen) -> bool:
-    """投资策略浮层单探测(双信号):id_mark 标识锚(固定位置全等,既有
-    0e 判据)∨ OCR 关键字「请选择投资策略」(全短语 + lcs 0.8,承 0e 分支
-    既有口径杀「投资环境」交叉误匹配)——两信号任一命中即浮层在场。"""
-    if op.round_by_find_area(screen, '货币战争-投资策略',
-                             '标识-请选择投资策略',
-                             crop_first=False).is_success:
-        return True
+def _invest_anchor_hit(op, screen) -> bool:
+    """投资策略浮层 id_mark 标识锚(固定位置全等,既有 0e 判据;便宜
+    area 对拍)。"""
+    return op.round_by_find_area(screen, '货币战争-投资策略',
+                                 '标识-请选择投资策略',
+                                 crop_first=False).is_success
+
+
+def _invest_ocr_hit(op, screen) -> bool:
+    """投资策略浮层 OCR 全短语信号(「请选择投资策略」+ lcs 0.8,承 0e
+    分支既有口径杀「投资环境」交叉误匹配;全屏 OCR,仅穿透形态付)。"""
     return op.round_by_ocr(screen, '请选择投资策略',
                            lcs_percent=0.8).is_success
 
@@ -410,20 +408,29 @@ def _invest_overlay_dispatch(op, screen):
     锚命中走 overlay 分支;15:14 浮层淡入动画期首帧采样 miss → 判别翻转
     落备战链 → 空挥 37s。单探测判据对淡入期采样不稳定 = 分发层根因。
 
-    **稳定化**:双信号探测(id_mark 锚 ∨ OCR 全短语)+ miss 且备战双锚
-    命中时短窗复探一次(新截图)——两时序形态(首帧命中/复探命中)同判据
-    同路由。仍 miss 才放行备战链(常规无浮层帧仅多一次锚对拍,零行为差;
-    复探窗口 = 执行层时序常量,沿 PREP_NO_PROGRESS_ROUNDS 先例)。
+    **稳定化 + 成本门控(三审 C2)**:
+    - 常规帧(双锚未命中 = 非穿透):仅双锚 + id_mark 锚对拍——零全屏
+      OCR、零复探等待;
+    - 穿透形态(双锚命中 = 浮层可能盖备战的必要条件):id_mark 锚 ∨
+      OCR 全短语「请选择投资策略」双信号,miss 时短窗复探一次(新截图)
+      ——两时序形态(首帧命中/复探命中)同判据同路由;仍 miss 才放行
+      备战链。复探窗口 = 执行层时序常量(沿 PREP_NO_PROGRESS_ROUNDS
+      先例);穿透帧固定付一次全短语 OCR + 一次复探,如实申报非零成本。
+    OCR 腿对 outer_loop §2.1「优先 area 化」的豁免记录见该文档 0e 行。
     消费点防御(达标臂浮层排除/遭遇 OCR/C1 计数)与本判据分层:本件管
     「路由稳定」,彼件管「路由误判后的发射兜底」,禁合并谓词。
     """
-    if _probe_invest_overlay(op, screen):
+    prep = _prep_anchors_hit(op, screen)
+    if _invest_anchor_hit(op, screen):
         return True, screen
-    if _prep_anchors_hit(op, screen):
-        time.sleep(op.INVEST_REPROBE_WAIT)
-        screen = op.screenshot()
-        if _probe_invest_overlay(op, screen):
-            return True, screen
+    if not prep:
+        return False, screen   # 常规帧:零全屏 OCR/零复探(三审 C2)
+    if _invest_ocr_hit(op, screen):
+        return True, screen
+    time.sleep(op.INVEST_REPROBE_WAIT)
+    screen = op.screenshot()
+    if _invest_anchor_hit(op, screen) or _invest_ocr_hit(op, screen):
+        return True, screen
     return False, screen
 
 
@@ -1426,13 +1433,15 @@ class CwLoop(SrOperation):
                         _ov_hit = f'{_ov_screen}.{_ov_area}'
                         break
                 if _ov_hit is None and self.round_by_ocr(
-                        screen, '遭遇其一', lcs_percent=0.9).is_success:
-                    # 遭遇选择面板 = 备战屏上的面板(非独立屏;切屏竞态实测病例):双锚仍可见
-                    # 但板面槽区被面板覆盖(切屏竞态实测病例:9 拖落进面板
-                    # 覆盖的中部槽区)——锚表探不到,补既有 OCR 词「遭遇其一」
-                    #(cw_entry_exit 同款复用,零新参数)。面板在场同不发射,
+                        screen, '遭遇其', lcs_percent=0.9).is_success:
+                    # 遭遇选择面板 = 备战屏上的面板(非独立屏;切屏竞态实测
+                    # 病例):双锚仍可见但板面槽区被面板覆盖 → 拖拽落进面板
+                    # 覆盖的中部槽区。锚表探不到,补 OCR 词「遭遇其」前缀
+                    #(其X 卡题视遭遇池而定,前缀更稳——出处 =
+                    # docs/game/screens/currency_war_encounter.md:22;
+                    # cw_entry_exit 同款复用,零新参数)。面板在场同不发射,
                     # 交遭遇接管面。
-                    _ov_hit = '遭遇选择面板(OCR:遭遇其一)'
+                    _ov_hit = '遭遇选择面板(OCR:遭遇其*)'
                 if _ov_hit is not None:
                     _arm_armed = False
                     counters = getattr(self.ctx.cw_match.session,

@@ -39,7 +39,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 0b | 巨星强化（盛会之星） | 独有标题 | CwScreenMegastar |
 | 0c | 遭遇节点 | id_mark | CwScreenEncounter |
 | 0d | 未达上限警告 | id_mark | CwScreenDeployNotFull |
-| 0e | 投资策略三选一 | id_mark | CwScreenInvestStrategy |
+| 0e | 投资策略三选一 | **双信号+复探**(N5 分发判别稳定化):id_mark ∨ OCR 全短语「请选择投资策略」(lcs 0.8);miss 且备战双锚命中(穿透形态)→ 短窗复探一次 | CwScreenInvestStrategy。OCR 全短语腿为「优先 area 化」（§2.1）的**显式豁免**：浮层淡入期 id_mark 单探测不稳定（第十五局 15:14 空挥 37s 实证），复探窗口 = 执行层时序常量；常规帧（双锚未命中）零 OCR 零复探 |
 | 0e1 | 补给阶段 | id_mark | CwScreenSupplyNode；成功 → `_record_supply_outcome`（补给是唯一无结算屏节点，合成 outcome 行，source='synthetic_supply'；`cw_loop.py:581-618`） |
 | 0f | 武装箱弹窗 | id_mark | CwScreenArmoryBox |
 | 0e2 | 商店刷新概率表弹窗 | id_mark | 点 ×(1501,263) 关闭 |
