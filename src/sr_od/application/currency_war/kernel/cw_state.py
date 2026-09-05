@@ -600,7 +600,7 @@ class DeployMove:
 @dataclass
 class RefreshShop:
     cost: int = 0    # 刷新花费(实机 OCR 补)
-    # 触发源**记录**字段(非指令;sim 观测面补齐批,先例 = LevelUp.
+    # 触发源**记录**字段(非指令;先例 = LevelUp.
     # auth_basis / SellBench.income 的「记录不是指令」形态——执行层
     # 不读此字段,行为零改动)。值域(发射位单一源 = mandate_v1/shop
     # R1 发射位,今日唯一刷新发射点;L2 补位=买卡、L3 末位=升级,

@@ -18,8 +18,8 @@
 
 计数载体:``session.cw4_counters``(dict,bridge 每局创建;键登记见
 design_telemetry 键节——本模块产键:theta_unavailable(聚合)+
-theta_unavailable_theta/_d_min/_delta(成因分桶观察件,sim 观测面
-补齐批;聚合与成因不同键防混计)/ switchline_skipped /
+theta_unavailable_theta/_d_min/_delta(成因分桶观察件;聚合与成因
+不同键防混计)/ switchline_skipped /
 switchline_exit_blocked / switchline_no_alt / switchline_no_target /
 switchline_e_cur_undefined / switchline_relock_window[R196 修复批:
 「不换线也记遥测」的归因分键补齐——四路 return 原先零计数])。

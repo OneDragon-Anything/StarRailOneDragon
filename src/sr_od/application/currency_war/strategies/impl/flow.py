@@ -292,11 +292,11 @@ class CwFlowStrategy(CwStrategy):
 
     def write_shop_mirrors(self, state: GameState,
                            session: StrategySession) -> None:
-        """逐帧恢复 ``v3_form_score`` 写者(sim 观测面补齐批任务④)。
+        """逐帧恢复 ``v3_form_score`` 写者(纯遥测观测面)。
 
-        背景:该字段自 mandate_v1 换核后仅剩 on_match_start 初始化 0.0
-        (本文件 :162),两批 sim 849 帧零非零(sim57 判读报告 §B5)
-        ——仪表缺写者,非车没走。口径 = ADR-0346/W114 设计语义的
+        背景:该字段自 mandate_v1 换核后仅剩 on_match_start 初始化
+        0.0,两批 sim 849 帧零非零(sim57 判读报告 §B5)——仪表缺
+        写者,非车没走。口径 = ADR-0346/W114 设计语义的
         **上场(deployed)连续量**:过渡体系达成数(``cw_deploy_logic.
         engines_count`` 四体系单一源)+ 配方档小数(``cw_line_defs.
         recipe_tier``/``RECIPE_BASE`` × ``registry.rung_frac_per_

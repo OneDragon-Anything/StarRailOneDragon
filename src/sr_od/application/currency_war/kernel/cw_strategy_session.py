@@ -212,7 +212,7 @@ class StrategySession:
     # 局首 on_match_start 清零;模式对齐上行停升级拒付计数)
     v3_blood_budget_refresh_rejects: int = 0
     # (血预算停手·终止分支触发闩 v3_terminal_release/v3_terminal_
-    #  release_plane 两字段已删(sim 观测面补齐批 C1):其「S0≤ε 触发后
+    #  release_plane 两字段已删:其「S0≤ε 触发后
     #  恒释放」闩语义随 v2 退役链失去判定本体,与现行唯一实现
     #  sim/checks/segments.terminal_release_bit 的无状态 hp 带口径冲突
     #  ——账本行键 terminal_release 由 sim 引擎轮入口直写该谓词,
