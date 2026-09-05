@@ -473,6 +473,47 @@ def run_mandate(frame: MandateFrame,
         if has_levelup:
             out.append(Emitted(RunDeploy(), True, 'm1_prime_redeploy'))
 
+    # M1″(板满换阵补部署意图;发射序 = M1′ 后、M6 前)。语义出处 =
+    # ADR-0530(board-full swap redeploy;判据单一源 =
+    # kernel.cw_deploy_logic.select_swap_plan,组合语义:cap 满占用数
+    # 口径 ∧ 义务集/轮内新鲜度排除后存在合格 victim ∧ 卖出后假想状态
+    # 复用 select_deployments 判 up 非空——底线留置件不作上序候选,
+    # 零新启发式)。发射载体 = RunDeploy(条件续类,entry.
+    # classify_frame_stability,不触发截断、不受 dd-027 回排辖);
+    # 卖谁由执行侧 CwOpDeploy 卖出臂现读仲裁(发射=存在性,执行=逐件;
+    # 执行侧同吃义务集∪新鲜度排除,swap_sell_exclusion_reason 单一判定)。
+    # 同帧 LevelUp 抑制(m1p_defer_levelup):升级开新 vacancy,下帧
+    # M1′ 以零卖出成本接管——卖出不可逆 > 等一帧。
+    # 发射位门(session.cw4_m1p_seam_verified):装配两侧(发射⇔执行)
+    # 输入对齐核对通过前置 False = 发射关闭、m1p_input_seam_pending 显影
+    # (ADR-0530:接线核对通过前不许发射,对齐证据 = 开闸前置义务;
+    # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与 dd-037
+    # 留 bench 合法稳态同向)。
+    if not any(isinstance(e.action, RunDeploy) for e in out):
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            assemble_swap_plan_inputs,
+            select_swap_plan,
+        )
+        _m1p = select_swap_plan(assemble_swap_plan_inputs(
+            session, state=state, deployed=list(frame.deployed),
+            bench=list(frame.bench), cap=frame.deploy_cap))
+        if _m1p.abstain == 'cap_unreadable':
+            _count('m1p_cap_unreadable')
+        elif _m1p.abstain == 'membership_unreadable':
+            _count('m1p_membership_unreadable')
+        elif _m1p.abstain == 'input_missing':
+            _count('m1p_input_missing')   # 供给缺失 ≠ 真计划空,禁混桶
+        elif _m1p.nonempty:
+            if any(isinstance(e.action, LevelUp) for e in out):
+                _count('m1p_defer_levelup')
+            elif not getattr(session, 'cw4_m1p_seam_verified', False):
+                _count('m1p_input_seam_pending')
+            else:
+                out.append(Emitted(RunDeploy(), True, 'm1_swap_redeploy'))
+                _count('m1p_fired')
+        else:
+            _count('m1p_plan_empty')
+
     # M6 溢余转压库(存在性=金>g* ∧ 无 S 目标;档匹配 fail-closed ⇒ 不买
     # +溢余滞留遥测;席位失败=单帧单评,R21-4)
     if frame.gold > saturation_line(_cap_of(session)) and frame.stop_flag:

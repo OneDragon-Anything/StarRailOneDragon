@@ -30,7 +30,7 @@ from sr_od.application.currency_war.kernel.cw_launch_admission import (
 )
 from sr_od.application.currency_war.kernel.cw_launch_admission import (
     offtarget_sell_allowed,
-    protect_names_of,
+    protect_names_of,  # noqa: F401  re-export 兼容(测试/既有消费路径)
 )
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
@@ -223,32 +223,14 @@ def exclude_system_units(chars: list) -> list:
 
 # offtarget_sell_allowed / protect_names_of 已迁 kernel.cw_launch_admission
 # (模块顶 re-export,实现单一源;判据 docstring 随迁,见彼处)。
-
-
-def swap_arm_deployed_count(board: dict | None,
-                            tracked_deployed: list) -> int:
-    """换阵卖出义务臂「板满」条件的部署数喂入(单一口径)。
-
-    = 占用槽位表计数(``cw_state.deployed_occupied``,数据源 =
-    reconcile_tracking 的 SIFT 真读槽位表)。**禁用
-    ``sum(board.values())``**:board 语义 = 阵营名 → 该阵营在场人数
-    (一人多阵营贡献多次,4 人可贡献 11 阵营次)——把羁绊计数当部署数
-    喂「板满」门 = 建模对象错,板未满即开臂、熔断自线成型起事实失效。
-    """
-    from sr_od.application.currency_war.kernel.cw_state import (
-        deployed_occupied,
-    )
-    return deployed_occupied(tracked_deployed or [])
-
-
-def fenced_swap_arm_of(fp: float, deployed_n: int,
-                       front_n: int, back_n: int) -> bool:
-    """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
-    单一源 ``cw_comps.form_progress``)∧ 板面满(真部署数 ≥ 前后排
-    槽位总数;喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
-    熔断的振荡防护前提(买/演进层仍要 fenced 件)消失、且 bench target
-    无空槽可进——此时 off-line fenced 件让位。"""
-    return fp >= 1.0 and deployed_n >= front_n + back_n
+# fenced_swap_arm_of / swap_arm_deployed_count 已迁 kernel.cw_deploy_logic
+# (与 form_progress 消费同址;kernel 谓词 select_swap_plan 需直调本判据,
+# 判据驻 operations 桶 = 非法依赖边/第三源,迁移批单一源收口)。本模块
+# 顶 re-export,既有消费路径(生产 deploy 卖出臂/锁测试)零迁移。
+from sr_od.application.currency_war.kernel.cw_deploy_logic import (  # noqa: E402,I001  re-export 位 = 原函数定义位(消费路径零迁移)
+    fenced_swap_arm_of,  # noqa: F401  re-export 兼容
+    swap_arm_deployed_count,  # noqa: F401
+)
 
 
 def _note_deployed_count_divergence(ctx: SrContext, screen: MatLike, source: str,
@@ -412,28 +394,42 @@ class CwOpDeploy(SrOperation):
         # 人口硬扛)。修:双轨期走 decision_target 单一入口(=配方伪 comp),
         # 框架件成为部署一等公民——与买/卖两侧 r72「三侧单一源」对齐(deploy
         # 侧此前是缺口)。
-        from sr_od.application.currency_war.kernel.cw_intention import (
-            committed_from,
+        # swap 面输入装配单一源(kernel.assemble_swap_plan_inputs):发射面
+        # (mandate M1″)与执行面(本函数)同函数同参——本侧装配源 =
+        # last_state滞后帧 + SIFT 读面(本函数这条链,ADR-0530 装配源契约);
+        # target 视图(双轨口径)/fenced 臂/保护域派生全在装配函数内,
+        # 禁自写第二份。装配不可得(None)= 按未装配处理(臂关/空保护,
+        # 原语义保守侧)。
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            assemble_swap_plan_inputs as _aswap,
         )
-        from sr_od.application.currency_war.kernel.cw_recipe import (
-            decision_target as _dt_fn,
-        )
-        _tgt_comp = None
-        if _match is not None and _match.session is not None:
-            # R1(蓝图 §4.3):session 双轨态读端 = committed_from 唯一读口
-            _st_dual = not committed_from(_match.session)
-            if _st_dual:
-                _pseudo = _match.session.last_state
-                _tgt_comp = _dt_fn(_match.session, _pseudo) if _pseudo is not None else None
-            if _tgt_comp is None:
-                _tgt_comp = _match.session.target_comp
-        # ADR-0152(评审🔴1):all_factions(核心+弹性)—— flex 板面单位(砂金=公司/护盾 是列车护盾流
-        # 常驻)不判 off-target;与 _card_hits_target 同源(策略层奖励的 flex 铺板 ≠ 执行层可卖的散牌)。
-        _target_factions: set[str] = set(_tgt_comp.all_factions) if _tgt_comp is not None else set()
-        # live 2026-08-15(M1 位面2 列车同行4→1 稀释根因):comp 核心辅助(花火/瓦尔特/符玄等)的阵营标签
-        # ∌ comp 阵营(列车同行)—— 只按阵营判 target 会把 core_char 辅助当 off-target 卖掉 → 板成型度崩。
-        # target 判定 = 阵营/流派交集 **或** core_chars 成员(_card_hits_target 同语义,ADR-0103)。
-        _target_cores: set[str] = set(_tgt_comp.core_chars) if _tgt_comp is not None else set()
+        _sess = _match.session if _match is not None else None
+        _swap_ctx = None
+        if _sess is not None:
+            _tracked_n = swap_arm_deployed_count(
+                _board, getattr(_sess, 'tracked_deployed', None))
+            _swap_ctx = _aswap(
+                _sess,
+                state=_sess.last_state,
+                deployed=[],      # 板满喂入走 tracked 真读口径(上方计数)
+                bench=[],
+                cap=None,         # 执行侧不消费谓词 cap 门,只取视图/臂态
+                deployed_n=_tracked_n,
+                front_slots=len(front), back_slots=len(back))
+        _target_factions: set[str] = set(
+            _swap_ctx.target_factions) if _swap_ctx is not None else set()
+        _target_cores: set[str] = set(
+            _swap_ctx.target_cores) if _swap_ctx is not None else set()
+        if _swap_ctx is None and _sess is not None:
+            # 装配不可得退型:target 视图按定型 comp 直读(ADR-0152
+            # all_factions 口径;双轨伪 comp 不可得时的保守侧,与旧
+            # committed_from 读端退化同向)。
+            _fb_comp = getattr(_sess, 'target_comp', None)
+            if _fb_comp is not None:
+                _target_factions = set(
+                    getattr(_fb_comp, 'all_factions', None) or ())
+                _target_cores = set(
+                    getattr(_fb_comp, 'core_chars', None) or ())
         _has_offtarget = bool(_board and _target_factions
                              and any(f not in _target_factions for f in _board))
         if _has_offtarget and templates is not None and _target_factions:
@@ -456,24 +452,18 @@ class CwOpDeploy(SrOperation):
                 # 熔断仍护旧线 fenced 件——旧线阵营件被保留 → sold 0/2 →
                 # RunDeploy 单签名三环守卫停机)。触发条件 = 线已成型
                 #(fp≥1.00,单一源 form_progress)∧ 板满(真部署数 ≥ 前后排
-                # 槽位总数,喂入单一源 = swap_arm_deployed_count)——两条件
-                # 成立时买/演进层对旧线 fenced 件已无需求,熔断的振荡防护
-                # 前提消失,off-line fenced 件让位给换阵卖出义务。未成型/
+                # 槽位总数,喂入单一源 = swap_arm_deployed_count)——判据
+                # 单一源 = kernel.fenced_swap_arm_of,本批经装配函数
+                # _swap_ctx 同契约消费(与发射面 M1″ 同一装配,输入源
+                # 分轨见 ADR-0530)。未成型/
                 # 未满板帧保持熔断(双轨期预囤框架件仍受保护,原语义零
                 # 变化)。新线 core∪shared 经 protect_names 继续保护(P41②
                 # 禁卖护栏不因换阵解除)。
-                _fenced_arm = False
-                _protect: frozenset[str] = frozenset()
-                if _tgt_comp is not None and _match.session.last_state is not None:
-                    from sr_od.application.currency_war.kernel.cw_comps import (
-                        form_progress,
-                    )
-                    _fp_now = form_progress(_tgt_comp, _match.session.last_state)
-                    _deployed_n = swap_arm_deployed_count(
-                        _board, _match.session.tracked_deployed)
-                    _fenced_arm = fenced_swap_arm_of(_fp_now, _deployed_n,
-                                                     len(front), len(back))
-                    _protect = protect_names_of(_tgt_comp)
+                _fenced_arm = bool(_swap_ctx.fenced_on) \
+                    if _swap_ctx is not None else False
+                _protect: frozenset[str] = (
+                    _swap_ctx.protect_names
+                    if _swap_ctx is not None else frozenset())
                 _arm_prev = getattr(_match.session, 'cw4_swap_arm_on', None)
                 if _arm_prev is not None and _arm_prev != _fenced_arm:
                     log.info('[cw-deploy] 换阵卖出义务臂状态变化: %s → %s'
@@ -488,7 +478,7 @@ class CwOpDeploy(SrOperation):
                     front, back, _target_factions, templates,
                     max_sell=_bench_tgt_n, target_cores=_target_cores,
                     fenced_offline_sellable=_fenced_arm,
-                    protect_names=_protect)
+                    protect_names=_protect, swap_ctx=_swap_ctx)
                 log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
                          f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
             else:
@@ -1189,7 +1179,8 @@ class CwOpDeploy(SrOperation):
                                  target_factions: set[str], templates: AvatarTemplates | None,
                                  max_sell: int = 99, target_cores: set[str] | None = None,
                                  fenced_offline_sellable: bool = False,
-                                 protect_names: frozenset[str] = frozenset()) -> int:
+                                 protect_names: frozenset[str] = frozenset(),
+                                 swap_ctx: object | None = None) -> int:
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
 
         SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
@@ -1197,12 +1188,25 @@ class CwOpDeploy(SrOperation):
         target 数,保证每个卖出被一个 target 补上,板大小稳定;防 bench target 少却卖光 off-target → 板缩 HP 崩)。
         ⚠️ ``read_deployed_chars`` 首用(deployed SIFT 身份未单验,D-4 验的是占用);日志详记识别结果供核实,
         首跑即验证 —— 若身份错(误卖 target / 漏卖 off-target)据日志回退。
+
+        义务集∪新鲜度排除(``swap_ctx`` 消费;卖出通道统一排除辖域 swap 行
+        「执行侧同步接线」兑付点,ADR-0530):每个卖出候选经 kernel
+        ``swap_sell_exclusion_reason`` 单一判定——买面义务集成员
+        (buy_membership)与轮内新鲜买入件(fresh_buy)禁卖,P60 卖义务
+        件↔买回环在执行路径同受保护(与 M1″ 发射面谓词同一份判定,禁
+        第二份实现);义务集缺读(membership=None)⇒ 全候选禁卖
+        (fail-closed,留板合法稳态 dd-037)+ 分键显影。
         """
         deployed = exclude_system_units(
             read_deployed_chars(self.ctx, self.last_screenshot, templates)
         ) if templates else []
         _sell = Point(70, 846)
         sold = 0
+        _excluded_n = 0
+        _sess = (self.ctx.cw_match.session
+                 if (self.ctx.cw_match is not None
+                     and self.ctx.cw_match.session is not None) else None)
+        _counters = getattr(_sess, 'cw4_counters', None) if _sess else None
         _cands: list[tuple[tuple, object, set[str]]] = []
         for d in deployed:
             if sold >= max_sell:
@@ -1235,8 +1239,25 @@ class CwOpDeploy(SrOperation):
                         log.warning(f'[cw-deploy] 卖出熔断留证落账失败(不拦):'
                                     f'{_ev_err}')
                 continue
+            # 义务集∪新鲜度排除(单一判定 = kernel.swap_sell_exclusion_reason,
+            # 与 M1″ 发射面谓词同源;ADR-0530)
+            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                swap_sell_exclusion_reason as _sser,
+            )
+            _excl = _sser(d.char_id or '', swap_ctx)
+            if _excl:
+                _excluded_n += 1
+                if isinstance(_counters, dict):
+                    _key = f'deploy_swap_sell_excluded_{_excl}'
+                    _counters[_key] = _counters.get(_key, 0) + 1
+                log.info(f'[cw-deploy] swap 卖出排除({_excl}):{d.char_id} '
+                         f'→ 保留(义务集∪新鲜度统一排除,P60 对账;ADR-0530)')
+                continue
             _rank: tuple = (1, 0 if getattr(d, 'star', 1) <= 1 else 1)
             _cands.append((_rank, d, bonds))
+        if _excluded_n:
+            log.info(f'[cw-deploy] deploy-swap 排除显影:{_excluded_n} 个候选'
+                     '被义务集/新鲜度排除保留(分键 deploy_swap_sell_excluded_*)')
         for _rank, d, bonds in _cands:
             if sold >= max_sell:
                 break

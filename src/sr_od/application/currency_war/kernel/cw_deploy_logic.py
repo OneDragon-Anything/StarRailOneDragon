@@ -22,6 +22,8 @@ drag 验证留在 op)。
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_line_defs import (
@@ -29,7 +31,13 @@ from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_BASE,
     RECIPE_FACTIONS,
 )
-from sr_od.application.currency_war.kernel.cw_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_state import (
+    DEPLOYED_BACK_CAPACITY,
+    DEPLOYED_FRONT_CAPACITY,
+    BenchChar,
+    GameState,
+    deployed_occupied,
+)
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
 
@@ -472,3 +480,365 @@ def can_deploy_single(
     # 字典无标注 = 未来新增 hold 路径漏标拒因的缺口形态——不冒名 'cap',
     # 显影回炉标注(既有五拒因调用面零变化)。
     return False, reasons.get(idx, 'unannotated')
+
+
+# ===== 换阵卖出义务臂(自 cw_op_deploy 迁 kernel;单一源收口)=====
+# 为什么迁 kernel:swap 发射面谓词(select_swap_plan,本文件尾)与执行侧
+# 卖出臂共吃同一 fenced 臂判据——判据驻 operations 桶时 kernel 谓词够不着
+# (包依赖矩阵禁 kernel→operations),自写 fp/板满组合 = 第三源(先例:
+# cw_launch_admission.py DEPLOY_FENCE 注释,r271 批同型双源清退)。
+# cw_op_deploy 保留同名 re-export,既有消费路径(生产 deploy 卖出臂/锁
+# 测试)零迁移。
+
+def swap_arm_deployed_count(board: dict | None,
+                            tracked_deployed: list) -> int:
+    """换阵卖出义务臂「板满」条件的部署数喂入(单一口径)。
+
+    = 占用槽位表计数(``cw_state.deployed_occupied``,数据源 =
+    reconcile_tracking 的 SIFT 真读槽位表)。**禁用
+    ``sum(board.values())``**:board 语义 = 阵营名 → 该阵营在场人数
+    (一人多阵营贡献多次,4 人可贡献 11 阵营次)——把羁绊计数当部署数
+    喂「板满」门 = 建模对象错,板未满即开臂、熔断自线成型起事实失效。
+    """
+    return deployed_occupied(tracked_deployed or [])
+
+
+def fenced_swap_arm_of(fp: float, deployed_n: int,
+                       front_n: int, back_n: int) -> bool:
+    """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
+    单一源 ``cw_comps.form_progress``)∧ 板面满(真部署数 ≥ 前后排
+    槽位总数;喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
+    熔断的振荡防护前提(买/演进层仍要 fenced 件)消失、且 bench target
+    无空槽可进——此时 off-line fenced 件让位。"""
+    return fp >= 1.0 and deployed_n >= front_n + back_n
+
+
+# ===== 板满换阵补部署计划(M1″ 发射面谓词;与 select_deployments 同族)=====
+# 语义出处:ADR-0530(board-full swap redeploy)。
+# 结构:发射侧(mandate M1″)与执行侧(CwOpDeploy 卖出臂)**同函数、
+# 同一装配契约**(assemble_swap_plan_inputs),但输入源两侧分轨——发射
+# = 决策帧黑板,执行 = last_state + SIFT(装配源契约钉死为执行侧卖出
+# 决策实际消费的快照链,禁另起第三路);两侧输入的逐字段对齐由 seam
+# 核对批兑现(cw4_m1p_seam_verified 唯一写点),对齐证据是开闸前置
+# 义务——「同谓词 ∧ 同输入快照 ⇒ 发射⇔执行可开出卖序」是条件式不变式
+# (ADR-0530)。
+# 拒因键(闭集):cap_unreadable / membership_unreadable / input_missing
+# (弃权三键,计划空)+ 逐件拒因 fenced_arm_closed / target_keep /
+# protected / buy_membership / fresh_buy / post_sell_held。
+
+#: 轮内新鲜度排除载体(session 属性名):发射位买入时逐名写入的名集,
+#: 键式 = {'phase': (plane, round_num), 'names': set[str]}——位面/轮次
+#: 推进自动失效(M7 闩键式同构)。取舍声明:沿用发射位写入(与
+#: ``cw4_fuel_filler_stall_buys`` 先例同位),被截断器丢弃的买入意图
+#: 也入排除集 = 过度排除压制合法 swap,方向安全(留置合法稳态,dd-037
+#: 口径),失真经 fresh_buy 拒因可追溯;单调性由义务集排除独立承载,
+#: 本载体只承担防抖+显影(拒因照记,不宣称切环)。
+SWAP_FRESH_BUYS_ATTR: str = 'cw4_swap_fresh_buys'
+
+
+def record_fresh_buy(session: object, state: GameState | None,
+                     name: str) -> None:
+    """轮内新鲜度排除登记(买入意图逐名写入;发射位调用)。
+
+    同一发射批的多个买入意图**逐名**入集(防批量买入漏记——漏记 =
+    卖出环切不断,防抖失效静默)。键式见 ``SWAP_FRESH_BUYS_ATTR``。
+    """
+    if not name:
+        return
+    reg = getattr(session, SWAP_FRESH_BUYS_ATTR, None)
+    phase = (getattr(state, 'plane', None),
+             getattr(state, 'round_num', 1))
+    if not isinstance(reg, dict) or reg.get('phase') != phase:
+        reg = {'phase': phase, 'names': set()}
+        setattr(session, SWAP_FRESH_BUYS_ATTR, reg)
+    reg['names'].add(name)
+
+
+def fresh_buys_of(session: object,
+                  state: GameState | None) -> frozenset[str]:
+    """读当前位面轮内有效的新鲜买入名集(跨轮 = 空集,自动失效)。"""
+    reg = getattr(session, SWAP_FRESH_BUYS_ATTR, None)
+    if not isinstance(reg, dict):
+        return frozenset()
+    phase = (getattr(state, 'plane', None),
+             getattr(state, 'round_num', 1))
+    if reg.get('phase') != phase:
+        return frozenset()
+    names = reg.get('names')
+    return frozenset(names) if isinstance(names, set) else frozenset()
+
+
+def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None,
+                               ) -> str:
+    """卖出 victim 义务集∪新鲜度排除的单一判定(ADR-0530)。
+
+    消费面 = 发射面谓词(select_swap_plan)与执行侧卖出臂(CwOpDeploy
+    `_sell_offtarget_deployed`)——卖出通道统一义务集排除辖域表 swap 行
+    「经 kernel 共享输入;执行侧迁移批同步接线」的兑付点,禁消费面各写
+    第二份排除判定(P60 换手循环的实体在执行路径)。返回 '' = 不排除。
+    """
+    if ctx is None or not name:
+        return ''
+    if ctx.membership is None:
+        return 'membership_unreadable'
+    if name in ctx.membership:
+        return 'buy_membership'
+    if name in ctx.fresh_buys:
+        return 'fresh_buy'
+    return ''
+
+
+@dataclass
+class SwapPlanContext:
+    """swap 计划谓词的共享输入快照(装配函数产物;发射/执行同契约消费)。
+
+    字段语义与装配源:
+    - ``target_factions``/``target_cores``:target 视图(双轨口径,装配
+      内经 committed_from→decision_target 伪 comp 链,与执行侧卖出决策
+      同一条链);
+    - ``membership``:买面义务排除集(单一源 = ``cw_intention.
+      locked_buy_membership``;与 M4 燃料集 ``exclude_names`` 同参同源)。
+      None = 缺读(谓词弃权,fail-closed);未锁定帧 = 空集(无锁定帧
+      不存在 hoard 义务,非缺读);
+    - ``fresh_buys``:轮内新鲜度排除名集(见 ``fresh_buys_of``);
+    - ``fenced_on``:换阵卖出义务臂态(fenced off-line 件可卖与否)。
+    """
+    target_factions: frozenset[str]
+    target_cores: frozenset[str]
+    fw_carry: frozenset[str]
+    locked_factions: frozenset[str]
+    protect_names: frozenset[str]
+    membership: frozenset[str] | None
+    fresh_buys: frozenset[str]
+    board: dict[str, int]
+    deployed: list[BenchChar]
+    bench: list[BenchChar]
+    cap: int | None
+    front_slots: int = DEPLOYED_FRONT_CAPACITY
+    back_slots: int = DEPLOYED_BACK_CAPACITY
+    fenced_on: bool = False
+
+
+@dataclass
+class SwapPlan:
+    """swap 计划(卖序 + 上序 + 逐件拒因;空计划 = 两序空)。"""
+    sell_names: list[str] = field(default_factory=list)
+    up_bench: list[int] = field(default_factory=list)
+    reasons: dict[str, str] = field(default_factory=dict)
+    abstain: str = ''
+
+    @property
+    def nonempty(self) -> bool:
+        return bool(self.sell_names) and bool(self.up_bench)
+
+
+def assemble_swap_plan_inputs(
+        session: object,
+        *,
+        state: GameState | None,
+        deployed: list[BenchChar],
+        bench: list[BenchChar],
+        cap: int | None,
+        deployed_n: int | None = None,
+        front_slots: int = DEPLOYED_FRONT_CAPACITY,
+        back_slots: int = DEPLOYED_BACK_CAPACITY,
+        fresh_buys: frozenset[str] | None = None,
+) -> SwapPlanContext | None:
+    """swap 计划输入装配单一源(发射侧与执行侧**同函数、同一装配契约**;
+    ADR-0530)。
+
+    装配源契约(ADR-0530;对抗收口方案钉死原话)= 执行侧卖出决策实际消费的
+    快照链,不用 PrepObservation 另起一路:board/fp 消费调用方传入的
+    ``state``(执行侧传 ``session.last_state`` 滞后帧链,发射侧传决策帧
+    黑板——同函数、异参,输入源两侧分轨是既定事实);deployed/bench 消
+    费调用方现读(执行侧 = SIFT 读面,发射侧 = PrepObservation 帧)。
+    派生逻辑(target 视图双轨口径/fenced 臂/义务排除集/保护域)全在
+    本函数,两侧禁自写第二份。两侧输入的逐字段对齐由 seam 核对批兑现
+    (对齐证据 = 开闸小批前置义务,挂账 IMPL_REPORT),核对通过前发射
+    位保持关闭。
+
+    返回 None = 装配不可得(target 视图/板面字典缺读),调用方按
+    谓词弃权处理(计划空,不静默发射)。
+
+    :param deployed_n: 板满计数覆盖(执行侧喂 ``swap_arm_deployed_count``
+        真读槽位口径;None = 按 ``deployed`` 占用件数计——同一占用数
+        口径,含 SIFT 未识别占位件)。
+    """
+    if state is None and cap is None:
+        return None
+    try:
+        from sr_od.application.currency_war.kernel.cw_comps import (
+            form_progress,
+        )
+        from sr_od.application.currency_war.kernel.cw_intention import (
+            committed_from,
+            locked_buy_membership,
+            locked_faction_scope,
+        )
+        from sr_od.application.currency_war.kernel.cw_launch_admission import (
+            protect_names_of,
+        )
+        from sr_od.application.currency_war.kernel.cw_recipe import (
+            decision_target,
+        )
+    except Exception:   # noqa: BLE001  派生面缺供给 = 装配不可得
+        return None
+    # target 视图(双轨口径;与 cw_op_deploy 执行侧同链:双轨期走
+    # decision_target 伪 comp,定型后走 session.target_comp)
+    tgt_comp = None
+    try:
+        if not committed_from(session, state):
+            tgt_comp = decision_target(session, state) if state is not None \
+                else None
+    except Exception:   # noqa: BLE001  双轨读端缺供给 → 退 target_comp
+        tgt_comp = None
+    if tgt_comp is None:
+        tgt_comp = getattr(session, 'target_comp', None)
+    target_factions = frozenset(getattr(tgt_comp, 'all_factions', None) or ())
+    target_cores = frozenset(getattr(tgt_comp, 'core_chars', None) or ())
+    # fenced 臂(fp 单一源 form_progress,板满喂入占用数口径)
+    fenced_on = False
+    if tgt_comp is not None and state is not None:
+        try:
+            _fp = form_progress(tgt_comp, state)
+        except Exception:   # noqa: BLE001  成型度不可得 = 臂关(保守)
+            _fp = 0.0
+        _n = deployed_n if deployed_n is not None else len(
+            [d for d in deployed if d is not None])
+        fenced_on = fenced_swap_arm_of(_fp, _n, front_slots, back_slots)
+    # 买面义务排除集(与 M4 燃料集同参同源):锁定帧 = locked_buy_
+    # membership;ist 缺失 = 缺读(None,谓词弃权);未锁定帧 = 空集。
+    ist = getattr(session, 'v3_intention', None)
+    membership: frozenset[str] | None
+    if ist is None:
+        membership = None
+    else:
+        _lm = locked_buy_membership(ist)
+        membership = _lm if _lm is not None else frozenset()
+    board = dict(getattr(state, 'board', None) or {}) if state is not None \
+        else {}
+    try:
+        _lf = locked_faction_scope(ist) or frozenset()
+    except Exception:   # noqa: BLE001  围栏兜底 best-effort(同执行侧)
+        _lf = frozenset()
+    fw_name = getattr(session, 'transition_framework', '') or ''
+    _tgt_fw, fw_carry = deploy_target_sets(tgt_comp, fw_name)
+    return SwapPlanContext(
+        target_factions=target_factions,   # 与执行侧卖出面同口径(all_factions,不含框架并集)
+        target_cores=target_cores,
+        fw_carry=frozenset(fw_carry),
+        locked_factions=frozenset(_lf),
+        protect_names=protect_names_of(tgt_comp) if tgt_comp is not None
+        else frozenset(),
+        membership=membership,
+        fresh_buys=fresh_buys if fresh_buys is not None
+        else fresh_buys_of(session, state),
+        board=board,
+        deployed=[d for d in deployed if d is not None],
+        bench=[b for b in bench if b is not None],
+        cap=cap,
+        front_slots=front_slots,
+        back_slots=back_slots,
+        fenced_on=fenced_on,
+    )
+
+
+def select_swap_plan(ctx: SwapPlanContext | None,
+                     reasons_out: dict[str, str] | None = None,
+                     ) -> SwapPlan:
+    """板满换阵补部署计划谓词(M1″ 发射面;select_deployments 同族纯函数)。
+
+    语义(组合式,零新启发式)::
+
+        swap 计划非空 ⟺ cap 满(占用数口径)∧ 义务/新鲜排除后存在
+        合格 victim ∧ 对「卖出 victim 后假想状态」复用 select_
+        deployments 判 up 非空
+
+    - **板满门 = 占用数口径**:``,len(deployed)``(占用件数,含 SIFT
+      未识别 char_id='' 占位件)≥ cap——与执行侧 cap 门「禁用衍生计数」
+      同向(``deployed_occupied`` 同源;禁 ``len(deployed_cids)`` 衍生
+      集,SIFT 未识别占位件漏计 = 板实满判未满);
+    - **victim 资格** = ``cw_launch_admission.offtarget_sell_allowed``
+      (fenced 臂态经装配注入,语义单一源)+ 买面义务集排除(拒因
+      ``buy_membership``,与 M4 燃料集同参同源;缺读 = 谓词弃权
+      ``membership_unreadable``,fail-closed,与 cap 缺读同构——
+      dd-037「留 bench 合法稳态」不对称口径)+ 轮内新鲜度排除(拒因
+      ``fresh_buy``,防抖+显影辅助);
+    - **上序 = 组合语义**:对卖出后假想板面复用 ``select_deployments_
+      reasoned``(围栏/成对/填空/点火序/核心桶/cap/同名去重/配方底线
+      全套留置规则就是上序的最终裁判);底线规则留 bench 的件**不作
+      上序候选**(拒因 ``post_sell_held``),「白卖一件板面变弱」形态
+      在谓词内不可达;
+    - **cap 缺读**(``cap is None``)⇒ 弃权 ``cap_unreadable``,与 M1/
+      M1′ vacancy=0 门同 fail-closed(dd-037)。
+
+    :param reasons_out: 传入 dict 时逐件拒因(名 → 拒因键)写入。
+    """
+    reasons: dict[str, str] = {}
+    if ctx is None:
+        if reasons_out is not None:
+            reasons_out.update({'(plan)': 'input_missing'})
+        return SwapPlan(abstain='input_missing')
+    if ctx.cap is None or ctx.cap <= 0:
+        if reasons_out is not None:
+            reasons_out.update({'(plan)': 'cap_unreadable'})
+        return SwapPlan(abstain='cap_unreadable')
+    if ctx.membership is None:
+        if reasons_out is not None:
+            reasons_out.update({'(plan)': 'membership_unreadable'})
+        return SwapPlan(abstain='membership_unreadable')
+    occupied = len(ctx.deployed)   # 占用数口径(含未识别占位件)
+    if occupied < ctx.cap:
+        return SwapPlan(reasons=reasons)
+    from sr_od.application.currency_war.kernel.cw_launch_admission import (
+        offtarget_sell_allowed,
+    )
+    victims: list[tuple[tuple, BenchChar, set[str]]] = []
+    for d in ctx.deployed:
+        name = d.char_id or ''
+        ch = CHARACTERS.get(name) if name else None
+        if ch is None:
+            continue   # 未识别件不可判羁绊,不入 victim(执行侧同款)
+        bonds = set(ch.factions) | set(ch.flows)
+        if not offtarget_sell_allowed(
+                name, bonds, set(ctx.target_factions),
+                set(ctx.target_cores), fenced_offline_sellable=ctx.fenced_on,
+                protect_names=ctx.protect_names):
+            reasons[name] = ('fenced_arm_closed'
+                             if (bonds & DEPLOY_FENCE and not ctx.fenced_on)
+                             else 'target_keep')
+            continue
+        # 义务集∪新鲜度排除单一判定(执行侧卖出臂同源消费,ADR-0530)
+        _excl = swap_sell_exclusion_reason(name, ctx)
+        if _excl and _excl != 'membership_unreadable':
+            reasons[name] = _excl
+            continue
+        # 排序对齐执行侧 _sell_offtarget_deployed 候选序:1★ 优先
+        victims.append(((0 if (d.star or 1) <= 1 else 1,), d, bonds))
+    victims.sort(key=lambda t: t[0])
+    plan = SwapPlan(reasons=reasons)
+    for _rank, d, _bonds in victims:
+        name = d.char_id or ''
+        # 卖出后假想态:该件从占用序移除,板面/阵营档按剩余件重算
+        kept = [x for x in ctx.deployed if x is not d]
+        cids2 = {x.char_id for x in kept if x.char_id}
+        fac2 = deployed_bond_counts(cids2)
+        up2, held2, held_reasons2 = select_deployments_reasoned(
+            ctx.bench, deployed_cids=cids2, deployed_fac=fac2,
+            board=dict(fac2), cap=ctx.cap,
+            front_total=ctx.front_slots, back_total=ctx.back_slots,
+            target_factions=ctx.target_factions,
+            target_cores=ctx.target_cores, fw_carry=ctx.fw_carry,
+            locked_factions=ctx.locked_factions)
+        for _hi in held2:
+            _hn = ctx.bench[_hi].char_id or ''
+            reasons[_hn] = 'post_sell_held'
+        if up2:
+            plan.sell_names = [name]
+            plan.up_bench = list(up2)
+            break
+        # 该 victim 卖了也上不了(全部候选被留置)→ 计划收窄试下一
+        # victim;最后一个 victim 的留置拒因保留在 reasons 显影。
+    if reasons_out is not None:
+        reasons_out.update(reasons)
+    return plan

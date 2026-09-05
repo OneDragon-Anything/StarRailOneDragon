@@ -474,6 +474,44 @@ def _residual_fill_deploy(
     return _res_up, _res_held, _lag
 
 
+def m1p_intent_record(st, sess) -> dict:
+    """M1″ 发射意图面(板满换阵补部署;sim 决策面只记意图,零行为面)。
+
+    语义出处:ADR-0530(board-full swap redeploy)——sim 不建模
+    执行侧 swap 卖出语义(如实申报不可信),只建模**发射意图**:谓词
+    ``kernel.cw_deploy_logic.select_swap_plan`` 在本 sim 帧(买/升级后、
+    部署代理前的语境,与生产 M1″ 决策帧同语境)判出计划非空 → 意图发射。
+    断言双向(锁测试面):计划空 ⇒ 无意图;计划非空 ⇒ 有意图——谓词在
+    sim 帧分布上的正确性覆盖,不依赖执行语义。零 rng 消耗、零状态写入
+    (行内观测键,与 'launch' 键同纪律)。
+
+    输入装配走生产同款单一源 ``assemble_swap_plan_inputs``(st = 买后
+    黑板,deployed/bench = 占用件现读,cap = max_units 派生链)——与
+    生产发射/执行两面同函数、同一装配契约,禁第二装配。
+    """
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        assemble_swap_plan_inputs,
+        select_swap_plan,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        iter_occupied_deployed,
+    )
+    ctx = assemble_swap_plan_inputs(
+        sess, state=st,
+        deployed=list(iter_occupied_deployed(st.deployed)),
+        bench=[b for b in st.bench if b is not None],
+        cap=st.max_units())
+    reasons: dict[str, str] = {}
+    plan = select_swap_plan(ctx, reasons_out=reasons)
+    return {
+        'nonempty': plan.nonempty,
+        'abstain': plan.abstain,
+        'sell': list(plan.sell_names),
+        'up': len(plan.up_bench),
+        'reasons': dict(reasons),
+    }
+
+
 
 def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
@@ -872,6 +910,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _round_handoff_gap = 0
             # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 披露(None=投影关/非末窗)
             _round_handoff_hp_proj = None
+            # 血预算停手·终止豁免位轮首缺省(账本行键 terminal_release;
+            # 真值由首决策段快照覆写——显式预初始化防「段循环零段」时
+            # 行键 NameError,与 _round_formed_stop 同族)
+            _round_terminal_release = False
             # 迁移审计 w52(git 历史)(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
             # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
             # 的「连续放弃轮」数据源)
@@ -923,14 +965,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _obs_overcap_frames = 0      # 本轮超容决策帧数
             _obs_refresh_avail = 0       # 本轮「刷新可得」决策帧数
             _obs_refreshes0 = res.refreshes   # 轮首刷新数(差分 = 本轮实刷)
-            # 刷新触发源分键(sim 观测面补齐批任务①):本轮各触发源
+            # 刷新触发源分键(观测面):本轮各触发源
             # 实刷次数。源 = RefreshShop.reason 记录字段(策略层发射位
             # 写,r1 / must_spend_r1_yielded;''/未知 = other 桶)——
             # 测绘结论:刷新发射位单一(R1),L2 补位=买卡、L3 末位=
             # 升级,结构上不产刷新动作,源信息只能在策略层动作对象取
             # (引擎侧推断不了 yielded 分支),故载体 = 动作 reason 透传。
             _obs_refresh_src: dict[str, int] = {}
-            # cw4_counters 轮差分(sim 观测面补齐批任务③⑤可见性):
+            # cw4_counters 轮差分(策略计数器账本可见性):
             # 策略行为观测计数(session.cw4_counters)此前不入 sim 账本
             # ——fenced 拆键(theta/fenced 成因分桶)落计数器后无账本面。
             # 轮首快照 → 行内 obs.cw4_counters = 本轮增量 dict(零增量为
@@ -1091,7 +1133,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 )
                 if _msz_pred(st.gold, sess):
                     _ms_zone += 1
-                    # 层命中按动作类 isinstance 判定(落地审发现):
+                    # 层命中按动作类 isinstance 判定:
                     # decide_shop_screen 出口的升级意图为 LevelUpShop
                     # 子类实例,无 __type__ 属性,type().__name__ 落子类
                     # 名 'LevelUpShop',字符串匹配集只含基类名 'LevelUp'
@@ -1189,15 +1231,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
                     _round_handoff_hp_proj = getattr(
                         sess, 'v3_handoff_hp_proj', None)
-                    # 终止豁免位(sim 观测面补齐批 C1 接线)——写入侧
-                    # 单一源 = checks.segments.terminal_release_bit
-                    #(常量同源,检查器 seg_p1_blood_budget_refresh 消费
-                    # 行键禁复算)。账本行键 terminal_release(**轮入口
-                    # 首段快照 = 决策帧现值,与检查器「决策发生在本轮回
-                    # 战斗前」的 hp 口径同源**);曾接 session
-                    # v3_terminal_release(闩语义载体现删——其「S0≤ε
-                    # 触发后恒释放」闩语义随 v2 退役链失去判定本体,
-                    # 与本谓词的无状态 hp 带口径冲突,死写清除)。
+                    # 终止豁免位——写入侧单一源 =
+                    # checks.segments.terminal_release_bit(检查器
+                    # seg_p1_blood_budget_refresh 消费行键禁复算)。
+                    # 账本行键 terminal_release = 轮入口首段快照(决策
+                    # 帧现值,与检查器「决策发生在本轮回战斗前」的 hp
+                    # 口径同源;旧 session 闩载体已删——其恒释放语义与
+                    # 本谓词的无状态 hp 带口径冲突)。
                     from sr_od.application.currency_war.sim.checks.segments import (
                         terminal_release_bit as _tr_bit,
                     )
@@ -1322,6 +1362,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                           'count': _mb_k})
                             # ADR-0129 购买经验单击模型:一次点击 +XP_PER_BUY
                             # (k 张自动多买仍是一次点击,不加倍)
+                            # 轮内新鲜度登记(发射位写入取舍,与
+                            # cw4_fuel_filler_stall_buys 先例同位):多买入
+                            # 意图逐名入集(k 张合成买 = k 个意图,防漏记)。
+                            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                                record_fresh_buy as _rfb,
+                            )
+                            for _ in range(_mb_k):
+                                _rfb(sess, st, a.card.name)
                             xp += XP_PER_BUY
                             st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                             _pre_units = (bench_occupied(st.bench)
@@ -1391,6 +1439,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                       'reason': _ch,
                                       'channel': _cb(a.card, st)})
                         xp += XP_PER_BUY
+                        # 轮内新鲜度登记(发射位写入取舍,与
+                        # cw4_fuel_filler_stall_buys 先例同位;逐名入集)。
+                        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                            record_fresh_buy as _rfb2,
+                        )
+                        _rfb2(sess, st, a.card.name)
                         st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                         # ADR-0276(批⑩最大杠杆):3合1 merge 接入 sim
                         # 执行层——生产 simulate(BuyCard) 每次买入后调
@@ -1555,6 +1609,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 st.level += 1
             # ADR-0286:轮末升级后 xp_progress 同步清零结转(生产 XP 条语义)
             st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, xp or 4))
+            # M1″ 发射意图面(行内观测键;决策语境 = 买/升级后、部署代理
+            # 前,与生产 M1″ 决策帧同语境;判定单一源直调,见函数注)。
+            # 零 rng 消耗、零状态写入——不挤占行为投影 digest 判别域。
+            _m1p_obs: dict | None = None
+            try:
+                _m1p_obs = m1p_intent_record(st, sess)
+            except Exception:   # noqa: BLE001  观测 best-effort(launch 同款)
+                _m1p_obs = None
             # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
             # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
             # (cw_deploy_logic.select_deployments 纯函数,与 CwOpDeploy op
@@ -2069,9 +2131,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'formed_stop': _round_formed_stop,
                 # 血预算停手·终止豁免位(轮入口首段快照;写入侧单一源 =
                 # checks.segments.terminal_release_bit,消费 =
-                # seg_p1_blood_budget_refresh 行键豁免面。本轮「位真=带内
-                # 刷新合法」的账本依据,C1 接线恢复——键曾随 v2 退役链
-                # 缺写,检查器恒读缺省 False 命中不可判)
+                # seg_p1_blood_budget_refresh 行键豁免面——位真 = 带内
+                # 刷新合法的账本依据)
                 'terminal_release': _round_terminal_release,
                 #  已随 C4 开关族删除——旧方案清退批,清查报告
                 #  OLD_MIX_AUDIT §1.3;v3_line_gate_* session 字段同批删。)
@@ -2182,6 +2243,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 达标臂发射事件(见上方「达标臂发射事件建模」块;None=
                 # 本轮达标臂未触发——非战斗节点/未成型/准入预估不可得)
                 'launch': _round_launch,
+                # M1″ 发射意图面(m1p_intent_record;None = 观测异常帧。
+                # nonempty = 谓词判计划非空 ⇒ M1″ 意图发射;abstain =
+                # 弃权键(cap_unreadable/membership_unreadable/
+                # input_missing);sell = 卖序;up = 上序件数;reasons =
+                # 逐件拒因。消费 = 触发频率探针(计划非空帧占比)与
+                # 锁测试双向断言)。
+                'm1p': _m1p_obs,
                 # 采购面三观察计数(见轮首「采购面三观察计数」块):
                 # locked_b=本轮最大锁定采购集 |B|(0=帧全未锁);
                 # overcap_frames=超容决策帧数;refresh_avail_frames=
@@ -2200,12 +2268,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'must_spend_zone_frames': _ms_zone,
                     'must_spend_zero_consume': _ms_zero,
                     'must_spend_layer_hit': dict(_ms_layer),
-                    # 刷新触发源分键(sim 观测面补齐批任务①):源 →
+                    # 刷新触发源分键(观测面):源 →
                     # 本轮实刷次数('other' = reason 未标/旧调用)。
                     'refresh_trigger': dict(_obs_refresh_src),
-                    # cw4_counters 轮差分(任务③⑤可见性):策略行为
-                    # 观测计数本轮增量(键 = session.cw4_counters 原键,
-                    # 含 fenced 拆键/theta 成因分桶);零增量 = 空 dict。
+                    # cw4_counters 轮差分(策略行为观测计数账本可见性):
+                    # 本轮增量(键 = session.cw4_counters 原键,含 fenced
+                    # 拆键/theta 成因分桶);零增量 = 空 dict。
                     'cw4_counters': {
                         k: int(v) - int(_cw4_before.get(k, 0))
                         for k, v in (getattr(sess, 'cw4_counters', None)
