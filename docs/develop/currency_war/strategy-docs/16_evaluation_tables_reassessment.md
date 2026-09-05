@@ -79,7 +79,7 @@
 
 ## 2. 消费点 grep 对账汇总（判定依据的锚清单）
 
-| 表 | 在产消费锚（grep 复核 2026-09-06） |
+| 表 | 在产消费锚（grep 复核 2026-09-05） |
 |---|---|
 | PICK_VALUE | cw_events.py:108,125-135；cw_investments.py:798,1127；cw_screen_invest_strategy.py:105；cw_screen_invest_env.py:112；flow.py:286 |
 | ENV_PICK_VALUE | cw_events.py:140-142；cw_investments.py:1148,1236-1237 |
