@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-05T23:14:30.530725+00:00",
+  "generated_at": "2026-09-05T23:33:27.662061+00:00",
   "source": "D:\\code\\workspace\\StarRailOneDragon\\.debug\\temp\\currency_war\\replay",
   "schema_single_source": "telemetry.schema.P26_PREP_OBS_FIELDS (node_type_next)",
   "bucket_dims": {
@@ -14,11 +14,16 @@
     "bucket": "n>=10/桶",
     "l_node": "败面 n>=30/节点型"
   },
-  "n_decision_rows": 15521,
+  "n_decision_rows": 15535,
   "n_rows_with_p26_obs": 0,
-  "n_outcome_rows": 2060,
+  "n_outcome_rows": 2064,
   "excluded_node_tokens": {},
   "n_joined_rows": 0,
+  "join_consistency": {
+    "n_comparable": 0,
+    "n_mismatch": 0,
+    "mismatch_pairs": {}
+  },
   "status": "insufficient: 实机 p26_prep_obs 样本不足(join 后 n=0 < 10),不硬跑;待采集批补样后重跑",
   "delta_p_prep": {},
   "l_node": {}
