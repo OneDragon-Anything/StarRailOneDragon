@@ -19,17 +19,16 @@
    「钻石局检测」由此消解(无需识别钻石图标,两 OCR 读数相减即扩展量)。
 2. **CV 通道**::func:`cv_back_slots` 画面实测——后排 y 带槽位存在性签名
    (空槽暗框 vs 无格背景的灰度 std 判别,标定见 :data:`_CV_SLOT_STD_MIN`)。
-3. **对账语义**(口述裁决 + 布局档对账批修订):一致 → 公式值;
-   **不一致 → 先经占用一致性仲裁**(``_occupancy_consistency_arbitrate``:
-   paddle X − 前排占用 = 后排期望人数,逐候选档读中心占用取最一致者;
-   依据 = CV 端点探针在「N 档端点被占」时结构性高估为 N+1 档——实机
-   停机局实证真板 7 格读 8,旧规「采 CV」致裁切错位 SIFT 漏认 4/6),
-   仲裁不可判(paddle 失读/并列/缺档)→ 退「采 CV 实测值」旧规
-   (画面事实 > 推导)+ ``obs_conflict('back_layout_channel_conflict')``
-   留证(带两值,便于判读);CV 不可判(帧越界/锚缺失,如 overlay 遮挡/
-   非备战帧)→ 退公式值(公式 = CV 偶发失效时的兜底 + 低成本快速路径)。
-   仲裁期望基准的独立性边界(前排幻影同源偏置)见
-   ``_expected_back_population`` docstring。
+3. **对账语义(三信号,布局档对账批修订)**:一致 → 公式值;不一致 →
+   信号梯——①公式(6+(cap−level),输入过 cap/level 防抖可信门);②CV 占用
+   态门三态探针(:func:`cv_back_slots`,full/slice/none 已治端点占用误高估);
+   ③占用一致性仲裁(:func:`_occupancy_consistency_arbitrate`:paddle X −
+   前排占用 = 后排期望人数,逐候选档读中心占用取最一致者;期望基准独立性
+   边界见 ``_expected_back_population`` docstring)。裁决序:一致采公式;
+   冲突 ∧ paddle 可读 → 信号③仲裁;冲突 ∧ paddle 不可得 → 信号②结构证据
+   (cv>formula 采 CV,cv<formula 采公式——门后 CV 低读为下界不否决推导);
+   CV 不可判/未建档 → 各自既有语义(公式兜底 / 防抖+8 格超集留证)。
+   ``obs_conflict('back_layout_channel_conflict')`` 留证(带两值,便于判读)。
 4. 7 格档已建档(2026-08-26 佩佩局,用户口述真值 + 点击面板/拖拽交互实锤 +
    246 覆盖拖测)→ diff==1 直读 7 格。**未建档新档位**(diff≥3 域外/CV 新
    观察)→ 8 格超集运行(读全扩展带;拖到不存在格被游戏拒 = 廉价
@@ -147,18 +146,21 @@ _CV_SLOT_STD_MIN: float = 6.0
 #: :func:`cv_back_slots`)。
 #: (旧解释「羁绊面板渗入」已作废:羁绊面板最右只到 x=258,渗不到 464——
 #: 该 26-44 信号就是 7 格真 1 号格的左半片。)
+#: ⚠️ 墓碑(布局档对账批):以下两常量属旧「左探针三值判据」(≥48 有格 /
+#: ≤12 无格 / 带内不可判)——已被 :func:`_probe_state` 占用态门三态探针
+#: 取代(切片签名分离了「N 档端点被占」与「N+1 档有格」,见
+#: ``_PROBE_*`` 注的机理标定)。留值作标定史锚,消费代码已不存在。
 _CV_LEFT_STD_MIN: float = 48.0
 #: 左端不可判带下界:12(6 格背景实测上限 2.9 的 ~4 倍,且在 7 格左半片
 #: 实测下限 26.2 之下留足间隔)
 _CV_LEFT_STD_AMBIG_LO: float = 12.0
 
 
-def _cv_slot_std(screen, cx: int) -> float | None:
-    """候选位裁切灰度 std(槽框/立绘 → 高;无格背景 → 近 0);越界 → None。"""
+def _cv_band_std(screen, x1: int, x2: int) -> float | None:
+    """y 带内 [x1,x2] 窗灰度 std(探针原语;越界 → None)。"""
     import cv2
     import numpy as np
     h, w = screen.shape[:2]
-    x1, x2 = cx - _CV_HALF, cx + _CV_HALF
     if x1 < 0 or x2 > w or h < _BACK_Y2:
         return None
     crop = screen[_BACK_Y1:_BACK_Y2, x1:x2]
@@ -166,41 +168,77 @@ def _cv_slot_std(screen, cx: int) -> float | None:
     return float(np.asarray(g, dtype=np.float32).std())
 
 
+def _cv_slot_std(screen, cx: int) -> float | None:
+    """候选位裁切灰度 std(槽框/立绘 → 高;无格背景 → 近 0);越界 → None。"""
+    return _cv_band_std(screen, cx - _CV_HALF, cx + _CV_HALF)
+
+
+#: 探针三态(布局档对账批:CV 端点探针占用态门,15 号稿批 B):探针窗内
+#: 「整窗/左半窗/右半窗」三段 std 相对 ``_CV_SLOT_STD_MIN`` 的形态。
+#: 机理标定(y 带内实测,真值帧:后排8槽-狸猫局/满级局/双宝钻局、
+#: deployed_r9_7grid 停机哨兵帧、shop_closed/reward_panel_empty 6 格帧):
+#: - full(整窗+两半窗全 ≥ 阈):该处**整格存在**(8 格档端点;立绘/暗框
+#:   三段全高,实测 min 半窗 40.8-59.3);
+#: - slice(恰一个半窗 ≥ 阈):**邻档端点格的切片**——居中重排几何下 7 格
+#:   档端点格只与探针窗重叠 72px(实测切片半窗 11.3-61.5、背景半窗
+#:   2.1-11.3),即「N 档端点被占」的切片签名;
+#: - none(三段全 < 阈):纯背景。
+#: 阈值复用既有 ``_CV_SLOT_STD_MIN=6.0``,半窗几何 = 探针窗对半
+#: (71px=既有 ``_CV_HALF``)——占用态门零新增自由参数。
+_PROBE_FULL: str = 'full'
+_PROBE_SLICE: str = 'slice'
+_PROBE_NONE: str = 'none'
+
+
+def _probe_state(screen, cx: int) -> str | None:
+    """端点探针三态判定(占用态门;任一段 std 不可读 → None 不可判)。"""
+    w1, w2 = cx - _CV_HALF, cx + _CV_HALF
+    whole = _cv_band_std(screen, w1, w2)
+    left = _cv_band_std(screen, w1, cx)
+    right = _cv_band_std(screen, cx, w2)
+    if None in (whole, left, right):
+        return None
+    if min(whole, left, right) >= _CV_SLOT_STD_MIN:
+        return _PROBE_FULL
+    if max(left, right) >= _CV_SLOT_STD_MIN:
+        return _PROBE_SLICE
+    return _PROBE_NONE
+
+
 def cv_back_slots(screen) -> int | None:
-    """CV 通道:实测当前帧后台格数(ADR-0385 双通道件2)→ ``6 + 两端探针存在数`` | None。
+    """CV 通道:实测当前帧后台格数(ADR-0385 双通道件2;布局档对账批改为
+    **占用态门三态探针**)→ 6/7/8 | None(不可判)。
 
-    方法:在后排两端各放一个**固定探针**(x=464 与 x=1458,即 8 格档 1/8 号格
-    中心;探针位不随档挪动),各裁 ±71px 窗算灰度 std,判「该处有没有格子」;
-    格数 = 6 + 存在数。三档居中重排(ADR-0390)后探针盖到的东西随档不同:
+    方法:后排两端各放固定探针(x=464 与 x=1458,即 8 格档 1/8 号格中心),
+    每探针按 :func:`_probe_state` 判 full/slice/none 三态,按组合定格数:
 
-    - **右端 1458**:std ≥ 6 即算有格子(8 格盖满真 8 号格、7 格盖真 7 号格
-      [1315,1457] 的右半 [1387,1457],两种都是高 std;6 格态 1458 在排外
-      背景 ≤2.9)。
-    - **左端 464 三值**:≥48 有格子 / ≤12 无格子 / **[12,48] 不可判**——
-      7 格局窗 [393,535] 只盖真 1 号格 [463,605] 的左半(std 26-44),与
-      8 格空槽暗框(38.8)重叠分不开;完整图解见 :data:`_CV_LEFT_STD_MIN`。
-    - **不可判 → 整体返 None 退公式通道**(7/8 由公式 diff=cap−level 定:
-      cap 是 OCR 直读,等级漏读有经验条反推兜底——ADR-0389 后批)。
-    - 锚位(606/1031)任一无槽签名 → 帧不可判(overlay 遮挡/非备战态/
+    - (full, full) → 8:两端**整格**存在,只有 8 格档几何能给出;
+    - (slice, slice) → 7:两端都是**切片签名** = 7 格档端点格被占(左端
+      右切片 + 右端左切片,居中重排几何专属);实机停机局实证:真板 7 格
+      旧整窗判据把切片 std 顶过阈值误读 8 → 8 格 rect 裁切错位 → SIFT
+      漏认 4/6 后排;
+    - (none, none) → 6:两端纯背景;
+    - 其余组合(full+none / full+slice / slice+none)= 未覆盖形态(如 8 格
+      端点空槽的暗框半窗分布未标定),保守不可判返 None 退公式(不猜)。
+    - 锚位(606/1031)任一无槽签名 → 整帧不可判(overlay 遮挡/非备战态/
       非 1080p)→ None(调用方退公式通道)。
 
-    三档几何(居中重排,排中心恒 960,互不共享列位):6 格中心 604..1314 /
-    7 格 534..1386 / 8 格 464..1458。纯读 best-effort,异常 → None 不抛。
+    阈值全部复用既有 ``_CV_SLOT_STD_MIN``(占用态门零新增自由参数);
+    三档几何(居中重排,排中心恒 960,互不共享列位)见模块 docstring。
+    纯读 best-effort,异常 → None 不抛。
     """
     try:
         anchors = [_cv_slot_std(screen, x) for x in _CV_ANCHOR_XS]
         if any(a is None or a < _CV_SLOT_STD_MIN for a in anchors):
             return None
-        left = _cv_slot_std(screen, 464)
-        if left is not None and _CV_LEFT_STD_AMBIG_LO < left < _CV_LEFT_STD_MIN:
-            return None   # 左端不可判带(重叠带):退公式,不硬猜
-        extras = 0
-        if left is not None and left >= _CV_LEFT_STD_MIN:
-            extras += 1
-        s = _cv_slot_std(screen, 1458)
-        if s is not None and s >= _CV_SLOT_STD_MIN:
-            extras += 1
-        return _BACK_SLOTS_BASE + extras
+        states = (_probe_state(screen, 464), _probe_state(screen, 1458))
+        if states == (_PROBE_FULL, _PROBE_FULL):
+            return 8
+        if states == (_PROBE_SLICE, _PROBE_SLICE):
+            return 7
+        if states == (_PROBE_NONE, _PROBE_NONE):
+            return 6
+        return None   # 混合形态:未标定,保守不可判(退公式,留证在调用方)
     except Exception:   # noqa: BLE001  CV best-effort,失败退公式
         return None
 
@@ -406,7 +444,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     formula_n = back_slots_from_cap_diff(diff)    # 映射后(7 → 8 格超集)
     cv_n = cv_back_slots(screen) if screen is not None else None
     cv_readings: list[int | None] | None = None
-    _arb_n: int | None = None   # 占用一致性仲裁胜出档(None=未仲裁/保旧规)
+    _arb_n: int | None = None   # 冲突最终裁决档(None=无冲突/保 CV 旧规)
     if cv_n is not None and cv_n != formula_n:
         # 对账不一致:CV 实测优先(画面事实>推导,ADR-0385)+ 留证两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
@@ -434,17 +472,13 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                 except Exception:   # noqa: BLE001
                     pass
                 cv_n = None   # 退公式(下游 n_raw = 公式真值)
-        # 占用一致性仲裁(布局档对账批;实机停机局实证:真板 7 格、公式 7、
-        # CV 读 8 → 旧规「采 CV」→ 8 格 rect 裁切错位 → SIFT 漏认 4/6 后排
-        # → 换阵卖出候选集残缺死锁)。机理:CV 端点探针的 std 分不开
-        # 「N+1 档端点有格」与「N 档端点被占」——occupied 立绘把探针窗顶过
-        # 阈值(ADR-0420 已在案「外缘探针受占用态干扰,单帧不可标」),即
-        # CV 通道在端点占用帧**结构性高估**。判别器 = 占用一致性:paddle X
-        #(游戏计数器,构造上真值)减前排占用 = 后排应有人数;逐候选档读
-        # 槽中心占用,|占用 − 期望| 最小者胜。双档并列/任一读数不可得
-        #(paddle 失读/ctx 缺/front 失读)→ 不仲裁,保持「采 CV」旧规
-        #(声明边界:公式档本身错且恰与 CV 错读数并列时不可救,依赖
-        # paddle/level 防抖读的既有防线)。
+        # 占用一致性仲裁 = 三信号之信号③(点修语义原样保留;布局档对账批
+        # 升级为通用机制,实机停机局实证:真板 7 格、公式 7、CV 读 8 → 旧规
+        # 「采 CV」→ 8 格 rect 裁切错位 → SIFT 漏认 4/6 后排 → 换阵卖出
+        # 候选集残缺死锁)。判别器 = paddle X(游戏计数器,构造上真值)减
+        # 前排占用 = 后排应有人数;逐候选档读槽中心占用,|占用 − 期望| 最小
+        # 者胜。双档并列/任一读数不可得(paddle 失读/ctx 缺/front 失读)→
+        # 不仲裁,走下方信号②退化梯。
         # 边界:cv_n 未建档(∉ _LAYOUT_PREFIX,走上方防抖/8 格超集语义)时
         # 不仲裁——仲裁只能在「两个已建档档」之间选,不得把未建档超集读数
         # 静默收敛回已建档档(那会跳过留证采集钩子)。
@@ -465,6 +499,23 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                 log.info('[cw][layout] 通道冲突占用一致性仲裁: %d 格胜出'
                          '(公式 %s/cv %s;期望后排 %s 人)——CV 端点占用高估'
                          '嫌疑,采仲裁值', _arb_n, formula_n, cv_n, _expected)
+            elif _arb_n is None:
+                # 信号②退化梯(paddle 不可得 → 信号③弃权):占用态门后 CV
+                # 读数已无「N 档端点被占误高估」偏置——cv>formula = 两端整格
+                # 存在的结构证据(full,full),采 CV;cv<formula = 下界读数
+                # (端点切片/失明非「无格」证据),不否决有 cap/level 防抖
+                # 背书的公式,采公式。双向不对称均有留证(上方
+                # note_channel_conflict),复现即按帧对拍。
+                if cv_n > formula_n:
+                    from one_dragon.utils.log_utils import log
+                    log.info('[cw][layout] 通道冲突(paddle 不可得):CV %s > '
+                             '公式 %s,整格结构证据 → 采 CV', cv_n, formula_n)
+                else:
+                    from one_dragon.utils.log_utils import log
+                    log.info('[cw][layout] 通道冲突(paddle 不可得):CV %s < '
+                             '公式 %s,CV 为下界读数不否决公式 → 采公式',
+                             cv_n, formula_n)
+                    _arb_n = formula_n
         n_raw = (_arb_n if _arb_n is not None
                  else (cv_n if cv_n is not None else formula_raw))
     else:
