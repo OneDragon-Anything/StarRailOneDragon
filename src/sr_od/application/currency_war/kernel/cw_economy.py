@@ -113,6 +113,24 @@ def saturation_line(cap_resolved: int) -> int:
     return 10 * cap_resolved
 
 
+def in_must_spend_zone(gold: int, session: StrategySession | None) -> bool:
+    """必花域判定(20 号稿 §2.1):g > G_must = 10 × cap_resolved。
+
+    单一源派生 = saturation_line(cap_resolved_of_session(session)),与
+    息线 g*/arm2 守息门同链,零新自由参数;买断制语境(cap_resolved = 0)
+    出辖恒 False(§2.1,该语境金出口归一般判据)。辖域 = 有动作决策点帧
+    (shop/备战决策入口调用点;§3.4)。
+
+    消费点(本批接线):shop.py 出口③ L2 第二触发源(∨ 合并)/L3 必花域
+    升级/R1 域内残形切分线/EV 域内降排序——四点共用本判定,禁再内联
+    ``gold > 10 * cap`` 字面量式。
+    """
+    cap = cap_resolved_of_session(session)
+    if cap <= 0:
+        return False   # 买断制出辖(§2.1)
+    return gold > saturation_line(cap)
+
+
 def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
                cap: int = DEFAULT_INTEREST_CAP) -> int:
     """金位 gold 花 spend 金后未来 rounds 轮的精确期望息损(P47 命题 2)。
@@ -535,8 +553,10 @@ def effective_refresh_prob(state: GameState, level: int, cost: int) -> float:
     (shop.py),两处禁第二套对账语义——「bar=0 ∧ 表值>0」形态两消费点
     曾相反(出口③判确证零/economy 判表值非零),已按本优先级统一。
     优先级:
-    - refresh_probs 非全 5 键 dict(不可得/解析失败)→ 基线表
-      (read_refresh_probs 契约「读不到 → None 退基线」);
+    - refresh_probs 不可得(None/非 dict)→ 基线表(read_refresh_probs
+      契约「读不到 → None 退基线」;「部分 dict」形态在本入口不可达——
+      上游 parse_prob_bar 契约 = 全 5 键或 None,部分键按缺键规则逐键
+      回退);
     - 结构内缺键 → 基线表(缺键禁当确证零);
     - 键在但 ≤0 → 基线表(轮岗只翻倍不归零,概率条 0 = 采样不可信,
       同款 `or` 回退;机制出处 =

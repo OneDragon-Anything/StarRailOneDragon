@@ -81,6 +81,7 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 from sr_od.application.currency_war.kernel.cw_economy import (
     clicks_to_next_level,
     effective_refresh_prob,
+    in_must_spend_zone,
     xp_click_cost,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
@@ -830,14 +831,22 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 七分键零静默:fuel_filler_stall_buy/fenced/precheck_unavailable/
     # fuel_not_on_sale/bench_full/below_reserve(held_postbuy = 部署
     # 执行侧,record_fuel_filler_held_postbuy)。
+    # 必花域判定(20 号稿 §2.1):g > G_must = 10 × cap_resolved_of_
+    # session(saturation_line 同源派生,零新自由参数);买断制语境
+    #(cap_resolved = 0)出辖恒 False。辖域 = 有动作决策点帧(本函数
+    # 即 shop 决策点)。L2 第二触发源 / L3 / R1 切分线共用本判定。
+    _zone_hit = in_must_spend_zone(gold, session)
     # D 支锁线布尔单一源 = ``_ist.locked_comp``(17 号稿 §1.1 应修-8 B-1
     # 定谳;三审 C1:flow.py 物化段证明 P1 未锁线帧早对物化伪 comp →
     # ``k is not None`` 恒真,作锁线门会让垫件在未锁线期发射——fail-closed
     # 破门,ADR-0525 决策 2 辖域)。
     if (getattr(_ist, 'locked_comp', None)
             and _lvl_readable):
-        # C 支(落后·期望态口径;level 消费 level_readable 可信位)
-        if int(state.level or 1) - len(deployed) > 0:
+        # C 支(落后·期望态口径;level 消费 level_readable 可信位)。
+        # L2 第二触发源(20 号稿 §3.1-L2,∨ 合并):必花域帧不辖 C/A
+        #(触发面差异),垫件在售/席/金位/围栏预检资格照常(资格硬闸
+        #(i) 零解封);触发源分键 must_spend_l2_trigger。
+        if int(state.level or 1) - len(deployed) > 0 or _zone_hit:
             # A 支(无可追件·不可追支):合格集 = cnt2==0 ∧ 有效概率>0;
             # 成因支 = ∃ cnt2==0 ∧ 有效概率=0。有效概率单一源 =
             # effective_refresh_prob(轮岗感知:概率条实读优先,不可得/
@@ -861,85 +870,89 @@ def decide_shop_action(state: GameState, session: StrategySession,
                         _causal.append(_m)
                     else:
                         _chaseable = True
-            if _causal and not _chaseable:
+            if (_causal and not _chaseable) or _zone_hit:
+                if _zone_hit:
+                    # 触发源分键(20 号稿 §3.5:合并不吞文号,发射时
+                    # 触发源可归因)
+                    _count('must_spend_l2_trigger')
                 # B 支(富金;观测条件,调度仍由 arm2 g* 线管辖)
-                    if gold > s_reserve:
-                        # 垫件在售 = 非 1★ 直出卡全过滤后仍有候选;资格排除集
-                        # ≡ locked_buy_membership(§2.3 第 2 点单一源)
-                        _ff_sale = [c for c in (state.shop or [])
-                                    if (c.name or '')
-                                    and (c.name or '') not in buy_members
-                                    and (c.star or 1) == 1
-                                    and predicates.zero_overlap(c.name or '',
-                                                                k_members)
-                                    and refund_full_star_ok(
-                                        1, c.cost if c.cost else 3)]
-                        if not _ff_sale:
-                            _count('fuel_not_on_sale')   # Φ_stall 成立而垫件缺
-                        elif bench_free <= 0:
-                            _count('bench_full')   # §7.3 授权条件含 bench_free≥1
-                        else:
-                            for card in _ff_sale:
-                                name = card.name or ''
-                                cost = card.cost if card.cost else 3
-                                # 金位 fail 向(§7.3:g − cost ≥ s_reserve)
-                                if gold - cost < s_reserve:
-                                    _count('below_reserve')
-                                    continue
-                                # 板面账围栏预检(§2.3 第 4 点;kernel 单一源)
-                                _mch2 = get_char(name)
-                                _cand_bc = BenchChar(
-                                    slot=0, char_id=name, star=1,
-                                    faction=(_mch2.factions[0]
-                                             if _mch2 is not None
-                                             and _mch2.factions else '?'),
-                                    position_pref='back')
-                                _tgt2, _fw2 = deploy_target_sets(k)
-                                try:
-                                    _lfs = cw_intention.locked_faction_scope(
-                                        _ist) if _ist is not None \
-                                        else frozenset()
-                                except Exception:   # noqa: BLE001 兜底 best-effort
-                                    _lfs = frozenset()
-                                try:
-                                    # kernel 单一源直调(围栏语义单一源契约 =
-                                    # N2;预检查询非判据面谓词,不挂 contracts
-                                    # 注册表——ensure_contract 未注册键会误判
-                                    # 违例,直调 + try/fail 向即完整闭环)
-                                    _ff_ok, _ff_why = can_deploy_single(
-                                        _cand_bc, bench,
-                                        deployed_cids=set(deployed_names),
-                                        deployed_fac=deployed_bond_counts(
-                                            set(deployed_names)),
-                                        board=deployed_bond_counts(
-                                            set(deployed_names)),
-                                        cap=(_cap_now if _cap_now
-                                             else 10 ** 6),
-                                        target_factions=_tgt2,
-                                        target_cores=set(),
-                                        fw_carry=_fw2,
-                                        locked_factions=_lfs or frozenset())
-                                except Exception:   # noqa: BLE001 查询不可得
-                                    _ff_ok, _ff_why = False, \
-                                        'precheck_unavailable'
-                                if not _ff_ok:
-                                    if _ff_why == 'precheck_unavailable':
-                                        _count('fuel_filler_stall_'
-                                               'precheck_unavailable')
-                                    else:
-                                        _count('fuel_filler_stall_fenced')
-                                    continue   # 围栏拒帧,试其余垫件
-                                _count('fuel_filler_stall_buy')
-                                _ff_reg = getattr(session,
-                                                  'cw4_fuel_filler_stall_buys',
-                                                  None)
-                                if _ff_reg is None:
-                                    _ff_reg = set()
-                                    session.cw4_fuel_filler_stall_buys = _ff_reg
-                                _ff_reg.add(name)   # N3 闭环登记契约
-                                _on_target_buy(name)
-                                return BuyCard(card=card,
-                                               reason='fuel_filler_stall')
+                if gold > s_reserve:
+                    # 垫件在售 = 非 1★ 直出卡全过滤后仍有候选;资格排除集
+                    # ≡ locked_buy_membership(§2.3 第 2 点单一源)
+                    _ff_sale = [c for c in (state.shop or [])
+                                if (c.name or '')
+                                and (c.name or '') not in buy_members
+                                and (c.star or 1) == 1
+                                and predicates.zero_overlap(c.name or '',
+                                                            k_members)
+                                and refund_full_star_ok(
+                                    1, c.cost if c.cost else 3)]
+                    if not _ff_sale:
+                        _count('fuel_not_on_sale')   # Φ_stall 成立而垫件缺
+                    elif bench_free <= 0:
+                        _count('bench_full')   # §7.3 授权条件含 bench_free≥1
+                    else:
+                        for card in _ff_sale:
+                            name = card.name or ''
+                            cost = card.cost if card.cost else 3
+                            # 金位 fail 向(§7.3:g − cost ≥ s_reserve)
+                            if gold - cost < s_reserve:
+                                _count('below_reserve')
+                                continue
+                            # 板面账围栏预检(§2.3 第 4 点;kernel 单一源)
+                            _mch2 = get_char(name)
+                            _cand_bc = BenchChar(
+                                slot=0, char_id=name, star=1,
+                                faction=(_mch2.factions[0]
+                                         if _mch2 is not None
+                                         and _mch2.factions else '?'),
+                                position_pref='back')
+                            _tgt2, _fw2 = deploy_target_sets(k)
+                            try:
+                                _lfs = cw_intention.locked_faction_scope(
+                                    _ist) if _ist is not None \
+                                    else frozenset()
+                            except Exception:   # noqa: BLE001 兜底 best-effort
+                                _lfs = frozenset()
+                            try:
+                                # kernel 单一源直调(围栏语义单一源契约 =
+                                # N2;预检查询非判据面谓词,不挂 contracts
+                                # 注册表——ensure_contract 未注册键会误判
+                                # 违例,直调 + try/fail 向即完整闭环)
+                                _ff_ok, _ff_why = can_deploy_single(
+                                    _cand_bc, bench,
+                                    deployed_cids=set(deployed_names),
+                                    deployed_fac=deployed_bond_counts(
+                                        set(deployed_names)),
+                                    board=deployed_bond_counts(
+                                        set(deployed_names)),
+                                    cap=(_cap_now if _cap_now
+                                         else 10 ** 6),
+                                    target_factions=_tgt2,
+                                    target_cores=set(),
+                                    fw_carry=_fw2,
+                                    locked_factions=_lfs or frozenset())
+                            except Exception:   # noqa: BLE001 查询不可得
+                                _ff_ok, _ff_why = False, \
+                                    'precheck_unavailable'
+                            if not _ff_ok:
+                                if _ff_why == 'precheck_unavailable':
+                                    _count('fuel_filler_stall_'
+                                           'precheck_unavailable')
+                                else:
+                                    _count('fuel_filler_stall_fenced')
+                                continue   # 围栏拒帧,试其余垫件
+                            _count('fuel_filler_stall_buy')
+                            _ff_reg = getattr(session,
+                                              'cw4_fuel_filler_stall_buys',
+                                              None)
+                            if _ff_reg is None:
+                                _ff_reg = set()
+                                session.cw4_fuel_filler_stall_buys = _ff_reg
+                            _ff_reg.add(name)   # N3 闭环登记契约
+                            _on_target_buy(name)
+                            return BuyCard(card=card,
+                                           reason='fuel_filler_stall')
                 # B 支不成立:g ≤ s_reserve(非病灶帧,静默)
 
     # ---- ④ EV pass(臂①旁路集;仅 criteria 真 EV 发射面)----
@@ -969,6 +982,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if not ok_seat:
                     _count('shop_ev_bench_wait')
                 else:
+                    # 必花域内 (iii) 期望核算类 veto(ev_buy_veto)降为
+                    # 排序信号:非 veto 先买,veto 候选排末位仍可消费
+                    #(三分类 (iii),ADR-0528);域外 veto 照旧直拒。
+                    _deferred = []
                     for cand in cands:
                         card = (state.shop or [])[cand.slot_idx] \
                             if cand.slot_idx < len(state.shop or []) else None
@@ -979,12 +996,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                 ('buy', 'ev_buy_veto'),
                                 contracts.ContractCtx(gold=gold), counters) \
                             else (True, '')
-                        if veto:
+                        if veto and not _zone_hit:
                             continue
                         ok1, _ = mandate.check_affordable(gold, cand.cost)
                         if not ok1:
                             continue
+                        if veto:
+                            _deferred.append(card)   # 域内:降排序末位
+                            continue
                         return BuyCard(card=card, reason='ev_buy')
+                    if _deferred:
+                        return BuyCard(card=_deferred[0], reason='ev_buy')
                     _count('shop_ev_all_vetoed')   # D-P2idle:「全拒」可辨
             else:
                 _count('shop_ev_no_candidate')     # D-P2idle:「无候选」可辨
@@ -1028,6 +1050,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                                    level=_lvl_star)
             ok_r1, rkey = crit_refresh.r1_commitment_account(
                 _ledger, _g0 - g_star)
+            if _zone_hit and rkey == 'account_over_budget':
+                # R1 域内残形切分线(20 号稿;ADR-0528):g*/L 核算账降为
+                # 期望核算排序信号(三分类 (iii) 整门,非只豁免息损项),
+                # 可负担性(r2_budget)留资格硬闸;合格集空守卫
+                # (no_chaseable_member,(ii) 类 fail-closed)不在此列照旧。
+                ok_r1 = True
         else:
             ok_r1, rkey = (False, 'contract_abstain')
             r2_reserve = g_star
@@ -1048,6 +1076,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     int(state.shop_refresh_cost or REFRESH_COST_BASE)):
                 return RefreshShop(
                     cost=int(state.shop_refresh_cost or REFRESH_COST_BASE))
+            if _zone_hit:
+                # 刷新臂 liveness 显影(52 轮 sim 设计输入②):域内刷新
+                # 尝试被可负担性硬闸拦 = 显式分键,禁恒零盲区
+                #(directed_refresh_game_cap_lock 绿灯掩盖恒零教训)。
+                _count('must_spend_r1_budget_fail')
         # 凑息卖·回拉发射位(T1 语义;设计 13_buy_face_design §2.2):
         # 金位触发(期望态金 < g* 才发射)+ 目标量止盈(remaining 递减
         # 贪心,Σrefund ≥ 缺口即止)。prefer_names = 本访问已买件
@@ -1122,6 +1155,41 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # shop_wave_idle_gold 波计数不等值,跨结构不可对拍)。
     if int(state.gold or 0) >= 10:
         _count('shop_visit_idle_gold')
+    # L3 必花域升级(20 号稿 §3.1-L3;授权文号 = 用户裁定 §1「无论什么
+    # hp,金这么多都是要花的」——消费权优先于期望核算的否决权;域内
+    # p1/p2_levelup_stop_hp 让位 = ADR-0528,域外停付线照旧)。
+    # 发射位合并纪律(§3.5):触发源 = M3 三臂 ∨ 必花域,同一
+    # LevelUpShop 单动作消费,auth_basis 触发源分键(m3_batch:must_spend)
+    # 可归因,无第二升级机制。本位点 = 分层序末位(L1 M2/EV/R1 与
+    # L2 出口③全未命中)——「L1/L2 无对象或未命中时 L3 消费」的载体位;
+    # 负账(P35 lv9→10 恒负/P39 L9→L10 −11.4)属 (iii) 类成本披露,
+    # 非否决门(§2.2-3)。资格硬闸((i) 零解封):等级 cap(lv9_stop 族)/
+    # 整批可负担(spend_unified + check_affordable);拒因分键
+    # level_cap/batch_unaffordable 零静默。
+    if _zone_hit and not (_arm1 or _arm0 or _pop):
+        _lvl_now = int(state.level or 1)
+        _lv9_ok = contracts.ensure_contract(
+            ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \
+            and not crit_levelup.lv9_stop(_lvl_now)
+        if not _lvl_readable or not _lv9_ok:
+            _count('level_cap')
+        else:
+            _clicks3 = clicks_to_next_level(state)
+            _cost3 = xp_click_cost(state)
+            _unified_ok = contracts.ensure_contract(
+                ('levelup', 'spend_unified'),
+                contracts.ContractCtx(gold=gold), counters) \
+                and crit_levelup.spend_unified(_clicks3, gold, _cost3)
+            if not _unified_ok:
+                _count('batch_unaffordable')
+            else:
+                ok3, _ = mandate.check_affordable(
+                    gold, 0, batch_cost=_clicks3 * _cost3)
+                if not (ok3 and _clicks3 > 0):
+                    _count('batch_unaffordable')
+                else:
+                    return LevelUpShop(cost=_cost3,
+                                       auth_basis='m3_batch:must_spend')
     return CloseShop()
 
 

@@ -323,8 +323,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
          registry: DecisionV2Registry | None = None) -> list[Emitted]:
     """决策入口三遍编排(R189-4 结构签名;返回 Emitted 列表交桥截断发射)。
 
-    编排:① prep 实体面(球/箱/典籍——控制流与 overlay 切换优先于
-    三遍)→ ② 证明 pass(信号臂/K/stop_flag/线级状态机/换线)→
+    编排:① prep 实体面(箱选卡/球/箱/典籍——控制流与 overlay 切换
+    优先于三遍)→ ② 证明 pass(信号臂/K/stop_flag/线级状态机/换线)→
     ③ 升档器求值位 → ④ 骨架 pass(M1-M7)→ ⑤ EV pass(criteria,
     臂①旁路)→ ⑥ 无动作 ⇒ StartBattle(序列终点=备战环正常出口)。
     """
