@@ -202,18 +202,33 @@ def write_strategy_dead_flag(streak: int, key: tuple | None, run_id: str,
 
 
 def locked_resume_sync_and_battle(op, ctx):
-    """恢复局锁定直出战(ADR-0329)+ **首战前备战同步步**(策略审查
-    十二跳 #7):恢复局分支原样跳过全部备战交互直接 StartBattle,板面
-    调整被跳过(实证:恢复局首战快照 board_before 为空——部署面零执行)。
-    本函数在 StartBattle 前插一次 **RunDeploy 组合同步步**(deploy-swap/
-    腾席/确定性部署整面跑一遍,零商店交互——锁定局「商店探针零响应」
-    禁令只辖商店域,部署面不受辖);每锁定局恰一次
-    (``op._cw_locked_sync_done`` 证据位),同步后 StartBattle 照旧。
+    """恢复局锁定直出战(ADR-0329)+ **首战前备战同步步**(裁定出处 =
+    策略审查报告 .debug/temp/currency_war/20260905-093104-strategy-review/
+    策略审查-第十二跳.md #7):恢复局分支原样跳过全部备战交互直接
+    StartBattle,板面调整被跳过(实证:恢复局首战快照 board_before 为空
+    ——部署面零执行)。本函数在 StartBattle 前插一次 **RunDeploy 组合
+    同步步**(deploy-swap/腾席/确定性部署整面跑一遍,零商店交互——锁定
+    局「商店探针零响应」禁令只辖商店域,部署面不受辖)。
+
+    证据位语义(R1 修订):**RunDeploy ok=True 才置位**
+    ``op._cw_locked_sync_done``——失败(drag 白拖/W209j 刹车/板满门退化)
+    不置位,下环重试同步;连续失败达 ``_SYNC_RETRY_LIMIT``(3)后放弃
+    (error 告警显影,依据:同步步幂等但与 StartBattle 重试共用 retry 池,
+    无限重试抢预算;3 次覆盖 CV 幻影瞬态,持续失败=结构性)。锁定确认
+    分支复位证据位与失败计数。
+
+    隐藏前提声明(R3):同步步的「不误卖」依赖恢复局 session 必新鲜——
+    恢复检测链(cw_resume_lock.is_new_match)恒走新容器,last_state=None
+    ⇒ deploy-swap 卖出通道整体跳过(_board 缺 board 不可判),同步步实际
+    只做确定性部署;若未来恢复检测放开 mid-run 复用 session,stale board
+    会让同步步按旧目标线卖新局板面——届时须先加卖出输入守卫。
+
     **无条件插入,零血线判据**:hp 入参合规口径 = λ 表血带维或已确认
     硬地板授权(00_framework §3)——「hp≤阈值则强制同步」形态不落码,
     挂账待玩家确认。与「达标即出战」臂(候选#1)同发射面:该臂落地时
     须经本函数单一发射位,禁旁路(移交登记)。
     """
+    _SYNC_RETRY_LIMIT = 3
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
         RunDeploy,
         StartBattle,
@@ -222,9 +237,25 @@ def locked_resume_sync_and_battle(op, ctx):
     ex = PrepActionExecutor(op, ctx)
     if not getattr(op, '_cw_locked_sync_done', False):
         _ok, _detail = ex.execute(RunDeploy())
-        log.info('[cw-loop] 恢复局备战同步步(RunDeploy,每锁定局一次): %s',
-                 _detail)
-        op._cw_locked_sync_done = True
+        if _ok:
+            op._cw_locked_sync_done = True
+            op._cw_locked_sync_fails = 0
+            log.info('[cw-loop] 恢复局备战同步步(RunDeploy)完成: %s', _detail)
+        else:
+            _fails = getattr(op, '_cw_locked_sync_fails', 0) + 1
+            op._cw_locked_sync_fails = _fails
+            if _fails >= _SYNC_RETRY_LIMIT:
+                # 连续失败达上限:放弃重试(同步幂等但与 StartBattle 重试
+                # 共用 retry 池,无限重试抢预算;放弃侧代价 = 首战未同步,
+                # error 显影交判读,不静默)
+                op._cw_locked_sync_done = True
+                log.error('[cw!][loop] 恢复局备战同步步连续 %d 次失败'
+                          '(最后一次: %s)→ 放弃重试,板面未同步开战',
+                          _fails, _detail)
+            else:
+                log.warning('[cw!][loop] 恢复局备战同步步失败(第 %d/%d 次,'
+                            '%s)→ 下环重试,证据位不置位', _fails,
+                            _SYNC_RETRY_LIMIT, _detail)
     return ex.execute(StartBattle())
 
 
@@ -1312,6 +1343,7 @@ class CwLoop(SrOperation):
                         self._cw_locked_resume = True
                         self._cw_locked_round = _pr[1]
                         self._cw_locked_sync_done = False   # 新锁定局:首战前同步步待执行
+                        self._cw_locked_sync_fails = 0
                         import contextlib
                         with contextlib.suppress(Exception):   # 遥测 best-effort
                             recorder.record_exogenous(
