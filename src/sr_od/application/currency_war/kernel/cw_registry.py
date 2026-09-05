@@ -77,6 +77,9 @@ class DecisionV2Registry:
     #: (已证)承载而非板面差分——评分维
     #(merge_progress 只计第 2 份,ADR-0340 边界)对它构造性零增量,
     #: 非正分拒是评分零维测量伪影非 EV 判断;与既有 'copy' 标签 C 豁免
+    #: 同型。〔待接线〕本字段语义=按 (名,星) 分星计数(设计口径);现行
+    #: 唯一加权实现 cw_discipline_rules.star_weighted_copies 仍为同名
+    #: 加权,分星接线随 P1 落码批落地,落地前以旧实现为准。
     #: (`w242_star_directed/`/ADR-0405 C 项)同为「完成素材放行」语义对称,无条件于
     #: 末窗 gap(完成价值全程存在,不作定向授权)。仅辖 BuyCard
     #(synthesize 候选虽 merge=True 但不辖)。
