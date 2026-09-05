@@ -837,7 +837,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 即 shop 决策点)。L2 第二触发源 / L3 / R1 切分线共用本判定。
     _zone_hit = in_must_spend_zone(gold, session)
     # D 支锁线布尔单一源 = ``_ist.locked_comp``(17 号稿 §1.1 应修-8 B-1
-    # 定谳;三审 C1:flow.py 物化段证明 P1 未锁线帧早对物化伪 comp →
+    # 定谳;flow.py 物化段证明 P1 未锁线帧早对物化伪 comp →
     # ``k is not None`` 恒真,作锁线门会让垫件在未锁线期发射——fail-closed
     # 破门,ADR-0525 决策 2 辖域)。
     if (getattr(_ist, 'locked_comp', None)
