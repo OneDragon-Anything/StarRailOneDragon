@@ -233,6 +233,7 @@ def select_deployments(
     target_cores: frozenset[str] | set[str] = frozenset(),
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
+    reasons_out: dict[int, str] | None = None,
 ) -> tuple[list[int], list[int]]:
     """围栏判定:返回 (上场 bench 下标序, 留 bench 下标)。
 
@@ -249,7 +250,15 @@ def select_deployments(
     scope``)并入围栏放行集——锁定 comp 的阵营(欢愉/公司等非 RECIPE ∪
     ENGINE 阵营)不再被配方围栏摁 bench(strict 局挤出后 59% 不回
     场,围栏是回场路径;锁定目标件保护,空窗期无锁定帧不辖)。
+
+    **held 拒因返回(N2 规格单一源,17 号稿 §7.1)**:传 ``reasons_out``
+    dict 时,held 下标 → 拒因('scatter_fence' 散牌围栏/'rest_capacity'
+    人口非扩展留置/'cap'/'name_dup' 同名去重/'recipe_floor' 配方底线门)
+    逐项写入——held 判定语义单一源在本函数,消费面(出口③围栏预检/
+    部署执行侧闭环分键)禁第二套围栏语义;带 reason 消费走
+    ``select_deployments_reasoned``。
     """
+    reasons: dict[int, str] = {}
     vacancy = front_total + back_total - len(deployed_cids)
     vacancy = max(vacancy, 0)
 
@@ -304,6 +313,7 @@ def select_deployments(
                 and not (not tgt_idx and _bond_paired):
             rest.remove(i)
             held.append(i)
+            reasons[i] = 'scatter_fence'
             continue
         if f is not None and pair_counts.get(f, 0) >= 2:
             continue    # 成对:上
@@ -311,9 +321,12 @@ def select_deployments(
             continue    # 人口扩展期:散牌填位
         rest.remove(i)
         held.append(i)
+        reasons[i] = 'rest_capacity'
     board_empty = len(deployed_cids) == 0
     if board_empty and not tgt_idx and not rest and held:
-        rest.append(held.pop(0))   # 板空保底:上 1 个
+        first = held.pop(0)
+        reasons.pop(first, None)   # 板空保底:上 1 个(拒因随之消除)
+        rest.append(first)
     # 点火增量首键——「恰好让某体系凑满 tier 的那张」
     # 排最前(冗余件/无关件让位)。引擎身份键降为次键
     # (探针实证:vacancy=1 时冗余第4仙舟曾挤掉点火列车2)。
@@ -368,19 +381,91 @@ def select_deployments(
     for i in order:
         if len(deployed_cids) + len(up) >= cap:
             held.append(i)
+            reasons[i] = 'cap'
             continue
         cid = getattr(bench[i], 'char_id', '') or ''
         if cid and (cid in deployed_cids or cid in _up_names):
             held.append(i)   # 去重(5.1.7,含本轮已上):留 bench
+            reasons[i] = 'name_dup'
             continue
         if bench_fac.get(i) == '列车同行' \
                 and _fac_run.get('列车同行', 0) >= _train_cap \
                 and _fac_run.get('仙舟', 0) < _xz_base:
             held.append(i)   # 配方底线门:列车件让位(仙舟基础线优先)
+            reasons[i] = 'recipe_floor'
             continue
         up.append(i)
         if cid:
             _up_names.add(cid)
         for f in _bonds_of(bench[i]):
             _fac_run[f] = _fac_run.get(f, 0) + 1
+    if reasons_out is not None:
+        reasons_out.update(reasons)
     return up, held
+
+
+def select_deployments_reasoned(
+    bench: list[BenchChar],
+    deployed_cids: set[str],
+    deployed_fac: dict[str, int],
+    board: dict[str, int],
+    cap: int,
+    front_total: int = 4,
+    back_total: int = 6,
+    target_factions: frozenset[str] | set[str] = frozenset(),
+    target_cores: frozenset[str] | set[str] = frozenset(),
+    fw_carry: frozenset[str] | set[str] = frozenset(),
+    locked_factions: frozenset[str] | set[str] = frozenset(),
+) -> tuple[list[int], list[int], dict[int, str]]:
+    """N2 规格①:select_deployments 的带拒因形态(单一源同函数路径)。
+
+    返回 ``(up, held, reasons)``——reasons = held 下标 → 拒因
+    ('scatter_fence'/'rest_capacity'/'cap'/'name_dup'/'recipe_floor')。
+    消费面 = 出口③围栏预检(17 号稿 §7.1)与部署执行侧闭环分键
+    (fuel_filler_stall_held_postbuy);预检/分键禁第二套围栏语义。
+    """
+    reasons: dict[int, str] = {}
+    up, held = select_deployments(
+        bench, deployed_cids=deployed_cids, deployed_fac=deployed_fac,
+        board=board, cap=cap, front_total=front_total,
+        back_total=back_total, target_factions=target_factions,
+        target_cores=target_cores, fw_carry=fw_carry,
+        locked_factions=locked_factions, reasons_out=reasons)
+    return up, held, reasons
+
+
+def can_deploy_single(
+    candidate: BenchChar,
+    bench: list[BenchChar],
+    deployed_cids: set[str],
+    deployed_fac: dict[str, int],
+    board: dict[str, int],
+    cap: int,
+    front_total: int = 4,
+    back_total: int = 6,
+    target_factions: frozenset[str] | set[str] = frozenset(),
+    target_cores: frozenset[str] | set[str] = frozenset(),
+    fw_carry: frozenset[str] | set[str] = frozenset(),
+    locked_factions: frozenset[str] | set[str] = frozenset(),
+) -> tuple[bool, str]:
+    """N2 规格②:单件假想查询(17 号稿 §7.1)。
+
+    输入 = 候选件 + 假想 bench/板面快照(现有 bench 追加 candidate,
+    其余量传当前真实快照),输出 = (可落板, 拒因);拒因口径 =
+    ``select_deployments_reasoned``(scatter_fence/rest_capacity/cap/
+    name_dup/recipe_floor)。出口③围栏放行预检**只消费本 API**,
+    禁发射面自算第二套围栏语义。查询不可得(快照缺失/语义冲突)由
+    调用方按 ``precheck_unavailable`` 分键处理(与围栏拒 'fenced' 禁
+    混键,17 号稿 §7.1 fail 向)。
+    """
+    bench2 = list(bench) + [candidate]
+    idx = len(bench2) - 1
+    up, _held, reasons = select_deployments_reasoned(
+        bench2, deployed_cids=deployed_cids, deployed_fac=deployed_fac,
+        board=board, cap=cap, front_total=front_total,
+        back_total=back_total, target_factions=target_factions,
+        target_cores=target_cores, fw_carry=fw_carry,
+        locked_factions=locked_factions)
+    if idx in up:
+        return True, ''
+    return False, reasons.get(idx, 'cap')
