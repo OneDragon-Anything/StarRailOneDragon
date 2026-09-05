@@ -427,8 +427,8 @@ class DecisionV2Registry:
     #: interest_floor+刷价+买价([3] 单次预算前提)时,pair 缺件账参与
     #: V_D(scoring._vd_p1_pair;core 通道不受本开关辖)
     vd_p1_pair_enabled: bool = True
-    #: 板深单位值(H3 板深条件化:深[6-8] -1.0 vs [3-5] -11.3 的
-    #: 方向;depth=可上阵件数,板面形态维之一,非单卡拆分;未标定)
+    #: 板深单位值(板深=可上阵件数,板面形态维之一,非单卡拆分;方向
+    #: 原引数据源已清退禁引,现未锚定;数值骨架占位未标定)
     depth_unit_value: float = 2.0
     #: 追级 EV 单位值(ADR-0290 层2 查表项「追级 EV」:等级→部署
     #: cap→板深的期权价值;小数等级=level+xp 进度比,单击经验
