@@ -231,6 +231,29 @@ def _prioritize_wearable(
 # 禁在本层加第二套时机判断(与 ADR-0461 裁定 3 同理由)。
 
 
+def get_equip_templates_cached(ctx: SrContext):
+    """加载 cw_equip SIFT 模板(缓存 ctx.cw_equip_templates,首次 load 后复用)。
+
+    模块级共享 helper(工具执行批 ADR-0532 整改:与 CwOpTools 的模板装载
+    同一单一源,禁两处各写一份装载逻辑);``CwOpEquipAll``/``CwOpTools``
+    同源消费。
+    """
+    cached = getattr(ctx, 'cw_equip_templates', None)
+    if cached is not None:
+        return cached
+    base = get_project_root() / 'assets/template'
+    equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(plaza 官方+手工补充)
+    if not equip_dir.is_dir():
+        equip_dir = base / 'currency_war' / 'equip_legacy'
+    if not equip_dir.is_dir():
+        log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
+        return None
+    templates = load_equip_templates(equip_dir)
+    ctx.cw_equip_templates = templates
+    log.info(f'[cw-equip] 加载 {len(templates)} 个 cw_equip 模板(缓存 ctx)')
+    return templates
+
+
 class CwOpEquipAll(SrOperation):
     """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排**空**角色头像(P0-2 占位检测)→ avatar-slot CV-diff 验穿。
 
@@ -259,21 +282,8 @@ class CwOpEquipAll(SrOperation):
         SrOperation.__init__(self, ctx, op_name='货币战争-全员装备')
 
     def _get_templates(self):
-        """加载 cw_equip SIFT 模板(缓存 ctx.cw_equip_templates,首次 load 后复用)。"""
-        cached = getattr(self.ctx, 'cw_equip_templates', None)
-        if cached is not None:
-            return cached
-        base = get_project_root() / 'assets/template'
-        equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(plaza 官方+手工补充)
-        if not equip_dir.is_dir():
-            equip_dir = base / 'currency_war' / 'equip_legacy'
-        if not equip_dir.is_dir():
-            log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
-            return None
-        templates = load_equip_templates(equip_dir)
-        self.ctx.cw_equip_templates = templates
-        log.info(f'[cw-equip] 加载 {len(templates)} 个 cw_equip 模板(缓存 ctx)')
-        return templates
+        """加载 cw_equip SIFT 模板(单一源 = get_equip_templates_cached)。"""
+        return get_equip_templates_cached(self.ctx)
 
     def _get_tm_grays(self):
         """加载 cw_equip TM grays(缓存 ctx.cw_equip_tm_grays;``read_row_equipped`` 读 avatar 已穿用)。
