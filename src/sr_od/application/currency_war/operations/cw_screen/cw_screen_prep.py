@@ -629,8 +629,17 @@ class CwScreenPrep(SrOperation):
             # **移出对拍**,对拍保持双源(paddle X vs CV 占用)。
             _cv_occ = len(obs.front_occupied) + len(obs.back_occupied)
             if dep_n is not None:
-                _spread = abs(dep_n - _cv_occ)
-                if _spread > 1:
+                # 对拍裁决迁仲裁注册面(15 号稿批 A;注册键 deployed_count,
+                # 计数类取低值+spread>1 告警带):divergent 判定经注册面,
+                # 留证行/分键仍在此处按键发射——行数/field/新旧值/verdict
+                # 文本逐字节不变(零行为验收,T-2 对拍)。
+                from sr_od.application.currency_war.obs.cw_arbitration import (
+                    arbitrate,
+                )
+                _value, _verdict, _divergent = arbitrate(
+                    'deployed_count',
+                    {'paddle_x': dep_n, 'cv_occupied': _cv_occ})
+                if _divergent:
                     from sr_od.application.currency_war.kernel.cw_observe import (
                         obs_conflict,
                     )

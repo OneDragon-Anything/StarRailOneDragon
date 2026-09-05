@@ -1366,14 +1366,16 @@ def arbitrate_deployed_count(paddle_n: int | None,
     **必须**先重读一帧(stylized 数字 det 单帧间歇漏在案)仍失读才接受
     退化,且**必须**记 ``DEPLOYED_COUNT_2SRC`` 分键申报(不得静默)。
     双缺席 → (None, False)。
+
+    **注册面迁移(15 号稿批 A)**:裁决内核已迁
+    ``cw_arbitration.combine_deployed_count``(注册键 ``deployed_count``,
+    计数类);本函数保留签名与 docstring 作既有消费面单一入口,内核转调,
+    前后行为逐字节等价(T-2 对拍锁)。
     """
-    if paddle_n is None and cv_n is None:
-        return None, False
-    if paddle_n is None:
-        return cv_n, False
-    if cv_n is None:
-        return paddle_n, False
-    return min(paddle_n, cv_n), abs(paddle_n - cv_n) > 1
+    from sr_od.application.currency_war.obs.cw_arbitration import (
+        combine_deployed_count,
+    )
+    return combine_deployed_count(paddle_x=paddle_n, cv_occupied=cv_n)
 
 
 def resolve_paddle_pair(ctx: SrContext, screen: MatLike,
@@ -2237,21 +2239,28 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     state.board_readable = _board_honest   # r319:动画帧(count=1 兜底)显式标注
     _ocr_board = {f: c for f, (c, _nt) in _bp.items()}
     if _computed is not None:
-        _merged = dict(_computed)
-        # 迁移审计 w287(git 历史):仅在真有分歧时才做帧态判定(is_prep_like_frame 走上层屏名单,常态一致零开销)
         _needs_arbitration = any(_computed.get(_f) != _c for _f, _c in _ocr_board.items())
         _prep_like = is_prep_like_frame(ctx, screen) if _needs_arbitration else True
-        for _f, _ocr_c in _ocr_board.items():
+        # 裁决迁仲裁注册面(15 号稿批 A;注册键 board_faction_count,标称类
+        # 帧态门):内核只产决策,留证行仍在此处按决策发射——行数/field/
+        # 新旧值/verdict 文本逐字节不变(零行为验收,T-2 对拍)。
+        from sr_od.application.currency_war.obs.cw_arbitration import (
+            combine_board_frame_gated,
+        )
+        _merged, _decisions = combine_board_frame_gated(
+            badge_ocr=_ocr_board, computed=_computed,
+            prep_like=_prep_like, board_honest=_board_honest)
+        for _f, _kind, _take in _decisions:
+            _ocr_c = _ocr_board[_f]
             _calc_c = _computed.get(_f)
-            if _calc_c is None:
-                if _prep_like and _board_honest:
+            if _kind == 'ocr_only':
+                if _take:
                     obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed},
                                  f'OCR有computed无:{_f}',
                                  screen, verdict=('采新-badge(备战帧徽标=画面事实,tracked漏该阵营;'
-                                                  'W287 裁决翻转:徽标覆入 board;'
-                                                  '频发 >10 行/时→排查 tracked 身份漏认(_reconcile 漂移源)'),
+                                                   'W287 裁决翻转:徽标覆入 board;'
+                                                   '频发 >10 行/时→排查 tracked 身份漏认(_reconcile 漂移源)'),
                                  source='computed_vs_ocr', faction=_f)
-                    _merged[_f] = _ocr_c
                 else:
                     obs_conflict('board', {'ocr': _ocr_board, 'computed': _computed},
                                  f'OCR有computed无:{_f}',
@@ -2259,20 +2268,18 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                                                   '均不采信(W285 overlay 干扰 2/6 实证防新错);'
                                                   '保 computed 底座,留等备战帧再裁'),
                                  source='computed_vs_ocr')
-            elif _calc_c != _ocr_c:
-                if _prep_like and _board_honest:
-                    obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
-                                 screen, verdict=('采新-badge(备战帧可视行徽标=画面事实,优先于身份'
-                                                  ' computed;W287 裁决翻转(旧采 computed,W285 board '
-                                                  '3/6 采错实证);频发 >10 行/时→排查对账纠漂链'),
-                                 source='computed_vs_ocr', faction=_f)
-                    _merged[_f] = _ocr_c
-                else:
-                    obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
-                                 screen, verdict=('留证-双不可信(非备战帧/动画帧,徽标与 computed '
-                                                  '均不采信(W285 overlay 干扰 2/6 实证防新错);'
-                                                  '保 computed 底座,留等备战帧再裁'),
-                                 source='computed_vs_ocr', faction=_f)
+            elif _take:
+                obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
+                             screen, verdict=('采新-badge(备战帧可视行徽标=画面事实,优先于身份'
+                                              ' computed;W287 裁决翻转(旧采 computed,W285 board '
+                                              '3/6 采错实证);频发 >10 行/时→排查对账纠漂链'),
+                             source='computed_vs_ocr', faction=_f)
+            else:
+                obs_conflict('board', {'ocr': _ocr_c, 'computed': _calc_c}, f'count不等:{_f}',
+                             screen, verdict=('留证-双不可信(非备战帧/动画帧,徽标与 computed '
+                                              '均不采信(W285 overlay 干扰 2/6 实证防新错);'
+                                              '保 computed 底座,留等备战帧再裁'),
+                             source='computed_vs_ocr', faction=_f)
         state.board = _merged
         # next_tier 从注册表 tier 表算(>count 的最小 tier;无更高档 → 0)。
         # 基于 _merged(徽标裁决后的最终计数)而非 computed 底座——否则徽标纠正
