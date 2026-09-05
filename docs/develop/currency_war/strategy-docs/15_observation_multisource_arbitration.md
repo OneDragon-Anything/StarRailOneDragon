@@ -20,7 +20,7 @@
 | 6 | deployed 槽位身份 | ①CV+SIFT 现读(read_deployed_chars);②跟踪账 tracked_deployed;③paddle X 对齐(截断/补齐);④board 重建 | **对齐目标=paddle X(ADR-0417);身份=SIFT 单源**(未知='?'显式;无第二身份源可裁) | read_game_state deployed 段 |
 | 7 | bench 名单/占用 | ①备战栏 9 格 CV 扫描;②跟踪账 tracked_bench_chars(ADR-0520 后播种=heavy 读屏重建);③商店行卡片(空间归属应排除) | **无空间归属仲裁** —— r9 诊断报告 §2.1 记「bench 名单=商店 4 卡」;7026c5db 勘误经三证**否决**该归因(候裁行在案)→ 病灶存疑待复现 | report §2.1 vs 7026c5db commit 注 |
 | 8 | board 阵营计数 | ①OCR 徽标(可视区);②computed(tracked 身份全集) | **双源仲裁:computed 底座+备战帧徽标覆写**(帧态门:非备战帧双不可信只留证;ADR-0417/W287 裁决翻转) | read_game_state board 段 |
-| 9 | 后排布局档 | ①公式 6+(cap−level);②CV 双端探针实测 | **双通道对账:CV 优先,CV 不可判退公式** —— 7 格帧 CV 左探针结构性失明(§3),公式输入 level 可毒化 → 家族⑤「7 实画选 6 档」 | `cw_back_layout.resolve_back_slots`(ADR-0385/0390) |
+| 9 | 后排布局档 | ①公式 6+(cap−level);②CV 双端探针实测 | **双通道对账:CV 优先,CV 不可判退公式** —— 7 格帧 CV 左探针结构性失明(§3),公式输入 level 可毒化 → 家族⑤「7 实画选 6 档」。〔as-built 2026-09-05:点修已落库 da4f49f2=不一致分支加占用一致性仲裁(paddle−前排占用=后排期望,ADR-0385 修订节);批 B 三信号落码时按 handover_layout7.md 单一替换点并入〕 | `cw_back_layout.resolve_back_slots`(ADR-0385/0390) |
 | 10 | node_type | ①台账表(位面详情采集+投资环境后重读两写点,权威);②逐帧标签 OCR;③三票(ROI OCR/位置推断/高亮 Hu) | **表权威+三票纯记账**。⚠️ A4 勘误:三票中**真独立画面票只有 2 张**(票A ROI OCR/票C 高亮 Hu);票B=台账序列重索引(`seq[past_n]`),与权威同源,是「进度一致性对账」非独立读数——现行 `node_vote_verdict` 的 ≥2 反对判据实际由票A+票C 承载,票B 不构成独立性实证(§2.2 标称类③随之如实收缩) | `verify_node_type_votes`(cw_observation.py:614,620 票B=seq 索引) |
 | 11 | streak | ①session 结算值(带符号);②备战 OCR magnitude | **仅对拍留证,无裁决**(不等即 obs_conflict,不采任何一方) | read_game_state streak 段 |
 | 12 | enemy_difficulty | ①逐帧旗牌两级管线 OCR(live);②session 简报恒值 | **优先级仲裁:live 优先**(读链翻转,旧「session 优先」把真值结构性压死 92.7%) | read_game_state enemy_difficulty 段 |
