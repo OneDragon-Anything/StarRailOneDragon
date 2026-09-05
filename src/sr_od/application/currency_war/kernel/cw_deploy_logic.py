@@ -468,4 +468,7 @@ def can_deploy_single(
         locked_factions=locked_factions)
     if idx in up:
         return True, ''
-    return False, reasons.get(idx, 'cap')
+    # 缺省 'unannotated' 显影(策略审查二十三跳必改项):候选 held 而拒因
+    # 字典无标注 = 未来新增 hold 路径漏标拒因的缺口形态——不冒名 'cap',
+    # 显影回炉标注(既有五拒因调用面零变化)。
+    return False, reasons.get(idx, 'unannotated')
