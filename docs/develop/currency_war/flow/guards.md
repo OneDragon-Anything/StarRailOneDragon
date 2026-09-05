@@ -54,7 +54,7 @@
 | 场景 | 降级行为 | 为什么 fail-closed |
 |---|---|---|
 | gold 失读（shop 关态） | 指纹 None 对 None 不构成假推进;备战入口 heavy 观察重试（旧腾席链 b「read_only 店取真值/链 c stale 试算」已随 ADR-0517 迁移批死码清理删除,ADR-0518） | 宁可重观察,不造值 |
-| 卖前对拍不符 | **守卫断言炸出**（ADR-0517 决策 9:非法返回 = 策略器 bug 响亮暴露;AssertionError 上抛 → 本轮 fail 交外循环 retry 链,禁静默跳过）——`cw_shop_action_ops.guard_proposal_vs_expected`（提案 vs 期望态）/`guard_expected_vs_tracked`（投影链 vs tracked 双账,满栏买入豁免）;单动作下期望态每动作后即更新,此属天然成立 | 不卖错件（卖出不可逆）。两守卫零读屏（tracked 纯内存）,详见 `screen_op.md` §2.3/`action_exec.md` §4 |
+| 卖前对拍不符 | **守卫断言两级分型**（ADR-0523;2026-09-05 双账 HIT 实证定谳）——`guard_expected_vs_tracked`:①多集等价(成员同、槽位序异)⇒ WARNING「槽位布局漂移」+按 tracked 真值就地重播种投影 bench,**不炸环**;②真多集分歧 ⇒ AssertionError 炸出(ADR-0517 决策 9 语义,双属归因不变)。`guard_proposal_vs_expected`(提案 vs 期望态)仍恒炸;满栏买入豁免不变 | 不卖错件(卖出不可逆)。两守卫零读屏(tracked 纯内存),详见 `screen_op.md` §2.3/`action_exec.md` §4/ADR-0523 |
 | 全保护死锁（旧链 c） | （随腾席链死码删除退役;M4 腾席现由 mandate_v1 骨架义务承载） | — |
 | 部署 cap 失读 | 单调链 max 兜底；全源失读 → 不设板满门（拖到游戏拒即真值） | 低读阻塞上阵（贵）> 高读白拖一次（便宜） |
 | 空计划 RunDeploy | （旧 flow.py 发射门已随死码删除;部署候选单一源 = `cw_deploy_logic.select_deployments`,空候选不提案） | 空计划 ✓ = 假成功，G3 守卫停机形态 |
