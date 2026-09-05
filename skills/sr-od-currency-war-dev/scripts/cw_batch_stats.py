@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-"""批统计面(七族过程量+复盘试金石修正;2026-09-07 反馈条目落地)。
+"""批统计面(八族过程量:资源转化/成型/战斗/供给/达标臂发射/终态…;2026-09-07 反馈条目落地,发射面为后补族)。
 
 定位:第 1 步统计+按指标点名最差局(供第 3 步挑局复盘);怎么判定「表现不好」不在此规定。
 两种数据源:
@@ -35,7 +34,7 @@ HP_ALERT = 40          # 危局血线(占位,[18] 报警语义)
 def _load(path: Path) -> list[dict]:
     if not path.exists():
         return []
-    return [json.loads(l) for l in open(path, encoding='utf-8') if l.strip()]
+    return [json.loads(line) for line in open(path, encoding='utf-8') if line.strip()]
 
 
 def pct(vals: list[float], p: float) -> float:
@@ -62,6 +61,8 @@ def _sim_rows(batch: Path) -> dict[str, list[dict]]:
             'form': r.get('form_score'), 'form_ok': r.get('form_ok'),
             'level': st.get('level'), 'deployed': st.get('deployed') or [],
             'factions': dict(st.get('board_factions') or {}), 'acts': r.get('actions') or [],
+            # 达标臂发射事件(行内 launch 键,engine_p1 建模;None=未触发)
+            'launch': r.get('launch'),
         }
     for o in outs:
         g(o.get('run_id') or '?')['outs'][(o.get('plane') or 1, o.get('round_num') or 0)] = o
@@ -114,6 +115,12 @@ def _archive_rows(mid: str) -> dict[str, list[dict]]:
         'form': r.get('form_score'), 'form_ok': r.get('form_ok'),
         'level': r.get('level'), 'deployed': r.get('deployed') or [],
         'factions': dict(r.get('board') or {}), 'acts': r.get('actions') or [],
+        # 档案侧发射面:行动作里的 StartBattle(生产发射核执行痕迹;
+        # 档案只记「发生了」,ok 恒 True——发射失败形态仅 sim/生产
+        # 计数器有真值,成功率面判读以 sim 批为准)
+        'launch': ({'__type__': 'StartBattle', 'ok': True}
+                   if any(a.get('__type__') in ('StartBattle', 'LaunchBattle')
+                          for a in r.get('actions') or []) else None),
         'shop_waves': _waves(r.get('shop_snapshots')),
     } for r in m.get('rounds', [])]
     affixes: list[str] = []
@@ -193,21 +200,32 @@ def analyze_game(rows: list[dict]) -> dict:
     m['装备覆盖均值'] = round(statistics.mean(cov), 2) if cov else None
     first_ok = next((i for i, r in enumerate(rows) if r['form_ok']), None)
     m['成型后退档轮数'] = sum(1 for r in rows[first_ok:] if not r['form_ok']) if first_ok is not None else 0
+    # F 达标臂发射面(sim = 行内 launch 键;档案 = StartBattle 行动):
+    # 成功率 sim 恒 1(发射核必然执行,建模声明见 engine_p1);
+    # victim 缺失占比 = 发射时板满∧无合格腾位形态(G1 准入)的占比。
+    launches = [r['launch'] for r in rows if r.get('launch')]
+    m['发射次数'] = len(launches)
+    m['发射成功率'] = (round(sum(1 for L in launches if L.get('ok')) / len(launches), 2)
+                    if launches else None)
+    m['发射victim缺失占比'] = (round(sum(1 for L in launches
+                                     if (L.get('victim') or {}).get('victim_missing'))
+                                 / len(launches), 2)
+                           if launches else None)
+    m['首发轮'] = next((r['round'] for r in rows if r.get('launch')), None)
     # D 战斗过程
-    form_by_i = {(r['plane'], r['round']): r['form'] for r in rows}
     lo, wo = [], []
     for r in rows:
         if r['node_type'] not in BATTLE_SKIP and r['form'] is not None:
             (lo if (r['hp_delta'] or 0) < 0 else wo).append(r['form'])
     m['最大连败'] = 0
     streak = 0
-    for l in losses:
-        streak = streak + 1 if l else 0
+    for loss in losses:
+        streak = streak + 1 if loss else 0
         m['最大连败'] = max(m['最大连败'], streak)
     m['败场形态中位'] = round(statistics.median(lo), 2) if lo else None
     m['胜场形态中位'] = round(statistics.median(wo), 2) if wo else None
     m['败场数'] = sum(losses)
-    # E 供给利用(商店侧;补给选项相关率挂档案二期字段缺口)
+    # F 供给利用(商店侧;补给选项相关率挂档案二期字段缺口)
     shops = []
     for r in rows:
         cards = [c for w in (r.get('shop_waves') or []) for c in (w or [])]
@@ -271,7 +289,14 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     print('\n-- E 供给利用 --')
     print(f'  相关供给吃掉率(中位 | p10 低尾): '
           f'{statistics.median(su):.2f} | {pct(su, 0.1):.2f}' if su else '  无数据')
-    print('\n-- F 终态 --')
+    print('\n-- F 达标臂发射面(sim launch 键 / 档案 StartBattle;成功率 sim 恒真值面) --')
+    for k in ('发射次数', '发射成功率', '发射victim缺失占比'):
+        a = agg(k)
+        print(f'  {k}: {a[0]} | {a[1]}' if a else f'  {k}: 无数据')
+    fr = [m['首发轮'] for m in ms.values() if m.get('首发轮') is not None]
+    print(f'  首发轮: 达成率 {len(fr) / max(len(ms), 1):.0%}'
+          f' | 中位轮 {int(statistics.median(fr)) if fr else None}')
+    print('\n-- G 终态 --')
     hps = [m['终态']['hp'] for m in ms.values() if m.get('终态') and m['终态']['hp'] is not None]
     print(f'  终局 hp 中位: {statistics.median(hps) if hps else None}')
     print('\n-- 表现不好的指标 → 体现最重的局(每指标 2 局;第 3 步挑局复盘的抽样单) --')

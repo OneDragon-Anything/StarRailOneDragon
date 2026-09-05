@@ -877,6 +877,63 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # shop_rejects——「线内核心在售未买」的供给空缺 vs 闸门拒绝
             # 判据,消费=R4 报告 §3 类复盘归因)
             _round_shop_rejects: dict[str, str] = {}
+            # ===== 达标臂发射事件建模(sim 观测面)=====
+            # 生产面:达标即出战臂(cw_loop 备战分支,14号稿 §9.6):
+            # 备战双锚命中 → 线成型 form_progress(target_comp, state)
+            # ≥1.0(cw_comps 现读单一源,与 P59/ADR-0522 触发门同源)∧
+            # 战斗就绪 ⇒ 发射核 launch_prepared_battle(RunDeploy+
+            # StartBattle),**短路备战动作链**——位次 = 动作链之前,
+            # 门在轮入口板面(买/部署前)评估。发射效果落在 op 执行层,
+            # 严格同池 A/B 的 ledger 逐位门在 sim 结构性不可见 → sim 在
+            # 轮入口(决策段循环前,同生产评估时点)对**战斗类节点**
+            # 建模发射事件:
+            # - 触发判据 = 同一 form_progress ≥1.0 直调(零新阈值、零
+            #   第二实现;战斗就绪在 sim = 节点本身为战斗类——逐轮必战
+            #   结构,sim 无「等战斗」语义);
+            # - victim 形态 = G1 准入三元(launch_admission_report,kernel
+            #   cw_launch_admission 单一源直调——生产 cw_loop 调用面同一
+            #   实现,sim 的 deployed/bench 是同形状 BenchChar,零第二
+            #   实现;sim 无 OCR 缺读,预估失败只有异常路径,best-effort
+            #   吞掉留 None,观测不炸账本 rho_obs 同纪律);
+            # - ok 恒 True:sim 无屏态过期/浮层在场/执行失败面(生产
+            #   stale_screen/overlay_hold 分键),战斗节点必然结算 =
+            #   发射必然执行。
+            # 零漂移声明:纯账本披露,零 rng 消耗、零状态写入。挂行内
+            # 'launch' 键而非向 actions 追加——行为投影 digest(w614 零漂移
+            # 锚)含 actions 逐项,观测面不得挤占行为哨兵的判别域;且
+            # 「一轮一行/outcomes 配对/段级检查轮键」三面不变式要求
+            # decisions 流不增行,发射事件以行内键实现同可见性。
+            # 已知边界:mantle 镜像族 v3_form_ok 在 mandate_v1 单臂下无
+            # 写者(恒 False),不可作触发源——生产门的本源是 form_progress
+            # 现读,本建模直调同源,不依赖镜像层。
+            _round_launch: dict | None = None
+            _tc_launch = getattr(sess, 'target_comp', None)
+            if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
+                    and _tc_launch is not None):
+                from sr_od.application.currency_war.kernel.cw_comps import (
+                    form_progress,
+                )
+                if form_progress(_tc_launch, st) >= 1.0:
+                    from sr_od.application.currency_war.kernel.cw_launch_admission import (
+                        launch_admission_report,
+                    )
+                    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+                        line_members,
+                    )
+                    try:
+                        _adm = launch_admission_report(
+                            st, _tc_launch, line_members=line_members)
+                    except Exception:   # noqa: BLE001  观测 best-effort
+                        _adm = None
+                    if _adm is not None:
+                        _round_launch = {
+                            '__type__': 'LaunchBattle',
+                            # 授权依据(与 LevelUp.auth_basis 观测同键名
+                            # 族):触发臂 = 达标臂(线成型∧战斗就绪)。
+                            'auth_basis': 'readiness_form_ok',
+                            'victim': _adm,
+                            'ok': True,
+                        }
             # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
             # RefreshShop 动作后**独立重决策一段**——r270 连刷在
             # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
@@ -1945,6 +2002,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 #  spend_gate 开关族删除——旧方案清退批,清查报告
                 #  OLD_MIX_AUDIT §1.3;v3_sg_block session 键同批删。)
                 'actions': _acts,
+                # 达标臂发射事件(见上方「达标臂发射事件建模」块;None=
+                # 本轮达标臂未触发——非战斗节点/未成型/准入预估不可得)
+                'launch': _round_launch,
                 # 商店波未买牌拒因串(末波 last-wins;生产端
                 # cw4/shop.shop_unbought_reasons,实机 DecisionTrace.
                 # shop_rejects 同键同值枚举;逐波明细=sim.shop_waves[].rejects)

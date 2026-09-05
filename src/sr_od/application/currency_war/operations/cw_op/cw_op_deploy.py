@@ -25,8 +25,12 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import get_char
-from sr_od.application.currency_war.kernel.cw_line_defs import (
-    ENGINE_FACTIONS as _ENGINE_FENCE,
+from sr_od.application.currency_war.kernel.cw_launch_admission import (
+    DEPLOY_FENCE as _DEPLOY_FENCE,
+)
+from sr_od.application.currency_war.kernel.cw_launch_admission import (
+    offtarget_sell_allowed,
+    protect_names_of,
 )
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
@@ -49,18 +53,6 @@ from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwCha
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-# r263b 过渡配方纪律 → r271 收口 cw_line_defs 单一源(此前模块级
-# frozenset 与旧 line_strategy 的局部 set 双源;两份审查共同点名;
-# line_strategy 随 ADR-0336 已删)。
-# 语义:配方基础(_RECIPE_BASE 档)未满时,off-recipe 阵营 pair
-# 不上板(防散件稀释配方;局15 r6-r8 实证)。
-# r357(局44 判读,r353 集成缺口):围栏集 = RECIPE ∪ ENGINE
-# (桥派生)——r353 把狼狩/贝洛伯格入桥后,买来的 hunt3 件被
-# 旧四阵营围栏按「非配方」摁 bench(局44 r2 板 2/5 空槽+
-# bench 7 实证:四飞霄全 bench)。V4.0 过渡配方含 3狼狩系,
-# 围栏必须随桥派生集走(单一源)。
-_DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
-
 
 def _cap_roomy_of(front_empty: int, back_empty: int, must_up: int) -> bool:
     """r387:空位 > 必上件数(target+成对)→ cap 富余——配方围栏放行散牌填空。
@@ -73,6 +65,44 @@ def _cap_roomy_of(front_empty: int, back_empty: int, must_up: int) -> bool:
     也可以」。锁测试:test_cw_r387_deploy_fill_vacancy(3 条)。
     """
     return front_empty + back_empty > must_up
+
+
+def record_fuel_filler_held_postbuy(session, held: list[tuple[str, str]]) -> int:
+    """出口③闭环分键(N3,17 号稿 §7.2;可离线测)。
+
+    出口③买入的垫件,在后续部署帧被围栏 held 留 bench 时计
+    ``fuel_filler_stall_held_postbuy``(session.cw4_counters;零静默)。
+    held 名单+拒因 = kernel 围栏语义单一源(N2:
+    cw_deploy_logic.select_deployments_reasoned)在执行时刻的现读重建,
+    本函数只做计数回流,不重建围栏语义(C2 落点声明:不新建策略→op
+    反向依赖)。买入登记源 = ``session.cw4_fuel_filler_stall_buys``
+    (出口③发射位买入时写入的名集;发射位随两核实门放行后接线,本
+    消费口先行闭环)。异常升高 = 预检语义与部署帧态系统性漂移,回炉
+    预检时点(不改阈值,查语义)。
+
+    **出口③授权定性(N4 定稿,17 号稿 §7.3,随批写死;发射位 docstring
+    与 ADR 禁回退「支配性/无条件/净成本=0」旧措辞)**:出口③ = 「净
+    成本 ≤1 金(注册表派生界:Δ息 = ⌊g/10⌋−⌊(g−cost)/10⌋ ∈ {0,1},
+    cost ≤5、息帽 5)的有界成本结构改善授权,零自由参数;严格支配
+    (净成本=0)仅 Δ息=0 帧(cost 不跨 10 金档)成立」。
+
+    返回计数增量(测试断言用)。
+    """
+    buys = getattr(session, 'cw4_fuel_filler_stall_buys', None)
+    if not isinstance(buys, set) or not buys:
+        return 0
+    counters = getattr(session, 'cw4_counters', None)
+    n = 0
+    for name, reason in held:
+        if name in buys:
+            n += 1
+            if isinstance(counters, dict):
+                counters['fuel_filler_stall_held_postbuy'] = \
+                    counters.get('fuel_filler_stall_held_postbuy', 0) + 1
+            log.warning('[cw!][deploy] 出口③垫件部署帧被 held(拒因=%s,'
+                        'name=%s)→ held_postbuy 闭环分键', reason or '(未知)',
+                        name)
+    return n
 
 
 def residual_fill_plan(held: list, front_empty: list, back_empty: list,
@@ -191,41 +221,8 @@ def exclude_system_units(chars: list) -> list:
     return out
 
 
-def offtarget_sell_allowed(char_id: str, bonds: set[str],
-                           target_factions: set[str],
-                           target_cores: set[str], *,
-                           fenced_offline_sellable: bool = False,
-                           protect_names: frozenset[str] = frozenset()
-                           ) -> bool:
-    """W209/ADR-0386:off-target 卖出候选判据(纯函数,锁测试面)。
-
-    run 26 实锤(崩坏根因②):P2 定型后 deploy 侧只按终局 ``target_comp`` 判
-    off-target,把买/演进层仍在买入的引擎·配方体系件(仙舟三人组:藿藿×3/
-    饮月×2/爻光×1)反复卖出——同期商店 plan 不停 ``Buy(仙舟/...)`` = 买→卖→买
-    振荡(两层目标视图分歧:deploy 看终局 comp,买/演进层看意向体系对/骨架纪律)。
-    振荡熔断:**引擎/配方体系件(``_DEPLOY_FENCE`` = RECIPE ∪ ENGINE,与散牌
-    围栏同源)恒不卖**——deploy 自己都把它们当围栏件不许留 bench,卖出判定不得
-    同源反向。真要换血走演进层显式 SellDeployed/CompTransaction(有保护集分级,
-    ADR-0382),不归 deploy 的机会性腾位通道管。
-
-    换阵卖出义务臂(板满换阵死锁修复;第七局 r9 实证):
-    ``fenced_offline_sellable=True`` 时,off-line 的引擎/配方件(**bonds ∌
-    target、∉ protect_names**)让位可卖。依据:熔断防的振荡前提 =「买/演进层
-    仍在买入该体系件」;线已成型(fp=1.00,单一源 ``cw_comps.form_progress``)
-    后买侧对旧线 fenced 件已无需求,保留保护只剩闭死腾位通道的副作用
-    (艾丝妲=旧线持续伤害/黑塔被护 → sold 0/2 → RunDeploy 单签名守卫停机)。
-    ``protect_names`` = 新线 core∪shared(禁卖护栏不因换阵解除,P41②口径;
-    core 件本就被 ``target_cores`` 挡,shared 件经本参显式兜住)。target 单位
-    判定(阵营/流派交集)在两臂下都不变。
-    """
-    if char_id and (char_id in target_cores or char_id in protect_names):
-        return False   # core/新线 core∪shared 保留(live 花火误卖根由;P41②)
-    if bonds & target_factions:
-        return False   # target 单位,保留
-    if fenced_offline_sellable:
-        return True    # 换阵卖出义务臂:off-line 引擎/配方件让位(线已成型)
-    # 引擎/配方体系件恒不卖(W209 振荡熔断,ADR-0386)
-    return not (bonds & _DEPLOY_FENCE)
+# offtarget_sell_allowed / protect_names_of 已迁 kernel.cw_launch_admission
+# (模块顶 re-export,实现单一源;判据 docstring 随迁,见彼处)。
 
 
 def swap_arm_deployed_count(board: dict | None,
@@ -252,26 +249,6 @@ def fenced_swap_arm_of(fp: float, deployed_n: int,
     熔断的振荡防护前提(买/演进层仍要 fenced 件)消失、且 bench target
     无空槽可进——此时 off-line fenced 件让位。"""
     return fp >= 1.0 and deployed_n >= front_n + back_n
-
-
-def protect_names_of(comp) -> frozenset[str]:
-    """换阵卖出义务臂的保护域(新线禁卖集)= core∪shared∪替班者全集。
-
-    替班者腿依据 = ``Comp.substitute_plan`` 字段契约原文「替班=『不卖、
-    转副C沉淀』」(cw_comps)——卖替班者本就违替班语义。仅 core∪shared
-    时存在保护域缺口:替班者凭 substitute_plan 直入买面义务集
-    (``locked_buy_membership`` → ``_line_hoard``),不经任何羁绊检查,
-    可对 comp 整体 off-line 且 fenced(P59 注册表反例:黄泉减益×卡芙卡,
-    bonds={持续伤害,星核猎手} ∩ all_factions=∅)→ 义务臂判可卖,同一
-    身份 M2 义务买 ↔ 换阵臂卖 = 买↔卖振荡。新增替班者自动入保护域。
-    """
-    names = set(getattr(comp, 'core_chars', []) or []) \
-        | set(getattr(comp, 'shared_chars', []) or [])
-    for sub in getattr(comp, 'substitute_plan', None) or []:
-        name = sub.get('替班者') if isinstance(sub, dict) else None
-        if name:
-            names.add(name)
-    return frozenset(names)
 
 
 def _note_deployed_count_divergence(ctx: SrContext, screen: MatLike, source: str,
@@ -889,7 +866,7 @@ class CwOpDeploy(SrOperation):
         except Exception:   # noqa: BLE001 —— 围栏兜底 best-effort
             _locked_fac = frozenset()
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            select_deployments as _sel_dep,
+            select_deployments_reasoned as _sel_dep,
         )
         from sr_od.application.currency_war.kernel.cw_state import (
             BenchChar as _BC,
@@ -909,7 +886,7 @@ class CwOpDeploy(SrOperation):
                 faction=(_ch_b.factions[0]
                          if _ch_b is not None and _ch_b.factions else '?'),
                 position_pref=_bench_pos.get(_bi, 'back')))
-        _up_rel, _held_rel = _sel_dep(
+        _up_rel, _held_rel, _held_reasons = _sel_dep(
             _bench_list, deployed_cids=set(_deployed_cids),
             deployed_fac=dict(_deployed_fac), board=_board_in,
             cap=(_cap if _cap is not None and _cap > 0 else 10 ** 6),
@@ -920,6 +897,17 @@ class CwOpDeploy(SrOperation):
         if _held:
             log.info(f'[cw-deploy] 留 bench(kernel 围栏/底线/去重/cap,dd-037):'
                      f'slots={[bench_occ[_k] + 1 for _k in _held_rel]}')
+        # N3 闭环分键(17 号稿 §7.2):出口③买入的垫件在部署帧被围栏 held
+        # 留 bench 时计数——消费 kernel 单一源拒因(N2),执行侧现读重建
+        # 回流遥测(C2 落点声明,不新建策略→op 反向依赖)。买入登记源 =
+        # session.cw4_fuel_filler_stall_buys(出口③发射位买入时写入的名集;
+        # 发射位随两核实门放行后接线,本消费口先行闭环)。
+        _ff_buys = getattr(_sess, 'cw4_fuel_filler_stall_buys', None)
+        if isinstance(_ff_buys, set) and _ff_buys:
+            record_fuel_filler_held_postbuy(
+                _sess,
+                [(_bench_list[_k].char_id or '', _held_reasons.get(_k, ''))
+                 for _k in _held_rel])
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} 上场序={order}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
