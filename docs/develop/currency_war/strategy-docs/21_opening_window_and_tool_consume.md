@@ -1,6 +1,6 @@
 # 21 装备策略残余设计:opening 窗口收窄 与 工具件消费语义
 
-> 状态:**as-designed v3(纯设计稿,零代码改动)。v3 = 对抗轮 R2 措辞级修订后(B3/S6/L5/L6,对照表 = `.debug/temp/currency_war/21_adversarial_r1/REVISION_R1.md` R2 节;R1 清单 = 同目录 ATTACK_R1.md,2 阻断/5 建议/4 低已全处置)。**合并两账本残余:①`流程/进度.md:36`(装备穿着主病灶残余:opening 窗口收窄策略语义未落);②`流程/进度.md:126`(工具件消费策略空缺:工具-only 库存已不致死 M7 门①,使用语义未设计)。
+> 状态:**as-designed v3(纯设计稿,零代码改动)。v3 = 对抗轮 R2 措辞级修订后(B3/S6/L5/L6 处置已落 §2.5/§5 各节;R1 2 阻断/5 建议/4 低已全处置,逐条落点见对应章节)。**合并两账本残余:①`流程/进度.md:36`(装备穿着主病灶残余:opening 窗口收窄策略语义未落);②`流程/进度.md:126`(工具件消费策略空缺:工具-only 库存已不致死 M7 门①,使用语义未设计)。
 > 前置 as-built:18 号稿(`18_equip_wear_semantics.md` + ADR-0526)——`kernel/cw_equip_env.py` `resolve_wear_release` 释放判据表五行、词缀条件优先层、fill-only、`classify_zero_wear_stop_reason` 辖域二分已落码;执行侧可穿戴已由投影面阶梯 L0+L1 验证(第十七局 P1r6 五件连穿全落)。本篇**不推翻 18 号稿任何语义**,在其上补两块:opening hold 的释放门收窄(§2)、工具件消费语义(§3)。
 > 判据源:00_framework(宪法四条,数学先行三形态【注】【推】【拟】)、01_math_framework(§8-2 发展优先默认)、注册表(`cw_equipment_data.py` 工具 7 件 = category='工具' 7 条,现址 :190-196;`cw_synthesis.py` `recycle_qualified`/`hoard_gaps`/`RESERVED_COMPONENTS`(:78-82,**辖域仅 P1**))、10 号稿 §2.1(工具判据收编源)、20 号稿(必花域/息线接口)、机制文档 `docs/game/currency_war/research/equipment_mechanics.md`(下称〔机制篇〕)、P14/P42/P50(冶金炉期望账)。
 > 术语:**opening 期** = 位面 1 r≤2(r388/ADR-0257 既有谓词,本篇沿用其祖父条款,通用化随 14 号稿 §8⑧ 确认批同族登记,不另立);**自由件** = owned 中同时满足「非 key_equips 候选 ∧ 非 RESERVED_COMPONENT ∧ category≠工具 ∧ 非唯一件标记」的装备;**hold 帧扣留** = 18 号稿 §2.1 判据表产出的 `hold=True` 释放位;**必花域** = 20 号稿 §2 定义(g > G_must = 10×cap_resolved 的动作帧域)。

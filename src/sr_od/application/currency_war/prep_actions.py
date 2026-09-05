@@ -416,7 +416,7 @@ class PrepActionExecutor:
         if not _pick_ok:
             log.warning(f'[cw][box] 开箱槽{slot} 选卡未生效:{_pick_msg}')
             return False, f'开箱槽{slot} 但选卡未生效:{_pick_msg}'
-        # 期望态补登记(三审 C1):合并路径直调 _pick_box_card 绕过
+        # 期望态补登记:合并路径直调 _pick_box_card 绕过
         # execute() 的统一登记入口(外层只登记 OpenBox = 零状态变更)→
         # 对内层 PickBoxCard 补登记一次(last_owned_equips/动态权重
         # 消费面),detail 复用可解析形态「选卡 <名>」;登记失败不阻塞。
