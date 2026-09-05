@@ -351,8 +351,14 @@ def run_checks_on_replay(replay_dir: Path, recent: int = 5) -> list[str]:
         # 分栈——ev_arm=skeleton_only/full(DecisionTrace.ev_arm,mandate_v1
         # 写/legacy 恒空);臂①② 分栈可辨识是 A/B「EV 增量(臂②−①)」
         # 判读的载体(统计设计缺陷封死,§4.1)。
+        # `cw:flow:` 前缀 = 流程心跳标记行(策略失活判据修复批,恢复局直
+        # 出战/补给节点的合法无声载体),非策略栈——不入判栈(否则标记行
+        # 若居 run 段首,该段被判「未知栈」跳过,mandate_v1 局漏跑冷启动
+        # 检查)。
         sid = next((d.get('strategy_id') for d in all_rows
-                    if d.get('strategy_id')), '')
+                    if d.get('strategy_id')
+                    and not str(d.get('strategy_id')).startswith('cw:flow:')),
+                   '')
         if sid == 'mandate_v1':
             ev_arm = next((d.get('ev_arm') for d in all_rows
                            if d.get('ev_arm')), '')
