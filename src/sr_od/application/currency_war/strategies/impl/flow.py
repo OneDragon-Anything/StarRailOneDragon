@@ -224,13 +224,6 @@ class CwFlowStrategy(CwStrategy):
                              hp_before - hp_after, VALLEY_ROLLBACK_LOSS)
         session.v3_prev_hp = hp_after if hp_after else hp_before
 
-    #: 台账 token → 生产词汇表(词汇表单一源 = GameState.node_type 顶部标签
-    #: OCR 词表;映射表与 cw_screen_battle_wait._normalize_node_type 同源)
-    _ALARM_NODE_TOKEN_MAP: dict[str, str] = {
-        'battle': '普通战斗', 'encounter': '遭遇', 'boss': 'boss',
-        'supply': '补给', 'reward': '奖励', 'megastar': '巨星',
-    }
-
     def _alarm_node_type_fallback(self, session, plane, round_num) -> str:
         """掉血报警 node_type 空值回落(→ 生产词汇表 token | 空串)。
 
@@ -246,7 +239,15 @@ class CwFlowStrategy(CwStrategy):
             token = ledger_node_type(session, plane, round_num)
         except Exception:   # noqa: BLE001  台账缺失不阻塞结算喂入
             token = None
-        nt = self._ALARM_NODE_TOKEN_MAP.get(str(token), '') if token else ''
+        # 词表单一源 = kernel.cw_state.NODE_TOKEN_TO_WORD(落地审 C1:自维护
+        # 删减副本漏 elite 致精英轮掉血恢复失效,从源头消掉)。
+        try:
+            from sr_od.application.currency_war.kernel.cw_state import (
+                NODE_TOKEN_TO_WORD,
+            )
+            nt = NODE_TOKEN_TO_WORD.get(str(token), '') if token else ''
+        except Exception:   # noqa: BLE001
+            nt = ''
         try:
             from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
                 DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK,
@@ -270,7 +271,17 @@ class CwFlowStrategy(CwStrategy):
         return nt
 
     def create_session(self, config) -> StrategySession:
-        """空白 session(rng 留默认,由 run loop 按 ``config.strategy_seed`` 覆盖)。"""
+        """空白 session(rng 留默认,由 run loop 按 ``config.strategy_seed`` 覆盖)。
+
+        新局起点顺带复位布局未知态计数(落地审 C4:跨局残留会让新局开局
+        ——level 未 observed/CV 高发不可判期——提前吃冻结)。"""
+        try:
+            from sr_od.application.currency_war.kernel.cw_state import (
+                reset_layout_unknown_state,
+            )
+            reset_layout_unknown_state()
+        except Exception:   # noqa: BLE001  复位 best-effort,不阻 session 创建
+            pass
         return StrategySession()
 
     def on_match_end(self, session: StrategySession, config, outcome: MatchOutcome) -> None:

@@ -158,3 +158,44 @@ def write_l0_andon_flag(flag_path: Path, *, run_id: str, surface: str,
               expected=expected, observed=observed, plane=plane,
               round_num=round_num, refs=refs, defect_shot=defect_shot,
               stop_shot=stop_shot)
+
+
+# ===== 布局档分键记录函数(15 号稿批 C;落地审 C3 择一=记录单一源迁入
+# 出口模块:obs 布局面只依 kernel 出口,telemetry.defects 不留副本)=====
+
+def record_back_layout_divergence(formula_n: int, cv_n: int,
+                                  source: str = 'resolve_back_slots') -> None:
+    """布局双通道分歧分键行(best-effort;run_id 缺省 no-op,恒 L2
+    auto_resolved——裁决已按三信号梯完成,行面只承担不一致率统计)。"""
+    if not current_run_id():
+        return
+    record_defect(
+        'back_layout', DEFECT_KIND_BACK_LAYOUT_DIVERGENCE,
+        expected=f'formula={int(formula_n)}', observed=f'cv={int(cv_n)}',
+        gap=float(int(cv_n) - int(formula_n)),
+        gap_large=abs(int(cv_n) - int(formula_n)) > 1,
+        auto_resolved=True,
+        verdict=('留证-布局双通道分歧,已按三信号梯裁决;'
+                 '本键计数=不一致率,复现帧对拍 cv_back_slots'),
+        refs=[{'stream': 'arbitration', 'key': f'source={source}'}],
+        reader_source=str(source),
+        note='布局档双通道仲裁分键(证据层见 obs_conflicts '
+             'back_layout_channel_conflict 行)')
+
+
+def record_back_layout_unknown(source: str = 'resolve_back_slots') -> None:
+    """布局未知态分键行(best-effort;run_id 缺省 no-op,恒 L2
+    auto_resolved——未知态按读写分级+冻结止损处置,频度=验收锚点)。"""
+    if not current_run_id():
+        return
+    record_defect(
+        'back_layout', DEFECT_KIND_BACK_LAYOUT_UNKNOWN,
+        expected='公式/CV 至少一源可判',
+        observed='双弃权(布局未知态)',
+        gap=None, gap_large=False,
+        auto_resolved=True,
+        verdict=('留证-布局未知态(读类退 6 档基线,写类冻结止损;'
+                 '频度锚点=15号稿 §7 批 B/C 验收)'),
+        refs=[{'stream': 'arbitration', 'key': f'source={source}'}],
+        reader_source=str(source),
+        note='布局未知态分键(证据层见 obs_conflicts back_layout 行)')

@@ -442,49 +442,4 @@ def bypass_exec_event_to_defect(rec: dict) -> None:
 # ===== 布局档分键(15 号稿批 C;T-6 互不混流)=====
 # 字符串单一源 = kernel.cw_telemetry_exit(obs 布局面经出口上行,双侧同引)。
 
-from sr_od.application.currency_war.kernel.cw_telemetry_exit import (  # noqa: E402
-    DEFECT_KIND_BACK_LAYOUT_DIVERGENCE,
-    DEFECT_KIND_BACK_LAYOUT_UNKNOWN,
-)
 
-
-def record_back_layout_divergence(formula_n: int, cv_n: int,
-                                  source: str) -> None:
-    """记一条布局双通道分歧分键行(best-effort;run_id 缺省 no-op,恒 L2
-    auto_resolved——裁决已按信号梯完成,行面只承担不一致率统计)。"""
-    rid = _telstate._CURRENT_RUN_ID
-    if not rid:
-        return
-    record_defect(
-        'back_layout', DEFECT_KIND_BACK_LAYOUT_DIVERGENCE,
-        expected=f'formula={int(formula_n)}',
-        observed=f'cv={int(cv_n)}',
-        gap=float(int(cv_n)) - float(int(formula_n)),
-        gap_large=abs(int(cv_n) - int(formula_n)) > 1,
-        auto_resolved=True,
-        verdict=('留证-布局双通道分歧,已按三信号梯裁决'
-                 '(裁决序见 cw_back_layout.resolve_back_slots docstring;'
-                 '本键计数=不一致率,复现帧对拍 cv_back_slots)'),
-        refs=[{'stream': 'arbitration', 'key': f'source={source}'}],
-        reader_source=str(source or ''),
-        note='布局档双通道仲裁分键(证据层见 obs_conflicts '
-             'back_layout_channel_conflict 行)')
-
-
-def record_back_layout_unknown(source: str) -> None:
-    """记一条布局未知态分键行(best-effort;run_id 缺省 no-op,恒 L2
-    auto_resolved——未知态按读写分级+冻结止损处置,频度=验收锚点)。"""
-    rid = _telstate._CURRENT_RUN_ID
-    if not rid:
-        return
-    record_defect(
-        'back_layout', DEFECT_KIND_BACK_LAYOUT_UNKNOWN,
-        expected='公式/CV 至少一源可判',
-        observed='双弃权(布局未知态)',
-        gap=None, gap_large=False,
-        auto_resolved=True,
-        verdict=('留证-布局未知态(读类退 6 档基线,写类冻结止损;'
-                 '频度锚点=15号稿 §7 批 B/C 验收)'),
-        refs=[{'stream': 'arbitration', 'key': f'source={source}'}],
-        reader_source=str(source or ''),
-        note='布局未知态分键(证据层见 obs_conflicts back_layout 行)')
