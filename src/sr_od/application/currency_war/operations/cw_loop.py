@@ -12,6 +12,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_comps import form_progress
 from sr_od.application.currency_war.kernel.cw_performance import (
     RoundOutcome,
 )
@@ -210,7 +211,8 @@ def locked_resume_sync_and_battle(op, ctx):
     同步步**(deploy-swap/腾席/确定性部署整面跑一遍,零商店交互——锁定
     局「商店探针零响应」禁令只辖商店域,部署面不受辖)。
 
-    证据位语义(R1 修订):**RunDeploy ok=True 才置位**
+    证据位语义(修订出处 = .debug/temp/currency_war/20260905_postresync_audit/
+    问题清单.md R1):**RunDeploy ok=True 才置位**
     ``op._cw_locked_sync_done``——失败(drag 白拖/W209j 刹车/板满门退化)
     不置位,下环重试同步;连续失败达 ``_SYNC_RETRY_LIMIT``(3)后放弃
     (error 告警显影,依据:同步步幂等但与 StartBattle 重试共用 retry 池,
@@ -225,8 +227,31 @@ def locked_resume_sync_and_battle(op, ctx):
 
     **无条件插入,零血线判据**:hp 入参合规口径 = λ 表血带维或已确认
     硬地板授权(00_framework §3)——「hp≤阈值则强制同步」形态不落码,
-    挂账待玩家确认。与「达标即出战」臂(候选#1)同发射面:该臂落地时
-    须经本函数单一发射位,禁旁路(移交登记)。
+    挂账待玩家确认。与「达标即出战」臂(§9.6)的关系按 C1 规格:本函数
+    = 恢复局面调用面(闩辖),底层发射核 = ``launch_prepared_battle``
+    单一函数,达标臂经 ``readiness_battle_launch`` 调用面共用发射核、
+    **不过本闩**(W1:旧「须经本函数单一发射位,禁旁路」话术与 C1 矛盾,
+    按规格改写)。
+    """
+    return launch_prepared_battle(op, ctx, sync_once=True)
+
+
+def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
+    """出战底层发射核(C1 单一发射函数,14号稿 §9.6):RunDeploy 组合 +
+    StartBattle 的执行核,恢复局面与达标臂两调用面共用,禁各写一套
+    StartBattle 发射位。
+
+    - ``sync_once=True``(恢复局面面,调用面 = locked_resume_sync_and_
+      battle):首战前插备战同步步,**RunDeploy ok=True 才置位**证据位
+      ``op._cw_locked_sync_done``——失败(drag 白拖/W209j 刹车/板满门
+      退化)不置位下环重试;连续失败达 ``_SYNC_RETRY_LIMIT``(3)放弃
+      (error 显影;依据:同步幂等但与 StartBattle 重试共用 retry 池,
+      3 次覆盖 CV 幻影瞬态,持续失败=结构性)。锁定确认分支复位证据位
+      与失败计数。
+    - ``sync_once=False``(达标臂面,调用面 = readiness_battle_launch):
+      **不过闩**——每达标帧都 RunDeploy+StartBattle(部署面现读重建,
+      已同步形态下 RunDeploy 合法 no-op 即零待部署;闩只辖恢复局面,
+      达标臂第二次发射被「每局恰一次」闩吞 = C1 明令防的双源病)。
     """
     _SYNC_RETRY_LIMIT = 3
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
@@ -235,28 +260,131 @@ def locked_resume_sync_and_battle(op, ctx):
     )
     from sr_od.application.currency_war.prep_actions import PrepActionExecutor
     ex = PrepActionExecutor(op, ctx)
-    if not getattr(op, '_cw_locked_sync_done', False):
-        _ok, _detail = ex.execute(RunDeploy())
-        if _ok:
-            op._cw_locked_sync_done = True
-            op._cw_locked_sync_fails = 0
-            log.info('[cw-loop] 恢复局备战同步步(RunDeploy)完成: %s', _detail)
-        else:
-            _fails = getattr(op, '_cw_locked_sync_fails', 0) + 1
-            op._cw_locked_sync_fails = _fails
-            if _fails >= _SYNC_RETRY_LIMIT:
-                # 连续失败达上限:放弃重试(同步幂等但与 StartBattle 重试
-                # 共用 retry 池,无限重试抢预算;放弃侧代价 = 首战未同步,
-                # error 显影交判读,不静默)
+    if sync_once:
+        if not getattr(op, '_cw_locked_sync_done', False):
+            _ok, _detail = ex.execute(RunDeploy())
+            if _ok:
                 op._cw_locked_sync_done = True
-                log.error('[cw!][loop] 恢复局备战同步步连续 %d 次失败'
-                          '(最后一次: %s)→ 放弃重试,板面未同步开战',
-                          _fails, _detail)
+                op._cw_locked_sync_fails = 0
+                log.info('[cw-loop] 恢复局备战同步步(RunDeploy)完成: %s',
+                         _detail)
             else:
-                log.warning('[cw!][loop] 恢复局备战同步步失败(第 %d/%d 次,'
-                            '%s)→ 下环重试,证据位不置位', _fails,
-                            _SYNC_RETRY_LIMIT, _detail)
+                _fails = getattr(op, '_cw_locked_sync_fails', 0) + 1
+                op._cw_locked_sync_fails = _fails
+                if _fails >= _SYNC_RETRY_LIMIT:
+                    # 连续失败达上限:放弃重试(同步幂等但与 StartBattle 重试
+                    # 共用 retry 池,无限重试抢预算;放弃侧代价 = 首战未同步,
+                    # error 显影交判读,不静默)
+                    op._cw_locked_sync_done = True
+                    log.error('[cw!][loop] 恢复局备战同步步连续 %d 次失败'
+                              '(最后一次: %s)→ 放弃重试,板面未同步开战',
+                              _fails, _detail)
+                else:
+                    log.warning('[cw!][loop] 恢复局备战同步步失败'
+                                '(第 %d/%d 次,%s)→ 下环重试,证据位不置位',
+                                _fails, _SYNC_RETRY_LIMIT, _detail)
+        else:
+            log.debug('[cw-loop] 恢复局同步步已置位,跳过 RunDeploy')
+    else:
+        # 达标臂面:每帧 RunDeploy(部署面现读重建;已同步形态合法 no-op)
+        _ok, _detail = ex.execute(RunDeploy())
+        log.info('[cw-loop] 达标臂 RunDeploy: %s', _detail)
     return ex.execute(StartBattle())
+
+
+def readiness_admission_report(state, comp) -> dict:
+    """达标臂 G1 准入预估(§9.2 准入三元 + victim 收口,发射面显影用)。
+
+    返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 物理
+    槽位总数 DEPLOYED_CAPACITY(前后排定长槽表),feed 单一源 =
+    deployed_occupied)、``bench_core_waiting``(三元②:bench 存在线内
+    待上场件——口径 = core∪shared(predicates.line_members)∨ 阵营交集,
+    与买入/部署义务面对齐)、``victim_missing``(三元③:板上无合格
+    victim)。
+
+    victim 资格单一源 = offtarget_sell_allowed fenced 臂全条件(off-line
+    ∧ 围栏 ∧ 非保护域,保护域 = core∪shared∪替班者),与执行侧
+    _sell_offtarget_deployed 同款;**不附 1★ 全退门**——执行侧 swap 卖出
+    无退款资格前置,提案侧多一道门只会造成 victim_missing 误显影。
+    提案侧预估基于期望态现读;执行时刻以 CwOpDeploy 现读重建为准。
+    三元不全/victim 缺失**只显影不拦截**(出战优先;准入是观测面,
+    非第二道闸)。
+    """
+    from sr_od.application.currency_war.data.cw_chars import get_char
+    from sr_od.application.currency_war.kernel.cw_state import (
+        DEPLOYED_CAPACITY,
+        deployed_occupied,
+    )
+    from sr_od.application.currency_war.operations.cw_op.cw_op_deploy import (
+        offtarget_sell_allowed,
+        protect_names_of,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        line_members,
+    )
+    deployed = [d for d in (state.deployed or []) if d is not None]
+    bench = [b for b in (state.bench or []) if b is not None]
+    cores = set(getattr(comp, 'core_chars', []) or [])
+    line = set(line_members(comp))
+    protect = protect_names_of(comp)
+    t_factions = set(getattr(comp, 'all_factions', []) or [])
+    board_full = deployed_occupied(state.deployed or []) >= DEPLOYED_CAPACITY
+    bench_core_waiting = False
+    for b in bench:
+        name = b.char_id or ''
+        if name in line:
+            bench_core_waiting = True
+            break
+        ch = get_char(name)
+        if ch is not None and (set(ch.factions) | set(ch.flows)) & t_factions:
+            bench_core_waiting = True
+            break
+    victim_missing = True
+    for d in deployed:
+        name = d.char_id or ''
+        if not name or name in cores or name in protect:
+            continue
+        ch = get_char(name)
+        if ch is None:
+            continue
+        bonds = set(ch.factions) | set(ch.flows)
+        if not offtarget_sell_allowed(name, bonds, t_factions, cores,
+                                      fenced_offline_sellable=True,
+                                      protect_names=protect):
+            continue
+        victim_missing = False
+        break
+    return {'board_full': board_full, 'bench_core_waiting': bench_core_waiting,
+            'victim_missing': victim_missing}
+
+
+def readiness_battle_launch(op, ctx):
+    """达标即出战臂调用面(14号稿 §9.6):线成型(fp≥1.00,备战环锚帧)
+    ∧ 战斗就绪 ⇒ 立即 RunDeploy 组合 + StartBattle,不过
+    ``_cw_locked_sync_done`` 闩(C1:闩只辖恢复局面,达标臂每达标帧发射)
+    ——发射核与恢复局面共用 ``launch_prepared_battle``,禁第二套
+    StartBattle 发射位。发射前过 **G1 准入预估**(§9.2 三元+victim 收口,
+    ``readiness_admission_report``):板满∧bench core∧victim 缺失形态
+    记 ``deploy_swap_no_victim`` 分键(零静默,§9.2);准入只显影不拦截
+    (出战优先)。位次 = 备战环动作链之前、守卫计数之前(§10)。"""
+    try:
+        _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+        _st_adm = getattr(_sess, 'last_state', None)
+        _tc_adm = getattr(_sess, 'target_comp', None)
+        if _st_adm is not None and _tc_adm is not None:
+            _adm = readiness_admission_report(_st_adm, _tc_adm)
+            if (_adm['board_full'] and _adm['bench_core_waiting']
+                    and _adm['victim_missing']):
+                counters = getattr(_sess, 'cw4_counters', None)
+                if isinstance(counters, dict):
+                    counters['deploy_swap_no_victim'] = \
+                        counters.get('deploy_swap_no_victim', 0) + 1
+                log.warning('[cw!][loop] 达标臂 G1:板满 ∧ bench core 待上 '
+                            '∧ 无合格 victim → 本帧出战无腾位(显影,'
+                            'deploy_swap_no_victim)')
+    except Exception as e:  # noqa: BLE001  准入预估 best-effort,不阻塞出战
+        log.debug('[cw-loop] G1 准入预估失败(不阻塞): %s', e)
+    return launch_prepared_battle(op, ctx, sync_once=False)
 
 
 def register_flow_heartbeat(ctx, kind: str) -> None:
@@ -632,6 +760,22 @@ class CwLoop(SrOperation):
         if _m is not None and getattr(_m.session, 'bail_reason_counts', None):
             _m.session.bail_reason_counts.pop(reason, None)
 
+    def _record_cw4_counters_snapshot(self) -> None:
+        """行为观测计数局终落盘(best-effort 观测旁路,失败不阻塞收口)。
+
+        把 ``ctx.cw_match.session.cw4_counters`` 快照追加进 replay 流
+        (``cw4_counters.jsonl``),由 match_archive 装配端归局进档案顶层
+        同名字段(v7)。无 match/session/计数 → 落空快照(与无流可区分)。
+        """
+        if self.ctx.cw_match is None:
+            return
+        try:
+            from sr_od.application.currency_war.telemetry import match_archive
+            match_archive.record_cw4_counters_from_match(
+                state.get_recorder().replay_dir, self.ctx.cw_match)
+        except Exception as e:   # noqa: BLE001  观测旁路,best-effort
+            log.warning('[cw][counters] 计数快照落盘失败(不阻塞): %s', e)
+
     def _last_true_hp(self, fallback_hp: int | None) -> int | None:
         """summary final_hp 真值源(r3 live 修):outcomes 内存轨迹的末条真 hp。
 
@@ -682,6 +826,10 @@ class CwLoop(SrOperation):
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
             _final_hp = self._last_true_hp(_st.hp if _st is not None
                                            and _st.hp is not None else 0)
+            # 行为观测计数落盘(先于 runs summary——计数行 ts 须落局时间窗
+            # 内,晚于 end_ts 会掉窗丢计数;契约见 match_archive.record_-
+            # cw4_counters_snapshot 注释)。best-effort,不阻塞收口。
+            self._record_cw4_counters_snapshot()
             state.record_run_summary(
                 result='stopped' if _stopped else 'abandoned',
                 plane_reached=_st.plane if _st is not None else 1,
@@ -1199,6 +1347,20 @@ class CwLoop(SrOperation):
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
             self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
+            # 达标即出战臂(14号稿 §9.6,第七局复盘病灶:达标后 3 轮
+            # RunDeploy 合法 no-op 靠守卫停机才重置):线成型(form_progress
+            # ≥1.00,cw_comps 现读单一源,与 P59/ADR-0522 触发门同源)∧
+            # 战斗就绪(备战双锚已命中 = 战斗入口可用;overlay 在 0 系分支
+            # 先行清场)⇒ 立即经底层发射核出战,短路备战动作链。位次 =
+            # 动作链之前、守卫计数之前(§10;守卫规格零改动,达标帧守卫
+            # 分键零命中——§7.3 锚③);不过 _cw_locked_sync_done 闩(C1:
+            # 闩只辖恢复局面)。非达标帧现行序零变化,不重排。
+            _tc = getattr(self.ctx.cw_match.session, 'target_comp', None)
+            if _tc is not None and form_progress(_tc, state) >= 1.0:
+                _ok_r, _detail_r = readiness_battle_launch(self, self.ctx)
+                log.info('[cw-loop] 达标即出战(fp≥1.00,ok=%s): %s',
+                         _ok_r, _detail_r)
+                return self.round_wait(wait=3)
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
             # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
             # 自动开店收起探针;稳定性由外循环每轮重识别保证。)
@@ -1581,6 +1743,8 @@ class CwLoop(SrOperation):
                 # ⚠️ final_hp 语义修正(2026-08-17 r3 live):死局回大厅后 last_state.hp
                 # 是结算屏后读不到的 100 兜底(hp_readable=False)——summary 曾记 100 而
                 # 实际 1。改用 outcomes 侧最后真值(recorder 内存轨迹,conf=1.0 的末条)。
+                # 行为观测计数落盘(先于 runs summary,时序契约同上行收口路径)。
+                self._record_cw4_counters_snapshot()
                 state.record_run_summary(
                     result='win' if _outcome.won else 'loss',
                     plane_reached=_outcome.final_plane,

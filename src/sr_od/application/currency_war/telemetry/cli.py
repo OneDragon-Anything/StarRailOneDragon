@@ -180,6 +180,14 @@ def _cli_main() -> None:
               f" {archive.get('start_ts')} → {archive.get('end_ts')}"
               f" result={endgame.get('result')}"
               f"{'(abandoned)' if endgame.get('abandoned') else ''}")
+        # 行为观测计数(v7 档案字段):None=无计数流(旧局/计数流缺失,
+        # 数据缺失可区分);空 dict=真实零计数
+        _ct = archive.get('cw4_counters')
+        if _ct is None:
+            print('[cw4_counters] (无计数流:本批改动前落的局/流缺失)')
+        else:
+            print('[cw4_counters] ' + (', '.join(
+                f'{k}={v}' for k, v in sorted(_ct.items())) or '(零计数)'))
         for view_name, seg in _match_view_lines(tmp_root, segs, args.view):
             print(view_name)
             print('\n'.join(seg))

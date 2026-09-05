@@ -151,21 +151,25 @@ def arm0_need(deployed: list[BenchChar], bench: list[BenchChar],
     新拍定选择)。
 
     = |deployed| + |{ b ∈ bench | b ∈ k_members(predicates core∪shared
-    口径)∧ (b.name, b.star) ∉ deployed (名,星) 集合 }|。
+    口径)∧ b.name ∉ deployed 名集 }|,bench 内同名去重(集合计)。
 
-    排除谓词按 **(名,星) 口径**(Y3 采纳):「同名同星 ≤1」只辖同星,
-    推不出「与场上同名 bench 件不可上阵」——同名异星可否同场属玩法文档
-    未证事实,挂玩家确认(14号稿 §8⑫);确认前按 (名,星) 计(把同名
-    异星 bench 件计入 need,防战力滞留漏触发)。
+    排除口径 = **纯 name**(口径对齐收口,落地审清单 20260905_cp1_landing_review/问题清单.md:与真实部署去重语义对齐——
+    check_seats 对象列同名禁上阵 + cw_deploy_logic 按 cid 去重的实际
+    规则即「同名不可再上阵」;Y3 的 (名,星) 字面让位于部署真实语义,
+    不为凑字面制造虚 need:①同名异星 bench 件按 name 排除后不再虚计
+    (旧口径计 it = 为不可执行部署买等级);②bench 同名 ×2(臂① j=2
+    形态)去重计 1(双计消除,need 恒高估修正)。同名异星可否同场的
+    机制事实 = cw_deploy_logic 实答「不可」,§8⑫ 挂账相应收窄。)
+    成员集分叉声明(编排者存-2 裁决 = 有意设计):本谓词只量 k_members
+    (可部署现量),臂①囤腿的 buy_members 超集成员不入 need——囤腿件
+    走合成→上板,部署/升级授权面与囤腿面两口径禁混。
     """
-    dep_pairs = {(d.char_id or '', d.star or 1) for d in (deployed or [])}
+    dep_names = {d.char_id or '' for d in (deployed or [])}
     kset = set(k_members)
-    need = len(deployed or [])
-    for b in bench or []:
-        name = b.char_id or ''
-        if name in kset and (name, b.star or 1) not in dep_pairs:
-            need += 1
-    return need
+    extra = {b.char_id or '' for b in bench or []
+             if (b.char_id or '') in kset
+             and (b.char_id or '') not in dep_names}
+    return len(deployed or []) + len(extra)
 
 
 def arm0_level_lag(level: int, readable: bool, deployed: list[BenchChar], bench: list[BenchChar],
@@ -207,7 +211,7 @@ def p1_blood_floor(state) -> bool:
     (血带结构锚,禁本处字面量第二份)。信任门 = ``hp_decision_trusted``
     (kernel 单一源;P1 hp 读链毒化史,不可信帧/hp 无值帧 fail 向不判线
     ——fail 向 = 本线不触发,各消费面维持既有语义)。
-    **位面域 = 仅 plane 1**(落地审应-A):解锁包授权族 = P1 血线硬地板
+    **位面域 = 仅 plane 1**(落地审清单应-A,20260905_cp1_landing_review/问题清单.md):解锁包授权族 = P1 血线硬地板
     ——P2 深血线有自己的在产口径(p2_crisis_band ≈41,更宽域更早介入),
     P2 帧 hp≤15 若误开 P1 专属解锁包 = 授权域外搭车,不可接受;域外帧
     fail 向不判线,消费面维持既有语义。

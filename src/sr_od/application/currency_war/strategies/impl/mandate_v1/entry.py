@@ -439,6 +439,14 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 漂移修复:旧 ``obs.deploy_vacancy + len(deployed)`` 观察复合废弃
     # ——与 shop 侧 arm1 消费位同链单源;state 缺读=None,消费点
     # deploy_vacancy 保守 0)
+    # 部署面 membership 消费口径声明(评估出处 = 策略审查报告 20260905-093104-strategy-review/策略审查-第十二跳.md):本帧 k_members
+    # = predicates.line_members(core∪shared,部署语义口径)——部署/升级
+    # 授权只量可上阵阵容;买入义务面口径 = buy_members(shop 域,含锁定
+    # 采购集超集)——两口径分域 = 有意设计(编排者存-2 裁决:囤腿件走
+    # 合成→上板,部署面只量可部署现量)。分层归属:transition_pair 维持
+    # ADR-0367 二级囤货(locked_buy_membership 已排除,不入部署/买入义务);
+    # F3(全 2★ 旧线重锚)经编排者裁决驳回(前提事实错误:第十局板面为
+    # 全 1★ 旧线;§9.5 单一源资格已覆盖该病例),全 2★ 形态另案观察。
     frame = mandate.MandateFrame(
         gold=state.gold if state else 0,
         level=state.level if state else 3,

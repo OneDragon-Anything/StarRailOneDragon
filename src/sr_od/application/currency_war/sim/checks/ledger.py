@@ -245,9 +245,12 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
             if a.get('__type__') != 'LevelUp':
                 continue
             basis = a.get('auth', '')
+            # 白名单 = 前缀匹配:m3_batch 带触发臂分键后缀(arm1/arm0/pop,
+            # 达标/升级授权三臂可归因分键),禁回退精确等值(分键后缀漂移
+            # = 白名单误判违规,污染 ADR-0354 验收锚)
             if prev_level >= 5 and gold0 is not None and gold0 < 50 \
-                    and basis not in ('pop_slot', 'dp', 'static_ev',
-                                      'm3_batch'):
+                    and not (basis in ('pop_slot', 'dp', 'static_ev')
+                             or basis.startswith('m3_batch')):
                 out.append(
                     f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"

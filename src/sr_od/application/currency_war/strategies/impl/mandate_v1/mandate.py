@@ -392,7 +392,7 @@ def run_mandate(frame: MandateFrame,
         if not _arm0 and _arm0_key == 'level_unreadable':
             _count('arm0_level_unreadable')
         elif _arm0 and _cap_now is None:
-            _count('arm0_cap_unreadable')   # 存-3:cap 不可读静默弃权补分键
+            _count('arm0_cap_unreadable')   # 存-3(落地审清单 20260905_cp1_landing_review/问题清单.md):cap 不可读静默弃权补分键
             _arm0 = False
     # pop_slot(D-lv7 满编+富金+候补升 cap;落地审应-B:与商店栈同判据
     # 同单一源,三臂并联)——备战帧店面不可读 ⇒ buyable_candidate 腿

@@ -43,7 +43,10 @@ from sr_od.application.currency_war.telemetry.query import (
     HP_CONF_TRUSTED,
     read_jsonl,
 )
-from sr_od.application.currency_war.telemetry.schema import terminal_state_summary
+from sr_od.application.currency_war.telemetry.schema import (
+    append_jsonl,
+    terminal_state_summary,
+)
 
 log = log_utils.log
 
@@ -73,7 +76,13 @@ log = log_utils.log
 #: 重装配补齐)。加法字段。装配器选型依据:并段与对账本质是「读侧把
 #: 已落库的 run 段拼成一局」,写入端已如实落库无需改;恢复帧读数与终值
 #: 不符时两侧都是真读,装配器无权裁哪边是真值,只做显影交判读定谳。
-SCHEMA_VERSION: int = 6
+#: v7(行为观测计数落盘批):+顶层 ``cw4_counters``(策略行为观测计数
+#: 局终快照;写入端 = cw_loop 局终收口把 ``session.cw4_counters`` 经
+#: ``record_cw4_counters_snapshot`` 落 ``cw4_counters.jsonl``,装配端按
+#: 局时间窗纯读派生归局)。旧档案/无计数流经 load_archive 版本检查自动
+#: 重装配补齐(无窗内行 → None=数据缺失;空 dict=局内真实零计数)。
+#: 加法字段。
+SCHEMA_VERSION: int = 7
 
 #: 档案子目录(replay/matches/)
 MATCHES_DIRNAME: str = 'matches'
@@ -88,6 +97,10 @@ _SLICE_FILES: tuple[str, ...] = (
     'decisions.jsonl', 'outcomes.jsonl', 'shop_snapshots.jsonl',
     'exogenous.jsonl', 'invest_cards.jsonl', 'spend_ledger.jsonl',
 )
+
+#: 行为观测计数流(cw4_counters 局终快照;跨局 journal 无 run_id——
+#: 归局靠 ts 时间窗匹配,故不进按 run_id 过滤的 _SLICE_FILES)
+COUNTERS_FILE: str = 'cw4_counters.jsonl'
 
 #: 终局结果的完结值域;非此值(如 'stopped')= abandoned(ADR-0235 口径:
 #: 中断局也装配,标 abandoned 供判读分型)
@@ -547,6 +560,67 @@ def _resume_reconciliation(segments: list[str],
     return out
 
 
+def _match_counters(rd: Path, start_ts: str, end_ts: str) -> dict[str, Any] | None:
+    """局时间窗内的计数快照归并(纯读派生;v7 顶层 ``cw4_counters``)。
+
+    - 写入端每局终落一行 ``{ts, counters}``(局终收口时点,``ts`` 与
+      runs 行同秒级 ISO 格式且早于/等于局 end_ts——cw_loop 两收口路径
+      均先落计数再写 runs summary)。归局判据 = ``start_ts <= ts <=
+      end_ts`` 闭区间;窗内多行(理论不出现,防御性容忍)按 ts 升序
+      dict-merge(后写覆盖同键)。
+    - 返回语义:**None = 窗内无计数行**(本批改动前落的局/计数流缺失,
+      数据缺失可区分);**空 dict = 局内真实零计数**(写入端无计数也
+      落空快照)。续局段重开进程会丢前段 session 计数——快照只含当前
+      进程生命周期内的计数,诚实缺省不补猜。
+    """
+    if not start_ts:
+        return None
+    rows = [r for r in read_jsonl(rd / COUNTERS_FILE)
+            if start_ts <= _row_ts(r) <= end_ts]
+    if not rows:
+        return None
+    merged: dict[str, Any] = {}
+    for r in sorted(rows, key=_row_ts):
+        c = r.get('counters')
+        if isinstance(c, dict):
+            merged.update(c)
+    return merged
+
+
+def record_cw4_counters_snapshot(replay_dir: Path | str,
+                                 counters: dict[str, Any] | None) -> dict[str, Any]:
+    """落一行行为观测计数局终快照(``cw4_counters.jsonl`` 写端唯一入口)。
+
+    - 数据源 = 局内 session 的 ``cw4_counters``(策略侧计数载体,键登记
+      见 strategies/impl/mandate_v1/design_telemetry 键节;sim 侧抽取
+      先例 = ab_core_swap.cw4_disclosure_from_session,本写端落**全量**
+      键——披露键族是它的子集,归档面不预筛,筛桨留给消费端)。
+    - 调用时序契约:必须在局终 runs summary **之前**写(行 ts 参与归局
+      时间窗,晚于 end_ts 会掉出窗外 = 计数丢失;cw_loop 两收口路径已按
+      此序接线)。
+    - ``counters=None/缺`` → 落空 dict 快照(与「无计数流」可区分;
+      ``_match_counters`` 返回语义见其注释)。返回实际写入的快照 dict。
+    """
+    snapshot = dict(counters or {})
+    append_jsonl(Path(replay_dir) / COUNTERS_FILE, {
+        'ts': datetime.now().isoformat(timespec='seconds'),
+        'counters': snapshot,
+    })
+    return snapshot
+
+
+def record_cw4_counters_from_match(replay_dir: Path | str,
+                                   match: Any) -> dict[str, Any]:
+    """从对局载体(CurrencyWarMatch)提取计数快照并落盘(cw_loop 收口用)。
+
+    ``match`` 无 session / session 无 cw4_counters(策略未初始化计数,
+    如 default 栈)→ 落空快照;异常由调用方 best-effort 包裹。
+    """
+    session = getattr(match, 'session', None)
+    return record_cw4_counters_snapshot(
+        replay_dir, getattr(session, 'cw4_counters', None))
+
+
 def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any]:
     """装配单局档案 dict(纯读 + 内存组装;不落盘)。
 
@@ -588,6 +662,9 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
     return {
         'schema_version': SCHEMA_VERSION,
         'game_id': game['game_id'],
+        # 行为观测计数局终快照(v7;None=无计数流,判读按「数据缺失」)
+        'cw4_counters': _match_counters(rd, game.get('start_ts') or '',
+                                        game.get('end_ts') or ''),
         'strategy_version': strategy_version,
         'segments': seg_summaries,
         'start_ts': game.get('start_ts') or '',

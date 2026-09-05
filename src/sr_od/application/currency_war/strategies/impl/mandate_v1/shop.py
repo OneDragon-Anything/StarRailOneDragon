@@ -592,18 +592,21 @@ def decide_shop_action(state: GameState, session: StrategySession,
 
     # m2_stockpile(臂①囤腿,j=1 第二份;14号稿 §3.2-3.4,发射位次 =
     # M2 主循环之后、M2b 之前,理由键 'm2_stockpile'):
+    # 成员集分叉声明(编排者存-2 裁决 = 有意设计):本臂循环 buy_members
+    # (锁定采购集超集)而 arm0_need 只量 k_members——囤腿件走合成→上板,
+    # 部署/升级授权面只量可部署现量,两口径禁混。
     # 触发 = m ∈ buy_members ∧ cnt1(m)==1 ∧ cnt2(m)==0(二-1:cnt2>0 帧
     # 臂①不判,防制造 cnt1=2∧有2★ 死库存)∧ 店内有该成员 **1★** 在售
     #(N7 星过滤:候选锚按 name 过滤不分星,店含同名 2★ 直出卡会取错);
     # 单提案至多购 1 张(F2 防御性上限——merge §2.5 自动多买在 j=1 帧的
     # 辖域未核,宁少买不多买,确认后如允许多买走规格修订)。
-    # 拒因序 = 金闸前置 → M4 腾席(落地审存-1:j=1 囤腿优先级低于缺员,
+    # 拒因序 = 金闸前置 → M4 腾席(落地审清单存-1,20260905_cp1_landing_review/问题清单.md:j=1 囤腿优先级低于缺员,
     # 满栏+金不足帧禁「先卖燃料件再报 unaffordable」的不可逆净损);拒因
     # 计数粒度申报 = 每成员命中一笔(帧内多成员可累计,与 visit 粒度键
-    # 对拍时须声明,落地审低-2)。bench 满 → M4 腾席(Y5:02 §3 M2 硬约束
+    # 对拍时须声明,清单低-2)。bench 满 → M4 腾席(Y5:02 §3 M2 硬约束
     # 同构,腾席后仍满记 'bench_full' 普通席闸键,非 merge_bench_full);
     # 金不足记 stockpile_unaffordable;cnt 达标但店内仅同名 2★ 直出卡 ⇒
-    # m2_stockpile_star_mismatch 分键(W4 零静默,与 M2b 分键,低-1)。
+    # m2_stockpile_star_mismatch 分键(W4 零静默,与 M2b 分键,清单低-1)。
     def _cnt(name: str, star: int) -> int:
         """同名同星副本计数(全局面 bench∪deployed;14号稿 §3.5 单一源:
         按 (名,星) 分星计数,2★ 成件不折算 1★)。"""
@@ -706,7 +709,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # M3 升级(触发信号三臂并联;D-BUYNOTE:P48 整买纪律内嵌)。单动作
     # 粒度:每帧恰发一个「购买经验」单击动作(升一级 = 一个动作 op,
     # clicks = 动作内部步骤,外部买面不可插花——ADR-0517 §权衡)。
-    # 双栈同义面声明(落地审阻-1/应-2 修复):本块与备战批栈
+    # 双栈同义面声明(落地审清单阻-1/应-2,20260905_cp1_landing_review/问题清单.md):本块与备战批栈
     # (mandate.run_mandate M3)消费同一组触发臂——
     # arm1_existence(板满∧bench 有候补)/ arm0_level_lag(等级落后于
     # 上阵人数需求,need = 期望态现量 (名,星) 口径 Y3,level 消费
@@ -784,6 +787,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 ('stockpile', 'stockpile_buy'),
                 contracts.ContractCtx(k_members=k_members), counters)
             for card in (state.shop or []):
+                name = card.name or ''
+                # 线内追星段排除(落地审清单存疑收口,N2/§3.7):线内副本
+                # 的买入全链归义务通道(M2 j=0→1 / 臂① j=1∧cnt2=0 / M2b
+                # j=2 完成段,§3.4 边界表)——M6 压库若买线内 1★ 副本会
+                # 绕过臂① cnt2==0 守卫制造「cnt1=2∧有 2★」死库存
+                #(§3.7 让渡形态)。压库域收窄为非线内件,分键零静默。
+                if name in buy_members:
+                    _count('m6_line_member_excluded')
+                    continue
                 cost = card.cost if card.cost else 3
                 okm, _mkey = crit_stockpile.stockpile_buy(
                     gold, s_reserve, bench_free, cost,
