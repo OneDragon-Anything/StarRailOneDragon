@@ -33,6 +33,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from cv2.typing import MatLike
+
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -295,10 +297,15 @@ class ShopActionOp(ABC):
         调用方据此跳过投影保持双账一致)。"""
 
 
-def buy_click_ineffective(before, after, diff_thr: float = 12.0) -> bool:
+def buy_click_ineffective(before: MatLike | None, after: MatLike | None,
+                          diff_thr: float = 12.0) -> bool:
     """买后同 rect 卡面未变判定(纯函数):灰度差均值 < 阈值 ⇒ 卡未离场
     = 购买未生效(点击落空/试用/被拦)。任一裁片缺失或形状不等 ⇒ False
     (不可判不污账,保持既有记账;第十八局 p2r7 形态的执行侧检出)。
+
+    阈值标定带:未生效形态 = 同卡逐帧重摄(均值差 ≈ 0,静态卡面);
+    生效形态 = 整卡替换/离场(均值差 > 100);12.0 = 两形态间的保守带,
+    中间带无实机样本,细标定挂账(候选 = 采 Both 形态各 N 帧分位数)。
     """
     if before is None or after is None:
         return False
@@ -364,7 +371,11 @@ class BuyCardOp(ShopActionOp):
                     note='计划花费>0 金差≈0 形态的执行侧闭环')
             log.warning(f'[cw-shop] Buy 未生效(卡面未变):'
                         f'{action.card.name}')
-            return True
+            # 基类契约「未落地=False、两侧都不动」:False ⇒ 调用方跳过
+            # project()/guard——期望账不得投影未发生的买入(落地审 C1:
+            # 旧 return True 使期望账/tracked 分叉,guard 断言当轮炸,
+            # 满栏豁免下假买入还污染下次对账)。
+            return False
         ledger.total_buy += 1
         ledger.spend_executed += action.card.cost
         if action.card.name:
@@ -386,7 +397,7 @@ class BuyCardOp(ShopActionOp):
                         if _d and _sys and members_in_shop(
                                 _sys, {action.card.name}):
                             record_drought_buy_no_reset(
-                                match.session, member=action.card.name,
+                                member=action.card.name,
                                 system=_sys, drought=_d)
         mutate_bench_deployed(match.session.tracked_bench_chars,
                               match.session.tracked_deployed, action)
