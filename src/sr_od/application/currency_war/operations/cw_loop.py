@@ -201,6 +201,33 @@ def write_strategy_dead_flag(streak: int, key: tuple | None, run_id: str,
     return str(p)
 
 
+def locked_resume_sync_and_battle(op, ctx):
+    """恢复局锁定直出战(ADR-0329)+ **首战前备战同步步**(策略审查
+    十二跳 #7):恢复局分支原样跳过全部备战交互直接 StartBattle,板面
+    调整被跳过(实证:恢复局首战快照 board_before 为空——部署面零执行)。
+    本函数在 StartBattle 前插一次 **RunDeploy 组合同步步**(deploy-swap/
+    腾席/确定性部署整面跑一遍,零商店交互——锁定局「商店探针零响应」
+    禁令只辖商店域,部署面不受辖);每锁定局恰一次
+    (``op._cw_locked_sync_done`` 证据位),同步后 StartBattle 照旧。
+    **无条件插入,零血线判据**:hp 入参合规口径 = λ 表血带维或已确认
+    硬地板授权(00_framework §3)——「hp≤阈值则强制同步」形态不落码,
+    挂账待玩家确认。与「达标即出战」臂(候选#1)同发射面:该臂落地时
+    须经本函数单一发射位,禁旁路(移交登记)。
+    """
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        RunDeploy,
+        StartBattle,
+    )
+    from sr_od.application.currency_war.prep_actions import PrepActionExecutor
+    ex = PrepActionExecutor(op, ctx)
+    if not getattr(op, '_cw_locked_sync_done', False):
+        _ok, _detail = ex.execute(RunDeploy())
+        log.info('[cw-loop] 恢复局备战同步步(RunDeploy,每锁定局一次): %s',
+                 _detail)
+        op._cw_locked_sync_done = True
+    return ex.execute(StartBattle())
+
+
 def register_flow_heartbeat(ctx, kind: str) -> None:
     """流程性合法无声轮的心跳载体行(策略失活判据修复;恢复局锁定直出战
     与补给节点两类分支按设计不产生任何策略决策行,整轮零心跳会被失活
@@ -1284,6 +1311,7 @@ class CwLoop(SrOperation):
                     else:
                         self._cw_locked_resume = True
                         self._cw_locked_round = _pr[1]
+                        self._cw_locked_sync_done = False   # 新锁定局:首战前同步步待执行
                         import contextlib
                         with contextlib.suppress(Exception):   # 遥测 best-effort
                             recorder.record_exogenous(
@@ -1292,14 +1320,9 @@ class CwLoop(SrOperation):
                         log.warning('[cw!][loop] 恢复局锁定确认(P%s-r%s,商店探针'
                                     '零响应)→ 直接出战', _pr[0], _pr[1])
             if self._cw_locked_resume:
-                from sr_od.application.currency_war.kernel.cw_prep_actions import (
-                    StartBattle,
-                )
-                from sr_od.application.currency_war.prep_actions import (
-                    PrepActionExecutor,
-                )
-                progressed, detail = PrepActionExecutor(
-                    self, self.ctx).execute(StartBattle())
+                # 首战前备战同步步 + StartBattle(组合封装,见函数 docstring;
+                # 同步步每锁定局恰一次,证据位 _cw_locked_sync_done)。
+                progressed, detail = locked_resume_sync_and_battle(self, self.ctx)
                 if progressed:
                     self._cw_locked_resume = locked_after_start_battle(progressed)
                     self._battle_ts = time.monotonic()   # ADR-0250:战斗窗口开
