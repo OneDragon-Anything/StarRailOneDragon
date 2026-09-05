@@ -539,7 +539,9 @@ def effective_refresh_prob(state: GameState, level: int, cost: int) -> float:
       (read_refresh_probs 契约「读不到 → None 退基线」);
     - 结构内缺键 → 基线表(缺键禁当确证零);
     - 键在但 ≤0 → 基线表(轮岗只翻倍不归零,概率条 0 = 采样不可信,
-      同款 `or` 回退);
+      同款 `or` 回退;机制出处 =
+      docs/game/currency_war/research/economy.md:66「轮岗:每备战期一
+      随机费用概率 ×2」——翻倍不归零);
     - 键在且 >0 → 实读真值(轮岗翻倍档直用)。
     """
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
