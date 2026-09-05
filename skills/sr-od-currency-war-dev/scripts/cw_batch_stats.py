@@ -15,6 +15,14 @@
 - 「危局空转」= 连败≥2 或 hp≤40 窗口内的零动作轮(复盘试金石:140843 局 R4-6 金44-57 连败不花);
 - sim 侧无词缀/补给选项(未建模)——词缀分组仅档案模式;补给选择相关率挂档案二期字段缺口;
 - 末尾「表现不好的指标→最差局」是纯排序,不拍阈值;哪边算差见各指标括号(高为差/低为差)。
+- 位面/锁线辖域披露(L 节):planes/plane_list/locked_frames 三字段数据源 = 逐局
+  decisions 行现有键(planes = plane 键集合;锁线布尔 = v3_intention.locked_comp 非空,
+  单一源与引擎一致);档案轮无 v3_intention 键 → locked_frames 为「无数据」不误报 0;
+  单面批(planes=1)自动声明「L2 辖域不可达」注记——L2 触发链前置锁线,位面入口
+  才建立锁线态,单面批 L2=0 是辖域结果,禁当行为信号;
+- 对拍口径:统一触发面键 = cw4_counters.must_spend_l2_trigger(触发帧数),
+  发射面 = must_spend_layer_hit.L2(层命中),两者分开披露不互换(实机报告键口径
+  = 触发帧数,与批报告发射数不对称,对拍时先对齐口径)。
 """
 from __future__ import annotations
 
@@ -65,6 +73,8 @@ def _sim_rows(batch: Path) -> dict[str, list[dict]]:
             'plane': key[0], 'round': key[1], 'node_type': None,
             'gold': r.get('gold'), 'hp': r.get('hp'), 'hp_delta': None,
             'form': r.get('b_t', r.get('form_score')), 'form_ok': r.get('form_ok'),  # b_t 优先(新数据),form_score 回退读历史(退役只读)
+            # 锁线布尔(单一源 = v3_intention.locked_comp 非空;L 位面/锁线辖域披露用)
+            'locked': bool((r.get('v3_intention') or {}).get('locked_comp')),
             'level': st.get('level'), 'deployed': st.get('deployed') or [],
             'factions': dict(st.get('board_factions') or {}), 'acts': r.get('actions') or [],
             # 达标臂发射事件(行内 launch 键,engine_p1 建模;None=未触发)
@@ -121,6 +131,8 @@ def _archive_rows(mid: str) -> dict[str, list[dict]]:
         'plane': r.get('plane'), 'round': r.get('round'), 'node_type': r.get('node_type'),
         'gold': r.get('gold'), 'hp': r.get('hp'), 'hp_delta': r.get('hp_delta'),
         'form': r.get('b_t', r.get('form_score')), 'form_ok': r.get('form_ok'),  # b_t 优先(新数据),form_score 回退读历史(退役只读)
+        # 档案轮无 v3_intention 键 → None(锁线辖域披露为「无数据」,不误报 0)
+        'locked': None,
         'level': r.get('level'), 'deployed': r.get('deployed') or [],
         'factions': dict(r.get('board') or {}), 'acts': r.get('actions') or [],
         # 档案侧发射面:行动作里的 StartBattle(生产发射核执行痕迹;
@@ -277,6 +289,13 @@ def analyze_game(rows: list[dict]) -> dict:
             _cts[k] = _cts.get(k, 0) + int(v or 0)
     m['刷新触发源'] = _src
     m['cw4计数器增量'] = _cts
+    # L 位面/锁线辖域披露(L2 不对称归因定谳配套,零语义只披露):
+    # planes/plane_list 批级聚合在 report 侧,这里只备逐局量;锁线布尔
+    # 单一源 = v3_intention.locked_comp 非空,档案行 None → 无数据不误报。
+    m['锁线帧'] = (sum(1 for r in rows if r.get('locked'))
+                   if any(r.get('locked') is not None for r in rows) else None)
+    m['l2统一触发帧'] = _cts.get('must_spend_l2_trigger', 0)
+    m['l2_rest_capacity拒'] = _cts.get('fuel_filler_stall_fenced_l2_rest_capacity', 0)
     # D 战斗过程
     lo, wo = [], []
     for r in rows:
@@ -413,6 +432,26 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     _ct_rest = len(_ct_tot) - len(_ct_show)
     if _ct_rest:
         print(f'  (其余 cw4 计数器键 {_ct_rest} 个不入打印,obs 载全量增量)')
+    print('\n-- L 位面/锁线辖域披露(L2 不对称归因定谳配套;零语义只披露) --')
+    planes_all = sorted({r['plane'] for rows in rows_by_game.values() for r in rows})
+    print(f'  planes: {len(planes_all)} | plane_list: {planes_all}')
+    lock_vals = [m['锁线帧'] for m in ms.values() if isinstance(m.get('锁线帧'), int)]
+    print(f'  locked_frames 合计: {sum(lock_vals) if lock_vals else "无数据(非 sim 源无锁线布尔)"}')
+    if len(planes_all) == 1:
+        print('  注: 单面批(planes=1)——L2 辖域不可达(触发链前置锁线,锁线态'
+              '在位面入口才建立,本批锁线帧=0),L2=0 是辖域结果,禁当行为信号')
+    _trig_tot = sum(m.get('l2统一触发帧') or 0 for m in ms.values())
+    _rest_tot = sum(m.get('l2_rest_capacity拒') or 0 for m in ms.values())
+    _l2_emit = sum(int((m.get('必花域层命中') or {}).get('L2') or 0)
+                   for m in ms.values())
+    # 对拍口径注记:触发面(统一触发面键)与发射面(层命中)分开披露,禁互换
+    print(f'  L2 统一触发帧(cw4_counters.must_spend_l2_trigger): {_trig_tot or "无数据"}'
+          f' | L2 发射(must_spend_layer_hit.L2): {_l2_emit or "无数据"}')
+    print(f'  l2_rest_capacity 拒(fenced 拆键,单列只披露): {_rest_tot or "无数据"}')
+    if _rest_tot:
+        print('  注(判读面候选登记,非缺口定谳): 「板未满 1-2 格 ∧ 垫件在售 ∧ '
+              'L3 不可用」= 结构性残量白名单扩行候选;翻转条件 = 垫件定性改为'
+              '「纯经济消费须买」(出口③判读配套,候裁)')
     print('\n-- 表现不好的指标 → 体现最重的局(每指标 2 局;第 3 步挑局复盘的抽样单) --')
     for key, d in WORST_METRICS:
         vals = [(m.get(key), rid) for rid, m in ms.items()
