@@ -41,7 +41,6 @@ from sr_od.application.currency_war.kernel.cw_equip_env import (
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.obs.cw_equipment import (
-    load_equip_templates,
     read_equips,
 )
 from sr_od.context.sr_context import SrContext
@@ -161,6 +160,32 @@ def classify_tool_consume(pre_owned: list[str], post_owned: list[str],
     return 'cancel', [], []
 
 
+def run_tool_queue(queue: list[ToolDragPlan], exec_fn, replan_fn,
+                   max_pass: int = _TOOL_MAX_PER_PASS) -> tuple[int, int]:
+    """工具执行环驱动(纯控制流,注入执行/重规划;离线可锁)。
+
+    while 队列循环:首件消费后画面网格 reflow → **剩余计划坐标全部作废**
+    (三审定谳:沿用切片快照的过期坐标拖曳 = 误烧负操作,已落错的首次
+    拖曳确认通道救不回)——故每件 consumed/partial 后经 ``replan_fn``
+    重读画面**整条重建**队列;replan 内须用 fresh owned 重评 admitted
+    (不沿用初始准入:首件消费改变死库存/m=1 结构,旧准入对新板面失效,
+    显式化而非依赖下游过滤兜底)。cancel 件直接丢弃(exec_fn 内重试
+    预算已耗尽,同件原地重拖失败相关,bug#1 结论)。``max_pass`` =
+    执行尝试硬上限(防「消费后重评仍放行同件」形态空转)。返回
+    (consumed, attempts)。
+    """
+    consumed = attempts = 0
+    while queue and attempts < max_pass:
+        plan = queue.pop(0)
+        outcome = exec_fn(plan)
+        attempts += 1
+        if outcome == 'consumed':
+            consumed += 1
+        if outcome != 'cancel':
+            queue = replan_fn()
+    return consumed, attempts
+
+
 class CwOpTools(SrOperation):
     """备战:G1 准入 admitted 工具动作 → 逐件 drag → 消耗确认通道对拍登记。
 
@@ -175,21 +200,11 @@ class CwOpTools(SrOperation):
         SrOperation.__init__(self, ctx, op_name='货币战争-工具消耗')
 
     def _get_templates(self):
-        """加载 cw_equip SIFT 模板(缓存 ctx.cw_equip_templates,与穿戴同源)。"""
-        cached = getattr(self.ctx, 'cw_equip_templates', None)
-        if cached is not None:
-            return cached
-        from one_dragon.utils.file_utils import get_project_root
-        base = get_project_root() / 'assets/template'
-        equip_dir = base / 'currency_war' / 'equip_plaza'
-        if not equip_dir.is_dir():
-            equip_dir = base / 'currency_war' / 'equip_legacy'
-        if not equip_dir.is_dir():
-            log.warning('[cw-tools] cw_equip 模板库不存在 %s', equip_dir)
-            return None
-        templates = load_equip_templates(equip_dir)
-        self.ctx.cw_equip_templates = templates
-        return templates
+        """加载 cw_equip SIFT 模板(单一源 = cw_op_equip_all 共享 helper)。"""
+        from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
+            get_equip_templates_cached,
+        )
+        return get_equip_templates_cached(self.ctx)
 
     def _read_owned(self) -> list:
         """现读 owned 全量命中([(名, (cx,cy), score)];区域 = 建档单一源)。"""
@@ -294,13 +309,12 @@ class CwOpTools(SrOperation):
                      [(p.tool, p.target) for p in skipped])
         if not plans:
             return self.round_success('无可用工具动作(判据拒/准入拒见 [cw!][tools] 分键)')
-        executed = 0
-        for plan in plans[:_TOOL_MAX_PER_PASS]:
+
+        def _exec(plan: ToolDragPlan) -> str:
             outcome, removed, added = self._exec_plan(plan)
             self._register_consume(_sess, outcome, removed, added,
                                    plan.tool, plan.target)
             if outcome == 'consumed':
-                executed += 1
                 log.info('[cw-tools] %s→%s 消费成功 removed=%s added=%s',
                          plan.tool, plan.target, removed, added)
             elif outcome == 'partial':
@@ -310,10 +324,29 @@ class CwOpTools(SrOperation):
             else:
                 log.info('[cw!][tools] tool_consume_cancel %s→%s(重试预算耗尽)',
                          plan.tool, plan.target)
-            # 逐件消费后画面网格 reflow → 剩余计划坐标作废,重读重规划
-            if outcome != 'cancel':
-                hits = self._read_owned()
-                plans = [p for p in plan_tool_drags(admitted, hits, comp)
-                         if p.tool_pos is not None
-                         and p.target_pos is not None and p.target]
-        return self.round_success(f'工具消费 {executed} 件(确认通道对拍完成)')
+            return outcome
+
+        def _replan() -> list[ToolDragPlan]:
+            """整条重建队列:fresh owned 现读 + admitted 重评(不沿用初始
+            准入,run_tool_queue docstring)+ 坐标全现读。"""
+            fresh_hits = self._read_owned()
+            fresh_names = owned_hits_names(fresh_hits)
+            fresh_admitted = admitted_tool_actions(
+                evaluate_tool_actions(fresh_names, comp))
+            for a in fresh_admitted:
+                log.info('[cw!][tools] replan tool=%s action=%s usable=%s '
+                         'reason=%s', a.tool, a.action, a.usable,
+                         a.reason or '-')
+            fresh_plans = plan_tool_drags(fresh_admitted, fresh_hits, comp)
+            skipped = [p for p in fresh_plans
+                       if p.tool_pos is None or p.target_pos is None
+                       or not p.target]
+            if skipped:
+                log.info('[cw-tools] 重规划计划面缺 icon(识别 miss)跳过: %s',
+                         [(p.tool, p.target) for p in skipped])
+            return [p for p in fresh_plans
+                    if p.tool_pos is not None and p.target_pos is not None
+                    and p.target]
+
+        consumed, _attempts = run_tool_queue(plans, _exec, _replan)
+        return self.round_success(f'工具消费 {consumed} 件(确认通道对拍完成)')
