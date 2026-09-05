@@ -537,14 +537,12 @@ def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
 
 #: 轮内新鲜度排除载体(session 属性名):发射位买入时逐名写入的名集,
 #: 键式 = {'phase': (plane, round_num), 'names': set[str]}——位面/轮次
-#: 推进自动失效(M7 闩键式同构)。⚠️ 写点现状(三审 C1 勘误):当前仅
-#: sim/engine_p1 决策帧接线,生产买入发射位(shop.py)写点候 M1″ 开闸
-#: 小批补接(ADR-0530 挂账)——实机侧防抖在此前不生效,失真经 fresh_buy
-#: 拒因不可追溯(与 sim 侧不对称,开闸前置义务)。取舍声明:沿用发射位
-#: 写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),被截断器丢弃的买入
-#: 意图也入排除集 = 过度排除压制合法 swap,方向安全(留置合法稳态,
-#: dd-037 口径),失真经 fresh_buy 拒因可追溯;单调性由义务集排除独立
-#: 承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
+#: 推进自动失效(M7 闩键式同构)。写点 = 生产 shop.py 全部 BuyCard 发射位
+#: 经 ``_emit_buy`` 收口调用(5edcf324)+ sim/engine_p1 决策帧。
+#: 取舍声明:沿用发射位写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),
+#: 被截断器丢弃的买入意图也入排除集 = 过度排除压制合法 swap,方向安全
+#: (留置合法稳态,dd-037 口径),失真经 fresh_buy 拒因可追溯;单调性由
+#: 义务集排除独立承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
 SWAP_FRESH_BUYS_ATTR: str = 'cw4_swap_fresh_buys'
 
 

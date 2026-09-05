@@ -429,5 +429,5 @@
 | 0525 | exit3-stall-fuel-filler | 出口③ Φ_stall 过渡件垫件出口(有界成本结构改善授权) | 已实施 |
 | [0526-equip-wear-release-strategy.md](0526-equip-wear-release-strategy.md) | ADR-0526: 装备穿戴策略语义落码——hold 触发权归策略侧+释放判据表五行+词缀条件优先层(18 号稿,零漂移锁面在案) | 已实施 |
 | [ADR-0529-invest-strategy-entry-reprobe.md](ADR-0529-invest-strategy-entry-reprobe.md) | ADR-0529: 投资策略屏入口锚动画帧复探——单探测 round_fail 退役(20/21 局同型失败治本;首探 miss→短窗新截图复探,超窗仍 miss 才 fail),与 cw_loop N5 分发复探同族 | 已实施 |
-| [0530-board-full-swap-redeploy.md](0530-board-full-swap-redeploy.md) | ADR-0530: 板满换阵补部署(M1″)——kernel swap 计划谓词单一源+发射位 seam 门缺省关+卖出通道统一义务集排除(sim 探针 0/2700 → 效果判定挂实机) | 已实施 |
+| [0530-board-full-swap-redeploy.md](0530-board-full-swap-redeploy.md) | ADR-0530: 板满换阵补部署(M1″)——kernel swap 计划谓词单一源+发射位 seam 门已开闸(M1P_SEAM_VERIFIED=True,5edcf324)+卖出通道统一义务集排除(含 fresh 生产写点接线) | 已实施 |
 | [0531-opening-narrow-tool-consume.md](0531-opening-narrow-tool-consume.md) | ADR-0531: 装备策略残余落码——opening hold 释放门收窄(O1/O2 逐件判定,支配性论证零新参数)+ 工具件消费判据面(冷启动分支炉准入+扳手闸,G1 发射位准入 fail-closed,遥测 row1/row2 分键)(21 号稿) | 已实施 |

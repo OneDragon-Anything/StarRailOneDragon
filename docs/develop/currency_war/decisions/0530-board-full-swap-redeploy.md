@@ -7,6 +7,10 @@ seam 门(`cw4_m1p_seam_verified`)缺省关属合法开关形态,但按开关生�
 恒满」=本 ADR 所治形态的实机代价已两现,开闸核对小批(两侧输入逐字段
 对齐证据)随即立项;对齐证据齐 + 置位验收判据(实机 m1p_* 读数)达成
 即核销本期限。超期未决 = 违规,处置 = 置位或退役关。
+【核销回记 2026-09-06】前置已兑付(fresh 生产写点接线 5edcf324+对齐证据
+m1p_seam_alignment/对齐证据.md 随档),seam 门已置位 True;实机验收判据
+(m1p_fired≥1 ∧ m1p_input_seam_pending 归零 ∧ sell-offtarget 闭环分键)
+候第二十三局起读数,回滚 = M1P_SEAM_VERIFIED 写回 False 单点恢复。
 
 ## 背景
 
