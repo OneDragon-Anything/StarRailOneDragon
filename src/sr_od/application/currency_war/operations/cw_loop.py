@@ -1356,7 +1356,9 @@ class CwLoop(SrOperation):
             # 分键零命中——§7.3 锚③);不过 _cw_locked_sync_done 闩(C1:
             # 闩只辖恢复局面)。非达标帧现行序零变化,不重排。
             _tc = getattr(self.ctx.cw_match.session, 'target_comp', None)
-            if _tc is not None and form_progress(_tc, state) >= 1.0:
+            _ms = getattr(self.ctx.cw_match.session, 'last_state', None)
+            if (_tc is not None and _ms is not None
+                    and form_progress(_tc, _ms) >= 1.0):
                 _ok_r, _detail_r = readiness_battle_launch(self, self.ctx)
                 log.info('[cw-loop] 达标即出战(fp≥1.00,ok=%s): %s',
                          _ok_r, _detail_r)
