@@ -137,3 +137,36 @@
 3. **L2/L3 被动采集样本**(已穿非空局/落空样本)到达后,回验 §1.2-3 语义声明与哨兵辖域二分的实机分布——不阻塞本篇收口。
 4. **濒死段 hold 判读面**(对抗轮一观察附注):第十六局 3 条 hold 帧位于 hp=1/3 濒死段——「by-design」只定谳非执行缺陷,件二判据评估须把濒死场景入判读面,不构成本篇缺口。
 5. 本篇为 as-designed;落码批(消费位改造+签名扩展+结构化载体)另立项,须自带 ADR + 单帧锁 + 三同步(skill「文档同步」纪律)。
+
+## 6. as-built 回记(落码批,ADR-0526)
+
+本篇已落码,与设计的对应关系(判据语义逐字收编,无新增自由参数):
+
+- **件一/件二消费位**:`kernel/cw_equip_env.py` 新增释放判据面——
+  `resolve_wear_release`(§2.1 五行评估,产出 `WearReleaseDecision`,`hold`
+  = 布尔释放位 = §4 消费位「备战穿戴动作的 hold 布尔释放位」)、
+  `classify_zero_wear_stop_reason`(§1.2 辖域二分,归域随
+  `equip_zero_wear` 遥测行 `domain` 字段落盘,兜底行 =
+  `execution_pending`)。执行层 `cw_op_equip_all.py` 三旧判据函数删除,
+  只消费释放位;row5 豁免帧的分配过滤由「hold=False 全量穿」自然承载。
+- **件三载体**:`data/affix_wear_semantics_data.py`(§3.1 独立文件,
+  与 `affix_effects_data.py` 互不触碰;`WEAR_AFFIX_SEMANTICS` 结构条目 +
+  `prose_ref` 名锚 + `check_wear_semantics_coverage` 互检显警;
+  `EXCLUDED_ADJACENT_AFFIXES` = §3.1 排除族 + 检测面降噪排除,逐条带
+  理由)。在册判定 = 条目存在 ∧ `wear_predicate` 非空 ∧
+  `penalty_side=='output'`。
+- **件三接口**(§3.3):`equip_allocation(comp, deployed, owned, occupied=None,
+  priority_order=None)`;`apply_equip_env_variants` 增同名透传参数。
+  priority_order 契约 = 序成员在分配侧吃满至容量(凑满谓词),由策略侧
+  `resolve_affix_priority_order` 产出(谓词涉及集合=在场角色全集;[9] 基序
+  内重排;全员满足 → None);只在**释放帧**启用(§2.1「释放动作的次序」),
+  扣留帧保持 carry 先拿零漂移。fill-only 脱落预防 = §1.2-3 声明,锁
+  `test_fill_only_never_removes_worn`。
+- **单帧锁**:`sr-od-test/.../test_cw_equip_wear_semantics_18.py`(判据表
+  五行+合并/二分四域+兜底行/求序/分配器零漂移与重排/对拍锁+检测面零显警)
+  + `test_cw_r388_opening_hold.py`(r388/r70 矩阵改锁 `resolve_wear_release`
+  新入口,语义逐条对应)。
+- **row5 开关裁定**:行为无条件化(ADR-0526 Considered Options;行为输入
+  已就绪,悬置默认关违反开关生命周期门)。
+- §5 挂账 1(P61 证明)期限起点 = 本节回记时点;挂账 2/3(错位件扳手批、
+  L2/L3 被动采集)不变。

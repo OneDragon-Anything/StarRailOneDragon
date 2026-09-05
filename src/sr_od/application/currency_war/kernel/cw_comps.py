@@ -1721,6 +1721,7 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
 
 def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                      occupied: dict[tuple[str, int], list[str]] | None = None,
+                     priority_order: list[str] | None = None,
                      ) -> list[tuple[str, str]]:
     """(角色名, 装备名) 分配序列 —— carry 先拿 key_equips(按序),其余 core 次之,剩余兜底前排。
 
@@ -1734,6 +1735,19 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);deployed 元素需带
     char_id/position_pref/slot(BenchChar)。comp=None → 全走 3(通用兜底)。
     纯函数(可离线测);CwOpEquipAll 消费(ADR-0154)。
+
+    ``priority_order``(18 号稿 §3.3 签名扩展,ADR-0526):可选分配优先序
+    (list[str],角色名);None(缺省)= 现行内部派生序,**零行为漂移**。
+    语义 = 词缀条件优先层(§3.2)的唯一传入通道:序的每个成员在分配侧都
+    被**吃满至容量**(凑满谓词;调用方 = 策略侧 resolve_affix_priority_order,
+    只放「谓词未满足成员 ∪ core」);它同时改写 key_equips 接收者序与 core
+    兜底序。语义保持声明(§3.3 措辞收窄):配对守卫与星徽唯一件守卫对候选
+    对的判定与遍历次序无关,重排序下逐对语义不变;occupied 容量扣减的
+    **可穿件总数**与次序无关,「落在谁身上」随次序变 = priority_order 的
+    语义本体,不属语义漂移。**comp=None 时强制 None**(§3.3:重排依据依赖
+    阵容名单;未定型帧零重排)。**脱落预防(18 号稿 §1.2-3)**:分配器为
+    fill-only——occupied 仅作容量扣减,不触碰任何已穿件(key 与否同判),
+    任何重排都不可能取下已穿 key 件(装备无角色间直拖通道,10 号稿 §2.1.8)。
 
     ADR-0265(穿戴可逆裁决):**穿戴是可逆操作**(卖角色全额返还装备)——穿着既不锁死
     合成路线(组件可取回)也不构成资源损耗(转移成本仅为操作摩擦),
@@ -1760,6 +1774,8 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     """
     occ = occupied or {}
     pool = list(owned)
+    if comp is None:
+        priority_order = None   # 18 号稿 §3.3:未定型帧词缀谓词集合退化,强制零重排
     by_name: dict[str, list] = {}
     for d in deployed:
         n = getattr(d, 'char_id', None)
@@ -1818,13 +1834,17 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
 
     out: list[tuple[str, str]] = []
     if comp is not None and comp.key_equips:
-        # 接收者顺序:plaza_carry(carry)优先,再 core_chars 顺序;只发给场上且容量 >0 者
-        order: list[str] = []
-        if comp.plaza_carry:
-            order.append(comp.plaza_carry)
-        for c in comp.core_chars:
-            if c not in order:
-                order.append(c)
+        # 接收者顺序:priority_order(词缀优先层重排序)优先,缺省 = 内部派生序
+        # (plaza_carry 优先,再 core_chars 顺序);只发给场上且容量 >0 者
+        if priority_order:
+            order: list[str] = list(priority_order)
+        else:
+            order = []
+            if comp.plaza_carry:
+                order.append(comp.plaza_carry)
+            for c in comp.core_chars:
+                if c not in order:
+                    order.append(c)
         recipients = [c for c in order if capacity.get(c, 0) > 0]
         for r in recipients:
             for w in list(comp.key_equips):
@@ -1847,7 +1867,12 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     # comp=None:**按轮转**(每人 1 件轮一圈再回头,而非按 deployed 序灌满一人
     # ——否则前排 capacity 全被第一人吃光);comp 有 core 时行为不变。
     if comp is not None:
-        _cores = [c for c in comp.core_chars if capacity.get(c, 0) > 0]
+        # core 兜底序:priority_order 在列时按其序吃满(凑满谓词语义,契约 =
+        # 调用方只放「谓词未满足成员 ∪ core」);缺省 = core_chars 序(零漂移)
+        if priority_order:
+            _cores = [c for c in priority_order if capacity.get(c, 0) > 0]
+        else:
+            _cores = [c for c in comp.core_chars if capacity.get(c, 0) > 0]
         _others = [d for d in deployed
                    if getattr(d, 'char_id', '') and d.char_id not in comp.core_chars]
         # ADR-0391 死库存回收去向:先于 core 兜底抽取(防 core 盲吃死库存),
