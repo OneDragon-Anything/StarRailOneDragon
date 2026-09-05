@@ -34,6 +34,7 @@
 | 13 | [13_pick_family.md](13_pick_family.md) | pick 族薄判据：九接口决策规格 + 事件面目录 E1-E18 |
 | 08 | [08_events.md](08_events.md) | 事件面规格骨架：E1-E18 逐项收录语义、数学判据逐项标「待 derive」（落差登记） |
 | 07 | [07_meta_run.md](07_meta_run.md) | 跨局 meta 域：显式声明出辖（当前无可设计对象，登记为未来立项） |
+| 18 | [18_equip_wear_semantics.md](18_equip_wear_semantics.md) | 装备穿戴策略语义：RunEquip 穿戴定谳、opening/非 key_equips 释放判据、词缀条件分配优先级 |
 
 （原 03/05/06/09 已按决策点重排删除：03/05/06 拆入 10-13；09 架构篇整体迁 `../flow/README.md` §2——策略↔流程契约。）
 
@@ -65,3 +66,4 @@
 - 直白表述：禁自造黑话；项目术语首次出现给定义 + 例子。
 - 引用规范：命题号 P(N) 经 `proofs/math_proofs.md` 索引跳转单篇；文档引用写「文件名:节」。
 - 阈值/权重不写死值，只写常量名；值的单一源在代码注册表或标定批。
+| 19 | [19_reinforce_channel_and_survival_discount.md](19_reinforce_channel_and_survival_discount.md) | 补强通道与生存折现重估 |
