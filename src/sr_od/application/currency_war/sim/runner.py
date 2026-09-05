@@ -786,6 +786,39 @@ SIM_RUNS_DIR = _AUTO_REPLAY_DIR.parent / 'sim_runs'   # 仓根锚定(同上)
 
 _SIM_RUNS_KEEP: int = 20   # 批次保留数(防无限累积;旧的自动清理)
 
+#: 锚定标记文件(批目录内)。滚动清理跳过含本文件的批——A/B 对照批、
+#: 测量基线批等复现链锚点免清理(评估表相位 2a 报告 §6:keep=20 滚动
+#: 清理曾把冻结池与 364c773a 对照批一起删掉,A/B 复现链断裂)。
+#: 形态依据:批目录名即账本 run_id 前缀与重放地址(改名会断既有消费
+#: 端引用,故不用前缀改名);标记随目录自包含、随批生存,无中央清单
+#: 的漂移面;人工 `rmtree` 之外的清理路径也只认这一个真相源。
+_ANCHOR_FILENAME: str = 'anchored.json'
+
+
+def anchor_batch(batch_dir: Path, reason: str) -> Path:
+    """给 sim 批目录打锚定标记(免滚动清理)。
+
+    :param batch_dir: sim_runs 下的批目录(不校验存在——存量补救可对
+        即将生成的目录预置;清理时只看标记文件)
+    :param reason: 锚定原因(写入标记,审计可读;如 'A/B 对照批 364c773a')
+    """
+    import json as _json
+    import time as _time
+
+    batch_dir = Path(batch_dir)
+    batch_dir.mkdir(parents=True, exist_ok=True)
+    marker = batch_dir / _ANCHOR_FILENAME
+    marker.write_text(_json.dumps({
+        'reason': reason,
+        'anchored_at': _time.strftime('%Y-%m-%dT%H:%M:%S'),
+    }, ensure_ascii=False), encoding='utf-8')
+    return marker
+
+
+def is_anchored(batch_dir: Path) -> bool:
+    """批目录是否带锚定标记(清理跳过判据的单一源)。"""
+    return (Path(batch_dir) / _ANCHOR_FILENAME).is_file()
+
 _NT_TO_PROD = {'battle': '普通战斗', 'encounter': '遭遇',
                'reward': '奖励', 'boss': '首领', 'supply': '补给'}
 
@@ -796,6 +829,21 @@ def _default_sim_runs_dir(pool_fp: str, n: int, seed_base: int) -> Path:
     stamp = time.strftime('%Y%m%d_%H%M%S') + f'{time.monotonic_ns() % 1000:03d}'
     return SIM_RUNS_DIR / f'sim_{stamp}_n{n}_s{seed_base}_{pool_fp[:8]}'
 
+
+
+def _prune_sim_runs() -> None:
+    """sim_runs 滚动清理:窗口外的非锚定批删除,锚定批跳过。
+
+    只清 sim_ 前缀批(用户显式传的非 sim 目录不动,审查#5);锚定批
+    (带 anchored.json:A/B 对照批/测量基线批等复现链锚点)免清理。
+    """
+    if not SIM_RUNS_DIR.exists():
+        return
+    batches = sorted(p for p in SIM_RUNS_DIR.iterdir()
+                     if p.is_dir() and p.name.startswith('sim_'))
+    for old in [b for b in batches[:-_SIM_RUNS_KEEP] if not is_anchored(b)]:
+        import shutil
+        shutil.rmtree(old, ignore_errors=True)
 
 
 def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
@@ -897,14 +945,8 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
         'economy_calib_version': (
             ECONOMY_CALIB_VERSION if results else None),
     }, ensure_ascii=False), encoding='utf-8')
-    # 保留清理(旧批次滚动删除;只清 sim_ 前缀批——用户显式传的
-    # 非 sim 目录不动,审查#5)
-    if SIM_RUNS_DIR.exists():
-        batches = sorted(p for p in SIM_RUNS_DIR.iterdir()
-                         if p.is_dir() and p.name.startswith('sim_'))
-        for old in batches[:-_SIM_RUNS_KEEP]:
-            import shutil
-            shutil.rmtree(old, ignore_errors=True)
+    # 保留清理(滚动删除,语义见 _prune_sim_runs)
+    _prune_sim_runs()
     return out_dir
 
 
