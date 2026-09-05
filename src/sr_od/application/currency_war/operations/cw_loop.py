@@ -408,25 +408,23 @@ def _invest_overlay_dispatch(op, screen):
     锚命中走 overlay 分支;15:14 浮层淡入动画期首帧采样 miss → 判别翻转
     落备战链 → 空挥 37s。单探测判据对淡入期采样不稳定 = 分发层根因。
 
-    **稳定化 + 成本门控(三审 C2)**:
-    - 常规帧(双锚未命中 = 非穿透):仅双锚 + id_mark 锚对拍——零全屏
-      OCR、零复探等待;
-    - 穿透形态(双锚命中 = 浮层可能盖备战的必要条件):id_mark 锚 ∨
-      OCR 全短语「请选择投资策略」双信号,miss 时短窗复探一次(新截图)
-      ——两时序形态(首帧命中/复探命中)同判据同路由;仍 miss 才放行
-      备战链。复探窗口 = 执行层时序常量(沿 PREP_NO_PROGRESS_ROUNDS
-      先例);穿透帧固定付一次全短语 OCR + 一次复探,如实申报非零成本。
+    **稳定化 + 成本门控(三审 C2/C1 修)**:
+    - 首探双信号(id_mark 锚 ∨ OCR 全短语「请选择投资策略」)**不受
+      双锚门控**——浮层淡入∧双锚也 miss 形态下删 OCR 兜底 = 删保险
+      (判别翻转回潮面,三审 C1);
+    - 复探(短窗 + 新截图,执行层时序常量)仅在穿透形态(双锚命中,
+      浮层盖备战的可达形态)触发——常规帧(双锚未命中)在首探 miss 后
+      短路,零复探等待/零新截图(三审 C2 成本门控);
+    - 两时序形态(首帧命中/复探命中)同判据同路由;仍 miss 才放行备战链。
     OCR 腿对 outer_loop §2.1「优先 area 化」的豁免记录见该文档 0e 行。
     消费点防御(达标臂浮层排除/遭遇 OCR/C1 计数)与本判据分层:本件管
     「路由稳定」,彼件管「路由误判后的发射兜底」,禁合并谓词。
     """
     prep = _prep_anchors_hit(op, screen)
-    if _invest_anchor_hit(op, screen):
+    if _invest_anchor_hit(op, screen) or _invest_ocr_hit(op, screen):
         return True, screen
     if not prep:
-        return False, screen   # 常规帧:零全屏 OCR/零复探(三审 C2)
-    if _invest_ocr_hit(op, screen):
-        return True, screen
+        return False, screen   # 常规帧短路:零复探等待/零新截图(三审 C2)
     time.sleep(op.INVEST_REPROBE_WAIT)
     screen = op.screenshot()
     if _invest_anchor_hit(op, screen) or _invest_ocr_hit(op, screen):
