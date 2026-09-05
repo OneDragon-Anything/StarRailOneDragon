@@ -156,7 +156,7 @@ def _shop_sell_refund(bc: BenchChar) -> int | None:
     return sell_refund(bc.star, ch.cost)
 
 
-def _r1_ledger_terms(k_members: tuple[str, ...],
+def _r1_ledger_terms(buy_members: tuple[str, ...],
                      bench: list, deployed: list,
                      level: int) -> tuple[float, int]:
     """R1 总账装配侧(ADR-0516 形式二):返回 (E(D|level), Σ卡费)。
@@ -165,7 +165,11 @@ def _r1_ledger_terms(k_members: tuple[str, ...],
     Σ成员 expected_refreshes_for_card(L, cost, target_star=2, owned=j)
     (k=3 完成档;3★=9 与下一张=1 档在文档判据面声明,代码消费位与
     P40 ② 单卡代表形态同辖域取 2★ 档)。口径申报(出处→边界):
-    - j = bench∪deployed 中该成员 1★ 副本数(star≥2 = 成型即出域;
+    - 成员集单源 = **buy_members**(F1 口径对齐:刷新追赶义务面与买入
+      义务面同一集合——臂①囤腿落地后「买满三张」费用口径与行为
+      (0→1→2→3 全链义务化)一致,§6.2 输入②申报的账面虚增随之消解;
+      锁定帧 = locked_buy_membership 采购集,未锁帧 = k_members);
+    - j = bench∪deployed 中该成员副本数(star≥2 = 成型即出域;
       j 低估 ⇒ E 高估 ⇒ 账高估 = 门收紧向,保守端申报);
     - c_taken=0(P40 待标定清单「缺则 0」;q 低估 ⇒ E 高估,同上
       保守向);
@@ -175,13 +179,13 @@ def _r1_ledger_terms(k_members: tuple[str, ...],
       与 E 的 (k−j) 张折算同档——旧单张 cost 口径与 E 口径不一致已修齐
       (单成员 j=2 帧两口径相消,j<2 帧旧口径低估总账)。
     返回 (e_sum, card_fees);e_sum=inf 表示该级无可追成员(合格集空
-    ——k_members 空/全部 2★ 成型/该级全不可追 ⇒ inf,P40 R0-1 刷新侧
+    ——成员集空/全部 2★ 成型/该级全不可追 ⇒ inf,P40 R0-1 刷新侧
     特例由判据 isfinite 过滤承载)。
     """
     e_sum = 0.0
     card_fees = 0
     qualified_any = False
-    for m in k_members:
+    for m in buy_members:
         ch = CHARACTERS.get(m)
         if ch is None or not ch.cost:
             continue
@@ -327,22 +331,33 @@ def shop_unbought_reasons(state: GameState,
             continue
         if name in k_members:
             if name in owned:
-                # 合并完成件拒因细分(候选②判读面):已持 2 张同名同星
-                # 1★ 且无 2★ 成件 ⇒ 第三张买入即合成 2★,拒因不再是中性
-                # 「owned」而是「合并买入未发生」的具体门(bench 满/金不足),
-                # 复盘可直接归因(g_20260904_054904 p2r1 判读缺口)。
+                # 线内已持有帧按持有形态细分拒因(与同帧实际动作一致):
+                # - 合并完成段(cnt=2 ∧ 无 2★):§3.6 满栏例外后买入直发
+                #   (免 bench_free 门),'merge_bench_full' 键退役;金不足
+                #   仍记 merge_unaffordable,金席俱足未发 = merge_ready
+                #   (判读关注面);
+                # - 臂①囤腿段(cnt1=1 ∧ 无 2★,§3.2):中性 'owned' 退役
+                #   ——同帧实际动作 = m2_stockpile 义务买入,拒因按其门序
+                #   细分(stockpile_bench_full/stockpile_unaffordable/
+                #   stockpile_ready),§7.3 owned 命中占比观测面随之真实;
+                # - 其余(含 cnt2>0 让渡死库存,§3.7):中性 'owned'。
                 copies = [c for c in bench + deployed
                           if (c.char_id or '') == name]
-                merge_completable = (len(copies) == 2
-                                     and all((c.star or 1) < 2
-                                             for c in copies))
+                cnt1 = sum(1 for c in copies if (c.star or 1) == 1)
+                cnt2 = len(copies) - cnt1
                 cost = min((c.cost if c.cost else 3)
                            for c in (state.shop or [])
                            if (c.name or '') == name)
-                if merge_completable and bench_free <= 0:
-                    out[name] = 'merge_bench_full'
-                elif merge_completable and gold < cost:
-                    out[name] = 'merge_unaffordable'
+                if len(copies) == 2 and cnt2 == 0:
+                    out[name] = ('merge_unaffordable' if gold < cost
+                                 else 'merge_ready')
+                elif cnt1 == 1 and cnt2 == 0:
+                    if bench_free <= 0:
+                        out[name] = 'stockpile_bench_full'
+                    elif gold < cost:
+                        out[name] = 'stockpile_unaffordable'
+                    else:
+                        out[name] = 'stockpile_ready'
                 else:
                     out[name] = 'owned'
                 continue
@@ -575,19 +590,82 @@ def decide_shop_action(state: GameState, session: StrategySession,
         _on_target_buy(card.name or m)
         return BuyCard(card=card, reason='m2_line_member')
 
+    # m2_stockpile(臂①囤腿,j=1 第二份;14号稿 §3.2-3.4,发射位次 =
+    # M2 主循环之后、M2b 之前,理由键 'm2_stockpile'):
+    # 触发 = m ∈ buy_members ∧ cnt1(m)==1 ∧ cnt2(m)==0(二-1:cnt2>0 帧
+    # 臂①不判,防制造 cnt1=2∧有2★ 死库存)∧ 店内有该成员 **1★** 在售
+    #(N7 星过滤:候选锚按 name 过滤不分星,店含同名 2★ 直出卡会取错);
+    # 单提案至多购 1 张(F2 防御性上限——merge §2.5 自动多买在 j=1 帧的
+    # 辖域未核,宁少买不多买,确认后如允许多买走规格修订)。
+    # 拒因序 = 金闸前置 → M4 腾席(落地审存-1:j=1 囤腿优先级低于缺员,
+    # 满栏+金不足帧禁「先卖燃料件再报 unaffordable」的不可逆净损);拒因
+    # 计数粒度申报 = 每成员命中一笔(帧内多成员可累计,与 visit 粒度键
+    # 对拍时须声明,落地审低-2)。bench 满 → M4 腾席(Y5:02 §3 M2 硬约束
+    # 同构,腾席后仍满记 'bench_full' 普通席闸键,非 merge_bench_full);
+    # 金不足记 stockpile_unaffordable;cnt 达标但店内仅同名 2★ 直出卡 ⇒
+    # m2_stockpile_star_mismatch 分键(W4 零静默,与 M2b 分键,低-1)。
+    def _cnt(name: str, star: int) -> int:
+        """同名同星副本计数(全局面 bench∪deployed;14号稿 §3.5 单一源:
+        按 (名,星) 分星计数,2★ 成件不折算 1★)。"""
+        return sum(1 for c in bench + deployed
+                   if (c.char_id or '') == name and (c.star or 1) == star)
+
+    for m in buy_members:
+        if _cnt(m, 1) != 1 or _cnt(m, 2) != 0:
+            continue
+        all_cands = _shop_candidates(m)
+        cands1 = [c for c in all_cands if (c.star or 1) == 1]
+        if not cands1:
+            if all_cands:
+                _count('m2_stockpile_star_mismatch')   # W4:仅 2★ 直出卡帧,分键非静默
+            continue
+        card = cands1[0]
+        cost = card.cost if card.cost else 3
+        ok1, _ = mandate.check_affordable(gold, cost)
+        if not ok1:
+            _count('stockpile_unaffordable')
+            continue
+        if bench_free <= 0:
+            # M4 腾席(Y5):j=1 帧不合成,满栏例外不辖;卖 1 燃料件
+            #(P60 排除集照常)后下一帧 bench_free ≥ 1 即合法买入。
+            cands = mandate.fuel_sell_candidates(bench, k_members,
+                                                 state=state,
+                                                 exclude_names=buy_members)
+            victim = cands[0] if cands else None
+            if victim is not None:
+                ok4, _ = mandate.check_irreversible(victim.char_id or '',
+                                                    k_members)
+            else:
+                ok4 = False
+            if victim is not None and ok4:
+                idx = (state.bench or []).index(victim)
+                _note_sell(victim.char_id or '')
+                return SellBench(bench_idx=idx,
+                                 income=_shop_sell_refund(victim),
+                                 expect=victim.char_id or '')
+            _count('bench_full')
+            continue
+        _on_target_buy(card.name or m)
+        return BuyCard(card=card, reason='m2_stockpile')
+
     # M2b 升星合并完成买入(实机复盘 g_20260904_054904 p2r1 候选②):
     # 已持 2 张同名同星 1★、无 2★ 成件,第三张在店 affordable ⇒ 买入即
-    # 合成 2★。义务通道不走息律门([41] 同 M2);bench_free ≥ 1 = 买入
-    # 硬前提(合成投影:买入触合并净席 -1,保守取买入时点可行)。
+    # 合成 2★。义务通道不走息律门([41] 同 M2)。
+    # Y4:候选 star==1 过滤——同名异星不合成(merge §1 凑满 3 指同名
+    # 同星),×3 价买 2★ 直出卡不成链且制造 §3.7 让渡死库存;仅 2★ 直出
+    # 卡帧 star_mismatch_skip 分键(W4 零静默)。
+    # §3.6 席位门满栏例外对齐(B2):本循环形态已保证「买入即触发合成」
+    #(同名同星 2→3),机制上买入后全局面同名同星 3→1 净席 −1,无溢出
+    # 散牌 ⇒ 免 bench_free 门(与机制对齐,非行为放宽;理由键不变)。
     for m in buy_members:
         copies = [c for c in bench + deployed if (c.char_id or '') == m]
         if len(copies) != 2 or any((c.star or 1) >= 2 for c in copies):
             continue
-        shop_cands = _shop_candidates(m)
+        all_cands = _shop_candidates(m)
+        shop_cands = [c for c in all_cands if (c.star or 1) == 1]
         if not shop_cands:
-            continue
-        if bench_free <= 0:
-            _count('merge_bench_full')
+            if all_cands:
+                _count('m2b_star_mismatch')   # W4:仅 2★ 直出卡帧(与臂①分键,低-1)
             continue
         card = shop_cands[0]
         cost = card.cost if card.cost else 3
@@ -625,15 +703,52 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 continue
             return BuyCard(card=card, reason='dominance_buy')
 
-    # M3 升级(触发信号=arm1_existence;D-BUYNOTE:P48 整买纪律内嵌)。
-    # 单动作粒度:每帧恰发一个「购买经验」单击动作(升一级 = 一个动作
-    # op,clicks = 动作内部步骤,外部买面不可插花——ADR-0517 §权衡)。
+    # M3 升级(触发信号三臂并联;D-BUYNOTE:P48 整买纪律内嵌)。单动作
+    # 粒度:每帧恰发一个「购买经验」单击动作(升一级 = 一个动作 op,
+    # clicks = 动作内部步骤,外部买面不可插花——ADR-0517 §权衡)。
+    # 双栈同义面声明(落地审阻-1/应-2 修复):本块与备战批栈
+    # (mandate.run_mandate M3)消费同一组触发臂——
+    # arm1_existence(板满∧bench 有候补)/ arm0_level_lag(等级落后于
+    # 上阵人数需求,need = 期望态现量 (名,星) 口径 Y3,level 消费
+    # level_readable C4)/ pop_slot(D-lv7 满编+富金+候补升 cap;§4.3
+    # 前置放宽「bench 有候选 ∨ 买得起候选」,买得起 = affordable ∧
+    # bench_free≥1)——「板满+bench 空+富金」病灶场景的商店帧升级授权
+    # 由 arm0/pop_slot 承载(arm1 在该形态恒 False)。
     _cap_now = state.max_units()
+    _lvl_readable = bool(getattr(state, 'level_readable', True))
     _arm1_ok = contracts.ensure_contract(
         ('predicates', 'arm1_existence'),
         contracts.ContractCtx(deploy_cap=_cap_now), counters)
-    if _arm1_ok and predicates.arm1_existence(len(deployed), bench_names,
-                                              deployed_names, _cap_now):
+    _arm1 = bool(_arm1_ok and predicates.arm1_existence(
+        len(deployed), bench_names, deployed_names, _cap_now))
+    _arm0 = False
+    if contracts.ensure_contract(
+            ('predicates', 'arm0_level_lag'),
+            contracts.ContractCtx(), counters):
+        _arm0, _arm0_key = predicates.arm0_level_lag(
+            int(state.level or 1), _lvl_readable, deployed, bench,
+            k_members, _cap_now)
+        if not _arm0 and _arm0_key == 'level_unreadable':
+            _count('arm0_level_unreadable')
+        elif _arm0 and _cap_now is None:
+            _count('arm0_cap_unreadable')   # 存-3:cap 不可读静默弃权补分键
+            _arm0 = False
+    _pop = False
+    if contracts.ensure_contract(
+            ('levelup', 'pop_slot'), contracts.ContractCtx(), counters):
+        _bench_cand = sum(1 for n in bench_names if n in k_members)
+        _buyable_cand = bench_free >= 1 and any(
+            (c.name or '') in k_members
+            and mandate.check_affordable(
+                gold, c.cost if c.cost else 3)[0]
+            for c in (state.shop or []))
+        _pop, _pop_why = crit_levelup.pop_slot(
+            len(deployed), _cap_now, gold, _bench_cand, g_star,
+            buyable_candidate=_buyable_cand, bench_free=bench_free)
+        session.cw4_pop_slot_why = _pop_why   # D-lv7:否向理由留决策迹
+    if _arm1 or _arm0 or _pop:
+        # auth_basis 三臂分键(可归因):触发臂按 arm1 > arm0 > pop 序取首
+        _arm_tag = 'arm1' if _arm1 else ('arm0' if _arm0 else 'pop')
         if contracts.ensure_contract(
                 ('levelup', 'level_spend_blocked'),
                 contracts.ContractCtx(), counters) \
@@ -651,7 +766,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 ok1, _ = mandate.check_affordable(gold, 0,
                                                   batch_cost=clicks * cost)
                 if ok1 and clicks > 0:
-                    return LevelUpShop(cost=cost, auth_basis='m3_batch')
+                    return LevelUpShop(cost=cost,
+                                       auth_basis=f'm3_batch:{_arm_tag}')
 
     # M6 溢余转压库(存在性=金>g* ∧ 无 S 目标;档匹配 fail-closed ⇒
     # 不买 + 溢余滞留遥测;两臂同开)
@@ -741,7 +857,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _rounds = horizon.r_remaining(session, int(state.plane or 1),
                                           int(state.round_num or 1))
             _lvl = int(state.level or 1)
-            _e_stay, _fees = _r1_ledger_terms(k_members, bench, deployed,
+            _e_stay, _fees = _r1_ledger_terms(buy_members, bench, deployed,
                                               _lvl)
             if _e_stay == float('inf'):
                 _t_stay = float('inf')
@@ -753,7 +869,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _clicks = clicks_to_next_level(state)
             if _clicks > 0:
                 _u_gold = _clicks * xp_click_cost(state)
-                _e_up, _fees_up = _r1_ledger_terms(k_members, bench,
+                _e_up, _fees_up = _r1_ledger_terms(buy_members, bench,
                                                    deployed, _lvl + 1)
                 if _e_up != float('inf'):
                     _t_up = _c_eff * _e_up + _fees_up + _u_gold + loss_exact(
@@ -772,6 +888,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
             r2_reserve = g_star
         if not ok_r1:
             _count(f'shop_r1_{rkey}')  # no_chaseable_member / account_over_budget
+            if rkey == 'no_chaseable_member' and gold > g_star:
+                # 语境分键:金过剩 ∧ 合格集空 = 深血线死握的孪生观测面
+                #(F1 定位批 H2 判别信号);合格集空守卫先于一切刷新语义
+                #(§6.2 显式守卫),(b)3 危机直通支永久挂空(§11.8)后
+                # 该帧无承重件——只显影观测,禁据以调参(§5.3 挂账期申报)。
+                _count('r1_idle_gold_no_chaseable')
         elif contracts.ensure_contract(
                 ('refresh', 'r2_budget'),
                 contracts.ContractCtx(gold=gold, reserve=r2_reserve),

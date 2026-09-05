@@ -369,12 +369,46 @@ def run_mandate(frame: MandateFrame,
     # 无 state 喂入(对抗复验=FIX_REVIEW 场景 A)⇒ deploy_cap=None 前提
     # 违例 ⇒ 弃权+计数,判据不可达。
     _cap_now = state.max_units() if state is not None else None
+    _arm1 = (contracts.ensure_contract(
+        ('predicates', 'arm1_existence'),
+        contracts.ContractCtx(deploy_cap=_cap_now), counters)
+        and _cap_now is not None
+        and predicates.arm1_existence(len(frame.deployed), frame.bench_names,
+                                      frame.deployed_names, _cap_now))
+    # arm0 升级授权回补(14号稿 §4.2 A4 现量版):等级落后于上阵人数需求
+    #(need = 期望态现量,排除谓词 (名,星) 口径 Y3);level 消费只认
+    # authoritative 可信位(level_readable,C4)——不可信帧 fail 向不触发
+    # + arm0_level_unreadable 分键(W6:15 号稿 T-8 锁读链合一,消费端
+    # fail 向零静默)。与 arm1 并联触发(任一成立即进 M3 判据链)。
+    _arm0 = False
     if contracts.ensure_contract(
-            ('predicates', 'arm1_existence'),
-            contracts.ContractCtx(deploy_cap=_cap_now), counters) \
-            and _cap_now is not None \
-            and predicates.arm1_existence(len(frame.deployed), frame.bench_names,
-                                 frame.deployed_names, _cap_now):
+            ('predicates', 'arm0_level_lag'),
+            contracts.ContractCtx(), counters):
+        _arm0, _arm0_key = predicates.arm0_level_lag(
+            frame.level,
+            bool(getattr(state, 'level_readable', True))
+            if state is not None else True,
+            frame.deployed, frame.bench, k, _cap_now)
+        if not _arm0 and _arm0_key == 'level_unreadable':
+            _count('arm0_level_unreadable')
+        elif _arm0 and _cap_now is None:
+            _count('arm0_cap_unreadable')   # 存-3:cap 不可读静默弃权补分键
+            _arm0 = False
+    # pop_slot(D-lv7 满编+富金+候补升 cap;落地审应-B:与商店栈同判据
+    # 同单一源,三臂并联)——备战帧店面不可读 ⇒ buyable_candidate 腿
+    # 只在商店栈生效(双栈分域声明);备战帧独有触发域 = 满编+富金+
+    # bench 有线内候补,否向理由留决策迹字段(D-lv7 纪律)。
+    _pop = False
+    if contracts.ensure_contract(
+            ('levelup', 'pop_slot'), contracts.ContractCtx(), counters):
+        _bench_cand = sum(1 for n in frame.bench_names if n in k)
+        _pop, _pop_why = levelup.pop_slot(
+            len(frame.deployed),
+            _cap_now if _cap_now is not None else 0,
+            frame.gold, _bench_cand,
+            saturation_line(_cap_of(session)) if _cap_now is not None else 0)
+        session.cw4_pop_slot_why = _pop_why
+    if (_arm1 or _arm0 or _pop) and _cap_now is not None:
         # 候选③危机带经验授权让位(g_20260904_054904 p2r1:hp=1 帧
         # 9×LevelUpShop 36g 零本帧收益):血预算停升级门(P21)此前只有
         # decision_v2 侧消费,cw4 M3 未接 = 双栈语义断层;判据单一源 =
@@ -399,7 +433,10 @@ def run_mandate(frame: MandateFrame,
                 ok1, _ = check_affordable(frame.gold, 0,
                                           batch_cost=clicks * cost)
                 if ok1:
-                    out.append(Emitted(LevelUp(), True, 'm3_levelup_batch'))
+                    # auth_basis 三臂分键(可归因,与商店栈同序 arm1>arm0>pop)
+                    _arm_tag = 'arm1' if _arm1 else ('arm0' if _arm0 else 'pop')
+                    out.append(Emitted(LevelUp(), True,
+                                       f'm3_levelup_batch:{_arm_tag}'))
 
     # M1′(M3 后新人口位补部署;R6-6/R8-1:迭代至不动点——RunDeploy
     # 执行侧现读重建输入(D-C44),发射即覆盖升级增量空位的部署重评)

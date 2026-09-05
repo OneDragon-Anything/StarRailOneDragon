@@ -89,7 +89,20 @@ def level_spend_blocked(state: GameState, session: StrategySession,
     levelup_blocked 内含,危机支同判让位(末战花光是时机不是血线
     判断)。hp 不可信帧由 blood_budget 支 fail-closed 拒付(危机会
     在内)。
+
+    血线硬地板解锁包件①(≤15 族在册授权,00§3/NMF 在册「不影响发展
+    为主线」条件):死亡线帧(判据单一源 = predicates.p1_blood_floor,
+    阈值常量 = lambda_death.HP_BAND_NEAR_DEATH)M3 破息批**解锁至
+    饱和线下**——p1_levelup_stop_hp 停付线(≈11 ⊂ ≤15 重叠域)以地板
+    为准重裁让位(14号稿 N3①);ALL IN 豁免族同型语义 = 深血线花光
+    是转化时机判断,非血线判断。不可信帧地板 fail 向不判线,停付维持
+    既有 fail-closed。
     """
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        p1_blood_floor,
+    )
+    if p1_blood_floor(state):
+        return False    # 死亡线:转化优先,停付线让位(解锁包件①)
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         blood_budget_levelup_blocked,
         p2_crisis_band,
@@ -116,15 +129,24 @@ def _plane_last_battle(state: GameState, session: StrategySession) -> bool:
 
 
 def pop_slot(deployed_count: int, deploy_cap: int, gold: int,
-             bench_candidates: int, floor_gold: int) -> tuple[bool, str]:
+             bench_candidates: int, floor_gold: int, *,
+             buyable_candidate: bool = False, bench_free: int = 0,
+             ) -> tuple[bool, str]:
     """D-lv7(OPEN 检查点):「满编+富金+bench 有候补 → 升 cap 上人」覆盖。
 
     返回 (是否发射升 cap 意图, 决策迹理由——不触发时显式理由,
     R189-5 D-lv7 行:「判据合法不触发须显式理由进决策迹」)。
+
+    前置放宽(14号稿 §4.3,零参数):「bench_candidates > 0」改为
+    「bench 有候选 ∨ 买入面有可即时买入的线内候选(affordable ∧
+    bench_free ≥ 1)」——从「已持有候补」放宽到「买得起候补」;臂①落地
+    后 bench 空帧大幅减少,本修正兜剩余帧(满编+空 bench+富金末段)。
     """
     if deployed_count < deploy_cap:
         return False, 'not_full'          # 未满编:普通 M1 部署辖
-    if bench_candidates <= 0:
+    has_candidate = bench_candidates > 0 or (buyable_candidate
+                                             and bench_free >= 1)
+    if not has_candidate:
         return False, 'no_bench_candidate'
     if gold < floor_gold:
         return False, 'gold_below_floor'

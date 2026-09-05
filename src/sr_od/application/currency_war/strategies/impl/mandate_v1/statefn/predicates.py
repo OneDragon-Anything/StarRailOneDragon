@@ -144,6 +144,91 @@ def zero_overlap(name: str, k: tuple[str, ...]) -> bool:
     return name not in k
 
 
+def arm0_need(deployed: list[BenchChar], bench: list[BenchChar],
+              k_members: tuple[str, ...]) -> int:
+    """arm0 v2 上阵人数需求 = 期望态现量,零派生规则(14号稿 §4.2 A4:
+    v1 need_slots 从 TRANSITION_SYSTEMS 派生已作废——派生规则本身即一组
+    新拍定选择)。
+
+    = |deployed| + |{ b ∈ bench | b ∈ k_members(predicates core∪shared
+    口径)∧ (b.name, b.star) ∉ deployed (名,星) 集合 }|。
+
+    排除谓词按 **(名,星) 口径**(Y3 采纳):「同名同星 ≤1」只辖同星,
+    推不出「与场上同名 bench 件不可上阵」——同名异星可否同场属玩法文档
+    未证事实,挂玩家确认(14号稿 §8⑫);确认前按 (名,星) 计(把同名
+    异星 bench 件计入 need,防战力滞留漏触发)。
+    """
+    dep_pairs = {(d.char_id or '', d.star or 1) for d in (deployed or [])}
+    kset = set(k_members)
+    need = len(deployed or [])
+    for b in bench or []:
+        name = b.char_id or ''
+        if name in kset and (name, b.star or 1) not in dep_pairs:
+            need += 1
+    return need
+
+
+def arm0_level_lag(level: int, readable: bool, deployed: list[BenchChar], bench: list[BenchChar],
+                   k_members: tuple[str, ...],
+                   deploy_cap: int | None) -> tuple[bool, str]:
+    """arm0 触发谓词 v2(14号稿 §4.2):等级落后于上阵人数需求。
+
+    返回 (是否触发, 拒因分键——不触发时显式理由,W6 零静默):
+    - level 消费只认 authoritative 位(``level_readable``,C4 采纳:与
+      15 号稿 §4.3 共用单一源可信位定义)——不可信帧 fail 向不触发
+      (E3 型毒化帧 fail 向,分键 'level_unreadable');
+    - level ≥ deploy_cap(等级容量已到,升级无对象)⇒ 'level_at_cap';
+    - level < arm0_need ⟹ 触发(cap 容不下已持有的可上阵线内件)。
+    常态保证:need > level ⇒ 至少一件与场上异 (名,星) 的 bench 线内件
+    ⇒ 升级后通常存在合法部署候选(围栏 held 路径例外由探针
+    arm0_post_level_no_deploy 承载,不作恒 0 断言——14号稿 §4.2 例外声明)。
+    零新自由参数,全量期望态现读。
+    """
+    if not readable:
+        return False, 'level_unreadable'
+    if deploy_cap is not None and level >= deploy_cap:
+        return False, 'level_at_cap'
+    if level < arm0_need(deployed, bench, k_members):
+        return True, ''
+    return False, 'level_ge_need'
+
+
+def p1_blood_floor(state) -> bool:
+    """血线硬地板(λ_death 死亡线;≤15 族,在册授权)。
+
+    **定位 = 不影响发展主线的最后保命,非主要求生手段**:触发域 hp≤15
+    深血线,辖域 = 反深血线死握(持金至死零支出,实机三局独立复现,
+    14号稿 §5.4)——解锁包三件 = ①M3 破息批解锁至饱和线下(经验支出
+    停付线让位)+ ②凑息禁令(凑息卖回拉不发射)+ ③转化优先(M2 义务
+    买/囤腿本就不走息律门,零行为差申报);发展面不在本线辖域,零变化。
+
+    授权链(00§3):阈值族 = 血线硬地板 ≤15 用户在册确认(形态/阈值域/
+    解锁包三件);阈值常量单一源 = ``lambda_death.HP_BAND_NEAR_DEATH``
+    (血带结构锚,禁本处字面量第二份)。信任门 = ``hp_decision_trusted``
+    (kernel 单一源;P1 hp 读链毒化史,不可信帧/hp 无值帧 fail 向不判线
+    ——fail 向 = 本线不触发,各消费面维持既有语义)。
+    **位面域 = 仅 plane 1**(落地审应-A):解锁包授权族 = P1 血线硬地板
+    ——P2 深血线有自己的在产口径(p2_crisis_band ≈41,更宽域更早介入),
+    P2 帧 hp≤15 若误开 P1 专属解锁包 = 授权域外搭车,不可接受;域外帧
+    fail 向不判线,消费面维持既有语义。
+    同族在册废弃件对照:p1_crisis_band(≈22 带判据)经用户裁决不授权、
+    废弃((b)2/(b)3 消费位永久挂空,14号稿 §11.8)——不在授权族,禁
+    借本件复活。
+    """
+    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+        hp_decision_trusted,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.lambda_death import (
+        HP_BAND_NEAR_DEATH,
+    )
+    if state is None or not hp_decision_trusted(state):
+        return False
+    if getattr(state, 'plane', None) != 1:
+        return False
+    hp = getattr(state, 'hp', None)
+    return hp is not None and hp <= HP_BAND_NEAR_DEATH
+
+
 @dataclass(frozen=True)
 class BenchEffectContext:
     """「挂后台效果」资格谓词的语境输入(R32-中⑤ 前置半步 0)。

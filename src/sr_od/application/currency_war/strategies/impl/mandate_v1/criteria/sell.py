@@ -98,7 +98,17 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     累计)与 ``t1_interest_sellback_total``(实际卖回累计,两者之比=覆盖
     缺口率)/``t1_pullback_gold_ge_gstar``(回拉后投影金 ≥ g* 帧数=金位
     轨迹)。
+
+    凑息禁令(血线硬地板解锁包件②,≤15 族在册授权):死亡线帧不凑息
+    ——金不卖回,当轮转化优先(14号稿 §5.4 Y7 口径);返回
+    ([], 'blood_floor') 零静默分键。state=None = 语境缺失,禁令按保守端
+    照禁(fail-closed:禁令是授权约束,缺读不构成豁免)。
     """
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        p1_blood_floor,
+    )
+    if state is None or p1_blood_floor(state):
+        return [], 'blood_floor'
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
         saturation_line,
     )

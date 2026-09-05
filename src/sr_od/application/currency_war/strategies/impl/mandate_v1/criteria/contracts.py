@@ -251,6 +251,13 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         _arm1_cap_level_driven,
         'M3 触发信号:前提=deploy_cap 等级驱动口径(禁固定槽表常数)',
         'ZERO_REFRESH_DIAG §4.2+statefn/predicates.arm1_existence 注释'),
+    ('predicates', 'arm0_level_lag'): Contract(
+        None,
+        'arm0 升级授权触发谓词 v2(14号稿 §4.2 A4 现量版):need=期望态'
+        '现量(排除谓词 (名,星) 口径,Y3),level 消费只认 level_readable '
+        '可信位(C4,不可信帧消费端 fail 向分键 arm0_level_unreadable)'
+        '——前提零槽位依赖(全量期望态现读,零新自由参数)',
+        '14_p1_consume_arms §4.2/§7.1 mandate.py 行(2026-09-05 对抗收敛)'),
     # —— 第三病灶(K 空窗回退)消费位 ——
     ('shop', 'k_projection'): Contract(
         _k_projection_domain_full,
