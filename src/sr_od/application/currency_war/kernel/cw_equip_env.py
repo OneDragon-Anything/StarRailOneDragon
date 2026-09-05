@@ -24,6 +24,21 @@ data/affix_effects_data。)
   (18 号稿 §1.2:策略 by-design / 策略缺口 / 执行链 + 枚举外兜底行);
 - ``resolve_affix_priority_order``:词缀条件优先层求序(18 号稿 §3.2,
   限输出侧罚则族;载体 = data/affix_wear_semantics_data 结构化缓存)。
+
+21 号稿落码批(ADR-0531)新增——opening 窗口收窄 + 工具件消费判据面:
+- ``resolve_wear_release`` 扩展:O1 战斗前置释放门(§2.3 三门)+ 自由件
+  谓词;row1(opening hold)从「无条件扣留」收窄为「三门全不中 ∧ 保留域
+  命中才扣」,row2(committed)语义零改动(21 号稿 §2.3);
+- ``classify_item_hold``:逐件扣留判定(B1 伴生:帧级布尔无法表达
+  「自由件穿+key 扣留」混合态,消费位改件级输出);求值序 = O3 豁免 →
+  O1/O2 释放门 → 保留域①-⑤ → 清单外一律释放(§2.3);
+- ``classify_zero_wear_stop_reason`` 新增 opening(row1) 域分键
+  ``strategy_by_design_opening``(§5 遥测分键,row1/row2 预期相反
+  无分键则锚不可判读);
+- ``evaluate_tool_actions``/``admitted_tool_actions``:工具件消费判据
+  (全量收编 10 号稿 §2.1 三道门,本批只落冷启动分支 = 炉准入+扳手闸,
+  其余 fail-closed 带拒因分键)+ G1 发射位准入(执行通道未建档 =
+  不发射,防第四个闩;ARCH_REFLECTION_3STALLS)。
 """
 from __future__ import annotations
 
@@ -99,6 +114,10 @@ def apply_equip_env_variants(signals: EquipEnvSignals,
 
 #: 零上身哨兵 stop_reason 辖域二分(18 号稿 §1.2)四归域常量。
 ZERO_WEAR_STRATEGY_BY_DESIGN: str = 'strategy_by_design'
+#: opening(row1) 域分键(21 号稿 §5 遥测分键):row1 帧域「分配方案空/
+#: 过渡期hold」帧数趋零与保留域「committed hold 不回归」对同一帧族预期
+#: 相反,无分键则 O2 实机锚不可判读(v3,B3)。
+ZERO_WEAR_STRATEGY_BY_DESIGN_OPENING: str = 'strategy_by_design_opening'
 ZERO_WEAR_STRATEGY_GAP: str = 'strategy_gap'
 ZERO_WEAR_EXECUTION: str = 'execution'
 ZERO_WEAR_EXECUTION_PENDING: str = 'execution_pending'
@@ -119,6 +138,8 @@ def classify_zero_wear_stop_reason(stop_reason: str) -> str:
     归域:
     - ``strategy_by_design``:过渡期/opening hold 命中(策略 by-design,
       由 18 号稿 §2.1 释放判据表解释,非执行缺陷);
+    - ``strategy_by_design_opening``:opening(row1) 域分键(21 号稿 §5,
+      写入端 = ``opening_hold(row1):...`` 前缀;row1/row2 预期相反须分键);
     - ``strategy_gap``:分配方案空(策略语义缺口,归词缀条件优先层
       (§3)与工具消费空缺评估);
     - ``execution``:执行链(drag 落空 / pool_empty / 分配对全部拉黑 /
@@ -127,7 +148,9 @@ def classify_zero_wear_stop_reason(stop_reason: str) -> str:
       空串 stall)暂归执行链待分诊;新枚举值出现时回 18 号稿 §1.2 补行。
     """
     s = stop_reason or ''
-    if s.startswith('过渡期hold'):
+    if s.startswith('opening_hold'):   # 21 号稿 §5:row1 域分键(新写入端)
+        return ZERO_WEAR_STRATEGY_BY_DESIGN_OPENING
+    if s.startswith('过渡期hold'):     # row2(committed)旧写入端字面量
         return ZERO_WEAR_STRATEGY_BY_DESIGN
     if s.startswith('分配方案空'):
         return ZERO_WEAR_STRATEGY_GAP
@@ -149,11 +172,23 @@ class WearReleaseDecision:
       (不对称理由 = 罚则结算时点:生锈按 owned 滞留计罚,软弱无力族只在
       战斗结算时点施罚,r≤2 奖励轮无罚结算点,§2.1)。
     最终 ``hold`` = (opening_hold ∧ ¬rust) ∨ (committed_hold ∧ ¬rust ∧ ¬penalty)。
+
+    21 号稿收窄后(v2,B1/B3):row1(opening) 域的帧级布尔不再表达真实
+    消费面——扣留收窄为「三门全不中 ∧ 保留域命中」的**逐件**判定
+    (``classify_item_hold``),同帧可出现「自由件穿+key 扣留」混合态;
+    ``hold`` 属性降格为 row2(committed) 遗留释放位,仅作观测/兼容,
+    opening 域消费一律走件级判定。新增字段:
+    - ``battle_precede_release`` = O1 战斗前置释放门(后随节点为战斗类,
+      备战帧是穿戴唯一发生点,扣到战斗帧就晚了,§2.3 三门表);
+    - ``node_type_unknown`` = row1 帧域内 node_type 缺失(保留域⑤
+      「维持 hold」的判据输入;None 回查失败时 True)。
     """
 
     opening_hold: bool
     """row1:P1 r≤2 ∧ 当前节点非战斗类(ADR-0257 R3 + ADR-0461 H3 收窄;
-    node_type 缺失维持 hold,观察缺失不改既有行为)。"""
+    node_type 缺失维持 hold,观察缺失不改既有行为)。21 号稿收窄后本字段
+    只表示「row1 帧域活跃」(逐件判定走 classify_item_hold),不再直接
+    等于帧级扣留。"""
     committed_hold: bool
     """row2:已定型扣留(r70 过渡持有语义;激活 = committed 权威
     (cw_intention.committed_from)∧ 0<form<COMMIT_FRAC ∧ 非双轨;
@@ -165,17 +200,141 @@ class WearReleaseDecision:
     """row5:输出侧罚则词缀在场豁免已定型扣留(18 号稿 §2.1 新裁行;
     载体 = data/affix_wear_semantics_data 结构化条目,行为无条件化——
     行为输入已就绪,按开关生命周期门不悬置默认关)。"""
+    battle_precede_release: bool = False
+    """O1(21 号稿 §2.3):后随节点为战斗类时,备战帧释放自由件+key 命中件
+    (保留域④唯一件除外,§2.5 有意行为变化)。"""
+    node_type_unknown: bool = False
+    """保留域⑤判据输入(21 号稿 §2.3):row1 帧域内 node_type 缺失
+    (ADR-0461 H3 既有 None 回查);仅 row1 帧域内有意义。"""
 
     @property
     def hold(self) -> bool:
-        """布尔释放位(True = 扣留;执行层唯一消费面)。"""
+        """帧级遗留释放位(True = 扣留;21 号稿收窄后只辖 row2 域)。
+
+        row1 域消费禁读本属性(混合态不可表达),一律走
+        ``classify_item_hold``;本属性保留 = row2 语义与既有观测面兼容。
+        """
         if self.rust_release:
             return False
-        if self.opening_hold:
-            return True
         if self.committed_hold:
             return not self.output_penalty_release
         return False
+
+
+def battle_precede_release_active(round_num: int | None,
+                                  next_node_type: str | None,
+                                  battle_gate: bool,
+                                  battle_nodes: frozenset[str]) -> bool:
+    """O1 战斗前置释放门(21 号稿 §2.3 三门;只辖 row1 帧域 P1 ∧ r≤2)。
+
+    后随节点 = 本备战帧之后第一个节点(执行层经 ``ledger_node_type``
+    读 r+1 台账);node_type 判定词汇表与 row1 同源(registry
+    ``opening_hold_battle_nodes`` + None 回查)。next_node 缺失 → 门不中
+    (保守侧 = 维持保留域判定,不引入第二套词汇表)。
+    """
+    if round_num is None or round_num > 2:
+        return False
+    if not battle_gate or next_node_type is None:
+        return False
+    return next_node_type in battle_nodes
+
+
+def is_unique_equipment(name: str) -> bool:
+    """唯一件谓词(21 号稿 §2.3 保留域④;机制篇 §4)。
+
+    注册表 effect 正文标记「唯一装备」(全角/半角括号并存,取子串免括号
+    形态漂移)。全场唯一/一人一件三解读未实测 → 本批按最强解读保守扣留
+    (§2.5);实测定谳为弱解读时随 §2.5 收窄撤销。
+    """
+    from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIPMENTS,
+    )
+    e = EQUIPMENTS.get(name)
+    return e is not None and '唯一装备' in e.effect
+
+
+def is_free_item(name: str, comp) -> bool:
+    """自由件谓词(21 号稿 §6 术语;静态注册表纯函数,sim 可达)。
+
+    自由件 = 非 key_equips 候选 ∧ 非 RESERVED_COMPONENT ∧ category≠工具
+    ∧ 非唯一件。comp=None(target 真空)→ key 集为空,其余三条件照判
+    (与 18 号稿 key 白名单「target 真空→白名单空」同向)。工具件在调用方
+    穿戴候选过滤已排除,此处重复排除 = 判据面防御(不进表语义,§3.2)。
+    """
+    from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIP_TOOL_CATEGORY,
+        EQUIPMENTS,
+    )
+    from sr_od.application.currency_war.data.cw_synthesis import (
+        RESERVED_COMPONENTS,
+    )
+    e = EQUIPMENTS.get(name)
+    if e is None or e.category == EQUIP_TOOL_CATEGORY:
+        return False
+    keys = set(getattr(comp, 'key_equips', None) or []) if comp is not None \
+        else set()
+    if name in keys:
+        return False
+    if name in RESERVED_COMPONENTS:
+        return False
+    return not is_unique_equipment(name)
+
+
+def classify_item_hold(decision: WearReleaseDecision, item_name: str,
+                       comp, free_slot_available: bool) -> bool:
+    """逐件扣留判定(21 号稿 §2.3 求值序;True = 扣留,消费位唯一判据)。
+
+    求值序(逐件,高→低):
+      1. O3 豁免:生锈在场 → 释放(无条件压倒保留域全体,含唯一件/node
+         None 共现帧——v1 保留域优先对该帧的第二答已作废);
+      2. O1/O2 释放门:row1 帧域内,O1(后随战斗)释放自由件+key 命中件、
+         O2(自由件 ∧ 有空槽)释放自由件——唯一件两门均不适用(§2.5:唯一
+         key 件扣留是有意行为变化,非 18 号稿语义偏离);
+      3. 保留域①-⑤(仅 row1 帧域;row2 域语义 = 18 号稿原样):
+         ② RESERVED_COMPONENT(key 未命中;P1 判据面第一道,消费端排除
+         为第二道)→ 扣;④ 唯一件 → 扣;① 非 key ∧ committed 活跃 → 扣;
+         ⑤ node_type 缺失 → 非 key 扣(key 命中件不受 hold);
+      4. 清单外一律释放(row1 帧 key 命中件经此兜出,v3,L6 锁钉死);
+      row2(非 row1)帧:key 命中随时穿、输出侧词缀豁免、其余扣(18 号稿
+      row2 原文,唯一件例外不辖 row2——收窄只改 row1 处置)。
+    工具件按 §3.2「不进表」防御性返回 True(调用方穿戴候选过滤已排除)。
+    """
+    from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIP_TOOL_CATEGORY,
+        EQUIPMENTS,
+    )
+    from sr_od.application.currency_war.data.cw_synthesis import (
+        RESERVED_COMPONENTS,
+    )
+    e = EQUIPMENTS.get(item_name)
+    if e is None or e.category == EQUIP_TOOL_CATEGORY:
+        return True
+    if decision.rust_release:   # 求值序第 1 级:O3 压倒一切
+        return False
+    keys = set(getattr(comp, 'key_equips', None) or []) if comp is not None \
+        else set()
+    key_hit = item_name in keys
+    unique = is_unique_equipment(item_name)
+    if decision.opening_hold:
+        # 第 2 级:O1/O2 释放门(逐件;唯一件除外)
+        free = is_free_item(item_name, comp)
+        if not unique and (decision.battle_precede_release
+                           and (free or key_hit)):
+            return False
+        if free and free_slot_available:   # O2
+            return False
+        # 第 3 级:保留域①-⑤
+        if item_name in RESERVED_COMPONENTS and not key_hit:
+            return True   # ②
+        if unique:
+            return True   # ④(含唯一 key 件,§2.5)
+        if (not key_hit) and decision.committed_hold:
+            return True   # ①(两行共现帧承接,§2.3 叠加关系)
+        # ⑤:node_type 缺失对剩余非 key 件维持 hold,其余清单外一律释放
+        return (not key_hit) and decision.node_type_unknown
+    if decision.committed_hold:   # row2 域:18 号稿 row2 原样
+        return not (key_hit or decision.output_penalty_release)
+    return False
 
 
 def opening_hold_active(round_num: int | None, node_type: str | None,
@@ -251,12 +410,17 @@ def resolve_wear_release(round_num: int | None, node_type: str | None,
                          battle_gate: bool, battle_nodes: frozenset[str],
                          comp, form: float, committed: bool,
                          enemy_affixes: list[str] | None,
-                         rust_gate: bool) -> WearReleaseDecision:
-    """释放判据表五行评估(18 号稿 §2.1;策略侧唯一入口,执行层只拿布尔位)。
+                         rust_gate: bool,
+                         next_node_type: str | None = None,
+                         ) -> WearReleaseDecision:
+    """释放判据表评估(18 号稿 §2.1 + 21 号稿 §2.3 收窄;策略侧唯一入口)。
 
     行 3(战斗类节点释放)不单独出字段——它是 row1 的否定支
     (opening_hold=False 即释放),与哨兵 expected 的 round≥3 自带条件
-    无冲突。多行命中合并规则见 ``WearReleaseDecision`` 注。
+    无冲突。21 号稿收窄:row1 帧域扣留降为逐件判定(``classify_item_hold``),
+    本函数新增 ``next_node_type``(O1 门输入,执行层读 r+1 台账)与
+    ``node_type_unknown``(保留域⑤);row2 语义零改动。
+    多行命中合并规则见 ``WearReleaseDecision`` 注。
     """
     opening = opening_hold_active(round_num, node_type, battle_gate, battle_nodes)
     committed_h = committed_hold_active(comp, form, committed)
@@ -267,6 +431,9 @@ def resolve_wear_release(round_num: int | None, node_type: str | None,
         committed_hold=committed_h,
         rust_release=rust,
         output_penalty_release=penalty,
+        battle_precede_release=battle_precede_release_active(
+            round_num, next_node_type, battle_gate, battle_nodes),
+        node_type_unknown=(opening and node_type is None),
     )
 
 
@@ -342,3 +509,151 @@ def resolve_affix_priority_order(comp, deployed: list,
     core_set = set(comp.core_chars)
     rest_cores = [c for c in base if c not in unsatisfied and c in core_set]
     return unsatisfied + rest_cores
+
+
+# ===== 21 号稿 §3:工具件消费判据面(全量收编 10 号稿 §2.1,零改写)=====
+
+#: G1 发射位准入(21 号稿 §2.4-2/§3.2;流程:197 常驻锁,ARCH_REFLECTION_
+#: 3STALLS 防第四个闩;ADR-0531):工具动作是**新的执行动作类**,不骑 M7
+#: 穿戴通道。
+#: 执行通道前置 = UI 建档(工具 icon 拖曳交互)+ 工具拖曳 op 落码批
+#: (10 号稿 §2.1.7 准入顺序),两件均未交付 → 本批 fail-closed 不发射。
+#: 开臂判据挂账:工具拖曳 op 落码批交付时翻 True 并随批带准入测试
+#: (合法开关形态 = 行为输入未就绪 + 开臂判据挂账,strategy-work §3.3)。
+TOOL_EXEC_CHANNEL_READY: bool = False
+
+#: 工具拒因分键(21 号稿 §4/§5 遥测:该烧没烧/误烧率/拒因分键)。
+TOOL_REJECT_G1_NOT_ADMITTED: str = 'g1_not_admitted(执行通道未建档)'
+TOOL_REJECT_NO_TARGET: str = 'key_equips 空(recycle_qualified 空集,fail-closed)'
+TOOL_REJECT_IN_DEMAND: str = '件在需求向量内(留合成)'
+TOOL_REJECT_M1_GAP: str = 'm=1 缺件专留(P14 定理 2,不值得喂炉)'
+TOOL_REJECT_DEST_UNREADY: str = '去向登记制未落地(10 号稿 §2.1.2)'
+TOOL_REJECT_RC_MISSING: str = 'R(c) 缺档 fail-closed(21 号稿 §3.4)'
+TOOL_REJECT_COLD_START_LATER: str = '冷启动分支外(10 号稿 §2.1.7 准入顺序)'
+
+
+@dataclass(frozen=True)
+class ToolAction:
+    """单件工具的判据评估产物(门 A 到货拍评估一次,不进跨轮计划)。
+
+    ``tool`` = 工具注册名;``action`` = 拟执行动作(如 'furnace_single');
+    ``usable`` = 判据是否放行;``reason`` = usable=False 时的拒因分键
+    (usable=True 时为 '')。本批不产生任何执行语义(判据面先行)。
+    """
+    tool: str
+    action: str
+    usable: bool
+    reason: str = ''
+
+
+def _privilege_base_name(priv_name: str) -> str | None:
+    """特权件名 → 对应进阶成品名('X·特权' → 'X';非特权名 → None)。
+
+    进阶→特权映射 = 注册表命名规则(P14 Q4:特权件无合成/炉/令牌通道,
+    特权卡是唯一获取通道;对应进阶 = 同名去「·特权」后缀且在注册表)。
+    """
+    suffix = '·特权'
+    if not priv_name.endswith(suffix):
+        return None
+    return priv_name[: -len(suffix)]
+
+
+def evaluate_tool_actions(owned: list[str], comp) -> list[ToolAction]:
+    """工具件消费判据(10 号稿 §2.1 三道门 + 21 号稿 §3.4 增量;纯函数)。
+
+    门 A(评估时点):调用方在备战期 owned 快照到达时**评估一次**,不进
+    跨轮计划(到货随机,规划无从附着)——本函数无内部状态,天然满足。
+    门 B(价值面):工具动作零金币,金面默认不管(两处派生金流按息律
+    通则搭车,不入本判据,21 号稿 §3.3);经济审只查「被操作装备在不在
+    目标需求向量里」(recycle_qualified/hoard_gaps 同源)。
+    门 C(不可逆分级):一次性工具证据要求更高;本批落地分支 =
+    冷启动两件(炉准入 + 扳手闸),其余按 fail-closed 带拒因分键。
+
+    逐件判据(21 号稿 §3.4 收编转写):
+    - 冶金炉(单件用法):owned 存在 b ∈ recycle_qualified(K)(死库存,
+      P14 定理 3)→ 放行;K 空 → 拒(no_target);全部死库存已在炉面无件
+      可烧 → 不产条目;b 满足但 hoard_gaps 正份额档恰为 1(m=1 缺件专留)
+      → 拒(m1_gap)。角色模式三件同刷(P14 定理 2 流水线)候工具拖曳
+      op 批(执行面依赖扳手先行取下判定),本批不产条目。
+    - 拆装扳手/精密扳手:去向登记制(每件取下物落位①重穿②回囤,找不
+      到去向 = 不拆)未落地 → 一律拒(dest_unready,fail-closed——拆完
+      散落 owned 无主是负操作)。
+    - 员工/完美投影仪:q 再遇比较与费用域分支候冷启动后续批 → 拒
+      (cold_start_later)。
+    - 好运令牌:R(c) 推荐表未采集 → 拒(rc_missing,fail-closed;四选一
+      选错整件报废,门 C)。
+    - 特权赋予卡:key_equips 显式含特权件 ∧ 对应进阶成品在手(栏内拖法,
+      精确控制配对)→ 放行;无特权目标 → 拒(in_demand 同族「留」语义,
+      分键用 in_demand)。
+    """
+    from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIP_TOOL_CATEGORY,
+        EQUIPMENTS,
+    )
+    from sr_od.application.currency_war.data.cw_synthesis import (
+        hoard_gaps,
+        recycle_qualified,
+    )
+    keys = list(getattr(comp, 'key_equips', None) or []) if comp is not None \
+        else []
+    owned_set = list(owned or [])
+    tools = sorted({n for n in owned_set
+                    if EQUIPMENTS.get(n) is not None
+                    and EQUIPMENTS[n].category == EQUIP_TOOL_CATEGORY})
+    actions: list[ToolAction] = []
+    for t in tools:
+        if t == '冶金炉':
+            if not keys:
+                actions.append(ToolAction(t, 'furnace_single', False,
+                                          TOOL_REJECT_NO_TARGET))
+                continue
+            rq = recycle_qualified(keys)
+            burnable = [b for b in owned_set if b in rq]
+            if not burnable:
+                continue   # 无死库存可烧,不产条目(非拒因,是无操作面)
+            gaps = hoard_gaps(keys, owned_set)
+            positive = [g for g, v in gaps.items() if v > 0]
+            if len(positive) == 1:
+                actions.append(ToolAction(t, 'furnace_single', False,
+                                          TOOL_REJECT_M1_GAP))
+            else:
+                actions.append(ToolAction(t, 'furnace_single', True))
+        elif t in ('拆装扳手', '精密拆装扳手'):
+            actions.append(ToolAction(t, 'wrench_detach', False,
+                                      TOOL_REJECT_DEST_UNREADY))
+        elif t in ('员工投影仪', '完美投影仪'):
+            actions.append(ToolAction(t, 'projector_copy', False,
+                                      TOOL_REJECT_COLD_START_LATER))
+        elif t == '好运令牌':
+            actions.append(ToolAction(t, 'lucky_token_pick', False,
+                                      TOOL_REJECT_RC_MISSING))
+        elif t == '特权赋予卡':
+            hit = any(_privilege_base_name(k) in owned_set
+                      for k in keys if _privilege_base_name(k) is not None)
+            if hit:
+                actions.append(ToolAction(t, 'privilege_upgrade', True))
+            else:
+                actions.append(ToolAction(t, 'privilege_upgrade', False,
+                                          TOOL_REJECT_IN_DEMAND))
+        else:
+            # 未逐件建模的工具新条目(注册表扩容)一律 fail-closed,
+            # 拒因复用冷启动分键;扩容批回本函数补行。
+            actions.append(ToolAction(t, 'unknown_tool_action', False,
+                                      TOOL_REJECT_COLD_START_LATER))
+    return actions
+
+
+def admitted_tool_actions(actions: list[ToolAction]) -> list[ToolAction]:
+    """G1 发射位准入过滤(21 号稿 §2.4-2/流程:197;防第四个闩)。
+
+    判据放行(usable)∧ 执行通道就绪(TOOL_EXEC_CHANNEL_READY)才可发射;
+    通道未就绪时全部拒(g1_not_admitted 分键,原判据拒因保留在先——
+    拒因可观测性:判据拒与准入拒分开可见,禁静默吞)。
+    """
+    if TOOL_EXEC_CHANNEL_READY:
+        return list(actions)
+    out: list[ToolAction] = []
+    for a in actions:
+        out.append(a if not a.usable else ToolAction(
+            a.tool, a.action, False, TOOL_REJECT_G1_NOT_ADMITTED))
+    return out

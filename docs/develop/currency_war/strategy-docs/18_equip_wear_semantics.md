@@ -186,3 +186,28 @@
 → PickBoxCard,选卡优先防重开)——OpenBox 开箱臂(boxes 臂)之后、
 决定弹窗消费闭环的下游臂。依据与 3 锁 = ADR-0527(第十八局停场
 修复,OpenBox 假成功判据 + 臂缺位根修)。
+
+## 8. as-built 回记(21 号稿落码批,ADR-0531)
+
+§2.1 判据表 row1(opening hold)行已按 21 号稿 §2.3 收窄(单行改动,
+row2- row5 语义原文照旧):
+
+- **判据面**:`kernel/cw_equip_env.py` `resolve_wear_release` 新增
+  ``battle_precede_release``(O1 战斗前置释放,输入 = 后随节点 r+1
+  台账类型)与 ``node_type_unknown``(保留域⑤);逐件判定单一源 =
+  ``classify_item_hold``(求值序:O3 豁免 → O1/O2 → 保留域①-⑤ →
+  清单外一律释放);自由件谓词 = ``is_free_item``;唯一件谓词 =
+  ``is_unique_equipment``(effect「唯一装备」子串,保守按最强解读)。
+  §2.1 表中「opening hold 活跃 → 非 key 扣留」行自此由本收窄取代;
+  row3(战斗节点释放)并入 O1(战斗**前置**帧同放)。
+- **消费位**:帧级 ``hold`` 布尔降格为 row2 遗留观测位(§2.4-2/B1:
+  布尔无法表达混合态);`cw_op_equip_all.py` 分配输入 = 件级判定后的
+  可释放集,原「扣留帧只穿 key_equips 命中件」过滤迁移入
+  classify_item_hold;词缀优先层(§3)在可释放集非空即启用。
+- **遥测分键**(21 号稿 §5):stop_reason 新增 ``opening_hold(row1):...``
+  前缀 → 归域 ``strategy_by_design_opening``(§1.2 二分表补行);
+  旧 ``过渡期hold`` 前缀归域不变。
+- **锁面变化**:r388 锁(§6 引)三断言改锁 ``opening_hold`` 域标记、
+  18 锁 §2.1 row5 opening 断言改写——语义被 21 号稿取代非机械跟绿,
+  出处已注各 docstring;21 号稿新锁 =
+  ``test_cw_equip_wear_semantics_21.py``。fill-only 锁不动。

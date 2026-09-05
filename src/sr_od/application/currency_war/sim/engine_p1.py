@@ -208,6 +208,17 @@ EQUIP_GRANT_BONUS_P: float = 0.30      # 每供给节点追加 1 件的概率
 
 EQUIP_GRANT_BONUS_ADV_SHARE: float = 0.35   # 追加件中进阶占比
 
+# ===== 工具发放注入基建(21 号稿 §4/§5 声明的最小面;10 号稿 §2.1.9)=====
+# 目的:让炉准入/扳手闸等工具判据在 sim 行为分布观测中可达(sim 局内
+# 自然发放永不含工具——工具为跨局持存物品,不建模,见上方供给校准注)。
+# 注入走**追加件通道旁路**:pool 非空且命中概率时追加 1 件工具(不经
+# 供给 3 选项,不改 decide_supply 决策语义)。**缺省(pool 空 ∧ P=0)零
+# 漂移**——既有批次与池指纹完全不受影响;开注入属显式实验配置,池指纹
+# 变化由实验批自行声明。消费侧:工具名进 st.equips 后不进 equip_allocation
+# 可穿池(下方分配调用处按注册表类别过滤,与执行层 wearable 同口径)。
+TOOL_GRANT_INJECT_POOL: list[str] = []
+TOOL_GRANT_INJECT_P: float = 0.0
+
 
 
 # 事件金 = 金流状态分布校准总闸(ADR-0233 建通道;ADR-0447 重整定)。
@@ -2033,6 +2044,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     else:
                         st.equips.append(rng.choice(_basic_names))
                     _equip_grants += 1   # `w614_sim_fidelity/` G1 追加件落账
+                # 工具注入旁路(21 号稿 §4/§5 最小面;缺省零漂移,见
+                # TOOL_GRANT_INJECT_POOL 注)
+                if TOOL_GRANT_INJECT_POOL and rng.random() < TOOL_GRANT_INJECT_P:
+                    st.equips.append(rng.choice(TOOL_GRANT_INJECT_POOL))
+                    _equip_grants += 1
                 if _is_supply and _pick.idx < len(_opts) \
                         and _opts[_pick.idx].has_diamond:
                     res.phantom_supply_picks += 1   # 披露计数(不进池)
@@ -2079,9 +2095,22 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _equip_syntheses += 1   # `w614_sim_fidelity/` G1 合成落账
             _duty = False
             if st.equips and deployed_occupied(st.deployed):   # ADR-0392 占用数(定长表恒真值)
+                from sr_od.application.currency_war.data.cw_equipment_data import (
+                    EQUIP_TOOL_CATEGORY as _EQTOOL,
+                )
+
+                # 工具注入伴随面(21 号稿 §4):工具不进可穿池(执行层
+                # wearable 同口径,类别=工具排除);st.equips 本体不动,
+                # 工具行为分布由工具判据消费端观测。
+                from sr_od.application.currency_war.data.cw_equipment_data import (
+                    EQUIPMENTS as _EQM,
+                )
                 from sr_od.application.currency_war.kernel.cw_comps import (
                     equip_allocation,
                 )
+                _wearable_equips = [n for n in st.equips
+                                    if _EQM.get(n) is not None
+                                    and _EQM[n].category != _EQTOOL]
                 # `w212_sim_equip/`/ADR-0393:equip_allocation 生产调用形态——
                 # ① occupied = 画面已穿(生产 occupied_m7
                 # 同语义;旧 sim 恒 None → 配对守卫看不见历史已穿,只看得
@@ -2096,7 +2125,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ADR-0487:谓词 p1_iface_carry_duty_active 已删;账本行
                 # p1_duty 键按披露稳定保留恒 False。)
                 _equipped_now = equip_allocation(
-                    sess.target_comp, st.deployed, list(st.equips),
+                    sess.target_comp, st.deployed, _wearable_equips,
                     occupied=_occupied)
                 # ADR-0312(迁移审计 w50(git 历史) L2 雏形):分配结果同步写回 BenchChar.equips
                 # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产

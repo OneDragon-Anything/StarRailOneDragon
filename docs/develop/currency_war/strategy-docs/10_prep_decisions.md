@@ -139,6 +139,7 @@
 
 - 用户裁决：独立设计件，不并入任何进行中的修法批；本节即该需求的定义稿（收编归位：判据随**我们的架构与常量**演进——引用 `cw_synthesis` 函数与 key_equips 语义，注册表变了跟着重构，不随游戏版本直接变；机制事实继续单一源留在〔机制篇〕，本节不复写数值）。
 - 未来实现批的准入顺序建议：UI 建档（工具 icon 拖曳交互）→ 冷启动分支（炉准入+扳手闸，sim 可验先行）→ 投影仪/特权卡 → 令牌（等 R(c)）；每步按 strategy-work checklist 走完整验证阶梯。
+- **as-built 增量（21 号稿落码批，ADR-0531）**：判据面已落 `kernel/cw_equip_env.py` `evaluate_tool_actions`（本节三道门全量收编零改写：冷启动分支 = 炉准入 `recycle_qualified`+`hoard_gaps` m=1 保留 + 扳手闸 fail-closed；投影仪/令牌（R(c) 缺档）/未建模新工具 fail-closed 带拒因分键；特权卡「key 含特权 ∧ 对应进阶成品在手」完整落地）。发射面 = `admitted_tool_actions` G1 准入（执行通道未建档不发射）；发射位本体与拖曳执行、工具消耗确认通道（21 号稿 §3.2 四态登记+三分支）辖工具拖曳 op 落码批（其开臂 = `TOOL_EXEC_CHANNEL_READY` 翻正随批准入测试）。
 
 #### 2.1.8 现状：equip_all 对工具零覆盖（码源）
 
