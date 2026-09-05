@@ -575,6 +575,9 @@ def _session_level(ctx: SrContext) -> int | None:
 
     布局选档的 level 源(ADR-0281:后排槽数由 level 驱动;``_resolve_level`` 维护的
     单调链已防毒化)。离线/无 session 场景返 None(调用方退 6 槽基线)。
+    **T-8 单一源可信门**(15 号稿 §2.3/§6):``last_state.level_readable=False``
+    的帧(纯 ``_expected_level`` 启发式兜底)其 state 值**不参与取大**——
+    「兜底 4」与「真读 4」在字段上可分后,兜底值不得混进单调链。
     """
     try:
         m = ctx.cw_match
@@ -582,9 +585,28 @@ def _session_level(ctx: SrContext) -> int | None:
             return None
         lv = getattr(m.session, 'last_level_obs', 0) or 0
         st = m.session.last_state
-        if st is not None and st.level:
+        if (st is not None and st.level
+                and getattr(st, 'level_readable', True)):
             lv = max(lv, st.level)
         return lv or None
+    except Exception:   # noqa: BLE001
+        return None
+
+
+def _level_trusted(ctx: SrContext) -> bool | None:
+    """level authoritative 位单一读口(15 号稿 §2.3/§3.2①)→ 三态:
+
+    ``True``/``False`` = ``session.last_state.level_readable``(observed /
+    启发式兜底帧);无 session/state → ``None`` = 未声明(布局公式通道
+    维持现行为,零行为变更)。布局公式与 14 号稿 level 消费门共用本定义,
+    不得各写一份「什么算可信 level」。"""
+    try:
+        m = ctx.cw_match
+        st = m.session.last_state if (m is not None and m.session is not None) \
+            else None
+        if st is None:
+            return None
+        return bool(getattr(st, 'level_readable', True))
     except Exception:   # noqa: BLE001
         return None
 
@@ -597,14 +619,36 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     布局选档 **cap 差公式 + CV 双通道**(ADR-0385,旧 level 驱动已废——run 26
     lv8 无召唤物局按 8 格读板失真实证):select_back_layout 现读 read_deploy_cap
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
+    **布局未知态**(15 号稿 §3.2④/T-7):单帧未知 → 只返前排(跳过后排读);
+    冻结帧(连续 3 未知)→ 读类退 6 档基线继续读;每帧 JSONL 留证在
+    resolve 侧。level_trusted 接线:未显式传 level 时取
+    session.last_state.level_readable(derived 帧公式通道弃权)。
     """
     from sr_od.application.currency_war.obs.cw_back_layout import (
         back_row_slot_rects_ctx,
         fallback_back_slots,
         resolve_back_slots,
     )
-    _lay = resolve_back_slots(ctx, screen, level=level)
-    back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
+    # 消费接线(15 号稿 §3.2①):显式传 level = 调用方自declare的读数,可信位
+    # 不越权代判(None=现行为);未传 = 走 session 等级链 → 接 last_state.
+    # level_readable 可信位(derived/启发式帧公式通道弃权)。
+    _lt = None if level is not None else _level_trusted(ctx)
+    _lay = resolve_back_slots(ctx, screen, level=level, level_trusted=_lt)
+    if _lay.get('unknown') and not _lay.get('frozen'):
+        # 单帧未知(T-7,§3.2④):跳过后排身份读(宁缺勿造,同 paddle None
+        # 对齐跳过先例);JSONL 留证(resolve 侧每帧落证)。
+        front = identify_slots(screen, templates, _ctx_slots(ctx, '前排', 4),
+                               'front',
+                               min_inliers=_DEPLOYED_MIN_INLIERS,
+                               live_only=_DEPLOYED_LIVE_ONLY,
+                               center_gate=_DEPLOYED_CENTER_GATE)
+        return front
+    if _lay.get('unknown'):
+        # 冻结帧读类(§3.2④ B2):退 6 档基线继续读(读面可重读可纠正,
+        # 下一帧覆盖;写类冻结在消费面 cw_op_deploy 侧)。
+        back_slots = fallback_back_slots()
+    else:
+        back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
     # 布局留证采集钩子(ADR-0385 决策 12,W209i 降级:原停机钩子废弃;
     # 2026-08-26 佩佩局 7 格坐标档已建档 → 钩子对 7 静默,只对未来**未建档**
     # 新档位(diff≥3 域外/CV 新观察)留证):
@@ -623,7 +667,8 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     # (方案 C,未暴露;真需要现场采集时人工经 MCP 驱动)。
     try:
         from sr_od.application.currency_war.obs.cw_back_layout import _LAYOUT_PREFIX
-        if _lay['n_raw'] not in _LAYOUT_PREFIX:
+        # 未知帧 n_raw=None 不辖本钩子(未知态留证已在 resolve 侧另落)
+        if _lay['n_raw'] is not None and _lay['n_raw'] not in _LAYOUT_PREFIX:
             from sr_od.application.currency_war.kernel.cw_obs_core import (
                 is_prep_like_frame,
             )
@@ -1007,19 +1052,27 @@ def read_deployed_chars_tiered(session, ctx: SrContext, screen: MatLike,
                                templates: AvatarTemplates,
                                level: int | None = None) -> list[BenchChar]:
     """:func:`read_deployed_chars` 的漏斗版(签名多 session;布局解析/
-    留证钩子/系统单位自检全部复用旧实现,仅 front/back 识别走三层漏斗)。"""
+    留证钩子/系统单位自检全部复用旧实现,仅 front/back 识别走三层漏斗)。
+    布局未知态语义与旧实现同款(§3.2④/T-7):单帧未知只返前排;冻结帧
+    读类退 6 档基线。"""
     from sr_od.application.currency_war.obs.cw_back_layout import (
         back_row_slot_rects_ctx,
         fallback_back_slots,
         resolve_back_slots,
     )
-    _lay = resolve_back_slots(ctx, screen, level=level)
-    back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
+    _lt = None if level is not None else _level_trusted(ctx)
+    _lay = resolve_back_slots(ctx, screen, level=level, level_trusted=_lt)
+    if _lay.get('unknown'):
+        back_slots = (fallback_back_slots() if _lay.get('frozen') else [])
+    else:
+        back_slots = back_row_slot_rects_ctx(ctx, _lay['prefix']) or fallback_back_slots()
     front = identify_slots_tiered(session, screen, templates,
                                   _ctx_slots(ctx, '前排', 4), 'front',
                                   min_inliers=_DEPLOYED_MIN_INLIERS,
                                   live_only=_DEPLOYED_LIVE_ONLY,
                                   center_gate=_DEPLOYED_CENTER_GATE)
+    if _lay.get('unknown') and not _lay.get('frozen'):
+        return front   # 单帧未知:跳过后排读(T-7)
     back = identify_slots_tiered(session, screen, templates, back_slots, 'back',
                                  min_inliers=_DEPLOYED_MIN_INLIERS,
                                  live_only=_DEPLOYED_LIVE_ONLY,

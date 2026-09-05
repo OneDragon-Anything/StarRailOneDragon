@@ -188,6 +188,11 @@ class PrepObservation:
     tomes: list = field(default_factory=list)         # read_tomes [(slot, Point)] 秘密典籍
     free_bench_slots: int = 0           # 9 − 占用(角色+箱都占席;CV 每步现读)
     deploy_vacancy: int = 0             # deploy_cap − deployed_count(heavy 刷新)
+    deploy_divergent: bool = False      # vacancy 分母双源分歧位(15 号稿批 C:
+                                        # True=deployed 计数取的是低值仲裁,
+                                        # 发射门按 §4.2 延迟;准备面载体)
+    deploy_stale: bool = False          # vacancy 陈旧位(True=缓存沿用:
+                                        # cap/paddle 双缺,B5 陈旧值过门申报)
     shop_open: bool = False             # 锚点「按钮-收起」可见(每步现读)
     box_overlay_open: bool = False      # 武装箱 overlay(标识-请选择;每步现读)
     front_occupied: set = field(default_factory=set)  # 前排占用物理槽位号(每步现读)

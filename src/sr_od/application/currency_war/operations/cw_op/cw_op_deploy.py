@@ -352,18 +352,26 @@ class CwOpDeploy(SrOperation):
         return [p for _, p in pts]
 
     def _session_level(self) -> int | None:
-        """session 等级链(``last_level_obs`` 单调链 vs ``last_state.level`` 取大)→ None(无 session)。
+        """session 等级链 → None(无 session)。
 
         布局选档的 level 源(ADR-0281:后排槽数 level 驱动,cap 与布局无关)。
+        **单一源转调**(15 号稿批 C/T-8:与 ``cw_identity_obs._session_level``
+        原为同逻辑双拷贝,合一后语义无分叉;authoritative 位传导见
+        ``cw_back_layout.resolve_back_slots`` 的 level_trusted 形参)。
         """
-        _m = self.ctx.cw_match
-        if _m is None or _m.session is None:
-            return None
-        lv = getattr(_m.session, 'last_level_obs', 0) or 0
-        st = _m.session.last_state
-        if st is not None and st.level:
-            lv = max(lv, st.level)
-        return lv or None
+        from sr_od.application.currency_war.obs.cw_identity_obs import (
+            _session_level as _single_source,
+        )
+        return _single_source(self.ctx)
+
+    def _level_trusted(self) -> bool | None:
+        """level authoritative 位(15 号稿 §3.2①/T-8):单一源 =
+        ``cw_identity_obs._level_trusted``(session.last_state.level_readable);
+        None = 未声明(布局公式通道维持现行为)。"""
+        from sr_od.application.currency_war.obs.cw_identity_obs import (
+            _level_trusted as _single_source,
+        )
+        return _single_source(self.ctx)
 
     def _back_row_centers(self) -> list[Point]:
         """W209/ADR-0385:后排槽位按 **cap 差公式** 选档(口述「后台格数=6+(cap−level)」)。
@@ -372,12 +380,20 @@ class CwOpDeploy(SrOperation):
         等级链);7 格档未建档保守 8 格超集 + 留证。旧 level≥7→8 格模型
         (ADR-0281)归因错误已废——run 26(lv8 无召唤物局)按 8 格坐标拖
         不存在的 7/8 号格 + 幻影空位把部署卡死在 bench = 崩坏根因①。
+        **布局未知态写面**(15 号稿 §3.2④/T-7)→ ``[]``:后排部署跳过
+        (单帧与冻结帧同语义——冻结=写类止损,单帧=宁缺勿造;JSONL 留证
+        在 resolve 侧)。
         """
         from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout,
         )
         _n, _pfx = select_back_layout(self.ctx, self.last_screenshot,
-                                      level=self._session_level())
+                                      level=self._session_level(),
+                                      level_trusted=self._level_trusted())
+        if _n is None:
+            log.info('[cw-deploy] 布局未知态 → 后排部署跳过(写类冻结语义,'
+                     '§3.2④)')
+            return []
         return self._row_centers(_pfx)
 
     @operation_node(name='部署备战栏角色', is_start_node=True)
@@ -654,14 +670,23 @@ class CwOpDeploy(SrOperation):
         from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
         )
-        _bk_n, _bk_pfx = _sel_bl(self.ctx, scr, level=self._session_level())
-        back_eq = read_row_equipped(self.ctx, scr, equip_grays, _bk_pfx, _bk_n)
+        _bk_n, _bk_pfx = _sel_bl(self.ctx, scr, level=self._session_level(),
+                                 level_trusted=self._level_trusted())
+        if _bk_n is None:
+            # 布局未知态写类冻结(§3.2④/T-7):tracked 后排 equips 写入停
+            # (前排快照不受影响;错向档读数写入 = 毒化 tracked 底座)。
+            log.info('[cw-deploy] 布局未知态 → tracked 后排 equips 写入冻结')
+            back_eq = None
+        else:
+            back_eq = read_row_equipped(self.ctx, scr, equip_grays, _bk_pfx, _bk_n)
         tracked = _match.session.tracked_deployed
         _n = 0
         for c in tracked:
             slot = getattr(c, 'slot', None)
             if slot is None:
                 continue
+            if c.position_pref != 'front' and back_eq is None:
+                continue   # 冻结面:后排写入停(§3.2④)
             eq = (front_eq if c.position_pref == 'front' else back_eq).get(slot, [])
             if eq:
                 # C6 装备对账(契约 2,W38):deployed 侧画面可读 → 与账面交叉校验,
@@ -728,7 +753,8 @@ class CwOpDeploy(SrOperation):
         from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
         )
-        _n2, _pfx2 = _sel_bl(self.ctx, scr, level=self._session_level(), cap=_cap)
+        _n2, _pfx2 = _sel_bl(self.ctx, scr, level=self._session_level(),
+                             cap=_cap, level_trusted=self._level_trusted())
         if _pfx2:
             back = self._row_centers(_pfx2)
         if _cap is None:
@@ -1259,6 +1285,17 @@ class CwOpDeploy(SrOperation):
             return
         _match = self.ctx.cw_match
         if _match is None or _match.session is None:
+            return
+        # 布局未知态写类冻结(15 号稿 §3.2④/T-7):reconcile 是整表采新覆写,
+        # 后排身份缺读帧(未知态 read_deployed_chars 只返前排)会把 back 缺读
+        # 当「板空」写进 tracked = 错向毒化底座 → 未知史在案(任一未知帧,
+        # 单帧/冻结同停)整表对账跳过,已知帧(计数清零)自动恢复。
+        from sr_od.application.currency_war.obs.cw_back_layout import (
+            back_layout_unknown_streak,
+        )
+        if back_layout_unknown_streak() >= 1:
+            log.info('[cw-deploy] 布局未知态在案 → tracking 整表对账跳过'
+                     '(写类冻结,§3.2④)')
             return
         scr = self.screenshot()   # fresh post-deploy
         real_bench = read_bench_chars(self.ctx, scr, templates)

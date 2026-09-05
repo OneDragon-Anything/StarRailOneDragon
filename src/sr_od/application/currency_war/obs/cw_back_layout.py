@@ -113,6 +113,33 @@ _BACK_Y1, _BACK_Y2 = 600, 739
 _channel_conflict_ts: dict[str, float] = {}
 _last_sel_log: tuple | None = None
 
+# ===== 布局未知态与冻结(15 号稿 §3.2④/T-7/B2/B3)=====
+# 依据:三信号双弃权(公式弃权 ∧ CV None)时「不固定选任何档」——diff=0 退 6
+# 档是把「不知道」当「无扩展」(15 号稿 §3.2① 对现行行为的定性)。缺省语义
+# 读写分级:单帧未知=跳过后排依赖操作;连续未知=读类退 6 档基线继续读、
+# 写类(后排部署/tracked 后排写入)冻结止损(依据=读写代价不对称:重读廉价/
+# 毒化传播贵,非「真值=6」分布先验;fail_closed_side 声明见注册面)。
+
+#: 连续未知帧冻结阈值(B3):与防抖门同 N=3,复用 W209h house 先例节奏,
+#: 显式不立第二旋钮;任一已知帧清零复位。
+UNKNOWN_FREEZE_FRAMES: int = 3
+
+#: 连续未知帧计数(模块级:读/写两侧消费面要看同一「连续」史;一次
+#: resolve 判定全不可判计 1。测试/新局经 :func:`reset_layout_unknown_state`
+#: 复位;测试纪律=被测生产路径含模块级全局时 setup 必须一并复位)。
+_unknown_streak: int = 0
+
+
+def reset_layout_unknown_state() -> None:
+    """复位连续未知帧计数(测试隔离/新局复位入口;生产=任一已知帧自动清零)。"""
+    global _unknown_streak
+    _unknown_streak = 0
+
+
+def back_layout_unknown_streak() -> int:
+    """当前连续未知帧计数(写面冻结门消费;≥ ``UNKNOWN_FREEZE_FRAMES`` = 冻结)。"""
+    return _unknown_streak
+
 # ===== CV 通道:槽位存在性签名(ADR-0385 双通道件2) =====
 
 #: 锚位(606/1031):帧可用性检查——三档几何下探针窗都落在格带上
@@ -327,13 +354,18 @@ def note_channel_conflict(screen, formula_n: int, cv_n: int,
 
 
 def select_back_layout(ctx, screen, level: int | None = None,
-                       cap: int | None = None) -> tuple[int, str]:
+                       cap: int | None = None,
+                       level_trusted: bool | None = None) -> tuple[int | None, str]:
     """布局选档单一入口(ADR-0385 双通道对账)→ ``(槽数, 布局前缀)``。
 
     委托 :func:`resolve_back_slots`(详见其对账语义与各返回字段);
     消费方只需格数+前缀。停机钩子/留证消费 raw 字段请直调后者。
+    **布局未知态**(15 号稿 §3.2④,双弃权帧)→ ``(None, '')``——消费方
+    按读写分级跳过后排依赖操作(单帧)/冻结止损(连续),禁把空串前缀
+    静默当 6 档基线用(那正是本态要防的缺省化复发)。
     """
-    r = resolve_back_slots(ctx, screen, level=level, cap=cap)
+    r = resolve_back_slots(ctx, screen, level=level, cap=cap,
+                           level_trusted=level_trusted)
     return r['n'], r['prefix']
 
 
@@ -429,16 +461,29 @@ def _occupancy_consistency_arbitrate(ctx: SrContext, screen: MatLike,
 
 def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                        level: int | None = None,
-                       cap: int | None = None) -> dict:
+                       cap: int | None = None,
+                       level_trusted: bool | None = None) -> dict:
     """双通道对账全量解析(ADR-0385;选档与钩子共用的单一判定源)→ dict:
 
     - ``formula_raw``/``formula_n``:公式原始格数/映射后格数(**未建档**值
-      (9+)映射 8 格超集;已建档的 6/7/8 原样返回);
+      (9+)映射 8 格超集;已建档的 6/7/8 原样返回;公式弃权帧 = None);
     - ``cv_n``:CV 实测格数(None=不可判;防抖未通过时为 None 语义=退公式);
     - ``cv_readings``:防抖重读序列(W209h;仅新格数读数触发时非 None);
-    - ``n_raw``:对账后原始格数(不一致采 CV;未建档值保留原值供钩子判档);
-    - ``n``/``prefix``:运行值(未建档档 → 8 格超集,已建档档直读);
-    - ``cap``/``level``/``diff``:读数快照(判读/留证)。
+    - ``n_raw``:对账后原始格数(不一致采 CV;未建档值保留原值供钩子判档;
+      未知态帧 = None);
+    - ``n``/``prefix``:运行值(未建档档 → 8 格超集,已建档档直读;未知态
+      帧 → ``None``/``''``,消费方按读写分级处置,§3.2④);
+    - ``cap``/``level``/``diff``:读数快照(判读/留证);
+    - ``unknown``/``frozen``/``unknown_streak``:布局未知态三键(§3.2④/
+      T-7)——unknown=本帧双弃权;frozen=连续未知达 ``UNKNOWN_FREEZE_FRAMES``
+      (写类冻结止损);unknown_streak=当前连续计数(任一已知帧清零)。
+
+    **公式输入净化(§3.2①,T-8 消费端)**:``level_trusted`` 三态——
+    ``False`` = level 为 derived/启发式(未过可信门)→ 公式通道**弃权**
+    (n_raw 依 CV/仲裁;CV 也不可判 → 双弃权进未知态);``None`` = 调用方
+    未声明 → 维持现行为(diff=0 退 6 档基线,零行为变更);``True`` =
+    observed(参与仲裁,现行为)。可信位单一源 =
+    ``cw_identity_obs._level_trusted``(session.last_state.level_readable)。
 
     对账:一致 → 公式值;CV 实测存在且不符 → **CV 值**(画面事实>推导)+
     :func:`note_channel_conflict` 留证两值;CV None → 公式值兜底。
@@ -446,6 +491,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     档 {6,7,8})单帧不行动——重读 2 次三次一致才采 CV 值;任一不一致 =
     瞬态,退公式值 + 留证(阈值不动,瞬态用重读解)。
     """
+    global _unknown_streak
     try:
         if level is None or level <= 0:
             from sr_od.application.currency_war.obs.cw_identity_obs import (
@@ -463,17 +509,101 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
             cap = read_deploy_cap_debounced(ctx, screen, level)
     except Exception:   # noqa: BLE001  读源失败 → 退基线(失败安全侧)
         cap, level = None, None
-    diff = (cap - level) if (cap is not None and level) else 0
-    d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
-    formula_raw = _BACK_SLOTS_BASE + d            # 未映射真值(7 = 未建档档)
-    formula_n = back_slots_from_cap_diff(diff)    # 映射后(7 → 8 格超集)
+    if level_trusted is False:
+        # §3.2① 公式输入净化:derived/启发式 level 不作裁决依据 → 公式弃权
+        # (不是退 6 档——现行 diff=0 → 6 把「不知道」当「无扩展」)。
+        diff = None
+        formula_raw = None
+        formula_n = None
+    else:
+        diff = (cap - level) if (cap is not None and level) else 0
+        d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
+        formula_raw = _BACK_SLOTS_BASE + d            # 未映射真值(7 = 未建档档)
+        formula_n = back_slots_from_cap_diff(diff)    # 映射后(7 → 8 格超集)
     cv_n = cv_back_slots(screen) if screen is not None else None
     cv_readings: list[int | None] | None = None
     _arb_n: int | None = None   # 冲突最终裁决档(None=无冲突/保 CV 旧规)
-    if cv_n is not None and cv_n != formula_n:
+    if formula_n is None and cv_n is None:
+        # 布局未知态(§3.2④/T-7):双弃权 → 不固定选任何档。连续计数按
+        # 「一次判定全不可判计 1」(B3 换算规则),每帧 JSONL 留证不节流。
+        _unknown_streak += 1
+        _frozen = _unknown_streak >= UNKNOWN_FREEZE_FRAMES
+        from one_dragon.utils.log_utils import log
+        log.info('[cw][layout] 布局未知态:公式弃权(level_trusted=False)+ CV '
+                 '不可判 → n=None(连续 %d/%d%s)',
+                 _unknown_streak, UNKNOWN_FREEZE_FRAMES,
+                 ',写类冻结' if _frozen else '')
+        try:
+            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+                DEFECT_KIND_BACK_LAYOUT_UNKNOWN,
+                record_defect,
+            )
+            record_defect(
+                'back_layout', DEFECT_KIND_BACK_LAYOUT_UNKNOWN,
+                expected='formula=abstain(level_trusted=False)',
+                observed=f'cv=None streak={_unknown_streak}',
+                gap_large=False, auto_resolved=False,
+                verdict=('留证-布局未知态(§3.2④):单帧未知=跳过后排依赖'
+                         '操作;连续 3 帧=读类退 6 档基线+写类冻结止损;'
+                         '任一已知帧解冻'),
+                refs=[{'stream': 'arbitration',
+                       'key': 'source=resolve_back_layout'}],
+                reader_source='resolve_back_slots',
+                note='布局未知态分键(每帧,不节流)')
+        except Exception:   # noqa: BLE001  遥测 best-effort
+            pass
+        try:
+            from sr_od.application.currency_war.kernel.cw_observe import (
+                obs_conflict,
+            )
+            obs_conflict(
+                'back_layout_unknown', None, f'streak={_unknown_streak}',
+                screen,
+                verdict=('布局未知态留证(双弃权,不固定选档;读写分级见'
+                         ' 15 号稿 §3.2④)'),
+                source='resolve_back_slots', cap=cap, level=level,
+                frozen=_frozen)
+        except Exception:   # noqa: BLE001
+            pass
+        return {'formula_raw': None, 'formula_n': None, 'cv_n': None,
+                'cv_readings': None, 'arb_n': None, 'n_raw': None,
+                'n': None, 'prefix': '', 'cap': cap, 'level': level,
+                'diff': None, 'unknown': True, 'frozen': _frozen,
+                'unknown_streak': _unknown_streak}
+    _unknown_streak = 0   # 已知帧清零复位(B3;= 干净裁决解冻)
+    if formula_n is None:
+        # 公式弃权 ∧ CV 单源可用:采 CV 实测(布局类「实测>推导」,§2.2;
+        # 占用态门三态探针已给结构判据,不存在「采信启发式」问题)。
+        n_raw = cv_n
+        n = n_raw if n_raw in _LAYOUT_PREFIX else 8   # 未建档 → 8 格超集
+        from one_dragon.utils.log_utils import log
+        log.info('[cw][layout] 公式弃权(level_trusted=False)→ CV 单源 %s 格',
+                 cv_n)
+    elif cv_n is not None and cv_n != formula_n:
         # 对账不一致:CV 实测优先(画面事实>推导,ADR-0385)+ 留证两值
         note_channel_conflict(screen, formula_n, cv_n, cap, level,
                               'select_back_layout')
+        # 分键(15 号稿批 C,T-6):不一致率经出口钩子上行(run_id 缺省
+        # no-op=缺省关;字符串单一源=kernel.cw_telemetry_exit)
+        try:
+            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+                DEFECT_KIND_BACK_LAYOUT_DIVERGENCE,
+                record_defect,
+            )
+            record_defect(
+                'back_layout', DEFECT_KIND_BACK_LAYOUT_DIVERGENCE,
+                expected=f'formula={formula_n}', observed=f'cv={cv_n}',
+                gap=float(cv_n - formula_n),
+                gap_large=abs(cv_n - formula_n) > 1,
+                auto_resolved=True,
+                verdict=('留证-布局双通道分歧,已按三信号梯裁决;'
+                         '本键计数=不一致率,复现帧对拍 cv_back_slots'),
+                refs=[{'stream': 'arbitration',
+                       'key': 'source=select_back_layout'}],
+                reader_source='select_back_layout',
+                note='布局档双通道仲裁分键')
+        except Exception:   # noqa: BLE001  遥测 best-effort
+            pass
         if cv_n not in _LAYOUT_PREFIX:
             # W209h 防抖:新格数读数(会触发 7 格采集/停机)单帧不行动——
             # 重读 2 次三次一致才采;任一不一致 = 瞬态自愈退公式 + 留证序列
@@ -561,7 +691,8 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     return {'formula_raw': formula_raw, 'formula_n': formula_n, 'cv_n': cv_n,
             'cv_readings': cv_readings, 'arb_n': _arb_n,
             'n_raw': n_raw, 'n': n, 'prefix': p, 'cap': cap, 'level': level,
-            'diff': diff}
+            'diff': diff, 'unknown': False, 'frozen': False,
+            'unknown_streak': 0}
 
 
 def back_row_slot_rects_ctx(ctx, prefix: str) -> list[tuple[int, Rect]]:

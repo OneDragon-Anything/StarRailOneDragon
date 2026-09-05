@@ -363,12 +363,39 @@ def readiness_battle_launch(op, ctx):
     ∧ 战斗就绪 ⇒ 立即 RunDeploy 组合 + StartBattle,不过
     ``_cw_locked_sync_done`` 闩(C1:闩只辖恢复局面,达标臂每达标帧发射)
     ——发射核与恢复局面共用 ``launch_prepared_battle``,禁第二套
-    StartBattle 发射位。发射前过 **G1 准入预估**(§9.2 三元+victim 收口,
+    StartBattle 发射位。
+
+    **执行时刻新鲜屏态复验**(第十六局实机雷:loop 早前读的备战双锚到
+    执行时已过期——切屏瞬间误真,9 拖全空挥 placed=0):发射前重截图
+    复验备战屏锚(复用既有锚,零新参数);非备战屏 → 放弃本次发射,
+    ``readiness_stale_screen`` 分键零静默,屏态过期**非发射失败**(返回
+    (False, 'readiness_stale_screen'),调用方不消耗 C1 失败计数)。
+
+    发射前过 **G1 准入预估**(§9.2 三元+victim 收口,
     ``readiness_admission_report``):板满∧bench core∧victim 缺失形态
     记 ``deploy_swap_no_victim`` 分键(零静默,§9.2);准入只显影不拦截
     (出战优先)。位次 = 备战环动作链之前、守卫计数之前(§10)。"""
+    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
     try:
-        _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+        _fresh = op.screenshot()
+        _still_prep = (
+            op.round_by_find_area(_fresh, '货币战争-备战',
+                                  '备战标识-购买经验',
+                                  crop_first=False).is_success
+            and op.round_by_find_area(_fresh, '货币战争-备战', '按钮-出战',
+                                      crop_first=False).is_success)
+    except Exception as e:  # noqa: BLE001  复验不可用不阻塞(保守放行)
+        log.debug('[cw-loop] 达标臂屏态复验失败(保守放行): %s', e)
+        _still_prep = True
+    if not _still_prep:
+        counters = getattr(_sess, 'cw4_counters', None)
+        if isinstance(counters, dict):
+            counters['readiness_stale_screen'] = \
+                counters.get('readiness_stale_screen', 0) + 1
+        log.info('[cw-loop] 达标臂放弃发射:执行时刻非备战屏'
+                 '(屏态过期,readiness_stale_screen)')
+        return False, 'readiness_stale_screen'
+    try:
         _st_adm = getattr(_sess, 'last_state', None)
         _tc_adm = getattr(_sess, 'target_comp', None)
         if _st_adm is not None and _tc_adm is not None:
@@ -1383,36 +1410,41 @@ class CwLoop(SrOperation):
                         break
             if _arm_armed:
                 _ok_r, _detail_r = readiness_battle_launch(self, self.ctx)
-                log.info('[cw-loop] 达标即出战(fp≥1.00,ok=%s): %s',
-                         _ok_r, _detail_r)
-                if _ok_r:
-                    # 成功复位失败计数(窗口 = 连续失败,非累计)
-                    self._cw_readiness_fail_n = 0
-                    return self.round_wait(wait=3)
-                # 发射失败连续计数(防线 C1,出处 = 落地审清单
-                # P1消费臂批落地审清单):fp≥1.00 恒真 + StartBattle
-                # 持续失败 + round_wait 不耗 retry = 框架内零防线自旋。
-                # 连续 3 次失败放弃短路,回落守卫链(守卫照常计数,卡死
-                # 仍可停机),分键零静默;成功即复位。
-                _rf = getattr(self, '_cw_readiness_fail_n', 0) + 1
-                self._cw_readiness_fail_n = _rf
-                counters = getattr(self.ctx.cw_match.session,
-                                   'cw4_counters', None)
-                if isinstance(counters, dict):
-                    counters['readiness_launch_fail'] = \
-                        counters.get('readiness_launch_fail', 0) + 1
-                if _rf >= 3:
-                    self._cw_readiness_fail_n = 0
-                    if isinstance(counters, dict):
-                        counters['readiness_launch_giveup'] = \
-                            counters.get('readiness_launch_giveup', 0) + 1
-                    log.error('[cw!][loop] 达标臂连续 %d 次发射失败(最后一次:'
-                              ' %s)→ 放弃短路,回落守卫链(防线 C1)', _rf,
-                              _detail_r)
+                if _detail_r == 'readiness_stale_screen':
+                    # 屏态过期非发射失败:不消耗 C1 计数、不短路,落到守卫
+                    # 链继续(下一环新截图重判真实屏)
+                    log.info('[cw-loop] 达标臂屏态过期放弃发射,本轮交既有链')
                 else:
-                    log.warning('[cw!][loop] 达标臂发射失败(第 %d/3 次,%s)'
-                                '→ 下环重试', _rf, _detail_r)
-                    return self.round_wait(wait=3)
+                    log.info('[cw-loop] 达标即出战(fp≥1.00,ok=%s): %s',
+                             _ok_r, _detail_r)
+                    if _ok_r:
+                        # 成功复位失败计数(窗口 = 连续失败,非累计)
+                        self._cw_readiness_fail_n = 0
+                        return self.round_wait(wait=3)
+                    # 发射失败连续计数(防线 C1,出处 = 落地审清单
+                    # last_change_review/问题清单.md):fp≥1.00 恒真 +
+                    # StartBattle 持续失败 + round_wait 不耗 retry = 框架内
+                    # 零防线自旋。连续 3 次失败放弃短路,回落守卫链(守卫
+                    # 照常计数,卡死仍可停机),分键零静默;成功即复位。
+                    _rf = getattr(self, '_cw_readiness_fail_n', 0) + 1
+                    self._cw_readiness_fail_n = _rf
+                    counters = getattr(self.ctx.cw_match.session,
+                                       'cw4_counters', None)
+                    if isinstance(counters, dict):
+                        counters['readiness_launch_fail'] = \
+                            counters.get('readiness_launch_fail', 0) + 1
+                    if _rf >= 3:
+                        self._cw_readiness_fail_n = 0
+                        if isinstance(counters, dict):
+                            counters['readiness_launch_giveup'] = \
+                                counters.get('readiness_launch_giveup', 0) + 1
+                        log.error('[cw!][loop] 达标臂连续 %d 次发射失败(最后一次:'
+                                  ' %s)→ 放弃短路,回落守卫链(防线 C1)', _rf,
+                                  _detail_r)
+                    else:
+                        log.warning('[cw!][loop] 达标臂发射失败(第 %d/3 次,%s)'
+                                    '→ 下环重试', _rf, _detail_r)
+                        return self.round_wait(wait=3)
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
             # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
             # 自动开店收起探针;稳定性由外循环每轮重识别保证。)

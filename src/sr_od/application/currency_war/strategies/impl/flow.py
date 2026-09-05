@@ -194,6 +194,19 @@ class CwFlowStrategy(CwStrategy):
         node_type = getattr(obs, 'node_type', None) or ''
         # N2 同源:obs.plane 比 state.plane 权威(结算时位面可能已推进)
         plane = getattr(obs, 'plane', None) or state.plane
+        if not node_type:
+            # supply 失活治本(supply失活升级线 第6/7次复现):空 node_type 轮
+            # 被 BloodAlarmTracker 战斗节点门整轮丢弃 → 掉血数据缺失、生死窗
+            # 判读缺页。修法 = node_type 空值回落**对局档案装配轮行序**——
+            # 档案(match_archive)按局归并轮次、轮行自带序,但其装配是局后
+            # assemble_pending 产物,on_round_end 时点不可得 → 同一轮行序的
+            # 局内单一源 = 位面节点台账(PlaneNodeLedger:按位面归并、轮行
+            # 自带序;位面详情采集/投资环境重读两写点,15 号稿 §1 行 10
+            # 「权威表」),按 (plane, round_num) 查同轮 node_type;查不到 =
+            # 照旧空串(不猜)+ 分键留证。
+            node_type = self._alarm_node_type_fallback(
+                session, plane, getattr(obs, 'round_num', None)
+                or state.round_num)
         t = (plane - 1) * NODES_PER_PLANE + state.round_num
         hp_before = getattr(session, 'v3_prev_hp', None)
         if hp_before is not None and hp_after:
@@ -210,6 +223,51 @@ class CwFlowStrategy(CwStrategy):
                     log.info('[cw][d2] 谷底回滚登记(单场 -%d > %d)',
                              hp_before - hp_after, VALLEY_ROLLBACK_LOSS)
         session.v3_prev_hp = hp_after if hp_after else hp_before
+
+    #: 台账 token → 生产词汇表(词汇表单一源 = GameState.node_type 顶部标签
+    #: OCR 词表;映射表与 cw_screen_battle_wait._normalize_node_type 同源)
+    _ALARM_NODE_TOKEN_MAP: dict[str, str] = {
+        'battle': '普通战斗', 'encounter': '遭遇', 'boss': 'boss',
+        'supply': '补给', 'reward': '奖励', 'megastar': '巨星',
+    }
+
+    def _alarm_node_type_fallback(self, session, plane, round_num) -> str:
+        """掉血报警 node_type 空值回落(→ 生产词汇表 token | 空串)。
+
+        命中 = 台账该位次有非空类型 → 映射回生产词表喂
+        BloodAlarmTracker(掉血数据恢复);未命中(表缺/越界/该位次 None)
+        = 照旧空串不猜 + ``blood_alarm_node_type_fallback`` 分键留证
+        (单一源 = kernel.cw_telemetry_exit 常量)。best-effort 不抛。"""
+        token: str | None = None
+        try:
+            from sr_od.application.currency_war.kernel.cw_state import (
+                ledger_node_type,
+            )
+            token = ledger_node_type(session, plane, round_num)
+        except Exception:   # noqa: BLE001  台账缺失不阻塞结算喂入
+            token = None
+        nt = self._ALARM_NODE_TOKEN_MAP.get(str(token), '') if token else ''
+        try:
+            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+                DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK,
+                record_defect,
+            )
+            record_defect(
+                'blood_alarm', DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK,
+                expected=f'node_type 非空(台账={token if token else "缺"})',
+                observed=f'回落={nt if nt else "空串(照旧)"}',
+                plane=int(plane or 0), round_num=int(round_num or 0),
+                gap_large=False, auto_resolved=bool(nt),
+                verdict=('台账命中-掉血数据恢复' if nt
+                         else '台账未命中-照旧空串(不猜)+分键留证'),
+                reader_source='on_round_end_node_type_fallback',
+                note='supply 失活治本:空 node_type 轮掉血数据不丢')
+        except Exception:   # noqa: BLE001  遥测 best-effort
+            pass
+        if nt:
+            log.info('[cw][d2] node_type 空值回落:台账 %s(%s-%s)→「%s」'
+                     '(掉血数据恢复)', token, plane, round_num, nt)
+        return nt
 
     def create_session(self, config) -> StrategySession:
         """空白 session(rng 留默认,由 run loop 按 ``config.strategy_seed`` 覆盖)。"""

@@ -81,6 +81,7 @@ from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_tomes as cw_identity_obs_read_tomes,
 )
 from sr_od.application.currency_war.obs.cw_observation import (
+    arbitrate_deployed_count,
     board_from_tracked,
     read_deploy_cap,
     read_deployed_count,
@@ -127,6 +128,26 @@ ENTRY_OVERLAY_CLOSE: dict[str, str] = {
 ENTRY_OVERLAY_CLEAR_ROUNDS: int = 4
 #: 点关闭后的画面过渡等待(秒)。
 ENTRY_OVERLAY_SETTLE_S: float = 1.0
+
+
+def vacancy_from_reads(cap: int | None, dep_n: int | None, cv_occ: int,
+                       cached_vacancy: int) -> tuple[int, bool, bool]:
+    """heavy 段 deploy_vacancy 判定(纯函数;15 号稿批 C/§4.1)。
+
+    - 语义:vacancy = max(0, cap − **仲裁后** deployed)。deployed 双源
+      (paddle X vs CV 占用)先过仲裁注册面键 ``deployed_count``
+      (``arbitrate_deployed_count``,计数类取低值);此前发射门消费的
+      vacancy 用未仲裁 dep_n,同一量两条口径并存无对账(§1 行 21,A5 根)。
+    - 返回 ``(vacancy, divergent, stale)``:divergent=仲裁判真分歧
+      (取低值生效,§4.2 发射门延迟语义的准备面载体);paddle 缺席 = CV
+      单源值(计数类声明的退化方向,非 stale,消费侧板满门另有重读+分键
+      契约);stale=True = cap 缺(无 cap 无法成 vacancy)→ 缓存兜底
+      (**陈旧值显式申报**,B5——缓存值不再静默过发射门)。
+    """
+    arb_dep, divergent = arbitrate_deployed_count(dep_n, cv_occ)
+    if cap is not None and arb_dep is not None:
+        return max(0, cap - arb_dep), divergent, False
+    return cached_vacancy, False, True
 
 
 def prep_obs_actual_for(session, entry, st, obs,
@@ -617,17 +638,19 @@ class CwScreenPrep(SrOperation):
                     log.debug('[cw][obs] cap=%d(宝钻×%d 叠加,合法;后排扩展 +%d 格)',
                               cap, cap - st.level, cap - st.level)
             dep_n = read_deployed_count(self.ctx, screen)
-            if cap is not None and dep_n is not None:
-                obs.deploy_vacancy = max(0, cap - dep_n)
-            else:
-                obs.deploy_vacancy = self._cached_vacancy
+            _cv_occ = len(obs.front_occupied) + len(obs.back_occupied)
+            # vacancy 消费仲裁值(15 号稿批 C/§4.1,A5 根:同一量两条口径并存
+            # 无对账——发射门消费的 vacancy 此前用未仲裁 dep_n):判定收在
+            # 纯函数 :func:`vacancy_from_reads`(判据见其 docstring),
+            # divergent/stale 位随 obs 传播(§4.2 发射门延迟语义的准备面载体)。
+            obs.deploy_vacancy, obs.deploy_divergent, obs.deploy_stale = \
+                vacancy_from_reads(cap, dep_n, _cv_occ, self._cached_vacancy)
             # deployed 总数双源对拍(同帧全齐):paddle X(读 deployed_count)
             # vs CV 占用(front+back)。
             # ⚠️ board 的 X 是「该阵营在场人数」非「角色数」——
             # 一个角色贡献多阵营(藿藿=仙舟+治疗,4 人可贡献 11 阵营次),
             # board_sum 系统性 ≥ 部署数,board 根本给不出角色数 →
             # **移出对拍**,对拍保持双源(paddle X vs CV 占用)。
-            _cv_occ = len(obs.front_occupied) + len(obs.back_occupied)
             if dep_n is not None:
                 # 对拍裁决迁仲裁注册面(15 号稿批 A;注册键 deployed_count,
                 # 计数类取低值+spread>1 告警带):divergent 判定经注册面,

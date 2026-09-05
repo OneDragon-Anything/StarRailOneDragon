@@ -31,6 +31,17 @@ SEVERITY_L0_ANDON: str = 'L0_andon'
 SEVERITY_L1_ALERT: str = 'L1_alert'
 SEVERITY_L2_RECORD: str = 'L2_record'
 
+# ===== 仲裁分键常量(布局档;15 号稿批 C。obs 布局面经本出口上行,
+# 缺陷台账/出口双侧同引此处=字符串单一源;T-6 互不混流锁钉值)=====
+
+#: 布局双通道分歧(公式 vs CV 占用态门,三信号梯裁决)。
+DEFECT_KIND_BACK_LAYOUT_DIVERGENCE: str = 'back_layout_divergence'
+#: 布局未知态(公式/CV 双弃权,读写分级+冻结止损事件面)。
+DEFECT_KIND_BACK_LAYOUT_UNKNOWN: str = 'back_layout_unknown'
+#: 掉血报警 node_type 空值回落(flow.on_round_end;supply 失活治本批:
+#: 空 node_type 轮按位面节点台账查同轮类型,查不到=照旧空串+本分键)。
+DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK: str = 'blood_alarm_node_type_fallback'
+
 # ===== 钩子槽(注入式; None=缺省关) =====
 
 _run_id_provider: Callable[[], str] | None = None

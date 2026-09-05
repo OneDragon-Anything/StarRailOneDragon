@@ -177,7 +177,10 @@ class BattlePrepRecognizer(ScreenRecognizer):
         templates = ensure_portrait_templates(ctx)  # 幂等加载缓存(并发安全,同 ensure_equip_tm_templates);保证 analyze 产角色
         equip_grays = ensure_equip_tm_templates(ctx)
         front_equips = read_row_equipped(ctx, image, equip_grays, '前排', 4) if equip_grays is not None else {}
-        back_equips = read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n) if equip_grays is not None else {}
+        # 布局未知态(15 号稿 §3.2④,select_back_layout 返 (None,''))→ 后排
+        # equips 空 dict(纯读面,跳过即正确;JSONL 留证在 resolve 侧)。
+        back_equips = (read_row_equipped(ctx, image, equip_grays, _back_pfx, _back_n)
+                       if (equip_grays is not None and _back_n) else {})
         # 角色复用 BenchChar(read_deployed_chars 已返,含 star);只补 equips(按 slot 对齐注入)
         front_line: list[BenchChar] | None = None
         back_line: list[BenchChar] | None = None

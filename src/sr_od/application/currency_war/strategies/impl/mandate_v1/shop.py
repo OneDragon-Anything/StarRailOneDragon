@@ -659,7 +659,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 卡帧 star_mismatch_skip 分键(W4 零静默)。
     # §3.6 席位门满栏例外对齐(B2):本循环形态已保证「买入即触发合成」
     #(同名同星 2→3),机制上买入后全局面同名同星 3→1 净席 −1,无溢出
-    # 散牌 ⇒ 免 bench_free 门(与机制对齐,非行为放宽;理由键不变)。
+    # 散牌 ⇒ 免 bench_free 门(与机制对齐,非行为放宽;理由键不变;
+    # 机制出处=merge_mechanics.md §2.5 满栏例外+§2.5 上限「绝不多买」)。
     for m in buy_members:
         copies = [c for c in bench + deployed if (c.char_id or '') == m]
         if len(copies) != 2 or any((c.star or 1) >= 2 for c in copies):
