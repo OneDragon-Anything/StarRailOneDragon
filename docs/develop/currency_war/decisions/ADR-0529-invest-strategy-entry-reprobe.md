@@ -53,6 +53,15 @@ RETRY 分支),单帧采样翻车直接炸出整个 op。编排者现场截图
 - 锁⑥(test_cw_invest_strategy_entry_tolerate.py)锁该语义:超窗 →
   retry 状态而非 fail。
 
+## 修订二(2026-09-06,哨兵白名单裁定)
+
+retry 的日志仍走 operation.py ERROR 级(「返回状态 投资策略屏未稳定,
+复探超窗重试」),哨兵 PATTERNS 含「执行失败」会照常触发报警退出——
+裁定:哨兵对该 status 行**豁免 HIT 但不豁免 STALL 累积**(行继续向下
+喂 STALL/loop,重试耗尽后的 op_fail 终态行不含白名单词、照常报警;
+真持续卡死由 HIT/STALL 双通道兜底)。载体 = cw_sentinel.py 白名单
+(d8481bcf,三审 C1 修正为仅豁免 HIT)。
+
 ## 锁
 
 `sr-od-test/test/sr_od/app/currency_war/test_cw_invest_strategy_entry_tolerate.py`

@@ -22,7 +22,23 @@ ADR-0531 已落工具件消费**判据面**(`evaluate_tool_actions` 三道门冷
 - B(弃) 骑 M7 RunEquip 通道内联执行工具:穿戴与工具消耗生命周期不同(闩语义/确认通道/拒因分键互相污染),且 M7 门①谓词刚因工具-only 库存修过活锁(dd-027),复骑 = 回填同一活锁风险。
 - C(弃) 无发射位,由执行 op 自评自执行:违反决策/执行分层(ADR-0461 裁定 3),执行层第二套时机判断 = 判据漂移源头。
 
-## 后果
+- 锁面:sr-od-test `test_cw_tools_exec_channel.py`(执行链/确认通道/fixture 交互/发射位闩/词表)+ 21 号稿锁 G1 节开臂对照重推。
+
+## 修订一(2026-09-06,三审 C1/三审阻断:执行环改 while 队列纯驱动)
+
+- 初版执行环 for 遍历切片快照、循环内重赋 `plans` 为死代码:首件消费后
+  reflow 使剩余计划持过期坐标拖曳,可误烧需求向量内件(烧毁不可逆,
+  cancel 补救只覆盖拖曳落空,救不回已落错的首次拖曳)。
+- 修订:执行环改 `run_tool_queue` while 队列纯驱动(模块级纯函数,离线可锁)
+  ——每件 consumed/partial 后调 `replan_fn` 整条重建队列(fresh owned 现读
+  + 重评 `evaluate_tool_actions`/`admitted_tool_actions`,坐标全现读);
+  cancel 件直接丢弃不触发重规划(防 cancel→replan 同件死循环);
+  `max_pass` 执行尝试硬上限防空转。载体 = ee59bfd0(+共享模板装载
+  `get_equip_templates_cached`,63b6de5d)。
+- 锁:多计划执行环 2 锁(双件帧重定位+无误烧断言/cancel 丢弃语义)+
+  `test_runtools_reordered_before_truncation` 空锁改 M6 溢余真发射路径帧。
+
+## 后果(初版)
 
 - 工具件从「永久占 owned 快照」变为「可清账物件」;确认通道登记入 owned 期望态,对账端不再有幽灵件。
 - 冷启动可执行件 = furnace_single / privilege_upgrade;扳手(去向登记制)/令牌(R(c) 缺档)/投影仪(冷启动分支外)仍 fail-closed,拒因分键照打,解锁各自候独立批。
