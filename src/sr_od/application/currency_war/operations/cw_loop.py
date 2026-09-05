@@ -169,6 +169,76 @@ def write_no_progress_flag(count: int, sig: tuple, shot: str,
     return str(p)
 
 
+def strategy_dead_flag_path():
+    """策略失活早停 flag 落点(与 prep_no_progress.flag 同目录族)。"""
+    return (get_project_root() / '.debug' / 'temp' / 'currency_war'
+            / 'strategy_dead_early_stop.flag')
+
+
+def write_strategy_dead_flag(streak: int, key: tuple | None, run_id: str,
+                             shot: str, path=None) -> str:
+    """策略失活早停存证 flag(od-dev-stop-hooks 三要素:触发定位/处理步骤/
+    删除条件,接管者不看代码即知发生了什么;测试传 tmp_path)。"""
+    p = path if path is not None else strategy_dead_flag_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    _pos = f'P{key[0]}-r{key[1]}' if key else '未知轮'
+    p.write_text(
+        '[HOOK-STOP] 策略失活早停(连续 2 个完整轮零策略心跳决策行;'
+        'ADR-0342/dd-031)\n'
+        '发生了什么:备战入口结算上一完整轮,decisions 连续 2 轮无任何'
+        '策略心跳行(sid 行或载体行)→ 判「外环停转」(继续跑=零信息量局),'
+        '停机保现场供重启加载策略。\n'
+        f'定位:run={run_id} 最后一轮={_pos} streak={streak} '
+        f'ts={time.strftime("%m-%d %H:%M:%S")} 截图={shot}\n'
+        '处理步骤:\n'
+        '1. 读 decisions.jsonl 对应轮确认确为零心跳——注意恢复局直出战与'
+        '补给节点两类合法流程轮已有载体/标记行(策略失活判据修复批),'
+        '若停机轮恰是这两类,先查载体行登记是否失效再判策略死;\n'
+        '2. 修复或重启载入策略代码;\n'
+        '3. 删除本 flag 后续跑。\n'
+        '删除条件:处理完即删,防误判为新停线;钩子本体常驻。\n',
+        encoding='utf-8')
+    return str(p)
+
+
+def register_flow_heartbeat(ctx, kind: str) -> None:
+    """流程性合法无声轮的心跳载体行(策略失活判据修复;恢复局锁定直出战
+    与补给节点两类分支按设计不产生任何策略决策行,整轮零心跳会被失活
+    连击误判「外环停转」——诊断档案「第五次停机」节定谳=误杀)。
+
+    本函数在该类分支消费一轮时显式登记一条 decisions 可见的心跳行,使
+    「外环在别的分支干活」不再被计零心跳,离线复盘亦可辨:
+    - locked_resume_direct_battle:真实执行的 StartBattle 载体行
+      (sid='',actions 非空——与 mandate 跳开店健康轮同构);
+    - supply_node_divert:补给节点流程 sid 标记行(actions 空,
+      strategy_id='cw:flow:supply_node_divert',自描述非店内决策)。
+    best-effort:遥测关闭 / last_state 缺席时静默跳过(与 record_exogenous
+    写入点同噪声口径,不阻塞游戏流)。
+    """
+    try:
+        _state = getattr(getattr(getattr(ctx, 'cw_match', None),
+                                 'session', None), 'last_state', None)
+        if _state is None or not _state.get_recorder().enabled:
+            return
+        if kind == 'locked_resume_direct_battle':
+            from sr_od.application.currency_war.kernel.cw_prep_actions import (
+                StartBattle,
+            )
+            actions: list = [StartBattle()]
+            sid = ''
+        else:
+            actions = []
+            sid = f'cw:flow:{kind}'
+        recorder.record_decision(_state, '', {}, {}, actions,
+                                 extra={'strategy_id': sid},
+                                 gold_point=False)
+        log.info('[cw-loop] 流程心跳载体行已登记(kind=%s P%s-r%s)',
+                 kind, getattr(_state, 'plane', '?'),
+                 getattr(_state, 'round_num', '?'))
+    except Exception as e:   # noqa: BLE001  遥测 best-effort,不阻塞游戏流
+        log.debug('[cw-loop] 流程心跳登记失败(不阻塞): %s', e)
+
+
 class CwLoop(SrOperation):
     """货币战争 对局内主循环:反复「备战单轮 + 轮间过渡」直到对局结束 / 超时。
 
@@ -1173,8 +1243,19 @@ class CwLoop(SrOperation):
                             log.warning('[cw!][loop] 策略失活连击 %d ≥2 → '
                                         '停局(重启加载策略;ADR-0342/dd-031)',
                                         self._cw_strategy_dead_streak)
+                            # flag 三要素(od-dev-stop-hooks 审计;修复批补齐,
+                            # 与环级无进展守卫同构):截图 + flag + 代码直调停机
+                            import contextlib
+                            _dead_shot = None
+                            with contextlib.suppress(Exception):
+                                _dead_shot = self.save_screenshot(
+                                    prefix='strategy_dead_early_stop')
+                            with contextlib.suppress(Exception):
+                                write_strategy_dead_flag(
+                                    self._cw_strategy_dead_streak, _dead_key,
+                                    state.current_run_id() or '', _dead_shot or '')
                             self.ctx.run_context.stop_running(
-                                reason='cw:strategy_dead_early_stop')
+                                reason='hook:strategy_dead_early_stop')
                             return self.round_wait(
                                 wait=1.0, status='策略失活早停(ADR-0342)')
             # 迁移审计 w62(git 历史) 件1(ADR-0329):恢复局(locked-resume)检测与直接出战。
@@ -1232,6 +1313,9 @@ class CwLoop(SrOperation):
                             screen='battle_prep', event='start_battle',
                             reason='locked_resume')
                     log.info('[cw-loop] 锁定恢复局 → 出战成功,锁解除(恢复正常循环)')
+                    # 流程心跳载体行(策略失活判据修复):锁定分支按设计
+                    # 零策略决策行,显式登记防失活连击误计本环。
+                    register_flow_heartbeat(self.ctx, 'locked_resume_direct_battle')
                     return self.round_wait(wait=3)
                 log.warning('[cw!][loop] 锁定模式出战未落地(%s)→ retry(保锁定)',
                             detail)
@@ -1255,6 +1339,9 @@ class CwLoop(SrOperation):
             if _cur_slot is not None and _cur_slot.node_type == 'supply':
                 self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
                 log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 CwScreenSupplyNode)')
+                # 流程心跳载体行(策略失活判据修复):补给链无备战策略环,
+                # 本环整轮零决策行属流程性合法无声,登记标记防连击误计。
+                register_flow_heartbeat(self.ctx, 'supply_node_divert')
                 return self.round_wait(wait=2)
             # r332(批次3/终审①③:cw_loop 消费返回值——
             # 旧版忽略 execute() 结果 → director 失败后下轮
