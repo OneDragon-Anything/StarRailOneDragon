@@ -160,6 +160,13 @@ def _bench_identity_signature(
             for b in (table or []) if b is not None]
 
 
+def _reseed_bench_layout(state: GameState,
+                         tracked: list[BenchChar | None]) -> None:
+    """投影 bench 布局按执行侧 tracked 槽位表就地回写(布局单一源重播种:
+    churn 后 tracked/实况是重排侧真值,投影副本跟随)。"""
+    state.bench[:] = list(tracked)
+
+
 def guard_expected_vs_tracked(state: GameState, session,
                               stage: str = 'project') -> None:
     """expected-vs-tracked 双账断言(ADR-0517 §守卫两属 (ii))。
@@ -168,24 +175,29 @@ def guard_expected_vs_tracked(state: GameState, session,
     (``tracked_bench_chars`` 经 mutate 随执行更新)的对拍——分叉的
     在环检测器。零读屏(tracked 纯内存)。
 
-    两属消息分离(按分叉出现时点归因,ADR-0517 §守卫两属 (ii) 迁移
-    补裁;2026-09-05 OpenShop 事故实证:播种层双源分叉曾被本守卫
-    误标成「project/mutate 模型分叉」,误导排查方向;同日对抗审计
-    再修正 seed 档的可达类别——见下):
-    - stage='seed'(播种后、首动作前调用):tracked 非空时本对账按
-      构造恒等(state.bench 即自 tracked 播种),唯一可达场景 =
-      tracked 主账为空而屏幕 bench 非空 ⇒ 跟踪账丢件/识别幻影
-      检测器(播种 bug 形态已随 ADR-0520 旧账退役结构性消失)。
-      投影链无责。
-    - stage='project'(默认,动作投影后调用):分叉 = project/mutate
-      模型分叉——投影建模 bug 的唯一在环检测器(project 错则两账
-      分离当场暴露;错误卖出会实际执行、损害不可逆,ADR-0516 投影
-      口径族史)。
+    两级分型(签名比较先做多集(multiset)等价,再走两属归因):
+    - **多集等价(槽位布局漂移,降级不炸)**:成员账对齐、仅槽位排列
+      分歧——对账 churn(卖出/合并/换位)后 tracked/实况槽位重排,
+      投影副本未跟随重播种,两侧落槽规则一致但「洞在哪」不同源
+      (第八局 OpenShop HIT 实证:expected=[符玄,阮·梅,阮·梅] vs
+      tracked=[阮·梅,符玄,阮·梅],买后守卫炸、环消化局存活)。
+      处置 = WARNING 记「槽位布局漂移」另账 + 按 tracked 真值就地
+      重播种投影 bench(``_reseed_bench_layout``)——回写源选 tracked
+      而非 ``match.bench_slot_map`` 的依据:后者只在买组确认后产出
+      (守卫炸点在组中,来不及)且只含所购名→槽、不承载 churn 重排
+      与洞位;tracked 账纯内存随执行与对账更新,是重排侧,零读屏。
+    - **真多集分歧**:按 stage 两属归因,断言炸出(消息见下)。
+      stage='seed'(播种后、首动作前):tracked 非空时本对账按构造
+      恒等(state.bench 即自 tracked 播种),唯一可达场景 = tracked 主
+      账为空而屏幕 bench 非空 ⇒ 跟踪账丢件/识别幻影检测器;投影链无责。
+      stage='project'(默认,动作投影后):分叉 = project/mutate 模型
+      分叉——投影建模 bug 的唯一在环检测器(错误卖出会实际执行、损害
+      不可逆,ADR-0516 投影口径族史)。
 
     已申报豁免(非分叉 bug 的已知建模分叉,豁免帧由调用方判定):
     满栏买入(执行侧 tracked 的 bench_place 在满栏时丢件,simulate 走
     §2.5 自动多买 k 张分支——两模型在满栏语境不同构,对账重挂点 = 下一
-    入口观察)。豁免面外的分叉 = 断言炸出。
+    入口观察)。豁免面外的真分叉 = 断言炸出。
     """
     tracked = bench_from_compact(
         [bc for bc in (getattr(session, 'tracked_bench_chars', None) or [])
@@ -193,6 +205,14 @@ def guard_expected_vs_tracked(state: GameState, session,
     expect_sig = _bench_identity_signature(state.bench)
     tracked_sig = _bench_identity_signature(tracked)
     if expect_sig != tracked_sig:
+        from collections import Counter as _Counter
+        if _Counter(expect_sig) == _Counter(tracked_sig):
+            log.warning(
+                '[cw-shop][guard] 双账槽位布局漂移(多集等价,降级不炸;'
+                '已按 tracked 重播种投影 bench):expected=%s tracked=%s',
+                expect_sig, tracked_sig)
+            _reseed_bench_layout(state, tracked)
+            return
         if stage == 'seed':
             raise AssertionError(
                 '[cw-shop][guard] tracked 主账为空而屏幕 bench 非空'
