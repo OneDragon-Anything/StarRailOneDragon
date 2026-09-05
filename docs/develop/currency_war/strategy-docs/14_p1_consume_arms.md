@@ -122,16 +122,16 @@ v1 的「need_slots 从 TRANSITION_SYSTEMS/COMP_LIBRARY 派生」**作废**(A4 �
 
 ```
 need(帧) = |deployed| + |{ b ∈ bench | b ∈ k_members(core∪shared,
-            predicates.py 口径) ∧ (b.name, b.star) ∉ deployed (名,星)
-            集合 }|
-            —— 排除谓词按 (名,星) 口径(Y3 采纳):「同名同星 ≤1」
-            只辖同星,推不出「与场上同名 bench 件不可上阵」的名字级
-            排除——同名异星可否同场属玩法文档未证事实,**挂玩家确认**
-            (§8⑫);确认前按 (名,星) 计(把同名异星 bench 件计入 need,
-            防战力滞留漏触发),其可部署性同步对账 cw_deploy_logic 的
-            cid 去重(落码批一并核);确认不可同场则排除依据改为该
-            确认而非同名同星规则。
-arm0 触发:level < need(即 cap 容不下已持有的可上阵线内件;level 消费
+            predicates.py 口径) ∧ b.name ∉ deployed 名集 }|,
+            bench 内同名去重(集合计)
+            —— 排除谓词按**纯 name 口径**(as-built 定稿,与真实部署
+            去重语义对齐:check_seats 对象列同名禁上阵 + cw_deploy_logic
+            按 cid 去重的实际规则 = 「同名不可再上阵」;Y3 的 (名,星)
+            字面让位于部署真实语义,不为凑字面制造虚 need——同名异星
+            bench 件排除(旧口径虚计 = 为不可执行部署买等级)、bench
+            同名 ×2(臂① j=2 形态)去重计 1(双计消除,need 恒高估
+            修正)。同名异星可否同场的机制事实 = cw_deploy_logic 实答
+            「不可」,§8⑫ 挂账相应收窄。
             只认 authoritative 位(level_readable 既有语义,C4 采纳:
             与 15 号稿 §4.3 共用单一源可信位定义,E3 型毒化帧 fail 向
             不触发))
@@ -243,7 +243,7 @@ B3 直调证实:`_r1_ledger_terms`(shop.py:157-202)现行合格集已含「无 2
 |---|---|---|
 | `strategies/impl/mandate_v1/shop.py` M2 段 | 新增 m2_stockpile 发射位(j=1;成员集 = buy_members,§3.2 Y2;bench 满走 M4 腾席,Y5;**候选 star==1 过滤同 N7——同型过滤三消费面(臂①/M2b/垫底级)逐处记全,W4**);拒因分键 stockpile_unaffordable/bench_full(腾席后仍满)/star_mismatch_skip(W4:星过滤静默跳过帧的分键,零静默纪律) | 臂① |
 | `strategies/impl/mandate_v1/shop.py` M2b 段 | 席位门满栏例外对齐(§3.6),理由键不变;**候选 star==1 过滤(Y4 采纳:仅 2★ 直出卡帧不买,禁 ×3 价买不成链 2★ 制造让渡死库存)** | 臂①/B2/Y4 |
-| `strategies/impl/mandate_v1/mandate.py` | arm0 触发谓词(need 现量 (名,星) 口径,§4.2 Y3)接入 M3;level 消费走 level_readable 可信位(C4) | 臂② |
+| `strategies/impl/mandate_v1/mandate.py` | arm0 触发谓词(need 现量纯 name 口径,§4.2 as-built)接入 M3;level 消费走 level_readable 可信位(C4) | 臂② |
 | `criteria/levelup.py` | pop_slot 前置「bench 有候选 ∨ 买得起候选」 | 臂② |
 | `kernel/cw_discipline_rules.py` | 新增 p1_crisis_band(**Z1 降格:判据本体挂账待用户逐项确认,不落码**;位面查表键通用形态 Y1;信任门差异理由 N6 写明);垫底级危机帧消费位**随本体挂空**(P36-a 重建另列) | 臂③/Z1 |
 | `strategies/impl/mandate_v1/shop.py` `decide_shop_action` R1 段(符号锚,Y2) | **P36-a 重建落码项(挂空至 Z1 确认)**:危机帧直通支插入(合格集守卫后、预算门前;触发域 = D≠∅ 危机帧,N1;计量容器 = 每 shop visit 至多一次,C3);**判据本体 = 新增命题骨架(P40/P48 族,math_proofs 草案位)**——crisis_refresh_invariant 仅作 gold>0 下界消费,非承重(N5 撤回复用声明) | 臂③(b)3 |
