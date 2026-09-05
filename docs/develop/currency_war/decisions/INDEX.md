@@ -423,3 +423,5 @@
 | [0521-p2-locked-buy-membership.md](0521-p2-locked-buy-membership.md) | ADR-0521: P2 锁线购买口径切换——locked_comp 建立后买入 membership 单一源切换锁定采购集,锁内成员不再被拒 non_line(第四局七轮 0 买实证;策略审查 0545 打回补档) |
 | [0522-w209-swap-arm-jurisdiction.md](0522-w209-swap-arm-jurisdiction.md) | ADR-0522: W209 换阵卖出义务臂+ADR-0386 辖域桥接裁决(演进层换血落地前 deploy 通道承接,§9 swap 落地让位)+P18 型命题挂账 |
 | [0523-dual-ledger-guard-two-tier.md](0523-dual-ledger-guard-two-tier.md) | ADR-0523: 双账守卫两级分型——多集等价⇒WARNING+tracked重播种不炸环,真分歧维持炸出+槽位漂移/坏槽号双分键(第八局HIT定谳) |
+
+> 豁免声明(2026-09-05,策略审查十九跳 D2):P1 消费臂落码波(14 号稿 v4.x 系列)的行为决策史以 14 号稿 §11 处置记录为单一载体,不另立批级 ADR;该豁免仅辖本波,后续波次如沿用须重声明。
