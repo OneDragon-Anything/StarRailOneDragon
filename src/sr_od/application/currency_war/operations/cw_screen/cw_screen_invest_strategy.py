@@ -105,7 +105,10 @@ class CwScreenInvestStrategy(SrOperation):
             time.sleep(CwScreenInvestStrategy.ENTRY_REPROBE_WAIT_S)
             screen = self.screenshot()
             hit = self._entry_anchor_hit(screen)
-        return False
+        # 末次复探结果必须消费:循环内 if 只判上一轮采样,最后一次采样的
+        # 命中若不在此返回,会被整体丢弃(三审 off-by-one:锚恰在窗口末拍
+        # 出现仍误报失败——恰是本复探窗要容忍的形态边缘)。
+        return hit
 
     @operation_node(name='投资策略', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
