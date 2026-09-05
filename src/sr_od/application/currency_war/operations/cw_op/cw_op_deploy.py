@@ -1195,7 +1195,10 @@ class CwOpDeploy(SrOperation):
         (buy_membership)与轮内新鲜买入件(fresh_buy)禁卖,P60 卖义务
         件↔买回环在执行路径同受保护(与 M1″ 发射面谓词同一份判定,禁
         第二份实现);义务集缺读(membership=None)⇒ 全候选禁卖
-        (fail-closed,留板合法稳态 dd-037)+ 分键显影。
+        (fail-closed,留板合法稳态 dd-037)+ 分键显影。⚠️ 排除覆盖
+        边界:swap_ctx 不可得(last_state 缺,装配未跑)时排除链整体
+        静默关闭(非禁卖)——与缺读禁卖不对称,开闸小批前收紧或分键
+        (落地审复验残留①)。
         """
         deployed = exclude_system_units(
             read_deployed_chars(self.ctx, self.last_screenshot, templates)

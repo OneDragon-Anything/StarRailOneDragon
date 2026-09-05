@@ -503,14 +503,23 @@ def swap_arm_deployed_count(board: dict | None,
     return deployed_occupied(tracked_deployed or [])
 
 
-def fenced_swap_arm_of(fp: float, deployed_n: int,
-                       front_n: int, back_n: int) -> bool:
+def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
     """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
-    单一源 ``cw_comps.form_progress``)∧ 板面满(真部署数 ≥ 前后排
-    槽位总数;喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
+    单一源 ``cw_comps.form_progress``)∧ 板满(占用数 ≥ cap——cap =
+    可上阵数占用数口径,与 select_swap_plan 板满门同一派生链
+    ``GameState.max_units``(level+宝钻、封顶 DEPLOYED_CAPACITY),
+    喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
     熔断的振荡防护前提(买/演进层仍要 fenced 件)消失、且 bench target
-    无空槽可进——此时 off-line fenced 件让位。"""
-    return fp >= 1.0 and deployed_n >= front_n + back_n
+    无空槽可进——此时 off-line fenced 件让位。
+
+    口径裁决(REVISION_R2 同根双源收口):板满门禁用物理槽位总数
+    (front+back=10)——XP_TO_NEXT_LEVEL 键域 3..9 ⇒ level≤9 ⇒
+    level 驱动 cap 全域 <10,物理门恒不可达 ⇒ 臂全游戏恒死;cap
+    缺读(None/≤0)= 臂关(fail-closed,与谓词 cap_unreadable 同向)。
+    """
+    if fp < 1.0 or not cap or cap <= 0:
+        return False
+    return deployed_n >= cap
 
 
 # ===== 板满换阵补部署计划(M1″ 发射面谓词;与 select_deployments 同族)=====
@@ -528,11 +537,14 @@ def fenced_swap_arm_of(fp: float, deployed_n: int,
 
 #: 轮内新鲜度排除载体(session 属性名):发射位买入时逐名写入的名集,
 #: 键式 = {'phase': (plane, round_num), 'names': set[str]}——位面/轮次
-#: 推进自动失效(M7 闩键式同构)。取舍声明:沿用发射位写入(与
-#: ``cw4_fuel_filler_stall_buys`` 先例同位),被截断器丢弃的买入意图
-#: 也入排除集 = 过度排除压制合法 swap,方向安全(留置合法稳态,dd-037
-#: 口径),失真经 fresh_buy 拒因可追溯;单调性由义务集排除独立承载,
-#: 本载体只承担防抖+显影(拒因照记,不宣称切环)。
+#: 推进自动失效(M7 闩键式同构)。⚠️ 写点现状(三审 C1 勘误):当前仅
+#: sim/engine_p1 决策帧接线,生产买入发射位(shop.py)写点候 M1″ 开闸
+#: 小批补接(ADR-0530 挂账)——实机侧防抖在此前不生效,失真经 fresh_buy
+#: 拒因不可追溯(与 sim 侧不对称,开闸前置义务)。取舍声明:沿用发射位
+#: 写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),被截断器丢弃的买入
+#: 意图也入排除集 = 过度排除压制合法 swap,方向安全(留置合法稳态,
+#: dd-037 口径),失真经 fresh_buy 拒因可追溯;单调性由义务集排除独立
+#: 承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
 SWAP_FRESH_BUYS_ATTR: str = 'cw4_swap_fresh_buys'
 
 
@@ -696,7 +708,10 @@ def assemble_swap_plan_inputs(
         tgt_comp = getattr(session, 'target_comp', None)
     target_factions = frozenset(getattr(tgt_comp, 'all_factions', None) or ())
     target_cores = frozenset(getattr(tgt_comp, 'core_chars', None) or ())
-    # fenced 臂(fp 单一源 form_progress,板满喂入占用数口径)
+    # fenced 臂(fp 单一源 form_progress,板满 = 占用数 ≥ cap 占用数
+    # 口径;cap 现算 = state.max_units() 单点收口链——与 select_swap_plan
+    # 板满门同源,禁经调用方 cap 参数分叉出第二口径;执行侧 cap=None
+    # (不消费谓词 cap 门)帧同吃现算)
     fenced_on = False
     if tgt_comp is not None and state is not None:
         try:
@@ -705,7 +720,7 @@ def assemble_swap_plan_inputs(
             _fp = 0.0
         _n = deployed_n if deployed_n is not None else len(
             [d for d in deployed if d is not None])
-        fenced_on = fenced_swap_arm_of(_fp, _n, front_slots, back_slots)
+        fenced_on = fenced_swap_arm_of(_fp, _n, state.max_units())
     # 买面义务排除集(与 M4 燃料集同参同源):锁定帧 = locked_buy_
     # membership;ist 缺失 = 缺读(None,谓词弃权);未锁定帧 = 空集。
     ist = getattr(session, 'v3_intention', None)
