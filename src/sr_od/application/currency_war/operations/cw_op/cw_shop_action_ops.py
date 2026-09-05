@@ -295,6 +295,21 @@ class ShopActionOp(ABC):
         调用方据此跳过投影保持双账一致)。"""
 
 
+def buy_click_ineffective(before, after, diff_thr: float = 12.0) -> bool:
+    """买后同 rect 卡面未变判定(纯函数):灰度差均值 < 阈值 ⇒ 卡未离场
+    = 购买未生效(点击落空/试用/被拦)。任一裁片缺失或形状不等 ⇒ False
+    (不可判不污账,保持既有记账;第十八局 p2r7 形态的执行侧检出)。
+    """
+    if before is None or after is None:
+        return False
+    if getattr(before, 'shape', None) != getattr(after, 'shape', None):
+        return False
+    import cv2
+    g1 = cv2.cvtColor(before, cv2.COLOR_BGR2GRAY)
+    g2 = cv2.cvtColor(after, cv2.COLOR_BGR2GRAY)
+    return float(cv2.absdiff(g1, g2).mean()) < diff_thr
+
+
 class BuyCardOp(ShopActionOp):
     """买一张 = 一个动作 op(ADR-0517 决策 3;满栏例外下一击多张仍一个
     op,张数由游戏规则定、投影按 merge_buy_k 计——方案 A 补裁)。"""
@@ -308,6 +323,7 @@ class BuyCardOp(ShopActionOp):
         # 买前裁该片矩形拷贝(`w536_merge_expect/`:「买了什么」的像素级
         # 证据,随期望态带到对账点;一帧原则,必须 copy 防帧缓存覆写)。
         _card_crop = None
+        _hit_rect = None
         with contextlib.suppress(Exception):
             _frame = op.screenshot()
             for _i in range(1, 6):
@@ -315,6 +331,7 @@ class BuyCardOp(ShopActionOp):
                                 f'{A_SHOP_CARD_PREFIX}{_i}',
                                 SHOP_SCREEN_NAME)
                 if _r is not None and _r.x1 <= pt.x <= _r.x2:
+                    _hit_rect = _r
                     _card_crop = _frame[_r.y1:_r.y2, _r.x1:_r.x2].copy()
                     break
         op.ctx.controller.click(pt)
@@ -322,10 +339,55 @@ class BuyCardOp(ShopActionOp):
                  f'{action.card.faction}/{action.card.name}/'
                  f'{action.card.cost}')
         time.sleep(0.4)
+        # 买后同 rect 复采:卡面未离场 = 购买未生效(第十八局 p2r7 实证:
+        # 点击发出而金差≈0;识别结构无试用/可买性字段,执行侧检出兜底)。
+        _after_crop = None
+        with contextlib.suppress(Exception):
+            if _hit_rect is not None:
+                _after = op.screenshot()
+                _after_crop = _after[_hit_rect.y1:_hit_rect.y2,
+                                     _hit_rect.x1:_hit_rect.x2].copy()
+        if buy_click_ineffective(_card_crop, _after_crop):
+            with contextlib.suppress(Exception):
+                from sr_od.application.currency_war.telemetry.defects import (
+                    record_defect,
+                )
+                record_defect(
+                    'shop', 'buy_click_ineffective',
+                    expected=(f'买 {action.card.name}/'
+                              f'{action.card.cost} 金扣账并离场'),
+                    observed=('点击后同 rect 卡面未变化(点击落空/试用/'
+                              '被拦;识别结构无试用字段,执行侧检出)'),
+                    verdict='留证-购买未生效;账不计入(bought_names/purchases/'
+                            'spend 均不记),防 pixel-diff 假配对',
+                    reader_source='buy_click_card_diff',
+                    note='计划花费>0 金差≈0 形态的执行侧闭环')
+            log.warning(f'[cw-shop] Buy 未生效(卡面未变):'
+                        f'{action.card.name}')
+            return True
         ledger.total_buy += 1
         ledger.spend_executed += action.card.cost
         if action.card.name:
             ledger.bought_names.append(action.card.name)
+            # 撤销操作证据留存(纯观测,零行为变更):体系成员买入不重置
+            # 干旱计数(重置单一源 = 商店可见性 _update_pair_drought),
+            # 解锁流程审计面落台账。复用 defect_ledger,异常不阻断买入。
+            with contextlib.suppress(Exception):
+                _ist_e = getattr(match.session, 'v3_intention', None)
+                _pd = getattr(_ist_e, 'pair_drought', None)
+                if isinstance(_pd, dict):
+                    from sr_od.application.currency_war.kernel.cw_intention import (
+                        members_in_shop,
+                    )
+                    from sr_od.application.currency_war.telemetry.undo_evidence import (
+                        record_drought_buy_no_reset,
+                    )
+                    for _sys, _d in _pd.items():
+                        if _d and _sys and members_in_shop(
+                                _sys, {action.card.name}):
+                            record_drought_buy_no_reset(
+                                match.session, member=action.card.name,
+                                system=_sys, drought=_d)
         mutate_bench_deployed(match.session.tracked_bench_chars,
                               match.session.tracked_deployed, action)
         if action.card.name:
