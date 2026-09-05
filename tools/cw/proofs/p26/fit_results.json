@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-09-05T23:14:30.530725+00:00",
+  "source": "D:\\code\\workspace\\StarRailOneDragon\\.debug\\temp\\currency_war\\replay",
+  "schema_single_source": "telemetry.schema.P26_PREP_OBS_FIELDS (node_type_next)",
+  "bucket_dims": {
+    "spend": "decisions.sess_release_spent → 声明桶 ('0', '1-5', '6-15', '16-30', '31+')(edges=[1, 6, 16, 31],分析桶非策略常数)",
+    "carry_equip": "decisions.state.deployed[].equips 合计",
+    "rung": "engines_count(outcome.board_before, deployed char_ids) — _settle_rung 同源式"
+  },
+  "join_key": "(run_id, plane, round_num)",
+  "censoring_rule": "结算两分量(damage_base/damage_unfinished_progress)缺一 = L_node 删失显式可辨,不入分位样本只计数",
+  "bootstrap": "run-cluster percentile, n=2000, seed=20260906",
+  "quality_gate": {
+    "bucket": "n>=10/桶",
+    "l_node": "败面 n>=30/节点型"
+  },
+  "n_decision_rows": 15521,
+  "n_rows_with_p26_obs": 0,
+  "n_outcome_rows": 2060,
+  "excluded_node_tokens": {},
+  "n_joined_rows": 0,
+  "status": "insufficient: 实机 p26_prep_obs 样本不足(join 后 n=0 < 10),不硬跑;待采集批补样后重跑",
+  "delta_p_prep": {},
+  "l_node": {}
+}
