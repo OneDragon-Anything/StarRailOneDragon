@@ -1835,9 +1835,14 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     out: list[tuple[str, str]] = []
     if comp is not None and comp.key_equips:
         # 接收者顺序:priority_order(词缀优先层重排序)优先,缺省 = 内部派生序
-        # (plaza_carry 优先,再 core_chars 顺序);只发给场上且容量 >0 者
+        # (plaza_carry 优先,再 core_chars 顺序);只发给场上且容量 >0 者。
+        # key 件绑定裁决(18 号稿 §3.2,ADR-0526):谓词层只重排候选序,
+        # 不改 key 件绑定——key 接收者在优先层下仍限于 carry∪core
+        # (非 core 凑谓词只走通用件吃满)。
         if priority_order:
-            order: list[str] = list(priority_order)
+            _core_pref = set(comp.core_chars) | (
+                {comp.plaza_carry} if comp.plaza_carry else set())
+            order: list[str] = [c for c in priority_order if c in _core_pref]
         else:
             order = []
             if comp.plaza_carry:
