@@ -471,17 +471,23 @@ def _resume_reconciliation(segments: list[str],
     前段末帧账面」逐字段对账。
 
     - 对账对象:续局段(首帧非 (p1,r1))的**恢复帧** = 该段最早 ts 的
-      决策迹帧(无则最早结算行兜底);**前段末帧** = 该段之前全部段的
-      最晚 ts 决策迹帧(≈ 停机时刻账面,与 endgame.final_snapshot 同源
-      口径)。比对 hp/gold(带 readable 可信位)与 plane/round 接续点。
+      决策迹帧(无决策帧时最早结算行兜底,hp_after/hp_confidence 归一为
+      帧 hp/hp_readable 口径,金/等级结算行不采 → aligned=None);
+      **前段末帧** = 该段之前全部段的最晚 ts 决策迹帧(≈ 停机时刻账面,
+      与 endgame.final_snapshot 同源口径)。比对 hp/gold/level(带
+      readable 可信位)与 plane/round 接续点。
     - aligned 语义:两侧都有值 → 是否相等;任一侧缺值或不可信(readable
-      明确 False)→ None = 不可判,不猜。装配器**不裁真值**:两侧都是
-      诚实读数,不符只显影交判读定谳(2026-09-05 夜第八局实证:恢复帧
-      hp14/金68 vs 档案终值 hp29/金36,判读侧需此列才免手工翻流对账)。
+      明确 False)→ None = 不可判,不猜。readable 守卫只查 resume 侧:
+      prev 侧「不可信」依赖 decision_assembly 对 readable=False 帧写
+      hp=None 的远端约定(值缺失即 aligned=None),本处不再重复守卫。
+      装配器**不裁真值**:两侧都是诚实读数,不符只显影交判读定谳
+      (2026-09-05 夜第八局实证:恢复帧 hp14/金68 vs 档案终值 hp29/金36,
+      判读侧需此列才免手工翻流对账)。
     - 单段局 / 无续局段 → 空列表(判读「无恢复事件」与「未装配」以
       schema_version ≥ 6 区分)。
     """
     dec = slice_rows['decisions.jsonl']
+    outs = slice_rows['outcomes.jsonl']
     by_seg: dict[str, list[dict[str, Any]]] = {}
     for d in dec:
         rid = d.get('run_id')
@@ -493,6 +499,19 @@ def _resume_reconciliation(segments: list[str],
             continue
         rows = by_seg.get(rid) or []
         resume = min(rows, key=_row_ts) if rows else None
+        if resume is None:
+            # 决策帧缺失段(零决策行采集缺口)→ 最早结算行兜底;结算行
+            # 只有 hp 真值,金/等级不采 → 对应字段自然落 aligned=None
+            o_rows = sorted((o for o in outs if o.get('run_id') == rid),
+                            key=_row_ts)
+            if o_rows:
+                o = o_rows[0]
+                conf = o.get('hp_confidence')
+                resume = {'run_id': rid, 'plane': o.get('plane'),
+                          'round_num': o.get('round_num'), 'ts': o.get('ts'),
+                          'hp': o.get('hp_after'),
+                          'hp_readable': (isinstance(conf, (int, float))
+                                          and conf >= HP_CONF_TRUSTED)}
         prev_rows = [r for seg in segments[:i] for r in by_seg.get(seg, [])]
         prev = _latest_ts_frame(prev_rows) if prev_rows else None
         if resume is None and prev is None:
@@ -523,8 +542,7 @@ def _resume_reconciliation(segments: list[str],
                              'round_num': (resume or {}).get('round_num')},
             'hp': _pair('hp', resume, prev, 'hp_readable'),
             'gold': _pair('gold', resume, prev, 'gold_readable'),
-            'level': {'resume': resume_st.get('level'),
-                      'prev_final': prev_st.get('level')},
+            'level': _pair('level', resume_st, prev_st),
         })
     return out
 
@@ -795,6 +813,22 @@ def _archive_covers_segments(archive: dict[str, Any],
     return archived == list(segments)
 
 
+#: 落后水位线且未入档的局的告警窗(小时):水位线 = 历史最大 end_ts 单调
+#: 锚,时钟回拨/DST 回拨段结束的局 end_ts < wm 会被 ``<=`` 判定永久跳过
+#: (漏装);该形态的局必然落在 wm 附近,而「旧数据不回填」的存量局落后
+#: wm 几天/几周属设计态——用时间窗区分两者,防告警被存量局永久刷屏。
+_BEHIND_WARN_WINDOW_HOURS: float = 48.0
+
+
+def _ts_hours_between(later: str, earlier: str) -> float | None:
+    """两个 ISO 秒级本地时间戳的小时差(later−earlier);解析失败 → None。"""
+    try:
+        return (datetime.fromisoformat(later)
+                - datetime.fromisoformat(earlier)).total_seconds() / 3600.0
+    except (TypeError, ValueError):
+        return None
+
+
 def assemble_pending(replay_dir: Path | str) -> list[str]:
     """装配「水位线之后结束、尚未入档」的局(局终钩子/CLI 缺省入口)。
 
@@ -805,6 +839,10 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     段集合有增长的局(活局续段并入)随版本检查一并重装,不丢不重:
     重装 = 从源流全量重派生后原子覆盖,续段并入即唯一变化。返回本次
     装配的 game_id 列表。
+    观测面:水位线是历史最大值锚——end_ts < wm 的局被静默跳过且永不
+    自动装配(时钟回拨/DST 回拨段的真实形态)。此类局若未入档且落后
+    wm 在告警窗内(``_BEHIND_WARN_WINDOW_HOURS``),落 WARNING 带溯源
+    (game_id/end_ts/wm),防「回拨期间新局连续漏装」无感。
     """
     rd = Path(replay_dir)
     games = assign_games(rd)
@@ -818,6 +856,16 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
         return done
     for g in games:
         if (g['end_ts'] or '') <= wm:
+            behind_hours = _ts_hours_between(wm, g['end_ts'] or '')
+            if (g['end_ts'] or '') < wm and not archive_path(
+                    rd, g['game_id']).exists() and (
+                    behind_hours is None
+                    or behind_hours <= _BEHIND_WARN_WINDOW_HOURS):
+                log.warning(
+                    '[cw][archive] 局 %s end_ts=%s 落后水位线 %s 且未入档'
+                    '(时钟回拨/DST/漏装形态)——水位线为历史最大值锚,该局'
+                    '不会被自动装配,需 CLI assemble --game 点名补装',
+                    g['game_id'], g['end_ts'], wm)
             continue
         p = archive_path(rd, g['game_id'])
         if p.exists():
@@ -830,7 +878,11 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
                     old = json.load(f)
                 stale = (int(old.get('schema_version') or 0) < SCHEMA_VERSION)
             except (OSError, json.JSONDecodeError, TypeError, ValueError):
-                stale = False   # 损坏档案不在此竞修(原子写使其概率极低),交读端报错
+                # 损坏/缺失版本号的档案 → old=None → 段集视为未知
+                # (_archive_covers_segments 对空档案恒 False)→ 落入重装,
+                # 由 build_archive 从源流全量重派生后原子覆盖 = 自愈;
+                # 仅当源流也不可读时 build_archive 才抛,向上传播不吞。
+                stale = False
                 old = None
             if not stale and _archive_covers_segments(old or {},
                                                       g['segments']):
