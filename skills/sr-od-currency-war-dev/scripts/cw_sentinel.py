@@ -504,6 +504,11 @@ def process_line(line: str, line_end: int | None) -> str | None:
         _now_tod = _now.tm_hour * 3600 + _now.tm_min * 60 + _now.tm_sec
         if (_now_tod - _t) % 86400 > 600:
             return None
+    # 设计内自愈白名单(ADR-0529 修订):round_retry 复探超窗重试是复探窗
+    # 的有界兜底路径(消耗 node_max_retry 预算),其日志虽走 ERROR 级但属
+    # 设计内自愈,不应触发报警退出;真持续卡死由 STALL 堆积检测兜底。
+    if '复探超窗重试' in line:
+        return None
     if any(p in line for p in PATTERNS):
         return f'[SENTINEL-HIT] {line.strip()}'
     if ('执行成功' in line or '执行失败' in line) \
