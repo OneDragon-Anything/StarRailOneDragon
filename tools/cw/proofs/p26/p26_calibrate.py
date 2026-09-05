@@ -153,6 +153,11 @@ def extract(replay_dir: Path) -> tuple[list[dict], dict]:
                 'has_outcome': o is not None,
                 'killed': killed,
                 'damage': dmg,
+                # join 轮号假设对账面:备战帧 node_type_next 应与同轮结算行
+                # node_type 归一后一致——错位 = 败率/伤害入错桶且不可辨,
+                # 故逐行记录供 compute 汇总抽验(未知 token 不比对)。
+                'node_type_outcome': NODE_NORM.get(
+                    str((o or {}).get('node_type') or '')),
             })
     stats = {
         'n_decision_rows': n_dec_rows,
@@ -212,6 +217,54 @@ def loss_rate_table(rows: list[dict]) -> dict:
     return out
 
 
+def quantile_ci95(by_run: dict[str, list[float]]) -> dict[str, list[float]]:
+    """分位 CI:同聚类 bootstrap,**逐分位列 sort 后取百分位**(手法对齐
+    同文件 boot_ci 的 sort——漏 sort 会取生成序第 50/1949 个重采样值,
+    产出假 CI,三审修复任务书必修1)。<2 局不估返回 {}。
+    """
+    rids = sorted(by_run)
+    if len(rids) < 2:
+        return {}
+    rng = random.Random(SEED)
+    boots: list[list[float]] = []
+    for _ in range(N_BOOT):
+        sample = [by_run[rng.choice(rids)] for _ in rids]
+        s = sorted(v for g in sample for v in g)
+        boots.append([s[min(int(q * len(s)), len(s) - 1)]
+                      for q in QUANTILES])
+    out: dict[str, list[float]] = {}
+    for i, q in enumerate(QUANTILES):
+        col = sorted(b[i] for b in boots)
+        out[f'p{int(q * 100)}'] = [
+            round(col[int(0.025 * len(col))], 2),
+            round(col[int(0.975 * len(col)) - 1], 2)]
+    return out
+
+
+def join_consistency(rows: list[dict]) -> dict:
+    """join 轮号假设抽验:node_type_next vs 同轮 outcome.node_type。
+
+    可比对 = 两侧归一后均非 None;错位对(如备战标签 battle、结算行
+    boss)= 败率/伤害可能入错桶,必须显式计数进报告,不可静默。
+    """
+    n_cmp = 0
+    mismatch: dict[str, int] = defaultdict(int)
+    for r in rows:
+        if not r['has_outcome']:
+            continue
+        a, b = r['node_type_next'], r.get('node_type_outcome')
+        if a is None or b is None:
+            continue
+        n_cmp += 1
+        if a != b:
+            mismatch[f'{a}->{b}'] += 1
+    return {
+        'n_comparable': n_cmp,
+        'n_mismatch': sum(mismatch.values()),
+        'mismatch_pairs': dict(sorted(mismatch.items())),
+    }
+
+
 def l_node_table(rows: list[dict]) -> dict:
     """L_node 分位带:按节点型,条件败面伤害分布尾部(分位 + 聚类 CI)。
 
@@ -246,22 +299,7 @@ def l_node_table(rows: list[dict]) -> dict:
                     flat[min(int(q * len(flat)), len(flat) - 1)], 2)
                 for q in QUANTILES
             }
-            # 分位 CI:同聚类 bootstrap,对每个分位分别取百分位带
-            rids = sorted(by_run)
-            if len(rids) >= 2:
-                rng = random.Random(SEED)
-                boots: list[list[float]] = []
-                for _ in range(N_BOOT):
-                    sample = [by_run[rng.choice(rids)] for _ in rids]
-                    s = sorted(v for g in sample for v in g)
-                    boots.append([s[min(int(q * len(s)), len(s) - 1)]
-                                  for q in QUANTILES])
-                cell['quantile_ci95'] = {
-                    f'p{int(q * 100)}': [
-                        round(boots[int(0.025 * len(boots))][i], 2),
-                        round(boots[int(0.975 * len(boots)) - 1][i], 2)]
-                    for i, q in enumerate(QUANTILES)
-                }
+            cell['quantile_ci95'] = quantile_ci95(by_run)
         cell['gate'] = ('ok' if n_loss[nt] >= MIN_LOSS_PER_NODE else
                         f'insufficient: 败面 n<{MIN_LOSS_PER_NODE}'
                         '/节点型(定向补样)')
@@ -295,6 +333,7 @@ def compute(rows: list[dict], src_stats: dict, source: str) -> dict:
         },
         **src_stats,
         'n_joined_rows': len(joined),
+        'join_consistency': join_consistency(joined),
     }
     if len(joined) < MIN_BUCKET_N:
         res['status'] = ('insufficient: 实机 p26_prep_obs 样本不足'
@@ -322,6 +361,13 @@ def write_report(res: dict, path: Path) -> None:
     if res.get('excluded_node_tokens'):
         lines.append(f"- 非战斗类下一节点 token(不入表):"
                      f"{res['excluded_node_tokens']}")
+    jc = res.get('join_consistency') or {}
+    if jc:
+        lines.append(f"- join 轮号对账:可比 {jc['n_comparable']} 行,"
+                     f"node_type_next 与结算 node_type 错位 "
+                     f"{jc['n_mismatch']} 行 {jc['mismatch_pairs']}"
+                     + (' —— **错位行存在,败率/伤害分桶存疑,先查轮号假设**'
+                        if jc['n_mismatch'] else ''))
     lines.append('')
     if res['delta_p_prep']:
         lines.append('## Δp_prep 条件表(桶键 = 支出桶/carry装备数/成型档/'
@@ -354,8 +400,8 @@ def write_report(res: dict, path: Path) -> None:
 
 
 def main() -> int:
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    # UTF-8 控制台已由 CLI 入口 _wrap_stdout 统一包装(此处二次包装会
+    # 使前一层 wrapper 被 GC 关闭底层句柄 → print 崩)。
     rows, src_stats = extract(REPLAY_DIR)
     res = compute(rows, src_stats, str(REPLAY_DIR))
     (OUT_DIR / 'fit_results.json').write_text(
@@ -369,11 +415,20 @@ def main() -> int:
     return 0
 
 
-def _selftest() -> int:
-    """最小合成数据自验:分桶正确性 + CI 计算 + 质量门标记,零外部数据。"""
+def _wrap_stdout() -> None:
+    """控制台 UTF-8(仅 CLI 入口;pytest 捕获下禁换 sys.stdout——
+    替换后原捕获流被关闭,测试收尾即崩)。"""
     import io
-    import tempfile
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+
+def _selftest() -> int:
+    """最小合成数据自验:分桶正确性 + CI 计算 + 质量门标记,零外部数据。
+
+    纯计算 + 临时目录,零真实副作用(sys.stdout 不换——pytest 捕获下
+    换流会关掉捕获句柄,UTF-8 包装归 CLI 入口 _wrap_stdout)。
+    """
+    import tempfile
 
     assert spend_bin(0) == '0' and spend_bin(5) == '1-5' \
         and spend_bin(15) == '6-15' and spend_bin(30) == '16-30' \
@@ -394,6 +449,7 @@ def _selftest() -> int:
                     {'char_id': 'y', 'equips': []}]}}))
             out.append(json.dumps({
                 'run_id': 'runA', 'plane': 1, 'round_num': i + 1,
+                'node_type': 'battle',
                 # 前 8 轮败(killed=False),后 2 轮胜
                 'killed': i >= 8, 'damage_base': 10,
                 'damage_unfinished_progress': 5,
@@ -406,8 +462,20 @@ def _selftest() -> int:
                 'state': {'deployed': []}}))
             out.append(json.dumps({
                 'run_id': 'runB', 'plane': 1, 'round_num': i + 1,
+                'node_type': '遭遇',
                 'killed': False, 'damage_base': None,
                 'damage_unfinished_progress': None, 'board_before': {}}))
+        # join 轮号错位注入:备战标签 battle、结算行 boss → 必须被
+        # join_consistency 显式计数(错位=败率入错桶不可辨)
+        dec.append(json.dumps({'run_id': 'runB', 'plane': 1,
+                               'round_num': 20, 'sess_release_spent': 0,
+                               'p26_prep_obs': {'node_type_next': 'battle'},
+                               'state': {'deployed': []}}))
+        out.append(json.dumps({'run_id': 'runB', 'plane': 1,
+                               'round_num': 20, 'node_type': 'boss',
+                               'killed': True, 'damage_base': 1,
+                               'damage_unfinished_progress': 1,
+                               'board_before': {}}))
         # 非 battle 下一节点 + 无 obs 行:不入表
         dec.append(json.dumps({'run_id': 'runB', 'plane': 1,
                                'round_num': 99, 'sess_release_spent': 0,
@@ -419,9 +487,9 @@ def _selftest() -> int:
         (rd / 'outcomes.jsonl').write_text('\n'.join(out), encoding='utf-8')
 
         rows, stats = extract(rd)
-        assert stats['n_rows_with_p26_obs'] == 21, stats
+        assert stats['n_rows_with_p26_obs'] == 22, stats
         assert stats['excluded_node_tokens'] == {'补给': 1}, stats
-        assert len(rows) == 20  # 21 obs - 1 非战斗
+        assert len(rows) == 21  # 22 obs - 1 非战斗
         r0 = rows[0]
         assert r0['spend_bin'] == '1-5' and r0['carry_equip'] == 2 \
             and r0['node_type_next'] == 'battle', r0
@@ -450,16 +518,33 @@ def _selftest() -> int:
         assert 'quantiles' not in ltab['encounter']  # 全删失不入分位
         assert ltab['encounter']['gate'].startswith('insufficient')
 
+        # 必修2 锁:分位 CI95 = 逐分位列 sort 后百分位(有序合成样本,
+        # 四局各一值 10/20/30/40;期望值由排序百分位定义解析可查:
+        # 每列 2.5% 分位=该列最小可达值、97.5%=最大可达值)。守卫移除
+        # 属性:恢复旧取法(生成序第 50/1949 个)即红——旧法对本样本给
+        # p50=[20,30] 而非 [10,40]。
+        qc = quantile_ci95({'A': [10], 'B': [20], 'C': [30], 'D': [40]})
+        assert qc == {'p50': [10, 40], 'p75': [20, 40],
+                      'p90': [20, 40], 'p95': [20, 40]}, qc
+
+        # 必修4 锁:join 轮号错位注入必须被显式计数(1 处 battle->boss)
+        jc = join_consistency(joined)
+        assert jc['n_comparable'] == 21 and jc['n_mismatch'] == 1, jc
+        assert jc['mismatch_pairs'] == {'battle->boss': 1}, jc
+
         res = compute(rows, stats, str(rd))
         assert res['status'].startswith('partial'), res['status']
+        assert res['join_consistency']['n_mismatch'] == 1
         rep = Path(td) / 'REPORT.md'
         write_report(res, rep)
         assert 'insufficient' in rep.read_text(encoding='utf-8')
+        assert 'battle->boss' in rep.read_text(encoding='utf-8')
     print('selftest PASS: 分桶/CI/删失/质量门/报告 全部符合预期')
     return 0
 
 
 if __name__ == '__main__':
+    _wrap_stdout()
     if '--selftest' in sys.argv:
         sys.exit(_selftest())
     sys.exit(main())
