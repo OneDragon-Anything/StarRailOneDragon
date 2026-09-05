@@ -301,11 +301,12 @@ def buy_click_ineffective(before: MatLike | None, after: MatLike | None,
                           diff_thr: float = 12.0) -> bool:
     """买后同 rect 卡面未变判定(纯函数):灰度差均值 < 阈值 ⇒ 卡未离场
     = 购买未生效(点击落空/试用/被拦)。任一裁片缺失或形状不等 ⇒ False
-    (不可判不污账,保持既有记账;第十八局 p2r7 形态的执行侧检出)。
+    = **不可判**(fail-open,保持既有记账;与「判了未生效」可分,执行侧
+    以 skipped 计数分键显影,低-4)。
 
-    阈值标定带:未生效形态 = 同卡逐帧重摄(均值差 ≈ 0,静态卡面);
-    生效形态 = 整卡替换/离场(均值差 > 100);12.0 = 两形态间的保守带,
-    中间带无实机样本,细标定挂账(候选 = 采 Both 形态各 N 帧分位数)。
+    阈值如实口径:12.0 = 合成帧推导的保守带(未生效形态 ≈ 逐像素全同;
+    生效形态 = 整卡替换,均值差大一个量级),**非实机边界标定**——同美术
+    异星卡等假阳窗口未评估,细标定挂账。
     """
     if before is None or after is None:
         return False
@@ -354,6 +355,12 @@ class BuyCardOp(ShopActionOp):
                 _after = op.screenshot()
                 _after_crop = _after[_hit_rect.y1:_hit_rect.y2,
                                      _hit_rect.x1:_hit_rect.x2].copy()
+        if _card_crop is None or _after_crop is None:
+            # 不可判(裁片缺失)与没判可分:skipped 计数分键显影(低-4)。
+            with contextlib.suppress(Exception):
+                _ct = match.session.cw4_counters
+                _ct['buy_click_verify_skipped'] = \
+                    _ct.get('buy_click_verify_skipped', 0) + 1
         if buy_click_ineffective(_card_crop, _after_crop):
             with contextlib.suppress(Exception):
                 from sr_od.application.currency_war.telemetry.defects import (

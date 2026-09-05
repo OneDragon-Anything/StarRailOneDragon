@@ -390,6 +390,32 @@ class BuyCardsOutcome:
     buy_pre_deployed: list[BenchChar]
 
 
+def apply_action_outcome(_aop, action, _ok: bool, _cur: GameState,
+                         match, ledger, visit_actions: list) -> None:
+    """执行结果落地门(调用环单一源;落地审 C1 调用环级锁的承载体)。
+
+    未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不投影、
+    不守卫、不入「已买」集(防检出帧名污染 prefer_names/churn/P60,
+    应修-2);落地且非终结 ⇒ 投影(决策 10)+ guard_expected_vs_tracked
+    (满栏买入豁免面照旧:执行侧 tracked 的 bench_place 在满栏时丢件,
+    两模型不同构,对账重挂点 = 下一入口观察)。
+    """
+    visit_actions.append(action)
+    if _ok and isinstance(action, BuyCard) and action.card.name:
+        match.session.cw4_visit_bought_names.append(action.card.name)
+    if _ok and not _aop.terminal:
+        _skip_guard = (isinstance(action, BuyCard)
+                       and bench_occupied(_cur.bench) >= BENCH_CAPACITY)
+        _proj = _aop.project(_cur)
+        match.session.shop_state_frame = _proj
+        if not _skip_guard:
+            from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
+                guard_expected_vs_tracked,
+            )
+            guard_expected_vs_tracked(_proj, match.session)
+        ledger.refresh_first_action = False
+
+
 def run_buy_waves(op: SrOperation, match,
                   hp_value: int | None, hp_readable: bool,
                   hp_trusted: bool) -> tuple[OperationRoundResult | None,
@@ -670,28 +696,8 @@ def run_buy_waves(op: SrOperation, match,
                 op=op, match=match, config=config, click_pts=click_pts,
                 level_btn=level_btn, refresh_btn=refresh_btn,
                 ledger=ledger, state=_cur))
-            visit_actions.append(action)
-            if isinstance(action, BuyCard) and action.card.name:
-                match.session.cw4_visit_bought_names.append(action.card.name)
-            # 投影(决策 10:动作 op 自带确定性投影;纯计算零读屏)。
-            # 终结动作不投影——期望态随终结作废,由下一次入口观察重建
-            # (决策 7/8)。卖出执行失败(拖 3 次未落地)同样不投影,
-            # 双账一致由「两侧都不动」保持。
-            if _ok and not _aop.terminal:
-                _skip_guard = (isinstance(action, BuyCard)
-                               and bench_occupied(_cur.bench) >= BENCH_CAPACITY)
-                _proj = _aop.project(_cur)
-                match.session.shop_state_frame = _proj
-                if not _skip_guard:
-                    # 满栏买入豁免:执行侧 tracked 的 bench_place 在满栏时
-                    # 丢件 vs simulate 走 §2.5 k 张分支,两模型不同构
-                    # (cw_shop_action_ops 模块头申报);对账重挂点 = 下一
-                    # 入口观察。豁免面外分叉 = 双账断言炸出。
-                    from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
-                        guard_expected_vs_tracked,
-                    )
-                    guard_expected_vs_tracked(_proj, match.session)
-                ledger.refresh_first_action = False
+            apply_action_outcome(_aop, action, _ok, _cur, match, ledger,
+                                 visit_actions)
         log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                  f'plan={[_fmt_action(a) for a in visit_actions]}')
         # decisions 行(段粒度 = 旧波行同框架;actions = 本段执行累计,
