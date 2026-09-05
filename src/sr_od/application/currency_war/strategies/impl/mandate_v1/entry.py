@@ -238,14 +238,16 @@ class UpgraderSignals:
     """升档器求值位输出(R27-1②:证明 pass 后、骨架 pass 前每备战期
     现读;信号位必须先于 F7/M3 消费位产出)。
 
-    None 期定谳(R29-1/R36-2):p=None ⇒ λ 顾问触发信号构造性 ⊥(仅
-    影子求值进遥测 ``advisor_lambda_shadow_armed``);血线阈值 None ⇒
-    地板组件构造性不触发。行为面三件(F7 禁令/M3 分流/arm2 门)对
-    未标定源解绑,保持默认姿态。
+    标定落地(用户裁定=按 15,撤销 R29-1/R36-2 None 期影子维持声明):
+    血线阈值单一源 = lambda_death.HP_BAND_NEAR_DEATH(=15,
+    BLOODLINE_HP_THRESHOLD provisional 源退役);hp≤阈值 ⇒ 解锁包三件
+    (F7 禁令/M3 分流/arm2 门)武装,行为介入开启。λ 顾问:标定前置
+    影子维持声明同批撤销——p 注入形态触发即真键武装(行为介入),
+    ``lambda_shadow``/``bloodline_shadow`` 影子键保留为对照(同条件
+    置位,禁删)。
 
-    R196 症3 载体补齐:``lambda_armed``(真键 ``advisor_lambda_armed``
-    的信号位,p 标定形态期产出,行为面接线候标定批)/``lambda_shadow``
-    (影子求值位,p 注入形态期的观察级信号,行为无关)。
+    R196 症3 载体:``lambda_armed``(真键 ``advisor_lambda_armed``)/
+    ``lambda_shadow``(对照键)。
     """
 
     f7_ban_armed: bool = False
@@ -295,30 +297,24 @@ def _upgrader_evaluate(session: StrategySession, state: GameState | None,
         lambda_death,
     )
     sig = UpgraderSignals()
-    # λ 顾问:R28-1 相对分位触发。三口径分列(R41-5①:影子/注入/真键
-    # 禁合并判读)——p=None ⇒ 不求值(两键构造性恒 0,R29-1);p 注入
-    # 形态 ⇒ 影子求值进 advisor_lambda_shadow_armed(观察级,行为无关);
-    # p 标定形态 ⇒ 真键 advisor_lambda_armed(行为面接线候标定批)。
+    # λ 顾问:R28-1 相对分位触发。标定前置影子维持声明按用户裁定撤销
+    #(死亡线标定落地批):p 在场即求值,触发 ⇒ 真键武装(行为介入开启);
+    # lambda_shadow 保留为对照键(同条件置位,禁删)。p=None ⇒ 不求值。
     p = provisional.get('P_LAMBDA_QUANTILE')
     if p is not None:
         armed = _lambda_quantile_armed(state, hp, float(p.value))
         if armed:
-            if p.injected_form:
-                sig.lambda_shadow_armed = True
-            else:
-                sig.lambda_armed = True
-    # 血线硬地板:hp 观测量 < 阈值(【拟】None ⇒ 构造性不触发,R36-2);
-    # None 期影子观测(R196 症3):注入形态结构锚 hp=15(血带下界,
-    # lambda_death.HP_BAND_NEAR_DEATH 单一源)照测 advisor_bloodline_
-    # shadow_armed(观察级,行为无关)
-    thr = provisional.get('BLOODLINE_HP_THRESHOLD')
-    if thr is not None and hp is not None and hp < thr.value:
+            sig.lambda_armed = True
+            sig.lambda_shadow_armed = True   # 对照键保留
+    # 血线硬地板(标定落地,用户裁定=按 15):阈值单一源 =
+    # lambda_death.HP_BAND_NEAR_DEATH(BLOODLINE_HP_THRESHOLD provisional
+    # 源退役,两源归一);hp ≤ 阈值 ⇒ 解锁包三件武装(F7 禁令/M3 分流/
+    # arm2 门,行为介入开启);影子键保留对照。
+    if hp is not None and hp <= lambda_death.HP_BAND_NEAR_DEATH:
         sig.neardeath_unlock = True
         sig.arm2_gate_open = True     # R28-2 解锁包:g*→0(arm2 金下限)
         sig.f7_ban_armed = True
-    elif thr is None and hp is not None \
-            and hp < lambda_death.HP_BAND_NEAR_DEATH:
-        sig.bloodline_shadow_armed = True
+        sig.bloodline_shadow_armed = True   # 对照键保留
     return sig
 
 
