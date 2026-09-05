@@ -91,6 +91,23 @@ _SLOTS: dict[str, _Slot] = {
     # (R29-1),仅影子求值进遥测——槽缺位会使求值位两读,补齐系缺口闭合
     # (STEP34_REPORT 呈报项,非数值语义变更)。
     'P_LAMBDA_QUANTILE': _Slot('λ 顾问相对分位 p(R28-1;R29-1 None 期不评估)'),
+    # 遭遇分支旗牌→敌难度 stat 映射(遭遇选卡 E3 判据,mandate_v1/
+    # encounter.py 消费):λ PL 键难度维需 stat 真值(带界 108),卡面只有
+    # 旗牌 1-6,映射未采(ADR-0536 §3 开闸链)——None 期 = 键观测量缺失 =
+    # 域外同判 fail-closed(禁拿旗牌值冒充 stat 假真值,lambda_death.
+    # difficulty_band R29-6 同款);标定批经 inject 显式注入。
+    # 载体类型例外(落地审低-2 登记):value 静态注解 float,本槽实载
+    # dict[int, int](键=旗牌)——运行无碍,后续批可放宽注解。
+    'ENCOUNTER_DSTAT_MAP': _Slot('遭遇分支旗牌→敌难度 stat 映射(ADR-0536 §3;'
+                                 'None 期 E3 λ 项域外 fail 向选低难)'),
+    # 金币×2 分支奖励金额(E3 判据金币支 V_r;ADR-0536 §3):金额是观察值
+    # (exogenous event_choice 单例 +8)非机制定义,须「≥3 局观察值定带」
+    # 判据过闸后注入——None 期金币支 V_r 未立(fail 向,未立 ≠ 0)。
+    # 与 ENCOUNTER_DSTAT_MAP 构成**双槽互锁**:数值 argmax 臂要求两槽都在
+    # 场,防「标定批只注 λ 侧映射即半标定全开闸、单例金额进承重比较位」
+    # (落地审建议-1 治本:代码常量 8 退役,槽位化单源)。
+    'ENCOUNTER_G_GOLD': _Slot('E3 金币×2 金额观察值(ADR-0536 §3;None 期金币支'
+                              '未立 fail 向;与 DSTAT 槽双槽互锁)'),
 }
 
 #: 槽位值存储(缺省全 None = fail-closed)

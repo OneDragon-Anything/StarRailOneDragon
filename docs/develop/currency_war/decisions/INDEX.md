@@ -435,3 +435,4 @@
 | [ADR-0533-must-spend-phase-latch-l3-reject-reasons.md](ADR-0533-must-spend-phase-latch-l3-reject-reasons.md) | ADR-0533: 必花域备战期闩(曾入域豁免保持,治「花光」义务域边界蒸发)+L3 资格拒分键落盘+prep xp 现读透传+form_score 回退源+实机遥测两件接线(三局濒死同构排查修批) | 已实施 |
 | [0534-swap-transition-arm.md](0534-swap-transition-arm.md) | ADR-0534: 转型臂(M1″ swap 谓词触发域扩展)——锁线后线未成型板满帧 fenced victim 经守恒门(五体系∪护盾)+合成素材守卫+1★ 限卖逐件放行,发射⇔执行单一判定函数内聚,SWAP_TRANSITION_ARM_ENABLED 单点回滚与 seam 门切割,seam 对齐增行 15-17 | 已实施 |
 | [0535-bt-disclose-replace-form-score.md](0535-bt-disclose-replace-form-score.md) | ADR-0535: B_t 替代 form_score 披露口径——决策关键帧零预测力定谳(boss 前 108/108、终局 90/90 恒 1.0 常数零方差),三方案①去封顶②engines+2★ 否决③B_t 成立(depth r=0.403 p<0.001 唯一显著代理),纯遥测不进判据+升格须过 ADR-0482 闸门 | 已实施 |
+| [0536-encounter-e3-ev-criterion.md](0536-encounter-e3-ev-criterion.md) | ADR-0536: 遭遇核 E3 判据替换——EV(b)=V_r−Δλ_death·G_loss 落码 mandate_v1.decide_encounter 覆写(λ label 四态接死 fail 向选低难/刷新肢条件化非免费期权/双槽互锁开闸链 DSTAT_MAP+G_GOLD/基线核零触碰;现态恒 fail 向低难零刷新建议) | 已实施 |
