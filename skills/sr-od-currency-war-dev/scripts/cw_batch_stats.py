@@ -1,4 +1,4 @@
-"""批统计面(八族过程量:资源转化/成型/战斗/供给/达标臂发射/终态…;2026-09-07 反馈条目落地,发射面为后补族)。
+"""批统计面(九族过程量:资源转化/成型/战斗/供给/达标臂发射/终态/采购面三观察…;2026-09-07 反馈条目落地,发射面/采购观察面为后补族)。
 
 定位:第 1 步统计+按指标点名最差局(供第 3 步挑局复盘);怎么判定「表现不好」不在此规定。
 两种数据源:
@@ -63,6 +63,8 @@ def _sim_rows(batch: Path) -> dict[str, list[dict]]:
             'factions': dict(st.get('board_factions') or {}), 'acts': r.get('actions') or [],
             # 达标臂发射事件(行内 launch 键,engine_p1 建模;None=未触发)
             'launch': r.get('launch'),
+            # 采购面三观察计数(行内 obs 键,engine_p1 建模;缺键=旧批)
+            'obs': r.get('obs') or {},
         }
     for o in outs:
         g(o.get('run_id') or '?')['outs'][(o.get('plane') or 1, o.get('round_num') or 0)] = o
@@ -122,6 +124,9 @@ def _archive_rows(mid: str) -> dict[str, list[dict]]:
                    if any(a.get('__type__') in ('StartBattle', 'LaunchBattle')
                           for a in r.get('actions') or []) else None),
         'shop_waves': _waves(r.get('shop_snapshots')),
+        # 档案行无 sim 行内 obs 键(生产决策帧无同构计数)——采购面观察
+        # 为 sim 专属,档案模式恒空 dict(统计族退化为 0/None,不误报)
+        'obs': {},
     } for r in m.get('rounds', [])]
     affixes: list[str] = []
     for b in (m.get('opening', {}).get('briefing_rows') or []):
@@ -212,6 +217,25 @@ def analyze_game(rows: list[dict]) -> dict:
                                  / len(launches), 2)
                            if launches else None)
     m['首发轮'] = next((r['round'] for r in rows if r.get('launch')), None)
+    # H 采购面三观察(sim 行内 obs 键,engine_p1「采购面三观察计数」块建模;
+    # 档案行 obs 恒空 → 0/None,不误报)。观察面只计数不定谳——
+    # 「超容→买冻结 / 刷新零用 / 冷启动零买」三形态病灶判定归第 3 步复盘。
+    _obs = [r.get('obs') or {} for r in rows]
+    m['超容帧数'] = sum(int(o.get('overcap_frames') or 0) for o in _obs)
+    _run = _best_run = 0
+    for o in _obs:
+        _run = _run + 1 if (o.get('overcap_frames') or 0) else 0
+        _best_run = max(_best_run, _run)
+    m['超容最长连续轮'] = _best_run
+    m['超容峰值|B|'] = max((int(o.get('locked_b') or 0) for o in _obs),
+                           default=0)
+    _avail = sum(int(o.get('refresh_avail_frames') or 0) for o in _obs)
+    _refs = sum(int(o.get('refreshes') or 0) for o in _obs)
+    m['刷新可得帧'] = _avail
+    m['刷新触发率'] = (round(_refs / _avail, 2) if _avail else None)
+    _cold = [r for r in rows if r['plane'] == 1 and r['round'] <= 4]
+    m['冷启动买次数'] = sum(n_act(r['acts'], 'BuyCard') for r in _cold)
+    m['冷启动金花费'] = sum(act_cost(r['acts']) for r in _cold)
     # D 战斗过程
     lo, wo = [], []
     for r in rows:
@@ -253,6 +277,7 @@ def supply_util(shops: list) -> float | None:
 WORST_METRICS = [  # (指标键, 方向):max=值大更差 / min=值小更差
     ('危局空转轮数', 'max'), ('空转轮占比', 'max'), ('停滞最长轮数', 'max'),
     ('花费率', 'min'), ('装备覆盖均值', 'min'), ('等级爬升', 'min'),
+    ('超容最长连续轮', 'max'),
 ]
 
 
@@ -299,6 +324,20 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     print('\n-- G 终态 --')
     hps = [m['终态']['hp'] for m in ms.values() if m.get('终态') and m['终态']['hp'] is not None]
     print(f'  终局 hp 中位: {statistics.median(hps) if hps else None}')
+    print('\n-- H 采购面三观察(sim obs 键;观察面只计数不定谳) --')
+    for k in ('超容帧数', '超容最长连续轮', '刷新可得帧', '冷启动买次数', '冷启动金花费'):
+        a = agg(k)
+        print(f'  {k}: {a[0]} | {a[1]}' if a else f'  {k}: 无数据')
+    rt = [m['刷新触发率'] for m in ms.values() if m.get('刷新触发率') is not None]
+    if rt:
+        print(f'  刷新触发率(实刷/可得帧,中位): {statistics.median(rt):.2f}')
+    else:
+        print('  刷新触发率: 无可得帧(全批零可得或非 sim 数据源)')
+    over_games = [rid for rid, m in ms.items() if m.get('超容帧数')]
+    print(f'  超容局占比: {len(over_games) / max(len(ms), 1):.0%}')
+    cold0 = [rid for rid, m in ms.items()
+             if m.get('冷启动买次数') == 0 and m.get('冷启动金花费') is not None]
+    print(f'  冷启动零买局占比: {len(cold0) / max(len(ms), 1):.0%}')
     print('\n-- 表现不好的指标 → 体现最重的局(每指标 2 局;第 3 步挑局复盘的抽样单) --')
     for key, d in WORST_METRICS:
         vals = [(m.get(key), rid) for rid, m in ms.items()

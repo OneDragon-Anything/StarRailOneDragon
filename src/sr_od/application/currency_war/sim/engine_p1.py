@@ -46,6 +46,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 )
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
+    DEPLOYED_CAPACITY,
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
     BenchChar,
@@ -877,6 +878,27 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # shop_rejects——「线内核心在售未买」的供给空缺 vs 闸门拒绝
             # 判据,消费=R4 报告 §3 类复盘归因)
             _round_shop_rejects: dict[str, str] = {}
+            # ===== 采购面三观察计数(sim 观测面,零策略行为改动)=====
+            # 背景:sim 找问题轮定位三形态但纪律要求「先立观察面再定谳,
+            # 禁直接立病灶」。三个观察面全部是**已发生决策帧的只读投影**,
+            # 零 rng 消耗、零状态写入、零策略分支——挂行内 'obs' 键而非
+            # 增行/动 actions(同 launch 键的先例:一轮一行/outcomes 配对/
+            # 段级检查轮键/行为投影 digest 四不变式不被观测面挤占)。
+            # - 超容观察:每决策帧 |locked_buy_membership| vs
+            #   BENCH_CAPACITY+DEPLOYED_CAPACITY(判据与告警门同式,
+            #   单一源 = cw_intention.locked_buy_membership 直调;超容帧
+            #   计数 + 持续轮数由统计端按「连续轮 overcap_frames>0」聚合);
+            # - 刷新触发率观察:「刷新可得帧」= 缺员(buy_members 中未
+            #   owned)∧ 缺员在售 ∧ 金 ≥ interest_floor+刷价+在售最低
+            #   买价——阈值口径 = 注册表 ADR-0369「[3] 单次预算前提」
+            #   (interest_floor+刷价+买价),零新自由参数;对偶计数 =
+            #   本轮实际刷新数(轮首差分);
+            # - 冷启动买率观察:轮级 actions/spend 已入账本,r1-r4 买
+            #   次数/金花费分布由统计端聚合,引擎零新键。
+            _obs_locked_b = 0            # 本轮最大锁定采购集 |B|(0=帧全未锁)
+            _obs_overcap_frames = 0      # 本轮超容决策帧数
+            _obs_refresh_avail = 0       # 本轮「刷新可得」决策帧数
+            _obs_refreshes0 = res.refreshes   # 轮首刷新数(差分 = 本轮实刷)
             # ===== 达标臂发射事件建模(sim 观测面)=====
             # 生产面:达标即出战臂(cw_loop 备战分支,14号稿 §9.6):
             # 备战双锚命中 → 线成型 form_progress(target_comp, state)
@@ -957,6 +979,53 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _round_bench_full = _round_bench_full or (
                     bench_occupied(st.bench) >= BENCH_CAPACITY)
                 strat.update_target(st, sess, config)
+                # 采购面三观察·帧级只读投影(见轮首「采购面三观察计数」
+                # 块;位次 = update_target 后 = 意向状态已刷新,与策略
+                # 决策帧同语境;纯读,零行为面)。义务面口径与策略侧
+                # buy_members 同式:锁定帧 = locked_buy_membership,未锁
+                # 帧 = line_members(target_comp)(单一源直调,禁第二实现)。
+                _obs_ist = getattr(sess, 'v3_intention', None)
+                _obs_bm = None
+                if _obs_ist is not None:
+                    from sr_od.application.currency_war.kernel import (
+                        cw_intention as _obs_intention,
+                    )
+                    _obs_bm = _obs_intention.locked_buy_membership(_obs_ist)
+                if _obs_bm is None:
+                    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
+                        predicates as _obs_predicates,
+                    )
+                    _obs_bm = _obs_predicates.line_members(
+                        getattr(sess, 'target_comp', None))
+                if _obs_bm:
+                    if _obs_ist is not None and getattr(
+                            _obs_ist, 'locked_comp', ''):
+                        # |B| 与超容判据只辖锁定采购集(策略侧 P60 告警门
+                        # 同式;未锁帧的 line_members 是 comp core∪shared
+                        # 小集,天然 ≤ 容量,不入 |B| 峰值)
+                        _obs_locked_b = max(_obs_locked_b, len(_obs_bm))
+                        if len(_obs_bm) > BENCH_CAPACITY + DEPLOYED_CAPACITY:
+                            _obs_overcap_frames += 1
+                    _obs_owned = {(c.char_id or '')
+                                  for c in list(st.bench or [])
+                                  + list(st.deployed or [])
+                                  if getattr(c, 'char_id', '')}
+                    _obs_missing = [m for m in _obs_bm if m not in _obs_owned]
+                    if _obs_missing:
+                        _obs_cands = [c for c in (st.shop or [])
+                                      if (c.name or '') in _obs_missing]
+                        if _obs_cands:
+                            from sr_od.application.currency_war.kernel.cw_registry import (
+                                DEFAULT_REGISTRY as _obs_reg,
+                            )
+                            _obs_buy0 = min(
+                                (c.cost if c.cost else 3)
+                                for c in _obs_cands)
+                            _obs_thr = (_obs_reg.interest_floor()
+                                        + (st.shop_refresh_cost or 2)
+                                        + _obs_buy0)
+                            if (st.gold or 0) >= _obs_thr:
+                                _obs_refresh_avail += 1
                 # W971 sim 适配批:决策调用切黑板新接口(生产/离线同路)。
                 # sim 决策段 = 商店决策核:帧写者 = 本处(shop_state_frame
                 # 写者白名单含 sim 引擎,见 cw_strategy_session 字段注释);
@@ -2005,6 +2074,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 达标臂发射事件(见上方「达标臂发射事件建模」块;None=
                 # 本轮达标臂未触发——非战斗节点/未成型/准入预估不可得)
                 'launch': _round_launch,
+                # 采购面三观察计数(见轮首「采购面三观察计数」块):
+                # locked_b=本轮最大锁定采购集 |B|(0=帧全未锁);
+                # overcap_frames=超容决策帧数;refresh_avail_frames=
+                # 「刷新可得」决策帧数;refreshes=本轮实际刷新数(轮首差分)。
+                # 冷启动 r1-r4 买次数/金花费不另设键——actions/sim.spend
+                # 既有轮级披露即数据源,统计端聚合。
+                'obs': {
+                    'locked_b': _obs_locked_b,
+                    'overcap_frames': _obs_overcap_frames,
+                    'refresh_avail_frames': _obs_refresh_avail,
+                    'refreshes': res.refreshes - _obs_refreshes0,
+                },
                 # 商店波未买牌拒因串(末波 last-wins;生产端
                 # cw4/shop.shop_unbought_reasons,实机 DecisionTrace.
                 # shop_rejects 同键同值枚举;逐波明细=sim.shop_waves[].rejects)
