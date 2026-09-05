@@ -293,72 +293,22 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
 
 
 def readiness_admission_report(state, comp) -> dict:
-    """达标臂 G1 准入预估(§9.2 准入三元 + victim 收口,发射面显影用)。
+    """达标臂 G1 准入预估(§9.2 三元+victim 收口,发射面显影用)。
 
-    返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 物理
-    槽位总数 DEPLOYED_CAPACITY(前后排定长槽表),feed 单一源 =
-    deployed_occupied)、``bench_core_waiting``(三元②:bench 存在线内
-    待上场件——口径 = core∪shared(predicates.line_members)∨ 阵营交集,
-    与买入/部署义务面对齐)、``victim_missing``(三元③:板上无合格
-    victim)。
-
-    victim 资格单一源 = offtarget_sell_allowed fenced 臂全条件(off-line
-    ∧ 围栏 ∧ 非保护域,保护域 = core∪shared∪替班者),与执行侧
-    _sell_offtarget_deployed 同款;**不附 1★ 全退门**——执行侧 swap 卖出
-    无退款资格前置,提案侧多一道门只会造成 victim_missing 误显影。
-    提案侧预估基于期望态现读;执行时刻以 CwOpDeploy 现读重建为准。
-    三元不全/victim 缺失**只显影不拦截**(出战优先;准入是观测面,
-    非第二道闸)。
-    **帧对齐说明**:预估读 ``session.last_state``(上一轮决策态),与发射
-    复验帧存在一轮滞后——显影是 best-effort 观测面(非判定门),一轮
-    滞后可接受;精确帧级对齐归观测口径批。
+    实现单一源 = ``kernel.cw_launch_admission.launch_admission_report``
+    (发射面观测批迁出:sim 桶不可依 app 桶——包依赖矩阵 LEGAL_EDGES,
+    纯判据入 kernel 后 sim 引擎/cw_loop/测试三方共用;线成员谓词由本
+    调用面注入同一单一源,禁各面自写第二实现)。判据语义、三元口径与
+    **帧对齐说明**(预估读 session.last_state,一轮滞后可接受)见彼处
+    docstring。
     """
-    from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.kernel.cw_state import (
-        DEPLOYED_CAPACITY,
-        deployed_occupied,
-    )
-    from sr_od.application.currency_war.operations.cw_op.cw_op_deploy import (
-        offtarget_sell_allowed,
-        protect_names_of,
+    from sr_od.application.currency_war.kernel.cw_launch_admission import (
+        launch_admission_report,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
     )
-    deployed = [d for d in (state.deployed or []) if d is not None]
-    bench = [b for b in (state.bench or []) if b is not None]
-    cores = set(getattr(comp, 'core_chars', []) or [])
-    line = set(line_members(comp))
-    protect = protect_names_of(comp)
-    t_factions = set(getattr(comp, 'all_factions', []) or [])
-    board_full = deployed_occupied(state.deployed or []) >= DEPLOYED_CAPACITY
-    bench_core_waiting = False
-    for b in bench:
-        name = b.char_id or ''
-        if name in line:
-            bench_core_waiting = True
-            break
-        ch = get_char(name)
-        if ch is not None and (set(ch.factions) | set(ch.flows)) & t_factions:
-            bench_core_waiting = True
-            break
-    victim_missing = True
-    for d in deployed:
-        name = d.char_id or ''
-        if not name or name in cores or name in protect:
-            continue
-        ch = get_char(name)
-        if ch is None:
-            continue
-        bonds = set(ch.factions) | set(ch.flows)
-        if not offtarget_sell_allowed(name, bonds, t_factions, cores,
-                                      fenced_offline_sellable=True,
-                                      protect_names=protect):
-            continue
-        victim_missing = False
-        break
-    return {'board_full': board_full, 'bench_core_waiting': bench_core_waiting,
-            'victim_missing': victim_missing}
+    return launch_admission_report(state, comp, line_members=line_members)
 
 
 def readiness_battle_launch(op, ctx):
@@ -387,8 +337,24 @@ def readiness_battle_launch(op, ctx):
                                   crop_first=False).is_success
             and op.round_by_find_area(_fresh, '货币战争-备战', '按钮-出战',
                                       crop_first=False).is_success)
-    except Exception as e:  # noqa: BLE001  复验不可用不阻塞(保守放行)
-        log.debug('[cw-loop] 达标臂屏态复验失败(保守放行): %s', e)
+    except Exception as e:  # noqa: BLE001  复验不可用不阻塞(保守放行;
+        # 放行/放弃之辩归编排者裁,本批只补观测面:分键零静默与 stale 分支对齐)
+        log.warning('[cw-loop] 达标臂屏态复验失败(保守放行): %s', e)
+        try:
+            from sr_od.application.currency_war.telemetry.defects import (
+                record_defect,
+            )
+            record_defect(
+                'deploy', 'readiness_recheck_error',
+                expected='复验链 screenshot/find_area 正常',
+                observed=f'异常:{type(e).__name__}',
+                gap_large=False, auto_resolved=False,
+                verdict=('留证-屏态复验异常保守放行(切屏瞬间误真 9 拖空挥'
+                         '面重新暴露的观测入口;放行/放弃裁归编排者)'),
+                reader_source='readiness_recheck',
+                note='复验异常分键(与 readiness_stale_screen 分支对齐零静默)')
+        except Exception:   # noqa: BLE001  遥测 best-effort
+            pass
         _still_prep = True
     if not _still_prep:
         counters = getattr(_sess, 'cw4_counters', None)
@@ -415,6 +381,50 @@ def readiness_battle_launch(op, ctx):
     except Exception as e:  # noqa: BLE001  准入预估 best-effort,不阻塞出战
         log.debug('[cw-loop] G1 准入预估失败(不阻塞): %s', e)
     return launch_prepared_battle(op, ctx, sync_once=False)
+
+
+def _prep_anchors_hit(op, screen) -> bool:
+    """备战双锚命中判定(小helper,复用 0 系锚表同款两锚;禁判据外散写)。"""
+    return (op.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验',
+                                  crop_first=False).is_success
+            and op.round_by_find_area(screen, '货币战争-备战', '按钮-出战',
+                                      crop_first=False).is_success)
+
+
+def _probe_invest_overlay(op, screen) -> bool:
+    """投资策略浮层单探测(双信号):id_mark 标识锚(固定位置全等,既有
+    0e 判据)∨ OCR 关键字「请选择投资策略」(全短语 + lcs 0.8,承 0e 分支
+    既有口径杀「投资环境」交叉误匹配)——两信号任一命中即浮层在场。"""
+    if op.round_by_find_area(screen, '货币战争-投资策略',
+                             '标识-请选择投资策略',
+                             crop_first=False).is_success:
+        return True
+    return op.round_by_ocr(screen, '请选择投资策略',
+                           lcs_percent=0.8).is_success
+
+
+def _invest_overlay_dispatch(op, screen):
+    """0e 投资策略浮层分发判据(N5 稳定化,根修)。返回 (dispatch, screen)。
+
+    **病灶**(第十五局两时序形态一正一误):同投资策略浮层,14:52 首帧
+    锚命中走 overlay 分支;15:14 浮层淡入动画期首帧采样 miss → 判别翻转
+    落备战链 → 空挥 37s。单探测判据对淡入期采样不稳定 = 分发层根因。
+
+    **稳定化**:双信号探测(id_mark 锚 ∨ OCR 全短语)+ miss 且备战双锚
+    命中时短窗复探一次(新截图)——两时序形态(首帧命中/复探命中)同判据
+    同路由。仍 miss 才放行备战链(常规无浮层帧仅多一次锚对拍,零行为差;
+    复探窗口 = 执行层时序常量,沿 PREP_NO_PROGRESS_ROUNDS 先例)。
+    消费点防御(达标臂浮层排除/遭遇 OCR/C1 计数)与本判据分层:本件管
+    「路由稳定」,彼件管「路由误判后的发射兜底」,禁合并谓词。
+    """
+    if _probe_invest_overlay(op, screen):
+        return True, screen
+    if _prep_anchors_hit(op, screen):
+        time.sleep(op.INVEST_REPROBE_WAIT)
+        screen = op.screenshot()
+        if _probe_invest_overlay(op, screen):
+            return True, screen
+    return False, screen
 
 
 def register_flow_heartbeat(ctx, kind: str) -> None:
@@ -515,6 +525,12 @@ class CwLoop(SrOperation):
     #: 计数)——单一计数单一签名,不留两套并行;N 沿用旧值 3。
     #: 三起实机卡死(8-34 分钟人工发现)在 3 环(≈1 分钟)内自动停机留证。
     PREP_NO_PROGRESS_ROUNDS: ClassVar[int] = 3
+
+    #: 0e 投资策略浮层分发复探窗口(N5 分发判别稳定化):首探测 miss 且
+    #: 备战双锚命中(浮层穿透形态)时,短窗后新截图复探一次。执行层时序
+    #: 常量(淡入动画期采样窗),沿 PREP_NO_PROGRESS_ROUNDS 先例,非策略
+    #: 数值参数。
+    INVEST_REPROBE_WAIT: ClassVar[float] = 0.6
 
     #: 主循环全部分支判定锚 ``画面名.area名``(分发预检枚举源,dd-029)。
     #: 运行时画面加载只读 _od_merged.yml;分文件改名后 merged 漏再生时,分支
@@ -1101,7 +1117,11 @@ class CwLoop(SrOperation):
         # 「投资策略/投资环境」(对局信息)会误匹配全屏 LCS(2026-08-06 实跑:loop 卡失败结算,
         # CwScreenInvestStrategy 误派点「标准博弈」死循环)。id_mark area 位置不同(失败结算在对局信息区,
         # 不在真屏 id_mark pc_rect)→ 不命中,落到 3b「下一页」回大厅。
-        if self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略', crop_first=False).is_success:
+        # N5 分发判别稳定化:单探测 → miss 且备战双锚命中(浮层穿透形态)
+        # → 短窗复探一次(两时序形态同判据同路由,见 _invest_overlay_dispatch);
+        # 复探产出的新截图回写 screen(未命中时后续分支也吃更新帧)。
+        _ov_dispatch, screen = _invest_overlay_dispatch(self, screen)
+        if _ov_dispatch:
             self._snap('invest_strategy')
             CwScreenInvestStrategy(self.ctx).execute()
             return self.round_wait(wait=2)
@@ -1435,8 +1455,8 @@ class CwLoop(SrOperation):
                         # 成功复位失败计数(窗口 = 连续失败,非累计)
                         self._cw_readiness_fail_n = 0
                         return self.round_wait(wait=3)
-                    # 发射失败连续计数(防线 C1,出处 = 落地审清单
-                    # last_change_review/问题清单.md):fp≥1.00 恒真 +
+                    # 发射失败连续计数(防线 C1,出处 = 14 号稿 §7.1 as-built
+                    # 发射门准入三元语义):fp≥1.00 恒真 +
                     # StartBattle 持续失败 + round_wait 不耗 retry = 框架内
                     # 零防线自旋。连续 3 次失败放弃短路,回落守卫链(守卫
                     # 照常计数,卡死仍可停机),分键零静默;成功即复位。
