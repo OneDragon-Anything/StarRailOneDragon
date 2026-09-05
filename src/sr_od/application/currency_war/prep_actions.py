@@ -407,7 +407,15 @@ class PrepActionExecutor:
                 _OVERLAY_POLL_TIMEOUT_S):
             return False, f'武装箱 overlay 未弹(槽{slot} 点击落空?)'
         log.info(f'[cw][box] 开箱槽{slot} → overlay 弹出 ✓')
-        return True, f'开箱槽{slot}'
+        # 同动作选卡闭环(第二次复跑诊断,21:06 链):OpenBox 与选卡跨帧
+        # 分离时,简易武装箱对话框在下一决策帧前已离场(box_overlay_open
+        # 判 False,点球点击又把对话框点掉)→ 选卡臂永远够不着。开箱
+        # 成功后必须在同一动作内立即选卡,失败显式回报。
+        _pick_ok, _pick_msg = self._pick_box_card(PickBoxCard())
+        if not _pick_ok:
+            log.warning(f'[cw][box] 开箱槽{slot} 选卡未生效:{_pick_msg}')
+            return False, f'开箱槽{slot} 但选卡未生效:{_pick_msg}'
+        return True, f'开箱槽{slot}+选卡'
 
     def _open_tome(self, action: OpenTome) -> tuple[bool, str]:
         """开秘密典籍:点槽两次(选中→开启)→ 验星徽四选一弹窗(标识-星徽秘典)。
@@ -453,8 +461,14 @@ class PrepActionExecutor:
                     names.append((r.data, r.center.x))
         names.sort(key=lambda t: t[1])
         if not names:
-            return False, 'OCR 未读到卡名'
-        if action.card_idx is not None:
+            # 简易武装箱变体兜底:卡名行 OCR 不可得(变体字型/布局)→
+            # 点首张装备卡(点卡选中即确认),靠 overlay 离场验证兜底。
+            _fb = _area_rect(self._ctx, '装备卡-1',
+                             PrepActionExecutor.BOX_SCREEN)
+            if _fb is None:
+                return False, 'OCR 未读到卡名且无装备卡-1 兜底区'
+            chosen, choose_x = '装备卡-1(兜底)', (_fb.x1 + _fb.x2) // 2
+        elif action.card_idx is not None:
             if not (1 <= action.card_idx <= len(names)):
                 return False, f'card_idx={action.card_idx} 超实读卡数 {len(names)}'
             chosen, choose_x = names[action.card_idx - 1]
