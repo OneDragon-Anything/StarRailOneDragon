@@ -1886,6 +1886,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                           'bench': [{'char_id': b.char_id,
                                      'faction': b.faction,
                                      'slot': b.slot,
+                                     # 星级入账本(与 deployed star 同语义
+                                     # 同口径):3合1 merge 后 bench 可有
+                                     # star≥2,_asset_thickness(C1 口径
+                                     # 纯终局件星级当量)重算需要它——缺
+                                     # 此键该度量只对 deployed 侧成立
+                                     'star': int(getattr(b, 'star', 1) or 1),
                                      # 装备随人入账本(与 deployed
                                      # equips 同语义)——换下场角色可带装,
                                      # 缺此键会让保有量口径漏计 bench 侧

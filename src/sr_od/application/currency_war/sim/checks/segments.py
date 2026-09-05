@@ -354,7 +354,7 @@ _LEVELUP_AUTH_WHITELIST = ('pop_slot', 'dp', 'static_ev', 'm3_batch')
 # 在 W785 sink 分解中 0 帧/0 金,供给面从未开火。m3_batch = mandate_v1
 # 换核后的 M3 批量授权臂(arm1_existence=[33] 人口位语境 + P48 整买
 # spend_unified + dd-034 危机让位),定谳批补入——出处与逐臂论证 =
-# check_levelup_interest_engine_gate docstring。)
+# check_levelup_interest_engine_gate docstring。m3_batch 现带触发臂分键后缀(m3_batch:arm1/arm0/pop,授权可归因),匹配走前缀(见 seg_check_unjustified_levelup 门内),禁回退精确等值。)
 
 # 同 check_levelup_interest_engine_gate(ADR-0410 static_ev 并入;
 # m3_batch 随 mandate_v1 换核定谳批并入)——
@@ -389,7 +389,7 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
                 continue   # [16]② 奖励节点买经验合法
             if prev_level < 5:
                 continue   # 与 batch 版同界:lv≥5 才算追级段
-            if basis in _LEVELUP_AUTH_WHITELIST:
+            if basis in _LEVELUP_AUTH_WHITELIST or basis.startswith('m3_batch:'):
                 continue
             st = row.get('state') or {}
             out.append({

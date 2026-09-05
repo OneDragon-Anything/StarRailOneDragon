@@ -250,7 +250,7 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
             # = 白名单误判违规,污染 ADR-0354 验收锚)
             if prev_level >= 5 and gold0 is not None and gold0 < 50 \
                     and not (basis in ('pop_slot', 'dp', 'static_ev')
-                             or basis.startswith('m3_batch')):
+                             or basis == 'm3_batch' or basis.startswith('m3_batch:')):
                 out.append(
                     f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"
