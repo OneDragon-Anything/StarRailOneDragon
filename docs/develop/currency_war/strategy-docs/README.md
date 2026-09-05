@@ -67,3 +67,4 @@
 - 引用规范：命题号 P(N) 经 `proofs/math_proofs.md` 索引跳转单篇；文档引用写「文件名:节」。
 - 阈值/权重不写死值，只写常量名；值的单一源在代码注册表或标定批。
 | 19 | [19_reinforce_channel_and_survival_discount.md](19_reinforce_channel_and_survival_discount.md) | 补强通道与生存折现重估 |
+| 20 | [20_large_balance_must_spend.md](20_large_balance_must_spend.md) | 大额结余必花域与旱期金出口分层 |
