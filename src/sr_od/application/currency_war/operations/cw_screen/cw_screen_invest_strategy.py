@@ -53,6 +53,17 @@ class CwScreenInvestStrategy(SrOperation):
     _EXCLUDE: ClassVar[set[str]] = {'请选择投资策略', '攻略', '返回备战界面', '图例', '确认', '刷新次数1'}
     # 确认按钮:screen_info「按钮-确认」center(task#20);常量=兜底。
     CONFIRM: ClassVar[Point] = Point(978, 983)   # 兜底;首选 area_center('按钮-确认')
+    #: 入口锚复探窗(动画帧容忍,治本 20/21 局同型失败 2026-09-06 01:41:30 /
+    #: 02:22:28「返回状态 非投资策略屏」):投资策略节点首访时派发帧 → 本 op
+    #: 首帧之间落在「备战 → 金币过场动画 → overlay 淡入」过渡段(screen_flow_timing.md
+    #: #11),首帧采样可 miss「标识-请选择投资策略」;旧实现单探测 miss 即
+    #: round_fail(round_fail 不吃 node_max_retry_times,直接炸出整 op),外层
+    #: 重试才自愈但每次触发哨兵报警+退出。修法与 cw_loop._invest_overlay_dispatch
+    #: 同族(复探=短窗+新截图):首探 miss → 短窗后新截图复探,窗口内命中即
+    #: 继续;超窗仍 miss 才 round_fail(防无限等真非目标屏)。决策记录 =
+    #: ADR-0529。执行层时序常量(沿 CwLoop.INVEST_REPROBE_WAIT 先例),非策略数值。
+    ENTRY_REPROBE_TIMES: ClassVar[int] = 4
+    ENTRY_REPROBE_WAIT_S: ClassVar[float] = 0.8
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资策略')
@@ -75,11 +86,32 @@ class CwScreenInvestStrategy(SrOperation):
         opts.sort(key=lambda t: t[1])
         return opts
 
+    def _entry_anchor_hit(self, screen) -> bool:
+        """入口锚探测:screen_info id_mark「标识-请选择投资策略」命中(与
+        cw_loop 0e 分发 / cw_entry 2b 分支同锚同源)。"""
+        return self.round_by_find_area(
+            screen, CwScreenInvestStrategy.SCREEN_NAME, '标识-请选择投资策略',
+        ).is_success
+
+    def _ensure_entry_screen(self) -> bool:
+        """入口锚判定 + 动画帧复探(语义见 ENTRY_REPROBE_* 注):首帧 miss →
+        短窗后新截图复探,窗口内命中即 True;超窗仍 miss 返回 False(调用方
+        才报失败,防无限等真非目标屏)。"""
+        screen = self.last_screenshot
+        hit = self._entry_anchor_hit(screen)
+        for _ in range(CwScreenInvestStrategy.ENTRY_REPROBE_TIMES):
+            if hit:
+                return True
+            time.sleep(CwScreenInvestStrategy.ENTRY_REPROBE_WAIT_S)
+            screen = self.screenshot()
+            hit = self._entry_anchor_hit(screen)
+        return False
+
     @operation_node(name='投资策略', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
-        screen = self.last_screenshot
-        if not self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
+        if not self._ensure_entry_screen():
             return self.round_fail('非投资策略屏')
+        screen = self.last_screenshot
 
         # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
         # #11,2026-09-02):「请选择投资策略」标题出现 1s 后画面(三卡)才稳定
