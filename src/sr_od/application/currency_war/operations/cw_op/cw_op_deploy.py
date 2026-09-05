@@ -478,7 +478,8 @@ class CwOpDeploy(SrOperation):
                     front, back, _target_factions, templates,
                     max_sell=_bench_tgt_n, target_cores=_target_cores,
                     fenced_offline_sellable=_fenced_arm,
-                    protect_names=_protect, swap_ctx=_swap_ctx)
+                    protect_names=_protect, swap_ctx=_swap_ctx,
+                    bench_chars=_bench_chars)
                 log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
                          f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
             else:
@@ -1175,12 +1176,30 @@ class CwOpDeploy(SrOperation):
         log.info(f'[cw-deploy] 加载 {len(templates)} 个 avatar 模板(缓存 ctx)')
         return templates
 
+    def _record_fenced_preserve(self, d: object, bonds: set[str]) -> None:
+        """W209 撤销操作证据留存(纯观测,零行为变更;复用 defect_ledger)。
+
+        从卖出循环提出:fenced 件被拒保留时记一笔(单一判定路径与退型
+        路径共用,落账失败不拦部署)。
+        """
+        try:
+            from sr_od.application.currency_war.telemetry.undo_evidence import (
+                record_sell_breaker_preserved,
+            )
+            record_sell_breaker_preserved(
+                char_id=getattr(d, 'char_id', '') or '',
+                reason='fence:' + ','.join(sorted(bonds & _DEPLOY_FENCE)),
+                channel='deploy_offtarget')
+        except Exception as _ev_err:   # 兜底日志:留证落账失败不拦部署
+            log.warning(f'[cw-deploy] 卖出熔断留证落账失败(不拦):{_ev_err}')
+
     def _sell_offtarget_deployed(self, front: list[Point], back: list[Point],
                                  target_factions: set[str], templates: AvatarTemplates | None,
                                  max_sell: int = 99, target_cores: set[str] | None = None,
                                  fenced_offline_sellable: bool = False,
                                  protect_names: frozenset[str] = frozenset(),
-                                 swap_ctx: object | None = None) -> int:
+                                 swap_ctx: object | None = None,
+                                 bench_chars: list | None = None) -> int:
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
 
         SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
@@ -1189,16 +1208,20 @@ class CwOpDeploy(SrOperation):
         ⚠️ ``read_deployed_chars`` 首用(deployed SIFT 身份未单验,D-4 验的是占用);日志详记识别结果供核实,
         首跑即验证 —— 若身份错(误卖 target / 漏卖 off-target)据日志回退。
 
-        义务集∪新鲜度排除(``swap_ctx`` 消费;卖出通道统一排除辖域 swap 行
-        「执行侧同步接线」兑付点,ADR-0530):每个卖出候选经 kernel
-        ``swap_sell_exclusion_reason`` 单一判定——买面义务集成员
-        (buy_membership)与轮内新鲜买入件(fresh_buy)禁卖,P60 卖义务
-        件↔买回环在执行路径同受保护(与 M1″ 发射面谓词同一份判定,禁
-        第二份实现);义务集缺读(membership=None)⇒ 全候选禁卖
-        (fail-closed,留板合法稳态 dd-037)+ 分键显影。⚠️ 排除覆盖
-        边界:swap_ctx 不可得(last_state 缺,装配未跑)时排除链整体
-        静默关闭(非禁卖)——与缺读禁卖不对称,开闸小批前收紧或分键
-        (落地审复验残留①)。
+        逐件单一判定(``swap_ctx`` 消费;ADR-0534 §4,docs/develop/currency_war/
+        decisions/0534-swap-transition-arm.md):swap_ctx 在场时,每个卖出候选经
+        kernel ``swap_sell_exclusion_reason``
+        同一判定函数逐件定价——排除族(buy_membership/fresh_buy/membership_unreadable,
+        ADR-0530 语义不变)∪ 资格族(per-piece fenced 可卖性 = fenced_on ∨ 转型臂资格;
+        **禁退化为标量 fenced_on 喂入**——标量形态正是 fp<1.00 帧新资格族整体不可达的
+        缺口根源,ADR-0534 §4)。资格族拒因(engines_guard/merge_material_guard/star_guard/
+        target_keep/fenced_arm_closed/fp_unreadable)在执行侧遥测逐件显影(分键
+        ``deploy_swap_sell_rejected_*``),转型帧拒卖零静默;``fenced_arm_closed`` 且
+        fenced 件保留 W209 撤销留证。``star``/``bench_chars``/deployed 现读喂入判定
+        函数(星级/合成素材全场域计数需要现读域;发射侧用 ctx 帧域,同函数同判)。
+        swap_ctx 不可得(last_state 缺,装配未跑)时退旧路径(标量 fenced +
+        排除链静默关闭)——与缺读禁卖不对称,在册遗留缺口原样继承未扩大
+        (排除静默关闭态的收紧候裁另案,ADR-0534 §4)。
         """
         deployed = exclude_system_units(
             read_deployed_chars(self.ctx, self.last_screenshot, templates)
@@ -1218,6 +1241,39 @@ class CwOpDeploy(SrOperation):
             if ch is None:
                 continue   # 系统单位(cost==0)已在入口剔除(ADR-0281 件4)
             bonds = set(ch.factions) | set(ch.flows)
+            if swap_ctx is not None:
+                # 逐件单一判定(排除族∪资格族;与 M1″ 发射面同函数,ADR-0534 §3)
+                from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                    swap_sell_exclusion_reason as _sser,
+                )
+                _rej = _sser(d.char_id or '', swap_ctx,
+                             star=getattr(d, 'star', None),
+                             bench=bench_chars, deployed=deployed)
+                if _rej:
+                    if _rej in ('buy_membership', 'fresh_buy',
+                                'membership_unreadable'):
+                        _excluded_n += 1
+                        if isinstance(_counters, dict):
+                            _key = f'deploy_swap_sell_excluded_{_rej}'
+                            _counters[_key] = _counters.get(_key, 0) + 1
+                        log.info(f'[cw-deploy] swap 卖出排除({_rej}):'
+                                 f'{d.char_id} → 保留(义务集∪新鲜度统一排除,'
+                                 'P60 对账;ADR-0530)')
+                    else:
+                        # 资格族拒因逐件显影(转型帧拒卖零静默,ADR-0534 §4)
+                        if isinstance(_counters, dict):
+                            _key = f'deploy_swap_sell_rejected_{_rej}'
+                            _counters[_key] = _counters.get(_key, 0) + 1
+                        log.info(f'[cw-deploy] swap 卖出拒({_rej}):{d.char_id}'
+                                 f'({sorted(bonds & _DEPLOY_FENCE)}) → 保留'
+                                 '(单一判定函数逐件拒因,转型臂同函数)')
+                        if _rej == 'fenced_arm_closed' and bonds & _DEPLOY_FENCE:
+                            self._record_fenced_preserve(d, bonds)
+                    continue
+                _cands.append(((1, 0 if getattr(d, 'star', 1) <= 1 else 1),
+                               d, bonds))
+                continue
+            # 退型路径(swap_ctx 不可得):标量 fenced + 排除链静默(旧语义)
             if not offtarget_sell_allowed(d.char_id, bonds, target_factions,
                                           target_cores or set(),
                                           fenced_offline_sellable=fenced_offline_sellable,
@@ -1228,33 +1284,7 @@ class CwOpDeploy(SrOperation):
                     log.info(f'[cw-deploy] off-target 卖出熔断(W209):{d.char_id}'
                              f'({sorted(bonds & _DEPLOY_FENCE)}) 是引擎/配方体系件'
                              f' → 保留(买/演进层目标源与终局 target 分歧时禁互踩)')
-                    # 撤销操作证据留存(纯观测,零行为变更;复用 defect_ledger)
-                    try:
-                        from sr_od.application.currency_war.telemetry.undo_evidence import (
-                            record_sell_breaker_preserved,
-                        )
-                        record_sell_breaker_preserved(
-                            char_id=d.char_id,
-                            reason='fence:'
-                                   + ','.join(sorted(bonds & _DEPLOY_FENCE)),
-                            channel='deploy_offtarget')
-                    except Exception as _ev_err:   # 兜底日志:留证落账失败不拦部署
-                        log.warning(f'[cw-deploy] 卖出熔断留证落账失败(不拦):'
-                                    f'{_ev_err}')
-                continue
-            # 义务集∪新鲜度排除(单一判定 = kernel.swap_sell_exclusion_reason,
-            # 与 M1″ 发射面谓词同源;ADR-0530)
-            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-                swap_sell_exclusion_reason as _sser,
-            )
-            _excl = _sser(d.char_id or '', swap_ctx)
-            if _excl:
-                _excluded_n += 1
-                if isinstance(_counters, dict):
-                    _key = f'deploy_swap_sell_excluded_{_excl}'
-                    _counters[_key] = _counters.get(_key, 0) + 1
-                log.info(f'[cw-deploy] swap 卖出排除({_excl}):{d.char_id} '
-                         f'→ 保留(义务集∪新鲜度统一排除,P60 对账;ADR-0530)')
+                    self._record_fenced_preserve(d, bonds)
                 continue
             _rank: tuple = (1, 0 if getattr(d, 'star', 1) <= 1 else 1)
             _cands.append((_rank, d, bonds))

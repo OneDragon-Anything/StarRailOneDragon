@@ -433,3 +433,4 @@
 | [0531-opening-narrow-tool-consume.md](0531-opening-narrow-tool-consume.md) | ADR-0531: 装备策略残余落码——opening hold 释放门收窄(O1/O2 逐件判定,支配性论证零新参数)+ 工具件消费判据面(冷启动分支炉准入+扳手闸,G1 发射位准入 fail-closed,遥测 row1/row2 分键)(21 号稿) | 已实施 |
 | [0532-tool-exec-channel-open.md](0532-tool-exec-channel-open.md) | ADR-0532: 工具件消费执行通道建成开臂——RunTools 发射位(M7.5,执行位闩)+ CwOpTools 执行 op(炉死库存/特权卡栏内拖法,消耗确认通道三分支)+ TOOL_EXEC_CHANNEL_READY 开臂(拒因分键照可见) | 已实施 |
 | [ADR-0533-must-spend-phase-latch-l3-reject-reasons.md](ADR-0533-must-spend-phase-latch-l3-reject-reasons.md) | ADR-0533: 必花域备战期闩(曾入域豁免保持,治「花光」义务域边界蒸发)+L3 资格拒分键落盘+prep xp 现读透传+form_score 回退源+实机遥测两件接线(三局濒死同构排查修批) | 已实施 |
+| [0534-swap-transition-arm.md](0534-swap-transition-arm.md) | ADR-0534: 转型臂(M1″ swap 谓词触发域扩展)——锁线后线未成型板满帧 fenced victim 经守恒门(五体系∪护盾)+合成素材守卫+1★ 限卖逐件放行,发射⇔执行单一判定函数内聚,SWAP_TRANSITION_ARM_ENABLED 单点回滚与 seam 门切割,seam 对齐增行 15-17 | 已实施 |

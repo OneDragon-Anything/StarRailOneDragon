@@ -537,9 +537,16 @@ def run_mandate(frame: MandateFrame,
             assemble_swap_plan_inputs,
             select_swap_plan,
         )
+        _m1p_reasons: dict[str, str] = {}
         _m1p = select_swap_plan(assemble_swap_plan_inputs(
             session, state=state, deployed=list(frame.deployed),
-            bench=list(frame.bench), cap=frame.deploy_cap))
+            bench=list(frame.bench), cap=frame.deploy_cap),
+            reasons_out=_m1p_reasons)
+        # 逐件拒因分键(ADR-0534 §7 键集;帧级显影,判读可归因)
+        for _r in (set(_m1p_reasons.values())
+                   & {'engines_guard', 'star_guard', 'merge_material_guard',
+                      'post_sell_offline', 'fp_unreadable'}):
+            _count(_r)
         if _m1p.abstain == 'cap_unreadable':
             _count('m1p_cap_unreadable')
         elif _m1p.abstain == 'membership_unreadable':
@@ -554,6 +561,11 @@ def run_mandate(frame: MandateFrame,
             else:
                 out.append(Emitted(RunDeploy(), True, 'm1_swap_redeploy'))
                 _count('m1p_fired')
+                # 双臂分键(plan.arm = 胜出者资格族标注,ADR-0534 §5;禁新排序键)
+                if _m1p.arm == 'transition':
+                    _count('swap_arm_transition_trigger')
+                elif _m1p.arm == 'formed':
+                    _count('swap_arm_formed_trigger')
         else:
             _count('m1p_plan_empty')
 

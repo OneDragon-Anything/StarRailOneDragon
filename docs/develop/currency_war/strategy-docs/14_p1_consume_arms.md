@@ -426,6 +426,20 @@ victim 合格集与保护域关系(防与 P59 冲突,硬边界):**资格仍由 �
       其占位挤压 core 进场的形态由命题批出报告)。
 ```
 
+**落码回记(as-built,2026-09-06;ADR-0534)**:转型期支路已按修订形态
+落码——M1″ swap 谓词触发域扩展(转型臂):触发域 = locked ∧ fp<1.00 ∧
+板满(占用数);victim 资格 = 单一判定函数 `swap_sell_exclusion_reason`
+逐件定价(守恒门 `SWAP_GUARD_SYSTEMS` 五体系档位不减 + 合成素材守卫
+`merge_material_guard` + 1★ 限卖 `star_guard`),发射面与执行侧卖出臂
+同吃该函数(内聚单点,资格语义两侧同值);胜出序 = 现行 victim 序首个
+可成交者,`plan.arm` 标注资格族,发射分键
+`swap_arm_transition_trigger`/`swap_arm_formed_trigger`;回滚 =
+`SWAP_TRANSITION_ARM_ENABLED` 单点常量(与 seam 门切割)。与本节原
+「最低贡献排序」草案的差异:victim 选择**零新排序键**(现行序首个可
+成交者,禁给 fenced 件提权),贡献排序形态未落码(挂账语义不变);
+「bench 存在目标 comp core 件」前提由卖出后假想态上序 target 视图
+底线(post_sell_offline)承接。语义单一源 = ADR-0534 + 代码符号。
+
 ## 10. 执行序·危局帧位次表(v3 按现行两段执行序重写,二-5 采纳)
 
 现行执行序有两段(v2 表与之不符,照 v2 落码 = 未声明的行为变更,作废重写):**备战帧发射序**(mandate.py:264-450)与**商店帧选择序**(shop.py:371-374 docstring)。v3 不重排任何现行相对位次,只声明各臂插入坐标:

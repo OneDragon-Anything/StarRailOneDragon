@@ -57,7 +57,7 @@
 - **换排纠正**（r241/r250）：场内错排者拖回正排；前排全空+后排有人 → 强制挪一（出战硬要求 > 站位偏好）。
 - **拖后整队等待 2.0s**【注·口述口径 screen_flow_timing.md #10】：羁绊徽章动画窗。
 - **收尾**：SIFT 真值纠 tracking（观测回路）+ 装备快照回写 tracked_deployed.equips（画面真值覆盖，账本漂移告警留痕）。
-- **off-target 卖出腾位**（deploy-swap）：bench 有 target 单位时卖 deployed 中的 off-target（守卫：`offtarget_sell_allowed`——引擎/配方体系件默认恒不卖（W209 振荡熔断）；**例外=换阵卖出义务臂**：线成型（fp≥1.00）∧ 板满时 off-line 件让位可卖，新线 core∪shared 禁卖护栏保持（ADR-0522）；core 辅助保留；1:1 替换上限 = bench target 数）。
+- **off-target 卖出腾位**（deploy-swap）：bench 有 target 单位时卖 deployed 中的 off-target（守卫：`offtarget_sell_allowed`——引擎/配方体系件默认恒不卖（W209 振荡熔断）；**例外=换阵卖出义务臂**：线成型（fp≥1.00）∧ 板满时 off-line 件让位可卖，新线 core∪shared 禁卖护栏保持（ADR-0522）；core 辅助保留；1:1 替换上限 = bench target 数）。**第二例外=转型臂**（ADR-0534）：线已锁（`locked_comp` 非空）∧ fp<1.00 ∧ 板满帧，fenced 过渡件经单一判定函数 `swap_sell_exclusion_reason` 逐件守卫放行卖出（守恒门∪护盾/合成素材守卫/star_guard/fw_carry 对称排除/merge_material_guard，逐件拒因分键零静默）；回滚常量 `SWAP_TRANSITION_ARM_ENABLED`（翻 False 两臂发射⇔执行同关）。
 
 ## 6. 观测复查与期望态对账（零决策记账）
 
