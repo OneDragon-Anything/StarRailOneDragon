@@ -434,3 +434,4 @@
 | [0532-tool-exec-channel-open.md](0532-tool-exec-channel-open.md) | ADR-0532: 工具件消费执行通道建成开臂——RunTools 发射位(M7.5,执行位闩)+ CwOpTools 执行 op(炉死库存/特权卡栏内拖法,消耗确认通道三分支)+ TOOL_EXEC_CHANNEL_READY 开臂(拒因分键照可见) | 已实施 |
 | [ADR-0533-must-spend-phase-latch-l3-reject-reasons.md](ADR-0533-must-spend-phase-latch-l3-reject-reasons.md) | ADR-0533: 必花域备战期闩(曾入域豁免保持,治「花光」义务域边界蒸发)+L3 资格拒分键落盘+prep xp 现读透传+form_score 回退源+实机遥测两件接线(三局濒死同构排查修批) | 已实施 |
 | [0534-swap-transition-arm.md](0534-swap-transition-arm.md) | ADR-0534: 转型臂(M1″ swap 谓词触发域扩展)——锁线后线未成型板满帧 fenced victim 经守恒门(五体系∪护盾)+合成素材守卫+1★ 限卖逐件放行,发射⇔执行单一判定函数内聚,SWAP_TRANSITION_ARM_ENABLED 单点回滚与 seam 门切割,seam 对齐增行 15-17 | 已实施 |
+| [0535-bt-disclose-replace-form-score.md](0535-bt-disclose-replace-form-score.md) | ADR-0535: B_t 替代 form_score 披露口径——决策关键帧零预测力定谳(boss 前 108/108、终局 90/90 恒 1.0 常数零方差),三方案①去封顶②engines+2★ 否决③B_t 成立(depth r=0.403 p<0.001 唯一显著代理),纯遥测不进判据+升格须过 ADR-0482 闸门 | 已实施 |
