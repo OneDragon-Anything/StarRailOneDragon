@@ -17,7 +17,9 @@
   cw4 侧载体(事件/滞回字段集中于本模块 ``LineState``,各判据共用)。
 
 计数载体:``session.cw4_counters``(dict,bridge 每局创建;键登记见
-design_telemetry 键节——本模块产键:theta_unavailable / switchline_skipped /
+design_telemetry 键节——本模块产键:theta_unavailable(聚合)+
+theta_unavailable_theta/_d_min/_delta(成因分桶观察件,sim 观测面
+补齐批;聚合与成因不同键防混计)/ switchline_skipped /
 switchline_exit_blocked / switchline_no_alt / switchline_no_target /
 switchline_e_cur_undefined / switchline_relock_window[R196 修复批:
 「不换线也记遥测」的归因分键补齐——四路 return 原先零计数])。
@@ -140,6 +142,26 @@ def signal_arm(session: StrategySession) -> str | None:
     return None
 
 
+def switch_param_missing() -> list[str]:
+    """θ/D_min/δ 三参缺失清单(R24-2 成因分桶观察件;零语义——只读
+    provisional,不改变 resolve_switch_params 的判返回值)。
+
+    返回缺失槽位名('theta'/'d_min'/'delta' 子集,全在 = 空表)。
+    分键纪律:既有聚合键 ``theta_unavailable`` 原样保留(聚合口径,
+    兼容旧判读);成因键 = ``theta_unavailable_<槽位名>``,**不同键
+    防混淆**(20260905_194344-simfind 报告问题 2 的刷新臂分键同纪律
+    ——归因键不复用聚合键,禁混计)。
+    """
+    missing: list[str] = []
+    if provisional.get('THETA') is None:
+        missing.append('theta')
+    if provisional.get('D_MIN') is None:
+        missing.append('d_min')
+    if provisional.get('DELTA_HYST') is None:
+        missing.append('delta')
+    return missing
+
+
 def resolve_switch_params() -> tuple[float, int, float] | None:
     """θ/D_min/δ 滞回三参解析(R192 修注;R23-5 归宿=provisional【拟】)。
 
@@ -250,7 +272,11 @@ def should_switch(state: GameState, session: StrategySession,
         return SwitchOutcome(False, 'switchline_skipped')
     params = resolve_switch_params()
     if params is None:
+        # 聚合键原样(兼容旧判读)+ 成因分桶键(R24-2 观察件;switch_
+        # param_missing 缺失清单直读,零第二套判返回语义)。
         _count(session, 'theta_unavailable')
+        for _slot in switch_param_missing():
+            _count(session, f'theta_unavailable_{_slot}')
         return SwitchOutcome(False, 'theta_unavailable')
     # 出口可用性前置:line_switch_sell 比较 u/V_ms 系【拟】未标定 ⇒
     # 出口确定性延迟(§2.2.1 第 4 行)——换线不登记,K 冻结(滞留螺旋

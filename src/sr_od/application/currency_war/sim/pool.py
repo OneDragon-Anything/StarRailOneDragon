@@ -23,8 +23,9 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 )
 
 # 血预算停手·终止分支账本决策位(设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469)——
-# 账本行 'terminal_release' 键的单一记账址。discipline 模块级无 cw_sim
-# 环(scoring→cw_sim 只在函数体内延迟 import),模块级引入安全。
+# 账本行 'terminal_release' 键的写入侧单一源 =
+# sim/checks/segments.terminal_release_bit(sim 引擎轮入口调用,本模块
+# 只消费行键不作记账面)。
 from sr_od.application.currency_war.kernel.cw_battle_calib import (
     _engines_count,
     _star_depth_from_rows,

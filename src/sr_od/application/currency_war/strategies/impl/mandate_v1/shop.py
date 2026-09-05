@@ -940,7 +940,39 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                     _count('fuel_filler_stall_'
                                            'precheck_unavailable')
                                 else:
+                                    # fenced 拒因拆键透传(exit3_fence_
+                                    # semantics DESIGN §5-1;kernel
+                                    # reasons_out 既有五键口径,零新语义
+                                    # ——拆的是计数不是谓词)。聚合键
+                                    # fuel_filler_stall_fenced 保留
+                                    #(合计口径,兼容既有判读/复盘对照)。
+                                    # 预注册裁决协议(DESIGN §5-3,先写
+                                    # 死后看数,防挪线):
+                                    # - 必花域触发源(l2 前缀键)中 cap
+                                    #   占比 >80% ⇒ 板满平凡拒成立,层错
+                                    #   假设终结,走 DESIGN §4-2(L3 接线)
+                                    #   /§4-3(白名单扩行);
+                                    # - scatter_fence ∪ rest_capacity 占比
+                                    #   >20% ⇒ 存在「板未满仍被围栏语义拒」
+                                    #   形态,重开预检辖域审查(仍须先过
+                                    #   §3.2 价值账,不直接豁免);
+                                    # - name_dup/recipe_floor 非零 ⇒ 各自
+                                    #   独立资格细化问题,单独立项。
+                                    # kernel 五键是闭集(cap/scatter_fence/
+                                    # rest_capacity/name_dup/recipe_floor,
+                                    # cw_deploy_logic:255-256);闭集外值
+                                    # 仍按动态后缀落键,零静默。
                                     _count('fuel_filler_stall_fenced')
+                                    _count(f'fuel_filler_stall_fenced_'
+                                           f'{_ff_why}')
+                                    if _zone_hit:
+                                        # 触发源对照分列(DESIGN §5-2):
+                                        # Φ_stall 源板未满 cap 占比应≈0,
+                                        # 必花域源板满帧 cap 主导——两源
+                                        # 分布差异可检验(Φ_stall 源 =
+                                        # 非前缀键,必花域源 = l2_ 前缀键)。
+                                        _count(f'fuel_filler_stall_fenced_'
+                                               f'l2_{_ff_why}')
                                 continue   # 围栏拒帧,试其余垫件
                             _count('fuel_filler_stall_buy')
                             _ff_reg = getattr(session,
@@ -1018,6 +1050,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
         # 量,零胜率建模。L* = 形式二等级选择输出(留级账 T_stay vs 升一
         # 级账 T_up 取小);P40 R2 息线熔断保留原语义。金基准 = 期望态
         # 现值(旧「买后投影金」专修无存在载体——每帧金即真值)。
+        # 触发源记录初值(息线门 R1 域外常规;域内 yielded 支在上方
+        # 切分线覆写。值域契约见 kernel/cw_state.RefreshShop.reason 注)。
+        _r1_src = 'r1'
         if contracts.ensure_contract(
                 ('refresh', 'r1_commitment_account'),
                 contracts.ContractCtx(), counters):
@@ -1059,6 +1094,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 # 可负担性(r2_budget)留资格硬闸;合格集空守卫
                 # (no_chaseable_member,(ii) 类 fail-closed)不在此列照旧。
                 ok_r1 = True
+                _r1_src = 'must_spend_r1_yielded'   # 触发源记录(sim obs)
                 _count('must_spend_r1_account_yielded')   # 零静默纪律
         else:
             ok_r1, rkey = (False, 'contract_abstain')
@@ -1078,8 +1114,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
             if crit_refresh.r2_budget(
                     gold, r2_reserve,
                     int(state.shop_refresh_cost or REFRESH_COST_BASE)):
+                # reason = 触发源记录字段(非指令;sim obs 分键消费,
+                # 执行层不读——cw_state.RefreshShop.reason 值域契约)。
                 return RefreshShop(
-                    cost=int(state.shop_refresh_cost or REFRESH_COST_BASE))
+                    cost=int(state.shop_refresh_cost or REFRESH_COST_BASE),
+                    reason=_r1_src)
             if _zone_hit:
                 # 刷新臂 liveness 显影(52 轮 sim 设计输入②):域内刷新
                 # 尝试被可负担性硬闸拦 = 显式分键,禁恒零盲区

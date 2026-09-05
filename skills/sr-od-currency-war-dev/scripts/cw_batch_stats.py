@@ -42,6 +42,12 @@ def pct(vals: list[float], p: float) -> float:
     return s[min(int(len(s) * p), len(s) - 1)] if s else float('nan')
 
 
+def agg_key(vals: list) -> tuple | None:
+    """裸数值列表 → (中位, p90);空 = None(冷启动金轨迹逐轮聚合用)。"""
+    nums = [v for v in vals if isinstance(v, (int, float))]
+    return (round(statistics.median(nums), 2), pct(nums, 0.9)) if nums else None
+
+
 # ---------- 数据装配:统一成 row{plane,round,node_type,gold,hp,hp_delta,form,form_ok,level,deployed,factions,acts} ----------
 
 def _sim_rows(batch: Path) -> dict[str, list[dict]]:
@@ -236,6 +242,14 @@ def analyze_game(rows: list[dict]) -> dict:
     _cold = [r for r in rows if r['plane'] == 1 and r['round'] <= 4]
     m['冷启动买次数'] = sum(n_act(r['acts'], 'BuyCard') for r in _cold)
     m['冷启动金花费'] = sum(act_cost(r['acts']) for r in _cold)
+    # J 冷启动金轨迹(sim 观测面补齐批任务②):P1 r1-r4 逐轮**轮末金**
+    # (decisions 行 gold = 该轮结算后值;对照 20260906-0145-simfind
+    # 报告问题 1 的轨迹形态口径:s7022 r1-r3 金 10→24→47 空板滞留)。
+    # 分布聚合在 report 侧(逐轮中位|p90),这里只取每局轨迹原值。
+    m['冷启动金轨迹'] = [
+        next((r['gold'] for r in rows
+              if r['plane'] == 1 and r['round'] == rr), None)
+        for rr in (1, 2, 3, 4)]
     # I 必花域观测三键(20 号稿 §6;sim 行内 obs 键,engine_p1 建模;
     # 档案行 obs 恒空 → 0/空,不误报)。观察面只计数不定谳——零消费帧
     # 判读看归因(物理残量白名单 §3.2 带分键)。
@@ -248,6 +262,20 @@ def analyze_game(rows: list[dict]) -> dict:
         for k, v in (o.get('must_spend_layer_hit') or {}).items():
             _ms_layer[k] = _ms_layer.get(k, 0) + int(v or 0)
     m['必花域层命中'] = _ms_layer
+    # K 刷新触发源分键 + cw4 计数器族(sim 观测面补齐批任务①③⑤;
+    # sim 行内 obs 键,engine_p1 建模;档案行 obs 恒空 → 空,不误报)。
+    # 观察面只计数不定谳——fenced 子键占比按 exit3_fence_semantics
+    # DESIGN §5-3 预注册协议裁决,theta 成因分桶只述现象不归因。
+    m['_obs'] = _obs
+    _src: dict[str, int] = {}
+    _cts: dict[str, int] = {}
+    for o in _obs:
+        for k, v in (o.get('refresh_trigger') or {}).items():
+            _src[k] = _src.get(k, 0) + int(v or 0)
+        for k, v in (o.get('cw4_counters') or {}).items():
+            _cts[k] = _cts.get(k, 0) + int(v or 0)
+    m['刷新触发源'] = _src
+    m['cw4计数器增量'] = _cts
     # D 战斗过程
     lo, wo = [], []
     for r in rows:
@@ -361,6 +389,29 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     print(f'  层命中(L1/L2/L3): {_ms_tot or "无数据"}')
     _zg = [rid for rid, m in ms.items() if m.get('必花域帧数')]
     print(f'  必花域帧出现局占比: {len(_zg) / max(len(ms), 1):.0%}')
+    print('\n-- J 冷启动金轨迹(P1 r1-r4 轮末金;分布 = 逐轮跨局中位 | p90;'
+          ' 口径 = decisions 行 gold) --')
+    _trajs = [m.get('冷启动金轨迹') or [None] * 4 for m in ms.values()]
+    for i, rr in enumerate((1, 2, 3, 4)):
+        vals = [t[i] for t in _trajs if isinstance(t[i], (int, float))]
+        print(f'  r{rr}: {a[0]} | {a[1]}' if (a := agg_key(vals)) else f'  r{rr}: 无数据')
+    print('\n-- K 刷新触发源分键 + cw4 计数器族(sim obs 键;只述现象不归因;'
+          ' fenced 子键按 exit3_fence_semantics DESIGN §5-3 预注册协议裁决) --')
+    _src_tot: dict[str, int] = {}
+    _ct_tot: dict[str, int] = {}
+    for m in ms.values():
+        for k, v in (m.get('刷新触发源') or {}).items():
+            _src_tot[k] = _src_tot.get(k, 0) + v
+        for k, v in (m.get('cw4计数器增量') or {}).items():
+            _ct_tot[k] = _ct_tot.get(k, 0) + v
+    print(f'  刷新触发源实刷合计(源→次): {_src_tot or "无数据"}')
+    _ct_show = {k: v for k, v in sorted(_ct_tot.items())
+                if k.startswith(('theta_unavailable',
+                                 'fuel_filler_stall_fenced'))}
+    print(f'  theta/fenced 计数器增量(键→次): {_ct_show or "无数据"}')
+    _ct_rest = len(_ct_tot) - len(_ct_show)
+    if _ct_rest:
+        print(f'  (其余 cw4 计数器键 {_ct_rest} 个不入打印,obs 载全量增量)')
     print('\n-- 表现不好的指标 → 体现最重的局(每指标 2 局;第 3 步挑局复盘的抽样单) --')
     for key, d in WORST_METRICS:
         vals = [(m.get(key), rid) for rid, m in ms.items()

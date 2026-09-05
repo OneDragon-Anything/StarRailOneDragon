@@ -431,12 +431,13 @@ _ALLIN_MIN_ROUND: dict[int, int] = {1: 9, 2: 7}
 
 
 def terminal_release_bit(sess, st) -> bool:
-    """血预算停手·末窗终止豁免位写入侧(ADR-0469;单一址 = session
-    v3_terminal_release,账本行键 terminal_release 的源)。
-
-    辖域 = P1 末窗(rn ≥ 末窗起点)∧ 血预算不足带(应急带 < hp <
-    退血线,开区间);boss ALL-IN 窗豁免归检查器轮键,本位不辖。
-    本函数 = 上述常量的唯一同源写入点——检查器消费行键禁复算 S0。
+    """血预算停手·末窗终止豁免位写入侧(ADR-0469;单一源 = 本函数,
+    账本行键 terminal_release 的唯一写入依据,sim 引擎轮入口调用;
+    实机遥测透传位 = telemetry schema sess_terminal_release,schema
+    缺省未写)。辖域 = P1 末窗(rn ≥ 末窗起点)∧ 血预算不足带
+    (应急带 < hp < 退血线,开区间);boss ALL-IN 窗豁免归检查器轮键,
+    本位不辖。本函数 = 上述常量的唯一同源写入点——检查器消费行键
+    禁复算 S0。
     """
     if (getattr(st, 'plane', None) or 1) != 1:
         return False
@@ -509,7 +510,8 @@ def seg_check_p1_blood_budget_refresh(rows: list[dict]) -> list[dict]:
     让位)出现 RefreshShop ∧ 账本终止位非真 = 搜索型停付未生效,违规。
 
     **账本位口径(禁同式复算 S0)**:行键 ``terminal_release``=
-    discipline.terminal_release_bit 单一址记账(谓词闩,决策发生在
+    ``terminal_release_bit`` 单一址记账(本模块实现,sim 引擎轮入口
+    写行键;决策发生在
     本轮回战斗前)——位真=终止豁免辖内(刷新行为合法,含当轮转化
     双门放行面);位假=停付应生效。键缺省(旧批账本)=False,行为
     与停付语义兼容。hp 口径同停升级检查(决策帧=上一行结算 hp)。"""

@@ -600,6 +600,16 @@ class DeployMove:
 @dataclass
 class RefreshShop:
     cost: int = 0    # 刷新花费(实机 OCR 补)
+    # 触发源**记录**字段(非指令;sim 观测面补齐批,先例 = LevelUp.
+    # auth_basis / SellBench.income 的「记录不是指令」形态——执行层
+    # 不读此字段,行为零改动)。值域(发射位单一源 = mandate_v1/shop
+    # R1 发射位,今日唯一刷新发射点;L2 补位=买卡、L3 末位=升级,
+    # 结构上不产刷新动作,槽位留作未来发射点扩展):
+    # - 'r1'                 = 息线门 R1(域外常规承诺账);
+    # - 'must_spend_r1_yielded' = 必花域内 R1 切分线(20 号稿/ADR-0528
+    #   核算账降排序 yielded 支);
+    # - '' = 旧调用/未标(引擎 obs 归 'other' 桶)。
+    reason: str = ''
 
 
 @dataclass

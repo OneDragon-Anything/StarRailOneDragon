@@ -288,6 +288,52 @@ class CwFlowStrategy(CwStrategy):
         """P1 no-op(outcome 字段全默认,真实结算屏 OCR 属 P1.5)。"""
         pass
 
+    # ===== 镜像族观察写者(mandate_v1 单臂)=====
+
+    def write_shop_mirrors(self, state: GameState,
+                           session: StrategySession) -> None:
+        """逐帧恢复 ``v3_form_score`` 写者(sim 观测面补齐批任务④)。
+
+        背景:该字段自 mandate_v1 换核后仅剩 on_match_start 初始化 0.0
+        (本文件 :162),两批 sim 849 帧零非零(sim57 判读报告 §B5)
+        ——仪表缺写者,非车没走。口径 = ADR-0346/W114 设计语义的
+        **上场(deployed)连续量**:过渡体系达成数(``cw_deploy_logic.
+        engines_count`` 四体系单一源)+ 配方档小数(``cw_line_defs.
+        recipe_tier``/``RECIPE_BASE`` × ``registry.rung_frac_per_
+        recipe_tier``),封顶 2 档除 2 归一到 [0,1];bench 囤件不计入
+        (「上场了才算战力」的裁决口径)。
+
+        边界:本方法**只恢复 form_score 一个键**——``v3_phase``/
+        ``v3_form_ok`` 的 v2 相位机写端仍属退役语义(测试仓
+        test_cw_metric_mirror_fix 锁 phase=''/form_ok=False 保持),
+        ``v3_mirror_key`` 轮键戳照常盖章(键语义 =「本轮已写」,sim
+        引擎缺写守卫据此不重复触发)。纯遥测恢复:该字段不进任何
+        判据(kernel/cw_registry.py「form_score 降级纯遥测观测,不进
+        判据」注记),写者本身零行为面。
+        """
+        from sr_od.application.currency_war.kernel.cw_battle_calib import (
+            board_factions_of,
+        )
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            engines_count,
+        )
+        from sr_od.application.currency_war.kernel.cw_line_defs import (
+            RECIPE_BASE,
+            recipe_tier,
+        )
+        deployed = list(getattr(state, 'deployed', None) or [])
+        bf = board_factions_of(deployed)
+        dep_names = frozenset(
+            (getattr(d, 'char_id', '') or '') for d in deployed)
+        engines = engines_count(bf, dep_names)
+        frac = min(recipe_tier(bf) / RECIPE_BASE, 1.0)
+        x = min(2.0, float(engines)
+                + getattr(self.registry, 'rung_frac_per_recipe_tier', 0.3)
+                * frac)
+        session.v3_form_score = max(0.0, min(1.0, x / 2.0))
+        session.v3_mirror_key = (getattr(state, 'plane', 1) or 1,
+                                 getattr(state, 'round_num', 0) or 0)
+
     # ===== 战略层:意向分层(点0)=====
 
     def update_target(self, state: GameState, session: StrategySession,
@@ -566,5 +612,9 @@ class CwFlowStrategy(CwStrategy):
                 'decide_shop_action: session.shop_state_frame 缺失'
                 '(黑板契约:入口观察段是唯一写者;None=观察层失约,'
                 '禁静默按空态决策)')
+        # v3_form_score 逐帧镜像写者(纯遥测,零行为面;口径与边界见
+        # write_shop_mirrors docstring)。写位 = 决策核入口 = 生产单
+        # 动作循环与 sim decide_shop_screen 驱动器共同必经点。
+        self.write_shop_mirrors(state, session)
         return shop.decide_shop_action(state, session, config,
                                        registry=self.registry)

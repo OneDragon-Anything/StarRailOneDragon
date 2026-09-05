@@ -923,7 +923,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _obs_overcap_frames = 0      # 本轮超容决策帧数
             _obs_refresh_avail = 0       # 本轮「刷新可得」决策帧数
             _obs_refreshes0 = res.refreshes   # 轮首刷新数(差分 = 本轮实刷)
-            # ===== 必花域观测三键(20 号稿 §6;审查二十九跳升格本批)=====
+            # 刷新触发源分键(sim 观测面补齐批任务①):本轮各触发源
+            # 实刷次数。源 = RefreshShop.reason 记录字段(策略层发射位
+            # 写,r1 / must_spend_r1_yielded;''/未知 = other 桶)——
+            # 测绘结论:刷新发射位单一(R1),L2 补位=买卡、L3 末位=
+            # 升级,结构上不产刷新动作,源信息只能在策略层动作对象取
+            # (引擎侧推断不了 yielded 分支),故载体 = 动作 reason 透传。
+            _obs_refresh_src: dict[str, int] = {}
+            # cw4_counters 轮差分(sim 观测面补齐批任务③⑤可见性):
+            # 策略行为观测计数(session.cw4_counters)此前不入 sim 账本
+            # ——fenced 拆键(theta/fenced 成因分桶)落计数器后无账本面。
+            # 轮首快照 → 行内 obs.cw4_counters = 本轮增量 dict(零增量为
+            # 空 dict,不占判读视野)。纯只读投影,零行为面。
+            _cw4_before = dict(getattr(sess, 'cw4_counters', None) or {})
+            # ===== 必花域观测三键(20 号稿 §6;策略审查升格本批落地)=====
             # 帧型 = 商店决策段(本引擎逐段决策点);判定单一源 =
             # in_must_spend_zone(与生产同链,零第二套语义)。
             # - must_spend_zone_frames:必花域动作帧数;
@@ -1078,13 +1091,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 )
                 if _msz_pred(st.gold, sess):
                     _ms_zone += 1
-                    # 层命中按动作类 isinstance 判定(落地审阻断-1):
+                    # 层命中按动作类 isinstance 判定(落地审发现):
                     # decide_shop_screen 出口的升级意图为 LevelUpShop
                     # 子类实例,无 __type__ 属性,type().__name__ 落子类
                     # 名 'LevelUpShop',字符串匹配集只含基类名 'LevelUp'
                     # ⇒ 旧写法 L3 恒缺且该帧误入零消费。过滤器含基类
-                    # LevelUp(三十三跳:备战栈 mandate.py:454 有基类
-                    # 发射先例,防同型复发敞口;is-a 覆盖 Shop 子类)。
+                    # LevelUp(备战栈 mandate.py:454 有基类发射先例,
+                    # 防同型复发敞口;is-a 覆盖 Shop 子类)。
                     _ms_acts = [
                         a for a in (acts or [])
                         if isinstance(a, (BuyCard, LevelUp, LevelUpShop,
@@ -1176,16 +1189,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
                     _round_handoff_hp_proj = getattr(
                         sess, 'v3_handoff_hp_proj', None)
-                    # 终止豁免位镜像(三十跳:镜像缺写家族第三键)——
-                    # 写入侧单一源 = checks.segments.terminal_release_bit
-                    #(常量同源,检查器消费行键禁复算);单一址 = session
-                    # v3_terminal_release(plane 键控清零同族)。
+                    # 终止豁免位(sim 观测面补齐批 C1 接线)——写入侧
+                    # 单一源 = checks.segments.terminal_release_bit
+                    #(常量同源,检查器 seg_p1_blood_budget_refresh 消费
+                    # 行键禁复算)。账本行键 terminal_release(**轮入口
+                    # 首段快照 = 决策帧现值,与检查器「决策发生在本轮回
+                    # 战斗前」的 hp 口径同源**);曾接 session
+                    # v3_terminal_release(闩语义载体现删——其「S0≤ε
+                    # 触发后恒释放」闩语义随 v2 退役链失去判定本体,
+                    # 与本谓词的无状态 hp 带口径冲突,死写清除)。
                     from sr_od.application.currency_war.sim.checks.segments import (
                         terminal_release_bit as _tr_bit,
                     )
                     _round_terminal_release = bool(_tr_bit(sess, st))
-                    sess.v3_terminal_release = _round_terminal_release
-                    sess.v3_terminal_release_plane = getattr(st, 'plane', 1)
                 # 预算-回执契约·对账门声明(**逐段覆写=末段口径**,
                 # 与回执 last-wins/生产 per-frame 直读同语义;w943_audit5
                 # P3-4:首段口径会漏记「前段已兑现、刷新后重决策段未兑现」
@@ -1202,6 +1218,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 for a in acts:
                     if isinstance(a, RefreshShop):
                         res.refreshes += 1
+                        # 触发源分键(见轮首「刷新触发源分键」块;
+                        # reason = 策略层记录字段,''=旧调用归 other 桶)
+                        _r_src = getattr(a, 'reason', '') or 'other'
+                        _obs_refresh_src[_r_src] = \
+                            _obs_refresh_src.get(_r_src, 0) + 1
                         if st.plane >= 2:
                             res.p2_refreshes += 1   # ADR-0362:P2 段 D 次数
                         _cost_r = (st.shop_refresh_cost or 2)
@@ -1228,7 +1249,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _refresh_xp_round += _xpr
                             st.xp_progress = (
                                 xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
-                        _acts.append({'__type__': 'RefreshShop', 'cost': _cost_r})
+                        _acts.append({'__type__': 'RefreshShop',
+                                      'cost': _cost_r, 'reason': _r_src})
                         st.shop = cards_pool.draw_shop(st.level,
                                                        probs=st.refresh_probs)
                         _waves.append(
@@ -2045,9 +2067,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'gold': st.gold, 'hp': st.hp,
                 # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
                 'formed_stop': _round_formed_stop,
-                # (terminal_release 账本位已随 v2 退役链删除——统一迁移批
-                #  ② MAP B 类「terminal_release 三函数」随删;检查器
-                #  seg_terminal_release_ledger 同件删除。)
+                # 血预算停手·终止豁免位(轮入口首段快照;写入侧单一源 =
+                # checks.segments.terminal_release_bit,消费 =
+                # seg_p1_blood_budget_refresh 行键豁免面。本轮「位真=带内
+                # 刷新合法」的账本依据,C1 接线恢复——键曾随 v2 退役链
+                # 缺写,检查器恒读缺省 False 命中不可判)
+                'terminal_release': _round_terminal_release,
                 #  已随 C4 开关族删除——旧方案清退批,清查报告
                 #  OLD_MIX_AUDIT §1.3;v3_line_gate_* session 字段同批删。)
                 # `w227_handoff_gate/`/ADR-0400:末窗承接门缺口(0=不辖/达标;判读承接维
@@ -2175,6 +2200,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'must_spend_zone_frames': _ms_zone,
                     'must_spend_zero_consume': _ms_zero,
                     'must_spend_layer_hit': dict(_ms_layer),
+                    # 刷新触发源分键(sim 观测面补齐批任务①):源 →
+                    # 本轮实刷次数('other' = reason 未标/旧调用)。
+                    'refresh_trigger': dict(_obs_refresh_src),
+                    # cw4_counters 轮差分(任务③⑤可见性):策略行为
+                    # 观测计数本轮增量(键 = session.cw4_counters 原键,
+                    # 含 fenced 拆键/theta 成因分桶);零增量 = 空 dict。
+                    'cw4_counters': {
+                        k: int(v) - int(_cw4_before.get(k, 0))
+                        for k, v in (getattr(sess, 'cw4_counters', None)
+                                     or {}).items()
+                        if int(v) != int(_cw4_before.get(k, 0))},
                 },
                 # 商店波未买牌拒因串(末波 last-wins;生产端
                 # cw4/shop.shop_unbought_reasons,实机 DecisionTrace.

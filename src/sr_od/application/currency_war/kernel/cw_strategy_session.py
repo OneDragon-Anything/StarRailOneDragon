@@ -211,12 +211,12 @@ class StrategySession:
     # ADR-0451):refresh 收尾授权前置拒付披露(arbiter 写入;
     # 局首 on_match_start 清零;模式对齐上行停升级拒付计数)
     v3_blood_budget_refresh_rejects: int = 0
-    # 血预算停手·终止分支位面内触发闩(ADR-0469):
-    # 本位面首次 S0≤ε 触发后恒释放(防 S0 邻域抖动半释放);位面切换由
-    # v3_terminal_release_plane 键控清零。账本决策位(R4)消费面=
-    # discipline.terminal_release_bit(单一址),检查器禁复算 S0。
-    v3_terminal_release: bool = False
-    v3_terminal_release_plane: int | None = None
+    # (血预算停手·终止分支触发闩 v3_terminal_release/v3_terminal_
+    #  release_plane 两字段已删(sim 观测面补齐批 C1):其「S0≤ε 触发后
+    #  恒释放」闩语义随 v2 退役链失去判定本体,与现行唯一实现
+    #  sim/checks/segments.terminal_release_bit 的无状态 hp 带口径冲突
+    #  ——账本行键 terminal_release 由 sim 引擎轮入口直写该谓词,
+    #  消费 = seg_p1_blood_budget_refresh 行键豁免面。)
     # (换线存活门决策位 v3_line_gate_blocked/cf_blocked 与门闩
     #  v3_line_gate_latch/latch_plane 四字段已随 C4 开关族删除——旧方案
     #  清退批,清查报告 OLD_MIX_AUDIT §1.3;line_gate_blocked/

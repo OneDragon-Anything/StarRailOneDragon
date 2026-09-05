@@ -389,8 +389,10 @@ class DecisionTrace:
     # 血预算停手·搜索型刷新停付拒付计数(session.v3_blood_budget_refresh_rejects
     # 透传;写入端=arbiter refresh 收尾,局首清零)。
     sess_blood_budget_refresh_rejects: int | None = None
-    # 血预算停手·终止分支决策位(discipline.terminal_release_bit(session,
-    # plane) 单一址透传;设计 W659 v2 §5.1 R4;ADR-0469)。None=无 match
+    # 血预算停手·终止分支决策位(写入侧单一源 =
+    # sim/checks/segments.terminal_release_bit 的实机遥测透传位;
+    # 设计 W659 v2 §5.1 R4;ADR-0469。写入面已随 v2 退役链退役,
+    # 字段保留为 schema 缺省——None=无 match 注册/未写)。None=无 match
     # 注册(离线/测试)。
     sess_terminal_release: bool | None = None
     # P1-a 末窗支出降格触发面:取值=本 record 调用时点按 state +
