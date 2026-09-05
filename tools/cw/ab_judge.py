@@ -169,7 +169,7 @@ def game_metrics(g: dict, *, planes: int, planned_rounds: int) -> dict:
     # hp 链:按 cw_batch_stats——结算行 hp_after 为主,决策行 hp 兜底,逐轮推 hp_delta
     rows = [{'plane': r.get('plane') or 0, 'round': r.get('round_num') or 0,
              'gold': r.get('gold'), 'hp': r.get('hp'),
-             'form': r.get('form_score'), 'form_ok': r.get('form_ok'),
+             'form': r.get('b_t', r.get('form_score')), 'form_ok': r.get('form_ok'),  # b_t 优先(新数据),form_score 回退读历史
              'acts': r.get('actions') or []} for r in dec]
     out_by_key = {(r.get('plane') or 0, r.get('round_num') or 0): r for r in out}
     prev_hp = None

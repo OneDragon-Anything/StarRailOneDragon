@@ -333,7 +333,8 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
     逐轮表键 = (plane, round_num)(位面内序,与全部视图同坐标系);
     每轮聚合:node_type(结算屏真值优先)/ hp 真值链 / 金 / 等级 / 动作
     (计数+全量序列化)/ shop 快照全波(offer/refresh)/ 配对(sess_p1_pair)/
-    姿态(dp_posture,decision_v2 决策帧口径)/ form_score / 证据链接 /
+    姿态(dp_posture,decision_v2 决策帧口径)/ b_t(form_score 替代披露
+    口径;form_score 已退役,历史数据只读透传)/ 证据链接 /
     战后终态(terminal,该轮最晚帧板面计数——与决策帧列并列的「执行后」快照)。
     败场节点 = hp 链上掉血的轮(delta = 本轮 hp − 前轮 hp < 0;死因素材)。
     """
@@ -404,7 +405,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
                     dp_tags.append(d['dp_posture'])
             except (TypeError, ValueError):
                 continue
-        # form_score:同轮末帧时点值(无决策帧 → outcome 无此字段 → None)
+        # b_t:同轮末帧时点值(无决策帧 → outcome 无此字段 → None)
         nt_out = (outcome or {}).get('node_type')
         nt_state = st.get('node_type')
         # 决策流程明细(二期①)显形:该轮最优决策帧的意向/打分/分解/姿态。
@@ -437,6 +438,9 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'shop_snapshots': snap_by_key.get(key, []),
             'sess_p1_pair': (frame or {}).get('sess_p1_pair'),
             'dp_postures': sorted(set(dp_tags)),
+            # b_t:同轮末帧时点值(form_score 替代披露口径;form_score
+            # 已退役历史只读——新帧无该键恒 None,旧行仍透传)
+            'b_t': (frame or {}).get('b_t'),
             'form_score': (frame or {}).get('form_score'),
             'form_ok': (frame or {}).get('form_ok'),
             'target_comp': (frame or {}).get('target_comp'),

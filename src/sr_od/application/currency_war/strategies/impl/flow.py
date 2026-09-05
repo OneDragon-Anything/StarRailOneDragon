@@ -159,7 +159,7 @@ class CwFlowStrategy(CwStrategy):
         # DP 姿态轮缓存载体:初始化(每轮 decide_shop_screen 重算)
         session.v3_phase = 'FORM'
         session.v3_form_ok = False
-        session.v3_form_score = 0.0
+        session.v3_b_t = 0   # 板面目标线承重计数(write_shop_mirrors 每轮重算)
         session.v3_dp_posture = None
         # 镜像族轮键戳(写者=write_shop_mirrors 单一源;None=本轮未写,
         # sim 引擎缺写守卫消费——见 write_shop_mirrors docstring)
@@ -292,34 +292,28 @@ class CwFlowStrategy(CwStrategy):
 
     def write_shop_mirrors(self, state: GameState,
                            session: StrategySession) -> None:
-        """逐帧恢复 ``v3_form_score`` 写者(纯遥测观测面)。
+        """逐帧写 ``v3_b_t`` 板面目标线承重计数(纯遥测观测面)。
 
-        背景:该字段自 mandate_v1 换核后仅剩 on_match_start 初始化
-        0.0,两批 sim 849 帧零非零(sim57 判读报告 §B5)——仪表缺
-        写者,非车没走。口径 = ADR-0346/W114 设计语义的
-        **上场(deployed)连续量**:过渡体系达成数(``cw_deploy_logic.
-        engines_count`` 四体系单一源)+ 配方档小数(``cw_line_defs.
-        recipe_tier``/``RECIPE_BASE`` × ``registry.rung_frac_per_
-        recipe_tier``),封顶 2 档除 2 归一到 [0,1];bench 囤件不计入
-        (「上场了才算战力」的裁决口径)。
+        口径 = B_t(件级单一源 ``cw_deploy_logic.
+        board_target_line_weight``:deployed 中全羁绊 ∩
+        SYSTEM_LINE_FACTIONS 非空件数,希儿本人单卡计入;bench 囤件
+        不计入)。选 B_t 替代的依据:旧 ``v3_form_score``(min(2,
+        engines+0.3×frac)/2 封顶连续量)在决策关键帧(boss 前/终局)
+        恒常数 1.0 零方差、预测力为零;B_t 全样本有方差且是唯一
+        p<0.001 显著代理(判读边界:预测力集中于 boss 战存活深度,
+        对伤害差/终局 hp 仅弱正)。
 
-        边界:本方法**只恢复 form_score 一个键**——``v3_phase``/
+        边界:本方法**只写 ``v3_b_t`` 一个键**——旧 ``v3_form_score``
+        随本口径替换退役(历史账本只读,不再有写者);``v3_phase``/
         ``v3_form_ok`` 的 v2 相位机写端仍属退役语义(测试仓
         test_cw_metric_mirror_fix 锁 phase=''/form_ok=False 保持),
         ``v3_mirror_key`` 轮键戳照常盖章(键语义 =「本轮已写」,sim
         引擎缺写守卫据此不重复触发)。纯遥测恢复:该字段不进任何
-        判据(kernel/cw_registry.py「form_score 降级纯遥测观测,不进
-        判据」注记),写者本身零行为面。
+        判据(ADR-0353「form_score 降级纯遥测观测,不进判据」口径
+        由 B_t 延续),写者本身零行为面。
         """
-        from sr_od.application.currency_war.kernel.cw_battle_calib import (
-            board_factions_of,
-        )
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-            engines_count,
-        )
-        from sr_od.application.currency_war.kernel.cw_line_defs import (
-            RECIPE_BASE,
-            recipe_tier,
+            board_target_line_weight,
         )
         deployed = [d for d in
                     (getattr(state, 'deployed', None) or [])
@@ -328,23 +322,16 @@ class CwFlowStrategy(CwStrategy):
             # 实机落位补缺(g_20260906_021859/034515 两局全帧 0.0 实证):
             # 商店观察帧(state=shop_state_frame)只播种 bench
             # (cw_op_buy_cards 入口 tracked_bench_chars 播种段),
-            # ``deployed`` 列表恒空 → engines/frac 恒 0 → form_score 恒 0,
-            # 写者调用点本身已接(decide_shop_action 决策核入口)。回退源 =
+            # ``deployed`` 列表恒空 → B_t 恒 0。回退源 =
             # session.tracked_deployed(执行记录槽位表,单元素带 char_id,
             # 与 assembly/cw_observation 同一消费源),空 = 板面真空的
             # 事实态,照写 0 不虚构。
             deployed = [d for d in
                         (getattr(session, 'tracked_deployed', None) or [])
                         if d is not None]
-        bf = board_factions_of(deployed)
-        dep_names = frozenset(
-            (getattr(d, 'char_id', '') or '') for d in deployed)
-        engines = engines_count(bf, dep_names)
-        frac = min(recipe_tier(bf) / RECIPE_BASE, 1.0)
-        x = min(2.0, float(engines)
-                + getattr(self.registry, 'rung_frac_per_recipe_tier', 0.3)
-                * frac)
-        session.v3_form_score = max(0.0, min(1.0, x / 2.0))
+        # 件级计数:名字列表保留重复件(同名多件各计 1,禁 frozenset 去重)
+        dep_names = [(getattr(d, 'char_id', '') or '') for d in deployed]
+        session.v3_b_t = board_target_line_weight(dep_names)
         session.v3_mirror_key = (getattr(state, 'plane', 1) or 1,
                                  getattr(state, 'round_num', 0) or 0)
 
@@ -626,8 +613,9 @@ class CwFlowStrategy(CwStrategy):
                 'decide_shop_action: session.shop_state_frame 缺失'
                 '(黑板契约:入口观察段是唯一写者;None=观察层失约,'
                 '禁静默按空态决策)')
-        # v3_form_score 逐帧镜像写者(纯遥测,零行为面;口径与边界见
-        # write_shop_mirrors docstring)。写位 = 决策核入口 = 生产单
+        # v3_b_t 逐帧镜像写者(纯遥测,零行为面;口径与边界见
+        # write_shop_mirrors docstring。旧 v3_form_score 已随口径
+        # 替换退役,历史账本只读)。写位 = 决策核入口 = 生产单
         # 动作循环与 sim decide_shop_screen 驱动器共同必经点。
         self.write_shop_mirrors(state, session)
         return shop.decide_shop_action(state, session, config,

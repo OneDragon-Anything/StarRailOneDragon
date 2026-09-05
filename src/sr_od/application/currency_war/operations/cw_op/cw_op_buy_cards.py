@@ -629,7 +629,9 @@ def run_buy_waves(op: SrOperation, match,
             # ADR-0346 相位影子观测(零消费;每轮 decide_prep 入口算,session 写,此处只透传)
             'phase': getattr(_sess, 'v3_phase', '') or '',
             'form_ok': bool(getattr(_sess, 'v3_form_ok', False)),
-            'form_score': round(float(getattr(_sess, 'v3_form_score', 0.0) or 0.0), 3),
+            # B_t 板面目标线承重计数(form_score 替代披露口径;写者单一源 =
+            # write_shop_mirrors,历史 form_score 只读退役)
+            'b_t': int(getattr(_sess, 'v3_b_t', 0) or 0),
             # ADR-0347 授权依据 trace:当轮 DP 日志表姿态
             'dp_posture': str(getattr(getattr(
                 getattr(_sess, 'v3_dp_posture', None),

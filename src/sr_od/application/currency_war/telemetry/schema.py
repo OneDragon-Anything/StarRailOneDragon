@@ -46,6 +46,11 @@ RHO_SHOP_OBS_FIELDS: tuple[str, ...] = ('systems', 'pair', 'n_shop')
 """shop_snapshots 行 ``rho_obs`` 键面单一源(测试锁面;语义见 rho_shop_obs)。"""
 
 
+P26_PREP_OBS_FIELDS: tuple[str, ...] = ('node_type_next',)
+"""decisions 行 ``p26_prep_obs`` 键面单一源(P26 采集批测试锁面;语义见
+DecisionTrace.p26_prep_obs 注)。禁第二语义键——键集扩条只改本元组。"""
+
+
 def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
     """shop 单帧 ρ 实测分子:各体系「当前可买且对 form 有贡献」的在店件数。
 
@@ -344,11 +349,17 @@ class DecisionTrace:
     sess_v2_state: list | None = None
     # —— 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(经济循环总模型步①;零消费):
     # phase(FORM/HOARD/SPEND 派生相位)/form_ok(三件套谓词,裁决后
-    # 无等级项)/form_score(上场阵容 rung 副指标,∈[0,1])。可选,
-    # 旧记录缺省不破坏 schema。
+    # 无等级项)。可选,旧记录缺省不破坏 schema。
     phase: str = ""
     form_ok: bool = False
+    # 已退役字段(历史数据只读):form_score 旧口径(min(2, engines+
+    # 0.3×frac)/2 连续量)在决策关键帧恒常数零方差、预测力为零,
+    # 已由 b_t 替代披露;新写端不再写,读历史账本仍取到原值。
     form_score: float = 0.0
+    # B_t 板面目标线承重计数(form_score 替代披露口径;kernel
+    # cw_deploy_logic.board_target_line_weight 单一源,禁第二实现)。
+    # 纯遥测观测面,不进判据(ADR-0353 纯遥测口径延续);旧记录缺省 0。
+    b_t: int = 0
     # ADR-0343 成型停手态(层2 写;检查器豁免/判读锚点)——补挂
     # DecisionTrace 字段:shop/cw_screen_prep 均已在 extra 传
     # 'formed_stop',但 recorder 映射缺失导致该键被静默丢弃
@@ -472,6 +483,21 @@ class DecisionTrace:
     # 新行 [] = 无挂起期望;新行非空 = 决策基于含期望推进值的画面。可选末尾
     # 追加字段,旧记录缺省 None 不破坏 schema。
     expected_paths: list[dict[str, Any]] | None = None
+    # —— P26 备战帧无条件采集(math_proofs P26 双挂账采集批;纯观测零行为)——
+    # 19 号稿 §2.3-4 裁定:P26 标定样本面须另立采集点(备战帧无条件采样),
+    # 非 D-D 尾部帧计数位。本字段 = 该采集点:每备战决策帧一行平铺
+    # ``node_type_next``(下一节点类型标签 = P26 的 L_node 标签维度;来源
+    # 单一源 = 位面节点台账 ``cw_state.ledger_node_type`` 同源读链,即
+    # flow 掉血回落同表;**原始 token 不映射不猜**——battle/encounter/boss/
+    # elite/supply/reward/...,查不到 = '' 诚实缺省,分桶映射归离线标定批)。
+    # 键面单一源 = ``P26_PREP_OBS_FIELDS``;禁第二语义键。
+    # hp 边界(00_framework §3 硬闸门):本钩子**不采任何 hp/战力量**——
+    # L_node 分位口径(条件败面伤害尾部)走既有结算三项遥测授权面
+    # (outcomes 行 damage_base/damage_unfinished_progress/hp_after),
+    # 本批只申报离线 join,不加新 hp 读链。
+    # None = 无 match 注册(离线/测试缺省);dict 且 node_type_next='' =
+    # session 在场但台账未命中(不猜)。可选末尾追加字段,旧记录缺省 None。
+    p26_prep_obs: dict[str, Any] | None = None
 
 
 

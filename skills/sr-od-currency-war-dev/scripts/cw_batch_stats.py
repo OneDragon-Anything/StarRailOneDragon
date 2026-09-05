@@ -64,7 +64,7 @@ def _sim_rows(batch: Path) -> dict[str, list[dict]]:
         g(r.get('run_id') or '?')['rounds'][key] = {
             'plane': key[0], 'round': key[1], 'node_type': None,
             'gold': r.get('gold'), 'hp': r.get('hp'), 'hp_delta': None,
-            'form': r.get('form_score'), 'form_ok': r.get('form_ok'),
+            'form': r.get('b_t', r.get('form_score')), 'form_ok': r.get('form_ok'),  # b_t 优先(新数据),form_score 回退读历史(退役只读)
             'level': st.get('level'), 'deployed': st.get('deployed') or [],
             'factions': dict(st.get('board_factions') or {}), 'acts': r.get('actions') or [],
             # 达标臂发射事件(行内 launch 键,engine_p1 建模;None=未触发)
@@ -120,7 +120,7 @@ def _archive_rows(mid: str) -> dict[str, list[dict]]:
     rows = [{
         'plane': r.get('plane'), 'round': r.get('round'), 'node_type': r.get('node_type'),
         'gold': r.get('gold'), 'hp': r.get('hp'), 'hp_delta': r.get('hp_delta'),
-        'form': r.get('form_score'), 'form_ok': r.get('form_ok'),
+        'form': r.get('b_t', r.get('form_score')), 'form_ok': r.get('form_ok'),  # b_t 优先(新数据),form_score 回退读历史(退役只读)
         'level': r.get('level'), 'deployed': r.get('deployed') or [],
         'factions': dict(r.get('board') or {}), 'acts': r.get('actions') or [],
         # 档案侧发射面:行动作里的 StartBattle(生产发射核执行痕迹;

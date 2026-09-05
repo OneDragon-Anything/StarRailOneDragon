@@ -942,7 +942,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 「每轮决策入口计算一次」对齐;一轮多决策段时取首段(轮初态)。
             _round_phase: str = ''
             _round_form_ok: bool = False
-            _round_form_score: float = 0.0
+            _round_b_t: int = 0   # 板面目标线承重计数(form_score 替代披露口径)
             _round_dp_posture: str = ''
             _round_reserve_cap = 0
             _round_reserve_overflow = 0
@@ -1203,7 +1203,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _phase_snap = True   # 轮入口首段快照(迁移审计 w114(git 历史) 影子)
                     # 镜像族缺写守卫(度量修复):覆写 decide_shop_screen 的
                     # 策略核(如 mandate_v1)不经旧核商店决策核,镜像族
-                    # (phase/form_ok/form_score/dp_posture/储备披露)无写者
+                    # (phase/form_ok/B_t/dp_posture/储备披露)无写者
                     # → 下方快照恒读初值(form_ok 假阴性)。轮键戳
                     # v3_mirror_key(写者=DecisionV2Strategy.write_shop_
                     # mirrors 单一源)标「本轮已写」:旧核每决策段自写、
@@ -1216,8 +1216,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _wsm(st, sess)
                     _round_phase = str(getattr(sess, 'v3_phase', '') or '')
                     _round_form_ok = bool(getattr(sess, 'v3_form_ok', False))
-                    _round_form_score = round(float(
-                        getattr(sess, 'v3_form_score', 0.0) or 0.0), 3)
+                    # B_t 板面目标线承重计数(form_score 替代披露口径;
+                    # 写者单一源 = write_shop_mirrors,历史 form_score 只读退役)
+                    _round_b_t = int(getattr(sess, 'v3_b_t', 0) or 0)
                     # 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace:当轮 DP 姿态 tag
                     _round_dp_posture = str(getattr(getattr(
                         getattr(sess, 'v3_dp_posture', None),
@@ -2174,7 +2175,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(轮入口快照;零消费)
                 'phase': _round_phase,
                 'form_ok': _round_form_ok,
-                'form_score': _round_form_score,
+                # form_score 已退役(历史账本只读);替代披露口径 = b_t
+                'b_t': _round_b_t,
                 # 决策时点挂起期望态快照(期望态 infra 遥测批;sim 引擎未接
                 # 期望态推进,sess.expected_state 缺省 None → 恒 [];与生产
                 # decisions 行同构,读端三态同口径)

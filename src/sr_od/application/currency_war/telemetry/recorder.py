@@ -154,7 +154,8 @@ class TelemetryRecorder:
             # + 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace(dp_posture)
             trace.phase = str(extra.get('phase', ''))
             trace.form_ok = bool(extra.get('form_ok', False))
-            trace.form_score = float(extra.get('form_score', 0.0))
+            trace.form_score = float(extra.get('form_score', 0.0))  # 已退役,历史只读
+            trace.b_t = int(extra.get('b_t', 0) or 0)   # form_score 替代披露口径
             trace.formed_stop = bool(extra.get('formed_stop', False))
             trace.dp_posture = str(extra.get('dp_posture', ''))
             trace.piggy_reward = bool(extra.get('piggy_reward', False))
@@ -247,6 +248,20 @@ class TelemetryRecorder:
                 # 开臂判据②「危机帧实花分项账非全零」的生产观测源,记账面
                 # (budget)不作兑现证据。
                 trace.sess_release_spent = _w611_int('v3_release_spent')
+                # P26 备战帧无条件采集(math_proofs P26 双挂账采集批;19 号稿
+                # §2.3-4 裁定的另立采集点——每备战决策帧无条件采样,非 D-D
+                # 尾部帧计数位):下一节点类型标签 = 位面节点台账同源读链
+                # (单一源 = ``cw_state.ledger_node_type``,与 flow 掉血回落
+                # 同表;原始 token 不映射,查不到 = '' 不猜)。键面单一源 =
+                # schema.P26_PREP_OBS_FIELDS。纯观测零行为:best-effort,
+                # 台账缺失/异常 → 字段缺省 None,决策行其余面零漂移。
+                # hp 边界(00_framework §3):本钩子不采任何 hp/战力量,
+                # L_node 分位口径走既有结算三项遥测授权面离线 join。
+                from sr_od.application.currency_war.kernel.cw_state import (
+                    ledger_node_type as _p26_lnt,
+                )
+                _p26_nt = _p26_lnt(_sess, state.plane, state.round_num)
+                trace.p26_prep_obs = {'node_type_next': str(_p26_nt or '')}
                 # W937 预算-回执契约(ADR-0504):姿态授权未兑现回执透传
                 # (extra 键不泛化透传,缺此映射行则 shop 端装配静默丢弃)
                 _pu = getattr(_sess, 'v3_posture_unfulfilled', None)

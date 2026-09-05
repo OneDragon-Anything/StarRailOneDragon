@@ -299,12 +299,13 @@ def query_rounds(replay_dir: Path, run_id: str) -> list[str]:
             ist_s = (f" ist=[{_ist.get('phase', '')}"
                      f"|{_ist.get('locked_comp', '') or '-'}]"
                      + ('/降格' if _ist.get('demoted_endgame') else ''))
-        # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(空则省略——旧局/影子代码前全空)
+        # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(空则省略——旧局/影子代码前全空;
+        # 承重显示 = b_t(form_score 替代口径;form_score 已退役历史只读,不再显示)
         _ph = d.get("phase") or ""
         _fok = d.get("form_ok")
-        _fsc = d.get("form_score")
+        _bt = d.get("b_t")
         ph_s = (f" ph={_ph}" + ("/ok" if _fok else "")
-                + (f"/{_fsc:.2f}" if isinstance(_fsc, (int, float)) else "")
+                + (f"/bt={_bt}" if isinstance(_bt, int) else "")
                 ) if _ph else ""
         # 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace:DP 姿态 tag(空则省略)
         # dp 显示规整:只有 decision_v2 决策帧显示 tag 本身(判定口径
