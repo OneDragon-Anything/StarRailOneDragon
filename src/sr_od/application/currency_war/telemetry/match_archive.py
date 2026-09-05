@@ -67,7 +67,13 @@ log = log_utils.log
 #: v5(M2 遥测增强批 ③):+endgame.final_snapshot(局级终局快照列:
 #: 终局阵容/金/等级取全局最晚决策迹帧的 state,装配端派生、零新运行时
 #: 写入;旧档案经 load_archive 版本检查自动重装配补齐)。加法字段。
-SCHEMA_VERSION: int = 5
+#: v6(活局续段数据治理批):+顶层 resume_reconciliation(恢复态对账列:
+#: 每个续局段「恢复帧读数 vs 前段末帧账面」的 hp/gold/plane/round 对账,
+#: 装配端纯读派生;单段局恒空列表,旧档案经 load_archive 版本检查自动
+#: 重装配补齐)。加法字段。装配器选型依据:并段与对账本质是「读侧把
+#: 已落库的 run 段拼成一局」,写入端已如实落库无需改;恢复帧读数与终值
+#: 不符时两侧都是真读,装配器无权裁哪边是真值,只做显影交判读定谳。
+SCHEMA_VERSION: int = 6
 
 #: 档案子目录(replay/matches/)
 MATCHES_DIRNAME: str = 'matches'
@@ -458,6 +464,71 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
     return rounds, loss_nodes
 
 
+def _resume_reconciliation(segments: list[str],
+                           slice_rows: dict[str, list[dict[str, Any]]]
+                           ) -> list[dict[str, Any]]:
+    """恢复态对账列(v6,装配端纯读派生):每个续局段「恢复帧读数 vs
+    前段末帧账面」逐字段对账。
+
+    - 对账对象:续局段(首帧非 (p1,r1))的**恢复帧** = 该段最早 ts 的
+      决策迹帧(无则最早结算行兜底);**前段末帧** = 该段之前全部段的
+      最晚 ts 决策迹帧(≈ 停机时刻账面,与 endgame.final_snapshot 同源
+      口径)。比对 hp/gold(带 readable 可信位)与 plane/round 接续点。
+    - aligned 语义:两侧都有值 → 是否相等;任一侧缺值或不可信(readable
+      明确 False)→ None = 不可判,不猜。装配器**不裁真值**:两侧都是
+      诚实读数,不符只显影交判读定谳(2026-09-05 夜第八局实证:恢复帧
+      hp14/金68 vs 档案终值 hp29/金36,判读侧需此列才免手工翻流对账)。
+    - 单段局 / 无续局段 → 空列表(判读「无恢复事件」与「未装配」以
+      schema_version ≥ 6 区分)。
+    """
+    dec = slice_rows['decisions.jsonl']
+    by_seg: dict[str, list[dict[str, Any]]] = {}
+    for d in dec:
+        rid = d.get('run_id')
+        if rid in segments:
+            by_seg.setdefault(rid, []).append(d)
+    out: list[dict[str, Any]] = []
+    for i, rid in enumerate(segments):
+        if i == 0:
+            continue
+        rows = by_seg.get(rid) or []
+        resume = min(rows, key=_row_ts) if rows else None
+        prev_rows = [r for seg in segments[:i] for r in by_seg.get(seg, [])]
+        prev = _latest_ts_frame(prev_rows) if prev_rows else None
+        if resume is None and prev is None:
+            continue
+        resume_st = (resume or {}).get('state') or {}
+        prev_st = (prev or {}).get('state') or {}
+
+        def _pair(key: str, resume_row: dict[str, Any] | None,
+                  prev_row: dict[str, Any] | None,
+                  readable_key: str | None = None) -> dict[str, Any]:
+            rv = (resume_row or {}).get(key)
+            pv = (prev_row or {}).get(key)
+            aligned: bool | None
+            if (readable_key is not None
+                    and (resume_row or {}).get(readable_key) is False):
+                aligned = None   # 恢复帧该字段不可信,不判
+            elif rv is None or pv is None:
+                aligned = None
+            else:
+                aligned = rv == pv
+            return {'resume': rv, 'prev_final': pv, 'aligned': aligned}
+
+        out.append({
+            'run_id': rid,
+            'resume_ts': _row_ts(resume) if resume else None,
+            'prev_final_ts': _row_ts(prev) if prev else None,
+            'resume_frame': {'plane': (resume or {}).get('plane'),
+                             'round_num': (resume or {}).get('round_num')},
+            'hp': _pair('hp', resume, prev, 'hp_readable'),
+            'gold': _pair('gold', resume, prev, 'gold_readable'),
+            'level': {'resume': resume_st.get('level'),
+                      'prev_final': prev_st.get('level')},
+        })
+    return out
+
+
 def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any]:
     """装配单局档案 dict(纯读 + 内存组装;不落盘)。
 
@@ -505,6 +576,8 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'end_ts': game.get('end_ts') or '',
         'archived_at': datetime.now().isoformat(timespec='seconds'),
         'continuity_note': continuity_note,
+        'resume_reconciliation': _resume_reconciliation(
+            segments, slice_rows),
         'rounds': rounds,
         'loss_nodes': loss_nodes,
         'opening': _build_opening(slice_rows, runs_by_seg),
@@ -698,13 +771,40 @@ def _write_watermark(replay_dir: Path, through_ts: str) -> None:
     _atomic_write_json(p, {'archived_through': through_ts})
 
 
+def _latest_end_ts(games: list[dict[str, Any]]) -> str:
+    """全量局的最晚 ``end_ts``(水位线推进的唯一锚)。
+
+    不能取 ``games[-1]``:``assign_games`` 把「无 outcomes 出现序的孤立
+    段」追加在列表尾部,列表末元素不是时间序最晚局——曾致水位线冻结在
+    某个旧孤立段的 end_ts(2026-09-05 夜实证:冻结在 06:56:29,其后
+    正常局只能靠 CLI 点名装配,水位线永远不动)。
+    """
+    return max((g.get('end_ts') or '' for g in games), default='')
+
+
+def _archive_covers_segments(archive: dict[str, Any],
+                             segments: list[str]) -> bool:
+    """已落盘档案的段集合是否与当前分组一致(续段归并检测)。
+
+    档案存在且 schema 最新 ≠ 内容最新:活局续段被 ``assign_games`` 并入
+    既有局后,该局 end_ts 越过水位线,但 schema 不变——若只按版本跳过,
+    续段永远进不了档案(2026-09-05 夜实证:g_20260905_080023 档案停在
+    单段,084407/090407 两续段只活在 assign_games 的内存分组里)。
+    """
+    archived = [s.get('run_id') for s in archive.get('segments') or []]
+    return archived == list(segments)
+
+
 def assemble_pending(replay_dir: Path | str) -> list[str]:
     """装配「水位线之后结束、尚未入档」的局(局终钩子/CLI 缺省入口)。
 
-    旧数据不回填:首次调用只落水位线(= 当前最晚局结束时刻),不装任何
-    存量局;此后每次只装 end_ts > 水位线的局并推进水位线。崩溃局没走钩子
-    也被下次任一触发点补装(end_ts 仍 > 水位线);更早的漏网局用
-    ``assemble_game`` 点名补装配。返回本次装配的 game_id 列表。
+    旧数据不回填:首次调用只落水位线(= 全量局最晚 end_ts,见
+    ``_latest_end_ts``),不装任何存量局;此后每次只装 end_ts > 水位线的
+    局并推进水位线。崩溃局没走钩子也被下次任一触发点补装(end_ts 仍
+    > 水位线);更早的漏网局用 ``assemble_game`` 点名补装配。
+    段集合有增长的局(活局续段并入)随版本检查一并重装,不丢不重:
+    重装 = 从源流全量重派生后原子覆盖,续段并入即唯一变化。返回本次
+    装配的 game_id 列表。
     """
     rd = Path(replay_dir)
     games = assign_games(rd)
@@ -714,7 +814,7 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     done: list[str] = []
     if not wm:
         # 首次启用:只记账不回填(边界:旧段 shop 刷新波已丢,回填也残缺)
-        _write_watermark(rd, games[-1]['end_ts'])
+        _write_watermark(rd, _latest_end_ts(games))
         return done
     for g in games:
         if (g['end_ts'] or '') <= wm:
@@ -727,17 +827,19 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
             # 自愈一次,与「新局装配」同一原子写路径。
             try:
                 with p.open('r', encoding='utf-8') as f:
-                    stale = (int(json.load(f).get('schema_version') or 0)
-                             < SCHEMA_VERSION)
+                    old = json.load(f)
+                stale = (int(old.get('schema_version') or 0) < SCHEMA_VERSION)
             except (OSError, json.JSONDecodeError, TypeError, ValueError):
                 stale = False   # 损坏档案不在此竞修(原子写使其概率极低),交读端报错
-            if not stale:
-                continue   # 已入档且版本最新(如显式补装过)——不重复写
+                old = None
+            if not stale and _archive_covers_segments(old or {},
+                                                      g['segments']):
+                continue   # 已入档、版本最新、段集无增长——不重复写
         _atomic_write_json(p, build_archive(rd, g))
         done.append(g['game_id'])
     if done:
         rebuild_index(rd)
-        _write_watermark(rd, games[-1]['end_ts'])
+        _write_watermark(rd, _latest_end_ts(games))
     return done
 
 
