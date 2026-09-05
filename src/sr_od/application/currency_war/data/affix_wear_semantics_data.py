@@ -91,9 +91,9 @@ def check_wear_semantics_coverage() -> list[str]:
     - 反向:结构条目在散文中无同名行 → 孤儿缓存(散文重写后词缀更名/删除)。
 
     值差异不在此拦截(散文不可靠机读)——走首次消费对拍锁(测试)与
-    D-81 守卫(采集批 divergent 拦截)。消费点 = 词缀优先层求序入口
-    (kernel/cw_equip_env.resolve_affix_priority_order),每次求序前跑一遍
-    (dict 扫描,量级 = 词缀总数,零性能顾虑)。
+    D-81 守卫(采集批 divergent 拦截)。消费点 = kernel/cw_equip_env.
+    output_penalty_release_active(每 op 一次;dict 扫描,量级 = 词缀
+    总数,零性能顾虑)。
     """
     warnings: list[str] = []
     for name, prose in AFFIX_EFFECTS.items():

@@ -1,4 +1,4 @@
-"""批统计面(九族过程量:资源转化/成型/战斗/供给/达标臂发射/终态/采购面三观察…;2026-09-07 反馈条目落地,发射面/采购观察面为后补族)。
+"""批统计面(九族过程量:资源转化/成型/战斗/供给/达标臂发射/终态/采购面三观察…;2026-09-07 反馈条目落地,发射面/采购观察/必花域观测为后补族)。
 
 定位:第 1 步统计+按指标点名最差局(供第 3 步挑局复盘);怎么判定「表现不好」不在此规定。
 两种数据源:
@@ -236,6 +236,18 @@ def analyze_game(rows: list[dict]) -> dict:
     _cold = [r for r in rows if r['plane'] == 1 and r['round'] <= 4]
     m['冷启动买次数'] = sum(n_act(r['acts'], 'BuyCard') for r in _cold)
     m['冷启动金花费'] = sum(act_cost(r['acts']) for r in _cold)
+    # I 必花域观测三键(20 号稿 §6;sim 行内 obs 键,engine_p1 建模;
+    # 档案行 obs 恒空 → 0/空,不误报)。观察面只计数不定谳——零消费帧
+    # 判读看归因(物理残量白名单 §3.2 带分键)。
+    m['必花域帧数'] = sum(int(o.get('must_spend_zone_frames') or 0)
+                          for o in _obs)
+    m['必花域零消费帧'] = sum(int(o.get('must_spend_zero_consume') or 0)
+                              for o in _obs)
+    _ms_layer: dict[str, int] = {}
+    for o in _obs:
+        for k, v in (o.get('must_spend_layer_hit') or {}).items():
+            _ms_layer[k] = _ms_layer.get(k, 0) + int(v or 0)
+    m['必花域层命中'] = _ms_layer
     # D 战斗过程
     lo, wo = [], []
     for r in rows:
@@ -338,6 +350,17 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     cold0 = [rid for rid, m in ms.items()
              if m.get('冷启动买次数') == 0 and m.get('冷启动金花费') is not None]
     print(f'  冷启动零买局占比: {len(cold0) / max(len(ms), 1):.0%}')
+    print('\n-- I 必花域观测三键(20 号稿 §6;零消费帧判读看归因) --')
+    for k in ('必花域帧数', '必花域零消费帧'):
+        a = agg(k)
+        print(f'  {k}: {a[0]} | {a[1]}' if a else f'  {k}: 无数据')
+    _ms_tot: dict[str, int] = {}
+    for m in ms.values():
+        for k, v in (m.get('必花域层命中') or {}).items():
+            _ms_tot[k] = _ms_tot.get(k, 0) + v
+    print(f'  层命中(L1/L2/L3): {_ms_tot or "无数据"}')
+    _zg = [rid for rid, m in ms.items() if m.get('必花域帧数')]
+    print(f'  必花域帧出现局占比: {len(_zg) / max(len(ms), 1):.0%}')
     print('\n-- 表现不好的指标 → 体现最重的局(每指标 2 局;第 3 步挑局复盘的抽样单) --')
     for key, d in WORST_METRICS:
         vals = [(m.get(key), rid) for rid, m in ms.items()

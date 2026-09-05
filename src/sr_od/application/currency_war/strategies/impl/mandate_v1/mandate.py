@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_economy import (
     clicks_to_next_level,
+    in_must_spend_zone,
     xp_click_cost,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
@@ -408,35 +409,62 @@ def run_mandate(frame: MandateFrame,
             frame.gold, _bench_cand,
             saturation_line(_cap_of(session)) if _cap_now is not None else 0)
         session.cw4_pop_slot_why = _pop_why
-    if (_arm1 or _arm0 or _pop) and _cap_now is not None:
+    # L3 必花域第三触发源(20 号稿 §3.1-L3/§3.5,备战栈接入;判定单一源
+    # = in_must_spend_zone,与 shop 栈同源禁第二套语义;应-C 偏高必收:
+    # 备战必花帧不再被停付线否决——域内让位 = ADR-0528,域外照旧)。
+    _zone_hit = in_must_spend_zone(frame.gold, session) and (
+        state is None
+        or bool(getattr(state, 'level_readable', True)))   # 等级不可信帧 fail 向(资格硬闸)
+    _arms_hit = _arm1 or _arm0 or _pop
+    if (_arms_hit or _zone_hit) and _cap_now is not None:
         # 候选③危机带经验授权让位(g_20260904_054904 p2r1:hp=1 帧
         # 9×LevelUpShop 36g 零本帧收益):血预算停升级门(P21)此前只有
         # decision_v2 侧消费,cw4 M3 未接 = 双栈语义断层;判据单一源 =
         # levelup.level_spend_blocked(blood_budget_levelup_blocked ∪
         # p2_crisis_band,P48 λ>0 段转化优先)。让位=挂起本批经验支出,
         # 授权面降级由 entry._reconcile_posture_authorization 显式声明。
-        if state is not None and contracts.ensure_contract(
+        # 必花域帧停付线让位(裁定覆盖,ADR-0528):域内本门不否决 L3。
+        # 停付判据提取为局部变量;域内豁免时记 must_spend_zone_defer_overridden
+        # 显影分键(与 shop 侧 must_spend_r1_account_yielded 对称)——归因时
+        # 区分「本来就不该停」与「停付被域裁压掉」,crisis_level_spend_defer
+        # 原语义不变(仍只辖域外命中帧)。
+        _level_spend_blocked = (
+            state is not None
+            and contracts.ensure_contract(
                 ('levelup', 'level_spend_blocked'),
-                contracts.ContractCtx(), counters) \
-                and levelup.level_spend_blocked(state, session):
+                contracts.ContractCtx(), counters)
+            and levelup.level_spend_blocked(state, session))
+        if _level_spend_blocked and not _zone_hit:
             _count('crisis_level_spend_defer')
-        elif contracts.ensure_contract(
-                ('levelup', 'lv9_stop'),
-                contracts.ContractCtx(), counters) \
-                and not levelup.lv9_stop(frame.level):
-            clicks = clicks_to_next_level(_state_view(frame, session))
-            cost = xp_click_cost(_state_view(frame, session))
+        else:
+            if _level_spend_blocked:
+                # 域内豁免显影分键(与 shop 侧 must_spend_r1_account_yielded
+                # 对称):本会停付但被必花域裁定压掉(ADR-0528),归因时
+                # 区分「本来就不该停」与「停付被域裁压掉」。
+                _count('must_spend_zone_defer_overridden')
             if contracts.ensure_contract(
-                    ('levelup', 'spend_unified'),
-                    contracts.ContractCtx(gold=frame.gold), counters) \
-                    and levelup.spend_unified(clicks, frame.gold, cost):
-                ok1, _ = check_affordable(frame.gold, 0,
-                                          batch_cost=clicks * cost)
-                if ok1:
-                    # auth_basis 三臂分键(可归因,与商店栈同序 arm1>arm0>pop)
-                    _arm_tag = 'arm1' if _arm1 else ('arm0' if _arm0 else 'pop')
-                    out.append(Emitted(LevelUp(), True,
-                                       f'm3_levelup_batch:{_arm_tag}'))
+                    ('levelup', 'lv9_stop'),
+                    contracts.ContractCtx(), counters) \
+                    and not levelup.lv9_stop(frame.level):
+                clicks = clicks_to_next_level(_state_view(frame, session))
+                cost = xp_click_cost(_state_view(frame, session))
+                if contracts.ensure_contract(
+                        ('levelup', 'spend_unified'),
+                        contracts.ContractCtx(gold=frame.gold), counters) \
+                        and levelup.spend_unified(clicks, frame.gold, cost):
+                    ok1, _ = check_affordable(frame.gold, 0,
+                                              batch_cost=clicks * cost)
+                    if ok1:
+                        # auth_basis 分键(可归因,与商店栈同序 arm1>arm0>pop;
+                        # 三臂全空时 = 必花域触发源,分键 must_spend)
+                        if _arms_hit:
+                            _arm_tag = 'arm1' if _arm1 else (
+                                'arm0' if _arm0 else 'pop')
+                        else:
+                            _arm_tag = 'must_spend'
+                            _count('must_spend_l3_prep_trigger')
+                        out.append(Emitted(LevelUp(), True,
+                                           f'm3_levelup_batch:{_arm_tag}'))
 
     # M1′(M3 后新人口位补部署;R6-6/R8-1:迭代至不动点——RunDeploy
     # 执行侧现读重建输入(D-C44),发射即覆盖升级增量空位的部署重评)

@@ -15,6 +15,7 @@ slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1
 """
 from __future__ import annotations
 
+import contextlib
 import time
 from typing import ClassVar
 
@@ -415,6 +416,18 @@ class PrepActionExecutor:
         if not _pick_ok:
             log.warning(f'[cw][box] 开箱槽{slot} 选卡未生效:{_pick_msg}')
             return False, f'开箱槽{slot} 但选卡未生效:{_pick_msg}'
+        # 期望态补登记(三审 C1):合并路径直调 _pick_box_card 绕过
+        # execute() 的统一登记入口(外层只登记 OpenBox = 零状态变更)→
+        # 对内层 PickBoxCard 补登记一次(last_owned_equips/动态权重
+        # 消费面),detail 复用可解析形态「选卡 <名>」;登记失败不阻塞。
+        with contextlib.suppress(Exception):
+            from sr_od.application.currency_war.kernel.cw_expected_state import (
+                apply_op_effect,
+            )
+            _sess = getattr(self._ctx.cw_match, 'session', None)
+            if _sess is not None:
+                apply_op_effect(_sess, PickBoxCard(), detail=_pick_msg,
+                                produced_by=type(self).__name__)
         return True, f'开箱槽{slot}+选卡'
 
     def _open_tome(self, action: OpenTome) -> tuple[bool, str]:

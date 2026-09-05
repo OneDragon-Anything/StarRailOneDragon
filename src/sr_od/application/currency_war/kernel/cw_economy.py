@@ -554,9 +554,9 @@ def effective_refresh_prob(state: GameState, level: int, cost: int) -> float:
     曾相反(出口③判确证零/economy 判表值非零),已按本优先级统一。
     优先级:
     - refresh_probs 不可得(None/非 dict)→ 基线表(read_refresh_probs
-      契约「读不到 → None 退基线」;「部分 dict」形态在本入口不可达——
-      上游 parse_prob_bar 契约 = 全 5 键或 None,部分键按缺键规则逐键
-      回退);
+      契约「读不到 → None 退基线」;「部分 dict」形态在上游
+      parse_prob_bar 契约(全 5 键或 None)下当前不可达,出现则按
+      部分键逐键回退,不整表弃用);
     - 结构内缺键 → 基线表(缺键禁当确证零);
     - 键在但 ≤0 → 基线表(轮岗只翻倍不归零,概率条 0 = 采样不可信,
       同款 `or` 回退;机制出处 = 注册表 `cw_invest_data.py`

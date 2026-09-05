@@ -54,6 +54,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     CompTransaction,
     GameState,
     LevelUp,
+    LevelUpShop,
     RefreshShop,
     SellBench,
     SellDeployed,
@@ -356,6 +357,21 @@ def sim_decision_registry():
 
 
 
+def _lag_excluding_fenced_holds(lag_idx: list[int], replay_occ: list[int],
+                                main_held_slots: set[int]) -> int:
+    """重放 lag 扣除主趟围栏已仲裁 hold 的槽位(ADR-0287/W678:围栏
+    hold 不计漏上,检查只盯「围栏认可却未执行」)。
+
+    :param lag_idx: 重放趟认可的可上件下标(紧缩占用序,与 replay_occ
+      同序同基);
+    :param replay_occ: 重放时点 bench 占用槽位表(压缩序 → 槽位下标映射);
+    :param main_held_slots: 主趟围栏仲裁为 hold 的槽位下标集。
+    """
+    return sum(1 for i in lag_idx
+               if i < len(replay_occ)
+               and replay_occ[i] not in main_held_slots)
+
+
 def _residual_fill_deploy(
     st: GameState,
     target_factions: frozenset[str],
@@ -400,7 +416,7 @@ def _residual_fill_deploy(
     # 仲裁同语义)——单趟会把「先上激活成对」的件错留 bench(640442 r7
     # 取证:单趟 up=2/lag=2,循环后归零)。
     while _keep:
-        _up_idx, _ = _dl.select_deployments(
+        _up_idx, _held_idx = _dl.select_deployments(
             [bc for _, bc in _keep],
             deployed_cids={d.char_id
                            for d in iter_occupied_deployed(st.deployed)
@@ -413,6 +429,10 @@ def _residual_fill_deploy(
             fw_carry=fw_carry,
             locked_factions=locked_factions,
         )
+        # 末次仲裁 hold 槽位集(W678:围栏 hold 不计漏上——lag 重放的
+        # 上下文翻转件以此为豁免集,与主趟路径同口径)。
+        _last_held_slots = {_keep[j][0] for j in _held_idx
+                            if j < len(_keep)}
         if not _up_idx:
             break
         # up_idx 是紧缩占用序(keep 表)→ 回映射槽位下标(ADR-0316 同式)
@@ -430,6 +450,7 @@ def _residual_fill_deploy(
         st.board = _board_counts_of(st.deployed)
         _keep = [(i, bc) for i, bc in _keep if st.bench[i] is not None]
     # 统一 lag:补部署后残余(围栏认可未上件)
+    _lag_slots = [i for i, bc in _occ if st.bench[i] is not None]
     _lag_keep = [bc for i, bc in _occ if st.bench[i] is not None]
     _lag = 0
     if _lag_keep:
@@ -446,7 +467,10 @@ def _residual_fill_deploy(
             fw_carry=fw_carry,
             locked_factions=locked_factions,
         )
-        _lag = len(_lag_idx)
+        # W678 豁免(与主趟路径同口径):重放认可的件若槽位属末次仲裁
+        # hold 集 ⇒ 不计 lag(上下文翻转件,非漏上)。
+        _lag = _lag_excluding_fenced_holds(
+            _lag_idx, _lag_slots, _last_held_slots)
     return _res_up, _res_held, _lag
 
 
@@ -899,6 +923,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _obs_overcap_frames = 0      # 本轮超容决策帧数
             _obs_refresh_avail = 0       # 本轮「刷新可得」决策帧数
             _obs_refreshes0 = res.refreshes   # 轮首刷新数(差分 = 本轮实刷)
+            # ===== 必花域观测三键(20 号稿 §6;审查二十九跳升格本批)=====
+            # 帧型 = 商店决策段(本引擎逐段决策点);判定单一源 =
+            # in_must_spend_zone(与生产同链,零第二套语义)。
+            # - must_spend_zone_frames:必花域动作帧数;
+            # - must_spend_zero_consume:其中零消费帧数(无花费类动作;
+            #   物理残量白名单帧归此桶,判读看归因非直接判失败);
+            # - must_spend_layer_hit:层命中计数(L1=普通买/刷新,
+            #   L2=垫件买 fuel_filler_stall,L3=升级),dict 聚合。
+            _ms_zone = 0
+            _ms_zero = 0
+            _ms_layer: dict[str, int] = {}
             # ===== 达标臂发射事件建模(sim 观测面)=====
             # 生产面:达标即出战臂(cw_loop 备战分支,14号稿 §9.6):
             # 备战双锚命中 → 线成型 form_progress(target_comp, state)
@@ -1037,6 +1072,35 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 仅作迁移期兼容,离线主路径不再依赖。
                 sess.shop_state_frame = st
                 acts = strat.decide_shop_screen(sess, config)
+                # 必花域观测三键(20 号稿 §6;判定单一源,见轮首块注释)。
+                from sr_od.application.currency_war.kernel.cw_economy import (
+                    in_must_spend_zone as _msz_pred,
+                )
+                if _msz_pred(st.gold, sess):
+                    _ms_zone += 1
+                    # 层命中按动作类 isinstance 判定(落地审阻断-1):
+                    # decide_shop_screen 出口的升级意图为 LevelUpShop
+                    # 子类实例,无 __type__ 属性,type().__name__ 落子类
+                    # 名 'LevelUpShop',字符串匹配集只含基类名 'LevelUp'
+                    # ⇒ 旧写法 L3 恒缺且该帧误入零消费。过滤器含基类
+                    # LevelUp(三十三跳:备战栈 mandate.py:454 有基类
+                    # 发射先例,防同型复发敞口;is-a 覆盖 Shop 子类)。
+                    _ms_acts = [
+                        a for a in (acts or [])
+                        if isinstance(a, (BuyCard, LevelUp, LevelUpShop,
+                                          RefreshShop))
+                    ]
+                    if not _ms_acts:
+                        _ms_zero += 1
+                    for _ms_a in _ms_acts:
+                        if (isinstance(_ms_a, BuyCard)
+                                and getattr(_ms_a, 'reason', '')
+                                    == 'fuel_filler_stall'):
+                            _ms_layer['L2'] = _ms_layer.get('L2', 0) + 1
+                        elif isinstance(_ms_a, (LevelUp, LevelUpShop)):
+                            _ms_layer['L3'] = _ms_layer.get('L3', 0) + 1
+                        else:
+                            _ms_layer['L1'] = _ms_layer.get('L1', 0) + 1
                 # 拒因遥测透传(纯观测,零行为面:sim 决策走 decision_v2
                 # 栈,不调 cw4 决策核,故由引擎在每决策段直调生产端函数
                 # ——同一输入同一映射,双栈无第二实现)。口径=段帧首静态
@@ -1112,6 +1176,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
                     _round_handoff_hp_proj = getattr(
                         sess, 'v3_handoff_hp_proj', None)
+                    # 终止豁免位镜像(三十跳:镜像缺写家族第三键)——
+                    # 写入侧单一源 = checks.segments.terminal_release_bit
+                    #(常量同源,检查器消费行键禁复算);单一址 = session
+                    # v3_terminal_release(plane 键控清零同族)。
+                    from sr_od.application.currency_war.sim.checks.segments import (
+                        terminal_release_bit as _tr_bit,
+                    )
+                    _round_terminal_release = bool(_tr_bit(sess, st))
+                    sess.v3_terminal_release = _round_terminal_release
+                    sess.v3_terminal_release_plane = getattr(st, 'plane', 1)
                 # 预算-回执契约·对账门声明(**逐段覆写=末段口径**,
                 # 与回执 last-wins/生产 per-frame 直读同语义;w943_audit5
                 # P3-4:首段口径会漏记「前段已兑现、刷新后重决策段未兑现」
@@ -1580,7 +1654,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     fw_carry=_fw,
                     locked_factions=_lf,
                 )
-                _deploy_lag_units = len(_lag_idx)
+                # 主趟围栏已仲裁 hold 的槽位不计 lag(W678 销案语义:
+                # 「围栏 hold」本身不漏上,检查只盯「围栏认可却未执行」)。
+                # 缺此豁免 = 重放 bench 上下文缩减(主趟 up 后剩余)会把
+                # 主趟按容量/成对留置的件翻转成可上 → 0 锁假阳(seed
+                # 31016 p1r6 lag=1,board 5/6 非满板 hold 形态)。
+                _lag_units = _lag_excluding_fenced_holds(
+                    _lag_idx,
+                    [i for i, b in enumerate(st.bench) if b is not None],
+                    {_occ_idx[j] for j in _held_idx if j < len(_occ_idx)})
+                _deploy_lag_units = _lag_units
             # `w614_sim_fidelity/` G2:上阵代理记账(轮末部署块后取值;纯观测零漂移)。
             # - bench_recipe_pieces:bench 上配方隶属件数(char∈target core
             #   或 faction∈target factions;目标集=部署块同源 session 现读,
@@ -2085,6 +2168,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'overcap_frames': _obs_overcap_frames,
                     'refresh_avail_frames': _obs_refresh_avail,
                     'refreshes': res.refreshes - _obs_refreshes0,
+                    # 必花域观测三键(20 号稿 §6):zone_frames = 必花域
+                    # 动作帧数;zero_consume = 其中零消费帧(白名单帧归此,
+                    # 判读看归因);layer_hit = 层命中计数(L1 普通/L2 垫件/
+                    # L3 升级,dict)。
+                    'must_spend_zone_frames': _ms_zone,
+                    'must_spend_zero_consume': _ms_zero,
+                    'must_spend_layer_hit': dict(_ms_layer),
                 },
                 # 商店波未买牌拒因串(末波 last-wins;生产端
                 # cw4/shop.shop_unbought_reasons,实机 DecisionTrace.

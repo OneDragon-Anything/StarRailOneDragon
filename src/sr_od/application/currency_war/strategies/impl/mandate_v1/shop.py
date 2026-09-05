@@ -1006,6 +1006,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
                             continue
                         return BuyCard(card=card, reason='ev_buy')
                     if _deferred:
+                        # 触发源分键(§3.5 归因纪律):域内 (iii) 类 veto
+                        # 降排序后的末位消费,可归因。
+                        _count('must_spend_ev_deferred')
                         return BuyCard(card=_deferred[0], reason='ev_buy')
                     _count('shop_ev_all_vetoed')   # D-P2idle:「全拒」可辨
             else:
@@ -1056,6 +1059,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 # 可负担性(r2_budget)留资格硬闸;合格集空守卫
                 # (no_chaseable_member,(ii) 类 fail-closed)不在此列照旧。
                 ok_r1 = True
+                _count('must_spend_r1_account_yielded')   # 零静默纪律
         else:
             ok_r1, rkey = (False, 'contract_abstain')
             r2_reserve = g_star

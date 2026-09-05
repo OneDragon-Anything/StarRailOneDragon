@@ -430,6 +430,22 @@ _P1_EMERGENCY_HP: int = 25
 _ALLIN_MIN_ROUND: dict[int, int] = {1: 9, 2: 7}
 
 
+def terminal_release_bit(sess, st) -> bool:
+    """血预算停手·末窗终止豁免位写入侧(ADR-0469;单一址 = session
+    v3_terminal_release,账本行键 terminal_release 的源)。
+
+    辖域 = P1 末窗(rn ≥ 末窗起点)∧ 血预算不足带(应急带 < hp <
+    退血线,开区间);boss ALL-IN 窗豁免归检查器轮键,本位不辖。
+    本函数 = 上述常量的唯一同源写入点——检查器消费行键禁复算 S0。
+    """
+    if (getattr(st, 'plane', None) or 1) != 1:
+        return False
+    if int(getattr(st, 'round_num', None) or 0) < _P1_HANDOFF_GATE_MIN_ROUND:
+        return False
+    hp = int(getattr(st, 'hp', None) or 0)
+    return _P1_EMERGENCY_HP < hp < _P1_EXIT_BLOOD_TARGET
+
+
 
 def _blood_budget_levelup_events(rows: list[dict], plane: int,
                                  stop_hp: int) -> list[dict]:
@@ -655,6 +671,38 @@ def seg_check_p2_bleed_gold_stack(rows: list[dict]) -> list[dict]:
     return out
 
 
+def seg_check_must_spend_observation(rows: list[dict]) -> list[dict]:
+    """必花域观测三键聚合(20 号稿 §6;行内键 = engine_p1 ledger obs)。
+
+    非违规检查(恒出摘要事件,给 sim 批报告收账用):合计
+    zone_frames/zero_consume + 零消费帧定位 + 层命中分布。零消费帧
+    判读看归因(物理残量白名单帧带分键,非直接判失败)。
+    """
+    zone = zero = 0
+    layer: dict[str, int] = {}
+    zero_rounds: list = []
+    for row in rows:
+        obs = row.get('obs') or {}
+        z = obs.get('must_spend_zone_frames')
+        if z is None:
+            continue   # 无键行(旧账本/生产合并行)跳过,不造零
+        zone += z
+        zc = obs.get('must_spend_zero_consume') or 0
+        zero += zc
+        if zc:
+            zero_rounds.append(row.get('round_num'))
+        for k, v in (obs.get('must_spend_layer_hit') or {}).items():
+            layer[k] = layer.get(k, 0) + int(v or 0)
+    if not zone:
+        return []
+    return [{'plane': rows[0].get('plane') or 1, 'round_num': None,
+             'detail': (f'必花域动作帧 {zone}、零消费 {zero}'
+                        f'(帧号 {zero_rounds[:20]})、层命中 {layer}'),
+             'zone_frames': zone, 'zero_consume': zero,
+             'zero_consume_rounds': zero_rounds[:20],
+             'layer_hit': layer}]
+
+
 #: 段级检查表(名字 → fn(rows)->list[event_dict];与 _BATCH_CHECKS
 #: 平行,输出粒度不同——事件带定位,见本节头注释)。
 _SEGMENT_CHECKS = {
@@ -668,6 +716,7 @@ _SEGMENT_CHECKS = {
     'seg_p1_blood_budget_refresh': seg_check_p1_blood_budget_refresh,
     'seg_untrusted_hp_levelup': seg_check_untrusted_hp_levelup,
     'seg_p2_bleed_gold_stack': seg_check_p2_bleed_gold_stack,
+    'seg_must_spend_observation': seg_check_must_spend_observation,
 }
 
 
