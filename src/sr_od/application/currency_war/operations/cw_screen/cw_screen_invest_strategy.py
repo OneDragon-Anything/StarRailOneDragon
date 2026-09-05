@@ -117,7 +117,13 @@ class CwScreenInvestStrategy(SrOperation):
     @operation_node(name='投资策略', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         if not self._ensure_entry_screen():
-            return self.round_fail('非投资策略屏')
+            # 超窗走 round_retry 而非 round_fail(二次治本,2026-09-06
+            # 04:16:38 实证复探窗 3.2s 仍不够覆盖个别过渡段):retry 消耗
+            # node_max_retry_times 预算有界自愈,且不产生 ERROR 行——
+            # round_fail 会炸出整 op 并触发哨兵报警退出(20-22 局实证
+            # 每次 fail 一次哨兵退出)。ADR-0529 原「拒 fail→retry」的
+            # 前提(外层重试等价)被实证推翻,重审结论见 ADR 修订。
+            return self.round_retry('投资策略屏未稳定,复探超窗重试')
         screen = self.last_screenshot
 
         # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md

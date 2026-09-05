@@ -41,6 +41,18 @@ RETRY 分支),单帧采样翻车直接炸出整个 op。编排者现场截图
 - 拒:入口前固定 sleep 拉长——常态局每次多付固定延迟,治标。
 - 拒:放宽锚 lcs/阈值——禁令,且治标(淡入期文本残缺非阈值问题)。
 
+## 修订(2026-09-06,二次治本:超窗改 round_retry)
+
+- **实证推翻原「拒 retry」的前提**:复探窗(3.2s)上线后第二十二局
+  04:16:38 同型 ERROR 仍复发——个别过渡段长于窗口;且原选项分析中
+  「哨兵仍触发」恰是 fail 路径的真实代价(round_fail 不吃重试预算、
+  直接炸出整 op 产生 ERROR 行,20-22 局实证每次 fail 一次哨兵退出)。
+- **修订裁定**:超窗后改 `round_retry`(消耗 node_max_retry_times=10
+  预算,有界自愈;retry 不产生 ERROR 行,哨兵不再被触发)。复探窗
+  (快速路径,常态零成本)与 retry(慢速兜底,有界)双层保留。
+- 锁⑥(test_cw_invest_strategy_entry_tolerate.py)锁该语义:超窗 →
+  retry 状态而非 fail。
+
 ## 锁
 
 `sr-od-test/test/sr_od/app/currency_war/test_cw_invest_strategy_entry_tolerate.py`
