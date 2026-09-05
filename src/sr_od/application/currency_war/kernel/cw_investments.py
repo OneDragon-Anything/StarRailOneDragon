@@ -795,6 +795,11 @@ def get_strategy(name: str) -> InvestmentStrategy | None:
 # 评估口径:value_class 七分类 + quantizable 三档 + pick_priority 0-100(读 effect 原文逐条判定;
 # 无上下文基准分,comp 匹配/HP 分档在 decide_event 消费侧调)。注册表 = plaza base 335,
 # 键经 canon 归一对齐(ADR-0150)。
+# **知识判据定序器声明(ADR-0524,16 号稿 §1.1)**:本表分值来自玩法研究/comp 知识
+# (ADR-0143 评估口径),非数学判据——形态 = 定序分:仅在本表(335 条策略)内选项间
+# 排大小有效;禁作为基数与其它分值族(comp-hit/augment/planner 等)做加减语义扩展。
+# 跨族交互仅保留 decide_event 的 max() 覆盖结构,禁新增「叠加进其它面判据」的消费点。
+# 立项挂账:升级为台账价值判据(ΔP̂ 完成概率增量参数化)归事件面命题批(08 E1/E2)。
 PICK_VALUE: dict[str, int] = {
     "鲜血阶梯": 75,
     "打通上下游·彩": 72,
@@ -1145,6 +1150,10 @@ def pick_value_of(name: str) -> int | None:
 # 环境与策略结构倒挂(评估实证):synergy 主导 47/83(阵营定向),economy 16;无品质分级(全 '-')。
 # 量化断层:yes-direct 仅 1 条(蓝海)—— 环境效果全是整局规则(费率覆写/分期/重复触发),EconomyEffect
 # 现有字段结构性装不下(EnvEconomyEffect 扩字段待后续);接线防一次性错装点名 6 条见 TSV notes。
+# **知识判据定序器声明(ADR-0524,16 号稿 §1.2)**:同 PICK_VALUE——分值仅在本表
+# (83 条环境)内选项间定序有效,禁作为基数与其它分值族加减;跨族仅 max() 覆盖。
+# 经济效果建模缺口(EnvEconomyEffect 扩字段)是升级为台账价值判据的真实卡点,
+# 随立项挂账归事件面命题批(08 E1/E2)。
 ENV_PICK_VALUE: dict[str, int] = {
     "追击概念股": 52,
     "击破概念股": 50,
@@ -1236,8 +1245,10 @@ if _ENV_PICK_ORPHANS:
 for _n, _v in ENV_PICK_VALUE.items():
     INVESTMENT_ENVS[_n] = replace(INVESTMENT_ENVS[_n], pick_value=_v)
 
-# 阵营定向类 comp 匹配条件分下限(评估表条件白名单:概念股→78 / 邀请→70 / 契约 66-78 取 72;
-# faction ∩ target_comp.factions 时 score 提到下限,未匹配吃裸基准分)
+# 阵营定向类 comp 匹配定序门(ADR-0524 定形,16 号稿 §1.3):三档值 = category 间
+# 定序档位(邀请 70 < 契约 72 < 概念股 78,评估实证序),非条件白名单的基数下限。
+# 承重语义 = 「faction ∩ target_comp.factions ⇒ 提到本 category 档位,压过全体 env
+# 裸分(上界 72)」;禁读作基数参与跨族加减。
 ENV_FACTION_MATCH_FLOOR: dict[str, float] = {'概念股': 78.0, '邀请': 70.0, '契约': 72.0}
 # (旧 ENV_SURVIVAL_BONUS = {白银时代 15, 敌后破坏 15, 人身意外险 10} 已退役
 # 2026-09-04,ADR-0519「未证即退役」:低血环境钩子保守缺省 0,消费分支同批删除。)

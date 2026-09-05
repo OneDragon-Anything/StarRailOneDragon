@@ -77,12 +77,23 @@ def decide_event(options: list[str], config, state: GameState,
     """事件选项打分(投资策略/环境 3 选 1)。
 
     分值来源优先级表(每项只在**高于当前分**时覆盖;ADR-0143/0144/0144b 语义;
-    ADR-0519 后事件面经验加减分族全退役,剩纯注册表评估体系):
-    1. comp 命中(45×N+20,双命中 110):选项绑定∩target_comp(策略侧;成型加速压倒一切)
-    2. 策略评估分 pick_value(12-75,ADR-0143;替裸品质先验,「分数为纲」)
-       / 品质先验回落(50/30/10+economy20,仅未评估卡)
-    3. eval-lcs(策略 OCR 形变裸分;**env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)
-    4. env 分支(_st is None 且 env 命中):env 裸分(28-72)/ 阵营 floor(概念股 78/邀请 70/契约 72)
+    ADR-0519 后事件面经验加减分族全退役;ADR-0524 定序改形:各分值族只承载
+    同族定序语义,跨族仅保留 max() 覆盖结构,禁新增加减叠加消费点):
+    1. 用户 forbid(−10000):唯一压过一切的家,有替代永不选
+    2. augment 定义型(120,支配性优先序):黑塔纪元/飞光类拿到即改写本局玩法 →
+       优先于一切常规评估项(comp-hit 双命中 110 / 升费 100 / steering +30 之上);
+       120 是该优先序的定序实现常数(ADR-0152 机制级声明),非基数
+    3. comp 命中(45×N+20,单 65/双 110):选项绑定∩target_comp;承重语义 =
+       「N 大者优先,comp 命中域(N≥1)压过纯基准分域」的定序规则(16 号稿 §1.5,
+       docs/develop/currency_war/strategy-docs/16_evaluation_tables_reassessment.md);
+       45/20 是 N 单调序数的定序实现常数,非基数
+    4. 策略评估分 pick_value(12-75,ADR-0143 知识判据定序器)/ env 裸分(28-72,
+       ADR-0144)+ env 阵营 floor(三档值=category 定序档位:邀请 70<契约 72<概念股 78,
+       匹配⇒提到本 category 档位,禁读基数,ADR-0524)
+    5. eval-lcs(策略 OCR 形变裸分;**env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)
+    6. 品质回落(纯字典序,零拍值,ADR-0524):仅未评估卡可达(OCR LCS 仍 miss/版本新增);
+       主键=品质序(棱彩>金>银,游戏定义),次键=economy 效果有无;回落域整体
+       压低于评估分域(评估分有知识判据依据,回落只是「未评估时别全盲」)
     叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源,ADR-0203)/
     用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
     未注册非 env = 0 分。(原 config event_whitelist 已删 ADR-0204;品质难度
@@ -94,7 +105,11 @@ def decide_event(options: list[str], config, state: GameState,
     env_forbid = list(getattr(config, 'env_forbid', []) or [])
     on_dot = sum(state.board.get(f, 0) for f in ('持续伤害', '减益')) >= 2
     penalty = 100
-    _rarity_prior: dict[str, float] = {'棱彩': 50.0, '金': 30.0, '银': 10.0}
+    # 品质回落字典序的序数编码(ADR-0524):品质序=游戏定义(棱彩>金>银),
+    # 主键 rank(0/1/2)+ 次键 econ(0/1);×2 保证次键永不翻转主键——
+    # 两个常数都是纯位置编码,不是拍定的语义幅度(旧 50/30/10/+20 已删,
+    # 序到分的映射无推导,ADR-0519 C9/C12 同判)。
+    _rarity_lex_rank: dict[str, int] = {'银': 0, '金': 1, '棱彩': 2}
     _tgt_factions: set[str] = set(target_comp.factions) if target_comp is not None else set()
     _tgt_chars: set[str] = set(target_comp.core_chars) if target_comp is not None else set()
 
@@ -109,7 +124,9 @@ def decide_event(options: list[str], config, state: GameState,
         # ↑ ADR-0144b 跨表污染守卫:83 env 名中 29 个会 LCS 误中策略名(全量扫描实测:列车同行概念股→
         # 列车同行星徽28/增发货币→超发货币55 等)——env 名走 env 分支评分,不进策略 LCS 兜底。
         # ADR-0152(评审🔴3a)augment 定义型 comp:黑塔纪元/飞光等拿到即改写本局玩法(216 张黑塔
-        # 入商店/师徒变身)—— 评分压过一切常规项(仅低于用户白名单;M1 资源入口:拿到 = 换打法)。
+        # 入商店/师徒变身)—— 支配性优先序(ADR-0524 定形,16 号稿 §1.4):定义型命中优先于
+        # 一切常规评估项(comp-hit 110/升费 100/steering +30 之上),仅低于用户 forbid;120 是
+        # 该零参数结构规则的定序实现常数,禁读作基数。(M1 资源入口:拿到 = 换打法)
         if augment_affinity(opt):
             score = max(score, 120.0)
             reason = 'augment-defining'
@@ -118,16 +135,19 @@ def decide_event(options: list[str], config, state: GameState,
             _fs, _cs = strategy_bindings(_st)
             _comp_hit = len((_fs & _tgt_factions) | (_cs & _tgt_chars))
             if _comp_hit:
+                # 45×N+20 = 定序实现常数:N 的单调序数承载优先序(16 号稿 §1.5);
+                # N≥1 域(≥65)压过纯基准分域(品质回落 0-5/未注册 0),N=2(110)
+                # 再压过单命中与评估分上界 75。立项挂账:台账价值候选锚 =
+                # ΔP̂ 完成概率增量参数化(08 E1/E2,owner=事件面命题批,ADR-0524)。
                 score = max(score, 45.0 * _comp_hit + 20.0)
                 reason = f'comp-hit×{_comp_hit}'
-            # ADR-0143:评估基准分替裸品质先验 —— 同品质内有先后(鲜血阶梯75 vs 数值碾压35)。
-            # 评估分已含经济价值 → economy +20 只在回落路径加(防双计)。
+            # ADR-0143 评估分(知识判据定序器)优先;未评估卡 → 品质回落字典序
+            # (ADR-0524,纯字典序零拍值:主键品质序+次键经济有无)。
             if _pv is not None:
                 _prior = float(_pv)
             else:
-                _prior = _rarity_prior.get(_st.rarity, 0.0)
-                if _st.economy is not None and _st.economy != EconomyEffect():
-                    _prior += 20.0
+                _econ = 1 if (_st.economy is not None and _st.economy != EconomyEffect()) else 0
+                _prior = float(_rarity_lex_rank.get(_st.rarity, 0) * 2 + _econ)
             if _prior > score:
                 score, reason = _prior, ('eval' if _pv is not None else f'prior-{_st.rarity}')
         elif _pv is not None and float(_pv) > score:
@@ -141,6 +161,10 @@ def decide_event(options: list[str], config, state: GameState,
             if _env.pick_value > 0 and float(_env.pick_value) > score:
                 score, reason = float(_env.pick_value), 'env-eval'
             if _env.faction and _env.faction in _tgt_factions:
+                # 阵营匹配定序门(ADR-0524 定形,16 号稿 §1.3):三档值 = category 间
+                # 定序档位(邀请 70 < 契约 72 < 概念股 78,评估实证序),承重语义 =
+                # 「匹配 ⇒ 提到本 category 档位、压过全体 env 裸分(上界 72)」,
+                # 禁读作基数。default 70.0 = 兜底档(未知 category)。
                 _floor = ENV_FACTION_MATCH_FLOOR.get(_env.category, 70.0)
                 if _floor > score:
                     score, reason = _floor, f'env-faction:{_env.faction}'
@@ -439,14 +463,20 @@ def decide_planner(options: list[PlannerOption], state: GameState,
     """银狼「我来当策划」二选一策略。
 
     用户定调:**必接策略模块由它定**(handler 不写死默认),虽结论
-    几乎总是升费——打分走通用原则,让「何时升费不是最优」可被策略表达:
+    几乎总是升费——打分走通用原则,让「何时升费不是最优」可被策略表达。
+    ADR-0524 定形(16 号稿 §1.7):三层定序结构 = 升费档 > 弱化档 > 装备档,
+    各层方向均有出处(升费优先 = 用户定调 + 银狼策划机制原文;弱化次之 =
+    全场即时战力;装备域内 key_equip 命中优先 = comp 知识);下列数值全部
+    是档位实现常数,只承载层间/层内定序,非基准基数:
 
-    - **升费卡**(「提升费用」):银狼成长滚动投资前提(升费→新费档刷商店→3星5费
-      滚强度)。基础 100;target 银狼线(狼尊欢愉/量子系)再 +30;**例外降权**:
-      target 不含银狼线且银狼确定不在场(board 有信息但无银狼)→ -60(投资无处兑现)。
-    - **弱化类**(「弱化」/「降低敌人」):全场即时战力,基础 55(原低血
-      +20 钩子已随 ADR-0519 C15 退役)。
-    - **装备类**(其余):_equip_value 回落(装备注册表);target key_equip 命中 +15。
+    - **升费档**(「提升费用」):银狼成长滚动投资前提(升费→新费档刷商店→3星5费
+      滚强度)。档内修饰:target 含银狼线(狼尊欢愉/量子系)⇒ **升档**(100+30,
+      升费兑现更高);银狼确定不在场(board 有信息但无银狼)⇒ **降档**(100−60,
+      落到弱化档之下=投资无处兑现);信息缺失不降权(在场判定保守)。
+    - **弱化档**(「弱化」/「降低敌人」):全场即时战力(55;原低血 +20 钩子
+      已随 ADR-0519 C15 退役,hp 可标不可定价)。
+    - **装备档**(其余):_equip_value 回落(装备注册表);target key_equip 命中
+      ⇒ **装备域内命中优先键**(+15,只在装备档内排前,不跨域压弱化档)。
     - 未识别文字:0 分(idx 顺序兜底)。
     """
     _tgt_chars = set(target_comp.core_chars) if target_comp is not None else set()
