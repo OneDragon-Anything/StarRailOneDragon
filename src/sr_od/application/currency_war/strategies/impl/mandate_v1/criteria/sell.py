@@ -71,6 +71,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
                       *,
                       prefer_names: tuple[str, ...] = (),
                       counters: dict | None = None,
+                      exclude_names: frozenset[str] | set[str] = frozenset(),
                       ) -> tuple[list[int], str]:
     """凑息卖·回拉发射位(T1 语义重写;设计 13_buy_face_design §2.2)。
 
@@ -117,6 +118,8 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
             continue
         if not predicates.zero_overlap(name, k_members):
             continue
+        if name in exclude_names:
+            continue   # P60:买面义务集成员禁入卖出资格集(防义务换手)
         if predicates.bench_effect_qualified(
                 name, predicates.bench_effect_context(state, b, k_members)):
             continue
@@ -148,6 +151,8 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
 def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          k_members: tuple[str, ...],
                          state: GameState | None = None,
+                         *,
+                         exclude_names: frozenset[str] | set[str] = frozenset(),
                          ) -> tuple[list[int], str]:
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
@@ -156,6 +161,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三
     通道统一;卖回量最小化 [11]);跨帧语义 = 变现金作用于下一备战期
     义务动作(延迟=1 备战期间隔,进遥测 reason)。无对象 ⇒ 空。
+    ``exclude_names`` = 买面义务集成员禁入(P60,与凑息卖/M4 燃料同款)。
     """
     if gold >= need_gold:
         return [], 'not_needed'
@@ -167,6 +173,8 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
             continue
         if not predicates.zero_overlap(name, k_members):
             continue
+        if name in exclude_names:
+            continue   # P60:买面义务集成员禁入卖出资格集
         if predicates.bench_effect_qualified(
                 name, predicates.bench_effect_context(state, b, k_members)):
             continue

@@ -254,6 +254,26 @@ def fenced_swap_arm_of(fp: float, deployed_n: int,
     return fp >= 1.0 and deployed_n >= front_n + back_n
 
 
+def protect_names_of(comp) -> frozenset[str]:
+    """换阵卖出义务臂的保护域(新线禁卖集)= core∪shared∪替班者全集。
+
+    替班者腿依据 = ``Comp.substitute_plan`` 字段契约原文「替班=『不卖、
+    转副C沉淀』」(cw_comps)——卖替班者本就违替班语义。仅 core∪shared
+    时存在保护域缺口:替班者凭 substitute_plan 直入买面义务集
+    (``locked_buy_membership`` → ``_line_hoard``),不经任何羁绊检查,
+    可对 comp 整体 off-line 且 fenced(P59 注册表反例:黄泉减益×卡芙卡,
+    bonds={持续伤害,星核猎手} ∩ all_factions=∅)→ 义务臂判可卖,同一
+    身份 M2 义务买 ↔ 换阵臂卖 = 买↔卖振荡。新增替班者自动入保护域。
+    """
+    names = set(getattr(comp, 'core_chars', []) or []) \
+        | set(getattr(comp, 'shared_chars', []) or [])
+    for sub in getattr(comp, 'substitute_plan', None) or []:
+        name = sub.get('替班者') if isinstance(sub, dict) else None
+        if name:
+            names.add(name)
+    return frozenset(names)
+
+
 def _note_deployed_count_divergence(ctx: SrContext, screen: MatLike, source: str,
                                     paddle_n: int | None, cv_n: int) -> None:
     """deployed 计数双源分歧/失读退化留证 + 分键(板满门仲裁触发时;best-effort 不抛)。
@@ -460,9 +480,7 @@ class CwOpDeploy(SrOperation):
                         _board, _match.session.tracked_deployed)
                     _fenced_arm = fenced_swap_arm_of(_fp_now, _deployed_n,
                                                      len(front), len(back))
-                    _protect = frozenset(
-                        set(_tgt_comp.core_chars)
-                        | set(getattr(_tgt_comp, 'shared_chars', []) or ()))
+                    _protect = protect_names_of(_tgt_comp)
                 _arm_prev = getattr(_match.session, 'cw4_swap_arm_on', None)
                 if _arm_prev is not None and _arm_prev != _fenced_arm:
                     log.info('[cw-deploy] 换阵卖出义务臂状态变化: %s → %s'

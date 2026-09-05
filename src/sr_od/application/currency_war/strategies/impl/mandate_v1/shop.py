@@ -66,6 +66,7 @@ import contextlib
 import math
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes_for_card,
@@ -78,6 +79,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
+    DEPLOYED_CAPACITY,
     REFRESH_COST_BASE,
     BuyCard,
     CloseShop,
@@ -447,6 +449,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 未锁帧两集相等(locked_buy_membership 返回 None),P1 无锁态零变化。
     _buy_members = cw_intention.locked_buy_membership(_ist)
     buy_members = tuple(sorted(_buy_members)) if _buy_members else k_members
+    # P60 容量超限告警门(帧级计数):|buy_members| > bench+板容量上界
+    # = 义务集出口(missing=∅)结构性不可达的形态——诚实停摆可判读的
+    # 前提是该形态可见。
+    if _buy_members and len(_buy_members) > BENCH_CAPACITY + DEPLOYED_CAPACITY:
+        _count('shop_hoard_over_capacity')
+        log.warning('[cw!][shop] 锁定采购集 |B|=%d > 容量上界 %d:缺员出口'
+                    '结构性不可达,换手循环诚实停摆形态(证据=换手对/'
+                    'm2_retry_exhausted 计数)', len(_buy_members),
+                    BENCH_CAPACITY + DEPLOYED_CAPACITY)
     bench = [b for b in (state.bench or []) if b is not None]
     deployed = [d for d in (state.deployed or []) if d is not None]
     bench_names = [b.char_id or '' for b in bench]
@@ -468,7 +479,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 决策帧自然离开集合——旧「帧内即时扣减」专修无存在载体)。
     liquid_refund = sum(sell_refund(1, bench_char_cost(b))
                         for b in mandate.fuel_sell_candidates(
-                            bench, k_members, state=state))
+                            bench, k_members, state=state,
+                            exclude_names=buy_members))
     s_reserve = g_star - liquid_refund
     _reg = registry
     if _reg is None:
@@ -493,26 +505,52 @@ def decide_shop_action(state: GameState, session: StrategySession,
 
     # ---- ③ 选择序逐帧取首项 ----
 
-    def _on_target_buy() -> None:
+    def _on_target_buy(bought_name: str = '') -> None:
         """D-A45 商店侧半边:买入目标件 ⇒ 干旱计数器重置 + 事件计数。
 
         计数粒度 = 每 visit 至多一笔(旧口径为每波;visit 含刷新段时
         行为等效但计数粒度不等效—— drought 已 0 帧跳过计数,跨结构
         对拍须声明口径差异)。
+
+        ``bought_name`` 传入时查近期卖出记认(``cw4_recent_sold_names``,
+        本 visit 内卖出件名集):买回近期卖出成员 = 义务换手买入,drought
+        重置按来源分键(P60 伪装进展观测面)——换手买动作不得与真实
+        缺员买入共用同一「进展」信号。
         """
+        churn = bool(bought_name) and bought_name in getattr(
+            session, 'cw4_recent_sold_names', ())
+        if churn:
+            _count('shop_churn_pair_buy')   # 换手对:与 drought 状态无关恒计
         ls = getattr(session, 'cw4_line_state', None)
         if ls is not None and getattr(ls, 'drought', 0):
             ls.drought = 0
-            _count('shop_drought_reset_on_buy')
+            _count('shop_drought_reset_on_churn_buy' if churn
+                   else 'shop_drought_reset_on_buy')
 
-    # M4 腾席(买入遇 bench 满:现场卖 1 燃料件,R8-8 单帧闭环)
+    def _note_sell(name: str) -> None:
+        """卖出记认(P60 换手对观测面):本 visit 卖出件名入近期卖出集,
+        后续买入命中 = 义务换手对。定长截断防长 visit 无界增长。"""
+        if not name:
+            return
+        recent = getattr(session, 'cw4_recent_sold_names', None)
+        if recent is None:
+            recent = []
+            session.cw4_recent_sold_names = recent
+        recent.append(name)
+        del recent[:-16]
+
+    # M4 腾席(买入遇 bench 满:现场卖 1 燃料件,R8-8 单帧闭环)。
+    # P60:燃料集排除 buy_members(exclude_names)——义务换手通道闭死,
+    # |B|>容量时走 m2_retry_exhausted 诚实停摆而非永恒卖 1 买 1。
     if missing and bench_free <= 0:
-        cands = mandate.fuel_sell_candidates(bench, k_members, state=state)
+        cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
+                                             exclude_names=buy_members)
         if cands:
             victim = cands[0]
             ok4, _ = mandate.check_irreversible(victim.char_id or '', k_members)
             if ok4:
                 idx = (state.bench or []).index(victim)
+                _note_sell(victim.char_id or '')
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(victim),
                                  expect=victim.char_id or '')
@@ -534,7 +572,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         ok1, _ = mandate.check_affordable(gold, cost)
         if not ok1:
             continue
-        _on_target_buy()
+        _on_target_buy(card.name or m)
         return BuyCard(card=card, reason='m2_line_member')
 
     # M2b 升星合并完成买入(实机复盘 g_20260904_054904 p2r1 候选②):
@@ -556,7 +594,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         ok1, _ = mandate.check_affordable(gold, cost)
         if not ok1:
             continue
-        _on_target_buy()
+        _on_target_buy(card.name or m)
         return BuyCard(card=card, reason='m2_merge_completion')
 
     # dominance_buy(P24 零参数,两臂同开;金口径 = 期望态现值——单动作下
@@ -755,6 +793,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 gold, bench, cap_resolved, k_members, state=state,
                 prefer_names=tuple(getattr(
                     session, 'cw4_visit_bought_names', ()) or ()),
+                exclude_names=buy_members,
                 counters=counters)
         else:
             _slots, skey = [], 'contract_abstain'
@@ -764,6 +803,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 idx = (state.bench or []).index(bc) if bc is not None else None
                 if idx is None:
                     continue
+                _note_sell((bc.char_id or '') if bc else '')
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(bc) if bc else None,
                                  expect=(bc.char_id or '') if bc else '')
@@ -784,7 +824,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     (c.cost if c.cost else 3) for c in shop_cands))
                 break
         fslots, _fkey = crit_sell.funding_support_sell(
-            gold, need, bench, k_members, state=state) \
+            gold, need, bench, k_members, state=state,
+            exclude_names=buy_members) \
             if contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
                 contracts.ContractCtx(gold=gold), counters) else ([], '')
@@ -793,6 +834,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             idx = (state.bench or []).index(bc) if bc is not None else None
             if idx is None:
                 continue
+            _note_sell((bc.char_id or '') if bc else '')
             return SellBench(
                 bench_idx=idx,
                 income=_shop_sell_refund(bc) if bc else None,

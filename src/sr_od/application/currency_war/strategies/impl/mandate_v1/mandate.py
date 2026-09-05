@@ -166,10 +166,20 @@ def check_irreversible(name: str, k_members: tuple[str, ...]) -> tuple[bool, str
 def fuel_sell_candidates(bench: list[BenchChar],
                          k_members: tuple[str, ...],
                          state: GameState | None = None,
+                         *,
+                         exclude_names: frozenset[str] | set[str] = frozenset(),
                          ) -> list[BenchChar]:
     """fuel_sell 对象集:1★ ∧ 与锁线零重叠 ∧ 边际贡献≈0
     (R17-2 扩维口径:板面作战边际+bench 后台效果维边际合计构造性 0
     ——1★ 无后台效果件 ⇒ bench 维边际构造性 0,精确 0 界)。
+
+    ``exclude_names``(P60 治本):买面义务集成员禁入燃料集,消费端注入
+    ``locked_buy_membership`` 产物(与 EV 排除集同款)。排除后
+    Fuel ∩ B = ∅ ⟹ 换手循环势函数 Φ=|owned∩B| 单调不减、循环
+    ≤|B∖k| 次收敛;|B|>容量时诚实停摆(m2_retry_exhausted 计数,金
+    累积可判读)优于不可见换手。锁线帧 buy_members ⊋ k_members,不
+    注入时 bench 上的 hoard 非核心件是合法燃料 → M4 卖 1 买 1 永恒
+    换手(伪装进展:net≈0 + drought 被买动作重置)。
 
     bench_effect_qualified 件(挂后台效果资格,例外①②显式枚举)不入
     燃料集——语境经 ``predicates.bench_effect_context(state, unit,
@@ -180,6 +190,8 @@ def fuel_sell_candidates(bench: list[BenchChar],
     out = []
     for b in bench:
         name = b.char_id or ''
+        if name in exclude_names:
+            continue
         if b.star != 1:
             continue
         if not predicates.zero_overlap(name, k_members):
