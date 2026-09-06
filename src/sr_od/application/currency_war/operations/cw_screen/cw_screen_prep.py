@@ -2047,13 +2047,6 @@ class CwScreenPrep(SrOperation):
                 for s in slots)
             log.info(f'[cw-director][nodeseq] n={len(slots)} | {summary}')
             self._capture_unrecognized_node_icons(screen, slots, NODE_ROW_RECT, HU_DIST_UNRECOGNIZED)
-            # [激活位·圣杯采集批 B2] 被动哈希采集接线行([临时采集],采集清单采齐后连本注释整段删):
-            # 激活 = 下面两行取消注释(diff 一次一行);钩子本体在 grail_collect_hooks.grail_passive_collect
-            # (每备战观察帧整帧哈希去重+节流收圣杯任务瞬时帧,零决策影响)。
-            from sr_od.application.currency_war.operations.grail_collect_hooks import (
-                grail_passive_collect,
-            )
-            grail_passive_collect(screen)
             # current 槽类型写 session(cw_loop on_round_end 消费——
             # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)。
             # current 高亮态 Hu 不匹配(模板只对

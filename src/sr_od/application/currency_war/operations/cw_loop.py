@@ -1410,14 +1410,6 @@ class CwLoop(SrOperation):
         #     点卡身选中(金色边框)→ 确认选择 → 关回备战。
         if self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼', crop_first=False).is_success:
             save_decision_frame(self, 'overlay_wish_trial', screen)   # 决策帧留证
-            # 钉屏停机钩子接线行([临时捕获],采集清单建档确认后连本注释整段删):
-            # 当前为激活态(钩子本体 = grail_collect_hooks.grail_pin_stop_hook)。
-            from sr_od.application.currency_war.operations.grail_collect_hooks import (
-                grail_pin_stop_hook,
-            )
-            _hook_r = grail_pin_stop_hook(self)
-            if _hook_r is not None:
-                return _hook_r
             _rw = CwScreenWishTrial(self.ctx).execute()
             if _rw is not None and getattr(_rw, 'success', False):
                 self._clear_bail_count('事件overlay:wish_trial')
