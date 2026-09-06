@@ -159,7 +159,7 @@ class CwFlowStrategy(CwStrategy):
         # DP 姿态轮缓存载体:初始化(每轮 decide_shop_screen 重算)
         session.v3_phase = 'FORM'
         # form_ok:每轮初值;写端 = write_shop_mirrors 接 readiness_form_ok
-        # 板面现读(sim71 批死镜像处置——v2 相位机旧写端已退役)
+        # 板面现读(死镜像处置后现读——v2 相位机旧写端已退役)
         session.v3_form_ok = False
         session.v3_b_t = 0   # 板面目标线承重计数(write_shop_mirrors 每轮重算)
         session.v3_dp_posture = None
@@ -307,7 +307,7 @@ class CwFlowStrategy(CwStrategy):
 
         边界:本方法写 ``v3_b_t`` 与 ``v3_form_ok`` 两个观测键——旧
         ``v3_form_score`` 随本口径替换退役(历史账本只读,不再有写者)。
-        ``v3_form_ok`` 写端已从退役 v2 相位机接回板面现读(sim71 批
+        ``v3_form_ok`` 写端已从退役 v2 相位机接回板面现读(死镜像处置批
         form_ok 死镜像处置:旧写端在 mandate_v1 下无写者恒 False,与
         发射判据核 armed 现读对账必然全量不一致——判读单一源 =
         第三十四局前后判读定谳);判据单一源 =
