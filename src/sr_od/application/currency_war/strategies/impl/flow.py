@@ -310,7 +310,7 @@ class CwFlowStrategy(CwStrategy):
         ``v3_form_ok`` 写端已从退役 v2 相位机接回板面现读(sim71 批
         form_ok 死镜像处置:旧写端在 mandate_v1 下无写者恒 False,与
         发射判据核 armed 现读对账必然全量不一致——判读单一源 =
-        sim71 批判读定谳(编排者判读记录));判据单一源 =
+        第三十四局前后判读定谳);判据单一源 =
         ``cw_launch_admission.readiness_form_ok``(与发射 armed 同式,
         零第二实现)。``v3_phase`` 维持无写端退役缺省 ''(相位机已亡,
         无现读语义可接)。``v3_mirror_key`` 轮键戳照常盖章(键语义 =
