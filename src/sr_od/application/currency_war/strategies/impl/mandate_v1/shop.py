@@ -527,7 +527,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     liquid_refund = sum(sell_refund(1, bench_char_cost(b))
                         for b in mandate.fuel_sell_candidates(
                             bench, k_members, state=state,
-                            exclude_names=buy_members))
+                            exclude_names=buy_members, counters=counters))
     s_reserve = g_star - liquid_refund
     _reg = registry
     if _reg is None:
@@ -591,7 +591,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # |B|>容量时走 m2_retry_exhausted 诚实停摆而非永恒卖 1 买 1。
     if missing and bench_free <= 0:
         cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
-                                             exclude_names=buy_members)
+                                             exclude_names=buy_members,
+                                             counters=counters)
         if cands:
             victim = cands[0]
             ok4, _ = mandate.check_irreversible(victim.char_id or '', k_members)
@@ -673,7 +674,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
             #(P60 排除集照常)后下一帧 bench_free ≥ 1 即合法买入。
             cands = mandate.fuel_sell_candidates(bench, k_members,
                                                  state=state,
-                                                 exclude_names=buy_members)
+                                                 exclude_names=buy_members,
+                                                 counters=counters)
             victim = cands[0] if cands else None
             if victim is not None:
                 ok4, _ = mandate.check_irreversible(victim.char_id or '',
@@ -1325,7 +1327,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 break
         fslots, _fkey = crit_sell.funding_support_sell(
             gold, need, bench, k_members, state=state,
-            exclude_names=buy_members) \
+            exclude_names=buy_members, counters=counters) \
             if contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
                 contracts.ContractCtx(gold=gold), counters) else ([], '')

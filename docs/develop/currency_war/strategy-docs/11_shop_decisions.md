@@ -122,7 +122,7 @@ V_dup(n) = P_complete(n)·ΔV_2★ + (1−P_complete(n))·V_resid(n)
 ```
 gold − x + Σ(活期卡退金) ≥ g*
 活期卡 = bench 中 1★ 全额退件（资格谓词与 funding_support_sell 同一：
-        star==1 ∧ 零重叠 ∧ 无后台效果）
+        star==1 ∧ 零重叠 ∧ 无后台效果 ∧ 非合成素材[ADR-0558 守卫扩展]）
 g* = saturation_line(cap_resolved)   （与刷新门同源，零新常数）
 ```
 

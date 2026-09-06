@@ -889,6 +889,34 @@ def same_star_count(name: str, star: int,
     return n
 
 
+def merge_material_reject_reason(name: str, star: int,
+                                 bench: list[BenchChar | None],
+                                 deployed: list[BenchChar] | None = None,
+                                 ) -> str:
+    """bench 侧卖出通道的合成素材拒入守卫(返回拒因键,'' = 可卖)。
+
+    判据:``c_excl = same_star_count(name, star, bench∪deployed) − 1``
+    (含自身全场域计数再扣 victim 自己)``≥ 1`` ⇒ 拒入资格集,拒因键
+    ``merge_material_guard``——与部署侧 ``cw_deploy_logic.
+    swap_sell_exclusion_reason`` 的拒因闭集**同名同键**(同一守卫语义
+    的两个卖出路径实现点;计数单一源 = ``same_star_count``,禁消费方
+    手搓同式)。辖域 = bench 四卖出通道(M4 燃料/凑息卖/支付变现/
+    换线塌缩),各通道原有资格谓词不动,只追加本子谓词。
+    数学依据:同名同星满 3 即自动升星且不变量「场上同名同星 ≤1」
+    (merge_mechanics.md §1/§2)⇒ c_excl≥2 稳态不可达,守卫生效域
+    恒为 c_excl=1(2/3 合成进度,差最后一张)——卖出即销毁距 2★
+    差一张的确定性进度期权,fail-closed 不卖。辖星 = 1(升星链语义
+    不在本守卫辖域;2★ 成件全场唯一,子谓词恒放行)。
+    设计出处:ADR-0558(合成素材拒入守卫,与部署侧 merge_material_guard
+    同键);案发对账 = g_20260906_081836 / g_20260906_095111 两局 P2r1
+    (2/3 进度素材被燃料类资格卖断)。
+    """
+    if (star or 1) != 1:
+        return ''
+    return ('merge_material_guard'
+            if same_star_count(name, 1, bench, deployed) - 1 >= 1 else '')
+
+
 def merge_buy_k(name: str, star: int,
                 bench: list[BenchChar | None],
                 deployed: list[BenchChar] | None,

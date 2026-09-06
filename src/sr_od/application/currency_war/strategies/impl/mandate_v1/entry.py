@@ -486,7 +486,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 contracts.ContractCtx(gold=state.gold), _ct):
             slots, _why = crit_sell.funding_support_sell(
                 state.gold, mandate.cheapest_member_cost(frame), bench,
-                k_members, state=state)
+                k_members, state=state, counters=_ct)
             for s in slots:
                 if s in sold_slots:
                     _ct['ev_conflict_dropped'] = \
@@ -687,7 +687,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             contracts.ContractCtx(gold=state.gold), counters):
         fslots, _why = crit_sell.funding_support_sell(
             state.gold, mandate.cheapest_member_cost(frame), frame.bench,
-            k_members, state=state)
+            k_members, state=state, counters=counters)
         for s in fslots:
             if s in sold_slots:
                 counters['ev_conflict_dropped'] = \

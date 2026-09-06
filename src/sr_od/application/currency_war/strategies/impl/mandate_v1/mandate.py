@@ -49,6 +49,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     REFRESH_COST_BASE,
+    merge_material_reject_reason,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     contracts,
@@ -179,6 +180,7 @@ def fuel_sell_candidates(bench: list[BenchChar],
                          state: GameState | None = None,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
+                         counters: dict | None = None,
                          ) -> list[BenchChar]:
     """fuel_sell 对象集:1★ ∧ 与锁线零重叠 ∧ 边际贡献≈0
     (R17-2 扩维口径:板面作战边际+bench 后台效果维边际合计构造性 0
@@ -197,13 +199,28 @@ def fuel_sell_candidates(bench: list[BenchChar],
     k_members)`` 共享装配从 state 现读(IMPL_ADV_R200 症3:三卖面通道
     统一消费;``state=None`` 缺读 ⇒ 装配函数缺省保守保护端)。带默认
     排序:slot 升序(确定性)。
+
+    合成素材拒入守卫(G-S1,ADR-0558):候选 1★ 与场上(deployed 域,
+    ``state`` 现读;bench 域含自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因
+    键 ``merge_material_guard``(单一源 = ``cw_state.
+    merge_material_reject_reason``,与部署侧同键)拒入燃料集——防
+    g_20260906_081836 P2r1 案发形态(同名 2★ 唯一升级路径被腾席通道
+    卖断)。
+    ``counters`` 非 None 时拒因同键计数(键 ``merge_material_guard_
+    blocked``,与凑息/支付变现通道同键分账)。
     """
+    _deployed = list(getattr(state, 'deployed', None) or [])
     out = []
     for b in bench:
         name = b.char_id or ''
         if name in exclude_names:
             continue
         if b.star != 1:
+            continue
+        if merge_material_reject_reason(name, b.star, bench, _deployed):
+            if counters is not None:
+                counters['merge_material_guard_blocked'] = \
+                    counters.get('merge_material_guard_blocked', 0) + 1
             continue
         if not predicates.zero_overlap(name, k_members):
             continue
@@ -343,7 +360,8 @@ def run_mandate(frame: MandateFrame,
             freed = False
             bench = list(frame.bench)
             while retries < BENCH_CAPACITY:
-                cands = fuel_sell_candidates(bench, k, state=state)
+                cands = fuel_sell_candidates(bench, k, state=state,
+                                             counters=counters)
                 if not cands:
                     break       # 0 发射 ⇒ 立即放弃(状态未变,重放必再失败)
                 victim = cands[0]

@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_state import (
     bench_char_cost,
+    merge_material_reject_reason,
     sell_refund,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import provisional
@@ -48,6 +49,12 @@ def line_switch_sell(old_line_members: tuple[str, ...],
     论证(零重叠∧1★全额退 ⇒ 卖出净成本=0,卖错代价≈0);2★+/部分退
     件卖错损失不可逆(手续费+V_opt 再遇账),注入态无全式比较 ⇒ 保守
     保留至 vopt 全式落位。全式接线后本子集语义由比较式取代。
+
+    合成素材拒入守卫(G-S1):保守子集候选若与场上(bench∪deployed)
+    另有同名同星副本(2/3 合成进度素材),拒因键 ``merge_material_
+    guard``(单一源 = ``cw_state.merge_material_reject_reason``,与
+    部署侧同键)拒入塌缩对象集——换线不构成素材豁免(素材对换线后
+    板面仍可能是素材,B-1)。设计出处:ADR-0558。
     """
     if not k_switched:
         return [], 'no_event'
@@ -59,6 +66,8 @@ def line_switch_sell(old_line_members: tuple[str, ...],
         if name in old_line_members and name not in new_line_members:
             # 注入态保守子集:仅燃料类(1★ 全额可退)放行,其余保留
             if not refund_full_star_ok(b.star, bench_char_cost(b)):
+                continue
+            if merge_material_reject_reason(name, b.star, bench, deployed):
                 continue
             out.append(b.slot)
     return out, ''
@@ -103,6 +112,12 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     ——金不卖回,当轮转化优先(14号稿 §5.4 Y7 口径);返回
     ([], 'blood_floor') 零静默分键。state=None = 语境缺失,禁令按保守端
     照禁(fail-closed:禁令是授权约束,缺读不构成豁免)。
+
+    合成素材拒入守卫(G-S1,ADR-0558):候选与场上(state.deployed ∪ bench,含
+    自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
+    ``merge_material_guard``(单一源 = ``cw_state.merge_material_
+    reject_reason``,与部署侧同键)拒入资格集;拒因同键计数
+    ``merge_material_guard_blocked``(与 M4 燃料/支付变现同键分账)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
@@ -121,6 +136,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         if counters is not None:
             counters[key] = counters.get(key, 0) + n
 
+    _deployed = list(getattr(state, 'deployed', None) or [])
     qualified: list[BenchChar] = []
     for b in bench:
         name = b.char_id or ''
@@ -130,6 +146,9 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
             continue
         if name in exclude_names:
             continue   # P60:买面义务集成员禁入卖出资格集(防义务换手)
+        if merge_material_reject_reason(name, b.star, bench, _deployed):
+            _count('merge_material_guard_blocked')
+            continue
         if predicates.bench_effect_qualified(
                 name, predicates.bench_effect_context(state, b, k_members)):
             continue
@@ -163,6 +182,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          state: GameState | None = None,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
+                         counters: dict | None = None,
                          ) -> tuple[list[int], str]:
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
@@ -172,11 +192,18 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     通道统一;卖回量最小化 [11]);跨帧语义 = 变现金作用于下一备战期
     义务动作(延迟=1 备战期间隔,进遥测 reason)。无对象 ⇒ 空。
     ``exclude_names`` = 买面义务集成员禁入(P60,与凑息卖/M4 燃料同款)。
+
+    合成素材拒入守卫(G-S1,ADR-0558):候选与场上(state.deployed ∪ bench,含
+    自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
+    ``merge_material_guard``(单一源 = ``cw_state.merge_material_
+    reject_reason``,与部署侧同键)拒入资格集;``counters`` 非 None
+    时同键计数 ``merge_material_guard_blocked``。
     """
     if gold >= need_gold:
         return [], 'not_needed'
     out: list[int] = []
     remaining = need_gold - gold
+    _deployed = list(getattr(state, 'deployed', None) or [])
     for b in sorted(bench, key=lambda x: (x.star, x.slot)):
         name = b.char_id or ''
         if b.star != 1:
@@ -185,6 +212,11 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
             continue
         if name in exclude_names:
             continue   # P60:买面义务集成员禁入卖出资格集
+        if merge_material_reject_reason(name, b.star, bench, _deployed):
+            if counters is not None:
+                counters['merge_material_guard_blocked'] = \
+                    counters.get('merge_material_guard_blocked', 0) + 1
+            continue
         if predicates.bench_effect_qualified(
                 name, predicates.bench_effect_context(state, b, k_members)):
             continue
