@@ -144,6 +144,33 @@ def prep_no_progress_tick(prev_sig: tuple | None, prev_count: int,
     return sig, 0
 
 
+def prep_exhaustion_launch_eligible(action_sig: tuple | None,
+                                    last_prep_success: bool | None) -> bool:
+    """备战收益耗尽 → 出战判据(纯函数;消费点 = 环级无进展守卫触发位)。
+
+    机制依据(docs/game/currency_war/data/gameplay.md 权威机制):备战环
+    等待的边际收益恒等于 0——商店「每个节点自动刷新 1 次」(节点推进以
+    战斗完成为前提)、基础金币/利息/连胜奖励均在「每场战斗结束时」结算。
+    出战的边际收益 ≥ 0(战斗必有结算收入),且战力由当前板面决定、与
+    等待时长无关(等待不改变任何战力输入)⇒ 支配性论证:收益耗尽帧
+    出战严格优于继续等待,无参数权衡,零拍定值。
+
+    判据 = 守卫既有信号的动作腿收窄(复用 PREP_NO_PROGRESS_ROUNDS 计数,
+    不立第二计数器):
+    - 动作批仅含 RunDeploy ∧ 上一备战环 success:RunDeploy 的 dd-037
+      契约保证「计划空+0 落地 = STATUS_NOOP 合法稳态」走 success、
+      「计划非空+0 落地 = 执行面失败」走 round_fail——success 即排除
+      执行面失败形态(拖拽落空/遮罩挡拖拽),剩馀唯一形态 = 策略层
+      自愿 no-op(候选被规则留 bench)∧ 买/升/刷均被策略拒绝且零状态
+      变换 = 备战收益耗尽;
+    - 其他形态(OpenShop/RunEquip 批、混合批、失败环)= 执行面/策略
+      异常,保持守卫停机语义(ADR-0554)。
+    """
+    return (last_prep_success is True
+            and action_sig is not None
+            and set(action_sig) == {'RunDeploy'})
+
+
 def no_progress_flag_path():
     """守卫停机 flag 落点(与 stall_watch.flag/unknown_state.flag 同目录族)。"""
     return (get_project_root() / '.debug' / 'temp' / 'currency_war'
@@ -530,6 +557,10 @@ class CwLoop(SrOperation):
     #: stop_running。取代旧备战 stall 留证线(只留证不停机的 state-only
     #: 计数)——单一计数单一签名,不留两套并行;N 沿用旧值 3。
     #: 三起实机卡死(8-34 分钟人工发现)在 3 环(≈1 分钟)内自动停机留证。
+    #: ADR-0554 修订:触发位先过「备战收益耗尽 → 出战臂」——RunDeploy
+    #: 合法稳态 no-op 形态(判据 = prep_exhaustion_launch_eligible)改判
+    #: 出战不属执行面卡死;其余形态维持停机留证语义。阈值沿用守卫常量,
+    #: 零新拍定值。
     PREP_NO_PROGRESS_ROUNDS: ClassVar[int] = 3
 
     #: 0e 投资策略浮层分发复探窗口(N5 分发判别稳定化):首探测 miss 且
@@ -668,6 +699,11 @@ class CwLoop(SrOperation):
         # 迁移审计 w103(git 历史) 件1(ADR-0342):策略失活连击(连续完整轮无 strategy_id 决策行)
         self._cw_strategy_dead_streak: int = 0
         self._cw_dead_prev_key: tuple[int, int] | None = None
+        # 备战收益耗尽出战臂(ADR-0554)状态:上一备战环 success(判据输入,
+        # CwScreenPrep 返回后写)+ 发射失败连击(与达标臂 _cw_readiness_fail_n
+        # 同构,达 3 放弃短路回落守卫停机)。
+        self._prep_last_success: bool | None = None
+        self._cw_exhaust_fail_n: int = 0
         self._cw_config: CurrencyWarConfig = CurrencyWarConfig(self.ctx.current_instance_idx)
         # 战斗/结算链状态机 + CwScreenBattleWait 实例(W971 05-battle §1 收编):
         # 结算读点/点继续/败局链/终局分叉的状态随 op 迁移,本 loop 只持引用
@@ -1514,6 +1550,72 @@ class CwLoop(SrOperation):
                     getattr(self, '_prep_np_sig', None),
                     getattr(self, '_prep_np_count', 0), _np_sig)
                 if self._prep_np_count >= self.PREP_NO_PROGRESS_ROUNDS:
+                    # 备战收益耗尽 → 出战臂(ADR-0554):RunDeploy 合法稳态
+                    # no-op 形态不属执行面卡死,停机只会烧掉不可复现的对局
+                    # 预算——备战等待零收益(机制依据见判据 docstring),
+                    # 出战支配性优于等待。发射核与达标臂共用
+                    # readiness_battle_launch(C1 单一发射函数);失败连击
+                    # 达 3 放弃短路回落守卫停机(与达标臂防线 C1 同构)。
+                    if prep_exhaustion_launch_eligible(
+                            _np_actions, getattr(self, '_prep_last_success',
+                                                 None)):
+                        # 补给节点排除:补给节点出战不推进(见下方 divert 分支
+                        # 注),该形态收益耗尽的正确出口是补流程非出战——跳过
+                        # 本臂,维持守卫停机(交留证判读)。
+                        _exh_slot = next(
+                            (s for s in (read_node_sequence(self.ctx, screen)
+                                         or []) if s.state == 'current'), None)
+                        _exh_supply = (_exh_slot is not None
+                                       and _exh_slot.node_type == 'supply')
+                        if not _exh_supply:
+                            _ex_counters = getattr(
+                                getattr(self.ctx, 'cw_match', None), 'session',
+                                None)
+                            _ex_counters = getattr(_ex_counters,
+                                                   'cw4_counters', None)
+                            _ex_c = (_ex_counters
+                                     if isinstance(_ex_counters, dict)
+                                     else None)
+                            if _ex_c is not None:
+                                _ex_c['exhaustion_battle_launch'] = \
+                                    _ex_c.get('exhaustion_battle_launch', 0) + 1
+                            _ok_x, _detail_x = readiness_battle_launch(
+                                self, self.ctx)
+                            if _detail_x == 'readiness_stale_screen':
+                                # 屏态过期(过渡帧):不发射不计数,交回下轮重判
+                                #(守卫计数保持,真备战帧下环重试发射)
+                                log.info('[cw-loop] 收益耗尽臂屏态过期放弃发射'
+                                         '(readiness_stale_screen),交回下轮')
+                                return self.round_wait(wait=1.0)
+                            if _ok_x:
+                                self._cw_exhaust_fail_n = 0
+                                self._battle_ts = time.monotonic()  # ADR-0250
+                                self._battle_wait_active = True
+                                register_flow_heartbeat(
+                                    self.ctx, 'exhaustion_battle_launch')
+                                log.info('[cw-loop] 备战收益耗尽(连续 %d 环 '
+                                         'RunDeploy 稳态 no-op ∧ 零推进)→ 出战: %s',
+                                         self._prep_np_count, _detail_x)
+                                return self.round_wait(wait=3)
+                            _xf = getattr(self, '_cw_exhaust_fail_n', 0) + 1
+                            self._cw_exhaust_fail_n = _xf
+                            if _ex_c is not None:
+                                _ex_c['exhaustion_launch_fail'] = \
+                                    _ex_c.get('exhaustion_launch_fail', 0) + 1
+                            if _xf >= 3:
+                                self._cw_exhaust_fail_n = 0
+                                if _ex_c is not None:
+                                    _ex_c['exhaustion_launch_giveup'] = \
+                                        _ex_c.get('exhaustion_launch_giveup',
+                                                  0) + 1
+                                log.error('[cw!][loop] 收益耗尽臂连续 %d 次发射失败'
+                                          '(最后一次: %s)→ 放弃短路,回落守卫停机',
+                                          _xf, _detail_x)
+                            else:
+                                log.warning('[cw!][loop] 收益耗尽臂发射失败'
+                                            '(第 %d/3 次,%s)→ 下环重试',
+                                            _xf, _detail_x)
+                                return self.round_wait(wait=3)
                     try:
                         _np_shot = self.save_screenshot(prefix='prep_no_progress')
                     except Exception:  # noqa: BLE001  留证失败不拦停机(flag 是主哨兵)
@@ -1733,6 +1835,10 @@ class CwLoop(SrOperation):
                          _bc_cards[0][0], getattr(_bc_result, 'success', None))
                 screen = self.screenshot()
             _ok = CwScreenPrep(self.ctx).execute()
+            # 备战环出口 success 记录(收益耗尽判据输入,ADR-0554):RunDeploy
+            # dd-037 契约下 success 含 STATUS_NOOP 合法稳态,fail = 执行面失败。
+            self._prep_last_success = bool(_ok.success) if _ok is not None \
+                else False
             if not _ok or not _ok.success:   # 迁移审计 w68(git 历史):OperationResult 无 __bool__,
                 # bool(FAIL)=True——裸 not _ok 恒 False,r332 停滞守卫成死码
                 # (验证局 206 次崩溃-重派无限循环实录);success 才是判据。
