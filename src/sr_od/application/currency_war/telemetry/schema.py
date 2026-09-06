@@ -348,8 +348,9 @@ class DecisionTrace:
     # 缺省 None;list 形态 = v2_state 元组逐位。
     sess_v2_state: list | None = None
     # —— 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(经济循环总模型步①;零消费):
-    # phase(FORM/HOARD/SPEND 派生相位)/form_ok(三件套谓词,裁决后
-    # 无等级项)。可选,旧记录缺省不破坏 schema。
+    # phase(v2 相位机退役,无写端恒缺省)/form_ok(sim71 批死镜像处置后
+    # 写端 = write_shop_mirrors 接 readiness_form_ok 板面现读;旧记录
+    # 均为退役恒 False)。可选,旧记录缺省不破坏 schema。
     phase: str = ""
     form_ok: bool = False
     # 已退役字段(历史数据只读):form_score 旧口径(min(2, engines+

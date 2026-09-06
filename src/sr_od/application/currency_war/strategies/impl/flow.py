@@ -158,6 +158,8 @@ class CwFlowStrategy(CwStrategy):
         # 迁移审计 w114(git 历史)/ADR-0346 相位观测(自 迁移审计 w119(git 历史) 起被消费)+ 迁移审计 w119(git 历史)/ADR-0347
         # DP 姿态轮缓存载体:初始化(每轮 decide_shop_screen 重算)
         session.v3_phase = 'FORM'
+        # form_ok:每轮初值;写端 = write_shop_mirrors 接 readiness_form_ok
+        # 板面现读(sim71 批死镜像处置——v2 相位机旧写端已退役)
         session.v3_form_ok = False
         session.v3_b_t = 0   # 板面目标线承重计数(write_shop_mirrors 每轮重算)
         session.v3_dp_posture = None
@@ -303,17 +305,28 @@ class CwFlowStrategy(CwStrategy):
         p<0.001 显著代理(判读边界:预测力集中于 boss 战存活深度,
         对伤害差/终局 hp 仅弱正)。
 
-        边界:本方法**只写 ``v3_b_t`` 一个键**——旧 ``v3_form_score``
-        随本口径替换退役(历史账本只读,不再有写者);``v3_phase``/
-        ``v3_form_ok`` 的 v2 相位机写端仍属退役语义(测试仓
-        test_cw_metric_mirror_fix 锁 phase=''/form_ok=False 保持),
-        ``v3_mirror_key`` 轮键戳照常盖章(键语义 =「本轮已写」,sim
-        引擎缺写守卫据此不重复触发)。纯遥测恢复:该字段不进任何
-        判据(ADR-0353「form_score 降级纯遥测观测,不进判据」口径
-        由 B_t 延续),写者本身零行为面。
+        边界:本方法写 ``v3_b_t`` 与 ``v3_form_ok`` 两个观测键——旧
+        ``v3_form_score`` 随本口径替换退役(历史账本只读,不再有写者)。
+        ``v3_form_ok`` 写端已从退役 v2 相位机接回板面现读(sim71 批
+        form_ok 死镜像处置:旧写端在 mandate_v1 下无写者恒 False,与
+        发射判据核 armed 现读对账必然全量不一致——判读单一源 =
+        sim71 批判读定谳(编排者判读记录));判据单一源 =
+        ``cw_launch_admission.readiness_form_ok``(与发射 armed 同式,
+        零第二实现)。``v3_phase`` 维持无写端退役缺省 ''(相位机已亡,
+        无现读语义可接)。``v3_mirror_key`` 轮键戳照常盖章(键语义 =
+        「本轮已写」,sim 引擎缺写守卫据此不重复触发)。纯遥测恢复:
+        两字段不进任何判据(ADR-0353「form_score 降级纯遥测观测,不进
+        判据」口径由 B_t 延续),写者本身零行为面。
+        已知边界(如实声明):生产侧商店观察帧若 board 未播种,
+        form_progress 现读恒 False——该帧族的 form_ok 读数是「观察帧
+        board 口径」,与发射门「轮入口全量 state 口径」存在帧差,判读
+        时以 sim 账本(全量 state)为准。
         """
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             board_target_line_weight,
+        )
+        from sr_od.application.currency_war.kernel.cw_launch_admission import (
+            readiness_form_ok,
         )
         deployed = [d for d in
                     (getattr(state, 'deployed', None) or [])
@@ -332,6 +345,10 @@ class CwFlowStrategy(CwStrategy):
         # 件级计数:名字列表保留重复件(同名多件各计 1,禁 frozenset 去重)
         dep_names = [(getattr(d, 'char_id', '') or '') for d in deployed]
         session.v3_b_t = board_target_line_weight(dep_names)
+        # form_ok 镜像现读写端(死镜像处置,见 docstring;判据单一源 =
+        # readiness_form_ok,与发射 armed 同式)
+        session.v3_form_ok = readiness_form_ok(
+            state, getattr(session, 'target_comp', None))
         session.v3_mirror_key = (getattr(state, 'plane', 1) or 1,
                                  getattr(state, 'round_num', 0) or 0)
 

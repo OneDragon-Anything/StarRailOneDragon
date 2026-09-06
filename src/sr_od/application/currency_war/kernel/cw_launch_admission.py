@@ -90,6 +90,20 @@ def protect_names_of(comp) -> frozenset[str]:
     return frozenset(names)
 
 
+def readiness_form_ok(state, comp) -> bool:
+    """form_ok 镜像观测的现读判据(单一源)。
+
+    = comp/state 输入齐备 ∧ ``cw_comps.form_progress(comp, state) >= 1.0``
+    ——与 :func:`readiness_launch_decision` 的 armed 判据同式同源(同一
+    原语同一阈值,禁各写端内联第二实现)。消费面 = 镜像族写端
+    (strategies.impl.flow.write_shop_mirrors,sim71 批 form_ok 死镜像
+    处置:写端接板面现读)与发射判据核本体;纯遥测恢复,不进任何判据。
+    """
+    from sr_od.application.currency_war.kernel.cw_comps import form_progress
+    return (comp is not None and state is not None
+            and form_progress(comp, state) >= 1.0)
+
+
 def readiness_launch_decision(state: GameState, comp: Comp | None,
                               *, line_members: Callable[[Comp], set[str]]
                               ) -> dict:
@@ -114,9 +128,7 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
         桶禁直引 strategies,由调用方注入同一函数对象——与
         launch_admission_report 同契约)。
     """
-    from sr_od.application.currency_war.kernel.cw_comps import form_progress
-    armed = (comp is not None and state is not None
-             and form_progress(comp, state) >= 1.0)
+    armed = readiness_form_ok(state, comp)
     admission = None
     if armed:
         try:

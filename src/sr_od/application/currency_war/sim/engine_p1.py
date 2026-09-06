@@ -485,6 +485,44 @@ def _residual_fill_deploy(
     return _res_up, _res_held, _lag
 
 
+def project_sell_buyback(acts: list[dict]) -> list[dict]:
+    """同轮「卖出→买回」回环投影(sim71 批;双层只读零 rng 的实例级半边)。
+
+    背景:sim71 批定位「同名卡同轮卖出→买回」回环 29 例(单次 1-2 金
+    价差,量级待分键),与 sim69/70 同轮买卖同族扩展——既有账本只有
+    轮级 spend/sell_income 聚合,回环不可见。本函数是**已发生动作流的
+    只读投影**:按动作序扫描,卖出登记名字→累计卖返;该名再被买时
+    记一笔回环(净金 = 买价 − 卖返),登记清空(再卖再买各记各笔)。
+    买先于卖不构成回环(登记序保证)。零 rng、零状态写入、零行为面。
+
+    口径边界(如实声明):只辖 SellBench/BuyCard 两通道(SimP1 账本
+    _acts 的商店回环主通道);deployed 侧卖出通道(SellDeployed/
+    SwapDeploy 转录行)不含卖返/名字同形状,不入投影——其回环若成
+    病灶属后续扩展,不与本键混桶。合并买 count=k 时买价 = 单价×k
+    (金真实流出,与 _acts 花费口径同式)。
+    """
+    loops: list[dict] = []
+    sold: dict[str, int] = {}
+    for a in acts or []:
+        t = a.get('__type__')
+        if t == 'SellBench':
+            n = a.get('name') or ''
+            if n:
+                sold[n] = sold.get(n, 0) + int(a.get('income') or 0)
+        elif t == 'BuyCard':
+            card = a.get('card') or {}
+            n = card.get('name') or ''
+            if n in sold:
+                cost = int(card.get('cost') or 0) * max(
+                    1, int(a.get('count') or 1))
+                income = sold.pop(n)
+                loops.append({'name': n,
+                              'sell_income': income,
+                              'buy_cost': cost,
+                              'net_gold': cost - income})
+    return loops
+
+
 def m1p_intent_record(st, sess) -> dict:
     """M1″ 发射意图面(板满换阵补部署;sim 决策面只记意图,零行为面)。
 
@@ -1024,9 +1062,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 向 actions 追加——行为投影 digest(w614 零漂移锚)含 actions
             # 逐项,观测面不得挤占行为哨兵的判别域;「一轮一行/outcomes
             # 配对/段级检查轮键」三面不变式不破。
-            # 已知边界:mantle 镜像族 v3_form_ok 在 mandate_v1 单臂下无
-            # 写者(恒 False),不可作触发源——生产门的本源是判据核内
-            # form_progress 现读,本消费直调同源,不依赖镜像层。
+            # 已知边界(历史注,已被 sim71 批死镜像处置取代):mandate_v1
+            # 单臂下 v3_form_ok 原无写者恒 False,不可作触发源——生产门的
+            # 本源是判据核内 form_progress 现读,本消费直调同源;镜像写端
+            # 现已接回 readiness_form_ok 现读(write_shop_mirrors),发射
+            # 触发仍不经镜像层(防镜像缺写回归敞口)。
             _round_launch: dict | None = None
             _tc_launch = getattr(sess, 'target_comp', None)
             if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
@@ -1040,8 +1080,30 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _core = readiness_launch_decision(
                     st, _tc_launch, line_members=line_members)
                 if _core['armed']:
+                    # form_ok 镜像现读补写(sim71 批死镜像处置的结构半边):
+                    # 发射帧短路决策段 → write_shop_mirrors 本轮永不执行,
+                    # 快照恒读上一轮旧值(False)= 死镜像形态在发射帧复活。
+                    # armed 本身就是判据核 readiness_form_ok 现读输出,
+                    # 直接落镜像位(零第二判据);session 位同写,与生产
+                    # 遥测 extra(form_ok)对拍同源。
+                    sess.v3_form_ok = True
+                    _round_form_ok = True
+                    # 发射帧滞留金观测键(sim71 批,零行为面):发射帧
+                    # 短路备战动作链 → 金出口族既有键(shop_visit_idle_
+                    # gold 等)全不计发射帧金,「发射帧金出口权衡」设计件
+                    # 判读不可见。双层披露:①launch 行内 idle_gold =
+                    # 该帧现读金(逐帧分布);②session.cw4_counters 增量
+                    # 键 launch_frame_idle_gold(累计金,经 obs.cw4_counters
+                    # 轮差分入账本;容器缺席静默跳过 = 缺省零漂移)。
+                    _idle_gold = int(getattr(st, 'gold', 0) or 0)
+                    _cts_l = getattr(sess, 'cw4_counters', None)
+                    if _cts_l is not None:
+                        _cts_l['launch_frame_idle_gold'] = \
+                            _cts_l.get('launch_frame_idle_gold', 0) + _idle_gold
                     _round_launch = {
                         '__type__': 'LaunchBattle',
+                        # 发射帧滞留金现读(逐帧口径;见上方注释)
+                        'idle_gold': _idle_gold,
                         # 授权依据(判据核单一源输出;与 LevelUp.auth_basis
                         # 观测同键名族)
                         'auth_basis': _core['auth_basis'],
@@ -1202,12 +1264,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _phase_snap = True   # 轮入口首段快照(迁移审计 w114(git 历史) 影子)
                     # 镜像族缺写守卫(度量修复):覆写 decide_shop_screen 的
                     # 策略核(如 mandate_v1)不经旧核商店决策核,镜像族
-                    # (phase/form_ok/B_t/dp_posture/储备披露)无写者
-                    # → 下方快照恒读初值(form_ok 假阴性)。轮键戳
-                    # v3_mirror_key(写者=DecisionV2Strategy.write_shop_
-                    # mirrors 单一源)标「本轮已写」:旧核每决策段自写、
-                    # 键戳恒盖 → 守卫不触发(旧核路径零漂移);缺写且策略
-                    # 带该钩子时在此补写(新核路径,判据同源无第二实现)。
+                    # (phase/B_t/dp_posture/储备披露)原无写者 → 下方
+                    # 快照恒读初值。sim71 批后 v3_form_ok 亦由
+                    # write_shop_mirrors 现读写端承载(死镜像处置);轮
+                    # 键戳 v3_mirror_key(写者=write_shop_mirrors 单一源)
+                    # 标「本轮已写」:旧核每决策段自写、键戳恒盖 →
+                    # 守卫不触发(旧核路径零漂移);缺写且策略带该钩子时
+                    # 在此补写(新核路径,判据同源无第二实现)。
                     if getattr(sess, 'v3_mirror_key', None) \
                             != (st.plane, st.round_num):
                         _wsm = getattr(strat, 'write_shop_mirrors', None)
@@ -2155,6 +2218,22 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             from sr_od.application.currency_war.kernel.cw_line_defs import (
                 core_count_for,
             )
+            # ===== 同轮卖→买回分键投影(sim71 批;双层只读零 rng)=====
+            # 实例级 = obs.sell_buyback_loops(逐笔明细);局级 =
+            # cw4_counters 两键 sell_buyback_count / sell_buyback_net_gold
+            # (Σ买价−卖返,经 obs.cw4_counters 轮差分同路入账本;容器
+            # 缺席静默跳过 = 缺省零漂移)。投影本身只读本轮 _acts,
+            # 零 rng/零行为面(函数 docstring 见 project_sell_buyback)。
+            _sell_buyback_loops = project_sell_buyback(_acts)
+            if _sell_buyback_loops:
+                _cts_sb = getattr(sess, 'cw4_counters', None)
+                if _cts_sb is not None:
+                    _cts_sb['sell_buyback_count'] = \
+                        _cts_sb.get('sell_buyback_count', 0) \
+                        + len(_sell_buyback_loops)
+                    _cts_sb['sell_buyback_net_gold'] = \
+                        _cts_sb.get('sell_buyback_net_gold', 0) \
+                        + sum(lp['net_gold'] for lp in _sell_buyback_loops)
             res.ledger.append({
                 'ts': _ts,   # 单调轮序号(跨位面累计;P1 段 == rn;审查①#9)
                 'plane': st.plane, 'round_num': rn,
@@ -2312,6 +2391,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         for k, v in (getattr(sess, 'cw4_counters', None)
                                      or {}).items()
                         if int(v) != int(_cw4_before.get(k, 0))},
+                    # 同轮卖→买回实例级投影(sim71 批;round/node 由
+                    # 引擎补上下文,明细字段单一源 = project_sell_buyback;
+                    # 空列表 = 本轮无回环,不占判读视野)
+                    'sell_buyback_loops': [
+                        dict(lp, round=rn, node=nodes[rn - 1])
+                        for lp in _sell_buyback_loops],
                 },
                 # 商店波未买牌拒因串(末波 last-wins;生产端
                 # cw4/shop.shop_unbought_reasons,实机 DecisionTrace.
