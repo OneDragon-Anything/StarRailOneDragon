@@ -509,7 +509,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # unfulfilled 恒 None(实机局 g_20260904_042657 p1r7-r9 posture=
     # 'level' 全程零 LevelUp)。本对账只声明不兜底花钱(禁重引入「乱花」
     # 对立面:P56 下界语义零触碰,升级仍由 M3 判据独裁)。
-    _reconcile_posture_authorization(session, state, out, k_members)
+    _reconcile_posture_authorization(session, state, out, k_members,
+                                     registry=registry)
 
     # ⑥ 无动作 ⇒ 出战(序列终点)
     if not out:
@@ -521,8 +522,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
 def _reconcile_posture_authorization(session: StrategySession,
                                      state: GameState | None,
                                      emitted: list[Emitted],
-                                     k_members: tuple[str, ...] = ()) \
-        -> dict | None:
+                                     k_members: tuple[str, ...] = (),
+                                     registry: DecisionV2Registry | None = None,
+                                     ) -> dict | None:
     """姿态兑现对账(经济冻结批病灶②;授权面与执行面的唯一仲裁点)。
 
     授权面 = ``get_node_goal`` 确定性预算核(spend_mode 单一供给,遥测
@@ -540,6 +542,15 @@ def _reconcile_posture_authorization(session: StrategySession,
     """
     if state is None:
         return None
+    # 上下文注册表(判据出处纠错批:等级帽单一源接线;emit 注入链 =
+    # MandateV1Strategy.registry,sim 帧注入视图随链到达)。None→缺省表
+    # 兜底与 shop 栈 _reg 同款通道约定,直调/测试面兼容;生产链恒注入。
+    _reg = registry
+    if _reg is None:
+        from sr_od.application.currency_war.kernel.cw_registry import (
+            DEFAULT_REGISTRY,
+        )
+        _reg = DEFAULT_REGISTRY
     from sr_od.application.currency_war.kernel.cw_economy import get_node_goal
     ng = get_node_goal(state.plane, state.round_num, gold=state.gold,
                        level=state.level, hp=state.hp,
@@ -557,7 +568,7 @@ def _reconcile_posture_authorization(session: StrategySession,
             ('levelup', 'level_spend_blocked'),
             contracts.ContractCtx(), getattr(state_of(session), 'cw4_counters',
                                              None) or {}) \
-            and crit_levelup.level_spend_blocked(state, session):
+            and crit_levelup.level_spend_blocked(state, session, _reg):
         un = {'auth_id': f'{state.plane}-{state.round_num}',
               'channel': 'levelup',
               'reason': 'crisis_level_spend_blocked',
@@ -583,7 +594,7 @@ def _reconcile_posture_authorization(session: StrategySession,
         levelup,
     )
     cap = state.max_units()
-    if levelup.lv9_stop(state.level):
+    if levelup.lv9_stop(state.level, _reg.level_max):
         reason = 'lv9_stop'
     elif cap is None:
         reason = 'contract_cap_missing'

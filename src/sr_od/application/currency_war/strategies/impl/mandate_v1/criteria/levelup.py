@@ -22,8 +22,31 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-# 满级(注册表 LEVEL_CAP 同值;pop_slot/lv9_stop 消费)
-LEVEL_CAP: int = 9
+
+def lv9_stop(level: int, level_max: int | None = None) -> bool:
+    """等级上限停(义务侧消费)。历史键名 'lv9_stop':cap=9 旧语义时代
+    命名,现语义 =「等级达注册表 level_max 即拒发升级」——键串保留
+    不改名(改键牵连判读脚本与历史档案可比性,纯改名无收益,ADR-0565)。
+
+    单一源 = 注册表 ``level_max``(kernel/cw_registry.py,实机真值 10,
+    与 cw_state.xp_apply_clicks「封顶 10」live 机制语义同源);sim 侧
+    经 ``sim_decision_registry`` 注入视图(=9)保持建模冻结,策略零
+    感知、sim 行为零漂移。⚠ 与同文件 ``cap_resolved``(利息上限)毫无
+    数值或语义关联,禁接错源。
+
+    ``level_max`` 由消费位传上下文注册表的 ``.level_max``(禁裸常数);
+    缺省 None 回读 DEFAULT_REGISTRY 是**过渡兼容**,仅覆盖 mandate.py
+    备战 L3 消费位(ADR-0565 落码时该文件属并行在飞文件面未接线;该位
+    仅 live prep 可达,sim 决策只走 shop 栈注入视图,不经此处,故回读
+    缺省表 = live 真值、无 sim 路径)——mandate 侧接线完成后本参收严
+    为必填,禁新消费位依赖缺省。
+    """
+    if level_max is None:
+        from sr_od.application.currency_war.kernel.cw_registry import (
+            DEFAULT_REGISTRY,
+        )
+        level_max = DEFAULT_REGISTRY.level_max
+    return level >= level_max
 
 
 def arm2_schedule(gold: int, cap_resolved: int, *, gate_open: bool = False,
@@ -131,11 +154,6 @@ def levelup_budget_gate(state: GameState, gold: int, cap_resolved: int,
 def batch_form(level: int, target_level: int) -> bool:
     """批量成型判据(M3 批形态:目标级差>0 才有批;义务侧消费)。"""
     return level < target_level
-
-
-def lv9_stop(level: int) -> bool:
-    """满级停(LEVEL_CAP=9;义务侧消费)。"""
-    return level >= LEVEL_CAP
 
 
 def level_spend_blocked(state: GameState, session: StrategySession,

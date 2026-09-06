@@ -870,7 +870,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _count('crisis_level_spend_defer')
         elif contracts.ensure_contract(
                 ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \
-                and not crit_levelup.lv9_stop(state.level):
+                and not crit_levelup.lv9_stop(state.level, _reg.level_max):
             clicks = clicks_to_next_level(state)
             cost = xp_click_cost(state)
             if contracts.ensure_contract(
@@ -1474,7 +1474,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         _lvl_now = int(state.level or 1)
         _lv9_ok = contracts.ensure_contract(
             ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \
-            and not crit_levelup.lv9_stop(_lvl_now)
+            and not crit_levelup.lv9_stop(_lvl_now, _reg.level_max)
         if not _lvl_readable or not _lv9_ok:
             _count('level_cap')
         else:
