@@ -20,6 +20,7 @@ from sr_od.application.currency_war.operations.cw_entry.cw_entry_exit import (
 )
 from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
     CwEntryStart,
+    try_handle_jade_detail_popup,
     try_handle_train_supply_popup,
 )
 from sr_od.application.currency_war.operations.cw_loop import CwLoop
@@ -146,6 +147,11 @@ class CurrencyWarApp(SrApplication):
         # 列车补给每日弹窗最先接(match2 实锤 2026-08-31):弹窗盖在大世界上,
         # 早于一切 CW 导航识别——不接住则 _in_match/enter 链全部识别不到已知态。
         popup = try_handle_train_supply_popup(self, screen)
+        if popup is not None:
+            return popup
+        # 星琼详情弹窗同层接住(ADR-0574):模态压暗+模糊背景下 _recover 预检/
+        # _at_lobby/_in_match 全部失明,不接住则 enter 链空烧预算。
+        popup = try_handle_jade_detail_popup(self, screen)
         if popup is not None:
             return popup
         # 预检必须在 _in_match 之前:战斗暂停屏带 货币战争- 前缀,会被 _in_match

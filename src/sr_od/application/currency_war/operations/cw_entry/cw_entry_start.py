@@ -30,17 +30,20 @@ def try_handle_train_supply_popup(
 
     游戏语义(2026-08-31 建档实锤):全屏领取弹窗,「点击领取今日补给」= 点任意处/
     中央徽章即领取,**无 X 关闭钮**——补贴为免费领取无消耗,领取优先;
-    领取点击未落地时弹窗仍在,round_wait 重跑本分支再点同点位(自愈重试,
-    吃节点自身 retry 预算,不会无限空转)。弹窗盖在**大世界之上**,早于 CW
-    入口首段导航(match2 实锤 2026-08-31:弹窗帧在 app 首节点即被误判,
-    执行流到不了 start op 内层挂点),故挂点前移到 app `_enter_lobby` 首节点;
-    内层 start op 两挂点保留作纵深(识别到弹窗的任何一步都接得住)。
-    离线建档声明:点击落地后的画面回落未实机验证(现场保活禁点击),
-    待下一局实机复核。
+    领取点击未落地时弹窗仍在,重跑本分支再点同点位(自愈重试)。
+    弹窗盖在**大世界之上**,早于 CW 入口首段导航(match2 实锤 2026-08-31:弹窗帧在
+    app 首节点即被误判,执行流到不了 start op 内层挂点),故挂点前移到 app
+    `_enter_lobby` 首节点;内层 start op 两挂点保留作纵深(识别到弹窗的任何一步
+    都接得住)。离线建档声明:点击落地后的画面回落未实机验证(现场保活禁点击)。
+
+    返回 round_retry 而非 round_wait(ADR-0574 交替循环上界闭合):框架只对 RETRY
+    计节点 retry 计数,WAIT 不计且把计数归零——WAIT 下「领取点击永不生效」会无限
+    空转,且与星琼详情守卫构成「关详情↔领取再开详情」的无界交替循环;RETRY 后两
+    分支都计入节点预算,任何组合都有界具名 FAIL。
 
     op:Operation 基类(SrOperation/SrApplication 共同祖先,round_by_* 同源)。
     未命中=一次全屏 OCR 后按 id_mark area 过滤(crop_first=False,非零开销),
-    返回 None;命中返回 round_wait(等领取动画回落)。
+    返回 None;命中返回 round_retry(计入节点预算,等领取动画回落)。
     """
     if not op.round_by_find_area(
             screen, CwEntryStart.TRAIN_SUPPLY_SCREEN, '标识-列车补给',
@@ -50,7 +53,46 @@ def try_handle_train_supply_popup(
     op.round_by_find_and_click_area(
         screen, CwEntryStart.TRAIN_SUPPLY_SCREEN, '按钮-领取补贴',
         success_wait=2, crop_first=False)
-    return op.round_wait(wait=3)
+    return op.round_retry(status='列车补给领取中', wait=3)
+
+
+def try_handle_jade_detail_popup(
+        op: Operation, screen: MatLike) -> OperationRoundResult | None:
+    """星琼(稀有货币)详情弹窗守卫(入局链共享助手,与列车补给助手同构;ADR-0574)。
+
+    事故(2026-09-07 实机):列车补给领取点击落在弹窗中央徽章区,命中其中的星琼
+    图标 → 游戏打开货币详情弹窗(「点货币图标→开详情」为游戏全局统一行为,已两次
+    活体复现实锤,采样结论见 ADR-0574 §5)。该弹窗模态压暗+模糊背景,入口链全部
+    背景锚点(备战
+    标识/创业指南/前进按钮)同时失明,推进循环无分支命中空烧 60 步超时。守卫识别
+    弹窗 → 点右上角 X 关闭;若弹窗底下压着未领取的列车补给弹窗,下一轮由补给
+    分支接住,两守卫接力收敛。
+
+    识别用双锚 AND:「星琼」标题 @0.5 管召回(2 字 @0.5 = 含任一字符即命中,是
+    全家族最弱配置,单锚触发误配面过大),「稀有货币」@0.75 管精度(4 字容 1 字
+    形变);双 id_mark 全中才算画面精准匹配,守卫触发同判据。同帧 OCR 有缓存,
+    第二锚近零增量成本。不用「当前持有」(数字变动);关闭不用 ESC(禁键令),
+    点空白关闭未采样,不作默认手段。
+
+    返回 round_retry(非 round_wait):RETRY 计入节点预算,X 点击始终不落地时以
+    具名状态有界 FAIL;与列车补给分支(同为 round_retry)两两计预算,「关详情↔
+    领取再开详情」交替循环每圈耗 2 次,任何节点预算内必具名退出,上界闭合。
+
+    op:Operation 基类(SrOperation/SrApplication 共同祖先,round_by_* 同源)。
+    未命中返回 None(双锚同帧 OCR 缓存下近零开销);命中返回 round_retry(等关闭动画)。
+    """
+    if not (op.round_by_find_area(
+            screen, CwEntryStart.JADE_DETAIL_SCREEN, '标识-星琼标题',
+            crop_first=False).is_success
+            and op.round_by_find_area(
+            screen, CwEntryStart.JADE_DETAIL_SCREEN, '标识-稀有货币',
+            crop_first=False).is_success):
+        return None
+    _log.info('[cw-entry] 星琼详情弹窗 → 点 X 关闭')
+    op.round_by_find_and_click_area(
+        screen, CwEntryStart.JADE_DETAIL_SCREEN, '按钮-关闭X',
+        success_wait=2, crop_first=False)
+    return op.round_retry(status='星琼详情弹窗关闭中', wait=1.5)
 
 
 class CwEntryStart(SrOperation):
@@ -81,6 +123,9 @@ class CwEntryStart(SrOperation):
     # 列车补给每日弹窗(建档 2026-08-31,launch_dead 停机后实锤:全屏弹窗挡死入局链
     # → 推进到备战阶段超时)。建档案:assets/game_data/screen_info/currency_war_train_supply.yml
     TRAIN_SUPPLY_SCREEN: ClassVar[str] = '货币战争-列车补给弹窗'
+    # 星琼(稀有货币)详情弹窗(建档 2026-09-07,模态弹窗卡死入局链事故;ADR-0574)。
+    # 建档案:assets/game_data/screen_info/currency_war_stellar_jade_detail.yml
+    JADE_DETAIL_SCREEN: ClassVar[str] = '货币战争-星琼详情'
 
     STATUS_AT_PREP: ClassVar[str] = '到达备战阶段'
 
@@ -137,12 +182,20 @@ class CwEntryStart(SrOperation):
         """列车补给每日弹窗处理(本 op 两节点挂点,共享助手见模块级函数)。"""
         return try_handle_train_supply_popup(self, screen)
 
+    def _handle_jade_detail_popup(self, screen: MatLike) -> OperationRoundResult | None:
+        """星琼详情弹窗守卫(本 op 两节点挂点,共享助手见模块级函数;ADR-0574)。"""
+        return try_handle_jade_detail_popup(self, screen)
+
     @operation_node(name='点开始', is_start_node=True)
     def click_start(self) -> OperationRoundResult:
         screen = self.last_screenshot
         if self._at_prep(screen):
             return self.round_success(CwEntryStart.STATUS_AT_PREP)
         popup = self._handle_train_supply_popup(screen)
+        if popup is not None:
+            return popup
+        # 星琼详情弹窗守卫(ADR-0574):模态弹窗盖住一切时开始按钮同样失明。
+        popup = self._handle_jade_detail_popup(screen)
         if popup is not None:
             return popup
         # lobby screen_info area(按钮-开始货币战争)替代全屏 ocr(根治 LCS 误匹配)。
@@ -160,6 +213,12 @@ class CwEntryStart(SrOperation):
             return self.round_success(CwEntryStart.STATUS_AT_PREP)
         # 列车补给每日弹窗优先于一切推进分支(全屏遮罩挡死下面全部前进按钮)。
         popup = self._handle_train_supply_popup(screen)
+        if popup is not None:
+            return popup
+        # 星琼详情弹窗守卫同样先于一切状态分支(ADR-0574:模态压暗+模糊背景下
+        # 大厅锚/前进按钮/教程提示全部失明,不接住则走兜底空烧预算;守既有
+        # 「列车补给优先于一切推进分支」的排序约定,守卫插在其后)。
+        popup = self._handle_jade_detail_popup(screen)
         if popup is not None:
             return popup
 

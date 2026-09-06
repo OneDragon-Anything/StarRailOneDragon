@@ -129,3 +129,30 @@
 1. **位面字面门**：`flow.py`（`state.plane == 1` 辖域，update_target 段）——修正方向：段索引/节点数一律由节点日程（`cw_plane_table.schedule_of`）派生查表，位面只作查表键。（另一处 `round_num >= 9` boss 先验随 ADR-0517 迁移批死码清理消失——载体 `_is_boss_round` 已删。）
 2. **hp 越权消费**：谷底回滚 `VALLEY_ROLLBACK_LOSS=15`（`flow.py` on_round_end 段）——hp 掉量作质量信号触发回滚动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**，代码删除随迁移后批次。
 3. **无标数字**：`VALLEY_ROLLBACK_LOSS=15` 无三形态标注；随第 2 项退役一并消失。
+
+## 6. 入口链（enter/start）与弹窗守卫族
+
+> 反向规格化来源 = `currency_war_app.py` + `operations/cw_entry/`（app/enter/start 三层）。对局内循环见 outer_loop.md，本节管「大世界 → 大厅 → 备战」入口链。守卫族决策依据 = ADR-0574。
+
+### 6.1 链路结构
+
+```
+CurrencyWarApp（app 三节点）
+  _enter_lobby：弹窗守卫×2 → 暂停面板恢复预检 → 大厅锚/对局屏判定（已在则跳过）→ CwEntryEnter
+  _start_match：恢复预检 → 对局屏判定 → CwEntryStart
+  _run_loop：CwLoop（对局内，见 outer_loop.md）
+CwEntryEnter.wait_lobby（node_max_retry_times=30，cw_entry_enter.py:69）：弹窗守卫×2 → 大厅锚 → 前往参与 → 点空白关弹窗 → 公告轮播 → F 交互进大厅
+CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3，operation_node.py:18）→ advance_to_prep（node_max_retry_times=60，cw_entry_start.py:208）：备战锚 → 弹窗守卫×2 → 大厅残留逃逸 →
+  前进按钮分支序（难度确认/模式选择/简报/继续进度/投资环境/投资策略/教程叠层/积分奖励页）→ 兜底 retry
+```
+
+### 6.2 弹窗守卫族（模块级共享助手，`cw_entry_start.py`）
+
+| 助手 | 识别 | 动作 | 返回 |
+|---|---|---|---|
+| `try_handle_train_supply_popup` | 单锚 `标识-列车补给` | 点 `按钮-领取补贴`（领取语义，无 X 钮；点击目标修正挂账见 ADR-0574 §2.4） | `round_retry('列车补给领取中')` |
+| `try_handle_jade_detail_popup` | 双锚 AND：`标识-星琼标题`@0.5 + `标识-稀有货币`@0.75 | 点 `按钮-关闭X` | `round_retry('星琼详情弹窗关闭中')` |
+
+- **挂点序位**：两守卫并列成对，位于各节点既有分支之前（列车补给在先）；`advance_to_prep` 内先于一切状态分支——模态弹窗盖场时背景锚点全部失明，守卫不接则兜底空烧节点预算。
+- **返回语义**：守卫一律 `round_retry`（计入 `node_max_retry_times`），禁 `round_wait`（框架对 WAIT 不计 retry 且归零计数 → 无界空转）；守卫×领取交替循环每圈耗 2 次预算，任一节点预算内具名 FAIL。
+- **对局屏白名单口径**：`cw_screen_state.LOBBY_STATE_SCREENS` 显式排除入口链可达的非对局屏（大厅/攻略系/列车补给弹窗/星琼详情/星徽详情/积分奖励等）；带 `货币战争-` 前缀的新建档屏默认进对局屏集，入口链可达的弹窗/奖励页漏排除 = 误判「已在对局中」跳过 enter（锁测试钉死）。
