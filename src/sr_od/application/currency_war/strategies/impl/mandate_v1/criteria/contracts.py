@@ -50,6 +50,11 @@ class ContractCtx:
     - k_fallback_resolved:消费位**实解析**的回退成员集(单一源
       cw_intention 调用的返回物;供给在场而解析为空 = 「回退字面量
       空元组」复发形态,违例)。
+    - locked_buy_members:锁定帧买侧采购集实解析
+      (cw_intention.locked_buy_membership 返回物)。合法形态 = None
+      (未锁帧/锁定解析空,消费位按未锁处置)或非空 frozenset(锁线态);
+      其他对象 = 「字面量冒充解析结果」复发形态,违例。消费位 =
+      C1 核心卡通道契约(ADR-0569)。
     """
 
     k_members: tuple[str, ...] | None = None
@@ -60,6 +65,7 @@ class ContractCtx:
     k_target: object = field(default=None)
     k_fallback_available: bool = field(default=False)
     k_fallback_resolved: object = field(default=None)
+    locked_buy_members: object | None = field(default=None)
 
 
 def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
@@ -148,6 +154,18 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
     return bool(ctx.k_fallback_resolved)
 
 
+def _core_channel_locked_ctx(ctx: ContractCtx) -> bool:
+    """C1 核心卡通道前提(ADR-0569):锁线态语境,可核验派生形态。
+
+    前提 = ctx.locked_buy_members 系 cw_intention.locked_buy_membership
+    实解析物且非空(锁线态);None = 未锁帧,通道不评估(设计判据式
+    前件,合法 fail 方向非违例)。空 frozenset / 非 frozenset 对象 =
+    「字面量冒充解析结果」复发形态,违例弃权。
+    """
+    return (isinstance(ctx.locked_buy_members, frozenset)
+            and bool(ctx.locked_buy_members))
+
+
 @dataclass(frozen=True)
 class Contract:
     """单判据契约:前提谓词(None=无条件)+ 辖域声明 + 规格锚。
@@ -173,8 +191,9 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('buy', 'ev_buy_veto'): Contract(
         None, 'EV 买否决门(随候选流一体;R7-1 发射面后半)',
         'IMPL_DESIGN §4.2.1 buy.ev_buy_* 行'),
-    ('buy', 'p2_lock_buy'): Contract(
-        None, 'P2 锁线核心卡钩子占位(默认关)', 'IMPL_DESIGN §2.11 P25'),
+    # ('buy', 'p2_lock_buy') 契约键已随 P25 占位接管批删除(ADR-0569):
+    # 占位函数与 BYPASS_TABLE 行同批清,P25 数值语义唯一载体 = C1 通道
+    # 数值支(挂账不落码,设计 §4 P25 行),消双源。
     # —— criteria/sell ——
     ('sell', 'line_switch_sell'): Contract(
         None, '换线塌缩出口:前提=K 已切换(判据自带 k_switched 门)',
@@ -272,6 +291,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'M2 前置支配买入(S 预留消费位,mandate.check_s_reserve 消费面):'
         '辖 dominance_buy,前提=目标线成型',
         'ZERO_REFRESH_DIAG §3 第 3 条+IMPL_DESIGN §3.2 ③'),
+    ('mandate', 'core_single_card_buy_eligible'): Contract(
+        _core_channel_locked_ctx,
+        'C1 直通核心卡支配性支资格门:前提=锁线态(锁定采购集实解析在'
+        '场;未锁帧通道不评估)',
+        '设计《直通核心卡信号层入口》§2 案A+§4 P25 行(ADR-0569)'),
     ('predicates', 'arm1_existence'): Contract(
         _arm1_cap_level_driven,
         'M3 触发信号:前提=deploy_cap 等级驱动口径(禁固定槽表常数)',

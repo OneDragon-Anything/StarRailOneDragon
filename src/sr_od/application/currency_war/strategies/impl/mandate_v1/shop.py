@@ -85,6 +85,9 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel import cw_intention
+from sr_od.application.currency_war.kernel.cw_comps import (
+    CORE_SINGLE_CARD_REGISTRY,
+)
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     can_deploy_single,
     deploy_target_sets,
@@ -376,7 +379,11 @@ def shop_unbought_reasons(state: GameState,
         elif name in trans:
             out[name] = 'transition_char'
         else:
-            out[name] = 'non_line'
+            # C1 拒因拆键(设计《直通核心卡信号层入口》§4 意向状态机行):
+            # registry 核心卡在售未买帧与真 non_line 可辨——sim 检查器归
+            # 机会错失类,落码批带方向声明(严格向:核心件在售帧被拒判红)。
+            out[name] = ('core_candidate_rejected'
+                         if name in CORE_SINGLE_CARD_REGISTRY else 'non_line')
     return out
 
 
@@ -429,7 +436,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     期望态为据只提合法动作);执行侧只余守卫断言(cw_shop_action_ops)。
 
     选择序 = 既有波批优先级逐帧取首项(ADR-0517 §映射,序不变):
-    M4 腾席 → M2 线成员(含 M2b 合并完成)→ dominance → M3 升级(单击)
+    M4 腾席 → M2 线成员(含 M2b 合并完成)→ dominance → C1 核心卡支配支
+    (dominance 邻位,ADR-0569)→ M3 升级(单击)
     → M6 溢余 → EV 买面 → R1 付费刷新(终结)→ 凑息卖 → 支付支撑卖
     → CloseShop(终结)。输入 ``state`` = 期望态当前值(动作后真值,
     ADR-0517 §8.1 裁决:契约核验与决策同源消费此值,禁帧首快照口径)。
@@ -815,6 +823,65 @@ def decide_shop_action(state: GameState, session: StrategySession,
             if not ok1:
                 continue
             return _emit_buy(card, 'dominance_buy')
+
+    # C1 直通核心卡支配性支(并列支配通道;位次 = dominance 邻位:既有
+    # 通道之后、M3 之前——支配族发射位先于一切带参数值比较,
+    # 01_math_framework §3 与权限骨架行(01:15)+支配性优先序(01:40);
+    # 设计《直通核心卡信号层入口》§2 案A,
+    # ADR-0569)。前件守卫:锁线态单判(_buy_members 非 None ⟺
+    # locked_comp 非空),未锁帧通道不评估(设计判据式;惯例同
+    # cw_intention.locked_line_recipe_floor_conflict 注)。
+    # 辖域分界(显式):既有 dominance_buy 辖「停手态 ∧ 溢余带 ∧ 线外
+    # 燃料件(全体 zero_overlap 1★)」;本通道辖「锁线态 ∧ 不破息带 ∧
+    # registry 名单核心卡」。锁线∧成型重叠带(stop_flag 与锁线态可并存)
+    # 两通道动作同致:既有通道序位在前先买 + 1★ 全额退/席位判据共享
+    # 单一源,单动作契约下无双发射(spotcheck δ2 措辞口径)。
+    # 开店闩申报(设计 §2 落码批核对项):备战期开店闩(cw4_shopped_phase)
+    # 辖 run_mandate 的 OpenShop 发射节流(mandate._emit_open_shop,
+    # shop_latch_skip_* 计数);本通道在商店决策访问位下游,闩不辖,
+    # 默认不消费、零闩读/写。
+    # 息纪律口径:不破息判据 = L 项零损(predicates.t5_p1_false 单一源,
+    # P47 现算;Ī 取 streak_pre=0 保守近似——收入低估 ⇒ L 偏大 ⇒ 发射
+    # 收窄,与 T5 位同款申报)——S 预留硬约束③对象列(EV 买/M6/
+    # dominance_buy)不辖本通道,设计判据式无 s_reserve 前件。
+    _core_locked = _buy_members is not None
+    if _core_locked:
+        _core_cands = [c for c in (state.shop or [])
+                       if (c.name or '') in CORE_SINGLE_CARD_REGISTRY
+                       and (c.name or '') not in _buy_members]
+        if _core_cands:
+            _count('core_candidate_seen')   # 候补支触发(帧级;§7 三键分账)
+            if contracts.ensure_contract(
+                    ('mandate', 'core_single_card_buy_eligible'),
+                    contracts.ContractCtx(locked_buy_members=_buy_members),
+                    counters) and mandate.core_single_card_buy_eligible(
+                        _core_locked, bench_free):
+                _core_rounds = horizon.r_remaining(
+                    session, int(state.plane or 1), int(state.round_num or 1))
+                _core_ibar = net_income(int(state.round_num or 1), 0)
+                for card in _core_cands:
+                    cost = card.cost if card.cost else 3
+                    star = card.star or 1
+                    if not refund_full_star_ok(star, cost):
+                        continue    # 支配性背书仅全额可退 1★(共享单一源,禁内联星级判断)
+                    ok2, _ = mandate.check_seats(
+                        bench_free, 0, needs_bench=True, needs_board=False,
+                        name='', deployed_names=deployed_names)
+                    if not ok2:
+                        break       # 帧级门已拦 bench 满,此处共享单一源防御(dominance 同款)
+                    if not predicates.t5_p1_false(
+                            gold, cost, _core_rounds, _core_ibar,
+                            cap_resolved):
+                        continue    # 不破息带:L>0 帧不放行(统一式 L 项判定)
+                    ok1, _ = mandate.check_affordable(gold, cost)
+                    if not ok1:
+                        continue
+                    _count('core_dominance_buy_hit')    # 支配性支命中(§7 三键分账)
+                    # 同帧多候补 = 等价免费期权,任意分配序不劣(设计 §2);
+                    # 发射序 = 店面确定性序。动作形态默认 = 囤(bench 持有,
+                    # 不上场;deploy 围栏不因持有而变化,设计 §4)。
+                    return _emit_buy(card, 'core_single_card_buy')
+                _count('core_numeric_fail_closed')  # 数值支域帧:支未落码 fail-closed 显影(§7)
 
     # M3 升级(触发信号三臂并联;D-BUYNOTE:P48 整买纪律内嵌)。单动作
     # 粒度:每帧恰发一个「购买经验」单击动作(升一级 = 一个动作 op,

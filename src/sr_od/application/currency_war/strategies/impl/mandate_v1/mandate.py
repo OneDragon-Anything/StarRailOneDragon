@@ -339,6 +339,27 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     return gold > saturation_line(cap_resolved) and bench_free > 0 and stop_flag
 
 
+def core_single_card_buy_eligible(locked_buy: bool, bench_free: int) -> bool:
+    """C1 直通核心卡支配性支资格门(设计《直通核心卡信号层入口》§2 案A;
+    零参数结构,ADR-0569):锁线态 ∧ bench 有空槽。
+
+    与 dominance_buy_eligible 同构分工:本门只辖帧级前件,逐卡判据
+    (CORE_SINGLE_CARD_REGISTRY 名单 / refund_full_star_ok 1★ 全额退 /
+    t5_p1_false 不破息)在商店线发射位现算。锁线态判据 = 锁定采购集
+    已解析(cw_intention.locked_buy_membership 非 None ⟺ locked_comp
+    非空);未锁帧通道不评估(设计判据式前件;phase 与 locked_comp
+    同点同置/同点清,单判惯例同 cw_intention.locked_line_recipe_floor_
+    conflict 注)。
+
+    辖域分界(设计 §2 N2 路线 b):既有 dominance_buy 辖「停手态 ∧
+    溢余带 ∧ 线外燃料件」;本通道辖「锁线态 ∧ 不破息带 ∧ registry
+    名单核心卡」。开店闩(cw4_shopped_phase)默认不消费:闩辖
+    run_mandate 的 OpenShop 发射节流(_emit_open_shop),本通道在商店
+    决策访问位下游,无闩读/写。
+    """
+    return locked_buy and bench_free > 0
+
+
 # ===== executor 本体 =====
 
 def run_mandate(frame: MandateFrame,

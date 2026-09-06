@@ -99,8 +99,3 @@ def ev_buy_veto(candidate: BuyCandidate, gold: int) -> tuple[bool, str]:
     if gold < candidate.cost:
         return True, 'unaffordable'
     return False, ''
-
-
-def p2_lock_buy() -> bool:
-    """P2 锁线核心卡(§2.11 P25 钩子占位):默认关——线内核心卡走 M2 义务。"""
-    return False
