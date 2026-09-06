@@ -1,7 +1,7 @@
 # ADR-0569: C1 直通核心卡支配性支(并列支配通道,dominance 邻位)——直通终局核心卡信号层入口落码,P25 占位接管
 
 - 状态:已实施
-- 关联:设计《直通核心卡信号层入口》(设计-C1直通核心入口.md v3,实施唯一口径;spotcheck_v3_C1_C3.md 复核解锁)、ADR-0506(支配性结构通道无条件落地先例,P36-a)、ADR-0556(t5_p1_false 息账零损支配论证先例,T5 止血买)、01_math_framework §3 支配性优先序与 §7 P25 钩子行、`cw_comps.CORE_SINGLE_CARD_REGISTRY`(名单单一源)、`mandate_v1/shop.py` 选择序、`mandate_v1/criteria`(P25 占位接管)
+- 关联:设计《直通核心卡信号层入口》(docs/develop/currency_war/design/设计-C1直通核心入口.md,实施唯一口径;spotcheck_v3_C1_C3.md 复核解锁)、ADR-0506(支配性结构通道无条件落地先例,P36-a)、ADR-0556(t5_p1_false 息账零损支配论证先例,T5 止血买)、01_math_framework §3 支配性优先序与 §7 P25 钩子行、`cw_comps.CORE_SINGLE_CARD_REGISTRY`(名单单一源)、`mandate_v1/shop.py` 选择序、`mandate_v1/criteria`(P25 占位接管)
 
 ## 1. 背景与问题
 
