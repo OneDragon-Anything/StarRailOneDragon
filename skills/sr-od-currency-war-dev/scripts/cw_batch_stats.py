@@ -183,6 +183,19 @@ def zero_action(acts: list[dict]) -> bool:
     return n_act(acts, 'BuyCard', 'LevelUp', 'RefreshShop') == 0
 
 
+def _g1_no_victim(launch: dict) -> bool:
+    """发射帧是否命中生产计数键 deploy_swap_no_victim 的三元联合形态。
+
+    = 板满 ∧ bench core 待上 ∧ 缺合格 victim(launch.victim = G1 准入
+    三元,cw_launch_admission.launch_admission_report 输出,与生产
+    cw_loop 显影同键同字段)。victim 缺席(准入异常吞 None/档案行无
+    观测)≠ 命中。
+    """
+    a = launch.get('victim') or {}
+    return bool(a.get('board_full') and a.get('bench_core_waiting')
+                and a.get('victim_missing'))
+
+
 def analyze_game(rows: list[dict]) -> dict:
     m: dict = {}
     spends = [act_cost(r['acts']) for r in rows]
@@ -225,15 +238,18 @@ def analyze_game(rows: list[dict]) -> dict:
     m['成型后退档轮数'] = sum(1 for r in rows[first_ok:] if not r['form_ok']) if first_ok is not None else 0
     # F 达标臂发射面(sim = 行内 launch 键;档案 = StartBattle 行动):
     # 成功率 sim 恒 1(发射核必然执行,建模声明见 engine_p1);
-    # victim 缺失占比 = 发射时板满∧无合格腾位形态(G1 准入)的占比。
+    # victim 缺失占比 = 生产计数键 deploy_swap_no_victim 同口径三元联合
+    # (板满 ∧ bench core 待上 ∧ 缺合格 victim,cw_loop 发射路径 G1 准入
+    # 显影同键)。裸 victim_missing 会误显影:板不满时三元③恒真但生产
+    # 不计数。victim 观测缺席(档案行/准入异常吞 None)→ None 不误报 0。
     launches = [r['launch'] for r in rows if r.get('launch')]
     m['发射次数'] = len(launches)
     m['发射成功率'] = (round(sum(1 for L in launches if L.get('ok')) / len(launches), 2)
                     if launches else None)
-    m['发射victim缺失占比'] = (round(sum(1 for L in launches
-                                     if (L.get('victim') or {}).get('victim_missing'))
+    _vic_seen = any(L.get('victim') for L in launches)
+    m['发射victim缺失占比'] = (round(sum(1 for L in launches if _g1_no_victim(L))
                                  / len(launches), 2)
-                           if launches else None)
+                           if launches and _vic_seen else None)
     m['首发轮'] = next((r['round'] for r in rows if r.get('launch')), None)
     # H 采购面三观察(sim 行内 obs 键,engine_p1「采购面三观察计数」块建模;
     # 档案行 obs 恒空 → 0/None,不误报)。观察面只计数不定谳——
@@ -388,7 +404,8 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     print('\n-- E 供给利用 --')
     print(f'  相关供给吃掉率(中位 | p10 低尾): '
           f'{statistics.median(su):.2f} | {pct(su, 0.1):.2f}' if su else '  无数据')
-    print('\n-- F 达标臂发射面(sim launch 键 / 档案 StartBattle;成功率 sim 恒真值面) --')
+    print('\n-- F 达标臂发射面(sim launch 键 / 档案 StartBattle;成功率 sim 恒真值面;'
+          ' victim 缺失占比 = 生产 deploy_swap_no_victim 同口径三元联合) --')
     for k in ('发射次数', '发射成功率', '发射victim缺失占比'):
         a = agg(k)
         print(f'  {k}: {a[0]} | {a[1]}' if a else f'  {k}: 无数据')
