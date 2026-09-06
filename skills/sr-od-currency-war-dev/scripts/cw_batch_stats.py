@@ -23,6 +23,10 @@
 - 对拍口径:统一触发面键 = cw4_counters.must_spend_l2_trigger(触发帧数),
   发射面 = must_spend_layer_hit.L2(层命中),两者分开披露不互换(实机报告键口径
   = 触发帧数,与批报告发射数不对称,对拍时先对齐口径)。
+- G4 r288 复发门·部署通道(ADR-0564 §6 预注册派生指标):锁定列车冲突语境
+  轮的「轮间 roster diff 仙舟全羁绊件离场事件数」,账本零新增字段;两个判定件
+  (仙舟全羁绊件集/locked_comp 冲突语境)直调 src 注册表单一源,src 不可达时
+  报「无数据」不误报 0。
 """
 from __future__ import annotations
 
@@ -75,7 +79,11 @@ def _sim_rows(batch: Path) -> dict[str, list[dict]]:
             'form': r.get('b_t', r.get('form_score')), 'form_ok': r.get('form_ok'),  # b_t 优先(新数据),form_score 回退读历史(退役只读)
             # 锁线布尔(单一源 = v3_intention.locked_comp 非空;L 位面/锁线辖域披露用)
             'locked': bool((r.get('v3_intention') or {}).get('locked_comp')),
+            # G4 语境行级数据(ADR-0564 §6):locked_comp 原串供注册表
+            # 解析冲突语境(非空即语境候选);bench = roster-diff 全集另一半
+            'locked_comp': (r.get('v3_intention') or {}).get('locked_comp') or '',
             'level': st.get('level'), 'deployed': st.get('deployed') or [],
+            'bench': st.get('bench') or [],
             'factions': dict(st.get('board_factions') or {}), 'acts': r.get('actions') or [],
             # 达标臂发射事件(行内 launch 键,engine_p1 建模;None=未触发)
             'launch': r.get('launch'),
@@ -133,7 +141,11 @@ def _archive_rows(mid: str) -> dict[str, list[dict]]:
         'form': r.get('b_t', r.get('form_score')), 'form_ok': r.get('form_ok'),  # b_t 优先(新数据),form_score 回退读历史(退役只读)
         # 档案轮无 v3_intention 键 → None(锁线辖域披露为「无数据」,不误报 0)
         'locked': None,
+        # G4 语境:档案行无 locked_comp → None(G4 报无数据;将来档案带
+        # v3_intention 时自动升级为可算)
+        'locked_comp': None,
         'level': r.get('level'), 'deployed': r.get('deployed') or [],
+        'bench': r.get('bench') or [],
         'factions': dict(r.get('board') or {}), 'acts': r.get('actions') or [],
         # 档案侧发射面:行动作里的 StartBattle(生产发射核执行痕迹;
         # 档案只记「发生了」,ok 恒 True——发射失败形态仅 sim/生产
@@ -194,6 +206,79 @@ def _g1_no_victim(launch: dict) -> bool:
     a = launch.get('victim') or {}
     return bool(a.get('board_full') and a.get('bench_core_waiting')
                 and a.get('victim_missing'))
+
+
+# ---------- G4 r288 复发门·部署通道(ADR-0564 §6 预注册派生指标)----------
+
+_G4_REG: dict | None = None
+
+
+def _find_src_dir() -> Path | None:
+    """定位含 ``sr_od`` 包的 src 目录(脚本可能从任意 cwd 调用:
+    候选 = cwd/src 与 __file__ 各级祖先直下/其 src 子目录)。"""
+    cands: list[Path] = [Path.cwd() / 'src']
+    cands.extend(Path(__file__).resolve().parents)
+    for cand in cands:
+        if (cand / 'sr_od').is_dir():
+            return cand
+        if (cand / 'src' / 'sr_od').is_dir():
+            return cand / 'src'
+    return None
+
+
+def _make_conflict_fn(cw_intention):
+    """冲突语境判定包装(fail-closed:解析异常 = 非冲突语境)。"""
+    from types import SimpleNamespace
+
+    def conflict(locked_comp: str) -> bool:
+        try:
+            return bool(cw_intention.locked_line_recipe_floor_conflict(
+                SimpleNamespace(locked_comp=locked_comp)))
+        except Exception:
+            return False
+    return conflict
+
+
+def _g4_registry() -> dict | None:
+    """G4 判定件的 src 注册表句柄(懒加载;不可达 = None → 无数据)。
+
+    两个判定件都是注册表单一源,禁在脚本内复制第二份口径:
+    - 仙舟全羁绊件集 = ``cw_chars.chars_by_faction('仙舟',
+      include_flows=True)``(CHARACTERS 查表 factions+flows 含仙舟,
+      ADR-0564 §6 G4 口径原文);
+    - 冲突语境 = ``cw_intention.locked_line_recipe_floor_conflict``
+      (locked_comp 可解析 ∧ form_tiers['列车同行'] > 门封顶档;
+      鸭子型直喂只含 locked_comp 单键——helper 只读该键)。
+    运行环境无 src(PYTHONPATH 缺失)时记失败缓存不再重试,消费面
+    读 None 按无数据披露,不误报 0。
+    """
+    global _G4_REG
+    if _G4_REG is not None:
+        return _G4_REG or None
+    import sys
+    src = _find_src_dir()
+    try:
+        if src is not None:
+            sys.path.insert(0, str(src))
+        from sr_od.application.currency_war.data.cw_chars import (
+            chars_by_faction,
+        )
+        from sr_od.application.currency_war.kernel import cw_intention
+        _G4_REG = {
+            'xz_all': frozenset(
+                c.name for c in chars_by_faction('仙舟', include_flows=True)),
+            'conflict': _make_conflict_fn(cw_intention),
+        }
+    except Exception:
+        _G4_REG = {}
+    return _G4_REG or None
+
+
+def roster_cids(row: dict) -> set[str]:
+    """行 roster 全集 = state.deployed/bench 逐件 char_id 并集
+    (G4 差分输入;ADR-0564 §6「逐件 char_id 集合」口径)。"""
+    return ({d.get('char_id') or '' for d in row.get('deployed') or []}
+            | {d.get('char_id') or '' for d in row.get('bench') or []})
 
 
 def analyze_game(rows: list[dict]) -> dict:
@@ -324,6 +409,50 @@ def analyze_game(rows: list[dict]) -> dict:
     m['位面锁定'] = ({p: (b['locked'], b['frames'])
                      for p, b in sorted(_pl.items())}
                     if any(r.get('locked') is not None for r in rows) else None)
+    # G4 r288 复发门·部署通道(ADR-0564 §6 预注册 roster-diff 口径;
+    # 挂账批落工具侧):相邻两轮 roster(state.deployed/bench 逐件
+    # char_id 集合)做差,差集中消失名 ∈ 仙舟全羁绊件 = 离场事件。
+    # 语境筛选 = 先行行 locked_comp 可解析 ∧ form_tiers['列车同行'] >
+    # 门封顶档(单一源直调,禁脚本内复制档值口径)。语境行取差分对
+    # 先行行:decisions 行 state 为决策时点快照,离场动作发生在该行
+    # 决策帧、显影在次行。通道合并计(离场即计的门语义),SellBench
+    # 行有顶层 name 可作通道分键;率 = 事件/语境轮(归一化读数)。
+    # 档案行无 locked_comp → None 不误报 0。
+    m['g4语境轮数'] = m['g4仙舟离场事件'] = None
+    m['g4离场事件率'] = m['g4离场通道'] = None
+    _g4reg = _g4_registry()
+    if _g4reg is not None and any(
+            r.get('locked_comp') is not None for r in rows):
+        _ctx = _ev = 0
+        _chan: dict[str, int] = {}
+        for _a, _b in zip(rows, rows[1:], strict=False):
+            _lc = _a.get('locked_comp')
+            if not _lc or not _g4reg['conflict'](_lc):
+                continue
+            _ctx += 1
+            # 通道分键读顶层 name = 真实账本转录单一形态(engine_p1
+            # SellBench 转录行 = {'__type__','bench_idx','name',
+            # 'income','sell_reason'},无 card 键)。边界声明:
+            # SellDeployed 转录行({'__type__','reason','result',…})
+            # 无件名字段 → 该分键结构性恒空,经 SellDeployed 的离场
+            # 一律落 unattributed(判读注记,非缺陷;转录行加名字段
+            # 则本分键自动激活)。
+            _acts = _a.get('acts') or []
+            _sb = {a.get('name') for a in _acts
+                   if a.get('__type__') == 'SellBench' and a.get('name')}
+            _sd = {a.get('name') for a in _acts
+                   if a.get('__type__') == 'SellDeployed' and a.get('name')}
+            for _name in roster_cids(_a) - roster_cids(_b):
+                if not _name or _name not in _g4reg['xz_all']:
+                    continue
+                _ev += 1
+                _ck = ('sell_bench' if _name in _sb else
+                       'sell_deployed' if _name in _sd else 'unattributed')
+                _chan[_ck] = _chan.get(_ck, 0) + 1
+        m['g4语境轮数'] = _ctx
+        m['g4仙舟离场事件'] = _ev
+        m['g4离场事件率'] = round(_ev / _ctx, 2) if _ctx else None
+        m['g4离场通道'] = _chan
     m['l2统一触发帧'] = _cts.get('must_spend_l2_trigger', 0)
     m['l2_rest_capacity拒'] = _cts.get('fuel_filler_stall_fenced_l2_rest_capacity', 0)
     # D 战斗过程
@@ -493,6 +622,25 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     _lp_show = {k: v for k, v in sorted(_ct_tot.items())
                 if k.startswith(_LP_PREFIXES)}
     print(f'  锁线断点分键(G5-G8+锁定率帧,键→次): {_lp_show or "无数据(本批改动前落的局无键)"}')
+    # G4 r288 复发门·部署通道(ADR-0564 §6 判据:事件数「≤ 基线 + 噪声」
+    # 为门语义,率 = 事件/语境轮为归一化读数;None = 注册表不可达或
+    # 非 sim 源无 locked_comp,不误报 0)
+    _g4ev = [m.get('g4仙舟离场事件') for m in ms.values()]
+    if all(v is None for v in _g4ev):
+        print('  G4 仙舟离场事件: 无数据(注册表不可达或非 sim 源无 locked_comp)')
+    else:
+        _ev_tot = sum(v or 0 for v in _g4ev)
+        _ctx_tot = sum(m.get('g4语境轮数') or 0 for m in ms.values())
+        _chan_tot: dict[str, int] = {}
+        for m in ms.values():
+            for k, v in (m.get('g4离场通道') or {}).items():
+                _chan_tot[k] = _chan_tot.get(k, 0) + v
+        print(f'  G4 仙舟离场事件(门语义,合计): {_ev_tot}'
+              f' | 语境轮合计: {_ctx_tot}'
+              f' | 率(事件/语境轮): '
+              f'{round(_ev_tot / _ctx_tot, 2) if _ctx_tot else None}'
+              f' | 有事件局: {sum(1 for v in _g4ev if v)}')
+        print(f'  G4 通道分键: {_chan_tot or "无"}')
     if len(planes_all) == 1:
         print('  注: 单面批(planes=1)——L2 辖域不可达(触发链前置锁线,锁线态'
               '在位面入口才建立,本批锁线帧=0),L2=0 是辖域结果,禁当行为信号')

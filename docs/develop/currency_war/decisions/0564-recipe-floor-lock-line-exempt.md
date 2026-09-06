@@ -72,7 +72,7 @@
 - **G1 生效门**:锁定线帧集 `deploy_emit_held_recipe_floor` ≈ 0;`deploy_emit_floor_exempt_open` > 0(开火验证:新机制触发 0 次 = 输入死,先查接线再谈效果)。
 - **G2 收益向**:锁定线成型率(locked train comp fp≥1.00 帧占比)≥ 基线且方向向上;`post_sell_held` 分键显著下降(转型臂通道复活)。
 - **G3 不劣门**:avg_final_hp / hp_ge_60 / battle_losses_le_2 同池同种子噪声带内不劣(单侧劣化超带 = 回炉查因,禁带病上实机)。
-- **G4 r288 复发门·部署通道**:锁定列车冲突语境轮的「轮间 roster diff 仙舟全羁绊件离场事件数」≤ 基线 + 噪声。派生口径(账本已可计算形态,零账本字段新增)= 相邻两轮账本行 `state.deployed/bench` 逐件 char_id 集合做差,差集中消失名 ∈ 仙舟全羁绊件(CHARACTERS 查表 factions+flows 含仙舟);语境筛选 = 该行 `v3_intention.locked_comp` 可解析 ∧ `form_tiers['列车同行'] > RECIPE_FLOOR_TRAIN_CAP`。通道合并计(离场即计的门语义;SellBench 行有名可作通道分键)。批统计工具侧扩展 = G4 派生指标落 `skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py`(现仅消费 cw4_counters 聚合),**该工具行不在本批代码文件面,候 A/B 批落**。
+- **G4 r288 复发门·部署通道**:锁定列车冲突语境轮的「轮间 roster diff 仙舟全羁绊件离场事件数」≤ 基线 + 噪声。派生口径(账本已可计算形态,零账本字段新增)= 相邻两轮账本行 `state.deployed/bench` 逐件 char_id 集合做差,差集中消失名 ∈ 仙舟全羁绊件(CHARACTERS 查表 factions+flows 含仙舟);语境筛选 = 该行 `v3_intention.locked_comp` 可解析 ∧ `form_tiers['列车同行'] > RECIPE_FLOOR_TRAIN_CAP`。通道合并计(离场即计的门语义;SellBench 行有名可作通道分键)。批统计工具侧扩展 = G4 派生指标落 `skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py`(现仅消费 cw4_counters 聚合),**该工具行不在本批代码文件面,候 A/B 批落**。(候补批留痕:G4 工具已随候补批——shop.py 预检接线批,进度账本 T-86——落地,派生口径 = 本节预注册原文,通道分键读账本转录顶层 name;判据运行仍候 A/B 批。)
 - **G5 r288 复发门·换血通道**:①锁定线帧 `swap_arm_transition_trigger` 批增量 > 0(转型臂复活确认;轮级 join 口径:行 `v3_intention.locked_comp` 解析为列车冲突 comp ∧ 该行 obs.cw4_counters 含该键增量——键为局级聚合,无帧级锁定属性,按轮级 join 判读);②`engines_guard` 拒因在案(守恒门 =「拆成型引擎」形态被拦的守恒证据)。原「仙舟件经 swap 1★ 离场计数」判据删除(sim 不建模执行侧 swap 卖出,恒真不可测),移 G6 判据 3′。
 - **G6 执行面(sim 结构性不可见,实机验证)**:`deploy_zero_place_breaker` 缺陷计数不升;部署 round_fail 帧不增;`deploy_exec_r288_skip_ctx_open/closed` 可归因;**3′** 锁定线帧仙舟全羁绊件经 swap 卖出离场事件 ≤ 基线 + 噪声(实机对局档案派生;实机辅助锚 = `deploy_swap_no_victim` 显影键;**基线样本源候实机批指认**——阈值结构已预注册,基线源指认是执行细节,不阻塞判据线先 commit)。
 
@@ -81,8 +81,8 @@
 - **P1 配方锁帧不豁免(占位裁决,登记 + 期限)**:本设计下 P1 框架帧(P1 配方锁/桥对)`locked_comp` 恒空(ADR-0357)→ 条件(1) 恒 False → 天然不豁免,零代码。框架列车目标 4 vs 封顶 2 的同型冲突在 P1 亦存在,过渡纪律最值钱期不豁免是合理缺省——但此为**占位裁决非终局**,登记重裁期限:**实机连续 3 局再现 P1 同形卡点(框架锁线帧列车 core 恒拦致部署真空),或下一策略迭代收口评审时,以先到者为准必须重裁**(升格需先解 p1_pair 语境的目标档来源,非本批参数可表达);禁无限期悬置。
 - **数据依赖声明**(豁免条件(2) 谓词完备性):依赖注册表现状「**仙舟羁绊件主阵营恒=仙舟**」(cw_chars 9/9)。当前该事实与门交互自洽:仙舟 ∈ RECIPE_FACTIONS ⊂ DEPLOY_FENCE → 主阵营仙舟件恒不被散牌围栏拦;board 仙舟档≥1 ⟺ 供给件成对 → 不被 rest_capacity 拦。**未来入表「flows 含仙舟 ∧ 主阵营 ∉ RECIPE_FACTIONS」的件**:锁定列车线帧 board_recipe=4<RECIPE_BASE(recipe_starved 恒真),vacancy≤2 帧该件被围栏/rest_capacity 拦住上不了场、却仍被判有效供给 → 豁免闭合 → 列车 core 恒拦 = 死供给第四类换形复发。处置:不预扩谓词(为不存在角色扩防是过度设计);**入表复核义务 = 凡新增仙舟羁绊件,核对其主阵营取值**(条件④实现注释点名围栏/成对门交互)。
 - **常量挂账关联**:`RECIPE_FLOOR_TRAIN_CAP`/`RECIPE_FLOOR_XZ_BASE` 派生自 `TRANSITION_TRAITS` 副本,该副本带迁移挂账(cw_deploy_logic 头部注释;权威副本 = knowledge/cw_engine_facts.TRANSITION_TRAITS,按 legacy cleanup 计划随文件删除)——新常量属既有消费方向的模块级化(cw_intention 本就 import TRANSITION_TRAITS,非新增消费方文件),**副本迁移执行时本常量须随迁,禁留断链**。
-- **G4 派生工具**(cw_batch_stats.py 扩展)与 **G6 判据 3′ 基线源指认**:候 A/B 实机批落/指认,不在本批代码面。
-- **shop.py 两处 `can_deploy_single` 预检接线义务(v3 §1.6.5)候补批**:本批未接线,裁决留痕。理由:①本批派单文件面不含 shop.py,且实施期检测到并行批正在改该文件,混入必撞;②不接线的后果方向 = 预检按未武装门判 False(fail 向保守——预检多拒 = 不买,合法稳态),与部署帧的豁免语义分裂但零行为回归,不构成 r288 复发面。义务本体不变(豁免是帧属性,同一帧预检与部署语义分裂 = dd-037 破口),**候补批挂账凭据 = 进度账本 T-86**(接线形态:两处均已持 `_ist`,追加 `recipe_floor_lock_exempt=locked_line_recipe_floor_conflict(_ist)` keyword 实参,try/fail-closed 同 mandate `_deployable` 形态)。
+- **G4 派生工具**:已随候补批(shop.py 预检接线批,T-86)落地——`cw_batch_stats.py` G4 派生指标,口径 = §6 G4 预注册原文;A/B 判据运行仍候实机批。**G6 判据 3′ 基线源指认**:候 A/B 实机批指认,不在本批代码面。
+- **shop.py 两处 `can_deploy_single` 预检接线义务(v3 §1.6.5)候补批**:已由候补批(T-86)接线——出口③/T5 两调用位按本条形态补 `recipe_floor_lock_exempt` keyword(try/fail-closed 同 mandate `_deployable` 形态),接线锁与红证在测试仓 `test_cw_exit3_fuel_filler`/`test_cw_t5_unlocked_transition`。本条其余留痕(未接线理由)保留作裁决记录。
 
 ## 8. 引用勘误(随批修)
 
