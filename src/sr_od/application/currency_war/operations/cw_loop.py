@@ -476,7 +476,11 @@ def register_flow_heartbeat(ctx, kind: str) -> None:
     try:
         _state = getattr(getattr(getattr(ctx, 'cw_match', None),
                                  'session', None), 'last_state', None)
-        if _state is None or not _state.get_recorder().enabled:
+        # recorder 单一源 = telemetry state 模块单例(与写入端同源);GameState
+        # 无 get_recorder——旧实现 `_state.get_recorder()` 恒 AttributeError
+        # 被下方 best-effort 吞掉 = 三类流程心跳(锁定直出战/补给/收益耗尽
+        # 出战)登记从未生效(局33 复盘定谳,机械面接线修复)。
+        if _state is None or not state.get_recorder().enabled:
             return
         if kind == 'locked_resume_direct_battle':
             from sr_od.application.currency_war.kernel.cw_prep_actions import (
