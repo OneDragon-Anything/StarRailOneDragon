@@ -543,6 +543,15 @@ def run_buy_waves(op: SrOperation, match,
     refresh_btn = area_center(op.ctx, '按钮-刷新', SHOP_SCREEN_NAME) or REFRESH_FALLBACK
 
     ledger = ShopVisitLedger()
+    # T-82 段序号置位(商店 visit 开始;发射帧仲裁段消费 = 本函数带
+    # spend_gate 的调用,共用本入口,两类段一并推进):visit = 腾席拒绝
+    # 结论的输入不变性段,入口 +1 使上一 visit/上一域(备战)残留的
+    # 续段 token/结论闩按序号不等自动失效(跨 visit/跨战斗伪命中封死)。
+    # 状态对象缺席(第三方策略面/桩)= 无缓存载体,跳过置位(B4 缺席
+    # 退缺省口径,决策核侧冷建自 0 起 = 恒重推导,保守端安全)。
+    _st_seg = strategy_state_of(match.session)
+    if _st_seg is not None:
+        _st_seg.cw4_segment_serial += 1
     # 对拍基线 = 开店首读金:首段循环顶读、任何动作执行前快照(含假 0
     # 救援后的值)。末段重读值已净含各段花销,当基线会与全程动作账双重相减。
     gold_open: int | None = None
@@ -795,6 +804,15 @@ def run_buy_waves(op: SrOperation, match,
                 ledger=ledger, state=_cur))
             apply_action_outcome(_aop, action, _ok, _cur, match, ledger,
                                  visit_actions)
+            # T-82 续段 token 写入(生产商店循环执行位):动作确认已执行
+            # 后置位 (动作型名, 当前段序号);未执行路径(闸拒/硬墙/
+            # CloseShop 提前退出)不写。策略器入口读后即清,下一帧据其
+            # 判定 M2 停摆续段缓存命中。状态对象缺席 = 跳过(B4 口径)。
+            if _ok:
+                _st_tok = strategy_state_of(match.session)
+                if _st_tok is not None:
+                    _st_tok.cw4_frame_action_record = (
+                        type(action).__name__, _st_tok.cw4_segment_serial)
             # 义务实花回执位记账(T-88;闸前不记——spend_gate 拒绝帧
             # 未执行,本位只在 execute 成功回执后累计,F4 栈守卫见函数注)。
             accrue_release_spent(match, action, _ok, _cur)

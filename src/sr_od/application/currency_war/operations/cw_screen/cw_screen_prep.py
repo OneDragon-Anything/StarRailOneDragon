@@ -1424,6 +1424,14 @@ class CwScreenPrep(SrOperation):
         #      外循环(下次入口重观察)。投影未建模的动作同判保守回退。
         _visit_acts: list[str] = []
         actions: list = []
+        # T-82 段序号置位(备战期开始;唯一置位点 = 本 prep 访问循环入口):
+        # 访问 = 腾席拒绝结论的输入不变性段,入口 +1 使上一访问/上一域
+        #(商店 visit/破墙段)残留的续段 token/结论闩按序号不等自动失效。
+        # 状态对象缺席(第三方策略面/桩)= 无缓存载体,跳过置位(决策核
+        # 侧冷建自 0 起,行为 = 恒重推导,保守端安全;B4 缺席退缺省口径)。
+        _st_seg = strategy_state_of(session)
+        if _st_seg is not None:
+            _st_seg.cw4_segment_serial += 1
         for _vi in range(self.VISIT_ACTION_CAP):
             # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 入口观察/
             #      循环投影步;首帧 = 入口 heavy,后续 = 投影态)
@@ -1516,6 +1524,15 @@ class CwScreenPrep(SrOperation):
                 if progressed and isinstance(action, LevelUp):
                     self._xp_apply_levelup()
             acct['progressed'] = progressed
+            # T-82 续段 token 写入(生产 prep 循环执行位;OpenShop 分支与
+            # 执行器分支在此合流):动作确认已执行后置位 (动作型名, 当前
+            # 段序号);执行失败(fail-stop 交回外循环 heavy 重观察)不写。
+            # 状态对象缺席 = 无缓存载体,跳过(B4 缺席退缺省口径)。
+            if progressed:
+                _st_tok = strategy_state_of(session)
+                if _st_tok is not None:
+                    _st_tok.cw4_frame_action_record = (
+                        type(action).__name__, _st_tok.cw4_segment_serial)
             _visit_acts.append(type(action).__name__)
             # 期望态记账暂存(ADR-0517:对账归下一入口时点;per-action heavy
             # 重观察契约退役,对账族消费帧 = 下次入口 heavy)
@@ -1637,6 +1654,14 @@ class CwScreenPrep(SrOperation):
             progressed, detail = self._executor.execute(action)
             log.info(f'[cw][director] 破警告动作 {_last_name} → '
                      f'{"✓" if progressed else "✗"} {detail}')
+            # T-82 续段 token 写入(破墙段执行位,主循环同款协议):确认
+            # 已执行后置位;破墙动作多为 SellBench(输入变异),token 自然
+            # 不命中缓存。状态对象缺席 = 跳过(B4 缺席退缺省口径)。
+            if progressed:
+                _st_tok = strategy_state_of(session)
+                if _st_tok is not None:
+                    _st_tok.cw4_frame_action_record = (
+                        type(action).__name__, _st_tok.cw4_segment_serial)
             if not progressed:
                 break   # fail-stop(契约 §2):丢弃余下,交回外循环重观察
         # 破墙动作也记一条 exec_events(类名带 BenchFull 前缀,审计可辨)

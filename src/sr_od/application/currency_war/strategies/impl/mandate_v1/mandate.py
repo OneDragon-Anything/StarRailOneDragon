@@ -78,6 +78,16 @@ if TYPE_CHECKING:
 # pending 重新显影),fresh 载体 phase 键式跨轮自动失效,无持久状态。
 M1P_SEAM_VERIFIED: bool = True
 
+# ===== M2 停摆续段缓存:非变异动作白名单·备战域(T-82 必花臂重试风暴;
+# 商店域对应集 = shop.M2_STALL_NONVARIANT_SHOP_ACTIONS,两域 φ 输入同构
+# 但动作词表不同,分集声明)=====
+# 跳过条件 = 可判定谓词「帧间动作全在本集 ∧ 同段」,非任何计数阈值。
+# 白名单外动作一律视为变异 ⇒ 缓存失效 ⇒ 全量重推导(保守端 = 现行为)。
+# ⚠️ 守卫:加入新动作型前须验证其执行语义不动 bench/deployed/k/敌缀/
+# 意图集——现行唯一成员依据:LevelUp(买经验点击)只动 xp/level/gold;
+# prep 其余动作(SellBench/RunDeploy/DeployMove…)均触 φ 分量,禁入。
+M2_STALL_NONVARIANT_PREP_ACTIONS: frozenset[str] = frozenset({'LevelUp'})
+
 # bench 容量 B(R8-8 重试上限;kernel/cw_state.BENCH_CAPACITY 单一源,
 # R196 症6:本地重定义删除,消费=import 符号名——第二源构成快照巧合双源)
 
@@ -377,7 +387,10 @@ def run_mandate(frame: MandateFrame,
     m2_retry_exhausted / dominance_bench_wait / m6_bench_full /
     m6_overflow_strand / bench_full_buy_abandon(R196 症4 落地:M2 bench
     满放弃买入帧的「bench 满拒买」事件计数,与 m2_retry_exhausted 的
-    环终止计数分键——前者量事件帧,后者量重试环耗竭)/
+    环终止计数分键——前者量事件帧,后者量重试环耗竭;T-82 批两键改
+    事件粒度:续段缓存命中帧不增,量级骤降 ≠ 风暴消失,判读协议随批
+    声明;观测对 m2_stall_cache_hit / m2_stall_cache_rederive 与重复帧
+    键 m2_stall_repeat_frame 同批新增,语义与商店域一致)/
     shop_latch_skip_dominance_buy / shop_latch_skip_m2_buy /
     shop_latch_skip_m6_stock(备战期开店闩跳过计数,分站记)/
     equip_latch_skip_m7(装备期闩跳过计数,dd-027 门②)。
@@ -407,6 +420,13 @@ def run_mandate(frame: MandateFrame,
     if not isinstance(counters, dict):
         counters = {}
         state_of(session).cw4_counters = counters
+
+    # T-82 续段 token 读清协议(备战域):入口读取后立即清除,token 供
+    # 下方 M2 停摆块命中判定消费;任何调用方首帧(槽空/型外/序号不等)
+    # 默认全量重推导。
+    _st = state_of(session)
+    _frame_token = _st.cw4_frame_action_record
+    _st.cw4_frame_action_record = None
 
     # M1″ seam 门唯一写点(session 属性;值源 = M1P_SEAM_VERIFIED 常量,
     # 出处与回滚路径见该常量注释,ADR-0530)。
@@ -478,43 +498,64 @@ def run_mandate(frame: MandateFrame,
             # 现场腾席:M4 fuel_sell(R8-8:环内意图=线内件(序 1/2)独占)
             # dedup = 拦截事件口径(C1):帧级去重集,while 重试环对同一
             # 滞留素材重复评估只计 1。
-            _mm_dedup: set[str] = set()
-            retries = 0
-            freed = False
-            bench = list(frame.bench)
-            while retries < BENCH_CAPACITY:
-                cands = fuel_sell_candidates(bench, k, state=state,
-                                             counters=counters,
-                                             defer_names=_t3_protect,
-                                             dedup_names=_mm_dedup)
-                if not cands:
-                    break       # 0 发射 ⇒ 立即放弃(状态未变,重放必再失败)
-                victim = cands[0]
-                ok4, _ = check_irreversible(victim.char_id or '', k)
-                if not ok4:
-                    break
-                # T3 末位牺牲序命中分键 + 卖出销账(唯一燃料帧放行转化)
-                _vname = victim.char_id or ''
-                if _vname in _t3_protect:
-                    _count('fuel_victim_protect_demoted')
-                    stall_buys_consume(session, _vname)
-                # prep 域 SellBench 载体无 reason 字段,转化类分键只落
-                # 计数不落动作标记——prep 通道卖出恒先于本轮买入,同轮
-                # 买卖检查的买→卖向不辖,豁免面无需 prep 侧 reason
-                #(与 entry.py EV funding 发射位同口径声明)。
-                out.append(Emitted(SellBench(slot=victim.slot), True,
-                                   'm4_fuel_sell_for_m2'))
-                bench = [b for b in bench if b.slot != victim.slot]
-                freed = True
-                retries += 1
-                # 腾席后席位复检(静态:卖 1 件 ⇒ bench_free+1)
-                if BENCH_CAPACITY - len(bench) > 0:
-                    break
-            if not freed or BENCH_CAPACITY - len(bench) <= 0:
-                _count('m2_retry_exhausted')
-                _count('bench_full_buy_abandon')   # 环终止仍满 ⇒ 事件帧
+            # T-82 续段缓存(商店域 M4 块同款):上帧动作 ∈ 备战域白名单
+            # ∧ token/闩序号均 == 当前段序号 ∧ 闩结论=腾席无候选 ⇒ 扫描
+            # 输入逐项不变 ⇒ while 环重放必再失败(环注释原语义),跳过
+            # 环与两事件键;计数从帧粒度回到事件粒度,命中帧改计
+            # m2_stall_repeat_frame(+m2_stall_cache_hit)。
+            _seg = _st.cw4_segment_serial
+            _latch = _st.cw4_m2_stall_latch
+            if (_frame_token is not None
+                    and _frame_token[0] in M2_STALL_NONVARIANT_PREP_ACTIONS
+                    and _frame_token[1] == _seg
+                    and _latch is not None and _latch[0]
+                    and _latch[1] == _seg):
+                _count('m2_stall_cache_hit')
+                _count('m2_stall_repeat_frame')
             else:
-                _emit_open_shop('m2_buy')
+                _mm_dedup: set[str] = set()
+                retries = 0
+                freed = False
+                no_fuel = False    # 闩写条件承载:环以「候选空集」退出(
+                                   # 不可逆拒/正常腾出 ≠ 本结论,不写闩)
+                bench = list(frame.bench)
+                while retries < BENCH_CAPACITY:
+                    cands = fuel_sell_candidates(bench, k, state=state,
+                                                 counters=counters,
+                                                 defer_names=_t3_protect,
+                                                 dedup_names=_mm_dedup)
+                    if not cands:
+                        no_fuel = True
+                        break       # 0 发射 ⇒ 立即放弃(状态未变,重放必再失败)
+                    victim = cands[0]
+                    ok4, _ = check_irreversible(victim.char_id or '', k)
+                    if not ok4:
+                        break
+                    # T3 末位牺牲序命中分键 + 卖出销账(唯一燃料帧放行转化)
+                    _vname = victim.char_id or ''
+                    if _vname in _t3_protect:
+                        _count('fuel_victim_protect_demoted')
+                        stall_buys_consume(session, _vname)
+                    # prep 域 SellBench 载体无 reason 字段,转化类分键只落
+                    # 计数不落动作标记——prep 通道卖出恒先于本轮买入,同轮
+                    # 买卖检查的买→卖向不辖,豁免面无需 prep 侧 reason
+                    #(与 entry.py EV funding 发射位同口径声明)。
+                    out.append(Emitted(SellBench(slot=victim.slot), True,
+                                       'm4_fuel_sell_for_m2'))
+                    bench = [b for b in bench if b.slot != victim.slot]
+                    freed = True
+                    retries += 1
+                    # 腾席后席位复检(静态:卖 1 件 ⇒ bench_free+1)
+                    if BENCH_CAPACITY - len(bench) > 0:
+                        break
+                if not freed or BENCH_CAPACITY - len(bench) <= 0:
+                    _count('m2_retry_exhausted')
+                    _count('bench_full_buy_abandon')   # 环终止仍满 ⇒ 事件帧
+                    if no_fuel:
+                        _count('m2_stall_cache_rederive')
+                        _st.cw4_m2_stall_latch = (True, _seg)
+                else:
+                    _emit_open_shop('m2_buy')
         else:
             ok1, _ = check_affordable(frame.gold, cheapest_member_cost(frame))
             if ok1:

@@ -188,6 +188,38 @@ class MandateState:
     # None=缺省回 DEFAULT_INTEREST_CAP)。
     cw4_cap_override: int | None = None
 
+    # ===== M2 停摆续段缓存(T-82 必花臂重试风暴;段标识/结论闩/帧动作
+    # token 三载体;为什么需要 = 商店/备战帧循环对「输入不变 ⇒ 拒绝不变」
+    # 的腾席拒绝无记忆重推导,把一次停摆事件逐帧放大成 N 个事件帧——
+    # 缓存命中帧跳过扫描且事件键不增,恢复 P60 诚实停摆的事件粒度语义)=====
+    # 段序号。构成:会话态单调递增 int;置位:各段入口 +1(商店 visit
+    # 开始[cw_op_buy_cards.run_buy_waves 入口=普通 visit 与发射帧仲裁段
+    # 共用同一入口 / bridge.decide_shop_screen 入口=sim/replay]、备战期
+    # 开始[生产 prep 访问循环入口]);比较:只作相等比较、不作阈值,
+    # 递增值不承载任何决策量。段 = 停摆结论的输入不变性区间;跨段残留
+    # token/闩按序号不等自动失效(域切换=必过段入口,跨域伪命中被同一
+    # 比较拦截)。
+    cw4_segment_serial: int = 0
+    # M4 腾席拒绝结论闩:None=无结论。写入端=两决策位(shop/mandate 的
+    # M2 停摆块)在「全量重推导得出腾席无候选」时写 (True, 当前段序号);
+    # 有候选但不可逆护栏拒=非本结论,不写。命中判定要求闩序号 == 当前
+    # 段序号(与 token 序号两道独立,任一不等即失效重推导)。
+    cw4_m2_stall_latch: tuple[bool, int] | None = None
+    # 帧动作记录 token(载体单一源):None=无记录。写入端=动作执行/投影
+    # 层确认已执行后写 (动作型名 type().__name__, 当前段序号),物理写入
+    # 位四处:①生产商店循环(cw_op_buy_cards.run_buy_waves 执行位);
+    # ②sim-replay 驱动器(bridge.decide_shop_screen 投影位);③生产 prep
+    # 循环主环(cw_screen_prep 决策循环 OpenShop/执行器分支合流执行位);
+    # ④同文件备战席满破墙段执行位(_bench_full_break_round;破墙动作多为
+    # SellBench/DeployMove ∉ 备战白名单恒不命中——登记防未来白名单扩集
+    # 后此处成无人知晓的命中输入面)。调用方申报:备战期开店循环
+    #(cw_screen_prep 开店分支逐动作调 decide_shop_action)无 token 写入
+    # 无段序号置位 ⇒ 域内缓存恒不命中(保守端=现行为,读清单点覆盖
+    # 无伪命中),收益面窄化,不接线。读清协议 = decide_shop_action 入口
+    # 读取后立即清除(防重复消费);任何调用方首帧(槽空/型外/序号不等)
+    # 默认全量重推导。
+    cw4_frame_action_record: tuple[str, int] | None = None
+
 
     # ===== 账外补充·第二波(实施批收尾扫描按 §6.1 收编的策略侧动态
     # 属性;写入端均在 mandate_v1,消费面含执行侧经访问函数只读)=====

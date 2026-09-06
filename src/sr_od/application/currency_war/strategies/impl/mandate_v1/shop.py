@@ -54,6 +54,17 @@ shop_merge_trigger_truncate;K 空窗回退修复批(2026-09-03 第三病灶)
 判读须按新语义重建基线);``shop_ev_bench_wait`` = EV 候选在场但
 bench 无空席、EV 买不提案的帧(席位门,与 dominance_bench_wait 同款)。
 
+T-82 必花臂重试风暴批计数粒度变更:``m2_retry_exhausted`` /
+``bench_full_buy_abandon`` 从「每决策帧一次」改**事件粒度**——腾席
+无候选的输入不变续段(上帧动作 ∈ M2_STALL_NONVARIANT_SHOP_ACTIONS
+白名单 ∧ 同段)内命中续段缓存的帧不再 +1(量级骤降 ≠ 风暴消失,
+判读协议随批声明);新增观测对 ``m2_stall_cache_hit``(命中帧)/
+``m2_stall_cache_rederive``(重推导得出无候选帧)与重复帧键
+``m2_stall_repeat_frame``(风暴帧量级保留可见,零静默)。语义依据
+= P60 诚实停摆事件语义(停摆计数应量「不同停摆段」而非「帧」)。
+``merge_material_guard_blocked`` 不受本批影响:帧首 P56 投影位
+无条件先触达并首计,与本缓存正交、行为零变化。
+
 T5 未锁线止血买分键族(ADR-0556 §5;对齐 17号稿
 七键口径):t3_available / t3_buy / t3_no_candidate(店无 cost-1 垫件,
 有意收窄帧归因显影)/ t3_fenced(+kernel 五拒因动态后缀)/
@@ -175,6 +186,19 @@ if TYPE_CHECKING:
 # 终结 op 吸收(RefreshShop/CompTransaction 即终结,CloseShop 恒可用),
 # 名-槽一致性复检降级为执行侧 proposal-vs-expected 守卫断言
 # (cw_shop_action_ops;ADR-0517 决策 9 和解注)。
+
+# ===== M2 停摆续段缓存:非变异动作白名单(T-82 必花臂重试风暴)=====
+# 跳过条件 = 可判定谓词「帧间动作全在本集 ∧ 同段」,非任何计数阈值
+# (零参数结构,同族支配语境:P70 已证、P69 草拟未证,本批语义依据
+# = P60 诚实停摆 + ADR-0573 方案 §3 跳过弱支配)。白名单外动作(含
+# 未知新动作型)一律视为变异 ⇒ 缓存失效 ⇒ 全量重推导(保守端 = 现
+# 行为,最坏退化即无缓存)。⚠️ 守卫:加入新动作型前须验证其执行语义
+# 不动 bench/deployed/k/敌缀/意图集(停摆结论的全部输入)——现行两
+# 成员依据:sim 引擎 LevelUpShop 只动 gold/spend/xp、RefreshShop 只动
+# gold/spend/xp/商店牌面(牌面不在输入集),生产对应 op(真实点击
+# 升级/刷新)同语义。
+M2_STALL_NONVARIANT_SHOP_ACTIONS: frozenset[str] = frozenset(
+    {'LevelUpShop', 'RefreshShop'})
 
 
 def _shop_sell_refund(bc: BenchChar) -> int | None:
@@ -458,6 +482,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
         state_of(session).cw4_counters = {}
     counters: dict = state_of(session).cw4_counters
 
+    # T-82 续段 token 读清协议:入口读取后立即清除(防重复消费;生产单
+    # 动作循环与 sim/replay 驱动器的共同必经点在本函数,读清单点覆盖全部
+    # 调用方)。命中判定见 M4 块——任何调用方首帧(槽空/型外/序号不等)
+    # 默认全量重推导。
+    _st = state_of(session)
+    _frame_token = _st.cw4_frame_action_record
+    _st.cw4_frame_action_record = None
+
     # 备战期开店闩置位(唯一写点;键与 mandate.run_mandate 的 phase 同式):
     # 本函数被调 = 开店动作真执行、商店域决策访问已发生——闩语义
     # 「本备战期商店已被访问,期内重开无信息量」的记账位在访问发生,
@@ -641,40 +673,65 @@ def decide_shop_action(state: GameState, session: StrategySession,
         recent.append(name)
         del recent[:-16]
 
+    # T-82 事件粒度辖记(初始化先于 M4 块:bench_full_buy_abandon 发射位
+    # 与 M4 块两处消费同一布尔,条件谓词相同但独立书写,防未来耦合)。
+    _m2_stall_hit = False
     # M4 腾席(买入遇 bench 满:现场卖 1 燃料件,R8-8 单帧闭环)。
     # P60:燃料集排除 buy_members(exclude_names)——义务换手通道闭死,
     # |B|>容量时走 m2_retry_exhausted 诚实停摆而非永恒卖 1 买 1。
+    # T-82 续段缓存:上帧动作 ∈ 白名单 ∧ token/闩序号均 == 当前段序号 ∧
+    # 闩结论=腾席无候选 ⇒ 扫描输入逐项不变 ⇒ 拒绝确定性复现,跳过扫描
+    # (弱支配:发射序列逐位一致;P56 投影位每帧照常触达,不受本缓存
+    # 影响)。计数从帧粒度回到事件粒度:命中帧两事件键不增,改计
+    # m2_stall_repeat_frame(风暴量级保留可见);段首/失效后重推导帧两
+    # 事件键照计 + m2_stall_cache_rederive。
     if missing and bench_free <= 0:
-        cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
-                                             exclude_names=buy_members,
-                                             defer_names=_t3_protect,
-                                             counters=counters,
-                                             dedup_names=_mm_dedup)
-        if cands:
-            victim = cands[0]
-            ok4, _ = mandate.check_irreversible(victim.char_id or '', k_members)
-            if ok4:
-                idx = (state.bench or []).index(victim)
-                _vname = victim.char_id or ''
-                # T3 末位牺牲序命中分键 + 卖出销账(生命周期出口②):
-                # 被保件是唯一燃料 ⇒ 放行卖出(为义务买入腾位的转化类,
-                # SellBench.reason 带分键供同轮买卖检查豁免面收敛)
-                _prot_hit = _vname in _t3_protect
-                if _prot_hit:
-                    _count('fuel_victim_protect_demoted')
-                    mandate.stall_buys_consume(session, _vname)
-                _note_sell(_vname)
-                return SellBench(bench_idx=idx,
-                                 income=_shop_sell_refund(victim),
-                                 expect=_vname,
-                                 reason=('fuel_victim_protect_demoted'
-                                         if _prot_hit else ''))
+        _seg = _st.cw4_segment_serial
+        _latch = _st.cw4_m2_stall_latch
+        if (_frame_token is not None
+                and _frame_token[0] in M2_STALL_NONVARIANT_SHOP_ACTIONS
+                and _frame_token[1] == _seg
+                and _latch is not None and _latch[0]
+                and _latch[1] == _seg):
+            _m2_stall_hit = True
+            _count('m2_stall_cache_hit')
+            _count('m2_stall_repeat_frame')
         else:
-            _count('m2_retry_exhausted')
+            cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
+                                                 exclude_names=buy_members,
+                                                 defer_names=_t3_protect,
+                                                 counters=counters,
+                                                 dedup_names=_mm_dedup)
+            if cands:
+                victim = cands[0]
+                ok4, _ = mandate.check_irreversible(victim.char_id or '', k_members)
+                if ok4:
+                    idx = (state.bench or []).index(victim)
+                    _vname = victim.char_id or ''
+                    # T3 末位牺牲序命中分键 + 卖出销账(生命周期出口②):
+                    # 被保件是唯一燃料 ⇒ 放行卖出(为义务买入腾位的转化类,
+                    # SellBench.reason 带分键供同轮买卖检查豁免面收敛)
+                    _prot_hit = _vname in _t3_protect
+                    if _prot_hit:
+                        _count('fuel_victim_protect_demoted')
+                        mandate.stall_buys_consume(session, _vname)
+                    _note_sell(_vname)
+                    return SellBench(bench_idx=idx,
+                                     income=_shop_sell_refund(victim),
+                                     expect=_vname,
+                                     reason=('fuel_victim_protect_demoted'
+                                             if _prot_hit else ''))
+            else:
+                _count('m2_retry_exhausted')
+                _count('m2_stall_cache_rederive')
+                _st.cw4_m2_stall_latch = (True, _st.cw4_segment_serial)
 
     # M2 线成员买入(序 1/2 义务;[41]:义务不走息律门)。金不足侧:
     # 支付支撑通道在 R1 拒后的发射位处理(卖一张回此帧重判)。
-    if bench_free <= 0 and missing:
+    # bench_full_buy_abandon 同受 T-82 事件粒度辖(_m2_stall_hit 命中帧
+    # 不增——与 m2_retry_exhausted 同一停摆事件的两投影键,粒度必须一致,
+    # 否则事件数与帧数两口径混计)。
+    if bench_free <= 0 and missing and not _m2_stall_hit:
         _count('bench_full_buy_abandon')
     for m in missing:
         if bench_free <= 0:
@@ -1114,6 +1171,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                     else frozenset()
                             except Exception:   # noqa: BLE001 兜底 best-effort
                                 _lfs = frozenset()
+                            # 豁免武装布尔(ADR-0564;豁免是帧属性,同一帧
+                            # 预检与部署必须同值——语义分裂 = dd-037 单一
+                            # 源契约破口;try/fail-closed 同 mandate.
+                            # _deployable 形态)
+                            try:
+                                _rf_ctx = cw_intention \
+                                    .locked_line_recipe_floor_conflict(_ist)
+                            except Exception:   # noqa: BLE001 豁免语境 fail-closed
+                                _rf_ctx = False
                             try:
                                 # kernel 单一源直调(围栏语义单一源契约 =
                                 # N2;预检查询非判据面谓词,不挂 contracts
@@ -1131,7 +1197,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                     target_factions=_tgt2,
                                     target_cores=set(),
                                     fw_carry=_fw2,
-                                    locked_factions=_lfs or frozenset())
+                                    locked_factions=_lfs or frozenset(),
+                                    recipe_floor_lock_exempt=_rf_ctx)
                             except Exception:   # noqa: BLE001 查询不可得
                                 _ff_ok, _ff_why = False, \
                                     'precheck_unavailable'
@@ -1273,6 +1340,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
                             if _ist is not None else frozenset()
                     except Exception:   # noqa: BLE001 兜底 best-effort(同出口③)
                         _lfs5 = frozenset()
+                    # 豁免武装布尔(ADR-0564;帧属性同帧同值,形态同出口③):
+                    # 武装帧 T5 结构性出辖(armed ⇒ 采购集解析成功 ⇒ T5
+                    # 门关),本接线 = 帧属性语义统一,非行为变更
+                    try:
+                        _rf_ctx5 = cw_intention \
+                            .locked_line_recipe_floor_conflict(_ist)
+                    except Exception:   # noqa: BLE001 豁免语境 fail-closed
+                        _rf_ctx5 = False
                     try:
                         ok5, why5 = can_deploy_single(
                             _cand5, bench,
@@ -1284,7 +1359,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
                             target_factions=_tgt5,
                             target_cores=set(),
                             fw_carry=_fw5,
-                            locked_factions=_lfs5 or frozenset())
+                            locked_factions=_lfs5 or frozenset(),
+                            recipe_floor_lock_exempt=_rf_ctx5)
                     except Exception:   # noqa: BLE001 查询不可得 fail 向(同出口③)
                         ok5, why5 = False, 'precheck_unavailable'
                     if not ok5:
