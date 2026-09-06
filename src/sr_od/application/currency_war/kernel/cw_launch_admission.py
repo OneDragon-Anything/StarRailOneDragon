@@ -12,12 +12,20 @@ re-export,既有消费路径(生产 deploy 卖出臂/测试)零迁移。
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS as _ENGINE_FENCE,
 )
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
+    from sr_od.application.currency_war.kernel.cw_state import GameState
 
 # 部署围栏集 = RECIPE ∪ ENGINE(桥派生单一源 = cw_line_defs;r357 收口:
 # 围栏必须随桥派生集走,局部 frozenset 双源已被 r271 批清退)。
@@ -82,22 +90,24 @@ def protect_names_of(comp) -> frozenset[str]:
     return frozenset(names)
 
 
-def readiness_launch_decision(state, comp, *, line_members) -> dict:
-    """达标臂判据核(单一源;sim 决策下沉两小批之①上收)。
+def readiness_launch_decision(state: GameState, comp: Comp | None,
+                              *, line_members: Callable[[Comp], set[str]]
+                              ) -> dict:
+    """达标臂判据核(单一源;sim 决策下沉两小批之①上收,裁决 = ADR-0557)。
 
     返回 dict:``armed``(发射判据成立 = comp/state 输入齐备 ∧ 线成型
     ``cw_comps.form_progress(comp, state) >= 1.0``——零新阈值,阈值唯一
     面 = form_progress 语义)、``auth_basis``(触发臂名,与生产
     LaunchBattle/LevelUp.auth_basis 观测同键名族)、``admission``(armed
     时的 G1 准入三元 = ``launch_admission_report``;best-effort:预估
-    异常吞为 None,消费面按 None 分支——sim 观测同纪律,不炸账本)。
+    异常吞为 None——admission 仅观测位,消费门只读 armed,见 ADR-0557
+    §4)。
 
-    消费面拓扑(选型建议书 .debug/temp/currency_war/sim_sink_adjudication/
-    选型建议.md 裁决:方案三混合):实机 = operations/cw_loop 备战分支
-    驱动执行(发射核 launch_prepared_battle 留 operations 不动);sim =
-    engine_p1 轮入口消费同一输出驱动行为建模(发射帧短路决策段)。
-    两面差异全部属执行/观测皮肤,判据语义恰此处一份,禁任一消费面
-    内联第二实现(布局守卫 + 测试单一源锁)。
+    消费面拓扑(裁决 = ADR-0557,方案三混合):实机 = operations/cw_loop
+    备战分支驱动执行(发射核 launch_prepared_battle 留 operations 不动);
+    sim = engine_p1 轮入口消费同一输出驱动行为建模(发射帧短路决策段,
+    门 = armed 单键)。两面差异全部属执行/观测皮肤,判据语义恰此处一份,
+    禁任一消费面内联第二实现(布局守卫 + 测试单一源锁)。
 
     :param line_members: 线成员谓词注入参,单一源 =
         strategies.impl.mandate_v1.statefn.predicates.line_members(kernel

@@ -1007,16 +1007,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 发射核 launch_prepared_battle(RunDeploy+StartBattle),
             # **短路备战动作链**——位次 = 动作链之前,门在轮入口板面
             # (买/部署前)评估。
-            # sim 消费(两小批②,选型建议书 sim_sink_adjudication 裁决
-            # 方案三混合):发射成立 ∧ 战斗类节点 ⇒ 本轮**短路决策段**
+            # sim 消费(两小批②,裁决 = ADR-0557 方案三混合):发射成立
+            # ∧ 战斗类节点 ⇒ 本轮**短路决策段**
             # (不跑 decide_shop_screen,金不花——生产发射帧不产生买/刷
             # 动作,sim 行为对齐,消「金出口族 A/B 恒假阴性」的结构根);
             # 'launch' 键保留观测 + short_circuited 分键。sim 边界如实
             # 声明:发射恒成立(ok 恒 True——sim 无屏态过期/浮层在场/
             # 执行失败面,战斗节点必然结算);执行失败/浮层面不建模;
             # 战斗就绪在 sim = 节点本身为战斗类(逐轮必战结构,sim 无
-            # 「等战斗」语义);victim 形态 = 判据核 admission(best-effort
-            # None 不炸账本,rho_obs 同纪律)。
+            # 「等战斗」语义)。**门 = armed 单键**(三审整改:admission
+            # 仅作 victim 观测位、异常吞 None——若 admission 缺失也拦
+            # 短路,该帧族会留「生产短路金不花、sim 决策照常」的假阴性
+            # 残留,恰为本批消除的结构根)。
             # 零漂移声明:发射判定本身零 rng 消耗;短路是生产语义对齐的
             # **行为**变更(金流分叉即本批目的)。挂行内 'launch' 键而非
             # 向 actions 追加——行为投影 digest(w614 零漂移锚)含 actions
@@ -1037,12 +1039,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 )
                 _core = readiness_launch_decision(
                     st, _tc_launch, line_members=line_members)
-                if _core['armed'] and _core['admission'] is not None:
+                if _core['armed']:
                     _round_launch = {
                         '__type__': 'LaunchBattle',
                         # 授权依据(判据核单一源输出;与 LevelUp.auth_basis
                         # 观测同键名族)
                         'auth_basis': _core['auth_basis'],
+                        # victim = G1 准入三元观测位(异常吞 None,门不读
+                        # 它——见 ADR-0557 §4)
                         'victim': _core['admission'],
                         'ok': True,
                         # 两小批②:本轮决策段被发射短路(行为消费分键;

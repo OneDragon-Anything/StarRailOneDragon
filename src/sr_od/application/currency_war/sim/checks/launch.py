@@ -1,7 +1,7 @@
-"""达标臂发射短路·反假阴性哨兵(sim 决策下沉两小批②)。
+"""达标臂发射短路·反假阴性哨兵(sim 决策下沉两小批②;裁决 = ADR-0557)。
 
-背景(sim 决策下沉选型建议书,.debug/temp/currency_war/sim_sink_adjudication/
-选型建议.md 裁决 = 方案三混合):生产达标臂发射帧**短路备战动作链**
+背景(docs/develop/currency_war/decisions/0557-sim-sink-launch-criteria-
+kernel.md):生产达标臂发射帧**短路备战动作链**
 (金不花);两小批② 之前 sim 只记观测键、决策照常跑金照花 ⇒ 金出口族
 改动在严格同池 A/B 的 ledger 上 pre/post 逐位一致 = **结构性假阴性**
 (form_ok 镜像族无写者同族事故,已两次实证)。本哨兵把该缺口变成检查器
