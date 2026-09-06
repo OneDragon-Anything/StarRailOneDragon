@@ -22,7 +22,7 @@ accepted(落码批随本 ADR 实施;策略审查打回路由后的落码形态,�
 - **承重满额(load_bearing_full)** = 板面目标线承重计数 ≥ 槽位占用数。承重计数 = deployed 非空件中,**名字 ∈ comp 自家核准集(core_chars∪shared_chars——注册表成员名单是结构量;落地审 F1 修复:白厄类空羁绊单卡(独立羁绊绑死单卡,注册表 factions∪flows 空集)/不死途类视图外 shared 件经此计入,否则 comp 自家核心被误判线外,该线承重支路恒不可达)**或全羁绊(CHARACTERS 注册表 factions∪flows)∩ `comp.all_factions`(核心∪弹性羁绊,ADR-0152「弹性羁绊铺板不算 off-target」板面判定同视图)非空的件数;占用数 = `cw_state.deployed_occupied`(ADR-0392 单一源)。承重计数 ≤ 占用数恒成立(计数域 ⊆ 占用域),下限取该平凡上界 ⇒ 判据 ⟺ 板面零线外件(线外 = 非核准 ∧ 视图外)。**零自由参数**:两端均注册表/机制定义量,无数值标定、无拍定值。四体系线 comp 的该口径与披露 B_t(`board_target_line_weight`,ADR-0535)同族——披露口径本体仍是纯遥测零改,质量报告附 `b_t_disclosure` 供判读对账。
 - **部署计划不可得(fail-open 出口)** = kernel `has_deployable` 判空(dd-037 单一源,禁第二套围栏语义)。线外件在场但部署计划不可得 ⇒ 质量目标不可达帧,**降格为配方完备发射**——C3 设计 §2.1/§6「算不出/不可达 → fail-open 降格防死锁」教义在 B_t 轴的移植。输入装配取 mandate 发射门同源缺省:cap = `state.max_units()`(缺读退 10**6,与发射门 None 兜底同口径)、target = `comp.factions`;framework carry/locked factions 在判据核不可得 → 严格子集,**只可能偏「计划不可得」= fail-open 方向**(闸偏开),结构性排除「关闸后无动作 → 环级无进展守卫停摆」的死型。
 - **推迟帧语义**(C3 设计 §3.2 的闸侧实现):质量推迟帧(`defer_by_quality` = 线外件在场 ∧ 计划可得)必有部署动作在途——计划存在 ⇒ 下一备战环 RunDeploy 推进换血/填板,承重单调收敛(P61 族:换血 B_t 严格增、触发有限),armed 翻真;换血执行失败走既有 round_fail/守卫链(零新机制);金尽稳态由 ADR-0554 收益耗尽臂兜底(其判据与 armed 零耦合,既有锁族 `test_cw_no_progress_guard.py` 保绿)。推迟上界 = armed 翻真 ∨ 计划耗尽 ∨ 金尽,无无限推迟。
-- **fail-closed/fail-open 分界**:逐件承重判定注册表查无/身份未识别 → 按线外计(承重不认,fail-closed);质量维整体评估异常 → armed 维持配方腿结果(fail-open,防死锁优先),报告 `quality=None` 显影异常帧。
+- **fail-closed/fail-open 分界**:逐件承重判定注册表查无/身份未识别 → 按线外计(承重不认,fail-closed);质量维整体评估异常 → armed 维持配方腿结果(fail-open,防死锁优先),报告 `quality=None` + 显影旗 `quality_eval_error=True` 单义标记异常帧(与「配方不完备」常态帧区分,残量禁静默;消费面经 `LAUNCH_QUALITY_EVAL_ERROR_KEY` 分键落盘,三审07轮 C1)。
 
 ### 2. 判据资格声明(ADR-0482 两层权威序)
 
@@ -35,7 +35,7 @@ accepted(落码批随本 ADR 实施;策略审查打回路由后的落码形态,�
 
 | 挂账项 | 载体 | 过期/裁决判据 |
 |---|---|---|
-| 质量闸推迟行为观测(armed 翻真率/推迟帧数/收益耗尽臂触发率) | sim A/B + 实机对拍;观测位 = `quality` 报告(`defer_by_quality`/`line_weight`/`b_t_disclosure`)+ 分键 `launch_quality_defer_frames`(推迟帧计数;写点 = engine_p1 发射判定位与 cw_loop 达标臂判定位,best-effort 双面 sink,落地审 F6 补)+ 既有 `exhaustion_*` 分键;A/B 报告必带 sim 可观测性声明(strategy-work §4) | 判读面,无裁决权(数值合法性已由结构式承载);若实证显示系统性过度推迟(推迟帧占比异常高且翻真率趋零),重标须回本 ADR 重开,禁码内悄悄调参 |
+| 质量闸推迟行为观测(armed 翻真率/推迟帧数/收益耗尽臂触发率) | sim A/B + 实机对拍;观测位 = `quality` 报告(`defer_by_quality`/`line_weight`/`b_t_disclosure`)+ 分键 `launch_quality_defer_frames`(推迟帧计数)/`launch_quality_eval_error`(评估异常帧;键名常量单一源 = kernel `LAUNCH_QUALITY_*_KEY`,写点 = engine_p1 发射判定位与 cw_loop 达标臂判定位,best-effort 双面 sink,落地审 F6 补)+ 既有 `exhaustion_*` 分键;A/B 报告必带 sim 可观测性声明(strategy-work §4) | 判读面,无裁决权(数值合法性已由结构式承载);若实证显示系统性过度推迟(推迟帧占比异常高且翻真率趋零),重标须回本 ADR 重开,禁码内悄悄调参 |
 | comp.all_factions 视图 vs 部署门真实视图(fw_carry/locked_factions)的偏差面 | 核内不可得项取严格子集(方向安全:闸偏开不偏关);偏差量级随 A/B 观测复盘 | 偏差可观测(`defer_by_quality` 与实发 RunDeploy 的差)且方向恒安全时挂账无害;出现反向证据即回本 ADR |
 
 ### 4. 消费面与零改动申报

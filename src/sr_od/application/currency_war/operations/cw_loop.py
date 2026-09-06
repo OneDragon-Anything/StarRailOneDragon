@@ -1663,6 +1663,8 @@ class CwLoop(SrOperation):
             # _cw_locked_sync_done 闩(C1:闩只辖恢复局面)。非达标帧现行
             # 序零变化,不重排。
             from sr_od.application.currency_war.kernel.cw_launch_admission import (
+                LAUNCH_QUALITY_DEFER_FRAMES_KEY,
+                LAUNCH_QUALITY_EVAL_ERROR_KEY,
                 readiness_launch_decision,
             )
             from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
@@ -1673,15 +1675,19 @@ class CwLoop(SrOperation):
             _arm_core = readiness_launch_decision(
                 _ms, _tc, line_members=_line_members)
             _arm_armed = _arm_core['armed']
-            # 质量闸推迟帧分键(ADR-0570 待标定①实机观测 sink;best-effort,
-            # 容器缺席静默跳过,与 readiness_overlay_hold 同写入族)。
-            _q_armed = _arm_core.get('quality')
-            if _q_armed is not None and _q_armed.get('defer_by_quality'):
-                counters = getattr(strategy_state_of(
-                    self.ctx.cw_match.session), 'cw4_counters', None)
-                if isinstance(counters, dict):
-                    counters['launch_quality_defer_frames'] = \
-                        counters.get('launch_quality_defer_frames', 0) + 1
+            # 质量闸观测分键(ADR-0570 待标定①实机观测 sink:推迟帧/评估
+            # 异常帧;best-effort,容器缺席静默跳过,与 readiness_overlay_
+            # hold 同写入族;键名单一源 = kernel 常量,三审07轮 C2)。
+            counters = getattr(strategy_state_of(
+                self.ctx.cw_match.session), 'cw4_counters', None)
+            if isinstance(counters, dict):
+                if _arm_core.get('quality_eval_error'):
+                    counters[LAUNCH_QUALITY_EVAL_ERROR_KEY] = \
+                        counters.get(LAUNCH_QUALITY_EVAL_ERROR_KEY, 0) + 1
+                _q_armed = _arm_core.get('quality')
+                if _q_armed is not None and _q_armed.get('defer_by_quality'):
+                    counters[LAUNCH_QUALITY_DEFER_FRAMES_KEY] = \
+                        counters.get(LAUNCH_QUALITY_DEFER_FRAMES_KEY, 0) + 1
             if _arm_armed:
                 # 浮层在场排除(第十五局实机雷:投资策略浮层盖备战后弹出,
                 # 双锚模板穿透命中 → RunDeploy 拖拽落空 placed=0)。探测复用

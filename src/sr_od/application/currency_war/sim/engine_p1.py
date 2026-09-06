@@ -1098,6 +1098,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                     and _tc_launch is not None):
                 from sr_od.application.currency_war.kernel.cw_launch_admission import (
+                    LAUNCH_QUALITY_DEFER_FRAMES_KEY,
+                    LAUNCH_QUALITY_EVAL_ERROR_KEY,
                     readiness_launch_decision,
                 )
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
@@ -1105,16 +1107,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 )
                 _core = readiness_launch_decision(
                     st, _tc_launch, line_members=line_members)
-                # 质量闸推迟帧分键(ADR-0570 待标定①观测 sink:armed 被
-                # 承重维关闭的配方完备帧计数;best-effort,容器缺席静默跳
-                # 过,与 launch_frame_idle_gold 同写入族)。
-                _q = _core.get('quality')
-                if _q is not None and _q.get('defer_by_quality'):
-                    _cts_q = getattr(strategy_state_of(sess),
-                                     'cw4_counters', None)
-                    if isinstance(_cts_q, dict):
-                        _cts_q['launch_quality_defer_frames'] = \
-                            _cts_q.get('launch_quality_defer_frames', 0) + 1
+                # 质量闸观测分键(ADR-0570 待标定①观测 sink:推迟帧/评估
+                # 异常帧;best-effort,容器缺席静默跳过,与
+                # launch_frame_idle_gold 同写入族;键名单一源 = kernel 常量,
+                # 三审07轮 C2 禁字面量散写)。
+                _cts_q = getattr(strategy_state_of(sess), 'cw4_counters', None)
+                if isinstance(_cts_q, dict):
+                    if _core.get('quality_eval_error'):
+                        _cts_q[LAUNCH_QUALITY_EVAL_ERROR_KEY] = \
+                            _cts_q.get(LAUNCH_QUALITY_EVAL_ERROR_KEY, 0) + 1
+                    _q = _core.get('quality')
+                    if _q is not None and _q.get('defer_by_quality'):
+                        _cts_q[LAUNCH_QUALITY_DEFER_FRAMES_KEY] = \
+                            _cts_q.get(LAUNCH_QUALITY_DEFER_FRAMES_KEY, 0) + 1
                 if _core['armed']:
                     # form_ok 镜像现读补写(sim71 批死镜像处置的结构半边):
                     # 发射帧短路决策段 → write_shop_mirrors 本轮永不执行,

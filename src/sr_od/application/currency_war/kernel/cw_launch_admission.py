@@ -39,6 +39,14 @@ if TYPE_CHECKING:
 # cw_op_deploy._DEPLOY_FENCE 自本常量别名(消费路径兼容,实现单一)。
 DEPLOY_FENCE: frozenset[str] = frozenset(_RECIPE | _ENGINE_FENCE)
 
+# 质量闸观测分键名(单一源;写点 = engine_p1 发射判定位 + cw_loop 达标
+# 臂判定位,best-effort 双面 sink,ADR-0570 待标定①载体)——消费面禁
+# 字面量散写(三审07轮 C2),键名改这里即全链跟随。
+LAUNCH_QUALITY_DEFER_FRAMES_KEY: str = 'launch_quality_defer_frames'
+#: 质量评估异常帧分键(fail-open 显影;armed∧quality_eval_error 帧,
+# 与「配方不完备」常态帧单义区分,残量禁静默)。
+LAUNCH_QUALITY_EVAL_ERROR_KEY: str = 'launch_quality_eval_error'
+
 
 def offtarget_sell_allowed(char_id: str, bonds: set[str],
                            target_factions: set[str],
@@ -212,7 +220,10 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
     best-effort:预估异常吞为 None——admission 仅观测位,消费门只读
     armed,见 ADR-0557 §4)、``quality``(配方完备帧的质量维报告;
     None = 配方不完备帧,或质量评估异常的 fail-open 帧——异常帧
-    armed 维持配方腿结果,防死锁优先,论证 = ADR-0570 §判据)。
+    armed 维持配方腿结果,防死锁优先,论证 = ADR-0570 §判据)、
+    ``quality_eval_error``(评估异常显影旗:True = quality=None 系
+    异常 fail-open 而非配方不完备,消费面经
+    ``LAUNCH_QUALITY_EVAL_ERROR_KEY`` 分键落盘,残量禁静默)。
 
     消费面拓扑(裁决 = ADR-0557,方案三混合):实机 = operations/cw_loop
     备战分支驱动执行(发射核 launch_prepared_battle 留 operations 不动);
@@ -228,6 +239,7 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
     """
     armed = readiness_form_ok(state, comp)
     quality = None
+    quality_eval_error = False
     admission = None
     if armed:
         try:
@@ -235,6 +247,9 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
         except Exception:   # noqa: BLE001  质量评估异常 fail-open(算不出
             # 不关闸,防死锁优先;论证 = ADR-0570 §判据 fail-open 分界)
             quality = None
+            # 异常显影旗(残量禁静默,ADR-0566 口径):quality=None 兼有
+            # 「配方不完备」常态义,异常帧经本旗与消费面分键单义区分。
+            quality_eval_error = True
         armed = True if quality is None else (
             quality['load_bearing_full']
             or not quality['deploy_plan_available'])
@@ -245,7 +260,8 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
         except Exception:   # noqa: BLE001  准入预估 best-effort(观测不炸)
             admission = None
     return {'armed': armed, 'auth_basis': 'readiness_form_ok',
-            'admission': admission, 'quality': quality}
+            'admission': admission, 'quality': quality,
+            'quality_eval_error': quality_eval_error}
 
 
 def launch_admission_report(state, comp, *, line_members) -> dict:
