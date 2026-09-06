@@ -9,6 +9,13 @@ cw_loop 调用面/测试)共用同一实现,零第二份。
 victim 资格单一源 = offtarget_sell_allowed fenced 臂全条件(判据语义
 见其 docstring,自 cw_op_deploy 迁出未改动);cw_op_deploy 保留同名
 re-export,既有消费路径(生产 deploy 卖出臂/测试)零迁移。
+
+armed 质量合取(ADR-0570):达标臂判据 = 配方完备(readiness_form_ok)
+∧(板面承重满额 ∨ 部署计划不可得 fail-open)——质量维只消费 B_t 通道
+承重结构派生量(目标线承重计数/槽位占用/部署计划存在性;承重判定 =
+comp 自家核准集 core∪shared ∪ 外部阵营视图,全机制定义量零自由参数),
+禁 2★ 计数/装备覆盖/强度评分直入(00 §1 禁战力建模 + P62 form_score
+饱和零信息已证);命题与判据资格 = ADR-0570。
 """
 from __future__ import annotations
 
@@ -91,37 +98,128 @@ def protect_names_of(comp) -> frozenset[str]:
 
 
 def readiness_form_ok(state, comp) -> bool:
-    """form_ok 镜像观测的现读判据(单一源)。
+    """配方完备判据(form_progress≥1.0;单一源)。
 
     = comp/state 输入齐备 ∧ ``cw_comps.form_progress(comp, state) >= 1.0``
-    ——与 :func:`readiness_launch_decision` 的 armed 判据同式同源(同一
-    原语同一阈值,禁各写端内联第二实现)。消费面 = 镜像族写端
-    (strategies.impl.flow.write_shop_mirrors,sim71 批 form_ok 死镜像
-    处置:写端接板面现读)与发射判据核本体;纯遥测恢复,不进任何判据。
+    ——配方腿语义与 v3_form_ok 镜像写端同式同源(禁各写端内联第二实现);
+    消费面 = 镜像族写端(strategies.impl.flow.write_shop_mirrors)与
+    :func:`readiness_launch_decision` armed 的配方腿(ADR-0570 起 armed
+    在本判据之上叠加质量合取,本函数自身语义零改)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
     return (comp is not None and state is not None
             and form_progress(comp, state) >= 1.0)
 
 
+def launch_board_quality_report(state, comp) -> dict:
+    """armed 质量维报告(ADR-0570;纯函数,配方完备帧调用)。
+
+    质量判据(零自由参数,两端均机制定义量):
+
+    - ``line_weight``(目标线承重计数)= deployed 非空件中,名字 ∈ comp
+      自家核准集(core_chars∪shared_chars——注册表成员名单是结构量:
+      白厄类空羁绊单卡/不死途类视图外 shared 件经此计入承重,否则
+      comp 自家核心被误判线外恒推迟)或全羁绊(CHARACTERS 注册表
+      factions∪flows)∩ ``comp.all_factions`` 非空
+      的件数——comp 视图 = 核心∪弹性羁绊(cw_comps.all_factions,
+      ADR-0152 口径「弹性羁绊铺板不算 off-target」的板面判定同视图);
+      未注册/未识别名按线外计(fail-closed:承重不认)。
+    - ``occupied`` = ``cw_state.deployed_occupied``(ADR-0392 槽位占用
+      单一源)。承重计数 ≤ 占用数恒成立,判据下限取该平凡上界 ⇒
+      ``load_bearing_full`` ⟺ 板面零线外件(线外 = 非核准 ∧ 视图外)。四体系线 comp
+      该口径与披露 B_t(kernel ``board_target_line_weight``)同族同源
+      ——披露口径本体温测零改(ADR-0535),本报告附 ``b_t_disclosure``
+      供判读对账。
+    - ``deploy_plan_available`` = kernel ``has_deployable`` 判空(dd-037
+      单一源,禁第二套围栏语义)。输入装配取 mandate 发射门同源缺省:
+      cap = ``state.max_units()``(装配缺读退 10**6,与发射门 None 兜底
+      同口径)、target = ``comp.factions``(framework carry/locked
+      factions 在判据核不可得 → 严格子集,只可能偏「计划不可得」=
+      fail-open 方向,不可能造成关闸后无动作的守卫停摆)。
+
+    fail-open 语义(ADR-0570 §判据):线外件在场但部署计划不可得 ⇒
+    质量目标不可达帧,降格为配方完备发射(「不可达不关闸」防死锁教义,
+    论证与出处 = ADR-0570 §判据/§Considered);推迟帧
+    (``defer_by_quality``)必有部署动作在途(计划存在 ⇒ 下环
+    RunDeploy 推进换血/填板,P61 族承重单调收敛),金尽稳态由 ADR-0554
+    收益耗尽臂兜底(判据与 armed 零耦合)。
+    """
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        board_target_line_weight,
+        deployed_bond_counts,
+        has_deployable,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
+        iter_occupied_deployed,
+    )
+    deployed = list(iter_occupied_deployed(state.deployed or []))
+    view = set(getattr(comp, 'all_factions', None) or [])
+    # 自家核准集 = comp 成员名单(core∪shared),注册表制裁的结构量——
+    # 空羁绊单卡(白厄)与视图外 shared 件(不死途/布洛妮娅/刃)经此
+    # 计入承重,防自家核心被误判线外致该线 armed 恒推迟(落地审 F1)。
+    sanctioned = (set(getattr(comp, 'core_chars', None) or [])
+                  | set(getattr(comp, 'shared_chars', None) or []))
+    line_weight = 0
+    for d in deployed:
+        name = d.char_id or ''
+        if name in sanctioned:
+            line_weight += 1
+            continue
+        ch = CHARACTERS.get(name) if name else None
+        if ch is None:
+            continue   # 未识别件承重不认(fail-closed)
+        if (set(ch.factions) | set(ch.flows)) & view:
+            line_weight += 1
+    occupied = deployed_occupied(state.deployed or [])
+    cids = {d.char_id for d in deployed if d.char_id}
+    try:
+        cap = int(state.max_units())
+    except Exception:   # noqa: BLE001  cap 缺读 = 发射门 None 兜底同口径
+        cap = 10 ** 6
+    plan_available = has_deployable(
+        [b for b in (state.bench or []) if b is not None],
+        deployed_cids=cids,
+        deployed_fac=deployed_bond_counts(cids),
+        board=dict(getattr(state, 'board', None) or {}),
+        cap=cap,
+        target_factions=set(getattr(comp, 'factions', None) or ()),
+        target_cores=set(getattr(comp, 'core_chars', None) or ()),
+    )
+    load_bearing_full = line_weight >= occupied
+    return {'load_bearing_full': load_bearing_full,
+            'deploy_plan_available': bool(plan_available),
+            'line_weight': line_weight, 'occupied': occupied,
+            'b_t_disclosure': board_target_line_weight(
+                [d.char_id for d in deployed if d.char_id]),
+            'defer_by_quality': not load_bearing_full
+                                and bool(plan_available)}
+
+
 def readiness_launch_decision(state: GameState, comp: Comp | None,
                               *, line_members: Callable[[Comp], set[str]]
                               ) -> dict:
-    """达标臂判据核(单一源;sim 决策下沉两小批之①上收,裁决 = ADR-0557)。
+    """达标臂判据核(单一源;sim 决策下沉两小批之①上收,裁决 = ADR-0557;
+    armed 质量合取 = ADR-0570)。
 
-    返回 dict:``armed``(发射判据成立 = comp/state 输入齐备 ∧ 线成型
-    ``cw_comps.form_progress(comp, state) >= 1.0``——零新阈值,阈值唯一
-    面 = form_progress 语义)、``auth_basis``(触发臂名,与生产
-    LaunchBattle/LevelUp.auth_basis 观测同键名族)、``admission``(armed
-    时的 G1 准入三元 = ``launch_admission_report``;best-effort:预估
-    异常吞为 None——admission 仅观测位,消费门只读 armed,见 ADR-0557
-    §4)。
+    返回 dict:``armed``(发射判据成立 = 配方完备 ``readiness_form_ok``
+    ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕,质量维定义与防死锁
+    语义见 :func:`launch_board_quality_report`/ADR-0570——配方腿阈值
+    唯一面 = form_progress 语义,质量腿零自由参数)、``auth_basis``
+    (触发臂名,与生产 LaunchBattle/LevelUp.auth_basis 观测同键名族)、
+    ``admission``(armed 时的 G1 准入三元 = ``launch_admission_report``;
+    best-effort:预估异常吞为 None——admission 仅观测位,消费门只读
+    armed,见 ADR-0557 §4)、``quality``(配方完备帧的质量维报告;
+    None = 配方不完备帧,或质量评估异常的 fail-open 帧——异常帧
+    armed 维持配方腿结果,防死锁优先,论证 = ADR-0570 §判据)。
 
     消费面拓扑(裁决 = ADR-0557,方案三混合):实机 = operations/cw_loop
     备战分支驱动执行(发射核 launch_prepared_battle 留 operations 不动);
     sim = engine_p1 轮入口消费同一输出驱动行为建模(发射帧短路决策段,
     门 = armed 单键)。两面差异全部属执行/观测皮肤,判据语义恰此处一份,
-    禁任一消费面内联第二实现(布局守卫 + 测试单一源锁)。
+    禁任一消费面内联第二实现(布局守卫 + 测试单一源锁)。armed 关闸帧
+    (配方完备 ∧ 质量推迟)的判读观测位 = ``quality.defer_by_quality``。
 
     :param line_members: 线成员谓词注入参,单一源 =
         strategies.impl.mandate_v1.statefn.predicates.line_members(kernel
@@ -129,7 +227,17 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
         launch_admission_report 同契约)。
     """
     armed = readiness_form_ok(state, comp)
+    quality = None
     admission = None
+    if armed:
+        try:
+            quality = launch_board_quality_report(state, comp)
+        except Exception:   # noqa: BLE001  质量评估异常 fail-open(算不出
+            # 不关闸,防死锁优先;论证 = ADR-0570 §判据 fail-open 分界)
+            quality = None
+        armed = True if quality is None else (
+            quality['load_bearing_full']
+            or not quality['deploy_plan_available'])
     if armed:
         try:
             admission = launch_admission_report(
@@ -137,7 +245,7 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
         except Exception:   # noqa: BLE001  准入预估 best-effort(观测不炸)
             admission = None
     return {'armed': armed, 'auth_basis': 'readiness_form_ok',
-            'admission': admission}
+            'admission': admission, 'quality': quality}
 
 
 def launch_admission_report(state, comp, *, line_members) -> dict:

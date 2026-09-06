@@ -393,7 +393,9 @@ P59(线成型门辖帧买入集与 off-line 围栏件不相交——**证伪**,�
       stale 帧出战发射延迟一环(与 swap 同语义,§9.2 E3 前置项同门)。
 ```
 
-**无进展守卫语义联动(守卫可达形态收窄)**:守卫(PREP_NO_PROGRESS_ROUNDS=3,同签名动作批 ∧ 状态零推进)现存可达形态之一「达标后 RunDeploy 合法 no-op 连环」在本臂落地后**不可达**——臂先于守卫计数产生状态推进。守卫规格零改动,仅可达域收窄声明;预期守卫在该相位触发频度趋零,**分键保留**(臂失效静默时守卫仍兜底,零静默不回退);守卫剩余辖域 = 执行面真卡死(遮罩/识别/流程故障),语义不变。
+**armed 判据语义增注(2026-09-07,ADR-0570)**:本节触发式第一行「form_progress ≥ 1.00」之上已叠加**成型质量合取**——armed = 配方完备 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕(B_t 通道承重结构维,零自由参数;判据资格与待标定项 = ADR-0570)。本节代码块保留发射位/位次/硬约束规格历史,armed 判据当前语义权威 = ADR-0570 + §11.10 as-built。
+
+**无进展守卫语义联动(守卫可达形态收窄)**:守卫(PREP_NO_PROGRESS_ROUNDS=3,同签名动作批 ∧ 状态零推进)现存可达形态之一「达标后 RunDeploy 合法 no-op 连环」在本臂落地后**不可达**——臂先于守卫计数产生状态推进。守卫规格零改动,仅可达域收窄声明;预期守卫在该相位触发频度趋零,**分键保留**(臂失效静默时守卫仍兜底,零静默不回退);守卫剩余辖域 = 执行面真卡死(遮罩/识别/流程故障),语义不变。(ADR-0570 增注:质量推迟帧上 RunDeploy 稳态 no-op 连环形态由 **收益耗尽臂**(ADR-0554,判据与 armed 零耦合)兜底改判出战,守卫停机仍不可达。)
 
 ### 9.7 恢复局备战同步步(伴生件;补段复盘 #7 实证)
 
@@ -606,3 +608,15 @@ victim 合格集与保护域关系(防与 P59 冲突,硬边界):**资格仍由 �
 | 浮层排除+面板 OCR 排除+新鲜屏态复验(第十五局实雷,as-built 已落库) | 投资策略等浮层在场 → 达标臂不发射(readiness_overlay_hold,探测复用 0 系分发锚表 + 遭遇 OCR 词「遭遇其」前缀,currency_war_encounter.md:22);执行时刻新鲜屏态复验(重截图复验备战双锚,非备战屏 → readiness_stale_screen 放弃发射不耗 C1 计数);发射失败连续 3 次回落守卫链(readiness_launch_giveup)。判别稳定化 N5 = 0e 分发层双信号+复探(outer_loop.md 0e 行) | cw_loop.py |
 | arm0_need 排除口径 | 纯 name 口径 = **执行层语义对齐**(check_seats 同名禁上阵 + cw_deploy_logic cid 去重实答);玩法机制定谳(同名异星可否同场)候实机帧证据,§8⑫ 挂账保留不收窄 | §4.2/predicates.py |
 | 出口③发射位接线(17 号稿 §7,ADR-0525) | Φ_stall 四支(锁线布尔/D=∅/δ_board>0/g>s_reserve)∧ 垫件资格单一源(1★∧∉buy_members∧零重叠∧可全退)∧ 净成本≤1 金 → 垫件买入授权;发射位次 M6 后 EV 前;七分键零静默;负向锁(四支 fail 向形态)候补强轮 | shop.py/cw_deploy_logic |
+
+### 11.10 达标臂 armed 质量合取 as-built 补录(2026-09-07,C3 成型质量维落码批;命题 = ADR-0570)
+
+> §9.6 达标臂触发语义自本批起 = 配方完备之上叠加成型质量合取;本节补录落码行为,§9.6 代码块保留规格历史。
+
+| 项 | as-built 内容 | 落点 |
+|---|---|---|
+| armed 质量合取 | armed = 配方完备(`readiness_form_ok`,fp≥1.0 零改)∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕;承重满额 = comp 自家核准集(core∪shared,落地审 F1 修复:白厄类空羁绊单卡/不死途类视图外 shared 件经此计入承重)∪ comp.all_factions 视图的承重计数 ≥ `deployed_occupied`(零自由参数结构式 ⟺ 板面零线外件,线外 = 非核准 ∧ 视图外);计划不可得 = kernel `has_deployable` 判空(dd-037 单一源;fw_carry/locked_factions 判据核缺读 → 严格子集输入,只偏 fail-open 方向,结构性排除「关闸后无动作 → 守卫停摆」);质量评估异常 fail-open(`quality=None` 显影) | kernel/cw_launch_admission.py(`readiness_launch_decision`/`launch_board_quality_report`) |
+| 推迟帧观测位 | 配方完备帧返回 quality 报告 `{load_bearing_full, deploy_plan_available, line_weight, occupied, b_t_disclosure, defer_by_quality}`;分键 `launch_quality_defer_frames`(推迟帧计数;写点 = engine_p1 发射判定位 + cw_loop 达标臂判定位,best-effort 双面 sink,落地审 F6 补);推迟上界 = 换血翻真(P61 族承重单调)∨ 计划耗尽 ∨ 金尽收益耗尽臂(ADR-0554,判据与 armed 零耦合) | 同上 + engine_p1.py/cw_loop.py 写点 + ADR-0554 既有锁族 |
+| 原候选作废声明 | 「按 2★ 数/装备覆盖重校成型判据」作废(策略审查打回:板面强度评分进决策门违 00 §1 + P62 form_score 饱和零信息已证);P63(B_t-depth r=0.403)只作方向锚禁作判据资格;判据资格 = 机制定义量结构式(ADR-0482 两层权威序全门行使记录 = ADR-0570 §判据资格声明) | decisions/0570-launch-quality-load-bearing-conjunction.md |
+| 零改动对照面申报 | **本批**零改(工作树中 shop/entry/engine_p1 等另有并行批在飞改动,不属本批申报):停手链(`proof.stop_buy` 成员齐备谓词 + shop/entry 消费位)、镜像写端(v3_form_ok/v3_b_t)、发射帧仲裁(ADR-0566 位次链,仲裁段本体零触);armed=True ⟹ 配方完备单向蕴含保持发射帧镜像补写语义正确 | mandate_v1/proof.py、shop.py、entry.py、flow.py、sim/engine_p1.py |
+| 测试锁面 | 新锁 `test_cw_launch_quality_conjunction.py`(真值表/视图随目标线回归/自家核准集回归〔反甲白厄空羁绊核心 + 视图外 shared,落地审 F1〕/B5 推迟上界,12 锁);旧「上收逐位等价锁」按锁的存在性纪律改写为合取语义锁(`test_cw_sim_launch_sink.py` TestKernelArmedConjunctionLock;红证口径:旁路形态 = armed 回退配方单键、质量报告保留,跨两文件计 = 新文件推迟支 2 锁 + sink 合取语义锁 1 锁共 3 红) | sr-od-test |
