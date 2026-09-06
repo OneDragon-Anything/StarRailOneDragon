@@ -1911,12 +1911,42 @@ class CwScreenPrep(SrOperation):
         hp_value = getattr(st, 'hp', None) if st is not None else None
         hp_readable = bool(getattr(st, 'hp_readable', False))
         hp_trusted = hp_readable
+        return self.visit_open_shop(hp_value, hp_readable, hp_trusted)
+
+    def visit_open_shop(self, hp_value: int | None = None,
+                        hp_readable: bool = False,
+                        hp_trusted: bool = False) -> tuple[bool, str]:
+        """店已开态的商店访问编排(外循环 0n 分支入口,ADR-0562)。
+
+        语义 = 「从店已开状态进入」(ADR-0517 单动作循环的入口形态):
+        入口观察现读当前牌面重建期望态 → 策略器逐动作决策(买/卖/升/刷)
+        → CloseShop 终结收店交回。**不调 open_shop**——店已开由外循环
+        0n 三 id_mark 锚判定确认,直接跳过开店动作(比依赖 open_shop
+        幂等性更进一步:已开连点都不发);「收不收」由策略器基于期望态
+        决定(CloseShop = 商店画面 op 的一等终结动作),路由层不硬编码收起。
+
+        hp 三件组缺省 (None, False, False):0n 入口无备战观察(商店开态
+        HP 区不可读,读互斥),session.last_state 可能是上一轮的陈旧值
+        不可用作决策依据 → 不覆盖,保留 read_game_state 产物,血线消费门
+        按 fail-closed 拒收(_apply_hp 契约)。显式开店路径
+        (_open_shop_phase)经参数传入开店前备战观察的 hp 三件组。
+
+        编排单一源归属:本方法 = 商店访问尾段(run_buy_waves → CwOpCloseShop
+        → finalize_buy_phase → 节点探针)的唯一编排点,显式开店路径与 0n
+        转交路径共用。失败路径不开收(店留着交上层重新识别,同 _open_shop_phase)。
+        """
+        match = self._match()
+        if match is None:
+            return False, '无 cw_match(对局未初始化)'
         from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
             run_buy_waves,
         )
+        from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
+            close_shop,
+        )
         _rr, outcome = run_buy_waves(self, match, hp_value, hp_readable, hp_trusted)
         if _rr is not None or outcome is None:
-            return (False, f'买牌波循环未完成'
+            return (False, f'买牌循环未完成'
                     f'({_rr.status if _rr is not None else "无产出"})')
         _r_close = close_shop(self)
         if not _r_close.is_success:

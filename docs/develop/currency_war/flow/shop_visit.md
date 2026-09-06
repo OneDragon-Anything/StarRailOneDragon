@@ -10,7 +10,11 @@ OpenShop 动作两形态（`kernel/cw_prep_actions.py:108-117`）：
 | 形态 | 编排 |
 |---|---|
 | `read_only=True`（读数性开店） | CwOpOpenShop（幂等：已开不点）→ heavy 观察（gold 开态真值进 session）→ **不调商店决策**（M-6 门保持：free=0 不进买牌）→ CwOpCloseShop → 节点探针 → 回备战。progressed = 开店成功（r364 进展保证语义） |
-| `read_only=False`（显式开店） | 开店前 hp 三件组取**开店前的备战观察**（商店开态 HP 区不可读，读互斥）→ `run_buy_waves`（§2）→ CwOpCloseShop → `finalize_buy_phase`（§4）→ 节点探针 |
+| `read_only=False`（显式开店） | 开店前 hp 三件组取**开店前的备战观察**（商店开态 HP 区不可读，读互斥）→ `visit_open_shop`（§2） |
+
+第三入口形态：**0n 外循环转交（店已开，ADR-0562）**——外循环 0n 分支命中后直接调 `CwScreenPrep.visit_open_shop()`（hp 缺省 `(None, False, False)` 不覆盖，fail-closed）：不调 open_shop（店已开由三 id_mark 锚确认，连点都不发），入口观察现读已开的店 → 策略器决策 → CloseShop 终结。路由层不硬编码收起（收不收归策略器，CloseShop = 商店画面 op 的一等终结动作）。
+
+`visit_open_shop` = 商店访问尾段（run_buy_waves → CwOpCloseShop → finalize_buy_phase → 节点探针）的**编排单一源**，显式开店与 0n 转交两路径共用。失败路径不开收（店留着交上层重新识别）。
 
 购买单元记账：开店前 `_spend_unit_open`（时点+gold 观测+F2 诚实标注），收尾 `_spend_unit_close`（boundary=closed/failed/aborted → spend_ledger.jsonl；`cw_screen_prep.py:1679` 起）。循环失败路径不开收（店留着交上层重新识别）。
 

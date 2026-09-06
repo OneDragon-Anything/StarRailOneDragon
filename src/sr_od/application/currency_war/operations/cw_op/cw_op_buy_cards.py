@@ -41,6 +41,9 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_gold_opt,  # noqa: F401  模块属性路由:cw_shop_action_ops 经本模块名取读函数(替身缝)
     read_shop_cards,
 )
+from sr_od.application.currency_war.operations.decision_frame_hooks import (
+    save_decision_frame,
+)
 from sr_od.application.currency_war.telemetry import defects, recorder
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -526,8 +529,10 @@ def run_buy_waves(op: SrOperation, match,
         # → 污染本帧 read_game_state;park 后再读。
         op.park_cursor(after_wait=0.1)
         # ---- 入口观察(ADR-0517 决策 1/8:唯一读屏点,即对账)----
-        state = read_game_state(op.ctx, op.screenshot(),
+        _entry_shot = op.screenshot()
+        state = read_game_state(op.ctx, _entry_shot,
                                 phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
+        save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         _apply_hp(state, hp_value, hp_readable, hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖
         if not _target_seeded:
             # 执行边界压缩:原开店后 update_target 专用读的首段替代。

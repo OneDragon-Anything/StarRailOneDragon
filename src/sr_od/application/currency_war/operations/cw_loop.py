@@ -82,6 +82,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_wait_one_one 
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_wish_trial import (
     CwScreenWishTrial,
 )
+from sr_od.application.currency_war.operations.decision_frame_hooks import (
+    save_decision_frame,
+)
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 from sr_od.application.currency_war.telemetry import query, recorder, state
 from sr_od.context.sr_context import SrContext
@@ -1083,6 +1086,7 @@ class CwLoop(SrOperation):
         #      确认按钮 → 失败循环。双 id_mark 门:装备标题+请选择1个都命中才派发。
         if (self.round_by_find_area(screen, '货币战争-选择装备', '标识-选择装备', crop_first=False).is_success
                 and self.round_by_find_area(screen, '货币战争-选择装备', '标识-请选择1个装备', crop_first=False).is_success):
+            save_decision_frame(self, 'overlay_equip_pick', screen)   # 决策帧留证
             from sr_od.application.currency_war.operations.cw_screen.cw_screen_equip_pick import (
                 CwScreenEquipPick,
             )
@@ -1097,6 +1101,7 @@ class CwLoop(SrOperation):
         #     共享「选择」(2/4=0.5=默认阈值)会误匹配全屏 LCS → 投资策略屏被误派发(2026-08-04 snap 实测)。
         #     area 位置不同(选择伙伴 overlay 标题在 top-center id_mark rect)→ 不命中(同 0d/0e area 化理由)。
         if self.round_by_find_area(screen, '货币战争-列车同行', '标识-选择伙伴', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_partner', screen)   # 决策帧留证
             self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
             _r = CwScreenPartner(self.ctx).execute()
             if _r is not None and getattr(_r, 'success', False):
@@ -1109,6 +1114,7 @@ class CwLoop(SrOperation):
         #      选卡后可能弹「属性详情」面板 → handler 内关)。
         #      ⚠️ 必须在 0a 后/备战(1)前:overlay 盖备战屏,loop 不认它就反复空读。
         if self.round_by_find_area(screen, '货币战争-骇入策划', '标识-我来当策划', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_planner', screen)   # 决策帧留证
             _r2 = CwScreenPlanner(self.ctx).execute()
             if _r2 is not None and getattr(_r2, 'success', False):
                 self._clear_bail_count('事件overlay:planner')
@@ -1120,6 +1126,7 @@ class CwLoop(SrOperation):
         #      (W971 P3b overlay 分发接管)。P2 强化关。
         if (self.round_by_find_area(screen, '货币战争-命运卜者强化', '标识-命运卜者', crop_first=False).is_success
                 and self.round_by_find_area(screen, '货币战争-命运卜者强化', '标识-请选择强化效果', crop_first=False).is_success):
+            save_decision_frame(self, 'overlay_fortune', screen)   # 决策帧留证
             _r3 = CwScreenFortune(self.ctx).execute()
             if _r3 is not None and getattr(_r3, 'success', False):
                 self._clear_bail_count('事件overlay:fortune')
@@ -1134,6 +1141,7 @@ class CwLoop(SrOperation):
         #      in-match 分支全部位于本分支之后,overlay 不再污染其判读。
         if self.round_by_find_area(screen, '货币战争-位面详情', '标识-位面详情标题',
                                    crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_plane_detail', screen)   # 决策帧留证
             _pd_close = self.round_by_find_and_click_area(
                 screen, '货币战争-位面详情', '按钮-关闭位面详情', success_wait=1.5)
             if not _pd_close.is_success:
@@ -1151,6 +1159,7 @@ class CwLoop(SrOperation):
         #     共享「选择」误匹配)—— 但「确认选择」partner overlay 也有(靠 0a 先捕 partner 区分);改用 megastar
         #     独有标题「盛会之星」更直接(独有标题位置区分,无需依赖分支先后)。
         if self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_megastar', screen)   # 决策帧留证
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
             _r = CwScreenMegastar(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失,超预算 bail
             if _r is not None and getattr(_r, 'success', False):
@@ -1162,6 +1171,7 @@ class CwLoop(SrOperation):
         #     lcs 0.9 在卡标题 OCR 截断帧(「遭遇其」3/4=0.75)miss → 整屏落未知画面停机。
         #     handler 交互(2026-08-04 实测):点卡身选中 → 点选择确认(中间勿插空白点击会取消选中)。
         if self.round_by_find_area(screen, '货币战争-遭遇节点', '标识-遭遇节点', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_encounter', screen)   # 决策帧留证
             self._snap('encounter')
             CwScreenEncounter(self.ctx).execute()
             return self.round_wait(wait=2)
@@ -1171,6 +1181,7 @@ class CwLoop(SrOperation):
         # 与「未达上限」共享子序列「上限」(LCS 2/4=0.5)会误匹配全屏 LCS → 投资策略屏被本分支吞 → 反复触发
         # CwScreenDeployNotFull 卡死(2026-08-05 实跑)。id_mark area 位置不同 → 不命中(同 0e invest area 化理由)。
         if self.round_by_find_area(screen, '货币战争-未达上限警告', '标识-未达上限警告', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_deploy_not_full', screen)   # 决策帧留证
             CwScreenDeployNotFull(self.ctx).execute()
             return self.round_wait(wait=3)
 
@@ -1189,6 +1200,7 @@ class CwLoop(SrOperation):
         # 复探产出的新截图回写 screen(未命中时后续分支也吃更新帧)。
         _ov_dispatch, screen = _invest_overlay_dispatch(self, screen)
         if _ov_dispatch:
+            save_decision_frame(self, 'overlay_invest_strategy', screen)   # 决策帧留证
             self._snap('invest_strategy')
             CwScreenInvestStrategy(self.ctx).execute()
             return self.round_wait(wait=2)
@@ -1196,6 +1208,7 @@ class CwLoop(SrOperation):
         # (#11:开场 1-1 前弹,1-3 后局中只弹投资策略,两画面不同 handler),
         # 开局投资环境由 0s 分支分发(OpeningSequence 拆解退役:外循环按画面自然流转)。
         if self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_supply', screen)   # 决策帧留证
             self._snap('supply')
             _rs = CwScreenSupplyNode(self.ctx).execute()  # 生命周期 owner:验证 overlay 消失才完成,超预算 bail(旧节点基类 committed-but-verifying 语义已内联)
             # 迁移审计 w28(git 历史) 缺陷②:补给节点完成 → 合成 outcome 行(无结算屏节点的遥测补行;
@@ -1208,6 +1221,7 @@ class CwLoop(SrOperation):
         #     CwScreenArmoryBox(点开箱 → 四选一 → 选卡点卡 → 验关;与备战补给箱
         #     同下游不同入口,选卡公用 pick_box_card)。
         if self.round_by_find_area(screen, '货币战争-武装箱弹窗', '标识-简易武装箱', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_armory_box', screen)   # 决策帧留证
             self._snap('armory_box')
             CwScreenArmoryBox(self.ctx).execute()
             return self.round_wait(wait=2)
@@ -1217,6 +1231,7 @@ class CwLoop(SrOperation):
         #       mouse_move 必带(bug#1:恢复原语同坐标点击曾落空)。
         if self.round_by_find_area(screen, '货币战争-商店刷新概率表', '标识-刷新概率表',
                                    crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_refresh_odds', screen)   # 决策帧留证
             self.ctx.controller.mouse_move(Point(1501, 263))
             self.ctx.controller.click(Point(1501, 263))
             log.info('[cw-loop] 概率表弹窗 → 点× 关闭')
@@ -1228,6 +1243,7 @@ class CwLoop(SrOperation):
         if (self.round_by_ocr(screen, '聘用书', lcs_percent=0.8).is_success
                 and not self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼',
                                                 crop_first=False).is_success):
+            save_decision_frame(self, 'overlay_item_detail', screen)   # 决策帧留证
             self.ctx.controller.mouse_move(Point(1862, 65))
             self.ctx.controller.click(Point(1862, 65))
             log.info('[cw-loop] 道具详情弹窗(聘用书)→ 点× 关闭')
@@ -1239,6 +1255,7 @@ class CwLoop(SrOperation):
         #     消耗品栏无)→ 双条件精确,不误匹配备战。装备类详情 modal(无「拖动到」)是长尾,观察到再补。
         if (self.round_by_ocr(screen, '消耗品', lcs_percent=0.9).is_success
                 and self.round_by_ocr(screen, '拖动到', lcs_percent=0.9).is_success):
+            save_decision_frame(self, 'overlay_consumable', screen)   # 决策帧留证
             self.ctx.controller.btn_tap('esc')
             return self.round_wait(wait=1.5)
 
@@ -1247,6 +1264,7 @@ class CwLoop(SrOperation):
         #     (2026-08-07 实跑:plane1 1-3 卡此 overlay 666s)。点第1装备(幸运星位 626,250;策略可后续
         #     按 key_equips 选,先关 overlay 推进)→ 实测自动关 overlay 回备战。
         if self.round_by_find_area(screen, '货币战争-备战', '标识-简易装备', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_aha_equip', screen)   # 决策帧留证
             self.ctx.controller.click(Point(626, 250))
             return self.round_wait(wait=1.5)
 
@@ -1256,6 +1274,7 @@ class CwLoop(SrOperation):
         #     透出命中 → 备战分支误派 → shop 被遮失败 → 死循环)。ESC 不关;
         #     点卡身选中(金色边框)→ 确认选择 → 关回备战。
         if self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_wish_trial', screen)   # 决策帧留证
             # 钉屏停机钩子接线行([临时捕获],采集清单建档确认后连本注释整段删):
             # 当前为激活态(钩子本体 = grail_collect_hooks.grail_pin_stop_hook)。
             from sr_od.application.currency_war.operations.grail_collect_hooks import (
@@ -1275,6 +1294,7 @@ class CwLoop(SrOperation):
         #     命中即接管 —— 提示词 OCR miss 时也进 handler(fallback 卡1),**不放行到
         #     备战分支**(弹窗盖备战 → 误派 CwScreenPrep ping-pong)。
         if self.round_by_find_area(screen, '货币战争-星徽秘典弹窗', '标识-星徽秘典', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_bookcard', screen)   # 决策帧留证
             CwScreenBookcard(self.ctx).execute()
             return self.round_wait(wait=2)
 
@@ -1285,6 +1305,7 @@ class CwLoop(SrOperation):
         #     误派 CwScreenPrep ping-pong)。替代原 bookcard_confirm 停机钩子
         #     (钩子段已随本分支接线删除)。
         if self.round_by_find_area(screen, '货币战争-备战-专家邀请函', '标识-专家邀请函', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_expert_invite', screen)   # 决策帧留证
             CwScreenExpertInvite(self.ctx).execute()
             return self.round_wait(wait=2)
 
@@ -1300,6 +1321,7 @@ class CwLoop(SrOperation):
                 ('货币战争-备战-遭遇锁定', '按钮-返回遭遇选择'),
         ):
             if self.round_by_find_area(screen, _lock_screen, _lock_area, crop_first=False).is_success:
+                save_decision_frame(self, 'overlay_lock', screen)   # 决策帧留证
                 _sl = self.round_by_find_and_click_area(
                     screen, _lock_screen, _lock_area, success_wait=1.5)
                 log.info('[cw-loop] 暗色锁定态(%s)→ 点返回按钮(success=%s)',
@@ -1316,23 +1338,33 @@ class CwLoop(SrOperation):
         #     _shop_open_anchors_hit(三 id_mark:idmark 审计批定稿;互斥
         #     依据 = 干净备战帧「按钮-收起」不存在,开商店档零候选,离线
         #     配对验证见 idmark 审计表 §三)。
-        #     处理 = 点「按钮-收起」收起商店 → round_wait 交回外循环重判
-        #     (下轮见干净备战走常规备战链;商店态顺势买牌归回合节奏重构,
-        #     本分支只收起不买牌)。分键 branch_shop_open_collapse 零静默。
-        #     深度防御保留:达标臂浮层扫描(readiness_overlay_hold)与
-        #     CwScreenPrep 环入口 _try_collapse_open_shop 守卫不删——主
-        #     防线已前移至本分支(路由级全帧生效),彼两处降级为单点兜底。
+        #     处理 = 转交商店访问路径(ADR-0562,用户裁定 2026-09-06):委托
+        #     CwScreenPrep.visit_open_shop(店已开态编排单一源)——入口观察
+        #     现读牌面 → 策略器逐动作决策(买/升/刷)→ CloseShop 终结收店
+        #     交回重判。禁路由层硬编码收起:「收不收」由策略器基于期望态
+        #     决定(CloseShop = 商店画面 op 的一等终结动作,ADR-0517 决策
+        #     4/5),旧「点收起交回重判」既越权又造成无谓往返(收起→重开
+        #     店想买时多一轮)。分键:branch_shop_open_hit = 分支命中;
+        #     branch_shop_open_visit_ok/_fail = 商店访问结果。深度防御
+        #     保留:达标臂浮层扫描(readiness_overlay_hold)与 CwScreenPrep
+        #     环入口 _try_collapse_open_shop 守卫不删——彼两处降级为单点
+        #     兜底(0n 分支处理不再收店后,环入口守卫仍兜「漏帧进备战环」)。
         if _shop_open_anchors_hit(self, screen):
+            save_decision_frame(self, 'overlay_shop_open', screen)   # 决策帧留证
             _so_counters = getattr(
                 getattr(self.ctx.cw_match, 'session', None),
                 'cw4_counters', None)
             if isinstance(_so_counters, dict):
-                _so_counters['branch_shop_open_collapse'] = \
-                    _so_counters.get('branch_shop_open_collapse', 0) + 1
-            _so = self.round_by_find_and_click_area(
-                screen, '货币战争-备战-开商店', '按钮-收起', success_wait=1.5)
-            log.info('[cw-loop] 开商店态(备战子态族)→ 点收起(success=%s)'
-                     '→ 交回外循环重判', _so.is_success)
+                _so_counters['branch_shop_open_hit'] = \
+                    _so_counters.get('branch_shop_open_hit', 0) + 1
+            _prep = CwScreenPrep(self.ctx)
+            _ok, _detail = _prep.visit_open_shop()
+            if isinstance(_so_counters, dict):
+                _k = 'branch_shop_open_visit_ok' if _ok \
+                    else 'branch_shop_open_visit_fail'
+                _so_counters[_k] = _so_counters.get(_k, 0) + 1
+            log.info('[cw-loop] 开商店态(备战子态族)→ 商店访问路径'
+                     '(策略器决策+关店终结)(ok=%s detail=%s)', _ok, _detail)
             return self.round_wait(wait=1.5)
 
         # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档)。
@@ -1344,6 +1376,7 @@ class CwLoop(SrOperation):
         #     守卫 prep_actions.POST_LAUNCH_BLOCKERS)。
         if self.round_by_find_area(
                 screen, '货币战争-提示-前台无角色', '标识-无角色提示', crop_first=False).is_success:
+            save_decision_frame(self, 'overlay_frontless', screen)   # 决策帧留证
             _ok_pt = self.round_by_find_and_click_area(
                 screen, '货币战争-提示-前台无角色', '按钮-确认', success_wait=1)
             self._frontless_redeploy = getattr(self, '_frontless_redeploy', 0) + 1

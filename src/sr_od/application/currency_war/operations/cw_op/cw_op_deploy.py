@@ -50,6 +50,9 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_deploy_cap_debounced,
     read_deployed_count,
 )
+from sr_od.application.currency_war.operations.decision_frame_hooks import (
+    save_decision_frame,
+)
 from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwChar
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -506,6 +509,7 @@ class CwOpDeploy(SrOperation):
                 return self.round_success('事件overlay,跳过部署')
 
         bench = self._row_centers('备战栏')
+        save_decision_frame(self, 'deploy', self.last_screenshot)   # 识别完成点原始帧留证(部署仲裁基准)
         front = self._row_centers('前排')
         templates = self._get_templates()   # W209:先载模板(布局选档/身份读都要;缓存 ctx)
         # W209/ADR-0385:后排槽位按 **cap 差公式** 选档(select_back_layout 单一

@@ -30,7 +30,10 @@ class StrategySession:
     """一局货币战争的跨步状态(框架每局新建,局终销毁;策略读写;/§11.4)。
 
     策略实例无状态,所有可变每局状态放这。``rng`` 可种子化(公平/replay);``performance`` 是观测
-    反馈(掉血/胜负);``memory`` 是策略私有 scratch(连胜计数/「这轮攒金升8」意图等 escape hatch)。
+    反馈(掉血/胜负)。``memory`` 仅限**框架不提供、策略推导产生**的私有状态
+    (意图/计划/内部缓存/防重入标志,如「这轮攒金升8」的意图)——框架已提供的
+    对局事实(连胜/血量/金币/等级/节点类型等)**禁止在此重复记账**(单一源
+    在框架字段,如连胜=session.last_streak;双源必漂移)。
     """
     target_comp: Comp | None = None        # 战略层目标阵容(update_target 维护)
     # 最近一次备战 read_game_state 快照(board/deployed/bench;BuyShopCards 每回合写)。给**节点 overlay
@@ -156,7 +159,17 @@ class StrategySession:
     # session 挂 ctx.cw_match 每局创建一次、跨 handler 持久(CurrencyWarMatch docstring),
     # 丢的是 handler 实例不是本 session;发出刷新点击即置位,不等验效,防重入反复尝试)
     _encounter_refresh_used: bool = False
-    # —— 策略 v2 扩展态——正式字段(动态 setattr 会在
+    # 策略实现层私有 scratch(用户 2026-09-06:自定义存储字段)——临时变量
+    # (如「本节点是否开过商店」)不再逐个升 dataclass 字段。纪律:
+    # ①键名加模块前缀防冲突(如 'shop_opened_this_node');②生命周期 =
+    # 局级(session 每局新建自然清零),节点级清理归使用者(跨节点仍存的
+    # 键自行按 node 号失效);③**不入 decisions 遥测**(schema 显式字段清单,
+    # 本容器不接线——临时变量非判读契约面);④高频共用/需类型与守卫的
+    # 状态仍应升正式字段(本字段是 escape hatch 非堆场);⑤**禁重复框架
+    # 已提供的对局事实**(连胜/血量/金币/等级/节点类型等已有正式字段或
+    # state 现读——双源必漂移;判据=框架字段/state 现读查得到的不进本表)。
+    memory: dict = field(default_factory=dict)
+    # 策略 v2 扩展态——正式字段(动态 setattr 会在
     # 「session 新建而 on_match_start 未走」路径崩;且 asdict/telemetry
     # 看不见动态属性——升正式)——
     # 默认值 None(评审 B1:default 局遥测 v2_* 应全空可区分——

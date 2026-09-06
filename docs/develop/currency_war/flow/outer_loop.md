@@ -50,7 +50,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 0i | 星徽秘典四选一 | id_mark（命中即接管，不放行备战分支） | CwScreenBookcard |
 | 0k | 专家邀请函 | id_mark（同上） | CwScreenExpertInvite |
 | 0m | 备战暗色锁定子态族 | 右上"返回XX选择"按钮锚 | 点返回按钮回 overlay |
-| 0n | 备战-开商店(商店浮层态) | 开商店画面档三 id_mark(购买经验+按钮-收起+标识-备战阶段;与干净备战的按钮-出战天然互斥,idmark 审计批定稿) | 点「按钮-收起」收店 → 交回重判(商店态禁止部署/出战调度;顺势买牌归回合节奏重构) |
+| 0n | 备战-开商店(商店浮层态) | 开商店画面档三 id_mark(购买经验+按钮-收起+标识-备战阶段;与干净备战的按钮-出战天然互斥,idmark 审计批定稿) | 转交商店访问路径(ADR-0562):CwScreenPrep.visit_open_shop——入口观察→策略器逐动作决策→CloseShop 终结收店;路由层禁硬编码收起(收不收归策略器,CloseShop = 商店画面 op 的一等终结动作)。分键 branch_shop_open_hit + visit_ok/_fail |
 | 0j | 前台无角色提示 | id_mark | 确认 → 带落点验证重部署 → 验前排≥1 → 本迭代内再出战；重试上限 FRONTLESS_REDEPLOY_LIMIT=2（`cw_loop.py:916-976`） |
 | 0p | BOSS 简报 | area 锚 ∨ 共享判别 `is_boss_briefing_texts`（误读鲁棒） | CwScreenBossBriefing；**先于备战双锚**（横幅遮挡下双锚仍透出命中） |
 | 0q | 位面过渡 | OCR'点击空白处继续' ∧ 非 boss 帧（两画面排他） | CwScreenPlaneTransition；误分发型 fail 连续 PLANE_MISDISPATCH_LIMIT=3 → round_fail（`cw_loop.py:1003-1034`） |
