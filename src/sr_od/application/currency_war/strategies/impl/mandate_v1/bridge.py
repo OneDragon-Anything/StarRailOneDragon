@@ -130,12 +130,14 @@ class MandateV1Strategy(CwFlowStrategy):
 
     def decide_encounter(self, options: list[EncounterOption],
                          state: GameState, session: StrategySession,
-                         config, refresh_used: bool = False) -> EncounterPick:
+                         config: CurrencyWarConfig,
+                         refresh_used: bool = False) -> EncounterPick:
         """遭遇分支选卡:E3 判据形态(mandate_v1/encounter.py 单一源)。
 
         EV(b)=V_r(r_b)−Δλ_death(b)·G_loss(P26/E3 锚同构,P51 折现口径
-        入负项);λ label 四态接死、fail 向选低难支、刷新肢条件化——
-        语义单一源 = ADR-0536(细则见 mandate_v1/encounter.py docstring)。
+        入负项);λ label 四态接死、fail 向选低难支、EV 精确并列走并列
+        出口、刷新肢条件化——语义单一源 = ADR-0536(细则见
+        mandate_v1/encounter.py docstring)。
         基线 ``cw_events.decide_encounter`` 零触碰(其他策略核行为不变);
         拒因串改 EV 格式 = 预期遥测差(ADR-0536 §2);现态生产验收口径 =
         恒 fail 向低难、零刷新建议(ADR-0536 §4)。

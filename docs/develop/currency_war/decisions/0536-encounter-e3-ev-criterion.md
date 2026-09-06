@@ -23,7 +23,7 @@
 - ① **奖励子型分立**:4费×3 ⇒ 清算下界 3×sell_refund(1★,4)=12(P41 全类成立,持有增值 fail-closed 不计);金币×2 ⇒ 金额经槽位(§3);5费/投影仪/读空 ⇒ 未立(**未立 ≠ 0**,禁置零续比)。
 - ② **数值 fail-closed + fail 向**:fail 向 = 选低难度支(并列取先读支),保守少掉血;与现行「未成型→低难保生存」零冲突(未成型帧动作序列 diff 空),formed 态 dare→高难被 fail 向覆盖 = 接线预期差——**验收门 = 动作序列级**(选卡 idx 序列),拒因串从难度评分格式改 EV 格式为预期遥测差。
 - ③ **λ label 四态接死**:「不可判」≡ 任一分支 λ 键为 None/域外/损坏态,或格 label ≠ 可消费(仅方向/禁用/空格)⇒ 放弃 argmax、整体 fail 向选低难;「负项置零继续比较」是禁止实现(与现态申报行为相反,落码第一行即踩的分叉)。仅方向格只作方向注记分键,不作数值。
-- ④ **刷新肢非免费期权**:生产执行链语义 = 刷新生效后原对弃用、强制从重掷对中选,重掷分布未建模、期望可为负。故刷新建议仅在「双支 λ 可消费 ∧ EV 比较不稳健(保守端 d̂=CI 宽度与乐观端 d̂=0 胜者不一致 = EV 差落入不可判带)」时作为探索性建议;λ 整体不可判帧不刷新(fail 向已知安全选项,不赌重掷);refresh_used=True 不再建议。刷新消费仍走既有分支刷新执行链,零新执行面。
+- ④ **刷新肢非免费期权**:生产执行链语义 = 刷新生效后原对弃用、强制从重掷对中选,重掷分布未建模、期望可为负。故刷新建议仅在「双支 λ 可消费 ∧ EV 比较不稳健(保守端 d̂=CI 宽度与乐观端 d̂=0 胜者不一致 = EV 差落入不可判带)」时作为探索性建议;**EV 精确并列**(双支 V_r 与复合项全等,典型 = 标定后同难度双卡帧)走并列出口 fail 向(决策树第 5 肢),不构成胜者翻转、不给刷新(三审定谳:并列曾误入翻转支);λ 整体不可判帧不刷新(fail 向已知安全选项,不赌重掷);refresh_used=True 不再建议。刷新消费仍走既有分支刷新执行链,零新执行面。
 - 数值算子唯一 = `lambda_death.differential_composite`(第三口,d̂=同格 CI 宽度,两支公共 λ_L 在差分中抵消;敞口 = g+Ī×R_剩余);判据零端点自持(R19-3)。零 hp 直读自变量(hp 只入 λ 路由键);不建胜率阶梯、不评单位强弱、不新增排序键。
 
 ### §3 数值开闸链:双槽互锁
@@ -40,7 +40,7 @@
 ### §4 现态行为申报与验收口径
 
 - **现态生产 = 双槽 None 期恒 fail 向选低难、零刷新建议**(刷新建议结构性不可触发:其前置 = 双支 λ 可消费 + 胜者翻转,现态不成立)。真表 encounter 12 格仅 3 格可消费(D0|hp>40|P1、D1|hp>40|P1、D0|hp≤15|P2+),标定注入后 flip 带亦为窄域——刷新建议作**条件触发观察位**,验收勿按「应见到刷新建议」判接线。
-- 分键 9+1:`encounter_ev_fail_low`(总出口)/`encounter_ev_pick`/`encounter_ev_fail_low_lambda_undecidable`/`encounter_ev_fail_low_reward_unmodeled`/`encounter_ev_undecidable_band_flip`/`encounter_ev_refresh_suggested`/`encounter_ev_reward_gold`/`encounter_ev_reward_4fee`/`encounter_ev_lambda_direction_note`;拒因串 `e3_*` 经既有 `record_event_choice`(event_choice)透传。
+- 分键 10+1:`encounter_ev_fail_low`(总出口)/`encounter_ev_fail_low_tie`(EV 精确并列出口)/`encounter_ev_pick`/`encounter_ev_fail_low_lambda_undecidable`/`encounter_ev_fail_low_reward_unmodeled`/`encounter_ev_undecidable_band_flip`/`encounter_ev_refresh_suggested`/`encounter_ev_reward_gold`/`encounter_ev_reward_4fee`/`encounter_ev_lambda_direction_note`;拒因串 `e3_*` 经既有 `record_event_choice`(event_choice)透传。
 
 ### §5 辖域与未建模面
 
