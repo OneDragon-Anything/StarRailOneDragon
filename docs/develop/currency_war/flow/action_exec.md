@@ -30,7 +30,7 @@
 | 商店编排 | `_open_shop_phase -> (progressed, detail)`；read_only 开店成功即 progressed（读数目标达成） |
 | 序列消费 | `StartBattle ∧ progressed` 才是出战完成；not progressed 一律 fail-stop 交回 |
 
-配套的**发射门**（发射方与执行方同源谓词，防空计划发射）：部署候选单一源 = kernel `select_deployments` 现算（`cw_deploy_logic`；dd-037——旧 flow.py 发射门 `_deploy_up_candidates` 已随 ADR-0517 迁移批死码清理删除,ADR-0518）。
+配套的**发射门**(发射方与执行方同源谓词,防空计划发射):部署候选单一源 = kernel `select_deployments` 现算（`cw_deploy_logic`；dd-037——旧 flow.py 发射门 `_deploy_up_candidates` 已随 ADR-0517 迁移批死码清理删除,ADR-0518）。发射门与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——**锁定线语境豁免（ADR-0564）**：豁免武装帧（`locked_comp` 成型目标档超门封顶，单源 `cw_intention.locked_line_recipe_floor_conflict`）且本帧无有效仙舟供给（`xianzhou_supply_exists`）时门让位；发射侧拒因/开火分键 = `deploy_emit_*`（mandate 发射门帧级去重），执行侧计划拒因/门命中分桶 = `deploy_exec_*`。
 
 ## 3. 备战单动作消费（`cw_screen_prep.py` 备战单轮）
 
@@ -53,7 +53,8 @@
 - **前置**：事件 overlay 在 → 跳过部署（success 态交还，overlay 挡 drag 全灭实证；`cw_op_deploy.py:279-286`）。
 - **输入装配**：槽位坐标全部从 screen_info 读（备战栏 9/前排 4/后排按 cap 差公式选档 `select_back_layout`，单一入口；7 格档未建档保守 8 格超集+留证）；cap = paddle 直读域防抖（权威，含宝钻/诅咒修正；失读才单调链 max 兜底——低读阻塞上阵贵、高读白拖一次便宜）。
 - **选人/围栏/排序单一源** = kernel `cw_deploy_logic.select_deployments`（dd-037：执行方只做输入装配 + 拖拽执行；发射方同源）。围栏集 = RECIPE ∪ ENGINE（桥派生，`cw_op_deploy.py:46-56`）；r387 cap 富余放行散牌填空（空位>必上件数）。
-- **拖拽循环运行时守卫**（保留作防线）：每槽动态 cap 复查（起始检查只做一次的历史事故）、同名在场禁双（`deploy_legal` 不变量）、列车配方底线仲裁（r288，档值从 TRANSITION_TRAITS 派生）、fresh 复查源槽占用（起始帧假阳）、前排保证（前排全空先重排真 front 候选，无则强转）、系统单位剔除（cost==0 不可拖）。
+- **输入装配段计划构造**：op 对 `select_deployments_reasoned` 的装配调用同帧穿豁免实参（五消费点的计划构造面，ADR-0564——漏武装 = kernel 计划层仍 held 列车件 → 豁免执行侧静默失效）。
+- **拖拽循环运行时守卫**（保留作防线）：每槽动态 cap 复查（起始检查只做一次的历史事故）、同名在场禁双（`deploy_legal` 不变量）、列车配方底线仲裁（r288：判定单一源 = kernel `recipe_floor_holds`，op 侧经 `r288_hold_now` 适配器消费拖拽增量真值；含**锁定线语境豁免** ADR-0564——豁免武装帧无有效仙舟供给时门让位，供给保留条款不变；档值常量 = `RECIPE_FLOOR_TRAIN_CAP`/`RECIPE_FLOOR_XZ_BASE`）、fresh 复查源槽占用（起始帧假阳）、前排保证（前排全空先重排真 front 候选，无则强转）、系统单位剔除（cost==0 不可拖）。P24 残余补部署的列车件过滤经同一判定（`filter_fill_plan_by_floor`，kernel 留 bench 件不得绕回上板）。
 - **换排纠正**（r241/r250）：场内错排者拖回正排；前排全空+后排有人 → 强制挪一（出战硬要求 > 站位偏好）。
 - **拖后整队等待 2.0s**【注·口述口径 screen_flow_timing.md #10】：羁绊徽章动画窗。
 - **收尾**：SIFT 真值纠 tracking（观测回路）+ 装备快照回写 tracked_deployed.equips（画面真值覆盖，账本漂移告警留痕）。

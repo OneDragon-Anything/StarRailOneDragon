@@ -33,9 +33,6 @@ from sr_od.application.currency_war.kernel.cw_launch_admission import (
     offtarget_sell_allowed,
     protect_names_of,  # noqa: F401  re-export 兼容(测试/既有消费路径)
 )
-from sr_od.application.currency_war.kernel.cw_line_defs import (
-    RECIPE_FACTIONS as _RECIPE,
-)
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
@@ -146,6 +143,37 @@ def prune_fuel_filler_deployed(session, deployed_names) -> int:
 # 状态挂 session(P4R4 纪律,禁模块级全局);无 session(测试/离线)
 # → 熔断惰性禁用,行为等价旧路径。
 ZERO_PLACE_BREAKER_THRESHOLD: int = 2   # 连续 ≥2 次同签名 0 落地 = 结构性拒绝(1 太早,3+ 白耗)
+
+# ===== 执行侧配方底线门遥测键(ADR-0564;键族前缀 deploy_exec_,与既有
+# 键族零交集;全键写入 strategy_state cw4_counters,经局终快照链与 sim
+# 轮差分零新增管道自动携带)=====
+# - deploy_exec_held_<reason>:每 execute 一次(一 execute 一 RunDeploy,
+#   无需帧去重),从 kernel 计划拒因(_held_reasons)逐 distinct reason 计
+#   ——计划时拒因,与发射侧 deploy_emit_held_<reason> 同粒度对读;
+# - deploy_exec_r288_skip_ctx_open/closed:主拖拽循环门命中与 P24 过滤
+#   剔除各计一次,按当前帧豁免武装布尔分桶(M4 漂移显影键)。
+DEPLOY_EXEC_HELD_PREFIX: str = 'deploy_exec_held_'
+DEPLOY_EXEC_R288_SKIP_CTX_OPEN: str = 'deploy_exec_r288_skip_ctx_open'
+DEPLOY_EXEC_R288_SKIP_CTX_CLOSED: str = 'deploy_exec_r288_skip_ctx_closed'
+
+
+def _bump_r288_skip_counter(session, lock_conflict: bool) -> None:
+    """r288 门执行侧命中分桶计数(ADR-0564 M4 漂移显影键;best-effort)。
+
+    漂移键成因注:「发射帧豁免开、执行帧关」的唯一成因 = 意向状态机
+    自身(武装布尔 locked_line_recipe_floor_conflict 只读
+    ist.locked_comp,不读 bench;供给是豁免闭合条件,不是武装位输入)
+    ——skip_ctx_open > 0 = 决策⇔执行间隙内意向翻转(清空/换线),归因
+    锚指向意向状态机事件流,不指向 bench 供给变化。
+    """
+    try:
+        counters = getattr(strategy_state_of(session), 'cw4_counters', None)
+        if isinstance(counters, dict):
+            key = (DEPLOY_EXEC_R288_SKIP_CTX_OPEN if lock_conflict
+                   else DEPLOY_EXEC_R288_SKIP_CTX_CLOSED)
+            counters[key] = counters.get(key, 0) + 1
+    except Exception:   # noqa: BLE001  遥测 best-effort,不阻塞部署
+        pass
 
 #: session 状态字段名(对象由本模块独占读写)。
 _ZP_SIG: str = 'cw_deploy_zeroplace_sig'
@@ -287,6 +315,52 @@ def assemble_bench_list(bench_occ: list, bench_cid: dict, bench_pos: dict,
             position_pref=bench_pos.get(_bi, 'back'),
             is_item_slot=(_bi + 1) in item_slots_exact))
     return out
+
+
+def r288_hold_now(main_fac: str, deployed_fac: dict[str, int],
+                  on_board_cids: set[str], bench_list: list,
+                  lock_conflict: bool) -> bool:
+    """op 侧配方底线门适配器(判定单一源 = kernel.recipe_floor_holds,
+    ADR-0564;主拖拽循环与 P24 fill 过滤两消费点共用,禁第三判定副本)。
+
+    拖拽逐件落地增量真值(``deployed_fac``/``on_board_cids`` 现值)在
+    调用方维护,本适配器只做共享判定 + 供给惰性计算(armed 才算)。
+
+    :param main_fac: 件的主阵营(与 kernel 内 bench_fac 同源口径;
+        '' = 未识别,门恒不辖)。
+    :param deployed_fac: 运行阵营档现值(入口快照 + 拖拽逐件增量)。
+    :param bench_list: 全量 bench(BenchChar 列表;供给谓词遍历用)。
+    """
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        recipe_floor_holds as _holds,
+    )
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        xianzhou_supply_exists as _supply,
+    )
+    return _holds(
+        main_fac,
+        deployed_fac.get('列车同行', 0),
+        deployed_fac.get('仙舟', 0),
+        lock_conflict,
+        _supply(bench_list, on_board_cids) if lock_conflict else False)
+
+
+def filter_fill_plan_by_floor(fill_plan: list[tuple[int, str, int]],
+                              bench_fac: dict[int, str],
+                              deployed_fac: dict[str, int],
+                              on_board_cids: set[str],
+                              bench_list: list,
+                              lock_conflict: bool,
+                              ) -> list[tuple[int, str, int]]:
+    """P24 fill 计划的配方底线门过滤(与主循环同消费 r288_hold_now,
+    ADR-0564;纯函数可离线测)。
+
+    kernel 留 bench 的列车件不得经 P24 补部署绕回上板——豁免语境下
+    计划层(装配段武装)与执行门层经同一判定函数自动同值,无第二副本。
+    """
+    return [(fi, row, slot) for (fi, row, slot) in fill_plan
+            if not r288_hold_now(bench_fac.get(fi, ''), deployed_fac,
+                                 on_board_cids, bench_list, lock_conflict)]
 
 
 def _tier_completes(bonds: 'frozenset[str] | set[str] | tuple[str, ...]',
@@ -1017,6 +1091,18 @@ class CwOpDeploy(SrOperation):
                 or frozenset()
         except Exception:   # noqa: BLE001 —— 围栏兜底 best-effort
             _locked_fac = frozenset()
+        # 锁定线语境豁免武装布尔(配方底线门,ADR-0564):同 _locked_fac
+        # 兜底形态(fail-closed 关豁免)。装配段/主循环/P24 三消费点经
+        # 本布尔同帧同值——装配段漏武装 = kernel 计划层仍 held 列车件
+        # (order 不含)→ 豁免在执行侧静默失效,恰回「零痕迹」形态。
+        try:
+            from sr_od.application.currency_war.kernel.cw_intention import (
+                locked_line_recipe_floor_conflict as _rf_conflict,
+            )
+            _rf_lock_conflict = _rf_conflict(
+                getattr(strategy_state_of(_sess), 'v3_intention', None))
+        except Exception:   # noqa: BLE001  同 _locked_fac 兜底:fail-closed
+            _rf_lock_conflict = False
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             select_deployments_reasoned as _sel_dep,
         )
@@ -1035,7 +1121,8 @@ class CwOpDeploy(SrOperation):
             deployed_fac=dict(_deployed_fac), board=_board_in,
             cap=(_cap if _cap is not None and _cap > 0 else 10 ** 6),
             target_factions=_tgt, target_cores=set(_cores),
-            fw_carry=_fw_carry, locked_factions=_locked_fac)
+            fw_carry=_fw_carry, locked_factions=_locked_fac,
+            recipe_floor_lock_exempt=_rf_lock_conflict)
         order = [bench_occ[_k] for _k in _up_rel]
         _held = [bench_occ[_k] for _k in _held_rel]
         # 同签名 placed=0 熔断跳槽(批 ③):上一执行同签名计划 0 落地,
@@ -1067,6 +1154,16 @@ class CwOpDeploy(SrOperation):
                 _sess,
                 [(_bench_list[_k].char_id or '', _held_reasons.get(_k, ''))
                  for _k in _held_rel])
+        # 执行侧计划拒因分键(ADR-0564;每 execute 一次,无需帧去重):
+        # kernel 计划时拒因逐 distinct reason 计,与发射侧
+        # deploy_emit_held_<reason> 同粒度对读(计划非空帧的拒因面;
+        # best-effort,无状态容器时静默跳过)。
+        _exec_counters = getattr(strategy_state_of(_sess), 'cw4_counters',
+                                 None) if _sess is not None else None
+        if isinstance(_exec_counters, dict):
+            for _er in set(_held_reasons.values()):
+                _ek = DEPLOY_EXEC_HELD_PREFIX + _er
+                _exec_counters[_ek] = _exec_counters.get(_ek, 0) + 1
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} 上场序={order}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
@@ -1103,31 +1200,27 @@ class CwOpDeploy(SrOperation):
                          f'bench槽{bi+1}({_cid}) 已 deployed,跳过')
                 _skipped += 1
                 continue
-            # r288(局23/24 连续实锤:锁 jizi 线列车 3 档吃板挤掉仙舟,
-            # 仙舟 2→1 → r3-r4 battle -13×2):配方基础线优先仲裁——
-            # 仙舟档 < 基础线(攻略[20] 3仙舟+2DOT)时,列车件封顶
-            # 2 档(锁线路径的线内件上板也要守配方底线;配方纪律
-            # 此前只在散 pair 路径生效,锁线路径无守门=审查②盲区)。
-            # ADR-0261 裁决选项3:cw_deploy_logic.select_deployments 已补
-            # 同语义门(running 阵营档仲裁)——sim 从此能测出本形态。
+            # r288 配方底线门(局23/24 连续实锤:锁 jizi 线列车 3 档吃板
+            # 挤掉仙舟,仙舟 2→1 → r3-r4 battle -13×2):仙舟基础线优先
+            # 仲裁——门判定单一源 = kernel.recipe_floor_holds(经
+            # r288_hold_now 适配器;档值单源 RECIPE_FLOOR_TRAIN_CAP/
+            # XZ_BASE)。锁定线语境豁免(ADR-0564,显式推翻本门旧注释
+            # 「锁线路径的线内件上板也要守配方底线」的辖域):豁免武装帧
+            # ∧ 本帧无有效仙舟供给 → 门让位;门本体与供给保留条款不变
+            # (bench 有真供给时照拦,供给先上)。动态防线价值保留:
+            # _deployed_fac/_deployed_cids 含拖拽逐件落地增量现值。
             _fac = _bench_fac.get(bi, '')
-            if _fac == '列车同行' and _RECIPE is not None:
-                # ADR-0261 裁决修订3(单一源):门的 2/3 档数值从
-                # TRANSITION_TRAITS 派生(与 cw_deploy_logic.select_
-                # deployments 的 r288 门同源)——旧硬编码 2/3 是历史双源。
-                from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-                    TRANSITION_TRAITS as _TT,
-                )
-                _tier_of = dict(_TT)
-                _train_cap = _tier_of.get('列车同行', 2)
-                _xz_base = _tier_of.get('仙舟', 3)
-                _train_now = _deployed_fac.get('列车同行', 0)
-                _xz_now = _deployed_fac.get('仙舟', 0)
-                if _train_now >= _train_cap and _xz_now < _xz_base:
-                    log.info(f'[cw-deploy] 配方底线(r288):列车{_train_now}档+仙舟{_xz_now}'
-                             f'→列车件留bench(仙舟<3 基础线优先,防挤占)')
-                    _skipped += 1
-                    continue
+            if _fac == '列车同行' and r288_hold_now(
+                    _fac, _deployed_fac, set(_deployed_cids), _bench_list,
+                    _rf_lock_conflict):
+                log.info(f'[cw-deploy] 配方底线(r288):列车'
+                         f'{_deployed_fac.get("列车同行", 0)}档+仙舟'
+                         f'{_deployed_fac.get("仙舟", 0)}→列车件留bench'
+                         f'(ctx={"锁定豁免 armed" if _rf_lock_conflict else "默认"}'
+                         f',供给在场时豁免闭合)')
+                _skipped += 1
+                _bump_r288_skip_counter(_sess, _rf_lock_conflict)
+                continue
             # live 2026-08-15(match4 deploy storm 根因):起始帧 slot_occupied 瞬时假阳(商店关闭/卖出
             # 动画残影 → 对空槽白烧 3×2s drag 重试)。每槽 drag 前 fresh 复查占用,空 → 跳过。
             if not slot_occupied(self.screenshot(), int(bench[bi].x), int(bench[bi].y)):
@@ -1293,17 +1386,14 @@ class CwOpDeploy(SrOperation):
             # r288 底线对 fill 段同样辖(dd-037):kernel 留 bench 的列车件
             # (列车≥2 档 ∧ 仙舟<3 基础线)不得经 P24 补部署绕回上板——
             # 补部署只覆盖「散牌留 bench」的填位语义,不覆盖配方底线仲裁。
-            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-                TRANSITION_TRAITS as _TT_fill,
-            )
-            _tt_fill = dict(_TT_fill)
-            _train_cap_f = _tt_fill.get('列车同行', 2)
-            _xz_base_f = _tt_fill.get('仙舟', 3)
-            _fill_plan = [
-                (_fi, _frow, _fslot) for _fi, _frow, _fslot in _fill_plan
-                if not (_bench_fac.get(_fi) == '列车同行'
-                        and _deployed_fac.get('列车同行', 0) >= _train_cap_f
-                        and _deployed_fac.get('仙舟', 0) < _xz_base_f)]
+            # 过滤纯函数化(ADR-0564):与主循环同消费 r288_hold_now,
+            # 豁免语境下计划层与执行门层同帧同值,无第二副本。
+            _fill_plan_n0 = len(_fill_plan)
+            _fill_plan = filter_fill_plan_by_floor(
+                _fill_plan, _bench_fac, _deployed_fac, set(_deployed_cids),
+                _bench_list, _rf_lock_conflict)
+            for _ in range(_fill_plan_n0 - len(_fill_plan)):
+                _bump_r288_skip_counter(_sess, _rf_lock_conflict)
             for _fi, _frow, _fslot in _fill_plan:
                 _fpts = front if _frow == 'front' else back
                 if _fslot >= len(_fpts):

@@ -960,14 +960,91 @@ def cheapest_member_cost(frame: MandateFrame) -> int:
     return 3
 
 
+# ===== 发射侧部署拒因分键(ADR-0564;键名集中定义处,与执行侧
+# cw_op_deploy 的 deploy_exec_ 键族零交集)=====
+# 「RunDeploy 不发射」形态下 op 从未执行,执行侧计数恒零——发射侧
+# 分键必须落在策略层谓词内(mandate._deployable),这是本 bug 类唯一
+# 的归因面。全部键写入 strategy_state.cw4_counters(局终快照链/sim
+# 轮差分零新增管道自动携带)。
+# - deploy_emit_held_<reason>:每决策帧一次(帧级去重;reason ∈ kernel
+#   拒因闭集);
+# - deploy_emit_floor_ctx_open:豁免语境 armed 的决策帧数(分母);
+# - deploy_emit_floor_exempt_open:豁免开火帧数(armed 帧无豁免对照
+#   补跑,'recipe_floor' 拒因消失 = 本帧开过火;G1 生效门读数)。
+DEPLOY_EMIT_HELD_PREFIX: str = 'deploy_emit_held_'
+DEPLOY_EMIT_FLOOR_CTX_OPEN: str = 'deploy_emit_floor_ctx_open'
+DEPLOY_EMIT_FLOOR_EXEMPT_OPEN: str = 'deploy_emit_floor_exempt_open'
+#: 帧级去重载体(session 属性名):{'phase': (plane, round_num),
+#: 'counted': set[str]}——位面/轮次推进自动重置(同 SWAP_FRESH_BUYS_
+#: ATTR 键式;kernel.cw_deploy_logic 先例)。本谓词每帧最多被
+#: M5/M1/M1′ 调三次,帧内 reason 集取并集、每键至多 +1(帧内差异面
+#: 由执行侧 deploy_exec_ 键补盲,如实申报)。
+DEPLOY_EMIT_TELEMETRY_ATTR: str = 'cw4_deploy_emit_frame'
+
+
+def _record_deploy_emit_held(session: StrategySession,
+                             state: GameState | None,
+                             frame: MandateFrame,
+                             reasons: dict[int, str],
+                             rf_ctx: bool,
+                             deploy_inputs: dict) -> None:
+    """发射侧部署拒因分键写点(ADR-0564;全段 try/except best-effort,
+    不阻塞决策——同执行侧遥测形态)。
+
+    :param reasons: armed 调用的 held 拒因(kernel 拒因闭集,下标键)。
+    :param rf_ctx: 本帧豁免武装布尔(单源 = locked_line_recipe_floor_
+        conflict;与部署调用同值)。
+    :param deploy_inputs: 部署判定的基础输入 kwargs(bench/deployed_cids/
+        deployed_fac/board/cap/target_factions/target_cores/fw_carry/
+        locked_factions;armed 帧无豁免对照补跑复用,禁二次装配)。
+    """
+    try:
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            has_deployable_reasoned,
+        )
+        st = state_of(session)
+        counters = getattr(st, 'cw4_counters', None)
+        if not isinstance(counters, dict):
+            counters = {}
+            st.cw4_counters = counters
+        phase = (getattr(state, 'plane', None),
+                 getattr(frame, 'round_num', 1))
+        reg = getattr(session, DEPLOY_EMIT_TELEMETRY_ATTR, None)
+        if not isinstance(reg, dict) or reg.get('phase') != phase:
+            reg = {'phase': phase, 'counted': set()}
+            setattr(session, DEPLOY_EMIT_TELEMETRY_ATTR, reg)
+        counted: set[str] = reg['counted']
+
+        def _bump(key: str) -> None:
+            if key not in counted:
+                counted.add(key)
+                counters[key] = counters.get(key, 0) + 1
+
+        for _r in set(reasons.values()):
+            _bump(DEPLOY_EMIT_HELD_PREFIX + _r)
+        if rf_ctx:
+            _bump(DEPLOY_EMIT_FLOOR_CTX_OPEN)
+            # 豁免开火检测:armed 帧补跑一次无豁免对照(锁定线帧才
+            # 触发,成本有界);对照 'recipe_floor' 拒因消失 = 豁免本帧
+            # 开过火(G1 生效门读数:新机制触发 0 次 = 输入死,先查
+            # 接线再谈效果)。
+            _ctrl_reasons = has_deployable_reasoned(
+                recipe_floor_lock_exempt=False, **deploy_inputs)[1]
+            if ('recipe_floor' in set(_ctrl_reasons.values())
+                    and 'recipe_floor' not in set(reasons.values())):
+                _bump(DEPLOY_EMIT_FLOOR_EXEMPT_OPEN)
+    except Exception:   # noqa: BLE001  遥测 best-effort,不阻塞决策
+        pass
+
+
 def _deployable(frame: MandateFrame, session: StrategySession,
                 state: GameState | None = None) -> bool:
     """RunDeploy 提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
 
-    谓词单一源 = ``kernel.cw_deploy_logic.has_deployable``(dd-037):
-    与执行方 CwOpDeploy 计划构造(select_deployments)同源同参语义
-    ——围栏/去重/cap/配方底线全在谓词内。计划空(含「候选全被规则
-    留 bench」形态)⇒ False,不提案 RunDeploy(序内取下一动作)。
+    谓词单一源 = ``kernel.cw_deploy_logic.has_deployable_reasoned``
+    (dd-037):与执行方 CwOpDeploy 计划构造(select_deployments_reasoned)
+    同源同参语义——围栏/去重/cap/配方底线全在谓词内。计划空(含「候选
+    全被规则留 bench」形态)⇒ False,不提案 RunDeploy(序内取下一动作)。
 
     事件语义(本守卫触发形态):2026-09-06 实机首局(单动作架构,
     ADR-0518)00:08:25 备战环无进展守卫以「连续 3 环同签名动作批
@@ -977,32 +1054,46 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     漏接抑制谓词。禁第二实现:判空一律走 kernel;本函数只做输入装配
     (与 CwOpDeploy 同款,经 kernel deploy_target_sets /
     deployed_bond_counts 单一源)。
+
+    ADR-0564:配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,
+    发射门与执行侧计划构造经同一 armed 布尔同值);返回值不变(bool),
+    逐次调用经 _record_deploy_emit_held 落发射侧分键(帧级去重)。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         deploy_target_sets,
         deployed_bond_counts,
-        has_deployable,
+        has_deployable_reasoned,
     )
     from sr_od.application.currency_war.kernel.cw_intention import (
         locked_faction_scope,
+        locked_line_recipe_floor_conflict,
     )
     _comp = getattr(state_of(session), 'target_comp', None)
     _tgt, _fw_carry = deploy_target_sets(
         _comp, getattr(state_of(session), 'transition_framework', '') or '')
     _cids = {d.char_id for d in frame.deployed if d.char_id}
-    return has_deployable(
-        frame.bench,
-        deployed_cids=_cids,
-        deployed_fac=deployed_bond_counts(_cids),
-        board=dict(getattr(state, 'board', None) or {}),
-        cap=(frame.deploy_cap if frame.deploy_cap and frame.deploy_cap > 0
-             else 10 ** 6),
-        target_factions=_tgt,
-        target_cores=set(getattr(_comp, 'core_chars', None) or ()),
-        fw_carry=_fw_carry,
-        locked_factions=(locked_faction_scope(
-            getattr(state_of(session), 'v3_intention', None)) or frozenset()),
-    )
+    _ist = getattr(state_of(session), 'v3_intention', None)
+    try:
+        _rf_ctx = locked_line_recipe_floor_conflict(_ist)
+    except Exception:   # noqa: BLE001  豁免语境 best-effort:fail-closed
+        _rf_ctx = False
+    _inputs = {
+        'bench': frame.bench,
+        'deployed_cids': _cids,
+        'deployed_fac': deployed_bond_counts(_cids),
+        'board': dict(getattr(state, 'board', None) or {}),
+        'cap': (frame.deploy_cap if frame.deploy_cap and frame.deploy_cap > 0
+                else 10 ** 6),
+        'target_factions': _tgt,
+        'target_cores': set(getattr(_comp, 'core_chars', None) or ()),
+        'fw_carry': _fw_carry,
+        'locked_factions': (locked_faction_scope(_ist) or frozenset()),
+    }
+    _ok, _reasons = has_deployable_reasoned(
+        recipe_floor_lock_exempt=_rf_ctx, **_inputs)
+    _record_deploy_emit_held(session, state, frame, _reasons, _rf_ctx,
+                             _inputs)
+    return _ok
 
 
 def _state_view(frame: MandateFrame, session: StrategySession,

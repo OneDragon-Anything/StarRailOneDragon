@@ -389,6 +389,7 @@ def _residual_fill_deploy(
     target_cores: frozenset[str],
     fw_carry: frozenset[str],
     locked_factions: frozenset[str],
+    recipe_floor_lock_exempt: bool = False,
 ) -> tuple[int, int, int]:
     """skip_fence 轮轮末残余补部署(迁移审计 w716(git 历史) F1 修复设计 §三;命题 P-F1)。
 
@@ -450,6 +451,7 @@ def _residual_fill_deploy(
             target_cores=target_cores,
             fw_carry=fw_carry,
             locked_factions=locked_factions,
+            recipe_floor_lock_exempt=recipe_floor_lock_exempt,
         )
         # 末次仲裁 hold 槽位集(W678:围栏 hold 不计漏上——lag 重放的
         # 上下文翻转件以此为豁免集,与主趟路径同口径)。
@@ -488,6 +490,7 @@ def _residual_fill_deploy(
             target_cores=target_cores,
             fw_carry=fw_carry,
             locked_factions=locked_factions,
+            recipe_floor_lock_exempt=recipe_floor_lock_exempt,
         )
         # W678 豁免(与主趟路径同口径):重放认可的件若槽位属末次仲裁
         # hold 集 ⇒ 不计 lag(上下文翻转件,非漏上)。
@@ -1675,8 +1678,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
             from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
             _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
-            # `w155_evolve_lock/`/ADR-0360 件4:锁定帧体系键并入围栏放行集(同生产 op 侧)
+            # `w155_evolve_lock/`/ADR-0360 件3:锁定帧体系键并入围栏放行集(同生产 op 侧)
             _lf = frozenset()
+            _rf = False
             try:
                 _tc = frozenset(getattr(strategy_state_of(sess), 'target_comp', None).core_chars
                                 or ()) if getattr(strategy_state_of(sess), 'target_comp', None) else frozenset()
@@ -1697,6 +1701,22 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _lf = _lfs(getattr(strategy_state_of(sess), 'v3_intention', None)) or frozenset()
             except Exception:   # noqa: BLE001  代理 best-effort
                 pass
+            # ADR-0564 锁定线语境豁免(sim 接线):_rf 计算独立 try/except
+            # (fail-closed False)且**显式后置**于 _lf 赋值之后,禁并入上方
+            # from-import 组、禁与 _lf 同块——上方裸 except pass 的
+            # best-effort 兜底是既有面(_lf 围栏放行集),若本新增量的
+            # import/计算留在同块,未来改名/搬运抛 ImportError 会中断整块
+            # → _lf 停留空集 → 锁定件被散牌围栏按非锁定语义误拦(行为变严
+            # 零显影,一个新增量失败面摧毁既有兜底)。独立块 = 新增量故障
+            # 面与既有兜底隔离。
+            try:
+                from sr_od.application.currency_war.kernel.cw_intention import (
+                    locked_line_recipe_floor_conflict as _rfc,
+                )
+                _rf = _rfc(getattr(strategy_state_of(sess), 'v3_intention',
+                                   None))
+            except Exception:   # noqa: BLE001  豁免语境 best-effort:fail-closed
+                _rf = False
             # ADR-0271(批⑦ F1,ADR-0219 第四次命中根治):上阵即 pop
             # ——生产语义(cw_state.simulate/mutate_bench_deployed 的
             # DeployMove:bench.pop → deployed.append → board 聚合)。
@@ -1722,7 +1742,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _res_held = 0
             if _explicit_deploy_seen:
                 _res_up, _res_held, _deploy_lag_units = \
-                    _residual_fill_deploy(st, _tf, _tc, _fw, _lf)
+                    _residual_fill_deploy(st, _tf, _tc, _fw, _lf,
+                                          recipe_floor_lock_exempt=_rf)
                 _acts.append({
                     '__type__': 'skip_fence',
                     'reason': ('explicit_action_v2+residual_fill'
@@ -1755,6 +1776,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     target_cores=_tc,
                     fw_carry=_fw,
                     locked_factions=_lf,
+                    recipe_floor_lock_exempt=_rf,
                 )
                 # ADR-0316:up_idx 是紧缩占用序 → 回映射槽位下标置 None
                 # (ADR-0271 上阵即出 bench 语义不变)
@@ -1787,6 +1809,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     target_cores=_tc,
                     fw_carry=_fw,
                     locked_factions=_lf,
+                    recipe_floor_lock_exempt=_rf,
                 )
                 # 主趟围栏已仲裁 hold 的槽位不计 lag(W678 销案语义:
                 # 「围栏 hold」本身不漏上,检查只盯「围栏认可却未执行」)。

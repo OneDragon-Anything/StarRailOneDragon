@@ -83,6 +83,17 @@ TRANSITION_TRAITS: tuple[tuple[str, int], ...] = tuple(
     for card in SYSTEM_CARDS.values() if card.card_id != 'seele'
 )
 
+#: r288 配方底线门档值(ADR-0261 修订3 单源派生的模块级化;原
+#: select_deployments 局部派生与 op 侧内联派生 cw_op_deploy 两处同消费
+#: 本常量,收口于此)。
+#: ⚠️ 挂账关联(ADR-0564):本常量派生自上方 TRANSITION_TRAITS 副本,
+#: 该副本带迁移挂账(权威副本 = knowledge/cw_engine_facts.
+#: TRANSITION_TRAITS,按 legacy cleanup 计划随本文件删除)——本常量属
+#: 既有消费方向的模块级化(cw_intention 本就 import TRANSITION_TRAITS,
+#: 非新增消费方文件),副本迁移执行时本常量须随迁,禁留断链。
+RECIPE_FLOOR_TRAIN_CAP: int = dict(TRANSITION_TRAITS).get('列车同行', 2)
+RECIPE_FLOOR_XZ_BASE: int = dict(TRANSITION_TRAITS).get('仙舟', 3)
+
 
 # ADR-0375 守卫辖域体系集:四过渡体系全辖(三羁绊 + 希儿系
 # 单卡判据,tier=1)。辖域语义与 TRANSITION_TRAITS 的 deploy 排序语义
@@ -204,6 +215,89 @@ def ignition_gain(bonds, deployed_fac: dict[str, int]) -> int:
     return _sys_count(after) - _sys_count(deployed_fac)
 
 
+def recipe_floor_holds(main_faction: str,
+                       train_now: int,
+                       xz_now: int,
+                       lock_exempt_armed: bool,
+                       supply_exists: bool) -> bool:
+    """r288 配方底线门单一判定(含锁定线语境豁免;kernel 单一源)。
+
+    返回 True = 该件应被门持有(拒因 'recipe_floor')。消费面五处,
+    禁任何分支副本(ADR-0261 门本体 + ADR-0564 豁免;判定语义只此一份):
+    select_deployments / CwOpDeploy 主拖拽循环 / CwOpDeploy P24 fill
+    过滤 / CwOpDeploy 输入装配段计划构造(经 select_deployments_reasoned)
+    / select_swap_plan(经 select_deployments_reasoned 复用)。
+
+    豁免语义:lock_exempt_armed(豁免条件(1)锁定线语境成立,单源 =
+    ``cw_intention.locked_line_recipe_floor_conflict``)∧ not
+    supply_exists(豁免条件(2)本帧无有效仙舟供给,单源 =
+    ``xianzhou_supply_exists``)→ 门让位——锁定线收束期列车 core 不被
+    门空槽拦死,仙舟基础线保护由供给保留条款继续承保。
+
+    :param main_faction: 件的主阵营(CHARACTERS factions[0];与
+        select_deployments 内 bench_fac / op 侧 _bench_fac 同源口径)。
+    :param train_now: 运行阵营列车档(kernel 侧 ``_fac_run`` 循环逐件
+        增量 / op 侧 ``_deployed_fac`` 拖拽逐件增量——动态重判的防线
+        价值在各消费方自持,本函数只共享判定不共享状态)。
+    :param xz_now: 运行阵营仙舟档(口径同上)。
+    :param supply_exists: armed 时由调用方现算喂入;disarmed 时传
+        False(惰性语义:armed=False 时本值不被读取)。
+    """
+    if main_faction != '列车同行':
+        return False
+    if not (train_now >= RECIPE_FLOOR_TRAIN_CAP
+            and xz_now < RECIPE_FLOOR_XZ_BASE):
+        return False
+    # 豁免:锁定线语境武装 ∧ 本帧无有效仙舟供给 → 门让位(供给保留
+    # 条款:bench 有真供给时门照拦,供给先上)。
+    return not (lock_exempt_armed and not supply_exists)
+
+
+def xianzhou_supply_exists(bench: list[BenchChar],
+                           on_board_cids: set[str]) -> bool:
+    """本帧 bench 是否存在「有效仙舟供给」(配方底线门豁免条件(2))。
+
+    有效供给 = 存在 bench 件同时满足四条(死供给三类排除,I2 防复发
+    ——按名义供给计数时,任一死供给形态在场 = 豁免恒闭 = 列车 core
+    恒拦,死锁换形复发):
+
+    ① 全羁绊(factions+flows)含 '仙舟'(与门增量口径同式——凡部署
+       推进仙舟档的件都算供给,对照 select_deployments 的 ``_fac_run``
+       全羁绊 +1 口径);
+    ② 非 item_slot(占槽物品恒拒、永不上场 = 死供给);
+    ③ char_id ∉ on_board_cids(同名在场拷贝恒 held = 死供给;
+       on_board_cids = deployed_cids ∪ 本帧已上——kernel 侧传
+       deployed_cids | _up_names,op 侧 _deployed_cids 已含同执行增量);
+    ④ 主阵营 ≠ '列车同行'(防御性排除,当前注册表无实例——防未来
+       「flows 含仙舟 ∧ 主阵营列车同行」形态件:其自身被本门拦,永远
+       轮不到它贡献仙舟档 = 死供给;主阵营口径 = ch.factions[0])。
+
+    ⚠️ 数据依赖声明(ADR-0564 豁免条件节):谓词完备性依赖注册表现状
+    「仙舟羁绊件主阵营恒=仙舟」;凡新增仙舟羁绊件入表,须核对其主阵营
+    取值——未来入表「flows 含仙舟 ∧ 主阵营 ∉ 配方阵营」的件会被散牌
+    围栏/成对门拦住上不了场、却仍被判有效供给 → 豁免闭合 → 列车 core
+    恒拦(死供给第四类换形)。
+
+    未注册/未识别件:无羁绊可判 → 非供给(与 ``_bonds_of`` 同形)。
+    本谓词恒不抛异常(全分支防御读),消费方无需 try。
+    """
+    for bc in bench or []:
+        if getattr(bc, 'is_item_slot', False):
+            continue
+        cid = getattr(bc, 'char_id', '') or ''
+        if not cid or cid in on_board_cids:
+            continue
+        ch = CHARACTERS.get(cid)
+        if ch is None or not ch.factions:
+            continue
+        if '仙舟' not in (set(ch.factions) | set(ch.flows)):
+            continue
+        if ch.factions[0] == '列车同行':
+            continue
+        return True
+    return False
+
+
 def has_deployable(
     bench: list[BenchChar],
     deployed_cids: set[str],
@@ -216,25 +310,60 @@ def has_deployable(
     target_cores: frozenset[str] | set[str] = frozenset(),
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
+    recipe_floor_lock_exempt: bool = False,
 ) -> bool:
     """「是否存在可部署件」的单一源谓词(dd-037)。
 
-    = ``bool(select_deployments(...)[0])``——发射方(决策核准备战段)与
-    执行方(CwOpDeploy)共用同一份围栏/去重/cap/配方底线语义判「还有没有
-    部署可做」。背景(run 20260904_28xx 局11 停机形态):发射方判「bench
-    有货该部署」、执行方按配方底线规则把该件留 bench → RunDeploy 空计划
-    被包装成 ✓「已部署角色」→ 同签名动作批零推进环,环级无进展守卫停机。
-    修后发射方在计划为空时不发射 RunDeploy(bench=1 是合法稳态)。
+    = ``has_deployable_reasoned(...)[0]``(委托,判空语义不变)——发射方
+    (决策核准备战段)与执行方(CwOpDeploy)共用同一份围栏/去重/cap/
+    配方底线语义判「还有没有部署可做」。背景(run 20260904_28xx 局11
+    停机形态):发射方判「bench 有货该部署」、执行方按配方底线规则把该件
+    留 bench → RunDeploy 空计划被包装成 ✓「已部署角色」→ 同签名动作批
+    零推进环,环级无进展守卫停机。修后发射方在计划为空时不发射 RunDeploy
+    (bench=1 是合法稳态)。
 
     语义口径与 ``select_deployments`` 完全一致(含 SIFT 未识别 char_id=''
     「照旧上」的 fail-open:身份不可判时恒 True,不做激进留 bench)。
+    ``recipe_floor_lock_exempt`` 透传(ADR-0564,缺省 False 逐位同旧)。
     """
-    up, _held = select_deployments(
+    return has_deployable_reasoned(
         bench, deployed_cids=deployed_cids, deployed_fac=deployed_fac,
         board=board, cap=cap, front_total=front_total, back_total=back_total,
         target_factions=target_factions, target_cores=target_cores,
-        fw_carry=fw_carry, locked_factions=locked_factions)
-    return bool(up)
+        fw_carry=fw_carry, locked_factions=locked_factions,
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt)[0]
+
+
+def has_deployable_reasoned(
+    bench: list[BenchChar],
+    deployed_cids: set[str],
+    deployed_fac: dict[str, int],
+    board: dict[str, int],
+    cap: int,
+    front_total: int = 4,
+    back_total: int = 6,
+    target_factions: frozenset[str] | set[str] = frozenset(),
+    target_cores: frozenset[str] | set[str] = frozenset(),
+    fw_carry: frozenset[str] | set[str] = frozenset(),
+    locked_factions: frozenset[str] | set[str] = frozenset(),
+    recipe_floor_lock_exempt: bool = False,
+) -> tuple[bool, dict[int, str]]:
+    """「是否存在可部署件」的带拒因形态(发射侧遥测载体;ADR-0564)。
+
+    = ``select_deployments_reasoned`` 的薄包装:返回 ``(bool(up),
+    reasons)``——判空语义与 ``has_deployable`` 完全一致,reasons =
+    held 下标 → 拒因闭集(scatter_fence/rest_capacity/cap/name_dup/
+    recipe_floor/item_slot)。消费面 = mandate._deployable(发射门:
+    ``deploy_emit_held_<reason>`` 发射侧分键的唯一拒因源)与本文件
+    ``has_deployable``(委托)。禁第二套围栏语义(单一源同函数路径)。
+    """
+    up, _held, reasons = select_deployments_reasoned(
+        bench, deployed_cids=deployed_cids, deployed_fac=deployed_fac,
+        board=board, cap=cap, front_total=front_total, back_total=back_total,
+        target_factions=target_factions, target_cores=target_cores,
+        fw_carry=fw_carry, locked_factions=locked_factions,
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt)
+    return bool(up), reasons
 
 
 def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
@@ -292,6 +421,7 @@ def select_deployments(
     target_cores: frozenset[str] | set[str] = frozenset(),
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
+    recipe_floor_lock_exempt: bool = False,
     reasons_out: dict[int, str] | None = None,
 ) -> tuple[list[int], list[int]]:
     """围栏判定:返回 (上场 bench 下标序, 留 bench 下标)。
@@ -304,11 +434,17 @@ def select_deployments(
     cap 语义 = 已 deployed 数 + 本轮上场数 ≤ cap(cap=None 不限,
     调用方传大数)。
 
-    ADR-0360 件4(deploy 围栏兜底,ADR-0226 同型扩位):
+    ADR-0360 件3(deploy 围栏锁定键放行,ADR-0226 同型扩位):
     ``locked_factions`` = 锁定帧体系键(``cw_intention.locked_faction_
     scope``)并入围栏放行集——锁定 comp 的阵营(欢愉/公司等非 RECIPE ∪
     ENGINE 阵营)不再被配方围栏摁 bench(strict 局挤出后 59% 不回
     场,围栏是回场路径;锁定目标件保护,空窗期无锁定帧不辖)。
+
+    ADR-0564 配方底线门锁定线语境豁免:``recipe_floor_lock_exempt``
+    = 豁免武装位(单源 = ``cw_intention.locked_line_recipe_floor_
+    conflict``);armed 时门在「本帧无有效仙舟供给」帧让位(判定含豁免
+    单一源 = ``recipe_floor_holds``)。缺省 False = 门判定逐位同旧,
+    供给谓词不被执行(计算面同旧)。
 
     **held 拒因返回(N2 规格单一源,17 号稿 §7.1)**:传 ``reasons_out``
     dict 时,held 下标 → 拒因('scatter_fence' 散牌围栏/'rest_capacity'
@@ -375,7 +511,7 @@ def select_deployments(
         # 厉害」(P3:e0→e1 +1.4 金/轮);tgt 空集时不存在挤占目标件
         # 位置的问题(tgt 非空时围栏照旧——降级件不挤目标件)。
         _bond_paired = f is not None and pair_counts.get(f, 0) >= 2
-        # ADR-0360 件4:锁定帧体系键(常为流派键——燃血/欢愉等,
+        # ADR-0360 件3:锁定帧体系键(常为流派键——燃血/欢愉等,
         # 而围栏基准键=主阵营)按**全羁绊**匹配放行;未传锁定帧时
         # `not (... & 空)` 恒 True,围栏行为与旧版逐位一致
         if f is not None and f not in DEPLOY_FENCE \
@@ -438,20 +574,20 @@ def select_deployments(
     # 留 bench(囤件语义不受影响:囤的是 bench 不是上场)。
     up: list[int] = []
     _up_names: set[str] = set()
-    # 配方底线门(ADR-0261 裁决选项3,与 deploy_bench op 同语义):
-    # 列车≥2 且仙舟<3 → 列车件让位留 bench(仙舟基础线优先,防列车
-    # 第 3 人挤占配方深度;实机实锤的既定配方纪律)。op 侧在 drag
-    # 循环内逐件动态仲裁(每次成功上场同步阵营档);此处用 running
-    # 副本 `_fac_run` 等价模拟(ADR-0261 裁决:**循环内逐件增量
-    # 维护**,每上一件按全羁绊口径 +1,不得用入参初始快照——
+    # 配方底线门(ADR-0261 裁决选项3 + ADR-0564 锁定线语境豁免;判定
+    # 单一源 = ``recipe_floor_holds``):列车≥RECIPE_FLOOR_TRAIN_CAP 且
+    # 仙舟<RECIPE_FLOOR_XZ_BASE → 列车件让位留 bench(仙舟基础线优先,
+    # 防列车第 3 人挤占配方深度;实机实锤的既定配方纪律)。锁定线语境
+    # 豁免(ADR-0564):豁免武装帧 ∧ 本帧无有效仙舟供给 → 门让位;
+    # 供给保留条款不变(bench 有真供给时门照拦,供给先上)。
+    # op 侧在 drag 循环内逐件动态仲裁(每次成功上场同步阵营档);此处用
+    # running 副本 ``_fac_run`` 等价模拟(ADR-0261 裁决:**循环内逐件
+    # 增量维护**,每上一件按全羁绊口径 +1,不得用入参初始快照——
     # 否则门系统性偏松)。门判定的阵营口径 = bench_fac(主阵营),与
-    # op 的 _bench_fac 同源。
-    # 门 2/3 档数值从 TRANSITION_TRAITS 派生
-    # (列车2/仙舟3 = 过渡体系 tier,同一批数字)——不造第三处硬编码,
-    # op 侧同源引用。
-    _tier_of = dict(TRANSITION_TRAITS)
-    _train_cap = _tier_of.get('列车同行', 2)
-    _xz_base = _tier_of.get('仙舟', 3)
+    # op 的 _bench_fac 同源;档值单源 = RECIPE_FLOOR_TRAIN_CAP/XZ_BASE
+    # (TRANSITION_TRAITS 派生,不造第三处硬编码,op 侧同源引用)。
+    # 供给惰性:豁免武装帧才现算(供给谓词);``_up_names`` 随循环推进
+    # → 同名拷贝本帧先上后不再计作供给(与去重语义一致)。
     _fac_run = dict(deployed_fac)
     for i in order:
         if len(deployed_cids) + len(up) >= cap:
@@ -463,10 +599,14 @@ def select_deployments(
             held.append(i)   # 去重(5.1.7,含本轮已上):留 bench
             reasons[i] = 'name_dup'
             continue
-        if bench_fac.get(i) == '列车同行' \
-                and _fac_run.get('列车同行', 0) >= _train_cap \
-                and _fac_run.get('仙舟', 0) < _xz_base:
-            held.append(i)   # 配方底线门:列车件让位(仙舟基础线优先)
+        if recipe_floor_holds(
+                bench_fac.get(i, ''),
+                _fac_run.get('列车同行', 0),
+                _fac_run.get('仙舟', 0),
+                recipe_floor_lock_exempt,
+                xianzhou_supply_exists(bench, deployed_cids | _up_names)
+                if recipe_floor_lock_exempt else False):
+            held.append(i)   # 配方底线门(锁定线豁免见 ADR-0564)
             reasons[i] = 'recipe_floor'
             continue
         up.append(i)
@@ -491,14 +631,17 @@ def select_deployments_reasoned(
     target_cores: frozenset[str] | set[str] = frozenset(),
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
+    recipe_floor_lock_exempt: bool = False,
 ) -> tuple[list[int], list[int], dict[int, str]]:
     """N2 规格①:select_deployments 的带拒因形态(单一源同函数路径)。
 
     返回 ``(up, held, reasons)``——reasons = held 下标 → 拒因
     ('scatter_fence'/'rest_capacity'/'cap'/'name_dup'/'recipe_floor'/
     'item_slot')。
-    消费面 = 出口③围栏预检(17 号稿 §7.1)与部署执行侧闭环分键
-    (fuel_filler_stall_held_postbuy);预检/分键禁第二套围栏语义。
+    消费面 = 出口③围栏预检(17 号稿 §7.1)、部署执行侧闭环分键
+    (fuel_filler_stall_held_postbuy)与 op 输入装配段计划构造/sim
+    部署代理(ADR-0564 五消费点经此穿豁免参);预检/分键禁第二套
+    围栏语义。``recipe_floor_lock_exempt`` 透传(缺省 False 逐位同旧)。
     """
     reasons: dict[int, str] = {}
     up, held = select_deployments(
@@ -506,7 +649,9 @@ def select_deployments_reasoned(
         board=board, cap=cap, front_total=front_total,
         back_total=back_total, target_factions=target_factions,
         target_cores=target_cores, fw_carry=fw_carry,
-        locked_factions=locked_factions, reasons_out=reasons)
+        locked_factions=locked_factions,
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt,
+        reasons_out=reasons)
     return up, held, reasons
 
 
@@ -523,6 +668,7 @@ def can_deploy_single(
     target_cores: frozenset[str] | set[str] = frozenset(),
     fw_carry: frozenset[str] | set[str] = frozenset(),
     locked_factions: frozenset[str] | set[str] = frozenset(),
+    recipe_floor_lock_exempt: bool = False,
 ) -> tuple[bool, str]:
     """N2 规格②:单件假想查询(17 号稿 §7.1)。
 
@@ -532,7 +678,9 @@ def can_deploy_single(
     name_dup/recipe_floor)。出口③围栏放行预检**只消费本 API**,
     禁发射面自算第二套围栏语义。查询不可得(快照缺失/语义冲突)由
     调用方按 ``precheck_unavailable`` 分键处理(与围栏拒 'fenced' 禁
-    混键,17 号稿 §7.1 fail 向)。
+    混键,17 号稿 §7.1 fail 向)。``recipe_floor_lock_exempt`` 透传
+    (ADR-0564;shop 预检两调用点接线义务——豁免是帧属性,同一帧
+    预检与部署语义分裂 = dd-037 单一源契约破口;缺省 False 逐位同旧)。
     """
     bench2 = list(bench) + [candidate]
     idx = len(bench2) - 1
@@ -541,7 +689,8 @@ def can_deploy_single(
         board=board, cap=cap, front_total=front_total,
         back_total=back_total, target_factions=target_factions,
         target_cores=target_cores, fw_carry=fw_carry,
-        locked_factions=locked_factions)
+        locked_factions=locked_factions,
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt)
     if idx in up:
         return True, ''
     # 缺省 'unannotated' 显影(策略审查二十三跳必改项):候选 held 而拒因
@@ -816,6 +965,12 @@ class SwapPlanContext:
     locked: bool = False
     #: 板满(占用数 ≥ cap,与 fenced 臂同一派生链;转型臂触发前提之一)。
     board_full: bool = False
+    #: 锁定线语境豁免武装位(配方底线门,ADR-0564):装配自
+    #: ist.locked_comp(经 cw_intention.locked_line_recipe_floor_conflict,
+    #: 与 ``locked`` 同点同源装配——发射⇔执行⇔sim 意图三面经同一装配
+    #: 同帧同值)。缺省 False = swap 上序(卖后假想态复用
+    #: select_deployments_reasoned)行为逐位同旧。
+    recipe_floor_lock_exempt: bool = False
 
 
 @dataclass
@@ -880,6 +1035,7 @@ def assemble_swap_plan_inputs(
             committed_from,
             locked_buy_membership,
             locked_faction_scope,
+            locked_line_recipe_floor_conflict,
         )
         from sr_od.application.currency_war.kernel.cw_launch_admission import (
             protect_names_of,
@@ -941,6 +1097,10 @@ def assemble_swap_plan_inputs(
         _lf = locked_faction_scope(ist) or frozenset()
     except Exception:   # noqa: BLE001  围栏兜底 best-effort(同执行侧)
         _lf = frozenset()
+    # 锁定线语境豁免武装位(配方底线门,ADR-0564):与 locked 同读
+    # ist.locked_comp 单源(helper 自身 fail-safe:清空路径/套名解析
+    # 失败自动 False,无需调用侧兜底)。
+    recipe_floor_lock_exempt = locked_line_recipe_floor_conflict(ist)
     fw_name = getattr(strategy_state_of(session), 'transition_framework', '') or ''
     _tgt_fw, fw_carry = deploy_target_sets(tgt_comp, fw_name)
     return SwapPlanContext(
@@ -963,6 +1123,7 @@ def assemble_swap_plan_inputs(
         fp=fp,
         locked=locked,
         board_full=board_full,
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt,
     )
 
 
@@ -1060,7 +1221,8 @@ def select_swap_plan(ctx: SwapPlanContext | None,
             front_total=ctx.front_slots, back_total=ctx.back_slots,
             target_factions=ctx.target_factions,
             target_cores=ctx.target_cores, fw_carry=ctx.fw_carry,
-            locked_factions=ctx.locked_factions)
+            locked_factions=ctx.locked_factions,
+            recipe_floor_lock_exempt=ctx.recipe_floor_lock_exempt)
         for _hi in held2:
             _hn = ctx.bench[_hi].char_id or ''
             reasons[_hn] = 'post_sell_held'

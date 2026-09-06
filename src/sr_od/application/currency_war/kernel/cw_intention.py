@@ -63,7 +63,10 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     get_comp,
     merged_mechanic_tables,
 )
-from sr_od.application.currency_war.kernel.cw_deploy_logic import TRANSITION_TRAITS
+from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+    RECIPE_FLOOR_TRAIN_CAP,
+    TRANSITION_TRAITS,
+)
 from sr_od.application.currency_war.kernel.cw_line_switch import (
     e_rounds,
 )
@@ -1778,6 +1781,42 @@ def locked_buy_membership(ist: IntentionState | None) -> frozenset[str] | None:
         chars, _equips = _line_hoard(comp)
         scope |= chars
     return frozenset(scope) if scope else None
+
+
+def locked_line_recipe_floor_conflict(ist: IntentionState | None) -> bool:
+    """锁定线语境豁免条件(1)(配方底线门;单一源,ADR-0564)。
+
+    = ``ist.locked_comp`` 非空 ∧ ``get_comp`` 可解析 ∧
+    ``comp.form_tiers.get('列车同行', 0)`` > ``RECIPE_FLOOR_TRAIN_CAP``
+    (门封顶档,自 cw_deploy_logic import——本模块本就 import
+    TRANSITION_TRAITS,顺向合法;helper 若落 cw_deploy_logic 反向
+    import get_comp 成环,故驻本模块)。
+
+    判据形态与 ``locked_buy_membership`` 同族(触发条件同为
+    locked_comp 非空单判;不查 phase——``_lock`` 中 phase 与
+    locked_comp 同点同置、清空路径同点清,不存在「locked_comp 非空而
+    phase≠locked」的常态;若未来状态机引入该瞬态,消费面复审豁免
+    条件,方向宁可少开)。只看 form_tiers 不看 sub_tiers:门冲突语义
+    = **成型目标档**超封顶(sub_tiers 是副档目标;注册表无 sub_tiers
+    含列车同行的 comp)。
+
+    ⚠️ 禁改 scope 成员判:``locked_faction_scope`` = p1_pair ∪
+    transition_pair ∪ locked_comp 主副档键——P1 配方锁(桥对)帧
+    locked_comp='' 但 scope 非空,桥池列车目标档=2(=门封顶,无冲突,
+    过渡纪律应全额生效);scope 成员判会把门在过渡期打开 = 重开
+    r288 暴露面。本函数只读 locked_comp,结构上不可触达 p1_pair。
+
+    失效安全(fail-safe,不依赖清空路径枚举完整):locked_comp 逐帧
+    重读,任一清空路径(驱逐/撤销换 weak/撤销换 unlocked/降格终局,
+    赋空点五处)或套名解析失败(get_comp 返 None)都自动关豁免;
+    换线自动关豁免(fail-safe)。
+    """
+    if ist is None or not getattr(ist, 'locked_comp', ''):
+        return False
+    comp = get_comp(ist.locked_comp)
+    if comp is None:
+        return False
+    return comp.form_tiers.get('列车同行', 0) > RECIPE_FLOOR_TRAIN_CAP
 
 
 def locked_faction_scope(ist: IntentionState | None) -> frozenset[str] | None:
