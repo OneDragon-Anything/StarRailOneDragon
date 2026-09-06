@@ -1036,17 +1036,16 @@ def check_equip_supply_wear_closure(rows: list[dict]) -> list[str]:
 
 
 def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
-    """批㉜ 检查项(策略域待裁决披露,预期红灯):价值表对策略层
+    """批㉜ 检查项(ADR-0555 补值批扩为全量披露):价值表对策略层
     自声明关键装备的通用价值覆盖。
 
-    判据:COMP_LIBRARY key_equips 被 ≥3 个阵容引用(策略层自声明
-    「重要」)且在 EQUIPMENT_ROSTER 内的装备名,应存在于
-    _EQUIP_VALUE——缺失 = 该装备在本阵容未锁线时(decide_supply 第 3
-    分支,key_fit +10 不触发)通用价值恒 0 分,与策略层自己的重要性
-    声明矛盾。批㉜ F4 实测缺口:光速螺旋桨(5 comps)/动能激发剑
-    (3 comps)。本检查不消费账本行(逐局循环里每 game 披露一次);
-    裁决归策略域(补值入表 / 显式裁决「通用价值确为 0」后按
-    ADR-0298 同款语义处理),裁决前恒红。
+    判据:COMP_LIBRARY key_equips 中在 EQUIPMENT_ROSTER 内的**全部**
+    装备名(不设引用次数阈值——批㉜ F4 实证 ≥3 阈值只看见 2 名、
+    盲区 13 名同样恒 0 分),应存在于 _EQUIP_VALUE——缺失 = 该装备
+    在本阵容未锁线时(decide_supply 第 3 分支,key_fit +10 不触发)
+    通用价值恒 0 分,与策略层自己的重要性声明矛盾。清偿判据 =
+    本检查归 0(补值入表 / 显式裁决「通用价值确为 0」后按 ADR-0298
+    同款语义处理)。本检查不消费账本行(逐局循环里每 game 披露一次)。
     """
     from collections import Counter
 
@@ -1060,13 +1059,14 @@ def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
         for k in c.key_equips:
             kc[k] += 1
     gap = sorted((n, v) for n, v in kc.items()
-                 if v >= 3 and n in EQUIPMENT_ROSTER
+                 if n in EQUIPMENT_ROSTER
                  and n not in _EQUIP_VALUE)
     if not gap:
         return []
     return [
-        f"策略层 key_equips ≥3 引用但价值表缺值 {gap}"
-        f"(未锁线局通用价值恒 0——批㉜ F4 待策略域裁决)"]
+        f"策略层 key_equips 引用但价值表缺值 {gap}"
+        f"(未锁线局通用价值恒 0——批㉜ F4 缺口 ADR-0555 已裁决补值,"
+        f"新缺值名按同批方法处置)"]
 
 
 
