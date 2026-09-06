@@ -62,8 +62,13 @@ class CwScreenEquipPick(SrOperation):
         _match = getattr(self.ctx, 'cw_match', None)
         key_equips: list[str] = []
         if _match is not None and _match.session is not None:
-            for comp in (getattr(_match.session, 'target_comp', None),
-                         getattr(_match.session, 'stash_comp', None)):
+            # 策略器状态读点(合法通道 = 访问函数;ADR-0563)
+            from sr_od.application.currency_war.kernel.cw_strategy_session import (
+                strategy_state_of,
+            )
+            _mst = strategy_state_of(_match.session)
+            for comp in (getattr(_mst, 'target_comp', None),
+                         getattr(_mst, 'stash_comp', None)):
                 key_equips.extend(getattr(comp, 'key_equips', ()) or ())
         best_i, best_s = 0, -1.0
         for i, t in enumerate(texts):

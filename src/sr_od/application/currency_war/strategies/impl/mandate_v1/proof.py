@@ -16,7 +16,7 @@
   目标件存量)+ D-P4(切线滞回)——共根组 3「线级状态机事件集」的
   cw4 侧载体(事件/滞回字段集中于本模块 ``LineState``,各判据共用)。
 
-计数载体:``session.cw4_counters``(dict,bridge 每局创建;键登记见
+计数载体:``state_of(session).cw4_counters``(dict,bridge 每局创建;键登记见
 design_telemetry 键节——本模块产键:theta_unavailable(聚合)+
 theta_unavailable_theta/_d_min/_delta(成因分桶观察件;聚合与成因
 不同键防混计)/ switchline_skipped /
@@ -32,6 +32,9 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel import cw_line_switch
 from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import provisional
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
     p_complete,
@@ -60,7 +63,7 @@ class LineState:
     """线级状态机(共根组 3):事件集与滞回字段的单一源。
 
     字段坐标系/取值时机:
-    - ``k_name``:当前生效目标线名(session.target_comp 的 comp 名投影,
+    - ``k_name``:当前生效目标线名(state_of(session).target_comp 的 comp 名投影,
       证明 pass 每帧现读比对,变化时 dwell 清零——R1-3:K 变更下一备战期
       生效由 entry 只登记不翻转承载);
     - ``dwell``:当前线驻留轮数(证明 pass 逐帧 +1,K 名变化时归 0);
@@ -75,7 +78,7 @@ class LineState:
       不步进本窗。窗口判据按备战期数计量,方向保守(窗偏长);
       ``since`` 的比较对象 D_min 系备战期维参数。
     - ``drought`` 读端申报(R197 症7):cw4 内 drought 无行为消费端
-      (换线排除读 ``session.drought_excluded``,cw4 无写端)——A/B 期
+      (换线排除读 ``state_of(session).drought_excluded``,cw4 无写端)——A/B 期
       drought 计数器=纯遥测影子面(与 should_switch 同族影子声明,
       R197 症2 裁决),drought→drought_excluded 的行为接线=过线后批。
     """
@@ -97,15 +100,15 @@ class SwitchOutcome:
 
 def _line_state(session: StrategySession) -> LineState:
     """session 侧线级状态机唯一入口(局内持久,局终随 session 销毁)。"""
-    st = getattr(session, 'cw4_line_state', None)
+    st = getattr(state_of(session), 'cw4_line_state', None)
     if not isinstance(st, LineState):
         st = LineState()
-        session.cw4_line_state = st
+        state_of(session).cw4_line_state = st
     return st
 
 
 def _count(session: StrategySession, key: str) -> None:
-    counters = getattr(session, 'cw4_counters', None)
+    counters = getattr(state_of(session), 'cw4_counters', None)
     if isinstance(counters, dict):
         counters[key] = counters.get(key, 0) + 1
 
@@ -220,9 +223,9 @@ def best_alt_comp(state: GameState, session: StrategySession,
         COMP_LIBRARY,
         shop_supply,
     )
-    cur = getattr(session, 'target_comp', None)
+    cur = getattr(state_of(session), 'target_comp', None)
     cur_name = getattr(cur, 'name', '') if cur is not None else ''
-    excluded = set(getattr(session, 'drought_excluded', None) or ())
+    excluded = set(getattr(state_of(session), 'drought_excluded', None) or ())
     best: Comp | None = None
     best_e: float = math.inf
     for comp in COMP_LIBRARY:
@@ -294,7 +297,7 @@ def should_switch(state: GameState, session: StrategySession,
                                   line_switch_min_dwell=d_min,
                                   line_switch_debias_delta=delta)
     ls = _line_state(session)
-    cur = getattr(session, 'target_comp', None)
+    cur = getattr(state_of(session), 'target_comp', None)
     if cur is None:
         _count(session, 'switchline_no_target')
         return SwitchOutcome(False, 'no_target')

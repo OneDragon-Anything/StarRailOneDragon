@@ -4,8 +4,8 @@
 终局线 P1 内冻结换线(定义型 augment 除外)。**
 
 架构:双 slot 解耦——
-- ``session.transition_framework``(已有):过渡框架(仙舟/列车,pick_framework 滞后选择)
-- ``session.target_comp``:终局线(P1 内冻结;CommitSignals 定型/进 P2 解锁)
+- ``strategy_state_of(session).transition_framework``(已有):过渡框架(仙舟/列车,pick_framework 滞后选择)
+- ``strategy_state_of(session).target_comp``:终局线(P1 内冻结;CommitSignals 定型/进 P2 解锁)
 - 决策中心(plan/deploy/骨架门)在双轨期拿到的 ``target_comp`` = **本模块的配方伪 comp**
   (RecipeComp:以框架羁绊为 form_tiers,TRANSITION_PACK carry/partial 为 core)——
   消费方零改动,评分自动转向配方完成度(缺什么买什么)。
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
 
 # 配方伪 comp 注册表(框架 → Comp;core = 该框架 carry+partial 件;form_tiers = 配方目标档)。
@@ -78,7 +79,7 @@ def recipe_char_wanted(char_id: str, framework: str) -> bool:
 def decision_target(session, state: GameState) -> Comp | None:
     """决策中心取 target 的**单一入口**(消费方零改动)。
 
-    用法:update_target/decide_prep 处把 ``session.target_comp`` 的直接读换成本函数
+    用法:update_target/decide_prep 处把 ``strategy_state_of(session).target_comp`` 的直接读换成本函数
     (仅决策路径;遥测/结算 tag 仍读原 target_comp 记终局线名)。
 
     双轨期(配方驱动):框架已定 → 配方伪 comp(仙舟/列车/量子三选一,
@@ -100,9 +101,9 @@ def decision_target(session, state: GameState) -> Comp | None:
         committed_from,
     )
     if not committed_from(session, state):
-        fw = getattr(session, 'transition_framework', '')
+        fw = getattr(strategy_state_of(session), 'transition_framework', '')
         if fw:
             rc = _RECIPES.get(fw)
             if rc is not None:
                 return rc
-    return getattr(session, 'target_comp', None)
+    return getattr(strategy_state_of(session), 'target_comp', None)

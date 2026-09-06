@@ -133,8 +133,14 @@ def simulate_p2_replay_entry(entry: P2ReplayEntry, seed: int, *,
     sess = StrategySession(rng=random.Random(f'sim-p2-entry-{seed}'))
     if entry.locked_comp:
         from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            state_of,
+        )
         if entry.locked_comp in COMP_LIBRARY:
-            sess.target_comp = COMP_LIBRARY[entry.locked_comp]
+            # 锁定线经状态对象注入(session.md §3.4:策略状态不在 session,
+            # 禁裸 setattr;simulate_p1 侧 ensure_strategy_state 见已有
+            # 状态对象不覆写,注入保留)。
+            state_of(sess).target_comp = COMP_LIBRARY[entry.locked_comp]
     return simulate_p1(seed, use_refresh=use_refresh, pool=pool,
                        session=sess, p2_combat=p2_combat,
                        _p2_entry=entry)

@@ -81,6 +81,10 @@ from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import (
+    strategy_state_lazy,
+    strategy_state_of,
+)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
@@ -174,7 +178,7 @@ class IntentionState:
     p1_pair: tuple[str, ...] = ()      # P1 配方锁:体系对(过渡体系键;P2+ 恒空)
     """**P1 锁定目标数据形态(ADR-0357;显式可读,约束基准契约)**:
 
-    - 读口 = ``session.v3_intention.p1_pair``——四体系键的二元组,按
+    - 读口 = ``strategy_state_of(session).v3_intention.p1_pair``——四体系键的二元组,按
       ``_P1_PAIR_PREF`` 序规整,非空即「P1 锁定帧目标=该体系对」;
       空元组=空窗期(未锁);P2+ 恒空(P2+ 锁定目标=``locked_comp``)。
     - 体系键域与判据单一源:三羁绊键=``TRANSITION_TRAITS``
@@ -706,7 +710,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     """体系对 → 配方伪 comp(P1 配方锁帧的 target 载体物化;ADR-0459)。
 
     语义:ADR-0357 把 P1 意向锁定产物定为体系对(p1_pair)后,
-    ``session.target_comp`` 在配方锁帧恒 None——部署选人/评分管线/
+    ``strategy_state_of(session).target_comp`` 在配方锁帧恒 None——部署选人/评分管线/
     投资装备钩子等既有 target 消费者从此全盲(断线症状:引擎件
     躺 bench、散脸占板,decisions.target_comp 全程空串)。
     本函数把已锁方向物化为伪 comp,写端单点 =
@@ -1053,7 +1057,7 @@ def _track(ist: IntentionState, comp_name: str) -> LineTrack:
 # 与结局无单调关系,禁入验收通过线禁作优化目标。零行为守卫:观测位只
 # 计数,不改任何判定/发射结果(守卫锁 = sr-od-test test_cw_lock_path_obs_keys)。
 
-#: 观测分键前缀全集(session.cw4_counters;与既有键族零交集,设计稿 §4 条款③)。
+#: 观测分键前缀全集(strategy_state_of(session).cw4_counters;与既有键族零交集,设计稿 §4 条款③)。
 LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
     'weakplane_exempt_eval',          # G5:信号曾生成但被弱面剔(+豁免判据分支)
     'p2_supply_gate_cull',            # G6:信号存活但被 G≤ε 缓锁剔除
@@ -1077,18 +1081,17 @@ def _near_death_band(state: GameState,
 
 
 def _bump_obs(session: StrategySession | None, key: str) -> None:
-    """观测分键计数(session.cw4_counters 容器;键登记惯例同 mandate_v1)。
+    """观测分键计数(strategy_state_of(session).cw4_counters 容器;键登记惯例同 mandate_v1)。
 
     session 为 None(纯逻辑直调)静默跳过;容器缺席惰性建空 dict
     (先例 = mandate_v1/entry.py 初始化面)——只写计数,不碰任何判定
     输入,零行为。"""
     if session is None:
         return
-    counters = getattr(session, 'cw4_counters', None)
-    if counters is None:
-        counters = {}
-        session.cw4_counters = counters
-    counters[key] = counters.get(key, 0) + 1
+    st = strategy_state_lazy(session)
+    if st is None:
+        return   # 工厂未注册(第三方策略面):kernel 不代建,静默跳过
+    st.cw4_counters[key] = st.cw4_counters.get(key, 0) + 1
 
 
 def promote_candidates(state: GameState,
@@ -1531,7 +1534,7 @@ def update_intention(state: GameState, ist: IntentionState,
     # 分子 = 帧末 phase=='locked';按位面分列,与 cw_batch_stats 的
     # planes/locked_frames 同域口径。只承归因:锁定率与结局无单调关系,
     # 禁作优化目标。生产驱动面 = drive_intention / flow.update_target,
-    # 两者共用 session.v3_intention_key 段级重入守卫 ⇒ 每 game-round 恰一次)。
+    # 两者共用 strategy_state_of(session).v3_intention_key 段级重入守卫 ⇒ 每 game-round 恰一次)。
     _plane_key = f'p{min(max(1, int(getattr(state, "plane", 1))), 3)}'
     _bump_obs(session, f'intention_frame_{_plane_key}')
     if ist.phase == 'locked' and ist.locked_comp:
@@ -1634,7 +1637,7 @@ def committed_authority(state: GameState | None,
     - **权威序**(任一成立即 True):
       ① ``state.plane >= 2``——P2 起恒定型(语义边界同旧 update_target:
          定型边界=进位面 2,严于文档口径 P2-3);
-      ② ``session.v3_intention.phase == 'locked'``——意向状态机已锁线;
+      ② ``strategy_state_of(session).v3_intention.phase == 'locked'``——意向状态机已锁线;
       ③ ``ist.p1_pair`` 非空——P1 配方锁已立(ADR-0357 产物形态)。
     - **缺供给帧 = 保守侧 False**(=双轨=攒息):ist 不可得/字段缺失时
       **禁止**缺省 True——True=已定型=激进侧,攒息门/双轨买门全开
@@ -1646,7 +1649,7 @@ def committed_authority(state: GameState | None,
     """
     if state is not None and getattr(state, 'plane', 1) >= 2:
         return True
-    ist = getattr(session, 'v3_intention', None) if session is not None else None
+    ist = getattr(strategy_state_of(session), 'v3_intention', None) if session is not None else None
     if ist is None:
         return False
     if getattr(ist, 'phase', '') == 'locked':
@@ -1679,7 +1682,7 @@ def drive_intention(state: GameState, session: StrategySession,
     """意向状态机驱动点(P7 契约,批 2 方向层接管):每 game-round 恰一次。
 
     - 锚定 = 决策环入口(ops 环入口 update_target 之前调用);驱动键 =
-      (plane, round_num),段级重入守卫 = session.v3_intention_key
+      (plane, round_num),段级重入守卫 = strategy_state_of(session).v3_intention_key
       (与策略栈 update_target 的驱动共享同一键面——双驱动并存天然幂等,
       同轮重入不重复计数,miss/冻结分母 = 轮不膨胀);
     - ist 归属(session 保留清单裁决,P4):``v3_intention`` 是跨轮状态机
@@ -1692,14 +1695,16 @@ def drive_intention(state: GameState, session: StrategySession,
     (自 decision_v2.prep_brain 迁入意向域单一源;prep_brain 本名保留
     re-export,消费方调用零改。)
     """
-    ist = getattr(session, 'v3_intention', None)
+    st = strategy_state_lazy(session)
+    ist = st.v3_intention if st is not None else None
     if not isinstance(ist, IntentionState):
-        ist = IntentionState()
-        session.v3_intention = ist
+        if st is None:
+            return   # 工厂未注册(第三方策略面):kernel 不代建,跳过驱动
+        ist = st.v3_intention = IntentionState()
     key = (getattr(state, 'plane', 1), getattr(state, 'round_num', 1))
-    if getattr(session, 'v3_intention_key', None) == key:
+    if st.v3_intention_key == key:
         return   # 同轮已驱动:幂等出口(重入只保派生视图刷新,不计数)
-    session.v3_intention_key = key
+    st.v3_intention_key = key
     update_intention(state, ist, session, registry=registry)
 
 
@@ -1831,7 +1836,7 @@ def alloc_reason_consistency(session, target_faction: str = '',
     - 否则返回脱节报警标签 ``'off_lock:<目标>'``(消费方 =
       execute_replacement 构造事务时的观察日志 + sim 检查网/测试锁)。
     """
-    ist = getattr(session, 'v3_intention', None)
+    ist = getattr(strategy_state_of(session), 'v3_intention', None)
     scope = locked_faction_scope(ist if isinstance(ist, IntentionState)
                                  else None)
     if scope is None:
@@ -1870,7 +1875,7 @@ def _to_jsonable(obj: Any) -> Any:
 def serialize_intention(ist: Any) -> dict[str, Any] | None:
     """v3 意向状态(IntentionState)→ JSON-safe dict。
 
-    ADR-0336 后锁定真值在 ``session.v3_intention``,但 decisions 行
+    ADR-0336 后锁定真值在 ``strategy_state_of(session).v3_intention``,但 decisions 行
     只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
     「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
     全量落遥测(锁定目标改过渡配方(ADR-0357)的实机验证依赖它)。

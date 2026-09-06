@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Any
 
 from one_dragon.utils import log_utils
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.telemetry.query import (
     HP_CONF_TRUSTED,
     read_jsonl,
@@ -77,7 +78,7 @@ log = log_utils.log
 #: 已落库的 run 段拼成一局」,写入端已如实落库无需改;恢复帧读数与终值
 #: 不符时两侧都是真读,装配器无权裁哪边是真值,只做显影交判读定谳。
 #: v7(行为观测计数落盘批):+顶层 ``cw4_counters``(策略行为观测计数
-#: 局终快照;写入端 = cw_loop 局终收口把 ``session.cw4_counters`` 经
+#: 局终快照;写入端 = cw_loop 局终收口把 ``strategy_state_of(session).cw4_counters`` 经
 #: ``record_cw4_counters_snapshot`` 落 ``cw4_counters.jsonl``,装配端按
 #: 局时间窗纯读派生归局)。旧档案/无计数流经 load_archive 版本检查自动
 #: 重装配补齐(无窗内行 → None=数据缺失;空 dict=局内真实零计数)。
@@ -622,7 +623,7 @@ def record_cw4_counters_from_match(replay_dir: Path | str,
     """
     session = getattr(match, 'session', None)
     return record_cw4_counters_snapshot(
-        replay_dir, getattr(session, 'cw4_counters', None))
+        replay_dir, getattr(strategy_state_of(session), 'cw4_counters', None))
 
 
 def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any]:

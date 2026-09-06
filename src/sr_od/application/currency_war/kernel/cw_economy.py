@@ -32,6 +32,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     effective_hp_threshold,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
@@ -95,7 +96,7 @@ def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
 def cap_resolved_of_session(session: StrategySession | None) -> int:
     """cap_resolved 现读(session resolved 链;ADR-0516 cap 三源归一)。
 
-    注入面 = ``session.cw4_cap_override``(int 覆写)经 ``interest_cap_
+    注入面 = ``strategy_state_of(session).cw4_cap_override``(int 覆写)经 ``interest_cap_
     resolved`` 归一,缺省回 DEFAULT_INTEREST_CAP。消费位 = 商店线 R1/R2
     的 g* 装配(mandate._cap_of 重定向至此)、schedule_upgrade ② 前置
     息线、U_L 阈值检验的 loss_exact cap 参数——三处共用本式,禁再内联
@@ -103,7 +104,7 @@ def cap_resolved_of_session(session: StrategySession | None) -> int:
     裸缺省 5 会低估 C_int)。边界:本链不读 registry.interest_cap
     (A/B 旋钮辖 decision_v2 预算面,不辖本链)。
     """
-    override = getattr(session, 'cw4_cap_override', None)
+    override = getattr(strategy_state_of(session), 'cw4_cap_override', None)
     return interest_cap_resolved(
         override if isinstance(override, int) else None)
 
@@ -656,10 +657,10 @@ def is_emergency(state: GameState,
 
 
 def _registry_of(session: StrategySession) -> DecisionV2Registry:
-    """接缝函数的注册表解析(A/B 注入面:session.v3_registry 显式注入
+    """接缝函数的注册表解析(A/B 注入面:strategy_state_of(session).v3_registry 显式注入
     优先,缺省落 DEFAULT_REGISTRY——缺省栈无注入臂,P6 契约同 prep_brain
     装配签名)。"""
-    reg = getattr(session, 'v3_registry', None)
+    reg = getattr(strategy_state_of(session), 'v3_registry', None)
     return reg if isinstance(reg, DecisionV2Registry) else DEFAULT_REGISTRY
 
 
@@ -825,7 +826,7 @@ def _vd_core_of(session: StrategySession) -> str:
         IntentionState,
         intention_core,
     )
-    ist = getattr(session, 'v3_intention', None)
+    ist = getattr(strategy_state_of(session), 'v3_intention', None)
     if not isinstance(ist, IntentionState) or ist.phase != 'locked' \
             or not ist.locked_comp:
         return ''

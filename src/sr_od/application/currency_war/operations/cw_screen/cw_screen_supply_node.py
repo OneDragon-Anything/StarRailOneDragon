@@ -36,6 +36,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
 from sr_od.application.currency_war.obs.cw_observation import read_game_state
@@ -105,12 +106,12 @@ class CwScreenSupplyNode(SrOperation):
         """本补给节点还没做过 detour?优先 session 态(跨外环重建存活,
         同 _supply_refresh_used 惯例),无 match 退实例态。"""
         if match is not None:
-            return not getattr(match.session, '_supply_detour_done', False)
+            return not getattr(exec_state_of(match.session), '_supply_detour_done', False)
         return not getattr(self, '_detour_done', False)
 
     def _mark_supply_detour(self, match) -> None:
         if match is not None:
-            match.session._supply_detour_done = True
+            exec_state_of(match.session)._supply_detour_done = True
         else:
             self._detour_done = True
 
@@ -182,7 +183,7 @@ class CwScreenSupplyNode(SrOperation):
         # r2 review#2:实例态在外环每次新建 op 下失效 → 挂 match.session
         # (正式字段,非 Optional)读;r10 review#3:getattr 兜底删(拼错字段名会静默
         # False 掩盖接线错误)。无 match 退实例态(测试/离线路径)。
-        _refresh_used = match.session._supply_refresh_used if match is not None else self._refresh_used
+        _refresh_used = exec_state_of(match.session)._supply_refresh_used if match is not None else self._refresh_used
         target = CwScreenSupplyNode.CARD_BODY
         reason = 'no-options(CARD_BODY 兜底)'
         refresh_target = None
@@ -200,7 +201,7 @@ class CwScreenSupplyNode(SrOperation):
             if pick.refresh and not _refresh_used:   # 只刷一次(r1#1+r2#2:session 级)
                 refresh_target = CwScreenSupplyNode.REFRESH_BTN
                 self._refresh_used = True
-                match.session._supply_refresh_used = True
+                exec_state_of(match.session)._supply_refresh_used = True
                 reason = pick.reason
             elif 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]

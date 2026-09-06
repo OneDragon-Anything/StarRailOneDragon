@@ -43,6 +43,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.sim.engine_p1 import (
     sim_decision_registry,
     simulate_p1,
@@ -496,7 +497,7 @@ def cw4_disclosure_from_session(session: Any) -> dict[str, int]:
     结果写进批次 manifest 的 ``cw4_disclosure`` 块——ab_judge v6 判读
     强制消费(缺块拒读),与 headline 一并输出。
     """
-    counters = getattr(session, 'cw4_counters', None) or {}
+    counters = getattr(strategy_state_of(session), 'cw4_counters', None) or {}
     return {k: v for k, v in counters.items()
             if k in DISCLOSURE_COUNTER_KEYS
             or any(k.startswith(p) for p in DISCLOSURE_COUNTER_PREFIXES)}

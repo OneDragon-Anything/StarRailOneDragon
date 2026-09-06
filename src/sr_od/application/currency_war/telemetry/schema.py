@@ -385,7 +385,7 @@ class DecisionTrace:
     # HandoffSnapshot.as_dict)。None=未进 P2/旧记录;仅 P2 首轮行非空。
     handoff: dict[str, Any] | None = None
     # —— P1 配方对平铺观测(cw_intention 配方锁产物;判读上游)——
-    # 取值 = 本 record 调用时点的 session.v3_intention 配方对(非空
+    # 取值 = 本 record 调用时点的 strategy_state_of(session).v3_intention 配方对(非空
     # IntentionState.p1_pair,次选 transition_pair),体系键以 '+' 连接
     # (同 cw_intention last_event 'p1_pair:' 标签风格);''=未锁/空窗/
     # 无意向状态机。平铺目的是 P1 备战步进行(decisions 行)不用解析
@@ -396,10 +396,10 @@ class DecisionTrace:
     # 零命中,判读盲区)。接出点=recorder 统一自 _CTX_MATCH_REF 的 session 取
     # (shop.py 的 extra 通道不动;record_outcome 板深快照同款模块槽先例)。
     # None/缺省 = 无 match 注册(离线/测试)或取值失败,旧 schema 不破坏。
-    # 血预算停手·停升级拒付计数(session.v3_blood_budget_rejects 透传;
+    # 血预算停手·停升级拒付计数(strategy_state_of(session).v3_blood_budget_rejects 透传;
     # 写入端=arbiter/remediation 拒付面,局首清零)。
     sess_blood_budget_rejects: int | None = None
-    # 血预算停手·搜索型刷新停付拒付计数(session.v3_blood_budget_refresh_rejects
+    # 血预算停手·搜索型刷新停付拒付计数(strategy_state_of(session).v3_blood_budget_refresh_rejects
     # 透传;写入端=arbiter refresh 收尾,局首清零)。
     sess_blood_budget_refresh_rejects: int | None = None
     # 血预算停手·终止分支决策位。⚠️ 与 sim 账本行键 terminal_release 同名
@@ -415,13 +415,13 @@ class DecisionTrace:
     # 注入臂行不带此语义保证,判读按 strategy_id 分栈)。None=现算失败/
     # 依赖缺失。
     p1_downgrade_active: bool | None = None
-    # 经验期望账本快照(session.xp_expect_ledger=cw_screen_prep.XpLedger 正式
+    # 经验期望账本快照(exec_state_of(session).xp_expect_ledger=cw_screen_prep.XpLedger 正式
     # 字段,此处平铺 dict 便于判读;None=未锚定/无账本)。
     xp_expect_ledger: dict[str, Any] | None = None
     # —— `w611_econ_cycle/` 储备/义务披露(经济循环总模型;ADR-0445 实机验证队列
     # 「死时带金/闲置金」判读的帧级数据源;接出点同 `w603_telemetry_wiring/` 汇点)——
     # None/缺省 = 无 match 注册或 decide_prep 未跑(离线/测试/default 栈)。
-    # 储备线 R*(=息线+窗口排程升级费;session.v3_reserve_cap 透传)。
+    # 储备线 R*(=息线+窗口排程升级费;strategy_state_of(session).v3_reserve_cap 透传)。
     sess_reserve_cap: int | None = None
     # 溢余 (g−R*)+(义务压力原料;闲置金判据=本字段的帧均值)。
     sess_reserve_overflow: int | None = None
@@ -430,7 +430,7 @@ class DecisionTrace:
     # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission';
     # 'crisis'=危机金出口臂 ADR-0503,判读兑换率分域勿漏此值)。
     sess_release_reason: str | None = None
-    # 当轮 release 帧实际消费(金;session.v3_release_spent 透传,每轮
+    # 当轮 release 帧实际消费(金;strategy_state_of(session).v3_release_spent 透传,每轮
     # 入口清零)。全渠道口径:刷新经 authorize_release_refresh 授权逐笔
     # 扣账;买牌/升级经仲裁收尾回执汇总裁(_accrue_release_frame_spend,
     # 决策帧值为轮内截至采样时点累计)。
@@ -451,7 +451,7 @@ class DecisionTrace:
     #  spend_gate 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT
     #  §1.3;存量 runs.jsonl 判读脚本按缺键读 None。)
     # 预算-回执契约·对账门声明(w921_rd_design DESIGN §1.1-C;
-    # session.v3_posture_unfulfilled 透传):{auth_id, channel, reason,
+    # strategy_state_of(session).v3_posture_unfulfilled 透传):{auth_id, channel, reason,
     # channels, action}——授权未兑现帧的显式归档(reason=四枚举
     # no_premise/no_channel/no_candidate/no_budget;action=allocator/
     # crisis_release/downgrade)。None=无未兑现帧/开关关/无 match 注册。
@@ -477,7 +477,7 @@ class DecisionTrace:
     # 可选末尾追加字段,旧记录缺省 None 不破坏 schema。
     supply_pick: dict[str, Any] | None = None
     # —— 决策时点挂起期望态快照(W971 期望态 infra 遥测批,用户确认推进)——
-    # 快照 = 本 record 调用时点 session.expected_state 未确认条目摘要
+    # 快照 = 本 record 调用时点 exec_state_of(session).expected_state 未确认条目摘要
     # [{path, value, produced_by, at_round, kind}](接出点 = recorder 统一自
     # _CTX_MATCH_REF session 自取,w603 汇点先例;归因 = 决策错可分型「基于
     # 错误期望推进 vs 实读错」)。读端三态:旧行无此键 = 迁移前数据(不修复);
@@ -558,7 +558,7 @@ class OutcomeRecord:
     # —— 迁移审计 w306(git 历史) 补给选择快照(仅 source='synthetic_supply' 行携带):补给节点选定+
     # 确认时的 {char, equip, has_diamond, refreshed, gold}——choices/效果归因数据源
     # (治疗/装备生效判读原无法挂回补给轮;rounds 视图 P1 r5 全缺的语义补齐)。
-    # refreshed=session._supply_refresh_used 时点值(该次确认前是否已刷新重掷);
+    # refreshed=exec_state_of(session)._supply_refresh_used 时点值(该次确认前是否已刷新重掷);
     # gold=完成时点 last_state.gold(gold_readable=False 缺省不写,不冒认真值)。
     # W306c:options=[{char,equip,has_diamond}...] + n_options=实际识别列数
     # (动态探测,通常 4/augment 3-5,逐列内容不假定结构;漏读审计与对拍源)。

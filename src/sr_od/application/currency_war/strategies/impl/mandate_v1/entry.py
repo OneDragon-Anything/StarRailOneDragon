@@ -71,6 +71,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     sell as crit_sell,
 )
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 
 if TYPE_CHECKING:
@@ -179,7 +182,7 @@ def truncate_frame_stable(actions: list[PrepAction],
     """
     counters: dict | None = None
     if session is not None:
-        got = getattr(session, 'cw4_counters', None)
+        got = getattr(state_of(session), 'cw4_counters', None)
         if isinstance(got, dict):
             counters = got
 
@@ -334,8 +337,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         Emitted,
     )
 
-    if getattr(session, 'cw4_counters', None) is None:
-        session.cw4_counters = {}
+    if getattr(state_of(session), 'cw4_counters', None) is None:
+        state_of(session).cw4_counters = {}
 
     # ① prep 实体面
     if getattr(obs, 'box_overlay_open', False):
@@ -359,8 +362,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 帧级复位(与 posture_release.attach_spend_authorization 同口径):
     # 每决策段「入口=无声明、段尾=本段真值」,防 posture_unfulfilled 旧值
     # 跨帧滞留成假信号(病灶②修法的正确性前提)。
-    session.v3_posture_unfulfilled = None
-    k = getattr(session, 'target_comp', None)
+    state_of(session).v3_posture_unfulfilled = None
+    k = getattr(state_of(session), 'target_comp', None)
     k_members = predicates.line_members(k)
     # K 空窗回退(准备域;经济冻结批病灶①保险层):shop.py 商店域已有
     # 同款回退,准备域(mandate pass)旧形态 K=None ⇒ k_members=() ⇒
@@ -370,13 +373,13 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 意向供给缺帧,保守侧不回退(与 shop.py 同款 fail 方向)。
     if k is None:
         from sr_od.application.currency_war.kernel import cw_intention
-        _ist = getattr(session, 'v3_intention', None)
+        _ist = getattr(state_of(session), 'v3_intention', None)
         if _ist is not None and state is not None:
             _fb, _band = cw_intention.k_empty_window_fallback(state, _ist)
             if _fb:
                 k_members = tuple(sorted(_fb))
-                session.cw4_counters[f'prep_k_fallback_{_band}'] = \
-                    session.cw4_counters.get(f'prep_k_fallback_{_band}', 0) + 1
+                state_of(session).cw4_counters[f'prep_k_fallback_{_band}'] = \
+                    state_of(session).cw4_counters.get(f'prep_k_fallback_{_band}', 0) + 1
     bench = list(obs.bench_chars)
     deployed = list(obs.deployed_chars)
     bench_names = [b.char_id or '' for b in bench]
@@ -384,7 +387,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
 
     # ② 证明 pass(信号臂 R11-3:两臂同开不旁路;命中=直通线语境,计数披露)
     if proof.signal_arm(session) is not None:
-        _ct_sig = session.cw4_counters
+        _ct_sig = state_of(session).cw4_counters
         _ct_sig['signal_arm_direct'] = _ct_sig.get('signal_arm_direct', 0) + 1
     stop_flag = None
     # 契约核验(FIX_REVIEW R1 漏接位补齐):stop_buy 消费位经
@@ -392,7 +395,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 弃权侧=保守停买(fail-closed,支配买/溢余面不因缺核验开闸)
     if contracts.ensure_contract(
             ('proof', 'stop_buy'), contracts.ContractCtx(),
-            session.cw4_counters):
+            state_of(session).cw4_counters):
         stop_flag = proof.stop_buy(k, bench_names, deployed_names)
     else:
         stop_flag = True
@@ -408,12 +411,12 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # (should_switch/回锁窗/干旱计数)=影子面,实装接线=过线后批。
     if switch.event:
         proof.register_eviction(session, getattr(k, 'name', ''))
-        counters = session.cw4_counters
+        counters = state_of(session).cw4_counters
         counters['switchline_event'] = counters.get('switchline_event', 0) + 1
     # k_switched 实值化(R196 症1):上一备战期线名快照 vs 本帧生效 K 名
     # ——不同即换线已在本帧生效(塌缩出口评估条件,line_switch_sell 只在
     # K 已更新的备战期评,§2.7);旧线成员自 COMP_LIBRARY 按名取回。
-    prev_name = getattr(session, 'cw4_prev_line_name', '') or ''
+    prev_name = getattr(state_of(session), 'cw4_prev_line_name', '') or ''
     cur_name = getattr(k, 'name', '') if k is not None else ''
     k_switched = bool(prev_name) and prev_name != cur_name
     old_line_members = predicates.line_members(get_comp(prev_name)) \
@@ -423,7 +426,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     _sig = _upgrader_evaluate(session, state,
                               state.gold if state else 0,
                               getattr(state, 'hp', None))
-    _ct = session.cw4_counters
+    _ct = state_of(session).cw4_counters
     if _sig.lambda_shadow_armed:
         _ct['advisor_lambda_shadow_armed'] = \
             _ct.get('advisor_lambda_shadow_armed', 0) + 1
@@ -511,7 +514,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # ⑥ 无动作 ⇒ 出战(序列终点)
     if not out:
         out.append(Emitted(StartBattle(), True, 'battle'))
-    session.cw4_prev_line_name = cur_name   # 下帧 k_switched 判定基准
+    state_of(session).cw4_prev_line_name = cur_name   # 下帧 k_switched 判定基准
     return out
 
 
@@ -526,9 +529,9 @@ def _reconcile_posture_authorization(session: StrategySession,
     dp_posture 同源);执行面 = M3 升级链(arm1 存在性 → lv9 停 →
     spend_unified 整批纪律 → 可负担)。spend_mode='level'(本轮授权升级)
     而发射序列无 LevelUp ⇒ 逐门评估定位未兑现原因,显式声明:
-    - ``session.v3_posture_unfulfilled`` 置位(遥测 posture_unfulfilled
+    - ``state_of(session).v3_posture_unfulfilled`` 置位(遥测 posture_unfulfilled
       消费;形状与 decision_v2.posture_release.reconcile_spend 同构);
-    - 计数键 ``posture_unfulfilled_level``(session.cw4_counters);
+    - 计数键 ``posture_unfulfilled_level``(state_of(session).cw4_counters);
     - log.info(带未兑现原因,判读可直接归因)。
 
     只声明不兜底:不因授权未兑现而改发射(升级发射仍由 M3 判据独裁,
@@ -552,7 +555,7 @@ def _reconcile_posture_authorization(session: StrategySession,
     # 不落逐门故障定位(那些门本轮根本未被求值)。
     if state is not None and contracts.ensure_contract(
             ('levelup', 'level_spend_blocked'),
-            contracts.ContractCtx(), getattr(session, 'cw4_counters',
+            contracts.ContractCtx(), getattr(state_of(session), 'cw4_counters',
                                              None) or {}) \
             and crit_levelup.level_spend_blocked(state, session):
         un = {'auth_id': f'{state.plane}-{state.round_num}',
@@ -560,8 +563,8 @@ def _reconcile_posture_authorization(session: StrategySession,
               'reason': 'crisis_level_spend_blocked',
               'channels': {'levelup': 'crisis_level_spend_blocked'},
               'action': 'crisis_yield'}
-        session.v3_posture_unfulfilled = un
-        counters = getattr(session, 'cw4_counters', None)
+        state_of(session).v3_posture_unfulfilled = un
+        counters = getattr(state_of(session), 'cw4_counters', None)
         if isinstance(counters, dict):
             counters['posture_crisis_level_defer'] = \
                 counters.get('posture_crisis_level_defer', 0) + 1
@@ -606,7 +609,7 @@ def _reconcile_posture_authorization(session: StrategySession,
             if contracts.ensure_contract(
                     ('levelup', 'levelup_budget_gate'),
                     contracts.ContractCtx(gold=state.gold, deploy_cap=cap),
-                    getattr(session, 'cw4_counters', None) or {}):
+                    getattr(state_of(session), 'cw4_counters', None) or {}):
                 from sr_od.application.currency_war.kernel.cw_economy import (
                     cap_resolved_of_session,
                 )
@@ -621,8 +624,8 @@ def _reconcile_posture_authorization(session: StrategySession,
           'reason': reason,
           'channels': {'levelup': reason},
           'action': 'downgrade'}
-    session.v3_posture_unfulfilled = un
-    counters = getattr(session, 'cw4_counters', None)
+    state_of(session).v3_posture_unfulfilled = un
+    counters = getattr(state_of(session), 'cw4_counters', None)
     if isinstance(counters, dict):
         counters['posture_unfulfilled_level'] = \
             counters.get('posture_unfulfilled_level', 0) + 1
@@ -671,10 +674,10 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         Emitted,
     )
-    counters = getattr(session, 'cw4_counters', None)
+    counters = getattr(state_of(session), 'cw4_counters', None)
     if not isinstance(counters, dict):
         counters = {}
-        session.cw4_counters = counters
+        state_of(session).cw4_counters = counters
     # 先到先得冲突域:骨架 pass 已发射的 SellBench 槽位(席位冲突面)
     sold_slots = {e.action.slot for e in (skeleton_out or [])
                   if isinstance(e.action, SellBench)}

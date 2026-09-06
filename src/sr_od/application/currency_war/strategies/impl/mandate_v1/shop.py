@@ -7,7 +7,7 @@ sim 引擎)。
 
 商店单动作形态(ADR-0517;前身份 = 波批 decide_shop_wave,迁移批改型):
 
-1. 方向(证明面投影):K = ``session.target_comp``(战略层 update_target 产物,
+1. 方向(证明面投影):K = ``state_of(session).target_comp``(战略层 update_target 产物,
    见 bridge 透传声明)、stop_flag = proof.stop_buy、D-A45 干旱计数器;
    **K 空窗回退(2026-09-03 第三病灶修复;FIX_REVIEW_20260903 R3 扩域
    至三带)**:target_comp 为 None 时按带回退(单一源 cw_intention,禁
@@ -37,7 +37,7 @@ registry 属性经 bridge 自带(Q3 坑位①)。
 D-BUYNOTE(修复池执行层附注):M3 升级内嵌 P48 整买纪律
   (``criteria/levelup.spend_unified``,散买 XP 零收益拦截)。
 
-计数键(session.cw4_counters,登记见 design_telemetry 键节——步4b 新键):
+计数键(state_of(session).cw4_counters,登记见 design_telemetry 键节——步4b 新键):
 shop_ev_u_unavailable / shop_ev_shop_domain / shop_ev_no_candidate /
 shop_ev_all_vetoed / shop_ev_bench_wait / shop_r1_ev_unavailable /
 shop_visit_idle_gold /
@@ -134,6 +134,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     stockpile as crit_stockpile,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
     horizon,
@@ -401,10 +404,10 @@ def count_material_stale(counters: dict, session: StrategySession,
     if _stale_names:
         counters['merge_material_stale'] = \
             counters.get('merge_material_stale', 0) + len(_stale_names)
-    _seen = getattr(session, 'cw4_stale_seen_rounds', None)
+    _seen = getattr(state_of(session), 'cw4_stale_seen_rounds', None)
     if _seen is None:
         _seen = {}
-        session.cw4_stale_seen_rounds = _seen
+        state_of(session).cw4_stale_seen_rounds = _seen
     for _sn in _stale_names:
         _prev = _seen.get(_sn)
         if _prev is not None and _prev < round_num:
@@ -431,19 +434,19 @@ def decide_shop_action(state: GameState, session: StrategySession,
     → CloseShop(终结)。输入 ``state`` = 期望态当前值(动作后真值,
     ADR-0517 §8.1 裁决:契约核验与决策同源消费此值,禁帧首快照口径)。
 
-    计数键粒度声明(ADR-0517 迁移步 2):``session.cw4_counters`` 各键
+    计数键粒度声明(ADR-0517 迁移步 2):``state_of(session).cw4_counters`` 各键
     语义从「每波一次」改「每决策帧一次」;跨结构对比(A/B 或回归判读)
     须声明口径切换,禁把两粒度计数直接对拍。拒因遥测
-    (``session.cw4_shop_rejects``)同样逐帧刷新——期望态即投影后真值,
+    (``state_of(session).cw4_shop_rejects``)同样逐帧刷新——期望态即投影后真值,
     无累积投影账,``actions`` 传空列表(买走的牌已从 state.shop 摘除)。
     M3 粒度(ADR-0517 决策 3 + §权衡):升一级 = 一个动作 op,clicks
     序列是动作内部步骤;单动作形态下每帧恰发一个单击动作,下一帧以更新
     后的 xp/level 重判(spend_unified 逐次校验整批可负担,可负担面单调
     ⇒ clicks 序列逐次全过,P48 整买纪律不破)。
     """
-    if getattr(session, 'cw4_counters', None) is None:
-        session.cw4_counters = {}
-    counters: dict = session.cw4_counters
+    if getattr(state_of(session), 'cw4_counters', None) is None:
+        state_of(session).cw4_counters = {}
+    counters: dict = state_of(session).cw4_counters
 
     # 备战期开店闩置位(唯一写点;键与 mandate.run_mandate 的 phase 同式):
     # 本函数被调 = 开店动作真执行、商店域决策访问已发生——闩语义
@@ -454,7 +457,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # run_mandate docstring「备战期开店闩」节 + dd-027 同型残留)。
     # read_only 开店(纯读数,不进本函数)不消耗闩:读数访问不改店面,
     # 期内买入决策仍待发。位面/轮次推进=新键自动失效,与 mandate 侧同。
-    session.cw4_shopped_phase = (getattr(state, 'plane', None),
+    state_of(session).cw4_shopped_phase = (getattr(state, 'plane', None),
                                  getattr(state, 'round_num', 1))
 
     def _count(key: str) -> None:
@@ -476,11 +479,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
     skeleton_only = (ev_arm == 'skeleton_only')
 
     # ---- ① 方向(证明面投影;契约核验 = 单动作决策入口,动作后真值口径)----
-    k = getattr(session, 'target_comp', None)
+    k = getattr(state_of(session), 'target_comp', None)
     k_members = predicates.line_members(k)
     k_fallback: frozenset[str] | set[str] | None = None
     k_band: str | None = None
-    _ist = getattr(session, 'v3_intention', None)
+    _ist = getattr(state_of(session), 'v3_intention', None)
     if k is None and _ist is not None:
         # K 空窗回退(FIX_REVIEW_20260903 R3 扩域;经济冻结批单一源化):
         # 派生本体 = cw_intention.k_empty_window_fallback(商店域与准备域
@@ -577,7 +580,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 拒因遥测逐帧刷新(ADR-0517 迁移步 2:拒因计数键逐动作化;期望态
     # 即真值,actions 传空——买走牌已由 project 从 state.shop 摘除)。
     with contextlib.suppress(Exception):
-        session.cw4_shop_rejects = shop_unbought_reasons(
+        state_of(session).cw4_shop_rejects = shop_unbought_reasons(
             state, k, buy_members, [])
     missing = [m for m in buy_members if m not in owned]
     # T3 同轮保留集卖侧读端(单一源 = mandate.stall_protect_active,禁
@@ -607,10 +610,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
         缺员买入共用同一「进展」信号。
         """
         churn = bool(bought_name) and bought_name in getattr(
-            session, 'cw4_recent_sold_names', ())
+            state_of(session), 'cw4_recent_sold_names', ())
         if churn:
             _count('shop_churn_pair_buy')   # 换手对:与 drought 状态无关恒计
-        ls = getattr(session, 'cw4_line_state', None)
+        ls = getattr(state_of(session), 'cw4_line_state', None)
         if ls is not None and getattr(ls, 'drought', 0):
             ls.drought = 0
             _count('shop_drought_reset_on_churn_buy' if churn
@@ -621,10 +624,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
         后续买入命中 = 义务换手对。定长截断防长 visit 无界增长。"""
         if not name:
             return
-        recent = getattr(session, 'cw4_recent_sold_names', None)
+        recent = getattr(state_of(session), 'cw4_recent_sold_names', None)
         if recent is None:
             recent = []
-            session.cw4_recent_sold_names = recent
+            state_of(session).cw4_recent_sold_names = recent
         recent.append(name)
         del recent[:-16]
 
@@ -855,7 +858,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         _pop, _pop_why = crit_levelup.pop_slot(
             len(deployed), _cap_now, gold, _bench_cand, g_star,
             buyable_candidate=_buyable_cand, bench_free=bench_free)
-        session.cw4_pop_slot_why = _pop_why   # D-lv7:否向理由留决策迹
+        state_of(session).cw4_pop_slot_why = _pop_why   # D-lv7:否向理由留决策迹
     _budget_gate_blocked = False   # P71-b 闸拒帧标记(M6 同帧挂起辖域)
     if _arm1 or _arm0 or _pop:
         # auth_basis 三臂分键(可归因):触发臂按 arm1 > arm0 > pop 序取首
@@ -1380,7 +1383,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _slots, skey = crit_sell.sell_for_interest(
                 gold, bench, cap_resolved, k_members, state=state,
                 prefer_names=tuple(getattr(
-                    session, 'cw4_visit_bought_names', ()) or ()),
+                    state_of(session), 'cw4_visit_bought_names', ()) or ()),
                 exclude_names=buy_members,
                 defer_names=_t3_protect,
                 counters=counters,

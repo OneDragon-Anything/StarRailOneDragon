@@ -56,6 +56,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     contracts,
     levelup,
 )
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
     saturation_line,
@@ -267,10 +270,10 @@ def stall_buys_register(session, name: str, round_num: int) -> None:
     """买入登记(写端单一源):名 → 登记轮号。旧 set 载体就地升级 dict。"""
     if not name:
         return
-    reg = getattr(session, STALL_BUYS_ATTR, None)
+    reg = getattr(state_of(session), STALL_BUYS_ATTR, None)
     if not isinstance(reg, dict):
         reg = {}
-        setattr(session, STALL_BUYS_ATTR, reg)
+        setattr(state_of(session), STALL_BUYS_ATTR, reg)
     reg[name] = int(round_num)
 
 
@@ -282,12 +285,12 @@ def stall_protect_active(session, current_round: int | None, *,
     ``t3_protect_expired_round``,零静默)。current_round=None(轮号
     不可得)按保守端处置:全集视为过期(禁据缺读放大保护面)。
     """
-    reg = getattr(session, STALL_BUYS_ATTR, None)
+    reg = getattr(state_of(session), STALL_BUYS_ATTR, None)
     if not reg:
         return frozenset()
     if not isinstance(reg, dict):
         # 旧 set 载体(轮戳缺失):整集过期销账后升级 dict
-        setattr(session, STALL_BUYS_ATTR, {})
+        setattr(state_of(session), STALL_BUYS_ATTR, {})
         if counters is not None:
             counters['t3_protect_expired_round'] = \
                 counters.get('t3_protect_expired_round', 0) + len(reg)
@@ -307,7 +310,7 @@ def stall_buys_consume(session, name: str) -> None:
     防同 visit 内第二次命中保护。容旧 set 载体(兼容未升级会话)。"""
     if not name:
         return
-    reg = getattr(session, STALL_BUYS_ATTR, None)
+    reg = getattr(state_of(session), STALL_BUYS_ATTR, None)
     if isinstance(reg, dict):
         reg.pop(name, None)
     elif isinstance(reg, set):
@@ -318,7 +321,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
     """部署即销(生命周期出口①):上板名从保留集移除(补部署 P24 /
     M1 同帧部署把该名上板后,保护使命完成;漏销 = 后续误保面)。
     返回销账数(测试断言用)。"""
-    reg = getattr(session, STALL_BUYS_ATTR, None)
+    reg = getattr(state_of(session), STALL_BUYS_ATTR, None)
     if not isinstance(reg, dict) or not reg:
         return 0
     hit = [n for n in reg if n in set(deployed_names or ())]
@@ -349,7 +352,7 @@ def run_mandate(frame: MandateFrame,
     同链;state 缺席(旧调用面/手工帧)= 契约前提 ``deploy_cap=None``
     ⇒ arm1 弃权+违例计数,固定常数/观察复合 cap 喂入不再可达判据)。
 
-    计数键(session.cw4_counters,登记见 design_telemetry 键节):
+    计数键(state_of(session).cw4_counters,登记见 design_telemetry 键节):
     m2_retry_exhausted / dominance_bench_wait / m6_bench_full /
     m6_overflow_strand / bench_full_buy_abandon(R196 症4 落地:M2 bench
     满放弃买入帧的「bench 满拒买」事件计数,与 m2_retry_exhausted 的
@@ -379,21 +382,21 @@ def run_mandate(frame: MandateFrame,
     重新决策)。旧核 step1 RunBuyPhase 的每备战期一次店内完整决策与本
     闩同构,佐证非理由。
     """
-    counters = getattr(session, 'cw4_counters', None)
+    counters = getattr(state_of(session), 'cw4_counters', None)
     if not isinstance(counters, dict):
         counters = {}
-        session.cw4_counters = counters
+        state_of(session).cw4_counters = counters
 
     # M1″ seam 门唯一写点(session 属性;值源 = M1P_SEAM_VERIFIED 常量,
     # 出处与回滚路径见该常量注释,ADR-0530)。
-    session.cw4_m1p_seam_verified = M1P_SEAM_VERIFIED
+    state_of(session).cw4_m1p_seam_verified = M1P_SEAM_VERIFIED
 
     def _count(key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
     # 备战期键(位面,轮次):state 缺 plane 时退化为 (None, round)。
     phase = (getattr(state, 'plane', None), frame.round_num)
-    shopped = getattr(session, 'cw4_shopped_phase', None) == phase
+    shopped = getattr(state_of(session), 'cw4_shopped_phase', None) == phase
 
     def _emit_open_shop(tag: str) -> None:
         """开店意图发射位(备战期闩消费点):闩命中=跳过+分站计数;
@@ -550,7 +553,7 @@ def run_mandate(frame: MandateFrame,
             _cap_now if _cap_now is not None else 0,
             frame.gold, _bench_cand,
             saturation_line(_cap_of(session)) if _cap_now is not None else 0)
-        session.cw4_pop_slot_why = _pop_why
+        state_of(session).cw4_pop_slot_why = _pop_why
     # L3 必花域第三触发源(20 号稿 §3.1-L3/§3.5,备战栈接入;判定单一源
     # = in_must_spend_zone,与 shop 栈同源禁第二套语义;应-C 偏高必收:
     # 备战必花帧不再被停付线否决——域内让位 = ADR-0528,域外照旧)。
@@ -568,8 +571,8 @@ def run_mandate(frame: MandateFrame,
     # prep 帧先于店内消费帧,闩天然先置)。
     _zone_raw = in_must_spend_zone(frame.gold, session)
     if _zone_raw:
-        session.cw4_must_spend_phase = phase
-    _zone_latched = getattr(session, 'cw4_must_spend_phase', None) == phase
+        state_of(session).cw4_must_spend_phase = phase
+    _zone_latched = getattr(state_of(session), 'cw4_must_spend_phase', None) == phase
     if _zone_latched and not _zone_raw:
         _count('must_spend_zone_latch_extend')
     _zone_hit = (_zone_raw or _zone_latched) and (
@@ -680,7 +683,7 @@ def run_mandate(frame: MandateFrame,
     # 执行侧同吃义务集∪新鲜度排除,swap_sell_exclusion_reason 单一判定)。
     # 同帧 LevelUp 抑制(m1p_defer_levelup):升级开新 vacancy,下帧
     # M1′ 以零卖出成本接管——卖出不可逆 > 等一帧。
-    # 发射位门(session.cw4_m1p_seam_verified):装配两侧(发射⇔执行)
+    # 发射位门(state_of(session).cw4_m1p_seam_verified):装配两侧(发射⇔执行)
     # 输入对齐核对通过前置 False = 发射关闭、m1p_input_seam_pending 显影
     # (ADR-0530:接线核对通过前不许发射,对齐证据 = 开闸前置义务;
     # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与 dd-037
@@ -690,7 +693,7 @@ def run_mandate(frame: MandateFrame,
     # CwOpDeploy.deploy 卖出臂(读后即清)。非 m1p 帧恒 None ⇒ 执行侧
     # 卖出计 regular 键,零漂移。无条件复位防「m1p 帧后接 M1 帧(下方
     # 块被跳过)且执行未及消费」的跨帧残留误归因。
-    session.cw4_m1p_arm_pending = None
+    state_of(session).cw4_m1p_arm_pending = None
     if not any(isinstance(e.action, RunDeploy) for e in out):
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             assemble_swap_plan_inputs,
@@ -715,7 +718,7 @@ def run_mandate(frame: MandateFrame,
         elif _m1p.nonempty:
             if any(isinstance(e.action, LevelUp) for e in out):
                 _count('m1p_defer_levelup')
-            elif not getattr(session, 'cw4_m1p_seam_verified', False):
+            elif not getattr(state_of(session), 'cw4_m1p_seam_verified', False):
                 _count('m1p_input_seam_pending')
             else:
                 out.append(Emitted(RunDeploy(), True, 'm1_swap_redeploy'))
@@ -727,7 +730,7 @@ def run_mandate(frame: MandateFrame,
                     _count('swap_arm_formed_trigger')
                 # 执行侧透传:本帧发射位 m1p 换血及其臂,供 CwOpDeploy
                 # 卖出臂归因分键(键族 sell_offtarget_arm_*,缺省 None)
-                session.cw4_m1p_arm_pending = _m1p.arm
+                state_of(session).cw4_m1p_arm_pending = _m1p.arm
         else:
             _count('m1p_plan_empty')
 
@@ -768,7 +771,7 @@ def run_mandate(frame: MandateFrame,
     #   意图未执行,发射即置闩会让闩烧而装备未穿、后续环被闩挡死)。
     if getattr(session, 'last_owned_equips', None) \
             and m7_wearable_exists(session.last_owned_equips):
-        if getattr(session, 'cw4_m7_equipped_phase', None) == phase:
+        if getattr(state_of(session), 'cw4_m7_equipped_phase', None) == phase:
             _count('equip_latch_skip_m7')
         else:
             out.append(Emitted(RunEquip(), True, 'm7_equip_transfer'))
@@ -795,7 +798,7 @@ def run_mandate(frame: MandateFrame,
     _owned_snap = list(getattr(session, 'last_owned_equips', None) or [])
     if _owned_snap:
         _tool_actions = _eval_tools(
-            _owned_snap, getattr(session, 'target_comp', None))
+            _owned_snap, getattr(state_of(session), 'target_comp', None))
         _tool_admitted = _admit_tools(_tool_actions)
         # 评估即留痕(二十四局复盘候选⑤:评估过但拒与未评估不可辨):
         # owned 快照在场即计已评估帧;零可执行件帧按拟执行动作分键显影
@@ -818,7 +821,7 @@ def run_mandate(frame: MandateFrame,
             log.info('[cw!][tools] tool=%s action=%s usable=%s reason=%s',
                      _ta.tool, _ta.action, _ta.usable, _ta.reason or '-')
         if any(a.usable for a in _tool_admitted):
-            if getattr(session, 'cw4_tools_phase', None) == phase:
+            if getattr(state_of(session), 'cw4_tools_phase', None) == phase:
                 _count('tools_latch_skip')
             else:
                 out.append(Emitted(RunTools(), True, 'm7_5_tool_consume'))
@@ -869,7 +872,7 @@ def mark_equip_pass_executed(session: StrategySession,
     """
     if session is None:
         return
-    session.cw4_m7_equipped_phase = (getattr(state, 'plane', None),
+    state_of(session).cw4_m7_equipped_phase = (getattr(state, 'plane', None),
                                      getattr(state, 'round_num', 1))
 
 
@@ -885,7 +888,7 @@ def mark_tools_pass_executed(session: StrategySession,
     """
     if session is None:
         return
-    session.cw4_tools_phase = (getattr(state, 'plane', None),
+    state_of(session).cw4_tools_phase = (getattr(state, 'plane', None),
                                getattr(state, 'round_num', 1))
 
 
@@ -983,9 +986,9 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     from sr_od.application.currency_war.kernel.cw_intention import (
         locked_faction_scope,
     )
-    _comp = getattr(session, 'target_comp', None)
+    _comp = getattr(state_of(session), 'target_comp', None)
     _tgt, _fw_carry = deploy_target_sets(
-        _comp, getattr(session, 'transition_framework', '') or '')
+        _comp, getattr(state_of(session), 'transition_framework', '') or '')
     _cids = {d.char_id for d in frame.deployed if d.char_id}
     return has_deployable(
         frame.bench,
@@ -998,7 +1001,7 @@ def _deployable(frame: MandateFrame, session: StrategySession,
         target_cores=set(getattr(_comp, 'core_chars', None) or ()),
         fw_carry=_fw_carry,
         locked_factions=(locked_faction_scope(
-            getattr(session, 'v3_intention', None)) or frozenset()),
+            getattr(state_of(session), 'v3_intention', None)) or frozenset()),
     )
 
 

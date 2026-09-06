@@ -56,7 +56,7 @@ fail 向选低难、**零刷新建议**(刷新建议结构性不可触发:其前
 λ 可消费 + 胜者翻转,双槽 None 期不成立;标定注入后亦仅在窄域可观测,
 作条件触发观察位,验收勿按「应见到刷新建议」判接线)。
 
-遥测分键(session.cw4_counters,与骨架 pass 计数同容器):
+遥测分键(state_of(session).cw4_counters,与骨架 pass 计数同容器):
 encounter_ev_fail_low(总出口)/ encounter_ev_fail_low_tie /
 encounter_ev_pick / encounter_ev_fail_low_lambda_undecidable /
 encounter_ev_fail_low_reward_unmodeled /
@@ -78,6 +78,9 @@ from sr_od.application.currency_war.kernel.cw_events import (
     EncounterPick,
 )
 from sr_od.application.currency_war.kernel.cw_state import GameState, sell_refund
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
+)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
@@ -251,7 +254,7 @@ def _fail_low(evals: list[_BranchEval], reason: str,
 
 def _count(session: StrategySession | None, key: str) -> None:
     """分键计数(cw4_counters 容器;session 缺席静默跳过,纯逻辑可单测)。"""
-    counters = getattr(session, 'cw4_counters', None)
+    counters = getattr(state_of(session), 'cw4_counters', None)
     if isinstance(counters, dict):
         counters[key] = counters.get(key, 0) + 1
 

@@ -78,7 +78,10 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     ('equipment', 'wear_release'): (
         '谓词', '不旁路', 'D-B 三态释放门(M7 消费的判据输入)'),
     ('equipment', 'affix_allocation'): (
-        '谓词', '不旁路', 'D-F46(分配排序判据;谓词非发射)'),
+        '谓词', '不旁路', 'D-F46 零调用面墓碑:词缀分配生产单一源 = '
+        'cw_equip_env.resolve_affix_priority_order(cw_op_equip_all 消费);'
+        '本函数系孤儿第二实现+死键,已随判据出处纠错批物理删除,'
+        '目录行保留旁路枚举完备性'),
     ('equipment', 'keep_policy'): (
         '判据/闭式', '不旁路', '§2.6(排序/保守端)'),
     ('equipment', 'endgame_context'): (

@@ -147,30 +147,15 @@ def _sell_floor_decrement(name: str, bonds: set, counts: dict) -> None:
 
 def seed_age_blocked(bc, state: GameState,
                      session: StrategySession | None) -> bool:
-    """ADR-0289 §5:engine_seed 年龄豁免——买入 ≤2 轮且同轮份数 <2 的种子
-    不进可卖集(跨轮窗;同轮 ≥2 份=3合1 素材语境豁免)。
+    """engine_seed 年龄豁免——**结构性恒 False**(session.md §2.5 退役收口)。
 
-    ADR-0339 件3:cnt≥2 豁免加**实际持有对账**(star_weighted_
-    copies≥2)——采纳处登记可能在同轮重复计数(采纳后被执行层否决的
-    买入也留痕,单买 cnt=2 实证),幻影 cnt 会静默解除
-    种子保护 → 买/卖互踩;以「真持有 ≥2 份」为素材语境判据。
+    豁免数据源 = 原购入轮登记(v2_seed_bought):其唯一写端是局首清零,
+    登记写端早已不存在 → 该 dict 现状恒空,豁免分支结构性失效(空输入
+    查表恒 miss → False)。职责分离切换批把该死码显式收口:删除恒空
+    查表读段,保留函数签名与恒 False 语义(cw_evolution 卖面判据的
+    豁免位消费零改;ADR-0289/0339 的豁免设计随登记写端消亡一并退役)。
     """
-    name = getattr(bc, 'char_id', '')
-    if not name or session is None:
-        return False
-    rec = (getattr(session, 'v2_seed_bought', None) or {}).get(name)
-    if rec is None:
-        return False
-    key, cnt = rec
-    if key[0] != state.plane:
-        return False
-    if not 0 <= state.round_num - key[1] <= 2:
-        return False
-    if cnt < 2:
-        return True
-    # cnt≥2:素材语境豁免仅当**真持有** ≥2 份;幻影计数(登记重复/
-    # 执行层否决留痕)不解除保护
-    return star_weighted_copies(name, state) < 2
+    return False
 
 
 # ===== 血预算停手/危机带判据族(自 decision_v2.discipline 下沉,迁移底稿
@@ -253,7 +238,7 @@ def blood_budget_levelup_blocked(state: GameState, session,
     消费点:cw4 M3 升级门(criteria/levelup.level_spend_blocked)/
     arbiter 约束 'blood_budget_stop'(候选通道)/remediation 稳态多击组
     与 deploy_cap 补偿臂①(授权通道旁路——两臂的升级收益同在 ≥1 战
-    之后才兑现,同辖;拒付计数=session.v3_blood_budget_rejects,披露
+    之后才兑现,同辖;拒付计数=strategy_state_of(session).v3_blood_budget_rejects,披露
     模式对齐 sim 执行层 level_cap_rejects)。
 
     消费层可信位门(ADR-0448 血线谓词唯一收口,W580):
@@ -330,7 +315,7 @@ def p2_crisis_band(state: GameState, registry: DecisionV2Registry) -> bool:
 
 @dataclass
 class BloodAlarmTracker:
-    """掉血三臂判据的跨步记忆(挂 session.v3_alarm;重启丢 session 保守重置)。
+    """掉血三臂判据的跨步记忆(挂 strategy_state_of(session).v3_alarm;重启丢 session 保守重置)。
 
     - ``recent_losses``:(全局节点号, 战斗净掉血)滚动窗——窗口单位=
       **连续战斗节点**(W51 语义修复:战斗节点计数器,非日历轮;点4

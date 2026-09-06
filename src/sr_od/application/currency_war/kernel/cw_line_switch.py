@@ -40,7 +40,10 @@ from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
 from sr_od.application.currency_war.kernel.cw_state import GameState
-from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
+from sr_od.application.currency_war.kernel.cw_strategy_session import (
+    StrategySession,
+    strategy_state_of,
+)
 
 
 def char_has_tag(ch, tag: str) -> bool:
@@ -225,8 +228,11 @@ def best_alt_line(state: GameState, session: StrategySession, config,
         shop_supply,
     )
     reg = registry or DEFAULT_REGISTRY
-    cur_name = session.target_comp.name if session.target_comp else ''
-    excluded = set(getattr(session, 'drought_excluded', None) or ())
+    # 判据面防御 getattr(strategy_state_of None 契约,ADR-0563 B4 划分线):
+    # 异型状态对象字段缺席退 ''(与下行 drought_excluded 防御形态同族)
+    _tc = getattr(strategy_state_of(session), 'target_comp', None)
+    cur_name = _tc.name if _tc is not None else ''
+    excluded = set(getattr(strategy_state_of(session), 'drought_excluded', None) or ())
     best: tuple[object, float] = (None, math.inf)
     for _s, c in select_comp_scored(state, score_ctx, config, top_n=8):
         if c.name == cur_name or c.name in excluded:

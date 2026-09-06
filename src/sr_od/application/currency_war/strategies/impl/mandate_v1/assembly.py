@@ -18,11 +18,15 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import committed_from
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 from sr_od.application.currency_war.kernel.cw_state import BenchChar
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     Snapshot,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.turn_state import (
     BudgetView,
@@ -58,7 +62,7 @@ def _tracking_view(session: StrategySession, snapshot: Snapshot,
                               tuple[BenchChar, ...]]:
     """R2 读口(蓝图 §2/§4.2):tracking 优先,fresh read 补缺。
 
-    session.tracked_bench_chars / tracked_deployed = bot 执行记录计数器族
+    exec_state_of(session).tracked_bench_chars / tracked_deployed = bot 执行记录计数器族
     (session 保留清单,非派生值;识别噪声滞回锚)。语义同老栈方向计算
     输入;决策板面输入仍走 snap 新鲜读(批 1 行为等价前提)。
     元素经 ``cw_state.snapshot_copy`` 浅拷贝(W639 C 落码):TurnState 帧
@@ -66,11 +70,11 @@ def _tracking_view(session: StrategySession, snapshot: Snapshot,
     装备拼接、deploy_bench 装备覆盖)不再穿透视图,反向亦然。
     """
     from sr_od.application.currency_war.kernel.cw_state import snapshot_copy
-    tracked_bench = getattr(session, 'tracked_bench_chars', None)
+    tracked_bench = getattr(exec_state_of(session), 'tracked_bench_chars', None)
     bench = (tuple(None if b is None else snapshot_copy(b)
                    for b in tracked_bench)
              if tracked_bench else tuple(snapshot.bench))
-    tracked_dep = getattr(session, 'tracked_deployed', None)
+    tracked_dep = getattr(exec_state_of(session), 'tracked_deployed', None)
     if tracked_dep:
         deployed = tuple(snapshot_copy(d) for d in tracked_dep
                          if d is not None)
@@ -85,7 +89,7 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
     from sr_od.application.currency_war.kernel import cw_intention
     from sr_od.application.currency_war.kernel.cw_intention import hoard_target_set
 
-    ist = getattr(session, 'v3_intention', None)
+    ist = getattr(state_of(session), 'v3_intention', None)
     locked = ist is not None and getattr(ist, 'phase', '') == 'locked'
     hoard: frozenset[str] = frozenset()
     hoard_readable = True   # D1:可信位——失败帧 False,消费侧走保守域
@@ -136,7 +140,7 @@ def _budget(state: Any, session: StrategySession,
     floor = registry.interest_cap * 10   # 守息线(与 reserve_cap 内部同源派生)
     return BudgetView(
         # P6 注入单源(W636 A):BudgetView 各字段消费同一 registry 实例,
-        # 禁混用 session.v3_registry 死通道 / DEFAULT 缺省表。
+        # 禁混用 state_of(session).v3_registry 死通道 / DEFAULT 缺省表。
         interest_floor=floor,
         reserve_cap=reserve_cap(state, session, registry),
         obligation=obligation(state, session, registry),

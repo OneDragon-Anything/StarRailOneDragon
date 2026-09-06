@@ -18,6 +18,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
     derive_clearable,
@@ -66,6 +67,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     xp_apply_clicks,
     xp_clicks_to_level,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
 from sr_od.application.currency_war.obs.cw_faction_obs import (
     compare_factions,
@@ -548,7 +550,7 @@ class CwScreenPrep(SrOperation):
                 session.last_node_type = st.node_type
             st.bench = bench_from_compact(
                 list(obs.bench_chars
-                     or (session.tracked_bench_chars if session else [])))
+                     or (exec_state_of(session).tracked_bench_chars if session else [])))
             obs.state = st
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
             if not obs.state_gold_trusted:
@@ -590,7 +592,7 @@ class CwScreenPrep(SrOperation):
                         if getattr(bc, 'char_id', ''))
                     _act: dict = {}
                     for _p, _e in list(
-                            (getattr(session, 'expected_state', None)
+                            (getattr(exec_state_of(session), 'expected_state', None)
                              or {}).items()):
                         if _e.confirm_point != 'prep_obs':
                             continue   # 条目绑覆盖点(F7):不可确认点透传
@@ -929,10 +931,10 @@ class CwScreenPrep(SrOperation):
         session = self._session()
         if session is None:
             return None
-        led = getattr(session, 'xp_expect_ledger', None)
+        led = getattr(exec_state_of(session), 'xp_expect_ledger', None)
         if led is None:
             led = XpLedger()
-            session.xp_expect_ledger = led
+            exec_state_of(session).xp_expect_ledger = led
         return led
 
     def _xp_apply_levelup(self) -> None:
@@ -1052,7 +1054,7 @@ class CwScreenPrep(SrOperation):
             if session is None:
                 return
             computed = board_from_tracked(
-                list(getattr(session, 'tracked_deployed', None) or []))
+                list(getattr(exec_state_of(session), 'tracked_deployed', None) or []))
             if computed is None:
                 return
             frame = getattr(self, 'last_screenshot', None)
@@ -1345,7 +1347,7 @@ class CwScreenPrep(SrOperation):
         # (本轮尚未决策),决策出口(主段/破墙段)写入动作类型序列。early
         # return(overlay 交回/接管补采/策略异常)保持 None → cw_loop 不计数,
         # 防跨环误延。写在 session(单轮 op 每环重建,实例属性不跨环存活)。
-        session.last_prep_action_sig = None
+        exec_state_of(session).last_prep_action_sig = None
         self._executor = PrepActionExecutor(self, self.ctx)
         self._cached_state = None
         self._cached_bench = []
@@ -1377,9 +1379,9 @@ class CwScreenPrep(SrOperation):
         #      契约已灭(逐动作零读屏,期望态投影承载;投影建模分叉由本对账
         #      在下一入口暴露,错卖类不可逆损害窗口的收窄手段 = 执行侧
         #      tracked 账随动,同商店线双账口径)。
-        for _pend in list(getattr(session, 'cw_prep_pending_accts', None) or []):
+        for _pend in list(getattr(exec_state_of(session), 'cw_prep_pending_accts', None) or []):
             self._v2_post_frame_accounting(obs, _pend, session)
-        session.cw_prep_pending_accts = []
+        exec_state_of(session).cw_prep_pending_accts = []
         self._v2_post_frame_accounting(obs, {'key': None, 'progressed': False,
                                              'drag_expect': None, 'equip_expect': None,
                                              'dep_delta': 0, 'dep_pre': None,
@@ -1443,13 +1445,13 @@ class CwScreenPrep(SrOperation):
             action = actions[0]
             # 动作批签名(环级无进展守卫的动作腿,消费方 = cw_loop 备战分支):
             # 累计本访问已执行动作类型 + 当前提案。
-            session.last_prep_action_sig = tuple(
+            exec_state_of(session).last_prep_action_sig = tuple(
                 _visit_acts + [type(action).__name__])
             self._record_step(obs, action)
             # 控制流(契约 §4:词表内特殊动作,不进 execute 验证链;defer 计数归框架)
             if isinstance(action, DeferSpheres):
-                session.defer_count += 1
-                log.info(f'[cw][director] DeferSpheres(defer={session.defer_count})'
+                exec_state_of(session).defer_count += 1
+                log.info(f'[cw][director] DeferSpheres(defer={exec_state_of(session).defer_count})'
                          '→ 交回外循环')
                 return self.round_success('球留置(空动作),交回外循环', wait=1.0)
             if isinstance(action, BailToOuter):
@@ -1517,10 +1519,9 @@ class CwScreenPrep(SrOperation):
             _visit_acts.append(type(action).__name__)
             # 期望态记账暂存(ADR-0517:对账归下一入口时点;per-action heavy
             # 重观察契约退役,对账族消费帧 = 下次入口 heavy)
-            if not hasattr(session, 'cw_prep_pending_accts') \
-                    or session.cw_prep_pending_accts is None:
-                session.cw_prep_pending_accts = []
-            session.cw_prep_pending_accts.append(acct)
+            if exec_state_of(session).cw_prep_pending_accts is None:
+                exec_state_of(session).cw_prep_pending_accts = []
+            exec_state_of(session).cw_prep_pending_accts.append(acct)
             # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建)
             if isinstance(action, StartBattle) and progressed:
                 return self.round_success('出战(交回外循环战斗分支)', wait=3)
@@ -1557,7 +1558,7 @@ class CwScreenPrep(SrOperation):
         可读;会开/关位面详情画面 → 执行后交回外循环重识别。计数挂 session
         (单轮 op 每外循环轮次重建,实例属性不存活);成功或 2 次失败后停。
         """
-        if (getattr(session, 'cw_takeover_collect_done', False)
+        if (getattr(exec_state_of(session), 'cw_takeover_collect_done', False)
                 or getattr(session, 'briefing_bosses', None)):
             return None
         _tk_slots = None
@@ -1565,10 +1566,10 @@ class CwScreenPrep(SrOperation):
             _tk_slots = read_node_sequence(self.ctx, self.last_screenshot)
         if _tk_slots is None:
             return None   # 节点条不可读(过场/overlay 半开帧)→ 等下轮,不消耗预算
-        _tries = getattr(session, 'cw_takeover_tries', 0) + 1
-        session.cw_takeover_tries = _tries
+        _tries = getattr(exec_state_of(session), 'cw_takeover_tries', 0) + 1
+        exec_state_of(session).cw_takeover_tries = _tries
         if _tries > 2:
-            session.cw_takeover_collect_done = True
+            exec_state_of(session).cw_takeover_collect_done = True
             log.info('[cw][director] 接管补采两次未成,放弃(boss 缺省中性)')
             # 放弃也清空两池:残留值会被下局判空误消费(跨局泄漏)
             self.ctx.cw_plane_bosses = None
@@ -1594,7 +1595,7 @@ class CwScreenPrep(SrOperation):
         self.ctx.cw_plane_bosses = None
         self.ctx.cw_plane_affixes = None
         if _pb_res is not None and getattr(_pb_res, 'success', False) and _names:
-            session.cw_takeover_collect_done = True
+            exec_state_of(session).cw_takeover_collect_done = True
             # 保位写(ADR-0398):徽章态位面采得 None 原样占 3 槽,
             # 丢弃会让后续位面名字左移错位(位面序真值变假)。
             session.briefing_bosses = _names
@@ -1628,7 +1629,7 @@ class CwScreenPrep(SrOperation):
         session.prep_obs_frame = bf_obs
         actions = match.strategy.decide_prep_screen(session, config)
         # 破墙段动作批签名(守卫动作腿):破墙环重复零变换同样计无进展
-        session.last_prep_action_sig = tuple(
+        exec_state_of(session).last_prep_action_sig = tuple(
             type(a).__name__ for a in actions)
         _last_name = '-'
         for action in actions:
@@ -1993,11 +1994,11 @@ class CwScreenPrep(SrOperation):
             if progressed and acct.get('drag_expect') is not None:
                 self._reconcile_drag_expect(acct['drag_expect'])
         # 期望态层·买牌:RunBuyPhase 单元购买期望由
-        # shop.py 买入点写入 session.pending_buy_expect;本帧消费对账。
+        # shop.py 买入点写入 exec_state_of(session).pending_buy_expect;本帧消费对账。
         with contextlib.suppress(Exception):
-            _pending_buy = session.pending_buy_expect
+            _pending_buy = exec_state_of(session).pending_buy_expect
             if _pending_buy is not None:
-                session.pending_buy_expect = None
+                exec_state_of(session).pending_buy_expect = None
                 if progressed:
                     self._reconcile_buy_expect(_pending_buy)
         with contextlib.suppress(Exception):
@@ -2163,8 +2164,8 @@ class CwScreenPrep(SrOperation):
                     if _sess is not None else []
             recorder.record_decision(
                 st if st is not None else GameState(),
-                target_comp=(_sess.target_comp.name
-                             if _sess is not None and _sess.target_comp else ''),
+                target_comp=(strategy_state_of(_sess).target_comp.name
+                             if _sess is not None and strategy_state_of(_sess).target_comp else ''),
                 candidate_scores={},
                 eval_breakdown={'prep_step': float(self._steps)},
                 actions=[action],   # type: ignore[list-item]  PrepAction 与旧 Action 并存(P2 归一)
@@ -2174,7 +2175,7 @@ class CwScreenPrep(SrOperation):
                     # P1 配方对平铺观测(P1 备战帧判读「终局线何时锁」的
                     # 上游量;锁定产物/副方向取序见 p1_pair_label)
                     'sess_p1_pair': schema.p1_pair_label(
-                        getattr(_sess, 'v3_intention', None))},
+                        getattr(strategy_state_of(_sess), 'v3_intention', None))},
             )
         except Exception as e:  # noqa: BLE001  遥测失败不阻塞环
             log.debug(f'[cw-director] telemetry skip: {e}')
@@ -2239,7 +2240,7 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
                 if _inc_gold is not None:
                     _post = build_post_buy_incremental_state(
                         state, _inc_gold,
-                        match.session.tracked_bench_chars,
+                        exec_state_of(match.session).tracked_bench_chars,
                         match.session.last_node_type or None,
                         hp_value, hp_readable, hp_trusted)
             if _post is None:
@@ -2265,7 +2266,7 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
             _buy_expect = compute_buy_expect(
                 _buy_purchases, _buy_pre_bench, _buy_pre_deployed)
             if _buy_expect is not None:
-                match.session.pending_buy_expect = _buy_expect
+                exec_state_of(match.session).pending_buy_expect = _buy_expect
     # gold 差值双源对拍(观察冲突审计 #6 P2,2026-08-17):动作账(逐动作执行时
     # 累计的 _spend_executed:买价+升级费+当次刷价)vs 关店后实际读数 ——
     # expected = 开店首读金 − 全程执行花金 + 全程卖入。基线必须取首读快照

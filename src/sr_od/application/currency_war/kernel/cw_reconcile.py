@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 
 # 下行守卫标定常量(值单一源 = 注册表;cw_reconcile 只消费)
 from sr_od.application.currency_war.kernel.cw_opening_hp import opening_hp_prior
@@ -33,7 +34,7 @@ def set_merge_effect_gate(fn) -> None:
 def _merge_equips(old_list, new_list) -> list:
     """对账合并语义(ADR-0387,对账覆盖装备):char_id 续接保留 equips。
 
-    断点实锤:整批替换 ``session.tracked_deployed = list(deployed)``
+    断点实锤:整批替换 ``exec_state_of(session).tracked_deployed = list(deployed)``
     时新读对象 equips=[] 默认 → ``deploy_bench._snapshot_equips_into_
     tracking`` 写入的装备在下次对账即被冲(decisions.jsonl 希儿装备闪烁
     实证:round6 三条快照仅一条有装备)。
@@ -94,9 +95,9 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # (槽位表语义写入端)——本消费端若假设紧凑无 None 即双写冲突
     # (曾致验证局数百次 AttributeError 崩溃-重派循环)。
     # 守卫:跳过 None 槽(空槽在对账语义里=无信息,不是冲突)。
-    old_b = [(bc.char_id, bc.star) for bc in session.tracked_bench_chars
+    old_b = [(bc.char_id, bc.star) for bc in exec_state_of(session).tracked_bench_chars
              if bc is not None]
-    old_d = [(bc.char_id, bc.star) for bc in session.tracked_deployed
+    old_d = [(bc.char_id, bc.star) for bc in exec_state_of(session).tracked_deployed
              if bc is not None]
     if not bench and not deployed and (old_b or old_d):
         log.warning(f'[cw!][{source}] 对账跳过:SIFT 双空读(疑过渡帧)+前值非空 → 保旧 tracking')
@@ -109,7 +110,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     # 漏金星 或 卖后重买边缘场景;不保旧(审计:保旧不安全)只留证统计毒化率。
     _old_stars = {(n, s) for n, s in old_b + old_d if n}
     _new_stars = {(n, s) for n, s in new_b + new_d if n}
-    _reg = dict(getattr(session, 'star_regression_count', {}) or {})
+    _reg = dict(getattr(exec_state_of(session), 'star_regression_count', {}) or {})
     # ⚖️ star 回退防抖(274 张存证全量重放实证:回退角色 40/40 在场且
     # 36/40 **同图重读为 2★**(live 读 1★)→ 真根因 = 3合1 合成动画窗
     # 识别(read_star 在特效期读 1,存证帧在动画后半段星已显),非 SIFT
@@ -201,7 +202,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         for n in _gone:
             del _pend[n]
     session.star_pending_regression = _pend
-    session.star_regression_count = _reg
+    exec_state_of(session).star_regression_count = _reg
     # 防抖可能原地改 bench/deployed 副本 star → 纠漂判定与日志必须
     # 取**防抖后**快照(改前快照会误导排障)。bench/deployed 入参
     # 是 SIFT 紧凑列表(无 None),但入参若被上游 pad 过则守卫之(同形状契约)。
@@ -209,13 +210,13 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
     drifted = (old_b != new_b) or (old_d != new_d)
     if bench is not None:
-        session.tracked_bench_chars = _merge_equips(session.tracked_bench_chars, bench)
+        exec_state_of(session).tracked_bench_chars = _merge_equips(exec_state_of(session).tracked_bench_chars, bench)
     if deployed is not None:
         # ADR-0392:tracked_deployed 是槽位表——_merge_equips 出紧缩占用序,
         # 写回前经 deployed_from_compact 转槽位表(单一源适配)。
         from sr_od.application.currency_war.kernel.cw_state import deployed_from_compact
-        session.tracked_deployed = deployed_from_compact(
-            _merge_equips(session.tracked_deployed, deployed))
+        exec_state_of(session).tracked_deployed = deployed_from_compact(
+            _merge_equips(exec_state_of(session).tracked_deployed, deployed))
     if drifted:
         log.warning(f'[cw!][{source}] 对账纠漂(read≠tracking):bench {old_b}→{new_b} |'
                     f' deployed {old_d}→{new_d}')

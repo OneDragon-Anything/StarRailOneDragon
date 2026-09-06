@@ -62,7 +62,7 @@ class CwScreenMegastar(SrOperation):
         if not still_in:
             _match = self.ctx.cw_match
             if _match is not None:
-                _match.session.megastar_candidate_clicked = False
+                _match.exec_state.megastar_candidate_clicked = False
         return still_in
 
     @operation_node(name='巨星处理', is_start_node=True, node_max_retry_times=8)
@@ -81,10 +81,11 @@ class CwScreenMegastar(SrOperation):
         return self.round_retry(wait=1.5)
 
     def _do_action(self, screen) -> None:
-        # 选中标记挂 match.session(跨 re-dispatch 持久;原实例态在重派时重置
-        # → re-click toggle 反选 → confirm 无候选 → 卡死)。megastar 选中态视觉(金边)。
+        # 选中标记挂 match.exec_state(局容器执行态,跨 re-dispatch 持久;
+        # 原实例态在重派时重置 → re-click toggle 反选 → confirm 无候选
+        # → 卡死)。megastar 选中态视觉(金边)。
         _match = self.ctx.cw_match
-        _clicked = getattr(_match.session, 'megastar_candidate_clicked', False) if _match else False
+        _clicked = _match.exec_state.megastar_candidate_clicked if _match else False
         if not _clicked:
             options = read_megastar_options(self.ctx, screen)
             match = self.ctx.cw_match
@@ -112,7 +113,7 @@ class CwScreenMegastar(SrOperation):
             self.ctx.controller.mouse_move(candidate)
             self.ctx.controller.click(candidate)
             if _match is not None:
-                _match.session.megastar_candidate_clicked = True   # session 级:跨 re-dispatch 持久
+                _match.exec_state.megastar_candidate_clicked = True   # 局容器级:跨 re-dispatch 持久(session.md §2.4 B1 定案落点)
                 # r358d(遥测接线):巨星选择落 session → read_game_state
                 # 回写 state.megastar_char(复盘「绑定与 comp 匹配」维度)。
                 if options and 0 <= idx < len(options):

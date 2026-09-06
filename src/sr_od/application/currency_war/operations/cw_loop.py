@@ -2,20 +2,22 @@ import time
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
-
-# 迁移审计 w75(git 历史)(ADR-0335):after_operation_done 的 result 注解在类定义期求值,OperationResult
-# 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
-# `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
 from one_dragon.base.operation.operation_base import OperationResult as _OperationResult
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+
+# 迁移审计 w75(git 历史)(ADR-0335):after_operation_done 的 result 注解在类定义期求值,OperationResult
+# 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
+# `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_performance import (
     RoundOutcome,
 )
 from sr_od.application.currency_war.kernel.cw_state import MatchOutcome
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import (
     read_game_state,
     read_node_sequence,
@@ -101,7 +103,7 @@ def prep_stall_pending_expected(session) -> tuple[str, ...]:
     同现。返回值进环级无进展守卫的触发留证行 = 「字段长期 expected 未覆盖」
     的结构化线索(停留在不可识别画面过久)。
     """
-    store = getattr(session, 'expected_state', None) or {}
+    store = getattr(exec_state_of(session), 'expected_state', None) or {}
     return tuple(sorted(f'{e.path}@{e.at_round}'
                         for e in store.values()
                         if e.confirm_point == 'prep_obs'))
@@ -381,7 +383,7 @@ def readiness_battle_launch(op, ctx):
             pass
         _still_prep = True
     if not _still_prep:
-        counters = getattr(_sess, 'cw4_counters', None)
+        counters = getattr(strategy_state_of(_sess), 'cw4_counters', None)
         if isinstance(counters, dict):
             counters['readiness_stale_screen'] = \
                 counters.get('readiness_stale_screen', 0) + 1
@@ -390,12 +392,12 @@ def readiness_battle_launch(op, ctx):
         return False, 'readiness_stale_screen'
     try:
         _st_adm = getattr(_sess, 'last_state', None)
-        _tc_adm = getattr(_sess, 'target_comp', None)
+        _tc_adm = getattr(strategy_state_of(_sess), 'target_comp', None)
         if _st_adm is not None and _tc_adm is not None:
             _adm = readiness_admission_report(_st_adm, _tc_adm)
             if (_adm['board_full'] and _adm['bench_core_waiting']
                     and _adm['victim_missing']):
-                counters = getattr(_sess, 'cw4_counters', None)
+                counters = getattr(strategy_state_of(_sess), 'cw4_counters', None)
                 if isinstance(counters, dict):
                     counters['deploy_swap_no_victim'] = \
                         counters.get('deploy_swap_no_victim', 0) + 1
@@ -708,7 +710,7 @@ class CwLoop(SrOperation):
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
-        # on_match_start 在 loop() 首次截图后调(见下方 _iter==1 守卫)。跨步状态进 session.target_comp
+        # on_match_start 在 loop() 首次截图后调(见下方 _iter==1 守卫)。跨步状态进 strategy_state_of(session).target_comp
         # (替代旧 BuyShopCards._target_comp class-attr hack,语义等价:每局新建已是现行为)。
         # 续跑支持(手动逐轮验证):cw_match 已存在(上轮 RunLoop 留下)→ 延用,不 new;否则 new(整局开始)。
         # 手动逐轮(max_rounds=1 反复 run_operation)靠此跨 run 延续 match state(target 稳定不每轮重选振荡)。
@@ -873,8 +875,8 @@ class CwLoop(SrOperation):
         是合法流转而非 ping-pong —— 不清零会在第 3 次合法出现时误升级停机(M11 2-2 巨星实锤)。
         """
         _m = self.ctx.cw_match
-        if _m is not None and getattr(_m.session, 'bail_reason_counts', None):
-            _m.session.bail_reason_counts.pop(reason, None)
+        if _m is not None and getattr(_m.exec_state, 'bail_reason_counts', None):
+            _m.exec_state.bail_reason_counts.pop(reason, None)
 
     def _record_cw4_counters_snapshot(self) -> None:
         """行为观测计数局终落盘(best-effort 观测旁路,失败不阻塞收口)。
@@ -991,7 +993,10 @@ class CwLoop(SrOperation):
             _st = _session.last_state
             _hp = (_st.hp if _st is not None and _st.hp is not None else 0)
             _conf = 1.0 if (_st is not None and getattr(_st, 'hp_readable', True)) else 0.0
-            _comp_tag = _session.target_comp.name if _session.target_comp else '?'
+            # 披露面防御 getattr(strategy_state_of None 契约,ADR-0563 B4 划分线):
+            # 异型状态对象字段缺席退 '?'(outcomes comp_tag 缺席语义,非行为面)
+            _tc = getattr(strategy_state_of(_session), 'target_comp', None)
+            _comp_tag = _tc.name if _tc is not None else '?'
             # 消费 run_supply_node 选定时暂存的选择快照,并附完成时点 gold
             # (gold_readable=False 不写——同 hp 不冒认真值;键缺失容忍=兜底点卡路径)。
             _pick = state.consume_last_supply_pick() or {}
@@ -1351,9 +1356,8 @@ class CwLoop(SrOperation):
         #     兜底(0n 分支处理不再收店后,环入口守卫仍兜「漏帧进备战环」)。
         if _shop_open_anchors_hit(self, screen):
             save_decision_frame(self, 'overlay_shop_open', screen)   # 决策帧留证
-            _so_counters = getattr(
-                getattr(self.ctx.cw_match, 'session', None),
-                'cw4_counters', None)
+            _so_counters = getattr(strategy_state_of(
+                self.ctx.cw_match.session), 'cw4_counters', None)
             if isinstance(_so_counters, dict):
                 _so_counters['branch_shop_open_hit'] = \
                     _so_counters.get('branch_shop_open_hit', 0) + 1
@@ -1542,7 +1546,7 @@ class CwLoop(SrOperation):
             from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
                 line_members as _line_members,
             )
-            _tc = getattr(self.ctx.cw_match.session, 'target_comp', None)
+            _tc = getattr(strategy_state_of(self.ctx.cw_match.session), 'target_comp', None)
             _ms = getattr(self.ctx.cw_match.session, 'last_state', None)
             _arm_armed = readiness_launch_decision(
                 _ms, _tc, line_members=_line_members)['armed']
@@ -1575,8 +1579,8 @@ class CwLoop(SrOperation):
                     _ov_hit = '遭遇选择面板(OCR:遭遇其*)'
                 if _ov_hit is not None:
                     _arm_armed = False
-                    counters = getattr(self.ctx.cw_match.session,
-                                       'cw4_counters', None)
+                    counters = getattr(strategy_state_of(
+                        self.ctx.cw_match.session), 'cw4_counters', None)
                     if isinstance(counters, dict):
                         counters['readiness_overlay_hold'] = \
                             counters.get('readiness_overlay_hold', 0) + 1
@@ -1602,8 +1606,8 @@ class CwLoop(SrOperation):
                     # 照常计数,卡死仍可停机),分键零静默;成功即复位。
                     _rf = getattr(self, '_cw_readiness_fail_n', 0) + 1
                     self._cw_readiness_fail_n = _rf
-                    counters = getattr(self.ctx.cw_match.session,
-                                       'cw4_counters', None)
+                    counters = getattr(strategy_state_of(
+                        self.ctx.cw_match.session), 'cw4_counters', None)
                     if isinstance(counters, dict):
                         counters['readiness_launch_fail'] = \
                             counters.get('readiness_launch_fail', 0) + 1
@@ -1633,7 +1637,7 @@ class CwLoop(SrOperation):
             # ②正常多帧部署:每次成功动作改变 bench/deployed 身份或 gold
             #  → 指纹变 → 归零;
             # ③闩跳过帧:闩抑制重发 → 动作批不同 → 签名变 → 归零。
-            _np_actions = getattr(self.ctx.cw_match.session,
+            _np_actions = getattr(exec_state_of(self.ctx.cw_match.session),
                                   'last_prep_action_sig', None)
             if _np_actions is None:
                 self._prep_np_sig = None
@@ -1687,11 +1691,11 @@ class CwLoop(SrOperation):
                                          self.PREP_NO_PROGRESS_ROUNDS * 2)
                         if _exh_over_cap:
                             self._cw_exhaust_attempts = 0
+                            _exh_m = getattr(self.ctx, 'cw_match', None)
                             _exh_counters = getattr(
-                                getattr(self.ctx, 'cw_match', None),
-                                'session', None)
-                            _exh_counters = getattr(_exh_counters,
-                                                    'cw4_counters', None)
+                                strategy_state_of(_exh_m.session)
+                                if _exh_m is not None else None,
+                                'cw4_counters', None)
                             if isinstance(_exh_counters, dict):
                                 _exh_counters[
                                     'exhaustion_launch_total_giveup'] = \
@@ -1704,11 +1708,11 @@ class CwLoop(SrOperation):
                                       self.PREP_NO_PROGRESS_ROUNDS * 2)
                             # 不 return:落穿到下方守卫停机留证
                         else:
+                            _ex_m = getattr(self.ctx, 'cw_match', None)
                             _ex_counters = getattr(
-                                getattr(self.ctx, 'cw_match', None),
-                                'session', None)
-                            _ex_counters = getattr(_ex_counters,
-                                                   'cw4_counters', None)
+                                strategy_state_of(_ex_m.session)
+                                if _ex_m is not None else None,
+                                'cw4_counters', None)
                             _ex_c = (_ex_counters
                                      if isinstance(_ex_counters, dict)
                                      else None)
@@ -2177,7 +2181,7 @@ class CwLoop(SrOperation):
         if self._allocator is None or self.ctx.cw_match is None:
             return
         try:
-            arm_obj = getattr(self.ctx.cw_match.session, 'target_comp', None)
+            arm_obj = getattr(strategy_state_of(self.ctx.cw_match.session), 'target_comp', None)
             comp_name = getattr(arm_obj, 'name', '') if arm_obj is not None else ''
             # 57-A1 修(臂命名空间):臂表键 = plaza carry 角色名,update 侧是 comp 阵容名
             # → 恒 no-op(62 局零累积实证)。comp→carry 归一映射(comp.plaza_carry)。

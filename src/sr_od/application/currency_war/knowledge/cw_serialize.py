@@ -41,7 +41,7 @@ def _to_jsonable(obj: Any) -> Any:
 def serialize_intention(ist: Any) -> dict[str, Any] | None:
     """v3 意向状态(IntentionState)→ JSON-safe dict(遥测判读供给)。
 
-    ADR-0336 后锁定真值在 ``session.v3_intention``,但 decisions 行
+    ADR-0336 后锁定真值在 ``strategy_state_of(session).v3_intention``,但 decisions 行
     只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
     「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
     全量落遥测(「锁定目标改过渡配方」判读依赖它)。

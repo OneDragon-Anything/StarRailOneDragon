@@ -42,7 +42,9 @@ from sr_od.application.currency_war.kernel.cw_equip_env import (
     resolve_affix_priority_order,
     resolve_wear_release,
 )
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     load_avatar_templates,
 )
@@ -86,7 +88,7 @@ def equip_drag_key(item_name: str, char_name: str) -> tuple[str, str]:
 def register_equip_drag_failure(counts: dict, key: tuple[str, str]) -> bool:
     """登记一次拖拽失败 → 返回是否已达拉黑线(纯函数,dd-015)。
 
-    ``counts`` = session.equip_drag_fail_counts(局级持久,跨轮累积);
+    ``counts`` = exec_state_of(session).equip_drag_fail_counts(局级持久,跨轮累积);
     同一对达 ``DRAG_FAIL_BLACKLIST_LIMIT`` 后恒返回 True(幂等拉黑)。
     """
     counts[key] = counts.get(key, 0) + 1
@@ -144,7 +146,7 @@ def register_equip_worn(session, item_name: str, char_name: str,
             session.last_owned_equips = owned
         idx = (slot - 1 if row == 'front'
                else DEPLOYED_FRONT_CAPACITY + slot - 1)
-        dep = list(getattr(session, 'tracked_deployed', None) or [])
+        dep = list(getattr(exec_state_of(session), 'tracked_deployed', None) or [])
         if 0 <= idx < len(dep) and dep[idx] is not None:
             dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
                 + [item_name]
@@ -503,7 +505,7 @@ class CwOpEquipAll(SrOperation):
         deployed = (read_deployed_chars(self.ctx, screen, avatar_templates)
                     if avatar_templates is not None else [])
         _match = self.ctx.cw_match
-        _tgt_comp = (_match.session.target_comp
+        _tgt_comp = (strategy_state_of(_match.session).target_comp
                      if (_match is not None and _match.session is not None) else None)
         # ⚖️ 过渡期持有语义修正(r70 审计刀②,替 2026-08-16 旧指示):旧版 form<COMMIT_FRAC
         # 全 P1 攒仓库 = 白板打 8 个战斗节点 + r9 boss(每场稳定掉血的确定性损失;r70 实证
@@ -638,7 +640,7 @@ class CwOpEquipAll(SrOperation):
             # ——单轮内拉黑仍生效,只是不跨轮)
             _fail_counts: dict = {}
             if (_match is not None and _match.session is not None):
-                _fail_counts = _match.session.equip_drag_fail_counts
+                _fail_counts = _match.exec_state.equip_drag_fail_counts
             while stall < 2 and _wear_iters < _EQUIP_MAX_WEAR_ITERS:
                 _wear_iters += 1
                 cur = self.screenshot()
@@ -828,7 +830,7 @@ class CwOpEquipAll(SrOperation):
         # 两路径互斥,M7 要求 deployed 身份可读,回退路径恰是其读失败分支)。
         _fail_counts_fb: dict = {}
         if _match is not None and _match.session is not None:
-            _fail_counts_fb = _match.session.equip_drag_fail_counts
+            _fail_counts_fb = _match.exec_state.equip_drag_fail_counts
         occupied = read_row_equipped(self.ctx, screen, tmpl_grays, '前排', len(self.FRONT_AVATARS))
         if occupied:
             log.info('[cw-equip] 前排已穿槽(跳过不覆盖): %s',

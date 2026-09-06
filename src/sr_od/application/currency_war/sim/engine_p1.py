@@ -36,6 +36,7 @@ from sr_od.application.currency_war.kernel.cw_battle_calib import (
     roll_rotation_per_stage,
     sample_node_sequence,
 )
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
 from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
@@ -74,6 +75,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.kernel.cw_state import (
     simulate as _simulate_state,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     InvestInjectionState,
     SimInvestProfile,
@@ -669,7 +671,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         st = _p2_entry.build_state()
         sess = session or StrategySession(
             rng=random.Random(f'sim-p1-entry-{seed}'))
-        sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
+        # 初始相位经统一 sim 构建口注入(session.md §3.4-2:禁裸 setattr
+        # session 策略字段;ensure_strategy_state = 被测策略工厂薄 helper)。
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            ensure_strategy_state,
+        )
+        ensure_strategy_state(strat, sess, initial_v2_state=(
+            'economy', False, False, 0, 0, 0, 0, 0))
         streak = _p2_entry.streak
         # 带符号 streak(生产口径:连胜 +/连败 −,结算「连胜×N」前缀=方向;
         # 本地 `streak` 是收入侧无符号连胜计数,语义不同勿合并——收入分支
@@ -698,7 +706,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 的 OS 熵默认——未来决策层接入 rng 消费时,同 seed 局天然可复现。
         sess = session or StrategySession(
             rng=random.Random(f'sim-p1-{seed}'))
-        sess.v2_state = ('economy', False, False, 0, 0, 0, 0, 0)
+        # 初始相位经统一 sim 构建口注入(session.md §3.4-2;同上案 b 臂)。
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            ensure_strategy_state,
+        )
+        ensure_strategy_state(strat, sess, initial_v2_state=(
+            'economy', False, False, 0, 0, 0, 0, 0))
         streak = 0
         streak_signed = 0
     # hp 决策可信位对齐生产真读帧口径(sim 无识别过程 = 恒真值帧;生产
@@ -715,7 +728,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 空 dict(区别于 None 的「未初始化」态),登记/对账按零挂起期望
     # 运转;构造侧字段信源取缺省确定值(ShopCard.cost_source='roster',
     # 费用识别批留的 sim/replay 构造路径缺省),不依赖徽章直读。
-    sess.expected_state = {}
+    exec_state_of(sess).expected_state = {}
     # `w162_inject/`/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
     # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
     # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
@@ -927,7 +940,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 本轮被定向车道放行并执行的刷新数,刷帽检查 directed_refresh_
             # game_cap_lock 的数据源。计数器在 arbiter 采纳处递增,本侧
             # 只读——观测非指令)
-            _dir_used0 = int(getattr(sess, 'v3_dir_refresh_used', 0) or 0)
+            _dir_used0 = int(getattr(strategy_state_of(sess), 'v3_dir_refresh_used', 0) or 0)
             # 动作 v2(契约包 C1,步2):本轮策略是否发出**且被应用**的显式部署
             # 动作(SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
             # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥;
@@ -958,7 +971,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _board_factions_of(st.deployed))
             # - ADR-0474 分配器遥测键(消费 = 锁#11 D2 接管可观测性):
             #   alloc_frame = 本轮最后一段 decide_prep 的分配器帧位
-            #   (session.v3_alloc_frame 每段覆写,末值 = 轮终帧披露;
+            #   (strategy_state_of(session).v3_alloc_frame 每段覆写,末值 = 轮终帧披露;
             #   此前该帧位无任何落盘消费面);alloc_active_any = 轮内
             #   任一段接管过(OR 聚合,与 formed_stop 同式)。
             _round_alloc_frame = None
@@ -975,11 +988,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 迁移审计 w52(git 历史)(ADR-0326):本轮补偿放弃信号快照——决策段后对比计数增量,
             # 进账本 sim.remedy_abandoned(检查项 decision_v2_remedy_loop
             # 的「连续放弃轮」数据源)
-            _remedy_abandons_before = getattr(sess, 'v3_remedy_abandoned', 0)
+            _remedy_abandons_before = getattr(strategy_state_of(sess), 'v3_remedy_abandoned', 0)
             # 血预算停手拒付计数轮前快照(设计件 12/ADR-0448):决策段后
             # 差分进账本 sim.blood_budget_levelup_rejects(与
             # remedy_abandoned 同式的轮级差分披露)
-            _bb_rejects_before = getattr(sess, 'v3_blood_budget_rejects', 0)
+            _bb_rejects_before = getattr(strategy_state_of(sess), 'v3_blood_budget_rejects', 0)
             # 血预算停手·搜索型刷新停付拒付计数轮前快照(设计件 12
             # §2.3-P1-c/§3.2/ADR-0451):决策段后差分进账本
             # sim.blood_budget_refresh_rejects(同式轮级差分披露)
@@ -1031,11 +1044,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # (引擎侧推断不了 yielded 分支),故载体 = 动作 reason 透传。
             _obs_refresh_src: dict[str, int] = {}
             # cw4_counters 轮差分(策略计数器账本可见性):
-            # 策略行为观测计数(session.cw4_counters)此前不入 sim 账本
+            # 策略行为观测计数(strategy_state_of(session).cw4_counters)此前不入 sim 账本
             # ——fenced 拆键(theta/fenced 成因分桶)落计数器后无账本面。
             # 轮首快照 → 行内 obs.cw4_counters = 本轮增量 dict(零增量为
             # 空 dict,不占判读视野)。纯只读投影,零行为面。
-            _cw4_before = dict(getattr(sess, 'cw4_counters', None) or {})
+            _cw4_before = dict(getattr(strategy_state_of(sess), 'cw4_counters', None) or {})
             # ===== 必花域观测三键(20 号稿 §6;策略审查升格本批落地)=====
             # 帧型 = 商店决策段(本引擎逐段决策点);判定单一源 =
             # in_must_spend_zone(与生产同链,零第二套语义)。
@@ -1077,7 +1090,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 现已接回 readiness_form_ok 现读(write_shop_mirrors),发射
             # 触发仍不经镜像层(防镜像缺写回归敞口)。
             _round_launch: dict | None = None
-            _tc_launch = getattr(sess, 'target_comp', None)
+            _tc_launch = getattr(strategy_state_of(sess), 'target_comp', None)
             if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                     and _tc_launch is not None):
                 from sr_od.application.currency_war.kernel.cw_launch_admission import (
@@ -1095,7 +1108,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # armed 本身就是判据核 readiness_form_ok 现读输出,
                     # 直接落镜像位(零第二判据);session 位同写,与生产
                     # 遥测 extra(form_ok)对拍同源。
-                    sess.v3_form_ok = True
+                    strategy_state_of(sess).v3_form_ok = True
                     _round_form_ok = True
                     # 发射帧滞留金观测键(sim71 批,零行为面):发射帧
                     # 短路备战动作链 → 金出口族既有键(shop_visit_idle_
@@ -1105,7 +1118,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 键 launch_frame_idle_gold(累计金,经 obs.cw4_counters
                     # 轮差分入账本;容器缺席静默跳过 = 缺省零漂移)。
                     _idle_gold = int(getattr(st, 'gold', 0) or 0)
-                    _cts_l = getattr(sess, 'cw4_counters', None)
+                    _cts_l = getattr(strategy_state_of(sess), 'cw4_counters', None)
                     if _cts_l is not None:
                         _cts_l['launch_frame_idle_gold'] = \
                             _cts_l.get('launch_frame_idle_gold', 0) + _idle_gold
@@ -1155,7 +1168,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 决策帧同语境;纯读,零行为面)。义务面口径与策略侧
                 # buy_members 同式:锁定帧 = locked_buy_membership,未锁
                 # 帧 = line_members(target_comp)(单一源直调,禁第二实现)。
-                _obs_ist = getattr(sess, 'v3_intention', None)
+                _obs_ist = getattr(strategy_state_of(sess), 'v3_intention', None)
                 _obs_bm = None
                 if _obs_ist is not None:
                     from sr_od.application.currency_war.kernel import (
@@ -1167,7 +1180,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         predicates as _obs_predicates,
                     )
                     _obs_bm = _obs_predicates.line_members(
-                        getattr(sess, 'target_comp', None))
+                        getattr(strategy_state_of(sess), 'target_comp', None))
                 if _obs_bm:
                     if _obs_ist is not None and getattr(
                             _obs_ist, 'locked_comp', ''):
@@ -1254,17 +1267,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
                     predicates as _rej_predicates,
                 )
-                _k_comp = getattr(sess, 'target_comp', None)
+                _k_comp = getattr(strategy_state_of(sess), 'target_comp', None)
                 _seg_rejects = shop_unbought_reasons(
                     st, _k_comp, _rej_predicates.line_members(_k_comp), acts)
                 _round_shop_rejects = _seg_rejects
                 if _waves:
                     _waves[-1]['rejects'] = dict(_seg_rejects)
                 _round_formed_stop = _round_formed_stop or bool(
-                    getattr(sess, 'v3_formed_stop', False))
+                    getattr(strategy_state_of(sess), 'v3_formed_stop', False))
                 # ADR-0474 分配器帧位轮内采集(每段 decide_prep 覆写
-                # session.v3_alloc_frame,这里逐段留末值 + OR 聚合)
-                _af = getattr(sess, 'v3_alloc_frame', None)
+                # strategy_state_of(session).v3_alloc_frame,这里逐段留末值 + OR 聚合)
+                _af = getattr(strategy_state_of(sess), 'v3_alloc_frame', None)
                 if _af is not None:
                     _round_alloc_frame = _af
                     _round_alloc_active_any = (_round_alloc_active_any
@@ -1280,37 +1293,37 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 标「本轮已写」:旧核每决策段自写、键戳恒盖 →
                     # 守卫不触发(旧核路径零漂移);缺写且策略带该钩子时
                     # 在此补写(新核路径,判据同源无第二实现)。
-                    if getattr(sess, 'v3_mirror_key', None) \
+                    if getattr(strategy_state_of(sess), 'v3_mirror_key', None) \
                             != (st.plane, st.round_num):
                         _wsm = getattr(strat, 'write_shop_mirrors', None)
                         if callable(_wsm):
                             _wsm(st, sess)
-                    _round_phase = str(getattr(sess, 'v3_phase', '') or '')
-                    _round_form_ok = bool(getattr(sess, 'v3_form_ok', False))
+                    _round_phase = str(getattr(strategy_state_of(sess), 'v3_phase', '') or '')
+                    _round_form_ok = bool(getattr(strategy_state_of(sess), 'v3_form_ok', False))
                     # B_t 板面目标线承重计数(form_score 替代披露口径;
                     # 写者单一源 = write_shop_mirrors,历史 form_score 只读退役)
-                    _round_b_t = int(getattr(sess, 'v3_b_t', 0) or 0)
+                    _round_b_t = int(getattr(strategy_state_of(sess), 'v3_b_t', 0) or 0)
                     # 迁移审计 w119(git 历史)/ADR-0347 授权依据 trace:当轮 DP 姿态 tag
                     _round_dp_posture = str(getattr(getattr(
-                        getattr(sess, 'v3_dp_posture', None),
+                        getattr(strategy_state_of(sess), 'v3_dp_posture', None),
                         'posture', None), 'tag', '') or '')
                     # `w611_econ_cycle/` 储备/义务披露(轮入口快照;与生产 decisions 行
                     # sess_* 同语义,义务帧兑现率/闲置金判读的 sim 侧源)
                     _round_reserve_cap = int(
-                        getattr(sess, 'v3_reserve_cap', 0) or 0)
+                        getattr(strategy_state_of(sess), 'v3_reserve_cap', 0) or 0)
                     _round_reserve_overflow = int(
-                        getattr(sess, 'v3_reserve_overflow', 0) or 0)
+                        getattr(strategy_state_of(sess), 'v3_reserve_overflow', 0) or 0)
                     _round_release_budget = int(
-                        getattr(sess, 'v3_release_budget', 0) or 0)
+                        getattr(strategy_state_of(sess), 'v3_release_budget', 0) or 0)
                     _round_release_reason = str(
-                        getattr(sess, 'v3_release_reason', '') or '')
+                        getattr(strategy_state_of(sess), 'v3_release_reason', '') or '')
                     # ADR-0348 ↺:扑满节点识别标记(遥测数据面)
-                    _round_piggy = bool(getattr(sess, 'v3_piggy_reward',
+                    _round_piggy = bool(getattr(strategy_state_of(sess), 'v3_piggy_reward',
                                                 False))
                     # `w227_handoff_gate/`/ADR-0400:承接门缺口(filters.formed_stop_
                     # active 写;轮入口快照,判读「门扣住哪些轮」)
                     _round_handoff_gap = int(
-                        getattr(sess, 'v3_handoff_gap', 0) or 0)
+                        getattr(strategy_state_of(sess), 'v3_handoff_gap', 0) or 0)
                     # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
                     _round_handoff_hp_proj = getattr(
                         sess, 'v3_handoff_hp_proj', None)
@@ -1329,7 +1342,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 与回执 last-wins/生产 per-frame 直读同语义;w943_audit5
                 # P3-4:首段口径会漏记「前段已兑现、刷新后重决策段未兑现」
                 # 的轮。判前预注册 A/B 主判据的数据源)
-                _unf = getattr(sess, 'v3_posture_unfulfilled', None)
+                _unf = getattr(strategy_state_of(sess), 'v3_posture_unfulfilled', None)
                 _round_posture_unfulfilled = dict(_unf) if _unf else None
                 if not use_refresh:
                     acts = [a for a in acts
@@ -1665,11 +1678,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # `w155_evolve_lock/`/ADR-0360 件4:锁定帧体系键并入围栏放行集(同生产 op 侧)
             _lf = frozenset()
             try:
-                _tc = frozenset(getattr(sess, 'target_comp', None).core_chars
-                                or ()) if getattr(sess, 'target_comp', None) else frozenset()
-                _tf = frozenset(getattr(sess, 'target_comp', None).factions
-                                or ()) if getattr(sess, 'target_comp', None) else frozenset()
-                _fw_name = getattr(sess, 'transition_framework', '') or ''
+                _tc = frozenset(getattr(strategy_state_of(sess), 'target_comp', None).core_chars
+                                or ()) if getattr(strategy_state_of(sess), 'target_comp', None) else frozenset()
+                _tf = frozenset(getattr(strategy_state_of(sess), 'target_comp', None).factions
+                                or ()) if getattr(strategy_state_of(sess), 'target_comp', None) else frozenset()
+                _fw_name = getattr(strategy_state_of(sess), 'transition_framework', '') or ''
                 _fw = frozenset()
                 if _fw_name:
                     from sr_od.application.currency_war.kernel.cw_transition import (
@@ -1681,7 +1694,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.kernel.cw_intention import (
                     locked_faction_scope as _lfs,
                 )
-                _lf = _lfs(getattr(sess, 'v3_intention', None)) or frozenset()
+                _lf = _lfs(getattr(strategy_state_of(sess), 'v3_intention', None)) or frozenset()
             except Exception:   # noqa: BLE001  代理 best-effort
                 pass
             # ADR-0271(批⑦ F1,ADR-0219 第四次命中根治):上阵即 pop
@@ -1819,8 +1832,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # `w162_inject/`/ADR-0364:P1 段锁定轮计数(①资格通道激活直证——
             # 注入前语料下 P1 恒 unlocked/p1_pair,此键恒 0[`w161_refresh/`])
             if (_seg_plane == 1
-                    and getattr(sess, 'v3_intention', None) is not None
-                    and getattr(sess.v3_intention, 'phase', '') == 'locked'):
+                    and getattr(strategy_state_of(sess), 'v3_intention', None) is not None
+                    and getattr(strategy_state_of(sess).v3_intention, 'phase', '') == 'locked'):
                 res.p1_locked_rounds += 1
             # r260:按本局采样的真实节点类型结算(奖励/补给不掉血;
             # 遭遇=boss×1.15;战斗=方向二元;boss=boss 档)
@@ -2055,12 +2068,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 if _is_supply:
                     # 补给节点:真两步 decide_supply(语义零改动,见下)
                     _opts = _sample_supply_opts(_basic_names)
-                    _pick = decide_supply(_opts, st, sess.target_comp, None,
-                                          refresh_used=sess._supply_refresh_used)
-                    if _pick.refresh and not sess._supply_refresh_used:
-                        sess._supply_refresh_used = True
+                    _pick = decide_supply(_opts, st, strategy_state_of(sess).target_comp, None,
+                                          refresh_used=exec_state_of(sess)._supply_refresh_used)
+                    if _pick.refresh and not exec_state_of(sess)._supply_refresh_used:
+                        exec_state_of(sess)._supply_refresh_used = True
                         _opts = _sample_supply_opts(_basic_names)
-                        _pick = decide_supply(_opts, st, sess.target_comp, None,
+                        _pick = decide_supply(_opts, st, strategy_state_of(sess).target_comp, None,
                                               refresh_used=True)
                     st.equips.append(_opts[_pick.idx].equip)
                     _equip_grants += 1   # `w614_sim_fidelity/` G1 发放落账
@@ -2100,14 +2113,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 保留池不对撞(本门是叠加在保留池之上的兑现门,不放松保留
             # 条件);时机 = 每备战期分配前,最小改动不重构分配器。
             _synth_events: list[str] = []
-            _ist = getattr(sess, 'v3_intention', None)
+            _ist = getattr(strategy_state_of(sess), 'v3_intention', None)
             _line_locked = (getattr(_ist, 'phase', '') == 'locked'
                             and getattr(_ist, 'locked_comp', ''))
             if _synth_on and _line_locked and st.equips:
                 from sr_od.application.currency_war.data.cw_synthesis import (
                     plan_syntheses,
                 )
-                _tgt = getattr(sess, 'target_comp', None)
+                _tgt = getattr(strategy_state_of(sess), 'target_comp', None)
                 _keys = list(getattr(_tgt, 'key_equips', ()) or ()) \
                     if _tgt is not None else []
                 # P2 锁线回收:合成门需要的组件若正被穿着,先取回再合成
@@ -2160,7 +2173,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ADR-0487:谓词 p1_iface_carry_duty_active 已删;账本行
                 # p1_duty 键按披露稳定保留恒 False。)
                 _equipped_now = equip_allocation(
-                    sess.target_comp, st.deployed, _wearable_equips,
+                    strategy_state_of(sess).target_comp, st.deployed, _wearable_equips,
                     occupied=_occupied)
                 # ADR-0312(迁移审计 w50(git 历史) L2 雏形):分配结果同步写回 BenchChar.equips
                 # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
@@ -2195,7 +2208,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 零 rng/零行为面(函数 docstring 见 project_sell_buyback)。
             _sell_buyback_loops = project_sell_buyback(_acts)
             if _sell_buyback_loops:
-                _cts_sb = getattr(sess, 'cw4_counters', None)
+                _cts_sb = getattr(strategy_state_of(sess), 'cw4_counters', None)
                 if _cts_sb is not None:
                     _cts_sb['sell_buyback_count'] = \
                         _cts_sb.get('sell_buyback_count', 0) \
@@ -2228,7 +2241,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # form_score 已退役(历史账本只读);替代披露口径 = b_t
                 'b_t': _round_b_t,
                 # 决策时点挂起期望态快照(期望态 infra 遥测批;sim 引擎未接
-                # 期望态推进,sess.expected_state 缺省 None → 恒 [];与生产
+                # 期望态推进,exec_state_of(sess).expected_state 缺省 None → 恒 [];与生产
                 # decisions 行同构,读端三态同口径)
                 'expected_paths': _expected_paths_snapshot(sess),
                 'dp_posture': _round_dp_posture,
@@ -2246,7 +2259,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 按它分锁定/未锁局——target_comp 只在锁定后非空,phase
                 # 才能区分 unlocked/weak/locked)
                 'v3_intention': serialize_intention(
-                    getattr(sess, 'v3_intention', None)),
+                    getattr(strategy_state_of(sess), 'v3_intention', None)),
                 'target_comp': _target_comp_label(sess),
                 'state': {'board': dict(st.board), 'level': st.level,
                           # r394(过渡阵容判据接线):板面阵营档位——
@@ -2353,11 +2366,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 本轮实刷次数('other' = reason 未标/旧调用)。
                     'refresh_trigger': dict(_obs_refresh_src),
                     # cw4_counters 轮差分(策略行为观测计数账本可见性):
-                    # 本轮增量(键 = session.cw4_counters 原键,含 fenced
+                    # 本轮增量(键 = strategy_state_of(session).cw4_counters 原键,含 fenced
                     # 拆键/theta 成因分桶);零增量 = 空 dict。
                     'cw4_counters': {
                         k: int(v) - int(_cw4_before.get(k, 0))
-                        for k, v in (getattr(sess, 'cw4_counters', None)
+                        for k, v in (getattr(strategy_state_of(sess), 'cw4_counters', None)
                                      or {}).items()
                         if int(v) != int(_cw4_before.get(k, 0))},
                     # 同轮卖→买回实例级投影(sim71 批;round/node 由
@@ -2419,20 +2432,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # frame 的普通车道扣除项。其余车道:release/E2 臂
                     # 预算另有界,计入普通车道口径——检查事件供归因)
                     'dir_refreshes': max(
-                        0, int(getattr(sess, 'v3_dir_refresh_used', 0) or 0)
+                        0, int(getattr(strategy_state_of(sess), 'v3_dir_refresh_used', 0) or 0)
                         - _dir_used0),
                     # 血预算停手·停升级拒付次数(决策层;设计件 12/
                     # ADR-0448):hp≤停升级线帧被门拦下的升级事件数
                     # (>0 = 本语义在该轮生效;决策侧判读输入)
                     'blood_budget_levelup_rejects': max(
-                        0, getattr(sess, 'v3_blood_budget_rejects', 0)
+                        0, getattr(strategy_state_of(sess), 'v3_blood_budget_rejects', 0)
                         - _bb_rejects_before),
                     # 血预算停手·搜索型刷新停付拒付次数(决策层;设计件
                     # 12 §2.3-P1-c/§3.2/ADR-0451):血预算不足帧被门拦下
                     # 的刷新事件数(>0 = 本语义在该轮生效;急救型/ALL IN
                     # 豁免帧不计)
                     'blood_budget_refresh_rejects': max(
-                        0, getattr(sess, 'v3_blood_budget_refresh_rejects', 0)
+                        0, getattr(strategy_state_of(sess), 'v3_blood_budget_refresh_rejects', 0)
                         - _bb_refresh_rejects_before),
                     # ADR-0287(批㉘ F1)+迁移审计 w652(git 历史) §5 处置①:重放围栏(部署前
                     # 快照语境冻结)的残留可上件数(行动语境下围栏认可件
@@ -2451,7 +2464,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # fuel_filler_stall_buy 触发数、residual_deployed 上板
                     # 数三方对读;>0 = 垫件仍持有待转化,非异常)
                     'stall_buys_pending': len(
-                        getattr(sess, 'cw4_fuel_filler_stall_buys', None)
+                        getattr(strategy_state_of(sess), 'cw4_fuel_filler_stall_buys', None)
                         or ()),
                     # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
                     # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)
@@ -2482,7 +2495,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 观测,只能金账反推」的收口):frame = 轮终帧分配器
                     # 帧位披露(active/domain/reason/proposals/chosen/
                     # alloc_gold;strategy.decide_prep 每帧写
-                    # session.v3_alloc_frame);None = 本轮无决策段。
+                    # strategy_state_of(session).v3_alloc_frame);None = 本轮无决策段。
                     'alloc_frame': _round_alloc_frame,
                     'alloc_active_any': _round_alloc_active_any,
                 },
@@ -2497,7 +2510,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 「滞留件数」的 sim 对应物,段内死亡也记)
             res.p1_unworn_exit = len(st.equips)
             res.p1_rust_units_peak = _rust_peak
-            _tc = getattr(sess, 'target_comp', None)
+            _tc = getattr(strategy_state_of(sess), 'target_comp', None)
             _keys = (list(getattr(_tc, 'key_equips', ()) or ())
                      if _tc is not None else [])
             _have: dict[str, int] = {}
@@ -2533,8 +2546,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     if res.p2_entered:
         res.p2_combat_calibrated = _p2c.calibrated
         # `w224_handoff/`/ADR-0399:承接快照披露(策略 decide_prep 位面首帧块写
-        # session.v3_handoff——案 b 臂同样经首轮 decide_prep 采样)。
-        _h = getattr(sess, 'v3_handoff', None)
+        # strategy_state_of(session).v3_handoff——案 b 臂同样经首轮 decide_prep 采样)。
+        _h = getattr(strategy_state_of(sess), 'v3_handoff', None)
         res.p2_handoff = _h.as_dict() if _h is not None else None
         _p2_rows = [row for row in res.ledger
                     if (row.get('plane') or 1) == 2]

@@ -21,6 +21,7 @@ from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     SHOP_SCREEN_NAME,
@@ -48,6 +49,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     SellDeployed,
     StartBattle,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_reward_spheres,
     read_supply_boxes,
@@ -538,8 +540,8 @@ class PrepActionExecutor:
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_supply import (
             _material_value,
         )
-        if match is not None and match.session.target_comp is not None:
-            key_equips = set(match.session.target_comp.key_equips or [])
+        if match is not None and strategy_state_of(match.session).target_comp is not None:
+            key_equips = set(strategy_state_of(match.session).target_comp.key_equips or [])
             for n, x in names:
                 if n in key_equips:
                     return n, x
@@ -625,8 +627,8 @@ class PrepActionExecutor:
         if match is None or match.session is None:
             return
         # 形状双源防御(ADR-0316):tracked_bench_chars 可能是 pad 态(含 None)
-        match.session.tracked_bench_chars = [
-            bc for bc in match.session.tracked_bench_chars
+        exec_state_of(match.session).tracked_bench_chars = [
+            bc for bc in exec_state_of(match.session).tracked_bench_chars
             if bc is not None and bc.slot != slot]
 
     def _track_remove_deployed(self, row: str, slot: int) -> None:
@@ -639,13 +641,13 @@ class PrepActionExecutor:
             DEPLOYED_FRONT_CAPACITY,
             pad_deployed,
         )
-        tracked = pad_deployed(list(match.session.tracked_deployed))
+        tracked = pad_deployed(list(exec_state_of(match.session).tracked_deployed))
         idx = (slot - 1 if row == 'front'
                else DEPLOYED_FRONT_CAPACITY + slot - 1)
         if 0 <= idx < len(tracked) and tracked[idx] is not None \
                 and tracked[idx].position_pref == row:
             tracked[idx] = None
-        match.session.tracked_deployed = tracked
+        exec_state_of(match.session).tracked_deployed = tracked
 
     def _track_move_deployed(self, from_slot: int, to_row: str, to_slot: int) -> None:
         """上阵后备势跟踪同步:bench 条目 → deployed 条目(位置/槽位改写)。"""
@@ -653,17 +655,17 @@ class PrepActionExecutor:
         if match is None or match.session is None:
             return
         # 形状双源防御(ADR-0316):tracked_bench_chars 可能是 pad 态(含 None)
-        moved = [bc for bc in match.session.tracked_bench_chars
+        moved = [bc for bc in exec_state_of(match.session).tracked_bench_chars
                  if bc is not None and bc.slot == from_slot]
-        match.session.tracked_bench_chars = [
-            bc for bc in match.session.tracked_bench_chars
+        exec_state_of(match.session).tracked_bench_chars = [
+            bc for bc in exec_state_of(match.session).tracked_bench_chars
             if bc is not None and bc.slot != from_slot]
         # ADR-0392:tracked_deployed 槽位表——deployed_place 单一源落槽;
         # to_slot 是执行器物理槽位真值,落槽后覆写信息位。
         from sr_od.application.currency_war.kernel.cw_state import deployed_place
         for bc in moved:
             bc.position_pref = to_row
-            deployed_place(match.session.tracked_deployed, bc)
+            deployed_place(exec_state_of(match.session).tracked_deployed, bc)
             bc.slot = to_slot
 
     # ===== 商店域 =====
@@ -876,8 +878,8 @@ class PrepActionExecutor:
         """发射成功/环内任何成功发射 → 清连败计数(输入通道已恢复的证据)。"""
         match = getattr(self._ctx, 'cw_match', None)
         session = getattr(match, 'session', None) if match is not None else None
-        if session is not None and getattr(session, 'launch_dead_streak', 0):
-            session.launch_dead_streak = 0
+        if session is not None and getattr(exec_state_of(session), 'launch_dead_streak', 0):
+            exec_state_of(session).launch_dead_streak = 0
 
     def _launch_dead_escalate(self) -> str | None:
         """发射连败升级:未落地连发达限 → 停机留证(返回失败 detail);未达限返回 None。
@@ -890,8 +892,8 @@ class PrepActionExecutor:
         session = getattr(match, 'session', None) if match is not None else None
         if session is None:
             return None
-        streak = getattr(session, 'launch_dead_streak', 0) + 1
-        session.launch_dead_streak = streak
+        streak = getattr(exec_state_of(session), 'launch_dead_streak', 0) + 1
+        exec_state_of(session).launch_dead_streak = streak
         if streak < PrepActionExecutor.LAUNCH_DEAD_LIMIT:
             log.warning('[cw!][battle] 出战未落地连败 %s/%s', streak,
                         PrepActionExecutor.LAUNCH_DEAD_LIMIT)

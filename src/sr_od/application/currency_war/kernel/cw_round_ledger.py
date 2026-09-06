@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_state import GameState
 
 if TYPE_CHECKING:
@@ -27,11 +28,11 @@ def register_round_sold(names, state: GameState,
     arbiter 主循环(采纳处,ADR-0328)/执行侧卖出落地加固。
     """
     key = (state.plane, state.round_num)
-    if getattr(session, 'v2_round_key', None) != key:
+    if getattr(exec_state_of(session), 'v2_round_key', None) != key:
         return    # 轮键不匹配(跨轮误写防御;set 下轮重置)
-    sold = getattr(session, 'v2_round_sold', None)
+    sold = getattr(exec_state_of(session), 'v2_round_sold', None)
     if sold is None:
-        session.v2_round_sold = sold = set()
+        exec_state_of(session).v2_round_sold = sold = set()
     for n in names:
         if n:
             sold.add(n)

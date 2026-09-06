@@ -46,6 +46,9 @@ from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import entry
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
+)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
@@ -170,14 +173,14 @@ class MandateV1Strategy(CwFlowStrategy):
                 '禁静默按空态决策)')
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好;驱动器在循环
         # 内登记,与生产执行侧同一载体)。
-        session.cw4_visit_bought_names = []
+        state_of(session).cw4_visit_bought_names = []
         out: list = []
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
             a = self.decide_shop_action(session, config)
             if isinstance(a, cw_state.CloseShop):
                 return out
             if isinstance(a, (cw_state.BuyCard,)):
-                session.cw4_visit_bought_names.append(a.card.name or '')
+                state_of(session).cw4_visit_bought_names.append(a.card.name or '')
             out.append(a)
             if isinstance(a, (cw_state.RefreshShop, cw_state.CompTransaction)):
                 return out      # 终结 op:序列到止(重观察语境)

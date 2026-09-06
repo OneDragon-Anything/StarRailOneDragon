@@ -682,7 +682,7 @@ class DecisionV2Registry:
     #: 逐动作 gold_floor 事务性重验(与 deploy_cap 补偿臂同一重验
     #: 链)。修「恒 lv6 通道缺陷」(迁移审计 w185(git 历史):每轮 1 击吞吐,lv6→lv7 需
     #: 7 轮,死亡窗内不跨;run15 型死局的 lv7 价格带永不可达)。
-    #: 每轮至多一组(session.v2_steady_lv_used 轮键,防刷后 re-decide
+    #: 每轮至多一组(strategy_state_of(session).v2_steady_lv_used 轮键,防刷后 re-decide
     #: 段链连发);boss 轮禁升([32])与 level_max 前置守卫保留。
     #: **辖域 P2+**(首版全位面泛化 n=300 引入 P1 never2 9→10 回归,
     #: `w194_p2line/` 辙回——P1 多击已由 deploy_cap 补偿臂覆盖)。
@@ -833,7 +833,7 @@ class DecisionV2Registry:
     #: 单合资格轮刷新次数上限(`w249_core2_reach/` 白盒估算初值:每轮 ≤2 次)
     directed_refresh_per_round: int = 2
     #: 每局刷新总上限(`w249_core2_reach/` 白盒估算初值:≈覆盖一颗 2★ 的第二跳
-    #: 6-7 次;消耗计数 session.v3_dir_refresh_used,decide_prep 轮首
+    #: 6-7 次;消耗计数 strategy_state_of(session).v3_dir_refresh_used,decide_prep 轮首
     #: 不重置——局级累计)。金消耗披露面:预算放行的每次刷新照付刷价,
     #: 金账户由 simulate 真值扣减,P1 末窗利息损失随 A/B 守门指标判读。
     #: **本常量是非绑定约束(`w274_cap_batch/`/ADR-0413)**:合资格授权窗 = gap>0 ∧
@@ -913,7 +913,7 @@ class DecisionV2Registry:
     line_switch_min_dwell: int = 2
     # (release 帧活栈消费门开关 release_spend_gate_enabled 已随 ADR-0426
     # 增补 D 第 4 态清理:开臂 A/B 结案,消费门恒接线,判据单一源=
-    # posture_release.spend_gate_active 读 session.v3_release。)
+    # posture_release.spend_gate_active 读 strategy_state_of(session).v3_release。)
 
     # ===== P2 生存批:换线存活轮数门(C4) =====
     #: 设计决策=ADR-0426 增补 B(C3/C4 重设计裁决)+ADR-0429(C4 接线):

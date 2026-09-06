@@ -95,9 +95,9 @@
 - **遥测分栈**：DecisionTrace 按 (strategy_id, ev_arm) 二元组分栈；mandate 标记维度区分骨架/EV 动作。
 - **换核机制** = config 切 strategy_id（最小面），不改流程侧分发；单一核 = mandate_v1（cw4 分层包），decision_v2 为声明的 A/B 基线臂（A/B 过线 = 整体删除旧决策包的触发门，dd-001 时序裁决）。
 
-### 2.5 无状态策略与 session
+### 2.5 无状态策略与 session / 策略器状态
 
-策略实例不持有可变每局状态（`cw_strategy.py:60-72`）；跨步状态走 `StrategySession`（框架每局新建、局终销毁）。异常路径残留容器由 `discard_stale_match_container` 在"确凿新局"信号点丢弃（`cw_strategy.py:232-260`）。obs 读口注入槽 `_RESET_PHASE_ROUND_CACHE` 缺省关（`cw_strategy.py:223-229`）。
+策略实例不持有可变每局状态;状态三类分离(ADR-0563;设计单一源 = `flow/session.md` as-designed):**观察数据**走 `StrategySession`(框架每局新建、局终销毁,只承载读屏采集);**策略器状态** = 实现包私有 `MandateState`,经 `CwStrategy.create_state` 工厂(非 abstract,基类缺省 None)每局冷建、挂 `session.strategy_state` 黑盒引用,框架只搬运引用,消费经访问函数(`strategy_state_of`/impl 侧 `state_of`);**执行层状态** = `ExecState`,宿主 = `CurrencyWarMatch.exec_state`,无 ctx 面经 `exec_state_of(session)` 旁表访问口。异常路径残留容器由 `discard_stale_match_container` 在"确凿新局"信号点丢弃(`cw_strategy.py`)。obs 读口注入槽 `_RESET_PHASE_ROUND_CACHE` 缺省关(`cw_strategy.py`)。
 
 ## 3. 各篇导读
 

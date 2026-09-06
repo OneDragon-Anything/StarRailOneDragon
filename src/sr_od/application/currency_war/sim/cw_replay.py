@@ -43,6 +43,9 @@ from sr_od.application.currency_war.kernel.cw_state import (  # ADR-0392 helper 
     deployed_from_compact,
     iter_occupied_deployed,
 )
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
+)
 
 
 class _Cfg:
@@ -147,19 +150,24 @@ def _divergence_kind(new_acts: list, old_acts: list) -> str:
 
 
 def _restore_session(strat, d: dict, sess):
-    """从 trace 行恢复 session 态(两策略共用;缺字段=旧记录,走默认)。"""
-    sess.transition_framework = d.get('sess_framework', '') or ''
-    sess.dual_track_phase = bool(d.get('sess_dual_track') or False)
+    """从 trace 行恢复 session 态(两策略共用;缺字段=旧记录,走默认)。
+
+    (session.md §2.5 退役前置动作:原 ``sess.dual_track_phase`` 恢复写行
+    已随职责分离切换删除——该字段无消费面,恢复语义消失 = 退役语义的
+    一部分,显式声明非静默。)
+    """
+    _ms = state_of(sess)
+    _ms.transition_framework = d.get('sess_framework', '') or ''
     if d.get('sess_drought') is not None:
-        sess.target_drought = int(d['sess_drought'])
+        _ms.target_drought = int(d['sess_drought'])
     if d.get('sess_active_env'):
         sess.active_env = str(d['sess_active_env'])
     _cs = d.get('sess_commit_scores') or {}
     if _cs:
         from sr_od.application.currency_war.kernel.cw_transition import CommitSignals
-        if not isinstance(sess.commit_signals, CommitSignals):
-            sess.commit_signals = CommitSignals()
-        sess.commit_signals.scores = {k: float(v) for k, v in _cs.items()}
+        if not isinstance(_ms.commit_signals, CommitSignals):
+            _ms.commit_signals = CommitSignals()
+        _ms.commit_signals.scores = {k: float(v) for k, v in _cs.items()}
 
 
 def main() -> None:

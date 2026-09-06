@@ -21,6 +21,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_prep_expect import material_value
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_identity_obs import read_supply_boxes
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -46,8 +47,8 @@ def pick_box_card(ctx: 'SrContext', names: list[str]) -> str | None:
         except Exception:   # noqa: BLE001  策略失败回落旧逻辑
             pass
     # 旧内联回落(key_equips → 材料通用性)
-    if match is not None and match.session.target_comp is not None:
-        key_equips = set(match.session.target_comp.key_equips or [])
+    if match is not None and strategy_state_of(match.session).target_comp is not None:
+        key_equips = set(strategy_state_of(match.session).target_comp.key_equips or [])
         for n in names:
             if n in key_equips:
                 return n

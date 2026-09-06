@@ -2229,8 +2229,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # - computed 有而 OCR 不可见 = 滚动截断(正常,不算错)。
     # - tracked 空/含未知 → None → OCR 兜底(现状;混合态半算比漏算更毒)。
     _match = getattr(ctx, 'cw_match', None)
-    _tracked_dep = (_match.session.tracked_deployed
-                    if (_match is not None and _match.session is not None) else None)
+    _exec = getattr(_match, 'exec_state', None) if _match is not None else None
+    _tracked_dep = (_exec.tracked_deployed if _exec is not None else None)
     _computed = board_from_tracked(_tracked_dep)
     # spec 无 board 的阶段(battle_or_transit)跳过面板 OCR:空 OCR 侧 + honest=False
     # → 有 tracked 时保 computed 底座、无 tracked 时空板(与「OCR 全 miss」同语义)。

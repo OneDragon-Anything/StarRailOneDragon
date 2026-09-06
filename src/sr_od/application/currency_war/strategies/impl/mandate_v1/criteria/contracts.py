@@ -127,7 +127,7 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
     空窗期——K 投影域覆盖 None。
 
     SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定):
-    ``session.target_comp`` 的值域含 None(P1 空窗=开局常态),消费端
+    ``state_of(session).target_comp`` 的值域含 None(P1 空窗=开局常态),消费端
     把 None 当「已锁线世界」直接投影(``line_members(None)→()``)=
     「单一值域的一端当全域」域错位(arm1 cap 口径/零刷新 r1 输入同型
     第三例)——空窗死锁环:K 空→零买入→板面零变化→永不锁。
@@ -247,7 +247,10 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('equipment', 'wear_release'): Contract(
         None, 'D-B 穿戴释放三态门(M7 消费的判据输入)', 'IMPL_DESIGN D-B'),
     ('equipment', 'affix_allocation'): Contract(
-        None, 'D-F46 词缀条件装备分配排序(谓词非发射)', 'IMPL_DESIGN D-F46'),
+        None, 'D-F46 零调用面墓碑:词缀分配生产单一源 = '
+        'cw_equip_env.resolve_affix_priority_order(cw_op_equip_all 消费);'
+        '本函数系孤儿第二实现+死键,已随判据出处纠错批物理删除,'
+        '登记行保留契约枚举完备性', 'IMPL_DESIGN D-F46'),
     ('equipment', 'keep_policy'): Contract(
         None, '近兑现距离绝不喂(P42 ③ 零参数公理)', 'IMPL_DESIGN §2.6'),
     ('equipment', 'endgame_context'): Contract(

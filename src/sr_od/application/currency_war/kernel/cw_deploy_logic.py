@@ -38,6 +38,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     deployed_occupied,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
 
@@ -418,7 +419,7 @@ def select_deployments(
     plain_rest = [i for i in rest if i not in ignite_rest]
     # 锁定线核心优先桶(ADR-0323):意向锁定的线核心优先于过渡填充件——tgt 中
     # target_cores 成员(锁定 comp 的 core_chars;sim/candidates 从
-    # session.target_comp 注入)提到最前,「同 cap 内先核心后填充」
+    # strategy_state_of(session).target_comp 注入)提到最前,「同 cap 内先核心后填充」
     # (变阵窗口语义:锁定线核心在窗口优先上板;对照语义:过渡配方
     # 照常占位,但核心不因 cap 竞争被填充件挤掉;不扩 cap)。
     # 非锁定局 target_cores 空 → 本桶恒空,序不变;「点火 >
@@ -889,7 +890,7 @@ def assemble_swap_plan_inputs(
     except Exception:   # noqa: BLE001  派生面缺供给 = 装配不可得
         return None
     # target 视图(双轨口径;与 cw_op_deploy 执行侧同链:双轨期走
-    # decision_target 伪 comp,定型后走 session.target_comp)
+    # decision_target 伪 comp,定型后走 strategy_state_of(session).target_comp)
     tgt_comp = None
     try:
         if not committed_from(session, state):
@@ -898,7 +899,7 @@ def assemble_swap_plan_inputs(
     except Exception:   # noqa: BLE001  双轨读端缺供给 → 退 target_comp
         tgt_comp = None
     if tgt_comp is None:
-        tgt_comp = getattr(session, 'target_comp', None)
+        tgt_comp = getattr(strategy_state_of(session), 'target_comp', None)
     target_factions = frozenset(getattr(tgt_comp, 'all_factions', None) or ())
     target_cores = frozenset(getattr(tgt_comp, 'core_chars', None) or ())
     # fenced 臂(fp 单一源 form_progress,板满 = 占用数 ≥ cap 占用数
@@ -906,7 +907,7 @@ def assemble_swap_plan_inputs(
     # 板满门同源,禁经调用方 cap 参数分叉出第二口径;执行侧 cap=None
     # (不消费谓词 cap 门)帧同吃现算)。fp/locked/board_full 同点装配:
     # 转型臂输入与 fenced 臂同源同值(装配单一源,ADR-0534 §8 对齐增行 15/16)。
-    ist = getattr(session, 'v3_intention', None)
+    ist = getattr(strategy_state_of(session), 'v3_intention', None)
     locked = bool(getattr(ist, 'locked_comp', None)) if ist is not None \
         else False   # 锁线布尔单源 = ist.locked_comp 非空(ADR-0534 §1)
     fenced_on = False
@@ -940,7 +941,7 @@ def assemble_swap_plan_inputs(
         _lf = locked_faction_scope(ist) or frozenset()
     except Exception:   # noqa: BLE001  围栏兜底 best-effort(同执行侧)
         _lf = frozenset()
-    fw_name = getattr(session, 'transition_framework', '') or ''
+    fw_name = getattr(strategy_state_of(session), 'transition_framework', '') or ''
     _tgt_fw, fw_carry = deploy_target_sets(tgt_comp, fw_name)
     return SwapPlanContext(
         target_factions=target_factions,   # 与执行侧卖出面同口径(all_factions,不含框架并集)

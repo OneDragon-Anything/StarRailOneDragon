@@ -50,6 +50,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     iter_occupied_deployed,
     simulate,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_system_cards import (
     SYSTEM_CARDS,
     card_engine_complete,
@@ -206,7 +207,7 @@ def _pair_systems(session) -> dict[str, int]:
         TRANSITION_TRAITS,
     )
     from sr_od.application.currency_war.kernel.cw_intention import IntentionState
-    ist = getattr(session, 'v3_intention', None)
+    ist = getattr(strategy_state_of(session), 'v3_intention', None)
     if not isinstance(ist, IntentionState):
         return {}
     keys: list[str] = []
@@ -257,7 +258,7 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
         IntentionState,
         locked_buy_scope,
     )
-    ist = getattr(session, 'v3_intention', None)
+    ist = getattr(strategy_state_of(session), 'v3_intention', None)
     lock_scope = (locked_buy_scope(ist)
                   if isinstance(ist, IntentionState) else None)
     bf = _board_factions_of(state.deployed)
@@ -533,7 +534,7 @@ def _off_lock_opt(opt: UpgradeOption, session) -> bool:
         IntentionState,
         locked_faction_scope,
     )
-    ist = getattr(session, 'v3_intention', None)
+    ist = getattr(strategy_state_of(session), 'v3_intention', None)
     if not isinstance(ist, IntentionState):
         return False
     scope = locked_faction_scope(ist)
@@ -572,7 +573,7 @@ def _locked_protected_names(old_line: list[BenchChar],
         IntentionState,
         locked_buy_scope,
     )
-    ist = getattr(session, 'v3_intention', None)
+    ist = getattr(strategy_state_of(session), 'v3_intention', None)
     if isinstance(ist, IntentionState):
         scope = locked_buy_scope(ist)
         if scope is not None:
@@ -777,7 +778,7 @@ def propose_upgrades(state: GameState, session=None) -> list[UpgradeOption]:
     - 体系卡(C2,桩):四卡目标羁绊,在手 ≥2(2换1 门槛在 evaluate 再校);
     - Comp(C4):每套主档各羁绊,在手人数 ≥2 且板面档 < 目标档 → 机会;
     - 当前板:板上已有羁绊在手人数 > 当前板档 → 升 1 档机会(加深)。
-    session.target_comp(意向同向)作 tie-break 加权,非一票否决(C2 语义)。
+    strategy_state_of(session).target_comp(意向同向)作 tie-break 加权,非一票否决(C2 语义)。
     线名来源收口(意向层消费契约「执行侧只读意向层权威状态」):
     tie-break 读 ``cw_recipe.decision_target``(意向单一入口,双轨期返回
     配方伪 comp)——只换数据来源,加权语义不变。

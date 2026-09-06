@@ -47,6 +47,7 @@ from sr_od.application.currency_war.kernel.cw_performance import (
     HP_CONFIDENCE_THRESHOLD,
 )
 from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import read_phase_round
 from sr_od.application.currency_war.obs.cw_settlement_obs import (
     parse_progress_fill_ratio,
@@ -255,7 +256,10 @@ class CwScreenBattleWait(SrOperation):
                             refs=[{'stream': 'outcomes',
                                    'key': f'plane={_plane}|round={_round}'}],
                             note='观测自检框架设计 §2.7;残留屏豁免')
-            _comp_tag = _session.target_comp.name if _session.target_comp else '?'
+            # 披露面防御 getattr(strategy_state_of None 契约,ADR-0563 B4 划分线):
+            # 异型状态对象字段缺席退 '?'(outcomes comp_tag 缺席语义,非行为面)
+            _tc = getattr(strategy_state_of(_session), 'target_comp', None)
+            _comp_tag = _tc.name if _tc is not None else '?'
             _is_boss = self.round_by_find_area(
                 screen, '货币战争-结算', '标识-首领').is_success
             _node = 'boss' if _is_boss else self._normalize_node_type(
@@ -476,9 +480,12 @@ class CwScreenBattleWait(SrOperation):
                     success_wait=1).is_success:
                 # 备战 defer 计数复位(结算点 = 新备战轮入口;W971 P3b 平移
                 # 语义。旧 prep_phase/prep_phase_retry 相位机复位随 ADR-0517
-                # 迁移批死码清理删除——字段已不存在)
+                # 迁移批死码清理删除——字段已不存在)。宿主 = 执行侧载体
+                # ExecState(session.md §2.4:defer_count 归框架流程侧,随
+                # ADR-0563 session 职责分离迁出 session;读 session 形态 =
+                # AttributeError,session 上已无该字段)
                 if self.ctx.cw_match is not None:
-                    _ps = self.ctx.cw_match.session
+                    _ps = self.ctx.cw_match.exec_state
                     if _ps.defer_count:
                         _ps.defer_count = 0
                         log.info('[cw-bwait] 新备战轮(结算点)→ defer 计数复位')

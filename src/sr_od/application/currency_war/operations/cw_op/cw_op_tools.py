@@ -40,6 +40,7 @@ from sr_od.application.currency_war.kernel.cw_equip_env import (
     evaluate_tool_actions,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_equipment import (
     read_equips,
 )
@@ -293,7 +294,7 @@ class CwOpTools(SrOperation):
         owned_names = owned_hits_names(hits)
         _match = getattr(self.ctx, 'cw_match', None)
         _sess = getattr(_match, 'session', None) if _match is not None else None
-        comp = getattr(_sess, 'target_comp', None) if _sess is not None else None
+        comp = getattr(strategy_state_of(_sess), 'target_comp', None) if _sess is not None else None
         # 判据 → G1 准入(策略侧单一源;本层禁第二套时机判断)
         admitted = admitted_tool_actions(evaluate_tool_actions(owned_names, comp))
         for a in admitted:

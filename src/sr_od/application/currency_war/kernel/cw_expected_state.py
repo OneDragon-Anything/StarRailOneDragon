@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     merge_simulate,
 )
@@ -79,18 +80,18 @@ class ExpectedEntry:
 
 
 def register_expected(session, entry: ExpectedEntry) -> None:
-    """登记一条期望态(session.expected_state 容器;缺容器时惰性建——
+    """登记一条期望态(exec_state_of(session).expected_state 容器;缺容器时惰性建——
     兼容未升级的 session 构造路径,如旧回放)。同 path 覆盖(last-wins)。"""
-    store = getattr(session, 'expected_state', None)
+    store = getattr(exec_state_of(session), 'expected_state', None)
     if store is None:
         store = {}
-        session.expected_state = store
+        exec_state_of(session).expected_state = store
     store[entry.path] = entry
 
 
 def clear_expected(session, paths: list[str]) -> None:
     """清账(覆盖点确认后;组条目按 group_id 整组清)。"""
-    store = getattr(session, 'expected_state', None)
+    store = getattr(exec_state_of(session), 'expected_state', None)
     if not store:
         return
     group_ids: set[str] = set()
@@ -148,8 +149,8 @@ def _char_fee(name: str) -> int | None:
 
 
 def _session_tracked(session) -> tuple[list[BenchChar], list[BenchChar | None]]:
-    m = getattr(session, 'tracked_bench_chars', None) or []
-    d = getattr(session, 'tracked_deployed', None) or []
+    m = getattr(exec_state_of(session), 'tracked_bench_chars', None) or []
+    d = getattr(exec_state_of(session), 'tracked_deployed', None) or []
     return list(m), list(d)
 
 
@@ -170,7 +171,7 @@ def apply_op_effect(session, action: PrepAction | dict, *,
     """原子 op 的期望态推进(EXPECTED_STATE §3 表;两执行面同源入口)。
 
     返回效果列表 [{path, value, kind}](组合动作子动作效果上抛形态)。
-    登记进 session.expected_state;同时推进可计算的 session 字段本体
+    登记进 exec_state_of(session).expected_state;同时推进可计算的 session 字段本体
     (gold/owned/xp——xp 通道分道:XpLedger 是权威账本,本函数只在
     显式传 pending 时做簿记镜像,不双写)。
     显式不建模盲区(EXPECTED_STATE §6):``_handle_bench_full`` 席满急救
@@ -233,7 +234,7 @@ def apply_op_effect(session, action: PrepAction | dict, *,
                  'tracked', group_id=f'deploy-{bc.char_id}-{at_round}')
     elif isinstance(action, LevelUp):
         # xp 分道:XpLedger 权威(锚点+轮界重锚);此处仅簿记镜像条目。
-        led = getattr(session, 'xp_expect_ledger', None)
+        led = getattr(exec_state_of(session), 'xp_expect_ledger', None)
         if led is not None and getattr(led, 'anchored', False):
             _reg('xp_ledger', f'lv{led.level} xp{led.xp_cur}',
                  'xp_ledger', confirm_point='prep_obs')
@@ -254,7 +255,7 @@ def apply_op_effect(session, action: PrepAction | dict, *,
             _reg(f'owned[{chosen}]', '+1(武装箱选卡)', 'owned')
     elif isinstance(action, RunBuyPhase):
         # buy 分道:BuyExpect 载体原样,expected_state 仅挂载点统一。
-        expect = pending_buy_expect or getattr(session, 'pending_buy_expect', None)
+        expect = pending_buy_expect or getattr(exec_state_of(session), 'pending_buy_expect', None)
         if expect is not None:
             _reg('buy_expect', expect, 'buy_expect')
     elif isinstance(action, dict):
@@ -339,7 +340,7 @@ def reconcile_expected(session, coverage_point: str,
     Returns:
         diff 行列表(空 = 全部可比项一致或无条目)。
     """
-    store = getattr(session, 'expected_state', None)
+    store = getattr(exec_state_of(session), 'expected_state', None)
     if not store:
         return []
     diffs: list[dict] = []

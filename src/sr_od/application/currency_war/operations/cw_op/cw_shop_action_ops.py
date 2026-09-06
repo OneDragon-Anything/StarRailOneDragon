@@ -37,6 +37,7 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
     SHOP_SCREEN_NAME,
@@ -59,6 +60,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     mutate_bench_deployed,
     simulate,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.telemetry import defects, recorder
 
 if TYPE_CHECKING:
@@ -233,7 +235,7 @@ def guard_expected_vs_tracked(state: GameState, session,
     入口观察)。豁免面外的真分叉 = 断言炸出。
     """
     tracked = bench_from_compact(
-        [bc for bc in (getattr(session, 'tracked_bench_chars', None) or [])
+        [bc for bc in (getattr(exec_state_of(session), 'tracked_bench_chars', None) or [])
          if bc is not None])
     expect_sig = _bench_identity_signature(state.bench)
     tracked_sig = _bench_identity_signature(tracked)
@@ -359,7 +361,7 @@ class BuyCardOp(ShopActionOp):
             # 不可判(裁片缺失)与没判可分:skipped 计数分键显影
             # (低-4 清单见 buy_click_ineffective docstring 指针)。
             with contextlib.suppress(Exception):
-                _ct = match.session.cw4_counters
+                _ct = strategy_state_of(match.session).cw4_counters
                 _ct['buy_click_verify_skipped'] = \
                     _ct.get('buy_click_verify_skipped', 0) + 1
         if buy_click_ineffective(_card_crop, _after_crop):
@@ -392,7 +394,7 @@ class BuyCardOp(ShopActionOp):
             # 干旱计数(重置单一源 = 商店可见性 _update_pair_drought),
             # 解锁流程审计面落台账。复用 defect_ledger,异常不阻断买入。
             with contextlib.suppress(Exception):
-                _ist_e = getattr(match.session, 'v3_intention', None)
+                _ist_e = getattr(strategy_state_of(match.session), 'v3_intention', None)
                 _pd = getattr(_ist_e, 'pair_drought', None)
                 if isinstance(_pd, dict):
                     from sr_od.application.currency_war.kernel.cw_intention import (
@@ -407,8 +409,8 @@ class BuyCardOp(ShopActionOp):
                             record_drought_buy_no_reset(
                                 member=action.card.name,
                                 system=_sys, drought=_d)
-        mutate_bench_deployed(match.session.tracked_bench_chars,
-                              match.session.tracked_deployed, action)
+        mutate_bench_deployed(exec_state_of(match.session).tracked_bench_chars,
+                              exec_state_of(match.session).tracked_deployed, action)
         if action.card.name:
             _cnt = 1
             if bench_occupied(state.bench) >= BENCH_CAPACITY:
@@ -417,7 +419,7 @@ class BuyCardOp(ShopActionOp):
                 # k×单价,执行账补差 (k−1)×单价。
                 _cnt = max(1, merge_buy_k(
                     action.card.name, action.card.star or 1, state.bench,
-                    match.session.tracked_deployed, state.shop))
+                    exec_state_of(match.session).tracked_deployed, state.shop))
                 ledger.spend_executed += (action.card.cost or 0) * (_cnt - 1)
             from sr_od.application.currency_war.kernel.cw_prep_expect import (
                 BuyPurchase,
@@ -478,10 +480,10 @@ class SellBenchOp(ShopActionOp):
             return False
         # tracking 同步:置 None 不紧缩(ADR-0316);紧凑态先归一为槽位表
         # 语义再 mutate(索引=槽位,防清错槽)。
-        _tracked = match.session.tracked_bench_chars
+        _tracked = exec_state_of(match.session).tracked_bench_chars
         _tracked[:] = bench_from_compact(
             [bc for bc in _tracked if bc is not None])
-        mutate_bench_deployed(_tracked, match.session.tracked_deployed, action)
+        mutate_bench_deployed(_tracked, exec_state_of(match.session).tracked_deployed, action)
         # ADR-0328 执行域对齐:卖出件入同轮已卖集(执行成功是卖出事实的
         # 权威,register_round_sold 带轮键自校验)。
         from sr_od.application.currency_war.kernel.cw_round_ledger import (

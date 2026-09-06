@@ -1,15 +1,13 @@
 """criteria/equipment——装备面(§2.6;M7 基础穿戴义务在 mandate)。
 
 修复池落点:D-B(非 key_equips 穿戴释放三态门 ``wear_release``——
-不再用无边界 opening 布尔拦穿)、D-F46(词缀条件装备分配
-``affix_allocation``——「软弱无力」类敌词缀下主输出位优先凑满 3 件,
-OPEN=sim 定谳)、D-P3(收尾段终局投资语境输入)。
+不再用无边界 opening 布尔拦穿)、D-P3(收尾段终局投资语境输入)。
+D-F46(词缀条件装备分配)的生产单一源 =
+``cw_equip_env.resolve_affix_priority_order``(cw_op_equip_all 消费);
+本模块原 ``affix_allocation`` 系其孤儿第二实现且键 'weakness' 死键,
+已随判据出处纠错批删除(墓碑见 criteria/__init__.py BYPASS_TABLE 行)。
 """
 from __future__ import annotations
-
-# 敌方词缀条件键(D-F46;词缀 id/名注册表随 data 批定谳,当前在册 =
-# 复盘 195720-F「软弱无力:未满 3 件伤害 8 折」单例)
-AFFIX_WEAKNESS: str = 'weakness'
 
 
 def wear_release(opening_achieved: bool, node_type: str | None,
@@ -30,22 +28,6 @@ def wear_release(opening_achieved: bool, node_type: str | None,
     if node_type in ('encounter', 'boss'):
         return True, 'hard_node'
     return False, 'saving_for_core'
-
-
-def affix_allocation(enemy_affixes: list[str],
-                     candidates: list[tuple[str, int]],
-                     ) -> list[tuple[str, int]]:
-    """D-F46 词缀条件装备分配排序(谓词,非发射)。
-
-    ``candidates`` = [(单位名, 已穿件数)];出现 AFFIX_WEAKNESS(未满
-    3 件伤害打折)⇒ 排序切换为「主输出位优先凑满 3 件」:已穿 <3 的
-    单位升序优先(凑满通道);无词缀 ⇒ 原序(均匀/先到先得)。
-    主输出位识别( carry 标记)随 comp 知识批定谳——当前以已穿件数
-    代理(OPEN 呈报)。
-    """
-    if AFFIX_WEAKNESS not in enemy_affixes:
-        return list(candidates)
-    return sorted(candidates, key=lambda c: (min(c[1], 3), c[0]))
 
 
 def keep_policy(redemption_distance: int) -> tuple[bool, str]:

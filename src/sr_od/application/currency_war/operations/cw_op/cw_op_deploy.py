@@ -25,6 +25,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import get_char
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_launch_admission import (
     DEPLOY_FENCE as _DEPLOY_FENCE,
 )
@@ -35,6 +36,7 @@ from sr_od.application.currency_war.kernel.cw_launch_admission import (
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
     load_avatar_templates,
@@ -75,7 +77,7 @@ def record_fuel_filler_held_postbuy(session, held: list[tuple[str, str]]) -> int
     """出口③闭环分键(N3,17 号稿 §7.2;可离线测)。
 
     出口③买入的垫件,在后续部署帧被围栏 held 留 bench 时计
-    ``fuel_filler_stall_held_postbuy``(session.cw4_counters;零静默)。
+    ``fuel_filler_stall_held_postbuy``(strategy_state_of(session).cw4_counters;零静默)。
     held 名单+拒因 = kernel 围栏语义单一源(N2:
     cw_deploy_logic.select_deployments_reasoned)在执行时刻的现读重建,
     本函数只做计数回流,不重建围栏语义(C2 落点声明:不新建策略→op
@@ -92,12 +94,12 @@ def record_fuel_filler_held_postbuy(session, held: list[tuple[str, str]]) -> int
 
     返回计数增量(测试断言用)。
     """
-    buys = getattr(session, 'cw4_fuel_filler_stall_buys', None)
+    buys = getattr(strategy_state_of(session), 'cw4_fuel_filler_stall_buys', None)
     # 载体两形态兼容:dict(名→登记轮号,T3 同轮保留批升级)或旧裸 set;
     # 成员判定语义一致(键/元素名集)。
     if not isinstance(buys, (dict, set)) or not buys:
         return 0
-    counters = getattr(session, 'cw4_counters', None)
+    counters = getattr(strategy_state_of(session), 'cw4_counters', None)
     n = 0
     for name, reason in held:
         if name in buys:
@@ -121,7 +123,7 @@ def prune_fuel_filler_deployed(session, deployed_names) -> int:
     漏销 = 后续帧误保面。旧 set 载体仅成员摘除(无轮戳,读端轮界兜底
     自会清)。返回销账数(测试断言用)。
     """
-    buys = getattr(session, 'cw4_fuel_filler_stall_buys', None)
+    buys = getattr(strategy_state_of(session), 'cw4_fuel_filler_stall_buys', None)
     if not isinstance(buys, (dict, set)) or not buys:
         return 0
     _on_board = set(deployed_names or ())
@@ -527,7 +529,7 @@ class CwOpDeploy(SrOperation):
                   if (_match is not None and _match.session is not None
                       and _match.session.last_state is not None) else None)
         # r120(断层①修复:配方从不成型的执行层根因):deploy 的 target 判定原读
-        # session.target_comp(终局 comp)——双轨期预囤的框架件(藿藖/卡芙卡=仙舟)
+        # strategy_state_of(session).target_comp(终局 comp)——双轨期预囤的框架件(藿藖/卡芙卡=仙舟)
         # 不是终局 comp 的阵营/core → deploy-swap 当 off-target 卖(局35 r7 卡芙卡
         # 被卖 4 次实证)+「target 先」排序不认 → 板面配方永不成型(P1 通关全靠
         # 人口硬扛)。修:双轨期走 decision_target 单一入口(=配方伪 comp),
@@ -546,7 +548,7 @@ class CwOpDeploy(SrOperation):
         _swap_ctx = None
         if _sess is not None:
             _tracked_n = swap_arm_deployed_count(
-                _board, getattr(_sess, 'tracked_deployed', None))
+                _board, getattr(exec_state_of(_sess), 'tracked_deployed', None))
             _swap_ctx = _aswap(
                 _sess,
                 state=_sess.last_state,
@@ -563,7 +565,7 @@ class CwOpDeploy(SrOperation):
             # 装配不可得退型:target 视图按定型 comp 直读(ADR-0152
             # all_factions 口径;双轨伪 comp 不可得时的保守侧,与旧
             # committed_from 读端退化同向)。
-            _fb_comp = getattr(_sess, 'target_comp', None)
+            _fb_comp = getattr(strategy_state_of(_sess), 'target_comp', None)
             if _fb_comp is not None:
                 _target_factions = set(
                     getattr(_fb_comp, 'all_factions', None) or ())
@@ -603,20 +605,20 @@ class CwOpDeploy(SrOperation):
                 _protect: frozenset[str] = (
                     _swap_ctx.protect_names
                     if _swap_ctx is not None else frozenset())
-                _arm_prev = getattr(_match.session, 'cw4_swap_arm_on', None)
+                _arm_prev = getattr(exec_state_of(_match.session), 'cw4_swap_arm_on', None)
                 if _arm_prev is not None and _arm_prev != _fenced_arm:
                     log.info('[cw-deploy] 换阵卖出义务臂状态变化: %s → %s'
                              '(fp/部署数逐环重评,开合抖动可观测)',
                              _arm_prev, _fenced_arm)
-                _match.session.cw4_swap_arm_on = _fenced_arm
+                exec_state_of(_match.session).cw4_swap_arm_on = _fenced_arm
                 if _fenced_arm:
                     log.info('[cw-deploy] 换阵卖出义务臂开启:线成型 fp=1.00 ∧ 板满 '
                              f'∧ bench target={_bench_tgt_n} → off-line 引擎/配方件'
                              '让位可卖(新线 core∪shared 仍保护)')
                 # m1p 执行侧归因:读发射位 pending(本帧 m1p 换血臂)后即清
                 #(一次消费;缺省 None = 非 m1p 帧,卖出计 regular 键零漂移)
-                _m1p_arm = getattr(_sess, 'cw4_m1p_arm_pending', None)
-                _sess.cw4_m1p_arm_pending = None
+                _m1p_arm = getattr(strategy_state_of(_sess), 'cw4_m1p_arm_pending', None)
+                strategy_state_of(_sess).cw4_m1p_arm_pending = None
                 _n = self._sell_offtarget_deployed(
                     front, back, _target_factions, templates,
                     max_sell=_bench_tgt_n, target_cores=_target_cores,
@@ -649,7 +651,7 @@ class CwOpDeploy(SrOperation):
         # r132 装备遥测采集(穿戴侧盲区修复):decisions.jsonl 的 deployed.equips 恒空
         # (决策点 state 来自 session.tracking 深拷贝,tracking 无 equips 字段;r117 定位)
         # → 判读永远看不见装备齐度。deploy 后此处是**全量读时机**(画面稳定/正对
-        # 备战)——读 equipped below icon 并写 session.tracked_deployed[].equips,
+        # 备战)——读 equipped below icon 并写 exec_state_of(session).tracked_deployed[].equips,
         # 后续决策快照自动携带。best-effort,失败不阻塞。
         try:
             self._snapshot_equips_into_tracking()
@@ -757,7 +759,7 @@ class CwOpDeploy(SrOperation):
             self._reconcile_tracking(templates)   # 换排后 tracking 再纠一次
 
     def _snapshot_equips_into_tracking(self) -> None:
-        """读当前画面已上阵装备 → 回写 session.tracked_deployed 的 equips 字段。"""
+        """读当前画面已上阵装备 → 回写 exec_state_of(session).tracked_deployed 的 equips 字段。"""
         _match = self.ctx.cw_match
         if _match is None or _match.session is None:
             return
@@ -790,7 +792,7 @@ class CwOpDeploy(SrOperation):
             back_eq = None
         else:
             back_eq = read_row_equipped(self.ctx, scr, equip_grays, _bk_pfx, _bk_n)
-        tracked = _match.session.tracked_deployed
+        tracked = _match.exec_state.tracked_deployed
         _n = 0
         for c in tracked:
             slot = getattr(c, 'slot', None)
@@ -954,8 +956,8 @@ class CwOpDeploy(SrOperation):
             deploy_target_sets as _deploy_target_sets,
         )
         _tgt, _fw_carry = _deploy_target_sets(
-            (_sess.target_comp if _sess is not None else None),
-            (getattr(_sess, 'transition_framework', '')
+            (strategy_state_of(_sess).target_comp if _sess is not None else None),
+            (getattr(strategy_state_of(_sess), 'transition_framework', '')
              if _sess is not None else ''))
         # D-8:bench 身份走 SIFT(read_bench_chars,plaza 官方立绘库可靠)→ 真实羁绊(target 排序)+ position_pref
         # (5.1.6 选排)。两者都从 get_char 注册表查(SIFT 只给 char_id,BenchChar.position_pref 默认 "back"
@@ -971,11 +973,11 @@ class CwOpDeploy(SrOperation):
                     _bench_pos[bc.slot - 1] = ch.position_pref()
                     _bench_cid[bc.slot - 1] = bc.char_id
         # ADR-0139:comp 特定站位覆盖命途默认(爻光必后台/万敌独前排——攻略实证,同 _pick_deploy_row 语义)
-        if (_sess is not None and _sess.target_comp is not None
-                and _sess.target_comp.char_positions):
+        if (_sess is not None and strategy_state_of(_sess).target_comp is not None
+                and strategy_state_of(_sess).target_comp.char_positions):
             for bi2, cid2 in list(_bench_cid.items()):
-                if cid2 in _sess.target_comp.char_positions:
-                    _bench_pos[bi2] = _sess.target_comp.char_positions[cid2]
+                if cid2 in strategy_state_of(_sess).target_comp.char_positions:
+                    _bench_pos[bi2] = strategy_state_of(_sess).target_comp.char_positions[cid2]
             log.info(f'[cw-deploy] bench 身份(SIFT):{ {i: sorted(b) for i, b in _bench_id.items()} }'
                      f' pos={_bench_pos} tgt={sorted(_tgt)}')
         # 5.1.7 同角色去重(live 观察 3,场上同角色只 1):read_deployed_chars → deployed char_id;
@@ -1002,8 +1004,8 @@ class CwOpDeploy(SrOperation):
         # ✓「已部署角色」→ 同签名零推进环(G3 守卫停机)。收敛后本 op 只做
         # 输入装配(SIFT 现读身份)+ 拖拽执行;拖拽循环内的动态守卫(fresh
         # 复查/动态 cap/逐件 r288 仲裁/落点验证)保留作运行时防线。
-        _cores = (_sess.target_comp.core_chars
-                  if (_sess is not None and _sess.target_comp is not None) else None) or []
+        _cores = (strategy_state_of(_sess).target_comp.core_chars
+                  if (_sess is not None and strategy_state_of(_sess).target_comp is not None) else None) or []
         _board_in = dict(_sess.last_state.board
                          if (_sess is not None and _sess.last_state is not None)
                          else {}) or {}
@@ -1011,7 +1013,7 @@ class CwOpDeploy(SrOperation):
             from sr_od.application.currency_war.kernel.cw_intention import (
                 locked_faction_scope as _lfs,
             )
-            _locked_fac = _lfs(getattr(_sess, 'v3_intention', None)) \
+            _locked_fac = _lfs(getattr(strategy_state_of(_sess), 'v3_intention', None)) \
                 or frozenset()
         except Exception:   # noqa: BLE001 —— 围栏兜底 best-effort
             _locked_fac = frozenset()
@@ -1059,7 +1061,7 @@ class CwOpDeploy(SrOperation):
         # 回流遥测(C2 落点声明,不新建策略→op 反向依赖)。买入登记源 =
         # session.cw4_fuel_filler_stall_buys(出口③发射位买入时写入的名集;
         # 发射位随两核实门放行后接线,本消费口先行闭环)。
-        _ff_buys = getattr(_sess, 'cw4_fuel_filler_stall_buys', None)
+        _ff_buys = getattr(strategy_state_of(_sess), 'cw4_fuel_filler_stall_buys', None)
         if isinstance(_ff_buys, (dict, set)) and _ff_buys:
             record_fuel_filler_held_postbuy(
                 _sess,
@@ -1415,7 +1417,7 @@ class CwOpDeploy(SrOperation):
         _sess = (self.ctx.cw_match.session
                  if (self.ctx.cw_match is not None
                      and self.ctx.cw_match.session is not None) else None)
-        _counters = getattr(_sess, 'cw4_counters', None) if _sess else None
+        _counters = getattr(strategy_state_of(_sess), 'cw4_counters', None) if _sess else None
         _cands: list[tuple[tuple, object, set[str]]] = []
         for d in deployed:
             if sold >= max_sell:

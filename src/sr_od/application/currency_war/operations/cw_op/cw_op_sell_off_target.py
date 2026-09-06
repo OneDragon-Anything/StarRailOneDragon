@@ -24,6 +24,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -47,11 +48,11 @@ class CwOpSellOffTarget(SrOperation):
         SrOperation.__init__(self, ctx, op_name='货币战争-清存量off-target')
 
     def _target_factions(self) -> set[str]:
-        """session.target_comp.factions(无 target → 空 → 本 op 不清,return None 语义由调用判)。"""
+        """strategy_state_of(session).target_comp.factions(无 target → 空 → 本 op 不清,return None 语义由调用判)。"""
         _match = self.ctx.cw_match
         if (_match is not None and _match.session is not None
-                and _match.session.target_comp is not None):
-            return set(_match.session.target_comp.factions)
+                and strategy_state_of(_match.session).target_comp is not None):
+            return set(strategy_state_of(_match.session).target_comp.factions)
         return set()
 
     def _read_panel_factions(self, screen) -> set[str]:

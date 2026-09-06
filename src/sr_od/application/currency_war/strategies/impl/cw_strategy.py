@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 from sr_od.application.currency_war.kernel.cw_events import (
@@ -32,6 +32,10 @@ from sr_od.application.currency_war.kernel.cw_events import (
     PartnerPick,
     SupplyOption,
     SupplyPick,
+)
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    ExecState,
+    bind_exec_state,
 )
 from sr_od.application.currency_war.kernel.cw_performance import (
     RoundOutcome,
@@ -87,6 +91,17 @@ class CwStrategy(ABC):
         """每局开始(run loop)调一次。返回空白 ``StrategySession``(rng 留默认,由 run loop 按
         ``config.strategy_seed`` 覆盖)。策略可覆盖以注入自己的 session 子类 / 初始 memory。"""
 
+    def create_state(self, config: CurrencyWarConfig) -> object:
+        """策略器状态对象工厂(session.md as-designed §3.1/§5.1)。
+
+        每局冷建一局存活的策略器状态对象,写入 ``session.strategy_state``
+        (黑盒契约:框架只搬运引用,不读不写内部;所有权归策略器)。
+        **非 abstract 钩子,基类缺省返回 None**(第三方兼容条款 B4,收缩
+        口径见 ADR-0563:缺省 None 不炸构造与 create_session;工厂实现
+        契约 = 可忽略 config/容忍 None——sim 注入桩面传 None);内置
+        mandate_v1 覆写返回 ``MandateState``。"""
+        return None
+
     @abstractmethod
     def on_match_start(self, state: GameState, session: StrategySession,
                        config: CurrencyWarConfig) -> None:
@@ -109,7 +124,7 @@ class CwStrategy(ABC):
     def update_target(self, state: GameState, session: StrategySession,
                       config: CurrencyWarConfig) -> None:
         """战略层:选/转型 target_comp。框架在每个备战回合 ``decide_shop_screen`` **之前**调一次。
-        实现写 ``session.target_comp``(首轮选;其后按信号 pivot;无强信号保持)。"""
+        实现写 ``state_of(session).target_comp``(首轮选;其后按信号 pivot;无强信号保持)。"""
 
     @abstractmethod
     def decide_prep_action(self, obs, session: StrategySession,
@@ -168,7 +183,7 @@ class CwStrategy(ABC):
         """商店开画面黑板决策接口(W971 §2/§4.1 amendment;前身 = ``decide_prep``)。
 
         - 输入:``session`` 唯一数据总线——商店融合观察态由商店观察段写入
-          ``session.shop_state_frame``;战略导向 ``session.target_comp`` 同 session。
+          ``session.shop_state_frame``;战略导向 ``state_of(session).target_comp`` 同 session。
         - 返回:动作 list;词表 = {BuyCard, **LevelUpShop**, RefreshShop, SellBench,
           SellDeployed, CompTransaction}——升级意图用商店屏专用 ``LevelUpShop``
           (W970 §4.1.3 拆分,LevelUpShop is-a LevelUp,执行器/账本零改动)。
@@ -221,6 +236,23 @@ class CurrencyWarMatch:
     """
     strategy: CwStrategy
     session: StrategySession
+    # 执行层状态载体(session.md §2.4/§5.5;22 具名,生命周期 = 一局;
+    # 账外收编账本 = ADR-0563「落位裁量」节)。
+    # 访问口与旁表绑定单一源见 kernel/cw_exec_state.py。
+    exec_state: ExecState = field(default_factory=lambda: ExecState())
+
+    def __post_init__(self) -> None:
+        # session→执行侧载体旁表绑定(单一源;kernel/策略器/sim 无 ctx
+        # 面经 exec_state_of(session) 解析到同一实例)。
+        bind_exec_state(self.session, self.exec_state)
+        # 策略器状态兜底附着:策略未覆写 create_session(直用裸 session)
+        # 而状态工厂已注册(mandate_v1 在场)→ 附着当局状态对象。恢复局
+        # 冷启动契约(session.md §3.2)不变——附着的是**新建**状态对象;
+        # 第三方策略无工厂注册 → 保持 None(其策略器沿用惰性建模式)。
+        from sr_od.application.currency_war.kernel.cw_strategy_session import (
+            ensure_strategy_state_attached,
+        )
+        ensure_strategy_state_attached(self.session)
 
 
 #: obs 读口注入槽(缺省关):清 obs 模块级 last-known-good 缓存的回调。

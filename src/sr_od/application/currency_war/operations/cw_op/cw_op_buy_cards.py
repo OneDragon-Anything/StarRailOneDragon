@@ -12,6 +12,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
@@ -32,6 +33,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     bench_from_compact,
     bench_occupied,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import (
     PHASE_PREP_SHOP_OPEN,
     ensure_portrait_templates,
@@ -429,7 +431,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
     """
     visit_actions.append(action)
     if _ok and isinstance(action, BuyCard) and action.card.name:
-        match.session.cw4_visit_bought_names.append(action.card.name)
+        strategy_state_of(match.session).cw4_visit_bought_names.append(action.card.name)
     if _ok and not _aop.terminal:
         _skip_guard = (isinstance(action, BuyCard)
                        and bench_occupied(_cur.bench) >= BENCH_CAPACITY)
@@ -507,8 +509,8 @@ def run_buy_waves(op: SrOperation, match,
     gold_open: int | None = None
     _buy_baseline = op.screenshot()
     # `w536_merge_expect/`:买牌期望态基座(pre 快照 = 单元执行前 tracked)。
-    _buy_pre_bench = deepcopy(match.session.tracked_bench_chars)
-    _buy_pre_deployed = deepcopy(match.session.tracked_deployed)
+    _buy_pre_bench = deepcopy(exec_state_of(match.session).tracked_bench_chars)
+    _buy_pre_deployed = deepcopy(exec_state_of(match.session).tracked_deployed)
     # 执行边界压缩:首段 update_target 已做(替代原开店后独立读);
     # _prev_refresh_only = 上一段是「仅刷新段」(连击续刷判定输入,
     # 判据单一源 = refresh_wave_is_refresh_only)。
@@ -547,8 +549,8 @@ def run_buy_waves(op: SrOperation, match,
             committed_from,
         )
         state.dual_track_phase = not committed_from(match.session)
-        if getattr(match.session, 'transition_framework', ''):
-            state.focus_factions = getattr(match.session, 'focus_factions', set())
+        if getattr(strategy_state_of(match.session), 'transition_framework', ''):
+            state.focus_factions = getattr(strategy_state_of(match.session), 'focus_factions', set())
         # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏 → 读 0 时重读几帧取首个 >0。
         # 观察冲突审计 #6:救援结果留证(救回/连读 0 统计,为 gold 双源排期供数据)。
         if state.gold == 0:
@@ -577,10 +579,10 @@ def run_buy_waves(op: SrOperation, match,
         # 追加、无人清理,回退会复活陈旧名(实证 = 2026-09-05 OpenShop
         # 双账分叉事故,诊断档
         # .debug/temp/currency_war/20260905_openshop_fork_diag/report.md)。
-        if match.session.tracked_bench_chars:
+        if exec_state_of(match.session).tracked_bench_chars:
             # ADR-0316:tracked 是占用列表(带 1-based slot)→ 槽位表
             state.bench = bench_from_compact(
-                deepcopy(match.session.tracked_bench_chars))  # copy 防下游 plan 污染持久态
+                deepcopy(exec_state_of(match.session).tracked_bench_chars))  # copy 防下游 plan 污染持久态
             log.info(f'[cw] tracked_bench_chars(seed)='
                      f'{[(c.char_id, c.star) for c in state.bench if c is not None]}')
         match.session.last_state = state
@@ -590,13 +592,13 @@ def run_buy_waves(op: SrOperation, match,
         # decide_shop_action。
         match.session.shop_state_frame = state
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好)段级清零。
-        match.session.cw4_visit_bought_names = []
+        strategy_state_of(match.session).cw4_visit_bought_names = []
         # 期望态覆盖点·商店段顶(条目绑覆盖点机制保留,EXPECTED_STATE §2)。
         try:
             from sr_od.application.currency_war.kernel.cw_expected_state import (
                 reconcile_expected,
             )
-            _store = getattr(match.session, 'expected_state', None) or {}
+            _store = getattr(exec_state_of(match.session), 'expected_state', None) or {}
             _act = {}
             for _p, _e in list(_store.items()):
                 if _e.confirm_point != 'shop_wave_top':
@@ -609,9 +611,13 @@ def run_buy_waves(op: SrOperation, match,
         # r97 供给快照(进店首见):全段牌面真值源之一(含 refresh 段)。
         recorder.record_shop_snapshot('offer', state.shop, state.gold,
                                       state.plane, state.round_num)
-        # A2:target 由 session 管理(update_target 写),日志/telemetry 直接读 session.target_comp。
-        target_name = match.session.target_comp.name if match.session.target_comp is not None else ''
-        _fp_v = _form_progress(match.session.target_comp, state) if match.session.target_comp is not None else -1.0
+        # A2:target 由策略器状态管理(update_target 写)。日志/遥测披露值构造
+        # = 披露面,经访问函数防御 getattr(strategy_state_of None 契约,
+        # ADR-0563 B4 划分线:异型状态对象字段缺席退缺省,缺席语义 = 迁移前
+        # None 缺省字段的 '?'/''/-1.0,非行为面读点)
+        _tc = getattr(strategy_state_of(match.session), 'target_comp', None)
+        target_name = _tc.name if _tc is not None else ''
+        _fp_v = _form_progress(_tc, state) if _tc is not None else -1.0
         # r295(判读必须看节点类型):state 行带 node(本节点类型)+next。
         _node = getattr(match.session, 'node_type_current', None) or '?'
         _upc = getattr(match.session, 'upcoming_types', None) or []
@@ -620,53 +626,55 @@ def run_buy_waves(op: SrOperation, match,
                  f'plane={state.plane} round={state.round_num} node={_node} '
                  f'next={_next} board={state.board} '
                  f'target={target_name!r} fp={_fp_v:.2f} bench={bench_occupied(state.bench)}')
-        _cand = dict(getattr(match.session, 'last_candidate_scores', {}) or {})
-        if getattr(match.session, 'last_candidate_scores_round', None) != state.round_num:
+        _cand = dict(getattr(strategy_state_of(match.session), 'last_candidate_scores', {}) or {})
+        if getattr(strategy_state_of(match.session), 'last_candidate_scores_round', None) != state.round_num:
             _cand = {}   # r3 review②:非本轮回合的分数是陈旧值 → 清空防 close_call 污染
-        # r73 RC6:fp 落遥测
+        # r73 RC6:fp 落遥测(披露面防御 getattr,同上 B4 划分线)
         _eb: dict[str, float] = {}
-        if match.session.target_comp is not None:
-            _eb['fp'] = round(_form_progress(match.session.target_comp, state), 3)
+        if _tc is not None:
+            _eb['fp'] = round(_form_progress(_tc, state), 3)
         # r101 session 态快照(redesign/102:完整决策输入落盘,回放/快照回归用)
         _sess = match.session
+        # v2 相位披露值(披露面防御 getattr,同上 B4 划分线)
+        _v2_state = getattr(strategy_state_of(_sess), 'v2_state', None)
         _extra = {
-            'sess_framework': getattr(_sess, 'transition_framework', '') or '',
+            'sess_framework': getattr(strategy_state_of(_sess), 'transition_framework', '') or '',
             'sess_dual_track': not committed_from(_sess),   # R1 唯一读端
-            'sess_drought': getattr(_sess, 'target_drought', None),
-            'sess_commit_scores': dict(getattr(getattr(_sess, 'commit_signals', None), 'scores', {}) or {}),
+            'sess_drought': getattr(strategy_state_of(_sess), 'target_drought', None),
+            'sess_commit_scores': dict(getattr(getattr(strategy_state_of(_sess), 'commit_signals', None), 'scores', {}) or {}),
             'sess_active_env': getattr(_sess, 'active_env', '') or '',
             # ADR-0343:成型停手态(层2 写;检查器豁免/判读锚点)
-            'formed_stop': bool(getattr(_sess, 'v3_formed_stop', False)),
+            'formed_stop': bool(getattr(strategy_state_of(_sess), 'v3_formed_stop', False)),
             # ADR-0346 相位影子观测(零消费;每轮 decide_prep 入口算,session 写,此处只透传)
-            'phase': getattr(_sess, 'v3_phase', '') or '',
-            'form_ok': bool(getattr(_sess, 'v3_form_ok', False)),
+            'phase': getattr(strategy_state_of(_sess), 'v3_phase', '') or '',
+            'form_ok': bool(getattr(strategy_state_of(_sess), 'v3_form_ok', False)),
             # B_t 板面目标线承重计数(form_score 替代披露口径;写者单一源 =
             # write_shop_mirrors,历史 form_score 只读退役)
-            'b_t': int(getattr(_sess, 'v3_b_t', 0) or 0),
+            'b_t': int(getattr(strategy_state_of(_sess), 'v3_b_t', 0) or 0),
             # ADR-0347 授权依据 trace:当轮 DP 日志表姿态
             'dp_posture': str(getattr(getattr(
-                getattr(_sess, 'v3_dp_posture', None),
+                getattr(strategy_state_of(_sess), 'v3_dp_posture', None),
                 'posture', None), 'tag', '') or ''),
             # ADR-0348 ↺:扑满节点识别遥测
-            'piggy_reward': bool(getattr(_sess, 'v3_piggy_reward', False)),
+            'piggy_reward': bool(getattr(strategy_state_of(_sess), 'v3_piggy_reward', False)),
             # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:恒空,保留兼容)
             'strategy_id': getattr(config, 'strategy_id', 'mandate_v1'),
             # 臂位遥测(IMPL_DESIGN §4.1 R1-1;§6.4-R 步4)
             'ev_arm': (getattr(config, 'ev_arm', '')
                        if getattr(config, 'strategy_id', '') == 'mandate_v1'
                        else ''),
-            'v2_mode': (_sess.v2_state[0] if _sess.v2_state else ''),
-            'v2_locked_line': _sess.locked_line or '',
-            'v2_bridge': _sess.bridge_id or '',
+            'v2_mode': (_v2_state[0] if _v2_state else ''),
+            'v2_locked_line': getattr(strategy_state_of(_sess), 'locked_line', None) or '',
+            'v2_bridge': getattr(strategy_state_of(_sess), 'bridge_id', None) or '',
             # r359(回放忠实化,ADR-0231):v2 相位机元组全量落盘
-            'sess_v2_state': list(_sess.v2_state)
-            if getattr(_sess, 'v2_state', None) else None,
+            'sess_v2_state': list(strategy_state_of(_sess).v2_state)
+            if getattr(strategy_state_of(_sess), 'v2_state', None) else None,
             # w146 v3 意向状态落遥测(锁定时点/目标只有这里可读)
             'v3_intention': serialize_intention(
-                getattr(_sess, 'v3_intention', None)),
+                getattr(strategy_state_of(_sess), 'v3_intention', None)),
             # `w224_handoff/`/ADR-0399:P2 承接快照(纯观测透传)
-            'handoff': (getattr(_sess, 'v3_handoff', None).as_dict()
-                        if getattr(_sess, 'v3_handoff', None)
+            'handoff': (getattr(strategy_state_of(_sess), 'v3_handoff', None).as_dict()
+                        if getattr(strategy_state_of(_sess), 'v3_handoff', None)
                         is not None else None),
         }
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----

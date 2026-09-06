@@ -11,7 +11,7 @@
   session),可安全复用。OCR 取全屏(``crop_first=False`` + ``color_range=None``)命中 analyze 同一份缓存
   (见 screen-recognizers.md「OCR 缓存复用」),不触发冗余 OCR。
 - **不复用 ``read_round_outcome``**:它要 ``plane`` / ``round_num`` / ``comp_tag`` 由调用方(loop,知当前节点
-  + ``session.target_comp``)传入 —— 结算屏本身不暴露这些;recognizer 不读 session,拿不到也不该读。
+  + ``strategy_state_of(session).target_comp``)传入 —— 结算屏本身不暴露这些;recognizer 不读 session,拿不到也不该读。
 - **hp 语义**:`parse_settlement_hp` 读到 → 该值;失败屏(「挑战失败」= 团灭)常读不到数字(hp_after 本就是 0
   ground truth)→ 取 0;非失败屏读不到 → None(不硬塞,见 spec「不稳定字段不硬塞」)。
 """

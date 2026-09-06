@@ -49,7 +49,6 @@ from sr_od.application.currency_war.kernel.cw_events import (
     SupplyPick,
 )
 from sr_od.application.currency_war.kernel.cw_evolution import (
-    EvolutionState,
     rollback_weakest,
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
@@ -77,6 +76,9 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     CwStrategy,
     StrategySession,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    state_of,
 )
 from sr_od.application.currency_war.strategies.impl.pick_bias import (
     PICK_BIAS,
@@ -115,69 +117,25 @@ class CwFlowStrategy(CwStrategy):
 
     def on_match_start(self, state: GameState, session: StrategySession,
                        config) -> None:
-        """扩展态初始化(意向/演进/报警;v2 同轮簿记一并清零)。
+        """当局状态对象保证(session.md as-designed §3.1 条款 2/§5.2)。
 
-        迁移审计 w51(git 历史):补清 ``v3_intention_key``/``v3_prev_hp``/``v3_last_
-        intention_event``——session 跨局复用(续跑/replay 路径)时,
-        旧局轮键会让新局 (1,1) 撞键被段级守卫误吞(首轮意向不驱动)、
-        旧局终值 HP 会污染三臂首 record 的 hp_before。
+        策略器状态 = 实现包私有 ``MandateState``,经 ``create_state`` 工厂
+        每局冷建(create_session 内接线)——**原 on_match_start 对策略
+        字段的逐项清零段整体消失**:状态对象每局新建即天然清零,清零
+        清单不再需要(flow.py 历史清零段 = 「session 跨局复用漏清零」
+        形态的补丁史,该形态随职责分离根除)。本钩子只强制「不复用上局
+        引用」契约:无条件冷建替换(by-construction 防跨局污染;sim 引擎
+        不调本钩子,其初始相位经 ensure_strategy_state 构造注入,不受
+        影响)。
         """
-        # (基类 on_match_start 原为 P1 no-op;default 本体删除批后无基类体可调)
-        session.v3_intention = IntentionState()
-        session.v3_evolution = EvolutionState()
-        session.v3_alarm = BloodAlarmTracker()
-        # (v3_hoard 囤货通道已随 v2 退役链删除——A6 裁决:写端活/读端零,
-        #  囤货视野通道语义消亡,session 字段保留历史 schema 缺省。)
-        session.v3_core_names = set()
-        session.v3_mode = 'economy'
-        session.v3_formed_stop = False   # ADR-0343:成型停手标志(层2 写,遥测读)
-        session.v3_pending_rollback = None
-        session.v3_intention_key = None
-        session.v3_prev_hp = None
-        session.v3_last_intention_event = ''
-        session.v2_round_key = None
-        session.v2_round_bought = set()
-        session.v2_round_sold = set()
-        session.v2_remedy_used = False   # 迁移审计 w52(git 历史)(ADR-0326):补偿轮键跨局清零
-        session.v2_steady_lv_used = False  # `w194_p2line/`/ADR-0378:稳态多击组跨局清零
-        session.v3_steady_lv_abandoned = 0  # 稳态组事务性放弃计数(判读)
-        session.v3_remedy_abandoned = 0  # 连续放弃轮计数器(检查项数据源)
-        # 血预算停手·停升级拒付计数(设计件 12;ADR-0448):决策层拒付
-        # 披露(判读「停手线拦了多少次追级」;sim 逐轮差分进账本)
-        session.v3_blood_budget_rejects = 0
-        # 血预算停手·搜索型刷新停付拒付计数(设计件 12 §2.3-P1-c/§3.2;
-        # ADR-0449):refresh 收尾拒付披露,sim 逐轮差分同式
-        session.v3_blood_budget_refresh_rejects = 0
-        session.v2_seed_bought = {}
-        session.v2_ever_full_interest = False   # default 栈消费(冻结);v2 已退场(E6)
-        session.v2_round_refreshes = 0   # 迁移审计 w122(git 历史) F-01/P8:扑满刷新豁免轮计数
-        session.v2_round_p1_early = 0    # `w179_gate/`/ADR-0372:早期买入门轮笔数
-        session.v2_round_p2_core = 0     # `w194_p2line/`/ADR-0378:P2 核心首件门轮笔数
-        session.v2_round_press_exempt = 0   # `w300_dup_ruling/`/V-B8:[11] 豁免臂轮笔数
-        session.v2_round_press_copy = 0     # `w300_dup_ruling/`/V-B8:press 候选轮笔数
-        # 迁移审计 w114(git 历史)/ADR-0346 相位观测(自 迁移审计 w119(git 历史) 起被消费)+ 迁移审计 w119(git 历史)/ADR-0347
-        # DP 姿态轮缓存载体:初始化(每轮 decide_shop_screen 重算)
-        session.v3_phase = 'FORM'
-        # form_ok:每轮初值;写端 = write_shop_mirrors 接 readiness_form_ok
-        # 板面现读(死镜像处置后现读——v2 相位机旧写端已退役)
-        session.v3_form_ok = False
-        session.v3_b_t = 0   # 板面目标线承重计数(write_shop_mirrors 每轮重算)
-        session.v3_dp_posture = None
-        # 镜像族轮键戳(写者=write_shop_mirrors 单一源;None=本轮未写,
-        # sim 引擎缺写守卫消费——见 write_shop_mirrors docstring)
-        session.v3_mirror_key = None
-        # `w224_handoff/`/ADR-0399:P2 承接快照(观测层;None=未进 P2/未计算)
-        session.v3_handoff = None
-        session.v3_handoff_plane = None
-        # `w227_handoff_gate/`/ADR-0400:P1 末窗承接门缺口(filters 每段写;跨局清零)
-        session.v3_handoff_gap = 0
-        # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 披露(ADR-0411 起投影无条件启用,
-        # 末窗 handoff_gate_gap 写;None=非末窗,判读「boss 后投影 hp」面)
-        session.v3_handoff_hp_proj = None
-        # W332b:release 泄息指令(每轮 decide_shop_screen 重算)与轮内累计花费
-        session.v3_release = None
-        session.v3_release_round = None
-        session.v3_release_spent = 0
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            MandateState,
+        )
+        _ms = MandateState()
+        # 相位观测初值(原 on_match_start 逐字段清零段的唯一非零缺省:
+        # live 置 'FORM';缺省字段值 = ''(absence 语义,sim 路径不调本钩子)。
+        _ms.v3_phase = 'FORM'
+        session.strategy_state = _ms
 
     def on_round_end(self, state: GameState, session: StrategySession,
                      config, obs: RoundOutcome) -> None:
@@ -189,9 +147,13 @@ class CwFlowStrategy(CwStrategy):
         # 结算屏「小队生命值NN」可靠 → 用它给下回合 prep(HP 结算→下回合 prep 不变)。保血/maybe_pivot 信号地基。
         if obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD:
             session.last_hp = obs.hp_after
-        tracker = session.v3_alarm
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            state_of,
+        )
+        _ms = state_of(session)
+        tracker = _ms.v3_alarm
         if tracker is None:
-            tracker = session.v3_alarm = BloodAlarmTracker()
+            tracker = _ms.v3_alarm = BloodAlarmTracker()
         hp_after = getattr(obs, 'hp_after', None)
         node_type = getattr(obs, 'node_type', None) or ''
         # N2 同源:obs.plane 比 state.plane 权威(结算时位面可能已推进)
@@ -210,21 +172,21 @@ class CwFlowStrategy(CwStrategy):
                 session, plane, getattr(obs, 'round_num', None)
                 or state.round_num)
         t = (plane - 1) * NODES_PER_PLANE + state.round_num
-        hp_before = getattr(session, 'v3_prev_hp', None)
+        hp_before = _ms.v3_prev_hp
         if hp_before is not None and hp_after:
             tracker.record(node_type, hp_before, hp_after, t, plane=plane)
             # 点6 谷底回滚:转型中(上次替换名单非空)单场掉血 >15
             # → 回滚一件最弱替换位后放缓(显式动作下轮发)
-            mem = session.v3_evolution
+            mem = _ms.v3_evolution
             if mem is not None and getattr(mem, 'last_deployed', None) \
                     and hp_before - hp_after > VALLEY_ROLLBACK_LOSS \
-                    and session.v3_pending_rollback is None:
+                    and _ms.v3_pending_rollback is None:
                 act = rollback_weakest(state, mem)
                 if act is not None:
-                    session.v3_pending_rollback = act
+                    _ms.v3_pending_rollback = act
                     log.info('[cw][d2] 谷底回滚登记(单场 -%d > %d)',
                              hp_before - hp_after, VALLEY_ROLLBACK_LOSS)
-        session.v3_prev_hp = hp_after if hp_after else hp_before
+        _ms.v3_prev_hp = hp_after if hp_after else hp_before
 
     def _alarm_node_type_fallback(self, session, plane, round_num) -> str:
         """掉血报警 node_type 空值回落(→ 生产词汇表 token | 空串)。
@@ -272,6 +234,21 @@ class CwFlowStrategy(CwStrategy):
                      '(掉血数据恢复)', token, plane, round_num, nt)
         return nt
 
+    def create_state(self, config: CurrencyWarConfig) -> object:
+        """策略器状态对象工厂(session.md §3.1/§5.1;ADR-0563 决策-2)。
+
+        每局冷建 MandateState(本核即 mandate_v1 流程核,on_match_start
+        同源;sim 初始相位注入经 ensure_strategy_state 构造入口,不经本
+        工厂——v3_phase='FORM' 是 live on_match_start 语义,工厂保持
+        缺省 '')。**config 契约:可忽略、可为 None**——sim 侧
+        ``ensure_strategy_state`` 注入桩面调 ``factory(None)``,工厂实现
+        禁依赖 config 取值;MandateState 无 config 依赖,恒冷建即安全。
+        """
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            MandateState,
+        )
+        return MandateState()
+
     def create_session(self, config) -> StrategySession:
         """空白 session(rng 留默认,由 run loop 按 ``config.strategy_seed`` 覆盖)。
 
@@ -284,7 +261,12 @@ class CwFlowStrategy(CwStrategy):
             reset_layout_unknown_state()
         except Exception:   # noqa: BLE001  复位 best-effort,不阻 session 创建
             pass
-        return StrategySession()
+        sess = StrategySession()
+        # 策略器状态工厂接线(session.md §3.1/§5.1):create_session 即冷建
+        # 当局 MandateState——manager/sim/replay/direct 直调点全走本方法,
+        # 状态生命周期与 session 同源(§3.4-1 统一构建口)。
+        sess.strategy_state = self.create_state(config)
+        return sess
 
     def on_match_end(self, session: StrategySession, config, outcome: MatchOutcome) -> None:
         """P1 no-op(outcome 字段全默认,真实结算屏 OCR 属 P1.5)。"""
@@ -336,21 +318,33 @@ class CwFlowStrategy(CwStrategy):
             # 商店观察帧(state=shop_state_frame)只播种 bench
             # (cw_op_buy_cards 入口 tracked_bench_chars 播种段),
             # ``deployed`` 列表恒空 → B_t 恒 0。回退源 =
-            # session.tracked_deployed(执行记录槽位表,单元素带 char_id,
+            # exec_state_of(session).tracked_deployed(执行记录槽位表,单元素带 char_id,
             # 与 assembly/cw_observation 同一消费源),空 = 板面真空的
             # 事实态,照写 0 不虚构。
+            # exec_state_of(session).tracked_deployed(执行记录槽位表,单元素带 char_id,
+            # 与 assembly/cw_observation 同一消费源),空 = 板面真空的
+            # 事实态,照写 0 不虚构。(执行侧载体读点:kernel.cw_exec_state
+            # 访问口——session.md §5.5)
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
+                exec_state_of,
+            )
             deployed = [d for d in
-                        (getattr(session, 'tracked_deployed', None) or [])
+                        (getattr(exec_state_of(session), 'tracked_deployed',
+                                 None) or [])
                         if d is not None]
         # 件级计数:名字列表保留重复件(同名多件各计 1,禁 frozenset 去重)
         dep_names = [(getattr(d, 'char_id', '') or '') for d in deployed]
-        session.v3_b_t = board_target_line_weight(dep_names)
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            state_of,
+        )
+        _ms = state_of(session)
+        _ms.v3_b_t = board_target_line_weight(dep_names)
         # form_ok 镜像现读写端(死镜像处置,见 docstring;判据单一源 =
         # readiness_form_ok,与发射 armed 同式)
-        session.v3_form_ok = readiness_form_ok(
-            state, getattr(session, 'target_comp', None))
-        session.v3_mirror_key = (getattr(state, 'plane', 1) or 1,
-                                 getattr(state, 'round_num', 0) or 0)
+        _ms.v3_form_ok = readiness_form_ok(
+            state, getattr(state_of(session), 'target_comp', None))
+        _ms.v3_mirror_key = (getattr(state, 'plane', 1) or 1,
+                             getattr(state, 'round_num', 0) or 0)
 
     # ===== 战略层:意向分层(点0)=====
 
@@ -359,15 +353,19 @@ class CwFlowStrategy(CwStrategy):
         """战略层:驱动意向状态机(锁线/撤销/强制锁线),写
         ``target_comp``(COMP_LIBRARY v2 真 Comp)+ ``v3_core_names``(carry 标签
         裁决);囤货集仅作意向派生视图与日志读数(A6:v3_hoard 通道随 v2 删)。"""
-        ist = session.v3_intention
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            state_of,
+        )
+        _ms = state_of(session)
+        ist = _ms.v3_intention
         if not isinstance(ist, IntentionState):
-            ist = session.v3_intention = IntentionState()
+            ist = _ms.v3_intention = IntentionState()
         # 段级重入守卫:sim 决策循环每轮最多 8 段重入 update_target,
         # 意向状态机的 miss 计数分母=轮——同轮重入只刷新派生视图
         # (hoard/target_comp),不重复驱动锁线/撤销计数。
         key = (state.plane, state.round_num)
-        if session.v3_intention_key != key:
-            session.v3_intention_key = key
+        if _ms.v3_intention_key != key:
+            _ms.v3_intention_key = key
             # ADR-0366:session 透传(plane_remaining_nodes 读本位面轮数真值);
             # registry 透传(C4 存活轮数门在 v2 换线通道的判据注入,A/B 臂
             # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
@@ -377,7 +375,7 @@ class CwFlowStrategy(CwStrategy):
             # update_intention 信号驱动锁线,不受影响。)
         comp = get_comp(ist.locked_comp) if ist.locked_comp else None
         # `w578_target_comp_wire/`:P1 配方锁帧物化——ADR-0357 后 locked_comp 在配方锁局恒空,
-        # session.target_comp 恒 None → 部署选人/评分管线/投资装备钩子等
+        # state_of(session).target_comp 恒 None → 部署选人/评分管线/投资装备钩子等
         # 既有 target 消费者全盲(实机断链:引擎件躺 bench、散脸占板)。
         # 把已锁配方对物化为伪 comp(单一口径=cw_intention.pair_target_comp
         # docstring);①锁局 locked_comp 优先,本分支不辖;P2+/空对不物化
@@ -394,14 +392,14 @@ class CwFlowStrategy(CwStrategy):
                 or p1_early_pair(state, ist)
             if pair:
                 comp = pair_target_comp(pair)
-        session.target_comp = comp
+        _ms.target_comp = comp
         hoard = hoard_target_set(state, ist)
-        session.v3_core_names = set(comp.core_chars) if comp else set()
+        _ms.v3_core_names = set(comp.core_chars) if comp else set()
         if ist.last_event and ist.last_event not in (
-                getattr(session, 'v3_last_intention_event', '')):
+                _ms.v3_last_intention_event,):
             log.info('[cw][d2] 意向 %s mode=%s(%s)',
                      ist.phase, hoard.mode, ist.last_event)
-        session.v3_last_intention_event = ist.last_event
+        _ms.v3_last_intention_event = ist.last_event
 
     # ===== pick 族(事件/选卡决策;判据单源 = kernel cw_events/cw_comps)=====
 
@@ -409,14 +407,17 @@ class CwFlowStrategy(CwStrategy):
                       state: GameState, session: StrategySession, config) -> PickEvent:
         """投资策略/投资环境 3 选 1。P1 两 kind 同一实现(委托 ``decide_event``);分表现 P2+ 议题。
         ``state.board`` 由调用方传空 stub(overlay 叠备战时 board 不可读,§11.7)。
-        ADR-0134:strategy kind 传 session.target_comp(星徽套组/专属强化对齐 target = 成型加速,
+        ADR-0134:strategy kind 传 state_of(session).target_comp(星徽套组/专属强化对齐 target = 成型加速,
         comp 匹配分压倒品质先验)。ADR-0144 修订:env kind 也传 —— 开局环境屏 comp 未定(None,
         行为同旧,阵营定向走 select_comp env_fit);**局中环境屏**(如 联席决策 2-6 节点)comp 已定,
         概念股/邀请/契约阵营匹配定序门(ENV_FACTION_MATCH_FLOOR,ADR-0524 定形:
         三档值=category 定序档位,禁读基数)生效。
         ADR-0209(接线 1/6):选卡结果喂 CommitSignals(策略 2.0/环境 1.0 权重;
         affinity 表把所选卡映射到 comp 分贡献)。"""
-        _tgt = session.target_comp
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+            state_of,
+        )
+        _tgt = state_of(session).target_comp
         pick = cw_events.decide_event(options, config, state, target_comp=_tgt)
         # 信号喂入:所选卡对各线的 affinity → comp 分贡献
         try:
@@ -428,7 +429,13 @@ class CwFlowStrategy(CwStrategy):
                 for comp_name, v in aff.items():
                     scores[comp_name] = max(scores.get(comp_name, 0.0), v)
             if scores:
-                session.commit_signals.add(src, scores)
+                from sr_od.application.currency_war.kernel.cw_transition import (
+                    CommitSignals,
+                )
+                _cs = state_of(session).commit_signals
+                if _cs is None:
+                    _cs = state_of(session).commit_signals = CommitSignals()
+                _cs.add(src, scores)
         except Exception:   # noqa: BLE001  信号喂入 best-effort
             pass
         return pick
@@ -436,12 +443,12 @@ class CwFlowStrategy(CwStrategy):
     def decide_supply(self, options: list[SupplyOption], state: GameState,
                       session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
         """补给选装备/出钻。⚠️ OCR 未就绪(P1 钩子 + 默认委托,handler 不 rewire,随阶段5)。"""
-        return cw_events.decide_supply(options, state, session.target_comp, config, refresh_used)
+        return cw_events.decide_supply(options, state, state_of(session).target_comp, config, refresh_used)
 
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
                          session: StrategySession, config, refresh_used: bool = False) -> EncounterPick:
         """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
-        return cw_events.decide_encounter(options, state, session.target_comp, config, refresh_used)
+        return cw_events.decide_encounter(options, state, state_of(session).target_comp, config, refresh_used)
 
     def decide_megastar(self, options: list[MegastarOption], state: GameState,
                         session: StrategySession, config) -> MegastarPick:
@@ -451,7 +458,7 @@ class CwFlowStrategy(CwStrategy):
         清退批,清查报告 OLD_MIX_AUDIT §1.3;MegastarPick.enhance_char_id
         字段保留恒 None,兼容既有遥测/执行面读取。)"""
         available = [o.char_id for o in options if o.char_id]
-        chosen_name = cw_comps.select_megastar(state, session.target_comp, available)
+        chosen_name = cw_comps.select_megastar(state, state_of(session).target_comp, available)
         if chosen_name:
             for o in options:
                 if o.char_id == chosen_name:
@@ -465,8 +472,8 @@ class CwFlowStrategy(CwStrategy):
         """选择伙伴:优先 ``config.character_build_around`` / ``target.core_chars`` 命中;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 命中恒失败 → idx=0 = 今天盲点 stage 立绘,随阶段5)。"""
         wants: list[str] = list(getattr(config, 'character_build_around', []) or [])
-        if session.target_comp is not None:
-            wants += list(session.target_comp.core_chars)
+        if state_of(session).target_comp is not None:
+            wants += list(state_of(session).target_comp.core_chars)
         for o in options:
             if o.char_id and o.char_id in wants:
                 return PartnerPick(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
@@ -477,8 +484,8 @@ class CwFlowStrategy(CwStrategy):
         """银狼策划事件(r104 用户定调:接入策略模块由它定;委托 cw_events.decide_planner)。
 
         升费卡打分含银狼线/在场判定(state.bench+deployed 的 char_id),
-        session.target_comp 决定银狼线加成。"""
-        return cw_events.decide_planner(options, state, session.target_comp)
+        state_of(session).target_comp 决定银狼线加成。"""
+        return cw_events.decide_planner(options, state, state_of(session).target_comp)
 
     def decide_star_tome(self, options: list[str], state: GameState,
                          session: StrategySession, config) -> int:
@@ -490,7 +497,7 @@ class CwFlowStrategy(CwStrategy):
         返回 options 索引。"""
         if not options:
             return 0
-        fw = getattr(session, 'transition_framework', '')
+        fw = getattr(state_of(session), 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
             from sr_od.application.currency_war.kernel.cw_transition import (
@@ -498,8 +505,8 @@ class CwFlowStrategy(CwStrategy):
             )
             _fw_facs = set(FRAMEWORK_FACTIONS.get(fw, ()) or ())
         _tgt_facs: set[str] = set()
-        if session.target_comp is not None:
-            _tgt_facs = set(session.target_comp.all_factions or [])
+        if state_of(session).target_comp is not None:
+            _tgt_facs = set(state_of(session).target_comp.all_factions or [])
         best_i, best_s = 0, -1.0
         for i, name in enumerate(options):
             s = 0.0
@@ -526,9 +533,9 @@ class CwFlowStrategy(CwStrategy):
         if not options:
             return 0
         _tgt_facs: set[str] = set()
-        if session.target_comp is not None:
-            _tgt_facs = set(session.target_comp.all_factions or [])
-        fw = getattr(session, 'transition_framework', '')
+        if state_of(session).target_comp is not None:
+            _tgt_facs = set(state_of(session).target_comp.all_factions or [])
+        fw = getattr(state_of(session), 'transition_framework', '')
         _fw_facs: set[str] = set()
         if fw:
             from sr_od.application.currency_war.kernel.cw_transition import (
@@ -562,8 +569,8 @@ class CwFlowStrategy(CwStrategy):
             material_value as _material_value,
         )
         _key: set[str] = set()
-        if session.target_comp is not None:
-            _key = set(session.target_comp.key_equips or [])
+        if state_of(session).target_comp is not None:
+            _key = set(state_of(session).target_comp.key_equips or [])
         # key_equip 的合成材料(两跳)
         _key_mats: set[str] = set()
         if _key:

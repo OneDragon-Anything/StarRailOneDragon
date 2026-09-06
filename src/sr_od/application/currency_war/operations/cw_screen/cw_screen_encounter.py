@@ -9,7 +9,7 @@
   comp 时)→ OCR「剩余次数:N」>0 且本局未用 → 文本锚定点刷新圆钮 → **重读选项 →
   refresh_used=True 重新决策 → 按新决策选**。分支刷新能力 = 优势布局「分支刷新」授予
   (每局 1 次重置两卡难度/奖励;bwiki 优势布局表);session 级单次标志
-  (``session._encounter_refresh_used``,与补给 ``_supply_refresh_used`` 同款)——
+  (``exec_state_of(session)._encounter_refresh_used``,与补给 ``_supply_refresh_used`` 同款)——
   发出刷新点击即置位,不等验效(点偏不重试,失败安全按原评分选,防重入反复尝试)。
   ⚠️ **触发源缺位挂账**:``read_encounter_options`` 的 affixes 恒空(卡面 UI 不显词缀,
   词缀在未建档的「敌方信息覆盖层」里)→ decide_encounter 的全克判定当前恒不触发,
@@ -33,6 +33,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_events import EncounterOption
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.obs.cw_node_obs import (
@@ -131,7 +132,7 @@ class CwScreenEncounter(SrOperation):
         # ===== 分支刷新执行链(dd-004):建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
         refreshed = False
         if match is not None and pick is not None and pick.refresh:
-            sess_used = getattr(match.session, '_encounter_refresh_used', False)
+            sess_used = getattr(exec_state_of(match.session), '_encounter_refresh_used', False)
             cnt = read_encounter_refresh_count(self.ctx, screen)
             if sess_used:
                 log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
@@ -140,7 +141,7 @@ class CwScreenEncounter(SrOperation):
             else:
                 # 发出点击即置位(不等验效):防「点偏未生效 → 重入屏再试」的反复尝试;
                 # 优势布局每局只授 1 次,单次尝试语义与游戏规则对齐。
-                match.session._encounter_refresh_used = True
+                exec_state_of(match.session)._encounter_refresh_used = True
                 refreshed, new_opts = self._try_refresh(
                     cnt[1], self._card_signature(options), cnt[0])
                 if refreshed:

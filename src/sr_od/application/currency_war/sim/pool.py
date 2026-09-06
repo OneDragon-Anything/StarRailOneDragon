@@ -157,7 +157,7 @@ class SimResult:
     p2_lv7_round: int | None = None  # P2 段内首次 level>=7 的轮(`w183_carry/`:
                                      # run15 恒 lv6 卡死形态的可观测指标)
     # `w224_handoff/`/ADR-0399:P2 承接快照(decision_v2.handoff.HandoffSnapshot.
-    # as_dict;进场继承完成后位面首帧采样——生产同点=session.v3_handoff,
+    # as_dict;进场继承完成后位面首帧采样——生产同点=strategy_state_of(session).v3_handoff,
     # 决策代码挂载零复制单一源)。None=未进 P2/策略桩未算。纯观测零漂移
     # (不耗 rng,planes=1 路径不触及)。
     p2_handoff: dict | None = None

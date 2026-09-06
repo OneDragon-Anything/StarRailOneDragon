@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_observe import (
     DEFAULT_REPLAY_DIR,
     stage_pending_strategy_pick,
@@ -17,6 +18,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     GameState,
     bench_occupied,
 )
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
     SEVERITY_L2_RECORD,
 )
@@ -162,12 +164,12 @@ class TelemetryRecorder:
             # 迁移审计 w146(git 历史) v3 意向状态(serialize_intention 产物直传)
             _ist = extra.get('v3_intention')
             trace.v3_intention = _ist if isinstance(_ist, dict) else None
-            # `w224_handoff/`/ADR-0399:P2 承接快照(session.v3_handoff 透传;
+            # `w224_handoff/`/ADR-0399:P2 承接快照(strategy_state_of(session).v3_handoff 透传;
             # 非 dict(None)=未进 P2/缺省,旧 schema 不破坏)。
             # P10④ 口径补齐(挂账落码):handoff.gold(出口金)旁补
             # 「可回收 1★ 值」读端字段——判读防「袋穷板富」误读,两字段
             # 并读判据见 p10-exit-gold-floor.md §④/检验点3。富化只改本行
-            # 遥测 dict 副本,不动 session.v3_handoff 本体(与 sim
+            # 遥测 dict 副本,不动 strategy_state_of(session).v3_handoff 本体(与 sim
             # SimResult.p2_handoff 的键集差异 = 本字段,读端容忍缺键)。
             # 取值时点 = 本 record 调用时点(decide_prep 之后、动作执行前,
             # deployed/bench 域与 P1 出口同帧;gold 域与 handoff.gold 同轮)。
@@ -210,13 +212,13 @@ class TelemetryRecorder:
         if _sess is not None:
             with contextlib.suppress(Exception):   # 观测 best-effort
                 trace.sess_blood_budget_rejects = int(
-                    getattr(_sess, 'v3_blood_budget_rejects', 0) or 0)
+                    getattr(strategy_state_of(_sess), 'v3_blood_budget_rejects', 0) or 0)
                 trace.sess_blood_budget_refresh_rejects = int(
-                    getattr(_sess, 'v3_blood_budget_refresh_rejects', 0) or 0)
+                    getattr(strategy_state_of(_sess), 'v3_blood_budget_refresh_rejects', 0) or 0)
                 # 商店波未买牌拒因串(生产端=cw4/shop.shop_unbought_reasons
                 # 经 session 汇点;session 汇点先例=w603,全部决策面一次覆盖)
                 trace.shop_rejects = dict(
-                    getattr(_sess, 'cw4_shop_rejects', {}) or {})
+                    getattr(strategy_state_of(_sess), 'cw4_shop_rejects', {}) or {})
                 # 末窗终止豁免位透传(sim/checks/segments.terminal_release_bit
                 # docstring 声明的实机遥测透传位;写入侧单一源 = 该谓词,
                 # 禁复算)。旧「写入面随 v2 退役」缺省在此接回——判读面 =
@@ -233,15 +235,18 @@ class TelemetryRecorder:
                 #  接回 sim/checks/segments.terminal_release_bit 单一源——
                 #  旧 v2 决策位写面退役后本键改挂该谓词,接线批恢复产出;
                 #  schema 字段语义不变。)
-                # `w611_econ_cycle/` 储备/义务披露(v3_* 为 decide_prep 每轮写;default
-                # 栈帧无写点 → attr 缺省 None,字段保持 None 语义)
+                # `w611_econ_cycle/` 储备/义务披露(v3_* 为 decide_prep/engine
+                # 每轮写 MandateState;读口 = strategy_state_of 访问函数——
+                # 状态字段已迁策略器状态对象,读 session 动态属性恒 miss =
+                # 遥测断流(session.md §7.2-2 点名风险形态,ADR-0563 决策-6)。
+                # default 栈帧无写点 → attr 缺省 None,字段保持 None 语义)
                 def _w611_int(attr: str) -> int | None:
-                    _v = getattr(_sess, attr, None)
+                    _v = getattr(strategy_state_of(_sess), attr, None)
                     return None if _v is None else int(_v)
                 trace.sess_reserve_cap = _w611_int('v3_reserve_cap')
                 trace.sess_reserve_overflow = _w611_int('v3_reserve_overflow')
                 trace.sess_release_budget = _w611_int('v3_release_budget')
-                _rs = getattr(_sess, 'v3_release_reason', None)
+                _rs = getattr(strategy_state_of(_sess), 'v3_release_reason', None)
                 trace.sess_release_reason = None if _rs is None else str(_rs)
                 # 实花面(v3_release_spent,全渠道:刷新经授权门逐笔扣账 +
                 # 买牌/升级经仲裁收尾回执汇总;每轮入口清零):ADR-0503
@@ -264,7 +269,7 @@ class TelemetryRecorder:
                 trace.p26_prep_obs = {'node_type_next': str(_p26_nt or '')}
                 # W937 预算-回执契约(ADR-0504):姿态授权未兑现回执透传
                 # (extra 键不泛化透传,缺此映射行则 shop 端装配静默丢弃)
-                _pu = getattr(_sess, 'v3_posture_unfulfilled', None)
+                _pu = getattr(strategy_state_of(_sess), 'v3_posture_unfulfilled', None)
                 trace.posture_unfulfilled = dict(_pu) if _pu else None
                 # (W829 支出门拒因枚举计数 sess_spend_gate_block 透传已随
                 #  spend_gate 开关族删除——旧方案清退批,清查报告
@@ -277,7 +282,7 @@ class TelemetryRecorder:
                 # (位面 2 支出授权 sess_p2_auth_intercept/water 写入面已随
                 # 定谳清理删除,ADR-0492;schema 字段按历史数据只读口径保留,
                 # 新数据恒 None。)
-            _led = getattr(_sess, 'xp_expect_ledger', None)
+            _led = getattr(exec_state_of(_sess), 'xp_expect_ledger', None)
             if _led is not None and is_dataclass(_led):
                 with contextlib.suppress(Exception):
                     trace.xp_expect_ledger = _to_jsonable(asdict(_led))
@@ -519,14 +524,14 @@ def snapshot_expected_paths(session) -> list[dict[str, Any]]:
     """决策时点挂起期望态摘要(W971 期望态 infra 遥测批;读 infra 接口,
     本函数不修改期望态本体)。
 
-    session.expected_state = 未确认条目表(kernel/cw_expected_state.
+    exec_state_of(session).expected_state = 未确认条目表(kernel/cw_expected_state.
     ExpectedEntry);摘要 = path/value/produced_by/at_round/kind(kind 供判读
     分型:merge_group=合成链模型错 / tracked=识别缺陷 等,五分类语义见
     cw_expected_state.reconcile_expected)。value 非标量(BuyExpect 载体等)
     str 化防序列化炸;无容器/空表 = []。sim 引擎与生产 decisions 行共用本
     单一源(sim/runner.py 落盘与 recorder.record_decision 同构)。"""
     out: list[dict[str, Any]] = []
-    store = getattr(session, 'expected_state', None) or {}
+    store = getattr(exec_state_of(session), 'expected_state', None) or {}
     for path, e in store.items():
         try:
             v = getattr(e, 'value', None)

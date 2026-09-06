@@ -10,4 +10,16 @@ strategy_id=``mandate_v1``。本批只落 statefn 状态函数层(NMF §2 的 22
 本包内部:statefn 只 import 数据/内核注册表(cw_chars/cw_shop_odds/cw_economy/
 cw_plane_table/cw_state/cw_comps)与同层 statefn 模块,禁回调 op 层与判据层。
 禁相对导入(项目 AGENTS 硬约束)。
+
+装配副作用(本包被导入即生效):向 kernel 的策略状态工厂注入槽注册
+``MandateState`` 工厂(kernel 依赖矩阵禁 kernel→impl 边,写路径的惰性
+冷建经槽反转;先例 = obs 缓存清理/合成特效帧门注入槽)。
 """
+from sr_od.application.currency_war.kernel.cw_strategy_session import (
+    install_strategy_state_factory,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    MandateState,
+)
+
+install_strategy_state_factory(MandateState)
