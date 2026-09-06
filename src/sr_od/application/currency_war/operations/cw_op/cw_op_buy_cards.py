@@ -447,9 +447,20 @@ def apply_action_outcome(_aop: 'ShopActionOp',
 
 def run_buy_waves(op: SrOperation, match,
                   hp_value: int | None, hp_readable: bool,
-                  hp_trusted: bool) -> tuple[OperationRoundResult | None,
-                                             BuyCardsOutcome | None]:
+                  hp_trusted: bool,
+                  *, spend_gate: Callable[[object], tuple[bool, str]] | None = None,
+                  ) -> tuple[OperationRoundResult | None,
+                             BuyCardsOutcome | None]:
     """商店单动作循环主体(ADR-0517 迁移批;前身份 = 买牌波循环)。
+
+    ``spend_gate``(缺省 None = 既有行为零漂移):可选单动作政策闸,发射帧
+    受限消费仲裁消费(出口 B;kernel 判定单一源 =
+    ``kernel/cw_launch_arbitrage.launch_arbitration_gate``,ADR-0566)。
+    语义 = 逐动作执行前咨询;``(False, why)`` ⇒ 该动作**不执行**、本访问
+    即刻收工(拒绝语义 = 消费终止非跳过续试:跳过高位动作改试低位 = 重排
+    既有评估序,违金出口族红线 5)——与既有 MAX_REFRESH 硬墙同为「终结
+    降级关店」路径,关店由编排壳承担。闸自身遥测由闭包侧计数,本函数
+    零感知闸语义。
 
     一次画面访问 = 轮「入口观察 + 逐动作决策循环」(ADR-0517 决策 1):
 
@@ -741,6 +752,12 @@ def run_buy_waves(op: SrOperation, match,
                 ledger.plan_truncated = True
                 ledger.refresh_skipped = 'max_cap'
                 break
+            if spend_gate is not None:
+                # 单动作政策闸(缺省 None 零漂移;发射帧仲裁专用,ADR-0566):
+                # 拒 = 本动作不执行 + 本访问收工(消费终止语义,见签名注)。
+                _g_ok, _g_why = spend_gate(action)
+                if not _g_ok:
+                    break
             _cur = match.session.shop_state_frame
             guard_proposal_vs_expected(action, _cur)
             _aop = shop_action_op_for(action)

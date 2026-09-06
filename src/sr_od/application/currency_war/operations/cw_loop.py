@@ -417,6 +417,136 @@ def _prep_anchors_hit(op, screen) -> bool:
                                       crop_first=False).is_success)
 
 
+def _launch_arb_counter(op, key: str) -> None:
+    """仲裁分键自增(best-effort;计数容器缺席静默跳过,家族同口径)。"""
+    try:
+        counters = getattr(strategy_state_of(
+            op.ctx.cw_match.session), 'cw4_counters', None)
+        if isinstance(counters, dict):
+            counters[key] = counters.get(key, 0) + 1
+    except Exception:   # noqa: BLE001  遥测 best-effort,不阻塞游戏流
+        pass
+
+
+def _launch_frame_arbitration(op) -> dict:
+    """发射帧受限消费仲裁(出口 B 溢出段;金出口族 DESIGN v1.1 §3.2,
+    落码裁决 = ADR-0566)。
+
+    **位次契约(v1.1 I-2 钉死)**:只在「确将发射」路径执行 = ①armed
+    判定通过(调用点上游 ``readiness_launch_decision``,判据零改动)→
+    ②浮层在场闸通过(调用点上游,``_ov_hit is None``)→ ③本函数内
+    ``_prep_anchors_hit`` 预检通过——预检只作仲裁段的门,发射链零改动;
+    调用点 = ``readiness_battle_launch`` 之前,发射核内部屏态复验保留作
+    纵深防线:仲裁若未恢复备战屏态 ⇒ 走既有 stale 分支弃射,调用点记
+    ``launch_arbitrage_abandoned_launch`` defect 分键(可辨识残量,从
+    「非发射帧 digest 零变化」锚辖域显式豁免,禁静默)。
+
+    **语义**:溢出段(g > g*,判定单一源 = kernel ``in_launch_spend_zone``
+    与必花域共享 saturation_line 链)开一次受限商店访问 = open_shop →
+    ``run_buy_waves(spend_gate=预算闸闭包)`` → close_shop。消费对象与
+    评估序全部由 shop 出口族既有评估栈(策略器单动作核)裁决,闸只辖
+    「花后金位 ≥ g*」(P70 Δ息=0 形;花穿息线部分出辖 = p70 边界 1,
+    判定单一源 = ``kernel/cw_launch_arbitrage.launch_arbitration_gate``)
+    ——不新造第二套评估语义(金出口族红线 1/5)。带内段(g ≤ g*)挂
+    L1' 独立命题 fail-closed 不开店(证不出不花;带内帧计
+    ``launch_arbitrage_inband_closed`` 分键,与「溢出帧零消费」可辨)。
+
+    **预算闸闭包读金口径** = 期望态黑板现读(``session.shop_state_frame``,
+    run_buy_waves 逐动作投影回写)= 决策与闸同帧同值。后验跌破 g* 检测
+    (合并多买等投影外成本)计 ``launch_arbitrage_cross_line``,正常恒 0。
+
+    返回报告 dict:``entered``(是否进入过商店访问——弃射豁免判定位)、
+    ``zone``('overflow'/'inband')、``executed``(本帧消费动作数)、
+    ``gate_blocks``(闸拦截数)。
+    """
+    report: dict = {'entered': False, 'zone': 'inband', 'executed': 0,
+                    'gate_blocks': 0, 'abort': False}
+    from sr_od.application.currency_war.kernel import cw_launch_arbitrage
+    try:
+        _fresh = op.screenshot()
+        if not _prep_anchors_hit(op, _fresh):
+            # 预检失败 = 屏态存疑:仲裁段不进入(开商店切屏会污染待判屏),
+            # 交发射核既有屏态复验裁定;分键显影防「静默跳过」形态。
+            _launch_arb_counter(op, cw_launch_arbitrage.KEY_PRECHECK_SKIP)
+            return report
+        from sr_od.application.currency_war.kernel.cw_economy import (
+            cap_resolved_of_session,
+            in_launch_spend_zone,
+            saturation_line,
+        )
+        from sr_od.application.currency_war.obs.cw_observation import (
+            PHASE_PREP_CLEAN,
+            read_game_state,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
+            run_buy_waves,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
+            close_shop,
+        )
+        from sr_od.application.currency_war.operations.cw_op.cw_op_open_shop import (
+            open_shop,
+        )
+        match = op.ctx.cw_match
+        session = match.session
+        # 开店前干净备战全量读(关店帧 = hp 真读主路径):hp 三件组供评估栈
+        # 血线消费门(危机停付/血预算),传缺省会让升级臂被 fail-closed 全拦;
+        # 金位预判只作开店门,权威判定在访问内预算闸(入口观察含 gold 救援)。
+        _pre = read_game_state(op.ctx, _fresh, phase=PHASE_PREP_CLEAN)
+        _sess_hp = session
+        if not in_launch_spend_zone(int(_pre.gold or 0), _sess_hp):
+            # 带内段 fail-closed(DESIGN v1.1 §3.2;L1' 挂账):不开店不花。
+            _launch_arb_counter(op, cw_launch_arbitrage.KEY_INBAND_CLOSED)
+            return report
+        _launch_arb_counter(op, cw_launch_arbitrage.KEY_ZONE_FRAMES)
+        _r_open = open_shop(op)
+        if not _r_open.is_success:
+            _launch_arb_counter(op, cw_launch_arbitrage.KEY_OPEN_FAILED)
+            return report
+        report['entered'] = True
+
+        def _gate(action) -> tuple[bool, str]:
+            gold_now = int(getattr(session.shop_state_frame, 'gold', 0) or 0)
+            ok, why = cw_launch_arbitrage.launch_arbitration_gate(
+                action, gold_now, _sess_hp)
+            if not ok:
+                report['gate_blocks'] += 1
+                _launch_arb_counter(op, cw_launch_arbitrage.KEY_GATE_BLOCKS)
+            return ok, why
+
+        _hp = getattr(_pre, 'hp', None)
+        _hp_readable = bool(getattr(_pre, 'hp_readable', False))
+        _hp_trusted = bool(getattr(_pre, 'hp_trusted', False))
+        _rr, outcome = run_buy_waves(op, match, _hp, _hp_readable,
+                                     _hp_trusted, spend_gate=_gate)
+        if _rr is not None:
+            # 访问失败路径不开收(店留着,与 prep 链同语义;典型 = 未识别卡
+            # 停机钩子已置 stop_running——保画面待建档,禁关店/禁发射摧毁
+            # 现场):abort 旗交调用点跳过本轮发射,交回外环由停机接管。
+            report['abort'] = True
+            return report
+        _r_close = close_shop(op)
+        if outcome is not None:
+            report['executed'] = int(outcome.total_buy + outcome.total_level
+                                     + outcome.total_refresh)
+            if report['executed'] == 0:
+                _launch_arb_counter(op,
+                                    cw_launch_arbitrage.KEY_ZERO_CONSUME)
+            # 后验跌破检测:闸投影成本与执行侧真实成本存在模型差时暴露
+            # (正常恒 0;>0 = 残量显影,判读归 ADR-0566)。
+            g_star = saturation_line(cap_resolved_of_session(_sess_hp))
+            _final_gold = int(getattr(outcome.state, 'gold', 0) or 0)
+            if report['executed'] > 0 and _final_gold < g_star:
+                _launch_arb_counter(op, cw_launch_arbitrage.KEY_CROSS_LINE)
+        if not _r_close.is_success:
+            log.warning('[cw-loop] 发射帧仲裁关店未生效(交发射核屏态复验裁定)')
+        return report
+    except Exception as e:   # noqa: BLE001  仲裁异常不阻塞发射(出战优先,
+        # 14号稿 §9.6 出战优先语义;异常帧=零消费帧,digest 锚辖域内)
+        log.warning('[cw-loop] 发射帧仲裁异常(不阻塞发射,零消费): %s', e)
+        return report
+
+
 def _shop_open_anchors_hit(op, screen) -> bool:
     """开商店态三 id_mark 锚判定(备战子态族分支 0n 判据单一源)。
 
@@ -1587,8 +1717,48 @@ class CwLoop(SrOperation):
                     log.info('[cw-loop] 达标臂浮层在场(%s)→ 本轮不发射,'
                              '交由浮层接管面', _ov_hit)
             if _arm_armed:
+                # 发射帧受限消费仲裁(出口 B;ADR-0566):位次契约 = armed
+                # 判定通过 ∧ 浮层在场闸通过 ∧ 预检通过(helper 内)∧ 发射核
+                # 调用之前(I-2 钉死「确将发射」路径独占)。溢出段先消费后
+                # 出战;带内/预检未过帧零动作直落发射,行为与非发射帧同构。
+                _arb = _launch_frame_arbitration(self)
+                if _arb.get('abort'):
+                    # 仲裁访问失败路径(未识别卡停机钩子等):保画面交回
+                    # 外环,停机接管;禁在本帧发射摧毁现场。
+                    log.info('[cw-loop] 发射帧仲裁访问中止(失败路径保画面)'
+                             ',本轮不发射')
+                    return self.round_wait(wait=1)
                 _ok_r, _detail_r = readiness_battle_launch(self, self.ctx)
                 if _detail_r == 'readiness_stale_screen':
+                    if _arb.get('entered'):
+                        # 仲裁消费后弃射(可辨识残量,DESIGN v1.1 §3.2):
+                        # 仲裁段已切屏而发射核屏态复验未过,该帧从「非发射
+                        # 帧 digest 零变化」锚辖域显式豁免,defect 分键禁静默。
+                        from sr_od.application.currency_war.kernel import (
+                            cw_launch_arbitrage as _kla,
+                        )
+                        _launch_arb_counter(self, _kla.KEY_ABANDONED_LAUNCH)
+                        try:
+                            from sr_od.application.currency_war.telemetry.defects import (
+                                record_defect as _rd_arb,
+                            )
+                            _ms_arb = getattr(
+                                getattr(self.ctx.cw_match, 'session', None),
+                                'last_state', None)
+                            _rd_arb(
+                                'launch', _kla.KEY_ABANDONED_LAUNCH,
+                                expected='仲裁关店后备战屏态恢复,发射核复验通过',
+                                observed='屏态复验 stale,本轮弃射落守卫链',
+                                plane=int(getattr(_ms_arb, 'plane', 0) or 0),
+                                round_num=int(getattr(_ms_arb, 'round_num', 0)
+                                              or 0),
+                                verdict=('可辨识残量申报:仲裁切屏与发射核'
+                                         '复验竞态的单列计数,禁静默'),
+                                reader_source='launch_arbitrage',
+                                gap_large=False, auto_resolved=True,
+                                note='豁免与计数语义 = ADR-0566/DESIGN §3.2')
+                        except Exception:   # noqa: BLE001  遥测 best-effort
+                            pass
                     # 屏态过期非发射失败:不消耗 C1 计数、不短路,落到守卫
                     # 链继续(下一环新截图重判真实屏)
                     log.info('[cw-loop] 达标臂屏态过期放弃发射,本轮交既有链')

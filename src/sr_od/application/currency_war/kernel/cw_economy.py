@@ -132,6 +132,28 @@ def in_must_spend_zone(gold: int, session: StrategySession | None) -> bool:
     return gold > saturation_line(cap)
 
 
+def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
+    """发射帧溢出段判定(金出口族出口 B 触发面;金出口族 DESIGN v1.1 §3.2,
+    落码裁决 = ADR-0566)。
+
+    = ``gold > saturation_line(cap_resolved_of_session(session))``——与
+    :func:`in_must_spend_zone` 共享 g* 单一源(saturation_line 同链,
+    禁内联第二份);买断制语境(cap_resolved = 0)出辖恒 False(与必花域
+    §2.1 同口径)。
+
+    **与必花域同 g* 不同域,禁并键**(DESIGN v1.1 §5;launch_gold_tradeoff
+    §3 边界①同判):必花域辖「有动作决策点的 shop/备战帧」,本谓词辖
+    「发射帧仲裁段」(仲裁段插入后发射帧成为决策点;两域互斥 = 调用点
+    约定非结构保证,M-1 降级口径,新增消费点须回 DESIGN §5 对账表)。
+    消费点(本批接线):cw_loop 发射帧仲裁段预判 / engine_p1 发射帧
+    仲裁段区判,两面直调本函数,禁各自内联 ``gold > g*`` 字面量式。
+    """
+    cap = cap_resolved_of_session(session)
+    if cap <= 0:
+        return False   # 买断制出辖(§2.1 同口径)
+    return gold > saturation_line(cap)
+
+
 def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
                cap: int = DEFAULT_INTEREST_CAP) -> int:
     """金位 gold 花 spend 金后未来 rounds 轮的精确期望息损(P47 命题 2)。

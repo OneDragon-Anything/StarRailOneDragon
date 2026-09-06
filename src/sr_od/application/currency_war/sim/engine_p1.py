@@ -1140,6 +1140,56 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 反假阴性哨兵 check_sim_launch_short_circuit 消费)
                         'short_circuited': True,
                     }
+            # ===== 发射帧受限消费仲裁(出口 B;ADR-0566)=====
+            # 位次契约(DESIGN v1.1 I-2 钉死,sim 同构接线):armed 立模后、
+            # 决策段循环前。两道生产闸(浮层在场/屏态过期)的 sim 结构等价物
+            # = 恒真(结构盲区申报:sim 无浮层、无切屏竞态,不仿真)。
+            # 区判单一源 = kernel in_launch_spend_zone(与必花域共享 g* 链):
+            # - 溢出段(g>g*):决策段循环以仲裁段帽运行,段内逐动作过
+            #   launch_arbitration_gate(P70 Δ息=0 形:花后金位 ≥ g*,花穿
+            #   息线部分出辖=p70 边界 1);消费对象与评估序全由既有策略栈
+            #   裁决,仲裁只供预算。
+            # - 带内段(g≤g*):挂 L1' 独立命题 fail-closed,决策段仍零执行
+            #   (证不出不花);inband 分键显影防「零消费」被误读为溢出帧
+            #   无机会。
+            _arb_seg_cap = 0
+            _launch_budget_on = False
+            _launch_arb: dict | None = None
+            _arb_stop = False
+            if _round_launch is not None:
+                from sr_od.application.currency_war.kernel import (
+                    cw_launch_arbitrage as _kla,
+                )
+                from sr_od.application.currency_war.kernel.cw_economy import (
+                    cap_resolved_of_session as _cap_of_a,
+                )
+                from sr_od.application.currency_war.kernel.cw_economy import (
+                    in_launch_spend_zone as _ilz,
+                )
+                from sr_od.application.currency_war.kernel.cw_economy import (
+                    saturation_line as _sat_a,
+                )
+                _g0_arb = int(getattr(st, 'gold', 0) or 0)
+                _cts_a = getattr(strategy_state_of(sess), 'cw4_counters', None)
+                _launch_arb = {
+                    'gold_before': _g0_arb,
+                    'g_star': _sat_a(_cap_of_a(sess)),
+                    'segments': 0, 'actions': 0, 'spent': 0,
+                    'stop_reason': '', 'gate_blocks': 0,
+                }
+                if _ilz(_g0_arb, sess):
+                    _launch_budget_on = True
+                    _arb_seg_cap = _kla.LAUNCH_ARBITRAGE_SEGMENT_CAP
+                    _launch_arb['zone'] = 'overflow'
+                    if _cts_a is not None:
+                        _cts_a[_kla.KEY_ZONE_FRAMES] = \
+                            _cts_a.get(_kla.KEY_ZONE_FRAMES, 0) + 1
+                else:
+                    _launch_arb['zone'] = 'inband_failclosed'
+                    _launch_arb['stop_reason'] = 'inband'
+                    if _cts_a is not None:
+                        _cts_a[_kla.KEY_INBAND_CLOSED] = \
+                            _cts_a.get(_kla.KEY_INBAND_CLOSED, 0) + 1
             # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
             # RefreshShop 动作后**独立重决策一段**——r270 连刷在
             # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
@@ -1157,10 +1207,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 滞后一档的 deployed(boss 轮 53.6% 结算键滞后)。部署块
             # 本体在轮末升级后执行(见下方「②部署」),目标集也在彼处
             # 从 session 现读(生产语义:买后 update_target 已刷新)。
-            # 两小批②短路:发射帧 range=0(决策段零执行——生产发射帧
-            # 短路备战动作链,金不花;RunDeploy 对应的部署块照常执行,
-            # 与生产 launch_prepared_battle 内 RunDeploy+StartBattle 同构)。
-            for _seg in range(0 if _round_launch is not None else 8):
+            # 两小批②短路(ADR-0557)+ 发射帧仲裁段(ADR-0566):发射帧的
+            # 自由决策段恒零执行(备战动作链被发射短路的语义不变);
+            # 溢出段帧以仲裁段帽运行本循环(段内逐动作过预算闸)=「先受限
+            # 消费再发射」;带内段帧 range=0(fail-closed 不花)。
+            # RunDeploy 对应的部署块照常执行,与生产
+            # launch_prepared_battle 内 RunDeploy+StartBattle 同构。
+            for _seg in range(_arb_seg_cap if _round_launch is not None
+                              else 8):
                 # 满栏旗标逐决策段 OR(生产「任一帧置 1」同式;取段入口
                 # 值=该段 decide_prep 的决策语境)
                 _round_bench_full = _round_bench_full or (
@@ -1355,6 +1409,30 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _segs_used += 1
                 progressed = False
                 for a in acts:
+                    if _launch_budget_on:
+                        # 仲裁单动作预算闸(ADR-0566;判定单一源 = kernel
+                        # launch_arbitration_gate,生产同源):花后金位 ≥ g*
+                        # 才放行;拒 = 本动作不执行 + 整个仲裁段收工(消费
+                        # 终止非跳过续试:跳过高位动作改试低位 = 重排既有
+                        # 评估序,违金出口族红线 5)。零成本动作(卖出/部署
+                        # 族)恒放行,闸辖「花」不辖「换手」。
+                        from sr_od.application.currency_war.kernel import (
+                            cw_launch_arbitrage as _kla_g,
+                        )
+                        _g_ok, _g_why = _kla_g.launch_arbitration_gate(
+                            a, int(getattr(st, 'gold', 0) or 0), sess)
+                        if not _g_ok:
+                            _launch_arb['stop_reason'] = _g_why
+                            _launch_arb['gate_blocks'] += 1
+                            _cts_g = getattr(strategy_state_of(sess),
+                                             'cw4_counters', None)
+                            if _cts_g is not None:
+                                _cts_g[_kla_g.KEY_GATE_BLOCKS] = \
+                                    _cts_g.get(_kla_g.KEY_GATE_BLOCKS, 0) + 1
+                            _arb_stop = True
+                            break
+                        if _kla_g.launch_spend_cost(a) > 0:
+                            _launch_arb['actions'] += 1   # 过闸花费动作计数(执行侧拒买不扣,如实申报为尝试口径)
                     if isinstance(a, RefreshShop):
                         res.refreshes += 1
                         # 触发源分键(见轮首「刷新触发源分键」块;
@@ -1651,6 +1729,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             # RefreshShop 的 break-redecide 语义),不套用
                             # 陈旧引用。
                             break
+                if _arb_stop:
+                    break   # 仲裁段预算闸拒:消费终止,带内预算已用尽(ADR-0566)
                 if not progressed:
                     break
             while (st.level < LEVEL_CAP
@@ -1659,6 +1739,34 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 st.level += 1
             # ADR-0286:轮末升级后 xp_progress 同步清零结转(生产 XP 条语义)
             st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, xp or 4))
+            # 仲裁段披露终化(ADR-0566):gold_after/segments/spent 落
+            # launch.arbitrage 位(发射帧行内;零漂移锚辖非发射帧,本键只
+            # 在发射帧存在)。后验跌破检测 = 合并多买等投影外成本显影
+            #(正常恒 0);溢出帧零消费单列分键,与带内 fail-closed 可辨。
+            if _launch_arb is not None and _round_launch is not None:
+                _ga_arb = int(getattr(st, 'gold', 0) or 0)
+                _launch_arb['gold_after'] = _ga_arb
+                _launch_arb['segments'] = _segs_used
+                _launch_arb['spent'] = _launch_arb['gold_before'] - _ga_arb
+                _cts_x = getattr(strategy_state_of(sess), 'cw4_counters', None)
+                if (_launch_arb['zone'] == 'overflow'
+                        and _launch_arb['spent'] > 0
+                        and _ga_arb < _launch_arb['g_star']
+                        and _cts_x is not None):
+                    from sr_od.application.currency_war.kernel import (
+                        cw_launch_arbitrage as _kla_x,
+                    )
+                    _cts_x[_kla_x.KEY_CROSS_LINE] = \
+                        _cts_x.get(_kla_x.KEY_CROSS_LINE, 0) + 1
+                if (_launch_arb['zone'] == 'overflow'
+                        and _launch_arb['spent'] == 0
+                        and _cts_x is not None):
+                    from sr_od.application.currency_war.kernel import (
+                        cw_launch_arbitrage as _kla_z,
+                    )
+                    _cts_x[_kla_z.KEY_ZERO_CONSUME] = \
+                        _cts_x.get(_kla_z.KEY_ZERO_CONSUME, 0) + 1
+                _round_launch['arbitrage'] = _launch_arb
             # M1″ 发射意图面(行内观测键;决策语境 = 买/升级后、部署代理
             # 前,与生产 M1″ 决策帧同语境;判定单一源直调,见函数注)。
             # 零 rng 消耗、零状态写入——不挤占行为投影 digest 判别域。
