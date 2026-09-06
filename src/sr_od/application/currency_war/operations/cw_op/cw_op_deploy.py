@@ -474,12 +474,16 @@ class CwOpDeploy(SrOperation):
                     log.info('[cw-deploy] 换阵卖出义务臂开启:线成型 fp=1.00 ∧ 板满 '
                              f'∧ bench target={_bench_tgt_n} → off-line 引擎/配方件'
                              '让位可卖(新线 core∪shared 仍保护)')
+                # m1p 执行侧归因:读发射位 pending(本帧 m1p 换血臂)后即清
+                #(一次消费;缺省 None = 非 m1p 帧,卖出计 regular 键零漂移)
+                _m1p_arm = getattr(_sess, 'cw4_m1p_arm_pending', None)
+                _sess.cw4_m1p_arm_pending = None
                 _n = self._sell_offtarget_deployed(
                     front, back, _target_factions, templates,
                     max_sell=_bench_tgt_n, target_cores=_target_cores,
                     fenced_offline_sellable=_fenced_arm,
                     protect_names=_protect, swap_ctx=_swap_ctx,
-                    bench_chars=_bench_chars)
+                    bench_chars=_bench_chars, m1p_arm=_m1p_arm)
                 log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
                          f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
             else:
@@ -1199,7 +1203,8 @@ class CwOpDeploy(SrOperation):
                                  fenced_offline_sellable: bool = False,
                                  protect_names: frozenset[str] = frozenset(),
                                  swap_ctx: object | None = None,
-                                 bench_chars: list | None = None) -> int:
+                                 bench_chars: list | None = None,
+                                 m1p_arm: str | None = None) -> int:
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
 
         SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
@@ -1222,6 +1227,11 @@ class CwOpDeploy(SrOperation):
         swap_ctx 不可得(last_state 缺,装配未跑)时退旧路径(标量 fenced +
         排除链静默关闭)——与缺读禁卖不对称,在册遗留缺口原样继承未扩大
         (排除静默关闭态的收紧候裁另案,ADR-0534 §4)。
+
+        ``m1p_arm`` = 发射位透传的 m1p 换血臂(transition/formed/base;
+        None = 非 m1p 帧):每件实际卖出按此归因计数
+        ``sell_offtarget_arm_{arm}`` / ``sell_offtarget_regular``
+        (观测分键,消费读后即清,不改卖出行为)。
         """
         deployed = exclude_system_units(
             read_deployed_chars(self.ctx, self.last_screenshot, templates)
@@ -1312,8 +1322,19 @@ class CwOpDeploy(SrOperation):
             src = row[d.slot - 1]
             if DragCwChar.drag_char(self, src, _sell):
                 sold += 1
+                # m1p 驱动归因分键(39 跳登记:sell-offtarget 闭环哪几次属
+                # m1p 驱动不可辨):发射位透传臂(transition/formed/base)
+                # 计 sell_offtarget_arm_{arm},非 m1p 帧计 regular。
+                # 只计数不改卖出行为,零策略语义。
+                if m1p_arm:
+                    _sell_key = f'sell_offtarget_arm_{m1p_arm}'
+                else:
+                    _sell_key = 'sell_offtarget_regular'
+                if isinstance(_counters, dict):
+                    _counters[_sell_key] = _counters.get(_sell_key, 0) + 1
                 log.info(f'[cw-deploy] sell-offtarget:{d.char_id}({sorted(bonds)}) @'
-                         f'{"前" if d.position_pref == "front" else "后"}排{d.slot} → 出售区 ✓ (源槽变)')
+                         f'{"前" if d.position_pref == "front" else "后"}排{d.slot} → 出售区 ✓ '
+                         f'(源槽变;m1p_arm={m1p_arm or "-"})')
             else:
                 log.info(f'[cw-deploy] sell-offtarget:{d.char_id} 拖3次源槽未变,跳过')
         if deployed:

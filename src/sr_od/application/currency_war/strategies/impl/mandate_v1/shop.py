@@ -608,7 +608,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
         if not ok1:
             continue
         _on_target_buy(card.name or m)
-        return _emit_buy(card, 'm2_line_member')
+        # 买因分键按线成员资格拆分(局21 g_20260906_021859 复盘候选3:
+        # 锁定采购集扩展成员(阵营∪流派,非 comp core∪shared)曾与真线
+        # 成员共用 'm2_line_member',同名异源买因不可辨——砂金/花火被记
+        # 线成员即此失真)。成员集单一源不变:两侧仍同吃
+        # cw_intention.locked_buy_membership(M2 循环与拒因遥测),本处只
+        # 拆标签不拆源。未锁帧 buy_members == k_members ⇒ 恒走线成员键,
+        # 零漂移。
+        return _emit_buy(card, 'm2_line_member' if m in k_members
+                         else 'm2_locked_member')
 
     # m2_stockpile(臂①囤腿,j=1 第二份;14号稿 §3.2-3.4,发射位次 =
     # M2 主循环之后、M2b 之前,理由键 'm2_stockpile'):

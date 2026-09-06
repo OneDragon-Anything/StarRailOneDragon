@@ -532,6 +532,12 @@ def run_mandate(frame: MandateFrame,
     # (ADR-0530:接线核对通过前不许发射,对齐证据 = 开闸前置义务;
     # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与 dd-037
     # 留 bench 合法稳态同向)。
+    # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
+    # 本帧发射位有 m1p 换血时在发射处置为 plan.arm,消费点 =
+    # CwOpDeploy.deploy 卖出臂(读后即清)。非 m1p 帧恒 None ⇒ 执行侧
+    # 卖出计 regular 键,零漂移。无条件复位防「m1p 帧后接 M1 帧(下方
+    # 块被跳过)且执行未及消费」的跨帧残留误归因。
+    session.cw4_m1p_arm_pending = None
     if not any(isinstance(e.action, RunDeploy) for e in out):
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             assemble_swap_plan_inputs,
@@ -566,6 +572,9 @@ def run_mandate(frame: MandateFrame,
                     _count('swap_arm_transition_trigger')
                 elif _m1p.arm == 'formed':
                     _count('swap_arm_formed_trigger')
+                # 执行侧透传:本帧发射位 m1p 换血及其臂,供 CwOpDeploy
+                # 卖出臂归因分键(键族 sell_offtarget_arm_*,缺省 None)
+                session.cw4_m1p_arm_pending = _m1p.arm
         else:
             _count('m1p_plan_empty')
 
@@ -632,8 +641,26 @@ def run_mandate(frame: MandateFrame,
     )
     _owned_snap = list(getattr(session, 'last_owned_equips', None) or [])
     if _owned_snap:
-        _tool_admitted = _admit_tools(
-            _eval_tools(_owned_snap, getattr(session, 'target_comp', None)))
+        _tool_actions = _eval_tools(
+            _owned_snap, getattr(session, 'target_comp', None))
+        _tool_admitted = _admit_tools(_tool_actions)
+        # 评估即留痕(二十四局复盘候选⑤:评估过但拒与未评估不可辨):
+        # owned 快照在场即计已评估帧;零可执行件帧按拟执行动作分键显影
+        #(m7_5_reject_{action},action = 判据面稳定标识;reason 是中文
+        # 判读文本非键面,禁直拼)。无任何条目产出计 m7_5_reject_none。
+        # 观测面零策略语义:发射门(any usable)与闩不变。
+        _count('m7_5_evaluated')
+        if not any(a.usable for a in _tool_admitted):
+            if any(a.usable for a in _tool_actions):
+                # 判据放行但准入拒(执行通道未就绪形态)——禁混入判据拒桶
+                _count('m7_5_reject_g1_not_admitted')
+            else:
+                _m75_rejs = sorted({a.action for a in _tool_actions
+                                    if not a.usable})
+                for _r in _m75_rejs:
+                    _count(f'm7_5_reject_{_r}')
+                if not _m75_rejs:
+                    _count('m7_5_reject_none')
         for _ta in _tool_admitted:
             log.info('[cw!][tools] tool=%s action=%s usable=%s reason=%s',
                      _ta.tool, _ta.action, _ta.usable, _ta.reason or '-')
