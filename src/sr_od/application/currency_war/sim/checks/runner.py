@@ -150,6 +150,9 @@ def run_batch_level_checks(ledgers: list[list[dict]],
     报告级披露(死旋钮/锚登记)。simulate_p1_batch 的接线归
     cw_sim.py(worker X 合流后;冲突隔离,本批不碰 cw_sim)。
     """
+    from sr_od.application.currency_war.sim.checks.launch import (
+        check_sim_launch_short_circuit as _launch_sentinel,
+    )
     out: dict[str, dict] = {
         'late_deploy_full': check_late_deploy_full(ledgers),
         # F5 部署供给观测(W956;披露型——采纳层修复后升格 _BATCH_CHECKS 断言门)
@@ -188,6 +191,10 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         'shop_cost_conformance': check_shop_cost_conformance(ledgers),
         'boss_round_real_actions':
             check_boss_round_real_actions(ledgers),
+        # sim 决策下沉两小批②:发射短路行为哨兵(反假阴性;守卫移除即红
+        # ——发射帧决策照常/金照花 = 金出口族 A/B 假阴性形态回归)
+        'sim_launch_short_circuit':
+            _launch_sentinel(ledgers),
         # (v2 四层/press/供给标签六检查项已随 decision_v2 退役链删除——统一迁移批 ② MAP B 类/A9。)
     }
     if pool_map is not None:

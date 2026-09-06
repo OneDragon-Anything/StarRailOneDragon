@@ -12,7 +12,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.kernel.cw_comps import form_progress
 from sr_od.application.currency_war.kernel.cw_performance import (
     RoundOutcome,
 )
@@ -1440,17 +1439,25 @@ class CwLoop(SrOperation):
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
             self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
             # 达标即出战臂(14号稿 §9.6,第七局复盘病灶:达标后 3 轮
-            # RunDeploy 合法 no-op 靠守卫停机才重置):线成型(form_progress
-            # ≥1.00,cw_comps 现读单一源,与 P59/ADR-0522 触发门同源)∧
-            # 战斗就绪(备战双锚已命中 = 战斗入口可用;overlay 在 0 系分支
-            # 先行清场)⇒ 立即经底层发射核出战,短路备战动作链。位次 =
-            # 动作链之前、守卫计数之前(§10;守卫规格零改动,达标帧守卫
-            # 分键零命中——§7.3 锚③);不过 _cw_locked_sync_done 闩(C1:
-            # 闩只辖恢复局面)。非达标帧现行序零变化,不重排。
+            # RunDeploy 合法 no-op 靠守卫停机才重置):判据核 = kernel
+            # ``readiness_launch_decision`` 单一源(sim 决策下沉两小批①
+            # 上收;线成型 fp≥1.00 与 P59/ADR-0522 触发门同源,禁本面
+            # 内联第二实现)∧ 战斗就绪(备战双锚已命中 = 战斗入口可用;
+            # overlay 在 0 系分支先行清场)⇒ 立即经底层发射核出战,短路
+            # 备战动作链。位次 = 动作链之前、守卫计数之前(§10;守卫规格
+            # 零改动,达标帧守卫分键零命中——§7.3 锚③);不过
+            # _cw_locked_sync_done 闩(C1:闩只辖恢复局面)。非达标帧现行
+            # 序零变化,不重排。
+            from sr_od.application.currency_war.kernel.cw_launch_admission import (
+                readiness_launch_decision,
+            )
+            from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+                line_members as _line_members,
+            )
             _tc = getattr(self.ctx.cw_match.session, 'target_comp', None)
             _ms = getattr(self.ctx.cw_match.session, 'last_state', None)
-            _arm_armed = (_tc is not None and _ms is not None
-                          and form_progress(_tc, _ms) >= 1.0)
+            _arm_armed = readiness_launch_decision(
+                _ms, _tc, line_members=_line_members)['armed']
             if _arm_armed:
                 # 浮层在场排除(第十五局实机雷:投资策略浮层盖备战后弹出,
                 # 双锚模板穿透命中 → RunDeploy 拖拽落空 placed=0)。探测复用

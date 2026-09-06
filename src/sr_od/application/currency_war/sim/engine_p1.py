@@ -1000,63 +1000,55 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _ms_zone = 0
             _ms_zero = 0
             _ms_layer: dict[str, int] = {}
-            # ===== 达标臂发射事件建模(sim 观测面)=====
+            # ===== 达标臂发射事件建模(sim 行为消费面)=====
             # 生产面:达标即出战臂(cw_loop 备战分支,14号稿 §9.6):
-            # 备战双锚命中 → 线成型 form_progress(target_comp, state)
-            # ≥1.0(cw_comps 现读单一源,与 P59/ADR-0522 触发门同源)∧
-            # 战斗就绪 ⇒ 发射核 launch_prepared_battle(RunDeploy+
-            # StartBattle),**短路备战动作链**——位次 = 动作链之前,
-            # 门在轮入口板面(买/部署前)评估。发射效果落在 op 执行层,
-            # 严格同池 A/B 的 ledger 逐位门在 sim 结构性不可见 → sim 在
-            # 轮入口(决策段循环前,同生产评估时点)对**战斗类节点**
-            # 建模发射事件:
-            # - 触发判据 = 同一 form_progress ≥1.0 直调(零新阈值、零
-            #   第二实现;战斗就绪在 sim = 节点本身为战斗类——逐轮必战
-            #   结构,sim 无「等战斗」语义);
-            # - victim 形态 = G1 准入三元(launch_admission_report,kernel
-            #   cw_launch_admission 单一源直调——生产 cw_loop 调用面同一
-            #   实现,sim 的 deployed/bench 是同形状 BenchChar,零第二
-            #   实现;sim 无 OCR 缺读,预估失败只有异常路径,best-effort
-            #   吞掉留 None,观测不炸账本 rho_obs 同纪律);
-            # - ok 恒 True:sim 无屏态过期/浮层在场/执行失败面(生产
-            #   stale_screen/overlay_hold 分键),战斗节点必然结算 =
-            #   发射必然执行。
-            # 零漂移声明:纯账本披露,零 rng 消耗、零状态写入。挂行内
-            # 'launch' 键而非向 actions 追加——行为投影 digest(w614 零漂移
-            # 锚)含 actions 逐项,观测面不得挤占行为哨兵的判别域;且
-            # 「一轮一行/outcomes 配对/段级检查轮键」三面不变式要求
-            # decisions 流不增行,发射事件以行内键实现同可见性。
+            # 备战双锚命中 → 判据核 readiness_launch_decision(kernel
+            # cw_launch_admission 单一源;两小批①上收,零第二实现)⇒
+            # 发射核 launch_prepared_battle(RunDeploy+StartBattle),
+            # **短路备战动作链**——位次 = 动作链之前,门在轮入口板面
+            # (买/部署前)评估。
+            # sim 消费(两小批②,选型建议书 sim_sink_adjudication 裁决
+            # 方案三混合):发射成立 ∧ 战斗类节点 ⇒ 本轮**短路决策段**
+            # (不跑 decide_shop_screen,金不花——生产发射帧不产生买/刷
+            # 动作,sim 行为对齐,消「金出口族 A/B 恒假阴性」的结构根);
+            # 'launch' 键保留观测 + short_circuited 分键。sim 边界如实
+            # 声明:发射恒成立(ok 恒 True——sim 无屏态过期/浮层在场/
+            # 执行失败面,战斗节点必然结算);执行失败/浮层面不建模;
+            # 战斗就绪在 sim = 节点本身为战斗类(逐轮必战结构,sim 无
+            # 「等战斗」语义);victim 形态 = 判据核 admission(best-effort
+            # None 不炸账本,rho_obs 同纪律)。
+            # 零漂移声明:发射判定本身零 rng 消耗;短路是生产语义对齐的
+            # **行为**变更(金流分叉即本批目的)。挂行内 'launch' 键而非
+            # 向 actions 追加——行为投影 digest(w614 零漂移锚)含 actions
+            # 逐项,观测面不得挤占行为哨兵的判别域;「一轮一行/outcomes
+            # 配对/段级检查轮键」三面不变式不破。
             # 已知边界:mantle 镜像族 v3_form_ok 在 mandate_v1 单臂下无
-            # 写者(恒 False),不可作触发源——生产门的本源是 form_progress
-            # 现读,本建模直调同源,不依赖镜像层。
+            # 写者(恒 False),不可作触发源——生产门的本源是判据核内
+            # form_progress 现读,本消费直调同源,不依赖镜像层。
             _round_launch: dict | None = None
             _tc_launch = getattr(sess, 'target_comp', None)
             if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                     and _tc_launch is not None):
-                from sr_od.application.currency_war.kernel.cw_comps import (
-                    form_progress,
+                from sr_od.application.currency_war.kernel.cw_launch_admission import (
+                    readiness_launch_decision,
                 )
-                if form_progress(_tc_launch, st) >= 1.0:
-                    from sr_od.application.currency_war.kernel.cw_launch_admission import (
-                        launch_admission_report,
-                    )
-                    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
-                        line_members,
-                    )
-                    try:
-                        _adm = launch_admission_report(
-                            st, _tc_launch, line_members=line_members)
-                    except Exception:   # noqa: BLE001  观测 best-effort
-                        _adm = None
-                    if _adm is not None:
-                        _round_launch = {
-                            '__type__': 'LaunchBattle',
-                            # 授权依据(与 LevelUp.auth_basis 观测同键名
-                            # 族):触发臂 = 达标臂(线成型∧战斗就绪)。
-                            'auth_basis': 'readiness_form_ok',
-                            'victim': _adm,
-                            'ok': True,
-                        }
+                from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+                    line_members,
+                )
+                _core = readiness_launch_decision(
+                    st, _tc_launch, line_members=line_members)
+                if _core['armed'] and _core['admission'] is not None:
+                    _round_launch = {
+                        '__type__': 'LaunchBattle',
+                        # 授权依据(判据核单一源输出;与 LevelUp.auth_basis
+                        # 观测同键名族)
+                        'auth_basis': _core['auth_basis'],
+                        'victim': _core['admission'],
+                        'ok': True,
+                        # 两小批②:本轮决策段被发射短路(行为消费分键;
+                        # 反假阴性哨兵 check_sim_launch_short_circuit 消费)
+                        'short_circuited': True,
+                    }
             # 决策循环:刷新后同轮再决策(真 op 两阶段语义;每个
             # RefreshShop 动作后**独立重决策一段**——r270 连刷在
             # 决策层一口气输出多个 RefreshShop,但实机 op 是逐动作
@@ -1074,7 +1066,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 滞后一档的 deployed(boss 轮 53.6% 结算键滞后)。部署块
             # 本体在轮末升级后执行(见下方「②部署」),目标集也在彼处
             # 从 session 现读(生产语义:买后 update_target 已刷新)。
-            for _seg in range(8):
+            # 两小批②短路:发射帧 range=0(决策段零执行——生产发射帧
+            # 短路备战动作链,金不花;RunDeploy 对应的部署块照常执行,
+            # 与生产 launch_prepared_battle 内 RunDeploy+StartBattle 同构)。
+            for _seg in range(0 if _round_launch is not None else 8):
                 # 满栏旗标逐决策段 OR(生产「任一帧置 1」同式;取段入口
                 # 值=该段 decide_prep 的决策语境)
                 _round_bench_full = _round_bench_full or (
@@ -1624,11 +1619,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # M1″ 发射意图面(行内观测键;决策语境 = 买/升级后、部署代理
             # 前,与生产 M1″ 决策帧同语境;判定单一源直调,见函数注)。
             # 零 rng 消耗、零状态写入——不挤占行为投影 digest 判别域。
+            # 两小批②短路帧:生产无 M1″ 决策帧(备战动作链被发射短路)
+            # ⇒ 恒 None(非观测异常,如实无帧)。
             _m1p_obs: dict | None = None
-            try:
-                _m1p_obs = m1p_intent_record(st, sess)
-            except Exception:   # noqa: BLE001  观测 best-effort(launch 同款)
-                _m1p_obs = None
+            if _round_launch is None:
+                try:
+                    _m1p_obs = m1p_intent_record(st, sess)
+                except Exception:   # noqa: BLE001  观测 best-effort(launch 同款)
+                    _m1p_obs = None
             # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
             # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
             # (cw_deploy_logic.select_deployments 纯函数,与 CwOpDeploy op
