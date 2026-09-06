@@ -1267,9 +1267,29 @@ class CwOpDeploy(SrOperation):
             # (held 名单内剔除,同下方 r288 底线辖 fill 段先例)。
             _held_fill = [_hi for _hi in _held
                           if (_hi + 1) not in _item_slots_exact]
+            # fill 输入重采样(1-1 事故:主循环排满 cap 后 P24 把 kernel 明确
+            # 留 bench 的留置件反复往满员板拖,游戏以人口上限不足拒收;根因
+            # = fill 拿到的容量输入是入口快照而非主循环后真值):
+            # - 计数:_deployed 是入口仲裁快照(此后不刷新),主循环增量只有
+            #   placed(只数落点验证成功件)→ 传 _deployed+placed,与上方
+            #   动态板满门同式,自然排尽/cap-stop break 两条退出路径同式覆盖;
+            #   cap 计数禁改走 CV 占用(DD-030 幻影占用面)。
+            # - 槽位:主循环的 front_empty/back_empty 虽是别名活值(chosen
+            #   pop/insert 原地变异),但「源槽已变+落点未验出→判无效」的
+            #   insert 回收会把实际已落位槽记成空(幻影空槽→fill 指向已占槽
+            #   白拖)→ fresh 帧按主循环同款列表推导重采两排(最终布局档,
+            #   延续 862-865 占用统一采样纪律)。禁按 placed 扣减现有列表
+            #   ——列表已被主循环原地扣减,再扣=双扣减,dd-016 静默修死。
+            _scr_fill = self.screenshot()
+            _fe_fill = [i for i, c in enumerate(front)
+                        if not slot_occupied(_scr_fill, int(c.x), int(c.y))]
+            _be_fill = [i for i, c in enumerate(back)
+                        if not slot_occupied(_scr_fill, int(c.x), int(c.y))]
+            log.info(f'[cw-deploy] 补部署输入重采样: front空={_fe_fill} '
+                     f'back空={_be_fill} deployed={_deployed}+placed={placed}')
             _fill_plan = residual_fill_plan(
-                _held_fill, front_empty, back_empty, _bench_pos, _bench_cid,
-                _deployed_cids, _cap, _deployed)
+                _held_fill, _fe_fill, _be_fill, _bench_pos, _bench_cid,
+                _deployed_cids, _cap, _deployed + placed)
             # r288 底线对 fill 段同样辖(dd-037):kernel 留 bench 的列车件
             # (列车≥2 档 ∧ 仙舟<3 基础线)不得经 P24 补部署绕回上板——
             # 补部署只覆盖「散牌留 bench」的填位语义,不覆盖配方底线仲裁。
