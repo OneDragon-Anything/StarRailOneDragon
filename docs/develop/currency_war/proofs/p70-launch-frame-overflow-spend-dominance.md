@@ -86,7 +86,7 @@ EV(spend) − EV(留存) = ΔV − L(g, spend, R, Ī) − 摩擦
 | 项 | 值 | 出处 |
 |---|---|---|
 | g*(默认局) | 50 = 10×cap_resolved(cap=5) | `cw_economy.saturation_line` |
-| 溢出段息损 L | ≡ 0(全网格:cap∈{5,9,10} × 溢出量 1-120 × spend 采样 × R 0-12 × Ī 4-9) | `p70_check.py` 断言 1 |
+| 溢出段息损 L | ≡ 0(全网格:cap∈{5,9,10} × 溢出量 1-120 × spend 全量枚举 × R 0-12 × Ī 4-9) | `p70_check.py` 断言 1 |
 | 带内对照格 L(50,10,1,Ī)| = 1 > 0(A₀=40 掉一档)——出辖即失零 | `p70_check.py` 断言 2 |
 | 掉血锚 S(n) | battle 复用 vd_p1_loss 单一源 / encounter (24.32, −4.53·rung) / boss (26.71, 0) ;boss P15v2 锚 26.79 [24.25,29.23] | `cw_registry.streak_floor_loss_damage` + p15 冻结语料 |
 | 立项事实面(非证明输入) | sim71:「armed∧战斗节点∧金>g*」重叠 35/109 帧;sink_baseline:短路臂金出口/花费/空转三面 p<0.0001,残金杠杆 134.75→50.5(≈84 金/局死仓) | DESIGN v1(立项材料指针) |
