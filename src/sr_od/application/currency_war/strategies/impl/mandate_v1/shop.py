@@ -54,6 +54,18 @@ shop_merge_trigger_truncate;K 空窗回退修复批(2026-09-03 第三病灶)
 判读须按新语义重建基线);``shop_ev_bench_wait`` = EV 候选在场但
 bench 无空席、EV 买不提案的帧(席位门,与 dominance_bench_wait 同款)。
 
+T5 未锁线止血买分键族(未锁线转换通道设计稿 §7 十键;对齐 17号稿
+七键口径):t3_available / t3_buy / t3_no_candidate(店无 cost-1 垫件,
+有意收窄帧归因显影)/ t3_fenced(+kernel 五拒因动态后缀)/
+t3_precheck_bench_full / t3_precheck_no_vacancy(vacancy ≤ 可部署
+bench 件数,买后无空槽可落,与 bench 满拆键)/ t3_precheck_unavailable /
+t3_unaffordable / t3_below_reserve / t3_p1_true_blocked(P1 真帧
+行为层挂起显影)——held 闭环归并申报:本发射面**不设独立 t3_held_postbuy
+键**,T5 垫件买入走出口③同款 N3 登记(session.cw4_fuel_filler_stall_buys
+单一载体),部署侧 held 显影并入 fuel_filler_stall_held_postbuy 口径
+(cw_op_deploy.record_fuel_filler_held_postbuy 消费;两触发源同垫件
+语义,禁第二登记集);t3_calib_blocked(行为层标定闸)归授权批。
+
 计数键粒度(ADR-0517 迁移步 2):各键从「每波一次」改「每决策帧一次」
 (shop_drought_reset_on_buy 经 drought 值门维持「每访问至多一笔」);
 ``shop_merge_trigger_truncate``/``emitter_*`` 族随截断器退役(语义被
@@ -1005,6 +1017,130 @@ def decide_shop_action(state: GameState, session: StrategySession,
                             _on_target_buy(name)
                             return _emit_buy(card, 'fuel_filler_stall')
                 # B 支不成立:g ≤ s_reserve(非病灶帧,静默)
+
+    # ---- T5 未锁线止血买(结构层,无开关;未锁线转换通道设计稿 v3.1 §2,
+    # 垫底级消费位第五触发源——消费位单一源 = 11号稿 §7.3 垫底级,与
+    # 上方出口③同位:出口③辖锁线帧、T5 辖未锁线帧,锁线布尔两支互斥
+    #(单一源锚 = cw_intention.locked_buy_membership:未锁帧返回 None),
+    # 锁线交接时 T5 出辖、出口③/(b)2 接盘)。触发核替换(W8 同款申报):
+    # 店侧「全店无候选」→「未锁线 ∧ P1(g,1) 假 ∧ vacancy 余存」结构谓词;
+    # P1 判据 = predicates.t5_p1_false 现算(零战力量,§2.3 支配论证,
+    # ADR-0288 仅接受形态先例)。cost-1 收窄 = 有意辖域(§2.3:lv1-3
+    # 全店 cost-1 的注册表事实;仅 2/3 费垫件帧不触发,禁自行扩域)。
+    # P1 真帧落行为层挂起(V_deploy 候用户逐项授权,00 §3 硬闸门)——
+    # t3_p1_true_blocked 显影后照旧落既有序,结构层禁发射。级内序(§4):
+    # 降级1(羁绊填充,在册)→ 本止血变体 → 降级2 囤形态(在册,回退位)
+    # ——梯宿主申报:降级1/降级2 囤形态两段不在本文件面(宿主 = 11号稿
+    # §7.3 垫底级 owner),本文件只承载止血变体位次;同帧双真单次消费由
+    # 物理位次保证(M6 囤臂 gold>g* 先行 = §4「现行序先行」明文)。
+    # 锁线布尔边缘双开形态申报:locked_comp 非空而采购集解析为空
+    #(get_comp 注册表缺项脏态 ∧ 无 p1_pair/transition_pair)时
+    # locked_buy_membership 返回 None,T5 门与出口③门同帧双开——
+    # 出口③物理先行、先到先发射(单动作契约),T5 仅承接其未消费帧,
+    # 无双买面。
+    # 发射序 = 垫底级在既有序(M6)之后、EV/R1 之前(§4 同备战期序);
+    # 部署腿不占发射位——单动作契约下买入落 bench,垫件上板由部署侧
+    # 残余补部署(P24:空 cap 槽任意合法单位 ΔEV≥0)既有语义承接,
+    # vacancy > 可部署 bench 件数预检保证买后仍有空槽可落;held 闭环 =
+    # 出口③同款 N3 登记(cw4_fuel_filler_stall_buys 单一载体,T5 held
+    # 并入 fuel_filler_stall_held_postbuy 口径,见文件头分键族申报)。
+    if _buy_members is None and (state.shop or []):
+        _t5_sale = [c for c in state.shop
+                    if (c.name or '') and (c.star or 1) == 1
+                    and (c.cost if c.cost else 3) == 1
+                    and predicates.zero_overlap(c.name or '', k_members)
+                    and refund_full_star_ok(1, 1)]
+        if not _t5_sale:
+            # 店无 cost-1 1★ 零重叠垫件:T5 域不开(§2.3 有意收窄,
+            # 无病灶证据禁扩域);计数显影归因(全店无候选帧的 T1 原生
+            # 触发源宿主 = 11号稿 §7.3,不在本文件面)。
+            _count('t3_no_candidate')
+        elif bench_free <= 0:
+            _count('t3_precheck_bench_full')
+        else:
+            _t5_dep = sum(1 for b in bench
+                          if (b.char_id or '') in k_members
+                          and (b.char_id or '') not in deployed_names)
+            # 可部署 bench 件数口径 = 线内件按名去重现读(与 arm0_need
+            # 部署去重语义对齐;未锁线 k_members=() 时恒 0)。
+            _t5_vac = _cap_now - len(deployed) if _cap_now else None
+            if _t5_vac is None:
+                _count('t3_precheck_unavailable')   # cap 不可读,查询不可得
+            elif _t5_vac < 1 or _t5_vac <= _t5_dep:
+                # 假想部署预检的结构前置:买后须仍有空槽可落
+                #(与 bench_free 拒拆键,两因判读可辨)
+                _count('t3_precheck_no_vacancy')
+            elif not predicates.t5_p1_false(
+                    gold, 1,
+                    horizon.r_remaining(session, int(state.plane or 1),
+                                        int(state.round_num or 1)),
+                    net_income(int(state.round_num or 1), 0),
+                    cap_resolved):
+                # Ī 口径申报:streak_pre=0 恒定近似(连胜奖励不计入,
+                # 与本函数 R1 段 _ibar 同款)——收入低估 ⇒ L 偏大 ⇒
+                # P1 偏真 ⇒ 发射收窄,方向保守。
+                _count('t3_p1_true_blocked')   # P1 真帧:行为层挂起显影
+            else:
+                _count('t3_available')
+                for card in _t5_sale:
+                    name = card.name or ''
+                    # 金 ≥ 卡价 → 金−卡价 ≥ s_reserve → 围栏预检
+                    #(§2.3 判据序;kernel 单一源,禁第二套围栏语义)
+                    ok5, _ = mandate.check_affordable(gold, 1)
+                    if not ok5:
+                        _count('t3_unaffordable')
+                        continue
+                    if gold - 1 < s_reserve:
+                        _count('t3_below_reserve')
+                        continue
+                    _mch5 = get_char(name)
+                    _cand5 = BenchChar(
+                        slot=0, char_id=name, star=1,
+                        faction=(_mch5.factions[0]
+                                 if _mch5 is not None and _mch5.factions
+                                 else '?'),
+                        position_pref='back')
+                    _tgt5, _fw5 = deploy_target_sets(k)
+                    try:
+                        _lfs5 = cw_intention.locked_faction_scope(_ist) \
+                            if _ist is not None else frozenset()
+                    except Exception:   # noqa: BLE001 兜底 best-effort(同出口③)
+                        _lfs5 = frozenset()
+                    try:
+                        ok5, why5 = can_deploy_single(
+                            _cand5, bench,
+                            deployed_cids=set(deployed_names),
+                            deployed_fac=deployed_bond_counts(
+                                set(deployed_names)),
+                            board=deployed_bond_counts(set(deployed_names)),
+                            cap=(_cap_now if _cap_now else 10 ** 6),
+                            target_factions=_tgt5,
+                            target_cores=set(),
+                            fw_carry=_fw5,
+                            locked_factions=_lfs5 or frozenset())
+                    except Exception:   # noqa: BLE001 查询不可得 fail 向(同出口③)
+                        ok5, why5 = False, 'precheck_unavailable'
+                    if not ok5:
+                        if why5 == 'precheck_unavailable':
+                            _count('t3_precheck_unavailable')
+                        else:
+                            # fenced 拒因拆键透传(kernel reasons_out 五键
+                            # 闭集口径,拆计数不拆谓词;闭集外动态后缀零静默)
+                            _count('t3_fenced')
+                            _count(f't3_fenced_{why5}')
+                        continue
+                    _count('t3_buy')
+                    # N3 闭环登记契约(出口③同款单一载体):T5 垫件买入
+                    # 入 cw4_fuel_filler_stall_buys 名集,部署侧 held 时
+                    # 经 record_fuel_filler_held_postbuy 显影(T5 held 并入
+                    # fuel_ 键口径,不设独立 t3_held_postbuy,见文件头申报)。
+                    _t5_reg = getattr(session, 'cw4_fuel_filler_stall_buys',
+                                      None)
+                    if _t5_reg is None:
+                        _t5_reg = set()
+                        session.cw4_fuel_filler_stall_buys = _t5_reg
+                    _t5_reg.add(name)
+                    return _emit_buy(card, 't3_unlocked_hemostat')
 
     # ---- ④ EV pass(臂①旁路集;仅 criteria 真 EV 发射面)----
     if not skeleton_only:
