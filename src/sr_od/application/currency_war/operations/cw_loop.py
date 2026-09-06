@@ -1582,13 +1582,36 @@ class CwLoop(SrOperation):
                             _ok_x, _detail_x = readiness_battle_launch(
                                 self, self.ctx)
                             if _detail_x == 'readiness_stale_screen':
-                                # 屏态过期(过渡帧):不发射不计数,交回下轮重判
-                                #(守卫计数保持,真备战帧下环重试发射)
-                                log.info('[cw-loop] 收益耗尽臂屏态过期放弃发射'
-                                         '(readiness_stale_screen),交回下轮')
-                                return self.round_wait(wait=1.0)
-                            if _ok_x:
+                                # 屏态过期(过渡帧):单帧不停机(无执行面卡死
+                                # 证据,交回下轮重判)——三审整改(必修1):但
+                                # 早退跳过守卫停机面 + round_wait 不耗 retry,
+                                # 发射核持续 stale 时=无界自旋。独立自旋上限
+                                # 3(与发射失败连击同构):连续 stale 达限放弃
+                                # 回落守卫停机;出现任一发射结果(success/fail)
+                                # 即复位——持续 stale = 发射核无法工作,同属
+                                # 需留证的结构性形态。选独立上限而非「落回守卫
+                                # 链」:本臂位于守卫触发位内侧,落回=立即停机,
+                                # 会把偶发过渡帧误升停机(比达标臂同形态更严,
+                                # 语义不对齐)。
+                                _xs = getattr(self, '_cw_exhaust_stale_n', 0) + 1
+                                self._cw_exhaust_stale_n = _xs
+                                if _xs >= 3:
+                                    self._cw_exhaust_stale_n = 0
+                                    if _ex_c is not None:
+                                        _ex_c['exhaustion_launch_stale_giveup'] = \
+                                            _ex_c.get('exhaustion_launch_stale_giveup',
+                                                      0) + 1
+                                    log.error('[cw!][loop] 收益耗尽臂连续 %d 次'
+                                              '屏态过期(readiness_stale_screen)'
+                                              '→ 放弃重试,回落守卫停机', _xs)
+                                    # 不 return:落穿到下方守卫停机留证
+                                else:
+                                    log.info('[cw-loop] 收益耗尽臂屏态过期'
+                                             '(第 %d/3 次)交回下轮重判', _xs)
+                                    return self.round_wait(wait=1.0)
+                            elif _ok_x:
                                 self._cw_exhaust_fail_n = 0
+                                self._cw_exhaust_stale_n = 0
                                 self._battle_ts = time.monotonic()  # ADR-0250
                                 self._battle_wait_active = True
                                 register_flow_heartbeat(
@@ -1597,25 +1620,27 @@ class CwLoop(SrOperation):
                                          'RunDeploy 稳态 no-op ∧ 零推进)→ 出战: %s',
                                          self._prep_np_count, _detail_x)
                                 return self.round_wait(wait=3)
-                            _xf = getattr(self, '_cw_exhaust_fail_n', 0) + 1
-                            self._cw_exhaust_fail_n = _xf
-                            if _ex_c is not None:
-                                _ex_c['exhaustion_launch_fail'] = \
-                                    _ex_c.get('exhaustion_launch_fail', 0) + 1
-                            if _xf >= 3:
-                                self._cw_exhaust_fail_n = 0
-                                if _ex_c is not None:
-                                    _ex_c['exhaustion_launch_giveup'] = \
-                                        _ex_c.get('exhaustion_launch_giveup',
-                                                  0) + 1
-                                log.error('[cw!][loop] 收益耗尽臂连续 %d 次发射失败'
-                                          '(最后一次: %s)→ 放弃短路,回落守卫停机',
-                                          _xf, _detail_x)
                             else:
-                                log.warning('[cw!][loop] 收益耗尽臂发射失败'
-                                            '(第 %d/3 次,%s)→ 下环重试',
-                                            _xf, _detail_x)
-                                return self.round_wait(wait=3)
+                                self._cw_exhaust_stale_n = 0
+                                _xf = getattr(self, '_cw_exhaust_fail_n', 0) + 1
+                                self._cw_exhaust_fail_n = _xf
+                                if _ex_c is not None:
+                                    _ex_c['exhaustion_launch_fail'] = \
+                                        _ex_c.get('exhaustion_launch_fail', 0) + 1
+                                if _xf >= 3:
+                                    self._cw_exhaust_fail_n = 0
+                                    if _ex_c is not None:
+                                        _ex_c['exhaustion_launch_giveup'] = \
+                                            _ex_c.get('exhaustion_launch_giveup',
+                                                      0) + 1
+                                    log.error('[cw!][loop] 收益耗尽臂连续 %d 次发射失败'
+                                              '(最后一次: %s)→ 放弃短路,回落守卫停机',
+                                              _xf, _detail_x)
+                                else:
+                                    log.warning('[cw!][loop] 收益耗尽臂发射失败'
+                                                '(第 %d/3 次,%s)→ 下环重试',
+                                                _xf, _detail_x)
+                                    return self.round_wait(wait=3)
                     try:
                         _np_shot = self.save_screenshot(prefix='prep_no_progress')
                     except Exception:  # noqa: BLE001  留证失败不拦停机(flag 是主哨兵)
