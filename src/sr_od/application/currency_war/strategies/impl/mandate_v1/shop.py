@@ -202,8 +202,9 @@ def _r1_ledger_terms(buy_members: tuple[str, ...],
       j 低估 ⇒ E 高估 ⇒ 账高估 = 门收紧向,保守端申报);
     - c_taken=0(P40 待标定清单「缺则 0」;q 低估 ⇒ E 高估,同上
       保守向);
-    - 该级不出此费(refresh_prob≤0)成员在该级不可追,E 记 inf
-      (判据侧 isfinite 过滤 = R0-1 合格集空特例);
+    - 该级不出此费(refresh_prob≤0)成员剔出本级合格集(E 不计;下级
+      账由 T_up 在 L+1 级重估同一成员集)——与 r2_card_reserve 的
+      continue 过滤同款语义,inf 仅由「合格集空」承载(见返回契约);
     - Σ卡费 = Σ合格成员 (k−j)×cost(k=3 完成档张数):完成路径真实卡费
       与 E 的 (k−j) 张折算同档——旧单张 cost 口径与 E 口径不一致已修齐
       (单成员 j=2 帧两口径相消,j<2 帧旧口径低估总账)。
@@ -225,8 +226,9 @@ def _r1_ledger_terms(buy_members: tuple[str, ...],
                                           # 可追性判定——成型件不受该级
                                           # 出牌面辖制,禁污染其余成员账)
         if refresh_prob(level, ch.cost) <= 0.0:
-            e_sum = float('inf')
-            continue                      # 该级不出此费:不可追(P40 R0)
+            continue    # 该级不出此费:成员出合格集(禁打 inf——任一不可追
+                        # 成员污染共享累加器会把非空合格集错判「无可追」,
+                        # 整局刷新臂结构性恒关;复现与修法裁决 = ADR-0571)
         qualified_any = True
         j = len(copies)
         e_sum += expected_refreshes_for_card(level, ch.cost, target_star=2,
@@ -1028,7 +1030,13 @@ def decide_shop_action(state: GameState, session: StrategySession,
     #(cap_resolved = 0)出辖恒 False。辖域 = 有动作决策点帧(本函数
     # 即 shop 决策点)。L2 第二触发源 / L3 / R1 切分线共用本判定。
     _zone_hit = in_must_spend_zone(gold, session)
-    # D 支锁线布尔单一源 = ``_ist.locked_comp``(17 号稿 §1.1 应修-8 B-1
+    if _zone_hit:
+        # 必花域帧义务来源披露(T-88 写点;遥测键 sess_release_reason 透传
+        # 源):帧内 last-wins、域外帧不覆写,轮界清零在装配键戳
+        # (assembly._disclose_budget)。披露面字段禁决策判据消费
+        #(决策输入一律走 TurnState 投影;ADR-0571)。
+        state_of(session).v3_release_reason = 'must_spend'
+    # D 支锁线布尔单一源 = ``_ist.locked_comp````(17 号稿 §1.1 应修-8 B-1
     # 定谳;flow.py 物化段证明 P1 未锁线帧早对物化伪 comp →
     # ``k is not None`` 恒真,作锁线门会让垫件在未锁线期发射——fail-closed
     # 破门,ADR-0525 决策 2 辖域)。

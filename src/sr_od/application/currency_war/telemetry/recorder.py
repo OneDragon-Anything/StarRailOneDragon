@@ -235,10 +235,12 @@ class TelemetryRecorder:
                 #  接回 sim/checks/segments.terminal_release_bit 单一源——
                 #  旧 v2 决策位写面退役后本键改挂该谓词,接线批恢复产出;
                 #  schema 字段语义不变。)
-                # `w611_econ_cycle/` 储备/义务披露(v3_* 为 decide_prep/engine
-                # 每轮写 MandateState;读口 = strategy_state_of 访问函数——
-                # 状态字段已迁策略器状态对象,读 session 动态属性恒 miss =
-                # 遥测断流(session.md §7.2-2 点名风险形态,ADR-0563 决策-6)。
+                # `w611_econ_cycle/` 储备/义务披露(写端 = assembly.
+                # _disclose_budget 每 prep 装配帧 + 商店执行回执位 spent/
+                # shop 必花域 reason,T-88/ADR-0571;读口 = strategy_state_of
+                # 访问函数——状态字段已迁策略器状态对象,读 session 动态属性
+                # 恒 miss = 遥测断流(session.md §7.2-2 点名风险形态,
+                # ADR-0563 决策-6);sim engine_p1 轮快照 = 读端非写端。
                 # default 栈帧无写点 → attr 缺省 None,字段保持 None 语义)
                 def _w611_int(attr: str) -> int | None:
                     _v = getattr(strategy_state_of(_sess), attr, None)
@@ -248,10 +250,11 @@ class TelemetryRecorder:
                 trace.sess_release_budget = _w611_int('v3_release_budget')
                 _rs = getattr(strategy_state_of(_sess), 'v3_release_reason', None)
                 trace.sess_release_reason = None if _rs is None else str(_rs)
-                # 实花面(v3_release_spent,全渠道:刷新经授权门逐笔扣账 +
-                # 买牌/升级经仲裁收尾回执汇总;每轮入口清零):ADR-0503
-                # 开臂判据②「危机帧实花分项账非全零」的生产观测源,记账面
-                # (budget)不作兑现证据。
+                # 实花面(v3_release_spent;写点 = cw_op_buy_cards 执行
+                # 回执位,首版只计刷新实花——「宁窄勿虚」收窄申报,扩口径
+                # 待裁归 ADR-0571;每轮入口清零,承载 = v3_disclosure_key
+                # 键戳):ADR-0503 开臂判据②「危机帧实花分项账非全零」的
+                # 生产观测源,记账面(budget)不作兑现证据。
                 trace.sess_release_spent = _w611_int('v3_release_spent')
                 # P26 备战帧无条件采集(math_proofs P26 双挂账采集批;19 号稿
                 # §2.3-4 裁定的另立采集点——每备战决策帧无条件采样,非 D-D

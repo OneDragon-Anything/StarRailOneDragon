@@ -3,7 +3,9 @@
 
 装配点管线(蓝图 §1.3):``assemble()``(Snapshot + session → TurnState,
 方向/预算投影一次装配)。纪律(蓝图 §2):投影幂等重算、单一写端
-(assemble 装配点)、派生值一律不落 session。
+(assemble 装配点)、派生值一律不落 session——唯一显式豁免 = 遥测
+披露面四字段 + 键戳(``_disclose_budget`` 写点;不入决策输入,裁决
+与边界 = ADR-0571)。
 
 - 方向权威 = cw_intention 只读快照(``committed`` 读端 = kernel 单一源);
 - 预算权威 = economy_cycle(本包,自 decision_v2 迁入)+ kernel.cw_economy
@@ -120,6 +122,40 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
     )
 
 
+def _disclose_budget(state: Any, session: StrategySession,
+                     budget: BudgetView) -> None:
+    """遥测披露面写点(T-88 决策环数据流断链修复;裁决 = ADR-0571)。
+
+    装配纪律(派生值不落 session)的立法目的 = 根治**决策输入**读跨帧
+    旧共享态的污染类缺陷;本写点四字段 + 键戳是**遥测披露面**,不入
+    决策输入——决策判据一律消费 TurnState 幂等投影,禁读这些字段
+    (守卫锁 = test_cw_t88_reserve_disclosure 禁消费 grep 锁)。写端
+    只有本函数与商店执行回执位(cw_op_buy_cards.accrue_release_spent,
+    只累计 spent);读端只有 recorder.py 透传与 sim engine_p1 轮快照
+    (遥测读链)。BudgetView 本身仍不落不回读,纪律本意零破坏。
+
+    - reserve_cap/obligation:BudgetView 现算值幂等覆写(同帧同值,
+      重复装配无副作用);
+    - overflow:``max(0, gold − reserve_cap)`` 纯派生直算——禁二次调
+      ``economy_cycle.overflow``(其内部再调 reserve_cap,双算分叉面);
+    - 键戳 (plane, round) 变更 ⇒ spent/reason 轮界清零后盖新戳:与
+      schema「sess_release_spent 每轮入口清零」「sess_release_reason
+      当轮义务来源」两契约对齐(F5 裁决二选一之①:reason 并入键戳
+      清零块,杜绝跨轮陈读);不复用 v3_release_round(W332b 旧轮语义)。
+    """
+    st = state_of(session)
+    key = (int(getattr(state, 'plane', 0) or 0),
+           int(getattr(state, 'round_num', 0) or 0))
+    if st.v3_disclosure_key != key:
+        st.v3_release_spent = 0
+        st.v3_release_reason = ''
+        st.v3_disclosure_key = key
+    st.v3_reserve_cap = int(budget.reserve_cap)
+    st.v3_reserve_overflow = max(
+        0, int(getattr(state, 'gold', 0) or 0) - int(budget.reserve_cap))
+    st.v3_release_budget = int(budget.obligation)
+
+
 def _budget(state: Any, session: StrategySession,
             registry: DecisionV2Registry) -> BudgetView:
     """预算投影(批 3 预算收权):W611 义务模型为核 + 确定性费用查表两接缝。
@@ -127,7 +163,8 @@ def _budget(state: Any, session: StrategySession,
     预算权威 = economy_cycle(schedule_upgrade/refresh_ev_budget 确定性
     核 + R*/义务链);DP 姿态供给已退役(原「帧内单一求解、四路共用」
     的 W620 效率热点随核替换消失——确定性核为闭式直算,无 0.3s 求解面,
-    效率复核判据:decide 热点回落)。
+    效率复核判据:decide 热点回落)。投影后附带遥测披露面写点
+    (``_disclose_budget``,T-88;不入决策输入)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
         refresh_ev_budget,
@@ -138,7 +175,7 @@ def _budget(state: Any, session: StrategySession,
         obligation,
     )
     floor = registry.interest_cap * 10   # 守息线(与 reserve_cap 内部同源派生)
-    return BudgetView(
+    budget = BudgetView(
         # P6 注入单源(W636 A):BudgetView 各字段消费同一 registry 实例,
         # 禁混用 state_of(session).v3_registry 死通道 / DEFAULT 缺省表。
         interest_floor=floor,
@@ -147,13 +184,18 @@ def _budget(state: Any, session: StrategySession,
         schedule=schedule_upgrade(state, session, registry),
         ev_auth=refresh_ev_budget(state, session, registry),
     )
+    _disclose_budget(state, session, budget)
+    return budget
 
 
 def assemble(snapshot: Snapshot, session: StrategySession,
              registry: DecisionV2Registry | None = None) -> TurnState:
     """装配点:Snapshot + session → TurnState(方向/预算投影一次算完)。
 
-    幂等:同输入重入返回等值 TurnState(投影重算,不落任何状态)。
+    幂等:同输入重入返回等值 TurnState(投影重算)。纪律边界(T-88
+    披露面豁免,ADR-0571):决策投影不落 session;唯一例外 =
+    ``_disclose_budget`` 写遥测披露面四字段 + 键戳(不入决策输入,
+    读端只有 recorder/engine_p1 遥测链)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.adapter import (
         decision_state,

@@ -427,13 +427,19 @@ class DecisionTrace:
     sess_reserve_overflow: int | None = None
     # 当轮 release 义务预算(金;0=无 release 帧或零预算结转帧)。
     sess_release_budget: int | None = None
-    # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission';
-    # 'crisis'=危机金出口臂 ADR-0503,判读兑换率分域勿漏此值)。
+    # 义务来源(''/'flip'/'crisis'/'third_path'/'reserve_admission'/
+    # 'must_spend';'crisis'=危机金出口臂 ADR-0503,判读兑换率分域勿漏
+    # 此值;'must_spend'=必花域帧写点,T-88 批新增值域——shop 必花域段
+    # 帧内 last-wins,轮界清零在装配键戳,ADR-0571。现役 mandate_v1
+    # 只产 ''/'must_spend',其余值为历史来源,存量数据按旧口径读)。
     sess_release_reason: str | None = None
     # 当轮 release 帧实际消费(金;strategy_state_of(session).v3_release_spent 透传,每轮
-    # 入口清零)。全渠道口径:刷新经 authorize_release_refresh 授权逐笔
-    # 扣账;买牌/升级经仲裁收尾回执汇总裁(_accrue_release_frame_spend,
-    # 决策帧值为轮内截至采样时点累计)。
+    # 入口清零,清零承载 = 策略状态 v3_disclosure_key 键戳)。
+    # 口径(T-88 收窄申报,ADR-0571):首版只计**刷新实花**(记账位 =
+    # cw_op_buy_cards 执行回执位;决策帧值 = 轮内截至采样时点累计)——
+    # 买牌/升级是否计入「全渠道义务实花」在 mandate_v1 语义下未经证明,
+    # 裁决前收窄防虚高(宁窄勿虚;旧 authorize_release_refresh/
+    # _accrue_release_frame_spend 机制退役史与口径裁决归 ADR-0571)。
     # ADR-0503 开臂判据②的「实花面分项账」数据源:危机帧兑换按本字段计,
     # sess_release_budget 记账面(预算许可)不作兑现证据。
     sess_release_spent: int | None = None

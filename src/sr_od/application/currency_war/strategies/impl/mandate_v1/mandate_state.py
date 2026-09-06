@@ -135,7 +135,12 @@ class MandateState:
     # ===== 泄息指令与承接门(W332b/w227/ADR-0400/0403;轮)=====
     v3_release: object = None
     v3_release_round: int | None = None
-    v3_release_spent: int = 0        # 遥测透传源(schema.sess_release_spent)
+    # 义务实花披露(遥测键 sess_release_spent 透传源):写端=商店执行
+    # 回执位(cw_op_buy_cards.accrue_release_spent,首版只计刷新实花,
+    # 「宁窄勿虚」口径申报归 ADR-0571),轮界清零承载=v3_disclosure_key
+    # 键戳(assembly 装配点);读端=recorder/engine_p1 轮快照。披露面
+    # 字段,禁决策判据消费(ADR-0571)。
+    v3_release_spent: int = 0
     v3_handoff_gap: int = 0
     v3_handoff_hp_proj: int | None = None
 
@@ -146,17 +151,29 @@ class MandateState:
     v3_dir_refresh_used: int = 0
     # DP 姿态轮帧缓存(每段 decide_prep 覆写;None=本轮无决策段)。
     v3_alloc_frame: dict | None = None
-    # 储备线披露(telemetry sess_reserve_cap 透传源)。
+    # 储备线披露(遥测键 sess_reserve_cap 透传源;写端=assembly.
+    # _disclose_budget 每 prep 装配帧幂等覆写;读端=recorder/engine_p1
+    # 轮快照。披露面字段,禁决策判据消费,ADR-0571)。
     v3_reserve_cap: int = 0
 
     # ===== 账外补充(实施批按 §6.1 收编的策略侧动态属性;产生者/消费
     # 面注释见原写入/读出点)=====
-    # 储备溢余披露(engine/sim 轮快照 sess_reserve_overflow)。
+    # 储备溢余披露(遥测键 sess_reserve_overflow 透传源;写端=assembly.
+    # _disclose_budget,读端=recorder/engine_p1 轮快照。披露面字段,
+    # 禁决策判据消费,ADR-0571)。
     v3_reserve_overflow: int = 0
-    # 危机金出口臂预算披露(engine 轮快照 sess_release_budget)。
+    # 义务预算披露(遥测键 sess_release_budget 透传源;写端/读端同上)。
     v3_release_budget: int = 0
-    # 危机金出口原因披露(engine 轮快照 sess_release_reason)。
+    # 义务来源披露(遥测键 sess_release_reason 透传源;写端=shop 必花域
+    # 段「must_spend」帧内 last-wins + 装配键戳轮界清零,读端同上)。
     v3_release_reason: str = ''
+    # 披露面轮键戳(T-88 轮界清零承载):坐标系=(plane, round) 二元组
+    #(位面号/位面内轮次,均 1 基);取值时机=装配帧现读
+    # (decision_state 的 plane/round_num);写入端=assembly._disclose_budget
+    # 单一写点(商店执行回执位只比较不写)。键戳 ≠ 当前 (plane, round)
+    # ⇒ v3_release_spent/v3_release_reason 清零并盖新戳。不复用
+    # v3_release_round(W332b 泄息指令旧轮语义)。
+    v3_disclosure_key: tuple[int, int] | None = None
     # ADR-0348:扑满节点识别标记(engine 轮快照)。
     v3_piggy_reward: bool = False
     # 商店拒因遥测(shop.py 逐帧刷新;期望态即投影后真值)。

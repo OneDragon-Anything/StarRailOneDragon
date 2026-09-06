@@ -445,6 +445,34 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         ledger.refresh_first_action = False
 
 
+def accrue_release_spent(match: 'CurrencyWarMatch',
+                         action: 'BuyCard | RefreshShop | LevelUpShop | CloseShop',
+                         ok: bool, state: GameState) -> None:
+    """v3_release_spent 执行回执位记账(T-88 写点;裁决 = ADR-0571)。
+
+    首版口径 = **只计刷新实花**(「宁窄勿虚」的遥测诚实性选择:买牌/
+    升级是否计入「义务实花」全渠道口径在 mandate_v1 语义下未经证明,
+    混入会虚高——扩口径挂 ADR-0571 待裁)。刷新单通道前提:R1 = 今日
+    唯一刷新发射点(kernel/cw_state.RefreshShop.reason 值域契约)。
+    记账位语义 = 动作执行成功回执(本函数在 apply_action_outcome 之后
+    调用),决策帧值 = 轮内截至采样时点累计(schema 同款声明)。
+
+    F4 栈守卫:仅当披露面轮键戳 == 当前 (plane, round)(即 mandate_v1
+    本轮 prep 装配已跑)才累计——非 mandate_v1 栈(异型策略状态对象无
+    键戳)或键戳过期帧不累计,防「spent>0 而预算三字段=None」的混合行
+    形态(recorder「default 栈帧无写点 → None 语义」声明)。字段经防御
+    getattr 访问(披露面形态;ADR-0563 B4 收缩申报)。
+    """
+    if not ok or not isinstance(action, RefreshShop):
+        return
+    st = strategy_state_of(match.session)
+    key = (int(getattr(state, 'plane', 0) or 0),
+           int(getattr(state, 'round_num', 0) or 0))
+    if getattr(st, 'v3_disclosure_key', None) != key:
+        return
+    st.v3_release_spent += max(0, int(getattr(action, 'cost', 0) or 0))
+
+
 def run_buy_waves(op: SrOperation, match,
                   hp_value: int | None, hp_readable: bool,
                   hp_trusted: bool,
@@ -767,6 +795,9 @@ def run_buy_waves(op: SrOperation, match,
                 ledger=ledger, state=_cur))
             apply_action_outcome(_aop, action, _ok, _cur, match, ledger,
                                  visit_actions)
+            # 义务实花回执位记账(T-88;闸前不记——spend_gate 拒绝帧
+            # 未执行,本位只在 execute 成功回执后累计,F4 栈守卫见函数注)。
+            accrue_release_spent(match, action, _ok, _cur)
             if _aop.terminal:
                 # 终结 op 统一退出(ADR-0517 决策 4/7;终结 op 语义 review
                 # V1/V2 修复,P35 实证):终结动作 execute 后黑板不投影
