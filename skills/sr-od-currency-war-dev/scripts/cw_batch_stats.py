@@ -294,6 +294,20 @@ def analyze_game(rows: list[dict]) -> dict:
     # 单一源 = v3_intention.locked_comp 非空,档案行 None → 无数据不误报。
     m['锁线帧'] = (sum(1 for r in rows if r.get('locked'))
                    if any(r.get('locked') is not None for r in rows) else None)
+    # M 锁线断头观测面(锁线断头 P2 定向通道设计稿 §6;纯观测件只披露
+    # 不定谳)。逐局按位面轮数/锁线帧——批级锁定率(locked_frames/总轮数,
+    # 按位面分列)在 report 侧聚合;42 跳对照警示:有锁对照批 hp 中位反而
+    # 0.0,锁定率与结局无单调关系,只承归因(跨批摆动可见性),禁读作
+    # 越高越好、禁作优化目标。档案行 locked=None → 无数据,不误报 0。
+    _pl: dict[int, dict[str, int]] = {}
+    for r in rows:
+        b = _pl.setdefault(r['plane'], {'frames': 0, 'locked': 0})
+        b['frames'] += 1
+        if r.get('locked'):
+            b['locked'] += 1
+    m['位面锁定'] = ({p: (b['locked'], b['frames'])
+                     for p, b in sorted(_pl.items())}
+                    if any(r.get('locked') is not None for r in rows) else None)
     m['l2统一触发帧'] = _cts.get('must_spend_l2_trigger', 0)
     m['l2_rest_capacity拒'] = _cts.get('fuel_filler_stall_fenced_l2_rest_capacity', 0)
     # D 战斗过程
@@ -437,6 +451,31 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     print(f'  planes: {len(planes_all)} | plane_list: {planes_all}')
     lock_vals = [m['锁线帧'] for m in ms.values() if isinstance(m.get('锁线帧'), int)]
     print(f'  locked_frames 合计: {sum(lock_vals) if lock_vals else "无数据(非 sim 源无锁线布尔)"}')
+    # M 锁定率按位面分列(设计稿 §6;只披露不作目标值——42 跳对照警示
+    # 见脚本头注记与 analyze_game 同段)。分母=该位面总轮数,分子=locked
+    # 帧数,跨局求和后相除(cw_batch_stats 同域口径)。
+    _pr: dict[int, list[int]] = {}
+    for m_ in ms.values():
+        for p, (lk, fr) in (m_.get('位面锁定') or {}).items():
+            b = _pr.setdefault(p, [0, 0])
+            b[0] += lk
+            b[1] += fr
+    if _pr:
+        print('  锁定率(locked/总轮,按位面): '
+              + ' | '.join(f'P{p} {lk}/{fr}={round(lk / fr, 2)}' if fr else f'P{p} 无帧'
+                           for p, (lk, fr) in sorted(_pr.items())))
+    else:
+        print('  锁定率: 无数据(非 sim 源无锁线布尔)')
+    # M 锁线断点分键批级汇总(G5/G6/G7/G8 四分键+锁定率帧计数;来自
+    # cw4_counters 轮差分,engine_p1 建模)。禁合并为单一「锁线失败」键
+    # ——四键与锁定率交叉 = 摆动局「断在哪一门」逐批分解(设计稿 §6)。
+    _LP_PREFIXES = ('weakplane_exempt_eval', 'p2_supply_gate_cull',
+                    'neardeath_direction_obs', 'p2_handoff_',
+                    'promote_candidate_', 'intention_frame_',
+                    'intention_locked_frame_')
+    _lp_show = {k: v for k, v in sorted(_ct_tot.items())
+                if k.startswith(_LP_PREFIXES)}
+    print(f'  锁线断点分键(G5-G8+锁定率帧,键→次): {_lp_show or "无数据(本批改动前落的局无键)"}')
     if len(planes_all) == 1:
         print('  注: 单面批(planes=1)——L2 辖域不可达(触发链前置锁线,锁线态'
               '在位面入口才建立,本批锁线帧=0),L2=0 是辖域结果,禁当行为信号')

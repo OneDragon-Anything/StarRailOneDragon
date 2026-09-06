@@ -222,6 +222,18 @@ class IntentionState:
     serialize_intention 全量序列化自动携带。"""
     # (supply_drought 方向侧供给衰减计数器已随兑现链开关族删除——旧方案
     #  清退批,清查报告 OLD_MIX_AUDIT §1.3。)
+    p1_pair_frozen_obs: tuple[str, ...] = ()
+    """P1 配方对观测快照(锁线断头 P2 定向通道设计稿 §2.1/§6,纯观测件):
+    plane==1 且派生 pair 非空时随帧覆写为最新非空值——P2 退场后仍可读
+    「退场前的冻结副本」,作 ``promote_candidates``(G8 观测载体)的输入。
+
+    - **坐标系/取值时机**:值域 = ``p1_pair`` 同域四体系键二元组;
+      生成期快照(最近一个非空 P1 派生帧),不随 P2 资产变化刷新;
+      跨局随 IntentionState 新建自然清零。
+    - **只承归因不作行为**:任何判定/发射逻辑禁消费本字段(行为交付面
+      = P65 直证批另行立项,届时按设计稿改 ``p1_pair`` 退场语义,不改
+      本快照);grep 守卫锁钉住唯一写入端与本函数族唯一读端。"""
+
     tracks: dict[str, LineTrack] = field(default_factory=dict)
     last_event: str = ''               # 最近一次状态转移(判读/遥测锚点)
     revoke_evidence: dict[str, object] = field(default_factory=dict)
@@ -1034,6 +1046,91 @@ def _track(ist: IntentionState, comp_name: str) -> LineTrack:
     return ist.tracks[comp_name]
 
 
+# ===== 锁线断头观测分键(纯观测件;设计出处 = 锁线断头 P2 定向通道
+# 设计稿 §6 分键清单,.debug/temp/currency_war/lock_path_p2_channel_design/)=====
+# 四分键禁合并为单一「锁线失败」键(设计稿 §6 断点定位粒度确认);全部
+# 只承归因不作目标值——42 跳对照警示:有锁对照批 hp 中位反而 0.0,锁定率
+# 与结局无单调关系,禁入验收通过线禁作优化目标。零行为守卫:观测位只
+# 计数,不改任何判定/发射结果(守卫锁 = sr-od-test test_cw_lock_path_obs_keys)。
+
+#: 观测分键前缀全集(session.cw4_counters;与既有键族零交集,设计稿 §4 条款③)。
+LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
+    'weakplane_exempt_eval',          # G5:信号曾生成但被弱面剔(+豁免判据分支)
+    'p2_supply_gate_cull',            # G6:信号存活但被 G≤ε 缓锁剔除
+    'neardeath_direction_obs_',       # G6/G7:濒死带定向观测(H=血预算轮数≤1 帧)
+    'p2_handoff_',                    # G7:移交帧/候选空帧计数
+    'promote_candidate_',             # G8:晋升候选集纯派生非空率
+    'intention_frame_',               # 锁定率分母:意向驱动帧数(按位面)
+    'intention_locked_frame_',        # 锁定率分子:phase=='locked' 帧(按位面)
+)
+
+
+def _near_death_band(state: GameState,
+                     registry: DecisionV2Registry | None = None) -> bool:
+    """濒死带观测判定(零新参数):0 < hp ≤ ``vd_p2_loss``,即血预算
+    轮数 ⌈hp/vd_p2_loss⌉ == 1——与 ``p2_supply_horizon`` 血预算支同式,
+    只辖观测分键(设计稿 §2.3 观测件;授权面出辖 §12-7 并案批)。"""
+    hp = int(getattr(state, 'hp', 0) or 0)
+    if hp <= 0:
+        return False
+    return math.ceil(hp / float((registry or DEFAULT_REGISTRY).vd_p2_loss)) == 1
+
+
+def _bump_obs(session: StrategySession | None, key: str) -> None:
+    """观测分键计数(session.cw4_counters 容器;键登记惯例同 mandate_v1)。
+
+    session 为 None(纯逻辑直调)静默跳过;容器缺席惰性建空 dict
+    (先例 = mandate_v1/entry.py 初始化面)——只写计数,不碰任何判定
+    输入,零行为。"""
+    if session is None:
+        return
+    counters = getattr(session, 'cw4_counters', None)
+    if counters is None:
+        counters = {}
+        session.cw4_counters = counters
+    counters[key] = counters.get(key, 0) + 1
+
+
+def promote_candidates(state: GameState,
+                       ist: IntentionState,
+                       session: StrategySession | None = None,
+                       registry: DecisionV2Registry | None = None,
+                       visible: set[str] | None = None) -> list[Comp]:
+    """晋升候选集纯派生(设计稿 §2.1 公式;本批为 G8 观测载体,零行为)。
+
+    公式(与 P2 移交候选 :1345 同判据形状,输入换 p1_pair 冻结快照):
+    ``{ c ∈ v2 comps : c ∉ evicted ∧ (form_tiers ∪ sub_tiers) ∩
+    pair 体系键 ≠ ∅ ∧ plane ∉ weak_planes ∧ _core_reachable ∧
+    (plane != 2 或 G > ε) }``。输入 = ``p1_pair_frozen_obs``(退场前
+    冻结副本,空 = P1 无配方方向,候选恒空)。
+
+    - **行为交付面出辖**:排序与锁定消费归 P65 直证批(设计稿 §6 验收
+      序「①前置观测」),本函数禁入任何行为消费点;
+    - 体系键交集用 ``_pair_bond_keys``(希儿系展开=量子同频+贝洛伯格,
+      与 ``locked_faction_scope`` 同口径,不另造键展开)。"""
+    pair = tuple(ist.p1_pair_frozen_obs or ())
+    if not pair:
+        return []
+    reg = registry or DEFAULT_REGISTRY
+    vis = _visible_chars(state) if visible is None else visible
+    bonds = _pair_bond_keys(pair)
+    out: list[Comp] = []
+    for c in _v2_comps():
+        if c.name in ist.evicted:
+            continue
+        if not (set(c.form_tiers) | set(c.sub_tiers)) & bonds:
+            continue
+        if state.plane in (c.weak_planes or ()):
+            continue
+        if not _core_reachable(c, state, vis):
+            continue
+        if state.plane == 2 and line_completion_feasibility(
+                state, c, session, reg, vis) <= reg.revoke_miss_tolerance_eps:
+            continue
+        out.append(c)
+    return out
+
+
 def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
           forced: bool = False) -> None:
     ist.phase = 'locked'
@@ -1068,6 +1165,10 @@ def update_intention(state: GameState, ist: IntentionState,
     换线裁决回归 E_rounds/θ/δ/D_min 主判据。)
     """
     if ist.demoted_endgame:
+        # 吸收态短路也计入锁定率分母(帧末恒 unlocked,分子自然不计;
+        # 漏计会虚高锁定率——分键口径声明见函数尾计数块)。
+        _plane_key = f'p{min(max(1, int(getattr(state, "plane", 1))), 3)}'
+        _bump_obs(session, f'intention_frame_{_plane_key}')
         return ist   # 降格终局是 absorbing 态(点7 止损序同构,不回弹)
     if state.plane != 1 and ist.transition_pair:
         # 出 P1:过渡对副方向退场(ADR-0367;P2+ 锁定目标=locked_comp 唯一)
@@ -1086,12 +1187,34 @@ def update_intention(state: GameState, ist: IntentionState,
     # 只滤 maybe_pivot 保命路径,③核心卡可见信号(P2r1 卡芙卡在场)绕过
     # 过滤锁出 P2 弱面线,选线即死路(实机局 g_20260904_042657)。
     _pre_wp = len(sigs)
+    _pre_sigs = sigs
     sigs = [s for s in sigs
             if state.plane not in (getattr(get_comp(s.comp_name),
                                             'weak_planes', ()) or ())]
     if len(sigs) != _pre_wp:
         log.info('[cw][intention] 弱面过滤 %d→%d 信号(plane=%s)',
                  _pre_wp, len(sigs), state.plane)
+        # G5 观测分键(设计稿 §6):信号曾生成但被弱面剔——逐被剔信号
+        # 计 eval,并按豁免判据(设计稿 §2.2:厚度 ≥ A_min ∧ 意向核心
+        # 在店/在手)预演分支(fail-closed 期只计数,豁免行为不落)。
+        # fail 支=厚度不足是「维持零通道」组拼合式的必要输入(§6)。
+        _reg_wp = registry or DEFAULT_REGISTRY
+        _a_min = _reg_wp.revoke_evidence_min_thickness
+        _kept = {y.comp_name for y in sigs}
+        for s in (x for x in _pre_sigs if x.comp_name not in _kept):
+            comp_wp = get_comp(s.comp_name)
+            if comp_wp is None:
+                continue
+            _bump_obs(session, 'weakplane_exempt_eval')
+            thk = _asset_thickness(comp_wp, state)
+            core = intention_core(comp_wp)
+            core_vis = bool(core) and core in visible
+            if thk >= _a_min and core_vis:
+                _bump_obs(session, 'weakplane_exempt_eval_hit')
+            elif thk < _a_min:
+                _bump_obs(session, 'weakplane_exempt_eval_fail_thickness')
+            else:
+                _bump_obs(session, 'weakplane_exempt_eval_fail_visible')
     revoked = False   # 本轮是否发生撤销(出口①miss/出口②):撤后当轮不重锁——
     # 「意向降级为弱意向……直至新信号」= 新信号指下一轮起的信号;同轮撤+锁会让
     # 弱意向态不可观测(判读/遥测断档),状态机一回合最多一次转移。
@@ -1276,12 +1399,24 @@ def update_intention(state: GameState, ist: IntentionState,
         if state.plane == 2:
             _reg_f2 = registry or DEFAULT_REGISTRY
             _n0 = len(sigs)
+            # G6 观测分键(设计稿 §6):信号存活至缓锁门但被 G≤ε 剔除。
+            # 濒死带定向观测(设计稿 §2.3,只计数不定谳):濒死带 = 血预算
+            # 轮数 ⌈hp/vd_p2_loss⌉ == 1(零新参数,与 p2_supply_horizon 血
+            # 预算支同式;G 数值分布不入计数容器,走既有 revoke_evidence
+            # 遥测面)。授权设计(濒死换向豁免)出辖设计稿 §12-7 并案批,
+            # fail-closed 前行为零变更。
+            _nd = _near_death_band(state, _reg_f2)
+            if _nd:
+                _bump_obs(session, 'neardeath_direction_obs_frame')
             sigs = [s for s in sigs
                     if _p2_signal_supply_ok(state, s, session, _reg_f2,
                                             visible)]
             if len(sigs) != _n0:
                 log.info('[cw][intention] P2 供给可行性缓锁 %d→%d 信号',
                          _n0, len(sigs))
+                _bump_obs(session, 'p2_supply_gate_cull')
+                if _nd:
+                    _bump_obs(session, 'neardeath_direction_obs_supply_cull')
         # H1 锁线环境判据(行为无条件化):累积型线强环境不命中(False)的信号
         # 本轮不锁(缓锁——「无环境不选」只辖**主动选线**,已锁线与判据
         # 不辖(None)/信息缺失帧不拦;观察期=line_env_lock_min_round)。
@@ -1308,6 +1443,10 @@ def update_intention(state: GameState, ist: IntentionState,
                 ist.p1_pair = pair
                 ist.last_event = ('p1_pair:' + '+'.join(pair)) \
                     if pair else 'p1_pair:wait'
+            # 观测快照(唯一写入端):最新非空派生对冻结留档,供 P2 期
+            # promote_candidates 消费(p1_pair 本体在 exit_p1 清空,见下)。
+            if pair and pair != ist.p1_pair_frozen_obs:
+                ist.p1_pair_frozen_obs = pair
         elif ist.p1_pair:
             # 进 P2:配方锁退场,comp 锁定通道照旧(P2+ 锁定产物=终局 comp)
             ist.p1_pair = ()
@@ -1336,12 +1475,24 @@ def update_intention(state: GameState, ist: IntentionState,
     _p2_handoff = (state.plane == 2 and ist.phase == 'unlocked'
                    and not revoked)
     if (state.plane >= 3 or _p2_handoff) and ist.phase != 'locked':
+        # G7/G8 观测分键(设计稿 §6):移交帧分母;候选空帧(handoff_lock
+        # 零发射的直接断点);濒死带出口去向;晋升候选集纯派生非空率
+        # (G8,输入 = p1_pair_frozen_obs,零行为)。与 G5/G6 分键交叉
+        # = 「整局零锁定」摆动局可逐门分解断点(禁合并单键)。
+        if _p2_handoff:
+            _bump_obs(session, 'p2_handoff_frame')
+            if _near_death_band(state, registry):
+                _bump_obs(session, 'neardeath_direction_obs_handoff_frame')
+        _reg_h = registry or DEFAULT_REGISTRY
+        if _p2_handoff and ist.p1_pair_frozen_obs:
+            _bump_obs(session, 'promote_candidate_frame')
+            if promote_candidates(state, ist, session, _reg_h, visible):
+                _bump_obs(session, 'promote_candidate_nonempty')
         # P2 移交候选补「锁线可行性」门(锁线可行性批):G > ε 才可锁
         # ——锁线前先验证可达性(供给概率×剩余轮×血预算,注册表派生
         # 零新参数),不可行线不进强锁候选;全不可行 ⇒ 无候选 ⇒ 保持
         # unlocked(dd-033 ⑤兜底语义=「降级目标」面,不降格终局)。
         # P3 分支不动(强锁/降格终局辖域原语义,本批只辖 P2)。
-        _reg_h = registry or DEFAULT_REGISTRY
         cands = [c for c in _v2_comps()
                  if c.name not in ist.evicted
                  and state.plane not in (c.weak_planes or ())
@@ -1369,6 +1520,22 @@ def update_intention(state: GameState, ist: IntentionState,
             ist.locked_comp = ''
             ist.revoke_evidence = {}   # 降格不经撤销,证据随之失效
             ist.last_event = 'demote:endgame'
+        elif _p2_handoff:
+            # G7 观测分键:候选空帧——unlocked 帧零候选 ⇒ handoff_lock
+            # 零发射(「整局零锁定」摆动的最直接断点;设计稿 §6)。
+            _bump_obs(session, 'p2_handoff_cand_empty')
+            if _near_death_band(state, _reg_h):
+                _bump_obs(session, 'neardeath_direction_obs_handoff_empty')
+
+    # 锁定率帧计数(设计稿 §6「锁定率入批统计披露」;分母 = 意向驱动帧,
+    # 分子 = 帧末 phase=='locked';按位面分列,与 cw_batch_stats 的
+    # planes/locked_frames 同域口径。只承归因:锁定率与结局无单调关系,
+    # 禁作优化目标。生产驱动面 = drive_intention / flow.update_target,
+    # 两者共用 session.v3_intention_key 段级重入守卫 ⇒ 每 game-round 恰一次)。
+    _plane_key = f'p{min(max(1, int(getattr(state, "plane", 1))), 3)}'
+    _bump_obs(session, f'intention_frame_{_plane_key}')
+    if ist.phase == 'locked' and ist.locked_comp:
+        _bump_obs(session, f'intention_locked_frame_{_plane_key}')
     return ist
 
 
