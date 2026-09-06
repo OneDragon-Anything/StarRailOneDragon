@@ -1583,7 +1583,7 @@ class CwLoop(SrOperation):
                                 self, self.ctx)
                             if _detail_x == 'readiness_stale_screen':
                                 # 屏态过期(过渡帧):单帧不停机(无执行面卡死
-                                # 证据,交回下轮重判)——三审整改(必修1):但
+                                # 证据,交回下轮重判)。三审整改(ADR-0554):
                                 # 早退跳过守卫停机面 + round_wait 不耗 retry,
                                 # 发射核持续 stale 时=无界自旋。独立自旋上限
                                 # 3(与发射失败连击同构):连续 stale 达限放弃
@@ -1592,7 +1592,10 @@ class CwLoop(SrOperation):
                                 # 需留证的结构性形态。选独立上限而非「落回守卫
                                 # 链」:本臂位于守卫触发位内侧,落回=立即停机,
                                 # 会把偶发过渡帧误升停机(比达标臂同形态更严,
-                                # 语义不对齐)。
+                                # 语义不对齐)。stale 同时复位失败连击(反之
+                                # 亦然,见下两分支):「连续」辖同型结果,
+                                # fail/stale 交错序列不累计 giveup。
+                                self._cw_exhaust_fail_n = 0
                                 _xs = getattr(self, '_cw_exhaust_stale_n', 0) + 1
                                 self._cw_exhaust_stale_n = _xs
                                 if _xs >= 3:
