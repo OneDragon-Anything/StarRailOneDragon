@@ -174,6 +174,11 @@ class MandateV1Strategy(CwFlowStrategy):
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好;驱动器在循环
         # 内登记,与生产执行侧同一载体)。
         state_of(session).cw4_visit_bought_names = []
+        # T-82 段序号置位(sim/replay 商店 visit 入口;生产对应位 =
+        # cw_op_buy_cards.run_buy_waves 入口,sim 引擎发射帧仲裁段的商店
+        # 决策同样经本驱动器,一并推进):visit = 腾席拒绝结论的输入不
+        # 变性段,入口 +1 使上一 visit/上一域残留 token/闩按序号不等失效。
+        state_of(session).cw4_segment_serial += 1
         out: list = []
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
             a = self.decide_shop_action(session, config)
@@ -182,6 +187,13 @@ class MandateV1Strategy(CwFlowStrategy):
             if isinstance(a, (cw_state.BuyCard,)):
                 state_of(session).cw4_visit_bought_names.append(a.card.name or '')
             out.append(a)
+            # T-82 续段 token 写入(sim/replay 驱动器位):驱动器采纳并
+            # append = 动作确认执行(终结 op 由引擎执行后重观察,其执行
+            # 不触停摆结论输入);策略器入口读后即清,下一帧据其判定 M2
+            # 停摆续段缓存命中。
+            _st_rec = state_of(session)
+            _st_rec.cw4_frame_action_record = (
+                type(a).__name__, _st_rec.cw4_segment_serial)
             if isinstance(a, (cw_state.RefreshShop, cw_state.CompTransaction)):
                 return out      # 终结 op:序列到止(重观察语境)
             state = cw_state.simulate(state, a)
