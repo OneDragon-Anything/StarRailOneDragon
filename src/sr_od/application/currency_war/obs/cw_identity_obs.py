@@ -847,36 +847,12 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
         # 书册卡开启语义已确认(2026-08-30 实机:点槽 → 「专家邀请函」五选一),
         # 原确认停机钩子退役,自动处理链见 operations/cw_screen/cw_screen_expert_invite.py
         # (备战环预清场 + loop 0k 弹窗分支接线)。
+        # 排除集单一源(部署伪槽修复批 ①):原内联段(find_* 族 ∪ 泛 TM 低阈
+        # 扫描)整体迁入 bench_item_slots,本钩子消费模糊档(精确 ∪ 泛扫描,
+        # 行为与原内联段等价);停机钩子其余段(面板守卫/帧态门/ADR-0263 锚
+        # 排除/防抖)是停机判定语义,不进该函数、留在钩子内。
         _bench_slots9 = _ctx_slots(ctx, '备战栏', 9)
-        _obj_slots: set[int] = {i for i, _p in find_supply_boxes(screen, _bench_slots9)}
-        _obj_slots |= {i for i, _p in find_tomes(screen, _bench_slots9)}
-        _obj_slots |= {i for i, _p in find_bookcards(screen, _bench_slots9)}   # r100k 书册卡
-        # 试用角色揭示卡(summon 钩子首捕建档):发光金卡点开即免费得 2★ 试用角色,
-        # 揭示动作由备战环派发前统一做(cw_loop 备战分支接线)→ 本钩子视其为
-        # 已知物品,不再落 unknown 停机(否则免费增益反成停机源)。
-        _obj_slots |= {i for i, _p in find_trial_reveal_cards(screen, _bench_slots9)}
-        _item_tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
-                     if t is not None]
-        _tm_g = _get_tome_gray()
-        if _item_tms:
-            _gray_full = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
-            for _i, _rect in _bench_slots9:
-                if _i in _obj_slots:
-                    continue
-                _c = _gray_full[_rect.y1:_rect.y2, _rect.x1:_rect.x2]
-                _bs = 0.0
-                for _it in _item_tms:
-                    if _c.shape[0] < _it.shape[0] or _c.shape[1] < _it.shape[1]:
-                        continue
-                    _bs = max(_bs, cv2.minMaxLoc(
-                        cv2.matchTemplate(_c, _it, cv2.TM_CCOEFF_NORMED))[1])
-                if _bs <= 0.45:
-                    continue
-                _ts = (cv2.minMaxLoc(cv2.matchTemplate(_c, _tm_g, cv2.TM_CCOEFF_NORMED))[1]
-                       if (_tm_g is not None and _c.shape[0] >= _tm_g.shape[0]
-                           and _c.shape[1] >= _tm_g.shape[1]) else 0.0)
-                if _bs >= _ts:
-                    _obj_slots.add(_i)   # 箱/卡包/武装箱类物件(低分渲染),排除
+        _obj_slots = bench_item_slots(ctx, screen, fuzzy=True)
         _named = {c.slot for c in chars} if chars else set()
         for _slot, _rect in _bench_slots9:
             if _slot in _named or _slot in _obj_slots:
@@ -1364,6 +1340,68 @@ def find_trial_reveal_cards(screen: MatLike, slots: list[tuple[int, Rect]]) -> l
                 hit = True
         if hit:
             out.append((idx, Point((rect.x1 + rect.x2) // 2, (rect.y1 + rect.y2) // 2)))
+    return out
+
+
+# ===== 占槽物品排除集·单一源(部署伪槽修复批 ①)=====
+# 双源缺口(方案 .debug/temp/currency_war/deploy_pseudo_slot/方案.md §0):
+# 已知物品(find_* 族)的排除集此前只内联在 read_bench_chars 的 summon 停机
+# 钩子里,部署扫描(cw_op_deploy bench_occ 纯像素占用)完全没消费 → 物件槽
+# 被装配成 char_id='' 伪槽进部署计划 → 游戏「无法移动该目标至场上」白耗
+# (局34 实证)。抽本函数后钩子与部署共用同一份名单,禁再各写一份。
+
+
+def bench_item_slots(ctx: SrContext, screen: MatLike, *, fuzzy: bool) -> set[int]:
+    """备战栏占槽物品槽位集(单一源,双置信档)→ **1-based** 槽号集合。
+
+    **坐标系与取值时机(注释规范硬门)**:返回值与 ``BenchChar.slot`` 同系
+    (备战栏 1-based);消费方转 0-based 须显式 −1(部署面 ``bench_occ``
+    为 0-based,勿混)。取值时机 = 生成期现读快照(调用方持帧自洽,跨帧失效)。
+
+    **双置信档**(方案 A1:两处消费的置信要求不同,禁止一个全集合两处共用):
+    - 精确档(``fuzzy=False``)= find_supply_boxes(补给箱/简易武装箱)
+      ∪ find_tomes(秘密典籍)∪ find_bookcards(书册卡)∪ find_trial_reveal_cards
+      (试用角色揭示卡)。部署面**只许**消费本档:泛扫描是模糊判据,真角色
+      立绘在极端帧可能弱匹配过阈 → 部署面误排真角色 = 战力真空(贵方向,
+      r60 同型),比伪槽白拖更贵。
+    - 模糊档(``fuzzy=True``)= 精确档 ∪ 泛 TM 低阈扫描(0.45 阈,箱/典籍
+      互斥对拍)。仅 summon 停机钩子消费:best-effort 包在 try/except,误排
+      最多少停机一次(下帧重判,便宜方向)。
+
+    :param fuzzy: True = 精确 ∪ 泛扫描(钩子档);False = 仅精确识别族(部署档)。
+    """
+    slots9 = _ctx_slots(ctx, '备战栏', 9)
+    out: set[int] = {i for i, _p in find_supply_boxes(screen, slots9)}
+    out |= {i for i, _p in find_tomes(screen, slots9)}
+    out |= {i for i, _p in find_bookcards(screen, slots9)}
+    # 试用角色揭示卡(summon 钩子首捕建档):发光金卡点开即免费得 2★ 试用角色,
+    # 揭示动作由备战环派发前统一做(cw_loop 备战分支接线)→ 视为已知物品。
+    out |= {i for i, _p in find_trial_reveal_cards(screen, slots9)}
+    if fuzzy:
+        # 泛 TM 低阈扫描(原 read_bench_chars 内联段逐行搬移,判定零变化):
+        # 兜已知形态全部漏认的低分渲染物品变体(r100j:卡包变体 TM 0.54 漏检型)。
+        _item_tms = [t for t in (_get_supply_box_gray(), _get_crate_gray())
+                     if t is not None]
+        _tm_g = _get_tome_gray()
+        if _item_tms:
+            _gray_full = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
+            for _i, _rect in slots9:
+                if _i in out:
+                    continue
+                _c = _gray_full[_rect.y1:_rect.y2, _rect.x1:_rect.x2]
+                _bs = 0.0
+                for _it in _item_tms:
+                    if _c.shape[0] < _it.shape[0] or _c.shape[1] < _it.shape[1]:
+                        continue
+                    _bs = max(_bs, cv2.minMaxLoc(
+                        cv2.matchTemplate(_c, _it, cv2.TM_CCOEFF_NORMED))[1])
+                if _bs <= 0.45:
+                    continue
+                _ts = (cv2.minMaxLoc(cv2.matchTemplate(_c, _tm_g, cv2.TM_CCOEFF_NORMED))[1]
+                       if (_tm_g is not None and _c.shape[0] >= _tm_g.shape[0]
+                           and _c.shape[1] >= _tm_g.shape[1]) else 0.0)
+                if _bs >= _ts:
+                    out.add(_i)   # 箱/卡包/武装箱类物件(低分渲染),排除
     return out
 
 

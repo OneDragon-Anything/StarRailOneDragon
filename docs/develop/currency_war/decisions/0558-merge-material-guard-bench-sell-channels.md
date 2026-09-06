@@ -24,7 +24,7 @@ c_excl 判据的数学边界:同名同星满 3 即自动升星且不变量「场
 
 - 守卫单一源:`cw_state.merge_material_reject_reason`(消费 `same_star_count`,禁消费方手搓同式;docstring 承载判据/辖域/出处)。
 - 五发射位:M4 燃料(`mandate.fuel_sell_candidates`,shop.py 三个 M4 消费位+mandate 腾席环随其覆盖)、凑息卖 `sell_for_interest`、支付变现 `funding_support_sell`、换线塌缩 `line_switch_sell`(criteria/sell.py 三函数体内)。
-- 拒因分键:`merge_material_guard_blocked` 同键计数(counters 可选参数;生产接线=凑息 shop.py 一处+M4 mandate 腾席环/shop 三处+支付 entry 两处/shop 一处,F-3 补全后全发射位显影)。
+- 拒因分键:`merge_material_guard_blocked` 同键计数(counters 可选参数;生产接线=凑息 shop.py 一处+M4 mandate 腾席环/shop 三处+支付 entry 两处/shop 一处+**换线塌缩 entry._criteria_pass 一处(三审整改 D1 补接线:此前本位静默 continue 无计数、接线枚举亦缺,「全发射位显影」现按实装口径兑现)**,全发射位显影)。计数口径 = **拦截事件**(三审整改 C1 定谳:同帧同素材名只计 1,去重载体 = 帧级 `dedup_names` 集合,计数单一源 = `cw_state.count_merge_material_blocked`)——已废弃的评估次数口径曾被 P56 投影读与腾席环 while 重试重复计数污染。
 - 锁(测试仓 `test_cw_merge_material_guard.py`,16+ 条):单帧锁×4通道+换线帧+对照零漂移 / 单一源 grep 锁(定义点唯一+四发射位各自引用+策略层禁手搓) / P60 收敛性质保持锁(拔守卫对照=移除即红) / 两案发帧回放锁(k_members 经 `k_empty_window_fallback` P2+ 带单一源派生,禁空集假设) / P56 活期投影面锁(F-2)。
 
 ## 4. 边界申报

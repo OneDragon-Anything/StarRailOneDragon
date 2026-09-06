@@ -486,7 +486,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 contracts.ContractCtx(gold=state.gold), _ct):
             slots, _why = crit_sell.funding_support_sell(
                 state.gold, mandate.cheapest_member_cost(frame), bench,
-                k_members, state=state, counters=_ct)
+                k_members, state=state, counters=_ct,
+                dedup_names=set())   # C1 事件口径:单帧去重(单调用语境)
             for s in slots:
                 if s in sold_slots:
                     _ct['ev_conflict_dropped'] = \
@@ -658,15 +659,20 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     # 先到先得冲突域:骨架 pass 已发射的 SellBench 槽位(席位冲突面)
     sold_slots = {e.action.slot for e in (skeleton_out or [])
                   if isinstance(e.action, SellBench)}
+    # 拦截事件去重集(C1 口径:同一备战帧内同一素材名只计 1;跨通道共享,
+    # 单一源 = cw_state.count_merge_material_blocked)
+    _mm_dedup: set[str] = set()
     out: list[Emitted] = []
     # line_switch_sell(换线塌缩出口:k_switched 时对旧线件重评;
-    # 契约核验=IMPL_DESIGN §4.2.2,前提不成立 ⇒ 本帧弃权+计数)
+    # 契约核验=IMPL_DESIGN §4.2.2,前提不成立 ⇒ 本帧弃权+计数;
+    # 拒因分键接线(D1 整改):本位曾静默 continue,现同键计数显影)
     if contracts.ensure_contract(
             ('sell', 'line_switch_sell'),
             contracts.ContractCtx(k_members=k_members), counters):
         slots, _key = crit_sell.line_switch_sell(
             old_line_members, k_members, frame.bench, frame.deployed, state,
-            k_switched=k_switched)
+            k_switched=k_switched, counters=counters,
+            dedup_names=_mm_dedup)
     else:
         slots = []
     for s in slots:
@@ -685,14 +691,32 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     if missing and state is not None and contracts.ensure_contract(
             ('sell', 'funding_support_sell'),
             contracts.ContractCtx(gold=state.gold), counters):
+        # T3 同轮保留集读端(第四消费位,与店侧 shop.py funding 发射位
+        # 同款口径):被保垫件仅降序放行(转化类,非禁卖),命中卖出分键
+        # funding_support_stall_convert + 卖出销账。
+        _t3_protect = mandate.stall_protect_active(
+            session, int(getattr(state, 'round_num', 1) or 1),
+            counters=counters)
         fslots, _why = crit_sell.funding_support_sell(
             state.gold, mandate.cheapest_member_cost(frame), frame.bench,
-            k_members, state=state, counters=counters)
+            k_members, state=state, counters=counters,
+            defer_names=_t3_protect,
+            dedup_names=_mm_dedup)
         for s in fslots:
             if s in sold_slots:
                 counters['ev_conflict_dropped'] = \
                     counters.get('ev_conflict_dropped', 0) + 1
                 continue
+            # T3 转化类分键 + 卖出销账(店侧同款;prep 域 SellBench 载体
+            # 无 reason 字段故分键只落计数不落动作标记——sim 不执行 prep
+            # 域,豁免检查只辖 sim 账本,prep 侧无需 reason;defer 保护
+            # 全时段覆盖,不依赖该注释所述的任何时序假设)
+            _fbc = next((b for b in frame.bench if b.slot == s), None)
+            _fname = (_fbc.char_id or '') if _fbc is not None else ''
+            if _fname in _t3_protect:
+                counters['funding_support_stall_convert'] = \
+                    counters.get('funding_support_stall_convert', 0) + 1
+                mandate.stall_buys_consume(session, _fname)
             out.append(Emitted(SellBench(slot=s), False, 'funding_support',
                                funding_support=True))
             sold_slots.add(s)

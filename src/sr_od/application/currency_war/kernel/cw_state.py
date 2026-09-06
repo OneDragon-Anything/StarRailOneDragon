@@ -140,6 +140,15 @@ class BenchChar:
     # 活对象仍 list)——读点(deploy_bench 装备校验/reconcile 配对)均为
     # Sequence 消费,写端仅 session/state 活对象(list 语义保留)。
     equips: list[str] | tuple[str, ...] = field(default_factory=list)
+    # 占槽物品标记(部署伪槽修复批 ②,防线字段;B1 返工=显式标记形态):
+    # True = 该槽画面是物品(箱/典籍/书册卡/揭示卡等)非角色。坐标系 =
+    # 备战栏 1-based slot(与 slot 字段同系);取值时机 = 部署装配期快照;
+    # 写入端 = 部署装配点(cw_op_deploy.assemble_bench_list 构造时显式写),
+    # 识别来源 = obs 单一源精确档(cw_identity_obs.bench_item_slots
+    # fuzzy=False)的命中产出;obs 未命中的槽位恒 False(缺省),与本字段
+    # 无关的 char_id='' 不触发(kernel 对 True 恒 held、拒因 'item_slot',
+    # 「照旧上」fail-open 语义不涉本字段)。sim 不产伪槽:缺省 False 零差。
+    is_item_slot: bool = False
 
 
 def snapshot_copy(bc: BenchChar) -> BenchChar:
@@ -547,6 +556,23 @@ class SellBench:
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
+    reason: str = ''           # 卖出通道分键(记录非指令,仿 LevelUp.auth_basis 形态;
+    #                            ''=未标)。现役合法值 = SELL_BENCH_CONVERT_REASONS
+    #                            (转化类卖出显式分键);sim 账本 SellBench 行
+    #                            sell_reason 键转录本字段,检查器豁免面据此收敛。
+
+
+# 转化类卖出豁免键集(同轮买后卖检查的豁免边;检查侧单一源):
+# - fuel_victim_protect_demoted: M4 腾席通道,被保垫件为唯一燃料时的
+#   放行卖出(为义务买入腾位,金转化成线成员,非净零自旋);
+# - funding_support_stall_convert: 支付变现通道卖出被保垫件(为骨架
+#   义务筹资,转化类,同上非自旋)。
+# 两键只辖「卖出被保留集(T3 同轮保留)登记件」的帧;缺省 '' 恒不豁免
+# ——豁免面按分键收敛,禁全开(T3 同轮保留修复批设计约束)。
+SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
+    'fuel_victim_protect_demoted',
+    'funding_support_stall_convert',
+})
 
 
 @dataclass
@@ -915,6 +941,49 @@ def merge_material_reject_reason(name: str, star: int,
         return ''
     return ('merge_material_guard'
             if same_star_count(name, 1, bench, deployed) - 1 >= 1 else '')
+
+
+def merge_material_stale_names(bench: list[BenchChar | None],
+                               deployed: list[BenchChar] | None = None,
+                               ) -> tuple[str, ...]:
+    """滞留素材名集(分键 ``merge_material_stale`` 的判定单一源)。
+
+    判定:全场域(bench∪deployed)同名同 1★ 计数 ≥2 的名 = 存在 2/3
+    合成进度素材对;计数单一源 = ``same_star_count``(与
+    ``merge_material_reject_reason`` 同源,禁消费方手搓同式)。
+    辖星 = 1(2★ 成件全场唯一,不构成素材对,同守卫口径)。
+    排序 = 字母序去重(确定性计数,禁集合迭代序入账本)。
+    「滞留」语义:对在场即 2/3 进度悬置;持续 N 轮计数仍增长 = N 轮
+    未合成(合成后计数停止增长,轮差分归零)——轮级时长由消费端按
+    键差分判读,本函数只答「当前帧哪些名滞留」。设计出处:ADR-0558
+    §4 滞留显影欠账(G-B1 第四级)。
+    """
+    names = {b.char_id or '' for b in bench or []
+             if b is not None and (b.star or 1) == 1}
+    names |= {d.char_id or '' for d in deployed or []
+              if d is not None and (d.star or 1) == 1}
+    return tuple(sorted(n for n in names if n
+                        and same_star_count(n, 1, bench, deployed) >= 2))
+
+
+def count_merge_material_blocked(counters: dict, name: str,
+                                 dedup_names: set[str] | None = None,
+                                 ) -> None:
+    """拒因分键 ``merge_material_guard_blocked`` 的**事件口径**计数单一源。
+
+    口径(C1,三审整改定谳):拦截**事件**计数,非评估次数——同一决策
+    帧内同一素材名只计 1(帧内多通道资格评估、投影读(P56 liquid_
+    refund)/腾席环重试对同名重复触达均去重),跨帧滞留素材每次新触达
+    仍计。去重载体 = ``dedup_names``(调用方按帧创建并传入;None =
+    无去重的单评语境,测试/离线直调)。评估次数口径为已废弃的实装
+    偏差(ADR-0558 §4「拦截事件判读」被投影读/重试环污染的整改)。
+    """
+    if dedup_names is not None:
+        if name in dedup_names:
+            return
+        dedup_names.add(name)
+    counters['merge_material_guard_blocked'] = \
+        counters.get('merge_material_guard_blocked', 0) + 1
 
 
 def merge_buy_k(name: str, star: int,

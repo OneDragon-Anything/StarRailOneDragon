@@ -111,6 +111,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     SellDeployed,
     ShopCard,
     bench_char_cost,
+    merge_material_stale_names,
     sell_refund,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
@@ -234,34 +235,12 @@ def _r2_card_reserve(k_members: tuple[str, ...],
                      bench: list, deployed: list,
                      state: GameState,
                      level: int | None = None) -> int:
-    """R2 预算门 Σ预留卡价 ρ = 合格集最低费卡价(修 R2 批)。
-
-    可追过滤等级:缺省=当前级;R2 消费位在 R1 选定 L* 之后,调用方
-    (decide_shop_wave R1 段)按 L* 重估传入——R1 已选等级的出牌面辖
-    R2 预留卡价,量级=一张卡价(用当前级过滤会在 L*≠当前级帧错档)。
-
-    证明单一源 = p54-r2-interest-floor §②(零新自由参数:ρ 锚
-    CHARACTERS 注册表 cost,非字面量)。可追过滤与 ``_r1_ledger_
-    terms`` 同一(该级出此费 refresh_prob>0 ∧ 无 2★)——语义
-    单一源不复制。单卡下界口径(P54 A2:P40 待标定清单「最低费卡价
-    × 期望命中数」在单刷波粒度下的整数下界;多命中超出部分 = 下一波
-    R2 重估补足的显式让渡,非破线刷新)。合格集空 ⇒ 0:该帧 R1 必先
-    以 no_chaseable_member 关闭,R2 不可达,兜底值不进任何可达比较。
-    """
-    level_now = int(state.level or 1) if level is None else int(level)
-    costs: list[int] = []
-    for m in k_members:
-        ch = CHARACTERS.get(m)
-        if ch is None or not ch.cost:
-            continue
-        if refresh_prob(level_now, ch.cost) <= 0.0:
-            continue
-        copies = [c for c in list(bench) + list(deployed)
-                  if (getattr(c, 'char_id', '') or '') == m]
-        if any((getattr(c, 'star', 1) or 1) >= 2 for c in copies):
-            continue
-        costs.append(int(ch.cost))
-    return min(costs) if costs else 0
+    """R2 预算门 Σ预留卡价 ρ(单一源已提升至 criteria/refresh.
+    r2_card_reserve;P71 闸批别名重导出——本名保留使既有测试面
+    (test_cw_r2_interest_floor.py 私有名直引)与生产调用点零漂移,
+    语义/签名/等级过滤口径逐位不变,docstring 见单一源本体)。"""
+    return crit_refresh.r2_card_reserve(k_members, bench, deployed,
+                                        state, level=level)
 
 
 def _frame_search_windows(session: StrategySession, state: GameState,
@@ -398,6 +377,45 @@ def shop_unbought_reasons(state: GameState,
     return out
 
 
+def count_material_stale(counters: dict, session: StrategySession,
+                         bench: list[BenchChar],
+                         deployed: list[BenchChar],
+                         round_num: int) -> None:
+    """滞留素材显影分键(ADR-0558 §4 滞留显影欠账 G-B1 第四级;官方键,
+    取代 sim71 守卫验收批的「重复对在场行数」代理口径)。
+
+    分键两把:
+    - ``merge_material_stale``:素材对(同名同 1★ ≥2,判定单一源 =
+      ``cw_state.merge_material_stale_names``)在场的决策帧计数,
+      粒度 = 名×帧(与 cw4_counters 家族逐帧口径一致);
+    - ``merge_material_stale_ge2``:跨轮仍滞留(上一见帧轮次 < 本轮)
+      的名×帧计数 = 「N 轮未合成」的轮级显影——合成后键停止增长
+      (轮差分归零),滞留时长由判读端按键差分读,本函数不做时长判定。
+
+    辖域 = 商店决策帧(由 ``decide_shop_action`` 逐帧调用;备战帧不计,
+    与家族同域)。跨轮记忆载体 = ``session.cw4_stale_seen_rounds``
+    (名 → 上一见帧轮次;名离场即清,防拆对后再组被误计跨轮)。
+    纯观测:只写 counters/session 记忆,零行为面。
+    """
+    _stale_names = merge_material_stale_names(bench, deployed)
+    if _stale_names:
+        counters['merge_material_stale'] = \
+            counters.get('merge_material_stale', 0) + len(_stale_names)
+    _seen = getattr(session, 'cw4_stale_seen_rounds', None)
+    if _seen is None:
+        _seen = {}
+        session.cw4_stale_seen_rounds = _seen
+    for _sn in _stale_names:
+        _prev = _seen.get(_sn)
+        if _prev is not None and _prev < round_num:
+            counters['merge_material_stale_ge2'] = \
+                counters.get('merge_material_stale_ge2', 0) + 1
+    for _sn in [k for k in _seen if k not in _stale_names]:
+        del _seen[_sn]
+    for _sn in _stale_names:
+        _seen[_sn] = round_num
+
+
 def decide_shop_action(state: GameState, session: StrategySession,
                        config: object, *, registry=None) -> Action:
     """商店单动作决策(ADR-0517 决策 1/2;前身份 = ``decide_shop_wave`` 波批)。
@@ -509,6 +527,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
     deployed = [d for d in (state.deployed or []) if d is not None]
     bench_names = [b.char_id or '' for b in bench]
     deployed_names = [d.char_id or '' for d in deployed]
+    # 滞留素材显影(分键,本体 = ``count_material_stale`` 单一源)。
+    count_material_stale(counters, session, bench, deployed,
+                         int(getattr(state, 'round_num', 1) or 1))
     owned = set(bench_names) | set(deployed_names)
     # 契约核验:stop_buy 消费位(前提恒真 None 登记,违例路径仅剩未登记键)
     stop_flag = proof.stop_buy(k, bench_names, deployed_names) \
@@ -524,10 +545,25 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # P56 可变现息线下界(设计 13_buy_face_design §2.2):s_reserve :=
     # g* − Σ活期退金投影;活期集合以期望态现值计(M4 卖出的活期件在下一
     # 决策帧自然离开集合——旧「帧内即时扣减」专修无存在载体)。
+    # T3 边界申报:本投影不改吃 defer(保护集)——门槛7 买入判据保持
+    # 既有口径(触发判据不动,修复只落协调层卖侧读端);同轮多笔被保
+    # 买入帧回拉缺口闭合可能不足,失败形态 = 金留 g* 之下真实持有,
+    # 非自旋(t1_interest_gap/sellback 差值可判读,见 criteria/sell 申报)。
+    # 拦截事件去重集(C1 口径:同一决策帧内同一素材名只计 1)——本帧
+    # 内所有守卫触达位(P56 投影读/M4 腾席资格评估/凑息/支付变现/换线)
+    # 共享,投影读与真卖评估不再重复计数;单一源 =
+    # ``cw_state.count_merge_material_blocked``。
+    _mm_dedup: set[str] = set()
     liquid_refund = sum(sell_refund(1, bench_char_cost(b))
                         for b in mandate.fuel_sell_candidates(
                             bench, k_members, state=state,
-                            exclude_names=buy_members, counters=counters))
+                            exclude_names=buy_members, counters=counters,
+                            dedup_names=_mm_dedup))
+    # 口径注(P56 投影位):上面这步是为 s_reserve 投影而「读」资格集
+    # (非卖出发射),``counters`` 照传时经 _mm_dedup 与本帧真卖评估位
+    # 去重——``merge_material_guard_blocked`` = 拦截事件数(每帧每素材
+    # 至多 1),非评估次数;投影读可能占首计(素材首次触达发生在本投
+    # 影读),判读时按帧级事件语义解读(ADR-0558 §4 F-2 消费面)。
     s_reserve = g_star - liquid_refund
     _reg = registry
     if _reg is None:
@@ -544,6 +580,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
         session.cw4_shop_rejects = shop_unbought_reasons(
             state, k, buy_members, [])
     missing = [m for m in buy_members if m not in owned]
+    # T3 同轮保留集卖侧读端(单一源 = mandate.stall_protect_active,禁
+    # 手搓读 cw4_fuel_filler_stall_buys):本帧活跃保护名集;轮界过期名
+    # 在此就地销账(t3_protect_expired_round 分键)。语义 = 末位牺牲序,
+    # 非绝对禁卖:凑息回拉绝对跳过,M4 腾席/支付变现仅降序放行(转化类)。
+    _t3_protect = mandate.stall_protect_active(
+        session, int(state.round_num or 1), counters=counters)
 
     def _shop_candidates(m: str):
         return sorted(
@@ -592,16 +634,28 @@ def decide_shop_action(state: GameState, session: StrategySession,
     if missing and bench_free <= 0:
         cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
                                              exclude_names=buy_members,
-                                             counters=counters)
+                                             defer_names=_t3_protect,
+                                             counters=counters,
+                                             dedup_names=_mm_dedup)
         if cands:
             victim = cands[0]
             ok4, _ = mandate.check_irreversible(victim.char_id or '', k_members)
             if ok4:
                 idx = (state.bench or []).index(victim)
-                _note_sell(victim.char_id or '')
+                _vname = victim.char_id or ''
+                # T3 末位牺牲序命中分键 + 卖出销账(生命周期出口②):
+                # 被保件是唯一燃料 ⇒ 放行卖出(为义务买入腾位的转化类,
+                # SellBench.reason 带分键供同轮买卖检查豁免面收敛)
+                _prot_hit = _vname in _t3_protect
+                if _prot_hit:
+                    _count('fuel_victim_protect_demoted')
+                    mandate.stall_buys_consume(session, _vname)
+                _note_sell(_vname)
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(victim),
-                                 expect=victim.char_id or '')
+                                 expect=_vname,
+                                 reason=('fuel_victim_protect_demoted'
+                                         if _prot_hit else ''))
         else:
             _count('m2_retry_exhausted')
 
@@ -675,7 +729,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
             cands = mandate.fuel_sell_candidates(bench, k_members,
                                                  state=state,
                                                  exclude_names=buy_members,
-                                                 counters=counters)
+                                                 defer_names=_t3_protect,
+                                                 counters=counters,
+                                                 dedup_names=_mm_dedup)
             victim = cands[0] if cands else None
             if victim is not None:
                 ok4, _ = mandate.check_irreversible(victim.char_id or '',
@@ -684,10 +740,18 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 ok4 = False
             if victim is not None and ok4:
                 idx = (state.bench or []).index(victim)
-                _note_sell(victim.char_id or '')
+                _vname1 = victim.char_id or ''
+                # T3 末位牺牲序命中分键 + 卖出销账(同 M4 腾席位)
+                _prot1 = _vname1 in _t3_protect
+                if _prot1:
+                    _count('fuel_victim_protect_demoted')
+                    mandate.stall_buys_consume(session, _vname1)
+                _note_sell(_vname1)
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(victim),
-                                 expect=victim.char_id or '')
+                                 expect=_vname1,
+                                 reason=('fuel_victim_protect_demoted'
+                                         if _prot1 else ''))
             _count('bench_full')
             continue
         _on_target_buy(card.name or m)
@@ -1009,13 +1073,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                                f'l2_{_ff_why}')
                                 continue   # 围栏拒帧,试其余垫件
                             _count('fuel_filler_stall_buy')
-                            _ff_reg = getattr(session,
-                                              'cw4_fuel_filler_stall_buys',
-                                              None)
-                            if _ff_reg is None:
-                                _ff_reg = set()
-                                session.cw4_fuel_filler_stall_buys = _ff_reg
-                            _ff_reg.add(name)   # N3 闭环登记契约
+                            # N3 闭环登记契约(写端单一源,带轮戳 dict;
+                            # 卖侧读端 = mandate.stall_protect_active)
+                            mandate.stall_buys_register(
+                                session, name, int(state.round_num or 1))
                             _on_target_buy(name)
                             return _emit_buy(card, 'fuel_filler_stall')
                 # B 支不成立:g ≤ s_reserve(非病灶帧,静默)
@@ -1134,16 +1195,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
                             _count(f't3_fenced_{why5}')
                         continue
                     _count('t3_buy')
-                    # N3 闭环登记契约(出口③同款单一载体):T5 垫件买入
-                    # 入 cw4_fuel_filler_stall_buys 名集,部署侧 held 时
-                    # 经 record_fuel_filler_held_postbuy 显影(T5 held 并入
-                    # fuel_ 键口径,不设独立 t3_held_postbuy,见文件头申报)。
-                    _t5_reg = getattr(session, 'cw4_fuel_filler_stall_buys',
-                                      None)
-                    if _t5_reg is None:
-                        _t5_reg = set()
-                        session.cw4_fuel_filler_stall_buys = _t5_reg
-                    _t5_reg.add(name)
+                    # N3 闭环登记契约(出口③同款单一载体,写端单一源
+                    # mandate.stall_buys_register 带轮戳):T5 垫件买入
+                    # 入 cw4_fuel_filler_stall_buys,部署侧 held 时经
+                    # record_fuel_filler_held_postbuy 显影;卖侧读端 =
+                    # stall_protect_active(同轮保留=末位牺牲序,修复
+                    # 买后同轮即卖净零自旋;T5 held 并入 fuel_ 键口径,
+                    # 不设独立 t3_held_postbuy,见文件头申报)。
+                    mandate.stall_buys_register(
+                        session, name, int(state.round_num or 1))
                     return _emit_buy(card, 't3_unlocked_hemostat')
 
     # ---- ④ EV pass(臂①旁路集;仅 criteria 真 EV 发射面)----
@@ -1287,7 +1347,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
         # 金位触发(期望态金 < g* 才发射)+ 目标量止盈(remaining 递减
         # 贪心,Σrefund ≥ 缺口即止)。prefer_names = 本访问已买件
         # (carried 融合:执行侧/兼容驱动器在 BuyCard 决策后登记,
-        # R2-N1 首卖刚买件连带损失=0)。
+        # R2-N1 首卖刚买件连带损失=0)。defer_names = T3 同轮保留集
+        #(凑息回拉通道绝对跳过被保件——门槛7 不等式保证跳过无损,
+        # 买后同轮即卖自旋的路径 A 在此精确切除)。
         if contracts.ensure_contract(
                 ('sell', 'sell_for_interest'),
                 contracts.ContractCtx(gold=gold), counters):
@@ -1296,7 +1358,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 prefer_names=tuple(getattr(
                     session, 'cw4_visit_bought_names', ()) or ()),
                 exclude_names=buy_members,
-                counters=counters)
+                defer_names=_t3_protect,
+                counters=counters,
+                dedup_names=_mm_dedup)
         else:
             _slots, skey = [], 'contract_abstain'
         if not skey:
@@ -1327,7 +1391,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 break
         fslots, _fkey = crit_sell.funding_support_sell(
             gold, need, bench, k_members, state=state,
-            exclude_names=buy_members, counters=counters) \
+            exclude_names=buy_members,
+            defer_names=_t3_protect,   # T3:转化类仅降序放行,非禁卖
+            counters=counters, dedup_names=_mm_dedup) \
             if contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
                 contracts.ContractCtx(gold=gold), counters) else ([], '')
@@ -1336,11 +1402,20 @@ def decide_shop_action(state: GameState, session: StrategySession,
             idx = (state.bench or []).index(bc) if bc is not None else None
             if idx is None:
                 continue
-            _note_sell((bc.char_id or '') if bc else '')
+            _fname = (bc.char_id or '') if bc else ''
+            # T3 转化类分键 + 卖出销账(为骨架义务筹资卖出被保垫件,
+            # SellBench.reason 带分键供同轮买卖检查豁免面收敛)
+            _fprot = _fname in _t3_protect
+            if _fprot:
+                _count('funding_support_stall_convert')
+                mandate.stall_buys_consume(session, _fname)
+            _note_sell(_fname)
             return SellBench(
                 bench_idx=idx,
                 income=_shop_sell_refund(bc) if bc else None,
-                expect=(bc.char_id or '') if bc else '')
+                expect=_fname,
+                reason=('funding_support_stall_convert'
+                        if _fprot else ''))
 
     # ---- D-D 硬节点补强门消费(观察级接线;逐帧计数,粒度申报见上)----
     _gate_open, _gkey = crit_refresh.hard_node_reinforce_gate(

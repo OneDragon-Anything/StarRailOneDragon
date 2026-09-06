@@ -49,6 +49,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     REFRESH_COST_BASE,
+    count_merge_material_blocked,
     merge_material_reject_reason,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
@@ -180,7 +181,9 @@ def fuel_sell_candidates(bench: list[BenchChar],
                          state: GameState | None = None,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
+                         defer_names: frozenset[str] | set[str] = frozenset(),
                          counters: dict | None = None,
+                         dedup_names: set[str] | None = None,
                          ) -> list[BenchChar]:
     """fuel_sell 对象集:1★ ∧ 与锁线零重叠 ∧ 边际贡献≈0
     (R17-2 扩维口径:板面作战边际+bench 后台效果维边际合计构造性 0
@@ -207,7 +210,17 @@ def fuel_sell_candidates(bench: list[BenchChar],
     g_20260906_081836 P2r1 案发形态(同名 2★ 唯一升级路径被腾席通道
     卖断)。
     ``counters`` 非 None 时拒因同键计数(键 ``merge_material_guard_
-    blocked``,与凑息/支付变现通道同键分账)。
+    blocked``,与凑息/支付变现/换线通道同键分账);计数 = 事件口径
+    (C1 整改:同帧同名只计 1,去重载体 = ``dedup_names``——腾席环
+    while 重试对同一滞留素材重复触达不再重复 +1,单一源 =
+    ``cw_state.count_merge_material_blocked``)。
+
+    ``defer_names``(T3 同轮保留=末位牺牲序;M4 腾席转化类放行,非绝对
+    禁卖):集合内名字降为候选**末位**——存在非保候选时 victim 恒取
+    非保件(被保件零成本存活);被保件是唯一燃料 ⇒ 照常放行卖出(为
+    义务买入腾位的转化类清算,非自旋;消费端命中时分键
+    ``fuel_victim_protect_demoted`` 并卖出销账)。稳定排序:仅把被保件
+    移尾,不改既有相对序——defer 空集时逐位等价旧序(零漂移)。
     """
     _deployed = list(getattr(state, 'deployed', None) or [])
     out = []
@@ -219,8 +232,7 @@ def fuel_sell_candidates(bench: list[BenchChar],
             continue
         if merge_material_reject_reason(name, b.star, bench, _deployed):
             if counters is not None:
-                counters['merge_material_guard_blocked'] = \
-                    counters.get('merge_material_guard_blocked', 0) + 1
+                count_merge_material_blocked(counters, name, dedup_names)
             continue
         if not predicates.zero_overlap(name, k_members):
             continue
@@ -232,7 +244,87 @@ def fuel_sell_candidates(bench: list[BenchChar],
         except Exception:   # noqa: BLE001  注册表查无此名:类级默认(低费燃料)可判
             pass
         out.append(b)
+    # T3 末位牺牲序:被保件稳定移尾(非绝对禁卖——唯一燃料帧照常放行)
+    out.sort(key=lambda b: (b.char_id or '') in defer_names)
     return out
+
+
+# ===== T3 同轮保留集(N3 登记集卖侧读端;买后同轮即卖净零自旋修复)=====
+# 载体单一源 = session.cw4_fuel_filler_stall_buys(N3 闭环登记契约,
+# ADR-0556 §5 延续,禁第二登记集),元素升级为 {名: 登记轮号} dict
+# (带轮戳;旧裸 set 读面 = 轮戳缺失,按轮界硬兜底整集失效)。
+# 语义 = 末位牺牲序,非绝对禁卖:凑息回拉通道跳过被保件(门槛7 保证
+# 缺口 ≤ 其他可变现件总和,跳过无损);M4 腾席/支付变现为转化类,
+# 仅降序放行;line_switch 候选集 ⊂ 旧线成员,垫件零重叠永不在旧线,
+# 结构无关。生命周期三出口:部署销(stall_buys_prune_deployed)/
+# 卖出销(stall_buys_consume)/轮界销(stall_protect_active 读端就地
+# 清过期,防前两者执行侧漏路后永久误保)。
+
+STALL_BUYS_ATTR = 'cw4_fuel_filler_stall_buys'
+
+
+def stall_buys_register(session, name: str, round_num: int) -> None:
+    """买入登记(写端单一源):名 → 登记轮号。旧 set 载体就地升级 dict。"""
+    if not name:
+        return
+    reg = getattr(session, STALL_BUYS_ATTR, None)
+    if not isinstance(reg, dict):
+        reg = {}
+        setattr(session, STALL_BUYS_ATTR, reg)
+    reg[name] = int(round_num)
+
+
+def stall_protect_active(session, current_round: int | None, *,
+                         counters: dict | None = None) -> frozenset[str]:
+    """卖侧读端单一源(禁消费方手搓读集,ADR-0558 §3 同款纪律):
+    返回「登记轮号 == current_round」的活跃保护名集;轮号已前进的
+    登记项就地销账(生命周期出口③轮界硬兜底,计数
+    ``t3_protect_expired_round``,零静默)。current_round=None(轮号
+    不可得)按保守端处置:全集视为过期(禁据缺读放大保护面)。
+    """
+    reg = getattr(session, STALL_BUYS_ATTR, None)
+    if not reg:
+        return frozenset()
+    if not isinstance(reg, dict):
+        # 旧 set 载体(轮戳缺失):整集过期销账后升级 dict
+        setattr(session, STALL_BUYS_ATTR, {})
+        if counters is not None:
+            counters['t3_protect_expired_round'] = \
+                counters.get('t3_protect_expired_round', 0) + len(reg)
+        return frozenset()
+    rn = int(current_round) if current_round is not None else None
+    expired = [n for n, r in reg.items() if rn is None or r != rn]
+    for n in expired:
+        del reg[n]
+    if expired and counters is not None:
+        counters['t3_protect_expired_round'] = \
+            counters.get('t3_protect_expired_round', 0) + len(expired)
+    return frozenset(reg)
+
+
+def stall_buys_consume(session, name: str) -> None:
+    """卖出即销(生命周期出口②):该名被任一卖出通道实际卖出时移除,
+    防同 visit 内第二次命中保护。容旧 set 载体(兼容未升级会话)。"""
+    if not name:
+        return
+    reg = getattr(session, STALL_BUYS_ATTR, None)
+    if isinstance(reg, dict):
+        reg.pop(name, None)
+    elif isinstance(reg, set):
+        reg.discard(name)
+
+
+def stall_buys_prune_deployed(session, deployed_names) -> int:
+    """部署即销(生命周期出口①):上板名从保留集移除(补部署 P24 /
+    M1 同帧部署把该名上板后,保护使命完成;漏销 = 后续误保面)。
+    返回销账数(测试断言用)。"""
+    reg = getattr(session, STALL_BUYS_ATTR, None)
+    if not isinstance(reg, dict) or not reg:
+        return 0
+    hit = [n for n in reg if n in set(deployed_names or ())]
+    for n in hit:
+        del reg[n]
+    return len(hit)
 
 
 def dominance_buy_eligible(gold: int, bench_free: int,
@@ -348,6 +440,10 @@ def run_mandate(frame: MandateFrame,
     # M2 线成员买入(+M2→M4 重试环 R8-8)
     missing = [m for m in k
                if m not in set(frame.bench_names) | set(frame.deployed_names)]
+    # T3 同轮保留集卖侧读端(prep 域;单一源 = stall_protect_active,
+    # 轮界过期名就地销账 t3_protect_expired_round)
+    _t3_protect = stall_protect_active(session, frame.round_num,
+                                       counters=counters)
     if shopped and missing and not frame.stop_flag:
         _count('shop_latch_skip_m2_buy')
     if missing and not frame.stop_flag and not shopped:
@@ -356,18 +452,32 @@ def run_mandate(frame: MandateFrame,
                                name='', deployed_names=frame.deployed_names)
         if not ok:
             # 现场腾席:M4 fuel_sell(R8-8:环内意图=线内件(序 1/2)独占)
+            # dedup = 拦截事件口径(C1):帧级去重集,while 重试环对同一
+            # 滞留素材重复评估只计 1。
+            _mm_dedup: set[str] = set()
             retries = 0
             freed = False
             bench = list(frame.bench)
             while retries < BENCH_CAPACITY:
                 cands = fuel_sell_candidates(bench, k, state=state,
-                                             counters=counters)
+                                             counters=counters,
+                                             defer_names=_t3_protect,
+                                             dedup_names=_mm_dedup)
                 if not cands:
                     break       # 0 发射 ⇒ 立即放弃(状态未变,重放必再失败)
                 victim = cands[0]
                 ok4, _ = check_irreversible(victim.char_id or '', k)
                 if not ok4:
                     break
+                # T3 末位牺牲序命中分键 + 卖出销账(唯一燃料帧放行转化)
+                _vname = victim.char_id or ''
+                if _vname in _t3_protect:
+                    _count('fuel_victim_protect_demoted')
+                    stall_buys_consume(session, _vname)
+                # prep 域 SellBench 载体无 reason 字段,转化类分键只落
+                # 计数不落动作标记——prep 通道卖出恒先于本轮买入,同轮
+                # 买卖检查的买→卖向不辖,豁免面无需 prep 侧 reason
+                #(与 entry.py EV funding 发射位同口径声明)。
                 out.append(Emitted(SellBench(slot=victim.slot), True,
                                    'm4_fuel_sell_for_m2'))
                 bench = [b for b in bench if b.slot != victim.slot]

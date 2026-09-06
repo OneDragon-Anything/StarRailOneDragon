@@ -415,6 +415,17 @@ def _residual_fill_deploy(
     返回 (residual_deployed 补上场件数, residual_held 恒 0——保留集
     投影已随 v3_hoard 通道退役删除(见上),字段保留仅为账本 schema
     兼容, deploy_lag_units 补部署后残余可上件数)。
+
+    T3 同轮保留·sim 建模缺口显式申报(修复批验收口径):本函数只在
+    skip_fence 分支调用(调用点见 if _explicit_deploy_seen 块)——
+    非 skip 轮的上板由围栏主趟代理,两代理都不等价生产 cw_op_deploy
+    每轮主排序+P24 的完整链。故「被保垫件买入→上板转化率」在 sim 侧
+    **只可部分测**(skip 轮可见 residual_deployed 转化;非 skip 轮
+    不可测)。修复批验收口径据此降级:效果断言改测「净转化」——
+    no_same_round_buy_sell violations 归零 + t3 买入轮的净金出口
+    (轮末金−轮初金,金应真实离手或形成板面资产),禁拿 t3_buy 触发
+    计数冒充上板效果;账本逐轮披露 sim.stall_buys_pending(轮末仍未
+    销账的保护名数)供对账。
     """
     from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
 
@@ -1582,7 +1593,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _acts.append({'__type__': 'SellBench',
                                           'bench_idx': a.bench_idx,
                                           'name': bc.char_id,
-                                          'income': _sell_v})
+                                          'income': _sell_v,
+                                          # 卖出通道分键转录(记录非指令;
+                                          # 同轮买卖检查豁免面据此收敛)
+                                          'sell_reason': getattr(
+                                              a, 'reason', '') or ''})
+                            # T3 同轮保留集「卖出即销」(生命周期出口②,
+                            # sim 侧与生产 sell 通道同语义闭环)
+                            from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+                                stall_buys_consume as _sbc,
+                            )
+                            _sbc(sess, bc.char_id)
                             cards_pool.ret(bc.char_id)
                             progressed = True
                     elif isinstance(a, (SellDeployed, SwapDeploy,
@@ -1825,6 +1846,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     [i for i, b in enumerate(st.bench) if b is not None],
                     {_occ_idx[j] for j in _held_idx if j < len(_occ_idx)})
                 _deploy_lag_units = _lag_units
+            # T3 同轮保留集「部署即销」(生命周期出口①,sim 对应物):
+            # 部署决议(围栏趟/skip 残余补部署)上板的名从保留集销账——
+            # 保护使垫件活到部署阶段、上板后保护使命完成。
+            from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+                stall_buys_prune_deployed as _sbpd,
+            )
+            _sbpd(sess, {d.char_id
+                         for d in iter_occupied_deployed(st.deployed)
+                         if d.char_id})
             # `w614_sim_fidelity/` G2:上阵代理记账(轮末部署块后取值;纯观测零漂移)。
             # - bench_recipe_pieces:bench 上配方隶属件数(char∈target core
             #   或 faction∈target factions;目标集=部署块同源 session 现读,
@@ -2473,9 +2503,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 迁移审计 w716(git 历史) F1 修复:skip 轮残余补部署披露
                     # (上几件;residual_held 恒 0——保留集投影已随 v3_hoard
                     # 通道退役删除,字段保留仅为账本 schema 兼容;非 skip 轮
-                    # 恒 0——补部署只在 skip 分支)
+                    # 恒 0——补部署只在 skip 分支。T3 修复批 sim 建模缺口
+                    # 申报见 _residual_fill_deploy docstring:上板转化率
+                    # sim 只可部分测,验收口径=净转化,禁触发计数冒充)
                     'residual_deployed': _res_up,
                     'residual_held': _res_held,
+                    # T3 同轮保留集轮末未销账保护名数(对账面:与 t3_buy/
+                    # fuel_filler_stall_buy 触发数、residual_deployed 上板
+                    # 数三方对读;>0 = 垫件仍持有待转化,非异常)
+                    'stall_buys_pending': len(
+                        getattr(sess, 'cw4_fuel_filler_stall_buys', None)
+                        or ()),
                     # 动作 v2(契约包 C1):本轮围栏是否被显式动作跳过
                     # (skip_fence 账本行的 sim 侧披露;checks 配对锁数据源)
                     'fence_skipped': _explicit_deploy_seen,

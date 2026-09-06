@@ -41,6 +41,7 @@ from sr_od.application.currency_war.obs.currency_war_char_id import (
 )
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
 from sr_od.application.currency_war.obs.cw_identity_obs import (
+    bench_item_slots,
     read_bench_chars,
     read_deployed_chars,
 )
@@ -89,7 +90,9 @@ def record_fuel_filler_held_postbuy(session, held: list[tuple[str, str]]) -> int
     返回计数增量(测试断言用)。
     """
     buys = getattr(session, 'cw4_fuel_filler_stall_buys', None)
-    if not isinstance(buys, set) or not buys:
+    # 载体两形态兼容:dict(名→登记轮号,T3 同轮保留批升级)或旧裸 set;
+    # 成员判定语义一致(键/元素名集)。
+    if not isinstance(buys, (dict, set)) or not buys:
         return 0
     counters = getattr(session, 'cw4_counters', None)
     n = 0
@@ -103,6 +106,112 @@ def record_fuel_filler_held_postbuy(session, held: list[tuple[str, str]]) -> int
                         'name=%s)→ held_postbuy 闭环分键', reason or '(未知)',
                         name)
     return n
+
+
+def prune_fuel_filler_deployed(session, deployed_names) -> int:
+    """T3 同轮保留集「部署即销」(生命周期出口①;属性契约级接线,
+    同 record_fuel_filler_held_postbuy 的消费形态——op 层经 duck-typed
+    属性读集,不 import 策略模块,不建策略→op 反向依赖)。
+
+    登记名上板(主排序循环 / P24 残余补部署)后保护使命完成,从
+    ``session.cw4_fuel_filler_stall_buys``(名→登记轮号 dict)移除;
+    漏销 = 后续帧误保面。旧 set 载体仅成员摘除(无轮戳,读端轮界兜底
+    自会清)。返回销账数(测试断言用)。
+    """
+    buys = getattr(session, 'cw4_fuel_filler_stall_buys', None)
+    if not isinstance(buys, (dict, set)) or not buys:
+        return 0
+    _on_board = set(deployed_names or ())
+    hit = [n for n in list(buys) if n in _on_board]
+    for n in hit:
+        if isinstance(buys, set):
+            buys.discard(n)
+        else:
+            buys.pop(n, None)
+    return len(hit)
+
+
+# ===== 同签名 placed=0 熔断跳槽(部署伪槽修复批 ③;兜底非根因)=====
+# 辖域(方案 A3,如实申报):只兜「已知伪槽形态全部漏认」+ 未来未知拒拖
+# 形态的结构性拒绝;触发即落遥测分键并转人工建档(补 find_* 模板),
+# 禁静默长期依赖熔断过日子。签名 = 计划结构(bench_occ 槽集/order 槽集/
+# 各槽 char_id),**不含** plane/round_num——外循环换轮重试时签名不变,
+# 熔断才可能触发(方案 A4)。计数按签名隔离:签名变化即重置,不跨签名
+# 累积(真重试场景——槽被卖出/买到/换位——必变 bench_occ,不误熔)。
+# 状态挂 session(P4R4 纪律,禁模块级全局);无 session(测试/离线)
+# → 熔断惰性禁用,行为等价旧路径。
+ZERO_PLACE_BREAKER_THRESHOLD: int = 2   # 连续 ≥2 次同签名 0 落地 = 结构性拒绝(1 太早,3+ 白耗)
+
+#: session 状态字段名(对象由本模块独占读写)。
+_ZP_SIG: str = 'cw_deploy_zeroplace_sig'
+_ZP_CNT: str = 'cw_deploy_zeroplace_cnt'
+
+
+def zero_place_sig(bench_occ: list, order: list, bench_cid: dict) -> tuple:
+    """计划结构签名(bench_occ 槽集, order 槽集, 各槽 char_id;不含轮次)。"""
+    return (tuple(bench_occ), tuple(order),
+            tuple(bench_cid.get(bi, '') for bi in bench_occ))
+
+
+def zero_place_breaker_should_trip(session, sig: tuple) -> bool:
+    """已记录同签名连续 ≥ZERO_PLACE_BREAKER_THRESHOLD 次 placed=0 → 熔断。
+
+    session 为 None(测试/离线)→ False(熔断禁用,行为等价旧路径);
+    两次瞬态机会(首败 + fresh 复查防线后的重试)让完仍 0 落地 = 结构性
+    拒绝,第三次同签名执行不再拖(局34 形态 4 fail 白耗省一半)。
+    """
+    if session is None:
+        return False
+    prev_sig = getattr(session, _ZP_SIG, None)
+    cnt = getattr(session, _ZP_CNT, 0) or 0
+    return prev_sig == sig and cnt >= ZERO_PLACE_BREAKER_THRESHOLD
+
+
+def zero_place_breaker_record(session, sig: tuple, placed: int,
+                              plan_non_empty: bool) -> None:
+    """失败计数回写(签名隔离;成功/合法空计划即重置)。
+
+    placed>0 = 结构性拒绝解除;placed=0 且计划空 = 合法稳态 no-op
+    (dd-037),两者都不算「拒拖失败」。"""
+    if session is None:
+        return
+    if placed > 0 or not plan_non_empty:
+        setattr(session, _ZP_SIG, None)
+        setattr(session, _ZP_CNT, 0)
+        return
+    if getattr(session, _ZP_SIG, None) == sig:
+        setattr(session, _ZP_CNT, (getattr(session, _ZP_CNT, 0) or 0) + 1)
+    else:
+        setattr(session, _ZP_SIG, sig)
+        setattr(session, _ZP_CNT, 1)
+
+
+def note_zero_place_breaker(ctx, sig: tuple, held_slots: list[int]) -> None:
+    """熔断触发遥测分键(best-effort;触发 1 次 = 有未知变体漏认,
+    应转人工建档,不调阈值——方案 §1③ 完成判据)。"""
+    try:
+        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+            SEVERITY_L2_RECORD,
+            record_defect,
+        )
+        _m = getattr(ctx, 'cw_match', None)
+        _st = getattr(getattr(_m, 'session', None), 'last_state', None)
+        record_defect(
+            'deploy_zero_place_breaker', 'deploy_zero_place_breaker',
+            expected='部署拖拽被游戏接受(placed>0)',
+            observed=f'同签名计划连续{ZERO_PLACE_BREAKER_THRESHOLD}次 0 落地,'
+                     f'熔断跳槽 slots={held_slots} sig={sig!r}',
+            plane=int(getattr(_st, 'plane', 0) or 0),
+            round_num=int(getattr(_st, 'round_num', 0) or 0),
+            gap_large=False, severity=SEVERITY_L2_RECORD,
+            verdict=('熔断跳槽(结构性拒绝兜底,非根因):该槽画面大概率是'
+                     '未建档物品变体或未知拒拖形态 → 按截图补 find_* 模板'
+                     '建档,禁调阈值;修复后实机批本分键计数应 ≈0'),
+            refs=[{'stream': 'arbitration', 'key': f'sig={sig!r}'}],
+            reader_source='cw_op_deploy',
+            note='部署 placed=0 同签名熔断分键(占槽物品伪槽修复批 ③)')
+    except Exception:   # noqa: BLE001  遥测 best-effort,不阻塞部署
+        pass
 
 
 def residual_fill_plan(held: list, front_empty: list, back_empty: list,
@@ -147,6 +256,32 @@ def residual_fill_plan(held: list, front_empty: list, back_empty: list,
         (fe if row == 'front' else be).remove(slot)
         plan.append((i, row, slot))
     return plan
+
+
+def assemble_bench_list(bench_occ: list, bench_cid: dict, bench_pos: dict,
+                        item_slots_exact: set[int]) -> list:
+    """部署装配点(占槽物品修复批 B1 返工:**显式标记形态**,落地审裁决修法一)。
+
+    bench_occ(0-based 像素占用)→ BenchChar 列表;obs 精确档
+    (``bench_item_slots`` fuzzy=False)命中的槽位**照常装配**并显式写
+    ``is_item_slot=True``——kernel select_deployments 恒拒逻辑由此真实
+    激活(kernel 单点裁决,防线不再是死代码)。物品槽 SIFT 不可读 →
+    char_id='' faction='?':本标记与 char_id 无关,身份来源 = 排除集
+    显式产出,非「空 id 推断」(「照旧上」fail-open 语义不涉本路径)。
+    可离线直测(锁 = test_cw_deploy_pseudo_slot 写入端存在性锁)。
+    """
+    from sr_od.application.currency_war.kernel.cw_state import BenchChar
+    out: list = []
+    for _bi in bench_occ:
+        _cid_b = bench_cid.get(_bi, '')
+        _ch_b = get_char(_cid_b) if _cid_b else None
+        out.append(BenchChar(
+            slot=_bi + 1, char_id=_cid_b,
+            faction=(_ch_b.factions[0]
+                     if _ch_b is not None and _ch_b.factions else '?'),
+            position_pref=bench_pos.get(_bi, 'back'),
+            is_item_slot=(_bi + 1) in item_slots_exact))
+    return out
 
 
 def _tier_completes(bonds: 'frozenset[str] | set[str] | tuple[str, ...]',
@@ -741,6 +876,22 @@ class CwOpDeploy(SrOperation):
                          f' 取 max={_cap}(低读阻塞上阵 > 高读白拖,r60/r64)')
             else:
                 log.info('[cw-deploy] cap 全源失读 → None(不设板满门,拖到游戏拒即真值)')
+        # 占槽物品识别(部署伪槽修复批 ①;B1 返工后为**标记形态**:物品槽
+        # 照常进装配,由装配点显式写 is_item_slot=True → kernel 恒拒,
+        # 单点裁决)。消费 obs 单一源精确档(bench_item_slots fuzzy=False,
+        # 泛扫描模糊判据**不给**部署面——误排真角色=战力真空,贵方向;
+        # 方案 A1)。返回 1-based,bench_occ 为 0-based,装配点显式 +1 对齐。
+        # 读不到(无 screen_info 的退化 ctx,离线/测试)→ 标记集空 = 退回
+        # 旧行为(缺省开,不阻塞部署)。
+        try:
+            _item_slots_exact: set[int] = bench_item_slots(
+                self.ctx, scr, fuzzy=False)
+        except Exception:   # noqa: BLE001  识别退化 = 旧行为(不拦部署)
+            _item_slots_exact = set()
+            log.warning('[cw!] [deploy] 占槽物品排除集读取失败 → 退纯像素'
+                        '占用/零标记(screen_info 缺失退化态,降级可见)')
+        if _item_slots_exact:
+            log.info(f'[cw-deploy] 占槽物品识别(精确档):slots={sorted(_item_slots_exact)}')
         bench_occ = [i for i, c in enumerate(bench) if slot_occupied(scr, int(c.x), int(c.y))]
         front_empty = [i for i, c in enumerate(front) if not slot_occupied(scr, int(c.x), int(c.y))]
         back_empty = [i for i, c in enumerate(back) if not slot_occupied(scr, int(c.x), int(c.y))]
@@ -863,24 +1014,16 @@ class CwOpDeploy(SrOperation):
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             select_deployments_reasoned as _sel_dep,
         )
-        from sr_od.application.currency_war.kernel.cw_state import (
-            BenchChar as _BC,
-        )
         # 拖拽循环内 r288 动态仲裁仍按主阵营判件(与 kernel 内 bench_fac 同源口径)
         _bench_fac: dict[int, str] = {}
         for _bi2, _cid2 in _bench_cid.items():
             _c2 = get_char(_cid2) if _cid2 else None
             if _c2 is not None and _c2.factions:
                 _bench_fac[_bi2] = _c2.factions[0]
-        _bench_list: list = []
-        for _bi in bench_occ:
-            _cid_b = _bench_cid.get(_bi, '')
-            _ch_b = get_char(_cid_b) if _cid_b else None
-            _bench_list.append(_BC(
-                slot=_bi + 1, char_id=_cid_b,
-                faction=(_ch_b.factions[0]
-                         if _ch_b is not None and _ch_b.factions else '?'),
-                position_pref=_bench_pos.get(_bi, 'back')))
+        # 装配单一源(B1 返工):物品槽照常进装配并显式 is_item_slot=True,
+        # kernel 恒拒由此真实激活(写入端存在性锁 = test_cw_deploy_pseudo_slot)。
+        _bench_list: list = assemble_bench_list(
+            bench_occ, _bench_cid, _bench_pos, _item_slots_exact)
         _up_rel, _held_rel, _held_reasons = _sel_dep(
             _bench_list, deployed_cids=set(_deployed_cids),
             deployed_fac=dict(_deployed_fac), board=_board_in,
@@ -889,6 +1032,21 @@ class CwOpDeploy(SrOperation):
             fw_carry=_fw_carry, locked_factions=_locked_fac)
         order = [bench_occ[_k] for _k in _up_rel]
         _held = [bench_occ[_k] for _k in _held_rel]
+        # 同签名 placed=0 熔断跳槽(批 ③):上一执行同签名计划 0 落地,
+        # 本轮同签名再现 = 结构性拒绝(游戏拒拖物件)→ 本轮直接标记 held
+        # 跳过拖拽,计划变空 → 走合法 NOOP 出口(0, True),省下外循环
+        # round_fail×4 的白耗(局34 形态 ~2.5min)。无 session(测试/离线)
+        # → should_trip 恒 False,行为等价旧路径。
+        _zp_sig = zero_place_sig(bench_occ, order, _bench_cid)
+        if order and zero_place_breaker_should_trip(_sess, _zp_sig):
+            _held_slots = [bi + 1 for bi in order]
+            log.warning('[cw!][deploy] placed=0 熔断触发:同签名计划连续%d 次'
+                        ' 0 落地 → 跳槽(标记 held)sig=%r 槽=%s(兜底非根因,'
+                        '转人工建档,禁调阈值)', ZERO_PLACE_BREAKER_THRESHOLD,
+                        _zp_sig, _held_slots)
+            note_zero_place_breaker(self.ctx, _zp_sig, _held_slots)
+            zero_place_breaker_record(_sess, _zp_sig, 0, True)
+            return 0, True
         if _held:
             log.info(f'[cw-deploy] 留 bench(kernel 围栏/底线/去重/cap,dd-037):'
                      f'slots={[bench_occ[_k] + 1 for _k in _held_rel]}')
@@ -898,7 +1056,7 @@ class CwOpDeploy(SrOperation):
         # session.cw4_fuel_filler_stall_buys(出口③发射位买入时写入的名集;
         # 发射位随两核实门放行后接线,本消费口先行闭环)。
         _ff_buys = getattr(_sess, 'cw4_fuel_filler_stall_buys', None)
-        if isinstance(_ff_buys, set) and _ff_buys:
+        if isinstance(_ff_buys, (dict, set)) and _ff_buys:
             record_fuel_filler_held_postbuy(
                 _sess,
                 [(_bench_list[_k].char_id or '', _held_reasons.get(_k, ''))
@@ -1099,8 +1257,12 @@ class CwOpDeploy(SrOperation):
         # 选排 fallback 守卫与其内注释同源);执行侧每拖前 fresh 复查占用
         # (主循环同款,防起始帧假阳)。
         if _held:
+            # B1 返工连带面:kernel 恒拒的物品槽不得经 P24 补部署绕回上板
+            # (held 名单内剔除,同下方 r288 底线辖 fill 段先例)。
+            _held_fill = [_hi for _hi in _held
+                          if (_hi + 1) not in _item_slots_exact]
             _fill_plan = residual_fill_plan(
-                _held, front_empty, back_empty, _bench_pos, _bench_cid,
+                _held_fill, front_empty, back_empty, _bench_pos, _bench_cid,
                 _deployed_cids, _cap, _deployed)
             # r288 底线对 fill 段同样辖(dd-037):kernel 留 bench 的列车件
             # (列车≥2 档 ∧ 仙舟<3 基础线)不得经 P24 补部署绕回上板——
@@ -1147,6 +1309,13 @@ class CwOpDeploy(SrOperation):
                         f'{len(order) - _skipped}(跳过{_skipped};失败帧已存证)')
         log.info(f'[cw-deploy] deterministic 完成: placed={placed}/{len(order) - _skipped}'
                  f'(跳过{_skipped})')
+        # T3 同轮保留集「部署即销」(生命周期出口①):主排序 + P24 补部署
+        # 上板的名(含被保垫件经保护活到部署帧后的上板转化)从保留集销账,
+        # 防后续帧误保。属性契约级接线(与 held 显影同形态,无策略 import)。
+        prune_fuel_filler_deployed(_sess, _deployed_cids)
+        # 熔断计数回写(批 ③):成功/合法空计划重置;同签名 0 落地累计,
+        # 攒够阈值后下一轮 should_trip 生效。
+        zero_place_breaker_record(_sess, _zp_sig, placed, bool(order))
         return placed, not order
 
     def _wait_slot_occupied(self, pt: Point, timeout_s: float = 2.0) -> bool:

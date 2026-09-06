@@ -311,10 +311,10 @@ def select_deployments(
 
     **held 拒因返回(N2 规格单一源,17 号稿 §7.1)**:传 ``reasons_out``
     dict 时,held 下标 → 拒因('scatter_fence' 散牌围栏/'rest_capacity'
-    人口非扩展留置/'cap'/'name_dup' 同名去重/'recipe_floor' 配方底线门)
-    逐项写入——held 判定语义单一源在本函数,消费面(出口③围栏预检/
-    部署执行侧闭环分键)禁第二套围栏语义;带 reason 消费走
-    ``select_deployments_reasoned``。
+    人口非扩展留置/'cap'/'name_dup' 同名去重/'recipe_floor' 配方底线门/
+    'item_slot' 占槽物品恒拒)逐项写入——held 判定语义单一源在本函数,
+    消费面(出口③围栏预检/部署执行侧闭环分键)禁第二套围栏语义;带
+    reason 消费走 ``select_deployments_reasoned``。
     """
     reasons: dict[int, str] = {}
     vacancy = front_total + back_total - len(deployed_cids)
@@ -351,6 +351,18 @@ def select_deployments(
         if bench_fac.get(i) is not None
         and pair_counts.get(bench_fac[i], 0) >= 2)
     roomy = cap_roomy_of(vacancy, 0, must_up)
+    # 占槽物品恒 held(部署伪槽修复批 ②,防线):is_item_slot=True 的候选从
+    # tgt/rest 全部桶剔除、恒 held,先于一切围栏/点火/cap 判定被拒——防未来
+    # 第三处装配点再漏伪槽。拒因 'item_slot' 进闭集;char_id='' 不触发本防线
+    # (「照旧上」fail-open 语义保留,见模块 docstring 与 L21)。
+    _item_idx = {k for k in range(len(bench))
+                 if getattr(bench[k], 'is_item_slot', False)}
+    if _item_idx:
+        tgt_idx = [k for k in tgt_idx if k not in _item_idx]
+        rest = [k for k in rest if k not in _item_idx]
+        for k in sorted(_item_idx):
+            held.append(k)
+            reasons[k] = 'item_slot'
     for i in list(rest):
         cid = getattr(bench[i], 'char_id', '') or ''
         if not cid:
@@ -381,8 +393,12 @@ def select_deployments(
         held.append(i)
         reasons[i] = 'rest_capacity'
     board_empty = len(deployed_cids) == 0
-    if board_empty and not tgt_idx and not rest and held:
-        first = held.pop(0)
+    # 板空保底只救「规则留置」件;item_slot 恒拒不参与保底(伪槽禁止因
+    # 保底被推上板——保底救的是真角色)。
+    _rescuable = [k for k in held if reasons.get(k) != 'item_slot']
+    if board_empty and not tgt_idx and not rest and _rescuable:
+        first = _rescuable[0]
+        held.remove(first)
         reasons.pop(first, None)   # 板空保底:上 1 个(拒因随之消除)
         rest.append(first)
     # 点火增量首键——「恰好让某体系凑满 tier 的那张」
@@ -478,7 +494,8 @@ def select_deployments_reasoned(
     """N2 规格①:select_deployments 的带拒因形态(单一源同函数路径)。
 
     返回 ``(up, held, reasons)``——reasons = held 下标 → 拒因
-    ('scatter_fence'/'rest_capacity'/'cap'/'name_dup'/'recipe_floor')。
+    ('scatter_fence'/'rest_capacity'/'cap'/'name_dup'/'recipe_floor'/
+    'item_slot')。
     消费面 = 出口③围栏预检(17 号稿 §7.1)与部署执行侧闭环分键
     (fuel_filler_stall_held_postbuy);预检/分键禁第二套围栏语义。
     """

@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_state import (
     bench_char_cost,
+    count_merge_material_blocked,
     merge_material_reject_reason,
     sell_refund,
 )
@@ -33,6 +34,8 @@ def line_switch_sell(old_line_members: tuple[str, ...],
                      new_line_members: tuple[str, ...],
                      bench: list[BenchChar], deployed: list[BenchChar],
                      state: GameState, *, k_switched: bool,
+                     counters: dict | None = None,
+                     dedup_names: set[str] | None = None,
                      ) -> tuple[list[int], str]:
     """换线塌缩出口(§2.2 主比较式的发射位;k_switched=K 已按 K′ 更新)。
 
@@ -54,7 +57,17 @@ def line_switch_sell(old_line_members: tuple[str, ...],
     另有同名同星副本(2/3 合成进度素材),拒因键 ``merge_material_
     guard``(单一源 = ``cw_state.merge_material_reject_reason``,与
     部署侧同键)拒入塌缩对象集——换线不构成素材豁免(素材对换线后
-    板面仍可能是素材,B-1)。设计出处:ADR-0558。
+    板面仍可能是素材)。设计出处:ADR-0558。
+    拒因分键接线(D1 整改,ADR-0558 §3「全发射位显影」兑现:本通道
+    曾静默 continue 无计数,接线枚举也不含本位):``counters`` 非 None
+    时计数 ``merge_material_guard_blocked``;计数 = 事件口径(C1,同帧
+    同名只计 1,去重载体 = ``dedup_names``,单一源 =
+    ``cw_state.count_merge_material_blocked``,与 M4 燃料/凑息/支付
+    变现同键同口径分账)。
+
+    T3 同轮保留结构无关声明:本通道候选集 ⊂ 旧线成员,同轮保留集
+    (垫件)零重叠永不在旧线 ⇒ 无交互,本函数不设 defer 参数——
+    形式化声明防后人误加;若未来候选域扩到线外件,须先补 defer 接线。
     """
     if not k_switched:
         return [], 'no_event'
@@ -68,6 +81,8 @@ def line_switch_sell(old_line_members: tuple[str, ...],
             if not refund_full_star_ok(b.star, bench_char_cost(b)):
                 continue
             if merge_material_reject_reason(name, b.star, bench, deployed):
+                if counters is not None:
+                    count_merge_material_blocked(counters, name, dedup_names)
                 continue
             out.append(b.slot)
     return out, ''
@@ -81,6 +96,8 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
                       prefer_names: tuple[str, ...] = (),
                       counters: dict | None = None,
                       exclude_names: frozenset[str] | set[str] = frozenset(),
+                      defer_names: frozenset[str] | set[str] = frozenset(),
+                      dedup_names: set[str] | None = None,
                       ) -> tuple[list[int], str]:
     """凑息卖·回拉发射位(T1 语义重写;设计 13_buy_face_design §2.2)。
 
@@ -117,7 +134,18 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
     ``merge_material_guard``(单一源 = ``cw_state.merge_material_
     reject_reason``,与部署侧同键)拒入资格集;拒因同键计数
-    ``merge_material_guard_blocked``(与 M4 燃料/支付变现同键分账)。
+    ``merge_material_guard_blocked``(与 M4 燃料/支付变现/换线同键
+    分账;事件口径 C1:同帧同名只计 1,去重载体 = ``dedup_names``)。
+
+    ``defer_names``(T3 同轮保留;凑息回拉通道 = **绝对跳过**,非降序):
+    集合内名字整体退出卖出资格集(分键 ``t3_protect_deferred``,零静默)
+    ——机理 = T5 门槛7 不等式:买后缺口 gap ≤ 决策帧可变现件退金总和
+    (被保垫件 1★ 全额可退,卖谁都净零,跳过后改卖其他 liquid 照常闭合
+    缺口,回拉功能零损失;边界申报:同轮多笔被保买入帧,前笔被保件在
+    买入帧 s_reserve 投影内时缺口闭合可能不足——失败形态 = 金留 g* 之下
+    真实持有,非自旋,经 t1_interest_gap/sellback 差值可判读)。与
+    G-S1 不冲突:被保件同时是素材时双守卫各拒各的(保护只影响排序/跳过,
+    不影响资格闭集)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
@@ -146,8 +174,12 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
             continue
         if name in exclude_names:
             continue   # P60:买面义务集成员禁入卖出资格集(防义务换手)
+        if name in defer_names:
+            _count('t3_protect_deferred')   # T3 同轮保留:回拉通道绝对跳过
+            continue
         if merge_material_reject_reason(name, b.star, bench, _deployed):
-            _count('merge_material_guard_blocked')
+            if counters is not None:
+                count_merge_material_blocked(counters, name, dedup_names)
             continue
         if predicates.bench_effect_qualified(
                 name, predicates.bench_effect_context(state, b, k_members)):
@@ -182,7 +214,9 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          state: GameState | None = None,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
+                         defer_names: frozenset[str] | set[str] = frozenset(),
                          counters: dict | None = None,
+                         dedup_names: set[str] | None = None,
                          ) -> tuple[list[int], str]:
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
@@ -192,19 +226,28 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     通道统一;卖回量最小化 [11]);跨帧语义 = 变现金作用于下一备战期
     义务动作(延迟=1 备战期间隔,进遥测 reason)。无对象 ⇒ 空。
     ``exclude_names`` = 买面义务集成员禁入(P60,与凑息卖/M4 燃料同款)。
+    ``defer_names``(T3 同轮保留;支付变现 = 转化类,**仅降序放行**,
+    非绝对禁卖):集合内名字排候选末位——为骨架义务筹资的卖出优先级
+    支配保护(保护若辖此通道 = 安全域内抑制发展动作的回归);非保
+    燃料在场时先卖非保件,被保件仅兜底消费。defer 空集时排序键逐位
+    等价旧 (star, slot) 序(零漂移)。
 
     合成素材拒入守卫(G-S1,ADR-0558):候选与场上(state.deployed ∪ bench,含
     自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
     ``merge_material_guard``(单一源 = ``cw_state.merge_material_
     reject_reason``,与部署侧同键)拒入资格集;``counters`` 非 None
-    时同键计数 ``merge_material_guard_blocked``。
+    时同键计数 ``merge_material_guard_blocked``(事件口径 C1:同帧同
+    名只计 1,去重载体 = ``dedup_names``,单一源 =
+    ``cw_state.count_merge_material_blocked``)。
     """
     if gold >= need_gold:
         return [], 'not_needed'
     out: list[int] = []
     remaining = need_gold - gold
     _deployed = list(getattr(state, 'deployed', None) or [])
-    for b in sorted(bench, key=lambda x: (x.star, x.slot)):
+    # T3 末位牺牲序:被保件稳定移尾(转化类放行,非禁卖)
+    for b in sorted(bench, key=lambda x: ((x.char_id or '') in defer_names,
+                                          x.star, x.slot)):
         name = b.char_id or ''
         if b.star != 1:
             continue
@@ -214,8 +257,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
             continue   # P60:买面义务集成员禁入卖出资格集
         if merge_material_reject_reason(name, b.star, bench, _deployed):
             if counters is not None:
-                counters['merge_material_guard_blocked'] = \
-                    counters.get('merge_material_guard_blocked', 0) + 1
+                count_merge_material_blocked(counters, name, dedup_names)
             continue
         if predicates.bench_effect_qualified(
                 name, predicates.bench_effect_context(state, b, k_members)):
