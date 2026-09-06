@@ -61,16 +61,14 @@ from sr_od.application.currency_war.kernel.cw_state import (
     ShopCard,
     SwapDeploy,
     _bench_char_cost,
-    _merge_bench,
-    bench_clear,
     bench_occupied,
     bench_place,
+    card_cost,
     deployed_occupied,
     deployed_place,
     iter_occupied,
     iter_occupied_deployed,
     merge_buy_completes,
-    merge_buy_k,
     sell_refund,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
@@ -1388,164 +1386,88 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         progressed = True
                         break          # 刷后立即 re-decide(见新店)
                     if isinstance(a, BuyCard):
-                        # ADR-0283(批⑰ F6)满栏守卫 + sim 解冻(ADR-0453
-                        # 影响节兑现):满栏不再一律拒——与生产 simulate
-                        # (cw_state.simulate BuyCard 满栏分支,`w544_fullbench_mergebuy/`)同源:
-                        # merge_buy_completes 判「本次点击完成一次合成」
-                        # → 执行满栏合成买(k = merge_buy_k 张一次买入,
-                        # 金 k×单价全款,店 k 张同身份牌下架,合成链
-                        # _merge_bench 照走;merge_mechanics.md §2.5
-                        # 自动多买)。不满足合成仍拒(ADR-0283 兜底语义
-                        # 保留);bench_full_skipped_* 计数语义收窄为
-                        # 「非合成拒买」——合成买已执行,计入 skipped
-                        # 会让拦截指标说谎。
-                        if bench_occupied(st.bench) >= BENCH_CAPACITY:
-                            _mb_star = a.card.star or 1
-                            if not merge_buy_completes(
-                                    a.card.name, _mb_star, st.bench,
+                        # 商店买入执行 = kernel/cw_state.simulate 单一源
+                        # (live 投影同款;分歧消解对账 = ADR-0561 申报表):
+                        # 状态变更(金/店槽下架/合成连锁/满栏合成买)全在
+                        # simulate 内部,引擎只余预检披露 + 池/经济/账本转录。
+                        # 满栏预检(ADR-0283/`w566_sim_guard/`):只为「满栏
+                        # 非合成拒买」计数披露,判定函数与 simulate 内部
+                        # 同源(merge_buy_completes),不构成第二套语义。
+                        if bench_occupied(st.bench) >= BENCH_CAPACITY \
+                                and not merge_buy_completes(
+                                    a.card.name, a.card.star or 1, st.bench,
                                     st.deployed, st.shop):
-                                _bench_full_skips += 1
-                                _bench_full_skip_gold += a.card.cost
-                                continue
-                            _mb_k = max(1, merge_buy_k(
-                                a.card.name, _mb_star, st.bench,
-                                st.deployed, st.shop))
-                            st.gold -= a.card.cost * _mb_k
-                            _ch = a.reason or 'unknown'
-                            _spend['buys'][_ch] = \
-                                _spend['buys'].get(_ch, 0) \
-                                + a.card.cost * _mb_k
-                            for _ in range(_mb_k):
-                                cards_pool.take(a.card.name)
-                            # 店 k 张同身份牌下架(生产语义:槽买后消失,
-                            # ADR-0284;不清槽会让 merge_buy_k 的 in_shop
-                            # 计数虚高 → 同槽幻影再买)
-                            _mb_left = _mb_k
-                            _mb_kept: list[ShopCard] = []
-                            for _c in st.shop:
-                                if _mb_left > 0 and _c.name == a.card.name \
-                                        and (_c.star or 1) == _mb_star:
-                                    _mb_left -= 1
-                                    continue
-                                _mb_kept.append(_c)
-                            st.shop = _mb_kept
-                            # 序列化形状对齐生产 serialize_action(card 嵌套;
-                            # 视图读 a['card']['cost'],平铺会让 economy 算 0)。
-                            # reason=**通道**(创建点语义);channel=**身份**
-                            # (classify_buy);count=自动多买张数(判读 k>1
-                            # 生效面的纯增列,既有消费方不读该键)。
-                            from sr_od.application.currency_war.kernel.cw_line_defs import (
-                                classify_buy as _cb,
-                            )
-                            _acts.append({'__type__': 'BuyCard',
-                                          'card': {'x': a.card.x,
-                                                   'faction': a.card.faction,
-                                                   'name': a.card.name,
-                                                   'cost': a.card.cost},
-                                          'reason': _ch,
-                                          'channel': _cb(a.card, st),
-                                          'count': _mb_k})
-                            # ADR-0129 购买经验单击模型:一次点击 +XP_PER_BUY
-                            # (k 张自动多买仍是一次点击,不加倍)
-                            # 轮内新鲜度登记(发射位写入取舍,与
-                            # cw4_fuel_filler_stall_buys 先例同位):多买入
-                            # 意图逐名入集(k 张合成买 = k 个意图,防漏记)。
-                            from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-                                record_fresh_buy as _rfb,
-                            )
-                            for _ in range(_mb_k):
-                                _rfb(sess, st, a.card.name)
-                            xp += XP_PER_BUY
-                            st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
-                            _pre_units = (bench_occupied(st.bench)
-                                          + deployed_occupied(st.deployed))
-                            # 执行序与生产同源(cw_state.simulate 满栏分支):
-                            # k 张临时挂 bench 尾参与全场 _merge_bench;
-                            # own+k ≡ 0 (mod 3) → 合成恰耗尽本次 k 张,
-                            # 截回定长 9。已知边:own=0 且 k=3 非链式时合成
-                            # 载体落尾槽、截断即丢——生产 simulate 同序同语义
-                            # (§2.5 满栏合成落点置信低),实机对账实证后两处同改。
-                            for _ in range(_mb_k):
-                                st.bench.append(BenchChar(
-                                    slot=0, char_id=a.card.name,
-                                    faction=a.card.faction, star=_mb_star))
-                            _merge_bench(st.bench, st.deployed)
-                            del st.bench[BENCH_CAPACITY:]
-                            # 合并次数按单位消减推算(每次合并净减 2 个单位;
-                            # 消费 3 产 1,链式多级同式)
-                            _merges += (_pre_units + _mb_k
-                                        - bench_occupied(st.bench)
-                                        - deployed_occupied(st.deployed)) // 2
-                            progressed = True
+                            _bench_full_skips += 1
+                            _bench_full_skip_gold += a.card.cost
                             continue
-                        # ADR-0284(批㉒ F1,最大杠杆):商店槽消费语义
-                        # ——买走即下架(生产语义:槽买后消失)。旧 sim
-                        # 买入不消费槽 → 同槽幻影再买(批㉒ 账本实测
-                        # 65.13% 买轮含槽再买、单槽最高 6 连买),3合1
-                        # 被同槽重复点击无限兜底 → 成型类指标系统性
-                        # 偏乐观(批㉒ F3)。槽匹配:引用同一 → 同名
-                        # 兜底(策略构造副本形态);无槽且本轮曾上架
-                        # 该名 = 已消费槽再买 → 跳过(金/池不消费)+
-                        # 披露;本轮从未上架 = 店外构造(测试桩)→
-                        # legacy 执行 + 披露计数(真策略提案恒来自
-                        # st.shop,检查项 phantom_rebuy_disclosure 锁
-                        # 真批次恒 0)。
+                        # 幻影再买披露(ADR-0284):槽匹配判定随单一源统一为
+                        # simulate 的 x 槽位口径;此处身份→同名兜底只辖
+                        # 「已消费槽再买」的可执行性跳过(金/池/板不消费)
+                        # 与店外构造(测试桩)的 legacy 执行披露;真策略
+                        # 提案恒来自 st.shop,phantom_rebuys 锁真批次恒 0。
                         _slot = next((c for c in st.shop if c is a.card),
                                      None)
                         if _slot is None:
                             _slot = next(
                                 (c for c in st.shop
                                  if c.name == a.card.name), None)
-                        if _slot is not None:
-                            st.shop.remove(_slot)
-                        else:
+                        if _slot is None:
                             _phantom_rebuys += 1
                             _offered = {c.get('name') for w in _waves
                                         for c in w.get('cards') or []}
                             if a.card.name in _offered:
                                 continue   # 已消费槽再买:不可执行
-                        cards_pool.take(a.card.name)
-                        st.gold -= a.card.cost
+                        _was_full = (bench_occupied(st.bench)
+                                     >= BENCH_CAPACITY)
                         _ch = a.reason or 'unknown'
-                        _spend['buys'][_ch] = \
-                            _spend['buys'].get(_ch, 0) + a.card.cost
+                        # reason=**通道**(创建点语义);channel=**身份**
+                        # (classify_buy——通道经济分析别混桶,审查#7)。
                         # 序列化形状对齐生产 serialize_action(card 嵌套;
                         # 视图读 a['card']['cost'],平铺会让 economy 算 0)。
-                        # reason=**通道**(创建点语义);channel=**身份**
-                        # (classify_buy——通道经济分析别混桶,审查#7)
                         from sr_od.application.currency_war.kernel.cw_line_defs import (
                             classify_buy as _cb,
                         )
+                        _channel = _cb(a.card, st)
+                        _pre_units = (bench_occupied(st.bench)
+                                      + deployed_occupied(st.deployed))
+                        _pre_gold = st.gold
+                        st = _simulate_state(st, a)
+                        _spent = _pre_gold - st.gold
+                        if _spent <= 0:
+                            # 防御:预检守卫与 simulate 判定同源,恒 applied;
+                            # 零消费 = 单一源语义漂移信号,如实不转录。
+                            continue
+                        # 实购张数(满栏合成买 k>1;常规买恒 1)
+                        _k = max(1, _spent // max(1, card_cost(a.card)))
+                        _spend['buys'][_ch] = \
+                            _spend['buys'].get(_ch, 0) + _spent
+                        for _ in range(_k):
+                            cards_pool.take(a.card.name)
                         _acts.append({'__type__': 'BuyCard',
                                       'card': {'x': a.card.x,
                                                'faction': a.card.faction,
                                                'name': a.card.name,
                                                'cost': a.card.cost},
                                       'reason': _ch,
-                                      'channel': _cb(a.card, st)})
+                                      'channel': _channel,
+                                      **({'count': _k} if _was_full else {})})
+                        # ADR-0129 购买经验单击模型:一次点击 +XP_PER_BUY
+                        # (k 张自动多买仍是一次点击,不加倍)。XP 记账统一
+                        # (ADR-0561 申报表 #4):XP 只在引擎侧本单一
+                        # 记账点累加,simulate 分支无 XP 语义,数值逐位不变。
                         xp += XP_PER_BUY
-                        # 轮内新鲜度登记(发射位写入取舍,与
-                        # cw4_fuel_filler_stall_buys 先例同位;逐名入集)。
-                        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-                            record_fresh_buy as _rfb2,
-                        )
-                        _rfb2(sess, st, a.card.name)
                         st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
-                        # ADR-0276(批⑩最大杠杆):3合1 merge 接入 sim
-                        # 执行层——生产 simulate(BuyCard) 每次买入后调
-                        # _merge_bench(全场域 bench+deployed,同名同星
-                        # ≥3 → star+1、删 2 张),sim 旧不接 → 副本占席
-                        # → bench 满 → 买通道死 → 滞留金 2.2× 虚高
-                        # (批⑩ F3/F4/F5 同根)。合并次数按单位消减推算
-                        # (每次合并净减 2 个单位;载体在场时 deployed
-                        # 计数不变)。
-                        _pre_units = (bench_occupied(st.bench)
-                                      + deployed_occupied(st.deployed))   # ADR-0392
-                        bench_place(st.bench, BenchChar(
-                            slot=0, char_id=a.card.name,
-                            faction=a.card.faction))
-                        _merge_bench(st.bench, st.deployed)
-                        _merges += (_pre_units + 1
+                        # 轮内新鲜度登记(发射位写入取舍,与
+                        # cw4_fuel_filler_stall_buys 先例同位):多买入
+                        # 意图逐名入集(k 张合成买 = k 个意图,防漏记)。
+                        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                            record_fresh_buy as _rfb,
+                        )
+                        for _ in range(_k if _was_full else 1):
+                            _rfb(sess, st, a.card.name)
+                        # 合并次数按单位消减推算(每次合并净减 2 个单位;
+                        # 消费 3 产 1,链式多级同式)
+                        _merges += (_pre_units + (_k if _was_full else 1)
                                     - bench_occupied(st.bench)
                                     - deployed_occupied(st.deployed)) // 2
                         progressed = True
@@ -1555,44 +1477,61 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # (不占 LevelUp 类型行:flat4 台账锁判据 =
                         # spend.levelup == 4 × LevelUp 行数,拒付行混入会
                         # 误报),计数进 sim.level_cap_rejects 披露。
-                        # 已知语义分歧:实机 lv10 才禁用购买经验,lv9 是
-                        # 正常付费档,本守卫在 lv9 拒付与实机方向相反;
-                        # 不静默,靠 level_cap_rejects 披露,放开归
-                        # LEVEL_CAP 注释所载行为变更批。
+                        # 【sim-only 已知差异·申报保留,ADR-0561 申报表 #6】
+                        # 实机 lv10 才禁用购买经验,lv9 是正常付费档,本守卫
+                        # 在 lv9 拒付与实机方向相反;LEVEL_CAP=9 冻结有在案
+                        # 前置(见本文件 LEVEL_CAP 注释:追级虚高治理+池指纹
+                        # 重锚,归行为变更批)。不随本批切 simulate:切源会
+                        # 连带引入「cap10 + 攒够即升即时升级」双重行为变更,
+                        # 违本批「切源不改行为」零漂移门,#6 只登记不顺手改。
                         if st.level >= LEVEL_CAP:
                             _lv_cap_rejects += 1
                             _acts.append({'__type__': 'LevelUpRejected',
                                           'reason': 'level_cap',
                                           'level': st.level})
                             continue
-                        st.gold -= 4
-                        _spend['levelup'] += 4
+                        # 花费载体统一(ADR-0561 申报表 #5,载体面):从
+                        # action.cost 读(策略层 xp_click_cost 真值优先,
+                        # fallback 常量;sim 恒 4 = 兜底值,真值接入归
+                        # sim-wiring P2 件——本行只消灭执行侧硬编码载体)。
+                        _lv_cost = int(getattr(a, 'cost', 0) or 4)
+                        st.gold -= _lv_cost
+                        _spend['levelup'] += _lv_cost
                         # auth=授权依据观测(ADR-0354):LevelUp.auth_basis
                         # 放行臂名(pop_slot/dp/static_ev/m3_batch;
                         # ''=default 栈旧调用或未过账)——检查器
                         # levelup_interest_engine_gate 判据消费;记录非指令。
                         _lv_auth = getattr(a, 'auth_basis', '')
-                        _acts.append({'__type__': 'LevelUp', 'cost': 4,
-                                      'auth': _lv_auth})
+                        _acts.append({'__type__': 'LevelUp',
+                                      'cost': _lv_cost, 'auth': _lv_auth})
                         xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
                         st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                         progressed = True
                     elif isinstance(a, SellBench):
-                        # ADR-0316:槽位置 None(占用校验在 bench_clear)
-                        bc = bench_clear(st.bench, a.bench_idx)
-                        if bc is not None:
-                            ch = CHARACTERS.get(bc.char_id)
+                        # 卖出执行 = kernel/cw_state.simulate 单一源
+                        # (ADR-0561 申报表 #7/#8):装备回收随单一源生效
+                        # ——【已申报行为修正,申报表 #7】sim 卖带装件装备回 owned
+                        # 池(C6 装备守恒,修复前凭空消失);expect 代际校验
+                        # 同源归位(#8,stale_proposal 拒绝;sim 单线程同帧
+                        # 语义下实际不可达,纯防线)。引擎保留池回填/同轮
+                        # 保留集销账/账本转录。
+                        _tgt = (st.bench[a.bench_idx]
+                                if 0 <= a.bench_idx < len(st.bench) else None)
+                        _stale = (_tgt is not None and a.expect
+                                  and _tgt.char_id != a.expect)
+                        if _tgt is not None and not _stale:
                             # ADR-0276:卖出回金接生产 sell_refund 单一源
-                            # ——merge 落地后 bench 可有 star≥2(1星=cost、
-                            # 2星=3×cost−1…),旧恒按 1星 cost 退会低估
-                            # 合成件价值、卖出通道失真。
-                            _sell_v = (sell_refund(bc.star, ch.cost)
-                                       if ch and ch.cost else 1)
-                            st.gold += _sell_v
+                            # (费用口径随单一源 = bench_char_cost:识别名查
+                            # 注册表,未知名 3 中费保守估——与旧 ch.cost
+                            # 兜底 1 在已识别名域恒等;merge 后 bench 可有
+                            # star≥2,按星退防合成件价值低估)。
+                            _sell_v = sell_refund(_tgt.star,
+                                                  _bench_char_cost(_tgt))
+                            st = _simulate_state(st, a)
                             _spend['sell_income'] += _sell_v
                             _acts.append({'__type__': 'SellBench',
                                           'bench_idx': a.bench_idx,
-                                          'name': bc.char_id,
+                                          'name': _tgt.char_id,
                                           'income': _sell_v,
                                           # 卖出通道分键转录(记录非指令;
                                           # 同轮买卖检查豁免面据此收敛)
@@ -1603,8 +1542,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
                                 stall_buys_consume as _sbc,
                             )
-                            _sbc(sess, bc.char_id)
-                            cards_pool.ret(bc.char_id)
+                            _sbc(sess, _tgt.char_id)
+                            cards_pool.ret(_tgt.char_id)
                             progressed = True
                     elif isinstance(a, (SellDeployed, SwapDeploy,
                                         CompTransaction)):
