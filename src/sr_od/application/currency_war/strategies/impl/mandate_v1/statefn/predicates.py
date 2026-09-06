@@ -286,21 +286,22 @@ def bench_effect_qualified(name: str, ctx: BenchEffectContext) -> bool:
 
 def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
                 cap_resolved: int) -> bool:
-    """T5 未锁线止血买的结构判据承重谓词(设计稿「未锁线转换通道」§2.2/
-    §2.3;p46 P1 谓词原式,判据 = loss_exact 现算,不按任何帧集清单)。
+    """T5 未锁线止血买的结构判据承重谓词(ADR-0556 §2/§4;p46 P1 谓词
+    原式,判据 = loss_exact 现算,不按任何帧集清单)。
 
     ``L(g,c,R_全局,Ī,cap) == 0`` ⟺ P1 假 ⟺ 该帧出 p46 否决域(D =
     P1∧P2∧P3 恒假)——无需 E_rev、无需 V_deploy、无需 P2 分析,止血买
     的正当性由「占用集合基数严格扩 + 全额可退可逆 + 息账零损」三结构量
-    的支配论证独立承载(ADR-0288 仅作「有比没有强」接受形态的在册先例,
-    辖域限定见设计稿 §2.3 S-3)。判据全为注册表派生量,零 hp/胜率/掉血
-    先验/板面评分消费——不在 00_framework §3 硬闸门辖域,无开关。
+    的支配论证独立承载(ADR-0556 §4;ADR-0288 仅作「有比没有强」接受
+    形态的在册先例,辖域限定同节)。判据全为注册表派生量,零 hp/胜率/
+    掉血先验/板面评分消费——不在 00_framework §3 硬闸门辖域,无开关。
 
     ``net_income`` 形参 = 逐节点净收入 Ī 的现算值(调用方经
     cw_economy.net_income 供给;非 i_bar 常量,命名随 cw_economy
     docstring 术语口径)。边界:cap=0(买断制)局 L≡0 ⇒ 全帧 P1 假
-    ⇒ T5 全开,方向安全(R3 S-2 申报);P1 真帧(现算 L>0)结构层
-    不发射,落行为层挂起(V_deploy 候用户逐项授权,宪法硬闸,禁自裁)。
+    ⇒ T5 全开,方向安全(ADR-0556 §2);P1 真帧(现算 L>0)结构层
+    不发射,落行为层挂起(V_deploy 候用户逐项授权,宪法硬闸,禁自裁;
+    ADR-0556 §7 挂账)。
     """
     return loss_exact(gold, spend, rounds, net_income, cap_resolved) == 0
 

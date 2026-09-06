@@ -54,7 +54,7 @@ shop_merge_trigger_truncate;K 空窗回退修复批(2026-09-03 第三病灶)
 判读须按新语义重建基线);``shop_ev_bench_wait`` = EV 候选在场但
 bench 无空席、EV 买不提案的帧(席位门,与 dominance_bench_wait 同款)。
 
-T5 未锁线止血买分键族(未锁线转换通道设计稿 §7 十键;对齐 17号稿
+T5 未锁线止血买分键族(ADR-0556 §5;对齐 17号稿
 七键口径):t3_available / t3_buy / t3_no_candidate(店无 cost-1 垫件,
 有意收窄帧归因显影)/ t3_fenced(+kernel 五拒因动态后缀)/
 t3_precheck_bench_full / t3_precheck_no_vacancy(vacancy ≤ 可部署
@@ -1018,32 +1018,34 @@ def decide_shop_action(state: GameState, session: StrategySession,
                             return _emit_buy(card, 'fuel_filler_stall')
                 # B 支不成立:g ≤ s_reserve(非病灶帧,静默)
 
-    # ---- T5 未锁线止血买(结构层,无开关;未锁线转换通道设计稿 v3.1 §2,
+    # ---- T5 未锁线止血买(结构层,无开关;ADR-0556 §2):
     # 垫底级消费位第五触发源——消费位单一源 = 11号稿 §7.3 垫底级,与
     # 上方出口③同位:出口③辖锁线帧、T5 辖未锁线帧,锁线布尔两支互斥
     #(单一源锚 = cw_intention.locked_buy_membership:未锁帧返回 None),
-    # 锁线交接时 T5 出辖、出口③/(b)2 接盘)。触发核替换(W8 同款申报):
+    # 锁线交接时 T5 出辖、出口③/(b)2 接盘。触发核替换(W8 同款申报):
     # 店侧「全店无候选」→「未锁线 ∧ P1(g,1) 假 ∧ vacancy 余存」结构谓词;
-    # P1 判据 = predicates.t5_p1_false 现算(零战力量,§2.3 支配论证,
-    # ADR-0288 仅接受形态先例)。cost-1 收窄 = 有意辖域(§2.3:lv1-3
-    # 全店 cost-1 的注册表事实;仅 2/3 费垫件帧不触发,禁自行扩域)。
-    # P1 真帧落行为层挂起(V_deploy 候用户逐项授权,00 §3 硬闸门)——
-    # t3_p1_true_blocked 显影后照旧落既有序,结构层禁发射。级内序(§4):
+    # P1 判据 = predicates.t5_p1_false 现算(零战力量,ADR-0556 §4
+    # 支配论证,ADR-0288 仅接受形态先例)。cost-1 收窄 = 有意辖域
+    #(ADR-0556 §2:lv1-3 全店 cost-1 的注册表事实;仅 2/3 费垫件帧
+    # 不触发,禁自行扩域)。
+    # P1 真帧落行为层挂起(V_deploy 候用户逐项授权,00 §3 硬闸门;
+    # ADR-0556 §7 挂账)——t3_p1_true_blocked 显影后照旧落既有序,
+    # 结构层禁发射。级内序(ADR-0556 §3):
     # 降级1(羁绊填充,在册)→ 本止血变体 → 降级2 囤形态(在册,回退位)
     # ——梯宿主申报:降级1/降级2 囤形态两段不在本文件面(宿主 = 11号稿
     # §7.3 垫底级 owner),本文件只承载止血变体位次;同帧双真单次消费由
-    # 物理位次保证(M6 囤臂 gold>g* 先行 = §4「现行序先行」明文)。
-    # 锁线布尔边缘双开形态申报:locked_comp 非空而采购集解析为空
-    #(get_comp 注册表缺项脏态 ∧ 无 p1_pair/transition_pair)时
+    # 物理位次保证(M6 囤臂 gold>g* 先行 = ADR-0556 §3「现行序先行」)。
+    # 锁线布尔边缘双开形态申报(ADR-0556 §3):locked_comp 非空而采购集
+    # 解析为空(get_comp 注册表缺项脏态 ∧ 无 p1_pair/transition_pair)时
     # locked_buy_membership 返回 None,T5 门与出口③门同帧双开——
     # 出口③物理先行、先到先发射(单动作契约),T5 仅承接其未消费帧,
     # 无双买面。
-    # 发射序 = 垫底级在既有序(M6)之后、EV/R1 之前(§4 同备战期序);
-    # 部署腿不占发射位——单动作契约下买入落 bench,垫件上板由部署侧
-    # 残余补部署(P24:空 cap 槽任意合法单位 ΔEV≥0)既有语义承接,
-    # vacancy > 可部署 bench 件数预检保证买后仍有空槽可落;held 闭环 =
-    # 出口③同款 N3 登记(cw4_fuel_filler_stall_buys 单一载体,T5 held
-    # 并入 fuel_filler_stall_held_postbuy 口径,见文件头分键族申报)。
+    # 发射序 = 垫底级在既有序(M6)之后、EV/R1 之前(ADR-0556 §3
+    # 同备战期序);部署腿不占发射位——单动作契约下买入落 bench,垫件
+    # 上板由部署侧残余补部署(P24:空 cap 槽任意合法单位 ΔEV≥0)既有
+    # 语义承接,vacancy > 可部署 bench 件数预检保证买后仍有空槽可落;
+    # held 闭环 = 出口③同款 N3 登记(cw4_fuel_filler_stall_buys 单一
+    # 载体,T5 held 并入 fuel_filler_stall_held_postbuy 口径,ADR-0556 §5)。
     if _buy_members is None and (state.shop or []):
         _t5_sale = [c for c in state.shop
                     if (c.name or '') and (c.star or 1) == 1
@@ -1051,7 +1053,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     and predicates.zero_overlap(c.name or '', k_members)
                     and refund_full_star_ok(1, 1)]
         if not _t5_sale:
-            # 店无 cost-1 1★ 零重叠垫件:T5 域不开(§2.3 有意收窄,
+            # 店无 cost-1 1★ 零重叠垫件:T5 域不开(ADR-0556 §2 有意收窄,
             # 无病灶证据禁扩域);计数显影归因(全店无候选帧的 T1 原生
             # 触发源宿主 = 11号稿 §7.3,不在本文件面)。
             _count('t3_no_candidate')
@@ -1085,7 +1087,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 for card in _t5_sale:
                     name = card.name or ''
                     # 金 ≥ 卡价 → 金−卡价 ≥ s_reserve → 围栏预检
-                    #(§2.3 判据序;kernel 单一源,禁第二套围栏语义)
+                    #(ADR-0556 §2 判据序;kernel 单一源,禁第二套围栏语义)
                     ok5, _ = mandate.check_affordable(gold, 1)
                     if not ok5:
                         _count('t3_unaffordable')
