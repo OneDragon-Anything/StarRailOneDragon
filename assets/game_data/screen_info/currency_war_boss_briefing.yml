@@ -17,7 +17,7 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 提示-点击空白处继续
-  id_mark: false
+  id_mark: true
   pc_rect:
   - 860
   - 770

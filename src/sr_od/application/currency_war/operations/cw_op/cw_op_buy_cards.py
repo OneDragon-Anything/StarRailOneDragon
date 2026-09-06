@@ -514,6 +514,12 @@ def run_buy_waves(op: SrOperation, match,
     state: GameState | None = None
     for _ in range(MAX_REFRESH + 1):
         ledger.refresh_first_action = True   # 段级复位(仅刷新段判定输入)
+        # did_refresh 段级复位(终结 op 语义 review 修复批暴露):两消费点
+        # (段尾 _prev_refresh_only / did_refresh=False 收工判定)语义都是
+        # 「本段」——不复位时首段刷新后的所有后续段都被陈旧 True 钉住,
+        # 段循环跑满 range(MAX_REFRESH+1) 不收工(终结 break 落地后每段
+        # 恰一刷新,该残留即显形;修复前被「段内连刷至硬墙」形态掩盖)。
+        ledger.did_refresh = False
         if not _prev_refresh_only:
             time.sleep(0.3)  # 等 board 面板 settle(连击续刷段前一动作是刷新,面板未变,跳过)
         # 光标 parking(审计 P0,2026-08-16):上轮 BuyCard/LevelUp/Refresh 点击后光标停在按钮上
@@ -707,7 +713,14 @@ def run_buy_waves(op: SrOperation, match,
                     _rd_err(state, target_name, {}, {'plan_error': 1.0, 'plan_error_len': float(len(_tb))}, [])
                 raise
             if isinstance(action, CloseShop):
-                break   # 恒可用终结:本段收工(关店由编排壳承担)
+                # 恒可用终结:本段收工(关店由编排壳承担)。CloseShopOp.execute
+                # 是 no-op,此处提前退出与「execute 后按 terminal 统一 break」
+                # 行为等价;保留 execute 前落点是有意声明——保持 decisions
+                # 行形态契约(CloseShop 终结不入行,ADR-0518 §decisions 遥测行,
+                # 安灯/判读输入面)。可执行终结(RefreshShop/CompTransaction)
+                # 的统一退出在 execute 之后(下方 _aop.terminal 分支),两条路径
+                # 承载同一语义「终结 = 本段结束」,非双轨。
+                break
             if isinstance(action, RefreshShop) and ledger.total_refresh >= MAX_REFRESH:
                 # 硬墙重定位(ADR-0517 §3.1 候选 (a)):visit 级刷新计数超墙
                 # ⇒ 终结集降级为仅关店。硬墙跳过=计划了但未尝试,可见化
@@ -724,11 +737,25 @@ def run_buy_waves(op: SrOperation, match,
                 ledger=ledger, state=_cur))
             apply_action_outcome(_aop, action, _ok, _cur, match, ledger,
                                  visit_actions)
+            if _aop.terminal:
+                # 终结 op 统一退出(ADR-0517 决策 4/7;终结 op 语义 review
+                # V1/V2 修复,P35 实证):终结动作 execute 后黑板不投影
+                # (apply_action_outcome 对终结跳过,期望态按规格作废)——
+                # 循环若不在此退出,下一帧 decide 读到的仍是刷前旧牌面,
+                # 策略器(期望态的确定性纯函数)对旧牌面重发 RefreshShop
+                # 连发至硬墙,或把旧牌面的 BuyCard 提案点在新牌面槽位
+                # (错买随机卡)。break 后段循环下一次迭代的入口观察重建
+                # 期望态 = 「交回外循环重进」的物理载体;RefreshShop 与
+                # CompTransaction(终结邻接 fallback,禁半档中间态)同路径。
+                break
         log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                  f'plan={[_fmt_action(a) for a in visit_actions]}')
         # decisions 行(段粒度 = 旧波行同框架;actions = 本段执行累计,
         # CloseShop 终结不入行——与旧「空序列=完成」的行形态对齐;单动作
         # 下不存在「截断丢弃尾」,plan_truncated 仅由刷新硬墙置位)。
+        # 粒度申报(终结 op 语义 review 修复批):刷新 = 终结 op 执行后本段
+        # 即 break ⇒ 每次刷新独立成段 = 每刷一行 decisions;刷新不再与后继
+        # 动作共行。消费端(安灯/判读)按 type 计数,行数变多不改单行语义。
         # ⚠️ equips 拷贝必须在决策之后(cw_comps 装备动态权重读
         # state.equips,提前拷=改决策行为,w222 遥测缺口①)。
         state.equips = list(getattr(match.session, 'last_owned_equips', []) or [])

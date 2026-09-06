@@ -10,7 +10,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
+    from sr_od.application.currency_war.kernel.cw_state import (
+        GameState,
+    )
 
 # 硬节点类型(节点行识别词;D-D 语境维)
 HARD_NODE_TYPES: frozenset[str] = frozenset({'encounter', 'boss'})
@@ -92,3 +94,51 @@ def hard_node_reinforce_gate(node_type: str | None, gold: int,
     if gold < floor_gold:
         return False, 'gold_below_floor'
     return True, ''
+
+
+def r2_card_reserve(k_members: tuple[str, ...],
+                    bench: list, deployed: list,
+                    state: GameState,
+                    level: int | None = None) -> int:
+    """R2 预算门 Σ预留卡价 ρ = 合格集最低费卡价(公共单一源;修 R2 批
+    实现,原 shop 模块私有实现提升至此——落点裁定 = 方案审 v2:ρ 依赖
+    ``data/cw_chars.CHARACTERS`` 注册表与 ``refresh_prob`` 现读,属判据面,
+    禁进 kernel 经济层破坏其输入纯度;P54 floor 与 P71-b 升级预算闸
+    (ADR-0560)的 ρ/Σ预留分量同源消费,禁第二实现)。
+
+    ⚠ 同名异义锚:本 ρ(P54「合格集最低费卡价」)与
+    ``statefn/s_line.py`` 的 ``rho(delta_v_band, delta_v_pop, rounds)``
+    (P48 整买价值率)毫无关系,两 ρ 共存于同一模块树,消费禁接错源。
+
+    可追过滤等级:缺省=当前级;R2 消费位在 R1 选定 L* 之后,调用方
+    (shop.py R1 段)按 L* 重估传入——R1 已选等级的出牌面辖 R2 预留
+    卡价(用当前级过滤会在 L*≠当前级帧错档)。P71-b 预算闸消费取
+    缺省当前级:闸在升级授权前评估,预留口径与 P54 floor「满息档 +
+    至少一张命中卡可买」同帧同等级(见 levelup.levelup_budget_gate)。
+
+    证明单一源 = p54-r2-interest-floor §②(零新自由参数:ρ 锚
+    CHARACTERS 注册表 cost,非字面量)。可追过滤与 R1 装配侧
+    (shop.py ``_r1_ledger_terms``)同一(该级出此费 refresh_prob>0 ∧
+    无 2★)——语义单一源不复制。单卡下界口径(P54 A2:P40 待标定清单
+    「最低费卡价 × 期望命中数」在单刷波粒度下的整数下界;多命中超出
+    部分 = 下一波 R2 重估补足的显式让渡,非破线刷新)。合格集空 ⇒ 0:
+    该帧 R1 必先以 no_chaseable_member 关闭,R2 不可达,兜底值不进
+    任何可达比较。
+    """
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+
+    level_now = int(state.level or 1) if level is None else int(level)
+    costs: list[int] = []
+    for m in k_members:
+        ch = CHARACTERS.get(m)
+        if ch is None or not ch.cost:
+            continue
+        if refresh_prob(level_now, ch.cost) <= 0.0:
+            continue
+        copies = [c for c in list(bench) + list(deployed)
+                  if (getattr(c, 'char_id', '') or '') == m]
+        if any((getattr(c, 'star', 1) or 1) >= 2 for c in copies):
+            continue
+        costs.append(int(ch.cost))
+    return min(costs) if costs else 0

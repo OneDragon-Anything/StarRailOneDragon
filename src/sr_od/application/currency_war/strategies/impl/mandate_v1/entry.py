@@ -506,7 +506,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # unfulfilled 恒 None(实机局 g_20260904_042657 p1r7-r9 posture=
     # 'level' 全程零 LevelUp)。本对账只声明不兜底花钱(禁重引入「乱花」
     # 对立面:P56 下界语义零触碰,升级仍由 M3 判据独裁)。
-    _reconcile_posture_authorization(session, state, out)
+    _reconcile_posture_authorization(session, state, out, k_members)
 
     # ⑥ 无动作 ⇒ 出战(序列终点)
     if not out:
@@ -517,7 +517,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
 
 def _reconcile_posture_authorization(session: StrategySession,
                                      state: GameState | None,
-                                     emitted: list[Emitted]) -> dict | None:
+                                     emitted: list[Emitted],
+                                     k_members: tuple[str, ...] = ()) \
+        -> dict | None:
     """姿态兑现对账(经济冻结批病灶②;授权面与执行面的唯一仲裁点)。
 
     授权面 = ``get_node_goal`` 确定性预算核(spend_mode 单一供给,遥测
@@ -596,7 +598,24 @@ def _reconcile_posture_authorization(session: StrategySession,
         elif state.gold < clicks * cost:
             reason = 'unaffordable'
         else:
-            reason = 'contract_other'
+            # P71-b (3) 溢余段预算闸镜像(ADR-0560;与 run_mandate M3 链
+            # 同序同判据,复用判据本体禁第二实现):闸拒归因 = budget_gate
+            # 族独立拒因,禁落 contract_other 兜底桶(prep 侧降级归因
+            # 全错形态,方案审 B4)。cap_resolved 用 resolved 口径单一源。
+            _gate_ok, _gate_why = (False, '')
+            if contracts.ensure_contract(
+                    ('levelup', 'levelup_budget_gate'),
+                    contracts.ContractCtx(gold=state.gold, deploy_cap=cap),
+                    getattr(session, 'cw4_counters', None) or {}):
+                from sr_od.application.currency_war.kernel.cw_economy import (
+                    cap_resolved_of_session,
+                )
+                _gate_ok, _gate_why = levelup.levelup_budget_gate(
+                    state, state.gold, cap_resolved_of_session(session),
+                    k_members, list(state.bench or []),
+                    list(state.deployed or []), clicks, cost)
+            reason = (_gate_why if not _gate_ok and _gate_why
+                      else 'contract_other')
     un = {'auth_id': f'{state.plane}-{state.round_num}',
           'channel': 'levelup',
           'reason': reason,

@@ -49,6 +49,9 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '判据/闭式', '不旁路', 'D-lv7(OPEN 检查点;决策迹理由显式)'),
     ('levelup', 'saturation_floor'): (
         '状态函数', '不旁路', 'g*=10×cap_resolved 单一源重导出(R70-1)'),
+    ('levelup', 'levelup_budget_gate'): (
+        '门', '不旁路', 'P71-b (3) 溢余段预算闸(ADR-0560;M3 两域+L3 '
+        '发射位消费,义务侧量闸)'),
     # —— criteria/refresh(§2.4)——
     ('refresh', 'r0_stop'): (
         '门', '不旁路', 'R10-3(结构位,与 crisis_refresh_invariant 同族)'),
@@ -61,6 +64,9 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '成员)'),
     ('refresh', 'r2_budget'): (
         '门', '旁路=门关闭', 'R5-4(预算门不批)'),
+    ('refresh', 'r2_card_reserve'): (
+        '状态函数', '不旁路', 'P54 §② ρ 公共单一源(ADR-0560 提升批;'
+        'R2 门与 P71-b 闸同源消费)'),
     ('refresh', 'hard_node_reinforce_gate'): (
         '门', '旁路=门关闭', 'D-D(硬节点补强门,消费面 r1/candidates 均臂①旁路)'),
     ('refresh', 'crisis_refresh_invariant'): (

@@ -412,6 +412,26 @@ def _prep_anchors_hit(op, screen) -> bool:
                                       crop_first=False).is_success)
 
 
+def _shop_open_anchors_hit(op, screen) -> bool:
+    """开商店态三 id_mark 锚判定(备战子态族分支 0n 判据单一源)。
+
+    锚集 = 「备战标识-购买经验」+「按钮-收起」+「标识-备战阶段」
+    (画面档 currency_war_battle_prep_shop_open.yml,idmark 审计批定稿)。
+    三锚全命中才认商店态;互斥依据 = 离线配对验证(idmark 审计表 §三):
+    干净备战帧「按钮-收起」不存在 → 开商店档零候选,不与备战(1)双门
+    竞争(但序位仍须在备战前,见分支注释)。
+    """
+    return (op.round_by_find_area(screen, '货币战争-备战-开商店',
+                                  '备战标识-购买经验',
+                                  crop_first=False).is_success
+            and op.round_by_find_area(screen, '货币战争-备战-开商店',
+                                      '按钮-收起',
+                                      crop_first=False).is_success
+            and op.round_by_find_area(screen, '货币战争-备战-开商店',
+                                      '标识-备战阶段',
+                                      crop_first=False).is_success)
+
+
 def _invest_anchor_hit(op, screen) -> bool:
     """投资策略浮层 id_mark 标识锚(固定位置全等,既有 0e 判据;便宜
     area 对拍)。"""
@@ -602,6 +622,8 @@ class CwLoop(SrOperation):
         ('0k 专家邀请函', '货币战争-备战-专家邀请函', '标识-专家邀请函'),
         ('0m 策略锁定', '货币战争-备战-策略锁定', '按钮-返回投资策略选择'),
         ('0m 遭遇锁定', '货币战争-备战-遭遇锁定', '按钮-返回遭遇选择'),
+        ('0n 开商店·购买经验', '货币战争-备战-开商店', '备战标识-购买经验'),
+        ('0n 开商店·备战阶段', '货币战争-备战-开商店', '标识-备战阶段'),
         ('0j 前台无角色', '货币战争-提示-前台无角色', '标识-无角色提示'),
         ('0j 前台无角色确认', '货币战争-提示-前台无角色', '按钮-确认'),
         ('0p BOSS简报', '货币战争-BOSS简报', '标识-强敌来袭'),
@@ -609,7 +631,7 @@ class CwLoop(SrOperation):
         ('0s 投资环境', '货币战争-投资环境', '标识-投资环境'),
         ('1 备战双锚·购买经验', '货币战争-备战', '备战标识-购买经验'),
         ('1 备战双锚·出战', '货币战争-备战', '按钮-出战'),
-        ('1 备战开商店探针', '货币战争-备战-开商店', '按钮-收起'),
+        ('0n 开商店·收起', '货币战争-备战-开商店', '按钮-收起'),
     )
 
     def _dispatch_anchor_precheck(self) -> None:
@@ -1284,6 +1306,35 @@ class CwLoop(SrOperation):
                          _lock_screen, _sl.is_success)
                 return self.round_wait(wait=1.5)
 
+        # 0n. 备战-开商店子态(备战子态族;与 0m 暗色锁定分支同段语义:
+        #     画面 = 备战底板 + 浮层子态,判据锚在浮层独有元素上)。
+        #     ⚠️ 序位 = 必须先于备战双锚(1):商店浮层不遮双锚锚区,
+        #     「购买经验/出战」在浮层下透出命中 → 商店开着时双锚判据穿透,
+        #     备战分支内的发射面(达标臂 RunDeploy+StartBattle)会把部署/
+        #     出战点击打在浮层上被挡(实机事故:商店浮层上跑部署空挥段,
+        #     详见进度流水 2026-09-06 外循环开商店分支批)。判据单一源 =
+        #     _shop_open_anchors_hit(三 id_mark:idmark 审计批定稿;互斥
+        #     依据 = 干净备战帧「按钮-收起」不存在,开商店档零候选,离线
+        #     配对验证见 idmark 审计表 §三)。
+        #     处理 = 点「按钮-收起」收起商店 → round_wait 交回外循环重判
+        #     (下轮见干净备战走常规备战链;商店态顺势买牌归回合节奏重构,
+        #     本分支只收起不买牌)。分键 branch_shop_open_collapse 零静默。
+        #     深度防御保留:达标臂浮层扫描(readiness_overlay_hold)与
+        #     CwScreenPrep 环入口 _try_collapse_open_shop 守卫不删——主
+        #     防线已前移至本分支(路由级全帧生效),彼两处降级为单点兜底。
+        if _shop_open_anchors_hit(self, screen):
+            _so_counters = getattr(
+                getattr(self.ctx.cw_match, 'session', None),
+                'cw4_counters', None)
+            if isinstance(_so_counters, dict):
+                _so_counters['branch_shop_open_collapse'] = \
+                    _so_counters.get('branch_shop_open_collapse', 0) + 1
+            _so = self.round_by_find_and_click_area(
+                screen, '货币战争-备战-开商店', '按钮-收起', success_wait=1.5)
+            log.info('[cw-loop] 开商店态(备战子态族)→ 点收起(success=%s)'
+                     '→ 交回外循环重判', _so.is_success)
+            return self.round_wait(wait=1.5)
+
         # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档)。
         #     P4R 升级(1-1 事故 5h 死循环返工):确认关闭 → **带落点验证的
         #     重部署**(CwOpDeploy,落点 CV 已收编)→ 验 deployed 前排 ≥1 →
@@ -1467,7 +1518,8 @@ class CwLoop(SrOperation):
                 # 双锚模板穿透命中 → RunDeploy 拖拽落空 placed=0)。探测复用
                 # 0 系分发锚表(零新参数):备战自身锚以外任一锚命中 = 浮层
                 # 在场 → 本轮不发射,交由浮层接管面(0 系分支)处理;分键
-                # 零静默。
+                # 零静默。深度防御注:本扫描 = 单点兜底,商店浮层穿透的
+                # 主防线已前移至 0n 开商店分支(路由级,先于备战分支整链)。
                 _ov_hit = None
                 for _ov_branch, _ov_screen, _ov_area in \
                         CwLoop.DISPATCH_AREA_ANCHORS:

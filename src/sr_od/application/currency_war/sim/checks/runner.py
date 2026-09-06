@@ -30,6 +30,7 @@ from sr_od.application.currency_war.sim.checks.ledger import (
     check_hp_upper_bound_truth,
     check_ledger_consistency,
     check_ledger_deploy_lag_disclosure,
+    check_levelup_budget_gate,
     check_levelup_flat4_ledger_lock,
     check_levelup_interest_engine_gate,
     check_no_same_round_buy_sell,
@@ -77,6 +78,8 @@ _BATCH_CHECKS = {
     'deploy_fills_cap': check_deploy_fills_cap,
     'equip_worn_in_battle': check_equip_worn_in_battle,
     'levelup_interest_engine_gate': check_levelup_interest_engine_gate,
+    # P71-b 溢余段预算闸(ADR-0560):m3_batch 升级批穿线 = 绕闸违规
+    'levelup_budget_gate': check_levelup_budget_gate,
     'no_same_round_buy_sell': check_no_same_round_buy_sell,
     'bench_full_deadlock_probe': check_bench_full_deadlock_probe,
     'shop_slot_consumption': check_shop_slot_consumption,

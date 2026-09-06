@@ -171,7 +171,7 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 标识-备战阶段
-  id_mark: false
+  id_mark: true
   pc_rect:
   - 250
   - 30

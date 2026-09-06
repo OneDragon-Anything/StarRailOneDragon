@@ -85,6 +85,17 @@ def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
     return ctx.gold is not None and ctx.reserve is not None
 
 
+def _budget_gate_ctx(ctx: ContractCtx) -> bool:
+    """P71-b 预算闸前提(ADR-0560):现读金与等级驱动 cap 在场。
+
+    闸值分量 g* 依赖 cap_resolved(消费位传 cap_resolved_of_session
+    口径)、闸比较依赖决策帧现读金——缺任一即语境未核验,弃权
+    (fail-closed,与先例②同型)。ρ/Σ预留分量对合格集空自带 0 兜底
+    (refresh.r2_card_reserve 契约),不另设前提。
+    """
+    return ctx.gold is not None and ctx.deploy_cap is not None
+
+
 def _arm1_cap_level_driven(ctx: ContractCtx) -> bool:
     """先例③前提:arm1 板满口径=等级驱动 cap(禁固定常数)。
 
@@ -192,6 +203,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'g_20260904_054904 候选③+P21/P48 λ>0 段(discipline 单一源)'),
     ('levelup', 'pop_slot'): Contract(
         None, 'D-lv7 OPEN 检查点(满编+富金+候补升 cap)', 'IMPL_DESIGN D-lv7'),
+    ('levelup', 'levelup_budget_gate'): Contract(
+        _budget_gate_ctx,
+        'P71-b (3) 溢余段预算闸(ADR-0560):前提=现读金与等级驱动 '
+        'cap 在场(g* 依赖 cap_resolved 口径,禁固定常数)',
+        'P71-levelup-channel-budget-gate §P71-b+ADR-0560'),
     # —— criteria/refresh ——
     ('refresh', 'r0_stop'): Contract(
         None, 'R0 维持结构门(结构位,输入=店面快照+金,恒良定义)',
@@ -218,6 +234,10 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('refresh', 'hard_node_reinforce_gate'): Contract(
         None, 'D-D 硬节点补强门(结构门,数值加权挂标定批)',
         'IMPL_DESIGN D-D'),
+    ('refresh', 'r2_card_reserve'): Contract(
+        None, 'R2 预算门 Σ预留卡价 ρ 公共单一源(注册表现读纯函数;'
+        'R2 门与 P71-b 预算闸同源消费,ADR-0560 提升批)',
+        'P54-r2-interest-floor §②+ADR-0560'),
     # —— criteria/stockpile ——
     ('stockpile', 'stockpile_buy'): Contract(
         _s_reserve_line_formed,

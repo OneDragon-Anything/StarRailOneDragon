@@ -2063,8 +2063,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     state.gold_readable = _gold_opt is not None   # r319 保真位(对齐 hp_readable)
     # ADR-0282(hp 三层,用户设计):hp 走对账层 reconcile_hp——读不到(shop 开态
     # 血量区空)≠漂移是读失败,保旧沿用 session.last_hp_real(比假 100 安全,低血
-    # 先验触发保血方向对);全无真值(开局)= None 诚实未知(ADR-0491 废止
-    # 兜底 100,W823 GameState.hp None 化)。state.hp=决策用值,
+    # 先验触发保血方向对);全无真值(开局)= 初值表先验(实证档 A8/108 → 82/62,
+    # readable=False;无实证档 → None 诚实未知;ADR-0559/0491,W823 GameState.hp
+    # None 化)。state.hp=决策用值,
     # state.hp_readable=是否真读(遥测分字段记,不混「真 100」)。
     # state.hp_trusted=值可信位(ADR-0428 语义细分;ADR-0431 帧龄门收紧,
     # 派生式见下方帧龄门注释)——FLIP 类谓词据此把「本帧未 OCR 到」与

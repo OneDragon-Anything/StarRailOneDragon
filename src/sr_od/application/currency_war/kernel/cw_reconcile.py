@@ -9,6 +9,7 @@ from __future__ import annotations
 from one_dragon.utils.log_utils import log
 
 # 下行守卫标定常量(值单一源 = 注册表;cw_reconcile 只消费)
+from sr_od.application.currency_war.kernel.cw_opening_hp import opening_hp_prior
 from sr_od.application.currency_war.kernel.cw_registry import (
     HP_LOSS_CAP_P100_BY_NODE,
     HP_SUSPECT_CONFIRM_FRAMES,
@@ -362,7 +363,9 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
 
     Returns:
         (决策用 hp, 是否真读):真值帧=(新读, True);读不到=(last_hp_real, False);
-        全无真值(开局)=(None, False) 诚实未知(ADR-0491,不再 100 兜底);
+        全无真值(开局)=(初值表先验, False)——实证档 A8/108 给 82/62、
+        readable=False(先验非真读,ADR-0559);无实证档 =(None, False)
+        诚实未知(ADR-0491,不再 100 兜底);
         被下行守卫拒信的帧=(旧值, False)(SUSPECT 态,ADR-0431)。
     """
     if new_hp is None:
@@ -371,7 +374,21 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
             log.info(f'[cw][{source}] hp 读不到(shop 开态/血量区空)→ '
                      f'沿用 last_hp_real={old}(保旧不写,ADR-0282)')
             return old, False
-        return None, False   # 全无真值(开局)→ None 诚实未知(ADR-0491 废止 100 兜底)
+        # 开局全无真值 → 遥测实证的初值表先验(ADR-0559;实证档 A8/108:
+        # 基础 82、「开局不利」62;无实证档 → None 诚实未知,ADR-0491 口径不变)。
+        # 只在本分支(读不到 ∧ session 无真值)填:先验非真读,readable=False;
+        # 首个真值帧经下方采新写回 last_hp_real 后自然取代先验,禁覆盖真读。
+        prior = (opening_hp_prior(
+            getattr(session, 'briefing_affixes', None),
+            getattr(session, 'selected_difficulty', ''),
+            getattr(session, 'enemy_difficulty', None))
+            if session is not None else None)
+        if prior is not None:
+            log.info(f'[cw][{source}] hp 开局无真值 → 初值表先验 {prior}'
+                     f'(词缀={sorted(set(getattr(session, "briefing_affixes", None) or []))};'
+                     f'ADR-0559,readable=False,真值帧到达即被覆盖)')
+            return prior, False
+        return None, False   # 无实证档(其他难度/未读到难度)→ None 诚实未知(ADR-0491)
     old = getattr(session, 'last_hp_real', None) if session is not None else None
     if old is not None and new_hp - old >= HP_REAL_JUMP_CONFLICT:
         _conflict('hp', old, new_hp, screen,

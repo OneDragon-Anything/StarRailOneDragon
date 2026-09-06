@@ -181,7 +181,7 @@ sim 板面分布 vs 训练分布的漂移监控(逐特征 PSI 类)。**报警分
 
 **现状**:批量 sim(`cw_sim batch`)的 GameState 从不填充 `enemy_difficulty`/`enemy_affixes`/`plane_bosses`(`kernel/cw_state.py` 缺省 None/空表;`sim/engine_p1.py` 只读不写;`cw_replay` 的字段拷贝仅回放臂)——不补生成器,模型的敌方上下文特征在消费端恒缺失。
 
-**现存物处置(单一源纪律)**:`telemetry/cw_win_model.py`(win_model M1,影子模式 P(win) 适配类 + W30 训练的 killed 分类器 + `corpus.py` 训练表检查族)与本设计是**两个并存的 P(win) 模型/两条训练表路径**——落地批同步处置:**M1 supersede 退役**(`cw_win_model.py` 及其特征/检查依赖面随落地 ADR 删除或迁移到新抽取表;M1 现状为影子不接线、模型产物 gitignored,退役低风险),防双源;在其退役前 M1 维持「predict 不接任何结算路径」现状。
+**现存物处置(单一源纪律)**:`telemetry/cw_win_model.py`(win_model M1,影子模式 P(win) 适配类 + 实机语料训练的 killed 分类器 + `corpus.py` 训练表检查族)与本设计是**两个并存的 P(win) 模型/两条训练表路径**——落地批同步处置:**M1 supersede 退役**(`cw_win_model.py` 及其特征/检查依赖面随落地 ADR 删除或迁移到新抽取表;M1 现状为影子不接线、模型产物 gitignored,退役低风险),防双源;在其退役前 M1 维持「predict 不接任何结算路径」现状。
 
 **方案(与既有 sim 经验表+采样器同风格,先例 `sample_node_sequence`)**:
 

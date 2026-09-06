@@ -39,6 +39,8 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
        ├─ CloseShop 终结 → break（关店点击由编排壳 CwOpCloseShop 承担）
        ├─ RefreshShop ∧ ledger.total_refresh ≥ MAX_REFRESH → 硬墙跳过:
        │    plan_truncated=True + refresh_skipped='max_cap'（可见化不停）→ break
+       │    （终结 break 落地后每段恰至多一次刷新;硬墙封顶的是跨段刷新提案——
+       │      终结→重进→再刷新,防外循环无进展;did_refresh 段级复位）
        ├─ 守卫断言（cw_shop_action_ops,决策 9——防 bug 路栏,炸出 = 策略器 bug）:
        │    guard_proposal_vs_expected（提案对象在期望态存在且未被消费）
        ├─ 动作 op execute（cw_shop_action_ops._OP_TABLE 词表分发）:
@@ -58,14 +60,18 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
        ├─ 落地门 apply_action_outcome（调用环单一源,cw_op_buy_cards）: execute 返回
        │    False（未落地,如 BuyCard 检出点击未生效）⇒ 两侧都不动——不投影/不守卫/
        │    不入已买集（cw4_visit_bought_names,防检出帧名污染对账）;落地且非终结才进投影
-       └─ 投影（决策 10:动作 op project = cw_state.simulate 单一源,纯计算零读屏）:
+       ├─ 投影（决策 10:动作 op project = cw_state.simulate 单一源,纯计算零读屏）:
             非终结且落地 → 黑板推进 session.shop_state_frame = project(态)
             → guard_expected_vs_tracked 双账断言（满栏买入豁免——tracked 的 bench_place
               满栏丢件 vs simulate §2.5 k 张分支不同构,对账重挂点 = 下一入口观察）
   段尾：state.equips 拷贝（必须在决策之后——cw_comps 装备动态权重读 state.equips）
-        + decisions 行（段尾累计行:actions = 本段执行累计,CloseShop 终结不入行,
+        + decisions 行（段尾累计行:actions = 本段执行累计,CloseShop 终结不入行;
           与旧「空序列=完成」的行形态对齐;单动作下无截断丢弃尾,plan_truncated
-          仅由刷新硬墙置位）
+          仅由刷新硬墙置位;粒度申报:刷新 = 终结 op 后本段即 break ⇒ 每刷独立成行）
+       └─ 终结 op 退出（ADR-0517 决策 4/7;review V1/V2 修复批）: execute 后 _aop.terminal
+       │    为真 → break——刷新引入的新牌面 = 新事实,由下一段入口观察重建期望态;
+       │    黑板对终结不投影（期望态按规格作废）,旧牌面不再回流策略器（消灭
+       │    RefreshShop 连发至硬墙 / 旧牌面 BuyCard 提案错买两个分支）。
   段间判定：did_refresh=False → break（本段无刷新/硬墙 → 收工）
 ```
 

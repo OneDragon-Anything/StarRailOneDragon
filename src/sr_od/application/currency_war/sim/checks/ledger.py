@@ -259,6 +259,103 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
     return out
 
 
+def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
+    """P71-b (3) 溢余段预算闸检查(ADR-0560;绕闸升级 = 违规)。
+
+    判据(证明 = docs/develop/currency_war/proofs/
+    p71-levelup-channel-budget-gate.md P71-b):m3_batch 臂的升级批
+    支出 s 必须 ≤ 该帧溢余段预算 ``g0 − g* − ρ − Σ预留``(g* =
+    saturation_line(cap);ρ = Σ预留 = 合格集最低费卡价,消费
+    criteria/refresh.r2_card_reserve 公共单一源——闸口径下两分量同值,
+    退化 g0 − g* − 2ρ,见 ADR-0560 三分量声明)。违规 = 该轮存在
+    m3_batch 授权的 LevelUp 且批支出穿线 = 绕闸形态(生产闸拦截后不
+    会有该批,出现即闸被绕过/判据漂移)。
+
+    合法拒向不在此检查器辖域(闸拒 = 零发射 = 无 LevelUp 行,天然
+    无违规);奖励/补给节点豁免(同 check_levelup_interest_engine_gate
+    [16]② 买经验合法)。**辖域镜像(ADR-0560 §4)**:g ≤ g* 帧生产闸
+    合法豁免(非溢余段预算不存在),检查器同条件 skip——镜像缺口会把
+    开局低金合法批误报绕闸(落地审 B1,lv3/g0=8 假违规复现在案)。
+
+    近似声明(与既有检查器同款口径):
+    - 时点金 = 首波 gold(决策发生在收入后/花销前)——生产闸用决策帧
+      现读金 ≤ g0,本检查器偏宽松向(少误报),构造性不冤枉合法批;
+    - 升级前等级用上一轮账本 level(轮内升级完成会抬高本行);
+    - cap 取本行 cap 按轮内升级量回退(level+常数线性近似,宝钻/投资
+      覆写语境有 ±10 量级误差窗口);
+    - ρ 成员集 = target_comp 名册(core∪faction 成员,含过渡配方标签
+      拆解)——生产 k_members 是其子集,ρ 低估 ⇒ 闸值偏大 ⇒ 宽松向,
+      合格集空帧 ρ=0 兜底与生产一致。
+    """
+    from types import SimpleNamespace
+
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
+        r2_card_reserve,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
+        saturation_line,
+    )
+
+    def _roster(target_label: str) -> tuple[str, ...]:
+        names: set[str] = set()
+        for lb in (target_label or '').removeprefix('过渡配方·').split('+'):
+            comp = next((c for c in COMP_LIBRARY
+                         if getattr(c, 'name', '') == lb), None)
+            if comp is None:
+                continue
+            names.update(getattr(comp, 'core_chars', ()) or ())
+            for fn in getattr(comp, 'factions', ()) or ():
+                names.update(n for n, ch in CHARACTERS.items()
+                             if fn in (ch.factions or ()))
+        return tuple(names)
+
+    out: list[str] = []
+    prev_level = 3
+    for row in rows:
+        st = row.get('state') or {}
+        sim = row.get('sim') or {}
+        level = prev_level
+        row_lvl = st.get('level') or prev_level
+        cap = st.get('cap')
+        if cap is not None and row_lvl != level:
+            cap = cap - (row_lvl - level)   # 决策时点 cap 回退(见近似声明)
+        waves = sim.get('shop_waves') or []
+        g0 = waves[0].get('gold') if waves else row.get('gold')
+        s = (sim.get('spend') or {}).get('levelup') or 0
+        node = sim.get('node') or ''
+        has_m3 = any(a.get('__type__') == 'LevelUp'
+                     and str(a.get('auth', '') or '').startswith('m3_batch')
+                     for a in row.get('actions') or [])
+        g_star = saturation_line(cap) if cap else None
+        if has_m3 and g_star and g0 is not None and s \
+                and g0 > g_star \
+                and node not in ('reward', 'supply'):
+            # 辖域镜像(ADR-0560 §4,落地审 B1):生产闸在 g ≤ g* 帧
+            # 合法豁免(非溢余段预算不存在,负闸值不读恒拒)——检查器
+            # 无对应豁免会把开局低金合法批误报绕闸(lv3/g0=8/批4金
+            # 假违规复现在案)。辖域外直接 skip,不留负 headroom 路径。
+            bench = [SimpleNamespace(char_id=b.get('char_id'),
+                                     star=b.get('star', 1) or 1)
+                     for b in st.get('bench') or []]
+            deployed = [SimpleNamespace(char_id=d.get('char_id'),
+                                        star=d.get('star', 1) or 1)
+                        for d in st.get('deployed') or []]
+            rho = r2_card_reserve(_roster(row.get('target_comp') or ''),
+                                  bench, deployed,
+                                  SimpleNamespace(level=level), level=level)
+            headroom = g0 - g_star - 2 * rho
+            if s > headroom:
+                out.append(
+                    f"p{row.get('plane')}r{row.get('round_num')} "
+                    f"LevelUp 批 {s} 金 > 溢余段预算 {headroom}"
+                    f"(g0={g0}, g*={g_star}, ρ={rho})——"
+                    f"P71-b (3) 绕闸升级(ADR-0560)")
+        prev_level = row_lvl
+    return out
+
+
 
 def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     """压测自由批 F1 指纹(同轮买卖互斥;ADR-0267;r408)。

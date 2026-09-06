@@ -856,6 +856,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             len(deployed), _cap_now, gold, _bench_cand, g_star,
             buyable_candidate=_buyable_cand, bench_free=bench_free)
         session.cw4_pop_slot_why = _pop_why   # D-lv7:否向理由留决策迹
+    _budget_gate_blocked = False   # P71-b 闸拒帧标记(M6 同帧挂起辖域)
     if _arm1 or _arm0 or _pop:
         # auth_basis 三臂分键(可归因):触发臂按 arm1 > arm0 > pop 序取首
         _arm_tag = 'arm1' if _arm1 else ('arm0' if _arm0 else 'pop')
@@ -876,12 +877,35 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 ok1, _ = mandate.check_affordable(gold, 0,
                                                   batch_cost=clicks * cost)
                 if ok1 and clicks > 0:
-                    return LevelUpShop(cost=cost,
-                                       auth_basis=f'm3_batch:{_arm_tag}')
+                    # P71-b (3) 溢余段预算闸(ADR-0560):整买与可负担
+                    # 之后、发射之前的量闸。拒 = 整批推迟(攒到闸开帧一次
+                    # 买齐,禁部分买),拒因独立分键;契约核验失败
+                    # (fail-closed 弃权)不发射,违例计数由 ensure_
+                    # contract 自带,不混拒因键。
+                    if contracts.ensure_contract(
+                            ('levelup', 'levelup_budget_gate'),
+                            contracts.ContractCtx(gold=gold,
+                                                  deploy_cap=_cap_now),
+                            counters):
+                        _gate_ok, _gate_why = (
+                            crit_levelup.levelup_budget_gate(
+                                state, gold, cap_resolved, k_members,
+                                bench, deployed, clicks, cost))
+                        if _gate_ok:
+                            return LevelUpShop(cost=cost,
+                                               auth_basis=f'm3_batch:{_arm_tag}')
+                        _count(_gate_why)
+                        _budget_gate_blocked = True
 
     # M6 溢余转压库(存在性=金>g* ∧ 无 S 目标;档匹配 fail-closed ⇒
-    # 不买 + 溢余滞留遥测;两臂同开)
-    if gold > g_star and stop_flag and bench_free > 0:
+    # 不买 + 溢余滞留遥测;两臂同开)。P71-b 闸拒同帧挂起(ADR-0560):
+    # 闸刚护住的预留金不得被同帧压库击穿(拒后照发 = 金换通道,预留
+    # 语义同帧失效)——挂起只辖 shop 侧 M6;prep 位「M6」是 emit
+    # OpenShop(转店后本函数 M3 重过闸兜住),不重复挂起(防双闸)。
+    _m6_arms = gold > g_star and stop_flag and bench_free > 0
+    if _m6_arms and _budget_gate_blocked:
+        _count('m6_budget_gate_suspend')
+    elif _m6_arms:
         ok2, _ = mandate.check_seats(
             bench_free, 0, needs_bench=True, needs_board=False,
             name='', deployed_names=deployed_names)
@@ -1465,8 +1489,31 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if not (ok3 and _clicks3 > 0):
                     _count('batch_unaffordable')
                 else:
-                    return LevelUpShop(cost=_cost3,
-                                       auth_basis='m3_batch:must_spend')
+                    # P71-b 闸在必花域内生效(ADR-0560;方案审 v2 采纳 3,
+                    # 73002 病灶即域内帧——域内豁免 = 修复不成立):必花
+                    # 域授权辖「要花」不辖「花在哪」,闸拒只量住升级通道,
+                    # 买卡臂(M2/压库/下帧命中卡)仍是合法消费出口,义务
+                    # 不被否决。拒因独立分键(与域外 levelup_budget_gate_
+                    # blocked 分开,归因可辨);闸拒 ∧ bench 无空席(义务
+                    # 无处安放)⇒ 金滞留死角观测分键(纯观察,攒 sim 数据
+                    # 后再裁是否需要域内降档——降档 = 部分买,与 P48 整买
+                    # 冲突,当前禁做)。
+                    _gate3_ok = False
+                    if contracts.ensure_contract(
+                            ('levelup', 'levelup_budget_gate'),
+                            contracts.ContractCtx(gold=gold,
+                                                  deploy_cap=_cap_now),
+                            counters):
+                        _gate3_ok, _gate3_why = (
+                            crit_levelup.levelup_budget_gate(
+                                state, gold, cap_resolved, k_members,
+                                bench, deployed, _clicks3, _cost3))
+                    if _gate3_ok:
+                        return LevelUpShop(cost=_cost3,
+                                           auth_basis='m3_batch:must_spend')
+                    _count('budget_gate_must_spend_defer')
+                    if bench_free <= 0:
+                        _count('budget_gate_must_spend_deadend')
     return CloseShop()
 
 

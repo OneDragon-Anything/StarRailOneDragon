@@ -1697,6 +1697,11 @@ class CwScreenPrep(SrOperation):
         """环入口遇开商店稳定态(战斗胜利后新回合游戏可能自动开)→
         收起返回 True;非开态(真特效/overlay)返回 False。
 
+        防线定位(0n 分支落地后):主防线已前移至外循环 0n 分支
+        (cw_loop `_shop_open_anchors_hit` 路由,商店态禁部署/出战调度);
+        本守卫降级为纵深防御二层——0n 分支漏收帧(如「备战阶段」OCR
+        抖动)或 future 入口绕过路由时兜底,语义不变。
+
         两个调用方:① 环入口 gate 前的预收(主路径:开 → 收起后
         以收紧超时等关店态 stable,直接进本轮,不再 round_retry;
         见 _run_loop 环入口注释;首探 miss 后环入口会在有限窗内

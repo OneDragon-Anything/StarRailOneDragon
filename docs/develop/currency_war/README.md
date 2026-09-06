@@ -19,8 +19,8 @@
 - [math_proofs](proofs/math_proofs.md) —— 命题索引(P1-P57 状态与重建纪元);命题本体与 [validations/](proofs/validations/) 验证报告
 - A/B 判据与结果一律落 proofs 命题单篇或 ADR 判据节,不建独立预注册文件(原 prereg/ 已删,git 历史可溯)
 
-### [sim/](sim/) —— sim 设计文档(战斗结算层)
-- [sim-power-model](sim/sim-power-model.md)(战力模型设计件,需求定义,ADR-0512) / [sim-wiring](sim/sim-wiring.md)(GameState↔sim 接线对照 as-built 底账)
+### [sim/](sim/) —— sim 设计文档
+- [sim-design](sim/sim-design.md)(sim 体系设计总纲:架构边界/动作语义契约/检查器分类/保真度纪律/复盘通道/守恒不变量) / [sim-power-model](sim/sim-power-model.md)(战力模型设计件,需求定义,ADR-0512) / [sim-wiring](sim/sim-wiring.md)(GameState↔sim 接线对照 as-built 底账)
 
 ### [decisions/](decisions/) —— 决策日志(ADR,一个决策一文件;INDEX 索引)
 
@@ -32,7 +32,7 @@
 
 - 策略实现 = `src/sr_od/application/currency_war/strategies/`(契约与管理器在 impl/,注册壳在顶层;架构见 [flow/README §2](flow/README.md))
 - `cw_performance.py` 观测反馈层 → 代码 docstring + decisions/ 相关 ADR(旧 strategy/05 已随 v2 树清退)
-- sim/回放基建(`cw_sim`/`cw_sim_checks`/`cw_replay`/`cw_match_recorder` 等)→ [sim/](sim/) + `sr-od-currency-war-dev` skill 的 verification.md(验证工作台:批量/对拍/Δ 池)
+- sim/回放基建(`cw_sim`/`cw_sim_checks`/`cw_replay`/`cw_match_recorder` 等)→ [sim/](sim/) + `sr-od-currency-war-dev` skill 的 sim-testing.md(验证工作台:批量/对拍/Δ 池)
 - 注册表 = 游戏数据单一源(生成器重跑流程见 [game 侧 README](../../game/currency_war/README.md))
 
 ## 关联 skill

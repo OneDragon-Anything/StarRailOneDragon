@@ -624,16 +624,41 @@ def run_mandate(frame: MandateFrame,
                             ok1, _ = check_affordable(frame.gold, 0,
                                                       batch_cost=clicks * cost)
                             if ok1:
-                                # auth_basis 分键(可归因,与商店栈同序 arm1>arm0>pop;
-                                # 三臂全空时 = 必花域触发源,分键 must_spend)
-                                if _arms_hit:
-                                    _arm_tag = 'arm1' if _arm1 else (
-                                        'arm0' if _arm0 else 'pop')
-                                else:
-                                    _arm_tag = 'must_spend'
-                                    _count('must_spend_l3_prep_trigger')
-                                out.append(Emitted(LevelUp(), True,
-                                                   f'm3_levelup_batch:{_arm_tag}'))
+                                # P71-b (3) 溢余段预算闸(ADR-0560):
+                                # 发射前过闸;拒 = 整批推迟(攒到闸开帧
+                                # 一次买齐,禁按闸值截断击数的部分买——
+                                # spend_unified 整批语义辖域)。拒因独立
+                                # 分键遥测显影。契约核验失败(fail-closed
+                                # 弃权)不发射,违例计数由 ensure_contract
+                                # 自带,不混拒因键。
+                                # 本位「M6」= _emit_open_shop('m6_stock'),
+                                # 转店后 shop 帧 M3 重过闸兜住闸拒形态,
+                                # prep 位不重复挂起 M6(防双闸,ADR-0560
+                                # 落码声明)。
+                                if contracts.ensure_contract(
+                                        ('levelup', 'levelup_budget_gate'),
+                                        contracts.ContractCtx(
+                                            gold=frame.gold,
+                                            deploy_cap=_cap_now), counters):
+                                    _gate_ok, _gate_why = (
+                                        levelup.levelup_budget_gate(
+                                            state, frame.gold,
+                                            _cap_of(session),
+                                            frame.k_members, frame.bench,
+                                            frame.deployed, clicks, cost))
+                                    if _gate_ok:
+                                        # auth_basis 分键(可归因,与商店栈同序 arm1>arm0>pop;
+                                        # 三臂全空时 = 必花域触发源,分键 must_spend)
+                                        if _arms_hit:
+                                            _arm_tag = 'arm1' if _arm1 else (
+                                                'arm0' if _arm0 else 'pop')
+                                        else:
+                                            _arm_tag = 'must_spend'
+                                            _count('must_spend_l3_prep_trigger')
+                                        out.append(Emitted(LevelUp(), True,
+                                                           f'm3_levelup_batch:{_arm_tag}'))
+                                    else:
+                                        _count(_gate_why)
                         else:
                             _count('l3_reject_batch_unaffordable')
 

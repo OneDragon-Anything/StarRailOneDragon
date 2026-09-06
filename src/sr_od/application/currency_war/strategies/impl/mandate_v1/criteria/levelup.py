@@ -59,6 +59,75 @@ def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
     return gold >= clicks_to_next * click_cost
 
 
+def levelup_budget_gate(state: GameState, gold: int, cap_resolved: int,
+                        k_members: tuple[str, ...], bench: list,
+                        deployed: list, clicks: int,
+                        click_cost: int) -> tuple[bool, str]:
+    """P71-b (3) 溢余段预算闸(ADR-0560):升级支出 s 的量闸。
+
+    判据式(证明 = docs/develop/currency_war/proofs/
+    p71-levelup-channel-budget-gate.md,P71-b 四合取之第 (3) 支,
+    零新自由参数):花后金位 ≥「满息档 + 一张命中卡」的 P54 floor——
+
+    ``g − s ≥ g* + ρ + Σ预留``(s = clicks×click_cost 整批成本;
+    P71-b 记法 B_L = min(U_L, g−g*−ρ−Σ预留) 中 min 因 (1) 整买
+    s≡U_L 恒退化,此处按方案审建议写单比较,禁读出「取较小者支出」
+    的分支语义)。
+
+    三分量口径(全部已证单一源):
+    - g* = saturation_floor(cap_resolved)(statefn/interest.
+      saturation_line 重导出;cap_resolved 必须传
+      cap_resolved_of_session 口径——投资覆写语境裸 level 推 cap 会
+      错线,消费位禁偷懒);
+    - ρ = ``refresh.r2_card_reserve``(合格集最低费卡价,P54 §②);
+    - Σ预留 = 下帧窗口一张命中卡价——与 ρ 消费**同一函数同参**
+      (P54 A2 单刷波粒度整数下界;禁改用 ``_r1_ledger_terms`` 的
+      合格集全完成链 Σ(k−j)×cost 口径,那会把闸值压成常态负值令
+      升级通道近乎永闭,方案审 v1 第 1(c) 节已否决该口径)。
+    ⚠ 两分量并存是语义角色差异,多数帧数值相同(闸值退化 g−g*−2ρ)
+    不是重复项、禁删一:ρ = 本轮升级后买卡臂对一张命中卡的即时购买力
+    (花后 < g* 帧买卡臂失去「满息档上买命中卡」资格,P71-b 必要性
+    论证子情形②);Σ预留 = 下帧窗口的购买力预留(同 P54 floor
+    「至少一张命中卡可买」语义对齐)。此口径下的数值重合是「下帧窗口
+    一张命中卡」定义的直接推论,并存保判据式与证明同形。
+
+    等级过滤口径:ρ/Σ预留取当前级(函数内不传 level,r2_card_reserve
+    缺省语义)——闸在升级授权前评估,与 P54 floor 同帧同等级;R1 形式
+    二的 L* 目标级重估是刷新语境,不辖本闸。
+
+    行为语义:拒 = 该批升级**整批推迟**(攒到金 ≥ g*+ρ+Σ预留+U_L 的
+    帧一次买齐)——禁实现「按 B_L 截断击数」的部分买(P48 整买 (1)
+    辖域,方案审 v1 第 7 节定谳「分轮 = 推迟语义」);常开无开关
+    (证明已闭环,strategy-work §3 第 1 档);pop_slot 升级臂不入闸
+    (P71-a 是收益侧分域命题,dep 满判定塞进闸会误杀 4-5 费搜窗域,
+    方案审 v1 第 5 节)。
+
+    辖域限定(g ≤ g* 闸不辖):本闸名与证明边界 1 均锚定**溢余段**
+    (P71-b L≡0 简化只在溢余段内成立)——金 ≤ g* 帧不存在可保护的
+    溢余预算(息律零档,L≡0),负闸值是「预算不存在」的代数信号,
+    禁读成「恒拒」(那会封死开局追级通道,与 arm0/arm1 升级授权语义
+    断层);非溢余段帧的升级量由可负担性 + P39/P21 既有门承载,
+    本闸 vacuous 通过。73002 病灶帧(g=82 > g*)不受此限定影响。
+
+    返回 (可行, 拒因);拒因恒 'levelup_budget_gate_blocked'(发射位
+    分键同名,三处发射位共键)。s ≤ 0(无批可发)恒可行:闸辖「升级
+    支出的量」,不制造支出。
+    """
+    if clicks * click_cost <= 0:
+        return True, ''
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
+        r2_card_reserve,
+    )
+    g_star = saturation_floor(cap_resolved)
+    if gold <= g_star:
+        return True, ''      # 非溢余段帧:预算前提不存在(见辖域限定)
+    rho = r2_card_reserve(k_members, bench, deployed, state)
+    window_reserve = r2_card_reserve(k_members, bench, deployed, state)
+    if gold - clicks * click_cost >= g_star + rho + window_reserve:
+        return True, ''
+    return False, 'levelup_budget_gate_blocked'
+
+
 def batch_form(level: int, target_level: int) -> bool:
     """批量成型判据(M3 批形态:目标级差>0 才有批;义务侧消费)。"""
     return level < target_level
