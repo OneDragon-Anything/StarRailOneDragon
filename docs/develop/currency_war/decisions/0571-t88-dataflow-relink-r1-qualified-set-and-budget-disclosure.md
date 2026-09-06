@@ -27,12 +27,13 @@
 - **写端 1**:`assembly._disclose_budget`(每 prep 装配帧)——`reserve_cap/obligation` 取 BudgetView 现算值幂等覆写;`overflow = max(0, gold − reserve_cap)` 纯派生直算(禁二次调 `economy_cycle.overflow`,防 reserve_cap 双算分叉);`v3_disclosure_key`(新增 MandateState 字段,坐标系 = (plane, round) 1 基二元组,取值时机 = 装配帧现读)键戳变更 ⇒ `v3_release_spent/v3_release_reason` 轮界清零并盖新戳。
 - **F5 裁决(二选一写死,取①)**:reason 并入键戳清零块——与 schema「sess_release_reason = 当轮义务来源」语义对齐,杜绝跨轮陈读;`'must_spend'` 同步扩进 schema 值域枚举注释。不复用 `v3_release_round`(W332b 泄息指令旧轮语义)。
 - **写端 2**:`cw_op_buy_cards.accrue_release_spent`(商店单动作循环执行回执位,`apply_action_outcome` 之后、terminal break 之前)——`RefreshShop` 执行成功(`_ok=True`)逐笔累计 `action.cost`。
+- **写端 3(双写语义,实机首局 g_20260907_025608 锚⑤定谳补遗)**:`assembly.disclose_budget_at_shop_frame`,调用点 = `cw_op_buy_cards.run_buy_waves` 段顶入口观察帧(best-effort,失败降级保留 prep 值)——prep 装配帧处关店态,F2 门(gold 仅店开态可信,`cw_screen_prep`)使装配态 gold 不可得 ⇒ overflow/obligation 在 prep 快照恒 0(「金未采」已知语义,非真 0);店开帧 gold 过 F2 门为真值,同一 BudgetView 链覆写三预算字段 ⇒ overflow/budget 变**帧现值**。键戳同轮 ⇒ 不清 spent(轮界清零仍由 prep 装配点独占)。判读:decisions 行 sess_* 取「最近一次写点」值——店开行=帧现值,prep 行=0(金未采,与真 0 分义);sim 侧 prep 快照 gold 恒可信,无需第二写点。
 - **必花域帧 reason 写点**:`shop.py` `_zone_hit` 帧写 `'must_spend'`(帧内 last-wins,域外不覆写)。
 - **读端零改**:recorder.py 透传 / sim engine_p1 轮快照零改动,sim 经共用装配链自动受益。
 
 ### 2.3 装配纪律披露面豁免(禁决策判据消费,硬禁令)
 
-`turn_state.py` 装配纪律「派生值一律不落 session」的立法目的 = 根治**决策输入**读跨帧旧共享态的污染类缺陷。本批四字段 + 键戳是**遥测披露面**:写端只有 `assembly._disclose_budget` 与执行回执位,读端只有 recorder / engine_p1 遥测读链;**禁任何决策判据消费这些字段**——决策输入一律走 TurnState 幂等投影。豁免边界申报:BudgetView 本身仍不落不回读,纪律本意零破坏;防回归 = F8 grep 守卫锁(`test_cw_t88_reserve_disclosure.test_disclosure_fields_not_consumed_by_decision_modules`,披露面字段在 strategies/impl 决策面白名单外零命中)+ 字段定义注释同禁令。
+`turn_state.py` 装配纪律「派生值一律不落 session」的立法目的 = 根治**决策输入**读跨帧旧共享态的污染类缺陷。本批四字段 + 键戳是**遥测披露面**:写端只有 `assembly._disclose_budget`(prep 装配帧 + 店开观察帧两调用点,后者经 `disclose_budget_at_shop_frame` 薄壳)与执行回执位,读端只有 recorder / engine_p1 遥测读链;**禁任何决策判据消费这些字段**——决策输入一律走 TurnState 幂等投影。豁免边界申报:BudgetView 本身仍不落不回读,纪律本意零破坏;防回归 = F8 grep 守卫锁(`test_cw_t88_reserve_disclosure.test_disclosure_fields_not_consumed_by_decision_modules`,披露面字段在 strategies/impl 决策面白名单外零命中)+ 字段定义注释同禁令。
 
 ### 2.4 spent 首版口径 = 只计刷新实花(宁窄勿虚)
 
@@ -49,6 +50,7 @@
 - **锁 C**(写读闭环,`test_cw_t88_reserve_disclosure`):装配后状态四字段 == 同帧独立现算值 + recorder 行 sess_* 键与状态一致且非 None。红证 = 现码恒 0(52 行全零)。
 - **锁 D**(轮界清零):p1r8→p1r9 新轮首帧 spent==0、reason==''(F5①)、键戳翻新;同轮重装配不清账。
 - **锁 E**(spent 累计):刷新 2 金/笔逐笔累计;未落地不记;非刷新动作不记;F4 栈守卫双探针(键戳过期/无键戳不累计)。
+- **锁 F**(店开帧双写,实机锚⑤补遗):prep 关店帧(gold 过 F2 门不可得)⇒ overflow/budget 恒 0「金未采」语义 + reserve_cap 不受影响;店开帧覆写 ⇒ overflow/budget 帧现值(gold 64>cap 50 ⇒ 14/义务>0)且同轮 spent 不清;下轮 prep 关店帧 ⇒ 键戳翻轮清零 + 关店 0 语义恢复。
 - 存量锁重推 4 例(3 文件,非机械跟绿;重推依据详见各测试 docstring):
   - `test_cw4_shop_line`:`test_refresh_face_fail_closed` 帧改全 2★ 成型钉真空合格集(旧帧钉的是污染病理);`test_d_hard_node_gate_consumed` 金位收至 g* 钉门接线活性(旧帧修复后落刷新发射,链在门位前返回);
   - `test_cw_must_spend_zone`:`test_zone_l3_consumes_when_arms_idle` 帧改未锁线(锁线帧 R1 买入义务集 = 锁定采购集 15 名,根修后合格集非空 ⇒ R1 yield 先于分层序末位的 L3,按设计让位;旧帧绿恰依赖 inf 污染把 R1 错判全空);

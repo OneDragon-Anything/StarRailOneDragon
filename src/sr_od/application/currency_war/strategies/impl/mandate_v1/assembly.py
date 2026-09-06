@@ -188,6 +188,23 @@ def _budget(state: Any, session: StrategySession,
     return budget
 
 
+def disclose_budget_at_shop_frame(state: Any, session: StrategySession,
+                                  registry: DecisionV2Registry | None = None,
+                                  ) -> None:
+    """店开观察帧披露覆写(T-88 双写语义第二写点;ADR-0571 §2.2)。
+
+    prep 装配帧处于关店态,F2 门(cw_screen_prep:gold 仅店开态可信,
+    关店读空)使装配态 gold 不可得(缺省 0)⇒ overflow/obligation 在
+    prep 快照恒 0——「金未采」已知语义,非真 0(实机首局
+    g_20260907_025608 锚⑤定谳)。本写点在商店入口观察帧(店开,gold
+    过 F2 门为真值)走同一 BudgetView 计算链重算并覆写三预算字段:
+    overflow/budget 变帧现值;键戳同轮 ⇒ 不清 spent(轮界清零语义由
+    prep 装配点独占)。豁免面与「禁决策消费」禁令同 ``_disclose_budget``;
+    调用方 = cw_op_buy_cards 段顶(best-effort,失败降级保留 prep 值)。
+    """
+    _budget(state, session, registry or DEFAULT_REGISTRY)
+
+
 def assemble(snapshot: Snapshot, session: StrategySession,
              registry: DecisionV2Registry | None = None) -> TurnState:
     """装配点:Snapshot + session → TurnState(方向/预算投影一次算完)。
