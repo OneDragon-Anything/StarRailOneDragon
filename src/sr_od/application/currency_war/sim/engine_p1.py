@@ -1000,7 +1000,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # §2.3-P1-c/§3.2/ADR-0451):决策段后差分进账本
             # sim.blood_budget_refresh_rejects(同式轮级差分披露)
             _bb_refresh_rejects_before = getattr(
-                sess, 'v3_blood_budget_refresh_rejects', 0)
+                strategy_state_of(sess),
+                'v3_blood_budget_refresh_rejects', 0)
             # 迁移审计 w114(git 历史)/ADR-0346 相位影子观测:轮入口(首决策段)快照——与生产
             # 「每轮决策入口计算一次」对齐;一轮多决策段时取首段(轮初态)。
             _round_phase: str = ''
@@ -1104,6 +1105,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 )
                 _core = readiness_launch_decision(
                     st, _tc_launch, line_members=line_members)
+                # 质量闸推迟帧分键(ADR-0570 待标定①观测 sink:armed 被
+                # 承重维关闭的配方完备帧计数;best-effort,容器缺席静默跳
+                # 过,与 launch_frame_idle_gold 同写入族)。
+                _q = _core.get('quality')
+                if _q is not None and _q.get('defer_by_quality'):
+                    _cts_q = getattr(strategy_state_of(sess),
+                                     'cw4_counters', None)
+                    if isinstance(_cts_q, dict):
+                        _cts_q['launch_quality_defer_frames'] = \
+                            _cts_q.get('launch_quality_defer_frames', 0) + 1
                 if _core['armed']:
                     # form_ok 镜像现读补写(sim71 批死镜像处置的结构半边):
                     # 发射帧短路决策段 → write_shop_mirrors 本轮永不执行,
@@ -1383,7 +1394,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         getattr(strategy_state_of(sess), 'v3_handoff_gap', 0) or 0)
                     # 迁移审计 w238(git 历史)/ADR-0403:boss 投影 hp 同点快照(投影开时非 None)
                     _round_handoff_hp_proj = getattr(
-                        sess, 'v3_handoff_hp_proj', None)
+                        strategy_state_of(sess), 'v3_handoff_hp_proj', None)
                     # 终止豁免位——写入侧单一源 =
                     # checks.segments.terminal_release_bit(检查器
                     # seg_p1_blood_budget_refresh 消费行键禁复算)。
@@ -2604,7 +2615,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # ≥3 由检查项 decision_v2_remedy_loop 报警——设计容量
                     # 不足信号)
                     'remedy_abandoned': 1 if getattr(
-                        sess, 'v3_remedy_abandoned', 0)
+                        strategy_state_of(sess), 'v3_remedy_abandoned', 0)
                         > _remedy_abandons_before else 0,
                     # ===== `w614_sim_fidelity/` 保真三补:记账出口(纯观测)=====
                     # 未穿滞留件数/生锈暴露(词条语义 cw_comps.RUST_AFFIX_NAME:

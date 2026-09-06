@@ -2171,7 +2171,8 @@ class CwScreenPrep(SrOperation):
                 actions=[action],   # type: ignore[list-item]  PrepAction 与旧 Action 并存(P2 归一)
                 gold_point=False,   # 步进记录不进 gold_trajectory(每回合一采样,shop 侧采)
                 extra={'formed_stop': bool(getattr(
-                    _sess, 'v3_formed_stop', False)),  # ADR-0343 豁免联动
+                    strategy_state_of(_sess), 'v3_formed_stop',
+                    False)),  # ADR-0343 豁免联动
                     # P1 配方对平铺观测(P1 备战帧判读「终局线何时锁」的
                     # 上游量;锁定产物/副方向取序见 p1_pair_label)
                     'sess_p1_pair': schema.p1_pair_label(
