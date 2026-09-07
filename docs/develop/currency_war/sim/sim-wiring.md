@@ -93,6 +93,8 @@
 | L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」(净效果无条件 +1) | board_from_tracked(实机)、GameState.equips→BenchChar.equips(sim 代理)、win_features faction_counts | **雏形落地**(ADR-0312:equips 消费链通,sim equip_allocation 回写) |
 | L3 全战力 | L2 + 装备 props 强度 + 投资策略/环境效果 + 羁绊档位效果数值 | win_model 特征、power_table、结算校准层 | 未建(挂「语料积累后」,裁定链见 sim-power-model) |
 
+配对端点资格:Δ池任一差分的两行端点须过 `sim/pool.py` 的 `hp_pair_endpoint_admissible`(合成行恒拒 + hp 可信门,ADR-0582;`build_pool` 与 `_pool_from_replay` 共用单件)。
+
 判读边界:Δ池桶键(boss=净星深 ADR-0404 v10;encounter=rung
 ADR-0407 v11,与 battle 同源 `_settle_rung`;reward/supply 深度桶
 =Σboard,L1+L2 全集口径 ADR-0312)。**池形状含位面层(ADR-0362)**:

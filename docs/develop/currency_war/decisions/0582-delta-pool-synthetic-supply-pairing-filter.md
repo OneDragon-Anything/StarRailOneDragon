@@ -29,7 +29,7 @@
 
 - **共享配对件**:`pool.pair_outcome_rows_to_pool`(单一实现)+ `pool.hp_pair_endpoint_admissible`(端点资格谓词,唯一判据闸)。快照生成器 `build_pool` 与 auto 池 `_pool_from_replay` 共同消费,配对循环/桶键逻辑收拢单件,镜像同步纪律终结。行级过滤三步,顺序有语义:①hp0 瞬态剔除(v12,「终局」按原始序列末行判,先于资格过滤);②端点资格过滤——合成行与 `_outcome_hp_trusted` 不可信行**移行桥接**(从序列移除、邻行重配对,v12 先例;断链会丢真实 +2 留 −20 错值);③相邻差分归属后行(节点/位面/桶键)。
 - **谓词语义**(= ADR-0577 装配端 `_settlement_hp_usable` 延伸到 Δ池消费面;0577 §3.2 自限「降权只及步进链」,扩面以本 ADR 为据):`source='synthetic_supply'` 恒 False(快照不是事件,先验「陈旧直到证伪」);其余行复用 `telemetry.query._outcome_hp_trusted` 单一源(**缺字段=可信**,边界声明随源);真实结算行(''/recovered)不受 source 过滤影响。惰性 import 防 sim↔telemetry 模块级新环。
-- **披露账**(META,与 `hp0_transient_dropped` 并列):`synthetic_supply_dropped`(本语料 256)/`hp_conf_dropped`(101,全部终局 loss_page hp=0 死亡腿)——**死亡腿账如实申报**:conf 门连带剔除其配对腿合计约 −75 对(battle P2 315→257、encounter P2 47→34、boss P2 14→12、reward P2 36→35、boss P1 164→163);修复语义内,非「真实行零影响」。
+- **披露账**(META,与 `hp0_transient_dropped` 并列):`synthetic_supply_dropped`(本语料 256)/`hp_conf_dropped`(101,全部终局 loss_page hp=0 死亡腿)——**死亡腿账如实申报**:conf 门(v1→v2)连带剔除其配对腿合计 −79 对(battle P2 −58、encounter P2 −13、supply P2 −5、boss P2 −2、reward P2 −1);另 boss P1 164→163 为 source 滤的 v0→v1 效应,不计入 conf 门。修复语义内,非「真实行零影响」。(初稿「约 −75 对」构成错位:误纳 boss P1、漏 supply P2——落地审勘误)
 - **supply 域后果**:P1 128→1(唯一真实结算行 run_20260906_120036 p1r6,Δ=+2;其『补给』标签本身疑似冷启动表误预测,仅存档不构成补给效应证据);P2 47→**0(整域消失)**,note 链 v13 显式声明。生产伪影哨兵唯一报警源(P1 +22)解除。
 - **battle rung 真值锚重推**:`BATTLE_RUNG_TRUTH` = {0: −9.73, 1: −3.24}(过滤后语料同口径实测,n=256/238;快照指纹 a0722904);方向 = 语料演进 + 毒值清除的合成,ADR 在案。
 - **存量锚登记**:n300 基线锚(`ANCHOR_REGISTRY_N300['pool_fingerprint_prefix']='0bf6c0d6'` 系 w157_p2 本地导出池,本就非随再生前移的提交快照;invest 锚 1762b1cf 同理)——**旧锚跨批不可比,待下次 n300 重跑换锚**,锚注释已加指针;`pool_fp_match` 为披露字段非违规。
@@ -57,7 +57,7 @@
 | supply/P1 | 128 / +4.29 [−4,22] | **1** / +2.00 |
 | supply/P2 | 47 / +12.60 [−3,47] | **0(域消失)** |
 
-  剔除账:合成 256 + conf 101 + hp0 瞬态 61;总样本 1835→1589。快照指纹 04d9cd7a→**a0722904dea13294**,生成器连跑两遍同 hash(幂等)。
+  剔除账:合成 256 + conf 101 + hp0 瞬态 61;总样本 1847→1592(初稿记 1835→1589 系 P1/P2 十域表和口径,漏 plane=3 残留桶:v0 12 条=battle/P3 11+supply/P3 1,v13 余 battle/P3 3 条)。快照指纹 04d9cd7a→**a0722904dea13294**,生成器连跑两遍同 hash(幂等)。
 - **锁面**:`test_cw_delta_pool.py` 新增 4 锁(fixture 毒行注入:合成行不入端点+双消费面同池+剔除计数;conf 门桥接+死亡腿零配对+计数;真实样本三 source 形态保留;快照 supply 缺席断言)。**红证(变异自检亲跑)**:谓词恒真变异 → 镜像律锁与 conf 门锁恰 2 红;谓词过严变异(只认 '' source)→ 真实样本保留锁红;毒池(谓词恒真重算全语料)喂缺席断言 → 捕获 [22,23,47,21,23]。`test_snapshot_battle_rung_means_match_b13_truth` 按新锚重推(docstring 同步,批⑬原值出处保留在锚常量注释)。
 - **转绿面**:ADR-0292 已知红家底 `test_snapshot_reward_pool_matches_corpus_truth` 转绿;slow 桶 smoke 门 `test_ci_smoke_snapshot_batch`(快照池 n=25,checks 0 容忍断言)亲跑转绿。
 - `ruff check` 三个 src 改动文件全绿;测试文件本批新增面无 F 类违规(该文件为机械拼接体,各节既有 E402/I001 为存量风格,未清理)。
