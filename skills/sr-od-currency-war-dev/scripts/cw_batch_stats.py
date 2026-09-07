@@ -28,6 +28,14 @@
   轮的「轮间 roster diff 仙舟全羁绊件离场事件数」,账本零新增字段;两个判定件
   (仙舟全羁绊件集/locked_comp 冲突语境)直调 src 注册表单一源,src 不可达时
   报「无数据」不误报 0。
+- C 族羁绊达成率分诊(2026-09-08「校准后首跑」找问题批 F3①):行级
+  board_factions 键缺/None = 无数据,不入达成率分母(行文附「分母=有观测
+  N 局」);0% 只属于「有观测全灭」——无数据与全灭是两种事实,混同会把
+  档案伪影当行为信号(该批 FakeP1Run 假局 0/222 行带此键,误报达成率 0%)。
+- C 族等级末值双口径(同批 F3②):「等级末值」= 决策帧快照(末帧 LevelUp
+  升级不计入,与等级曲线/爬升同源);「等级末值·帧内升级后」= 快照 + 末轮
+  LevelUp 动作逐击结算(口径出处 = 该批重算脚本 true_end_level.py;仅计
+  升级动作 XP,BuyCard 同源 XP 未计入 = 低估下界),详见 true_end_level。
 """
 from __future__ import annotations
 
@@ -85,9 +93,17 @@ def _sim_rows(batch: Path) -> dict[str, list[dict]]:
             # G4 语境行级数据(ADR-0564 §6):locked_comp 原串供注册表
             # 解析冲突语境(非空即语境候选);bench = roster-diff 全集另一半
             'locked_comp': (r.get('v3_intention') or {}).get('locked_comp') or '',
-            'level': st.get('level'), 'deployed': st.get('deployed') or [],
+            'level': st.get('level'), 'xp': st.get('xp_progress'),
+            'deployed': st.get('deployed') or [],
             'bench': st.get('bench') or [],
-            'factions': dict(st.get('board_factions') or {}), 'acts': r.get('actions') or [],
+            # board_factions 键缺/None = 无数据(2026-09-08「校准后首跑」找
+            # 问题批 F3①:FakeP1Run 假局档案结构性不带该行级键);直传 None
+            # 不折空 dict——「无数据」与「有观测全灭」是两种事实,C 族达成率
+            # 分母剔除前者(混同会把档案伪影当达成率 0%)。键在值空 dict =
+            # 有观测空板,照常有数据。
+            'factions': (dict(st['board_factions'])
+                         if st.get('board_factions') is not None else None),
+            'acts': r.get('actions') or [],
             # 达标臂发射事件(行内 launch 键,engine_p1 建模;None=未触发)
             'launch': r.get('launch'),
             # 采购面三观察计数(行内 obs 键,engine_p1 建模;缺键=旧批)
@@ -147,9 +163,13 @@ def _archive_rows(mid: str) -> dict[str, list[dict]]:
         # G4 语境:档案行无 locked_comp → None(G4 报无数据;将来档案带
         # v3_intention 时自动升级为可算)
         'locked_comp': None,
-        'level': r.get('level'), 'deployed': r.get('deployed') or [],
+        'level': r.get('level'), 'xp': r.get('xp_progress'),
+        'deployed': r.get('deployed') or [],
         'bench': r.get('bench') or [],
-        'factions': dict(r.get('board') or {}), 'acts': r.get('actions') or [],
+        # 档案行 board=None = 无决策帧/字段缺(match_archive 装配语义),
+        # 与 sim 行同分诊口径:C 族无数据剔除,不折空 dict 误报 0%
+        'factions': (dict(r['board']) if r.get('board') is not None else None),
+        'acts': r.get('actions') or [],
         # 档案侧发射面:行动作里的 StartBattle(生产发射核执行痕迹;
         # 档案只记「发生了」,ok 恒 True——发射失败形态仅 sim/生产
         # 计数器有真值,成功率面判读以 sim 批为准)
@@ -174,6 +194,43 @@ def _archive_rows(mid: str) -> dict[str, list[dict]]:
 
 
 # ---------- 指标 ----------
+
+# 购买经验单击 XP 与升级门槛表(同值独立声明;单一源 = src
+# sr_od/application/currency_war/kernel/cw_state.py 的 XP_PER_BUY /
+# XP_TO_NEXT_LEVEL,本脚本零 src 导入先例同 SIM_ROOT 注记)。
+XP_PER_BUY: int = 4
+XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
+
+
+def true_end_level(row: dict) -> int | None:
+    """末轮真实终级:行快照 lv/xp + 行内 LevelUp 动作逐击结算(帧内升级计入)。
+
+    口径出处 = 2026-09-08「校准后首跑」找问题批重算脚本 true_end_level.py
+    (F3②:决策帧 = 轮初快照,末帧快照不含帧内 LevelUp 升级,快照口径
+    「等级末值」在该批 24 局系统性低估——快照中位 4 vs 真实终级中位 5)。
+
+    边界(判读前先读):
+    - 只结算 LevelUpShop/LevelUp 动作 XP(+XP_PER_BUY/击);BuyCard 同源
+      XP(ADR-0286 买牌给经验建模)未计入 → 数值为低估下界,与该批重算
+      单一源可逐局对照;
+    - 快照 xp 缺(合成行/旧数据)按 [0, 当前级门槛] 近似,xp 结转丢失;
+    - sim 行 = 每轮末帧快照 + 末帧动作(早帧动作已反映在快照,不丢不重);
+      档案行 = 计划最全决策帧快照 + 全轮动作(match_archive 装配语义),
+      同轮后置帧动作更多的局存在超计边界(罕见形态)。
+    """
+    lv = row.get('level')
+    if lv is None:
+        return None
+    xp = list(row.get('xp') or [0, XP_TO_NEXT_LEVEL.get(lv, 4)])
+    for a in row.get('acts') or []:
+        if a.get('__type__') in ('LevelUpShop', 'LevelUp'):
+            xp[0] += XP_PER_BUY
+            while xp[0] >= xp[1] and lv < 10:
+                xp[0] -= xp[1]
+                lv += 1
+                xp[1] = XP_TO_NEXT_LEVEL.get(lv, 999)
+    return lv
+
 
 def act_cost(acts: list[dict]) -> int:
     spend = 0
@@ -307,9 +364,14 @@ def analyze_game(rows: list[dict]) -> dict:
         stag = stag + 1 if abs(forms[i] - forms[i - 1]) < STAGNANT_EPS else 0
         best_s = max(best_s, stag)
     m['停滞最长轮数'] = best_s
+    # 羁绊达标轮:factions=None 行(无观测)跳过不参与判定;达成率分母
+    # 剔除在 report 侧(逐局 _factions_seen 标记)
+    _fac_rows = [r for r in rows if r['factions'] is not None]
+    m['_factions_seen'] = bool(_fac_rows)
     for fac, need in (('仙舟', 3), ('持续伤害', 2), ('列车同行', 2)):
         m[f'{fac}{need}达成轮'] = next(
-            (r['round'] for r in rows if r['factions'].get(fac, 0) >= need), None)
+            (r['round'] for r in _fac_rows
+             if r['factions'].get(fac, 0) >= need), None)
     m['首个2★轮'] = next(
         (r['round'] for r in rows if any(d.get('star', 0) >= 2 for d in r['deployed'])), None)
     m['上场人数曲线'] = [len(r['deployed']) for r in rows]
@@ -317,6 +379,10 @@ def analyze_game(rows: list[dict]) -> dict:
     m['等级曲线'] = levels
     m['等级爬升'] = (max(levels) - min(levels)) if levels else None
     m['等级末值'] = levels[-1] if levels else None
+    # 双口径并列(2026-09-08「校准后首跑」找问题批 F3②):快照口径保留
+    # (与等级曲线/爬升同源),帧内升级后终级单列,口径与边界见
+    # true_end_level docstring
+    m['等级末值·帧内升级后'] = true_end_level(rows[-1]) if rows else None
     # 装备覆盖:穿戴件数/(3×上场人数) 逐轮,末值+均值
     cov = [round(sum(len(d.get('equips') or []) for d in r['deployed'])
                  / max(3 * len(r['deployed']), 1), 2) for r in rows]
@@ -485,6 +551,8 @@ def supply_util(shops: list) -> float | None:
     """相关供给吃掉率:店内与板面阵营相关的牌中,被买入的占比(按轮聚合)。"""
     rel = bought = 0
     for facs, cards, acts in shops:
+        if facs is None:
+            continue  # 无观测轮不入分母(与 C 族羁绊分诊同口径)
         bf = set(facs)
         rel_names = {c.get('name') for c in cards if c.get('faction') in bf}
         if rel_names:
@@ -518,14 +586,28 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
     print('  行动配比(中位):', {k: int(statistics.median([m['行动配比'][k] for m in ms.values()]))
                              for k in ('BuyCard', 'LevelUp', 'RefreshShop', 'SellBench')} if ms else {})
     print('\n-- C 阵容成型(含等级/装备) --')
-    for k in ('末轮成型度', '停滞最长轮数', '首个2★轮', '等级末值', '等级爬升',
+    for k in ('末轮成型度', '停滞最长轮数', '首个2★轮', '等级末值',
+              '等级末值·帧内升级后', '等级爬升',
               '装备覆盖均值', '装备覆盖末值', '成型后退档轮数'):
         a = agg(k)
         print(f'  {k}: {a[0]} | {a[1]}' if a else f'  {k}: 无数据')
+    print('  注: 等级末值双口径——「等级末值」=决策帧快照(末帧 LevelUp 升级'
+          '不计入);「·帧内升级后」=快照+末轮 LevelUp 动作逐击结算(只计'
+          '升级动作 XP,BuyCard 同源 XP 未计入=低估下界)')
+    # 羁绊达成率分诊(2026-09-08「校准后首跑」找问题批 F3①):分母=有
+    # board_factions 观测的局,无观测局剔除并单独披露——0% 只属于
+    # 「有观测全灭」,无数据局不进分母(混同会把档案伪影当行为信号)
     for fac in ('仙舟3', '持续伤害2', '列车同行2'):
         key = f'{fac}达成轮'
-        vals = [m[key] for m in ms.values() if m.get(key) is not None]
-        print(f'  {key}: 达成率 {len(vals) / max(len(ms), 1):.0%}'
+        seen_ms = [mm for mm in ms.values() if mm.get('_factions_seen')]
+        if not seen_ms:
+            print(f'  {key}: 无数据(全批无羁绊面板观测,达成率不适用)')
+            continue
+        vals = [mm[key] for mm in seen_ms if mm.get(key) is not None]
+        _miss = len(ms) - len(seen_ms)
+        _den = (f'分母=有观测 {len(seen_ms)}/{len(ms)} 局' if _miss
+                else f'分母={len(seen_ms)} 局')
+        print(f'  {key}: 达成率 {len(vals) / len(seen_ms):.0%}({_den})'
               f' | 中位轮 {int(statistics.median(vals)) if vals else None}')
     print('\n-- D 战斗过程 --')
     for k in ('败场数', '最大连败', '败场形态中位', '胜场形态中位'):
