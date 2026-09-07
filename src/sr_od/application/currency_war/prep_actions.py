@@ -151,6 +151,59 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> bool:
     return DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx))
 
 
+def record_hp_pay_event(session, plane: int | None, round_num: int | None,
+                        clicks: int = 1) -> None:
+    """血购执行回执遥测(exogenous.jsonl kind='hp_pay' 一行;ADR-0577)。
+
+    - 两通道共用的**唯一写点实现**:店通道 LevelUpOp.execute(单击=一行)与
+      prep 通道 ``_level_up``(连点循环内每击一行,验证成功前每击已实际扣血)
+      在点击落地后调用。粒度 = 击数,判读口径:hp_pay 行数 = 血购击数,
+      血购总量 = Σhp_delta(装配端 hp_events 列消费,同 ADR)。
+    - mode 与判定同源注册表派生:active_strategies 中 ``xp_buy_hp_cost>0``
+      的卡(cw_investments.STRATEGY_ECONOMY,现唯一命中『奋斗协议』=6);
+      无命中(金本位升级)→ 零行 no-op。多卡命中取 active_strategies 序
+      首个(现版本游戏仅单卡在册;新血本位卡落地本写点零改动)。
+    - basis='modeled':行是注册表建模期望账,非屏面读数——HP HUD 店开态
+      物理不可见(obs/cw_observation 相位门),支付时点结构上无真值可读;
+      真值对账 = 装配端在下一可信结算行处比对(偏差落 hp_pay_defects,
+      链游标每个可信结算处自愈,见 match_archive v9)。
+    - **遥测禁入决策输入**(ADR-0577 隔离申报):本行纯观测追加写,禁任何
+      决策/跟踪代码读它回写 state.hp/session.last_hp_real/预算门状态
+      (grep 守卫锁钉死);写入路径与决策路径无共享可变状态。
+    - plane/round 显式入 choice(record_exogenous 顶层 plane 恒 None,先例
+      record_modality_gold),装配链从 choice 取。不传 state 快照:支付时点
+      的快照 hp 是陈旧携带值,入行会被误当「支付时点真值」判读。
+    - best-effort:异常内部吞掉记 warning,调用方零包裹负担、不阻塞对局。
+    """
+    try:
+        from sr_od.application.currency_war.kernel.cw_investments import (
+            get_strategy,
+        )
+        mode: str | None = None
+        cost = 0
+        for name in getattr(session, 'active_strategies', None) or []:
+            s = get_strategy(name)
+            if (s is not None and s.economy is not None
+                    and s.economy.xp_buy_hp_cost):
+                mode, cost = name, int(s.economy.xp_buy_hp_cost)
+                break
+        if mode is None:
+            return   # 金本位升级(非血本位)→ 零行
+        from sr_od.application.currency_war.telemetry import (
+            recorder as cw_telemetry,
+        )
+        cw_telemetry.record_exogenous(
+            int(round_num or 0), 'hp_pay',
+            detail=f'hp_pay {mode} -{cost}/click x{int(clicks)}',
+            choice={'plane': int(plane or 0),
+                    'round_num': int(round_num or 0),
+                    'currency': 'hp', 'hp_delta': -cost,
+                    'mode': mode, 'clicks': int(clicks),
+                    'basis': 'modeled'})
+    except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
+        log.warning('[cw][hp-pay] 血购回执落盘失败(不阻塞): %s', e)
+
+
 class PrepActionExecutor:
     """备战原子/组合动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
@@ -695,6 +748,13 @@ class PrepActionExecutor:
                 break
             self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
             self._ctx.controller.click(btn)
+            # 血购回执(ADR-0577,批1 A 采集):每击已实际扣血,验证前逐击
+            # 落一行(粒度=击数);纯观测禁入决策输入,失败不阻塞(写点内部
+            # 吞异常)。mode 从注册表派生,非血本位协议下为零行 no-op。
+            _pp_st = getattr(session, 'last_state', None) if session is not None else None
+            record_hp_pay_event(session,
+                                getattr(_pp_st, 'plane', None),
+                                getattr(_pp_st, 'round_num', None))
             # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
             # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再读。
             self._op.park_cursor(before_wait=0.3, after_wait=0.15)

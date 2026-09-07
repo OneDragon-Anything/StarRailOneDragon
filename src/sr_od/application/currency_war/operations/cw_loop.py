@@ -1123,6 +1123,20 @@ class CwLoop(SrOperation):
             _st = _session.last_state
             _hp = (_st.hp if _st is not None and _st.hp is not None else 0)
             _conf = 1.0 if (_st is not None and getattr(_st, 'hp_readable', True)) else 0.0
+            # 快照新鲜性降权(ADR-0577,批2 C-伴生写端):快照 hp 的观察时点
+            # (last_hp_real_node = 备战域真读写入的全局节点号,值被真读到的
+            # 时刻的锚)早于最后可信结算(last_hp_t = 结算屏可信写点节点号)
+            # ⇒ 该值不反映结算后血面,conf 落 0.0——readable 位不是新鲜性
+            # 证据(025608 03:19:38 帧 readable=True 值陈旧的携带链实证),
+            # 赋值时刻同禁。任一锚 None(无结算/无真读)→ 无法判陈旧,维持
+            # readable 口径。v9 装配链对合成行一律不消费,本降权护的是 rounds
+            # 槽/query_hp/anomalies 等其余读面不冒真值。
+            if _conf > 0.0:
+                _obs_node = getattr(_session, 'last_hp_real_node', None)
+                _settle_node = getattr(_session, 'last_hp_t', None)
+                if (_obs_node is not None and _settle_node is not None
+                        and _obs_node <= _settle_node):
+                    _conf = 0.0
             # 披露面防御 getattr(strategy_state_of None 契约,ADR-0563 B4 划分线):
             # 异型状态对象字段缺席退 '?'(outcomes comp_tag 缺席语义,非行为面)
             _tc = getattr(strategy_state_of(_session), 'target_comp', None)

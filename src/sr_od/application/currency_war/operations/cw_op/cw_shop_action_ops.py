@@ -447,6 +447,16 @@ class LevelUpOp(ShopActionOp):
         # 用户口述口径(screen_flow_timing.md #22,2026-09-02):购买经验
         # 动画 ~1s(原 0.6s 不足;光标遮挡由段顶 park_cursor 防)。
         time.sleep(1.0)
+        # 血购执行回执(ADR-0577,批1 A 采集):单动作形态下本 execute 恰
+        # 一击,单击已扣血 → 逐击落一行(粒度=击数)。纯观测追加写,禁入
+        # 决策输入(隔离申报 ADR-0577;写点内部吞异常,失败不阻塞执行链)。
+        _hp_sess = getattr(env.match, 'session', None)
+        _hp_st = getattr(_hp_sess, 'last_state', None)
+        from sr_od.application.currency_war.prep_actions import (
+            record_hp_pay_event,
+        )
+        record_hp_pay_event(_hp_sess, getattr(_hp_st, 'plane', None),
+                            getattr(_hp_st, 'round_num', None))
         ledger.total_level += 1
         ledger.spend_executed += action.cost
         return True

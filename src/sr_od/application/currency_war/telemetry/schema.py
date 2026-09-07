@@ -636,7 +636,10 @@ class ExogenousEvent:
     # sell_income(迁移审计 w323(git 历史),遥测审计 G2)= 卖牌执行点实收回金(shop.py SellBench
     # 执行分支,执行前后 gold 差——decisions 行的 actions 是执行前快照,
     # 实际回金只有执行点可知)。event_choice/sell_income 的结构化载荷在 choice
-    # (detail 只放一行人读摘要)
+    # (detail 只放一行人读摘要);hp_pay(ADR-0577,T-100 批1)= 血购执行回执
+    # (prep_actions.record_hp_pay_event 两通道共用写点,粒度=击数),载荷在
+    # choice:{plane/round_num/currency/hp_delta/mode/clicks/basis='modeled'};
+    # **遥测禁入决策输入**(隔离申报同 ADR)。
     detail: str = ""
     state_snapshot: dict[str, Any] = field(default_factory=dict)   # 触发时的关键字段(hp/gold/bench…)
     choice: dict[str, Any] | None = None   # 结构化载荷(迁移审计 w312(git 历史) event_choice:{event/options/

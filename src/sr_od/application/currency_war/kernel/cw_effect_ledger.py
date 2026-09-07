@@ -30,7 +30,7 @@ class AggregateEffect:
                                    # | 'interest_cap' | 'xp_click_delta' | 'win_mult' | 'free_refresh'
                                    # | 'free_refresh_burst' | 'surprise_every' | 'gold_per_three_5cost'
                                    # | 'xp_per_refresh' | 'xp_per_node' | 'plane_start_gold'
-                                   # | 'refresh_discount_after' | 'refresh_price_mult' | 'xp_click_hp_cost'
+                                   # | 'refresh_discount_after' | 'refresh_price_mult'
     value: float = 0.0
     remaining_nodes: int = 0       # next_nodes 类的余期;plane_start_gold 类的位面号
 
@@ -54,8 +54,9 @@ class MechanismMutation:
     # —— 机制修改器补字段(审计 F1/F2;修复项 12 裁决)——
     refresh_price_mult: float = 1.0     # 期望刷价乘子(概率事件:45% 免刷 → 0.55,
                                         # 基准价 2 → 期望 1.1;消费=refresh 面参数替换 P40 变体)
-    xp_click_hp_cost: int = 0           # 购经验血本币价(奋斗协议 6 血/击;金侧成本置 0,
-                                        # IMPL §6.2 血本位安全带 rate 直读本字段)
+    # (xp_click_hp_cost 血本币价聚合路由已随死字段清退删除,ADR-0577:血购
+    #  判定/mode 的单一消费形态 = 写点直查注册表(prep_actions.record_hp_pay_
+    #  event),不经效果账本;多血价卡需求出现时在写点查询处再引入聚合。)
 
 
 @dataclass
@@ -133,9 +134,6 @@ def build_ledger(effects: list[AggregateEffect],
         elif e.kind == 'refresh_price_mult':
             # 概率事件(修复项12):期望刷价乘子(45% 免刷 → 0.55)
             m.refresh_price_mult *= e.value
-        elif e.kind == 'xp_click_hp_cost':
-            # 奋斗协议(修复项12):血本币购经验价(并持取更宽=非零者,金侧成本消费端置 0)
-            m.xp_click_hp_cost = m.xp_click_hp_cost or int(e.value)
     return led
 
 
@@ -176,61 +174,10 @@ def level_cost_with(clicks: int, ledger: EffectLedger, base_click_cost: float = 
     return clicks * max(0.0, base_click_cost + ledger.mutations.xp_click_delta)
 
 
-# ===== v2:ADR-0205 调研新字段 → 台账路由(API 文本明说的数值) =====
-
-def effects_from_strategies(strategy_names: list[str]) -> list[AggregateEffect]:
-    """注册表 EconomyEffect → AggregateEffect 路由(生产接法:state.active_strategies)。
-
-    只路由**台账可表达**的字段;行为条件流(存款回报/招财狗/星星相印)、期权类
-    (期货系,33 号合同台)、难度类(36 号账本)各自归位,不进本台账。
-    """
-    from sr_od.application.currency_war.kernel.cw_investments import get_strategy
-    out: list[AggregateEffect] = []
-    for name in strategy_names:
-        s = get_strategy(name)
-        if s is None or s.economy is None:
-            continue
-        e = s.economy
-        if e.interest_cap_override is not None:
-            out.append(AggregateEffect(name, 'interest_cap', float(e.interest_cap_override)))
-        if e.xp_buy_cost_discount:
-            out.append(AggregateEffect(name, 'xp_click_delta', -float(e.xp_buy_cost_discount)))
-        if e.win_reward_mult != 1.0:
-            out.append(AggregateEffect(name, 'win_mult', float(e.win_reward_mult)))
-        if e.gold_per_node:
-            out.append(AggregateEffect(name, 'per_node', float(e.gold_per_node)))
-        if e.gold_next_nodes_amount:
-            out.append(AggregateEffect(name, 'next_nodes', float(e.gold_next_nodes_amount),
-                                       remaining_nodes=e.gold_next_nodes_count))
-        if e.gold_per_boss_node:
-            out.append(AggregateEffect(name, 'boss_node', float(e.gold_per_boss_node)))
-        if e.free_refresh_per_node:
-            out.append(AggregateEffect(name, 'free_refresh', float(e.free_refresh_per_node)))
-        if e.free_refresh_burst:
-            out.append(AggregateEffect(name, 'free_refresh_burst', float(e.free_refresh_burst)))
-        if e.refresh_surprise_every:
-            out.append(AggregateEffect(name, 'surprise_every', float(e.refresh_surprise_every)))
-        if e.xp_per_refresh:
-            out.append(AggregateEffect(name, 'xp_per_refresh', float(e.xp_per_refresh)))
-        if e.xp_per_node:
-            out.append(AggregateEffect(name, 'xp_per_node', float(e.xp_per_node)))
-        # 修复项12 新字段路由(概率事件/奋斗协议;市场干预的 burst 已有通道,池改写旗标
-        # 属 cw_shop_odds 池面辖域,不进台账数值路由)
-        if e.refresh_free_chance:
-            out.append(AggregateEffect(name, 'refresh_price_mult', 1.0 - float(e.refresh_free_chance)))
-        if e.xp_buy_hp_cost:
-            out.append(AggregateEffect(name, 'xp_click_hp_cost', float(e.xp_buy_hp_cost)))
-        # v2 新字段
-        if e.interest_flat_per_node:
-            # 固定息:每节点平金流,与 cap 息并行
-            out.append(AggregateEffect(name, 'per_node', float(e.interest_flat_per_node)))
-        if e.gold_at_node:
-            out.append(AggregateEffect(name, 'next_nodes', float(e.gold_at_node),
-                                       remaining_nodes=e.gold_at_node_offset))
-            # ↑ 时点大额用 next_nodes 语义(t+offset 一次性);超发货币的负债部分
-            # 由调用方补 AggregateEffect('超发货币:负债', 'next_nodes', -gold_held, offset)
-    return out
-
+# ===== v2 路由退役(ADR-0577):effects_from_strategies 及其 xp_buy_hp_cost
+# 聚合路由随死字段清退删除——生产从未接线(零调用者实证),血购的唯一消费
+# 形态 = 写点直查注册表;条件路由(conditional_effects_at/gold_at_level_
+# effect)各有生产消费面,保留。 =====
 
 def conditional_effects_at(state) -> list[AggregateEffect]:
     """等级条件突变(成长的快乐:8 级起单击 −1)——按当前等级激活。

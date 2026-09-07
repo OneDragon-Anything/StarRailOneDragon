@@ -92,7 +92,18 @@ log = log_utils.log
 #: (仍单槽净额)。旧档案经 load_archive 版本检查自动重装配(loss_nodes
 #: 净额→战斗腿原地修复);旧不变量「loss_nodes 条目集 ≡
 #: {rounds.hp_delta<0 的轮}」自 v8 解除,分歧形态见 _build_rounds。
-SCHEMA_VERSION: int = 8
+#: v9(T-100 遥测数据病统一件,ADR-0577):hp 真值链的「事件模型」落地,
+#: 四机制一次到位——①事件步进链:结算步进链扩为 hp 变化步进链,可信结算
+#: 行 ∪ hp_pay 事件行按 ts 全局交织走行,事件只推进游标不出条目;②段界
+#: 重锚:换段取该段恢复帧 hp 重锚两链游标,续段首槽 hp_delta 从「跨段净额」
+#: 变「段内变化」(读端可见口径变化),重锚差落 resume_reconciliation 扩展
+#: 字段(unexplained_delta/consumed_by_chain)不进 loss_nodes;③合成行
+#: (synthetic_supply)一律退出步进链(先验「陈旧直到证伪」,v8 的 0 值
+#: 防御升格;rounds 槽/query_hp 显示行为不变);④终局腿:result='loss' 且
+#: 步进游标未到 0 → runs.final_hp=0 结构真值兜底出 hp_source='endgame_
+#: final' 条目。顶层新增加法列 hp_events(事件行显影)/hp_pay_defects
+#: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
+SCHEMA_VERSION: int = 9
 
 #: 档案子目录(replay/matches/)
 MATCHES_DIRNAME: str = 'matches'
@@ -318,23 +329,23 @@ def _hp_entry(dec_frame: dict[str, Any] | None,
 
 
 def _settlement_hp_usable(row: dict[str, Any]) -> bool:
-    """结算行 hp 可否作步进链锚(v8):可信门 + 合成行 0 值防御。
+    """结算行 hp 可否作步进链锚(v8 可信门;v9 合成行一律退出,ADR-0577)。
 
     - 可信门 = query._outcome_hp_trusted 单一源:OCR miss 兜底行
       (hp_confidence<0.9,hp_after 落 0)不入链不推游标——伪值入链会伪造
       「掉血 −prev」条目并把游标打穿到 0、毒化后续全部战斗腿(纪律同
       query_hp「伪值不推进链」)。
-    - 合成行 0 值防御(方案审 M2 可选防御):补给节点无结算屏,合成行
-      hp 是备战快照;hp_after≤0 的合成行结构上不可能是真值(0 血=战败,
-      走战斗结算屏),即便 conf 字段可信也拒锚——写端「hp None→0 兜底 +
-      hp_readable 缺省 True」(cw_loop._record_supply_outcome)可产出
-      hp=0/conf=1.0 行,无此防御会伪造大掉血条目。写端洞本身登记不修
-      (ADR-0567 §边界申报)。
+    - 合成行一律退出步进链(v9,升格自 v8 的仅 0 值防御):补给合成行 hp
+      是 last_state 快照,**快照不是事件**——先验按「陈旧,直到证伪」。
+      双实证:g_20260906_182456 p2r4 合成行 45 陈旧了一整轮战斗(−14,最后
+      观察支持 18:53:49、18:57:42 已结算 31),v8 给合成行步进资格的唯一
+      立案见证经帧序复核为鬼值;g_20260907_025608 p2r4 合成行 18 vs 结算
+      真值 1。降权不回退:「新鲜回血合成行」若被未来取证证实,回血可见性
+      走 hp_receipt 类**事件**写点(另立批),不走快照。降权只及步进链:
+      rounds 槽/query_hp/anomalies 对合成行的既有显示行为不变。
     """
     if row.get('source') == 'synthetic_supply':
-        hp = row.get('hp_after')
-        return (isinstance(hp, (int, float)) and hp > 0
-                and _outcome_hp_trusted(row))
+        return False
     return _outcome_hp_trusted(row)
 
 
@@ -357,8 +368,71 @@ def _evidence_links(replay_dir: Path, key: tuple[int, int]) -> list[str]:
     return sorted(p.name for p in base.glob(f'buy_expect_{tag}*'))
 
 
-def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
-                  ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _segment_resume_frame(dec: list[dict[str, Any]],
+                          outs: list[dict[str, Any]],
+                          rid: str) -> dict[str, Any] | None:
+    """段恢复帧单一源:该段最早 ts 决策迹帧;零决策帧段(采集缺口)→ 最早
+    结算行兜底(hp_after/hp_confidence 归一为帧 hp/hp_readable 口径)。
+
+    两处消费必须同源(v9):_resume_reconciliation 的对账对象与段界重锚的
+    锚值——否则「重锚用的恢复帧」与「对账列显影的恢复帧」分叉,判读对不上。
+    """
+    rows = [d for d in dec if d.get('run_id') == rid]
+    resume = min(rows, key=_row_ts) if rows else None
+    if resume is None:
+        o_rows = sorted((o for o in outs if o.get('run_id') == rid),
+                        key=_row_ts)
+        if o_rows:
+            o = o_rows[0]
+            conf = o.get('hp_confidence')
+            resume = {'run_id': rid, 'plane': o.get('plane'),
+                      'round_num': o.get('round_num'), 'ts': o.get('ts'),
+                      'hp': o.get('hp_after'),
+                      'hp_readable': (isinstance(conf, (int, float))
+                                      and conf >= HP_CONF_TRUSTED)}
+    return resume
+
+
+def _resume_hp_anchorable(resume: dict[str, Any] | None) -> int | None:
+    """恢复帧 hp 可否作重锚值:帧在 ∧ hp 非 None ∧ hp_readable 非 False
+    (与 _resume_reconciliation 的 readable 守卫同判——恢复帧该字段不可信
+    即不判不锚)。可锚 → 返回 int hp;不可锚 → None(诚实退化:游标维持
+    跨段携带,与 v8 行为一致)。"""
+    if resume is None:
+        return None
+    hp = resume.get('hp')
+    if hp is None or resume.get('hp_readable') is False:
+        return None
+    try:
+        return int(hp)
+    except (TypeError, ValueError):
+        return None
+
+
+def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """顶层 hp_events 派生列(v9,加法,装配端纯读):kind='hp_pay' 事件行
+    显影——非结算血变(血购支付)的可见面。行字段从 choice 载荷平铺
+    (plane/round 显式入 choice 是写点契约,顶层 plane 恒 None);旧档案
+    恒空列表 = 装配端救不回没有写入的数据(采集面修复只及新局)。"""
+    out: list[dict[str, Any]] = []
+    for r in exo_rows:
+        if (r.get('kind') or '') != 'hp_pay':
+            continue
+        ch = r.get('choice') or {}
+        out.append({'run_id': r.get('run_id'), 'ts': r.get('ts'),
+                    'plane': ch.get('plane'), 'round': ch.get('round_num'),
+                    'currency': ch.get('currency'),
+                    'hp_delta': ch.get('hp_delta'), 'mode': ch.get('mode'),
+                    'clicks': ch.get('clicks'), 'basis': ch.get('basis')})
+    out.sort(key=_row_ts)   # 稳定:同秒保文件追加序
+    return out
+
+
+def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
+                  segments: list[str] | None = None,
+                  endgame_result: str = '',
+                  ) -> tuple[list[dict[str, Any]], list[dict[str, Any]],
+                             dict[str, dict[str, Any]], list[dict[str, Any]]]:
     """装配逐轮表 + 败场节点列表。
 
     逐轮表键 = (plane, round_num)(位面内序,与全部视图同坐标系);
@@ -368,18 +442,40 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
     口径;form_score 已退役,历史数据只读透传)/ 证据链接 /
     战后终态(terminal,该轮最晚帧板面计数——与决策帧列并列的「执行后」快照)。
     败场节点(loss_nodes,v8 起)= hp 链上掉血的**结算行**(战斗腿口径;
-    ADR-0567),由与逐轮表平行的 settlement 步进链派生:
+    ADR-0567);v9(ADR-0577)步进链升格为 **hp 变化事件步进链**:
 
     - 两链分工:rounds 链 = 轮级血面变化(单槽取末结算行,净额,无可信
-      门——「本轮账面变化」的本职);步进链 = 结算腿,同轮每个 hp 可信的
-      结算行(可信门 + 合成行 0 值防御,判据见 _settlement_hp_usable)按
-      ts 序各成一步(delta = 本步 hp − 步进游标),掉血步出一条目。同轮
-      「补给回血+战斗掉血」因此不再被净额抵减/整条漏记(实证
-      g_20260906_182456 p2r4:净额 −19、战斗腿 −33)。
-    - 单步回落:该轮无任何可信结算行 → 用轮槽 hp_e 成一步(hp_source
-      沿用轮槽口径),游标推进同 rounds 链 prev_hp(凡非 None 即推进),
-      保住「无结算行轮备帧掉血也入 loss_nodes」与「仅不可信结算行轮」的
-      既有行为——全回落局与旧实现逐字节同退化。
+      门——「本轮账面变化」的本职);步进链 = hp 变化走行,可信结算行
+      (可信门,判据见 _settlement_hp_usable;v9 起合成行一律退出)∪
+      hp_pay 事件行(批1 写点产物)按 **ts 全局交织**各成一步:结算步出
+      掉血条目,事件步只推进游标不出条目(保 ADR-0567「一条目=掉血结算
+      行」口径纯度,新增加法来源 hp_source='endgame_final' 除外)。
+    - 段界重锚(v9):跨段停机时游标不再携带前段值——走行遇换段(以及
+      rounds 链到达续段首 key)取该段恢复帧 hp(_segment_resume_frame
+      单一源,与 resume_reconciliation 同一帧)重锚;重锚差 |游标−resume|≠0
+      → 边界差落 boundaries(进 resume_reconciliation 扩展字段
+      unexplained_delta/consumed_by_chain,不进 loss_nodes)。恢复帧不可锚
+      (缺帧/hp None/readable False)→ 不锚维持跨段携带(诚实退化)。
+      续段首槽 hp_delta 语义从「跨段净额」变「段内变化」(读端可见口径
+      变化,跨局对照跨段槽位数字会变,ADR-0577 申报)。
+    - 真值对账(v9,hp_pay 建模账):事件只作期望账;下一**可信结算行**
+      与「游标(已含事件推进)」偏差≠0 → hp_pay_defects 落一行(留证不
+      阻塞),游标照取结算值自愈——建模错账最多污染到下一结算并当场显影。
+    - 走行序(F5 三边界,ADR-0577):ts 单源 = 记录时点墙钟,排序键字符
+      串比较;①同秒并列:事件物料前置拼接 + Python 稳定排序 → 同秒事件
+      先于结算(备战先于战斗的物理先序),结算/回落保持 v8 遍历序(key
+      升序、key 内 ts 稳定)= 单段局逐字节退化的技术前提;②缺 ts 行:
+      排序键回空串会错位到全局最前 → 守卫为不进步进链(该行步进资格让位
+      回落,hp_events 列仍显影);③时钟回拨/NTP 步进:走行序失真,诚实
+      退化(错位条目)与恢复帧不可锚退化并列申报。
+    - 终局腿(v9,C-主,加法零新运行时写入):链走完后 result='loss' 且
+      步进游标≠0 → 追加 {hp:0, delta:−游标, hp_source:'endgame_final',
+      outcome_source:'runs.final_hp'}(runs 行结构保证死亡真值);游标已
+      到 0(含回落路径到达)守卫不重复,win/abandoned 局零终局腿,游标
+      None(全程无可锚行)→ 无 delta 可算诚实跳过。
+    - 单步回落(v8 语义保留):该轮无(入链的)可信结算行 → 用轮槽 hp_e
+      成一步(hp_source 沿用轮槽口径,游标推进同 rounds 链 prev_hp,凡非
+      None 即推进),保住「无结算行轮备帧掉血也入 loss_nodes」的既有行为。
     - 条目形状:{plane, round, node_type, hp, delta, hp_source} 同键同序 +
       加法键 outcome_source/ts:恒指认条目 hp 的**直接来源结算行**
       (outcome_source = 行 source 字段,''=屏面真值行;'synthetic_supply'
@@ -389,6 +485,8 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
       取不可信末行,后续轮条目按游标计算(与 query_hp「伪值不推进链」同
       纪律,方向正确非回归);净额≥0 的轮因战斗腿<0 仍必有条目。判读侧
       勿按旧直觉假设 loss_nodes ⊆ rounds 掉血轮(ADR-0567 §边界申报)。
+    返回:(rounds, loss_nodes, boundaries, hp_pay_defects)。boundaries =
+    {run_id: {unexplained_delta, consumed_by_chain}}(v9 段界重锚差显影)。
     """
     dec = slice_rows['decisions.jsonl']
     outs = slice_rows['outcomes.jsonl']
@@ -427,11 +525,30 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
         except (TypeError, ValueError):
             continue
         dec_count[k] = dec_count.get(k, 0) + 1
+    # —— v9 段界重锚准备:续局段首 key(该段最早 ts 行的 (plane, round))——
+    # rounds 链锚点判据:per-key 循环到达该 key 即换锚(此时前段全部行已
+    # 处理完;本局 (2,1) 槽两段行共存时,槽 hp_e 取 ts 末行,前段行天然让位)。
+    anchor_seg_by_key: dict[tuple[int, int], str] = {}
+    if segments and len(segments) > 1:
+        for rid in segments[1:]:
+            seg_rows = [r for r in dec + outs if r.get('run_id') == rid]
+            if not seg_rows:
+                continue
+            first = min(seg_rows, key=_row_ts)
+            try:
+                anchor_seg_by_key[(int(first.get('plane') or 1),
+                                    int(first.get('round_num') or 0))] = rid
+            except (TypeError, ValueError):
+                continue
+    resume_cache: dict[str, dict[str, Any] | None] = {}
+    boundaries: dict[str, dict[str, Any]] = {}
     rounds: list[dict[str, Any]] = []
     prev_hp: int | None = None
-    # settlement 步进链游标(独立于轮级 prev_hp,两链各推各的,防双推进)
-    step_prev: int | None = None
     loss_nodes: list[dict[str, Any]] = []
+    # v9 步进链物料:walk_items 按 v8 遍历序收集(key 升序、key 内 ts 稳定),
+    # 循环后与事件物料合并做全局 ts 稳定排序走行(见循环后注释)
+    walk_items: list[dict[str, Any]] = []
+    node_type_by_key: dict[tuple[int, int], str | None] = {}
     for key in sorted(keys):
         frame = _best_decision_frame(dec, key)
         # 同轮全帧动作合并(流内序;口径同 query._load_decisions_rounds):
@@ -451,6 +568,17 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
         outcome = outs_k[-1] if outs_k else None
         st = (frame or {}).get('state') or {}
         hp_e = _hp_entry(frame, outcome)
+        # —— v9 段界重锚(rounds 链):到达续局段首 key → 取该段恢复帧 hp
+        # 重锚轮级游标(prev_hp 从「前段末值」换锚「本段恢复读数」)。重锚差
+        # 显影归走行段界处统一落(见走行注释:步进链游标含事件推进,是
+        # 「事件已解释边界差」的唯一知情者);恢复帧不可锚 → 不锚维持携带。
+        _aid = anchor_seg_by_key.get(key)
+        if _aid is not None:
+            if _aid not in resume_cache:
+                resume_cache[_aid] = _segment_resume_frame(dec, outs, _aid)
+            _rhp = _resume_hp_anchorable(resume_cache[_aid])
+            if _rhp is not None:
+                prev_hp = _rhp
         delta = None
         if hp_e['hp'] is not None and prev_hp is not None:
             delta = int(hp_e['hp']) - int(prev_hp)
@@ -537,42 +665,145 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]]
             'outcome': outcome,
             'evidence': _evidence_links(replay_dir, key),
         })
-        # —— settlement 步进链(v8,ADR-0567):loss_nodes 逐结算行化 ——
-        # 每个可信结算行各成一步(ts 序,outs_k 已按序);掉血步出一条目,
-        # 条目 hp 直接来源即该结算行(加法键指认之,契约见函数 docstring)
-        step_rows = [o for o in outs_k
-                     if o.get('hp_after') is not None
-                     and _settlement_hp_usable(o)]
-        for o in step_rows:
-            step_hp = o['hp_after']
-            step_delta = int(step_hp) - step_prev \
+        # —— v9 步进链物料收集(走行在循环后):结算/回落按 v8 遍历序
+        # (key 升序、key 内 ts 稳定)收集;缺 ts 行不进步进链(F5② 守卫:
+        # 空串排序键会错位到全局最前;该行步进资格让位回落,hp_events 列
+        # 仍显影)——落条目的构造规则与 v8 逐字一致,仅执行位后移到走行处
+        node_type_by_key[key] = nt_out or nt_state
+        key_step_rows = [o for o in outs_k
+                         if o.get('hp_after') is not None
+                         and _row_ts(o)
+                         and _settlement_hp_usable(o)]
+        for o in key_step_rows:
+            walk_items.append({'_kind': 'settle', 'row': o, 'key': key,
+                               'node_type': o.get('node_type') or (nt_out or nt_state),
+                               'run_id': o.get('run_id') or '',
+                               'row_ts': _row_ts(o)})
+        if not key_step_rows and hp_e['hp'] is not None:
+            # 单步回落物料(v8 语义:该轮无入链可信结算行 → 轮槽 hp_e 成
+            # 一步;游标推进同 rounds 链凡非 None 即推进)。走行序键取来源
+            # 行 ts(帧来源取帧 ts);条目 ts 契约不变(帧来源 = None)。
+            # 缺 ts 来源行 → 同 F5② 守卫不进链(ts 走行无位可置,v8 键位
+            # 内联无此依赖;该轮条目丢失是缺 ts 数据的诚实代价)。
+            from_outcome = hp_e['source'] == 'settlement'
+            _fb_row = outcome if from_outcome else frame
+            _fb_ts = (_row_ts(outcome) if from_outcome
+                      else (_row_ts(frame) if frame is not None else ''))
+            if _fb_ts:
+                walk_items.append({
+                    '_kind': 'fallback', 'hp': int(hp_e['hp']),
+                    'hp_source': hp_e['source'],
+                    'outcome_source': (outcome.get('source') or ''
+                                       if from_outcome else None),
+                    'entry_ts': (outcome.get('ts') if from_outcome else None),
+                    'key': key, 'node_type': nt_out or nt_state,
+                    'run_id': (_fb_row or {}).get('run_id') or '',
+                    'row_ts': _fb_ts})
+
+    # —— v9 全局 ts 事件走行:结算/回落物料 ∪ hp_pay 事件物料 ——
+    # 事件物料前置拼接 + 稳定排序 ⇒ 同秒并列时事件先于结算(备战先于战斗
+    # 的物理先序,F5① tiebreaker);结算/回落保持 v8 遍历序 = 单段局(无
+    # 事件/无重锚形态)逐字节退化的技术前提。
+    event_items: list[dict[str, Any]] = []
+    for r in slice_rows['exogenous.jsonl']:
+        if (r.get('kind') or '') != 'hp_pay':
+            continue
+        ch = r.get('choice') or {}
+        try:
+            delta_ev = int(ch.get('hp_delta'))
+        except (TypeError, ValueError):
+            continue   # F5② 守卫:畸形事件不进链(hp_events 列仍显影)
+        if not _row_ts(r):
+            continue   # F5② 守卫:缺 ts 行错位防御
+        event_items.append({'_kind': 'event', 'hp_delta': delta_ev,
+                            'key': None, 'node_type': None,
+                            'run_id': r.get('run_id') or '',
+                            'row_ts': _row_ts(r)})
+    step_prev: int | None = None
+    # 步进链当前段(v9 段界重锚判据;None = 走行首行,不重锚)
+    walk_seg: str | None = None
+    pending_pay = 0        # 上一可信结算以来 modeled 支付累计(hp_delta 和)
+    pending_pay_n = 0      # 未决事件笔数(0 = 无待对账)
+    hp_pay_defects: list[dict[str, Any]] = []
+    for it in sorted(event_items + walk_items, key=lambda x: x['row_ts']):
+        rid = it.get('run_id') or ''
+        if walk_seg is None:
+            walk_seg = rid
+        elif rid and rid != walk_seg:
+            # 段界重锚(步进链):换段 → 该段恢复帧 hp 重锚游标。重锚差
+            # ≠0 → 边界差显影(本处单一落点:步进链游标含 hp_pay 事件推进,
+            # 是「事件已解释边界差 → 重锚 no-op」的唯一知情者,§2.3 形态②;
+            # rounds 链锚点静默换锚)。跨段未决对账随重锚落账不追溯。
+            walk_seg = rid
+            if rid not in resume_cache:
+                resume_cache[rid] = _segment_resume_frame(dec, outs, rid)
+            _rhp = _resume_hp_anchorable(resume_cache[rid])
+            if _rhp is not None:
+                if step_prev is not None and _rhp != step_prev:
+                    boundaries[rid] = {'unexplained_delta': _rhp - step_prev,
+                                       'consumed_by_chain': True}
+                step_prev = _rhp
+                pending_pay, pending_pay_n = 0, 0
+        if it['_kind'] == 'event':
+            # 事件步:只推进游标不出条目(ADR-0567「一条目=掉血结算行」
+            # 纯度);游标未锚(None)时事件无基準不可推进也不进对账。
+            if step_prev is not None:
+                step_prev += it['hp_delta']
+                pending_pay += it['hp_delta']
+                pending_pay_n += 1
+            continue
+        if it['_kind'] == 'settle':
+            o = it['row']
+            step_hp = int(o['hp_after'])
+            # 真值对账(v9):modeled 期望账(游标已含事件推进)vs 结算
+            # 真值,偏差≠0 落 defect 行(留证不阻塞);游标照取结算值自愈。
+            if pending_pay_n and step_prev is not None:
+                _gap = step_hp - step_prev
+                if _gap != 0:
+                    hp_pay_defects.append({
+                        'plane': it['key'][0], 'round': it['key'][1],
+                        'expected_hp': step_prev, 'actual_hp': step_hp,
+                        'gap': _gap, 'modeled_paid': pending_pay,
+                        'ts': o.get('ts')})
+                pending_pay, pending_pay_n = 0, 0
+            step_delta = step_hp - step_prev \
                 if step_prev is not None else None
-            step_prev = int(step_hp)
+            step_prev = step_hp
             if step_delta is not None and step_delta < 0:
                 loss_nodes.append({
-                    'plane': key[0], 'round': key[1],
-                    'node_type': o.get('node_type') or (nt_out or nt_state),
+                    'plane': it['key'][0], 'round': it['key'][1],
+                    'node_type': it['node_type'],
                     'hp': step_hp, 'delta': step_delta,
                     'hp_source': 'settlement',
                     'outcome_source': o.get('source') or '',
                     'ts': o.get('ts')})
-        if not step_rows and hp_e['hp'] is not None:
-            # 单步回落:该轮无可信结算行 → 轮槽 hp_e 成一步(语义见函数
-            # docstring;游标推进同 rounds 链:凡非 None 即推进)
-            fb_hp = int(hp_e['hp'])
+        else:
+            # 单步回落步(v8 语义原样:凡非 None 即推进;掉血出条目)
+            fb_hp = it['hp']
             fb_delta = fb_hp - step_prev if step_prev is not None else None
             if fb_delta is not None and fb_delta < 0:
-                from_outcome = hp_e['source'] == 'settlement'
                 loss_nodes.append({
-                    'plane': key[0], 'round': key[1],
-                    'node_type': nt_out or nt_state,
-                    'hp': hp_e['hp'], 'delta': fb_delta,
-                    'hp_source': hp_e['source'],
-                    'outcome_source': (outcome.get('source') or ''
-                                       if from_outcome else None),
-                    'ts': outcome.get('ts') if from_outcome else None})
+                    'plane': it['key'][0], 'round': it['key'][1],
+                    'node_type': it['node_type'],
+                    'hp': it['hp'], 'delta': fb_delta,
+                    'hp_source': it['hp_source'],
+                    'outcome_source': it['outcome_source'],
+                    'ts': it['entry_ts']})
             step_prev = fb_hp
-    return rounds, loss_nodes
+    # —— v9 终局腿(C-主,加法零新运行时写入):result='loss' 且步进游标
+    # 未到 0 → runs.final_hp=0 结构保证真值兜底出死亡条目;游标已到 0(含
+    # 回落路径到达)守卫不重复,win/abandoned 局零终局腿,游标 None(全程
+    # 无可锚行)无 delta 可算诚实跳过(ADR-0577)。
+    if (endgame_result == 'loss' and step_prev is not None
+            and step_prev != 0 and keys):
+        lk = max(keys)
+        loss_nodes.append({
+            'plane': lk[0], 'round': lk[1],
+            'node_type': node_type_by_key.get(lk),
+            'hp': 0, 'delta': -step_prev,
+            'hp_source': 'endgame_final',
+            'outcome_source': 'runs.final_hp', 'ts': None})
+    return rounds, loss_nodes, boundaries, hp_pay_defects
 
 
 def _resume_reconciliation(segments: list[str],
@@ -608,21 +839,9 @@ def _resume_reconciliation(segments: list[str],
     for i, rid in enumerate(segments):
         if i == 0:
             continue
-        rows = by_seg.get(rid) or []
-        resume = min(rows, key=_row_ts) if rows else None
-        if resume is None:
-            # 决策帧缺失段(零决策行采集缺口)→ 最早结算行兜底;结算行
-            # 只有 hp 真值,金/等级不采 → 对应字段自然落 aligned=None
-            o_rows = sorted((o for o in outs if o.get('run_id') == rid),
-                            key=_row_ts)
-            if o_rows:
-                o = o_rows[0]
-                conf = o.get('hp_confidence')
-                resume = {'run_id': rid, 'plane': o.get('plane'),
-                          'round_num': o.get('round_num'), 'ts': o.get('ts'),
-                          'hp': o.get('hp_after'),
-                          'hp_readable': (isinstance(conf, (int, float))
-                                          and conf >= HP_CONF_TRUSTED)}
+        # 恢复帧 = _segment_resume_frame 单一源(v9:与段界重锚同帧定义,
+        # 防两处「恢复帧」分叉;零决策帧段的结算行兜底语义原样内聚其中)
+        resume = _segment_resume_frame(dec, outs, rid)
         prev_rows = [r for seg in segments[:i] for r in by_seg.get(seg, [])]
         prev = _latest_ts_frame(prev_rows) if prev_rows else None
         if resume is None and prev is None:
@@ -656,6 +875,20 @@ def _resume_reconciliation(segments: list[str],
             'level': _pair('level', resume_st, prev_st),
         })
     return out
+
+
+def _merge_boundary_records(
+        recon: list[dict[str, Any]],
+        boundaries: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    """段界重锚差并入恢复态对账行(v9,ADR-0577):unexplained_delta =
+    resume − 重锚前游标(负 = 停机间隙真掉血),consumed_by_chain=True =
+    该差已被重锚消费、不进 loss_nodes。无重锚差的续段行零新增键。"""
+    for row in recon:
+        b = boundaries.get(row.get('run_id'))
+        if b is not None:
+            row['unexplained_delta'] = b['unexplained_delta']
+            row['consumed_by_chain'] = True
+    return recon
 
 
 def _match_counters(rd: Path, start_ts: str, end_ts: str) -> dict[str, Any] | None:
@@ -728,20 +961,21 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
     segments: list[str] = list(game['segments'])
     seg_set = set(segments)
     slice_rows = _load_slice(rd, seg_set)
-    rounds, loss_nodes = _build_rounds(rd, slice_rows)
     runs_rows = [r for r in read_jsonl(rd / 'runs.jsonl')
                  if r.get('run_id') in seg_set]
     runs_by_seg = {r.get('run_id'): r for r in runs_rows}
+    last_summary = runs_by_seg.get(segments[-1]) if segments else {}
+    result = str((last_summary or {}).get('result') or '')
+    # abandoned 判定:末段无 runs 摘要(收口路径没走)或 result 非完结值域
+    abandoned = (not result) or (result not in _TERMINAL_RESULTS)
+    rounds, loss_nodes, boundaries, hp_pay_defects = _build_rounds(
+        rd, slice_rows, segments, result)
     seg_summaries = [
         {'run_id': rid,
          'first_frame': _first_frame_key(slice_rows['decisions.jsonl'], rid)
          or _first_frame_key(slice_rows['outcomes.jsonl'], rid),
          'summary': runs_by_seg.get(rid)}
         for rid in segments]
-    last_summary = runs_by_seg.get(segments[-1]) if segments else {}
-    result = str((last_summary or {}).get('result') or '')
-    # abandoned 判定:末段无 runs 摘要(收口路径没走)或 result 非完结值域
-    abandoned = (not result) or (result not in _TERMINAL_RESULTS)
     # 孤立续局(本段是续局但上一局不在库)留痕:首段首帧非 (p1,r1)
     first_fk = seg_summaries[0]['first_frame'] if seg_summaries else None
     continuity_note = ('孤立续局段(上一段不在库,game_id 取本段)'
@@ -769,10 +1003,17 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'end_ts': game.get('end_ts') or '',
         'archived_at': datetime.now().isoformat(timespec='seconds'),
         'continuity_note': continuity_note,
-        'resume_reconciliation': _resume_reconciliation(
-            segments, slice_rows),
+        # 恢复态对账列(v6)+ 段界重锚差扩展字段(v9,ADR-0577):
+        # boundaries 按 run_id 并入对应续段行(unexplained_delta/consumed_
+        # by_chain),不进 loss_nodes——重锚差是「段界间隙变化」显影非战斗腿。
+        'resume_reconciliation': _merge_boundary_records(
+            _resume_reconciliation(segments, slice_rows), boundaries),
         'rounds': rounds,
         'loss_nodes': loss_nodes,
+        # hp 变化事件显影列(v9 加法,装配端纯读;旧档案恒空 = 采集面修复
+        # 只及新局)与 modeled 期望账对账偏差列(v9 加法,留证不阻塞)
+        'hp_events': _hp_pay_events(slice_rows['exogenous.jsonl']),
+        'hp_pay_defects': hp_pay_defects,
         'opening': _build_opening(slice_rows, runs_by_seg),
         'endgame': {'result': result or 'abandoned',
                     'abandoned': abandoned,
