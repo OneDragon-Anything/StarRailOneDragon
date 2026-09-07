@@ -20,7 +20,9 @@ rewatch 杀净哨兵 → daemon 重启 MCP server(加载新代码)→ 重武哨�
 哨兵报警退出 → 本进程打印 [CYCLE-*] 并带码退出 → 编排者的后台 job 结算送达。
 禁 DETACHED 自起本脚本:那等于把整条报警链再度挂空。
 
-用法(项目根;哨兵脚本须存在于 .debug/temp/currency_war/,默认 sentinel+gap 两件):
+用法(项目根;哨兵脚本单一源 = skills/sr-od-currency-war-dev/scripts/
+(寻址取自 rewatch.SCRIPTS_DIR,ADR-0586 根切换后旧散拷贝目录已退役),
+默认 sentinel+gap 两件):
 
   uv run python tools/cw/cycle_restart.py --to-ready    # 只做①②③,打印就绪信号与武装命令即退(编排者手动收尾用)
   uv run python tools/cw/cycle_restart.py --stop-only   # 只做①停局(≥ to-ready 更保守的分步开关,②③④⑤全不碰)
@@ -49,21 +51,32 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from types import ModuleType
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')   # type: ignore[attr-defined]  Windows GBK 控制台下保中文输出
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-WATCH_DIR = os.path.join(REPO_ROOT, '.debug', 'temp', 'currency_war')
 MAIN_SERVER = 'http://127.0.0.1:24001'
 DAEMON_MCP = 'http://127.0.0.1:24000/mcp'
 
-# 武装组合(与 rewatch.py WATCHERS 同口径;early 有显式纪律须 --early)
-WATCHERS: dict[str, tuple[str, str]] = {
-    'sentinel': ('cw_sentinel.py', '事件哨兵'),
-    'gap': ('cw_runs_gap.py', 'runs 断流哨兵'),
-    'early': ('cw_early_stop.py', '早停哨兵(首条遥测落后再武装)'),
-}
+
+def _rewatch() -> ModuleType:
+    """取同目录 rewatch 模块——哨兵脚本单一源(SCRIPTS_DIR/WATCHERS/SENTINEL_POS)宿主。
+
+    2026-09-08 最近改动三审 M1:哨兵单一源已迁
+    skills/sr-od-currency-war-dev/scripts/(ADR-0586 根切换随批),本文件
+    曾自留一份 WATCHERS 表并按 .debug/temp 散拷贝目录寻址——散拷贝滞留
+    旧常量 = 静默武装盯死旧路径的哑哨兵(rewatch 头注同源警告),散拷贝
+    清空后则整批「缺脚本」跳过、零武装中止起局。治本 = 删本表,武装/
+    杀净/旧水位路径全部取自 rewatch 单一源,不再有第二份表可漂移;
+    只改寻址,武装语义(Popen 继承句柄 + 退出码看守)不变。
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import rewatch  # noqa: PLC0415  局部导入:仅哨兵相关步骤需要,兄弟模块按名导入
+    return rewatch
 
 
 def _log(msg: str) -> None:
@@ -121,15 +134,14 @@ def stop_running(stop_timeout: float) -> bool:
 
 def kill_watchers(wanted: list[str]) -> None:
     """杀净旧哨兵实例 + 删事件哨兵旧水位,逻辑全走 rewatch(不自起纪律的另一半)。"""
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import rewatch  # noqa: PLC0415  局部导入:仅此函数需要
-    procs = rewatch.find_old_watchers()
-    rewatch.print_old_list(procs)
-    rewatch.kill_all(procs)
-    pos = os.path.join(WATCH_DIR, 'cw_sentinel.pos')
-    if 'sentinel' in wanted and os.path.exists(pos):
+    rw = _rewatch()
+    procs = rw.find_old_watchers()
+    rw.print_old_list(procs)
+    rw.kill_all(procs)
+    # 旧水位路径同取单一源(rw.SENTINEL_POS),不再本文件拼第二份
+    if 'sentinel' in wanted and rw.SENTINEL_POS.exists():
         with contextlib.suppress(OSError):
-            os.unlink(pos)
+            rw.SENTINEL_POS.unlink()
         _log('[2/5] 已删旧水位 cw_sentinel.pos')
 
 
@@ -229,19 +241,22 @@ def restart_server(skip: bool, restart_wait: float) -> bool:
 def arm_watchers(wanted: list[str]) -> list[subprocess.Popen]:
     """武装哨兵:作为本进程子进程起(继承控制台句柄,退出码由本进程接收转达)。
 
+    脚本寻址单一源 = rewatch.SCRIPTS_DIR/WATCHERS(三审 M1,见 _rewatch);
     命令口径与 runtime-ops 一致($env:PYTHONUTF8=1 + uv run python);注意
     「会话后台任务信道」要求的落点在本脚本自身如何被执行(必须由编排者经
     后台任务起本脚本),不在此处 DETACHED——那是 2026-08-25 明令禁止的哑哨兵形态。
     """
+    rw = _rewatch()
     env = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
     kids: list[subprocess.Popen] = []
     for key in wanted:
-        name, note = WATCHERS[key]
-        script = os.path.join(WATCH_DIR, name)
-        if not os.path.exists(script):
+        name, note = rw.WATCHERS[key]
+        script = rw.SCRIPTS_DIR / name
+        if not script.is_file():
             _log(f'[4/5] ⚠️ 缺哨兵脚本 {script}({note})——跳过该件')
             continue
-        kid = subprocess.Popen(['uv', 'run', 'python', script], cwd=REPO_ROOT, env=env)
+        kid = subprocess.Popen(['uv', 'run', 'python', str(script)],
+                               cwd=REPO_ROOT, env=env)
         kids.append(kid)
         _log(f'[4/5] 已武装 {key}: pid={kid.pid} {name}({note})')
     if len(kids) != len(wanted):
@@ -280,9 +295,10 @@ def supervise(kids: dict[int, subprocess.Popen]) -> int:
     打印流里),统一上报给编排者判断;这里只负责「醒来 + 不吞退出码」。
     """
     _log(f'[看守] {len(kids)} 件哨兵在岗,阻塞值守中……(哨兵任意一件退出即唤醒上报)')
+    watchers = _rewatch().WATCHERS
     names = {}
     for k in kids.values():
-        names[k.pid] = next((key for key, v in WATCHERS.items() if key in k.args[-1]), '?')
+        names[k.pid] = next((key for key in watchers if key in k.args[-1]), '?')
     while True:
         time.sleep(2)
         for pid, kid in list(kids.items()):
@@ -334,10 +350,11 @@ def main() -> None:
         sys.exit(3)
 
     if args.to_ready:
+        rw = _rewatch()
         _log('[READY] ①②③ 完成——server 新代码已生效。编排者收尾:')
         for key in wanted:
-            name, _note = WATCHERS[key]
-            print(f"  武装: $env:PYTHONUTF8='1'; uv run python {os.path.join('.debug', 'temp', 'currency_war', name)}")
+            name, _note = rw.WATCHERS[key]
+            print(f"  武装: $env:PYTHONUTF8='1'; uv run python {rw.SCRIPTS_DIR / name}")
         print(f'  起局: uv run python tools/cw/cycle_restart.py --start-only --app {args.app}')
         print('  前提自查: analyze_screen 确认货币战争-大厅(runtime-ops 残局清理序)')
         return

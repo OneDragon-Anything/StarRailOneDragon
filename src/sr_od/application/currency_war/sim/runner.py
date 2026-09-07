@@ -865,7 +865,7 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
     - **守卫:out_dir 不得是生产 live 流根,也不得是退役旧根**(本函数
       以 'w' 截断模式开三流文件名,写错位置 = 把目标处既有同名词整份
       清零——2026-09-07 22:20:52 空批写退役旧根截断历史三流实证,
-      落地审 t125_telemetry_relocation/落地审.md §5;生成器侧另有源
+      对账裁定 = ADR-0586;生成器侧另有源
       目录断言,双保险)。
     """
     import json as _json
