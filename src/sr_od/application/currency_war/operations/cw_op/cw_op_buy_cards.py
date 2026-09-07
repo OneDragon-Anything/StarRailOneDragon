@@ -12,6 +12,10 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_game_ports import (
+    action_sink,
+    observation_source,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -599,9 +603,16 @@ def run_buy_waves(op: SrOperation, match,
         # → 污染本帧 read_game_state;park 后再读。
         op.park_cursor(after_wait=0.1)
         # ---- 入口观察(ADR-0517 决策 1/8:唯一读屏点,即对账)----
+        # 观察源端口改道(T-120 方案 §2.3/§3.3,批 1;封闭集登记 =
+        # sr-od-test test_cw_game_ports 改道集守卫):端口在场(假环境)
+        # 时入口观察 = observe_prep 状态真值直出,跳过读图;缺省 None =
+        # 生产真实读屏,行为逐位不变。
+        _src = observation_source()
         _entry_shot = op.screenshot()
-        state = read_game_state(op.ctx, _entry_shot,
-                                phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
+        state = (_src.observe_prep(op.ctx, PHASE_PREP_SHOP_OPEN).state
+                 if _src is not None else
+                 read_game_state(op.ctx, _entry_shot,
+                                 phase=PHASE_PREP_SHOP_OPEN))   # ADR-0462 开店动作期
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         _apply_hp(state, hp_value, hp_readable, hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖
         # 店开帧节点行被遮 node_type 恒 None → 查位面节点序列台账(键 =
@@ -856,10 +867,18 @@ def run_buy_waves(op: SrOperation, match,
             _cur = match.session.shop_state_frame
             guard_proposal_vs_expected(action, _cur)
             _aop = shop_action_op_for(action)
-            _ok = _aop.execute(ShopExecEnv(
+            _env = ShopExecEnv(
                 op=op, match=match, config=config, click_pts=click_pts,
                 level_btn=level_btn, refresh_btn=refresh_btn,
-                ledger=ledger, state=_cur))
+                ledger=ledger, state=_cur)
+            # 执行器端口改道(T-120 方案 §2.4/§3.3,批 1):端口在场(假
+            # 环境)时动作落假游戏状态机(sink 账本位随动,机械点击层
+            # 被替换);缺省 None = 生产真实执行,行为逐位不变。
+            _sink = action_sink()
+            if _sink is not None:
+                _ok = _sink.execute_action(op.ctx, action, _env).applied
+            else:
+                _ok = _aop.execute(_env)
             apply_action_outcome(_aop, action, _ok, _cur, match, ledger,
                                  visit_actions)
             # T-82 续段 token 写入(生产商店循环执行位):动作确认已执行

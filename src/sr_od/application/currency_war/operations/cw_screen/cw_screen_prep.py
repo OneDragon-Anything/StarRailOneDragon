@@ -18,6 +18,10 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_game_ports import (
+    CwObservationSource,
+    observation_source,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
@@ -458,6 +462,79 @@ class CwScreenPrep(SrOperation):
 
     # ===== 观察(F2:只由现成 reader 产出)=====
 
+    def _observe_from_ports(self, src: CwObservationSource) -> PrepObservation:
+        """观察源端口路径的观察装配(T-120 方案 §2.3,批 1)。
+
+        读半部(轻字段扫读 + observe_full 重观察)整体换端口真值直出;
+        装配半部(单写者 session 写点)与读屏路径同语义:bench 播种/
+        last_node_type/gated_hp 写 last_state/期望态对账/缓存/黑板帧。
+        缺席申报:cap×paddle 双源 vacancy 仲裁在端口路径结构性不跑——
+        假环境 vacancy 单一真值(cap−deployed),双源分歧问题不存在;
+        坐标/视觉域字段(spheres/boxes/tomes/overlay 检测)恒空,消费方
+        按「识别缺陷面结构性为零」申报(方案 §4-6)分流。
+        """
+        bundle = src.observe_prep(self.ctx, 'prep_clean')
+        obs = bundle.prep if bundle.prep is not None else PrepObservation()
+        st = obs.state if obs.state is not None else bundle.state
+        obs.state = st
+        # 期望态基座:bench 播种(与读屏路径 :551 同语义,来源换端口真值)
+        st.bench = bench_from_compact(
+            list(obs.bench_chars
+                 or (exec_state_of(self._session()).tracked_bench_chars
+                     if self._session() else [])))
+        session = self._session()
+        if session is not None:
+            if st.node_type:
+                session.last_node_type = st.node_type
+            # hp 双源收口:写 last_state 前过 gated_hp(与读屏路径同门)
+            _st_t = ((st.plane - 1) * 9 + st.round_num) \
+                if (st.plane and st.round_num) else None
+            from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+                gated_hp as _gh,
+            )
+            st.hp = _gh(st.hp, session, _st_t,
+                        current_readable=bool(
+                            getattr(st, 'hp_readable', True)))
+            session.last_state = st
+            # 期望态覆盖点·备战观察(与读屏路径同一 actual 构造器
+            # prep_obs_actual_for——条目实读形状按 kind 分派,真值来源
+            # 换端口;best-effort,失败不阻塞环)
+            try:
+                from sr_od.application.currency_war.kernel.cw_expected_state import (
+                    reconcile_expected,
+                )
+                _ids = ' | '.join(
+                    f'{bc.char_id}@{bc.star}★'
+                    for bc in (obs.bench_chars or [])
+                    if getattr(bc, 'char_id', ''))
+                _dids = ' | '.join(
+                    f'{bc.char_id}@{bc.star}★'
+                    for bc in (obs.deployed_chars or [])
+                    if getattr(bc, 'char_id', ''))
+                _act: dict = {}
+                for _p, _e in list(
+                        (getattr(exec_state_of(session), 'expected_state', None)
+                         or {}).items()):
+                    if _e.confirm_point != 'prep_obs':
+                        continue   # 条目绑覆盖点(F7):不可确认点透传
+                    _r = prep_obs_actual_for(session, _e, st, obs,
+                                             _ids, _dids)
+                    if _r is not None:
+                        _act[_p] = _r
+                reconcile_expected(session, 'prep_obs', _act)
+            except Exception as _e:  # noqa: BLE001  观测面不阻塞环
+                log.debug(f'[cw-director] expected reconcile skip: {_e}')
+            # light 沿用缓存更新(trusted 位随 state,MED-1 同读屏路径)
+            self._cached_state = st
+            self._cached_bench = list(obs.bench_chars)
+            self._cached_deployed = list(obs.deployed_chars)
+            self._cached_vacancy = obs.deploy_vacancy
+            self._cached_gold_trusted = obs.state_gold_trusted
+        # 黑板写路径(W971 §2,P2):写者白名单 = 本装配点(与读屏路径同点)
+        if session is not None:
+            session.prep_obs_frame = obs
+        return obs
+
     def _observe(self, heavy: bool, screen: MatLike | None = None) -> PrepObservation:
         """组装备战观察(ADR-0517 迁移后:heavy = 画面 op 入口单次——期望态
         重建的唯一读屏点,即对账;调用点 = 单轮入口 / OpenShop(read_only)
@@ -471,7 +548,14 @@ class CwScreenPrep(SrOperation):
         按 id(image) 缓存,本方法所有 crop_first=False 读取(id_mark 判定/
         observe_full)全部缓存命中,heavy 观察的 OCR 成本归零;且观察的就是
         「已验证稳定」的那一帧(gate 语义),而非稳定后又隔一拍的帧。
+
+        观察源端口改道(T-120 方案 §2.3/§3.3,批 1):端口在场(假环境)时
+        读半部整体换端口真值直出(见 :meth:`_observe_from_ports`),缺省
+        None = 生产真实读屏,本方法体逐位不变。
         """
+        _src = observation_source()
+        if _src is not None:
+            return self._observe_from_ports(_src)
         if heavy:
             self.park_cursor()
         screen = screen if screen is not None else self.screenshot()

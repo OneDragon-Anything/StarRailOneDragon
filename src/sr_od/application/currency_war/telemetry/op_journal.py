@@ -24,6 +24,7 @@ from __future__ import annotations
 import datetime
 import json as _json
 import time as _time
+from pathlib import Path
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_observe import LIVE_DIR
@@ -36,6 +37,41 @@ from sr_od.application.currency_war.telemetry.state import current_run_id
 #: journal 落盘位置(telemetry/live 实时流根,单一源 = kernel/cw_observe
 #: 的根常量块;独立流,永不并入 decisions 行)
 _JOURNAL = LIVE_DIR / 'op_journal.jsonl'
+
+# ===== journal 根装配槽(T-120 批 1;T-129/T-130「sim 与 live 共写同一
+# ===== journal 文件」混流设计注记的落地点)=====
+# 机制裁决 = **写端根隔离**而非读端 run_id 过滤:假局(经根槽接指假局
+# 档案根)的 action/op 行从写入时点就不进 live 流,读端无需维护
+# 「run_id ∈ sim 集」过滤态(过滤态漏维护 = 静默混流,比写端漏接通更
+# 难发现——写端漏接通表现为 live 流出现行,obs_conflict 式审计可见)。
+# 行内 run_id 键保持不变,读端过滤能力不受影响(双保险,非双实现)。
+# 缺省 None = LIVE_DIR(生产路径逐位不变);测试 harness 与 recorder 落盘
+# 根槽(telemetry/state.set_recorder_replay_dir)同点接通,两根恒一致。
+_JOURNAL_DIR: Path | None = None
+
+
+def set_journal_dir(path: Path | None) -> None:
+    """接通/复位 journal 落盘根(缺省 None = LIVE_DIR 生产路径)。
+
+    与 :func:`telemetry.state.set_recorder_replay_dir` 同装配纪律:缺省关、
+    测试显式接通、teardown 复位——进程全局槽,残留会把后续写的 journal
+    行带去假局根。
+    """
+    global _JOURNAL_DIR
+    _JOURNAL_DIR = Path(path) if path is not None else None
+
+
+def _journal_path() -> Path:
+    """journal 文件现算路径(根槽优先;槽是函数内读取,测试可 monkeypatch
+    槽变量后立即生效,不经模块 import 绑定快照)。
+
+    槽缺省回落模块常量 ``_JOURNAL``(非直接回落 LIVE_DIR):既有测试以
+    monkeypatch ``_JOURNAL`` 作落盘重定向缝(test_cw_op_journal/
+    test_cw_dispatch_wrapper 同款),常量保持活读=该缝不失效;根槽是
+    追加缝,不改写既有缝语义。"""
+    if _JOURNAL_DIR is not None:
+        return _JOURNAL_DIR / 'op_journal.jsonl'
+    return _JOURNAL
 
 #: 行字节硬上限(超限截断 + ``_trunc`` 标记;方案 §共通-体积纪律 (a))
 _ROW_CAP: int = 400
@@ -109,8 +145,9 @@ def _emit(rec: dict[str, Any], row_cap: int) -> None:
             slim = {k: rec[k] for k in rec if k != 'expected_delta'}
             slim['_trunc'] = True
             blob = _json.dumps(slim, ensure_ascii=False)
-        _JOURNAL.parent.mkdir(parents=True, exist_ok=True)
-        with _JOURNAL.open('a', encoding='utf-8') as f:
+        out = _journal_path()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with out.open('a', encoding='utf-8') as f:
             f.write(blob + '\n')
     except Exception:   # noqa: BLE001  journal best-effort,失败不阻塞业务流
         pass

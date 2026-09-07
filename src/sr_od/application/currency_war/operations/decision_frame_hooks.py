@@ -27,6 +27,7 @@
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -48,10 +49,10 @@ def _out_dir(run_id: str):
             / 'decision_frames' / run_id)
 
 
-def _prune_old(dir_path, tag: str) -> None:
+def _prune_old(dir_path, tag: str, suffix: str = '.png') -> None:
     """按 tag 维度滚动删除,保留最近 _KEEP_PER_TAG 帧(文件名 ts 前缀字典序=时间序)。"""
     mine = sorted(p for p in dir_path.iterdir()
-                  if p.is_file() and p.name.endswith(f'_{tag}.png'))
+                  if p.is_file() and p.name.endswith(f'_{tag}{suffix}'))
     for p in mine[:-_KEEP_PER_TAG] if len(mine) > _KEEP_PER_TAG else []:
         p.unlink(missing_ok=True)
 
@@ -65,19 +66,46 @@ def save_decision_frame(op: Operation, tag: str,
     :param tag: 挂点名(如 shop_entry/deploy/overlay_partner),同 tag 滚动治理
     :param screen: 当前游戏截图(RGB);None 时 op.screenshot() 现截
     :return: 落盘文件名(与 decisions.jsonl 行 ts 秒级可对齐);None=跳过/失败
+
+    假环境改形(T-120 方案 §2.3 契约三则「留证面改形」):观察源端口
+    在场(假环境)时,「识别完成点原始帧」不存在语义(无读图)——留证
+    改落**结构化观察 JSON**(观察内容快照,消费端按来源分型),不再落
+    PNG(stub 帧落图 = 假证据)。观察载荷经 duck-typed
+    ``evidence_snapshot(tag)`` 从端口实现方取(协议不折叠载荷形状;
+    实现方无此能力 = 只落定位行)。
     """
     try:
+        from sr_od.application.currency_war.cw_game_ports import (
+            observation_source,
+        )
         from sr_od.application.currency_war.telemetry.state import current_run_id
         run_id = current_run_id() or 'norun'
         out = _out_dir(run_id)
         out.mkdir(parents=True, exist_ok=True)
+        now = datetime.now()
+        stem = (f'{now.strftime("%Y%m%d_%H%M%S")}_{now.microsecond // 1000:03d}'
+                f'_{tag}')
+        src = observation_source()
+        if src is not None:
+            payload: dict = {'kind': 'observation_evidence', 'tag': tag,
+                             'ts': now.isoformat(timespec='seconds'),
+                             'run_id': run_id}
+            snap = getattr(src, 'evidence_snapshot', None)
+            if callable(snap):
+                loaded = snap(tag)
+                if isinstance(loaded, dict):
+                    payload.update(loaded)
+            fn = f'{stem}.json'
+            (out / fn).write_text(json.dumps(payload, ensure_ascii=False,
+                                             default=str),
+                                  encoding='utf-8')
+            _prune_old(out, tag, suffix='.json')
+            return fn
         if screen is None:
             screen = op.screenshot()
         if screen is None:
             return None
-        now = datetime.now()
-        fn = (f'{now.strftime("%Y%m%d_%H%M%S")}_{now.microsecond // 1000:03d}'
-              f'_{tag}.png')
+        fn = f'{stem}.png'
         cv2_utils.save_image(screen, str(out / fn))
         _prune_old(out, tag)
         return fn

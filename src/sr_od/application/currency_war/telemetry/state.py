@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
@@ -39,14 +40,21 @@ log = log_utils.log
 
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
 # telemetry 是横切关注点,用模块级 recorder + current_run_id,避免给 BuyShopCards / loop
-# 线程传参。CwLoop 在 __init__ 调 start_run(生成 run_id),BuyShopCards 用
-# current_run_id() 取,loop 在战斗后 record_outcome、局终 record_run_summary。
+# 线程传参。run_id 铸造单点 = ensure_run_started(入口链在写任何开局遥测行前铸造,
+# loop 侧认领,ADR-0588);BuyShopCards 用 current_run_id() 取,loop 在战斗后
+# record_outcome、局终 record_run_summary。
 # 默认 enabled=True(用户 2026-08-03 要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
 _RECORDER: TelemetryRecorder | None = None
 
 _CURRENT_RUN_ID: str = ""
 
 _CURRENT_DIFFICULTY: str = ""
+
+# ADR-0588:铸造时点的 match 容器引用 token。ensure_run_started 用「is 比较」
+# 判当前 open run 是否属于这个物理对局(不用 id()——规避对象复活后 id 复用;
+# 强引用滞留一个死容器,内存代价可忽略)。None = 尚未铸造或铸造时无容器
+# (重启后中途进局,ctx.cw_match=None 直达投资屏的形态)。
+_RUN_MATCH: object | None = None
 
 # r339:ctx.cw_match 弱引用槽(record_outcome 板深快照源;
 # cw_loop 启动 run 时注册,None=离线/测试容错)
@@ -163,18 +171,54 @@ def set_ctx_match(match) -> None:
 
 
 
+# ===== 落盘根装配槽(T-120 批 1,F4)=====
+# 为什么是槽:get_recorder() 单例构造不传 replay_dir(缺省 DEFAULT_REPLAY_DIR,
+# kernel/cw_observe 根常量块),假局档案要改指档案根原本只能私 poke
+# ``_RECORDER``——与 install_obs_ports「模块级槽 + 缺省关 + 装配点显式接通」
+# 同构的正规入口(方案 §4-2 落盘根装配槽申报)。缺省 None = 生产路径逐位
+# 不变;测试 harness 显式接指假局档案根。换根即重建单例:recorder 的内存
+# 累积(gold 轨迹/难度表)按根隔离,半途换根复用旧实例会把上一根的累积
+# 写进新根。
+_REPLAY_DIR_OVERRIDE: Path | None = None
+
+
+def set_recorder_replay_dir(path: Path | None) -> None:
+    """接通/复位 recorder 落盘根装配槽。
+
+    ``path=None`` = 复位生产缺省(DEFAULT_REPLAY_DIR);已构造的 recorder
+    单例随之丢弃,下次 :func:`get_recorder` 按新根惰性重建。测试 teardown
+    必调复位——模块槽是进程全局,残留会把后续测试的遥测写进假局根。
+    """
+    global _REPLAY_DIR_OVERRIDE, _RECORDER
+    _REPLAY_DIR_OVERRIDE = Path(path) if path is not None else None
+    _RECORDER = None
+
+
 def get_recorder() -> TelemetryRecorder:
-    """模块级 recorder 单例(默认 enabled,写 .debug/currency_war/telemetry/live/)。"""
+    """模块级 recorder 单例(默认 enabled,写 .debug/currency_war/telemetry/live/)。
+
+    落盘根 = :func:`set_recorder_replay_dir` 接通的装配槽值;槽缺省 None
+    时走生产缺省根(kernel/cw_observe.DEFAULT_REPLAY_DIR)——两者互斥,
+    槽只改根不改 enabled 等其余构造面。
+    """
     global _RECORDER
     if _RECORDER is None:
         from sr_od.application.currency_war.telemetry import recorder as _rec_mod
-        _RECORDER = _rec_mod.TelemetryRecorder(enabled=True)
+        if _REPLAY_DIR_OVERRIDE is not None:
+            _RECORDER = _rec_mod.TelemetryRecorder(enabled=True,
+                                                   replay_dir=_REPLAY_DIR_OVERRIDE)
+        else:
+            _RECORDER = _rec_mod.TelemetryRecorder(enabled=True)
     return _RECORDER
 
 
 
 def start_run(difficulty: str = "") -> str:
-    """开始一次 run:生成 run_id(时间戳)+ start_run。返回 run_id。loop __init__ 调。
+    """开始一次 run:生成 run_id(时间戳)+ start_run。返回 run_id。
+
+    ADR-0588:生产铸造统一经 :func:`ensure_run_started`(入口链在写开局
+    遥测行前调用;直调本函数仅存在于测试)。函数体零改动保留——w603 简报
+    缓冲补写与测试桩面都锚在这里。
 
     ADR-0273:开局先补上一局(们)缺的 summary 行 —— FAIL/崩溃/重启杀局路径
     不走 3c/stop 收口,此处在下一局起点从 outcomes/decisions 重算兜底(幂等)。
@@ -200,6 +244,37 @@ def start_run(difficulty: str = "") -> str:
                  get_build_fingerprint())
     except Exception as e:   # noqa: BLE001  观测件,失败不阻塞开局
         log.warning('[cw][build] 构建指纹读取失败(不阻塞): %s', e)
+    return _CURRENT_RUN_ID
+
+
+
+def ensure_run_started(match: object, difficulty: str) -> str:
+    """幂等开局:写任何本局遥测行前确保有归属本局的 open run(ADR-0588)。
+
+    门控三分支任一成立 → 经 start_run 铸新 run(本体零改动),并在其返回后
+    自赋 _RUN_MATCH token(token 赋值在 ensure 内不进 start_run——保
+    start_run 签名/函数体原样,w603 直调锁零波及);否则认领现有 open run
+    原样返回(同一物理对局一段一 id)。三分支语义:
+
+    - ``_CURRENT_RUN_ID`` 空:进程首局/重启后首铸造(治冷启动首局零行);
+    - ``_RUN_CLOSED``:上局已收口,正常开新局(跨 loop 执行必然已收口,
+      after_operation_done 全路径必达写 summary);
+    - ``_RUN_MATCH is not match``:悬空 open run 防护——入口铸造后入口链
+      FAIL 的 run 不收口;新局确凿信号处容器被弃置重建(cw_entry_start
+      ``_discard_stale_once`` + establish),新容器 ≠ 铸造时容器 → 强制
+      重铸,防新局开局行盖进上次失败会话的悬空 run。
+
+    「继续进度」恢复路径:入口不走铸造分支 → loop 侧 ensure 见 _RUN_CLOSED
+    铸新段 = 续段语义,与 ADR-0460 时代的担忧由本门控显式覆盖。
+
+    生产铸造唯一调用点 = 本函数(cw_entry_start 简报/投资环境/投资策略三分
+    支 + cw_loop __init__ 认领)。返回 open run_id。
+    """
+    global _RUN_MATCH
+    if (not _CURRENT_RUN_ID) or _RUN_CLOSED or (_RUN_MATCH is not match):
+        run_id = start_run(difficulty)
+        _RUN_MATCH = match
+        return run_id
     return _CURRENT_RUN_ID
 
 
