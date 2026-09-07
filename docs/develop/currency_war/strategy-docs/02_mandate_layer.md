@@ -84,7 +84,7 @@
 | 机器 | 处置 |
 |---|---|
 | buy | 升格骨架（EV 剥离）：序 1/序 2 走 M2 义务通道；序 3-5 留 EV；息律域只对 EV 买生效 |
-| sell | 升格骨架（单向）：M4 腾席方向义务化；线内件禁卖护栏保留（只保留「卖杂件」一个义务出口 + 其余 fail-closed） |
+| sell | 升格骨架（单向）：M4 腾席方向义务化；线内件禁卖护栏保留（只保留「卖杂件」一个义务出口 + 其余 fail-closed）。**姊妹出口（[14_p1_consume_arms.md](14_p1_consume_arms.md) §9.3 三-3 ⑧(c) 登记的入册批补句，T-127 R2 执行）**：部署面换血（M1″ 锁线段，ADR-0530/0534/0590）借用卖出作为实现手段，构成 M4 之外的第二卖出义务出口 = **「M4 姊妹出口·部署腾席卖出」**——victim 资格单一判定 = `kernel/cw_deploy_logic.swap_sell_exclusion_reason`（义务集∪新鲜度排除∪资格族，发射⇔执行同函数；非 M4 燃料判据本体），触发面 = T-127 装配级键集收窄 + 执行条件发射门（ADR-0590）；出口自 ADR-0530 起先于本补句在产，为登记滞后如实申报 |
 | levelup | 升格骨架：M3 arm1 去 board_vacancy 依赖；cap 感知；arm2 降为调度门 |
 | opening / deploy | 升格骨架：M5 / M1（deploy 为核心修复位） |
 | refresh / streak_money | 保持 EV |

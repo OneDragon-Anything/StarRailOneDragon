@@ -91,6 +91,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest 
 )
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        SwapPlanContext,
+    )
     from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
@@ -103,6 +106,17 @@ if TYPE_CHECKING:
 # = 本常量写回 False——门关回即恢复现役 fail-closed(m1p_input_seam_
 # pending 重新显影),fresh 载体 phase 键式跨轮自动失效,无持久状态。
 M1P_SEAM_VERIFIED: bool = True
+
+# 部署让渡总开关(T-127 方案 v3.1 §2.3/§7 #5;ADR-0590)。False = 保守
+# 档件形态(现役缺省):锁线转型域的 M1″ 发射仅当压席锁线成员中存在
+# 「档关键件」(部署其使 form_progress 上升,面板口径读法 b,编排者
+# 裁决钉源)时让位——非档成员按 [21] 上场窗口语义合法等待。True = 全量
+# 形态(候裁通过后翻):任何压席成员即可承载让位。开关生命周期合法
+# 形态申报:部署面让渡正当性是用户裁定输入非数学输出(P79-5),裁决
+# 挂账 = 进度账本 T-127 候裁行;候裁落地只翻本常量(成员类轴放开),
+# 守恒门保护对象切换(过渡档→终局线档,方案 §3.3)随候裁批另行走
+# ADR-0433 修订申报,不在本常量辖域。翻 False 即回滚,无悬置态。
+REDEPLOY_TRANSITION_ENABLED: bool = False
 
 # ===== M2 停摆续段缓存:非变异动作白名单·备战域(T-82 必花臂重试风暴;
 # 商店域对应集 = shop.M2_STALL_NONVARIANT_SHOP_ACTIONS,两域 φ 输入同构
@@ -362,6 +376,80 @@ def core_single_card_buy_eligible(locked_buy: bool, bench_free: int) -> bool:
     决策访问位下游,无闩读/写。
     """
     return locked_buy and bench_free > 0
+
+
+# ===== M1″ 锁线转型域执行条件发射门(T-127 方案 §2.3;P79-3 落码)=====
+
+def _deploy_advances_form(comp: object | None,
+                          state: GameState | None, name: str) -> bool:
+    """「档关键件」判定(读法 b 面板口径;编排者裁决钉源 = T-127 方案
+    §2.3/§7 #5 与 math_proofs P79 消费限制行)。
+
+    = 部署该成员使 ``cw_comps.form_progress`` 严格上升——form 机制单一
+    源即 form_progress,其读数 = state.board 面板口径(档案
+    g_20260907_214130 fp=0.5 与面板口径精确互证),本判定不另建第二套
+    缺口机制。⚠️ 面板欠计传导(方案 §7 #12 观测项):星间旅人面板 1 vs
+    注册表真值 2 的欠计已实证——数据源修复会使罗刹型判定静默翻转为
+    不发射,挂观测项随数据源批对账,届时显式接受翻转或回炉(读法 c)。
+    comp/form_tiers/成员注册表缺读 = 判定不可得 → False(保守等待)。
+    """
+    if comp is None or state is None \
+            or not getattr(comp, 'form_tiers', None):
+        return False
+    ch = CHARACTERS.get(name) if name else None
+    if ch is None:
+        return False
+    from types import SimpleNamespace
+
+    from sr_od.application.currency_war.kernel.cw_comps import form_progress
+    _before = form_progress(comp, state)
+    _board2 = dict(getattr(state, 'board', None) or {})
+    for _f in tuple(ch.factions or ()) + tuple(ch.flows or ()):
+        _board2[_f] = _board2.get(_f, 0) + 1
+    # form_progress 只读 state.board(单一源直读);假想面板用轻量视图
+    # 复用同一实现,禁第二套进度算式。
+    _after = form_progress(comp, SimpleNamespace(board=_board2))
+    return _after > _before
+
+
+def _redeploy_emission_allowed(session: StrategySession,
+                               state: GameState | None,
+                               ctx: SwapPlanContext | None) -> bool:
+    """锁线转型域执行条件发射门(P79-3;T-127 方案 §2.3「发射门」)。
+
+    三轴(缺一即 defer,分键 redeploy_cost_gate_defer;与逐件资格拒因
+    分列禁混桶):
+    ① 压席锁线成员存在 = bench ∩ membership 非空——A1 主体(换上的
+       是谁)缺位即无让位可言;
+    ② 成员类轴:保守形态(REDEPLOY_TRANSITION_ENABLED=False)要求压席
+       成员中存在档关键件(``_deploy_advances_form``);全量形态本轴
+       放开(候裁挂账 = 进度账本 T-127 候裁行);
+    ③ 换下代价轴:卖出态由资格面 fail-closed 承载 P41 ②——2★+ 卖出
+       已被 star_guard 资格门持有(P79-3 辖域限定「资格门不被收益侧
+       豁免」),存活 victim 恒 1★ = P41 甲.2 全档往返净 0 ⇒ 代价 0 ≤
+       压席成本(C_sat ≥ 0 恒成立,f≤1/f≥2 带同)——本轴在卖出态解析
+       闭合、零自由参数,不另设数值门;下场态(方向甲,R3)落码时
+       在此轴展开。
+    """
+    if ctx is None:
+        return False
+    _membership = getattr(ctx, 'membership', None)
+    if not _membership:
+        return False
+    _waiting = [b for b in (getattr(ctx, 'bench', None) or [])
+                if (getattr(b, 'char_id', '') or '') in _membership]
+    if not _waiting:
+        return False   # ①无压席成员
+    if REDEPLOY_TRANSITION_ENABLED:
+        return True    # ②全量形态(③卖出态解析闭合恒过)
+    # 判读源与计划同源(落地审 F2):装配 ctx 携带本计划实际消费的
+    # target comp(双轨口径随装配);手装 ctx/缺读退 state_of 二份
+    # (缺读帧档关键件轴保守 defer,方向不变)。
+    _comp = (getattr(ctx, 'target_comp', None)
+             or getattr(state_of(session), 'target_comp', None))
+    return any(_deploy_advances_form(_comp, state,
+                                     getattr(b, 'char_id', '') or '')
+               for b in _waiting)
 
 
 # ===== executor 本体 =====
@@ -840,6 +928,9 @@ def run_mandate(frame: MandateFrame,
     # (ADR-0530:接线核对通过前不许发射,对齐证据 = 开闸前置义务;
     # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与 dd-037
     # 留 bench 合法稳态同向)。
+    # 执行条件发射门(T-127 方案 §2.3,P79-3 落码):锁线转型域
+    # (arm='transition')发射前过「压席成员存在 ∧ 保守形态档关键件」
+    # 门,redeploy_cost_gate_defer 显影;成型/基座臂不辖(§2.3 不动)。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
     # 本帧发射位有 m1p 换血时在发射处置为 plan.arm,消费点 =
     # CwOpDeploy.deploy 卖出臂(读后即清)。非 m1p 帧恒 None ⇒ 执行侧
@@ -852,14 +943,20 @@ def run_mandate(frame: MandateFrame,
             select_swap_plan,
         )
         _m1p_reasons: dict[str, str] = {}
-        _m1p = select_swap_plan(assemble_swap_plan_inputs(
+        # 装配产物持引用(发射门消费 membership/bench 压席成员面,同一
+        # 快照,禁发射门二次装配出第二份输入)。
+        _m1p_ctx = assemble_swap_plan_inputs(
             session, state=state, deployed=list(frame.deployed),
-            bench=list(frame.bench), cap=frame.deploy_cap),
-            reasons_out=_m1p_reasons)
-        # 逐件拒因分键(ADR-0534 §7 键集;帧级显影,判读可归因)
+            bench=list(frame.bench), cap=frame.deploy_cap)
+        _m1p = select_swap_plan(_m1p_ctx, reasons_out=_m1p_reasons)
+        # 逐件拒因分键(ADR-0534 §7 键集;T-127 §2.3 分键闭集扩:收窄后
+        # 仍被保的弹性件拒因 target_keep 与义务集拒因 buy_membership
+        # 纳入闭集——病灶局八件拒因 4×target_keep+2×buy_membership 在
+        # 旧闭集零显影,「臂武装而计划空」无法遥测归因;帧级显影)。
         for _r in (set(_m1p_reasons.values())
                    & {'engines_guard', 'star_guard', 'merge_material_guard',
-                      'post_sell_offline', 'fp_unreadable'}):
+                      'post_sell_offline', 'fp_unreadable',
+                      'target_keep', 'buy_membership'}):
             _count(_r)
         if _m1p.abstain == 'cap_unreadable':
             _count('m1p_cap_unreadable')
@@ -872,6 +969,12 @@ def run_mandate(frame: MandateFrame,
                 _count('m1p_defer_levelup')
             elif not getattr(state_of(session), 'cw4_m1p_seam_verified', False):
                 _count('m1p_input_seam_pending')
+            elif _m1p.arm == 'transition' and not _redeploy_emission_allowed(
+                    session, state, _m1p_ctx):
+                # 执行条件发射门未过(P79-3;T-127 §2.3):与逐件资格拒因
+                # 分列禁混桶——资格拒 = 「能不能换」(victim 级),本键 =
+                # 「该不该这帧换」(帧级 defer,压席成员轴/代价轴)。
+                _count('redeploy_cost_gate_defer')
             else:
                 out.append(Emitted(RunDeploy(), True, 'm1_swap_redeploy'))
                 _count('m1p_fired')
@@ -880,6 +983,11 @@ def run_mandate(frame: MandateFrame,
                     _count('swap_arm_transition_trigger')
                 elif _m1p.arm == 'formed':
                     _count('swap_arm_formed_trigger')
+                # 让渡 victim 逐件归因分键(T-127 §2.3/§6.3:压席轮数
+                # 判读可归因;只随发射显影,defer 帧由 defer 键单义承载)
+                if _m1p.arm == 'transition' and _m1p.sell_names:
+                    _count(f"redeploy_transition_victim_"
+                           f"{_m1p.sell_names[0]}")
                 # 执行侧透传:本帧发射位 m1p 换血及其臂,供 CwOpDeploy
                 # 卖出臂归因分键(键族 sell_offtarget_arm_*,缺省 None)
                 state_of(session).cw4_m1p_arm_pending = _m1p.arm

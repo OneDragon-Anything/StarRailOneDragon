@@ -267,9 +267,11 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
 def launch_admission_report(state, comp, *, line_members) -> dict:
     """达标臂 G1 准入预估(§9.2 准入三元 + victim 收口,发射面显影用)。
 
-    返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 物理
-    槽位总数 DEPLOYED_CAPACITY(前后排定长槽表),feed 单一源 =
-    deployed_occupied)、``bench_core_waiting``(三元②:bench 存在线内
+    返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 可上阵
+    数 ``state.max_units()``——T-127 顺手修(方案 v3.1 §2.2/§7 #11 精度
+    组⑥):旧口径 = 物理槽位总数 DEPLOYED_CAPACITY,level 驱动 cap 全域
+    <10 ⇒ 该分键结构性不显影;换占用数 vs max_units 与 swap 臂同一裁决
+    先例(禁物理门),feed 单一源 = deployed_occupied)、``bench_core_waiting``(三元②:bench 存在线内
     待上场件——口径 = core∪shared(line_members)∨ 阵营交集,
     与买入/部署义务面对齐)、``victim_missing``(三元③:板上无合格
     victim)。
@@ -289,7 +291,6 @@ def launch_admission_report(state, comp, *, line_members) -> dict:
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
     from sr_od.application.currency_war.kernel.cw_state import (
-        DEPLOYED_CAPACITY,
         deployed_occupied,
     )
     deployed = [d for d in (state.deployed or []) if d is not None]
@@ -298,7 +299,13 @@ def launch_admission_report(state, comp, *, line_members) -> dict:
     line = set(line_members(comp))
     protect = protect_names_of(comp)
     t_factions = set(getattr(comp, 'all_factions', []) or [])
-    board_full = deployed_occupied(state.deployed or []) >= DEPLOYED_CAPACITY
+    # 板满口径 = 占用数 vs max_units(与 swap 臂同裁决:禁物理槽位门,
+    # T-127 §2.2 顺手修);cap 缺读 = 质量闸兜底同口径(不显影板满)。
+    try:
+        _cap = int(state.max_units())
+    except Exception:   # noqa: BLE001  cap 缺读 = 发射门 None 兜底同口径
+        _cap = 10 ** 6
+    board_full = deployed_occupied(state.deployed or []) >= _cap
     bench_core_waiting = False
     for b in bench:
         name = b.char_id or ''
