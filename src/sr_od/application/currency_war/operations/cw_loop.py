@@ -465,6 +465,18 @@ def _launch_arb_counter(op, key: str) -> None:
         pass
 
 
+def _op_journal_pos_of(ctx: Any) -> tuple[int, int]:
+    """op 行位置键(ADR-0579):最后已知 (plane, round),缺省 (0, 0)。
+
+    模块级形态供仲裁段第三载体行复用——仲裁宿主在测试缝里可为非 CwLoop
+    桩,位置键只依赖 ctx 的 getattr 链,不依赖宿主方法。
+    """
+    _st = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    _st = getattr(_st, 'last_state', None) if _st is not None else None
+    return (int(getattr(_st, 'plane', 0) or 0),
+            int(getattr(_st, 'round_num', 0) or 0))
+
+
 def _launch_frame_arbitration(op) -> dict:
     """发射帧受限消费仲裁(出口 B 溢出段;金出口族 DESIGN v1.1 §3.2,
     落码裁决 = ADR-0566)。
@@ -495,9 +507,16 @@ def _launch_frame_arbitration(op) -> dict:
     返回报告 dict:``entered``(是否进入过商店访问——弃射豁免判定位)、
     ``zone``('overflow'/'inband')、``executed``(本帧消费动作数)、
     ``gate_blocks``(闸拦截数)。
+
+    遥测载体:溢出段访问落 op='发射帧仲裁商店访问' enter/exit 行(第三
+    载体,ADR-0584 §5.1;预检/带内路径零行)。
     """
     report: dict = {'entered': False, 'zone': 'inband', 'executed': 0,
                     'gate_blocks': 0, 'abort': False}
+    # 第三载体 op 行 token(ADR-0584 §5.1):None = 访问窗口未开(预检/带
+    # 内路径零行);非 None 期间任何出口(含异常)必须配对 exit,孤儿 enter
+    # 语义回归「进程中断专属」。
+    _arb_token: dict | None = None
     from sr_od.application.currency_war.kernel import cw_launch_arbitrage
     try:
         _fresh = op.screenshot()
@@ -536,9 +555,17 @@ def _launch_frame_arbitration(op) -> dict:
             _launch_arb_counter(op, cw_launch_arbitrage.KEY_INBAND_CLOSED)
             return report
         _launch_arb_counter(op, cw_launch_arbitrage.KEY_ZONE_FRAMES)
+        # 第三载体 op 行(ADR-0584 §5.1):仲裁触发的商店访问此前零边界
+        # 载体——不经 dispatch 包装、无 OpenShop 决策行,档案只剩无头商店
+        # 段决策行,复盘按行重建会误归 0n。enter 挂 open_shop 前(行窗口 =
+        # 访问尝试边界),exit 覆盖全部出口(open 失败/abort/正常/异常)。
+        _arb_token = record_op_enter('发射帧仲裁商店访问',
+                                     *_op_journal_pos_of(op.ctx))
         _r_open = open_shop(op)
         if not _r_open.is_success:
             _launch_arb_counter(op, cw_launch_arbitrage.KEY_OPEN_FAILED)
+            record_op_exit(_arb_token, outcome='fail', detail='open_failed')
+            _arb_token = None
             return report
         report['entered'] = True
 
@@ -561,6 +588,8 @@ def _launch_frame_arbitration(op) -> dict:
             # 停机钩子已置 stop_running——保画面待建档,禁关店/禁发射摧毁
             # 现场):abort 旗交调用点跳过本轮发射,交回外环由停机接管。
             report['abort'] = True
+            record_op_exit(_arb_token, outcome='fail', detail='abort')
+            _arb_token = None
             return report
         _r_close = close_shop(op)
         if outcome is not None:
@@ -577,9 +606,20 @@ def _launch_frame_arbitration(op) -> dict:
                 _launch_arb_counter(op, cw_launch_arbitrage.KEY_CROSS_LINE)
         if not _r_close.is_success:
             log.warning('[cw-loop] 发射帧仲裁关店未生效(交发射核屏态复验裁定)')
+        # 正常出口行:关店未生效 = 访问非正常出口(与 0n 载体口径一致,
+        # visit_open_shop 关店失败同样返 False)。
+        record_op_exit(_arb_token,
+                       outcome='ok' if _r_close.is_success else 'fail',
+                       detail='' if _r_close.is_success else 'close_failed')
+        _arb_token = None
         return report
     except Exception as e:   # noqa: BLE001  仲裁异常不阻塞发射(出战优先,
         # 14号稿 §9.6 出战优先语义;异常帧=零消费帧,digest 锚辖域内)
+        if _arb_token is not None:
+            # 异常路径也必须闭合 op 行(ADR-0584 §5.2 同一口径):补行后
+            # 仲裁段自身不得新增孤儿 enter。
+            record_op_exit(_arb_token, outcome='error', detail=str(e)[:120])
+            _arb_token = None
         log.warning('[cw-loop] 发射帧仲裁异常(不阻塞发射,零消费): %s', e)
         return report
 
@@ -1082,10 +1122,7 @@ class CwLoop(SrOperation):
 
     def _op_journal_pos(self) -> tuple[int, int]:
         """op 行位置键(ADR-0579):最后已知 (plane, round),缺省 (0, 0)。"""
-        _st = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
-        _st = getattr(_st, 'last_state', None) if _st is not None else None
-        return (int(getattr(_st, 'plane', 0) or 0),
-                int(getattr(_st, 'round_num', 0) or 0))
+        return _op_journal_pos_of(self.ctx)
 
     def _dispatch_screen_op(
         self,
@@ -1116,26 +1153,36 @@ class CwLoop(SrOperation):
             None = 走默认映射,返回 round 对象 = 覆盖默认返回(如 0q 超限
             round_fail)。调用点 = execute 之后、record_op_exit 之前。
         :return: 分支的轮次结果
+
+        异常安全(ADR-0584 §5.2):``op`` 体或 ``on_result`` 抛异常时,补发
+        outcome='error' 的 exit 行后原样上抛——异常语义归节点级重试链不变,
+        孤儿 enter 语义回归「进程中断专属」;结果映射(round_wait/retry)
+        在 exit 之后,映射段异常不产生双 exit。
         """
         if frame_tag is not None:
             save_decision_frame(self, frame_tag, self.last_screenshot)
         token = record_op_enter(journal_name, *self._op_journal_pos())
-        if hasattr(op, 'execute'):
-            res = op.execute()
-        else:
-            raw = op()
-            res = (_FnResult(bool(raw[0]), str(raw[1] if len(raw) > 1 else ''))
-                   if isinstance(raw, tuple) else raw)
-        if isinstance(res, OperationRoundResult):
-            # 链形(0j/3c):轮次结果即分支出口,包装只补 journal/帧,不改分流。
-            ok = res.result not in (OperationRoundResultEnum.FAIL,
-                                    OperationRoundResultEnum.RETRY)
+        try:
+            if hasattr(op, 'execute'):
+                res = op.execute()
+            else:
+                raw = op()
+                res = (_FnResult(bool(raw[0]), str(raw[1] if len(raw) > 1 else ''))
+                       if isinstance(raw, tuple) else raw)
+            if isinstance(res, OperationRoundResult):
+                # 链形(0j/3c):轮次结果即分支出口,包装只补 journal/帧,不改分流。
+                ok = res.result not in (OperationRoundResultEnum.FAIL,
+                                        OperationRoundResultEnum.RETRY)
+            else:
+                ok = res is not None and getattr(res, 'success', False)
             hook_ret = on_result(ok, res) if on_result is not None else None
             record_op_exit(token, outcome='ok' if ok else 'fail')
+        except Exception as e:   # noqa: BLE001  出口行补发后原样上抛(异常
+        # 处理归节点级重试链,包装只保 journal 配对;ADR-0584 §5.2)。
+            record_op_exit(token, outcome='error', detail=str(e)[:120])
+            raise
+        if isinstance(res, OperationRoundResult):
             return res if hook_ret is None else hook_ret
-        ok = res is not None and getattr(res, 'success', False)
-        hook_ret = on_result(ok, res) if on_result is not None else None
-        record_op_exit(token, outcome='ok' if ok else 'fail')
         if hook_ret is not None:
             return hook_ret
         if on_fail_retry and not ok:
@@ -2400,9 +2447,16 @@ class CwLoop(SrOperation):
                 _bc_cards = find_bookcards(screen, _ctx_slots(self.ctx, '备战栏', 9))
                 if not _bc_cards or not is_prep_like_frame(self.ctx, screen):
                     break
-                _bc_result = CwScreenExpertInvite(self.ctx).execute()
-                log.info('[cw-loop] 书册卡 slot%s → 处理链执行 success=%s',
-                         _bc_cards[0][0], getattr(_bc_result, 'success', None))
+                # 经包装分发(ADR-0584 §5.3 收编件):预清场与 0k 分支是同一
+                # op,直调 .execute() 曾造成「0k 有 op 行、预清场无行」的双通
+                # 道行缺口(复盘同 op 归属不一致,S11 族近亲)。返回轮次对象
+                # 在清场语境无消费方(分支出口由备战环 dispatch 承担)→ 丢弃;
+                # wait=0 不注入等待(原直调零等待);frame_tag=None 留证面零扩。
+                self._dispatch_screen_op(
+                    CwScreenExpertInvite(self.ctx), journal_name='专家邀请函',
+                    frame_tag=None, wait=0)
+                log.info('[cw-loop] 书册卡 slot%s → 处理链经包装执行(op 行=专家邀请函)',
+                         _bc_cards[0][0])
                 screen = self.screenshot()
             def _on_prep_round(ok: bool, res: Any) -> OperationRoundResult | None:
                 # 备战环出口 success 记录(收益耗尽判据输入,ADR-0554):RunDeploy

@@ -80,7 +80,7 @@ overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"�
 6. 可控轮数：`max_rounds` 已跑满 → round_success 停备战屏（单/多轮验证）；
 7. 补给节点分流：nodeseq current=supply → 点"返回补给阶段"进补给屏（用节点类型判，非按钮——battle 节点也有该按钮）；
 8. 预清场：试用角色揭示卡（≤3 轮，免费 2★，非策略决策不进 director）+ 书册卡（≤2 轮，CwScreenExpertInvite 全链）；
-9. **达标即出战臂**（ADR-0557 判据核 + ADR-0570 armed 质量合取 + ADR-0566 发射帧仲裁）：armed 判定通过（kernel `readiness_launch_decision` 单一源；判据 = 配方完备 fp≥1.0 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕——质量维 = B_t 通道承重结构零自由参数式，ADR-0570；推迟帧 `quality.defer_by_quality` 观测位显影，推迟上界 = 换血翻真 ∨ 计划耗尽 ∨ 金尽收益耗尽臂）→ 浮层在场闸（锚表扫描 + 遭遇 OCR 兜底；命中 ⇒ 本轮交浮层接管面）→ **发射帧受限消费仲裁**（ADR-0566：`_prep_anchors_hit` 预检通过才执行；溢出段 g>g* 开一次受限商店访问——open_shop → `run_buy_waves(spend_gate=预算闸)` → close_shop，闸拒因 = 花后金位跌破息线 g*；带内段 fail-closed 不开店；访问失败路径 abort 保画面交停机接管）→ 发射核 `readiness_battle_launch`（内部屏态复验 = 纵深防线；仲裁切屏后复验未过 ⇒ stale 弃射落守卫链，弃射帧带 `launch_arbitrage_abandoned_launch` defect 分键）。发射成功复位失败计数并 round_wait；
+9. **达标即出战臂**（ADR-0557 判据核 + ADR-0570 armed 质量合取 + ADR-0566 发射帧仲裁）：armed 判定通过（kernel `readiness_launch_decision` 单一源；判据 = 配方完备 fp≥1.0 ∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕——质量维 = B_t 通道承重结构零自由参数式，ADR-0570；推迟帧 `quality.defer_by_quality` 观测位显影，推迟上界 = 换血翻真 ∨ 计划耗尽 ∨ 金尽收益耗尽臂）→ 浮层在场闸（锚表扫描 + 遭遇 OCR 兜底；命中 ⇒ 本轮交浮层接管面）→ **发射帧受限消费仲裁**（ADR-0566：`_prep_anchors_hit` 预检通过才执行；溢出段 g>g* 开一次受限商店访问——open_shop → `run_buy_waves(spend_gate=预算闸)` → close_shop，闸拒因 = 花后金位跌破息线 g*；带内段 fail-closed 不开店；访问失败路径 abort 保画面交停机接管；该访问落第三载体 op 行 op='发射帧仲裁商店访问',ADR-0584 §5.1）→ 发射核 `readiness_battle_launch`（内部屏态复验 = 纵深防线；仲裁切屏后复验未过 ⇒ stale 弃射落守卫链，弃射帧带 `launch_arbitrage_abandoned_launch` defect 分键）。发射成功复位失败计数并 round_wait；
 10. `CwScreenPrep(self.ctx).execute()`——**备战单轮**（prep_visit.md；达标臂发射失败连续 3 次放弃短路回落本链，防线 C1）；
 11. 失败 streak ≥5 → round_fail 交兜底链；成功 → `_battle_ts` 置位 + `_battle_wait_active=True`；
 12. **环让位重入契约**：director 返回（含 overlay bail）后必经 return → 下轮 loop 顶全分支重判，不在同一迭代内直接回备战分支（`cw_loop.py:1329-1337`）。
@@ -98,7 +98,7 @@ overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"�
 | 钩子 | 内容 | 载体 |
 |---|---|---|
 | runs summary 收口 | `after_operation_done` 全路径必达；未写 summary 的对局补写 stopped/abandoned（真假局判定 = "从未观察到对局态"才算假局；`cw_loop.py:517-578`） | `cw_loop.py:517-578` |
-| op 调用流 | **全分支 dispatch 包装统一落**（T-121/ADR-0584）：`_dispatch_screen_op` 每次分发写 op_journal enter/exit 成对行（0n='商店访问'/1='备战'/3c='回大厅收口'…）+ 决策帧留证（frame_tag） | `telemetry/op_journal.jsonl` + `decision_frames/` |
+| op 调用流 | **全分支 dispatch 包装统一落**（T-121/ADR-0584）：`_dispatch_screen_op` 每次分发写 op_journal enter/exit 成对行（0n='商店访问'/1='备战'/3c='回大厅收口'…）+ 决策帧留证（frame_tag）；异常路径补发 outcome='error' 的 exit 行后上抛（孤儿 enter 回归进程中断专属，ADR-0584 §5.2）；仲裁触发商店访问为包装外唯一补行点（op='发射帧仲裁商店访问'，三载体口径 = ADR-0584 §5.1） | `telemetry/op_journal.jsonl` + `decision_frames/` |
 | 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空（生命周期钩子 on_match_end 已随 ADR-0583 删除,原实现 no-op 零行为） | `cw_loop.py:1404-1459` |
 | 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py:1469-1494,1572-1594` |
 | 补给合成 outcome | 见 §2.2 分支 0e1 | `cw_loop.py:581-618` |

@@ -127,7 +127,7 @@
 
 | 画面(op) | 动作（单动作粒度） | 终结动作 | 适配判注 |
 |---|---|---|---|
-| 商店（`operations/cw_op/cw_op_buy_cards.py` 波循环） | 买一张/卖一张/升一级（clicks 拆逐 op）/刷新 | 刷新、关店 | **规范原生画面**，迁移首选 |
+| 商店（`operations/cw_op/cw_op_buy_cards.py` 波循环） | 买一张/卖一张/升一级（clicks 拆逐 op）/刷新 | 刷新、关店 | **规范原生画面**，迁移首选；商店访问入口遥测分三载体（显式开店/0n 直入/仲裁触发；op 行与决策行归属 = ADR-0584 §5.1） |
 | 备战（`cw_screen_prep`，决策 = live 链 `cw_screen_prep.py:1278/1477` → `mandate_v1/bridge.py:80 decide_prep_screen` → `bridge.py:146 decide_from_turn` → `entry.py:325 emit`（三遍编排，自有动作词表 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle）；`flow.py` 旧备战骨架死码簇已物理删除（`prep_visit.md` §2.1）;方向重估由 decide_prep_screen 入口经黑板帧代次标注内化触发（ADR-0583）） | 开典籍/开箱/收球/部署拖拽/升级/卖件/开店/装备 | 开店、开战 | 适配；prep_phase 相位机已随 mandate_v1 接线退出 live（见 §8.2），不再是迁移阻碍 |
 | 备战·整档替换（CompTransaction，`kernel/cw_state.py:696-714`） | 整档替换事务 = 一个宏动作 op（§5） | 无固有终结（归属备战终结集） | 复合动作类 |
 | 事件单选族（invest_strategy/invest_env/planner/megastar/partner/wish_trial/bookcard/expert_invite/boss_briefing/**fortune**） | 选卡（每候选一个动作） | 确认离开 | 形式兼容（循环退化为一步：选即终结，零投影账→§8.3 单选族例外不入规范）；fortune=`cw_screen_fortune.py` live-verified(r115),点卡+确认同族 |
