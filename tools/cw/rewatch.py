@@ -48,8 +48,10 @@ SENTINEL_POS = WATCH_DIR / 'cw_sentinel.pos'
 # 让任何人不扫进程表也能看什么在岗
 STATUS_FILE = WATCH_DIR / 'rewatch.status'
 
-# 哨兵脚本名 → 武装说明
-WATCHERS: dict[str, str] = {
+# 哨兵脚本名 → (脚本文件名, 武装说明)二元组;消费方按元组解包/取下标
+# (rewatch.print_commands 与 cycle_restart 的 arm/supervise 路径),
+# 注解须与实值同形——错标单值会让类型检查起诉合法解包
+WATCHERS: dict[str, tuple[str, str]] = {
     'sentinel': ('cw_sentinel.py', '事件哨兵(高信号 pattern+卡死+静默双窗)'),
     'gap': ('cw_runs_gap.py', 'runs 断流哨兵'),
     'early': ('cw_early_stop.py', '早停哨兵(纪律:首条遥测落后再武装,须显式 --early)'),
