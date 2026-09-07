@@ -475,8 +475,9 @@ def run_mandate(frame: MandateFrame,
     # 契约截断点(M7 回排申报在案,truncate_frame_stable 其后必截),
     # 卖出须先于本轮开店到账,与 M4「prep 卖出恒先于本轮买入」域序
     # 一致;(a) 先于全部买面动作求值(Z1 臂序:义务臂之外的先手)。
-    # 载体 = Emitted(SellBench, True, 分键)——prep 域 SellBench 无
-    # reason 字段,归因走发射标记(与 M4 同口径声明)。
+    # 载体 = Emitted(SellBench, True, reason):批 4 起载体带归因枚举,
+    # tag==reason 双写对齐(方案 v3 §3.4/ADR-0585 §3,契约条目 =
+    # flow/action_exec.md §1);计数键名零断链。
     # exclude = sell_exclusions(session, k, channel='interest',
     # current_round=frame.round_num):装配 A 全量形态(批 3 落地,单一
     # 入口 sell_gate;ADR-0585)——义务基座(锁线宽窄解析单点,与 shop
@@ -510,8 +511,11 @@ def run_mandate(frame: MandateFrame,
             _count('t1_interest_prep_contract_abstain')
         if not _t1_key and _t1_slots:
             for _s in _t1_slots:
-                out.append(Emitted(SellBench(slot=_s), True,
-                                   't1_interest_prep_emit'))
+                # tag==reason 双写对齐(方案 v3 §3.4/ADR-0585 §3):载体补
+                # reason 后发射标记与归因枚举同值;计数键名零断链。
+                out.append(Emitted(
+                    SellBench(slot=_s, reason='interest_pullback_prep'),
+                    True, 'interest_pullback_prep'))
             _count('t1_interest_prep_emit')
 
     # dominance_buy(M2 前置,mandate 邻位;席位失败=单帧单评不入 M2 重试环 R12-2)
@@ -592,15 +596,19 @@ def run_mandate(frame: MandateFrame,
                         break
                     # T3 末位牺牲序命中分键 + 卖出销账(唯一燃料帧放行转化)
                     _vname = victim.char_id or ''
+                    # reason = T3 特化值优先于通道名(ADR-0585 §3 规则);
+                    # tag==reason 双写对齐(方案 v3 §3.4)。归因纯遥测面
+                    #(记录非指令):prep 通道卖出恒先于本轮买入,同轮买卖
+                    # 检查的买→卖向不辖,豁免面无需 prep 侧动作标记。
+                    _m4_reason = ('fuel_victim_protect_demoted'
+                                  if _vname in _t3_protect
+                                  else 'm4_fuel_victim')
                     if _vname in _t3_protect:
                         _count('fuel_victim_protect_demoted')
                         stall_buys_consume(session, _vname)
-                    # prep 域 SellBench 载体无 reason 字段,转化类分键只落
-                    # 计数不落动作标记——prep 通道卖出恒先于本轮买入,同轮
-                    # 买卖检查的买→卖向不辖,豁免面无需 prep 侧 reason
-                    #(与 entry.py EV funding 发射位同口径声明)。
-                    out.append(Emitted(SellBench(slot=victim.slot), True,
-                                       'm4_fuel_sell_for_m2'))
+                    out.append(Emitted(
+                        SellBench(slot=victim.slot, reason=_m4_reason),
+                        True, _m4_reason))
                     bench = [b for b in bench if b.slot != victim.slot]
                     freed = True
                     retries += 1
