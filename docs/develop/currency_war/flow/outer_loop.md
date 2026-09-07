@@ -97,12 +97,12 @@ overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"�
 
 | 钩子 | 内容 | 载体 |
 |---|---|---|
-| runs summary 收口 | `after_operation_done` 全路径必达；未写 summary 的对局补写 stopped/abandoned（真假局判定 = "从未观察到对局态"才算假局；`cw_loop.py:517-578`） | `cw_loop.py:517-578` |
+| runs summary 收口 | `after_operation_done` 全路径必达；未写 summary 的对局补写 stopped/abandoned（真假局判定 = "从未观察到对局态"才算假局） | `cw_loop.py::CwLoop.after_operation_done` |
 | op 调用流 | **全分支 dispatch 包装统一落**（T-121/ADR-0584）：`_dispatch_screen_op` 每次分发写 op_journal enter/exit 成对行（0n='商店访问'/1='备战'/3c='回大厅收口'…）+ 决策帧留证（frame_tag）；异常路径补发 outcome='error' 的 exit 行后上抛（孤儿 enter 回归进程中断专属，ADR-0584 §5.2）；仲裁触发商店访问为包装外唯一补行点（op='发射帧仲裁商店访问'，三载体口径 = ADR-0584 §5.1） | `telemetry/op_journal.jsonl` + `decision_frames/` |
-| 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空（生命周期钩子 on_match_end 已随 ADR-0583 删除,原实现 no-op 零行为） | `cw_loop.py:1404-1459` |
-| 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py:1469-1494,1572-1594` |
-| 补给合成 outcome | 见 §2.2 分支 0e1 | `cw_loop.py:581-618` |
-| 关键点快照 `_snap` | 选人/事件屏 debug 截图 + 全量 OCR 日志（验证后去掉；非关键路径 best-effort） | `cw_loop.py:408-425` |
+| 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空（生命周期钩子 on_match_end 已随 ADR-0583 删除,原实现 no-op 零行为） | `cw_loop.py::对局循环分支 3c（局终正常收口）` |
+| 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py::ThompsonAllocator 单例与终局 update` |
+| 补给合成 outcome | 见 §2.2 分支 0e1 | `cw_loop.py::补给节点完成合成 outcome 段（分支 0e1，见 §2.2）` |
+| 关键点快照 `_snap` | 选人/事件屏 debug 截图 + 全量 OCR 日志（验证后去掉；非关键路径 best-effort） | `cw_loop.py::CwLoop._snap` |
 
 ## 6. ⚠️ 现状违宪待改标记（本篇辖内）
 

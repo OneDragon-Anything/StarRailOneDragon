@@ -1,6 +1,6 @@
 # 三位面节点序列实测记录(实机对局)
 
-> 目的:实证记录货币战争三位面(P1/P2/P3)的节点数量与类型序列。数据源 = 实机对局档案(`.debug/temp/currency_war/replay/matches/match_<game_id>.json`,遥测 CLI `--match` 直读同源),node_type 以 `settlement`(结算屏)来源为准。
+> 目的:实证记录货币战争三位面(P1/P2/P3)的节点数量与类型序列。数据源 = 实机对局档案(`.debug/currency_war/telemetry/matches/match_<game_id>.json`,遥测 CLI `--match` 直读同源;2026-09-07 布局裁定前落在 `.debug/temp/currency_war/replay/matches/`,存量已迁),node_type 以 `settlement`(结算屏)来源为准。
 > 记录日期:2026-09-02(同日用户裁定修订:回退先验废弃、默认环境序列升为地面真值,见「裁定记录」节)。档案语料共 80+ 局,进入 P3 的局 7 局全部收录。
 
 ## 裁定记录(用户,2026-09-02)

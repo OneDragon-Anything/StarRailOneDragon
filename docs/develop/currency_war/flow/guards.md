@@ -26,6 +26,8 @@
 | `PLANE_MISDISPATCH_LIMIT=3` | 连续计（接管/过渡成功清零） | 位面过渡误分发型 fail 超限 round_fail（boss 简报帧误分发每 2s 无限循环实证） |
 | director fail streak 5 | 连续计 | CwScreenPrep 连续 5 次失败 → round_fail 交未知画面兜底链（消除静默 ping-pong；round_fail 在 node_max_retry 400 下不停机——刻意：消除"静默"，warning 进日志即哨兵，停机决策留给观察者） |
 
+> 补注（T-121/ADR-0584）:分支守卫钩子（0n visit_ok/_fail 计数、0q streak 复位、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行——限额值与清零/超限语义不变，仅执行落点随包装迁移，钩子明细见 ADR-0584 §2.3-2。
+
 ## 4. 未知画面兜底（常驻安全网；`cw_loop.py:194-200,1518-1569`）
 
 - 触发 = loop 尾所有分支不命中（兜一切未知态，非点名某态的临时捕获；移除条件 = 该类未知态全部建档实际不可达，长期保留）。

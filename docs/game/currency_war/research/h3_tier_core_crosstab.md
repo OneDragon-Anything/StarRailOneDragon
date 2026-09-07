@@ -8,8 +8,11 @@
 
 ## 口径
 
-- 数据:`.debug/temp/currency_war/replay/outcomes.jsonl` 全量 191 行
-  (普通战斗 83 / 奖励 68 / 遭遇 23 / boss 17;弃局 0 行);
+- 数据:实机 outcomes 流全量 191 行——普通战斗 83 / 奖励 68 / 遭遇 23 /
+  boss 17;弃局 0 行(采集时点 = 2026-09-02,时落
+  `.debug/temp/currency_war/replay/outcomes.jsonl`;2026-09-07 布局裁定后
+  该流随历史语料退役,逐局数据在按局档案 `telemetry/matches/` 的
+  slices.outcomes 切片内);
 - 档位 tier = `recipe_tier(board_before)`(`RECIPE_FACTIONS`
   =仙舟/持续伤害/列车同行/护盾 的档位和),分桶 <5 / 5-6 / 7+
   (配方基础线 5、满线 7);
