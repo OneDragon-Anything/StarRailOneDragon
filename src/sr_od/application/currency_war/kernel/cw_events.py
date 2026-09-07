@@ -16,7 +16,9 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
     get_env,
     get_strategy,
+    is_blood_economy,
     pick_value_of,
+    resolve_strategy_canonical,
     strategy_bindings,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
@@ -98,6 +100,14 @@ def decide_event(options: list[str], config, state: GameState,
     用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
     未注册非 env = 0 分。(原 config event_whitelist 已删 ADR-0204;品质难度
     惩罚/低血生存钩子/P2 装备流加分/刷新建议阈值已退役,见模块墓碑注与 ADR-0519。)
+
+    **裁定回避(集合级排除,非分值族;[40]①「主动选择=回避」,ADR-0578)**:
+    血本位候选(判据 = ``cw_investments.is_blood_economy``,注册表派生零名单)
+    不进上述任何分值族的竞争——三态触发序在评分循环之后收口:①可入选非血集
+    非空 → 其 argmax;②仅非禁血卡可选 → 血卡间常规评估序 argmax;③全禁帧
+    → 全体 argmax(现状退化零漂移)。排除是结构规则不是定价:任何罚值都是
+    拍值(ADR-0519),且给血计分触 [40]③ 定价禁域。血卡排位于「可入选非血卡」
+    之后、「被禁非血卡」之前(user-forbid「有替代永不选」的血卡替代在 ② 兑现)。
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
@@ -115,6 +125,12 @@ def decide_event(options: list[str], config, state: GameState,
 
     best_idx, best_score = 0, -1.0
     best_reason = ''
+    # [40]① 血本位分区随算随记(ADR-0578,单次评分循环内,不二次评分):
+    # 每候选记录 (得分, 归因, 是否血本位, 是否被禁)——三态触发序在循环后收口。
+    _cand_scores: list[float] = []
+    _cand_reasons: list[str] = []
+    _cand_blood: list[bool] = []
+    _cand_forbid: list[bool] = []
     for i, opt in enumerate(options):
         score = 0.0
         reason = 'eval'
@@ -127,6 +143,20 @@ def decide_event(options: list[str], config, state: GameState,
         # 入商店/师徒变身)—— 支配性优先序(ADR-0524 定形,16 号稿 §1.4):定义型命中优先于
         # 一切常规评估项(comp-hit 110/升费 100/steering +30 之上),仅低于用户 forbid;120 是
         # 该零参数结构规则的定序实现常数,禁读作基数。(M1 资源入口:拿到 = 换打法)
+        # [40]① 候选级血本位分类(N2 挂点,ADR-0578):精确名 miss(OCR 形变)的
+        # 策略候选在进任何分值支**之前**先解析分类——不依赖后续分值支可达性
+        # (评估表未命中 → eval-lcs 分支不可达,分支内挂点会让未评估血卡漏分
+        # 区)。仅策略轴候选解析;env 名禁进策略解析(上方 ADR-0144b 守卫同款:
+        # 29/83 env 名会 LCS 误中策略名,误分类会错杀 env 选项)。
+        _is_blood = False
+        if _st is not None:
+            _is_blood = is_blood_economy(_st.economy)
+        elif _env is None:
+            _canon = resolve_strategy_canonical(opt)
+            if _canon is not None:
+                _canon_st = get_strategy(_canon)
+                if _canon_st is not None:
+                    _is_blood = is_blood_economy(_canon_st.economy)
         if augment_affinity(opt):
             score = max(score, 120.0)
             reason = 'augment-defining'
@@ -176,13 +206,44 @@ def decide_event(options: list[str], config, state: GameState,
             score += STEERING_PRIORITY_BONUS
             reason = 'user-priority'
         _forbid = env_forbid if _env is not None else strategy_forbid
-        if any(p in opt for p in _forbid):
+        _opt_forbidden = any(p in opt for p in _forbid)
+        if _opt_forbidden:
             score -= STEERING_FORBID_PENALTY
             reason = 'user-forbid'
         if on_dot and _opt_counters_dot(opt):
             score -= penalty
+        _cand_scores.append(score)
+        _cand_reasons.append(reason)
+        _cand_blood.append(_is_blood)
+        _cand_forbid.append(_opt_forbidden)
         if score > best_score:
             best_score, best_idx, best_reason = score, i, reason
+    # [40]① 血本位回避·三态触发序(ADR-0578;裁定「主动选择=不选」):
+    # L1 可入选非血集(非血 ∧ 非 forbid)非空 → 其 argmax(既有管线分值全序,
+    #     内序零漂移;血卡无论被 priority +30 抬多高都进不了本分区——排除是
+    #     集合级结构规则,分值族软加分不可逾越);本帧存在血卡候选时 winner
+    #     reason 附 '+blood-avoided'(观测锚,零新遥测通道)。
+    # L2 可入选非血集空 ∧ 非禁血卡非空 → 血卡间常规评估序 argmax(被禁非血卡
+    #     让位于血卡 = user-forbid「有替代永不选」的替代语义兑现)。
+    # L3 全禁帧(含血与非血混合全禁)→ 全体 argmax 最不负分者,现状退化零
+    #     漂移——全禁帧 forbid 已无「替代」可用,把血卡抬到被禁非血卡之上
+    #     无根据(超防御态,判读面 reason 可辨)。
+    _l1 = [j for j in range(len(options))
+           if not _cand_blood[j] and not _cand_forbid[j]]
+    _l2 = [j for j in range(len(options))
+           if _cand_blood[j] and not _cand_forbid[j]]
+    if _l1:
+        if best_idx not in _l1:
+            # 全体 argmax 落在血卡/被禁卡 → 分区内重选(strict > 取首序与主循环同语义)
+            _j = max(_l1, key=lambda k: _cand_scores[k])
+            best_idx, best_score, best_reason = _j, _cand_scores[_j], _cand_reasons[_j]
+        if any(_cand_blood):
+            best_reason = f'{best_reason}+blood-avoided'
+    elif _l2:
+        if best_idx not in _l2:
+            _j = max(_l2, key=lambda k: _cand_scores[k])
+            best_idx, best_score, best_reason = _j, _cand_scores[_j], _cand_reasons[_j]
+        best_reason = f'blood-forced({best_reason})'
     # (旧 ADR-0146 刷新建议已随 EVENT_REFRESH_SCORE_FLOOR 退役,ADR-0519;
     # refresh 恒 False,handler 不再触发事件面刷新。)
     return PickEvent(option_idx=best_idx, refresh=False,

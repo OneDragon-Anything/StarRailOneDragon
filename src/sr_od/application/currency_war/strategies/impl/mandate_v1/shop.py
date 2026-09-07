@@ -106,6 +106,7 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     record_fresh_buy,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
+    blood_xp_gate_for,
     clicks_to_next_level,
     effective_refresh_prob,
     in_must_spend_zone,
@@ -994,6 +995,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 contracts.ContractCtx(), counters) \
                 and crit_levelup.level_spend_blocked(state, session, _reg):
             _count('crisis_level_spend_defer')
+        elif not blood_xp_gate_for(state, session):
+            # [40]② 血闸(ADR-0578):支付能力检查(买不买得起下一级),与
+            # level_spend_blocked 串联;拒因独立分键。金本位 gate 恒 True 直通。
+            _count('blood_xp_gate_defer')
         elif contracts.ensure_contract(
                 ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \
                 and not crit_levelup.lv9_stop(state.level, _reg.level_max):

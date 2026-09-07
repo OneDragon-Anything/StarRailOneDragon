@@ -159,8 +159,9 @@ def record_hp_pay_event(session, plane: int | None, round_num: int | None,
       prep 通道 ``_level_up``(连点循环内每击一行,验证成功前每击已实际扣血)
       在点击落地后调用。粒度 = 击数,判读口径:hp_pay 行数 = 血购击数,
       血购总量 = Σhp_delta(装配端 hp_events 列消费,同 ADR)。
-    - mode 与判定同源注册表派生:active_strategies 中 ``xp_buy_hp_cost>0``
-      的卡(cw_investments.STRATEGY_ECONOMY,现唯一命中『奋斗协议』=6);
+    - mode 与判定同源注册表派生(单一源 = ``cw_investments.blood_xp_mode``,
+      ADR-0578:[40]② 血闸与遥测写点同源消费;active_strategies 中
+      ``xp_buy_hp_cost>0`` 的卡,现唯一命中『奋斗协议』=6);
       无命中(金本位升级)→ 零行 no-op。多卡命中取 active_strategies 序
       首个(现版本游戏仅单卡在册;新血本位卡落地本写点零改动)。
     - basis='modeled':行是注册表建模期望账,非屏面读数——HP HUD 店开态
@@ -177,18 +178,12 @@ def record_hp_pay_event(session, plane: int | None, round_num: int | None,
     """
     try:
         from sr_od.application.currency_war.kernel.cw_investments import (
-            get_strategy,
+            blood_xp_mode,
         )
-        mode: str | None = None
-        cost = 0
-        for name in getattr(session, 'active_strategies', None) or []:
-            s = get_strategy(name)
-            if (s is not None and s.economy is not None
-                    and s.economy.xp_buy_hp_cost):
-                mode, cost = name, int(s.economy.xp_buy_hp_cost)
-                break
-        if mode is None:
+        _mode = blood_xp_mode(session)
+        if _mode is None:
             return   # 金本位升级(非血本位)→ 零行
+        mode, cost = _mode
         from sr_od.application.currency_war.telemetry import (
             recorder as cw_telemetry,
         )
@@ -728,6 +723,14 @@ class PrepActionExecutor:
 
         MED-8:完成验证用 _read_level_raw(无 _expected_level 兜底)—— read_level 漏读时返
         期望曲线值,落后攒金场景 expected>actual → 首点即假成功 + 污染 session 单调守卫。
+
+        [40]② 血闸(ADR-0578,血本位协议限定;金模式零改动):循环前整级授权检
+        (全量口径 ``⌈need/4⌉×血单价``,hp 不可信 fail-closed)+ 循环内逐击双检——
+        ①支付能力地板 modeled_hp ≥ 单价;②过冲 fail-closed(已击数 ≥ 入口授权
+        击数而级未验证 → 授权级界已买满,级界状态未知帧文义公式对「下一级」无法
+        affirm → 停点,继续点 = 无授权扩仓 + 未知级界盲付;自愈 = 下一动作批入口
+        重授权)。实付上界 = 入口授权击数 × 单价 = 裁定授权血成本(复盘实证的
+        「授权 24 血、验级失败实付至 72 血」过冲结构性消灭)。
         """
         match = self._ctx.cw_match
         session = match.session if match is not None else None
@@ -737,8 +740,45 @@ class PrepActionExecutor:
             before = session.last_level_obs   # OCR 漏读基线退单调守卫值(只作比较基,不写回)
         if before is None:
             return False, 'level 基线读不到(OCR 漏读),拒绝盲点'
+        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+            hp_decision_trusted,
+        )
+        from sr_od.application.currency_war.kernel.cw_economy import (
+            blood_xp_full_clicks,
+            blood_xp_gate,
+        )
+        from sr_od.application.currency_war.kernel.cw_investments import (
+            blood_xp_mode,
+        )
+        _blood = None if session is None else blood_xp_mode(session)
+        _hp: int | None = None
+        _auth_clicks = 0
+        if _blood is not None:
+            _mode_name, _cost = _blood
+            _st = getattr(session, 'last_state', None)
+            _hp = getattr(_st, 'hp', None) if _st is not None else None
+            _trusted = hp_decision_trusted(_st) if _st is not None else False
+            # 批入口整级授权检(全量口径);拒 → 与「level 基线读不到」同返回路径
+            if not blood_xp_gate(_hp, _trusted, before, _cost):
+                return False, (f'血闸拒:hp={_hp} < 下一级血成本 '
+                               f'{blood_xp_full_clicks(before) * _cost}'
+                               f'(mode={_mode_name};[40]② 否则停,升级走买牌自然 XP)')
+            _auth_clicks = blood_xp_full_clicks(before)
         btn = area_center(self._ctx, '备战标识-购买经验') or Point(296, 860)
-        for _ in range(PrepActionExecutor.LEVEL_MAX_CLICKS):
+        _clicked = 0   # 实击数(失败路径回显真实停点;血模式地板/过冲可提前停)
+        for k in range(PrepActionExecutor.LEVEL_MAX_CLICKS):
+            if _blood is not None and _hp is not None:
+                # ①逐击支付能力地板:modeled_hp(= hp_trusted − 已击数×单价)≥ 单价才可点下一击
+                if _hp - k * _cost < _cost:
+                    log.info('[cw][levelup] 血模式 modeled hp %s 第%s击前不足单价 %s → 停点',
+                             _hp - k * _cost, k + 1, _cost)
+                    break
+                # ②过冲 fail-closed:入口授权击数已买满而级未验证成功 → 停点(P21
+                # 「证据缺失时禁令保持」同款;继续点 = 无授权扩仓)
+                if k >= _auth_clicks:
+                    log.info('[cw][levelup] 血模式授权击数 %s 已买满而级未验证 → 停点(过冲 fail-closed)',
+                             _auth_clicks)
+                    break
             # r15 review P1:循环内金检查——旧版 12 连点无金门,策略侧金前置滞后一环时
             # (如 P2 急救态 _saving_for_level 仍攒金但 plan 已发 LevelUp),gold 63→9
             # 一动作排干(M57 P2-1 实证)。每点前读金,gold < 单击价(4)即停(防排干买牌本金)。
@@ -746,6 +786,7 @@ class PrepActionExecutor:
             if gold_now is not None and gold_now < 4:
                 log.info('[cw][levelup] gold %s < 单击价 → 停点(保买牌本金)', gold_now)
                 break
+            _clicked += 1
             self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
             self._ctx.controller.click(btn)
             # 血购回执(ADR-0577,批1 A 采集):每击已实际扣血,验证前逐击
@@ -787,7 +828,7 @@ class PrepActionExecutor:
                         log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
                 log.info(f'[cw][levelup] level {before}→{lv} ✓')
                 return True, f'level {before}→{lv}'
-        return False, f'点{PrepActionExecutor.LEVEL_MAX_CLICKS}次经验 level 未变({before})'
+        return False, f'点{_clicked}次经验 level 未变({before})'
 
     def _ensure_shop(self, want_open: bool) -> tuple[bool, str]:
         """开/关商店 + 锚点验证(按钮-收起 可见 = 开态)。

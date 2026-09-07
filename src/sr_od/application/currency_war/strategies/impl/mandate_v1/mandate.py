@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_economy import (
+    blood_xp_gate_for,
     clicks_to_next_level,
     in_must_spend_zone,
     xp_click_cost,
@@ -659,7 +660,16 @@ def run_mandate(frame: MandateFrame,
                 ('levelup', 'level_spend_blocked'),
                 contracts.ContractCtx(), counters)
             and levelup.level_spend_blocked(state, session))
-        if _level_spend_blocked and not _zone_hit:
+        # [40]② 血闸(ADR-0578):支付能力检查,与停付线**独立串联**——不可被
+        # 必花域/血线地板豁免(裁定字面「否则停」是支付能力非血线判断;血模式
+        # 「破息批」无金可破,解锁包件①的转化语义本就不适用,方案审 N5/R2
+        # 收窄申报)。拒因独立分键;金本位 gate 恒 True 直通。
+        _blood_gate_blocked = (
+            state is not None
+            and not blood_xp_gate_for(state, session))
+        if _blood_gate_blocked:
+            _count('blood_xp_gate_defer')
+        elif _level_spend_blocked and not _zone_hit:
             _count('crisis_level_spend_defer')
         else:
             if _level_spend_blocked:

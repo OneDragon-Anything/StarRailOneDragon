@@ -305,6 +305,85 @@ def clicks_to_next_level(state: GameState) -> int:
     return max(0, -(-(need - cur) // XP_PER_BUY))
 
 
+# ===== [40]② 血本位 XP 购买支付能力闸(ADR-0578;判据与模式解析单一源在
+# ===== kernel,prep 批入口与 cw4 三消费位同源消费)=====
+
+def blood_xp_full_clicks(level: int) -> int:
+    """下一级**全量击数** = ⌈XP_TO_NEXT_LEVEL[level]/XP_PER_BUY⌉([40]② 裁定字面
+    「下一级血成本(⌈need/4⌉×6)」的击数项;ADR-0578 N1 拍板全量口径)。
+
+    - 全量口径先例 = ``cw_plane_table.clicks_to_level``(同式,xp 结转忽略);
+      本函数与它的差异 = 权威表逐字(无 1/2 级 _XP_NEED 先验补全)。
+    - 与 ``clicks_to_next_level``(剩余口径 ⌈(need−cur)/4⌉)**语义不同,闸不消费
+      该函数**:cur>0 是常态(买牌 XP 直抬进度 + 购经验溢出结转,cw_state
+      .xp_apply_clicks),剩余口径系统性压低门槛、方向恒向放行,与 [40]②
+      「否则停」的保护目的反向。
+    - 满级分支(R1):level≥10 → 0 击(购买经验无效,与 cw_state.xp_apply_clicks
+      / clicks_to_next_level 的满级返 0 同语义)——分支必须在公式本体,否则
+      字面公式对满级产出 ⌈兜底4/4⌉=1 击的 6 血门槛,与「恒放行」申报分叉。
+    - 1/2 级(权威表未收录,游戏内近乎白送)按兜底 need=4 → 1 击,与
+      clicks_to_next_level 既有兜底同语义。
+    """
+    if level >= 10:
+        return 0
+    return -(-XP_TO_NEXT_LEVEL.get(level, 4) // XP_PER_BUY)
+
+
+def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
+                  level: int, cost: int) -> bool:
+    """[40]② 血本位 XP 购买支付能力闸(纯函数;ADR-0578)。
+
+    判据(裁定字面):血余额 ≥ 下一级血成本(⌈need/4⌉×6)才买经验,否则停。
+    ``hp_trusted ≥ blood_xp_full_clicks(level) × cost``;返回 True=放行。
+
+    - 授权链:闸读 hp 的授权 = [40]② 本身即用户逐项确认(2026-08-31 OPEN-6
+      裁定 + 同日三次简化「不留安全量」)+ 00_framework §3 硬闸门条款。与
+      [39] 的辖域分界:[39] 禁 hp 作**运营质量信号**驱动决策;本闸是**支付
+      能力检查**——血被选卡变成 XP 的支付币种后,闸只回答「买不买得起下一级」,
+      不回答「该不该转型/止损」。两裁定并存不冲突(后者立法在后且更具体)。
+    - hp 不可信帧 fail-closed 返 False:沿 ``cw_discipline_rules
+      .blood_budget_levelup_blocked`` 同面同论证(误放=血线内追级,误拦=少
+      升一级,非对称)。``hp_readable`` = 该帧 hp 决策可信位(调用方经
+      ``cw_discipline_rules.hp_decision_trusted`` 解析后传入)。
+    - 本函数**禁读** hp_pay 遥测(ADR-0577 隔离申报):hp 输入 = 最近可信备战
+      帧值,与 P21 闸同一决策输入。
+    """
+    if not hp_readable:
+        return False
+    if hp_trusted is None:
+        # hp 无真值帧 fail-closed(ADR-0495 消费点对 None 一律保守):误放与
+        # 误拦代价非对称,同 blood_budget_levelup_blocked 的 None 支。
+        return False
+    return hp_trusted >= blood_xp_full_clicks(level) * cost
+
+
+def blood_xp_gate_for(state: GameState | None, session) -> bool:
+    """血闸消费面适配(mode 解析 + state 输入接线;prep 批入口与 cw4 三消费位
+    共用,ADR-0578)。
+
+    - 金本位(session 无 active 血本位卡,``cw_investments.blood_xp_mode`` →
+      None)→ True 直通:金模式升级零改动([40]② 辖域 = XP 购买通道的**血**
+      支付形态)。
+    - state 缺席 → False fail-closed(与判据本体 None 支同论证)。
+    - hp/level 取 state 现值:与 P21 闸(``blood_budget_levelup_blocked``)同面
+      同输入;店开态 hp 结构性不可见时 state 沿用最近备战帧可信值(P21 同帧
+      正常工作,复盘 15 帧实证)。
+    """
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        blood_xp_mode,
+    )
+    mode = blood_xp_mode(session)
+    if mode is None:
+        return True
+    if state is None:
+        return False
+    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+        hp_decision_trusted,
+    )
+    return blood_xp_gate(state.hp, hp_decision_trusted(state),
+                         state.level, mode[1])
+
+
 
 def _want_level_up(state: GameState, target_comp: Comp | None,
                    committed: bool | None = None) -> bool:

@@ -6,6 +6,8 @@
   官方全量(游戏内数据银行同口径,米游社百科 doc 的 19 条版本漂移缺口就此补齐)。
 - **建模增量层** = 本文件手维护(API 给不了的人工建模):
   - ``STRATEGY_ECONOMY``(ADR-0131 可数值化经济效果);
+  - ``is_blood_economy``/``blood_xp_mode``(血本位判别与 XP 购买模式解析,
+    [40]① 选择回避 / [40]② 血闸共享判据,ADR-0578);
   - ``ENV_CATEGORY``/``ENV_FACTION``(环境 7 类分类 + 阵营绑定,ENV_FACTION_MAP 派生源);
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
   - ``PICK_VALUE``/``ENV_PICK_VALUE``(ADR-0143/0144 选卡评估分;SURVIVAL_PICKS
@@ -127,6 +129,21 @@ class EconomyEffect:
                                           # 不入经济账,仅本注释留档)
     refresh_shop_rewrite_every_3cost: int = 0  # 市场干预(银):下一次和每 4 次刷新全 3 费面
                                           # (池构成族突变旗标字段;5 次免费刷走 free_refresh_burst)
+
+
+def is_blood_economy(eff: EconomyEffect | None) -> bool:
+    """血本位突变判别([40]①「主动选择=回避」的候选判据;ADR-0578)。
+
+    判据 = 效果把 HP 写进经济循环的字段:购经验币种切换(xp_buy_hp_cost)
+    ∨ HP↔金互换(hp_gold_swap)。补偿型字段(gold_per_20hp_lost/
+    gold_per_hp_lost_now)不改支付币种,不入族;名字含「血」不可作判据
+    (反例:鲜血阶梯 = 击杀增伤卡,effect 无 HP 经济字段)。当前族集 =
+    {奋斗协议, 不等价交换}——与 [40] 裁定原文点名完全一致;新血本位卡
+    建模 EconomyEffect 对应字段即自动入族(零名单维护)。
+    """
+    if eff is None:
+        return False
+    return eff.xp_buy_hp_cost > 0 or eff.hp_gold_swap
 
 
 @dataclass(frozen=True)
@@ -791,6 +808,23 @@ def get_strategy(name: str) -> InvestmentStrategy | None:
     入参先经 normalize_invest_name 归一分隔符形变,如 `全都要•彩`→`全都要·彩`,run_20260826_004527)。"""
     return INVESTMENT_STRATEGIES.get(normalize_invest_name(name))
 
+
+def blood_xp_mode(session) -> tuple[str, int] | None:
+    """血本位 XP 购买模式解析(返回 (卡名, 每击血价);无 active 血本位卡 → None=金本位)。
+
+    单一源 = 注册表 STRATEGY_ECONOMY.xp_buy_hp_cost 派生(先例 =
+    prep_actions.record_hp_pay_event 的 mode 判定;[40]② 血闸与遥测写点
+    经本助手同源消费,ADR-0578)。多卡命中取 active_strategies 序首个
+    (现版本游戏仅『奋斗协议』单卡在册;新血本位卡落地零改动)。
+    入参先经 get_strategy 归一(session 存量 OCR 原始名不静默 miss)。
+    """
+    for name in getattr(session, 'active_strategies', None) or []:
+        s = get_strategy(name)
+        if (s is not None and s.economy is not None
+                and s.economy.xp_buy_hp_cost):
+            return name, int(s.economy.xp_buy_hp_cost)
+    return None
+
 # ===== ADR-0143 选卡价值基准分(全量评估表派生)=====
 # 评估口径:value_class 七分类 + quantizable 三档 + pick_priority 0-100(读 effect 原文逐条判定;
 # 无上下文基准分,comp 匹配/HP 分档在 decide_event 消费侧调)。注册表 = plaza base 335,
@@ -1129,21 +1163,35 @@ for _n, _v in PICK_VALUE.items():
 #   11 局实锤经验拟合——辖域与幅度双未证,重立须按板面装备存量观测参数化。)
 
 
-def pick_value_of(name: str) -> int | None:
-    """选卡价值基准分(ADR-0143)。精确名优先;OCR 形变走 LCS(0.6 + 长度差守卫,评审建议6:
-    |Δlen|≤3 —— 防未来新增短名/长名与现有卡高 LCS 借分;env 名的跨表污染由 cw_events 守卫
-    另行拦截,此处只管策略表内部);未评估(codex 新条目/完全未知)→ None(回落品质先验)。"""
+def resolve_strategy_canonical(name: str) -> str | None:
+    """候选名 → 投资策略注册表规范名(归一 + LCS 兜底;ADR-0578)。
+
+    解析逻辑与 pick_value_of 原 LCS 路径逐字同源(阈值 0.6 + |Δlen|≤3,
+    评审建议6:防未来新增短名/长名与现有卡高 LCS 借分;env 名的跨表污染
+    由 cw_events 守卫另行拦截,此处只管策略表内部)。消费面:pick_value_of
+    (评估分)与 decide_event 候选级血本位分类(评估表未命中的形变名也要
+    能分类,[40]① 排除支辖域)。
+    """
     name = normalize_invest_name(name)
-    s = INVESTMENT_STRATEGIES.get(name)
-    if s is not None and s.pick_value > 0:
-        return s.pick_value
+    if name in INVESTMENT_STRATEGIES:
+        return name
     from one_dragon.utils.str_utils import find_best_match_by_lcs
     names = list(INVESTMENT_STRATEGIES)
     idx = find_best_match_by_lcs(name, names, lcs_percent_threshold=0.6)
     if idx is not None and abs(len(names[idx]) - len(name)) <= 3:
-        v = INVESTMENT_STRATEGIES[names[idx]].pick_value
-        return v if v > 0 else None
+        return names[idx]
     return None
+
+
+def pick_value_of(name: str) -> int | None:
+    """选卡价值基准分(ADR-0143)。精确名优先;OCR 形变走 LCS 兜底
+    (解析单一源 = ``resolve_strategy_canonical``);未评估(codex 新条目/
+    完全未知)→ None(回落品质先验)。"""
+    canonical = resolve_strategy_canonical(name)
+    if canonical is None:
+        return None
+    v = INVESTMENT_STRATEGIES[canonical].pick_value
+    return v if v > 0 else None
 
 
 # ===== ADR-0144 环境选卡价值基准分(83 条全量评估表派生)=====

@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
+from sr_od.application.currency_war.kernel.cw_economy import blood_xp_gate_for
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     BailToOuter,
     ClickSpheres,
@@ -580,6 +581,24 @@ def _reconcile_posture_authorization(session: StrategySession,
             counters['posture_crisis_level_defer'] = \
                 counters.get('posture_crisis_level_defer', 0) + 1
         log.info('[cw][cw4] posture level 授权危机让位 '
+                 '(hp=%s, plane=%s r%s): %s',
+                 state.hp, state.plane, state.round_num,
+                 un['reason'])
+        return un
+    # [40]② 血闸镜像(ADR-0578):发射位闸拒 → 授权面 crisis_yield 同款让位
+    # 语义(支付能力检查独立于停付线,不可被域/地板豁免;金本位恒 True 直通)。
+    if state is not None and not blood_xp_gate_for(state, session):
+        un = {'auth_id': f'{state.plane}-{state.round_num}',
+              'channel': 'levelup',
+              'reason': 'blood_xp_gate_blocked',
+              'channels': {'levelup': 'blood_xp_gate_blocked'},
+              'action': 'crisis_yield'}
+        state_of(session).v3_posture_unfulfilled = un
+        counters = getattr(state_of(session), 'cw4_counters', None)
+        if isinstance(counters, dict):
+            counters['posture_blood_xp_gate_defer'] = \
+                counters.get('posture_blood_xp_gate_defer', 0) + 1
+        log.info('[cw][cw4] posture level 授权血闸让位 '
                  '(hp=%s, plane=%s r%s): %s',
                  state.hp, state.plane, state.round_num,
                  un['reason'])
