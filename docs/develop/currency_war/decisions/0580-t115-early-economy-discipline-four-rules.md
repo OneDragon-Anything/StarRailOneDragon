@@ -72,3 +72,14 @@
 **修法选型**(审查建议二选一):**下沉 `sell_hold_exclusions` 统一装配** ✓——义务基座解析(锁线态 = `locked_buy_membership(ist)` 宽集 / 未锁态 = `k_members`)收进函数体内,prep 与 shop 两处调用只传各自的 k_members,宽/窄选择收拢单点;优于「prep 位改传 shop 同款装配」(后者仍留两处各自组装基座的面,未来第三消费位再同步一次即复发)。副产:F1 定型清空判据与义务基座共用同一次 `locked_buy_membership` 解析(单点双消费)。
 
 **回归锁**:`test_locked_frame_wide_member_excluded_from_sellback`(test_cw_p56_t1)——锁线帧宽集成员在 bench 不被 (a) 卖出;红证同构 = 按窄集装配排除时该成员恰入卖出槽集(修复前形态的病理复现)。
+
+### 检查器对齐申报(④ 放行臂 × sim [13] 成型停手检查器;2026-09-07,实现已裁定语义,非新决策)
+
+- **语义来源**:12_line_and_intention.md §2「④ 转线前瞻放行臂 = 未定型期转型前瞻例外」(用户裁定+编排者裁决 2026-09-07;T-123 对抗审折入)——TRANSITION_PACK carry/partial 成员在未定型期(S3 锁线前)经 ④ 臂买入合法:④ 件 = 候选终局线自身的结构件,按终局效用评估照买;与「纯过渡件(终局边际贡献=0)不再买入」辖域不相交。该条目登记的检查器对齐跟进义务(`sim/checks/segments.py` [13] 成型停手检查器按身份通道把 ④ 买入判违例)由本批清账。
+- **对齐内容**:`seg_check_formed_still_buying_transition` 新增例外臂——成型后买因 `transition_component_buy` ∧ 件 ∈ `transition_release_names()`(carry/partial 单一源)→ 放行。drop 档不设独立判定:在放行集数据源处即不入集 = 负空间排除,另立名单即第二表;例外判定先于违例回落 = 例外面取窄(误挂买因的 drop 件/不经 ④ 臂的集内件都照报)。时间辖域由买因写入侧不变量承载(唯一写点在 `committed_from` 门外,买因在行即未定型帧在**决策时点**的账本位戳记;检查器不复算定型位——行级 `v3_intention` 键(engine_p1 行装配序列化)虽免 import 可读定型位,但它是轮末结算快照,同轮「先 ④ 买入后锁线」的帧按行键复算会制造假红,写端位无此时序歧义,且 committed_from 读端需会话/状态对象,checks 层纯函数纪律不经决策栈,同 terminal_release 账本位先例);定型收窄由发射侧辖域闸与 §5 规则④ shop 锁辖。
+- **同族排查(零改动申报)**:`sim/checks/ledger.py` grep 确认无同族 [13] 身份通道豁免——`check_overflow_gold_zero_buy_streak` 的 formed_stop 豁免辖「成型停手攒息」(买不买的合法性,非买什么),`check_coldstart_seed_squander` 辖冷启动方向门,均与本例外不相交。
+- **回归锁**:test_cw_sim_suite `test_seg_formed_still_buying_transition_release_arm`(两形态构造帧:carry 成员+④ 买因放行 / drop 档+④ 买因照报)+ 买因闸变体(集内成员非 ④ 买因照报);既有 [13] 四帧锁(散装件必报/未成型不报/同名副本豁免/桥池件豁免)语义重推后零改动——新例外臂不触任何既有帧形态。
+
+### 与 [22]④ 的张力对账(2026-09-07 落地审观察回写)
+
+③恒买与④放行臂均不设息纪律门——金<g* 带内买入可降息档,与 user_playstyle [22]④「囤的前提不破息」存在表面张力。处置 = **有意取舍申报**(w628 重推在案):被本规则买入的对象为义务件/核心件/候选线结构件,资产可逆(1★ 全额退金 + 凑息臂可回收,P76 甲),非 [22]④ 所指的无对价囤积;息档边缘损耗 ≤1 金/轮(落地审低-1 定级依据)。持续张力若实机判读显著,归标定批复核。

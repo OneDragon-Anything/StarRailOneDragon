@@ -287,13 +287,45 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
     engine/pair 身份买入 = 成型后过渡件,违规。
     数据边界:target 未锁定时的 bridge 白名单兜底;pairs 周边件在
     两名单之外的极端形态可能误报——事件率仅供诊断。
+
+    **④ 放行臂例外(未定型期转型前瞻例外)**:成型后经 ④ 转线前瞻
+    放行臂(买因 ``transition_component_buy``)买入 TRANSITION_PACK
+    carry/partial 成员**不判违例**。出处 = 策略文档
+    12_line_and_intention.md §2「④ 转线前瞻放行臂 = 未定型期转型
+    前瞻例外」(用户裁定+编排者裁决 2026-09-07;对齐申报 = ADR-0580
+    §7):④ 臂的买入对象是**候选终局线自身的结构件**,未定型期(S3
+    锁线前)按终局效用评估照买;与「纯过渡件(终局边际贡献=0)不再
+    买入」不矛盾——后者是终局标准估值下的输出集合(辖纯过渡件),
+    前者辖终局候选线结构件,同一评估尺下两类件结论相反、辖域不相交。
+
+    - 成员资格单一源 = ``transition_release_names()``,drop 档在
+      数据源处即不入放行集(cw_card_identity 模块口径)——**不设
+      独立 drop 判定**:「④ 买因 ∧ 集内成员」一个谓词同时完成
+      carry/partial 放行与 drop 负空间排除,另立 drop 名单即第二表
+      (禁第二源);顺序上例外判定置于违例回落之前 = 例外面取窄——
+      带 ④ 买因但不在放行集(写侧误挂买因形态)或集内件不经 ④
+      买因买入,都仍按身份通道照报,宁可误报不漏报。
+    - 时间辖域(未定型期)由**买因写入侧不变量**承载:买因唯一写点
+      (shop ④ 臂)在 ``cw_intention.committed_from`` 门外才发射,
+      买因在行即「未定型帧」在**决策时点**的账本位戳记。检查器不复算
+      定型位,理由有二:①行级 ``v3_intention`` 键(engine_p1 行装配
+      时序列化,免 import 可读)是**轮末结算快照**——同轮「先 ④ 买入
+      后锁线」的帧行键已显示 locked 而买因合法,按行键复算会制造
+      假红,写端位无此时序歧义;②committed_from 读端需会话/状态
+      对象,checks 层纯函数纪律不经决策栈(同 terminal_release
+      账本位先例)。定型后 ④ 臂收窄由发射侧辖域闸与 shop 锁
+      (test_cw4_shop_line TestTransitionReleaseArm)辖,本检查不重复。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_card_identity import (
+        transition_release_names,
+    )
     from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
     from sr_od.application.currency_war.kernel.cw_line_defs import BRIDGE_POOL
     bridge_names: set[str] = set()
     for combo in BRIDGE_POOL:
         bridge_names.update(combo.fixed + combo.core)
+    release_names = transition_release_names()
 
     def _is_target_piece(name: str, target_label: str) -> bool:
         if name in bridge_names:
@@ -337,13 +369,20 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
                 continue
             if any(_is_target_piece(name, lb) for lb in labels):
                 continue
+            # ④ 放行臂例外(判据与顺序理由见 docstring):买因 ∧
+            # 放行集成员双条件,任一不成立即回落身份通道违例判定。
+            if a.get('reason') == 'transition_component_buy' \
+                    and name in release_names:
+                continue
             rn = row.get('round_num')
             out.append({
                 'plane': 1, 'round_num': rn,
                 'detail': f'成型后仍买过渡件 {name}(channel='
-                          f'{a.get("channel")}, target={target_label})'
+                          f'{a.get("channel")}, reason={a.get("reason")},'
+                          f' target={target_label})'
                           f'——[13] 成型停手线',
                 'bought': name, 'channel': a.get('channel'),
+                'reason': a.get('reason'),
                 'target_comp': target_label,
             })
     return out
