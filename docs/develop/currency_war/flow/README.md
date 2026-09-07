@@ -142,7 +142,7 @@ CurrencyWarApp（app 三节点）
   _start_match：恢复预检 → 对局屏判定 → CwEntryStart
   _run_loop：CwLoop（对局内，见 outer_loop.md）
 CwEntryEnter.wait_lobby（node_max_retry_times=30，cw_entry_enter.py:69）：弹窗守卫×2 → 大厅锚 → 前往参与 → 点空白关弹窗 → 公告轮播 → F 交互进大厅
-CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3，operation_node.py:18）→ advance_to_prep（node_max_retry_times=60，cw_entry_start.py:208）：备战锚 → 弹窗守卫×2 → 大厅残留逃逸 →
+CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3，operation_node.py:18）→ advance_to_prep（node_max_retry_times=60，cw_entry_start.py:209）：备战锚 → 弹窗守卫×2 → 大厅残留逃逸 →
   前进按钮分支序（难度确认/模式选择/简报/继续进度/投资环境/投资策略/教程叠层/积分奖励页）→ 兜底 retry
 ```
 

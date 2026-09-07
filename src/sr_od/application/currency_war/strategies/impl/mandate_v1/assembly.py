@@ -198,9 +198,10 @@ def disclose_budget_at_shop_frame(state: Any, session: StrategySession,
     prep 快照恒 0——「金未采」已知语义,非真 0(实机首局
     g_20260907_025608 锚⑤定谳)。本写点在商店入口观察帧(店开,gold
     过 F2 门为真值)走同一 BudgetView 计算链重算并覆写三预算字段:
-    overflow/budget 变帧现值;键戳同轮 ⇒ 不清 spent(轮界清零语义由
-    prep 装配点独占)。豁免面与「禁决策消费」禁令同 ``_disclose_budget``;
-    调用方 = cw_op_buy_cards 段顶(best-effort,失败降级保留 prep 值)。
+    overflow/budget 变帧现值;键戳同轮 ⇒ 不清 spent(轮界清零由键戳
+    承载,本写点只比较不盖戳)。豁免面与「禁决策消费」禁令同
+    ``_disclose_budget``;调用方 = cw_op_buy_cards 段顶(best-effort,
+    失败降级保留 prep 值)。
     """
     _budget(state, session, registry or DEFAULT_REGISTRY)
 
