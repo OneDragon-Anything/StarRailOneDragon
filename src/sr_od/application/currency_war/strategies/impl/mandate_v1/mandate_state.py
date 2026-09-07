@@ -72,9 +72,11 @@ class MandateState:
     # flex 收敛白名单(已铺 flex top2)。
     focus_factions: set[str] = field(default_factory=set)
 
-    # ===== 推导缓存(选线轮评分;轮)=====
-    last_candidate_scores: dict[str, float] = field(default_factory=dict)
-    last_candidate_scores_round: int = -1              # 分数轮次戳
+    # ===== 遥测披露缓存(选线轮评分;轮;T-113/ADR-0579:_telemetry_ 前缀 =
+    # 披露面自带隔离,禁决策消费——守卫 = 全仓命中点计数锁,恰 2 处声明 +1 写点
+    # +1 读点)=====
+    _telemetry_last_candidate_scores: dict[str, float] = field(default_factory=dict)
+    _telemetry_last_candidate_scores_round: int = -1   # 分数轮次戳
 
     # ===== 相位面(v2 决策层相位元组;A2 改判迁出——活读端 =
     # cw_op_buy_cards decisions 行,活写端 = sim 初始相位注入)=====

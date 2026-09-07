@@ -430,6 +430,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
     两模型不同构,对账重挂点 = 下一入口观察)。
     """
     visit_actions.append(action)
+    _post_frame = None   # 动作后投影帧(终结/未落地 = None → journal delta 省略)
     if _ok and isinstance(action, BuyCard) and action.card.name:
         strategy_state_of(match.session).cw4_visit_bought_names.append(action.card.name)
     if _ok and not _aop.terminal:
@@ -437,12 +438,26 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                        and bench_occupied(_cur.bench) >= BENCH_CAPACITY)
         _proj = _aop.project(_cur)
         match.session.shop_state_frame = _proj
+        _post_frame = _proj
         if not _skip_guard:
             from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
                 guard_expected_vs_tracked,
             )
             guard_expected_vs_tracked(_proj, match.session)
         ledger.refresh_first_action = False
+    # 遥测(T-113/ADR-0579):逐动作执行回执行(op_journal.jsonl;全量叶级
+    # delta 零漏报)。置于投影之后:_post_frame = 本动作后的期望态帧,防取到
+    # 上一段陈旧帧。CloseShop 终结不入行(ADR-0518 行形态契约);未执行动作
+    # 零行的语义由调用点保证(闸拒/硬墙 break 在本函数之前)。
+    if not getattr(_aop, 'terminal', False):
+        try:
+            from sr_od.application.currency_war.telemetry.op_journal import (
+                record_action_journal,
+            )
+            record_action_journal(match, action, len(visit_actions), _ok,
+                                  _cur, _post_frame)
+        except Exception:   # noqa: BLE001  journal best-effort
+            pass
 
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
@@ -692,8 +707,9 @@ def run_buy_waves(op: SrOperation, match,
                  f'plane={state.plane} round={state.round_num} node={_node} '
                  f'next={_next} board={state.board} '
                  f'target={target_name!r} fp={_fp_v:.2f} bench={bench_occupied(state.bench)}')
-        _cand = dict(getattr(strategy_state_of(match.session), 'last_candidate_scores', {}) or {})
-        if getattr(strategy_state_of(match.session), 'last_candidate_scores_round', None) != state.round_num:
+        # 本读取只进 record_decision 落盘(ADR-0579),禁转决策分支。
+        _cand = dict(getattr(strategy_state_of(match.session), '_telemetry_last_candidate_scores', {}) or {})
+        if getattr(strategy_state_of(match.session), '_telemetry_last_candidate_scores_round', None) != state.round_num:
             _cand = {}   # r3 review②:非本轮回合的分数是陈旧值 → 清空防 close_call 污染
         # r73 RC6:fp 落遥测(披露面防御 getattr,同上 B4 划分线)
         _eb: dict[str, float] = {}
@@ -756,6 +772,13 @@ def run_buy_waves(op: SrOperation, match,
         _seg_frames = 0
         while True:
             _seg_frames += 1
+            # 帧序推进(T-113/ADR-0579):段序号与 decisions 行同源,动作行
+            # frame_seq 关联键读取端(op_journal.current_frame_seq)。
+            from sr_od.application.currency_war.telemetry.op_journal import (
+                advance_frame_seq as _adv_seq,
+            )
+            with contextlib.suppress(Exception):
+                _adv_seq()
             if _seg_frames > SHOP_SEGMENT_ACTION_CAP:
                 # 防御帧帽(对抗发现:决策循环不收敛的响亮暴露——占位
                 # decisions 行带分键计数 + 完整栈,再上抛;禁静默续跑/

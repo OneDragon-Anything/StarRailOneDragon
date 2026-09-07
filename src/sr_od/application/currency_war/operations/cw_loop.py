@@ -1024,6 +1024,13 @@ class CwLoop(SrOperation):
         except Exception as e:   # noqa: BLE001  观测旁路,best-effort
             log.warning('[cw][counters] 计数快照落盘失败(不阻塞): %s', e)
 
+    def _op_journal_pos(self) -> tuple[int, int]:
+        """op 行位置键(ADR-0579):最后已知 (plane, round),缺省 (0, 0)。"""
+        _st = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+        _st = getattr(_st, 'last_state', None) if _st is not None else None
+        return (int(getattr(_st, 'plane', 0) or 0),
+                int(getattr(_st, 'round_num', 0) or 0))
+
     def _last_true_hp(self, fallback_hp: int | None) -> int | None:
         """summary final_hp 真值源(r3 live 修):outcomes 内存轨迹的末条真 hp。
 
@@ -1608,9 +1615,15 @@ class CwLoop(SrOperation):
                          '排他,留 0p(不误分发位面过渡)')
                 return self.round_wait(wait=1.0)
             _pt = CwScreenPlaneTransition(self.ctx)
+            from sr_od.application.currency_war.telemetry.op_journal import (
+                record_op_enter,
+                record_op_exit,
+            )
+            _pt_tok = record_op_enter('位面过渡', *self._op_journal_pos())
             _pt_res = _pt.execute()
             _pt_ok = bool(_pt_res is not None
                           and getattr(_pt_res, 'success', False))
+            record_op_exit(_pt_tok, outcome='ok' if _pt_ok else 'fail')
             if _pt_ok:
                 self._plane_mis_streak = 0
             else:
@@ -2288,11 +2301,17 @@ class CwLoop(SrOperation):
         if (self._battle_wait_active
                 or self._frame_in_battle_window(screen)):
             self._settle.battle_ts = self._battle_ts
+            from sr_od.application.currency_war.telemetry.op_journal import (
+                record_op_enter,
+                record_op_exit,
+            )
+            _bw_tok = record_op_enter('战斗等待', *self._op_journal_pos())
             _bw_res = self._battle_wait.execute()
             # ADR-0250:op 内已见结算屏 → 战斗窗口关(watch 恢复)
             if self._settle.saw_settlement:
                 self._battle_ts = None
             _bw_ok = bool(_bw_res is not None and getattr(_bw_res, 'success', False))
+            record_op_exit(_bw_tok, outcome='ok' if _bw_ok else 'fail')
             log.info('[cw-loop] 战斗等待返回(success=%s status=%s)→ 交回顶层分发'
                      '(下轮全分支重判)', _bw_ok,
                      getattr(_bw_res, 'status', '') or '')

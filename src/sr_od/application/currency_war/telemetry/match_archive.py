@@ -117,6 +117,7 @@ _WATERMARK_NAME: str = '.watermark.json'
 _SLICE_FILES: tuple[str, ...] = (
     'decisions.jsonl', 'outcomes.jsonl', 'shop_snapshots.jsonl',
     'exogenous.jsonl', 'invest_cards.jsonl', 'spend_ledger.jsonl',
+    'op_journal.jsonl',
 )
 
 #: 行为观测计数流(cw4_counters 局终快照;跨局 journal 无 run_id——
@@ -217,7 +218,28 @@ def _load_slice(replay_dir: Path, segments: set[str]) -> dict[str, list[dict[str
     for name in _SLICE_FILES:
         rows = read_jsonl(replay_dir / name)
         out[name] = [r for r in rows if r.get('run_id') in segments]
+    _annotate_orphan_op_rows(out.get('op_journal.jsonl'))
     return out
+
+
+def _annotate_orphan_op_rows(rows: list[dict[str, Any]] | None) -> None:
+    """op journal 孤儿 enter 行标注(方案 C4):行序内无同 op exit 配对的
+    enter 行标注 ``outcome='orphan'`` = 进程中断证据,容缺非缺陷。exit 行
+    与已配对 enter 不动。"""
+    if not rows:
+        return
+    open_stack: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        if r.get('kind') != 'op':
+            continue
+        op = str(r.get('op') or '')
+        if r.get('event') == 'enter':
+            open_stack.setdefault(op, []).append(r)
+        elif r.get('event') == 'exit':
+            open_stack.get(op, []).clear()
+    for pending in open_stack.values():
+        for r in pending:
+            r['outcome'] = 'orphan'
 
 
 def _best_decision_frame(dec_rows: list[dict[str, Any]],
@@ -685,11 +707,21 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             # 行 ts(帧来源取帧 ts);条目 ts 契约不变(帧来源 = None)。
             # 缺 ts 来源行 → 同 F5② 守卫不进链(ts 走行无位可置,v8 键位
             # 内联无此依赖;该轮条目丢失是缺 ts 数据的诚实代价)。
+            # 回落来源守卫(ADR-0577「合成行一律退出步进链」的回落侧补执):
+            # 来源行 = outcome 时同用 _settlement_hp_usable 判据(synthetic
+            # 标记/conf 门一并辖),frame 来源用 _hp_entry 可信位(可读位)
+            # ——不满足即同缺 ts 行走「不进链」通道,条目缺失 = 缺数据的
+            # 诚实代价。纯补给轮(唯一 outcome=合成行,补给节点天然无结算
+            # 屏)被 settle 路挡下的快照鬼值不再经本路复活回步进链;
+            # hp=0/conf=1.0 兜底合成行伪造死亡条目的缝隙同封——loss 局
+            # 死亡真值由终局腿(runs.final_hp 结构保证)兜底,不因本守卫丢失。
             from_outcome = hp_e['source'] == 'settlement'
             _fb_row = outcome if from_outcome else frame
             _fb_ts = (_row_ts(outcome) if from_outcome
                       else (_row_ts(frame) if frame is not None else ''))
-            if _fb_ts:
+            _fb_trusted = (_settlement_hp_usable(outcome) if from_outcome
+                           else bool(hp_e['trusted']))
+            if _fb_ts and _fb_trusted:
                 walk_items.append({
                     '_kind': 'fallback', 'hp': int(hp_e['hp']),
                     'hp_source': hp_e['source'],

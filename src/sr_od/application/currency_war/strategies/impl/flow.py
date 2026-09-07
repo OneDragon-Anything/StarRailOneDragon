@@ -53,7 +53,10 @@ from sr_od.application.currency_war.kernel.cw_evolution import (
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
+    _v2_comps,
+    _visible_chars,
     hoard_target_set,
+    line_completion_feasibility,
     p1_early_pair,
     pair_target_comp,
     update_intention,
@@ -370,6 +373,19 @@ class CwFlowStrategy(CwStrategy):
             # registry 透传(C4 存活轮数门在 v2 换线通道的判据注入,A/B 臂
             # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
             update_intention(state, ist, session, registry=self.registry)
+            # 遥测供数(ADR-0579):候选线评分表落盘——选线时点的判断依据
+            # (轮入口快照,非店开时刻值;_telemetry_ 前缀 = 披露面自带隔离,
+            # 禁决策消费,守卫 = 全仓命中点计数锁)。纯遥测增量:唯一读点
+            # 只进 record_decision(深度复盘候选评分可见性,诊断.md §6)。
+            _vis = _visible_chars(state)
+            _ms._telemetry_last_candidate_scores = {
+                c.name: round(line_completion_feasibility(
+                    state, c, session, self.registry, _vis), 4)
+                for c in _v2_comps()
+                if c.name not in ist.evicted
+                and state.plane not in (c.weak_planes or ())
+            }
+            _ms._telemetry_last_candidate_scores_round = state.round_num
             # (P1→P2 接口机制·①锁线 v2 后处理已随五开关定谳清理删除,
             # ADR-0487:W793 A/B 触发面全开火仍主判据双败。[23] 锚经
             # update_intention 信号驱动锁线,不受影响。)
