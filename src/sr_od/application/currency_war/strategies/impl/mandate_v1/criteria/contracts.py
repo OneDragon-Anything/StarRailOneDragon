@@ -229,8 +229,10 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'P72 (3) 全段预算闸(ADR-0576;P71-b 溢余段形态全段化):前提='
         '现读金与等级驱动 cap 在场(息档 τ 与退化锚 g* 依赖 '
         'cap_resolved 口径,禁固定常数;ALL IN 豁免与支A 兑现链在'
-        '判据体内自判,不另设前提)',
-        'p72-full-band-budget-gate §1+§2.5+ADR-0576'),
+        '判据体内自判,不另设前提;支A 谓词 = kernel/cw_waiting_piece.'
+        'recipe_waiting 单一源,[33] 板面域不限星级 + 配方缺口成员,'
+        'ADR-0592 收敛)',
+        'p72-full-band-budget-gate §1+§2.5+ADR-0576+ADR-0592'),
     # —— criteria/refresh ——
     ('refresh', 'r0_stop'): Contract(
         None, 'R0 维持结构门(结构位,输入=店面快照+金,恒良定义)',
@@ -301,7 +303,9 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('predicates', 'arm1_existence'): Contract(
         _arm1_cap_level_driven,
         'M3 触发信号:前提=deploy_cap 等级驱动口径(禁固定槽表常数)',
-        'ZERO_REFRESH_DIAG §4.2+statefn/predicates.arm1_existence 注释'),
+        'ZERO_REFRESH_DIAG §4.2+kernel/cw_waiting_piece.'
+        'arm1_existence 注释(实现单一源,ADR-0592 sink;'
+        'statefn 位=import 重定向)'),
     ('predicates', 'arm0_level_lag'): Contract(
         None,
         'arm0 升级授权触发谓词 v2(14号稿 §4.2 A4 现量版):need=期望态'

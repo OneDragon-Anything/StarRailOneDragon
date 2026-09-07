@@ -1,10 +1,12 @@
-"""板满/等待件谓词(arm1_existence 触发信号)+ 目标线 K/零重叠 +
-「挂后台效果」资格谓词(前置半步 0 载体)。
+"""板满/等待件谓词(arm1_existence 触发信号,实现已下沉 kernel)+
+目标线 K/零重叠 +「挂后台效果」资格谓词(前置半步 0 载体)。
 
 NMF §2 三行的唯一实现:P39 臂一三元(板满 ∧ 阵营相关等待件不限星级 ∧
 上场边际贡献>0——板面谓词保证 w>0,NMF §3.3 #3:臂一只用 w>0 不需精确值)
 =R2-2 移入的 arm1_existence 触发信号(M3 消费,板面可观测量,非 EV 项);
 目标线 K(comp 的 core/shared/flex 名单,cw_comps.COMP_LIBRARY 运行时可判定)。
+arm1_existence 实现单一源自 kernel/cw_waiting_piece(ADR-0592 sink 批,
+kernel 支A 消费同源);本模块保留 import 重定向位。
 """
 from __future__ import annotations
 
@@ -14,7 +16,6 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_comps import RUST_AFFIX_NAME, Comp
 from sr_od.application.currency_war.kernel.cw_economy import loss_exact
-from sr_od.application.currency_war.kernel.cw_state import DEPLOYED_CAPACITY
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_state import (
@@ -83,46 +84,17 @@ def _herta_supply_present(state: GameState | None,
 def arm1_existence(deployed_count: int, bench_names: list[str],
                    deployed_names: list[str],
                    deploy_cap: int | None = None) -> bool:
-    """P39 臂一三元触发信号(R2-2 移入 statefn;M3 消费)。
-
-    ①板满:``deployed_count == deploy_cap``——**cap 口径 = 当前可上阵数**
-    (GameState.max_units() / MandateFrame.deploy_cap:level+宝钻、封顶
-    10),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,ADR-0392 定长槽表
-    的物理长度)。结论出处:2026-09-03 零刷新诊断批(ZERO_REFRESH_DIAG
-    §4.2)实证 M3 升级门 13/13 波恒 False 的根因即此——旧条件拿 10 当
-    板满阈值,而板面实际上板量受等级驱动 cap 约束(P1 期 3→5 量级),
-    ``deployed_count`` 构造性不可达 10 ⇒ 触发面恒空;按 cap 口径重算
-    同语料 10/13、5/12 波真(``.debug/temp/currency_war/core_swap/
-    arm1_diag.py`)。边界:``deploy_cap=None``(观察帧缺 cap 读数)时
-    兜底固定槽表常数 10——**该分支在生产消费位(run_mandate/商店线)
-    经 ensure_contract 前提 ``_arm1_cap_level_driven``(deploy_cap=None
-    ⇒ 违例弃权)已不可达**(契约层弃权优先于函数内兜底,IMPL_ADV_R200
-    OBS-3 收口);保留仅作函数局部完备性(直调/测试面),非生产语义。
-    cap>10 时按 10 封顶(max_units 同款)。②③见下,不变。
-    ②阵营相关等待件:bench 存在与当前板面(deployed∪bench 域成员性,
-    P39 裁定宽域:不限星级)共享阵营/流派羁绊的单位;③上场边际贡献>0:
-    由①②结构承载(w>0 板面谓词,NMF §3.3 #3——臂一只需 w>0,无需 w
-    精确值,【拟】#3 的 w 标定面不触发)。
-    """
-    cap = (DEPLOYED_CAPACITY if deploy_cap is None
-           else min(deploy_cap, DEPLOYED_CAPACITY))
-    if deployed_count < cap or not bench_names:
-        return False
-    board_tags: set[str] = set()
-    for name in deployed_names:
-        ch = CHARACTERS.get(name)
-        if ch is not None:
-            board_tags.update(ch.factions)
-            board_tags.update(ch.flows)
-    if not board_tags:
-        return False
-    for name in bench_names:
-        ch = CHARACTERS.get(name)
-        if ch is None:
-            continue
-        if board_tags & (set(ch.factions) | set(ch.flows)):
-            return True
-    return False
+    """P39 臂一三元触发信号(R2-2 移入 statefn;M3 消费)——实现已下沉
+    kernel 单一源(ADR-0516 先例、ADR-0592:kernel 判据
+    schedule_upgrade ①臂/ΔV_pop 指示项/P72 支A 兑现链消费同一谓词,
+    受「kernel 禁 import strategies」桶边界约束,实现随 sink 批迁
+    kernel/cw_waiting_piece;本位 = import 重定向,三在役消费位
+    (mandate/shop/entry)调用零改,语义与迁移前逐字同体;cap 口径/
+    兜底边界/契约前提等完整 docstring 随实现走)。"""
+    from sr_od.application.currency_war.kernel.cw_waiting_piece import (
+        arm1_existence as _impl,
+    )
+    return _impl(deployed_count, bench_names, deployed_names, deploy_cap)
 
 
 def line_members(comp: Comp | None) -> tuple[str, ...]:
