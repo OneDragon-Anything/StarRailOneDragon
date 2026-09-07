@@ -89,7 +89,7 @@ def _cli_main() -> None:
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     ap.add_argument('--sim-batch', default='', metavar='BATCH',
                     help='查 sim 批次账本:BATCH=批次目录名(缺省=最新;'
-                         '根目录 sim_runs;"latest" 同缺省)。sim 语义差异:'
+                         '根 telemetry/sim;"latest" 同缺省)。sim 语义差异:'
                          'board 系字段恒空(hp/tiers/rounds 视图自动回退'
                          '账本深度/核心维度);planexec 不适用(sim 无'
                          '执行层分离);ts=轮序号(生产 ISO 串)')

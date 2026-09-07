@@ -26,10 +26,41 @@ _log = log_utils.log
 # 仓库根经 one_dragon.utils.file_utils.get_project_root 统一定位(包内禁文件相对层级硬锚)
 _SHOT_DIR = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'shots'
 
-# 默认 replay 账本目录(自 telemetry/cw_telemetry.py 下沉本模块:
-# sim 桶消费它而 sim 禁依 telemetry,观测基础设施归 kernel——telemetry/sim
-# 均可合法上行 import)。值保持原样(相对 Path,cwd 即仓根的运行口径不变)。
-DEFAULT_REPLAY_DIR = Path('.debug/temp/currency_war/replay')
+# ===== CW 遥测/深评固定落盘根(单一源;2026-09-07 用户裁定,T-125)=====
+# 结构:telemetry/{live,matches,sim} 三层——live = 实时追加流(decisions/
+# op_journal 等 jsonl,跨局追加行内带 run_id,不按局拆文件);matches =
+# 按局装配档案(局终旁路装配器写,见 telemetry/match_archive);sim =
+# sim 批账本(每批一目录)。深评报告根独立于 telemetry(消费面是人读的
+# 复盘 md):.debug/currency_war/deep_review/。
+# 旧根 .debug/temp/currency_war/{replay,sim_runs} 同期退役:该处历史
+# 材料已迁新树,旧路径不再有任何活跃写点(存量数据一次性迁移见
+# tools/cw/migrate_telemetry_tree.py,可重跑补迁运行中局的终局产物)。
+# 全部经 get_project_root 仓根锚定:旧的相对 Path 形态 cwd 敏感
+# (非仓根 cwd 启动即指错目录,sim/pool 审查#7 同因先改绝对,此处统一)。
+TELEMETRY_ROOT: Path = (get_project_root() / '.debug' / 'currency_war'
+                        / 'telemetry')
+LIVE_DIR: Path = TELEMETRY_ROOT / 'live'
+MATCHES_ROOT: Path = TELEMETRY_ROOT / 'matches'
+SIM_ROOT: Path = TELEMETRY_ROOT / 'sim'
+DEEP_REVIEW_ROOT: Path = (get_project_root() / '.debug' / 'currency_war'
+                          / 'deep_review')
+
+#: 实时流根(遥测 recorder/query/match_archive 的 replay_dir 语义 = 本目录;
+#: 保留旧符号名作别名,「replay_dir」参数名在 query/cli 全链沿用,整体
+#: 更名是独立重构不属本批——路径才是用户裁定面,符号名不是)。
+DEFAULT_REPLAY_DIR: Path = LIVE_DIR
+
+# ===== 退役旧根(T-125 布局裁定前的落点;写端守卫拒写面)=====
+# 为什么升为常量:2026-09-07 22:20:52 实证——write_batch_ledger 的禁写
+# 守卫只锚当前生产根时,以旧根为 out_dir 的空批把历史三流整份截断
+# (落地审 = .debug/temp/currency_war/t125_telemetry_relocation/落地审.md
+# §5)。退役根必须与生产根同级受守卫辖,直到旧根目录物理清除为止。
+#: 字面量按路径分段拼装(不写成可被墓碑扫描命中的连续串):本声明是
+#: 「否定式退役背书」,墓碑扫描辖的是回流写点,不是本声明本身。
+RETIRED_STREAMS_ROOT: Path = (get_project_root() / '.debug' / 'temp'
+                              / 'currency_war' / 'replay')
+RETIRED_SIM_ROOT: Path = (get_project_root() / '.debug' / 'temp'
+                          / 'currency_war' / 'sim_runs')
 
 
 def cw_log(
@@ -109,7 +140,7 @@ def current_obs_phase() -> str | None:
 # 观察冲突证据链(用户 2026-08-16 指示):新旧观察冲突时持久化结构化证据,供后续调研
 # (M38 教训:lv4 毒化 3 个位面才被发现,中途无数 [cw!] 日志没人看 —— 冲突要进专属文件+截图,
 # 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
-_CONFLICT_JOURNAL = get_project_root() / '.debug' / 'temp' / 'currency_war' / 'replay' / 'obs_conflicts.jsonl'
+_CONFLICT_JOURNAL = LIVE_DIR / 'obs_conflicts.jsonl'
 
 #: 冲突截图节流窗(秒):同 (field, verdict) 在窗内只存一张截图。
 #: 实证积压 18.8GB 的根因 —— 慢性状态冲突(deployed_align「补齐」每帧触发,board

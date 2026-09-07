@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """runs 断流探测器(2026-08-23):补「局终但 runs.jsonl 无行」盲区。
 原理:tail decisions.jsonl 的 run_id——当某 run 的「最后一轮 node_type 出现
 战斗/boss 且 hp 已低」或「decisions 停更但 get_run_status 显示 idle」时,
@@ -29,7 +28,7 @@ sys.stdout.reconfigure(encoding='utf-8')  # type: ignore[attr-defined]
 
 REP = Path(os.environ.get(
     'CW_RUNSGAP_REP',
-    r'D:\code\workspace\StarRailOneDragon\.debug\temp\currency_war\replay'))
+    r'D:\code\workspace\StarRailOneDragon\.debug\currency_war\telemetry\live'))
 # 2026-08-26 信道自动探测:server 重启后日志落点漂移(.log/mcp_server.log 与
 # .debug/sr_od_mcp/main_server.log),取 mtime 最新;env CW_RUNSGAP_LOG 优先。
 _REPO = Path(r'D:\code\workspace\StarRailOneDragon')

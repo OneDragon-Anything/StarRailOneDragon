@@ -11,7 +11,6 @@ import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.data.cw_battle_tables import (
     BUCKET_MIN_N,
     DEPTH_BUCKET_W,
@@ -34,6 +33,12 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     STRATEGY_EFFECTS,
     EconomyEffect,
     normalize_invest_name,
+)
+
+# 生产流根 = kernel/cw_observe 单一源(telemetry/live;2026-09-07 布局
+# 裁定前本模块曾自持一份 get_project_root 镜像,收拢后镜像双源不再存在)。
+from sr_od.application.currency_war.kernel.cw_observe import (
+    DEFAULT_REPLAY_DIR as _AUTO_REPLAY_DIR,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
     ShopCard,
@@ -96,7 +101,7 @@ class SimResult:
     pool_source: str = ''
     # ① 判读同构账本:每轮一行(轮内多段聚合;字段与遥测 jsonl
     # 同构 + sim 专属键挂 'sim' 下)。由 write_batch_ledger 落盘
-    # sim_runs/<batch_id>/{decisions,outcomes}.jsonl 两流。
+    # telemetry/sim/<batch_id>/{decisions,outcomes}.jsonl 两流。
     ledger: list[dict] = field(default_factory=list)
     # ADR-0284(批㉒ F1/F5):幻影再买提案数(已消费槽/店外构造;
     # 真策略批次应恒 0)与牌池 take 地板命中数(copies≤0 仍 take;
@@ -254,7 +259,7 @@ class _Pool:
 #   pool='fallback',结果行打标 pool_source;
 # - **指纹 = hash(池内容+桶宽+采样器版本)**,随 SimResult/批量
 #   结果记录——裸 seed 不构成可重放承诺,重放 = seed+指纹;
-# - 池源与 sim 落盘(sim_runs)隔离,防线在生成器源目录断言
+# - 池源与 sim 落盘(telemetry/sim)隔离,防线在生成器源目录断言
 #   (tools/cw/gen_delta_pool_snapshot.py,防 sim 数据回灌校准池)。
 # v6(ADR-0308,迁移审计 w37(git 历史)):回退层胜负面换 迁移审计 w31(git 历史) 实测节点×轮次胜率阶梯
 # (NODE_WIN_P_LADDER,n=192)——battle 方向二元门控/encounter 恒败/
@@ -310,10 +315,9 @@ _SAMPLER_VERSION: int = 11  # 桶化/邻桶回退/采样语义变更时 +1(指�
 # rung2 桶实测外推(boss_win_p,快照 META 单一源);快照 META 新增
 # 胜判定权威口径(killed)逐桶统计与桶贫困披露。池内容不变但校准
 # 语义变 → 旧锚全作废重记(ADR-0306 回归验证节)。
-# 仓根锚定(审查#7:相对路径 cwd 敏感,非仓根 cwd 的 auto 指错目录;
-# 真源 = one_dragon.utils.get_project_root,期 0a 统一批)
-_AUTO_REPLAY_DIR = get_project_root() / '.debug' \
-    / 'temp' / 'currency_war' / 'replay'
+# (生产流根单一源见顶部 import:_AUTO_REPLAY_DIR 别名指向
+# kernel/cw_observe.DEFAULT_REPLAY_DIR = telemetry/live;仓根锚定与
+# 布局语义随根常量块统一,审查#7 的 cwd 敏感问题一并消除。)
 
 
 
@@ -500,7 +504,7 @@ def pair_outcome_rows_to_pool(
 
 
 def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
-    """从生产 replay jsonl 构建 Δ 池 + 构成 meta(auto 池解析体)。
+    """从生产 live 流根的 jsonl 构建 Δ 池 + 构成 meta(auto 池解析体)。
 
     配对口径(r340 起):decisions 每轮取末行板深(Σboard),
     outcomes 同 run 按 (plane, round) 排序后相邻轮 hp 差分。
@@ -592,7 +596,7 @@ def resolve_pool(pool: str | Path = 'auto', *,
                  auto_dir: Path | None = None) -> tuple[dict, str, str]:
     """Δ 池三态解析 → (pool_map, fingerprint, source_label)。
 
-    - ``'auto'``(默认):生产 replay 实时构建(进程内缓存一次
+    - ``'auto'``(默认):生产 live 流根实时构建(进程内缓存一次
       冻结);缺源/空池 raise DeltaPoolUnavailable——**不静默**;
     - ``'snapshot'``:主仓提交快照 ``cw_delta_pool_data``
       (CI/跨机可复现基准;重生成 tools/cw/gen_delta_pool_snapshot.py);

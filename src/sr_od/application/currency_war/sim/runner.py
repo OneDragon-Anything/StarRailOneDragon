@@ -1,8 +1,8 @@
 """sim 批量运行/对照/账本落盘/CLI(自 cw_sim 拆出,分包期6)。
 
 批量入口 simulate_p1_batch(含 P1 段辖域切片 _Plane1View 与满级拒付
-按 plane 披露)、A/B 与敏感性对照、sim 账本落盘(SIM_RUNS_DIR,与生产
-replay 隔离,写入器有目录守卫)、快照合成与 ``python -m`` CLI。
+按 plane 披露)、A/B 与敏感性对照、sim 账本落盘(SIM_RUNS_DIR = telemetry/sim,
+与生产 live 流根隔离,写入器有目录守卫)、快照合成与 ``python -m`` CLI。
 """
 
 from __future__ import annotations
@@ -151,7 +151,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     返回含 ``pool_fingerprint``/``pool_source``(⓪):跨日基线
     对照必须核对指纹一致——池随实机追加漂移,裸数字不可比。
 
-    :param ledger: True=落两流账本到 ``sim_runs/<batch_id>/"``"
+    :param ledger: True=落两流账本到 ``telemetry/sim/<batch_id>/``"
         (decisions+outcomes.jsonl,判读 CLI 可查);Path=显式目录;
         False=不落盘。batch_id 含时间戳,自动保留最近
         ``_SIM_RUNS_KEEP`` 个批次。
@@ -782,8 +782,14 @@ def simulate_p2_sensitivity(n: int = 100, *, pool: str | Path = 'snapshot',
 
 
 
-# sim 账本落盘根目录(与生产 replay 隔离;写入器有目录守卫)
-SIM_RUNS_DIR = _AUTO_REPLAY_DIR.parent / 'sim_runs'   # 仓根锚定(同上)
+# sim 账本落盘根(telemetry/sim/<batch_id>/,2026-09-07 布局裁定;
+# 单一源 = kernel/cw_observe 根常量块,与生产 live 流根隔离;
+# write_batch_ledger 另有禁写生产 live 目录守卫,双保险)
+from sr_od.application.currency_war.kernel.cw_observe import (  # noqa: E402
+    SIM_ROOT,
+)
+
+SIM_RUNS_DIR: Path = SIM_ROOT
 
 _SIM_RUNS_KEEP: int = 20   # 批次保留数(防无限累积;旧的自动清理)
 
@@ -799,8 +805,8 @@ _ANCHOR_FILENAME: str = 'anchored.json'
 def anchor_batch(batch_dir: Path, reason: str) -> Path:
     """给 sim 批目录打锚定标记(免滚动清理)。
 
-    :param batch_dir: sim_runs 下的批目录(不校验存在——存量补救可对
-        即将生成的目录预置;清理时只看标记文件)
+    :param batch_dir: sim 批目录(telemetry/sim 下的批目录;不校验存在——
+        存量补救可对即将生成的目录预置;清理时只看标记文件)
     :param reason: 锚定原因(写入标记,审计可读;如 'A/B 对照批 364c773a')
     """
     import json as _json
@@ -833,10 +839,12 @@ def _default_sim_runs_dir(pool_fp: str, n: int, seed_base: int) -> Path:
 
 
 def _prune_sim_runs() -> None:
-    """sim_runs 滚动清理:窗口外的非锚定批删除,锚定批跳过。
+    """sim 批滚动清理(telemetry/sim):窗口外的非锚定批删除,锚定批跳过。
 
     只清 sim_ 前缀批(用户显式传的非 sim 目录不动,审查#5);锚定批
     (带 anchored.json:A/B 对照批/测量基线批等复现链锚点)免清理。
+    根 = telemetry/sim(2026-09-07 布局裁定;历史批已由
+    tools/cw/migrate_telemetry_tree.py 一次性迁入)。
     """
     if not SIM_RUNS_DIR.exists():
         return
@@ -854,18 +862,32 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
     - decisions 每轮一行(SimResult.ledger;run_id=batch 目录名);
     - outcomes 每轮一行(OutcomeRecord 同构:生产 node_type 词表
       + hp_after + board_before/bench_count;sim 专属键挂 'sim');
-    - **守卫:out_dir 不得是生产 replay 目录**(自中毒防线,
-      生成器侧另有源目录断言,双保险)。
+    - **守卫:out_dir 不得是生产 live 流根,也不得是退役旧根**(本函数
+      以 'w' 截断模式开三流文件名,写错位置 = 把目标处既有同名词整份
+      清零——2026-09-07 22:20:52 空批写退役旧根截断历史三流实证,
+      落地审 t125_telemetry_relocation/落地审.md §5;生成器侧另有源
+      目录断言,双保险)。
     """
     import json as _json
 
     from sr_od.application.currency_war.kernel import cw_coarse_battle as _cb
+    from sr_od.application.currency_war.kernel.cw_observe import (
+        RETIRED_SIM_ROOT,
+        RETIRED_STREAMS_ROOT,
+    )
     out_dir = Path(out_dir)
-    _prod = _AUTO_REPLAY_DIR.resolve()
-    if out_dir.resolve() == _prod or _prod in out_dir.resolve().parents:
-        raise RuntimeError(
-            f'sim 账本禁写生产 replay 目录: {out_dir}(自中毒回路;'
-            f'落盘目标只能是 {SIM_RUNS_DIR} 下或显式独立目录)')
+    _resolved = out_dir.resolve()
+    _forbidden_roots: tuple[Path, ...] = (
+        _AUTO_REPLAY_DIR.resolve(),   # 生产 live 流根(自中毒回路)
+        RETIRED_STREAMS_ROOT.resolve(),   # 退役旧流根(历史数据封存地)
+        RETIRED_SIM_ROOT.resolve(),   # 退役旧 sim 批根(同上)
+    )
+    for _root in _forbidden_roots:
+        if _resolved == _root or _root in _resolved.parents:
+            raise RuntimeError(
+                f'sim 账本禁写受保护目录: {out_dir}(命中 {_root};'
+                f'本函数以截断模式开流文件,写错位置 = 清零既有数据;'
+                f'落盘目标只能是 {SIM_RUNS_DIR} 下或显式独立目录)')
     out_dir.mkdir(parents=True, exist_ok=True)
     base_id = out_dir.name
     with (out_dir / 'decisions.jsonl').open('w', encoding='utf-8') as f_d, \

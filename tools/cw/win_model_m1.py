@@ -45,15 +45,19 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'src'))
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS  # noqa: E402
-from sr_od.application.currency_war.kernel.cw_battle_calib import _engines_count
+from sr_od.application.currency_war.kernel.cw_battle_calib import (  # noqa: E402
+    _engines_count,
+)
 from sr_od.application.currency_war.kernel.cw_line_defs import (  # noqa: E402
     ENGINE_FACTIONS,
+)
+from sr_od.application.currency_war.kernel.cw_observe import (  # noqa: E402
+    DEFAULT_REPLAY_DIR as REPLAY,  # 生产流根单一源(telemetry/live)
 )
 from sr_od.application.currency_war.telemetry.cw_win_features import (  # noqa: E402
     features_from_deployed,
 )
 
-REPLAY = REPO / '.debug/temp/currency_war/replay'
 BATTLE_NODE_TYPES = ('普通战斗', '遭遇', 'boss')
 
 # --- 引擎实体单一源(transition_combos.md;与 W30 探针对齐) ---

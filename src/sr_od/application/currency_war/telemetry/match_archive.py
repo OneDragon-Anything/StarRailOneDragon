@@ -4,8 +4,9 @@
 复盘一局需要在查询侧手工做四件事:跨 run 拼段(server 重启切段)、滤
 hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把这套机制化:
 
-- **档案 = 终局旁路产物**:只读 replay/*.jsonl(与判读 CLI 同源同层),
-  写 ``replay/matches/``;对运行时零侵入(不改任何内存态/决策路径,
+- **档案 = 终局旁路产物**:只读 live 流根的 *.jsonl(与判读 CLI 同源同层),
+  写 ``telemetry/matches/``(布局单一源 = kernel/cw_observe 根常量块);对
+  运行时零侵入(不改任何内存态/决策路径,
   触发点 try 包裹失败不阻塞局终收口)。
 - **触发双路**:①局终钩子(cw_loop 局终收口分支调
   ``assemble_pending``,正常局自动装配);②CLI 离线装配(崩溃局/补装配,
@@ -39,6 +40,10 @@ from pathlib import Path
 from typing import Any
 
 from one_dragon.utils import log_utils
+from sr_od.application.currency_war.kernel.cw_observe import (
+    LIVE_DIR,
+    MATCHES_ROOT,
+)
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.telemetry.query import (
     HP_CONF_TRUSTED,
@@ -105,7 +110,7 @@ log = log_utils.log
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
 SCHEMA_VERSION: int = 9
 
-#: 档案子目录(replay/matches/)
+#: 档案目录名(telemetry/matches;生产布局见 matches_dir)
 MATCHES_DIRNAME: str = 'matches'
 
 #: 水位线文件名(旧数据不回填的记账锚)
@@ -130,8 +135,14 @@ _TERMINAL_RESULTS: frozenset[str] = frozenset({'win', 'loss'})
 
 
 def matches_dir(replay_dir: Path | str) -> Path:
-    """档案目录:``<replay_dir>/matches``。"""
-    return Path(replay_dir) / MATCHES_DIRNAME
+    """档案目录:生产 live 流根 → 兄弟目录 ``telemetry/matches``(单一源 =
+    kernel/cw_observe 的根常量块,2026-09-07 用户裁定布局);其余目录
+    (测试合成流目录/sim 批目录等)保持旧子目录语义 ``<replay_dir>/matches``
+    ——测试夹具以 tmp 流目录自洽构造,生产布局只有 live 一个入口。"""
+    rd = Path(replay_dir)
+    if rd == LIVE_DIR:
+        return MATCHES_ROOT
+    return rd / MATCHES_DIRNAME
 
 
 def game_id_from_run(run_id: str) -> str:
@@ -382,7 +393,7 @@ def _action_counts(actions: list[dict[str, Any]]) -> dict[str, int]:
 
 def _evidence_links(replay_dir: Path, key: tuple[int, int]) -> list[str]:
     """buy_expect 留证 webp 按轮索引(cw_screen_prep 只在对账不一致时落盘,
-    文件名 tag=p{plane}-r{round},落 replay 根;可选证据,缺 = 空列表)。"""
+    文件名 tag=p{plane}-r{round},落 live 流根;可选证据,缺 = 空列表)。"""
     tag = f'p{key[0]}-r{key[1]}_'
     base = Path(replay_dir)
     if not base.exists():
@@ -1224,7 +1235,7 @@ def assemble_game(replay_dir: Path | str, game_id: str) -> dict[str, Any] | None
 
 
 def _read_watermark(replay_dir: Path) -> str:
-    p = Path(replay_dir) / MATCHES_DIRNAME / _WATERMARK_NAME
+    p = matches_dir(replay_dir) / _WATERMARK_NAME
     try:
         with p.open('r', encoding='utf-8') as f:
             return str(json.load(f).get('archived_through') or '')
@@ -1233,7 +1244,7 @@ def _read_watermark(replay_dir: Path) -> str:
 
 
 def _write_watermark(replay_dir: Path, through_ts: str) -> None:
-    p = Path(replay_dir) / MATCHES_DIRNAME / _WATERMARK_NAME
+    p = matches_dir(replay_dir) / _WATERMARK_NAME
     _atomic_write_json(p, {'archived_through': through_ts})
 
 

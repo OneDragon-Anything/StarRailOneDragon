@@ -79,6 +79,7 @@ v5 语义修复的根)。
   python cw_sentinel.py --replay <日志文件>: 历史日志回放——全文件喂行处理逻辑,
   打印全部报警位点(每卡死段一次;不退出不 stop,验证用)。
 """
+import contextlib
 import json
 import os
 import re
@@ -144,7 +145,7 @@ def _acquire_lock() -> bool:
             pass   # 陈旧锁 → 覆盖
     LOCK.write_text(str(os.getpid()))
     return True
-_REPLAY_DIR = Path(os.environ.get('CW_SENTINEL_REPLAY_DIR', r'D:\code\workspace\StarRailOneDragon\.debug\temp\currency_war\replay'))
+_REPLAY_DIR = Path(os.environ.get('CW_SENTINEL_REPLAY_DIR', r'D:\code\workspace\StarRailOneDragon\.debug\currency_war\telemetry\live'))
 RUNS_JSONL = Path(os.environ.get('CW_SENTINEL_RUNS', str(_REPLAY_DIR / 'runs.jsonl')))
 OUTCOMES_JSONL = Path(os.environ.get('CW_SENTINEL_OUTCOMES', str(_REPLAY_DIR / 'outcomes.jsonl')))
 # v4.1 活跃局判定第 4 条:活跃局每备战环落决策帧,decisions 新鲜=局在跑。
@@ -432,7 +433,7 @@ def _loop_alarm(sig: str, line_end: int | None) -> str:
         f'- 卡死签名(归一化,去时间戳/数字): {sig[:150]}',
         '- 窗口内实质推进: 0 次(无 非零买/升/刷/卖,无 round/plane 变化,无进位面)',
         '',
-        '## 窗口内该签名最近原始行(最多 {})'.format(LOOP_N),
+        f'## 窗口内该签名最近原始行(最多 {LOOP_N})',
     ]
     ev += [f'- {ln}' for ln in excerpts]
     ev += [
@@ -450,10 +451,8 @@ def _loop_alarm(sig: str, line_end: int | None) -> str:
     msg = (f'[SENTINEL-LOOP] 近{LOOP_WIN}s同签名动作行≥{LOOP_N}次且零实质推进'
            f'(活跃循环卡死,run24 形态): {sig[:120]} | 证据={LOOP_EVIDENCE} | {stop_note}')
     if line_end is not None:
-        try:
+        with contextlib.suppress(OSError):
             MARKER.write_text(str(line_end))
-        except OSError:
-            pass
     return msg
 
 
@@ -473,10 +472,8 @@ def _dwell_alarm(payload: str, line_end: int | None) -> str:
     ]
     _write_evidence(NODE_DWELL_EVIDENCE, '[SENTINEL-NODE-DWELL] 节点相位滞留报警证据', ev)
     if line_end is not None:
-        try:
+        with contextlib.suppress(OSError):
             MARKER.write_text(str(line_end))
-        except OSError:
-            pass
     return (f'[SENTINEL-NODE-DWELL] 同一(位面,轮次)相位持续≥{DWELL_SEC}s'
             f'(节点滞留): {payload} | 证据={NODE_DWELL_EVIDENCE}')
 
@@ -905,7 +902,7 @@ while True:
     MARKER.write_text(str(pos))
     if time.time() - last_line_wall > SILENCE_SEC:
             # v3.5(12:51 误报修):静默判定前先做「活跃局检查」(离线读
-            # replay/runs.jsonl + outcomes.jsonl)。局已自然终局 → 局后空窗
+            # telemetry/live/runs.jsonl + outcomes.jsonl)。局已自然终局 → 局后空窗
             # 是正常交接状态,IDLE 提示 + 优雅退出,不走 SILENCE 报警;
             # 局仍活跃 → 维持原双窗逻辑(结算屏/动画段误报防护不弱化)。
             if _run_ended():

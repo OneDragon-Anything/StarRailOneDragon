@@ -47,25 +47,29 @@ flow/screen_op.md`` §1「一次画面 op 调用 = 入口观察 + 逐动作决�
 ## 用法(主仓根目录)
 
     uv run python tools/cw/replay_to_md.py --match g_20260907_084421 \
-        [--run run_20260907_084421] [--out 复盘.md] [--replay-dir <dir>]
+        [--run run_20260907_084421] [--out 复盘.md | --stdout] [--replay-dir <dir>]
 
-- ``--match`` game_id(必填)。档案 = ``<replay-dir>/matches/match_<game_id>.json``。
+- ``--match`` game_id(必填)。档案 = ``telemetry/matches/match_<game_id>.json``
+  (matches 根与 live 流根的派生关系同 kernel/cw_observe.match_archive.matches_dir:
+  传生产 live 根 → 兄弟 matches 根;传其他目录 → 其下 matches 子目录)。
 - ``--run`` 只看某一段(run_id):流行按该 run_id 过滤;帧序号仍按切片全局
   行序(持久索引,便于与判读记录对帧)。档案逐轮表是跨段合并产物,不带
   run_id,故节点分组不过滤;run 不在段列表时打警告并按全段渲染。
-- ``--out`` 输出文件;缺省打印 stdout。
-- ``--replay-dir`` 缺省 ``.debug/temp/currency_war/replay``(与生产
+- ``--out`` 输出文件;**缺省 = 深评固定落点 ``.debug/currency_war/deep_review/
+  <game_id>.md``**(2026-09-07 用户裁定:一局一份,布局单一源);``--stdout``
+  改为打印不落盘。
+- ``--replay-dir`` 缺省 ``.debug/currency_war/telemetry/live``(与生产
   ``kernel/cw_observe.DEFAULT_REPLAY_DIR`` 同值,此处独立声明:本工具
   刻意零 src 导入,保持纯 stdlib、免 PYTHONPATH 即可运行)。
 
 ## 数据源(全部只读)
 
-1. 档案 ``replay/matches/match_<game_id>.json``:rounds/loss_nodes/segments/
+1. 档案 ``telemetry/matches/match_<game_id>.json``:rounds/loss_nodes/segments/
    resume_reconciliation/cw4_counters/endgame/opening/slices(六条流切片)。
    直读 json,**不做**自动重装配(需要补装配走判读 CLI ``assemble --game``)。
-2. 流 ``replay/*.jsonl``:obs_conflicts 按设计不入档案切片,恒从流文件按
-   run_id 过滤;slices 缺某条流时同法回源读文件。decisions 行字段口径见
-   ``sr_od/application/currency_war/telemetry/schema.py``。
+2. 流 ``telemetry/live/*.jsonl``:obs_conflicts 按设计不入档案切片,恒从流
+   文件按 run_id 过滤;slices 缺某条流时同法回源读文件。decisions 行字段口径
+   见 ``sr_od/application/currency_war/telemetry/schema.py``。
 
 ## 渲染结构
 
@@ -103,9 +107,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-#: 缺省 replay 目录(与生产 kernel/cw_observe.DEFAULT_REPLAY_DIR 同值;
-#: 独立声明理由见模块 docstring「零 src 导入」)
-DEFAULT_REPLAY_DIR = Path('.debug/temp/currency_war/replay')
+#: 缺省 live 流根(与生产 kernel/cw_observe.DEFAULT_REPLAY_DIR 同值;
+#: 独立声明理由见模块 docstring「零 src 导入」)。matches/深评根同布局
+#: 裁定(2026-09-07),派生关系与 match_archive.matches_dir 保持一致。
+DEFAULT_REPLAY_DIR = Path('.debug/currency_war/telemetry/live')
+DEFAULT_MATCHES_DIR = Path('.debug/currency_war/telemetry/matches')
+DEEP_REVIEW_DIR = Path('.debug/currency_war/deep_review')
 
 #: 字段缺槽的统一占位符
 MISSING = '(无此数据)'
@@ -788,7 +795,7 @@ def _mk_unattached(ops: list[dict[str, Any]], tag: str, row: dict[str, Any],
 #: 入口观察已单独渲染的 state 键(其余字段进「state 面」行,保证字段面
 #: 全量可见 —— 084421 复盘完整性审计渲染缺 R1:state 快照零消费使环境/
 #: 敌难度/升级缺口等复盘关键事实不可见;出处 =
-#: .debug/temp/currency_war/replay/matches/reviews/g_20260907_084421.md §C2)
+#: .debug/currency_war/deep_review/g_20260907_084421.md §C2)
 _STATE_CURATED: frozenset[str] = frozenset({
     'gold', 'gold_readable', 'hp', 'hp_readable', 'hp_trusted',
     'level', 'level_readable', 'xp_progress', 'level_up_cost',
@@ -2032,13 +2039,21 @@ def main(argv: list[str] | None = None) -> int:
                     help='game_id(档案名 match_<id>.json)')
     ap.add_argument('--run', default=None,
                     help='只渲染某段 run_id 的流行(帧序号仍为切片全局行序)')
-    ap.add_argument('--out', default=None, help='输出 markdown 文件(缺省 stdout)')
+    ap.add_argument('--out', default=None,
+                    help='输出 markdown 文件(缺省 = 深评固定落点 '
+                         f'{DEEP_REVIEW_DIR}/<game_id>.md)')
+    ap.add_argument('--stdout', action='store_true',
+                    help='打印到 stdout 不落盘(覆盖 --out 缺省落盘行为)')
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR),
-                    help='replay 目录(缺省 .debug/temp/currency_war/replay)')
+                    help='live 流根(缺省 .debug/currency_war/telemetry/live)')
     args = ap.parse_args(argv)
 
     replay_dir = Path(args.replay_dir)
-    archive_path = replay_dir / 'matches' / f'match_{args.match}.json'
+    # matches 根派生与 match_archive.matches_dir 同规则:生产 live 根 →
+    # 兄弟 telemetry/matches;其余目录(测试/离线自带流)→ 子目录 matches
+    matches_dir = (DEFAULT_MATCHES_DIR if replay_dir == DEFAULT_REPLAY_DIR
+                   else replay_dir / 'matches')
+    archive_path = matches_dir / f'match_{args.match}.json'
     if not archive_path.exists():
         print(f'(档案不存在: {archive_path}——先装配:'
               f' uv run python -m sr_od.application.currency_war.telemetry.cli'
@@ -2050,13 +2065,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f'(档案不可读: {archive_path}: {e})', file=sys.stderr)
         return 2
     md = render_match(archive, replay_dir, run_filter=args.run)
-    if args.out:
-        out = Path(args.out)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(md, encoding='utf-8')
-        print(f'(已写出: {out} 共 {len(md.splitlines())} 行)', file=sys.stderr)
-    else:
+    if args.stdout:
         sys.stdout.write(md)
+        return 0
+    # 深评固定落点(2026-09-07 用户裁定):一局一份 <game_id>.md
+    out = Path(args.out) if args.out else DEEP_REVIEW_DIR / f'{args.match}.md'
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(md, encoding='utf-8')
+    print(f'(已写出: {out} 共 {len(md.splitlines())} 行)', file=sys.stderr)
     return 0
 
 

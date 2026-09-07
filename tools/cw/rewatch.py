@@ -22,7 +22,7 @@
   uv run python tools/cw/rewatch.py --selftest         # 干跑:只查旧+列计划,不杀
 
 依赖:psutil(项目既有依赖,pyproject.toml 已声明);武装命令口径与 runtime-ops 一致:
-  PYTHONUTF8=1 + `uv run python .debug/temp/currency_war/<脚本>.py`。
+  PYTHONUTF8=1 + `uv run python skills/sr-od-currency-war-dev/scripts/<脚本>.py`。
 """
 import argparse
 import contextlib
@@ -36,7 +36,11 @@ import psutil
 
 # 仓库根(本脚本在 tools/cw/ 下)
 REPO_ROOT = Path(__file__).resolve().parents[2]
-# 哨兵脚本目录(gitignore 区,不入 git 但运行时存在)
+# 哨兵脚本单一源(skill 版本化目录;runtime-ops「哨兵脚本组」节口径:
+# 武装命令直接从 skill 目录起,不再用 .debug/temp 下的散拷贝——散拷贝
+# 会滞留旧版常量,遥测根迁移后旧拷贝盯死路径 = 哨兵哑掉)
+SCRIPTS_DIR = REPO_ROOT / 'skills' / 'sr-od-currency-war-dev' / 'scripts'
+# 哨兵运行态文件目录(水位/锁/在岗状态;.debug/temp 约定不变)
 WATCH_DIR = REPO_ROOT / '.debug' / 'temp' / 'currency_war'
 # 事件哨兵旧水位文件:不删 = 读旧水位误报(局47 实证)
 SENTINEL_POS = WATCH_DIR / 'cw_sentinel.pos'
@@ -122,7 +126,7 @@ def print_commands(wanted: list[str]) -> None:
     本工具不自起(DETACHED 自起=报警链自断,2026-08-25 用户纠正后移除)。"""
     print('[武装命令] 以下命令请由编排者经会话后台任务机制执行(勿在本工具内起):')
     for key in wanted:
-        script = WATCH_DIR / WATCHERS[key][0]
+        script = SCRIPTS_DIR / WATCHERS[key][0]
         note = ';注意首条遥测落后再武装纪律' if key == 'early' else ''
         print(f"  {key}: $env:PYTHONUTF8='1'; uv run python {script}({WATCHERS[key][1]}{note})")
     print('[武装命令] 事件哨兵起前删旧水位 cw_sentinel.pos(本工具杀净阶段已顺手处理)')

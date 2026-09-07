@@ -321,7 +321,7 @@ def write_l0_andon_flag(flag_path: Path, *, run_id: str, surface: str,
         f'p{plane}r{round_num} ts={datetime.now().isoformat(timespec="seconds")}\n'
         f'期望:{expected}\n'
         f'观测:{observed}\n'
-        f'缺陷台账:replay/defect_ledger.jsonl 同 run_id 行(refs={refs_txt})\n'
+        f'缺陷台账:telemetry/live/defect_ledger.jsonl 同 run_id 行(refs={refs_txt})\n'
         f'截图:{shots_txt}\n'
         '处理步骤:1. 看现场截图确认画面与缺陷面;2. 按 refs 下钻原流行\n'
         '  (obs_conflicts/decisions/exec_events 等)判 reader 误读还是观测真漂移;\n'

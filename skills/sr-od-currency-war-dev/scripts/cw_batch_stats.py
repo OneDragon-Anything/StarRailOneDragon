@@ -5,7 +5,8 @@
     --sim-batch <名|latest>   sim 批次目录三流账本(ADR-0242 同构)
     --recent N / --match ID   生产对局档案(matches/;词缀条件化分组仅此模式——sim 未建模词条)
 
-用法(项目根):
+用法(项目根;⚠️ 缺省根是 cwd 相对 Path,须从项目根运行,另机/异目录
+语料用 --sim-root/--matches-root 显式指路):
     uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --sim-batch latest
     uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --recent 10
 
@@ -36,8 +37,10 @@ import re
 import statistics
 from pathlib import Path
 
-SIM_ROOT = Path('.debug/temp/currency_war/sim_runs')
-MATCHES = Path('.debug/temp/currency_war/replay/matches')
+# 落盘根(2026-09-07 布局裁定,.debug/currency_war/telemetry/{live,matches,sim};
+# 单一源 = src kernel/cw_observe 根常量块,本脚本零 src 导入故按同值独立声明)
+SIM_ROOT = Path('.debug/currency_war/telemetry/sim')
+MATCHES = Path('.debug/currency_war/telemetry/matches')
 BATTLE_SKIP = {'奖励', '补给'}
 STAGNANT_EPS = 0.02
 HP_ALERT = 40          # 危局血线(占位,[18] 报警语义)
@@ -669,11 +672,19 @@ def report(rows_by_game: dict[str, dict], title: str) -> None:
 
 
 def main() -> None:
+    global SIM_ROOT, MATCHES
     ap = argparse.ArgumentParser()
     ap.add_argument('--sim-batch', default='', help='sim 批次名或 latest')
     ap.add_argument('--recent', type=int, default=0, help='生产档案最近 N 局')
     ap.add_argument('--match', default='', help='生产档案单局 game_id')
+    # 档案根参数(覆盖缺省 telemetry 根;离线/另机语料对账用)
+    ap.add_argument('--sim-root', default=str(SIM_ROOT),
+                    help='sim 批根目录(缺省 .debug/currency_war/telemetry/sim)')
+    ap.add_argument('--matches-root', default=str(MATCHES),
+                    help='按局档案根(缺省 .debug/currency_war/telemetry/matches)')
     args = ap.parse_args()
+    SIM_ROOT = Path(args.sim_root)
+    MATCHES = Path(args.matches_root)
     if args.sim_batch:
         name = args.sim_batch
         batch = (sorted(d for d in SIM_ROOT.iterdir() if d.is_dir())[-1]

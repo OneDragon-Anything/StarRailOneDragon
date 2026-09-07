@@ -11,9 +11,13 @@
   enter 行(进程中断/停局导致 exit 丢失)= 进程中断证据,装配端标注
   ``outcome='orphan'`` 容缺非缺陷。
 
-体积纪律:action 行 ≤400B(op 行 ≤250B),超限截断 + ``_trunc`` 标记;每局
-500 行软上限(超限停写,防病态决策循环炸盘)。禁入决策输入(守卫 = 键族
-命中锁,ADR-0571 §2.3 范式;决策输入一律走 TurnState 幂等投影)。
+体积纪律:action 行 ≤400B(op 行 ≤250B),超限截断 + ``_trunc`` 标记。
+行数**不设上限**(原「每局 500 行软上限超限停写」已由用户裁定 2026-09-07
+整条删除):病态决策循环的停线防护已由哨兵层 STALL/LOOP 检测承接,
+journal 侧静默触顶停写会让长局尾段 op 行无感丢失——复盘盲区的代价
+远大于流体积风险(T-121 深局实测单 run 690 行即已越旧顶)。禁入决策
+输入(守卫 = 键族命中锁,ADR-0571 §2.3 范式;决策输入一律走 TurnState
+幂等投影)。
 """
 from __future__ import annotations
 
@@ -22,25 +26,19 @@ import json as _json
 import time as _time
 from typing import Any
 
-from one_dragon.utils.file_utils import get_project_root
+from sr_od.application.currency_war.kernel.cw_observe import LIVE_DIR
 from sr_od.application.currency_war.telemetry.schema import (
     serialize_action,
     serialize_state,
 )
 from sr_od.application.currency_war.telemetry.state import current_run_id
 
-#: journal 落盘位置(与 obs_conflicts 同目录;独立流,永不并入 decisions 行)
-_JOURNAL = (get_project_root() / '.debug' / 'temp' / 'currency_war'
-            / 'replay' / 'op_journal.jsonl')
+#: journal 落盘位置(telemetry/live 实时流根,单一源 = kernel/cw_observe
+#: 的根常量块;独立流,永不并入 decisions 行)
+_JOURNAL = LIVE_DIR / 'op_journal.jsonl'
 
 #: 行字节硬上限(超限截断 + ``_trunc`` 标记;方案 §共通-体积纪律 (a))
 _ROW_CAP: int = 400
-
-#: 每局行数软上限(超 = 停写,方案 §共通-体积纪律 (d);病态循环炸盘保险丝)
-_MATCH_ROWS_SOFT_CAP: int = 500
-
-#: 每局行计数(run_id → 行数;进程内存态,跨局自然重置)
-_row_counts: dict[str, int] = {}
 
 #: 决策帧关联键帧序(C6):每 run 当前段序号(shop 段计数同源,由
 #: advance_frame_seq 在段边界推进;action 行读取当前值做精确 join)
@@ -99,14 +97,12 @@ def flatten_diff(before: dict[str, Any], after: dict[str, Any],
 
 
 def _emit(rec: dict[str, Any], row_cap: int) -> None:
-    """best-effort 追加一行(局外无 run_id 不写假键;软上限超限停写;
-    序列化超行帽截断 + ``_trunc``,obs_conflict 同款 try/except 兜底)。"""
+    """best-effort 追加一行(局外无 run_id 不写假键;
+    序列化超行帽截断 + ``_trunc``,obs_conflict 同款 try/except 兜底;
+    行数不设上限——软上限删除裁决见模块 docstring 体积纪律节)。"""
     rid = rec.get('run_id', '')
     if not rid:
         return
-    if _row_counts.get(rid, 0) >= _MATCH_ROWS_SOFT_CAP:
-        return
-    _row_counts[rid] = _row_counts.get(rid, 0) + 1
     try:
         blob = _json.dumps(rec, ensure_ascii=False)
         if len(blob.encode('utf-8')) > row_cap:

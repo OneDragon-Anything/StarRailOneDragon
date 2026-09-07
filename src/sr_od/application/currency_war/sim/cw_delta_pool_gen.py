@@ -1,12 +1,13 @@
-"""货币战争 · Δ池快照生成核心(生产 replay → 主仓提交快照数据层)。
+"""货币战争 · Δ池快照生成核心(生产 live 流 → 主仓提交快照数据层)。
 
 2026-08-25 W109(ADR-0344)起本模块是生成器的**唯一核心**(原
 tools/cw/gen_delta_pool_snapshot.py 迁入;tools 侧保留 CLI 壳)——
 实机局终自动再生管线(cw_telemetry 局终钩子)与 CLI 共用此入口,
 「生成器是池的唯一入口」防线随核心走。
 
-数据源:.debug/temp/currency_war/replay/{decisions,outcomes}.jsonl
-(生产遥测 append 流)。配对口径与 pool._pool_from_replay **单件
+数据源:telemetry/live/{decisions,outcomes}.jsonl(.debug/currency_war
+下,2026-09-07 布局裁定;生产遥测 append 流)。配对口径与
+pool._pool_from_replay **单件
 同源**(ADR-0582:双方共同消费 pool.pair_outcome_rows_to_pool,
 「行级过滤+配对」单一实现,禁再长镜像循环):decisions 每轮取
 末行板深,outcomes 同 run 相邻行 hp 差分;合成行
@@ -31,8 +32,8 @@ SNAPSHOT {节点: {位面: {桶键: [Δ]}}} + META(构成/过滤/指纹)。
 主仓提交(先例:REFRESH_PROB 实测概率表在 cw_shop_odds);CI 与
 跨机可复现基准靠它(裸 .debug 池随实机追加漂移,不可作基准)。
 
-防自中毒(对抗审查定谳):**源目录断言 ≠ sim_runs** —— sim 批量
-落盘(sim_runs)若混进池源即「sim 校准 sim」回路;生成器是池的
+防自中毒(对抗审查定谳):**源目录断言 ≠ sim 批根** —— sim 批量
+落盘(telemetry/sim)若混进池源即「sim 校准 sim」回路;生成器是池的
 唯一入口,防线落在这里,不靠调用方自觉。
 
 半写行容错:生产 append 进行中尾行可能撕裂(JSONDecodeError)——
@@ -45,13 +46,17 @@ import sys
 from pathlib import Path
 
 from one_dragon.utils.file_utils import get_project_root
+from sr_od.application.currency_war.kernel.cw_observe import (
+    DEFAULT_REPLAY_DIR as REPLAY_DIR,  # 生产流根单一源(telemetry/live)
+)
+from sr_od.application.currency_war.kernel.cw_observe import (
+    SIM_ROOT as SIM_RUNS_DIR,  # sim 批根单一源(telemetry/sim)
+)
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')  # type: ignore[attr-defined]
 
 REPO = get_project_root()
-REPLAY_DIR = REPO / '.debug/temp/currency_war/replay'
-SIM_RUNS_DIR = REPO / '.debug/temp/currency_war/sim_runs'
 DATA_PY = REPO / 'src/sr_od/application/currency_war/data/cw_delta_pool_data.py'
 
 # 写目标白名单守卫(同 gen_factions 范式):本生成器只允许写
@@ -85,7 +90,7 @@ BATTLE_RUNG_DOMAIN = range(0, 5)
 
 
 def _assert_guards(src_dir: Path) -> None:
-    """写目标白名单 + 源目录 ≠ sim_runs(防 sim 数据回灌校准池)。"""
+    """写目标白名单 + 源目录 ≠ sim 批根(防 sim 数据回灌校准池)。"""
     for t in WRITABLE_TARGETS:
         if t.suffix == '.py' and not t.name.endswith('_data.py'):
             raise RuntimeError(f'生成器写目标非法: {t}(只写 _data.py 数据层)')
@@ -93,9 +98,9 @@ def _assert_guards(src_dir: Path) -> None:
     sim_resolved = SIM_RUNS_DIR.resolve()
     if src_resolved == sim_resolved or sim_resolved in src_resolved.parents:
         raise RuntimeError(
-            f'池源目录非法: {src_resolved} 位于 sim_runs 下——'
+            f'池源目录非法: {src_resolved} 位于 sim 批根下——'
             'sim 产出回灌校准池 = 自中毒回路(对抗审查定谳);'
-            '池源只能是生产 replay 目录')
+            '池源只能是生产 live 流根(telemetry/live)')
 
 
 # r378b(测量链 review B3):事故局隔离清单——这些 run 的遥测被判定

@@ -86,7 +86,7 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 
 - **产生规则**:装配在每个可信结算行处,把「游标(已计入事件推进)」与结算真值比对,偏差≠0 落一行 `{plane, round, expected_hp(游标), actual_hp(结算真值), gap, modeled_paid(自上次结算起事件 Σhp_delta), ts}`;留证不阻塞装配。
 - **读法**:有 hp_pay 的局先看本列(空 = 建模与实跑吻合)。gap≠0 = 血购建模代价与实际扣血有出入;污染半径到下一可信结算为止——游标照取结算值自愈,其后战斗腿不受影响。
-- **查询面**:hp_events/hp_pay_defects/resume_reconciliation 都是档案顶层列,`--match` 的 CLI 输出不直接打印,判读直读档案 JSON `replay/matches/match_<game_id>.json`。
+- **查询面**:hp_events/hp_pay_defects/resume_reconciliation 都是档案顶层列,`--match` 的 CLI 输出不直接打印,判读直读档案 JSON `telemetry/matches/match_<game_id>.json`(固定根 `.debug/currency_war/telemetry/matches/`,2026-09-07 布局裁定)。
 
 ### 段界重锚与 rounds 续段首槽(跨段语义,schema 9 变更)
 
@@ -146,7 +146,7 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 - **数据治理**(发现旧数据是错的——用户定调:能修复就修复,不能修复就删掉,免得误导未来):
   1. 先定界污染窗口(从采集 bug 引入的第一局起,不是发现日);
   2. 判修复/删除——真值可从别的源重算(如 decisions 逐轮行重算终值/日志回填)→ 修复;真值从未被捕获 → 删除;判不了先隔离标注,别在判读里裸奔;
-  3. 派生物必须再生(replay 语料变了 → Δ 池快照重跑生成器、依赖它的 sim 基线作废重记);
+  3. 派生物必须再生(live 流语料变了 → Δ 池快照重跑生成器、依赖它的 sim 基线作废重记);
   4. 留证≠留语料(事故证据 = 日志/截图/sentinel 保留;删的是分析语料行;删除动作与理由记进度账本);
   5. 防再犯——修复落写端 schema,别靠一次性手工回填(手工回填漏网 = 下一轮伪值)。
   动手前先核语义:`loss+final_hp=100` 可能是放弃局合法值(中断保留当前 HP),不是伪值——把合法数据当脏数据删,比留着脏数据更糟。

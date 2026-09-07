@@ -1,7 +1,7 @@
 # 单局复盘协议(2026-09-07 用户定稿;同日二次修订:判定方法论 + 粒度=外层循环画面op调用)
 
 > **定位:本协议只做数据复盘**——重建画面、玩家对拍、位面三问、候选修复项;**不管 bug 定位与修复路由**(复盘报告交给编排者分诊处置,口径=autonomous-loop 实机监控第 4 步)。
-> **执行者 = 干净上下文的子 agent**(每次复盘新开,不带编排者偏见)。**触发 = 实机监控局终派单**(每局一单,后台异步;报告落盘 `matches/reviews/<game_id>.md`,45min 策略审查角色消费产出作病灶输入,不重做)。
+> **执行者 = 干净上下文的子 agent**(每次复盘新开,不带编排者偏见)。**触发 = 实机监控局终派单**(每局一单,后台异步;报告落盘 `.debug/currency_war/deep_review/<game_id>.md`——深评固定落点,2026-09-07 布局裁定,局册见同目录 INDEX.md,45min 策略审查角色消费产出作病灶输入,不重做)。
 > **判定尺 = 玩法文档 + 在册用户裁定**(§判定尺,2026-09-07 用户裁定)——判「算法做得对不对」;迭代目标只排修复优先级,不参与判卷;A/B 验证当期改动才用当期目标行判据(telemetry-reading 判读流程步骤 0 的分界,两种活动别混)。
 
 ## 阶段 1 · 阅读理解(开工前提;任务书直接引用本清单)
@@ -31,7 +31,7 @@
 ```
 
 **op 边界重建规则**(档案 = `--match <game_id>` 直读,查询工具见 telemetry-reading「查询工具」节):
-- 档案决策帧的动作序列里,**OpenShop…CloseShop 段 = 商店访问 op**(分支 0n,处理类 = `CwScreenPrep.visit_open_shop`),其余备战动作 = 备战 op(分支 1,`CwScreenPrep.execute`;备战访问在一次 RunDeploy/RunEquip/LevelUp 等未建模投影动作后终结重入,边界按 `flow/prep_visit.md` §1 投影规则 + 帧时距重建);
+- 档案决策帧的动作序列里,**OpenShop…CloseShop 决策行段 = 备战内显式开店通道的商店访问**(该通道在 prep 决策环内发射 OpenShop 落行,**非 0n 分发**——旧标注「分支 0n」系错标,纠正口径 = ADR-0584 §2.4-1;处理类 = `CwScreenPrep.visit_open_shop` 备战内联);**0n 直入通道**(直调 visit_open_shop、不发射 OpenShop 决策行)按 journal op 行独立计数——复盘重建规则 = journal op 行为主、决策帧为辅;商店访问总数 = 两载体并集,引用计数注明口径(双载体口径,ADR-0584 §2.4-1)。其余备战动作 = 备战 op(分支 1,`CwScreenPrep.execute`;备战访问在一次 RunDeploy/RunEquip/LevelUp 等未建模投影动作后终结重入,边界按 `flow/prep_visit.md` §1 投影规则 + 帧时距重建);
 - 战斗窗/结算 = `CwScreenBattleWait` 一体 op(三段式,`outer_loop.md` §2.2),按 outcomes/outcome 行定位;补给(`CwScreenSupplyNode`,决策帧 `phase=supply_detour/supply_pick`)、遭遇选择(`CwScreenEncounter`,exogenous `event_choice` 行)、投资选卡(`invest_cards` 切片)按各自数据面定位;
 - **无决策行的纯路由迭代(弹窗关闭类)不逐条成节**,按轮汇总为「无决策行迭代」小清单,并入文末完整性审计的源数据缺口。
 

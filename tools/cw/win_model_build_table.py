@@ -16,11 +16,13 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from sr_od.application.currency_war.kernel.cw_observe import (
+    DEFAULT_REPLAY_DIR as REPLAY_DIR,  # 生产流根单一源(telemetry/live)
+)
 from sr_od.application.currency_war.telemetry.cw_win_features import (
     features_from_deployed,
 )
 
-REPLAY_DIR = Path('.debug/temp/currency_war/replay')
 OUT_PATH = Path('.debug/temp/currency_war/cw_dev/win_model_design/train_table.jsonl')
 BATTLE_NODE_TYPES = ('普通战斗', '遭遇', 'boss')
 

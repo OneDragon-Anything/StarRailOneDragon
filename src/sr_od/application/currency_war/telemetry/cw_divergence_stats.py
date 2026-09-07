@@ -13,12 +13,13 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
+from sr_od.application.currency_war.kernel.cw_observe import (
+    DEFAULT_REPLAY_DIR as DEFAULT_REPLAY,  # 单一源:live 流根(曾为本地镜像,收拢防双源漂移)
+)
 from sr_od.application.currency_war.telemetry.cw_replay_reader import (
     load_decisions,
     posture_tag,
 )
-
-DEFAULT_REPLAY = Path('.debug/temp/currency_war/replay')
 
 
 def divergence_stats(replay_dir: Path | str = DEFAULT_REPLAY,

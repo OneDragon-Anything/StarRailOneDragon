@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """早停监视 v3(只报不停,停局决策归主 agent)。
 
 判据 v3(2026-08-25 目标函数修正,对齐口述 [28]+[18],用户点破五局误判后重写;
@@ -17,7 +16,7 @@
   v3 之前 HP<70 即 ALERT 推荐停局——五局实证此为错误目标函数(五局全被
   误停/误判,判读叙事被带偏)。
 
-数据源:replay/decisions.jsonl 每轮追加(state 含 hp/plane/streak)+
+数据源:telemetry/live/decisions.jsonl 每轮追加(state 含 hp/plane/streak)+
 outcomes.jsonl(hp_after/gold_after 真值)。
 
 watch 模式(默认,武装在有局时):tail 文件,plane==2 首行出现 = P1 结束,
@@ -61,10 +60,10 @@ def _acquire_lock() -> bool:
 
 JSONL = Path(os.environ.get(
     'CW_EARLYSTOP_JSONL',
-    r'D:\code\workspace\StarRailOneDragon\.debug\temp\currency_war\replay\decisions.jsonl'))
+    r'D:\code\workspace\StarRailOneDragon\.debug\currency_war\telemetry\live\decisions.jsonl'))
 OUTCOMES = Path(os.environ.get(
     'CW_EARLYSTOP_OUTCOMES',
-    r'D:\code\workspace\StarRailOneDragon\.debug\temp\currency_war\replay\outcomes.jsonl'))
+    r'D:\code\workspace\StarRailOneDragon\.debug\currency_war\telemetry\live\outcomes.jsonl'))
 TH = int(os.environ.get('CW_EARLYSTOP_TH', '70'))
 STALE_SEC = 900          # 启动时 mtime 超此值 = 无活跃局
 IDLE_NOTE_SEC = 1800     # watch 中无新行的提醒阈值(打印不退出)

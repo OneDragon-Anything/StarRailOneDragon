@@ -164,7 +164,7 @@ def set_ctx_match(match) -> None:
 
 
 def get_recorder() -> TelemetryRecorder:
-    """模块级 recorder 单例(默认 enabled,写 .debug/temp/currency_war/replay/)。"""
+    """模块级 recorder 单例(默认 enabled,写 .debug/currency_war/telemetry/live/)。"""
     global _RECORDER
     if _RECORDER is None:
         from sr_od.application.currency_war.telemetry import recorder as _rec_mod
