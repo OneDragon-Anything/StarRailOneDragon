@@ -496,18 +496,31 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         if missing and state is not None and contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
                 contracts.ContractCtx(gold=state.gold), _ct):
-            # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;ADR-0585,
+            # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;ADR-0585,
             # 方案 v3 §2.9 新格 A):本位旧形态**空排除**——锁线宽集成员
             # (zero_overlap 只拦窄 k_members)可被 prep funding 卖 → shop
             # 域 M2 重买 = 义务换手;义务基座(锁线宽窄解析单点)∪ 静态
-            # 持有两集(P78-4)在此并入。兜底豁免(P78-5)批 3 接线。
+            # 持有两集(P78-4)∪ 窗口段(批 3)在此并入。
+            _f_round = int(getattr(state, 'round_num', 1) or 1)
+            _f_excl = sell_gate.sell_exclusions(session, k_members,
+                                                channel='funding',
+                                                current_round=_f_round)
+            _f_need = mandate.cheapest_member_cost(frame)
             slots, _why = crit_sell.funding_support_sell(
-                state.gold, mandate.cheapest_member_cost(frame), bench,
+                state.gold, _f_need, bench,
                 k_members, state=state,
-                exclude_names=sell_gate.sell_exclusions(
-                    session, k_members, channel='funding'),
+                exclude_names=_f_excl,
                 counters=_ct,
                 dedup_names=set())   # C1 事件口径:单帧去重(单调用语境)
+            # 兜底豁免(P78-5:主路径空 ∧ 仍需筹资;池定义单一源 =
+            # sell_gate.funding_hold_fallback;prep 域 SellBench 载体无
+            # reason 字段,分键只落计数,与 T3 转化同口径申报;减法①读
+            # 到的是上一 visit 买入名,方向偏保守无害,V2-10)。
+            _f_fallback = []
+            if not slots and state.gold < _f_need:
+                _f_fallback = sell_gate.funding_hold_fallback(
+                    session, k_members, bench, gold=state.gold,
+                    need=_f_need, a_exclusions=_f_excl)
             for s in slots:
                 if s in sold_slots:
                     _ct['ev_conflict_dropped'] = \
@@ -516,6 +529,19 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 ev_out.append(Emitted(SellBench(slot=s), False,
                                       'funding_support',
                                       funding_support=True))
+            for bc in _f_fallback:
+                if bc.slot in sold_slots:
+                    _ct['ev_conflict_dropped'] = \
+                        _ct.get('ev_conflict_dropped', 0) + 1
+                    continue
+                # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)
+                _ct['funding_hold_liquidated'] = \
+                    _ct.get('funding_hold_liquidated', 0) + 1
+                sell_gate.consume_on_sell(session, bc.char_id or '')
+                ev_out.append(Emitted(SellBench(slot=bc.slot), False,
+                                      'funding_support',
+                                      funding_support=True))
+                break
     out = _merge_ev_before_frame_end(out, ev_out)
 
     # ⑤′ 姿态兑现对账(经济冻结批病灶②):预算核姿态(spend_mode='level')
@@ -789,17 +815,27 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
         _t3_protect = mandate.stall_protect_active(
             session, int(getattr(state, 'round_num', 1) or 1),
             counters=counters)
-        # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;ADR-0585,
+        # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;ADR-0585,
         # 新格 A 同根格——与上方 skeleton_only 分支及店侧 funding 发射位
-        # 三位同源,空排除形态在此闭死)。
+        # 三位同源,空排除形态在此闭死;批 3 窗口段生效)。
+        _f_excl = sell_gate.sell_exclusions(
+            session, k_members, channel='funding',
+            current_round=int(getattr(state, 'round_num', 1) or 1))
         fslots, _why = crit_sell.funding_support_sell(
             state.gold, mandate.cheapest_member_cost(frame), frame.bench,
             k_members, state=state,
-            exclude_names=sell_gate.sell_exclusions(
-                session, k_members, channel='funding'),
+            exclude_names=_f_excl,
             counters=counters,
             defer_names=_t3_protect,
             dedup_names=_mm_dedup)
+        # 兜底豁免(P78-5:主路径空 ∧ 仍需筹资;pool 单一源同上;prep 域
+        # SellBench 无 reason 字段,分键只落计数,V2-10 语义注同上)。
+        _fb_need = mandate.cheapest_member_cost(frame)
+        _f_fallback = []
+        if not fslots and state.gold < _fb_need:
+            _f_fallback = sell_gate.funding_hold_fallback(
+                session, k_members, frame.bench, gold=state.gold,
+                need=_fb_need, a_exclusions=_f_excl)
         for s in fslots:
             if s in sold_slots:
                 counters['ev_conflict_dropped'] = \
@@ -818,4 +854,17 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             out.append(Emitted(SellBench(slot=s), False, 'funding_support',
                                funding_support=True))
             sold_slots.add(s)
+        for bc in _f_fallback:
+            if bc.slot in sold_slots:
+                counters['ev_conflict_dropped'] = \
+                    counters.get('ev_conflict_dropped', 0) + 1
+                continue
+            # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)
+            counters['funding_hold_liquidated'] = \
+                counters.get('funding_hold_liquidated', 0) + 1
+            sell_gate.consume_on_sell(session, bc.char_id or '')
+            out.append(Emitted(SellBench(slot=bc.slot), False,
+                               'funding_support', funding_support=True))
+            sold_slots.add(bc.slot)
+            break
     return out

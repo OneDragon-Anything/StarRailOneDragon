@@ -137,6 +137,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     ShopCard,
     bench_char_cost,
     merge_material_stale_names,
+    same_star_count,
     sell_refund,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
@@ -530,14 +531,55 @@ def decide_shop_action(state: GameState, session: StrategySession,
     def _count(key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
-    def _emit_buy(card: ShopCard, reason: str) -> BuyCard:
+    def _emit_buy(card: ShopCard, reason: str, *,
+                  launch_cause: str | None = None) -> BuyCard:
         """买入发射位 fresh 排除登记(ADR-0530 开闸批接线;单一载体 =
         kernel SWAP_FRESH_BUYS_ATTR,禁第二实现)。单动作契约(本函数
         docstring)下 return 动作被决策循环无条件采纳执行——生产买面无
         截断丢弃面(刷新硬墙只降级 RefreshShop),故本写入时点 = 买入
         采纳;发射位逐名写入(漏记 = 卖出环切不断),过度排除方向安全
-        (载体注释口径,拒因 fresh_buy 可追溯)。"""
-        record_fresh_buy(session, state, getattr(card, 'name', '') or '')
+        (载体注释口径,拒因 fresh_buy 可追溯)。
+
+        发射登记(P78 窗口段;T-126 批 3,ADR-0585 §2/§3):窗口段两类
+        买因(press/stall_protect)经发射登记簿逐名登记(登记轮 = 当前
+        轮;活跃 = 登记轮==当前轮 → 同 visit 卖回全通道被禁,W1)。
+        ②(b) 按 prio 三分买因(obligation/hold/press)经 ``launch_cause``
+        显式传因;hold 类过类资格断言(2★ 转线直出 = launch_cause_
+        mismatch 拒登记不拦发射,W5/V2-06)。dominance/M6/ev_buy 按
+        LAUNCH_CAUSE_BY_ARM 映射落 press 写点;T5/出口③ 垫保登记经
+        mandate.stall_buys_register(shim 同簿);M2 族/C1/④ 产物由身份
+        段辖,登记写点不辖行为、随矩阵批落(方案 v3 §3.1 声明面)。
+
+        合成销检出(V2-05,出口②′):本笔 1★ 买入补齐同名 1★ 三张 ⇒
+        执行层买入应用即自动合成 2★,登记的 1★ 副本离场(件离场闭合)
+        ——发射位先销旧账,且不为本笔开账(1★ 即刻离场,press 账的
+        资产对象不存在)。接线位申报:方案 v3 §3.1 理想位 = 执行层合成
+        事务应用位(cw_op_buy_cards/sim 引擎,本批文件面禁碰);单动作
+        契约下发射位检出与执行层应用等价(动作被无条件采纳执行),
+        CompTransaction fill 残余形态由轮界销 ≤1 轮兜底(V2-05 有界性
+        申报)。
+        """
+        _buy_name = getattr(card, 'name', '') or ''
+        record_fresh_buy(session, state, _buy_name)
+        # 合成检出计数单一源 = kernel same_star_count(店内外身份计数
+        # 共用,禁消费方手搓内联——落地审 §2-Ⓑ 附条件收敛行)。
+        if (getattr(card, 'star', 1) or 1) == 1 \
+                and same_star_count(_buy_name, 1,
+                                    state.bench, state.deployed) >= 2:
+            sell_gate.consume_on_merge(session, _buy_name)
+            return BuyCard(card=card, reason=reason)
+        _cause = launch_cause
+        if _cause is None:
+            _mapped = sell_gate.launch_cause_of(reason)
+            if _mapped is not None and _mapped in \
+                    sell_gate.WINDOW_LAUNCH_CAUSES:
+                _cause = _mapped
+        if _cause is not None:
+            sell_gate.register_launch(
+                session, _buy_name, cause=_cause,
+                round_num=int(getattr(state, 'round_num', 1) or 1),
+                star=getattr(card, 'star', 1) or 1,
+                cost=card.cost if card.cost else 3)
         return BuyCard(card=card, reason=reason)
 
     ev_arm = getattr(config, 'ev_arm', 'full')
@@ -624,15 +666,18 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 共享,投影读与真卖评估不再重复计数;单一源 =
     # ``cw_state.count_merge_material_blocked``。
     _mm_dedup: set[str] = set()
-    # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;P78-6 读端同源,
+    # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;P78-6 读端同源,
     # 方案 v3 §2.9 新格 B/V2-08):投影位「读」的资格面必须与凑息发射位
     # 同一——本位旧形态只排 buy_members,漏静态持有两集(③④件在 bench
     # 不入凑息资格却被计入可变现投影 → liquid_refund 高估 → s_reserve
-    # 低估 → 预留被吃)。批 2 身份段先行:方向 = liquid_refund 只降不升、
-    # s_reserve 只升不降(支出闸更保守,P56 下界语义);projection 视图
-    # 并 T3 活跃集/窗口段随批 3 补齐(届时与凑息发射位全资格面严格同源)。
+    # 低估 → 预留被吃)。批 2 身份段先行、批 3 补齐全资格面:projection
+    # 视图 = 身份段 ∪ 窗口段(press 登记活跃帧不可变现,W1 同源)∪
+    # T3 活跃集(凑息对垫保是资格级绝对跳过,criteria/sell.py:140-148,
+    # 投影漏 T3 则 liquid_refund 仍高估;通道侧 defer 参数语义零改,M7)。
     _p56_excl = sell_gate.sell_exclusions(session, k_members,
-                                          channel='projection')
+                                          channel='projection',
+                                          current_round=int(
+                                              state.round_num or 1))
     liquid_refund = sum(sell_refund(1, bench_char_cost(b))
                         for b in mandate.fuel_sell_candidates(
                             bench, k_members, state=state,
@@ -731,14 +776,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _count('m2_stall_cache_hit')
             _count('m2_stall_repeat_frame')
         else:
-            # 排除集升级 buy_members → 统一装配 A 身份段(单一入口
+            # 排除集升级 buy_members → 统一装配 A 全量形态(单一入口
             # sell_gate;ADR-0585):义务基座与 buy_members 同源(锁定宽集
-            # 解析单点),新增静态持有两集生效——W4 修法(shop_sell 攻击
+            # 解析单点),静态持有两集生效——W4 修法(shop_sell 攻击
             # 报告 W4;P78-4):M4 腾席对 ③④ 持有 1★ 件禁卖 = P41 燃料
             # 类资格本义,③④ 持有换手震荡通道闭死,腾不出席走
-            # m2_retry_exhausted 诚实停摆。窗口段归批 3。
+            # m2_retry_exhausted 诚实停摆。批 3 窗口段生效(press 登记
+            # 活跃帧腾席同禁,P78 INV 通道无关)。
             _m4_excl = sell_gate.sell_exclusions(session, k_members,
-                                                 channel='m4_fuel')
+                                                 channel='m4_fuel',
+                                                 current_round=int(
+                                                     state.round_num or 1))
             cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
                                                  exclude_names=_m4_excl,
                                                  defer_names=_t3_protect,
@@ -838,10 +886,13 @@ def decide_shop_action(state: GameState, session: StrategySession,
         if bench_free <= 0:
             # M4 腾席(Y5):j=1 帧不合成,满栏例外不辖;卖 1 燃料件
             # 后下一帧 bench_free ≥ 1 即合法买入。排除集 = 统一装配 A
-            # 身份段(与 M2 缺员腾席位同源,单一入口 sell_gate;W4/P78-4
-            # 同格:③④ 持有件退出燃料资格,禁与臂① 囤腿件换手)。
+            # 全量形态(与 M2 缺员腾席位同源,单一入口 sell_gate;W4/P78-4
+            # 同格:③④ 持有件退出燃料资格,禁与臂① 囤腿件换手;批 3
+            # 窗口段生效)。
             _m4_excl = sell_gate.sell_exclusions(session, k_members,
-                                                 channel='m4_fuel')
+                                                 channel='m4_fuel',
+                                                 current_round=int(
+                                                     state.round_num or 1))
             cands = mandate.fuel_sell_candidates(bench, k_members,
                                                  state=state,
                                                  exclude_names=_m4_excl,
@@ -1168,8 +1219,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 吸收(同帧更宽判据未发射 ⇒ 本臂同判据 + 更严地板必不发射),保留
     # 枚举 = 候选集定义完备性(方案规格),实际新增覆盖面 = 燃料类
     #(dominance 辖 gold>g* 带与本臂不重叠)。全不可达 = 诚实空转允许囤
-    #(禁为花而买垃圾)。发射即登记名入会话级集合(Z1:防 (a) 跨轮卖回;
-    # 生命周期 = 锁线定型清空,F1,载体注释在 mandate_state)。
+    #(禁为花而买垃圾)。发射即按 prio 买因登记入统一发射登记簿
+    #(窗口段:press 类活跃 = 登记轮==当前轮,同 visit 卖回全通道被禁,
+    # W1;F1 锁线清空语义废除,P78-3/W3,载体注释在 mandate_state)。
     if gold < g_star and bench_free > 0 \
             and reward_node_suppressed(state):
         _dead_gold = gold - 10 * (gold // 10)
@@ -1202,8 +1254,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if not ok1:
                     continue
                 _count('dead_gold_press_buy_hit')
-                state_of(session).cw4_dead_gold_bought_names.add(name)
-                return _emit_buy(card, 'dead_gold_press_buy')
+                # ②(b) 按 prio 三分买因登记(prio0=obligation/prio1=
+                # hold/prio2=press;ADR-0585 §2 映射定稿):旧 ②(b) 动态
+                # 集 cw4_dead_gold_bought_names 退役并入统一发射登记簿,
+                # F1 锁线清空废除(P78-3),窗口段轮界过期承载(W3)。
+                # prio1(hold)过类资格断言:2★ 转线直出 = launch_cause_
+                # mismatch 拒登记不拦发射(W5/V2-06,买面门槛归臂自身批)。
+                _dg_cause = ('obligation', 'hold', 'press')[_dg_prio]
+                return _emit_buy(card, 'dead_gold_press_buy',
+                                 launch_cause=_dg_cause)
 
     # M6 溢余转压库(存在性=金>g* ∧ 无 S 目标;档匹配 fail-closed ⇒
     # 不买 + 溢余滞留遥测;两臂同开)。P71-b 闸拒同帧挂起(ADR-0560):
@@ -1710,19 +1769,21 @@ def decide_shop_action(state: GameState, session: StrategySession,
         if contracts.ensure_contract(
                 ('sell', 'sell_for_interest'),
                 contracts.ContractCtx(gold=gold), counters):
-            # T-115 Z1 排除集扩展(ADR-0580):义务基座 ∪ 静态持有两集 ∪
-            # ②(b) 动态登记,装配单一源 = mandate.sell_hold_exclusions,
-            # 与 prep ②(a) 接线两处同步(只扩一处时另一处成卖回漏口——
-            # shop 访视帧 bench ④件 1★ 无效果仍会入资格)。义务基座的
-            # 锁线宽集解析在函数体内完成(落地审低-1 修复:两处调用
-            # 只传各自 k_members,禁调用侧自选基座),判据本体零改
-            #(B3 单一源纪律,参数级扩展)。
+            # T-115 Z1 排除集扩展(ADR-0580)→ 批 3 全量形态:装配单一
+            # 源 = sell_gate.sell_exclusions(channel='interest', ADR-0585)
+            # = 义务基座(锁线宽集解析在装配体内完成,落地审低-1 修复:
+            # 调用只传各自 k_members,禁调用侧自选基座)∪ 静态持有两集
+            # ∪ 窗口段(press 登记活跃帧禁卖回,W1;F1 锁线清空废除,
+            # P78-3/W3)。凑息与 prep ②(a) 接线两处同步(只扩一处时另一
+            # 处成卖回漏口——shop 访视帧 bench ④件 1★ 无效果仍会入资格),
+            # 判据本体零改(B3 单一源纪律,参数级扩展)。
             _slots, skey = crit_sell.sell_for_interest(
                 gold, bench, cap_resolved, k_members, state=state,
                 prefer_names=tuple(getattr(
                     state_of(session), 'cw4_visit_bought_names', ()) or ()),
-                exclude_names=mandate.sell_hold_exclusions(
-                    session, k_members),
+                exclude_names=sell_gate.sell_exclusions(
+                    session, k_members, channel='interest',
+                    current_round=int(state.round_num or 1)),
                 defer_names=_t3_protect,
                 counters=counters,
                 dedup_names=_mm_dedup)
@@ -1740,11 +1801,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                  expect=(bc.char_id or '') if bc else '')
     # 支付支撑通道(两臂同开,R13-5):骨架义务动作金不足侧筹资变现。
     # F2 已由 ADR-0585 §4 拆三块修订(原「有意不扩 Z1 排除集」申报废止):
-    # ①义务基座必须并入(本位旧排除 buy_members 与义务基座同源,并入零
-    # 漂移);②③④ 持有件变现从「主路径隐式同池竞争」降级为显式兜底
-    # 豁免(P78-5 四条件,批 3 接线)——批 2 排除集升级为统一装配 A
-    # 身份段后,③④ 件在本通道暂无变现出口(兜底豁免落地前的申报窗口,
-    # 义务筹资仍以非持有资格面为第一顺位;P78-5′ 腿①授权不变)。
+    # ①义务基座并入(本位旧排除 buy_members 与义务基座同源,并入零
+    # 漂移);②③④ 持有件变现 = 显式兜底豁免(P78-5 四条件,批 3 本批
+    # 接线:主路径(非持有资格面)空 ∧ 仍需筹资 ⇒ 兜底池单笔变现,
+    # 分键 funding_hold_liquidated;豁免面(同轮买卖检查)同步见
+    # kernel/cw_state.SELL_BENCH_CONVERT_REASONS);③窗口段生效(批 3:
+    # press 登记活跃帧筹资卖回被禁,W1)。
     if missing:
         mf = mandate.MandateFrame(
             gold=gold, level=state.level, bench=bench, deployed=deployed,
@@ -1760,18 +1822,28 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 need = min(need, min(
                     (c.cost if c.cost else 3) for c in shop_cands))
                 break
-        # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;ADR-0585):
+        # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;ADR-0585):
         # 义务基座(防义务件被筹资卖 → M2 重买换手)+ 静态持有两集
-        #(W4 同格;③④ 兜底豁免批 3 补)。窗口段(press 登记禁卖)归批 3。
+        #(W4 同格)+ 窗口段(批 3)。
+        _f_excl = sell_gate.sell_exclusions(session, k_members,
+                                            channel='funding',
+                                            current_round=int(
+                                                state.round_num or 1))
         fslots, _fkey = crit_sell.funding_support_sell(
             gold, need, bench, k_members, state=state,
-            exclude_names=sell_gate.sell_exclusions(session, k_members,
-                                                    channel='funding'),
+            exclude_names=_f_excl,
             defer_names=_t3_protect,   # T3:转化类仅降序放行,非禁卖
             counters=counters, dedup_names=_mm_dedup) \
             if contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
                 contracts.ContractCtx(gold=gold), counters) else ([], '')
+        # 兜底豁免(P78-5:主路径空 ∧ 仍需筹资;池定义与达成量化单一源
+        # = sell_gate.funding_hold_fallback;单笔即止,need 即止)。
+        _f_fallback = []
+        if not fslots and gold < need:
+            _f_fallback = sell_gate.funding_hold_fallback(
+                session, k_members, bench, gold=gold, need=need,
+                a_exclusions=_f_excl)
         for s in fslots:
             bc = next((b for b in bench if b.slot == s), None)
             idx = (state.bench or []).index(bc) if bc is not None else None
@@ -1791,6 +1863,19 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 expect=_fname,
                 reason=('funding_support_stall_convert'
                         if _fprot else ''))
+        for bc in _f_fallback:
+            _fidx = (state.bench or []).index(bc)
+            _fname = bc.char_id or ''
+            # 分键显影 + 卖出销账(出口①;reason 带分键 = 同轮买卖检查
+            # 豁免面成员,三键集见 cw_state.SELL_BENCH_CONVERT_REASONS)
+            _count('funding_hold_liquidated')
+            sell_gate.consume_on_sell(session, _fname)
+            _note_sell(_fname)
+            return SellBench(
+                bench_idx=_fidx,
+                income=_shop_sell_refund(bc),
+                expect=_fname,
+                reason='funding_hold_liquidated')
 
     # ---- D-D 硬节点补强门消费(观察级接线;逐帧计数,粒度申报见上)----
     _gate_open, _gkey = crit_refresh.hard_node_reinforce_gate(

@@ -17,7 +17,9 @@ cw4_fuel_filler_stall_buys/cw4_m1p_arm_pending/cw4_m7_equipped_phase/
 cw4_must_spend_phase/cw4_pop_slot_why/cw4_prev_line_name/
 cw4_recent_sold_names/cw4_shopped_phase/cw4_stale_seen_rounds/
 cw4_tools_phase/cw4_visit_bought_names。合计 72 具名,逐波归类理由见
-ADR-0563「落位裁量」节账外清单)。原
+ADR-0563「落位裁量」节账外清单;批 3 并账申报(ADR-0585):第二波
+中的 cw4_dead_gold_bought_names(②(b) 压库登记集)已并入
+cw4_fuel_filler_stall_buys 统一发射登记簿,字段退役删除。原
 ``session.memory`` scratch dict 按设计 §6.3 随切换直接消解:一次性键落
 本类的 ``scratch`` dict(纪律条款原样平移:键名加模块前缀、局级生命
 周期、不入 decisions 遥测;高频共用/需类型与守卫的状态升本类具名字段)。
@@ -230,8 +232,6 @@ class MandateState:
 
     # ===== 账外补充·第二波(实施批收尾扫描按 §6.1 收编的策略侧动态
     # 属性;写入端均在 mandate_v1,消费面含执行侧经访问函数只读)=====
-    # N3 闭环登记(mandate/shop 写,deploy/sim 只读):名 → 登记轮号。
-    cw4_fuel_filler_stall_buys: dict = field(default_factory=dict)
     # M1″ pending 臂(mandate 写,deploy 消费后清 None)。
     cw4_m1p_arm_pending: object = None
     # M7 已穿相位(位面,轮) 元组。
@@ -252,16 +252,22 @@ class MandateState:
     cw4_tools_phase: object = None
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
     cw4_visit_bought_names: list = field(default_factory=list)
-    # T-115 ②(b) 死金压库买入登记名集(会话级,跨轮存续;ADR-0580 Z1):
-    # 写点 = shop ②(b) 臂发射位逐名登记;读点 = 凑息卖出资格集排除
-    # (mandate.sell_hold_exclusions,prep 接线与 shop 消费位共用)。
-    # 生命周期(F1 申报):**锁线定型时清空**——定型后 ④ 放行已收窄、
-    # ③④ 静态排除集足以护持有面,残留登记只对 (b) 早期买入的燃料件
-    # 造成过度禁卖(燃料 = 可逆变现资产,定型后应重新入凑息资格);
-    # Early 期按名永久 = 「(b) 买入名永不回卖」设计意图,合成消耗后
-    # 同名新副本罕见且代价仅利息机会损失。集载体 = set(无序,只做
-    # 成员判定);局级清零由状态对象每局新建保证。
-    cw4_dead_gold_bought_names: set = field(default_factory=set)
+    # 统一发射登记簿(T-126 批 3;ADR-0585 §2/§3,P78 窗口段载体):
+    # 名 → (买因, 登记轮),买因闭集 = sell_gate.LAUNCH_CAUSES。前身 =
+    # T3 垫保簿(N3 闭环登记契约,名→轮 dict)——T3 簿与 ②(b) 压库簿
+    # 完全合一(编者裁);属性名沿用旧簿:执行侧 cw_op_deploy 按鸭子
+    # 属性读本名(部署销/held 显影,属性契约级接线禁 import 策略模块),
+    # 改名 = 供给静默断裂,语义升级由本注释与本批 ADR 承载。
+    # 写端单一源 = sell_gate.register_launch(shop 发射位 _emit_buy +
+    # mandate.stall_buys_register 兼容 shim);读端单一源 =
+    # sell_gate.active_window(窗口段,press/垫保两类,活跃 = 登记轮
+    # ==当前轮)/ sell_gate.stall_protect_active(T3 单类视图)。
+    # 生命周期四出口(方案 v3 §3.1;①卖出销/②部署销/②′合成销/
+    # ③轮界销):consume_on_sell / prune_on_deploy / consume_on_merge /
+    # 读端轮界过期;obligation/hold 类 τ=∞ 不轮界过期,由出口①②②′
+    # 与换线闭合(close_on_switch)承载。账闭合按五键分键
+    #(close_on_sell/deploy/merge/round/switch)落 cw4_counters。
+    cw4_fuel_filler_stall_buys: dict = field(default_factory=dict)
 
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:

@@ -566,12 +566,17 @@ class SellBench:
 # - fuel_victim_protect_demoted: M4 腾席通道,被保垫件为唯一燃料时的
 #   放行卖出(为义务买入腾位,金转化成线成员,非净零自旋);
 # - funding_support_stall_convert: 支付变现通道卖出被保垫件(为骨架
-#   义务筹资,转化类,同上非自旋)。
-# 两键只辖「卖出被保留集(T3 同轮保留)登记件」的帧;缺省 '' 恒不豁免
-# ——豁免面按分键收敛,禁全开(T3 同轮保留修复批设计约束)。
+#   义务筹资,转化类,同上非自旋);
+# - funding_hold_liquidated: 支付变现兜底豁免卖出 ③④ 持有件(P78-5
+#   最后手段变现,ADR-0585;本键辖「持有件变现」非 T3 垫件转化,豁免
+#   理由同为非自旋——义务筹资的资产重组,凑息缺口偏好账不授同款豁免)。
+# 三键只辖「卖出排除面/被保留集登记件」的帧;缺省 '' 恒不豁免
+# ——豁免面按分键收敛,禁全开(T3 同轮保留修复批设计约束;三键形态
+# = ADR-0585 批 3,N7 豁免面与分键同批消除误报窗口)。
 SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
     'fuel_victim_protect_demoted',
     'funding_support_stall_convert',
+    'funding_hold_liquidated',
 })
 
 

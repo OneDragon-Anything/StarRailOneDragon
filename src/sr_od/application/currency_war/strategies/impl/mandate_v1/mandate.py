@@ -68,12 +68,22 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
     state_of,
 )
 
-# 卖出排除仲裁单一源(T-126;ADR-0585):sell_hold_exclusions 本体平移至
-# sell_gate,此处保留同名再出口(兼容签名,凑息消费位与测试引用零断链;
-# 消费点渐进迁移——批 3 窗口段 API 落地后换 sell_exclusions,申报入 ADR)。
+# 卖出排除仲裁单一源(T-126;ADR-0585):装配 A 与发射登记 API 本体在
+# sell_gate;本模块保留兼容再出口(sell_hold_exclusions 凑息身份段——
+# 测试/外部引用零断链;T3 垫保簿 stall_buys_* 三函数 shim——sim 引擎
+# 经本模块 import,签名零断链)。消费位已批 3 全量迁移 sell_exclusions
+# (窗口段 API)。冗余别名 = 刻意再出口(PEP 484 re-export 形态)。
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
+    consume_on_sell,
+    prune_on_deploy,
+    register_launch,
     sell_exclusions,
-    sell_hold_exclusions,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
+    sell_hold_exclusions as sell_hold_exclusions,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
+    stall_protect_active as _sell_gate_stall_protect_active,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
@@ -286,81 +296,42 @@ def fuel_sell_candidates(bench: list[BenchChar],
 
 
 # ===== T3 同轮保留集(N3 登记集卖侧读端;买后同轮即卖净零自旋修复)=====
-# 载体单一源 = session.cw4_fuel_filler_stall_buys(N3 闭环登记契约,
-# ADR-0556 §5 延续,禁第二登记集),元素升级为 {名: 登记轮号} dict
-# (带轮戳;旧裸 set 读面 = 轮戳缺失,按轮界硬兜底整集失效)。
-# 语义 = 末位牺牲序,非绝对禁卖:凑息回拉通道跳过被保件(门槛7 保证
-# 缺口 ≤ 其他可变现件总和,跳过无损);M4 腾席/支付变现为转化类,
-# 仅降序放行;line_switch 候选集 ⊂ 旧线成员,垫件零重叠永不在旧线,
-# 结构无关。生命周期三出口:部署销(stall_buys_prune_deployed)/
-# 卖出销(stall_buys_consume)/轮界销(stall_protect_active 读端就地
-# 清过期,防前两者执行侧漏路后永久误保)。
-
-STALL_BUYS_ATTR = 'cw4_fuel_filler_stall_buys'
+# 载体单一源 = 统一发射登记簿(属性 = STALL_BUYS_ATTR,见 sell_gate 注;
+# T-126 批 3 起为四因类登记簿,本节函数 = 兼容 shim,本体单一源在
+# sell_gate)。语义 = 末位牺牲序,非绝对禁卖:凑息回拉通道跳过被保件
+# (门槛7 保证缺口 ≤ 其他可变现件总和,跳过无损);M4 腾席/支付变现
+# 为转化类,仅降序放行;line_switch 候选集 ⊂ 旧线成员,垫件零重叠永不
+# 在旧线,结构无关。生命周期四出口编号对齐(方案 v3 §3.1/ADR-0585 §3
+# 定稿序;旧在码注释「①部署销/②卖出销」错位于本批统一):①卖出销
+# (consume_on_sell)/②部署销(prune_on_deploy)/②′合成销
+# (consume_on_merge,V2-05)/③轮界销(读端就地过期)。
 
 
 def stall_buys_register(session, name: str, round_num: int) -> None:
-    """买入登记(写端单一源):名 → 登记轮号。旧 set 载体就地升级 dict。"""
-    if not name:
-        return
-    reg = getattr(state_of(session), STALL_BUYS_ATTR, None)
-    if not isinstance(reg, dict):
-        reg = {}
-        setattr(state_of(session), STALL_BUYS_ATTR, reg)
-    reg[name] = int(round_num)
+    """买入登记兼容 shim(写端单一源 = sell_gate.register_launch,
+    本节只保 T3 时代签名:垫保臂(T5/出口③)发射位调用零改动)。"""
+    register_launch(session, name, cause='stall_protect',
+                    round_num=round_num)
 
 
 def stall_protect_active(session, current_round: int | None, *,
                          counters: dict | None = None) -> frozenset[str]:
-    """卖侧读端单一源(禁消费方手搓读集,ADR-0558 §3 同款纪律):
-    返回「登记轮号 == current_round」的活跃保护名集;轮号已前进的
-    登记项就地销账(生命周期出口③轮界硬兜底,计数
-    ``t3_protect_expired_round``,零静默)。current_round=None(轮号
-    不可得)按保守端处置:全集视为过期(禁据缺读放大保护面)。
-    """
-    reg = getattr(state_of(session), STALL_BUYS_ATTR, None)
-    if not reg:
-        return frozenset()
-    if not isinstance(reg, dict):
-        # 旧 set 载体(轮戳缺失):整集过期销账后升级 dict
-        setattr(state_of(session), STALL_BUYS_ATTR, {})
-        if counters is not None:
-            counters['t3_protect_expired_round'] = \
-                counters.get('t3_protect_expired_round', 0) + len(reg)
-        return frozenset()
-    rn = int(current_round) if current_round is not None else None
-    expired = [n for n, r in reg.items() if rn is None or r != rn]
-    for n in expired:
-        del reg[n]
-    if expired and counters is not None:
-        counters['t3_protect_expired_round'] = \
-            counters.get('t3_protect_expired_round', 0) + len(expired)
-    return frozenset(reg)
+    """T3 垫保视图兼容 shim(读端单一源 = sell_gate.stall_protect_active;
+    轮界过期与 close_on_round/t3_protect_expired_round 分键语义原样)。"""
+    return _sell_gate_stall_protect_active(session, current_round,
+                                           counters=counters)
 
 
 def stall_buys_consume(session, name: str) -> None:
-    """卖出即销(生命周期出口②):该名被任一卖出通道实际卖出时移除,
-    防同 visit 内第二次命中保护。容旧 set 载体(兼容未升级会话)。"""
-    if not name:
-        return
-    reg = getattr(state_of(session), STALL_BUYS_ATTR, None)
-    if isinstance(reg, dict):
-        reg.pop(name, None)
-    elif isinstance(reg, set):
-        reg.discard(name)
+    """卖出即销兼容 shim(生命周期出口①;本体 = sell_gate.consume_on_sell,
+    close_on_sell 分键随统一簿生效)。容旧 set 载体(兼容未升级会话)。"""
+    consume_on_sell(session, name)
 
 
 def stall_buys_prune_deployed(session, deployed_names) -> int:
-    """部署即销(生命周期出口①):上板名从保留集移除(补部署 P24 /
-    M1 同帧部署把该名上板后,保护使命完成;漏销 = 后续误保面)。
-    返回销账数(测试断言用)。"""
-    reg = getattr(state_of(session), STALL_BUYS_ATTR, None)
-    if not isinstance(reg, dict) or not reg:
-        return 0
-    hit = [n for n in reg if n in set(deployed_names or ())]
-    for n in hit:
-        del reg[n]
-    return len(hit)
+    """部署即销兼容 shim(生命周期出口②;本体 = sell_gate.prune_on_deploy,
+    close_on_deploy 分键随统一簿生效)。返回销账数(测试断言用)。"""
+    return prune_on_deploy(session, deployed_names)
 
 
 def dominance_buy_eligible(gold: int, bench_free: int,
@@ -506,13 +477,14 @@ def run_mandate(frame: MandateFrame,
     # 一致;(a) 先于全部买面动作求值(Z1 臂序:义务臂之外的先手)。
     # 载体 = Emitted(SellBench, True, 分键)——prep 域 SellBench 无
     # reason 字段,归因走发射标记(与 M4 同口径声明)。
-    # exclude = sell_hold_exclusions(session, k):义务基座(锁线宽窄
-    # 解析单点,与 shop 消费位同源——落地审低-1 修复)∪ Z1 静态持有
-    # 两集 ∪ ②(b) 动态登记(③④件禁被凑息卖回)。本体已平移单一源
-    # sell_gate(ADR-0585;本位为兼容再出口消费,渐进迁移——批 3 换
-    # sell_exclusions 窗口段 API);②(b) 动态登记的 F1 锁线清空语义
-    # 批 2 原样保留(修法=轮界过期,随批 3)。defer = T3 同轮保留
-    #(跨轮保护由排除集承担,T3 只辖同轮,sell.py:140-148)。
+    # exclude = sell_exclusions(session, k, channel='interest',
+    # current_round=frame.round_num):装配 A 全量形态(批 3 落地,单一
+    # 入口 sell_gate;ADR-0585)——义务基座(锁线宽窄解析单点,与 shop
+    # 消费位同源——落地审低-1 修复)∪ Z1 静态持有两集(③④件禁被凑息
+    # 卖回)∪ 窗口段(press/垫保登记,活跃 = 登记轮==当前轮;②(b) 动态
+    # 登记的 F1 锁线清空语义废除,P78-3 证其错误,W3 修法 = 轮界过期)。
+    # defer = T3 同轮保留(垫保在凑息是绝对跳过 = 通道对价语义,与窗口
+    # 段排除是两个面,sell.py:140-148)。
     _cap_resolved = _cap_of(session)
     # 合成素材拦截去重集(帧级,C1 事件口径):本帧所有守卫触达位
     #(②(a) 凑息资格评估 / M4 腾席环)共享,与 shop 侧 _mm_dedup 同款
@@ -525,7 +497,9 @@ def run_mandate(frame: MandateFrame,
             _t1_slots, _t1_key = crit_sell.sell_for_interest(
                 frame.gold, list(frame.bench), _cap_resolved, k,
                 state=state,
-                exclude_names=sell_hold_exclusions(session, k),
+                exclude_names=sell_exclusions(session, k,
+                                              channel='interest',
+                                              current_round=frame.round_num),
                 defer_names=_t3_protect,
                 counters=counters,
                 dedup_names=_mm_dedup)
@@ -589,14 +563,15 @@ def run_mandate(frame: MandateFrame,
             else:
                 # _mm_dedup 帧级去重集已上移至 ②(a) 接线前创建(两守卫
                 # 触达位共享,声明见彼处)。
-                # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;
+                # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;
                 # ADR-0585):义务基座(本位此前漏注入——备战 F1 主案,
                 # prep_loop 攻击报告 F1 的「两域同函数分叉」在此闭死,
                 # 与 shop 消费位同源单点)∪ 静态持有两集(P78-4:③④
-                # 持有件本非燃料类,禁卖 = 类资格本义)。窗口段(press/
-                # 垫保登记)归批 3;T3 同轮保护仍走 defer_names(转化类
-                # 末位牺牲,通道对价语义不动)。
-                _m4_excl = sell_exclusions(session, k, channel='m4_fuel')
+                # 持有件本非燃料类,禁卖 = 类资格本义)∪ 窗口段(批 3:
+                # press 登记活跃帧腾席同禁,P78 INV 通道无关)。T3 同轮
+                # 保护仍走 defer_names(转化类末位牺牲,通道对价语义不动)。
+                _m4_excl = sell_exclusions(session, k, channel='m4_fuel',
+                                           current_round=frame.round_num)
                 retries = 0
                 freed = False
                 no_fuel = False    # 闩写条件承载:环以「候选空集」退出(
