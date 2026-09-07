@@ -543,16 +543,17 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                         _ct.get('ev_conflict_dropped', 0) + 1
                     continue
                 # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)。
-                # reason = 通道枚举值(兜底分键走计数,不入载体归因——
-                # 与 shop 兜底位 reason='funding_hold_liquidated' 的差异:
-                # 彼位分键兼同轮买卖检查豁免面,prep 卖出恒先于本轮买入
-                # 豁免面结构性不可达,ADR-0585 §3/§5 落档申报)
+                # reason = 兜底分键入载体(三审三波 F6 修订,批 3 旧申报
+                # 「走计数不入载体」废止:批 4 prep 载体已带 reason 字段,
+                # 与 shop 兜底位归因一致性面对齐;tag==reason 双写对齐,
+                # 方案 v3 §3.4)。
                 _ct['funding_hold_liquidated'] = \
                     _ct.get('funding_hold_liquidated', 0) + 1
                 sell_gate.consume_on_sell(session, bc.char_id or '')
                 ev_out.append(Emitted(
-                    SellBench(slot=bc.slot, reason='funding_support'), False,
-                    'funding_support', funding_support=True))
+                    SellBench(slot=bc.slot,
+                              reason='funding_hold_liquidated'), False,
+                    'funding_hold_liquidated', funding_support=True))
                 break
     out = _merge_ev_before_frame_end(out, ev_out)
 
@@ -878,13 +879,14 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                     counters.get('ev_conflict_dropped', 0) + 1
                 continue
             # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)。reason =
-            # 通道枚举值,兜底分键走计数不入载体(与 shop 兜底位差异的
-            # 理由同骨架-only 位申报)。
+            # 兜底分键入载体(三审三波 F6 修订,与骨架-only 位同批回填;
+            # tag==reason 双写对齐,方案 v3 §3.4)。
             counters['funding_hold_liquidated'] = \
                 counters.get('funding_hold_liquidated', 0) + 1
             sell_gate.consume_on_sell(session, bc.char_id or '')
-            out.append(Emitted(SellBench(slot=bc.slot, reason='funding_support'),
-                               False, 'funding_support', funding_support=True))
+            out.append(Emitted(
+                SellBench(slot=bc.slot, reason='funding_hold_liquidated'),
+                False, 'funding_hold_liquidated', funding_support=True))
             sold_slots.add(bc.slot)
             break
     return out

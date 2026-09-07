@@ -478,6 +478,43 @@ def count_material_stale(counters: dict, session: StrategySession,
         _seen[_sn] = round_num
 
 
+# ===== 线账闭合孤儿证明载体(T-141 乙′;ADR-0591 §4)=====
+
+#: 义务类买入镜像簿 scratch 键(模块前缀纪律;{名: 买入轮})。
+#: 为何镜像而非读统一登记簿:shop 消费位禁手搓读登记簿(单一源锁
+#: test_cw_t3_stall_protect.Test6),sell_gate 在本批文件面禁碰无法
+#: 落单一源读端——本簿在发射登记成功后由写点同步落,义务类登记无
+#: 资格断言(恒落账)⇒ 簿 ≡ 登记簿义务类视图;回迁候 sell_gate
+#: 开放批(ADR-0591 §4 申报)。
+_SHOP_OBLIGATION_BOOK_KEY: str = 'shop_obligation_buy_rounds'
+
+
+def _obligation_book(session: StrategySession) -> dict:
+    """义务类买入镜像簿读口(scratch 载体,局级生命周期;缺省就地建)。"""
+    book = state_of(session).scratch.setdefault(
+        _SHOP_OBLIGATION_BOOK_KEY, {})
+    return book if isinstance(book, dict) else {}
+
+
+def _line_switch_orphans(session: StrategySession,
+                         base: set[str], round_num: int) -> frozenset[str]:
+    """本轮线账闭合孤儿证明集(帧首计算;必须先于本帧任何装配 A 读点
+    调用——A 身份段会就地销账,销账后登记面不可再辨「曾义务」)。
+
+    = 本轮义务登记名 ∧ 已出义务基座。两者合取即登记簿线账闭合事件
+    (销账谓词单一源 = sell_gate._close_switched_obligations 的
+    「义务类 ∧ ∉ 基座」;base 解析与其 _resolve_base 同源 = 锁定宽集
+    或 k_members,调用位传帧 ``buy_members`` 即同一解析)。bench 在场
+    义务件的轮内账闭合出口唯一 = 换线闭合(卖出销/部署销/合成销都
+    以件离场为前提),合取不误标;跨轮名随轮戳剪枝(陈旧证明不洗白)。
+    """
+    book = _obligation_book(session)
+    for _n in [k for k, v in book.items() if v != round_num]:
+        del book[_n]
+    return frozenset(n for n, v in book.items()
+                     if v == round_num and n not in base)
+
+
 def decide_shop_action(state: GameState, session: StrategySession,
                        config: object, *, registry=None) -> Action:
     """商店单动作决策(ADR-0517 决策 1/2;前身份 = ``decide_shop_wave`` 波批)。
@@ -547,8 +584,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
         显式传因;hold 类过类资格断言(2★ 转线直出 = launch_cause_
         mismatch 拒登记不拦发射,W5/V2-06)。dominance/M6/ev_buy 按
         LAUNCH_CAUSE_BY_ARM 映射落 press 写点;T5/出口③ 垫保登记经
-        mandate.stall_buys_register(shim 同簿);M2 族/C1/④ 产物由身份
-        段辖,登记写点不辖行为、随矩阵批落(方案 v3 §3.1 声明面)。
+        mandate.stall_buys_register(shim 同簿)。**写点扩全映射(T-141;
+        ADR-0585 §6 在途件提前落)**:M2 族(obligation)/C1·④(hold)
+        自此随发射落账,义务件有账可闭、线账闭合读点真实运转;行为
+        零面(两类不入窗口段,身份段独立承载)。
 
         合成销检出(V2-05,出口②′):本笔 1★ 买入补齐同名 1★ 三张 ⇒
         执行层买入应用即自动合成 2★,登记的 1★ 副本离场(件离场闭合)
@@ -578,16 +617,24 @@ def decide_shop_action(state: GameState, session: StrategySession,
             return BuyCard(card=card, reason=reason)
         _cause = launch_cause
         if _cause is None:
-            _mapped = sell_gate.launch_cause_of(reason)
-            if _mapped is not None and _mapped in \
-                    sell_gate.WINDOW_LAUNCH_CAUSES:
-                _cause = _mapped
+            # 登记写点扩全映射(T-141;ADR-0585 §6「写点随矩阵批落」
+            # 提前落):obligation/hold 类自此随发射落账——义务件有账
+            # 可闭,线账闭合读点真实运转。行为零面:两类不入窗口段
+            # (active_window 过滤面不变),身份段由基座/静态集独立
+            # 承载;hold 过既有 W5 类资格断言,拒登记不拦发射语义不变。
+            _cause = sell_gate.launch_cause_of(reason)
         if _cause is not None:
-            sell_gate.register_launch(
-                session, _buy_name, cause=_cause,
-                round_num=int(getattr(state, 'round_num', 1) or 1),
-                star=getattr(card, 'star', 1) or 1,
-                cost=card.cost if card.cost else 3)
+            if sell_gate.register_launch(
+                    session, _buy_name, cause=_cause,
+                    round_num=int(getattr(state, 'round_num', 1) or 1),
+                    star=getattr(card, 'star', 1) or 1,
+                    cost=card.cost if card.cost else 3) \
+                    and _cause == 'obligation' and _buy_name:
+                # 义务类镜像簿同步落(孤儿证明载体,见
+                # _line_switch_orphans;义务类登记无资格断言恒落账,
+                # 簿 ≡ 登记簿义务类视图)。
+                _obligation_book(session)[_buy_name] = \
+                    int(getattr(state, 'round_num', 1) or 1)
         return BuyCard(card=card, reason=reason)
 
     ev_arm = getattr(config, 'ev_arm', 'full')
@@ -643,6 +690,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     '结构性不可达,换手循环诚实停摆形态(证据=换手对/'
                     'm2_retry_exhausted 计数)', len(_buy_members),
                     BENCH_CAPACITY + DEPLOYED_CAPACITY)
+    # 线账闭合孤儿证明集(T-141 乙′;ADR-0591 §4):帧首计算,必须先于
+    # 本帧任何装配 A 读点(P56 投影/M4/凑息/支付变现)——A 身份段会就
+    # 地销账,销账后登记面不可再辨「曾义务」。base 传帧 buy_members =
+    # 锁定宽集/k_members 同一解析(见 helper 注)。
+    _sw_orphans = _line_switch_orphans(
+        session, set(buy_members), int(getattr(state, 'round_num', 1) or 1))
     bench = [b for b in (state.bench or []) if b is not None]
     deployed = [d for d in (state.deployed or []) if d is not None]
     bench_names = [b.char_id or '' for b in bench]
@@ -815,13 +868,19 @@ def decide_shop_action(state: GameState, session: StrategySession,
                         mandate.stall_buys_consume(session, _vname)
                     _note_sell(_vname)
                     # reason = T3 特化值优先于通道名(ADR-0585 §3 批 4
-                    # 填充;''→'m4_fuel_victim' 旧缺省形态退役)。
+                    # 填充;''→'m4_fuel_victim' 旧缺省形态退役);次优先
+                    # = 线账闭合孤儿证明标记(T-141/ADR-0591:本轮义务
+                    # 登记且已出基座的 victim,键带账闭合证明供同轮买卖
+                    # 检查豁免面分键,通道无关)。
                     return SellBench(bench_idx=idx,
                                      income=_shop_sell_refund(victim),
                                      expect=_vname,
-                                     reason=('fuel_victim_protect_demoted'
-                                             if _prot_hit
-                                             else 'm4_fuel_victim'))
+                                     reason=(
+                                         'fuel_victim_protect_demoted'
+                                         if _prot_hit else (
+                                             'line_switch_collapse'
+                                             if _vname in _sw_orphans
+                                             else 'm4_fuel_victim')))
             else:
                 _count('m2_retry_exhausted')
                 _count('m2_stall_cache_rederive')
@@ -925,12 +984,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     _count('fuel_victim_protect_demoted')
                     mandate.stall_buys_consume(session, _vname1)
                 _note_sell(_vname1)
-                # reason = T3 特化值优先于通道名(ADR-0585 §3,同 M2 腾席位)
+                # reason = T3 特化值优先于通道名(ADR-0585 §3,同 M2 腾席位);
+                # 次优先 = 线账闭合孤儿证明标记(T-141/ADR-0591,同 M2 位)。
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(victim),
                                  expect=_vname1,
-                                 reason=('fuel_victim_protect_demoted'
-                                         if _prot1 else 'm4_fuel_victim'))
+                                 reason=(
+                                     'fuel_victim_protect_demoted'
+                                     if _prot1 else (
+                                         'line_switch_collapse'
+                                         if _vname1 in _sw_orphans
+                                         else 'm4_fuel_victim')))
             _count('bench_full')
             continue
         _on_target_buy(card.name or m)
@@ -1807,13 +1871,19 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 idx = (state.bench or []).index(bc) if bc is not None else None
                 if idx is None:
                     continue
-                _note_sell((bc.char_id or '') if bc else '')
-                # reason = 凑息通道归因(ADR-0585 §3 批 4 填充;发射位旧
-                # 形态整行不带 reason,缺省 '' 同义)。
+                _iname = (bc.char_id or '') if bc else ''
+                _note_sell(_iname)
+                # reason = 凑息通道归因(ADR-0585 §3 批 4 填充);命中孤儿
+                # 证明集时 = 线账闭合标记优先(T-141/ADR-0591:义务买入
+                # 当轮 K 窄化出基座,闭合后凑息清算 = P78-2a/P78 INV 合法
+                # 形态,键带账闭合证明供同轮买卖检查豁免面分键;被保件
+                # 已被 defer 绝对跳过,与 T3 特化值无同帧竞争)。
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(bc) if bc else None,
-                                 expect=(bc.char_id or '') if bc else '',
-                                 reason='interest_pullback')
+                                 expect=_iname,
+                                 reason=('line_switch_collapse'
+                                         if _iname in _sw_orphans
+                                         else 'interest_pullback'))
     # 支付支撑通道(两臂同开,R13-5):骨架义务动作金不足侧筹资变现。
     # F2 已由 ADR-0585 §4 拆三块修订(原「有意不扩 Z1 排除集」申报废止):
     # ①义务基座并入(本位旧排除 buy_members 与义务基座同源,并入零
@@ -1876,13 +1946,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 # 补齐——funding 空手率分母侧的可观测事件,方案 v3 §5.4)
                 _count('funding_support_plain_sell')
             _note_sell(_fname)
-            # reason = T3 特化值优先于通道名(ADR-0585 §3 批 4 填充)
+            # reason = T3 特化值优先于通道名(ADR-0585 §3 批 4 填充);
+            # 次优先 = 线账闭合孤儿证明标记(T-141/ADR-0591,通道无关)。
             return SellBench(
                 bench_idx=idx,
                 income=_shop_sell_refund(bc) if bc else None,
                 expect=_fname,
                 reason=('funding_support_stall_convert'
-                        if _fprot else 'funding_support'))
+                        if _fprot else (
+                            'line_switch_collapse'
+                            if _fname in _sw_orphans
+                            else 'funding_support')))
         for bc in _f_fallback:
             _fidx = (state.bench or []).index(bc)
             _fname = bc.char_id or ''
