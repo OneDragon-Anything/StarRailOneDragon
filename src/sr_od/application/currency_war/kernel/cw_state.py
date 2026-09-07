@@ -545,10 +545,14 @@ class SellBench:
     提案生成时该槽位指向内容的期望名(char_id)——提案生成→应用之间
     槽位内容可能已变,应用时不符 → no-op + stale_proposal 语义
     (对齐 SellDeployed/SwapDeploy 既有守卫形态)。
-    **防线写入端核查(ADR-0326 §1.7)**:发射点=
-    remediation 两补偿器(_compensate_gold/_compensate_bench,从候选
-    生成时 state 快照取名);锁面=test_cw_w52_remediation.py 的
-    expect 正反锁(校验被触发,非恒放行)。
+    **防线写入端核查(ADR-0326 §1.7;N3② 勘误,ADR-0585 批 4)**:发射点
+    = mandate_v1/shop.py 卖出发射位(M2 腾席两处/凑息回拉/funding 变现
+    /funding 兜底,逐位带 expect 写入;原「remediation 两补偿器」表述
+    无实码对应,全仓 grep 仅本 docstring 自引用,锁面引用同勘误);
+    prep 域载体(cw_prep_actions.SellBench)无 expect 字段,不涉本校验。
+    锁面 = test_cw_sell_reason_matrix.py(reason/归因面)与
+    test_cw_sell_window_launch.py(TestFundingHoldFallback 兜底位
+    expect+income 正锁)。
     """
     bench_idx: int
     # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316 定长 9 槽,空槽 None;
@@ -557,9 +561,13 @@ class SellBench:
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
     reason: str = ''           # 卖出通道分键(记录非指令,仿 LevelUp.auth_basis 形态;
-    #                            ''=未标)。现役合法值 = SELL_BENCH_CONVERT_REASONS
-    #                            (转化类卖出显式分键);sim 账本 SellBench 行
-    #                            sell_reason 键转录本字段,检查器豁免面据此收敛。
+    #                            ''=未标)。现役合法值 = 卖出归因枚举闭集
+    #                            cw_prep_actions.SELL_BENCH_REASONS(5 通道值,
+    #                            ADR-0585 §3 批 4 填充)∪ SELL_BENCH_CONVERT_
+    #                            REASONS(转化特化值,特化优先于通道名);
+    #                            sim 账本 SellBench 行
+    #                            sell_reason 键转录本字段,检查器豁免面
+    #                            (仅转化集)据此收敛。
 
 
 # 转化类卖出豁免键集(同轮买后卖检查的豁免边;检查侧单一源):

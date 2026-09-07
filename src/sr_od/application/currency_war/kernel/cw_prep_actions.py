@@ -69,8 +69,36 @@ class PickBoxCard(PrepAction):
 
 @dataclass
 class SellBench(PrepAction):
-    """卖备战席角色(slot=物理槽位 1-9;身份感知「卖谁」由策略层保证)。"""
+    """卖备战席角色(slot=物理槽位 1-9;身份感知「卖谁」由策略层保证)。
+
+    reason = 卖出通道归因(ADR-0585 §3 W8 枚举闭集×9 发射位;契约条目
+    落档 = flow/action_exec.md §1 卖出类行):记录非指令,执行层不读
+    (仿 cw_state.SellBench.income 形态);值域闭集 = 下述
+    ``SELL_BENCH_REASONS`` ∪ 转化特化值(其单一源 =
+    cw_state.SELL_BENCH_CONVERT_REASONS,特化优先于通道名),'' = 未标。
+    字段带默认 '' ⇒ 类型消费全向后兼容(方案 v3 §3.4 V2-02 判定口径);
+    归因不入幂等键(action_key 经字段 metadata 排除——归因标签不改变
+    动作实例身份,幂等粒度 = 类型 + 行为参数);prep 域不入 sim 账本
+    (engine 转录按白名单挑字段,归因遥测走 decisions 行既有转录面)。
+    """
     slot: int
+    reason: str = field(default='', metadata={'action_key_exclude': True})
+
+
+#: 卖出归因枚举闭集(W8;ADR-0585 §3 定稿装配键集 = 方案 v3 §3.4 枚举表,
+#: 枚举值 = 卖出通道名,prep/shop 双载体 9 发射位共用)。转化特化值
+#: (fuel_victim_protect_demoted / funding_support_stall_convert /
+#: funding_hold_liquidated)不在本集——其单一源 =
+#: cw_state.SELL_BENCH_CONVERT_REASONS(同轮买卖检查豁免面),发射位
+#: 规则 = 特化优先于通道名。新增发射位先在此登记再接线(登记门:
+#: 值漂移由 test_cw_sell_reason_matrix 双向暴露)。
+SELL_BENCH_REASONS: frozenset[str] = frozenset({
+    'interest_pullback_prep',   # 凑息·备战臂(mandate ②(a) 接线)
+    'interest_pullback',        # 凑息·商店臂(shop 回拉发射位)
+    'funding_support',          # 支付变现(shop 一位/entry 两位)
+    'm4_fuel_victim',           # M4 腾席燃料(shop 两位/mandate prep 一位)
+    'line_switch_collapse',     # 换线塌缩出口(entry EV pass)
+})
 
 
 @dataclass
@@ -160,11 +188,19 @@ PREP_ACTION_TYPES: tuple = (
 
 
 def action_key(action: PrepAction) -> str:
-    """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;SellBench(3) 与 SellBench(5) 各自计数)。"""
+    """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;SellBench(3) 与 SellBench(5) 各自计数)。
+
+    带 ``action_key_exclude`` metadata 的字段不入键(现役唯一 =
+    SellBench.reason 卖出归因):幂等粒度 = 行为参数,归因标签不改变
+    动作实例身份——同槽位不同归因是同一动作,禁拆成两个幂等键。
+    """
     import dataclasses
 
     if dataclasses.is_dataclass(action):
         params = dict(vars(action))
+        for f in dataclasses.fields(action):
+            if f.metadata.get('action_key_exclude'):
+                params.pop(f.name, None)
         if not params:
             return type(action).__name__   # 无字段 dataclass(StartBattle 等)→ 裸名
         return f'{type(action).__name__}({params})'

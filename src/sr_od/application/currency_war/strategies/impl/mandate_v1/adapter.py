@@ -191,11 +191,16 @@ for _cls, _fam, _dom in [
 
 
 def _param_fingerprint(action: PrepAction) -> str:
-    """op_key 参数指纹(与 action_key 同粒度思想:同族不同参数=不同幂等键)。"""
+    """op_key 参数指纹(与 action_key 同粒度思想:同族不同参数=不同幂等键;
+    带 ``action_key_exclude`` metadata 的归因字段同样不入——批 4
+    SellBench.reason 填充后,归因标签不得分裂同槽动作的幂等键,与
+    action_key 消费同一 metadata 单一源)。"""
     if not dataclasses.is_dataclass(action):
         return ''
     parts = []
     for f in dataclasses.fields(action):
+        if f.metadata.get('action_key_exclude'):
+            continue
         v = getattr(action, f.name)
         parts.append('' if v is None else str(v))
     return ':'.join(parts) if any(parts) else ''

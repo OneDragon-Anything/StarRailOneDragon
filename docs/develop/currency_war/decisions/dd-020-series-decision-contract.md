@@ -2,7 +2,7 @@
 
 > 类名/路径已随 2026-09-03 命名迁移与流程重构持续更替,本文代码锚为批时快照(2026-09-03),漂移按「契约占位」处理不立案。
 
-- Status: accepted(2026-09-03,用户整包批准三裁决点;正文权威 = `.debug/temp/currency_war/redesign/CONTRACT_SERIES_DECISION.md` v1,汇合点后 as-built 归 `strategy/07_plugin.md` 更新承接)
+- Status: accepted(2026-09-03,用户整包批准三裁决点;**权威链重锚(2026-09-08,ADR-0585 §5/批 4)**:原正文权威 `CONTRACT_SERIES_DECISION.md` 工作副本已灭失(全仓零命中,`.debug/` 不入 git),承接目标 `strategy/07_plugin.md` 从未创建——词表 as-built 权威 = `../flow/action_exec.md` §1(该节即词表行的首次文档落档),判型机器可读形式 = `entry.py` 帧稳定截断分类区)
 - 关联: dd-014(黑板接口前身)、dd-017(P3b 编排切换)、`prereg/w971_flow_layer/DESIGN.md[已删·git 84370361 可溯]`
 
 ## 背景
@@ -31,8 +31,10 @@ dd-014 落黑板接口后,动作发射类接口粒度分裂:商店线 `decide_sh
 - 策略器换核的发射器按序列输出,帧稳定截断判断在策略器侧(契约 §3 初始枚举);DecideAdapter 绑定表多元素化列改造件。
 - **sim A/B 证明面边界**(2026-09-03 测绘,sim 只消费 update_target+decide_shop_screen):A/B 证明=商店波经济决策;prep 编排域(收球/开箱/典籍/腾席/开商店时机/出战时机)sim 无实体真值源,防线=契约锁+适配器零漂移门+实机。
 - pick 类接口不在本轮;遭遇刷新类「旗标+handler 编排」泄漏记 v2 收编候选。
-- 契约正文权威链:CONTRACT_SERIES_DECISION.md(工作副本,冻结 v1)→ 汇合点后 strategy/07_plugin.md as-built 承接。
+- 契约正文权威链(**已重锚**,2026-09-08):~~CONTRACT_SERIES_DECISION.md(工作副本,冻结 v1)→ 汇合点后 strategy/07_plugin.md as-built 承接~~ → 词表 as-built 权威 = `../flow/action_exec.md` §1(首次文档落档,ADR-0585 §5 申报);正文条款以本文件为决策记录、§1 为词表现值。
 
 ## 修订记录
+
+- **重锚(2026-09-08,ADR-0585 §5/批 4)**:正文权威链断裂处置(编者裁决「全仓确无正本」分支)——CONTRACT_SERIES_DECISION.md 工作副本灭失、strategy/07_plugin.md 从未创建;词表 as-built 权威改指 `../flow/action_exec.md` §1(该节同批完成 SellBench reason 字段条目落档+词表漂移勘误:白名单实码 18 项/:178-184)。契约条款零改动。
 
 - **v2(2026-09-03,用户批准)**:§3 截断规则表按接口分域(商店线/备战线)+备战词表 12 类逐类补判(含 4 退役类退役标注)+SwapDeploy 系新增分类+§3.3 未识别动作 fail-closed 处置条款(计数披露义务归遥测键登记纪律,契约不立法键名)。其余条款零改动。对抗审查链:IMPL_ADV_R192 症1→R193 症1-4→R194 症4(修复全闭环)。提案档=`.debug/temp/currency_war/redesign/CONTRACT_V2_PROPOSAL.md`(已归档)。

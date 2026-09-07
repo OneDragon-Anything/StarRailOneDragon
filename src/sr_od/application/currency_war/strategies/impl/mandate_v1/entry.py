@@ -11,8 +11,11 @@ IMPL_DESIGN §6.4-R 步4 / R189-4 结构签名:
 ev_arm 模式参数(skeleton_only/full,R1-1)决定 EV 发射面旁路集(§4.2.1)
 并写遥测行(bridge 侧)。
 
-truncate_frame_stable 判 = 契约 v2(CONTRACT_SERIES_DECISION.md,2026-09-03
-用户批准)§3.2 备战线域 17 类逐类表 + §3.3 fail-closed(词表外/无分类
+truncate_frame_stable 判 = 契约 v2 §3.2 备战线域 18 类逐类表(词表
+as-built 权威 = docs/develop/currency_war/flow/action_exec.md §1——
+契约正本 CONTRACT_SERIES_DECISION.md 工作副本灭失(全仓零命中,
+.debug 不入 git),§1 即该词表行的首次文档落档,权威链重锚申报 =
+ADR-0585 §5 + dd-020 修订记录)+ §3.3 fail-closed(词表外/无分类
 动作 ⇒ 截断 + 计数披露,禁静默丢弃)。发射器实现期增补条目须回契约
 改版,禁只改代码。R196 修复批(症5)对齐:ClickSpheres=条件判(末批
 可能掉箱 ⇒ 其后截断)、conditional 五类名-槽一致性复检(推不出即截断,
@@ -513,9 +516,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 counters=_ct,
                 dedup_names=set())   # C1 事件口径:单帧去重(单调用语境)
             # 兜底豁免(P78-5:主路径空 ∧ 仍需筹资;池定义单一源 =
-            # sell_gate.funding_hold_fallback;prep 域 SellBench 载体无
-            # reason 字段,分键只落计数,与 T3 转化同口径申报;减法①读
-            # 到的是上一 visit 买入名,方向偏保守无害,V2-10)。
+            # sell_gate.funding_hold_fallback;减法①读到的是上一 visit
+            # 买入名,方向偏保守无害,V2-10)。
             _f_fallback = []
             if not slots and state.gold < _f_need:
                 _f_fallback = sell_gate.funding_hold_fallback(
@@ -526,21 +528,31 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                     _ct['ev_conflict_dropped'] = \
                         _ct.get('ev_conflict_dropped', 0) + 1
                     continue
-                ev_out.append(Emitted(SellBench(slot=s), False,
-                                      'funding_support',
-                                      funding_support=True))
+                # plain 分键(批 4/ADR-0585 §3:funding 普通路径零计数
+                # 补齐——funding 空手率分母侧可观测,方案 v3 §5.4)
+                _ct['funding_support_plain_sell'] = \
+                    _ct.get('funding_support_plain_sell', 0) + 1
+                # tag==reason 双写对齐(方案 v3 §3.4;载体归因纯遥测,
+                # 记录非指令)。
+                ev_out.append(Emitted(
+                    SellBench(slot=s, reason='funding_support'), False,
+                    'funding_support', funding_support=True))
             for bc in _f_fallback:
                 if bc.slot in sold_slots:
                     _ct['ev_conflict_dropped'] = \
                         _ct.get('ev_conflict_dropped', 0) + 1
                     continue
-                # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)
+                # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)。
+                # reason = 通道枚举值(兜底分键走计数,不入载体归因——
+                # 与 shop 兜底位 reason='funding_hold_liquidated' 的差异:
+                # 彼位分键兼同轮买卖检查豁免面,prep 卖出恒先于本轮买入
+                # 豁免面结构性不可达,ADR-0585 §3/§5 落档申报)
                 _ct['funding_hold_liquidated'] = \
                     _ct.get('funding_hold_liquidated', 0) + 1
                 sell_gate.consume_on_sell(session, bc.char_id or '')
-                ev_out.append(Emitted(SellBench(slot=bc.slot), False,
-                                      'funding_support',
-                                      funding_support=True))
+                ev_out.append(Emitted(
+                    SellBench(slot=bc.slot, reason='funding_support'), False,
+                    'funding_support', funding_support=True))
                 break
     out = _merge_ev_before_frame_end(out, ev_out)
 
@@ -798,7 +810,8 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             counters['ev_conflict_dropped'] = \
                 counters.get('ev_conflict_dropped', 0) + 1
             continue
-        out.append(Emitted(SellBench(slot=s), False, 'line_switch_sell'))
+        out.append(Emitted(SellBench(slot=s, reason='line_switch_collapse'),
+                           False, 'line_switch_collapse'))
         sold_slots.add(s)
     # 凑息档 EV 面 / 压库 / 装备精修 / 付费刷新:商店线辖域或【拟】
     # None 期 fail-closed,prep 帧无追加发射(判据本体已落
@@ -828,8 +841,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             counters=counters,
             defer_names=_t3_protect,
             dedup_names=_mm_dedup)
-        # 兜底豁免(P78-5:主路径空 ∧ 仍需筹资;pool 单一源同上;prep 域
-        # SellBench 无 reason 字段,分键只落计数,V2-10 语义注同上)。
+        # 兜底豁免(P78-5:主路径空 ∧ 仍需筹资;pool 单一源同上)。
         _fb_need = mandate.cheapest_member_cost(frame)
         _f_fallback = []
         if not fslots and state.gold < _fb_need:
@@ -841,30 +853,38 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                 counters['ev_conflict_dropped'] = \
                     counters.get('ev_conflict_dropped', 0) + 1
                 continue
-            # T3 转化类分键 + 卖出销账(店侧同款;prep 域 SellBench 载体
-            # 无 reason 字段故分键只落计数不落动作标记——sim 不执行 prep
-            # 域,豁免检查只辖 sim 账本,prep 侧无需 reason;defer 保护
-            # 全时段覆盖,不依赖该注释所述的任何时序假设)
+            # T3 转化类分键 + 卖出销账(店侧同款);plain 路径补零计数
+            # 分键(批 4/ADR-0585 §3)。reason = T3 特化值优先于通道名
+            #(ADR-0585 §3 批 4 填充);tag==reason 双写对齐(方案 v3
+            # §3.4)。归因纯遥测(记录非指令):prep 卖出恒先于本轮买入,
+            # 同轮买卖检查豁免面结构性不可达,分键语义只落计数。
             _fbc = next((b for b in frame.bench if b.slot == s), None)
             _fname = (_fbc.char_id or '') if _fbc is not None else ''
             if _fname in _t3_protect:
                 counters['funding_support_stall_convert'] = \
                     counters.get('funding_support_stall_convert', 0) + 1
                 mandate.stall_buys_consume(session, _fname)
-            out.append(Emitted(SellBench(slot=s), False, 'funding_support',
-                               funding_support=True))
+            else:
+                counters['funding_support_plain_sell'] = \
+                    counters.get('funding_support_plain_sell', 0) + 1
+            _ev_reason = ('funding_support_stall_convert'
+                          if _fname in _t3_protect else 'funding_support')
+            out.append(Emitted(SellBench(slot=s, reason=_ev_reason), False,
+                               _ev_reason, funding_support=True))
             sold_slots.add(s)
         for bc in _f_fallback:
             if bc.slot in sold_slots:
                 counters['ev_conflict_dropped'] = \
                     counters.get('ev_conflict_dropped', 0) + 1
                 continue
-            # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)
+            # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)。reason =
+            # 通道枚举值,兜底分键走计数不入载体(与 shop 兜底位差异的
+            # 理由同骨架-only 位申报)。
             counters['funding_hold_liquidated'] = \
                 counters.get('funding_hold_liquidated', 0) + 1
             sell_gate.consume_on_sell(session, bc.char_id or '')
-            out.append(Emitted(SellBench(slot=bc.slot), False,
-                               'funding_support', funding_support=True))
+            out.append(Emitted(SellBench(slot=bc.slot, reason='funding_support'),
+                               False, 'funding_support', funding_support=True))
             sold_slots.add(bc.slot)
             break
     return out

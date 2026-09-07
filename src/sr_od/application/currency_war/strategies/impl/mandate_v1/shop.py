@@ -558,6 +558,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
         契约下发射位检出与执行层应用等价(动作被无条件采纳执行),
         CompTransaction fill 残余形态由轮界销 ≤1 轮兜底(V2-05 有界性
         申报)。
+
+        sim 边界(ADR-0585 §6 申报,三审 F2 回填):上述等价性前提 =
+        生产单动作循环;sim/replay 序列驱动形态下引擎两个作废通道
+        (仲裁预算闸拒/事务 fill 后陈旧 BuyCard 作废重决策)可作废
+        已发射动作,而本发射位 consume_on_merge 已销账(同轮卖回保护
+        缺口)、register_launch 已开账(≤1 轮滞留,轮界销兜底)——
+        缺口有界低概率无决策行为差,sim 为测试载体生产不可达,接线
+        位维持发射位不变(移位属行为面变更,候后续行为批)。
         """
         _buy_name = getattr(card, 'name', '') or ''
         record_fresh_buy(session, state, _buy_name)
@@ -806,11 +814,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
                         _count('fuel_victim_protect_demoted')
                         mandate.stall_buys_consume(session, _vname)
                     _note_sell(_vname)
+                    # reason = T3 特化值优先于通道名(ADR-0585 §3 批 4
+                    # 填充;''→'m4_fuel_victim' 旧缺省形态退役)。
                     return SellBench(bench_idx=idx,
                                      income=_shop_sell_refund(victim),
                                      expect=_vname,
                                      reason=('fuel_victim_protect_demoted'
-                                             if _prot_hit else ''))
+                                             if _prot_hit
+                                             else 'm4_fuel_victim'))
             else:
                 _count('m2_retry_exhausted')
                 _count('m2_stall_cache_rederive')
@@ -914,11 +925,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     _count('fuel_victim_protect_demoted')
                     mandate.stall_buys_consume(session, _vname1)
                 _note_sell(_vname1)
+                # reason = T3 特化值优先于通道名(ADR-0585 §3,同 M2 腾席位)
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(victim),
                                  expect=_vname1,
                                  reason=('fuel_victim_protect_demoted'
-                                         if _prot1 else ''))
+                                         if _prot1 else 'm4_fuel_victim'))
             _count('bench_full')
             continue
         _on_target_buy(card.name or m)
@@ -1796,9 +1808,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if idx is None:
                     continue
                 _note_sell((bc.char_id or '') if bc else '')
+                # reason = 凑息通道归因(ADR-0585 §3 批 4 填充;发射位旧
+                # 形态整行不带 reason,缺省 '' 同义)。
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(bc) if bc else None,
-                                 expect=(bc.char_id or '') if bc else '')
+                                 expect=(bc.char_id or '') if bc else '',
+                                 reason='interest_pullback')
     # 支付支撑通道(两臂同开,R13-5):骨架义务动作金不足侧筹资变现。
     # F2 已由 ADR-0585 §4 拆三块修订(原「有意不扩 Z1 排除集」申报废止):
     # ①义务基座并入(本位旧排除 buy_members 与义务基座同源,并入零
@@ -1856,13 +1871,18 @@ def decide_shop_action(state: GameState, session: StrategySession,
             if _fprot:
                 _count('funding_support_stall_convert')
                 mandate.stall_buys_consume(session, _fname)
+            else:
+                # plain 分键(批 4/ADR-0585 §3:funding 普通路径零计数
+                # 补齐——funding 空手率分母侧的可观测事件,方案 v3 §5.4)
+                _count('funding_support_plain_sell')
             _note_sell(_fname)
+            # reason = T3 特化值优先于通道名(ADR-0585 §3 批 4 填充)
             return SellBench(
                 bench_idx=idx,
                 income=_shop_sell_refund(bc) if bc else None,
                 expect=_fname,
                 reason=('funding_support_stall_convert'
-                        if _fprot else ''))
+                        if _fprot else 'funding_support'))
         for bc in _f_fallback:
             _fidx = (state.bench or []).index(bc)
             _fname = bc.char_id or ''
