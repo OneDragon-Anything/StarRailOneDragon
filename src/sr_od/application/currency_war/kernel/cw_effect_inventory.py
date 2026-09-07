@@ -13,8 +13,8 @@
 payload 承载效果数值/战场语义;经济/状态类复用 ``cw_investments.EconomyEffect``
 同一实例(单一源,不复制字段)。
 
-**与 cw_effect_ledger 的关系**:ledger(``cw_effect_ledger.py``)是消费端派生视图
-(从 EconomyEffect 聚合出 DP 日程/突变结构),本模块是其上游。
+**上游关系**:本模块是效果规格的登记侧;消费端派生视图(DP 日程/突变聚合,
+原 v0 规划)不存在,消费接缝出现时按需重建。
 """
 from __future__ import annotations
 

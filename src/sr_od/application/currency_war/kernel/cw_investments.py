@@ -612,8 +612,8 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     聚合消费链静默丢值。分型语义=**数值字段加法求和 + 触发配对字段守卫
     min 并宽**(哨兵 0,最早触发位代表聚合时点)。边界:标量载体对
     「多条目不同触发位」有损(两笔不同等级/时点的触发被折叠到最早位)——
-    精确多条目消费走 cw_effect_ledger 逐策略路径(gold_at_level_effect /
-    conditional_effects_at,不经本聚合)。聚合语义机器可读单一源 =
+    精确多条目消费暂无独立载体(逐策略消费视图未建),需要时先建再依赖。
+    聚合语义机器可读单一源 =
     测试位分型表(test_cw_economy_aggregate_typing,§E6 裁决:代码即载体)。
     """
     eff = EconomyEffect()
