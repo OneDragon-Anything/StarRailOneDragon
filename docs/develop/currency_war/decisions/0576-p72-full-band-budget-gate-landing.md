@@ -29,6 +29,11 @@ T-81)作为 P71-b 辖域的全段推广证明在库,本批落码并同步检查�
    `schedule_upgrade` ①臂 / `_upgrade_ul_threshold_ok` ΔV_pop 指示项成
    同步锚对(同一 P39 指示项第三消费位);全段化若缺本支,arm1 帧会被
    量闸否决存在性(违 P39 ②「骨架义务 M3,arm2 无权否决存在性」)。
+   (支A辖域声明,ADR-0589 落库批补:豁免谓词**节点无关**——奖励帧
+   同样适用,与 ADR-0580 奖励帧升级抑制意图的策略张力归策略域候裁
+   行,非 ADR 层裁决;sim 侧该张力可观测性系于决策帧 node_type 可见
+   性——生产侧 = ADR-0587 台账制,sim 侧 = 可见性批;检查器面 =
+   ADR-0589。)
 4. **P39 接缝处置(核对点 B,本 ADR 核心)——承担项换位 + 缺位挂账**:
    (3b) 数值完备账支(`ΔV_band ≥ s + L + 尖括号欠账`,C_realize=0 帧)
    **不落码**——math_proofs P39 明载 ΔV_band「窗口前提证伪的重锚未完成
@@ -49,6 +54,8 @@ T-81)作为 P71-b 辖域的全段推广证明在库,本批落码并同步检查�
      + `predicates.line_members`,D3 修复);
    - ALL IN 豁免镜像:位面末 boss 节,位面长度由本 run rows 现推
      max(round_num);支A 镜像同谓词;reward/supply 豁免承继。
+     (后继修正:支A realize 改按击读引擎披露的决策帧真值,行末快照
+     自此仅辖无披露键账本回退——ADR-0589。)
 6. 契约锁(`contracts.CONTRACTS[('levelup','levelup_budget_gate')]`)辖域
    与锚更新指 P72 + 本 ADR(前提谓词 gold+cap 在场不变;ALL IN/支A 在
    判据体内自判不另设前提)。

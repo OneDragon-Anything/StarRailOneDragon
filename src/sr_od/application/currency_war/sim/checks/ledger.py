@@ -300,13 +300,18 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
       同构);
     - **支A 兑现链**(板满 ∧ bench 2★,生产同步锚对谓词镜像);
       支B(ΔV_band 数值完备账)生产侧本批不落码(P39 接缝,
-      ADR-0576 §判据),镜像侧同缺,两侧一致。
+      ADR-0576 §判据),镜像侧同缺,两侧一致。realize 判定按击读
+      引擎 LevelUp 执行点披露的 dec_board_full/dec_bench_2star
+      (决策帧真值,T-135:行末快照在「帧内合成 2★→升级批→上板」
+      序列下 bench 已无 2★,恒误报绕闸;定谳 = ADR-0589;无披露键
+      账本回退行末近似,见近似声明);
 
     近似声明(与既有检查器同款口径,偏差方向逐条标注):
     - 升级前等级用上一轮账本 level(轮内升级完成会抬高本行);
     - 板满判定 cap 按轮内升级量回退(level+常数线性近似,宝钻语境
-      ±1 量级窗口);bench/deployed 用行末快照(轮内先升后买/上板
-      的漂移窗口,支A 镜像 ±1 件,双向);
+      ±1 量级窗口);bench/deployed 行末快照仅辖**无披露键账本的
+      支A 回退判定**(轮内先升后买/上板的漂移窗口 ±1 件双向——
+      T-135 起有披露键的击走决策帧真值,该窗口不再辖现役 sim 批);
     - 击序余量 s = 同轮 m3 击实际花费后缀和(生产 s =
       clicks_to_next_level 现读;轮内买牌 +4XP 令生产 s ≤ 本口径
       ——宽松向,不冤枉合法批);
@@ -381,47 +386,65 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
                 rho = r2_card_reserve(km, bench, deployed,
                                       SimpleNamespace(level=level),
                                       level=level)
-                # 支A 镜像:板满(cap 按轮内升级量回退)∧ bench 2★
-                cap_dep = st.get('cap')
-                cap_dec = (cap_dep - (row_lvl - level)
-                           if cap_dep is not None else None)
-                realize = (cap_dec is not None
-                           and len(deployed) >= cap_dec
-                           and any(b.star >= 2 for b in bench))
-                if not realize:
-                    # 逐击余量(实际花费后缀和;缺 cost 行退化均摊)
-                    lv_costs = [actions[i].get('cost') for i in lv_pos]
-                    s_total = ((sim.get('spend') or {}).get('levelup')
-                               or 0)
-                    if any(c is None for c in lv_costs):
-                        per = s_total // len(lv_pos)
-                        lv_costs = [per] * len(lv_pos)
-                    # 逐击决策帧金重放 + 闸式判定
-                    for j, idx in enumerate(lv_pos):
-                        gold_dec = g0
-                        for a in actions[:idx]:
-                            t = a.get('__type__')
-                            if t == 'BuyCard':
-                                gold_dec -= ((a.get('card') or {})
-                                             .get('cost', 0) or 0) \
-                                    * (a.get('count') or 1)
-                            elif t in ('RefreshShop', 'LevelUp'):
-                                gold_dec -= a.get('cost') or 0
-                            elif t == 'SellBench':
-                                gold_dec += a.get('income') or 0
-                        s_j = sum(lv_costs[j:])
-                        tau = interest(gold_dec, DEFAULT_INTEREST_CAP)
-                        floor = tau * 10 + 2 * rho
-                        if gold_dec - s_j < floor:
-                            out.append(
-                                f"p{row.get('plane')}"
-                                f"r{row.get('round_num')} "
-                                f"LevelUp 击{j + 1}/{len(lv_pos)} 批余 "
-                                f"{s_j} 金,决策帧金 {gold_dec} < "
-                                f"息档 floor {floor}"
-                                f"(τ={tau}, ρ={rho}, g0={g0})——"
-                                f"P72 (3a) 绕闸升级(ADR-0576)")
-                            break
+                # 支A 镜像·按击豁免(T-135,决策帧真值优先):引擎在
+                # LevelUp 执行点披露的 dec_board_full/dec_bench_2star =
+                # 发射帧支A 谓词输入(单动作架构 ADR-0517 下执行点状态 =
+                # 发射帧状态),按击判定——行末快照在「帧内合成 2★→升级批
+                # →轮末部署块当帧上板」确定性序列下 bench 已无 2★,旧口径
+                # 恒误报绕闸(假阳定谳 = ADR-0589;谓词设计 =
+                # ADR-0576 §2.5 支A 兑现链)。无披露键的账本(生产回放/
+                # 历史批次)回退旧行末口径,整行同判(漂移窗口见近似声明)。
+                lv_actions: list[dict] = [actions[i] for i in lv_pos]
+                if all(isinstance(a.get('dec_board_full'), bool)
+                       and isinstance(a.get('dec_bench_2star'), bool)
+                       for a in lv_actions):
+                    realize_by_click: list[bool] = [
+                        bool(a['dec_board_full'])
+                        and bool(a['dec_bench_2star'])
+                        for a in lv_actions]
+                else:
+                    # 旧账本回退:板满(cap 按轮内升级量回退)∧ bench 2★
+                    cap_dep = st.get('cap')
+                    cap_dec = (cap_dep - (row_lvl - level)
+                               if cap_dep is not None else None)
+                    realize_row = (cap_dec is not None
+                                   and len(deployed) >= cap_dec
+                                   and any(b.star >= 2 for b in bench))
+                    realize_by_click = [realize_row] * len(lv_actions)
+                # 逐击余量(实际花费后缀和;缺 cost 行退化均摊)
+                lv_costs = [a.get('cost') for a in lv_actions]
+                s_total = (sim.get('spend') or {}).get('levelup') or 0
+                if any(c is None for c in lv_costs):
+                    per = s_total // len(lv_pos)
+                    lv_costs = [per] * len(lv_pos)
+                # 逐击决策帧金重放 + 闸式判定(支A 豁免按击短路)
+                for j, idx in enumerate(lv_pos):
+                    if realize_by_click[j]:
+                        continue
+                    gold_dec = g0
+                    for a in actions[:idx]:
+                        t = a.get('__type__')
+                        if t == 'BuyCard':
+                            gold_dec -= ((a.get('card') or {})
+                                         .get('cost', 0) or 0) \
+                                * (a.get('count') or 1)
+                        elif t in ('RefreshShop', 'LevelUp'):
+                            gold_dec -= a.get('cost') or 0
+                        elif t == 'SellBench':
+                            gold_dec += a.get('income') or 0
+                    s_j = sum(lv_costs[j:])
+                    tau = interest(gold_dec, DEFAULT_INTEREST_CAP)
+                    floor = tau * 10 + 2 * rho
+                    if gold_dec - s_j < floor:
+                        out.append(
+                            f"p{row.get('plane')}"
+                            f"r{row.get('round_num')} "
+                            f"LevelUp 击{j + 1}/{len(lv_pos)} 批余 "
+                            f"{s_j} 金,决策帧金 {gold_dec} < "
+                            f"息档 floor {floor}"
+                            f"(τ={tau}, ρ={rho}, g0={g0})——"
+                            f"P72 (3a) 绕闸升级(ADR-0576)")
+                        break
         prev_level = row_lvl
     return out
 
