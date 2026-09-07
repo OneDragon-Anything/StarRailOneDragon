@@ -3,7 +3,8 @@
 本模块是决策核(decision)与应用执行层(app)之间的**共享词汇**:PrepAction 动作全集、
 动作键函数与统一观察视图 PrepObservation。纯 dataclass 标记 + 纯函数,零副作用、
 零识别/执行逻辑——「执行一个动作」在 app/prep_actions.py 的 PrepActionExecutor,
-「产出动作」在策略层 CwStrategy.decide_prep_action 系钩子。
+「产出动作」在策略层 CwStrategy.decide_prep_screen 决策接口(ADR-0583 措辞:
+契约方法不称钩子)。
 
 为何落在 kernel:决策核产出这些动作、执行层消费这些动作,任一侧定义都会造成
 另一侧的反向依赖(分包依赖矩阵 §3.2:decision 只可依 kernel/data;app 依一切)。

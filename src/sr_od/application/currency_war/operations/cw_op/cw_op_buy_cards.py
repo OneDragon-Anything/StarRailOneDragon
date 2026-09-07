@@ -330,8 +330,8 @@ def build_post_buy_incremental_state(
     全量 read_game_state;②tracked_bench_chars 为空 → 同样返回 None。
     ②的理由:bench 真空(全部署/合成清空)与跟踪丢失在本构造点不可区分,
     而垫底 state.bench 是执行前快照——空 tracked 时沿用它会把陈旧 bench
-    当真值喂给 update_target(误读维度造值)。回退全量读后两种情形都得到
-    OCR 真值,代价只是罕见情形多一次整帧读。
+    当真值喂给方向刷新(误读维度造值;消费位 = finalize 暂存帧,ADR-0583)。
+    回退全量读后两种情形都得到 OCR 真值,代价只是罕见情形多一次整帧读。
     """
     if gold_read is None:
         return None
@@ -542,7 +542,9 @@ def run_buy_waves(op: SrOperation, match,
     config = CurrencyWarConfig(op.ctx.current_instance_idx)
     if match is None:
         # 防御:无对局态(独立 run_operation 调本 op)→ 临时 match,不挂 ctx(局外不复用)
-        # (防御具现 = 活策略核 mandate_v1,与生产注册面同源;统一迁移批重指向)
+        # (防御具现 = 活策略核 mandate_v1,与生产注册面同源;统一迁移批重指向)。
+        # 该路径经 create_session 冷建(ADR-0583:live 初值 v3_phase='FORM'
+        # 随唯一冷建口在此落位,旧 on_match_start 写点已删;phase 列仅诊断用)。
         from sr_od.application.currency_war.strategies.impl.cw_strategy import (
             CurrencyWarMatch,
         )
@@ -552,7 +554,8 @@ def run_buy_waves(op: SrOperation, match,
         _def = MandateV1Strategy()
         match = CurrencyWarMatch(_def, _def.create_session(config))
 
-    # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。target 由 strategy.update_target 管理(下方)。
+    # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。方向视图由策略器
+    # 决策入口内化刷新(帧代次标注触发,ADR-0583)。
     click_pts = shop_card_click_points(op.ctx)
     level_btn = area_center(op.ctx, BUY_EXP_AREA) or LEVEL_UP_FALLBACK
     refresh_btn = area_center(op.ctx, '按钮-刷新', SHOP_SCREEN_NAME) or REFRESH_FALLBACK
@@ -574,10 +577,12 @@ def run_buy_waves(op: SrOperation, match,
     # `w536_merge_expect/`:买牌期望态基座(pre 快照 = 单元执行前 tracked)。
     _buy_pre_bench = deepcopy(exec_state_of(match.session).tracked_bench_chars)
     _buy_pre_deployed = deepcopy(exec_state_of(match.session).tracked_deployed)
-    # 执行边界压缩:首段 update_target 已做(替代原开店后独立读);
+    # 执行边界压缩:首段入口观察已带全量语境(替代原开店后独立读);
+    # _entry_frame_marked = visit 首段已标 full(续段标 none,连击续刷判定输入
+    # 所在的段循环共用此分段);
     # _prev_refresh_only = 上一段是「仅刷新段」(连击续刷判定输入,
     # 判据单一源 = refresh_wave_is_refresh_only)。
-    _target_seeded = False
+    _entry_frame_marked = False
     _prev_refresh_only = False
     state: GameState | None = None
     for _ in range(MAX_REFRESH + 1):
@@ -599,10 +604,6 @@ def run_buy_waves(op: SrOperation, match,
                                 phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         _apply_hp(state, hp_value, hp_readable, hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖
-        if not _target_seeded:
-            # 执行边界压缩:原开店后 update_target 专用读的首段替代。
-            _target_seeded = True
-            match.strategy.update_target(state, match.session, config)
         # r7 review P0-①:shop 开帧节点行被遮 node_type 恒 None → 拷 Director shop 关态真值(仿 hp_value 同法)。
         if match is not None and match.session.last_node_type:
             state.node_type = match.session.last_node_type
@@ -654,6 +655,12 @@ def run_buy_waves(op: SrOperation, match,
         # session.shop_state_frame——写者 = 入口观察段/决策循环投影步;读者 =
         # decide_shop_action。
         match.session.shop_state_frame = state
+        # 帧代次标注(ADR-0583 §3.4):visit 首段入口观察 = full(方向视图
+        # 由 decide_shop_action 入口消费刷新);续段刷新重观察 = none
+        #(= 旧 _target_seeded「仅首段重估」语义,段内视图不随买入漂移)。
+        match.session.shop_frame_class = (
+            'full' if not _entry_frame_marked else 'none')
+        _entry_frame_marked = True
         # 店开观察帧披露覆写(T-88 双写第二写点;ADR-0571 §2.2):prep
         # 装配帧关店态 gold 过 F2 门不可得 ⇒ overflow/budget 在 prep 快照
         # 恒 0(金未采语义);此处店开帧 gold 为真值,同一 BudgetView 链
@@ -692,7 +699,7 @@ def run_buy_waves(op: SrOperation, match,
         # r97 供给快照(进店首见):全段牌面真值源之一(含 refresh 段)。
         recorder.record_shop_snapshot('offer', state.shop, state.gold,
                                       state.plane, state.round_num)
-        # A2:target 由策略器状态管理(update_target 写)。日志/遥测披露值构造
+        # A2:target 由策略器状态管理(方向刷新写,ADR-0583 内化)。日志/遥测披露值构造
         # = 披露面,经访问函数防御 getattr(strategy_state_of None 契约,
         # ADR-0563 B4 划分线:异型状态对象字段缺席退缺省,缺席语义 = 迁移前
         # None 缺省字段的 '?'/''/-1.0,非行为面读点)

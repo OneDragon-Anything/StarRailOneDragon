@@ -1326,7 +1326,7 @@ def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
 
     每张持有策略的绑定(``strategy_bindings``,ADR-0134 派生)∩ comp(阵营/core 角色)命中 → 该策略
     对此 comp 加成。归一 0..1:0.5 中性(无策略/无命中),每命中 +0.25 封顶 1.0(星徽套组双命中
-    = 三件套到手 → 1.0 满分,comp_score 显著抬 → select_comp/update_target 自然转向)。
+    = 三件套到手 → 1.0 满分,comp_score 显著抬 → select_comp/方向重估自然转向)。
     **augment 定义型 comp(ADR-0152)**:命中 ``AUGMENT_COMP_AFFINITY``(黑塔纪元/飞光等)按亲和
     覆盖计分(0.5 + 0.5×affinity)—— 拿到黑塔纪元对大黑塔 comp 即 1.0,近乎硬绑(env_fit 同款语义)。
     无持有策略 → None(动态权重剔除,与 env_fit 同语义)。
@@ -1405,7 +1405,7 @@ def make_score_context(state: GameState, bosses: list[str] | None = None) -> Sco
         bosses=bosses or list(state.plane_bosses),
         mechanics=current_enemy_mechanics(state),
         env=state.active_env,
-        held_strategies=list(state.active_strategies),   # ADR-0135 机会型 pivot(选完策略后 update_target 重评)
+        held_strategies=list(state.active_strategies),   # ADR-0135 机会型 pivot(选完策略后方向重估)
         plane=state.plane, round_num=state.round_num, gold=state.gold,
     )
 
@@ -2012,7 +2012,7 @@ def target_committed(target: Comp, state: GameState) -> bool:
 # 每次 pivot 把已买核心推倒重买,板面强度清半程;A8 敌强度随轮涨 → 换线窗口=最弱时撞最强怪。
 # 转线后 cooldown 轮内信号 1/2 不再触发(信号 3 保命豁免——危机永远允许转)。
 # 冷却状态宿主 StrategySession.pivot_cooldown_until 已随 default 栈退役删除
-# (唯一写端=default update_target);maybe_pivot 挂账层的冷却守卫随之惰性化
+# (唯一写端=default 栈战略层,已随 ADR-0583 出基类);maybe_pivot 挂账层的冷却守卫随之惰性化
 # (session 冷却字段不再存在,守卫恒不触发)。
 # 保命 pivot 也设冷却(1 轮/次,弱于信号1/2 的 3 轮,审计 cc119c14):危机允许转,
 # 但「信号3→转线→板面清零→更弱→又信号3」的连续翻转自激会被冷却掐断
@@ -2052,7 +2052,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # target_comp 是从近空板上按分选的(分=噪声),每来一张牌重排 → 每 1-4 轮 pivot →
     # 四条零共享核心线各推倒一次 → 板永不成型 → P1 全输过去。
     # 用户模型:P1 玩的 = 过渡框架(列车+仙舟)持续加深;终局线由贯穿件信号锁
-    # (CommitSignals,update_target 定型路径);涌现/ceiling 分差在双轨期无信息量。
+    # (CommitSignals,方向重估定型路径);涌现/ceiling 分差在双轨期无信息量。
     # target 变更路径收敛为:①CommitSignals 定型(ADR-0209)②drought 弃线重 select
     # ③定义型 augment(贯穿件级资源信号,下方 _defining_new)④定型后信号 1/2 照常。
     # (易 comp 成型快 → 少掉血;实测出现过 easy/medium gap 0.097 卡 0.10 没转、

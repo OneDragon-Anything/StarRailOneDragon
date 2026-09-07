@@ -28,7 +28,10 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     ActiveEffectInventory,
 )
-from sr_od.application.currency_war.kernel.cw_performance import PerformanceTracker
+from sr_od.application.currency_war.kernel.cw_performance import (
+    PerformanceTracker,
+    RoundOutcome,
+)
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_prep_actions import PrepObservation
@@ -80,10 +83,10 @@ def strategy_state_of(session: StrategySession) -> object:
     承载——依赖矩阵禁 kernel→impl 边,策略状态内部结构对 kernel 不
     可见,消费面走 getattr)。
 
-    **None 契约与调用方前提**(B4 收缩申报,ADR-0563「落位裁量」):
+    None 契约与调用方前提**(B4 收缩申报,ADR-0563「落位裁量」):
     None = 策略器状态未装配(裸构造 session 且工厂未注册 / 第三方策略
     未覆写 ``create_state``)。内置策略路径由 create_session 接线 +
-    局容器 ``__post_init__`` 附着 + on_match_start 冷建 + kernel 写路径
+    局容器 ``__post_init__`` 附着 + kernel 写路径
     惰性兜底保证在位。两类读面形态:
 
     - **判据/披露面**(kernel 判据、遥测披露键):字段在异型状态对象上
@@ -135,7 +138,7 @@ class StrategySession:
     # heavy 读到时写此;shop.py 喂决策前拷入(仿 last_hp 模式)。
     last_node_type: str | None = None
     # 节点行 current 槽识别类型(read_node_sequence,备战画面权威源)——
-    # cw_screen_prep 每次备战读节点行时写;cw_loop on_round_end 消费。
+    # cw_screen_prep 每次备战读节点行时写;结算观测回路(cw_screen_battle_wait)消费。
     node_type_current: str | None = None
     # 上帧 upcoming 槽类型序列(idx 升序)——current 高亮态 Hu 不匹配时
     # 左移推断用:本轮 current = 上帧 upcoming[0]。
@@ -150,8 +153,8 @@ class StrategySession:
     plane_lengths_seen: list[int] | None = None
     # 左移推断的轮次锚——同轮多次 probe 不重做左移。
     nodeseq_probe_anchor: tuple | None = None
-    # 上回合结算 streak(带符号 连胜+/连败-;on_round_end 从结算「连胜×N」
-    # 写)。给下回合 economy C 杠杆读(语义在前缀,备战 read_streak 无方向)。
+    # 上回合结算 streak(带符号 连胜+/连败-;结算观察半从结算「连胜×N」
+    # 即时直写,ADR-0583)。给下回合 economy C 杠杆读(语义在前缀,备战 read_streak 无方向)。
     last_streak: int = 0
     # level 单调守卫(read_level OCR 间歇误读;等级局内只升不降,读出<上次
     # =误读用上次)。新局默认 0。识别层守卫状态。
@@ -202,6 +205,26 @@ class StrategySession:
     # 生命周期 = 画面态(每次进商店波循环覆写)。写者白名单 =
     # buy_cards.run_buy_waves 波顶融合段 / sim 引擎。读者 = decide_shop_screen。
     shop_state_frame: 'GameState | None' = None   # noqa: F821, UP037
+    # —— 黑板帧刷新代次标注(ADR-0583 §3.4;帧语义标注,属观察层产物)——
+    # 值域 'full' | 'view' | 'none',缺省 'none'。坐标系:标注对象 = 同名黑板
+    # 帧槽(prep_obs_frame / shop_state_frame)的最近一次写入。写者 = 流程
+    # 观察段具名写点(cw_screen_prep 入口 heavy/破墙/投影/read_only 分支、
+    # finalize 买后暂存;cw_op_buy_cards 商店 visit 首段/续段;sim engine_p1
+    # 每决策段;写点清单 = ADR-0583 §3.4,守卫 = 契约形状锁 L6);
+    # 策略器/驱动器零标注写点(帧类写'full'/'view' = 观察层专属身份,D6)。
+    # 读者 = 策略器决策入口(flow 层 _consume_*_direction_frame),读后即复位
+    # 'none'(消费即清;复位是读协议半部,非新鲜度宣告)。语义:full = 入口
+    # 主观察帧(方向重估全程触发);view = 派生帧(只刷派生视图);
+    # none = 投影/循环续段/pick 未持新观察(不触发刷新)。
+    prep_frame_class: str = 'none'
+    shop_frame_class: str = 'none'
+    # 结算策略半待加工槽(ADR-0583 §2.5:旧 on_round_end 拆两半)。观察层在
+    # 结算点(cw_screen_battle_wait 结算回路)追加 ``RoundOutcome``;策略器在
+    # 下一次决策入口惰性 drain(flow 层 _drain_pending_round_outcomes),
+    # 处理即清槽(每行只加工一次)。写者 = 观察层(单一写端);清者 = 策略器。
+    # 生命周期 = 槽内行存活到下一决策入口(死亡局无后续入口则不加工——
+    # 该四字段族零行为读端,零行为差申报见 ADR-0583 §2.5)。
+    pending_round_outcomes: list[RoundOutcome] = field(default_factory=list)
     # —— 策略器状态黑盒引用(session.md §3.1 裁决 1)——
     # 类型由实现包自定义(mandate_v1 = MandateState);框架经 create_state
     # 工厂按局冷建、只搬运引用不识内部(所有权归策略器;生命周期 =

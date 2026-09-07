@@ -3,7 +3,7 @@
 结算屏(战斗后「挑战结束/数据统计/继续挑战」)展示战后小队 HP「小队生命值<N>」+ 总伤害等
 (2026-08-05 实跑 OCR 确认形态:['挑战结束','战斗','小队生命值71i','数据统计','连胜×0','继续挑战'])。
 ``parse_settlement_hp`` 纯函数(可单测);``read_round_outcome`` OCR 全屏调它 → ``RoundOutcome``
-(``on_round_end`` 输入,性能 trend 用)。node_type/comp_tag/plane/round 由调用方(loop)传入
+(结算观察半直写输入,ADR-0583;性能 trend 用)。node_type/comp_tag/plane/round 由调用方(loop)传入
 (结算屏不暴露这些)。
 
 共享常量(HP_MIN/HP_MAX)在 ``cw_obs_core``。本模块被 ``cw_observation`` re-export。
@@ -540,7 +540,7 @@ def parse_settle_hp_anchor(ocr_texts: list[str]) -> bool:
 
 def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num: int,
                        comp_tag: str, node_type: str = '普通战斗'):
-    """结算屏 → ``RoundOutcome``(观测回路 P1.5;``on_round_end`` 输入)。
+    """结算屏 → ``RoundOutcome``(观测回路 P1.5;结算观察半直写输入,ADR-0583)。
 
     OCR 全屏 → ``parse_settlement_hp`` 得 hp_after;解析成功 hp_confidence=1.0(进 trend),失败 0.0
     (< ``HP_CONFIDENCE_THRESHOLD`` 不进 trend,防噪声)。plane/round_num/comp_tag 由调用方
@@ -548,8 +548,9 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     RunBuyPhase 下 EnsureShopClosed 零执行,node_type 生产链全死,传参恒回退普通战斗);
     解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
 
-    ✅ 已接线(2026-08-07 起):cw_loop._record_round_outcome(分支3)每轮胜结算屏调用 →
-    strategy.on_round_end → performance.record + telemetry.record_outcome(2026-08-16 补)。
+    ✅ 已接线(2026-08-07 起):CwScreenBattleWait._record_round_outcome 每轮胜结算屏调用 →
+    结算观察半直写(_write_settlement_observation,ADR-0583)→ performance.record +
+    telemetry.record_outcome(2026-08-16 补)。
     """
     from sr_od.application.currency_war.kernel.cw_performance import RoundOutcome
     _items = ctx.ocr_service.get_ocr_result_list(

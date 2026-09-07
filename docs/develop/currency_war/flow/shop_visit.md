@@ -28,7 +28,7 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
   ├─ 入口观察(段顶,唯一决策读屏点 = 对账):
   │    read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读（gold/hp/lv/plane/round/shop 五槽）
   │    → _apply_hp（shop 关闭帧 hp 三件组值+位同写覆盖）
-  │    → 首段 update_target（执行边界压缩：替代原开店后专用读）
+  │    → 首段帧代次标注 full（ADR-0583:方向视图由 decide_shop_action 入口消费刷新,续段 none 保持首段值）
   │    → node_type 拷 Director shop 关态真值（shop 开帧节点行被遮恒 None）
   │    → dual_track_phase/committed_from 拷入（R1 唯一读端）
   │    → gold==0 救援（读 0 时重读 4 帧取首个 >0；结果留证 obs_conflict）
@@ -96,7 +96,7 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
 
 ## 4. 单元收尾 finalize_buy_phase（`cw_screen_prep.py:2071`）
 
-1. **买后重估**（r251）：total_buy/level/refresh 非零 → 用最新 bench 重跑一次 update_target（买桥件当轮认领，紧随 deploy 有方向；幂等）。无升级单元走增量态构造 `build_post_buy_incremental_state`（gold 真读 + tracked 重播替代整帧 OCR；fail-closed 两维：金失读/tracked 空 → 回退全量 read_game_state）。
+1. **买后重估暂存**（r251;ADR-0583 内化形态）：total_buy/level/refresh 非零 → 用最新 bench 构造 `_post` **暂存为黑板派生帧标 view**（`prep_obs_frame` 缺席则跳过,0n 直入商店窄窗）,由下一决策入口(pick/备战)消费刷新——买桥件当轮认领,紧随消费面有方向;幂等(键守卫段同轮短路)。无升级单元走增量态构造 `build_post_buy_incremental_state`（gold 真读 + tracked 重播替代整帧 OCR；fail-closed 两维：金失读/tracked 空 → 回退全量 read_game_state）。
 2. **买牌期望暂存**：纯买入单元（无卖出/未识别牌）→ `compute_buy_expect` 暂存 `session.pending_buy_expect`，主环 heavy 定型帧消费对账。
 3. **gold 差值双源对拍**：expected = 开店首读金 − 全程执行花金 + 全程卖入（`expected_gold_after_actions`；基线必须取首读快照，末波重读已净含花销）；|差|>2 → obs_conflict 留证（容忍 ±2 = 收入/连胜金不可观项）。关店实读金无条件暂存进单元行（gold_close，三态判定 unknown 面收窄）。
 4. **执行事实暂存**：plan_truncated / refresh_* → set_unit_exec_facts（安灯分类器消费）。

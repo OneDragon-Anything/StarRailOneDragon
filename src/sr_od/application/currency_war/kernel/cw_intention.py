@@ -717,8 +717,8 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     投资装备钩子等既有 target 消费者从此全盲(断线症状:引擎件
     躺 bench、散脸占板,decisions.target_comp 全程空串)。
     本函数把已锁方向物化为伪 comp,写端单点 =
-    ``decision_v2.strategy.update_target``(locked_comp 空且 P1 配方锁
-    时调用);方向选择不动(ADR-0442 删除的 transition_focus 是
+    策略器方向刷新(flow.CwFlowStrategy._refresh_direction,ADR-0583
+    内化;locked_comp 空且 P1 配方锁时调用);方向选择不动(ADR-0442 删除的 transition_focus 是
     「从零选收敛方向」,与本物化不同层,非其变体复活)。
 
     单一口径:
@@ -1536,8 +1536,9 @@ def update_intention(state: GameState, ist: IntentionState,
     # 锁定率帧计数(设计稿 §6「锁定率入批统计披露」;分母 = 意向驱动帧,
     # 分子 = 帧末 phase=='locked';按位面分列,与 cw_batch_stats 的
     # planes/locked_frames 同域口径。只承归因:锁定率与结局无单调关系,
-    # 禁作优化目标。生产驱动面 = drive_intention / flow.update_target,
-    # 两者共用 strategy_state_of(session).v3_intention_key 段级重入守卫 ⇒ 每 game-round 恰一次)。
+    # 禁作优化目标。生产驱动面 = flow.CwFlowStrategy._refresh_direction
+    #(ADR-0583 内化;本模块 drive_intention 生产调用点已清零,保留作
+    # 纵深防御),共用 strategy_state_of(session).v3_intention_key 段级重入守卫 ⇒ 每 game-round 恰一次)。
     _plane_key = f'p{min(max(1, int(getattr(state, "plane", 1))), 3)}'
     _bump_obs(session, f'intention_frame_{_plane_key}')
     if ist.phase == 'locked' and ist.locked_comp:
@@ -1638,8 +1639,8 @@ def committed_authority(state: GameState | None,
     """committed(已定型/非双轨期)权威判定(方向层单一派生源)。
 
     - **权威序**(任一成立即 True):
-      ① ``state.plane >= 2``——P2 起恒定型(语义边界同旧 update_target:
-         定型边界=进位面 2,严于文档口径 P2-3);
+      ① ``state.plane >= 2``——P2 起恒定型(语义边界沿用方向重估时代的
+         定型边界 = 进位面 2,严于文档口径 P2-3;载体史见 ADR-0583 内化锚):
       ② ``strategy_state_of(session).v3_intention.phase == 'locked'``——意向状态机已锁线;
       ③ ``ist.p1_pair`` 非空——P1 配方锁已立(ADR-0357 产物形态)。
     - **缺供给帧 = 保守侧 False**(=双轨=攒息):ist 不可得/字段缺失时
@@ -1682,11 +1683,13 @@ def committed_from(session: StrategySession,
 
 def drive_intention(state: GameState, session: StrategySession,
                     registry: DecisionV2Registry | None = None) -> None:
-    """意向状态机驱动点(P7 契约,批 2 方向层接管):每 game-round 恰一次。
+    """意向状态机驱动点(P7 契约):每 game-round 恰一次。
 
-    - 锚定 = 决策环入口(ops 环入口 update_target 之前调用);驱动键 =
+    - 锚定 = 决策入口方向刷新(ADR-0583 内化后,唯一活跃生产驱动者 =
+      flow.CwFlowStrategy._refresh_direction;本函数生产调用点已清零,
+      键守卫保留作纵深防御——同一键面误驱动天然幂等);驱动键 =
       (plane, round_num),段级重入守卫 = strategy_state_of(session).v3_intention_key
-      (与策略栈 update_target 的驱动共享同一键面——双驱动并存天然幂等,
+      (与策略器方向刷新共享同一键面——并存天然幂等,
       同轮重入不重复计数,miss/冻结分母 = 轮不膨胀);
     - ist 归属(session 保留清单裁决,P4):``v3_intention`` 是跨轮状态机
       计数器族(miss_count/frozen_rounds/evicted/tracks),显式归 session

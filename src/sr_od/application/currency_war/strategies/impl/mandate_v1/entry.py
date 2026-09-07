@@ -31,7 +31,8 @@ OpenShop 的典型帧)的塌缩出口发射会落在截断点之后被静默丢�
 键节 R197 补登行)。
 
 R197 修复批(症2)影子面声明:A/B 期换线权威 = decision_v2 意向状态机
-(``update_target`` 透传,两臂同源恒等);本模块 ``switch.event`` 只登记
+(方向重估经 flow 层方向刷新,ADR-0583 内化,两臂同源恒等);本模块
+``switch.event`` 只登记
 回锁窗遥测与 switchline_event 计数,**不写 target_comp**——cw4 的
 should_switch/回锁窗/干旱计数全部为影子面(实装接线=过线后批)。
 """
@@ -408,9 +409,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     switch = proof.should_switch(
         state, session, config, registry, skeleton_only=skeleton_only)
     # 换线事件本帧只登记,K 变更下一备战期生效(R1-3):登记 = 撤线窗口
-    # 步进 + 换线遥测;K 翻转由 update_target(下帧)承载。
+    # 步进 + 换线遥测;K 翻转由方向重估(下帧决策入口)承载(ADR-0583)。
     # 【R197 症2 影子面声明(编排者裁=方案 a)】A/B 期 target_comp 权威
-    # = decision_v2 意向状态机(update_target 透传,两臂同源恒等);本
+    # = decision_v2 意向状态机(经 flow 层方向刷新,两臂同源恒等);本
     # 登记只写回锁窗状态与计数,不写 target_comp——cw4 换线判据族
     # (should_switch/回锁窗/干旱计数)=影子面,实装接线=过线后批。
     if switch.event:

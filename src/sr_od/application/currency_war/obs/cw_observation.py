@@ -2331,8 +2331,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # r358d(遥测全面性审计接线,ADR-0229 缺口清单):观察了但
         # 未回写决策 state 的恒空字段集中补——复盘(站位/环境/
         # 词缀/巨星/伙伴/连胜)与决策(mechanics_fit/boss_fit/
-        # 连胜门)同源。注入点单一(此处),策略层的
-        # update_target 注入保留(两处都幂等:非空才覆)。
+        # 连胜门)同源。注入点单一(此处),策略器的
+        # 方向刷新注入保留(两处都幂等:非空才覆)。
         _sess = _match.session
         if getattr(_sess, 'active_env', ''):
             state.active_env = str(_sess.active_env)

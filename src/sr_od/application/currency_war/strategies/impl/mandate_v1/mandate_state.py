@@ -52,9 +52,10 @@ class MandateState:
     状态对象每局冷建 = 天然初值,清零段整体消失)。
     """
 
-    # ===== 意向面(update_target 策略推导;局/轮)=====
-    target_comp: Comp | None = None   # 战略层目标阵容(update_target 维护)
-    # 弃 target 重选(防 commit 锁死不可达 target:update_target 重选)。
+    # ===== 意向面(方向重估策略推导;局/轮;写者 = flow 层 _refresh_direction,
+    #       ADR-0583 内化——原 update_target 直调点收编进策略器决策入口)=====
+    target_comp: Comp | None = None   # 战略层目标阵容(方向刷新维护,ADR-0583)
+    # 弃 target 重选(防 commit 锁死不可达 target:方向刷新重选)。
     target_drought: int = 0
     # 待执行的部署意图(按 position_pref 决策落位)。
     pending_deploys: list = field(default_factory=list)
@@ -62,10 +63,10 @@ class MandateState:
     transition_framework: str = ''
 
     # ===== 定型面(ADR-0209 定型信号推导;局)=====
-    # CommitSignals(定型信号累积器;update_target 首调时惰性建——
+    # CommitSignals(定型信号累积器;方向刷新首调时惰性建——
     # default_factory 会引环形导入,保留 None 惰性建模式)。
     commit_signals: object = None
-    # 双轨期信号领先线 comp(囤牌方向;update_target 每回合刷新)。
+    # 双轨期信号领先线 comp(囤牌方向;方向刷新每回合刷新)。
     stash_comp: object = None
     # 定型边沿(卖散上限放宽;decide_prep 一次性消费)。
     commit_flip_pending: bool = False
@@ -111,9 +112,9 @@ class MandateState:
     cw4_counters: dict = field(default_factory=dict)
 
     # ===== 相位与镜像(每轮重算;write_shop_mirrors 写)=====
-    # 相位观测缺省 = ''(无写端退役缺省,与原「动态属性缺席」读取语义
-    # 逐字节一致;live 由 on_match_start 显式置 'FORM',sim 不调该钩子
-    # → 恒 ''——两条路径的旧读数各自保真)。
+    # 相位观测缺省 = ''(absence 语义;live 初值 'FORM' 由 create_session
+    # 唯一冷建口写入——ADR-0583 生命周期收编,原 on_match_start 写点已删;
+    # sim 直构 session 不经冷建口 → 恒 '',两条路径的旧读数各自保真)。
     v3_phase: str = ''
     v3_form_ok: bool = False         # 镜像现读写端(write_shop_mirrors/sim 发射帧)
     v3_b_t: int = 0                  # 板面目标线承重计数(每轮重算)

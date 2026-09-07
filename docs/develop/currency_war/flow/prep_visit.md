@@ -19,8 +19,8 @@ run()
  │    手段 = 执行侧 tracked 账随动,同商店线双账口径）+ 空动作账（pending_buy_expect 留证族）
  ├─ 决策前置：
  │    ├─ 席满破墙 _bench_full_break_round（M16：备战席满警告模态 → 破墙动作优先，见 §4）
- │    ├─ 意向驱动 drive_intention（每 game-round 恰一次，v3_intention_key 段级重入守卫；失败沿用旧方向）
- │    └─ update_target（异常沿用旧 target，不阻塞步级决策）
+ │    └─ 观察终饰：dual 态拷回（committed_from 唯一读端）+ gated_hp 覆写
+ │      （方向重估已内化进策略器决策入口,由帧代次标注 full 触发,ADR-0583）
  └─ ③④⑤单动作决策循环 for _vi in range(VISIT_ACTION_CAP=16)（ADR-0517;循环内零读屏）：
       action = strategy.decide_prep_screen(session, config) 取输出首项（单动作选择序,
       三遍编排序保持——决策核输出逐帧取首项;空批合法 → 交回外循环重观察）
@@ -71,5 +71,5 @@ heavy 帧消费：tracking 对账（SIFT 真值重置 session tracking，漂移�
 
 ## 5. ⚠️ 现状违宪待改标记
 
-- ⚠️ **谷底回滚 hp 消费**（`flow.py:95,203-211`，on_round_end 段）：`VALLEY_ROLLBACK_LOSS=15` 单场掉血门触发 `rollback_weakest` 回滚动作——hp 掉量作质量信号驱动动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；且 15 无三形态标注（宪法第 1/4 条）。**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**——代码删除随迁移后批次执行。
+- ⚠️ **谷底回滚 hp 消费**（`flow.py` 结算策略半 drain 段,ADR-0583 内化后原位搬运）：`VALLEY_ROLLBACK_LOSS=15` 单场掉血门触发 `rollback_weakest` 回滚动作——hp 掉量作质量信号驱动动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；且 15 无三形态标注（宪法第 1/4 条）。**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**——代码删除随迁移后批次执行。
 - （旧备战骨架的位面字面门 `round_num >= 9` 与息引擎门双源漂移两项 ⚠️ 随 ADR-0517 迁移批死码清除消失——载体 `_is_boss_round`/`_levelup_engine_ok` 已删,见 §2.1。）

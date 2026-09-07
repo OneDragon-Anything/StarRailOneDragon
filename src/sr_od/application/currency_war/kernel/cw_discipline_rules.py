@@ -327,7 +327,8 @@ class BloodAlarmTracker:
       节点数(=1 → ①自然补强窗内;>1 → 窗耗尽未达标;报警解除清零);
     - 非战斗节点:不入窗、不清臂(点4 冻结语义)。
 
-    写者 = 策略生命周期 on_round_end(结算真值喂入;两栈共享)。
+    写者 = flow 结算策略半惰性 drain(ADR-0583:原 on_round_end 拆两半后,
+    battle_wait 观察半入 pending 槽、决策入口 drain 喂入;结算真值;两栈共享)。
     """
 
     recent_losses: deque = field(default_factory=lambda: deque(maxlen=5))
@@ -340,7 +341,7 @@ class BloodAlarmTracker:
 
     def record(self, node_type: str, hp_before: int, hp_after: int,
                t: int, plane: int | None = None) -> None:
-        """on_round_end 喂入(结算真值;hp_after 为空帧跳过)。
+        """结算策略半喂入(结算真值;hp_after 为空帧跳过)。
 
         ``plane`` 传入时做跨位面重置判定(位面变更 → 三臂全清,
         不带旧位面的掉血趋势进新位面)。

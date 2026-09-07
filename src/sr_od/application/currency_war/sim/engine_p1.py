@@ -1222,7 +1222,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 轮存在「当轮可上未上」,1124 件次),结算键(rung/depth)读
             # 滞后一档的 deployed(boss 轮 53.6% 结算键滞后)。部署块
             # 本体在轮末升级后执行(见下方「②部署」),目标集也在彼处
-            # 从 session 现读(生产语义:买后 update_target 已刷新)。
+            # 从 session 现读(生产语义:买后 finalize 暂存帧已由决策入口
+            # 刷新方向视图,ADR-0583)。
             # 两小批②短路(ADR-0557)+ 发射帧仲裁段(ADR-0566):发射帧的
             # 自由决策段恒零执行(备战动作链被发射短路的语义不变);
             # 溢出段帧以仲裁段帽运行本循环(段内逐动作过预算闸)=「先受限
@@ -1235,12 +1236,29 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 值=该段 decide_prep 的决策语境)
                 _round_bench_full = _round_bench_full or (
                     bench_occupied(st.bench) >= BENCH_CAPACITY)
-                strat.update_target(st, sess, config)
+                # W971 sim 适配批:决策调用切黑板新接口(生产/离线同路)。
+                # sim 决策段 = 商店决策核:帧写者 = 本处(shop_state_frame
+                # 写者白名单含 sim 引擎,见 cw_strategy_session 字段注释);
+                # sim 合成态全字段可读(无 OCR 缺读面),帧语义与生产波顶
+                # 融合段同构。decide_shop_screen 出口的升级意图为
+                # LevelUpShop(is-a LevelUp,simulate/执行器零改动,账本
+                # __type__ 仍落 'LevelUp')。帧缺失由接口抛错暴露
+                # (黑板契约),禁静默按空态决策。
+                # 帧代次 = full(ADR-0583 §3.3-sim):每段入口帧触发方向重估——
+                # 首段键新驱动机器、后续段键同只刷视图(每段视图刷新保持,
+                # 与旧「每段战略层直调重估」效果一致;段内投影帧槽值保持
+                # 'none' 不再刷新,= 段内视图不漂)。
+                sess.shop_state_frame = st
+                sess.shop_frame_class = 'full'
+                acts = strat.decide_shop_screen(sess, config)
                 # 采购面三观察·帧级只读投影(见轮首「采购面三观察计数」
-                # 块;位次 = update_target 后 = 意向状态已刷新,与策略
-                # 决策帧同语境;纯读,零行为面)。义务面口径与策略侧
+                # 块;位次 = 本段入口刷新后 = 意向状态已刷新,与策略决策帧
+                # 同语境;纯读,零行为面)。义务面口径与策略侧
                 # buy_members 同式:锁定帧 = locked_buy_membership,未锁
                 # 帧 = line_members(target_comp)(单一源直调,禁第二实现)。
+                # 位次申报(ADR-0583):旧序 = 战略层直调先于本块;
+                # 内化后刷新发生在驱动器首帧消费,本块后移到决策调用之后
+                # 以保持「读数 = 本段入口态刷新后视图」语境逐位不变。
                 _obs_ist = getattr(strategy_state_of(sess), 'v3_intention', None)
                 _obs_bm = None
                 if _obs_ist is not None:
@@ -1283,17 +1301,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                         + _obs_buy0)
                             if (st.gold or 0) >= _obs_thr:
                                 _obs_refresh_avail += 1
-                # W971 sim 适配批:决策调用切黑板新接口(生产/离线同路)。
-                # sim 决策段 = 商店决策核:帧写者 = 本处(shop_state_frame
-                # 写者白名单含 sim 引擎,见 cw_strategy_session 字段注释);
-                # sim 合成态全字段可读(无 OCR 缺读面),帧语义与生产波顶
-                # 融合段同构。decide_shop_screen 出口的升级意图为
-                # LevelUpShop(is-a LevelUp,simulate/执行器零改动,账本
-                # __type__ 仍落 'LevelUp')。帧缺失由接口抛错暴露
-                # (黑板契约),禁静默按空态决策。旧 decide_prep 薄委托
-                # 仅作迁移期兼容,离线主路径不再依赖。
-                sess.shop_state_frame = st
-                acts = strat.decide_shop_screen(sess, config)
                 # 必花域观测三键(20 号稿 §6;判定单一源,见轮首块注释)。
                 from sr_od.application.currency_war.kernel.cw_economy import (
                     in_must_spend_zone as _msz_pred,
@@ -1798,8 +1805,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
             # (cw_deploy_logic.select_deployments 纯函数,与 CwOpDeploy op
             # 同一源)——r373/r387 类执行层 bug sim 可发现。target 集从
-            # session **买后**现读(生产:买牌段 update_target 已刷新,
-            # 锁线轮目标已更新);未识别(char_id 空)照旧上,与 op 一致。
+            # session **买后**现读(生产:买牌段 finalize 暂存帧已由决策
+            # 入口刷新方向视图,锁线轮目标已更新,ADR-0583);未识别
+            # (char_id 空)照旧上,与 op 一致。
             from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
             _tf, _tc, _fw = frozenset(), frozenset(), frozenset()
             # `w155_evolve_lock/`/ADR-0360 件3:锁定帧体系键并入围栏放行集(同生产 op 侧)
@@ -2121,7 +2129,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _prev_combat_lost = (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                                  and delta <= 0)
             # 批⑤ F4(ADR-0276):结算补写 session.last_streak——生产语义
-            # = 结算「连胜×N」写 session(策略层 on_round_end 观测段),
+            # = 结算「连胜×N」写 session(结算观察半直写,ADR-0583),
             # r308 保连胜门/evaluate 连胜响应消费读 session;sim 旧连胜
             # 只存本地变量算收入,决策侧连胜响应恒盲。
             # 观测态补齐:改写带符号值并对齐备战帧 state.streak(生产

@@ -79,7 +79,7 @@ def recipe_char_wanted(char_id: str, framework: str) -> bool:
 def decision_target(session, state: GameState) -> Comp | None:
     """决策中心取 target 的**单一入口**(消费方零改动)。
 
-    用法:update_target/decide_prep 处把 ``strategy_state_of(session).target_comp`` 的直接读换成本函数
+    用法:决策路径处把 ``strategy_state_of(session).target_comp`` 的直接读换成本函数
     (仅决策路径;遥测/结算 tag 仍读原 target_comp 记终局线名)。
 
     双轨期(配方驱动):框架已定 → 配方伪 comp(仙舟/列车/量子三选一,

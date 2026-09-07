@@ -46,7 +46,6 @@ from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_performance import (
     HP_CONFIDENCE_THRESHOLD,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import read_phase_round
 from sr_od.application.currency_war.obs.cw_settlement_obs import (
@@ -60,6 +59,29 @@ from sr_od.application.currency_war.obs.cw_settlement_obs import (
 from sr_od.application.currency_war.telemetry import defects, recorder
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+
+def _write_settlement_observation(session, obs, now_t: int | None) -> None:
+    """结算观察半直写(ADR-0583 §2.5:旧 on_round_end 观察段收编的单一写点)。
+
+    逐行 = 原 on_round_end 观察段原样搬运:performance.record /
+    last_streak / last_hp(过置信门,门单一源 = ``HP_CONFIDENCE_THRESHOLD``)
+    / last_hp_t(同门,时间锚)。写点 = 结算屏观测回路(battle_wait)在
+    结算点**即时直写**——备战帧 streak 对账锚与 gated_hp 真值源都依赖
+    「结算即写」时序,禁惰性化(D-94 时序语义,r68 实证承袭)。
+    独立成模块级函数:被测面 = 纯写点(观察层产物),单测直调即经生产
+    链路(op 回路是唯一调用方)。
+    """
+    session.performance.record(obs)
+    # 结算「连胜×N」前缀=方向 → session.last_streak(备战帧 streak 权威/
+    # 对账与经济 streak 杠杆的即时写锚)
+    session.last_streak = obs.streak
+    # 结算屏「小队生命值NN」可靠 → 用它给下回合 prep(置信门 = last_hp
+    # 写入语义的一半,漏门 = 误读 hp 污染 gated_hp 真值源)
+    if obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD:
+        session.last_hp = obs.hp_after
+    if obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD and now_t is not None:
+        session.last_hp_t = now_t
 
 
 @dataclass
@@ -193,11 +215,17 @@ class CwScreenBattleWait(SrOperation):
     # ===== 结算链遥测(自 cw_loop 原样平移;写端调用零变更)=====
 
     def _record_round_outcome(self, screen, telemetry_only: bool = False) -> None:
-        """P1.5 观测回路:结算屏 → read_round_outcome → strategy.on_round_end。
+        """P1.5 观测回路:结算屏 → read_round_outcome → 观察半直写 + 策略半入槽。
 
         (自 cw_loop._record_round_outcome 平移;方法级注释与判定链逐条
         保真,详见原处 git 历史。差异仅两处载体:循环态挂 SettlementState、
         ADR-0250 窗口关由 saw_settlement 承载。)
+        **ADR-0583 拆两半**:策略生命周期钩子 on_round_end 删除后,本回路
+        直接承担观察半——结算真值观察字段(performance.record/last_streak/
+        last_hp 过置信门/last_hp_t)在结算点即时直写(写点与原 on_round_end
+        同点同时序,performance.history 无缺行窗口);策略半(RoundOutcome)
+        追加进 ``session.pending_round_outcomes`` 待加工槽,由策略器下一决策
+        入口惰性 drain。telemetry-only 面(败局页补录)不写任何一侧。
         """
         if self.ctx.cw_match is None:
             return
@@ -309,10 +337,13 @@ class CwScreenBattleWait(SrOperation):
             _st.settle_page1_settle = {}
             _st.settle_p1_ts = None
             if not telemetry_only:
-                self.ctx.cw_match.strategy.on_round_end(
-                    GameState(), _session, self._cw_config, _obs)
-                if _obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD and _now_t is not None:
-                    _session.last_hp_t = _now_t
+                # —— 观察半直写(ADR-0583 §2.5;原 on_round_end 观察段逐行平移,
+                # 写点与原调用同点同时序)——
+                _write_settlement_observation(_session, _obs, _now_t)
+                # —— 策略半入槽(ADR-0583 §2.5):策略器下一决策入口惰性 drain
+                #(掉血三臂喂入/node_type 回落/谷底回滚登记 = flow 层
+                # _drain_pending_round_outcomes;处理即清)。
+                _session.pending_round_outcomes.append(_obs)
             recorder.record_outcome(_obs, source=_source)
             if not telemetry_only:
                 if _obs.hp_confidence >= 0.9:
@@ -323,7 +354,7 @@ class CwScreenBattleWait(SrOperation):
                     state=_session.last_state)
                 # 结算屏覆盖点(EXPECTED_STATE §2:hp/gold/streak/level 全可信
                 # + 05-battle §1「结算屏 hp/gold/level 写 session」):hp 真值
-                # 链走 on_round_end→last_hp(上);gold/level/经验经
+                # 链走结算观察直写→last_hp(上);gold/level/经验经
                 # parse_settlement_assets 写 last_state 并做覆盖点对账
                 # (expected vs actual diff → 留证)。best-effort,失败不阻塞。
                 try:
@@ -357,13 +388,13 @@ class CwScreenBattleWait(SrOperation):
                     reconcile_expected(_session, 'settlement', _act)
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 结算覆盖点对账失败(不阻塞): %s', e)
-            log.info('[cw-bwait] on_round_end plane=%s round=%s hp_after=%s conf=%s '
+            log.info('[cw-bwait] 结算观测 plane=%s round=%s hp_after=%s conf=%s '
                      'comp=%s node=%s%s',
                      _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag,
                      _obs.node_type,
                      ' [loss_page telemetry-only]' if telemetry_only else '')
         except Exception as e:  # noqa: BLE001  观测回路失败不阻塞对局
-            log.warning('[cw-bwait] on_round_end 失败(不阻塞): %s', e)
+            log.warning('[cw-bwait] 结算观测失败(不阻塞): %s', e)
 
     def _record_loss_page(self, screen, pre_fp: tuple | None = None) -> None:
         """失败结算页 → telemetry-only 补一行 outcome + 同屏指纹防重

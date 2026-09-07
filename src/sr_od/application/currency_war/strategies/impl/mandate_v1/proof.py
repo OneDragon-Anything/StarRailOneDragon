@@ -253,8 +253,8 @@ def should_switch(state: GameState, session: StrategySession,
     【R197 症2 影子面声明(编排者裁=方案 a,A/B 期换线共用基线权威)】
     本函数输出在 A/B 期为**影子面**:只发遥测(归因分键/switchline_
     event 计数)与登记回锁窗,**不写 target_comp**——K 翻转的生产载具
-    = decision_v2 意向状态机(``MandateV1Strategy.update_target``
-    透传,两臂同源恒等,臂间 diff 归因不含换线路径)。cw4 自有换线
+    = decision_v2 意向状态机(ADR-0583 起内化为 flow 层方向刷新,
+    两臂同源恒等,臂间 diff 归因不含换线路径)。cw4 自有换线
     接线(事件→target_comp、drought→drought_excluded)=过线后批;
     禁删影子机(遥测持续供验证)。
 

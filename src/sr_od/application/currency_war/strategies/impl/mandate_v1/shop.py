@@ -7,8 +7,8 @@ sim 引擎)。
 
 商店单动作形态(ADR-0517;前身份 = 波批 decide_shop_wave,迁移批改型):
 
-1. 方向(证明面投影):K = ``state_of(session).target_comp``(战略层 update_target 产物,
-   见 bridge 透传声明)、stop_flag = proof.stop_buy、D-A45 干旱计数器;
+1. 方向(证明面投影):K = ``state_of(session).target_comp``(方向重估产物,
+   写者 = flow 层方向刷新,ADR-0583)、stop_flag = proof.stop_buy、D-A45 干旱计数器;
    **K 空窗回退(2026-09-03 第三病灶修复;FIX_REVIEW_20260903 R3 扩域
    至三带)**:target_comp 为 None 时按带回退(单一源 cw_intention,禁
    复制)——P1 空窗带(支持度 < P1_PAIR_LOCK_MIN_SUPPORT)取

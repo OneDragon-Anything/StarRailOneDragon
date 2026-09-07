@@ -12,8 +12,9 @@ loop()（@operation_node，node_max_retry_times=400；cw_loop.py:620-624）
   ├─ 停滞 watchdog tick（guards.md §2）
   ├─ 每 10 iter：窗口焦点防线（失焦 → 主动激活；cw_loop.py:652-658）
   ├─ iter1 ∧ 新局：read_game_state(phase='battle_or_transit') 最小读
-  │   ├─ round>1 ∨ plane>1 → 恢复对局标记（遥测 record_exogenous；cw_loop.py:661-675）
-  │   └─ strategy.on_match_start(...)（cw_loop.py:678-679）
+  │   └─ round>1 ∨ plane>1 → 恢复对局标记（遥测 record_exogenous；cw_loop.py:661-675）
+  │   （新局策略状态冷建已前移 establish_new_match 进对局时点;生命周期钩子
+  │    on_match_start 已随 ADR-0583 收编删除,冷建唯一口 = create_session）
   ├─ 分支序匹配（§2）→ 命中即执行并 round_wait 返回
   └─ 全不命中 → _handle_unknown_fallback()（guards.md §4）
 ```
@@ -95,7 +96,7 @@ overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"�
 | 钩子 | 内容 | 载体 |
 |---|---|---|
 | runs summary 收口 | `after_operation_done` 全路径必达；未写 summary 的对局补写 stopped/abandoned（真假局判定 = "从未观察到对局态"才算假局；`cw_loop.py:517-578`） | `cw_loop.py:517-578` |
-| 局终正常收口（3c） | on_match_end + 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空 | `cw_loop.py:1404-1459` |
+| 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空（生命周期钩子 on_match_end 已随 ADR-0583 删除,原实现 no-op 零行为） | `cw_loop.py:1404-1459` |
 | 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py:1469-1494,1572-1594` |
 | 补给合成 outcome | 见 §2.2 分支 0e1 | `cw_loop.py:581-618` |
 | 关键点快照 `_snap` | 选人/事件屏 debug 截图 + 全量 OCR 日志（验证后去掉；非关键路径 best-effort） | `cw_loop.py:408-425` |

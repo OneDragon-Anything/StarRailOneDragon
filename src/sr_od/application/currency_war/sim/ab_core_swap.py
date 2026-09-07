@@ -17,8 +17,8 @@ A/B 约束(SIM_CONSUMPTION_MAP ③/Q3):
 
 **预注册声明(R197 症2 裁决落地,编排者裁=方案 a;步6 判前锁 v6
 前置语句的一部分)**:A/B 期两臂**换线行为恒等**——target_comp 权威
-= decision_v2 意向状态机(``MandateV1Strategy.update_target`` 透传,
-见 cw4/bridge.py 声明,两臂同源共用),cw4 proof 侧 should_switch/
+= decision_v2 意向状态机(ADR-0583 起内化为 flow 层方向刷新,两臂
+同源共用,见 cw4/bridge.py 声明),cw4 proof 侧 should_switch/
 回锁窗/干旱计数=影子面(发遥测不写 target_comp,影子机禁删);臂间
 ledger diff 的归因域因此**不含换线路径**。
 

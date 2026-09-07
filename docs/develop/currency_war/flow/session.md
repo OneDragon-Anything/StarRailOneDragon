@@ -10,7 +10,7 @@
 - **观察数据**:框架从游戏画面采集/推导的对局事实(血量/金币/牌面/板凳/等级/连胜/节点类型/词缀/池状态/已持投资策略等)。判据 = **谁产生**:框架读屏与识别层守卫产生;策略器只读。
 - **策略器状态**:策略推导产生、供后续决策消费的中间状态(意向状态机/定型信号累积/回退集/纪律计数/遥测分键容器)。生命周期 = 一局(局首建、局终灭)。
 - **执行层状态**:动作执行与画面 op 运行产生的状态(拖拽失败计数/发射连败/防重入标志/对账期望账)。产生者 = op/执行侧代码,不是读屏采集。
-- **策略器(StrategyActor)** = 策略实现包(`strategies/impl/mandate_v1/`)的决策本体(bridge/entry/mandate/shop 等),经 17 接口钩子被流程侧调用(flow/README.md §2)。
+- **策略器(StrategyActor)** = 策略实现包(`strategies/impl/mandate_v1/`)的决策本体(bridge/entry/mandate/shop 等),经契约接口被流程侧调用(flow/README.md §2;ADR-0583 后契约形状 = 每局冷建 2 + 分画面决策入口 11)。
 - **StrategySession(session)** = 现行一局跨步状态载体 dataclass(`kernel/cw_strategy_session.py`)。
 - **恢复局(接管形态)** = server/进程重启后 `cw_match` 不在,外循环识别到对局中途画面并重建 match 继续跑的形态(outer_loop.md §1 新局兜底、§3 恢复局检测)。
 - **黑盒状态对象** = 框架只搬运引用、不识内部结构的策略器状态载体(§3.1 裁决 2)。
@@ -129,11 +129,11 @@
 
 - **被否选项 A:策略管理器每局复用同一策略实例**(策略器变有状态单例)——否决理由:①策略实例现在是跨局长命对象,「每局新建 session」的清零保证失效,漏清零字段成为跨局污染源(现状 `on_match_start` 逐字段清零已多次出漏,`flow.py:120-180` 的清零清单本身就是该形态的补丁史);②sim 与 live 共享同一实例定义时,实例级可变状态让并发跑批/回放对拍不可复现;③换核热替换面(A/B 切 strategy_id)要求实例可随时丢弃——实例带状态则丢弃即丢局中状态,语义断裂。
 - **被否选项 B:框架代管 dict(= memory 现状延伸)**——否决理由:①schema 不可见(asdict/telemetry 看不见),判读面盲区;②无类型与守卫,键名冲突靠纪律约束(memory 注释五条款全是纪律不是机制);③所有权名义归策略、宿主仍在框架载体——与目标态的定义矛盾,只是换个字段名继续混装。
-- **被否选项 C:状态作为独立参数贯穿 17 钩子签名**——否决理由:17 钩子 + bridge/entry/mandate/shop 全链签名改一遍,爆炸面最大,且签名携带的输入本就经 session 黑板(prep_obs_frame/shop_state_frame 同款),单独走参数属双通道。
+- **被否选项 C:状态作为独立参数贯穿全部契约接口签名**——否决理由:契约接口 + bridge/entry/mandate/shop 全链签名改一遍,爆炸面最大,且签名携带的输入本就经 session 黑板(prep_obs_frame/shop_state_frame 同款),单独走参数属双通道。
 
 **契约条款**:
 1. `MandateState` 类型定义、字段、更新语义全部在实现包;kernel 判据层(cw_intention/cw_evolution 等)对策略状态的消费改经**访问函数**(取 `session.strategy_state` 后类型收窄),kernel 不再持有 `session.v3_*` 字段注解。
-2. 框架侧唯一义务:`create_session` 时置初值、局终随 session 销毁、`on_match_start` 前保证为当局实例(不复用上局引用)。
+2. 框架侧唯一义务:`create_session` 时置初值、局终随 session 销毁、不复用上局引用(as-built 语义更新,ADR-0583:生命周期收编后冷建与 live 初值统一在 create_session 唯一冷建口,原 `on_match_start` 逐字段清零/强制冷建钩子已删——状态对象每局新建即天然清零,「不复用上局引用」by construction 成立)。
 3. 意向状态机的跨轮驱动重入守卫(现状 `v3_intention_key` 段级重入)语义原样搬入 MandateState,**不变**。
 4. **遥测可见性依赖链显式化**(对抗审查 C1 采纳):黑盒字段不进 asdict/repr/遍历通道(全仓核过无 asdict(session)/deepcopy(session) 消费点,该面成立),动态属性现状的「asdict 完整」亦名存实亡——**迁移后遥测可比性完全依赖 §5.4 的访问函数抽读链,该链是唯一观测通道,任何新遥测字段必须从访问函数出发,禁直读 session 猜字段**。
 
@@ -186,7 +186,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 
 ### 5.1 策略管理器、注册壳与 create_session 直调点
 
-- `cw_strategy_manager.py`:`create_session` 增「调用实现包状态工厂」一步(ABC 钩子 `create_state(config) -> object`,与 17 接口同风格)。
+- `cw_strategy_manager.py`:`create_session` 增「调用实现包状态工厂」一步(ABC 工厂接口 `create_state(config) -> object`,非 abstract,ADR-0563)。
 - **第三方插件兼容条款**(对抗审查 B4 采纳):CwStrategy 是 plugins/currency_war_strategies 的参赛入口契约,新增 **abstract** 钩子会让所有存量第三方策略实例化后调 create_session 即 TypeError。裁决:`create_state` 定义为 **ABC 非 abstract 钩子,基类缺省实现返回 None**——存量第三方策略零破坏(None 态 = 策略器可沿用惰性建模式,与现状 cw_intention.py:1695-1702 惰性建同构);mandate_v1 覆写返回 MandateState。不做插件契约版本化(非 abstract 缺省已消除破坏面,版本化属过度设计)。
   **B4 承诺收缩申报(as-built,ADR-0563「落位裁量」节同文)**:「零破坏」收缩为「缺省 None **不炸策略构造与 create_session**」;**不承诺**框架行为面读点(ops 主链决策输入等)容忍 `strategy_state=None`——第三方策略未覆写 create_state 且无工厂注册时状态恒 None,进入行为面读点 = AttributeError 显式炸错(mis-assembly 信号,优于静默产 None 假数据)。判据/披露面(kernel 判据、遥测披露键)维持防御 getattr 形态(异型状态对象字段缺席退缺省)。两形态划分与 None 契约单一源 = `strategy_state_of` docstring。附带工厂契约:`create_state(config)` 的 config **可忽略、可为 None**(sim 注入桩面传 None,工厂实现禁读 config 取值)。
 - **create_session 直调点两处纳入改造面**(对抗审查 B2-6 补):`sim/cw_replay.py:195` 与 `operations/cw_op/cw_op_buy_cards.py:497` 绕过 StrategyManager 直调 `strat.create_session(config)`——两处的状态工厂语义随 §5.1 钩子自动生效(直调的就是 ABC 方法),核对项 = 直调后 session.strategy_state 非 None。
@@ -194,8 +194,8 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 
 ### 5.2 中间 ABC(`strategies/impl/flow.py`)
 
-- 生命周期钩子(`on_match_start` 清零段 `flow.py:120-180`,对抗审查 C3 引用校准)对 MandateState 字段的逐项清零**整体消失**——状态对象每局新建即天然清零;`on_match_start` 只保留对观察字段的必要复位(如 last_streak 类在 on_round_end 写的观察字段复位语义逐项核)。
-- `update_target`/`decide_*` 内对 `session.v3_*`/`session.commit_*` 的读写改经 `session.strategy_state`(访问函数收窄类型);ABC 不定义 MandateState 内部结构(它是实现私有)。
+- 生命周期冷建(`on_match_start` 清零段 `flow.py:120-180`,对抗审查 C3 引用校准)对 MandateState 字段的逐项清零**整体消失**——状态对象每局新建即天然清零(as-built,ADR-0583:该钩子随生命周期收编物理删除,冷建与 live 初值归 create_session 唯一冷建口)。
+- 方向刷新/`decide_*` 内对 `session.v3_*`/`session.commit_*` 的读写改经 `session.strategy_state`(访问函数收窄类型);ABC 不定义 MandateState 内部结构(它是实现私有)。
 
 ### 5.3 bridge 透传与 kernel 判据层
 

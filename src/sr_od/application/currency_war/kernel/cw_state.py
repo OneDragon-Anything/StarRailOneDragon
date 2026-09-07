@@ -256,7 +256,7 @@ class GameState:
     plane_modifiers: list[str] = field(default_factory=list)  # 当前位面特殊修正(如「战个痛快」;§13.9 待核各 plane)
     shop_locked: bool = False                # 商店是否锁定
     dual_track_phase: bool = False           # ADR-0209 双轨期(P1 未定型;方向层接管起值源(ADR-0465) = cw_intention 权威派生经装配边界回填,读端 committed_from)
-    focus_factions: set[str] | None = None   # ADR-0209 flex 收敛白名单(update_target 写入;evaluate 消费)
+    focus_factions: set[str] | None = None   # ADR-0209 flex 收敛白名单(方向刷新写入,ADR-0583;evaluate 消费)
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
     megastar_char: str | None = None         # 巨星绑定角色(巨星节点)
     partner_char: str | None = None          # 选择的伙伴(选择伙伴节点)
@@ -788,12 +788,12 @@ Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | CloseShop
 
 @dataclass
 class MatchOutcome:
-    """一局货币战争的终局结算(框架构造,传给 ``CwStrategy.on_match_end``;/§11.4)。
+    """一局货币战争的终局结算(框架构造,局终收口消费:跨局分配器/runs summary;/§11.4)。
 
-    ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(默认 ``on_match_end`` no-op,
-    字段未被读);**真实 outcome 填充(结算屏 OCR 读终局 HP/位面/轮次/通关)属 P1.5**,依赖结算屏
-    OCR 探查(现 run loop 是「点空白加速 → 继续挑战」,未见独立结算屏)。故 P1 此 dataclass 仅占位,
-    待 P1.5 接线才被真实数据填充。
+    ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(生命周期
+    钩子随 ADR-0583 收编删除后,消费面 = cw_loop 局终分支,
+    字段已被真实数据填充);**真实 outcome 填充(结算屏 OCR 读终局 HP/位面/轮次/通关)依赖结算屏
+    OCR 探查(现 run loop 是「点空白加速 → 继续挑战」,未见独立结算屏)。
     """
     won: bool = False        # 是否通关(3 位面全清)
     final_plane: int = 1     # 到达位面

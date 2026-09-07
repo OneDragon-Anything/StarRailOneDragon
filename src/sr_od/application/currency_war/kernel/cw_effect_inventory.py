@@ -215,7 +215,8 @@ class ActiveEffectInventory:
         self._events[_EVENT_LEVEL_UP] = self._events.get(_EVENT_LEVEL_UP, 0) + 1
 
     def on_battle_end(self) -> None:
-        """战斗结算事件标记(挂点候选 = strategy.on_round_end 回调;未接)。"""
+        """战斗结算事件标记(挂点候选 = 结算观测回路;现状未接,原 on_round_end
+        候选宿主已随 ADR-0583 删除)。"""
         self._events[_EVENT_BATTLE_END] = self._events.get(_EVENT_BATTLE_END, 0) + 1
 
     def event_count(self, kind: str) -> int:

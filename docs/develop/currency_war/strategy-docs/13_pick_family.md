@@ -1,19 +1,19 @@
 # 13 pick 族薄判据（九接口 + 事件面目录）
 
-> 本篇为新写薄篇：pick 族 = CwStrategy 的 9 个选项决策钩子（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py:298-487` 实现反向 + `kernel/cw_events`/`kernel/cw_comps` 判据单源）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补三钩子，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
+> 本篇为新写薄篇：pick 族 = CwStrategy 的 9 个选项决策接口(ADR-0583 后全部在 ABC 契约面)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py:298-487` 实现反向 + `kernel/cw_events`/`kernel/cw_comps` 判据单源）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补三接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
 > 动作编排（画面 op 怎么点卡）不在本篇 = `../flow/outer_loop.md` §2.2（0x 分支）；本篇只管"选项怎么选"。
 > 每项标注**判据状态**：有规格（判据可执行）/ 待 derive（判据立项锚见 08）。
 
 ## 0. 共同形态
 
 - pick 族返回 PickEvent 系载体（选项决策；控制流归画面 op——单选族形态：选卡即动作、确认 = 终结 op，ADR-0517 / flow/screen_op.md §7）。
-- 新事件面优先评估归并进既有 pick 钩子或走契约改版，禁旁路自造接口（遭遇分支刷新的 pick.refresh 旗标泄漏 = 已登记的后续收编候选）。
-- OCR 未就绪位（选项 char_id 空）的钩子按 fallback（idx=0）执行并标注——供给面升级属 P4/阶段 5，不改变判据形态。
+- 新事件面优先评估归并进既有 pick 接口或走契约改版，禁旁路自造接口（遭遇分支刷新的 pick.refresh 旗标泄漏 = 已登记的后续收编候选）。
+- OCR 未就绪位（选项 char_id 空）的接口按 fallback（idx=0）执行并标注——供给面升级属 P4/阶段 5，不改变判据形态。
 - 权重常量单一源 = `strategies/impl/pick_bias.PICK_BIAS`（值在代码；本篇只写常量名）。
 
 ## 1. 逐接口规格
 
-| 钩子 | 事件面 | 判据（现行规格） | 判据状态 |
+| 接口 | 事件面 | 判据（现行规格） | 判据状态 |
 |---|---|---|---|
 | `decide_invest(kind, options)` | E1/E2（投资环境/策略三选一） | 委托 `cw_events.decide_event`（options + target_comp 对齐：comp 匹配分压倒品质先验，ADR-0134/0144）；env kind 局中屏 comp 已定时阵营条件分（ENV_FACTION_MATCH_FLOOR）生效；选卡结果喂 CommitSignals（策略 2.0/环境 1.0 权重，affinity 表映射 comp 分贡献，ADR-0209） | **有规格**（知识判据）；数学判据待 derive（08 E1/E2 行：台账价值挂 P38 ⑤层参数化、刷新期权挂 P40 变体②；评分框架 = [11_shop_decisions.md](11_shop_decisions.md) §8） |
 | `decide_supply(options)` | E4（补给选装备/出钻 + 重刷 1 次） | 委托 `cw_events.decide_supply`（options + target_comp）；OCR 未就绪默认委托 | **有规格**（知识判据：选项价值 vs 目标线组件/成品需求，equipment_mechanics；[9]）；数学待 derive（08 E4：组件缺口 = P42 hoard_gaps 参数化） |
@@ -25,7 +25,7 @@
 | `decide_wish_trial(options)` | E5（圣杯试炼二选一，祈愿试炼） | 打分：①金币类 +`PICK_BIAS.wish_gold`；②target/框架阵营词命中 +`PICK_BIAS.wish_faction`；③「刷新/购买」操作向 +`PICK_BIAS.wish_operation`；另 effect_pick_bias 基分；fallback idx=0 | **有规格**（奖励偏好序雏形：Archer>金币>星徽，combo_methodology）；数学待 derive（08 E5：奖励序 = 知识判据；「何时接」可挂金日程；**供给硬缺为前置**） |
 | `decide_box_card(names)` | E18（武装箱/节点弹窗四选一装备卡；2026-08-19 用户定调批次接入策略模块） | 打分：①target.key_equips 命中 +`PICK_BIAS.box_key_equip`（成型加速压倒）；②合成材料通用性（`cw_prep_expect.material_value` 配方数）；③key_equips 的合成材料（两跳，读 EQUIPMENTS.recipes）命中 +`PICK_BIAS.box_key_material`；fallback idx=0 | **有规格**（结构打分） |
 
-## 2. 事件面目录 E1-E18（原 03 §4.9 收编 + 2026-08-19 用户定调批次后补三钩子 E16-E18；判据状态详见 [08_events.md](08_events.md)）
+## 2. 事件面目录 E1-E18（原 03 §4.9 收编 + 2026-08-19 用户定调批次后补三接口 E16-E18；判据状态详见 [08_events.md](08_events.md)）
 
 | # | 决策点 | 出现时机 | 决策机制（现有语义） | 知识/数学来源 |
 |---|---|---|---|---|

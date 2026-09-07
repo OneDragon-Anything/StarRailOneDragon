@@ -10,8 +10,10 @@
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
 四个组件(本模块 3 个 + manager):
-- ``CwStrategy`` —— ABC,大脑接口(3 生命周期 + 8 决策 + create_session = 12 钩子,全 abstract;
-  ``decide_prep_action`` = 备战决策环步级决策,P1 新增,见 doc 15/ADR-0123)。
+- ``CwStrategy`` —— ABC,大脑接口(契约形状见 ADR-0583:每局冷建 2
+  + 分画面决策入口 11 = abstract 12,外加非 abstract 工厂 ``create_state``
+  1 = 保留总成员 13;零策略专属语义——方向重估节拍/意向 target 机器
+  是具体策略实现的私事,不在基类契约面上)。
 - ``StrategySession`` —— 每局跨步状态(框架新建 / 局终销毁;策略读写)。
 - ``CurrencyWarMatch`` —— 运行时持有 strategy+session 的轻容器,挂 ``ctx.cw_match``。
 - ``StrategyManager``(``cw_strategy_manager.py``)—— 约定式文件扫描发现 + 去重 + 实例化。
@@ -30,6 +32,8 @@ from sr_od.application.currency_war.kernel.cw_events import (
     MegastarPick,
     PartnerOption,
     PartnerPick,
+    PlannerOption,
+    PlannerPick,
     SupplyOption,
     SupplyPick,
 )
@@ -37,13 +41,9 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     ExecState,
     bind_exec_state,
 )
-from sr_od.application.currency_war.kernel.cw_performance import (
-    RoundOutcome,
-)
 from sr_od.application.currency_war.kernel.cw_state import (
     Action,
     GameState,
-    MatchOutcome,
     PickEvent,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
@@ -64,12 +64,14 @@ class CwStrategy(ABC):
     """一整套货币战争局内打法(可替换的决策大脑;/§11.3)。
 
     **无状态策略**:实例**不持有可变的每局状态**,所有跨步状态走 ``StrategySession``(框架每局
-    新建、传入每个钩子、局终销毁)。收益:实例可反复 instantiate、可 unit 测(喂构造好的 state)、
-    无隐藏实例状态 → 不会跨局泄漏。
+    新建、传入每个契约调用点、局终销毁)。收益:实例可反复 instantiate、可 unit 测(喂构造好的
+    state)、无隐藏实例状态 → 不会跨局泄漏。
 
-    本 ABC 的钩子**全 abstract**(纯接口,ABC 自身不含内置逻辑);唯一内置具现见
-    ``decision_v2/strategy.py``。自定义策略:继承 ``CwStrategy`` 实现全部钩子,或继承
-    ``DecisionV2Strategy`` 只覆盖关心的几个。
+    契约形状(ADR-0583):基类 = 「每局冷建(create_session/create_state)+ 分画面决策入口
+    (备战 1 / 商店 1 / pick 族 9)」;方向重估时机、意向状态机、事件钩子等策略内部构造**不在
+    契约面**(旧 ``update_target``/生命周期钩子族已随 ADR-0583 出基类)。本 ABC 契约成员全
+    abstract(纯接口,ABC 自身不含内置逻辑;``create_state`` 工厂除外,非 abstract)。自定义
+    策略:继承 ``CwStrategy`` 实现全部契约成员,或继承 ``CwFlowStrategy`` 只覆盖关心的几个。
 
     **构造无参**(继承默认 ``object.__init__``):策略跨局跨账号复用,**不收 ctx/config** —— 配置每次
     调用按参传入;``StrategyManager`` 经 ``cls()`` 实例化。可变每局状态一律走 ``session``,非实例属性。
@@ -84,68 +86,28 @@ class CwStrategy(ABC):
     # 扫描器内部:True = 中间辅助 ABC,不注册;非展示元数据(§11.5)
     _abstract: bool = False
 
-    # ===== 生命周期钩子 =====
+    # ===== 每局冷建(唯一冷建口 + 状态工厂;ADR-0583 生命周期收编)=====
 
     @abstractmethod
     def create_session(self, config: CurrencyWarConfig) -> StrategySession:
         """每局开始(run loop)调一次。返回空白 ``StrategySession``(rng 留默认,由 run loop 按
-        ``config.strategy_seed`` 覆盖)。策略可覆盖以注入自己的 session 子类 / 初始 memory。"""
+        ``config.strategy_seed`` 覆盖)。策略可覆盖以注入自己的 session 子类 / 初始 memory。
+        **唯一冷建口**(ADR-0583):策略器状态经 ``create_state`` 工厂在此接线
+        (flow 具现),live 初值一并在此落位;不存在第二状态冷建路径。"""
 
     def create_state(self, config: CurrencyWarConfig) -> object:
         """策略器状态对象工厂(session.md as-designed §3.1/§5.1)。
 
         每局冷建一局存活的策略器状态对象,写入 ``session.strategy_state``
         (黑盒契约:框架只搬运引用,不读不写内部;所有权归策略器)。
-        **非 abstract 钩子,基类缺省返回 None**(第三方兼容条款 B4,收缩
+        **非 abstract 契约成员,基类缺省返回 None**(第三方兼容条款 B4,收缩
         口径见 ADR-0563:缺省 None 不炸构造与 create_session;工厂实现
         契约 = 可忽略 config/容忍 None——sim 注入桩面传 None);内置
         mandate_v1 覆写返回 ``MandateState``。"""
         return None
 
-    @abstractmethod
-    def on_match_start(self, state: GameState, session: StrategySession,
-                       config: CurrencyWarConfig) -> None:
-        """每局开始(loop 首次截图后)。初始化跨步状态(如设初始 target 意向)。P1 默认 no-op。"""
-
-    @abstractmethod
-    def on_round_end(self, state: GameState, session: StrategySession,
-                     config: CurrencyWarConfig, obs: RoundOutcome) -> None:
-        """每场战斗后(观测驱动)。默认 ``session.performance.record(obs)``。
-        ✅ 已接线(2026-08-07 起):loop._record_round_outcome 每轮胜结算调用。"""
-
-    @abstractmethod
-    def on_match_end(self, session: StrategySession, config: CurrencyWarConfig,
-                     outcome: MatchOutcome) -> None:
-        """每局结束。局终收尾(策略可学习/记日志;比赛评分钩子)。P1 默认 no-op(outcome 桩)。"""
-
-    # ===== 决策钩子 =====
-
-    @abstractmethod
-    def update_target(self, state: GameState, session: StrategySession,
-                      config: CurrencyWarConfig) -> None:
-        """战略层:选/转型 target_comp。框架在每个备战回合 ``decide_shop_screen`` **之前**调一次。
-        实现写 ``state_of(session).target_comp``(首轮选;其后按信号 pivot;无强信号保持)。"""
-
-    @abstractmethod
-    def decide_prep_action(self, obs, session: StrategySession,
-                           config: CurrencyWarConfig):
-        """备战决策环步级决策(doc 15 / ADR-0123,P1 新增):看 ``obs`` 出**一个**动作。
-
-        - ``obs``: ``PrepObservation``(框架观察层产出;P1 ``overlay_state``/``shop_cards`` 恒空)。
-        - 返回: 一个 ``PrepAction``(``prep_actions.py``;原子为主,P1 含 Run* 组合过渡)。
-          控制流动作(``DeferSpheres``/``BailToOuter``)是框架信号,不走 execute 验证链。
-        - 契约: 无状态策略 —— 跨步意图(defer 计数等)走 ``session``;框架保证每步先观察再决策
-          (F1),动作合法性由框架校验(F3),验证失败/stall 屏蔽对策略透明(F4)。
-
-        ⚠️ **deprecated(兼容期,P2 黑板模式)**:黑板接口 =
-        :meth:`decide_prep_screen`(W971 §2)。本钩子保留为薄委托形态
-        (旧签名 → 写 ``session.prep_obs_frame`` → 同一决策核),供存量
-        测试/影子路径过渡;调用方迁移完后随 P5 删除。**序列契约 v1
-        (dd-020)后**:委托目标返回 ``list[PrepAction]``,**基类实现直传
-        完整 list**(实际返回类型 = list;live 覆写
-        ``mandate_v1/bridge.py`` 才做单动作解包——空批以 DeferSpheres
-        承载,见覆写处 docstring)。
-        """
+    # ===== 分画面决策入口(ADR-0517 目标模型:op 的策略接触面 = 入口观察
+    #       + 策略器单动作循环;入口按画面塑形,方向重估时机是实现私事)=====
 
     @abstractmethod
     def decide_prep_screen(self, session: StrategySession,
@@ -178,22 +140,13 @@ class CwStrategy(ABC):
         """
 
     @abstractmethod
-    def decide_shop_screen(self, session: StrategySession,
-                           config: CurrencyWarConfig) -> list[Action]:
-        """商店开画面黑板决策接口(W971 §2/§4.1 amendment;前身 = ``decide_prep``)。
-
-        - 输入:``session`` 唯一数据总线——商店融合观察态由商店观察段写入
-          ``session.shop_state_frame``;战略导向 ``state_of(session).target_comp`` 同 session。
-        - 返回:动作 list;词表 = {BuyCard, **LevelUpShop**, RefreshShop, SellBench,
-          SellDeployed, CompTransaction}——升级意图用商店屏专用 ``LevelUpShop``
-          (W970 §4.1.3 拆分,LevelUpShop is-a LevelUp,执行器/账本零改动)。
-        - 终止语义(ADR-0517 迁移后):本接口 = 单动作核
-          (:meth:`CwFlowStrategy.decide_shop_action`)的**序列兼容驱动器**
-          (sim/回放/序列锁消费);生产执行侧直接走单动作循环。驱动器逐帧
-          调单动作核并以 ``cw_state.simulate`` 纯投影推进期望态,终结动作
-          (RefreshShop/CompTransaction)截停、``CloseShop`` 收尾不入序列——
-          旧「空序列 = 决策完成触发关店」契约由 CloseShop 终结动作取代。
-        - 契约:观察帧缺失即抛错(同 ``decide_prep_screen``)。
+    def decide_shop_action(self, session: StrategySession,
+                           config: CurrencyWarConfig) -> Action:
+        """商店单动作决策入口(ADR-0517 决策 1/2/5;ADR-0583 升格入契约面,
+        本批前为 flow 中间层成员)。全函数恒可用终结 = ``CloseShop``;
+        生产执行侧单动作循环逐帧调用(sim/回放经 ``decide_shop_screen``
+        驱动器循环化消费,该驱动器非契约成员)。观察帧缺失 = 观察层失约,
+        实现须抛错(禁静默按空态决策)。
         """
 
     @abstractmethod
@@ -206,7 +159,7 @@ class CwStrategy(ABC):
     def decide_supply(self, options: list[SupplyOption], state: GameState,
                       session: StrategySession, config: CurrencyWarConfig,
                       refresh_used: bool = False) -> SupplyPick:
-        """补给选装备/出钻。⚠️ OCR 未就绪(P1 钩子存在 + 默认委托,handler 不 rewire,随阶段5)。"""
+        """补给选装备/出钻。⚠️ OCR 未就绪(契约成员存在 + 默认委托,handler 不 rewire,随阶段5)。"""
 
     @abstractmethod
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
@@ -219,19 +172,39 @@ class CwStrategy(ABC):
     @abstractmethod
     def decide_megastar(self, options: list[MegastarOption], state: GameState,
                         session: StrategySession, config: CurrencyWarConfig) -> MegastarPick:
-        """巨星选候选。⚠️ OCR 未就绪(P1 钩子存在 + 默认委托,handler 不 rewire,候选 char_id 空 → idx=0)。"""
+        """巨星选候选。⚠️ OCR 未就绪(契约成员存在 + 默认委托,handler 不 rewire,候选 char_id 空 → idx=0)。"""
 
     @abstractmethod
     def decide_partner(self, options: list[PartnerOption], state: GameState,
                        session: StrategySession, config: CurrencyWarConfig) -> PartnerPick:
-        """选择伙伴。⚠️ OCR 未就绪(P1 钩子存在 + 默认委托,handler 不 rewire,char_id 空 → idx=0)。"""
+        """选择伙伴。⚠️ OCR 未就绪(契约成员存在 + 默认委托,handler 不 rewire,char_id 空 → idx=0)。"""
+
+    @abstractmethod
+    def decide_planner(self, options: list[PlannerOption], state: GameState,
+                       session: StrategySession, config: CurrencyWarConfig) -> PlannerPick:
+        """银狼策划事件 3 选 1(r104 接入;ADR-0583 补入契约面)。``options`` = 选项卡 OCR 文本。"""
+
+    @abstractmethod
+    def decide_star_tome(self, options: list[str], state: GameState,
+                         session: StrategySession, config: CurrencyWarConfig) -> int:
+        """星徽典籍四选一,返回 options 索引(r104 接入;ADR-0583 补入契约面)。"""
+
+    @abstractmethod
+    def decide_wish_trial(self, options: list[str], state: GameState,
+                          session: StrategySession, config: CurrencyWarConfig) -> int:
+        """祈愿试炼选卡,返回 options 索引(r104 接入;ADR-0583 补入契约面)。"""
+
+    @abstractmethod
+    def decide_box_card(self, names: list[str], state: GameState,
+                        session: StrategySession, config: CurrencyWarConfig) -> int:
+        """武装箱/节点弹窗装备卡 4 选 1,返回 names 索引(r104 接入;ADR-0583 补入契约面)。"""
 
 
 @dataclass
 class CurrencyWarMatch:
     """运行时持有 strategy + session 的轻容器,挂 ``ctx.cw_match``(子 op 都拿得到 ``self.ctx``)。
 
-    生命周期:``CwLoop.__init__`` 每局创建 → 挂 ctx → 每个钩子收到的 session 就是它 →
+    生命周期:``CwLoop.__init__`` 每局创建 → 挂 ctx → 每个契约调用点收到的 session 就是它 →
     局终置 ``ctx.cw_match = None``(防跨局污染)。
     """
     strategy: CwStrategy
@@ -312,9 +285,12 @@ def gated_hp(current_hp: int | None, session: StrategySession,
       + r6 现读失败 → 旧 gap==1 判陈旧回退 100 假值喂 pivot);窗口 3 外(结算连失,
       如 boss conf=0 冻结场景)仍拒 → 保持兜底值。
 
-    消费点:shop.py(buy 前)+ cw_screen_prep(环入口,传 obs.state.hp_readable)+
-    策略层 ``_pseudo_state`` —— 同门,否则先调方用假 hp 判 pivot、后调方真 hp
-    反向 pivot,同节点两次方向相反换线(r68 实证)。
+    消费点:shop.py(buy 前)+ cw_screen_prep(环入口,传 obs.state.hp_readable)——
+    同门,否则先调方用假 hp 判 pivot、后调方真 hp
+    反向 pivot,同节点两次方向相反换线(r68 实证)。方向重估(ADR-0583 内化
+    进策略器决策入口)消费的是**已被本门覆写后的帧 state**(cw_screen_prep
+    环入口终饰在决策入口之前执行)→ 驱动输入恒为同门 hp,见 gated 门锁
+    (test_cw_w971_blackboard.py::TestDirectionRhythmL1L2L3L7::test_l7)。
     """
     last_hp = getattr(session, 'last_hp', None)
     last_t = getattr(session, 'last_hp_t', None)

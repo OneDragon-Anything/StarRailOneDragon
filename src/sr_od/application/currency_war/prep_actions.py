@@ -1,6 +1,6 @@
 """货币战争 备战决策环 原子动作全集 + 执行器(P1;strategy/03(原 doc 15§4)/§13)。
 
-框架层:本模块**不含玩法判断**(何时收球/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_action),
+框架层:本模块**不含玩法判断**(何时收球/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
 只负责「执行一个动作 + 完成验证」。三失败路径(§13.2):
 - 验证失败 → execute 返回 progressed=False(CwScreenPrep 计 fail/屏蔽);
 - 参数非法 → validate 返回错误串(Director 拒绝执行 + 该步计 stall + telemetry);

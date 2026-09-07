@@ -48,7 +48,8 @@ PREP_SUBSTATE_NAME: str = 'prep_shop'
 # ------------------------------------------------- Snapshot → 决策输入(§3)
 
 def snapshot_to_obs(snapshot: Snapshot, session: StrategySession) -> PrepObservation:
-    """Snapshot → 现役 decide_prep_action 的观察视图(设计 §3.1 逐字段表)。
+    """Snapshot → 现役 decide_prep_screen 的观察视图(设计 §3.1 逐字段表;
+    旧单动作别名 decide_prep_action 已随 ADR-0583 删除)。
 
     保守方向裁决(设计钉死,fixture 锁):free_bench_slots None →
     ``BENCH_CAPACITY``(宁多收球——点击失败可自愈、defer 门兜住;不误卖,

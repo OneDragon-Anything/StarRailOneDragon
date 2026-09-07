@@ -827,7 +827,7 @@ class CwLoop(SrOperation):
         # _is_new_match 与 match 建立块必须**同块迁移**:_is_new_match 的求值
         # (ctx.cw_match is None)在「match 尚未建立」时点才有意义——只迁三字段
         # 会让首次 execute 重判时 cw_match 恒已存在(_is_new_match 恒 False,
-        # on_match_start/残留屏判定双双失活)。整块迁移后:首次 execute 时序与
+        # 新局标记/残留屏判定双双失活)。整块迁移后:首次 execute 时序与
         # 原 __init__ 等价(本方法在首个节点运行前执行);execute 重入时重判
         # ——cw_match 若已建立则不再当新局(保守方向:漏标不误标,R4 已证)。
 
@@ -840,7 +840,7 @@ class CwLoop(SrOperation):
         # 每局清空 plane/round last-known-good(防跨局复用上局值;task#24)
         reset_phase_round_cache()
         # SrOperation 还没 last_screenshot(截图由 node runner 进 @operation_node 时给)→ 不能 read_game_state;
-        # on_match_start 在 loop() 首次截图后调(见下方 _iter==1 守卫)。跨步状态进 strategy_state_of(session).target_comp
+        # 新局初值经 create_session 唯一冷建口承载(ADR-0583;见 _iter==1 分支)。跨步状态进 strategy_state_of(session).target_comp
         # (替代旧 BuyShopCards._target_comp class-attr hack,语义等价:每局新建已是现行为)。
         # 续跑支持(手动逐轮验证):cw_match 已存在(上轮 RunLoop 留下)→ 延用,不 new;否则 new(整局开始)。
         # 手动逐轮(max_rounds=1 反复 run_operation)靠此跨 run 延续 match state(target 稳定不每轮重选振荡)。
@@ -951,7 +951,7 @@ class CwLoop(SrOperation):
         # 可全程不含豁免词(局54 实锤:4 词缀+3 首领+难度常驻简报信息面板,
         # 「决战在即」是词缀名非战斗标语)→ 关键词豁免兜不住,误报稀释真哨兵
         # 信号。窗口内不计数;宽限过 → 恢复正常判定(出战卡死类真挂死仍可触发)。
-        # 开窗=备战环出口(出战);关窗=on_round_end(结算观测)/备战分支再入。
+        # 开窗=备战环出口(出战);关窗=结算观测回路(battle_wait)/备战分支再入。
         if self._watch_in_battle_grace(
                 getattr(self, '_battle_ts', None), time.monotonic()):
             self._stall_count = 0
@@ -1118,7 +1118,7 @@ class CwLoop(SrOperation):
         写入入口**,带 source='synthetic_supply'(镜像 ADR-0273 行来源标记)防与
         结算屏真值行混淆。hp 用 last_state 快照(最近备战观察;hp_readable=False
         时置信度记 0,hp 字段不冒认真值)。plane/round 用 last-known(补给屏顶栏
-        被遮,read_phase_round 走缓存)。只写遥测,不喂 on_round_end/last_hp
+        被遮,read_phase_round 走缓存)。只写遥测,不喂结算观察半/last_hp
         (不改策略行为面)。失败不阻塞对局(观测为辅)。
         """
         try:
@@ -1205,9 +1205,12 @@ class CwLoop(SrOperation):
                     log.warning('[cw!][loop] 窗口失焦(输入静默丢风险)→ 主动激活')
                     _gw.active()
 
-        # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖是 update_target 的事(§11.6 M6)。
+        # 尽力而为 read_game_state(默认实现不读);**不做 hp 覆盖** —— hp 覆盖归观察终饰/策略器内化刷新(ADR-0583)。
         if self._iter == 1 and self._is_new_match:
-            # ADR-0462:消费面只有 plane/round(恢复对局检测/on_match_start 归属标记)
+            # ADR-0462:消费面只有 plane/round(恢复对局检测)。
+            # 生命周期钩子已随 ADR-0583 收编删除:on_match_start 的冷建与
+            # live 初值(v3_phase='FORM')由 create_session 唯一冷建口承载
+            #(establish_new_match 进对局前移点/防御路径/回放三处同源)。
             # → battle/过渡帧最小读(仅位面轮次,其余字段该帧无备战可读)。
             _st0 = read_game_state(self.ctx, screen, phase='battle_or_transit')
             # r25 恢复对局标记(telemetry):bot 侧新 match 但游戏已在中局(首读 round>1
@@ -1223,8 +1226,6 @@ class CwLoop(SrOperation):
                                                   state=_st0)
             # 接管局补采(boss+词缀)挂点 = 干净备战观察(W971 §2.1,CwScreenPrep
             # 环入口 gate 后稳定帧执行;稳定门退役后由备战观察承担)。
-            self.ctx.cw_match.strategy.on_match_start(
-                _st0, self.ctx.cw_match.session, self._cw_config)
 
         # 「返回投资策略选择」分支已挪入备战分支(2026-08-26 用户定性:
         # 该按钮出现 = 上游投资策略屏处理失败的 symptom)——确定是备战画面后再
@@ -2335,7 +2336,8 @@ class CwLoop(SrOperation):
                 # B4(ADR-0170 telemetry 接线):终局真实数据灌 MatchOutcome(原桩全默认)——
                 # won=回大厅即本局结束;plane/round/hp 取 session.last_state(每回合框架刷新的
                 # 最后快照;⚠️ CurrencyWarMatch 无 state 字段——review 子代理 P0 实锤,勿写
-                # cw_match.state)。喂 strategy.on_match_end + 跨局分配器(0170,分级奖励)。
+                # cw_match.state)。喂跨局分配器(0170,分级奖励);生命周期钩子
+                # on_match_end 已随 ADR-0583 收编删除(原实现 = P1 no-op,零行为)。
                 _st = self.ctx.cw_match.session.last_state
                 # ⚠️ 假 win 守卫(2026-08-17 M70 事故):won 曾用 `plane >= 3`——恢复对局时 plane
                 # 被 OCR 读成 8(A8 难度泄漏)→ 8>=3 → 假通关进遥测。现要求 **plane==3 精确值**
@@ -2348,8 +2350,6 @@ class CwLoop(SrOperation):
                     final_hp=(_st.hp if _st is not None
                               and _st.hp is not None else 0),
                 )
-                self.ctx.cw_match.strategy.on_match_end(
-                    self.ctx.cw_match.session, self._cw_config, _outcome)
                 self._allocator_update(_outcome)
                 # 遥测写端(review 半接线修复,2026-08-16):runs.jsonl 生产侧此前无写入方。
                 # result:plane>=3 = win(通关),否则 loss(死在 P3 内);gold 轨迹由 recorder
@@ -2366,8 +2366,9 @@ class CwLoop(SrOperation):
                     final_hp=self._last_true_hp(_outcome.final_hp),
                     notes='auto')
                 self._summary_written = True
-                # 按局存档装配(终局旁路,零运行时侵入):挂在 on_match_end
-                # 调用点之后同一生命周期;只读 replay/*.jsonl 写 matches/,
+                # 按局存档装配(终局旁路,零运行时侵入):挂在局终收口
+                #(原 on_match_end 调用点之后同一生命周期;该钩子已随
+                # ADR-0583 收编删除);只读 replay/*.jsonl 写 matches/,
                 # 不碰任何内存态/决策路径,失败不阻塞局终收口。
                 try:
                     from sr_od.application.currency_war.telemetry import match_archive

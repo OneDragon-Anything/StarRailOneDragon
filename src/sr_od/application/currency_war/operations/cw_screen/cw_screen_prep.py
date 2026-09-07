@@ -1364,6 +1364,9 @@ class CwScreenPrep(SrOperation):
         self._clear_entry_overlays()
         self._try_collapse_open_shop()
         obs = self._observe(heavy=True)
+        # 帧代次标注(ADR-0583 §3.4):入口 heavy 主观察帧 = full;消费归
+        # 决策入口(含经 overlay 防线反弹的 pick 子路径,§5.5-丁)。
+        session.prep_frame_class = 'full'
         if obs.event_overlay is not None:
             # overlay 在场 → 交回外循环重识别分发(无计数;对应 loop 0x 分支/op 接管)
             log.info(f'[cw][director] 事件 overlay({obs.event_overlay})→ 交回外循环分发')
@@ -1386,34 +1389,24 @@ class CwScreenPrep(SrOperation):
                                              'drag_expect': None, 'equip_expect': None,
                                              'dep_delta': 0, 'dep_pre': None,
                                              'unit_open': False}, session)
-        # —— 决策前置:席满破墙(M16,保留)→ 方向层/gated_hp/update_target(幂等键守卫)
+        # —— 决策前置:席满破墙(M16,保留)→ 观察终饰(dual/gated_hp;
+        #      方向重估已内化进策略器决策入口,由帧代次标注触发,ADR-0583)
         _bf = self._bench_full_break_round(match, session, obs, config)
         if _bf is not None:
             return _bf
         if obs.state is not None:
             from sr_od.application.currency_war.kernel.cw_intention import (
                 committed_from,
-                drive_intention,
             )
             from sr_od.application.currency_war.strategies.impl.cw_strategy import (
                 gated_hp,
             )
             _os = obs.state
-            # 方向层接管(P7 驱动点契约):意向状态机每 game-round 恰一次;
-            # 段级重入守卫 = v3_intention_key(双驱动幂等,单轮每轮调不重复驱动)。
-            try:
-                drive_intention(_os, session)
-            except Exception as e:  # noqa: BLE001  方向驱动失败不阻塞步级决策
-                log.warning(f'[cw!][director] 意向驱动异常(沿用旧方向): {e}')
             # dual 态拷回(读端 = R1 唯一合法读端 committed_from)
             _os.dual_track_phase = not committed_from(session, _os)
             _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
             _os.hp = gated_hp(_os.hp, session, _os_t,
                               current_readable=bool(getattr(_os, 'hp_readable', True)))
-        try:
-            match.strategy.update_target(obs.state or GameState(), session, config)
-        except Exception as e:  # noqa: BLE001  战略层失败不阻塞步级决策
-            log.warning(f'[cw!][director] update_target 异常(沿用旧 target): {e}')
         # —— ③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 +
         #      每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次
         #      建期望态 → 逐动作「决策(黑板=投影态)→ F3 校验 → 期望态计算 →
@@ -1563,6 +1556,8 @@ class CwScreenPrep(SrOperation):
                     f'{key} ✓(投影未建模,访问终结交回外循环重观察)', wait=1.0)
             obs = _proj
             session.prep_obs_frame = obs   # 黑板推进(下一动作决策读投影态)
+            # 投影帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
+            session.prep_frame_class = 'none'
         # 访问动作数上限(防御:决策循环不收敛 = 投影或策略 bug,交回外循环
         # 由 stall 防线接管——不静默续跑)
         return self.round_success(
@@ -1644,6 +1639,9 @@ class CwScreenPrep(SrOperation):
         # 黑板接口:破墙派生帧写 session → decide_prep_screen(序列契约 v1
         # /dd-020:返回 list[PrepAction];本破墙段逐动作执行,fail-stop 同主段)
         session.prep_obs_frame = bf_obs
+        # 派生帧代次 = view(ADR-0583 §3.4):以自身 .state 只刷派生视图、
+        # 不触状态机(.state 字段经 replace 保真 = 入口主帧的买后物理真值)
+        session.prep_frame_class = 'view'
         actions = match.strategy.decide_prep_screen(session, config)
         # 破墙段动作批签名(守卫动作腿):破墙环重复零变换同样计无进展
         exec_state_of(session).last_prep_action_sig = tuple(
@@ -1928,6 +1926,9 @@ class CwScreenPrep(SrOperation):
             return False, f'开店未生效({_r_open.status})'
         if action.read_only:
             self._observe(heavy=True)   # 开态观察刷新(gold 真值)
+            # 帧代次 = none(ADR-0583 §3.4/D6 补):read_only 分支不接决策
+            #(M-6 门)——heavy 观察不等于主观察帧,禁把本分支误标 full
+            match.session.prep_frame_class = 'none'
             _r_close = close_shop(self)
             if not _r_close.is_success:
                 return False, f'read_only 关店未生效({_r_close.status})'
@@ -2072,7 +2073,7 @@ class CwScreenPrep(SrOperation):
                 for s in slots)
             log.info(f'[cw-director][nodeseq] n={len(slots)} | {summary}')
             self._capture_unrecognized_node_icons(screen, slots, NODE_ROW_RECT, HU_DIST_UNRECOGNIZED)
-            # current 槽类型写 session(cw_loop on_round_end 消费——
+            # current 槽类型写 session(结算观测回路 cw_screen_battle_wait 消费——
             # 节点类型分层遥测;权威源=备战节点行,替代结算屏 OCR 推断)。
             # current 高亮态 Hu 不匹配(模板只对
             # future 生效)+OCR 标签错位守卫 → current 直读恒 None。
@@ -2219,7 +2220,6 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
         expected_gold_after_actions,
     )
     state = outcome.state
-    config = outcome.config
     total_buy = outcome.total_buy
     total_level = outcome.total_level
     total_refresh = outcome.total_refresh
@@ -2236,11 +2236,14 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
     _buy_unidentified = outcome.buy_unidentified
     _buy_pre_bench = outcome.buy_pre_bench
     _buy_pre_deployed = outcome.buy_pre_deployed
-    # r251 修 A(买后同轮重估):update_target 原只在买前跑——买桥件
-    # 当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
-    # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。
-    # 买完用最新 bench 重估一次:桥/锁线当轮生效,紧随的 deploy
-    # 就有方向。幂等(update_target 是纯重估,已锁线不漂移)。
+    # r251 修 A(买后同轮重估;ADR-0583 Z1 修法):方向重估原只在买前跑——
+    # 买桥件当轮桥不认领,deploy 当轮无方向(第六局 r4 买藿藿/爻光但
+    # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。买完需用最新
+    # bench 重估一次:桥/锁线当轮生效,紧随的消费面才有方向。幂等
+    # (键守卫段同轮短路,已锁线不漂移)。**内化形态**:流程侧不再直调
+    # 策略器——买后 ``_post`` 暂存为黑板派生帧标 view,由下一决策入口
+    # (pick/备战)消费复现原重估语义(§3.3-③):pick 窗口 = 同 ``_post``
+    # 基底逐位同源;备战入口 = heavy full 帧构造性覆盖(同一物理 bench)。
     try:
         if match is not None and (total_buy or total_level or total_refresh):
             _post = None
@@ -2268,9 +2271,19 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
                 _apply_hp(_post, hp_value, hp_readable, hp_trusted)
                 if match.session.last_node_type:
                     _post.node_type = match.session.last_node_type
-            match.strategy.update_target(_post, match.session, config)
-    except Exception as e:   # noqa: BLE001  重估失败不阻塞买牌
-        log.debug('[cw] 买后重估失败(不阻塞): %s', e)
+            # finalize 同位暂存(ADR-0583 §3.3-③;写者 = 流程侧,§3.4 具名清单)。
+            # 缺席守卫(方案审 L-b):外循环 0n 直入商店(接管/店已开路径,
+            # ADR-0562 入口)无 prep 黑板帧 → 显式跳过暂存,该窄窗 pick 退回
+            # 'none' 类(申报见 ADR-0583 §5.5-丁);暂存帧仅 state/帧类两字段
+            # 有消费合法性(现帧其余 OCR 列相对 _post 已陈旧,消费面禁扩读)。
+            import dataclasses as _dc
+            _cur_frame = match.session.prep_obs_frame
+            if _cur_frame is not None:
+                match.session.prep_obs_frame = _dc.replace(
+                    _cur_frame, state=_post)
+                match.session.prep_frame_class = 'view'
+    except Exception as e:   # noqa: BLE001  重估暂存失败不阻塞买牌
+        log.debug('[cw] 买后重估暂存失败(不阻塞): %s', e)
     # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 CwScreenPrep 主环在
     # RunBuyPhase 后的 heavy 定型帧上消费对账(surface='bench',
     # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建

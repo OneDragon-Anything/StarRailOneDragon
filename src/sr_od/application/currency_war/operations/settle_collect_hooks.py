@@ -5,7 +5,7 @@
 时序),不能用内容哈希去重——去重会把面板变化帧丢掉。改用「每次进入结算屏
 分支存一帧」:对局 loop 在结算屏停留期间每 ~1.5-2s 重入分支一次,天然形成
 2s 间隔序列;帧名带单调序号 + 墙钟时间,与 .log/mcp_server.log 的
-[cw-loop][battle_end] / on_round_end 行对齐即可还原轮次归属。
+[cw-loop][battle_end] / 结算观测行(cw-bwait)对齐即可还原轮次归属。
 
 生命周期(SR 约定,无开关无参数):
 - 采集清单完成(结论写入 redesign/REAL_MACHINE_COLLECTION_1.md)后:删本文件

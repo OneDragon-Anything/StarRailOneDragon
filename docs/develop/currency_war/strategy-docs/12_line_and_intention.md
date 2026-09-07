@@ -1,6 +1,6 @@
 # 12 换线与意向（生命周期 / 证据门 / 换线机器 / update_target）
 
-> 重排来源：原 `03_strategy_layer.md`(已删除) §3（生命周期状态机）、§4.2（终局证据门与通用目标态定义）、§4.3（换线机器）。本篇管**线的选/换/承诺怎么产出决策**——即 `update_target` 钩子的判据域；流程侧调用时机与黑板 = `../flow/README.md` §2.2、`../flow/prep_visit.md` §1。
+> 重排来源：原 `03_strategy_layer.md`(已删除) §3（生命周期状态机）、§4.2（终局证据门与通用目标态定义）、§4.3（换线机器）。本篇管**线的选/换/承诺怎么产出决策**——即方向内化判据域（原 `update_target` 契约调用点已随 ADR-0583 内化为策略器私有 `_refresh_direction`，流程侧仅声明帧代次）；流程侧帧声明与黑板 = `../flow/README.md` §2.2、`../flow/prep_visit.md` §1。
 > 前置阅读：[01_math_framework.md](01_math_framework.md) §3.7（P16/P38）、[02_mandate_layer.md](02_mandate_layer.md) §2（三层权限：证明层）。
 
 ## 1. 终局证据门（唯一线级选择）【已裁定】——通用目标态定义（原 03 §4.2）

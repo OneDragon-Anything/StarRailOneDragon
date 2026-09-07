@@ -354,7 +354,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
         payload=BattlefieldEffect(board_rewrite='upgrade_all_cost+1'),
         duties=DutyFlags(predict=True),
-        notes='board/target 全量失效→update_target 强制重派生是后续批辖域'),
+        notes='board/target 全量失效→方向重估强制重派生是后续批辖域'),
     # 人力重组:官方「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个2星2费
     # 角色和2个2星1费角色」。⚠️ 注册表 STRATEGY_ECONOMY 无此条(经济面未建模,发牌资产
     # 走战力评估)——语义实为全场出售的板面重写,按 BATTLEFIELD 建模(效果规格判读

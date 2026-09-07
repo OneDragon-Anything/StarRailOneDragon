@@ -128,7 +128,7 @@
 | 画面(op) | 动作（单动作粒度） | 终结动作 | 适配判注 |
 |---|---|---|---|
 | 商店（`operations/cw_op/cw_op_buy_cards.py` 波循环） | 买一张/卖一张/升一级（clicks 拆逐 op）/刷新 | 刷新、关店 | **规范原生画面**，迁移首选 |
-| 备战（`cw_screen_prep`，决策 = live 链 `cw_screen_prep.py:1278/1477` → `mandate_v1/bridge.py:80 decide_prep_screen` → `bridge.py:146 decide_from_turn` → `entry.py:325 emit`（三遍编排，自有动作词表 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle）；`flow.py` 的 `_decide_prep_action_impl`/`_main_flow_step`/`_free_bench_step` 等旧备战骨架 = 零生产调用的死码簇，挂收敛批（清单见 `prep_visit.md` §2.1）） | 开典籍/开箱/收球/部署拖拽/升级/卖件/开店/装备 | 开店、开战 | 适配；prep_phase 相位机已随 mandate_v1 接线退出 live（见 §8.2），不再是迁移阻碍 |
+| 备战（`cw_screen_prep`，决策 = live 链 `cw_screen_prep.py:1278/1477` → `mandate_v1/bridge.py:80 decide_prep_screen` → `bridge.py:146 decide_from_turn` → `entry.py:325 emit`（三遍编排，自有动作词表 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle）；`flow.py` 旧备战骨架死码簇已物理删除（`prep_visit.md` §2.1）;方向重估由 decide_prep_screen 入口经黑板帧代次标注内化触发（ADR-0583）） | 开典籍/开箱/收球/部署拖拽/升级/卖件/开店/装备 | 开店、开战 | 适配；prep_phase 相位机已随 mandate_v1 接线退出 live（见 §8.2），不再是迁移阻碍 |
 | 备战·整档替换（CompTransaction，`kernel/cw_state.py:696-714`） | 整档替换事务 = 一个宏动作 op（§5） | 无固有终结（归属备战终结集） | 复合动作类 |
 | 事件单选族（invest_strategy/invest_env/planner/megastar/partner/wish_trial/bookcard/expert_invite/boss_briefing/**fortune**） | 选卡（每候选一个动作） | 确认离开 | 形式兼容（循环退化为一步：选即终结，零投影账→§8.3 单选族例外不入规范）；fortune=`cw_screen_fortune.py` live-verified(r115),点卡+确认同族 |
 | 补给（supply/supply_node） | 选装备（动态 N 选 1）/**刷新（节点内至多 1 次,游戏规则；终结性同商店款,待 §8.4 终裁）** | 确认离开（overlay 消失=节点完成） | **入规范**（轮 6 按代码体回炉:N 选 1+刷新→刷后循环可 ≥2 步=有投影账;代码事实 `cw_screen_supply_node.py:60-61` REFRESH_BTN/`:176` `_supply_refresh_used` session 实态/`:188-195` decide_supply 消费+实点;**docstring 第 14 行「无刷新按钮」系陈旧残句,轮 5 误信已纠**——代码侧该行修正挂实施批）;§8.4 开放问题恢复 live 地位 |
