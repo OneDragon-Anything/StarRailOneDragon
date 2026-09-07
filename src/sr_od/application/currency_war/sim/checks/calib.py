@@ -286,6 +286,9 @@ def check_ab_verdict_claim(mean_diff: float, sd_pair: float, n: int,
 # 常红披露(非本批引入,见各检查项口径):equip_value_strategy_key_
 # coverage(批㉜ 策略域待裁决恒红)/delta_pool_bucket_min_n+depth_
 # cliff_monotonicity(池语料贫困,META 披露)。
+# ADR-0582(Δ池合成行治理)后提交快照指纹前移至 a0722904 系——
+# 本锚池仍是 w157_p2 本地导出件(跨池重放以该导出件为准,池指纹
+# 前缀失配属预期披露非违规);旧锚跨批不可比,待下次 n300 重跑换锚。
 ANCHOR_REGISTRY_N300: dict = {
     'pool_fingerprint_prefix': '0bf6c0d6',
     'recorded': '2026-08-28(`w157_p2/`/ADR-0362:Δ池 plane 维键化后重建'

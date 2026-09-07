@@ -236,11 +236,14 @@ def check_ab_depth_boundary_confound(ledgers_a: list[list[dict]],
 # --- 批⑬ 检查项(2026-08-24 裁决落地;ADR-0279) ---------------------
 # battle Δ池 rung 分桶锁:sim 压测批⑬ F1/F2/F7 的常态化防线。
 
-# 批⑬ F2 真值表(battle rung 桶均值;全量 replay 分桶实测,
-# r0 n=26 / r1 n=24 双主桶)。r2 方差未判(时代分层混杂)/r3 无
-# 样本——真值表只锁双主桶;池重生成后均值漂移 >3hp 报警
-# (判据表原值)。
-BATTLE_RUNG_TRUTH: dict[int, float] = {0: -11.5, 1: -6.3}
+# 批⑬ F2 真值表(battle rung 桶均值;b13 时代全量 replay 分桶
+# 实测,r0 n=26 / r1 n=24 双主桶)。v13(ADR-0582)随 Δ池合成行/
+# conf 门治理**用过滤后语料重推**——旧值(-11.5/-6.3)是含毒语料
+# (合成行入配对)的产物,治理后 rung1 漂移 3.06hp 超带;重推值 =
+# 过滤后语料同口径实测(r0 n=256 mean −9.73 / r1 n=238 mean −3.24,
+# 快照指纹 a0722904)。r2 方差未判(时代分层混杂)/r3 无样本——
+# 真值表只锁双主桶;池重生成后均值漂移 >3hp 报警(判据表原值)。
+BATTLE_RUNG_TRUTH: dict[int, float] = {0: -9.73, 1: -3.24}
 
 BATTLE_RUNG_DRIFT_MAX: float = 3.0
 
@@ -259,8 +262,9 @@ def check_battle_rung_pool_bucket_lock(pool_map: dict) -> dict:
     """批⑬ 检查项 battle_rung_pool_bucket_lock(ADR-0279)。
 
     判据(批⑬检查项设计表原文):
-    - battle rung 桶真值表(r0 -11.5/r1 -6.3)锁进池——rung0/rung1
-      双主桶存在且 n≥10,均值距真值漂移 ≤3hp;
+    - battle rung 桶真值表(BATTLE_RUNG_TRUTH,v13/ADR-0582 起=
+      过滤后语料重推锚)锁进池——rung0/rung1 双主桶存在且 n≥10,
+      均值距真值漂移 ≤3hp;
     - battle 桶键全落 rung 域(0-4)——出现 depth 域键(≥6)= rung
       分桶未生效(快照未重生成/生成器回归);
     - encounter rung 化(v11/ADR-0407):encounter 桶键应全落 rung

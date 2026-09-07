@@ -342,14 +342,172 @@ def pool_fingerprint(pool: dict) -> str:
 
 
 
+# 节点类型归一(Δ池配对共享件唯一表;快照生成器经本表消费,
+# 消灭生成器/池两份镜像字典的漂移面)
+NT_MAP: dict[str, str] = {'普通战斗': 'battle', '遭遇': 'encounter',
+                          '奖励': 'reward', '首领': 'boss', '补给': 'supply'}
+
+
+def hp_pair_endpoint_admissible(row: dict) -> bool:
+    """outcome 行可否作 Δ池 hp 差分端点(共享过滤件谓词,ADR-0582)。
+
+    - 合成行(source='synthetic_supply',全仓唯一写者 =
+      cw_loop._record_supply_outcome,hp 取 last_state 战前快照)
+      恒 False——**快照不是事件**(ADR-0577 §3.3 取证链,先验
+      「陈旧直到证伪」):相邻差分把「前一行差分取反」记成补给
+      增益(镜像律,语料复核 155/170=91.2%),并顶替后行真实
+      战斗差分(+2 型被顶成 −20 型)。
+    - 其余行走 ``_outcome_hp_trusted`` 单一源(缺字段=可信,边界
+      声明在其常量注):conf<0.9 的真实行在本语料全部是终局
+      loss_page hp=0 的 OCR-miss 兜底行(败页血条不可读),入
+      配对 = 死亡腿伪值入池,且被节点冷启动表兜底误标『补给』。
+    - 真实结算行(source=''/recovered,屏面**当时**读取,无快照
+      携带机制)不受 source 过滤影响。
+
+    判据语义 = ADR-0577 装配端 ``_settlement_hp_usable`` 延伸到
+    Δ池消费面(0577 §3.2 自限「降权只及步进链」,扩面依据见
+    ADR-0582);惰性 import 防 sim↔telemetry 模块级新环
+    (telemetry.recorder 已模块级依赖 sim.ledger_hooks)。
+    """
+    if row.get('source') == 'synthetic_supply':
+        return False
+    from sr_od.application.currency_war.telemetry.query import (
+        _outcome_hp_trusted,
+    )
+    return _outcome_hp_trusted(row)
+
+
+def pair_outcome_rows_to_pool(
+        seqs: dict[str, list[dict]], *,
+        boards: dict, star_depths: dict, deployed_names: dict,
+) -> tuple[dict, dict]:
+    """run 分组 outcome 序列 → (Δ池, 构成统计)(共享配对件,ADR-0582)。
+
+    快照生成器(cw_delta_pool_gen.build_pool)与 auto 池
+    (_pool_from_replay)共同消费——两处曾各持一份镜像循环,过滤
+    语义单侧修改即破坏 auto/snapshot 指纹收敛判据(无标签行案的
+    教训:两侧同步修,见 _pool_from_replay 的指纹判据注),本函数
+    把「行级过滤+配对」收成单一实现消除第三源漂移。
+
+    行级过滤三步,**顺序有语义**:
+
+    1. hp0 瞬态剔除(v12/DD-012):非终局 hp==0 是结算过渡帧伪读
+       数(紧随的同轮行血量恢复真值),配对前剔除;终局位保留
+       (真死)。「终局」按本 run **原始序列**末行判,先于步骤 2;
+    2. 端点资格过滤(:func:`hp_pair_endpoint_admissible`,ADR-0582):
+       合成行/低可信行**移行桥接**——从序列移除、邻行重配对(先例
+       = v12 hp0 瞬态「剔除后差分跨过它直接配对」)。不采用断链:
+       断链会把真实战斗差分(如 +2)丢失、留下跨合成行错值;
+    3. 相邻差分入桶:delta = 后行 hp − 前行 hp,归属后行的节点
+       类型/位面/桶键(battle/encounter=rung,boss=净星深,
+       其余=Σboard 深度桶;键语义出处见 _pool_from_replay 注)。
+
+    :param seqs: 按 run_id 分组的 outcome 行(调用方已过 runs_filter/
+        隔离清单/hp_after 非 None);本函数会按 (plane, round) 原地
+        排序各 run 序列(与既有两实现同语义)。
+    :param boards: decisions join 的 Σboard 桶键物料(键=(run,plane,round))。
+    :param star_depths: decisions join 的净星深(同键;boss 桶键)。
+    :param deployed_names: decisions join 的上场名单(同键;rung 判据)。
+    :return: (pool, stats);stats 键 = ``runs``(逐 run 入池行数,
+        post-步骤 1)/ ``unlabeled_dropped`` / ``hp0_transient_dropped``
+        / ``synthetic_supply_dropped`` / ``hp_conf_dropped``(四类剔除
+        计数,如实披露不静默)/ ``battle_killed``(ADR-0306 P1 逐桶
+        killed 列表,快照生成器胜率统计消费)。
+    """
+    pool: dict = {}
+    stats: dict = {
+        'runs': {},
+        'unlabeled_dropped': 0,
+        'hp0_transient_dropped': 0,
+        'synthetic_supply_dropped': 0,
+        'hp_conf_dropped': 0,
+        'battle_killed': {},
+    }
+    for run, seq in seqs.items():
+        seq.sort(key=lambda o: (o.get('plane') or 0, o.get('round_num') or 0))
+        # 步骤 1:hp0 瞬态伪读数(终局位保留;判据在原序列上)
+        cleaned: list[dict] = []
+        for i, o in enumerate(seq):
+            if o['hp_after'] == 0 and i < len(seq) - 1:
+                stats['hp0_transient_dropped'] += 1
+                continue
+            cleaned.append(o)
+        stats['runs'][str(run)] = len(cleaned)
+        # 步骤 2:端点资格过滤(移行桥接,ADR-0582)——判定唯一闸 =
+        # :func:`hp_pair_endpoint_admissible`(判据禁第二源;此处只
+        # 按 source 族分类计数,便于披露归因)
+        kept: list[dict] = []
+        for o in cleaned:
+            if hp_pair_endpoint_admissible(o):
+                kept.append(o)
+                continue
+            if o.get('source') == 'synthetic_supply':
+                stats['synthetic_supply_dropped'] += 1
+            else:
+                stats['hp_conf_dropped'] += 1
+        # 步骤 3:相邻差分入桶(归属后行)
+        for a, b in zip(kept, kept[1:], strict=False):
+            raw_nt = b.get('node_type') or ''
+            nt = NT_MAP.get(raw_nt, raw_nt)
+            if not nt:
+                # 2026-08-22 retrofix(ADR-0239 配对配套):历史死链
+                # node_type 置 None——无标签行不入池(标签不可信的
+                # "经验分布"是幻觉地基),计数披露。此判据必须两侧
+                # (auto/snapshot)同态:单侧缺失会让两态指纹结构性
+                # 永不相等,指纹相等性无法用作收敛判据。
+                stats['unlabeled_dropped'] += 1
+                continue
+            # ADR-0362:差分归属后行位面(P1r9→P2r1 归 plane=2;
+            # 位面难度语义不同,混桶=P1 池被 P2 掉血带污染)
+            plane = int(b.get('plane') or 1)
+            k = (run, b.get('plane'), b.get('round_num'))
+            dep = boards.get(k)
+            sd = star_depths.get(k)
+            if dep is None:
+                continue
+            delta = b['hp_after'] - a['hp_after']
+            if nt == 'battle':
+                # ADR-0279:battle 按 rung 一维分桶(结算前 board_before
+                # + deployed join;rung 定义单一源=_engines_count)。
+                bucket = _engines_count(
+                    b.get('board_before') or {},
+                    deployed_names.get(k, frozenset()))
+                # ADR-0306:胜判定权威口径=killed(结算屏 extras),逐
+                # 样本留档供快照 META 逐桶胜率统计;只辖 plane=1
+                # (boss_win_p 消费面是 P1 回退层,P2 语料不足)。
+                if plane == 1:
+                    stats['battle_killed'].setdefault(
+                        bucket, []).append(b.get('killed'))
+            elif nt == 'boss':
+                # ADR-0404:boss 桶键=净星深(上场件 Σ(star−1))——
+                # Σboard 键下 3合1 升星使键 −2/次落浅桶,与机制相反。
+                if sd is None:
+                    continue
+                bucket = min(sd // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
+            elif nt == 'encounter':
+                # v11(ADR-0407):encounter 桶键 depth→rung(与 battle
+                # 同源 _engines_count;dep 键下期望伤害真平 p=0.87,
+                # rung 键梯度单调显著)。
+                bucket = _engines_count(
+                    b.get('board_before') or {},
+                    deployed_names.get(k, frozenset()))
+            else:
+                # reward/supply 沿用 Σboard 深度分桶。
+                bucket = min(dep // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
+            pool.setdefault(nt, {}).setdefault(
+                plane, {}).setdefault(bucket, []).append(delta)
+    return pool, stats
+
+
 def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
-    """从生产 replay jsonl 构建 Δ 池 + 构成 meta。
+    """从生产 replay jsonl 构建 Δ 池 + 构成 meta(auto 池解析体)。
 
     配对口径(r340 起):decisions 每轮取末行板深(Σboard),
     outcomes 同 run 按 (plane, round) 排序后相邻轮 hp 差分。
     半写行跳过并计数(生产 append 进行中尾行可能撕裂)。
-    ADR-0362(`w157_p2/`):差分归属**后行位面**——{节点:{位面:{桶:[Δ]}}}
-    (与 cw_delta_pool_gen.build_pool 同口径;P1/P2 分桶)。
+    ADR-0362:差分归属后行位面——{节点:{位面:{桶:[Δ]}}}。
+    **行级过滤与配对全部委托 :func:`pair_outcome_rows_to_pool`**
+    (ADR-0582:与快照生成器单件同源,禁在本函数再长配对逻辑)。
     """
     import json as _json
     skipped: dict[str, int] = {}
@@ -369,13 +527,13 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
         return out
 
     boards: dict = {}
-    # 迁移审计 w240(git 历史)/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1));v11 起桶键
-    # 判据需 deployed 名单(rung)也辖 encounter——decisions 行 join;
-    # reward/supply 仍用 Σboard(boards)。
+    # ADR-0404:boss 桶键=净星深;v11 起桶键判据需 deployed 名单
+    # (rung)也辖 encounter——decisions 行 join;reward/supply 仍用
+    # Σboard(boards)。
     star_depths: dict = {}
-    # ADR-0279(批⑬):battle rung 判据需上场名单(希儿系=单卡
-    # 依赖)——从 decisions join deployed;join 缺失时希儿系可能
-    # 漏计(rung 低估 1 档),与批⑬盲区声明一致。
+    # ADR-0279:battle rung 判据需上场名单(希儿系=单卡依赖)——
+    # 从 decisions join deployed;join 缺失时希儿系可能漏计(rung
+    # 低估 1 档),与批⑬盲区声明一致。
     deployed_names: dict = {}
     for d in _rows('decisions.jsonl'):
         st = d.get('state') or {}
@@ -386,92 +544,20 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
         deployed_names[k] = frozenset(
             x.get('char_id') or '' for x in (st.get('deployed') or [])
             if isinstance(x, dict))
-    seqs: dict[str, list] = {}
+    seqs: dict[str, list[dict]] = {}
     for o in _rows('outcomes.jsonl'):
         if o.get('hp_after') is None:
             continue
         seqs.setdefault(o.get('run_id'), []).append(o)
-    pool: dict = {}
-    per_run_rounds: dict[str, int] = {}
-    unlabeled_dropped = 0
-    # F6 语料治理:非终局 hp_after==0 行 = 结算瞬时伪读数(结算画面
-    # 过渡帧把血条读成 0,紧随的同轮行血量恢复到真实值,如 84→0→71;
-    # 对局档案真值语料 P1 n=290 未删失最大单轮损 36,单轮 -40 以下
-    # 不存在)。相邻差分把每条伪影拆成 -(hp)/+恢复 两条毒行入桶
-    # (实证:plane1 battle 桶 0 含 -84/+45,桶 1 含 -86/+80/-71/+50)。
-    # 判据:hp=0 只在真终局(run 最后一行)可能为真;非终局 = 伪影,
-    # 剔除后差分跨过它直接配对(84→71=-13 回真实量级)。终局 hp0
-    # 行保留(真死,不入差分对因无后继)。
-    hp0_transient_dropped = 0
-    for run in seqs:
-        seq = seqs[run]
-        seq.sort(key=lambda o: (o.get('plane') or 0, o.get('round_num') or 0))
-        cleaned = []
-        for i, o in enumerate(seq):
-            if o['hp_after'] == 0 and i < len(seq) - 1:
-                hp0_transient_dropped += 1
-                continue
-            cleaned.append(o)
-        seqs[run] = cleaned
-    for run, seq in seqs.items():
-        per_run_rounds[str(run)] = len(seq)
-        for a, b in zip(seq, seq[1:], strict=False):
-            raw_nt = b.get('node_type') or ''
-            nt = {'普通战斗': 'battle', '遭遇': 'encounter',
-                  '奖励': 'reward', '首领': 'boss',
-                  '补给': 'supply'}.get(raw_nt, raw_nt)
-            if not nt:
-                # 2026-08-22 retrofix(ADR-0239 配套)后历史死链标签
-                # 置 None——无标签行不入池(与快照生成器 v2 同口径;
-                # 审查#1:否则 auto/snapshot 两态指纹结构性永不相等,
-                # 指纹相等性无法用作收敛判据)。
-                unlabeled_dropped += 1
-                continue
-            # ADR-0362(`w157_p2/`):差分归属后行位面(P1r9→P2r1 归 plane=2)
-            plane = int(b.get('plane') or 1)
-            k = (run, b.get('plane'), b.get('round_num'))
-            dep = boards.get(k)
-            sd = star_depths.get(k)
-            if dep is None:
-                continue
-            delta = b['hp_after'] - a['hp_after']
-            if nt == 'battle':
-                # ADR-0279(批⑬ F1/F2/F4):battle 按 rung 一维分桶
-                # ——depth-only 池把成型信息扔掉(d9 成型桶 sim 高估
-                # 战损 ~6.4hp/场);rung 输入 = 结算前 board_before
-                # (主阵营计数)+decisions deployed(希儿系单卡判据),
-                # rung 定义单一源 = _engines_count(与 boss_settle_
-                # delta 同源)。depth 维弃用(批⑬ F3:depth×rung 二维
-                # 键 27 格仅 3 格够,样本粉碎)。
-                bucket = _engines_count(
-                    b.get('board_before') or {},
-                    deployed_names.get(k, frozenset()))
-            elif nt == 'boss':
-                # 迁移审计 w240(git 历史)/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1),
-                # deployed_star_depth 同式)——Σboard 键下 3合1 升星
-                # 使键 −2/次落浅桶而浅桶期望伤害更大,与 [27]「星级↑
-                # =战力↑」相反(迁移审计 w238(git 历史) 实证);净星深下 1★→2★ 合并键 +1。
-                if sd is None:
-                    continue
-                bucket = min(sd // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
-            else:
-                # v11(ADR-0407,`w250_delta_pool/`):encounter 桶键 depth→rung(与
-                # battle 同源 _engines_count;键查证:dep/sd 键下期望
-                # 伤害真平 p=0.87,rung 键梯度显著)。reward/supply 沿用
-                # depth 分桶。
-                if nt == 'encounter':
-                    bucket = _engines_count(
-                        b.get('board_before') or {},
-                        deployed_names.get(k, frozenset()))
-                else:
-                    bucket = min(dep // DEPTH_BUCKET_W,
-                                 5) * DEPTH_BUCKET_W
-            pool.setdefault(nt, {}).setdefault(
-                plane, {}).setdefault(bucket, []).append(delta)
-    meta = {'source_dir': str(replay_dir), 'runs': per_run_rounds,
+    pool, stats = pair_outcome_rows_to_pool(
+        seqs, boards=boards, star_depths=star_depths,
+        deployed_names=deployed_names)
+    meta = {'source_dir': str(replay_dir), 'runs': stats['runs'],
             'skipped_lines': skipped,
-            'unlabeled_dropped': unlabeled_dropped,
-            'hp0_transient_dropped': hp0_transient_dropped}
+            'unlabeled_dropped': stats['unlabeled_dropped'],
+            'hp0_transient_dropped': stats['hp0_transient_dropped'],
+            'synthetic_supply_dropped': stats['synthetic_supply_dropped'],
+            'hp_conf_dropped': stats['hp_conf_dropped']}
     return pool, meta
 
 

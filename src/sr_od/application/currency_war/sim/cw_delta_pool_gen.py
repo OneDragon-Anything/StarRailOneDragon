@@ -6,8 +6,13 @@ tools/cw/gen_delta_pool_snapshot.py 迁入;tools 侧保留 CLI 壳)——
 「生成器是池的唯一入口」防线随核心走。
 
 数据源:.debug/temp/currency_war/replay/{decisions,outcomes}.jsonl
-(生产遥测 append 流)。配对口径与 pool._pool_from_replay 同源:
-decisions 每轮取末行板深,outcomes 同 run 相邻轮 hp 差分。
+(生产遥测 append 流)。配对口径与 pool._pool_from_replay **单件
+同源**(ADR-0582:双方共同消费 pool.pair_outcome_rows_to_pool,
+「行级过滤+配对」单一实现,禁再长镜像循环):decisions 每轮取
+末行板深,outcomes 同 run 相邻行 hp 差分;合成行
+(source='synthetic_supply')与低可信行(hp_confidence<0.9)不作
+差分端点——移行桥接重配对(ADR-0582;快照不是事件,判据语义
+= ADR-0577 装配端 _settlement_hp_usable 延伸到 Δ池消费面)。
 桶键(ADR-0279,批⑬):battle=成型度 rung(结算前 board_before +
 decisions deployed join);reward/supply=深度桶;**boss=
 净星深桶(ADR-0404,W240:上场件 Σ(star−1),deployed_star_depth
@@ -66,9 +71,9 @@ class DeltaPoolFrozen(RuntimeError):
     """Δ池快照再生已被冻结标志拦下(退役第一步,见模块内标志注)。"""
 
 
-# 节点类型归一(与 pool._pool_from_replay 同表)
-NT_MAP = {'普通战斗': 'battle', '遭遇': 'encounter', '奖励': 'reward',
-          '首领': 'boss', '补给': 'supply'}
+# 节点类型归一表单一源 = pool.NT_MAP(ADR-0582 随共享配对件收拢;
+# 本模块经 build_pool 内惰性 import 消费,保持模块级轻载——局终
+# 钩子 ledger_hooks 直接 import 本模块)。
 DEPTH_BUCKET_W = 3   # 与 cw_sim._DEPTH_BUCKET_W 同值(指纹输入)
 # ADR-0306:桶覆盖披露门槛(检查项 delta_pool_bucket_coverage 判据)
 # —— 各桶 n≥10 或进 bucket_poverty 显式披露;n<10 的桶真值方向
@@ -119,13 +124,6 @@ def _iter_jsonl(path: Path, skipped: dict) -> list[dict]:
         except json.JSONDecodeError:
             skipped[path.name] = skipped.get(path.name, 0) + 1
     return out
-
-
-def _engines_count_of(bf: dict, names: frozenset) -> int:
-    """rung = _engines_count 单一源(cw_deploy_logic.engines_count,
-    W279 上移——此处经 cw_sim 薄委托消费;ADR-0279)——battle 桶键。"""
-    from sr_od.application.currency_war.kernel.cw_battle_calib import _engines_count
-    return _engines_count(bf, names)
 
 
 def _star_depth_of(rows) -> int:
@@ -202,7 +200,7 @@ def _poverty_list(pool: dict, battle_killed: dict) -> list[str]:
 
 
 def build_pool(src_dir: Path, runs_filter: set[str] | None):
-    """构建 {节点: {位面: {桶键: [Δ]}}} + 构成 meta(与 cw_sim 同配对口径)。
+    """构建 {节点: {位面: {桶键: [Δ]}}} + 构成 meta(auto 池同配对件)。
 
     桶键语义(ADR-0279,批⑬):battle=成型度 rung(结算前
     board_before + decisions deployed join 算希儿系);encounter/
@@ -210,6 +208,10 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
     boss=净星深桶(W240/ADR-0404:上场件 Σ(star−1),修 Σboard 键
     3合1 升星方向冲突)。
     plane 维(ADR-0362,W157):差分归属后行位面,P1/P2 分桶。
+    行级过滤(ADR-0582):合成行/低可信行不作 hp 差分端点,移行
+    桥接重配对——语义与实现单一源 =
+    pool.pair_outcome_rows_to_pool(本函数只做读取/runs 过滤/
+    隔离清单与 META 组装,禁再长配对逻辑)。
 
     守卫在函数体内生效(审查#4:只在 main 锁不住 import 复用)。
     """
@@ -237,7 +239,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
         deployed_names[k] = frozenset(
             x.get('char_id') or '' for x in (st.get('deployed') or [])
             if isinstance(x, dict))
-    seqs: dict[str, list] = {}
+    seqs: dict[str, list[dict]] = {}
     for o in _iter_jsonl(src_dir / 'outcomes.jsonl', skipped):
         if o.get('hp_after') is None:
             continue
@@ -247,90 +249,28 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
             quarantined_hits.add(o.get('run_id'))
             continue
         seqs.setdefault(o.get('run_id'), []).append(o)
-    pool: dict = {}
-    battle_killed: dict[int, list] = {}   # ADR-0306:battle 逐样本 killed(None=未观测)
-    per_run_rounds: dict[str, int] = {}
-    unlabeled_dropped = 0
-    # F6 语料治理(与 pool._pool_from_replay 同口径):非终局
-    # hp_after==0 行 = 结算瞬时伪读数(结算画面过渡帧把血条读成 0,
-    # 紧随的同轮行血量恢复到真实值)——相邻差分把每条伪影拆成
-    # -(hp)/+恢复 两条毒行入桶。hp=0 只在真终局(末行)可能为真。
-    hp0_transient_dropped = 0
-    for run in seqs:
-        seq = seqs[run]
-        seq.sort(key=lambda o: (o.get('plane') or 0, o.get('round_num') or 0))
-        cleaned = []
-        for i, o in enumerate(seq):
-            if o['hp_after'] == 0 and i < len(seq) - 1:
-                hp0_transient_dropped += 1
-                continue
-            cleaned.append(o)
-        seqs[run] = cleaned
-    for run, seq in seqs.items():
-        per_run_rounds[str(run)] = len(seq)
-        for a, b2 in zip(seq, seq[1:], strict=False):
-            raw_nt = b2.get('node_type') or ''
-            nt = NT_MAP.get(raw_nt, raw_nt)
-            if not nt:
-                # 2026-08-22 retrofix(ADR-0239 配套):历史 node_type
-                # 为死链产物已置 None——无标签行**不可入池**(标签
-                # 不可信的"经验分布"是幻觉地基),计数披露。
-                unlabeled_dropped += 1
-                continue
-            # ADR-0362(W157):差分归属**后行位面**——P1r9→P2r1 的
-            # 跨位面差分归 plane=2(结算节点在 P2);位面难度语义
-            # 不同,混桶=P1 池被 P2 掉血带污染(W156 勘察 §5.1)。
-            plane = int(b2.get('plane') or 1)
-            k = (run, b2.get('plane'), b2.get('round_num'))
-            dep = boards.get(k)
-            sd = star_depths.get(k)
-            if dep is None:
-                continue
-            delta = b2['hp_after'] - a['hp_after']
-            if nt == 'battle':
-                # ADR-0279(批⑬):battle 按 rung 一维分桶(结算前
-                # board_before + deployed join;depth 维弃用,F3)。
-                bucket = _engines_count_of(
-                    b2.get('board_before') or {},
-                    deployed_names.get(k, frozenset()))
-                # ADR-0306:胜判定权威口径 = killed(结算屏 extras;
-                # Δ=相邻轮差分是派生量)——逐样本留档供 META 逐桶
-                # 胜率统计(boss_win_p rung≥3 外推消费);
-                # ADR-0362:胜率统计只辖 plane=1(boss_win_p 消费
-                # 面是 P1 回退层;P2 胜率语料不足,见 META note)。
-                if plane == 1:
-                    battle_killed.setdefault(bucket, []).append(
-                        b2.get('killed'))
-            elif nt == 'boss':
-                # W240/ADR-0404:boss 桶键=净星深(上场件 Σ(star−1),
-                # cw_battle_calib.deployed_star_depth 同式)——Σboard 键下
-                # 3合1 升星使键 −2/次落浅桶而浅桶期望伤害更大,与
-                # [27]「星级↑=战力↑」相反(W238 实证)。
-                if sd is None:
-                    continue
-                bucket = min(sd // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
-            elif nt == 'encounter':
-                # v11(W250/ADR-0407):encounter 桶键 depth→rung
-                # (与 battle 同源 _engines_count)——扩容+键查证实证:
-                # dep/sd 键下期望伤害真平(置换检验 p=0.87/Spearman
-                # ≈0),rung 键下梯度单调且显著(r0 -24.9/r1 -15.6/
-                # r2 -4.3,CI 不交叠);rung 合并稳定(名字集口径,
-                # 3合1 不变号),无 ADR-0404 式方向冲突。
-                bucket = _engines_count_of(
-                    b2.get('board_before') or {},
-                    deployed_names.get(k, frozenset()))
-            else:
-                # reward/supply 沿用 depth 分桶(v11 起 encounter 已迁出)。
-                bucket = min(dep // DEPTH_BUCKET_W, 5) * DEPTH_BUCKET_W
-            pool.setdefault(nt, {}).setdefault(
-                plane, {}).setdefault(bucket, []).append(delta)
+    # 共享配对件(ADR-0582:与 pool._pool_from_replay 单件同源;
+    # 惰性 import 保持本模块轻载——局终钩子经 ledger_hooks 直连)。
+    from sr_od.application.currency_war.sim.pool import (
+        pair_outcome_rows_to_pool,
+    )
+    pool, stats = pair_outcome_rows_to_pool(
+        seqs, boards=boards, star_depths=star_depths,
+        deployed_names=deployed_names)
+    battle_killed: dict = stats['battle_killed']
     meta = {
         'source_dir': str(src_dir),
-        'runs': per_run_rounds,
+        'runs': stats['runs'],
         'runs_filter': (sorted(runs_filter) if runs_filter else 'all'),
         'skipped_lines': skipped,
-        'unlabeled_dropped': unlabeled_dropped,
-        'hp0_transient_dropped': hp0_transient_dropped,
+        'unlabeled_dropped': stats['unlabeled_dropped'],
+        'hp0_transient_dropped': stats['hp0_transient_dropped'],
+        # ADR-0582:端点资格过滤剔除账(与 hp0_transient_dropped
+        # 并列如实披露)——synthetic=补给合成行(快照鬼值);
+        # hp_conf=低可信真实行(本语料全部是终局 loss_page hp=0
+        # 死亡腿,连带剔除其配对腿约 75 对)。
+        'synthetic_supply_dropped': stats['synthetic_supply_dropped'],
+        'hp_conf_dropped': stats['hp_conf_dropped'],
         # r378b:隔离清单实际命中的 run(没命中=清单过期,该清理)
         'quarantined_hits': sorted(quarantined_hits),
         'depth_bucket_w': DEPTH_BUCKET_W,
@@ -403,7 +343,20 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 'v12(F6 语料治理,编排者批)非终局 hp_after==0 行'
                 '判定为结算瞬时伪读数(伪影拆出 -84/+71 型毒对;对局'
                 '档案真值语料 P1 未删失最大单轮损 36)——配对前剔除,'
-                '计数 hp0_transient_dropped;池内容变(指纹重算)',
+                '计数 hp0_transient_dropped;池内容变(指纹重算);'
+                'v13(ADR-0582,T-118 Δ池生成器治理)合成行'
+                "(source='synthetic_supply')与低可信行(hp_confidence"
+                '<0.9,判据=telemetry.query._outcome_hp_trusted)不作'
+                ' hp 差分端点——移行桥接重配对(v12 hp0 瞬态同法),'
+                '剔除计数 synthetic_supply_dropped/hp_conf_dropped 入'
+                ' META;治镜像律毒(supply 域均值≈上一轮战败取反,'
+                '复核 155/170=91.2%):supply P1 128→1/P2 47→0(域'
+                '消失),battle P1 均值 -7.70→-6.27,conf 门另剔终局 '
+                'loss_page hp=0 死亡腿 101 行(连带配对 -75 对);'
+                '配对语义收拢单件 pool.pair_outcome_rows_to_pool'
+                '(auto/snapshot 同口径);battle rung 真值锚随批用'
+                '过滤后语料重推(sim.checks.pool.BATTLE_RUNG_TRUTH,'
+                'ADR-0582);池内容变(指纹重算)',
     }
     return pool, meta
 
