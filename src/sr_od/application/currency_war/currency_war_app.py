@@ -167,6 +167,21 @@ class CurrencyWarApp(SrApplication):
     @node_from(from_name='进入货币战争大厅')
     @operation_node(name='开始对局到备战阶段')
     def _start_match(self) -> OperationRoundResult:
+        # 起局前置码哈希结构闸(ADR-0581,T-106 run6 混合码事故防线):工作树≠HEAD 的
+        # 码面不允许起局——run 记录会以本失败状态收尾,不一致清单进日志。
+        # 闸关(config.code_hash_gate=False)时整段跳过。
+        _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
+        if _cfg.code_hash_gate:
+            from sr_od.application.currency_war.kernel.cw_code_hash_gate import (
+                check_workspace_matches_head,
+            )
+            _gate = check_workspace_matches_head()
+            if not _gate.ok:
+                log.error(f'[cw][code-hash-gate] 起局拒绝:{_gate.reason} '
+                          f'不一致码面={_gate.mismatches}')
+                return self.round_fail(
+                    f'起局拒绝:代码哈希闸检出工作树与 HEAD 不一致 '
+                    f'{len(_gate.mismatches)} 个文件(详见日志)')
         screen = self.last_screenshot
         # 同 _enter_lobby:面板残留时的防御性预检(_enter_lobby 截图后画面才
         # 落到暂停面板的边缘情形),未命中零开销。

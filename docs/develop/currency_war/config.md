@@ -66,6 +66,7 @@
 | `strategy_id` | **用户面** | 选策略插件(`default` = 不配置即内置打法;现行生产 v2 = `decision_v2`;旧 `line_v2` 已删,ADR-0336) |
 | `strategy_seed` | 开发/实验(yml-only,不进 GUI) | A/B 复现调试;只种子化策略内部随机(游戏侧种子化不到,对用户是虚承诺,07 §4) |
 | `max_rounds` | 开发/实验(同上) | 多轮采样验证;一次 app 运行本就是一整局 |
+| `code_hash_gate` | 开发/运维(yml-only,不进 GUI) | 起局前置码哈希结构闸开关([ADR-0581](decisions/0581-start-match-code-hash-gate.md)):起局前比对 server 已加载码面 vs git HEAD,不一致拒起;缺省开 = 安全闸宁拦勿放。**server 进程 PATH 无 git = 起局被拒**(fail-closed),git 是起局硬依赖 |
 
 > 已出清字段(`economy_mode`/`event_whitelist` 删、`hp_safe_threshold`/`difficulty_hp_override` 迁代码常量 `cw_state.HP_SAFE_THRESHOLD`/`DIFFICULTY_HP_TABLE`、gate_* 4 个 yml-only flag 删)的**why 与过程 → [ADR-0204](decisions/0204-config-prune-batch2.md) / [ADR-0216](decisions/0216-gate-old-path-removal.md)**;阵营轴保留与必含轴确认的用户裁定 → ADR-0203。
 

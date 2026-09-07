@@ -99,6 +99,10 @@ class CurrencyWarConfig(YamlConfig):
         # 不一致进 defect 台账;零决策行为)。默认开 = 验证期积累「简报 vs 真值」
         # 配对证据;稳态后可 yml 关掉。消费端 = cw_loop 实采块 + takeover 写回。
         self.briefing_reconcile: bool = self.get('briefing_reconcile', True)
+        # 起局前置码哈希结构闸(ADR-0581,T-106 run6 混合码事故防线):工作树≠HEAD 拒绝
+        # 起局。默认开 = 安全闸宁拦勿放;闸本体见 kernel/cw_code_hash_gate
+        # (豁免名单/口径申报单一源 = ADR-0581 与闸模块 docstring)。
+        self.code_hash_gate: bool = self.get('code_hash_gate', True)
         # r347(旧路径删除):gate_* 4 flag 已删(对拍验证过,观测
         # gate 无条件化——ADR-0216 对拍期结束;yml 残留键无害,
         # get() 不再读)。
@@ -123,6 +127,9 @@ class CurrencyWarConfig(YamlConfig):
             # 手写 yml 值(单/多轮验证配置丢失)。None 也要持久化(显式清空语义)。
             'max_rounds': self.max_rounds,
             'briefing_reconcile': self.briefing_reconcile,
+            # code_hash_gate 也要持久化(同 max_rounds 先例):缺了则 GUI 保存
+            # 静默抹掉 yml 手写的关闭值,闸被悄悄重新打开——配置丢失即行为漂移。
+            'code_hash_gate': self.code_hash_gate,
             # r347:gate_* flags 已删(无条件化),save 不再写。
         }
         YamlConfig.save(self)
