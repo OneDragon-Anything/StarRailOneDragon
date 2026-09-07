@@ -260,56 +260,92 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
 
 
 def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
-    """P71-b (3) 溢余段预算闸检查(ADR-0560;绕闸升级 = 违规)。
+    """P72 (3) 全段预算闸检查(ADR-0576;生产闸判据的检查器镜像,
+    绕闸升级 = 违规)。
 
-    判据(证明 = docs/develop/currency_war/proofs/
-    p71-levelup-channel-budget-gate.md P71-b):m3_batch 臂的升级批
-    支出 s 必须 ≤ 该帧溢余段预算 ``g0 − g* − ρ − Σ预留``(g* =
-    saturation_line(cap);ρ = Σ预留 = 合格集最低费卡价,消费
-    criteria/refresh.r2_card_reserve 公共单一源——闸口径下两分量同值,
-    退化 g0 − g* − 2ρ,见 ADR-0560 三分量声明)。违规 = 该轮存在
-    m3_batch 授权的 LevelUp 且批支出穿线 = 绕闸形态(生产闸拦截后不
-    会有该批,出现即闸被绕过/判据漂移)。
+    判据镜像(生产 = criteria/levelup.levelup_budget_gate,P72 全段形):
+    m3_batch 臂升级批**逐击**判定——
 
-    合法拒向不在此检查器辖域(闸拒 = 零发射 = 无 LevelUp 行,天然
-    无违规);奖励/补给节点豁免(同 check_levelup_interest_engine_gate
-    [16]② 买经验合法)。**辖域镜像(ADR-0560 §4)**:g ≤ g* 帧生产闸
-    合法豁免(非溢余段预算不存在),检查器同条件 skip——镜像缺口会把
-    开局低金合法批误报绕闸(落地审 B1,lv3/g0=8 假违规复现在案)。
+    ``g − s ≥ 10·τ(g) + ρ + Σ预留``
 
-    近似声明(与既有检查器同款口径):
-    - 时点金 = 首波 gold(决策发生在收入后/花销前)——生产闸用决策帧
-      现读金 ≤ g0,本检查器偏宽松向(少误报),构造性不冤枉合法批;
+    g = 该击决策帧现读金(重放),s = 该击起同轮 m3 批实际余量,
+    τ = interest 档数分量,ρ/Σ预留 = r2_card_reserve 同参同值(闸
+    口径两分量同值,退化 10·τ(g)+2ρ)。违规 = 存在 m3 击其生产闸
+    本应拒绝却已发射(闸被绕过/判据漂移);生产闸拦下的批零发射,
+    天然无违规。
+
+    三处口径对齐(T-79 验收线 / T-93 三分类修复):
+    - **g\\* 单一源**(签名 B 假阳性根因修复):息档 floor 的 cap =
+      息帽档数 cap_resolved 缺省口径(kernel cw_economy 单一源),
+      **禁读 ``state.cap``**——那是部署人口 cap(=等级+宝钻)同名
+      异义族,T-93 期当息帽推 g*=40~90 即假阳性源(4 处);
+    - **金基准 = 决策帧现读金**(签名 A 真洞的观测面修复):自
+      waves[0] gold 逐动作重放净额(买/刷/升扣、卖入账;动作行
+      cost/income 单一源),非首波 g0——「义务买牌先花 + 逐击发射」
+      的线下潜行形态在 g0 口径下结构性漏报(方案设计 §2 D2);
+    - **ρ 名册**(D3):生产 k_members 同源解析——过渡配方标签
+      ('过渡配方·A+B')走 kernel cw_intention.pair_target_comp,
+      普通线名走 get_comp,成员 = predicates.line_members(core∪
+      shared);禁名册自造(旧 faction 全集口径在过渡配方标签上
+      解析为空名册,ρ 恒 0)。
+
+    豁免镜像(与生产闸同谓词同帧判定,P72 §2.5 合取序禁分裂):
+    - reward/supply 节点([16]② 买经验合法,承 ADR-0560);
+    - **ALL IN 位面末 boss 节**(R=0 机会成本恒零,生产闸同支豁免)
+      ——位面长度 = 本 run rows 现推 max(round_num)(生产真值 =
+      session.plane_node_table,账本不携;已完位面精确,P3 自适应
+      同构);
+    - **支A 兑现链**(板满 ∧ bench 2★,生产同步锚对谓词镜像);
+      支B(ΔV_band 数值完备账)生产侧本批不落码(P39 接缝,
+      ADR-0576 §判据),镜像侧同缺,两侧一致。
+
+    近似声明(与既有检查器同款口径,偏差方向逐条标注):
     - 升级前等级用上一轮账本 level(轮内升级完成会抬高本行);
-    - cap 取本行 cap 按轮内升级量回退(level+常数线性近似,宝钻/投资
-      覆写语境有 ±10 量级误差窗口);
-    - ρ 成员集 = target_comp 名册(core∪faction 成员,含过渡配方标签
-      拆解)——生产 k_members 是其子集,ρ 低估 ⇒ 闸值偏大 ⇒ 宽松向,
-      合格集空帧 ρ=0 兜底与生产一致。
+    - 板满判定 cap 按轮内升级量回退(level+常数线性近似,宝钻语境
+      ±1 量级窗口);bench/deployed 用行末快照(轮内先升后买/上板
+      的漂移窗口,支A 镜像 ±1 件,双向);
+    - 击序余量 s = 同轮 m3 击实际花费后缀和(生产 s =
+      clicks_to_next_level 现读;轮内买牌 +4XP 令生产 s ≤ 本口径
+      ——宽松向,不冤枉合法批);
+    - 息帽 cap 取 DEFAULT(±cap 覆写语境误差窗口:sim 未接线
+      cw4_cap_override,覆写语境出现时本检查器需增观测键);
+    - 逐击重放的动作净额:满栏合成买行携 count,净额按
+      cost×count(与实际扣金差 ≤1 金的粒度窗口)。
     """
     from types import SimpleNamespace
 
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        DEFAULT_INTEREST_CAP,
+        interest,
+    )
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        pair_target_comp,
+    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
         r2_card_reserve,
     )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
-        saturation_line,
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        line_members,
     )
 
-    def _roster(target_label: str) -> tuple[str, ...]:
-        names: set[str] = set()
-        for lb in (target_label or '').removeprefix('过渡配方·').split('+'):
-            comp = next((c for c in COMP_LIBRARY
-                         if getattr(c, 'name', '') == lb), None)
-            if comp is None:
-                continue
-            names.update(getattr(comp, 'core_chars', ()) or ())
-            for fn in getattr(comp, 'factions', ()) or ():
-                names.update(n for n, ch in CHARACTERS.items()
-                             if fn in (ch.factions or ()))
-        return tuple(names)
+    def _k_members(label: str) -> tuple[str, ...]:
+        """生产 k_members 同源解析(单一源对拍,禁名册自造)。"""
+        label = label or ''
+        if label.startswith('过渡配方·'):
+            comp = pair_target_comp(
+                tuple(label.removeprefix('过渡配方·').split('+')))
+        else:
+            comp = get_comp(label)
+        return line_members(comp)
+
+    # 位面长度现推(ALL IN 镜像;账本不携 plane_node_table,run 内
+    # 已完位面 max(round_num) = 真长)
+    plane_len: dict[int, int] = {}
+    for r in rows:
+        p = r.get('plane')
+        if p is not None:
+            plane_len[p] = max(plane_len.get(p, 0), r.get('round_num') or 0)
 
     out: list[str] = []
     prev_level = 3
@@ -318,40 +354,70 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
         sim = row.get('sim') or {}
         level = prev_level
         row_lvl = st.get('level') or prev_level
-        cap = st.get('cap')
-        if cap is not None and row_lvl != level:
-            cap = cap - (row_lvl - level)   # 决策时点 cap 回退(见近似声明)
-        waves = sim.get('shop_waves') or []
-        g0 = waves[0].get('gold') if waves else row.get('gold')
-        s = (sim.get('spend') or {}).get('levelup') or 0
         node = sim.get('node') or ''
-        has_m3 = any(a.get('__type__') == 'LevelUp'
-                     and str(a.get('auth', '') or '').startswith('m3_batch')
-                     for a in row.get('actions') or [])
-        g_star = saturation_line(cap) if cap else None
-        if has_m3 and g_star and g0 is not None and s \
-                and g0 > g_star \
-                and node not in ('reward', 'supply'):
-            # 辖域镜像(ADR-0560 §4,落地审 B1):生产闸在 g ≤ g* 帧
-            # 合法豁免(非溢余段预算不存在,负闸值不读恒拒)——检查器
-            # 无对应豁免会把开局低金合法批误报绕闸(lv3/g0=8/批4金
-            # 假违规复现在案)。辖域外直接 skip,不留负 headroom 路径。
-            bench = [SimpleNamespace(char_id=b.get('char_id'),
-                                     star=b.get('star', 1) or 1)
-                     for b in st.get('bench') or []]
-            deployed = [SimpleNamespace(char_id=d.get('char_id'),
-                                        star=d.get('star', 1) or 1)
-                        for d in st.get('deployed') or []]
-            rho = r2_card_reserve(_roster(row.get('target_comp') or ''),
-                                  bench, deployed,
-                                  SimpleNamespace(level=level), level=level)
-            headroom = g0 - g_star - 2 * rho
-            if s > headroom:
-                out.append(
-                    f"p{row.get('plane')}r{row.get('round_num')} "
-                    f"LevelUp 批 {s} 金 > 溢余段预算 {headroom}"
-                    f"(g0={g0}, g*={g_star}, ρ={rho})——"
-                    f"P71-b (3) 绕闸升级(ADR-0560)")
+        if node not in ('reward', 'supply'):
+            actions = row.get('actions') or []
+            waves = sim.get('shop_waves') or []
+            g0 = waves[0].get('gold') if waves else None
+            lv_pos = [i for i, a in enumerate(actions)
+                      if a.get('__type__') == 'LevelUp'
+                      and str(a.get('auth', '') or '').startswith('m3_batch')]
+            if lv_pos and g0 is not None:
+                # ALL IN 镜像(P72 §2.5):位面末 boss 节生产闸同支豁免
+                is_allin = (node == 'boss' and (row.get('round_num') or 0)
+                            >= plane_len.get(row.get('plane'), 0))
+                if not is_allin:
+                    km = _k_members(row.get('target_comp') or '')
+                    bench = [SimpleNamespace(char_id=b.get('char_id'),
+                                             star=b.get('star', 1) or 1)
+                             for b in st.get('bench') or []]
+                    deployed = [SimpleNamespace(char_id=d.get('char_id'),
+                                                star=d.get('star', 1) or 1)
+                                for d in st.get('deployed') or []]
+                    rho = r2_card_reserve(km, bench, deployed,
+                                          SimpleNamespace(level=level),
+                                          level=level)
+                    # 支A 镜像:板满(cap 按轮内升级量回退)∧ bench 2★
+                    cap_dep = st.get('cap')
+                    cap_dec = (cap_dep - (row_lvl - level)
+                               if cap_dep is not None else None)
+                    realize = (cap_dec is not None
+                               and len(deployed) >= cap_dec
+                               and any(b.star >= 2 for b in bench))
+                    if not realize:
+                        # 逐击余量(实际花费后缀和;缺 cost 行退化均摊)
+                        lv_costs = [actions[i].get('cost') for i in lv_pos]
+                        s_total = ((sim.get('spend') or {}).get('levelup')
+                                   or 0)
+                        if any(c is None for c in lv_costs):
+                            per = s_total // len(lv_pos)
+                            lv_costs = [per] * len(lv_pos)
+                        # 逐击决策帧金重放 + 闸式判定
+                        for j, idx in enumerate(lv_pos):
+                            gold_dec = g0
+                            for a in actions[:idx]:
+                                t = a.get('__type__')
+                                if t == 'BuyCard':
+                                    gold_dec -= ((a.get('card') or {})
+                                                 .get('cost', 0) or 0) \
+                                        * (a.get('count') or 1)
+                                elif t in ('RefreshShop', 'LevelUp'):
+                                    gold_dec -= a.get('cost') or 0
+                                elif t == 'SellBench':
+                                    gold_dec += a.get('income') or 0
+                            s_j = sum(lv_costs[j:])
+                            tau = interest(gold_dec, DEFAULT_INTEREST_CAP)
+                            floor = tau * 10 + 2 * rho
+                            if gold_dec - s_j < floor:
+                                out.append(
+                                    f"p{row.get('plane')}"
+                                    f"r{row.get('round_num')} "
+                                    f"LevelUp 击{j + 1}/{len(lv_pos)} 批余 "
+                                    f"{s_j} 金,决策帧金 {gold_dec} < "
+                                    f"息档 floor {floor}"
+                                    f"(τ={tau}, ρ={rho}, g0={g0})——"
+                                    f"P72 (3a) 绕闸升级(ADR-0576)")
+                                break
         prev_level = row_lvl
     return out
 

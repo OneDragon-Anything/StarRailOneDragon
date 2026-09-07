@@ -689,13 +689,13 @@ def run_mandate(frame: MandateFrame,
                             ok1, _ = check_affordable(frame.gold, 0,
                                                       batch_cost=clicks * cost)
                             if ok1:
-                                # P71-b (3) 溢余段预算闸(ADR-0560):
-                                # 发射前过闸;拒 = 整批推迟(攒到闸开帧
-                                # 一次买齐,禁按闸值截断击数的部分买——
-                                # spend_unified 整批语义辖域)。拒因独立
-                                # 分键遥测显影。契约核验失败(fail-closed
-                                # 弃权)不发射,违例计数由 ensure_contract
-                                # 自带,不混拒因键。
+                                # P72 (3) 全段预算闸(ADR-0576 承继
+                                # ADR-0560):发射前过闸;拒 = 整批推迟
+                                # (攒到闸开帧一次买齐,禁按闸值截断击数
+                                # 的部分买——spend_unified 整批语义辖域)。
+                                # 拒因独立分键遥测显影。契约核验失败
+                                # (fail-closed 弃权)不发射,违例计数由
+                                # ensure_contract 自带,不混拒因键。
                                 # 本位「M6」= _emit_open_shop('m6_stock'),
                                 # 转店后 shop 帧 M3 重过闸兜住闸拒形态,
                                 # prep 位不重复挂起 M6(防双闸,ADR-0560
@@ -707,7 +707,7 @@ def run_mandate(frame: MandateFrame,
                                             deploy_cap=_cap_now), counters):
                                     _gate_ok, _gate_why = (
                                         levelup.levelup_budget_gate(
-                                            state, frame.gold,
+                                            state, session, frame.gold,
                                             _cap_of(session),
                                             frame.k_members, frame.bench,
                                             frame.deployed, clicks, cost))

@@ -51,8 +51,9 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     ('levelup', 'saturation_floor'): (
         '状态函数', '不旁路', 'g*=10×cap_resolved 单一源重导出(R70-1)'),
     ('levelup', 'levelup_budget_gate'): (
-        '门', '不旁路', 'P71-b (3) 溢余段预算闸(ADR-0560;M3 两域+L3 '
-        '发射位消费,义务侧量闸)'),
+        '门', '不旁路', 'P72 (3) 全段预算闸(p72-full-band-budget-gate'
+        '+ADR-0576;P71-b 溢余段形态全段化,M3 两域+L3 发射位消费,'
+        '义务侧量闸)'),
     # —— criteria/refresh(§2.4)——
     ('refresh', 'r0_stop'): (
         '门', '不旁路', 'R10-3(结构位,与 crisis_refresh_invariant 同族)'),

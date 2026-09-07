@@ -226,9 +226,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None, 'D-lv7 OPEN 检查点(满编+富金+候补升 cap)', 'IMPL_DESIGN D-lv7'),
     ('levelup', 'levelup_budget_gate'): Contract(
         _budget_gate_ctx,
-        'P71-b (3) 溢余段预算闸(ADR-0560):前提=现读金与等级驱动 '
-        'cap 在场(g* 依赖 cap_resolved 口径,禁固定常数)',
-        'P71-levelup-channel-budget-gate §P71-b+ADR-0560'),
+        'P72 (3) 全段预算闸(ADR-0576;P71-b 溢余段形态全段化):前提='
+        '现读金与等级驱动 cap 在场(息档 τ 与退化锚 g* 依赖 '
+        'cap_resolved 口径,禁固定常数;ALL IN 豁免与支A 兑现链在'
+        '判据体内自判,不另设前提)',
+        'p72-full-band-budget-gate §1+§2.5+ADR-0576'),
     # —— criteria/refresh ——
     ('refresh', 'r0_stop'): Contract(
         None, 'R0 维持结构门(结构位,输入=店面快照+金,恒良定义)',

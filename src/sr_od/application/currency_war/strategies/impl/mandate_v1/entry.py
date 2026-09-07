@@ -612,7 +612,7 @@ def _reconcile_posture_authorization(session: StrategySession,
         elif state.gold < clicks * cost:
             reason = 'unaffordable'
         else:
-            # P71-b (3) 溢余段预算闸镜像(ADR-0560;与 run_mandate M3 链
+            # P72 (3) 全段预算闸镜像(ADR-0576;与 run_mandate M3 链
             # 同序同判据,复用判据本体禁第二实现):闸拒归因 = budget_gate
             # 族独立拒因,禁落 contract_other 兜底桶(prep 侧降级归因
             # 全错形态,方案审 B4)。cap_resolved 用 resolved 口径单一源。
@@ -625,7 +625,8 @@ def _reconcile_posture_authorization(session: StrategySession,
                     cap_resolved_of_session,
                 )
                 _gate_ok, _gate_why = levelup.levelup_budget_gate(
-                    state, state.gold, cap_resolved_of_session(session),
+                    state, session, state.gold,
+                    cap_resolved_of_session(session),
                     k_members, list(state.bench or []),
                     list(state.deployed or []), clicks, cost)
             reason = (_gate_why if not _gate_ok and _gate_why

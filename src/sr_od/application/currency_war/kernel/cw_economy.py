@@ -714,6 +714,10 @@ def _upgrade_ul_threshold_ok(state: GameState,
     ①臂**有意复制**——两处是同一 P39 指示项在「检验内翻转分量」与
     「排程触发①」两个消费位的落点,语义单一源 = P39 修订式;改任一处
     须同步另一处(同步锚对:本函数 / schedule_upgrade ① 臂)。
+    第三消费位(ADR-0576):mandate_v1/criteria/levelup.
+    ``_realize_chain_ready``(P72 支A 兑现链放行)消费同一指示项——三
+    副本逐字一致,改谓词三处同改;三副本一致对拍锁候批(登记面申报,
+    防漂移无锁位)。
     """
     import math as _math
 
@@ -722,7 +726,8 @@ def _upgrade_ul_threshold_ok(state: GameState,
     )
 
     # ΔV_pop 指示项(P39 修订式;与 schedule_upgrade ①臂谓词成同步锚对,
-    # 见 docstring 末段——改谓词两处同改)
+    # 见 docstring 末段——改谓词两处同改;第三消费位 = criteria/levelup.
+    # _realize_chain_ready(ADR-0576),三处同改)
     from sr_od.application.currency_war.kernel.cw_state import (
         deployed_occupied,
     )
@@ -812,7 +817,9 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     )
     # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a));
     # 谓词与 _upgrade_ul_threshold_ok 的 ΔV_pop 指示项**成同步锚对**
-    # (同一 P39 指示项两个消费位,改谓词两处同改——见该函数 docstring)
+    # (同一 P39 指示项两个消费位,改谓词两处同改——见该函数 docstring;
+    # 第三消费位 = criteria/levelup._realize_chain_ready,ADR-0576,
+    # 三处同改)
     if deployed_occupied(state.deployed or []) >= state.max_units() \
             and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
                     for b in (state.bench or [])):

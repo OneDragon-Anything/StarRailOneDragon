@@ -1006,11 +1006,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 ok1, _ = mandate.check_affordable(gold, 0,
                                                   batch_cost=clicks * cost)
                 if ok1 and clicks > 0:
-                    # P71-b (3) 溢余段预算闸(ADR-0560):整买与可负担
-                    # 之后、发射之前的量闸。拒 = 整批推迟(攒到闸开帧一次
-                    # 买齐,禁部分买),拒因独立分键;契约核验失败
-                    # (fail-closed 弃权)不发射,违例计数由 ensure_
-                    # contract 自带,不混拒因键。
+                    # P72 (3) 全段预算闸(ADR-0576;P71-b 溢余段形态的
+                    # 全段化替换):整买与可负担之后、发射之前的量闸。
+                    # 拒 = 整批推迟(攒到闸开帧一次买齐,禁部分买),
+                    # 拒因独立分键;契约核验失败(fail-closed 弃权)
+                    # 不发射,违例计数由 ensure_contract 自带,不混拒因键。
                     if contracts.ensure_contract(
                             ('levelup', 'levelup_budget_gate'),
                             contracts.ContractCtx(gold=gold,
@@ -1018,8 +1018,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
                             counters):
                         _gate_ok, _gate_why = (
                             crit_levelup.levelup_budget_gate(
-                                state, gold, cap_resolved, k_members,
-                                bench, deployed, clicks, cost))
+                                state, session, gold, cap_resolved,
+                                k_members, bench, deployed, clicks, cost))
                         if _gate_ok:
                             return LevelUpShop(cost=cost,
                                                auth_basis=f'm3_batch:{_arm_tag}')
@@ -1643,15 +1643,16 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if not (ok3 and _clicks3 > 0):
                     _count('batch_unaffordable')
                 else:
-                    # P71-b 闸在必花域内生效(ADR-0560;方案审 v2 采纳 3,
-                    # 73002 病灶即域内帧——域内豁免 = 修复不成立):必花
-                    # 域授权辖「要花」不辖「花在哪」,闸拒只量住升级通道,
-                    # 买卡臂(M2/压库/下帧命中卡)仍是合法消费出口,义务
-                    # 不被否决。拒因独立分键(与域外 levelup_budget_gate_
-                    # blocked 分开,归因可辨);闸拒 ∧ bench 无空席(义务
-                    # 无处安放)⇒ 金滞留死角观测分键(纯观察,攒 sim 数据
-                    # 后再裁是否需要域内降档——降档 = 部分买,与 P48 整买
-                    # 冲突,当前禁做)。
+                    # P72 (3) 全段预算闸在必花域内生效(ADR-0576 承继
+                    # ADR-0560 方案审 v2 采纳 3;73002 病灶即域内帧——
+                    # 域内豁免 = 修复不成立):必花域授权辖「要花」不辖
+                    # 「花在哪」,闸拒只量住升级通道,买卡臂(M2/压库/
+                    # 下帧命中卡)仍是合法消费出口,义务不被否决。拒因
+                    # 独立分键(与域外 levelup_budget_gate_blocked 分开,
+                    # 归因可辨);闸拒 ∧ bench 无空席(义务无处安放)⇒
+                    # 金滞留死角观测分键(纯观察,攒 sim 数据后再裁是否
+                    # 需要域内降档——降档 = 部分买,与 P48 整买冲突,
+                    # 当前禁做)。
                     _gate3_ok = False
                     if contracts.ensure_contract(
                             ('levelup', 'levelup_budget_gate'),
@@ -1660,8 +1661,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
                             counters):
                         _gate3_ok, _gate3_why = (
                             crit_levelup.levelup_budget_gate(
-                                state, gold, cap_resolved, k_members,
-                                bench, deployed, _clicks3, _cost3))
+                                state, session, gold, cap_resolved,
+                                k_members, bench, deployed,
+                                _clicks3, _cost3))
                     if _gate3_ok:
                         return LevelUpShop(cost=_cost3,
                                            auth_basis='m3_batch:must_spend')

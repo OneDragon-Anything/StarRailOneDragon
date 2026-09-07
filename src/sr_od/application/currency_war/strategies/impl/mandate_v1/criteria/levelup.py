@@ -82,55 +82,78 @@ def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
     return gold >= clicks_to_next * click_cost
 
 
-def levelup_budget_gate(state: GameState, gold: int, cap_resolved: int,
+def levelup_budget_gate(state: GameState, session: StrategySession | None,
+                        gold: int, cap_resolved: int,
                         k_members: tuple[str, ...], bench: list,
                         deployed: list, clicks: int,
                         click_cost: int) -> tuple[bool, str]:
-    """P71-b (3) 溢余段预算闸(ADR-0560):升级支出 s 的量闸。
+    """P72 (3) 全段预算闸(ADR-0576):升级支出 s 的量闸(全段辖域)。
 
     判据式(证明 = docs/develop/currency_war/proofs/
-    p71-levelup-channel-budget-gate.md,P71-b 四合取之第 (3) 支,
-    零新自由参数):花后金位 ≥「满息档 + 一张命中卡」的 P54 floor——
+    p72-full-band-budget-gate.md;P71-b (3) 辖域的全段化推广非推翻,
+    溢余段逐字退化零漂移):
 
-    ``g − s ≥ g* + ρ + Σ预留``(s = clicks×click_cost 整批成本;
-    P71-b 记法 B_L = min(U_L, g−g*−ρ−Σ预留) 中 min 因 (1) 整买
-    s≡U_L 恒退化,此处按方案审建议写单比较,禁读出「取较小者支出」
-    的分支语义)。
+    ``g − s ≥ 10·τ(g) + ρ + Σ预留``(P72 (3a) 强读式;τ(g) =
+    min(⌊g/10⌋, cap_resolved),s = clicks×click_cost 整批成本)
 
-    三分量口径(全部已证单一源):
-    - g* = saturation_floor(cap_resolved)(statefn/interest.
-      saturation_line 重导出;cap_resolved 必须传
+    - 息档零侵蚀 + 购买力保底:花后金位不低于「当前息档最低金位 +
+      一张命中卡 + 下帧窗口预留」——升级不花「正在生息的钱」;
+    - g > g* 帧 10·τ(g) = g*,逐字退化回 P71-b (3)(证明 §1 退化
+      一致性,已落码溢余段行为零漂移);
+    - g ≤ g* 帧(中间段)不再空过放行:旧 ``gold <= g_star`` vacuous
+      分支即 T-93 签名 A 真洞——「义务买牌先花钱 + 逐击发射」组合
+      把金潜到息线以下(30 局插桩 20% 局息损潜行,fix_p71_bypass/
+      方案设计 §2.3);全段化后中间段逐帧管账。
+
+    三分量口径(全部已证单一源,P72 §6 零新自由参数核对表):
+    - τ(g) = ``kernel.cw_economy.interest(gold, cap_resolved)`` 直消费
+      (息律档数分量单一源,禁第二实现;cap_resolved 必须传
       cap_resolved_of_session 口径——投资覆写语境裸 level 推 cap 会
       错线,消费位禁偷懒);
     - ρ = ``refresh.r2_card_reserve``(合格集最低费卡价,P54 §②);
     - Σ预留 = 下帧窗口一张命中卡价——与 ρ 消费**同一函数同参**
-      (P54 A2 单刷波粒度整数下界;禁改用 ``_r1_ledger_terms`` 的
-      合格集全完成链 Σ(k−j)×cost 口径,那会把闸值压成常态负值令
-      升级通道近乎永闭,方案审 v1 第 1(c) 节已否决该口径)。
-    ⚠ 两分量并存是语义角色差异,多数帧数值相同(闸值退化 g−g*−2ρ)
-    不是重复项、禁删一:ρ = 本轮升级后买卡臂对一张命中卡的即时购买力
-    (花后 < g* 帧买卡臂失去「满息档上买命中卡」资格,P71-b 必要性
-    论证子情形②);Σ预留 = 下帧窗口的购买力预留(同 P54 floor
-    「至少一张命中卡可买」语义对齐)。此口径下的数值重合是「下帧窗口
-    一张命中卡」定义的直接推论,并存保判据式与证明同形。
+      (P54 A2 单刷波粒度整数下界)。⚠ 两分量并存是语义角色差异,
+      多数帧数值相同不是重复项、禁删一:ρ = 本轮升级后买卡臂对一张
+      命中卡的即时购买力;Σ预留 = 下帧窗口的购买力预留(ADR-0560
+      三分量声明承继,并存保判据式与证明同形)。
+    等级过滤口径:ρ/Σ预留取当前级(闸在升级授权前评估,与 P54 floor
+    同帧同等级);R1 形式二的 L* 目标级重估是刷新语境,不辖本闸。
 
-    等级过滤口径:ρ/Σ预留取当前级(函数内不传 level,r2_card_reserve
-    缺省语义)——闸在升级授权前评估,与 P54 floor 同帧同等级;R1 形式
-    二的 L* 目标级重估是刷新语境,不辖本闸。
+    ALL IN 豁免支(P72 §2.5,新增交互):位面末 boss 末战帧 R=0 ⟹
+    L(g,s,0,Ī)≡0 且息/购买力无消费主体,(3a) 的保护对象(未来息流)
+    不存在——机会成本恒零,预算闸前提不成立,放行花光。豁免谓词 =
+    ``plane_last_battle`` 单一源(经本模块 ``_plane_last_battle`` 重导出
+    委托),与 level_spend_blocked 的 (2) 支 ALL IN 豁免同谓词同帧
+    判定(证明 §2.5 合取序,禁「(2) 豁免了 (3) 还拦」的分裂);
+    ``session`` 参数即为其 nodes_of_plane 真值链新增。
 
-    行为语义:拒 = 该批升级**整批推迟**(攒到金 ≥ g*+ρ+Σ预留+U_L 的
-    帧一次买齐)——禁实现「按 B_L 截断击数」的部分买(P48 整买 (1)
-    辖域,方案审 v1 第 7 节定谳「分轮 = 推迟语义」);常开无开关
-    (证明已闭环,strategy-work §3 第 1 档);pop_slot 升级臂不入闸
-    (P71-a 是收益侧分域命题,dep 满判定塞进闸会误杀 4-5 费搜窗域,
-    方案审 v1 第 5 节)。
+    支A(C_realize=1 兑现链放行):板满 ∧ bench 有 2★ 等待件 = 升级
+    人口位增量当帧可兑现——谓词与 ``kernel.cw_economy.schedule_upgrade``
+    ①臂 / ``_upgrade_ul_threshold_ok`` ΔV_pop 指示项**成同步锚对**
+    (同一 P39 指示项,改谓词多处同改,见 ``_realize_chain_ready``)。
+    P39 ②「骨架义务 M3,arm2 无权否决存在性」:全段化若缺本支,
+    arm1 帧会被量闸否决存在性——本支是 P72 消解该否决的 sanctioned
+    机制(证明 §1 支A 姿态声明,沿 schedule_upgrade ①臂短路先例)。
 
-    辖域限定(g ≤ g* 闸不辖):本闸名与证明边界 1 均锚定**溢余段**
-    (P71-b L≡0 简化只在溢余段内成立)——金 ≤ g* 帧不存在可保护的
-    溢余预算(息律零档,L≡0),负闸值是「预算不存在」的代数信号,
-    禁读成「恒拒」(那会封死开局追级通道,与 arm0/arm1 升级授权语义
-    断层);非溢余段帧的升级量由可负担性 + P39/P21 既有门承载,
-    本闸 vacuous 通过。73002 病灶帧(g=82 > g*)不受此限定影响。
+    ⚠ P39 接缝处置(落码批核对点 B,ADR-0576 §判据):(3b) 数值完备
+    账支(``ΔV_band ≥ s + L + 尖括号欠账``,C_realize=0 帧)**本批
+    不落码**——math_proofs P39 明载 ΔV_band「窗口前提证伪的重锚
+    ……禁单独作闸门」,该支在 C_realize=0 帧的收益侧承担项正是
+    ΔV_band 独自,落码即以边界带未裁决量(sim 对拍项 2 在册)作
+    决定性闸门。替代构造 = 承担项换位:全段化放行域由 (3a)(注册表
+    量)∪ 支A(零标定构造谓词)承载,证明辖域内其余帧 fail-closed
+    推迟(缺支B 只收窄放行域、永不放宽;防恒拒由 (3a) 开局结构性
+    宽松承载,证明 §3)。支B 与支A②支(has_deployable 部署面接线,
+    C_realize 完整评价面)挂账随 P39 sim 对拍项 2 裁决落码
+    (01 §6 三要素 3:owner=编排者,期限=一个对局周期;P72 §5
+    边界 3/5 同族观察)。
+
+    行为语义:拒 = 该批升级**整批推迟**(攒到 10·τ(g)+ρ+Σ预留+s 的
+    帧一次买齐)——禁「按闸值截断击数」的部分买(P48 整买 (1) 辖域);
+    推迟目标随金位上移但 g 越过 g* 后固定为 g*+ρ+Σ预留+U_L,存在
+    不动点无「追着息档永远攒不够」的发散(证明 §1 收敛性,禁误读为
+    移动靶)。常开无开关(证明已闭环,strategy-work §3 第 1 档);
+    pop_slot 升级臂不入闸(P71-a 是收益侧分域命题,ADR-0560 承继)。
 
     返回 (可行, 拒因);拒因恒 'levelup_budget_gate_blocked'(发射位
     分键同名,三处发射位共键)。s ≤ 0(无批可发)恒可行:闸辖「升级
@@ -138,17 +161,49 @@ def levelup_budget_gate(state: GameState, gold: int, cap_resolved: int,
     """
     if clicks * click_cost <= 0:
         return True, ''
+    if _plane_last_battle(state, session):
+        return True, ''      # ALL IN 豁免(P72 §2.5:R=0 机会成本恒零)
+    if _realize_chain_ready(state, bench, deployed):
+        return True, ''      # 支A:兑现链当帧可兑现(P39 ①臂姿态)
+    from sr_od.application.currency_war.kernel.cw_economy import interest
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
         r2_card_reserve,
     )
-    g_star = saturation_floor(cap_resolved)
-    if gold <= g_star:
-        return True, ''      # 非溢余段帧:预算前提不存在(见辖域限定)
     rho = r2_card_reserve(k_members, bench, deployed, state)
     window_reserve = r2_card_reserve(k_members, bench, deployed, state)
-    if gold - clicks * click_cost >= g_star + rho + window_reserve:
+    tau = interest(gold, cap_resolved)
+    if gold - clicks * click_cost >= tau * 10 + rho + window_reserve:
         return True, ''
     return False, 'levelup_budget_gate_blocked'
+
+
+def _realize_chain_ready(state: GameState, bench: list,
+                         deployed: list) -> bool:
+    """P72 支A 谓词:C_realize=1 判定(升级收益的兑现链当帧可兑现)。
+
+    板满(deployed_occupied ≥ max_units)∧ bench 有 2★ 等待件——与
+    ``kernel.cw_economy.schedule_upgrade`` ①臂及
+    ``_upgrade_ul_threshold_ok`` ΔV_pop 指示项成同步锚对(同一 P39
+    指示项的第三消费位,改谓词多处同改;禁止判据体外的平行实现,
+    本注释与 contracts 锚为登记面非实现副本)。两支全断 ⟹
+    C_realize=0 构造性精确零(证明 §2.3)。模块私有:非判据面公开
+    函数,不入契约/旁路枚举表(契约由 levelup_budget_gate 键承载)。
+
+    C_realize ②支(部署面合格谓词 ``kernel.cw_deploy_logic.has_deployable``
+    接线)随支B 挂账(ADR-0576 §判据):谓词真源已在 kernel,接线需
+    闸+检查器双面重建部署语境,随 C_realize 完整评价面批落码;早稿
+    pop_slot 放宽支系「融资腿」非合格判据(P72 §2.3 勘误锚承继)。
+    """
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
+    )
+    cap = state.max_units()
+    if cap is None:
+        return False
+    if deployed_occupied(list(deployed or [])) < cap:
+        return False
+    return any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
+               for b in (bench or []))
 
 
 def batch_form(level: int, target_level: int) -> bool:
