@@ -35,6 +35,8 @@
 
 `turn_state.py` 装配纪律「派生值一律不落 session」的立法目的 = 根治**决策输入**读跨帧旧共享态的污染类缺陷。本批四字段 + 键戳是**遥测披露面**:写端只有 `assembly._disclose_budget`(prep 装配帧 + 店开观察帧两调用点,后者经 `disclose_budget_at_shop_frame` 薄壳)与执行回执位,读端只有 recorder / engine_p1 遥测读链;**禁任何决策判据消费这些字段**——决策输入一律走 TurnState 幂等投影。豁免边界申报:BudgetView 本身仍不落不回读,纪律本意零破坏;防回归 = F8 grep 守卫锁(`test_cw_budget_disclosure.test_disclosure_fields_not_consumed_by_decision_modules`,披露面字段在 strategies/impl 决策面白名单外零命中)+ 字段定义注释同禁令。
 
+**已知交互面(策略审查 12/13 轮挂账,申报不修)**:店开帧写点(`cw_op_buy_cards.run_buy_waves` 段顶)无 strategy_id 门——非 mandate 栈经店开路径时同样被盖 `v3_disclosure_key` 键戳,击穿 F4 探针②「非 mandate 栈无键戳」前提;且 registry 经 `getattr` 兜底 DEFAULT 时向 recorder 透传 mandate 模型值。当前注册表单策略,两形态实际不可达=零行为影响;多策略落地前必须加 strategy_id 门(或等价隔离),本申报行即该义务的跟踪载体(三窗催办后于窗口 3 落申报,完整门候批)。
+
 ### 2.4 spent 首版口径 = 只计刷新实花(宁窄勿虚)
 
 买牌/升级是否计入「义务实花」全渠道口径在 mandate_v1 语义下未经证明(M2 义务买/支配买与 release 义务不同源,混入会虚高);schema 旧注释引用的 `authorize_release_refresh`/`_accrue_release_frame_spend` 是 decision_v2 时代已退役机制。裁决 = 裁决前收窄口径并如实申报(schema/recorder/mandate_state 注释同步纠偏),扩口径挂 §5 待裁。这是遥测诚实性选择,非功能缺失。
