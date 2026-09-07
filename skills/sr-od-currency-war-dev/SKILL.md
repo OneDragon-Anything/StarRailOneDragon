@@ -1,6 +1,6 @@
 ---
 name: sr-od-currency-war-dev
-description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战争(Currency War,app_id `currency_war`)自动化时用——改策略代码、判读遥测与对局数据、跑实机局、修运行 bug、迭代算法、维护 CW 文档/ADR 都算,即使没明说。凡是碰 `src/sr_od/application/currency_war/`、`docs/*/currency_war/`、cw_sim 模拟、CW 遥测判读的工作都用本 skill。新玩法从零搭建走 od-dev-gameplay-automation,通用任务账本/钩子/画面建档走对应 od-dev-* skill,本 skill 只管已存在的货币战争。
+description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战争(Currency War,app_id `currency_war`)自动化时用——改策略代码、判读遥测与对局数据、单局深度复盘/复盘模板维护、跑实机局、修运行 bug、迭代算法、维护 CW 文档/ADR 都算,即使没明说。凡是碰 `src/sr_od/application/currency_war/`、`docs/*/currency_war/`、cw_sim 模拟、CW 遥测判读的工作都用本 skill。新玩法从零搭建走 od-dev-gameplay-automation,通用任务账本/钩子/画面建档走对应 od-dev-* skill,本 skill 只管已存在的货币战争。
 ---
 
 # 货币战争开发·维护·自主推进
@@ -13,6 +13,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 |---|---|---|
 | 改策略 / 迭代算法 | strategy-work 按流水线走:改前(判读上局→读文档→定位→设计)→开关落地→验证→单帧锁 | strategy-work |
 | 判读一局 / 跨局对照 | telemetry-reading「判读流程」(步骤0=先取尺子:当期目标行判据) | telemetry-reading |
+| 单局深度复盘 / 复盘模板修订 | match-review(粒度=外层循环画面op调用序逐op记录;判定尺=玩法文档+在册裁定,算法自洽≠合格;产出含算法缺陷候选清单) | match-review |
 | 起局 / 停局 / 监控 / 残局清理 | runtime-ops「启动与重启+局间交接序」 | runtime-ops |
 | sim 批量 / A/B / 压测 / 改 sim 基建 | sim-testing「找问题三步+边界」(A/B 归 strategy-work「验证」) | sim-testing |
 | 阵容知识提炼 / 修订 / 版本重跑 | compo-knowledge(证据三层;先读再动) | compo-knowledge |
@@ -31,7 +32,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | **模拟测试说明**(sim 能信什么/测试手段/sim 测试角色/分诊与固化) | [references/sim-testing.md](references/sim-testing.md) |
 | **测试分层**(L1 快速集 `uv run pytest sr-od-test/test/sr_od/app/currency_war -m "not slow and not legacy_baseline"` ≈2.5min/L2=L1+受影响域点名/L3 全量 `uv run pytest sr-od-test/ -m "not slow and not legacy_baseline"` ≈3.5min 仅 commit 前;禁跳到实机试错,实机运行期=做便宜层的窗口) | 策略验证阶梯单一源 = strategy-work「验证」 |
 | **实机局数据判读**(判读流程/查询工具/观察面全量/已知缺口) | [references/telemetry-reading.md](references/telemetry-reading.md) |
-| **单局复盘协议**(局终深度复盘:阅读理解→逐节点玩家对拍→位面三问;实机监控局终派单执行,45min 策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
+| **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,每op单独记录入口观察+决策循环+判定三槽;判定尺=玩法文档+在册裁定,算法自洽≠合格;产出含算法缺陷候选;实机监控局终派单执行,策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 攒批局中不改**;重启/早停/残局清理/监控栈与哨兵) | [references/runtime-ops.md](references/runtime-ops.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 叠加细则 = [references/autonomous-loop.md](references/autonomous-loop.md);进度结构见 od-dev-progress-tracking §2.5 |
 | 人怎么玩(直觉假设登记簿——策略命题权威=math_proofs 证明与 sim/实机实证,ADR-0482;改策略必读=了解在册假设及证明状态) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
