@@ -284,6 +284,33 @@ def current_run_id() -> str:
 
 
 
+def reset_run_state() -> None:
+    """run 态簇的测试复位正规入口:清 _CURRENT_RUN_ID/_RUN_MATCH/_RUN_CLOSED。
+
+    为什么收口成单点(ADR-0588 ensure 门消费簇 × 测试复位链缺口):三件套
+    分散在三处生产写点(start_run 铸造 / ensure_run_started 赋 token /
+    record_run_summary 置收口位),测试侧逐件 monkeypatch 清单漏一件即留
+    跨测试残留——实证:假局 harness 局终经生产 record_run_summary 裸写
+    _RUN_CLOSED=True,teardown 复位链不覆盖,后续未全簇桩化就直调
+    ensure_run_started 的测试把「上局已收口」误判为真走重铸假分支(出处:
+    .debug/temp/currency_war/attacks/three_review_20260908/三审报告-第二波.md
+    F1,**易失产物**待 ADR 回填;门控三分支语义见 ADR-0588)。
+
+    生产路径零调用申报:生产 run 态由 ensure_run_started → start_run →
+    record_run_summary 自洽推进(收口位由下一局 start_run 复位),复位
+    语义只属于测试 teardown,本函数禁入任何生产调用链。
+
+    边界:只复位 run 态簇;_RECORDER 与落盘根两槽有各自正规入口
+    (:func:`set_recorder_replay_dir` / ``op_journal.set_journal_dir``),
+    teardown 按槽分立调用,职责不混。
+    """
+    global _CURRENT_RUN_ID, _RUN_MATCH, _RUN_CLOSED
+    _CURRENT_RUN_ID = ''
+    _RUN_MATCH = None
+    _RUN_CLOSED = False
+
+
+
 # ===== `w603_telemetry_wiring/` 简报行 run_id 归属(局间缓冲)=====
 # 生命周期:简报读取(局前)→ start_run 补写;进程终止未遇 start_run = 缓冲丢弃
 # (best-effort,与原「行被丢/带错 id」相比只改善不劣化)。上限 16 行 = 简报
