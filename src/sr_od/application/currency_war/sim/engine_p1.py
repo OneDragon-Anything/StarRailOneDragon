@@ -825,6 +825,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # (300 局「地板降 5」0 次)。词表与 sim nodes 同源
             # (battle/encounter/boss/…)。
             sess.node_type_current = nodes[rn - 1]
+            # 决策帧同点填充 st.node_type(「2026-09-08 奖励帧策略审查」
+            # 建议①可见性批):规则①/②(b) 的帧型判据单一源
+            # reward_node_suppressed 按帧 node_type 判(ADR-0580),此前
+            # sim 决策帧该字段恒 None → 抑制在 sim 全域 fail-open,同一
+            # 决策核在 sim/实机两域语义分叉(实机可辨面 = ADR-0587 台账制)。
+            # 与上行同源同点,词表同为策略层 token 层('reward' 等,
+            # sample_node_sequence/P2_NODE_SEQUENCE)。填充分支零行为改变
+            # 边界:除本字段外帧内容逐位不变、不消耗 rng;申报行为面 =
+            # 规则①四消费位与 ②(b) 在 sim 奖励帧按实机语义生效(审查
+            # 定谳「属修复非波及」),遥测面 = 硬节点门计数与
+            # v3_piggy_reward 刷新点(两者均无决策分支消费)。
+            st.node_type = nodes[rn - 1]
             # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
             _gold_before = st.gold
             _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
@@ -1619,8 +1631,27 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # ''=default 栈旧调用或未过账)——检查器
                         # levelup_interest_engine_gate 判据消费;记录非指令。
                         _lv_auth = getattr(a, 'auth_basis', '')
+                        # 支A 谓词输入的执行点披露(观测非指令;零 rng 消耗/
+                        # 零状态写入):单动作架构(ADR-0517)下动作执行点
+                        # 状态 = 发射帧状态,levelup_budget_gate 检查器的支A
+                        # 镜像据此按击判 realize——行末快照在「帧内合成
+                        # 2★→升级批→轮末部署块当帧上板」确定性序列下 bench
+                        # 已无 2★,行末口径恒误报绕闸(假阳定谳 =
+                        # ADR-0589;谓词单一源 = ADR-0576 §2.5 支A,
+                        # criteria/levelup._realize_chain_ready 同判)。cap
+                        # 缺读对齐生产谓词 fail-closed(False,非恒真)。
+                        # 行为投影 digest 只取动作 (__type__,reason,result)
+                        # (test_cw_w614_sim_fidelity 锚),本键零位移。
+                        _lv_mu = st.max_units()
                         _acts.append({'__type__': 'LevelUp',
-                                      'cost': _lv_cost, 'auth': _lv_auth})
+                                      'cost': _lv_cost, 'auth': _lv_auth,
+                                      'dec_board_full': (
+                                          _lv_mu is not None
+                                          and deployed_occupied(st.deployed)
+                                          >= _lv_mu),
+                                      'dec_bench_2star': any(
+                                          (getattr(b, 'star', 1) or 1) >= 2
+                                          for b in iter_occupied(st.bench))})
                         xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
                         st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                         progressed = True
