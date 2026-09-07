@@ -1,6 +1,6 @@
 # 外层循环（outer_loop）
 
-> 反向规格化来源 = `operations/cw_loop.py`（CwLoop，1595 行）。职责：对局内唯一循环——每轮截图后按优先级匹配画面分支，把控制权交给对应画面 op / 直接处理弹窗；驱动轮次推进（备战→出战→战斗→结算→回备战）；承载停机与遥测钩子。路径根 = `src/sr_od/application/currency_war/`。
+> 反向规格化来源 = `operations/cw_loop.py`（CwLoop，2716 行）。职责：对局内唯一循环——每轮截图后按优先级匹配画面分支，把控制权交给对应画面 op（经 dispatch 包装统一落遥测）；驱动轮次推进（备战→出战→战斗→结算→回备战）；承载停机与遥测钩子。路径根 = `src/sr_od/application/currency_war/`。
 > 数字三形态：本篇数字多为流程预算/阈值（框架常量，非策略判据），不进决策门，按"常量名 = 代码单一源"纪律书写；涉策略语义的数字标三形态。
 
 ## 1. 循环骨架
@@ -30,39 +30,41 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 
 ### 2.2 分支序（浮层先于备战双锚；序位漏项 = 实机事故源，锁测试钉死）
 
+> **处理列自 T-121（ADR-0584）起全部为画面 op 调用**——外循环只管识别分派，推进处理（含弹窗关闭）一律在 op 内；每次分发经统一包装 `_dispatch_screen_op` 落 op_journal 行（telemetry/op_journal.py，op 调用流）与决策帧留证。分发判定/排他/序位/守卫域归属不变（§2.1 判定原语、guards.md；守卫钩子经 on_result 调用点邻接闭包留在分支体）。标「新·推进」= 空决策形态 op（`screen_op.md` §8.3），标「经包装」= 既有 op 本次接包装。
+
 | 序 | 分支 | 判定 | 处理 |
 |---|---|---|---|
-| 0a0 | 选择装备 overlay | 双 id_mark 门（标题+副题） | CwScreenEquipPick；**必须先于 0a**（副题同为"请选择1个"） |
-| 0a | 选择伙伴 | id_mark | CwScreenPartner |
-| 0a2 | 银狼策划事件 | id_mark | CwScreenPlanner（失败 round_retry） |
-| 0a3 | 命运卜者强化 | 双 id_mark | CwScreenFortune |
-| 0a4 | 位面详情 | 标题锚 | 点关闭键 + 验消失 |
-| 0b | 巨星强化（盛会之星） | 独有标题 | CwScreenMegastar |
-| 0c | 遭遇节点 | id_mark | CwScreenEncounter |
-| 0d | 未达上限警告 | id_mark | CwScreenDeployNotFull |
-| 0e | 投资策略三选一 | **双信号+复探**(N5 分发判别稳定化):id_mark ∨ OCR 全短语「请选择投资策略」(lcs 0.8);miss 且备战双锚命中(穿透形态)→ 短窗复探一次 | CwScreenInvestStrategy。OCR 全短语腿为「优先 area 化」（§2.1）的**显式豁免**：浮层淡入期 id_mark 单探测不稳定（第十五局 15:14 空挥 37s 实证），复探窗口 = 执行层时序常量；常规帧（双锚未命中）零 OCR 零复探 |
-| 0e1 | 补给阶段 | id_mark | CwScreenSupplyNode；成功 → `_record_supply_outcome`（补给是唯一无结算屏节点，合成 outcome 行，source='synthetic_supply'；`cw_loop.py:581-618`） |
-| 0f | 武装箱弹窗 | id_mark | CwScreenArmoryBox |
-| 0e2 | 商店刷新概率表弹窗 | id_mark | 点 ×(1501,263) 关闭 |
-| 0e3 | 道具详情弹窗（聘用书类） | OCR'聘用书' ∧ 非祈愿屏 | 点 ×(1862,65) |
-| 0f' | 消耗品详情浮层 | OCR'消耗品'∧'拖动到' 双条件 | ESC 关 |
-| 0g | 阿哈装备选择 | 备战屏'标识-简易装备' | 点第 1 装备 |
-| 0h | 祈愿试炼 | id_mark | CwScreenWishTrial（点卡选中→确认→验关） |
-| 0i | 星徽秘典四选一 | id_mark（命中即接管，不放行备战分支） | CwScreenBookcard |
-| 0k | 专家邀请函 | id_mark（同上） | CwScreenExpertInvite |
-| 0m | 备战暗色锁定子态族 | 右上"返回XX选择"按钮锚 | 点返回按钮回 overlay |
-| 0n | 备战-开商店(商店浮层态) | 开商店画面档三 id_mark(购买经验+按钮-收起+标识-备战阶段;与干净备战的按钮-出战天然互斥,idmark 审计批定稿) | 转交商店访问路径(ADR-0562):CwScreenPrep.visit_open_shop——入口观察→策略器逐动作决策→CloseShop 终结收店;路由层禁硬编码收起(收不收归策略器,CloseShop = 商店画面 op 的一等终结动作)。分键 branch_shop_open_hit + visit_ok/_fail |
-| 0j | 前台无角色提示 | id_mark | 确认 → 带落点验证重部署 → 验前排≥1 → 本迭代内再出战；重试上限 FRONTLESS_REDEPLOY_LIMIT=2（`cw_loop.py:916-976`） |
-| 0p | BOSS 简报 | area 锚 ∨ 共享判别 `is_boss_briefing_texts`（误读鲁棒） | CwScreenBossBriefing；**先于备战双锚**（横幅遮挡下双锚仍透出命中） |
-| 0q | 位面过渡 | OCR'点击空白处继续' ∧ 非 boss 帧（两画面排他） | CwScreenPlaneTransition；误分发型 fail 连续 PLANE_MISDISPATCH_LIMIT=3 → round_fail（`cw_loop.py:1003-1034`） |
-| 0r | 位面简报 | id_mark | CwScreenBriefing |
-| 0s | 投资环境（开场/接管局） | id_mark | CwScreenInvestEnv → CwScreenWaitOneOne（等备战锚就绪） |
-| **1** | **备战** | **双锚**：'备战标识-购买经验' ∧ '按钮-出战' 同帧命中 | 见 §3 |
-| 1b/1d/1g | 详情弹窗族（可合成列表/角色详情/星徽详情/中断挑战） | OCR/area | ESC / 点 X 关闭；中断挑战绝不点"放弃并结算" |
-| 战斗窗 | `_battle_wait_active`（出战驻留闩）∨ 帧锚 `_frame_in_battle_window`（`cw_loop.py:1495-1516`） | CwScreenBattleWait（三段式：等结算→结算处理→白名单完成；团灭终局分叉交回 3c） |
-| 3c | 回大厅（'标识-创业指南'） | area | 局终收口（§5） |
-| 5 | 前进按钮 | OCR'下一步' | 点击 |
-| 兜底 | 全不命中 | — | `_handle_unknown_fallback`（guards.md §4） |
+| 0a0 | 选择装备 overlay | 双 id_mark 门（标题+副题） | CwScreenEquipPick（经包装）；**必须先于 0a**（副题同为"请选择1个"） |
+| 0a | 选择伙伴 | id_mark | CwScreenPartner（经包装） |
+| 0a2 | 银狼策划事件 | id_mark | CwScreenPlanner（经包装,失败 round_retry） |
+| 0a3 | 命运卜者强化 | 双 id_mark | CwScreenFortune（经包装） |
+| 0a4 | 位面详情 | 标题锚 | **CwScreenPlaneDetail（新·推进）**:点关闭+验消失迁入 op;关不掉经包装映射 round_retry |
+| 0b | 巨星强化（盛会之星） | 独有标题 | CwScreenMegastar（经包装） |
+| 0c | 遭遇节点 | id_mark | CwScreenEncounter（经包装） |
+| 0d | 未达上限警告 | id_mark | CwScreenDeployNotFull（经包装） |
+| 0e | 投资策略三选一 | **双信号+复探**(N5 分发判别稳定化):id_mark ∨ OCR 全短语「请选择投资策略」(lcs 0.8);miss 且备战双锚命中(穿透形态)→ 短窗复探一次 | CwScreenInvestStrategy（经包装;双信号+复探判定留外循环）。OCR 全短语腿为「优先 area 化」（§2.1）的**显式豁免**：浮层淡入期 id_mark 单探测不稳定（第十五局 15:14 空挥 37s 实证），复探窗口 = 执行层时序常量；常规帧（双锚未命中）零 OCR 零复探 |
+| 0e1 | 补给阶段 | id_mark | CwScreenSupplyNode（经包装;成功 → `_record_supply_outcome` 合成 outcome 行留外循环回调:补给是唯一无结算屏节点,source='synthetic_supply'） |
+| 0f | 武装箱弹窗 | id_mark | CwScreenArmoryBox（经包装） |
+| 0e2 | 商店刷新概率表弹窗 | id_mark | **CwScreenRefreshOddsPopup（新·推进）**;× 已 area 化(按钮-关闭概率表,中心=原 (1501,263)),mouse_move bug#1 缓解在 op 内 |
+| 0e3 | 道具详情弹窗（聘用书类） | OCR'聘用书' ∧ 非祈愿屏 | **CwScreenItemDetailPopup（新·推进）**;祈愿排他留外循环;× 已 area 化(中心=原 (1862,65)) |
+| 0f' | 消耗品详情浮层 | OCR'消耗品'∧'拖动到' 双条件 | **CwScreenConsumableOverlay（新·推进）**;ESC 关 |
+| 0g | 阿哈装备选择 | 备战屏'标识-简易装备' | **CwScreenAhaEquipPick（新·推进,固定策略=点第 1 件,申报）**;首件已 area 化(中心=原 (626,250)) |
+| 0h | 祈愿试炼 | id_mark | CwScreenWishTrial（经包装;点卡选中→确认→验关） |
+| 0i | 星徽秘典四选一 | id_mark（命中即接管，不放行备战分支） | CwScreenBookcard（经包装） |
+| 0k | 专家邀请函 | id_mark（同上） | CwScreenExpertInvite（经包装） |
+| 0m | 备战暗色锁定子态族 | 右上"返回XX选择"按钮锚 | **CwScreenPrepLockedReturn（新·推进）**;两画面档参数化(策略锁定/遭遇锁定,分发处传命中的那对) |
+| 0n | 备战-开商店(商店浮层态) | 开商店画面档三 id_mark(购买经验+按钮-收起+标识-备战阶段;与干净备战的按钮-出战天然互斥,idmark 审计批定稿) | 转交商店访问路径(ADR-0562):CwScreenPrep.visit_open_shop **经包装(元组适配形),op='商店访问' 行补齐 = S11 对齐**——入口观察→策略器逐动作决策→CloseShop 终结收店;路由层禁硬编码收起。分键 branch_shop_open_hit + visit_ok/_fail |
+| 0j | 前台无角色提示 | id_mark | 直管恢复链保留(边界申报:发射核/战斗窗口状态耦合,op 化挂后续批);**经包装链形补 op='前台无角色恢复' 行**;确认 → 带落点验证重部署 → 验前排≥1 → 本迭代内再出战;重试上限 FRONTLESS_REDEPLOY_LIMIT=2 |
+| 0p | BOSS 简报 | area 锚 ∨ 共享判别 `is_boss_briefing_texts`（误读鲁棒） | CwScreenBossBriefing（经包装补行）;**先于备战双锚**（横幅遮挡下双锚仍透出命中）;streak 复位留外循环回调 |
+| 0q | 位面过渡 | OCR'点击空白处继续' ∧ 非 boss 帧（两画面排他） | CwScreenPlaneTransition（经包装）;误分发型 fail streak/超限 round_fail 留外循环回调（PLANE_MISDISPATCH_LIMIT=3） |
+| 0r | 位面简报 | id_mark | CwScreenBriefing（经包装补行） |
+| 0s | 投资环境（开场/接管局） | id_mark | CwScreenInvestEnv → CwScreenWaitOneOne（经包装补行×2;链序=等备战锚就绪,用户裁定特殊等待） |
+| **1** | **备战** | **双锚**：'备战标识-购买经验' ∧ '按钮-出战' 同帧命中 | CwScreenPrep（**经包装**,journal='备战'）;进入序/达标臂/守卫域见 §3(臂族/守卫留外循环) |
+| 1b/1d/1g | 详情弹窗族 | OCR'可合成列表'∨'角色详情' / 星徽双锚 / 中断挑战锚 | **CwScreenRoleDetailOverlay / CwScreenEmblemDetailPopup / CwScreenInterruptDialog（新·推进）**;1d「不用 ESC」理由随迁 op;1g 外生 popup 行随迁、「绝不点放弃并结算」红线随迁 |
+| 战斗窗 | `_battle_wait_active`（出战驻留闩）∨ 帧锚 `_frame_in_battle_window` | CwScreenBattleWait（经包装;三段式：等结算→结算处理→白名单完成,团灭终局分叉交回 3c;settle 注入/窗口关/闩清留外循环回调=守卫域） |
+| 3c | 回大厅（'标识-创业指南'） | area | 直管收口保留（遥测红线:runs summary/分配器/存档写端不迁移）;**经包装链形补 op='回大厅收口' 行**（§5） |
+| 5 | 前进按钮 | OCR'下一步' | **CwScreenNextButton（新·推进）** |
+| 兜底 | 全不命中 | — | `_handle_unknown_fallback`（guards.md §4;不经包装） |
 
 overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"会透出命中，先查备战会误派（多处实机事故，见各分支注释）。
 
@@ -96,6 +98,7 @@ overlay 分支必须在备战(1)前检测：overlay 叠备战时"购买经验"�
 | 钩子 | 内容 | 载体 |
 |---|---|---|
 | runs summary 收口 | `after_operation_done` 全路径必达；未写 summary 的对局补写 stopped/abandoned（真假局判定 = "从未观察到对局态"才算假局；`cw_loop.py:517-578`） | `cw_loop.py:517-578` |
+| op 调用流 | **全分支 dispatch 包装统一落**（T-121/ADR-0584）：`_dispatch_screen_op` 每次分发写 op_journal enter/exit 成对行（0n='商店访问'/1='备战'/3c='回大厅收口'…）+ 决策帧留证（frame_tag） | `telemetry/op_journal.jsonl` + `decision_frames/` |
 | 局终正常收口（3c） | 假局守卫 + 假 win 守卫（plane==3 精确 ∧ 非死局）+ record_run_summary（final_hp 走 `_last_true_hp` 防 100 兜底毒化）+ 对局存档装配 + match 清空（生命周期钩子 on_match_end 已随 ADR-0583 删除,原实现 no-op 零行为） | `cw_loop.py:1404-1459` |
 | 跨局分配器 | ThompsonAllocator 进程级单例，plaza 份额先验；终局 update（臂 = comp→plaza_carry 归一；影子期只记后验） | `cw_loop.py:1469-1494,1572-1594` |
 | 补给合成 outcome | 见 §2.2 分支 0e1 | `cw_loop.py:581-618` |
