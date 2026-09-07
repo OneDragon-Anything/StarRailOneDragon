@@ -32,6 +32,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     SellBench,
     bench_from_compact,
     bench_occupied,
+    ledger_node_type,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import (
@@ -314,7 +315,6 @@ def build_post_buy_incremental_state(
         last_state: GameState,
         gold_read: int | None,
         tracked_bench_chars: list[BenchChar],
-        last_node_type: str | None,
         hp_value: int | None,
         hp_readable: bool,
         hp_trusted: bool,
@@ -325,7 +325,9 @@ def build_post_buy_incremental_state(
     node_type(升级触 level/xp,由调用方 total_level 门拦截,不进本函数);
     gold 用关店帧真读;bench 重播 tracked_bench_chars(执行侧
     mutate_bench_deployed 逐动作同步的权威源,末波垫底 state 的 bench
-    是执行前快照,必须重播)。
+    是执行前快照,必须重播)。node_type 随 deepcopy 沿垫底帧透传——垫底
+    帧值由店开帧组装供给(台账查表,ADR-0587),本构造点禁再接会话滞后
+    标量覆盖(旧 last_node_type 参数已删,与买后重估回退分支同理由)。
     fail-closed 两维:①gold_read=None(金失读)→ 返回 None,调用方回退
     全量 read_game_state;②tracked_bench_chars 为空 → 同样返回 None。
     ②的理由:bench 真空(全部署/合成清空)与跟踪丢失在本构造点不可区分,
@@ -341,8 +343,6 @@ def build_post_buy_incremental_state(
     post.gold = gold_read
     post.bench = bench_from_compact(deepcopy(tracked_bench_chars))
     _apply_hp(post, hp_value, hp_readable, hp_trusted)
-    if last_node_type:
-        post.node_type = last_node_type
     return post
 
 
@@ -604,9 +604,19 @@ def run_buy_waves(op: SrOperation, match,
                                 phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         _apply_hp(state, hp_value, hp_readable, hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖
-        # r7 review P0-①:shop 开帧节点行被遮 node_type 恒 None → 拷 Director shop 关态真值(仿 hp_value 同法)。
-        if match is not None and match.session.last_node_type:
-            state.node_type = match.session.last_node_type
+        # 店开帧节点行被遮 node_type 恒 None → 查位面节点序列台账(键 =
+        # 本帧 phase_round 现读的 (plane, round),写入端=位面详情采集/投资
+        # 环境后重读,结构上不可能滞后)。ADR-0587:旧实现无条件拷
+        # session.last_node_type,该值唯一写点(备战环 heavy 观察)节拍天然
+        # 晚于本轮店开,拷到的恒为上一轮值——曾以滞后奖励值误开 ②(b) 并
+        # 误抑制 M3 升级。查不到(台账缺档/续局未随局建/位次越界)→ 保持
+        # None fail-open:②(b) 不发射(ADR-0580 None 语义),死金域义务由
+        # 节点无关的 ②(a) 备战凑息承载;禁再退回 last_node_type 滞后拷贝
+        # (连续硬节点段靠它侥幸开门的形态=有意变 None 关门,ADR-0587)。
+        _ledger_node = ledger_node_type(match.session, state.plane,
+                                        state.round_num)
+        if _ledger_node is not None:
+            state.node_type = _ledger_node
         # r73 review RC3 修:dual 态单一源挂 session,循环态每段拷贝;读端 =
         # R1 唯一合法读端 committed_from(蓝图 §4.3,禁 session 直读散落)。
         from sr_od.application.currency_war.kernel.cw_intention import (

@@ -2260,17 +2260,21 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
                 with contextlib.suppress(Exception):
                     _inc_gold = read_gold_settled(op.ctx, op.screenshot())
                 if _inc_gold is not None:
+                    # node_type 不传 last_node_type(ADR-0587 收编去参):
+                    # 垫底帧 state 已带店开帧台账值,构造点 deepcopy 透传,
+                    # 旧实参会在非 None 时把台账值盖回跨轮滞后值。
                     _post = build_post_buy_incremental_state(
                         state, _inc_gold,
                         exec_state_of(match.session).tracked_bench_chars,
-                        match.session.last_node_type or None,
                         hp_value, hp_readable, hp_trusted)
             if _post is None:
                 _post = read_game_state(op.ctx, op.screenshot(),
                                         phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
                 _apply_hp(_post, hp_value, hp_readable, hp_trusted)
-                if match.session.last_node_type:
-                    _post.node_type = match.session.last_node_type
+                # node_type 不拷 session.last_node_type(ADR-0587 删旧覆盖):
+                # prep_clean 全量读已走台账优先链(cw_observation 节点类型段)
+                # 拿到新鲜值,旧无条件覆盖把刚取得的新鲜值降级为跨轮滞后值
+                # ——两值不等时这次覆盖只会把对的改错的。
             # finalize 同位暂存(ADR-0583 §3.3-③;写者 = 流程侧,§3.4 具名清单)。
             # 缺席守卫(方案审 L-b):外循环 0n 直入商店(接管/店已开路径,
             # ADR-0562 入口)无 prep 黑板帧 → 显式跳过暂存,该窄窗 pick 退回

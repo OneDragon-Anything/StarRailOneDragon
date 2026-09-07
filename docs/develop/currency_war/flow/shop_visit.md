@@ -29,7 +29,7 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
   │    read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读（gold/hp/lv/plane/round/shop 五槽）
   │    → _apply_hp（shop 关闭帧 hp 三件组值+位同写覆盖）
   │    → 首段帧代次标注 full（ADR-0583:方向视图由 decide_shop_action 入口消费刷新,续段 none 保持首段值）
-  │    → node_type 拷 Director shop 关态真值（shop 开帧节点行被遮恒 None）
+  │    → node_type 查位面节点序列台账（键 = 本帧 plane/round；查不到保持 None fail-open，ADR-0587）
   │    → dual_track_phase/committed_from 拷入（R1 唯一读端）
   │    → gold==0 救援（读 0 时重读 4 帧取首个 >0；结果留证 obs_conflict）
   │    → gold_open = 首段快照（对拍基线，任何动作执行前）
