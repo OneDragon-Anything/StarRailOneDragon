@@ -31,7 +31,7 @@
 ```
 
 **op 边界重建规则**(档案 = `--match <game_id>` 直读,查询工具见 telemetry-reading「查询工具」节):
-- 档案决策帧的动作序列里,**OpenShop…CloseShop 决策行段 = 备战内显式开店通道的商店访问**(该通道在 prep 决策环内发射 OpenShop 落行,**非 0n 分发**——旧标注「分支 0n」系错标,纠正口径 = ADR-0584 §2.4-1;处理类 = `CwScreenPrep.visit_open_shop` 备战内联);**0n 直入通道**(直调 visit_open_shop、不发射 OpenShop 决策行)按 journal op 行独立计数——复盘重建规则 = journal op 行为主、决策帧为辅;商店访问总数 = 两载体并集,引用计数注明口径(双载体口径,ADR-0584 §2.4-1)。其余备战动作 = 备战 op(分支 1,`CwScreenPrep.execute`;备战访问在一次 RunDeploy/RunEquip/LevelUp 等未建模投影动作后终结重入,边界按 `flow/prep_visit.md` §1 投影规则 + 帧时距重建);
+- 档案决策帧的动作序列里,**OpenShop…CloseShop 决策行段 = 备战内显式开店通道的商店访问**(该通道在 prep 决策环内发射 OpenShop 落行,**非 0n 分发**——旧标注「分支 0n」系错标,纠正口径 = ADR-0584 §2.4-1;处理类 = `CwScreenPrep.visit_open_shop` 备战内联);**0n 直入通道**(直调 visit_open_shop、不发射 OpenShop 决策行)按 journal op 行独立计数——复盘重建规则 = journal op 行为主、决策帧为辅;商店访问总数 = 三载体并集(显式开店/0n 直入/仲裁触发——达标臂发射帧仲裁的商店访问落 journal op 行对,ADR-0584 §2.4-1 与 §5.1),引用计数注明口径。其余备战动作 = 备战 op(分支 1,`CwScreenPrep.execute`;备战访问在一次 RunDeploy/RunEquip/LevelUp 等未建模投影动作后终结重入,边界按 `flow/prep_visit.md` §1 投影规则 + 帧时距重建);
 - 战斗窗/结算 = `CwScreenBattleWait` 一体 op(三段式,`outer_loop.md` §2.2),按 outcomes/outcome 行定位;补给(`CwScreenSupplyNode`,决策帧 `phase=supply_detour/supply_pick`)、遭遇选择(`CwScreenEncounter`,exogenous `event_choice` 行)、投资选卡(`invest_cards` 切片)按各自数据面定位;
 - **无决策行的纯路由迭代(弹窗关闭类)不逐条成节**,按轮汇总为「无决策行迭代」小清单,并入文末完整性审计的源数据缺口。
 
