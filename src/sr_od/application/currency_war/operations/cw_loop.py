@@ -910,11 +910,16 @@ class CwLoop(SrOperation):
         self._battle_ts: float | None = None
         # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
-        # 开一次 run 的遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 写端已接 2026-08-16)。
+        # 本局遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 写端已接 2026-08-16)。
+        # ADR-0588:铸造单点已前移到入口链(简报锚/投资屏分支,先于任何开局
+        # 遥测行)——此处改「认领」:新局路径同容器 open run 已在,不重铸
+        # (一段一 id);接管局/run_operation/恢复路径上 run 已收口(_RUN_CLOSED)
+        # → 按 gate 重铸,等价旧「每次 loop 执行新 run_id」语义。
         # difficulty:ctx.cw_selected_difficulty(CwEntryStart 难度确认屏读存;此时**尚未**被
         # 下方取走 —— 取走在 cw_match new 之后,此处先读传 telemetry,review 半接线「difficulty 恒空」修复)。
         _diff_for_telemetry = self.ctx.cw_selected_difficulty or ''
-        state.start_run(difficulty=_diff_for_telemetry)
+        state.ensure_run_started(match=self.ctx.cw_match,
+                                 difficulty=_diff_for_telemetry)
         # R4-1(迁移审计 w52(git 历史) §3.1):recovered 三字段(_run_start_ts/_first_settlement_seen/
         # _is_new_match)+ match 建立/续用块 + 每局缓存清空,已迁 handle_init——
         # 框架语义:execute() 每次开头 _init_before_execute 调 handle_init,

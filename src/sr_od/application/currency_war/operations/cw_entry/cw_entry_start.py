@@ -20,6 +20,7 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_briefing impo
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_invest_env import (
     CwScreenInvestEnv,
 )
+from sr_od.application.currency_war.telemetry import state
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -328,6 +329,11 @@ class CwEntryStart(SrOperation):
                 crop_first=False).is_success:
             self._discard_stale_once('到达简报屏=新局开始')
             self._establish_match_once()
+            # ADR-0588:简报锚 = 新局路径上第一个遥测生产分支,简报/开局选卡行
+            # 落盘前先铸造本局 run(行生而归本局;治冷启动首局零行 + 行盖上局
+            # 戳)。难度已在前序难度确认回合读存。幂等;loop 侧同容器认领。
+            state.ensure_run_started(self.ctx.cw_match,
+                                     self.ctx.cw_selected_difficulty or '')
             _log.info('[cw-entry] 到达简报屏 → CwScreenBriefing(读词缀/boss 写 session + 下一步)')
             CwScreenBriefing(self.ctx).execute()
             return self.round_wait(wait=2)
@@ -338,6 +344,10 @@ class CwEntryStart(SrOperation):
         #    + 确认)。统一开局与主循环的投资环境处理(原 hardcoded
         #    盲点中卡 + 无策略,已下沉到 handler)。handler 内有 round_by_ocr('投资环境') 入口日志。
         if self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境').is_success:
+            # ADR-0588:「选卡前铸造」硬保证——即使简报屏因转场被跳过,env 行
+            # 落盘前必有归属本局的 open run(幂等,重复调用零成本)。
+            state.ensure_run_started(self.ctx.cw_match,
+                                     self.ctx.cw_selected_difficulty or '')
             _log.info('[cw-entry] 到达投资环境 → CwScreenInvestEnv(3 选 1 + 确认)')
             CwScreenInvestEnv(self.ctx).execute()
             return self.round_wait(wait=2)
@@ -347,6 +357,10 @@ class CwEntryStart(SrOperation):
         #     内含打分(STRATEGY_BINDINGS)+确认;此前只在 prep 主循环内被调度。
         if self.round_by_find_area(screen, '货币战争-投资策略', '标识-请选择投资策略').is_success:
             _log.info('[cw-entry] 到达投资策略屏 → CwScreenInvestStrategy(3 选 1 + 确认)')
+            # ADR-0588:策略 kind 与 env 同一写端漏斗同一时序缺陷,环境屏被
+            # 跳过而策略屏直达时的兜底铸造(幂等)。
+            state.ensure_run_started(self.ctx.cw_match,
+                                     self.ctx.cw_selected_difficulty or '')
             from sr_od.application.currency_war.operations.cw_screen.cw_screen_invest_strategy import (
                 CwScreenInvestStrategy,
             )
