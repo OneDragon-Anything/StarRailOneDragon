@@ -68,7 +68,11 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
 )
-from sr_od.application.currency_war.strategies.impl.mandate_v1 import mandate, proof
+from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+    mandate,
+    proof,
+    sell_gate,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import contracts
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     levelup as crit_levelup,
@@ -492,9 +496,17 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         if missing and state is not None and contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
                 contracts.ContractCtx(gold=state.gold), _ct):
+            # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;ADR-0585,
+            # 方案 v3 §2.9 新格 A):本位旧形态**空排除**——锁线宽集成员
+            # (zero_overlap 只拦窄 k_members)可被 prep funding 卖 → shop
+            # 域 M2 重买 = 义务换手;义务基座(锁线宽窄解析单点)∪ 静态
+            # 持有两集(P78-4)在此并入。兜底豁免(P78-5)批 3 接线。
             slots, _why = crit_sell.funding_support_sell(
                 state.gold, mandate.cheapest_member_cost(frame), bench,
-                k_members, state=state, counters=_ct,
+                k_members, state=state,
+                exclude_names=sell_gate.sell_exclusions(
+                    session, k_members, channel='funding'),
+                counters=_ct,
                 dedup_names=set())   # C1 事件口径:单帧去重(单调用语境)
             for s in slots:
                 if s in sold_slots:
@@ -777,9 +789,15 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
         _t3_protect = mandate.stall_protect_active(
             session, int(getattr(state, 'round_num', 1) or 1),
             counters=counters)
+        # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;ADR-0585,
+        # 新格 A 同根格——与上方 skeleton_only 分支及店侧 funding 发射位
+        # 三位同源,空排除形态在此闭死)。
         fslots, _why = crit_sell.funding_support_sell(
             state.gold, mandate.cheapest_member_cost(frame), frame.bench,
-            k_members, state=state, counters=counters,
+            k_members, state=state,
+            exclude_names=sell_gate.sell_exclusions(
+                session, k_members, channel='funding'),
+            counters=counters,
             defer_names=_t3_protect,
             dedup_names=_mm_dedup)
         for s in fslots:

@@ -143,6 +143,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     entry,
     mandate,
     proof,
+    sell_gate,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     buy as crit_buy,
@@ -623,10 +624,19 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 共享,投影读与真卖评估不再重复计数;单一源 =
     # ``cw_state.count_merge_material_blocked``。
     _mm_dedup: set[str] = set()
+    # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;P78-6 读端同源,
+    # 方案 v3 §2.9 新格 B/V2-08):投影位「读」的资格面必须与凑息发射位
+    # 同一——本位旧形态只排 buy_members,漏静态持有两集(③④件在 bench
+    # 不入凑息资格却被计入可变现投影 → liquid_refund 高估 → s_reserve
+    # 低估 → 预留被吃)。批 2 身份段先行:方向 = liquid_refund 只降不升、
+    # s_reserve 只升不降(支出闸更保守,P56 下界语义);projection 视图
+    # 并 T3 活跃集/窗口段随批 3 补齐(届时与凑息发射位全资格面严格同源)。
+    _p56_excl = sell_gate.sell_exclusions(session, k_members,
+                                          channel='projection')
     liquid_refund = sum(sell_refund(1, bench_char_cost(b))
                         for b in mandate.fuel_sell_candidates(
                             bench, k_members, state=state,
-                            exclude_names=buy_members, counters=counters,
+                            exclude_names=_p56_excl, counters=counters,
                             dedup_names=_mm_dedup))
     # 口径注(P56 投影位):上面这步是为 s_reserve 投影而「读」资格集
     # (非卖出发射),``counters`` 照传时经 _mm_dedup 与本帧真卖评估位
@@ -721,8 +731,16 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _count('m2_stall_cache_hit')
             _count('m2_stall_repeat_frame')
         else:
+            # 排除集升级 buy_members → 统一装配 A 身份段(单一入口
+            # sell_gate;ADR-0585):义务基座与 buy_members 同源(锁定宽集
+            # 解析单点),新增静态持有两集生效——W4 修法(shop_sell 攻击
+            # 报告 W4;P78-4):M4 腾席对 ③④ 持有 1★ 件禁卖 = P41 燃料
+            # 类资格本义,③④ 持有换手震荡通道闭死,腾不出席走
+            # m2_retry_exhausted 诚实停摆。窗口段归批 3。
+            _m4_excl = sell_gate.sell_exclusions(session, k_members,
+                                                 channel='m4_fuel')
             cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
-                                                 exclude_names=buy_members,
+                                                 exclude_names=_m4_excl,
                                                  defer_names=_t3_protect,
                                                  counters=counters,
                                                  dedup_names=_mm_dedup)
@@ -819,10 +837,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
             continue
         if bench_free <= 0:
             # M4 腾席(Y5):j=1 帧不合成,满栏例外不辖;卖 1 燃料件
-            #(P60 排除集照常)后下一帧 bench_free ≥ 1 即合法买入。
+            # 后下一帧 bench_free ≥ 1 即合法买入。排除集 = 统一装配 A
+            # 身份段(与 M2 缺员腾席位同源,单一入口 sell_gate;W4/P78-4
+            # 同格:③④ 持有件退出燃料资格,禁与臂① 囤腿件换手)。
+            _m4_excl = sell_gate.sell_exclusions(session, k_members,
+                                                 channel='m4_fuel')
             cands = mandate.fuel_sell_candidates(bench, k_members,
                                                  state=state,
-                                                 exclude_names=buy_members,
+                                                 exclude_names=_m4_excl,
                                                  defer_names=_t3_protect,
                                                  counters=counters,
                                                  dedup_names=_mm_dedup)
@@ -1717,10 +1739,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                  income=_shop_sell_refund(bc) if bc else None,
                                  expect=(bc.char_id or '') if bc else '')
     # 支付支撑通道(两臂同开,R13-5):骨架义务动作金不足侧筹资变现。
-    # T-115 F2 申报(ADR-0580):本通道**有意不扩** Z1 排除集——筹资
-    # 卖出有真实对价(金换线内义务件,非 Z1 病理的零和买卖对冲),扩
-    # 排除会削义务筹资能力;义务优先于转线期权,③④持有件在此通道
-    # 可被合法变现。
+    # F2 已由 ADR-0585 §4 拆三块修订(原「有意不扩 Z1 排除集」申报废止):
+    # ①义务基座必须并入(本位旧排除 buy_members 与义务基座同源,并入零
+    # 漂移);②③④ 持有件变现从「主路径隐式同池竞争」降级为显式兜底
+    # 豁免(P78-5 四条件,批 3 接线)——批 2 排除集升级为统一装配 A
+    # 身份段后,③④ 件在本通道暂无变现出口(兜底豁免落地前的申报窗口,
+    # 义务筹资仍以非持有资格面为第一顺位;P78-5′ 腿①授权不变)。
     if missing:
         mf = mandate.MandateFrame(
             gold=gold, level=state.level, bench=bench, deployed=deployed,
@@ -1736,9 +1760,13 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 need = min(need, min(
                     (c.cost if c.cost else 3) for c in shop_cands))
                 break
+        # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;ADR-0585):
+        # 义务基座(防义务件被筹资卖 → M2 重买换手)+ 静态持有两集
+        #(W4 同格;③④ 兜底豁免批 3 补)。窗口段(press 登记禁卖)归批 3。
         fslots, _fkey = crit_sell.funding_support_sell(
             gold, need, bench, k_members, state=state,
-            exclude_names=buy_members,
+            exclude_names=sell_gate.sell_exclusions(session, k_members,
+                                                    channel='funding'),
             defer_names=_t3_protect,   # T3:转化类仅降序放行,非禁卖
             counters=counters, dedup_names=_mm_dedup) \
             if contracts.ensure_contract(

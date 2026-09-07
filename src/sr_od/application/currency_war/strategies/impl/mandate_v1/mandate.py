@@ -32,17 +32,11 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.kernel.cw_card_identity import (
-    sell_hold_exclusion_names,
-)
 from sr_od.application.currency_war.kernel.cw_economy import (
     blood_xp_gate_for,
     clicks_to_next_level,
     in_must_spend_zone,
     xp_click_cost,
-)
-from sr_od.application.currency_war.kernel.cw_intention import (
-    locked_buy_membership,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     LevelUp,
@@ -72,6 +66,14 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
+)
+
+# 卖出排除仲裁单一源(T-126;ADR-0585):sell_hold_exclusions 本体平移至
+# sell_gate,此处保留同名再出口(兼容签名,凑息消费位与测试引用零断链;
+# 消费点渐进迁移——批 3 窗口段 API 落地后换 sell_exclusions,申报入 ADR)。
+from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
+    sell_exclusions,
+    sell_hold_exclusions,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
@@ -213,8 +215,15 @@ def fuel_sell_candidates(bench: list[BenchChar],
                          dedup_names: set[str] | None = None,
                          ) -> list[BenchChar]:
     """fuel_sell 对象集:1★ ∧ 与锁线零重叠 ∧ 边际贡献≈0
-    (R17-2 扩维口径:板面作战边际+bench 后台效果维边际合计构造性 0
-    ——1★ 无后台效果件 ⇒ bench 维边际构造性 0,精确 0 界)。
+    (R17-2 扩维口径:板面作战边际+bench 后台效果维边际合计构造性 0)。
+
+    「1★ 无后台效果件 ⇒ bench 维边际构造性 0,精确 0 界」旧表述已废
+    (勘误 N3①,ADR-0585 §5):T-123/裁定410 定谳 ③④ 持有件
+    V_power>0——「1★ ∧ 无后台效果」不再蕴含边际 0。持有身份维不在本
+    函数内重判(单一源),由消费位注入统一装配 A 身份段承载
+    (``sell_gate.sell_exclusions``,P78-4:③④ 件本非燃料类,禁卖 =
+    P41 类资格本义);未注入身份段的本体调用只余物理谓词,语义 =
+    排除前的候选集上界。
 
     ``exclude_names``(P60 治本):买面义务集成员禁入燃料集,消费端注入
     ``locked_buy_membership`` 产物(与 EV 排除集同款)。排除后
@@ -352,47 +361,6 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
     for n in hit:
         del reg[n]
     return len(hit)
-
-
-def sell_hold_exclusions(session: StrategySession,
-                         k_members: tuple[str, ...],
-                         ) -> set[str]:
-    """凑息卖出资格集排除集(T-115 Z1 修法单一装配点;ADR-0580)。
-
-    集合 = 义务基座 ∪ 静态持有两集(kernel.cw_card_identity.
-    sell_hold_exclusion_names:registry 核心 ∪ ④放行集)∪ ②(b)
-    动态买入登记集。义务基座解析在**本函数体内**完成(落地审低-1
-    修复,ADR-0580 §7):锁线态 = ``locked_buy_membership(ist)``
-    锁定采购集宽集,未锁态 = ``k_members``——与 shop 消费位
-    ``buy_members`` 装配同一语义源,prep 接线与 shop 凑息位两处调用
-    只传各自的 k_members,宽/窄选择收拢单点,禁调用侧自选基座
-    (宽−窄成员被 (a) 卖出→shop 域 M2 重买 = Z1 锁线域残留病理)。
-    ③④语义 = 持有,整类退出凑息燃料资格,覆盖「已买待持有」与
-    「在售未买」两态,防跨轮卖回(1★ 全额退会机械抵消裁定③④的
-    持有语义)。
-
-    动态集生命周期(F1 申报):锁线定型时清空(定型后 ④ 放行收窄、
-    静态集护住持有面,残留登记只对 Early 期 (b) 买入的燃料件造成
-    过度禁卖)——清空判据与义务基座共用同一次
-    ``locked_buy_membership(ist)`` 解析(单点双消费),在读点惰性清,
-    不挂锁线转移钩子。静态/动态切分理由(禁静态全集):name 型
-    零重叠语义下静态全集排除会把 (a) 的全部 1★ 燃料资格掏空
-    (方案审 v3 攻击点①实证)。
-
-    第三卖出通道 funding_support_sell 有意**不**扩本集(F2 申报,
-    ADR-0580):筹资卖出有真实对价(金换线内义务件,非 Z1 的零和
-    买卖对冲),扩排除会削义务筹资能力;义务优先于转线期权。
-    """
-    st = state_of(session)
-    _locked = locked_buy_membership(getattr(st, 'v3_intention', None))
-    excl: set[str] = (set(_locked) if _locked is not None
-                      else set(k_members))
-    excl |= set(sell_hold_exclusion_names())
-    if _locked is not None:
-        st.cw4_dead_gold_bought_names.clear()   # F1:定型清空(见上)
-    else:
-        excl |= set(st.cw4_dead_gold_bought_names)
-    return excl
 
 
 def dominance_buy_eligible(gold: int, bench_free: int,
@@ -538,11 +506,13 @@ def run_mandate(frame: MandateFrame,
     # 一致;(a) 先于全部买面动作求值(Z1 臂序:义务臂之外的先手)。
     # 载体 = Emitted(SellBench, True, 分键)——prep 域 SellBench 无
     # reason 字段,归因走发射标记(与 M4 同口径声明)。
-    # exclude = sell_hold_exclusions(session, k):义务基座(锁线态 =
-    # locked_buy_membership 宽集,解析在函数体内,与 shop 消费位同源
-    # ——落地审低-1 修复)∪ Z1 静态持有两集 ∪ ②(b) 动态登记
-    #(③④件禁被凑息卖回);defer = T3 同轮保留(跨轮保护由 Z1 排除集
-    # 承担,T3 只辖同轮,sell.py:140-148)。
+    # exclude = sell_hold_exclusions(session, k):义务基座(锁线宽窄
+    # 解析单点,与 shop 消费位同源——落地审低-1 修复)∪ Z1 静态持有
+    # 两集 ∪ ②(b) 动态登记(③④件禁被凑息卖回)。本体已平移单一源
+    # sell_gate(ADR-0585;本位为兼容再出口消费,渐进迁移——批 3 换
+    # sell_exclusions 窗口段 API);②(b) 动态登记的 F1 锁线清空语义
+    # 批 2 原样保留(修法=轮界过期,随批 3)。defer = T3 同轮保留
+    #(跨轮保护由排除集承担,T3 只辖同轮,sell.py:140-148)。
     _cap_resolved = _cap_of(session)
     # 合成素材拦截去重集(帧级,C1 事件口径):本帧所有守卫触达位
     #(②(a) 凑息资格评估 / M4 腾席环)共享,与 shop 侧 _mm_dedup 同款
@@ -619,6 +589,14 @@ def run_mandate(frame: MandateFrame,
             else:
                 # _mm_dedup 帧级去重集已上移至 ②(a) 接线前创建(两守卫
                 # 触达位共享,声明见彼处)。
+                # 排除集 = 统一装配 A 身份段(单一入口 sell_gate;
+                # ADR-0585):义务基座(本位此前漏注入——备战 F1 主案,
+                # prep_loop 攻击报告 F1 的「两域同函数分叉」在此闭死,
+                # 与 shop 消费位同源单点)∪ 静态持有两集(P78-4:③④
+                # 持有件本非燃料类,禁卖 = 类资格本义)。窗口段(press/
+                # 垫保登记)归批 3;T3 同轮保护仍走 defer_names(转化类
+                # 末位牺牲,通道对价语义不动)。
+                _m4_excl = sell_exclusions(session, k, channel='m4_fuel')
                 retries = 0
                 freed = False
                 no_fuel = False    # 闩写条件承载:环以「候选空集」退出(
@@ -626,6 +604,7 @@ def run_mandate(frame: MandateFrame,
                 bench = list(frame.bench)
                 while retries < BENCH_CAPACITY:
                     cands = fuel_sell_candidates(bench, k, state=state,
+                                                 exclude_names=_m4_excl,
                                                  counters=counters,
                                                  defer_names=_t3_protect,
                                                  dedup_names=_mm_dedup)
