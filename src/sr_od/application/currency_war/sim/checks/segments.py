@@ -187,8 +187,10 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     ② **连胜保三态谱**([19]:已连胜值得花保)= 进入轮时重算连胜
     ≥2(``_combat_streak_by_round`` 单一源;连胜只有战斗类节点累积,
     重算口径与该 helper 相同);
-    ③ **奖励/补给节点买经验**([16]②)——破息由 LevelUp 于 reward/
-    supply 轮引发的旧口径,[32] 节点无关定调后由④收编;
+    ③ ~~奖励/补给节点买经验~~(**已收编退役**:[16]② 原条目已删除,
+    节点限定口径随「息律节点无关」定调由④收编——ADR-0471;T-115 起
+    奖励节点 = 升级抑制对象(ADR-0580 规则①),不再构成独立豁免依据,
+    奖励帧 LevelUp 支出仍由④通道口径覆盖);
     ④ **追级经验通道**(spend.levelup>0):升级授权单一源 =
     ev.levelup_ev_basis([12]/[33] 总账,ADR-0347/0354;[32] 定调
     升级节点无关)——任意节点的升级破息都是授权通道的表征,不是
@@ -228,8 +230,6 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
                    'reason': a.get('reason')}
                   for a in row.get('actions') or []
                   if a.get('__type__') == 'BuyCard']
-        lv = [a for a in row.get('actions') or []
-              if a.get('__type__') == 'LevelUp']
         node = (row.get('sim') or {}).get('node') or ''
         _spend = (row.get('sim') or {}).get('spend') or {}
         spend_lv = int(_spend.get('levelup') or 0)
@@ -240,8 +240,9 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
             exceptions.append('store_all_wanted')
         if streaks.get(row.get('round_num'), 0) >= 2:
             exceptions.append('streak_hold')
-        if lv and node in ('reward', 'supply'):
-            exceptions.append('reward_node_xp')
+        # T-115 对齐(ADR-0580):原③奖励/补给节点豁免已退役——奖励节点
+        # = 升级抑制对象,不再构成节点型独立豁免;LevelUp 支出由④
+        # levelup_spend 通道口径覆盖(ADR-0471 收编口径)。
         if spend_lv > 0:
             exceptions.append('levelup_spend')
         if spend_rf > 0:
@@ -370,7 +371,11 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
     static_ev(EV 平台账)外 = 凭空追级。[12] 主条(连 50 金都没凑到
     不急升级)落在授权门的金维:与 batch 表 check_levelup_interest_
     engine_gate 同谓词,差异只在输出粒度(那里=违规局数,这里=逐事件
-    带 state 关键值供段级归因);豁免奖励/补给节点([16]② 买经验合法)。
+    带 state 关键值供段级归因)。T-115 对齐(ADR-0580):原「豁免奖励/
+    补给节点([16]② 买经验合法)」节点型 skip 已退役——奖励节点 = 升级
+    抑制对象(T-115 规则①),授权判定按 ADR-0471 收编口径回归节点无关
+    的通道分类(auth 白名单);奖励帧无授权升级 = 违规可见,白名单内
+    授权(如扑满环境帧经 M3 闸链的 m3_batch:*)照常放行。
     近似声明同 batch 版:升级前等级用上一行 level;时点金=首波 gold。
     """
     out: list[dict] = []
@@ -380,13 +385,10 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
             continue
         waves = (row.get('sim') or {}).get('shop_waves') or []
         g0 = waves[0].get('gold') if waves else row.get('gold')
-        node = (row.get('sim') or {}).get('node') or ''
         for a in row.get('actions') or []:
             if a.get('__type__') != 'LevelUp':
                 continue
             basis = a.get('auth', '')
-            if node in ('reward', 'supply'):
-                continue   # [16]② 奖励节点买经验合法
             if prev_level < 5:
                 continue   # 与 batch 版同界:lv≥5 才算追级段
             if basis in _LEVELUP_AUTH_WHITELIST or basis.startswith('m3_batch:'):

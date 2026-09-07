@@ -290,7 +290,10 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
       解析为空名册,ρ 恒 0)。
 
     豁免镜像(与生产闸同谓词同帧判定,P72 §2.5 合取序禁分裂):
-    - reward/supply 节点([16]② 买经验合法,承 ADR-0560);
+    - ~~reward/supply 节点~~(**已退役**,T-115 对齐 ADR-0580:原 [16]②
+      「买经验合法」条目已删除,奖励节点 = 升级抑制对象;生产闸判据
+      本身节点无关,镜像删除节点型 skip 后对闸的镜像更忠实——奖励帧
+      m3_batch 绕闸 = 违规可见,扑满环境帧经 M3 闸链的合法批照常通过);
     - **ALL IN 位面末 boss 节**(R=0 机会成本恒零,生产闸同支豁免)
       ——位面长度 = 本 run rows 现推 max(round_num)(生产真值 =
       session.plane_node_table,账本不携;已完位面精确,P3 自适应
@@ -355,69 +358,70 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
         level = prev_level
         row_lvl = st.get('level') or prev_level
         node = sim.get('node') or ''
-        if node not in ('reward', 'supply'):
-            actions = row.get('actions') or []
-            waves = sim.get('shop_waves') or []
-            g0 = waves[0].get('gold') if waves else None
-            lv_pos = [i for i, a in enumerate(actions)
-                      if a.get('__type__') == 'LevelUp'
-                      and str(a.get('auth', '') or '').startswith('m3_batch')]
-            if lv_pos and g0 is not None:
-                # ALL IN 镜像(P72 §2.5):位面末 boss 节生产闸同支豁免
-                is_allin = (node == 'boss' and (row.get('round_num') or 0)
-                            >= plane_len.get(row.get('plane'), 0))
-                if not is_allin:
-                    km = _k_members(row.get('target_comp') or '')
-                    bench = [SimpleNamespace(char_id=b.get('char_id'),
-                                             star=b.get('star', 1) or 1)
-                             for b in st.get('bench') or []]
-                    deployed = [SimpleNamespace(char_id=d.get('char_id'),
-                                                star=d.get('star', 1) or 1)
-                                for d in st.get('deployed') or []]
-                    rho = r2_card_reserve(km, bench, deployed,
-                                          SimpleNamespace(level=level),
-                                          level=level)
-                    # 支A 镜像:板满(cap 按轮内升级量回退)∧ bench 2★
-                    cap_dep = st.get('cap')
-                    cap_dec = (cap_dep - (row_lvl - level)
-                               if cap_dep is not None else None)
-                    realize = (cap_dec is not None
-                               and len(deployed) >= cap_dec
-                               and any(b.star >= 2 for b in bench))
-                    if not realize:
-                        # 逐击余量(实际花费后缀和;缺 cost 行退化均摊)
-                        lv_costs = [actions[i].get('cost') for i in lv_pos]
-                        s_total = ((sim.get('spend') or {}).get('levelup')
-                                   or 0)
-                        if any(c is None for c in lv_costs):
-                            per = s_total // len(lv_pos)
-                            lv_costs = [per] * len(lv_pos)
-                        # 逐击决策帧金重放 + 闸式判定
-                        for j, idx in enumerate(lv_pos):
-                            gold_dec = g0
-                            for a in actions[:idx]:
-                                t = a.get('__type__')
-                                if t == 'BuyCard':
-                                    gold_dec -= ((a.get('card') or {})
-                                                 .get('cost', 0) or 0) \
-                                        * (a.get('count') or 1)
-                                elif t in ('RefreshShop', 'LevelUp'):
-                                    gold_dec -= a.get('cost') or 0
-                                elif t == 'SellBench':
-                                    gold_dec += a.get('income') or 0
-                            s_j = sum(lv_costs[j:])
-                            tau = interest(gold_dec, DEFAULT_INTEREST_CAP)
-                            floor = tau * 10 + 2 * rho
-                            if gold_dec - s_j < floor:
-                                out.append(
-                                    f"p{row.get('plane')}"
-                                    f"r{row.get('round_num')} "
-                                    f"LevelUp 击{j + 1}/{len(lv_pos)} 批余 "
-                                    f"{s_j} 金,决策帧金 {gold_dec} < "
-                                    f"息档 floor {floor}"
-                                    f"(τ={tau}, ρ={rho}, g0={g0})——"
-                                    f"P72 (3a) 绕闸升级(ADR-0576)")
-                                break
+        # T-115 对齐(ADR-0580):原 reward/supply 节点型 skip 已退役
+        #([16]② 删除,奖励节点 = 抑制对象),检查覆盖回归节点无关口径。
+        actions = row.get('actions') or []
+        waves = sim.get('shop_waves') or []
+        g0 = waves[0].get('gold') if waves else None
+        lv_pos = [i for i, a in enumerate(actions)
+                  if a.get('__type__') == 'LevelUp'
+                  and str(a.get('auth', '') or '').startswith('m3_batch')]
+        if lv_pos and g0 is not None:
+            # ALL IN 镜像(P72 §2.5):位面末 boss 节生产闸同支豁免
+            is_allin = (node == 'boss' and (row.get('round_num') or 0)
+                        >= plane_len.get(row.get('plane'), 0))
+            if not is_allin:
+                km = _k_members(row.get('target_comp') or '')
+                bench = [SimpleNamespace(char_id=b.get('char_id'),
+                                         star=b.get('star', 1) or 1)
+                         for b in st.get('bench') or []]
+                deployed = [SimpleNamespace(char_id=d.get('char_id'),
+                                            star=d.get('star', 1) or 1)
+                            for d in st.get('deployed') or []]
+                rho = r2_card_reserve(km, bench, deployed,
+                                      SimpleNamespace(level=level),
+                                      level=level)
+                # 支A 镜像:板满(cap 按轮内升级量回退)∧ bench 2★
+                cap_dep = st.get('cap')
+                cap_dec = (cap_dep - (row_lvl - level)
+                           if cap_dep is not None else None)
+                realize = (cap_dec is not None
+                           and len(deployed) >= cap_dec
+                           and any(b.star >= 2 for b in bench))
+                if not realize:
+                    # 逐击余量(实际花费后缀和;缺 cost 行退化均摊)
+                    lv_costs = [actions[i].get('cost') for i in lv_pos]
+                    s_total = ((sim.get('spend') or {}).get('levelup')
+                               or 0)
+                    if any(c is None for c in lv_costs):
+                        per = s_total // len(lv_pos)
+                        lv_costs = [per] * len(lv_pos)
+                    # 逐击决策帧金重放 + 闸式判定
+                    for j, idx in enumerate(lv_pos):
+                        gold_dec = g0
+                        for a in actions[:idx]:
+                            t = a.get('__type__')
+                            if t == 'BuyCard':
+                                gold_dec -= ((a.get('card') or {})
+                                             .get('cost', 0) or 0) \
+                                    * (a.get('count') or 1)
+                            elif t in ('RefreshShop', 'LevelUp'):
+                                gold_dec -= a.get('cost') or 0
+                            elif t == 'SellBench':
+                                gold_dec += a.get('income') or 0
+                        s_j = sum(lv_costs[j:])
+                        tau = interest(gold_dec, DEFAULT_INTEREST_CAP)
+                        floor = tau * 10 + 2 * rho
+                        if gold_dec - s_j < floor:
+                            out.append(
+                                f"p{row.get('plane')}"
+                                f"r{row.get('round_num')} "
+                                f"LevelUp 击{j + 1}/{len(lv_pos)} 批余 "
+                                f"{s_j} 金,决策帧金 {gold_dec} < "
+                                f"息档 floor {floor}"
+                                f"(τ={tau}, ρ={rho}, g0={g0})——"
+                                f"P72 (3a) 绕闸升级(ADR-0576)")
+                            break
         prev_level = row_lvl
     return out
 

@@ -176,7 +176,11 @@ class MandateState:
     # ⇒ v3_release_spent/v3_release_reason 清零并盖新戳。不复用
     # v3_release_round(W332b 泄息指令旧轮语义)。
     v3_disclosure_key: tuple[int, int] | None = None
-    # ADR-0348:扑满节点识别标记(engine 轮快照)。
+    # ADR-0348 ↺ 扑满节点识别标记(T-115 复活为真写点,ADR-0580):写者
+    # = mandate_v1 奖励帧判定位(shop/mandate 两栈同值幂等写,值源 =
+    # kernel.cw_reward_node.is_piggy_reward_frame);读面 = engine 轮快照
+    # /telemetry schema piggy_reward(恢复真值)。历史:ADR-0348 本体已
+    # 随 decision_v2 删除,本字段曾为恒 False 死值(写者已死)。
     v3_piggy_reward: bool = False
     # 商店拒因遥测(shop.py 逐帧刷新;期望态即投影后真值)。
     cw4_shop_rejects: dict = field(default_factory=dict)
@@ -247,6 +251,16 @@ class MandateState:
     cw4_tools_phase: object = None
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
     cw4_visit_bought_names: list = field(default_factory=list)
+    # T-115 ②(b) 死金压库买入登记名集(会话级,跨轮存续;ADR-0580 Z1):
+    # 写点 = shop ②(b) 臂发射位逐名登记;读点 = 凑息卖出资格集排除
+    # (mandate.sell_hold_exclusions,prep 接线与 shop 消费位共用)。
+    # 生命周期(F1 申报):**锁线定型时清空**——定型后 ④ 放行已收窄、
+    # ③④ 静态排除集足以护持有面,残留登记只对 (b) 早期买入的燃料件
+    # 造成过度禁卖(燃料 = 可逆变现资产,定型后应重新入凑息资格);
+    # Early 期按名永久 = 「(b) 买入名永不回卖」设计意图,合成消耗后
+    # 同名新副本罕见且代价仅利息机会损失。集载体 = set(无序,只做
+    # 成员判定);局级清零由状态对象每局新建保证。
+    cw4_dead_gold_bought_names: set = field(default_factory=set)
 
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:

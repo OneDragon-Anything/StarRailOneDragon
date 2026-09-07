@@ -21,7 +21,7 @@ sim62③ + sim72③ 两批同族病灶(判定报告 = .debug/temp/currency_war/2
 - **三发射位全接(拒 = 整批推迟,禁部分买)**:①prep 位 mandate.py M3(spend_unified/check_affordable 之后、Emitted(LevelUp) 之前);②商店波 M3 shop.py(同链位,拒后 fall-through);③必花域 L3 shop.py 域内(独立分键)。发射序中闸位次在 P48 整买与可负担性之后——P71-b 四合取 (1)(2)(4) 既有门串联在前,闸只辖量。
 - **拒因分键(遥测显影,零行为旁路)**:`levelup_budget_gate_blocked`(prep+shop M3 共键)/ `budget_gate_must_spend_defer`(必花域 L3,与域外分开归因)/ `budget_gate_must_spend_deadend`(域内闸拒 ∧ bench 无空席 = 金滞留死角,纯观测,攒 sim 数据后再裁是否需要域内降档——降档 = 部分买,与 P48 整买冲突,当前禁做)/ `m6_budget_gate_suspend`(见下)。
 - **M6 同帧挂起(shop 侧辖域)**:闸拒帧 M6 压库挂起——闸刚护住的预留金不得被同帧压库击穿(拒后照发 = 金换通道,预留语义同帧失效)。挂起只辖 shop 侧 M6;prep 位「M6」是 emit OpenShop(转店后 shop 帧 M3 重过闸兜住),不重复挂起(防双闸,两侧注释在案)。
-- **对账位两处**:①entry.py `_reconcile_posture_authorization` 逐门镜像增闸(签名加 k_members 入参),闸拒归因 = `levelup_budget_gate_blocked`,禁落 contract_other 兜底桶;②sim 检查器 `sim/checks/ledger.check_levelup_budget_gate`(注册名 `levelup_budget_gate`):m3_batch 授权的升级批支出 > 溢余段预算 = 绕闸违规;奖励/补给节点豁免([16]② 同款);近似声明(首波金时点/上一轮 level/cap 线性回退/ρ 名册超集)全部宽松向,构造性不冤枉合法批;辖域镜像同条件(g ≤ g* skip,落地审 B1 补——镜像缺口 = 开局低金合法批假违规复现)。
+- **对账位两处**:①entry.py `_reconcile_posture_authorization` 逐门镜像增闸(签名加 k_members 入参),闸拒归因 = `levelup_budget_gate_blocked`,禁落 contract_other 兜底桶;②sim 检查器 `sim/checks/ledger.check_levelup_budget_gate`(注册名 `levelup_budget_gate`):m3_batch 授权的升级批支出 > 溢余段预算 = 绕闸违规;奖励/补给节点豁免([16]② 同款;**↺ 勘误注,T-115 对齐 = ADR-0580**:[16]② 已删除,奖励节点 = 升级抑制对象,检查器节点型 skip 已退役——授权判定回归 ADR-0471 收编口径的节点无关通道分类,奖励帧 m3_batch 绕闸 = 违规可见);近似声明(首波金时点/上一轮 level/cap 线性回退/ρ 名册超集)全部宽松向,构造性不冤枉合法批;辖域镜像同条件(g ≤ g* skip,落地审 B1 补——镜像缺口 = 开局低金合法批假违规复现)。
 
 ## 4. 边界申报
 

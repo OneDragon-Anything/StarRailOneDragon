@@ -32,11 +32,17 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.kernel.cw_card_identity import (
+    sell_hold_exclusion_names,
+)
 from sr_od.application.currency_war.kernel.cw_economy import (
     blood_xp_gate_for,
     clicks_to_next_level,
     in_must_spend_zone,
     xp_click_cost,
+)
+from sr_od.application.currency_war.kernel.cw_intention import (
+    locked_buy_membership,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     LevelUp,
@@ -47,6 +53,10 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     RunTools,
     SellBench,
 )
+from sr_od.application.currency_war.kernel.cw_reward_node import (
+    is_piggy_reward_frame,
+    reward_node_suppressed,
+)
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     REFRESH_COST_BASE,
@@ -56,6 +66,9 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     contracts,
     levelup,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
+    sell as crit_sell,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
@@ -341,6 +354,47 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
     return len(hit)
 
 
+def sell_hold_exclusions(session: StrategySession,
+                         k_members: tuple[str, ...],
+                         ) -> set[str]:
+    """凑息卖出资格集排除集(T-115 Z1 修法单一装配点;ADR-0580)。
+
+    集合 = 义务基座 ∪ 静态持有两集(kernel.cw_card_identity.
+    sell_hold_exclusion_names:registry 核心 ∪ ④放行集)∪ ②(b)
+    动态买入登记集。义务基座解析在**本函数体内**完成(落地审低-1
+    修复,ADR-0580 §7):锁线态 = ``locked_buy_membership(ist)``
+    锁定采购集宽集,未锁态 = ``k_members``——与 shop 消费位
+    ``buy_members`` 装配同一语义源,prep 接线与 shop 凑息位两处调用
+    只传各自的 k_members,宽/窄选择收拢单点,禁调用侧自选基座
+    (宽−窄成员被 (a) 卖出→shop 域 M2 重买 = Z1 锁线域残留病理)。
+    ③④语义 = 持有,整类退出凑息燃料资格,覆盖「已买待持有」与
+    「在售未买」两态,防跨轮卖回(1★ 全额退会机械抵消裁定③④的
+    持有语义)。
+
+    动态集生命周期(F1 申报):锁线定型时清空(定型后 ④ 放行收窄、
+    静态集护住持有面,残留登记只对 Early 期 (b) 买入的燃料件造成
+    过度禁卖)——清空判据与义务基座共用同一次
+    ``locked_buy_membership(ist)`` 解析(单点双消费),在读点惰性清,
+    不挂锁线转移钩子。静态/动态切分理由(禁静态全集):name 型
+    零重叠语义下静态全集排除会把 (a) 的全部 1★ 燃料资格掏空
+    (方案审 v3 攻击点①实证)。
+
+    第三卖出通道 funding_support_sell 有意**不**扩本集(F2 申报,
+    ADR-0580):筹资卖出有真实对价(金换线内义务件,非 Z1 的零和
+    买卖对冲),扩排除会削义务筹资能力;义务优先于转线期权。
+    """
+    st = state_of(session)
+    _locked = locked_buy_membership(getattr(st, 'v3_intention', None))
+    excl: set[str] = (set(_locked) if _locked is not None
+                      else set(k_members))
+    excl |= set(sell_hold_exclusion_names())
+    if _locked is not None:
+        st.cw4_dead_gold_bought_names.clear()   # F1:定型清空(见上)
+    else:
+        excl |= set(st.cw4_dead_gold_bought_names)
+    return excl
+
+
 def dominance_buy_eligible(gold: int, bench_free: int,
                            stop_flag: bool, cap_resolved: int,
                            ) -> bool:
@@ -464,6 +518,58 @@ def run_mandate(frame: MandateFrame,
         out.append(Emitted(RunDeploy(), True, 'm5_opening_board'))
         deploy_intent_emitted = True
 
+    # T3 同轮保留集卖侧读端(prep 域;单一源 = stall_protect_active,
+    # 轮界过期名就地销账 t3_protect_expired_round)。计算位 = T-115 ②(a)
+    # 凑息接线之前(D5 接线位先消费 defer_names);原 M2 块前计算点删除
+    #(单点计算,禁同帧双算致轮界过期名重复销账计数)。
+    _t3_protect = stall_protect_active(session, frame.round_num,
+                                       counters=counters)
+
+    # ---- T-115 规则②(a) 凑息卖 prep 接线(ADR-0580)----
+    # 触发 = gold < g*(息帽 resolved 口径;买断制局 g*=0 自然全关,B2
+    # 息帽维度修正)。判据单一源 = criteria/sell.sell_for_interest 零改
+    #(金位缺口触发/目标量止盈/资格谓词族/刚买件优先/血线地板禁令全
+    # 继承,B3 禁第二套卖件通道)。state 必传(N1):血线地板判据输入,
+    # 漏传 = sell.py 首闸 fail-closed 返回 blood_floor,prep 凑息结构性
+    # 哑火(Z1 回归锁以「须产生 SellBench」断言兜住此漏接)。
+    # 接线位 = 备战环首个 _emit_open_shop 发射之前:OpenShop 是帧稳定
+    # 契约截断点(M7 回排申报在案,truncate_frame_stable 其后必截),
+    # 卖出须先于本轮开店到账,与 M4「prep 卖出恒先于本轮买入」域序
+    # 一致;(a) 先于全部买面动作求值(Z1 臂序:义务臂之外的先手)。
+    # 载体 = Emitted(SellBench, True, 分键)——prep 域 SellBench 无
+    # reason 字段,归因走发射标记(与 M4 同口径声明)。
+    # exclude = sell_hold_exclusions(session, k):义务基座(锁线态 =
+    # locked_buy_membership 宽集,解析在函数体内,与 shop 消费位同源
+    # ——落地审低-1 修复)∪ Z1 静态持有两集 ∪ ②(b) 动态登记
+    #(③④件禁被凑息卖回);defer = T3 同轮保留(跨轮保护由 Z1 排除集
+    # 承担,T3 只辖同轮,sell.py:140-148)。
+    _cap_resolved = _cap_of(session)
+    # 合成素材拦截去重集(帧级,C1 事件口径):本帧所有守卫触达位
+    #(②(a) 凑息资格评估 / M4 腾席环)共享,与 shop 侧 _mm_dedup 同款
+    #——凑息臂先触达首计后,腾席环对同一素材不再重复计数。
+    _mm_dedup: set[str] = set()
+    if frame.gold < saturation_line(_cap_resolved):
+        if contracts.ensure_contract(
+                ('sell', 'sell_for_interest'),
+                contracts.ContractCtx(gold=frame.gold), counters):
+            _t1_slots, _t1_key = crit_sell.sell_for_interest(
+                frame.gold, list(frame.bench), _cap_resolved, k,
+                state=state,
+                exclude_names=sell_hold_exclusions(session, k),
+                defer_names=_t3_protect,
+                counters=counters,
+                dedup_names=_mm_dedup)
+        else:
+            # 契约核验失败 = fail-closed 弃权零发射,分键显影(同 shop
+            # 消费位形态;禁新契约键,复用同键 ('sell','sell_for_interest'))
+            _t1_slots, _t1_key = [], 'contract_abstain'
+            _count('t1_interest_prep_contract_abstain')
+        if not _t1_key and _t1_slots:
+            for _s in _t1_slots:
+                out.append(Emitted(SellBench(slot=_s), True,
+                                   't1_interest_prep_emit'))
+            _count('t1_interest_prep_emit')
+
     # dominance_buy(M2 前置,mandate 邻位;席位失败=单帧单评不入 M2 重试环 R12-2)
     if dominance_buy_eligible(frame.gold, frame.bench_free, frame.stop_flag,
                               cap_resolved=_cap_of(session)):
@@ -485,10 +591,7 @@ def run_mandate(frame: MandateFrame,
     # M2 线成员买入(+M2→M4 重试环 R8-8)
     missing = [m for m in k
                if m not in set(frame.bench_names) | set(frame.deployed_names)]
-    # T3 同轮保留集卖侧读端(prep 域;单一源 = stall_protect_active,
-    # 轮界过期名就地销账 t3_protect_expired_round)
-    _t3_protect = stall_protect_active(session, frame.round_num,
-                                       counters=counters)
+    # T3 同轮保留集卖侧读端已上移至 ②(a) 凑息接线前(单点计算声明见彼处)。
     if shopped and missing and not frame.stop_flag:
         _count('shop_latch_skip_m2_buy')
     if missing and not frame.stop_flag and not shopped:
@@ -514,7 +617,8 @@ def run_mandate(frame: MandateFrame,
                 _count('m2_stall_cache_hit')
                 _count('m2_stall_repeat_frame')
             else:
-                _mm_dedup: set[str] = set()
+                # _mm_dedup 帧级去重集已上移至 ②(a) 接线前创建(两守卫
+                # 触达位共享,声明见彼处)。
                 retries = 0
                 freed = False
                 no_fuel = False    # 闩写条件承载:环以「候选空集」退出(
@@ -642,7 +746,21 @@ def run_mandate(frame: MandateFrame,
         state is None
         or bool(getattr(state, 'level_readable', True)))   # 等级不可信帧 fail 向(资格硬闸)
     _arms_hit = _arm1 or _arm0 or _pop
-    if (_arms_hit or _zone_hit) and _cap_now is not None:
+    # T-115 规则① 消费位3(ADR-0580):奖励帧升级抑制,判据单一源 =
+    # kernel.cw_reward_node.reward_node_suppressed(None fail-open)。抑制
+    # 先于危机/血闸求值——抑制 = 结构性无授权,支付能力检查无须求值
+    # (§0.2「抑制先行」;同帧双闸分键不混桶:reward_node_defer ≠
+    # blood_xp_gate_defer ≠ crisis_level_spend_defer)。扑满环境帧守卫
+    # 解除抑制(守卫单一源同 kernel),写点同时复活 v3_piggy_reward
+    # 遥测真值(ADR-0348 ↺,ADR-0580)。
+    _reward_defer = reward_node_suppressed(state)
+    if _reward_defer:
+        _count('reward_node_defer')
+    if getattr(state, 'node_type', None) == 'reward':
+        # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
+        state_of(session).v3_piggy_reward = is_piggy_reward_frame(state)
+    if (_arms_hit or _zone_hit) and _cap_now is not None \
+            and not _reward_defer:
         # 候选③危机带经验授权让位(g_20260904_054904 p2r1:hp=1 帧
         # 9×LevelUpShop 36g 零本帧收益):血预算停升级门(P21)此前只有
         # decision_v2 侧消费,cw4 M3 未接 = 双栈语义断层;判据单一源 =

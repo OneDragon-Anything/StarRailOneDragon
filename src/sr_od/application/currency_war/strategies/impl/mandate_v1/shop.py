@@ -96,6 +96,12 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel import cw_intention
+from sr_od.application.currency_war.kernel.cw_card_identity import (
+    TIER_REGISTRY_CORE,
+    TIER_TRANSITION,
+    TIER_UNRELATED,
+    line_identity_tier,
+)
 from sr_od.application.currency_war.kernel.cw_comps import (
     CORE_SINGLE_CARD_REGISTRY,
 )
@@ -111,6 +117,10 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     effective_refresh_prob,
     in_must_spend_zone,
     xp_click_cost,
+)
+from sr_od.application.currency_war.kernel.cw_reward_node import (
+    is_piggy_reward_frame,
+    reward_node_suppressed,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
@@ -318,6 +328,8 @@ def shop_unbought_reasons(state: GameState,
     - 线内已持有:``owned``;
     - transition_chars(打工后卖、刻意不入线——单一源 = cw_comps 注册表
       + ``predicates.line_members`` 只取 core∪shared):``transition_char``;
+    - ④转线放行集(kernel.cw_card_identity 身份分层单一源,T-115 D7 键序
+      先于 trans 分支——交集卡可辨):``transition_component``;
     - 其余:``non_line``。
 
     口径 = 帧首静态快照 + 逐动作累积投影:金按已发射 BuyCard 总价扣减、
@@ -403,12 +415,23 @@ def shop_unbought_reasons(state: GameState,
                 out[name] = 'missing_unaffordable'
             else:
                 out[name] = 'missing_no_path'
+        elif line_identity_tier(name) == TIER_TRANSITION:
+            # T-115 规则④ 拒因键(D7 键序,ADR-0580):④放行集判据先于
+            # trans 分支——交集卡(④放行件 ∧ 某 comp transition_chars)
+            # 在旧序(k_members→trans→else)下恒落 transition_char,新键
+            # 不可达。定序理由 = 判读价值:④件被拒才是要盯的信号(席/金/
+            # 星级硬闸漏放),打工件刻意不买是常态;行为无影响(买入由
+            # 放行臂驱动),纯遥测口径。判据单一源 = line_identity_tier
+            #(与规则④买入臂同源)。
+            out[name] = 'transition_component'
         elif name in trans:
             out[name] = 'transition_char'
         else:
             # C1 拒因拆键(设计《直通核心卡信号层入口》§4 意向状态机行):
             # registry 核心卡在售未买帧与真 non_line 可辨——sim 检查器归
             # 机会错失类,落码批带方向声明(严格向:核心件在售帧被拒判红)。
+            # T-115 规则③后语义收窄(ADR-0580):未锁线帧在售核心卡正常帧
+            # 已由恒买放行臂买入,本键残留 = 席/金硬闸拒的 fallback 标签。
             out[name] = ('core_candidate_rejected'
                          if name in CORE_SINGLE_CARD_REGISTRY else 'non_line')
     return out
@@ -888,14 +911,18 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 通道之后、M3 之前——支配族发射位先于一切带参数值比较,
     # 01_math_framework §3 与权限骨架行(01:15)+支配性优先序(01:40);
     # 设计《直通核心卡信号层入口》§2 案A,
-    # ADR-0569)。前件守卫:锁线态单判(_buy_members 非 None ⟺
-    # locked_comp 非空),未锁帧通道不评估(设计判据式;惯例同
-    # cw_intention.locked_line_recipe_floor_conflict 注)。
+    # ADR-0569)。候选身份(T-115 规则③重构,ADR-0580)= 身份分层单一源
+    # line_identity_tier == registry_core 层(原 CORE_SINGLE_CARD_REGISTRY
+    # 直查同义——helper 对表即该注册表;③④共源防第六套并列前件)。
+    # 前件分叉:锁线态(_buy_members 非 None ⟺ locked_comp 非空)走既有
+    # C1 全判据(排除已入采购集者→M2 义务;ADR-0569 判据式);未锁线态 =
+    # 规则③ 恒买放行(裁定:核心卡过渡/终局皆核心,恒买;原「锁线前置
+    # 使 1-3 未锁线不触发」即本批病灶之一)。
     # 辖域分界(显式):既有 dominance_buy 辖「停手态 ∧ 溢余带 ∧ 线外
-    # 燃料件(全体 zero_overlap 1★)」;本通道辖「锁线态 ∧ 不破息带 ∧
-    # registry 名单核心卡」。锁线∧成型重叠带(stop_flag 与锁线态可并存)
-    # 两通道动作同致:既有通道序位在前先买 + 1★ 全额退/席位判据共享
-    # 单一源,单动作契约下无双发射(spotcheck δ2 措辞口径)。
+    # 燃料件(全体 zero_overlap 1★)」;本通道辖「不破息带 ∧ registry
+    # 名单核心卡(锁线态)/恒买(未锁线态)」。锁线∧成型重叠带(stop_flag
+    # 与锁线态可并存)两通道动作同致:既有通道序位在前先买 + 1★ 全额退/
+    # 席位判据共享单一源,单动作契约下无双发射(spotcheck δ2 措辞口径)。
     # 开店闩申报(设计 §2 落码批核对项):备战期开店闩(cw4_shopped_phase)
     # 辖 run_mandate 的 OpenShop 发射节流(mandate._emit_open_shop,
     # shop_latch_skip_* 计数);本通道在商店决策访问位下游,闩不辖,
@@ -903,45 +930,97 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 息纪律口径:不破息判据 = L 项零损(predicates.t5_p1_false 单一源,
     # P47 现算;Ī 取 streak_pre=0 保守近似——收入低估 ⇒ L 偏大 ⇒ 发射
     # 收窄,与 T5 位同款申报)——S 预留硬约束③对象列(EV 买/M6/
-    # dominance_buy)不辖本通道,设计判据式无 s_reserve 前件。
+    # dominance_buy)不辖本通道,设计判据式无 s_reserve 前件。未锁线恒买
+    # 腿**不继承** t5(裁定「恒买」= 无条件;ADR-0580)。
     _core_locked = _buy_members is not None
-    if _core_locked:
-        _core_cands = [c for c in (state.shop or [])
-                       if (c.name or '') in CORE_SINGLE_CARD_REGISTRY
-                       and (c.name or '') not in _buy_members]
-        if _core_cands:
-            _count('core_candidate_seen')   # 候补支触发(帧级;§7 三键分账)
-            if contracts.ensure_contract(
-                    ('mandate', 'core_single_card_buy_eligible'),
-                    contracts.ContractCtx(locked_buy_members=_buy_members),
-                    counters) and mandate.core_single_card_buy_eligible(
-                        _core_locked, bench_free):
-                _core_rounds = horizon.r_remaining(
-                    session, int(state.plane or 1), int(state.round_num or 1))
-                _core_ibar = net_income(int(state.round_num or 1), 0)
-                for card in _core_cands:
-                    cost = card.cost if card.cost else 3
-                    star = card.star or 1
-                    if not refund_full_star_ok(star, cost):
-                        continue    # 支配性背书仅全额可退 1★(共享单一源,禁内联星级判断)
-                    ok2, _ = mandate.check_seats(
-                        bench_free, 0, needs_bench=True, needs_board=False,
-                        name='', deployed_names=deployed_names)
-                    if not ok2:
-                        break       # 帧级门已拦 bench 满,此处共享单一源防御(dominance 同款)
-                    if not predicates.t5_p1_false(
-                            gold, cost, _core_rounds, _core_ibar,
-                            cap_resolved):
-                        continue    # 不破息带:L>0 帧不放行(统一式 L 项判定)
-                    ok1, _ = mandate.check_affordable(gold, cost)
-                    if not ok1:
-                        continue
-                    _count('core_dominance_buy_hit')    # 支配性支命中(§7 三键分账)
-                    # 同帧多候补 = 等价免费期权,任意分配序不劣(设计 §2);
-                    # 发射序 = 店面确定性序。动作形态默认 = 囤(bench 持有,
-                    # 不上场;deploy 围栏不因持有而变化,设计 §4)。
-                    return _emit_buy(card, 'core_single_card_buy')
-                _count('core_numeric_fail_closed')  # 数值支域帧:支未落码 fail-closed 显影(§7)
+    _core_cands = [c for c in (state.shop or [])
+                   if line_identity_tier(c.name or '')
+                   == TIER_REGISTRY_CORE
+                   and (not _core_locked
+                        or (c.name or '') not in _buy_members)]
+    if _core_cands:
+        _count('core_candidate_seen')   # 候补支触发(帧级;§7 三键分账)
+        if not _core_locked:
+            # T-115 规则③ 未锁线恒买放行:硬闸继承只保留席/金物理约束;
+            # 息纪律/锁线单判/星级(refund_full_star_ok,恒买不限星)不
+            # 继承——2★ 核心件买入价按店面现价过 check_affordable,可逆
+            # 性是 dominance 族语义,恒买语义 = 持有价值非燃料可逆
+            #(ADR-0580 申报)。auth_basis 以 unlocked 形态 + 独立计数键
+            # 与锁线路径可辨不混桶(A2 二选一申报:两件都落)。
+            for card in _core_cands:
+                cost = card.cost if card.cost else 3
+                ok2, _ = mandate.check_seats(
+                    bench_free, 0, needs_bench=True, needs_board=False,
+                    name='', deployed_names=deployed_names)
+                if not ok2:
+                    break       # 帧级门已拦 bench 满(与锁线腿同防御)
+                ok1, _ = mandate.check_affordable(gold, cost)
+                if not ok1:
+                    continue
+                _count('core_unlocked_buy_hit')
+                return _emit_buy(card, 'core_single_card_buy:unlocked')
+        elif contracts.ensure_contract(
+                ('mandate', 'core_single_card_buy_eligible'),
+                contracts.ContractCtx(locked_buy_members=_buy_members),
+                counters) and mandate.core_single_card_buy_eligible(
+                    _core_locked, bench_free):
+            _core_rounds = horizon.r_remaining(
+                session, int(state.plane or 1), int(state.round_num or 1))
+            _core_ibar = net_income(int(state.round_num or 1), 0)
+            for card in _core_cands:
+                cost = card.cost if card.cost else 3
+                star = card.star or 1
+                if not refund_full_star_ok(star, cost):
+                    continue    # 支配性背书仅全额可退 1★(共享单一源,禁内联星级判断)
+                ok2, _ = mandate.check_seats(
+                    bench_free, 0, needs_bench=True, needs_board=False,
+                    name='', deployed_names=deployed_names)
+                if not ok2:
+                    break       # 帧级门已拦 bench 满,此处共享单一源防御(dominance 同款)
+                if not predicates.t5_p1_false(
+                        gold, cost, _core_rounds, _core_ibar,
+                        cap_resolved):
+                    continue    # 不破息带:L>0 帧不放行(统一式 L 项判定)
+                ok1, _ = mandate.check_affordable(gold, cost)
+                if not ok1:
+                    continue
+                _count('core_dominance_buy_hit')    # 支配性支命中(§7 三键分账)
+                # 同帧多候补 = 等价免费期权,任意分配序不劣(设计 §2);
+                # 发射序 = 店面确定性序。动作形态默认 = 囤(bench 持有,
+                # 不上场;deploy 围栏不因持有而变化,设计 §4)。
+                return _emit_buy(card, 'core_single_card_buy')
+            _count('core_numeric_fail_closed')  # 数值支域帧:支未落码 fail-closed 显影(§7)
+
+    # T-115 规则④ 转线前瞻放行臂(ADR-0580;C1 邻位,③优先 = C1 先行
+    # return 兑现,命中③即不评④)。数据源单一源 =
+    # kernel.cw_card_identity.transition_release_names
+    #(knowledge/cw_line_facts.TRANSITION_PACK 档∈{carry,partial};drop 档
+    # 不放行;禁消费 kernel/cw_transition 迁移副本——其内明令勿新增消费)。
+    # 时间辖域(L2)= 未定型期:定型权威 = cw_intention.committed_from
+    #(唯一读端,消费先例 cw_op_buy_cards 装配段),定型后放行收窄 =
+    # TRANSITION_PACK「P1 过渡包」语义直接推论;P2 换线场景 = 显式不辖
+    #(方案悬而未决节请裁,实施者无裁量)。硬闸继承 = 席/金/1★ 全额退
+    # refund_full_star_ok(2★ 转线件买入价值未证,本批不放开,ADR-0580)。
+    # 未买帧拒因 = transition_component(D7 键序,shop_unbought_reasons
+    # 同源分层)。
+    if not cw_intention.committed_from(session, state):
+        for card in (state.shop or []):
+            name = card.name or ''
+            if not name or line_identity_tier(name) != TIER_TRANSITION:
+                continue
+            cost = card.cost if card.cost else 3
+            if not refund_full_star_ok(card.star or 1, cost):
+                continue    # 1★ 全额退:转线件可逆性硬闸(与 C1 同源)
+            ok2, _ = mandate.check_seats(
+                bench_free, 0, needs_bench=True, needs_board=False,
+                name='', deployed_names=deployed_names)
+            if not ok2:
+                break       # 帧级门已拦 bench 满(支配族同款防御)
+            ok1, _ = mandate.check_affordable(gold, cost)
+            if not ok1:
+                continue
+            _count('transition_component_buy_hit')
+            return _emit_buy(card, 'transition_component_buy')
 
     # M3 升级(触发信号三臂并联;D-BUYNOTE:P48 整买纪律内嵌)。单动作
     # 粒度:每帧恰发一个「购买经验」单击动作(升一级 = 一个动作 op,
@@ -954,40 +1033,55 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 前置放宽「bench 有候选 ∨ 买得起候选」,买得起 = affordable ∧
     # bench_free≥1)——「板满+bench 空+富金」病灶场景的商店帧升级授权
     # 由 arm0/pop_slot 承载(arm1 在该形态恒 False)。
+    # T-115 规则① 消费位1(ADR-0580):抑制判据置于臂计算之前短路——
+    # 抑制 = 结构性无授权,三臂与闸链全部无须求值;判据单一源 =
+    # kernel.cw_reward_node.reward_node_suppressed(None fail-open:店开
+    # 观察帧节点行被遮,误拦升级 = 奖励帧人口停滞,方向论证见 kernel
+    # 单一源 docstring)。同帧双闸分键不混桶:reward_node_defer ≠
+    # blood_xp_gate_defer ≠ crisis_level_spend_defer。扑满环境帧守卫
+    # 解除抑制,写点同时复活 v3_piggy_reward 遥测真值(ADR-0348 ↺)。
+    _reward_defer = reward_node_suppressed(state)
+    if _reward_defer:
+        _count('reward_node_defer')
+    if getattr(state, 'node_type', None) == 'reward':
+        # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
+        state_of(session).v3_piggy_reward = is_piggy_reward_frame(state)
     _cap_now = state.max_units()
     _lvl_readable = bool(getattr(state, 'level_readable', True))
-    _arm1_ok = contracts.ensure_contract(
-        ('predicates', 'arm1_existence'),
-        contracts.ContractCtx(deploy_cap=_cap_now), counters)
-    _arm1 = bool(_arm1_ok and predicates.arm1_existence(
-        len(deployed), bench_names, deployed_names, _cap_now))
+    _arm1 = False
     _arm0 = False
-    if contracts.ensure_contract(
-            ('predicates', 'arm0_level_lag'),
-            contracts.ContractCtx(), counters):
-        _arm0, _arm0_key = predicates.arm0_level_lag(
-            int(state.level or 1), _lvl_readable, deployed, bench,
-            k_members, _cap_now)
-        if not _arm0 and _arm0_key == 'level_unreadable':
-            _count('arm0_level_unreadable')
-        elif _arm0 and _cap_now is None:
-            _count('arm0_cap_unreadable')   # 存-3:cap 不可读静默弃权补分键
-            _arm0 = False
     _pop = False
-    if contracts.ensure_contract(
-            ('levelup', 'pop_slot'), contracts.ContractCtx(), counters):
-        _bench_cand = sum(1 for n in bench_names if n in k_members)
-        _buyable_cand = bench_free >= 1 and any(
-            (c.name or '') in k_members
-            and mandate.check_affordable(
-                gold, c.cost if c.cost else 3)[0]
-            for c in (state.shop or []))
-        _pop, _pop_why = crit_levelup.pop_slot(
-            len(deployed), _cap_now, gold, _bench_cand, g_star,
-            buyable_candidate=_buyable_cand, bench_free=bench_free)
-        state_of(session).cw4_pop_slot_why = _pop_why   # D-lv7:否向理由留决策迹
+    if not _reward_defer:
+        _arm1_ok = contracts.ensure_contract(
+            ('predicates', 'arm1_existence'),
+            contracts.ContractCtx(deploy_cap=_cap_now), counters)
+        _arm1 = bool(_arm1_ok and predicates.arm1_existence(
+            len(deployed), bench_names, deployed_names, _cap_now))
+        if contracts.ensure_contract(
+                ('predicates', 'arm0_level_lag'),
+                contracts.ContractCtx(), counters):
+            _arm0, _arm0_key = predicates.arm0_level_lag(
+                int(state.level or 1), _lvl_readable, deployed, bench,
+                k_members, _cap_now)
+            if not _arm0 and _arm0_key == 'level_unreadable':
+                _count('arm0_level_unreadable')
+            elif _arm0 and _cap_now is None:
+                _count('arm0_cap_unreadable')   # 存-3:cap 不可读静默弃权补分键
+                _arm0 = False
+        if contracts.ensure_contract(
+                ('levelup', 'pop_slot'), contracts.ContractCtx(), counters):
+            _bench_cand = sum(1 for n in bench_names if n in k_members)
+            _buyable_cand = bench_free >= 1 and any(
+                (c.name or '') in k_members
+                and mandate.check_affordable(
+                    gold, c.cost if c.cost else 3)[0]
+                for c in (state.shop or []))
+            _pop, _pop_why = crit_levelup.pop_slot(
+                len(deployed), _cap_now, gold, _bench_cand, g_star,
+                buyable_candidate=_buyable_cand, bench_free=bench_free)
+            state_of(session).cw4_pop_slot_why = _pop_why   # D-lv7:否向理由留决策迹
     _budget_gate_blocked = False   # P71-b 闸拒帧标记(M6 同帧挂起辖域)
-    if _arm1 or _arm0 or _pop:
+    if not _reward_defer and (_arm1 or _arm0 or _pop):
         # auth_basis 三臂分键(可归因):触发臂按 arm1 > arm0 > pop 序取首
         _arm_tag = 'arm1' if _arm1 else ('arm0' if _arm0 else 'pop')
         if contracts.ensure_contract(
@@ -1030,6 +1124,64 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                                auth_basis=f'm3_batch:{_arm_tag}')
                         _count(_gate_why)
                         _budget_gate_blocked = True
+
+    # ---- T-115 规则②(b) 死金压库买入(ADR-0580)----
+    # 裁定 409:金不满息档时二选一——卖低价值件凑息(②(a) prep 接线)
+    # 或花掉压库,禁死囤。触发 = gold < g* ∧ 奖励帧型(帧型判据与规则①
+    # **同一谓词同向** = reward_node_suppressed,禁第二套帧型判定,方案
+    # D3;None 帧与规则①同向不发射,该域禁死囤由 ②(a) 承载——其触发
+    # 节点无关;战斗类节点不新增义务,既有 M2/dominance/C1 授权面已管
+    # 战斗帧买入)。位次 = M3 之后、M6/EV 之前:奖励帧上 M3 已被规则①
+    # 抑制短路,本臂独占残余(同帧无竞争,D3);M6(gold>g*)与本臂
+    #(gold<g*)金带互斥;裁定 409 优先于 EV 面(EV 帧可下帧再评,死金
+    # 囤积即病灶本体,ADR-0580)。
+    # 买入地板(B2):cost ≤ 死金 gold − 10×⌊gold/10⌋——买入后金位不跌
+    # 破当前息档;地板只辖本臂自身,③④/M2/dominance 各臂自有息纪律
+    # 判据不受约束(骨架例外,防「同一买入两处闸」混判,ADR-0580)。
+    # 跨帧申报(F3 改写):本臂消费不改变 ⌊gold/10⌋,但全金下降使后续
+    # 中间段帧的整批可负担时点(spend_unified 按全金判)至多推迟一个
+    # 收入周期——与裁定 409 取舍一致,申报为有意。
+    # 候选集 = 既有买入臂对象集并集,取序沿用既有买面优先序(线内缺口 >
+    # ③/④ > 燃料件);线内缺口/③/④类在此结构性被更早的 M2/C1/④ 臂
+    # 吸收(同帧更宽判据未发射 ⇒ 本臂同判据 + 更严地板必不发射),保留
+    # 枚举 = 候选集定义完备性(方案规格),实际新增覆盖面 = 燃料类
+    #(dominance 辖 gold>g* 带与本臂不重叠)。全不可达 = 诚实空转允许囤
+    #(禁为花而买垃圾)。发射即登记名入会话级集合(Z1:防 (a) 跨轮卖回;
+    # 生命周期 = 锁线定型清空,F1,载体注释在 mandate_state)。
+    if gold < g_star and bench_free > 0 \
+            and reward_node_suppressed(state):
+        _dead_gold = gold - 10 * (gold // 10)
+        _dg_gap = {m for m in buy_members if m not in owned}
+        for _dg_prio in range(3):
+            for card in (state.shop or []):
+                name = card.name or ''
+                cost = card.cost if card.cost else 3
+                if not name or cost > _dead_gold:
+                    continue
+                tier = line_identity_tier(name)
+                if _dg_prio == 0:
+                    _hit = name in _dg_gap
+                elif _dg_prio == 1:
+                    _hit = tier in (TIER_REGISTRY_CORE, TIER_TRANSITION)
+                else:
+                    # 燃料类 = dominance 对象定义同款:非线内 1★ 全额退
+                    _hit = (tier == TIER_UNRELATED
+                            and (card.star or 1) == 1
+                            and predicates.zero_overlap(name, k_members)
+                            and refund_full_star_ok(1, cost))
+                if not _hit:
+                    continue
+                ok2, _ = mandate.check_seats(
+                    bench_free, 0, needs_bench=True, needs_board=False,
+                    name='', deployed_names=deployed_names)
+                if not ok2:
+                    break
+                ok1, _ = mandate.check_affordable(gold, cost)
+                if not ok1:
+                    continue
+                _count('dead_gold_press_buy_hit')
+                state_of(session).cw4_dead_gold_bought_names.add(name)
+                return _emit_buy(card, 'dead_gold_press_buy')
 
     # M6 溢余转压库(存在性=金>g* ∧ 无 S 目标;档匹配 fail-closed ⇒
     # 不买 + 溢余滞留遥测;两臂同开)。P71-b 闸拒同帧挂起(ADR-0560):
@@ -1536,11 +1688,19 @@ def decide_shop_action(state: GameState, session: StrategySession,
         if contracts.ensure_contract(
                 ('sell', 'sell_for_interest'),
                 contracts.ContractCtx(gold=gold), counters):
+            # T-115 Z1 排除集扩展(ADR-0580):义务基座 ∪ 静态持有两集 ∪
+            # ②(b) 动态登记,装配单一源 = mandate.sell_hold_exclusions,
+            # 与 prep ②(a) 接线两处同步(只扩一处时另一处成卖回漏口——
+            # shop 访视帧 bench ④件 1★ 无效果仍会入资格)。义务基座的
+            # 锁线宽集解析在函数体内完成(落地审低-1 修复:两处调用
+            # 只传各自 k_members,禁调用侧自选基座),判据本体零改
+            #(B3 单一源纪律,参数级扩展)。
             _slots, skey = crit_sell.sell_for_interest(
                 gold, bench, cap_resolved, k_members, state=state,
                 prefer_names=tuple(getattr(
                     state_of(session), 'cw4_visit_bought_names', ()) or ()),
-                exclude_names=buy_members,
+                exclude_names=mandate.sell_hold_exclusions(
+                    session, k_members),
                 defer_names=_t3_protect,
                 counters=counters,
                 dedup_names=_mm_dedup)
@@ -1557,6 +1717,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                  income=_shop_sell_refund(bc) if bc else None,
                                  expect=(bc.char_id or '') if bc else '')
     # 支付支撑通道(两臂同开,R13-5):骨架义务动作金不足侧筹资变现。
+    # T-115 F2 申报(ADR-0580):本通道**有意不扩** Z1 排除集——筹资
+    # 卖出有真实对价(金换线内义务件,非 Z1 病理的零和买卖对冲),扩
+    # 排除会削义务筹资能力;义务优先于转线期权,③④持有件在此通道
+    # 可被合法变现。
     if missing:
         mf = mandate.MandateFrame(
             gold=gold, level=state.level, bench=bench, deployed=deployed,
@@ -1626,7 +1790,13 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 非否决门(§2.2-3)。资格硬闸((i) 零解封):等级 cap(lv9_stop 族)/
     # 整批可负担(spend_unified + check_affordable);拒因分键
     # level_cap/batch_unaffordable 零静默。
-    if _zone_hit and not (_arm1 or _arm0 or _pop):
+    # T-115 规则① 消费位2(ADR-0580):本变体触发条件含「三臂未触发」,
+    # 大金奖励帧三臂被压空后若无此守卫会经必花域绕过抑制(方案审 L3
+    # 实证的绕行面)——奖励帧显式拒,分键独立可辨。
+    if (_zone_hit and not (_arm1 or _arm0 or _pop)
+            and _reward_defer):
+        _count('reward_node_must_spend_defer')
+    elif _zone_hit and not (_arm1 or _arm0 or _pop):
         _lvl_now = int(state.level or 1)
         _lv9_ok = contracts.ensure_contract(
             ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \

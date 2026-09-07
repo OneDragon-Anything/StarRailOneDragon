@@ -64,6 +64,9 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     SellDeployed,
     StartBattle,
 )
+from sr_od.application.currency_war.kernel.cw_reward_node import (
+    reward_node_suppressed,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import mandate, proof
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import contracts
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
@@ -561,6 +564,29 @@ def _reconcile_posture_authorization(session: StrategySession,
         return None
     if any(isinstance(e.action, LevelUp) for e in emitted):
         return None
+    # T-115 规则① 消费位4(ADR-0580):奖励帧抑制授权面让位 = 显式降级,
+    # 防奖励帧被「逐门定位未兑现原因」当故障链走(与 crisis_yield 修复
+    # 前的噪声同型;范式 = 下方 crisis 让位三键结构,不另造让位机制)。
+    # 位次钉死(方案 D2)= 授权链**首位**:先于危机让位与血闸镜像求值
+    # ——置于血闸之后时,血本位奖励帧先命中 blood_xp_gate_blocked 提前
+    # return,本分键永不可达;抑制先行声明 = 方案 §0.2(抑制 = 结构性
+    # 无授权,支付能力检查无须求值)。判据单一源 = kernel.cw_reward_node
+    # (与 M3 三消费位同谓词,None fail-open)。
+    if reward_node_suppressed(state):
+        un = {'auth_id': f'{state.plane}-{state.round_num}',
+              'channel': 'levelup',
+              'reason': 'reward_node_no_power_need',
+              'channels': {'levelup': 'reward_node_no_power_need'},
+              'action': 'reward_node_yield'}
+        state_of(session).v3_posture_unfulfilled = un
+        counters = getattr(state_of(session), 'cw4_counters', None)
+        if isinstance(counters, dict):
+            counters['posture_reward_node_defer'] = \
+                counters.get('posture_reward_node_defer', 0) + 1
+        log.info('[cw][cw4] posture level 授权奖励帧让位 '
+                 '(plane=%s r%s): %s',
+                 state.plane, state.round_num, un['reason'])
+        return un
     # 候选③:危机带经验授权让位 = 显式降级而非「未兑现故障」——
     # M3 发射位(mandate/shop)被 level_spend_blocked 挂起时,授权面
     # 按 crisis_yield 声明(P48 λ>0 段转化优先;判据单一源同 M3 消费位),
