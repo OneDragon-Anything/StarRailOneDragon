@@ -86,7 +86,7 @@ class SellBench(PrepAction):
 
 
 #: 卖出归因枚举闭集(W8;ADR-0585 §3 定稿装配键集 = 方案 v3 §3.4 枚举表,
-#: 枚举值 = 卖出通道名,prep/shop 双载体 9 发射位共用)。转化特化值
+#: 枚举值 = 卖出通道名,prep/shop 双载体 10 发射位共用)。转化特化值
 #: (fuel_victim_protect_demoted / funding_support_stall_convert /
 #: funding_hold_liquidated)不在本集——其单一源 =
 #: cw_state.SELL_BENCH_CONVERT_REASONS(同轮买卖检查豁免面),发射位
@@ -98,6 +98,9 @@ SELL_BENCH_REASONS: frozenset[str] = frozenset({
     'funding_support',          # 支付变现(shop 一位/entry 两位)
     'm4_fuel_victim',           # M4 腾席燃料(shop 两位/mandate prep 一位)
     'line_switch_collapse',     # 换线塌缩出口(entry EV pass)
+    'endgame_liquidation_clear',  # 终局清算腾位(域①卖出腿;P81/ADR-0594:
+                                  # ADR-0585 通道对价段「终局清算」豁免行的
+                                  # 发射位;victim = 燃料类单一源 + 装配 A)
 })
 
 
