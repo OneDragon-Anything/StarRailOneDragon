@@ -40,7 +40,7 @@ support = min(1, max(c_量/2, c_贝/2))        否则
 
 ## 验收指针
 
-行为锁=test_cw_t171_seele_support.py 13 条(§6.3-4 全格+零漂移钉值 4+消费面 2);变异=公式回退「到手即 1.0」→恰 4 锁红;落地审=attacks/t171_xierie_criteria/落地审.md(可提交,八维全过)。
+行为锁=test_cw_seele_support.py 11 条(§6.3-4 全格+零漂移钉值 4;原「消费面 2」与 Formula 格 1/格 3 同板面同断言,按测试纪律删并,格 3 折入配对后 gap=False 断言,文件名同步改机制主题名);变异=公式回退「到手即 1.0」→恰 2 锁红(单卡两格;13 条态时为 4);落地审=attacks/t171_xierie_criteria/落地审.md(可提交,八维全过)。
 
 ## 测试重锚记录
 
