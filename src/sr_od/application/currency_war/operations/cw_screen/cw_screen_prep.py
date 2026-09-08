@@ -10,7 +10,7 @@ from __future__ import annotations
 import contextlib
 import time
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from cv2.typing import MatLike
 
@@ -119,6 +119,17 @@ from sr_od.application.currency_war.telemetry import (
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.currency_war_config import (
+        CurrencyWarConfig,
+    )
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        StrategySession,
+    )
+    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        CurrencyWarMatch,
+    )
 
 # ===== P0 清场段:环入口可一键关闭的 overlay 注册表(2026-09-03 自
 # cw_observation_gate 随清尾批迁入,唯一消费方 = 本文件 _clear_entry_overlays;
@@ -1404,11 +1415,11 @@ class CwScreenPrep(SrOperation):
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] equip_expect reconcile skip: {e}')
 
-    def _session(self):
+    def _session(self) -> StrategySession | None:
         match = getattr(self.ctx, 'cw_match', None)
         return match.session if (match is not None and match.session is not None) else None
 
-    def _match(self):
+    def _match(self) -> CurrencyWarMatch | None:
         return getattr(self.ctx, 'cw_match', None)
 
     # ===== 备战单轮 op(W971 P3b 返工定稿:拆内环,op 生命周期五段化)=====
@@ -1647,7 +1658,9 @@ class CwScreenPrep(SrOperation):
         return self.round_success(
             f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
 
-    def _takeover_collect_if_needed(self, match, session) -> OperationRoundResult | None:
+    def _takeover_collect_if_needed(self, match: CurrencyWarMatch,
+                                    session: StrategySession
+                                    ) -> OperationRoundResult | None:
         """接管局补采(W971 §2.1/01-opening §2.1;单轮化后挂点 = 单轮 op 观察段)。
 
         触发 = session.briefing_bosses 空(本局尚无位面序真值);可交互门 = 节点条
@@ -1701,7 +1714,11 @@ class CwScreenPrep(SrOperation):
             log.info('[cw][director] 词缀补采(位面详情横条随采,简报未供时):%s', _affixes)
         return self.round_success('接管补采执行,交回外循环重识别', wait=1.0)
 
-    def _bench_full_break_round(self, match, session, obs, config) -> OperationRoundResult | None:
+    def _bench_full_break_round(self, match: CurrencyWarMatch,
+                                session: StrategySession,
+                                obs: PrepObservation,
+                                config: CurrencyWarConfig
+                                ) -> OperationRoundResult | None:
         """席满破墙单轮(M16,ADR-0136):备战席满警告模态拒绝拖拽/出战 →
         破墙动作优先(腾席链),执行后交回外循环。None = 无警告,继续正常单轮。"""
         from sr_od.application.currency_war.obs.cw_observation import read_bench_full
@@ -1893,7 +1910,11 @@ class CwScreenPrep(SrOperation):
                 gold_before_trusted=meta['gold_trusted'])
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
             log.debug(f'[cw-director] spend_ledger skip: {e}')
-        # [停机钩子·临时采证,安灯式] 采够/问题闭环后整段删除(钩子纪律:不留开关)。
+        # [停机钩子·常驻兜底(od-dev-stop-hooks §2.1 分类),安灯式] 触发条件兜
+        # 「购买单元执行失败(计划花费>0 金差≈0)」整类持续可能复发的失败 =
+        # 安全网,非单次采证——原「临时采证,采完删」标注系误分类,改标防未来
+        # 按「临时」误删安全网。移除条件 = 该失败类根因修复并长期验证后才可
+        # 评估移除;平时触发只删 flag 不删钩子(钩子不留开关的纪律不变)。
         # 判定与记账同点:
         # 命中 mismatch → 哨兵(截图+flag)→ stop_running → 不再点击保画面。
         # 每局最多停一次;判定复用分类器,数据源与离线读端同一套
@@ -1978,7 +1999,8 @@ class CwScreenPrep(SrOperation):
 
     # ===== W970 批 C:流程层商店编排(RunBuyPhase 解体的承接,§4.3.2/§4.3.6,dd-017)=====
 
-    def _open_shop_phase(self, action, obs) -> tuple[bool, str]:
+    def _open_shop_phase(self, action: PrepAction,
+                         obs: PrepObservation) -> tuple[bool, str]:
         """OpenShop 动作的流程层编排(壳直调三 op 调用点自 BuyShopCards 上移)。
 
         - read_only=True(腾席链 b 取 gold 真值 / 开态清洁面板):CwOpOpenShop
@@ -2067,8 +2089,8 @@ class CwScreenPrep(SrOperation):
         self._probe_node_type()
         return True, f'买牌 {_summary}'
 
-    def _v2_post_frame_accounting(self, obs, acct: dict,
-                                  session) -> None:
+    def _v2_post_frame_accounting(self, obs: PrepObservation, acct: dict,
+                                  session: StrategySession) -> None:
         """新环 heavy 定型帧上的动作级对账族(旧环同帧消费逐位对齐;零决策)。
 
         输入 = 本帧 obs + acct(最近一步动作记账状态);每通道内部
@@ -2223,7 +2245,9 @@ class CwScreenPrep(SrOperation):
         except Exception as e:  # noqa: BLE001  live 验证 best-effort,失败不阻塞备战
             log.info(f'[cw-director] nodeseq skip: {e}')
 
-    def _capture_unrecognized_node_icons(self, screen, slots, node_row_rect, hu_threshold) -> None:
+    def _capture_unrecognized_node_icons(self, screen: MatLike, slots: list,
+                                         node_row_rect: tuple[int, int, int, int],
+                                         hu_threshold: float) -> None:
         """未识别图标采集(版本前哨):未来圆 Hu 无显著最近 → 裁图标存盘(内容哈希去重)。
 
         仅 upcoming 槽(判态已修 V 门,变暗过去节点不再混入);RGB 裁剪存盘(颜色信息保留,
@@ -2405,7 +2429,7 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
         # 照记(trusted=False),unknown 占比降到读失败率。分类器零改动。
         from sr_od.application.currency_war.telemetry import state as _cw_tel
         _cw_tel.set_unit_gold_close(_final_gold)
-        # 迁移审计 w62(git 历史) 件2(ADR-0329):gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
+        # ADR-0329 件2:gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
         # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
         # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
         _expected = expected_gold_after_actions(

@@ -54,6 +54,8 @@ import logging
 import time
 from typing import Any, ClassVar
 
+from cv2.typing import MatLike
+
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_edge import node_from
 from one_dragon.base.operation.operation_node import operation_node
@@ -95,7 +97,7 @@ _GATE_STATIC_FAIL_FRAMES: int = 2        # 连续 N 帧零变化 → 判静止
 _FRAME_DIFF_TOL: float = 1.0             # 降采样灰度平均绝对差 ≤ 该值 = 零变化
 
 
-def _frame_thumbnail(screen) -> Any:
+def _frame_thumbnail(screen: MatLike) -> Any:
     """截图 → 96x54 灰度缩略图(帧差比较的降采样表示;RGB 输入)。"""
     import cv2 as _cv2
     gray = _cv2.cvtColor(screen, _cv2.COLOR_RGB2GRAY)
@@ -251,6 +253,7 @@ class CwScreenPlaneIntel(SrOperation):
         s = slots[-1]
         from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
         r = _area_rect(self.ctx, '区域-节点条', _PD_SCREEN)
+        # 兜底字面量:area 缺失(离线/档案损坏)时的节点条原点(1080p 实测值)
         ox, oy = (r.x1, r.y1) if r is not None else (385, 514)
         return Point(s.cx + ox, s.cy + oy)
 
@@ -446,6 +449,7 @@ class CwScreenPlaneIntel(SrOperation):
                 self._nonclean_wait_start = None   # 读出=clean,重置等待账
                 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
                 r = _area_rect(self.ctx, '区域-节点条', _PREP_SCREEN)
+                # 兜底字面量:area 缺失(离线/档案损坏)时的节点条原点(1080p 实测值)
                 ox, oy = (r.x1, r.y1) if r is not None else (544, 24)
                 self.ctx.controller.click(Point(cur.cx + ox, cur.cy + oy))
                 time.sleep(_DETAIL_OPEN_WAIT_S)   # 用户定值 ~3s:开屏动画落定再读
@@ -570,7 +574,7 @@ class CwScreenPlaneIntel(SrOperation):
             return self.round_retry(f'位面{self._cur_plane + 1} {val}')
         if action == 'skip':
             _log.info('[cw-plane-intel] 位面%d 首领节点=徽章态(无头像无名,本屏无身份)'
-                      '→ 记 None 跳过,不空转重试(W221/ADR-0398)', self._cur_plane + 1)
+                      '→ 记 None 跳过,不空转重试(ADR-0398)', self._cur_plane + 1)
         self._plane_bosses[self._cur_plane] = val
         _dt = time.monotonic() - self._plane_start if self._plane_start else 0.0
         _log.info('[cw-plane-intel] 位面%d 采集完成(耗时 %.1fs,session_plane=%s):%s',
@@ -578,7 +582,7 @@ class CwScreenPlaneIntel(SrOperation):
         self._cur_plane += 1
         return self.round_wait(f'位面{self._cur_plane}完成,下一位面')
 
-    def _cross_check_node_seq(self, detail_slots) -> None:
+    def _cross_check_node_seq(self, detail_slots: list) -> None:
         """备战帧与位面详情帧同位面节点序列互证(观测自检框架设计 §1 行11/
         §5-B5「备战/位面详情节点序列互证」;纯记账零决策)。
 

@@ -59,7 +59,9 @@ if TYPE_CHECKING:
     # 注解专用。消费关系锚点 = cw_observation.read_gold_opt 经本模块名
     # 取读的替身缝(monkeypatch 面),cw_shop_action_ops 因此以函数内
     # lazy import 消费本文件;注解不经运行时求值,不新增模块级反向依赖。
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
     from sr_od.application.currency_war.kernel.cw_state import (
+        Action,
         CloseShop,
         LevelUpShop,
     )
@@ -185,7 +187,7 @@ def _r1_retry_read_hp(read_fn) -> int | None:
 
 
 def sell_guard_ok(expected: str | None, live: str | None) -> bool:
-    """卖前对拍守卫(迁移审计 w62(git 历史) 件2 设计章2.5 轻守卫;ADR-0329)。
+    """卖前对拍守卫(ADR-0329 件2 设计章2.5 轻守卫)。
 
     生成期快照 ``state.bench[idx].char_id``(期望名)vs 执行期实况
     ``tracked_bench_chars`` 现槽名——不符 = 槽位内容已被本循环前序动作消费
@@ -199,7 +201,7 @@ def sell_guard_ok(expected: str | None, live: str | None) -> bool:
 
 def expected_gold_after_actions(state_gold: int, spend: int,
                                 sell_income: int) -> int:
-    """买后预期金(迁移审计 w62(git 历史) 件2 设计章2.7 必改项;ADR-0329):开店金 − 花出 + 卖入。
+    """买后预期金(ADR-0329 件2 设计章2.7 必改项):开店金 − 花出 + 卖入。
 
     gold 差值对拍口径:卖出接线后,卖轮实际金 = state.gold − spend + sell_income
     (游戏侧卖出入账),与旧 ``_expected = state.gold - _spend`` 恒差 income →
@@ -350,8 +352,8 @@ def build_post_buy_incremental_state(
     return post
 
 
-def _form_progress(comp, state) -> float:
-    """fp 遥测helper(review 要求:fp 轨迹可观测;comp None 时不调)。"""
+def _form_progress(comp: 'Comp', state: GameState) -> float:
+    """fp 遥测helper(review 要求:fp 轨迹可观测;调用方保证 comp 非 None)。"""
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
     return form_progress(comp, state)
 
@@ -369,7 +371,7 @@ MAX_REFRESH: int = 4
 SHOP_SEGMENT_ACTION_CAP: int = 16
 
 
-def _fmt_action(a) -> str:
+def _fmt_action(a: 'Action') -> str:
     """单 Action → 紧凑日志串(调试/复盘读 plan 用)。"""
     if isinstance(a, BuyCard):
         return f'Buy({a.card.faction}/{a.card.name}/{a.card.cost})'
@@ -492,7 +494,7 @@ def accrue_release_spent(match: 'CurrencyWarMatch',
     st.v3_release_spent += max(0, int(getattr(action, 'cost', 0) or 0))
 
 
-def run_buy_waves(op: SrOperation, match,
+def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                   hp_value: int | None, hp_readable: bool,
                   hp_trusted: bool,
                   *, spend_gate: Callable[[object], tuple[bool, str]] | None = None,
@@ -923,8 +925,12 @@ def run_buy_waves(op: SrOperation, match,
         if not ledger.did_refresh:
             break   # 本段无刷新(或硬墙)→ 收工
 
-    # [停机钩子·临时,采完删(用户 2026-08-15 指示)]未购买(含刷新后仍未购买)且商店有
-    # 未识别卡(SIFT miss)→ 停机留画面给 AI 建档。
+    # [停机钩子·常驻兜底(od-dev-stop-hooks §2.1 分类;原「临时,采完删(用户
+    # 2026-08-15 指示)」标注系误分类)]未购买(含刷新后仍未购买)且商店有
+    # 未识别卡(SIFT miss)→ 停机留画面给 AI 建档。触发条件兜「商店出现
+    # 未识别卡」整类(新版本新卡/非角色内容/立绘缺/瞬时帧)持续可能复发 =
+    # 安全网;移除条件 = 未识别卡类建模收敛(见下方 flag 文字),平时触发
+    # 只删 flag 不删钩子。
     # 📋 调研档案(2026-08-17 阮·梅/白厄单帧 miss 归因闭环,下次触发先读这段):
     # - 历史触发全部是刷新动画/settle 瞬时帧;本 hook 防抖重读两次均自愈。
     # - W944 治本(2026-08-31):blind sleep 改判据化自愈(_wait_shop_row_stable,
@@ -948,15 +954,16 @@ def run_buy_waves(op: SrOperation, match,
                 / 'currency_war' / 'shop_unk.flag'
             _fp.parent.mkdir(parents=True, exist_ok=True)
             _fp.write_text(
-                f'[HOOK-STOP] shop 未识别卡停机钩子(方案D,恢复):operations/cw_op/cw_op_buy_cards.py run_buy_waves\n'
+                f'[HOOK-STOP] shop 未识别卡停机钩子(常驻兜底,方案D恢复):'
+                f'operations/cw_op/cw_op_buy_cards.py run_buy_waves\n'
                 f'触发:未购买且商店槽{_unk}未识别(防抖重读 2 帧后仍 miss)——\n'
                 f'   新版本新卡/昔涟诗篇类非角色内容/立绘缺。\n'
                 f'处理步骤:1. 看 shot={_shot};对停机画面跑 analyze_screen\n'
                 f'   + 离线 SIFT 对拍(真实rect 商店牌-1..5)确认真未知;\n'
                 f'   2. 新卡 → 建档(screen_info/立绘库);瞬时帧类 → 调上方\n'
-                f'   RefreshShop 后等待;3. 删本 flag + 重启 MCP server 重跑。\n'
-                f'删除条件:连续多局零触发(未知内容建模收敛)后按 skill\n'
-                f'   od-dev-stop-hooks 生命周期判据评估删除。\n'
+                f'   RefreshShop 后等待;3. 删本 flag(钩子保留)+ 重启 MCP server 重跑。\n'
+                f'移除条件:常驻兜底——未识别卡类建模收敛(连续多局零触发)后按\n'
+                f'   od-dev-stop-hooks §2.1 评估移除整段;平时触发只删 flag 不删钩子。\n'
                 f'ts={_dt.now().strftime("%m-%d %H:%M:%S")}\n',
                 encoding='utf-8')
             log.warning('[cw!] [shop] 未识别卡槽%s(重读后仍 miss)→ 停机留画面'

@@ -30,6 +30,9 @@ RunTools;执行位闩 = mandate.mark_tools_pass_executed)。
 """
 import time
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
@@ -46,6 +49,9 @@ from sr_od.application.currency_war.obs.cw_equipment import (
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 # 拖曳参数(与 CwOpEquipAll 拖拽失败降级同型口径;工具 icon→icon 同网格,
 # 距离短,首档参数即可,不建补救链——失败由确认通道 cancel 分支自然重评)
@@ -70,7 +76,8 @@ class ToolDragPlan:
     target_pos: tuple[int, int] | None
 
 
-def plan_tool_drags(admitted: list, owned_hits: list, comp) -> list[ToolDragPlan]:
+def plan_tool_drags(admitted: list, owned_hits: list,
+                    comp: 'Comp | None') -> list[ToolDragPlan]:
     """admitted 判据产物 → 逐件拖曳计划(纯函数,离线可锁)。
 
     ``admitted`` = ``admitted_tool_actions`` 输出(ToolAction 列表,只消费
@@ -200,7 +207,7 @@ class CwOpTools(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-工具消耗')
 
-    def _get_templates(self):
+    def _get_templates(self) -> 'dict[str, tuple[MatLike, tuple, object]] | None':
         """加载 cw_equip SIFT 模板(单一源 = cw_op_equip_all 共享 helper)。"""
         from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
             get_equip_templates_cached,

@@ -104,7 +104,9 @@ class CwOpSellOffTarget(SrOperation):
                 kept += 1
                 self.ctx.controller.btn_tap('esc')   # 关面板,保 target / 不可读保守保留
                 time.sleep(0.4)
-        # 收尾:末个 sell 面板自关;末个 keep 已在循环内 ESC 关(panel 开时 ESC 安全 → 只关面板)。
-        # retry stall)。sell 自关 + keep(面板开)ESC 关 = 循环结束无面板开,无需额外关。
+        # 收尾:末个 sell 面板自关;末个 keep 已在循环内 ESC 关(panel 开时
+        # ESC 安全 → 只关面板)。sell 自关 + keep(面板开)ESC 关 = 循环结束
+        # 无面板开,无需额外关(面板残留会遮备战 id_mark,下轮分支不命中
+        # → retry 空转)。
         log.info(f'[cw-clean] 清完:sold={sold} off-target,kept={kept} target')
         return self.round_success(f'sold {sold} off-target / kept {kept} target', wait=1)

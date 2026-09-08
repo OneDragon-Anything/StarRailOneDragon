@@ -105,12 +105,24 @@ class CwScreenSupply(SrOperation):
             chosen, choose_x = '(no-ocr)', 620   # 区域左端中心兜底
         log.info(f'[cw-box] 卡={[n for n, _ in names]} 选={chosen}@x={choose_x}')
 
-        # 点卡选中即确认(实测单步);点卡身(卡名下方一点,避「查看详情」)
-        card_point = Point(choose_x, 290)
+        # 点卡选中即确认(实测单步)。坐标单一源(清点整改):点卡点从建档
+        # 「装备卡-N」rect 派生 —— OCR x 落进哪张卡就点该卡中心(同时对冲
+        # OCR x 抖动);area 缺失(离线/档案损坏)回退旧字面量 (choose_x, 290)。
+        # 派生后点击点与旧值的差 ≤10px 且都在同一卡身内(选中语义不变)。
+        _card_pt: Point | None = None
+        for _ci in range(1, 5):
+            _cr = _area_rect(self.ctx, f'装备卡-{_ci}', self.BOX_SCREEN)
+            if _cr is not None and _cr.x1 <= choose_x <= _cr.x2:
+                _card_pt = Point((_cr.x1 + _cr.x2) // 2, (_cr.y1 + _cr.y2) // 2)
+                break
+        card_point = _card_pt if _card_pt is not None else Point(choose_x, 290)
         self.ctx.controller.mouse_move(card_point)
         self.ctx.controller.click(card_point)
         time.sleep(1.5)
-        # 验 overlay 关(武装箱 消失 = 开箱完成 + 箱槽腾空)
+        # 验 overlay 关(武装箱 消失 = 开箱完成 + 箱槽腾空)。
+        # ⚠️ lcs 0.5 风险提示(清点定级提示级,不改值):全屏 OCR 短词低阈值
+        # 有子序列误匹配面;此处靠「武装箱」在本 overlay 的独有词保护 + 该
+        # 判定只在本 op 尾部单点消费(无分发序位竞争)。收紧留待触碰本分支时。
         if self.round_by_ocr(self.screenshot(), '武装箱', lcs_percent=0.5).is_success:
             log.info('[cw-box] 选卡后 overlay 仍在 → retry')
             return self.round_retry(wait=1)

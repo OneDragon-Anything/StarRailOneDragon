@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
@@ -60,8 +60,18 @@ from sr_od.application.currency_war.telemetry import defects, recorder
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_performance import (
+        RoundOutcome,
+    )
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        StrategySession,
+    )
 
-def _write_settlement_observation(session, obs, now_t: int | None) -> None:
+
+def _write_settlement_observation(session: 'StrategySession',
+                                  obs: RoundOutcome,
+                                  now_t: int | None) -> None:
     """结算观察半直写(ADR-0583 §2.5:旧 on_round_end 观察段收编的单一写点)。
 
     逐行 = 原 on_round_end 观察段原样搬运:performance.record /

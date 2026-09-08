@@ -46,6 +46,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.currency_war_char_id import (
+    AvatarTemplates,
     load_avatar_templates,
 )
 from sr_od.application.currency_war.obs.cw_equipment import (
@@ -165,7 +166,7 @@ def register_equip_worn(session, item_name: str, char_name: str,
 def _owned_wearable_names(hits: list) -> list[str]:
     """read_equips 命中 → 穿戴类 owned 名单(工具类过滤;ADR-0358 搬运链写端)。
 
-    与主流程 ``wearable`` 同过滤口径(非工具类即穿戴候选);W92 修法 A:owned
+    与主流程 ``wearable`` 同过滤口径(非工具类即穿戴候选);ADR-0358 修法 A:owned
     持有面原先有读点、无写链,决策/遥测全盲(3,061 条 decisions 里 state.equips
     0 条非空)——本函数供 ``equip_all`` 写 ``session.last_owned_equips``。
     """
@@ -195,7 +196,7 @@ def _empty_slots(occupied: dict[int, list[str]], count: int) -> list[int]:
     """已穿槽位 dict → 空槽位序号列表(1-based;P0-2 drag 前占位检测)。
 
     ``occupied`` = ``read_row_equipped`` 结果(``{slot_idx: [装备名]}``,slot_idx 1-based);槽不在 dict = 空。
-    纯函数(可离线测):只往空槽 drag,避免覆盖已穿装备(原 bug:``target = FRONT_AVATARS[equipped]``
+    纯函数(可离线测):只往空槽 drag,避免覆盖已穿装备(原 bug:``target`` 按已穿计数索引旧字面量表(该表已删,现走 _front_avatar_points 派生)
     按已穿计数索引 → 已穿槽被覆盖)。
     """
     return [i for i in range(1, count + 1) if i not in occupied]
@@ -226,14 +227,14 @@ def _prioritize_wearable(
     return prioritized + rest
 
 
-# ===== hold 触发权归策略侧(18 号稿 §1.2-1;ADR-0526;21 号稿 §2.3 收窄)=====
+# ===== hold 触发权归策略侧(ADR-0526 判据表;ADR-0531 收窄)=====
 # _transition_hold_active/_opening_hold_active/_rust_release_active 三判据
-# 已整编迁移至 kernel/cw_equip_env.resolve_wear_release;21 号稿收窄后本层
+# 已整编迁移至 kernel/cw_equip_env.resolve_wear_release;收窄后本层
 # 消费位 = classify_item_hold 逐件判定(帧级 ``.hold`` 只辖 row2 域),
 # 禁在本层加第二套时机判断(与 ADR-0461 裁定 3 同理由)。
 
 
-def get_equip_templates_cached(ctx: SrContext):
+def get_equip_templates_cached(ctx: SrContext) -> dict[str, tuple[MatLike, tuple, np.ndarray]] | None:
     """加载 cw_equip SIFT 模板(缓存 ctx.cw_equip_templates,首次 load 后复用)。
 
     模块级共享 helper(工具执行批 ADR-0532 整改:与 CwOpTools 的模板装载
@@ -261,17 +262,20 @@ class CwOpEquipAll(SrOperation):
 
     装备库区域 = screen_info「区域-道具装备」(多列 x1620-1918,D-40;坐标维护 yml 非硬编码)。
     **P0-2 drag 前占位检测**:``read_row_equipped`` 读前排 avatar 已穿 → 只往空槽 drag(``_empty_slots``,
-    修原 ``target=FRONT_AVATARS[equipped]`` 按已穿计数索引 → 已穿槽被覆盖)。
+    修原 target 按已穿计数索引旧字面量表(符号已删) → 已穿槽被覆盖)。
     avatar-slot 验穿(R19治本③,替 count-verify):drag 前后对比目标 avatar 下方 mini icon 区 CV-diff,
     变了=穿(新装/合成都变),不变=落空。robust 合成消耗2件/列reflow/read漏检(D-41 count-verify 报3实4 失真)。
     前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**已接 cycle**(CwScreenPrep 备战单轮 ③);bug#1 根治 = 拖前稳帧确认 + 落空补救链(坐标现读重定位 + 参数升级)。
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
-    # drag 落点:前排-1 avatar(D-36 确认 drag 到角色头像穿,非详情装备槽 D-23)。
-    # screen_info 前排-1..4 x:743/887/1033/1179,y~350(头像)。
-    FRONT_AVATARS: ClassVar[list[Point]] = [
-        Point(743, 350), Point(887, 350), Point(1033, 350), Point(1179, 350),
+    # 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量)。
+    FRONT_SLOT_COUNT: ClassVar[int] = 4
+    # 前排 avatar 拖拽点兜底常量(坐标单一源整改:主源 = screen_info「前排-N」
+    # rect 派生,见 _front_avatar_points();此处仅 area 缺失(离线/档案损坏)时
+    # 回退,值 = 派生式对建档 rect 的算出值。D-36 验 y350 = rect.y1+21 校准)。
+    FRONT_AVATAR_FALLBACK: ClassVar[list[Point]] = [
+        Point(743, 350), Point(887, 350), Point(1033, 350), Point(1175, 350),
     ]
     # avatar-slot 验穿(D-41/R19):目标 avatar 下方 mini icon 区(已装备显示处;D-41 测 y=479),
     # drag 前后 CV-diff → 变了=穿(新装/合成),不变=落空。robust 合成/reflow/read漏检(替 count-verify)。
@@ -283,11 +287,28 @@ class CwOpEquipAll(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-全员装备')
 
-    def _get_templates(self):
+    def _front_avatar_points(self) -> list[Point]:
+        """前排 4 槽 avatar 拖拽点(screen_info 前排-N rect 派生;缺失回退常量)。
+
+        坐标单一源(清点整改,原字面量 FRONT_AVATARS 与 deploy 侧「前排-N」
+        双源删除):派生式与后排 _slot_drag_point 同款 —— x = rect 中心,
+        y = rect.y1+21(前排 329→350 的 D-36 校准即此式)。对拍注:旧字面量
+        槽4 x=1179 与建档 rect 中心 1175 差 4px(双源漂移实证),随单源化消除。
+        """
+        pts: list[Point] = []
+        for _i in range(1, self.FRONT_SLOT_COUNT + 1):
+            _r = _area_rect(self.ctx, f'前排-{_i}', self.SCREEN_NAME)
+            if _r is not None:
+                pts.append(Point((_r.x1 + _r.x2) // 2, _r.y1 + 21))
+            else:
+                pts.append(self.FRONT_AVATAR_FALLBACK[_i - 1])
+        return pts
+
+    def _get_templates(self) -> dict[str, tuple[MatLike, tuple, np.ndarray]] | None:
         """加载 cw_equip SIFT 模板(单一源 = get_equip_templates_cached)。"""
         return get_equip_templates_cached(self.ctx)
 
-    def _get_tm_grays(self):
+    def _get_tm_grays(self) -> dict[str, MatLike] | None:
         """加载 cw_equip TM grays(缓存 ctx.cw_equip_tm_grays;``read_row_equipped`` 读 avatar 已穿用)。
 
         与 ``_get_templates`` 互补:后者 SIFT keypoint/descriptor(read_equips owned 列用);本函数返
@@ -384,7 +405,7 @@ class CwOpEquipAll(SrOperation):
                 return True, diff
         return False, diff
 
-    def _get_avatar_templates(self):
+    def _get_avatar_templates(self) -> AvatarTemplates | None:
         """加载立绘 SIFT 模板(ADR-0154 M7 身份用;缓存 ctx.cw_portrait_templates,与 deploy_bench 同源)。"""
         cached = getattr(self.ctx, 'cw_portrait_templates', None)
         if cached is not None:
@@ -401,7 +422,8 @@ class CwOpEquipAll(SrOperation):
     def _slot_drag_point(self, row: str, slot: int) -> tuple[Point, int] | None:
         """(row, slot) → (avatar 拖拽点, below 验穿 y);ADR-0154 后排支持。
 
-        前排用实测常量 FRONT_AVATARS(D-36 验,y350)+ BELOW_ICON_Y=479(D-41 验);
+        前排走 _front_avatar_points()(screen_info 前排-N rect 派生,D-36 验
+        y350)+ BELOW_ICON_Y=479(D-41 验);
         后排从 screen_info rect 推导:drag_y = rect.y1+21(前排 329→350 校准外推),
         verify_y = rect.y2+14(avatar_to_below 同式,前排 467→481≈479 互证)。
 
@@ -413,8 +435,9 @@ class CwOpEquipAll(SrOperation):
         修正 = 与占用读侧同源(布局选档单一入口);读档失败退 6 槽基线。
         """
         if row == 'front':
-            if 1 <= slot <= len(self.FRONT_AVATARS):
-                return self.FRONT_AVATARS[slot - 1], self.BELOW_ICON_Y
+            _front_pts = self._front_avatar_points()
+            if 1 <= slot <= len(_front_pts):
+                return _front_pts[slot - 1], self.BELOW_ICON_Y
             return None
         _pfx = '后排'
         try:
@@ -492,7 +515,7 @@ class CwOpEquipAll(SrOperation):
             return self.round_fail('screen_info 区域-道具装备 缺失')
         equip_rect = (rect.x1, rect.y1, rect.x2, rect.y2)
         # P0-2 drag 前占位检测:读前排 avatar 已穿(read_row_equipped below-avatar TM)→ 只往空槽 drag。
-        # 修原 bug:target=FRONT_AVATARS[equipped] 按已穿计数索引 → 已穿槽被覆盖。空槽序号 1-based → FRONT_AVATARS[slot-1]。
+        # 修原 bug:target 按已穿计数索引旧字面量表(符号已删) → 已穿槽被覆盖。空槽序号 1-based → 派生表[slot-1]。
         tmpl_grays = self._get_tm_grays()
         if tmpl_grays is None:
             return self.round_fail('cw_equip TM grays 未加载(无法读槽位占位)')
@@ -545,7 +568,7 @@ class CwOpEquipAll(SrOperation):
         _round_now = (_st_hold.round_num
                       if (_st_hold is not None
                           and getattr(_st_hold, 'plane', 1) == 1) else None)
-        # W607 H3/H2②(ADR-0461):hold 收窄+生锈豁免,开关走策略 registry
+        # ADR-0461:hold 收窄+生锈豁免,开关走策略 registry
         # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
         # =全关,零漂移)。
         from sr_od.application.currency_war.kernel.cw_registry import (
@@ -578,7 +601,7 @@ class CwOpEquipAll(SrOperation):
             build_equip_env_signals,
         )
         _equip_signals = build_equip_env_signals(_st_hold)
-        # 18 号稿 §2.1 释放判据表(ADR-0526)+ 21 号稿 §2.3 收窄(ADR-0531):
+        # 释放判据表(ADR-0526)+ 收窄(ADR-0531):
         # 五行评估单点在策略侧;row1(opening) 域扣留收窄为「三门全不中 ∧
         # 保留域命中」的逐件判定(classify_item_hold),帧级 ``.hold`` 只辖
         # row2 域——hold 触发权归策略侧(§1.2-1),禁在本层加第二套时机判断。
@@ -654,7 +677,7 @@ class CwOpEquipAll(SrOperation):
                 wearable = [(n, p) for n, p, _ in hits
                             if EQUIPMENTS.get(n) is not None
                             and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-                # ADR-0358(W92 修法 A)搬运链写端:owned 持有面快照进 session,
+                # ADR-0358 修法 A 搬运链写端:owned 持有面快照进 session,
                 # 供 _pseudo_state 拷入决策 state.equips(持有面遥测/特征可见)。
                 # 每次现读都覆写(穿戴后 owned 减少,末次读=最新持有面)。
                 # W209g 断点②(ADR-0387 追加):写端**全量 hits**(工具进快照,
@@ -711,8 +734,8 @@ class CwOpEquipAll(SrOperation):
                         log.info('[cw-equip] 扣留帧无 key_equips 命中(全攒着)→ 停')
                         _stop_reason = '过渡期hold:无 key_equips 命中(全攒着)'
                     break
-                # 18 号稿 §3.2/§3.3(ADR-0526):词缀条件优先层在**释放帧**
-                # 重排(§2.1「释放动作的次序」)。21 号稿收窄后扣留收窄为
+                # ADR-0526 词缀条件优先层在**释放帧**
+                # 重排(释放动作的次序)。收窄后扣留收窄为
                 # 逐件判定,可释放集非空即(部分)释放帧——序 = 策略侧决策层
                 # 产物,每次迭代现算(occupied 随穿戴推进,谓词满足度现读)。
                 _priority_order = resolve_affix_priority_order(
@@ -831,11 +854,12 @@ class CwOpEquipAll(SrOperation):
         _fail_counts_fb: dict = {}
         if _match is not None and _match.session is not None:
             _fail_counts_fb = _match.exec_state.equip_drag_fail_counts
-        occupied = read_row_equipped(self.ctx, screen, tmpl_grays, '前排', len(self.FRONT_AVATARS))
+        occupied = read_row_equipped(self.ctx, screen, tmpl_grays, '前排',
+                                     self.FRONT_SLOT_COUNT)
         if occupied:
             log.info('[cw-equip] 前排已穿槽(跳过不覆盖): %s',
                      {k: '+'.join(v) for k, v in sorted(occupied.items())})
-        slots = _empty_slots(occupied, len(self.FRONT_AVATARS))
+        slots = _empty_slots(occupied, self.FRONT_SLOT_COUNT)
         if not slots:
             log.info('[cw-equip] 前排 avatar 全已穿 → 无空槽,停')
             return self.round_success('前排 avatar 全已穿,跳过')
@@ -860,7 +884,7 @@ class CwOpEquipAll(SrOperation):
             # 工具躺着无人知)。采集层无权丢数据,消费侧各自过滤。
             wearable = [(n, p) for n, p, _ in hits
                         if EQUIPMENTS.get(n) is not None and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-            # ADR-0358(W92 修法 A)搬运链写端(旧 front-only 路径同链)
+            # ADR-0358 修法 A 搬运链写端(旧 front-only 路径同链)
             if _match is not None and _match.session is not None:
                 _match.session.last_owned_equips = [n for n, _, _ in hits]
             if not wearable:
@@ -879,7 +903,7 @@ class CwOpEquipAll(SrOperation):
                 break
             name, (cx, cy) = wearable[0]
             _tag = 'key_equip优先' if (_key_equips and name in _key_equips) else '通用'
-            target = self.FRONT_AVATARS[slot_idx - 1]
+            target = self._front_avatar_points()[slot_idx - 1]
             log.info('[cw-equip] drag %s @(%d,%d) → 前排-%d avatar (%d,%d)[空槽] [%s]',
                      name, cx, cy, slot_idx, target.x, target.y, _tag)
 

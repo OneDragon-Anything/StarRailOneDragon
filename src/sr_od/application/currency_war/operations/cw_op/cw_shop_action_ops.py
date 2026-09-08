@@ -64,6 +64,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_s
 from sr_od.application.currency_war.telemetry import defects, recorder
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_state import Action
     from sr_od.operations.sr_operation import SrOperation  # noqa: F401
 
 
@@ -119,7 +120,7 @@ class ShopExecEnv:
 # 守卫断言(决策 9:防 bug 路栏,非法 = 响亮暴露)
 # ---------------------------------------------------------------------------
 
-def guard_proposal_vs_expected(action, state: GameState) -> None:
+def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     """proposal-vs-expected 断言(ADR-0517 §守卫两属 (i))。
 
     提案动作引用的对象在期望态中确实存在且未被消费——防策略器算术 bug
@@ -285,7 +286,7 @@ class ShopActionOp(ABC):
     #: 终结动作(执行即本画面访问结束,交回外循环;决策 4)
     terminal: bool = False
 
-    def __init__(self, action):
+    def __init__(self, action: Action):
         self.action = action
 
     def project(self, state: GameState) -> GameState:
@@ -527,7 +528,6 @@ class RefreshShopOp(ShopActionOp):
     terminal = True
 
     def execute(self, env: ShopExecEnv) -> bool:
-        from one_dragon.base.geometry.rectangle import Rect
         from one_dragon.utils import cv2_utils as _cvu
 
         # 读函数经 cw_op_buy_cards 模块属性路由(该模块的读点替身缝,
@@ -576,7 +576,9 @@ class RefreshShopOp(ShopActionOp):
                  f'{env.refresh_btn.y})')
         # r325(P1⑤):刷新后两帧一致门(牌行区指纹;刷新动画帧上的
         # SIFT miss 是 r97/383 样本实证根因);超时 2.5s 回退旧 sleep 语义。
-        _rects = (Rect(300, 228, 1560, 326),)   # 商店牌行
+        # 牌行 rect 单一源:改调 _shop_row_rects()(建档 area 派生+字面量
+        # 兜底同门),删除本文件第二副本字面量(坐标单一源清点项)。
+        _rects = _buy_cards_mod._shop_row_rects(op)   # 商店牌行
         _base = None
         _stable = False
         for _ in range(8):   # ≤2s@0.25s 步长
@@ -736,7 +738,7 @@ _OP_TABLE = {
 }
 
 
-def shop_action_op_for(action) -> ShopActionOp:
+def shop_action_op_for(action: Action) -> ShopActionOp:
     """动作词表 → 动作 op(词表外类型 = 策略器 bug 响亮暴露,决策 9)。"""
     for cls, op_cls in _OP_TABLE.items():
         if isinstance(action, cls):

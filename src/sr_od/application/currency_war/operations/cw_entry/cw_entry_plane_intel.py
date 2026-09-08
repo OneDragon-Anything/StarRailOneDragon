@@ -1,14 +1,13 @@
-"""货币战争 接管补采位面情报 op(独立可调起入口,W280)。
+"""货币战争 接管补采位面情报 op(独立可调起入口)。
 
 职责:在**接管场景**(对局进行中但 session 无位面序真值——MCP 重启丢内存 /
 bot 未走过简报链 / 人工要补)一键完成「进位面详情 → 逐位面采集 → 写
 session → 返回」,供 `run_operation` 单独调起,不等 cw_loop 的备战稳定帧
-触发(W219 内联块只在 loop 对局轮里跑;重启后 loop 首局 target 重选断档期,
+触发(cw_loop 内联实采块只在 loop 对局轮里跑;重启后 loop 首局 target 重选断档期,
 手动通道是唯一入口)。
 
-组装口径(W277 已裁决,.debug/temp/currency_war/w277_plane_detail.md):
-以「货币战争-位面详情」屏为唯一组装画面;难度不在此屏补(备战「文本-难度」
-有独立现读通道);不用图鉴屏/敌人信息浮层兜底。
+组装口径(接管补采裁决):以「货币战争-位面详情」屏为唯一组装画面;难度不在此屏补
+(备战「文本-难度」有独立现读通道);不用图鉴屏/敌人信息浮层兜底。
 
 复用明细(不重造 reader):采集本体 = :class:`CwScreenPlaneIntel`
 (三 boss 大图标 SIFT + 词缀横条 + 徽章态记 None 保位的全部分支逻辑都在它);
@@ -144,7 +143,8 @@ class CwEntryPlaneIntel(SrOperation):
 
         # 已有真值保护:session 本有真值(cw_loop 早前采过 / 上一轮本 op
         # 成功)→ 中转池内容再新也只是重复或残留,**不覆写**,只清池。
-        # 覆写 = 用陈旧池冲掉真值(W219「唯一写入端」退化成最后一写者赢)。
+        # 覆写 = 用陈旧池冲掉真值(cw_loop 内联实采块的「唯一写入端」约定
+        # 退化成最后一写者赢)。
         if getattr(sess, 'briefing_bosses', None):
             self.ctx.cw_plane_bosses = None
             self.ctx.cw_plane_affixes = None
@@ -153,7 +153,7 @@ class CwEntryPlaneIntel(SrOperation):
             return self.round_success(CwEntryPlaneIntel.STATUS_SKIP)
 
         # 保位写(None=徽章态位面原样占槽,滤掉=后续位面名字左移错序,
-        # W221/ADR-0398;与 cw_loop `_names = list(...)` 同口径)
+        # ADR-0398;与 cw_loop `_names = list(...)` 同口径)
         names = list(bosses)
         sess.briefing_bosses = names
         if affixes and not getattr(sess, 'briefing_affixes', None):

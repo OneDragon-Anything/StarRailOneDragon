@@ -14,6 +14,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 # propagate=False),本文件日志从未落地 → 改挂框架 logger。
 from one_dragon.utils.log_utils import log as _log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_briefing import (
     CwScreenBriefing,
 )
@@ -147,7 +148,7 @@ class CwEntryStart(SrOperation):
         self._residual_reentered: bool = False
 
     def _discard_stale_once(self, reason: str) -> None:
-        """新局确凿信号处弃置上一局残留 match 容器(迁移审计 w289(git 历史)/ADR-0419)。
+        """新局确凿信号处弃置上一局残留 match 容器(ADR-0419)。
 
         难度确认/模式选择/简报三屏只在**无保存局的新局路径**出现(有保存局走
         「继续进度」直达,恢复的是同一物理对局 —— 此时旧容器合法续用,不弃)。
@@ -272,9 +273,18 @@ class CwEntryStart(SrOperation):
         if self._advance_steps > CwEntryStart.MAX_ADVANCE_STEPS:
             return self.round_fail(status='推进到备战阶段超时')
 
-        # 0) 详情弹窗(点卡触发的"可合成列表")→ ESC(同 cw_loop)
+        # 0) 详情弹窗(点卡触发的"可合成列表")→ 点面板外空白关(与外循环 1b 的
+        #    CwScreenRoleDetailOverlay 同弹窗同修;旧按 ESC:浮窗已自关时 ESC 落
+        #    备战会误弹「中断挑战」bug#2,空白点在弹窗未开时是无害空点)。
+        #    ⚠️ 待实机核:该 overlay 帧上「区域-空白关闭」坐标未实机复点
+        #    (关闭机制经建档 live 验,见 CwScreenRoleDetailOverlay 模块头)。
+        # ⚠️ lcs 默认 0.5 风险提示(清点定级提示级,不改值):「可合成列表」
+        # 5 字全屏 OCR 低阈值有子序列误匹配面;此处靠入口链序位保护(本分支
+        # 在弹窗守卫/残留大厅分支之后的推进段尾)独占消费。收紧留待触碰本分支。
         if self.round_by_ocr(screen, '可合成列表').is_success:
-            self.ctx.controller.btn_tap('esc')
+            _blank = area_center(self.ctx, '区域-空白关闭', CwEntryStart.PREP_SCREEN)
+            if _blank is not None:
+                self.ctx.controller.click(_blank)
             return self.round_wait(wait=1.5)
 
         # 1) 前进按钮(恢复/新局两路的明确推进)
@@ -285,7 +295,7 @@ class CwEntryStart(SrOperation):
         # crop_first=False:全屏 OCR 后按 area.rect 过滤(小 area crop 易漏字,全屏 OCR 稳)。
         # 读本局职级(难度确认屏「标识-当前难度职级」→ ctx.cw_selected_difficulty 中转;切最高后 = A8)
         # → loop __init__ copy session → 策略层填 state → effective_hp_threshold D-32(3.5.1 接线)。
-        # 迁移审计 w289(git 历史)/ADR-0419:难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
+        # ADR-0419:难度确认屏 = 新局确凿信号(不受 cw_selected_difficulty 门限),
         # 见屏即弃置上一局残留 match 容器。
         if self.round_by_find_area(
                 screen, CwEntryStart.DIFFICULTY_SCREEN, '标识-当前职级难度效果',
@@ -316,7 +326,7 @@ class CwEntryStart(SrOperation):
                 screen, CwEntryStart.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 success_wait=2, crop_first=False).is_success:
             return self.round_wait(wait=1)
-        # 模式选择屏可见 = 新局确凿信号(迁移审计 w289(git 历史)/ADR-0419;点击未中也不丢信号)
+        # 模式选择屏可见 = 新局确凿信号(ADR-0419;点击未中也不丢信号)
         if self.round_by_find_area(
                 screen, CwEntryStart.MODE_SELECT_SCREEN, '按钮-进入标准博弈',
                 crop_first=False).is_success:

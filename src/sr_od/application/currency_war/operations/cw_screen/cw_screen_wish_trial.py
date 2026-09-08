@@ -26,6 +26,8 @@ from sr_od.operations.sr_operation import SrOperation
 class CwScreenWishTrial(SrOperation):
     """祈愿试炼 overlay:OCR objective → decide_wish_trial 策略选卡 → 确认 → 验关。"""
 
+    # ⚠️ 待实机核(坐标单一源清点项):以下卡位为实测字面量,未 area 化
+    # (确认按钮已 area 化;卡身建档挂账实机批——本批实机纪律不可测)。
     CARD_Y: ClassVar[int] = 340
     # 卡 x 中心(实测左卡 660 命中;多卡间距 ~300;读 objective 后近邻分流)
     CARD_XS: ClassVar[tuple[int, ...]] = (660, 960, 1260)

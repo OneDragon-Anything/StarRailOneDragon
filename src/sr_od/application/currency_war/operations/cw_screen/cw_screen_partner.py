@@ -39,7 +39,9 @@ class CwScreenPartner(SrOperation):
     # 候选立绘在 label 上方约 60px(label 362 → 立绘 302;实测点 (1127,300) 命中选中)。
     PORTRAIT_DY_ABOVE_LABEL: ClassVar[int] = 60
     # OCR 无候选时兜底(点画面中央立绘区;2026-08-06 实测 2 候选间隙 x≈1010,中央 x=960 可能落间隙,
-    # 但兜底比 stall 强;真无候选极少)。
+    # 但兜底比 stall 强;真无候选极少)。⚠️ 待实机核(坐标单一源清点项):
+    # 本兜底与 step2 中央立绘 (960,300) 均为实测字面量未 area 化(本批实机
+    # 纪律不可测,建档挂账实机批)。
     FALLBACK_PORTRAIT: ClassVar[Point] = Point(960, 300)
     _EXCLUDE: ClassVar[set[str]] = {'选择伙伴', '攻略', '确认选择', '详情', '角色', '装备'}
 

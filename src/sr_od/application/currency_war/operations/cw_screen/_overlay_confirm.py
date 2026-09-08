@@ -13,13 +13,20 @@ write-operation skill「反模式:点了≠成了」)。
 带 bug#1 缓解即可;确认统一走 ``confirm_and_verify``。
 """
 import time
+from typing import TYPE_CHECKING
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.operations.sr_operation import SrOperation
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        StrategySession,
+    )
 
 
-def register_confirm_arrival(session, op: str, item: str,
+def register_confirm_arrival(session: 'StrategySession | None', op: str, item: str,
                              produced_by: str = 'overlay_confirm') -> None:
     """overlay 选卡确认到账登记(EXPECTED_STATE §3 C 区到账登记区;
     DD-019 后果节「handler 侧到账登记」缺口接线)。
@@ -70,7 +77,7 @@ def register_confirm_arrival(session, op: str, item: str,
         log.info(f'[cw-overlay] 到账登记跳过: {e}')
 
 
-def find_text_center(op, text: str) -> Point | None:
+def find_text_center(op: SrOperation, text: str) -> Point | None:
     """OCR 全屏找 ``text`` 的 center(没找到 None)。给动态定位确认按钮用(确认文字位置随 overlay 变,
     无固定坐标 / 未进 screen_info 时)。"""
     ocr_map = op.ctx.ocr_service.get_ocr_result_map(
@@ -82,7 +89,7 @@ def find_text_center(op, text: str) -> Point | None:
     return None
 
 
-def safe_click(op, point: Point, *, tag: str = 'cw-overlay') -> None:
+def safe_click(op: SrOperation, point: Point, *, tag: str = 'cw-overlay') -> None:
     """bug#1 缓解点击:click 前 ``mouse_move``(零移动),防 ``before_screenshot`` 移光标 → click 落空。
 
     给选项选中点击(卡身/候选/勾选)用。确认点击走 ``confirm_and_verify``(已含 mouse_move)。
@@ -93,7 +100,7 @@ def safe_click(op, point: Point, *, tag: str = 'cw-overlay') -> None:
 
 
 def confirm_and_verify(
-    op, *, confirm_point: Point, entry_keyword: str, lcs_percent: float = 0.5,
+    op: SrOperation, *, confirm_point: Point, entry_keyword: str, lcs_percent: float = 0.5,
     confirm_wait: float = 1.0, success_wait: float = 2.0, tag: str = 'cw-overlay',
     press_time: float = 0.1,
 ) -> OperationRoundResult:

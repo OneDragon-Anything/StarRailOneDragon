@@ -29,6 +29,8 @@ from sr_od.operations.sr_operation import SrOperation
 class CwScreenEquipPick(SrOperation):
     """选择装备三选一:OCR 卡名 → 策略选卡(点卡即选,出战按钮由主流程点)。"""
 
+    # ⚠️ 待实机核(坐标单一源清点项):以下卡位为 2026-08-20 实拍字面量,
+    # 未 area 化(本批实机纪律不可测,建档 area 化挂账实机批);布局变更需实拍重校。
     CARD_XS: ClassVar[tuple[int, ...]] = (780, 1070, 1380)
     CARD_Y: ClassVar[int] = 280          # 卡名带中心(避开下方详情按钮 y≈310)
     TEXT_Y_LO: ClassVar[int] = 235

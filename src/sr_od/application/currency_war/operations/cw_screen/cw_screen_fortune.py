@@ -27,6 +27,8 @@ from sr_od.operations.sr_operation import SrOperation
 class CwScreenFortune(SrOperation):
     """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。"""
 
+    # ⚠️ 待实机核(坐标单一源清点项):以下为 2026-08-21 live 实锤字面量
+    # (文件头实拍布局),未 area 化(本批实机纪律不可测,建档挂账实机批)。
     # 三卡卡身(选中点击点=卡下半部,避详情按钮 y~430-462;同策划事件教训)
     CARD_XS: ClassVar[tuple[int, ...]] = (510, 900, 1290)
     CARD_Y: ClassVar[int] = 480

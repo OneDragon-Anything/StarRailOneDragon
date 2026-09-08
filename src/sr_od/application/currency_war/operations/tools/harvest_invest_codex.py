@@ -88,6 +88,11 @@ class HarvestInvestCodex(SrOperation):
         """
         ctrl = self.ctx.controller
         entry = '投资策略图鉴' if self.kind == 'strategies' else '投资环境图鉴'
+        # ⚠️ 待实机核(ESC 正形化挂账):本处 ESC 关图鉴 overlay 的点击替代 =
+        # 数据银行图鉴族右上「返回箭头」(货币战争-装备图鉴 doc 记录 VLM 见
+        # ~1840-1905,40-105,未 click 实锤;投资策略/环境图鉴屏未建档)。
+        # 实机不可测(验证局在跑)不硬编坐标——待现场 click 实锤后建档 area
+        # 改点并删本 ESC。拖拽回顶兜底(_scroll_to_top_drag)不受影响。
         ctrl.btn_tap('esc')
         time.sleep(1.5)
         img = ctrl.get_screenshot(independent=False)

@@ -56,10 +56,11 @@ def write_exec_fail_flag(flag_path: Path, *, run_id: str, plane: int,
     """写哨兵 flag(纯 IO,可单测;内容锁 od-dev-stop-hooks flag 三要素)。
 
     三要素:触发定位(HOOK-STOP 标记+钩子位置+触发态+时间)/ 可执行处理步骤 /
-    删除条件(临时捕获类 = 根因修完删整段钩子)。返回写入内容(测试断言用)。
+    移除条件(按 od-dev-stop-hooks §2.1 分类:本钩子 = 常驻兜底,非临时捕获)。
+    返回写入内容(测试断言用)。
     """
     content = (
-        '[HOOK-STOP] 执行失败停机钩子(临时采证,安灯式;cw_screen_prep 购买单元记账边界)\n'
+        '[HOOK-STOP] 执行失败停机钩子(常驻兜底,安灯式;cw_screen_prep 购买单元记账边界)\n'
         f'触发:购买单元关闭时分类器判 mismatch(计划花费>0 且金差≈0 = 动作发出但金没动;'
         f'partial/unknown 不停)。\n'
         f'定位:run_id={run_id} p{plane}r{round_num} unit_seq={unit_seq} '
@@ -69,9 +70,10 @@ def write_exec_fail_flag(flag_path: Path, *, run_id: str, plane: int,
         f'截图:.debug/images/exec_fail_* (前缀含 run_id/轮/unit_seq)\n'
         f'处理步骤:1. 看截图核购买单元画面;2. 对拍 replay 三流(spend_ledger 单元行/'
         f'decisions shop plan 行/obs_conflicts gold_delta 行)确认是执行未生效'
-        f'(点击落空/被拦)还是口径失配;3. 修失败模式并验证后,删本 flag + 删整段钩子'
-        f'(cw_screen_prep 安灯段)+ 重启载入代码的进程。\n'
-        f'删除条件:临时采证钩子——失败模式根因修完并验证后删整段,不留开关。\n'
+        f'(点击落空/被拦)还是口径失配;3. 修失败模式并验证后,删本 flag'
+        f'(钩子保留)+ 重启载入代码的进程。\n'
+        f'移除条件:常驻兜底钩子——该失败类根因修复并长期验证后,按 '
+        f'od-dev-stop-hooks §2.1 评估移除整段;平时触发只删 flag 不删钩子,不留开关。\n'
     )
     flag_path.parent.mkdir(parents=True, exist_ok=True)
     flag_path.write_text(content, encoding='utf-8')

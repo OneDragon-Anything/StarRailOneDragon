@@ -15,7 +15,7 @@
 ``_row_centers`` 自动跟上(读全,不硬编码)。
 """
 import time
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from cv2.typing import MatLike
 
@@ -56,8 +56,14 @@ from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwCha
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        StrategySession,
+    )
 
-def record_fuel_filler_held_postbuy(session, held: list[tuple[str, str]]) -> int:
+
+def record_fuel_filler_held_postbuy(session: 'StrategySession',
+                                    held: list[tuple[str, str]]) -> int:
     """出口③闭环分键(N3,17 号稿 §7.2;可离线测)。
 
     出口③买入的垫件,在后续部署帧被围栏 held 留 bench 时计
@@ -97,7 +103,8 @@ def record_fuel_filler_held_postbuy(session, held: list[tuple[str, str]]) -> int
     return n
 
 
-def prune_fuel_filler_deployed(session, deployed_names) -> int:
+def prune_fuel_filler_deployed(session: 'StrategySession',
+                               deployed_names: list[str]) -> int:
     """T3 同轮保留集「部署即销」(生命周期出口①;属性契约级接线,
     同 record_fuel_filler_held_postbuy 的消费形态——op 层经 duck-typed
     属性读集,不 import 策略模块,不建策略→op 反向依赖)。
@@ -144,7 +151,8 @@ DEPLOY_EXEC_R288_SKIP_CTX_OPEN: str = 'deploy_exec_r288_skip_ctx_open'
 DEPLOY_EXEC_R288_SKIP_CTX_CLOSED: str = 'deploy_exec_r288_skip_ctx_closed'
 
 
-def _bump_r288_skip_counter(session, lock_conflict: bool) -> None:
+def _bump_r288_skip_counter(session: 'StrategySession',
+                            lock_conflict: bool) -> None:
     """r288 门执行侧命中分桶计数(ADR-0564 M4 漂移显影键;best-effort)。
 
     漂移键成因注:「发射帧豁免开、执行帧关」的唯一成因 = 意向状态机
@@ -173,7 +181,8 @@ def zero_place_sig(bench_occ: list, order: list, bench_cid: dict) -> tuple:
             tuple(bench_cid.get(bi, '') for bi in bench_occ))
 
 
-def zero_place_breaker_should_trip(session, sig: tuple) -> bool:
+def zero_place_breaker_should_trip(session: 'StrategySession | None',
+                                   sig: tuple) -> bool:
     """已记录同签名连续 ≥ZERO_PLACE_BREAKER_THRESHOLD 次 placed=0 → 熔断。
 
     session 为 None(测试/离线)→ False(熔断禁用,行为等价旧路径);
@@ -187,8 +196,8 @@ def zero_place_breaker_should_trip(session, sig: tuple) -> bool:
     return prev_sig == sig and cnt >= ZERO_PLACE_BREAKER_THRESHOLD
 
 
-def zero_place_breaker_record(session, sig: tuple, placed: int,
-                              plan_non_empty: bool) -> None:
+def zero_place_breaker_record(session: 'StrategySession | None', sig: tuple,
+                              placed: int, plan_non_empty: bool) -> None:
     """失败计数回写(签名隔离;成功/合法空计划即重置)。
 
     placed>0 = 结构性拒绝解除;placed=0 且计划空 = 合法稳态 no-op
@@ -206,7 +215,8 @@ def zero_place_breaker_record(session, sig: tuple, placed: int,
         setattr(session, _ZP_CNT, 1)
 
 
-def note_zero_place_breaker(ctx, sig: tuple, held_slots: list[int]) -> None:
+def note_zero_place_breaker(ctx: SrContext, sig: tuple,
+                            held_slots: list[int]) -> None:
     """熔断触发遥测分键(best-effort;触发 1 次 = 有未知变体漏认,
     应转人工建档,不调阈值——方案 §1③ 完成判据)。"""
     try:
@@ -476,7 +486,7 @@ class CwOpDeploy(SrOperation):
         return _single_source(self.ctx)
 
     def _back_row_centers(self) -> list[Point]:
-        """W209/ADR-0385:后排槽位按 **cap 差公式** 选档(口述「后台格数=6+(cap−level)」)。
+        """ADR-0385:后排槽位按 **cap 差公式** 选档(口述「后台格数=6+(cap−level)」)。
 
         ``select_back_layout`` 单一入口(cap=read_deploy_cap 直读,level=session
         等级链);7 格档未建档保守 8 格超集 + 留证。旧 level≥7→8 格模型
@@ -517,7 +527,7 @@ class CwOpDeploy(SrOperation):
         save_decision_frame(self, 'deploy', self.last_screenshot)   # 识别完成点原始帧留证(部署仲裁基准)
         front = self._row_centers('前排')
         templates = self._get_templates()   # W209:先载模板(布局选档/身份读都要;缓存 ctx)
-        # W209/ADR-0385:后排槽位按 **cap 差公式** 选档(select_back_layout 单一
+        # ADR-0385:后排槽位按 **cap 差公式** 选档(select_back_layout 单一
         # 入口,与 read_deployed_chars 同源)——旧 level≥7→8 格模型归因错误
         # (ADR-0281),run 26 lv8 无召唤物局按 8 格坐标拖不存在的 7/8 号格 +
         # 幻影空位(393/1529 段恒无人)假「板未满」→ 白拖重试把部署卡死在 bench。
@@ -717,11 +727,14 @@ class CwOpDeploy(SrOperation):
                             time.sleep(1.2)
                             self._reconcile_tracking(templates)
                             return
-        # r241 原逻辑:错排者归位
+        # r241 原逻辑:错排者归位(空槽采样两排共用单帧:逐槽 screenshot 会在
+        # 推导内截 ~10-12 次全屏白烧延迟,且各槽判定撕裂自不同帧;与下方
+        # 补部署段 _scr_fill 同款单帧纪律)
+        _scr_fix = self.screenshot()
         front_empty = [i for i, c in enumerate(front)
-                       if not slot_occupied(self.screenshot(), int(c.x), int(c.y))]
+                       if not slot_occupied(_scr_fix, int(c.x), int(c.y))]
         back_empty = [i for i, c in enumerate(back)
-                      if not slot_occupied(self.screenshot(), int(c.x), int(c.y))]
+                      if not slot_occupied(_scr_fix, int(c.x), int(c.y))]
         moved = 0
         for d in deployed:
             ch = get_char(d.char_id) if d.char_id else None
@@ -853,13 +866,13 @@ class CwOpDeploy(SrOperation):
         # 诅咒-1/宝钻+1 —— 读到时直用,max 会把诅咒降级吃掉);**失读才 max 兜底**(单调链
         # last_level_obs[_resolve_level 维护已防毒化] vs last_state.level 取大 —— 低读阻塞
         # 上阵的代价 > 高读白拖一次,不对称取舍)。
-        # W218(ADR-0395):cap 直读同时驱 板满门 + 布局公式通道(select_back_layout
+        # ADR-0395:cap 直读同时驱 板满门 + 布局公式通道(select_back_layout
         # 复用 _cap)=「读数→行动」高危点——瞬态低读(cap<level 域外,过渡帧旧值
         # 残影 run 27 型)→ 板满假判 → 留 bench 战力真空(r60 实证,贵方向);
         # 改走域防抖读(ADR-0286:域外重读一帧,仍域外 → None → 走下方失读
         # max 兜底链,不在单帧瞬态值上行动;高读白拖一次被游戏拒 = 便宜方向不变)。
         _cap = read_deploy_cap_debounced(self.ctx, scr, self._session_level())
-        # W209/ADR-0385:入场帧(收起商店 1s 过渡)选档可能按旧帧退基线;此处
+        # ADR-0385:入场帧(收起商店 1s 过渡)选档可能按旧帧退基线;此处
         # fresh 帧按 **cap 差公式** 重建 back 布局(select_back_layout 单一入口,
         # cap 复用上面现读值——口述「后台格数=6+(cap−level)」)。
         # ⚠️ 重绑**必须先于**下方占用采样(布局档对账批):后排槽坐标按所选档
@@ -1503,9 +1516,9 @@ class CwOpDeploy(SrOperation):
                                           fenced_offline_sellable=fenced_offline_sellable,
                                           protect_names=protect_names):
                 if bonds & _DEPLOY_FENCE:
-                    # W209/ADR-0386 振荡熔断:引擎/配方体系件保留(与围栏同源反向禁卖;
+                    # ADR-0386 振荡熔断:引擎/配方体系件保留(与围栏同源反向禁卖;
                     # 换阵卖出义务臂开启时 off-line fenced 件已让位,走不到这里)
-                    log.info(f'[cw-deploy] off-target 卖出熔断(W209):{d.char_id}'
+                    log.info(f'[cw-deploy] off-target 卖出熔断:{d.char_id}'
                              f'({sorted(bonds & _DEPLOY_FENCE)}) 是引擎/配方体系件'
                              f' → 保留(买/演进层目标源与终局 target 分歧时禁互踩)')
                     self._record_fenced_preserve(d, bonds)
