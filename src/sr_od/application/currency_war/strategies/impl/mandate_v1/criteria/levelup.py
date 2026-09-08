@@ -127,6 +127,47 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
     判定(证明 §2.5 合取序,禁「(2) 豁免了 (3) 还拦」的分裂);
     ``session`` 参数即为其 nodes_of_plane 真值链新增。
 
+    ALL IN 豁免支收窄(泄金阶梯批,ADR-0604 §4-F5 豁免
+    语义迁移申报行;指标 G=P21 域内非支A XP 支出=0):豁免的 XP 类
+    通道按「当轮可上场」类别白名单过滤——hp 落停升级线内
+    (``kernel.cw_discipline_rules.all_in_xp_domain_hit``,P21 域,
+    复用停升级线锚表零新参数)∧ 支A 兑现链未就绪(``_realize_chain_
+    ready`` 单一源)的帧,升级收益兑现 ≥1 战之后(P21 到账延迟),
+    位面末花光的类别白名单不含 d≥1 经验批 → 拒(拒因分键
+    ``all_in_xp_category_filtered``,零静默)。支A 形态(板满 ∧
+    bench 有 2★ 等待件 = 升级人口位当帧可兑现,下方既有支)与域外
+    帧(hp>停线)维持全豁免。宪法姿态:消费既有停升级线 hp 读数,
+    零新增 hp 消费点(总图 N5 对账);「R=0 机会成本恒零」论证在
+    d≥1 类不成立(收益兑现主体已死亡概率辖域,P21),非推翻豁免
+    本体——时机判断([18])保留,变的是类别结构。
+
+    保底金门(T-149,ADR-0603;``_guarantee_floor_holds`` 判据本体):
+    ALL IN/支A 两豁免支的放行输出上追加第二条件「花后金 ≥ 1 息档」
+    ——豁免支只有放行谓词没有花后下界时,可把金花穿到 0(0 金过 P1
+    = 息通道死 + 购买力通道死,T-126 病理;缺口本体在豁免支结构,
+    d15ce341 回滚只拆了放大器)。推导链(数学先行,零拍定):域③
+    「非末位面持金未来效用 > 0/息档纪律辖」(math_proofs P83,权威 =
+    用户直接指令 2026-09-08 + P47 A6 全局轴)⇒ 下界须落在息档结构上
+    ⇒ g ≥ 10 是「下一向位面首息存在」的机制判等式(interest 的
+    10 = 息档宽 = 斜率倒数,g<10 首息恒 0)⇒ 「保一档不多保」=
+    最小绑定支配论证(扩档须先补第 2 档转化机会成本在册账,禁静默
+    蠕升)。下界值单一源 = ``DEFAULT_REGISTRY.boss_floor``(**同值
+    异据共享载体**:彼据 = release 泄息通道 P1 出口金生存边际
+    ADR-0426;此据 = 息通道非退化——两据独立在案,任一据修订必须过
+    另一消费位重推,断言只锁同值不锁同据)。出辖三支(判据见
+    ``_guarantee_floor_holds``):终局域(R_全局 查表判定,消费
+    ``kernel.cw_plane_table.r_remaining`` 单一源禁自推位面数,01
+    §8-1 位面参数化)/生存域(``p1_blood_floor`` 让位,真花光唯一
+    合法通道)/买断制(cap_resolved=0 息账整体消解,p47 A1)。
+    (3a) 非豁免路径行为零漂移:本门只辖两豁免支的放行输出,闸序
+    与 (3a) 判据式一字不动。推迟 = 整批推迟(P48 整买辖域,禁按
+    闸值截断击数),拒因独立分键 ``guarantee_floor_defer``(与
+    ``levelup_budget_gate_blocked`` 分键区分,XP 花穿 vs 买入通道
+    花穿可归因);推迟终止性 = 定性申报非定理(g 非单调,M2/E_rev/
+    funding/P36-a 均可合法减 g;三条退出路径 = 谓词消失/g−s 越线/
+    减通道在册有界;位面末帧 defer = 跨位面兑现——等待件/等级/金
+    跨位面继承,批在下一向位面继续可发),持续 defer 由分键显影。
+
     支A(C_realize=1 兑现链放行):板满 ∧ bench 有 2★ 等待件 = 升级
     人口位增量当帧可兑现——谓词与 ``kernel.cw_economy.schedule_upgrade``
     ①臂 / ``_upgrade_ul_threshold_ok`` ΔV_pop 指示项**成同步锚对**
@@ -161,16 +202,38 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
     移动靶)。常开无开关(证明已闭环,strategy-work §3 第 1 档);
     pop_slot 升级臂不入闸(P71-a 是收益侧分域命题,ADR-0560 承继)。
 
-    返回 (可行, 拒因);拒因恒 'levelup_budget_gate_blocked'(发射位
-    分键同名,三处发射位共键)。s ≤ 0(无批可发)恒可行:闸辖「升级
-    支出的量」,不制造支出。
+    返回 (可行, 拒因);拒因分键两键——``levelup_budget_gate_blocked``
+    ((3a) 量闸,三处发射位共键)/``guarantee_floor_defer``(豁免支保底
+    门推迟,ADR-0603)——独立显影可归因,禁混键。s ≤ 0(无批可发)恒
+    可行:闸辖「升级支出的量」,不制造支出。
     """
     if clicks * click_cost <= 0:
         return True, ''
     if _plane_last_battle(state, session):
-        return True, ''      # ALL IN 豁免(P72 §2.5:R=0 机会成本恒零)
+        # ALL IN 豁免支收窄(ADR-0604 §4-F5;辖域与支A 判据见 docstring):
+        # P21 域内 ∧ 非支A 帧拒 XP;域外帧/支A 形态维持全豁免放行。
+        # 位次申报:本支先于 ADR-0603 保底金门——P21 域内 XP 类即便
+        # 生存域/保底让位也拒(类别白名单仅支A)。
+        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+            all_in_xp_domain_hit,
+        )
+        from sr_od.application.currency_war.kernel.cw_registry import (
+            DEFAULT_REGISTRY,
+        )
+        if not _realize_chain_ready(state, bench, deployed) \
+                and all_in_xp_domain_hit(
+                    state, session,
+                    DEFAULT_REGISTRY):
+            return False, 'all_in_xp_category_filtered'
+        if _guarantee_floor_holds(state, session, gold, clicks, click_cost,
+                                  cap_resolved):
+            return True, ''      # ALL IN 豁免(P72 §2.5;花后下界见上,ADR-0603)
+        return False, 'guarantee_floor_defer'
     if _realize_chain_ready(state, bench, deployed):
-        return True, ''      # 支A:兑现链当帧可兑现(P39 ①臂姿态)
+        if _guarantee_floor_holds(state, session, gold, clicks, click_cost,
+                                  cap_resolved):
+            return True, ''      # 支A:兑现链当帧可兑现(P39 ①臂姿态)
+        return False, 'guarantee_floor_defer'
     from sr_od.application.currency_war.kernel.cw_economy import interest
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
         r2_card_reserve,
@@ -181,6 +244,56 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
     if gold - clicks * click_cost >= tau * 10 + rho + window_reserve:
         return True, ''
     return False, 'levelup_budget_gate_blocked'
+
+
+def _guarantee_floor_holds(state: GameState, session: StrategySession | None,
+                           gold: int, clicks: int, click_cost: int,
+                           cap_resolved: int) -> bool:
+    """保底金门判据本体(T-149,ADR-0603):豁免支花后金下界,真 = 放行。
+
+    出辖三支先行(任一真 = 不设下界,让位语义各有在册出处):
+
+    - 终局域:位面末战(``_plane_last_battle`` 单一源)∧ R_全局 ≤ 1
+      (``kernel.cw_plane_table.r_remaining`` 单一源查表;R 含当前节点,
+      决策帧最小值 = 末位面末战的 1;禁自推位面数——宪法 01 §8-1
+      位面参数化不变量)。末位面末战后金无任何消费场景(域③前提
+      失效:P41 终局清仓恒优/P23 死亡域攥金价值恒零),ALL IN 维持
+      花光原语义(P72 §2.5「机会成本恒零」前提仅在全局轴此处成立)。
+    - 生存域:``p1_blood_floor``(≤15 族在册授权,00 §3)——域③的
+      「未来效用」前提在死亡带失效(效用上限被死亡吸收态截断,P23),
+      转化优先语义既有(level_spend_blocked 同源让位);真花光唯一
+      合法通道自此收敛到本域。
+    - 买断制:cap_resolved = 0 ⇒ 息账整体消解(p47 A1),「息档纪律
+      辖」无对象,下界失去推导基座,金出口归一般判据(20 号稿出辖
+      先例同款)。
+
+    下界值 = ``DEFAULT_REGISTRY.boss_floor``(同值异据共享载体,据各
+    表):彼据 = release 泄息通道 P1 出口金生存边际(ADR-0426,
+    ``sim/checks/segments.py`` boss_floor 豁免同值消费);此据 = 息
+    通道非退化判等式(见 levelup_budget_gate docstring 推导链)。
+    两据独立在案——任一据修订(如生存边际重标)必须过另一消费位
+    重推,断言只锁同值不锁同据(ADR-0603 §同值异据声明/P83)。
+    模块私有:非判据面公开函数,不入契约/旁路枚举表(契约由
+    levelup_budget_gate 键承载)。
+    """
+    if _plane_last_battle(state, session):
+        from sr_od.application.currency_war.kernel.cw_plane_table import (
+            r_remaining,
+        )
+        if r_remaining(session, int(state.plane or 1),
+                       int(state.round_num or 1)) <= 1:
+            return True          # 终局域:末位面末战,域③前提失效
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        p1_blood_floor,
+    )
+    if p1_blood_floor(state):
+        return True              # 生存域:死亡带转化优先,本门让位
+    if cap_resolved == 0:
+        return True              # 买断制:息账消解,下界无推导基座
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
+    return gold - clicks * click_cost >= DEFAULT_REGISTRY.boss_floor
 
 
 def _realize_chain_ready(state: GameState, bench: list,

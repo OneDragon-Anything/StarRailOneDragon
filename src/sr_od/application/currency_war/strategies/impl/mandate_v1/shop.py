@@ -813,7 +813,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
 
     def _note_sell(name: str) -> None:
         """卖出记认(P60 换手对观测面):本 visit 卖出件名入近期卖出集,
-        后续买入命中 = 义务换手对。定长截断防长 visit 无界增长。"""
+        后续买入命中 = 义务换手对。定长截断防长 visit 无界增长。
+        另写轮内卖出登记(泄金阶梯档 2 新鲜度排除写端,单一源 =
+        mandate.record_round_sold;同轮卖X买回X再卖X禁,模拟批#5 s108
+        实证)——本函数 = shop 域全部 SellBench 发射位的共同收口,
+        凑息回拉/M4 腾席/支付变现四发射位零遗漏。"""
         if not name:
             return
         recent = getattr(state_of(session), 'cw4_recent_sold_names', None)
@@ -822,6 +826,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             state_of(session).cw4_recent_sold_names = recent
         recent.append(name)
         del recent[:-16]
+        mandate.record_round_sold(session, state, name)
 
     # T-82 事件粒度辖记(初始化先于 M4 块:bench_full_buy_abandon 发射位
     # 与 M4 块两处消费同一布尔,条件谓词相同但独立书写,防未来耦合)。
@@ -1054,11 +1059,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
 
     # dominance_buy(P24 零参数,两臂同开;金口径 = 期望态现值——单动作下
     # 每帧金即买后真值,R197 症9 的投影口径问题无存在载体)。
+    # (stop_flag 已摘,见 mandate.dominance_buy_eligible docstring——
+    # 泄金阶梯档 0,ADR-0604 §2,三处消费位同步摘;本臂物理位次先于
+    # 下方档 1/档 2,支配性优先序先于带参臂,发射序申报同 §2。)
     _dom_ok = contracts.ensure_contract(
         ('mandate', 'dominance_buy'),
         contracts.ContractCtx(k_members=k_members), counters)
     if _dom_ok and mandate.dominance_buy_eligible(gold, bench_free,
-                                                  stop_flag, cap_resolved):
+                                                  cap_resolved):
         for card in (state.shop or []):
             name = card.name or ''
             cost = card.cost if card.cost else 3
@@ -1366,12 +1374,115 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 return _emit_buy(card, 'dead_gold_press_buy',
                                  launch_cause=_dg_cause)
 
-    # M6 溢余转压库(存在性=金>g* ∧ 无 S 目标;档匹配 fail-closed ⇒
+    # ---- 泄金阶梯档 1:可上场非定向买(press_buy_deployable;ADR-0604
+    # §2,R2 审 F8/F10/F12 落点)----
+    # 必花域溢余金消费序的第二档(单动作契约下物理位次即优先序:
+    # 档 0 定向/支配臂已在前,本臂先于下方档 2 压库)。触发 = 必花域
+    # 帧 ∧ 锁线态(单一源 = ``_ist.locked_comp``,同出口③ D 支定谳,
+    # 禁 k_members 非空作门——恒真不可作门,17号稿 §1.1 应修-8 B-1)
+    # ∧ deploy_vacancy > 0 ∧ bench_free ≥ 1 ∧ 店内存在可上场件。
+    # 判据性质 = [31]②/[32] 口述判据+结构判据(非支配,审 F10 降格
+    # 标注):买入的边际账 = 填充价值 vs 搜索预算的 EV 比较臂,立项
+    # 命题候选挂 ADR-0604 §4(待证钩子),本臂不引 P24/P70。
+    # 「可上场件」= a. 围栏可落(can_deploy_single 预检放行,内含
+    # 非纯散件 = [31]③ 边际羁绊贡献;kernel 五键闭集拒因语义同出口③);
+    # b. 替换可落(板满变体)首版出辖(待实证 #4 挂账,ADR-0604 §4-⑦)。
+    # 候选互斥切分(F12):垫件类(1★ 零重叠全额退)归出口③ 既有臂
+    #(N3 登记/位次语义保留),线内件归 M2 义务通道——本臂候选集 =
+    # 围栏可落 ∧ 非垫件类 ∧ 非线内,显式排除分键零静默。
+    # 金位地板 = ``g − cost ≥ g*``(息基零破坏,ADR-0604 §2;
+    # 不走档 2 的 s_reserve 投影口径——本臂非压库语义)。
+    # P72 拒帧挂起(L4):M3 批被 levelup_budget_gate 拒的帧,预留金
+    # 不被本臂同帧击穿(复用 m6_budget_gate_suspend 先例,ADR-0560;
+    # 挂起只辖 NORMAL 语境,F16 的 FLOOR_ON 让位随 hp 闸批落位,本批
+    # 无该分支,申报 = ADR-0604 §4-F16)。
+    _zone_hit = in_must_spend_zone(gold, session)
+    if (getattr(_ist, 'locked_comp', None)
+            and _zone_hit and bench_free > 0):
+        _pd_vac = (_cap_now - len(deployed)) if _cap_now else None
+        if _pd_vac is None:
+            _count('press_buy_deployable_cap_unreadable')
+        elif _pd_vac < 1:
+            _count('press_buy_deployable_no_vacancy')
+        elif _budget_gate_blocked:
+            _count('press_buy_deployable_budget_suspend')
+        else:
+            _pd_tgt, _pd_fw = deploy_target_sets(k)
+            try:
+                _pd_lfs = cw_intention.locked_faction_scope(_ist) \
+                    if _ist is not None else frozenset()
+            except Exception:   # noqa: BLE001 兜底 best-effort(同出口③)
+                _pd_lfs = frozenset()
+            try:
+                _pd_rf = cw_intention.locked_line_recipe_floor_conflict(_ist)
+            except Exception:   # noqa: BLE001 豁免语境 fail-closed(同出口③)
+                _pd_rf = False
+            for card in (state.shop or []):
+                name = card.name or ''
+                if not name or name in buy_members:
+                    continue    # 线内件归 M2 义务通道(定向最高优先不变)
+                cost = card.cost if card.cost else 3
+                if gold - cost < g_star:
+                    _count('press_buy_deployable_below_floor')
+                    continue
+                # 垫件类互斥切分(F12):1★ 零重叠全额退 = 出口③ 候选,
+                # 本臂不评(出口③ 物理在后,先到先发射语义不破——本臂
+                # 显式跳过即让位,登记语义不分流)。
+                if (card.star or 1) == 1 \
+                        and predicates.zero_overlap(name, k_members) \
+                        and refund_full_star_ok(1, cost):
+                    _count('press_buy_deployable_filler_excluded')
+                    continue
+                _pd_mch = get_char(name)
+                _pd_cand = BenchChar(
+                    slot=0, char_id=name, star=(card.star or 1),
+                    faction=(_pd_mch.factions[0]
+                             if _pd_mch is not None and _pd_mch.factions
+                             else '?'),
+                    position_pref='back')
+                try:
+                    # kernel 单一源直调(围栏语义,预检查询非判据面谓词
+                    # 不挂 contracts,形态同出口③/T5)。
+                    _pd_ok, _pd_why = can_deploy_single(
+                        _pd_cand, bench,
+                        deployed_cids=set(deployed_names),
+                        deployed_fac=deployed_bond_counts(
+                            set(deployed_names)),
+                        board=deployed_bond_counts(set(deployed_names)),
+                        cap=(_cap_now if _cap_now else 10 ** 6),
+                        target_factions=_pd_tgt,
+                        target_cores=set(),
+                        fw_carry=_pd_fw,
+                        locked_factions=_pd_lfs or frozenset(),
+                        recipe_floor_lock_exempt=_pd_rf)
+                except Exception:   # noqa: BLE001 查询不可得 fail 向
+                    _pd_ok, _pd_why = False, 'precheck_unavailable'
+                if not _pd_ok:
+                    _count('press_buy_deployable_fenced')
+                    _count(f'press_buy_deployable_fenced_{_pd_why}')
+                    continue
+                ok1, _ = mandate.check_affordable(gold, cost)
+                if not ok1:
+                    _count('press_buy_deployable_unaffordable')
+                    continue
+                _count('press_buy_deployable_hit')
+                if _reopen_armed:
+                    _count('shop_reopen_discretionary_actions')
+                return _emit_buy(card, 'press_buy_deployable')
+
+    # M6 溢余转压库(存在性=金>g*;档匹配 fail-closed ⇒
     # 不买 + 溢余滞留遥测;两臂同开)。P71-b 闸拒同帧挂起(ADR-0560):
     # 闸刚护住的预留金不得被同帧压库击穿(拒后照发 = 金换通道,预留
     # 语义同帧失效)——挂起只辖 shop 侧 M6;prep 位「M6」是 emit
     # OpenShop(转店后本函数 M3 重过闸兜住),不重复挂起(防双闸)。
-    _m6_arms = gold > g_star and stop_flag and bench_free > 0
+    # stop_flag 已摘(泄金阶梯档 2,ADR-0604 §2 摘旗扩域,
+    # 对抗审 F6 落点三处消费位之一):必花域转化期帧(线未齐)压库
+    # 合法,[13] 停手线纪律语义由候选集判据本体承载(P49 档匹配
+    # fail-closed + P56 s_reserve 下界 + 线内副本排除 + 轮内新鲜度
+    # 排除,全保留/新增见下);窗口语义维持在产 ω 塌缩带
+    #(tier_w = tier_search_window(level, ω) 单一源,审 F11 维持裁决,
+    # 不采用「合格集费用带」替换案,申报 = ADR-0604 §4-#11)。
+    _m6_arms = gold > g_star and bench_free > 0
     if _m6_arms and _budget_gate_blocked:
         _count('m6_budget_gate_suspend')
     elif _m6_arms:
@@ -1395,6 +1506,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 #(§3.7 让渡形态)。压库域收窄为非线内件,分键零静默。
                 if name in buy_members:
                     _count('m6_line_member_excluded')
+                    continue
+                # 轮内新鲜度排除(泄金阶梯档 2,ADR-0604 §3;模拟批#5
+                # s108 实证:同轮「卖X→买回X→再卖X」净零自旋——凑息/
+                # 腾席卖出抬高金位过 g* 后同轮压库买回,金位与席面循环
+                # 烧动作)。单一源 = mandate.round_sold_names(键式相位
+                # 载体,跨轮自动失效);分键显影禁静默。
+                if name in mandate.round_sold_names(session, state):
+                    _count('m6_round_sold_excluded')
                     continue
                 cost = card.cost if card.cost else 3
                 okm, _mkey = crit_stockpile.stockpile_buy(
@@ -1426,7 +1545,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # session(saturation_line 同源派生,零新自由参数);买断制语境
     #(cap_resolved = 0)出辖恒 False。辖域 = 有动作决策点帧(本函数
     # 即 shop 决策点)。L2 第二触发源 / L3 / R1 切分线共用本判定。
-    _zone_hit = in_must_spend_zone(gold, session)
+    # (求值点已上移至档 1 臂前,泄金阶梯批:档 1/出口③ 同帧同值
+    # 单点计算,禁第二份。)
     if _zone_hit:
         # 必花域帧义务来源披露(T-88 写点;遥测键 sess_release_reason 透传
         # 源):帧内 last-wins、域外帧不覆写,轮界清零在装配键戳
@@ -2059,7 +2179,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     # 金滞留死角观测分键(纯观察,攒 sim 数据后再裁是否
                     # 需要域内降档——降档 = 部分买,与 P48 整买冲突,
                     # 当前禁做)。
-                    _gate3_ok = False
+                    _gate3_ok, _gate3_why = False, ''
                     if contracts.ensure_contract(
                             ('levelup', 'levelup_budget_gate'),
                             contracts.ContractCtx(gold=gold,
@@ -2073,7 +2193,13 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     if _gate3_ok:
                         return LevelUpShop(cost=_cost3,
                                            auth_basis='m3_batch:must_spend')
-                    _count('budget_gate_must_spend_defer')
+                    if _gate3_why == 'guarantee_floor_defer':
+                        # 保底金门推迟独立分键(ADR-0603):域内 XP 花穿
+                        # 推迟与 (3a) 量闸拒归因分离,禁混键(与 mandate/
+                        # entry 位的原键转发同语义,本位加 must_spend 前缀)
+                        _count('must_spend_guarantee_floor_defer')
+                    else:
+                        _count('budget_gate_must_spend_defer')
                     if bench_free <= 0:
                         _count('budget_gate_must_spend_deadend')
     return CloseShop()

@@ -102,6 +102,9 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     'm2_merge_completion': 'obligation',
     'dominance_buy': 'press',
     'm6_stockpile': 'press',
+    # 泄金阶梯档 1(可上场非定向买;溢余金 discretionary 面,同 M6/dominance
+    # 因果类。ADR-0604 §2 档 1)。
+    'press_buy_deployable': 'press',
     'ev_buy': 'press',
     'core_single_card_buy': 'hold',
     'core_single_card_buy:unlocked': 'hold',

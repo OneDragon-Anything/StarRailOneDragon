@@ -198,6 +198,46 @@ def plane_last_battle(state: GameState, session) -> bool:
     return node in ('boss',) and state.round_num >= nodes_of_plane(session)
 
 
+def all_in_xp_domain_hit(state: GameState, session,
+                         registry: DecisionV2Registry) -> bool:
+    """ALL IN 窗 XP 类别过滤的辖域判据(ADR-0604 §4-F5;P21 域钉死)。
+
+    = 位面末最后一战(``plane_last_battle`` 单一源,[18] 豁免窗)
+    ∧ hp 真值可信(``hp_decision_trusted`` 单一源)
+    ∧ hp ≤ 停升级线(复用 p1/p2_levelup_stop_hp 锚表,零新参数——
+    「按下一节点型 L_c^stop 查表」的落码形态即在产停升级线同一线表,
+    禁另建第二套血线表;辖域口径差申报 = ADR-0604 §4-D1:在产线
+    P1=11 不分节点型 vs 设计锚 12/15/30,重校债归重设计落码批)。
+
+    辖域语义:ALL IN 窗内支出按「当轮可上场」类别白名单过滤(档 0
+    d=0 形态/档 1/让位卖出后部署;XP 升级类仅支A 兑现链形态合法),
+    本谓词只辖「hp 落停升级线内」的帧——域外帧(hp>停线)不受过滤,
+    维持既有 [18] 全豁免(域外不动申报 = ADR-0604 §4-F5:批#2 s9 型
+    hp=35 帧 8×LevelUp 在域外,过滤后不拦)。hp 不可信/None 帧 = 线内线外
+    不可判 → False 不过滤([18]「末战花光是时机不是血线判断」豁免
+    语义在不可信帧仍生效,与 blood_budget_levelup_blocked 的豁免序、
+    p2_crisis_band 的「血预算未知不判带」非对称口径一致:误放有地板
+    与 refresh 预算兜底,误拦失转化通道)。
+
+    宪法姿态:消费既有停升级线 hp 读数,零新增 hp 消费点(总图 N5
+    对账「既有授权辖域收窄非新增 hp 点」);判据级辖域收窄,非血线
+    地板解锁包件(hp 闸批另落,总图实施序第 5 步)。支A 谓词不进
+    kernel(消费侧 criteria/levelup._realize_chain_ready 单一源,
+    P39 指示项锚对契约),本谓词只答血侧半支。
+    """
+    if not plane_last_battle(state, session):
+        return False
+    if not hp_decision_trusted(state):
+        return False
+    if state.hp is None:
+        return False
+    if state.plane == 2:
+        return state.hp <= p2_levelup_stop_hp(registry)
+    if state.plane == 1:
+        return state.hp <= p1_levelup_stop_hp(registry)
+    return False
+
+
 def p2_levelup_stop_hp(registry: DecisionV2Registry) -> int:
     """P2 停升级线(设计件 12 §6 参数表 P2_LEVELUP_STOP_L_C)
     = ceil(blood_budget_stop_d × vd_p2_loss)。d=1、vd_p2_loss=20.05
