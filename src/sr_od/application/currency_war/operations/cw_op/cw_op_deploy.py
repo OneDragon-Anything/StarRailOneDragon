@@ -57,19 +57,6 @@ from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
 
-def _cap_roomy_of(front_empty: int, back_empty: int, must_up: int) -> bool:
-    """r387:空位 > 必上件数(target+成对)→ cap 富余——配方围栏放行散牌填空。
-
-    配方纪律(r263b)防的是「散件挤占 target 槽位」(cap 竞争),不是「填空」:
-    cap 富余时散牌填空不稀释任何人(配方件来了仍有位);紧张(空位 ≤ 必上)→
-    围栏照旧。局62 r2 实锤根因:deploy_cap=3 只上 1 人(三月七成对),bench 躺
-    5 张(艾丝妲/阿格莱雅/缇宝/万敌全被判「不成对/非 target」留 bench)——两条
-    纪律真冲突,r263b 无条件拦截压过 M18 填位。用户 live 口径「随便上填空位
-    也可以」。锁测试:test_cw_r387_deploy_fill_vacancy(3 条)。
-    """
-    return front_empty + back_empty > must_up
-
-
 def record_fuel_filler_held_postbuy(session, held: list[tuple[str, str]]) -> int:
     """出口③闭环分键(N3,17 号稿 §7.2;可离线测)。
 
@@ -361,64 +348,6 @@ def filter_fill_plan_by_floor(fill_plan: list[tuple[int, str, int]],
     return [(fi, row, slot) for (fi, row, slot) in fill_plan
             if not r288_hold_now(bench_fac.get(fi, ''), deployed_fac,
                                  on_board_cids, bench_list, lock_conflict)]
-
-
-def _tier_completes(bonds: 'frozenset[str] | set[str] | tuple[str, ...]',
-                    deployed_fac: dict[str, int]) -> int:
-    """r361 补档键:该角色上阵后任一阵营计数**恰达激活档** → 1,否则 0。
-
-    纯函数(模块级可测):``bonds`` = 角色全部羁绊 tag 集合
-    (factions+flows,同 _bench_id 口径;review B-1 已把生产
-    _deployed_fac 统一为全羁绊口径);``deployed_fac`` = 当前
-    板面阵营计数;档表单一源 FACTIONS.tiers。
-    """
-    from sr_od.application.currency_war.data.cw_factions import FACTIONS
-    for _f in bonds:
-        _now = (deployed_fac.get(_f, 0) or 0) + 1
-        if _now in (FACTIONS.get(_f).tiers if FACTIONS.get(_f) else ()):
-            return 1
-    return 0
-
-
-def _deployment_order(tgt_idx: list[int], rest: list[int],
-                      bench_id: dict[int, set[str]],
-                      bench_fac: dict[int, str],
-                      deployed_fac: dict[str, int]) -> list[int]:
-    """r404-A1/ADR-0258 点火排序(ADR-0261 裁决选项1;模块级可测,锁测试直调)。
-
-    ⚠️ dd-037 起 op 生产路径不再调用(选人/排序单一源 =
-    kernel.cw_deploy_logic.select_deployments,本函数与该纯函数同语义的
-    op 侧副本仅作锁测试对账面保留;勿新增生产消费点)。
-
-    与 cw_deploy_logic.select_deployments 的排序**同语义**(单一源
-    `ignition_gain`,import 不复制):
-    - tgt 序:点火增量首键(-ignition_gain)+ r361 补档键次键
-      (旧版纯 tier_completes,无点火键);
-    - rest 序:点火增量首键 + r251 引擎身份键次键(降为次键——
-      探针实证 vacancy=1 时冗余第4仙舟曾挤掉点火列车2);
-    - 桶序修正:点火 rest 件先于 ignition=0 的 tgt 件(纯函数侧
-      探针④:冗余 tgt 件压点火 rest 件)。
-
-    输入口径与 _deploy_deterministic 内部字典一致:``bench_id`` =
-    bench_idx(0-based) → 全羁绊集;``bench_fac`` = bench_idx → 主阵营;
-    ``deployed_fac`` = 起始板面阵营计数(全羁绊口径,静态——排序只做
-    一次,与纯函数一致;r288 门的动态仲裁在 drag 循环内另行维护)。
-    """
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        ignition_gain as _ign,
-    )
-    _ENGINE = {'仙舟', '列车同行', '持续伤害'}
-    tgt_sorted = sorted(tgt_idx, key=lambda i: (
-        -_ign(bench_id.get(i) or (), deployed_fac),
-        -_tier_completes(bench_id.get(i) or (), deployed_fac)))
-    rest_sorted = sorted(rest, key=lambda i: (
-        -_ign(bench_id.get(i) or (), deployed_fac),
-        0 if (bench_fac.get(i) in _ENGINE
-              or (bench_id.get(i, set()) & _ENGINE)) else 1))
-    ignite_rest = [i for i in rest_sorted
-                   if _ign(bench_id.get(i) or (), deployed_fac) > 0]
-    plain_rest = [i for i in rest_sorted if i not in ignite_rest]
-    return ignite_rest + tgt_sorted + plain_rest
 
 
 def exclude_system_units(chars: list) -> list:
@@ -1063,8 +992,8 @@ class CwOpDeploy(SrOperation):
             if _deployed_cids:
                 log.info(f'[cw-deploy] deployed 身份(5.1.7 去重):{sorted(_deployed_cids)}')
             # 已上场角色的阵营档(多阵营角色每阵营 +1,同板面 OCR 口径)
-            # r361b(review B 修:口径统一):补 flows——_tier_completes
-            # 的补档键按 factions+flows 全羁绊判档。计数单一源 =
+            # r361b(review B 修:口径统一):补 flows——补档键按
+            # factions+flows 全羁绊判档。计数单一源 =
             # kernel.deployed_bond_counts(与发射侧 mandate._deployable
             # 同款装配)。
             from sr_od.application.currency_war.kernel.cw_deploy_logic import (
@@ -1072,7 +1001,7 @@ class CwOpDeploy(SrOperation):
             )
             _deployed_fac = _deployed_bond_counts(_deployed_cids)
         # dd-037:选人/围栏/排序单一源 = kernel.select_deployments。此前 op 内
-        # 复写一份 tgt/rest 切分 + 散牌围栏 + 点火排序(_deployment_order),与
+        # 复写一份 tgt/rest 切分 + 散牌围栏 + 点火排序,与
         # kernel 纯函数双源——run 20260904_28xx 局11 停机形态:配方底线规则只在
         # 执行方 drag 循环里,发射方(决策核)不知道 → 空计划 RunDeploy 被报
         # ✓「已部署角色」→ 同签名零推进环(G3 守卫停机)。收敛后本 op 只做
