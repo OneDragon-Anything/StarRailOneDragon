@@ -1,8 +1,20 @@
-"""r229c 事件哨兵 v5(v4 循环/静默 + STALL 推进语义修复 + 节点滞留检测)。
+"""r229c 事件哨兵 v5.1(HIT 分级驻留 + 游标恒锚尾;v4 循环/静默 + v5 STALL 语义 + 节点滞留)。
 
 ## 检测面(当前语义)
 
-- [SENTINEL-HIT]:崩溃/停机类关键事件(PATTERNS),命中即退出推送。
+- [SENTINEL-HIT](v5.1 分级·关键即退):崩溃栈(Traceback/TypeError/
+  AttributeError/StopIteration)/停机终态(STOPPED/停机待建档/plan_error)/
+  超时——命中即退出推送。处置依据:审计 0 自愈、run 已断,「退出=事件」
+  是唯一即时信道,不能降级到轮询。
+- [SENTINEL-HIT-CONT](v5.1 分级·一般驻留):『执行失败』(单 op 失败,
+  有自愈实录 2026-09-08 08:09;且常来自共享日志的其他活动,对 CW 是外活动
+  噪声)与『stall_watch』(停滞前兆,升级判定本就归 STALL)——首见打印 +
+  整体重写证据文件(cw_hit_alert.md,内容=本纪元全部已报签名+首见行摘录+
+  首见时刻)后**驻留续侦不退进程**;纪元内同签名只报一次(复发升级由 STALL
+  独立承担,续侦面重复报无增量信息)。非退出事件:消费方核读证据即可,
+  不重武——重武三步会杀掉在岗实例(见 autonomous-loop §3)。
+  回退开关 CW_SENTINEL_HIT_EXIT_ALL=1 恢复 v5 全即退。--replay 下『执行失败』
+  『stall_watch』的打印标签同为 HIT-CONT(replay 本就不退出,观察面)。
 - [SENTINEL-STALL]:近 STALL_WIN 秒同特征 WARNING/ERROR 行 ≥ STALL_N 次
   且窗口内**零实质推进**(实质推进判据见下,与 LOOP 分支共用单一源)。
 - [SENTINEL-LOOP]:近 LOOP_WIN 秒白名单定向动作行同一归一化签名 ≥ LOOP_N 次、
@@ -42,6 +54,7 @@
 | v4.0 | 活跃循环卡死 LOOP + 试用期纪律 | run 24 出战被拒循环 53min;参数 N=10/win=1500s/span≥300s/stale=600s(首报警比人工早 ~44min) |
 | v4.1 | 活跃局判定第 4 条(decisions 新鲜度) | 2026-09-03 1-1 卡死 26min 零报警:runs/outcomes 双陈旧误判「已终局」,LOOP 整局被 suppress |
 | v5 | STALL 推进语义修复(无操作成功≠推进)+ 节点滞留 NODE-DWELL + 词汇审计(见下) | 2026-09-03 1-1 卡死段实机日志回放标定 |
+| v5.1 | HIT 分级(关键即退/一般驻留续侦+纪元内同因去重+证据文件)+ 游标恒锚尾不变量(武装/轮转/漂移一律从当前尾起扫,水位文件退役为纯活性心跳) | 2026-09-09 01:13-01:14 脏纪元三连自退实证(死亡实例留新鲜小值水位被信任=重放向量,哨兵逐格啃完脏纪元期间全盲)+ 2026-09-08 70min 补位空窗实证(HIT 即退纯损) |
 
 ## 词汇审计(v5,对照流程侧代码与 .log/mcp_server.log 全文 grep)
 
@@ -68,14 +81,20 @@ v5 语义修复的根)。
 ## 运行环境
 
 日志时间戳无日期(跨天 append),窗口按 HH:MM:SS 回绕计算;
-日志轮转(文件变小)时从头读并重置窗口。
+扫描起点不变量(v5.1):起点 ∈ {进入监视时的文件尾} ∪ {单调前进的已读位置}
+——武装一律锚尾(水位文件退役为纯活性心跳,只按 mtime 消费,值不进游标),
+日志轮转/截断锚定新纪元当前尾,信道漂移切新文件当前尾。历史字节永不在
+扫描集合内,脏日志纪元(有历史 ERROR 行)结构性不重放。
 离线自测: 环境变量 CW_SENTINEL_LOG / CW_SENTINEL_POS 重定向日志与水位路径;
   CW_SENTINEL_REPLAY_DIR(或 CW_SENTINEL_RUNS / CW_SENTINEL_OUTCOMES)重定向
   活跃局判定文件;CW_SENTINEL_SILENCE / CW_SENTINEL_CONFIRM /
-  CW_SENTINEL_DWELL_SEC 覆盖阈值(仅自测)。
-  python cw_sentinel.py --selftest: 内置回归(局后空窗→IDLE / 局中静默→SILENCE /
-  信道漂移 / 活跃循环→LOOP / 无操作成功循环→STALL 不被假推进掩盖 /
-  节点滞留→NODE-DWELL / 正常推进→不误报)。
+  CW_SENTINEL_DWELL_SEC 覆盖阈值(仅自测);CW_SENTINEL_HIT_EVIDENCE 重定向
+  HIT 证据路径;CW_SENTINEL_HIT_EXIT_ALL=1 恢复 v5 全即退(缺省分级)。
+  python cw_sentinel.py --selftest: 内置回归(15 用例:局后空窗→IDLE /
+  局中静默→SILENCE / 信道漂移[含漂移后 CONT 去重清零轻断言] / 活跃循环→LOOP /
+  无操作成功循环→STALL 不被假推进掩盖 / 节点滞留→NODE-DWELL / 正常推进→不误报 /
+  v5.1 七锁:轮转锚尾 L1 / 武装锚尾脏纪元 L2 / 新行双路命中 L3 /
+  同因去重+运行边界清零 L4 / 异因仍报 L5 / 升级通道 L6 / 终局标记 L7)。
   python cw_sentinel.py --replay <日志文件>: 历史日志回放——全文件喂行处理逻辑,
   打印全部报警位点(每卡死段一次;不退出不 stop,验证用)。
 """
@@ -155,18 +174,30 @@ DECISIONS_FRESH_SEC = int(os.environ.get('CW_SENTINEL_DECISIONS_FRESH', 600))
 
 # v2 原样:只报需介入的事件(第一版把对账纠漂/MISS 例行也报了,噪声淹没真警报)。
 # 词汇审计(v5)见文件头;『人工结束』『plan_error』处置理由亦在头注。
-PATTERNS = (
+# v5.1 分级:原 PATTERNS 全集 10 词按「即退/驻留」拆两表,成员不增不减——
+# 分级依据全部取自 v5 词汇审计的既有语义认定,未新造判定。
+# 关键(即退):崩溃栈/运行已死/停机终态,审计 0 自愈;送达信道=「退出=事件」
+# 即时推送,降级到轮询等于让最关键事件走最弱信道。『超时』必先于续侦表判:
+# 此类行同含『执行失败』(短路序,见 process_line)。
+HIT_EXIT_PATTERNS = (
     'Traceback',
     'plan_error',
-    '执行失败',
     '停机待建档',
     'STOPPED',
     '超时',
-    'stall_watch',
     'TypeError',
     'AttributeError',
     'StopIteration',
 )
+# 一般(驻留续侦):有自愈实录(『执行失败』,2026-09-08 08:09 失败→自愈→局继续)
+# 或前兆信号(『stall_watch』归 STALL 通道)——报一次+纪元内同签名去重,不退进程。
+HIT_CONT_PATTERNS = ('执行失败', 'stall_watch')
+# 回退开关:恢复 v5 全即退(试用期若判分级过激,一行环境变量回旧世界)。
+# 缺省分级生效,防「缺省关悬置」反模式。
+HIT_EXIT_ALL = os.environ.get('CW_SENTINEL_HIT_EXIT_ALL', '0') == '1'
+HIT_EVIDENCE = Path(os.environ.get(
+    'CW_SENTINEL_HIT_EVIDENCE',
+    r'D:\code\workspace\StarRailOneDragon\.debug\temp\currency_war\cw_hit_alert.md'))
 STALL_WIN = 600    # 卡死判定窗口(秒)
 STALL_N = 10       # 同特征行阈值
 SILENCE_SEC = int(os.environ.get('CW_SENTINEL_SILENCE', 360))  # 静默死锁阈值(秒)
@@ -478,17 +509,70 @@ def _dwell_alarm(payload: str, line_end: int | None) -> str:
             f'(节点滞留): {payload} | 证据={NODE_DWELL_EVIDENCE}')
 
 
+# ── v5.1 D3 HIT 分级驻留状态 ────────────────────────────────────────
+# 已报 CONT 签名 → (首见行摘录, 首见时刻)。去重键复用 _sig(与 STALL 同源,
+# 不引入第二套归一化);不做 occurrence 计数(升级归 STALL,证据文件只答
+# 「报过什么」,还避免每行重写的高频 IO)。纪元边界四处清零:武装(进程全新,
+# 自然为空)/轮转锚尾/信道漂移锚尾/运行边界(与 _dwell_reset 同点同因)。
+hit_reported: dict[str, tuple[str, str]] = {}
+
+
+def _hit_reset() -> None:
+    """CONT 去重表纪元边界清零:新纪元/新局重新获得首见报警权。
+
+    跨局复发的同一签名不被旧纪元的去重吞掉(与 _dwell_reset 同点同因:
+    终态/被停行是稳定框架词汇,标志上一局已结束)。
+    """
+    hit_reported.clear()
+
+
+def _hit_cont(line: str) -> str | None:
+    """一般词汇 HIT(执行失败/stall_watch)驻留续侦处置,返回 CONT 报警文本。
+
+    纪元内同签名首见必报+整体重写证据文件;复见静默(返回 None,但调用方
+    不因此提前 return——该行仍照常进 STALL/LOOP/DWELL 喂行)。两种返回都
+    不退出进程:非退出事件,消费协议=核读证据不重武。
+    """
+    s = _sig(line)
+    if s in hit_reported:
+        return None
+    now = time.strftime('%Y-%m-%d %H:%M:%S')
+    hit_reported[s] = (line.strip()[:200], now)
+    ev = [
+        f'- 报警时刻: {now}(v5.1 分级:一般词汇驻留续侦,非退出事件,实例在岗)',
+        f'- 纪元内已报签名数: {len(hit_reported)}',
+        '',
+        '## 本纪元已报签名(按首见顺序:时刻 + 首见行摘录)',
+    ]
+    ev += [f'- [{t0}] {excerpt}' for excerpt, t0 in hit_reported.values()]
+    ev += [
+        '',
+        '## 判读与建议动作',
+        '1. 本报警非退出事件:核读本文件、按试用期纪律核时间戳归属(旧行重放/'
+        '中途武装无上下文/局后空窗三类误报在 CONT 面同样可能),仅此而已',
+        '2. 禁按退出协议重武:重武三步会杀掉在岗实例,丢纪元内去重/静默计时'
+        '等在岗状态并制造空窗(单实例锁只兜底裸重武,防不了杀净)',
+        '3. 同签名复发的升级判定归 STALL/LOOP 通道(窗口统计),不在本文件',
+    ]
+    _write_evidence(HIT_EVIDENCE, '[SENTINEL-HIT-CONT] 一般词汇报警证据(驻留续侦)', ev)
+    return f'[SENTINEL-HIT-CONT] {line.strip()[:150]} | 证据={HIT_EVIDENCE}'
+
+
 # ── 行处理核心(watch 主循环与 --replay 共用)─────────────────────────
 _seen_terminal = False   # 武装后是否见过 run 终态行(执行成功/执行失败)
 _seen_quiet_noted = False  # 交接窗口提示是否已打印(防每5s刷屏;新行到来时重置)
 _confirm_deadline = 0.0
 
 
-def process_line(line: str, line_end: int | None) -> str | None:
-    """喂一行日志;返回报警消息(进程应退出)或 None。
+def process_line(line: str, line_end: int | None) -> tuple[str, bool] | None:
+    """喂一行日志;返回 (报警消息, 是否退出进程) 或 None。
 
-    顺序:陈旧行防线 → PATTERNS(HIT)→ run 终态标记 → 循环/滞留喂行(同时
-    产出实质推进)→ STALL(零推进下的 WARNING/ERROR 堆积)→ LOOP/DWELL 报警。
+    v5.1 返回协议:关键事件(HIT/STALL/LOOP/DWELL)=(消息, True)→ 主循环
+    打印后写水位并 exit(0);一般词汇首见 CONT=(消息, False)→ 只打印不退
+    (驻留续侦)。--replay 收集全部消息做回放摘要(观察面)。
+    顺序:陈旧行防线 → 白名单豁免 → 关键表 HIT → 续侦表 CONT(纪元内同签名
+    去重,不提前 return)→ run 终态标记 → 循环/滞留喂行(同时产出实质推进)
+    → STALL(零推进下的 WARNING/ERROR 堆积)→ LOOP/DWELL 报警。
     v5:STALL 的推进判据改与 LOOP 共用「实质推进」(无操作成功不算推进),
     修复 1-1 卡死段「OpenShop 买0张 → ✓」被当推进致 STALL 整局失明的缺陷。
     """
@@ -505,9 +589,21 @@ def process_line(line: str, line_end: int | None) -> str | None:
     # 的有界兜底路径(消耗 node_max_retry 预算),其日志不应触发 HIT 报警
     # 退出——但仅豁免 HIT,行仍向下喂 STALL/loop 累积(重试耗尽后的
     # op_fail 终态行不含白名单词,照常报警;真持续卡死双通道兜底)。
+    # v5.1(A3 序):白名单豁免挂在关键/续侦两表的总判定之前,语义与 v5
+    # 单表一致——若只挂关键表前,白名单行将开始打 CONT(未申报的行为变更)。
     _whitelisted = '复探超窗重试' in line
-    if not _whitelisted and any(p in line for p in PATTERNS):
-        return f'[SENTINEL-HIT] {line.strip()}'
+    _cont_msg: str | None = None
+    if not _whitelisted:
+        # 总短路序:关键表先判(『超时』行同含『执行失败』,即此因)→ 续侦表。
+        if any(p in line for p in HIT_EXIT_PATTERNS):
+            return (f'[SENTINEL-HIT] {line.strip()}', True)
+        if HIT_EXIT_ALL and any(p in line for p in HIT_CONT_PATTERNS):
+            return (f'[SENTINEL-HIT] {line.strip()}', True)   # 回退开关=恢复 v5 即退
+        if any(p in line for p in HIT_CONT_PATTERNS):
+            # 驻留续侦:首见得 CONT 文本,复见得 None;两种情况都继续向下喂行
+            #(v5 在此提前 return,连 _seen_terminal 标记都到不了——run 以
+            # 执行失败终局时静默分支 seen_terminal 判据恒假,属潜伏失配,v5.1 顺带修复)。
+            _cont_msg = _hit_cont(line)
     if ('执行成功' in line or '执行失败' in line) \
             and ('指令[' in line or 'app' in line.lower()):
         _seen_terminal = True   # run 生命周期行(粗粒度:区分「run 在」与「run 完」)
@@ -519,6 +615,7 @@ def process_line(line: str, line_end: int | None) -> str | None:
     # 若不重置,滞留会把上一局的时间算进本局 → 23:29 误报实证。
     if 'terminal=RunState' in line or '已停止[' in line:
         _dwell_reset()
+        _hit_reset()   # v5.1:运行边界=纪元边界,新局重新获得 CONT 首见报警权
     # v4.0/v5 循环+滞留检测(所有日志级别之外独立计数;同时产出实质推进)
     progressed, kind, payload = _loop_feed(line, _tod_v)
     if progressed:
@@ -530,7 +627,8 @@ def process_line(line: str, line_end: int | None) -> str | None:
         bad = _stall_sig(_tod_v)
         if bad:
             span = _delta(recent[0][0], _tod_v)
-            return (f'[SENTINEL-STALL] 近{span}秒同特征行≥{STALL_N}且无实质推进: {bad[:120]}')
+            return (f'[SENTINEL-STALL] 近{span}秒同特征行≥{STALL_N}且无实质推进: {bad[:120]}',
+                    True)
     if kind == 'loop':
         # 局已终局(runs.jsonl 有 result)则抑制——08-25 17:07 实证:局末/server
         # 重启间隙,窗口残留旧动作行 + 无新推进,非卡死(与 SILENCE 分支同源守卫;
@@ -540,10 +638,13 @@ def process_line(line: str, line_end: int | None) -> str | None:
                   f'(残留窗口),清窗继续: {payload[:80]}', flush=True)
             loop_recent.clear()
             loop_sig_lines.clear()
-            return None
-        return _loop_alarm(payload, line_end)
-    if kind == 'dwell':
-        return _dwell_alarm(payload, line_end)
+            # 不在此返回:落到函数尾统一收尾,本行若同时为 CONT 首见则不丢首报
+        else:
+            return (_loop_alarm(payload, line_end), True)
+    elif kind == 'dwell':
+        return (_dwell_alarm(payload, line_end), True)
+    if _cont_msg is not None:
+        return (_cont_msg, False)   # 驻留续侦:只打印不退,主循环继续喂行
     return None
 
 
@@ -574,6 +675,8 @@ def _replay(path: str) -> int:
     """历史日志回放:全文件喂 process_line,打印全部报警位点(验证用)。
 
     每报警后清空循环/滞留窗口,同一卡死段只报一次;HIT/STALL 同样打印(观察面)。
+    v5.1:『执行失败』『stall_watch』的标签为 HIT-CONT(分级驻留;replay 本就
+    不退出,标签变化纯观察面),且纪元内同签名去重——重复形态只报首见。
     """
     global REPLAY_MODE
     REPLAY_MODE = True
@@ -583,7 +686,8 @@ def _replay(path: str) -> int:
     with p.open(encoding='utf-8', errors='replace') as fh:
         for raw in fh:
             n += 1
-            msg = process_line(raw, None)
+            _res = process_line(raw, None)
+            msg = _res[0] if _res is not None else None
             if msg:
                 ts = TS_RE.match(raw)
                 alarms.append((ts.group(0) if ts else f'line{n}', msg))
@@ -604,12 +708,98 @@ def _replay(path: str) -> int:
 
 
 def _selftest() -> int:
-    """v5 内置回归:空窗/静默/漂移/循环/无操作成功 STALL/节点滞留/正常推进。"""
+    """v5.1 内置回归(15 用例):空窗/静默/漂移[含漂移清零轻断言]/循环/
+    无操作成功 STALL/节点滞留/正常推进 + 七锁(轮转锚尾/武装锚尾/新行双路/
+    同因去重+运行边界清零/异因仍报/升级通道/终局标记)。"""
     import subprocess
     import tempfile
 
     script = Path(__file__).resolve()
     cases = []
+
+    def _now_hms() -> str:
+        """当前时刻的日志时间戳前缀。历史行时间戳一律用当前时刻——绕过
+        陈旧行防线:锁必须证明游标层独自防住重放,不许搭防线便车。"""
+        lt = time.localtime()
+        return f'[{lt.tm_hour:02d}:{lt.tm_min:02d}:{lt.tm_sec:02d}]'
+
+    def _spawn_resident(d: Path, name: str,
+                        extra_env: dict[str, str] | None = None,
+                        ) -> tuple[subprocess.Popen, Path]:
+        """续侦类用例(漂移/七锁)共用子进程启动。
+
+        stdout/stderr 重定向临时文件+父进程轮读——现有 PIPE+communicate 技术
+        阻塞到进程退出,做不了「存活期」断言,续侦类锁必须观测存活态。
+        env 全量重定向(日志/水位/锁/遥测/三份证据):测试零真实副作用,
+        HIT 证据同样必须重定向,不许写生产 cw_hit_alert.md。
+        """
+        out = d / f'{name}_out.txt'
+        env = dict(os.environ,
+                   CW_SENTINEL_LOG=str(d / 'log.txt'),
+                   CW_SENTINEL_POS=str(d / 'pos'),
+                   CW_SENTINEL_LOCK=str(d / 'lock'),
+                   CW_SENTINEL_REPLAY_DIR=str(d),   # runs/outcomes/decisions 全落本例目录
+                   CW_SENTINEL_POLL='1',
+                   CW_SENTINEL_HIT_EVIDENCE=str(d / 'hit_ev.md'),
+                   CW_SENTINEL_LOOP_EVIDENCE=str(d / 'loop_ev.md'),
+                   CW_SENTINEL_DWELL_EVIDENCE=str(d / 'dwell_ev.md'))
+        if extra_env:
+            env.update(extra_env)
+        # with 退出只关父进程句柄:子进程已在 Popen 时继承了自己的句柄,写不中断
+        with open(out, 'w', encoding='utf-8', errors='replace') as fh:
+            proc = subprocess.Popen([sys.executable, str(script)], env=env,
+                                    stdout=fh, stderr=fh)
+        return proc, out
+
+    def _read_out(out: Path) -> str:
+        """轮读子进程输出文件;瞬时共享冲突按空串处理(下轮重试)。"""
+        try:
+            return out.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            return ''
+
+    def _wait_out(out: Path, substr: str, timeout: float) -> bool:
+        """轮读直到 substr 出现;超时 False。"""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if substr in _read_out(out):
+                return True
+            time.sleep(0.2)
+        return False
+
+    def _wait_out_count(out: Path, substr: str, count: int, timeout: float) -> bool:
+        """轮读直到 substr 出现次数达 count;超时 False。"""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if _read_out(out).count(substr) >= count:
+                return True
+            time.sleep(0.2)
+        return False
+
+    def _wait_exit(proc: subprocess.Popen, timeout: float) -> bool:
+        """轮询进程直到退出;超时 False(仍存活)。"""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if proc.poll() is not None:
+                return True
+            time.sleep(0.2)
+        return False
+
+    def _append_log(path: Path, text: str) -> None:
+        with open(path, 'a', encoding='utf-8') as f:
+            f.write(text)
+
+    def _kill(proc: subprocess.Popen) -> None:
+        """终止续侦子进程并等句柄释放。Windows 上 TerminateProcess 后内核
+        异步收尾子进程残留句柄,紧接的临时目录删除会撞 WinError 32
+        (实测:L1 输出文件 unlink 共享冲突),wait 后给一拍余量。"""
+        if proc.poll() is None:
+            proc.terminate()
+            proc.wait(timeout=10)
+        time.sleep(0.3)
+
+    def _last_line(o: str) -> str:
+        return o.strip().splitlines()[-1][:110] if o.strip() else ''
     with tempfile.TemporaryDirectory(prefix='cw_sentinel_st_') as td:
         tdp = Path(td)
         now = time.localtime()
@@ -660,13 +850,20 @@ def _selftest() -> int:
             cases.append((name, expect, ok, out.strip().splitlines()[-1] if out.strip() else ''))
     for name, expect, ok, last in cases:
         print(f"  {'PASS' if ok else 'FAIL'} {name}: 期望 {expect} | 尾行: {last[:110]}")
-    # v3.7 信道漂移回归:武装时盯 A,B 为旧 mtime;武装后 B 被写入(变最新)→
-    # 静默分支周期重探测应切换到 B(打印漂移行),随后按新信道静默走 IDLE 退出。
+    # v3.7 信道漂移回归 + v5.1 漂移纪元清零轻断言:武装盯 A → A 上见 CONT#1 →
+    # B 变最新触发漂移切换(锚尾+清 CONT 去重表)→ B 上追加同签名行 → CONT#2
+    # 复现=漂移纪元边界确实清了表(去重表清零点之「信道漂移」,锁面原本无覆盖);
+    # 随后按新信道静默走 IDLE 退出。
     with tempfile.TemporaryDirectory(prefix='cw_sentinel_drift_') as td:
         d = Path(td)
         log_a = d / 'log_a.txt'
         log_b = d / 'log_b.txt'
-        log_a.write_text(log_lines, encoding='utf-8')
+        quiet = (f'{_now_hms()} [operation.py 431] [INFO]: 指令[ 货币战争-对局循环 ]'
+                 f' 节点 检测游戏窗口 -> 对局循环 返回状态 等待\n'
+                 f'{_now_hms()} [onnx_ocr_matcher.py 472] [DEBUG]: OCR结果 [] 耗时 0.27\n')
+        fail_a = (f'{_now_hms()} [operation.py 695] [ERROR]: 指令[ 货币战争-对局循环 ]'
+                  f' 节点 检测游戏窗口 执行失败\n')
+        log_a.write_text(quiet, encoding='utf-8')
         log_b.write_text('', encoding='utf-8')
         old = time.time() - 3600
         os.utime(log_b, (old, old))   # B 初始陈旧 → 武装时选 A
@@ -675,29 +872,29 @@ def _selftest() -> int:
         (d / 'decisions.jsonl').write_text('{"run_id": "run_z"}\n', encoding='utf-8')
         os.utime(d / 'outcomes.jsonl', (old, old))
         os.utime(d / 'decisions.jsonl', (old, old))
-        env = dict(os.environ,
-                   CW_SENTINEL_LOG=str(log_a), CW_SENTINEL_LOG2=str(log_b),
-                   CW_SENTINEL_POS=str(d / 'pos'), CW_SENTINEL_LOCK=str(d / 'lock'),
-                   CW_SENTINEL_RUNS=str(d / 'runs.jsonl'),
-                   CW_SENTINEL_OUTCOMES=str(d / 'outcomes.jsonl'),
-                   CW_SENTINEL_DECISIONS=str(d / 'decisions.jsonl'),
-                   CW_SENTINEL_SILENCE='8', CW_SENTINEL_CONFIRM='3',
-                   CW_SENTINEL_REPROBE='2')
-        proc = subprocess.Popen([sys.executable, str(script)], env=env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, encoding='utf-8', errors='replace')
+        proc, out = _spawn_resident(d, 'drift', extra_env={
+            'CW_SENTINEL_LOG': str(log_a), 'CW_SENTINEL_LOG2': str(log_b),
+            'CW_SENTINEL_SILENCE': '8', 'CW_SENTINEL_CONFIRM': '3',
+            'CW_SENTINEL_REPROBE': '2'})
         time.sleep(1.5)   # 等子进程完成武装(盯 A)
-        log_b.write_text(log_lines, encoding='utf-8')   # B 变最新 → 触发漂移
+        _append_log(log_a, fail_a)                    # A 上首见 → CONT#1
+        c1 = _wait_out(out, '[SENTINEL-HIT-CONT]', 10)
+        log_b.write_text(quiet, encoding='utf-8')     # B 变最新 → 触发漂移
+        drift = _wait_out(out, '日志信道漂移', 15)     # 等到切换打印=锚尾已定,再喂 B
+        _append_log(log_b, fail_a)                    # 同签名(去时间戳同键)
+        c2 = _wait_out_count(out, '[SENTINEL-HIT-CONT]', 2, 10)
         try:
-            out_b, _ = proc.communicate(timeout=60)
+            proc.wait(timeout=60)                     # 静默 → 活跃局检查判终局 → IDLE
         except subprocess.TimeoutExpired:
             proc.kill()
-            out_b, _ = proc.communicate()
-        out = out_b or ''
-        ok = '日志信道漂移' in out and '[RUN-ENDED-IDLE]' in out and '[SENTINEL-SILENCE]' not in out
-        last = out.strip().splitlines()[-1] if out.strip() else ''
-        print(f"  {'PASS' if ok else 'FAIL'} channel_drift: 期望 漂移切换+IDLE | 尾行: {last[:110]}")
-        cases.append(('channel_drift', '日志信道漂移', ok, last))
+        o = _read_out(out)
+        ok = (c1 and drift and c2
+              and '日志信道漂移' in o and '[RUN-ENDED-IDLE]' in o
+              and '[SENTINEL-SILENCE]' not in o
+              and o.count('[SENTINEL-HIT-CONT]') == 2)
+        print(f"  {'PASS' if ok else 'FAIL'} channel_drift: 期望 漂移切换+CONT清零复现+IDLE"
+              f" | 尾行: {_last_line(o)}")
+        cases.append(('channel_drift', '漂移切换+CONT清零复现+IDLE', ok, _last_line(o)))
     # v4.0/v5 循环/STALL/滞留回归(--replay 路径,不占锁不起线程)
     with tempfile.TemporaryDirectory(prefix='cw_sentinel_loop_') as td:
         d = Path(td)
@@ -768,11 +965,202 @@ def _selftest() -> int:
             last = out.strip().splitlines()[-1] if out.strip() else ''
             print(f"  {'PASS' if ok else 'FAIL'} {name}: 期望 {expect_tag or '零报警'} | 尾行: {last[:110]}")
             cases.append((name, expect_tag or 'no-alarm', ok, last))
+    # ── v5.1 七锁(2026-09-09 01:13 脏纪元三连自退 + 2026-09-08 70min 补位
+    #    空窗实证驱动;构造与变异纪律=文件头 v5.1 语义)。续侦类存活断言全走
+    #    「stdout 重定向临时文件+轮读」;历史行时间戳一律当前时刻(不搭陈旧
+    #    防线便车,锁死的是游标层/分级层本身)。────────────────────────────
+    _FAIL_A = ('[operation.py 695] [ERROR]: 指令[ 货币战争-对局循环 ]'
+               ' 节点 检测游戏窗口 执行失败')
+    _CRIT = '[prep_director.py 1] [ERROR]: Traceback (most recent call last):'
+    _BOUNDARY = '[run_context.py 88] [INFO]: run 已停止[mcp:stop_run]'
+
+    # L1 轮转锚尾锁:arm(无 pos)→ 过 2 轮询 → 更小文件整替(模拟轮转,内含
+    # 新鲜 Traceback)→ 过 3 轮询 → 追加良性新行。锚尾语义必须:全程零 HIT*、
+    # 出现轮转锚尾打印、进程存活且良性行后仍在岗。
+    # 变异 M1:轮转分支回退 pos=0 → 整替件内 Traceback 被重放 HIT,红。
+    with tempfile.TemporaryDirectory(prefix='cw_sentinel_L1_') as td:
+        d = Path(td)
+        log = d / 'log.txt'
+        # 初文件必须大于整替件:size<pos 才构成轮转;整替件仅 1 行必然更小
+        log.write_text(''.join(
+            f'{_now_hms()} [onnx_ocr_matcher.py 472] [DEBUG]: OCR结果 [] 耗时 0.2{i}\n'
+            for i in range(3)), encoding='utf-8')
+        proc, out = _spawn_resident(d, 'L1')
+        time.sleep(2.2)   # 过 2 轮询,锚定初文件尾
+        log.write_text(f'{_now_hms()} {_CRIT}\n', encoding='utf-8')   # 整替=变小
+        time.sleep(3.3)   # 过 3 轮询,轮转分支必已走
+        o = _read_out(out)
+        ok = ('[SENTINEL-HIT' not in o and '锚定新纪元尾部' in o
+              and proc.poll() is None)
+        _append_log(log, f'{_now_hms()} [onnx_ocr_matcher.py 472] [DEBUG]: OCR结果 [] 耗时 0.31\n')
+        time.sleep(2.2)   # 良性新行后仍存活(锚尾后继续增量)
+        o = _read_out(out)
+        ok = ok and '[SENTINEL-HIT' not in o and proc.poll() is None
+        _kill(proc)
+        print(f"  {'PASS' if ok else 'FAIL'} L1_rotation_anchor_tail:"
+              f" 期望 零HIT*+锚尾打印+存活 | 尾行: {_last_line(o)}")
+        cases.append(('L1_rotation_anchor_tail', '零HIT*+锚尾打印+存活', ok, _last_line(o)))
+
+    # L2 武装锚尾锁(脏纪元验收主锁,criteria 前半「arm 后 ≤60s 无重放 HIT」):
+    # 预填新鲜历史(Traceback+执行失败)→ 无 pos 武装 → POLL=1s 观测 60s:
+    # 零 [SENTINEL-HIT] 且零 [SENTINEL-HIT-CONT](历史一个不咬)+心跳 mtime 推进
+    # +武装打印锚尾语义。
+    # 变异 M2:恢复 MARKER 信任块并以小值毒化 pos → arm 后数秒 HIT,红。
+    with tempfile.TemporaryDirectory(prefix='cw_sentinel_L2_') as td:
+        d = Path(td)
+        log = d / 'log.txt'
+        log.write_text(f'{_now_hms()} {_CRIT}\n{_now_hms()} {_FAIL_A}\n', encoding='utf-8')
+        proc, out = _spawn_resident(d, 'L2')
+        t0 = time.time()
+        time.sleep(5)   # 首个心跳已落
+        hb1 = (d / 'pos').stat().st_mtime if (d / 'pos').exists() else 0.0
+        dirty_red = False
+        while time.time() - t0 < 60:   # criteria 口径:观测满 60s
+            o = _read_out(out)
+            if '[SENTINEL-HIT' in o or proc.poll() is not None:
+                dirty_red = True   # 历史被重放,或进程提前退出
+                break
+            time.sleep(1)
+        hb2 = (d / 'pos').stat().st_mtime if (d / 'pos').exists() else 0.0
+        o = _read_out(out)
+        ok = (not dirty_red and '[SENTINEL-HIT' not in o
+              and '武装恒锚尾' in o and hb2 > hb1 and proc.poll() is None)
+        _kill(proc)
+        print(f"  {'PASS' if ok else 'FAIL'} L2_armed_anchor_tail:"
+              f" 期望 脏纪元60s零HIT*+心跳推进+存活 | 尾行: {_last_line(o)}")
+        cases.append(('L2_armed_anchor_tail', '脏纪元60s零HIT*+心跳推进+存活',
+                      ok, _last_line(o)))
+
+    # L3 新行命中锁(验收后半「新行仍能命中」):脏历史在场的前提下新行双路——
+    # 追加新鲜 执行失败 → CONT 且进程存活(驻留);追加新鲜 Traceback → HIT 且
+    # exit(0)(关键即时推送不弱化)。
+    # 变异 M3:续侦词并入关键表 → 执行失败处直接退,存活断言红。
+    with tempfile.TemporaryDirectory(prefix='cw_sentinel_L3_') as td:
+        d = Path(td)
+        log = d / 'log.txt'
+        log.write_text(f'{_now_hms()} {_CRIT}\n', encoding='utf-8')
+        proc, out = _spawn_resident(d, 'L3')
+        time.sleep(2.2)
+        _append_log(log, f'{_now_hms()} {_FAIL_A}\n')
+        cont = _wait_out(out, '[SENTINEL-HIT-CONT]', 10)
+        time.sleep(1.5)   # CONT 后确认没有跟着退出(驻留)
+        alive = proc.poll() is None
+        _append_log(log, f'{_now_hms()} {_CRIT}\n')
+        exited = _wait_exit(proc, 10)
+        o = _read_out(out)
+        ok = (cont and alive and exited
+              and '[SENTINEL-HIT-CONT]' in o and '[SENTINEL-HIT]' in o
+              and proc.returncode == 0)
+        _kill(proc)
+        print(f"  {'PASS' if ok else 'FAIL'} L3_newline_dual_path:"
+              f" 期望 CONT存活+HIT退出 | 尾行: {_last_line(o)}")
+        cases.append(('L3_newline_dual_path', 'CONT存活+HIT退出', ok, _last_line(o)))
+
+    # L4 同因去重锁 + 运行边界清零轻断言:同签名两条(仅时间戳不同)→ CONT 恰
+    # 1 次;喂终态行(运行边界=纪元边界,与 _dwell_reset 同点)后同签名再现 →
+    # CONT 第 2 次=边界确实清了表(去重表清零点之「运行边界」,锁面原本无覆盖)。
+    # 变异 M4:去重表查找短路(每见必报)→ 3 报即红;边界清零缺失 → 1 报即红。
+    with tempfile.TemporaryDirectory(prefix='cw_sentinel_L4_') as td:
+        d = Path(td)
+        log = d / 'log.txt'
+        log.write_text('', encoding='utf-8')
+        proc, out = _spawn_resident(d, 'L4')
+        time.sleep(2.2)   # 锚定空尾
+        _append_log(log, f'{_now_hms()} {_FAIL_A}\n')
+        _wait_out(out, '[SENTINEL-HIT-CONT]', 10)        # 报#1
+        _append_log(log, f'{_now_hms()} {_FAIL_A}\n')    # 同签名(去时间戳同键)
+        time.sleep(2.2)   # 等该行被读:复见必须静默
+        _append_log(log, f'{_now_hms()} {_BOUNDARY}\n')  # 运行边界:清表
+        time.sleep(1.2)
+        _append_log(log, f'{_now_hms()} {_FAIL_A}\n')    # 新局首见 → 应再报
+        again = _wait_out_count(out, '[SENTINEL-HIT-CONT]', 2, 10)
+        # 第 3 报探测窗:绿态必超时(同因静默);去重失效变异(每见必报)下第 3 报
+        # 在一个轮询内落地——给足落地时间再计数,否则变异态读到瞬时 count=2 假绿
+        _ = _wait_out_count(out, '[SENTINEL-HIT-CONT]', 3, 3)
+        o = _read_out(out)
+        ok = (again and o.count('[SENTINEL-HIT-CONT]') == 2
+              and proc.poll() is None)
+        _kill(proc)
+        print(f"  {'PASS' if ok else 'FAIL'} L4_dedup_boundary_reset:"
+              f" 期望 同因恰1报+边界后复现共2报+存活 | 尾行: {_last_line(o)}")
+        cases.append(('L4_dedup_boundary_reset', '同因恰1报+边界后复现共2报+存活',
+                      ok, _last_line(o)))
+
+    # L5 异因仍报锁:执行失败 后跟不同签名 stall_watch 行 → 两个不同 CONT 各 1 次。
+    # 变异 M5:去重键退化为全局单键 → 第二异因被吞,1 报即红。
+    with tempfile.TemporaryDirectory(prefix='cw_sentinel_L5_') as td:
+        d = Path(td)
+        log = d / 'log.txt'
+        log.write_text('', encoding='utf-8')
+        proc, out = _spawn_resident(d, 'L5')
+        time.sleep(2.2)
+        _append_log(log, f'{_now_hms()} {_FAIL_A}\n')
+        _wait_out(out, '[SENTINEL-HIT-CONT]', 10)
+        _append_log(log, f'{_now_hms()} [cw_loop.py 366] [WARNING]:'
+                         ' [cw!][loop] stall_watch 备战连续 3 轮 session 无变化 → 留证\n')
+        second = _wait_out_count(out, '[SENTINEL-HIT-CONT]', 2, 10)
+        o = _read_out(out)
+        ok = (second and o.count('[SENTINEL-HIT-CONT]') == 2
+              and 'stall_watch' in o and proc.poll() is None)
+        _kill(proc)
+        print(f"  {'PASS' if ok else 'FAIL'} L5_distinct_cause_reported:"
+              f" 期望 异因两报各1次+存活 | 尾行: {_last_line(o)}")
+        cases.append(('L5_distinct_cause_reported', '异因两报各1次+存活', ok, _last_line(o)))
+
+    # L6 升级通道锁:10 条同签名 [ERROR] 执行失败(单窗内、无实质推进)→
+    # 第 10 条触发 STALL 且进程退——证明续侦不吞升级(STALL 判据与去重正交:
+    # WARNING/ERROR 全量进 recent,不看是否 CONT 报过)。
+    # 变异 M6:续侦分支提前 return → recent 不进 → STALL 不触发,存活即红。
+    with tempfile.TemporaryDirectory(prefix='cw_sentinel_L6_') as td:
+        d = Path(td)
+        log = d / 'log.txt'
+        log.write_text('', encoding='utf-8')
+        proc, out = _spawn_resident(d, 'L6')
+        time.sleep(2.2)
+        t = _now_hms()
+        _append_log(log, ''.join(f'{t} {_FAIL_A}\n' for _ in range(10)))
+        exited = _wait_exit(proc, 15)
+        o = _read_out(out)
+        ok = (exited and '[SENTINEL-STALL]' in o
+              and o.count('[SENTINEL-HIT-CONT]') == 1 and proc.returncode == 0)
+        _kill(proc)
+        print(f"  {'PASS' if ok else 'FAIL'} L6_stall_escalation:"
+              f" 期望 第10条STALL退出+CONT恰1 | 尾行: {_last_line(o)}")
+        cases.append(('L6_stall_escalation', '第10条STALL退出+CONT恰1', ok, _last_line(o)))
+
+    # L7 终局标记修复锁(行为增量):『指令[...] 执行失败』行喂到后进入静默
+    # 双窗(短阈值;runs 尾行无 result 使 _run_ended() 为假;夹具不得混入
+    # 『执行成功』——该行在 v5/v5.1 都会置位标记,混入即毁判别力)。v5 下该行
+    # 的标记置位到不了(HIT 判定即提前返回,准确说是仅 执行失败 行的置位丢失,
+    # 执行成功 行本就置位);v5.1 续侦喂行后应走 [sentinel-quiet] 路径:
+    # 无 SILENCE 报警、进程在岗。
+    # 变异 M7:续侦面恢复提前 return → 置位到不了 → 走 SILENCE 报警分支,红。
+    with tempfile.TemporaryDirectory(prefix='cw_sentinel_L7_') as td:
+        d = Path(td)
+        log = d / 'log.txt'
+        log.write_text('', encoding='utf-8')
+        (d / 'runs.jsonl').write_text('{"run_id": "run_l7", "result": ""}\n', encoding='utf-8')
+        proc, out = _spawn_resident(d, 'L7', extra_env={
+            'CW_SENTINEL_SILENCE': '3', 'CW_SENTINEL_CONFIRM': '3'})
+        time.sleep(2.2)
+        _append_log(log, f'{_now_hms()} {_FAIL_A}\n')
+        _wait_out(out, '[SENTINEL-HIT-CONT]', 10)
+        quiet = _wait_out(out, '[sentinel-quiet]', 10)
+        time.sleep(7)   # 越过 SILENCE(3)+CONFIRM(3):误走 SILENCE 分支者此处已退
+        o = _read_out(out)
+        ok = (quiet and proc.poll() is None
+              and '[sentinel-quiet]' in o and '[SENTINEL-SILENCE]' not in o)
+        _kill(proc)
+        print(f"  {'PASS' if ok else 'FAIL'} L7_terminal_mark_via_cont:"
+              f" 期望 quiet路径+无SILENCE+存活 | 尾行: {_last_line(o)}")
+        cases.append(('L7_terminal_mark_via_cont', 'quiet路径+无SILENCE+存活',
+                      ok, _last_line(o)))
     return 0 if all(c[2] for c in cases) else 1
 
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--selftest':
-    print('[selftest] v5 空窗/静默/漂移/循环/无操作成功STALL/节点滞留/正常推进 回归')
+    print('[selftest] v5.1 十五用例回归:空窗/静默/漂移/循环/STALL/滞留/推进'
+          ' + v5.1 七锁(轮转锚尾/武装锚尾/新行双路/同因去重/异因仍报/升级通道/终局标记)')
     sys.exit(_selftest())
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--replay':
@@ -783,22 +1171,25 @@ if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--replay':
 
 if not REPLAY_MODE and not _acquire_lock():
     sys.exit(0)
-# pos 残留防线(W133 低危②):单实例锁生效后,武装时见到的 pos 只可能来自已死
-# 前实例(报警退出写 fh.tell() / 被 kill 未写)——mtime 陈旧(>10min)的 pos 与
-# 锁保护下的「本实例上次心跳」必然不匹配,按残留处理重置到 EOF,防旧行回放。
-# 新鲜 pos 仍信任(显式分支:v2 的 and/or 链在 pos=0 时回落 EOF 的潜伏 bug 保留修复)。
-start_pos = None
-if MARKER.exists():
-    try:
-        if time.time() - MARKER.stat().st_mtime <= 600:
-            start_pos = int(MARKER.read_text().strip())
-    except (ValueError, OSError):
-        pass
-if start_pos is None:
-    start_pos = LOG.stat().st_size
-print(f'[sentinel] armed v5 @ {time.strftime("%H:%M:%S")}, pos={start_pos}, '
+# ── v5.1 D1 武装游标:恒锚尾(不变量:扫描起点 ∈ {进入监视时尾} ∪ {单调前进})──
+# 2026-09-09 01:13-01:14 三连自退实证的自持链:死亡实例报警路径写
+# MARKER=line_end → 十分钟内重武信任该新鲜小值 → 从历史中段续扫 → 撞新鲜
+# 历史 ERROR → 再死、水位再前爬——哨兵像啃玉米一样把脏纪元啃完,期间监控
+# 全盲。「信任水位」整体退役:水位文件降级为纯活性心跳(runtime-ops 活性
+# 回读只消费 mtime),值不再进入游标;武装起点恒为武装时刻的文件尾。
+# LOG 缺失守卫(搭车件,现行武装即崩):pos 以 None 起始,由 _read_new_lines()
+# 首见成功 stat 时锚定当时尾(锚定发生在该函数内 size<pos 比较之前,否则
+# None<int 直接 TypeError);禁用 0 兜底——0 在合法起点集合之外,文件稍后
+# 以带历史形态出现时又是重放。
+pos: int | None
+try:
+    pos = LOG.stat().st_size   # 进入监视时的文件尾
+except OSError:
+    pos = None                 # 日志尚不存在 → 首见成功 stat 时锚尾
+_pos_show = '待日志首见锚尾' if pos is None else str(pos)
+print(f'[sentinel] armed v5.1 @ {time.strftime("%H:%M:%S")}, pos={_pos_show}(武装恒锚尾), '
       f'log={LOG}, loop(N={LOOP_N},win={LOOP_WIN}s,trial={LOOP_TRIAL}), '
-      f'dwell(>{DWELL_SEC}s)', flush=True)
+      f'dwell(>{DWELL_SEC}s), hit(分级,exit_all={HIT_EXIT_ALL})', flush=True)
 
 last_line_wall = time.time()
 
@@ -807,10 +1198,10 @@ last_line_wall = time.time()
 # 尾随)——Windows 下开着句柄挡 os.rename,server 的 TimedRotatingFileHandler
 # 午夜滚转 PermissionError(WinError 32,日志 Traceback 实锤:轮转 rename 被本
 # 哨兵的句柄挡住)。改**短开轮询**:每 POLL_SEC 开→seek→读新增→关,全程不持
-# 句柄;外部轮转(rename/截断)由 size<pos 判据捕获。行处理语义逐位保留
-# (陈旧行防线/HIT/STALL/LOOP/DWELL/静默双窗/信道重探测)。
+# 句柄;外部轮转(rename/截断)由 size<pos 判据捕获(v5.1 起处置=锚定新纪元
+# 当前尾,不再是回零重读)。行处理语义除 HIT 分级(v5.1,见文件头)外逐位
+# 保留(陈旧行防线/STALL/LOOP/DWELL/静默双窗/信道重探测)。
 POLL_SEC = float(os.environ.get('CW_SENTINEL_POLL', '5'))
-pos = start_pos
 _log_path = LOG            # 当前活信道(漂移切换后更新)
 _last_probe = time.time()  # 上次信道重探测时刻
 _buf = ''                  # 尾部半行(写入中),下轮拼接
@@ -818,25 +1209,39 @@ _skipped_stale = 0
 
 
 def _read_new_lines() -> list[tuple[str, int]]:
-    """短开读新增行:返回 [(行文本含换行, 行尾偏移)];轮转重置从头。
+    """短开读新增行:返回 [(行文本含换行, 行尾偏移)];轮转锚定新纪元当前尾。
 
     行尾偏移按解码后字节累计,损坏字节被 errors='replace' 替换的场景可能偏
-    几字节——只用于 MARKER(重武装位点),偏差无害(最多重读半行被解析跳过)。
+    几字节——只用于 MARKER(心跳/报警位点),偏差无害(最多重读半行被解析跳过)。
     """
     global pos, _buf
     try:
         size = _log_path.stat().st_size
     except OSError:
         return []
-    if size < pos:   # 日志轮转/截断重写(重建变小)→ 从头读
-        print('[sentinel] 日志轮转,重置窗口', flush=True)
-        pos = 0
-        _buf = ''
+    if pos is None:
+        # v5.1 D1 搭车件:武装时日志尚不存在 → 首见成功 stat 即锚定当时尾
+        #(该时刻才是真正「进入监视」的时刻,符合不变量的进入时尾语义)。
+        # 锚定必须先于下方 size<pos 比较(否则 None < int 直接 TypeError);
+        # 禁用 0 兜底:0 在合法起点集合之外,见武装块注释。
+        pos = size
+    if size < pos:
+        # v5.1 D2 轮转/截断:旧纪元坐标失效 → 锚定新纪元当前尾,历史不重放。
+        # v5 及以前此处置 pos=0=整文件重放,是 2026-09-09 脏纪元自毁循环的
+        # 向量之一(武装信任水位是另一个,已在武装块拆除)。检测边界:
+        # size<pos 只能测「新纪元未长过旧 pos」的轮转;新文件在一个轮询间隔
+        # 内长过旧 pos 则漏检(需单间隔重写整旧文件长度,本项目日志速率下
+        # 不可达;漏检后果=跳过新纪元前缀的丢失窗,不重放不崩溃)。
+        print(f'[sentinel] 日志轮转/截断,锚定新纪元尾部 pos={size}'
+              f'(其已有内容按纪元边界跳过)', flush=True)
+        pos = size
+        _buf = ''   # 旧文件半行残尾必须弃:拼进新纪元首行会造伪行
         recent.clear()
         progress_tods.clear()
         loop_recent.clear()
         loop_progress.clear()
         _dwell_reset()
+        _hit_reset()   # v5.1:纪元边界,CONT 去重表清零(新纪元重获首见报警权)
         return []
     if size == pos:
         return []
@@ -865,11 +1270,15 @@ while True:
         last_line_wall = time.time()
         _seen_quiet_noted = False
     for _line, _line_end in _lines:
-        _msg = process_line(_line, _line_end)
-        if _msg:
-            print(_msg, flush=True)
-            MARKER.write_text(str(_line_end))
-            sys.exit(0)
+        _res = process_line(_line, _line_end)
+        if _res is None:
+            continue
+        _msg, _fatal = _res
+        print(_msg, flush=True)
+        if not _fatal:
+            continue   # v5.1 CONT 驻留:非退出事件,实例保持在岗继续侦
+        MARKER.write_text(str(_line_end))
+        sys.exit(0)
     if not _lines:
         # 信道周期重探测(2026-08-26 run 17 实证):仅在静默分支每 REPROBE_SEC
         # 重跑 _pick_log();活信道变了 → 切到新文件当前尾(不回读历史),窗口
@@ -885,21 +1294,25 @@ while True:
                 if _new_size is not None:
                     print(f'[sentinel] 日志信道漂移 {_log_path} → {_cand},切换', flush=True)
                     _log_path = _cand
-                    pos = _new_size
+                    pos = _new_size   # v5.1:切到新文件当前尾(锚尾先例,历史不回读)
                     _buf = ''
                     recent.clear()
                     progress_tods.clear()
                     loop_recent.clear()
                     loop_progress.clear()
                     _dwell_reset()
+                    _hit_reset()   # v5.1:纪元边界,CONT 去重表清零
                     last_line_wall = time.time()
                     _seen_quiet_noted = False
                     _skipped_stale = 0
     # 心跳无条件每轮写(2026-09-04 勘误:旧版嵌在 not _lines 分支内,
     # 局活跃日志有流时水位冻结——runtime-ops「哨兵活性回读」以 pos mtime
     # 推进判活,冻结被误读成挂死,两个健康实例被杀)。进程活着 = 水位推进,
-    # 与是否读到新行无关;报警路径(上写 _line_end 后 exit)不受影响。
-    MARKER.write_text(str(pos))
+    # 与是否读到新行无关;报警路径(写 _line_end 后 exit)不受影响。
+    # v5.1:值退役为纯活性指标(游标不再读它);pos 尚未锚定(None,武装时
+    # 日志缺失)写 '-1' 占位——写 "None" 字符串会让任何按 int 解析水位的
+    # 工具崩,可解析占位两全(仅 mtime 被消费,值本身无人读)。
+    MARKER.write_text('-1' if pos is None else str(pos))
     if time.time() - last_line_wall > SILENCE_SEC:
             # v3.5(12:51 误报修):静默判定前先做「活跃局检查」(离线读
             # telemetry/live/runs.jsonl + outcomes.jsonl)。局已自然终局 → 局后空窗
