@@ -285,7 +285,8 @@ def current_run_id() -> str:
 
 
 def reset_run_state() -> None:
-    """run 态簇的测试复位正规入口:清 _CURRENT_RUN_ID/_RUN_MATCH/_RUN_CLOSED。
+    """run 态簇的测试复位正规入口:清 _CURRENT_RUN_ID/_RUN_MATCH/_RUN_CLOSED
+    /_CURRENT_DIFFICULTY/_PENDING_BRIEFING_ROWS 五件。
 
     为什么收口成单点(ADR-0588 ensure 门消费簇 × 测试复位链缺口):三件套
     分散在三处生产写点(start_run 铸造 / ensure_run_started 赋 token /
@@ -296,18 +297,30 @@ def reset_run_state() -> None:
     .debug/temp/currency_war/attacks/three_review_20260908/三审报告-第二波.md
     F1,**易失产物**待 ADR 回填;门控三分支语义见 ADR-0588)。
 
+    难度列与简报缓冲两件同簇(出处:.debug/temp/currency_war/attacks/
+    three_review_20260908/三审报告-第三波.md F3,**易失产物**待 ADR 回填;
+    单一入口判据承本函数既有先例):_CURRENT_DIFFICULTY 由 start_run 与
+    _CURRENT_RUN_ID 同语句铸造,消费 = recorder.record_decision 决策行
+    难度列;_PENDING_BRIEFING_ROWS 是简报行 run 归属缓冲(下一局
+    start_run 把缓冲行补写进新局)。两者残留病理 = 遥测内容污染(后续
+    仅桩 run_id 的测试写出带前局难度/错局归属的行),无分支翻转;入簇
+    而非散点补桩 = 簇成员随写点扩员自动进复位链,防逐件补桩清单再漏。
+
     生产路径零调用申报:生产 run 态由 ensure_run_started → start_run →
     record_run_summary 自洽推进(收口位由下一局 start_run 复位),复位
     语义只属于测试 teardown,本函数禁入任何生产调用链。
 
-    边界:只复位 run 态簇;_RECORDER 与落盘根两槽有各自正规入口
+    边界:只复位 run 态簇五件;_RECORDER 与落盘根两槽有各自正规入口
     (:func:`set_recorder_replay_dir` / ``op_journal.set_journal_dir``),
     teardown 按槽分立调用,职责不混。
     """
     global _CURRENT_RUN_ID, _RUN_MATCH, _RUN_CLOSED
+    global _CURRENT_DIFFICULTY, _PENDING_BRIEFING_ROWS
     _CURRENT_RUN_ID = ''
     _RUN_MATCH = None
     _RUN_CLOSED = False
+    _CURRENT_DIFFICULTY = ''
+    _PENDING_BRIEFING_ROWS = []
 
 
 
