@@ -988,7 +988,7 @@ def _cli_main() -> None:
     """④ seed 重放入口(可复现 bug 报告:seed+池指纹 → 逐轮决策)。
 
     用法:
-        uv run python -m sr_od.application.currency_war.sim.cw_sim \\
+        uv run python -m sr_od.application.currency_war.sim.runner \\
             replay --seed 42 --pool snapshot
     checks 报的 games 索引 → seed = seed_base + idx,同参数重放。
     池指纹不符(历史 bug 对新池)→ 提示换池版本,不硬跑(⓪ 纪律)。

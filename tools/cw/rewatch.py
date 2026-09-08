@@ -8,7 +8,9 @@
 报警链自断,哨兵哑了;2026-08-25 用户纠正后移除)。哨兵三件的「起」永远走**会话后台
 任务信道**(退出码=警报,可送达编排者);本工具只管:
   1. 查旧:按命令行匹配 cw_sentinel|cw_early_stop|cw_runs_gap 的 python 进程并列出;
-  2. 杀净:全部 kill(带 2 秒宽限确认);
+  2. 杀净(树终杀+杀后复扫断言):匹配进程与其 psutil 树后代一并 kill(带
+      2 秒宽限确认);杀后重扫断言零残留——复扫非空自动再杀(有界重试),
+      仍非空 exit 2,「杀净」从尽力而为变成可验证出口;
   3. 打印标准武装命令(--print-commands,默认开):按参数列该由编排者以后台任务起的
      命令(默认 sentinel+gap 两件;early_stop 有「首条遥测落后再武装」纪律,须显式
      --early 才列入);
@@ -59,6 +61,9 @@ WATCHERS: dict[str, tuple[str, str]] = {
 
 WATCHER_CMD_NAMES = ('cw_sentinel', 'cw_early_stop', 'cw_runs_gap')
 KILL_GRACE_SEC = 2.0
+# 杀净出口的「杀→复扫」总轮数上限(1 轮主杀 + 至多 2 轮复扫再杀;轮数耗尽
+# 仍非空 = exit 2 可验证失败)——有界重试,不做无限兜圈
+KILL_RESCAN_MAX = 3
 
 
 def _cmdline_text(proc: psutil.Process) -> str:
@@ -102,25 +107,113 @@ def print_old_list(procs: list[psutil.Process]) -> None:
         print(f'  - pid={proc.pid} name={proc.name()} :: {text}')
 
 
+def collect_tree(procs: list[psutil.Process]) -> list[psutil.Process]:
+    """树收编:每个进程经 psutil children(recursive=True) 并入其全部后代,
+    按 pid 去重(排除本工具自身),返回「匹配进程 ∪ 后代」的杀集。
+
+    为什么(ADR-0602 §2):哨兵实为 pwsh→uv→venv python→base python
+    的进程链,今天四层命令行都含脚本名、命令行匹配够用,明天 uv 改实现
+    未必——后代命令行不含脚本名/不可读时按命令行抓不到,树语义保证
+    链上进程不孤儿化(2026-09-08 实证:单点杀 pwsh 留 uv→python 孤儿,
+    占 runs_gap 锁拒新实例+报警链断成哑哨兵)。psutil 单机制:树遍历
+    只用 children(recursive=True),不引 taskkill/CIM 第二套。
+    """
+    out: dict[int, psutil.Process] = {}
+    for proc in procs:
+        if proc.pid in out or proc.pid == os.getpid():
+            continue
+        out[proc.pid] = proc
+        with contextlib.suppress(psutil.NoSuchProcess, psutil.AccessDenied,
+                                 psutil.ZombieProcess):
+            for child in proc.children(recursive=True):
+                if child.pid not in out and child.pid != os.getpid():
+                    out[child.pid] = child
+    return list(out.values())
+
+
+def _merge_procs(*groups: list[psutil.Process]) -> list[psutil.Process]:
+    """按 pid 去重合并多组进程(杀集幸存者 ∪ 复扫命中,防同进程双计)。"""
+    merged: dict[int, psutil.Process] = {}
+    for group in groups:
+        for proc in group:
+            merged.setdefault(proc.pid, proc)
+    return list(merged.values())
+
+
+def _kill_procs(victims: list[psutil.Process]) -> list[psutil.Process]:
+    """杀一批进程(kill→宽限确认→强杀),返回宽限+强杀后仍存活的成员。
+
+    kill 抑制 NoSuchProcess+AccessDenied:Windows TerminateProcess 是
+    原子的——目标死了,或抛 AccessDenied(需管理员),不存在「不抛异常
+    但不死」的中间态。杀不动=视作存活返回,交复扫轮有界重试,最终走
+    exit 2 可验证失败(ADR-0602 §2);不抑制会让真实「需管理员权限」
+    场景变成未处理异常(traceback 退 1),绕过 exit 2 契约,消费方
+    (编排者后台 job / cycle_restart)拿到契约外退出码。
+    """
+    for proc in victims:
+        with contextlib.suppress(psutil.NoSuchProcess, psutil.AccessDenied):
+            proc.kill()  # 哨兵是旁观进程,无需优雅关闭
+    _, alive = psutil.wait_procs(victims, timeout=KILL_GRACE_SEC)
+    for proc in alive:
+        print(f'  ! pid={proc.pid} 宽限 {KILL_GRACE_SEC}s 未退出,强杀')
+        with contextlib.suppress(psutil.NoSuchProcess, psutil.AccessDenied):
+            proc.kill()
+    _, still = psutil.wait_procs(alive, timeout=1.0)
+    return list(still)
+
+
 def kill_all(procs: list[psutil.Process]) -> None:
-    """杀净:全部 kill,带 2 秒宽限确认,超时强杀。"""
+    """杀净(树终杀 + 杀后复扫断言,ADR-0602 §2)。
+
+    树终杀:匹配进程+collect_tree 收编的后代一并杀;杀后复扫:重跑
+    find_old_watchers,非空自动再杀(KILL_RESCAN_MAX 轮有界重试),仍
+    非空 exit 2——把「杀净」从尽力而为变成可验证出口:杀净步骤被绕过
+    时(2026-09-08 事故:Stop-Process 杀 pwsh 留 uv→python 孤儿)人忘了
+    核,命令会报红。停净判据=「[杀净] …复扫零残留 ✅」或「[杀净]
+    无需杀(本来就干净)」二者之一(他信道已停净时只有后者;[复扫]
+    前缀行只在重试轮与最终失败出现)。
+    """
     if not procs:
         print('[杀净] 无需杀(本来就干净)')
         return
-    for proc in procs:
-        with contextlib.suppress(psutil.NoSuchProcess):
-            proc.kill()  # 哨兵是旁观进程,无需优雅关闭
-    _, alive = psutil.wait_procs(procs, timeout=KILL_GRACE_SEC)
-    for proc in alive:
-        print(f'  ! pid={proc.pid} 宽限 {KILL_GRACE_SEC}s 未退出,强杀')
-        with contextlib.suppress(psutil.NoSuchProcess):
-            proc.kill()
-    _, still = psutil.wait_procs(alive, timeout=1.0)
-    if still:
-        pids = [p.pid for p in still]
-        print(f'[杀净] 失败:pid {pids} 杀不掉')
-        sys.exit(2)
-    print(f'[杀净] 已杀 {len(procs)} 个(宽限 {KILL_GRACE_SEC}s 内全部退出)')
+    for round_no in range(1, KILL_RESCAN_MAX + 1):
+        victims = collect_tree(procs)
+        descendants = [p for p in victims if p.pid not in {q.pid for q in procs}]
+        if descendants and round_no == 1:
+            print(f'[杀净] 树收编:并入 {len(descendants)} 个后代进程'
+                  f'(pid {[p.pid for p in descendants]})')
+        still = _kill_procs(victims)
+        leftover = find_old_watchers()
+        remaining = _merge_procs(still, leftover)
+        if not remaining:
+            print(f'[杀净] 已杀 {len(procs)} 个匹配进程+树收编后代'
+                  f'(宽限 {KILL_GRACE_SEC}s 内全部退出);复扫零残留 ✅')
+            return
+        procs = remaining
+        print(f'[复扫] 第 {round_no} 轮杀后仍有 {len(remaining)} 个哨兵进程'
+              f'(pid {[p.pid for p in remaining]}),再杀')
+    print(f'[复扫] 失败:{KILL_RESCAN_MAX} 轮杀+复扫后仍有残留'
+          f'(pid {[p.pid for p in procs]})——可能需管理员权限,请人工核查')
+    sys.exit(2)
+
+
+def kill_pids_tree(pids: list[int]) -> list[int]:
+    """按 pid 树终杀:目标进程+psutil 树收编后代一并 kill。
+
+    cycle_restart 两处单点杀消费点(supervise 兄弟终止 / start_app 失败
+    回滚)的复用缝(ADR-0602 §3):Popen.terminate() 在 Windows 下不
+    级联,只杀 uv 层会孤儿化 venv python→base python 链——两处复用本
+    实现,杀语义与 kill_all 单一源,禁在消费点自造第二套树杀。
+    返回杀后仍存活的杀集 pid(含树收编后代;空列表 = 全杀净,以「杀集
+    成员无一存活」为可验证出口);目标 pid 已死时幂等返回空。
+    """
+    targets: list[psutil.Process] = []
+    for pid in pids:
+        with contextlib.suppress(psutil.NoSuchProcess, psutil.AccessDenied):
+            targets.append(psutil.Process(pid))
+    if not targets:
+        return []
+    return [p.pid for p in _kill_procs(collect_tree(targets))]
 
 
 def print_commands(wanted: list[str]) -> None:
@@ -138,7 +231,13 @@ def print_commands(wanted: list[str]) -> None:
 def verify(expected: int) -> None:
     """核岗:按在岗脚本件数核验(一个脚本 = uv→python 进程链,可能 2-3 个进程同命令行,
     按进程数会翻倍,故按「命令行里出现该脚本名」去重计件);并把在岗状态写入
-    rewatch.status;不等 → 非零退出。"""
+    rewatch.status;不等 → 非零退出。
+
+    已知局限(申报不修,ADR-0602 §4):①按名计件——同名双实例仍计 1 件,
+    exit 0 检不出实例堆积(打印的 pid 列表供人眼核对);②cmdline 命中即在岗——
+    哑孤儿(报警信道已断的残留进程)照样绿,exit 0 ≠ 报警信道活,活性回读
+    以 cw_sentinel.pos 心跳推进 / 后台 job 结算为准(runtime-ops「哨兵活性回读」)。
+    """
     procs = find_old_watchers()
     on_duty: dict[str, list[int]] = {name: [] for name in WATCHER_CMD_NAMES}
     for proc in procs:

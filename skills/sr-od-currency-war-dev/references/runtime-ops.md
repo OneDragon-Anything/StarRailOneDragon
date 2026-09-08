@@ -16,7 +16,7 @@
 
 - 启动对局:MCP `run_standalone_app`(app=`currency_war`);进度 `get_run_status`(state/current_node/retry);停止 `stop_run`(信号式,当前节点完成后退出——发完信号游戏可能还在打,等自动战斗结算再动画面)。
 - 改代码生效路径 = 重启 MCP server(经 daemon 的 restart 工具;**对局运行中它按守卫拒绝重启**——先 stop_run 等结算)。重启后客户端按 harness 约定重连(项目级 servers.yml strip/restore toggle,见全局工作指令)。
-- 重启代价:对局丢、session(target/信号/失败记忆)清零——重启后首局 target 重选是已知断档,判读时别把首局异当回归。
+- 重启代价:对局丢、session(target/信号/失败记忆)清零——重启后首局 target 重选是已知断档(P1),判读时别把首局异当回归。**P2 同辖(T-167 事故扩档)**:接管重建的 StrategySession 方向真空(target_comp=None、K 线回退/θ 不可得)在 P2+ 接管局同样成立——该真空曾与发射-执行接缝缺口复合成 15 分钟零推进软卡死(run_20260908_210431;接缝与守卫缺口已修,此态降级为「出战推进、后续重评」的质量问题,方向真空治本归策略批挂账)。**接管局 = 卡死类报警第一排查上下文**:NODE-DWELL/守卫停机/断流报警先核接管态(判定锚 = 日志「已在对局中,跳过 start 交 loop」行 + 首条 state 行直接非 r1),遥测按下方「重启接管段的遥测降权」降权判读。
 - 改动攒批纪律:局中不改代码;一局跑完(或早停)再重启加载。
 - 旧自主推进代码带 `# 未验证` 注释:进对应画面复审(重点补日志/截图让每步可观测)后删注释才能信——复审是义务不是可跳的。
 - **重启前四步确认**(全过才动手):① `git status` 干净(或仅剩声明过的挂起件);② 全量 pytest 0 failed(`uv run pytest sr-od-test/`,分层命令见 SKILL.md 单一源地图「测试分层」行);③ `check_game_window` is_win_valid=true(无效先 open_game);④ `analyze_screen` 确认在货币战争-大厅(不在则先按下方残局清理序回大厅)。
@@ -60,6 +60,7 @@
 
 - **武装命令口径**:三件统一 `$env:PYTHONUTF8='1'; uv run python skills\sr-od-currency-war-dev\scripts\<脚本>.py` 后台起(退出码即警报);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 P2 投资策略误报经信道送达并处置实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `tools/cw/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap` 双查;事件哨兵重武前删 `cw_sentinel.pos` 旧水位(rewatch 杀净时顺手删);job id 记进度账本「工作状态·持续运行」节。
 - **重武三步(硬序,防实例堆积)**:查旧(rewatch)→ kill 净(rewatch,含上一局残留)→ 编排者经会话后台任务信道 arm 新;起完 `rewatch --verify N` 核岗。**值守兜底定期核:哨兵实例数应=3(每脚本恰 1),多杀少补**。
+- **杀哨兵只许经 rewatch;任何信道停后必复扫**:Stop-Process / 后台 job 等单点杀在 Windows 不级联——pwsh 包装被杀后 uv→venv python→base python 链照样存活(2026-09-08 实证:孤儿占 runs_gap 锁拒新实例武装+报警链断成哑哨兵)。rewatch 杀净已带树终杀(psutil 收编链上后代)+杀后复扫断言(复扫非空自动再杀,有界重试后仍非空 exit 2;决策 why=ADR-0602)。停净判据=跑一遍 `tools/cw/rewatch.py` 见到「**复扫零残留 ✅**」或「**无需杀(本来就干净)**」二者之一(他信道已停净时只有后者出现;「[复扫]」前缀行=仍在杀,末轮失败行需人工核查权限)。
 - **试用期纪律**:哨兵/早停脚本前几跳 = 试用期——报警先核时间戳与归属(旧行重放/中途武装无上下文/局后空窗三类误报实证),再信内容;watcher 上线不算完,前几跳逐一复盘。
 
 ## 判读与建档的运维侧纪律

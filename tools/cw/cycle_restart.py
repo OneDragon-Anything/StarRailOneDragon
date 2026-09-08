@@ -39,8 +39,10 @@ rewatch 杀净哨兵 → daemon 重启 MCP server(加载新代码)→ 重武哨�
 停局是**信号式**(POST /game/stop,当前战斗打完才终),超时(--stop-timeout,默认
 900s)未终则中止后续步骤(fail-safe:绝不带着活跃对局重启——daemon r99 守卫同判据)。
 
-退出码:0 全流程完成(含哨兵全部以 0 退出);2 参数/前置失败;3 重启失败或停局超时;
-非零透传首个退出的哨兵的退出码时附 [CYCLE-ALARM](哨兵报警/事件,需介入判读)。
+退出码:0 全流程完成(含哨兵全部以 0 退出);2 参数/前置失败(含杀净失败:
+rewatch 复扫后仍有残留时透传 2,fail-safe 中止不带孤儿武装,ADR-0602 §3);
+3 重启失败或停局超时;非零透传首个退出的哨兵的退出码时附 [CYCLE-ALARM]
+(哨兵报警/事件,需介入判读)。
 """
 import argparse
 import contextlib
@@ -133,7 +135,13 @@ def stop_running(stop_timeout: float) -> bool:
 # ── 步骤②:哨兵杀净(复用 rewatch,单一源)──────────────────────────
 
 def kill_watchers(wanted: list[str]) -> None:
-    """杀净旧哨兵实例 + 删事件哨兵旧水位,逻辑全走 rewatch(不自起纪律的另一半)。"""
+    """杀净旧哨兵实例 + 删事件哨兵旧水位,逻辑全走 rewatch(不自起纪律的另一半)。
+
+    杀净出口含树终杀+杀后复扫断言(rewatch 侧语义,ADR-0602 §2):复扫
+    仍非空时 rewatch 以 exit 2 终止——本流程随之带码中止,不带孤儿武装
+    新哨兵(哑哨兵占锁的 fail-safe 方向)。停净判据=输出出现「[杀净]
+    …复扫零残留 ✅」或「[杀净] 无需杀(本来就干净)」二者之一(他信道
+    已停净时只有后者;[复扫] 前缀行只在重试轮与最终失败出现)。"""
     rw = _rewatch()
     procs = rw.find_old_watchers()
     rw.print_old_list(procs)
@@ -295,7 +303,8 @@ def supervise(kids: dict[int, subprocess.Popen]) -> int:
     打印流里),统一上报给编排者判断;这里只负责「醒来 + 不吞退出码」。
     """
     _log(f'[看守] {len(kids)} 件哨兵在岗,阻塞值守中……(哨兵任意一件退出即唤醒上报)')
-    watchers = _rewatch().WATCHERS
+    rw = _rewatch()
+    watchers = rw.WATCHERS
     names = {}
     for k in kids.values():
         names[k.pid] = next((key for key in watchers if key in k.args[-1]), '?')
@@ -309,10 +318,15 @@ def supervise(kids: dict[int, subprocess.Popen]) -> int:
             tone = '[CYCLE-IDLE]' if rc == 0 else '[CYCLE-ALARM]'
             _log(f'{tone} 哨兵 {names.get(pid)}(pid={pid})退出 code={rc}'
                  f'{"——正常交接窗(局终/IDLE),请判读并启动下一周期" if rc == 0 else "——报警/异常,读上方该哨兵输出判定"}')
-            for other in kids.values():
-                with contextlib.suppress(Exception):
-                    other.terminate()
-            _log('[看守] 其余哨兵已终止(防双实例残留);全程结束')
+            # 树终杀而非单点 terminate(ADR-0602 §3):kid 是 uv 层进程,
+            # Windows 下 TerminateProcess 不级联,只杀 uv 层会孤儿化
+            # venv python→base python 链——孤儿占 runs_gap 锁拒下一轮武装
+            # +报警链断成哑哨兵(2026-09-08 实证);杀语义单一源在 rewatch。
+            leftover = rw.kill_pids_tree([k.pid for k in kids.values()])
+            if leftover:
+                _log(f'[看守] ⚠️ 树终杀后仍有存活 pid {leftover}'
+                     f'——请跑 tools/cw/rewatch.py 复扫确认零残留')
+            _log('[看守] 其余哨兵已树终杀(防双实例残留+防 uv→python 链孤儿化);全程结束')
             return 0 if rc == 0 else (rc or 7)
 
 
@@ -369,8 +383,13 @@ def main() -> None:
             _log('[4/5] ❌ 一件哨兵都没起来,中止起局(裸奔局烧时间没人报)')
             sys.exit(3)
     if not start_app(args.app):
-        for kid in kids_list:
-            kid.terminate()
+        # 树终杀而非单点 terminate(ADR-0602 §3,与 supervise 兄弟终止
+        # 同源同缝):回滚只杀 uv 层会孤儿化 venv python 链,复刻哑哨兵占锁。
+        rw = _rewatch()
+        leftover = rw.kill_pids_tree([k.pid for k in kids_list])
+        if leftover:
+            _log(f'[5/5] ⚠️ 武装回滚树终杀后仍有存活 pid {leftover}'
+                 f'——请跑 tools/cw/rewatch.py 复扫确认零残留')
         sys.exit(2)
     if args.no_supervise or args.no_arm:
         _log('[完] 起局完成;看守已关(--no-supervise/--no-arm)——编排者需自管监控兜底')
