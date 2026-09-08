@@ -32,14 +32,26 @@ A 三段(方案 v3 §2.2;与 ADR-0580「资格判定 = 物理硬闸 ∧ 身份�
    过度禁卖上界 ≤1 轮有界可判读)。current_round=None ⇒ 窗口段失效
    = INV 显式例外,方向 = 放行向(V2-09;三读端同源 state.round_num,
    轮号恒可得,None 为死分支防御位)。
+2′. L1 同轮硬面(ADR-0611;r408「买后禁卖」
+   不变量的载体化恢复):kernel ``cw4_swap_fresh_buys`` 轮键事实集
+   (``fresh_buys_sell_face`` 读端自治,全因类完备——每笔买入无条件
+   写入且先于合成捷径分支,hold 资格拒收/合并捷径/未映射臂三形态
+   天然覆盖,读源定谳考古修正见 ADR-0611 §3-1)并入排除集;读端不消费
+   ``current_round`` 形参(None 漏接线帧不再构成硬面放行 = 对 V2-09
+   在本面的显式翻转,v1 缺口 C 结构性闭合)。两个 carve-out:垫保类
+   登记名集从硬面剔除(继续走 defer 通道,硬排除杀转化类放行 =
+   P78-5′ 破面,ADR-0611 §3-1);换线孤儿清算卖 = 账闭合豁免语境
+   (P78-2a「线账闭合」,不经硬面,检查器 ``line_switch_collapse``
+   豁免键兜住,ADR-0611 §3-7)。
 3. 通道对价段(显式豁免,每条一行+出处):funding 筹资兜底豁免
    (P78-5 四条件,``funding_hold_fallback`` 单一源供三消费位拼装)、
    line_switch 闭合线界投影(消费现参,行为等价)、projection 视图 =
    interest 全资格面(身份 ∪ 窗口 ∪ T3 活跃集,P78-6 读端同源,M7)。
 
 发射登记统一(ADR-0585 §2/§3):``LaunchCause`` 闭集
-{obligation, hold, press, stall_protect},12 买入臂逐一映射
-(``LAUNCH_CAUSE_BY_ARM``,ADR 定稿载体);T3 垫保簿与 ②(b) 压库簿
+{obligation, hold, press, stall_protect},14 买入臂逐一映射
+(``LAUNCH_CAUSE_BY_ARM``,ADR 定稿载体;臂计数对现值校正 = ADR-0611,
+12/13 为历史口径);T3 垫保簿与 ②(b) 压库簿
 完全合一为单载体双视图(载体属性沿用 T3 簿名——执行侧 cw_op_deploy
 鸭子读契约在先,禁改名破契约)。生命周期四出口:卖出销 / 部署销 /
 合成销(V2-05 新增)/ 轮界销;账闭合按五键分键承载(close_on_sell/
@@ -53,6 +65,9 @@ from sr_od.application.currency_war.kernel.cw_card_identity import (
     TIER_TRANSITION,
     line_identity_tier,
     sell_hold_exclusion_names,
+)
+from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+    fresh_buys_sell_face,
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_membership,
@@ -91,7 +106,8 @@ LAUNCH_CAUSES: frozenset[str] = frozenset({
 #: 账本观测面(五键闭合分键),不入窗口段排除。
 WINDOW_LAUNCH_CAUSES: frozenset[str] = frozenset({'press', 'stall_protect'})
 
-#: 12 买入臂 → 因果类全映射(ADR-0585 §2 定稿载体;方案 v3 §3.1 表)。
+#: 14 买入臂 → 因果类全映射(ADR-0585 §2 定稿载体;方案 v3 §3.1 表;
+#: 臂计数对现值校正 = ADR-0611,12/13 为历史口径)。
 #: 批 3 落写点的臂 = 窗口段两类(shop 发射位 _emit_buy 统一登记)+ ②(b)
 #: 按 prio 三分显式传因;obligation/hold 类的 M2 族/C1/④ 产物由身份段
 #: 辖(写点不辖行为),写点随矩阵批按需落——本表先钉全映射防第 5 臂复发。
@@ -118,7 +134,10 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
 
 def launch_cause_of(reason: str) -> str | None:
     """买入臂名(BuyCard.reason)→ 因果类(LAUNCH_CAUSE_BY_ARM 查因;
-    未映射臂 = None——新臂必须先入映射表再可登记,登记闭集强制)。"""
+    未映射臂 = None)。A4 硬闸(ADR-0611):发射位
+    ``_emit_buy`` 对 None 改抛错——静默跳过登记分支 = 新臂绕过登记与
+    一切以字典为臂全集的穷举断言,抛错后该字典才是臂全集的硬地基;
+    新臂必须先入映射表再可发射。"""
     return LAUNCH_CAUSE_BY_ARM.get(reason)
 
 
@@ -371,6 +390,56 @@ def _close_switched_obligations(session: StrategySession,
         _bump(_counters_of(session), 'close_on_switch', closed)
 
 
+# ===== 义务镜像簿与换线孤儿证明(L1 carve-out 的证据载体;ADR-0611)=====
+# 为什么需要镜像簿:装配 A 身份段的换线闭合读点(``_close_switched_
+# obligations``)会**就地销账**义务类登记——同帧更早的 A 读点(帧首
+# 投影等)触发销账后,登记面不可再辨「曾义务」,L1 换线孤儿 carve-out
+# (ADR-0611 §3-7)迟到读登记簿 = 永远扑空。义务买入镜像簿
+# (scratch,轮戳)与登记账分离,跨销账存活 = 孤儿证明的载体(与
+# shop 帧首 ``_sw_orphans`` 证明集同一依据,ADR-0591 §4)。
+#
+#: 义务类买入镜像簿 scratch 键(shop 发射位 _emit_buy 写,义务类登记
+#: 落账同步落)。键常量原宿主 = shop.py(_SHOP_OBLIGATION_BOOK_KEY),
+#: ADR-0611 上移本模块:L1 carve-out 与 shop 帧首孤儿证明读点必须同源
+#: 同键(第二键 = 双源漂移面)。
+_OBLIGATION_BOOK_KEY: str = 'shop_obligation_buy_rounds'
+
+
+def obligation_book_of(session: StrategySession) -> dict:
+    """义务类买入镜像簿读口(scratch 载体,局级生命周期;缺省就地建)。"""
+    book = state_of(session).scratch.setdefault(_OBLIGATION_BOOK_KEY, {})
+    return book if isinstance(book, dict) else {}
+
+
+def line_switch_orphans_of(session: StrategySession, base: set[str],
+                           round_num: int) -> frozenset[str]:
+    """本轮线账闭合孤儿证明集(镜像簿 ∧ 登记轮 == 当前轮 ∧ 已出基座)。
+
+    = 本轮义务登记名 ∧ 已出义务基座,两者合取即登记簿线账闭合事件
+    (销账谓词单一源 = ``_close_switched_obligations`` 的「义务类 ∧
+    ∉ 基座」;base 解析调用方须传 ``_resolve_base`` 同一解析)。bench
+    在场义务件的轮内账闭合出口唯一 = 换线闭合(卖出销/部署销/合成销
+    都以件离场为前提),合取不误标;跨轮名随轮戳剪枝(陈旧证明不洗白,
+    ADR-0591 §4)。读点幂等(剪枝只删 ≠ 当前轮的陈旧戳)。"""
+    book = obligation_book_of(session)
+    for _n in [k for k, v in book.items() if v != round_num]:
+        del book[_n]
+    return frozenset(n for n, v in book.items()
+                     if v == round_num and n not in base)
+
+
+def _autonomous_round(session: StrategySession) -> int | None:
+    """读端自治轮号(黑板帧解析;与 ``fresh_buys_sell_face`` 同槽同序:
+    last_state 优先、shop_state_frame 兜底)。帧全缺 = None(调用方按
+    fail-closed 方向处置:硬面不 carve)。"""
+    for attr in ('last_state', 'shop_state_frame'):
+        frame = getattr(session, attr, None)
+        if frame is not None:
+            rn = getattr(frame, 'round_num', 1)
+            return int(rn) if rn is not None else 1
+    return None
+
+
 # ===== 装配 A(身份段 + 窗口段 + 通道对价段)=====
 
 
@@ -417,23 +486,50 @@ def sell_exclusions(session: StrategySession,
     """统一装配 A 单一入口(P78 INV 主不变量;ADR-0585 §2/§3)。
 
     任何卖出通道的资格排除必须经本入口装配——「不许卖谁」独占于 A,
-    消费位禁手搓排除集。批 3 全量形态 = 身份段 ∪ 窗口段;projection
-    通道视图 = interest 全资格面再并 T3 活跃集(P78-6 读端同源/M7:
-    凑息实际资格面含 T3 绝对跳过,投影漏 T3 则 liquid_refund 高估 →
-    s_reserve 低估 → 预留被吃;T3 的 defer 参数语义零改,B3)。
+    消费位禁手搓排除集。全量形态 = 身份段 ∪ 窗口段 ∪ L1 同轮硬面
+    (模块 docstring 2′ 段);projection 通道视图 = interest 全资格面
+    再并 T3 活跃集(P78-6 读端同源/M7:凑息实际资格面含 T3 绝对跳过,
+    投影漏 T3 则 liquid_refund 高估 → s_reserve 低估 → 预留被吃;T3
+    的 defer 参数语义零改,B3)。
 
     ``channel``:卖出通道标记(SELL_CHANNELS 闭集;枚举外值抛错)。
     ``current_round``:窗口段活跃判据轮号(M5 定稿;三读端同源
     state.round_num);None ⇒ 窗口段失效 = INV 显式例外,方向 = 放行向
-    (V2-09;实际全部消费位轮号恒可得,死分支防御位)。
+    (V2-09)。**L1 同轮硬面不消费本形参**(读端自治 fail-closed,ADR-0611
+    对 V2-09 的显式翻转);垫保 carve-out 在轮号不可得帧不剔除
+    (fail-closed 方向 = 硬面保持全集)。
     """
     if channel not in SELL_CHANNELS:
         raise ValueError(
             f'未知卖出通道 {channel!r}:合法闭集 = {sorted(SELL_CHANNELS)}'
             ' (方案 v3 §3.1;新通道先登记 SELL_CHANNELS 再接线)')
+    # L1 换线孤儿证明集读点(ADR-0611 §3-7):证据载体 = 义务
+    # 镜像簿(轮戳跨销账存活,见 line_switch_orphans_of 节注),禁读
+    # 登记簿——同帧更早的装配 A 读点已触发换线闭合就地销账,登记面
+    # 不可再辨「曾义务」。base 解析与销账谓词同一(_resolve_base 单一
+    # 源,禁调用侧自选)。轮号自治(ADR-0611):消费位漏传轮号时从黑板帧
+    # 解析;全缺 = 不 carve(fail-closed 方向:硬面保持全集)。
+    _carve_round = (int(current_round) if current_round is not None
+                    else _autonomous_round(session))
+    _sw_orphans: frozenset[str] = frozenset()
+    if _carve_round is not None:
+        _locked0, _base0 = _resolve_base(session, k_members)
+        _sw_orphans = line_switch_orphans_of(session, _base0, _carve_round)
     excl = identity_exclusions(session, k_members)
     if current_round is not None:
         excl |= active_window(session, current_round)
+    # L1 同轮硬面(ADR-0611 §3-1;r408「买后禁卖」恢复):
+    # 读源 = kernel fresh_buys 轮键事实集(全因类完备,见模块 docstring
+    # 2′ 段);减两个 carve-out——
+    # ① 垫保:stall_protect 登记活跃名从硬面剔除,继续走既有
+    #    defer 通道(凑息绝对跳过/M4·funding 降序放行 = 转化类放行
+    #    保全,P78-5′ 在册语义);轮号不可得帧不剔除(fail-closed)。
+    # ② 换线孤儿:孤儿清算 = 账闭合豁免语境,不经硬面。
+    _fresh = fresh_buys_sell_face(session)
+    if _fresh:
+        _t3 = (stall_protect_active(session, current_round)
+               if current_round is not None else frozenset())
+        excl |= _fresh - _t3 - _sw_orphans
     if channel == 'projection':
         # T3 活跃集并入投影视图(资格级 defer 的读端同源;通道侧
         # defer 参数不升入 A,判据本体零改——方案 v3 §2.8/M7)。

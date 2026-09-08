@@ -103,6 +103,9 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
     持有语境 = 净持有(买入入集/卖出台账销账;ADR-0593 后果.5(L2),「终身持有
     通行证」形态封死)。
     """
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        SELL_BENCH_REASONS,
+    )
     from sr_od.application.currency_war.kernel.cw_state import (
         SELL_BENCH_CONVERT_REASONS,
     )
@@ -131,6 +134,10 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
                     _normalize_buy_reason(b.get('reason') or '')
                     for b in buys]
                 claimed.append(a.get('sell_reason') or '')
+                # 转化类结构化分键入自报面(ADR-0611:与
+                # 检查器按键分工同构,转化类读 convert_reason/孤儿读
+                # reason;披露面加法增益)
+                claimed.append(a.get('convert_reason') or '')
                 claimed = [c for c in claimed if c]
                 # 自算身份(ADR-0593 §D1:线外散牌/孤儿/垫件/收集语境);
                 # 持有证据 = 本轮前净持有快照(本轮 copy 买不算持有)
@@ -148,12 +155,22 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
                         identity = '名册不可解析(未锁线,线成员腿不可得)'
                     else:
                         identity = '线外散牌/垫件'
-                # 失配判定(与检查器复核同判据;任一自报分键被自算反驳)
+                # 失配判定(与检查器复核同判据;任一自报分键被自算反驳;
+                # T-165 按键分工:转化类读 convert_reason,孤儿读
+                # sell_reason = line_switch_collapse,与
+                # check_no_same_round_buy_sell 零双源同构)
+                _conv_key = a.get('convert_reason') or ''
+                _orph_key = a.get('sell_reason') or ''
+                _conv_orphan_claim = ''
+                if _conv_key in SELL_BENCH_CONVERT_REASONS:
+                    _conv_orphan_claim = _conv_key
+                elif _orph_key in SELL_BENCH_REASONS:
+                    _conv_orphan_claim = _orph_key
                 mismatch = ''
-                if (a.get('sell_reason') or '') in SELL_BENCH_CONVERT_REASONS \
+                if _conv_orphan_claim \
                         and _sl.sell_line_membership_review(row, a) \
                         == _sl.REVIEW_MISMATCH:
-                    mismatch = (f'自报转化分键={a.get("sell_reason")}'
+                    mismatch = (f'自报转化分键={_conv_orphan_claim}'
                                 ' 但自算非线成员')
                 elif 'copy' in claimed \
                         and _sl.copy_collection_review(
@@ -173,6 +190,7 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
                         '——请裁决: 合法转化 / 振荡'), evidence={
                             'buy_reasons': claimed,
                             'sell_reason': a.get('sell_reason'),
+                            'convert_reason': a.get('convert_reason'),
                             'self_calc_identity': identity,
                         }))
     return out

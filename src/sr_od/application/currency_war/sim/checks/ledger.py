@@ -523,11 +523,15 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     豁免边**:reason='engine_seed' 同名买入 ≥2(同轮)同属 3合1
     素材收集语境(买青雀×3 后卖冗余 1),同样豁免;单张买入即卖
     (振荡主通道)仍 0 容忍。
-    **T3 同轮保留批扩豁免边(转化类卖出分键)**:SellBench 行带
-    sell_reason ∈ ``SELL_BENCH_CONVERT_REASONS``(M4 腾席唯一燃料
-    放行 / 支付变现筹资,金转化成线成员/义务动作,非净零自旋)
-    ⇒ 豁免;豁免面按分键收敛,禁全开(缺省 '' 恒不豁免)。键集
-    单一源 = kernel/cw_state.SELL_BENCH_CONVERT_REASONS(镜像纪律
+    **T3 同轮保留批扩豁免边(转化类卖出分键)**:ADR-0611 起按键分工判定
+    (迁移期不并读零双源)——转化类豁免读
+    convert_reason ∈ ``SELL_BENCH_CONVERT_REASONS``(M4 腾席唯一燃料
+    放行 / 支付变现筹资,金转化成线成员/义务动作,非净零自旋;结构化
+    证明键,值域收窄两类放行位);孤儿豁免读 sell_reason =
+    line_switch_collapse(线账闭合孤儿清算,ADR-0591 §4 证明打标制,
+    闭集单一源 = cw_prep_actions.SELL_BENCH_REASONS)。豁免面按分键
+    收敛,禁全开(缺省 '' 恒不豁免;reason 旧通道值不再放大豁免面)。
+    键集单一源 = kernel/cw_state.SELL_BENCH_CONVERT_REASONS(镜像纪律
     同 XP_TO_NEXT_LEVEL:值漂移由双向锁暴露)。
     仅 v2 栈(line_v2/decision_v2)账本适用(default 栈 reason='plan' 的
     卖出语义不同,生产侧按 strategy_id 分栈后选择)。
@@ -541,6 +545,9 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     (按振荡 0 容忍判违);不可复核(旧账本无披露键)= 豁免照旧
     (兼容先例 = ADR-0589,避免一刀切翻旧案)。
     """
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        SELL_BENCH_REASONS,
+    )
     from sr_od.application.currency_war.kernel.cw_state import (
         SELL_BENCH_CONVERT_REASONS,
     )
@@ -643,8 +650,16 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
                     out.append(_violation)
                     bought.remove(_nm)
                     continue
-                # T3 转化类卖出分键豁免(腾席唯一燃料/支付筹资;非自旋)
-                if (a.get('sell_reason') or '') in SELL_BENCH_CONVERT_REASONS:
+                # 转化类/孤儿豁免按键分工判定(ADR-0611;
+                # 分支结构见函数 docstring「转化类卖出分键」段)
+                _claim = ''
+                _conv_key = a.get('convert_reason') or ''
+                _orph_key = a.get('sell_reason') or ''
+                if _conv_key in SELL_BENCH_CONVERT_REASONS:
+                    _claim = _conv_key
+                elif _orph_key in SELL_BENCH_REASONS:
+                    _claim = _orph_key
+                if _claim:
                     # T-153 迁移(C4/ADR-0593):分键豁免降级——线成员
                     # 复核失配 = 可疑项 + 不豁免(键缺省/名册不可解析
                     # 豁免照旧)。
@@ -655,7 +670,7 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
                     out.append(
                         f"p{row.get('plane')}r{row.get('round_num')} "
                         f"可疑项(转化分键失配): 卖 {_nm} 自报分键="
-                        f"{a.get('sell_reason')} 自算=非当前线名册成员"
+                        f"{_claim} 自算=非当前线名册成员"
                         f"(dec_sell_in_line=False)——请裁决: 合法转化 / "
                         f'振荡 (ADR-0593;写端义务 = ADR-0591 §4)')
                     out.append(_violation)   # 失配不豁免:按振荡 0 容忍判违
@@ -964,12 +979,18 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
     (r408 通道,ADR-0267/0276 豁免边同源:copy/engine_seed≥2
     收集语境不计);XP_PER_BUY=4 同步自 cw_state(镜像纪律)。
     r408 修后振荡应归 0 → 本检查恒绿;涌现即买卖互踩回归。
-    T3 转化类卖出分键豁免与 check_no_same_round_buy_sell 同边
-    (键集单一源 = cw_state.SELL_BENCH_CONVERT_REASONS)。
+    T3 转化类卖出分键豁免与 check_no_same_round_buy_sell 同边,并随
+    T-165 按键分工判定同步(转化类读 convert_reason / 孤儿读
+    sell_reason = line_switch_collapse,键集单一源 =
+    cw_state.SELL_BENCH_CONVERT_REASONS + cw_prep_actions.SELL_BENCH_
+    REASONS)。
     T-153 迁移(C4/ADR-0593):豁免边同款降级为「自算复核通过才豁免」
     (copy 收集语境/seed 身份/转化分键线成员三复核,判定核单一源 =
     selfcalc;失配 = 可疑项条目 + 该对计入 osc 不豁免;键缺省照旧)。
     """
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        SELL_BENCH_REASONS,
+    )
     from sr_od.application.currency_war.kernel.cw_state import (
         SELL_BENCH_CONVERT_REASONS,
         XP_TO_NEXT_LEVEL,
@@ -1050,7 +1071,16 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
                     osc += 1
                     bought.remove(_nm)
                     continue
-                if (a.get('sell_reason') or '') in SELL_BENCH_CONVERT_REASONS:
+                # 转化类/孤儿豁免按键分工判定(ADR-0611,
+                # 与 check_no_same_round_buy_sell 同构)
+                _claim = ''
+                _conv_key = a.get('convert_reason') or ''
+                _orph_key = a.get('sell_reason') or ''
+                if _conv_key in SELL_BENCH_CONVERT_REASONS:
+                    _claim = _conv_key
+                elif _orph_key in SELL_BENCH_REASONS:
+                    _claim = _orph_key
+                if _claim:
                     # T3 转化类卖出分键豁免(非自旋)+ T-153(C4)降级
                     if _sl.sell_line_membership_review(row, a) \
                             != _sl.REVIEW_MISMATCH:
@@ -1059,7 +1089,7 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
                     out.append(
                         f"p{row.get('plane')}r{row.get('round_num')} "
                         f"可疑项(转化分键失配): 卖 {_nm} 自报分键="
-                        f'{a.get("sell_reason")} 自算=非线成员——请裁决 '
+                        f'{_claim} 自算=非线成员——请裁决 '
                         f'(ADR-0593)')
                     osc += 1
                     bought.remove(_nm)

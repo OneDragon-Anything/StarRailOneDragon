@@ -1901,6 +1901,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                           # 同轮买卖检查豁免面据此收敛)
                                           'sell_reason': getattr(
                                               a, 'reason', '') or '',
+                                          # 转化类豁免分键转录(C4/ADR-0611:
+                                          # 结构化证明键
+                                          # convert_reason 进账本行,检查器
+                                          # 转化类豁免分支据此判定;孤儿键
+                                          # 仍在 sell_reason,按键分工零双源)
+                                          'convert_reason': getattr(
+                                              a, 'convert_reason', '') or '',
                                           # T-153 披露键(纯观测;ADR-0593)
                                           'dec_sell_in_line': _dec_in_line})
                             # T3 同轮保留集「卖出即销」(生命周期出口②,

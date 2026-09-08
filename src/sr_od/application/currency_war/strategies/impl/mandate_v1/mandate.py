@@ -404,10 +404,18 @@ def round_sold_names(session, state) -> frozenset[str]:
     return frozenset(names) if isinstance(names, set) else frozenset()
 
 
+def sold_this_round(session, state, name: str) -> bool:
+    """本轮已卖名判定(L2 卖后禁买统一判定 helper;ADR-0611)。
+    薄封装 ``round_sold_names`` 单一源(档 2 载体零新载体
+    零新阈值);全买入臂候选过滤位统一经本 helper 消费,禁臂层手搓
+    第二读法(防「第七臂绕过新鲜度」复发形态)。"""
+    return bool(name) and name in round_sold_names(session, state)
+
+
 def dominance_buy_eligible(gold: int, bench_free: int,
                            cap_resolved: int,
                            ) -> bool:
-    """dominance_buy 资格门(P24 零参数;M2 前置支配买入,mandate=true):
+    """dominance_buy 资格门(零参数结构;M2 前置支配买入,mandate=true):
     1★ 燃料/可退件 ∧ 档内 ∧ 金>g*。
     金位阈值 g*=10×cap_resolved 参数化(R70-1;字面 50 实现即红)。
 
@@ -415,9 +423,14 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     落点):必花域转化期帧(线未齐)被本旗关死
     是「刷新成唯一出口」病灶的三合取之一(三处消费位=M6 shop 位/
     M6 prep 位/本函数, shop+prep 两域同步摘)。支配性优先序本体不动
-    = 1★ 全额退净成本 0 的严格支配(docs/develop/currency_war/proofs/
-    p24-residual-fill-dominance.md,P24)先于一切带参数值比较
-    (01_math_framework.md §3.8),线未齐帧同辖;[13] 停手线纪律语义
+    = 1★ 全额退净成本 0 的严格支配——论证锚(ADR-0611 换锚重写):
+    口述 [41](死金禁囤消费侧口径/资产形态二次精确化)+
+    P76 甲(退货表二值可逆:1★ 往返净损 0、锁时点期权,math_proofs.md
+    P76 行)+ P78-1(同 visit 卖出定义性抵消买入),先于一切带参数
+    值比较(01_math_framework.md §3.8),线未齐帧同辖。P24 = 残余补
+    部署支配定理(p24-residual-fill-dominance.md),辖零支出部署行为,
+    无买入/持有期权命题——前版本体注 P24 系锚错位误注,已正。
+    [13] 停手线纪律语义
     由候选集判据承载(零重叠 1★ 全额退),不随本旗消失(迁移完备性
     申报 = ADR-0604 §4-①)。
     """

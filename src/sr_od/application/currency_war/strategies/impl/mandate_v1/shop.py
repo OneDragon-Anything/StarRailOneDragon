@@ -479,40 +479,24 @@ def count_material_stale(counters: dict, session: StrategySession,
 
 
 # ===== 线账闭合孤儿证明载体(T-141 乙′;ADR-0591 §4)=====
-
-#: 义务类买入镜像簿 scratch 键(模块前缀纪律;{名: 买入轮})。
-#: 为何镜像而非读统一登记簿:shop 消费位禁手搓读登记簿(单一源锁
-#: test_cw_t3_stall_protect.Test6),sell_gate 在本批文件面禁碰无法
-#: 落单一源读端——本簿在发射登记成功后由写点同步落,义务类登记无
-#: 资格断言(恒落账)⇒ 簿 ≡ 登记簿义务类视图;回迁候 sell_gate
-#: 开放批(ADR-0591 §4 申报)。
-_SHOP_OBLIGATION_BOOK_KEY: str = 'shop_obligation_buy_rounds'
+# T-165 上移申报(原「回迁候 sell_gate 开放批」兑现):簿键/读口/孤儿
+# 证明集单一源 = sell_gate(_OBLIGATION_BOOK_KEY / obligation_book_of /
+# line_switch_orphans_of)——L1 换线孤儿 carve-out 需要同源证明(第二
+# 键 = 双源漂移面);本侧保留薄委托零断链(调用位/测试引用不变)。
 
 
 def _obligation_book(session: StrategySession) -> dict:
-    """义务类买入镜像簿读口(scratch 载体,局级生命周期;缺省就地建)。"""
-    book = state_of(session).scratch.setdefault(
-        _SHOP_OBLIGATION_BOOK_KEY, {})
-    return book if isinstance(book, dict) else {}
+    """义务类买入镜像簿读口(单一源 = sell_gate.obligation_book_of)。"""
+    return sell_gate.obligation_book_of(session)
 
 
 def _line_switch_orphans(session: StrategySession,
                          base: set[str], round_num: int) -> frozenset[str]:
     """本轮线账闭合孤儿证明集(帧首计算;必须先于本帧任何装配 A 读点
-    调用——A 身份段会就地销账,销账后登记面不可再辨「曾义务」)。
-
-    = 本轮义务登记名 ∧ 已出义务基座。两者合取即登记簿线账闭合事件
-    (销账谓词单一源 = sell_gate._close_switched_obligations 的
-    「义务类 ∧ ∉ 基座」;base 解析与其 _resolve_base 同源 = 锁定宽集
-    或 k_members,调用位传帧 ``buy_members`` 即同一解析)。bench 在场
-    义务件的轮内账闭合出口唯一 = 换线闭合(卖出销/部署销/合成销都
-    以件离场为前提),合取不误标;跨轮名随轮戳剪枝(陈旧证明不洗白)。
-    """
-    book = _obligation_book(session)
-    for _n in [k for k, v in book.items() if v != round_num]:
-        del book[_n]
-    return frozenset(n for n, v in book.items()
-                     if v == round_num and n not in base)
+    调用——A 身份段会就地销账,销账后登记面不可再辨「曾义务」;
+    证据载体/谓词单一源 = sell_gate.line_switch_orphans_of,镜像簿
+    轮戳跨销账存活)。"""
+    return sell_gate.line_switch_orphans_of(session, base, round_num)
 
 
 def decide_shop_action(state: GameState, session: StrategySession,
@@ -633,18 +617,28 @@ def decide_shop_action(state: GameState, session: StrategySession,
             # (active_window 过滤面不变),身份段由基座/静态集独立
             # 承载;hold 过既有 W5 类资格断言,拒登记不拦发射语义不变。
             _cause = sell_gate.launch_cause_of(reason)
-        if _cause is not None:
-            if sell_gate.register_launch(
-                    session, _buy_name, cause=_cause,
-                    round_num=int(getattr(state, 'round_num', 1) or 1),
-                    star=getattr(card, 'star', 1) or 1,
-                    cost=card.cost if card.cost else 3) \
-                    and _cause == 'obligation' and _buy_name:
-                # 义务类镜像簿同步落(孤儿证明载体,见
-                # _line_switch_orphans;义务类登记无资格断言恒落账,
-                # 簿 ≡ 登记簿义务类视图)。
-                _obligation_book(session)[_buy_name] = \
-                    int(getattr(state, 'round_num', 1) or 1)
+        if _cause is None:
+            # A4 硬闸(ADR-0611):未映射
+            # reason 的旧形态 = 静默跳过登记分支——新买入臂忘配映射即
+            # 绕过发射登记与一切以 LAUNCH_CAUSE_BY_ARM 为臂全集的穷举
+            # 断言(防复发保证的地基为假)。抛错把静默裸奔变硬闸,此后
+            # 14 键穷举断言才成立;新买入臂先入映射表归入某因果类才可
+            # 发射(launch_cause_of 契约同源)。
+            raise ValueError(
+                f'买入臂 {reason!r} 未登记 LAUNCH_CAUSE_BY_ARM 因果类'
+                ' 映射(sell_gate;ADR-0611 A4 硬闸——新臂'
+                ' 先入映射表归入某因果类才可发射)')
+        if sell_gate.register_launch(
+                session, _buy_name, cause=_cause,
+                round_num=int(getattr(state, 'round_num', 1) or 1),
+                star=getattr(card, 'star', 1) or 1,
+                cost=card.cost if card.cost else 3) \
+                and _cause == 'obligation' and _buy_name:
+            # 义务类镜像簿同步落(孤儿证明载体,见
+            # _line_switch_orphans;义务类登记无资格断言恒落账,
+            # 簿 ≡ 登记簿义务类视图)。
+            _obligation_book(session)[_buy_name] = \
+                int(getattr(state, 'round_num', 1) or 1)
         return BuyCard(card=card, reason=reason)
 
     ev_arm = getattr(config, 'ev_arm', 'full')
@@ -782,7 +776,38 @@ def decide_shop_action(state: GameState, session: StrategySession,
     _t3_protect = mandate.stall_protect_active(
         session, int(state.round_num or 1), counters=counters)
 
-    def _shop_candidates(m: str):
+    # ---- L2 卖后禁买:全买入臂统一过滤位(ADR-0611 §3-3)----
+    # 单一事实源 = mandate.round_sold_names(档 2 键式相位载体,写端 =
+    # 各卖出发射位 record_round_sold 收口,零新载体零新阈值);判定单一
+    # helper = mandate.sold_this_round。形态申报(新建结构如实申报,
+    # ADR-0611 §2):
+    # 「新建统一过滤位」——各买入臂候选枚举改经本帧级视图单点
+    # (_buy_view / _shop_candidates 过滤),臂层零手搓读法,防「第七臂
+    # 绕过新鲜度」复发;直读 state.shop 的买入候选路径已全量收口。
+    # 分键显影(C6/ADR-0604 §3-5 扩域候观测键判读载体):按触发臂归因
+    # 分键 <arm>_round_sold_excluded(M6 沿用既有 m6_round_sold_excluded
+    # 键名零断链),逐臂排斥可观测、禁静默。
+    _round_sold = mandate.round_sold_names(session, state)
+
+    def _buy_view(arm_key: str) -> list[ShopCard]:
+        """店内卡全集的 L2 过滤视图:剔除「本轮已卖名集」命中卡,
+        按触发臂分键显影(arm_key 只进计数键,不进判据)。"""
+        out: list[ShopCard] = []
+        for c in (state.shop or []):
+            n = c.name or ''
+            if n and n in _round_sold:
+                _count(f'{arm_key}_round_sold_excluded')
+                continue
+            out.append(c)
+        return out
+
+    def _shop_candidates(m: str, arm_key: str = ''):
+        if m and mandate.sold_this_round(session, state, m):
+            # 按名查店内卡路径的 L2 过滤(arm_key 空 = 观测快照位,
+            # 过滤不计数——快照口径与买入面同源一致,T-161 F2 同闭包)。
+            if arm_key:
+                _count(f'{arm_key}_round_sold_excluded')
+            return []
         return sorted(
             (c for c in (state.shop or []) if (c.name or '') == m),
             key=lambda c: (c.cost if c.cost else 3))
@@ -885,13 +910,18 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591:
                     # 本轮义务登记且已出基座的 victim,键带账闭合证明供
                     # 同轮买卖检查豁免面分键,通道无关);纯归因通道值/
-                    # 特化值填充已删,'' = 未标缺省形态。
+                    # 特化值填充已删,'' = 未标缺省形态。转化类豁免分键
+                    # 走结构化字段 convert_reason(ADR-0611 §3-5:
+                    # 值域收窄两类放行键;孤儿键留 reason,零双源)。
                     return SellBench(bench_idx=idx,
                                      income=_shop_sell_refund(victim),
                                      expect=_vname,
                                      reason=('line_switch_collapse'
                                              if _vname in _sw_orphans
-                                             else ''))
+                                             else ''),
+                                     convert_reason=(
+                                         'fuel_victim_protect_demoted'
+                                         if _prot_hit else ''))
             else:
                 _count('m2_retry_exhausted')
                 _count('m2_stall_cache_rederive')
@@ -928,7 +958,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     for m in missing:
         if bench_free <= 0:
             break
-        shop_cands = _shop_candidates(m)
+        shop_cands = _shop_candidates(m, 'm2')   # L2 统一过滤位(逐臂分键)
         if not shop_cands:
             continue
         card = shop_cands[0]
@@ -973,7 +1003,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     for m in buy_members:
         if _cnt(m, 1) != 1 or _cnt(m, 2) != 0:
             continue
-        all_cands = _shop_candidates(m)
+        all_cands = _shop_candidates(m, 'm2_stockpile')   # L2 统一过滤位
         cands1 = [c for c in all_cands if (c.star or 1) == 1]
         if not cands1:
             if all_cands:
@@ -1017,13 +1047,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     mandate.stall_buys_consume(session, _vname1)
                 _note_sell(_vname1)
                 # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591,同
-                # M2 位);纯归因填充已删,'' = 未标缺省形态。
+                # M2 位);纯归因填充已删,'' = 未标缺省形态。转化分键 =
+                # convert_reason(同 M4 位,ADR-0611 §3-5)。
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(victim),
                                  expect=_vname1,
                                  reason=('line_switch_collapse'
                                          if _vname1 in _sw_orphans
-                                         else ''))
+                                         else ''),
+                                 convert_reason=(
+                                     'fuel_victim_protect_demoted'
+                                     if _prot1 else ''))
             _count('bench_full')
             continue
         _on_target_buy(card.name or m)
@@ -1043,7 +1077,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         copies = [c for c in bench + deployed if (c.char_id or '') == m]
         if len(copies) != 2 or any((c.star or 1) >= 2 for c in copies):
             continue
-        all_cands = _shop_candidates(m)
+        all_cands = _shop_candidates(m, 'm2_merge_completion')   # L2 统一过滤位
         shop_cands = [c for c in all_cands if (c.star or 1) == 1]
         if not shop_cands:
             if all_cands:
@@ -1057,7 +1091,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         _on_target_buy(card.name or m)
         return _emit_buy(card, 'm2_merge_completion')
 
-    # dominance_buy(P24 零参数,两臂同开;金口径 = 期望态现值——单动作下
+    # dominance_buy(零参数资格门,两臂同开;金口径 = 期望态现值——单动作下
     # 每帧金即买后真值,R197 症9 的投影口径问题无存在载体)。
     # (stop_flag 已摘,见 mandate.dominance_buy_eligible docstring——
     # 泄金阶梯档 0,ADR-0604 §2,三处消费位同步摘;本臂物理位次先于
@@ -1067,7 +1101,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
         contracts.ContractCtx(k_members=k_members), counters)
     if _dom_ok and mandate.dominance_buy_eligible(gold, bench_free,
                                                   cap_resolved):
-        for card in (state.shop or []):
+        # 支配性背书仅全额可退 1★(P76 甲/[41];误注 P24 已正——
+        # P24 为残余补部署支配定理,无买入命题,T-165 B4)
+        for card in _buy_view('dominance_buy'):   # L2 统一过滤位(逐臂分键)
             name = card.name or ''
             cost = card.cost if card.cost else 3
             star = card.star or 1
@@ -1076,7 +1112,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             if not predicates.zero_overlap(name, k_members):
                 continue
             if not refund_full_star_ok(star, cost):
-                continue            # 支配性背书仅全额可退 1★(P24)
+                continue
             ok2, _ = mandate.check_seats(
                 bench_free, 0, needs_bench=True, needs_board=False,
                 name='', deployed_names=deployed_names)
@@ -1116,7 +1152,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # dominance_buy)不辖本通道,设计判据式无 s_reserve 前件。未锁线恒买
     # 腿**不继承** t5(裁定「恒买」= 无条件;ADR-0580)。
     _core_locked = _buy_members is not None
-    _core_cands = [c for c in (state.shop or [])
+    _core_cands = [c for c in _buy_view('core_single_card_buy')
                    if line_identity_tier(c.name or '')
                    == TIER_REGISTRY_CORE
                    and (not _core_locked
@@ -1187,7 +1223,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 未买帧拒因 = transition_component(D7 键序,shop_unbought_reasons
     # 同源分层)。
     if not cw_intention.committed_from(session, state):
-        for card in (state.shop or []):
+        for card in _buy_view('transition_component_buy'):   # L2 统一过滤位
             name = card.name or ''
             if not name or line_identity_tier(name) != TIER_TRANSITION:
                 continue
@@ -1337,7 +1373,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
         _dead_gold = gold - 10 * (gold // 10)
         _dg_gap = {m for m in buy_members if m not in owned}
         for _dg_prio in range(3):
-            for card in (state.shop or []):
+            for card in _buy_view('dead_gold_press_buy'):   # L2 统一过滤位
                 name = card.name or ''
                 cost = card.cost if card.cost else 3
                 if not name or cost > _dead_gold:
@@ -1417,7 +1453,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 _pd_rf = cw_intention.locked_line_recipe_floor_conflict(_ist)
             except Exception:   # noqa: BLE001 豁免语境 fail-closed(同出口③)
                 _pd_rf = False
-            for card in (state.shop or []):
+            for card in _buy_view('press_buy_deployable'):   # L2 统一过滤位
                 name = card.name or ''
                 if not name or name in buy_members:
                     continue    # 线内件归 M2 义务通道(定向最高优先不变)
@@ -1497,7 +1533,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _stock_ok = contracts.ensure_contract(
                 ('stockpile', 'stockpile_buy'),
                 contracts.ContractCtx(k_members=k_members), counters)
-            for card in (state.shop or []):
+            for card in _buy_view('m6'):   # L2 统一过滤位
                 name = card.name or ''
                 # 线内追星段排除(落地审清单存疑收口,N2/§3.7):线内副本
                 # 的买入全链归义务通道(M2 j=0→1 / 臂① j=1∧cnt2=0 / M2b
@@ -1507,14 +1543,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if name in buy_members:
                     _count('m6_line_member_excluded')
                     continue
-                # 轮内新鲜度排除(泄金阶梯档 2,ADR-0604 §3;模拟批#5
-                # s108 实证:同轮「卖X→买回X→再卖X」净零自旋——凑息/
-                # 腾席卖出抬高金位过 g* 后同轮压库买回,金位与席面循环
-                # 烧动作)。单一源 = mandate.round_sold_names(键式相位
-                # 载体,跨轮自动失效);分键显影禁静默。
-                if name in mandate.round_sold_names(session, state):
-                    _count('m6_round_sold_excluded')
-                    continue
+                # 轮内新鲜度排除已由统一过滤位承载(泄金阶梯档 2,
+                # ADR-0604 §3;模拟批#5 s108 实证:同轮「卖X→买回X→
+                # 再卖X」净零自旋)。起位收编 = 全买入臂统一位
+                # (ADR-0611 §3-3),分键 m6_round_sold_excluded 键名
+                # 零断链;原档 2 手搓读法退役。
                 cost = card.cost if card.cost else 3
                 okm, _mkey = crit_stockpile.stockpile_buy(
                     gold, s_reserve, bench_free, cost,
@@ -1595,8 +1628,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 # B 支(富金;观测条件,调度仍由 arm2 g* 线管辖)
                 if gold > s_reserve:
                     # 垫件在售 = 非 1★ 直出卡全过滤后仍有候选;资格排除集
-                    # ≡ locked_buy_membership(§2.3 第 2 点单一源)
-                    _ff_sale = [c for c in (state.shop or [])
+                    # ≡ locked_buy_membership(§2.3 第 2 点单一源);L2
+                    # 统一过滤位随行(本轮已卖垫件不再买回,T-165)。
+                    _ff_sale = [c for c in _buy_view('fuel_filler_stall')
                                 if (c.name or '')
                                 and (c.name or '') not in buy_members
                                 and (c.star or 1) == 1
@@ -1739,7 +1773,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # held 闭环 = 出口③同款 N3 登记(cw4_fuel_filler_stall_buys 单一
     # 载体,T5 held 并入 fuel_filler_stall_held_postbuy 口径,ADR-0556 §5)。
     if _buy_members is None and (state.shop or []):
-        _t5_sale = [c for c in state.shop
+        # L2 统一过滤位随行(本轮已卖垫件不再买回,ADR-0611 §3-3)。
+        _t5_sale = [c for c in _buy_view('t3_unlocked_hemostat')
                     if (c.name or '') and (c.star or 1) == 1
                     and (c.cost if c.cost else 3) == 1
                     and predicates.zero_overlap(c.name or '', k_members)
@@ -1879,6 +1914,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                         card = (state.shop or [])[cand.slot_idx] \
                             if cand.slot_idx < len(state.shop or []) else None
                         if card is None:
+                            continue
+                        # L2 统一过滤位(ev_buy 走 slot_idx 解析,过滤位
+                        # 落在解析点;单一判定 helper 同源,T-165)。
+                        if mandate.sold_this_round(session, state,
+                                                   card.name or ''):
+                            _count('ev_buy_round_sold_excluded')
                             continue
                         veto, _vkey = crit_buy.ev_buy_veto(cand, gold) \
                             if contracts.ensure_contract(
@@ -2095,25 +2136,31 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 mandate.stall_buys_consume(session, _fname)
             _note_sell(_fname)
             # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591,通道
-            # 无关);纯归因填充已删,'' = 未标缺省形态。
+            # 无关);纯归因填充已删,'' = 未标缺省形态。被保垫件筹资卖
+            # = 转化类,分键走 convert_reason(ADR-0611 §3-5)。
             return SellBench(
                 bench_idx=idx,
                 income=_shop_sell_refund(bc) if bc else None,
                 expect=_fname,
                 reason=('line_switch_collapse'
                         if _fname in _sw_orphans
-                        else ''))
+                        else ''),
+                convert_reason=('funding_support_stall_convert'
+                                if _fprot else ''))
         for bc in _f_fallback:
             _fidx = (state.bench or []).index(bc)
             _fname = bc.char_id or ''
             # 卖出销账(出口①;兜底分键计数已随 2026-09-08 用户归因
-            # 遥测删除指令拆除,销账行为面保留)。reason 缺省 '' 未标。
+            # 遥测删除指令拆除,销账行为面保留)。reason 缺省 '' 未标;
+            # 兜底变现 = P78-5 最后手段豁免语境,转化分键恒带
+            # funding_hold_liquidated(ADR-0611 §3-5)。
             sell_gate.consume_on_sell(session, _fname)
             _note_sell(_fname)
             return SellBench(
                 bench_idx=_fidx,
                 income=_shop_sell_refund(bc),
-                expect=_fname)
+                expect=_fname,
+                convert_reason='funding_hold_liquidated')
 
     # ---- D-D 硬节点补强门消费(观察级接线;逐帧计数,粒度申报见上)----
     _gate_open, _gkey = crit_refresh.hard_node_reinforce_gate(

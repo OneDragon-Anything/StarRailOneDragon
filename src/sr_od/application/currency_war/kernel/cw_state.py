@@ -551,9 +551,22 @@ class SellBench:
     #                            cw_prep_actions.SELL_BENCH_REASONS;纯归因
     #                            通道值填充已随 2026-09-08 用户归因遥测删除
     #                            指令拆除);sim 账本 SellBench 行
-    #                            sell_reason 键转录本字段,检查器豁免面
-    #                            (SELL_BENCH_CONVERT_REASONS,键集保留)
-    #                            据此收敛。
+    #                            sell_reason 键转录本字段,检查器孤儿豁免
+    #                            分支据此判定。
+    convert_reason: str = ''   # 转化类豁免分键(结构化证明键,ADR-0611):
+    #                            值域收窄为本批两类放行键 ⊂
+    #                            SELL_BENCH_CONVERT_REASONS 闭集——
+    #                            fuel_victim_protect_demoted(M4 腾席被保
+    #                            垫件末位牺牲)/ funding_support_stall_
+    #                            convert + funding_hold_liquidated(筹资
+    #                            变现两键);仅放行位填写,''=未标恒不豁免。
+    #                            line_switch_collapse 不入本字段:孤儿证明
+    #                            打标语义与豁免资格耦合留在 reason(ADR-0591
+    #                            §4,防窗口段回归洗白),检查器按键分工判定
+    #                            (转化类读本字段/孤儿读 reason),迁移期不
+    #                            并读零双源;sim 账本 SellBench 行
+    #                            convert_reason 键转录本字段(engine_p1
+    #                            转录块)后检查器方可读。
 
 
 # 转化类卖出豁免键集(同轮买后卖检查的豁免边;检查侧单一源):
@@ -576,11 +589,12 @@ class SellBench:
 # = ADR-0585 批 3,N7 豁免面与分键同批消除误报窗口;三→四键 =
 # T-141 方案审零阻断放行的语义演进,出处 = 2026-09-08 同轮交互
 # 方案审 + ADR-0591)。
-# 发射侧填充现状(2026-09-08 用户归因遥测删除指令):四键中仅
-# line_switch_collapse 仍有在役发射位(商店孤儿证明打标制+entry 换线
-# 塌缩通道位);其余三键的发射位填充已拆除,键集保留 = 检查器豁免面
-# 单一源(键语义/豁免边不变,可核查面三格:缺省 ''/plain 值/跨轮
-# 陈旧恒不豁免)。
+# 发射侧填充现状(T-165 起两通道分键):两类放行键(T3 末位牺牲/
+# funding 两键)经 SellBench.convert_reason 结构化字段填充(值域收窄,
+# 见字段注);line_switch_collapse 仍在役于 reason(孤儿证明打标制 +
+# entry 换线塌缩通道位)。检查器按键分工判定,禁单键并读双源;
+# 键集保留 = 检查器豁免面单一源(键语义/豁免边不变,可核查面三格:
+# 缺省 ''/plain 值/跨轮陈旧恒不豁免)。
 SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
     'fuel_victim_protect_demoted',
     'funding_support_stall_convert',

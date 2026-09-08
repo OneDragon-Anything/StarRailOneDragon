@@ -957,6 +957,45 @@ def fresh_buys_of(session: object,
     return frozenset(names) if isinstance(names, set) else frozenset()
 
 
+def fresh_buys_sell_face(session: object) -> frozenset[str]:
+    """L1 卖侧统一闩读端(ADR-0611;r408
+    「本轮已买」半边的消费面补全——该半边自 ADR-0530 起存活于本载体,
+    读面此前仅 deploy 侧换出守卫,读源定谳考古修正见 ADR-0611 §3-1)。
+
+    读端自治(fail-closed 语义,ADR-0611):相位 (plane, round_num) 从
+    session 黑板帧自行解析(last_state 优先——生产 prep/shop 两域
+    逐帧写点齐备;shop_state_frame 兜底——sim/replay 驱动器写者,
+    写者白名单见 cw_strategy_session 字段注),不消费消费位显式传轮
+    ——``current_round`` 漏接线帧不再静默放行(对 V2-09 在 L1 硬面
+    的显式翻转;v1 缺口 C:漏接线静默裸奔,纪律覆盖改结构保证)。
+
+    - 黑板帧可得:常规键对读(相位失配 = 空集,与 ``fresh_buys_of``
+      同形态,轮界自动过期);
+    - 黑板帧不可得(轮号解析失败帧)= 排除登记当前记录 names 全集
+      ——单记录载体下「当前记录」恒为最新相位写入(新相位写入即整体
+      作废旧记录),历史轮名不泄入,过度排除上界 = 单轮,方向安全;
+    - 读取零销账(过期由相位失配整体作废,与档 2 载体
+      mandate.ROUND_SOLD_ATTR 同形态,读端无逐名生命周期面)。
+    """
+    reg = getattr(session, SWAP_FRESH_BUYS_ATTR, None)
+    if not isinstance(reg, dict):
+        return frozenset()
+    names = reg.get('names')
+    if not isinstance(names, set):
+        return frozenset()
+    for attr in ('last_state', 'shop_state_frame'):
+        frame = getattr(session, attr, None)
+        if frame is None:
+            continue
+        phase = (getattr(frame, 'plane', None),
+                 getattr(frame, 'round_num', 1))
+        if reg.get('phase') != phase:
+            return frozenset()   # 相位失配 = 跨轮,整体作废(零销账)
+        return frozenset(names)
+    # 黑板帧不可得:fail-closed 排除当前记录全集(方向安全,上界单轮)
+    return frozenset(names)
+
+
 def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
                                star: int | None = None,
                                bench: list[BenchChar] | None = None,
