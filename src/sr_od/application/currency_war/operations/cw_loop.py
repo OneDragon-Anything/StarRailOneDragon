@@ -108,6 +108,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_refresh_odds_
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_role_detail_overlay import (
     CwScreenRoleDetailOverlay,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_shop_card_detail import (
+    CwScreenShopCardDetailPopup,
+)
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_supply_node import (
     CwScreenSupplyNode,
 )
@@ -644,6 +647,42 @@ def _shop_open_anchors_hit(op, screen) -> bool:
                                       crop_first=False).is_success)
 
 
+def _shop_card_detail_anchor_hit(op, screen) -> bool:
+    """商店卡牌详情弹窗双 id_mark 锚判定(0t 分支判据单一源,T-163 建档)。
+
+    锚集 = 「按钮-购买」+「按钮-角色详情」(画面档 currency_war_shop_card_
+    detail.yml,id_mark 均取弹窗前景独有元素;禁取衬底透出的底层锚——弹窗
+    暗色衬底遮蔽底层屏档全部锚,T-163 实证:开商店三锚/备战双锚在该衬底
+    下 OCR 全灭,锚必须挂在弹窗自己的前景上)。双锚全中才接管,单锚形态
+    (其他带购买按钮的弹窗)不放行。
+    """
+    return (op.round_by_find_area(screen, '货币战争-商店卡牌详情',
+                                  '按钮-购买',
+                                  crop_first=False).is_success
+            and op.round_by_find_area(screen, '货币战争-商店卡牌详情',
+                                      '按钮-角色详情',
+                                      crop_first=False).is_success)
+
+
+def _role_detail_anchor_hit(op, screen) -> bool:
+    """详情弹窗双锚其一判定(1b 分支判据单一源,T-163 锚化)。
+
+    锚集 = 「按钮-装备推荐」(角色详情变体,归档 fixture 4/4 命中)∨
+    「装备详情-合成公式」(可合成列表变体,该变体 fixture 命中),同档
+    currency_war_battle_prep_equip_detail.yml。取代旧全屏 OCR「可合成列表」
+    ∨「角色详情」(lcs 0.8):全屏「角色详情」与商店卡牌详情弹窗底部按钮
+    (x560-930)全等共享(LCS 1.0,收紧无济于事)→ T-163 弹窗被 1b 垄断
+    26 分钟——outer_loop.md §2.1「优先 area 化」的存量欠账清偿,位置约束
+    天然区分两变体。
+    """
+    return (op.round_by_find_area(screen, '货币战争-备战-角色详情',
+                                  '按钮-装备推荐',
+                                  crop_first=False).is_success
+            or op.round_by_find_area(screen, '货币战争-备战-角色详情',
+                                     '装备详情-合成公式',
+                                     crop_first=False).is_success)
+
+
 def _invest_anchor_hit(op, screen) -> bool:
     """投资策略浮层 id_mark 标识锚(固定位置全等,既有 0e 判据;便宜
     area 对拍)。"""
@@ -785,9 +824,24 @@ class CwLoop(SrOperation):
     #: CwScreenPlaneTransition(「提示未出现」fail)每 2s 无限循环。
     PLANE_MISDISPATCH_LIMIT: ClassVar[int] = 3
     # r119 停滞 watchdog 参数:每 5 iter 采一次指纹(≈5-10s),连续 6 次相同
-    # (≈1-2min 同屏)→ 哨兵。战斗态(指纹含「战斗/胜利/挑战」关键词)豁免。
+    # (≈1-2min 同屏)→ 哨兵。合法静止态(结算族)按固定短语豁免,见
+    # STALL_EXEMPT_PHRASES;战斗进行期由 BATTLE_WATCH_GRACE_S 宽限窗承管。
     STALL_SNAPSHOT_EVERY: ClassVar[int] = 5
     STALL_N: ClassVar[int] = 6
+    #: 停滞豁免固定短语表(T-163 去盲,2026-09-08 实机事故):合法静止态的
+    #: **全帧 OCR 固定短语**,非裸子串。旧裸子串表(战斗/胜利/挑战/结算/
+    #: 准备/倒计时)被弹窗正文撞车致盲——天赋文本「进入战斗前为自己打造
+    #: 装备」含「战斗」、词缀描述含「倒计时/战斗节点」→ 豁免恒中 → 停滞
+    #: 计数恒清零,卡死 26 分钟无人报(哨兵 stall_watch.flag 零落盘实证)。
+    #: 短语集取自归档结算族 fixture 实测 OCR(货币战争-结算/结算-失败/
+    #: 挑战失败 三屏):挑战成功/继续挑战(win)、挑战结束/前往结算(轮败)、
+    #: 挑战失败(团灭)。战斗进行期本就零关键词(ADR-0250 局54 实锤:
+    #: HUD 词可全程缺位),由宽限窗承管,不入本表——本表只辖「结算/等待
+    #: 态合法静止」。新增豁免态须先归档 fixture、从实帧 OCR 取短语,
+    #: 禁凭裸词直觉回填(裸词 = T-163 同型致盲面)。
+    STALL_EXEMPT_PHRASES: ClassVar[tuple[str, ...]] = (
+        '挑战成功', '挑战失败', '挑战结束', '继续挑战', '前往结算',
+    )
     #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
@@ -846,6 +900,11 @@ class CwLoop(SrOperation):
         ('0h 祈愿试炼', '货币战争-祈愿试炼', '标识-祈愿试炼'),
         ('0i 星徽秘典', '货币战争-星徽秘典弹窗', '标识-星徽秘典'),
         ('0k 专家邀请函', '货币战争-备战-专家邀请函', '标识-专家邀请函'),
+        ('0t 卡牌详情·购买', '货币战争-商店卡牌详情', '按钮-购买'),
+        ('0t 卡牌详情·角色详情', '货币战争-商店卡牌详情', '按钮-角色详情'),
+        ('0t 卡牌详情关闭', '货币战争-商店卡牌详情', '按钮-关闭'),
+        ('1b 详情·装备推荐', '货币战争-备战-角色详情', '按钮-装备推荐'),
+        ('1b 详情·合成公式', '货币战争-备战-角色详情', '装备详情-合成公式'),
         ('0m 策略锁定', '货币战争-备战-策略锁定', '按钮-返回投资策略选择'),
         ('0m 遭遇锁定', '货币战争-备战-遭遇锁定', '按钮-返回遭遇选择'),
         ('0n 开商店·购买经验', '货币战争-备战-开商店', '备战标识-购买经验'),
@@ -1036,11 +1095,22 @@ class CwLoop(SrOperation):
         return (battle_ts is not None
                 and now - battle_ts < CwLoop.BATTLE_WATCH_GRACE_S)
 
+    @staticmethod
+    def _stall_exempt(texts: frozenset[str]) -> bool:
+        """停滞豁免判据(T-163 去盲):全帧 OCR 含任一合法静止态固定短语。
+
+        短语集与致盲机理见 ``STALL_EXEMPT_PHRASES`` 注;独立成纯函数供
+        测试仓锁「弹窗正文类文本不豁免」(裸子串回归 = 26min 致盲复发面)。
+        """
+        return any(p in t for t in texts
+                   for p in CwLoop.STALL_EXEMPT_PHRASES)
+
     def _stall_watch_tick(self, screen) -> None:
         """r119 停滞 watchdog:同屏指纹连续相同 → 哨兵(不停机,日志+flag 双通道)。
 
         指纹 = OCR 关键词 frozenset 哈希(5 iter 采一次,~5-10s 粒度)。战斗/
-        结算/等待态关键词豁免(它们本来就该静止)。触发 = 写 stall_watch.flag
+        结算/等待态按固定短语豁免(合法静止,STALL_EXEMPT_PHRASES;战斗
+        进行期归下方宽限窗)。触发 = 写 stall_watch.flag
         (含处理指引)+ [cw!] 日志一次;画面变化后自动清计数(flag 留给 AI 巡检
         后删)。设计:采集哨兵非停机(bot 可能只是慢,停机代价>等待代价;
         od-dev-stop-hooks 采集/停机分流判据)。
@@ -1064,10 +1134,9 @@ class CwLoop(SrOperation):
             image=screen, rect=None, color_range=None, crop_first=False,
         )
         texts = frozenset(k for k, mrl in ocr_map.items() if mrl.max is not None)
-        # 战斗/结算/等待态豁免(合法静止)
-        _exempt = any(w in t for t in texts for w in
-                      ('战斗', '胜利', '挑战', '结算', '准备', '倒计时'))
-        if _exempt:
+        # 结算/等待态豁免(合法静止;固定短语判据,T-163 去盲——旧裸子串
+        # 「战斗」被弹窗正文撞车致盲 26min,机理见 STALL_EXEMPT_PHRASES 注)
+        if self._stall_exempt(texts):
             self._stall_count = 0
             self._stall_last_fp = None
             return
@@ -1657,6 +1726,29 @@ class CwLoop(SrOperation):
             return self._dispatch_screen_op(
                 CwScreenExpertInvite(self.ctx), journal_name='专家邀请函',
                 frame_tag='overlay_expert_invite', wait=2)
+
+        # 0t. 商店卡牌详情弹窗(T-163 实机事故建档:奖励节点点球误触开的
+        #     角色 offer 购买页——0e2 概率表/1d 星徽详情之后同族第三例)。
+        #     弹窗暗色衬底遮蔽底层全部锚(T-163 实证:开商店三锚/备战双锚
+        #     OCR 全灭),不先分流则只剩 1b 变体不敏感关键词兜底接住 =
+        #     「点 X 坐标落面板内零效果 → 无验效假成功 → 外循环重分发」
+        #     的 26 分钟死循环形态。处理 = 点 X(弹窗内坐标,1d 先例「永远
+        #     安全」;不点购买——买不买归商店域,关闭动作不代替购买决策)
+        #     → 验 X 消失 → 交回重判(店开 → 0n 商店访问;备战 → 备战环)。
+        #     弹窗从此任何时刻有主,无孤儿形态。
+        if _shop_card_detail_anchor_hit(self, screen):
+
+            def _on_shop_card_detail(ok: bool, _res: Any) -> None:
+                if ok:
+                    self._clear_bail_count('事件overlay:shop_card_detail')
+                log.info('[cw-loop] 商店卡牌详情弹窗 → 点X关闭(ok=%s)', ok)
+
+            # 关不掉 → on_fail_retry 映射 round_retry(消费同一 retry 池,
+            # 「点了≠成了」由 op 内验效承载,T-163 D3)
+            return self._dispatch_screen_op(
+                CwScreenShopCardDetailPopup(self.ctx), journal_name='商店卡牌详情',
+                frame_tag='overlay_shop_card_detail', wait=1.5,
+                on_result=_on_shop_card_detail, on_fail_retry=True)
 
         # 0m. 备战「锁定」暗色子态族(2026-09-02 建档+接线,用户口述时序 #12/#20):
         #     overlay 点「返回备战界面」→ 备战画面带暗色蒙层,右上「返回XX选择」
@@ -2503,16 +2595,21 @@ class CwLoop(SrOperation):
                 CwScreenPrep(self.ctx), journal_name='备战',
                 frame_tag='flow_prep_entry', wait=1.0, on_result=_on_prep_round)
 
-        # 1b. 详情弹窗(点卡/点角色触发的:"可合成列表"祝福详情 / "角色详情"角色信息)→ ESC 关闭。
-        #     lcs_percent=0.8:「角色详情」与 invest env 等屏的「角色」label 共享「角色」(2/4=0.5)→
-        #     不收紧则凡有"角色"标签的屏(投资环境/...)都被 1b 吞 → ESC 卡死(2026-08-04 实跑,自己上轮加
-        #     的 1b 修复引入此误匹配)。0.8 杀误匹配(真「角色详情」1.0 不受影响)。
-        if (self.round_by_ocr(screen, '可合成列表', lcs_percent=0.8).is_success
-                or self.round_by_ocr(screen, '角色详情', lcs_percent=0.8).is_success):
-            # 双 OCR 判定留外循环(序位在备战后不变);ESC 关迁入 op
+        # 1b. 详情弹窗(点卡/点角色触发的:可合成列表祝福详情 / 角色详情角色
+        #     信息)→ 点面板外空白关闭。判据(T-163 锚化)= archive 双锚其一
+        #     (_role_detail_anchor_hit 判据单一源:装备推荐 ∨ 合成公式)——
+        #     旧全屏 OCR「可合成列表」∨「角色详情」(lcs 0.8)退役:全屏
+        #     「角色详情」与商店卡牌详情弹窗底部按钮全等共享(LCS 1.0)→
+        #     T-163 弹窗被本分支垄断 26 分钟(outer_loop.md §2.1 存量欠账)。
+        #     序位在备战后不变(右侧面板锚区被大面板帧独占,与 0t 双锚天然互斥)。
+        if _role_detail_anchor_hit(self, screen):
+            # 锚化判定留外循环(序位不变);空白关+验效迁 op(T-163 D3)。
+            # on_fail_retry 同 0a2/0a3/0a4/0t(落地审 F2):op 单尝试 fail
+            # 映射 loop 级 round_retry 消费 retry 池,否则零预算重派。
             return self._dispatch_screen_op(
                 CwScreenRoleDetailOverlay(self.ctx), journal_name='详情弹窗',
-                frame_tag='overlay_role_detail', wait=1.5)
+                frame_tag='overlay_role_detail', wait=1.5,
+                on_fail_retry=True)
 
         # 1d. 星徽详情弹窗(2026-08-17 M53 停机建档:「XX星徽套组」标题 + 流派星徽类型 + 效果/
         #     适配角色/合成公式面板;点球/装备操作误点开星徽图标的详情)。点右上 X 关回备战。

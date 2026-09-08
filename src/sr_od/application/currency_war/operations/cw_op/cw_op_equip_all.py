@@ -498,14 +498,19 @@ class CwOpEquipAll(SrOperation):
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        # 前置(外层判干净):建档画面判定。面板/浮窗态各有独立建档且盖备战 id_mark
-        # (角色详情面板盖右下「出战」)→ 判不出「货币战争-备战」即非干净,不识别;
-        # 识别器 read_equip_grid 纯识别,画面状态判断统一在本层(单一源)。
+        # 入口预期屏执行断言(T-163 D5/2026-09-08 用户架构裁定):动作 op
+        # 不作路由决策——非预期屏如实 round_fail 交回外循环重判,禁旧
+        # round_success('跳过') 假成功吞分发(外层把 RunEquip ✓ 当完成入账,
+        # 装备实际没装;T-163 事故里还掩盖了「环的批前提已变」)。「该不该
+        # 执行」的判断上提 = PrepActionExecutor._run_composite 派发前置
+        # (实例化前判干净备战,不干净不派、环重观察),本检查降级为第二道
+        # 执行断言(派发到落地间隙的画面漂移防线)。
         current = self.check_and_update_current_screen(
             screen, screen_name_list=[self.SCREEN_NAME])
         if current != self.SCREEN_NAME:
-            log.info('[cw-equip] 当前画面 %s 非干净备战 → 停(下轮再装)', current)
-            return self.round_success('非干净备战画面,跳过')
+            log.warning('[cw!][equip] 当前画面 %s 非预期屏(%s)→ 执行断言 fail',
+                        current, self.SCREEN_NAME)
+            return self.round_fail(f'不在预期屏: {current}')
         templates = self._get_templates()
         if templates is None:
             return self.round_fail('cw_equip 模板库未加载')

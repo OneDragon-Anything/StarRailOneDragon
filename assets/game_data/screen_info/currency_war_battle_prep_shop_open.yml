@@ -255,7 +255,7 @@ area_list:
   color_range: null
   goto_list: []
 - area_name: 按钮-出战
-  id_mark: true
+  id_mark: false
   pc_rect:
   - 1745
   - 710

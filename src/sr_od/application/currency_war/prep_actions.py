@@ -396,9 +396,11 @@ class PrepActionExecutor:
         if isinstance(action, RunDeploy):
             return self._run_composite('部署', 'sr_od.application.currency_war.operations.cw_op.cw_op_deploy.CwOpDeploy')
         if isinstance(action, RunEquip):
-            return self._run_composite('装备', 'sr_od.application.currency_war.operations.cw_op.cw_op_equip_all.CwOpEquipAll')
+            return self._run_composite('装备', 'sr_od.application.currency_war.operations.cw_op.cw_op_equip_all.CwOpEquipAll',
+                                       guard_screen='货币战争-备战')
         if isinstance(action, RunTools):
-            return self._run_composite('工具', 'sr_od.application.currency_war.operations.cw_op.cw_op_tools.CwOpTools')
+            return self._run_composite('工具', 'sr_od.application.currency_war.operations.cw_op.cw_op_tools.CwOpTools',
+                                       guard_screen='货币战争-备战')
         if isinstance(action, (DeferSpheres, BailToOuter)):   # 本模块定义,无需导入
             return False, '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)'
         return False, f'未知动作类型 {type(action).__name__}'
@@ -1086,10 +1088,26 @@ class PrepActionExecutor:
 
     # ===== 组合动作(P1 过渡;旧 op 内部一行不动)=====
 
-    def _run_composite(self, name: str, op_path: str) -> tuple[bool, str]:
-        """执行组合动作(按模块路径延迟导入,避免 prep_actions ↔ operations 循环导入)。"""
+    def _run_composite(self, name: str, op_path: str,
+                       guard_screen: str | None = None) -> tuple[bool, str]:
+        """执行组合动作(按模块路径延迟导入,避免 prep_actions ↔ operations 循环导入)。
+
+        :param guard_screen: 派发前置预期屏(T-163 D5,2026-09-08 用户架构
+            裁定:「该不该执行」的判断归分发层)——非 None 时实例化组合 op
+            **前**判干净备战,不干净即不派、环重观察(返回 False 断批重规划;
+            批前提中途失效本就该重规划)。装备/工具两组合传入(对应 op 内
+            旧 success-skip 闸门同批降级为执行断言);部署不传——其画面
+            检查属转移验证用途(cw_op_deploy),非路由闸门,不越权接管。
+        """
         import importlib
 
+        if guard_screen is not None:
+            current = self._op.check_and_update_current_screen(
+                self._op.screenshot(), screen_name_list=[guard_screen])
+            if current != guard_screen:
+                log.warning('[cw!][composite] %s 派发前置:当前画面 %s 非干净备战'
+                            ' → 不派,环重观察', name, current)
+                return False, f'{name} 不在预期屏: {current}'
         module_path, cls_name = op_path.rsplit('.', 1)
         op_cls = getattr(importlib.import_module(module_path), cls_name)
         result = op_cls(self._ctx).execute()

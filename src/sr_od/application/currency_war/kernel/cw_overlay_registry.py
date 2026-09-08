@@ -303,6 +303,22 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         dispatch_priority=18,
         recovery_exit=RECOVERY_HANDLE,
     ),
+    # 商店卡牌详情弹窗(T-163 实机事故建档,2026-09-08):奖励节点点球误触
+    # 开的角色 offer 购买页(0e2 概率表/1d 星徽详情之后同族第三例)。语义
+    # display(买不买归商店域——0t 分支只点 X 关闭交回重判,店开时商店
+    # 访问路径接管购买,关闭不丢决策内容);closable=False ⇒ 不进清场
+    # 派生集(弹窗有主 = cw_loop 0t 分支,点 X 带验效,禁清场旁路双owner)。
+    # 双锚表达 0t 判据(购买 ∧ 角色详情,双 id_mark 同帧全中才派发);
+    # close_area 按钮-关闭 = cw_lobby_close 同族模板。
+    OverlaySpec(
+        screen_name='货币战争-商店卡牌详情',
+        anchor_area='按钮-购买',
+        anchor_area_alt='按钮-角色详情',
+        semantic=SEMANTIC_DISPLAY,
+        close_area='按钮-关闭',
+        dispatch_priority=21,
+        recovery_exit=RECOVERY_CLOSE,
+    ),
     # ── 未激活条目(active=False,待实机建档)──
     # 道具详情弹窗(聘用书类 modal):现 cw_loop 0e3 裸 OCR 分支;建档后
     # screen_name/anchor_area 取建档终值(id_mark 用独有标题行),判定坍缩

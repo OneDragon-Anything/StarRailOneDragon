@@ -24,8 +24,9 @@ pre/post owned 现读对拍(``classify_tool_consume`` 纯函数):
   ``tool_consume_cancel``(防静默重试不可见)。
 对账基准 = 登记后由 prep_obs heavy 覆盖点与现读对拍(与穿戴登记同型)。
 
-前置(与 CwOpEquipAll 同):建档画面判定确认「货币战争-备战」,非干净
-不操作。发射位 = mandate_v1 M7.5(逐备战帧评估,admitted 非空才发
+前置(与 CwOpEquipAll 同):入口预期屏执行断言「货币战争-备战」,非预期屏
+round_fail 交回外循环(T-163 D5 降级,旧 success-skip 假成功形态已废)。
+发射位 = mandate_v1 M7.5(逐备战帧评估,admitted 非空才发
 RunTools;执行位闩 = mandate.mark_tools_pass_executed)。
 """
 import time
@@ -197,9 +198,10 @@ def run_tool_queue(queue: list[ToolDragPlan], exec_fn, replan_fn,
 class CwOpTools(SrOperation):
     """备战:G1 准入 admitted 工具动作 → 逐件 drag → 消耗确认通道对拍登记。
 
-    入口识别预期屏(非干净备战不操作);出口验真转移(确认通道
-    consumed 才算成,partial/cancel 计入观测披露——发射位闩在执行位
-    成功返回时置位,单 pass 语义与 M7 穿戴闩同型)。
+    入口预期屏执行断言(非干净备战如实 fail 交回外循环,T-163 D5;判断
+    上提 _run_composite 派发前置);出口验真转移(确认通道 consumed 才算
+    成,partial/cancel 计入观测披露——发射位闩在执行位成功返回时置位,
+    单 pass 语义与 M7 穿戴闩同型)。
     """
 
     SCREEN_NAME: str = '货币战争-备战'
@@ -287,11 +289,15 @@ class CwOpTools(SrOperation):
     @operation_node(name='工具消耗', is_start_node=True, node_max_retry_times=3)
     def tools_consume(self) -> OperationRoundResult:
         cur = self.screenshot()
+        # 入口预期屏执行断言(T-163 D5,与 CwOpEquipAll 同形同批):非预期屏
+        # 如实 round_fail 交回外循环,禁假成功吞分发;判断上提见
+        # PrepActionExecutor._run_composite 派发前置。
         current = self.check_and_update_current_screen(
             cur, screen_name_list=[self.SCREEN_NAME])
         if current != self.SCREEN_NAME:
-            log.info('[cw-tools] 当前画面 %s 非干净备战 → 停', current)
-            return self.round_success('非干净备战画面,跳过')
+            log.warning('[cw!][tools] 当前画面 %s 非预期屏(%s)→ 执行断言 fail',
+                        current, self.SCREEN_NAME)
+            return self.round_fail(f'不在预期屏: {current}')
         templates = self._get_templates()
         if templates is None:
             return self.round_fail('cw_equip 模板库未加载')
