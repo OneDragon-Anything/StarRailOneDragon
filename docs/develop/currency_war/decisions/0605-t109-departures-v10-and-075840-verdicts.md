@@ -47,3 +47,18 @@ release_budget 恒 0 / overflow 新码帧读 0 = T-88 复核批定谳「三写�
 - 新锁 `test_cw_t109_departures.py` 6 例(075840 Saber 素材帧 / sell_recorded / merge_promoted / 不可知帧跳过 / 零变化空列 / 段界隔离)全绿。
 - 形态锁 `test_cw_adr0282_hp_layers.py` 件5 全绿;受影响面 `test_cw_telemetry_archive.py`+`test_cw_t100_v9_assembly.py`+`test_cw_gold_flow_channel.py`+`test_cw_replay_to_md.py` 123 例全绿(schema 版本单一源 `arch.SCHEMA_VERSION` 无字面值锁,版本 bump 零波及)。
 - ruff 全部改动文件通过。
+
+## 5. 修订:sell_recorded 通道解析键勘误(三审 C1/T1 修复批)
+
+### 5.1 缺陷:通道解析键与真实落盘形状错配,通道从未可用
+
+§3.2 的 sell_recorded 通道装配后从未真正触发过——`_sell_deployed_target_names` 按 (position_pref, slot) 匹配动作的 row/slot 字段,这是 `cw_prep_actions.SellDeployed`(执行层拖拽规格,同名类)的形状;而能落 decisions 帧的唯一生产形状 = **kernel `cw_state.SellDeployed`**(序列化字段 `deployed_idx/income/reason/expect`,无 row/slot)。形状基准实证:全仓 SellDeployed 构造点仅两处(kernel 谷底回滚 `cw_evolution._sell_action` / sim `engine_p1`),prep 同名 row+slot 类零构造点、且策略辖外声明不发射(`test_cw4_shop_line` 辖外锁);存量语料 144 档案 decisions 切片 SellDeployed 行总数 = 0。通道恒空 ⇒ 决策时点卖出场上件一旦发生即被误归 unexplained。
+
+### 5.2 修法:deployed_idx → (排, 排内槽号) 固定双射换算命中
+
+解析键改动作 `deployed_idx`(= state.deployed 槽位表下标 0-9,ADR-0392),换算 0-3=前排 1-4、4-9=后排 1-6(`deployed_slot_no` 单一源)后按条目 position_pref/slot 命中。**不能下标直取**:`serialize_state` 落遥测的 deployed 是紧缩占用序(None 空槽剔除,ADR-0392),帧内列表下标 ≠ 槽位表下标;条目级 position_pref/slot 信息位随序列化保留、由 `deployed_place` 落位归一,是换算后唯一可靠的匹配面。键缺失/越界不入集合(该件落 unexplained,宁缺勿造不炸)。
+
+- **备选不采**:「通道退役、闭集收敛为二元」——通道语义(决策时点卖出背书,防与 unexplained 换血通道混淆)成立,退役是放弃而非治理。
+- **对存量档案零影响**:语料零 SellDeployed 行 ⇒ 修复前后派生输出逐档案相同,无数据病、无需 schema bump / 强制重装配。
+- **075840 重分箱对照**(修复令预期「决策时点卖出误归 unexplained 重分箱」的裁决):重跑派生 = 24 行(19 unexplained + 5 merge_promoted + 0 sell_recorded),与修复前基线逐行相同——**重分箱 0 行,误归预判不成立**:该局无 SellDeployed 行可被错配;19 条 unexplained 全部是 RunDeploy 换血窗(§3.1 真缺口,归因如实)与买窗感知纠噪,非解析错配产物。
+- **测试随改(T1)**:用例②弃虚构 row+slot 形状,改真实键面(deployed_idx/income/reason/expect)并取**紧缩错位形态**(目标件 compact 下标 ≠ 其 deployed_idx,前排空槽剔除所致)——直取列表下标与回退 row/slot 两种错实现都命中不了,变异打红亲跑;另加固 deployed_idx 越界防御用例(落 unexplained)。

@@ -45,6 +45,11 @@ from sr_od.application.currency_war.kernel.cw_observe import (
     LIVE_DIR,
     MATCHES_ROOT,
 )
+from sr_od.application.currency_war.kernel.cw_state import (
+    DEPLOYED_CAPACITY,
+    DEPLOYED_FRONT_CAPACITY,
+    deployed_slot_no,
+)
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.telemetry.query import (
     HP_CONF_TRUSTED,
@@ -476,7 +481,7 @@ def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 #: 离场通道闭集(单一源;键语义见 _derive_departures docstring)
 DEPARTURE_CHANNELS: tuple[str, ...] = (
-    'sell_recorded',      # 该帧动作 SellDeployed 槽位解析命中此件(决策时点卖出)
+    'sell_recorded',      # 该帧动作 SellDeployed 按 deployed_idx 换算解析命中此件(决策时点卖出)
     'merge_promoted',     # 同名更高星在后帧在场(买牌合成链,1★ 副本离场)
     'unexplained',        # 无卖出动作而消失 = 执行期 deploy 换血卖出信号通道
 )
@@ -505,19 +510,36 @@ def _deployed_multiset(frame: dict[str, Any]) -> Counter | None:
 def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     """帧动作里 SellDeployed 的卖出目标名集合(按同帧 deployed 解析槽位身份)。
 
-    解析键 = (position_pref, slot)(序列化 deployed 条目自带行位字段,与
-    apply_op_effect 的扁平下标式不同源——读帧是 front/back 分组紧凑表,两
-    布局不能混用)。SellBench 卖的是备战席,不解释场上离场,不入集合。
+    解析键 = 动作 ``deployed_idx``(= state.deployed 槽位表下标 0-9,
+    ADR-0392)——这是唯一能落帧的生产形状:全仓唯一构造点 = kernel
+    cw_state.SellDeployed(cw_evolution 谷底回滚 / sim engine,序列化字段
+    deployed_idx/income/reason/expect,无 row/slot);cw_prep_actions 的
+    同名 row+slot 类零构造点、且策略辖外声明不发射(test_cw4_shop_line
+    辖外锁),不会出现在 decisions 帧。
+
+    换算命中而非下标直取:serialize_state 落遥测的 deployed 是**紧缩
+    占用序**(ADR-0392,None 空槽剔除),帧内列表下标 ≠ 槽位表下标;
+    deployed_idx→(排,排内槽号) 是固定双射(0-3=前排 1-4,4-9=后排
+    1-6,deployed_slot_no 单一源),条目级 position_pref/slot 信息位随
+    序列化保留、由 deployed_place 落位归一,按此对上。键缺失/越界 =
+    解析不出身份,不入集合(该件落 unexplained,宁缺勿造不炸)。
+    SellBench 卖的是备战席,不解释场上离场,不入集合。
     """
     names: set[str] = set()
     dep = (frame.get('state') or {}).get('deployed') or []
     for a in frame.get('actions') or []:
         if not isinstance(a, dict) or a.get('__type__') != 'SellDeployed':
             continue
+        idx = a.get('deployed_idx')
+        if isinstance(idx, bool) or not isinstance(idx, int) \
+                or not 0 <= idx < DEPLOYED_CAPACITY:
+            continue
+        row = 'front' if idx < DEPLOYED_FRONT_CAPACITY else 'back'
+        slot_no = deployed_slot_no(idx)
         for e in dep:
             if (isinstance(e, dict) and e.get('char_id')
-                    and e.get('position_pref') == a.get('row')
-                    and e.get('slot') == a.get('slot')):
+                    and e.get('position_pref') == row
+                    and e.get('slot') == slot_no):
                 names.add(str(e['char_id']))
     return names
 
@@ -535,7 +557,8 @@ def _derive_departures(dec: list[dict[str, Any]],
       多重集差;任一侧身份不可知(缺/非列表)整对跳过。战斗不改场上
       (部署/买卖只发生在备战期),帧间差分即备战动作净效果。
     - 通道分键(closed set = DEPARTURE_CHANNELS):
-      sell_recorded = 该帧 SellDeployed 槽位解析命中;merge_promoted =
+      sell_recorded = 该帧 SellDeployed 按 deployed_idx 换算解析命中
+      (解析口径见 _sell_deployed_target_names);merge_promoted =
       同名更高星在后帧在场(买牌 3 合 1 的 1★ 副本离场);unexplained =
       其余,首义 = 换血卖出(离场常伴 1:1 到场,行内 same_window_arrivals
       可并读)。感知纠噪(SIFT 翻转)也可能落入 unexplained——本列不与
