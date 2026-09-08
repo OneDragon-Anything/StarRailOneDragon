@@ -122,6 +122,12 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
     - 合法不报:reason=bridge_seed/engine(pair 通道放行的
     方向件)、line(锁线形态逻辑辖区)/p2_core/emergency/
     swap/board_focus(其它通道各有语义,不越权);
+    - **T-153 迁移(C1,ADR-0593)**:身份断言型自述(bridge_seed/engine)
+    降级为「自算复核通过才豁免」——复核 = classify_buy 同源身份自算
+    (channel 披露优先,见 selfcalc.buy_identity),失配 = 可疑项条目
+    (自报词表绕过面显形,ADR-0593 §C1)+ 不豁免;其余通道
+    语义自述与无 channel 旧账本 = 不可复核,豁免照旧(兼容先例 =
+    ADR-0589 无键回退);
     - **仅 v2 栈账本适用**:生产配置 strategy_id=
       decision_v2(旧 line_v2 随 ADR-0336 已删)时实机 decisions.jsonl
       同样适用(BuyCard.reason 是共享 dataclass,生产遥测同带标签);
@@ -130,6 +136,7 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
       判栈后选择。
     """
     out: list[str] = []
+    from sr_od.application.currency_war.sim.checks import selfcalc as _sl
     for row in rows:
         if row.get('plane') != 1 or (row.get('round_num') or 9) > 2:
             continue
@@ -143,6 +150,17 @@ def check_coldstart_seed_squander(rows: list[dict]) -> list[str]:
             if reason not in ('pair', 'off'):
                 # r383b:copy=开局轮同名副本(3合1 素材,口述[15]
                 # 压缩牌库)——合法放行,非门失效;区分见 docstring。
+                # T-153 迁移(C1/ADR-0593):身份断言型自述降级为自算复核
+                # 通过才豁免(兼容策略见 docstring;失配→可疑项+不豁免)。
+                _identity = _sl.buy_identity(row, a) \
+                    if reason in _sl.COLDSTART_IDENTITY_CLAIMS else reason
+                if _identity != reason:
+                    card = a.get('card') or {}
+                    out.append(
+                        f"p{row.get('plane')}r{row.get('round_num')} "
+                        f"可疑项(冷启动身份失配): 买 {card.get('name')}"
+                        f" 自报 reason={reason} 自算身份={_identity}"
+                        '——请裁决: 门内放行 / 改标绕门(ADR-0593)')
                 continue
             card = a.get('card') or {}
             out.append(
@@ -233,8 +251,17 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
     ③授权依据是**放行时点的臂名快照**(动作对象携带),检查器不复
     判——重演需要 cost/val 等决策期中间量,账本不携(声明数据边界);
     gold≥50 的升级不报(与旧判据同:息平台在场,无追级风险面)。
+
+    T-153 迁移(C2/ADR-0593):白名单降级为「自算复核通过才豁免」——
+    pop_slot/m3_batch(含分键后缀)的可核前置(板满∧等待上场名册件)
+    经 selfcalc.levelup_prereq_review 现算(执行点披露键优先,行末
+    近似回退),失配 = 可疑项条目(自报臂名 vs 自算前置)+ 不豁免;
+    dp/static_ev 腿需决策期中间量不可机械复算 = unverifiable,豁免
+    照旧(语境条目交复盘检测器 D3)。预算闸辖域缺口(C3)由 D3 前置
+    失配检测补位(闸判据本体保留机械检查器,ADR-0593 §4.3)。
     """
     out: list[str] = []
+    from sr_od.application.currency_war.sim.checks import selfcalc as _sl
     prev_level = 3
     for row in rows:
         if row.get('plane') != 1:
@@ -248,13 +275,30 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
             # 白名单 = 前缀匹配:m3_batch 带触发臂分键后缀(arm1/arm0/pop,
             # 达标/升级授权三臂可归因分键),禁回退精确等值(分键后缀漂移
             # = 白名单误判违规,污染 ADR-0354 验收锚)
-            if prev_level >= 5 and gold0 is not None and gold0 < 50 \
-                    and not (basis in ('pop_slot', 'dp', 'static_ev')
-                             or basis == 'm3_batch' or basis.startswith('m3_batch:')):
+            _chasing = prev_level >= 5 and gold0 is not None and gold0 < 50
+            _whitelisted = (basis in ('pop_slot', 'dp', 'static_ev')
+                            or basis == 'm3_batch'
+                            or basis.startswith('m3_batch:'))
+            if _chasing and not _whitelisted:
                 out.append(
                     f"p1r{row.get('round_num')} LevelUp 时点金 {gold0}<50"
                     f" 授权依据={basis or '(空)'}(lv{prev_level}"
                     f" 无授权依据——ADR-0354 违规)")
+            elif _chasing and (basis == 'pop_slot'
+                               or basis == 'm3_batch'
+                               or basis.startswith('m3_batch:')):
+                # T-153 迁移(C2/ADR-0593):自算可核前置,失配显形。
+                if _sl.levelup_prereq_review(row, a, prev_level) \
+                        == _sl.REVIEW_MISMATCH:
+                    st = row.get('state') or {}
+                    out.append(
+                        f"p1r{row.get('round_num')} 可疑项(追级授权前置失配):"
+                        f" LevelUp 自报授权={basis} lv{prev_level} 时点金"
+                        f" {gold0}<50;自算前置: 板满="
+                        f"{a.get('dec_board_full')} 待上场="
+                        f"{a.get('dec_bench_wait_member')}"
+                        f"(cap={st.get('cap')})"
+                        '——请裁决: 授权成立 / 谎报臂名(ADR-0593)')
         prev_level = (row.get('state') or {}).get('level') or prev_level
     return out
 
@@ -473,45 +517,141 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     同 XP_TO_NEXT_LEVEL:值漂移由双向锁暴露)。
     仅 v2 栈(line_v2/decision_v2)账本适用(default 栈 reason='plan' 的
     卖出语义不同,生产侧按 strategy_id 分栈后选择)。
+
+    T-153 迁移(C4/ADR-0593):三连豁免全部降级为「自算复核通过才豁免」
+    ——copy 复核收集语境(selfcalc.copy_collection_review:同轮同名≥2
+    ∨购买前已持有)、engine_seed≥2 复核种子身份(selfcalc.
+    seed_identity_review:引擎件∧购买时未持有)、转化类分键复核线成员
+    (selfcalc.sell_line_membership_review:dec_sell_in_line 执行点披露,
+    ADR-0591 §4 写端证明义务的检查端补位)。失配 = 可疑项条目 + 不豁免
+    (按振荡 0 容忍判违);不可复核(旧账本无披露键)= 豁免照旧
+    (兼容先例 = ADR-0589,避免一刀切翻旧案)。
     """
     from sr_od.application.currency_war.kernel.cw_state import (
         SELL_BENCH_CONVERT_REASONS,
     )
+    from sr_od.application.currency_war.sim.checks import selfcalc as _sl
     out: list[dict] = []
-    for row in rows:
+    # 净持有语境(复核基线;ADR-0593 后果.5(L2)):买入入集、卖出台账销账——
+    # 「曾持有但中途已卖出」的名不再构成 copy 豁免的持有证据(封死
+    # 「终身持有通行证」形态)。开局 bench 种子 = 首行末态扣除首行动作
+    # 涉及名(首轮先买场景的 ±漂移窗口,与 check_buys_at_full_bench
+    # 期初 bench 口径同款近似声明)。
+    _held_net: set[str] = set()
+    if rows:
+        _row0_act_names = {(a.get('card') or {}).get('name')
+                           for a in (rows[0].get('actions') or [])
+                           if a.get('__type__') == 'BuyCard'}
+        _st0 = rows[0].get('state') or {}
+        _row0_held = {b.get('char_id') for b in (_st0.get('bench') or [])
+                      if isinstance(b, dict)} | \
+                     {d.get('char_id') for d in (_st0.get('deployed') or [])
+                      if isinstance(d, dict)}
+        _held_net = {n for n in (_row0_held - _row0_act_names) if n}
+    for _row_idx, row in enumerate(rows):
         bought: list[str] = []
         _copy_names: set[str] = set()
         _seed_buys: dict[str, int] = {}   # 批⑩ F3 裁决(ADR-0276)
+        _copy_round_buys: dict[str, int] = {}   # T-153(C4):收集语境判据
+        _seed_acts: dict[str, list[dict]] = {}   # T-153(C4/C7):种子身份复核
+        # 本轮前净持有快照(复核基线):本轮买入不污染、跨轮销账已生效——
+        # r1买→r2卖→r3 copy 场景 r3 快照为空=谎报显形;r1买→r2 copy 卖
+        # 场景 r2 快照含持有=合法第 2 份副本路径
+        _held_before_round = set(_held_net)
         for a in row.get('actions') or []:
             if a.get('__type__') == 'BuyCard':
                 _n = (a.get('card') or {}).get('name')
                 _rs = _normalize_buy_reason(a.get('reason') or '')
                 if _n and _rs == 'copy':
-                    _copy_names.add(_n)   # 3合1 收集语境:让位豁免
+                    _copy_names.add(_n)   # 3合1 收集语境:让位豁免(复核面)
+                    _copy_round_buys[_n] = \
+                        _copy_round_buys.get(_n, 0) + 1
+                    # ADR-0593 后果.5(L1):copy 买入 bought(纯「copy 买→同轮卖」对
+                    # 由此可达复核分支——旧结构只挂标记不入集,该形态在
+                    # 机械面整体不可达,申报「三连降级」言过其实)
+                    bought.append(_n)
                 elif _n and _rs == 'engine_seed':
                     _seed_buys[_n] = _seed_buys.get(_n, 0) + 1
+                    _seed_acts.setdefault(_n, []).append(a)
                     bought.append(_n)
                 elif _n:
                     bought.append(_n)
-            elif a.get('__type__') == 'SellBench' \
-                    and a.get('name') in bought \
-                    and a.get('name') not in _copy_names:
+                if _n:
+                    _held_net.add(_n)   # 净持有:买入入集
+            elif a.get('__type__') == 'SellBench':
+                _nm = a.get('name')
+                # 净持有销账(ADR-0593 后果.5(L2)):所有卖出即时除名,不辖「是否
+                # 同轮对」——跨轮 r1买→r2卖→r3 copy 买场景靠这里归零。
+                _held_net.discard(_nm)
+                if _nm not in bought:
+                    continue   # 非同轮对:本检查(同轮买卖互斥)不辖
+                _violation = (
+                    f"p{row.get('plane')}r{row.get('round_num')} "
+                    f"同轮买后卖: {_nm}"
+                    f"(ADR-0267 买卖互斥违规)")
+                if _nm in _copy_names:
+                    # T-153 迁移(C4/ADR-0593):copy 豁免降级为自算复核
+                    # 通过才豁免;失配 = 可疑项 + 不豁免(0 容忍恢复)。
+                    if _sl.copy_collection_review(
+                            _held_before_round,
+                            _copy_round_buys.get(_nm, 0)) \
+                            != _sl.REVIEW_MISMATCH:
+                        bought.remove(_nm)   # 豁免照旧(每对只豁免一次)
+                        continue
+                    out.append(
+                        f"p{row.get('plane')}r{row.get('round_num')} "
+                        f"可疑项(同轮买卖分键失配): 卖 {_nm} 自报 copy"
+                        f"(3合1 素材) 同轮同名 copy 买 "
+                        f"{_copy_round_buys.get(_nm, 0)} 笔、购买时净持有="
+                        f"{'是' if _nm in _held_before_round else '否'}"
+                        f" 自算=无收集语境——请裁决: 合法让位 / 振荡"
+                        '(ADR-0593)')
+                    out.append(_violation)
+                    bought.remove(_nm)   # 每对只报一次
+                    continue
                 # 批⑩ F3 裁决(ADR-0276):engine_seed 同名买入 ≥2
                 # (同轮) = 3合1 素材收集语境,其同名卖出 = 合成冗余
                 # 让位(与 copy 豁免同族),不报;单张买入即卖 = 振荡
                 # (r408 主通道)仍 0 容忍。
-                if a.get('name') in _seed_buys \
-                        and _seed_buys[a.get('name')] >= 2:
+                if _nm in _seed_buys and _seed_buys[_nm] >= 2:
+                    # T-153 迁移(C4/C7/ADR-0593):收集语境份数照旧,
+                    # 叠加种子身份自算复核(改标攻击面显形)。
+                    if all(_sl.seed_identity_review(rows, _row_idx, _ba)
+                           != _sl.REVIEW_MISMATCH
+                           for _ba in _seed_acts.get(_nm, ())):
+                        bought.remove(_nm)
+                        continue   # 豁免照旧
+                    out.append(
+                        f"p{row.get('plane')}r{row.get('round_num')} "
+                        f"可疑项(种子身份失配): 卖 {_nm} 自报 engine_seed"
+                        f' 收集语境(同轮 ≥2) 自算=非引擎件/购买时已持有'
+                        '——请裁决: 收集让位 / 改标振荡 (ADR-0593)')
+                    out.append(_violation)
+                    bought.remove(_nm)
                     continue
                 # T3 转化类卖出分键豁免(腾席唯一燃料/支付筹资;非自旋)
                 if (a.get('sell_reason') or '') in SELL_BENCH_CONVERT_REASONS:
-                    bought.remove(a.get('name'))   # 每对只豁免一次,同报面语义
+                    # T-153 迁移(C4/ADR-0593):分键豁免降级——线成员
+                    # 复核失配 = 可疑项 + 不豁免(键缺省/名册不可解析
+                    # 豁免照旧)。
+                    if _sl.sell_line_membership_review(row, a) \
+                            != _sl.REVIEW_MISMATCH:
+                        bought.remove(_nm)   # 每对只豁免一次,同报面语义
+                        continue
+                    out.append(
+                        f"p{row.get('plane')}r{row.get('round_num')} "
+                        f"可疑项(转化分键失配): 卖 {_nm} 自报分键="
+                        f"{a.get('sell_reason')} 自算=非当前线名册成员"
+                        f"(dec_sell_in_line=False)——请裁决: 合法转化 / "
+                        f'振荡 (ADR-0593;写端义务 = ADR-0591 §4)')
+                    out.append(_violation)   # 失配不豁免:按振荡 0 容忍判违
+                    bought.remove(_nm)
                     continue
-                out.append(
-                    f"p{row.get('plane')}r{row.get('round_num')} "
-                    f"同轮买后卖: {a.get('name')}"
-                    f"(ADR-0267 买卖互斥违规)")
-                bought.remove(a.get('name'))   # 每对只报一次
+                out.append(_violation)
+                bought.remove(_nm)   # 每对只报一次
+        # 同轮未消化的买入进净持有(跨轮复核基线;卖出已在上方销账)
+        for _nm in bought:
+            _held_net.add(_nm)
     return out
 
 
@@ -611,20 +751,50 @@ def check_overflow_gold_zero_buy_streak(rows: list[dict]) -> list[str]:
     成型停手是 [13]「过渡成型即可停手攒息」的正确行为,与 [17]
     在「成型」谓词处分割状态空间(未成型金趴窝=违规,成型停手=
     守息);旧局无该字段不豁免(兼容)。
+
+    T-153 迁移(C5/ADR-0593):ADR-0343 豁免降级为「自算成型复核通过
+    才豁免」——复核 = engines_count 自算(单一源 = kernel
+    cw_deploy_logic.engines_count,经 segments._seg_engines 适配器
+    消费);自报停手 ∧ 自算未成型(engines<2) = 成型谎报形态
+    (ADR-0593)→ 不断 streak(计入违规窗口);可疑项条目辖域收在
+    本检查本职的溢金未泄轮(ADR-0593 后果.5(L5):非溢金轮的谎报只剥夺豁免,
+    不产越辖条目,溢金语境外失配归 D2/seg 面);行无成型度可算键
+    (旧账本无 board_factions/deployed)= 不可复核,豁免照旧。
     """
+    from sr_od.application.currency_war.sim.checks.segments import (
+        _seg_engines,
+    )
     rid = rows[0].get('run_id', '?') if rows else '?'
+    _suspects: list[str] = []
     streak = first_r = 0
     worst = worst_r = 0
     for row in rows:
         if (row.get('plane') or 1) != 1:
             continue    # 只辖 P1(金跨位面继承,P2+ 语义另裁)
-        if row.get('formed_stop'):
-            streak = 0   # ADR-0343:成型停手轮=合法零买,断 streak
-            continue
         gold = row.get('gold') or 0
         spent = any(a.get('__type__') in ('BuyCard', 'LevelUp')
                     for a in row.get('actions') or [])
-        if gold > 50 and not spent:
+        _overflow_round = gold > 50 and not spent
+        if row.get('formed_stop'):
+            # T-153 迁移(C5/ADR-0593):自算成型复核通过才断 streak。
+            _st = row.get('state') or {}
+            if 'board_factions' not in _st and 'deployed' not in _st:
+                streak = 0   # 旧账本无成型度键:不可复核,豁免照旧
+                continue
+            _engines = _seg_engines(row)
+            if _engines >= 2:
+                streak = 0   # ADR-0343:成型停手轮=合法零买,断 streak
+                continue
+            # ADR-0593 后果.5(L5):可疑项条目辖域收在本检查本职(溢金未泄轮);
+            # 非溢金轮的谎报只剥夺豁免(不断 streak),不产越辖条目。
+            if _overflow_round:
+                _suspects.append(
+                    f"p1r{row.get('round_num')} 可疑项(成型谎报): "
+                    f'金 {gold} 零花费 自报停手=真 '
+                    f'自算成型度={_engines}(<2)'
+                    '——请裁决: 合法守息 / 谎报停手 (ADR-0593)')
+            # 不豁免:落入下方 streak 计数(失配轮计入违规窗口)
+        if _overflow_round:
             if streak == 0:
                 first_r = row.get('round_num') or 0
             streak += 1
@@ -633,9 +803,10 @@ def check_overflow_gold_zero_buy_streak(rows: list[dict]) -> list[str]:
         else:
             streak = 0
     if worst >= 2:
-        return [f'{rid}: P1 溢出金断买 {worst} 连'
-                f'(r{worst_r} 起,金>50 零买零升级——[17] 溢余该花)']
-    return []
+        _suspects.append(
+            f'{rid}: P1 溢出金断买 {worst} 连'
+            f'(r{worst_r} 起,金>50 零买零升级——[17] 溢余该花)')
+    return _suspects
 
 
 
@@ -781,17 +952,37 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
     r408 修后振荡应归 0 → 本检查恒绿;涌现即买卖互踩回归。
     T3 转化类卖出分键豁免与 check_no_same_round_buy_sell 同边
     (键集单一源 = cw_state.SELL_BENCH_CONVERT_REASONS)。
+    T-153 迁移(C4/ADR-0593):豁免边同款降级为「自算复核通过才豁免」
+    (copy 收集语境/seed 身份/转化分键线成员三复核,判定核单一源 =
+    selfcalc;失配 = 可疑项条目 + 该对计入 osc 不豁免;键缺省照旧)。
     """
     from sr_od.application.currency_war.kernel.cw_state import (
         SELL_BENCH_CONVERT_REASONS,
         XP_TO_NEXT_LEVEL,
     )
+    from sr_od.application.currency_war.sim.checks import selfcalc as _sl
     out: list[str] = []
-    for row in rows:
+    # 净持有语境(ADR-0593 后果.5(L2):买入入集/卖出台账销账;首行种子口径同
+    # check_no_same_round_buy_sell 的 _held_net 声明)
+    _held_net: set[str] = set()
+    if rows:
+        _row0_act_names = {(a.get('card') or {}).get('name')
+                           for a in (rows[0].get('actions') or [])
+                           if a.get('__type__') == 'BuyCard'}
+        _st0 = rows[0].get('state') or {}
+        _row0_held = {b.get('char_id') for b in (_st0.get('bench') or [])
+                      if isinstance(b, dict)} | \
+                     {d.get('char_id') for d in (_st0.get('deployed') or [])
+                      if isinstance(d, dict)}
+        _held_net = {n for n in (_row0_held - _row0_act_names) if n}
+    for _row_idx, row in enumerate(rows):
         bought: list[str] = []
         copy_names: set[str] = set()
         seed_buys: dict[str, int] = {}
+        _seed_acts: dict[str, list[dict]] = {}
+        _copy_round_buys: dict[str, int] = {}
         osc = 0
+        _held_before_round = set(_held_net)   # 本轮前净持有(复核基线)
         for a in row.get('actions') or []:
             t = a.get('__type__')
             if t == 'BuyCard':
@@ -801,19 +992,66 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
                 _rs = _normalize_buy_reason(a.get('reason') or '')
                 if _rs == 'copy':
                     copy_names.add(_n)
+                    _copy_round_buys[_n] = _copy_round_buys.get(_n, 0) + 1
+                    bought.append(_n)   # ADR-0593 后果.5(L1):copy 对可达复核分支
                 else:
                     if _rs == 'engine_seed':
                         seed_buys[_n] = seed_buys.get(_n, 0) + 1
+                        _seed_acts.setdefault(_n, []).append(a)
                     bought.append(_n)
-            elif t == 'SellBench' and a.get('name') in bought \
-                    and a.get('name') not in copy_names:
-                if seed_buys.get(a.get('name'), 0) >= 2:
-                    continue   # 收集语境让位(ADR-0276)
+                _held_net.add(_n)   # 净持有:买入入集
+            elif t == 'SellBench':
+                _nm = a.get('name')
+                _held_net.discard(_nm)   # 净持有销账(跨轮;ADR-0593 后果.5(L2))
+                if _nm not in bought:
+                    continue   # 非同轮对:本检查(振荡)不辖
+                if _nm in copy_names:
+                    # T-153 迁移(C4/ADR-0593):copy 复核,失配计入 osc。
+                    # 复核基线 = 本轮前净持有快照(本轮 copy 买不算持有)
+                    if _sl.copy_collection_review(
+                            _held_before_round,
+                            _copy_round_buys.get(_nm, 0)) \
+                            != _sl.REVIEW_MISMATCH:
+                        bought.remove(_nm)   # 豁免照旧(每对只豁免一次)
+                        continue
+                    out.append(
+                        f"p{row.get('plane')}r{row.get('round_num')} "
+                        f"可疑项(同轮买卖分键失配): 卖 {_nm} 自报 copy "
+                        f'自算=无收集语境——请裁决 (ADR-0593)')
+                    osc += 1
+                    bought.remove(_nm)
+                    continue
+                if seed_buys.get(_nm, 0) >= 2:
+                    # 收集语境让位(ADR-0276)+ T-153(C7)种子身份复核
+                    if all(_sl.seed_identity_review(rows, _row_idx, _ba)
+                           != _sl.REVIEW_MISMATCH
+                           for _ba in _seed_acts.get(_nm, ())):
+                        bought.remove(_nm)
+                        continue   # 豁免照旧
+                    out.append(
+                        f"p{row.get('plane')}r{row.get('round_num')} "
+                        f"可疑项(种子身份失配): 卖 {_nm} 自报 engine_seed "
+                        f'收集语境 自算=非引擎件/购买时已持有——请裁决 '
+                        f'(ADR-0593)')
+                    osc += 1
+                    bought.remove(_nm)
+                    continue
                 if (a.get('sell_reason') or '') in SELL_BENCH_CONVERT_REASONS:
-                    bought.remove(a.get('name'))
-                    continue   # T3 转化类卖出分键豁免(非自旋)
+                    # T3 转化类卖出分键豁免(非自旋)+ T-153(C4)降级
+                    if _sl.sell_line_membership_review(row, a) \
+                            != _sl.REVIEW_MISMATCH:
+                        bought.remove(_nm)
+                        continue   # 豁免照旧
+                    out.append(
+                        f"p{row.get('plane')}r{row.get('round_num')} "
+                        f"可疑项(转化分键失配): 卖 {_nm} 自报分键="
+                        f'{a.get("sell_reason")} 自算=非线成员——请裁决 '
+                        f'(ADR-0593)')
+                    osc += 1
+                    bought.remove(_nm)
+                    continue   # 失配不豁免
                 osc += 1
-                bought.remove(a.get('name'))
+                bought.remove(_nm)
         if osc:
             level = (row.get('state') or {}).get('level') or 3
             need = XP_TO_NEXT_LEVEL.get(level, 4)

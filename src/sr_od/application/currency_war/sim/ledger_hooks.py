@@ -197,7 +197,14 @@ _PRODUCTION_SEGMENT_CHECKS = (
     'seg_p2_bleed_gold_stack',
 )
 
-_SPEND_ACTION_TYPES = ('BuyCard', 'LevelUp', 'RefreshShop')
+_SPEND_ACTION_TYPES = ('BuyCard', 'LevelUp', 'RefreshShop',
+                       'SellBench')
+# T-153(ADR-0593):SellBench 并入合并行动作并集——D1(同轮买卖分键
+# 复核)/D5(种子回卖辖域自算)检测器的生产覆盖面需要卖出动作行。
+# 段级既有消费面核对:_seg_spent/__type__ 白名单(BuyCard/LevelUp/
+# RefreshShop)与 check_overflow_gold_zero_buy_streak 花费判定均不含
+# SellBench,并入零影响;生产 SellBench 动作行缺 name/sell_reason 键
+# (slot 载体),检测器按缺键跳过并如实声明——join 通路属后续批。
 
 
 def merge_round_rows(rows: list[dict]) -> list[dict]:
@@ -209,7 +216,9 @@ def merge_round_rows(rows: list[dict]) -> list[dict]:
     - gold/hp/gold_readable/hp_readable = 本轮**首帧**(决策时点;
       与段级 ``_seg_gold0``「首波 gold」同口径——末帧 gold 已含本轮
       花销,拿去判「溢余未泄」会系统性偏小);
-    - actions = 全帧**花费类**动作并集(BuyCard/LevelUp/RefreshShop;
+    - actions = 全帧**花费类**动作并集(BuyCard/LevelUp/RefreshShop
+      + SellBench[T-153/ADR-0593:D1/D5 检测器生产覆盖面;生产卖出行
+      缺 name/sell_reason 键,检测器按缺键跳过];
       生产 wrapper 动作 RunBuyPhase/RunDeploy/StartBattle 等非花费,
       不入——段级 ``_seg_spent`` 按 __type__ 白名单判,混入无害但
       并集只留花费类更省);

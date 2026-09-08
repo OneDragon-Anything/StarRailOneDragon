@@ -110,9 +110,14 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
     ——与 check_overflow_gold_zero_buy_streak 的豁免边界一致,但那条
     要连续 ≥2 轮才报,本条单轮即报,诊断灵敏度更高、预期噪声也更高,
     违规率按「量级说明」读不按达标线读)。
-    豁免:formed_stop 行(策略自认停手攒息)、bench 满守卫拦截轮
-    (想买买不了,``bench_full_skipped_buys``>0 披露在场)、息线邻近
-    容忍带(g0 ≤ interest_floor+``_OVERFLOW_TOLERANCE``,ADR-0478)。
+    豁免:bench 满守卫拦截轮(想买买不了,``bench_full_skipped_buys``>0
+    披露在场)、息线邻近容忍带(g0 ≤ interest_floor+
+    ``_OVERFLOW_TOLERANCE``,ADR-0478)。
+    **T-153 迁移(C5/ADR-0593)**:formed_stop 自述豁免降级为「自算成型
+    复核通过才豁免」——自算(engines≥2)先行,自报停手∧自算未成型 =
+    「成型谎报」形态(ADR-0593 §C5:旧序自报短路在自算之前,
+    谎报恰好不可见)→ 违规事件带 ``suspect`` 标记产出,不豁免;自洽
+    停手(自算已成型)不产条目、豁免照旧。
     """
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
@@ -120,8 +125,6 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
     out: list[dict] = []
     for row in rows:
         if (row.get('plane') or 1) != 1:
-            continue
-        if row.get('formed_stop'):
             continue
         sim = row.get('sim') or {}
         if (sim.get('bench_full_skipped_buys') or 0) > 0:
@@ -131,16 +134,25 @@ def seg_check_overflow_idle_spend(rows: list[dict]) -> list[dict]:
             continue
         if g0 <= DEFAULT_REGISTRY.interest_floor() + _OVERFLOW_TOLERANCE:
             continue
+        # T-153 迁移(C5/ADR-0593):自算成型度先行(旧序 formed_stop
+        # 短路在自算之前,谎报形态不可见——迁移后失配显形)。
         engines = _seg_engines(row)
         if engines >= 2:
-            continue
+            continue   # 自算成型:合法攒息(自洽停手豁免照旧)
         node = sim.get('node') or ''
-        out.append({
+        ev = {
             'plane': 1, 'round_num': row.get('round_num'),
             'detail': f'金 {g0}>50 整轮零花费未成型(engines={engines})'
                       f' 节点={node}——[17] 溢余该花',
             'gold_before': g0, 'engines': engines, 'node': node,
-        })
+        }
+        if row.get('formed_stop'):
+            # 自报停手 ∧ 自算未成型 = 成型谎报:不豁免,suspect 标记
+            # 交复盘裁决(复核三态语义见 selfcalc 模块 docstring)。
+            ev['suspect'] = ('成型谎报: 自报停手=真 自算成型度='
+                             f'{engines}(<2)——请裁决: 合法守息 / '
+                             '谎报停手 (ADR-0593)')
+        out.append(ev)
     return out
 
 
@@ -315,6 +327,12 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
       对象,checks 层纯函数纪律不经决策栈(同 terminal_release
       账本位先例)。定型后 ④ 臂收窄由发射侧辖域闸与 shop 锁
       (test_cw4_shop_line TestTransitionReleaseArm)辖,本检查不重复。
+
+    T-153 迁移(C6/ADR-0593):豁免面本身不变(时序歧义理由成立,机械
+    不复算定型位)——但 ④ 臂放行的买入不再静默:语境条目(④臂买入+
+    邻近轮 v3_intention+committed 时点打包)由检测器 D6(sim/checks/
+    suspects.py)产出、嵌入复盘对应节点小节交复盘者裁决定型位
+    (ADR-0593 §4.1-D6「机械判不了→复盘者判」的归宿)。
     """
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.kernel.cw_card_identity import (
@@ -416,7 +434,20 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
     的通道分类(auth 白名单);奖励帧无授权升级 = 违规可见,白名单内
     授权(如扑满环境帧经 M3 闸链的 m3_batch:*)照常放行。
     近似声明同 batch 版:升级前等级用上一行 level;时点金=首波 gold。
+    T-153 迁移(C2/ADR-0593):白名单降级为「自算复核通过才豁免」——
+    pop_slot/m3_batch(含分键)可核前置(板满∧等待上场名册件)经
+    selfcalc.levelup_prereq_review 现算(执行点披露键优先,行末近似
+    回退),失配 = 可疑项事件(``suspect`` 标记)+ 不豁免;dp/static_ev
+    腿不可机械复算 = unverifiable 豁免照旧(语境交检测器 D3)。
+    复核辖域与批版同门(ADR-0593 后果.5 L4):lv≥5 ∧ 时点金 < 追级金门
+    (interest_floor 单一源)才复核——金门外白名单臂不产可疑项;
+    条目文案不硬编码阈数字,由金门现值渲染。
     """
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DEFAULT_REGISTRY,
+    )
+    from sr_od.application.currency_war.sim.checks import selfcalc as _sl
+    _gold_gate = DEFAULT_REGISTRY.interest_floor()   # 追级金门单一源
     out: list[dict] = []
     prev_level = 3
     for row in rows:
@@ -431,6 +462,34 @@ def seg_check_unjustified_levelup(rows: list[dict]) -> list[dict]:
             if prev_level < 5:
                 continue   # 与 batch 版同界:lv≥5 才算追级段
             if basis in _LEVELUP_AUTH_WHITELIST or basis.startswith('m3_batch:'):
+                # T-153 迁移(C2/ADR-0593):自算可核前置,失配显形
+                # (dp/static_ev 不可复算 = unverifiable,照旧豁免)。
+                # ADR-0593 后果.5(L4):金门 = 批版同款 <interest_floor 辖域,
+                # 阈值从注册表现读(禁硬编码假文案)。
+                if (g0 is not None and g0 < _gold_gate
+                        and (basis == 'pop_slot' or basis == 'm3_batch'
+                             or basis.startswith('m3_batch:')) \
+                        and _sl.levelup_prereq_review(
+                            row, a, prev_level) == _sl.REVIEW_MISMATCH):
+                    st = row.get('state') or {}
+                    out.append({
+                        'plane': 1, 'round_num': row.get('round_num'),
+                        'detail': f'可疑项(追级授权前置失配): LevelUp '
+                                  f'自报授权={basis} lv{prev_level} 时点金 '
+                                  f'{g0}(追级金门 {_gold_gate} 以下);'
+                                  f'自算前置: 板满='
+                                  f'{a.get("dec_board_full")} 待上场='
+                                  f'{a.get("dec_bench_wait_member")}'
+                                  f'(cap={st.get("cap")})'
+                                  '——请裁决: 授权成立 / 谎报臂名 '
+                                  '(ADR-0593)',
+                        'gold_before': g0, 'auth_basis': basis,
+                        'level_before': prev_level, 'cap': st.get('cap'),
+                        'dec_board_full': a.get('dec_board_full'),
+                        'dec_bench_wait_member':
+                            a.get('dec_bench_wait_member'),
+                        'suspect': True,
+                    })
                 continue
             st = row.get('state') or {}
             out.append({

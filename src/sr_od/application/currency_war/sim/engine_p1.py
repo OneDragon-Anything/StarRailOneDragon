@@ -575,6 +575,35 @@ def m1p_intent_record(st, sess) -> dict:
     }
 
 
+def _line_member_names(sess) -> frozenset[str]:
+    """当前线名册集合(T-153 生成侧自算披露的计算 helper;ADR-0593)。
+
+    名册单一源 = predicates.line_members;过渡配方标签解析与
+    check_levelup_budget_gate._k_members 同式(生产/sim 同解析)。
+    空 target/解析失败 = 空集——披露键写 False,复核面按
+    selfcalc 的三态语义(键在场∧空名册 = 不可复核腿)处置。
+    纯读:sim 决策执行点调用的观测底座,零 rng/零状态写入。
+    """
+    label = _target_comp_label(sess)
+    if not label:
+        return frozenset()
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        pair_target_comp,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        line_members,
+    )
+    if label.startswith('过渡配方·'):
+        comp = pair_target_comp(
+            tuple(label.removeprefix('过渡配方·').split('+')))
+    else:
+        comp = get_comp(label)
+    if comp is None:
+        return frozenset()
+    return frozenset(line_members(comp))
+
+
 
 def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
@@ -1557,6 +1586,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             classify_buy as _cb,
                         )
                         _channel = _cb(a.card, st)
+                        # T-153 生成侧自算披露(ADR-0593):成型度执行点
+                        # 现读(单一源 = cw_deploy_logic.engines_count;
+                        # 买前帧口径,零 rng/零状态写入纯观测)。消费 =
+                        # C5 成型停手自报复核 / D2 停手失配检测在生成点
+                        # 可见。同 ADR-0589 dec_* 键理由:行为投影 digest
+                        # 只取动作 (__type__,reason,result),本键零位移。
+                        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                            engines_count as _ec,
+                        )
+                        _dec_engines = _ec(
+                            _board_factions_of(st.deployed),
+                            {d.char_id for d in (st.deployed or [])
+                             if getattr(d, 'char_id', '')})
                         _pre_units = (bench_occupied(st.bench)
                                       + deployed_occupied(st.deployed))
                         _pre_gold = st.gold
@@ -1579,6 +1621,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                                'cost': a.card.cost},
                                       'reason': _ch,
                                       'channel': _channel,
+                                      # T-153 披露键(纯观测;ADR-0593)
+                                      'dec_engines_count': _dec_engines,
                                       **({'count': _k} if _was_full else {})})
                         # ADR-0129 购买经验单击模型:一次点击 +XP_PER_BUY
                         # (k 张自动多买仍是一次点击,不加倍)。XP 记账统一
@@ -1643,6 +1687,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 行为投影 digest 只取动作 (__type__,reason,result)
                         # (test_cw_w614_sim_fidelity 锚),本键零位移。
                         _lv_mu = st.max_units()
+                        # T-153 生成侧自算披露(ADR-0593):升级授权存在性
+                        # 腿执行点现读——板满腿 = 下方 dec_board_full
+                        # (ADR-0589 同披露载体);待上场腿 = bench 持有
+                        # 当前线名册成员(名册 = _line_member_names,消费
+                        # = C2 授权自报复核 / D3 前置失配检测)。纯观测。
+                        _dec_wait = any(
+                            getattr(b, 'char_id', '') in _line_member_names(
+                                sess)
+                            for b in iter_occupied(st.bench))
                         _acts.append({'__type__': 'LevelUp',
                                       'cost': _lv_cost, 'auth': _lv_auth,
                                       'dec_board_full': (
@@ -1651,7 +1704,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                           >= _lv_mu),
                                       'dec_bench_2star': any(
                                           (getattr(b, 'star', 1) or 1) >= 2
-                                          for b in iter_occupied(st.bench))})
+                                          for b in iter_occupied(st.bench)),
+                                      # T-153 披露键(纯观测;ADR-0593)
+                                      'dec_bench_wait_member': _dec_wait})
                         xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
                         st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                         progressed = True
@@ -1675,6 +1730,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             # star≥2,按星退防合成件价值低估)。
                             _sell_v = sell_refund(_tgt.star,
                                                   _bench_char_cost(_tgt))
+                            # T-153 生成侧自算披露(ADR-0593):孤儿性机械
+                            # 腿执行点现读 = 被卖件是否当前线名册成员
+                            # (线账闭合语境判据;义务登记簿引擎层不可见,
+                            # 本键只携线成员机械腿,复核面 = C4 转化分键
+                            # 复核 / D1 身份对照的输入,ADR-0591 §4 写端
+                            # 证明义务的检查端补位)。纯观测。⚠ 未锁线
+                            # 期名册不可解析 → 键恒 False(语境缺失非
+                            # 「非线成员」证据);复核面按 unverifiable
+                            # 处置(seed18 p1r1 口径,禁据键定罪)。
+                            _dec_in_line = _tgt.char_id in (
+                                _line_member_names(sess))
                             st = _simulate_state(st, a)
                             _spend['sell_income'] += _sell_v
                             _acts.append({'__type__': 'SellBench',
@@ -1684,7 +1750,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                           # 卖出通道分键转录(记录非指令;
                                           # 同轮买卖检查豁免面据此收敛)
                                           'sell_reason': getattr(
-                                              a, 'reason', '') or ''})
+                                              a, 'reason', '') or '',
+                                          # T-153 披露键(纯观测;ADR-0593)
+                                          'dec_sell_in_line': _dec_in_line})
                             # T3 同轮保留集「卖出即销」(生命周期出口②,
                             # sim 侧与生产 sell 通道同语义闭环)
                             from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (

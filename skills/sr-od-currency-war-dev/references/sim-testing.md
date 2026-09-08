@@ -24,4 +24,4 @@
 从第 1 步的指标里筛出表现不好的(怎么筛不规定:与设计预期对照、与历史批/同批分布比,哪种都行)。
 
 ### 3. 挑一局复盘——归因到决策
-对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。直查:`cw_telemetry query --sim-batch <名|latest> --view rounds|economy|supply|...`。
+对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。直查:`cw_telemetry query --sim-batch <名|latest> --view rounds|economy|supply|...`。复盘骨架与可疑项预填生成器:`uv run python tools/cw/review_skeleton.py --decisions <decisions.jsonl> [--run-id <rid>]`(跑 sim/checks/suspects.py 检测器集 D1-D11,条目嵌对应节点小节判定三槽前;ADR-0593)。
