@@ -45,8 +45,13 @@ _JOURNAL = LIVE_DIR / 'op_journal.jsonl'
 # 「run_id ∈ sim 集」过滤态(过滤态漏维护 = 静默混流,比写端漏接通更
 # 难发现——写端漏接通表现为 live 流出现行,obs_conflict 式审计可见)。
 # 行内 run_id 键保持不变,读端过滤能力不受影响(双保险,非双实现)。
-# 缺省 None = LIVE_DIR(生产路径逐位不变);测试 harness 与 recorder 落盘
-# 根槽(telemetry/state.set_recorder_replay_dir)同点接通,两根恒一致。
+# 缺省 None = LIVE_DIR(生产路径逐位不变)。假局遥测写根共三根
+# (recorder 流/journal 行/决策帧,三审二波 F2 勘明——决策帧原为无槽
+# 第三根,靠 harness monkeypatch 私函数兜住,「两根恒一致」旧声明对
+# 三根现实不成立),三根槽(telemetry/state.set_recorder_replay_dir /
+# 本模块 set_journal_dir / operations/decision_frame_hooks.
+# set_decision_frame_dir)由驱动方同点接指同一档案根:恒一致由三槽
+# 并列接线承载,不再靠调用侧自觉。
 _JOURNAL_DIR: Path | None = None
 
 

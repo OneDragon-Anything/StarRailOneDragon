@@ -29,7 +29,8 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from cv2.typing import MatLike
 
@@ -44,12 +45,53 @@ if TYPE_CHECKING:
 _KEEP_PER_TAG = 40
 
 
-def _out_dir(run_id: str):
+# ===== 决策帧落盘根装配槽(三遥测写根的第三槽;三审二波 F2)=====
+# 为什么是槽:决策帧写根原恒锚生产树(.debug/temp/currency_war/
+# decision_frames/),假环境只靠 harness monkeypatch 私函数 _out_dir 改道
+# ——不经 harness 的假局驱动方(易失离线 runner/未来 sim 批真 op 驱动)
+# 会把 kind=observation_evidence 的观察证据静默写进生产树,正是写端根
+# 隔离(T-129/T-130 裁决,机制见 op_journal.set_journal_dir 注)要防的
+# 静默混流形态换流复发(出处:.debug/temp/currency_war/attacks/
+# three_review_20260908/三审报告-第二波.md F2,**易失产物**待 ADR 回填)。
+# 与既有两槽(telemetry/state.set_recorder_replay_dir /
+# op_journal.set_journal_dir)同构:缺省 None = 生产路径逐位不变;驱动方
+# 显式接指假局档案根,teardown 复位(进程全局槽,残留会把后续帧带去
+# 假局根)。零生产行为变更:生产全程无设槽点,生产公式逐位保留(守卫
+# = test_cw_telemetry_root_slot 的缺省路径锁 + 生产树零设槽点扫描
+# TestZeroProductionWiring)。
+_DIR_OVERRIDE: Path | None = None
+
+
+def set_decision_frame_dir(path: Path | None) -> None:
+    """接通/复位决策帧落盘根(缺省 None = 生产路径)。
+
+    与 :func:`telemetry.state.set_recorder_replay_dir`、
+    :func:`telemetry.op_journal.set_journal_dir` 同装配纪律:缺省关、
+    驱动方显式接通、teardown 复位。三槽同点接指同一假局档案根
+    (harness 先例 = fixtures/cw_harness.fake_p1_run)——漏接一件即
+    部分隔离,该驱动方的遥测流仍触生产树。
+    """
+    global _DIR_OVERRIDE
+    _DIR_OVERRIDE = Path(path) if path is not None else None
+
+
+def _out_dir(run_id: str) -> Path:
+    """决策帧目录现算(根槽优先;槽是函数内读取,测试可 monkeypatch
+    槽变量后立即生效,不经模块 import 绑定快照——journal 槽
+    ``_journal_path`` 同纪律)。
+
+    槽缺省回落生产公式**活读** ``get_project_root``:既有测试以
+    monkeypatch ``get_project_root`` 作落盘重定向缝
+    (test_cw_decision_frame_hooks 同款),缝保持活读=不失效;根槽是
+    追加缝,不改写既有缝语义(journal 槽缺省回落 ``_JOURNAL`` 常量
+    同款先例)。"""
+    if _DIR_OVERRIDE is not None:
+        return _DIR_OVERRIDE / 'decision_frames' / run_id
     return (get_project_root() / '.debug' / 'temp' / 'currency_war'
             / 'decision_frames' / run_id)
 
 
-def _prune_old(dir_path, tag: str, suffix: str = '.png') -> None:
+def _prune_old(dir_path: Path, tag: str, suffix: str = '.png') -> None:
     """按 tag 维度滚动删除,保留最近 _KEEP_PER_TAG 帧(文件名 ts 前缀字典序=时间序)。"""
     mine = sorted(p for p in dir_path.iterdir()
                   if p.is_file() and p.name.endswith(f'_{tag}{suffix}'))
@@ -80,14 +122,26 @@ def save_decision_frame(op: Operation, tag: str,
         )
         from sr_od.application.currency_war.telemetry.state import current_run_id
         run_id = current_run_id() or 'norun'
+        src = observation_source()
+        if src is not None and _DIR_OVERRIDE is None:
+            # 拒写守卫(写端根隔离,T-129 同裁决):假环境观察证据 +
+            # 未接根槽 = 三审二波 F2 的静默混流形态(证据落生产
+            # decision_frames 树)。宁缺勿混——证据缺失在消费端表现为
+            # 文件不存在(可发现),混流是静默污染(不可发现);生产
+            # 路径零感知(生产 observation_source 恒 None 不进本分支)。
+            # 判定位次须先于 mkdir:守卫拒写连目录也不得建(空目录
+            # 同为生产树写痕迹)。
+            log.warning('[cw-dframe] 假环境观察证据未接决策帧根槽,'
+                        '拒写 tag=%s(驱动方需 set_decision_frame_dir)',
+                        tag)
+            return None
         out = _out_dir(run_id)
         out.mkdir(parents=True, exist_ok=True)
         now = datetime.now()
         stem = (f'{now.strftime("%Y%m%d_%H%M%S")}_{now.microsecond // 1000:03d}'
                 f'_{tag}')
-        src = observation_source()
         if src is not None:
-            payload: dict = {'kind': 'observation_evidence', 'tag': tag,
+            payload: dict[str, Any] = {'kind': 'observation_evidence', 'tag': tag,
                              'ts': now.isoformat(timespec='seconds'),
                              'run_id': run_id}
             snap = getattr(src, 'evidence_snapshot', None)
