@@ -670,9 +670,11 @@ class CloseShop:
 class PickEvent:
     """选事件选项(投资环境/策略/遭遇/补给)。
 
-    refresh(ADR-0146 缺口1):三张最优分低于阈值时建议刷新(游戏规则:投资策略/环境/补给各可刷
-    N 次,免费)。**纯建议**——是否真刷由 handler 决定(读「刷新次数N」OCR,次数>0 才点;
-    刷新失败/次数 0 → 照常选当前最优,失败安全 = 现状行为)。
+    refresh(T-162 重立,ADR-0600;旧「ADR-0146 缺口1 阈值建议」已随 ADR-0519
+    C10 退役,现判据 = 零阈值结构存在性,推导与优势论证见 ADR-0600 §3.2 +
+    math_proofs P81,env kind 不启用见 ADR-0600 §2/§4):「建议刷新」布尔 =
+    ``refresh_slots`` 非空。**纯建议**——是否真刷由 handler 决定(逐槽计数
+    现读 >0 才点;刷新失败/次数 0 → 照常选当前最优,失败安全 = 现状行为)。
     """
     option_idx: int
     # [索引定义] 坐标系: 事件选项列表下标(画面选项序,左→右 0 起;
@@ -681,6 +683,13 @@ class PickEvent:
     #             handler 按同一画面序点选,选项集跨代际变化时以画面为准)
     reason: str = ""
     refresh: bool = False
+    refresh_slots: tuple[int, ...] = ()
+    # [索引定义] 坐标系: 策略屏逐卡刷新槽位下标(同 option_idx 坐标系:画面
+    #             选项序左→右 0-2,与 handler 逐卡刷新钮/逐卡计数一一对应)
+    #             取值时机: 生成期快照(kernel 帧级触发判定一次算出)
+    #             写入端: cw_events.decide_event(ADR-0600 §3.1;空元组 = 不建议;
+    #             环境屏恒空 = 执行不启用)。消费端 = CwScreenInvestStrategy
+    #             槽序循环(逐槽计数现读闸 + 已发射槽集防重入)。
 
 
 @dataclass

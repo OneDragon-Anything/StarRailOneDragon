@@ -105,6 +105,90 @@ def read_encounter_refresh_count(ctx: SrContext, screen: MatLike) -> tuple[int, 
     return None
 
 
+# ===== 投资策略/投资环境 刷新计数 reader(ADR-0600 §3.4,T-162 观察通道)=====
+# 两屏交互模型不同构(归档帧实证,ADR-0600 §1 三张):策略屏逐卡刷新(每卡一组
+# 「刷新圆钮 icon + 刷新次数N」,N 独立扣减)/ 环境屏整组重掷(单个全局钮 +
+# 剩余次数:N)。正则族两支 = 两屏冒号/无冒号形态(策略屏「刷新次数1」无冒号、
+# 环境屏「剩余次数：1」全角冒号,均为在册 OCR 实证)。
+_INVEST_REMAIN_RE = re.compile(r'剩余次数\s*[：:]\s*(\d+)')
+_INVEST_REFRESH_COUNT_RE = re.compile(r'刷新次数\s*(\d+)')
+# 计数行 OCR 带(形态对齐遭遇屏 _REMAIN_RECT 先例:只裁 OCR 量,不承点击坐标
+# 真相——点击走文本锚定偏移,非本带;screen_info 已同值建档「区域-刷新次数行」
+# /「区域-剩余次数行」供对账,V7 建档实测收口)。
+# - 策略屏:三组「刷新次数N」文本 y≈841-869、x≈421-1530(归档帧 CV/OCR 实测;
+#   旧 docstring 记 y≈841 与归档帧一致)。
+# - 环境屏:「剩余次数：N」文本 x≈703-842、y≈969-997;x 上界 1000 避开「确认」
+#   (x≥1054)文本区。
+_INVEST_STRATEGY_COUNT_RECT = Rect(300, 830, 1560, 880)
+_INVEST_ENV_COUNT_RECT = Rect(300, 955, 1000, 1010)
+
+
+def read_invest_refresh_counts(
+        ctx: SrContext, screen: MatLike,
+        kind: str) -> list[tuple[int, int, int]]:
+    """OCR 投资屏刷新计数 → ``[(count, 文本中心x, 文本中心y), ...]``(纯读)。
+
+    kind = 'strategy'(逐卡计数,可多条)/ 'env'(全局计数,至多一条;正则同
+    支兼容「剩余次数:0」等形态)。读不到 → [](无授予/读缺的判定归调用方,
+    失败安全)。文本中心供 handler 文本锚定刷新圆钮(单帧证据不足判文本漂移
+    形态,固定 area 不可行——遭遇屏先例同款)。计数 0 的灰置态可读(归档帧
+    card3_refreshed 实证:灰置但清晰,对比度 ~150 仍在 OCR 可读域)。
+    **走 list 形态 API**(get_ocr_result_list 非 map):策略屏三卡计数常态同文
+    (「刷新次数1」×3),map 按文本为键会收敛成一_entry 丢位(ocr_service.
+    convert_list_to_map),list 按检测逐条保留位置——三槽计数齐读的前提。
+    """
+    rect = (_INVEST_STRATEGY_COUNT_RECT if kind == 'strategy'
+            else _INVEST_ENV_COUNT_RECT)
+    pattern = (_INVEST_REFRESH_COUNT_RE if kind == 'strategy'
+               else _INVEST_REMAIN_RE)
+    results = ctx.ocr_service.get_ocr_result_list(
+        image=screen, rect=rect, color_range=None, crop_first=False,
+    )
+    out: list[tuple[int, int, int]] = []
+    for r in results:
+        m = pattern.search(r.data or '')
+        if m is None:
+            continue
+        c = r.center
+        out.append((int(m.group(1)), int(c.x), int(c.y)))
+    out.sort(key=lambda t: t[1])
+    return out
+
+
+# x 就近配对容差(执行层几何常量,非策略数值):三卡槽锚 x ≈{460,960,1460}
+# (槽距 ~500px),计数文本实测距槽锚 ≤ ~20px(归档帧 V7)——取半槽距 250 为
+# 「这条计数属于这槽」的布局推导上界;超界 = 读缺形态(如中槽文本漏读时其右
+# 邻文本相距 514px)→ 落 None,防邻槽计数被误配颠覆「计数>0 才点」的权威闸
+# (fail-closed 方向:误配最坏多试一次点击,验效双输兜底)。
+_PAIR_X_TOL = 250
+
+
+def pair_refresh_counts_to_slots(
+        counts: list[tuple[int, int, int]],
+        slot_xs: list[int]) -> list[tuple[int, int, int] | None]:
+    """把逐卡计数文本按 x 就近配对到画面槽(策略屏三槽;纯函数可单测)。
+
+    每槽取 x 距离最近的一条计数文本,一条只配一槽(防同文本重复消费);
+    距离超 ``_PAIR_X_TOL``(半槽距)→ 该槽落 None = 读缺。槽序 = slot_xs 下标
+    (画面左→右,与 PickEvent.refresh_slots 同坐标系)。计数条数 ≠ 槽数
+    (读缺/碎片)时缺口落 None,调用方按无授予处理(失败安全)。
+    """
+    remaining = list(range(len(counts)))
+    out: list[tuple[int, int, int] | None] = []
+    for sx in slot_xs:
+        if not remaining:
+            out.append(None)
+            continue
+        best = min(remaining, key=lambda k: abs(counts[k][1] - sx))
+        if abs(counts[best][1] - sx) > _PAIR_X_TOL:
+            out.append(None)
+            continue
+        remaining.remove(best)
+        out.append(counts[best])
+    return out
+
+
+
 # 巨星候选标题「盛会之星一X先生/女士!」→ X = 角色名(花火/星期日…)。实测 OCR 核实(2026-08-07 cw_megastar)。
 # 先生/女士 + 全/半角叹号容错(OCR 渲染不一)。
 _MEGASTAR_RE = re.compile(r'盛会之星一(.+?)(先生|女士)[!！]?')

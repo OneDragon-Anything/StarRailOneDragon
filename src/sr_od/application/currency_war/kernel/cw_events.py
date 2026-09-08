@@ -175,8 +175,9 @@ def _opt_counters_dot(opt: str) -> bool:
 
 # (事件面经验加减分族已退役 2026-09-04,ADR-0519「未证即退役」,保守缺省
 # 全部置 0/移除,墓碑注逐项:
-# - 旧 EVENT_REFRESH_SCORE_FLOOR=50(≈评估分中位估计)→ refresh 建议恒
-#   False(免费刷新的换手期望无证明,保守 = 不弃当前手牌);
+# - 旧 EVENT_REFRESH_SCORE_FLOOR=50(≈评估分中位估计)→ 阈值式刷新判据
+#   退役;T-162 已重立刷新判据——判据换了推导(结构存在性,非分值阈值),
+#   见 decide_event 内刷新判据段;退役史归 ADR 不留注释链。
 # - 旧低血生存钩子:策略 SURVIVAL_PICKS +15 / env ENV_SURVIVAL_BONUS
 #   {白银时代+15,敌后破坏+15,人身意外险+10} → 0(hp 语义可标不可定价);
 # - 旧 P2 装备流 EQUIP_FLOW_PICKS plane≥2 +25(11 局实锤)→ 0(经验
@@ -217,7 +218,8 @@ def decide_event(options: list[str], config, state: GameState,
     叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源,ADR-0203)/
     用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
     未注册非 env = 0 分。(原 config event_whitelist 已删 ADR-0204;品质难度
-    惩罚/低血生存钩子/P2 装备流加分/刷新建议阈值已退役,见模块墓碑注与 ADR-0519。)
+    惩罚/低血生存钩子/P2 装备流加分已退役,见模块墓碑注与 ADR-0519;
+    刷新建议阈值同退役,刷新判据已由 T-162 换推导重立,见函数尾刷新判据段。)
 
     **裁定回避(集合级排除,非分值族;[40]①「主动选择=回避」,ADR-0578)**:
     血本位候选(判据 = ``cw_investments.is_blood_economy``,注册表派生零名单)
@@ -255,6 +257,16 @@ def decide_event(options: list[str], config, state: GameState,
     _cand_reasons: list[str] = []
     _cand_blood: list[bool] = []
     _cand_forbid: list[bool] = []
+    # T-162 刷新判据的逐槽分类存档(循环内顺手存,不二次评分):exact =
+    # 策略轴归一后精确命中(get_strategy;LCS 兜底不入刷新分类,fail-closed
+    # 见帧级闸——评分侧对形变名既定判定就是「comp/economy 修饰不可靠」,
+    # 评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严)/ s1 = 定义型档
+    # / engine = S2 经济引擎档 / align_n = S3 对齐档 N。消费序安全依赖(G8):
+    # 只在帧级触发(三卡全精确分类)前提下消费——先判帧级闸、后取分类。
+    _cand_exact: list[bool] = []
+    _cand_s1: list[bool] = []
+    _cand_engine: list[bool] = []
+    _cand_align_n: list[int] = []
     for i, opt in enumerate(options):
         score = 0.0
         reason = 'eval'
@@ -281,7 +293,11 @@ def decide_event(options: list[str], config, state: GameState,
                 _canon_st = get_strategy(_canon)
                 if _canon_st is not None:
                     _is_blood = is_blood_economy(_canon_st.economy)
-        if augment_affinity(opt):
+        _aug = augment_affinity(opt)
+        _is_engine = False
+        if _st is not None:
+            _is_engine = is_economy_engine(_st.economy)
+        if _aug:
             score = max(score, 120.0)
             reason = 'augment-defining'
         _comp_hit = 0
@@ -298,7 +314,7 @@ def decide_event(options: list[str], config, state: GameState,
             # S2 经济引擎档(T-155,ADR-0597):持续通道策略卡整带(≥111)压过
             # S3 上界(110),用户裁定「优先经济」的分值载体;档内序 = PICK_VALUE
             # 归一带内(只承载带内先后)。域带是 max() 覆盖结构的一员,非加减叠加。
-            if is_economy_engine(_st.economy):
+            if _is_engine:
                 _pv_norm = min(float(_pv) if _pv is not None else 0.0,
                                ECON_ENGINE_PV_NORM)
                 _s2 = ECON_ENGINE_BAND_BASE + ECON_ENGINE_BAND_SPAN * (
@@ -355,6 +371,10 @@ def decide_event(options: list[str], config, state: GameState,
         _cand_reasons.append(reason)
         _cand_blood.append(_is_blood)
         _cand_forbid.append(_opt_forbidden)
+        _cand_exact.append(_st is not None)
+        _cand_s1.append(bool(_aug))
+        _cand_engine.append(_is_engine)
+        _cand_align_n.append(_comp_hit)
         if score > best_score:
             best_score, best_idx, best_reason = score, i, reason
     # [40]① 血本位回避·三态触发序(ADR-0578;裁定「主动选择=不选」):
@@ -383,9 +403,64 @@ def decide_event(options: list[str], config, state: GameState,
             _j = max(_l2, key=lambda k: _cand_scores[k])
             best_idx, best_score, best_reason = _j, _cand_scores[_j], _cand_reasons[_j]
         best_reason = f'blood-forced({best_reason})'
-    # (旧 ADR-0146 刷新建议已随 EVENT_REFRESH_SCORE_FLOOR 退役,ADR-0519;
-    # refresh 恒 False,handler 不再触发事件面刷新。)
-    return PickEvent(option_idx=best_idx, refresh=False,
+    # ===== T-162 事件面刷新判据(ADR-0600 §3.1;推导 = ADR-0600 §3.2 +
+    # math_proofs P81;零阈值结构存在性判据,逐槽弱占优论证承载;旧评估分
+    # 阈值判据已随 ADR-0519 C10 退役,推导已换代,退役史归 ADR)=====
+    # G8 消费序依赖(安全面,勿改序):下列 _cand_* 存档量只在帧级触发
+    # (三卡全精确分类)前提下消费——先判帧级闸、后取分类。精确 miss 槽的
+    # 存档值(如经 resolve_strategy_canonical LCS 兜底的 _cand_blood)视为
+    # 不可分类禁止下游消费;改动此序 = 静默击穿 fail-closed(锁 6/锁 3 辖)。
+    refresh_slots: tuple[int, ...] = ()
+    if len(options) == 3 and all(_cand_exact):
+        # F9 env 帧结构检测(零 kind 参,decide_event 签名不变):三选项全部
+        # 精确命中环境注册表(get_env 同源查表)→ 判 env 帧 → 动作集恒空
+        # (执行不启用,ADR-0600 §2/§4)。策略∩环境注册表精确/归一后双 ∅(直调在案),
+        # 本支与上方 all(_cand_exact) 联手使 env 帧恒不刷;即使误判,后果方向
+        # = 漏刷(保守向,失败安全)。
+        _env_frame = all(get_env(o) is not None for o in options)
+        if not _env_frame:
+            # 帧级触发门(ADR-0600 §3.1):
+            # ① S1/S2 达档检查——被禁卡不参加达档判定(P5①:被禁卡永不被选,
+            #    不构成达档、不阻断触发);
+            # ② max_N ≠ 1 门——N 档 = 非被禁候选的绑定∩D* 绑定数(J6:被禁卡
+            #    不计入 max_N);帧内最高对齐档 = 1 → 整帧不刷(N=1 价值地位
+            #    未决挂账 T-155/16 号稿批,与 S4 抽样的交换不可比 → 保守缺省,
+            #    ADR-0600 §3.2);max_N=0(无对齐)或 ≥2 → 继续。
+            _s1s2_hit = any(
+                (not _cand_forbid[j]) and (_cand_s1[j] or _cand_engine[j])
+                for j in range(3))
+            if not _s1s2_hit:
+                _max_n = max((n for j, n in enumerate(_cand_align_n)
+                              if not _cand_forbid[j]), default=0)
+                if _max_n != 1:
+                    # 槽级动作集:非顶级槽可刷。顶级 = S1 ∨ S2 ∨ [N≥2 对齐]
+                    # ——顶级判定在被禁卡上恒取否(P5② 被禁槽恒入可刷集,含
+                    # 被禁∧N≥2 对齐槽:永不被选,保护无对象);血∧N≥2 现行不可达
+                    # (两血卡 STRATEGY_BINDINGS 双空恒 N=0,直调在案),注册表
+                    # 演化致可达时按 ADR-0600 §3.1 J7 申报裁:保护无对象 → 不保护。
+                    _action = [
+                        j for j in range(3)
+                        if _cand_forbid[j] or not (
+                            _cand_s1[j] or _cand_engine[j]
+                            or ((not _cand_blood[j]) and _cand_align_n[j] >= 2))
+                    ]
+                    # F2 唯一 L1 槽守卫(kernel 静态口径):L1 = 非血∧非禁
+                    # (cw_investments.is_blood_economy + user-forbid);恰一个时
+                    # 该槽不可刷——刷掉唯一 L1 且新卡为血/禁 → 三态序强制血选,
+                    # 确定损失分支,优势论证不闭合。执行期「逐步重估」(覆盖
+                    # L1={A,B} 刷 A 后 B 成唯一的序贯形态)由 handler 槽序循环
+                    # 承载(kernel 单次调用不可表达,单帧锁 14)。
+                    _refresh_l1 = [j for j in range(3)
+                                   if not _cand_blood[j] and not _cand_forbid[j]]
+                    if len(_refresh_l1) == 1 and _refresh_l1[0] in _action:
+                        _action.remove(_refresh_l1[0])
+                    refresh_slots = tuple(_action)
+    if refresh_slots:
+        # 归因后缀仅观测归因,不进任何检查器白名单(ADR-0593 C1→D4 迁移
+        # 兼容口径,沿 T-155 归因串先例)。
+        best_reason = f'{best_reason}+refresh-suggest'
+    return PickEvent(option_idx=best_idx, refresh=bool(refresh_slots),
+                     refresh_slots=refresh_slots,
                      reason=f"{best_reason} score={best_score:.0f}")
 
 

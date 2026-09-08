@@ -25,6 +25,7 @@ from sr_od.application.currency_war.kernel.cw_events import decide_event
 from sr_od.application.currency_war.kernel.cw_investments import is_known_env
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.obs.cw_node_obs import read_invest_refresh_counts
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     confirm_and_verify,
     safe_click,
@@ -91,9 +92,20 @@ class CwScreenInvestEnv(SrOperation):
         screen = self.screenshot()
         opts = self._read_options(screen)
 
-        # 事件面刷新已退役(ADR-0519 C10:decide_event refresh 恒 False,
-        # cw_events.py「refresh 恒 False」注)——原 ADR-0146 刷新流(OCR 剩余次数 +
-        # _try_click_refresh + 刷新重读重选分支)永不可达,整段已删。
+        # T-162 观察写入(ADR-0600 §3.4,G5;非执行链:零点击、零决策行为——环境屏刷新执行
+        # 不启用,推导见下方退役注)。计数读数落 log 遥测面,供 V5/V6 实证
+        # (无布局计数形态/授予口径/接管局重入帧)与 BoardState §2.5 写入端
+        # (类尚未落码,落地时以本处为写入端)。
+        _env_counts = read_invest_refresh_counts(self.ctx, screen, 'env')
+        log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(T-162 观察通道,V5/V6)')
+
+        # 事件面刷新执行不启用(ADR-0600 §2/§4,非「机制上不可能」):环境侧顶级类
+        # 结构性不可判(InvestmentEnv 无 economy 字段,EnvEconomyEffect 缺口在册
+        # 挂账 08 E1/E2)、S1 定义型键与环境名零交集、首开局帧 D*=∅ → 无可证
+        # 改进分支,保守缺省不刷(与 C10 同门);接管局重入帧类(D* 可能非 ∅)
+        # 一并禁用(未建模,V6 观察项)。启用前置 = 环境侧顶级类建模,届时首开局
+        # 与接管局帧类分别辖。kernel 侧 env 帧恒不刷 = decide_event 三选项全中
+        # 环境注册表的结构检测(F9),本 op 零执行链改动。
 
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _ in opts]

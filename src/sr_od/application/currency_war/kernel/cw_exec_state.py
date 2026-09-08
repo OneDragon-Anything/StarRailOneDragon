@@ -122,6 +122,14 @@ class ExecState:
     _supply_refresh_used: bool = False
     # 遭遇分支刷新 1 次已用(dd-004;同款跨 handler 语义)。节点级。
     _encounter_refresh_used: bool = False
+    # 投资策略逐卡刷新已发射槽集(ADR-0600 §3.3;发射即记不等验效,同款防重入;
+    # [索引定义] 坐标系: 策略屏画面槽位下标左→右 0-2,与 PickEvent.
+    #             refresh_slots 同源;取值时机: 执行期,发射点击即 add)。
+    # 复位 = visit 起点单点(CwScreenInvestStrategy 实例首帧入口锚验通过后
+    # clear——同 visit 重入不清保防重入,跨 visit 新实例必清防陈旧集泄入)。
+    # 「可否再刷」权威判定 = 逐卡计数现读(cw_node_obs reader),本集唯一
+    # 职责 = 同 visit 防重入(双保险不同源,观察赢规则照常辖)。
+    _invest_refresh_used_slots: set[int] = field(default_factory=set)
     # 奖励球留置计数(环级——Director 每次环入口清零,清零语义在写端;
     # 策略/框架经 DeferSpheres +1;门=2 防空转环)。框架流程侧。
     defer_count: int = 0
