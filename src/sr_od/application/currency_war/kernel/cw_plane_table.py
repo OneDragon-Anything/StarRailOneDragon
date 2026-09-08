@@ -12,7 +12,8 @@ ADR-0465 起,本模块是生产路径消费的**真值/标定面**
   plane_offsets/plane_end_slots/schedule_of/nodes_of_plane;
 - 升级费用查询:clicks_to_level/level_cost(逐帧现读单价由消费方
   economy_cycle.upgrade_plan_fee 承担,本表只供次数);
-- 息闭式:interest/GOLD_CAP_INTEREST(min(g//10,5) 截断点);
+- 息封顶常量:GOLD_CAP_INTEREST(息闭式本体 = kernel cw_economy
+  .interest 唯一源,DEFAULT_INTEREST_CAP 由其派生);
 - 损血先验表:HP_LOSS_MU(原 DP 模块 HP_LOSS_PRIOR 平移,ADR-0183
   统一的单一源,消费方=cw_first_passage 分布模型);
 - P2 两态胜率映射:p_win_p2(registry.p_win_p2_by_rung 分段线性,
@@ -149,10 +150,9 @@ def level_cost(level: int) -> int:
     return clicks_to_level(level) * XP_CLICK_COST_FLAT
 
 
-def interest(gold: int) -> int:
-    """息闭式:min(g//10, 息帽档数)。截断点=息线(守息线同源派生,
-    经济循环设计 §2.2 恒等式:interest_cap×10)。"""
-    return min(gold // 10, GOLD_CAP_INTEREST // 10)
+# (第二息实现 ``plane_table.interest`` 已删(ADR-0598 随批清理):与
+#  kernel cw_economy.interest 同形双源、全仓零生产调用——息闭式唯一源
+#  = kernel cw_economy.interest(cap 参数化,消费 cap_resolved 链)。)
 
 
 def peak_refresh_level(cost: int) -> int:

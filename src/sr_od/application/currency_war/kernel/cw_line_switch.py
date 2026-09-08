@@ -115,11 +115,20 @@ def line_distance(comp: Comp, state: GameState) -> int:
 
 
 def e_rounds(comp: Comp, state: GameState,
-             registry: DecisionV2Registry | None = None) -> float:
+             registry: DecisionV2Registry | None = None,
+             session: StrategySession | None = None) -> float:
     """E_rounds(c) ≈ distance / per_round(per_round 见模块注释)。
 
     distance=0 → 0.0(已完成);p̄=0(该等级刷不出)→ inf(静态不可达;
-    「实测断供」归 drought bail 旁路,DESIGN §附4)。"""
+    「实测断供」归 drought bail 旁路,DESIGN §附4)。
+
+    可负担窗的守息线 = session resolved 链单一源
+    (``saturation_line(cap_resolved_of_session(session))``,ADR-0598
+    随批接线:旧 ``reg.interest_floor()`` 不随持卡语境动——买断制局
+    刷新可负担窗被 50 金地板压死,囤金经本车道部分存活);
+    ``session=None``(无 session 调用形态/旧测试桩)退注册表派生值,
+    与既有调用形状零漂移。
+    """
     reg = registry or DEFAULT_REGISTRY
     dist = line_distance(comp, state)
     if dist <= 0:
@@ -136,7 +145,15 @@ def e_rounds(comp: Comp, state: GameState,
     if p <= 0:
         return math.inf
     cost = state.shop_refresh_cost or 2
-    affordable = max(0, ((state.gold or 0) - reg.interest_floor()) // cost)
+    if session is not None:
+        from sr_od.application.currency_war.kernel.cw_economy import (
+            cap_resolved_of_session,
+            saturation_line,
+        )
+        floor = saturation_line(cap_resolved_of_session(session))
+    else:
+        floor = reg.interest_floor()
+    affordable = max(0, ((state.gold or 0) - floor) // cost)
     bench_free = max(0, BENCH_CAPACITY - bench_occupied(state.bench or []))
     rolls = min(affordable, bench_free)    # 买刷截断到 bench 空位
     per_round = (1 + rolls) * p
@@ -239,7 +256,7 @@ def best_alt_line(state: GameState, session: StrategySession, config,
             continue
         if shop_supply(c, state) <= 0:
             continue
-        e = e_rounds(c, state, reg)
+        e = e_rounds(c, state, reg, session=session)
         if e < best[1]:
             best = (c, e)
     return best

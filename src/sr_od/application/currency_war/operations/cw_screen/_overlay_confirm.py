@@ -35,7 +35,7 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
     - ConfirmSupply/ConfirmBox/ConfirmTome(dict 形态 apply_op_effect 已实现):
       owned += item(apply 同时推进 session.last_owned_equips 本体)+ 登记;
     - ConfirmStrategy:apply 登记 active_strategies[item] 条目(本体追加由
-      handler 既有写入点承担,效果走台账不进 session 推进,§3.3 #22);
+      handler 在确认成功后承担,效果走台账不进 session 推进,§3.3 #22);
     - ConfirmMegastar/ConfirmPartner(chosen_*,infra 未建 dict op):经公开
       接口 register_expected 直登 kind='strategy',值带「待实读」= 覆盖点
       (prep_obs)可信读只清账不 diff;

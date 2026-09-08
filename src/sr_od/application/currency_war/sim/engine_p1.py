@@ -2655,6 +2655,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 同名同位;invest 注入写 session.active_env,cw_replay
                 # 回读消费。空串 = 未注入/无环境——机制性缺省,非缺口)
                 'sess_active_env': str(getattr(sess, 'active_env', '') or ''),
+                # 持卡注入面轮末快照(生产 decisions 行 top-level
+                # active_strategies 同语义;空列表 = 未注入/无持卡——
+                # 消费面 = sim 检查器 τ 的覆写语境观测键,ADR-0598
+                # 兑现 ledger.py 近似声明的预留义务)。
+                'sess_active_strategies': list(sess.active_strategies),
                 # (W829 支出门拒因枚举计数 sess_spend_gate_block 已随
                 #  spend_gate 开关族删除——旧方案清退批,清查报告
                 #  OLD_MIX_AUDIT §1.3;v3_sg_block session 键同批删。)

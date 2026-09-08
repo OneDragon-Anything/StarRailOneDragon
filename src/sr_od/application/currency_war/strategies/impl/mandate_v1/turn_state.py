@@ -73,8 +73,9 @@ class DirectionView:
 class BudgetView:
     """预算投影(现役件 = economy_cycle + posture_release;蓝图 §2/§3)。
 
-    - ``interest_floor``:息线(economy_cycle 口径 = registry.interest_cap
-      × 10,守息线同源派生)。
+    - ``interest_floor``:息线(session resolved 链口径 =
+      saturation_line(cap_resolved_of_session),与 reserve_cap 内部分量
+      同链;ADR-0598 随批自 registry.interest_cap×10 归一)。
     - ``reserve_cap``:R*(t) = 息线 + 窗口内排程升级费(储备制储备线)。
     - ``obligation``:义务花销 f = min((g − R*)+, C_t);0=无义务帧。
     - ``schedule``:排程升级判据(R4 可替换接缝 ``schedule_upgrade``,

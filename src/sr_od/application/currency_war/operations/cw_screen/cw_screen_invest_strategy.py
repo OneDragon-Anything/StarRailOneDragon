@@ -158,12 +158,10 @@ class CwScreenInvestStrategy(SrOperation):
         else:
             chosen, choose_x, choose_y, reason = '?', 920, 490, 'fallback(no-ocr)'
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
-        # 写入 session.active_strategies(原 bug:chosen 只点不存 → active_strategies 恒空 → 经济/难度判定静默失效,
-        # 如 cw_economy._refresh_cost 刷新减费策略判定、刷新费用减免都读不到已持有策略)。
-        # 投资策略可多张(局中重复选)→ append;去重防重选同一张时重复入列。
-        if match is not None and chosen != '?':
-            if chosen not in match.session.active_strategies:
-                match.session.active_strategies.append(chosen)
+        # 持卡注入面(session.active_strategies)的 append 已移至确认成功后
+        #(本文件尾块;ADR-0598 幻影卡收口)——旧时序 append 先于点卡确认,
+        # 确认失败轮(session.active_strategies 是息帽 resolved 链的输入源)
+        # 留下幻影卡:幻影买断制 = 息线全关,比幻影 9/10 更烈。
         # ADR-0132 采集:候选全集 + 效果原文(描述带 y 505-835,排除卡名行/确认/刷新次数 UI)按卡分桶
         # → invest_cards.jsonl;未注册名告警(注册表只 T0 子集,315 长尾靠采集渐进补全)。
         _items = [(t, m.max.center.x, m.max.center.y)
@@ -192,10 +190,14 @@ class CwScreenInvestStrategy(SrOperation):
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestStrategy.SCREEN_NAME) or CwScreenInvestStrategy.CONFIRM
         _rr = confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资策略',
                                  tag='cw-strat')
-        # 到账登记(§3.3 #22 ConfirmStrategy):active_strategies += 卡(粗粒度
-        # expected;本体追加在上方既有写入点,效果走台账不进 session 推进)。
-        # 仅确认落地成功登记(round_retry = 确认未发生)。
+        # 持卡本体追加 + 到账登记(§3.3 #22 ConfirmStrategy;粗粒度
+        # expected,效果走台账不进 session 推进)。**append 只在确认落地
+        # 成功后**(ADR-0598 幻影卡收口:确认失败轮 = round_retry,卡未
+        # 到手不留幻影;下轮重入本节点重新选卡);去重防重复入列。
+        # (原「chosen 只点不存」bug 的修复语义由本块承载。)
         if _rr.is_success and match is not None and chosen != '?':
+            if chosen not in match.session.active_strategies:
+                match.session.active_strategies.append(chosen)
             from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
                 register_confirm_arrival,
             )

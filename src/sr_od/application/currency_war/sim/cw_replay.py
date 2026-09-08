@@ -162,6 +162,12 @@ def _restore_session(strat, d: dict, sess):
         _ms.target_drought = int(d['sess_drought'])
     if d.get('sess_active_env'):
         sess.active_env = str(d['sess_active_env'])
+    # 持卡注入面回读(ADR-0598):decisions 行 top-level active_strategies
+    # → session——息帽 resolved 链的输入源,不回读则持卡局重放恒按 base
+    # cap 决策(修复效果在重放中结构性不可见)。空行(旧档案/无持卡局)
+    # 不写,session 缺省 [] 零漂移。
+    if d.get('active_strategies'):
+        sess.active_strategies = list(d['active_strategies'])
     _cs = d.get('sess_commit_scores') or {}
     if _cs:
         from sr_od.application.currency_war.kernel.cw_transition import CommitSignals

@@ -11,7 +11,8 @@
 迁移账本(session.md §2.3 28 项 + §2.6 24 项 = 52 具名字段;外加实施批
 实装时按 §6.1「账外字段一律视为范围遗漏」收编的两波策略侧动态属性
 共 20 个——第一波 9 个:cw4_shop_rejects/cw4_line_state/cw4_m1p_seam_
-verified/drought_excluded/cw4_cap_override/v3_reserve_overflow/
+verified/drought_excluded/cw4_cap_override(后经 ADR-0598 死链处置
+删字段,见类体墓碑注)/v3_reserve_overflow/
 v3_release_budget/v3_release_reason/v3_piggy_reward;第二波 11 个:
 cw4_fuel_filler_stall_buys/cw4_m1p_arm_pending/cw4_m7_equipped_phase/
 cw4_must_spend_phase/cw4_pop_slot_why/cw4_prev_line_name/
@@ -193,9 +194,11 @@ class MandateState:
     cw4_m1p_seam_verified: bool = False
     # 换线排除集(cw4 换线判据族读;proof/line_switch 消费)。
     drought_excluded: set = field(default_factory=set)
-    # 利息上限覆写注入面(cw_economy.cap_resolved_of_session 消费;
-    # None=缺省回 DEFAULT_INTEREST_CAP)。
-    cw4_cap_override: int | None = None
+    # (``cw4_cap_override`` 字段已删(ADR-0598 息帽死链处置):全仓零
+    #  生产写点的死链读点——覆写单一源 = session.active_strategies 经
+    #  aggregate_economy 聚合(kernel cw_economy.cap_resolved_of_session
+    #  消费)。保留字段 = 两源并存复发面,故删码;语义与决策史见
+    #  docs/develop/currency_war/decisions/0598。)
 
     # ===== M2 停摆续段缓存(T-82 必花臂重试风暴;段标识/结论闩/帧动作
     # token 三载体;为什么需要 = 商店/备战帧循环对「输入不变 ⇒ 拒绝不变」

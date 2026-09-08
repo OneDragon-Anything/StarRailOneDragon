@@ -168,19 +168,24 @@ def _budget(state: Any, session: StrategySession,
     (``_disclose_budget``,T-88;不入决策输入)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import (
+        cap_resolved_of_session,
         refresh_ev_budget,
         reserve_cap,
+        saturation_line,
         schedule_upgrade,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.economy_cycle import (
         obligation,
     )
-    floor = registry.interest_cap * 10   # 守息线(与 reserve_cap 内部同源派生)
+    # 守息线 = session resolved 链单一源(与 reserve_cap 内部分量同链;
+    # ADR-0598 息帽死链修复随批接线:旧 registry.interest_cap×10 不随
+    # 持卡语境动,买断制囤金经预算投影面部分存活)。
+    floor = saturation_line(cap_resolved_of_session(session))
     budget = BudgetView(
         # P6 注入单源(W636 A):BudgetView 各字段消费同一 registry 实例,
         # 禁混用 state_of(session).v3_registry 死通道 / DEFAULT 缺省表。
         interest_floor=floor,
-        reserve_cap=reserve_cap(state, session, registry),
+        reserve_cap=reserve_cap(state, session),
         obligation=obligation(state, session, registry),
         schedule=schedule_upgrade(state, session, registry),
         ev_auth=refresh_ev_budget(state, session, registry),

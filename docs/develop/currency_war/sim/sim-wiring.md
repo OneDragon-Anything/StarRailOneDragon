@@ -9,15 +9,18 @@
 > 对账:**已接 18(首版 13 + ADR-0271 接入 board + ADR-0276 接入
 > node_type/streak[session 口径]+ ADR-0286 接入 xp_progress/
 > refresh_probs/deploy_cap[宝钻通道参数化,默认频率 0]+ 动作 v2 契约
-> 接入 action_log[动作 v2 账本])+ 必须接线 12 + 观测冗余豁免 6 +
-> 结构未建 5 = 41**。(首版任务书的分档口径与字段总数不符,按实测
+> 接入 action_log[动作 v2 账本])+ 必须接线 12 + 观测冗余豁免 6 =
+> 36**。(首版任务书的分档口径与字段总数不符,按实测
 > 归类对账;此后字段增补:ADR-0286 新增 deploy_cap
 > 字段 → 总数 36→37;后续批次新增 enemy_difficulty_live(判读用保真位)、
 > 动作 v2 契约
 > 新增 action_log → 37→39;ADR-0428 新增 hp_trusted → 39→40,入
 > 观测冗余豁免档——决策消费经 `hp_readable or hp_trusted`,sim 帧
 > readable=True 短路,行为逐位等价;观测修复批新增 level_readable →
-> 40→41,入同档。)
+> 40→41,入同档;2026-09-08 死字段清理:自建表起恒缺省、零接线零
+> 消费的 5 个「结构未建」占位字段(match_type/plane_modifiers/
+> shop_locked/megastar_char/partner_char)从 GameState 删除 → 41→36,
+> 该档随之撤档——字段复现需求随依赖结构建设时按新字段流程重立。)
 >
 > 优先级:P1 = 影响当期 sim A/B 结论有效性;P2 = 决策消费存在但当前
 > 栈(decision_v2)影响面小;P3 = 随依赖结构建设顺带接入。
@@ -72,16 +75,6 @@
 | board_readable | 恒默认 True | board 是否真读到(空 dict 双义标注) | 豁免(同上) | — |
 | enemy_difficulty_live | 恒默认 False | 难度值是否逐帧真读(判读用保真位;判读过滤用,决策不用) | 豁免(sim 假设完美观测;生产亦仅判读侧消费) | — |
 | level_readable | 恒默认 True | level 是否真读到(False=纯 _expected_level 启发式兜底帧;判读过滤用,决策不用) | 豁免(同上) | — |
-
-## 四、结构未建(5;依赖的事件/画面层 sim 未建模)
-
-| 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
-|---|---|---|---|---|
-| match_type | 恒 None | 模式选择屏(标准/超频博弈) | 未建(模式层) | P3 |
-| plane_modifiers | 恒 [] | 位面特殊修正(如「战个痛快」) | 未建(位面修正层;P1 域内影响待核) | P3 |
-| shop_locked | 恒 False | 商店锁定 | 未建(sim 无锁店行为,策略亦未用) | P3 |
-| megastar_char | 恒 None | 巨星节点绑定角色(回写复盘) | 未建(巨星节点层) | P3 |
-| partner_char | 恒 None | 伙伴节点选择(回写复盘) | 未建(伙伴节点层) | P3 |
 
 ## 羁绊口径分层(ADR-0312;board 统计语义单一源声明)
 

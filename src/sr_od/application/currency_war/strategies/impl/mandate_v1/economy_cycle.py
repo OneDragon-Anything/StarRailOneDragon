@@ -169,19 +169,19 @@ def channel_capacity(state: GameState, session: StrategySession,
     return total
 
 
-def overflow(state: GameState, session: StrategySession,
-             registry: DecisionV2Registry) -> int:
+def overflow(state: GameState, session: StrategySession) -> int:
     """溢余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。
 
     R* 单一源 = kernel cw_economy.reserve_cap(模块级 import:纯查表
-    函数,无桩点契约;A/B 注入经 registry 参数显式传递)。"""
-    return max(0, (state.gold or 0) - reserve_cap(state, session, registry))
+    函数,无桩点契约;守息线分量已归一 session resolved 链,registry
+    旋钮不再辖本缝——ADR-0598)。"""
+    return max(0, (state.gold or 0) - reserve_cap(state, session))
 
 
 def obligation(state: GameState, session: StrategySession,
                registry: DecisionV2Registry) -> int:
     """义务花销 f = min((g − R*)+, C_t)(设计 §1.4;0=无义务)。"""
-    r = overflow(state, session, registry)
+    r = overflow(state, session)
     if r <= 0:
         return 0
     return min(r, channel_capacity(state, session, registry))

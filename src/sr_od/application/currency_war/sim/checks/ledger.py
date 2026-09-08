@@ -359,8 +359,12 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
     - 击序余量 s = 同轮 m3 击实际花费后缀和(生产 s =
       clicks_to_next_level 现读;轮内买牌 +4XP 令生产 s ≤ 本口径
       ——宽松向,不冤枉合法批);
-    - 息帽 cap 取 DEFAULT(±cap 覆写语境误差窗口:sim 未接线
-      cw4_cap_override,覆写语境出现时本检查器需增观测键);
+    - 息帽 cap = 账本行覆写语境观测键解析(ADR-0598 兑现本检查器原
+      预留义务):行携 ``sess_active_strategies``(轮末持卡快照,engine
+      写端)→ ``aggregate_economy`` 聚合取 cap 覆写(None/0 判别语义 =
+      kernel interest_cap_resolved 单点);键缺席(历史账本/无持卡局)
+      → DEFAULT——历史账本在覆写语境下的旧读数仍带近似窗,只读不
+      新产;无持卡局与 DEFAULT 同值,零行为差;
     - 逐击重放的动作净额:满栏合成买行携 count,净额按
       cost×count(与实际扣金差 ≤1 金的粒度窗口)。
     """
@@ -370,9 +374,13 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
     from sr_od.application.currency_war.kernel.cw_economy import (
         DEFAULT_INTEREST_CAP,
         interest,
+        interest_cap_resolved,
     )
     from sr_od.application.currency_war.kernel.cw_intention import (
         pair_target_comp,
+    )
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        aggregate_economy,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
         r2_card_reserve,
@@ -407,6 +415,12 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
         level = prev_level
         row_lvl = st.get('level') or prev_level
         node = sim.get('node') or ''
+        # 覆写语境 cap(行级观测键解析;ADR-0598):键缺席(历史账本/
+        # 无持卡)→ DEFAULT,与 τ 旧钉值同值零漂移;键在 → 聚合覆写。
+        _strats = row.get('sess_active_strategies')
+        _cap = (interest_cap_resolved(
+                    aggregate_economy(list(_strats)).interest_cap_override)
+                if _strats else DEFAULT_INTEREST_CAP)
         # T-115 对齐(ADR-0580):原 reward/supply 节点型 skip 已退役
         #([16]② 删除,奖励节点 = 抑制对象),检查覆盖回归节点无关口径。
         actions = row.get('actions') or []
@@ -477,7 +491,7 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
                         elif t == 'SellBench':
                             gold_dec += a.get('income') or 0
                     s_j = sum(lv_costs[j:])
-                    tau = interest(gold_dec, DEFAULT_INTEREST_CAP)
+                    tau = interest(gold_dec, _cap)
                     floor = tau * 10 + 2 * rho
                     if gold_dec - s_j < floor:
                         out.append(

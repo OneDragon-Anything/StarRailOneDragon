@@ -1289,7 +1289,8 @@ def update_intention(state: GameState, ist: IntentionState,
                         alt_name, thk = ev
                         q = _core_miss_q(core, state.level)
                         alt_comp = get_comp(alt_name)
-                        e_alt = (e_rounds(alt_comp, state, reg)
+                        e_alt = (e_rounds(alt_comp, state, reg,
+                                          session=session)
                                  if alt_comp is not None else math.inf)
                         ist.phase = 'weak'
                         ist.weak_comp = ist.locked_comp

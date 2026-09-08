@@ -81,12 +81,14 @@ def interest(gold: int, cap: int = DEFAULT_INTEREST_CAP) -> int:
 
 
 def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
-    """resolved 息帽(语境修正开关单一源 = cw_investments.STRATEGY_ECONOMY
-    overlay 登记 + MechanismMutation 运行时突变视图,NMF §2 末行)。
+    """resolved 息帽(「无覆写回默认」的单点归一)。
 
-    override=None(默认局/无突变)→ DEFAULT_INTEREST_CAP;买断制 0/息律 10/
-    开源节流 9 由调用方传注册表 override 值——本函数只做「无突变回默认」的
-    单点归一,禁在判据侧内联 cap 字面量(E4.0 第 1 条)。
+    override=None(默认局/未持息帽卡)→ DEFAULT_INTEREST_CAP;注册表
+    覆写值(开源节流 9/利息上调 10/买断制 0)由调用方经聚合链传入——
+    本函数只做归一,禁在判据侧内联 cap 字面量(E4.0 第 1 条)。
+    **0 是有效覆写**(买断制 = 息通道改写,在册同判 cw_events
+    is_economy_engine):判别只认 None,禁真值折叠——``override or 缺省``
+    形态会让买断制静默回 5(ADR-0598 最高危陷阱锁)。
     """
     if interest_cap_override is None:
         return DEFAULT_INTEREST_CAP
@@ -96,17 +98,31 @@ def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
 def cap_resolved_of_session(session: StrategySession | None) -> int:
     """cap_resolved 现读(session resolved 链;ADR-0516 cap 三源归一)。
 
-    注入面 = ``strategy_state_of(session).cw4_cap_override``(int 覆写)经 ``interest_cap_
-    resolved`` 归一,缺省回 DEFAULT_INTEREST_CAP。消费位 = 商店线 R1/R2
-    的 g* 装配(mandate._cap_of 重定向至此)、schedule_upgrade ② 前置
-    息线、U_L 阈值检验的 loss_exact cap 参数——三处共用本式,禁再内联
-    ``interest_cap×10`` 或 loss_exact 裸缺省 cap(息律投资 cap=10 局,
-    裸缺省 5 会低估 C_int)。边界:本链不读 registry.interest_cap
-    (A/B 旋钮辖 decision_v2 预算面,不辖本链)。
+    覆写单一源 = ``aggregate_economy(session.active_strategies).
+    interest_cap_override``(注册表派生、零新参数;ADR-0598 息帽死链
+    修复):已持投资策略聚合取 cap 覆写(并持取宽 = ADR-0131),未持
+    息帽卡 → None → 回 DEFAULT_INTEREST_CAP;None/0 判别语义由
+    :func:`interest_cap_resolved` 单点承载。两个写点 = 实机选卡 handler
+    (cw_screen_invest_strategy,确认成功后 append)与 sim 注入臂
+    (engine_p1,append+state 镜像)——本函数只读 session 级字段,
+    禁读 state 镜像(非公共权威)。
+
+    消费位 = 商店线 R1/R2 的 g* 装配(mandate._cap_of 重定向至此)、
+    schedule_upgrade ② 前置息线、U_L 阈值检验的 loss_exact cap 参数、
+    必花域/发射帧溢余段、registry 预算面守息线分量(reserve_cap/
+    BudgetView.interest_floor/换线可负担窗,ADR-0598 随批接线)——
+    共用本式,禁再内联 ``interest_cap×10`` 或 loss_exact 裸缺省 cap
+    (息律投资 cap=10 局,裸缺省 5 会低估 C_int)。
+
+    边界:本链不读 registry.interest_cap(A/B 旋钮辖观察/检查器镜像
+    面,不辖本链);回落问题的实际形态 = 「从未持有」——投资策略
+    无卖出/移除建模(handler 只 append),与 economy_score/S2 共享
+    同一 append-only 假设,非本函数独立边界。
     """
-    override = getattr(strategy_state_of(session), 'cw4_cap_override', None)
-    return interest_cap_resolved(
-        override if isinstance(override, int) else None)
+    strategies = getattr(session, 'active_strategies', None) or []
+    override = (aggregate_economy(list(strategies)).interest_cap_override
+                if strategies else None)
+    return interest_cap_resolved(override)
 
 
 def saturation_line(cap_resolved: int) -> int:
@@ -585,6 +601,11 @@ def get_node_goal(plane: int, round_num: int, *,
         _st = _GS(gold=gold, level=level, plane=plane, round_num=round_num,
                   hp=hp)
         _st.active_strategies = list(strategies or [])
+        # ⚠️ 结构性边界(ADR-0598 申报,不扩修):下行两接缝核以
+        # session=None 调用 → 息帽 resolved 链恒 DEFAULT(base cap),
+        # 持息帽卡局的本投影帧判据按 base 口径——接缝无 session 入参
+        # (标量投影形态,消费面 = entry 兼容调用,量级有界),扩修
+        # 随该调用面的 session 通道批。
         _rolls = min(6, refresh_ev_budget(_st, None))
         if schedule_upgrade(_st, None):
             return NodeGoal(min(10, level + 1), 'level', 'rush_level',
@@ -1102,7 +1123,7 @@ def refresh_ev_budget(state: GameState, session: StrategySession,
     reg = registry or _registry_of(session)
     if is_emergency(state, reg):
         return 0
-    over = (state.gold or 0) - reserve_cap(state, session, reg)
+    over = (state.gold or 0) - reserve_cap(state, session)
     if over <= 0:
         return 0
     cost = state.shop_refresh_cost or 2
@@ -1132,8 +1153,7 @@ def _rounds_to_plane_end(state: GameState, session: StrategySession) -> int:
     return max(0, total - state.round_num)
 
 
-def reserve_cap(state: GameState, session: StrategySession,
-                registry: DecisionV2Registry) -> int:
+def reserve_cap(state: GameState, session: StrategySession | None) -> int:
     r"""R\*(t) = interest_floor + Σ 窗口内排程升级费(设计 §1.3)。
 
     窗口 h = min(3, 到本位面末节点轮数);只储蓄下一级费用——多级
@@ -1142,16 +1162,17 @@ def reserve_cap(state: GameState, session: StrategySession,
     排程判据单一址 = ``schedule_upgrade``(确定性查表核,ADR-0465 预算
     收权;与 arbiter 授权/EV 授权 ② 臂共调同一函数,R4)。
 
-    守息线取 `interest_cap × 10`(息帽同源派生,经济循环设计 §2.2 恒等式):
-    基参数下 5×10=50==interest_floor,行为零漂移;写法保证「守息线
-    ≤ 封顶线」结构性成立——两者同源,不可能出现守息线高于持有增益
-    归零点(息帽截断点)的态。策略级息帽 override(interest_cap_override)
-    走 ledger/DP 通道,registry 息帽与之分离时以封顶线为准(设计 §2.2
-    规则原文);分离面=已知缺口,如实挂账。
+    守息线分量 = ``saturation_line(cap_resolved_of_session(session))``
+    (session resolved 链单一源,与排程判据 ② 前置同链;ADR-0598 息帽
+    死链修复随批接线:旧 ``registry.interest_cap × 10`` 把策略息帽覆写
+    挡在刷新授权车道外——买断制(cap=0)囤金经本车道部分存活,利息
+    上调(cap=10)守息线被低估;归一方向 = ADR-0516 cap 三源归一同款)。
+    写法保证「守息线 ≤ 封顶线」结构性成立——两者同源(cap_resolved),
+    不可能出现守息线高于持有增益归零点(息帽截断点)的态。
     """
     h = min(_RESERVE_WINDOW_ROUNDS,
             _rounds_to_plane_end(state, session))
-    floor = registry.interest_cap * 10
+    floor = saturation_line(cap_resolved_of_session(session))
     if h <= 0 or not schedule_upgrade(state, session):
         return floor
     return floor + upgrade_plan_fee(state)
