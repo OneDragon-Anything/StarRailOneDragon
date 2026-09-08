@@ -274,8 +274,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     # —— 机制修改器审计 F1/F2/F3(效果原文=cw_invest_data
     #    plaza API 逐字:概率事件 300401/奋斗协议 301801/市场干预 102201)——
     '概率事件': EconomyEffect(refresh_free_chance=0.45),
-    # ↑ 「刷新时有45%概率获得一次免费刷新」——消费侧经 EffectLedger 折期望刷价
-    #   2×0.55=1.1(MechanismMutation.refresh_price_mult=0.55)
+    # ↑ 「刷新时有45%概率获得一次免费刷新」——期望刷价口径 2×0.55=1.1
+    #   (MechanismMutation.refresh_price_mult=0.55)
     '奋斗协议': EconomyEffect(xp_buy_hp_cost=6),
     # ↑ 「购买经验值消耗6点小队生命值而非金币。首领战斗结束时回复50点小队生命值」——
     #   金侧成本置 0(血本位),IMPL §6.2 血本位安全带按 rate=6 直读本字段;回血段=行为流不建模
