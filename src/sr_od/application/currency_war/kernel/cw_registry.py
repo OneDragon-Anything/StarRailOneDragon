@@ -787,8 +787,9 @@ class DecisionV2Registry:
     #: 27.57 落谷底不近似任何真实伤害。**投影口径取 Q3≈34**(保守:均值使
     #: hp 临界局 tier 高估一档=重蹈 迁移审计 w234(git 历史) 缺口;低估方向仅更保守可 AB 校正);
     #: 协变量(Σboard/净星深/日期/comp/streak)无一解释簇归属,嫌疑首因=
-    #: boss 敌型(outcomes 无 boss_name 字段——数据采集欠账,攒齐后按敌型
-    #: 混合重标定)。分布数字以本注释为单一源(2026-08-27 boss 伤害
+    #: boss 敌型(生产 outcomes 自 迁移审计 w253(git 历史) 起带 boss_names 实采,攒齐后按敌型
+    #: 混合重标定;sim 批 outcomes 键位同构,恒 None=未建模)。
+    #: 分布数字以本注释为单一源(2026-08-27 boss 伤害
     #: 分布重标定,离线标定产物随对局遥测语料归档);投影口径取 Q3 的
     #: 前移耦合挂账=ADR-0418。
     handoff_boss_e_damage: dict[int, float] = field(default_factory=lambda: {

@@ -871,7 +871,8 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
 
     - decisions 每轮一行(SimResult.ledger;run_id=batch 目录名);
     - outcomes 每轮一行(OutcomeRecord 同构:生产 node_type 词表
-      + hp_after + board_before/bench_count;sim 专属键挂 'sim');
+      + hp_after + board_before/bench_count + boss_names 槽位(恒
+      None,见行内注);sim 专属键挂 'sim');
     - **守卫:out_dir 不得是生产 live 流根,也不得是退役旧根**(本函数
       以 'w' 截断模式开三流文件名,写错位置 = 把目标处既有同名词整份
       清零——2026-09-07 22:20:52 空批写退役旧根截断历史三流实证,
@@ -927,6 +928,13 @@ def write_batch_ledger(results: list[SimResult], out_dir: Path, *,
                         (row['state'] or {}).get('board') or {}),
                     'bench_count':
                         len(row['state']['bench']),
+                    # T-179 件②:boss 身份槽位与生产 OutcomeRecord 同键
+                    # 同构。sim 未建模简报面 → 恒 None(「未建模」显式
+                    # 缺省,区别于旧数据的键缺失,消费端 .get 可辨);
+                    # boss 伤害双峰按敌型混合重标定的实采数据源 = 生产
+                    # outcomes(w253 起 boss_names 有真值,单一源 =
+                    # cw_registry.handoff_boss_e_damage 注)。
+                    'boss_names': None,
                     'sim': {'delta': row['sim']['delta'],
                             'depth': row['sim']['depth'],
                             # killed 语义同产线=**胜**(击杀敌方;

@@ -155,16 +155,57 @@ def check_hoard_gold_no_engine(ledgers: list[list[dict]]) -> dict:
 
 
 
+# --- T-179 件① 期限 miss 原因分键常量(观测面口径) -------------------
+# 金滞留阈值:与 hoard_gold_no_engine 的设计表原值 40 同阈值族
+# (「金 ≥40 = 囤」既有观测口径,禁第二套阈值)。
+_DEADLINE_HOARD_GOLD: int = 40
+
+# 次引擎供给原料面(镜像 pool._rung_of_row 的体系语义):三体系阵营卡
+# 或希儿本卡。量子同频/贝洛伯格卡**不计**——第四体系需希儿在场才成立
+# (_rung_of_row 同判),把它们当原料会虚增「有供给」读数。
+_ENGINE_SUPPLY_FACTIONS: frozenset[str] = frozenset(
+    {'持续伤害', '列车同行', '仙舟'})
+_ENGINE_SUPPLY_CHAR: str = '希儿'
+
+
+def _is_engine_supply_card(card: dict) -> bool:
+    """次引擎供给原料谓词(入参 = 卡面 dict(name/faction);口径见上方常量注)。"""
+    return (card.get('faction') in _ENGINE_SUPPLY_FACTIONS
+            or card.get('name') == _ENGINE_SUPPLY_CHAR)
+
+
 def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
-    """成型批 second_engine_deadline(次引擎期限观测;披露型)。
+    """成型批 second_engine_deadline(次引擎期限观测+miss 原因分键;披露型)。
 
     判据(设计表原文):首引擎后 ≤3 轮内达次引擎或记原因——
     现状(设计时)gap=8 存在(2/11)。sim 账本无原因字段 →
     披露 gap 分布(engines 口径=_rung_of_row;「引擎」=四体系
     数≥1/≥2 的首达轮)。
+
+    T-179 件① miss 原因分键:期限窗(首引擎轮 F 后 ≤3 轮)内按
+    账本既有字段给每个 miss 局分**互斥主因**(优先级序):
+    - ``supply_break`` 供给断:窗内 shop_waves 零次引擎原料(三体系
+      阵营卡或希儿本卡;量子同频/贝洛伯格不计——无希儿不构成第四
+      体系,镜像 _rung_of_row);
+    - ``gold_hoarded`` 金滞留:窗内有原料且进轮金全程 ≥40
+      (_DEADLINE_HOARD_GOLD,与 hoard_gold_no_engine 同阈值族;
+      口径 = sim.gold_before,缺键行回退行末 gold);
+    - ``diverted_spend`` 摇摆挤占:窗内金有花(spend.buys+levelup
+      +refresh>0)但零原料买入——花了但没花在次引擎上;
+    - ``other``:混合/边界(有原料买入仍未达、窗空 = 首引擎后 P1
+      已无观察窗、低金零花等)。
+
+    边界:分键是**观测面近似,非因果归因**——只读账本既有字段
+    (供给 = 波里有没有 / 金 = 进轮口径 / 花 = spend 面合计),
+    三键形状之外的形态(如 bench 握料未上板)落 other;分诊立项前
+    仍须挑局复盘取实证(match-review)。miss_reason_games 给各键
+    前 5 个局索引(seed = seed_base+idx,供复盘重放)。
     """
     gaps: list[int] = []
-    for rows in ledgers:
+    reasons = {'supply_break': 0, 'gold_hoarded': 0,
+               'diverted_spend': 0, 'other': 0}
+    reason_games: dict[str, list[int]] = {k: [] for k in reasons}
+    for gi, rows in enumerate(ledgers):
         first = second = None
         for row in rows:
             r = _rung_of_row(row)
@@ -174,12 +215,58 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
             if first is not None and second is None and r >= 2:
                 second = rn
                 break
-        if first is not None:
-            gaps.append((second - first) if second is not None else 99)
+        if first is None:
+            continue
+        gap = (second - first) if second is not None else 99
+        gaps.append(gap)
+        if gap <= 3:
+            continue
+        # --- miss 原因分键(期限窗 = (F, F+3];截断于局末) ---
+        window = [row for row in rows
+                  if first < (row.get('round_num') or 0) <= first + 3]
+        reason = 'other'
+        if window:
+            offered = any(_is_engine_supply_card(c)
+                          for row in window
+                          for w in (row.get('sim') or {}).get('shop_waves')
+                          or []
+                          for c in w.get('cards') or [])
+            buys = [a for row in window for a in row.get('actions') or []
+                    if isinstance(a, dict) and a.get('__type__') == 'BuyCard']
+            bought_engine = any(_is_engine_supply_card(a.get('card') or {})
+                                for a in buys)
+            gold_floor: int | None = None
+            spend_gold = 0
+            for row in window:
+                s = row.get('sim') or {}
+                gb = s.get('gold_before')
+                g = gb if isinstance(gb, int) else row.get('gold')
+                if isinstance(g, int):
+                    gold_floor = (g if gold_floor is None
+                                  else min(gold_floor, g))
+                sp = s.get('spend') or {}
+                spend_gold += sum((sp.get('buys') or {}).values()) \
+                    + int(sp.get('levelup') or 0) \
+                    + int(sp.get('refresh') or 0)
+            if not offered:
+                reason = 'supply_break'
+            elif gold_floor is not None \
+                    and gold_floor >= _DEADLINE_HOARD_GOLD:
+                reason = 'gold_hoarded'
+            elif spend_gold > 0 and not bought_engine:
+                reason = 'diverted_spend'
+        reasons[reason] += 1
+        if len(reason_games[reason]) < 5:
+            reason_games[reason].append(gi)
     miss = sum(1 for g in gaps if g > 3)
     return {'violations': 0, 'first_engine_games': len(gaps),
             'deadline_miss': miss,
-            'avg_gap': round(sum(gaps) / len(gaps), 2) if gaps else None}
+            'avg_gap': round(sum(gaps) / len(gaps), 2) if gaps else None,
+            'miss_reasons': reasons,
+            'miss_reason_games': reason_games,
+            'miss_reason_note': '主因分键(互斥,优先级 '
+                                '供给断>金滞留>摇摆挤占>其他;'
+                                '观测面近似非因果,立项前挑局复盘)'}
 
 
 
