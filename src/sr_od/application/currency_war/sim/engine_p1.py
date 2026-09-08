@@ -76,9 +76,6 @@ from sr_od.application.currency_war.kernel.cw_state import (
     simulate as _simulate_state,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
-from sr_od.application.currency_war.kernel.cw_waiting_piece import (
-    recipe_waiting,
-)
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     InvestInjectionState,
     SimInvestProfile,
@@ -1646,12 +1643,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 行为投影 digest 只取动作 (__type__,reason,result)
                         # (test_cw_w614_sim_fidelity 锚),本键零位移。
                         _lv_mu = st.max_units()
-                        # 收敛谓词披露(ADR-0592;ADR-0589 同模式扩键):
-                        # dec_recipe_waiting = 发射帧支A 谓词现值(单一源
-                        # kernel.cw_waiting_piece.recipe_waiting,与生产
-                        # 闸/kernel ①臂/检查器镜像同源)——检查器支A 镜像
-                        # 按击优先消费本键;dec_bench_2star 为旧谓词形态
-                        # 观测键,保留辖跨版本账本的近似分支。
                         _acts.append({'__type__': 'LevelUp',
                                       'cost': _lv_cost, 'auth': _lv_auth,
                                       'dec_board_full': (
@@ -1660,12 +1651,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                           >= _lv_mu),
                                       'dec_bench_2star': any(
                                           (getattr(b, 'star', 1) or 1) >= 2
-                                          for b in iter_occupied(st.bench)),
-                                      'dec_recipe_waiting': (
-                                          _lv_mu is not None
-                                          and recipe_waiting(
-                                              st.deployed, list(st.bench),
-                                              _lv_mu))})
+                                          for b in iter_occupied(st.bench))})
                         xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
                         st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
                         progressed = True

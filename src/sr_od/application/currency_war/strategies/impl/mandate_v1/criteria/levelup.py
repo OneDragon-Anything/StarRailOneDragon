@@ -1,5 +1,5 @@
-"""criteria/levelup——升级面判据(§2.3;M3 触发信号 arm1_existence 与
-支A 兑现链谓词的单一源均在 kernel/cw_waiting_piece,不在本域)。
+"""criteria/levelup——升级面判据(§2.3;M3 触发信号 arm1_existence 在
+statefn/predicates,不在本域)。
 
 D-BUYNOTE(修复池执行层附注,随批收编):新核买牌/升级发射器内嵌
 P48 整买纪律常量判据——``spend_unified`` = XP 仅整批够升级时放行
@@ -127,16 +127,13 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
     判定(证明 §2.5 合取序,禁「(2) 豁免了 (3) 还拦」的分裂);
     ``session`` 参数即为其 nodes_of_plane 真值链新增。
 
-    支A(C_realize=1 兑现链放行):板满 ∧ bench 有配方等待件 = 升级
-    人口位增量当帧可兑现——谓词单一源 =
-    ``kernel.cw_waiting_piece.recipe_waiting``(kernel ①臂/ΔV_pop 指示
-    项/引擎披露/检查器镜像同源,ADR-0592;[33] 裁定域=板面域不限星级,
-    历史「bench 2★」收窄读法系 ADR-0576 落码批晚于裁定的违裁写入,
-    P82-e 定性;P82-e 候册:证明批候立,见账本 T-139 跟踪)。P39 ②「骨架义务 M3,arm2 无权否决存在性」:全段化
-    若缺本支,arm1 帧会被量闸否决存在性——本支是 P72 消解该否决的
-    sanctioned 机制(证明 §1 支A 姿态声明,沿 schedule_upgrade ①臂
-    短路先例)。放行域变化是对称差(放宽 1★ 配方缺口件/收窄线外 2★
-    与纯冗余件,P82-c 双向申报)。
+    支A(C_realize=1 兑现链放行):板满 ∧ bench 有 2★ 等待件 = 升级
+    人口位增量当帧可兑现——谓词与 ``kernel.cw_economy.schedule_upgrade``
+    ①臂 / ``_upgrade_ul_threshold_ok`` ΔV_pop 指示项**成同步锚对**
+    (同一 P39 指示项,改谓词多处同改,见 ``_realize_chain_ready``)。
+    P39 ②「骨架义务 M3,arm2 无权否决存在性」:全段化若缺本支,
+    arm1 帧会被量闸否决存在性——本支是 P72 消解该否决的 sanctioned
+    机制(证明 §1 支A 姿态声明,沿 schedule_upgrade ①臂短路先例)。
     **辖域 = 战斗帧**(2026-09-08 奖励帧策略审查;schedule_upgrade ①臂
     同款辖域注的锚对位):「当帧可兑现」隐含帧上有战斗,奖励帧无战斗
     → 本支收益面在奖励帧不适用,该帧由 ADR-0580 规则①抑制先辖
@@ -171,12 +168,6 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
     if clicks * click_cost <= 0:
         return True, ''
     if _plane_last_battle(state, session):
-        # ALL IN 豁免(P72 §2.5:R=0 机会成本恒零)。域①邻接(T-143
-        # 落码批):域①终局帧 ⊂ 本谓词辖域,清算续批(落点二步 0,双栈
-        # mandate/shop 发射位)的闸可行性由本支天然承载——闸开≠臂发的
-        # 病灶在发射侧触发面(arm1 挂账),不在本闸。域①面的数学权威 =
-        # math_proofs P81 主定理(P72 §2.5 恒零表述在域②③的过强面候
-        # 修订批收窄,本闸域①面零改);决策记录 = ADR-0594。
         return True, ''      # ALL IN 豁免(P72 §2.5:R=0 机会成本恒零)
     if _realize_chain_ready(state, bench, deployed):
         return True, ''      # 支A:兑现链当帧可兑现(P39 ①臂姿态)
@@ -194,24 +185,31 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
 
 def _realize_chain_ready(state: GameState, bench: list,
                          deployed: list) -> bool:
-    """P72 支A 谓词消费位:C_realize=1 判定(升级收益的兑现链当帧可
-    兑现)——**委托 kernel 单一源** ``cw_waiting_piece.recipe_waiting``
-    (ADR-0516 桶边界 sink 先例、ADR-0592;谓词语义/域论证/候裁挂账
-    全在该单一源 docstring,本位禁第二实现)。kernel ①臂/ΔV_pop 指示
-    项/引擎披露/检查器镜像同源消费。两支全断(本支 False ∧ (3a) 拒)
-    ⟹ C_realize=0 构造性精确零(证明 §2.3)。模块私有:非判据面公开
+    """P72 支A 谓词:C_realize=1 判定(升级收益的兑现链当帧可兑现)。
+
+    板满(deployed_occupied ≥ max_units)∧ bench 有 2★ 等待件——与
+    ``kernel.cw_economy.schedule_upgrade`` ①臂及
+    ``_upgrade_ul_threshold_ok`` ΔV_pop 指示项成同步锚对(同一 P39
+    指示项的第三消费位,改谓词多处同改;禁止判据体外的平行实现,
+    本注释与 contracts 锚为登记面非实现副本)。两支全断 ⟹
+    C_realize=0 构造性精确零(证明 §2.3)。模块私有:非判据面公开
     函数,不入契约/旁路枚举表(契约由 levelup_budget_gate 键承载)。
 
-    C_realize ②支收口申报(ADR-0592,C2 裁决):部署语境的完整评价面
-    (``kernel.cw_deploy_logic.has_deployable`` 接线)候后续批;先行态 =
-    ``char_id∉deployed_cids`` 零参数轻量合取(E1 同名排除,谓词体内
-    承载)——同名件升级后仍被部署围栏拦,当帧不可兑现。早稿 pop_slot
-    放宽支系「融资腿」非合格判据(P72 §2.3 勘误锚承继)。
+    C_realize ②支(部署面合格谓词 ``kernel.cw_deploy_logic.has_deployable``
+    接线)随支B 挂账(ADR-0576 §判据):谓词真源已在 kernel,接线需
+    闸+检查器双面重建部署语境,随 C_realize 完整评价面批落码;早稿
+    pop_slot 放宽支系「融资腿」非合格判据(P72 §2.3 勘误锚承继)。
     """
-    from sr_od.application.currency_war.kernel.cw_waiting_piece import (
-        recipe_waiting,
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
     )
-    return recipe_waiting(deployed, bench, state.max_units())
+    cap = state.max_units()
+    if cap is None:
+        return False
+    if deployed_occupied(list(deployed or [])) < cap:
+        return False
+    return any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
+               for b in (bench or []))
 
 
 def batch_form(level: int, target_level: int) -> bool:

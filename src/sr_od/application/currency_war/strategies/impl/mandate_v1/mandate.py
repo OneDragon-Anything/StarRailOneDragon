@@ -32,7 +32,6 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.kernel import cw_launch_arbitrage
 from sr_od.application.currency_war.kernel.cw_economy import (
     blood_xp_gate_for,
     clicks_to_next_level,
@@ -797,16 +796,6 @@ def run_mandate(frame: MandateFrame,
         state is None
         or bool(getattr(state, 'level_readable', True)))   # 等级不可信帧 fail 向(资格硬闸)
     _arms_hit = _arm1 or _arm0 or _pop
-    # 域①终局续批触发(T-143 落点二步 0 备战栈位;P81;三跑 N2):
-    # 辖域判据 = 域①帧本身(kernel 判定核单一源),**独立于 arm1 板满
-    # 谓词**——20260958/76 实证升级臂挂 arm1,lv5 cap 松开即停 = 48/50
-    # 金死;闸链下方共用既有判据(ALL IN 豁免 ⊃ 域①,量闸/停付线天然
-    # 放行),本触发只补「臂发」面。state 缺帧 fail-closed 不触发。
-    _end_frame = (state is not None
-                  and cw_launch_arbitrage.endgame_liquidation_frame(
-                      state, session))
-    if _end_frame:
-        _count('endgame_liquidation_frame')   # 落点二分键(备战栈位)
     # T-115 规则① 消费位3(ADR-0580):奖励帧升级抑制,判据单一源 =
     # kernel.cw_reward_node.reward_node_suppressed(None fail-open)。抑制
     # 先于危机/血闸求值——抑制 = 结构性无授权,支付能力检查无须求值
@@ -820,7 +809,7 @@ def run_mandate(frame: MandateFrame,
     if getattr(state, 'node_type', None) == 'reward':
         # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
         state_of(session).v3_piggy_reward = is_piggy_reward_frame(state)
-    if (_arms_hit or _zone_hit or _end_frame) and _cap_now is not None \
+    if (_arms_hit or _zone_hit) and _cap_now is not None \
             and not _reward_defer:
         # 候选③危机带经验授权让位(g_20260904_054904 p2r1:hp=1 帧
         # 9×LevelUpShop 36g 零本帧收益):血预算停升级门(P21)此前只有
@@ -902,12 +891,10 @@ def run_mandate(frame: MandateFrame,
                                             frame.deployed, clicks, cost))
                                     if _gate_ok:
                                         # auth_basis 分键(可归因,与商店栈同序 arm1>arm0>pop;
-                                        # 三臂全空时 = 域①续批 or 必花域触发源,分键区分)
+                                        # 三臂全空时 = 必花域触发源,分键 must_spend)
                                         if _arms_hit:
                                             _arm_tag = 'arm1' if _arm1 else (
                                                 'arm0' if _arm0 else 'pop')
-                                        elif _end_frame:
-                                            _arm_tag = 'endgame_liquidation'
                                         else:
                                             _arm_tag = 'must_spend'
                                             _count('must_spend_l3_prep_trigger')

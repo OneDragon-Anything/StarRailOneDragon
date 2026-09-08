@@ -95,7 +95,7 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes_for_card,
     refresh_prob,
 )
-from sr_od.application.currency_war.kernel import cw_intention, cw_launch_arbitrage
+from sr_od.application.currency_war.kernel import cw_intention
 from sr_od.application.currency_war.kernel.cw_card_identity import (
     TIER_REGISTRY_CORE,
     TIER_TRANSITION,
@@ -109,7 +109,6 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     can_deploy_single,
     deploy_target_sets,
     deployed_bond_counts,
-    has_deployable,
     record_fresh_buy,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
@@ -137,7 +136,6 @@ from sr_od.application.currency_war.kernel.cw_state import (
     SellDeployed,
     ShopCard,
     bench_char_cost,
-    merge_buy_completes,
     merge_material_stale_names,
     same_star_count,
     sell_refund,
@@ -814,245 +812,6 @@ def decide_shop_action(state: GameState, session: StrategySession,
             state_of(session).cw4_recent_sold_names = recent
         recent.append(name)
         del recent[:-16]
-
-    # ---- 域①终局清算臂(T-143 落点二;P81 主定理;方案 v2 §4)----
-    # 数学授权 = math_proofs P81:域①终局帧持金未来效用 ≡0 且消费纯金流
-    # 成本 ≡0 ⟹ 「当帧可兑现战力、边际战力产出 ≥0」的消费弱支配持金。
-    # 辖域判据 = 域①帧本身(kernel 判定核单一源),**独立于 arm1 板满
-    # 谓词**(三跑 N2 实证 20260958/76:闸开≠臂发,lv5 cap 松开即停
-    # = 48/50 金死)。保守序纯增量(方案 v2 §4 N1 放弃面记录):步 0-4
-    # 序 = 升级续批→腾位卖出→补位→单帧合成→寻件刷新;花什么复用既有
-    # 单一源判据(金出口族红线:不新造第二套评估语义),清算臂只提供
-    # 「这帧金无机会成本」的豁免语义与循环序。终止 = 金尽 ∨ 无合法消费
-    # 动作(步 0-4 每步净耗金 ≥0 ⟹ 有限终止)。域①帧上既有选择序整体
-    # 让位:M6 压库/②(b)/囤积族的花费对象 = 未来价值,域①下边际战力
-    # = 0 不获 P81 授权;利息预留类守卫保护对象同不存在。
-    if cw_launch_arbitrage.endgame_liquidation_frame(state, session):
-        _count('endgame_liquidation_frame')   # 落点二分键(与落点一
-        # launch_arbitrage_endgame_frames 分开计数,A/B 判据①分键面)
-        _end_cap = state.max_units()
-        _end_reg = _reg
-        _end_vacancy = max(0, (_end_cap - len(deployed))) if _end_cap else 0
-        _end_tgt, _end_fw = deploy_target_sets(k)
-        try:
-            _end_lfs = cw_intention.locked_faction_scope(_ist) \
-                if _ist is not None else frozenset()
-        except Exception:   # noqa: BLE001  意向供给缺帧,fail 向不豁免围栏
-            _end_lfs = frozenset()
-        try:
-            _end_rfx = cw_intention.locked_line_recipe_floor_conflict(_ist)
-        except Exception:   # noqa: BLE001  豁免语境 fail-closed(同出口③)
-            _end_rfx = False
-        _end_fac = deployed_bond_counts(set(deployed_names))
-
-        def _end_card_deployable(card: ShopCard, star: int) -> bool:
-            """店内件假想上板预检(单一源 = ``can_deploy_single``,
-            出口③/T5 同装配;查询不可得 fail 向)。"""
-            _name = card.name or ''
-            if not _name:
-                return False
-            _mch = get_char(_name)
-            _cand = BenchChar(slot=0, char_id=_name, star=star,
-                              faction=(_mch.factions[0]
-                                       if _mch is not None and _mch.factions
-                                       else '?'),
-                              position_pref='back')
-            try:
-                _ok, _why = can_deploy_single(
-                    _cand, bench,
-                    deployed_cids=set(deployed_names),
-                    deployed_fac=_end_fac,
-                    board=dict(_end_fac),
-                    cap=(_end_cap if _end_cap else 10 ** 6),
-                    target_factions=_end_tgt,
-                    target_cores=set(),
-                    fw_carry=_end_fw,
-                    locked_factions=_end_lfs or frozenset(),
-                    recipe_floor_lock_exempt=_end_rfx)
-            except Exception:   # noqa: BLE001  查询不可得 = fail 向
-                return False
-            return bool(_ok)
-
-        def _end_merged_deployable(card: ShopCard, star: int) -> bool:
-            """合成产物上板预检(步 3「且能上场」):假想板面 = 合成销
-            后形态(同名同星持有副本离场,产物以 star+1 入 bench)——
-            直接对购买前板面做单件假想会把产物误判成同名第 4 张
-            (name_dup 恒拒)。围栏装配与 :meth:`_end_card_deployable`
-            同源。"""
-            _name = card.name or ''
-            if not _name:
-                return False
-            _bench2 = [b for b in bench
-                       if not ((b.char_id or '') == _name
-                               and (b.star or 1) == star)]
-            _mch = get_char(_name)
-            _cand = BenchChar(slot=0, char_id=_name, star=star + 1,
-                              faction=(_mch.factions[0]
-                                       if _mch is not None and _mch.factions
-                                       else '?'),
-                              position_pref='back')
-            try:
-                _ok, _why = can_deploy_single(
-                    _cand, _bench2,
-                    deployed_cids=set(deployed_names),
-                    deployed_fac=_end_fac,
-                    board=dict(_end_fac),
-                    cap=(_end_cap if _end_cap else 10 ** 6),
-                    target_factions=_end_tgt,
-                    target_cores=set(),
-                    fw_carry=_end_fw,
-                    locked_factions=_end_lfs or frozenset(),
-                    recipe_floor_lock_exempt=_end_rfx)
-            except Exception:   # noqa: BLE001  查询不可得 = fail 向
-                return False
-            return bool(_ok)
-
-        # 步 0:升级续批(N2)。闸链与既有 M3 同序同源(level_spend_
-        # blocked→血闸→lv9_stop→整买纪律→P72 全段闸):域① ⊂
-        # plane_last_battle,ALL IN 豁免支天然放行量闸与停付线——闸可行
-        # 性由在册豁免辖,清算臂只补「臂发」面(N2 病灶 = 闸开臂不发)。
-        _end_clicks = clicks_to_next_level(state)
-        _end_ucost = xp_click_cost(state)
-        _end_lvl_ok = bool(getattr(state, 'level_readable', True))
-        if _end_lvl_ok \
-                and not crit_levelup.level_spend_blocked(state, session,
-                                                         _end_reg) \
-                and blood_xp_gate_for(state, session) \
-                and not crit_levelup.lv9_stop(int(state.level or 1),
-                                              _end_reg.level_max) \
-                and crit_levelup.spend_unified(_end_clicks, gold,
-                                               _end_ucost):
-            _end_gok, _end_gwhy = crit_levelup.levelup_budget_gate(
-                state, session, gold, cap_resolved, k_members, bench,
-                deployed, _end_clicks, _end_ucost)
-            if _end_gok:
-                _count('endgame_liquidation_upgrade')
-                return LevelUpShop(cost=_end_ucost,
-                                   auth_basis='endgame_liquidation:step0')
-            _count('endgame_liquidation_upgrade_gate_blocked')
-
-        # 步 2/3 目标探测(步 1 腾位卖出共用;先定义后消费)。
-        _end_fill_seen = False    # 店内有「买之可上板」件(步 2 目标)
-        _end_merge_card: ShopCard | None = None   # 步 3 合成目标(强优先)
-        if _end_vacancy > 0:
-            for _c in sorted((c for c in (state.shop or []) if c.name),
-                             key=lambda c: (-(c.cost if c.cost else 3),
-                                            c.name or '')):
-                if _end_card_deployable(_c, _c.star or 1):
-                    _end_fill_seen = True
-                    break
-        # 步 3 目标 = 店内+持有同名同星合计 ≥3(买齐语义,方案 §4 步 3)
-        # ∧ 合成产物能上板;进度张与完成张逐帧各买一张(单动作循环收敛
-        # = 买齐),完成张经 merge_buy_completes 单一源判(满栏例外同
-        # M2b:买入即 3→1 净席不溢)。
-        _end_owned_ns: dict[tuple[str, int], int] = {}
-        for _b in bench + deployed:
-            _n = _b.char_id or ''
-            if _n:
-                _key = (_n, _b.star or 1)
-                _end_owned_ns[_key] = _end_owned_ns.get(_key, 0) + 1
-        for _c in sorted((c for c in (state.shop or []) if c.name),
-                         key=lambda c: (-(c.cost if c.cost else 3),
-                                        c.name or '')):
-            _n = _c.name or ''
-            _s = _c.star or 1
-            _shop_n = sum(1 for x in (state.shop or [])
-                          if (x.name or '') == _n and (x.star or 1) == _s)
-            if _end_owned_ns.get((_n, _s), 0) + _shop_n < 3:
-                continue
-            _merged = _end_merged_deployable(_c, _s)
-            if not _merged:
-                continue
-            _end_merge_card = _c
-            break
-
-        # 步 1:腾位卖出(最小面;P78 通道对价段「终局清算」豁免行,
-        # ADR-0585:对价 = 域①资产价值清零 = P78-5′ 腿②无损形态;边界
-        # = 线内成员/骨架件禁卖维持 = 统一装配 A 身份段,禁手搓排除集)。
-        # 触发 = bench 满 ∧ 有步 2/3 目标(腾位服务于当帧可兑现消费);
-        # victim = 燃料类单一源(mandate.fuel_sell_candidates)+ P78-1
-        # 同 visit 禁卖(funding 兜底减法①同款消费位减法:本 visit 买入
-        # 禁入燃料集——豁免机制不得自造同 visit 换手)。
-        if bench_free <= 0 and (_end_fill_seen
-                                or _end_merge_card is not None):
-            _end_excl = sell_gate.sell_exclusions(
-                session, k_members, channel='m4_fuel',
-                current_round=int(state.round_num or 1))
-            _end_excl = frozenset(_end_excl) | frozenset(
-                getattr(state_of(session), 'cw4_visit_bought_names', ()) or ())
-            _end_cands = mandate.fuel_sell_candidates(
-                bench, k_members, state=state, exclude_names=_end_excl,
-                defer_names=_t3_protect, counters=counters,
-                dedup_names=_mm_dedup)
-            _end_victim = _end_cands[0] if _end_cands else None
-            if _end_victim is not None:
-                _end_ok4, _ = mandate.check_irreversible(
-                    _end_victim.char_id or '', k_members)
-            else:
-                _end_ok4 = False
-            if _end_victim is not None and _end_ok4:
-                _end_idx = (state.bench or []).index(_end_victim)
-                _end_vname = _end_victim.char_id or ''
-                if _end_vname in _t3_protect:
-                    _count('fuel_victim_protect_demoted')
-                    mandate.stall_buys_consume(session, _end_vname)
-                _note_sell(_end_vname)
-                _count('endgame_liquidation_sell')
-                return SellBench(bench_idx=_end_idx,
-                                 income=_shop_sell_refund(_end_victim),
-                                 expect=_end_vname,
-                                 reason='endgame_liquidation_clear')
-
-        # 步 2:补位买入(板有空位 ∧ bench 有席 ∧ bench 无待部署件——
-        # 有待部署件时空位已由部署块认领,超买 = 制造死库存)。候选序 =
-        # 费档降序(店面现价 = 游戏定义强度代理)同名并列取店面确定性序。
-        if _end_vacancy > 0 and bench_free > 0 \
-                and not has_deployable(
-                    bench, deployed_cids=set(deployed_names),
-                    deployed_fac=_end_fac, board=dict(_end_fac),
-                    cap=(_end_cap if _end_cap else 10 ** 6),
-                    target_factions=_end_tgt, target_cores=set(),
-                    fw_carry=_end_fw, locked_factions=_end_lfs or frozenset(),
-                    recipe_floor_lock_exempt=_end_rfx):
-            for _c in sorted((c for c in (state.shop or []) if c.name),
-                             key=lambda c: (-(c.cost if c.cost else 3),
-                                            c.name or '')):
-                if not _end_card_deployable(_c, _c.star or 1):
-                    continue
-                _end_cost = _c.cost if _c.cost else 3
-                _end_ok1, _ = mandate.check_affordable(gold, _end_cost)
-                if not _end_ok1:
-                    continue
-                _count('endgame_liquidation_fill')
-                return _emit_buy(_c, 'endgame_liquidation_fill')
-
-        # 步 3:单帧合成买(店内+持有可凑 ∧ 产物能上板;义务通道不走息
-        # 律门同 M2b——域①帧息律门本就出辖)。
-        if _end_merge_card is not None:
-            _end_mcard = _end_merge_card
-            _end_mname = _end_mcard.name or ''
-            _end_mstar = _end_mcard.star or 1
-            _end_mcost = _end_mcard.cost if _end_mcard.cost else 3
-            _end_completes = merge_buy_completes(
-                _end_mname, _end_mstar, bench, deployed)
-            if (bench_free > 0 or _end_completes) \
-                    and mandate.check_affordable(gold, _end_mcost)[0]:
-                _count('endgame_liquidation_merge_buy')
-                _on_target_buy(_end_mname)
-                return _emit_buy(_end_mcard, 'endgame_liquidation_merge')
-
-        # 步 4:寻件刷新(金 ≥ 刷价 ∧ 无上述目标 → 刷店再评估;金单调
-        # 递减 ⟹ 循环有限终止,方案 §4 步 5)。
-        _end_rcost = int(getattr(state, 'shop_refresh_cost', 0)
-                         or REFRESH_COST_BASE)
-        if gold >= _end_rcost:
-            _count('endgame_liquidation_refresh')
-            return RefreshShop(cost=_end_rcost,
-                               reason='endgame_liquidation_refresh')
-
-        # 步 5:终止(金尽 ∨ 无合法消费动作)。
-        _count('endgame_liquidation_close')
-        return CloseShop()
 
     # T-82 事件粒度辖记(初始化先于 M4 块:bench_full_buy_abandon 发射位
     # 与 M4 块两处消费同一布尔,条件谓词相同但独立书写,防未来耦合)。

@@ -298,19 +298,13 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
       ——位面长度 = 本 run rows 现推 max(round_num)(生产真值 =
       session.plane_node_table,账本不携;已完位面精确,P3 自适应
       同构);
-    - **支A 兑现链**(板满 ∧ 配方等待件,生产单一源
-      ``kernel.cw_waiting_piece.recipe_waiting`` 同源镜像;[33] 板面域
-      不限星级 + 配方缺口成员 + name_dup 轻量合取,ADR-0592——
-      「板满 ∧ bench 2★」旧形态系 ADR-0576 落码批违裁写入,已收敛);
+    - **支A 兑现链**(板满 ∧ bench 2★,生产同步锚对谓词镜像);
       支B(ΔV_band 数值完备账)生产侧本批不落码(P39 接缝,
       ADR-0576 §判据),镜像侧同缺,两侧一致。realize 判定按击读
-      引擎 LevelUp 执行点披露,三级优先:``dec_recipe_waiting``(收敛
-      谓词决策帧真值,ADR-0592 扩键,现役批权威)→
-      ``dec_board_full``/``dec_bench_2star``(ADR-0589 旧谓词形态披露,
-      跨版本账本近似)→ 无披露键账本(生产回放/历史批次)回退行末
-      近似——近似**经同一单一源谓词**现算(谓词同源,近似仅在帧时点:
-      行末快照在「帧内合成→升级批→上板」序列下 bench 已变化,漂移
-      窗口见近似声明);
+      引擎 LevelUp 执行点披露的 dec_board_full/dec_bench_2star
+      (决策帧真值,T-135:行末快照在「帧内合成 2★→升级批→上板」
+      序列下 bench 已无 2★,恒误报绕闸;定谳 = ADR-0589;无披露键
+      账本回退行末近似,见近似声明);
 
     近似声明(与既有检查器同款口径,偏差方向逐条标注):
     - 升级前等级用上一轮账本 level(轮内升级完成会抬高本行);
@@ -335,9 +329,6 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
     )
     from sr_od.application.currency_war.kernel.cw_intention import (
         pair_target_comp,
-    )
-    from sr_od.application.currency_war.kernel.cw_waiting_piece import (
-        recipe_waiting,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
         r2_card_reserve,
@@ -395,33 +386,30 @@ def check_levelup_budget_gate(rows: list[dict]) -> list[str]:
                 rho = r2_card_reserve(km, bench, deployed,
                                       SimpleNamespace(level=level),
                                       level=level)
-                # 支A 镜像·按击豁免,披露三级优先(见 docstring):
-                # ①dec_recipe_waiting(ADR-0592 收敛谓词决策帧真值,与
-                # 生产闸单一源同谓词)→ ②dec_board_full/dec_bench_2star
-                #(ADR-0589 旧谓词形态,跨版本账本近似)→ ③行末近似
-                #(经同一单一源谓词现算;近似仅帧时点,非谓词形态)。
+                # 支A 镜像·按击豁免(T-135,决策帧真值优先):引擎在
+                # LevelUp 执行点披露的 dec_board_full/dec_bench_2star =
+                # 发射帧支A 谓词输入(单动作架构 ADR-0517 下执行点状态 =
+                # 发射帧状态),按击判定——行末快照在「帧内合成 2★→升级批
+                # →轮末部署块当帧上板」确定性序列下 bench 已无 2★,旧口径
+                # 恒误报绕闸(假阳定谳 = ADR-0589;谓词设计 =
+                # ADR-0576 §2.5 支A 兑现链)。无披露键的账本(生产回放/
+                # 历史批次)回退旧行末口径,整行同判(漂移窗口见近似声明)。
                 lv_actions: list[dict] = [actions[i] for i in lv_pos]
-                if all(isinstance(a.get('dec_recipe_waiting'), bool)
+                if all(isinstance(a.get('dec_board_full'), bool)
+                       and isinstance(a.get('dec_bench_2star'), bool)
                        for a in lv_actions):
-                    realize_by_click = [bool(a['dec_recipe_waiting'])
-                                        for a in lv_actions]
-                elif all(isinstance(a.get('dec_board_full'), bool)
-                         and isinstance(a.get('dec_bench_2star'), bool)
-                         for a in lv_actions):
-                    realize_by_click = [
+                    realize_by_click: list[bool] = [
                         bool(a['dec_board_full'])
                         and bool(a['dec_bench_2star'])
                         for a in lv_actions]
                 else:
-                    # 无披露键回退:行末快照过单一源谓词(cap 按轮内
-                    # 升级量回退;历史批次在新谓词镜下的误报窗口 =
-                    # 旧行为线外 2★ 旁路帧,双向申报见 ADR-0592)
+                    # 旧账本回退:板满(cap 按轮内升级量回退)∧ bench 2★
                     cap_dep = st.get('cap')
                     cap_dec = (cap_dep - (row_lvl - level)
                                if cap_dep is not None else None)
                     realize_row = (cap_dec is not None
-                                   and recipe_waiting(deployed, bench,
-                                                      cap_dec))
+                                   and len(deployed) >= cap_dec
+                                   and any(b.star >= 2 for b in bench))
                     realize_by_click = [realize_row] * len(lv_actions)
                 # 逐击余量(实际花费后缀和;缺 cost 行退化均摊)
                 lv_costs = [a.get('cost') for a in lv_actions]
@@ -483,12 +471,6 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     ⇒ 豁免;豁免面按分键收敛,禁全开(缺省 '' 恒不豁免)。键集
     单一源 = kernel/cw_state.SELL_BENCH_CONVERT_REASONS(镜像纪律
     同 XP_TO_NEXT_LEVEL:值漂移由双向锁暴露)。
-    **T-141 扩第四键(line_switch_collapse,线账闭合孤儿清算)**:
-    义务类买入当轮 K 支持度重排致成员出基座 = P78-2a 线账闭合事件,
-    闭合后通道清算合法(P78 INV;P78-1 前提「同 visit 无新信息」被
-    闭合事件破坏,不辖此形态),1★ 往返净损 0 非自旋。键的授予必须
-    伴随登记簿线账闭合证明——发射位仅在证明在场时打标,非自由豁免
-    (防窗口段回归洗白;证明载体与边界申报 = ADR-0591 §4)。
     仅 v2 栈(line_v2/decision_v2)账本适用(default 栈 reason='plan' 的
     卖出语义不同,生产侧按 strategy_id 分栈后选择)。
     """

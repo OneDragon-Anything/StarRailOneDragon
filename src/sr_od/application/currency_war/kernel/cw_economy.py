@@ -147,31 +147,11 @@ def in_launch_spend_zone(gold: int, session: StrategySession | None) -> bool:
     约定非结构保证,M-1 降级口径,新增消费点须回 DESIGN §5 对账表)。
     消费点(本批接线):cw_loop 发射帧仲裁段预判 / engine_p1 发射帧
     仲裁段区判,两面直调本函数,禁各自内联 ``gold > g*`` 字面量式。
-
-    **域①终局豁免行(T-143 落码;P81 = L1' 带内命题的域①子域已证)**:
-    域①终局帧(判定单一源 = ``cw_launch_arbitrage.
-    endgame_liquidation_frame``)带内 fail-closed 解除——金 >0 即出
-    ``True``(zone 开,消费授权 = 清算;金 = 0 无可花不出)。两面循环
-    体各恰调一次/帧,豁免分键(KEY_ENDGAME_FRAMES)随本释放支同源
-    计数。买断制出辖分支先于本豁免(cap_resolved = 0 语境金出口归
-    一般判据的既有申报维持)。
     """
     cap = cap_resolved_of_session(session)
     if cap <= 0:
         return False   # 买断制出辖(§2.1 同口径)
-    if gold > saturation_line(cap):
-        return True
-    from sr_od.application.currency_war.kernel.cw_launch_arbitrage import (
-        arbitration_frame_state,
-        bump_endgame_frame,
-        endgame_liquidation_frame,
-    )
-    _st = arbitration_frame_state(session)
-    if _st is not None and gold > 0 \
-            and endgame_liquidation_frame(_st, session):
-        bump_endgame_frame(session)
-        return True
-    return False
+    return gold > saturation_line(cap)
 
 
 def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
@@ -796,11 +776,8 @@ def _upgrade_ul_threshold_ok(state: GameState,
     P47 L 递推(loss_exact,gold 支 U_L 后 R_剩余 轮,Ī=收入日程现算;
     cap 参数 = cap_resolved_of_session 现读——裸缺省 5 在息律投资
     cap=10 局会低估 C_int,ADR-0516 cap 三源归一)。
-    ΔV_pop 按 P39 式 = w·1[板满 ∧ bench 有配方等待件](w 待标定禁计值
-    → 指示=1 时视为翻转项,方向门;指示=0 时纯概率账须独自过阈;
-    「2★ 等待件」系 ADR-0516 撰写期收窄形态,现行裁定 = [33] 板面域
-    不限星级,ADR-0592 收敛落码——谓词读法以现行裁定为准,同 ADR-0516
-    决策 4 勘误注)。
+    ΔV_pop 按 P39 式 = w·1[板满 ∧ bench 有 2★ 等待件](w 待标定禁计值
+    → 指示=1 时视为翻转项,方向门;指示=0 时纯概率账须独自过阈)。
     反例锚(ADR-0516):希儿 lv7 省刷费 28 < 升级金 40,纯概率账亏 12,
     靠人口位翻转——缺本检验的裸「峰值级>当前级」会在该带过度升级。
     R_剩余视界=r_remaining(决策帧现算,禁写死;本模块下沉实现)。
@@ -812,12 +789,14 @@ def _upgrade_ul_threshold_ok(state: GameState,
     → 检验偏严(保守向);成员在 L+1 概率回落(E 恶化)帧单核可能
     高估净受益(非保守端,边界注)。
 
-    ΔV_pop 指示项谓词(板满 ∧ 配方等待件,ADR-0592 收敛后形态)与
-    schedule_upgrade ①臂**单一源同判**——两处是同一 P39 指示项在
-    「检验内翻转分量」与「排程触发①」两个消费位的落点,谓词本体 =
-    ``kernel.cw_waiting_piece.recipe_waiting``(三消费位 + 引擎披露 +
-    检查器镜像单一源;ADR-0576 时代的「三副本逐字一致、改谓词三处
-    同改」登记面已随谓词收敛批改为单一源委托,副本不复存在)。
+    ΔV_pop 指示项谓词(板满 ∧ bench 有 2★ 等待件)与 schedule_upgrade
+    ①臂**有意复制**——两处是同一 P39 指示项在「检验内翻转分量」与
+    「排程触发①」两个消费位的落点,语义单一源 = P39 修订式;改任一处
+    须同步另一处(同步锚对:本函数 / schedule_upgrade ① 臂)。
+    第三消费位(ADR-0576):mandate_v1/criteria/levelup.
+    ``_realize_chain_ready``(P72 支A 兑现链放行)消费同一指示项——三
+    副本逐字一致,改谓词三处同改;三副本一致对拍锁候批(登记面申报,
+    防漂移无锁位)。
     """
     import math as _math
 
@@ -825,14 +804,15 @@ def _upgrade_ul_threshold_ok(state: GameState,
         expected_refreshes_for_card,
     )
 
-    # ΔV_pop 指示项(P39 修订式;谓词单一源 = kernel/cw_waiting_piece.
-    # recipe_waiting,ADR-0592 收敛:[33] 板面域不限星级 + 配方缺口成员
-    # 口径 B + name_dup 轻量合取;与 schedule_upgrade ①臂同源同判)
-    from sr_od.application.currency_war.kernel.cw_waiting_piece import (
-        recipe_waiting,
+    # ΔV_pop 指示项(P39 修订式;与 schedule_upgrade ①臂谓词成同步锚对,
+    # 见 docstring 末段——改谓词两处同改;第三消费位 = criteria/levelup.
+    # _realize_chain_ready(ADR-0576),三处同改)
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
     )
-    if recipe_waiting(state.deployed or [], state.bench or [],
-                      state.max_units()):
+    if deployed_occupied(state.deployed or []) >= state.max_units() \
+            and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
+                    for b in (state.bench or [])):
         return True
 
     level = int(state.level or 1)
@@ -884,16 +864,14 @@ def schedule_upgrade(state: GameState, session: StrategySession,
 
     触发(任一,判据单一址=R4:本函数被 R* 储蓄分量(reserve_cap)、
     arbiter 金地板授权、EV 升级授权 ② 臂三处共调):
-    ① 人口位([33]):cap 满 ∧ bench 有配方等待件等上场——升级后能
-       立即部署,当轮兑现战力,为最高义务。谓词形态 = [33] 裁定域
-       (板面域不限星级;ADR-0576 时代的「成型件(2★)」收窄读法已判废,
-       ADR-0592 收敛)。**辖域 = 战斗帧**(2026-09-08
+    ① 人口位([33]):cap 满 ∧ bench 有成型件(2★)等上场——升级后能
+       立即部署,当轮兑现战力,为最高义务。**辖域 = 战斗帧**(2026-09-08
        奖励帧策略审查):「当轮兑现」的兑现对象是本帧的战斗,奖励帧
-       无战斗 → 当帧升级与推迟到下一备战帧升级,等待件的部署时点对
-       下一场战斗相同,本臂收益面在奖励帧不增益;奖励帧行为由 ADR-0580
-       规则①升级抑制先辖(抑制判据置于臂计算之前短路)。辖域注不改
-       谓词本体(M3 消费位 = criteria/levelup._realize_chain_ready,
-       单一源同谓词);奖励帧政策的命题化归审查建议②命题批。
+       无战斗 → 当帧升级与推迟到下一备战帧升级,2★ 的部署时点对下一场
+       战斗相同,本臂收益面在奖励帧不增益;奖励帧行为由 ADR-0580 规则①
+       升级抑制先辖(抑制判据置于臂计算之前短路)。辖域注不改谓词本体
+       (M3 消费位 = criteria/levelup._realize_chain_ready 同步锚对,
+       同款辖域注见彼处);奖励帧政策的命题化归审查建议②命题批。
     ② 概率级([3]/[7]):目标核心概率峰值级 > 当前级 ∧ 息引擎已立
        (g ≥ 息线,[12] 息引擎前置)∧ **U_L 阈值检验**(ADR-0516 形式二
        修正①:``c_eff·(E(D|L)−E(D|L+1)) + ΔV_pop > U_L + C_int``,
@@ -919,15 +897,17 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     )
     if refresh_invest_active(state):
         return False    # 淘金客姿态:升级通道退役(sim 注入臂实证;谓词单一址)
-    # ① 人口位:cap 满 ∧ bench 有配方等待件等上场([33]/[32](a));
-    # 谓词单一源 = kernel/cw_waiting_piece.recipe_waiting(ADR-0592:
-    # [33] 板面域不限星级 + 配方缺口成员 + name_dup 轻量合取;与
-    # _upgrade_ul_threshold_ok 的 ΔV_pop 指示项/criteria 支A 同源同判)
-    from sr_od.application.currency_war.kernel.cw_waiting_piece import (
-        recipe_waiting,
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
     )
-    if recipe_waiting(state.deployed or [], state.bench or [],
-                      state.max_units()):
+    # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a));
+    # 谓词与 _upgrade_ul_threshold_ok 的 ΔV_pop 指示项**成同步锚对**
+    # (同一 P39 指示项两个消费位,改谓词两处同改——见该函数 docstring;
+    # 第三消费位 = criteria/levelup._realize_chain_ready,ADR-0576,
+    # 三处同改)
+    if deployed_occupied(state.deployed or []) >= state.max_units() \
+            and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
+                    for b in (state.bench or [])):
         return True
     # ② 概率级:息引擎已立 ∧ 目标峰值级在当前级之上 ∧ U_L 阈值检验
     # (ADR-0516 形式二修正①:升级 iff c_eff·ΔE + ΔV_pop > U_L + C_int;

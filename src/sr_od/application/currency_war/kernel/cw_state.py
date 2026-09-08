@@ -562,7 +562,7 @@ class SellBench:
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
     reason: str = ''           # 卖出通道分键(记录非指令,仿 LevelUp.auth_basis 形态;
     #                            ''=未标)。现役合法值 = 卖出归因枚举闭集
-    #                            cw_prep_actions.SELL_BENCH_REASONS(6 通道值,
+    #                            cw_prep_actions.SELL_BENCH_REASONS(5 通道值,
     #                            ADR-0585 §3 批 4 填充)∪ SELL_BENCH_CONVERT_
     #                            REASONS(转化特化值,特化优先于通道名);
     #                            sim 账本 SellBench 行
