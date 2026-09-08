@@ -12,7 +12,7 @@
 |---|---|---|
 | 控制流 | `DeferSpheres` / `BailToOuter` | 框架信号，不进 execute 验证链；defer 计数归框架（门=2）；BailToOuter 词表已退役（防御性兜底 = 原样交回，`cw_screen_prep.py:1313-1318`） |
 | 领取类 | `ClickSpheres(max_k)` / `OpenBox(slot)` / `OpenTome(slot)` / `PickBoxCard(card_idx)` | 点球带上界批大球优先内验早停；开箱/开典籍即腾席 + 弹 overlay 交外环分支 |
-| 卖出类 | `SellBench(slot, reason)` / `SellDeployed(row, slot)` | slot = **物理槽位**（备战栏 1-9 / 排内槽号），非列表下标（`cw_prep_actions.py:12-15` 坐标系约定）；SellBench.reason = 卖出通道归因枚举（**记录非指令**，执行层不读；值域闭集 = `cw_prep_actions.SELL_BENCH_REASONS` 5 通道值 ∪ 转化特化值 `cw_state.SELL_BENCH_CONVERT_REASONS`，特化优先于通道名；9 发射位装配键集 = ADR-0585 §3；'' = 未标；序列化等值口径 = 字段带默认值，类型消费全向后兼容，sim 账本白名单挑字段、prep 域不入 sim 账本，归因遥测走 decisions 行既有转录面） |
+| 卖出类 | `SellBench(slot, reason)` / `SellDeployed(row, slot)` | slot = **物理槽位**（备战栏 1-9 / 排内槽号），非列表下标（`cw_prep_actions.py:12-15` 坐标系约定）；SellBench.reason = 线账闭合孤儿证明载体（**记录非指令**，执行层不读；'' = 未标，缺省形态）。纯归因遥测面已随 2026-09-08 用户归因遥测删除指令拆除：发射侧值域闭集 = `cw_prep_actions.SELL_BENCH_REASONS` 唯一承重值 `line_switch_collapse`（线账闭合孤儿清算标记，授予须伴随登记簿线账闭合证明，T-141/ADR-0591）；检查器豁免键集 `cw_state.SELL_BENCH_CONVERT_REASONS` 四键保留 = 检查器面单一源（非发射填充面）；reason 不入幂等键，序列化等值口径 = 字段带默认值，类型消费全向后兼容，sim 账本白名单挑字段、prep 域不入 sim 账本 |
 | 部署类 | `DeployMove(from_slot, to_row, to_slot)` | bench→上阵单步拖拽（腾席链专用；组合部署走 RunDeploy） |
 | 升级 | `LevelUp` | 点购买经验循环至 level+1 |
 | 商店 | `OpenShop(read_only)` | 开店意图（EnsureShopOpen/Closed 已退役，W970 批 C） |

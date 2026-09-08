@@ -528,32 +528,21 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                     _ct['ev_conflict_dropped'] = \
                         _ct.get('ev_conflict_dropped', 0) + 1
                     continue
-                # plain 分键(批 4/ADR-0585 §3:funding 普通路径零计数
-                # 补齐——funding 空手率分母侧可观测,方案 v3 §5.4)
-                _ct['funding_support_plain_sell'] = \
-                    _ct.get('funding_support_plain_sell', 0) + 1
-                # tag==reason 双写对齐(方案 v3 §3.4;载体归因纯遥测,
-                # 记录非指令)。
+                # 纯归因载体填充/plain 分键计数已随 2026-09-08 用户归因
+                # 遥测删除指令拆除:reason/标记缺省 '' 未标,发射行为零面。
                 ev_out.append(Emitted(
-                    SellBench(slot=s, reason='funding_support'), False,
-                    'funding_support', funding_support=True))
+                    SellBench(slot=s), False, funding_support=True))
             for bc in _f_fallback:
                 if bc.slot in sold_slots:
                     _ct['ev_conflict_dropped'] = \
                         _ct.get('ev_conflict_dropped', 0) + 1
                     continue
-                # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)。
-                # reason = 兜底分键入载体(三审三波 F6 修订,批 3 旧申报
-                # 「走计数不入载体」废止:批 4 prep 载体已带 reason 字段,
-                # 与 shop 兜底位归因一致性面对齐;tag==reason 双写对齐,
-                # 方案 v3 §3.4)。
-                _ct['funding_hold_liquidated'] = \
-                    _ct.get('funding_hold_liquidated', 0) + 1
+                # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数/
+                # 载体填充已随 2026-09-08 用户归因遥测删除指令拆除
+                #(reason/标记缺省 '' 未标)。
                 sell_gate.consume_on_sell(session, bc.char_id or '')
                 ev_out.append(Emitted(
-                    SellBench(slot=bc.slot,
-                              reason='funding_hold_liquidated'), False,
-                    'funding_hold_liquidated', funding_support=True))
+                    SellBench(slot=bc.slot), False, funding_support=True))
                 break
     out = _merge_ev_before_frame_end(out, ev_out)
 
@@ -854,39 +843,27 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                 counters['ev_conflict_dropped'] = \
                     counters.get('ev_conflict_dropped', 0) + 1
                 continue
-            # T3 转化类分键 + 卖出销账(店侧同款);plain 路径补零计数
-            # 分键(批 4/ADR-0585 §3)。reason = T3 特化值优先于通道名
-            #(ADR-0585 §3 批 4 填充);tag==reason 双写对齐(方案 v3
-            # §3.4)。归因纯遥测(记录非指令):prep 卖出恒先于本轮买入,
-            # 同轮买卖检查豁免面结构性不可达,分键语义只落计数。
+            # T3 转化类卖出销账(店侧同款)。转化/plain 分键计数与载体
+            # 归因填充已随 2026-09-08 用户归因遥测删除指令拆除——prep
+            # 卖出恒先于本轮买入,同轮买卖检查豁免面对本位结构性不可达,
+            # reason/标记缺省 '' 未标,销账行为面保留。
             _fbc = next((b for b in frame.bench if b.slot == s), None)
             _fname = (_fbc.char_id or '') if _fbc is not None else ''
             if _fname in _t3_protect:
-                counters['funding_support_stall_convert'] = \
-                    counters.get('funding_support_stall_convert', 0) + 1
                 mandate.stall_buys_consume(session, _fname)
-            else:
-                counters['funding_support_plain_sell'] = \
-                    counters.get('funding_support_plain_sell', 0) + 1
-            _ev_reason = ('funding_support_stall_convert'
-                          if _fname in _t3_protect else 'funding_support')
-            out.append(Emitted(SellBench(slot=s, reason=_ev_reason), False,
-                               _ev_reason, funding_support=True))
+            out.append(Emitted(SellBench(slot=s), False,
+                               funding_support=True))
             sold_slots.add(s)
         for bc in _f_fallback:
             if bc.slot in sold_slots:
                 counters['ev_conflict_dropped'] = \
                     counters.get('ev_conflict_dropped', 0) + 1
                 continue
-            # 分键显影 + 卖出销账(出口①;单笔即止,need 即止)。reason =
-            # 兜底分键入载体(三审三波 F6 修订,与骨架-only 位同批回填;
-            # tag==reason 双写对齐,方案 v3 §3.4)。
-            counters['funding_hold_liquidated'] = \
-                counters.get('funding_hold_liquidated', 0) + 1
+            # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数/载体
+            # 填充已随 2026-09-08 用户归因遥测删除指令拆除(缺省 '' 未标)。
             sell_gate.consume_on_sell(session, bc.char_id or '')
             out.append(Emitted(
-                SellBench(slot=bc.slot, reason='funding_hold_liquidated'),
-                False, 'funding_hold_liquidated', funding_support=True))
+                SellBench(slot=bc.slot), False, funding_support=True))
             sold_slots.add(bc.slot)
             break
     return out

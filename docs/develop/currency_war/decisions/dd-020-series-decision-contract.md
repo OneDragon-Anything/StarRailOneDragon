@@ -35,6 +35,8 @@ dd-014 落黑板接口后,动作发射类接口粒度分裂:商店线 `decide_sh
 
 ## 修订记录
 
+- **归因遥测删除批增注(2026-09-08 用户归因遥测删除指令)**:§1 权威落档行的 SellBench.reason 条目已按删除批改写——纯归因通道枚举/发射位填充整体拆除,发射侧值域缩至 `line_switch_collapse` 载体值(ADR-0591),检查器豁免键集保留;权威链指向(`../flow/action_exec.md` §1)不变,契约条款零改动。
+
 - **重锚(2026-09-08,ADR-0585 §5/批 4)**:正文权威链断裂处置(编者裁决「全仓确无正本」分支)——CONTRACT_SERIES_DECISION.md 工作副本灭失、strategy/07_plugin.md 从未创建;词表 as-built 权威改指 `../flow/action_exec.md` §1(该节同批完成 SellBench reason 字段条目落档+词表漂移勘误:白名单实码 18 项/:178-184)。契约条款零改动。
 
 - **v2(2026-09-03,用户批准)**:§3 截断规则表按接口分域(商店线/备战线)+备战词表 12 类逐类补判(含 4 退役类退役标注)+SwapDeploy 系新增分类+§3.3 未识别动作 fail-closed 处置条款(计数披露义务归遥测键登记纪律,契约不立法键名)。其余条款零改动。对抗审查链:IMPL_ADV_R192 症1→R193 症1-4→R194 症4(修复全闭环)。提案档=`.debug/temp/currency_war/redesign/CONTRACT_V2_PROPOSAL.md`(已归档)。

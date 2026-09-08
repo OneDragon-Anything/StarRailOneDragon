@@ -560,14 +560,15 @@ class SellBench:
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
-    reason: str = ''           # 卖出通道分键(记录非指令,仿 LevelUp.auth_basis 形态;
-    #                            ''=未标)。现役合法值 = 卖出归因枚举闭集
-    #                            cw_prep_actions.SELL_BENCH_REASONS(5 通道值,
-    #                            ADR-0585 §3 批 4 填充)∪ SELL_BENCH_CONVERT_
-    #                            REASONS(转化特化值,特化优先于通道名);
-    #                            sim 账本 SellBench 行
+    reason: str = ''           # 卖出通道记录字段(记录非指令,仿 LevelUp.auth_basis 形态;
+    #                            ''=未标,缺省形态)。现役发射侧唯一承重值 =
+    #                            line_switch_collapse(线账闭合孤儿证明标记,
+    #                            cw_prep_actions.SELL_BENCH_REASONS;纯归因
+    #                            通道值填充已随 2026-09-08 用户归因遥测删除
+    #                            指令拆除);sim 账本 SellBench 行
     #                            sell_reason 键转录本字段,检查器豁免面
-    #                            (仅转化集)据此收敛。
+    #                            (SELL_BENCH_CONVERT_REASONS,键集保留)
+    #                            据此收敛。
 
 
 # 转化类卖出豁免键集(同轮买后卖检查的豁免边;检查侧单一源):
@@ -590,6 +591,11 @@ class SellBench:
 # = ADR-0585 批 3,N7 豁免面与分键同批消除误报窗口;三→四键 =
 # T-141 方案审零阻断放行的语义演进,出处 = 2026-09-08 同轮交互
 # 方案审 + ADR-0591)。
+# 发射侧填充现状(2026-09-08 用户归因遥测删除指令):四键中仅
+# line_switch_collapse 仍有在役发射位(商店孤儿证明打标制+entry 换线
+# 塌缩通道位);其余三键的发射位填充已拆除,键集保留 = 检查器豁免面
+# 单一源(键语义/豁免边不变,可核查面三格:缺省 ''/plain 值/跨轮
+# 陈旧恒不豁免)。
 SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
     'fuel_victim_protect_demoted',
     'funding_support_stall_convert',

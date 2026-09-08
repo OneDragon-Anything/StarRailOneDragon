@@ -859,28 +859,24 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if ok4:
                     idx = (state.bench or []).index(victim)
                     _vname = victim.char_id or ''
-                    # T3 末位牺牲序命中分键 + 卖出销账(生命周期出口②):
-                    # 被保件是唯一燃料 ⇒ 放行卖出(为义务买入腾位的转化类,
-                    # SellBench.reason 带分键供同轮买卖检查豁免面收敛)
+                    # T3 末位牺牲序命中 + 卖出销账(生命周期出口②):
+                    # 被保件是唯一燃料 ⇒ 放行卖出(为义务买入腾位的转化类;
+                    # 销账 = 行为面保留)。纯归因分键计数已随 2026-09-08
+                    # 用户归因遥测删除指令拆除。
                     _prot_hit = _vname in _t3_protect
                     if _prot_hit:
-                        _count('fuel_victim_protect_demoted')
                         mandate.stall_buys_consume(session, _vname)
                     _note_sell(_vname)
-                    # reason = T3 特化值优先于通道名(ADR-0585 §3 批 4
-                    # 填充;''→'m4_fuel_victim' 旧缺省形态退役);次优先
-                    # = 线账闭合孤儿证明标记(T-141/ADR-0591:本轮义务
-                    # 登记且已出基座的 victim,键带账闭合证明供同轮买卖
-                    # 检查豁免面分键,通道无关)。
+                    # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591:
+                    # 本轮义务登记且已出基座的 victim,键带账闭合证明供
+                    # 同轮买卖检查豁免面分键,通道无关);纯归因通道值/
+                    # 特化值填充已删,'' = 未标缺省形态。
                     return SellBench(bench_idx=idx,
                                      income=_shop_sell_refund(victim),
                                      expect=_vname,
-                                     reason=(
-                                         'fuel_victim_protect_demoted'
-                                         if _prot_hit else (
-                                             'line_switch_collapse'
+                                     reason=('line_switch_collapse'
                                              if _vname in _sw_orphans
-                                             else 'm4_fuel_victim')))
+                                             else ''))
             else:
                 _count('m2_retry_exhausted')
                 _count('m2_stall_cache_rederive')
@@ -978,23 +974,20 @@ def decide_shop_action(state: GameState, session: StrategySession,
             if victim is not None and ok4:
                 idx = (state.bench or []).index(victim)
                 _vname1 = victim.char_id or ''
-                # T3 末位牺牲序命中分键 + 卖出销账(同 M4 腾席位)
+                # T3 末位牺牲序命中 + 卖出销账(同 M4 腾席位;纯归因
+                # 分键计数已随 2026-09-08 用户归因遥测删除指令拆除)
                 _prot1 = _vname1 in _t3_protect
                 if _prot1:
-                    _count('fuel_victim_protect_demoted')
                     mandate.stall_buys_consume(session, _vname1)
                 _note_sell(_vname1)
-                # reason = T3 特化值优先于通道名(ADR-0585 §3,同 M2 腾席位);
-                # 次优先 = 线账闭合孤儿证明标记(T-141/ADR-0591,同 M2 位)。
+                # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591,同
+                # M2 位);纯归因填充已删,'' = 未标缺省形态。
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(victim),
                                  expect=_vname1,
-                                 reason=(
-                                     'fuel_victim_protect_demoted'
-                                     if _prot1 else (
-                                         'line_switch_collapse'
+                                 reason=('line_switch_collapse'
                                          if _vname1 in _sw_orphans
-                                         else 'm4_fuel_victim')))
+                                         else ''))
             _count('bench_full')
             continue
         _on_target_buy(card.name or m)
@@ -1873,17 +1866,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     continue
                 _iname = (bc.char_id or '') if bc else ''
                 _note_sell(_iname)
-                # reason = 凑息通道归因(ADR-0585 §3 批 4 填充);命中孤儿
-                # 证明集时 = 线账闭合标记优先(T-141/ADR-0591:义务买入
-                # 当轮 K 窄化出基座,闭合后凑息清算 = P78-2a/P78 INV 合法
-                # 形态,键带账闭合证明供同轮买卖检查豁免面分键;被保件
-                # 已被 defer 绝对跳过,与 T3 特化值无同帧竞争)。
+                # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591:义务
+                # 买入当轮 K 窄化出基座,闭合后凑息清算 = P78-2a/P78 INV
+                # 合法形态,键带账闭合证明供同轮买卖检查豁免面分键;被保
+                # 件已被 defer 绝对跳过)。凑息通道归因值已随 2026-09-08
+                # 用户归因遥测删除指令拆除,'' = 未标缺省形态。
                 return SellBench(bench_idx=idx,
                                  income=_shop_sell_refund(bc) if bc else None,
                                  expect=_iname,
                                  reason=('line_switch_collapse'
                                          if _iname in _sw_orphans
-                                         else 'interest_pullback'))
+                                         else ''))
     # 支付支撑通道(两臂同开,R13-5):骨架义务动作金不足侧筹资变现。
     # F2 已由 ADR-0585 §4 拆三块修订(原「有意不扩 Z1 排除集」申报废止):
     # ①义务基座并入(本位旧排除 buy_members 与义务基座同源,并入零
@@ -1935,41 +1928,33 @@ def decide_shop_action(state: GameState, session: StrategySession,
             if idx is None:
                 continue
             _fname = (bc.char_id or '') if bc else ''
-            # T3 转化类分键 + 卖出销账(为骨架义务筹资卖出被保垫件,
-            # SellBench.reason 带分键供同轮买卖检查豁免面收敛)
+            # T3 转化类卖出销账(为骨架义务筹资卖出被保垫件;转化类/
+            # plain 分键计数已随 2026-09-08 用户归因遥测删除指令拆除,
+            # 销账行为面保留)。
             _fprot = _fname in _t3_protect
             if _fprot:
-                _count('funding_support_stall_convert')
                 mandate.stall_buys_consume(session, _fname)
-            else:
-                # plain 分键(批 4/ADR-0585 §3:funding 普通路径零计数
-                # 补齐——funding 空手率分母侧的可观测事件,方案 v3 §5.4)
-                _count('funding_support_plain_sell')
             _note_sell(_fname)
-            # reason = T3 特化值优先于通道名(ADR-0585 §3 批 4 填充);
-            # 次优先 = 线账闭合孤儿证明标记(T-141/ADR-0591,通道无关)。
+            # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591,通道
+            # 无关);纯归因填充已删,'' = 未标缺省形态。
             return SellBench(
                 bench_idx=idx,
                 income=_shop_sell_refund(bc) if bc else None,
                 expect=_fname,
-                reason=('funding_support_stall_convert'
-                        if _fprot else (
-                            'line_switch_collapse'
-                            if _fname in _sw_orphans
-                            else 'funding_support')))
+                reason=('line_switch_collapse'
+                        if _fname in _sw_orphans
+                        else ''))
         for bc in _f_fallback:
             _fidx = (state.bench or []).index(bc)
             _fname = bc.char_id or ''
-            # 分键显影 + 卖出销账(出口①;reason 带分键 = 同轮买卖检查
-            # 豁免面成员,三键集见 cw_state.SELL_BENCH_CONVERT_REASONS)
-            _count('funding_hold_liquidated')
+            # 卖出销账(出口①;兜底分键计数已随 2026-09-08 用户归因
+            # 遥测删除指令拆除,销账行为面保留)。reason 缺省 '' 未标。
             sell_gate.consume_on_sell(session, _fname)
             _note_sell(_fname)
             return SellBench(
                 bench_idx=_fidx,
                 income=_shop_sell_refund(bc),
-                expect=_fname,
-                reason='funding_hold_liquidated')
+                expect=_fname)
 
     # ---- D-D 硬节点补强门消费(观察级接线;逐帧计数,粒度申报见上)----
     _gate_open, _gkey = crit_refresh.hard_node_reinforce_gate(
