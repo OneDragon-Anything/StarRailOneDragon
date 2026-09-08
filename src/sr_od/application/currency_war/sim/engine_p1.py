@@ -129,6 +129,9 @@ from sr_od.application.currency_war.sim.pool import (  # noqa: E402
 if TYPE_CHECKING:
     # P2ReplayEntry 仅作注解引用(future annotations 下运行期零依赖);
     # 模块级反向 import 会与 engine_p2→engine_p1 构成环,故挂 TYPE_CHECKING。
+    # SwapPlan 仅作注解引用(kernel 与 sim 无环,但函数内已惰性导入,
+    # 注解面统一挂 TYPE_CHECKING 保持「运行期零依赖」同款纪律)。
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import SwapPlan
     from sr_od.application.currency_war.sim.engine_p2 import P2ReplayEntry
 
 
@@ -511,10 +514,13 @@ def project_sell_buyback(acts: list[dict]) -> list[dict]:
     买先于卖不构成回环(登记序保证)。零 rng、零状态写入、零行为面。
 
     口径边界(如实声明):只辖 SellBench/BuyCard 两通道(SimP1 账本
-    _acts 的商店回环主通道);deployed 侧卖出通道(SellDeployed/
-    SwapDeploy 转录行)不含卖返/名字同形状,不入投影——其回环若成
-    病灶属后续扩展,不与本键混桶。合并买 count=k 时买价 = 单价×k
+    _acts 的商店回环主通道);deployed 侧卖出通道不入投影——其回环
+    若成病灶属后续扩展,不与本键混桶。合并买 count=k 时买价 = 单价×k
     (金真实流出,与 _acts 花费口径同式)。
+    【勘误(T-169 落地审 F5)】本注旧文「SellDeployed/SwapDeploy 转录行
+    不含卖返/名字同形状」已失真:m1_swap_redeploy 转录行(T-169 执行面)
+    带 name+income 键;本投影的辖域裁定不变(仍只消费 SellBench/BuyCard,
+    deployed 侧卖出不成「买回」回环形态),行形状申报以此勘误为准。
     """
     loops: list[dict] = []
     sold: dict[str, int] = {}
@@ -538,20 +544,22 @@ def project_sell_buyback(acts: list[dict]) -> list[dict]:
     return loops
 
 
-def m1p_intent_record(st, sess) -> dict:
-    """M1″ 发射意图面(板满换阵补部署;sim 决策面只记意图,零行为面)。
+def _m1p_plan_and_record(st: GameState, sess) -> tuple[SwapPlan, dict]:
+    """M1″ 计划计算 + 发射意图记录(sim 决策面共用同一份计划对象)。
 
-    语义出处:ADR-0530(board-full swap redeploy)——sim 不建模
-    执行侧 swap 卖出语义(如实申报不可信),只建模**发射意图**:谓词
-    ``kernel.cw_deploy_logic.select_swap_plan`` 在本 sim 帧(买/升级后、
-    部署代理前的语境,与生产 M1″ 决策帧同语境)判出计划非空 → 意图发射。
-    断言双向(锁测试面):计划空 ⇒ 无意图;计划非空 ⇒ 有意图——谓词在
-    sim 帧分布上的正确性覆盖,不依赖执行语义。零 rng 消耗、零状态写入
-    (行内观测键,与 'launch' 键同纪律)。
+    语义出处:ADR-0530(board-full swap redeploy);执行面接入与本
+    函数拆分 = 进度账本 T-169(sim 缺板满换血执行面,总图设计 R2 §2
+    sim 边界行)。原 ``m1p_intent_record`` 只记意图零行为面(ADR-0530
+    自述「sim 不建模执行侧 swap 卖出语义」)——实测该边界让换血行为
+    在 sim 结构性不可见(板满帧计划非空、零卖出动作,模拟批#5 最大
+    发现;账本 T-169 污染声明),本批按最小执行面接通:计划对象同时
+    供引擎执行转录消费(见 ``m1p_swap_execute``),记录 dict 形状不变
+    (nonempty/abstain/sell/up/reasons,下游判读零迁移)。
 
-    输入装配走生产同款单一源 ``assemble_swap_plan_inputs``(st = 买后
-    黑板,deployed/bench = 占用件现读,cap = max_units 派生链)——与
-    生产发射/执行两面同函数、同一装配契约,禁第二装配。
+    谓词 = 生产同款单一源 ``assemble_swap_plan_inputs`` + ``select_swap_
+    plan``(st = 买/升级后黑板,deployed/bench = 占用件现读,cap =
+    max_units 派生链)——与生产发射/执行两面同函数、同一装配契约,禁
+    第二装配。零 rng 消耗、纯读(状态写入只发生在引擎执行转录块)。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assemble_swap_plan_inputs,
@@ -567,13 +575,84 @@ def m1p_intent_record(st, sess) -> dict:
         cap=st.max_units())
     reasons: dict[str, str] = {}
     plan = select_swap_plan(ctx, reasons_out=reasons)
-    return {
+    record = {
         'nonempty': plan.nonempty,
         'abstain': plan.abstain,
         'sell': list(plan.sell_names),
         'up': len(plan.up_bench),
         'reasons': dict(reasons),
     }
+    return plan, record
+
+
+def m1p_intent_record(st: GameState, sess) -> dict:
+    """M1″ 发射意图记录(兼容入口;计划本体经 ``_m1p_plan_and_record``)。
+
+    返回记录 dict 形状与执行面接入前逐位同(nonempty/abstain/sell/up/
+    reasons);引擎现走 ``_m1p_plan_and_record`` 取计划执行,本包装仅供
+    锁测试与只读探针消费(test_cw_swap_plan 意图面双向断言)。
+    """
+    return _m1p_plan_and_record(st, sess)[1]
+
+
+def m1p_swap_execute(st: GameState, plan: SwapPlan, *, acts: list[dict],
+                     spend: dict, pool: _Pool) -> tuple[GameState, bool]:
+    """M1″ 执行面 sim 转录:计划非空 → 逐件卖 victim(卖出臂)。
+
+    T-169 最小执行面(总图设计 R2 §2 sim 边界行):生产链 = mandate 发射
+    RunDeploy(m1_swap_redeploy)+ CwOpDeploy 卖出臂现读逐件卖 +
+    部署 op 补上;sim 对应物 = 本函数卖 victim + 引擎轮末部署块残余
+    补部署补上(调用方据返回值置显式动作旗 → skip_fence+residual_
+    fill,与显式动作轮同语义)。卖出执行走 ``cw_state.simulate`` 单一源
+    (金回充/装备回收/板面重算全在源内),账本转录行带 name+reason=
+    'm1_swap_redeploy'(换血可见性的判读锚;既有显式动作行无名,本行
+    加键不破消费)。victim 槽位 = 按 char_id 现读(占用件同名唯一,W43
+    板面约束);单一源拒绝(原子性防线)= 零行为转录如实跳过。
+
+    同构边界申报(T-169 落地审 F2):生产发射位门**未镜像**——生产
+    plan.nonempty 后还有 m1p_defer_levelup(同帧 LevelUp 抑制,mandate
+    发射位)与 P79-3 转型门(_redeploy_emission_allowed)两道 defer,
+    sim 只看 plan.nonempty 即执行 ⇒ sim 换血活跃度结构上 ≥ 生产
+    (defer 帧在 sim 照换;plan.arm 不入记录,P79-3 缺口不可从账本测)。
+    当前批 defer 缺口实测共现 0(锚批 680 执行帧同轮 LevelUp=0),若
+    后续策略批抬升 defer 触发率,换血读数会系统性偏置——显影键
+    (arm/defer)归后续批。
+
+    拒绝路径显影申报(T-169 落地审 F6):单一源拒绝帧**无账本痕迹**
+    (不追加 rejected 行、不进 explicit_action_rejects;显式动作路径
+    对 rejected 有逐行+reject_reason 纪律,本路径防御分支未对齐)——
+    消费面只能按 m1p 记录 nonempty=1 而 executed 缺失反推。本锚批
+    680/680 全 applied 未触发;rejected 行转录/计数键归后续批。
+
+    :param acts: 轮账本动作流(调用方 ``_acts``,就地追加转录行);
+    :param spend: 轮经济账(调用方 ``_spend``,sell_income 就地累加);
+    :param pool: 有限牌池(卖出回池 ``ret``,与 SellBench 通道同守恒);
+    :returns: (卖出后的新 GameState, 是否有任一 victim 真卖出)。
+    """
+    sold_any = False
+    new_st = st
+    for name in plan.sell_names:
+        idx = next((i for i, d in enumerate(new_st.deployed)
+                    if d is not None and d.char_id == name), -1)
+        if idx < 0:
+            continue   # victim 已不在场(防御;同帧装配不会走到)
+        victim = new_st.deployed[idx]
+        applied_st = _simulate_state(
+            new_st, SellDeployed(deployed_idx=idx,
+                                 reason='m1_swap_redeploy', expect=name))
+        log = applied_st.action_log[-1] if applied_st.action_log else {}
+        if log.get('result') != 'applied':
+            continue   # 单一源拒绝 → 零行为转录(与显式动作分支同口径)
+        new_st = applied_st
+        refund = sell_refund(victim.star, _bench_char_cost(victim))
+        spend['sell_income'] = spend.get('sell_income', 0) + refund
+        if name:
+            pool.ret(name)
+        acts.append({'__type__': 'SellDeployed', 'deployed_idx': idx,
+                     'name': name, 'income': refund,
+                     'reason': 'm1_swap_redeploy', 'result': 'applied'})
+        sold_any = True
+    return new_st, sold_any
 
 
 def _line_member_names(sess) -> frozenset[str]:
@@ -1960,17 +2039,35 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _cts_x[_kla_z.KEY_ZERO_CONSUME] = \
                         _cts_x.get(_kla_z.KEY_ZERO_CONSUME, 0) + 1
                 _round_launch['arbitrage'] = _launch_arb
-            # M1″ 发射意图面(行内观测键;决策语境 = 买/升级后、部署代理
+            # M1″ 计划+意图面(行内观测键;决策语境 = 买/升级后、部署代理
             # 前,与生产 M1″ 决策帧同语境;判定单一源直调,见函数注)。
-            # 零 rng 消耗、零状态写入——不挤占行为投影 digest 判别域。
+            # 零 rng 消耗;计划非空帧由下方执行转录产生状态写入(其余帧
+            # 纯读)——不挤占行为投影 digest 判别域的声明自此收窄为
+            # 「计划空帧纯读」(T-169 执行面接入后的如实申报)。
             # 两小批②短路帧:生产无 M1″ 决策帧(备战动作链被发射短路)
             # ⇒ 恒 None(非观测异常,如实无帧)。
             _m1p_obs: dict | None = None
             if _round_launch is None:
                 try:
-                    _m1p_obs = m1p_intent_record(st, sess)
+                    _m1p_plan, _m1p_obs = _m1p_plan_and_record(st, sess)
                 except Exception:   # noqa: BLE001  观测 best-effort(launch 同款)
-                    _m1p_obs = None
+                    _m1p_plan, _m1p_obs = None, None
+                # M1″ 执行面 sim 转录(T-169;总图设计 R2 §2 sim 边界行,
+                # 修订 ADR-0530「sim 不建模执行侧」申报):计划非空 = 生产
+                # 发射 RunDeploy(m1_swap_redeploy) 帧 → sim 逐件卖 victim
+                # (卖出臂单一源执行,见 m1p_swap_execute),腾出的 vacancy
+                # 由轮末部署块补上——显式动作旗置位走 skip_fence+残余补
+                # 部署路径(裁决1「显式>围栏」同语义;补上件 =
+                # select_deployments 同源仲裁,与生产 CwOpDeploy 卖出臂+
+                # 部署 op 两段同构)。计划空/卖出被拒帧零状态写入(原
+                # 「零行为面」语义在这些帧保持)。
+                if _m1p_plan is not None and _m1p_plan.nonempty:
+                    st, _m1p_sold = m1p_swap_execute(
+                        st, _m1p_plan, acts=_acts, spend=_spend,
+                        pool=cards_pool)
+                    if _m1p_sold:
+                        _m1p_obs['executed'] = True
+                        _explicit_deploy_seen = True
             # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
             # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
             # (cw_deploy_logic.select_deployments 纯函数,与 CwOpDeploy op
@@ -2151,7 +2248,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _bench_recipe_rounds_p1 += _bench_recipe
                 _dep_power_sum_p1 += _dep_power
                 _dep_power_rounds_p1 += 1
-                _rust_peak = max(_rust_peak, min(10, len(st.equips)))
+                # (生锈暴露峰值已移到轮账本行键写入点采样——原此处取值
+                # 与行键 `rust_units` 是两个观测时点,轮中段卖出回充装备
+                # [T-169 执行面:victim 带装回收进 owned 池]会让分配器穿戴
+                # 前后的两读数分叉,峰值 ≠ 行值最大值;T-169 锁红重推后
+                # 收口为「峰值 = 逐轮账本行口径最大值」,恒等式由构造保证。)
             if res.dir_round == 99 and _direction_established(sess):
                 res.dir_round = rn
             # `w162_inject/`/ADR-0364:P1 段锁定轮计数(①资格通道激活直证——
@@ -2667,12 +2768,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 达标臂发射事件(见上方「达标臂发射事件建模」块;None=
                 # 本轮达标臂未触发——非战斗节点/未成型/准入预估不可得)
                 'launch': _round_launch,
-                # M1″ 发射意图面(m1p_intent_record;None = 观测异常帧。
-                # nonempty = 谓词判计划非空 ⇒ M1″ 意图发射;abstain =
-                # 弃权键(cap_unreadable/membership_unreadable/
+                # M1″ 计划+执行面(_m1p_plan_and_record;None = 观测异常帧。
+                # nonempty = 谓词判计划非空 ⇒ M1″ 发射;executed = 本帧
+                # 计划已经执行转录(卖出臂真卖,T-169 执行面接入;键缺省
+                # = 计划空/执行异常,锁测试双向断言与换血可见性判读锚)。
+                # abstain = 弃权键(cap_unreadable/membership_unreadable/
                 # input_missing);sell = 卖序;up = 上序件数;reasons =
-                # 逐件拒因。消费 = 触发频率探针(计划非空帧占比)与
-                # 锁测试双向断言)。
+                # 逐件拒因。卖出动作明细 = actions 流 SellDeployed 行
+                # (reason='m1_swap_redeploy'),补上 = 同轮 skip_fence 行
+                # residual_deployed 计数(执行语义见 m1p_swap_execute)。
                 'm1p': _m1p_obs,
                 # 采购面三观察计数(见轮首「采购面三观察计数」块):
                 # locked_b=本轮最大锁定采购集 |B|(0=帧全未锁);
@@ -2835,6 +2939,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                      if _round_pick_recs else None),
                 },
             })
+            # P1 段生锈暴露峰值(采样点 = 账本行 rust_units 键同点:峰值 ≡
+            # 逐轮行值最大值,由构造保证)。原采样点在轮中部 power 块
+            # (部署后/结算+分配器前),与行键是两个观测时点——轮中段
+            # 卖出回充装备(T-169 执行面:victim 带装回收)再被分配器
+            # 穿戴时,两读数分叉(峰值≠行值最大);T-169 锁红重推后移点
+            # 收口,勘误说明留在 power 块注释。
+            if _seg_plane == 1:
+                _rust_peak = max(_rust_peak, min(10, len(st.equips)))
             if st.hp <= 0:
                 break
         # `w213_sim_supply/`/ADR-0394:P1 段出口 key_equips 命中度量段末快照

@@ -95,3 +95,35 @@ R2 四阻断钉死①输入快照契约(装配源 = 执行侧 last_state+SIFT �
 `sr-od-test/test/sr_od/app/currency_war/test_cw_swap_plan.py`(基础设施语义锁,
 docstring 逐条引本文与 dd-037);`test_cw_deploy_ops.py` 的 fenced 臂真值表锁经
 re-export 同一性锁(`test_fenced_arm_single_source_identity`)继续覆盖。
+
+## 修订(T-169):sim 缺板满换血执行面接通,「sim 不建模执行侧」申报退役
+
+本文两处旧申报自本修订起被取代:
+
+- 背景§「sim 只建模发射意图面……该形态 sim 不可测,效果判定只在实机可达」
+  (探针依据 = 当时谓词形态下计划非空 0/2700 帧);
+- 决策 6「sim 不建模执行卖出语义,如实申报不可信」。
+
+修订内容(进度账本任务 T-169,总图设计 R2 §2 sim 边界行):
+sim 侧新增**最小执行面**——`engine_p1.m1p_swap_execute` 把同一份
+`select_swap_plan` 计划(与意图记录同装配同谓词,零第二判定)转录为
+`SellDeployed(reason='m1_swap_redeploy')` 经 `cw_state.simulate` 单一源逐件卖
+victim,腾出的 vacancy 由引擎轮末部署块残余补部署补上(skip_fence+residual_fill,
+与显式动作轮同语义);换血行为自此在 sim 可见可测(首批实测:计划非空 680 帧
+=执行 680=补上 680 三重配对,296/300 局)。账本判读锚 = actions 流
+SellDeployed 行(reason='m1_swap_redeploy',带 name)+ `m1p.executed` 键。
+
+边界(如实申报,消费前必读):
+
+- **发射位门未镜像**:生产 plan.nonempty 后还有 m1p_defer_levelup 与 P79-3
+  转型门两道 defer,sim 只看计划非空即执行 ⇒ sim 换血活跃度结构上 ≥ 生产;
+  当前 defer 缺口实测共现 0,后续策略批抬升 defer 触发率时换血读数系统性偏置
+  (arm/defer 显影键归后续批);
+- 拒绝路径(单一源拒)零账本痕迹,按 m1p.nonempty=1∧executed 缺失反推;
+- sim 决策入口仍只有 decide_shop_screen,M1′/M3/M6/M7 等 prep 面依旧零覆盖,
+  prep 入口接通归 sim 架构批(T-120),本修订只辖换血执行面。
+
+验证:重锚 n300(seeds 300-599 不相交,池 0e091d4d)+ 执行面单变量 A/B
+(engines2 +0.25/avg_hp +8.73,hp 双指标带外=设计内行为变化;B 臂产物未存档,
+复算须按 registry 归因注桩点重跑);效果验收 A/B 归 sim-testing 三步消费面,
+实机验收阶梯照旧。

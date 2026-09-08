@@ -24,9 +24,28 @@ row{plane, round, node_type, gold, hp, form, form_ok, level, locked_comp},
 
 P1 通关判定(按优先级):行面存在 plane>=2 行 → 通关;否则局级权威源
 (sim = runs.jsonl 的 plane_reached;档案 = endgame.plane_reached)≥2 → 通关;
-两源都缺 → 行面规则收尾:无 plane>=2 行 = 未通关(末行 hp 到死亡地板为佐证,
-sim 死亡地板 = 1)。边界:P1-only sim 载体(FakeP1Run)结构性不可达位面 2 →
-全批通关率 0 是载体辖域结果,禁当行为信号。
+两源都缺 → 行面规则收尾:无 plane>=2 行 = 未通关。**权威源降级通道
+(T-169 落地审 F7)**:新批布局(2026-09-07)不落 runs.jsonl,旧通道成死路
+——sim 批 runs.jsonl 缺失时改读 outcomes.jsonl 逐局 max(plane)(同语义:
+引擎实际到达的最高位面);runs 值优先不覆盖(旧批兼容);双通道皆缺的局
+= 不可判,死亡筛不适用,头部小注显影。**死亡筛(T-169 统计
+口径增补,2026-09-09)**:plane 证据达 2 后还须末行 hp>0 才算通关——死在
+P2 段的局(末行 hp=0)不是通关局,旧口径把它算通关会虚高通过率。hp 缺读
+(行无 hp 键)局死亡筛不适用 = 保持 plane 证据判定(边界如实申报:该类局
+死亡状态不可判,不折 0 不折 1)。载体标识:批统计头行自动标注载体类型
+(全载体 = 生产档案或存在 plane>=2 行的 sim 批;P1-only = 零 plane>=2 行
+的 sim 批——其通关率 0 是载体辖域结果,禁当行为信号,与下行边界同义)。
+
+出口生存余量读数行(T-169 账本 23:49 增补/落地审 F3 补交付;读数非门):
+P1 出口行(= ① 同行源)hp 分布 min/中位/max + 死亡地板命中数(sim 地板 0,
+出口 hp<=0 = 死在出口帧)——与死亡筛同源不同问:筛答「算不算通关」,
+本行答「出口时还剩多少血」;hp 缺读局不入分布,可读数随行披露。
+
+boss 结算敏感性边界披露(sim 源头行固定披露):boss 战损 Δ 采样键 =
+净星深一维(迁移审计 w240/ADR-0404),不含 rung(成型度)维——「同净星深、
+不同成型度」的 boss 战损差异在 sim 内不可分辨(无敏感性边界可读)。升维
+rung×净星深二维列是后续候选(T-169 增补项 ②,本批只披露不升维);判读
+boss 段读数(如 hp 轨迹尾段)时按此键边界理解。
 
 [28] 线读数 = P1 出口金 ≥50 的局数,一行,不做门只做读数——[28] 双指标验收
 明确「出口金单独不作验收」(单指标优化会复刻「金 92 过线但板面弱」的假达标);
@@ -73,7 +92,7 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
         return games.setdefault(rid, _game_shell())
 
     for o in _load(batch / 'runs.jsonl'):
-        # 局级权威源:P1 通关判定用(引擎自记 plane_reached)
+        # 局级权威源:P1 通关判定用(引擎自记 plane_reached;旧批布局)
         g(o.get('run_id') or '?')['plane_reached'] = o.get('plane_reached')
     for r in dec:
         st = r.get('state') or {}
@@ -95,6 +114,23 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
         for row in g(o.get('run_id') or '?')['rows']:
             if row['_key'] == (o.get('plane') or 1, o.get('round_num') or 0):
                 row['node_type'] = o.get('node_type')
+    # 权威源降级通道(T-169 落地审 F7:新批布局 2026-09-07 起不落
+    # runs.jsonl,旧通道成死路)——runs.jsonl 缺失时读 outcomes.jsonl
+    # 逐局 max(plane)(同语义:引擎实际到达的最高位面,逐轮行带 plane);
+    # runs 值优先不覆盖(旧批兼容)。两源皆缺的局 plane_reached 保持
+    # None(不可判,死亡筛不适用),report 头部小注显影(F3)。
+    # 位置=decisions/outcomes 两循环后(games 键已齐),回填才非空操作。
+    if not (batch / 'runs.jsonl').exists():
+        max_plane: dict[str, int] = {}
+        for o in outs:
+            rid = o.get('run_id') or '?'
+            pl = o.get('plane')
+            if isinstance(pl, int):
+                max_plane[rid] = max(max_plane.get(rid, 0), pl)
+        for rid, pl in max_plane.items():
+            gd = games.get(rid)
+            if gd is not None and gd['plane_reached'] is None:
+                gd['plane_reached'] = pl
     out: dict[str, dict] = {}
     for rid, gd in games.items():
         rows = sorted(gd['rows'], key=lambda r: r['_key'])
@@ -138,6 +174,12 @@ def game_metrics(game: dict) -> dict:
     passed = any((r.get('plane') or 0) >= 2 for r in rows)
     if not passed and game.get('plane_reached') is not None:
         passed = game['plane_reached'] >= 2
+    # 死亡筛(T-169 统计口径增补):plane 证据达 2 后还须末行 hp>0——
+    # 死在 P2 的局(末行 hp=0)不是通关局。hp 缺读局不适用死亡筛 =
+    # 保持 plane 证据判定(不可判 ≠ 判死,边界见模块 docstring)。
+    if passed and last is not None and last.get('hp') is not None \
+            and last['hp'] <= 0:
+        passed = False
     lc = last.get('locked_comp') if last else None
     if lc is None:
         comp_done = None            # 档案源结构性无锁线字段 = 无数据
@@ -148,6 +190,7 @@ def game_metrics(game: dict) -> dict:
     return {
         'passed_p1': passed,
         'exit_gold': p1_last.get('gold') if p1_last else None,
+        'exit_hp': p1_last.get('hp') if p1_last else None,
         'exit_form_ok': p1_last.get('form_ok') if p1_last else None,
         'exit_form': p1_last.get('form') if p1_last else None,
         'final_gold': last.get('gold') if last else None,
@@ -161,7 +204,25 @@ def _fmt(v, nd: int = 0) -> str:
     return f'{v:.{nd}f}' if isinstance(v, float) else str(v)
 
 
-def report(games: dict[str, dict], title: str) -> None:
+def carrier_label(games: dict[str, dict], source: str) -> str:
+    """批载体标识(头行自动标注;T-169 统计口径增补)。
+
+    全载体 = 生产档案,或存在 plane>=2 行的 sim 批(数据证明可达位面 2);
+    P1-only = 零 plane>=2 行的 sim 批——该批通关率 0 是载体辖域结果,
+    禁当行为信号(判读先看本标识再看通关率)。边界:planes=2 sim 批
+    恰逢全批死在 P1 时行面证据与 P1-only 载体同形,本标识按「数据可见
+    辖域」如实标注(该批同样没有 P2 数据可判,语义不漂)。
+    """
+    if source == 'archive':
+        return '全载体(生产档案)'
+    has_p2 = any((r.get('plane') or 0) >= 2
+                 for g in games.values() for r in g.get('rows') or [])
+    if has_p2:
+        return '全载体(sim,存在 plane≥2 行)'
+    return 'P1-only(零 plane≥2 行;通关率 0 属载体辖域)'
+
+
+def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
     ms = {rid: game_metrics(g) for rid, g in games.items()}
     n = len(ms)
 
@@ -175,7 +236,21 @@ def report(games: dict[str, dict], title: str) -> None:
                  if isinstance(m['exit_gold'], (int, float)) and m['exit_gold'] >= 50)
     gold28 = sum(1 for m in ms.values() if isinstance(m['exit_gold'], (int, float)))
 
-    print(f'\n== 批统计面(四指标) | {title} | 局数 {n} ==')
+    print(f'\n== 批统计面(四指标) | {title} | 局数 {n} '
+          f'| 载体: {carrier_label(games, source)} ==')
+    if source == 'sim':
+        # boss 结算敏感性边界披露(T-169 增补 ②,只披露不升维;口径见
+        # 模块 docstring「boss 结算敏感性边界披露」节,单一源在彼处)
+        print('边界: boss 结算键=净星深一维(ADR-0404),无 rung×净星深'
+              '敏感性——升维列后续候选,boss 段读数按一维键边界理解')
+        # 局级权威源缺行小注(T-169 落地审 F3):runs/outcomes 两通道皆
+        # 无法给出 plane_reached 的局数——该类局死亡筛不适用(不可判),
+        # 通关判定降级行面证据;>0 时显影,归 runs/账本完整性问题。
+        no_auth = sum(1 for gd in games.values()
+                      if gd.get('plane_reached') is None)
+        if no_auth:
+            print(f'注: 局级权威源缺行 {no_auth}/{n} 局无 plane_reached'
+                  '(runs/outcomes 双通道皆缺;通关判定降级行面证据)')
     print(f'通关率: {passed}/{n}')
     if ok_games:
         print(f'②过渡凑齐率(P1 出口,通关局中): {ok_ok}/{len(ok_games)} = {ok_ok / len(ok_games):.0%}')
@@ -190,6 +265,18 @@ def report(games: dict[str, dict], title: str) -> None:
     else:
         print('④终局阵容完成率: 无数据(全批无锁线字段观测)')
     print(f'[28]线 出口金≥50: {line28}/{gold28} 局(读数,非门)')
+    # 出口生存余量读数行(T-169 账本 23:49 增补/落地审 F3 补交付;
+    # 读数非门):P1 出口行(= ① 同行源)hp 分布 + 死亡地板命中数
+    # (sim 地板 0,出口 hp<=0 = 死在出口帧;与死亡筛同源不同问——
+    # 筛答「算不算通关」,本行答「出口时还剩多少血」)。hp 缺读局
+    # 不入分布,可读数随行披露。
+    exit_hps = [m['exit_hp'] for m in ms.values()
+                if isinstance(m['exit_hp'], (int, float))]
+    exit_floor = sum(1 for h in exit_hps if h <= 0)
+    eh3 = (f'{min(exit_hps)} / {statistics.median(exit_hps)} / {max(exit_hps)}'
+           if exit_hps else '无数据')
+    print(f'出口生存余量 hp min/中位/max: {eh3}(可读 {len(exit_hps)}/{n} 局) '
+          f'| 地板命中(hp≤0) {exit_floor} 局(读数,非门)')
 
     print(f"\n{'局号':<22} {'P1通关':<6} {'①出口金':>7} {'②凑齐(形态)':<14} {'③终局金':>7} {'④完成':>5}")
     for rid in sorted(ms):
@@ -223,17 +310,17 @@ def main() -> None:
         batch = Path(args.batch)
         if not (batch / 'decisions.jsonl').is_file():
             raise SystemExit(f'批次目录不含 decisions.jsonl:{batch}')
-        report(_sim_rows(batch), batch.name)
+        report(_sim_rows(batch), batch.name, source='sim')
     elif args.sim_batch:
         name = args.sim_batch
         batch = (sorted(d for d in SIM_ROOT.iterdir() if d.is_dir())[-1]
                  if name == 'latest' else SIM_ROOT / name)
         if not batch.is_dir():
             raise SystemExit(f'批次不存在:{batch}')
-        report(_sim_rows(batch), batch.name)
+        report(_sim_rows(batch), batch.name, source='sim')
     elif args.match:
         g = _archive_rows(args.match)
-        report({g['game_id']: g}, g['game_id'])
+        report({g['game_id']: g}, g['game_id'], source='archive')
     elif args.recent:
         idx = _load(MATCHES / 'index.jsonl')[-args.recent:]
         games: dict[str, dict] = {}
@@ -242,7 +329,7 @@ def main() -> None:
                 continue
             g = _archive_rows(e['game_id'])
             games[g['game_id']] = g
-        report(games, f'生产档案最近 {len(games)} 局')
+        report(games, f'生产档案最近 {len(games)} 局', source='archive')
     else:
         ap.error('需 --sim-batch / --batch / --recent / --match 之一')
 
