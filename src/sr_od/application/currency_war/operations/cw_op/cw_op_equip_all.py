@@ -269,6 +269,10 @@ class CwOpEquipAll(SrOperation):
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
+    # 失败状态具名常量(T-164 批A;方案审:禁散字符串,判读侧可分键)——
+    # 消费面 = run_record/日志判读与 prep_no_progress 停机留证归因。
+    STATUS_SCREEN_DRIFTED: ClassVar[str] = \
+        '画面漂移(批内非干净备战,执行环境失配)'
     # 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量)。
     FRONT_SLOT_COUNT: ClassVar[int] = 4
     # 前排 avatar 拖拽点兜底常量(坐标单一源整改:主源 = screen_info「前排-N」
@@ -674,9 +678,17 @@ class CwOpEquipAll(SrOperation):
                 cur = self.screenshot()
                 if self.check_and_update_current_screen(
                         cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
-                    log.info('[cw-equip] 画面漂移(面板/浮窗开)→ 停')
-                    _stop_reason = '画面非干净备战'
-                    break
+                    # 执行断言(T-164 批A/E2;同 E1 形态,T-163 D5 裁定延伸):
+                    # 批内画面漂移 = 执行环境失配,如实 round_fail 交回外循环
+                    # 重判——禁旧 break+success 把「弃批」记成「M7 装备 X 件」
+                    # 假成功(闩置位/装备实际没穿,吞分发)。「该不该执行」归
+                    # 分发层(_run_composite 派发前置 + cw_loop 0 系 overlay 分支)。
+                    # 哨兵观测保留(纯观测零行为;stop_reason 串供分类域锁)。
+                    log.warning('[cw!][equip] 画面漂移(面板/浮窗开)→ 执行断言 fail')
+                    self._zero_wear_sentinel(equipped, _owned_last,
+                                             '画面非干净备战')
+                    return self.round_fail(
+                        CwOpEquipAll.STATUS_SCREEN_DRIFTED)
                 hits = read_equips(cur, templates, equip_rect=equip_rect)
                 _owned_last = [n for n, _, _ in hits]
                 wearable = [(n, p) for n, p, _ in hits
@@ -875,8 +887,11 @@ class CwOpEquipAll(SrOperation):
             cur = self.screenshot()
             if self.check_and_update_current_screen(
                     cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
-                log.info('[cw-equip] 画面漂移(面板/浮窗开)→ 停')
-                break
+                # 执行断言(T-164 批A/E3;与 E2 同批同形):回退路径批内画面
+                # 漂移同样如实 round_fail,禁静默 break 后 success 假完成。
+                log.warning('[cw!][equip] 画面漂移(面板/浮窗开)→ 执行断言 fail')
+                return self.round_fail(
+                    CwOpEquipAll.STATUS_SCREEN_DRIFTED)
             hits = read_equips(cur, templates, equip_rect=equip_rect)
             unknown = [n for n, _, _ in hits if EQUIPMENTS.get(n) is None]
             if unknown:

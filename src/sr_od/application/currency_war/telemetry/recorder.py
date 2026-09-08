@@ -721,8 +721,13 @@ def record_modality_gold(node: str, plane: int, round_num: int,
       「来源节点 × 轮号 × 前后金」逐笔记账,查询侧 query_gold_flow
       用它分解 economy 残差(口径同源:同一 exogenous 流、同一
       (plane, round) join 键,与 sell_income 行同法)。
-    - 生产者 = 模态期金变动可读的操作点(首选 cw_op_collect_spheres
-      奖励球收取:金球点开即入账,备战屏 gold 区全程可读)。overlay
+    - 生产者 = 模态期金变动可读的操作点。**当前零喂点(T-164 批A
+      如实登记缺口)**:唯一历史喂点 cw_op_collect_spheres(奖励球
+      收取)已随该 op 下线删除(零调用死代码,清查 S1/S2;职能由
+      分发层 ClickSpheres 动作接管)——'spheres' 分键断喂,模态金
+      进账暂回流 economy 残差;补喂点候选 = PrepActionExecutor.
+      _click_spheres(收取前后金现读),是否接通属观测面排期裁决,
+      不随 op 下线擅自重接。overlay
       事件屏(策划/命运卜者等)金区被覆盖不可读,不设钩——其金效应
       仍留在 economy 残差里,本通道只承诺「有钩处逐笔、无钩处显残差」。
     - 参数:

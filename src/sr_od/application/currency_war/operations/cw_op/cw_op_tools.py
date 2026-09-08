@@ -55,7 +55,8 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 # 拖曳参数(与 CwOpEquipAll 拖拽失败降级同型口径;工具 icon→icon 同网格,
-# 距离短,首档参数即可,不建补救链——失败由确认通道 cancel 分支自然重评)
+# 距离短,首档参数即可,不建补救链——失败由确认通道 cancel 分支如实上报,
+# 重算归分发层下一环重派,T-164 批A/C3)
 _TOOL_DRAG_HOLD: float = 0.5
 _TOOL_DRAG_DURATION: float = 1.2
 _TOOL_MAX_PER_PASS: int = 4   # 单 pass 执行硬上限(防 owned 全死库存时超时)
@@ -169,21 +170,25 @@ def classify_tool_consume(pre_owned: list[str], post_owned: list[str],
     return 'cancel', [], []
 
 
-def run_tool_queue(queue: list[ToolDragPlan], exec_fn, replan_fn,
-                   max_pass: int = _TOOL_MAX_PER_PASS) -> tuple[int, int]:
-    """工具执行环驱动(纯控制流,注入执行/重规划;离线可锁)。
+def run_tool_queue(queue: list[ToolDragPlan], exec_fn,
+                   max_pass: int = _TOOL_MAX_PER_PASS) -> tuple[int, int, bool]:
+    """工具执行环驱动(纯控制流,注入执行;离线可锁)。
 
-    while 队列循环:首件消费后画面网格 reflow → **剩余计划坐标全部作废**
-    (三审定谳:沿用切片快照的过期坐标拖曳 = 误烧负操作,已落错的首次
-    拖曳确认通道救不回)——故每件 consumed/partial 后经 ``replan_fn``
-    重读画面**整条重建**队列;replan 内须用 fresh owned 重评 admitted
-    (不沿用初始准入:首件消费改变死库存/m=1 结构,旧准入对新板面失效,
-    显式化而非依赖下游过滤兜底)。cancel 件直接丢弃(exec_fn 内重试
-    预算已耗尽,同件原地重拖失败相关,bug#1 结论)。``max_pass`` =
-    执行尝试硬上限(防「消费后重评仍放行同件」形态空转)。返回
-    (consumed, attempts)。
+    while 队列循环逐件执行;**首件 consumed/partial 后画面网格 reflow →
+    剩余计划坐标全部作废**(三审定谳:沿用切片快照的过期坐标拖曳 = 误烧
+    负操作,已落错的首次拖曳确认通道救不回)。T-164 批A/C3 整改:op 内
+    不再重评准入自建新队列(replan 删除——「重评 admitted」是策略判据的
+    第二次触发,违反动作 op 机械执行规范),计划失效如实上报交回分发层,
+    下一环重派即天然重算(发射位 G1 对 fresh owned 重评 = 判据单一源;
+    _click_spheres「观察-执行竞态 → 下轮再派」同形先例)。cancel 件直接
+    丢弃(exec_fn 内重试预算已耗尽,同件原地重拖失败相关,bug#1 结论;
+    画面未消费 = 无 reflow,队列其余坐标仍有效,继续下一件)。
+    ``max_pass`` = 执行尝试硬上限(防异常态空转)。
+    返回 (consumed, attempts, plan_stale)——plan_stale = 有剩余计划因
+    reflow 作废(调用方须 round_fail 上报,不得当合法完成)。
     """
     consumed = attempts = 0
+    plan_stale = False
     while queue and attempts < max_pass:
         plan = queue.pop(0)
         outcome = exec_fn(plan)
@@ -191,8 +196,10 @@ def run_tool_queue(queue: list[ToolDragPlan], exec_fn, replan_fn,
         if outcome == 'consumed':
             consumed += 1
         if outcome != 'cancel':
-            queue = replan_fn()
-    return consumed, attempts
+            # 消费发生(consumed/partial)→ 网格 reflow,剩余计划坐标作废
+            plan_stale = bool(queue)
+            break
+    return consumed, attempts, plan_stale
 
 
 class CwOpTools(SrOperation):
@@ -205,6 +212,8 @@ class CwOpTools(SrOperation):
     """
 
     SCREEN_NAME: str = '货币战争-备战'
+    # 失败状态具名常量(T-164 批A/C3;禁散字符串,判读侧可分键)。
+    STATUS_PLAN_STALE: str = '工具计划失效(首件消费后 reflow,剩余计划作废)'
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-工具消耗')
@@ -340,27 +349,14 @@ class CwOpTools(SrOperation):
                          plan.tool, plan.target)
             return outcome
 
-        def _replan() -> list[ToolDragPlan]:
-            """整条重建队列:fresh owned 现读 + admitted 重评(不沿用初始
-            准入,run_tool_queue docstring)+ 坐标全现读。"""
-            fresh_hits = self._read_owned()
-            fresh_names = owned_hits_names(fresh_hits)
-            fresh_admitted = admitted_tool_actions(
-                evaluate_tool_actions(fresh_names, comp))
-            for a in fresh_admitted:
-                log.info('[cw!][tools] replan tool=%s action=%s usable=%s '
-                         'reason=%s', a.tool, a.action, a.usable,
-                         a.reason or '-')
-            fresh_plans = plan_tool_drags(fresh_admitted, fresh_hits, comp)
-            skipped = [p for p in fresh_plans
-                       if p.tool_pos is None or p.target_pos is None
-                       or not p.target]
-            if skipped:
-                log.info('[cw-tools] 重规划计划面缺 icon(识别 miss)跳过: %s',
-                         [(p.tool, p.target) for p in skipped])
-            return [p for p in fresh_plans
-                    if p.tool_pos is not None and p.target_pos is not None
-                    and p.target]
-
-        consumed, _attempts = run_tool_queue(plans, _exec, _replan)
+        # 旧 op 内 _replan(fresh owned 重评 admitted 再建队列)已删(T-164
+        # 批A/C3):「重评 admitted」是策略判据在 op 内第二次触发,违反动作
+        # op 机械执行规范;计划失效改由 plan_stale 如实上报交回分发层重算。
+        consumed, _attempts, _plan_stale = run_tool_queue(plans, _exec)
+        if _plan_stale:
+            # 计划失效上报(C3):闩不置位(execute ok=False),下一环重派
+            # 即天然重算(发射位 G1 对 fresh owned 重评 = 判据单一源)。
+            log.info('[cw-tools] 首件消费后剩余计划失效(reflow)→ round_fail '
+                     '交回分发层(本环已消费 %d 件)', consumed)
+            return self.round_fail(CwOpTools.STATUS_PLAN_STALE)
         return self.round_success(f'工具消费 {consumed} 件(确认通道对拍完成)')

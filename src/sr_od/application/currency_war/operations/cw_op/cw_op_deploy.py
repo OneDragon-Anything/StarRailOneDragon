@@ -127,17 +127,6 @@ def prune_fuel_filler_deployed(session: 'StrategySession',
     return len(hit)
 
 
-# ===== 同签名 placed=0 熔断跳槽(部署伪槽修复批 ③;兜底非根因)=====
-# 辖域(方案 A3,如实申报):只兜「已知伪槽形态全部漏认」+ 未来未知拒拖
-# 形态的结构性拒绝;触发即落遥测分键并转人工建档(补 find_* 模板),
-# 禁静默长期依赖熔断过日子。签名 = 计划结构(bench_occ 槽集/order 槽集/
-# 各槽 char_id),**不含** plane/round_num——外循环换轮重试时签名不变,
-# 熔断才可能触发(方案 A4)。计数按签名隔离:签名变化即重置,不跨签名
-# 累积(真重试场景——槽被卖出/买到/换位——必变 bench_occ,不误熔)。
-# 状态挂 session(P4R4 纪律,禁模块级全局);无 session(测试/离线)
-# → 熔断惰性禁用,行为等价旧路径。
-ZERO_PLACE_BREAKER_THRESHOLD: int = 2   # 连续 ≥2 次同签名 0 落地 = 结构性拒绝(1 太早,3+ 白耗)
-
 # ===== 执行侧配方底线门遥测键(ADR-0564;键族前缀 deploy_exec_,与既有
 # 键族零交集;全键写入 strategy_state cw4_counters,经局终快照链与 sim
 # 轮差分零新增管道自动携带)=====
@@ -169,80 +158,6 @@ def _bump_r288_skip_counter(session: 'StrategySession',
             counters[key] = counters.get(key, 0) + 1
     except Exception:   # noqa: BLE001  遥测 best-effort,不阻塞部署
         pass
-
-#: session 状态字段名(对象由本模块独占读写)。
-_ZP_SIG: str = 'cw_deploy_zeroplace_sig'
-_ZP_CNT: str = 'cw_deploy_zeroplace_cnt'
-
-
-def zero_place_sig(bench_occ: list, order: list, bench_cid: dict) -> tuple:
-    """计划结构签名(bench_occ 槽集, order 槽集, 各槽 char_id;不含轮次)。"""
-    return (tuple(bench_occ), tuple(order),
-            tuple(bench_cid.get(bi, '') for bi in bench_occ))
-
-
-def zero_place_breaker_should_trip(session: 'StrategySession | None',
-                                   sig: tuple) -> bool:
-    """已记录同签名连续 ≥ZERO_PLACE_BREAKER_THRESHOLD 次 placed=0 → 熔断。
-
-    session 为 None(测试/离线)→ False(熔断禁用,行为等价旧路径);
-    两次瞬态机会(首败 + fresh 复查防线后的重试)让完仍 0 落地 = 结构性
-    拒绝,第三次同签名执行不再拖(局34 形态 4 fail 白耗省一半)。
-    """
-    if session is None:
-        return False
-    prev_sig = getattr(session, _ZP_SIG, None)
-    cnt = getattr(session, _ZP_CNT, 0) or 0
-    return prev_sig == sig and cnt >= ZERO_PLACE_BREAKER_THRESHOLD
-
-
-def zero_place_breaker_record(session: 'StrategySession | None', sig: tuple,
-                              placed: int, plan_non_empty: bool) -> None:
-    """失败计数回写(签名隔离;成功/合法空计划即重置)。
-
-    placed>0 = 结构性拒绝解除;placed=0 且计划空 = 合法稳态 no-op
-    (dd-037),两者都不算「拒拖失败」。"""
-    if session is None:
-        return
-    if placed > 0 or not plan_non_empty:
-        setattr(session, _ZP_SIG, None)
-        setattr(session, _ZP_CNT, 0)
-        return
-    if getattr(session, _ZP_SIG, None) == sig:
-        setattr(session, _ZP_CNT, (getattr(session, _ZP_CNT, 0) or 0) + 1)
-    else:
-        setattr(session, _ZP_SIG, sig)
-        setattr(session, _ZP_CNT, 1)
-
-
-def note_zero_place_breaker(ctx: SrContext, sig: tuple,
-                            held_slots: list[int]) -> None:
-    """熔断触发遥测分键(best-effort;触发 1 次 = 有未知变体漏认,
-    应转人工建档,不调阈值——方案 §1③ 完成判据)。"""
-    try:
-        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-            SEVERITY_L2_RECORD,
-            record_defect,
-        )
-        _m = getattr(ctx, 'cw_match', None)
-        _st = getattr(getattr(_m, 'session', None), 'last_state', None)
-        record_defect(
-            'deploy_zero_place_breaker', 'deploy_zero_place_breaker',
-            expected='部署拖拽被游戏接受(placed>0)',
-            observed=f'同签名计划连续{ZERO_PLACE_BREAKER_THRESHOLD}次 0 落地,'
-                     f'熔断跳槽 slots={held_slots} sig={sig!r}',
-            plane=int(getattr(_st, 'plane', 0) or 0),
-            round_num=int(getattr(_st, 'round_num', 0) or 0),
-            gap_large=False, severity=SEVERITY_L2_RECORD,
-            verdict=('熔断跳槽(结构性拒绝兜底,非根因):该槽画面大概率是'
-                     '未建档物品变体或未知拒拖形态 → 按截图补 find_* 模板'
-                     '建档,禁调阈值;修复后实机批本分键计数应 ≈0'),
-            refs=[{'stream': 'arbitration', 'key': f'sig={sig!r}'}],
-            reader_source='cw_op_deploy',
-            note='部署 placed=0 同签名熔断分键(占槽物品伪槽修复批 ③)')
-    except Exception:   # noqa: BLE001  遥测 best-effort,不阻塞部署
-        pass
-
 
 def residual_fill_plan(held: list, front_empty: list, back_empty: list,
                        bench_pos: dict, bench_cid: dict,
@@ -437,6 +352,17 @@ class CwOpDeploy(SrOperation):
     STATUS_NOOP: ClassVar[str] = '无部署可做(计划空,bench为合法稳态)'
     STATUS_NO_BENCH: ClassVar[str] = '备战栏无角色'
     STATUS_NO_SCREEN: ClassVar[str] = '未加载货币战争-备战 screen_info'
+    # 失败状态具名常量(T-164 批A/D1/D2;禁散字符串,判读侧可分键)——
+    # 消费面 = run_record/_run_composite detail 判读与 prep_no_progress
+    # 停机留证归因。命中即「计划-现读失配/执行环境失配」暴露信号。
+    STATUS_EVENT_OVERLAY: ClassVar[str] = \
+        '事件overlay在场(执行环境失配,重判归分发层)'
+    STATUS_BOARD_FULL_MISMATCH: ClassVar[str] = \
+        '板满失配(执行位现读 deployed≥cap 而 RunDeploy 已派发)'
+    STATUS_PHANTOM_FULL_BOARD: ClassVar[str] = \
+        '幻影满板矛盾帧(CV 采样无空槽 ∧ 仲裁值未达 cap)'
+    STATUS_LANDED_NONE: ClassVar[str] = \
+        '部署未落地(计划非空但 placed=0,失败帧已存证)'
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-部署角色')
@@ -514,14 +440,20 @@ class CwOpDeploy(SrOperation):
         if si is None:
             log.warning('[cw-deploy] 未加载「货币战争-备战」screen_info,跳过部署')
             return self.round_fail(status=CwOpDeploy.STATUS_NO_SCREEN)
-        # live 2026-08-15:事件 overlay(盛会之星等)挡 drag —— 拖全灭(源槽未变连环)+ 空场上阵
-        # HP 82→1。overlay 在 → 跳过部署(success 态交还上层,Director 观察会 bail 交外环 handler)。
+        # 窗口防线执行断言(T-164 批A/D1;方案审选项 b,同 E1 形态):
+        # 派发间隙(宿主入口观察 → 本 op 执行)overlay 弹出 = 执行环境失配,
+        # 如实 round_fail 交回重判——禁旧 success-skip 把「弃执行」记成成功
+        # (闩置位/部署实际没做,吞分发)。「overlay 弹出重判」归分发层
+        #(cw_loop 0 系 overlay 分支先于备战链 + 宿主入口 overlay 防线为
+        # 第一道);本检查降级为窗口期第二道执行断言,不升 guard_screen
+        #(deploy 派发不带回环守卫,T-163 边界申报锁语义不变)。
         for _scr, _area in (('货币战争-盛会之星', '标识-盛会之星'),
                             ('货币战争-列车同行', '标识-选择伙伴'),
                             ('货币战争-祈愿试炼', '标识-祈愿试炼')):
             if self.round_by_find_area(self.last_screenshot, _scr, _area, crop_first=False).is_success:
-                log.warning(f'[cw-deploy] 事件 overlay({_scr})在,跳过部署(交主循环 handler)')
-                return self.round_success('事件overlay,跳过部署')
+                log.warning(f'[cw!][deploy] 事件 overlay({_scr})在 → 执行断言 fail(重判归分发层)')
+                return self.round_fail(
+                    f'{CwOpDeploy.STATUS_EVENT_OVERLAY}({_scr})')
 
         bench = self._row_centers('备战栏')
         save_decision_frame(self, 'deploy', self.last_screenshot)   # 识别完成点原始帧留证(部署仲裁基准)
@@ -643,7 +575,8 @@ class CwOpDeploy(SrOperation):
             else:
                 log.info('[cw-deploy] deploy-swap 跳过:bench 无 target 单位(留 off-target bodies;'
                          ' 根因=buy 未买 target / economy 未攒金升级)')
-        _placed, _plan_empty = self._deploy_deterministic(bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
+        _placed, _plan_empty, _gate_fail = self._deploy_deterministic(
+            bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
         self._reconcile_tracking(templates)   # D-12(3.3.2):deploy 后 SIFT 真实身份纠 tracking 漂(观测回路)
         # r241 换排纠正(用户实锤:三月七被兜底强推前排,后续永不被挪回):
         # deploy 只管 bench→场,场内错排(pref=back 在前排/fallback 遗留)无人纠正
@@ -674,13 +607,17 @@ class CwOpDeploy(SrOperation):
         # dd-037 契约硬化:no-op 与真实部署在返回状态上可区分——
         # ① 计划空且 0 落地 = 合法稳态(bench 留置),STATUS_NOOP(非「已部署角色」,
         #    不再把空计划伪装成部署成功);② 计划非空但 placed=0 = 真失败,round_fail
-        #    (交框架失败链,不再 ✓ 蒙混);③ placed>0 = 真部署,STATUS_DEPLOYED。
+        #    (交框架失败链,不再 ✓ 蒙混);③ placed>0 = 真部署,STATUS_DEPLOYED;
+        # ④ 入口失配闸命中(T-164 批A/D2)= 具名失配状态 round_fail,先于
+        #    ①②③判定(闸返回恒 placed=0,先查避免被 NOOP 分支吞掉)。
+        if _gate_fail is not None:
+            return self.round_fail(_gate_fail)
         if _placed == 0:
             if _plan_empty:
                 log.info('[cw-deploy] 无部署可做(计划空,候选全被规则留 bench;'
                          'dd-037:no-op 状态,发射方同源谓词已在本环抑制此形态)')
                 return self.round_success(CwOpDeploy.STATUS_NOOP, wait=1)
-            return self.round_fail('部署未落地(计划非空但 placed=0;失败帧已存证)')
+            return self.round_fail(CwOpDeploy.STATUS_LANDED_NONE)
         return self.round_success(CwOpDeploy.STATUS_DEPLOYED, wait=1)
 
     def _fix_misplaced_rows(self, front: list, back: list,
@@ -831,13 +768,16 @@ class CwOpDeploy(SrOperation):
             log.info('[cw-deploy] equips 采集:tracked %d 件写入(决策快照将携带)', _n)
 
     def _deploy_deterministic(self, bench: list[Point], front: list[Point], back: list[Point],
-                              templates: AvatarTemplates | None) -> tuple[int, bool]:
+                              templates: AvatarTemplates | None) -> tuple[int, bool, str | None]:
         """D-7 确定性部署:CV 知占用 → 每个有角色的备战槽按**角色前后台属性**(position_pref)拖到对应排的
         空槽(target 阵营先)→ CV 验「源备战槽空了」=成功。
 
-        返回 ``(placed, plan_empty)``(dd-037 契约):placed = 落点验证过的实际上阵数;
-        plan_empty = 主计划为空(kernel 选人无上场候选)——调用方据此区分
-        no-op(合法稳态)与「计划非空却 0 落地」(真失败),两者返回状态可区分。
+        返回 ``(placed, plan_empty, gate_fail)``(dd-037 契约 + T-164 批A 扩展):
+        placed = 落点验证过的实际上阵数;plan_empty = 主计划为空(kernel 选人
+        无上场候选)——调用方据此区分 no-op(合法稳态)与「计划非空却 0 落地」
+        (真失败),两者返回状态可区分;gate_fail = 入口失配闸具名状态
+        (D2:板满失配/幻影满板,非 None = 调用方须 round_fail 上报),
+        None = 未命中失配闸。
 
         **5.1.6(2026-08-12,live 观察 2)**:按 ``Character.position_pref()``(cw_chars 注册表)选排 ——
         前台角色→前排空槽、后台/flex 角色→后排空槽;对应排满才 fallback 另一排(避免不上场)。
@@ -950,19 +890,26 @@ class CwOpDeploy(SrOperation):
                 self.ctx, scr, 'deploy_cap_gate_paddle_missing', None, _deployed_cv)
         if _cap is not None and _cap > 0:
             if _deployed >= _cap:
-                log.info(f'[cw-deploy] 板满 cap:deployed={_deployed}(双源仲裁) '
-                         f'≥ cap={_cap}(level,5.1.8)'
-                         f' front空={len(front_empty)} back空={len(back_empty)} → bench 角色留 bench(不白拖)')
-                return 0, True
+                # 计划-现读失配执行断言(T-164 批A/D2 三分之一):发射位谓词
+                # (_deployable 含 cap 围栏,kernel 单源)正常时板满帧不会派
+                # RunDeploy——命中即发射面读与执行面读失配(谓词 bug 或派发
+                # 窗口期板面变化),如实 fail 交回重判;禁旧 (0, True) 伪装
+                # plan_empty 合法稳态把失配吞成 NOOP。批内动态停(拖拽循环内
+                # _cap_stopped 截断)是另一类:执行细节机械安全边界,保留
+                # 不动(C4 裁决的区分判据:截断剩余 ≠ 跳过整批)。
+                log.warning(f'[cw!][deploy] 板满失配:deployed={_deployed}(双源仲裁) '
+                            f'≥ cap={_cap} 而 RunDeploy 已派发 → 执行断言 fail'
+                            f'(front空={len(front_empty)} back空={len(back_empty)})')
+                return 0, False, CwOpDeploy.STATUS_BOARD_FULL_MISMATCH
         if not front_empty and not back_empty:
-            # 幻影满板矛盾帧(P1 闭死):CV 采样占满全部槽但仲裁值未达 cap
-            #(或 cap 失读)= 采样结构性失真。无空槽可拖,拖拽循环必然空转
-            # → 合法稳态 no-op 交回外环(分歧留证已由上方仲裁分支落账,
-            # DD-030 兜底持续零推进)。
-            log.info(f'[cw-deploy] deterministic: CV 采样无空槽但仲裁值 '
-                     f'deployed={_deployed}(cv={_deployed_cv})未达板满 → '
-                     f'疑幻影满板,留证后留 bench(不空转拖拽)')
-            return 0, True
+            # 幻影满板矛盾帧执行断言(T-164 批A/D2 三分之二;P1 闭死升级):
+            # CV 采样占满全部槽但仲裁值未达 cap(或 cap 失读)= 采样结构性
+            # 失真——「派发认为可部署」与「现读无空槽」矛盾,如实 fail 暴露
+            #(分歧留证已由上方仲裁分支落账),禁旧 (0, True) 伪装合法稳态。
+            log.warning(f'[cw!][deploy] 幻影满板矛盾帧:CV 采样无空槽但仲裁值 '
+                        f'deployed={_deployed}(cv={_deployed_cv})未达板满 → '
+                        f'执行断言 fail(矛盾帧交回重观察)')
+            return 0, False, CwOpDeploy.STATUS_PHANTOM_FULL_BOARD
         # r70 过渡框架并进 deploy target 集(双轨期):框架牌 = 当前阶段的「临时 target」,
         # 否则保血资产(三月七/藿藿/饮月)被判 off-target 散牌留 bench → 白板挨打
         # (r70 审计「买了→不上场→被卖」三侧断裂的 deploy 侧)。定型后 framework 已清空,
@@ -1067,21 +1014,6 @@ class CwOpDeploy(SrOperation):
             recipe_floor_lock_exempt=_rf_lock_conflict)
         order = [bench_occ[_k] for _k in _up_rel]
         _held = [bench_occ[_k] for _k in _held_rel]
-        # 同签名 placed=0 熔断跳槽(批 ③):上一执行同签名计划 0 落地,
-        # 本轮同签名再现 = 结构性拒绝(游戏拒拖物件)→ 本轮直接标记 held
-        # 跳过拖拽,计划变空 → 走合法 NOOP 出口(0, True),省下外循环
-        # round_fail×4 的白耗(局34 形态 ~2.5min)。无 session(测试/离线)
-        # → should_trip 恒 False,行为等价旧路径。
-        _zp_sig = zero_place_sig(bench_occ, order, _bench_cid)
-        if order and zero_place_breaker_should_trip(_sess, _zp_sig):
-            _held_slots = [bi + 1 for bi in order]
-            log.warning('[cw!][deploy] placed=0 熔断触发:同签名计划连续%d 次'
-                        ' 0 落地 → 跳槽(标记 held)sig=%r 槽=%s(兜底非根因,'
-                        '转人工建档,禁调阈值)', ZERO_PLACE_BREAKER_THRESHOLD,
-                        _zp_sig, _held_slots)
-            note_zero_place_breaker(self.ctx, _zp_sig, _held_slots)
-            zero_place_breaker_record(_sess, _zp_sig, 0, True)
-            return 0, True
         if _held:
             log.info(f'[cw-deploy] 留 bench(kernel 围栏/底线/去重/cap,dd-037):'
                      f'slots={[bench_occ[_k] + 1 for _k in _held_rel]}')
@@ -1371,10 +1303,11 @@ class CwOpDeploy(SrOperation):
         # 上板的名(含被保垫件经保护活到部署帧后的上板转化)从保留集销账,
         # 防后续帧误保。属性契约级接线(与 held 显影同形态,无策略 import)。
         prune_fuel_filler_deployed(_sess, _deployed_cids)
-        # 熔断计数回写(批 ③):成功/合法空计划重置;同签名 0 落地累计,
-        # 攒够阈值后下一轮 should_trip 生效。
-        zero_place_breaker_record(_sess, _zp_sig, placed, bool(order))
-        return placed, not order
+        # 失败记忆单一源(T-164 批A/D3):同签名 0 落地的失败记忆归分发层
+        # (cw_loop PREP_NO_PROGRESS_ROUNDS + prep_no_progress_tick 同签名
+        # 计数 + 停机留证),op 侧不再自持第二份熔断计数;placed=0 且计划
+        # 非空 → 节点 STATUS_LANDED_NONE round_fail 如实上报。
+        return placed, not order, None
 
     def _wait_slot_occupied(self, pt: Point, timeout_s: float = 2.0) -> bool:
         """落点验证原语(P4R 返工):目标槽 ~timeout_s 内出现占用 = 上阵落地。
