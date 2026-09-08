@@ -142,8 +142,7 @@ class CwScreenPartner(SrOperation):
             record_event_choice('partner',
                                 [{'char_id': o.char_id} for o in options],
                                 idx, reason)
-            # r358d(遥测接线):伙伴选择落 session → read_game_state
-            # 回写 state.partner_char(复盘维度;选中确认后写)。
+            # r358d(遥测接线):伙伴选择落 session(复盘维度;选中确认后写)。
             if match is not None and options and 0 <= idx < len(options):
                 match.session.chosen_partner = options[idx].char_id or ''
             if cands and 0 <= idx < len(cands):

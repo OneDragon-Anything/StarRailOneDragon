@@ -2329,12 +2329,6 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             state.plane_bosses = list(_sess.briefing_bosses)
         if getattr(_sess, 'briefing_affixes', None):
             state.enemy_affixes = list(_sess.briefing_affixes)
-        _mg = getattr(_sess, 'chosen_megastar', None)
-        if _mg:
-            state.megastar_char = _mg
-        _pt = getattr(_sess, 'chosen_partner', None)
-        if _pt:
-            state.partner_char = _pt
     # ADR-0392:deployed 是槽位表(定长 10 含 None)——对账/截断/补齐一律
     # 走占用序(紧缩视图),再转回槽位表;len() 恒 10 不可作计数。
     from sr_od.application.currency_war.kernel.cw_state import (

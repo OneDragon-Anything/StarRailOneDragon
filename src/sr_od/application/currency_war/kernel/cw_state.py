@@ -236,7 +236,7 @@ class GameState:
     # 不可能再漂移);容量判据 = 占用数(``bench_occupied``),**禁止
     # len(bench)**;迭代一律 ``iter_occupied``(裸 for 会撞 None)。
     bench: list[BenchChar | None] = field(default_factory=list)
-    # 3 位面 boss 名(current_boss 派生;strategy/06;session.briefing_bosses 同步)。
+    # 3 位面 boss 名(strategy/06;session.briefing_bosses 同步)。
     # 元素 None = 该位面徽章态无身份(ADR-0398,boss_fit 跳过 None 项)
     plane_bosses: list[str | None] = field(default_factory=list)
     # 开局环境 + 敌人词缀(select_comp / mechanics_fit 用;decide_event 选完写 active_env,实机 OCR 写 enemy_affixes)
@@ -252,14 +252,9 @@ class GameState:
     # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
     refresh_probs: dict[int, float] | None = None
     # 节点序列由 cw_node_reader.NodeSlot 承载(read_node_sequence 直连消费方)。
-    match_type: str | None = None            # 标准博弈/超频博弈(模式选择屏;None=未读到)
-    plane_modifiers: list[str] = field(default_factory=list)  # 当前位面特殊修正(如「战个痛快」;§13.9 待核各 plane)
-    shop_locked: bool = False                # 商店是否锁定
     dual_track_phase: bool = False           # ADR-0209 双轨期(P1 未定型;方向层接管起值源(ADR-0465) = cw_intention 权威派生经装配边界回填,读端 committed_from)
     focus_factions: set[str] | None = None   # ADR-0209 flex 收敛白名单(方向刷新写入,ADR-0583;evaluate 消费)
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
-    megastar_char: str | None = None         # 巨星绑定角色(巨星节点)
-    partner_char: str | None = None          # 选择的伙伴(选择伙伴节点)
     # 动作v2 账本(契约包 C1,步2):显式动作(SellDeployed/SwapDeploy/
     # CompTransaction)的执行结果逐条记录(applied/rejected + reason)
     # ——事务拒绝必须可见(checks 消费;冻结 invariant「拒绝记录进账本」)。
@@ -312,16 +307,6 @@ class GameState:
         if self.bench_full_flag is not None:
             return self.bench_full_flag
         return bench_occupied(self.bench) >= BENCH_CAPACITY
-
-    @property
-    def current_boss(self) -> str | None:
-        """当前位面 boss(派生 = plane_bosses[plane-1];strategy/06)。无 boss 数据/越界 → None。"""
-        if not self.plane_bosses:
-            return None
-        idx = self.plane - 1
-        if 0 <= idx < len(self.plane_bosses):
-            return self.plane_bosses[idx]
-        return None
 
 
 def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,

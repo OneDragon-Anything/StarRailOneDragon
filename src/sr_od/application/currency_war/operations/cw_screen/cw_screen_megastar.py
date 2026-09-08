@@ -114,8 +114,7 @@ class CwScreenMegastar(SrOperation):
             self.ctx.controller.click(candidate)
             if _match is not None:
                 _match.exec_state.megastar_candidate_clicked = True   # 局容器级:跨 re-dispatch 持久(session.md §2.4 B1 定案落点)
-                # r358d(遥测接线):巨星选择落 session → read_game_state
-                # 回写 state.megastar_char(复盘「绑定与 comp 匹配」维度)。
+                # r358d(遥测接线):巨星选择落 session(复盘「绑定与 comp 匹配」维度)。
                 if options and 0 <= idx < len(options):
                     _match.session.chosen_megastar = options[idx].char_id or ''
             time.sleep(0.6)
