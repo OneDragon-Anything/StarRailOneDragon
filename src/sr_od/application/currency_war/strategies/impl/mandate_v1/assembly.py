@@ -129,7 +129,8 @@ def _disclose_budget(state: Any, session: StrategySession,
     装配纪律(派生值不落 session)的立法目的 = 根治**决策输入**读跨帧
     旧共享态的污染类缺陷;本写点四字段 + 键戳是**遥测披露面**,不入
     决策输入——决策判据一律消费 TurnState 幂等投影,禁读这些字段
-    (守卫锁 = test_cw_t88_reserve_disclosure 禁消费 grep 锁)。写端
+    (守卫锁 = test_cw_budget_disclosure.py::test_disclosure_fields_not_consumed_by_decision_modules
+    禁消费 grep 锁)。写端
     只有本函数与商店执行回执位(cw_op_buy_cards.accrue_release_spent,
     只累计 spent);读端只有 recorder.py 透传与 sim engine_p1 轮快照
     (遥测读链)。BudgetView 本身仍不落不回读,纪律本意零破坏。
