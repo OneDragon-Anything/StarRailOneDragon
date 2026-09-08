@@ -2303,7 +2303,8 @@ def select_megastar(state: GameState, target: Comp | None,
     2. COMP_MEGASTAR_PREFERENCE[target.name](comp 级偏好序);
     3. 机械属性兜底(MEGASTAR_BY_ATTRIBUTE);
     4. 首个可选(naive)。
-    无 target / 无可选 → None(调用方处理)。
+    4. 首个可选(naive)。
+    候选空 → None;无 target 且候选非空 → 返回首个可选(naive 兜底)。
     """
     if not available_megastars:
         return None
