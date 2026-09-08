@@ -19,7 +19,7 @@ active_strategies/enemy_difficulty/level_up_cost/inventory 等;icon/身份类阻
 v1 OCR 可读性(2026-08-03,实机多样本 + 诊断脚本确认):
 - **level**:``read_level`` OCR 优先 + ``_expected_level`` 兜底;telemetry level 跨样本合理(✓)。
 - **hp**:⚠️ **plan-time 读不到(保血原本未武装),根因已确认 = shop 开启时右上角 HP 区空,非读取器坏**。
-  ``BuyShopCards`` 在 shop 关闭帧读 hp → 覆盖 state.hp(见 shop.buy;回归 test_read_hp_shop_state)。
+  ``BuyShopCards`` 在 shop 关闭帧读 hp → 覆盖 state.hp(见 shop.buy)。
 - **board**:count 解析曾脆(全屏 OCR 把 "2/3" 误读 "213");改用 ``_board_pairs`` 聚焦解析 X/Y,
   count=X + next_tier=Y(``read_board_next_tier``),根因(全屏密度)解决。
 """
@@ -256,17 +256,6 @@ def read_hp_opt(ctx: SrContext, screen: MatLike) -> int | None:
         if v is None or not (HP_MIN <= v <= HP_MAX):
             return None
     return v
-
-
-def read_hp(ctx: SrContext, screen: MatLike) -> int:
-    """小队剩余血量(备战屏右上角 ``文本-剩余血量``)。读不到/越界 → 100(健康先验)。
-
-    **plan-time 读不到,根因已多样本确认(2026-08-03):HP 只在 shop 关闭态显示右上角;shop 开启态该区空。**
-    5 张 shop-关闭态全读到真 HP(80/80/80/29/84)、shop-开启态该区空 → 默认 100。本函数正确 ——
-    ``BuyShopCards`` 在 shop 关闭帧读 hp 覆盖 state.hp(见 shop.buy)。回归:``test_read_hp_shop_state``。
-    """
-    v = read_hp_opt(ctx, screen)
-    return 100 if v is None else v
 
 
 def _ocr_upscaled(ctx: SrContext, screen: MatLike, rect: Rect | None,
