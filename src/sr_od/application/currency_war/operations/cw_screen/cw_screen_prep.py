@@ -1612,7 +1612,7 @@ class CwScreenPrep(SrOperation):
                 if progressed and isinstance(action, LevelUp):
                     self._xp_apply_levelup()
             acct['progressed'] = progressed
-            # F3/T-174(ADR-0609):StartBattle 发射结果写执行态(环级;
+            # F3/T-174(ADR-0610):StartBattle 发射结果写执行态(环级;
             # 消费端 = cw_loop 备战环出口的 0j 恢复链预算复位判定,读后
             # 即清)。StartBattle 验证失败的环在外循环仍记 round_success
             #(「已试恢复交回」),无本写入则复位判据无法区分真成功。
