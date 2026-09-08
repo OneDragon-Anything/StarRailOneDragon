@@ -19,14 +19,14 @@
 
 - **禁清空前排守卫**(r241):front→back 纠正是唯一能减前排占用的移动;将把前排拖空(计数将到 0)即跳过,分键 `rowfix_skip_front_invariant` 零静默。**守卫计数 = 调用内动态维护**(方案审 F-1 必改钉死):初值 = `_scr_fix` 单帧采样的前排占用数,front→back 拖拽完成 −1、back→front 完成 +1;**禁循环内对静态帧重复采样判定**——「前排 2 个 pref=back」形态(真实可达:前排保证强转 1 个 + 后排满 fallback 落 1 个,或 comp 覆盖改变 pref)下静态读法两次移动各自看到计数 2 双双放行 → 前排清空 → 复发同型 bug 且逃过单前角色帧的锁(配套双前角色形态锁 L1b)。变异打红:MUT-STATIC(静态重采样)→ L1b 红、L1 绿——L1 对静态/动态计数不具判别力(单前角色帧两读法同为 1,与方案 §6.1/测试 docstring 一致;落地审 F-B 勘误:初版验收记录「L1b/L1 红」中 L1 半边失真,落地审已按正确静态语义复演定谳);MUT-REMOVE(守卫移除)→ L1 红。
 - **r250 场内前排保证后置**:由函数开头移到 r241 循环之后——循环纠正完所有错排后再补,前排仍空 ∧ 后排有人 → 拖一个后排(真 pref=front 优先,否则第一个,系统单位剔除照旧)到前排 1。路径无关式:无论空前排来自哪个路径(纠正产生/拖拽失败遗留/卖出臂清前排/外部状态),函数出口都满足不变量。后置补位的候选/占用读数 = 函数头 deployed 读数,依据结构不变量「补位触发 ⟺ r241 未产生任何涉及前排的完成移动」(动态计数为 0 ⟹ 初值前排空 ∧ 无 back→front 完成),该分支下读数与终态一致(方案审 F-3);若未来在补位前新增涉及前排的拖拽,须改为补位前单帧重读。
-- **出口断言**(方案审 F-2 必改钉死):`execute()` 收尾(2.0s 整队等待后)CV 现读「上阵 ≥1 ⇒ 前排 ≥1」,覆盖全部成功出口——`STATUS_DEPLOYED` 与 `STATUS_NOOP`(NOOP = bench 空板上有人的合法稳态,同样不允许「板有人而前排空」地成功返回);不过 = `round_fail(STATUS_FRONT_INVARIANT_FAIL)`,不静默 success。读法与 0j `_front_ok` 同源(currency_war_cv.slot_occupied)。已知残留:DD-030 幻影占用族可使「真板空」帧误判有人 → 假 round_fail,有界(环重试 → 守卫兜底),登记见 §4。
+- **出口断言**(方案审 F-2 必改钉死;改动三审 C1/D1 收口修订为三出口全覆盖实况):CV 现读「上阵 ≥1 ⇒ 前排 ≥1」辖**全部**成功出口——①`STATUS_DEPLOYED` 与 ②`STATUS_NOOP`(NOOP = bench 空板上有人的合法稳态,同样不允许「板有人而前排空」地成功返回)在 `execute()` 收尾(2.0s 整队等待后)断言;③`STATUS_NO_BENCH`(bench 槽未建模早退)在早退点以同一谓词复验(front 已在识别完成点算出,零重复计算)——初版早退绕过断言以合法稳态蒙混 success,「bench 槽未建模 × 板上全后排 ∧ 前排空」形态下发射链即出战遭游戏拒「前台区域无角色」(与 1-1 冻结同型,从另一未覆盖出口复发);④`STATUS_ROWFIX_RECOVERED` 经 §2.2 豁免路径的出口复验同判。不过 = `round_fail(STATUS_FRONT_INVARIANT_FAIL)`,不静默 success。前排槽未建模 = 识别退化态,断言不辖(谓词内放行,交下游防线)。读法与 0j `_front_ok` 同源(currency_war_cv.slot_occupied)。已知残留:DD-030 幻影占用族可使「真板空」帧误判有人 → 假 round_fail,有界(环重试 → 守卫兜底),登记见 §4。
 
 ### 2.2 F2 板满失配闸窄豁免(ADR-0601 修订联动)
 
 闸命中值为 `STATUS_BOARD_FULL_MISMATCH` ∧ 前排 4 槽全空 ∧ 后排至少 1 个非系统单位(门值为闸分支判定值;两个帧条件 fresh 帧现读,落地审观察 E 措辞勘误)→ 执行 `_fix_misplaced_rows` 场内换排修复 → sleep 2.0s 后按 F1 出口判据复验前排 ≥1 → 过 = `round_success(STATUS_ROWFIX_RECOVERED)`(新具名状态,dd-037 可区分),不过 = 维持 `round_fail`。分键 `board_full_front_empty_rowfix` 零静默。
 
 - **豁免的合法性依据**(方案审 F-4,升级为 ADR-0601 §5 辖域改写):「板满」经双源仲裁取低值(paddle = 游戏计数器权威)已是可信真值,失配实质 = 发射位谓词违约(0j 无条件派发),不是帧不可信——「满板前排空」是合法的场内换排工作形态,不是幻影帧。旧 §5「执行位现读不可信」论断对板满失配**过宽**,已随本批改写辖域(见 ADR-0601 §5 修订注)。
-- **窄度红线**:满板 ∧ 前排有人 → 仍原语义 fail;**幻影满板门值永不豁免**(CV 全占 ⇒ 前排非空,豁免条件恒假,但门值分叉是实现自由度,必须锁死——负锁 L4b,变异打红:豁免门值放开到 PHANTOM → L4b 红);身份读不可得(templates None)不豁免,诚实 round_fail。穷举性核:幻影满板自排除;换阵卖出臂到达闸时已先卖(板 = cap−1 闸不响),卖失败帧前排非空走负形态;bench 空 early-return 不过闸(归 F1 出口断言辖);后排纯系统单位被排除 → 诚实 round_fail(拖拽修复本不可能,守卫停机留证是正确出口)。豁免恰好覆盖「恢复需要 ∧ 拖拽可行」形态,无漏无滥。
+- **窄度红线**:满板 ∧ 前排有人 → 仍原语义 fail;**幻影满板门值永不豁免**(CV 全占 ⇒ 前排非空,豁免条件恒假,但门值分叉是实现自由度,必须锁死——负锁 L4b,变异打红:豁免门值放开到 PHANTOM → L4b 红);身份读不可得(templates None)不豁免,诚实 round_fail。穷举性核:幻影满板自排除;换阵卖出臂到达闸时已先卖(板 = cap−1 闸不响),卖失败帧前排非空走负形态;bench 空 early-return 不过闸(早退点经 §2.1 出口断言谓词复验,前排空而板有人 = `STATUS_FRONT_INVARIANT_FAIL` 具名 fail);后排纯系统单位被排除 → 诚实 round_fail(拖拽修复本不可能,守卫停机留证是正确出口)。豁免恰好覆盖「恢复需要 ∧ 拖拽可行」形态,无漏无滥。
 - 豁免成功路径的 tracking reconcile 由 `_fix_misplaced_rows` 内部既有 `if moved` 分支隐式覆盖(豁免成功必 moved ≥ 1),不新增第二处对账。
 
 ### 2.3 F3 0j 重试预算复位条件收紧(cw_loop.py + cw_screen_prep.py + cw_exec_state.py)
@@ -50,7 +50,7 @@
 
 ## 5. 验收与锁面
 
-- **锁**:L1(守卫反证锁:单前角色帧旧实现必拖空)/L1b(双前角色形态锁,静态计数实现必红)/L1c(back-full 跳过不计守卫分键负锁,落地审 F-C)/L2(r250 后置补位)/L2b(NOOP 出口不变量锁)/L3(收敛二段,防「被跳角色永不被挪回」)/L4(豁免正锁+分键)/L4b(PHANTOM 门值负锁)/L5(豁免窄度负锁)/L6(0j 复位收紧)——`sr-od-test/test/sr_od/app/currency_war/test_cw_t174_front_invariant.py` 10 锁全绿;变异打红 5 发亲测:MUT-STATIC→L1b 红(L1 绿,对静态/动态计数不具判别力,落地审 F-B 勘误)、MUT-REMOVE→L1 红、出口断言禁用→L2b 红、复位条件回退→L6 红、PHANTOM 豁免放开→L4b 红;守卫/back_empty 序位小修(L1c 修复)随批落地并复验全绿。
+- **锁**:L1(守卫反证锁:单前角色帧旧实现必拖空)/L1b(双前角色形态锁,静态计数实现必红)/L1c(back-full 跳过不计守卫分键负锁,落地审 F-C)/L2(r250 后置补位)/L2b(NOOP 出口不变量锁)/L2c(NO_BENCH 第三出口不变量锁,改动三审 C1 收口:备战栏槽未建模 ∧ 板上全后排 ∧ 前排空 → `STATUS_FRONT_INVARIANT_FAIL` 而非蒙混 success)/L3(收敛二段,防「被跳角色永不被挪回」)/L4(豁免正锁+分键)/L4b(PHANTOM 门值负锁)/L5(豁免窄度负锁)/L6(0j 复位收紧)——`sr-od-test/test/sr_od/app/currency_war/test_cw_t174_front_invariant.py` 11 锁全绿;变异打红 6 发亲测:MUT-STATIC→L1b 红(L1 绿,对静态/动态计数不具判别力,落地审 F-B 勘误)、MUT-REMOVE→L1 红、出口断言禁用→L2b 红、NO_BENCH 早退复验移除→L2c 红(三审收口批补测)、复位条件回退→L6 红、PHANTOM 豁免放开→L4b 红;守卫/back_empty 序位小修(L1c 修复)随批落地并复验全绿。
 - **回归面(L7)**:既有 T-159 29 锁 + T-164 合规锁 + 闸锁 `test_cap_gate_full_board_mismatch_fails_not_noop` + dispatch/journal/battle 面全绿不动(零决策层改动、闸三元组契约不动);id_mark 准确性测试零漂移。
 - **sim 可观测性声明**(strategy-work §4 申报义务):本批全部落在 operations 层(部署 op + 0j 恢复链 + ExecState 字段),sim 结构性不可见——不可 A/B,只可实机验证。零决策层改动 ⇒ sim 层在册验收线零影响;实机验收线 = 连续 ≥2 局完成 P1 全轮次推进(1-1/1-2 双 reward 节点连续穿越为天然复验点),零误触发判据 = run_record/op_journal 无「前台无角色恢复」行 + mcp 日志无 0j 分支行 + cw4_counters 无 `exhaustion_*` 增长(frontless 分键族不存在,判据改指 journal 行,方案审 A-1)+ 无 prep_no_progress.flag。
 - **实机预期守卫形态**(方案审 G-1 更正):修后若同类冻结复发,恒指纹窗动作批并集 = `{StartBattle}`(本局实证即如此),判读按此口径,勿按「并集应变 {RunDeploy}」旧预测找信号。

@@ -364,8 +364,9 @@ class CwOpDeploy(SrOperation):
     STATUS_LANDED_NONE: ClassVar[str] = \
         '部署未落地(计划非空但 placed=0,失败帧已存证)'
     # T-174 新增(ADR-0610,dd-037 契约:出口状态可区分,判读侧分键):
-    # 出口不变量断言失败具名状态(DEPLOYED/NOOP 成功出口收尾复验「上阵
-    # ≥1 ⇒ 前排≥1」不过时的 fail 形态)+ 板满失配窄豁免成功具名状态
+    # 出口不变量断言失败具名状态(成功出口 DEPLOYED/NOOP 收尾复验 +
+    # NO_BENCH 早退点复验「上阵 ≥1 ⇒ 前排≥1」,不过时的 fail 形态;
+    # 三出口辖域见 ADR-0610 §2.1)+ 板满失配窄豁免成功具名状态
     # (与 STATUS_DEPLOYED/STATUS_NOOP/各 fail 形态判读侧可分)。
     STATUS_FRONT_INVARIANT_FAIL: ClassVar[str] = \
         '前排空修复失败(出口不变量:上阵≥1⇒前排≥1)'
@@ -474,6 +475,18 @@ class CwOpDeploy(SrOperation):
         # 幻影空位(393/1529 段恒无人)假「板未满」→ 白拖重试把部署卡死在 bench。
         back = self._back_row_centers()
         if len(bench) == 0:
+            # F1.5 出口不变量第三出口复验(T-174 收口,ADR-0610 §2.1):
+            # 「success ⇒ 前排≥1」承诺辖 NO_BENCH 早退——bench 槽未建模
+            # (识别退化)而板上有角色、前排空时,旧代码在此以合法稳态
+            # 蒙混 success,发射链拿到 success 即出战 → 游戏拒「前台区域
+            # 无角色」(与 1-1 冻结同型,从另一未覆盖出口复发)。front 在
+            # 上方识别完成点已算出,零重复计算;不过 = 同既有出口断言形态
+            # 具名 fail。前排槽也未建模时谓词内放行(识别退化态断言不辖,
+            # 见 _front_ok_now)。
+            if not self._front_ok_now(front, back):
+                log.warning('[cw!] [deploy] NO_BENCH 出口不变量断言失败:'
+                            '板上有角色而前排空 → round_fail 交回')
+                return self.round_fail(CwOpDeploy.STATUS_FRONT_INVARIANT_FAIL)
             log.info('[cw-deploy] 备战栏无槽坐标,跳过')
             return self.round_success(CwOpDeploy.STATUS_NO_BENCH)
 
