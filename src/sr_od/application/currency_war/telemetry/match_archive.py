@@ -124,7 +124,16 @@ log = log_utils.log
 #: SellDeployed 槽位解析命中)/ merge_promoted(同名更高星在场=买牌合成链)/
 #: unexplained(= 换血卖出信号通道;感知纠噪也可能落入,判读并读 obs_conflicts)。
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
-SCHEMA_VERSION: int = 10
+#: v11(零结算段自标识批,ADR-0615):+段条目 ``settlement_gap``(装配端纯读
+#: 派生;见 ``_settlement_gap``),并修 assign_games 决策独有段时序插位(见其
+#: docstring)。锚点病灶:段摘要 rounds_survived 取自收口时点 state.round_num
+#: (备战停滞段可带非零冻结值),「rounds_survived=N 且本段零 outcome 行」
+#: 曾被判读成「结算遥测断流」(实证:g_20260908_165445 续段 run_20260908_
+#: 210431,79 决策帧全冻结 p2-r6、零 StartBattle 发射、rounds_survived=6;
+#: g_20260909_012536,4 次出战尝试未成战后无进展守卫停机,rounds_survived=1
+#: ——两段本就零结算,非遥测丢失)。本字段在场 = 本段零结算,判读直接可见。
+#: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
+SCHEMA_VERSION: int = 11
 
 #: 档案目录名(telemetry/matches;生产布局见 matches_dir)
 MATCHES_DIRNAME: str = 'matches'
@@ -175,6 +184,34 @@ def _row_ts(r: dict[str, Any]) -> str:
     return str(r.get('ts') or '')
 
 
+def _settlement_gap(dec_rows: list[dict[str, Any]],
+                    outcome_rows: list[dict[str, Any]],
+                    run_id: str,
+                    summary: dict[str, Any] | None) -> dict[str, Any]:
+    """零结算段自标识(v11 加法,装配端纯读;非零结算段返回空 dict = 键缺省)。
+
+    - 触发条件 = 本段决策帧 ≥1 且结算行(outcomes)= 0:本段全程没有
+      任何一场战斗走到结算屏(备战停滞 / 出战失败后被守卫或人工停机)。
+    - 为什么要在装配端显影:段摘要的 rounds_survived 写自收口时点的
+      state.round_num(备战环里的 state 可能多环冻结),零结算段可以带
+      非零 claimed 值——「claimed=N 而 outcome 行 0」形态曾被判读成
+      「结算遥测断流」(实证局见 SCHEMA_VERSION v11 注)。本字段在场
+      即「零结算是事实而非丢数据」,claimed 值随行给出仅供对照。
+    - 边界:仅决策帧为 0 的空段(如被代码闸拦下、一行未写)不标注
+      (无判读价值);有任一 outcome 行(含 synthetic_supply/recovered/
+      loss_page 来源)即视为「有结算记录」,不标注。
+    """
+    has_decisions = any(r.get('run_id') == run_id for r in dec_rows)
+    if not has_decisions:
+        return {}
+    if any(r.get('run_id') == run_id for r in outcome_rows):
+        return {}
+    n_dec = sum(1 for r in dec_rows if r.get('run_id') == run_id)
+    return {'settlement_gap': {'decision_frames': n_dec,
+                               'claimed_rounds_survived':
+                                   (summary or {}).get('rounds_survived')}}
+
+
 def _first_frame_key(rows: list[dict[str, Any]], run_id: str) -> tuple[int, int] | None:
     """段首帧的 (plane, round_num)(decisions 优先,outcomes 兜底)。
 
@@ -198,7 +235,8 @@ def _first_frame_key(rows: list[dict[str, Any]], run_id: str) -> tuple[int, int]
 
 
 def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
-    """按局分组全量段(outcomes 出现序)→ 有序列表。
+    """按局分组全量段(outcomes 首现序为骨架,决策独有段按段首 ts 插回时序位)
+    → 有序列表。
 
     返回元素:``{game_id, segments: [run_id...], start_ts, end_ts}``。
     分组规则:段首帧 = (p1,r1) → 新局(继承规则的主判据);否则续局并入
@@ -206,22 +244,48 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
     本段首段——档案内 ``continuity_note`` 留痕(装配时补)。
     plane/round/hp 连续性只作复核素材,不作分组判据(首帧判据已覆盖
     实证形态;连续性兜底留给未来出现「续局段恰好从 (p1,r1) 误读起」时)。
+
+    时序插位(v11 修,ADR-0615):旧法把决策独有段(零结算段)排序后整体
+    **补尾**,续局归组「并入 games[-1]」无时序门 → 该段被错组到时间上晚于
+    它的最后一局名下(实证:run_20260908_210431 曾被组到比其段末帧晚 8.5
+    小时的 g_20260909_053235 名下,锚点档案 g_20260908_165445 静默丢段)。
+    按段首 ts(跨 decisions/outcomes 两流最小值)插回时序位后,后继带
+    outcome 新局入流不再夺走前局的续段。边界:段首 ts 缺失(空串)的段
+    无法比较,保持补尾退化(旧行为);同 ts 平手按 run_id 字典序保确定性。
     """
     outcomes = read_jsonl(Path(replay_dir) / 'outcomes.jsonl')
     decisions = read_jsonl(Path(replay_dir) / 'decisions.jsonl')
     runs = read_jsonl(Path(replay_dir) / 'runs.jsonl')
-    # 段出现序:outcomes 首现序;无 outcome 的段(decisions 有帧)按 ts 补尾
+    # 段出现序骨架:outcomes 首现序
     seg_order: list[str] = []
     for o in outcomes:
         rid = o.get('run_id')
         if rid and (not seg_order or seg_order[-1] != rid) and rid not in seg_order:
             seg_order.append(rid)
+    # 段首 ts 单遍账(run_id → 最小行 ts;跨 decisions/outcomes,排序与插位共用)
+    _first_ts: dict[str, str] = {}
+    for r in (*decisions, *outcomes):
+        _rid = r.get('run_id')
+        _ts = _row_ts(r)
+        if not _rid or not _ts:
+            continue
+        _cur = _first_ts.get(_rid)
+        if _cur is None or _ts < _cur:
+            _first_ts[_rid] = _ts
     known = set(seg_order)
-    extra = sorted({d.get('run_id') for d in decisions
-                    if d.get('run_id') and d.get('run_id') not in known},
-                   key=lambda r: min((_row_ts(d) for d in decisions
-                                      if d.get('run_id') == r), default=''))
-    seg_order.extend(r for r in extra if r)
+    extra = sorted((r for r in {d.get('run_id') for d in decisions}
+                    if r and r not in known),
+                   key=lambda r: (_first_ts.get(r, ''), r))
+    for rid in extra:
+        _rid_ts = _first_ts.get(rid, '')
+        _pos = len(seg_order)
+        if _rid_ts:
+            for _i, _cur in enumerate(seg_order):
+                _cur_ts = _first_ts.get(_cur, '')
+                if _cur_ts and _rid_ts < _cur_ts:
+                    _pos = _i
+                    break
+        seg_order.insert(_pos, rid)
     games: list[dict[str, Any]] = []
     for rid in seg_order:
         fk = _first_frame_key(decisions, rid) or _first_frame_key(outcomes, rid)
@@ -1158,7 +1222,11 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         {'run_id': rid,
          'first_frame': _first_frame_key(slice_rows['decisions.jsonl'], rid)
          or _first_frame_key(slice_rows['outcomes.jsonl'], rid),
-         'summary': runs_by_seg.get(rid)}
+         'summary': runs_by_seg.get(rid),
+         # 零结算段自标识(v11 加法,见 _settlement_gap;非零结算段键缺省)
+         **_settlement_gap(slice_rows['decisions.jsonl'],
+                           slice_rows['outcomes.jsonl'], rid,
+                           runs_by_seg.get(rid))}
         for rid in segments]
     # 孤立续局(本段是续局但上一局不在库)留痕:首段首帧非 (p1,r1)
     first_fk = seg_summaries[0]['first_frame'] if seg_summaries else None
