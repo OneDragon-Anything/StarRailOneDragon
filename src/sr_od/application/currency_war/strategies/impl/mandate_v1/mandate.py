@@ -496,7 +496,8 @@ def route_tag_of(action: PrepAction) -> str:
 
 
 def shop_wanted_defer(session: StrategySession, state: GameState | None,
-                      missing: list[str]) -> None:
+                      missing: list[str],
+                      in_shop_snapshot: tuple[tuple[str, int], ...]) -> None:
     """S2 置位(唯一写点;调用位 = shop.decide_shop_action 两席满残差
     计数点 m2_retry_exhausted / bench_full_buy_abandon 同点,T-159 迁移 A)。
 
@@ -507,12 +508,20 @@ def shop_wanted_defer(session: StrategySession, state: GameState | None,
     类(猎点 14:线名单缺员 = obligation;EV 席满拒因 = press 类属
     discretionary,按 §5.3 [13] 精确化注排除在重进之外,不置位)。
     遥测 shop_wanted_deferred 与残差计数点同粒度(事件帧)。
+
+    ``in_shop_snapshot`` = 「在店的缺员 (名, 费用)」子集(T-161 F2 前件
+    载体,ADR-0599):消费臂判定 ∃在店∧可负担 的存在性数据源。必须由
+    调用位(商店域,商店面板开着、state.shop 有效)经 _shop_candidates
+    同一闭包算好传入——臂在备战域,state.shop 已被 obs 清空(ADR-0462),
+    现读恒空(T-161 方案审 F2-1);费用为卡面费用(游戏定义量),金不在
+    快照内、臂时点现读。空快照合法(缺员全不在店),消费臂按 hold 处理。
     """
     st = state_of(session)
     st.cw4_shop_wanted_pending = (
         (getattr(state, 'plane', None), getattr(state, 'round_num', 1)),
         'obligation',   # LAUNCH_CAUSES 闭集成员(单一源 = sell_gate)
-        tuple(missing))
+        tuple(missing),
+        tuple(in_shop_snapshot))
     ct = getattr(st, 'cw4_counters', None)
     if isinstance(ct, dict):
         ct['shop_wanted_deferred'] = ct.get('shop_wanted_deferred', 0) + 1
@@ -546,18 +555,20 @@ def wanted_closure_emit(session: StrategySession, state: GameState | None,
     """S2 wanted 闭环消费臂(T-159 迁移 A;调用位 = entry.emit ①实体面后、
     ②证明 pass 前——wanted 是未完成义务,闭环优先级高于常规步骤序)。
 
-    门序(方案 §5.2):放弃态短路 → 门 0 残差有效性镜像(missing ∧
-    not stop_flag 现读复核,审 B1)→ 门 1 席已空闲先重进(零发射,S1
-    清键后调用方落回常规步骤序,由当帧 M2 重评发 OpenShop)→ 腿 1 部署
-    腾槽(无损优先,[22] 囤积判据一致)→ 腿 2 M4 卖角色 → 两腿皆不可行
-    = 裁决放弃态(用户 5.1「商店没得买了」)。返回发射列表:非空 =
-    本帧臂动作(调用方直通返回,单动作环);空 = 臂无发射,调用方照常
-    续走后续编排。落地后的 S1 清键由路径 (i) 执行侧落地门承接
-    (mark_s1_route_check),臂内只管发射与预算。
+    门序(方案 §5.2;门 0′ 为 T-161 F2 增设):放弃态短路 → 门 0 残差
+    有效性镜像(missing ∧ not stop_flag 现读复核,审 B1)→ 门 0′ 前件
+    复核(∃在店快照成员∧可负担,不满足 = hold 零发射且 S2 保留,ADR-0599)
+    → 门 1 席已空闲先重进(零发射,S1 清键后调用方落回常规步骤序,由
+    当帧 M2 重评发 OpenShop)→ 腿 1 部署腾槽(无损优先,[22] 囤积判据
+    一致)→ 腿 2 M4 卖角色 → 两腿皆不可行 = 裁决放弃态(用户 5.1
+    「商店没得买了」)。返回发射列表:非空 = 本帧臂动作(调用方直通
+    返回,单动作环);空 = 臂无发射,调用方照常续走后续编排。落地后的
+    S1 清键由路径 (i) 执行侧落地门承接(mark_s1_route_check),臂内只
+    管发射与预算。
     """
     st = state_of(session)
     s2 = getattr(st, 'cw4_shop_wanted_pending', None)
-    if not (isinstance(s2, tuple) and len(s2) == 3):
+    if not (isinstance(s2, tuple) and len(s2) == 4):
         return []
     phase = (getattr(state, 'plane', None), round_num)
     if s2[0] != phase:
@@ -590,6 +601,26 @@ def wanted_closure_emit(session: StrategySession, state: GameState | None,
     still_missing = [m for m in (s2[2] or ()) if m not in owned]
     if not still_missing or stop_flag:
         st.cw4_shop_wanted_pending = None
+        return []
+
+    # 门 0′(T-161 F2 前件,ADR-0599):残差激活前件 = ∃m∈still_missing:
+    # m 在店快照 ∧ 可负担。可负担复用 check_affordable ①号本体(单一源,
+    # 禁第二份 affordability 谓词;与闭环最终买入在店内段要过的同一道闸
+    # 同源——「激活时判得过的,重进后买入也判得过」,方案审 §1.3);
+    # 金臂时点现读(节点内金会变,快照金会错杀 late-flip),费用取置位
+    # 快照(卡面费用 = 游戏定义量,节点内不变)。不满足 = hold 返回
+    #(零发射),S2 保留至节点推进自动失效、不置放弃态、不记重进预算
+    #(预算只在发射点记账):可负担腿可随节点内金入账翻真,早清错杀;
+    # 「不在店」腿本节点确定性死(备战域无刷新通道,重开不换牌面)但
+    # 统一保留零成本(纯谓词评估),过期规则保持单一 = 键失配(§3.2)。
+    # 附:前件不满足即返回,腾席腿(腿 2 卖燃料)不再为「买不成的买入」
+    # 付出不可逆代价——本前件即 F2 缺陷(先腾席后知道买不成)的关闭面。
+    _gold_now = (getattr(state, 'gold', 0) or 0) if state is not None else 0
+    _in_shop = dict(s2[3] or ())
+    if not any(m in _in_shop
+               and check_affordable(_gold_now, _in_shop[m])[0]
+               for m in still_missing):
+        _count('wanted_precond_hold')
         return []
 
     # 门 1(席已空闲先重进,审 B1):部署/卖出在其他臂已腾过席的情形不
@@ -676,7 +707,7 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
         route = 'deploy_launch'                       # (i) 部署类
     else:
         s2 = getattr(st, 'cw4_shop_wanted_pending', None)
-        if (isinstance(s2, tuple) and len(s2) == 3 and s2[0] == phase
+        if (isinstance(s2, tuple) and len(s2) == 4 and s2[0] == phase
                 and pre_bench_count >= 0 and post_bench_count >= 0
                 and BENCH_CAPACITY - pre_bench_count <= 0
                 < BENCH_CAPACITY - post_bench_count):

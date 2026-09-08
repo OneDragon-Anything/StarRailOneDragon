@@ -251,9 +251,10 @@ STREAK_WEIGHT: float = 2.0            # 每档 streak 的经济分(占位,待实
 
 STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 ≤5 档)
 
-# C 杠杆 3 winning half(R2-4b;14 §连胜中「2 胜+」):连胜 ≥ 此 → 破息花钱提质量维持连胜(断连胜亏 > 利息亏)。
 # streak 带符号(连胜 + / 连败 −,结算源 session.last_streak 方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b)。
-WIN_STREAK_BREAK_INTEREST: int = 2    # 连胜 ≥2 破息(阈值历史源 auto-chess 常识,货币战争档金真值未核——见 plan 层 _refresh_cap 处破息-保息抉择注释)
+# 「连胜 ≥2 破息」旧阈值常量已删(P43 §⑤ 处死名单:与已证破息-保息判据
+# 冲突的未核经验值;决策语义现由息线判据默认承载,激活腿 Δp 通道被
+# ADR-0516 封锁——登记 = ADR-0599 §F3,math_proofs P43)。
 
 # 连胜-保息抉择(攻略专题「连胜与卖血抉择」三变量模型,663 帖精读实证):
 # 攻略明文两分支 —— 已连胜→破息保连(#205「如果连胜就多D几个,利息保3」息档降到 30;
@@ -629,7 +630,7 @@ def economy_score(state: GameState, economy_mode: str) -> float:
 
     economy_mode 只调利息项(rush_level 弱化守息、interest_first 强化守息),等级项不变。
     阶段保血(前期/低血 → 经济降权)由 evaluate 的 _phase_weights 统一处理。
-    streak 单边计分(ADR-0128 #1:货币战争无连败补偿,只计连胜;连败 0 分);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate);方向驱动「保连胜」半(连胜维持>吃息)已接 plan:``_should_save_for_interest`` 连胜≥``WIN_STREAK_BREAK_INTEREST`` 破息(C 杠杆 3,R2-4b)。
+    streak 单边计分(ADR-0128 #1:货币战争无连败补偿,只计连胜;连败 0 分);fold(连败保息)已由 HP-gating 实现(02 R2-4b,用户 2026-08-12 确认:血量安全→fold/不安全→急救,经 _phase_weights/_refresh_cap HP gate)。
     """
     # ADR-0131(投资策略效果进经济分):利息上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)+
     # 每节点固定给金(定期福利 2/节点 ≈ 白拿 0.2 档息)+ 连胜奖励倍率(伟大征服 ×3 → streak 更值)。

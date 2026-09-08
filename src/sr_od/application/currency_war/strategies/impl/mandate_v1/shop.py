@@ -904,7 +904,22 @@ def decide_shop_action(state: GameState, session: StrategySession,
         # m2_retry_exhausted 分支为其子事件——腾席候选空的强形态)。
         # 席满残差的结构性流失(猎点 10)自此有载体:回备战后由消费臂
         # 评估腾席/重进,买入机会不再丢失至下节点。
-        mandate.shop_wanted_defer(session, state, missing)
+        # T-161 F2 前件快照(方案审 F2-1/F2-6,ADR-0599):「在店的
+        # 缺员 (名, 费用)」子集必须由本调用位经同一 _shop_candidates
+        # 闭包计算(禁 mandate 侧复刻第二份候选读法)——消费臂时点商店
+        # 域字段已被 obs 清空(ADR-0462),臂时点现读恒空会把闭环闷死。
+        # 口径:M2 语义取同名最便宜卡(不滤星,区别于 stockpile 1★
+        # 过滤),cost 假值兜 3 与排序键一致,空名(识别失败占位)不进集。
+        _wanted_snap: list[tuple[str, int]] = []
+        for _m in missing:
+            if not _m:
+                continue
+            _cands = _shop_candidates(_m)
+            if _cands:
+                _wanted_snap.append(
+                    (_m, _cands[0].cost if _cands[0].cost else 3))
+        mandate.shop_wanted_defer(
+            session, state, missing, in_shop_snapshot=tuple(_wanted_snap))
     for m in missing:
         if bench_free <= 0:
             break
