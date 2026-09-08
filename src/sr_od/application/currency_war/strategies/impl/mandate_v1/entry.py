@@ -601,7 +601,11 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         node_type=getattr(session, 'node_type_current', None),
         stop_flag=stop_flag, k_members=k_members,
         round_num=getattr(state, 'round_num', 1) if state else 1)
-    out: list[Emitted] = mandate.run_mandate(frame, session, state=state)
+    # registry 下传骨架 pass(等级帽单一源,ADR-0565 收口 = ADR-0606:
+    # M3 链 lv9_stop/level_spend_blocked 消费注入表,与 ④′ 姿态对账
+    # 同一注入链)。
+    out: list[Emitted] = mandate.run_mandate(frame, session, state=state,
+                                             registry=registry)
     # ④ 合流(迁移 C):工具发射前置 = 同帧 LevelUp+RunTools 形态执行序
     # = RunTools 先于 LevelUp(编者⑤ 升级裁决输入新鲜度;行为锚 =
     # test_cw_prep_flag_machine::test_runtools_emit_position)。RunTools

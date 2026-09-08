@@ -93,6 +93,9 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         SwapPlanContext,
     )
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DecisionV2Registry,
+    )
     from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
@@ -803,6 +806,7 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
 def run_mandate(frame: MandateFrame,
                 session: StrategySession,
                 state: GameState | None = None,
+                registry: DecisionV2Registry | None = None,
                 ) -> list[Emitted]:
     """骨架 pass(§3.1 执行序;返回发射列表,执行序=列表序)。
 
@@ -810,6 +814,13 @@ def run_mandate(frame: MandateFrame,
     在消费点现读 ``state.max_units()`` 派生链——单一真值源,与 shop 侧
     同链;state 缺席(旧调用面/手工帧)= 契约前提 ``deploy_cap=None``
     ⇒ arm1 弃权+违例计数,固定常数/观察复合 cap 喂入不再可达判据)。
+
+    ``registry`` = 上下文注册表注入(等级帽单一源,ADR-0565 第 4 消费位
+    挂账的收口 = ADR-0606):M3 链 ``lv9_stop``/``level_spend_blocked``
+    消费位读注入表的 ``level_max`` 与停付线字段,禁回读缺省表。
+    ``None`` 回读 ``DEFAULT_REGISTRY`` 与 entry/shop ``_reg`` 通道同款
+    约定(直调/测试面兼容,生产链经 entry.emit 恒注入);备战栈无 sim
+    调用方(ADR-0565 §4),本通道无 sim 路径。
 
     计数键(state_of(session).cw4_counters,登记见 design_telemetry 键节):
     m2_retry_exhausted / dominance_bench_wait / m6_bench_full /
@@ -848,6 +859,17 @@ def run_mandate(frame: MandateFrame,
     if not isinstance(counters, dict):
         counters = {}
         state_of(session).cw4_counters = counters
+
+    # 上下文注册表(等级帽单一源,ADR-0565 收口 = ADR-0606):M3 链
+    # lv9_stop / level_spend_blocked 消费注入表,禁回读缺省表;None→
+    # 缺省表 = entry/shop _reg 通道同款直调兼容约定(生产链恒注入,
+    # 备战栈无 sim 路径)。
+    _reg = registry
+    if _reg is None:
+        from sr_od.application.currency_war.kernel.cw_registry import (
+            DEFAULT_REGISTRY,
+        )
+        _reg = DEFAULT_REGISTRY
 
     # T-82 续段 token 读清协议(备战域):入口读取后立即清除,token 供
     # 下方 M2 停摆块命中判定消费;任何调用方首帧(槽空/型外/序号不等)
@@ -1183,7 +1205,9 @@ def run_mandate(frame: MandateFrame,
             and contracts.ensure_contract(
                 ('levelup', 'level_spend_blocked'),
                 contracts.ContractCtx(), counters)
-            and levelup.level_spend_blocked(state, session))
+            # 停付线消费注入注册表(ADR-0565 §3 同族泛化项收口 = ADR-0606,
+            # 禁裸缺省;现注入字段与缺省表同值,接线为单一源纪律面)。
+            and levelup.level_spend_blocked(state, session, _reg))
         # [40]② 血闸(ADR-0578):支付能力检查,与停付线**独立串联**——不可被
         # 必花域/血线地板豁免(裁定字面「否则停」是支付能力非血线判断;血模式
         # 「破息批」无金可破,解锁包件①的转化语义本就不适用,方案审 N5/R2
@@ -1210,7 +1234,9 @@ def run_mandate(frame: MandateFrame,
             if contracts.ensure_contract(
                     ('levelup', 'lv9_stop'),
                     contracts.ContractCtx(), counters):
-                if levelup.lv9_stop(frame.level):
+                # 等级帽单一源(ADR-0565 §3 第 4 消费位接线收口 =
+                # ADR-0606):消费注入注册表 .level_max,禁裸常数/缺省。
+                if levelup.lv9_stop(frame.level, _reg.level_max):
                     _count('l3_reject_level_cap')
                 else:
                     clicks = clicks_to_next_level(

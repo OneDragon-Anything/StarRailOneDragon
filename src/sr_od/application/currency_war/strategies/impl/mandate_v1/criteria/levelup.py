@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 
-def lv9_stop(level: int, level_max: int | None = None) -> bool:
+def lv9_stop(level: int, level_max: int) -> bool:
     """等级上限停(义务侧消费)。历史键名 'lv9_stop':cap=9 旧语义时代
     命名,现语义 =「等级达注册表 level_max 即拒发升级」——键串保留
     不改名(改键牵连判读脚本与历史档案可比性,纯改名无收益,ADR-0565)。
@@ -34,18 +34,11 @@ def lv9_stop(level: int, level_max: int | None = None) -> bool:
     感知、sim 行为零漂移。⚠ 与同文件 ``cap_resolved``(利息上限)毫无
     数值或语义关联,禁接错源。
 
-    ``level_max`` 由消费位传上下文注册表的 ``.level_max``(禁裸常数);
-    缺省 None 回读 DEFAULT_REGISTRY 是**过渡兼容**,仅覆盖 mandate.py
-    备战 L3 消费位(ADR-0565 落码时该文件属并行在飞文件面未接线;该位
-    仅 live prep 可达,sim 决策只走 shop 栈注入视图,不经此处,故回读
-    缺省表 = live 真值、无 sim 路径)——mandate 侧接线完成后本参收严
-    为必填,禁新消费位依赖缺省。
+    ``level_max`` = 消费位传上下文注册表的 ``.level_max``(禁裸常数),
+    **必填**:4 消费位(shop M3 批/shop 必花域 L3/mandate 备战 M3/
+    entry posture 镜像)已全量接线,过渡缺省通道已随 mandate 接线拆除
+    (ADR-0565 §3 挂账收口 = ADR-0606);禁新消费位依赖缺省。
     """
-    if level_max is None:
-        from sr_od.application.currency_war.kernel.cw_registry import (
-            DEFAULT_REGISTRY,
-        )
-        level_max = DEFAULT_REGISTRY.level_max
     return level >= level_max
 
 
@@ -335,6 +328,11 @@ def level_spend_blocked(state: GameState, session: StrategySession,
     """危机带内整批经验授权让位保命面(实机复盘 g_20260904_054904
     p2r1 候选③:hp=1 败即死帧 9×LevelUpShop 36g,m3_batch 批授权把
     67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
+
+    ``registry`` = 上下文注册表(停付线字段 vd_p2_loss 族的单一源口径);
+    三生产消费位(entry posture 镜像/shop M3/mandate 备战 M3)恒注入
+    (ADR-0565 同族泛化项收口 = ADR-0606),``None`` 回读缺省表 = 与
+    entry/shop ``_reg`` 通道同款直调兼容约定,禁新消费位依赖缺省。
 
     两支,全部单一源判据,零新自由参数:
     - ``discipline.blood_budget_levelup_blocked``(decision_v2 同源,

@@ -18,7 +18,7 @@
 
 - **判据面**(`criteria/levelup.py`):删 `LEVEL_CAP` 常量;`lv9_stop(level, level_max=None)`——单一源 = 注册表 `level_max`,`level_max` 由消费位传上下文注册表,禁裸常数;缺省 None 回读 `DEFAULT_REGISTRY` 为**过渡兼容**(辖域见 §4)。
 - **消费位接线(3/4 本批)**:①`shop.py` M3 批位与 ②必花域 L3 位传 `_reg.level_max`(`_reg` = `decide_shop_action` 的 registry 注入链,生产 = `flow.py` `self.registry`,sim = `sim_decision_registry()` 视图);③`entry.py` `_reconcile_posture_authorization` 签名加 `registry` 参(emit → decide_from_turn → bridge 注入链),lv9_stop 与同函数 `level_spend_blocked` 均传 `_reg`。
-- **第 4 消费位(mandate.py 备战 M3)**:派单时 mandate.py 属并行在飞文件面(禁并行同文件纪律),本批不接线;该位由缺省通道覆盖,行为与接线后等价(见 §4),接线义务归 mandate.py 主理批,接线后 `lv9_stop` 收严为必填参数。
+- **第 4 消费位(mandate.py 备战 M3)**:派单时 mandate.py 属并行在飞文件面(禁并行同文件纪律),本批不接线;该位由缺省通道覆盖,行为与接线后等价(见 §4),接线义务归 mandate.py 主理批,接线后 `lv9_stop` 收严为必填参数。(收口 = ADR-0606:接线 + 收严 + level_spend_blocked 同族位接线已落。)
 - **同族泛化(方案审义务项)**:`level_spend_blocked` 的裸 DEFAULT 调用——`entry.py` 位本批随函数接线一并补传 `_reg`(一参之改);`mandate.py` 位未传 registry 属同族债,登记归 mandate 主理批,不静默放过。
 - **契约回显**(`criteria/contracts.py`):`('levelup','lv9_stop')` scope 改引注册表 `level_max` 口径;BYPASS_TABLE(levelup 域)不变(函数仍在,类别不变)。
 - **行为变化声明**:live lv9 帧从「恒拒」变为「按 P48 整买/P21 血预算/P39 双臂门/P71-b 预算闸逐帧判」——游戏定义量纠错,strategy-work §3 第 1 档直接落码无开关;回滚 = git revert。
