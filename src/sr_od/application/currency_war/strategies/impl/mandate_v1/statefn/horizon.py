@@ -66,13 +66,6 @@ def delta_w_increment(lambda_upper: float, refund: int,
     return int(lambda_upper * (refund + delta_interest_flow(refund, cap_sup)))
 
 
-def _phi_hat(ibar: int, r_rem: int) -> int:
-    """Φ̂ 基础流组成下界 = Ī×R_剩余(R2-8 估计器)——**模块私有**(R6-4:
-    无裸 Φ̂ 消费位;仅第三口差分复合项经 lambda_death 层以 d̂×(g+Φ̂) 复合
-    形态消费,非裸数值)。下划线命名 + 测试静态断言「判据模块禁 import」。"""
-    return ibar * r_rem
-
-
 __all__ = [
     'delta_interest_flow', 'delta_w_increment', 'r_global', 'r_remaining',
     'r_remaining_in_plane', 'r_trunc', 'schedule_of',
