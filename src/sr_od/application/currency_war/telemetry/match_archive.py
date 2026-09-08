@@ -35,6 +35,7 @@ import contextlib
 import json
 import os
 import tempfile
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -108,7 +109,17 @@ log = log_utils.log
 #: 步进游标未到 0 → runs.final_hp=0 结构真值兜底出 hp_source='endgame_
 #: final' 条目。顶层新增加法列 hp_events(事件行显影)/hp_pay_defects
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
-SCHEMA_VERSION: int = 9
+#: v10(T-109①场上件离场逐件落账批,ADR-0605):+顶层 ``departures``(离场
+#: 事件派生列,装配端纯读派生、零新运行时写入)。缺口实锤(g_20260907_075840
+#: p1r1,Saber):执行期 deploy 换血卖出(CwOpDeploy._sell_offtarget_deployed)
+#: 的逐件身份只在 log 行与匿名计数键(sell_offtarget_*),无遥测行——场上件
+#: 「无卖出动作而消失」挡 pivot 判读。决策时点卖出(SellBench/SellDeployed)
+#: 本就逐件在案(actions+期望态快照),不在本列重复;本列吃的是帧间差分:
+#: 相邻决策帧 state.deployed 身份多重集相减,通道分键 sell_recorded(帧动作
+#: SellDeployed 槽位解析命中)/ merge_promoted(同名更高星在场=买牌合成链)/
+#: unexplained(= 换血卖出信号通道;感知纠噪也可能落入,判读并读 obs_conflicts)。
+#: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
+SCHEMA_VERSION: int = 10
 
 #: 档案目录名(telemetry/matches;生产布局见 matches_dir)
 MATCHES_DIRNAME: str = 'matches'
@@ -458,6 +469,113 @@ def _hp_pay_events(exo_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     'hp_delta': ch.get('hp_delta'), 'mode': ch.get('mode'),
                     'clicks': ch.get('clicks'), 'basis': ch.get('basis')})
     out.sort(key=_row_ts)   # 稳定:同秒保文件追加序
+    return out
+
+
+# ===== 离场事件派生列(v10,T-109①,ADR-0605;装配端纯读) =====
+
+#: 离场通道闭集(单一源;键语义见 _derive_departures docstring)
+DEPARTURE_CHANNELS: tuple[str, ...] = (
+    'sell_recorded',      # 该帧动作 SellDeployed 槽位解析命中此件(决策时点卖出)
+    'merge_promoted',     # 同名更高星在后帧在场(买牌合成链,1★ 副本离场)
+    'unexplained',        # 无卖出动作而消失 = 执行期 deploy 换血卖出信号通道
+)
+
+
+def _deployed_multiset(frame: dict[str, Any]) -> Counter | None:
+    """帧 → 场上身份多重集 {(char_id, star): n};deployed 缺席/非列表 → None。
+
+    None 语义 = 该帧场上身份不可知(旧数据/未采集),差分对这对帧跳过——
+    宁缺勿造(与 hp 链「不可信不入链」同纪律);空列表是合法帧(开局板空)。
+    """
+    dep = (frame.get('state') or {}).get('deployed')
+    if not isinstance(dep, list):
+        return None
+    ms: Counter = Counter()
+    for e in dep:
+        if isinstance(e, dict) and e.get('char_id'):
+            try:
+                star = int(e.get('star') or 1)
+            except (TypeError, ValueError):
+                star = 1
+            ms[(str(e['char_id']), star)] += 1
+    return ms
+
+
+def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
+    """帧动作里 SellDeployed 的卖出目标名集合(按同帧 deployed 解析槽位身份)。
+
+    解析键 = (position_pref, slot)(序列化 deployed 条目自带行位字段,与
+    apply_op_effect 的扁平下标式不同源——读帧是 front/back 分组紧凑表,两
+    布局不能混用)。SellBench 卖的是备战席,不解释场上离场,不入集合。
+    """
+    names: set[str] = set()
+    dep = (frame.get('state') or {}).get('deployed') or []
+    for a in frame.get('actions') or []:
+        if not isinstance(a, dict) or a.get('__type__') != 'SellDeployed':
+            continue
+        for e in dep:
+            if (isinstance(e, dict) and e.get('char_id')
+                    and e.get('position_pref') == a.get('row')
+                    and e.get('slot') == a.get('slot')):
+                names.add(str(e['char_id']))
+    return names
+
+
+def _derive_departures(dec: list[dict[str, Any]],
+                       segments: list[str]) -> list[dict[str, Any]]:
+    """顶层 ``departures`` 派生列(v10,ADR-0605;纯读,零运行时写入)。
+
+    - 缺口与实锤:执行期 deploy 换血卖出(CwOpDeploy._sell_offtarget_deployed)
+      逐件身份只在 log 行与匿名计数键,无遥测行——复盘实证 g_20260907_075840
+      p1r1 Saber(08:00:18 帧 [椒丘,藿藿,Saber] → 08:00:42 帧 [椒丘,艾丝妲,
+      藿藿],无任何 Sell 动作)。决策时点卖出(SellBench/SellDeployed)本就
+      逐件在案(actions+期望态快照,决策迹),不在本列重复。
+    - 派生口径:段内相邻决策帧(第 1 基,ts 升序)的 state.deployed 身份
+      多重集差;任一侧身份不可知(缺/非列表)整对跳过。战斗不改场上
+      (部署/买卖只发生在备战期),帧间差分即备战动作净效果。
+    - 通道分键(closed set = DEPARTURE_CHANNELS):
+      sell_recorded = 该帧 SellDeployed 槽位解析命中;merge_promoted =
+      同名更高星在后帧在场(买牌 3 合 1 的 1★ 副本离场);unexplained =
+      其余,首义 = 换血卖出(离场常伴 1:1 到场,行内 same_window_arrivals
+      可并读)。感知纠噪(SIFT 翻转)也可能落入 unexplained——本列不与
+      obs_conflicts 交叉裁决(跨局流不入切片),判读并读。
+    - 行形状:{run_id, plane, round, ts, char, star, count, channel,
+      same_window_arrivals};按 ts 全局升序。末帧无后继,终局前最后一段
+      备战窗的离场不可见(诚实边界,判读申报)。
+    """
+    out: list[dict[str, Any]] = []
+    for rid in segments:
+        frames = sorted((d for d in dec if d.get('run_id') == rid),
+                        key=_row_ts)   # 稳定排序:同秒保文件追加序
+        # strict=False:相邻对滑动窗口,两序列长度有意差一
+        for fr_a, fr_b in zip(frames, frames[1:], strict=False):
+            ms_a = _deployed_multiset(fr_a)
+            ms_b = _deployed_multiset(fr_b)
+            if ms_a is None or ms_b is None:
+                continue   # 身份不可知帧对:宁缺勿造
+            departed = ms_a - ms_b
+            if not departed:
+                continue
+            arrived = ms_b - ms_a
+            arr_names = sorted({name for (name, _s) in arrived})
+            sell_names = _sell_deployed_target_names(fr_a)
+            next_top_star: dict[str, int] = {}
+            for (name, star) in ms_b:
+                next_top_star[name] = max(next_top_star.get(name, 0), star)
+            for (name, star), cnt in sorted(departed.items()):
+                if name in sell_names:
+                    channel = 'sell_recorded'
+                elif next_top_star.get(name, 0) > star:
+                    channel = 'merge_promoted'
+                else:
+                    channel = 'unexplained'
+                out.append({
+                    'run_id': rid, 'plane': fr_a.get('plane'),
+                    'round': fr_a.get('round_num'), 'ts': _row_ts(fr_a),
+                    'char': name, 'star': star, 'count': cnt,
+                    'channel': channel, 'same_window_arrivals': arr_names})
+    out.sort(key=_row_ts)
     return out
 
 
@@ -1057,6 +1175,10 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         # 只及新局)与 modeled 期望账对账偏差列(v9 加法,留证不阻塞)
         'hp_events': _hp_pay_events(slice_rows['exogenous.jsonl']),
         'hp_pay_defects': hp_pay_defects,
+        # 离场事件派生列(v10 加法,ADR-0605;装配端纯读,旧档案重装配补齐):
+        # 执行期 deploy 换血卖出逐件落账缺口(075840 Saber 实锤)的判读面。
+        'departures': _derive_departures(slice_rows['decisions.jsonl'],
+                                         segments),
         'opening': _build_opening(slice_rows, runs_by_seg),
         'endgame': {'result': result or 'abandoned',
                     'abandoned': abandoned,
