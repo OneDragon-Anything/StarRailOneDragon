@@ -161,6 +161,25 @@ class Comp:
     部署例外规则**尚未实现**——消费点应为 decision_v2/candidates._deploy_candidates
     / scoring._deploy_pipeline,实现归后续策略批;本字段目前仅数据标注,零行为改动。"""
 
+    # ===== T-171 批序 1 形态端口(ADR-0613):OR 腿 + carry 在场条件 =====
+    # 两字段缺省空 = 行为不变(既有 COMP_LIBRARY 与全部非希儿配方对
+    # 产物逐字节不变);唯一生产写入方 = cw_intention.pair_target_comp
+    # 希儿系对分支。判定/进度唯一折法 = ``form_progress``(单一源契约
+    # fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定(判据双源
+    # = 批序 1 取代面,出处见 ADR-0613)。
+    or_legs: list[tuple[str, int]] = field(default_factory=list)
+    """OR 腿(析取档组):组内**任一** (羁绊, 档) 达成即该组算满——文档
+    「凑到任一=成型,不设完全体门槛」(transition_combos.md:27 希儿系定义
+    行;combo_methodology.md:133)。空 = 无 OR 腿(纯 AND)。进度折法:OR 组
+    折叠为一条虚拟腿,腿值 = 组内各腿进度 max(取最好腿非均值,「任一即成」
+    的进度语义;换最好腿只单调抬升无重置)。禁把 OR 腿写进 ``form_tiers``
+    (键侧 AND 语义会把 OR 塌回 AND 全档——批序 1 病灶本体)。"""
+    required_deployed: tuple[str, ...] = ()
+    """carry 在场条件:逐一必须**在板**(deployed;bench 在手不算)——文档
+    成型判据第一合取支「希儿在场」(transition_combos.md:27)。空 = 无
+    carry 条件。进度折法:逐名折一条 0/1 虚拟腿(在板=1 否则 0);state
+    缺 deployed 视图的轻量假想面板按 0 计(保守向,缺读≠满成)。"""
+
     @property
     def all_factions(self) -> set[str]:
         """核心 + 弹性羁绊全集(亲和/过滤/板面判定用;成型判定仍只看 form_tiers)。"""
@@ -1179,8 +1198,24 @@ def form_progress(comp: Comp, state: GameState) -> float:
     """成型度 0..1:各核心阵营 tier 进度的均值(min(board,form_tiers)/form_tiers)。
 
     10 的 helper(comp_viability 先验用);纯阵营 tier,不含角色(避免与 char_quality 三重计分)。
+
+    OR 腿与 carry 条件折法(T-171 批序 1,ADR-0613;本函数 = 成型判据
+    唯一折法,fp=1.0 ⟺ 成型谓词「form_tiers 全档 ∧ or_legs 组任一满 ∧
+    required_deployed 全在板」的单一源契约):
+    - ``or_legs`` 非空 → 折为**一条**虚拟腿,腿值 = 组内各腿进度的 max
+      (「凑到任一=成型」的进度语义;半成品如 量1∨贝1 如实给 0.5,取
+      最好腿非均值);
+    - ``required_deployed`` 逐名折一条 0/1 虚拟腿(在板=1;state 无
+      deployed 视图(轻量假想面板)按 0 计 = 保守向,缺读≠满成)。
+    两字段经 ``getattr`` 缺省空读(真实 Comp 恒有字段;测试鸭型桩与
+    旧序列化载体两态按「无 OR/carry 条件」解释,与空字段同值,不炸)。
+    两字段缺省空(全注册表 comp)逐位同旧式均值。禁消费位绕过本函数
+    自写 min(board,tier)≥tier 内联成型判定(判据双源;内联位清单与
+    取代声明见 ADR-0613)。
     """
-    if not comp.form_tiers:
+    if (not comp.form_tiers
+            and not getattr(comp, 'or_legs', None)
+            and not getattr(comp, 'required_deployed', None)):
         return 0.0
     total = 0.0
     n = 0
@@ -1189,6 +1224,23 @@ def form_progress(comp: Comp, state: GameState) -> float:
             continue
         total += min(state.board.get(f, 0), tier) / tier
         n += 1
+    or_legs = getattr(comp, 'or_legs', None) or []
+    if or_legs:
+        best = 0.0
+        for f, tier in or_legs:
+            if tier <= 0:
+                continue
+            best = max(best, min(state.board.get(f, 0), tier) / tier)
+        total += best
+        n += 1
+    required = getattr(comp, 'required_deployed', None) or ()
+    if required:
+        deployed_names = {d.char_id
+                          for d in (getattr(state, 'deployed', None) or ())
+                          if d is not None and getattr(d, 'char_id', None)}
+        for name in comp.required_deployed:
+            total += 1.0 if name in deployed_names else 0.0
+            n += 1
     if n == 0:
         return 0.0
     return clamp(total / n, 0.0, 1.0)

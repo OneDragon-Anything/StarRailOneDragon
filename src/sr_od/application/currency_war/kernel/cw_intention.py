@@ -478,6 +478,27 @@ SEELE_SYSTEM: str = '希儿系'
 _P1_PAIR_PREF: tuple[str, ...] = tuple(
     b for b, _t in TRANSITION_TRAITS) + (SEELE_SYSTEM,)
 
+# ===== 希儿系形态端口(OR 腿 + carry;T-171 批序 1,ADR-0613)=====
+# 辖域切分(与批序 2 支持度端口 ``_seele_system_support`` 机械可检验,
+# 禁互相渗透成双源):形态端口读**板面羁绊计数**(state.board,经
+# form_progress),支持度端口读**owned 去重成员计数**(bench∪deployed);
+# 本文件 form 链禁出现 _seele_system_support 消费。
+SEELE_OR_LEGS: tuple[tuple[str, int], ...] = (('量子同频', 2), ('贝洛伯格', 2))
+"""希儿系 OR 腿档位单一源(零新参数:档位 = 文档定义行 transition_combos.
+md:27/103「量≥2 ∨ 贝≥2」,与「不设完全体门槛」自洽;组合机制注 =
+combo_methodology.md:133「凑到任一=成型」/ :143「放大器不需要最大档,
+有就行」)。量 2 vs 量 3 的文档内部张力(combo_methodology.md:133/170 写
+量 3)挂玩家确认(ADR-0608 挂确认指针):主窗口 T=9 两读法完成率差
+≤0.03、与 P38 闭式 ±8pp 误差带同量级,数值不可分辨**限主窗口**;残局
+域 T=4 模型可分辨(表观差 0.04~0.18)但读法归属是语义问题候玩家,不由
+落码批裁决。确认后改本常量即全链生效,禁消费位另写档。"""
+
+SEELE_CARRY_CHAR: str = '希儿'
+"""希儿系 carry(形态端口 required_deployed 载体):文档成型判据第一
+合取支「希儿在场」(transition_combos.md:27);单卡不算开线语义
+(combo_methodology.md:138)在形态端口的投影 = 无放大器腿时 fp<1.0
+不成型(与支持度端口 0.5<1.0 不即锁各自独立成立,ADR-0613)。"""
+
 P1_PAIR_LOCK_MIN_SUPPORT: float = 1.0
 """配方对锁定门槛(门槛值不变,ADR-0519 C2):最高体系支持度 ≥ 此值才锁。
 
@@ -524,6 +545,11 @@ def _seele_system_support(owned: set[str]) -> float:
     - ÷2 = 文档 OR 腿档位(量≥2 ∨ 贝≥2,docs/game/currency_war/
       research/transition_combos.md:27);max = 文档 OR 结构(凑到任一
       腿即满,取最好腿非均值);
+    - 挂账指针(C1,前批遗留):量腿档位存在文档内部张力——本式 ÷2 取
+      量≥2 主口径(定义表行),combo_methodology.md:133/170 写量 3;
+      张力挂玩家确认(ADR-0608 挂确认指针),确认改档落
+      ``SEELE_OR_LEGS``(形态端口单一源,ADR-0613)并同步回改本式分母,
+      禁两端口各自为政;
     - 希儿缺席恒 0:量/贝放大器不能独立当过渡(含希儿 28 帖无一缺希儿
       独立成线,transition_combos.md:27);
     - 希儿单卡(任意星级)= 0.5 不是拍定值:注册表锚 = 希儿自身双标签
@@ -786,11 +812,17 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     - form_tiers 分辨序:① ``cw_bridge_pool.BRIDGE_POOL`` 精确匹配
       (键集合相等 → 整组取该桥 engine_bonds;桥池是配方对档位的既有
       单一源,数据底=transition_combos 调研);② 无桥条目的对(希儿系
-      组合)→ 逐体系取桥池任一条的档 + 希儿系并 ``cw_recipe`` 量子配方
-      档(量子同频+贝洛伯格,希儿系板面键=量子系,口径同展开)。
-      ⚠️ 已知双源分歧:列车同行档桥池=2(train_dot)、cw_recipe
-      _RECIPES=4(框架单独成型档,语义不同层)——本函数取桥池;
-      分歧裁决与合流判据见 ADR-0459。
+      组合)→ form_tiers 只放**他体系档**(逐体系取桥池任一条的档);
+      放大器两腿挂 ``or_legs``(``SEELE_OR_LEGS``:量≥2 ∨ 贝≥2 任一即
+      成,OR 语义)、carry 挂 ``required_deployed``(希儿在板)——
+      ADR-0613 取代 ADR-0459 ②的「桥池档+量子配方档」AND 全档口径
+      (借 cw_recipe 完全体档把「凑到任一=成型」塌成「量3∧贝2 全档」,
+      且缺 carry 合取支;取代先例 = ADR-0608 对 ADR-0519 post-state)。
+      跨体系 AND 保留:他体系档仍是 AND 腿,OR 只辖放大器组(防半对
+      冒充)。⚠️ 既有双源分歧申报:列车同行档桥池=2(train_dot)、
+      cw_recipe _RECIPES=4(框架单独成型档,语义不同层)——本函数取
+      桥池;cw_recipe 量子配方档自此无 pair 物化消费(注册表保留,
+      其「框架单独成型档」辖域不变)。
       注:桥线对平局无平滑性偏好;若 v2 需要
       同等偏好需另行设计。
     - level_plan 不设:升级账退默认(升级通道的息引擎前置是独立
@@ -802,22 +834,26 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
 
     bonds = _pair_bond_keys(pair)
     tiers: dict[str, int] = {}
+    or_legs: list[tuple[str, int]] = []
+    required: tuple[str, ...] = ()
     for combo in BRIDGE_POOL:
         if set(combo.engine_bonds) == bonds:
             tiers = dict(combo.engine_bonds)
             break
     else:
-        # 逐体系兜底:取该体系在桥池任一条的档(同源派生,不手写表);
-        # 希儿系补量子配方档后,只保留本对键(防兜底混入对外体系)。
+        # 逐体系兜底:取该体系在桥池任一条的档(同源派生,不手写表),
+        # 只保留本对键(防兜底混入对外体系);希儿系对再剥掉放大器键
+        # (放大器档位归 or_legs,不进 form_tiers 的 AND 账——ADR-0613)。
         for combo in BRIDGE_POOL:
             for bond, tier in combo.engine_bonds.items():
                 tiers.setdefault(bond, tier)
-        if SEELE_SYSTEM in pair:
-            from sr_od.application.currency_war.kernel.cw_recipe import recipe_comp
-            _q = recipe_comp('量子')
-            if _q is not None:
-                tiers.update(_q.form_tiers)
         tiers = {bond: tier for bond, tier in tiers.items() if bond in bonds}
+        if SEELE_SYSTEM in pair:
+            amp_keys = {bond for bond, _tier in SEELE_OR_LEGS}
+            tiers = {bond: tier for bond, tier in tiers.items()
+                     if bond not in amp_keys}
+            or_legs = list(SEELE_OR_LEGS)
+            required = (SEELE_CARRY_CHAR,)
     if not tiers:
         return None
     return Comp(
@@ -827,6 +863,8 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
         form_tiers=dict(sorted(tiers.items())),
         strength='A',
         form_difficulty='easy',
+        or_legs=or_legs,
+        required_deployed=required,
     )
 
 

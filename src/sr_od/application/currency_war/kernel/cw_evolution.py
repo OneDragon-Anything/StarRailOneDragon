@@ -703,8 +703,22 @@ def _shop_has_faction_member(state: GameState, faction: str) -> bool:
 
 
 def _comp_formed(comp: Comp, state: GameState) -> bool:
-    """comp 主档(form_tiers 下限)已在板上成型。"""
-    return all(_board_tier(state, f) >= t for f, t in comp.form_tiers.items())
+    """comp 主档(form_tiers 下限)已在板上成型。
+
+    单一源 = ``cw_launch_admission.readiness_form_ok``(→ form_progress;
+    T-171 批序 1 内联位收口,ADR-0613:注册表 comp 现均无 or_legs/
+    required_deployed,委托逐位同旧内联式,且 comp 未来携带 OR/carry
+    字段时自动跟随,不留第二份 AND 判定)。空 form_tiers(反甲白厄类)
+    保留「无档=视同已成型」的注册表惯例判 True——与 form_progress 的
+    空档 0.0 约定不同,故空档短路不委托(委托会把该类 comp 翻成
+    「未成型」,改变真核心等档判定)。
+    """
+    if not comp.form_tiers:
+        return True
+    from sr_od.application.currency_war.kernel.cw_launch_admission import (
+        readiness_form_ok,
+    )
+    return readiness_form_ok(state, comp)
 
 
 def _core_names(opt: UpgradeOption) -> tuple[list[str], list[str]]:
