@@ -437,6 +437,23 @@ def apply_action_outcome(_aop: 'ShopActionOp',
     """
     visit_actions.append(action)
     _post_frame = None   # 动作后投影帧(终结/未落地 = None → journal delta 省略)
+    if _ok and isinstance(action, SellBench):
+        # T-159 §3.3 误标检出位(s1_reset_mischannel 交叉对账的运行时半):
+        # 商店域落地门不辖 S1 清键(落域澄清:店内段 S1 语义正在成立中,
+        # 域内卖出经由六序域内闭环旗标无感)——landed 族 A 卖出若携带
+        # 备战域白名单 route tag = tag 泄漏进商店域的结构性错位,计数
+        # 显影(现役构造面不可达:族 A 动作无 route_tag 字段,防御位)。
+        # 离线对账半 = s1_reset_by_* 与卖出通道计数交叉判读。
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+            S1_RESET_ROUTE_TAGS,
+        )
+        _rt = getattr(action, 'route_tag', '') or ''
+        if _rt in S1_RESET_ROUTE_TAGS:
+            _st_mis = strategy_state_of(match.session)
+            _ct_mis = getattr(_st_mis, 'cw4_counters', None)
+            if isinstance(_ct_mis, dict):
+                _ct_mis['s1_reset_mischannel'] = \
+                    _ct_mis.get('s1_reset_mischannel', 0) + 1
     if _ok and isinstance(action, BuyCard) and action.card.name:
         strategy_state_of(match.session).cw4_visit_bought_names.append(action.card.name)
     if _ok and not _aop.terminal:

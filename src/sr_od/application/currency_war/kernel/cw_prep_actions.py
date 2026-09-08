@@ -24,8 +24,22 @@ from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
 # ===== 动作全集 =====
 
 
+@dataclass
 class PrepAction:
-    """备战决策环动作标记基类(策略 → 框架的单步意图载体)。"""
+    """备战决策环动作标记基类(策略 → 框架的单步意图载体)。
+
+    ``route_tag`` = 发射臂路线标签(T-159 备战旗标状态机 §3.3;桥
+    ``bridge.decide_from_turn`` 从 ``Emitted.reason`` 透传,动作自带、
+    无时序错位面)。定位 = 策略内部路由键(发射分支的构造事实,不随
+    时间漂移、不维护状态),只回答「该次落地该不该清 S1 开店闩」的
+    环路控制路由问题,**非**卖出资格面(资格单一源 = sell_gate 装配 A)
+    、非放行证据(T-153 治理立场对表:禁检查器采信)。值域:现役发射位
+    = m4_fuel_sell / interest_prep(单帧锁
+    ``test_route_tag_whitelist`` 锁映射表);deploy_launch 类由动作类型
+    (RunDeploy)承载不占本字段。kw_only 缺省 '' ⇒ 构造调用全向后兼容。
+    """
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
 
 
 @dataclass
@@ -186,9 +200,10 @@ PREP_ACTION_TYPES: tuple = (
 def action_key(action: PrepAction) -> str:
     """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;SellBench(3) 与 SellBench(5) 各自计数)。
 
-    带 ``action_key_exclude`` metadata 的字段不入键(现役唯一 =
-    SellBench.reason 卖出归因):幂等粒度 = 行为参数,归因标签不改变
-    动作实例身份——同槽位不同归因是同一动作,禁拆成两个幂等键。
+    带 ``action_key_exclude`` metadata 的字段不入键(现役 =
+    SellBench.reason 卖出归因 + PrepAction.route_tag 发射臂路线标签
+    [T-159 §3.3]):幂等粒度 = 行为参数,归因/路由标签不改变动作实例
+    身份——同槽位不同归因是同一动作,禁拆成两个幂等键。
     """
     import dataclasses
 

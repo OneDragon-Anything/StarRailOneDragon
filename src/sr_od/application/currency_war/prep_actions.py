@@ -290,6 +290,10 @@ class PrepActionExecutor:
             log.info('[cw][battle] 停机标志已设 → 拒绝执行 %s'
                      '(W209j 刹车,ADR-0388)', type(action).__name__)
             return False, '已停止[W209j刹车]'
+        # 落地门前捕获备战席占用(tracked 账现读):路径 (ii) 翻正判读
+        # 需要 pre/post 两点,post 点必须在 dispatch 之后读(dispatch 内
+        # 卖出/部署 handler 会同步销账)。
+        _pre_bench = self._bench_tracked_count()
         ok, detail = self._execute_dispatch(action)
         if ok and isinstance(action, RunEquip):
             # M7 备战期装备闩置位(执行位,唯一写点 = mandate.mark_equip_
@@ -325,6 +329,27 @@ class PrepActionExecutor:
                         _sess, getattr(_sess, 'last_state', None))
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][tools-latch] 置位失败(不阻塞): %s', e)
+        if ok:
+            # T-159 迁移 D:S1 清键落地门(唯一写点 = mandate.mark_s1_
+            # route_check,三路径封闭枚举)。挂钩形态与上方 mark_equip/
+            # mark_tools 写点族同位(progressed 返回时);发射位只读不写
+            # 的同型纪律在此不适用——本门消费「已落地」事实,发射侧天然
+            # 无此事实(猎点 8:旗标翻转全部挂在执行侧落地确认)。
+            # OpenShop 分支不经本执行器(cw_screen_prep 流程层编排),
+            # 开店落地不触清键面,与其置位语义(商店决策访问位)自洽。
+            try:
+                from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+                    mark_s1_route_check,
+                )
+                _m = self._ctx.cw_match
+                _sess = _m.session if _m is not None else None
+                if _sess is not None:
+                    mark_s1_route_check(
+                        _sess, getattr(_sess, 'last_state', None), action,
+                        pre_bench_count=_pre_bench,
+                        post_bench_count=self._bench_tracked_count())
+            except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
+                log.warning('[cw][s1-route] 清键门失败(不阻塞): %s', e)
         # 期望态推进(EXPECTED_STATE §6 对抗 F8:两执行面同源接线)——
         # 本执行器是 PrepActionExecutor.execute 与 decision_assembly.execute
         # 的共同底层(decision 面经绑定回放委托到这里),登记挂本入口 = 两面
@@ -440,6 +465,23 @@ class PrepActionExecutor:
             return bool(free)
         except Exception:   # noqa: BLE001  保守:读失败不拉黑
             return False
+
+    def _bench_tracked_count(self) -> int:
+        """备战席占用数(tracked 账现读;T-159 路径 (ii) 席翻正判读输入)。
+
+        tracked 账由本执行器卖出/部署 handler 同步销账,pre/post 两点
+        夹一次 dispatch 即「本帧落地是否使席 free 由 0 翻正」的观测读数
+        (方案 §3.3 (ii);账缺页形态由消费臂门 1 下帧现读自愈)。会话
+        缺席/读失败 = -1(调用侧按「不可判」处理,不产生翻正)。
+        """
+        try:
+            match = self._ctx.cw_match
+            if match is None or match.session is None:
+                return -1
+            tracked = exec_state_of(match.session).tracked_bench_chars
+            return sum(1 for bc in tracked if bc is not None)
+        except Exception:   # noqa: BLE001  观测 best-effort
+            return -1
 
     def _poll_transition(self, check, timeout_s: float,
                          interval_s: float = 0.3) -> bool:

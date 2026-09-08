@@ -553,6 +553,16 @@ def decide_shop_action(state: GameState, session: StrategySession,
     _frame_token = _st.cw4_frame_action_record
     _st.cw4_frame_action_record = None
 
+    # T-159 B4 内容面观测:重进店内段(本节点 S1 曾被旗标机清键)的
+    # discretionary 面(dominance/EV/R1)动作计数。重开的合法来源 = 义务
+    # 残差闭环(猎点 14),重跑 discretionary 面 = 内容面如实开放(编者③
+    # 边界只在触发面成立),本键为其 [28] 息基腿风险源监控读数(量级非
+    # 归因)。标记键式,本节点首个清键后的全部店内段计入;纯遥测,禁
+    # 决策判据消费。
+    _reopen_armed = (getattr(_st, 'cw4_reopen_armed_phase', None)
+                     == (getattr(state, 'plane', None),
+                         int(getattr(state, 'round_num', 1) or 1)))
+
     # 备战期开店闩置位(唯一写点;键与 mandate.run_mandate 的 phase 同式):
     # 本函数被调 = 开店动作真执行、商店域决策访问已发生——闩语义
     # 「本备战期商店已被访问,期内重开无信息量」的记账位在访问发生,
@@ -889,6 +899,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 否则事件数与帧数两口径混计)。
     if bench_free <= 0 and missing and not _m2_stall_hit:
         _count('bench_full_buy_abandon')
+        # T-159 迁移 A:S2 wanted 残差置位(唯一写点 = mandate.shop_
+        # wanted_defer)。挂本点 = 两投影键的超集位(同帧不双计;
+        # m2_retry_exhausted 分支为其子事件——腾席候选空的强形态)。
+        # 席满残差的结构性流失(猎点 10)自此有载体:回备战后由消费臂
+        # 评估腾席/重进,买入机会不再丢失至下节点。
+        mandate.shop_wanted_defer(session, state, missing)
     for m in missing:
         if bench_free <= 0:
             break
@@ -1047,6 +1063,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
             ok1, _ = mandate.check_affordable(gold, cost)
             if not ok1:
                 continue
+            if _reopen_armed:
+                _count('shop_reopen_discretionary_actions')
             return _emit_buy(card, 'dominance_buy')
 
     # C1 直通核心卡支配性支(并列支配通道;位次 = dominance 邻位:既有
@@ -1740,11 +1758,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
                         if veto:
                             _deferred.append(card)   # 域内:降排序末位
                             continue
+                        if _reopen_armed:
+                            _count('shop_reopen_discretionary_actions')
                         return _emit_buy(card, 'ev_buy')
                     if _deferred:
                         # 触发源分键(§3.5 归因纪律):域内 (iii) 类 veto
                         # 降排序后的末位消费,可归因。
                         _count('must_spend_ev_deferred')
+                        if _reopen_armed:
+                            _count('shop_reopen_discretionary_actions')
                         return _emit_buy(_deferred[0], 'ev_buy')
                     _count('shop_ev_all_vetoed')   # D-P2idle:「全拒」可辨
             else:
@@ -1818,6 +1840,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
             if crit_refresh.r2_budget(
                     gold, r2_reserve,
                     int(state.shop_refresh_cost or REFRESH_COST_BASE)):
+                if _reopen_armed:
+                    _count('shop_reopen_discretionary_actions')
                 # reason = 触发源记录字段(非指令;sim obs 分键消费,
                 # 执行层不读——cw_state.RefreshShop.reason 值域契约)。
                 return RefreshShop(

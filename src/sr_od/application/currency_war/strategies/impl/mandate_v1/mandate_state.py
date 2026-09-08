@@ -269,6 +269,29 @@ class MandateState:
     #(close_on_sell/deploy/merge/round/switch)落 cw4_counters。
     cw4_fuel_filler_stall_buys: dict = field(default_factory=dict)
 
+    # ===== T-159 备战旗标状态机(方案 v2.1 §3.1 载体层级裁决,ADR-0596
+    # 收编:旗标语义域 = 跨画面访问的复查义务,必须比 visit 长、比对局短,
+    # session 是唯一同时满足两界的现役层;全部键式,(位面, 轮次) 相等
+    # 命中,节点推进自动失效,免战跳变/恢复局冷建零特判)=====
+    # S2 wanted 残差旗标:((位面, 轮次), 买因类, 残差名单元组)。
+    # 唯一写点 = mandate.shop_wanted_defer(商店域席满残差产生时点);
+    # 消费 = mandate.wanted_closure_emit(备战域闭环消费臂四门序)。
+    # 买因类 = LAUNCH_CAUSES 现役分类学(猎点 14,禁第二分类学),
+    # 现役仅 obligation 类置位(press/EV 席满属 discretionary,排除在
+    # 重进之外,§5.3 [13])。
+    cw4_shop_wanted_pending: tuple | None = None
+    # wanted 裁决放弃态:(位面, 轮次)。置位 = 消费臂两腿皆不可行或重进
+    # 安全阀超限——本节点不再重进;节点推进键失配自动干净。
+    cw4_wanted_abandon_phase: object = None
+    # wanted 重进安全阀计数:(phase, n)。记账点 = 门 1 实清与两腿发射;
+    # 上限 = mandate.WANTED_REOPEN_CAP(B+1,保守安全阀非紧界,§6.2)。
+    cw4_wanted_reopens: tuple | None = None
+    # S1 清键后的重进观测标记:(位面, 轮次)。写点 = mark_s1_route_check
+    # 实清与 _wanted_reopen_budget;读点 = shop.decide_shop_action 的
+    # shop_reopen_discretionary_actions 计数(B4 内容面观测,[28] 息基腿
+    # 风险源监控)。纯遥测面,禁决策判据消费。
+    cw4_reopen_armed_phase: object = None
+
     # ===== scratch(原 session.memory 消解宿主;§6.3 纪律平移)=====
     # 策略实现层私有 scratch——临时变量不再逐个升字段。纪律:
     # ①键名加模块前缀防冲突;②生命周期 = 局级(状态对象每局新建自然

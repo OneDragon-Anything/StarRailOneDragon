@@ -213,6 +213,14 @@ def decide_from_turn(obs: PrepObservation, turn: TurnState,
         ev_arm = 'full'
     emitted = entry.emit(obs, turn, session, config,
                          ev_arm=ev_arm, registry=registry)
+    # route_tag 伴带透传(方案 v2.1 §3.3 通道载体主案,ADR-0596 收编):
+    # 发射臂身份自 Emitted.reason 写入动作自带字段,消旧「actions 列表
+    # 推导丢弃发射臂身份」的丢点。tag 定位 = 策略内部路由键(发射分支
+    # 构造事实,非放行证据,T-153 治理立场对表);消费位唯一 = 备战域
+    # 执行侧落地门(mandate.mark_s1_route_check)的 S1 清键三路径枚举。
+    # 字段不入 action_key(kw_only + metadata 排除),幂等粒度零漂移。
+    for _e in emitted:
+        _e.action.route_tag = _e.reason
     actions = [e.action for e in emitted]
     bench_slots = {b.slot for b in (obs.bench_chars or [])
                    if b is not None and getattr(b, 'slot', None)}

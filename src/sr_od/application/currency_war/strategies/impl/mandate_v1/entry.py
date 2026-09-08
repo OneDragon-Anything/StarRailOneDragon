@@ -71,6 +71,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
 )
+from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     mandate,
     proof,
@@ -108,6 +109,24 @@ if TYPE_CHECKING:
 
 #: ev_arm 值域(R1-1:skeleton_only=臂① EV 发射面旁路;full=臂② 全开)
 EV_ARM_VALUES: tuple[str, ...] = ('skeleton_only', 'full')
+
+#: 球内容占席颜色集(迁移 B 球谓词第二腿的判定输入;ADR-0596 §4.9③)。
+#: CV 颜色域 = {'gold','blue','gray'}(cw_identity_obs 圆心 HSV 分类),
+#: 但「颜色 → 内容是否占席」的玩法机制面待实机实证——现役缺省 = 空集
+#(球均按不占席,宁多收球不误卖:点击失败可自愈、SellBench 不可逆,
+#: 与 adapter.snapshot_to_obs 对 free_bench_slots None→BENCH_CAPACITY
+#: 的在库裁决同向;占席球面的损失面由 2026-09-02 席满球裁定
+#: screen_flow_timing #16「部分没点开自然回补」容忍语义承载)。实证
+#: 落地后在此登记占席颜色,谓词第二腿自动收紧(腾席先于点球)。
+SPHERE_OCCUPYING_COLORS: frozenset[str] = frozenset()
+
+
+def _sphere_bench_free(obs: PrepObservation) -> int:
+    """席自由槽读数(球谓词第一腿输入;缺省方向 = adapter.py 在库裁决
+    对齐:free_bench_slots None/缺读 → BENCH_CAPACITY,宁多收球不误卖,
+    非 0 值按物理现读)。"""
+    _free = getattr(obs, 'free_bench_slots', None)
+    return BENCH_CAPACITY if _free is None else max(0, int(_free))
 
 log = logging.getLogger(__name__)
 
@@ -341,9 +360,11 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     """决策入口三遍编排(R189-4 结构签名;返回 Emitted 列表交桥截断发射)。
 
     编排:① prep 实体面(箱选卡/球/箱/典籍——控制流与 overlay 切换
-    优先于三遍)→ ② 证明 pass(信号臂/K/stop_flag/线级状态机/换线)→
-    ③ 升档器求值位 → ④ 骨架 pass(M1-M7)→ ⑤ EV pass(criteria,
-    臂①旁路)→ ⑥ 无动作 ⇒ StartBattle(序列终点=备战环正常出口)。
+    优先于三遍)→ ①′ wanted 闭环消费臂(迁移 A;义务优先)→ ② 证明
+    pass(信号臂/K/stop_flag/线级状态机/换线)→ ②′ 工具消费发射位
+    (迁移 C,物理移出自 run_mandate)→ ③ 升档器求值位 → ④ 骨架 pass
+    (M1-M7)→ ⑤ EV pass(criteria,臂①旁路)→ ⑥ 无动作 ⇒ StartBattle
+    (序列终点=备战环正常出口)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
         Emitted,
@@ -351,6 +372,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
 
     if getattr(state_of(session), 'cw4_counters', None) is None:
         state_of(session).cw4_counters = {}
+
+    state = obs.state
+    _round_num = int(getattr(state, 'round_num', 1) or 1) \
+        if state is not None else 1
 
     # ① prep 实体面
     if getattr(obs, 'box_overlay_open', False):
@@ -364,13 +389,54 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     if obs.tomes:
         return [Emitted(OpenTome(slot=obs.tomes[0][0]), True, 'prep_tome')]
     if obs.spheres:
-        return [Emitted(ClickSpheres(max_k=min(3, len(obs.spheres))), True,
-                        'prep_spheres')]
+        # 席满前置谓词(T-159 迁移 B;ADR-0596 §4.9③)两腿:
+        # 「bench_free>0 ∨ 球均不占席」。第二腿按 CV 颜色位判定
+        #(SPHERE_OCCUPYING_COLORS 占席颜色集);席满 ∧ 球判占席 → 先发
+        # 单次 M4 腾席(候选/排除同源 = fuel_sell_candidates + 统一装配
+        # A channel='m4_fuel',白名单 tag 落地经路径 (i) 清 S1);腾不出 →
+        # sphere_blocked_bench_full 遥测 + 球残留跳过(不停机,落入常规
+        # 步骤序——2026-09-02 席满球裁定 screen_flow_timing #16 的容忍
+        # 语义:该裁定辖点击验证容忍度,非禁止为球腾席;覆盖留痕 = 方案
+        # §4 猎点 13 + 进度账本)。
+        _sf_free = _sphere_bench_free(obs)
+        _sf_occupied = any(
+            (color or '') in SPHERE_OCCUPYING_COLORS
+            for color, _pt, _r in obs.spheres)
+        if _sf_free > 0 or not _sf_occupied:
+            return [Emitted(ClickSpheres(max_k=min(3, len(obs.spheres))),
+                            True, 'prep_spheres')]
+        _sf_k = predicates.line_members(
+            getattr(state_of(session), 'target_comp', None))
+        _sf_excl = sell_gate.sell_exclusions(
+            session, _sf_k, channel='m4_fuel', current_round=_round_num)
+        _sf_cands = mandate.fuel_sell_candidates(
+            list(obs.bench_chars), _sf_k, state=state,
+            exclude_names=_sf_excl,
+            counters=state_of(session).cw4_counters,
+            dedup_names=set())
+        if _sf_cands:
+            return [Emitted(SellBench(slot=_sf_cands[0].slot), True,
+                            'm4_fuel_sell')]
+        _ct_sf = state_of(session).cw4_counters
+        if isinstance(_ct_sf, dict):
+            _ct_sf['sphere_blocked_bench_full'] = \
+                _ct_sf.get('sphere_blocked_bench_full', 0) + 1
+        # 球残留跳过:不 return,落入下方常规步骤序(下帧 ① 再尝试)
     if obs.event_overlay:
         return [Emitted(BailToOuter(reason=obs.event_overlay), True,
                         'event_overlay')]
 
-    state = obs.state
+    # ①′ wanted 闭环消费臂(T-159 迁移 A;位次 = ①实体面后、②证明 pass
+    # 前——wanted 是未完成义务,滞留越久损失越大,方案 §5.2)。非空返回
+    # = 臂动作即本帧发射(单动作环直通);空返回 = 臂无发射(门 0 失效/
+    # 门 1 S1 已清/放弃态),照常落回常规步骤序。deploy_cap 真值链与
+    # ④ 骨架帧同源(state.max_units() 派生,R4 单一真值源)。
+    _arm_out = mandate.wanted_closure_emit(
+        session, state, list(obs.bench_chars), list(obs.deployed_chars),
+        (state.max_units() if state is not None else None), _round_num)
+    if _arm_out:
+        return _arm_out
+
     # 帧级复位(与 posture_release.attach_spend_authorization 同口径):
     # 每决策段「入口=无声明、段尾=本段真值」,防 posture_unfulfilled 旧值
     # 跨帧滞留成假信号(病灶②修法的正确性前提)。
@@ -434,6 +500,62 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     old_line_members = predicates.line_members(get_comp(prev_name)) \
         if k_switched else ()
 
+    # ②′ 工具消费发射位(T-159 迁移 C,审 A1 主案:物理移出自
+    # run_mandate M7.5 块,防双发射由 mandate 侧删块承载)。判据单一源
+    # = kernel/cw_equip_env.evaluate_tool_actions + admitted_tool_actions
+    # (G1 准入)原样;工具期闩 cw4_tools_phase 同 phase 一次语义原样
+    #(写点 mark_tools_pass_executed 在执行位,发射位只读不写)。发射
+    # 语义 = 判据/准入通过的 RunTools 挂起,骨架 pass 输出后前置合并
+    #(见下方 ④ 合流)——RunTools 投影未建模,当帧 visit 终结,消耗品
+    # 给的经验/金经下一 visit 入口 heavy 进 M3;前移真正消除的是
+    # 「旧输入 LevelUp 先执行→错误升级照发」面(编者⑤ 裁决输入新鲜度;
+    # 收益路径口径 = 方案 §4 猎点 12 v2.1 更正)。
+    from sr_od.application.currency_war.kernel.cw_equip_env import (
+        admitted_tool_actions as _admit_tools,
+    )
+    from sr_od.application.currency_war.kernel.cw_equip_env import (
+        evaluate_tool_actions as _eval_tools,
+    )
+    _tools_emitted: list[Emitted] = []
+    _tools_phase = (getattr(state, 'plane', None), _round_num)
+    _owned_snap = list(getattr(session, 'last_owned_equips', None) or [])
+    if _owned_snap:
+        _ct_tools = state_of(session).cw4_counters
+        _tool_actions = _eval_tools(
+            _owned_snap, getattr(state_of(session), 'target_comp', None))
+        _tool_admitted = _admit_tools(_tool_actions)
+        # 评估即留痕(二十四局复盘候选⑤:评估过但拒与未评估不可辨):
+        # owned 快照在场即计已评估帧;零可执行件帧按拟执行动作分键显影
+        #(m7_5_reject_{action},action = 判据面稳定标识;reason 是中文
+        # 判读文本非键面,禁直拼)。无任何条目产出计 m7_5_reject_none。
+        # 观测面零策略语义:发射门(any usable)与闩不变。
+        _ct_tools['m7_5_evaluated'] = _ct_tools.get('m7_5_evaluated', 0) + 1
+        if not any(a.usable for a in _tool_admitted):
+            if any(a.usable for a in _tool_actions):
+                # 判据放行但准入拒(执行通道未就绪形态)——禁混入判据拒桶
+                _ct_tools['m7_5_reject_g1_not_admitted'] = \
+                    _ct_tools.get('m7_5_reject_g1_not_admitted', 0) + 1
+            else:
+                _m75_rejs = sorted({a.action for a in _tool_actions
+                                    if not a.usable})
+                for _r in _m75_rejs:
+                    _ct_tools[f'm7_5_reject_{_r}'] = \
+                        _ct_tools.get(f'm7_5_reject_{_r}', 0) + 1
+                if not _m75_rejs:
+                    _ct_tools['m7_5_reject_none'] = \
+                        _ct_tools.get('m7_5_reject_none', 0) + 1
+        for _ta in _tool_admitted:
+            log.info('[cw!][tools] tool=%s action=%s usable=%s reason=%s',
+                     _ta.tool, _ta.action, _ta.usable, _ta.reason or '-')
+        if any(a.usable for a in _tool_admitted):
+            if getattr(state_of(session), 'cw4_tools_phase',
+                       None) == _tools_phase:
+                _ct_tools['tools_latch_skip'] = \
+                    _ct_tools.get('tools_latch_skip', 0) + 1
+            else:
+                _tools_emitted.append(
+                    Emitted(RunTools(), True, 'm7_5_tool_consume'))
+
     # ③ 升档器求值位(先于一切卖面判据评估,§3.1)
     _sig = _upgrader_evaluate(session, state,
                               state.gold if state else 0,
@@ -475,6 +597,13 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         stop_flag=stop_flag, k_members=k_members,
         round_num=getattr(state, 'round_num', 1) if state else 1)
     out: list[Emitted] = mandate.run_mandate(frame, session, state=state)
+    # ④ 合流(迁移 C):工具发射前置 = 同帧 LevelUp+RunTools 形态执行序
+    # = RunTools 先于 LevelUp(编者⑤ 升级裁决输入新鲜度;行为锚 =
+    # test_cw_prep_flag_machine::test_runtools_emit_position)。RunTools
+    # 投影未建模 ⇒ 当帧 visit 在工具消费后终结,其后动作下一帧带新输入
+    # 重评。dd-027 回排块(run_mandate 内)已不见 RunTools,零特例叠加。
+    if _tools_emitted:
+        out = _tools_emitted + out
 
     # ⑤ EV pass(臂①旁路集=§4.2.1 显式清单;仅 criteria 真 EV 项)。
     # R197 症1:EV 输出先收进独立列表,经 _merge_ev_before_frame_end
