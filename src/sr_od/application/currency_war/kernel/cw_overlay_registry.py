@@ -243,7 +243,11 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         dispatch_priority=10,
         recovery_exit=RECOVERY_CLOSE,
     ),
-    # 星徽详情浮窗:纯展示(点星徽弹详情),无 cw_loop 消费分支
+    # 星徽详情浮窗:纯展示(点星徽弹详情)。对局内消费分支实况 = cw_loop 1d
+    # (OR 双锚任一命中即派发 CwScreenEmblemDetailPopup,召回优先,M53 起生产
+    # 里程)——本条 OverlaySpec 是分类/清场表成员(单锚=变体帧同样漏,如实
+    # 申报);入口链另有注册表守卫(AND,防御面)。同弹窗多判据是有意分叉,
+    # 禁无据统一(调和声明见 ADR-0607)。
     OverlaySpec(
         screen_name='货币战争-星徽详情',
         anchor_area='标识-流派星徽',

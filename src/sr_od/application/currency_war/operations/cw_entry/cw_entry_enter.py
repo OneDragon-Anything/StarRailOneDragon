@@ -6,8 +6,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.operations.cw_entry.cw_entry_start import (
-    try_handle_jade_detail_popup,
-    try_handle_train_supply_popup,
+    try_handle_entry_popups,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guid_choose_tab import GuideChooseTab
@@ -70,15 +69,11 @@ class CwEntryEnter(SrOperation):
     def wait_lobby(self) -> OperationRoundResult:
         screen = self.last_screenshot
 
-        # 列车补给每日弹窗(纵深挂点:弹窗可盖在指南页/朝露公馆入口任意一帧上,
-        # 不接住则下方「前往参与」/F 分支全部落空 → 节点预算耗尽)。共享助手见
-        # cw_entry_start 模块级函数。
-        popup = try_handle_train_supply_popup(self, screen)
-        if popup is not None:
-            return popup
-        # 星琼详情弹窗守卫(ADR-0574):模态压暗背景下「前往参与」/大厅锚/F 分支
-        # 提示全部失明,同样在纵深位接住。
-        popup = try_handle_jade_detail_popup(self, screen)
+        # 入口链弹窗守卫(注册表统一入口,supply→jade→badge 序位见
+        # cw_entry_start.ENTRY_POPUP_GUARDS;ADR-0574/ADR-0607):纵深挂点——
+        # 弹窗可盖在指南页/朝露公馆入口任意一帧上,不接住则下方「前往参与」/
+        # 大厅锚/F 分支全部落空 → 节点预算耗尽。
+        popup = try_handle_entry_popups(self, screen)
         if popup is not None:
             return popup
 
