@@ -10,7 +10,7 @@ loop()（@operation_node，node_max_retry_times=400；cw_loop.py::CwLoop.loop）
   ├─ _iter += 1；> MAX_ITER=2000（≈66min 预算）→ round_fail('对局循环超时')（cw_loop.py::CwLoop.MAX_ITER）
   ├─ iter1：分发锚可解析预检（§2.2）
   ├─ 停滞 watchdog tick（guards.md §2）
-  ├─ 每 10 iter：窗口焦点防线（失焦 → 主动激活；cw_loop.py::CwLoop.loop r15 焦点防线段）
+  ├─ 每 10 iter：窗口焦点防线（失焦 → 主动激活；cw_loop.py::CwLoop.loop 窗口焦点防线段）
   ├─ iter1 ∧ 新局：read_game_state(phase='battle_or_transit') 最小读
   │   └─ round>1 ∨ plane>1 → 恢复对局标记（遥测 record_exogenous；cw_loop.py::CwLoop.loop iter1 新局段）
   │   （新局策略状态冷建已前移 establish_new_match 进对局时点;生命周期钩子

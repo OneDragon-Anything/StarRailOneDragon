@@ -40,4 +40,4 @@ source_image: screens/货币战争-星琼详情/default.webp
 ## 识别快照
 
 - fixture:`screens/货币战争-星琼详情/default.webp`。
-- 事故帧存档:`.debug/sr_od_mcp/screenshot/screenshot_20260907_061729_276507.png`(2026-09-07 实机卡死现场)。
+- 事故帧存档:曾引 `.debug/sr_od_mcp/screenshot/screenshot_20260907_061729_276507.png`(2026-09-07 实机卡死现场),易失路径不持久——现场语义已由守卫锁(test_cw_screens_entry)与本档文字承载,原始帧候归档迁移后回填。
