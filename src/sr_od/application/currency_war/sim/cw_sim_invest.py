@@ -24,10 +24,29 @@ P1 永不锁 comp → V_D 目标恒空 → sim 一切含 D 的 P1 结论零外�
 注入后 sim 经济聚合生效的字段子集(其余字段不建模,见 ADR-0364 排除表):
 ``instant_gold``(选卡时点)/ ``gold_per_node`` / ``interest_cap_override`` /
 ``free_refresh_per_node``。
+
+===== 双臂(T-155 前置批,ADR-0519 审查线方案)=====
+
+sim 投资选卡有两个可选决策臂(engine ``invest_arm`` 开关,缺省 = 基线臂):
+
+- **基线臂(真实判据,'sink')**:选卡槽位只提供 3 个候选
+  (``SinkInvestSampler`` 加权采样),选哪张 = 真实决策链
+  ``strategy.decide_invest``(flow 委托 kernel ``cw_events.decide_event``)
+  的裁决——sim 从此消费真实判据,T-155 新判据对照臂在此基线上
+  同 seed 配对 A/B。旧频次注入臂(plaza 名直注入,decide_event 零消费)
+  是判据改动在 sim 里不可验证的根因。
+- **对照臂(频次注入,'freq')**:ADR-0364 原形态——每槽按 plaza 频次
+  直采 1 名注入。保留为行为对照腿。
+
+两臂共享:日程表(何时出现选卡)、plaza 频次分布(候选从哪来);
+唯一差异 = 3 候选中**谁被选中**(判据裁决 vs 频次直采)。
+``invest=SimInvestProfile`` 固定剧本不受开关影响(显式点名 = 直注入,
+两臂同义,测试/配对夹具路径)。
 """
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 
@@ -170,3 +189,68 @@ class InvestInjectionState:
     def build(cls, profile: SimInvestProfile) -> InvestInjectionState:
         return cls(profile=profile,
                    picks_by_key={(p, r): n for p, r, n in profile.picks})
+
+
+# ===== T-155 下沉臂:3 候选采样(选卡"何时出现/候选从哪来"与注入臂同口径,
+# "选哪张"交给真实判据 decide_invest——本模块只供候选,不做裁决) =====
+
+# 候选槽数(实机选卡屏恒 3 张;3 = 画面语义,非常量调参面)
+SINK_CANDIDATES: int = 3
+
+
+def _weighted_distinct(rng: random.Random,
+                       table: tuple[tuple[str, int], ...],
+                       k: int) -> tuple[str, ...]:
+    """按频次加权**不放回**抽 k 个不同名(表不足 k → 返全表;表空 → ())。
+
+    不放回 = 实机同一屏 3 张卡互不重名;首抽分布与 freq 臂单抽
+    (``_weighted``)一致——两臂候选生成同口径,A/B 差异才可归因到
+    "谁被选中"而非"候选从哪来"。
+    """
+    pool_: list[tuple[str, int]] = list(table)
+    out: list[str] = []
+    while pool_ and len(out) < k:
+        names = [n for n, _ in pool_]
+        weights = [c for _, c in pool_]
+        pick = rng.choices(names, weights=weights, k=1)[0]
+        out.append(pick)
+        pool_ = [(n, c) for n, c in pool_ if n != pick]
+    return tuple(out)
+
+
+class SinkInvestSampler:
+    """下沉臂候选采样器(基线臂随机面;engine 在选卡点消费)。
+
+    - **概率门**:构造期对 ``SIM_STRATEGY_PICK_SCHEDULE`` 逐条掷——
+      选卡"何时出现"与 freq 注入臂(sample_invest_profile)同表同语义;
+    - **候选**:局内逐槽惰性采(加权不放回 ``SINK_CANDIDATES`` 张);
+      策略候选排除已持名——实机 handler 对已持策略去重
+      (cw_screen_invest_strategy L200-202),重发已持名会让 3 选 1
+      退化成 2 选 1,与画面语义不符;
+    - **流隔离**:rng 命名空间 ``'t155-invest-sink-{seed}'``,与 freq 臂
+      (``'w162-invest-{seed}'``)及引擎主 rng 互不交集——invest=False
+      主路径逐位零漂移;同 seed 同臂的候选序列可复现,这是 T-155
+      基线臂/新判据臂同 seed 配对 A/B 的随机面契约(两臂跑同一采样器,
+      只有 decide_event 内部判据不同)。
+    """
+
+    def __init__(self, seed: int) -> None:
+        self._rng = random.Random(f't155-invest-sink-{seed}')
+        # 概率门预决(构造期):门判定只依赖 seed,提前定掉让局内采样
+        # 调用次数与门结果解耦(局内读 pick_slots,不再掷门)。
+        self.pick_slots: frozenset[tuple[int, int]] = frozenset(
+            (plane, rnd)
+            for plane, rnd, prob in SIM_STRATEGY_PICK_SCHEDULE
+            if self._rng.random() < prob)
+
+    def sample_env_options(self) -> tuple[str, ...]:
+        """开局投资环境候选(环境屏恒出现;表空 = 本局无环境,() 透传)。"""
+        return _weighted_distinct(self._rng, env_freq_table(), SINK_CANDIDATES)
+
+    def sample_strategy_options(
+            self, held: Iterable[str]) -> tuple[str, ...]:
+        """选卡轮策略候选(排除已持名;排除后表空 = 无可发候选,())。"""
+        _held = set(held)
+        table = tuple((n, c) for n, c in strategy_freq_table()
+                      if n not in _held)
+        return _weighted_distinct(self._rng, table, SINK_CANDIDATES)

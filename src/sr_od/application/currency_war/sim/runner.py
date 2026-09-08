@@ -127,6 +127,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
                       checks: bool = True,
                       planes: int = 1,
                       invest: SimInvestProfile | bool = False,
+                      invest_arm: str = 'sink',
                       p2_combat: P2CombatCalib | None = None,
                       max_rounds: int | None = None,
                       synthesis_chain: bool = False,
@@ -147,6 +148,9 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     :param invest: 透传 ``simulate_p1``(`w162_inject/`/ADR-0364;注入批报告增
         invest headline 三联:环境注入率/持卡均值/P1 锁定轮——含 D 的
         P1 侧结论自此批起以注入口径为基准)。
+    :param invest_arm: 透传 ``simulate_p1``(T-155 前置批;'sink'=基线臂
+        真实判据(缺省)| 'freq'=旧频次注入对照臂);批报告以
+        ``invest_arm`` 键披露(双臂报告同形,缺臂标 = 无法对账)。
 
     返回含 ``pool_fingerprint``/``pool_source``(⓪):跨日基线
     对照必须核对指纹一致——池随实机追加漂移,裸数字不可比。
@@ -161,6 +165,7 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
     import statistics
     results = [simulate_p1(seed_base + i, use_refresh=use_refresh,
                            pool=pool, planes=planes, invest=invest,
+                           invest_arm=invest_arm,
                            p2_combat=p2_combat,
                            synthesis_chain=synthesis_chain,
                            equip_wear_effect=equip_wear_effect)
@@ -250,6 +255,8 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         # ===== invest headline 三联(`w162_inject/`/ADR-0364;invest 注入时有意义)=====
         # 环境注入率/P1 持卡均值/P1 锁定轮分布(①资格通道激活直证:
         # 无注入语料下 invest_p1_lock_rate 恒 0——`w161_refresh/` 缺口闭合对照键)
+        # T-155 前置批:invest_arm 键 = 批的臂标(双臂报告同形,缺臂标 = 无法对账)
+        'invest_arm': (invest_arm if invest else None),
         'invest_env_rate': (sum(1 for r in results if r.invest_env) / n
                             if invest else None),
         'avg_invest_strategies': (round(statistics.mean(
@@ -564,13 +571,14 @@ def simulate_core_ab(old_strategy_factory=None,
                      seed_base: int = 0, planes: int = 1,
                      use_refresh: bool = True,
                      invest: SimInvestProfile | bool = False,
+                     invest_arm: str = 'sink',
                      p2_combat: P2CombatCalib | None = None,
                      synthesis_chain: bool = False,
                      equip_wear_effect: float = 0.0) -> dict:
     """策略对象双臂换核 A/B harness(换核对拍基建;纯新增入口)。
 
     双臂 = 同 seed_base/同池(核对 ``pool_fingerprint``,含 simulate_p1
-    内追加的 ``+eqgN`` 位)/同 planes/同 invest/p2_combat/
+    内追加的 ``+eqgN`` 位)/同 planes/同 invest/invest_arm/p2_combat/
     synthesis_chain/equip_wear_effect/use_refresh,唯一差异 = 注入的
     策略对象。``*_strategy_factory`` 为无参可调用,返回策略对象;
     **传 None = 该臂走 simulate_p1 默认构造**(不传 strategy 参数,
@@ -620,6 +628,7 @@ def simulate_core_ab(old_strategy_factory=None,
                     results.append(simulate_p1(
                         seed_base + i, pool=pool, planes=planes,
                         use_refresh=use_refresh, invest=invest,
+                        invest_arm=invest_arm,
                         p2_combat=p2_combat,
                         synthesis_chain=synthesis_chain,
                         equip_wear_effect=equip_wear_effect))
@@ -627,6 +636,7 @@ def simulate_core_ab(old_strategy_factory=None,
                     results.append(simulate_p1(
                         seed_base + i, pool=pool, planes=planes,
                         use_refresh=use_refresh, invest=invest,
+                        invest_arm=invest_arm,
                         p2_combat=p2_combat,
                         synthesis_chain=synthesis_chain,
                         equip_wear_effect=equip_wear_effect,

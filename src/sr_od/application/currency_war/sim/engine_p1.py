@@ -79,6 +79,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_s
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     InvestInjectionState,
     SimInvestProfile,
+    SinkInvestSampler,
     sample_invest_profile,
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
@@ -612,6 +613,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 config=None,
                 planes: int = 1,
                 invest: SimInvestProfile | bool = False,
+                invest_arm: str = 'sink',
                 p2_combat: P2CombatCalib | None = None,
                 synthesis_chain: bool = False,
                 equip_wear_effect: float = 0.0,
@@ -647,6 +649,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         active_strategies/active_env(实机 handler 语义),经济聚合
         (economy_effect_of 链的已建模子集)在 sim 收入/刷价层生效,
         意向层①资格通道(ADR-0338)因此可点火。
+    :param invest_arm: 投资选卡决策臂(``invest`` 真值时才有意义;
+        T-155 前置批,见 cw_sim_invest 模块 docstring 双臂节):
+        'sink'(缺省)= **基线臂**——选卡槽采样 3 候选,选哪张由真实
+        判据 ``strategy.decide_invest``(flow 委托 kernel decide_event)
+        裁决,归因透传 ``SimResult.invest_picks``;'freq' = 旧频次注入
+        对照臂(plaza 名直注入,decide_event 零消费)。固定剧本
+        (``invest=SimInvestProfile``)不受本开关影响(显式点名 = 直注入)。
+        要求策略对象具备 flow 接口 ``decide_invest``(缺省 mandate_v1
+        满足;测试桩策略不带该接口时基线臂响亮报错——基线臂的存在
+        意义就是消费真实判据,静默降级 = 假验证)。
     :param p2_combat: P2 战斗存活层参数族(`w193_p2sim/`/ADR-0377;None=模块
         默认 ``P2_COMBAT_DEFAULT``)。``calibrated=False`` 臂逐位回
         `w157_p2/`/ADR-0362 行为(Δ池 plane=2 优先 + 恒值回退档)——A/B
@@ -764,15 +776,51 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # `w162_inject/`/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
     # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
     # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
+    # T-155 前置批双臂(见 cw_sim_invest 模块 docstring):'sink' 基线臂 =
+    # 采样器供 3 候选、真实判据裁决;'freq' 对照臂 = plaza 名直注入(原形态)。
     _inv: InvestInjectionState | None = None
+    _sink: SinkInvestSampler | None = None
     if isinstance(invest, SimInvestProfile):
         _inv = InvestInjectionState.build(invest)
     elif invest:
-        _inv = InvestInjectionState.build(sample_invest_profile(seed))
+        if invest_arm == 'freq':
+            _inv = InvestInjectionState.build(sample_invest_profile(seed))
+        elif invest_arm == 'sink':
+            if not callable(getattr(strat, 'decide_invest', None)):
+                raise ValueError(
+                    'invest_arm="sink"(基线臂)要求策略对象具备 decide_invest '
+                    f'(flow 接口);当前策略 {type(strat).__name__} 不带——基线臂 '
+                    '的存在意义就是消费真实判据,禁静默降级')
+            _sink = SinkInvestSampler(seed)
+        else:
+            raise ValueError(
+                f"invest_arm 非法: {invest_arm!r}('sink'=基线臂(真实判据)|"
+                "'freq'=旧频次注入对照臂)")
+    # 基线臂选卡归因记录(局级;env 开局 1 条 + 逐选卡槽 1 条,见下方两写点)
+    _inv_picks: list[dict] = []
+    # env 归因条(单列引用;账本侧挂在 P1 r1 行——entry 口径,同 schedule
+    # (1,1) 必选注释的时点语义;局级明细仍以 _inv_picks 为全集)
+    _env_pick_rec: dict | None = None
     if _inv is not None:
         if _inv.profile.active_env:
             sess.active_env = _inv.profile.active_env
             st.active_env = _inv.profile.active_env
+    elif _sink is not None:
+        # 基线臂·开局环境选卡:3 候选 → decide_invest('env') 裁决。
+        # 时点对齐生产 entry 流程(简报→投资环境屏);state 用开局真值帧
+        # (board 空 = overlay 上 board 不可读的生产语义,decide_event 的
+        # DoT 惩罚不触发);comp 未定(None)与生产开局环境屏同态。
+        _env_opts = _sink.sample_env_options()
+        if _env_opts:
+            _env_pick = strat.decide_invest(
+                'env', list(_env_opts), st, sess, config)
+            _env = _env_opts[_env_pick.option_idx]
+            sess.active_env = _env
+            st.active_env = _env
+            _env_pick_rec = {'kind': 'env', 'plane': 1, 'round': 1,
+                             'options': list(_env_opts), 'picked': _env,
+                             'reason': _env_pick.reason}
+            _inv_picks.append(_env_pick_rec)
     # 供给重校准:装备发放结构版本并入指纹(+eqgN 位)——发放结构是
     # 行为语义的一部分,新旧结构不可比,跨版本对照必须显式失败。
     pool_fp = f'{pool_fp}+eqg{EQUIP_GRANT_CALIB_VERSION}'
@@ -848,6 +896,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         for rn in range(1, _seg_rounds + 1):
             _ts += 1
             st.round_num = rn
+            # 基线臂本轮选卡归因条(env 条挂 P1 r1 行,见 _env_pick_rec 注)
+            _round_pick_recs: list[dict] = (
+                [_env_pick_rec]
+                if (_env_pick_rec is not None and _seg_plane == 1 and rn == 1)
+                else [])
             # 批⑤ F4(ADR-0276):决策前写 session.node_type_current——
             # 生产语义 = cw_screen_prep 备战期存下一节点类型(r308 保连胜
             # 门/节点感知消费读 session);sim 旧不写 → 门在 sim 恒盲
@@ -921,22 +974,40 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 结算后、决策前;实机写点 = cw_screen_invest_strategy 的 session
             # append+去重)。instant_gold 在选卡时点入账(生产游戏引擎同点)。
             # 免费刷额度在选卡后按当前持卡聚合重算(当轮选的卡当轮生效)。
+            # T-155 前置批:freq 臂 = 日程直采名;基线臂('sink')= 采样器供
+            # 3 候选 → 真实判据 decide_invest 裁决(flow 委托 decide_event,
+            # 含 CommitSignals 喂入 = 生产 handler 同路径),归因透传
+            # _pick_rec → res.invest_picks / 账本行。采纳语义(append+去重+
+            # 经济入账)两臂同一代码路径。
+            _pk = None
+            _pick_rec: dict | None = None   # 基线臂判据归因(freq 臂恒 None)
             if _inv is not None:
                 _pk = _inv.picks_by_key.get((_seg_plane, rn))
-                if _pk is not None and _pk not in sess.active_strategies:
-                    sess.active_strategies.append(_pk)
-                    st.active_strategies = list(sess.active_strategies)
-                    _pk_econ = economy_effect_of(_pk)
-                    st.gold += _pk_econ.instant_gold
-                    if _pk_econ.xp_instant > 0:
-                        # 一次性经验选卡时点入账**一次**(接缝面批 S-4:
-                        # xp_instant oneshot 位的生产对位——登记表独立
-                        # 操作数 'xp_instant',禁并入每节点 flow 重复入账;
-                        # 生产由游戏引擎同点入账、决策侧 XP 条读数已含,
-                        # 壳只披露不叠加,防双计)。
-                        xp += _pk_econ.xp_instant
-                        st.xp_progress = (
-                            xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
+            elif _sink is not None and (_seg_plane, rn) in _sink.pick_slots:
+                _opts = _sink.sample_strategy_options(sess.active_strategies)
+                if _opts:
+                    _pe = strat.decide_invest(
+                        'strategy', list(_opts), st, sess, config)
+                    _pk = _opts[_pe.option_idx]
+                    _pick_rec = {'kind': 'strategy', 'plane': _seg_plane,
+                                 'round': rn, 'options': list(_opts),
+                                 'picked': _pk, 'reason': _pe.reason}
+                    _inv_picks.append(_pick_rec)
+                    _round_pick_recs.append(_pick_rec)
+            if _pk is not None and _pk not in sess.active_strategies:
+                sess.active_strategies.append(_pk)
+                st.active_strategies = list(sess.active_strategies)
+                _pk_econ = economy_effect_of(_pk)
+                st.gold += _pk_econ.instant_gold
+                if _pk_econ.xp_instant > 0:
+                    # 一次性经验选卡时点入账**一次**(接缝面批 S-4:
+                    # xp_instant oneshot 位的生产对位——登记表独立
+                    # 操作数 'xp_instant',禁并入每节点 flow 重复入账;
+                    # 生产由游戏引擎同点入账、决策侧 XP 条读数已含,
+                    # 壳只披露不叠加,防双计)。
+                    xp += _pk_econ.xp_instant
+                    st.xp_progress = (
+                        xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
             _free_r = (_agg_inv.free_refresh_per_node
                        if _agg_inv is not None else 0)
             if _inv is not None:
@@ -2752,6 +2823,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # strategy_state_of(session).v3_alloc_frame);None = 本轮无决策段。
                     'alloc_frame': _round_alloc_frame,
                     'alloc_active_any': _round_alloc_active_any,
+                    # T-155 基线臂:本轮选卡判据归因(kind/options/picked/
+                    # reason;env 条挂 P1 r1 行)。None = 本轮无基线臂选卡
+                    # (freq 臂/固定剧本/未开注入恒 None——注入无判据归因)
+                    'invest_picks': (_round_pick_recs
+                                     if _round_pick_recs else None),
                 },
             })
             if st.hp <= 0:
@@ -2839,9 +2915,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         (row.get('sim') or {}).get('phantom_rebuys', 0)
         for row in res.ledger)
     res.pool_floor_hits = cards_pool.floor_hits
-    if _inv is not None:
-        # `w162_inject/`/ADR-0364:注入观测(实际持有序 = session 真值,含去重)
+    if _inv is not None or _sink is not None:
+        # `w162_inject/`/ADR-0364:注入观测(实际持有序 = session 真值,含去重)。
+        # env/持有序统一读 session 写点后的真值——freq 臂(开局/日程直写)
+        # 与基线臂(裁决后写)语义同源,单读点免双臂分叉
+        res.invest_env = str(getattr(sess, 'active_env', '') or '')
         res.invest_strategies = tuple(sess.active_strategies)
+    if _sink is not None:
+        # T-155 基线臂:选卡判据归因全集(env + 逐策略槽;reason =
+        # decide_event 归因串透传,判读/统计入口)
+        res.invest_picks = tuple(_inv_picks)
     return res
 
 
