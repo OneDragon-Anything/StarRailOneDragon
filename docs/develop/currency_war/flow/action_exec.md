@@ -42,7 +42,7 @@
 
 ## 4. 商店动作执行（动作 op；`cw_shop_action_ops.py`,ADR-0517/0518）
 
-> 波批执行面的防线已按守卫断言语义重定位（`screen_op.md` §2.3 落定）：**proposal-vs-expected 断言**（`guard_proposal_vs_expected`——提案对象在期望态存在且未被消费,炸出 = 策略器算术 bug）与 **expected-vs-tracked 双账断言**（`guard_expected_vs_tracked`——投影建模 bug 的唯一在环检测器,满栏买入豁免:tracked 的 bench_place 满栏丢件 vs simulate §2.5 k 张分支不同构,对账重挂点 = 下一入口观察）。旧 `sell_guard_ok` 波级对拍与 x 去重随「整波共享帧快照」前提消失而退役（单动作下第一笔动作后期望态已更新,第二笔提案自然不指向已卖槽）。执行侧观测通道三件（卖回金实收/刷新有效性/免费刷新证据）走候选 (a) = 动作 op execute 实现层遥测（ADR-0518 处置表）。
+> 波批执行面的防线已按守卫断言语义重定位（`screen_op.md` §2.3 落定）：**proposal-vs-expected 断言**（`guard_proposal_vs_expected`——提案对象在期望态存在且未被消费,炸出 = 策略器算术 bug）与 **expected-vs-tracked 双账断言**（`guard_expected_vs_tracked`——投影建模 bug 的唯一在环检测器,满栏买入豁免已随 ADR-0617 收窄:满栏合成买面 tracked 与 simulate 同走 `_apply_full_bench_merge_buy` 单一源双账同构,豁免面仅剩非合成满栏买被拒而像素差漏检的 fail-open 残余窗）。旧 `sell_guard_ok` 波级对拍与 x 去重随「整波共享帧快照」前提消失而退役（单动作下第一笔动作后期望态已更新,第二笔提案自然不指向已卖槽）。执行侧观测通道三件（卖回金实收/刷新有效性/免费刷新证据）走候选 (a) = 动作 op execute 实现层遥测（ADR-0518 处置表）。
 
 - **BuyCardOp**：点击牌位（click_pts 从 screen_info 读，缺失兜底字面量）→ 动画窗 0.4s → **买后同 rect 卡面未变检出**（`buy_click_ineffective`：灰度差均值 < 阈值 = 点击落空/试用/被拦；裁片缺失或形状不等 = 不可判，`skipped` 分键显影不与「判了未生效」混账）→ **未生效 ⇒ execute 返回 False ⇒ 落地门两侧都不动**（不投影/不守卫/不入已买集，与 SellBenchOp 失败分支同契约）→ 有效才记账（total_buy / spend_executed += cost / tracked 追加名 / 买前裁片证据）→ 满栏自动多买补差（k = `merge_buy_k` 单一源,总价 = k×单价,执行账补差 (k−1)×单价）→ `project` = `simulate` 单一源。落地契约的调用环单一源 = `apply_action_outcome`（未落地不投影/不守卫/不入已买集；落地且非终结才投影+守卫）。
 - **LevelUpOp**：点购买经验单击 → 1.0s 动画（光标遮挡由段顶 park 防）→ 记账（clicks 序列 = 动作内部步骤,决策循环逐帧重组）。

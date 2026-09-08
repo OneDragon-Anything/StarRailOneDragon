@@ -231,9 +231,10 @@ def guard_expected_vs_tracked(state: GameState, session,
       不可逆,ADR-0516 投影口径族史)。
 
     已申报豁免(非分叉 bug 的已知建模分叉,豁免帧由调用方判定):
-    满栏买入(执行侧 tracked 的 bench_place 在满栏时丢件,simulate 走
-    §2.5 自动多买 k 张分支——两模型在满栏语境不同构,对账重挂点 = 下一
-    入口观察)。豁免面外的真分叉 = 断言炸出。
+    满栏买入(豁免面 = 游戏接受而两模型都不收编的残余窗:非合成满栏买
+    被游戏拒绝而像素差漏检的 fail-open 形态。合成满栏买面已随 T-182
+    同构化——mutate 带 shop 视图走 `_apply_full_bench_merge_buy` 同
+    分支,不再丢件漏记)。豁免面外的真分叉 = 断言炸出。
     """
     tracked = bench_from_compact(
         [bc for bc in (getattr(exec_state_of(session), 'tracked_bench_chars', None) or [])
@@ -410,8 +411,13 @@ class BuyCardOp(ShopActionOp):
                             record_drought_buy_no_reset(
                                 member=action.card.name,
                                 system=_sys, drought=_d)
+        # tracking 同步:满栏合成买与投影同分支单一源(T-182:shop 视图
+        # 进 tracked mutate,满栏完成合成的买入在 tracked 侧同样合成腾槽
+        # ——旧丢件行为使 tracked 漏记合成,同 visit 下一动作守卫对拍
+        # 误炸;2026-09-09 05:52 运行局双响事故)。
         mutate_bench_deployed(exec_state_of(match.session).tracked_bench_chars,
-                              exec_state_of(match.session).tracked_deployed, action)
+                              exec_state_of(match.session).tracked_deployed,
+                              action, shop=env.state.shop)
         if action.card.name:
             _cnt = 1
             if bench_occupied(state.bench) >= BENCH_CAPACITY:

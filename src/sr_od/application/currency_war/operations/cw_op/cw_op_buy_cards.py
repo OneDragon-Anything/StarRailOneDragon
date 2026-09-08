@@ -432,8 +432,9 @@ def apply_action_outcome(_aop: 'ShopActionOp',
     未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不投影、
     不守卫、不入「已买」集(防检出帧名污染 prefer_names/churn/P60,
     应修-2);落地且非终结 ⇒ 投影(决策 10)+ guard_expected_vs_tracked
-    (满栏买入豁免面照旧:执行侧 tracked 的 bench_place 在满栏时丢件,
-    两模型不同构,对账重挂点 = 下一入口观察)。
+    (满栏买入豁免照旧:豁免面 = 游戏接受而两模型都不收编的残余窗;
+    合成满栏买面已随 T-182 同构化——tracked mutate 带 shop 视图与
+    simulate 同走 `_apply_full_bench_merge_buy`,不再丢件漏记)。
     """
     visit_actions.append(action)
     _post_frame = None   # 动作后投影帧(终结/未落地 = None → journal delta 省略)
