@@ -1529,8 +1529,8 @@ class CwLoop(SrOperation):
         except Exception as _e:   # noqa: BLE001  watchdog 失败不阻塞
             log.debug('[cw-watch] 停滞检测失败(不阻塞): %s', _e)
 
-        # r15 焦点防线(loop 级,失焦僵尸根治):每 10 迭代主动验窗口焦点,失焦即激活。
-        # r9 实证窗口后台化时输入静默丢/截图正常 → 环僵尸;click/drag 点位守卫(r9/r10)
+        # 窗口焦点防线(loop 级,失焦僵尸根治):每 10 迭代主动验窗口焦点,失焦即激活。
+        # 实证依据:窗口后台化时输入静默丢/截图正常 → 环僵尸;click/drag 点位守卫
         # 只护单操作,本防线兜全类(未覆盖操作/未来新动作)。best-effort。
         if self._iter % 10 == 0:
             import contextlib
@@ -2697,7 +2697,20 @@ class CwLoop(SrOperation):
                     self._director_fail_streak = 0
                     # 正常备战环跑完一轮 = 部署链健康 → 0j 恢复链重试预算复位
                     #(预算只辖「前台无角色→重部署」连续失败窗,非整局总量)。
-                    self._frontless_redeploy = 0
+                    # F3/T-174(ADR-0609)复位条件收紧:StartBattle 验证失败
+                    # 的环在外循环仍记 round_success(「已试恢复交回」)——
+                    # 1-1 冻结局实证该形态每环误复位预算(两次显示 (1/2)),
+                    # 预算形同虚设、唯一止住循环的是环级守卫。故「发射但
+                    # 验证失败」(False)不复位;「本环未发射」(None)或发射
+                    # 成功(True)才复位。读后即清防跨环残留。
+                    _prep_sess = (self.ctx.cw_match.session
+                                  if self.ctx.cw_match is not None else None)
+                    _launch_ok = getattr(
+                        exec_state_of(_prep_sess),
+                        'last_prep_battle_launch_ok', None)
+                    if _launch_ok is not False:
+                        self._frontless_redeploy = 0
+                    exec_state_of(_prep_sess).last_prep_battle_launch_ok = None
                     # ADR-0250:备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
                     self._battle_ts = time.monotonic()
                     # 环出口含出战 → 战斗窗口驻留闩置位(下轮委托 CwScreenBattleWait;
