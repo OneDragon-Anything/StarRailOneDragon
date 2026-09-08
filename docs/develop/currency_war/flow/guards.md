@@ -3,16 +3,16 @@
 > 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_op/cw_op_buy_cards.py` 的守卫/停机/降级段。职责：卡死与失活的检出、留证、停机或降级。路径根 = `src/sr_od/application/currency_war/`。
 > 分工判据（od-dev-stop-hooks）：**采集哨兵不停机**（bot 可能只是慢）；**停机钩子保画面**（stop_running + flag + 截图，处理完删 flag 重启）。本篇全部为流程防线，与策略判据无关。
 
-## 1. G3 环级无进展守卫（架构反思三卡死批防线①；`cw_loop.py:226-231,1077-1126`）
+## 1. G3 环级无进展守卫（架构反思三卡死批防线①；`cw_loop.py::prep_no_progress_tick` + `CwLoop.loop` 备战分支 G3 计数段）
 
 - **判据**（T-167/ADR-0554 修订后口径）：状态指纹恒定窗口累计 `PREP_NO_PROGRESS_ROUNDS=3`【注·框架常量，三起实机卡死 8-34min 在 3 环(≈1min)内停机校准】环即触发停机留证；收益耗尽臂另设放宽判据=「指纹恒定窗口内动作批并集 ⊆ {OpenShop, RunDeploy} ∧ 末批 = RunDeploy ∧ 上一备战环 success」→ 不停机改发射出战（备战等待边际收益恒 0 的支配性论证见 ADR-0554）。指纹恒定本身即窗口内全部动作的定义性零变换证明（真实买入/卖出/升级必变 gold 或身份串）。
-- **动作批签名** = `session.last_prep_action_sig`（备战单轮 op 决策出口写动作类型元组；破墙段同写；overlay 交回/策略异常/破墙派生帧前保持 None，`cw_screen_prep.py:1211-1215,1287-1290`）。修订后动作批降级为窗口留证与收益耗尽臂判别输入（窗口动作批并集累积器），不再是计数键。
-- **状态指纹** = `prep_no_progress_state_fingerprint`（`cw_loop.py` 状态指纹构造段,行号易漂移——语义定位,ADR-0554 修订节）：(plane, round_num, last_node_type, gold, bench 身份串, deployed 身份串)，为守卫**唯一计数键**（T-167 单键化：签名振荡+恒指纹=最纯「忙而无功」，旧双键 (动作批,指纹) 在振荡下每帧归零穿透两出口，实证 run_20260908_210431 15 分钟软卡死）。任一分量变化 = 有推进（战斗等待不进备战分支且回备战时 round 必变；正常多帧部署改变身份或 gold；闩跳过帧动作批不同）。gold 分量仅开态可信帧更新（`prep_obs_frame.state_gold_trusted` 单一写点，关店帧 raw 读数不再归零计数，真买入/升级/刷新必经开店帧）；球/箱/vacancy 刻意不进指纹（识别抖动误计数，由动作签名留证腿覆盖）。
+- **动作批签名** = `session.last_prep_action_sig`（备战单轮 op 决策出口写动作类型元组；破墙段同写；overlay 交回/策略异常/破墙派生帧前保持 None；写点 = `cw_screen_prep.py::CwScreenPrep.run`（前置清零 + 决策出口）与 `CwScreenPrep._bench_full_break_round`（破墙段同写））。修订后动作批降级为窗口留证与收益耗尽臂判别输入（窗口动作批并集累积器），不再是计数键。
+- **状态指纹** = `cw_loop.py::prep_no_progress_state_fingerprint`（ADR-0554 修订节）：(plane, round_num, last_node_type, gold, bench 身份串, deployed 身份串)，为守卫**唯一计数键**（T-167 单键化：签名振荡+恒指纹=最纯「忙而无功」，旧双键 (动作批,指纹) 在振荡下每帧归零穿透两出口，实证 run_20260908_210431 15 分钟软卡死）。任一分量变化 = 有推进（战斗等待不进备战分支且回备战时 round 必变；正常多帧部署改变身份或 gold；闩跳过帧动作批不同）。gold 分量仅开态可信帧更新（`prep_obs_frame.state_gold_trusted` 单一写点，关店帧 raw 读数不再归零计数，真买入/升级/刷新必经开店帧）；球/箱/vacancy 刻意不进指纹（识别抖动误计数，由动作签名留证腿覆盖）。
 - **计数纯函数** `prep_no_progress_tick`：同指纹累加、指纹变化归零；sig=None 批归零（overlay 垄断/策略异常形态维持哨兵档语义，ADR-0554 修订第 3 条）。
 - **触发动作**：截图 + `write_no_progress_flag`（签名序列+计数+处理指引）→ 附 `prep_stall_pending_expected` 留证（EXPECTED_STATE prep_obs 覆盖点滞留条目）→ `stop_running(reason='hook:prep_no_progress')`。取代旧备战 stall 留证线（单一计数单一签名，不留两套）。
 - flag 处理指引要点：同批动作反复发射而状态不动 = 执行面变换失败（遮罩挡拖拽/点击落空/闩漏网活锁）→ 按截图判画面：未建档 overlay → 建档 + 0x 分支；已建档 → 查该动作执行链。
 
-## 2. 停滞 watchdog（r119；哨兵不停机；`cw_loop.py:209-215,434-495`）
+## 2. 停滞 watchdog（r119；哨兵不停机；`cw_loop.py::CwLoop._stall_watch_tick`）
 
 - 每 `STALL_SNAPSHOT_EVERY=5` iter 采样一次画面指纹（OCR 关键词 frozenset 哈希）；连续 `STALL_N=6` 次相同（≈1-2min 同屏）→ 写 `stall_watch.flag`（关键词+截图+处理指引）+ `[cw!]` 日志一次。**不停机**（bot 可能只是慢，停机代价>等待代价）。
 - **战斗窗口宽限**（ADR-0250）：`BATTLE_WATCH_GRACE_S=600`【注·框架常量，覆盖实测 4-5.5min 战斗】内不计数（出战后合法静止；战斗 HUD 关键词可全程不含豁免词，宽限窗防误报）。开窗 = 备战环出口出战；关窗 = 见结算屏/回备战。
@@ -28,13 +28,13 @@
 
 > 补注（T-121/ADR-0584）:分支守卫钩子（0n visit_ok/_fail 计数、0q streak 复位、A1 bail 清除、B5 窗口关+闩清）自 dispatch 包装落地起经 `_dispatch_screen_op` 的 **on_result 调用点邻接闭包**执行——限额值与清零/超限语义不变，仅执行落点随包装迁移，钩子明细见 ADR-0584 §2.3-2。
 
-## 4. 未知画面兜底（常驻安全网；`cw_loop.py:194-200,1518-1569`）
+## 4. 未知画面兜底（常驻安全网；`cw_loop.py::CwLoop._handle_unknown_fallback`）
 
 - 触发 = loop 尾所有分支不命中（兜一切未知态，非点名某态的临时捕获；移除条件 = 该类未知态全部建档实际不可达，长期保留）。
 - `UNKNOWN_STOP_THRESHOLD=15` 轮 ≈ 2min（旧 30s 放宽，换取停机钩子触发前充分自愈窗口）；重试退避 = 2s 起步每连续一次翻倍，封顶 `UNKNOWN_RETRY_BACKOFF_CAP_S=10`（画面被任何分支接走 → streak 归 1 退避自动复位）。
 - 触发动作：截图 + `unknown_state.flag`（处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + 0x 分支加 handler → 删 flag + 重启 server）→ `stop_running`。
 
-## 5. 策略失活早停（ADR-0342/dd-031；`cw_loop.py:360-362,1142-1179`）
+## 5. 策略失活早停（ADR-0342/dd-031；`cw_loop.py::CwLoop.loop` 策略失活早停检查段）
 
 - 判据：连续 **2 个完整轮**无任何策略心跳决策行（心跳 = sid 行或载体行，单一源 `query._row_heartbeat`；外环停转 = 整轮零心跳行）→ 停局重启加载策略（"重大修复待加载 = 无条件早停"的运行期镜像：外环死了继续跑 = 零信息量局）。
 - dd-031 定谳辖域收敛：sid 行唯一写点在店内决策；mandate 合法跳过开店（三开店站全关）时整轮只有载体行——旧判据"无 sid 行=死"把健康局误杀。结算点 = 备战入口查**上一轮**（本轮决策尚未发生，查本轮恒空会误杀）；telemetry 关闭时本检查让位。

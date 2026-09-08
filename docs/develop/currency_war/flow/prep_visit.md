@@ -4,7 +4,7 @@
 
 ## 1. 单轮形态（W971 P3b：外循环是唯一循环,本 op 无内环;ADR-0517 单动作化）
 
-`run()`（`cw_screen_prep.py:1261`）每调用执行一轮：
+`run()`（`cw_screen_prep.py::CwScreenPrep.run`）每调用执行一轮：
 
 ```
 run()
@@ -40,9 +40,9 @@ run()
 
 ### 1.1 观察分层（F1/F2 契约）
 
-- **heavy**（入口单次；ADR-0517 迁移后 = 画面 op 入口唯一读屏点——期望态重建,即对账。调用点 = 单轮入口 / OpenShop(read_only) 开态 gold 真值刷新）：SIFT 身份（bench/deployed）+ GameState 全量 + cap 读取；光标 parking 先行（防 OCR/SIFT 污染）。旧「每个执行过的游戏动作后必调 heavy」契约已随单动作循环退役（逐动作零读屏,期望态由投影纯计算推进;执行侧读数性通道的局部 park 由动作实现层自理,`_observe` docstring 载）。组装单一源 = `obs.cw_observe_full.observe_full`（tier='heavy'），director 只保留副作用编排（session 写/审计/缓存——单写者原则）。`PrepObservation` 字段清单 = `kernel/cw_prep_actions.py:167-202`。
+- **heavy**（入口单次；ADR-0517 迁移后 = 画面 op 入口唯一读屏点——期望态重建,即对账。调用点 = 单轮入口 / OpenShop(read_only) 开态 gold 真值刷新）：SIFT 身份（bench/deployed）+ GameState 全量 + cap 读取；光标 parking 先行（防 OCR/SIFT 污染）。旧「每个执行过的游戏动作后必调 heavy」契约已随单动作循环退役（逐动作零读屏,期望态由投影纯计算推进;执行侧读数性通道的局部 park 由动作实现层自理,`_observe` docstring 载）。组装单一源 = `obs.cw_observe_full.observe_full`（tier='heavy'），director 只保留副作用编排（session 写/审计/缓存——单写者原则）。`PrepObservation` 字段清单 = `kernel/cw_prep_actions.py::PrepObservation`。
 - **light**（兼容形态,现生产无调用方）：轻字段（球/箱/典籍/overlay/占用/shop_open）每步现读；heavy 字段沿用缓存。
-- **可信门（F2/F5）**：gold 仅 shop 开态可信（`obs.state_gold_trusted = obs.shop_open`，关态读空）；hp 写 session 前过 `gated_hp` 新鲜度门（结算真值仅在可信窗口覆盖现读；`cw_strategy.py:263-287`）。
+- **可信门（F2/F5）**：gold 仅 shop 开态可信（`obs.state_gold_trusted = obs.shop_open`，关态读空）；hp 写 session 前过 `gated_hp` 新鲜度门（结算真值仅在可信窗口覆盖现读；`cw_strategy.py::gated_hp`）。
 - 黑板写路径：obs 直写 `session.prep_obs_frame`（写者白名单 = 入口观察段/循环投影步；读者 = decide_prep_screen；`cw_screen_prep.py`）。
 
 ### 1.2 观察段的对账接线（零决策记账）
@@ -51,19 +51,19 @@ heavy 帧消费：tracking 对账（SIFT 真值重置 session tracking，漂移�
 
 ## 2. 备战决策核：live 链（mandate_v1）
 
-**live 决策链（as-built，亲验）**：`cw_screen_prep.py`（主流程/破墙段）→ `strategies/impl/mandate_v1/bridge.py:80 decide_prep_screen`（黑板读 `session.prep_obs_frame`，缺失即抛错）→ `bridge.py:146 decide_from_turn`（纯函数：调 emit）→ `entry.py:325 emit`（决策入口三遍编排）。
+**live 决策链（as-built，亲验）**：`cw_screen_prep.py`（主流程/破墙段）→ `strategies/impl/mandate_v1/bridge.py::MandateV1Strategy.decide_prep_screen`（黑板读 `session.prep_obs_frame`，缺失即抛错）→ `bridge.py::decide_from_turn`（纯函数：调 emit）→ `entry.py::emit`（决策入口三遍编排）。
 
-`entry.emit` 编排序（docstring 与代码体一致）：① prep 实体面（boxes→OpenBox / tomes→OpenTome / spheres→ClickSpheres / event_overlay→BailToOuter，优先于三遍）→ ② 证明 pass（信号臂/K/stop_flag/线级状态机/换线）→ ③ 升档器求值位 → ④ 骨架 pass（M1-M7，`mandate.py`）→ ⑤ EV pass（criteria，臂①旁路）→ ⑥ 无动作 ⇒ StartBattle（序列终点 = 备战环正常出口）。动作词表 = emit/adapter 自有的 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle 等（`adapter.py:173-187`），输出 `list[PrepAction]`——单动作循环取**首项**消费（执行序 = 逐帧取首项,即单动作选择序）。
+`entry.emit` 编排序（docstring 与代码体一致）：① prep 实体面（boxes→OpenBox / tomes→OpenTome / spheres→ClickSpheres / event_overlay→BailToOuter，优先于三遍）→ ② 证明 pass（信号臂/K/stop_flag/线级状态机/换线）→ ③ 升档器求值位 → ④ 骨架 pass（M1-M7，`mandate.py`）→ ⑤ EV pass（criteria，臂①旁路）→ ⑥ 无动作 ⇒ StartBattle（序列终点 = 备战环正常出口）。动作词表 = emit/adapter 自有的 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle 等（`adapter.py::_OP_SPECS` 全集映射表），输出 `list[PrepAction]`——单动作循环取**首项**消费（执行序 = 逐帧取首项,即单动作选择序）。
 
 ### 2.1 旧备战骨架：已删除（ADR-0517 迁移批死码清理,ADR-0518）
 
-以下旧骨架在 live 链上无入口（零生产调用,测试直调不算）,**已随 ADR-0517 迁移批物理删除**（`flow.py` 模块头 :15-22 载清单）：`_decide_prep_action_impl`（步级决策序）/ `_main_flow_step`（prep_phase 相位机,原 §2.2）/ `_free_bench_step`（腾席链 a/a2/b/c/d,原 §3）/ `_deploy_up_candidates` / `_bench_junk_idx` / `_pseudo_state` / `_fresh_state` 及私有 helper（`_is_boss_round` / `_cap_shortfall` / `_levelup_engine_ok`）。传递性死码 `kernel/cw_deploy_seat` 整模块（`_should_deploy` 族——同名禁双不变量的存活载体 = `cw_state.board_unique_key`,部署谓词载体 = `cw_deploy_logic`）与 session 暂存字段 `prep_phase` / `prep_phase_retry` / `free_bench_gold_wait` 同批清除。腾席功能现由 mandate_v1 M4 骨架义务承载（`../strategy-docs/02_mandate_layer.md` §3）。
+以下旧骨架在 live 链上无入口（零生产调用,测试直调不算）,**已随 ADR-0517 迁移批物理删除**（`flow.py` 模块头 docstring「旧备战骨架已删」节载清单）：`_decide_prep_action_impl`（步级决策序）/ `_main_flow_step`（prep_phase 相位机,原 §2.2）/ `_free_bench_step`（腾席链 a/a2/b/c/d,原 §3）/ `_deploy_up_candidates` / `_bench_junk_idx` / `_pseudo_state` / `_fresh_state` 及私有 helper（`_is_boss_round` / `_cap_shortfall` / `_levelup_engine_ok`）。传递性死码 `kernel/cw_deploy_seat` 整模块（`_should_deploy` 族——同名禁双不变量的存活载体 = `cw_state.board_unique_key`,部署谓词载体 = `cw_deploy_logic`）与 session 暂存字段 `prep_phase` / `prep_phase_retry` / `free_bench_gold_wait` 同批清除。腾席功能现由 mandate_v1 M4 骨架义务承载（`../strategy-docs/02_mandate_layer.md` §3）。
 
 ## 3. 完成判定与交还外循环
 
-- **出战** = 唯一完成态：`StartBattle` 落地（progressed）→ round_success(wait=3) → 外循环置战斗窗口（`cw_loop.py:1321-1328`）。
+- **出战** = 唯一完成态：`StartBattle` 落地（progressed）→ round_success(wait=3) → 外循环置战斗窗口（`cw_loop.py::CwLoop.loop` 备战分支出口置位段）。
 - 非完成交回（合法）：overlay 交回、空批、fail-stop 后交回、OpenShop 编排返回。每轮外循环重识别保证稳定性；无进展防线 = 外循环 G3 守卫（guards.md §1）。
-- **环级预算**（旧内环机制已拆）：原 MAX_STEPS=60/STALL_LIMIT=5/连败→恢复→屏蔽随内环拆除（`cw_screen_prep.py:393-405` 类常量保留为历史锚；现行防线 = 外循环）。
+- **环级预算**（旧内环机制已拆）：原 MAX_STEPS=60/STALL_LIMIT=5/连败→恢复→屏蔽随内环拆除（`cw_screen_prep.py::CwScreenPrep` 类常量 MAX_STEPS/STALL_LIMIT 保留为历史锚；现行防线 = 外循环）。
 
 ## 4. 席满破墙单轮（M16，ADR-0136；`cw_screen_prep.py` `_bench_full_break_round`）
 

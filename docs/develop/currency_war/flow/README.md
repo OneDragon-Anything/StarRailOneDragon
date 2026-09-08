@@ -2,7 +2,7 @@
 
 > 本目录是货币战争（CW）**流程控制的唯一现行设计家**，由流程层代码反向规格化而成（本批为纯文档，零代码改动）。原 `strategy-docs/09_architecture.md`（契约/插件/管理器/注册壳/三臂）已删除，其内容全部收编入本 README §2。
 > 职责分界（用户裁定）：**策略文档（`../strategy-docs/`）只管"每个画面结合哪些数学证明、怎么产出决策"；流程控制单独立文档（本目录）**——画面识别与路由、访问相位推进、动作发射契约、守卫与停机。
-> 读者 = 无会话历史的工程师/智能体。术语首次出现给定义。引用格式 = `文件:行号`（路径根 = `src/sr_od/application/currency_war/`）。
+> 读者 = 无会话历史的工程师/智能体。术语首次出现给定义。代码定位一律用符号锚 `文件::符号名`（loop 内语义段用 `文件::CwLoop.loop(段名)` 形态）——行号随代码增长漂移，不作定位依据；路径根 = `src/sr_od/application/currency_war/`。
 > **单动作循环架构 = 已迁移（ADR-0517 accepted,实施 ADR-0518,2026-09-06 落码）**：商店决策波批形态（一次观察算整波动作、截断器、波级契约）已被单动作循环（入口观察→逐动作决策循环→终结 op）替换;备战 per-action heavy 重读契约已灭（入口单次 + 逐动作投影 + 未建模面保守回退）;旧备战骨架死码（flow.py 10 方法 + kernel/cw_deploy_seat + prep_phase 族 session 字段）已物理删除。目标态规格 = [screen_op.md](screen_op.md)（as-designed 与 as-built 对齐维护）;各篇 as-built 描述即为现行实现。波批时代的 §2.2 序列契约保留为历史注（见该节）。
 
 ## 1. 四层结构总图
@@ -114,13 +114,13 @@
 
 | 守卫 | 触发 | 动作 | 载体 |
 |---|---|---|---|
-| 环级无进展守卫（G3） | 连续 3 个备战环"同签名动作批 ∧ 状态零推进" | 截图+flag 存证 → stop_running | `cw_loop.py:1077-1126` |
-| 停滞 watchdog | 同屏 OCR 指纹连续 6 次采样相同（非战斗态） | 哨兵 flag+日志，**不停机** | `cw_loop.py:434-495` |
-| 未知画面兜底 | 连续 15 轮全分支不命中（指数退避封顶 10s） | 停机保画面待建档 | `cw_loop.py:1518-1560` |
-| 策略失活早停 | 连续 2 个完整轮无策略心跳决策行 | 停局重启加载策略 | `cw_loop.py:1142-1179` |
-| 执行失败安灯 | 购买单元"计划花费>0 金差≈0"（分类器三态） | 停机留现场 flag | `cw_screen_prep.py:1642-1712` |
-| 商店未识别卡停机 | 防抖重读 2 帧后仍有未识别槽 | 停机保画面待建档 | `cw_op_buy_cards.py:1072-1135` |
-| 误分发/恢复链限额 | 位面过渡连败 3 / 前台无角色重部署 2 / director 连败 5 | round_fail 交兜底链 | `cw_loop.py:200-208,927-976,1306-1315` |
+| 环级无进展守卫（G3） | 连续 3 个备战环"同签名动作批 ∧ 状态零推进" | 截图+flag 存证 → stop_running | `cw_loop.py::CwLoop.loop` 备战分支 G3 计数段 |
+| 停滞 watchdog | 同屏 OCR 指纹连续 6 次采样相同（非战斗态） | 哨兵 flag+日志，**不停机** | `cw_loop.py::CwLoop._stall_watch_tick` |
+| 未知画面兜底 | 连续 15 轮全分支不命中（指数退避封顶 10s） | 停机保画面待建档 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
+| 策略失活早停 | 连续 2 个完整轮无策略心跳决策行 | 停局重启加载策略 | `cw_loop.py::CwLoop.loop` 策略失活早停检查段 |
+| 执行失败安灯 | 购买单元"计划花费>0 金差≈0"（分类器三态） | 停机留现场 flag | `cw_screen_prep.py::CwScreenPrep._exec_fail_hook_check` |
+| 商店未识别卡停机 | 防抖重读 2 帧后仍有未识别槽 | 停机保画面待建档 | `cw_op_buy_cards.py::run_buy_waves` 未识别卡停机钩子段 |
+| 误分发/恢复链限额 | 位面过渡连败 3 / 前台无角色重部署 2 / director 连败 5 | round_fail 交兜底链 | `cw_loop.py::CwLoop` 限额类常量（FRONTLESS_REDEPLOY_LIMIT/PLANE_MISDISPATCH_LIMIT）与 loop 内 director streak 判定 |
 
 ## 5. 宪法四条对流程层的适用口径
 
@@ -141,8 +141,8 @@ CurrencyWarApp（app 三节点）
   _enter_lobby：弹窗守卫 → 暂停面板恢复预检 → 大厅锚/对局屏判定（已在则跳过）→ CwEntryEnter
   _start_match：恢复预检 → 对局屏判定 → CwEntryStart
   _run_loop：CwLoop（对局内，见 outer_loop.md）
-CwEntryEnter.wait_lobby（node_max_retry_times=30，cw_entry_enter.py:69）：弹窗守卫 → 大厅锚 → 前往参与 → 点空白关弹窗 → 公告轮播 → F 交互进大厅
-CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3，operation_node.py:18）→ advance_to_prep（node_max_retry_times=60，cw_entry_start.py:209）：备战锚 → 弹窗守卫 → 大厅残留逃逸 →
+CwEntryEnter.wait_lobby（node_max_retry_times=30；`cw_entry_enter.py::CwEntryEnter.wait_lobby`）：弹窗守卫 → 大厅锚 → 前往参与 → 点空白关弹窗 → 公告轮播 → F 交互进大厅
+CwEntryStart.click_start（node_max_retry_times 装饰器缺省 3；`operation_node.py::operation_node`）→ advance_to_prep（node_max_retry_times=60；`cw_entry_start.py::CwEntryStart.advance_to_prep`）：备战锚 → 弹窗守卫 → 大厅残留逃逸 →
   前进按钮分支序（难度确认/模式选择/简报/继续进度/投资环境/投资策略/教程叠层/积分奖励页）→ 兜底 retry
 ```
 
