@@ -111,6 +111,20 @@ SELL_BENCH_REASONS: frozenset[str] = frozenset({
 })
 
 
+#: 检查器孤儿豁免键集(同轮买后卖检查的孤儿清算豁免边;**与上方发射位
+#: 值域登记门 SELL_BENCH_REASONS 分离的独立闭集**,T-180):两集当前同值
+#: 但语义不同源——发射登记门的新增值不得静默放大豁免面(豁免面若随
+#: 登记门生长即成振荡防空洞;同轮买卖振荡零容忍 = ADR-0267/0593 治理
+#: 立场)。当前值 = line_switch_collapse(线账闭合孤儿清算证明标记,
+#: 授予须伴随登记簿线账闭合事件,ADR-0591 §4)。三消费位 = sim/checks
+#: /ledger 的 check_no_same_round_buy_sell 与 check_oscillation_xp_cap、
+#: sim/checks/suspects 的 d1_same_round_pair_review(检查器/复盘面同键
+#: 集,禁借道发射登记门)。值漂移由 test_cw_sell_reason_matrix 暴露。
+SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
+    'line_switch_collapse',
+})
+
+
 @dataclass
 class SellDeployed(PrepAction):
     """卖已上阵角色(row=front/back + 物理槽位)。"""

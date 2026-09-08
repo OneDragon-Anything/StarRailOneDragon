@@ -425,8 +425,12 @@ def deployed_slot_no(idx: int) -> int:
 def deployed_place(deployed: list[BenchChar | None], bc: BenchChar) -> int | None:
     """放入指定排的首个空槽(上场落位语义):position_pref='front' → 前排区
     0-3,'back' → 后排区 4-9(ADR-0392);放置时归一 ``bc.position_pref``、
-    ``bc.slot``(排内 1-based 槽号信息位)。首选排满时落全局首个空槽兜底
-    (旧行为 append 不看排,排容量门在上游;兜底保持「合法动作必成功」)。
+    ``bc.slot``(排内 1-based 槽号信息位)与实际落位下标一致。首选排满时
+    落全局首个空槽兜底,兜底跨排时 pref 随落位改写(写端治本,ADR-0605
+    §5.2:sell_recorded 通道解析键 = deployed_idx→(排,槽号) 固定双射换算
+    后按条目 pref/slot 命中,信息位与下标错位必漏匹配误归 unexplained;
+    权威槽位 = 下标,信息位恒为派生,与 _apply_row_to_char 换排归一同向)。
+    兜底保持「合法动作必成功」(旧行为 append 不看排,排容量门在上游)。
     无任何空槽返回 None。入口防御 pad(短列表=紧缩前缀,兼容旧构造;
     同 mutate_bench_deployed 的 pad_bench 入口防御)。
     """
@@ -436,6 +440,8 @@ def deployed_place(deployed: list[BenchChar | None], bc: BenchChar) -> int | Non
     for rng in (range(lo, hi), range(DEPLOYED_CAPACITY)):
         for i in rng:
             if deployed[i] is None:
+                bc.position_pref = ('front' if i < DEPLOYED_FRONT_CAPACITY
+                                    else 'back')
                 bc.slot = deployed_slot_no(i)
                 deployed[i] = bc
                 return i
@@ -552,7 +558,9 @@ class SellBench:
     #                            通道值填充已随 2026-09-08 用户归因遥测删除
     #                            指令拆除);sim 账本 SellBench 行
     #                            sell_reason 键转录本字段,检查器孤儿豁免
-    #                            分支据此判定。
+    #                            分支据此判定(豁免键集 = cw_prep_actions
+    #                            .SELL_BENCH_ORPHAN_REASONS,与发射登记门
+    #                            分离的独立闭集,T-180)。
     convert_reason: str = ''   # 转化类豁免分键(结构化证明键,ADR-0611):
     #                            值域收窄为本批两类放行键 ⊂
     #                            SELL_BENCH_CONVERT_REASONS 闭集——
@@ -1060,6 +1068,38 @@ def merge_buy_completes(name: str, star: int,
     return own + k >= 3
 
 
+def _apply_full_bench_merge_buy(bench: list[BenchChar | None],
+                                deployed: list[BenchChar] | None,
+                                card: ShopCard,
+                                shop: list[ShopCard] | None) -> int | None:
+    """满栏合成买分支应用(``simulate`` 与 ``mutate_bench_deployed`` 共用
+    单一源,T-182)。
+
+    调用语境 = ``bench_place`` 失败(bench 无空槽)后的满栏买入;前置 =
+    该买完成一次合成(``merge_buy_completes``,不满足 = 满栏拒买,
+    ADR-0283 兜底)。应用 = k = ``merge_buy_k`` 张临时挂槽位表尾参与
+    ``_merge_bench``(3 合 1 是全场;own+k ≡ 0 mod 3,合成本身恒耗尽
+    尾挂张),截回定长 9。返回应用张数 k;前置不满足返回 None(调用方
+    据此 no-op)。
+
+    双账同构依据(T-182,2026-09-09 05:52 运行局双响事故):满栏时游戏
+    对完成合成的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上
+    载体升星)——投影与 tracked 两本账必须同走本分支;旧 tracked 侧
+    丢件不合成使两账结构性分叉,守卫在同 visit 下一动作(投影侧已腾槽、
+    豁免条件失效)对拍误炸。
+    """
+    _name = card.name
+    _star = card.star or 1
+    if not merge_buy_completes(_name, _star, bench, deployed, shop):
+        return None
+    _k = max(1, merge_buy_k(_name, _star, bench, deployed, shop))
+    for _ in range(_k):
+        bench.append(_card_to_bench(card))
+    _merge_bench(bench, deployed)   # 全场域(3合1 是全场)
+    del bench[BENCH_CAPACITY:]
+    return _k
+
+
 def sell_refund(star: int, cost: int) -> int:
     """卖出回金(economy_research.md §2(strategy/);用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
 
@@ -1495,17 +1535,16 @@ def simulate(state: GameState, action: Action) -> GameState:
         if not placed:
             _name = action.card.name
             _star = action.card.star or 1
-            if not merge_buy_completes(_name, _star, s.bench, s.deployed,
-                                       s.shop):
+            # 分支应用单一源 = _apply_full_bench_merge_buy(T-182:与运行时
+            # tracked mutate 共用,双账同构;判据面不变 = merge_buy_completes
+            # 不满足仍拒,ADR-0283 兜底)。
+            _k = _apply_full_bench_merge_buy(s.bench, s.deployed,
+                                             action.card, s.shop)
+            if _k is None:
                 return state.copy()
-            _k = merge_buy_k(_name, _star, s.bench, s.deployed, s.shop)
             s.gold -= card_cost(action.card) * max(1, _k)
-            for _ in range(max(1, _k)):
-                s.bench.append(_card_to_bench(action.card))
-            _merge_bench(s.bench, s.deployed)   # 全场域(3合1 是全场)
             # 合成恰耗尽本次 k 张(own+k ≡ 0 mod 3),尾部临时槽恒被清,
             # 截回定长 9;店侧 k 张同身份牌全部下架(自动多买语义)。
-            del s.bench[BENCH_CAPACITY:]
             _left = max(1, _k)
             _kept: list[ShopCard] = []
             for c in s.shop:
@@ -1679,7 +1718,8 @@ def simulate(state: GameState, action: Action) -> GameState:
 
 def mutate_bench_deployed(bench: list[BenchChar | None],
                           deployed: list[BenchChar],
-                          action: Action) -> None:
+                          action: Action,
+                          shop: list[ShopCard] | None = None) -> None:
     """就地应用 action 的 bench/deployed 转移到持久跟踪状态(运行时同步用)。
 
     与 ``simulate`` 的区别:``simulate`` 返回新 ``GameState`` copy(前瞻语义,含 gold/level/shop 全字段);
@@ -1688,11 +1728,19 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
     ``session.bench``/``session.deployed``。转移规则与 simulate 一致(单一源,避双源漂移)。
     ADR-0316/0392:bench/deployed 均为槽位表(定长 9/10,None=空槽)——入口防御性 pad。
     LevelUp/RefreshShop/PickEvent 不影响 bench/deployed → no-op。
+
+    ``shop``(缺省 None = 零漂移兼容):调用方的当前店面视图。提供时,
+    满栏合成买(T-182)与 simulate 同分支单一源——满栏时游戏对完成合成
+    的买入接受并合成(bench 素材被消费腾槽),tracked 侧同走
+    ``_apply_full_bench_merge_buy``,不再丢件漏记;未提供或未识别牌
+    (name 空,无法判合成对象)时维持旧丢件行为。
     """
     pad_bench(bench)
     pad_deployed(deployed)
     if isinstance(action, BuyCard):
-        bench_place(bench, _card_to_bench(action.card))
+        _placed = bench_place(bench, _card_to_bench(action.card)) is not None
+        if not _placed and shop is not None and (action.card.name or ''):
+            _apply_full_bench_merge_buy(bench, deployed, action.card, shop)
         _merge_bench(bench, deployed)   # 全场域(live tracking 与 simulate 同源)
     elif isinstance(action, SellBench):
         # ADR-0317 代际校验(与 simulate 同源):expect 非空且不符 →

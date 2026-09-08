@@ -527,9 +527,11 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     (迁移期不并读零双源)——转化类豁免读
     convert_reason ∈ ``SELL_BENCH_CONVERT_REASONS``(M4 腾席唯一燃料
     放行 / 支付变现筹资,金转化成线成员/义务动作,非净零自旋;结构化
-    证明键,值域收窄两类放行位);孤儿豁免读 sell_reason =
-    line_switch_collapse(线账闭合孤儿清算,ADR-0591 §4 证明打标制,
-    闭集单一源 = cw_prep_actions.SELL_BENCH_REASONS)。豁免面按分键
+    证明键,值域收窄两类放行位);孤儿豁免读 sell_reason ∈
+    ``cw_prep_actions.SELL_BENCH_ORPHAN_REASONS``(线账闭合孤儿清算,
+    ADR-0591 §4 证明打标制;T-180 起与发射位登记门 SELL_BENCH_REASONS
+    分离的独立闭集——登记门新增值不得静默放大豁免面,振荡零容忍)。
+    豁免面按分键
     收敛,禁全开(缺省 '' 恒不豁免;reason 旧通道值不再放大豁免面)。
     键集单一源 = kernel/cw_state.SELL_BENCH_CONVERT_REASONS(镜像纪律
     同 XP_TO_NEXT_LEVEL:值漂移由双向锁暴露)。
@@ -546,7 +548,7 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     (兼容先例 = ADR-0589,避免一刀切翻旧案)。
     """
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        SELL_BENCH_REASONS,
+        SELL_BENCH_ORPHAN_REASONS,
     )
     from sr_od.application.currency_war.kernel.cw_state import (
         SELL_BENCH_CONVERT_REASONS,
@@ -657,7 +659,7 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
                 _orph_key = a.get('sell_reason') or ''
                 if _conv_key in SELL_BENCH_CONVERT_REASONS:
                     _claim = _conv_key
-                elif _orph_key in SELL_BENCH_REASONS:
+                elif _orph_key in SELL_BENCH_ORPHAN_REASONS:
                     _claim = _orph_key
                 if _claim:
                     # T-153 迁移(C4/ADR-0593):分键豁免降级——线成员
@@ -981,15 +983,16 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
     r408 修后振荡应归 0 → 本检查恒绿;涌现即买卖互踩回归。
     T3 转化类卖出分键豁免与 check_no_same_round_buy_sell 同边,并随
     T-165 按键分工判定同步(转化类读 convert_reason / 孤儿读
-    sell_reason = line_switch_collapse,键集单一源 =
+    sell_reason ∈ cw_prep_actions.SELL_BENCH_ORPHAN_REASONS(T-180 起
+    与发射位登记门分离的独立闭集),键集单一源 =
     cw_state.SELL_BENCH_CONVERT_REASONS + cw_prep_actions.SELL_BENCH_
-    REASONS)。
+    ORPHAN_REASONS)。
     T-153 迁移(C4/ADR-0593):豁免边同款降级为「自算复核通过才豁免」
     (copy 收集语境/seed 身份/转化分键线成员三复核,判定核单一源 =
     selfcalc;失配 = 可疑项条目 + 该对计入 osc 不豁免;键缺省照旧)。
     """
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        SELL_BENCH_REASONS,
+        SELL_BENCH_ORPHAN_REASONS,
     )
     from sr_od.application.currency_war.kernel.cw_state import (
         SELL_BENCH_CONVERT_REASONS,
@@ -1078,7 +1081,7 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
                 _orph_key = a.get('sell_reason') or ''
                 if _conv_key in SELL_BENCH_CONVERT_REASONS:
                     _claim = _conv_key
-                elif _orph_key in SELL_BENCH_REASONS:
+                elif _orph_key in SELL_BENCH_ORPHAN_REASONS:
                     _claim = _orph_key
                 if _claim:
                     # T3 转化类卖出分键豁免(非自旋)+ T-153(C4)降级

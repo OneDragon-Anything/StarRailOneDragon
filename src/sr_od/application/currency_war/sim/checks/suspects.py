@@ -104,7 +104,7 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
     通行证」形态封死)。
     """
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        SELL_BENCH_REASONS,
+        SELL_BENCH_ORPHAN_REASONS,
     )
     from sr_od.application.currency_war.kernel.cw_state import (
         SELL_BENCH_CONVERT_REASONS,
@@ -157,14 +157,15 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
                         identity = '线外散牌/垫件'
                 # 失配判定(与检查器复核同判据;任一自报分键被自算反驳;
                 # T-165 按键分工:转化类读 convert_reason,孤儿读
-                # sell_reason = line_switch_collapse,与
+                # sell_reason ∈ cw_prep_actions.SELL_BENCH_ORPHAN_REASONS
+                # (T-180 起与发射位登记门分离的独立闭集),与
                 # check_no_same_round_buy_sell 零双源同构)
                 _conv_key = a.get('convert_reason') or ''
                 _orph_key = a.get('sell_reason') or ''
                 _conv_orphan_claim = ''
                 if _conv_key in SELL_BENCH_CONVERT_REASONS:
                     _conv_orphan_claim = _conv_key
-                elif _orph_key in SELL_BENCH_REASONS:
+                elif _orph_key in SELL_BENCH_ORPHAN_REASONS:
                     _conv_orphan_claim = _orph_key
                 mismatch = ''
                 if _conv_orphan_claim \

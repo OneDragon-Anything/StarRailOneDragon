@@ -62,3 +62,7 @@ release_budget 恒 0 / overflow 新码帧读 0 = T-88 复核批定谳「三写�
 - **对存量档案零影响**:语料零 SellDeployed 行 ⇒ 修复前后派生输出逐档案相同,无数据病、无需 schema bump / 强制重装配。
 - **075840 重分箱对照**(修复令预期「决策时点卖出误归 unexplained 重分箱」的裁决):重跑派生 = 24 行(19 unexplained + 5 merge_promoted + 0 sell_recorded),与修复前基线逐行相同——**重分箱 0 行,误归预判不成立**:该局无 SellDeployed 行可被错配;19 条 unexplained 全部是 RunDeploy 换血窗(§3.1 真缺口,归因如实)与买窗感知纠噪,非解析错配产物。
 - **测试随改(T1)**:用例②弃虚构 row+slot 形状,改真实键面(deployed_idx/income/reason/expect)并取**紧缩错位形态**(目标件 compact 下标 ≠ 其 deployed_idx,前排空槽剔除所致)——直取列表下标与回退 row/slot 两种错实现都命中不了,变异打红亲跑;另加固 deployed_idx 越界防御用例(落 unexplained)。
+
+### 5.3 修订:position_pref 写端归一落码(三审 C1 修复批,T-180)
+
+§5.2「条目级 position_pref/slot 信息位……由 `deployed_place` 落位归一」在本批前只是**解析侧的假设**:`deployed_place` 兜底落位(首选排满跨排)只归一 `slot`,`position_pref` 保留原偏好值——条目信息位与权威下标错位的形态真实存在。后果沿 §5.2 的解析键链:换算命中要求条目 `(position_pref, slot) == (row(idx), deployed_slot_no(idx))`,错位件被 SellDeployed 解析恒漏匹配 → 决策时点卖出误归 unexplained(通道要消除的形态从解析键修复后的新边界复发)。修法 = 写端治本(kernel `cw_state.deployed_place`):放置时 `position_pref` 与 `slot` 同批归一到实际落位下标(与 `_apply_row_to_char` 换排归一同向;信息位恒为下标派生,`deployed_from_compact` 旧语料适配路径同吃)。解析侧(telemetry)零改动。锁:`test_cw_state.py::test_deployed_place_normalizes_pref_and_slot_to_authoritative_idx`(归一不变式:首选排内保持/兜底跨排改写/满表拒放不写)+ `test_cw_departures.py::test_departure_sell_recorded_pref_fallback_normalized`(pref 错位形态经生产写端→序列化→派生全链命中 sell_recorded);两锁对「拆 pref 改写」变异态亲跑全红,还原后全绿。
