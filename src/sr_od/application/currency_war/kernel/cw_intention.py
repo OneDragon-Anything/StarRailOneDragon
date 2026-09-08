@@ -1673,7 +1673,8 @@ def committed_from(session: StrategySession,
 
     grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;
     变异锁:拔掉意向供给(ist=None 且 plane<2)必须落 False 保守侧
-    (穿透锁=test_cw_w620_migration_b1/test_cw_w653_c7_zero_drift)。
+    (穿透锁=test_cw_session_separation 的 committed_authority 直锁
+    + test_cw_w628_migration_b2 对拍帧)。
     decision_v2.prep_brain 本名保留 import 重定向,消费方调用零改。
     """
     if state is not None:
