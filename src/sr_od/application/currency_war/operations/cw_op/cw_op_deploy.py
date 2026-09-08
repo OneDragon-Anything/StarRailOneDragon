@@ -363,6 +363,14 @@ class CwOpDeploy(SrOperation):
         '幻影满板矛盾帧(CV 采样无空槽 ∧ 仲裁值未达 cap)'
     STATUS_LANDED_NONE: ClassVar[str] = \
         '部署未落地(计划非空但 placed=0,失败帧已存证)'
+    # T-174 新增(ADR-0610,dd-037 契约:出口状态可区分,判读侧分键):
+    # 出口不变量断言失败具名状态(DEPLOYED/NOOP 成功出口收尾复验「上阵
+    # ≥1 ⇒ 前排≥1」不过时的 fail 形态)+ 板满失配窄豁免成功具名状态
+    # (与 STATUS_DEPLOYED/STATUS_NOOP/各 fail 形态判读侧可分)。
+    STATUS_FRONT_INVARIANT_FAIL: ClassVar[str] = \
+        '前排空修复失败(出口不变量:上阵≥1⇒前排≥1)'
+    STATUS_ROWFIX_RECOVERED: ClassVar[str] = \
+        '满板前排空(场内换排修复)'
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-部署角色')
@@ -587,12 +595,40 @@ class CwOpDeploy(SrOperation):
         _placed, _plan_empty, _gate_fail = self._deploy_deterministic(
             bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
         if _gate_fail is not None:
-            # 失配闸命中帧立即 return(ADR-0601 §5,「失配速报交回重判」
-            # 语义自洽):执行位现读已判不可信(板满失配/幻影满板),此帧上
-            # 的换排纠正 = 对坏帧做真实状态变更拖拽放大失配,SIFT 重观测/
-            # 2s 等待/装备快照同属对坏帧的后续投入——一律不做,如实速报
-            # round_fail 交回分发层重判。收敛责任 = cw_loop 环级无进展守卫
-            #(同签名计数 + 停机留证),op 侧禁自建第二份失败记忆/停出。
+            # F2 板满失配窄豁免(T-174,ADR-0610):「仲裁真满板 ∧ 前排 4 槽
+            # 全空 ∧ 后排有人(非系统单位)」= 合法的场内换排工作形态——
+            # 双源仲裁取低值(paddle=游戏计数器权威)已使「板满」为可信真值,
+            # 失配实质 = 发射位谓词违约(0j 无条件派发重部署),不是帧不可信
+            #(ADR-0601 §5 辖域修订);此形态执行场内换排修复,让 0j 恢复链
+            # 第一次真正可达 r250 场内前排保证。
+            if _gate_fail == CwOpDeploy.STATUS_BOARD_FULL_MISMATCH and \
+                    self._rowfix_front_empty_recoverable(
+                        front, back, templates):
+                self._bump_cw4_counter('board_full_front_empty_rowfix')
+                log.info('[cw-deploy] 板满失配豁免(board_full_front_empty_'
+                         'rowfix):仲裁真满板 ∧ 前排全空 ∧ 后排有人 → '
+                         '场内换排修复(恢复需要 ∧ 拖拽可行的恰覆盖形态)')
+                try:
+                    self._fix_misplaced_rows(front, back, templates)
+                except Exception as e:   # noqa: BLE001  修复失败走复验 fail
+                    log.debug('[cw-deploy] 豁免路径换排修复失败(不阻塞复验): %s', e)
+                # 复验时点 = 修复拖后特效/overlay 稳定后(同收尾整队等待口径;
+                # 过 = 新具名成功状态交回,0j 链直接再出战;不过 = 维持原闸
+                # fail 语义交回重判,持续无进展由守卫停机留证兜底)。
+                time.sleep(2.0)
+                if self._front_ok_now(front, back):
+                    log.info('[cw-deploy] 板满失配豁免:换排修复后前排 ≥1 ✓')
+                    return self.round_success(
+                        CwOpDeploy.STATUS_ROWFIX_RECOVERED, wait=1)
+                log.warning('[cw!] [deploy] 板满失配豁免:换排修复后前排仍空 '
+                            '→ round_fail 交回(修复不可达,守卫兜底)')
+                return self.round_fail(_gate_fail)
+            # 失配闸命中帧立即 return(ADR-0601 §5;T-174 修订辖域:速报
+            # 语义对幻影满板与「满板∧前排有人」形态不变——此帧上的换排纠正
+            # = 对坏帧做真实状态变更拖拽放大失配;「板满∧前排空∧后排有人」
+            # 的恢复形态已由上方窄豁免承接,ADR-0610)。如实速报 round_fail
+            # 交回分发层重判,收敛责任 = cw_loop 环级无进展守卫(同签名计数
+            # + 停机留证),op 侧禁自建第二份失败记忆/停出。
             return self.round_fail(_gate_fail)
         self._reconcile_tracking(templates)   # D-12(3.3.2):deploy 后 SIFT 真实身份纠 tracking 漂(观测回路)
         # r241 换排纠正(用户实锤:三月七被兜底强推前排,后续永不被挪回):
@@ -610,6 +646,17 @@ class CwOpDeploy(SrOperation):
         #(2026-08-16 口述的 1.5s 是低估;最后一个动作是拖动 → 等满 2s 再识别)。
         time.sleep(2.0)
         log.info('[cw-deploy] 拖完')
+
+        # F1.5 出口不变量断言(T-174,ADR-0610):op 成功出口的承诺 =
+        # 「上阵 ≥1 ⇒ 前排 ≥1」,现读时点 = 本 2.0s 整队等待之后(r241/
+        # r250 拖后各有 1.2s 特效等待,特效/overlay 中读占用 = 假阴假阳
+        # 双向风险)。覆盖全部成功出口:STATUS_DEPLOYED 与 STATUS_NOOP
+        # (NOOP = bench 空、板上有人的合法稳态,同样不允许「板有人而
+        # 前排空」地成功返回);读法与 0j 恢复链 _front_ok 同源。
+        if not self._front_ok_now(front, back):
+            log.warning('[cw!] [deploy] 出口不变量断言失败:上阵 ≥1 而前排空 '
+                        '(修复失败) → round_fail 交回')
+            return self.round_fail(CwOpDeploy.STATUS_FRONT_INVARIANT_FAIL)
 
         # r132 装备遥测采集(穿戴侧盲区修复):decisions.jsonl 的 deployed.equips 恒空
         # (决策点 state 来自 session.tracking 深拷贝,tracking 无 equips 字段;r117 定位)
@@ -642,15 +689,30 @@ class CwOpDeploy(SrOperation):
 
     def _fix_misplaced_rows(self, front: list, back: list,
                             templates: AvatarTemplates | None) -> None:
-        """r241 场内换排纠正 + r250 前排保证(场内版)。
+        """r241 场内换排纠正 + r250 场内前排保证(T-174 后置,ADR-0610)。
 
-        r241:pref=back 却在前排(或反之)→ 拖回正排
-        (兜底强推遗留的永久错排)。
-        r250(用户局实锤「前台区域无角色,无法出战」卡 12min):
-        全部角色在后排+前排完全空 → 游戏拒出战;deploy 的
-        前排保证只管 bench→场,场内全后排无人纠正 → 死循环。
-        修:此情形强制把一个后排(pref=front 优先)挪前排——
-        出战硬要求 > 站位偏好。"""
+        r241:pref=back 却在前排(或反之)→ 拖回正排(兜底强推遗留的永久
+        错排)。**禁清空前排守卫**:front→back 纠正若会把前排拖空则跳过
+        ——出战硬要求前排非空。守卫计数 = **调用内动态维护**(T-174 F1.1):
+        初值 = 下方 ``_scr_fix`` 单帧采样的前排占用数,此后每次 front→back
+        纠正拖拽完成 −1、back→front 完成 +1,守卫判定一律读该动态计数;
+        **禁循环内对静态帧重采样判定**——「前排 2 个 pref=back」形态(真实
+        可达:前排保证强转 1 个 + 后排满 fallback 落 1 个,或 comp 覆盖改变
+        pref)下静态读法两次移动各自看到计数 2 → 双双放行 → 前排清空 =
+        复发 T-174 停机根因且逃过单前角色帧的锁(方案审 F-1,配套锁 L1b)。
+        收敛性:守卫只禁清空移动,后排 pref=front 角色先入前排(动态计数
+        上升)后,被跳角色下次调用即可归位——两种处理序均 ≤2 次调用收敛;
+        全部署集合无 pref=front 角色时 pref=back 角色留前排 = 游戏硬要求。
+        r250(用户局实锤「前台区域无角色,无法出战」卡 12min):全部角色在
+        后排+前排完全空 → 游戏拒出战。**后置**(T-174 F1.2,ADR-0610):
+        r241 循环纠正完所有错排后再补,前排仍空 ∧ 后排有人 → 挪一个后排
+        (真 pref=front 优先,否则第一个,系统单位剔除照旧)到前排 1——无论
+        空前排来自哪个路径(纠正产生/拖拽失败遗留/卖出臂清前排/外部状态),
+        函数出口都满足不变量。后置补位的候选/占用读数 = 函数头 deployed
+        读数,依据结构不变量「补位触发 ⟺ r241 未产生任何涉及前排的完成
+        移动」(``_front_occ == 0`` ⟹ 初值前排空 ∧ 无 back→front 完成)——
+        该分支下函数头读数与终态一致,不漂移(方案 F-3);若未来在补位前
+        新增涉及前排的拖拽,须改为补位前单帧重读。"""
         if templates is None:
             return
         _all_deployed = read_deployed_chars(self.ctx, self.screenshot(), templates)
@@ -659,33 +721,8 @@ class CwOpDeploy(SrOperation):
         deployed = exclude_system_units(_all_deployed)
         if not deployed:
             return
-        # r250 前排保证(场内版):前排全空 + 后排有人 → 挪一
-        front_occupied = [d for d in deployed
-                          if (d.position_pref or 'back') == 'front']
-        if not front_occupied:
-            back_chars = [d for d in deployed
-                          if (d.position_pref or 'back') == 'back']
-            if back_chars and back:
-                # 优先真 front(pref)在后排的;否则第一个后排
-                cand = next(
-                    (d for d in back_chars
-                     if get_char(d.char_id) is not None
-                     and get_char(d.char_id).position_pref() == 'front'),
-                    back_chars[0])
-                ch = get_char(cand.char_id) if cand.char_id else None
-                if ch is not None and 1 <= cand.slot <= len(back):
-                    src = back[cand.slot - 1]
-                    if front:
-                        dst = front[0]
-                        if DragCwChar.drag_char(self, src, dst):
-                            log.info(f'[cw-deploy] 前排保证(场内 r250):'
-                                     f'{cand.char_id} 后排{cand.slot}'
-                                     f' → 前排1(前排空,出战硬要求) ✓')
-                            time.sleep(1.2)
-                            self._reconcile_tracking(templates)
-                            return
         # r241 原逻辑:错排者归位(空槽采样两排共用单帧:逐槽 screenshot 会在
-        # 推导内截 ~10-12 次全屏白烧延迟,且各槽判定撕裂自不同帧;与下方
+        # 推导内截 ~10-12 次全屏白烧延迟,且各槽判定撕裂自不同帧;与
         # 补部署段 _scr_fill 同款单帧纪律)
         _scr_fix = self.screenshot()
         front_empty = [i for i, c in enumerate(front)
@@ -693,10 +730,19 @@ class CwOpDeploy(SrOperation):
         back_empty = [i for i, c in enumerate(back)
                       if not slot_occupied(_scr_fix, int(c.x), int(c.y))]
         moved = 0
+        _skip_invariant = 0
+        # 禁清空前排守卫计数(T-174 F1.1,ADR-0610):调用内动态维护,见 docstring。
+        _front_occ = len(front) - len(front_empty)
         for d in deployed:
             ch = get_char(d.char_id) if d.char_id else None
             if ch is None:
                 continue   # 系统单位(cost==0)已在函数头统一剔除(ADR-0281 件4)
+            # 登记挂账(T-174,ADR-0610):want = 注册表 position_pref,
+            # 不消费 comp char_positions 覆盖(ADR-0139;部署主循环
+            # _bench_pos 吃覆盖)——覆盖与注册表冲突的 comp 存在「部署按
+            # 覆盖上前排 → 本循环按注册表拖回后排」的口径双源,本批守卫
+            # 不改该判定(守卫只禁清空移动),该形态以错排残留面出现,
+            # 后续批收口。
             want = ch.position_pref()
             cur = d.position_pref or 'back'
             if want == cur:
@@ -709,7 +755,19 @@ class CwOpDeploy(SrOperation):
                 dst = front[ti]
                 _row_cn = '前'
             else:
+                # 后排满先跳过(无槽可拖,与守卫无关)——置于守卫判定之前,
+                # 防「前排 1 人 ∧ 后排满」形态把 back-full 跳过误计入守卫
+                # 分键的归因噪声(落地审 F-C,行为零差:两路径都不拖)。
                 if not back_empty:
+                    continue
+                # 守卫辖域 = front→back(唯一能减前排占用的移动,ADR-0610):
+                # 计数将到 0(本移动完成后前排空)即跳过——出战硬要求前排
+                # 非空 > 站位偏好,与 r250 前排保证同一原则。
+                if _front_occ <= 1:
+                    _skip_invariant += 1
+                    log.info(f'[cw-deploy] 换排纠正:{d.char_id} front排{d.slot}'
+                             f' → 后排被守卫拦下(禁清空前排:出战硬要求,'
+                             f'当前排占用={_front_occ})')
                     continue
                 ti = back_empty.pop(0)
                 dst = back[ti]
@@ -720,6 +778,7 @@ class CwOpDeploy(SrOperation):
             src = src_row[d.slot - 1]
             if DragCwChar.drag_char(self, src, dst):
                 moved += 1
+                _front_occ += 1 if want == 'front' else -1
                 log.info(f'[cw-deploy] 换排纠正:{d.char_id} {cur}排{d.slot}'
                          f' → {_row_cn}排{ti + 1}(pref={want}) ✓')
                 time.sleep(1.2)    # 特效等待(同 drag 后约定)
@@ -727,9 +786,91 @@ class CwOpDeploy(SrOperation):
                 log.info(f'[cw-deploy] 换排纠正:{d.char_id} 拖3次未动,跳过')
                 # 槽没占住,回收
                 (front_empty if want == 'front' else back_empty).insert(0, ti)
+        if _skip_invariant:
+            # 守卫拦截分键零静默(T-174,ADR-0610;best-effort,无载体静默跳过)
+            self._bump_cw4_counter('rowfix_skip_front_invariant', _skip_invariant)
+        # r250 前排保证(场内版,后置;T-174 F1.2,ADR-0610):前排仍空 +
+        # 后排有人 → 挪一(出战硬要求 > 站位偏好)。候选/占用读数 =
+        # 函数头 deployed 读数(结构不变量见 docstring)。
+        if _front_occ == 0 and back and front:
+            back_chars = [d for d in deployed
+                          if (d.position_pref or 'back') == 'back']
+            if back_chars:
+                # 优先真 front(pref)在后排的;否则第一个后排
+                cand = next(
+                    (d for d in back_chars
+                     if get_char(d.char_id) is not None
+                     and get_char(d.char_id).position_pref() == 'front'),
+                    back_chars[0])
+                ch = get_char(cand.char_id) if cand.char_id else None
+                if ch is not None and 1 <= cand.slot <= len(back):
+                    src = back[cand.slot - 1]
+                    dst = front[0]
+                    if DragCwChar.drag_char(self, src, dst):
+                        moved += 1
+                        log.info(f'[cw-deploy] 前排保证(场内 r250,后置):'
+                                 f'{cand.char_id} 后排{cand.slot}'
+                                 f' → 前排1(前排空,出战硬要求) ✓')
+                        time.sleep(1.2)   # 特效等待(同 drag 后约定)
         if moved:
             log.info(f'[cw-deploy] 换排纠正完成: {moved} 个角色归位')
             self._reconcile_tracking(templates)   # 换排后 tracking 再纠一次
+
+    def _bump_cw4_counter(self, key: str, n: int = 1) -> None:
+        """cw4_counters 分键 best-effort 计数(T-174,ADR-0610)。
+
+        与 _bump_r288_skip_counter 同形态:无 session/无 dict 载体时静默
+        跳过(观测面不阻塞执行);键写入 strategy_state.cw4_counters,经
+        局终快照链自动携带。
+        """
+        try:
+            _sess = (self.ctx.cw_match.session
+                     if (self.ctx.cw_match is not None
+                         and self.ctx.cw_match.session is not None) else None)
+            _counters = getattr(strategy_state_of(_sess), 'cw4_counters',
+                                None) if _sess else None
+            if isinstance(_counters, dict):
+                _counters[key] = _counters.get(key, 0) + n
+        except Exception:   # noqa: BLE001  遥测 best-effort
+            pass
+
+    def _front_ok_now(self, front: list, back: list) -> bool:
+        """出口不变量现读(T-174 F1.5,ADR-0610):上阵 ≥1 时前排占用 ≥1。
+
+        CV 占用现读(front+back 全槽扫描,fresh 帧);与 0j 恢复链
+        ``_front_ok`` 同源(currency_war_cv.slot_occupied)。返回 False =
+        「板有人而前排空」(不变量破);整板空 = 不变量前提不适用(合法
+        稳态放行);前排槽未建模 = 识别退化态,断言不辖(交下游防线)。
+        已知残留:DD-030 幻影占用族可使「真板空」帧误判有人 → 假
+        round_fail(有界:环重试 → 守卫兜底;双源仲裁缓解挂账 ADR-0610)。
+        """
+        if not front:
+            return True   # 前排槽未建模(识别退化态)不辖
+        scr = self.screenshot()
+        front_occ = any(slot_occupied(scr, int(p.x), int(p.y)) for p in front)
+        if front_occ:
+            return True
+        return not any(slot_occupied(scr, int(p.x), int(p.y)) for p in back)
+
+    def _rowfix_front_empty_recoverable(self, front: list, back: list,
+                                        templates: AvatarTemplates | None) -> bool:
+        """F2 窄豁免条件现读(T-174,ADR-0610):前排 4 槽全空 ∧ 后排至少
+        1 个非系统单位(拖拽修复可行)。
+
+        三条件合取的另外一支在调用点:门值 = STATUS_BOARD_FULL_MISMATCH
+        (闸内双源仲裁取低值已使「板满」为可信真值,ADR-0601 §5 修订辖域;
+        幻影满板门值永不豁免——负锁 L4b)。fresh 帧现读,不消费闸命中帧。
+        身份读不可得(templates=None)→ False:无法确证修复可行就不豁免,
+        诚实 round_fail(守卫停机留证是正确出口)。
+        """
+        if templates is None or not front:
+            return False
+        scr = self.screenshot()
+        if any(slot_occupied(scr, int(p.x), int(p.y)) for p in front):
+            return False   # 前排有人 → 豁免窄度红线:维持原闸 fail 语义
+        deployed = exclude_system_units(
+            read_deployed_chars(self.ctx, scr, templates))
+        return any((d.position_pref or 'back') == 'back' for d in deployed)
 
     def _snapshot_equips_into_tracking(self) -> None:
         """读当前画面已上阵装备 → 回写 exec_state_of(session).tracked_deployed 的 equips 字段。"""

@@ -1,8 +1,8 @@
 # ADR-0601: 动作 op=机械执行,画面/失败判断属分发层(用户裁定 2026-09-08;T-164 批A 执行断言化+报告硬化+死代码下线的决策 why 收编)
 
-- **Status**: 已实施(主仓 f465c39dd + 测试仓 a18a2612 已入库;本 ADR 为该批决策 why 的持久收编与代码注释出处指针的回填目标)
-- **Date**: 2026-09-08(裁定与实施同日;ADR 补立同日三审事后批)
-- **关联**: dd-037(部署发射×执行契约接缝——本裁定在其三分契约上扩第④分支)、ADR-0517/0518(单动作画面 op 架构——动作 op 的宿主形态)、ADR-0530(板满换阵装配源契约——C2 晚帧重放豁免的「同函数同参」判据)、ADR-0532(工具执行通道——C3 replan 删除的宿主)、ADR-0554(备战收益耗尽出战臂——RunDeploy 合法稳态 no-op 的环级出口)、ADR-0596(备战旗标状态机——分发层职权面的同代定义)
+- **Status**: 已实施(主仓 f465c39dd + 测试仓 a18a2612 已入库;本 ADR 为该批决策 why 的持久收编与代码注释出处指针的回填目标)。**修订(T-174/ADR-0610,2026-09-09)**:§3 D2 增补板满失配窄豁免分支、§5「执行位现读不可信」论断按双源仲裁真值改写辖域(对幻影满板成立/对板满失配不成立)——修订依据与本批实现面见 ADR-0610
+- **Date**: 2026-09-08(裁定与实施同日;ADR 补立同日三审事后批;2026-09-09 T-174 修订)
+- **关联**: dd-037(部署发射×执行契约接缝——本裁定在其三分契约上扩第④分支)、ADR-0517/0518(单动作画面 op 架构——动作 op 的宿主形态)、ADR-0530(板满换阵装配源契约——C2 晚帧重放豁免的「同函数同参」判据)、ADR-0532(工具执行通道——C3 replan 删除的宿主)、ADR-0554(备战收益耗尽出战臂——RunDeploy 合法稳态 no-op 的环级出口)、ADR-0596(备战旗标状态机——分发层职权面的同代定义)、ADR-0610(板满失配窄豁免与部署出口不变量——§3 D2/§5 修订的依据件)
 - **原始材料**: 合规清查与方案审原文在 `.debug/temp/currency_war/attacks/action_op_compliance/`(不入 git,易失);本文为其决策内容的持久收编,两者冲突时以本文为准。
 
 ## 1. 背景与决策 why
@@ -57,13 +57,14 @@
 5. **C3**(tools):`run_tool_queue` 删 replan 参数,返 `(consumed, attempts, plan_stale)`;节点 plan_stale → `STATUS_PLAN_STALE` round_fail(闩不置位,下环重派重算)。
 6. **S1/S2 下线**(collect_spheres 文件删除):模态金 `'spheres'` 分键断喂缺口如实登记在 `recorder.record_modality_gold` docstring(补喂点候选 = `PrepActionExecutor._click_spheres` 收取前后金现读,是否接通属观测面排期裁决)。
 7. **失败状态具名常量**(禁散字符串,判读侧可分键):deploy 4 个(`STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`)+ equip_all `STATUS_SCREEN_DRIFTED` + tools `STATUS_PLAN_STALE`。
+8. **T-174 修订实施面**(ADR-0610):deploy 节点 gate_fail 分支增补板满失配窄豁免(门值 `STATUS_BOARD_FULL_MISMATCH` ∧ fresh 帧前排 4 槽全空 ∧ 后排非系统单位在场 → `_fix_misplaced_rows` 场内换排修复 → 2.0s 后出口复验前排 ≥1 → 新具名成功状态 `STATUS_ROWFIX_RECOVERED` / 维持 fail;分键 `board_full_front_empty_rowfix`);幻影满板门值永不进豁免(负锁 L4b)。既有闸三元组契约与 `STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD` 常量语义不动,既有闸锁(`test_cap_gate_full_board_mismatch_fails_not_noop`)保绿。
 
 ## 5. 消费链与收敛责任(fail 化之后谁兜底)
 
 - **闩语义**(正向收益):`mark_equip_pass_executed`/`mark_tools_pass_executed`/`mark_s1_route_check` 只在 ok=True 置位——旧 success-skip 会置闩吞分发(装备没装但闩已置),fail 化后闩不置 → 下一环重发,正确。
 - **期望态**:`apply_op_effect` 只在 ok 时登记,失败不污染期望态投影。
 - **Director 失败链**:fail-stop → 同动作连败 2 → `try_recovery` 一次 → 仍连败 → 分型 bail/屏蔽,交外循环 heavy 重观察。
-- **失配闸命中帧立即 return**(三审 C2 显式裁决):闸命中(板满失配/幻影满板)= 执行位现读不可信,该帧上的换排纠正是对坏帧做真实状态变更拖拽(放大失配),SIFT 重观测/2s 等待/装备快照同属对坏帧的后续投入——命中帧在闸返回点**立即 round_fail 速回**,不做上述任何后续动作。「如实速报交回重判」的注释自我定位与实际时序由此自洽。
+- **失配闸命中帧立即 return**(三审 C2 显式裁决;**T-174 修订辖域,ADR-0610**):闸命中两形态的「帧不可信」判定**分辖**——「执行位现读不可信」论断对**幻影满板**(CV 采样结构性失真)**成立**;对**板满失配不成立**:双源仲裁取低值(paddle = 游戏计数器权威,r64 口径)已使「板满」为可信真值,失配实质 = 发射位谓词违约(0j 无条件派发),不是帧不可信。故:①幻影满板命中帧在闸返回点**立即 round_fail 速回**不变——该帧上的换排纠正是对坏帧做真实状态变更拖拽(放大失配),SIFT 重观测/2s 等待/装备快照同属对坏帧的后续投入,一律不做;②板满失配命中帧的换排纠正不再一概视为「对坏帧的真实变更」——「满板 ∧ 前排 4 槽全空 ∧ 后排有人」是合法的场内换排工作形态(非幻影帧),走 T-174 窄豁免(ADR-0610 §2.2):fresh 帧现读三条件 → 场内换排修复 → 出口复验前排 ≥1 → 新具名成功状态 `STATUS_ROWFIX_RECOVERED` 或维持 fail;其余板满失配形态(前排有人等)仍立即 round_fail 速回。「如实速报交回重判」的注释自我定位由此在修订后的辖域内自洽。
 - **收敛终局**(依赖声明):失配/失败形态若持续,同签名动作批 + 状态零推进 → cw_loop 环级无进展守卫(`PREP_NO_PROGRESS_ROUNDS=3` 同签名计数 + 停机留证)停机;RunDeploy 合法稳态 no-op 形态由 ADR-0554 出战臂接管。**op 侧禁为任何 fail 形态自建「连续 N 次即跳过/停出」的第二份失败记忆**——那会重演 D3 刚删掉的双份计数。
 - **「失败重试风暴」结构性排除**:Director fail-stop 每环一次不环内重试;环间有 heavy 重观察;组合 op 是单节点 op,round_fail = 失败终止(不耗 node_max_retry_times)。
 

@@ -27,7 +27,7 @@
 
 | 执行面 | 三态形态 |
 |---|---|
-| 部署 CwOpDeploy | ①计划空 ∧ 0 落地 = `STATUS_NOOP`（合法稳态，bench 留置，round_success）；②计划非空 ∧ placed=0 = round_fail（交框架失败链，"失败帧已存证"）；③placed>0 = `STATUS_DEPLOYED`；④入口失配闸命中 = round_fail 先于①②③（板满失配/幻影满板 = 发射面读与执行面读失配的暴露信号，命中帧立即 return，不做换排纠正/等待/装备快照；持续无进展由环级无进展守卫停机留证；ADR-0601 §3/§5）。执行契约 = 3 元组 `(placed, plan_empty, gate_fail)`；失败状态具名常量 4 个 = `STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`（`CwOpDeploy` 类常量，判读侧分键） |
+| 部署 CwOpDeploy | ①计划空 ∧ 0 落地 = `STATUS_NOOP`（合法稳态，bench 留置，round_success）；②计划非空 ∧ placed=0 = round_fail（交框架失败链，"失败帧已存证"）；③placed>0 = `STATUS_DEPLOYED`；④入口失配闸命中 = round_fail 先于①②③（板满失配/幻影满板 = 发射面读与执行面读失配的暴露信号；**窄豁免（ADR-0610）**：板满失配 ∧ fresh 帧前排 4 槽全空 ∧ 后排非系统单位在场 = 合法场内换排工作形态 → 场内换排修复 → 出口复验前排 ≥1 → `STATUS_ROWFIX_RECOVERED`（新具名成功状态）/维持 fail；幻影满板与「满板∧前排有人」仍立即 return，ADR-0601 §3/§5 修订辖域）。执行契约 = 3 元组 `(placed, plan_empty, gate_fail)`；失败状态具名常量 4 个 = `STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`（`CwOpDeploy` 类常量，判读侧分键）。**出口不变量（ADR-0601 §5 T-174 修订/ADR-0610 §2.1）**：成功出口（`STATUS_DEPLOYED` 与 `STATUS_NOOP`）收尾在 2.0s 整队等待后 CV 现读承诺「上阵 ≥1 ⇒ 前排 ≥1」，不过 = `STATUS_FRONT_INVARIANT_FAIL` round_fail，禁静默 success |
 | 备战动作执行器 | `execute(action) -> (progressed: bool, detail: str)`：progressed=False 涵盖 NOOP 与失败时由 detail 区分（`cw_screen_prep.py:1368-1372` 消费） |
 | 商店编排 | `_open_shop_phase -> (progressed, detail)`；read_only 开店成功即 progressed（读数目标达成） |
 | 序列消费 | `StartBattle ∧ progressed` 才是出战完成；not progressed 一律 fail-stop 交回 |
@@ -57,7 +57,7 @@
 - **选人/围栏/排序单一源** = kernel `cw_deploy_logic.select_deployments`（dd-037：执行方只做输入装配 + 拖拽执行；发射方同源）。围栏集 = RECIPE ∪ ENGINE（桥派生，`cw_op_deploy.py:46-56`）；r387 cap 富余放行散牌填空（空位>必上件数）。
 - **输入装配段计划构造**：op 对 `select_deployments_reasoned` 的装配调用同帧穿豁免实参（五消费点的计划构造面，ADR-0564——漏武装 = kernel 计划层仍 held 列车件 → 豁免执行侧静默失效）。
 - **拖拽循环运行时守卫**（保留作防线）：每槽动态 cap 复查（起始检查只做一次的历史事故）、同名在场禁双（`deploy_legal` 不变量）、列车配方底线仲裁（r288：判定单一源 = kernel `recipe_floor_holds`，op 侧经 `r288_hold_now` 适配器消费拖拽增量真值；含**锁定线语境豁免** ADR-0564——豁免武装帧无有效仙舟供给时门让位，供给保留条款不变；档值常量 = `RECIPE_FLOOR_TRAIN_CAP`/`RECIPE_FLOOR_XZ_BASE`）、fresh 复查源槽占用（起始帧假阳）、前排保证（前排全空先重排真 front 候选，无则强转）、系统单位剔除（cost==0 不可拖）。P24 残余补部署的列车件过滤经同一判定（`filter_fill_plan_by_floor`，kernel 留 bench 件不得绕回上板）。
-- **换排纠正**（r241/r250）：场内错排者拖回正排；前排全空+后排有人 → 强制挪一（出战硬要求 > 站位偏好）。
+- **换排纠正**（r241/r250）：场内错排者拖回正排；**禁清空前排守卫（ADR-0610）**：front→back 纠正若会把前排拖空则跳过（出战硬要求 > 站位偏好），守卫计数 = 调用内动态维护（初值 = 单帧采样，front→back 完成 −1 / back→front 完成 +1，禁循环内静态帧重采样——双前角色形态下静态读法双双放行清空前排），拦截分键 `rowfix_skip_front_invariant`；**前排保证后置（ADR-0610）**：纠正循环后前排仍空 ∧ 后排有人 → 挪一后排到前排 1（真 pref=front 优先）——出口不变量「上阵≥1⇒前排≥1」由此在函数出口成立，收尾出口断言现读复验（`STATUS_FRONT_INVARIANT_FAIL` 兜底）。
 - **拖后整队等待 2.0s**【注·口述口径 screen_flow_timing.md #10】：羁绊徽章动画窗。
 - **收尾**：SIFT 真值纠 tracking（观测回路）+ 装备快照回写 tracked_deployed.equips（画面真值覆盖，账本漂移告警留痕）。
 - **off-target 卖出腾位**（deploy-swap）：bench 有 target 单位时卖 deployed 中的 off-target（守卫：`offtarget_sell_allowed`——引擎/配方体系件默认恒不卖（W209 振荡熔断）；**例外=换阵卖出义务臂**：线成型（fp≥1.00）∧ 板满时 off-line 件让位可卖，新线 core∪shared 禁卖护栏保持（ADR-0522）；core 辅助保留；1:1 替换上限 = bench target 数）。**第二例外=转型臂**（ADR-0534）：线已锁（`locked_comp` 非空）∧ fp<1.00 ∧ 板满帧，fenced 过渡件经单一判定函数 `swap_sell_exclusion_reason` 逐件守卫放行卖出（守恒门∪护盾/合成素材守卫/star_guard/fw_carry 对称排除/merge_material_guard，逐件拒因分键零静默）；回滚常量 `SWAP_TRANSITION_ARM_ENABLED`（翻 False 两臂发射⇔执行同关）。

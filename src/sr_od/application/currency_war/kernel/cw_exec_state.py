@@ -179,4 +179,12 @@ class ExecState:
     cw_takeover_tries: int = 0
     # fenced 臂上一帧状态(deploy 写读)。
     cw4_swap_arm_on: object = None
+    # 备战环 StartBattle 发射结果(F3/T-174,ADR-0610)。True = 本环发射
+    # 且验证成功;False = 发射但验证失败(「备战环返回 success=True
+    # status=…验证失败…」形态——1-1 冻结局实证该形态曾使 0j 恢复链预算
+    # 每环被误复位,预算形同虚设);None = 本环未发射(缺省)。写入端 =
+    # cw_screen_prep 备战单轮执行记账处(StartBattle 是终结动作,每环至多
+    # 一写);消费端 = cw_loop 备战环出口 on_result 的 0j 预算复位判定,
+    # 读后即清防跨环残留。环级生命周期。
+    last_prep_battle_launch_ok: bool | None = None
 
