@@ -511,20 +511,29 @@ class CwFlowStrategy(CwStrategy):
                       state: GameState, session: StrategySession, config) -> PickEvent:
         """投资策略/投资环境 3 选 1。P1 两 kind 同一实现(委托 ``decide_event``);分表现 P2+ 议题。
         ``state.board`` 由调用方传空 stub(overlay 叠备战时 board 不可读,§11.7)。
-        ADR-0134:strategy kind 传 state_of(session).target_comp(星徽套组/专属强化对齐 target = 成型加速,
-        comp 匹配分压倒品质先验)。ADR-0144 修订:env kind 也传 —— 开局环境屏 comp 未定(None,
-        行为同旧,阵营定向走 select_comp env_fit);**局中环境屏**(如 联席决策 2-6 节点)comp 已定,
-        概念股/邀请/契约阵营匹配定序门(ENV_FACTION_MATCH_FLOOR,ADR-0524 定形:
-        三档值=category 定序档位,禁读基数)生效。
+        T-155(ADR-0597,用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
+        不为过渡阵容服务」):对齐源 = D* 预期终局方向——本入口从意向状态解析
+        D*① 三参(locked_comp/demoted_endgame/evicted 同源于 ist)传 kernel,
+        D*② 由 decide_event 内直算 detect_signals(单帧单读,§5.4);旧
+        ``state_of(session).target_comp`` 对 invest kind 停止消费(P1 期它是
+        过渡配方对物化的伪 comp,辖域错位;supply/encounter 等 pick 族消费面
+        不变)。env kind 开局屏 comp 未定帧,D* 通常 ∅ → 落 S4 评估(行为同旧)。
         ADR-0209(接线 1/6):选卡结果喂 CommitSignals(策略 2.0/环境 1.0 权重;
-        affinity 表把所选卡映射到 comp 分贡献)。"""
+        affinity 表把所选卡映射到 comp 分贡献)——**纯遥测保留,决策面零消费**
+        (ADR-0519 C5 现状即合规;投资源不参与证明自身的反自馈 = D*② ①层排除
+        承载,ADR-0597 §5.3)。"""
         # 入口内务(ADR-0583 §3.2:pick 入口入触发面;消费最近一次备战黑板帧)
         self._consume_prep_direction_frame(session)
         from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
             state_of,
         )
-        _tgt = state_of(session).target_comp
-        pick = cw_events.decide_event(options, config, state, target_comp=_tgt)
+        _ist = self._ensure_intention(state_of(session))
+        pick = cw_events.decide_event(
+            options, config, state,
+            locked_comp=_ist.locked_comp,
+            demoted_endgame=_ist.demoted_endgame,
+            evicted=frozenset(_ist.evicted),
+        )
         # 信号喂入:所选卡对各线的 affinity → comp 分贡献
         try:
             from sr_od.application.currency_war.kernel.cw_comps import augment_affinity

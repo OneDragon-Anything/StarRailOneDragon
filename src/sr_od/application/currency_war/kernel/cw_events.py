@@ -8,8 +8,12 @@ from typing import TYPE_CHECKING
 from sr_od.application.currency_war.kernel.cw_comps import (
     augment_affinity,
     form_progress,
+    get_comp,
     mechanics_fit,
     merged_mechanic_tables,
+)
+from sr_od.application.currency_war.kernel.cw_intention import (
+    detect_signals,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_FACTION_MATCH_FLOOR,
@@ -49,6 +53,110 @@ STEERING_FORBID_PENALTY: float = 10000.0  # hard−:有替代永不选
 _DOT_PUNISHED_MECHS: frozenset[str] = frozenset({'DoT', '减益'})
 
 
+# ===== T-155 投资选卡新定序结构(ADR-0597;用户裁定 2026-09-08「优先经济,
+# 然后是终局阵容」;S0/S0'/S1/S4/叠加项语义保留,S2 新增/S3 换源重构)=====
+
+# S2 经济引擎档域带(ADR-0524 定序实现常数;锚位声明 = 110 < S2 下界 且
+# S2 上界 < 120:S2 整带压过终局对齐族上界(45×2+20=110)、低于定义型
+# augment 档(120,S1>S2 编者预裁)。档内序 = PICK_VALUE 线性归一到带内
+# (monotone,只承载带内先后,禁读基数);PV_NORM 取评估分域上界 100。
+ECON_ENGINE_BAND_BASE: float = 111.0
+ECON_ENGINE_BAND_SPAN: float = 8.0
+ECON_ENGINE_PV_NORM: float = 100.0
+
+# 持续通道字段闭集(S2 谓词的单一源;出处 = 方案 §3.1 分族表→ADR-0597 §3):
+# 「引擎 vs 一次性」的界 = 效果原文持续/一次性结构事实,零幅度拍值。四族:
+# 利息(interest_flat_per_node;interest_cap_override 单列)/持续金流/刷新/
+# 经验。经验通道属经济 = ADR-0131 EconomyEffect docstring 明文含经验 +
+# 「经验就是财富」效果原文 XP↔金 1:1 游戏定义兑换(候裁 2a 推荐采纳)。
+# **不入集**:一次性金族(instant_gold/gold_at_node/gold_at_level/
+# gold_per_hp_lost_now)、期权/难度族、血本位族(hp_gold_swap/
+# xp_buy_hp_cost,另由 is_blood_economy 集合排除)、补偿型
+# gold_per_20hp_lost(不属四族);孪生素数(EconomyEffect(xp_instant=0)
+# 全默认)自然 miss。
+_ECON_ENGINE_SINGLE_FIELDS: tuple[tuple[str, float], ...] = (
+    # (字段, 默认值):非默认即通道存在。
+    ('gold_per_node', 0), ('gold_per_boss_node', 0),
+    ('gold_per_level_up', 0), ('gold_per_three_5cost', 0),
+    ('gold_per_2star2cost_merge', 0), ('gold_per_3star_merge', 0),
+    ('interest_flat_per_node', 0),
+    ('win_reward_mult', 1.0), ('sell_price_mult', 1.0),
+    ('free_refresh_per_node', 0), ('free_refresh_burst', 0),
+    ('refresh_surprise_every', 0), ('refresh_per_compose', 0),
+    ('refresh_free_chance', 0.0), ('refresh_shop_rewrite_every_3cost', 0),
+    ('xp_per_refresh', 0), ('xp_per_node', 0), ('xp_buy_cost_discount', 0),
+    ('xp_instant', 0),
+)
+# 配对字段通道:效果语义两半齐备才存在(「接下来 count 次每次 amount」/
+# 「level 起单击减金」)——任一半缺省 = 通道不存在。
+_ECON_ENGINE_PAIR_FIELDS: tuple[tuple[str, str], ...] = (
+    ('gold_next_nodes_amount', 'gold_next_nodes_count'),
+    ('xp_click_discount_from_level', 'xp_click_discount_from_level_at'),
+)
+
+
+def is_economy_engine(economy: EconomyEffect | None) -> bool:
+    """S2 经济引擎档谓词(T-155;ADR-0597):economy 存在非默认的持续通道字段。
+
+    结构事实判据(存在性,非幅度):命中任意持续通道字段即真;字段值不参与
+    定序(档内先后由 PICK_VALUE 承载)。与血本位排除族零交集(两族字段不
+    相交,ADR-0578 对账声明)。
+    """
+    if economy is None:
+        return False
+    if economy.interest_cap_override is not None:
+        # 有效值口径:0 也是有效覆写(买断制 cap=0 = 息通道改写)。
+        return True
+    for name, default in _ECON_ENGINE_SINGLE_FIELDS:
+        if getattr(economy, name) != default:
+            return True
+    for amt, cnt in _ECON_ENGINE_PAIR_FIELDS:
+        if getattr(economy, amt) != 0 and getattr(economy, cnt) != 0:
+            return True
+    return False
+
+
+def _invest_d_star(state: GameState, locked_comp: str,
+                   demoted_endgame: bool,
+                   evicted: frozenset[str] | set[str]) -> tuple[set[str], set[str], str]:
+    """投资选卡的「预期终局方向」D* 解析(T-155;ADR-0597;级联单规则零阶段特判)。
+
+    ①终局锁线:``locked_comp`` 非空取其绑定集(P2+ 主形态;P1 ①资格锁局
+      照常落此,配方锁局恒空由级联自然落②③);``demoted_endgame`` 帧
+      D*=∅——降格终局「赢不了就少输」无对齐语义,detect_signals 不查
+      降格标志,此短路必要(防降格帧②复活对齐)。
+    ②资产层信号:``detect_signals`` ②family_bond/③core_card/④resource
+      (①层 env/strategy 亲和排除 = 反投资自证:候选卡的亲和不得参与证明
+      选它自己,T-153 同构),继承 evicted 过滤(「等同信号未发生」契约的
+      消费面镜像,意向层 :1189 同款)+ weak_planes 弱面过滤(注册表自注
+      位面死路,意向层 :1197 同款);取 (layer 升序, weight 降序,
+      comp_name 字典序)最优线。
+    ③皆空:D*=∅ → S3 全体 N=0,候选自然落 S2/S4,不引入兜底方向。
+    P2 缓锁门/H1 环境门/P1 ①资格过滤**不继承**(ADR-0597 §2 五门裁决:
+    辖「锁线动作资格」非「方向证据本体」;缓锁门另需 session/registry,
+    kernel 纯函数结构性不可达)。
+    返回 (factions, core_chars, source);source ∈ 'locked'|'signal'|''。
+    """
+    if demoted_endgame:
+        return set(), set(), ''
+    if locked_comp:
+        comp = get_comp(locked_comp)
+        if comp is not None:
+            return set(comp.factions), set(comp.core_chars), 'locked'
+    sigs = [s for s in detect_signals(state)
+            if s.layer != 1
+            and s.comp_name not in evicted
+            and state.plane not in (getattr(get_comp(s.comp_name),
+                                            'weak_planes', ()) or ())]
+    if not sigs:
+        return set(), set(), ''
+    best = sorted(sigs, key=lambda s: (s.layer, -s.weight, s.comp_name))[0]
+    comp = get_comp(best.comp_name)
+    if comp is None:   # detect_signals 只对 COMP_LIBRARY 在册线发射,防御保底
+        return set(), set(), ''
+    return set(comp.factions), set(comp.core_chars), 'signal'
+
+
 def _opt_counters_dot(opt: str) -> bool:
     """选项(词缀/环境名)是否克制 DoT/减益主派 —— 机制注册表单一源(ADR-0203)。
 
@@ -75,26 +183,36 @@ def _opt_counters_dot(opt: str) -> bool:
 #   拟合,辖域+幅度双未证;若重立须按观测参数化,见 ADR-0519 重derive 节)。)
 
 def decide_event(options: list[str], config, state: GameState,
-                  target_comp=None) -> PickEvent:
-    """事件选项打分(投资策略/环境 3 选 1)。
+                 locked_comp: str = '', demoted_endgame: bool = False,
+                 evicted: frozenset[str] | set[str] = frozenset()) -> PickEvent:
+    """事件选项打分(投资策略/环境 3 选 1;T-155 判据重构,ADR-0597)。
 
     分值来源优先级表(每项只在**高于当前分**时覆盖;ADR-0143/0144/0144b 语义;
-    ADR-0519 后事件面经验加减分族全退役;ADR-0524 定序改形:各分值族只承载
-    同族定序语义,跨族仅保留 max() 覆盖结构,禁新增加减叠加消费点):
+    ADR-0524 定序改形:各分值族只承载同族定序语义,跨族仅保留 max() 覆盖
+    结构,禁新增加减叠加消费点;用户裁定 2026-09-08「投资选卡优先经济、
+    然后是终局阵容,不为过渡阵容服务」——comp 命中层的对齐对象由过渡对
+    target_comp 换 D* 预期终局方向,解析 = :func:`_invest_d_star`:D*①
+    锁线 comp 由 decide_invest 从意向状态解析传入,D*② kernel 内直算
+    detect_signals,单帧单读):
     1. 用户 forbid(−10000):唯一压过一切的家,有替代永不选
     2. augment 定义型(120,支配性优先序):黑塔纪元/飞光类拿到即改写本局玩法 →
-       优先于一切常规评估项(comp-hit 双命中 110 / 升费 100 / steering +30 之上);
+       优先于一切常规评估项(S2 域带/S3 对齐 110/steering +30 之上);
        120 是该优先序的定序实现常数(ADR-0152 机制级声明),非基数
-    3. comp 命中(45×N+20,单 65/双 110):选项绑定∩target_comp;承重语义 =
-       「N 大者优先,comp 命中域(N≥1)压过纯基准分域」的定序规则(16 号稿 §1.5,
-       docs/develop/currency_war/strategy-docs/16_evaluation_tables_reassessment.md);
-       45/20 是 N 单调序数的定序实现常数,非基数
-    4. 策略评估分 pick_value(12-75,ADR-0143 知识判据定序器)/ env 裸分(28-72,
-       ADR-0144)+ env 阵营 floor(三档值=category 定序档位:邀请 70<契约 72<概念股 78,
-       匹配⇒提到本 category 档位,禁读基数,ADR-0524)
-    5. eval-lcs(策略 OCR 形变裸分;**env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)
-    6. 品质回落(纯字典序,零拍值,ADR-0524):仅未评估卡可达(OCR LCS 仍 miss/版本新增);
-       主键=品质序(棱彩>金>银,游戏定义),次键=economy 效果有无;回落域整体
+    3. **S2 经济引擎档(本批新增)**:EconomyEffect 含持续通道字段的策略卡
+       (:func:`is_economy_engine`,一次性金/期权/难度/血本位不入),域带
+       111-119(整带压过 S3 上界 110、低于 S1 120),档内序 = PICK_VALUE
+       归一带内(monotone,定序实现常数)
+    4. S3 终局对齐族(信号源 = D*,换源重构):comp 命中 45×N+20 =
+       选项绑定∩D* 绑定集(N 单调定序语义与 45/20 常数沿 ADR-0143/0152/
+       16 号稿 §1.5 现状保留);env 阵营 floor(三档 = category 定序档位
+       邀请 70<契约 72<概念股 78,禁读基数,ADR-0524)触发条件 =
+       _env.faction ∈ D*_factions(预裁③:floor 与 comp-hit 同批换源)。
+       D*=∅(冷启动/降格帧)→ 全体 N=0、floor 不触,候选自然落 S2/S4
+    5. S4 常规评估层(现状保留):策略评估分 pick_value(12-75,ADR-0143
+       知识判据定序器)/ env 裸分(ADR-0144)/ eval-lcs(策略 OCR 形变裸分,
+       **env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)/
+       品质回落(纯字典序,零拍值,ADR-0524):仅未评估卡可达,主键=品质序
+       (棱彩>金>银,游戏定义),次键=economy 效果有无;回落域整体
        压低于评估分域(评估分有知识判据依据,回落只是「未评估时别全盲」)
     叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源,ADR-0203)/
     用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
@@ -108,6 +226,10 @@ def decide_event(options: list[str], config, state: GameState,
     → 全体 argmax(现状退化零漂移)。排除是结构规则不是定价:任何罚值都是
     拍值(ADR-0519),且给血计分触 [40]③ 定价禁域。血卡排位于「可入选非血卡」
     之后、「被禁非血卡」之前(user-forbid「有替代永不选」的血卡替代在 ② 兑现)。
+    S2 谓词与血本位字段零交集(四族闭集不含 hp_gold_swap/xp_buy_hp_cost,
+    ADR-0597 对账);归因串 ``econ-engine``/``align×N``/``align-locked``/
+    ``align-signal`` 为本批新增,仅观测归因,不进任何检查器白名单
+    (ADR-0593 C1→D4 迁移兼容)。
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
@@ -120,8 +242,10 @@ def decide_event(options: list[str], config, state: GameState,
     # 两个常数都是纯位置编码,不是拍定的语义幅度(旧 50/30/10/+20 已删,
     # 序到分的映射无推导,ADR-0519 C9/C12 同判)。
     _rarity_lex_rank: dict[str, int] = {'银': 0, '金': 1, '棱彩': 2}
-    _tgt_factions: set[str] = set(target_comp.factions) if target_comp is not None else set()
-    _tgt_chars: set[str] = set(target_comp.core_chars) if target_comp is not None else set()
+    # D* 单帧单读(ADR-0597):每决策帧现算一次快照,帧内不重读——
+    # T-152「K 活读数轮内重排」病灶在消费面结构性不可发生。
+    _d_facs, _d_chars, _d_src = _invest_d_star(
+        state, locked_comp, demoted_endgame, evicted)
 
     best_idx, best_score = 0, -1.0
     best_reason = ''
@@ -141,7 +265,7 @@ def decide_event(options: list[str], config, state: GameState,
         # 列车同行星徽28/增发货币→超发货币55 等)——env 名走 env 分支评分,不进策略 LCS 兜底。
         # ADR-0152(评审🔴3a)augment 定义型 comp:黑塔纪元/飞光等拿到即改写本局玩法(216 张黑塔
         # 入商店/师徒变身)—— 支配性优先序(ADR-0524 定形,16 号稿 §1.4):定义型命中优先于
-        # 一切常规评估项(comp-hit 110/升费 100/steering +30 之上),仅低于用户 forbid;120 是
+        # 一切常规评估项(S2 域带/S3 对齐 110/升费 100/steering +30 之上),仅低于用户 forbid;120 是
         # 该零参数结构规则的定序实现常数,禁读作基数。(M1 资源入口:拿到 = 换打法)
         # [40]① 候选级血本位分类(N2 挂点,ADR-0578):精确名 miss(OCR 形变)的
         # 策略候选在进任何分值支**之前**先解析分类——不依赖后续分值支可达性
@@ -163,14 +287,24 @@ def decide_event(options: list[str], config, state: GameState,
         _comp_hit = 0
         if _st is not None:
             _fs, _cs = strategy_bindings(_st)
-            _comp_hit = len((_fs & _tgt_factions) | (_cs & _tgt_chars))
+            _comp_hit = len((_fs & _d_facs) | (_cs & _d_chars))
             if _comp_hit:
                 # 45×N+20 = 定序实现常数:N 的单调序数承载优先序(16 号稿 §1.5);
                 # N≥1 域(≥65)压过纯基准分域(品质回落 0-5/未注册 0),N=2(110)
                 # 再压过单命中与评估分上界 75。立项挂账:台账价值候选锚 =
                 # ΔP̂ 完成概率增量参数化(08 E1/E2,owner=事件面命题批,ADR-0524)。
                 score = max(score, 45.0 * _comp_hit + 20.0)
-                reason = f'comp-hit×{_comp_hit}'
+                reason = f'align×{_comp_hit}'
+            # S2 经济引擎档(T-155,ADR-0597):持续通道策略卡整带(≥111)压过
+            # S3 上界(110),用户裁定「优先经济」的分值载体;档内序 = PICK_VALUE
+            # 归一带内(只承载带内先后)。域带是 max() 覆盖结构的一员,非加减叠加。
+            if is_economy_engine(_st.economy):
+                _pv_norm = min(float(_pv) if _pv is not None else 0.0,
+                               ECON_ENGINE_PV_NORM)
+                _s2 = ECON_ENGINE_BAND_BASE + ECON_ENGINE_BAND_SPAN * (
+                    _pv_norm / ECON_ENGINE_PV_NORM)
+                if _s2 > score:
+                    score, reason = _s2, 'econ-engine'
             # ADR-0143 评估分(知识判据定序器)优先;未评估卡 → 品质回落字典序
             # (ADR-0524,纯字典序零拍值:主键品质序+次键经济有无)。
             if _pv is not None:
@@ -184,20 +318,25 @@ def decide_event(options: list[str], config, state: GameState,
             # 精确名 miss 但 LCS 命中评估表(OCR 形变)→ 裸评估分(comp/economy 修饰不可靠)
             score, reason = float(_pv), 'eval-lcs'
         # ADR-0144(环境侧评估分):env 名不在策略注册表(原恒 0 分 → fallback 恒选第一张);
-        # 基准分 + 阵营定向条件分(概念股/邀请/契约 faction ∩ target_comp)。
+        # 基准分 + 阵营定向条件分(概念股/邀请/契约 faction ∈ D*_factions——
+        # T-155 换源:floor 与 comp-hit 同批从过渡对换 D*,预裁③;D*=∅ 不触)。
         # OCR 形变的 env 名(如 尾彩•变体)不进策略 LCS(上方 _env 精确查 miss 时仍可能污染 ——
         # 但 OCR 只出现在 handler 层归一名后才进决策,形变 env 名实际不达此处;守卫以精确查为准)。
         if _st is None and _env is not None:
             if _env.pick_value > 0 and float(_env.pick_value) > score:
                 score, reason = float(_env.pick_value), 'env-eval'
-            if _env.faction and _env.faction in _tgt_factions:
+            if _env.faction and _env.faction in _d_facs:
                 # 阵营匹配定序门(ADR-0524 定形,16 号稿 §1.3):三档值 = category 间
                 # 定序档位(邀请 70 < 契约 72 < 概念股 78,评估实证序),承重语义 =
                 # 「匹配 ⇒ 提到本 category 档位、压过全体 env 裸分(上界 72)」,
                 # 禁读作基数。default 70.0 = 兜底档(未知 category)。
                 _floor = ENV_FACTION_MATCH_FLOOR.get(_env.category, 70.0)
                 if _floor > score:
-                    score, reason = _floor, f'env-faction:{_env.faction}'
+                    # 归因串 = D* 来源级(ADR-0597;align-locked=①锁线/
+                    # align-signal=②资产信号;仅观测归因)。
+                    score = _floor
+                    reason = ('align-locked' if _d_src == 'locked'
+                              else 'align-signal')
         # 用户转向轴(develop config.md §3):投资策略/环境 priority 软加分 + forbid 重罚。
         # 选项归属:env 注册表命中走 env 轴,其余(策略/未注册)走 strategy 轴 —— env 名经 handler
         # 归一后才进决策(ADR-0144b),未注册项按事件主流(投资策略)处理。子串匹配与白名单一致(OCR 容错)。
