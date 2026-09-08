@@ -374,6 +374,9 @@ class TelemetryRecorder:
             damage_base=getattr(outcome, 'damage_base', None),
             damage_unfinished_progress=getattr(outcome, 'damage_unfinished_progress', None),
             damage_breakdown_visible=getattr(outcome, 'damage_breakdown_visible', False),
+            # T-83 补链(ADR-0609):「长线作战」回血分量透传(旧 RoundOutcome 无
+            # 此字段时 getattr 缺省 None,与两侧旧数据兼容)
+            heal_longline=getattr(outcome, 'heal_longline', None),
             board_before=_board, bench_count=_bench,
             source=source,
             boss_names=_bosses, selected_difficulty=_diff,

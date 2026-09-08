@@ -65,10 +65,15 @@ class RoundOutcome:
     # 掉血说明 tooltip 两分量(进页瞬窗内捕获,miss=None 删失显式可辨,勿造假值);
     # damage_breakdown_visible = tooltip 是否在场(False+两分量 None=不在场,
     # True+None=在场但解析失败,两态可分)。条不可见/面板不在场 → None。
+    # heal_longline = tooltip 第三行「长线作战」(战斗回血,恒 ≥0;实机实证
+    # 常量 +2/场,ADR-0241 口述+80→82→84 连胜轨迹)——链差(净变化)含它、
+    # 两掉血分量不含,是「tooltip 幅度 = 链差 + 2」系统偏移的机制项
+    # (T-83 定谳,ADR-0609);此前解析器已读但 schema 缺字段被静默丢弃。
     progress_fill_ratio: float | None = None
     damage_base: int | None = None
     damage_unfinished_progress: int | None = None
     damage_breakdown_visible: bool = False
+    heal_longline: int | None = None
 
 
 # 节点类型 → 预期掉血(相对值;归一化用)。先验,历史 refine。

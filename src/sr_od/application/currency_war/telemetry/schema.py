@@ -535,6 +535,13 @@ class OutcomeRecord:
     damage_base: int | None = None
     damage_unfinished_progress: int | None = None
     damage_breakdown_visible: bool = False
+    # —— T-83 补链(ADR-0609):tooltip 第三行「长线作战」战斗回血分量(恒 ≥0,
+    # 实机常量 +2/场,ADR-0241 口述+连胜轨迹实证)。此前解析器已读但本 schema
+    # 缺字段 → 静默丢弃,L_node 判读「tooltip 幅度 = hp 链差 + 2」偏移只能靠
+    # 猜。补齐后偏移可直接从行内验证:链差(净变化)= 掉血两分量 + heal_longline。
+    # 可选字段追加(关键字序列化,位置无关),旧记录缺省 None 不破坏 schema
+    # (读取端 .get 容忍)。
+    heal_longline: int | None = None
     # —— r339 板深快照(板深→胜率模型校准数据源;复盘发现 sim
     # 天花板 8%>=60 vs 实机 3/3 达标的矛盾根因=模型缺板深机制,
     # 而逐轮板面×掉血对就是拟合数据):战前板面+上阵深度。

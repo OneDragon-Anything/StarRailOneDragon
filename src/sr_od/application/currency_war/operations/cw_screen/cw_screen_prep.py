@@ -1612,6 +1612,12 @@ class CwScreenPrep(SrOperation):
                 if progressed and isinstance(action, LevelUp):
                     self._xp_apply_levelup()
             acct['progressed'] = progressed
+            # F3/T-174(ADR-0609):StartBattle 发射结果写执行态(环级;
+            # 消费端 = cw_loop 备战环出口的 0j 恢复链预算复位判定,读后
+            # 即清)。StartBattle 验证失败的环在外循环仍记 round_success
+            #(「已试恢复交回」),无本写入则复位判据无法区分真成功。
+            if isinstance(action, StartBattle):
+                exec_state_of(session).last_prep_battle_launch_ok = progressed
             # T-82 续段 token 写入(生产 prep 循环执行位;OpenShop 分支与
             # 执行器分支在此合流):动作确认已执行后置位 (动作型名, 当前
             # 段序号);执行失败(fail-stop 交回外循环 heavy 重观察)不写。
@@ -2202,6 +2208,52 @@ class CwScreenPrep(SrOperation):
                     if store_plane_table(_sess, _seq, _plane_now):
                         log.info('[cw-director][nodeseq] 槽序表存 p%s %d 槽:%s',
                                  _plane_now, len(_seq), _seq)
+                    # 台账写点③·备战行源(遥测观测面,T-83;ADR-0609):
+                    # PlaneNodeLedger 原有两个写入端在正常局只覆盖 P1——写点②
+                    # (投资环境选择后重读)只在开局 1-1 前触发,写点①(位面
+                    # 详情采集)仅接管局触发(briefing_bosses 空门)→ P2/P3 序列
+                    # 恒缺,p26 备战帧采样(node_type_next)与 flow 掉血回落查表
+                    # 全 miss(sim 语料 P2 备战轮 miss 18/24 实证)。本写点每备战
+                    # 帧 heavy 观察已在读节点行,读数按位合并进 session 权威表:
+                    # 槽 idx(0-based)= 该位面第 idx+1 轮,与台账 seq 下标同基
+                    # (cw_node_reader「槽 i = 第 1+i 轮」);current 槽已由
+                    # read_node_sequence 的 OCR 标签带位置覆盖填值 → 备战查表
+                    # 「当前轮」从本位面首个 clean 备战帧起即命中。合并语义
+                    # (None 位保旧)下 past 槽 None 不覆盖历史非 None 读数;
+                    # 投资环境变异窗内节点行合法变异中,不写(与三票校验豁免
+                    # 窗同语义,防把变异中序列当真值落表)。另设轮位对齐门
+                    # (检测圆漏检→槽枚举左移的错位帧拒写,见门注)。纯观测
+                    # 写入:失败不阻塞备战环,查表消费面行为不变。
+                    try:
+                        import time as _ltime
+
+                        from sr_od.application.currency_war.kernel.cw_state import (
+                            get_node_ledger,
+                            ledger_update_plane,
+                        )
+                        _ledger_now = get_node_ledger(_sess)
+                        _ledger_seq = [s.node_type for s in _all]
+                        # 轮位对齐门(落地审建议修):槽 idx 是检测圆枚举序,
+                        # HoughCircles 中段漏检一圆 → 后续槽整体左移 → 按绝对位
+                        # 合并会把类型写错位且 past 位不可自愈。帧内自洽交叉锚 =
+                        # current 槽 idx 必须 == round_num-1(台账语义 seq[round-1]
+                        # 即当前轮);错位帧拒写本帧,等下个 clean 备战帧。
+                        _align_cur = next(
+                            (s for s in _all if s.state == 'current'), None)
+                        _align_ok = (
+                            _align_cur is not None
+                            and _st_now is not None and _st_now.round_num
+                            and _align_cur.idx == int(_st_now.round_num) - 1)
+                        if (_ledger_now is not None and _plane_now
+                                and _ledger_seq and _align_ok
+                                and _ledger_now.env_grace_until <= _ltime.monotonic()):
+                            _lchanged = ledger_update_plane(
+                                _sess, int(_plane_now), _ledger_seq, 'prep_row')
+                            if _lchanged:
+                                log.info('[cw-director][nodeseq] 台账落账 p%d(prep_row):%s',
+                                         _plane_now, _ledger_seq)
+                    except Exception:   # noqa: BLE001  观测写点 best-effort
+                        pass
                     # current 覆盖链左移优先:OCR 标签
                     # 位置门拦不住相邻同类标签(reward 标签恰在
                     # current 下方 x 对上时误读)→

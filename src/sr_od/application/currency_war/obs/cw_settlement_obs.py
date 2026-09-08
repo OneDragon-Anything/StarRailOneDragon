@@ -606,4 +606,5 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
         damage_base=_panel['damage_base'],
         damage_unfinished_progress=_panel['damage_unfinished_progress'],
         damage_breakdown_visible=_panel['visible'],
+        heal_longline=_panel['heal_longline'],   # T-83 补链:回血分量入遥测(ADR-0609)
     )

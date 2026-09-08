@@ -69,7 +69,7 @@ if TYPE_CHECKING:
     )
 
 
-def _write_settlement_observation(session: 'StrategySession',
+def _write_settlement_observation(session: StrategySession,
                                   obs: RoundOutcome,
                                   now_t: int | None) -> None:
     """结算观察半直写(ADR-0583 §2.5:旧 on_round_end 观察段收编的单一写点)。
@@ -336,10 +336,11 @@ class CwScreenBattleWait(SrOperation):
                                  '赢' if _obs.killed else '输')
                 _st.last_outcome_t = _now_t
             # 结算三项遥测页1 暂存合并(同 progress 合并法;暂存值优先于页2 同帧读数)
+            # heal_longline 同并入(T-83/ADR-0609:回血分量,页1 瞬窗才可见)
             _st1 = _st.settle_page1_settle
             if _st1:
                 for _k in ('progress_fill_ratio', 'damage_base',
-                           'damage_unfinished_progress'):
+                           'damage_unfinished_progress', 'heal_longline'):
                     if _st1.get(_k) is not None:
                         setattr(_obs, _k, _st1[_k])
                 if _st1.get('damage_breakdown_visible'):
@@ -594,7 +595,8 @@ class CwScreenBattleWait(SrOperation):
                 _st_1f = self._st.settle_page1_settle or {}
                 for _k, _v in (('damage_base', _pnl['damage_base']),
                                ('damage_unfinished_progress',
-                                _pnl['damage_unfinished_progress'])):
+                                _pnl['damage_unfinished_progress']),
+                               ('heal_longline', _pnl.get('heal_longline'))):
                     if _st_1f.get(_k) is None and _v is not None:
                         _st_1f[_k] = _v
                 if _pnl['visible']:
@@ -639,7 +641,8 @@ class CwScreenBattleWait(SrOperation):
                 _stash = self._st.settle_page1_settle or {}
                 for _k, _v in (('damage_base', _panel_now['damage_base']),
                                ('damage_unfinished_progress',
-                                _panel_now['damage_unfinished_progress'])):
+                                _panel_now['damage_unfinished_progress']),
+                               ('heal_longline', _panel_now.get('heal_longline'))):
                     if _stash.get(_k) is None and _v is not None:
                         _stash[_k] = _v
                 if _panel_now['visible']:
