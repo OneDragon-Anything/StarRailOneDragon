@@ -517,9 +517,21 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
     ADR-0362:差分归属后行位面——{节点:{位面:{桶:[Δ]}}}。
     **行级过滤与配对全部委托 :func:`pair_outcome_rows_to_pool`**
     (ADR-0582:与快照生成器单件同源,禁在本函数再长配对逻辑)。
+    **run 级隔离与快照生成器同判据**(ADR-0595 适用范围含 auto 池:
+    判据单一源 = cw_delta_pool_gen._run_quarantine_reason,本函数是
+    消费方非第二实现;auto 池 = resolve_pool('auto') 是 simulate_p1
+    的缺省池,假局/sim 批 run 不入缺省校准路径——ADR-0582 方案审
+    阻断-1「默认路径继续吃毒」同型禁再犯)。
     """
     import json as _json
+
+    # 判据单一源(ADR-0595):函数级 import,防 pool↔cw_delta_pool_gen
+    # 模块级新环(生成器侧对 pool 同为函数级消费,先例同法)。
+    from sr_od.application.currency_war.sim.cw_delta_pool_gen import (
+        _run_quarantine_reason,
+    )
     skipped: dict[str, int] = {}
+    quarantined_hits: set = set()
 
     def _rows(name: str) -> list[dict]:
         out: list[dict] = []
@@ -545,6 +557,9 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
     # 低估 1 档),与批⑬盲区声明一致。
     deployed_names: dict = {}
     for d in _rows('decisions.jsonl'):
+        if _run_quarantine_reason(d.get('run_id')) is not None:
+            quarantined_hits.add(d.get('run_id'))
+            continue
         st = d.get('state') or {}
         b = st.get('board') or {}
         k = (d.get('run_id'), d.get('plane'), d.get('round_num'))
@@ -557,6 +572,9 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
     for o in _rows('outcomes.jsonl'):
         if o.get('hp_after') is None:
             continue
+        if _run_quarantine_reason(o.get('run_id')) is not None:
+            quarantined_hits.add(o.get('run_id'))
+            continue
         seqs.setdefault(o.get('run_id'), []).append(o)
     pool, stats = pair_outcome_rows_to_pool(
         seqs, boards=boards, star_depths=star_depths,
@@ -566,7 +584,10 @@ def _pool_from_replay(replay_dir: Path) -> tuple[dict, dict]:
             'unlabeled_dropped': stats['unlabeled_dropped'],
             'hp0_transient_dropped': stats['hp0_transient_dropped'],
             'synthetic_supply_dropped': stats['synthetic_supply_dropped'],
-            'hp_conf_dropped': stats['hp_conf_dropped']}
+            'hp_conf_dropped': stats['hp_conf_dropped'],
+            # ADR-0595:被隔离 run 与快照生成器 META 同名披露(没命中=
+            # 清单/规则过期,该清理;与 build_pool 同语义)。
+            'quarantined_hits': sorted(quarantined_hits)}
     return pool, meta
 
 

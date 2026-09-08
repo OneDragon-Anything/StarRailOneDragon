@@ -34,7 +34,13 @@ SNAPSHOT {节点: {位面: {桶键: [Δ]}}} + META(构成/过滤/指纹)。
 
 防自中毒(对抗审查定谳):**源目录断言 ≠ sim 批根** —— sim 批量
 落盘(telemetry/sim)若混进池源即「sim 校准 sim」回路;生成器是池的
-唯一入口,防线落在这里,不靠调用方自觉。
+唯一入口,防线落在这里,不靠调用方自觉。防线三道(池数据防线
+一脉,ADR-0582):①目录守卫(_assert_guards,源 ≠ sim 批根);
+②run 级隔离(前缀规则 + 显式名单,拦「进错目录的 run」——
+2026-09-08 假游戏局 run_id=fake_20260908 落进 live 生产流实证,
+目录守卫对此失明);③塌缩守卫(源行数账较现提交快照塌缩即拒绝
+覆写、保留现快照——同日微型语料三次静默覆盖提交快照,对账
+正本 = ADR-0595 与编排者台账 T-126 note, 2026-09-08)。
 
 半写行容错:生产 append 进行中尾行可能撕裂(JSONDecodeError)——
 跳过+计数告警,不中断、不静默(计数进 META)。
@@ -103,16 +109,123 @@ def _assert_guards(src_dir: Path) -> None:
             '池源只能是生产 live 流根(telemetry/live)')
 
 
-# r378b(测量链 review B3):事故局隔离清单——这些 run 的遥测被判定
-# 不可信(双进程写侧竞争/观测链断),生成器**默认物理排除**防回灌
+# ===== run 级隔离机制(池数据防线,机制化双轨)=====
+# 为什么机制化:逐条名单每类新污染源都要先出一次事故再补条目,
+# 防线永远追着事故跑;前缀规则按「来源类别」拦截,显式名单只留
+# 不成类的一次性事故局。为什么必须落到 run 粒度:目录守卫
+# (_assert_guards)只辖源目录,拦不住写进生产 live 流的非真实
+# run——2026-09-08 假游戏局 fake_20260908 混在 live 源里触发局终
+# 自动再生(ADR-0595/编排者台账 T-126 note),是本机制的直接实证。
+# 关联:ADR-0582(池生成器数据防线一脉);新增类别在
+# QUARANTINED_RUN_PREFIXES 登记(带一句来源语义)。
+
+#: 前缀规则(类别级隔离):run_id 以这些前缀开头的 run 一律不入池。
+#: 消费统一走 _run_quarantine_reason,禁散写 startswith/in 判断。
+QUARANTINED_RUN_PREFIXES: dict[str, str] = {
+    # 假游戏/调试注入局:行内 hp/板深是造数非屏面观测,入池即
+    # 「用编造的对局校准真实策略」。
+    'fake_': '假游戏/调试注入局(非真实对局观测)',
+    # sim 批 run(sim/runner.write_batch_ledger 以批目录名为 run_id
+    # 前缀,目录形如 sim_<stamp>_n..._s...):sim 产出回灌池 =
+    # 「sim 校准 sim」自中毒回路(对抗审查定谳,与 _assert_guards
+    # 目录守卫同一裁决的 run 粒度延伸)。
+    'sim_': 'sim 批 run(sim 校准 sim 回路,同 _assert_guards 裁决)',
+}
+
+# 显式名单(个例级,不成类故不走前缀):这些 run 的遥测被判定不可信
+# (双进程写侧竞争/观测链断),生成器**默认物理排除**防回灌
 # (只「作废判读信任」不排池,下次全量重生成会悄悄流回快照)。
 # 增删条目在此登记(带一句事故原因),源头治理靠 daemon 修复。
 QUARANTINED_RUNS: dict[str, str] = {
-    # 2026-08-22 双进程事故(r377):18:56 restart orphan 残留,两代
+    # 2026-08-22 双进程事故:18:56 restart orphan 残留,两代
     # server 并行写 outcomes(killed 全 None=写侧竞争表征)。
-    'run_20260822_185613': 'r377 双进程写竞争(局55)',
-    'run_20260822_191028': 'r377 双进程写竞争(局56/57 重启交错)',
+    'run_20260822_185613': '双进程写竞争事故局(局55)',
+    'run_20260822_191028': '双进程写竞争事故局(局56/57 重启交错)',
 }
+
+
+def _run_quarantine_reason(run_id: object) -> str | None:
+    """run 隔离判据单一源:前缀规则优先(类别级),显式名单兜底(个例级)。
+
+    返回隔离原因(命中,不入池)或 None(放行);快照生成器
+    build_pool 与 auto 池 pool._pool_from_replay 的 decisions/outcomes
+    两循环共用(ADR-0595:适用范围含 auto 池),禁再散写名单判断。
+    """
+    rid = run_id if isinstance(run_id, str) else ''
+    for prefix, reason in QUARANTINED_RUN_PREFIXES.items():
+        if rid.startswith(prefix):
+            return reason
+    explicit = QUARANTINED_RUNS.get(rid)
+    return explicit if explicit else None
+
+
+# ===== 塌缩守卫(池数据防线)=====
+# 为什么需要:遥测流是 append-only,正常局终再生只会让源行数账
+# 上升;一旦再生源比提交快照的行数账大幅缩水(语料被截断/迁移
+# 丢失/换根后新树只有微型语料),再生会拿残缺语料静默覆盖全量
+# 快照。实证:2026-09-08 池再生源迁 telemetry/live 后仅 3 run
+# 144 行,假游戏局触发局终再生把 16391 行全量语料的提交快照
+# 覆写成微语料快照(行数账 144/18637≈0.8%,当日 11:54-12:05 三次;
+# 对账正本 = ADR-0595 与编排者台账 T-126 note, 2026-09-08)——
+# 既有目录守卫与 run 隔离都
+# 不辖「量」,必须有独立的量级守卫。
+#: 阈值 = 源行数账 < 现快照行数账 × 此比例 → 拒绝再生覆写。
+#: 为什么取 50%:合法下跌只剩「语料归档/显式裁剪」两类人工操作,
+#: 都应显式申报而非被再生静默吞掉;50% 把微语料覆盖(实测 0.8%)
+#: 与正常局终增量(每次 ≥99%)分在两侧,同时留足单次数据清洗
+#: (合理裁剪 ~10-30%)不误伤的余量。
+#: 边界:守卫按两流行数「总和」比较——单流截断(decisions 砍半时
+#: 总和约 56%)可过闸,由 META unlabeled_dropped/桶贫困披露兜底
+#: 显影;单流全灭则先撞「池为空」拒绝。
+SNAPSHOT_COLLAPSE_MIN_RATIO: float = 0.5
+
+
+class SourceCorpusCollapse(RuntimeError):
+    """再生源语料较现提交快照塌缩,守卫拒绝覆写(语义见阈值常量注)。"""
+
+
+def _committed_source_rows(data_py: Path) -> dict[str, int] | None:
+    """读「将被覆写的快照文件」里的语料行数账(塌缩守卫基线)。
+
+    生产 = 主仓提交快照;测试 = monkeypatch 的写目标(tmp_path),
+    两侧同一读取路径。文件不存在(首次再生,无现状可保护)或
+    行数账缺键(老快照无此披露)→ None,守卫无从比对即放行——
+    守卫语义是「不许比现状少」,不是「必须比某阈值多」。
+    为什么 exec 读文件而非 import:import 拿进程内已加载模块,长跑
+    进程里与磁盘现态可能脱节(他进程已重写文件);exec 生成产物
+    (自包含)才是「即将被覆盖的那个文件」的真值(测试仓 exec
+    产物先例同法)。
+    """
+    if not data_py.exists():
+        return None
+    ns: dict = {}
+    exec(data_py.read_text(encoding='utf-8'), ns)   # noqa: S102 只执行本生成器产物
+    rows = (ns.get('META') or {}).get('source_rows')
+    return rows if isinstance(rows, dict) else None
+
+
+def _assert_no_source_collapse(data_py: Path,
+                               source_rows: dict[str, int]) -> None:
+    """塌缩守卫:源行数账低于现快照行数账的阈值比例 → raise 拒绝覆写。
+
+    现快照原样保留(不写 data_py),差异申报进异常文案;局终钩子
+    的 best-effort 捕获(ADR-0344:再生失败只记警告不阻塞对局)
+    就是告警日志通道,文案自含两侧数字供申报对账。
+    """
+    baseline = _committed_source_rows(data_py)
+    if baseline is None:
+        return
+    base_total = sum(int(v) for v in baseline.values())
+    src_total = sum(int(v) for v in source_rows.values())
+    if base_total <= 0 or src_total >= SNAPSHOT_COLLAPSE_MIN_RATIO * base_total:
+        return
+    raise SourceCorpusCollapse(
+        f'再生源语料塌缩: 源行数账 {src_total} < 现快照行数账 '
+        f'{base_total} × {SNAPSHOT_COLLAPSE_MIN_RATIO}(塌缩阈值,'
+        '理由见 cw_delta_pool_gen 常量注)——已保留现快照未覆写;'
+        f'源 {dict(sorted(source_rows.items()))} vs 快照基线 '
+        f'{dict(sorted(baseline.items()))}。先核查语料去向(迁移/'
+        '裁剪/流被截断)并显式申报,再恢复再生')
 
 
 def _iter_jsonl(path: Path, skipped: dict) -> list[dict]:
@@ -216,7 +329,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
     行级过滤(ADR-0582):合成行/低可信行不作 hp 差分端点,移行
     桥接重配对——语义与实现单一源 =
     pool.pair_outcome_rows_to_pool(本函数只做读取/runs 过滤/
-    隔离清单与 META 组装,禁再长配对逻辑)。
+    run 隔离与 META 组装,禁再长配对逻辑)。
 
     守卫在函数体内生效(审查#4:只在 main 锁不住 import 复用)。
     """
@@ -233,7 +346,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
     for d in _iter_jsonl(src_dir / 'decisions.jsonl', skipped):
         if runs_filter and d.get('run_id') not in runs_filter:
             continue
-        if d.get('run_id') in QUARANTINED_RUNS:
+        if _run_quarantine_reason(d.get('run_id')) is not None:
             quarantined_hits.add(d.get('run_id'))
             continue
         st = d.get('state') or {}
@@ -250,7 +363,7 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
             continue
         if runs_filter and o.get('run_id') not in runs_filter:
             continue
-        if o.get('run_id') in QUARANTINED_RUNS:
+        if _run_quarantine_reason(o.get('run_id')) is not None:
             quarantined_hits.add(o.get('run_id'))
             continue
         seqs.setdefault(o.get('run_id'), []).append(o)
@@ -361,7 +474,13 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 '配对语义收拢单件 pool.pair_outcome_rows_to_pool'
                 '(auto/snapshot 同口径);battle rung 真值锚随批用'
                 '过滤后语料重推(sim.checks.pool.BATTLE_RUNG_TRUTH,'
-                'ADR-0582);池内容变(指纹重算)',
+                'ADR-0582);池内容变(指纹重算);'
+                'v14(池数据防线)run 隔离机制化:前缀规则 fake_/sim_'
+                '(类别级)+显式名单(个例级)双轨统一判据 '
+                '_run_quarantine_reason,假游戏/sim 批 run 不入池;'
+                '塌缩守卫:源行数账 < 现快照行数账×0.5 拒绝再生覆写、'
+                '保留现快照(2026-09-08 假游戏局 fake_20260908 触发'
+                '微语料三次静默覆写提交快照的实证防线)',
     }
     return pool, meta
 
@@ -380,7 +499,11 @@ def regenerate_snapshot(src_dir: Path | None = None,
 
     返回新池指纹。空池 raise(调用方 best-effort 捕获;局终钩子
     不让异常外传)。生成纪律:头部勿手编警告+写目标白名单守卫在
-    :func:`build_pool` / :func:`_assert_guards` 内生效。
+    :func:`build_pool` / :func:`_assert_guards` 内生效;run 级隔离
+    在 :func:`build_pool` 行循环内生效(前缀规则 + 显式名单);
+    塌缩守卫 :func:`_assert_no_source_collapse` 在覆写前生效——
+    源语料较现快照塌缩即 raise :class:`SourceCorpusCollapse`,
+    现快照原样保留(池数据防线,理由见各守卫注释)。
     """
     if _DELTA_POOL_FROZEN:
         raise DeltaPoolFrozen(
@@ -390,6 +513,9 @@ def regenerate_snapshot(src_dir: Path | None = None,
     src = Path(src_dir) if src_dir is not None else REPLAY_DIR
     _assert_guards(src)
     pool, meta = build_pool(src, runs_filter)
+    # 塌缩守卫先于空池判定:微语料源给「塌缩」诊断(可行动:查语料
+    # 去向),比笼统的「池为空」多申报两侧行数账差异。
+    _assert_no_source_collapse(DATA_PY, meta['source_rows'])
     if not pool:
         raise RuntimeError(f'池为空: {src} 无可配对样本(decisions 板深 × outcomes 差分)')
 
