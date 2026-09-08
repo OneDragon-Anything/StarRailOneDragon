@@ -60,7 +60,7 @@
 - **换排纠正**（r241/r250）：场内错排者拖回正排；**禁清空前排守卫（ADR-0610）**：front→back 纠正若会把前排拖空则跳过（出战硬要求 > 站位偏好），守卫计数 = 调用内动态维护（初值 = 单帧采样，front→back 完成 −1 / back→front 完成 +1，禁循环内静态帧重采样——双前角色形态下静态读法双双放行清空前排），拦截分键 `rowfix_skip_front_invariant`；**前排保证后置（ADR-0610）**：纠正循环后前排仍空 ∧ 后排有人 → 挪一后排到前排 1（真 pref=front 优先）——出口不变量「上阵≥1⇒前排≥1」由此在函数出口成立，收尾出口断言现读复验（`STATUS_FRONT_INVARIANT_FAIL` 兜底）。
 - **拖后整队等待 2.0s**【注·口述口径 screen_flow_timing.md #10】：羁绊徽章动画窗。
 - **收尾**：SIFT 真值纠 tracking（观测回路）+ 装备快照回写 tracked_deployed.equips（画面真值覆盖，账本漂移告警留痕）。
-- **off-target 卖出腾位**（deploy-swap）：bench 有 target 单位时卖 deployed 中的 off-target（守卫：`offtarget_sell_allowed`——引擎/配方体系件默认恒不卖（W209 振荡熔断）；**例外=换阵卖出义务臂**：线成型（fp≥1.00）∧ 板满时 off-line 件让位可卖，新线 core∪shared 禁卖护栏保持（ADR-0522）；core 辅助保留；1:1 替换上限 = bench target 数）。**第二例外=转型臂**（ADR-0534）：线已锁（`locked_comp` 非空）∧ fp<1.00 ∧ 板满帧，fenced 过渡件经单一判定函数 `swap_sell_exclusion_reason` 逐件守卫放行卖出（守恒门∪护盾/合成素材守卫/star_guard/fw_carry 对称排除/merge_material_guard，逐件拒因分键零静默）；回滚常量 `SWAP_TRANSITION_ARM_ENABLED`（翻 False 两臂发射⇔执行同关）。
+- **off-target 卖出腾位**（deploy-swap）：bench 有 target 单位时卖 deployed 中的 off-target（守卫：`offtarget_sell_allowed`——引擎/配方体系件默认恒不卖（W209 振荡熔断）；**例外=换阵卖出义务臂**：线成型（fp≥1.00）∧ 板满时 off-line 件让位可卖，新线 core∪shared 禁卖护栏保持（ADR-0522）；core 辅助保留；1:1 替换上限 = bench target 数）。**第二例外=转型臂**（ADR-0534）：线已锁（`locked_comp` 非空）∧ fp<1.00 ∧ 板满帧，fenced 过渡件经单一判定函数 `swap_sell_exclusion_reason` 逐件守卫放行卖出（守恒门∪护盾/合成素材守卫/star_guard/fw_carry 对称排除/merge_material_guard，逐件拒因分键零静默）；回滚常量 `SWAP_TRANSITION_ARM_ENABLED`（翻 False 两臂发射⇔执行同关）。**第三例外=演进降级换血臂**（ADR-0614）：锁线转型域 ∧ 板满 ∧ bench 在册采购集件待上（准入三元，谓词单一源 `evolution_swap_arm_trigger`，装配级计算+执行侧 SIFT 域重算覆写）时 star_guard 对可读星级 >1 的 victim 让位（其余守卫全保留，星级不可读恒拒；非武装帧逐位同旧）。
 
 ## 6. 观测复查与期望态对账（零决策记账）
 

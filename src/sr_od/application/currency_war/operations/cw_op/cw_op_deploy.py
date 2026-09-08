@@ -540,6 +540,7 @@ class CwOpDeploy(SrOperation):
             and all(f in _swap_ctx.target_factions for f in _board))
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             bench_target_count,
+            evolution_swap_arm_trigger,
             swap_realizable,
             target_view_present,
         )
@@ -553,6 +554,16 @@ class CwOpDeploy(SrOperation):
             # 收口)——计数即 1:1 替换上限(与旧 _bench_tgt_n 同语义)。
             _bench_chars = read_bench_chars(self.ctx, self.last_screenshot,
                                             templates)
+            # 演进降级换血臂 bench 域分轨重算(ADR-0614):装配喂入 bench=[]
+            #(上方装配块注,执行侧装配源 = last_state 滞后帧),本侧域 =
+            # SIFT 现读——与逐件判定(swap_sell_exclusion_reason 的
+            # bench=/deployed= 覆盖参)及合取②③同域。谓词单一源 =
+            # evolution_swap_arm_trigger(发射⇔执行同值,禁分轨态);
+            # 域内覆写只影响本卖出臂的资格判定面,装配产物其余字段不动。
+            _swap_ctx.evolution_swap_armed = evolution_swap_arm_trigger(
+                _swap_ctx.membership, _bench_chars,
+                locked=_swap_ctx.locked, fp=_swap_ctx.fp,
+                board_full=_swap_ctx.board_full)
             _bench_tgt_n = bench_target_count(_swap_ctx, bench=_bench_chars)
             if _bench_tgt_n > 0:
                 # 合取③:板上存在其资格臂下可卖的 off-target 件(逐件

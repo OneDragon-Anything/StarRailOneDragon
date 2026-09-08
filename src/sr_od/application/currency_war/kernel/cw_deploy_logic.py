@@ -1014,7 +1014,10 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
       fresh_buy;
     - 资格族(per-piece,ADR-0534 §1-§2 扩展):target_keep /
       fenced_arm_closed / engines_guard / merge_material_guard /
-      star_guard / fp_unreadable。fenced 件可卖性 =
+      star_guard / fp_unreadable。star_guard 在演进降级换血臂武装帧
+      对可读星级 >1 让位(arm = ``SwapPlanContext.evolution_swap_armed``,
+      谓词单一源 = evolution_swap_arm_trigger;ADR-0614/ADR-0382,判定
+      见该分支注)。fenced 件可卖性 =
       ``fenced_on ∨ 转型臂资格``——基座/成型臂经
       ``offtarget_sell_allowed`` 参数化接入(本体零修改,守恒门参数化
       喂 fenced 布尔);转型臂拒因逐件显影,执行侧卖出仲裁同吃本函数
@@ -1094,12 +1097,22 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
     if any(_ach_a[k] < _ach_b[k] for k in _ach_b):
         return 'engines_guard'
     # ---- ADR-0534 §2 1★ 限卖(star_guard)----
+    # 演进降级换血臂让位(arm 谓词单一源 = evolution_swap_arm_trigger,
+    # 装配级计算见 SwapPlanContext.evolution_swap_armed 注):武装帧放行
+    # 可读星级 >1 的 victim——ADR-0382 分级降级换血语义(弱序星级→费用,
+    # G0 非引擎锁定线件/G1 未成型引擎件可动)接入换血机器的参数化面
+    #(ADR-0614);其余守卫(target/engines/merge/fresh/membership)全保留,
+    # 卖出代价轴重推持久家 = ADR-0614 §决策5。星级不可读恒拒(fail 向
+    # 不换,武装不豁免——不可判星级 = 不可判弱序,ADR-0382 分级序的
+    # 排序输入缺失);未武装帧逐位同旧。
     star_eff = star if star is not None else next(
         (x.star for x in _deployed
          if x is not None and (x.char_id or '') == name), None)
     star_n = star_eff or 1
-    if star_eff is None or star_n > 1:
-        return 'star_guard'   # 星级不可读/非 1★ = fail 向不换
+    if star_eff is None or (star_n > 1
+                            and not getattr(ctx, 'evolution_swap_armed',
+                                            False)):
+        return 'star_guard'   # 星级不可读/非 1★ = fail 向不换(armed 让位见上注)
     # ---- ADR-0534 §2 合成素材守卫:含自身全场域同名同星计数 = 2 未完态拒 ----
     from sr_od.application.currency_war.kernel.cw_state import same_star_count
     if same_star_count(name, star_n, _bench, _deployed) == 2:
@@ -1157,6 +1170,15 @@ class SwapPlanContext:
     #: 档关键件判读源(落地审 F2:判读源与本计划的 comp 同源,禁发射门
     #: 另读 state_of 二份——双轨帧两源可分歧,判据源分裂 = 同型分叉)。
     target_comp: object | None = None
+    #: 演进降级换血臂武装位(缺省 False = 逐位同旧;装配函数单点计算,
+    #: 执行侧 bench 域分轨面经 :func:`evolution_swap_arm_trigger` 现读
+    #: 重算覆写)。True 时 :func:`swap_sell_exclusion_reason` 的
+    #: star_guard 对可读星级 >1 的 victim 让位——演进层 ADR-0382 分级
+    #: 降级换血语义(弱序星级→费用)接入换血机器的参数化面,辖域 =
+    #: 锁线转型域 ∧ 板满 ∧ bench 在册线件待上(ADR-0614;
+    #: 语义宿主 = kernel.cw_evolution 的分级保护机器,本臂不新增
+    #: 资格语义,只放开既有 1★ 限制并以其余守卫全保留为界)。
+    evolution_swap_armed: bool = False
 
 
 # ===== 换阵可兑现谓词(F1 单一源;T-167 发射-执行接缝合拢)=====
@@ -1314,6 +1336,52 @@ class SwapPlan:
         return bool(self.sell_names) and bool(self.up_bench)
 
 
+def evolution_swap_arm_trigger(membership: frozenset[str] | None,
+                               bench: list[BenchChar] | None, *,
+                               locked: bool,
+                               fp: float | None,
+                               board_full: bool) -> bool:
+    """演进降级换血臂触发谓词(纯函数;ADR-0614,ADR-0382 语义)。
+
+    最小等效通道的准入面:「锁线转型域 ∧ 板满 ∧ bench 有在册线件待上」
+    (ADR-0614 修向「板满∧bench有locked线core→发射卖线外件上core事务」
+    的准入三元)。三面消费(装配级缺省计算 = 发射面 mandate M1″ 与
+    sim 引擎;执行侧 CwOpDeploy 卖出臂经本函数用 SIFT 现读 bench 域
+    重算覆写)——同函数同谓词,发射⇔执行资格自动同值,禁分轨态
+    (ADR-0534 §3 同款纪律)。
+
+    各腿单一源与 fail-closed:
+    - ``locked``/``fp``/``board_full`` = 装配 ctx 同源字段(fp 缺读 =
+      臂关,与转型臂 fp_unreadable 两臂同弃权口径一致,ADR-0534 §1;
+      fp≥1.00 = 线已成型无完成缺口,臂辖域外);
+    - ``membership`` = ``cw_intention.locked_buy_membership``(锁线帧
+      采购集正典口径,与 M4 燃料集/卖出义务排除同参同源;None = 缺读
+      臂关)。bench 待上判定用买面义务集而非部署面 line_members:
+      集合构成声明 = 存-2 裁决两口径分域的在册复用(entry.emit 装配
+      注),本臂不新增第三口径;
+    - 「在册 core 待上」= bench 占用件名 ∈ membership(采购集=线名册
+      全集,含 core∪shared∪替班;能否真上场不由本谓词答——上序裁判 =
+      select_swap_plan 的卖后 select_deployments 底线,结构性排除
+      「白卖」形态)。
+
+    与转型域谓词的偏差申报(F6):本谓词内联三腿(locked∧fp<1.00∧板满)
+    未消费 ``_swap_transition_domain_of``(其辖域含
+    SWAP_TRANSITION_ARM_ENABLED 回滚腿)。行为安全性由可达性拓扑兜住:
+    ENABLED=False 时 select_swap_plan 的转型域全关(fenced_arm_closed
+    全拒),本臂即便 armed 亦无计划可成——偏差无行为面;域定义变更时
+    本谓词须随 ADR-0614 对账,禁静默分叉。
+
+    :param bench: bench 域(None 缺省 = 空域臂关);发射面 = 决策帧
+        黑板,执行面 = SIFT 现读(装配源契约的既定分轨,ADR-0530)。
+    """
+    if not locked or fp is None or fp >= 1.0 or not board_full:
+        return False
+    if not membership:
+        return False
+    return any((getattr(b, 'char_id', '') or '') in membership
+               for b in (bench or []) if b is not None)
+
+
 def assemble_swap_plan_inputs(
         session: object,
         *,
@@ -1442,6 +1510,13 @@ def assemble_swap_plan_inputs(
             target_factions,
             frozenset(getattr(tgt_comp, 'factions', None) or ()),
             _dep_names)
+    # 演进降级换血臂(装配级缺省计算;执行侧 bench 域分轨面在
+    # cw_op_deploy 卖出臂 SIFT 现读后经同一触发函数重算覆写,声明见
+    # evolution_swap_arm_trigger)。
+    _bench_occ = [b for b in bench if b is not None]
+    evolution_armed = evolution_swap_arm_trigger(
+        membership, _bench_occ,
+        locked=locked, fp=fp, board_full=board_full)
     return SwapPlanContext(
         target_factions=target_factions,   # 转型域 = 收窄键集(行 #4);域外(未锁/成型帧) = all_factions 全量
         target_cores=target_cores,
@@ -1454,7 +1529,7 @@ def assemble_swap_plan_inputs(
         else fresh_buys_of(session, state),
         board=board,
         deployed=[d for d in deployed if d is not None],
-        bench=[b for b in bench if b is not None],
+        bench=_bench_occ,
         cap=cap,
         front_slots=front_slots,
         back_slots=back_slots,
@@ -1464,6 +1539,7 @@ def assemble_swap_plan_inputs(
         board_full=board_full,
         recipe_floor_lock_exempt=recipe_floor_lock_exempt,
         target_comp=tgt_comp,
+        evolution_swap_armed=evolution_armed,
     )
 
 
