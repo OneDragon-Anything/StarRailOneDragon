@@ -56,6 +56,9 @@ R2 四阻断钉死①输入快照契约(装配源 = 执行侧 last_state+SIFT �
    **对齐证据**核对完成后的开闸小批(只置位不算核对)。分键族:`m1p_fired` /
    `m1p_plan_empty` / `m1p_cap_unreadable` / `m1p_membership_unreadable` /
    `m1p_input_missing` / `m1p_defer_levelup` / `m1p_input_seam_pending`。
+   【键表追加,T-167(F-8):`m1p_no_direction` / `m1p_no_bench_target`——换阵可
+   兑现谓词(`swap_realizable`)的 plan 级弃权键,层位 = plan 级弃权(与本节既有
+   分键同族),不并入逐件拒因闭集;显影语义见 ADR-0534 修订节。】
 5. **新鲜度排除载体取舍**:发射位写入(`cw4_swap_fresh_buys`,phase 键式,逐名入集),
    过度排除(被截断器丢弃的买入意图也入集)方向安全;fresh 降格为防抖+显影辅助,
    单调性由义务集排除独立承载(不宣称构造性切环)。

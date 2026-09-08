@@ -149,47 +149,99 @@ def prep_stall_pending_expected(session) -> tuple[str, ...]:
                         if e.confirm_point == 'prep_obs'))
 
 
+#: gold 分量可信陈值载体(session 属性名;T-167 gold 分量钉死)。
+#: 键式 = 标量 int。
+#: 写点唯一 = prep_no_progress_state_fingerprint(开态可信帧现读写入);
+#: 生命周期随 session(新局新容器自动失效)。先例 = SWAP_FRESH_BUYS_ATTR
+#: (kernel,session 属性载体 + 模块级常量名单一源)。
+PREP_GOLD_TRUSTED_ATTR: str = 'cw4_prep_gold_trusted'
+
+
 def prep_no_progress_state_fingerprint(session) -> tuple:
     """备战环状态指纹(环级无进展守卫的状态腿;只读 observe 现成字段,
     零新增识别)。
 
     任一分量变化 = 状态有推进:plane/round_num(轮次)、last_node_type
-    (节点序推进,CwScreenPrep 观察段写)、gold(买牌/卖牌/刷新必变;
-    关店态不可信读恒 None——None 对 None 不构成假推进,买牌经开店必有
-    开店帧把真值写进 last_state)、bench/deployed 身份串(部署/装备/
-    合成必变;deploy_count 用身份串而非计数,防「同数换人」漏检)。
-    故意比旧留证线的对账字段族窄的部分(球/箱/vacancy)不再进指纹:
-    它们由动作签名腿覆盖(动作批相同 ⇒ 对这些的意图相同),收窄只为
-    防识别抖动(球体检测闪烁)误计数。
+    (节点序推进,CwScreenPrep 观察段写)、gold(分量语义钉死见下)、
+    bench/deployed 身份串(部署/装备/合成必变;deploy_count 用身份串而非
+    计数,防「同数换人」漏检)。故意比旧留证线的对账字段族窄的部分
+    (球/箱/vacancy)不再进指纹:它们由窗口动作批并集覆盖(动作在窗口
+    出现过 ⇒ 其意图在案),收窄只为防识别抖动(球体检测闪烁)误计数。
+
+    gold 分量语义(T-167 钉死,持久家 = ADR-0554 修订节第 5 条;
+    docstring 与写入链一致性勘误):
+    session.last_state.gold 是 **raw 读数**——wholesale 写入链
+    (cw_screen_prep 观察段 `session.last_state = st` 整帧赋值)不按可信
+    位过滤,关店帧失读时 read_game_state 兜底 0 非 None,可读帧含 OCR
+    噪声(事故局 21:05:28 一帧 29→31 已见)。本函数钉死为「仅开态可信帧
+    (prep_obs_frame.state_gold_trusted = heavy ∧ 店开,单一写点
+    cw_screen_prep)更新可信陈值(session 属性 PREP_GOLD_TRUSTED_ATTR),
+    其余帧沿用陈值」:真买入/升级/刷新必经开店帧,真值写入即变指纹,
+    进展检测无损;卖出有 bench/deployed 身份串兜底;关店帧 gold 噪声
+    (0 兜底/OCR 抖动)不再归零计数——只此一处防止「恒态下指纹分量
+    抖动 = 永不触发」的失效方向。无陈值时(开局首店前)回退 raw 读数,
+    噪声至多延迟出口,不破坏正确性(守卫停机/哨兵兜底)。⚠️ 本函数带
+    一次 session 属性写入(可信陈值更新),属守卫消费链的记账副作用,
+    不改变「纯读 observe 现成字段」的识别面。
     """
     _st = getattr(session, 'last_state', None)
     _frame = getattr(session, 'prep_obs_frame', None)
     _ids = lambda chars: tuple(  # noqa: E731  身份串(零新识别,读 heavy 观察现成字段)
         getattr(bc, 'char_id', '') for bc in (chars or []))
+    _gold_raw = getattr(_st, 'gold', None)
+    if getattr(_frame, 'state_gold_trusted', False) and _gold_raw is not None:
+        setattr(session, PREP_GOLD_TRUSTED_ATTR, _gold_raw)
+    _gold = getattr(session, PREP_GOLD_TRUSTED_ATTR, _gold_raw)
     return (
         getattr(_st, 'plane', None),
         getattr(_st, 'round_num', None),
         getattr(session, 'last_node_type', None),
-        getattr(_st, 'gold', None),
+        _gold,
         _ids(getattr(_frame, 'bench_chars', None)),
         _ids(getattr(_frame, 'deployed_chars', None)),
     )
 
 
 def prep_no_progress_tick(prev_sig: tuple | None, prev_count: int,
-                          sig: tuple) -> tuple[tuple | None, int]:
-    """守卫计数纯函数:同签名累加,异签名归零(便于三历史重放/健康序列锁测)。
+                          prev_actions: frozenset[str] | None,
+                          sig: tuple,
+                          actions: tuple[str, ...]) -> tuple[
+        tuple | None, int, frozenset[str]]:
+    """守卫计数纯函数(F2 单键化,T-167):同状态指纹累加,异指纹归零;
+    窗口动作批并集累积器随指纹变化归零重开(便于三历史重放/健康序列
+    锁测)。
 
-    sig=None(本轮备战环无动作批:overlay 交回/策略异常/破墙前)不累计——
-    防跨环误延;调用方须先判 None 再进来。
+    计数键变更依据(T-167 诊断②结构缺口):旧键 (动作批, 指纹) 被策略
+    闩驱动的签名振荡穿透——交替 OpenShop/RunDeploy 每帧归零,相位级
+    出口全灭。守卫语义 = 「相位不推进」,状态指纹单键即相位真值;
+    振荡签名 + 恒指纹恰是最纯的「忙而无功」。动作批降级为窗口留证与
+    臂判别输入(并集累积器)。
+
+    :param prev_actions: 窗口动作批并集累积器(同指纹逐环并入;指纹变化
+        即重开为本环动作)。
+    :param actions: 本环动作批(调用方保证非 None;None 批 = overlay
+        交回/策略异常/破墙前,调用方在共同出口归零计数与并集——overlay
+        垄断形态维持哨兵档,本守卫不越界,ADR-0554 修订节第 3 条)。
     """
     if sig == prev_sig:
-        return prev_sig, prev_count + 1
-    return sig, 0
+        return prev_sig, prev_count + 1, (prev_actions or frozenset()) | set(actions)
+    return sig, 0, frozenset(actions)
+
+
+#: 收益耗尽臂窗口动作白名单(F2 判据放宽;ADR-0554 修订节第 2 条):
+#: 恒指纹窗口
+#: 内出现过的动作批并集 ⊆ {OpenShop, RunDeploy} 才可能出战——真实进展
+#: 必变指纹,能留在恒指纹窗口的动作定义性零变换(零购买开店=纯读、
+#: 无部署可做 RunDeploy=合法稳态);第三类动作(DeferSpheres/ClickSpheres/
+#: RunEquip/SellBench 等)在窗口出现 = 语义未核实,不出战、落守卫停机
+#: 留证交判读(不代打)。
+EXHAUSTION_WINDOW_ACTIONS: frozenset[str] = frozenset({'OpenShop', 'RunDeploy'})
 
 
 def prep_exhaustion_launch_eligible(action_sig: tuple | None,
-                                    last_prep_success: bool | None) -> bool:
+                                    last_prep_success: bool | None,
+                                    actions_union: frozenset[str] | None = None,
+                                    ) -> bool:
     """备战收益耗尽 → 出战判据(纯函数;消费点 = 环级无进展守卫触发位)。
 
     机制依据(docs/game/currency_war/data/gameplay.md 权威机制):备战环
@@ -199,20 +251,26 @@ def prep_exhaustion_launch_eligible(action_sig: tuple | None,
     等待时长无关(等待不改变任何战力输入)⇒ 支配性论证:收益耗尽帧
     出战严格优于继续等待,无参数权衡,零拍定值。
 
-    判据 = 守卫既有信号的动作腿收窄(复用 PREP_NO_PROGRESS_ROUNDS 计数,
-    不立第二计数器):
-    - 动作批仅含 RunDeploy ∧ 上一备战环 success:RunDeploy 的 dd-037
-      契约保证「计划空+0 落地 = STATUS_NOOP 合法稳态」走 success、
-      「计划非空+0 落地 = 执行面失败」走 round_fail——success 即排除
-      执行面失败形态(拖拽落空/遮罩挡拖拽),剩馀唯一形态 = 策略层
-      自愿 no-op(候选被规则留 bench)∧ 买/升/刷均被策略拒绝且零状态
-      变换 = 备战收益耗尽;
-    - 其他形态(OpenShop/RunEquip 批、混合批、失败环)= 执行面/策略
-      异常,保持守卫停机语义(ADR-0554)。
+    判据(F2 放宽,T-167;ADR-0554 修订):
+    - **恒指纹窗口动作批并集 ⊆ {OpenShop, RunDeploy}**(EXHAUSTION_WINDOW_
+      ACTIONS):恒指纹本身已是窗口内全部动作的定义性零变换证明——真实
+      买入/卖出/升级必变 gold 或身份串,无需逐动作核实计划是否为零;
+      窗口含白名单外动作 = 语义未核实形态 → 不出战(守卫停机留证);
+    - **末批 = RunDeploy**(``action_sig[-1]``):有部署意图在场才替以
+      出战;末批 = OpenShop 的第 3 恒指纹环判据假 → 落守卫停机留证——
+      出战/停机出口按末批相位二选一,3 环内必有出口,结构性缺口闭合
+      是确定性的(两种末批相位形态都锁,实机验收断言「必出战」
+      只对末批=RunDeploy 相位成立);
+    - **上一备战环 success**:dd-037 契约保证「计划空+0 落地 = STATUS_
+      NOOP 合法稳态」走 success、「计划非空+0 落地 = 执行面失败」走
+      round_fail——success 即排除执行面失败形态(拖拽落空/遮罩挡拖拽);
+    - None 批不累计(调用方共同出口归零)。
     """
     return (last_prep_success is True
-            and action_sig is not None
-            and set(action_sig) == {'RunDeploy'})
+            and bool(action_sig)
+            and action_sig[-1] == 'RunDeploy'
+            and bool(actions_union)
+            and actions_union <= EXHAUSTION_WINDOW_ACTIONS)
 
 
 def no_progress_flag_path():
@@ -221,19 +279,62 @@ def no_progress_flag_path():
             / 'prep_no_progress.flag')
 
 
+def prep_exhaustion_exclusion_reason(ctx, screen) -> str:
+    """收益耗尽臂排除族(F2 边界;返回拒因键,'' = 不排除,可出战)。
+
+    排除族可扩展形态(T-167):新排除形态在此追加一腿,消费位零改。
+
+    - ``exhaustion_supply``:补给节点出战不推进(节点推进以战斗完成为
+      前提,补给节点的出口是补流程非出战——既有 divert 分支同语义),
+      该形态收益耗尽的正确出口 = 补流程,维持守卫停机交留证判读;
+    - ``exhaustion_reward_sphere``:奖励节点 ∧ 球在场 → 暂缓强制出战。
+      ⚠️ **实机观测项,离线不可判**(T-167 前置声明):「奖励球滞留态
+      强制出战,球/奖励是否随节点推进继承」玩法文档未记录(screen_flow_
+      timing.md #16 只记点球动画时长与席满容忍语义,未记滞留球奖励
+      归属)。与 supply 排除同构式实现(当前节点类型='reward' ∧ 球在场
+      两条件合取——防「奖励节点球已收清」帧被误排除);若实机核实球随
+      节点推进继承,删本腿即可(排除族可扩展形态承载)。检测退化
+      (识别异常)不排除——出战优先,同前置引入前的现行为。
+      登记持久家 = ADR-0554 修订节第 6 条。
+
+    节点类型读法 = read_node_sequence 的 current 槽(与 divert 分支同源)。
+    """
+    _slot = next(
+        (s for s in (read_node_sequence(ctx, screen) or [])
+         if s.state == 'current'), None)
+    _node_type = getattr(_slot, 'node_type', None) if _slot is not None else None
+    if _node_type == 'supply':
+        return 'exhaustion_supply'
+    if _node_type == 'reward':
+        try:
+            from sr_od.application.currency_war.obs.cw_identity_obs import (
+                read_reward_spheres,
+            )
+            if read_reward_spheres(ctx, screen):
+                return 'exhaustion_reward_sphere'
+        except Exception:   # noqa: BLE001  检测退化不排除(出战优先)
+            pass
+    return ''
+
+
 def write_no_progress_flag(count: int, sig: tuple, shot: str,
                            path=None) -> str:
-    """守卫存证 flag(签名序列+计数+截图路径+处理指引;测试传 tmp_path)。"""
+    """守卫存证 flag(计数+状态指纹+截图路径+处理指引;测试传 tmp_path)。
+
+    ``sig`` = 状态指纹单键(F2;旧二元组「动作批, 指纹」的计数键随
+    T-167 迁移,动作批降级为窗口留证,见 prep_no_progress_tick)。
+    """
     p = path if path is not None else no_progress_flag_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(
         f'[HOOK-STOP] 环级无进展守卫触发:连续 {count} 个备战环'
-        f'「同签名动作批 ∧ 状态零推进」\n'
-        f'签名(动作批, 状态指纹)=(plane,round,node,gold,bench_ids,deployed_ids):\n'
+        f'「状态指纹零推进」(F2 单键计数;窗口动作批并集见判定日志)\n'
+        f'状态指纹(plane,round,node,gold,bench_ids,deployed_ids):\n'
         f'{sig}\n'
         f'处理流程:\n'
-        f'1. 看动作批:同批动作反复发射而板面/金/轮次不动 = 执行面变换失败'
-        f'(遮罩挡拖拽/点击落空/闩漏网活锁)→ 按截图判当前画面:\n'
+        f'1. 看决策日志备战环动作批:同相位动作反复发射而板面/金/轮次不动'
+        f'= 忙而无功(执行面变换失败/策略闩振荡/闩漏网活锁)→ 按截图判'
+        f'当前画面:\n'
         f'   未建档 overlay → od-dev-screen-onboarding 建档 + cw_loop 0x 分支\n'
         f'   加 handler;已建档 → 查该动作执行链为何零变换;\n'
         f'2. 处理完删本 flag + 重启 MCP server。\n'
@@ -856,14 +957,15 @@ class CwLoop(SrOperation):
     # 同批退役:_post_settle_auto_shop 标志位(结算后自动开店判稳收编 director
     # 环入口预收探针 + 准备就绪锚,不再跨分支传标志)。
     #: 环级无进展守卫阈值(架构反思三卡死批防线①,「第 5 局放行硬门」):
-    #: 连续 N 个备战环「同签名动作批 ∧ 状态零推进」→ 存证(截图+flag)→
-    #: stop_running。取代旧备战 stall 留证线(只留证不停机的 state-only
-    #: 计数)——单一计数单一签名,不留两套并行;N 沿用旧值 3。
-    #: 三起实机卡死(8-34 分钟人工发现)在 3 环(≈1 分钟)内自动停机留证。
-    #: ADR-0554 修订:触发位先过「备战收益耗尽 → 出战臂」——RunDeploy
-    #: 合法稳态 no-op 形态(判据 = prep_exhaustion_launch_eligible)改判
-    #: 出战不属执行面卡死;其余形态维持停机留证语义。阈值沿用守卫常量,
-    #: 零新拍定值。
+    #: 连续 N 个备战环「状态指纹零推进」(F2 单键计数,动作批振荡不再
+    #: 穿透计数)→ 存证(截图+flag)→ 出战臂或 stop_running。取代旧备战
+    #: stall 留证线(只留证不停机的 state-only 计数)——单一计数单一键,
+    #: 不留两套并行;N 沿用旧值 3。三起实机卡死(8-34 分钟人工发现)在
+    #: 3 环(≈1 分钟)内自动停机留证。
+    #: ADR-0554 修订:触发位先过「备战收益耗尽 → 出战臂」——恒指纹窗口
+    #: 合法形态(判据 = prep_exhaustion_launch_eligible)改判出战不属
+    #: 执行面卡死;其余形态维持停机留证语义。阈值沿用守卫常量,零新
+    #: 拍定值。
     PREP_NO_PROGRESS_ROUNDS: ClassVar[int] = 3
 
     #: 0e 投资策略浮层分发复探窗口(N5 分发判别稳定化):首探测 miss 且
@@ -2169,55 +2271,69 @@ class CwLoop(SrOperation):
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
             # 标志位已退役,W971 §2.6/§2.11:半开帧防护替身 = 单轮 op 清场 +
             # 自动开店收起探针;稳定性由外循环每轮重识别保证。)
-            # 环级无进展守卫(架构反思三卡死批防线①,取代旧 stall 留证线——
-            # 单一计数勿留两套):连续 PREP_NO_PROGRESS_ROUNDS 个备战环
-            # 「同签名动作批 ∧ 状态零推进」→ 存证(截图+flag)→ stop_running。
-            # 动作批签名 = CwScreenPrep 上一环 decide 输出的动作类型序列
+            # 环级无进展守卫(F2 单键计数,T-167;架构反思三卡死批防线①,
+            # 取代旧 stall 留证线——单一计数勿留两套):连续
+            # PREP_NO_PROGRESS_ROUNDS 个备战环「状态指纹零推进」→ 存证
+            #(截图+flag)→ 出战臂或 stop_running。计数键 = 状态指纹单键
+            #(相位真值;动作批振荡不再穿透计数——T-167 事故的交替活锁
+            # 引擎),动作批 = 窗口并集累积器留证 + 臂判别。动作批签名 =
+            # CwScreenPrep 上一环 decide 输出的动作类型序列
             #(session.last_prep_action_sig,备战单轮 op 写);None(overlay
-            # 交回/策略异常/破墙派生帧前)不累计。不误伤依据:
+            # 交回/策略异常/破墙派生帧前)在共同出口归零计数与并集
+            #(ADR-0554 修订节第 3 条:overlay 垄断形态维持哨兵档)。不误伤依据:
             # ①战斗等待期不进本分支(备战双锚不命中),且回备战时 round 必变
             #  → 指纹变 → 归零;
             # ②正常多帧部署:每次成功动作改变 bench/deployed 身份或 gold
             #  → 指纹变 → 归零;
-            # ③闩跳过帧:闩抑制重发 → 动作批不同 → 签名变 → 归零。
+            # ③闩跳过帧:动作批不同不再归零(F2 语义变更)——恒指纹下的
+            #  振荡 = 忙而无功,恰是本守卫要捕的形态(T-167 事故定谳);
+            #  gold 分量按开态可信帧钉死,关店帧噪声不归零(ADR-0554 修订节第 5 条)。
             _np_actions = getattr(exec_state_of(self.ctx.cw_match.session),
                                   'last_prep_action_sig', None)
+            _np_fp = prep_no_progress_state_fingerprint(
+                self.ctx.cw_match.session)
             if _np_actions is None:
                 self._prep_np_sig = None
                 self._prep_np_count = 0
+                self._prep_np_actions = frozenset()
             else:
-                _np_sig = (_np_actions,
-                           prep_no_progress_state_fingerprint(
-                               self.ctx.cw_match.session))
-                self._prep_np_sig, self._prep_np_count = prep_no_progress_tick(
-                    getattr(self, '_prep_np_sig', None),
-                    getattr(self, '_prep_np_count', 0), _np_sig)
-            # 守卫计数归零共同出口(None 交回环 / 签名或状态推进):收益耗尽臂
-            # 总尝试计数同步归零——新冻结情节从零起算,总限只辖单一冻结情节
-            #(ADR-0554 双限防线)。归零必须在共同出口:只挂 tick 分支会漏
-            # None 路径,跨情节残留计数会让新情节提前总限 giveup(三审后补
-            # 必修1)。
+                self._prep_np_sig, self._prep_np_count, self._prep_np_actions = \
+                    prep_no_progress_tick(
+                        getattr(self, '_prep_np_sig', None),
+                        getattr(self, '_prep_np_count', 0),
+                        getattr(self, '_prep_np_actions', frozenset()),
+                        _np_fp, _np_actions)
+            # 守卫计数归零共同出口(None 交回环 / 状态指纹推进,F2 单键):
+            # 收益耗尽臂总尝试计数同步归零——新冻结情节从零起算,总限只辖
+            # 单一冻结情节(ADR-0554 双限防线)。归零必须在共同出口:只挂
+            # tick 分支会漏 None 路径,跨情节残留计数会让新情节提前总限
+            # giveup(三审后补必修1)。界定重推(ADR-0554 修订节第 4 条,F2 迁移后):旧键下
+            # 「情节」= 同动作批 ∧ 同指纹持续期;新键下 = 同指纹持续期
+            #(较旧更短或等长,归零频率上升)——总限预算(2×守卫阈值)在
+            # 每个恒指纹情节内重置,跨情节残留不可能,单情节内发射预算
+            # 不变量保持;动作批振荡不再触发归零(这正是 F2 要捕的形态,
+            # 振荡情节内总限照常累计,交错自旋防线语义增强)。
             if self._prep_np_count == 0:
                 self._cw_exhaust_attempts = 0
             if self._prep_np_count >= self.PREP_NO_PROGRESS_ROUNDS:
-                # 备战收益耗尽 → 出战臂(ADR-0554):RunDeploy 合法稳态
-                # no-op 形态不属执行面卡死,停机只会烧掉不可复现的对局
-                # 预算——备战等待零收益(机制依据见判据 docstring),
-                # 出战支配性优于等待。发射核与达标臂共用
+                # 备战收益耗尽 → 出战臂(ADR-0554;F2 判据放宽,T-167):
+                # 恒指纹窗口动作批并集 ⊆ {OpenShop, RunDeploy} ∧ 末批
+                # RunDeploy ∧ 上环 success 的形态不属执行面卡死,停机只会
+                # 烧掉不可复现的对局预算——备战等待零收益(机制依据见判据
+                # docstring),出战支配性优于等待。发射核与达标臂共用
                 # readiness_battle_launch(C1 单一发射函数);失败连击
                 # 达 3 放弃短路回落守卫停机(与达标臂防线 C1 同构)。
                 if prep_exhaustion_launch_eligible(
                         _np_actions, getattr(self, '_prep_last_success',
-                                             None)):
-                    # 补给节点排除:补给节点出战不推进(见下方 divert 分支
-                    # 注),该形态收益耗尽的正确出口是补流程非出战——跳过
-                    # 本臂,维持守卫停机(交留证判读)。
-                    _exh_slot = next(
-                        (s for s in (read_node_sequence(self.ctx, screen)
-                                     or []) if s.state == 'current'), None)
-                    _exh_supply = (_exh_slot is not None
-                                   and _exh_slot.node_type == 'supply')
-                    if not _exh_supply:
+                                             None),
+                        getattr(self, '_prep_np_actions', frozenset())):
+                    # 排除族(F2 边界,单一源 = prep_exhaustion_exclusion_
+                    # reason):补给节点(出战不推进,正确出口是补流程)/
+                    # 奖励节点滞留球(见该函数 docstring 实机观测项)——
+                    # 命中不出战,维持守卫停机(交留证判读)。
+                    _exh_excl = prep_exhaustion_exclusion_reason(
+                        self.ctx, screen)
+                    if not _exh_excl:
                         # 双限防线②·总尝试限(ADR-0554 三审定稿):交错
                         # 序列可让 fail/stale 两个同型连击计数器互复位
                         # 永不达限 = 无界自旋复活(三审定谳「治本缺半」)
@@ -2303,8 +2419,13 @@ class CwLoop(SrOperation):
                                 register_flow_heartbeat(
                                     self.ctx, 'exhaustion_battle_launch')
                                 log.info('[cw-loop] 备战收益耗尽(连续 %d 环 '
-                                         'RunDeploy 稳态 no-op ∧ 零推进)→ 出战: %s',
-                                         self._prep_np_count, _detail_x)
+                                         '状态指纹零推进,窗口动作批并集 %s ∧ '
+                                         '末批 RunDeploy)→ 出战: %s',
+                                         self._prep_np_count,
+                                         sorted(getattr(
+                                             self, '_prep_np_actions',
+                                             frozenset())) or '空',
+                                         _detail_x)
                                 return self.round_wait(wait=3)
                             else:
                                 self._cw_exhaust_stale_n = 0
@@ -2336,17 +2457,20 @@ class CwLoop(SrOperation):
                     _np_shot = ''
                 try:
                     write_no_progress_flag(
-                        self._prep_np_count, _np_sig, _np_shot)
+                        self._prep_np_count, _np_fp, _np_shot)
                 except Exception as e:  # noqa: BLE001  flag 失败仍停机(日志留证)
                     log.warning('[cw-loop] 无进展守卫 flag 写入失败: %s', e)
-                log.error('[cw!][loop] 环级无进展守卫:连续 %d 个备战环同签名'
-                          '动作批 %s ∧ 状态零推进 → 停机留证'
-                          '(flag=prep_no_progress.flag shot=%s)',
-                          self._prep_np_count, list(_np_actions), _np_shot)
+                log.error('[cw!][loop] 环级无进展守卫:连续 %d 个备战环状态'
+                          '指纹零推进(F2 单键)→ 停机留证(末环动作批 %s ∧ '
+                          '窗口动作批并集 %s;flag=prep_no_progress.flag '
+                          'shot=%s)',
+                          self._prep_np_count, list(_np_actions),
+                          sorted(getattr(self, '_prep_np_actions',
+                                         frozenset())) or '空', _np_shot)
                 _pend = prep_stall_pending_expected(
                     self.ctx.cw_match.session)
-                log.error('[cw!][loop] 环级无进展守卫:连续 %d 个备战环同签名'
-                          '动作批 %s ∧ 状态零推进 → 停机留证'
+                log.error('[cw!][loop] 环级无进展守卫:连续 %d 个备战环状态'
+                          '指纹零推进(F2 单键)→ 停机留证(末环动作批 %s)'
                           '(pending_expected=%s flag=prep_no_progress.flag '
                           'shot=%s)',
                           self._prep_np_count, list(_np_actions),
@@ -2354,7 +2478,7 @@ class CwLoop(SrOperation):
                 self.ctx.run_context.stop_running(
                     reason='hook:prep_no_progress')
                 return self.round_fail(
-                    status='备战环无进展守卫触发(同签名动作批连续'
+                    status='备战环无进展守卫触发(状态指纹连续'
                            f'{self._prep_np_count}环零推进),停机留证')
             # 备战被锁(顶部「返回投资策略选择」按钮)→ 点去选策略(check#4 接手)。
             # 2026-08-26 挪位(原在备战判定前全屏扫):用户定性该按钮出现 = 上游

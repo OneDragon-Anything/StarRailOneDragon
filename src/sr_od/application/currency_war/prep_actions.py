@@ -294,7 +294,7 @@ class PrepActionExecutor:
         # 需要 pre/post 两点,post 点必须在 dispatch 之后读(dispatch 内
         # 卖出/部署 handler 会同步销账)。
         _pre_bench = self._bench_tracked_count()
-        ok, detail = self._execute_dispatch(action)
+        ok, detail, landed = self._execute_dispatch(action)
         if ok and isinstance(action, RunEquip):
             # M7 备战期装备闩置位(执行位,唯一写点 = mandate.mark_equip_
             # pass_executed;发射位只读不写):本入口在 RunEquip 组合 op
@@ -347,7 +347,8 @@ class PrepActionExecutor:
                     mark_s1_route_check(
                         _sess, getattr(_sess, 'last_state', None), action,
                         pre_bench_count=_pre_bench,
-                        post_bench_count=self._bench_tracked_count())
+                        post_bench_count=self._bench_tracked_count(),
+                        landed=landed)
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][s1-route] 清键门失败(不阻塞): %s', e)
         # 期望态推进(EXPECTED_STATE §6 对抗 F8:两执行面同源接线)——
@@ -369,8 +370,38 @@ class PrepActionExecutor:
                 log.warning('[cw][expect] apply_op_effect 失败(不阻塞): %s', e)
         return ok, detail
 
-    def _execute_dispatch(self, action: PrepAction) -> tuple[bool, str]:
-        """动作分派(原 execute 主体;期望态钩子在其上层 execute)。"""
+    def _execute_dispatch(self, action: PrepAction) -> tuple[bool, str, bool]:
+        """动作分派(原 execute 主体;期望态钩子在其上层 execute)。
+
+        返回 ``(progressed, detail, landed)``。``landed`` = 真实落地结构化
+        位(F1b,T-167 无方向幻影部署事故修法):组合动作在分派位按执行
+        器具名常量**结构化判定**(禁由 detail 反推——detail = f'{name}
+        {status}' 带前缀显影文本,与裸 STATUS 常量永不相等,字符串比对
+        会让落地判定恒真、修复静默失效);非组合动作 progressed 即落地
+        (卖出类完成验证 = 源槽变,fail-closed 无 no-op success 形态的
+        泛化核查结论;装备/工具组合的假成功 skip 已由 T-163 D5 改
+        round_fail)。
+        """
+        if isinstance(action, RunDeploy):
+            # 落地 = 执行器具名常量 STATUS_DEPLOYED(真部署);STATUS_NOOP
+            # (计划空合法稳态)/STATUS_NO_BENCH(无角色)均零落地 →
+            # landed=False,S1 清键门据此不清开店闩(F1b 活锁引擎拆除)。
+            return self._run_composite(
+                '部署', 'sr_od.application.currency_war.operations.cw_op.cw_op_deploy.CwOpDeploy',
+                landed_status_attr='STATUS_DEPLOYED')
+        if isinstance(action, RunEquip):
+            return self._run_composite('装备', 'sr_od.application.currency_war.operations.cw_op.cw_op_equip_all.CwOpEquipAll',
+                                       guard_screen='货币战争-备战')
+        if isinstance(action, RunTools):
+            return self._run_composite('工具', 'sr_od.application.currency_war.operations.cw_op.cw_op_tools.CwOpTools',
+                                       guard_screen='货币战争-备战')
+        if isinstance(action, (DeferSpheres, BailToOuter)):   # 本模块定义,无需导入
+            return False, '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)', False
+        ok, detail = self._dispatch_direct(action)
+        return ok, detail, ok
+
+    def _dispatch_direct(self, action: PrepAction) -> tuple[bool, str]:
+        """直执行动作分派(非组合动作;progressed 即落地,见 _execute_dispatch)。"""
         if isinstance(action, ClickSpheres):
             return self._click_spheres(action)
         if isinstance(action, OpenBox):
@@ -393,16 +424,6 @@ class PrepActionExecutor:
             return self._ensure_shop(False)
         if isinstance(action, StartBattle):
             return self._start_battle()
-        if isinstance(action, RunDeploy):
-            return self._run_composite('部署', 'sr_od.application.currency_war.operations.cw_op.cw_op_deploy.CwOpDeploy')
-        if isinstance(action, RunEquip):
-            return self._run_composite('装备', 'sr_od.application.currency_war.operations.cw_op.cw_op_equip_all.CwOpEquipAll',
-                                       guard_screen='货币战争-备战')
-        if isinstance(action, RunTools):
-            return self._run_composite('工具', 'sr_od.application.currency_war.operations.cw_op.cw_op_tools.CwOpTools',
-                                       guard_screen='货币战争-备战')
-        if isinstance(action, (DeferSpheres, BailToOuter)):   # 本模块定义,无需导入
-            return False, '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)'
         return False, f'未知动作类型 {type(action).__name__}'
 
     # ===== 奖励域 =====
@@ -1089,8 +1110,17 @@ class PrepActionExecutor:
     # ===== 组合动作(P1 过渡;旧 op 内部一行不动)=====
 
     def _run_composite(self, name: str, op_path: str,
-                       guard_screen: str | None = None) -> tuple[bool, str]:
+                       guard_screen: str | None = None,
+                       landed_status_attr: str | None = None,
+                       ) -> tuple[bool, str, bool]:
         """执行组合动作(按模块路径延迟导入,避免 prep_actions ↔ operations 循环导入)。
+
+        返回 ``(ok, detail, landed)``:``landed`` = 真实落地结构化位——
+        ``landed_status_attr`` 非 None 时 = status 与该具名常量的结构化
+        比对(常量在延迟导入的执行器类上解析;缺属性按未落地计,
+        fail-closed:S1 清键门宁「该清不清」不「乱清」,后者可无限重复,
+        实证 = T-167 交替活锁);None 时 = ok(无 no-op success 形态的
+        组合,T-163 D5 后装备/工具假成功已改 round_fail)。
 
         :param guard_screen: 派发前置预期屏(T-163 D5,2026-09-08 用户架构
             裁定:「该不该执行」的判断归分发层)——非 None 时实例化组合 op
@@ -1107,7 +1137,7 @@ class PrepActionExecutor:
             if current != guard_screen:
                 log.warning('[cw!][composite] %s 派发前置:当前画面 %s 非干净备战'
                             ' → 不派,环重观察', name, current)
-                return False, f'{name} 不在预期屏: {current}'
+                return False, f'{name} 不在预期屏: {current}', False
         module_path, cls_name = op_path.rsplit('.', 1)
         op_cls = getattr(importlib.import_module(module_path), cls_name)
         result = op_cls(self._ctx).execute()
@@ -1116,7 +1146,13 @@ class PrepActionExecutor:
         ok = bool(result is not None and getattr(result, 'success', False))
         status = getattr(result, 'status', '')
         log.info(f'[cw][composite] {name} → {"✓" if ok else "✗"} {status}')
-        return ok, f'{name} {status}'
+        if landed_status_attr is not None:
+            # F1b 结构化落地判定:常量 vs 常量(status 原值对执行器具名
+            # 常量),不经 detail 文本(带前缀,禁比对——见 _execute_dispatch)。
+            landed = status == getattr(op_cls, landed_status_attr, object())
+        else:
+            landed = ok
+        return ok, f'{name} {status}', landed
 
 
 # ===== 恢复原语(§13.3;动作连败 2 次时先试,bail 是恢复失败后的上抛)=====

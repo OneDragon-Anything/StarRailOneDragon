@@ -352,7 +352,7 @@ class CwOpDeploy(SrOperation):
     STATUS_NOOP: ClassVar[str] = '无部署可做(计划空,bench为合法稳态)'
     STATUS_NO_BENCH: ClassVar[str] = '备战栏无角色'
     STATUS_NO_SCREEN: ClassVar[str] = '未加载货币战争-备战 screen_info'
-    # 失败状态具名常量(T-164 批A/D1/D2;禁散字符串,判读侧可分键)——
+    # 失败状态具名常量(ADR-0601 §4;禁散字符串,判读侧可分键)——
     # 消费面 = run_record/_run_composite detail 判读与 prep_no_progress
     # 停机留证归因。命中即「计划-现读失配/执行环境失配」暴露信号。
     STATUS_EVENT_OVERLAY: ClassVar[str] = \
@@ -440,13 +440,14 @@ class CwOpDeploy(SrOperation):
         if si is None:
             log.warning('[cw-deploy] 未加载「货币战争-备战」screen_info,跳过部署')
             return self.round_fail(status=CwOpDeploy.STATUS_NO_SCREEN)
-        # 窗口防线执行断言(T-164 批A/D1;方案审选项 b,同 E1 形态):
+        # 窗口防线执行断言(ADR-0601 §3 D1,同 E1 形态):
         # 派发间隙(宿主入口观察 → 本 op 执行)overlay 弹出 = 执行环境失配,
         # 如实 round_fail 交回重判——禁旧 success-skip 把「弃执行」记成成功
         # (闩置位/部署实际没做,吞分发)。「overlay 弹出重判」归分发层
         #(cw_loop 0 系 overlay 分支先于备战链 + 宿主入口 overlay 防线为
         # 第一道);本检查降级为窗口期第二道执行断言,不升 guard_screen
-        #(deploy 派发不带回环守卫,T-163 边界申报锁语义不变)。
+        #(deploy 派发不带回环守卫,test_cw_t163_popup_dispatch 边界申报锁
+        # 语义不变)。
         for _scr, _area in (('货币战争-盛会之星', '标识-盛会之星'),
                             ('货币战争-列车同行', '标识-选择伙伴'),
                             ('货币战争-祈愿试炼', '标识-祈愿试炼')):
@@ -502,81 +503,97 @@ class CwOpDeploy(SrOperation):
                 cap=None,         # 执行侧不消费谓词 cap 门,只取视图/臂态
                 deployed_n=_tracked_n,
                 front_slots=len(front), back_slots=len(back))
-        _target_factions: set[str] = set(
-            _swap_ctx.target_factions) if _swap_ctx is not None else set()
-        _target_cores: set[str] = set(
-            _swap_ctx.target_cores) if _swap_ctx is not None else set()
-        if _swap_ctx is None and _sess is not None:
-            # 装配不可得退型:target 视图按定型 comp 直读(ADR-0152
-            # all_factions 口径;双轨伪 comp 不可得时的保守侧,与旧
-            # committed_from 读端退化同向)。
-            _fb_comp = getattr(strategy_state_of(_sess), 'target_comp', None)
-            if _fb_comp is not None:
-                _target_factions = set(
-                    getattr(_fb_comp, 'all_factions', None) or ())
-                _target_cores = set(
-                    getattr(_fb_comp, 'core_chars', None) or ())
-        _has_offtarget = bool(_board and _target_factions
-                             and any(f not in _target_factions for f in _board))
-        if _has_offtarget and templates is not None and _target_factions:
-            # D-10:卖 off-target deployed 给 bench target 腾位(替一次性 sell-all)。死锁根因:bot 买到 target
-            # 单位但板满(cap)+ off-target 卖不掉(旧 deploy_swapped 一次性冻结)→ bench target 上不了场 →
-            # 板冻结 off-target → 慢失血。修:bench 有 target 单位时,卖 deployed 中的 off-target(留 target),
-            # 腾位给 bench target(_deploy_deterministic 填)。自收敛(板全 target → _has_offtarget=False 停)。
-            # 守卫(D-3):bench 有 target 才卖(有更好的要换上);无 target 留 off-target bodies(> 空板)。
-            _bench_chars = read_bench_chars(self.ctx, self.last_screenshot, templates)
-
-            def _is_tgt_char(name: str) -> bool:
-                if name in _target_cores:
-                    return True   # core_char 辅助(阵营∉comp)也是 target(勿卖/优先上)
-                _c = get_char(name) if name else None
-                return _c is not None and bool((set(_c.factions) | set(_c.flows)) & _target_factions)
-
-            _bench_tgt_n = sum(1 for _bc in _bench_chars if _is_tgt_char(_bc.char_id))
+        # —— 换阵卖出臂前提(F1 执行面消费;T-167 发射-执行接缝合拢)——
+        # 判定单一源 = kernel cw_deploy_logic 合取支函数族(与发射面 M1″
+        # 同一谓词,禁第二份口径;fw_carry 口径收口=含,依据见
+        # target_view_char_is)。旧「装配不可得退型第二份目标视图派生」
+        # 随之拆除(硬约束,登记 = ADR-0534「修订(T-167)」节:只消费装配 ctx 字段——ctx None ⟺
+        # last_state None ⟹ _board None,旧退型派生在此形态本就消费不到)。
+        # 快路负判(与旧 _has_offtarget 同式同读数,行为逐位同旧):
+        # 板面阵营计数全在视图内 ⇒ 任一注册件羁绊∩视图≠∅ ⇒ 全部被
+        # swap_sell_exclusion_reason target_keep ⇒ 合取③必假——这是 ③ 的
+        # 必然假形态提前短路(省 bench/deployed 两次 SIFT 读),非第二口径
+        # (board OCR 漏读阵营帧的短板与旧门相同,未扩大)。
+        _board_all_tgt = bool(
+            _board and _swap_ctx is not None and _swap_ctx.target_factions
+            and all(f in _swap_ctx.target_factions for f in _board))
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            bench_target_count,
+            swap_realizable,
+            target_view_present,
+        )
+        if (target_view_present(_swap_ctx) and not _board_all_tgt
+                and templates is not None and _sess is not None):
+            # D-10:卖 off-target deployed 给 bench target 腾位(替一次性
+            # sell-all;自收敛:板全 target → 快路负判停)。守卫(D-3):
+            # bench 有目标视图件才卖(有更好的要换上);无则留 off-target
+            # bodies(> 空板)。
+            # 合取②:bench 目标视图件计数(kernel 单一源,含 fw_carry
+            # 收口)——计数即 1:1 替换上限(与旧 _bench_tgt_n 同语义)。
+            _bench_chars = read_bench_chars(self.ctx, self.last_screenshot,
+                                            templates)
+            _bench_tgt_n = bench_target_count(_swap_ctx, bench=_bench_chars)
             if _bench_tgt_n > 0:
-                # 换阵卖出义务臂(板满换阵死锁修复:线成型 fp=1.00 后 W209
-                # 熔断仍护旧线 fenced 件——旧线阵营件被保留 → sold 0/2 →
-                # RunDeploy 单签名三环守卫停机)。触发条件 = 线已成型
-                #(fp≥1.00,单一源 form_progress)∧ 板满(真部署数 ≥ 前后排
-                # 槽位总数,喂入单一源 = swap_arm_deployed_count)——判据
-                # 单一源 = kernel.fenced_swap_arm_of,本批经装配函数
-                # _swap_ctx 同契约消费(与发射面 M1″ 同一装配,输入源
-                # 分轨见 ADR-0530)。未成型/
-                # 未满板帧保持熔断(双轨期预囤框架件仍受保护,原语义零
-                # 变化)。新线 core∪shared 经 protect_names 继续保护(P41②
-                # 禁卖护栏不因换阵解除)。
-                _fenced_arm = bool(_swap_ctx.fenced_on) \
-                    if _swap_ctx is not None else False
-                _protect: frozenset[str] = (
-                    _swap_ctx.protect_names
-                    if _swap_ctx is not None else frozenset())
-                _arm_prev = getattr(exec_state_of(_match.session), 'cw4_swap_arm_on', None)
-                if _arm_prev is not None and _arm_prev != _fenced_arm:
-                    log.info('[cw-deploy] 换阵卖出义务臂状态变化: %s → %s'
-                             '(fp/部署数逐环重评,开合抖动可观测)',
-                             _arm_prev, _fenced_arm)
-                exec_state_of(_match.session).cw4_swap_arm_on = _fenced_arm
-                if _fenced_arm:
-                    log.info('[cw-deploy] 换阵卖出义务臂开启:线成型 fp=1.00 ∧ 板满 '
-                             f'∧ bench target={_bench_tgt_n} → off-line 引擎/配方件'
-                             '让位可卖(新线 core∪shared 仍保护)')
-                # m1p 执行侧归因:读发射位 pending(本帧 m1p 换血臂)后即清
-                #(一次消费;缺省 None = 非 m1p 帧,卖出计 regular 键零漂移)
-                _m1p_arm = getattr(strategy_state_of(_sess), 'cw4_m1p_arm_pending', None)
-                strategy_state_of(_sess).cw4_m1p_arm_pending = None
-                _n = self._sell_offtarget_deployed(
-                    front, back, _target_factions, templates,
-                    max_sell=_bench_tgt_n, target_cores=_target_cores,
-                    fenced_offline_sellable=_fenced_arm,
-                    protect_names=_protect, swap_ctx=_swap_ctx,
-                    bench_chars=_bench_chars, m1p_arm=_m1p_arm)
-                log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
-                         f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
+                # 合取③:板上存在其资格臂下可卖的 off-target 件(逐件
+                # 单一判定 = swap_sell_exclusion_reason;SIFT 现读域喂入,
+                # 读一次与卖出臂共用,免重读)。
+                _dep_read = exclude_system_units(
+                    read_deployed_chars(self.ctx, self.last_screenshot,
+                                        templates))
+                _swap_ok, _swap_why = swap_realizable(
+                    _swap_ctx, bench=_bench_chars, deployed=_dep_read)
+                if _swap_ok:
+                    # 换阵卖出义务臂(板满换阵死锁修复:线成型 fp=1.00 后
+                    # W209 熔断仍护旧线 fenced 件——旧线阵营件被保留 →
+                    # sold 0/2 → RunDeploy 单签名三环守卫停机)。臂态来源
+                    # = 装配 ctx.fenced_on(fp 单一源 form_progress,与发射
+                    # 面 M1″ 同装配同值)。三合取谓词全真才进本臂——发射⇔
+                    # 执行分轨态被结构性关闭(T-167 F1;无方向幻影部署
+                    # run_20260908_210431 的执行侧根除位)。新线 core∪shared
+                    # 经 protect_names 继续保护(P41② 禁卖护栏不因换阵解除)。
+                    _fenced_arm = bool(_swap_ctx.fenced_on)
+                    _protect: frozenset[str] = _swap_ctx.protect_names
+                    _arm_prev = getattr(exec_state_of(_match.session), 'cw4_swap_arm_on', None)
+                    if _arm_prev is not None and _arm_prev != _fenced_arm:
+                        log.info('[cw-deploy] 换阵卖出义务臂状态变化: %s → %s'
+                                 '(fp/部署数逐环重评,开合抖动可观测)',
+                                 _arm_prev, _fenced_arm)
+                    exec_state_of(_match.session).cw4_swap_arm_on = _fenced_arm
+                    if _fenced_arm:
+                        log.info('[cw-deploy] 换阵卖出义务臂开启:线成型 fp=1.00 ∧ 板满 '
+                                 f'∧ bench target={_bench_tgt_n} → off-line 引擎/配方件'
+                                 '让位可卖(新线 core∪shared 仍保护)')
+                    # m1p 执行侧归因:读发射位 pending(本帧 m1p 换血臂)后即清
+                    #(一次消费;缺省 None = 非 m1p 帧,卖出计 regular 键零漂移)
+                    _m1p_arm = getattr(strategy_state_of(_sess), 'cw4_m1p_arm_pending', None)
+                    strategy_state_of(_sess).cw4_m1p_arm_pending = None
+                    _n = self._sell_offtarget_deployed(
+                        front, back, set(_swap_ctx.target_factions), templates,
+                        max_sell=_bench_tgt_n,
+                        target_cores=set(_swap_ctx.target_cores),
+                        fenced_offline_sellable=_fenced_arm,
+                        protect_names=_protect, swap_ctx=_swap_ctx,
+                        bench_chars=_bench_chars, m1p_arm=_m1p_arm,
+                        deployed_chars=_dep_read)
+                    log.info(f'[cw-deploy] deploy-swap:sell {_n} off-target deployed(留 target,1:1 替换上限={_bench_tgt_n})'
+                             f' 腾位; bench target={_bench_tgt_n}/{len(_bench_chars)} → redeploy 集中')
+                else:
+                    log.info('[cw-deploy] deploy-swap 跳过:板上无其资格臂下可卖'
+                             '的 off-target 件(%s;逐件拒因见卖出单一判定,F1 合取③)'
+                             '——发射面同谓词本环已弃权,零幻影', _swap_why)
             else:
-                log.info('[cw-deploy] deploy-swap 跳过:bench 无 target 单位(留 off-target bodies;'
-                         ' 根因=buy 未买 target / economy 未攒金升级)')
+                log.info('[cw-deploy] deploy-swap 跳过:bench 无目标视图件(留 off-target bodies;'
+                         ' 根因=buy 未买 target / economy 未攒金升级;F1 合取②)')
         _placed, _plan_empty, _gate_fail = self._deploy_deterministic(
             bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
+        if _gate_fail is not None:
+            # 失配闸命中帧立即 return(ADR-0601 §5,「失配速报交回重判」
+            # 语义自洽):执行位现读已判不可信(板满失配/幻影满板),此帧上
+            # 的换排纠正 = 对坏帧做真实状态变更拖拽放大失配,SIFT 重观测/
+            # 2s 等待/装备快照同属对坏帧的后续投入——一律不做,如实速报
+            # round_fail 交回分发层重判。收敛责任 = cw_loop 环级无进展守卫
+            #(同签名计数 + 停机留证),op 侧禁自建第二份失败记忆/停出。
+            return self.round_fail(_gate_fail)
         self._reconcile_tracking(templates)   # D-12(3.3.2):deploy 后 SIFT 真实身份纠 tracking 漂(观测回路)
         # r241 换排纠正(用户实锤:三月七被兜底强推前排,后续永不被挪回):
         # deploy 只管 bench→场,场内错排(pref=back 在前排/fallback 遗留)无人纠正
@@ -607,15 +624,18 @@ class CwOpDeploy(SrOperation):
         # dd-037 契约硬化:no-op 与真实部署在返回状态上可区分——
         # ① 计划空且 0 落地 = 合法稳态(bench 留置),STATUS_NOOP(非「已部署角色」,
         #    不再把空计划伪装成部署成功);② 计划非空但 placed=0 = 真失败,round_fail
-        #    (交框架失败链,不再 ✓ 蒙混);③ placed>0 = 真部署,STATUS_DEPLOYED;
-        # ④ 入口失配闸命中(T-164 批A/D2)= 具名失配状态 round_fail,先于
-        #    ①②③判定(闸返回恒 placed=0,先查避免被 NOOP 分支吞掉)。
-        if _gate_fail is not None:
-            return self.round_fail(_gate_fail)
+        #    (交框架失败链,不再 ✓ 蒙混);③ placed>0 = 真部署,STATUS_DEPLOYED。
+        # ④ 入口失配闸命中(ADR-0601 §3)= 具名失配状态 round_fail,且在闸
+        #    返回点**立即 return**(见 _deploy_deterministic 调用后分支)——
+        #    先于①②③判定,闸返回恒 placed=0,不会被 NOOP 分支吞掉。
         if _placed == 0:
             if _plan_empty:
+                # 文案口径(T-167 连带修正):「发射方同源谓词抑制」
+                # 指 F1 换阵可兑现谓词——不可兑现形态(无方向/无 bench
+                # 目标件/无可卖 off-target)发射面已弃权,RunDispatch 只会
+                # 由真实部署意图(M1′/达标臂)派发,本 no-op 是其合法稳态。
                 log.info('[cw-deploy] 无部署可做(计划空,候选全被规则留 bench;'
-                         'dd-037:no-op 状态,发射方同源谓词已在本环抑制此形态)')
+                         'dd-037:no-op 状态,F1 同源谓词已抑制不可兑现发射)')
                 return self.round_success(CwOpDeploy.STATUS_NOOP, wait=1)
             return self.round_fail(CwOpDeploy.STATUS_LANDED_NONE)
         return self.round_success(CwOpDeploy.STATUS_DEPLOYED, wait=1)
@@ -772,7 +792,7 @@ class CwOpDeploy(SrOperation):
         """D-7 确定性部署:CV 知占用 → 每个有角色的备战槽按**角色前后台属性**(position_pref)拖到对应排的
         空槽(target 阵营先)→ CV 验「源备战槽空了」=成功。
 
-        返回 ``(placed, plan_empty, gate_fail)``(dd-037 契约 + T-164 批A 扩展):
+        返回 ``(placed, plan_empty, gate_fail)``(dd-037 契约 + ADR-0601 §4 扩展):
         placed = 落点验证过的实际上阵数;plan_empty = 主计划为空(kernel 选人
         无上场候选)——调用方据此区分 no-op(合法稳态)与「计划非空却 0 落地」
         (真失败),两者返回状态可区分;gate_fail = 入口失配闸具名状态
@@ -859,7 +879,11 @@ class CwOpDeploy(SrOperation):
         back_empty = [i for i, c in enumerate(back) if not slot_occupied(scr, int(c.x), int(c.y))]
         if not bench_occ:
             log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} → 无 bench 角色')
-            return 0, True
+            # 契约补全(ADR-0601 §4):bench 空 = 合法稳态 NOOP 的输入形态,
+            # 返回须满足 3 元组签名 (placed, plan_empty, gate_fail)——
+            # (0, True, None) = 0 落地/计划空/未命中失配闸;少返第三元会
+            # 在调用点三元解包处 ValueError(三审 C1 实证,行为锁堵漏)。
+            return 0, True, None
         # deployed 计数双源仲裁(观测仲裁批):CV 占用(front+back 实测)
         # 只是像素推断源,「板满」是高危读→行动点(本函数内**全部**板满早退
         # 都必须经仲裁值,含下方两道)。仲裁规则与代价不对称依据 =
@@ -890,7 +914,7 @@ class CwOpDeploy(SrOperation):
                 self.ctx, scr, 'deploy_cap_gate_paddle_missing', None, _deployed_cv)
         if _cap is not None and _cap > 0:
             if _deployed >= _cap:
-                # 计划-现读失配执行断言(T-164 批A/D2 三分之一):发射位谓词
+                # 计划-现读失配执行断言(ADR-0601 §3 D2 三分之一):发射位谓词
                 # (_deployable 含 cap 围栏,kernel 单源)正常时板满帧不会派
                 # RunDeploy——命中即发射面读与执行面读失配(谓词 bug 或派发
                 # 窗口期板面变化),如实 fail 交回重判;禁旧 (0, True) 伪装
@@ -902,7 +926,7 @@ class CwOpDeploy(SrOperation):
                             f'(front空={len(front_empty)} back空={len(back_empty)})')
                 return 0, False, CwOpDeploy.STATUS_BOARD_FULL_MISMATCH
         if not front_empty and not back_empty:
-            # 幻影满板矛盾帧执行断言(T-164 批A/D2 三分之二;P1 闭死升级):
+            # 幻影满板矛盾帧执行断言(ADR-0601 §3 D2 三分之二;P1 闭死升级):
             # CV 采样占满全部槽但仲裁值未达 cap(或 cap 失读)= 采样结构性
             # 失真——「派发认为可部署」与「现读无空槽」矛盾,如实 fail 暴露
             #(分歧留证已由上方仲裁分支落账),禁旧 (0, True) 伪装合法稳态。
@@ -1303,7 +1327,7 @@ class CwOpDeploy(SrOperation):
         # 上板的名(含被保垫件经保护活到部署帧后的上板转化)从保留集销账,
         # 防后续帧误保。属性契约级接线(与 held 显影同形态,无策略 import)。
         prune_fuel_filler_deployed(_sess, _deployed_cids)
-        # 失败记忆单一源(T-164 批A/D3):同签名 0 落地的失败记忆归分发层
+        # 失败记忆单一源(ADR-0601 §3 C4):同签名 0 落地的失败记忆归分发层
         # (cw_loop PREP_NO_PROGRESS_ROUNDS + prep_no_progress_tick 同签名
         # 计数 + 停机留证),op 侧不再自持第二份熔断计数;placed=0 且计划
         # 非空 → 节点 STATUS_LANDED_NONE round_fail 如实上报。
@@ -1364,7 +1388,8 @@ class CwOpDeploy(SrOperation):
                                  protect_names: frozenset[str] = frozenset(),
                                  swap_ctx: object | None = None,
                                  bench_chars: list | None = None,
-                                 m1p_arm: str | None = None) -> int:
+                                 m1p_arm: str | None = None,
+                                 deployed_chars: list | None = None) -> int:
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
 
         SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
@@ -1372,6 +1397,10 @@ class CwOpDeploy(SrOperation):
         target 数,保证每个卖出被一个 target 补上,板大小稳定;防 bench target 少却卖光 off-target → 板缩 HP 崩)。
         ⚠️ ``read_deployed_chars`` 首用(deployed SIFT 身份未单验,D-4 验的是占用);日志详记识别结果供核实,
         首跑即验证 —— 若身份错(误卖 target / 漏卖 off-target)据日志回退。
+
+        :param deployed_chars: 调用位预读的 deployed 域覆盖(F1 换阵可兑现
+            谓词在门位已读一次;传入免重读,同帧同域,SIFT 识别零二义);
+            None = 本函数自读(旧路径,防御缺省)。
 
         逐件单一判定(``swap_ctx`` 消费;ADR-0534 §4,docs/develop/currency_war/
         decisions/0534-swap-transition-arm.md):swap_ctx 在场时,每个卖出候选经
@@ -1393,9 +1422,10 @@ class CwOpDeploy(SrOperation):
         ``sell_offtarget_arm_{arm}`` / ``sell_offtarget_regular``
         (观测分键,消费读后即清,不改卖出行为)。
         """
-        deployed = exclude_system_units(
-            read_deployed_chars(self.ctx, self.last_screenshot, templates)
-        ) if templates else []
+        deployed = deployed_chars if deployed_chars is not None else (
+            exclude_system_units(
+                read_deployed_chars(self.ctx, self.last_screenshot, templates)
+            ) if templates else [])
         _sell = Point(70, 846)
         sold = 0
         _excluded_n = 0

@@ -1120,6 +1120,139 @@ class SwapPlanContext:
     target_comp: object | None = None
 
 
+# ===== 换阵可兑现谓词(F1 单一源;T-167 发射-执行接缝合拢)=====
+# 语义出处:T-167 无方向幻影部署软卡死事故(裁决持久家 = docs/develop/
+# currency_war/decisions/0534-swap-transition-arm.md「修订(T-167)」节,
+# ADR-0530 决策4 键表追加行为伴登记)。
+# 为什么存在:发射面(select_swap_plan)与执行面(CwOpDeploy 卖出臂两门)
+# 对「这场换阵能否兑现」判定不同源时,发射面会发出执行面必然空转的
+# RunDeploy(2026-09-08 实机软卡死 run_20260908_210431:无方向态
+# 发射 53 次幻影部署,执行 0 次真实换阵,交替活锁 15 分钟)——本谓词是
+# 「发射⇔执行同谓词」的单一实现,两面各消费其合取支,禁任一面自写
+# 第二份口径。支出出口总图防双改清单的共享单点对账持久家 = ADR-0534
+# 「修订(T-167)」节:本谓词消费 form 成型度(fp 经装配 ctx 单字段)与
+# victim 资格(swap_sell_exclusion_reason)两个已登记共享单点,零新增
+# 派生链——只消费装配 ctx(SwapPlanContext)字段,禁第二份 fp/目标视图
+# 派生。sim 镜像(engine_p1.m1p_intent_record)经
+# select_swap_plan 自动继承,零第二份。
+
+#: swap_realizable 拒因闭集(plan 级弃权键;层位 = plan 级弃权键(登记 = ADR-0530 决策4 键表追加行),
+#: 非逐件拒因闭集——后者见 swap_sell_exclusion_reason docstring)。
+SWAP_REALIZABLE_WHY: tuple[str, ...] = (
+    'no_direction', 'no_bench_target', 'no_sellable_offtarget',
+)
+
+
+def target_view_present(ctx: SwapPlanContext | None) -> bool:
+    """合取①:目标视图非空(阵营视图 ∪ 核心件任一非空)。
+
+    为什么含 core:目标视图 = cores ∪ factions 双字段(cw_comps 口径,
+    白厄类空羁绊单卡 comp 只有 core_chars)——只看 factions 会把
+    「有方向(核心件)」误标 no_direction;执行面旧门只看 factions 是
+    同族窄口径,T-167 一并收口(有向 core-only 帧卖出臂从结构性关闭
+    变为可开门,方向同收口语义,ADR-0534「修订(T-167)」节的伴随申报面)。
+    """
+    return ctx is not None and bool(ctx.target_factions or ctx.target_cores)
+
+
+def target_view_char_is(ctx: SwapPlanContext, char_id: str) -> bool:
+    """单件目标视图判定(收口后唯一实现;fw_carry 口径 = **含**)。
+
+    fw_carry 收口依据(T-167 择一裁决,申报持久家 = ADR-0534「修订
+    (T-167)」节第 2 条):①上序裁判
+    select_deployments 的 is_tgt 判定含 fw_carry(本文件 :474,框架件
+    r120 起是部署一等公民)——为 fw_carry 件腾位是可兑现的换阵,执行面
+    不认它则发射⇔执行再次分叉;②卖出侧 swap_sell_exclusion_reason 对
+    fw_carry 板件同样 target_keep 保护(ADR-0534 §2 对称排除)——同口径
+    才自洽;③旧执行面 _is_tgt_char 不含 fw_carry 正是本批要消灭的
+    「同一判据两份实现」病样本,收口 = 向 kernel 口径(含)对齐。
+    有向态行为变化面(如实申报):执行面 max_sell 上限自此计 fw_carry
+    bench 件,可多卖一件 off-target 为其腾位——腾位对象是上序真会部署
+    的件,方向安全(ADR-0534 用例预期更新随批)。
+    """
+    cid = char_id or ''
+    if cid in ctx.target_cores or cid in ctx.fw_carry:
+        return True
+    ch = CHARACTERS.get(cid) if cid else None
+    return ch is not None and bool(
+        (set(ch.factions) | set(ch.flows)) & ctx.target_factions)
+
+
+def bench_target_count(ctx: SwapPlanContext | None, *,
+                       bench: list[BenchChar] | None = None) -> int:
+    """合取②(计数形态):bench 目标视图件数(>0 即合取②成立)。
+
+    :param bench: 域覆盖(执行面 SIFT 现读喂入;缺省 ctx.bench 帧)。
+      与 swap_sell_exclusion_reason 的 bench 覆盖参同规(同函数异参、
+      输入源两侧分轨,ADR-0530 装配源契约)。
+    """
+    if ctx is None:
+        return 0
+    _bench = bench if bench is not None else ctx.bench
+    return sum(1 for b in _bench
+               if target_view_char_is(ctx, getattr(b, 'char_id', '') or ''))
+
+
+def board_sellable_offtarget_exists(ctx: SwapPlanContext | None, *,
+                                    deployed: list[BenchChar] | None = None,
+                                    ) -> bool:
+    """合取③:板上存在其资格臂下可卖的 off-target 件。
+
+    逐件判定 = swap_sell_exclusion_reason 单一源(返 '' = 该件在当前
+    臂态下可卖且必为 off-target——target 视图件被该函数 target_keep
+    拒,语义内含)。未识别/未注册件不入候选(select_swap_plan victim
+    扫描同款:不可判羁绊即不可判资格)。与发射面 victim 扫描同构同源,
+    差异仅在输入域(发射面 ctx 帧域 / 执行面 SIFT 现读域,分轨既定)。
+    """
+    if ctx is None:
+        return False
+    _dep = deployed if deployed is not None else ctx.deployed
+    for d in _dep:
+        name = getattr(d, 'char_id', '') or ''
+        if not name or CHARACTERS.get(name) is None:
+            continue   # 未识别/未注册件不可判羁绊,不入候选(扫描同款)
+        if swap_sell_exclusion_reason(name, ctx, deployed=_dep) == '':
+            return True
+    return False
+
+
+def swap_realizable(ctx: SwapPlanContext | None, *,
+                    bench: list[BenchChar] | None = None,
+                    deployed: list[BenchChar] | None = None,
+                    ) -> tuple[bool, str]:
+    """换阵可兑现谓词(三合取;发射⇔执行同吃,F1 单一源)。
+
+    realizable ⟺ ①目标视图非空 ∧ ②bench 存在目标视图件 ∧ ③板上存在
+    其资格臂下可卖的 off-target 件(ADR-0534「修订(T-167)」节钉死的
+    三合取;原「fenced 臂开 ∨ bench 存在目标视图件」形态
+    会使执行面卖出臂在
+    「fenced 开 ∧ bench 无目标件」帧仍跳过,发射⇔执行在有向成型态再次
+    分叉,故改写)。
+
+    消费面与合取支的对应:
+    - 发射面(select_swap_plan)门①显式弃权(abstain no_direction);门②
+      域外(非锁线转型域)显式弃权(abstain no_bench_target)——转型域
+      跳过门②:转型臂自带更强的卖后上序底线(post_sell_offline),计划
+      非空 ⟹ up2 含 target 视图件 ⟹ bench 必有目标视图件,门②被底线
+      蕴含,预判只会把逐件显影挤成单键;门③由 victim 扫描自然承载
+      (逐件同判 swap_sell_exclusion_reason,扫描空即计划空,语义等价
+      且逐件拒因保留显影);
+    - 执行面(CwOpDeploy 卖出臂两门)消费本函数与合取②计数;
+    - sim 镜像经 select_swap_plan 自动继承。
+
+    :returns: (ok, why)。why ∈ SWAP_REALIZABLE_WHY(拒因闭集)或 ''
+        (ok=True)。ctx None 按无方向弃权(fail-closed,与装配不可得
+        「不静默发射」同向)。
+    """
+    if not target_view_present(ctx):
+        return False, 'no_direction'
+    if bench_target_count(ctx, bench=bench) == 0:
+        return False, 'no_bench_target'
+    if not board_sellable_offtarget_exists(ctx, deployed=deployed):
+        return False, 'no_sellable_offtarget'
+    return True, ''
+
+
 @dataclass
 class SwapPlan:
     """swap 计划(卖序 + 上序 + 逐件拒因;空计划 = 两序空)。
@@ -1323,9 +1456,20 @@ def select_swap_plan(ctx: SwapPlanContext | None,
       上序候选**(拒因 ``post_sell_held``),「白卖一件板面变弱」形态
       在谓词内不可达;
     - **cap 缺读**(``cap is None``)⇒ 弃权 ``cap_unreadable``,与 M1/
-      M1′ vacancy=0 门同 fail-closed(dd-037)。
+      M1′ vacancy=0 门同 fail-closed(dd-037);
+    - **换阵可兑现门(F1;T-167 发射-执行接缝合拢)**:合取①目标视图
+      非空(假 ⇒ 弃权 ``no_direction``,2026-09-08 实机无方向幻影部署
+      软卡死的直接根除位)∧ 合取②bench 存在目标视图件(假 ⇒ 弃权
+      ``no_bench_target``,根除 base/formed 臂「上序非目标件填空」的
+      执行面必然空转形态,如实申报的行为变化面(ADR-0534「修订(T-167)」节))。合取③(板上存在
+      可卖 off-target 件)由 victim 扫描自然承载(逐件同判
+      swap_sell_exclusion_reason,扫描空即计划空),逐件拒因保留显影。
+      判定实现单一源 = swap_realizable 合取支函数族,禁第二份口径。
+      弃权序:供给缺读面(input_missing/cap/membership,装配侧更早
+      失败点)先报,语义谓词门在其后。
 
-    :param reasons_out: 传入 dict 时逐件拒因(名 → 拒因键)写入。
+    :param reasons_out: 传入 dict 时逐件拒因(名 → 拒因键)写入;
+        plan 级弃权以键 ``'(plan)'`` 写入(既有惯例)。
     """
     reasons: dict[str, str] = {}
     if ctx is None:
@@ -1340,12 +1484,28 @@ def select_swap_plan(ctx: SwapPlanContext | None,
         if reasons_out is not None:
             reasons_out.update({'(plan)': 'membership_unreadable'})
         return SwapPlan(abstain='membership_unreadable')
+    # F1 换阵可兑现门(合取①②;实现单一源见 swap_realizable 合取支
+    # 函数族。合取③ = 下方 victim 扫描自然承载,不预判——预判会把逐件
+    # 拒因(fenced_arm_closed 等)挤成 plan 级单键,丢显影)。
+    # 合取②辖域修正:锁线转型域跳过——转型臂自带更强的卖后上序底线
+    #(post_sell_offline,逐 victim 判 up ∩ target ≠ ∅),与合取②在
+    # 「bench 无目标视图件」帧同判计划空(底线把 victim 全拒),plan
+    # 级预判只会把逐件显影挤成单键;且 plan 非空 ⟹ up2 含 target 视图
+    # 件 ⟹ bench 必有目标视图件,合取②被底线蕴含,发射⇔执行零分叉。
+    _trans = _swap_transition_domain(ctx)
+    if not target_view_present(ctx):
+        if reasons_out is not None:
+            reasons_out.update({'(plan)': 'no_direction'})
+        return SwapPlan(abstain='no_direction')
+    if not _trans and bench_target_count(ctx) == 0:
+        if reasons_out is not None:
+            reasons_out.update({'(plan)': 'no_bench_target'})
+        return SwapPlan(abstain='no_bench_target')
     occupied = len(ctx.deployed)   # 占用数口径(含未识别占位件)
     if occupied < ctx.cap:
         return SwapPlan(reasons=reasons)
     # 锁线转型域(辖域谓词单一源 = _swap_transition_domain):域内
     # arm 标注恒 'transition'(行 #5/N5)且 victim 序 = P79-4 让渡序。
-    _trans = _swap_transition_domain(ctx)
     _dep_names = {x.char_id for x in ctx.deployed if x.char_id}
     victims: list[tuple[tuple, BenchChar, set[str], str]] = []
     for _scan, d in enumerate(ctx.deployed):
@@ -1386,15 +1546,10 @@ def select_swap_plan(ctx: SwapPlanContext | None,
     victims.sort(key=lambda t: t[0])
 
     # bench 件是否 target 视图(转型臂卖后上序底线:up ∩ target ≠ ∅;
-    # 判定口径与 select_deployments 的 is_tgt 同式,禁第二实现)
+    # 判定单一源 = target_view_char_is,fw_carry 口径收口后禁第二实现)
     def _bench_is_target(i: int) -> bool:
-        b = ctx.bench[i]
-        cid = getattr(b, 'char_id', '') or ''
-        if cid in ctx.target_cores or cid in ctx.fw_carry:
-            return True
-        bch = CHARACTERS.get(cid) if cid else None
-        return bch is not None and bool(
-            (set(bch.factions) | set(bch.flows)) & ctx.target_factions)
+        return target_view_char_is(
+            ctx, getattr(ctx.bench[i], 'char_id', '') or '')
 
     plan = SwapPlan(reasons=reasons)
     for _rank, d, _bonds, _arm in victims:

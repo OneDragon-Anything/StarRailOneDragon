@@ -269,7 +269,7 @@ class CwOpEquipAll(SrOperation):
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
-    # 失败状态具名常量(T-164 批A;方案审:禁散字符串,判读侧可分键)——
+    # 失败状态具名常量(ADR-0601 §4;禁散字符串,判读侧可分键)——
     # 消费面 = run_record/日志判读与 prep_no_progress 停机留证归因。
     STATUS_SCREEN_DRIFTED: ClassVar[str] = \
         '画面漂移(批内非干净备战,执行环境失配)'
@@ -678,7 +678,8 @@ class CwOpEquipAll(SrOperation):
                 cur = self.screenshot()
                 if self.check_and_update_current_screen(
                         cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
-                    # 执行断言(T-164 批A/E2;同 E1 形态,T-163 D5 裁定延伸):
+                    # 执行断言(ADR-0601 §4 E2;同 E1 形态,前置画面闸
+                    # 执行断言化裁定的批内延伸):
                     # 批内画面漂移 = 执行环境失配,如实 round_fail 交回外循环
                     # 重判——禁旧 break+success 把「弃批」记成「M7 装备 X 件」
                     # 假成功(闩置位/装备实际没穿,吞分发)。「该不该执行」归
@@ -887,7 +888,7 @@ class CwOpEquipAll(SrOperation):
             cur = self.screenshot()
             if self.check_and_update_current_screen(
                     cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
-                # 执行断言(T-164 批A/E3;与 E2 同批同形):回退路径批内画面
+                # 执行断言(ADR-0601 §4 E3;与 E2 同形):回退路径批内画面
                 # 漂移同样如实 round_fail,禁静默 break 后 success 假完成。
                 log.warning('[cw!][equip] 画面漂移(面板/浮窗开)→ 执行断言 fail')
                 return self.round_fail(

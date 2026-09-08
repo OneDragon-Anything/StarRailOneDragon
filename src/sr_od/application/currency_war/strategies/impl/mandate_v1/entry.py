@@ -415,6 +415,11 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             counters=state_of(session).cw4_counters,
             dedup_names=set())
         if _sf_cands:
+            # 轮内卖出登记(泄金阶梯档 2 新鲜度排除写端,ADR-0604 §3;
+            # 球路径 M4 腾席与 prep/shop 域 M4 同口径——漏记 = 卖X 后同轮
+            # 压库买回 X 的净零自旋在该路径残余可达)。
+            mandate.record_round_sold(session, state,
+                                      _sf_cands[0].char_id or '')
             return [Emitted(SellBench(slot=_sf_cands[0].slot), True,
                             'm4_fuel_sell')]
         _ct_sf = state_of(session).cw4_counters
@@ -687,6 +692,12 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                                      registry=registry)
 
     # ⑥ 无动作 ⇒ 出战(序列终点)
+    # F1(T-167)后本出口的可达面恢复:无方向态 M1″ 换阵臂被「换阵可
+    # 兑现」谓词(kernel swap_realizable)弃权,不再发射执行面必然空转的
+    # 幻影 RunDeploy(实证:run_20260908_210431 发射 53 次、执行 0 次,
+    # 交替活锁把本出口堵死 15 分钟)——闩闭帧序列归空,StartBattle 自然
+    # 可达(支配性论证:备战等待边际收益恒 0,见 cw_loop 收益耗尽判据
+    # docstring)。有向态语义不变(计划非空照发,计划空本就达本出口)。
     if not out:
         out.append(Emitted(StartBattle(), True, 'battle'))
     state_of(session).cw4_prev_line_name = cur_name   # 下帧 k_switched 判定基准

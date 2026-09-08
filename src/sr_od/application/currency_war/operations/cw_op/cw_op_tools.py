@@ -56,7 +56,7 @@ if TYPE_CHECKING:
 
 # 拖曳参数(与 CwOpEquipAll 拖拽失败降级同型口径;工具 icon→icon 同网格,
 # 距离短,首档参数即可,不建补救链——失败由确认通道 cancel 分支如实上报,
-# 重算归分发层下一环重派,T-164 批A/C3)
+# 重算归分发层下一环重派,ADR-0601 §3)
 _TOOL_DRAG_HOLD: float = 0.5
 _TOOL_DRAG_DURATION: float = 1.2
 _TOOL_MAX_PER_PASS: int = 4   # 单 pass 执行硬上限(防 owned 全死库存时超时)
@@ -176,7 +176,7 @@ def run_tool_queue(queue: list[ToolDragPlan], exec_fn,
 
     while 队列循环逐件执行;**首件 consumed/partial 后画面网格 reflow →
     剩余计划坐标全部作废**(三审定谳:沿用切片快照的过期坐标拖曳 = 误烧
-    负操作,已落错的首次拖曳确认通道救不回)。T-164 批A/C3 整改:op 内
+    负操作,已落错的首次拖曳确认通道救不回)。ADR-0601 §3 整改:op 内
     不再重评准入自建新队列(replan 删除——「重评 admitted」是策略判据的
     第二次触发,违反动作 op 机械执行规范),计划失效如实上报交回分发层,
     下一环重派即天然重算(发射位 G1 对 fresh owned 重评 = 判据单一源;
@@ -212,7 +212,7 @@ class CwOpTools(SrOperation):
     """
 
     SCREEN_NAME: str = '货币战争-备战'
-    # 失败状态具名常量(T-164 批A/C3;禁散字符串,判读侧可分键)。
+    # 失败状态具名常量(ADR-0601 §4;禁散字符串,判读侧可分键)。
     STATUS_PLAN_STALE: str = '工具计划失效(首件消费后 reflow,剩余计划作废)'
 
     def __init__(self, ctx: SrContext):
@@ -349,8 +349,8 @@ class CwOpTools(SrOperation):
                          plan.tool, plan.target)
             return outcome
 
-        # 旧 op 内 _replan(fresh owned 重评 admitted 再建队列)已删(T-164
-        # 批A/C3):「重评 admitted」是策略判据在 op 内第二次触发,违反动作
+        # 旧 op 内 _replan(fresh owned 重评 admitted 再建队列)已删(ADR-0601
+        # §3):「重评 admitted」是策略判据在 op 内第二次触发,违反动作
         # op 机械执行规范;计划失效改由 plan_stale 如实上报交回分发层重算。
         consumed, _attempts, _plan_stale = run_tool_queue(plans, _exec)
         if _plan_stale:
