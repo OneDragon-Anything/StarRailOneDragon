@@ -48,6 +48,7 @@ SNAPSHOT {节点: {位面: {桶键: [Δ]}}} + META(构成/过滤/指纹)。
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -177,6 +178,12 @@ def _run_quarantine_reason(run_id: object) -> str | None:
 #: 边界:守卫按两流行数「总和」比较——单流截断(decisions 砍半时
 #: 总和约 56%)可过闸,由 META unlabeled_dropped/桶贫困披露兜底
 #: 显影;单流全灭则先撞「池为空」拒绝。
+#: 基线来源(2026-09-09 穿透定谳,ADR-0612):必须是 git HEAD 提交版
+#: 而非盘面文件——盘面可能已被一次未提交的塌缩再生改写,若以盘面
+#: 为基线,塌缩件自我延续(微语料 vs 微语料永过闸;2026-09-08 三次
+#: 静默覆写后 286/48 微语料再生在守卫在场下持续放行即实证),守卫
+#: 语义与 ADR-0595「提交快照持续受保护」的申报才真正对齐。无 HEAD
+#: 版本(首次再生/仓外写目标)退回盘面读取,放行语义不变。
 SNAPSHOT_COLLAPSE_MIN_RATIO: float = 0.5
 
 
@@ -184,22 +191,48 @@ class SourceCorpusCollapse(RuntimeError):
     """再生源语料较现提交快照塌缩,守卫拒绝覆写(语义见阈值常量注)。"""
 
 
-def _committed_source_rows(data_py: Path) -> dict[str, int] | None:
-    """读「将被覆写的快照文件」里的语料行数账(塌缩守卫基线)。
+def _head_data_py_text(data_py: Path) -> str | None:
+    """读 git HEAD 提交版数据文件文本(塌缩守卫基线来源,见常量块注)。
 
-    生产 = 主仓提交快照;测试 = monkeypatch 的写目标(tmp_path),
-    两侧同一读取路径。文件不存在(首次再生,无现状可保护)或
-    行数账缺键(老快照无此披露)→ None,守卫无从比对即放行——
-    守卫语义是「不许比现状少」,不是「必须比某阈值多」。
-    为什么 exec 读文件而非 import:import 拿进程内已加载模块,长跑
-    进程里与磁盘现态可能脱节(他进程已重写文件);exec 生成产物
-    (自包含)才是「即将被覆盖的那个文件」的真值(测试仓 exec
-    产物先例同法)。
+    只读 ``git show HEAD:<相对路径>``;任何失败(仓外写目标/未跟踪/
+    无 git/超时)返回 None,由调用方退回盘面读取——退回通道即旧行为,
+    测试仓 tmp_path 写目标(仓外)全部经此通道维持原语义。
     """
-    if not data_py.exists():
+    try:
+        rel = data_py.resolve().relative_to(REPO.resolve()).as_posix()
+    except ValueError:
         return None
+    try:
+        proc = subprocess.run(
+            ['git', 'show', f'HEAD:{rel}'], cwd=str(REPO),
+            capture_output=True, encoding='utf-8', errors='replace',
+            timeout=10)
+    except Exception:   # noqa: BLE001 无 git 环境/进程异常一律退回盘面
+        return None
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return None
+    return proc.stdout
+
+
+def _committed_source_rows(data_py: Path) -> dict[str, int] | None:
+    """读守卫基线里的语料行数账:git HEAD 提交版优先,盘面文件兜底。
+
+    基线语义 = 「不许比提交真值少」(2026-09-09 穿透定谳,ADR-0612:
+    旧实现读盘面,盘面被未提交塌缩改写后守卫即对提交真值失明)。
+    两处都拿不到行数账(首次再生无现状可保护/老快照无此披露)→
+    None,守卫无从比对即放行——守卫语义是「不许比提交真值少」,不是
+    「必须比某阈值多」。为什么 exec 读文本而非 import:import 拿
+    进程内已加载模块,长跑进程里与磁盘现态可能脱节(他进程已重写
+    文件);exec 文本(HEAD 版或盘面产物,自包含)才是被比对的真值
+    (测试仓 exec 产物先例同法)。
+    """
+    text = _head_data_py_text(data_py)
+    if text is None:
+        if not data_py.exists():
+            return None
+        text = data_py.read_text(encoding='utf-8')
     ns: dict = {}
-    exec(data_py.read_text(encoding='utf-8'), ns)   # noqa: S102 只执行本生成器产物
+    exec(text, ns)   # noqa: S102 只执行本生成器产物
     rows = (ns.get('META') or {}).get('source_rows')
     return rows if isinstance(rows, dict) else None
 
@@ -502,8 +535,9 @@ def regenerate_snapshot(src_dir: Path | None = None,
     :func:`build_pool` / :func:`_assert_guards` 内生效;run 级隔离
     在 :func:`build_pool` 行循环内生效(前缀规则 + 显式名单);
     塌缩守卫 :func:`_assert_no_source_collapse` 在覆写前生效——
-    源语料较现快照塌缩即 raise :class:`SourceCorpusCollapse`,
-    现快照原样保留(池数据防线,理由见各守卫注释)。
+    源语料较基线塌缩即 raise :class:`SourceCorpusCollapse`,
+    盘面快照原样保留(池数据防线,理由见各守卫注释;基线 =
+    git HEAD 提交版优先、盘面兜底,ADR-0612)。
     """
     if _DELTA_POOL_FROZEN:
         raise DeltaPoolFrozen(
