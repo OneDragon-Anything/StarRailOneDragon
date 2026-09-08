@@ -10,16 +10,21 @@
 #      → 点「继续战斗」恢复战斗 → 退局打转 2min(实录 03:59:35-04:01:35)。
 # 锁光标恢复态加固(2026-09-02 一条龙恢复链事故,同 BackToNormalWorldPlus
 #   大厅/兜底分支注释):机器重启后游戏直接恢复进 UI 时光标锁定,不带 Alt 的
-#   点击全部落空——本 op 所有 UI 坐标点击统一带 pc_alt=True(键盘 esc 不受影响)。
+#   点击全部落空——本 op 所有 UI 坐标点击统一带 pc_alt=True。
+# ESC 清零(2026-09-08):备战/overlay 两处 ESC 换建档点击(退局发起=左上
+#   门形「退出对局」图标;overlay 族各走建档关闭控件),依据见各分支注释。
 
 """从货币战争对局中退出(放弃+结算)回大厅。
 
 高频重复操作(测试/刷开局/回滚),手动做很繁琐(Esc→放弃→结算3页→大厅)→ 建成 op 一键调用。
-支持入口:备战阶段 / 战斗中 / **事件 overlay**(投资策略/环境/补给/遭遇/巨星 —— 先 escape 回备战)
-(任何有 Esc 放弃提示的态)→ 放弃并结算 → 结算 3 页 → 大厅。
+支持入口:备战阶段 / 战斗中 / **事件 overlay**(投资策略/环境/补给/遭遇/巨星/详情浮层)
+(任何可识别的对局内态)→ 中断挑战弹窗「放弃并结算」→ 结算 3 页 → 大厅。
+全链零 ESC:退局发起 = 备战左上门形「退出对局」图标(建档点击,点开中断挑战
+弹窗,与 ESC 等价;overlay 族各走建档关闭控件,依据见各分支注释)。
 """
 import difflib
 import time
+from collections.abc import Callable
 from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -38,8 +43,18 @@ class CwEntryExit(SrOperation):
 
     STATUS_AT_LOBBY: ClassVar[str] = '已返回货币战争大厅'
 
+    #: overlay 关闭/绕过动作同键连续未生效上限(次):超限 round_fail 交外层。
+    #: 定向点击后动作未生效时本分支每轮重命中、不计尾部 _miss_rounds(那是
+    #: 全分支未命中计数),必须自带计数上界——success 边循环不消耗节点 retry
+    #: 预算(同 sim_uni_exit MAX_BACK_MENU_CYCLES 的 27min 空转教训)。
+    OVERLAY_ACTION_MAX: ClassVar[int] = 5
+
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='退出货币战争对局')
+        #: overlay 子态定向动作连续未生效计数(键=overlay 名)。坐标系=本 op
+        #: 实例内一次退出尝试;实例即一次 CwEntryExit 调用,不做中途清零
+        #: (保守口径:同浮层一次退出尝试内至多 OVERLAY_ACTION_MAX 次动作)。
+        self._overlay_action_streaks: dict[str, int] = {}
 
     @operation_node(name='退出对局', is_start_node=True, node_max_retry_times=30)
     def exit_match(self) -> OperationRoundResult:
@@ -77,7 +92,7 @@ class CwEntryExit(SrOperation):
         if self._ocr_click_pc_alt(screen, '返回货币战争', lcs_percent=0.8):
             return self.round_wait(wait=2)
 
-        # 备战/对局中(无放弃提示)→ Esc 弹放弃提示
+        # 备战/对局中(无放弃提示)→ 点门形「退出对局」图标弹中断挑战弹窗
         # r317:「备战阶段」旧裸 OCR 必须收紧 lcs=0.8(find_by_ocr 直接 LCS 匹配
         # (无 difflib 前置过滤),默认 0.5 时在投资策略屏误命中「返回备战界面」)
         # T#103 area 化(标识-备战阶段,prep fixture 实帧建档):positional rect
@@ -86,12 +101,20 @@ class CwEntryExit(SrOperation):
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success       # 备战
                 or self.round_by_find_area(screen, '货币战争-备战', '标识-备战阶段').is_success   # T#103:原「备战阶段」裸 OCR(lcs=0.8)→ area
                 or self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
-            self.ctx.controller.btn_tap('esc')
-            return self.round_wait(wait=2)
+            # 退局发起:点左上门形「退出对局」图标 → 中断挑战弹窗(替代旧 ESC)。
+            # 依据:中断挑战弹窗 doc 记「两个入口」(2026-08-17 实测:ESC / 点左上角
+            # ~(100,70));左上实为两枚相邻控件——门形退出图标(本 area,视觉中心
+            # ≈(61,63),doc 的 (100,70) 落其热区右缘)与难度徽标(按钮-敌人难度
+            # 95-180,点它弹的是敌方信息浮层,见 货币战争-敌人信息浮层 doc 入口①),
+            # 点门形图标才到放弃链。ESC 语义随画面漂移(无面板时落备战=误弹本弹窗,
+            # runtime-ops 运行坑),故以建档点击等价替换。
+            if self._click_exit_door():
+                return self.round_wait(wait=2)
+            return self.round_fail('按钮-退出对局 area 缺失,退局链无法发起(ESC 已禁用)')
 
         # r303b(局30 实证):「返回备战界面」点后可能弹投资策略
         # 三选一(退局途中绕不过)→ 选左卡+确认(任意策略都行,
-        # 本局反正要弃)→ 回备战再走 Esc 链
+        # 本局反正要弃)→ 回备战再走退出对局链
         # r317 顺序修正:本分支(round_by_find_area area 定位)必须**在**
         # 「返回备战界面」(round_by_ocr_and_click 全屏 OCR)**之前**——
         # 投资策略屏是独立屏,右上角也有「返回备战界面」按钮文字:若
@@ -110,6 +133,8 @@ class CwEntryExit(SrOperation):
             # 点击带 bug#1 mouse_move 缓解(partner reset 根因同类)。
             _confirm = (area_center(self.ctx, '按钮-确认', '货币战争-投资策略')
                         or Point(978, 983))   # 兜底常量 = CwScreenInvestStrategy.CONFIRM
+            # ⚠️ 待实机核(坐标单一源清点项):左卡 (460,475) 为实测字面量未
+            # area 化(本批实机纪律不可测,建档挂账实机批)。
             self.ctx.controller.mouse_move(Point(460, 475))   # 左卡
             self.ctx.controller.click(Point(460, 475), pc_alt=True)
             time.sleep(1.2)
@@ -118,7 +143,7 @@ class CwEntryExit(SrOperation):
             log.info('[cw-exit] 投资策略三选一(退局途中)→ 左卡+确认(area 定位)')
             return self.round_wait(wait=2)
 
-        # 事件 overlay(投资策略/环境 有「返回备战界面」)→ 点回备战,下轮走备战分支 Esc→放弃。
+        # 事件 overlay(投资策略/环境 有「返回备战界面」)→ 点回备战,下轮走备战分支点「退出对局」弃局。
         # 修 bug:事件屏无「放弃并结算」/备战文本 → 全分支不命中 → retry 死循环(2026-08-04 实测卡 210s+)。
         # r317 顺序修正:本分支**必须在投资策略分支之后**(投资策略屏也是独立屏,
         # 右上角同有「返回备战界面」按钮文字;全屏 OCR 点击其 OCR 框中心落空——
@@ -127,13 +152,38 @@ class CwEntryExit(SrOperation):
         # (防「返回备战界面」与「返回货币战争」共享子序列 0.5 误匹配)。
         if self._ocr_click_pc_alt(screen, '返回备战界面', lcs_percent=0.8):
             return self.round_wait(wait=2)
-        if (self.round_by_ocr(screen, '补给阶段').is_success
-                or self.round_by_ocr(screen, '遭遇其一').is_success
-                or self.round_by_ocr(screen, '盛会之星').is_success
-                or self.round_by_ocr(screen, '可合成列表').is_success
-                or self.round_by_ocr(screen, '角色详情').is_success):
-            self.ctx.controller.btn_tap('esc')
-            return self.round_wait(wait=2)
+        # 事件 overlay 族兜底(:128 全屏 OCR 未命中时)→ 各自建档点击,零 ESC。
+        # 每子态的替代控件与依据:
+        # - 补给/遭遇:屏上「返回备战界面」按钮 area(货币战争-补给 / 货币战争-遭遇
+        #   节点建档),与上一分支同目的的 area 化兜底腿(按钮热区 vs OCR 框中心
+        #   偏移史见 r317 注释,area 中心直达热区);
+        # - 盛会之星:档内无关闭控件(仅候选卡+确认选择),浮层不遮左上门形图标
+        #   (cw_megastar 实拍帧核验)→ 直点「退出对局」进中断挑战弹窗——退局
+        #   语境目标是弃局,无需先关浮层回备战;
+        # - 可合成列表(装备详情浮窗)/角色详情:点面板外空白关闭 = 选中驱动
+        #   deselect(装备详情浮窗 2026-08-14 live 验「点空白 → 关闭回备战」;
+        #   建档 货币战争-备战/区域-空白关闭,与主消费路径 CwScreenRoleDetailOverlay
+        #   同源同控件),连续未关升级门图标兜底。
+        # 有界性:定向点击后动作未生效时本分支每轮重命中、不计尾部 _miss_rounds,
+        # 故每子态带连续计数上界(OVERLAY_ACTION_MAX,SimUniExit MAX_BACK_MENU_
+        # CYCLES 同款教训:success 边循环不消耗 retry 预算),超限 round_fail
+        # 交外层重新导航。
+        if self.round_by_ocr(screen, '补给阶段').is_success:
+            return self._overlay_branch(
+                '补给阶段',
+                lambda: self._click_screen_area_center(
+                    '货币战争-补给', '按钮-返回备战界面'))
+        if self.round_by_ocr(screen, '遭遇其一').is_success:
+            return self._overlay_branch(
+                '遭遇其一',
+                lambda: self._click_screen_area_center(
+                    '货币战争-遭遇节点', '按钮-返回备战界面'))
+        if self.round_by_ocr(screen, '盛会之星').is_success:
+            return self._overlay_branch('盛会之星', self._click_exit_door)
+        if self.round_by_ocr(screen, '可合成列表').is_success:
+            return self._overlay_branch('可合成列表', self._click_blank_close)
+        if self.round_by_ocr(screen, '角色详情').is_success:
+            return self._overlay_branch('角色详情', self._click_blank_close)
 
         # r279(用户交办,分支③实证建档 2026-08-23):战斗中(不可识别
         # 画面)→ 右上角 X → 「货币战争-战斗暂停」(新档)→「撤退」→
@@ -162,8 +212,58 @@ class CwEntryExit(SrOperation):
         self._miss_rounds = getattr(self, '_miss_rounds', 0) + 1
         if self._miss_rounds >= 10:   # 本次退出尝试内累计 10 次全分支 miss(保守:含穿插命中,仍表明退出受阻)
             return self.round_fail('退出流程连续 10 轮全分支未命中(帧非 CW 域),交外层重新导航')
+        # ⚠️ 待实机核(坐标单一源清点项):战斗中右上 X (1843,42) 为实测字面量
+        # (实证 2026-08-23)未 area 化(本批实机纪律不可测,建档挂账实机批)。
         self.ctx.controller.click(Point(1843, 42), pc_alt=True)
         return self.round_wait(wait=1.5)
+
+    def _click_screen_area_center(self, screen_name: str, area_name: str) -> bool:
+        """取建档 area 中心并 pc_alt=True 点击;area 缺失返回 False(fail-closed)。
+
+        不走框架 round_by_find_and_click_area:其点击不透传 pc_alt(本文件头
+        锁光标恢复态注释),且此处分支判定已由 OCR/id_mark 完成,点击目标
+        恒在,属「已知可点、直接点」形态。mouse_move 为 bug#1 缓解(同
+        投资策略分支,点击前先移锚,否则首击被吃)。
+        """
+        area = self.ctx.screen_loader.get_area(screen_name, area_name)
+        if area is None:
+            log.error('[cw-exit] area 缺失:%s / %s', screen_name, area_name)
+            return False
+        self.ctx.controller.mouse_move(area.center)
+        self.ctx.controller.click(area.center, pc_alt=True)
+        return True
+
+    def _click_exit_door(self) -> bool:
+        """点备战左上门形「退出对局」图标 → 中断挑战弹窗。why 见备战分支注释。"""
+        return self._click_screen_area_center('货币战争-备战', '按钮-退出对局')
+
+    def _click_blank_close(self) -> bool:
+        """点面板外空白(建档 区域-空白关闭)关闭选中驱动详情面板(浮窗/角色详情)。
+
+        关闭机制依据:装备详情浮窗 2026-08-14 live 验「点画面空白处 → 关闭回
+        备战」;area 中心 (960,530) = 前排 y467 底~后排 y600 顶之间的真空档
+        (2026-08-14 实测修正,旧 700,400 前排有人时=前排-1 槽会误开角色详情)。
+        与 try_recovery / CwScreenRoleDetailOverlay 同源同控件。
+        """
+        return self._click_screen_area_center('货币战争-备战', '区域-空白关闭')
+
+    def _overlay_branch(self, key: str, act: Callable[[], bool]) -> OperationRoundResult:
+        """overlay 子态定向动作的统一出口:动作已发 → round_wait;异常 → round_fail。
+
+        连续 OVERLAY_ACTION_MAX 次未生效(浮层没关/弹窗没弹,分支重命中)或
+        area 缺失即 fail 交外层重新导航——防「分支自命中但动作无效」的
+        round_wait 死循环(旧 ESC 分支的隐性安全网是 ESC 失效后无分支命中、
+        落尾部 _miss_rounds,定向点击没有这层,必须自带上界)。
+        """
+        streak = self._overlay_action_streaks.get(key, 0) + 1
+        self._overlay_action_streaks[key] = streak
+        if streak > CwEntryExit.OVERLAY_ACTION_MAX:
+            return self.round_fail(
+                f'{key} 连续 {streak - 1} 次关闭/绕过动作未生效,交外层重新导航')
+        if not act():
+            return self.round_fail(f'{key} 关闭动作 area 缺失(ESC 已禁用),交外层重新导航')
+        log.info('[cw-exit] overlay[%s] 建档点击已发(连续第 %s 次)', key, streak)
+        return self.round_wait(wait=2)
 
     def _ocr_click_pc_alt(self, screen, target_cn: str,
                           lcs_percent: float = 0.5) -> bool:

@@ -125,8 +125,10 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         handler_id='CwScreenEncounter',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=4,
-        # 退局链现状走 Esc(恢复面恢复口径)
-        recovery_exit=RECOVERY_ESC,
+        # 退局链现状 = 点「按钮-返回备战界面」回备战再走退局门(ESC 清零批把
+        # 旧 Esc 改建档点击,行为权威 = cw_entry_exit 遭遇分支注释);本表对
+        # 退局面仍是「声明+锁」,D 面切换前以 cw_entry_exit 现行为为准
+        recovery_exit=RECOVERY_BACK_BUTTON,
         bail_tag='encounter',
     ),
     OverlaySpec(
@@ -157,7 +159,10 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         handler_id='CwScreenMegastar',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=3,
-        # 退局链现状走 Esc
+        # ⚠️ 挂账(ESC 清零批元数据):退局链现状 = 直点备战「按钮-退出对局」
+        # 门图标进中断挑战弹窗(cw_entry_exit 盛会之星分支),RECOVERY_* 词表
+        # 无「点门」对应项,现值 esc 已非实况——D 面(退出恢复链)切换前补
+        # 词表项并按该分支实作重推,勿按 esc 接线。
         recovery_exit=RECOVERY_ESC,
         bail_tag='megastar',
     ),
@@ -313,8 +318,12 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         recovery_exit=RECOVERY_CLOSE,
         active=False,
     ),
-    # 消耗品详情浮层:现 cw_loop 0f(esc)裸 OCR 双条件分支;「拖动到」
-    # 只出现在消耗品详情 modal(天然独有 id_mark 候选),建档后单锚收编
+    # 消耗品详情浮层:「拖动到」只出现在消耗品详情 modal(天然独有
+    # id_mark 候选),建档后单锚收编。
+    # ⚠️ 挂账(ESC 清零批元数据):下方 esc 双声明描述的 cw_loop 0f ESC 分支
+    # 已删除——现关层行为 = 分发 CwScreenConsumableOverlay 点同族「道具详情
+    # 弹窗/按钮-关闭」×(× 同位 (1862,65))。条目未建档保持 inactive;
+    # 建档批按该实作改声明并清 esc 值。
     OverlaySpec(
         screen_name='货币战争-消耗品详情浮层',
         anchor_area='',

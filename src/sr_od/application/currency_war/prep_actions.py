@@ -1070,19 +1070,43 @@ def try_recovery(op: SrOperation, ctx: SrContext) -> tuple[str, bool]:
     失败 → 本环屏蔽该动作)。调用后外层靠下一步动作是否恢复判断效果。
     """
     screen = op.last_screenshot
-    # 消耗品详情 modal(签名:消耗品 + 拖动到 双条件;L-2:双条件精确,单「消耗品」易误)→ ESC
+    # 消耗品详情 modal(签名:消耗品 + 拖动到 双条件;L-2:双条件精确,单「消耗品」易误)。
+    # 2026-09-08 ESC 清零批:关 modal 右上 ×,复用同族建档「货币战争-道具详情
+    # 弹窗/按钮-关闭」(消耗品 modal 与聘用书 modal 同为道具详情弹窗家族,× 同位;
+    # 与主消费路径 CwScreenConsumableOverlay 同源同控件)。
+    # ⚠️ 待实机核(对称姊妹消费方 cw_screen_consumable_overlay 模块头):× 同位
+    # 为家族类推,消耗品帧上该坐标未实机复点——不中 → modal 留场交外层恢复(有界)。
     if (op.round_by_ocr(screen, '消耗品', lcs_percent=0.9).is_success
             and op.round_by_ocr(screen, '拖动到', lcs_percent=0.9).is_success):
-        ctx.controller.btn_tap('esc')
-        return 'ESC 关消耗品详情', True
-    # 可合成列表 overlay → ESC
+        _close = area_center(ctx, '按钮-关闭', '货币战争-道具详情弹窗')
+        if _close is None:
+            log.error('[cw!] try_recovery:按钮-关闭 area 缺失(货币战争-道具详情弹窗),modal 未关')
+            return '道具详情弹窗× area 缺失(ESC 已禁用)', False
+        ctx.controller.mouse_move(_close)   # bug#1 缓解(同概率表×分支)
+        ctx.controller.click(_close)
+        return '点×关消耗品详情', True
+    # 可合成列表 overlay(装备详情浮窗):点面板外空白关闭。
+    # 2026-09-08 ESC 清零批:浮窗无 X,关闭 = 选中驱动 deselect——2026-08-14
+    # live 验「点画面空白处 → 关闭回备战」(建档 货币战争-备战/区域-空白关闭,
+    # 与主消费路径 CwScreenRoleDetailOverlay 同源同控件)。
     if op.round_by_ocr(screen, '可合成列表', lcs_percent=0.8).is_success:
-        ctx.controller.btn_tap('esc')
-        return 'ESC 关可合成列表', True
-    # 角色详情面板 → 点空白(960,530 真空白 = 前后排之间;700,400 旧值前排有人时=前排-1 槽,已修)
+        _blank = area_center(ctx, '区域-空白关闭', SCREEN_NAME)
+        if _blank is None:
+            log.error('[cw!] try_recovery:区域-空白关闭 area 缺失(货币战争-备战),浮窗未关')
+            return '空白关闭点 area 缺失(ESC 已禁用)', False
+        ctx.controller.mouse_move(_blank)   # bug#1 缓解
+        ctx.controller.click(_blank)
+        return '点空白关可合成列表', True
+    # 角色详情面板 → 点面板外空白关闭(选中驱动 deselect;2026-09-08 ESC 清零批
+    # area 化:货币战争-备战/区域-空白关闭,中心 (960,530) 真空白 = 前后排之间;
+    # 700,400 旧值前排有人时=前排-1 槽,已修。与 CwScreenRoleDetailOverlay 同源)。
     if op.round_by_ocr(screen, '角色详情', lcs_percent=0.8).is_success:
-        ctx.controller.mouse_move(Point(960, 530))   # live 2026-08-14:恢复点击也要 mouse_move(bug#1)
-        ctx.controller.click(Point(960, 530))
+        _blank_char = area_center(ctx, '区域-空白关闭', SCREEN_NAME)
+        if _blank_char is None:
+            log.error('[cw!] try_recovery:区域-空白关闭 area 缺失,角色详情未关')
+            return '空白关闭点 area 缺失', False
+        ctx.controller.mouse_move(_blank_char)   # live 2026-08-14:恢复点击也要 mouse_move(bug#1)
+        ctx.controller.click(_blank_char)
         return '点空白关角色详情', True
     # 概率表弹窗 → 点 ×(1501,263;VLM live 定位 2026-08-14,与原建档 1502,258 同点)。MED-5:
     # area 化检测(标识-刷新概率表 id_mark)—— 旧全屏 OCR「概率」lcs=0.7 过松会误中商店文本。
