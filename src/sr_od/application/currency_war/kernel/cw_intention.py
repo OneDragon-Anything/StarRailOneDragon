@@ -479,14 +479,20 @@ _P1_PAIR_PREF: tuple[str, ...] = tuple(
     b for b, _t in TRANSITION_TRAITS) + (SEELE_SYSTEM,)
 
 P1_PAIR_LOCK_MIN_SUPPORT: float = 1.0
-"""配方对锁定门槛(ADR-0519 后口径):最高体系支持度 ≥ 此值才锁。
+"""配方对锁定门槛(门槛值不变,ADR-0519 C2):最高体系支持度 ≥ 此值才锁。
 
-【注】游戏定义激活当量:支持度 = 该体系羁绊计数 / 体系档(TRANSITION_
-TRAITS),1.0 = 体系羁绊满员(羁绊档可完整凑齐)——锁线证据回到游戏
-定义计数。旧值 0.5(「三羁绊系 ≥1 件或希儿在手」,设计推断 sim 校准)
-与希儿系 0.6+0.2+0.2 放大器权重已按「未证即退役」退役;希儿系为单卡
-体系,支持度 = 希儿在手二元(1.0/0.0)。保守方向:锁线门槛更严 →
-P1 空窗期(囤跨线骨架件)更长,方向承诺不提前。"""
+【注】游戏定义激活当量:三羁绊系支持度 = 该体系羁绊计数 / 体系档
+(TRANSITION_TRAITS),1.0 = 体系羁绊满员;希儿系支持度 = 分级公式
+(``_seele_system_support`` 单一源):希儿 + 任 1 去重放大器 = 1.0
+(锁线证据 = 文档「引擎达成那一刻切希儿直通模式」的开线点),希儿
+单卡 = 0.5(开线候选,不再即锁——文档「希儿到手 ≠ 希儿线成型」,
+docs/game/currency_war/research/combo_methodology.md:138)。旧 0.5
+门槛与希儿系 0.6+0.2+0.2 放大器权重的退役裁定(ADR-0519 C2)不变;
+被 T-171 支持度降档取代的仅是其 post-state「希儿系 = 在手二元
+1.0/0.0」条款——分级公式属重新推导(每一项来自文档档位结构
+transition_combos.md:27 与注册表计数),非旧手定权重复活(重推定性
+记录 = T-171 设计方案 §5.1,账本任务 T-171)。保守方向:锁线门槛
+更严 → P1 空窗期(囤跨线骨架件)更长,方向承诺不提前。"""
 
 
 # ===== ①锁局过渡对保护副方向(ADR-0367)=====
@@ -503,13 +509,64 @@ def _owned_chars(state: GameState) -> set[str]:
             if bc is not None and bc.char_id}
 
 
+def _seele_system_support(owned: set[str]) -> float:
+    """希儿系支持度分级公式(单一源;三消费面经 ``_p1_system_support`` 共用)。
+
+        support = 0                               若 希儿 ∉ 手上
+                = min(1, max(c_量/2, c_贝/2))     若 希儿 ∈ 手上
+
+    【注】每一项均为文档/注册表定义量,零拟合常数(重推出处 = T-171
+    设计方案 §5.1,F5 裁决=去重成员计数;账本任务 T-171):
+    - c_量 / c_贝 = ``owned``(bench∪deployed 成员名去重集)中带
+      量子同频 / 贝洛伯格标签的成员数——**去重成员计数**(同名多副本
+      计 1)= 羁绊激活语义,与 form 腿(羁绊按去重成员激活)同语义,
+      对合成零扰动(2★ = 3 副本合并产物,去重前后成员数不变);
+    - ÷2 = 文档 OR 腿档位(量≥2 ∨ 贝≥2,docs/game/currency_war/
+      research/transition_combos.md:27);max = 文档 OR 结构(凑到任一
+      腿即满,取最好腿非均值);
+    - 希儿缺席恒 0:量/贝放大器不能独立当过渡(含希儿 28 帖无一缺希儿
+      独立成线,transition_combos.md:27);
+    - 希儿单卡(任意星级)= 0.5 不是拍定值:注册表锚 = 希儿自身双标签
+      (CHARACTERS['希儿'].factions=('贝洛伯格',), flows=('量子同频',),
+      data/cw_chars.py「希儿」行),她同时计入两池各 1,在文档档位结构
+      下直接导出 max(1/2,1/2)=0.5——单卡 0.5 是推导后果。
+
+    坐标系声明(同文件两套计数口径并存,禁默默统一;T-171 设计方案
+    §4.4/F5 显式登记,分歧裁决权在 T-166 R2 对表):本公式用**去重成员
+    计数**(羁绊激活证据);同文件 ``_asset_thickness`` 及 T-166 配修甲
+    后续同族落点用**星级当量**原语(每副本按 star 计,Σ3^(star−1) 族,
+    治「合成被记为倒退」的通用排序面)。两者辖域不同——支持度回答
+    「羁绊激活了几成」,星级当量回答「投入叠了多少」;任一侧禁私自换用
+    另一原语。同函数内三羁绊系腿沿用逐副本羁绊计数(与 cw_battle_calib
+    ._engines_count 同式)而希儿系两腿用去重计数,是设计决定非疏漏。
+    """
+    if '希儿' not in owned:
+        return 0.0
+    c_quantum = 0
+    c_belobog = 0
+    for name in owned:
+        ch = CHARACTERS.get(name)
+        if ch is None:
+            continue
+        if '量子同频' in ch.flows:
+            c_quantum += 1
+        if '贝洛伯格' in ch.factions:
+            c_belobog += 1
+    return min(1.0, max(c_quantum / 2, c_belobog / 2))
+
+
 def _p1_system_support(state: GameState) -> dict[str, float]:
     """四过渡体系的手上资产支持度(bench+deployed;注册表阵营∪流派口径,
     与 ``cw_battle_calib._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
 
     三羁绊系 = 羁绊计数 / 体系档(仙舟3/列车2/DOT2,TRANSITION_TRAITS
-    单一源);希儿系 = 希儿在手二元 1.0(单卡体系,到手即完整;旧
-    0.6+量2/贝2 各 0.2 放大器权重已随 ADR-0519 退役)。
+    单一源;逐副本计数,与希儿系腿的去重口径分立,坐标系声明见
+    ``_seele_system_support``);希儿系 = 分级公式
+    (``_seele_system_support`` 单一源,去重成员计数:希儿单卡 0.5
+    开线候选、希儿+任 1 去重放大器满支持,推导链见其 docstring)。
+    旧「希儿在手二元 1.0」post-state 条款被 T-171 支持度降档取代
+    (0.6+0.2+0.2 手定权重退役裁定本身仍属 ADR-0519,本式为文档口径
+    重推非旧值复活)。
     """
     counts: dict[str, int] = {}
     for bc in list(state.bench) + list(state.deployed):
@@ -523,7 +580,9 @@ def _p1_system_support(state: GameState) -> dict[str, float]:
         for f in set(ch.factions) | set(ch.flows):
             counts[f] = counts.get(f, 0) + 1
     sup = {b: counts.get(b, 0) / t for b, t in TRANSITION_TRAITS}
-    sup[SEELE_SYSTEM] = 1.0 if '希儿' in _owned_chars(state) else 0.0
+    # 去重成员集(_owned_chars 已是名字集)直喂分级公式;禁在此换回
+    # 逐副本计数(坐标系声明见 _seele_system_support docstring)。
+    sup[SEELE_SYSTEM] = _seele_system_support(_owned_chars(state))
     return sup
 
 
