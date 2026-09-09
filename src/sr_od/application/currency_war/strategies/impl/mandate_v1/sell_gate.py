@@ -125,6 +125,8 @@ LAUNCH_CAUSE_BY_ARM: dict[str, str] = {
     'core_single_card_buy': 'hold',
     'core_single_card_buy:unlocked': 'hold',
     'transition_component_buy': 'hold',
+    # P86 乙臂枢纽期权(获取持有,与 C1/④ 同因类;T-177 落码批)。
+    'hub_option_buy': 'hold',
     # ②(b) 按 prio 三分(obligation/hold/press),发射位显式传因覆写本行。
     'dead_gold_press_buy': 'press',
     'fuel_filler_stall': 'stall_protect',

@@ -43,7 +43,6 @@ class DirectionView:
     - ``gates``:资格门快照(只读映射;F5 模块级旗标随批 3 清偿后无
       旗标面,恒空——字段保留为契约形状)。快照语义:装配帧的门状态,
       不在帧间存活。
-    - ``fallback_comp``:⑤无信号兜底线(单一源=cw_intention.FALLBACK_COMP_NAME)。
     - ``committed``:R1 显式化(蓝图 §4.3)——P1 攒息语义(True=已定型/
       非双轨期)。装配点单一写端;唯一合法 session 读端 =
       ``prep_brain.committed_from``(grep 守卫锁其余读点归零)。
@@ -51,6 +50,11 @@ class DirectionView:
       tracking 优先(session.tracked_*),fresh read 补缺;语义同老栈
       方向计算输入(方向消费面;决策板面输入仍走 snap 新鲜读)。
       元素 = BenchChar;bench 槽位 None=空槽,deployed 紧缩型(滤 None)。
+
+    (P86 退役注:原 ``fallback_comp`` 投影字段(⑤无信号兜底线名)随
+    FALLBACK_COMP_NAME 四面退役表④面整体删除——单一写端、grep 无读端的
+    准死字段;兜底方向本身由三臂判据取代,见 kernel/cw_intention
+    「P86 无目标期三臂判据」节。)
     """
 
     intent: str = ''
@@ -63,7 +67,6 @@ class DirectionView:
     ``prep_brain.hoard_consumer_domain`` 对不可得帧走保守域(整库)而非
     空集放行。变异探针(投影抛错)下买侧行为 ≠ 空集放行(单帧锁钉)。"""
     gates: Mapping[str, bool] = field(default_factory=lambda: MappingProxyType({}))
-    fallback_comp: str = ''
     committed: bool = True
     bench_view: tuple[BenchChar | None, ...] = ()
     deployed_view: tuple[BenchChar, ...] = ()

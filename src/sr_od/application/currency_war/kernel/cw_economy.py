@@ -974,8 +974,8 @@ def _vd_core_of(session: StrategySession) -> str:
 
 
 def _target_peak_level(state: GameState, session: StrategySession) -> int:
-    """目标核心费用档 → 概率峰值级(解析链:意向锁定核心 → 兜底 comp
-    核心 → 缺省 3 费;核心解析单一源 = _vd_core_of 与其兜底扩展)。"""
+    """目标核心费用档 → 概率峰值级(解析链:意向锁定核心 → 缺省 3 费;
+    核心解析单一源 = _vd_core_of 与其缺省扩展)。"""
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
     from sr_od.application.currency_war.kernel.cw_plane_table import (
         peak_refresh_level,
@@ -987,27 +987,18 @@ def _target_peak_level(state: GameState, session: StrategySession) -> int:
 
 
 def _schedule_target_core(session: StrategySession) -> str:
-    """排程目标核心解析(ev._vd_core_of 锁定核单一源;未锁帧落意向
-    ⑤兜底 comp 的核心——方向层 FALLBACK_COMP_NAME 单一源;再缺='' →
-    调用方缺省 3 费档,供给不断)。"""
-    # ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/archive/redesign/
-    # 03_legacy_cleanup_plan.md):FALLBACK_COMP_NAME 是方向层
-    # 决策常量,属决策半部不迁;本消费点随 decision 核处死(处死计划批 1)一并退役。
-    from sr_od.application.currency_war.kernel.cw_intention import (
-        FALLBACK_COMP_NAME,
-    )
-    core = _vd_core_of(session)
-    if core:
-        return core
-    from sr_od.application.currency_war.kernel.cw_comps import get_comp
-    fb = get_comp(FALLBACK_COMP_NAME)
-    if fb is not None:
-        # ⚠️ 批 0 裁决(处死计划 §3 批 0 第 4 项,docs/develop/currency_war/archive/redesign/
-        # 03_legacy_cleanup_plan.md):intention_core 属决策半部
-        # 不迁;本消费点随 decision 核处死(处死计划批 1)一并退役。
-        from sr_od.application.currency_war.kernel.cw_intention import intention_core
-        return intention_core(fb)
-    return ''
+    """排程目标核心解析(ev._vd_core_of 锁定核单一源;未锁帧返回 '' →
+    调用方缺省 3 费档,供给不断)。
+
+    P86 落码批申报(p86-no-target-period-fund-allocation.md §4.1-1 选项
+    「维持缺省 3 费」):原未锁帧⑤兜底 comp 核心锚(FALLBACK_COMP_NAME
+    单线硬编码)随四面退役表②面退役——峰值级锚只进概率校准分量,
+    方向语义中性,未锁帧峰值档统一回落 3 费缺省。
+    ⚠️ 处死计划批 1 的「本消费点随 decision 核处死一并退役」语义由本批
+    提前兑现;处死计划文档本体已不在仓(docs/develop/currency_war/archive/
+    目录不存在,漂移登记见 P86 正本 §4.1-2),码内注释是原唯一在档裁决
+    记录,本注即其承接。"""
+    return _vd_core_of(session)
 
 
 def _target_core_cost(session: StrategySession) -> tuple[str, int]:

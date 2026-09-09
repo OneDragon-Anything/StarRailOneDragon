@@ -86,9 +86,8 @@ def _tracking_view(session: StrategySession, snapshot: Snapshot,
 
 
 def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
-               ) -> DirectionView:
+               registry: DecisionV2Registry | None = None) -> DirectionView:
     """方向投影:cw_intention 只读快照(权威不迁移,只投影)。"""
-    from sr_od.application.currency_war.kernel import cw_intention
     from sr_od.application.currency_war.kernel.cw_intention import hoard_target_set
 
     ist = getattr(state_of(session), 'v3_intention', None)
@@ -97,7 +96,11 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
     hoard_readable = True   # D1:可信位——失败帧 False,消费侧走保守域
     if ist is not None:
         try:
-            ht = hoard_target_set(state, ist)
+            # P86:session/registry 透传甲臂 G 门(强锁门逐字需要 plane
+            # 真值视界与当帧注册表 ε;落地审 F-2 两域禁分叉);投影失败帧
+            # 走 hoard_readable=False 保守域,同 D1 面。
+            ht = hoard_target_set(state, ist, session=session,
+                                  registry=registry)
             hoard = frozenset(ht.char_targets) | frozenset(ht.equip_targets)
         except Exception:   # noqa: BLE001  投影失败显式暴露(D1):不再静默退空集
             hoard_readable = False
@@ -115,7 +118,6 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
         hoard=hoard,
         hoard_readable=hoard_readable,
         gates=gates,
-        fallback_comp=cw_intention.FALLBACK_COMP_NAME,
         committed=committed_from(session, state),
         bench_view=bench_view,
         deployed_view=deployed_view,
@@ -229,6 +231,6 @@ def assemble(snapshot: Snapshot, session: StrategySession,
     state = decision_state(snapshot, session)
     return TurnState(
         snap=snapshot,
-        direction=_direction(state, session, snapshot),
+        direction=_direction(state, session, snapshot, reg),
         budget=_budget(state, session, reg),
     )

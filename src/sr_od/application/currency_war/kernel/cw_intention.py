@@ -34,7 +34,9 @@
 - ``IntentionState``:锁线/撤销状态机(未锁/锁定/弱意向 + 降格终局标记),
   ``update_intention(state, ist)`` 每回合驱动;
 - ``hoard_target_set(state, ist)``:锁后效果接口——输出囤货目标集合(角色件 +
-  装备件),买侧唯一消费面。
+  装备件),买侧唯一消费面;无目标期帧(P2+ 无信号)囤货方向 = 三臂判据
+  (P86;甲臂候选机器强锁门逐字/乙臂枢纽期权资格核/丙臂守息缺省,
+  见「P86 无目标期三臂判据」节)。
 
 数值标注「设计推断,sim 校准」的常量属 strategy_v4「悬而未决·摆动域」,
 不写死语义进文档。
@@ -54,12 +56,15 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
+    CORE_SINGLE_CARD_REGISTRY,
     STRONG_ENV_MECHS,
     V2_FAMILIES,
     Comp,
     augment_affinity,
     augment_env_affinity,
+    char_routes,
     derive_key_equips,
+    form_progress,
     get_comp,
     merged_mechanic_tables,
 )
@@ -73,6 +78,7 @@ from sr_od.application.currency_war.kernel.cw_line_switch import (
 from sr_od.application.currency_war.kernel.cw_plane_table import (
     NODES_PER_PLANE,
     TOTAL_NODES,
+    r_remaining,
 )
 from sr_od.application.currency_war.kernel.cw_plugins import (
     cross_line_skeleton as _cross_line_skeleton,
@@ -110,9 +116,14 @@ FAMILY_BOND_MIN_COUNT: int = 2
 羁绊首档均为 2 人(cw_factions 注册表 counts[0]),阈值 = 信号族最小
 激活档,非经验拟合(ADR-0519 组4-B 复核)。"""
 
-# ⑤无信号兜底线(comp_definitions_v2 欢愉族·绯英档:「门槛全游戏最低,
-# 6 级搜绯英三星,无信号时的默认落点」)。四体系顺来牌支归点2,P1 侧不在本模块。
-FALLBACK_COMP_NAME: str = '绯英欢愉'
+# ⑤无信号兜底线常量 FALLBACK_COMP_NAME('绯英欢愉')已退役(P86 落码批,
+# T-177;四面退役表 = p86-no-target-period-fund-allocation.md §4.2)。
+# 墓碑注(strategy-work §1「未证即退役」通则③):原值 = 单线硬编码囤货方向,
+# 知识出处 = comp_definitions_v2「门槛全游戏最低,6 级搜绯英三星,无信号时
+# 的默认落点」(经验拍定,绯英自身 G=0.0000——囤货方向落在候选机器自己
+# 判死的线上,P35 复盘 §6-5 实证)。现行为:无目标期帧囤货方向由三臂判据
+# 输出(甲臂=候选机器强锁门逐字/乙臂=枢纽期权资格核/丙臂=守息缺省),
+# 见本模块「P86 无目标期三臂判据」节。
 
 # 跨线骨架件(strategy_v4「目标件」定义节 class3)。弱意向态只囤这批
 # (点0:撤销后去向——只囤跨线骨架件)。
@@ -240,6 +251,28 @@ class IntentionState:
     - **只承归因不作行为**:任何判定/发射逻辑禁消费本字段(行为交付面
       = P65 直证批另行立项,届时按设计稿改 ``p1_pair`` 退场语义,不改
       本快照);grep 守卫锁钉住唯一写入端与本函数族唯一读端。"""
+
+    p1_pair_frozen: bool = False
+    """命题 1b 冻结闩 F(ADR-0616 §2.2;T-171 批序 3 落码):True=方向
+    冻结,重派生被抑制(冻结的是方向不是板面,买入/部署继续服务
+    ``p1_pair_frozen_pair``)。置位 = 事件闩:F=False ∧ 重派生对非空 ∧
+    ``form_progress(pair_target_comp(pair))>=1.0``(board-only 口径单一源,
+    cw_comps.py);空对永不置位;fp 回落不自动清位。解冻闭集(p1_pair 域
+    恰三项)= {面③超窗出口, 位面末(exit_p1), comp 锁定取代(``_lock``
+    域退出类清除)}——闭集之外零解冻事件(ADR-0616 §2.2)。与
+    ``p1_pair_frozen_obs``(上方,纯观测快照)零行为交互,两字段独立。"""
+    p1_pair_frozen_pair: tuple[str, ...] = ()
+    """冻结方向身份(F=True 时的在任对;值域 = ``p1_pair`` 同域四体系键
+    二元组)。不变式 **F=True ⟹ 本字段非空**:置位需重派生对非空 +
+    「外部清除⟹F 同帧归 0」二选一裁决(ADR-0616 §2.2,拒绝为空对新造
+    比较语义)⟹ 超窗出口永不对空对求值,「comp 锁后方向真空直到位面末」
+    的孤儿态从构造上不可达。"""
+    p1_pair_refreeze_hold: tuple[str, ...] = ()
+    """超窗解冻后的再闩封印(空 = 无封印)。出口解冻的对在「重派生对 ==
+    封印对 ∧ fp 未见回落(<1.0)」期间禁止再闩——防超窗在任对陷入
+    「出口→解冻→保持→复位→再触发」逐帧空转环(ADR-0616 §2.2 清除后
+    段)。解封两路:重派生出不同对(合法换向,新方向自由闩)/ fp 回落
+    (方向丢失,此后再达成 = 新 form_ok 事件,允许再闩)。"""
 
     tracks: dict[str, LineTrack] = field(default_factory=dict)
     last_event: str = ''               # 最近一次状态转移(判读/遥测锚点)
@@ -431,8 +464,6 @@ def _p1_transition_eligible(comp: Comp) -> bool:
     """线的锁线方向是否仍喂养过渡引擎(资格门的「过渡线」支;ADR-0341)。
 
     三支全部派生,无手写线名(ADR-0338「派生优于快照」同款):
-    - ⑤兜底线(FALLBACK_COMP_NAME):未锁分支的囤货=同线采购集
-      (hoard_target_set),门对其恒 no-op;
     - 希儿 ∈ core:希儿系=四体系之一,单卡即战力(伤害在希儿技能层);
     - 主/副档 ∩ 三羁绊体系键 ≠ ∅:锁线方向=意向线主/副档羁绊
       (discipline 方向期阵营门的消费对象),档位即体系 → 锁了仍在买引擎件
@@ -441,9 +472,13 @@ def _p1_transition_eligible(comp: Comp) -> bool:
     其余线=终局专属(万敌单C/黄泉减益/双王圣杯/命运圣杯红A/大黑塔银河学者/
     狼尊欢愉/反甲白厄):前期战力来自通用引擎池而非自身目标件
     (transition_combos 直通终局线节),锁线会把囤货方向从过渡引擎上引开。
+
+    (P86 退役注:原首支「⑤兜底线恒 no-op」随 FALLBACK_COMP_NAME 四面
+    退役表③面删除——兜底方向退役后该支永不命中;删前死分支断言 =
+    「该支仅由 ⑤兜底囤货衔接语义承重,P1 信号路径上未资格信号被
+    update_intention 配方锁段 _direct_line_qualified 过滤,删除行为零差」,
+    测试锁 = test_cw_no_target_three_arms.py ③面。)
     """
-    if comp.name == FALLBACK_COMP_NAME:
-        return True
     if '希儿' in comp.core_chars:
         return True
     tier_keys = set(comp.form_tiers) | set(comp.sub_tiers)
@@ -639,6 +674,10 @@ def _derive_p1_pair(state: GameState,
     是来牌选型不是 pivot;[23] 冻结语义辖终局线,不辖 P1 配方)。
     (兑现链方向侧的供给感知支持度/切换滞回已随旧方案清退批删除——
     realization_chain 开关族出局,清查报告 OLD_MIX_AUDIT §1.3。)
+
+    命题 1b(ADR-0616 §2.2):本函数是重派生派生器,**F 冻结期间不被
+    进入**(抑制在调用方 update_intention P1 段;调用时机/闩/出口归
+    状态机,本函数保持纯派生)。
     """
     sup = _p1_system_support(state)
     ranked = [k for k in sorted(sup, key=lambda k: (-sup[k], _P1_PAIR_PREF.index(k)))
@@ -646,6 +685,37 @@ def _derive_p1_pair(state: GameState,
     if not ranked or sup[ranked[0]] < P1_PAIR_LOCK_MIN_SUPPORT:
         return ()
     return tuple(sorted(ranked[:2], key=_P1_PAIR_PREF.index))
+
+
+def _p1_pair_overwindow(pair: tuple[str, ...],
+                        state: GameState,
+                        session: StrategySession | None = None,
+                        registry: DecisionV2Registry | None = None,
+                        ) -> tuple[bool, float, int]:
+    """命题 1b 解冻闭集出口①「面③超窗出口」判定(ADR-0616 §2.2/§2.4;
+    T-171 批序 3)。E(frozen_pair) > R_rem ⟹ 超窗。
+
+    - E = kernel ``e_rounds`` **逐字直调**(零第二估计器,三姊妹门共享
+      测量单一源;消费对象 = ``pair_target_comp`` 现行物化产物,与本门
+      E(inc)/E(alt) 同物化器同源,超窗判定不失真);
+    - R_rem = ``cw_plane_table.r_remaining`` 单一源读法(到局终,与 P84
+      门同读法);
+    - 零新常量:比较即判据,出口与超窗同一比较单一源。
+
+    **单点兜底充分性(承重项,ADR-0616 §2.2)**:健康域(E≤R_rem)无需
+    出口;超窗/字面零域出口按构造触发——E 有限 ∧ R_rem 随节点推进单调
+    不增 ⟹ R_rem 收缩到 E 之下必然发生(末段必越窗),出口是断供盲区的
+    唯一合法出口(早退通道 = 空集,诚实申报 §2.4)。返回
+    (是否超窗, E, R_rem);目标物化失败(None)按 E=inf 处理 = 超窗
+    (不可评估方向不冻结,诚实保守)。E/R_rem 供调用方写遥测分键。
+    """
+    reg = registry or DEFAULT_REGISTRY
+    target = pair_target_comp(pair)
+    e_f = (e_rounds(target, state, reg, session=session)
+           if target is not None else math.inf)
+    r_rem = r_remaining(session, int(state.plane or 1),
+                        int(state.round_num or 1))
+    return (not (math.isfinite(e_f) and e_f <= r_rem)), e_f, r_rem
 
 
 #: R3 断供驱逐已退役(2026-09-04,ADR-0519「未证即退役」):旧
@@ -872,7 +942,7 @@ def detect_signals(state: GameState) -> list[IntentionSignal]:
     """信号分层判定(①策略驱动 > ②类专属羁绊 > ③核心卡 > ④资源)。
 
     返回分层信号列表(未排序;消费方按 layer 升序 / weight 降序取最优);
-    ⑤无信号兜底不在此产出——列表为空时解析侧落 FALLBACK_COMP_NAME。
+    ⑤无信号兜底不在此产出——列表为空时解析侧落三臂判据(无目标期帧)。
     冻结超限已移出候选集(evicted)的线不产信号(等同信号未发生)。
     """
     out: list[IntentionSignal] = []
@@ -1239,6 +1309,12 @@ def _lock(ist: IntentionState, state: GameState, sig: IntentionSignal,
     ist.phase = 'locked'
     ist.locked_comp = sig.comp_name
     ist.p1_pair = ()   # comp 锁定取代配方锁(ADR-0357:①资格通道)
+    # 命题 1b 解冻闭集出口③「comp 锁定取代」(ADR-0616 §2.2):域退出类
+    # 清除,外部清除 ⟹ F 同帧归 0(F=1⟹对非空不变式的写点侧半边)。
+    # 冻结保护配方方向不被噪声重派生,不保护已被合法方向替代取代的承诺。
+    ist.p1_pair_frozen = False
+    ist.p1_pair_frozen_pair = ()
+    ist.p1_pair_refreeze_hold = ()
     # ADR-0367:①锁局(P1∧配方锁开)同时派生过渡对副方向
     # (与 p1_pair 同口径;P2+ 强制锁线/旧通道 P1 锁均不辖)。
     ist.transition_pair = (
@@ -1541,26 +1617,79 @@ def update_intention(state: GameState, ist: IntentionState,
         if state.plane == 1:
             sigs = [s for s in sigs
                     if _direct_line_qualified(state, s.comp_name)]
-            pair = _derive_p1_pair(state, exclude=frozenset(ist.pair_evicted),
-                                   registry=registry)
-            if pair != ist.p1_pair:
-                ist.p1_pair = pair
-                ist.last_event = ('p1_pair:' + '+'.join(pair)) \
-                    if pair else 'p1_pair:wait'
+            # ── 命题 1b form_ok 冻结状态机(ADR-0616 §2.2;T-171 批序 3)──
+            # 帧序:①超窗出口(F=True 时先判,解冻后本帧重派生照走)
+            # → ②重派生(F=True 抑制,方向= frozen_pair)→ ③置位评估
+            # (事件闩)。解冻闭集(p1_pair 域恰三项):超窗出口(①)/
+            # 位面 exit_p1(下方 elif)/comp 锁定取代(_lock 域退出类)。
+            if ist.p1_pair_frozen and ist.p1_pair_frozen_pair:
+                over, e_f, r_rem = _p1_pair_overwindow(
+                    ist.p1_pair_frozen_pair, state, session, registry)
+                if over:
+                    # 出口①触发:解冻 + 封印该对(防「出口→解冻→保持→
+                    # 复位→再触发」逐帧空转环);本帧重派生按派生语义执行,
+                    # 在任保持帧对保持且 F=False,直至新 form_ok 帧再闩。
+                    ist.p1_pair_refreeze_hold = ist.p1_pair_frozen_pair
+                    ist.p1_pair_frozen = False
+                    ist.p1_pair_frozen_pair = ()
+                    ist.last_event = (
+                        f'p1_pair:unfreeze_overwindow'
+                        f'(E={e_f:.2f},R_rem={r_rem})')
+            if ist.p1_pair_frozen:
+                # 冻结的是方向不是板面:买入/部署继续服务 frozen_pair,
+                # 重派生被抑制(p1_pair 钉在 frozen_pair 上)。
+                pair = ist.p1_pair_frozen_pair
+                if pair != ist.p1_pair:
+                    ist.p1_pair = pair
+                    ist.last_event = 'p1_pair:' + '+'.join(pair)
+            else:
+                pair = _derive_p1_pair(
+                    state, exclude=frozenset(ist.pair_evicted),
+                    registry=registry)
+                fp_v: float | None = None
+                if ist.p1_pair_refreeze_hold:
+                    if pair != ist.p1_pair_refreeze_hold:
+                        ist.p1_pair_refreeze_hold = ()   # 换向解封
+                    else:
+                        _t = pair_target_comp(pair)
+                        fp_v = (form_progress(_t, state)
+                                if _t is not None else 0.0)
+                        if fp_v < 1.0:
+                            # fp 回落 = 方向丢失;此后再达成才是新
+                            # form_ok 事件,允许再闩(§2.2 清除后段)。
+                            ist.p1_pair_refreeze_hold = ()
+                if pair != ist.p1_pair:
+                    ist.p1_pair = pair
+                    ist.last_event = ('p1_pair:' + '+'.join(pair)) \
+                        if pair else 'p1_pair:wait'
+                # 置位评估(事件闩):空对永不置位;封印期内不闩。
+                if pair and not ist.p1_pair_refreeze_hold:
+                    if fp_v is None:
+                        _t = pair_target_comp(pair)
+                        fp_v = (form_progress(_t, state)
+                                if _t is not None else 0.0)
+                    if fp_v >= 1.0:
+                        ist.p1_pair_frozen = True
+                        ist.p1_pair_frozen_pair = pair
+                        ist.last_event = 'p1_pair:freeze:' + '+'.join(pair)
             # 观测快照(唯一写入端):最新非空派生对冻结留档,供 P2 期
             # promote_candidates 消费(p1_pair 本体在 exit_p1 清空,见下)。
             if pair and pair != ist.p1_pair_frozen_obs:
                 ist.p1_pair_frozen_obs = pair
         elif ist.p1_pair:
-            # 进 P2:配方锁退场,comp 锁定通道照旧(P2+ 锁定产物=终局 comp)
+            # 进 P2:配方锁退场(解冻闭集出口②「位面末」,清除 ⟹ F 同帧
+            # 归 0),comp 锁定通道照旧(P2+ 锁定产物=终局 comp)
             ist.p1_pair = ()
+            ist.p1_pair_frozen = False
+            ist.p1_pair_frozen_pair = ()
+            ist.p1_pair_refreeze_hold = ()
             ist.last_event = 'p1_pair:exit_p1'
         best = _best_signal(sigs)
         if best is not None:
             _lock(ist, state, best)
         elif ist.phase == 'weak':
             ist.last_event = ist.last_event or 'weak:hold'
-        # 无信号:保持 unlocked——囤货方向落⑤兜底(hoard_target_set 处理)
+        # 无信号:保持 unlocked——囤货方向落三臂判据(hoard_target_set 处理)
 
 
     # 强制锁线(位面入口无意向;点0〔修N4〕对象限定)。经济冻结批扩 P2:
@@ -1571,8 +1700,9 @@ def update_intention(state: GameState, ist: IntentionState,
     # 语义)。P3 起维持原辖域(phase!='locked');P2 收窄到 unlocked:
     # weak 态是撤销机器在册的意向降级,强制锁会踩掉其「直至新信号」语义。
     # 位面强锁候选同过 weak_planes 过滤(P3 旧分支未滤,同病灶③面)。
-    # P2 无可达候选 ⇒ 保持 unlocked(⑤兜底绯英档方向,位面余量尚在,
-    # 不降格终局;降格=终局不可达判定,归 P3)。
+    # P2 无可达候选 ⇒ 保持 unlocked(P86 三臂判据接管囤货方向:甲臂空帧
+    # 由乙臂枢纽期权/丙臂守息缺省承接,位面余量尚在,不降格终局;
+    # 降格=终局不可达判定,归 P3)。
     # P2 移交守卫:撤销当轮(出口①/②/③)不接同一轮的移交重锁——
     # 「状态机一回合最多一次转移」纪律(revoked 注);下一轮由移交通道
     # 正常重锁(P3 强锁辖域不受本守卫影响,维持既有语义)。
@@ -1671,7 +1801,217 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
     return chars, equips
 
 
-def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
+# ===== P86 无目标期三臂判据(落码批;命题/证明单一源 =
+# docs/develop/currency_war/proofs/p86-no-target-period-fund-allocation.md
+# (正本 §2/§4)+ p86-proof-batch.md(证明批 §3/§4/§6))=====
+# 辖域 = p2plus 无目标期帧(商店决策帧 ∧ target_comp=None ∧ 意向供给在场
+# ∧ 未降格终局;活跃域 = 位面 2,证明批引理 Z)。p1_gap/p1_lock_band 显式
+# 出辖(证明批 §4.1 必答⑥裁决);weak/demoted_endgame 分带仍走跨线骨架
+# (正本 §6.2-4,不在退役面)。
+#
+# 三臂:甲臂(方向化囤货)= 候选机器强锁门逐字判活的方向集(定理 A);
+# 乙臂(枢纽期权)=「覆盖数 ≥ 2 ∧ 非单卡注册身份」资格核(定理 B1/B2/B5);
+# 丙臂(换现守息)= 两臂皆空帧缺省(命题 C,辖买卡买面与卖面资格,
+# 不辖升级/刷新既有授权)。判据零新数值:ε 复用机器常量
+# revoke_miss_tolerance_eps,覆盖数边界 2 = 单线依赖否定的结构量(定义值
+# 非阈值,随命题文本声明)。
+
+K_FALLBACK_SOURCE_THREE_ARM: str = 'three_arm'
+"""p2plus 带合法空的来源证据 token(契约维度,证明批 §4.6-2):k_fallback
+空集仅在 source 标明判据臂评估产出时放行;无来源空 = 「回退字面量空元组
+但保留声明」复发形态,违例。单一源 = 本常量(contracts 契约面同值引用)。"""
+
+_NO_TARGET_HUB_MIN_COVER: int = 2
+"""乙臂资格核覆盖数边界(证明批 §3.2 定理 B5:单线依赖否定在身份档商集
+上的补集边界)。定义量非调参阈值——「2」= 覆盖数 ≥ 2 即不依赖任何单一线,
+随命题文本声明,禁按经验常数理解或调整。"""
+
+
+def structural_candidate_lines(state: GameState,
+                               ist: IntentionState) -> frozenset[str]:
+    """𝕃(f) 结构候选线集(证明批 §3.2 定义):
+
+    只施加两类排除——意图稳定排除(``ist.evicted``,意向层显式出局的线)与
+    注册表静态排除(``weak_planes``,注册表数据);**不施加**任何供给筛
+    (``_core_reachable``)或概率筛(G)——理由 = 乙臂跨帧期权价值恰恰
+    spanning 判死线的后续复活帧,解耦独立性见定理 B2-3;把帧变量筛放进
+    覆盖集会让枢纽资格随帧闪烁,乙臂退化成甲臂的影子筛。
+    """
+    return frozenset(
+        c.name for c in COMP_LIBRARY
+        if c.name not in ist.evicted
+        and state.plane not in (c.weak_planes or ()))
+
+
+def hub_covered_lines(state: GameState, ist: IntentionState,
+                      char_name: str) -> frozenset[str]:
+    """枢纽 h 的覆盖集 C_h(f)(char_routes 复用网络口径,core∪shared 计入)
+    与结构候选线集的交集;乙臂资格核与同帧仲裁第一层的共享输入。"""
+    routes = char_routes().get(char_name, set())
+    return frozenset(routes & set(structural_candidate_lines(state, ist)))
+
+
+def _build_char_declaration_index() -> dict[str, int]:
+    """角色卡注册表声明序索引表(模块级一次构建;COMP_LIBRARY 静态)。"""
+    idx: dict[str, int] = {}
+    for comp in COMP_LIBRARY:
+        for name in list(comp.core_chars) + list(comp.shared_chars):
+            if name and name not in idx:
+                idx[name] = len(idx)
+    return idx
+
+
+_CHAR_DECL_INDEX: dict[str, int] = _build_char_declaration_index()
+
+
+def char_declaration_index(name: str) -> int:
+    """角色卡注册表声明序索引(P86 同帧仲裁第三层的确定性序单一源,
+    证明批 §4.4:剩余并列按注册表声明序,纯确定性零语义承载)。
+
+    坐标系 = COMP_LIBRARY 逐套 core∪shared 首现序(与 hub_option_names
+    枚举序同源同一构建式,禁消费方第二套排序);取值时机 = 导入期快照
+    (注册表静态)。不在册名(散件/识别噪声)返回 len(全集) 垫底。"""
+    return _CHAR_DECL_INDEX.get(name, len(_CHAR_DECL_INDEX))
+
+
+def hub_option_names(state: GameState, ist: IntentionState) -> tuple[str, ...]:
+    """乙臂资格核(P86 证明批 §3.2 终裁形态;定理 B5):
+
+    HUB(h) ⟺ cov(h) ≥ 2 ∧ h ∉ CORE_SINGLE_CARD_REGISTRY——覆盖数按
+    覆盖集 C_h(f)(注册表派生)计;银狼LV.999 型注册单卡依赖核心的
+    「覆盖 2」是家族内计数不构成跨线灵活性,身份排除结构性必要(定理
+    B5 三层:语义/通道[防与规则③双通道注册]/判例),禁档间谓词复用
+    (正本 §6.2-3:line_identity_tier 三分档是身份单一源)。
+
+    输入面 = (COMP_LIBRARY, ist.evicted, state.plane, weak_planes,
+    CORE_SINGLE_CARD_REGISTRY)——G/``_core_reachable`` 禁入(定理 B2
+    解耦独立性的实现守卫,静态锁 = test_cw_no_target_three_arms.py 锁 2)。
+    返回序 = 注册表声明序(逐套 core∪shared 首现序;同帧仲裁第三层的
+    确定性序,证明批 §4.4)。
+    """
+    routes = char_routes()
+    lines = structural_candidate_lines(state, ist)
+    out: list[str] = []
+    seen: set[str] = set()
+    for comp in COMP_LIBRARY:
+        for name in list(comp.core_chars) + list(comp.shared_chars):
+            if not name or name in seen:
+                continue
+            seen.add(name)
+            if name in CORE_SINGLE_CARD_REGISTRY:
+                continue
+            if len(routes.get(name, set()) & lines) >= _NO_TARGET_HUB_MIN_COVER:
+                out.append(name)
+    return tuple(out)
+
+
+def arm_a_live_direction(state: GameState, ist: IntentionState,
+                         session: StrategySession | None = None,
+                         registry: DecisionV2Registry | None = None,
+                         visible: set[str] | None = None) -> str:
+    """甲臂资格(P86 证明批 §3.1 定理 A):候选机器强锁门**原样逐字**
+    放行的方向集的首方向。
+
+    三要素逐字继承位面 2 移交候选门(:1600-1607 同式):同一谓词
+    ``line_completion_feasibility``、同一常量 ``revoke_miss_tolerance_eps``、
+    同一 plane 条件语义(``plane != 2 or G > ε``);方向选择 = 机器自身
+    选择序(资产厚度降序 → 再遇窗口,与强锁分支同式,证明批 §4.4 第二层
+    机器原生序)。机器判死(G ≤ ε)方向按公理 1 fail-closed 不授权囤货,
+    零新数字;G=0 是判死的极端实例不是定义。已知缺口(缓锁豁免角漏授,
+    保守向、机器锁后 M2 自纠)= 证明批 §3.1-4 申报,显影分键归消费位。
+
+    **promote_candidates 禁入本调用链**(G8 观测载体,码内明文禁入任何
+    行为消费点,cw_intention.py 消费位注;正本 §2.2 F11)。"""
+    reg = registry or DEFAULT_REGISTRY
+    vis = _visible_chars(state) if visible is None else visible
+    cands = [c for c in _v2_comps()
+             if c.name not in ist.evicted
+             and state.plane not in (c.weak_planes or ())
+             and _core_reachable(c, state, vis)
+             and (state.plane != 2
+                  or line_completion_feasibility(state, c, session, reg, vis)
+                  > reg.revoke_miss_tolerance_eps)]
+    if not cands:
+        return ''
+    return sorted(
+        cands,
+        key=lambda c: (-_asset_thickness(c, state),
+                       encounter_window_rounds(intention_core(c), state.level)),
+    )[0].name
+
+
+def arm_a_corner_names(state: GameState, ist: IntentionState,
+                       session: StrategySession | None = None,
+                       registry: DecisionV2Registry | None = None,
+                       visible: set[str] | None = None) -> tuple[str, ...]:
+    """甲臂漏授角方向集(证明批 §3.1-4/§6 增量 7 的判读显影输入):
+
+    plane==2 无目标帧上,方向 d 过 evicted/weak/_core_reachable 三门但
+    G(d) ≤ ε 判死,且意向核心在店/在手——该角机器缓锁门(core 可见短路
+    G)构造可达,甲臂按强锁门逐字不授权。与无信号判死是两个可辨状态,
+    独立分键,禁混桶。"""
+    reg = registry or DEFAULT_REGISTRY
+    vis = _visible_chars(state) if visible is None else visible
+    out: list[str] = []
+    if state.plane != 2:
+        return tuple(out)
+    for c in _v2_comps():
+        if c.name in ist.evicted or state.plane in (c.weak_planes or ()):
+            continue
+        if not _core_reachable(c, state, vis):
+            continue
+        core = intention_core(c)
+        if core and core in vis \
+                and line_completion_feasibility(state, c, session, reg, vis) \
+                <= reg.revoke_miss_tolerance_eps:
+            out.append(c.name)
+    return tuple(out)
+
+
+@dataclass(frozen=True)
+class NoTargetArms:
+    """三臂判据帧输出(无目标期帧的资金配置判定件;消费面 = hoard_target_set
+    终支与 mandate_v1 商店域乙臂发射位)。
+
+    - ``direction``:甲臂方向线名('' = 判死全灭/甲臂空);
+    - ``char_targets``:判据臂囤货成员集(甲臂判活 = 方向采购集;甲臂空
+      = 空集——丙臂守息带合法空,契约经 k_fallback_source 证据放行);
+    - ``hub_names``:乙臂资格核过枢纽名(注册表声明序;出域帧恒空);
+    - ``corner_names``:甲臂漏授角方向名(判读显影,行为零消费)。
+    """
+
+    direction: str
+    char_targets: frozenset[str]
+    hub_names: tuple[str, ...] = ()
+    corner_names: tuple[str, ...] = ()
+
+
+def no_target_arms(state: GameState, ist: IntentionState,
+                   session: StrategySession | None = None,
+                   registry: DecisionV2Registry | None = None,
+                   visible: set[str] | None = None) -> NoTargetArms:
+    """三臂帧判定入口(无目标期帧域守卫内聚:phase=='unlocked' ∧ 未降格
+    ∧ 位面 ≥ 2;p1 两带与 weak/demoted 分带显式出辖,出域帧返回空甲乙)。"""
+    if (ist.demoted_endgame or ist.phase != 'unlocked'
+            or state.plane < 2):
+        return NoTargetArms('', frozenset())
+    direction = arm_a_live_direction(state, ist, session, registry, visible)
+    hubs = hub_option_names(state, ist)
+    if direction:
+        comp = get_comp(direction)
+        if comp is not None:
+            chars, _equips = _line_hoard(comp)
+            return NoTargetArms(direction, frozenset(chars), hubs)
+        return NoTargetArms('', frozenset(), hubs)
+    return NoTargetArms('', frozenset(), hubs,
+                        arm_a_corner_names(state, ist, session, registry,
+                                           visible))
+
+
+def hoard_target_set(state: GameState, ist: IntentionState,
+                     session: StrategySession | None = None,
+                     registry: DecisionV2Registry | None = None,
+                     visible: set[str] | None = None) -> HoardTarget:
     """锁后效果接口:输出「囤货目标集合」供买侧消费([21]:只改囤货方向,不改板上)。
 
     - locked/forced:意向线采购集;
@@ -1679,7 +2019,10 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
       (p1_pair)/四体系引擎件全集(p1_transition,空窗);绯英⑤兜底
       不再辖 P1(零引擎覆盖,sim 实证 e2 成率 5%);
     - weak:只囤跨线骨架件(撤销后去向);
-    - unlocked 无信号(P2+):⑤兜底 = 绯英档采购集(「无信号时的默认落点」);
+    - unlocked 无信号(P2+):P86 三臂判据——甲臂判活 = 机器强锁门逐字
+      首方向采购集;甲臂空 = 空集(乙臂枢纽期权在商店域发射位获取,
+      丙臂守息缺省;FALLBACK_COMP_NAME 单线硬编码退役,墓碑注见常量区)。
+      session/registry/visible 缺省时 G 视界回退先验(裸调用/旧签名兼容)。
     - demoted_endgame:降格终局 = 通用骨架满配(四体系板深强化归点4/点6,不在本模块)。
     """
     if ist.demoted_endgame:
@@ -1701,15 +2044,23 @@ def hoard_target_set(state: GameState, ist: IntentionState) -> HoardTarget:
                            'p1_pair' if pair else 'p1_transition')
     if ist.phase == 'weak':
         return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'weak')
-    comp = get_comp(FALLBACK_COMP_NAME)
-    if comp is None:
-        return HoardTarget(frozenset(CROSS_LINE_SKELETON), frozenset(), 'fallback')
-    chars, equips = _line_hoard(comp)
-    return HoardTarget(frozenset(chars), frozenset(equips), 'fallback')
+    # P86 三臂(p2plus 无目标带;①面退役处置 = 替换为三臂判据,正本 §4.2):
+    arms = no_target_arms(state, ist, session, registry, visible)
+    if arms.direction:
+        comp = get_comp(arms.direction)
+        if comp is not None:
+            chars, equips = _line_hoard(comp)
+            return HoardTarget(frozenset(chars), frozenset(equips),
+                               'fallback_arm_a')
+    return HoardTarget(frozenset(), frozenset(), 'fallback_hold')
 
 
 def k_empty_window_fallback(state: GameState,
-                            ist: IntentionState) -> tuple[frozenset[str], str]:
+                            ist: IntentionState,
+                            session: StrategySession | None = None,
+                            registry: DecisionV2Registry | None = None,
+                            visible: set[str] | None = None,
+                            ) -> tuple[frozenset[str], str]:
     """K 空窗回退单一源(经济冻结批病灶①):target_comp=None 时目标成员
     集的分带派生,商店域(shop.py)与准备域(cw4/entry.py)共用本函数——
     禁在任一消费域复制四体系全集/兜底逻辑(第二源)。
@@ -1721,15 +2072,17 @@ def k_empty_window_fallback(state: GameState,
       (消「K 空→零买入→支持度永不涨」死锁环);
     - p1_lock_band:P1 锁线过渡带 → p1_early_pair 无门槛方向,派生空
       (全驱逐)⇒ 链 hoard 全集兜底;
-    - p2plus:P2+ → hoard 分带(unlocked=绯英⑤兜底/weak=跨线骨架/
-      demoted=骨架满配)。
-    """
+    - p2plus:P2+ → hoard 分带(unlocked=三臂判据[P86:甲臂方向集/合法空
+      (丙臂守息,空集带 k_fallback_source 证据)]/weak=跨线骨架/
+      demoted=骨架满配)。session/registry/visible 透传甲臂 G 门
+      (缺省回退先验,与 hoard_target_set 同款)。"""
     if state.plane == 1:
         if p1_gap_window(state):
             return hoard_target_set(state, ist).char_targets, 'p1_gap'
         return (p1_early_pair_members(state, ist)
                 or hoard_target_set(state, ist).char_targets), 'p1_lock_band'
-    return hoard_target_set(state, ist).char_targets, 'p2plus'
+    return (hoard_target_set(state, ist, session, registry, visible)
+            .char_targets, 'p2plus')
 
 
 def committed_authority(state: GameState | None,

@@ -49,7 +49,16 @@ class ContractCtx:
       v3_intention 在场性派生;缺供给帧=保守侧不回退,合法)。
     - k_fallback_resolved:消费位**实解析**的回退成员集(单一源
       cw_intention 调用的返回物;供给在场而解析为空 = 「回退字面量
-      空元组」复发形态,违例)。
+      空元组」复发形态,违例——p1 带恒违例;p2plus 带合法空须携带
+      k_fallback_source 证据,见该字段)。
+    - k_fallback_band:分带 token(cw_intention.k_empty_window_fallback
+      第二返回值直传,零第二派生;P86 证明批 §4.6-1)。空窗期待按带
+      非对称:p1 带(p1_gap/p1_lock_band)回退集注册表派生构造性非空;
+      p2plus 带落码后空集合法(丙臂守息帧)。None = 带未知,按 p1 带
+      保守期待处置(空 = 违例)。
+    - k_fallback_source:p2plus 带合法空的来源证据(P86 证明批 §4.6-2;
+      合法值 = cw_intention.K_FALLBACK_SOURCE_THREE_ARM——判据臂评估
+      产出)。无来源标记的空集 = 复发形态,违例(检测力不松动)。
     - locked_buy_members:锁定帧买侧采购集实解析
       (cw_intention.locked_buy_membership 返回物)。合法形态 = None
       (未锁帧/锁定解析空,消费位按未锁处置)或非空 frozenset(锁线态);
@@ -65,6 +74,8 @@ class ContractCtx:
     k_target: object = field(default=None)
     k_fallback_available: bool = field(default=False)
     k_fallback_resolved: object = field(default=None)
+    k_fallback_band: str | None = field(default=None)
+    k_fallback_source: str | None = field(default=None)
     locked_buy_members: object | None = field(default=None)
 
 
@@ -76,8 +87,26 @@ def _s_reserve_line_formed(ctx: ContractCtx) -> bool:
     dominance_buy(R32-3)」——前提=目标线 K 已成型(k_members 非空):
     无目标线语境下的恒量预留即「语境前提未被核验」缺陷形态
     (R196 ``_s_reserve`` 恒 54 同型,diag §3 挂账项)。
-    """
-    return bool(ctx.k_members)
+
+    **P86 带维度扩展(无目标期三臂判据落码批;证明批 §4.3 裁决②)**:
+    k_members 空且系三臂判据评估产出的合法空(k_target=None ∧ 回退供给
+    在场 ∧ 实解析空集 ∧ p2plus 带证据 source 齐备)时前提放行——该帧不
+    存在「为目标线预留」语境,S 预留原始禁令对象(无目标语境恒量预留,
+    R196 同型)不成立;溢余带必花通道(dominance/EV,ADR-0528)按裁决②
+    「必花域维持」不以本前提误伤,其自身带判据/候选门照旧辖。证据要件
+    与 k_projection 契约同构(F-9 防御纵深:band='p2plus' ∧ source=
+    three_arm 双核,无来源空不放行,两谓词判定一致);供给缺帧
+    (k_fallback_available False)维持旧违例语义(无评估证据的空 =
+    复发形态)。"""
+    if ctx.k_members:
+        return True
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        K_FALLBACK_SOURCE_THREE_ARM,
+    )
+    return (ctx.k_target is None and ctx.k_fallback_available
+            and not ctx.k_fallback_resolved
+            and ctx.k_fallback_band == 'p2plus'
+            and ctx.k_fallback_source == K_FALLBACK_SOURCE_THREE_ARM)
 
 
 def _gold_minus_reserve_ctx(ctx: ContractCtx) -> bool:
@@ -146,11 +175,26 @@ def _k_projection_domain_full(ctx: ContractCtx) -> bool:
     ``k_fallback_resolved`` 为空 = 「回退字面量空元组但保留声明」
     复发形态,违例弃权。回退单一源=cw_intention.hoard_target_set /
     p1_early_pair_members(禁复制四体系全集逻辑)。
-    """
+
+    **带维度非对称期待(P86 落码批,证明批 §4.6)**:p1 带
+    (p1_gap/p1_lock_band)回退集注册表派生构造性非空,空 = 复发违例
+    (检测力保留);p2plus 带落码后空集合法(两臂皆空 → 丙臂守息帧),
+    但合法空必须携带来源证据——``k_fallback_source`` ==
+    cw_intention.K_FALLBACK_SOURCE_THREE_ARM(判据臂评估产出)才放行,
+    无来源空 = 复发形态守卫不松动。分期接线:退役常量在位期 p2plus
+    解析恒非空,本分支无行为面。"""
     if ctx.k_target is not None:
         return True
     if not ctx.k_fallback_available:
         return True
+    if ctx.k_fallback_resolved:
+        return True
+    if ctx.k_fallback_band == 'p2plus':
+        # 延迟 import(内核→契约面单向依赖;常量单一源在 cw_intention)
+        from sr_od.application.currency_war.kernel.cw_intention import (
+            K_FALLBACK_SOURCE_THREE_ARM,
+        )
+        return ctx.k_fallback_source == K_FALLBACK_SOURCE_THREE_ARM
     return bool(ctx.k_fallback_resolved)
 
 
@@ -313,13 +357,16 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('shop', 'k_projection'): Contract(
         _k_projection_domain_full,
         '商店线方向 pass K 投影:前提=战略层产物 target_comp 值域全集'
-        '含 None——回退辖三带(FIX_REVIEW_20260903 R3 扩域:P1 空窗带'
-        '=hoard_target_set 四体系全集 / P1 锁线过渡带=p1_early_pair '
-        'top-2 方向 / P2+ 带=hoard_target_set 绯英⑤兜底·跨线骨架·'
-        '降格满配),单一源=cw_intention(禁复制);供给在场而回退解析'
-        '空集即违例',
+        '含 None——回退辖三带(P1 空窗带=hoard_target_set 四体系全集 / '
+        'P1 锁线过渡带=p1_early_pair top-2 方向 / P2+ 带=三臂判据'
+        '[P86:甲臂判活=机器强锁门逐字方向采购集;甲臂空=合法空集'
+        '(丙臂守息,须携带 k_fallback_source=three_arm 证据;'
+        'weak/demoted 分带仍走跨线骨架)]),单一源=cw_intention(禁复制);'
+        '供给在场而回退解析空集即违例(p1 带恒违例;p2plus 带无来源'
+        '证据的空集违例)',
         'SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定)'
-        '+FIX_REVIEW_20260903 ②旧核缺口 1/2/3+IMPL_DESIGN §4.2.2 规格补注'),
+        '+FIX_REVIEW_20260903 ②旧核缺口 1/2/3+IMPL_DESIGN §4.2.2 规格补注'
+        '+P86 证明批 §4.6(带维度非对称期待)'),
 }
 
 

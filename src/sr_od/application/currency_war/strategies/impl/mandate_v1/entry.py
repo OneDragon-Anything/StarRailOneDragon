@@ -458,7 +458,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         from sr_od.application.currency_war.kernel import cw_intention
         _ist = getattr(state_of(session), 'v3_intention', None)
         if _ist is not None and state is not None:
-            _fb, _band = cw_intention.k_empty_window_fallback(state, _ist)
+            # session/registry 透传(P86;落地审 F-2):甲臂 G 门按 plane
+            # 真值视界与当帧注册表判定,与商店域同源(两域禁分叉)。
+            _fb, _band = cw_intention.k_empty_window_fallback(
+                state, _ist, session=session, registry=registry)
             if _fb:
                 k_members = tuple(sorted(_fb))
                 state_of(session).cw4_counters[f'prep_k_fallback_{_band}'] = \

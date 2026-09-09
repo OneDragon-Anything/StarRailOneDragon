@@ -46,7 +46,17 @@ shop_merge_trigger_truncate;K 空窗回退修复批(2026-09-03 第三病灶)
 增补 shop_k_fallback_p1_gap(空窗帧回退计数);复审返工批
 (FIX_REVIEW_20260903 R3)增补 shop_k_fallback_p1_lock_band(P1 锁线
 过渡带回退计数)/shop_k_fallback_p2plus(P2+ 带回退计数)——三带
-回退分键登记=design_telemetry「复审返工批」节。
+回退分键登记=design_telemetry「复审返工批」节。P86 无目标期三臂判据
+落码批增补(判据=kernel 三臂;分键独立,禁混入历史 token 计数——
+shop_k_fallback_p2plus 语义重建为「回退采用」,落码后构成=甲臂方向
+采购集):shop_no_target_arm_a_adopted(甲臂方向采用帧)/
+shop_no_target_arm_a_dead_defer(甲臂判死出辖帧,P35 病灶帧行为改变
+显影)/ shop_no_target_arm_a_corner_defer(缓锁豁免角漏授帧,证明批
+§3.1-4 已知缺口,与无信号判死禁混桶)/ shop_no_target_hold_default
+(丙臂守息合法空帧,契约 k_fallback_source 证据通道显影)/
+hub_option_candidate_seen / hub_option_buy_hit / hub_option_arbitration_
+yield / hub_option_reject_{merge_material,seats,interest,unaffordable}
+(乙臂发射五前件合取的拒因归真族)。
 
 键语义申报:``shop_visit_idle_gold`` = CloseShop 收尾且金 ≥10 的
 **visit**(单动作迁移批自旧 ``shop_wave_idle_gold`` 改名——「波」结构
@@ -314,7 +324,9 @@ def _frame_search_windows(session: StrategySession, state: GameState,
 def shop_unbought_reasons(state: GameState,
                           comp: Comp | None,
                           k_members: tuple[str, ...],
-                          actions: list[Action]) -> dict[str, str]:
+                          actions: list[Action],
+                          hub_names: frozenset[str] = frozenset(),
+                          ) -> dict[str, str]:
     """商店波未买牌拒因串(决策帧遥测字段 ``shop_rejects`` 的生产端)。
 
     为什么:复盘 g_20260904_031925 把在售 transition 件「花火」误读成
@@ -332,6 +344,10 @@ def shop_unbought_reasons(state: GameState,
       + ``predicates.line_members`` 只取 core∪shared):``transition_char``;
     - ④转线放行集(kernel.cw_card_identity 身份分层单一源,T-115 D7 键序
       先于 trans 分支——交集卡可辨):``transition_component``;
+    - 乙臂枢纽资格集(P86;入参 = kernel.no_target_arms().hub_names 直传,
+      判据单一源在 kernel,本函数只挂标签):``hub_option``——空窗帧枢纽
+      件从 non_line 改显式拒因(正本 §4.4 行 3 键序消费面重排;未发射
+      = 金/席/息/素材门逐帧判,精确门序以 hub_option_* 计数键为准);
     - 其余:``non_line``。
 
     口径 = 帧首静态快照 + 逐动作累积投影:金按已发射 BuyCard 总价扣减、
@@ -417,6 +433,14 @@ def shop_unbought_reasons(state: GameState,
                 out[name] = 'missing_unaffordable'
             else:
                 out[name] = 'missing_no_path'
+        elif name in hub_names:
+            # P86 乙臂拒因键(枢纽资格件在售未买帧与真 non_line 可辨)。
+            # 键序 = 先于 ④/trans 分支(P86 正本 §4.4 行 3「键序消费面重排」:
+            # p2plus 无目标帧上 ④ 放行臂经 committed 门构造性关闭,枢纽臂
+            # 才是在售交集卡(如 花火)的活发射通道,拒因按活通道归属;P1
+            # 帧本键不产(hub_names 空集直传),④ 旧键序零变化)。判据单一
+            # 源 = kernel.hub_option_names,本函数只挂标签。
+            out[name] = 'hub_option'
         elif line_identity_tier(name) == TIER_TRANSITION:
             # T-115 规则④ 拒因键(D7 键序,ADR-0580):④放行集判据先于
             # trans 分支——交集卡(④放行件 ∧ 某 comp transition_chars)
@@ -647,25 +671,60 @@ def decide_shop_action(state: GameState, session: StrategySession,
     skeleton_only = (ev_arm == 'skeleton_only')
 
     # ---- ① 方向(证明面投影;契约核验 = 单动作决策入口,动作后真值口径)----
+    _reg = registry
+    if _reg is None:
+        from sr_od.application.currency_war.kernel.cw_registry import (
+            DEFAULT_REGISTRY,
+        )
+        _reg = DEFAULT_REGISTRY
     k = getattr(state_of(session), 'target_comp', None)
     k_members = predicates.line_members(k)
     k_fallback: frozenset[str] | set[str] | None = None
     k_band: str | None = None
+    _kfb_tok: str | None = None
+    _kfb_source: str | None = None
+    _arms = None   # P86 三臂帧判定件(p2plus 带才派生;乙臂发射位消费)
     _ist = getattr(state_of(session), 'v3_intention', None)
     if k is None and _ist is not None:
-        # K 空窗回退(FIX_REVIEW_20260903 R3 扩域;经济冻结批单一源化):
-        # 派生本体 = cw_intention.k_empty_window_fallback(商店域与准备域
-        # 共用,禁第二源);本处只保留消费面(回退采用+计数键)。ist 缺失
-        # = 意向供给缺帧,保守侧不回退(现行 () 行为)。
-        k_fallback, _tok = cw_intention.k_empty_window_fallback(state, _ist)
-        k_band = f'shop_k_fallback_{_tok}'
-    # 契约核验(可核验派生形态):回退字面量空元组但保留声明 = 违例 ⇒
-    # 不回退 + 计数。sorted = 确定性发射序(str 哈希随机化防御)。
+        # K 空窗回退(FIX_REVIEW_20260903 R3 扩域;经济冻结批单一源化;
+        # P86 落码批:p2plus 带派生本体 = 三臂判据——甲臂判活帧成员集
+        # 换源为甲臂方向采购集,甲臂空帧合法空[丙臂守息,k_fallback_source
+        # 证据放行])。派生本体 = cw_intention.k_empty_window_fallback
+        #(商店域与准备域共用,禁第二源);本处只保留消费面(回退采用+
+        # 计数键)。ist 缺失 = 意向供给缺帧,保守侧不回退(现行 () 行为)。
+        k_fallback, _kfb_tok = cw_intention.k_empty_window_fallback(
+            state, _ist, session=session, registry=_reg)
+        k_band = f'shop_k_fallback_{_kfb_tok}'
+        if _kfb_tok == 'p2plus':
+            _arms = cw_intention.no_target_arms(state, _ist, session=session,
+                                                registry=_reg)
+            if not k_fallback:
+                _kfb_source = cw_intention.K_FALLBACK_SOURCE_THREE_ARM
+            # P86 判读分键(证明批 §6 增量 1/4/7 + 正本 §4.4 行1):
+            # 甲臂采用/判死出辖/漏授角/丙臂合法空四态独立分键,禁混入
+            # 历史 token 计数(shop_k_fallback_p2plus 语义 = 回退采用,
+            # 落码后构成 = 甲臂方向采购集,判读按新臂构成重建)。
+            # F-7 口径注(落地审):hold_default = 「合法空/契约通道显影」,
+            # 判死帧即计、先于乙臂发射位——同帧乙臂发射时两键并发,
+            # 「守息帧」直读须按 dead_defer+adopted/hit 联合口径修正。
+            if _arms is not None and _arms.direction:
+                _count('shop_no_target_arm_a_adopted')
+            elif _arms is not None:
+                _count('shop_no_target_arm_a_dead_defer')
+                if _arms.corner_names:
+                    _count('shop_no_target_arm_a_corner_defer')
+                _count('shop_no_target_hold_default')
+    # 契约核验(可核验派生形态;P86 带维度非对称期待,证明批 §4.6):
+    # 回退字面量空元组但保留声明 = 违例 ⇒ 不回退 + 计数;p2plus 带合法空
+    # 仅在 source 标明判据臂评估产出时放行。sorted = 确定性发射序(str 哈
+    # 希随机化防御)。
     if contracts.ensure_contract(
             ('shop', 'k_projection'),
             contracts.ContractCtx(k_target=k,
                                   k_fallback_available=_ist is not None,
-                                  k_fallback_resolved=k_fallback),
+                                  k_fallback_resolved=k_fallback,
+                                  k_fallback_band=_kfb_tok,
+                                  k_fallback_source=_kfb_source),
             counters) and k_fallback:
         k_members = tuple(sorted(k_fallback))
         _count(k_band)
@@ -754,20 +813,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 至多 1),非评估次数;投影读可能占首计(素材首次触达发生在本投
     # 影读),判读时按帧级事件语义解读(ADR-0558 §4 F-2 消费面)。
     s_reserve = g_star - liquid_refund
-    _reg = registry
-    if _reg is None:
-        from sr_od.application.currency_war.kernel.cw_registry import (
-            DEFAULT_REGISTRY,
-        )
-        _reg = DEFAULT_REGISTRY
     tier_w, card_w = _frame_search_windows(session, state, _reg, counters)
     gold = int(state.gold or 0)
     bench_free = BENCH_CAPACITY - len(bench)
     # 拒因遥测逐帧刷新(ADR-0517 迁移步 2:拒因计数键逐动作化;期望态
     # 即真值,actions 传空——买走牌已由 project 从 state.shop 摘除)。
+    # P86:乙臂枢纽资格集直传(拒因键 hub_option 的单一源直通面)。
     with contextlib.suppress(Exception):
         state_of(session).cw4_shop_rejects = shop_unbought_reasons(
-            state, k, buy_members, [])
+            state, k, buy_members, [],
+            hub_names=frozenset(_arms.hub_names)
+            if _arms is not None else frozenset())
     missing = [m for m in buy_members if m not in owned]
     # T3 同轮保留集卖侧读端(单一源 = mandate.stall_protect_active,禁
     # 手搓读 cw4_fuel_filler_stall_buys):本帧活跃保护名集;轮界过期名
@@ -926,6 +982,117 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 _count('m2_retry_exhausted')
                 _count('m2_stall_cache_rederive')
                 _st.cw4_m2_stall_latch = (True, _st.cw4_segment_serial)
+
+    # P86 乙臂发射位(枢纽期权;unlocked p2plus 无目标带;物理位次先于 M2
+    # = 同帧仲裁三层序的承载,证明批 §4.4/§6 增量 1)。获取 = 备战席持有
+    # (免费期权),行权 = 部署/组线归部署域既有管辖,零新增行权授权;
+    # 持有期租金残余由 M4 腾席/P41③ V_slot 现行管辖吸收(正本 §6.1)。
+    # 五前件合取 = 资格核(kernel.hub_option_names:覆盖数≥2 ∧ 非单卡注册
+    # 身份)+ 非合并素材(第五前件,P75 原子⑩同款)+ 四谓词核
+    #(1★ 全额退/席位/不破息/可负担,与 C1 锁线腿同源单一实现)。
+    # 甲乙并存帧仲裁:支配序(覆盖甲臂方向线的枢纽先于该方向**单线**方向
+    # 件,推论 B1.1;多线方向件不授件级支配)→ 机器原生序(甲臂方向已由
+    # kernel 机器自身选择序定,本位不动)→ 注册表声明序(资格核枚举序;
+    # 枢纽与在售方向件竞争按卡声明序首发判定)。覆盖数降序已否决(集合
+    # 包含单调性 ≠ 基数单调性,非嵌套集合无授权比较,§4.4 显式否决)。
+    if _arms is not None and _arms.hub_names:
+        _hub_set = set(_arms.hub_names)
+        _hub_cands = sorted(
+            (c for c in _buy_view('hub_option_buy')
+             if (c.star or 1) == 1 and (c.name or '') in _hub_set),
+            key=lambda c: cw_intention.char_declaration_index(c.name or ''))
+        # ↑ 候选序 = 注册表声明序(资格核枚举序同源)——店面槽位序不进
+        # 仲裁(乱序注入店面发射序不变,增量 1;hub-hub 并列同序兜底)。
+        if _hub_cands:
+            _count('hub_option_candidate_seen')
+            # 发射时点 t5 输入(与 C1 锁线腿同源:r_remaining/net_income;
+            # Ī 取 streak_pre=0 保守近似——收入低估 ⇒ L 偏大 ⇒ 发射收窄)。
+            _hub_rounds = horizon.r_remaining(
+                session, int(state.plane or 1), int(state.round_num or 1))
+            _hub_ibar = net_income(int(state.round_num or 1), 0)
+            # 在售缺员方向件声明序(第三层让位判定的输入;店面槽位序无关
+            # ——乱序注入店面发射序不变,§6 增量 1 测试化)。
+            # F-1(落地审,证明批 §4.4 先决澄清+附带条款①):竞争域收窄
+            # ——仅本帧**可发射**(金/席快判过)的在售缺员方向件获挤占权,
+            # 合取不过的方向件不因序获得挤占权,否则甲帧上更早声明的
+            # 不可负担件会逐帧挤掉枢纽发射机会。
+            _dir_name = _arms.direction
+            _piece_in_shop = []
+            _ok_seat_all, _ = mandate.check_seats(
+                bench_free, 0, needs_bench=True, needs_board=False,
+                name='', deployed_names=deployed_names)
+            for _m in missing:
+                if not _m:
+                    continue
+                _mcands = _shop_candidates(_m)
+                if not _mcands:
+                    continue
+                if not _ok_seat_all:
+                    continue    # 帧级席满:任何方向件本帧皆不可发射
+                _mcost = _mcands[0].cost if _mcands[0].cost else 3
+                _ok_aff, _ = mandate.check_affordable(gold, _mcost)
+                if _ok_aff:
+                    _piece_in_shop.append(_m)
+            for card in _hub_cands:
+                _hname = card.name or ''
+                if _dir_name:
+                    # 仲裁三层序(逐在售方向件判定,§4.4 候选级序):
+                    _covers = _dir_name in cw_intention.hub_covered_lines(
+                        state, _ist, _hname)
+                    _yield = False
+                    for _m in _piece_in_shop:
+                        # 第一层授权面(推论 B1.1 收窄):仅 C_x == {l_d} 的
+                        # 单线方向件受支配序辖——枢纽覆盖多线时件级比较无
+                        # 定理授权,一律降第三层声明序。
+                        if _covers and cw_intention.hub_covered_lines(
+                                state, _ist, _m) == frozenset({_dir_name}):
+                            continue    # 第一层支配序:枢纽先于单线方向件
+                        if cw_intention.char_declaration_index(_hname) > \
+                                cw_intention.char_declaration_index(_m):
+                            # 第三层注册表声明序:更早方向件首发,本帧让位
+                            # (M2 先发;次帧重评,竞错代价由 1★ 全退可逆封顶)
+                            _yield = True
+                            break
+                    if _yield:
+                        _count('hub_option_arbitration_yield')
+                        continue
+                # 非合并素材第五前件(获取时点不与在场同名同星 1★ 副本构成
+                # 即时合并素材,保住 1★ 净 0 出口;核对面 = bench∪deployed
+                # 全场域,计数单一源 = cw_state.same_star_count 禁手搓同式;
+                # 买面阈值 = 场内已有 ≥1 副本即拒 = 获取后 c_excl≥1 的
+                # merge_material_reject_reason 同式视点,副本在部署面同拦)。
+                if same_star_count(_hname, 1, bench, deployed) >= 1:
+                    _count('hub_option_reject_merge_material')
+                    continue
+                cost = card.cost if card.cost else 3
+                ok2, _ = mandate.check_seats(
+                    bench_free, 0, needs_bench=True, needs_board=False,
+                    name='', deployed_names=deployed_names)
+                if not ok2:
+                    _count('hub_option_reject_seats')
+                    break       # 帧级门已拦 bench 满(C1/支配族同款防御)
+                if not predicates.t5_p1_false(
+                        gold, cost, _hub_rounds, _hub_ibar, cap_resolved):
+                    _count('hub_option_reject_interest')
+                    continue    # 不破息带:L>0 帧不放行(丙臂同带同纪律)
+                ok1, _ = mandate.check_affordable(gold, cost)
+                if not ok1:
+                    _count('hub_option_reject_unaffordable')
+                    continue
+                _count('hub_option_buy_hit')
+                # F-3 载体(P86 正本 §6.1;P75 §7.4 先例):乙臂获取名集
+                # 单一写点(session 载体,零分支去重)。deployed_from_hub /
+                # activation_from_hub 两观测分键的读端归部署域下批消费本
+                # 名集(禁第二载体),获取≠行权显影面由此可直读。
+                _hub_held = getattr(state_of(session),
+                                    'cw4_hub_acquired_names', None)
+                if _hub_held is None:
+                    _hub_held = []
+                    state_of(session).cw4_hub_acquired_names = _hub_held
+                if _hname and _hname not in _hub_held:
+                    _hub_held.append(_hname)
+                # 买因 = hold 类(LAUNCH_CAUSE_BY_ARM 映射行,P86 随批登记)
+                return _emit_buy(card, 'hub_option_buy')
 
     # M2 线成员买入(序 1/2 义务;[41]:义务不走息律门)。金不足侧:
     # 支付支撑通道在 R1 拒后的发射位处理(卖一张回此帧重判)。
@@ -1098,7 +1265,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 下方档 1/档 2,支配性优先序先于带参臂,发射序申报同 §2。)
     _dom_ok = contracts.ensure_contract(
         ('mandate', 'dominance_buy'),
-        contracts.ContractCtx(k_members=k_members), counters)
+        contracts.ContractCtx(k_members=k_members, k_target=k,
+                              k_fallback_available=_ist is not None,
+                              k_fallback_resolved=k_fallback,
+                              k_fallback_band=_kfb_tok,
+                              k_fallback_source=_kfb_source), counters)
     if _dom_ok and mandate.dominance_buy_eligible(gold, bench_free,
                                                   cap_resolved):
         # 支配性背书仅全额可退 1★(P76 甲/[41];误注 P24 已正——
@@ -1532,7 +1703,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
         else:
             _stock_ok = contracts.ensure_contract(
                 ('stockpile', 'stockpile_buy'),
-                contracts.ContractCtx(k_members=k_members), counters)
+                contracts.ContractCtx(k_members=k_members, k_target=k,
+                                      k_fallback_available=_ist is not None,
+                                      k_fallback_resolved=k_fallback,
+                                      k_fallback_band=_kfb_tok,
+                                      k_fallback_source=_kfb_source),
+                counters)
             for card in _buy_view('m6'):   # L2 统一过滤位
                 name = card.name or ''
                 # 线内追星段排除(落地审清单存疑收口,N2/§3.7):线内副本
@@ -1883,7 +2059,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
     if not skeleton_only:
         if contracts.ensure_contract(
                 ('buy', 'ev_buy_candidates'),
-                contracts.ContractCtx(k_members=k_members), counters):
+                contracts.ContractCtx(k_members=k_members, k_target=k,
+                                      k_fallback_available=_ist is not None,
+                                      k_fallback_resolved=k_fallback,
+                                      k_fallback_band=_kfb_tok,
+                                      k_fallback_source=_kfb_source),
+                counters):
             # EV 排除集 = 买入义务集(buy_members):义务面成员「走 M2,
             # 非 EV 域」——与买面同口径;非卖免面,不吃锁定全集收窄裁。
             cands, ckey = crit_buy.ev_buy_candidates(
@@ -1998,6 +2179,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 ok_r1 = True
                 _r1_src = 'must_spend_r1_yielded'   # 触发源记录(sim obs)
                 _count('must_spend_r1_account_yielded')   # 零静默纪律
+                if _arms is not None:
+                    # F-6(落地审;批件 §6-4)键④联合分键:yielded 支在
+                    # p2plus 无目标帧族的分布直读键——落码后该族预期归零
+                    #(判死帧合格集空,no_chaseable 先于 yielded),联合键
+                    # 与历史全量键分离,禁混桶。
+                    _count('must_spend_r1_yielded_no_target')
         else:
             ok_r1, rkey = (False, 'contract_abstain')
             r2_reserve = g_star
