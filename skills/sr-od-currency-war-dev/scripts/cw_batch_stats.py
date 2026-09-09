@@ -22,17 +22,29 @@ row{plane, round, node_type, gold, hp, form, form_ok, level, locked_comp},
   (引擎未建锁线态 = 没锁);档案行结构性无 v3_intention 键 = 无数据,
   不入分母(「无数据」与「未锁线」两种事实,混同会把档案伪影当行为信号)。
 
-P1 通关判定(按优先级):行面存在 plane>=2 行 → 通关;否则局级权威源
-(sim = runs.jsonl 的 plane_reached;档案 = endgame.plane_reached)≥2 → 通关;
-两源都缺 → 行面规则收尾:无 plane>=2 行 = 未通关。**权威源降级通道
-(T-169 落地审 F7)**:新批布局(2026-09-07)不落 runs.jsonl,旧通道成死路
-——sim 批 runs.jsonl 缺失时改读 outcomes.jsonl 逐局 max(plane)(同语义:
-引擎实际到达的最高位面);runs 值优先不覆盖(旧批兼容);双通道皆缺的局
-= 不可判,死亡筛不适用,头部小注显影。**死亡筛(T-169 统计
-口径增补,2026-09-09)**:plane 证据达 2 后还须末行 hp>0 才算通关——死在
-P2 段的局(末行 hp=0)不是通关局,旧口径把它算通关会虚高通过率。hp 缺读
-(行无 hp 键)局死亡筛不适用 = 保持 plane 证据判定(边界如实申报:该类局
-死亡状态不可判,不折 0 不折 1)。载体标识:批统计头行自动标注载体类型
+P1 通关判定(按优先级):行面存在 plane>=2 行 → 行面证据;否则局级权威源
+(sim = runs.jsonl 的 plane_reached;档案 = endgame.plane_reached)≥2 → 行面
+证据;两源都缺 → 行面规则收尾:无 plane>=2 行 = 无行面证据。**死亡筛
+(T-169 统计口径增补,2026-09-09)**:行面证据达 2 后还须末行 hp>0——死在
+P2 段的局(末行 hp=0)行面不存活。hp 缺读(行无 hp 键)局死亡筛不适用 =
+保持 plane 证据判定(边界如实申报:该类局死亡状态不可判,不折 0 不折 1)。
+**killed 消费(通关权威口径,ADR-0306 件3)**:通关 = 行面存活 ∧ 局末行
+outcomes killed==True。killed = 结算屏「玩家击败对手」,是行面证据之外的
+唯一权威胜负口径——「活满末轮」与「杀穿 boss」两种结局在行面同形,
+只看行面会把前者整批误判为通关,通关率系统性虚高(全载体批实测为
+真值的数倍,读数以 killed 列为准)。局末行 killed 不可判(outcomes
+缺局 / sim 键缺 / None,旧批无该字段同此)→ 未知桶:不入通关
+(禁默认通关),报告头按局数显影;不回退取早轮行——早轮 True 只证该轮
+胜,不证终局杀穿。档案侧合成轮同律:补给节点的 outcome 是采集端合成
+填充,killed=true 非战斗结算,不承载真值(合成轮恰为末轮 → 整局未知
+桶,证据档案见 _archive_rows 注)。输出双列披露:通关率(killed 真值,
+权威)+ 通关率(行面口径,旧列兼容——无 killed 数据的历史批/档案唯一
+可算口径);逐局表「行/killed」双标记同义。**权威源降级通道(T-169 落地审 F7)**:
+新批布局(2026-09-07)不落 runs.jsonl——runs.jsonl 缺失时改读
+outcomes.jsonl 逐局 max(plane) 作局级权威源(同语义);runs 值优先不覆盖。
+载体验证(2026-09-09 增补):模拟常开批须 --planes 2 才有 P2 观测
+(planes=1 段表只含 P1 九轮,P2 面零观测)。
+载体标识:批统计头行自动标注载体类型
 (全载体 = 生产档案或存在 plane>=2 行的 sim 批;P1-only = 零 plane>=2 行
 的 sim 批——其通关率 0 是载体辖域结果,禁当行为信号,与下行边界同义)。
 
@@ -80,7 +92,7 @@ def _load(path: Path) -> list[dict]:
 # ---------- 数据装配:统一成 row{plane,round,node_type,gold,hp,form,form_ok,level,locked_comp} ----------
 
 def _game_shell() -> dict:
-    return {'rows': [], 'plane_reached': None}
+    return {'rows': [], 'plane_reached': None, 'killed': None}
 
 
 def _sim_rows(batch: Path) -> dict[str, dict]:
@@ -114,6 +126,22 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
         for row in g(o.get('run_id') or '?')['rows']:
             if row['_key'] == (o.get('plane') or 1, o.get('round_num') or 0):
                 row['node_type'] = o.get('node_type')
+    # killed 真值捕获(通关权威口径消费源,ADR-0306 件3):逐局取
+    # (plane, round) 最大的 outcome 行的 sim.killed——末行 = 该局最后一场
+    # 战斗的结算,True = 玩家击败对手(全载体 = 杀穿 boss = 真通关)。
+    # 不回退取早轮行:早轮 True 只证该轮胜,不证终局杀穿。sim 键缺/None
+    # = 不可判(旧批无该字段同此,未知桶,禁默认通关);局无 outcome 行
+    # 时 games 里的 killed 保持 shell 初值 None,同归未知桶。
+    last_out: dict[str, tuple] = {}
+    for o in outs:
+        rid = o.get('run_id') or '?'
+        key = (o.get('plane') or 1, o.get('round_num') or 0)
+        if rid not in last_out or key >= last_out[rid][0]:
+            last_out[rid] = (key, (o.get('sim') or {}).get('killed'))
+    for rid, (_, k) in last_out.items():
+        gd = games.get(rid)
+        if gd is not None:
+            gd['killed'] = k
     # 权威源降级通道(T-169 落地审 F7:新批布局 2026-09-07 起不落
     # runs.jsonl,旧通道成死路)——runs.jsonl 缺失时读 outcomes.jsonl
     # 逐局 max(plane)(同语义:引擎实际到达的最高位面,逐轮行带 plane);
@@ -136,7 +164,8 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
         rows = sorted(gd['rows'], key=lambda r: r['_key'])
         for r in rows:
             del r['_key']
-        out[rid] = {'rows': rows, 'plane_reached': gd['plane_reached']}
+        out[rid] = {'rows': rows, 'plane_reached': gd['plane_reached'],
+                    'killed': gd['killed']}
     return out
 
 
@@ -159,27 +188,64 @@ def _archive_rows(mid: str) -> dict:
         'locked_comp': None,
     } for r in m.get('rounds', [])]
     eg = m.get('endgame', {}) or {}
+    # killed 真值(权威口径,ADR-0306 件3):取 (plane, round) 最大轮的
+    # outcome.killed,与 sim 侧同律——不回退取早轮(早轮 True 只证该轮胜,
+    # 不证终局杀穿)。末轮 outcome 缺/null 或 killed=null = 不可判(未知
+    # 桶,禁默认通关;旧档案末轮 outcome 未捕获常见,如实申报)。
+    # 合成轮不承载真值:补给节点 outcome 是采集端合成填充(source=
+    # synthetic_supply),其 killed=true 非战斗结算——恰为末轮时整局落
+    # 未知桶(不排除出扫描:排除式会在「真末轮 outcome 缺失+早轮
+    # killed=true」场景复刻不回退违规)。行面合取对此拦不住:合成末轮
+    # 快照 hp>0 且 plane_reached≥2 时行面同样通过(实库档案
+    # g_20260901_202525/g_20260902_023643 的 loss/stopped 局曾据此误判)。
+    last_round = None
+    last_key = (-1, -1)
+    for r in m.get('rounds', []):
+        key = (r.get('plane') or 1, r.get('round') or 0)
+        if key >= last_key:
+            last_key = key
+            last_round = r
+    oc = (last_round or {}).get('outcome') if last_round else None
+    # 合成判定双信号:结构面 = 非战斗节点(补给);标注面 = source 带
+    # synthetic 前缀(防未来新增合成种类)。loss_page/recovered 是真实
+    # 结算的恢复通道,不在排除面。
+    synth = oc is not None and (
+        (last_round or {}).get('node_type') == '补给'
+        or str(oc.get('source') or '').startswith('synthetic'))
+    killed = None if oc is None or synth else oc.get('killed')
     return {'rows': rows, 'plane_reached': eg.get('plane_reached'),
+            'killed': killed,
             'game_id': m.get('game_id', mid)}
 
 
 # ---------- 四指标 ----------
 
 def game_metrics(game: dict) -> dict:
-    """逐局四指标取值(口径见模块 docstring;None = 无数据,不折 0)。"""
+    """逐局四指标取值(口径见模块 docstring;None = 无数据,不折 0)。
+
+    通关双口径:passed_row = 行面口径(披露列);passed = killed 真值
+    (权威,ADR-0306 件3)= passed_row ∧ game['killed'] is True。killed
+    不可判(None)→ passed 必 False 且入未知桶(禁默认通关)。
+    """
     rows: list[dict] = game['rows']
     p1_rows = [r for r in rows if r['plane'] == 1]
     p1_last = p1_rows[-1] if p1_rows else None
     last = rows[-1] if rows else None
-    passed = any((r.get('plane') or 0) >= 2 for r in rows)
-    if not passed and game.get('plane_reached') is not None:
-        passed = game['plane_reached'] >= 2
+    # 行面口径(披露列):plane 证据 + 死亡筛,无 killed 数据历史批唯一可算口径
+    passed_row = any((r.get('plane') or 0) >= 2 for r in rows)
+    if not passed_row and game.get('plane_reached') is not None:
+        passed_row = game['plane_reached'] >= 2
     # 死亡筛(T-169 统计口径增补):plane 证据达 2 后还须末行 hp>0——
-    # 死在 P2 的局(末行 hp=0)不是通关局。hp 缺读局不适用死亡筛 =
+    # 死在 P2 的局(末行 hp=0)行面不存活。hp 缺读局不适用死亡筛 =
     # 保持 plane 证据判定(不可判 ≠ 判死,边界见模块 docstring)。
-    if passed and last is not None and last.get('hp') is not None \
+    if passed_row and last is not None and last.get('hp') is not None \
             and last['hp'] <= 0:
-        passed = False
+        passed_row = False
+    # killed 消费(权威口径,ADR-0306 件3):通关 = 行面存活 ∧ 局末行
+    # killed==True。killed None(缺行/缺键)= 未知桶,不入通关(禁默认
+    # 通关)——「活到末轮」与「杀穿 boss」在行面同形,killed 是唯一区分。
+    killed = game.get('killed')
+    passed = passed_row and killed is True
     lc = last.get('locked_comp') if last else None
     if lc is None:
         comp_done = None            # 档案源结构性无锁线字段 = 无数据
@@ -188,7 +254,9 @@ def game_metrics(game: dict) -> dict:
     else:
         comp_done = 0               # 未锁线 = 0(用户规格逐字)
     return {
-        'passed_p1': passed,
+        'passed_row': passed_row,
+        'passed': passed,
+        'killed': killed,
         'exit_gold': p1_last.get('gold') if p1_last else None,
         'exit_hp': p1_last.get('hp') if p1_last else None,
         'exit_form_ok': p1_last.get('form_ok') if p1_last else None,
@@ -226,8 +294,12 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
     ms = {rid: game_metrics(g) for rid, g in games.items()}
     n = len(ms)
 
-    passed = sum(1 for m in ms.values() if m['passed_p1'])
-    ok_games = [m for m in ms.values() if m['passed_p1']]
+    # 通关双口径(权威 = killed 真值,ADR-0306 件3;行面口径旧列披露)。
+    # ② 过渡凑齐率的「通关局」分母随权威口径走。
+    passed = sum(1 for m in ms.values() if m['passed'])
+    passed_row_n = sum(1 for m in ms.values() if m['passed_row'])
+    killed_unknown = sum(1 for m in ms.values() if m['killed'] is None)
+    ok_games = [m for m in ms.values() if m['passed']]
     ok_ok = sum(1 for m in ok_games if m['exit_form_ok'])
     golds = [m['final_gold'] for m in ms.values() if isinstance(m['final_gold'], (int, float))]
     comp = [m['comp_done'] for m in ms.values() if m['comp_done'] is not None]
@@ -251,7 +323,19 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
         if no_auth:
             print(f'注: 局级权威源缺行 {no_auth}/{n} 局无 plane_reached'
                   '(runs/outcomes 双通道皆缺;通关判定降级行面证据)')
-    print(f'通关率: {passed}/{n}')
+    # 通关双口径披露:权威 = killed 真值;行面口径旧列兼容历史批。
+    # 差值拆解 = 行面误判面(未杀穿 a + 真值不可判 b),判读直接可见。
+    print(f'通关率(killed 真值,ADR-0306 权威): {passed}/{n}')
+    row_kf = sum(1 for m in ms.values()
+                 if m['passed_row'] and m['killed'] is False)
+    row_ku = sum(1 for m in ms.values()
+                 if m['passed_row'] and m['killed'] is None)
+    row_tail = (f'(行面多计 {passed_row_n - passed} = 未杀穿 {row_kf} '
+                f'+ 真值不可判 {row_ku})') if passed_row_n != passed else ''
+    print(f'通关率(行面口径,披露用): {passed_row_n}/{n} {row_tail}'.rstrip())
+    if killed_unknown:
+        print(f'注: killed 真值不可判 {killed_unknown}/{n} 局(局末行 '
+              'outcomes killed 缺行/缺键/None;不入通关,如实申报)')
     if ok_games:
         print(f'②过渡凑齐率(P1 出口,通关局中): {ok_ok}/{len(ok_games)} = {ok_ok / len(ok_games):.0%}')
     else:
@@ -278,10 +362,12 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
     print(f'出口生存余量 hp min/中位/max: {eh3}(可读 {len(exit_hps)}/{n} 局) '
           f'| 地板命中(hp≤0) {exit_floor} 局(读数,非门)')
 
-    print(f"\n{'局号':<22} {'P1通关':<6} {'①出口金':>7} {'②凑齐(形态)':<14} {'③终局金':>7} {'④完成':>5}")
+    print(f"\n{'局号':<22} {'通关行/killed':<12} {'①出口金':>7} {'②凑齐(形态)':<14} {'③终局金':>7} {'④完成':>5}")
     for rid in sorted(ms):
         m = ms[rid]
-        mark = '✓' if m['passed_p1'] else '✗'
+        rmark = '✓' if m['passed_row'] else '✗'
+        kmark = '—' if m['killed'] is None else ('✓' if m['killed'] else '✗')
+        mark = f'{rmark}/{kmark}'
         if m['exit_form_ok'] is None:
             c2 = '—'
         else:
