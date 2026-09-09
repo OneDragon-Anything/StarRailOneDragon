@@ -21,10 +21,11 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 
   | 子态 | 入口 | HP(右上 文本-剩余血量) | 金币(右下 文本-金币数) | 商店按钮 | 商店牌区 |
   |---|---|---|---|---|---|
-  | shop 关闭 | 上轮收起 / 入口默认 | **可见**(真值) | 空(不可读) | 「商店」 | 隐藏 |
+  | shop 关闭 | 上轮收起 / 入口默认 | **可见**(真值) | **可见**(真值;玩家确认 2026-09-09) | 「商店」 | 隐藏 |
   | shop 开启 | 点「商店」 | 空(read_hp→100) | **可见** | 「收起」 | 5 张牌 + 刷新概率% |
 
   - plan 在 shop 开启态运行;HP 须在 shop 关闭帧读(见下 reader)。
+  - ⚠️ 金币列勘误(2026-09-09):旧记「shop 关闭→金币 空(不可读)」与玩家确认及 :117 部署后快照(HP 可见帧上金币 20)冲突,已按玩家观察更正为可见;:113 关店快照「金币区空」为孤例异常待实机复核(疑采集时刻金币未渲染)。HP 列互斥关系不受影响。
 
 ## 场景切换时序(结算 → 备战先渲染 → overlay 后弹;2026-08-18 用户定调)
 
@@ -81,14 +82,14 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 
 **可靠(实图跨子态核实)**:
 - 进度/节点:`read_phase_round`(区域-阶段「X-Y」)、`read_node_type`(顶部节点标签 首领→boss / 战斗→battle 等;**仅 battle/boss 稳**,见备注)。
-- 经济:`read_gold`(文本-金币数,shop 开启态)、`read_level`(文本-等级「LV.N」)、`read_xp_progress`(文本-升级所需经验「X/Y」)。
+- 经济:`read_gold`(文本-金币数;备战/商店帧均可读——玩家确认 2026-09-09;恢复局备战帧待实机一帧定谳〔:113 孤例〕,复核前按可读尝试+失读容忍)、`read_level`(文本-等级「LV.N」)、`read_xp_progress`(文本-升级所需经验「X/Y」)。
 - 棋盘:`read_board` + `read_board_next_tier`(区域-羁绊面板「X/Y」→ 阵营 count + 下个 tier 阈值)、`read_deployed_count`(区域-部署数「X/Y」,如 5/5)。
-- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost,name 经 CHARACTER_ROSTER 匹配得规范名 + cost)、`read_bench_full`(「备战席已满」警告)。
+- 商店:`read_shop_cards`(商店牌区 5 牌:阵营/名/cost,name 经 CHARACTER_ROSTER 匹配得规范名 + cost)、`read_bench_full`(「备战席已满」警告)——**read_bench_full 已退役不做识别**(警告太短暂无法可靠采样,玩家裁定 2026-09-09;满栏判定=bench 槽位派生,见 BoardState 设计 §3.2.5)。
 - 生命:`read_hp`(文本-剩余血量,**仅 shop 关闭态可读**;shop 开启态该区空 → 返 100)。
 
 **需放大管线(原生分辨率 det 漏检)**:
 - `read_level_up_cost`:费用是按钮底部的**小 + stylized 彩色印刷数字**(购买经验「4」),原生直读基本检不到(小字 det 漏检,与等级/XP 小字同根)。**两级管线可读**:3x 放大 → 仍空再 OTSU 二值化重试;58 张备战帧仓离线对拍 3x=55/58、加二值化=57/58(唯一残留帧数字在场但两级均未检出,走 None → plan 用 `LEVEL_UP_COST_TABLE` 兜底)。实帧锁见测试 `test_read_level_up_cost_real_fixture`。
-- `read_shop_refresh_cost`(刷新「2」):同根小字失读 → 已接两级放大管线(3x → OTSU 二值化);rect 内金币图标会被 OCR 并入前缀('GO'/'G0'=0,归一后取数字)。**读不到返 None**(消费方 `or 2` 兜底),「真 0(免费刷/减免)」与「失读」不再混写(决策见 ADR-0455)。实帧锁见测试 `test_read_refresh_cost_and_streak_real_fixture`。
+- `read_shop_refresh_cost`(刷新「2」):同根小字失读 → 已接两级放大管线(3x → OTSU 二值化);rect 内金币图标会被 OCR 并入前缀('GO'/'G0'=0,归一后取数字)。**读不到返 None**(消费方 `or 2` 兜底),「真 0(免费刷/减免)」与「失读」不再混写(决策见 ADR-0455)。实帧锁见测试 `test_read_refresh_cost_and_streak_real_fixture`。**ADR-0622(2026-09-09)**:刷新费字段写端权威改=商店开态刷新钮旁标价现场识别(reader `cw_shop_refresh_obs.read_shop_refresh_price`,区域「文本-刷新价格」已建档);本条通道转旁证退役,主条目=设计文档 BoardState §3.3.4。
 
 **弱**:
 - `read_enemy_difficulty`(文本-难度 左上角):stylized 数字,OCR 常空。
@@ -109,7 +110,7 @@ source_image: screens/货币战争-备战/(多子态,见识别快照)
 
 ### 2. shop 关闭态(默认 / 入口)— `screens/货币战争-备战/shop_closed.webp`
 - 命中:`is_precise=True`(购买经验 + 按钮-商店 + 按钮-出战)。
-- OCR:备战阶段 / 1-3 / 战斗(node=battle)/ **HP 84**(右上 文本-剩余血量)/ 购买经验 / 商店(= 关)/ 出战。board 6 阵营。金币区空。fixture 变体:`shop_closed_lowhp.webp`(HP 29)、`shop_closed_a8_start.webp`(A8 起 HP 60、board 空)。
+- OCR:备战阶段 / 1-3 / 战斗(node=battle)/ **HP 84**(右上 文本-剩余血量)/ 购买经验 / 商店(= 关)/ 出战。board 6 阵营。金币区空(孤例异常——玩家确认备战帧金币可读、:117 同档案金币 20 实证;疑采集时刻金币未渲染,待实机复核)。fixture 变体:`shop_closed_lowhp.webp`(HP 29)、`shop_closed_a8_start.webp`(A8 起 HP 60、board 空)。
 
 ### 3. 部署后 + boss 节点 — `screens/货币战争-备战/deployed_p1r9.webp`
 - 命中:`is_precise=True`(购买经验 + 按钮-商店 + 按钮-出战)。
