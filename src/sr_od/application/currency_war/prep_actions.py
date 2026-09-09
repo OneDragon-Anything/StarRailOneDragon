@@ -641,11 +641,16 @@ class PrepActionExecutor:
         match = self._ctx.cw_match
         if match is not None:
             try:
-                from sr_od.application.currency_war.kernel.cw_state import GameState
-                _st = match.session.last_state or GameState()
+                # 策略输入单一源(kernel/cw_bs_view.strategy_input_state,
+                # 迁移批次二):与全 pick 族同款 BoardState 视图,禁回落
+                # last_state 直读——被删的 cw_screen_supply.pick_box_card
+                # 原本同款直读,迁移批已切,本执行器副本为最后一个未切点。
+                from sr_od.application.currency_war.kernel.cw_bs_view import (
+                    strategy_input_state,
+                )
                 idx = match.strategy.decide_box_card(
-                    [n for n, _ in names], _st, match.session,
-                    getattr(match, 'config', None))
+                    [n for n, _ in names], strategy_input_state(match.session),
+                    match.session, getattr(match, 'config', None))
                 if 0 <= idx < len(names):
                     return names[idx]
             except Exception:   # noqa: BLE001  策略失败回落旧逻辑
@@ -1109,6 +1114,69 @@ class PrepActionExecutor:
 
     # ===== 组合动作(P1 过渡;旧 op 内部一行不动)=====
 
+    def _guard_screen_mismatch(self, guard_screen: str) -> str | None:
+        """派发前置预期屏检查(T-163 D5 判断上提的共用实现)。
+
+        返回 None = 干净可派;返回当前画面名 = 不干净、不派、环重观察
+        (断批重规划)。``_run_composite``(部署/工具)与 ``_run_equip``
+        (装备计划派发)共用——守卫语义单一源,防两派发位漂移。
+        """
+        current = self._op.check_and_update_current_screen(
+            self._op.screenshot(), screen_name_list=[guard_screen])
+        return None if current == guard_screen else current
+
+    def _run_equip(self) -> tuple[bool, str, bool]:
+        """RunEquip 专用派发:计划产出 → 空计划具名 NOOP / 计划随 op 下发。
+
+        为什么不走 _run_composite:通用路径 ``op_cls(self._ctx).execute()``
+        无法传构造参——穿戴计划在分发段产出(``_build_equip_wear_plan``,
+        ADR-0601 §3-C1 计划产出位)后随 op 构造下发(CwOpEquipAll
+        ``__init__(ctx, plan)`` 必填),「计划」概念不泄漏进部署/工具分派。
+
+        空计划 = 合法稳态具名 NOOP(dd-037 形态):返回
+        ``(True, f'装备 计划空: {具名原因}', False)``——ok=True 闩照置
+        (execute 的 ``mark_equip_pass_executed`` 唯一写点只看 ok,hold 期
+        闭环不变量「每期 RunEquip 恰一次 ok=True 收敛」由此成立,dd-027
+        活锁三条件缺二);landed=False 对 S1 清键门行为中性(RunEquip 本
+        就不命中 mark_s1_route_check 三路径封闭枚举,landed 仅语义归正,
+        RunDeploy NOOP 的 landed=False 先例同构)。
+
+        资源前置缺失走 fail_reason 通道 (False, …, False):闩不置,下帧
+        重派,与今日 op round_fail('模板库未加载')同形,Director
+        fail-stop 链兜底(ADR-0601 §5),无新环。
+        """
+        from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
+            CwOpEquipAll,
+            record_zero_wear_defect,
+        )
+        _drift = self._guard_screen_mismatch('货币战争-备战')
+        if _drift is not None:
+            log.warning('[cw!][composite] 装备 派发前置:当前画面 %s 非干净备战'
+                        ' → 不派,环重观察', _drift)
+            return False, f'装备 不在预期屏: {_drift}', False
+        build = _build_equip_wear_plan(self._ctx, self._op)
+        if build.fail_reason:
+            return False, f'装备 {build.fail_reason}', False
+        if not build.steps:
+            # 空计划短路:不实例化 op。哨兵双挂点之计划面(equipped=0,
+            # 计划面具名原因);front_only 回退分支不挂——与今日该分支
+            # 无哨兵覆盖一致。
+            if build.branch == 'm7':
+                record_zero_wear_defect(self._ctx, 0,
+                                        build.owned_wearable_names,
+                                        build.empty_reason)
+            log.info('[cw-equip] 计划空(%s)→ 具名 NOOP(闩照置, landed=False)',
+                     build.empty_reason)
+            return True, f'装备 计划空: {build.empty_reason}', False
+        result = CwOpEquipAll(self._ctx, build.steps).execute()
+        # live 修复(2026-08-14,同 _run_composite):OperationResult 字段
+        # 是 success(非 is_success)。非空计划生产路径 landed=ok(无
+        # no-op success 形态;计划步失效/漂移均为 round_fail → ok=False)。
+        ok = bool(result is not None and getattr(result, 'success', False))
+        status = getattr(result, 'status', '')
+        log.info(f'[cw][composite] 装备 → {"✓" if ok else "✗"} {status}')
+        return ok, f'装备 {status}', ok
+
     def _run_composite(self, name: str, op_path: str,
                        guard_screen: str | None = None,
                        landed_status_attr: str | None = None,
@@ -1132,9 +1200,8 @@ class PrepActionExecutor:
         import importlib
 
         if guard_screen is not None:
-            current = self._op.check_and_update_current_screen(
-                self._op.screenshot(), screen_name_list=[guard_screen])
-            if current != guard_screen:
+            current = self._guard_screen_mismatch(guard_screen)
+            if current is not None:
                 log.warning('[cw!][composite] %s 派发前置:当前画面 %s 非干净备战'
                             ' → 不派,环重观察', name, current)
                 return False, f'{name} 不在预期屏: {current}', False
