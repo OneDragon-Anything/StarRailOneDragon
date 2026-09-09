@@ -1172,9 +1172,17 @@ def check_degrade_recover_mutex(rows: list[dict]) -> list[str]:
     轮内回锁 A(relapse 指纹)。降级落地后本检查语义自动升级
     (真降级事件的 relapse 同型命中);pivot 合法来回(>3 轮)
     不辖。
+
+    段首轮号语义:history 每段记该配方「首次出现轮」,同段延续
+    不更新——r_c - r_b 因此等于 B 段驻留轮数(≤3 轮 = 试错回摆
+    relapse;>3 轮 = 合法 pivot,不辖)。若段首轮号被段末行覆盖,
+    「A→B→A 且回锁后保持稳定」这一最常见回摆形态会把 r_c 推到
+    A 段末,r_c - r_b 必然 >3,摇摆全部漏判(实测三批 sim 档案
+    重测,摇摆率被该缺陷低估约一半;检测器实现层缺陷,判据表
+    语义无歧义:回锁 = 该配方首次重新出现之轮)。
     """
     out: list[str] = []
-    history: list[tuple[int, str]] = []   # (轮号, comp)
+    history: list[tuple[int, str]] = []   # (段首轮号, comp)
     for row in rows:
         if row.get('plane') != 1:
             continue
@@ -1183,7 +1191,8 @@ def check_degrade_recover_mutex(rows: list[dict]) -> list[str]:
             continue
         rn = row.get('round_num') or 0
         if history and history[-1][1] == comp:
-            history[-1] = (rn, comp)
+            # 同段延续:保留段首(首次出现轮),不取段末覆盖——
+            # 段末覆盖会把「回锁后稳定」段的 r_c 推远,漏判 relapse
             continue
         history.append((rn, comp))
     for i in range(1, len(history) - 1):
