@@ -194,25 +194,192 @@ def loss_exact(gold: int, spend: int, rounds: int, net_income: int,
 
 
 def round_base_income(round_num: int) -> int:
-    """基础奖励金:1-1 轮 3 / 1-2 轮 4 / 其余 BASE_INCOME(R09 表一;
-    REWARD_BASE_GOLD_BY_ROUND 单一源)。"""
-    return REWARD_BASE_GOLD_BY_ROUND.get(round_num, BASE_INCOME)
+    """基础奖励金的 **P1 规划投影**(round 单键形态;决策数学规划用)。
+
+    = ``reward_base_gold(1, round_num)`` 薄委托(ADR-0623 处置(①):
+    base 曲线实现单一源归 :func:`reward_base_gold`,本函数只剩「P1 键
+    当全平面规划曲线」这一申报语义)。**规划近似申报**:决策数学没有
+    plane 入参,取 P1 键当通用规划曲线——对 P2/P3 的 r1/r2 轮与真值
+    有差(P2r1 真值 5,本投影返 3),差异归属=决策近似口径 vs 记账
+    口径,申报面见统一观察架构 §7.1 与 ADR-0623 决策2;等价性锁=
+    sr-od-test test_cw_income_single_source(net_income 值域逐位不变)。
+    """
+    return reward_base_gold(1, round_num)
 
 
 def net_income(round_num: int, streak_pre: int,
                lost_node_type: str | None = None) -> int:
     """逐节点净收入 Ī(NMF §2「Ī」行;R09 收入三表现算,非 i_bar 常量)。
 
+    **处置申报(统一观察架构方案审 F4-①,ADR-0623 决策2,裁决=委托改造
+    +规划近似显式化)**:base/streak 分量已改为委托 T1a 单一源函数族
+    (:func:`reward_base_gold` 的 P1 规划投影 + :func:`streak_gold`),
+    消费点数值逐位不变(等价性锁在册)。
+
     - ``round_num``:日程轮号(1 基;开局两轮基础金折半段);
     - ``streak_pre``:**决策前相**连胜数(进轮连胜,奖励轮照发不动计数,
       ADR-0439 引擎口径);
-    - ``lost_node_type``:上一轮若为败掉的战斗类节点,其败轮底金在本轮轮首
-      补发(battle/encounter/boss → LOSS_GOLD_BY_NODE);非败轮接续传 None。
+    - ``lost_node_type``:上一轮若为败掉的战斗类节点,其败轮底金在本轮
+      轮首补发(battle/encounter/boss → LOSS_GOLD_BY_NODE);非败轮接续
+      传 None。**规划近似申报(两处)**:①本参数签名无 plane/round,败补
+      只能取类型表底金做规划下界,与记账口径(:func:`loss_compensation_base`
+      平面感知键)的差异归属=决策近似,挂玩家确认(ADR-0623 决策3);
+      ②现役 6 个决策消费点(mandate_v1 shop.py ×4 / encounter.py / 本模块
+      loss_exact 前置)全部传 ``streak_pre=0, lost_node_type=None``——
+      败补参数支当前零消费,近似不落值。
     """
-    inc = round_base_income(round_num) + streak_gold(streak_pre)
+    inc = reward_base_gold(1, round_num) + streak_gold(streak_pre)
     if lost_node_type is not None:
         inc += LOSS_GOLD_BY_NODE.get(lost_node_type, 0)
     return inc
+
+
+# ===== T1a 轮首收入三支·kernel 单一源函数族(统一观察架构 §7-T1/T2 搬迁任务的 =====
+# ===== kernel 半部;正本语义=BoardState 设计 §4.2 轮首收入行。引擎收入段与 =====
+# ===== 实机 live 写端改调本函数族=T1b,本批不动 sim/engine_p1.py)=====
+
+
+def reward_base_gold(plane: int, round_num: int) -> int:
+    """基础奖励金·平面感知键(奖励轮/常规轮共用的 base 分量单一源)。
+
+    键(正本=BoardState 设计 §4.2 奖励轮行;真值=economy.md §10.1):
+    P1 r1=3 / P1 r2=4(:data:`REWARD_BASE_GOLD_BY_ROUND`,弹窗 VLM 直读
+    85/85 零散布);P2r1=5(结构化直读两批独立一致);P3r1 按 5 近似
+    (无直读样本,维持挂账);其余轮恒 5。
+
+    **禁按 round_num 单键直查注册表**:P2r1/P3r1 单键误返 3 = 已知
+    hazard(注册表 REWARD_BASE_GOLD_BY_ROUND 键是 P1 实测的 round 键,
+    不是全平面通用键);本函数是唯一合法取键口,round_base_income 是
+    它的 P1 规划投影(见该函数申报)。
+    """
+    if plane == 1:
+        return REWARD_BASE_GOLD_BY_ROUND.get(round_num, _REWARD_BASE_DEFAULT)
+    return _REWARD_BASE_DEFAULT
+
+
+def loss_compensation_base(plane: int, round_num: int, node_type: str) -> int:
+    """战斗败轮的补发基项(败补分支的 base 分量单一源)。
+
+    记账口径 = 玩家裁定 2026-09-09「看节点基础奖励」(BoardState 设计
+    §4.2 败轮行):按**被败节点**的基础奖励取值——平面感知键与奖励轮
+    同款,``round_num`` 语义=被败轮节点(败 P1r9 后 P2r1 补发按 P1r9
+    口径取键)。
+
+    〔口径冲突挂账·判别已执行〕:旧口径 = LOSS_GOLD_BY_NODE 类型表
+    {battle:2, encounter:4, boss:4}(ADR-0439 108 局差分)。仲裁实验
+    (分桶重放,tools/cw/loss_comp_bucket_replay.py,146 局语料,
+    ADR-0623 决策3)**数据不足以定谳**:判别判据所需的 P1r1/r2 败局阶梯
+    样本在语料中不存在(低轮位 bot 恒胜),boss 桶 n=1;且标准节点序把
+    「被败节点类型」与「下一节点类型」结构性绑定(battle→encounter→
+    reward),差分窗内的类型差分与到账项差分不可分。记录模型**维持
+    玩家裁定口径**,待玩家确认(采集口径见 ADR-0623 决策3)。
+    """
+    return reward_base_gold(plane, round_num)
+
+
+@dataclass(frozen=True)
+class LostNodeRef:
+    """被败战斗节点的引用(败补分支的取键输入)。
+
+    ``node_type`` = 引擎 token(battle/encounter/boss,与
+    :data:`LOSS_GOLD_BY_NODE` 键同域);坐标系=节点序列台账
+    (plane+round_num,跨位面 round 重启)。由调用方在战斗结算段构造:
+    仅当上一战斗类节点败(delta<=0)且败态未被消费时传入。
+    """
+
+    plane: int
+    round_num: int
+    node_type: str
+
+
+@dataclass(frozen=True)
+class RoundStartIncome:
+    """轮首收入三分支的分解账(实机/sim 记账与决策共读同一份分解)。
+
+    ``branch``:supply/reward/loss_comp/combat 四值——supply=补给轮
+    (连胜不动)、reward=奖励轮(连胜照发×倍率)、loss_comp=败补(连胜
+    取 0)、combat=常规战斗胜轮(连胜照发×倍率)。分支派发序与引擎
+    elif 序一致(supply→reward→败补→常规,BoardState 设计 §4.2 行选择
+    优先级;奖励/补给轮不发 LOSS_GOLD)。
+    """
+
+    branch: str
+    base: int            # 基础奖励分量(败补分支=补发基项)
+    interest: int        # 利息分量(含息 flat 修饰)
+    streak: int          # 连胜分量(已乘 win_reward_mult;supply/loss_comp 恒 0)
+    total: int           # 三分量之和
+
+    def as_dict(self) -> dict[str, int | str]:
+        """账本行形态(sim 收入段 dict 行与实机遥测行共用的投影)。"""
+        return {'branch': self.branch, 'base': self.base,
+                'interest': self.interest, 'streak': self.streak,
+                'total': self.total}
+
+
+def _streak_component(streak: int, win_reward_mult: float) -> int:
+    """连胜分量 = streak_gold(进轮连胜) × win_reward_mult(四舍五入取整)。
+
+    倍率单一源 = 注册表 STRATEGY_ECONOMY.win_reward_mult(聚合取最大
+    不叠乘,cw_investments.aggregate_economy);在册唯一非 1 值=伟大征服
+    3.0。**含奖励轮**(BoardState 设计 §4.1:win_reward_mult 施于连胜
+    分量含奖励轮,消持卡局奖励轮系统性少计——修复 sim 零消费挂账的
+    kernel 半部,引擎侧消费=T1b)。
+    """
+    return int(round(streak_gold(streak) * win_reward_mult))
+
+
+def round_start_income(
+        plane: int, round_num: int, node_type: str, gold: int, streak: int,
+        *, lost_node: LostNodeRef | None = None,
+        win_reward_mult: float = 1.0,
+        interest_flat: int = 0,
+        interest_cap: int | None = None) -> RoundStartIncome:
+    """轮首收入三支单一源(统一观察架构 §7-T1:同输入必同输出,禁第二份)。
+
+    - 分支派发(与引擎 elif 序同构,supply→reward→败补→常规):
+      supply → base+息,连胜不动(补给轮连胜不动,ADR-0439 决策 2);
+      reward → base+连胜×倍率+息(连胜照发含 counter0=1);当前为战斗
+      类节点且 ``lost_node`` 在场 → 败补(base=补发基项+息,连胜取 0,
+      win_reward_mult 不生效);其余 → 常规战斗胜轮(base+连胜×倍率+息)。
+    - ``lost_node``:调用方契约=上一战斗类节点败且败态未被消费时传入
+      (败态跨奖励/补给轮的归宿——吞掉还是递延——是调用方策略,本函数
+      不裁决,待实机实证挂观测期核对项,BoardState 设计 §4.2)。
+    - ``interest_flat``:息 flat 修饰(狸财经狸每节点固定息,与息帽无关;
+      聚合单一源=EconomyEffect.interest_flat_per_node)。
+    - ``interest_cap``:resolved 息帽(None→DEFAULT_INTEREST_CAP;归一口
+      =:func:`interest_cap_resolved`,禁调用方内联 cap 字面量)。
+    - 值域注:奖励/常规轮的 base 经 :func:`reward_base_gold` 平面感知
+      取键(P2r1/P3r1 单键误返 3 hazard 在此消灭);r8 位面大奖励
+      (ADR-0439 挂账,sim 少发 ~9)与事件金不在本函数辖域(触发面不同,
+      调用方单列)。**辖域排除(ADR-0623 决策1)**:gold_per_node/
+      gold_per_boss_node/战斗表现条件类三轮首真实金分量(引擎 'invest'
+      键单列)签名无槽位,承载方式(分量扩参 or 调用方聚合单列)随 T1b
+      定;supply 支 base 取平面感知键=实现选择(正本只写「基础」;现节点
+      序 supply 不落 r1/r2 与引擎恒 5 无数值差,节点序变异时两域分叉,
+      键语义随 T1b 复核)。
+    """
+    if node_type == 'supply':
+        base = reward_base_gold(plane, round_num)
+        streak_amt = 0
+        branch = 'supply'
+    elif node_type == 'reward':
+        base = reward_base_gold(plane, round_num)
+        streak_amt = _streak_component(streak, win_reward_mult)
+        branch = 'reward'
+    elif lost_node is not None:
+        base = loss_compensation_base(lost_node.plane, lost_node.round_num,
+                                      lost_node.node_type)
+        streak_amt = 0
+        branch = 'loss_comp'
+    else:
+        base = reward_base_gold(plane, round_num)
+        streak_amt = _streak_component(streak, win_reward_mult)
+        branch = 'combat'
+    interest_amt = (interest(gold, interest_cap_resolved(interest_cap))
+                    + interest_flat)
+    return RoundStartIncome(branch=branch, base=base, interest=interest_amt,
+                            streak=streak_amt,
+                            total=base + interest_amt + streak_amt)
 
 
 #: 每节点基础收入的近似常量(单一源:cw_sim 收入模型消费)。
@@ -232,6 +399,11 @@ LOSS_GOLD_BY_NODE: dict[str, int] = {'battle': 2, 'encounter': 4, 'boss': 4}
 #: BASE_INCOME=5 恰好盖住奖励轮照发的连胜金 table[0]=1——单独改 streak 不改本表
 #: 会让奖励轮多发 1(ADR-0439 成对约束)。
 REWARD_BASE_GOLD_BY_ROUND: dict[int, int] = {1: 3, 2: 4}
+
+#: P1 之外各轮的基础奖励统一近似值(与 :data:`BASE_INCOME` 同源同值,禁在本
+#: 模块另写裸 5;P2r1=5 是 economy.md §10.1 结构化直读两批独立的定谳值,
+#: P3r1=5 是无直读样本下的近似、挂账维持——见 :func:`reward_base_gold`)。
+_REWARD_BASE_DEFAULT: int = BASE_INCOME
 
 #: sim 收入口径版本(独立披露,不占 cw_coarse_battle.COARSE_CALIB_VERSION——
 #: 那是粗模型战斗引擎校准的版本,收入口径在 cw_economy/cw_sim 收入段,另一子系统)。

@@ -208,7 +208,7 @@ class PrepActionExecutor:
 
     SELL_POINT: ClassVar[Point] = Point(70, 846)      # 出售区(左下,同 deploy_bench/_handle_bench_full)
     BOX_SCREEN: ClassVar[str] = '货币战争-备战-武装箱选择'
-    BOX_OPEN_DY: ClassVar[int] = 41                   # 「开启」文字区 = 箱 icon 下方偏移(cw_screen_supply 实测)
+    BOX_OPEN_DY: ClassVar[int] = 41                   # 「开启」文字区 = 箱 icon 下方偏移(2026-08-14 实测:槽center(563,911)→命中(565,952))
     CARD_Y: ClassVar[int] = 290                       # 武装箱卡身点击 y(点卡名下方一点避「查看详情」)
     LEVEL_MAX_CLICKS: ClassVar[int] = 12              # 升级单动作最多买经验次数(同 _handle_bench_full 量级)
     SPHERE_MAX_CLICKS: ClassVar[int] = 12             # 单动作点球硬上限(防识别抖动死循环)
@@ -650,15 +650,15 @@ class PrepActionExecutor:
                     return names[idx]
             except Exception:   # noqa: BLE001  策略失败回落旧逻辑
                 pass
-        from sr_od.application.currency_war.operations.cw_screen.cw_screen_supply import (
-            _material_value,
+        from sr_od.application.currency_war.kernel.cw_prep_expect import (
+            material_value,
         )
         if match is not None and strategy_state_of(match.session).target_comp is not None:
             key_equips = set(strategy_state_of(match.session).target_comp.key_equips or [])
             for n, x in names:
                 if n in key_equips:
                     return n, x
-        best = max(names, key=lambda t: _material_value(t[0]))
+        best = max(names, key=lambda t: material_value(t[0]))
         return best
 
     # ===== 席位域 =====
