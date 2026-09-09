@@ -97,7 +97,3 @@ def board_by_row(deployed: list[BenchChar]) -> BoardByRow:
     return BoardByRow(front=front, back=back)
 
 
-def board_by_row_of(state) -> BoardByRow:
-    """便捷入口:从 GameState 取 deployed 聚合(签名宽松 = duck-typing,
-    测试/sim 的 state-like 视图同样可用)。"""
-    return board_by_row(getattr(state, 'deployed', []) or [])

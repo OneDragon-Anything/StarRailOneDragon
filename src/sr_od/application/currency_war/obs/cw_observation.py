@@ -871,27 +871,6 @@ def read_streak(ctx: SrContext, screen: MatLike) -> int | None:
     return None
 
 
-def parse_damage_value(s: str) -> int | None:
-    """伤害值文本 → int('126.5万'→1265000 / '1439282'→1439282 / '89.8亿'→...;无数字/异常 → None)。
-
-    战斗实时屏右侧「伤害」列角色明细 parse(总伤害 = 各角色求和,**无单独字段**;2026-08-12 视觉大模型确认)。
-    """
-    s = (s or '').strip()
-    if not s:
-        return None
-    mult = 1
-    if s.endswith('万'):
-        mult = 10_000
-        s = s[:-1]
-    elif s.endswith('亿'):
-        mult = 100_000_000
-        s = s[:-1]
-    try:
-        return int(round(float(s) * mult))
-    except ValueError:
-        return None
-
-
 # 难度确认屏 reader(开局读本局职级;非备战屏,放本模块集中 OCR readers)
 _DIFFICULTY_CONFIRM_SCREEN: str = '货币战争-难度确认'
 
