@@ -19,6 +19,7 @@ bug#1 根治(W849 批,台账 6/6「retry 仍败」证明原地 retry 失败相�
 """
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
@@ -32,19 +33,11 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_equipment_data import (
     EQUIP_TOOL_CATEGORY,
 )
-from sr_od.application.currency_war.kernel.cw_comps import (
-    EQUIP_CAPACITY,
-    equip_alloc_empty_reason,
-)
 from sr_od.application.currency_war.kernel.cw_equip_env import (
-    classify_item_hold,
     classify_zero_wear_stop_reason,
-    resolve_affix_priority_order,
-    resolve_wear_release,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
-from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
     load_avatar_templates,
@@ -57,8 +50,6 @@ from sr_od.application.currency_war.obs.cw_equipment import (
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     _ctx_slots,
-    read_deployed_chars,
-    read_row_equipped,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -67,13 +58,35 @@ from sr_od.operations.sr_operation import SrOperation
 # 类名单一源 = cw_equipment_data.EQUIP_TOOL_CATEGORY(与策略侧同源,原本地
 # 平行定义 _TOOL_CATEGORIES 已收编)。
 
+
+@dataclass(frozen=True)
+class EquipWearStep:
+    """单件穿戴计划步(计划随指令下发的契约载体;ADR-0601 §3-C1)。
+
+    产出位 = 分发段 ``prep_actions._build_equip_wear_plan``(对执行帧
+    现读后由 kernel 判据单一源求值),随 ``CwOpEquipAll.__init__(ctx, plan)``
+    构造下发;op 对计划只做机械执行(定位/拖拽/验穿/报告),禁二次求值。
+
+    字段坐标系(索引/槽位字段定义注释约定):
+    - ``row``: 'front'|'back'(画面物理排;deployed 槽位表同坐标系);
+    - ``slot``: 物理槽位 1-based(前排 1-4 / 后排 1-选档 N;非列表下标
+      ——与 prep_actions §13.1 slot 语义全局统一一致),**产出期快照**
+      (builder 现读 deployed 戳记),pass 内恒稳;
+    - ``char_name``: 分配目标角色注册名;**'' = front-only 回退步**
+      (身份读失败分支:无角色身份,拖点 = 前排空槽 avatar),全 char_name
+      为 '' 的计划 = 回退路径计划(哨兵不挂,与今日该分支无哨兵一致)。
+    """
+    item_name: str
+    char_name: str
+    row: str
+    slot: int
+
 # ===== 拖拽失败降级(dd-015;复盘 g_20260902_181254 修复项 A)=====
 # 实证形态:同一(源件→目标)拖拽 diff=0.0 连败 4 轮,每轮整个装备步骤
 # 中止(~18s/轮)且无跨轮记忆。修法三件:失败计数登记(session 级,跨轮
 # 存活)→ 连败达限拉黑该(件,角色)对;单件失败跳过继续穿下一件(不再
 # break 中止整批);拖点坐标错配修正见 ``CwOpEquipAll._slot_drag_point``。
 DRAG_FAIL_BLACKLIST_LIMIT: int = 2   # 同一对连败达此次数 → 拉黑
-_EQUIP_MAX_WEAR_ITERS: int = 20      # 穿戴主循环硬上限(防异常态空转;量级=owned 件数×2)
 
 
 def equip_drag_key(item_name: str, char_name: str) -> tuple[str, str]:
@@ -227,11 +240,11 @@ def _prioritize_wearable(
     return prioritized + rest
 
 
-# ===== hold 触发权归策略侧(ADR-0526 判据表;ADR-0531 收窄)=====
-# _transition_hold_active/_opening_hold_active/_rust_release_active 三判据
-# 已整编迁移至 kernel/cw_equip_env.resolve_wear_release;收窄后本层
-# 消费位 = classify_item_hold 逐件判定(帧级 ``.hold`` 只辖 row2 域),
-# 禁在本层加第二套时机判断(与 ADR-0461 裁定 3 同理由)。
+# ===== hold 触发权归策略侧(ADR-0526 判据表;ADR-0531 收窄;ADR-0601 §3-C1)=====
+# hold/释放判据已整编迁移至 kernel/cw_equip_env(函数名清单与唯一消费位 =
+# prep_actions._build_equip_wear_plan 分发段);收窄后的逐件判定亦随求值块
+# 迁出(2026-09-09 批),本层零时机判断(与 ADR-0461 裁定 3 同理由),
+# 残留判据函数引用 = 违规回归(验收锁 test_cw_equip_plan_builder)。
 
 
 def get_equip_templates_cached(ctx: SrContext) -> dict[str, tuple[MatLike, tuple, np.ndarray]] | None:
@@ -257,6 +270,94 @@ def get_equip_templates_cached(ctx: SrContext) -> dict[str, tuple[MatLike, tuple
     return templates
 
 
+def get_equip_tm_grays_cached(ctx: SrContext) -> dict[str, MatLike] | None:
+    """加载 cw_equip TM grays(缓存 ctx.cw_equip_tm_grays;``read_row_equipped``
+    读 avatar 已穿用;模块级单一源,``CwOpEquipAll._get_tm_grays`` 委托本函数,
+    分发段 ``_build_equip_wear_plan`` 资源前置同源消费)。
+
+    与 ``get_equip_templates_cached`` 互补:后者 SIFT keypoint/descriptor
+    (read_equips owned 列用);本函数返简单 gray(``matchTemplate`` 用,
+    read_equipped_below below-avatar mini icon 用)。两套同源(`assets/template/cw_equip`)。
+    """
+    cached = getattr(ctx, 'cw_equip_tm_grays', None)
+    if cached is not None:
+        return cached
+    base = get_project_root() / 'assets/template'
+    equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(同 get_equip_templates_cached)
+    if not equip_dir.is_dir():
+        equip_dir = base / 'currency_war' / 'equip_legacy'
+    if not equip_dir.is_dir():
+        log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
+        return None
+    grays = load_equip_tm_grays(equip_dir)
+    ctx.cw_equip_tm_grays = grays
+    log.info(f'[cw-equip] 加载 {len(grays)} 个 cw_equip TM grays(缓存 ctx)')
+    return grays
+
+
+def get_avatar_templates_cached(ctx: SrContext) -> AvatarTemplates | None:
+    """加载立绘 SIFT 模板(ADR-0154 M7 身份用;缓存 ctx.cw_portrait_templates,
+    与 deploy_bench 同源;模块级单一源供分发段 ``_build_equip_wear_plan`` 消费,
+    ``CwOpEquipAll._get_avatar_templates`` 委托本函数)。"""
+    cached = getattr(ctx, 'cw_portrait_templates', None)
+    if cached is not None:
+        return cached
+    base = get_project_root() / 'assets/template'
+    portrait_dir = base / 'currency_war' / 'portrait_plaza'
+    if not portrait_dir.is_dir():
+        return None
+    templates = load_avatar_templates(portrait_dir)
+    ctx.cw_portrait_templates = templates
+    log.info(f'[cw-equip] 加载 {len(templates)} 个 avatar 模板(M7 身份,缓存 ctx)')
+    return templates
+
+
+def record_zero_wear_defect(ctx: SrContext, equipped: int,
+                            owned_names: list[str], stop_reason: str) -> None:
+    """零穿戴哨兵(W596/W593 方案②;纯观测,零行为变更;ADR-0601 §3-C1
+    起为**双挂点单一源**:op 执行面(拖拽落空/槽位坐标缺失/画面漂移)与
+    分发段计划面(pool_empty/两 hold/分配方案空/分配对全部拉黑,经
+    ``prep_actions._run_equip`` 空计划短路挂,equipped=0)。
+
+    触发面(DESIGN §五):装备 pass 结束时 worn_added==0 且 owned 有**可穿**件
+    (工具类过滤,与穿戴决策同口径)且 state.round_num≥3 → defect_ledger 记
+    ``equip_zero_wear`` 一条(带 owned 名单、stop 原因与**辖域归域**;
+    severity 走通道缺省 L2 观测,不停机)。病灶出处:局22(r3~r9 连续零
+    穿戴无一报警,排查靠三段证据合围)——本哨兵让下次复发当轮可查台账归因。
+    round<3 不触发:r1~r2 开局 hold(ADR-0257)零穿戴是 by design。
+    无 state(run 上下文缺失/离线)静默跳过。
+    **辖域二分(18 号稿 §1.2)**:stop_reason 按归域分流裁定——
+    strategy_by_design=策略 by-design(释放判据表解释);strategy_gap=
+    策略语义缺口;execution=执行链;execution_pending=枚举外兜底行
+    (暂归执行链待分诊,新枚举值回 18 号稿 §1.2 补表)。
+    """
+    if equipped > 0:
+        return
+    wearable_owned = [n for n in owned_names
+                      if EQUIPMENTS.get(n) is not None
+                      and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
+    if not wearable_owned:
+        return
+    from sr_od.application.currency_war.telemetry import defects as cw_telemetry
+    _match = getattr(ctx, 'cw_match', None)
+    st = getattr(getattr(_match, 'session', None), 'last_state', None)
+    if st is None or int(getattr(st, 'round_num', 0) or 0) < 3:
+        return
+    _reason = stop_reason or '循环自然结束(stall)'
+    cw_telemetry.record_defect(
+        surface='equip', kind='equip_zero_wear',
+        expected='owned 有可穿件且 round>=3:本 op 至少穿 1 件',
+        observed=(f'worn_added=0 owned={wearable_owned} '
+                  f'stop_reason={_reason} '
+                  f'domain={classify_zero_wear_stop_reason(stop_reason)}'),
+        plane=int(getattr(st, 'plane', 1) or 1),
+        round_num=int(st.round_num),
+        note=('观测面不停机;辖域二分(18 号稿 §1.2):'
+              'strategy_by_design=by-design 残留;'
+              'strategy_gap=策略语义缺口(词缀优先层/工具消费评估);'
+              'execution=执行链即查;execution_pending=枚举外兜底待分诊'))
+
+
 class CwOpEquipAll(SrOperation):
     """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排**空**角色头像(P0-2 占位检测)→ avatar-slot CV-diff 验穿。
 
@@ -273,6 +374,17 @@ class CwOpEquipAll(SrOperation):
     # 消费面 = run_record/日志判读与 prep_no_progress 停机留证归因。
     STATUS_SCREEN_DRIFTED: ClassVar[str] = \
         '画面漂移(批内非干净备战,执行环境失配)'
+    # 计划失效(ADR-0601 §3-C1;tools C3 同形):计划步件经首读+一次机械
+    # 现读重试仍不可定位(robust 合成消耗/列 reflow)→ round_fail 闩不置,
+    # 下帧重派时分发段 _build_equip_wear_plan 对 fresh 帧重算 = 天然重算,
+    # 保住期内穿戴极大性(合成产物当帧进入新计划)。
+    STATUS_PLAN_STALE: ClassVar[str] = \
+        '装备计划失效(计划步件两次现读不可定位,交回重派重算)'
+    # 空计划合法稳态(dd-037 对称出口):生产路径不可达(分发段 _run_equip
+    # 已对空计划短路 NOOP+闩照置),仅为直接构造面(测试/未来调用方)提供
+    # 对称出口,不承担闩闭合职责。
+    STATUS_PLAN_EMPTY: ClassVar[str] = \
+        '装备计划空(合法稳态,无穿戴步)'
     # 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量)。
     FRONT_SLOT_COUNT: ClassVar[int] = 4
     # 前排 avatar 拖拽点兜底常量(坐标单一源整改:主源 = screen_info「前排-N」
@@ -288,8 +400,16 @@ class CwOpEquipAll(SrOperation):
     BX_HALF: ClassVar[int] = 35                   # below-icon crop 半宽
     BELOW_DIFF_THRESHOLD: ClassVar[float] = 8.0   # drag 前后 diff 阈值(>阈值=穿了;待跨局面调)
 
-    def __init__(self, ctx: SrContext):
+    def __init__(self, ctx: SrContext, plan: list[EquipWearStep]):
+        """组合 op 构造(计划随指令下发;ADR-0601 §3-C1)。
+
+        ``plan`` = 分发段 ``prep_actions._build_equip_wear_plan`` 产出的
+        机械执行计划(EquipWearStep 列表),**必填无缺省**——缺计划无法
+        执行;空计划由分发段短路具名 NOOP,生产路径不会以空计划构造本 op
+        (直接构造面的空计划走 STATUS_PLAN_EMPTY 防御分支)。
+        """
         SrOperation.__init__(self, ctx, op_name='货币战争-全员装备')
+        self.plan: list[EquipWearStep] = list(plan)
 
     def _front_avatar_points(self) -> list[Point]:
         """前排 4 槽 avatar 拖拽点(screen_info 前排-N rect 派生;缺失回退常量)。
@@ -313,25 +433,8 @@ class CwOpEquipAll(SrOperation):
         return get_equip_templates_cached(self.ctx)
 
     def _get_tm_grays(self) -> dict[str, MatLike] | None:
-        """加载 cw_equip TM grays(缓存 ctx.cw_equip_tm_grays;``read_row_equipped`` 读 avatar 已穿用)。
-
-        与 ``_get_templates`` 互补:后者 SIFT keypoint/descriptor(read_equips owned 列用);本函数返
-        简单 gray(``matchTemplate`` 用,read_equipped_below below-avatar mini icon 用)。两套同源(`assets/template/cw_equip`)。
-        """
-        cached = getattr(self.ctx, 'cw_equip_tm_grays', None)
-        if cached is not None:
-            return cached
-        base = get_project_root() / 'assets/template'
-        equip_dir = base / 'currency_war' / 'equip_plaza'   # 混合库(同 _get_templates)
-        if not equip_dir.is_dir():
-            equip_dir = base / 'currency_war' / 'equip_legacy'
-        if not equip_dir.is_dir():
-            log.warning(f'[cw-equip] cw_equip 模板库不存在 {equip_dir}')
-            return None
-        grays = load_equip_tm_grays(equip_dir)
-        self.ctx.cw_equip_tm_grays = grays
-        log.info(f'[cw-equip] 加载 {len(grays)} 个 cw_equip TM grays(缓存 ctx)')
-        return grays
+        """加载 cw_equip TM grays(单一源 = get_equip_tm_grays_cached)。"""
+        return get_equip_tm_grays_cached(self.ctx)
 
     def _wait_stable_frame(self, interval: float = 0.3,
                            budget_s: float = 1.2) -> MatLike:
@@ -386,7 +489,7 @@ class CwOpEquipAll(SrOperation):
         首拖共用同一帧坐标/同一时序 → 失败相关。补救链每次重试前:① park 光标
         ② ``relocate()`` 现读坐标(列 reflow/首读动画帧错位自愈)③ 参数升级
         (_WEAR_RETRY_PARAMS 逐档)。``relocate`` 返 None = 件已不在 owned(被合成消耗/
-        reflow miss)→ 立即放弃本件(交还主循环 stall 语义,不硬撑)。全档仍败 →
+        reflow miss)→ 立即放弃本件(交还主循环按计划步语义处置)。全档仍败 →
         (False, 末次 diff),交由主循环停手并进哨兵归因。
         """
         cur_start = start
@@ -410,18 +513,8 @@ class CwOpEquipAll(SrOperation):
         return False, diff
 
     def _get_avatar_templates(self) -> AvatarTemplates | None:
-        """加载立绘 SIFT 模板(ADR-0154 M7 身份用;缓存 ctx.cw_portrait_templates,与 deploy_bench 同源)。"""
-        cached = getattr(self.ctx, 'cw_portrait_templates', None)
-        if cached is not None:
-            return cached
-        base = get_project_root() / 'assets/template'
-        portrait_dir = base / 'currency_war' / 'portrait_plaza'
-        if not portrait_dir.is_dir():
-            return None
-        templates = load_avatar_templates(portrait_dir)
-        self.ctx.cw_portrait_templates = templates
-        log.info(f'[cw-equip] 加载 {len(templates)} 个 avatar 模板(M7 身份,缓存 ctx)')
-        return templates
+        """加载立绘 SIFT 模板(单一源 = get_avatar_templates_cached)。"""
+        return get_avatar_templates_cached(self.ctx)
 
     def _slot_drag_point(self, row: str, slot: int) -> tuple[Point, int] | None:
         """(row, slot) → (avatar 拖拽点, below 验穿 y);ADR-0154 后排支持。
@@ -459,45 +552,9 @@ class CwOpEquipAll(SrOperation):
 
     def _zero_wear_sentinel(self, equipped: int, owned_names: list[str],
                             stop_reason: str) -> None:
-        """零穿戴哨兵(W596/W593 方案②;纯观测,零行为变更)。
-
-        触发面(DESIGN §五):本 op 结束时 worn_added==0 且 owned 有**可穿**件
-        (工具类过滤,与穿戴决策同口径)且 state.round_num≥3 → defect_ledger 记
-        ``equip_zero_wear`` 一条(带 owned 名单、stop 原因与**辖域归域**;
-        severity 走通道缺省 L2 观测,不停机)。病灶出处:局22(r3~r9 连续零
-        穿戴无一报警,排查靠三段证据合围)——本哨兵让下次复发当轮可查台账归因。
-        round<3 不触发:r1~r2 开局 hold(ADR-0257)零穿戴是 by design。
-        无 state(run 上下文缺失/离线)静默跳过。
-        **辖域二分(18 号稿 §1.2)**:stop_reason 按归域分流裁定——
-        strategy_by_design=策略 by-design(释放判据表解释);strategy_gap=
-        策略语义缺口;execution=执行链;execution_pending=枚举外兜底行
-        (暂归执行链待分诊,新枚举值回 18 号稿 §1.2 补表)。
-        """
-        if equipped > 0:
-            return
-        wearable_owned = [n for n in owned_names
-                          if EQUIPMENTS.get(n) is not None
-                          and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-        if not wearable_owned:
-            return
-        from sr_od.application.currency_war.telemetry import defects as cw_telemetry
-        _match = getattr(self.ctx, 'cw_match', None)
-        st = getattr(getattr(_match, 'session', None), 'last_state', None)
-        if st is None or int(getattr(st, 'round_num', 0) or 0) < 3:
-            return
-        _reason = stop_reason or '循环自然结束(stall)'
-        cw_telemetry.record_defect(
-            surface='equip', kind='equip_zero_wear',
-            expected='owned 有可穿件且 round>=3:本 op 至少穿 1 件',
-            observed=(f'worn_added=0 owned={wearable_owned} '
-                      f'stop_reason={_reason} '
-                      f'domain={classify_zero_wear_stop_reason(stop_reason)}'),
-            plane=int(getattr(st, 'plane', 1) or 1),
-            round_num=int(st.round_num),
-            note=('观测面不停机;辖域二分(18 号稿 §1.2):'
-                  'strategy_by_design=by-design 残留;'
-                  'strategy_gap=策略语义缺口(词缀优先层/工具消费评估);'
-                  'execution=执行链即查;execution_pending=枚举外兜底待分诊'))
+        """零穿戴哨兵挂点(执行面;单一源 = 模块级 record_zero_wear_defect,
+        计划面挂点在 prep_actions._run_equip 空计划短路,双挂点共用实现)。"""
+        record_zero_wear_defect(self.ctx, equipped, owned_names, stop_reason)
 
     @operation_node(name='全员装备', is_start_node=True, node_max_retry_times=5)
     def equip_all(self) -> OperationRoundResult:
@@ -528,437 +585,151 @@ class CwOpEquipAll(SrOperation):
         tmpl_grays = self._get_tm_grays()
         if tmpl_grays is None:
             return self.round_fail('cw_equip TM grays 未加载(无法读槽位占位)')
-        # ===== M7 装备角色级分配(ADR-0154;方法论 M7:装备是角色特定的)=====
-        # 身份(SIFT read_deployed_chars,**立绘模板**非装备模板)+ 两排已穿(read_row_equipped)
-        # → equip_allocation(carry 先拿 key_equips 按序 → 其余 core → 剩余兜底)→ 逐件 drag 到
-        # **该角色 avatar**(前排实测常量/后排 screen_info 推导)+ below CV-diff 验穿。
-        # 身份读失败 → 退回旧 front-only 流程(robust;offline fixture 也走旧路径)。
-        avatar_templates = self._get_avatar_templates()
-        deployed = (read_deployed_chars(self.ctx, screen, avatar_templates)
-                    if avatar_templates is not None else [])
+        # ===== 计划消费循环(ADR-0601 §3-C1:机械执行,禁二次求值)=====
+        # 计划 = 分发段 _build_equip_wear_plan 产出随构造下发(self.plan);
+        # hold/释放/分配四 kernel 判据已随求值块迁出至分发段(prep_actions,
+        # 函数名清单见该 builder docstring——本文件对四名零字面引用,验收锁
+        # test_cw_equip_plan_builder::test_equip_op_kernel_criteria_free
+        # 按源码文本逐名扫描)。
+        # 本循环只做:屏断言(E2/E3 执行断言)→ owned 现读(W209g 快照
+        # 写端)→ 计划件定位(miss → 一次机械现读重试 → 仍 miss =
+        # STATUS_PLAN_STALE fail-fast,下帧重派时分发段对 fresh 帧重算)
+        # → 拖点解析(缺失跳步)→ 拖拽补救链/CV-diff 验穿/dd-015 登记。
         _match = self.ctx.cw_match
-        _tgt_comp = (strategy_state_of(_match.session).target_comp
-                     if (_match is not None and _match.session is not None) else None)
-        # ⚖️ 过渡期持有语义修正(r70 审计刀②,替 2026-08-16 旧指示):旧版 form<COMMIT_FRAC
-        # 全 P1 攒仓库 = 白板打 8 个战斗节点 + r9 boss(每场稳定掉血的确定性损失;r70 实证
-        # P1 八战掉 62 血)。修正:过渡期**穿给当前上场的 5 人**——key_equips 命中件照穿
-        # (未来迁给核心只付一次性拆卸),非 key 散件穿给当前板面高战力者(carry 优先);
-        # 「攒给成型核心」只在**已定型**(非双轨)且 form 低时保留。
-        _form = 0.0
-        if _tgt_comp is not None and deployed:
-            from sr_od.application.currency_war.kernel.cw_comps import (
-                form_progress,
-            )
-            from sr_od.application.currency_war.kernel.cw_state import GameState
-            _st = (_match.session.last_state if _match is not None else None) or GameState()
-            _form = form_progress(_tgt_comp, _st)
-        # W629-R1 扩口(批 2):state/last_state 通道读点点名迁移——
-        # committed 读端唯一化(decision_v2.prep_brain.committed_from,
-        # 内部 = cw_intention 权威派生);本处旧形为 last_state 通道裸直读
-        # 双轨字段(在「session 读点」守卫措辞之外,W623 D3 活证据),随本批
-        # 并入守卫辖域(state 通道 grep 锁,test_cw_w620/w628)。
-        from sr_od.application.currency_war.kernel.cw_intention import (
-            committed_from as _committed_from,
-        )
-        _committed = (_committed_from(_match.session,
-                                      _match.session.last_state)
-                      if (_match is not None
-                          and getattr(_match.session, 'last_state', None)
-                          is not None) else False)   # 缺供给 = 双轨保守侧(D2)
-        # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励
-        # 节点无战斗)穿装备零战斗变现,且阵容未起步(form≈0 时
-        # 分配语义退化为「谁在场谁独占」——r2 一人穿 2 件实证);
-        # key_equips 命中件照穿(命中即阵容意图明确),gen 散件
-        # 攒到 r3 战斗轮再穿。与 r70「P1 白板也该穿」不冲突:
-        # 白板 8 战指的是 r3+ 战斗期,不含奖励轮。
-        # R3 修正(ADR-0257):开局 hold 不再依赖 target 存在。
-        _st_hold = (getattr(_match.session, 'last_state', None)
-                    if _match is not None else None)
-        _round_now = (_st_hold.round_num
-                      if (_st_hold is not None
-                          and getattr(_st_hold, 'plane', 1) == 1) else None)
-        # ADR-0461:hold 收窄+生锈豁免,开关走策略 registry
-        # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
-        # =全关,零漂移)。
-        from sr_od.application.currency_war.kernel.cw_registry import (
-            DEFAULT_REGISTRY,
-        )
-        from sr_od.application.currency_war.kernel.cw_state import ledger_node_type
-        _reg_eq = (getattr(getattr(_match, 'strategy', None), 'registry', None)
-                   or DEFAULT_REGISTRY)
-        _node_type = (getattr(_st_hold, 'node_type', None)
-                      if _st_hold is not None else None)
-        if _node_type is None and _st_hold is not None and _round_now is not None:
-            _node_type = ledger_node_type(_match.session,
-                                          getattr(_st_hold, 'plane', 1),
-                                          _round_now)
-        # O1 门输入(21 号稿 §2.3):后随节点 = 本备战帧之后第一个节点的
-        # 台账类型(r+1);缺档 None → 门不中(保守维持保留域判定,词汇表
-        # 与 row1 同源 opening_hold_battle_nodes)。
-        _next_node_type = (
-            ledger_node_type(_match.session, getattr(_st_hold, 'plane', 1),
-                             _round_now + 1)
-            if (_match is not None and _st_hold is not None
-                and _round_now is not None) else None)
-        # W880 装备环境信号单源(设计 §2.2):构造点唯一 = 本处,一次打包传递;
-        # 生锈豁免(门)、变宝为废(序)等变体一律吃 signals,
-        # 不再各自摸 state;state 缺失(离线/旧栈)= 空集 → 判据安全默认不启用。
-        from sr_od.application.currency_war.kernel.cw_equip_env import (
-            apply_equip_env_variants as _apply_env_variants,
-        )
-        from sr_od.application.currency_war.kernel.cw_equip_env import (
-            build_equip_env_signals,
-        )
-        _equip_signals = build_equip_env_signals(_st_hold)
-        # 释放判据表(ADR-0526)+ 收窄(ADR-0531):
-        # 五行评估单点在策略侧;row1(opening) 域扣留收窄为「三门全不中 ∧
-        # 保留域命中」的逐件判定(classify_item_hold),帧级 ``.hold`` 只辖
-        # row2 域——hold 触发权归策略侧(§1.2-1),禁在本层加第二套时机判断。
-        _release = resolve_wear_release(
-            _round_now, _node_type,
-            _reg_eq.opening_hold_battle_gate_enabled,
-            _reg_eq.opening_hold_battle_nodes,
-            _tgt_comp, _form, _committed,
-            sorted(_equip_signals.enemy_affixes),
-            _reg_eq.rust_wear_release_enabled,
-            next_node_type=_next_node_type)
-        _hold = _release.hold
-        # fill 防线③(设计 §3.1):row2 帧级扣留不激活 fill——
-        # hold 语义(攒给成型核心)优先,防两套意图打架
-        _fill_hold = _hold
-        if _release.rust_release and (_release.opening_hold
-                                      or _release.committed_hold):
-            log.info('[cw-equip] 库藏生锈在场 → hold 豁免(owned 滞留喂敌),全量穿戴')
-        elif _release.opening_hold or _hold:
-            log.info('[cw-equip] hold 域活跃(row1=%s O1战斗前置=%s row2=%s '
-                     'node=%s next_node=%s rust=%s penalty=%s form=%.2f):'
-                     'opening 扣留收窄为逐件判定(21 号稿 §2.3)',
-                     _release.opening_hold, _release.battle_precede_release,
-                     _release.committed_hold, _node_type, _next_node_type,
-                     _release.rust_release, _release.output_penalty_release,
-                     _form)
-        if deployed:
-            # W209g 断点③:后排装备读槽随布局选档(旧硬编码 10 与布局档自相
-            # 矛盾——deploy 拖 8 格坐标、装备读固定槽;select_back_layout
-            # 双通道单一源,ADR-0385/0387)。
-            from sr_od.application.currency_war.obs.cw_back_layout import (
-                select_back_layout as _sel_bl,
-            )
-            _bk_n, _bk_pfx = _sel_bl(self.ctx, screen)
-            _row_specs = (('front', '前排', 4), ('back', _bk_pfx, _bk_n))
-            occupied_m7: dict[tuple[str, int], list[str]] = {}
-            for row, prefix, n in _row_specs:
-                row_occ = read_row_equipped(self.ctx, screen, tmpl_grays, prefix, n)
-                for k, v in row_occ.items():
-                    occupied_m7[(row, k)] = list(v)
-            deployed_by_name: dict[str, list] = {}
-            for d in deployed:
-                if d.char_id:
-                    deployed_by_name.setdefault(d.char_id, []).append(d)
-            log.info('[cw-equip] M7 角色级分配:deployed=%s occupied=%s',
-                     [(d.char_id, d.position_pref, d.slot) for d in deployed],
-                     {f'{r}{s}': '+'.join(v) for (r, s), v in occupied_m7.items() if v})
-            # 「过渡持有→核心转移」不在本 op 实现:装备不能角色间直拖(机制纠正),
-            # 转移唯一途径 = 卖角色(装备全额回区)或拆装扳手(消耗工具)——
-            # 未来表达 = 决策器输出(卖角色+重买/重穿,或扳手两段),见
-            # docs/game/currency_war/research/equipment_mechanics.md「装备转移机制」节。
-            equipped = 0
-            stall = 0
-            _wear_iters = 0   # dd-015:穿戴硬上限计数(失败继续后 stall 不再兜底中止)
-            _stop_reason = ''   # 零穿戴哨兵(W596)归因字段:本轮为何停手
-            _owned_last: list[str] = []   # 哨兵输入:循环内最后一次 owned 全量快照
-            _snap_logged = False   # 每次装备只记一遍快照(循环重读不重复记)
-            # dd-015:拖拽失败记忆(session 级,跨轮累积;无 session 时局部 dict
-            # ——单轮内拉黑仍生效,只是不跨轮)
-            _fail_counts: dict = {}
-            if (_match is not None and _match.session is not None):
-                _fail_counts = _match.exec_state.equip_drag_fail_counts
-            while stall < 2 and _wear_iters < _EQUIP_MAX_WEAR_ITERS:
-                _wear_iters += 1
-                cur = self.screenshot()
-                if self.check_and_update_current_screen(
-                        cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
-                    # 执行断言(ADR-0601 §4 E2;同 E1 形态,前置画面闸
-                    # 执行断言化裁定的批内延伸):
-                    # 批内画面漂移 = 执行环境失配,如实 round_fail 交回外循环
-                    # 重判——禁旧 break+success 把「弃批」记成「M7 装备 X 件」
-                    # 假成功(闩置位/装备实际没穿,吞分发)。「该不该执行」归
-                    # 分发层(_run_composite 派发前置 + cw_loop 0 系 overlay 分支)。
-                    # 哨兵观测保留(纯观测零行为;stop_reason 串供分类域锁)。
-                    log.warning('[cw!][equip] 画面漂移(面板/浮窗开)→ 执行断言 fail')
-                    self._zero_wear_sentinel(equipped, _owned_last,
-                                             '画面非干净备战')
-                    return self.round_fail(
-                        CwOpEquipAll.STATUS_SCREEN_DRIFTED)
-                hits = read_equips(cur, templates, equip_rect=equip_rect)
-                _owned_last = [n for n, _, _ in hits]
-                wearable = [(n, p) for n, p, _ in hits
-                            if EQUIPMENTS.get(n) is not None
-                            and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-                # ADR-0358 修法 A 搬运链写端:owned 持有面快照进 session,
-                # 供 _pseudo_state 拷入决策 state.equips(持有面遥测/特征可见)。
-                # 每次现读都覆写(穿戴后 owned 减少,末次读=最新持有面)。
-                # W209g 断点②(ADR-0387 追加):写端**全量 hits**(工具进快照,
-                # 采集层无权丢数据);过滤只辖 wearable 穿戴决策。
-                if _match is not None and _match.session is not None:
-                    _match.session.last_owned_equips = [n for n, _, _ in hits]
-                if not _snap_logged:
-                    # ADR-0391 λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
-                    # 每轮备战首次读板记 owned 全量快照(含工具;发放流只在
-                    # 奖励/补给/投资策略/遭遇后事件点出现)——离线 diff 相邻轮
-                    # 快照 = 各节点发放件数 → λ 与事件条件化修正(P14 记账)。
-                    _st_ref = (getattr(_match.session, 'last_state', None)
-                               if _match is not None else None)
-                    _own_ct: dict[str, int] = {}
-                    for n, _, _ in hits:
-                        _own_ct[n] = _own_ct.get(n, 0) + 1
-                    log.info('[cw!][grant] plane=%s round=%s owned=%s',
-                             getattr(_st_ref, 'plane', '?'),
-                             getattr(_st_ref, 'round_num', '?'), _own_ct)
-                    # 判读锚点(P14 检验点 2):「缺什么囤什么」——目标 K 的
-                    # 组件需求 − 当前库存正差,判读/值守按此报装备面。
-                    if _tgt_comp is not None and _tgt_comp.key_equips:
-                        from sr_od.application.currency_war.data.cw_synthesis import (
-                            hoard_gaps,
-                        )
-                        gaps = hoard_gaps(list(_tgt_comp.key_equips),
-                                          [n for n, _, _ in hits])
-                        log.info('[cw!][hoard] gaps=%s', gaps or '库存已覆盖需求')
-                    _snap_logged = True
-                if not wearable:
-                    log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
-                    _stop_reason = 'pool_empty(无穿戴候选)'
-                    break
-                # 21 号稿 §2.3 消费位逐件化(v3,S6/B1):帧级布尔 hold 改
-                # 件级判定——同帧可「自由件穿+key 命中穿+保留域件扣」并存;
-                # 原「扣留帧只穿 key_equips 命中件」过滤迁移入
-                # classify_item_hold(求值序 O3→O1/O2→保留域→清单外)。
-                # free_slot = O2 门输入(存在有空装备槽的在场角色,现读)。
-                _free_slot_any = any(len(v) < EQUIP_CAPACITY
-                                     for v in occupied_m7.values())
-                _releasable = [(n, p) for n, p in wearable
-                               if not classify_item_hold(
-                                   _release, n, _tgt_comp, _free_slot_any)]
-                if not _releasable:
-                    # row1/row2 分键停手(21 号稿 §5 遥测分键:row1 域帧数
-                    # 趋零锚与 row2 committed hold 不回归锚预期相反,无
-                    # 分键则 O2 实机验收锚不可判读,v3,B3)
-                    if _release.opening_hold:
-                        log.info('[cw-equip] opening(row1) 三门全不中'
-                                 '(保留域扣留)→ 停')
-                        _stop_reason = ('opening_hold(row1):三门全不中'
-                                        '(保留域扣留)')
-                    else:
-                        log.info('[cw-equip] 扣留帧无 key_equips 命中(全攒着)→ 停')
-                        _stop_reason = '过渡期hold:无 key_equips 命中(全攒着)'
-                    break
-                # ADR-0526 词缀条件优先层在**释放帧**
-                # 重排(释放动作的次序)。收窄后扣留收窄为
-                # 逐件判定,可释放集非空即(部分)释放帧——序 = 策略侧决策层
-                # 产物,每次迭代现算(occupied 随穿戴推进,谓词满足度现读)。
-                _priority_order = resolve_affix_priority_order(
-                    _tgt_comp, deployed,
-                    sorted(_equip_signals.enemy_affixes), occupied_m7)
-                # W880 装备分配入口(kernel/cw_equip_env.apply_equip_env_
-                # variants;fill3 量变体与变宝为废序变体已随各自开关族删除
-                # ——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3,现=基分配
-                # equip_allocation 直通零漂移;W849 拖拽执行链零触碰)。
-                alloc, _env_actions = _apply_env_variants(
-                    _equip_signals, _reg_eq, _match.session, _tgt_comp,
-                    deployed, [n for n, _ in _releasable], occupied_m7,
-                    hold_active=_fill_hold,
-                    priority_order=_priority_order)
-                # (P1→P2 接口机制·②分配义务 hold 豁免已随五开关定谳清理
-                # 删除,ADR-0487:过渡期 hold 过滤恢复无条件既有语义。
-                #  21 号稿收窄后原「扣留帧 key 过滤」上移为 _releasable
-                #  件级判定,此处不再二次过滤。)
-                if not alloc:
-                    # W596/W593 方案③:分配空做结构化归因(pool_empty/capacity_full/
-                    # pairing_guard/no_deployed/unknown),替旧的一句话两义日志。
-                    _empty_reason = equip_alloc_empty_reason(
-                        _tgt_comp, deployed, [n for n, _ in _releasable],
-                        occupied_m7)
-                    log.info('[cw-equip] 分配方案空 原因=%s(owned=%s)→ 停',
-                             _empty_reason, [n for n, _ in _releasable])
-                    _stop_reason = f'分配方案空:{_empty_reason}'
-                    break
-                # dd-015:剔除已拉黑(件→角色)对后再取队首(失败 1 次的保留,
-                # 补救链重试一次;再败即拉黑,不再进后续轮次的 alloc)
-                alloc = filter_alloc_blacklisted(alloc, _fail_counts)
-                if not alloc:
-                    log.info('[cw-equip] 分配对全部拉黑(拖拽连败,dd-015)→ 停;'
-                             ' 拉黑集=%s', sorted(_fail_counts))
-                    _stop_reason = '分配对全部拉黑(drag 连败,dd-015)'
-                    break
-                char_name, want = alloc[0]
-                ds = deployed_by_name.get(char_name) or []
-                target_pv: tuple[Point, int] | None = None
-                for d in ds:
-                    pv = self._slot_drag_point(d.position_pref or 'back', int(d.slot or 1))
-                    if pv is not None:
-                        target_pv = pv
-                        d_used = d
-                        break
-                if target_pv is None:
-                    # 日志与行为对齐(593-596 语义修正,原为 break):单角色坐标缺失
-                    # 只跳过该分配项,不中断整轮穿戴。同一分配项会反复顶到队首,
-                    # stall 计数防死循环(连续 2 次定位不了 → 出循环交哨兵归因)。
-                    log.info('[cw-equip] %s 槽位坐标缺失 → 跳过该分配项', char_name)
-                    stall += 1
-                    _stop_reason = f'{char_name} 槽位坐标缺失'
-                    continue
-                entry = next(((n, p) for n, p in wearable if n == want), None)
-                if entry is None:
-                    stall += 1   # owned 列 reflow 瞬时 miss → 再读一次
-                    continue
-                name, (cx, cy) = entry
-                target, verify_y = target_pv
-                log.info('[cw-equip] M7 drag %s @(%d,%d) → %s(%s-%d) [%s]',
-                         name, cx, cy, char_name, d_used.position_pref, d_used.slot,
-                         'key' if (_tgt_comp and name in _tgt_comp.key_equips) else 'gen')
-
-                def _relocate_item(_want: str = want,
-                                   _tmpl=templates,
-                                   _rect=equip_rect) -> Point | None:
-                    """补救链坐标现读:件被合成消耗/列 reflow 后,首读坐标作废 → 现读。
-
-                    默认参绑定当轮值(ruff B023:闭包不绑循环变量)。
-                    """
-                    _hits = read_equips(self.screenshot(), _tmpl, equip_rect=_rect)
-                    _e = next(((n, p) for n, p, _ in _hits if n == _want), None)
-                    return Point(_e[1][0], _e[1][1]) if _e is not None else None
-
-                landed, diff = self._wear_with_recovery(Point(cx, cy), target,
-                                                        verify_y, _relocate_item)
-                if landed:
-                    equipped += 1
-                    key = (d_used.position_pref or 'back', int(d_used.slot or 1))
-                    occupied_m7.setdefault(key, []).append(name)
-                    stall = 0
-                    # 装备分布期望态(§3 B-6;落点已验后才登记)
-                    if _match is not None and _match.session is not None:
-                        register_equip_worn(_match.session, name, char_name,
-                                            d_used.position_pref or 'back',
-                                            int(d_used.slot or 1))
-                    log.info('[cw-equip] %s → %s 穿了(diff=%.1f)', name, char_name, diff)
-                else:
-                    # dd-015:失败不中止整批——登记失败(≥2 次拉黑该对,跨轮存活),
-                    # 跳过继续穿下一件。原 break 语义(复盘 g_20260902_181254 A 条
-                    # 实证:单件连败 → 当轮其余 8-10 件全不穿)废弃;真持续失败由
-                    # 拉黑过滤自然收敛(全部拉黑 → 上分支停),硬上限 _EQUIP_MAX_
-                    # WEAR_ITERS 兜底防异常态空转。
-                    # 定谳(2026-09-02,临时捕获钩子已删):该场景主根因 = M7 分配
-                    # 把阵营星徽分给同阵营角色(游戏装备不上,diff=0,机制见
-                    # equipment_mechanics §6 星徽 add-if-absent)——分配层已加同阵营
-                    # 排除,本降级只兜未知失败(设备/画面态偶发)。
-                    _bl = register_equip_drag_failure(
-                        _fail_counts, equip_drag_key(name, char_name))
-                    if _bl:
-                        log.warning('[cw!][equip] %s → %s 拖拽连败 %d 次 → 拉黑(dd-015,'
-                                    ' diff=%.1f;后排拖点已随布局档修正)',
-                                    name, char_name,
-                                    _fail_counts[equip_drag_key(name, char_name)], diff)
-                    else:
-                        log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 跳过继续下一件(dd-015)',
-                                 name, diff)
-                    _stop_reason = 'drag 落空(失败继续,dd-015)'
-                    break
-            # 零穿戴哨兵(W596/W593 方案②;纯观测,不停机零行为变更)
-            self._zero_wear_sentinel(equipped, _owned_last, _stop_reason)
-            return self.round_success(f'M7 装备 {equipped} 件(角色级分配)')
-        # ===== 旧 front-only 流程(身份读失败 fallback;原 ADR-0101 key_equips 优先)=====
-        # dd-015:回退路径失败记忆(session 级;键=(件名,''),与主路径键空间不交——
-        # 两路径互斥,M7 要求 deployed 身份可读,回退路径恰是其读失败分支)。
-        _fail_counts_fb: dict = {}
+        _fail_counts: dict = {}
         if _match is not None and _match.session is not None:
-            _fail_counts_fb = _match.exec_state.equip_drag_fail_counts
-        occupied = read_row_equipped(self.ctx, screen, tmpl_grays, '前排',
-                                     self.FRONT_SLOT_COUNT)
-        if occupied:
-            log.info('[cw-equip] 前排已穿槽(跳过不覆盖): %s',
-                     {k: '+'.join(v) for k, v in sorted(occupied.items())})
-        slots = _empty_slots(occupied, self.FRONT_SLOT_COUNT)
-        if not slots:
-            log.info('[cw-equip] 前排 avatar 全已穿 → 无空槽,停')
-            return self.round_success('前排 avatar 全已穿,跳过')
-        # avatar-slot CV-diff 验穿(R19治本③/D-41:替 count-verify —— robust 合成消耗2件/列reflow/read漏检;
-        # drag 前后对比目标 avatar 下方 mini icon 区,变了=穿[新装或合成],不变=drag 落空/非穿戴)
+            _fail_counts = _match.exec_state.equip_drag_fail_counts
         equipped = 0
-        for slot_idx in slots:
+        _owned_last: list[str] = []   # 哨兵输入:步内最后一次 owned 全量快照
+        _stop_reason = ''   # 零穿戴哨兵(W596)归因字段:执行面停手原因
+        # 回退计划(全步 char_name='')不挂哨兵——与今日 front-only 分支
+        # 无哨兵覆盖一致(哨兵的 M7 观测面辖域保持不变)。
+        _is_m7 = any(s.char_name for s in self.plan)
+        _skipped = 0   # 拖点解析失败跳步计数(计划 for 有界,无今日 stall 断面)
+        if not self.plan:
+            # 空计划防御(dd-037 对称出口):生产路径不可达——分发段
+            # _run_equip 已对空计划短路(具名 NOOP + 闩照置);本分支只为
+            # 直接构造面(测试/未来调用方)提供合法稳态,不承担闩闭合职责
+            # (闩写点唯一在 prep_actions.execute 执行位)。
+            return self.round_success(CwOpEquipAll.STATUS_PLAN_EMPTY)
+        for step in self.plan:
             cur = self.screenshot()
             if self.check_and_update_current_screen(
                     cur, screen_name_list=[self.SCREEN_NAME]) != self.SCREEN_NAME:
-                # 执行断言(ADR-0601 §4 E3;与 E2 同形):回退路径批内画面
-                # 漂移同样如实 round_fail,禁静默 break 后 success 假完成。
+                # 执行断言(ADR-0601 §4 E2/E3;前置画面闸执行断言化裁定的
+                # 批内延伸):批内画面漂移 = 执行环境失配,如实 round_fail
+                # 交回外循环重判,禁 break+success 把弃批记成假完成。
+                # 哨兵观测保留(纯观测零行为;stop_reason 串供分类域锁)。
                 log.warning('[cw!][equip] 画面漂移(面板/浮窗开)→ 执行断言 fail')
+                if _is_m7:
+                    self._zero_wear_sentinel(equipped, _owned_last,
+                                             '画面非干净备战')
                 return self.round_fail(
                     CwOpEquipAll.STATUS_SCREEN_DRIFTED)
             hits = read_equips(cur, templates, equip_rect=equip_rect)
-            unknown = [n for n, _, _ in hits if EQUIPMENTS.get(n) is None]
-            if unknown:
-                log.warning('[cw-equip] read_equips 命中但不在 EQUIPMENTS registry(名对齐缺失?R18 P1): %s',
-                            sorted(set(unknown)))
-            # 过滤工具类(拆装扳手/冶金炉等非 drag 穿,D-32 拆/转化副作用)
-            # ⚠️ 过滤只辖**穿戴决策**(wearable);采集写端(W209g 断点②,
-            # ADR-0387 追加)**全量**进 last_owned_equips——旧版把过滤后列表
-            # 写快照,冶金炉/扳手从不进决策快照(owned 恒空实证,run 26 两件
-            # 工具躺着无人知)。采集层无权丢数据,消费侧各自过滤。
-            wearable = [(n, p) for n, p, _ in hits
-                        if EQUIPMENTS.get(n) is not None and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-            # ADR-0358 修法 A 搬运链写端(旧 front-only 路径同链)
+            _owned_last = [n for n, _, _ in hits]
+            # ADR-0358 修法 A 搬运链写端(W209g 断点②,ADR-0387 追加):
+            # 写端**全量 hits**(工具进快照,采集层无权丢数据);每次现读
+            # 都覆写(穿戴后 owned 减少,末次读=最新持有面)。派发位另有
+            # 一次承接写(计划空帧全靠它),两写端值同构后写覆盖先写。
             if _match is not None and _match.session is not None:
-                _match.session.last_owned_equips = [n for n, _, _ in hits]
-            if not wearable:
-                log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 停', len(hits))
-                break
-            # comp 驱动穿戴(ADR-0101):优先穿 target_comp.key_equips 命脉件,替 naive wearable[0]。
-            _key_equips = (_tgt_comp.key_equips if _tgt_comp is not None else None)
-            wearable = _prioritize_wearable(wearable, _key_equips)
-            # dd-015:回退路径同主路径纪律——拉黑件不重试,失败继续下一槽。
-            # 回退路径无角色身份(拖点=空槽 avatar),拉黑键取 (件名, '')。
-            wearable = [(n, p) for n, p in wearable
-                        if _fail_counts_fb.get(equip_drag_key(n, ''), 0)
-                        < DRAG_FAIL_BLACKLIST_LIMIT]
-            if not wearable:
-                log.info('[cw-equip] 回退路径候选全拉黑(dd-015)→ 停')
-                break
-            name, (cx, cy) = wearable[0]
-            _tag = 'key_equip优先' if (_key_equips and name in _key_equips) else '通用'
-            target = self._front_avatar_points()[slot_idx - 1]
-            log.info('[cw-equip] drag %s @(%d,%d) → 前排-%d avatar (%d,%d)[空槽] [%s]',
-                     name, cx, cy, slot_idx, target.x, target.y, _tag)
+                _match.session.last_owned_equips = list(_owned_last)
+            # 拖点解析(front-only 步 = 前排空槽 avatar 序号;M7 步 =
+            # (row, slot) 物理槽位现读)。解析失败只跳过本计划步——计划
+            # for 有界(每对恰出现一次),今日 stall<2 中断面随迭代重规划
+            # 一并退役,其余计划步照常执行。
+            if step.char_name == '':
+                target = self._front_avatar_points()[step.slot - 1]
+                verify_y = None
+            else:
+                pv = self._slot_drag_point(step.row, step.slot)
+                if pv is None:
+                    log.info('[cw-equip] %s 槽位坐标缺失 → 跳过该计划步',
+                             step.char_name)
+                    _skipped += 1
+                    _stop_reason = f'{step.char_name} 槽位坐标缺失'
+                    continue
+                target, verify_y = pv
+            # 网格现读定位计划件:首读 miss → 一次机械现读重试(补救链
+            # relocate 同源;单件瞬时识别 miss 由该次重试吸收,不进失效
+            # 通道)→ 仍 miss = 计划失效(件被 robust 合成消耗/列 reflow)
+            # → fail-fast 闩不置,下帧重派重算(保住期内穿戴极大性)。
+            entry = next(((n, p) for n, p, _ in hits if n == step.item_name),
+                         None)
+            if entry is None:
+                _retry = read_equips(self.screenshot(), templates,
+                                     equip_rect=equip_rect)
+                entry = next(((n, p) for n, p, _ in _retry
+                              if n == step.item_name), None)
+            if entry is None:
+                log.warning('[cw!][equip] 计划步件 %s 两次现读不可定位 → %s',
+                            step.item_name, CwOpEquipAll.STATUS_PLAN_STALE)
+                if _is_m7:
+                    self._zero_wear_sentinel(equipped, _owned_last,
+                                             CwOpEquipAll.STATUS_PLAN_STALE)
+                return self.round_fail(CwOpEquipAll.STATUS_PLAN_STALE)
+            name, (cx, cy) = entry
+            log.info('[cw-equip] 计划步 drag %s @(%d,%d) → %s(%s-%d)',
+                     name, cx, cy,
+                     step.char_name or '前排空槽', step.row, step.slot)
 
-            def _relocate_front(_tmpl=templates, _rect=equip_rect,
-                                _keys=_key_equips) -> Point | None:
-                """补救链坐标现读(旧 front-only 路径):现读 owned 同优先序取最新坐标。
+            def _relocate_item(_want: str = step.item_name,
+                               _tmpl=templates,
+                               _rect=equip_rect) -> Point | None:
+                """补救链坐标现读:件被合成消耗/列 reflow 后,首读坐标作废 → 现读。
 
-                默认参绑定当轮值(ruff B023:闭包不绑循环变量)。
+                默认参绑定计划步值(ruff B023:闭包不绑循环变量)。
                 """
                 _hits = read_equips(self.screenshot(), _tmpl, equip_rect=_rect)
-                _wear = [(n, p) for n, p, _ in _hits
-                         if EQUIPMENTS.get(n) is not None
-                         and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-                _wear = _prioritize_wearable(_wear, _keys)
-                return Point(_wear[0][1][0], _wear[0][1][1]) if _wear else None
+                _e = next(((n, p) for n, p, _ in _hits if n == _want), None)
+                return Point(_e[1][0], _e[1][1]) if _e is not None else None
 
-            landed, diff = self._wear_with_recovery(Point(cx, cy), target, None,
-                                                    _relocate_front)
+            landed, diff = self._wear_with_recovery(Point(cx, cy), target,
+                                                    verify_y, _relocate_item)
             if landed:
                 equipped += 1
-                # 装备分布期望态(§3 B-6;回退路径无角色身份,槽=前排空槽序号)
+                # 装备分布期望态(§3 B-6;落点已验后才登记;front-only 步
+                # 无角色身份,char 传 '',与今日回退路径登记同形)
                 if _match is not None and _match.session is not None:
-                    register_equip_worn(_match.session, name, '',
-                                        'front', slot_idx)
-                log.info('[cw-equip] %s 穿了(前排-%d below-icon diff=%.1f > %.1f)',
-                         name, slot_idx, diff, self.BELOW_DIFF_THRESHOLD)
-                continue
-            # dd-015:失败不中止——登记(≥2 次拉黑该件,回退键=(件名,'')),
-            # 继续下一空槽。真持续失败由拉黑过滤收敛(候选全拉黑 → 上分支停)。
-            _bl_fb = register_equip_drag_failure(_fail_counts_fb,
-                                                 equip_drag_key(name, ''))
-            if _bl_fb:
-                log.warning('[cw!][equip] %s 拖拽连败 → 拉黑(dd-015 回退路径, diff=%.1f)',
-                            name, diff)
+                    register_equip_worn(_match.session, name,
+                                        step.char_name,
+                                        step.row, step.slot)
+                log.info('[cw-equip] %s → %s 穿了(diff=%.1f)',
+                         name, step.char_name or '前排空槽', diff)
             else:
-                log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 继续下一槽(dd-015)', name, diff)
-        return self.round_success(f'装备 {equipped} 件到前排 avatar(空槽 {slots})')
+                # dd-015 + pass 终止语义落名(R3):拖拽硬失败(补救链全档
+                # 仍败)与今日 break 语义一致——登记失败(≥2 次拉黑该对,
+                # 跨轮存活;只影响下一计划的过滤)、终止本 pass、round_
+                # success 已穿件数(闩照置)。剩余计划步交回下帧重派(重算
+                # 计划已无该拉黑对;真持续失败由拉黑过滤收敛)。
+                # 定谳(2026-09-02,临时捕获钩子已删):该场景主根因 = M7 分配
+                # 把阵营星徽分给同阵营角色(游戏装备不上,diff=0,机制见
+                # equipment_mechanics §6 星徽 add-if-absent)——分配层已加同阵营
+                # 排除,本降级只兜未知失败(设备/画面态偶发)。
+                _bl = register_equip_drag_failure(
+                    _fail_counts, equip_drag_key(name, step.char_name))
+                if _bl:
+                    log.warning('[cw!][equip] %s → %s 拖拽连败 %d 次 → 拉黑(dd-015,'
+                                ' diff=%.1f;后排拖点已随布局档修正)',
+                                name, step.char_name,
+                                _fail_counts[equip_drag_key(name, step.char_name)], diff)
+                else:
+                    log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 终止本 pass,'
+                             '剩余计划步交回下帧重派(dd-015)', name, diff)
+                _stop_reason = 'drag 落空(失败继续,dd-015)'
+                break
+        if _is_m7:
+            # 零穿戴哨兵(W596/W593 方案②;纯观测,不停机零行为变更)。
+            # 计划面原因(pool_empty/两 hold/分配方案空/分配对全部拉黑)
+            # 挂分发段空计划短路(双挂点单一源 = record_zero_wear_defect),
+            # 本挂点只辖执行面原因。
+            self._zero_wear_sentinel(equipped, _owned_last, _stop_reason)
+        if _skipped:
+            log.info('[cw-equip] 拖点解析失败跳步 %d(其余计划步已照常执行)', _skipped)
+        if self.plan and all(s.char_name == '' for s in self.plan):
+            # front-only 回退计划:detail 字面与今日回退路径一致
+            # (空槽列表 = 计划步槽位集,升序)。
+            return self.round_success(
+                f'装备 {equipped} 件到前排 avatar(空槽 '
+                f'{sorted(s.slot for s in self.plan)})')
+        return self.round_success(f'M7 装备 {equipped} 件(角色级分配)')
