@@ -292,7 +292,7 @@ def _r2_card_reserve(k_members: tuple[str, ...],
                      level: int | None = None) -> int:
     """R2 预算门 Σ预留卡价 ρ(单一源已提升至 criteria/refresh.
     r2_card_reserve;P71 闸批别名重导出——本名保留使既有测试面
-    (test_cw_r2_interest_floor.py 私有名直引)与生产调用点零漂移,
+    (test_cw_interest_floor.py 私有名直引)与生产调用点零漂移,
     语义/签名/等级过滤口径逐位不变,docstring 见单一源本体)。"""
     return crit_refresh.r2_card_reserve(k_members, bench, deployed,
                                         state, level=level)

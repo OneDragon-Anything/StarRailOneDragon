@@ -290,7 +290,7 @@ def gated_hp(current_hp: int | None, session: StrategySession,
     反向 pivot,同节点两次方向相反换线(r68 实证)。方向重估(ADR-0583 内化
     进策略器决策入口)消费的是**已被本门覆写后的帧 state**(cw_screen_prep
     环入口终饰在决策入口之前执行)→ 驱动输入恒为同门 hp,见 gated 门锁
-    (test_cw_w971_blackboard.py::TestDirectionRhythmL1L2L3L7::test_l7)。
+    (test_cw_blackboard.py::TestDirectionRhythmL1L2L3L7::test_l7)。
     """
     last_hp = getattr(session, 'last_hp', None)
     last_t = getattr(session, 'last_hp_t', None)
