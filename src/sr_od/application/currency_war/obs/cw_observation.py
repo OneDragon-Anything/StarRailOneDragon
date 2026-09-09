@@ -1874,12 +1874,17 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
 
 
 def read_bench_full(ctx: SrContext, screen: MatLike) -> bool | None:
-    """「备战席已满」警告(True=满,需破;None=未观察到)。"""
-    for kw in ('备战席已满', '出售或提升等级'):
-        if any(kw in (r.data or '')
-               for r in _ocr(ctx, screen, Rect(600, 360, 1320, 540))):
-            return True
-    return None
+    """~~已退役~~(迁移批次二,设计 §3.2.5):「备战席已满」警告 OCR 不做
+    识别——出现太短暂、无法可靠采样(玩家裁定 2026-09-09);席满判定 =
+    BoardState 派生(:func:`kernel.cw_board_state.bench_is_full`,占位
+    真值一份)。
+
+    本函数保留为**墓碑**(发警告防复活):调用即断言失败。唯一在册
+    消费点(cw_screen_prep._bench_full_break_round)已同批改接派生判定。
+    """
+    raise RuntimeError(
+        'read_bench_full 已退役(设计 §3.2.5/迁移批次二):警告 OCR 通道'
+        '不复活;席满判定用 kernel.cw_board_state.bench_is_full 派生')
 
 
 # ===== 组合入口 =====
@@ -1978,14 +1983,16 @@ PHASE_BATTLE_OR_TRANSIT: str = 'battle_or_transit'
 #: 字段键与 read_game_state 内各识别段一一对应;hp 段特殊:在集内=真读
 #: (read_hp_opt),不在=对账沿用(reconcile,零 OCR)。
 PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
+    # ~~'bench_full' 键已删(迁移批次二 §3.2.5 通道退役):该键只辖
+    # read_bench_full OCR,通道退役后无辖域,键位删除防复活。
     PHASE_PREP_CLEAN: frozenset({
         'gold', 'phase_round', 'hp', 'node_type', 'xp', 'level',
         'deploy_cap', 'deployed_count', 'enemy_difficulty',
-        'level_up_cost', 'streak', 'board', 'bench_full',
+        'level_up_cost', 'streak', 'board',
     }),
     PHASE_PREP_SHOP_OPEN: frozenset({
         'gold', 'phase_round', 'xp', 'level', 'level_up_cost',
-        'board', 'shop_cards', 'refresh_probs', 'bench_full',
+        'board', 'shop_cards', 'refresh_probs',
     }),
     PHASE_BATTLE_OR_TRANSIT: frozenset({'phase_round'}),
 }
@@ -2260,12 +2267,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # next_tier 从注册表 tier 表算(>count 的最小 tier;无更高档 → 0)。
         # 基于 _merged(徽标裁决后的最终计数)而非 computed 底座——否则徽标纠正
         # 上行时 next_tier 仍按旧计数停在前一档(低估修复,DD-021,见 _board_pairs)。
-        state.board_next_tier = {}
-        for _f, _c in _merged.items():
-            _tiers = FACTIONS[_f].tiers if _f in FACTIONS else ()
-            _nt = next((t for t in _tiers if t > _c), 0)
-            if _nt:
-                state.board_next_tier[_f] = _nt
+        # kernel 单一源委托(迁移批次二):同式推导收敛到
+        # cw_board_state.board_next_tier_of(sim 观测键 ADR-0488 同源)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_next_tier_of,
+        )
+        state.board_next_tier = board_next_tier_of(_merged)
     else:
         state.board = _ocr_board
         state.board_next_tier = {f: nt for f, (_c, nt) in _bp.items() if nt > 0}
@@ -2368,7 +2375,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
     # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
     state.refresh_probs = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
-    state.bench_full_flag = read_bench_full(ctx, screen) if _w('bench_full') else None
+    # ~~read_bench_full 通道已退役(迁移批次二,§3.2.5):「备战席已满」警告
+    # 出现太短暂无法可靠采样(玩家裁定 2026-09-09),席满判定 = BoardState
+    # 派生(kernel/cw_board_state.bench_is_full);bench_full_flag 警告位
+    # 字段随通道裁撤,原「双证据互督」一并取消。state.bench_full_flag 不再
+    # 任何人写,消费端(cw_state.bench_is_full)恒走占用派生支。~~
     if phase is not None:
         from sr_od.application.currency_war.kernel.cw_observe import set_obs_phase
         set_obs_phase(None)   # 冲突行阶段标注随本次读取结束清位(best-effort)
@@ -2514,6 +2525,18 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
                 bs.observe(bs.shop_refresh_cost, int(price))
             else:
                 bs.carry(bs.shop_refresh_cost, frame=frame)
+        # —— 开局域/持卡/环境镜像(迁移批次二,§3.1/§3.4;任务书件 8)——
+        # 载体中继收敛(§2.1,批次二扩单件 3):这些字段的真写端在各自画面
+        # (难度确认屏/简报/事件屏 handler),中继只补写**从未写过**的字段
+        # (source=logic + evidence='session_carrier',已有正式值一律跳过——
+        # 禁把 handler 已写的 logic 翻成 observation);值恒等(同一事实),
+        # 归档 bs_prov 按 evidence 可分。
+        bs.relay(bs.active_strategies, list(state.active_strategies))
+        bs.relay(bs.active_env, str(state.active_env))
+        bs.relay(bs.plane_bosses, list(state.plane_bosses))
+        bs.relay(bs.enemy_affixes, list(state.enemy_affixes))
+        _sel_diff = getattr(session, 'selected_difficulty', '') or ''
+        bs.relay(bs.selected_difficulty, str(_sel_diff))
         bs.mark_frame_obs('view' if spec is not None else 'full')
     except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化决策链
         log.warning('[cw!][bs-feed] BoardState 观察流跳过: %s', e)

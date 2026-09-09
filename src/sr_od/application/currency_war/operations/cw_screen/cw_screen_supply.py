@@ -38,8 +38,12 @@ def pick_box_card(ctx: 'SrContext', names: list[str]) -> str | None:
     match = getattr(ctx, 'cw_match', None)
     if match is not None:
         try:
-            from sr_od.application.currency_war.kernel.cw_state import GameState
-            _st = match.session.last_state or GameState()
+            # 策略输入消费切换(迁移批次二):BoardState 视图替 last_state
+            # 直读(kernel/cw_bs_view.strategy_input_state,调用面单一源)。
+            from sr_od.application.currency_war.kernel.cw_bs_view import (
+                strategy_input_state,
+            )
+            _st = strategy_input_state(match.session)
             idx = match.strategy.decide_box_card(
                 names, _st, match.session, getattr(match, 'config', None))
             if 0 <= idx < len(names):

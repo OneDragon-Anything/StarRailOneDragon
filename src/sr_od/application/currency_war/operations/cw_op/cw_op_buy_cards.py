@@ -457,10 +457,43 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                     _ct_mis.get('s1_reset_mischannel', 0) + 1
     if _ok and isinstance(action, BuyCard) and action.card.name:
         strategy_state_of(match.session).cw4_visit_bought_names.append(action.card.name)
+    if _ok and isinstance(action, RefreshShop):
+        # 刷新执行事实组接线(迁移批次二,设计 §3.3.6-§3.3.8;写入=仅逻辑,
+        # 记录挂执行回执点 = 落地门,未落地不计数)。免费帧闸(§3.3.7 申报):
+        # 免费帧不进付费计数;免费判定输入 = 免费刷新余额(效果账本激活面,
+        # 未建模局余额恒空 → 恒 paid,与接线前行为逐位一致)。
+        # shop_refresh_cost 本口不写(§3.3.4 写端=现场 OCR 唯一;免费帧
+        # 「免费」读数 OCR 为 None → 喂入口 carried,不落 0,免费帧不写闸
+        # 由观察通道结构性满足)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+            record_refresh_execution,
+        )
+        _bs = board_state_of(match.session)
+        _free = (_bs.free_refresh_balance.value or 0) > 0
+        record_refresh_execution(
+            _bs, free=_free,
+            frame=f'p{getattr(_cur, "plane", 1) or 1}-r{getattr(_cur, "round_num", 1) or 1}')
     if _ok and not _aop.terminal:
         _skip_guard = (isinstance(action, BuyCard)
                        and bench_occupied(_cur.bench) >= BENCH_CAPACITY)
         _proj = _aop.project(_cur)
+        if isinstance(action, BuyCard) and _proj is not None:
+            # 合成升星预期写端(§3.2.18 窟窿一修法 a,迁移批次二扩单件 1):
+            # BuyCard 投影发生 3 合 1 升星 → 预期条目表记 bench 投影视图
+            # (字段值不动,策略器读不到;confirm_point=prep_obs,下一备战
+            # 帧观察核对转正/失配清账留证,§2.5 两步闭环)。last-wins:同段
+            # 级联合并只留末张预期。纯记录面,决策零影响(bench 为消费视图
+            # 透传域,§8.7 批次二 as-built)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                bench_view_of_slots,
+                board_state_of,
+                detect_merge_upgrade,
+            )
+            if detect_merge_upgrade(_cur, _proj):
+                _bs_m = board_state_of(match.session)
+                _bs_m.expect(_bs_m.bench, bench_view_of_slots(_proj.bench),
+                             confirm_point='prep_obs', produced_by='BuyCard')
         match.session.shop_state_frame = _proj
         _post_frame = _proj
         if not _skip_guard:

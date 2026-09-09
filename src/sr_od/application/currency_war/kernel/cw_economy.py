@@ -35,6 +35,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_board_state import BoardState
     from sr_od.application.currency_war.kernel.cw_comps import Comp
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
@@ -290,7 +291,8 @@ def _refresh_cost(state: GameState, refresh_used: int) -> int:
 
 
 def refresh_cost_effective(state: GameState, refresh_count: int,
-                           registry: DecisionV2Registry | None = None) -> int:
+                           registry: DecisionV2Registry | None = None,
+                           bs: BoardState | None = None) -> int:
     """刷新 EV 判据用的参数化刷价(基价直通)。
 
     (原 W875 长线利好折价臂已随 longterm_refresh 开关族删除——旧方案
@@ -298,8 +300,18 @@ def refresh_cost_effective(state: GameState, refresh_count: int,
     参数保留占位,消费点 ev/posture_release/scoring 调用零改,行为与
     删除前默认关逐位一致(恒基价)。机制真值(长线利好 30 刷后 1 金)
     仍在 cw_invest_data。)
+
+    消费切换(迁移批次二,§3.3.4 遗留消费面申报的搬迁归宿):``bs``
+    给定时刷价 = BoardState.shop_refresh_cost 现场识别值(ADR-0622 观察通
+    道,免费帧不写保证该域不出 0);None = 未读到 → **建模基价
+    SHOP_REFRESH_COST 显式消费缺省**——原 ``or 2`` falsy 兜底形态的消灭
+    形态:数值恒同,语义从「静默兜底」升为「声明式建模缺省」。``bs``
+    未给(存量调用面)走 state 契约(恒基价,行为零变化)。
     """
-    return state.shop_refresh_cost or 2
+    if bs is not None:
+        _v = bs.shop_refresh_cost.value
+        return int(_v) if _v is not None else SHOP_REFRESH_COST
+    return state.shop_refresh_cost or SHOP_REFRESH_COST
 
 
 

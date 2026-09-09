@@ -646,7 +646,60 @@ class CwScreenPrep(SrOperation):
             st.bench = bench_from_compact(
                 list(obs.bench_chars
                      or (exec_state_of(session).tracked_bench_chars if session else [])))
-            obs.state = st
+            # PrepObservation 消费切换转适配器(迁移批次二,设计 §8.7):决策
+            # 观察帧的 state 槽 = BoardState 主 + 本帧透传的消费视图
+            # (kernel/cw_bs_view.game_state_view)。read_game_state 内部
+            # _feed_board_state 已把本帧镜像进 BoardState 单例,视图已建模
+            # 域取记录值(失读帧沿用语义)、未建模/执行域透传本帧——决策
+            # 消费自此以 BoardState 为源;last_state 原帧保持既有执行侧
+            # 装配源契约不变(ADR-0530)。
+            if session is not None:
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    bench_view_from_obs,
+                    board_state_of,
+                    reconcile_pending_observation,
+                )
+                from sr_od.application.currency_war.kernel.cw_reconcile import (
+                    is_merge_effect_window,
+                )
+                _bs_obs = board_state_of(session)
+                # 备战席观察写端(§3.2.5 观察写端=本屏;迁移批次二扩单件 1
+                # 「星级观察消费」):SIFT 身份+星级(read_star 链)已读,
+                # 零新增 OCR——记录模型 Unit.star 自此有消费路径(窟窿一
+                # 事实基线:识别线在役,缺的是 BoardState 消费)。
+                # P2-1(批次二落地审):空集 = 失读非全空(overlay 残留/动画帧/
+                # 识别退化)——bench_view_from_obs 返 None 时走 carried
+                # (§2.2 处置①;宁缺勿造,先例=商店空牌面 cw_observation
+                # ._feed_board_state shop_cards 分支),禁把「9 槽全空」当
+                # observation 入记录(席空数派生误报 free=9/挂起合成升星
+                # 预期被空视图误清)。tracked 沿用已有 GameState 侧兜底
+                # (上方 bench_from_compact(tracked)),记录侧同式沿用现值。
+                _bench_obs = bench_view_from_obs(obs.bench_chars)
+                if _bench_obs is not None:
+                    _bs_obs.observe(_bs_obs.bench, _bench_obs)
+                    # 合成升星预期核对闭环(§3.2.18 修法 a 核对半;confirm_point
+                    # 绑定 prep_obs):一致转正/失配清账+缺陷留证/无挂起不动。
+                    # P3-10(批次二复审):特效窗(星爆动画 ≥2 帧)内**顺延核对**
+                    # ——窗内观测=门后保旧星(reconcile_tracking 防抖口径),
+                    # 与投影新星比对必失配,照常核对 = 误清挂起预期 +
+                    # bs_defect 噪声行;留表下帧干净帧核对(观察覆盖照常,
+                    # 下帧真值到 → observe 覆盖 + 核对转正,自愈链不变)。
+                    if is_merge_effect_window(screen):
+                        log.info('[cw][bs] 特效窗内挂起合成升星预期顺延下帧'
+                                 '核对(防重叠型误报,P3-10)')
+                    else:
+                        reconcile_pending_observation(
+                            _bs_obs, _bs_obs.bench, _bench_obs,
+                            at_point='prep_obs')
+                else:
+                    _bs_obs.carry(_bs_obs.bench,
+                                  frame=f'p{st.plane}-r{st.round_num}')
+                from sr_od.application.currency_war.kernel.cw_bs_view import (
+                    game_state_view,
+                )
+                obs.state = game_state_view(_bs_obs, st)
+            else:
+                obs.state = st
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
             if not obs.state_gold_trusted:
                 log.debug('[cw][director] heavy 读 state 于 shop 关态 → gold 不可信')
@@ -1484,11 +1537,18 @@ class CwScreenPrep(SrOperation):
                                              'drag_expect': None, 'equip_expect': None,
                                              'dep_delta': 0, 'dep_pre': None,
                                              'unit_open': False}, session)
-        # —— 决策前置:席满破墙(M16,保留)→ 观察终饰(dual/gated_hp;
-        #      方向重估已内化进策略器决策入口,由帧代次标注触发,ADR-0583)
-        _bf = self._bench_full_break_round(match, session, obs, config)
-        if _bf is not None:
-            return _bf
+        # —— 决策前置:~~席满破墙(M16)~~ 已随 read_bench_full 通道退役
+        #      (迁移批次二,设计 §3.2.5:警告出现太短暂无法可靠采样,玩家
+        #      裁定 2026-09-09;「双证据互督」随字段裁撤一并取消)。模态
+        #      恢复路径改由三既有防线承接:①发射门(ADR-0596 前置谓词:
+        #      bench_free>0 才发席耗动作,模态源头收敛);②环入口清场
+        #      (_clear_entry_overlays,残留模态一键关);③外循环无进展
+        #      守卫(动作批签名计数)。派生席满判定单一源 =
+        #      kernel.cw_board_state.bench_is_full(决策/拦截消费面);
+        #      破墙主动探测不复活——派生席满≠模态在场(持 9 席是合法
+        #      运营态,按席满主动腾席会打穿策略持仓)。
+        #      观察终饰(dual/gated_hp;方向重估已内化进策略器决策入口,
+        #      由帧代次标注触发,ADR-0583)
         if obs.state is not None:
             from sr_od.application.currency_war.kernel.cw_intention import (
                 committed_from,
@@ -1725,66 +1785,16 @@ class CwScreenPrep(SrOperation):
                                 obs: PrepObservation,
                                 config: CurrencyWarConfig
                                 ) -> OperationRoundResult | None:
-        """席满破墙单轮(M16,ADR-0136):备战席满警告模态拒绝拖拽/出战 →
-        破墙动作优先(腾席链),执行后交回外循环。None = 无警告,继续正常单轮。"""
-        from sr_od.application.currency_war.obs.cw_observation import read_bench_full
-        _scr_full = getattr(self, 'last_screenshot', None)
-        _bench_full_now = (_scr_full is not None
-                           and read_bench_full(self.ctx, _scr_full))
-        if not _bench_full_now:
-            # (r366b 的 free_bench_gold_wait 清零随 ADR-0517 迁移批死码清理
-            #  删除——字段唯一写点在 flow.py 死码腾席链,live 复位已无对象)
-            return None
-        log.warning('[cw!][director] 备战席已满警告(模态挡拖拽/出战)→ 破警告优先(腾席链)')
-        # 破墙 obs 用 dataclasses.replace 从真 obs 派生(全字段保真,仅覆写腾席相关)
-        import dataclasses
-        bf_obs = dataclasses.replace(
-            obs, box_overlay_open=False, boxes=[], spheres=[],
-            free_bench_slots=0, shop_open=False,
-            # ADR-0136 补修:横幅在时拖放被游戏拒 → vacancy 置 0 强制走 b(升级)/c(卖最弱)
-            deploy_vacancy=0)
-        # 黑板接口:破墙派生帧写 session → decide_prep_screen(序列契约 v1
-        # /dd-020:返回 list[PrepAction];本破墙段逐动作执行,fail-stop 同主段)
-        session.prep_obs_frame = bf_obs
-        # 派生帧代次 = view(ADR-0583 §3.4):以自身 .state 只刷派生视图、
-        # 不触状态机(.state 字段经 replace 保真 = 入口主帧的买后物理真值)
-        session.prep_frame_class = 'view'
-        actions = match.strategy.decide_prep_screen(session, config)
-        # 破墙段动作批签名(守卫动作腿):破墙环重复零变换同样计无进展
-        exec_state_of(session).last_prep_action_sig = tuple(
-            type(a).__name__ for a in actions)
-        _last_name = '-'
-        for action in actions:
-            _last_name = type(action).__name__
-            progressed, detail = self._executor.execute(action)
-            log.info(f'[cw][director] 破警告动作 {_last_name} → '
-                     f'{"✓" if progressed else "✗"} {detail}')
-            # T-82 续段 token 写入(破墙段执行位,主循环同款协议):确认
-            # 已执行后置位;破墙动作多为 SellBench(输入变异),token 自然
-            # 不命中缓存。状态对象缺席 = 跳过(B4 缺席退缺省口径)。
-            if progressed:
-                _st_tok = strategy_state_of(session)
-                if _st_tok is not None:
-                    _st_tok.cw4_frame_action_record = (
-                        type(action).__name__, _st_tok.cw4_segment_serial)
-            if not progressed:
-                break   # fail-stop(契约 §2):丢弃余下,交回外循环重观察
-        # 破墙动作也记一条 exec_events(类名带 BenchFull 前缀,审计可辨)
-        try:
-            if obs.state is not None:
-                _bf_rid = state.current_run_id() or '-'
-                if _bf_rid == '-' and self.ctx.cw_match is not None:
-                    _bf_rid = f'match:{id(self.ctx.cw_match) & 0xffff:x}'
-                state.get_recorder().record_exec_event(
-                    run_id=_bf_rid,
-                    round_num=obs.state.round_num,
-                    action_family=f'BenchFull_{_last_name}',
-                    screen='battle_prep', event='bench_full_break',
-                    reason='备战席满破墙')
-        except Exception:   # noqa: BLE001  遥测 best-effort
-            pass
-        return self.round_wait(
-            status=f'备战席已满,已试破警告({_last_name}),交回外循环', wait=1.0)
+        """~~已退役~~(迁移批次二,设计 §3.2.5):M16 席满破墙的触发通道
+        read_bench_full(警告 OCR)已裁撤——警告出现太短暂无法可靠采样
+        (玩家裁定 2026-09-09);派生席满≠模态在场(持 9 席是合法运营态,
+        按席满主动腾席会打穿策略持仓),本探测**不复活**。模态恢复路径 =
+        发射门(ADR-0596 前置谓词)+ 环入口清场(_clear_entry_overlays)
+        + 外循环无进展守卫。方法体保留为墓碑:调用即断言失败。"""
+        raise RuntimeError(
+            '_bench_full_break_round 已退役(read_bench_full 通道裁撤,'
+            '设计 §3.2.5/迁移批次二);席满判定用 '
+            'kernel.cw_board_state.bench_is_full,破墙探测不复活')
 
     def _clear_entry_overlays(self) -> None:
         """P0 清场前置段(规范入口序列「先清场、再识别、后动作」;ADR-0462):

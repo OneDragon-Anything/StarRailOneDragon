@@ -212,7 +212,12 @@ class CwScreenInvestStrategy(SrOperation):
         match = self.ctx.cw_match
         if names:
             if match is not None:
-                pick = match.strategy.decide_invest('strategy', names, match.session.last_state or GameState(), match.session, config)  # ADR-0144:真状态替空 stub
+                # ADR-0144:真状态替空 stub。决策输入消费切换(迁移批次二):
+                # 值源 = BoardState 视图(cw_bs_view.strategy_input_state)。
+                from sr_od.application.currency_war.kernel.cw_bs_view import (
+                    strategy_input_state,
+                )
+                pick = match.strategy.decide_invest('strategy', names, strategy_input_state(match.session), match.session, config)
             else:
                 # 防御:无 match(局外独立跑)。ADR-0519 C6/C9 后 decide_event 不读
                 # hp/品质惩罚,hp 字段仅为 GameState 构造完整性。**显式跳过刷新链**
@@ -312,7 +317,7 @@ class CwScreenInvestStrategy(SrOperation):
                 # CommitSignals 双喂为既有 telemetry 累积器零决策消费,判读侧按
                 # 「同 visit 多次喂入」口径读(ADR-0600 §3.3 申报,禁为消重复改 flow)。
                 pick = match.strategy.decide_invest(
-                    'strategy', names, match.session.last_state or GameState(),
+                    'strategy', names, strategy_input_state(match.session),
                     match.session, config)
 
         if pick is not None and 0 <= pick.option_idx < len(opts):
@@ -374,6 +379,16 @@ class CwScreenInvestStrategy(SrOperation):
         if _rr.is_success and match is not None and chosen != '?':
             if chosen not in match.session.active_strategies:
                 match.session.active_strategies.append(chosen)
+            # BoardState 写端(迁移批次二,§3.4.4/§4 投资选择行):持有投资
+            # 策略=本屏写入、局级累计(逐次选择追加);单次逻辑写入
+            # (§3.4 申报豁免)。品质锚挂建模批(设计 §3.4.4)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            board_state_of(match.session).write_logic(
+                board_state_of(match.session).active_strategies,
+                list(match.session.active_strategies),
+                produced_by='CwScreenInvestStrategy')
             from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
                 register_confirm_arrival,
             )

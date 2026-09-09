@@ -117,10 +117,14 @@ class CwScreenPlanner(SrOperation):
         from sr_od.application.currency_war.kernel.cw_state import GameState
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
-            _st = _match.session.last_state
+            # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读。
+            from sr_od.application.currency_war.kernel.cw_bs_view import (
+                strategy_input_state,
+            )
+            _st = strategy_input_state(_match.session)
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = _match.strategy.decide_planner(
-                options, _st or GameState(), _match.session, _cfg)
+                options, _st, _match.session, _cfg)
         else:
             from sr_od.application.currency_war.kernel.cw_events import decide_planner
             pick = decide_planner(options, GameState(), None)

@@ -19,7 +19,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_events import PartnerOption
-from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -131,7 +130,12 @@ class CwScreenPartner(SrOperation):
             idx = 0
             reason = 'no-candidates(fallback)'
             if match is not None and options:
-                _state = match.session.last_state or GameState()
+                # 决策输入消费切换(迁移批次二):BoardState 视图
+                # (kernel/cw_bs_view.strategy_input_state)替 last_state 直读。
+                from sr_od.application.currency_war.kernel.cw_bs_view import (
+                    strategy_input_state,
+                )
+                _state = strategy_input_state(match.session)
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
                 pick = match.strategy.decide_partner(options, _state, match.session, _cfg)
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
@@ -145,6 +149,15 @@ class CwScreenPartner(SrOperation):
             # r358d(遥测接线):伙伴选择落 session(复盘维度;选中确认后写)。
             if match is not None and options and 0 <= idx < len(options):
                 match.session.chosen_partner = options[idx].char_id or ''
+                # BoardState 写端(迁移批次二,§3.4.5:各屏选卡写入
+                # chosen_*;单次逻辑写入,§3.4 申报豁免)。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
+                )
+                board_state_of(match.session).write_logic(
+                    board_state_of(match.session).chosen_partner,
+                    match.session.chosen_partner,
+                    produced_by='CwScreenPartner')
             if cands and 0 <= idx < len(cands):
                 _name, cx, cy = cands[idx]
                 portrait = Point(cx, cy - CwScreenPartner.PORTRAIT_DY_ABOVE_LABEL)

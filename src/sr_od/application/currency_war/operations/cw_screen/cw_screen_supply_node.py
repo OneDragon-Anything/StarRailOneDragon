@@ -37,7 +37,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
 from sr_od.application.currency_war.obs.cw_observation import read_game_state
 from sr_od.application.currency_war.telemetry import recorder as cw_telemetry
@@ -193,7 +192,12 @@ class CwScreenSupplyNode(SrOperation):
         # cw_loop 合成结算行,提前消费=结算行断粮)。
         picked: dict | None = None
         if match is not None and opts:
-            _state = match.session.last_state or GameState()
+            # 决策输入消费切换(迁移批次二):BoardState 视图
+            # (kernel/cw_bs_view.strategy_input_state)替 last_state 直读。
+            from sr_od.application.currency_war.kernel.cw_bs_view import (
+                strategy_input_state,
+            )
+            _state = strategy_input_state(match.session)
             _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
             pick = match.strategy.decide_supply(
                 [o for o, _ in opts], _state, match.session, _cfg,

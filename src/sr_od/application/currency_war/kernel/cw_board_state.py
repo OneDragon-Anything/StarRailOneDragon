@@ -29,6 +29,7 @@ bench 槽位保序映射——记录模型按实机真值箱占席(§3.2.5),不�
 """
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import weakref
 from collections.abc import Callable
@@ -65,7 +66,7 @@ DEFAULT_BS_SCHEMA: dict[str, int] = {
     'match_facts': 1,       # 职级/对局类型/敌人难度/boss/词缀/环境/持卡/board(§3.1/§3.2.6/§3.2.14/§3.2.20)
     'refresh_counters': 1,  # 商店刷新计数组(§3.3.6-§3.3.9,写入=仅逻辑)
     'node_screen_refresh': 1,  # 节点屏刷新计数组(§3.4.1-§3.4.4;遭遇/补给/环境/策略逐卡)
-    'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19)
+    'inventory': 1,         # equips/consumables/免战牌(§3.2.15/§3.2.16/§3.2.19〔勘误:免战牌正本=effect_inventory.remaining_uses,§8.6-3——本域不含其字段〕)
     'spheres': 1,           # 奖励球(§3.2.8,不占席)
     'substate': 1,          # 分类子态/事件浮层(§3.2.17/§3.6.1)
     'shop': 1,              # 商店开态 payload(§3.3)
@@ -257,7 +258,7 @@ class EncounterPayload:
 
 @dataclass(frozen=True)
 class SupplyPayload:
-    """补给屏附加(§3.4.2):三选一。options = (角色, 装备, 有钻石)。"""
+    """补给屏附加(§3.4.2):列数动态——通常4选1,效果改写3-5,勿写死(cw_node_obs.py:279-282)。options = (角色, 装备, 有钻石)。"""
 
     options: list[tuple[str, str, bool]] = field(default_factory=list)
 
@@ -305,10 +306,12 @@ def consume_defect_sink() -> list[dict]:
 
 
 def _emit_defect(*, field_name: str, expected: Any, actual: Any,
-                 evidence: str | None) -> None:
-    """失配留证(§2.3:观察覆盖 logic 值失配 → 缺陷台账)。best-effort:
+                 evidence: str | None,
+                 kind: str = 'observe_vs_logic_mismatch') -> None:
+    """缺陷台账留证(§2.3 观察赢;kind 扩展 = 预期核对点失配
+    expect_vs_obs_mismatch,§2.5 两步闭环)。best-effort:
     外送钩子异常不阻塞观察主链。"""
-    row: dict = {'kind': 'observe_vs_logic_mismatch', 'field': field_name,
+    row: dict = {'kind': kind, 'field': field_name,
                  'expected': expected, 'actual': actual,
                  'observed_evidence': evidence}
     _DEFECT_BUFFER.append(row)
@@ -348,6 +351,275 @@ def bench_is_full(bs: BoardState) -> bool | None:
     (玩家裁定 2026-09-09,现役 read_bench_full 通道退役挂批次二)。"""
     free = bench_free_slots(bs)
     return None if free is None else free == 0
+
+
+def board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
+    """board 下档阈值派生(§3.2.6/§8.8 准入③:计算函数不存储)。
+
+    语义 = 左面板「X/Y」的 Y:对注册表 ``FACTIONS[].tiers`` 取 >当前人数
+    的最小档,无更高档不计入。**本函数 = 该推导的 kernel 单一源**——
+    迁移批次二起,obs computed 支(cw_observation read_game_state)与
+    sim 观测键(engine_p1._board_next_tier_of,ADR-0488 硬依赖键供给)
+    均委托至此,禁第三份推导(sim 侧旧注释「与 obs computed 支同一式」
+    的对齐义务由委托结构保证)。
+    """
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    out: dict[str, int] = {}
+    for _f, _c in board_factions.items():
+        _tiers = FACTIONS[_f].tiers if _f in FACTIONS else ()
+        _nt = next((t for t in _tiers if t > _c), 0)
+        if _nt:
+            out[_f] = _nt
+    return out
+
+
+# ============================================================ cost_source 三值归并(§3.3.1/§8.6-9)
+
+#: cost_source 消费词表二值(§3.3.1):badge=徽章直读 / registry=注册表查表。
+COST_SOURCE_BADGE: str = 'badge'
+COST_SOURCE_REGISTRY: str = 'registry'
+
+
+def cost_source_group(cost_source: str) -> str:
+    """cost_source 三值 → 消费二值归并(§8.6-9,迁移批次二)。
+
+    存储侧保三值不折叠(roster_fallback 的「徽章失读」证据分级禁丢,
+    P2-4 落地审);消费侧归并 = 对**费用数值**的可信度只分两域——badge
+    徽章直读与 registry 注册表查表(含 roster_fallback 失读退查)给出的
+    都是角色招募费真值,按费用消费的分支(估价/卖价/合成费用档)无需
+    区分后两者。归并不丢证据:原值仍在 :attr:`ShopCard.cost_source`,
+    失配归因/缺陷台账按原值分档。未知值保守归 registry(与 reader 缺省
+    语义同向;词表外值 = 上游漂移信号,归因时看原值)。
+    """
+    return COST_SOURCE_BADGE if cost_source == COST_SOURCE_BADGE \
+        else COST_SOURCE_REGISTRY
+
+
+# ============================================================ 刷新执行事实组(§3.3.5-§3.3.9)
+
+def record_refresh_execution(bs: BoardState, *, free: bool,
+                             frame: str = '') -> None:
+    """RefreshShop op 执行回执 → 刷新计数组逻辑写入(§3.3.6-§3.3.8,
+    写入=仅逻辑;接线点 = cw_op_buy_cards 执行落地门,迁移批次二)。
+
+    行为口径(§4 RefreshShop 行为申报配套):
+    - total_refresh_count 恒 +1(§3.3.8:付费+免费全量);
+    - free=True(免费帧):**不写** paid_refresh_count(§3.3.7 该键=付费
+      累计,长线利好触发载体,免费帧混入即计数毒化)并消耗免费余额
+      (§3.3.6 余额 −1,下限 0);
+    - free=False:paid_refresh_count +1;
+    - 计数从未写过(值 None)按 0 基线起算——计数器是局内单调累计,
+      0 基线是构造事实非观察兜底(与「禁兜底改值」的观察域无关)。
+
+    免费判定输入 = 调用方(执行侧按免费余额/效果账本判定后传入;
+    余额未建模局恒 paid = 现状保守形态,行为与接线前逐位一致)。
+    frame = 轮键留证(写入 evidence)。
+    """
+    _ev = f'refresh_exec@{frame}' if frame else 'refresh_exec'
+    total = bs.total_refresh_count.value or 0
+    bs.write_logic(bs.total_refresh_count, int(total) + 1,
+                   produced_by='RefreshShop', evidence=_ev)
+    if free:
+        balance = bs.free_refresh_balance.value or 0
+        bs.write_logic(bs.free_refresh_balance, max(int(balance) - 1, 0),
+                       produced_by='RefreshShop', evidence=_ev)
+    else:
+        paid = bs.paid_refresh_count.value or 0
+        bs.write_logic(bs.paid_refresh_count, int(paid) + 1,
+                       produced_by='RefreshShop', evidence=_ev)
+
+
+# ============================================================ 备战席观察写端(§3.2.5)
+
+
+def bench_view_from_obs(bench_chars: list) -> BenchView | None:
+    """备战席 SIFT 读链 → BenchView(观察写端的值构造;§3.2.5 观察写端=本屏)。
+
+    - **空集 = 失读非全空**(P2-1 批次二落地审):overlay 残留/动画帧/识别
+      退化都会产空集,≠实席真清空——返 None,调用方走 carried(§2.2 处置①;
+      先例 = 商店空牌面「宁缺勿造不写」),禁把「9 槽全空」当 observation
+      入记录(席空数派生误报 free=9/挂起合成升星预期被空视图误清);
+    - 槽位越界条目丢弃并 log 留证(物理槽 1..capacity 外 = 读链漂移信号,
+      静默丢弃 = 身份静默丢失);
+    - 非 None 返回 = 槽位保序映射(下标 i = 物理槽 i+1,与 sim 合成口同构)。
+    """
+    if not bench_chars:
+        return None
+    slots: list[BenchSlot] = [BenchSlot(kind='empty')] * BENCH_CAPACITY_DEFAULT
+    for bc in bench_chars:
+        s = int(getattr(bc, 'slot', 0) or 0)
+        if 1 <= s <= BENCH_CAPACITY_DEFAULT:
+            slots[s - 1] = BenchSlot(kind='unit', unit=Unit(
+                char_id=str(getattr(bc, 'char_id', '') or ''),
+                star=int(getattr(bc, 'star', 1) or 1),
+                equips=list(getattr(bc, 'equips', None) or []),
+                slot=s))
+        else:
+            log.warning('[cw!][bs-bench] 备战席读链槽位越界丢弃:'
+                        'slot=%s char=%s(SIFT/星级读链漂移信号)',
+                        s, getattr(bc, 'char_id', '?'))
+    return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
+
+
+# ============================================================ 局终归档快照(§6.2/§8.8)
+
+def archive_snapshot(bs: BoardState) -> dict:
+    """局终 BoardState 归档快照(§6.2 局终归档喂遥测,先于连刷重建;
+    §8.8 遥测行形状正本的三键:bs_prov/bs_pending/bs_extra)。
+
+    - bs_prov = 非默认来源注记(稀疏化,不逐字段灌满):source 非
+      observation、或 observation 带 evidence 的字段才入——默认 observation
+      无注记的字段 = 「本帧真读」语义,键面留白;
+    - bs_pending = 预期条目表快照(局终尚有挂起预期 = 未闭合写端信号,
+      归档保留供判读);
+    - bs_extra = 工程结构(schema 版本/域版本/心跳/效果账本规模)+
+      全部非 None 字段值(JSON 安全形态,供离线判读)。
+
+    返回 dict 直接入档(由局终装配器并档);序列化失败逐字段跳过
+    (归档 best-effort,不阻塞局终流转)。
+    """
+    prov: dict[str, dict] = {}
+    extra_values: dict[str, object] = {}
+    for f in dataclasses.fields(bs):
+        val = getattr(bs, f.name, None)
+        if not isinstance(val, Field):
+            continue
+        if val.value is not None:
+            with contextlib.suppress(Exception):
+                extra_values[f.name] = _json_safe(val.value)
+        if val.source != 'observation' or val.evidence is not None:
+            prov[f.name] = {'source': val.source, 'evidence': val.evidence}
+    return {
+        'schema_version': bs.schema_version,
+        'bs_prov': prov,
+        'bs_pending': [dataclasses.asdict(e) for e in bs.pending_entries()],
+        'bs_extra': {
+            'values': extra_values,
+            'bs_schema': dict(bs.bs_schema),
+            'write_seq': bs.write_seq,
+            'frame_obs': bs.frame_obs,
+            'effects_count': len(getattr(bs.effects, 'effects', []) or []),
+        },
+    }
+
+
+def _json_safe(value: Any) -> Any:
+    """归档值的 JSON 安全化(dataclass → dict;容器递归;其余原样)。"""
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return {k: _json_safe(v) for k, v in dataclasses.asdict(value).items()}
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+# ============================================================ 合成升星预期写端(§3.2.18 窟窿一,修法 a)
+
+def bench_view_of_slots(bench_list: list) -> BenchView:
+    """GameState.bench 槽位表(0 基下标 + None 洞)→ BenchView(记录模型
+    形状契约;槽 i = 物理槽 i+1,与 sim 合成口同构映射)。投影面用
+    (BuyCard 升星预期写端的期望值构造源)。"""
+    slots: list[BenchSlot] = []
+    for i, bc in enumerate(bench_list or []):
+        if bc is None:
+            slots.append(BenchSlot(kind='empty'))
+        else:
+            slots.append(BenchSlot(kind='unit', unit=Unit(
+                char_id=str(getattr(bc, 'char_id', '') or ''),
+                star=int(getattr(bc, 'star', 1) or 1),
+                equips=list(getattr(bc, 'equips', None) or []),
+                slot=i + 1)))
+    while len(slots) < BENCH_CAPACITY_DEFAULT:
+        slots.append(BenchSlot(kind='empty'))
+    return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
+
+
+def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
+    """BuyCard 投影是否发生 3 合 1 升星(§3.2.18 修法 a 触发判定;纯函数)。
+
+    判据 = 同名角色投影后最高星级 > 投影前同名最高星——3 份合成是该
+    签名的唯一来源(星级只经合成上升;买新卡不抬同名最高星)。合成域 =
+    全场(bench+deployed,``cw_state._merge_bench`` 同口径)。级联合并
+    (3×1★→2★→…)只看「有抬升」真值,层级数不影响本判定。
+    """
+    def _max_star(st: Any) -> dict[str, int]:
+        best: dict[str, int] = {}
+        for c in (list(getattr(st, 'bench', None) or [])
+                  + list(getattr(st, 'deployed', None) or [])):
+            if c is not None:
+                cid = str(getattr(c, 'char_id', '') or '')
+                if not cid:
+                    continue
+                s = int(getattr(c, 'star', 1) or 1)
+                if s > best.get(cid, 0):
+                    best[cid] = s
+        return best
+    before, after = _max_star(cur), _max_star(proj)
+    return any(after.get(cid, 0) > s for cid, s in before.items())
+
+
+def reconcile_pending_observation(bs: BoardState, target: Field,
+                                  observed: Any, *,
+                                  at_point: str) -> str:
+    """核对点闭环(§2.5 两步机制的核对半;迁移批次二扩单件 1)。
+
+    对绑定 ``at_point`` 的该字段挂起预期与观察值比对:
+    - 一致 → :meth:`confirm` 转正(source=logic;决策推算被核实);
+    - 失配 → :meth:`discard_expected` 清账 + 缺陷台账留证
+      (kind=expect_vs_obs_mismatch;§2.3 观察赢,观察覆盖已先行写入真值);
+    - 无挂起预期或条目绑定其他核对点 → 不动(返回 'none')。
+
+    返回 'confirmed' | 'discarded' | 'none'。
+    """
+    name = bs._field_name(target)
+    entry = bs.expected.get(name)
+    if entry is None or entry.confirm_point != at_point:
+        return 'none'
+    if entry.value == observed:
+        bs.confirm(entry, at_point=at_point)
+        return 'confirmed'
+    bs.discard_expected(entry)
+    _emit_defect(kind='expect_vs_obs_mismatch', field_name=name,
+                 expected=entry.value, actual=observed,
+                 evidence=f'at:{at_point}')
+    return 'discarded'
+
+
+# ============================================================ 结算覆盖写端(§3.5.1)
+
+def apply_settlement_cover(bs: BoardState, *, hp_after: int | None,
+                           streak_after: int | None,
+                           killed: bool | None = None,
+                           progress_delta: int | None = None,
+                           gold: int | None = None,
+                           level: int | None = None,
+                           xp: tuple[int, int] | None = None) -> None:
+    """结算屏真值覆盖(§3.5.1;接线点 = cw_screen_battle_wait 结算块,
+    迁移批次二任务书件 8)。
+
+    本屏同时是这些字段的覆盖写端:hp(§3.2.13)/streak 带方向真值
+    (§3.2.12:备战幅度读数无方向,带方向值只有本写端与逻辑推进)/
+    金币仅胜局(§3.2.9,败局结算屏无收入面板)/等级/经验仅胜局结算页
+    可读(cw_settlement_obs.py:118-135)。伤害不入本结构(遥测面,
+    字段准入①)。全部 observation 写入(真值覆盖)。
+    """
+    if hp_after is not None:
+        bs.observe(bs.hp, int(hp_after))
+    if streak_after is not None:
+        bs.observe(bs.streak, int(streak_after))
+    if gold is not None:
+        bs.observe(bs.gold, int(gold))
+    if level is not None:
+        bs.observe(bs.level, int(level))
+    if xp is not None:
+        bs.observe(bs.xp, (int(xp[0]), int(xp[1])))
+    bs.observe(bs.settlement, Settlement(
+        hp_after=hp_after, streak_after=streak_after, killed=killed,
+        progress_delta=progress_delta, gold=gold, level=level,
+        xp=(int(xp[0]), int(xp[1])) if xp is not None else None))
 
 
 # ============================================================ 单例宿主
@@ -443,18 +715,23 @@ class BoardState:
     total_refresh_count: Field[int] = field(default_factory=Field)   # 累计全部刷新(§3.3.8;二手市场/采购专员计数载体)
     prev_node_spent: Field[bool] = field(default_factory=Field)      # 上节点是否花费(§3.3.9;存款回报条件输入,观察需求)
 
-    # —— 节点屏刷新计数组(P1-2 落地审补;§3.4.1-§3.4.4;字段先入 schema,
-    # 写端=各选择屏刷新点击置位(不等验效,§4 事件选择),批次二接线)——
+    # —— 节点屏刷新计数组(P1-2 批次一落地审补;§3.4.1-§3.4.4;字段先入
+    # schema,**写端未接**——遭遇/补给刷新已用现役走 exec_state 侧标
+    # (cw_exec_state._encounter_refresh_used/_supply_refresh_used),四字段
+    # 零写端;接线挂批次三/建模批申报,零写端期间禁按字段值做决策)——
     encounter_refresh_used: Field[int] = field(default_factory=Field)    # 遭遇刷新已用(§3.4.1;cw_screen_encounter 置位口径)
     supply_refresh_used: Field[int] = field(default_factory=Field)       # 补给刷新已用(§3.4.2;「无布局局原生可刷」收窄待证,字段位先申报禁静默)
     env_refresh_used: Field[int] = field(default_factory=Field)          # 环境刷新已用(§3.4.3;观察通道在册 cw_node_obs「剩余次数」)
-    strategy_refresh_used: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新已用,键=卡名(§3.4.4;基线每卡 1 次、例外三族以注册表官方全文为唯一口径,禁按基线做核对预期)
+    strategy_refresh_used: Field[dict[str, int]] = field(default_factory=Field)  # 投资策略逐卡刷新已用(§3.4.4)。**键口径显式申报(迁移批次二)**:键 = 注册表规范卡名(normalize_invest_name 归一后;选名不选 spec.id 的理由 = 效果注册表 STRATEGY_EFFECTS 即以规范名为键,写端 OCR 名经同一归一函数入键,免双坐标系换算)。值域纪律:基线每卡 1 次、例外三族(银金彩环境+2/投资卡族=3/期货族=0/远见=0)以注册表官方全文为唯一口径,禁按基线做核对预期
 
     # —— 持久账本组(跨画面保留)——
+    # ⚠️ 免战牌不在本组(§8.6-3 载体归一,迁移批次二):激活态+剩余次数
+    # 正本 = effect_inventory.remaining_uses(§5.1,ActiveEffect.remaining_
+    # uses「次数类余量(免战牌×2 等)」,同型躺平/节省工位;批次一骨架的
+    # skip_battle_active/remaining 两 Field 已按正本归一移除,消费走
+    # bs.effects 查询)。
     equips: Field[list[str]] = field(default_factory=Field)          # 装备库存(§3.2.15)
     consumables: Field[list[str]] = field(default_factory=Field)     # 消耗品库存(§3.2.16)
-    skip_battle_active: Field[bool] = field(default_factory=Field)   # 免战牌激活态(§3.2.19)
-    skip_battle_remaining: Field[int] = field(default_factory=Field) # 免战牌剩余跳过次数(§3.2.19)
 
     # —— 奖励球(§3.2.8,不占席)——
     spheres: Field[SphereSight] = field(default_factory=Field)
@@ -619,6 +896,40 @@ class BoardState:
         for e in group:
             self._swap(e.path, Field(value=e.value, source='logic'))
             self.expected.pop(e.path, None)
+
+    def write_logic(self, target: Field, value: Any, *,
+                    produced_by: str, evidence: str | None = None) -> None:
+        """单次逻辑写入(直接转正,不经预期条目表)。
+
+        仅限设计**显式申报豁免**的写端——「不为它记待核实预期」(§3.4 通用
+        机制:事件屏 chosen_* 由选择 handler 单次逻辑写入;§4 事件选择行;
+        §3.3.6-8 刷新计数组=仅逻辑)。豁免语义 = 该写端的真值在写入时点
+        即确定(选择事实/自身动作事实),不存在可核对的后续定型帧,不是
+        免检通道:字段值之后仍受观察覆盖辖(§2.3 观察赢)。其余决策动作
+        禁走此口,必须走 expect/confirm 两步(§2.5);判断不符的调用 =
+        设计缺口,先回设计文档申报再落码。
+
+        produced_by = 产生者标识(op/handler 名,留证用);
+        evidence = 可选来源注记(如刷新执行的轮键 refresh_exec@p1-r2)。
+        """
+        name = self._field_name(target)
+        self._swap(name, Field(value=value, source='logic', evidence=evidence))
+
+    def relay(self, target: Field, value: Any) -> bool:
+        """载体中继(§2.1,**不设第五来源类**;迁移批次二收敛)。
+
+        接管/初始化把会话已知事实补写进**从未写过的字段**:
+        - source = logic + evidence = 'session_carrier'(中继是已核实事实
+          的搬运,非本帧观察,禁标 observation);
+        - **已有正式值的字段一律跳过**(返回 False)——禁把 handler 已写的
+          logic 翻成 observation(§8.1),真写端(write_logic/观察覆盖)优先。
+        """
+        if target.value is not None:
+            return False
+        name = self._field_name(target)
+        self._swap(name, Field(value=value, source='logic',
+                               evidence='session_carrier'))
+        return True
 
     def discard_expected(self, entry: PendingEntry) -> None:
         """核对失败清账(§8.4 用法块第 4 步:点击落空 → 观察赢 + 条目清账,

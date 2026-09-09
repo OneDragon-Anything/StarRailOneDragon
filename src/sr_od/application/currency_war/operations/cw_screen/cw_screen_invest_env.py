@@ -117,9 +117,14 @@ class CwScreenInvestEnv(SrOperation):
         match = self.ctx.cw_match
         if names:
             if match is not None:
-                # ADR-0144:last_state(上次备战真实快照,含 hp/active_strategies)替空 stub ——
-                # 环境屏 overlay 下 board 不可读,但 HP 分档/持有策略该用真值(空 stub hp=100 恒满血)。
-                pick = match.strategy.decide_invest('env', names, match.session.last_state or GameState(), match.session, config)
+                # ADR-0144:真状态替空 stub ——环境屏 overlay 下 board 不可读,
+                # 但 HP 分档/持有策略该用真值。决策输入消费切换(迁移批次二):
+                # 值源 = BoardState 视图(kernel/cw_bs_view
+                # .strategy_input_state),原 last_state 直读退役。
+                from sr_od.application.currency_war.kernel.cw_bs_view import (
+                    strategy_input_state,
+                )
+                pick = match.strategy.decide_invest('env', names, strategy_input_state(match.session), match.session, config)
             else:
                 pick = decide_event(names, config, GameState(hp=100, hp_readable=True))  # 防御:无 match(局外独立跑)。ADR-0519 C6/C9 后 decide_event 不读 hp/品质惩罚,hp 字段仅为 GameState 构造完整性
         else:
@@ -135,6 +140,15 @@ class CwScreenInvestEnv(SrOperation):
         # 原 bug:chosen 只点不存 → state.active_env 恒空 → env_fit 全 0.5 → T0 env 绑定静默失效。
         if match is not None and chosen != '?':
             match.session.active_env = chosen
+            # BoardState 写端(迁移批次二,§3.4.3/§4 投资选择行):已选投资
+            # 环境=本屏写入、选完即关整局保留;单次逻辑写入(§3.4 申报豁免:
+            # 选择落地无定型帧可核对,后果走观察覆盖)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            board_state_of(match.session).write_logic(
+                board_state_of(match.session).active_env, chosen,
+                produced_by='CwScreenInvestEnv')
         # ADR-0132 采集:候选全集 + 效果原文(描述带 y 410-900)按卡分桶 → invest_cards.jsonl
         # (kind=env;环境注册表虽全量,效果原文仍采 —— 对拍校验 + 版本变更感知)。
         _items = [(t, m.max.center.x, m.max.center.y)

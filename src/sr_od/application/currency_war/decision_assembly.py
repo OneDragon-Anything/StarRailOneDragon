@@ -66,6 +66,15 @@ def install_obs_ports() -> None:
     set_evidence_sink(_expected_reconcile_sink_for_test(
         _reconcile_dir()))
 
+    # 缺陷台账生产武装点(迁移批次二,任务书件 7):BoardState 观察覆盖
+    # logic 值失配行(kernel/cw_board_state._emit_defect,批次一为缺省关)
+    # 经 sink 落 bs_defect.jsonl(与 expected_reconcile.jsonl 同目录同追加
+    # 形态);缺省关 = 只缓冲不落盘,测试零真实 IO。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        set_defect_sink,
+    )
+    set_defect_sink(_bs_defect_sink_for_test(_reconcile_dir()))
+
 
 def _reconcile_dir() -> Path:
     """expected_reconcile.jsonl 目录(项目根锚定绝对路径;P4R4 缺陷②:
@@ -86,6 +95,23 @@ def _expected_reconcile_sink_for_test(base_dir: Path):
     def _sink(row: dict) -> None:
         try:
             p = Path(base_dir) / 'expected_reconcile.jsonl'
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with p.open('a', encoding='utf-8') as f:
+                f.write(json.dumps(row, ensure_ascii=False, default=str) + '\n')
+        except Exception:  # noqa: BLE001  留证 best-effort
+            pass
+
+    return _sink
+
+
+def _bs_defect_sink_for_test(base_dir: Path):
+    """BoardState 缺陷台账 sink 工厂(形态同 expected_reconcile sink;
+    单一文件 = bs_defect.jsonl,逐行 JSON,失败静默)。"""
+    import json
+
+    def _sink(row: dict) -> None:
+        try:
+            p = Path(base_dir) / 'bs_defect.jsonl'
             p.parent.mkdir(parents=True, exist_ok=True)
             with p.open('a', encoding='utf-8') as f:
                 f.write(json.dumps(row, ensure_ascii=False, default=str) + '\n')

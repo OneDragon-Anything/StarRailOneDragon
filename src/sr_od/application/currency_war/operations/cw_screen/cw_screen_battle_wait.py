@@ -84,8 +84,11 @@ def _write_settlement_observation(session: StrategySession,
     """
     session.performance.record(obs)
     # 结算「连胜×N」前缀=方向 → session.last_streak(备战帧 streak 权威/
-    # 对账与经济 streak 杠杆的即时写锚)
-    session.last_streak = obs.streak
+    # 对账与经济 streak 杠杆的即时写锚)。失读守卫(迁移批次二,§8.8):
+    # parse_streak 失读 None 化后,None = 未读到 → 跳过沿用上次真值——
+    # 旧行为失读写 0 会把连胜/连败假复位(0 冒认真值,read_hp 100 同型)。
+    if obs.streak is not None:
+        session.last_streak = obs.streak
     # 结算屏「小队生命值NN」可靠 → 用它给下回合 prep(置信门 = last_hp
     # 写入语义的一半,漏门 = 误读 hp 污染 gated_hp 真值源)
     if obs.hp_confidence >= HP_CONFIDENCE_THRESHOLD:
@@ -388,6 +391,32 @@ class CwScreenBattleWait(SrOperation):
                                 and _assets.get('xp_next') is not None):
                             _lst.xp_progress = (_assets['xp_cur'],
                                                 _assets['xp_next'])
+                    # BoardState 结算覆盖写端(迁移批次二,任务书件 8/设计
+                    # §3.5.1):与上写入点同时序——结算真值组(hp/streak 带
+                    # 方向/gold·level·xp 仅胜局)覆盖进记录;金/等级/经验
+                    # 缺席(败局页无该面板)不写,与 _lst 分支同口径。
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        apply_settlement_cover,
+                        board_state_of,
+                    )
+                    from sr_od.application.currency_war.kernel.cw_performance import (
+                        HP_CONFIDENCE_THRESHOLD,
+                    )
+                    apply_settlement_cover(
+                        board_state_of(_session),
+                        hp_after=(getattr(_obs, 'hp_after', None)
+                                  if getattr(_obs, 'hp_confidence', 1.0)
+                                  >= HP_CONFIDENCE_THRESHOLD
+                                  else None),
+                        streak_after=getattr(_obs, 'streak', None),
+                        killed=getattr(_obs, 'killed', None),
+                        progress_delta=getattr(_obs, 'progress_delta', None),
+                        gold=_assets.get('gold'),
+                        level=_assets.get('level'),
+                        xp=((_assets.get('xp_cur'), _assets.get('xp_next'))
+                            if (_assets.get('xp_cur') is not None
+                                and _assets.get('xp_next') is not None)
+                            else None))
                     _act = {
                         'gold': (_assets.get('gold'),
                                  _assets.get('gold') is not None),

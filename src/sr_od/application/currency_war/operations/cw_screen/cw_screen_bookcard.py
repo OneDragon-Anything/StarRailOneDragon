@@ -72,8 +72,11 @@ class CwScreenBookcard(SrOperation):
         if cards:
             _match = getattr(self.ctx, 'cw_match', None)
             if _match is not None:
-                from sr_od.application.currency_war.kernel.cw_state import GameState
-                _st = _match.session.last_state or GameState()
+                # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读。
+                from sr_od.application.currency_war.kernel.cw_bs_view import (
+                    strategy_input_state,
+                )
+                _st = strategy_input_state(_match.session)
                 _decided = _match.strategy.decide_star_tome(
                     [c[0] for c in cards], _st, _match.session,
                     getattr(_match, 'config', None))
@@ -103,5 +106,17 @@ class CwScreenBookcard(SrOperation):
             _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
             register_confirm_arrival(_sess, 'ConfirmTome', _eq_name,
                                      produced_by='CwScreenBookcard')
+            # BoardState 写端(P3-6 批次二落地审;§3.4.5:星徽秘典弹窗=卡名,
+            # 选卡写入 chosen_tome;单次逻辑写入,§3.4 申报豁免;CwScreenMegastar
+            # chosen_megastar 同式)。候选读取链在役(:70-90)+建档在册,tome
+            # 非「暂无画面建档」屏——写端自此接通。
+            if _sess is not None:
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
+                )
+                board_state_of(_sess).write_logic(
+                    board_state_of(_sess).chosen_tome,
+                    pick_name,
+                    produced_by='CwScreenBookcard')
         return self.round_success('星徽秘典选卡完成', wait=CW_OVERLAY_SETTLE_S)
 

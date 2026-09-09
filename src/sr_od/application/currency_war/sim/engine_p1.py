@@ -22,7 +22,6 @@ from sr_od.application.currency_war.data.cw_battle_tables import (
     P2CombatCalib,
 )
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_battle_calib import (
     _board_counts_of,
     _board_factions_of,
@@ -139,18 +138,17 @@ def _board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
     """板面各阵营「下档阈值」观测键(生产 ``GameState.board_next_tier``
     的 sim 同构面;语义 = 左面板 "X/Y" 的 Y)。
 
-    判据单一源 = ``FACTIONS[].tiers``:取 >当前人数 的最小档,无更高档
-    不计入(与 obs/cw_observation computed 支同一式,禁第二份推导)。
+    派生单一源 = ``kernel.cw_board_state.board_next_tier_of``(迁移批次二:
+    本函数 = **薄委托**,禁第三份推导——obs computed 支与 sim 观测键
+    (ADR-0488 硬依赖键供给)同源由委托结构保证;consume 锁
+    test_board_next_tier_of_matches_registry_formula)。
     消费方 = Δp_tier 档位分解标定批(观测披露面;兑现链开关族已随旧
     方案清退批删除,清查报告 OLD_MIX_AUDIT §1.3,键保留作判读面)。
     """
-    out: dict[str, int] = {}
-    for _f, _c in board_factions.items():
-        _tiers = FACTIONS[_f].tiers if _f in FACTIONS else ()
-        _nt = next((t for t in _tiers if t > _c), 0)
-        if _nt:
-            out[_f] = _nt
-    return out
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_next_tier_of,
+    )
+    return board_next_tier_of(board_factions)
 
 START_BENCH_COUNT: int = 4
 
@@ -1423,10 +1421,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # launch_prepared_battle 内 RunDeploy+StartBattle 同构。
             for _seg in range(_arb_seg_cap if _round_launch is not None
                               else 8):
-                # 满栏旗标逐决策段 OR(生产「任一帧置 1」同式;取段入口
-                # 值=该段 decide_prep 的决策语境)
-                _round_bench_full = _round_bench_full or (
-                    bench_occupied(st.bench) >= BENCH_CAPACITY)
                 # W971 sim 适配批:决策调用切黑板新接口(生产/离线同路)。
                 # sim 决策段 = 商店决策核:帧写者 = 本处(shop_state_frame
                 # 写者白名单含 sim 引擎,见 cw_strategy_session 字段注释);
@@ -1445,8 +1439,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 正本 = BoardState-数据结构设计.md):sim 真值帧同步记观察
                 # (evidence 恒 sim:synthesized),bench 槽位保序 = 记录模型
                 # 按实机真值箱占席(sim「无箱实体」只是内部口径约定不进
-                # 记录)。纯记录零决策面:sim 账本/行为逐位不变,消费切换
-                # 归迁移批次二。best-effort 不炸引擎(记录层故障不毒化 sim)。
+                # 记录)。纯记录零决策面:sim 账本/行为逐位不变。best-effort
+                # 不炸引擎(记录层故障不毒化 sim)。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    bench_is_full as _bs_bench_is_full,
+                )
                 from sr_od.application.currency_war.kernel.cw_board_state import (
                     board_state_of as _bs_of,
                 )
@@ -1458,6 +1455,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 except Exception as _bs_e:   # noqa: BLE001
                     from one_dragon.utils.log_utils import log as _log
                     _log.debug('[cw-sim] BoardState 合成口跳过: %s', _bs_e)
+                # ADR-0488 席满观测键·派生支(迁移批次二;设计 §8.7 as-built
+                # 「席满观测键 ADR-0488 经合成口后 bench_is_full 供给」):
+                # 满栏旗标改经 BoardState 派生(席空数==0,§3.2.5 派生单一
+                # 源),不再直接数 st.bench。**语义等值申报**:sim 无箱实体,
+                # 占席谓词(unit/empty)与 bench_occupied 非 None 计数逐位
+                # 等值——零行为漂移。轮内 OR 聚合语义不变(生产 merge 同式:
+                # 「任一决策帧满栏」;本判定在合成口后 = 本段帧语境,与旧
+                # 「段入口值」同点);合成失败窗(None→False)保守端,下段
+                # 合成自愈。
+                _round_bench_full = _round_bench_full or bool(
+                    _bs_bench_is_full(_bs_of(sess)))
                 acts = strat.decide_shop_screen(sess, config)
                 # 采购面三观察·帧级只读投影(见轮首「采购面三观察计数」
                 # 块;位次 = 本段入口刷新后 = 意向状态已刷新,与策略决策帧
