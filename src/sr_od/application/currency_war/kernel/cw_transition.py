@@ -154,8 +154,6 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
         _challenger_owned = owned[fw]
         if owned[current] >= _challenger_owned and owned[current] >= 1:
             return current   # 现任持有未被挑战者持有领先 → 保持
-        if owned[current] >= 1 and _challenger_owned < owned[current] + 1:
-            return current   # 挑战者持有未领先 ≥1 → 保持(滞后语义的持有权版)
     return fw
 
 
