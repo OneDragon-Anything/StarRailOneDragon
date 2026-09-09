@@ -999,9 +999,18 @@ class BoardState:
         - source = logic + evidence = 'session_carrier'(中继是已核实事实
           的搬运,非本帧观察,禁标 observation);
         - **已有正式值的字段一律跳过**(返回 False)——禁把 handler 已写的
-          logic 翻成 observation(§8.1),真写端(write_logic/观察覆盖)优先。
+          logic 翻成 observation(§8.1),真写端(write_logic/观察覆盖)优先;
+        - **会话侧值已确立闸**(§2.1 空值=未知态禁中继):字符串非空、
+          列表/元组非空才中继——会话载体的默认空值(''/[])是「未知」不是
+          「已知事实」,中继空值会把未知固化成正式值(遮蔽帧值、拦截后到
+          真值、持卡名单 [] 为假事实);恢复局新 session 的镜像字段停在
+          空默认,靠本闸拒写,真值后到时字段仍未写过、可正常落。
         """
         if target.value is not None:
+            return False
+        if isinstance(value, str) and not value.strip():
+            return False
+        if isinstance(value, (list, tuple, dict, set)) and not value:
             return False
         name = self._field_name(target)
         self._swap(name, Field(value=value, source='logic',
@@ -1097,10 +1106,13 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
       记录模型按实机真值箱占席——sim「无箱实体」只是内部口径约定,
       不进记录模型(占席谓词 = :func:`slot_occupies`,箱/秘典占席);
     - at_round = 轮键('p{plane}-r{round}' 形,登记期快照);
-    - **payload 域离屏分支**(§2.2 例外,第 15 轮对抗审 C8 补):shop 真值
-      缺席 = 结构离屏(置 None+left_screen,等价 leave_screen);encounter/
-      supply 两域 sim 不建模,恒离屏口径——三 payload 域在合成帧恒反映
-      「当前画面事实」,禁旧 payload 连旧 evidence 残留。
+    - **payload 域离屏分支**(§2.2 例外):shop 真值缺席 = 结构离屏(置
+      None+left_screen,等价 leave_screen);encounter/supply 两域 sim 不建模,
+      恒离屏口径——三 payload 域在合成帧恒反映「当前画面事实」,禁旧
+      payload 连旧 evidence 残留。**空表与 None 同判 = 离屏**(边界申报):
+      sim 真值域无 OCR 失读态,GameState.shop 空表 = 「不在商店」的真值
+      形态(开店帧恒有五张);与 live 观察链「空牌面 = OCR 失读不写、非本
+      画面才离屏」的语义分叉是有意申报(真值域 vs 识别域)。
     """
     _ev = f'{SIM_SYNTHESIZED}@{at_round}' if at_round else SIM_SYNTHESIZED
     # node_type None(裸 GameState 未建模该帧)不写 node——禁 'prep' 占位
@@ -1156,7 +1168,7 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
         bs.observe(bs.shop, ShopPayload(cards=cards, refresh_probs=probs),
                    evidence=_ev)
     else:
-        # 画面附加域离屏分支(§2.2 显式例外;第 15 轮对抗审 C8):sim 真值
+        # 画面附加域离屏分支(§2.2 显式例外):sim 真值
         # 帧无商店牌 = 「不在商店」的结构事实——非当前画面置 None(等价
         # leave_screen,evidence=left_screen),禁沿用旧 payload 连旧 evidence
         # (残留会把离屏帧误读成「商店仍开着」)。此为「空则不写」的漏申报

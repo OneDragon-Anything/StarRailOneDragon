@@ -5,8 +5,9 @@
 (``session.last_state`` 原始观察帧)转 BoardState 适配层:对已建模域,
 值取自 BoardState 单例(经 :func:`cw_observation._feed_board_state` /
 sim 合成口逐帧喂入,来源四分类带 evidence);对**未建模/执行域**,显式
-透传入参帧(声明残差,退役归迁移批次四)。返回值 = 标准
-:class:`GameState`(形状兼容,消费方零改动)。
+透传入参帧(申报面非残差:各域有"不入 BoardState 记录模型"的显式理由,
+见下方清单;收敛前提 = 该域本身建模入 BoardState,归建模批,非退役批)。
+返回值 = 标准 :class:`GameState`(形状兼容,消费方零改动)。
 
 **等价性语义(行为等价门)**:
 - 已建模域:BoardState 值由同一帧的观察流镜像而来,常态帧与旧直读
@@ -15,7 +16,8 @@ sim 合成口逐帧喂入,来源四分类带 evidence);对**未建模/执行域*
   同输入序下更诚实的输入」的申报面,回放语料(无 OCR 失读)逐位零差;
 - 透传域:值与旧形态逐位一致(同一入参帧原样搬运)。
 
-**未建模/透传域清单**(批次二实况,批四退役时清零):hp(门权威随帧:
+**未建模/透传域清单**(各域理由申报;域建模入 BoardState 后对应透传分支
+自然由建模批收编):hp(门权威随帧:
 last_state.hp = gated_hp 门后消费值,BoardState.hp = 门前真值,消费施门
 归策略侧 kernel 不可反向依赖——记录/消费分离,模块内 hp 注释)/
 bench/deployed(席位身份识别在 PrepObservation/执行侧 SIFT,未入
@@ -148,7 +150,7 @@ def game_state_view(bs: BoardState, frame: GameState | None) -> GameState:
     if not st.board_next_tier and st.board:
         st.board_next_tier = board_next_tier_of(st.board)
 
-    # —— 透传域(未建模/执行域,批四退役时清零;清单见模块 docstring)——
+    # —— 透传域(未建模/执行域,理由申报见模块 docstring 清单)——
     st.deployed = list(fr.deployed)
     st.bench = list(fr.bench)
     st.deploy_cap = fr.deploy_cap

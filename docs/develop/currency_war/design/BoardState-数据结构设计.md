@@ -24,7 +24,7 @@
 - **logic（逻辑）**：决策动作按游戏规则推算的预期效果。字段的 logic 值只存**核实通过**的正式值；核实前的预期放在预期条目表，不进字段（两步见 §2.5）。
 - **carried（沿用值）**：这一帧没读到、保留上次好值时写入，evidence 必带 `carried:<来源帧>`——防 N 帧前的旧值在遥测里被当成「本帧真读」。
 - **prior（先验）**：来自历史遥测调查的先验写入——非本局亲见、非当前推算、非沿用，是第四类（如开局 hp 先验，§3.1.6）。evidence 必带 `prior:<来源>`（如 `prior:adr-0559`）；本类仅限显式申报的条目，禁扩散。
-- **载体中继（session_carrier，批次一实现暂用）**：接管/初始化时把会话已知事实补写进从未写过的字段——**不设第五来源类**：中继写入 source=logic（evidence=session_carrier），且**已有正式值的字段一律跳过**（禁把 handler 已写的 logic 翻成 observation，§8.1）；批次二收敛此语义并落测试锁（cw_observation.py:2528-2548 现状）。
+- **载体中继（session_carrier）**：接管/初始化时把会话已知事实补写进从未写过的字段——**不设第五来源类**：中继写入 source=logic（evidence=session_carrier），且**已有正式值的字段一律跳过**（禁把 handler 已写的 logic 翻成 observation，§8.1）。载体 = `BoardState.relay`（kernel/cw_board_state.py；测试锁 = sr-od-test test_cw_board_state_consume / test_cw_board_state_batch4）。**空值=未知态禁中继**：会话载体默认空值（''/[]）不是「已知事实」——恢复局新 session 的五镜像字段停在默认值，中继会把未知固化为正式值（遮蔽帧值、拦截后到真值、持卡名单 [] 为假事实）；relay 判据带「会话侧值已确立」闸（字符串非空白/列表元组字典集合非空才中继，空白串同判空白），恢复局镜像五字段的恢复源随接管协议申报。
 
 evidence 为可选的来源注记，用来记录证据分级（帧标签的稳定范围、当场读还是开局恒值、`superset` 标记等，随各字段申报）。
 
@@ -83,7 +83,7 @@ evidence 为可选的来源注记，用来记录证据分级（帧标签的稳�
 
 #### 3.1.6 hp 开局先验
 
-开局 hp 不等首个备战帧观察：对账层按**遥测先验**写入——实证档=**82/开局不利 62**（_AFFIX_HP_DELTA，kernel/cw_opening_hp.py:22/:32-34；hp0_survey 133 局，ADR-0559；经 cw_reconcile.reconcile_hp 开局分支接线，已实施）；其余难度档维持 None。来源标记 evidence=`prior:adr-0559`——先验写入是来源四分类（observation/logic/carried/prior）的 prior 类（§2.1 已申报）。
+开局 hp 不等首个备战帧观察：对账层按**遥测先验**写入——实证档=**82/开局不利 62**（_AFFIX_HP_DELTA，kernel/cw_opening_hp.py:22/:32-34；hp0_survey 133 局，ADR-0559；经 cw_reconcile.reconcile_hp 开局分支接线）；其余难度档维持 None。来源标记 evidence=`prior:adr-0559`——先验写入是来源四分类（observation/logic/carried/prior）的 prior 类（§2.1 已申报）。
 
 ### 3.2 干净的备战画面（商店关闭态）
 
@@ -182,7 +182,7 @@ evidence 为可选的来源注记，用来记录证据分级（帧标签的稳�
 #### 3.2.13 血量 hp（主条目）
 
 **语义**：int | None。
-**写端**：本屏血量条观察覆盖，**仅商店关闭态可写**——商店开启帧该区不显示（档案实证该态该区空、非遮挡；旧 read_hp 曾返 100 默认假值，防线已落观察漏斗〔批次一：hp 仅真读才 observe〕），写入闸按分类子态拒绝这类垃圾输入；结算覆盖见 §3.5.1。其他可见面：战斗结算页、挑战失败页、中断对话框（暂停面板未建档血量区域）。
+**写端**：本屏血量条观察覆盖，**仅商店关闭态可写**——商店开启帧该区不显示（档案实证该态该区空、非遮挡；旧 read_hp 曾返 100 默认假值，防线=观察漏斗（hp 仅真读才 observe，写端=cw_observation hp 观察段）），写入闸按分类子态拒绝这类垃圾输入；结算覆盖见 §3.5.1。其他可见面：战斗结算页、挑战失败页、中断对话框（暂停面板未建档血量区域）。
 **边界**：不可信帧不写。「备战帧仅 shop 关闭态」的字面全局禁写与结算覆盖不冲突——结算是独立写端。
 
 #### 3.2.14 敌人难度 enemy_difficulty（主条目）
@@ -212,20 +212,20 @@ evidence 为可选的来源注记，用来记录证据分级（帧标签的稳�
 
 #### 3.2.18 单位的星级与装备子字段（写端全申报）
 
-**管什么**：前台/后台/备战席里每个 Unit 身上的两个子字段——**星级**和**装备**。角色本名靠观察识别（§3.2.3），这里只说这两个子字段「怎么读到、谁会改」，以及两个已知的窟窿。
+**管什么**：前台/后台/备战席里每个 Unit 身上的两个子字段——**星级**和**装备**。角色本名靠观察识别（§3.2.3），这里只说这两个子字段「怎么读到、谁会改」，以及装备图标观察面的已知待采证项。
 
-**怎么读到（观察通道）**：**干净备战画面直接识别**（玩家裁定 2026-09-09）——每个角色素材上的**星级角标与装备图标**都在备战屏画面里，识别不依赖详情面板。接线现状：①前后排**已穿装备已有逐帧读取器**（read_row_equipped，备战帧每帧注入前排/后排已穿装备，battle_prep_recognizer.py:179-183；equipment_mechanics.md:57 在册；覆盖前后排、不含备战席）；②**星级=read_star 已在役**（立绘底部金星计数，cw_identity_obs.py:124-146，identify_slots :464 注入——read_deployed_chars/read_bench_chars 两链都在用）：玩家「备战屏可识别星级」裁定由现役线兑现，无需建线；**备战席装备图标=负探针在案**（battle_prep_recognizer.py:167-168 备战栏 below 带机制恒空——未上阵无 icon，读只产假 MISS 噪声）→ 装备图标面维持待采证（随机组收口通道对备战席**装备子字段**的依赖以负探针复核为准；星级面不受影响）。前后排装备读取不受影响（read_row_equipped 在役）。辅助通道：点开角色详情面板（选中才弹出）可核装备（核对源已实证）；详情面板无星级项（备战屏档案 :56）——辅助而已，星级的主观察通道在备战屏本体。纪律对称：不可识别的通道禁建，**可识别的通道也禁因「未建线」而当成不存在**。
+**怎么读到（观察通道）**：**干净备战画面直接识别**（玩家裁定 2026-09-09）——每个角色素材上的**星级角标与装备图标**都在备战屏画面里，识别不依赖详情面板。接线面：①前后排**已穿装备已有逐帧读取器**（read_row_equipped，备战帧每帧注入前排/后排已穿装备，battle_prep_recognizer.py:179-183；equipment_mechanics.md:57 在册；覆盖前后排、不含备战席）；②**星级=read_star 已在役**（立绘底部金星计数，cw_identity_obs.py:124-146，identify_slots :464 注入——read_deployed_chars/read_bench_chars 两链都在用）：玩家「备战屏可识别星级」裁定由现役线兑现，无需建线；**备战席装备图标=负探针在案**（battle_prep_recognizer.py:167-168 备战栏 below 带机制恒空——未上阵无 icon，读只产假 MISS 噪声）→ 装备图标面维持待采证（随机组收口通道对备战席**装备子字段**的依赖以负探针复核为准；星级面不受影响）。前后排装备读取不受影响（read_row_equipped 在役）。辅助通道：点开角色详情面板（选中才弹出）可核装备（核对源已实证）；详情面板无星级项（备战屏档案 :56）——辅助而已，星级的主观察通道在备战屏本体。纪律对称：不可识别的通道禁建，**可识别的通道也禁因「未建线」而当成不存在**。
 
 **谁会改（逐条标写入归属，依据=装备注册表效果文本；随机值源不进逻辑写端——§5.3 归属判据）**：买牌升星推算（按费用倍数规则，DD-018）=逻辑写；RunEquip 穿装备（归属变更）=逻辑写；穿着即合成（两件简易合成进阶上身）=逻辑写；拆装扳手（脱下角色装备回背包）=逻辑写；冶金炉（拖装备变同类型**随机**）=产出值不可预知，**观察收口**；随便骰子（佩戴者每节点自动填充两件装备，**随机**）=**观察收口**。
 
-**窟窿一：BoardState 观察面尚未消费星级、无合成升星预期写端（挂迁移批次二）**。事实基线（2026-09-09 对账修正）：①**星级识别线已存在且接线**——read_star（立绘底部金星计数，cw_identity_obs.py:124-146）经 identify_slots（:464）注入，read_deployed_chars/read_bench_chars 两链都在用；②**现役 tracking 链已有合成升星逻辑写入**——BuyCard simulate 后 3 合 1 升星（carrier.star += 1，cw_state.py:858-894；live 走 bot tracking BenchChar.star 非 read_star，:138），卖价 sell_refund 读 tracking star（:1293）——「现役链按 1★ 卖 2★」不成立；③合成过渡窗 read_star 读数不可信的门在册（星爆粒子/满栏横幅帧，cw_identity_obs.py:290-330，消费方保旧）。**真实缺口**：新 BoardState 骨架仅有 expect/confirm 基建，无星级观察消费、无合成升星预期写端调用方（cw_op_buy_cards 仅写刷新计数组）——消费切换（批次二）后若不接，新链才可能出现「合成后星级停旧值」。修法二选一：(a) 批次二在预期条目表补「合成升星」最小逻辑写入（3 合 1 事件按注册表费用规则推星级，预期+观察核对）；(b) 观察面接 read_star（须挂过渡窗不可信门保旧，:290-330）。**窟窿二：备战席装备图标观察面待采证**（见上文②负探针——battle_prep_recognizer.py:167-168 备战栏 below 带机制恒空）——与窟窿一同挂批次二处置对账。两线不互斥：逻辑写端管即时正确，观察识别管兜底核对。按归属判据（合成升星=确定性可算），倾向 (a)。
+**星级与合成的 BoardState 消费面（实现落位）**：①**星级观察消费** = 备战屏 SIFT/read_star 链（read_star=立绘底部金星计数，cw_identity_obs.py:124-146，经 identify_slots（:464）注入 read_deployed_chars/read_bench_chars 两链）经观察喂入口写 `bs.bench`（BenchView，零新增 OCR——识别线在役，缺的只是 BoardState 消费，批次二扩单①补齐，§8.7）；②**合成升星预期写端** = BuyCard 执行落地门投影升星检测（`detect_merge_upgrade`：同名最高星抬升、全场域 bench+deployed）→ `expect(bs.bench, 投影 BenchView)` + 核对闭环 `reconcile_pending_observation`（一致 confirm 转正 / 失配 discard+缺陷留证；kernel/cw_board_state.py；3 合 1 事件按注册表费用规则推星级，预期+观察核对）。归属依据：合成升星=确定性可算 → 逻辑写（§5.3 判据）；观察识别管兜底核对，两线互补不互斥。**执行侧边界**：现役 tracking 链合成升星（BuyCard simulate 后 3 合 1 升星，carrier.star += 1，cw_state.py:858-894；live 走 bot tracking BenchChar.star 非 read_star，:138）与卖价 sell_refund 读 tracking star（:1293）保持原样——「现役链按 1★ 卖 2★」不成立；装配源切换归尾批（ADR-0530）。**在册门**：合成过渡窗 read_star 读数不可信（星爆粒子/满栏横幅帧，cw_identity_obs.py:290-330，消费方保旧）。**窟窿二（开放）：备战席装备图标观察面待采证**（负探针——battle_prep_recognizer.py:167-168 备战栏 below 带机制恒空）——随机发牌进备战席的星级在观察侧同面无源，随本窟窿处置。
 
 **效果发牌族：按归属判据逐卡分面（玩家裁定 2026-09-09 纠正：能准确算的就逻辑算）**。这些卡直接发角色进席、不走买牌——按「结果可否精确计算」分两组：
 - **确定性发牌（身份/星级/数量可精确算）=逻辑写候选**（建模批按卡登记写端；此前「整族撤销」的过度裁定就此纠正）：广聚天下英才（所有 2 费各一张，:151）；公司契约（累计 40 利息发托帕&账账，:395——利息可自算故时点可追踪）；持续伤害契约（计数 180 发黑天鹅，:396）；战技点契约（晶矿计数发火花=确定性；**随附 1 个随机战技点羁绊角色=随机面走随机组**，:397）；星核猎手契约（同战斗发流萤，:398）；节节高升（发 2★、费用=等级−4 最小 1 费，:253——星级/费用确定，进席身份若随机则身份面走随机组）。
 - **随机/待证面（身份随机或构成未证）=不建逻辑写，观察收口**：扩充团队（数量/费用构成确定 2×1费+2×2费+1×3费=逻辑写候选面；**进席身份随机**〔官方文 :63 未点名具体角色〕=观察收口——按节节高升同式拆面）；大扩招（随机 4 费至多 10 个，:145）；砂里淘金（发【砂金】，:127——**星级未证，暂随本组观察收口**，采证后按判据归组）；天降救兵；价值投资；援军族；打捞人才库/+（发未选角色——集合确定但依赖草案上下文，建模批归组）；全都要·银/金/彩（追加未选角色，:95/:150/:323——同打捞逻辑，建模批归组）；劳务派遣合同（对应羁绊随机角色，:387）；量子同频契约（符玄或希儿随机，:394）；欢愉契约（火花或开拓者·欢愉随机，:451）；愚者恶作剧已移出本族——注册表原文=商店变身+备战席离场产金（:240），进席走买牌（BuyCard 域），见 §5.2。未列明的卡由建模批按注册表文本归组。
-随机面到席与星级后果全部等观察覆盖收口：备战席槽位观察管「来了谁」，星级角标识别线管「几星」（收口通道对**备战席**依赖上述待采证——未核验前，随机发牌进备战席的星级在观察侧同样无源，随窟窿一处置）。**边界**：机器人自己的合成升星（窟窿一）=确定性，修法倾向 (a)（挂批次二，§8.7）。**名册边界**：上列=已点名代表；base 注册表发牌面远大于此（星徽族 22 张、星徽套组族 20 张、盗用身份、迷之旅人、本姑娘就是罗刹、黑塔纪元、白衣伙伴、双龙会、钢铁美学、人在旅途、梦境大舞台、借力打力、超充站、燃起来了、量子力学、艾丝妲的猛犬、步狸村之谜、狸职手续首发、双手狸开键盘、孪生姵姵、三星/粗星佩佩、人才引进、英雄登场、概念股开局角色、命运圣杯契约等）——枚举谓词「效果文本含获得…角色」，全量归组建模批（§7 源 d）。
+随机面到席与星级后果全部等观察覆盖收口：备战席槽位观察管「来了谁」，星级角标识别线管「几星」（收口通道对**备战席**依赖上述待采证——未核验前，随机发牌进备战席的星级在观察侧同样无源，随备战席装备图标待采证项处置）。**边界**：机器人自己的合成升星=确定性，归逻辑写（实现落位见 §3.2.18 星级与合成的 BoardState 消费面，§8.7）。**名册边界**：上列=已点名代表；base 注册表发牌面远大于此（星徽族 22 张、星徽套组族 20 张、盗用身份、迷之旅人、本姑娘就是罗刹、黑塔纪元、白衣伙伴、双龙会、钢铁美学、人在旅途、梦境大舞台、借力打力、超充站、燃起来了、量子力学、艾丝妲的猛犬、步狸村之谜、狸职手续首发、双手狸开键盘、孪生姵姵、三星/粗星佩佩、人才引进、英雄登场、概念股开局角色、命运圣杯契约等）——枚举谓词「效果文本含获得…角色」，全量归组建模批（§7 源 d）。
 
-**特例：开拓者形态随排**。同一个开拓者**站前台=记忆形态、站后台=欢愉形态**，拖排即切换，阵营/羁绊随之变（单一源=cw_chars 的 trailblazer_form，cw_chars.py:47-57；ADR-0158 聚合侧已接线）。部署/换线链消费 board 与阵营子字段时按**当前排**归一预期，禁按 char_id 原值算（旧代码教训：换排后欢愉计数虚高、记忆侧漏算）。
+**特例：开拓者形态随排**。同一个开拓者**站前台=记忆形态、站后台=欢愉形态**，拖排即切换，阵营/羁绊随之变（单一源=cw_chars 的 trailblazer_form，cw_chars.py:47-57；聚合侧按 ADR-0158 接线）。部署/换线链消费 board 与阵营子字段时按**当前排**归一预期，禁按 char_id 原值算（旧代码教训：换排后欢愉计数虚高、记忆侧漏算）。
 
 #### 3.2.19 免战牌激活态与剩余跳过次数
 
@@ -258,7 +258,7 @@ evidence 为可选的来源注记，用来记录证据分级（帧标签的稳�
 #### 3.3.4 刷新费 shop_refresh_cost（主条目）
 
 **语义**：最近一次付费刷新的标价。**动态**——投资策略/环境可改；免费帧不写（None≠标价 0）。
-**写端**：本屏刷新钮标价的**现场 OCR 识别**（玩家裁定 2026-09-09 现场识别为准，ADR-0622；识别失败=None，禁兜底改值）——数字类误读用规则修复。⚠️ 干净备战屏底部「文本-刷新金币数」区域的读数实为**利息徽标**（min(gold//10,5)，非刷价——ADR-0456 三流对拍定谳），已裁不识别（徽标退役）——禁拿它当本通道锚。旧「刷新前后金币差倒推」通道退役（只证偏差/同窗归因约束与 P1 第 9 节点、等级 5-6 证据域注记一并作废）。遗留消费面申报（批次二 as-built 更新）：refresh_cost_effective 的 `or 2` 兜底**已消灭**——现为声明式缺省 SHOP_REFRESH_COST + bs 参数消费 BoardState.shop_refresh_cost 现场识别值（cw_economy.py:293-314）；余项=调用面传参归批次二。§3.2.11 的 xp_click_cost FALLBACK 仍在（cw_economy.py:318-322，两项勿混）。
+**写端**：本屏刷新钮标价的**现场 OCR 识别**（玩家裁定 2026-09-09 现场识别为准，ADR-0622；识别失败=None，禁兜底改值）——数字类误读用规则修复。⚠️ 干净备战屏底部「文本-刷新金币数」区域的读数实为**利息徽标**（min(gold//10,5)，非刷价——ADR-0456 三流对拍定谳），已裁不识别（徽标退役）——禁拿它当本通道锚。旧「刷新前后金币差倒推」通道退役（只证偏差/同窗归因约束与 P1 第 9 节点、等级 5-6 证据域注记一并作废）。遗留消费面申报（批次二）：refresh_cost_effective = 声明式缺省 SHOP_REFRESH_COST + bs 参数消费 BoardState.shop_refresh_cost 现场识别值（cw_economy.py:293-314；`or 2` falsy 兜底不复活）；xp_click_cost 的 FALLBACK 消费形态仍在（cw_economy.py:318-322，与上项勿混，搬迁随消费切换余量申报）。
 
 #### 3.3.5 商店免费刷新·结构化来源族
 
@@ -272,7 +272,7 @@ evidence 为可选的来源注记，用来记录证据分级（帧标签的稳�
 
 #### 3.3.6 商店免费刷新余额
 
-当前未消耗免费刷新次数。**写入=仅逻辑**（结构化 burst/per_node 族按效果激活经账本累加——**桥接归属批次三已落**：`apply_effect_burst_grant`〔burst=选卡一次性，活载体=固定理财即时段〕/`grant_effect_node_refresh_balance`〔per_node=每节点+N，活载体=双手狸 2/节点；闸门=advance_node 的 advanced 位每节点恰一次〕，kernel/cw_board_state.py；条件判定形态〔本金充裕 :509〕无结构化规格不 wire，结构化后经同一桥自动生效）；**无 UI 观察通道**——画面档与游戏 UI 均无计数控件（2026-09-09 对拍申报）；间接核对信号=免费帧刷价显示 0/「免费」（挂实机采证义务）。付费帧/免费帧判定输入。
+当前未消耗免费刷新次数。**写入=仅逻辑**（结构化 burst/per_node 族按效果激活经账本累加——**桥接载体**：`apply_effect_burst_grant`〔burst=选卡一次性，活载体=固定理财即时段〕/`grant_effect_node_refresh_balance`〔per_node=每节点+N，活载体=双手狸 2/节点；闸门=advance_node 的 advanced 位每节点恰一次〕，kernel/cw_board_state.py；条件判定形态〔本金充裕 :509〕无结构化规格不 wire，结构化后经同一桥自动生效）；**无 UI 观察通道**——画面档与游戏 UI 均无计数控件（2026-09-09 对拍申报）；间接核对信号=免费帧刷价显示 0/「免费」（挂实机采证义务）。付费帧/免费帧判定输入。
 
 #### 3.3.7 累计付费刷新次数
 
@@ -317,7 +317,7 @@ evidence 为可选的来源注记，用来记录证据分级（帧标签的稳�
   - 基线=每卡 1 次，独立扣减、刷到 0 时按钮置灰、读数仍可读；观察写端=本屏 OCR（reader 在册 cw_node_obs.py:108-158），与环境屏「剩余次数」对齐消双标。
   - 例外三族：银·金·彩环境 +2（单卡效果 id 135，cw_invest_data.py:403——**非品质类通则**）；投资卡族（白银投资/黄金投资）=3（:146/:265「选择有3次刷新机会」）；期货族（黄金期货/+、彩虹期货/+）=0（:46-47/:122-123「不能刷新」——机制性无刷新钮，该屏读不到时按「机制性无此元素」分流，禁按「默认 1 没读到」处理）；另有远见改写=0（:279「无法刷新」）。
   - 口径裁决：判据源 invest_effects.md:54 自身另一错向（把白银/黄金投资亦写成「不可刷新」）——逐卡刷新次数以**注册表官方全文为唯一口径**；基线仅作先验，**禁作核对预期源**（OCR 读真值）。
-- **策略屏刷新已用**：逐卡独立计数（口径同上）；行为口径：**随刷新点击置位（不等验效）**；与选卡落地的关系同式申报。**逐卡计数键口径（迁移批次二申报）**：键 = **注册表规范卡名**（normalize_invest_name 归一后）——效果注册表 STRATEGY_EFFECTS 即以规范名为键，写端 OCR 名经同一归一函数入键，免双坐标系换算；不采 spec.id。写端 = 策略屏刷新点击置位（**批次三已接**，cw_screen_invest_strategy 逐槽 write_logic；键口径如上）。
+- **策略屏刷新已用**：逐卡独立计数（口径同上）；行为口径：**随刷新点击置位（不等验效）**；与选卡落地的关系同式申报。**逐卡计数键口径（迁移批次二申报）**：键 = **注册表规范卡名**（normalize_invest_name 归一后）——效果注册表 STRATEGY_EFFECTS 即以规范名为键，写端 OCR 名经同一归一函数入键，免双坐标系换算；不采 spec.id。写端 = 策略屏刷新点击置位（cw_screen_invest_strategy 逐槽 write_logic；键口径如上）。
 - **持有投资策略（名单+品质）（本屏写入）**：局级累计——逐次选择追加、跨位面保留；难度按每拥有 1 个累加（economy.md §9）；品质=难度加成锚（白 0/金 3/彩 6）。选卡帧观察由遥测侧作选后复盘输入。
 
 #### 3.4.5 单选事件屏（盛会之星 / 伙伴 / 祈愿试炼 / 命运卜者 / 骇入策划 / 专家邀请函 / 星徽秘典 / 装备三选一）
@@ -372,7 +372,7 @@ hp_after / streak_after / killed / 进度变化 / 结算资产（等级/经验�
    - **大裁员 burst 数值反转（ADR-0620）**：注册表 free_refresh_burst=5 vs 官方卡文=6（cw_invest_data.py:134）——以官方卡文 6 为准 + 注册表漂移标注。数据权限序=**base 官方文本 > 手工 overlay > 文档转述**（cw_investments.py:1-8 两层架构）；若暂按注册表消费须显式申报「已知 −1 系统性偏差 + 核对豁免」。
 2. **基础机制注意**（合成链/穿着即合成/满栏自动多买——非注册表项、基础游戏机制），单一源=merge_mechanics.md + cw_synthesis.py。
 
-**不记预期值的豁免范围**：合成链/穿着即合成/事件类选择——后果全部等下一次识别覆盖（申报过的豁免，防正常游戏行为刷爆缺陷台账）。豁免在 merge_mechanics.md §4 记为现状描述（批次号 W530）、不是最终裁定；是否给自动多买/连锁落点补记预期值，随迁移批次二的行为口径申报一并裁决（候选批次号 W536）。
+**不记预期值的豁免范围**：合成链/穿着即合成/事件类选择——后果全部等下一次识别覆盖（申报过的豁免，防正常游戏行为刷爆缺陷台账）。豁免在 merge_mechanics.md §4 记为现状描述、不是最终裁定；是否给自动多买/连锁落点补记预期值，随后续行为口径申报裁决。
 
 **轮首收入三行共用的收入修饰**：在册修饰（收入四类〔每节点固定加金/战斗表现条件/利息通道修改含 cap 覆写/一次性触发〕+ win_reward_mult ×3）对三支触发面统一生效；win_reward_mult 施于连胜分量**含奖励轮**（消持卡局奖励轮系统性少计）。单一源=STRATEGY_ECONOMY（经 effect_inventory 查询）。**sim 收入路径未接 win_reward_mult**（engine_p1 连胜分量直查 streak_gold 纯表；全仓唯一消费点=决策 EV 侧 cw_economy.py:672）——持卡局（如伟大征服 ×3）sim-记录分叉最高差 ×3 连胜分量，sim 修正随批（与败轮基项冲突同一「sim 修正随之」桶，§4.2 败轮行）。net_income=规划近似与记账口径差异归属申报。布局修饰未建模：玩家裁定 2026-09-09「布局全量默认激活、所有玩家一致」——**辖域=本账号/当前版本**（advantage_layouts.md:3-4 与**官方原文 gameplay.md:56-59** 均在册「等价钻钞逐项激活」——与裁定冲突，复核问题=官方原文与实机现状二选一定谳）；裁定辖域内收入修饰（攻守自如改连胜分量）常开；建模**不采「全员常开」通则**——激活状态未知局→观察覆盖兜底+核对降级（激活名单字段已撤，归因输入缺位在案）。挂迁移批次二/观测期。
 
@@ -437,7 +437,7 @@ hp_after / streak_after / killed / 进度变化 / 结算资产（等级/经验�
 **行选择优先级**：本轮节点类型先分派——奖励/补给节点走各自行，败补仅当前为**战斗类**节点时入账（引擎 elif 序 supply→reward→败补→常规，engine_p1.py:1028-1036=奖励/补给轮不发 LOSS_GOLD，文档对齐引擎）。胜局金归结算覆盖/下店观察覆盖。败战后奖励/补给轮的补发归宿=吞掉还是递延，待实机实证挂观测期核对项。**live 写端载体未指派**（全文唯一有完整公式无 op 载体的声明面）——指派挂迁移尾批（候选=effect_inventory 节点边界回执，§8.7）；接线前轮首增量走观察覆盖兜底。
 
 - **战斗败轮补发**：**机制**——战斗失败时结算屏不发收入（败局结算屏只显示扣血分解，economy.md §11），这笔金改到**下一轮轮首**补发。**写入**：金币 += 补发基项=**该节点的基础奖励**（玩家裁定 2026-09-09「看节点基础奖励」——即该节点若胜会拿的那份 base，平面感知键与奖励轮同款：P1 {1:3,2:4}、P2r1/P3r1=5、其余 5；round_num 语义=被败轮节点——败 P1r9 后 P2r1 补发按 P1r9 口径）+ 利息(gold, cap) + streak_gold×0（连胜分量取 0，win_reward_mult 不生效）。〔口径冲突挂账〕旧口径=按战败节点类型定表 LOSS_GOLD_BY_NODE {battle:2,encounter:4,boss:4}（cw_economy.py:228；economy.md:148；ADR-0439 有 108 局实机差分实证）——与玩家裁定冲突，**记录模型按玩家裁定执行**；判别=差分数据按轮次/平面分桶重放可仲裁（补发随轮次变=基础奖励口径；恒 2/4=类型表口径），挂实机复核批，sim 常量修正随之。基项取平面感知键，禁用 round_base_income 双盲近似（P2r1/P3r1 误返 3 hazard 同前）。**到账时序**：结算屏「存量」=入账前值（暂定——三点差分实验〔结算屏存量×关店/开店金〕出结论前不锚定；cw_settlement_obs「存量=当前金币」为相反口径，登记为该实验核对项）。
-- **奖励轮**：金币 += 基础奖励（**平面感知键，禁按 round_num 单键直查注册表**：P1=REWARD_BASE_GOLD_BY_ROUND {1:3,2:4}（cw_economy.py:234）；P2r1=**5**（economy.md §10.1：08-27 W284 结构化 VLM 直读两批独立一致、直读优先——ADR-0439 挂账「P2 base 未验证」就此撤销）；P3r1=按 BASE_INCOME=5 近似、**无直读样本维持挂账**；其余轮恒 5。注册表按 round_num 单键，P2r1/P3r1 会误返 3=已知 hazard，记录模型取平面感知键不复刻该误）+ **连胜照发** streak_gold(进轮连胜，含 counter0=1——连胜表 49 样本证据且全取自开局 r1/r2 无败战前置；「败战后照发」为无实证外推，待实机实证，迁移回归测试禁按其断言)×win_reward_mult + 利息。触发源申报：奖励节点不在现有自动开店触发源清单（screen_flow_timing #14；#29 修正：位面过渡后 1 号节点照常自动开店，唯一例外 1-1）——**补奖励节点为触发源**挂申报，防整段备战相位金量滞后；r8 位面大奖励（ADR-0439 挂账，sim 少发 ~9）随到账时序观测期一并登记。
+- **奖励轮**：金币 += 基础奖励（**平面感知键，禁按 round_num 单键直查注册表**：P1=REWARD_BASE_GOLD_BY_ROUND {1:3,2:4}（cw_economy.py:234）；P2r1=**5**（economy.md §10.1：结构化 VLM 直读两批独立一致、直读优先——ADR-0439 挂账「P2 base 未验证」就此撤销）；P3r1=按 BASE_INCOME=5 近似、**无直读样本维持挂账**；其余轮恒 5。注册表按 round_num 单键，P2r1/P3r1 会误返 3=已知 hazard，记录模型取平面感知键不复刻该误）+ **连胜照发** streak_gold(进轮连胜，含 counter0=1——连胜表 49 样本证据且全取自开局 r1/r2 无败战前置；「败战后照发」为无实证外推，待实机实证，迁移回归测试禁按其断言)×win_reward_mult + 利息。触发源申报：奖励节点不在现有自动开店触发源清单（screen_flow_timing #14；#29 修正：位面过渡后 1 号节点照常自动开店，唯一例外 1-1）——**补奖励节点为触发源**挂申报，防整段备战相位金量滞后；r8 位面大奖励（ADR-0439 挂账，sim 少发 ~9）随到账时序观测期一并登记。
 - **补给轮**：金币 += 基础 + 利息 + 连胜零（**补给轮连胜不动**，ADR-0439 决策 2）。触发源申报面同奖励轮。
 
 #### 自动行为写入（无决策 op）
@@ -481,7 +481,7 @@ hp/streak 按结算真值覆盖；等级/经验仅胜局结算页可读——败
 
 **「每个效果都独特」放在哪**：独特性由**注册表条目**承担——每个效果的规格是独立类型化条目（触发/时长/职责旗标/专属载荷，如 BattlefieldEffect.board_rewrite、CounterKey 计数键），账本只承担「实例进展」这个真正同构的部分（登记/推进/到期）。**曾考虑的替代=每效果写独立处理类，否决**：每个类都要重写同一套登记/推进/到期三件套，sim 与生产还要各自实例化，统一接口会自己长回来；且需要专属响应代码的效果是少数（躺平到期返款、节省工位回容量、采购专员改牌类——挂职责旗标 respond 接线），纯修饰型（淘金客每刷 +2XP）注册表条目+通用推进即覆盖。**记录模型的进一步优化（含替代形状再评估）=开放讨论项，暂不展开。**
 
-**规格单一源**=cw_investments.STRATEGY_EFFECTS + STRATEGY_ECONOMY（每条效果记什么、怎么推进，注册表是唯一权威）。**词缀效果辖域申报**：affix_effects_data 词缀（成长的烦恼/变宝为废等）暂无结构化规格——改写面（LevelUp 金/装备库存）暂走观察覆盖+§5.2 缺口登记；ActiveEffect.source 已预留 'affix'（kernel/cw_effect_inventory.py ActiveEffect 类字段注释，符号名索引——该文件批次三后行号整体漂移），结构化归建模批。**过渡口径申报（批次三 as-built 更新）**：effect_inventory 挂点接线已落批次三——登记/tick/bump/consume_use 五挂点在产（结算挂点仍未接）；未结构化字段仍观察覆盖兜底。**待实采定谳挂账**：「持续 N 个节点」型卡文（躺平「持续 3 个节点」自然读法含登记节点）vs「接下来 N 个节点」型（节省工位）两读法现共用 tick 守卫（登记当节点不推进）——躺平方向系统性多冻 1 节点（remaining_nodes 零决策消费，现仅到期时点差一拍）；实采后按卡文逐卡拆两读法（EffectSpec.pending 标记随批）。
+**规格单一源**=cw_investments.STRATEGY_EFFECTS + STRATEGY_ECONOMY（每条效果记什么、怎么推进，注册表是唯一权威）。**词缀效果辖域申报**：affix_effects_data 词缀（成长的烦恼/变宝为废等）暂无结构化规格——改写面（LevelUp 金/装备库存）暂走观察覆盖+§5.2 缺口登记；ActiveEffect.source 已预留 'affix'（kernel/cw_effect_inventory.py ActiveEffect 类字段注释，符号名索引），结构化归建模批。**挂点接线**：**五挂点在产**：选卡登记/节点 tick/计数 bump/跳过递减（consume_use）/**升级标记**（prep_actions 既有，经属性归一接 BoardState 正本）；结算挂点（on_battle_end）仍未接；未结构化字段仍观察覆盖兜底。**待实采定谳挂账**：「持续 N 个节点」型卡文（躺平「持续 3 个节点」自然读法含登记节点）vs「接下来 N 个节点」型（节省工位）两读法现共用 tick 守卫（登记当节点不推进）——躺平方向系统性多冻 1 节点（remaining_nodes 零决策消费，现仅到期时点差一拍）；实采后按卡文逐卡拆两读法（EffectSpec.pending 标记随批）。
 
 ### 5.2 效果缺口与载体登记（开放清单）
 
@@ -500,9 +500,9 @@ hp/streak 按结算真值覆盖；等级/经验仅胜局结算页可读——败
 - 计数载体：二手市场（20 刷后 +30 金+投影仪——**累计刷新总次数**载体，卡文无付费限定，见 §3.3.8；cw_invest_data.py:375〔PlazaPortal id=106〕）。
 - 无字段面：圣杯任务链（任务激活态/进度无字段；**非战斗 hp 事件源**登记位——-88 类大额扣血非识别事故）/效果发牌星级=**按归属判据逐卡分面**（玩家裁定 2026-09-09 纠正）：确定性发牌=逻辑写候选（建模批按卡登记）；随机面=不建逻辑写、观察收口（§3.2.18）。
 - 装备面：全员晋升（获得 2 个【拆装扳手】，cw_invest_data.py:67——装备库存精确增量、逻辑写候选；注册表仅 board_rewrite 无 tools 载体，§5.3 全员晋升行）。
-- 词缀面：成长的烦恼（8 级后每次购经验 −1 金，competitors.md:53——LevelUp 经验金面改写源）/变宝为废（每位面首次合成进阶装备 50% 变垃圾袋，:43——装备库存改写源，随机面观察收口）。
+- 词缀面：成长的烦恼（8 级后每次购经验 −1 金，competitors.md:53——LevelUp 经验金面改写源）/变宝为废（每位面首次合成进阶装备 50% 变垃圾袋，:43——装备库存改写源，随机面观察收口）/永久创伤（我方小队生命值降低时生命上限 −20%、至多 60%，affix_effects_data.py:31——**hp_max 词缀源**，hp_max 来源枚举第四来源，随 hp_max 缺位一并申报）。
 
-**结构化在册、缺 BoardState 写端申报的载体（非缺口）**：返利族/特战资金族/长期主义族/砂里淘金/星星相印——effect_inventory 载体（BUY 购买计数 cw_effect_inventory.py:117 / 进节点日程 NODE_ENTER :35 / 分期日程 / 合成触发 ON_MERGE :39）会改写 BoardState 字段，写入归属见 §5；砂里淘金发牌星级缺口并入 §3.2.18。**板面重写族（EffectSpec board_rewrite，cw_investments.py:352-367；载体 cw_effect_inventory.py:76）**：全员晋升（整场上阵替换为高 1 费随机角色）/人力重组（全场出售+再发牌）——写入归属见 §5 两行。
+**结构化在册、缺 BoardState 写端申报的载体（非缺口）**：返利族/特战资金族/长期主义族/砂里淘金/星星相印——effect_inventory 载体（BUY 购买计数=CounterKey.BUY / 进节点日程=TriggerKind.NODE_ENTER / 分期日程 / 合成触发=TriggerKind.ON_MERGE，kernel/cw_effect_inventory.py 符号名索引）会改写 BoardState 字段，写入归属见 §5；砂里淘金发牌星级缺口并入 §3.2.18。**板面重写族（EffectSpec board_rewrite，cw_investments.py:352-367）**：全员晋升（整场上阵替换为高 1 费随机角色）/人力重组（全场出售+再发牌）——写入归属见 §5 两行。
 
 **逐卡补登（具写入面的改写/触发源）**：
 
@@ -568,7 +568,7 @@ hp/streak 按结算真值覆盖；等级/经验仅胜局结算页可读——败
 
 #### 特战资金族（gold_per_boss_node=7/11）
 
-逻辑写端=**首领节点进入触发**（TriggerKind.NODE_ENTER，cw_effect_inventory.py:35）。时点=进首领节点非轮首，禁轮首吸收；接线前观察覆盖兜底。
+逻辑写端=**首领节点进入触发**（TriggerKind.NODE_ENTER，kernel/cw_effect_inventory.py 符号名索引）。时点=进首领节点非轮首，禁轮首吸收；接线前观察覆盖兜底。
 
 #### 长期主义族（gold_next_nodes_amount=7/9 + count=3）
 
@@ -580,12 +580,12 @@ hp/streak 按结算真值覆盖；等级/经验仅胜局结算页可读——败
 
 #### 星星相印（gold_per_3star_merge=5）
 
-逻辑写端=**合成 3 星触发**（ON_MERGE 载体在册——武力刷新 refresh_per_compose 先例，cw_effect_inventory.py:39）。时点=合成事件非轮首，禁轮首吸收；接线前观察覆盖兜底。
+逻辑写端=**合成 3 星触发**（ON_MERGE 载体在册——武力刷新 refresh_per_compose 先例，kernel/cw_effect_inventory.py TriggerKind.ON_MERGE 符号名索引）。时点=合成事件非轮首，禁轮首吸收；接线前观察覆盖兜底。
 **边界**：ON_MERGE 先例（武力刷新）=**装备**合成事件（官方限定「合成装备时」，cw_invest_data.py:57）；角色 3 星合成是否共用 ON_MERGE 触发面未登记——**待裁决**（载体注释只注武力刷新）；裁决前两事件域分开计数，禁混账。
 
 #### 全员晋升（EffectSpec board_rewrite='upgrade_all_cost+1'）
 
-**替换面=随机、不可准确算 → 不建逻辑写端，观察收口**（前台/后台所有 Unit 被替换为高 1 费随机角色、最大 5 费，char_id/星级随之变，board 羁绊联动重算——官方文+spec cw_investments.py:350-357，载体 cw_effect_inventory.py:76 board_rewrite；随机性按本节归属判据不建逻辑写）。附精确面：获得 2 个【拆装扳手】=精确增量、逻辑写候选（注册表未结构化=缺口登记，§5.2）。
+**替换面=随机、不可准确算 → 不建逻辑写端，观察收口**（前台/后台所有 Unit 被替换为高 1 费随机角色、最大 5 费，char_id/星级随之变，board 羁绊联动重算——官方文+spec cw_investments.py:350-357，载体=EffectSpec.board_rewrite（kernel/cw_effect_inventory.py 符号名索引）；随机性按本节归属判据不建逻辑写）。附精确面：获得 2 个【拆装扳手】=精确增量、逻辑写候选（注册表未结构化=缺口登记，§5.2）。
 
 #### 人力重组（EffectSpec board_rewrite='sell_all'）
 
@@ -621,7 +621,7 @@ K 方向 · 义务账本 · CommitSignals · 旗标（S1 开店闩 / S2 wanted �
 
 进过战斗后 exe 异常退出再继续的局：**恢复局备战期商店不可开**——商店按钮点击无响应/面板不可用/不得尝试开商店（currency_war_prep.md:16-18；retry 耗尽=整个 run 失败）；备战期 gold **无机制性例外**：同按备战帧观察接线（§3.2.9 玩家确认）；首战前商店不可开=无开店读数来源，gold 保持 None 是**无读数机会的数据事实**（§2.2 分支②：从未读过→保持 None），非机制规则。**显式决策表（§3.2.9/本节同源，禁三种读法并存）**：①接线恒观察——备战帧读到即 observe（:113 复核只影响「是否会读到」，不影响接线方式）；②读失败→carried 沿用（从未读过→None）；③None 仅当从未读过——不是机制规则、不是恒 None 口径。
 
-- **恢复锁定判定协议（收编已实施 ADR-0329/W62 件1，cw_resume_lock.py；玩家「标记+探针」思路 2026-09-09 与其同构，触发判据以 ADR-0329 画面候选为准）**：
+- **恢复锁定判定协议（实现=cw_resume_lock.py，ADR-0329；玩家「标记+探针」思路 2026-09-09 与其同构，触发判据以 ADR-0329 画面候选为准）**：
   1. **候选判据**（resume_candidate）：session 全新（is_new_match，无本局任何记录）∧（round>1 ∨ plane>1）→ 恢复局候选——纯画面/会话判据，不依赖 run 记录、不依赖「战斗中崩溃」口述（该因果=口述待证，ADR-0482；新局 r1 不检测）。
   2. **探针确认**（一次性）：点商店按钮 → 验「按钮-收起」出现（probe_resolve）：出现=normal，按正常流程；未出现=locked（锁定唯一可观测特征=商店按钮零响应，实锤 prep.md:16-18）→ 分类子态置「恢复锁定」。
   3. **结果承载**：分类子态=恢复锁定，后续循环直接消费，**不重复探针**。
@@ -638,11 +638,11 @@ K 方向 · 义务账本 · CommitSignals · 旗标（S1 开店闩 / S2 wanted �
 
 扫描方法论（四步）：①脚本枚举**五源**×本文档全文做点名/族名覆盖矩阵（源 a=STRATEGY_ECONOMY 非默认条目；源 b=STRATEGY_EFFECTS 全条目；源 c=装备注册表效果面，判定谓词=效果文本触发金/生命/容量字段改写∨改写单位装备归属∨发牌进席/解锁获得单位〔数据拷贝仪 1★复制 :57、分身墨镜解锁银狼 :54-55〕；源 d=base 注册表发牌/出售面，判定谓词=效果文本含「获得…角色」∨「出售…所有角色」；源 e=词缀注册表 affix_effects_data，判定谓词=改写金/生命/装备/单位面〔成长的烦恼 LevelUp 金面、变宝为废装备库存改写——competitors.md:43/:53〕）；②效果族归属逐行×注册表官方全文（cw_invest_data.py）锚点核对；③具名锚点抽核实读（命中/错位分开申报）；④判定分布申报=全覆盖（点名/族名/通用通道）/部分（已点名但某条效果未申报）/无归属，三数之和=条目总数。判据绑定「零无归属 ∧ 零部分覆盖」，**不绑定固定条目数**——非默认条目计数随过滤口径浮动（全默认占位条目/显式 0 值字段的取舍），每轮扫描须随附计数口径与快照数申报（快照与计数明细记入货币战争当前迭代的进度账本）。
 
-**扫描范围**：投资策略注册表（STRATEGY_ECONOMY 全条目）∪ **STRATEGY_EFFECTS 全条目**（EffectSpec overlay——全员晋升/人力重组等 board_rewrite 类只在表内，cw_investments.py:352-367，此面由第 1 轮对抗补开）∪ **装备注册表侧会改写 BoardState 字段的效果**（cw_equipment_data.py 全 158 件〔:50 计数〕中改写金/生命/容量字段的成员——财富宝钻〔团队规模上限+1+装备者每 3 备战阶段 1 金，:53〕/财富〔每进节点 4 金，:66〕/诅咒系扣血〔罪孽王冠战败双倍扣血 :213 / 诅咒·阿瓦隆战斗结算 −6 小队生命 :218〕为代表）。装备效果大量随投资卡发放（钻石商人/这么大的钻石/控制规模/深井角斗场等）后成常驻写入源，不纳入扫描=效果没被点名就无人看管，老问题复现。**宝钻 cap+1 效果豁免显式申报**：cap 走现场实时读值（备战屏档案 :53「cap(deploy_cap,财富宝钻叠加)与布局无关」），不改写布局档字段——豁免基于现场读值申报，非静默。
+**扫描范围**：投资策略注册表（STRATEGY_ECONOMY 全条目）∪ **STRATEGY_EFFECTS 全条目**（EffectSpec overlay——全员晋升/人力重组等 board_rewrite 类只在表内，cw_investments.py:352-367）∪ **装备注册表侧会改写 BoardState 字段的效果**（cw_equipment_data.py 全 158 件〔:50 计数〕中改写金/生命/容量字段的成员——财富宝钻〔团队规模上限+1+装备者每 3 备战阶段 1 金，:53〕/财富〔每进节点 4 金，:66〕/诅咒系扣血〔罪孽王冠战败双倍扣血 :213 / 诅咒·阿瓦隆战斗结算 −6 小队生命 :218〕为代表）。装备效果大量随投资卡发放（钻石商人/这么大的钻石/控制规模/深井角斗场等）后成常驻写入源，不纳入扫描=效果没被点名就无人看管，老问题复现。**宝钻 cap+1 效果豁免显式申报**：cap 走现场实时读值（备战屏档案 :53「cap(deploy_cap,财富宝钻叠加)与布局无关」），不改写布局档字段——豁免基于现场读值申报，非静默。
 
 ## 8. 代码层面结构
 
-> 本章把字段规格落到代码形状。**正式骨架已落 `kernel/cw_board_state.py`（迁移批次一）**；`.debug/temp/currency_war/record_data_model/board_state.py`（数据结构设计草板 v2）仅存档对照，禁作施工基准。骨架与本章草图的分叉对账（bench 载体=BenchView、xp=tuple[int,int]）见 §8.6；批次二/三余项照旧。
+> 本章把字段规格落到代码形状。**正式骨架 = `kernel/cw_board_state.py`**；`.debug/temp/currency_war/record_data_model/board_state.py`（数据结构设计草板 v2）仅存档对照，禁作施工基准。骨架与本章草图的分叉对账（bench 载体=BenchView、xp=tuple[int,int]）见 §8.6-10。
 
 ### 8.1 字段容器 Field[T]
 
@@ -811,7 +811,7 @@ class BoardState:
         """全部 logic 来源字段名（已确认、尚未被观察重锚——对账巡检用）。"""
 ```
 
-写入纪律（§2.4）：op 层一律经写入 API 写入；写点以**写时刻的单例现引用**为基底构造新帧（frozen 帧替换，禁原地改旧帧后跨耗时段写回）。**API 正本面**（批次一/二已落码，kernel/cw_board_state.py）：`observe`（观察覆盖，拒 None）/`expect`+`confirm`+`discard_expected`（两步机制）/`carry`（失读沿用）/`write_prior`（先验，强制 evidence=prior:）/`leave_screen`（附加域结构离屏）/`write_logic`（**单次逻辑写豁免通道**——仅限设计显式申报豁免的写端〔§3.4 chosen 族、§3.4 刷新计数组写端、§4 RefreshShop 执行门、效果写端 §5.3 申报行、§5.1 B1 账本→字段桥三分函数〕，其余禁走此口）/`relay`（载体中继，source=logic+从未写过才补写，§2.1）/`logic_written_fields`。用法示例（买牌一笔完整流）：
+写入纪律（§2.4）：op 层一律经写入 API 写入；写点以**写时刻的单例现引用**为基底构造新帧（frozen 帧替换，禁原地改旧帧后跨耗时段写回）。**API 正本面**（kernel/cw_board_state.py）：`observe`（观察覆盖，拒 None）/`expect`+`confirm`+`discard_expected`（两步机制）/`carry`（失读沿用）/`write_prior`（先验，强制 evidence=prior:）/`leave_screen`（附加域结构离屏）/`write_logic`（**单次逻辑写豁免通道**——仅限设计显式申报豁免的写端〔§3.4 chosen 族、§3.4.3/§3.4.4 局级事实写端（active_env/active_strategies）、§3.4 刷新计数组写端、§4 RefreshShop 执行门、效果写端 §5.3 申报行、§5.1 账本→字段桥三分函数〕，其余禁走此口）/`relay`（载体中继，source=logic+从未写过才补写+会话侧值已确立闸〔空默认禁中继〕，§2.1）/`logic_written_fields`。用法示例（买牌一笔完整流）：
 
 ```python
 # 1. 观察覆盖（画面 op 识别完成后）
@@ -860,39 +860,39 @@ class StrategyState:
     # S3 升级检查不立变量（ADR-0596 墓碑测试在册）——期望态新鲜度派生，非存储旗标
 ```
 
-### 8.6 差距对账（批次一已落项+批次二三余项）
+### 8.6 草板与规格的差距对账
 
-> 标注规则：1-5、7 已随批次一落码（kernel/cw_board_state.py 在案）；6=批次三；8/9=批次一已落码+批次二归并申报；无标注余项=批次二三。
+> 标注规则：条目内的实现落位以静态代码指针（符号名）标注；迁移批次的范围归属唯一正本 = §8.7 批次线。
 
 1. Field 缺 `carried`/`prior` 来源与 `evidence` 注记——按 §2.1 扩四来源（observation/logic/carried/prior，先验类见 §3.1.6）+注记。
 2. BoardState 缺三个关键结构：预期条目表（两步机制的本体）、帧观察完整度标注、bs_schema（§2.4）。
-3. 画面附加域只有 shop/encounter/supply 三域——开局初值域、十事件屏域、结算事件位、商店刷新计数组（§3.3.5–§3.3.9）、**节点屏刷新计数组与候选结构（§3.4.1–§3.4.4）**、持久账本组（equips/消耗品/chosen_*）均未入草板（effect_inventory 已入 §8.4 草图）。**免战牌不在此组**：激活态+剩余次数正本=effect_inventory.remaining_uses（§5.1，同型躺平/节省工位；cw_effect_inventory.py consume_use/EffectSpec.duration_uses 释义在册）——批次一骨架的 skip_battle_active/remaining 两 Field 按此降格或移除，归批次二。
-4. 缺字段：board、bench capacity（默认恒 9；草板「恒 9 槽」注释基本正确，缺节省工位时限分支，§3.2.5）、level_up_cost、back_layout 布局档（§3.2.7，域外=8 格超集+superset 标记）、奖励球 spheres（数量/颜色）、分类子态、对局类型、节点序列台账、hp 保底事件位——board_next_tier/席空数/**席满判定**=**计算函数不存储**，策略器自算（§3.2.6/§3.2.5；bench_full_flag 警告位字段已裁撤不建，席满=派生）；GameState 合成口的同键供给（sim 观测硬依赖，ADR-0488）由同一派生函数接线，归迁移批次二（消费切换批）。
+3. 画面附加域只有 shop/encounter/supply 三域——开局初值域、十事件屏域、结算事件位、商店刷新计数组（§3.3.5–§3.3.9）、**节点屏刷新计数组与候选结构（§3.4.1–§3.4.4）**、持久账本组（equips/消耗品/chosen_*）均未入草板（effect_inventory 已入 §8.4 草图）。**免战牌不在此组**：激活态+剩余次数正本=effect_inventory.remaining_uses（§5.1，同型躺平/节省工位；cw_effect_inventory.py consume_use/EffectSpec.duration_uses 释义在册）——骨架曾设的 skip_battle_active/remaining 两平行 Field 已按正本移除（防复活负锁=test_skip_battle_fields_retired，sr-od-test）。
+4. 缺字段：board、bench capacity（默认恒 9；草板「恒 9 槽」注释基本正确，缺节省工位时限分支，§3.2.5）、level_up_cost、back_layout 布局档（§3.2.7，域外=8 格超集+superset 标记）、奖励球 spheres（数量/颜色）、分类子态、对局类型、节点序列台账、hp 保底事件位——board_next_tier/席空数/**席满判定**=**计算函数不存储**，策略器自算（§3.2.6/§3.2.5；bench_full_flag 警告位字段已裁撤不建，席满=派生）；GameState 合成口的同键供给（sim 观测硬依赖，ADR-0488）由同一派生函数接线（board_next_tier_of：obs computed 支与 sim 观测键均委托）。
 5. 草板写入 API 直接改 Field，未实现「写时刻单例现引用为基底的 frozen 帧替换」与缺陷台账挂点（§2.3/§2.4）。
-6. StrategyState（原 StrategyMemory）键名即目标名，改名归位动作在迁移批次三（§8.7），并下沉策略实现层——框架策略器基类仅泛型携带。〔批次三已落：类名 MandateState→StrategyState（同对象别名保留）+ `CwStrategy(Generic[_TState])` 泛型基类 + kernel/one_dragon 零 import 静态锁，见 §8.7 批次三 as-built。〕
+6. StrategyState（原 StrategyMemory）改名归位+下沉策略实现层——正本=`strategies/impl/mandate_v1/mandate_state.StrategyState`（历史名 MandateState=同对象别名，别名清理归尾批，§8.7 尾批行）；基类=`CwStrategy(Generic[_TState])`（strategies/impl/cw_strategy.py）——框架策略器基类仅泛型携带；kernel/one_dragon 零 import 具体类型（静态锁=test_framework_layer_does_not_import_concrete_state，sr-od-test）。
 7. 草板 Unit.faction 字段应删——阵营由 char_id 查角色注册表派生（开拓者按当前排推导，§3.2.3/§3.2.18），禁在 Unit 另存。
-8. 草板 logic 语义反转：草板 Field=「logic=未核实预期、策略器按推定读」且 apply_logic 直写字段——规格=预期入条目表、字段只存已核实 logic、策略器不读预期；草板 apply_logic/verify 作废换 expect/confirm（§2.5/§8.1）。〔批次一已落：新骨架 expect/confirm 语义+测试锁在案〕
-9. cost_source 词表两值→三值（badge=徽章直读 / roster=注册表查表 / roster_fallback=徽章失读退查表——证据分级禁丢，落地审 P2-4；归并消费归批次二），批次一已按三值透传落码。〔批次二已落：消费归并函数 `cost_source_group` 在案（kernel/cw_board_state）——三值→消费两域（badge/registry），存储侧三值不折叠，roster_fallback 的「徽章失读」分级只在归并面折叠、原值保留供归因；未知值保守归 registry。〕
-10. 分叉对账：骨架 bench 载体=**BenchView**（slots+capacity）非草板 Field[list[BenchSlot]]；xp=**tuple[int,int]**（「X/Y」现读）非草板 Field[int]——批次一 as-built。
+8. 草板 logic 语义反转：草板 Field=「logic=未核实预期、策略器按推定读」且 apply_logic 直写字段——规格=预期入条目表、字段只存已核实 logic、策略器不读预期；草板 apply_logic/verify 作废换 expect/confirm（§2.5/§8.1；实现=kernel/cw_board_state.py `expect`/`confirm`/`discard_expected`，测试锁=sr-od-test test_cw_board_state）。
+9. cost_source 词表两值→三值（badge=徽章直读 / roster=注册表查表 / roster_fallback=徽章失读退查表——证据分级禁丢）。存储侧三值透传不折叠（BoardState.ShopCard.cost_source，§3.3.1）；消费侧归并函数 = `cost_source_group`（kernel/cw_board_state.py）——三值→消费两域（badge/registry），roster_fallback 的「徽章失读」分级只在归并面折叠、原值保留供归因；未知值保守归 registry。
+10. 分叉对账：骨架 bench 载体=**BenchView**（slots+capacity）非草板 Field[list[BenchSlot]]；xp=**tuple[int,int]**（「X/Y」现读）非草板 Field[int]——§8.2/§8.4 注解同源。
 
 ### 8.7 落位与迁移四刀
 
 骨架落位模块建议 `kernel/`。
 
 - **迁移批次一（骨架）**：BoardState 骨架 + 观察/决策双向接线 + 迁移回归测试（先红后绿；断言覆盖占位语义；禁按 level 驱动表写）+ 心跳观察者（单调推进量载体）+ 构造守卫（hp frozen+不变式断言）+ 刷新费观察通道重建（§3.3.4 刷新钮标价现场识别，ADR-0622）+ sim 合成口箱占席语义同步改（§3.2.5）。验收=迁移回归测试绿 + 心跳不断流。
-- **迁移批次二（消费切换）**：策略器消费切换（78 处读写点全仓迁移，口径=条目〔跨物理行合并计〕，迁移批次二复跑定版）+ PrepObservation 消费切换转适配器 + 局终归档接线 + 刷新执行事实组行为口径申报（§3.3.5–§3.3.9）+ 合成升星最小逻辑写入/星级观察消费（§3.2.18 窟窿一）+ 免战牌载体归一（§5.1 正本，骨架 skip 两 Field 降格）+ session_carrier 中继收敛（§2.1）+ parse_streak 失读 0→None 化（§8.8）。验收=端到端行为等价门（回放语料逐位；语料显式含锁定态恢复局）。**范围规矩：凡他节写「归批次 N」的项，§8.7 范围枚举必须同步出现——本节为批次范围的唯一正本。**
-  - **批次二 as-built 落位**：适配器 = `kernel/cw_bs_view.game_state_view`（BoardState 主 + 未建模/执行域显式透传：hp=门权威随帧〔gated_hp 同门纪律，ADR-0583 §2.4〕/席位身份=SIFT 域/deploy_cap=现场读值豁免〔§3.2.7〕/shop 域=波顶融合帧辖域），策略输入调用面单一源 = `strategy_input_state`（事件屏 pick 族 10 点 + flow 结算半）；观察喂入口镜像扩开局域/持卡/环境/词缀/boss（**载体中继 `BoardState.relay`**：source=logic + evidence=session_carrier，从未写过才补写——§2.1 收敛语义）。局终归档 = live 流 `board_state_archive.jsonl`（三键形态 §8.8，双终局点接线，先于连刷重建）。缺陷台账武装点 = `decision_assembly.install_obs_ports`（bs_defect.jsonl）。派生单一源 = `board_next_tier_of`（obs computed 支 + sim `_board_next_tier_of` 委托；席满观测键 ADR-0488 经合成口后 `bench_is_full` 供给）。read_bench_full 通道退役 = 墓碑化（cw_observation + cw_screen_prep M16 破墙探测；模态恢复路径 = 发射门 ADR-0596 + 入口清场 + 无进展守卫——派生席满≠模态在场，持 9 席是合法运营态）。刷新计数组接线 = 执行落地门（§4 RefreshShop 申报块）。结算覆盖写端 = `apply_settlement_cover`（battle_wait 结算块，与 last_state 覆盖点同时序）。事件屏 chosen_* 写端 = 单次逻辑写入（`write_logic`，申报豁免）——已接盛会之星/伙伴两 chosen + **局级事实写端**（active_env/active_strategies，§3.4.3/§3.4.4，非 chosen 族）+ 星徽秘典 chosen_tome（CwScreenBookcard 选卡落地，P3-6 返工批接通——tome 已有建档+候选链在役，非建档缺口）；**余屏 chosen 写端未接线**：命运卜者/骇入策划/装备三选一已有专档=接线缺口（cw_fortune_picker/cw_hacker_planner/cw_equip_pick，§3.4.5），遭遇/补给/专家邀请函/祈愿试炼已有建档=**接线缺口非建档缺口**（chosen_encounter/supply/expert/wish 待接）。
-  - **批次二 as-built 落位（扩单四件，第 12 轮对抗审）**：①**合成升星最小逻辑写入/星级观察消费**（§3.2.18 修法 a）= BuyCard 执行落地门投影升星签名检测（`detect_merge_upgrade`：同名最高星抬升、全场域 bench+deployed）→ `expect(bs.bench, 投影 BenchView, confirm_point='prep_obs')`（last-wins 留级联末张）；星级观察消费 = 备战屏 SIFT/read_star 链经 `_observe` 喂 `bs.bench`（BenchView，零新增 OCR——识别线在役，缺的是 BoardState 消费）；核对闭环 = `reconcile_pending_observation`（一致 confirm 转正 / 失配 discard+缺陷 kind=expect_vs_obs_mismatch / 绑定点不符不动）。②**免战牌载体归一** = skip_battle_active/remaining 两 Field 移除（正本 `effect_inventory.remaining_uses` §5.1；批一锁同步改写+负向锁防复发）。③**载体中继收敛** = feed 五镜像点改 `BoardState.relay`（source=logic + evidence=session_carrier + 已有正式值一律跳过，§2.1；测试锁覆盖「handler 已写 logic 不被翻 observation」）。④**parse_streak 失读 None 化**（cw_settlement_obs.py，§8.8）+ 消费链守卫（battle_wait 观察半 streak None 跳过沿用、performance.is_losing_streak None 行跳过）——'连胜×0' 真 0 与失读 None 分写，结算覆盖闸对 None 天然跳过（0 仅来自真读）。
-  - **消费切换余量归属（批次二复跑定版）**：策略输入面（decide_* 入参 + flow 结算半）本批全切；执行侧/遥测侧 last_state 读写点（prep_actions 期望态对账、cw_loop 遥测行、cw_op_deploy/cw_op_equip_all 装配源契约 ADR-0530、cw_intention:2132 无现读面 plane 锚、decision_assembly 装配兜底、cw_expected_state 簿记）**留批次三/四**——切换的等价性前提（值逐位同源）在「帧新鲜度差」域不成立（bs.node 含 battle 帧更新、last_state 仅备战/结算点推进），该域属策略批申报面非机械迁移。
+- **迁移批次二（消费切换）**：策略器消费切换（78 处读写点全仓迁移，口径=条目〔跨物理行合并计〕）+ PrepObservation 消费切换转适配器 + 局终归档接线 + 刷新执行事实组行为口径申报（§3.3.5–§3.3.9）+ 合成升星最小逻辑写入/星级观察消费（§3.2.18 星级与合成的 BoardState 消费面）+ 免战牌载体归一（§5.1 正本，骨架 skip 两 Field 降格）+ session_carrier 中继收敛（§2.1）+ parse_streak 失读 0→None 化（§8.8）。验收=端到端行为等价门（回放语料逐位；语料显式含锁定态恢复局）。**范围规矩：凡他节写「归批次 N」的项，§8.7 范围枚举必须同步出现——本节为批次范围的唯一正本。**
+  - **批次二落位面**：适配器 = `kernel/cw_bs_view.game_state_view`（BoardState 主 + 未建模/执行域显式透传：hp=门权威随帧〔gated_hp 同门纪律，ADR-0583 §2.4〕/席位身份=SIFT 域/deploy_cap=现场读值豁免〔§3.2.7〕/shop 域=波顶融合帧辖域），策略输入调用面单一源 = `strategy_input_state`（事件屏 pick 族 10 点 + flow 结算半）；观察喂入口镜像扩开局域/持卡/环境/词缀/boss（**载体中继 `BoardState.relay`**：source=logic + evidence=session_carrier，从未写过才补写——§2.1 收敛语义）。局终归档 = live 流 `board_state_archive.jsonl`（三键形态 §8.8，双终局点接线，先于连刷重建）。缺陷台账武装点 = `decision_assembly.install_obs_ports`（bs_defect.jsonl）。派生单一源 = `board_next_tier_of`（obs computed 支 + sim `_board_next_tier_of` 委托；席满观测键 ADR-0488 经合成口后 `bench_is_full` 供给）。read_bench_full 通道退役 = 墓碑化（cw_observation.read_bench_full + cw_screen_prep._bench_full_break_round 墓碑，测试锁调用即红；模态恢复路径 = 发射门 ADR-0596 + 入口清场 + 无进展守卫——派生席满≠模态在场，持 9 席是合法运营态）。刷新计数组接线 = 执行落地门（§4 RefreshShop 申报块）。结算覆盖写端 = `apply_settlement_cover`（battle_wait 结算块，与 last_state 覆盖点同时序）。事件屏 chosen_* 写端 = 单次逻辑写入（`write_logic`，申报豁免）——接线面=盛会之星/伙伴两 chosen + **局级事实写端**（active_env/active_strategies，§3.4.3/§3.4.4，非 chosen 族）+ 星徽秘典 chosen_tome（CwScreenBookcard 选卡落地；tome 已有建档+候选链在役，非建档缺口）；**余屏 chosen 写端未接线**：命运卜者/骇入策划/装备三选一已有专档=接线缺口（cw_fortune_picker/cw_hacker_planner/cw_equip_pick，§3.4.5），遭遇/补给/专家邀请函/祈愿试炼已有建档=**接线缺口非建档缺口**（chosen_encounter/supply/expert/wish 待接）。
+  - **批次二落位面（扩单四件）**：①**合成升星最小逻辑写入/星级观察消费**（§3.2.18 星级与合成的 BoardState 消费面）= BuyCard 执行落地门投影升星签名检测（`detect_merge_upgrade`：同名最高星抬升、全场域 bench+deployed）→ `expect(bs.bench, 投影 BenchView, confirm_point='prep_obs')`（last-wins 留级联末张）；星级观察消费 = 备战屏 SIFT/read_star 链经 `_observe` 喂 `bs.bench`（BenchView，零新增 OCR——识别线在役，缺的是 BoardState 消费）；核对闭环 = `reconcile_pending_observation`（一致 confirm 转正 / 失配 discard+缺陷 kind=expect_vs_obs_mismatch / 绑定点不符不动）。②**免战牌载体归一** = skip_battle_active/remaining 两 Field 移除（正本 `effect_inventory.remaining_uses` §5.1；批一锁同步改写+负向锁防复发）。③**载体中继收敛** = feed 五镜像点改 `BoardState.relay`（source=logic + evidence=session_carrier + 已有正式值一律跳过，§2.1；测试锁覆盖「handler 已写 logic 不被翻 observation」）。④**parse_streak 失读 None 化**（cw_settlement_obs.py，§8.8）+ 消费链守卫（battle_wait 观察半 streak None 跳过沿用、performance.is_losing_streak None 行跳过）——'连胜×0' 真 0 与失读 None 分写，结算覆盖闸对 None 天然跳过（0 仅来自真读）。
+  - **消费切换余量归属**：策略输入面（decide_* 入参 + flow 结算半）本批全切；执行侧/遥测侧 last_state 读写点（prep_actions 期望态对账、cw_loop 遥测行、cw_op_deploy/cw_op_equip_all 装配源契约 ADR-0530、cw_intention:2132 无现读面 plane 锚、decision_assembly 装配兜底、cw_expected_state 簿记）**留尾批**（执行侧装配对账批，§8.7 尾批行）——切换的等价性前提（值逐位同源）在「帧新鲜度差」域不成立（bs.node 含 battle 帧更新、last_state 仅备战/结算点推进），该域属策略批申报面非机械迁移。
 - **迁移批次三（策略器状态归位）**：StrategyState 改名归位（session 记忆迁移）+ 下沉策略实现层（框架策略器基类仅泛型携带，不感知具体类型）+ Snapshot 消费切换（mandate_v1 内部改读）+ **effect_inventory 挂点接线**（选卡登记/节点 tick/计数 bump/到期尾款——§5.1 目标口径，现状仅 on_level_up 挂点在产）+ **免战牌 EffectSpec 条目**（建模批）与选卡登记/跳过递减挂点（§3.2.19 载体归一的另一半，禁只做一半）+ **节点屏刷新计数组写端**（§3.4.1-4 四字段现空窗，零写端期间禁按值决策）。验收=决策轨迹逐位一致。**范围规矩：凡他节写「归批次 N」的项，§8.7 范围枚举必须同步出现——本节为批次范围的唯一正本。**
-  - **批次三 as-built 落位**：①**StrategyState 改名归位** = `strategies/impl/mandate_v1/mandate_state.StrategyState`（类名 MandateState→StrategyState，同对象别名保留，退役清理归批次四；§8.5 五语义槽 as-built 映射在该模块 docstring：K 方向→target_comp 族/义务账本→cw4_fuel_filler_stall_buys+v3_release/CommitSignals→commit_signals/S1→cw4_shopped_phase/S2→cw4_shop_wanted_pending 族/刷新推论→v3_dir_refresh_used 族；S3 不立变量墓碑注同处）。②**下沉+泛型携带** = 基类 `CwStrategy(Generic[_TState])`（strategies/impl/cw_strategy.py），`create_state() -> _TState | None`；`CwFlowStrategy(CwStrategy[StrategyState])` 具体绑定；kernel/one_dragon 零 import 具体类型（静态锁在册）。③**Snapshot 消费切换** = `decision_assembly.snapshot_from_obs` 回退锚 + `mandate_v1/adapter` `_anchor_state`/`decision_state` 两锚，三点改读 `strategy_input_state`（kernel/cw_bs_view 单一源）；快照字段优先级不变，锚只在快照值缺席时兜底。④**effect_inventory 挂点接线** = 选卡登记（CwScreenInvestStrategy 确认落地，chosen 命中 STRATEGY_EFFECTS 才登记，acquired_t=节点序快照）/节点 tick（cw_loop 备战分支，tick_node 同节点去重+登记当节点不推进；到期移除条目返回尾款触发面——尾款金走观察覆盖兜底〔§4.1 九卡纠偏辖〕，禁 logic 直写金币防双计）/计数 bump（cw_op_buy_cards 执行落地门：bump_key=CounterKey.REFRESH@刷新回执+BUY@购买回执，只推进 duties.track 条目，未落地不计数）/升级标记（prep_actions 既有）。⑤**账本载体归一** = `session.effect_inventory` 字段移除，改只读透传属性指向 `board_state_of(session).effects`（§8.4 单例；防 session/BoardState 双账本；历史写点读点经属性零改动兼容；无 setter=禁直挂实例）。⑥**免战牌 EffectSpec 条目** = `STRATEGY_EFFECTS['免战牌']`（id 151301，NODE_ENTER×WHILE_HELD×STATE，payload=EconomyEffect(xp_instant=30)，`EffectSpec.duration_uses=2` 新字段种子 → `ActiveEffect.remaining_uses`）；递减挂点 = prep_actions `_launch_attempt`「按钮-跳过」发射落地回执（`consume_use`，归零移除，未登记返 None 零动作）。⑦**节点屏刷新计数组写端** = 遭遇（CwScreenEncounter 刷新点击置位，+1 口径）与策略屏（CwScreenInvestStrategy 逐槽点击置位，键=normalize_invest_name 规范卡名），均随点击置位不等验效（write_logic，§3.4 申报豁免）；**环境/补给两字段维持零写端**（环境刷新执行链未启用〔ADR-0600 环境侧启用前置=顶级类建模〕、补给屏现役无刷新钮〔§3.4.2 第三源〕——零写端期间禁按值决策口径继续辖）。**余量拆分申报**：执行侧装配源切换（ADR-0530，cw_op_deploy/cw_op_equip_all/prep_actions ~18 点）拆出本批——切换非机械迁移：ADR-0530 十四字段对齐证据锚在 last_state 滞后帧+SIFT 分轨语义上，装配源改读 BoardState 视图会在帧新鲜度差域改变执行侧消费值，须独立对账批（尾批）重验对齐面后再切；cw_expected_state 簿记 ~4 点随批次四退役一并清偿。验证锚：改前/改后 cw_replay --diff 双语料（run_20260909_084216/run_20260907_214130）分歧行逐位一致，证据档 `.debug/temp/currency_war/bs_batch3/`。
-  - **批次三补单（第 15 轮对抗审 B1/C8，随批落）**：⑧**账本→字段桥**（§5.1「经效果账本逻辑写入」的代码化，B1）——三形态三分函数（kernel/cw_board_state，与刷新执行事实组同族段）：**burst（选卡一次性）** = apply_effect_burst_grant（载体=payload.free_refresh_burst，采样点=选卡登记挂点登记后单次调用，一次性由调用点唯一性承载）；**per_node（每节点 +N）** = grant_effect_node_refresh_balance（载体=EconomyEffect.free_refresh_per_node + BattlefieldEffect.free_refresh_on_node_enter 两字段鸭子求和，采样点=节点 tick 挂点、闸门=advance_node advanced 位每节点恰一次）；**容量投影（§3.2.5）** = project_effect_capacity（声明契约=payload 鸭子属性 capacity_limit，§5.2 缺口登记辖、注册表建模批候选——当前零条目携带，投影恒=默认 9 幂等 no-op 零行为差；采样点=备战帧观察后每 pass 重锚，观察构造器按默认容量建视图会覆盖投影值；首批容量条目入册须同批补观察构造器容量感知，防观察覆盖 logic 刷缺陷台账）。**条件判定形态（本金充裕）不 wire**：无结构化规格（§5.2 注册表仅 instant_gold），保守不猜，结构化后经同一桥自动生效。advance_node 返回 (advanced, expired)（tick_node 为忽略 advanced 位的兼容口）。活载体现况：burst=固定理财即时段 2、per_node=双手狸 2/节点；免费余额消费面=刷新执行免费闸（§3.3.6→§4 RefreshShop）。⑨**sim 合成口 payload 离屏分支**（§2.2 例外，C8）：synthesize_from_game_state 对 shop 真值缺席 = 结构离屏（置 None+left_screen，等价 leave_screen）、encounter/supply 两域 sim 不建模恒离屏口径——三 payload 域在合成帧恒反映当前画面事实，禁旧 payload 连旧 evidence 残留（批次一 as-built 漏申报面补口）；锁=test_cw_board_state_batch3。
-- **迁移批次四（退役）**：退役冗余结构（载体删除）+ AST 级静态锁（last_state 全仓 0 命中）+ **文档状态剥离收口**（正文进度标记/轮次标识符/状态快照→进度账本与 ADR，「已落码」收敛为静态代码指针——as-built 无状态规范回归）。验收=锁绿+状态句清零。
+  - **批次三落位面**：①**StrategyState 改名归位** = `strategies/impl/mandate_v1/mandate_state.StrategyState`（类名 MandateState→StrategyState，同对象别名保留，别名清理归尾批〔§8.7 尾批行〕；§8.5 五语义槽 as-built 映射在该模块 docstring：K 方向→target_comp 族/义务账本→cw4_fuel_filler_stall_buys+v3_release/CommitSignals→commit_signals/S1→cw4_shopped_phase/S2→cw4_shop_wanted_pending 族/刷新推论→v3_dir_refresh_used 族；S3 不立变量墓碑注同处）。②**下沉+泛型携带** = 基类 `CwStrategy(Generic[_TState])`（strategies/impl/cw_strategy.py），`create_state() -> _TState | None`；`CwFlowStrategy(CwStrategy[StrategyState])` 具体绑定；kernel/one_dragon 零 import 具体类型（静态锁在册）。③**Snapshot 消费切换** = `decision_assembly.snapshot_from_obs` 回退锚 + `mandate_v1/adapter` `_anchor_state`/`decision_state` 两锚，三点改读 `strategy_input_state`（kernel/cw_bs_view 单一源）；快照字段优先级不变，锚只在快照值缺席时兜底。④**effect_inventory 挂点接线** = 选卡登记（CwScreenInvestStrategy 确认落地，chosen 命中 STRATEGY_EFFECTS 才登记，acquired_t=节点序快照）/节点 tick（cw_loop 备战分支，tick_node 同节点去重+登记当节点不推进；到期移除条目返回尾款触发面——尾款金走观察覆盖兜底〔§4.1 九卡纠偏辖〕，禁 logic 直写金币防双计）/计数 bump（cw_op_buy_cards 执行落地门：bump_key=CounterKey.REFRESH@刷新回执+BUY@购买回执，只推进 duties.track 条目，未落地不计数）/升级标记（prep_actions 既有）。⑤**账本载体归一** = `session.effect_inventory` 字段移除，改只读透传属性指向 `board_state_of(session).effects`（§8.4 单例；防 session/BoardState 双账本；历史写点读点经属性零改动兼容；无 setter=禁直挂实例）。⑥**免战牌 EffectSpec 条目** = `STRATEGY_EFFECTS['免战牌']`（id 151301，NODE_ENTER×WHILE_HELD×STATE，payload=EconomyEffect(xp_instant=30)，`EffectSpec.duration_uses=2` 新字段种子 → `ActiveEffect.remaining_uses`）；递减挂点 = prep_actions `_launch_attempt`「按钮-跳过」发射落地回执（`consume_use`，归零移除，未登记返 None 零动作）。⑦**节点屏刷新计数组写端** = 遭遇（CwScreenEncounter 刷新点击置位，+1 口径）与策略屏（CwScreenInvestStrategy 逐槽点击置位，键=normalize_invest_name 规范卡名），均随点击置位不等验效（write_logic，§3.4 申报豁免）；**环境/补给两字段维持零写端**（环境刷新执行链未启用〔ADR-0600 环境侧启用前置=顶级类建模〕、补给屏现役无刷新钮〔§3.4.2 第三源〕——零写端期间禁按值决策口径继续辖）。**余量拆分申报**：执行侧装配源切换（ADR-0530，cw_op_deploy/cw_op_equip_all/prep_actions ~18 点）拆出本批——切换非机械迁移：ADR-0530 十四字段对齐证据锚在 last_state 滞后帧+SIFT 分轨语义上，装配源改读 BoardState 视图会在帧新鲜度差域改变执行侧消费值，须独立对账批（尾批）重验对齐面后再切；cw_expected_state 簿记 ~4 点随尾批清偿（§8.7 尾批行）。验收锚 = cw_replay --diff 双语料分歧行逐位一致（运行证据归进度账本）。
+  - **批次三补单（账本→字段桥 / sim 合成口 payload 离屏）**：⑧**账本→字段桥**（§5.1「经效果账本逻辑写入」的代码化）——三形态三分函数（kernel/cw_board_state，与刷新执行事实组同族段）：**burst（选卡一次性）** = apply_effect_burst_grant（载体=payload.free_refresh_burst，采样点=选卡登记挂点登记后单次调用，一次性由调用点唯一性承载）；**per_node（每节点 +N）** = grant_effect_node_refresh_balance（载体=EconomyEffect.free_refresh_per_node + BattlefieldEffect.free_refresh_on_node_enter 两字段鸭子求和，采样点=节点 tick 挂点、闸门=advance_node advanced 位每节点恰一次）；**容量投影（§3.2.5）** = project_effect_capacity（声明契约=payload 鸭子属性 capacity_limit，§5.2 缺口登记辖、注册表建模批候选——当前零条目携带，投影恒=默认 9 幂等 no-op 零行为差；采样点=备战帧观察后每 pass 重锚，观察构造器按默认容量建视图会覆盖投影值；首批容量条目入册须同批补观察构造器容量感知，防观察覆盖 logic 刷缺陷台账）。**条件判定形态（本金充裕）不 wire**：无结构化规格（§5.2 注册表仅 instant_gold），保守不猜，结构化后经同一桥自动生效。advance_node 返回 (advanced, expired)（tick_node 为忽略 advanced 位的兼容口）。活载体现况：burst=固定理财即时段 2、per_node=双手狸 2/节点；免费余额消费面=刷新执行免费闸（§3.3.6→§4 RefreshShop）。⑨**sim 合成口 payload 离屏分支**（§2.2 例外）：synthesize_from_game_state 对 shop 真值缺席 = 结构离屏（置 None+left_screen，等价 leave_screen；空表与 None 同判=离屏——sim 真值域无 OCR 失读态，边界申报见 kernel synthesize_from_game_state docstring）、encounter/supply 两域 sim 不建模恒离屏口径——三 payload 域在合成帧恒反映当前画面事实，禁旧 payload 连旧 evidence 残留；锁=test_cw_board_state_batch3。
+- **迁移批次四（退役）**：退役冗余结构（载体删除）+ AST 级静态锁（last_state 0 命中——执行侧装配源 last_state 消费归尾批〔§8.7 尾批行〕，本批锁面=记录面 kernel/cw_board_state.py 零命中+已退役符号全仓零命中，全仓断言随尾批完成扩展）+ **relay 空值未知态判据**（§2.1：relay 加「会话侧值已确立」闸——字符串非空白/列表元组字典集合非空才中继，恢复局镜像五字段空默认禁中继+测试锁）+ **测试侧 payload 域常量对齐**（test_cw_board_state `_PAYLOAD_DOMAINS` 移除 settlement、docstring 改三域口径）+ **文档状态剥离收口**（正文进度标记/轮次标识符/状态快照→进度账本与 ADR，落定态标记收敛为静态代码指针——as-built 无状态规范回归）。验收=锁绿+状态句清零。
 - **迁移尾批（执行侧装配对账，ADR-0530）**：执行侧装配源切换 ~18 点（cw_op_deploy/cw_op_equip_all/prep_actions 期望态对账）——非机械迁移：十四字段对齐证据锚在 last_state 滞后帧+SIFT 分轨语义，换源须独立重验对齐面（ADR-0530 决策 2「装配源契约钉死」核销前提）。附带：cw_expected_state 簿记切换、MandateState 别名与 cw_strategy_session docstring 旧名清理、advance_node(None) 生产挂点 None 跳过守卫、**轮首收入三支 live 写端载体指派**（候选=effect_inventory 节点边界回执；未指派接线前 gold 轮首增量走观察覆盖兜底——§4.2 轮首收入行为唯一「有公式无载体」声明面，sim 侧败补旧表修正同批）。验收=对齐面逐字段重验+锁绿。**范围规矩：凡他节写「归批次 N」的项，本节必须同步出现。**
 
 ### 8.8 实现备注（治理面）
 
-- **未建模字段不入 schema**（§2.2）——缺口清单挂观察实现工作清单：商店锁识别接线与字段（锁按钮与牌锁定模板已建档，备战屏档案 :51）/刷新计数建模/概率条「底部条含义待查」/read_hp miss 缺陷修复（**已随批次一落码**：hp 仅真读才 observe，失读返 None——cw_observation.py:220/:2399-2425）/~~parse_streak 失读返 0 假值~~（**批次二已落**：parse 层 None 化+消费链守卫，'连胜×0' 真 0 与失读 None 分写）——禁建「None=未建模」占位字段。
+- **未建模字段不入 schema**（§2.2）——缺口清单挂观察实现工作清单：商店锁识别接线与字段（锁按钮与牌锁定模板已建档，备战屏档案 :51）/刷新计数建模/概率条「底部条含义待查」/read_hp miss：hp 仅真读才 observe、失读返 None（cw_observation 观察漏斗）/parse_streak：失读返 None（'连胜×0' 真 0 与失读 None 分写；消费链守卫=结算观察半 None 跳过沿用）——禁建「None=未建模」占位字段。
 - **hp_readable 缺省反转**修复时，sim 合成口同批显式写 True。
 - **治理三件**：
   - **字段准入四问**（新字段先落纸再进 schema，禁实现方自问自答）：①谁消费？②影响什么决策？③能否从其他字段算出（能算=计算函数，不存储）？④是不是识别质量元数据（是=写入闸门，不存）？四问过不了的字段不进记录；③的在册例外=面板/识别口径与推导口径并存且各有消费面的字段可存（在册例外=board、level_up_cost），例外走申报单留痕；③的标准执行例=下档阈值/席空数/席满判定（计算函数，策略器自算，§3.2.6/§3.2.5）——bench_full_flag 曾列例外、2026-09-09 裁定撤出（警告太短暂不识别，席满判定归派生）。

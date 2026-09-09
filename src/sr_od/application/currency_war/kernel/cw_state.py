@@ -158,7 +158,7 @@ def snapshot_copy(bc: BenchChar) -> BenchChar:
     mutate_bench_deployed 星级/装备拼接、deploy_bench 装备覆盖)断开
     对象别名,「快照不在帧间存活」由机制保证而非消费纪律约定。
     成本已量化(ADR-0465 §9):每次 decide_prep ~19 元素 ×6 字段 <20µs,
-    占帧预算 <0.1%。隔离锁=test_cw_w633_migration_b3(迁移哨兵)。"""
+    占帧预算 <0.1%。隔离锁=test_cw_migration_budget_authority(迁移哨兵)。"""
     from dataclasses import replace
     return replace(bc, equips=tuple(bc.equips or ()))
 
@@ -247,8 +247,6 @@ class GameState:
     equips: list[str] = field(default_factory=list)
     front_max: int = 4    # 前/后排槽位上限(满 10 = 4 前 + 6 后)
     back_max: int = 6
-    # OCR「备战席已满」警告(True 时硬门必破;None/False 用 BENCH_CAPACITY 兜底)
-    bench_full_flag: bool | None = None
     # 商店开态概率条真值 {费用档 1-5: 概率}(轮岗接线:投资环境轮岗每备战阶段随机
     # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
     refresh_probs: dict[int, float] | None = None
@@ -304,9 +302,12 @@ class GameState:
                    if c is not None and c.position_pref == "back")
 
     def bench_is_full(self) -> bool:
-        """备战席是否满:OCR 警告标志优先,否则按固定 9 槽(占用数)。"""
-        if self.bench_full_flag is not None:
-            return self.bench_full_flag
+        """备战席是否满 = 占用派生(bench_occupied >= BENCH_CAPACITY,§3.2.5)。
+
+        席满判定正本 = BoardState 派生(kernel/cw_board_state.bench_is_full,
+        同式同源);本类无警告位字段(「备战席已满」警告太短暂不可靠采样,
+        通道退役有测试墓碑,§3.2.5)。
+        """
         return bench_occupied(self.bench) >= BENCH_CAPACITY
 
 

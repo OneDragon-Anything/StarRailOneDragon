@@ -1967,8 +1967,7 @@ _LV_LOG_FMT: dict[str, str] = {
 # ===== 规范入口序列:阶段键 + 每阶段字段规格(ADR-0462)=====
 # 「先清场、再识别、后动作」:P0 清场期零业务识别 → P1 干净备战期全量基线 →
 # P2 动作期(开店/overlay)只读该动作决策所需。字段规格 = read_game_state 的
-# 逐字段门单一源(2026-09-03 自 cw_observation_gate 随清尾批迁入,gate 模块
-# 退役;键域与 Snapshot SubstateClassification.name 对齐,W583 快照契约)。
+# 逐字段门单一源(键域与 Snapshot SubstateClassification.name 对齐)。
 
 #: P1 干净备战期(关店备战帧):全量识别基线,含 hp 真读主路径(shop 关帧血量区
 #: 可见)。shop_cards/refresh_probs 属开店面板,必空不读。
@@ -2375,11 +2374,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
     # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
     state.refresh_probs = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
-    # ~~read_bench_full 通道已退役(迁移批次二,§3.2.5):「备战席已满」警告
-    # 出现太短暂无法可靠采样(玩家裁定 2026-09-09),席满判定 = BoardState
-    # 派生(kernel/cw_board_state.bench_is_full);bench_full_flag 警告位
-    # 字段随通道裁撤,原「双证据互督」一并取消。state.bench_full_flag 不再
-    # 任何人写,消费端(cw_state.bench_is_full)恒走占用派生支。~~
+    # 席满判定 = BoardState 派生(kernel/cw_board_state.bench_is_full,§3.2.5):
+    # 「备战席已满」警告出现太短暂无法可靠采样(玩家裁定 2026-09-09),本帧
+    # 不产席满警告读数、GameState 亦无警告位字段;防复活墓碑 = 测试锁
+    # (调用 read_bench_full 通道即红)。
     if phase is not None:
         from sr_od.application.currency_war.kernel.cw_observe import set_obs_phase
         set_obs_phase(None)   # 冲突行阶段标注随本次读取结束清位(best-effort)

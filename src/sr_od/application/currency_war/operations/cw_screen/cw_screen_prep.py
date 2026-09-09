@@ -131,9 +131,9 @@ if TYPE_CHECKING:
         CurrencyWarMatch,
     )
 
-# ===== P0 清场段:环入口可一键关闭的 overlay 注册表(2026-09-03 自
-# cw_observation_gate 随清尾批迁入,唯一消费方 = 本文件 _clear_entry_overlays;
-# 单一源仍是 ``cw_overlay_registry.derive_clearable()`` 派生桥接)=====
+# ===== P0 清场段:环入口可一键关闭的 overlay 注册表(唯一消费方 = 本文件
+# _clear_entry_overlays;单一源仍是 ``cw_overlay_registry.derive_clearable()``
+# 派生桥接)=====
 #: 只收「无决策语义的弹窗/面板」——星徽秘典/补给已 decision 化(关闭即丢
 #: 决策内容,C1 红线),从清场集消失,改走 event_overlay bail → 0i 选卡 /
 #: CwScreenSupplyNode 消化;投资环境/投资策略/选择伙伴/盛会之星/祈愿试炼
@@ -1799,12 +1799,12 @@ class CwScreenPrep(SrOperation):
     def _clear_entry_overlays(self) -> None:
         """P0 清场前置段(规范入口序列「先清场、再识别、后动作」;ADR-0462):
         环入口先逐屏探可一键关闭的 overlay(注册表 = ``ENTRY_OVERLAY_CLOSE``,
-        单一源 = ``cw_overlay_registry.derive_clearable()`` 派生桥接,
-        2026-09-03 自 cw_observation_gate 随清尾批迁入;锚判定走现有 screen
-        体系),命中即点其关闭按钮,拿干净备战画面再进全量识别——识别与
-        overlay 状态交织是死读与冲突噪声的共同根。只收「无决策语义的弹窗/
-        面板」;投资环境/策略等交互 overlay 有专属 handler,关闭即丢决策
-        内容,不进注册表、仍走既有 event_overlay bail → 外环消化路径。
+        单一源 = ``cw_overlay_registry.derive_clearable()`` 派生桥接;
+        锚判定走现有 screen 体系),命中即点其关闭按钮,拿干净备战画面再进
+        全量识别——识别与 overlay 状态交织是死读与冲突噪声的共同根。只收
+        「无决策语义的弹窗/面板」;投资环境/策略等交互 overlay 有专属
+        handler,关闭即丢决策内容,不进注册表、仍走既有 event_overlay
+        bail → 外环消化路径。
         fail-open:截图/识别/点击任一异常静默返回(=现行为,外循环重判兜底)。"""
         from one_dragon.base.screen import screen_utils
         for _ in range(ENTRY_OVERLAY_CLEAR_ROUNDS):
