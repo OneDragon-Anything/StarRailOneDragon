@@ -162,18 +162,23 @@ class Comp:
     / scoring._deploy_pipeline,实现归后续策略批;本字段目前仅数据标注,零行为改动。"""
 
     # ===== T-171 批序 1 形态端口(ADR-0613):OR 腿 + carry 在场条件 =====
-    # 两字段缺省空 = 行为不变(既有 COMP_LIBRARY 与全部非希儿配方对
-    # 产物逐字节不变);唯一生产写入方 = cw_intention.pair_target_comp
-    # 希儿系对分支。判定/进度唯一折法 = ``form_progress``(单一源契约
-    # fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定(判据双源
-    # = 批序 1 取代面,出处见 ADR-0613)。
+    # 两字段缺省空 = 行为不变。生产写入方 = cw_intention.pair_target_comp
+    # 希儿系对分支(P1 配方锁伪 comp)+ COMP_LIBRARY 静态套「希儿量子」
+    # (P2+ 锁线路径经 get_comp 消费静态条目,ADR-0621;档位单一源 =
+    # SEELE_OR_LEGS/SEELE_CARRY_CHAR)。判定/进度唯一折法 = ``form_progress``
+    # (单一源契约 fp=1.0 ⟺ 成型谓词),禁消费位绕过自写 AND/OR 内联判定
+    # (判据双源 = 批序 1 取代面,出处见 ADR-0613)。
     or_legs: list[tuple[str, int]] = field(default_factory=list)
     """OR 腿(析取档组):组内**任一** (羁绊, 档) 达成即该组算满——文档
     「凑到任一=成型,不设完全体门槛」(transition_combos.md:27 希儿系定义
     行;combo_methodology.md:133)。空 = 无 OR 腿(纯 AND)。进度折法:OR 组
     折叠为一条虚拟腿,腿值 = 组内各腿进度 max(取最好腿非均值,「任一即成」
-    的进度语义;换最好腿只单调抬升无重置)。禁把 OR 腿写进 ``form_tiers``
-    (键侧 AND 语义会把 OR 塌回 AND 全档——批序 1 病灶本体)。"""
+    的进度语义;换最好腿只单调抬升无重置)。**OR 组承接同键档位**:键出现在
+    本字段的 ``form_tiers`` 档位不入 AND 账(该键成型语义归 OR 组;档位值
+    保留作线键/完全体账单结构载体——囤货采购集羁绊展开、晋升候选键面交集、
+    换线距离账等结构消费读 form_tiers 键面,清空即残)。禁把 OR 腿当 AND
+    写进 ``form_tiers`` 计账(键侧 AND 语义会把 OR 塌回 AND 全档——批序 1
+    病灶本体)。"""
     required_deployed: tuple[str, ...] = ()
     """carry 在场条件:逐一必须**在板**(deployed;bench 在手不算)——文档
     成型判据第一合取支「希儿在场」(transition_combos.md:27)。空 = 无
@@ -536,6 +541,24 @@ V2_FAMILIES: tuple[str, ...] = (
     "欢愉族", "圣杯双C", "大黑塔群攻", "白厄反甲",
 )
 
+# ===== 希儿系成型判据常量(注册表数据层;静态套与 pair 物化共用判据)=====
+# 档位出处 = 文档定义行 transition_combos.md:27「希儿在场 ∧ (量子同频≥2 ∨
+# 贝洛伯格≥2),不设完全体门槛」(combo_methodology.md:133「凑到任一=成型」/
+# :143「放大器不需要最大档」);量 2 vs 量 3 的文档内部张力(combo_
+# methodology.md:133/170 写量 3)挂玩家确认(ADR-0613 同一挂账口径,不由
+# 落码批裁决),确认后改档动本常量(配对消费位随 import 自动跟随),
+# **另须同步第三表面** `_seele_system_support` 的 ÷2 分母(挂账指针 =
+# cw_intention._seele_system_support docstring「同步回改本式分母」节;
+# 公式体用字面量 2 不消费本常量,接线守卫钉不住,漏改=两端口档位漂移)。
+# carry = 同表行第一合取支「希儿在场」。
+# ⚠️ 单一源归属声明(ADR-0621):真源归位本文件(注册表数据层——静态套
+# 条目在 import 期消费,常量若留 cw_intention 会反向 import 成环)。
+# cw_intention 经顶部 import 消费本常量(re-import 别名,其形态端口注
+# 「禁再写本地第二份」),单一源接线由测试仓接线守卫钉死(对象身份 `is`,
+# 本地第二份复发即红)。
+SEELE_OR_LEGS: tuple[tuple[str, int], ...] = (('量子同频', 2), ('贝洛伯格', 2))
+SEELE_CARRY_CHAR: str = '希儿'
+
 COMP_LIBRARY: list[Comp] = [
     # ===== S 级(版本真神,V4.4 合集 76807134)=====
     Comp(
@@ -683,6 +706,12 @@ COMP_LIBRARY: list[Comp] = [
         # 布洛妮娅/杰帕德/娜塔莎/佩拉(贝2 凑数+辅助);知更鸟/瓦尔特移出 core(P3 补位件,留 shared)。
         core_chars=["希儿", "花火", "符玄", "缇宝", "刻律德菈"],
         form_tiers={"量子同频": 4, "贝洛伯格": 2}, strength="A", form_difficulty="medium", early_power="高",
+        # 成型判据 = 文档 OR 口径(transition_combos.md:27,与 ADR-0613 的
+        # pair 物化路径同构,ADR-0621):form_tiers 双档由 OR 组**承接**
+        # (同键档位不入 AND 账,折法见 form_progress),档位值保留作线键/
+        # 完全体账单结构载体——囤货采购集/晋升候选/换线距离账等消费读其
+        # 键面,清空即残(银狼/佩拉/桑博等放大器成员会掉出采购集)。
+        or_legs=list(SEELE_OR_LEGS), required_deployed=(SEELE_CARRY_CHAR,),
         # V4.4 评级(76807134):希儿 = A 级(A8-50 最强轮椅);攻略(76802749 直读纠正):4量子+贝城(2贝=原4贝,引擎拉条)
         # 斩杀+70%下二战技+再现+造物引擎。希儿(双电锯+风暴潮)+杨叔(瓦尔特)+记忆主+鸟(知更鸟)+刻律+鸭鸭(布洛妮娅)+符玄
         # 前期强势(希儿无装也能换怪/胜)→ 强烈推荐希儿过渡;7级找希儿3星或先上8/9找4-5费同时找希儿
@@ -1199,12 +1228,17 @@ def form_progress(comp: Comp, state: GameState) -> float:
 
     10 的 helper(comp_viability 先验用);纯阵营 tier,不含角色(避免与 char_quality 三重计分)。
 
-    OR 腿与 carry 条件折法(T-171 批序 1,ADR-0613;本函数 = 成型判据
-    唯一折法,fp=1.0 ⟺ 成型谓词「form_tiers 全档 ∧ or_legs 组任一满 ∧
-    required_deployed 全在板」的单一源契约):
+    OR 腿与 carry 条件折法(T-171 批序 1,ADR-0613;OR 组承接键,ADR-0621;
+    本函数 = 成型判据唯一折法,fp=1.0 ⟺ 成型谓词「form_tiers 未被承接档
+    全档 ∧ or_legs 组任一满 ∧ required_deployed 全在板」的单一源契约):
     - ``or_legs`` 非空 → 折为**一条**虚拟腿,腿值 = 组内各腿进度的 max
       (「凑到任一=成型」的进度语义;半成品如 量1∨贝1 如实给 0.5,取
       最好腿非均值);
+    - **承接规则**(ADR-0621):``form_tiers`` 中与 OR 腿**同键**的档位
+      不计入 AND 账(该键的成型语义归 OR 组,分子分母同免——静态套
+      希儿量子 form_tiers={量4,贝2} 全被 ``SEELE_OR_LEGS`` 承接,成型
+      判据即文档 OR 口径;pair 伪 comp 两键集恒不相交,本规则对其逐位
+      零差)。档位值保留的用途见 ``Comp.or_legs`` 注;
     - ``required_deployed`` 逐名折一条 0/1 虚拟腿(在板=1;state 无
       deployed 视图(轻量假想面板)按 0 计 = 保守向,缺读≠满成)。
     两字段经 ``getattr`` 缺省空读(真实 Comp 恒有字段;测试鸭型桩与
@@ -1217,14 +1251,15 @@ def form_progress(comp: Comp, state: GameState) -> float:
             and not getattr(comp, 'or_legs', None)
             and not getattr(comp, 'required_deployed', None)):
         return 0.0
+    or_legs = getattr(comp, 'or_legs', None) or []
+    or_owned = {f for f, _t in or_legs}   # OR 组承接键(同键档位免 AND 账)
     total = 0.0
     n = 0
     for f, tier in comp.form_tiers.items():
-        if tier <= 0:
+        if tier <= 0 or f in or_owned:
             continue
         total += min(state.board.get(f, 0), tier) / tier
         n += 1
-    or_legs = getattr(comp, 'or_legs', None) or []
     if or_legs:
         best = 0.0
         for f, tier in or_legs:
