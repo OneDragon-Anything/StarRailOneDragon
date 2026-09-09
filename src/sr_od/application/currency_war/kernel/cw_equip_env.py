@@ -130,8 +130,9 @@ ZERO_WEAR_EXECUTION: str = 'execution'
 ZERO_WEAR_EXECUTION_PENDING: str = 'execution_pending'
 
 #: 执行链 stop_reason 全枚举(精确匹配行;18 号稿 §1.2 值域)。
-#: 字符串值 = cw_op_equip_all 写入端字面量(单一写入点);新增行须与写入端
-#: 常量逐字同步(kernel 不反向 import operations,只复制入场)。
+#: 字符串值 = 动作 op 写入端字面量(cw_op_equip_all / cw_op_tools,
+#: 各自单一写入点);新增行须与写入端常量逐字同步(kernel 不反向
+#: import operations,只复制入场)。
 _ZERO_WEAR_EXECUTION_REASONS: frozenset[str] = frozenset({
     'drag 落空(失败继续,dd-015)',
     'pool_empty(无穿戴候选)',
@@ -144,6 +145,14 @@ _ZERO_WEAR_EXECUTION_REASONS: frozenset[str] = frozenset({
     # execution 使哨兵台账直接指向执行链即查,不落 execution_pending
     # 待分诊兜底行(18 号稿 §1.2「新枚举值回表补行」纪律)。
     '装备计划失效(计划步件两次现读不可定位,交回重派重算)',
+    # 工具计划失效(写入端 = CwOpTools.STATUS_PLAN_STALE,ADR-0601 §4
+    # 具名常量):与装备侧计划失效同归域裁决——计划已产出且执行已开始
+    #(首件已消费),执行期网格 reflow 打空剩余计划坐标,恢复动作
+    #(交回分发层下一环重派重算)也走分发/执行链 → execution(18 号稿
+    # §1.2「新枚举值回表补行」纪律)。哨兵当前双挂点(装备 op 执行面/
+    # 分发段计划面)均不直接产生本字面量,先行登记保判读分键确定性
+    #(ADR-0601 §4 消费面 = run_record/日志判读),挂点扩面不漏行。
+    '工具计划失效(首件消费后 reflow,剩余计划作废)',
 })
 
 
@@ -158,7 +167,7 @@ def classify_zero_wear_stop_reason(stop_reason: str) -> str:
     - ``strategy_gap``:分配方案空(策略语义缺口,归词缀条件优先层
       (§3)与工具消费空缺评估);
     - ``execution``:执行链(drag 落空 / pool_empty / 分配对全部拉黑 /
-      槽位坐标缺失 / 画面非干净备战 / 装备计划失效);
+      槽位坐标缺失 / 画面非干净备战 / 装备计划失效 / 工具计划失效);
     - ``execution_pending``:**兜底行**——枚举外的一切 stop_reason(含
       空串 stall)暂归执行链待分诊;新枚举值出现时回 18 号稿 §1.2 补行。
     """
