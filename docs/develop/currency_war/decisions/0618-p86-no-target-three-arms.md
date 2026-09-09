@@ -66,9 +66,38 @@
 - 已知缺口如实申报:甲臂缓锁豁免角漏授(保守向,机器锁后 M2 自纠,
   corner_defer 分键显影);乙臂家族内集中覆盖(爻光型)期权集中度由开火计数
   与出口转化判读守;`cw4_hub_acquired_names` 载体已挂,deployed_from_hub/
-  activation_from_hub 读端归部署域下批(F-3 半)。
+  activation_from_hub 读端归部署域下批(F-3 半)——**攻击 r1 后状态更新见
+  「攻击 r1 闭环」节:三面读端已接线**。
 - 甲臂候选集帧内至多三次求值(k_empty_window_fallback/no_target_arms/flow 日志位)
   为已知效率面,归机械批(F-8)。
+
+## 攻击 r1 闭环(备战策略攻击 634ec79b,发现1【高】三面同批收口)
+
+乙臂「获取 = 免费期权持有」的持有语义原只活在买因标签:覆盖数 ≥2 注册表
+派生枢纽集包含静态持有集(`sell_hold_exclusion_names`)之外成员(瓦尔特/
+刻律德菈,cw_line_facts 移出记录实证)——hold 类登记名字腿恒拒(病灶信号键
+被常态发射污染)且卖面无保护(fresh_buys 只保同轮,下帧凑息/腾席/筹资可当
+1★ 燃料卖掉),期权价值被己方判据销毁。三面收口(禁只补一面):
+
+1. 面①登记资格域:`_hold_qualification_ok` 名字腿 = 静态持有集 ∪
+   乙臂获取名集(发射位先登记后 emit,当笔在场);launch_cause_mismatch
+   病灶信号语义不再被乙臂常态稀释(名集之外名仍拒,负锁在案)。
+2. 面②装配 A 身份段:`identity_exclusions` 并集获取名集——保护面只辖
+   实际获取件(取获取时点记录,不随帧资格集波动扩张)。
+3. 面③部署域行权显影:cw_op_deploy 鸭子读同一载体(属性契约,同
+   `cw4_fuel_filler_stall_buys` 先例),围栏放行上场的获取名按笔计
+   `deployed_from_hub`;正本 §4.3-1「围栏放行核查前置」自此有代码面兑现。
+
+载体 = `cw4_hub_acquired_names`(发射位单一写点);策略侧读口
+`sell_gate.hub_acquired_names_of` 单一源,部署域鸭子读同一属性禁改名。
+锁:三面收口锁 1(登记零污染+簿落账+下帧 L1 过期后身份段保护——
+**变异夹具须推进帧轮再验**,同轮 L1 硬面会遮蔽面②缺失)+静态接线锁 1+
+负锁 1(名集之外名不获资格域);变异 M-A(持有腿摘除)/M-B(身份段并集
+摘除)各自红、还原绿。随批:中1 mandate `_redeploy_emission_allowed` ③轴
+docstring 按 ADR-0614 §决策5 重推(三审 C-1 挂账兑现);中低1
+`_seele_system_support` docstring 并入 T-59 副本形态挂账(ADR-0613 确认项);
+低2 detect_signals ②注释「⑤兜底」陈旧语义更新;发现5 乙臂星级腿改消费
+`refund_full_star_ok` 单一源(对本面等价,防半边退金表静默分叉)。
 
 ## 验证
 

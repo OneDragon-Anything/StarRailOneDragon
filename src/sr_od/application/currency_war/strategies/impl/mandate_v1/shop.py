@@ -999,10 +999,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
         _hub_set = set(_arms.hub_names)
         _hub_cands = sorted(
             (c for c in _buy_view('hub_option_buy')
-             if (c.star or 1) == 1 and (c.name or '') in _hub_set),
+             if refund_full_star_ok(c.star or 1, c.cost if c.cost else 3)
+             and (c.name or '') in _hub_set),
             key=lambda c: cw_intention.char_declaration_index(c.name or ''))
         # ↑ 候选序 = 注册表声明序(资格核枚举序同源)——店面槽位序不进
         # 仲裁(乱序注入店面发射序不变,增量 1;hub-hub 并列同序兜底)。
+        # ↑ 星级腿(攻击 r1 发现5):1★ 过滤走 refund_full_star_ok 单一源
+        #(1★ 全档净 0 恒真/2★+ 恒假,与本面原内联 (star or 1)==1 等价;
+        # 防「乙臂只吃半边退金表」的演化期静默分叉)。
         if _hub_cands:
             _count('hub_option_candidate_seen')
             # 发射时点 t5 输入(与 C1 锁线腿同源:r_remaining/net_income;
@@ -1081,9 +1085,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     continue
                 _count('hub_option_buy_hit')
                 # F-3 载体(P86 正本 §6.1;P75 §7.4 先例):乙臂获取名集
-                # 单一写点(session 载体,零分支去重)。deployed_from_hub /
-                # activation_from_hub 两观测分键的读端归部署域下批消费本
-                # 名集(禁第二载体),获取≠行权显影面由此可直读。
+                # 单一写点(session 载体,零分支去重)。**先登记后 emit**:
+                # 本笔的 hold 类登记资格域(攻击 r1 面①)与装配 A 身份段
+                #(面②)在本发射内即消费本名集;面③ = 部署域行权显影
+                #(cw_op_deploy 读端,deployed_from_hub)。
                 _hub_held = getattr(state_of(session),
                                     'cw4_hub_acquired_names', None)
                 if _hub_held is None:

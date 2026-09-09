@@ -219,19 +219,42 @@ def register_launch(session: StrategySession,
             ' (ADR-0585 §2;新买因先登记 LAUNCH_CAUSES 再接线)')
     counters = _counters_of(session)
     if cause == 'hold' and not _hold_qualification_ok(name, star, cost,
-                                                      counters):
+                                                      counters, session):
         return False
     _registry_of(session)[name] = (cause, int(round_num))
     return True
 
 
+HUB_ACQUIRED_ATTR: str = 'cw4_hub_acquired_names'
+"""乙臂获取名集的 MandateState 载体属性名(写点 = shop.py 乙臂发射位
+单一写点;载体注释口径:duck-typed 属性契约,改名 = 静默断供给)。"""
+
+
+def hub_acquired_names_of(session: StrategySession) -> frozenset[str]:
+    """乙臂获取名集读口(P86 攻击 r1 发现1 面①/②/③三面共用的单一
+    读端;面①=hold 登记资格域、面②=装配 A 身份段、面③=部署域行权
+    显影,三面同源本口,禁消费方手搓第二读法)。"""
+    values = getattr(state_of(session), HUB_ACQUIRED_ATTR, None)
+    if isinstance(values, (list, tuple, set)):
+        return frozenset(n for n in values if n)
+    return frozenset()
+
+
 def _hold_qualification_ok(name: str, star: int | None, cost: int | None,
-                           counters: dict | None) -> bool:
+                           counters: dict | None,
+                           session: StrategySession) -> bool:
     """hold 类登记资格 = 名字腿 ∧ 硬闸腿(V2-06 合取;缺合取则 2★
     转线登记恒绿 = 锁恒绿形态,红对由硬闸腿补齐)。registry_core 层
     恒买无星闸(裁定410);其余在册档(transition)按 1★ 全额退硬闸;
-    星/费缺读 = fail-closed 拒登记(资格判据禁缺读放行)。"""
-    name_ok = name in sell_hold_exclusion_names()
+    星/费缺读 = fail-closed 拒登记(资格判据禁缺读放行)。
+
+    **乙臂持有腿(P86 攻击 r1 发现1 面①)**:名 ∈ 乙臂获取名集
+    (``hub_acquired_names_of``,发射位先登记后 emit 故当笔在场)与
+    静态持有集并集构成资格域——否则覆盖数 ≥2 注册表派生枢纽中
+    TRANSITION_PACK 之外成员(瓦尔特/刻律德菈等实证)hold 登记恒拒,
+    launch_cause_mismatch 病灶信号键被乙臂常态发射逐笔污染。"""
+    name_ok = (name in sell_hold_exclusion_names()
+               or name in hub_acquired_names_of(session))
     tier = line_identity_tier(name)
     if tier == TIER_TRANSITION:
         gate = (star is not None and cost is not None
@@ -474,11 +497,19 @@ def identity_exclusions(session: StrategySession,
 
     附带换线闭合读点(义务类登记账对账,见
     ``_close_switched_obligations``;读端幂等,行为零面)。
+
+    **乙臂持有段(P86 攻击 r1 发现1 面②)**:并集加乙臂获取名集
+    (``hub_acquired_names_of``)——乙臂「获取 = 免费期权持有」语义的卖面
+    承载:未并集时 TRANSITION_PACK 之外枢纽件(瓦尔特/刻律德菈等)在下
+    一备战帧可被凑息/腾席/筹资当 1★ 燃料卖掉(fresh_buys 只保同轮),
+    期权价值被己方卖面销毁。取获取时点记录(非注册表帧集) =
+    保护面只辖实际获取件,不随帧资格集波动扩张。
     """
     _locked, base = _resolve_base(session, k_members)
     _close_switched_obligations(session, base)
     excl = set(base)
     excl |= set(sell_hold_exclusion_names())
+    excl |= hub_acquired_names_of(session)
     return excl
 
 

@@ -504,12 +504,19 @@ def _redeploy_emission_allowed(session: StrategySession,
     ② 成员类轴:保守形态(REDEPLOY_TRANSITION_ENABLED=False)要求压席
        成员中存在档关键件(``_deploy_advances_form``);全量形态本轴
        放开(候裁挂账 = 进度账本 T-127 候裁行);
-    ③ 换下代价轴:卖出态由资格面 fail-closed 承载 P41 ②——2★+ 卖出
-       已被 star_guard 资格门持有(P79-3 辖域限定「资格门不被收益侧
-       豁免」),存活 victim 恒 1★ = P41 甲.2 全档往返净 0 ⇒ 代价 0 ≤
-       压席成本(C_sat ≥ 0 恒成立,f≤1/f≥2 带同)——本轴在卖出态解析
-       闭合、零自由参数,不另设数值门;下场态(方向甲,R3)落码时
-       在此轴展开。
+    ③ 换下代价轴(ADR-0614 §决策5 重推,三审 C-1 挂账兑现):卖出态由
+       资格面 fail-closed 承载 P41 ②——非武装帧 2★+ 卖出已被 star_guard
+       资格门持有(P79-3 辖域限定「资格门不被收益侧豁免」),存活
+       victim 恒 1★ = P41 甲.2 全档往返净 0 ⇒ 代价 0 ≤ 压席成本
+       (C_sat ≥ 0 恒成立,f≤1/f≥2 带同);**武装帧(evolution_swap_arm_
+       trigger,ADR-0614)旧闭合失效**——2★ 卖出 = P41 往返净损 > 0,
+       让位正当性改由病灶态机会账承载:板满∧席满∧线未成的卡死态下,
+       bench 槽期权价值(买入线内件→完成度推进)+「core 上板」完成度
+       收益,支配 2★ 线外件持有价值(不卖也上不了场;机会成本锚 =
+       bench_full_buy_abandon 4717 次/100 局,T-168 立案证据批)。金不减
+       腿在 2★ 失效后,收敛改由 B_t 严格增腿独立承载(胜出者必过
+       post_sell_offline 底线 ⇒ B_t 净 +1,无死循环保持);下场态
+       (方向甲,R3)落码时在此轴展开。
     """
     if ctx is None:
         return False

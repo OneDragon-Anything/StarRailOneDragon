@@ -1227,6 +1227,21 @@ class CwOpDeploy(SrOperation):
             for _er in set(_held_reasons.values()):
                 _ek = DEPLOY_EXEC_HELD_PREFIX + _er
                 _exec_counters[_ek] = _exec_counters.get(_ek, 0) + 1
+        # P86 乙臂行权显影(攻击 r1 发现1 面③;正本 §4.3-1):乙臂获取
+        # 名集读端消费——本部署轮被围栏放行上场的名 ∈ 获取名集时按笔计
+        # deployed_from_hub(行权走通用凑档路径的观测面,非新增授权;
+        # 鸭子读属性契约同 cw4_fuel_filler_stall_buys 先例,禁改名破契约;
+        # 策略侧读口 = sell_gate.hub_acquired_names_of 同一载体;
+        # best-effort,无载体静默跳过)。
+        if _sess is not None and isinstance(_exec_counters, dict):
+            _hub_held = getattr(strategy_state_of(_sess),
+                                'cw4_hub_acquired_names', None)
+            if isinstance(_hub_held, list) and _hub_held:
+                _dep_hub = {(_bench_list[_k].char_id or '')
+                            for _k in _up_rel} & set(_hub_held)
+                for _hn in sorted(_dep_hub):
+                    _exec_counters['deployed_from_hub'] = \
+                        _exec_counters.get('deployed_from_hub', 0) + 1
         log.info(f'[cw-deploy] deterministic: bench_occ={bench_occ} 上场序={order}'
                  f' front空={len(front_empty)} back空={len(back_empty)}')
         placed = 0
