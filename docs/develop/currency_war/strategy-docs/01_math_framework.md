@@ -106,6 +106,8 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 
 权威判据 = **P16**：E_rounds(c) = distance/per_round 超几何精确口径 + θ 滞回 + D_min 驻留（无抖动序列，振荡 ≤1/(2·D_min)）；判定 = E(alt)·(1+δ)+θ < E(cur)·(1+δ) ∧ 驻留 ≥ D_min。换线瞬间 P41 卖出不等式自动翻转。实证注（as-built，2026-09-06 核）：`should_switch_e` **已接线**（mandate_v1 证明 pass：`entry.py:397` → `proof.should_switch` → kernel/cw_line_switch）；休眠机理 = θ/U_X/V_ms【拟】None 期 fail-closed 封印（`theta_unavailable`/`switchline_exit_blocked` 短路），标定齐前换线事件恒 0——非零接线（详 [12_line_and_intention.md](12_line_and_intention.md) §3）。
 
+配方对/意向层（未锁线层）的方向判据 = **ADR-0616 四层谓词**（在任优先 × form_ok 冻结 × 证据中性计票 × 可行性门；谓词结构条件消环，零新阈值族——意向层滞回唯一合法路径 = P31 并轨本面 P16 参数族）。辖域分界：本节辖锁线换线「换不换」，ADR-0616 辖未锁配方对层「席位翻不翻」，P74 辖锁线买面「买不买」；三层共享 kernel `e_rounds` + `r_remaining` 读法，禁消费端内联改写。判据本体与消解矩阵见 ADR-0616，实现锚见 [12_line_and_intention.md](12_line_and_intention.md) §3/§4。
+
 ### 3.8 横切修正项与支配性族
 
 - **连胜取舍（P43）**：不是独立决策面，是支出侧的加性外差项——支出会改变战斗胜负时，花侧加 ΔV_streak（引擎口径 DP）；默认姿态 = 保息；旧常量 WIN_STREAK_BREAK_INTEREST=2 在处死名单。
