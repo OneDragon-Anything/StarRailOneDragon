@@ -135,8 +135,8 @@ class CwActionSink(Protocol):
 
         ``env`` = 动作执行步的宿主语境(T-120 方案 §3.3「商店动作执行步」
         改道点承载;批 1 起传入):生产形状 = operations 桶
-        ``cw_shop_action_ops.ShopExecEnv``(协议住 kernel 桶零依赖,故只以
-        Any 申报形状、不 import——依赖方向 = operations→kernel 单向)。
+        ``cw_shop_action_ops.ShopExecEnv``(协议住 CW 根、不 import
+        operations 类型,故只以 Any 申报形状——依赖方向 = operations→CW 根单向)。
         live 实现(批 2 LiveActionSink)消费它驱动点击/验证读;fake 实现
         (测试仓 FakeActionSink)消费它落「账本位随动」——动作账(ledger)
         与 tracked 账是 visit 级宿主状态,不随动作传递就无处落(方案 §2.4
