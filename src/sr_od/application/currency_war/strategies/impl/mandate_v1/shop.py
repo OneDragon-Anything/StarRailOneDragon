@@ -523,6 +523,46 @@ def _line_switch_orphans(session: StrategySession,
     return sell_gate.line_switch_orphans_of(session, base, round_num)
 
 
+# ===== 结算线地板(discretionary 买臂的买后裸金下界;ADR-0624)=====
+
+def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]:
+    """结算线地板:买后裸金不出息律饱和线(gold − cost ≥ g*,g* 由
+    调用方传 ``saturation_line(cap_resolved)`` 派生,禁字面 50——R70-1
+    息帽参数化链,买断制 g*=0 时被 check_affordable 蕴含即 no-op)。
+
+    为什么需要(五件结构事实的合取,ADR-0624 §背景):①资格门单边——
+    dominance 臂原只查买前 gold > g* 与 check_affordable,是全部
+    discretionary 买臂中唯一无买后线检查的臂;②单动作串行链——一次
+    店访每帧买一张、金为期望态现值,串行消费下末笔可穿线;③P78-1 同
+    visit 禁卖回(定义性抵消买入);④T3 同轮垫保——买入即入发射登记
+    簿(press 类 τ=同轮),卖回恢复通道当轮结构性不可达;⑤息结算在
+    轮末、按裸金(bench 资产不计息,P47)——穿线笔使当轮息档恰降
+    1 档且当轮不可恢复。
+
+    口径分界(禁三处买臂判据漂移):
+    - 与 P56 s_reserve(可变现口径)**不同源不同面禁统一**(账本预裁):
+      s_reserve 管 EV 臂完成度价值买入的财富账,本线管纪律面当轮结算
+      息档,本谓词不消费 s_reserve 谓词;
+    - 档 1 press_buy_deployable 的金位地板(ADR-0604 §2)为同形判据,
+      自本批起消费本谓词(同谓词同值,行为不变);
+    - ②(b) 当轮档地板是**另一形状**(当轮息档保持 cost ≤ gold −
+      10×⌊gold/10⌋,带内语义),不合流、勿合并。
+
+    拦截语义 = 资格修正非票据废除(P88 同族):买后金 ≥ g* 的购买全程
+    处于溢余带——该带内支出息损 L≡0(P70 全网格复算已证),地板保留的
+    全部行为都在已证零损域内;穿线笔(出域段)无在证授权,fail-closed。
+    被截笔价值面(压缩/垫件)不进判据(P49 判据一:跨档压缩恒 0 为
+    结构事实;价值账归显式模型轨,ADR-0624 §挂账)。
+
+    正本规格指认的家 = mandate.check_s_reserve 旁;因 mandate.py 存在
+    并行在飞改动暂居本模块(T-193 文件面阶段化),归位迁移随 mandate
+    面修正批整体平移(本函数零模块态依赖,平移零行为面)。
+    """
+    if gold - cost < g_star:
+        return False, 'settlement_line'
+    return True, ''
+
+
 def decide_shop_action(state: GameState, session: StrategySession,
                        config: object, *, registry=None) -> Action:
     """商店单动作决策(ADR-0517 决策 1/2;前身份 = ``decide_shop_wave`` 波批)。
@@ -1298,6 +1338,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
             ok1, _ = mandate.check_affordable(gold, cost)
             if not ok1:
                 continue
+            # 结算线地板(ADR-0624):买后金 gold−cost ≥ g* 才发射,拒则
+            # 试下一更便宜候选(单动作契约下金现读每帧,逐笔买后检查
+            # ≡ 顺序贪心花完溢余带预算 g_visit − g*,零批状态;拒笔为
+            # 候选级事件,分键显影防静默)。
+            _sl_ok, _ = check_settlement_line(gold, cost, g_star)
+            if not _sl_ok:
+                _count('dominance_settlement_floor_reject')
+                continue
             if _reopen_armed:
                 _count('shop_reopen_discretionary_actions')
             return _emit_buy(card, 'dominance_buy')
@@ -1603,7 +1651,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
     #(N3 登记/位次语义保留),线内件归 M2 义务通道——本臂候选集 =
     # 围栏可落 ∧ 非垫件类 ∧ 非线内,显式排除分键零静默。
     # 金位地板 = ``g − cost ≥ g*``(息基零破坏,ADR-0604 §2;
-    # 不走档 2 的 s_reserve 投影口径——本臂非压库语义)。
+    # 不走档 2 的 s_reserve 投影口径——本臂非压库语义)。判据自结算线
+    # 地板批起消费 ``check_settlement_line`` 同谓词(与 dominance 臂
+    # 单一源,防三处买臂判据漂移;同谓词同值,行为不变,ADR-0624)。
     # P72 拒帧挂起(L4):M3 批被 levelup_budget_gate 拒的帧,预留金
     # 不被本臂同帧击穿(复用 m6_budget_gate_suspend 先例,ADR-0560;
     # 挂起只辖 NORMAL 语境,F16 的 FLOOR_ON 让位随 hp 闸批落位,本批
@@ -1634,7 +1684,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if not name or name in buy_members:
                     continue    # 线内件归 M2 义务通道(定向最高优先不变)
                 cost = card.cost if card.cost else 3
-                if gold - cost < g_star:
+                _pf_ok, _ = check_settlement_line(gold, cost, g_star)
+                if not _pf_ok:
                     _count('press_buy_deployable_below_floor')
                     continue
                 # 垫件类互斥切分(F12):1★ 零重叠全额退 = 出口③ 候选,

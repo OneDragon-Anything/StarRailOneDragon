@@ -48,7 +48,7 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 | 压库买入 | 档匹配（c ∈ T_search）∧ free≥2 即买 / free=1 过 V_slot 净门 | **P49** ③ |
 | 合成完备购（第 3 份） | 满栏不阻断（merge §2.5 机制事实）；排序批前置卡点 = P30① 待证（**已由 P55 承接**，见 [11_shop_decisions.md](11_shop_decisions.md) §6.2） | 机制直读；P55 |
 | 线成员第 2/3 副本 | **待证明·阶段 2 已撤（2026-09-04 用户裁定：ΔV_2★ 经验标定属战力建模、策略核心不依赖），阶段 1 结构面仅史**；2★ 决策现行覆盖 = M2b 完成买入（dd-034）+ P20 方向序 + 线内义务（[11_shop_decisions.md](11_shop_decisions.md) §2） | **P55**（见 [11_shop_decisions.md](11_shop_decisions.md) §6） |
-| discretionary 买面金位下界 | 可变现息线下界 s_reserve := g* − Σ活期退金投影 | **P56**（条件式，见 [11_shop_decisions.md](11_shop_decisions.md) §6） |
+| discretionary 买面金位下界 | 可变现息线下界 s_reserve := g* − Σ活期退金投影（**P56**，条件式，见 [11_shop_decisions.md](11_shop_decisions.md) §6）；**并列第二口径 = 结算线地板 g − cost ≥ g\*（截断口径，ADR-0624）**——两口径不同源不同面禁统一（s_reserve 管 EV 臂完成度价值买入的财富账；结算线管纪律面当轮结算息档，消费位 = dominance/档 1，逐位裁定见 [11_shop_decisions.md](11_shop_decisions.md) §6.3） | **P56**；结算线 = **ADR-0624** |
 
 ### 3.2 卖（卡牌卖出）
 

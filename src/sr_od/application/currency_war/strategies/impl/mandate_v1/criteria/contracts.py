@@ -334,8 +334,10 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     # —— 三先例的非 criteria 消费位 ——
     ('mandate', 'dominance_buy'): Contract(
         _s_reserve_line_formed,
-        'M2 前置支配买入(S 预留消费位,mandate.check_s_reserve 消费面):'
-        '辖 dominance_buy,前提=目标线成型',
+        'M2 前置支配买入(前提=目标线成型):R32-3 规格拦截对象列虽含 '
+        'dominance_buy,其金位面实接线为结算线地板(shop.check_settlement_'
+        'line,截断口径),与 s_reserve 可变现口径不同源不同面,'
+        '非 mandate.check_s_reserve 消费位(T-193;ADR-0624)',
         'ZERO_REFRESH_DIAG §3 第 3 条+IMPL_DESIGN §3.2 ③'),
     ('mandate', 'core_single_card_buy_eligible'): Contract(
         _core_channel_locked_ctx,
