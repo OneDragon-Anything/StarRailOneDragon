@@ -3,8 +3,8 @@
 决策核(decision)与应用执行层(app)共同消费的**无副作用估值函数**单一源:
 输入名字/数值,输出期望价值,零识别零点击零包外依赖。
 
-为何落在 kernel:同一条估值曲线同时喂给武装箱选卡策略(decision_v2.decide_box_card)
-与 app 侧 handler 的旧内联回落(cw_screen_supply.pick_box_card),归 kernel 是
+为何落在 kernel:同一条估值曲线同时喂给武装箱选卡策略(decide_box_card)
+与备战执行器的内联回落(prep_actions._default_box_card),归 kernel 是
 分包依赖矩阵(DESIGN 分包 §3.2)下唯一同时合法的方向。
 """
 
