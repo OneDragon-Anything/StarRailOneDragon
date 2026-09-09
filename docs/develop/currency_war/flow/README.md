@@ -108,6 +108,7 @@
 | [prep_visit.md](prep_visit.md) | 备战访问：单轮形态（入口 heavy + 单动作决策循环 + 投影/保守回退）、备战决策 live 链（mandate_v1）、旧骨架删除注、完成判定与交还外循环 |
 | [shop_visit.md](shop_visit.md) | 商店访问：单动作循环（入口观察→逐动作→终结 op）、visit 级刷新硬墙、离店条件与收尾 |
 | [action_exec.md](action_exec.md) | 复合动作执行：词表、发射契约三态、重试/恢复语义、观测复查 |
+| [projection_contract.md](projection_contract.md) | 备战投影面交互契约：cw_state 面板/TurnState 投影 ↔ 执行臂的字段消费、双族坐标系、快照 vs 现读时序、注释规范缺口登记 |
 | [guards.md](guards.md) | 守卫总册：G3 环级无进展守卫、停滞/未知/失活防线、降级链、fail-closed 行为 |
 
 ## 4. 守卫总览（细则 = guards.md）
