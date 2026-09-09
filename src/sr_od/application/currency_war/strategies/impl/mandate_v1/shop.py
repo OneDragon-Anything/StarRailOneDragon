@@ -589,7 +589,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     def _emit_buy(card: ShopCard, reason: str, *,
                   launch_cause: str | None = None) -> BuyCard:
         """买入发射位 fresh 排除登记(ADR-0530 开闸批接线;单一载体 =
-        kernel SWAP_FRESH_BUYS_ATTR,禁第二实现)。单动作契约(本函数
+        kernel ExecState.cw4_swap_fresh_buys,禁第二实现)。单动作契约(本函数
         docstring)下 return 动作被决策循环无条件采纳执行——生产买面无
         截断丢弃面(刷新硬墙只降级 RefreshShop),故本写入时点 = 买入
         采纳;发射位逐名写入(漏记 = 卖出环切不断),过度排除方向安全

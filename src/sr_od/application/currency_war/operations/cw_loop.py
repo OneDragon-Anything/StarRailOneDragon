@@ -154,8 +154,8 @@ def prep_stall_pending_expected(session) -> tuple[str, ...]:
 #: gold 分量可信陈值载体(session 属性名;T-167 gold 分量钉死)。
 #: 键式 = 标量 int。
 #: 写点唯一 = prep_no_progress_state_fingerprint(开态可信帧现读写入);
-#: 生命周期随 session(新局新容器自动失效)。先例 = SWAP_FRESH_BUYS_ATTR
-#: (kernel,session 属性载体 + 模块级常量名单一源)。
+#: 生命周期随 session(新局新容器自动失效)。同族键式载体 =
+#: kernel ExecState.cw4_swap_fresh_buys(收编落点形态可参照)。
 PREP_GOLD_TRUSTED_ATTR: str = 'cw4_prep_gold_trusted'
 
 

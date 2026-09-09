@@ -23,6 +23,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 
 # 卖出回金 = 招募费(cost)× 合成倍数,economy_research.md §2(strategy/)。1星=cost 🟢 BWIKI+4399+用户权威;
 # 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」,
@@ -1860,8 +1861,8 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
 class PlaneNodeLedger:
     """本局 per-plane 节点序列台账 + 逐帧校验的去重/豁免状态。
 
-    宿主:``ctx.cw_match.session``(经 :func:`get_node_ledger` 惰性挂载;
-    session 随每局新建 → 台账生命周期 = 一局,无跨局污染)。
+    宿主:``ExecState.plane_node_ledger``(kernel/cw_exec_state.py;经
+    :func:`get_node_ledger` 惰性建。载体生命周期 = 一局,无跨局污染)。
     """
 
     #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
@@ -1892,22 +1893,20 @@ class PlaneNodeLedger:
     defect_seen: set[str] = field(default_factory=set)
 
 
-#: 台账在 session 上的挂载属性名(下划线前缀 = 非数据类契约,仅经函数存取)
-_LEDGER_ATTR: str = '_cw_plane_node_ledger'
-
-
 def get_node_ledger(session: object) -> PlaneNodeLedger | None:
-    """取 session 上的台账,无则惰性建(None session → None,调用方跳过)。
+    """取执行侧载体上的台账,无则惰性建(None session → None,调用方跳过)。
 
-    不放 StrategySession 字段声明(该类属策略域,本批不动)→ 动态挂载;
-    session 每局新建,属性随实例消亡 = 天然 session 级。
+    宿主 = ``ExecState.plane_node_ledger``(产生者 = 画面 op 采集/重读
+    写入端,归执行侧载体;读写全经本函数与 :func:`ledger_node_type`,
+    消费点禁直摸载体字段)。
     """
     if session is None:
         return None
-    ledger = getattr(session, _LEDGER_ATTR, None)
+    ex = exec_state_of(session)
+    ledger = ex.plane_node_ledger
     if ledger is None:
         ledger = PlaneNodeLedger()
-        setattr(session, _LEDGER_ATTR, ledger)
+        ex.plane_node_ledger = ledger
     return ledger
 
 
@@ -1919,7 +1918,8 @@ def ledger_node_type(session: object, plane: int | None,
     **不猜**)。boss 位在序列里存 'boss' token(写入端按「首领=位面最后节点」
     位置先验回填,与既有 boss 语义门同源)。
     """
-    ledger = getattr(session, _LEDGER_ATTR, None)
+    ledger = (None if session is None
+              else exec_state_of(session).plane_node_ledger)
     if ledger is None or not plane or not round_num:
         return None
     seq = ledger.seq_by_plane.get(int(plane))

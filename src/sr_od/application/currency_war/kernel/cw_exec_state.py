@@ -31,7 +31,10 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BenchChar,
+        PlaneNodeLedger,
+    )
 
 _EXEC_BY_SESSION: weakref.WeakKeyDictionary[object, ExecState] = \
     weakref.WeakKeyDictionary()
@@ -93,8 +96,8 @@ def exec_state_of(session: object) -> ExecState:
 
 @dataclass
 class ExecState:
-    """一局的执行层状态(22 具名 = 清册 16 + 账外第二波 6;生命周期/
-    防重入语义逐字段自原 session 字段平移,值域与缺省一致——载体每局
+    """一局的执行层状态(24 具名 = 清册 16 + 账外第二波 6 + 账外第三波
+    2;生命周期/防重入语义逐字段自原宿主平移,值域与缺省一致——载体每局
     新建即天然清零)。账外收编账本 = ADR-0563「落位裁量」节。
 
     生命周期分级(迁移核对判据:落点生命周期 ≥ 原生命周期,session.md
@@ -187,4 +190,23 @@ class ExecState:
     # 一写);消费端 = cw_loop 备战环出口 on_result 的 0j 预算复位判定,
     # 读后即清防跨环残留。环级生命周期。
     last_prep_battle_launch_ok: bool | None = None
+    # —— 账外补充·第三波(session 动态属性锚点收编,逐波清单 =
+    # ADR-0563「落位裁量」节第三波)——
+    # 轮内新鲜度排除载体(ADR-0530 立项;ADR-0611 §3-1 定谳为 L1 卖侧闩
+    # 「本轮已买」半边,与 v2_round_sold「已卖」半边同族互斥账)。
+    # 键式 = {'phase': (plane, round_num), 'names': set[str]},相位失配 =
+    # 跨轮整体作废(读取零销账,无逐名生命周期面);None = 本局未登记。
+    # 写点 = shop._emit_buy 全部 BuyCard 发射位 + sim/engine_p1 决策帧,
+    # 经 cw_deploy_logic.record_fresh_buy 单口;读端 = fresh_buys_of
+    # (换出守卫)+ fresh_buys_sell_face(L1 卖侧闩,fail-closed)。
+    cw4_swap_fresh_buys: dict | None = None
+    # 位面节点序列台账(cw_state.PlaneNodeLedger;备战帧查表与逐帧校验的
+    # 去重/豁免状态,[索引定义] 坐标系 = seq_by_plane 键为 1-based 位面号,
+    # 序列下标 0-based = 该位面第 i+1 轮,取值时机 = 写入端整行重读快照,
+    # 定义详注在载体类头)。写入端 = 画面 op 三处(CwScreenPlaneIntel
+    # 位面详情 / CwScreenInvestEnv 环境重读 / CwScreenPrep 备战节点行),
+    # 经 cw_state.get_node_ledger / ledger_update_plane 单口;读端 =
+    # cw_state.ledger_node_type(kernel 判据 + 遥测 recorder)。
+    # None = 本局未建(读口惰性建)。
+    plane_node_ledger: PlaneNodeLedger | None = None
 

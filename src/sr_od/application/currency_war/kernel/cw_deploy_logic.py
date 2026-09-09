@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS,
     RECIPE_BASE,
@@ -914,15 +915,15 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # (弃权三键,计划空)+ 逐件拒因 fenced_arm_closed / target_keep /
 # protected / buy_membership / fresh_buy / post_sell_held。
 
-#: 轮内新鲜度排除载体(session 属性名):发射位买入时逐名写入的名集,
-#: 键式 = {'phase': (plane, round_num), 'names': set[str]}——位面/轮次
-#: 推进自动失效(M7 闩键式同构)。写点 = 生产 shop.py 全部 BuyCard 发射位
-#: 经 ``_emit_buy`` 收口调用(5edcf324)+ sim/engine_p1 决策帧。
-#: 取舍声明:沿用发射位写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),
-#: 被截断器丢弃的买入意图也入排除集 = 过度排除压制合法 swap,方向安全
-#: (留置合法稳态,dd-037 口径),失真经 fresh_buy 拒因可追溯;单调性由
-#: 义务集排除独立承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
-SWAP_FRESH_BUYS_ATTR: str = 'cw4_swap_fresh_buys'
+# 轮内新鲜度排除载体(宿主 = ``ExecState.cw4_swap_fresh_buys``,字段
+# 定义注 = kernel/cw_exec_state.py):发射位买入时逐名写入的名集,键式 =
+# {'phase': (plane, round_num), 'names': set[str]}——位面/轮次推进自动
+# 失效(M7 闩键式同构)。写点 = 生产 shop.py 全部 BuyCard 发射位
+# 经 ``_emit_buy`` 收口调用(5edcf324)+ sim/engine_p1 决策帧。
+# 取舍声明:沿用发射位写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),
+# 被截断器丢弃的买入意图也入排除集 = 过度排除压制合法 swap,方向安全
+# (留置合法稳态,dd-037 口径),失真经 fresh_buy 拒因可追溯;单调性由
+# 义务集排除独立承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
 
 
 def record_fresh_buy(session: object, state: GameState | None,
@@ -930,23 +931,25 @@ def record_fresh_buy(session: object, state: GameState | None,
     """轮内新鲜度排除登记(买入意图逐名写入;发射位调用)。
 
     同一发射批的多个买入意图**逐名**入集(防批量买入漏记——漏记 =
-    卖出环切不断,防抖失效静默)。键式见 ``SWAP_FRESH_BUYS_ATTR``。
+    卖出环切不断,防抖失效静默)。键式见 ``ExecState.cw4_swap_fresh_buys``
+    (kernel/cw_exec_state.py 字段注)。
     """
     if not name:
         return
-    reg = getattr(session, SWAP_FRESH_BUYS_ATTR, None)
+    ex = exec_state_of(session)
+    reg = ex.cw4_swap_fresh_buys
     phase = (getattr(state, 'plane', None),
              getattr(state, 'round_num', 1))
     if not isinstance(reg, dict) or reg.get('phase') != phase:
         reg = {'phase': phase, 'names': set()}
-        setattr(session, SWAP_FRESH_BUYS_ATTR, reg)
+        ex.cw4_swap_fresh_buys = reg
     reg['names'].add(name)
 
 
 def fresh_buys_of(session: object,
                   state: GameState | None) -> frozenset[str]:
     """读当前位面轮内有效的新鲜买入名集(跨轮 = 空集,自动失效)。"""
-    reg = getattr(session, SWAP_FRESH_BUYS_ATTR, None)
+    reg = exec_state_of(session).cw4_swap_fresh_buys
     if not isinstance(reg, dict):
         return frozenset()
     phase = (getattr(state, 'plane', None),
@@ -977,7 +980,7 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
     - 读取零销账(过期由相位失配整体作废,与档 2 载体
       mandate.ROUND_SOLD_ATTR 同形态,读端无逐名生命周期面)。
     """
-    reg = getattr(session, SWAP_FRESH_BUYS_ATTR, None)
+    reg = exec_state_of(session).cw4_swap_fresh_buys
     if not isinstance(reg, dict):
         return frozenset()
     names = reg.get('names')
