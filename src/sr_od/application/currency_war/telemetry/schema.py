@@ -519,7 +519,7 @@ class OutcomeRecord:
     node_type: str = ""
     comp_tag: str = ""
     intentional_fold: bool = False
-    hp_after: int = 0
+    hp_after: int | None = 0   # None 仅收口终局行携带(见 match_result 注);缺省 0=旧记录字段缺位
     hp_confidence: float = 1.0
     enemy_hp_after: int | None = None
     damage_dealt: int | None = None
@@ -577,6 +577,16 @@ class OutcomeRecord:
     # (动态探测,通常 4/augment 3-5,逐列内容不假定结构;漏读审计与对拍源)。
     # dict 键缺失容忍(兜底点卡路径无 options → 只有 gold);None=非补给行/旧记录。
     supply_pick: dict[str, Any] | None = None
+    # —— T-185 收口终局行标记(实机末轮 outcome 采集补全):''=普通结算行
+    # (屏面真值/'recovered'/'synthetic_supply');'stopped'/'abandoned'=
+    # 对局收口终局行(对局循环中止收口时补写,写点 = cw_loop._write_terminal_
+    # outcome_row)。终局行 killed 语义切换为**对局级**:False = 对局终了时
+    # 通关击杀未达成(中止局可证未通关,ADR-0306 权威口径可判),**不是该轮
+    # 战斗结算**(该轮战斗可能根本未打完);hp_after 恒 None、hp_confidence
+    # 恒 0.0(不发任何 hp/战斗真值——Δ池配对按 hp_after=None 前置剔除、
+    # hp 步进链按可信门退出,零新过滤)。可选字段追加(关键字序列化,位置
+    # 无关),旧记录缺省 '' 不破坏 schema(读取端 .get 容忍)。
+    match_result: str = ""
 
 
 

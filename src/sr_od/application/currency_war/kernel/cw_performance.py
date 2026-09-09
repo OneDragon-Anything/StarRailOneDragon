@@ -49,7 +49,8 @@ class RoundOutcome:
     comp_tag: str               # 打这关时的 target comp 名
     intentional_fold: bool = False
     # —— 自身侧 ——
-    hp_after: int = 0           # 结算后 HP(hp_delta = 本回合 − 上回合,差分)
+    hp_after: int | None = 0    # 结算后 HP(hp_delta = 本回合 − 上回合,差分);
+    # None 仅收口终局行携带(cw_loop._write_terminal_outcome_row,不发 hp 真值)
     hp_confidence: float = 1.0  # OCR 置信度(0-1);<0.7 不进 trend(防 OCR 抖动)
     # —— 敌方侧(击杀信号)——
     enemy_hp_after: int | None = None
@@ -58,7 +59,8 @@ class RoundOutcome:
     # —— 进度真值(2026-08-18 用户点破:「扣血=战斗失败,游戏内有记录」)——
     progress_delta: int | None = None   # 结算屏「挑战进度 ±N」带符号(赢 +2 / 输 -22);None=未读到
     # —— streak(连胜/连败;2026-08-11 结算「连胜×N」前缀=方向,fixture 核实)——
-    streak: int = 0           # 带符号:+N 连胜 / -N 连败 / 0 无(结算 OCR 读;economy C 杠杆用)
+    streak: int | None = 0    # 带符号:+N 连胜 / -N 连败 / 0 无(结算 OCR 读;economy C 杠杆用);
+    # None 仅收口终局行携带(不发 streak 真值,镜像 hp_after 口径)
     # —— 结算三项遥测(docs/develop/currency_war/strategy/05_observation.md §3.1(迭代工作面原稿 SETTLE_OCR_DESIGN §3;P15 脱删失/P12 幅度授权真值通道)——
     # progress_fill_ratio = 挑战进度条填充率 [0,1](幅度绝对值通道;±N 浮字是符号+
     # 增量真值,两通道同帧并记互为对拍);damage_base/damage_unfinished_progress =
@@ -74,6 +76,10 @@ class RoundOutcome:
     damage_unfinished_progress: int | None = None
     damage_breakdown_visible: bool = False
     heal_longline: int | None = None
+    # —— T-185 收口终局行标记:仅对局收口终局行携带('stopped'/'abandoned'),
+    # 普通结算行恒 ''(字段语义与读端消费边界 =
+    # telemetry.schema.OutcomeRecord.match_result 注)。
+    match_result: str = ""
 
 
 # 节点类型 → 预期掉血(相对值;归一化用)。先验,历史 refine。

@@ -382,6 +382,9 @@ class TelemetryRecorder:
             boss_names=_bosses, selected_difficulty=_diff,
             enemy_affixes=_affixes,
             supply_pick=dict(supply_pick) if supply_pick else None,
+            # T-185 收口终局行标记透传(旧 outcome 载体无此字段时 getattr
+            # 缺省 '',与两侧旧数据兼容)
+            match_result=getattr(outcome, 'match_result', '') or '',
         )
         self._append("outcomes.jsonl", _to_jsonable(rec))
 

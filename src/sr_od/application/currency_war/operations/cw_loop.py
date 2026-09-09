@@ -1,5 +1,7 @@
+import json
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, ClassVar
 
 from one_dragon.base.operation.operation_base import OperationResult as _OperationResult
@@ -946,6 +948,9 @@ class CwLoop(SrOperation):
     #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
+    #: 收口终局行来源标记(T-185 实机末轮 outcome 采集补全):outcomes 行
+    #: source 值,行字段语义与读端消费边界见 _write_terminal_outcome_row。
+    TERMINAL_OUTCOME_SOURCE: ClassVar[str] = 'terminal_closure'
     # (结算链常量族 SETTLE_PANEL_WAIT_S/SETTLE_DEFEAT_LATCH_MIN_T/
     #  RELAUNCH_SETTLE_GRACE_S/BLANK/SETTLEMENT_NEXT 已随 1f/2/3/3b/6 分支
     #  收编 CwScreenBattleWait(W971 05-battle §1),常量随 op 迁移单一源。)
@@ -1296,6 +1301,116 @@ class CwLoop(SrOperation):
         except Exception as e:   # noqa: BLE001  观测旁路,best-effort
             log.warning('[cw][counters] 计数快照落盘失败(不阻塞): %s', e)
 
+    def _run_has_outcome_at(self, plane: int, round_num: int) -> bool:
+        """本 run 在 (plane, round_num) 键是否已有 outcomes 行(终局行防重门)。
+
+        读失败方向不对称(落地审建议-1 裁决:宁缺勿污):
+        - **撕裂行逐行容错**:append-only 流的撕裂行只发生于尾行(生产
+          append 进行中崩溃的半写 JSON,sim/pool 消费端同款先例),跳过坏行
+          继续判——既有结算行照常命中,门功能不因撕裂失能;
+        - **文件级读失败 → fail-closed** 视同「键已有行」返回 True 不补行:
+          缺行的代价 = 回到 T-185 前的不可判(良性,可由判读者按缺数据
+          对待);误放行的代价 = 终局行以 ts 末行身份覆盖既有结算 killed
+          真值(恶性,权威口径静默失真)。
+        量级口径:全文件读(outcomes.jsonl 跨 run 累积全量,非本 run 行数);
+        收口时点一次性,量级可忽略。
+        """
+        try:
+            with Path(state.get_recorder().replay_dir,
+                      'outcomes.jsonl').open('r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            return False   # 流尚未建 = 必无该键行(缺文件非读失败,放行)
+        except Exception:   # noqa: BLE001  文件级读失败 → fail-closed(理由见方法注)
+            return True
+        _bad = 0
+        _rid = state.current_run_id()
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                r = json.loads(line)
+            except ValueError:
+                _bad += 1   # 撕裂行(尾行形态):跳过继续判,不使整读抛异常
+                continue
+            if r.get('run_id') != _rid:
+                continue
+            try:
+                if (int(r.get('plane') or 0) == plane
+                        and int(r.get('round_num') or 0) == round_num):
+                    if _bad:
+                        log.warning('[cw][loop] 防重门跳过撕裂行 %s 条,键行命中'
+                                    '不补 P%s-r%s', _bad, plane, round_num)
+                    return True
+            except (TypeError, ValueError):
+                continue
+        if _bad:
+            log.warning('[cw][loop] 防重门跳过撕裂行 %s 条,无键行放行补行 '
+                        'P%s-r%s', _bad, plane, round_num)
+        return False
+
+    def _write_terminal_outcome_row(self, last_state: Any | None,
+                                    result_kind: str) -> None:
+        """收口终局结算行(T-185 实机末轮 outcome 采集补全;遥测采集侧,零决策行为)。
+
+        病灶(实机 killed 真值可判性):result=stopped/abandoned 局的对局循环
+        在末轮战斗结算前中止 → 该轮 outcomes 零行 → 按局存档末轮 outcome=null
+        → batch_stats 通关权威口径 killed(ADR-0306 件3,cw_batch_stats
+        _archive_rows)落不可判桶(2026-09-09 档案近 12 局 6 局不可判,4 局即
+        stopped 局)。本行在对局收口时点补写末轮终局行,与既有 outcomes 行
+        schema 同构(OutcomeRecord 单一 schema),使档案末轮 outcome 在档。
+
+        行语义(读端必读):
+        - ``killed=False`` = **对局级**「对局终了时通关击杀未达成」——中止局
+          可证未通关,不是该轮战斗结算真值(该轮战斗可能根本未打完);
+        - ``hp_after=None``/``hp_confidence=0.0``/``progress_delta=None``/
+          ``streak=None``/``node_type=''``:不发任何 hp/战斗/节点真值——
+          Δ池配对按 hp_after=None 前置剔除(pool.pair_outcome_rows_to_pool
+          调用方契约)、hp 步进链按可信门退出(_settlement_hp_usable→
+          _outcome_hp_trusted,0.0<0.9)、档案轮槽 hp/node_type 回落决策帧
+          (_hp_entry / nt_out or nt_state),全部既有读面零扰动零新过滤;
+        - ``source='terminal_closure'``/``match_result=result_kind``:行身份
+          双标记(判读分型;不以 'synthetic' 前缀命名,避开读端合成行排除面)。
+
+        防重门:该键已有本 run 结算行(停止点在结算读取之后的场景,如败局
+        多页链/通关结算链中途停)→ 不补——终局行 ts 更晚会以「ts 末行」
+        身份覆盖既有真值行(档案轮槽 outcome 取 ts 最末行),会把已判真的
+        killed=True/False 冲成对局级 False。best-effort:任何失败只记日志,
+        不阻塞 runs summary 收口(W75 红线)。
+        """
+        try:
+            if last_state is None:
+                return
+            _plane = int(getattr(last_state, 'plane', 0) or 0)
+            _round = int(getattr(last_state, 'round_num', 0) or 0)
+            if _plane <= 0 or _round <= 0:
+                return
+            if self._run_has_outcome_at(_plane, _round):
+                return
+            _m = self.ctx.cw_match
+            _session = getattr(_m, 'session', None) if _m is not None else None
+            # 披露面防御(同 _record_supply_outcome 口径):strategy_state_of
+            # None 契约,异型状态对象 target_comp 缺席退 '?'
+            _tc = getattr(strategy_state_of(_session), 'target_comp', None) \
+                if _session is not None else None
+            _comp_tag = _tc.name if _tc is not None else '?'
+            recorder.record_outcome(
+                RoundOutcome(
+                    round_num=_round, plane=_plane, node_type='',
+                    comp_tag=_comp_tag,
+                    hp_after=None, hp_confidence=0.0,
+                    killed=False,   # 对局级终了真值,见方法注(非战斗结算)
+                    progress_delta=None, streak=None,
+                    match_result=result_kind,
+                ),
+                source=self.TERMINAL_OUTCOME_SOURCE,
+            )
+            log.info('[cw][loop] 收口终局行落盘 %s P%s-r%s(match_result=%s)',
+                     self.TERMINAL_OUTCOME_SOURCE, _plane, _round, result_kind)
+        except Exception as e:   # noqa: BLE001  遥测 best-effort,不阻塞收口
+            log.warning('[cw][loop] 收口终局行落盘失败(不阻塞): %s', e)
+
     def _op_journal_pos(self) -> tuple[int, int]:
         """op 行位置键(ADR-0579):最后已知 (plane, round),缺省 (0, 0)。"""
         return _op_journal_pos_of(self.ctx)
@@ -1402,6 +1517,9 @@ class CwLoop(SrOperation):
         outcome = 开局即失败,镜像 3c 守卫;此时拼 stopped 行才有污染分母
         之嫌);只要观察过对局态或有过任一结算行,就是真局,必落终局行
         (result=stopped/abandoned,hp/plane/round 取最后已知值)。
+
+        本收口同时补写 outcomes 收口终局行(T-185,末轮 outcome 采集缺口;
+        字段语义/防重门/读端边界见 _write_terminal_outcome_row 方法注)。
         """
         if self._summary_written:
             return
@@ -1420,6 +1538,10 @@ class CwLoop(SrOperation):
             # 内,晚于 end_ts 会掉窗丢计数;契约见 match_archive.record_-
             # cw4_counters_snapshot 注释)。best-effort,不阻塞收口。
             self._record_cw4_counters_snapshot()
+            # 收口终局结算行(T-185):先于 runs summary 落(数据行先于收口
+            # 行的次序契约同 cw4 计数行);内部自吞异常,W75 runs 行不受影响。
+            self._write_terminal_outcome_row(
+                _st, 'stopped' if _stopped else 'abandoned')
             state.record_run_summary(
                 result='stopped' if _stopped else 'abandoned',
                 plane_reached=_st.plane if _st is not None else 1,
