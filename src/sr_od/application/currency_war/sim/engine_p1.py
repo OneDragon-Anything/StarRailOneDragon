@@ -1531,16 +1531,37 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # sim.shop_waves 对应波(键 rejects,与该波 cards/gold 同
                 # 位对齐),顶层 shop_rejects=末波 last-wins(生产 decisions
                 # 行 session 单槽同语义)。K 空窗时 target_comp=None,
-                # 生产端 comp=None 分支统一归 non_line,同源。
+                # comp 派生分类不可得,membership/hub 面与生产 comp=None
+                # 分支同源(hub 直传面见下方打标块注)。
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.shop import (
                     shop_unbought_reasons,
                 )
-                from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
-                    predicates as _rej_predicates,
-                )
                 _k_comp = getattr(strategy_state_of(sess), 'target_comp', None)
+                # 买侧 membership 正典口径 = _obs_bm(上方 obs 段构造:
+                # 锁定帧 locked_buy_membership / 未锁帧 line_members,
+                # 与生产 shop.py buy_members 同式)——打标与 obs 同帧消费
+                # 同一实例,两观测位物理同源禁分叉;旧口径本块第二实现
+                # line_members 直传曾把锁定帧阵营成员误标 non_line
+                #(g_20260905_035710 同型事故修法在 sim 打标点的对齐)。
+                # hub_names 直传(生产 _arms 同条件:K 空窗 ∧ p2plus 带,
+                # 分带走 k_empty_window_fallback 单一源,禁 plane 直判)
+                # ——空窗帧枢纽件落 hub_option,不再混入 non_line。
+                _seg_hub: frozenset[str] = frozenset()
+                if _k_comp is None and _obs_ist is not None:
+                    from sr_od.application.currency_war.kernel import (
+                        cw_intention as _rej_intention,
+                    )
+                    _rej_fb, _rej_tok = (
+                        _rej_intention.k_empty_window_fallback(
+                            st, _obs_ist, session=sess,
+                            registry=_obs_registry))
+                    if _rej_tok == 'p2plus':
+                        _rej_arms = _rej_intention.no_target_arms(
+                            st, _obs_ist, session=sess,
+                            registry=_obs_registry)
+                        _seg_hub = frozenset(_rej_arms.hub_names)
                 _seg_rejects = shop_unbought_reasons(
-                    st, _k_comp, _rej_predicates.line_members(_k_comp), acts)
+                    st, _k_comp, _obs_bm, acts, hub_names=_seg_hub)
                 _round_shop_rejects = _seg_rejects
                 if _waves:
                     _waves[-1]['rejects'] = dict(_seg_rejects)
