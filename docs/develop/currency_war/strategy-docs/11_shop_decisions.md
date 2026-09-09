@@ -159,6 +159,8 @@ g* = saturation_line(cap_resolved)   （与刷新门同源，零新常数）
 
 **dominance_buy（ADR-0624，结算线口径并列注册）**：不辖 s_reserve——其金位面 = 结算线地板（逐笔买后裸金 ≥ g*，`shop.check_settlement_line` 单一源，g* = saturation_line(cap_resolved) 派生），与 P56 可变现口径**不同源不同面禁统一**（可变现口径保财富完成度账，买后可经下一备战帧卖回变现；结算线保当轮结算息档——变现中间隔轮末裸金结算，P47 息账时点维；判据输入仅 g*，零 s_reserve 消费）。拒笔 = 候选级事件，分键 `dominance_settlement_floor_reject`，拒后 continue 试更便宜候选（单动作契约顺序贪心）。档 1 press_buy_deployable 的金位地板（ADR-0604 §2）为同形判据同消费该谓词；②(b) 当轮档地板为另一形状（当轮息档保持）不合流。残余穿线面 = C1:unlocked 恒买腿与义务笔（候裁归编排者，须走 ADR-0580 修订申报/例外谱条目，禁顺手改）。
 
+**dominance/hub 锁线转型域收窄（ADR-0627；P88）**：两 S_spec 买因（`dominance_buy`/`hub_option_buy`）发射位挂 D 帧辖域前置——D = `mandate.swap_transition_narrow_frame`（域谓词单一源 = kernel `cw_deploy_logic._swap_transition_domain_of` 同一谓词：armed ∧ locked ∧ fp<1.00 ∧ 板满；店侧输入装配对齐 `assemble_swap_plan_inputs`：locked 单源 = `ist.locked_comp`、fp 单一源 = `form_progress`（锁线帧 tgt = `target_comp` 同装配）、板满 = `deployed_occupied ≥ state.max_units()`；禁消费面内联第二份合取）。语义 = V_slot 维资格修正非支配性否决（P88 调和引理：金维「净成本≈0」前提 = 席位免费，D 帧线外 1★ 候选占位成本 = 被阻线内义务净 EV>0，P41③/P76 丙）；豁免 ⇔ 买因 ∈ `LAUNCH_CAUSE_BY_ARM` ∖ `mandate.PRESS_NARROWED_ARMS`（结构性承载：仅两 S_spec 位挂前置，m2 族/C1/M6/ev_buy 等零触碰——C1 在 D 帧的解封 = 收窄收益的行为载体）。分键：`press_narrowed_transition_domain`（dominance 位，帧级「将发射笔」口径 = 候选全门通过后首见笔计一次，置于结算线地板检查之后——T-193 候选级分键先于收窄照常显影）/ `press_narrowed_transition_domain_hub`（hub 位防御性哨兵，hub 辖 unlocked 与 locked D 域结构性不相交 = 空开火面，判读禁并桶）/ `press_narrowed_transition_domain_prep_seen`（prep dominance OpenShop 位对称观测，仅登记零行为）。M6 两域（prep emit 与 shop 臂）零触碰：压库 = P88 §5 解封回填主体的合法出口，档序语义不动。席位维姊妹修正 = ADR-0616 命题 4（bench_free≤1 带 V_slot 否决，`dominance_buy_eligible` 本体收紧候 T-166 批 2），与本收窄叠加合取互不替代——资格门 docstring 辖域注（双引注）为回滚合法依据封堵面。
+
 ### 6.4 U_X / T_SEARCH_A 标定计划
 
 > **采集计划已作废降史实（2026-09-04 用户裁定）**：本节 U_X 真标定批与替代路径原为 P55 阶段 2 的配套采集/消门计划，随阶段 2 撤销（ΔV_2★ 经验标定属战力建模）作废降史实；采集链 ebd1bc96 挂 deprecate。T1/T_SEARCH_A 行不受影响（已落地现行）。
@@ -179,6 +181,15 @@ g* = saturation_line(cap_resolved)   （与刷新门同源，零新常数）
 ### 6.6 交付与挂账（编排者裁决位）
 
 ①（已撤，2026-09-04 用户裁定）原 P55 待标定采集批优先级安排随阶段 2 撤销作废（§6.4 采集计划已降史实，采集链 ebd1bc96 挂 deprecate）；②EV 买面 free≥2 支配性消 U_X 门的对抗审查排期随替代路径作废降史实（§6.4）；③funding_support 卖回序精确化（P49 ⑤ 对齐）归卖面批辖域确认；④M3 S 线接线批单列（先裁定性再接线，不并入 P56/T1）。
+
+### 6.7 买面现货时机判据 as-built（P77 缺口面装载；ADR-0626）
+
+P77（math_proofs/p77-shop-spot-availability-signal.md，已收口命题）裁决:现货观测的信号价值只在买动作兑现（甲.2），证据门辅助臂全域空域（丙.1 零互信息），进法 = 把可得性折现加进买面比较子、方向面（锁线判据）不动（丁.1:溢价对锁线阈值零影响）。生产落位（ADR-0626 为决策正本，此处只记语义与指针）：
+
+- **2★ 直出现货比较子**（缺口面1）:m2_stockpile 臂内，j=1 帧同名 2★ 直出在售且无 1★ 候选帧,经比较子放行（DIY 账 = 再收 2 张 1★ + 付费刷新账 vs 现货账 = 星级费用实付;E 单一源 = `expected_refreshes_for_card`,c_eff 单一源 = `REFRESH_COST_BASE` 链）。比较子函数 = `shop.spot2_direct_out_card`（模块级槽位,兼作 A/B 基线臂测试侧注入位）;p=0 帧（该级刷不出该费）不可评 → 维持拒（fail-closed）。达成路线分键 `m2_stockpile_spot2_buy`,义务 reason 键不变。
+- **s_reserve 拒绝对价载体**（缺口面3）:M6 压库面 s_reserve 拒帧累计被拒现货再遇窗（自然帧;单一源 = `cw_shop_odds.reencounter_window_frames`,P77 §1.4 同式）入 `m6_s_reserve_remeet_frames_sum`——「留保息 vs 收现货」权衡的量值载体;纯遥测禁决策消费,让路裁决（下界是否/如何为现货让路）归 P56 辖域设计批。
+- **V_slot（缺口面2）维持缺省放行**:u/U_X 未标定（P77 §7【拟】#3 fail-closed 在册）,装载归标定批,本面零改动。
+- 边界申报:j=2 帧维持 M2b 星过滤拒（P77 备注5,DIY 严格占优）;P77 §2.3 复现域（P2 未定型带线外候选/转线包成员无买入臂覆盖）不在本次装载辖域（其修 = 准入/授权面另批,非现货时机判据）。
 
 ## 7. 引擎池渐进买进（原 06 全文收编）
 

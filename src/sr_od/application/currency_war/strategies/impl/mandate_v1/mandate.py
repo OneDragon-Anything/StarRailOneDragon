@@ -31,6 +31,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.kernel.cw_comps import form_progress
+from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+    SWAP_TRANSITION_ARM_ENABLED,
+    _swap_transition_domain_of,
+)
 from sr_od.application.currency_war.kernel.cw_economy import (
     blood_xp_gate_for,
     clicks_to_next_level,
@@ -54,6 +59,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     REFRESH_COST_BASE,
     count_merge_material_blocked,
+    deployed_occupied,
     merge_material_reject_reason,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
@@ -430,11 +436,82 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     值比较(01_math_framework.md §3.8),线未齐帧同辖。P24 = 残余补
     部署支配定理(p24-residual-fill-dominance.md),辖零支出部署行为,
     无买入/持有期权命题——前版本体注 P24 系锚错位误注,已正。
+
+    辖域注(双引注,ADR-0627;P88 落码纪律——缺本注则上文支配性论述
+    构成收窄回滚的合法依据):上段「无条件放行」是**金维**论证,成立
+    前提 = 席位免费;席位维的两处辖域修正在本函数**之外**、消费位侧
+    落码,禁据上文支配性论述回滚——
+    ① ADR-0616 命题 4:V_slot>0 带(bench_free ≤ 1)席位外部性否决,
+    落点 = 本函数本体单点收紧(T-166 批 2 候派,现未落);
+    ② P88 调和引理(docs/develop/currency_war/proofs/p88.md):锁线
+    转型域 D 帧(armed ∧ locked ∧ fp<1.00 ∧ 板满)席位最贵态——线外
+    1★ 候选占位成本 = 被阻线内义务净 EV>0(P41③/P76 丙),金维
+    「净成本≈0」前提在 D 域席位维失效,支配性放行辖域不含 D 帧。
+    域语义声明:收窄落码 = 店侧两 S_spec 发射位(dominance_buy/
+    hub_option_buy)的辖域前置(``swap_transition_narrow_frame``,
+    域谓词单一源 = kernel ``_swap_transition_domain_of``);豁免 ⇔
+    reason ∈ LAUNCH_CAUSE_BY_ARM ∖ PRESS_NARROWED_ARMS(闭集单一源 =
+    sell_gate,m2 族/C1/M6 零触碰)。本函数本体(金位+bench_free>0)
+    是金维+席物理维资格门,不辖 D 域判定——两域修正叠加合取,互不
+    替代。
     [13] 停手线纪律语义
     由候选集判据承载(零重叠 1★ 全额退),不随本旗消失(迁移完备性
     申报 = ADR-0604 §4-①)。
     """
     return gold > saturation_line(cap_resolved) and bench_free > 0
+
+
+# ===== 锁线转型域收窄辖域(T-190 批 B;P88,ADR-0627)=====
+
+#: 收窄集 S_spec(P88 §0;键域 = 买因闭集 ``sell_gate.LAUNCH_CAUSE_
+#: BY_ARM``,收窄集必须 ⊆ 闭集——闭集对账锁 = 测试仓
+#: test_cw_press_narrow_transition.py 闭集锁,新买入臂先入映射表归
+#: 因果类才可发射[ADR-0611 A4 硬闸],越出闭集的收窄键 = 锁红面)。
+#: 豁免 ⇔ reason ∈ 闭集 ∖ S_spec,由「仅两 S_spec 发射位挂辖域前置、
+#: 他臂零消费」结构性承载(防复制枚举漂移:豁免名单不在此列举,
+#: 对账 = 闭集锁按符号差集断言)。
+PRESS_NARROWED_ARMS: frozenset[str] = frozenset({
+    'dominance_buy',
+    'hub_option_buy',
+})
+
+
+def swap_transition_narrow_frame(state: GameState | None,
+                                 session: StrategySession) -> bool:
+    """锁线转型域 D 帧判定(店侧 S_spec 收窄辖域;P88,ADR-0627)。
+
+    = kernel ``cw_deploy_logic._swap_transition_domain_of`` **同一谓词**
+    (armed ∧ locked ∧ fp<1.00 ∧ 板满)——辖域判定单一源,本函数只做
+    店侧输入装配,禁第二份合取(第二源 = 与部署域 M1″ 转型域分裂)。
+    装配对齐 ``assemble_swap_plan_inputs`` 发射侧同字段链:locked 单源
+    = ``ist.locked_comp`` 非空;fp 单一源 = ``cw_comps.form_progress``,
+    锁线帧 committed_from=True ⇒ 装配点 tgt 退 ``target_comp`` 同读法
+    (flow._refresh_direction_views 锁线帧恒置 target_comp = locked
+    comp 解析,两读法锁线帧同值);板满 = 占用数 ≥ ``state.max_units()``
+    (占用数口径 = ``cw_state.deployed_occupied`` 单点,禁裸 len)。
+
+    用途 = P88 收窄:仅两 S_spec 发射位(press_narrowed_* 分键)消费
+    本旗作辖域前置;豁免臂零消费。fail 方向 = 域外/缺读帧恒 False
+    (不收窄 = 旧行为,保守可逆);未锁帧短路返回——语义同谓词
+    (D⊆locked,p88_check 断言 1)且免 fp/板满推导成本。
+    """
+    if state is None:
+        return False
+    _ms = state_of(session)
+    ist = getattr(_ms, 'v3_intention', None)
+    locked = bool(getattr(ist, 'locked_comp', None))
+    if not locked:
+        return False
+    tgt = getattr(_ms, 'target_comp', None)
+    fp: float | None = None
+    if tgt is not None:
+        try:
+            fp = float(form_progress(tgt, state))
+        except Exception:   # noqa: BLE001  成型度不可得 = 不收窄(保守侧)
+            fp = None
+    board_full = deployed_occupied(state.deployed) >= state.max_units()
+    return _swap_transition_domain_of(
+        SWAP_TRANSITION_ARM_ENABLED, locked, fp, board_full)
 
 
 def core_single_card_buy_eligible(locked_buy: bool) -> bool:
@@ -1019,6 +1096,12 @@ def run_mandate(frame: MandateFrame,
             ok3, _ = check_s_reserve(frame.gold, 0,
                                      _s_reserve(frame, session))
             if ok3:
+                # 锁线转型域对称观测(T-190 批 B,ADR-0627;设计修订 3):
+                # 仅登记不挂行为收窄——prep emit 只是开店载体,真实收窄面
+                # = 店侧谓词(shop 两 S_spec 发射位);本键 = prep OpenShop
+                # 位触达 D 帧的对称性读数,行为近无操作如实申报。
+                if swap_transition_narrow_frame(state, session):
+                    _count('press_narrowed_transition_domain_prep_seen')
                 # 支配买对象(店面 1★ 燃料/可退件)在商店域:prep 帧载体 =
                 # OpenShop 意图(截断点,序列在此收口,商店线执行候选评估)
                 _emit_open_shop('dominance_buy')
@@ -1211,6 +1294,22 @@ def run_mandate(frame: MandateFrame,
     if getattr(state, 'node_type', None) == 'reward':
         # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
         state_of(session).v3_piggy_reward = is_piggy_reward_frame(state)
+    # 形态⑥第二破口观测(纯观测零行为;M3 前置短路帧显影,补「零分键
+    # 零静默」)。分键形态钉死四元合取(241 §15.1 R3-低3 兑付:防宽化为
+    # 「一切前置短路帧」——域内闩失效帧/cap 不可读帧不入键),键带授权域
+    # 维分列(P1 域/P2 域授权域不同,防混键重演 fenced/precheck 教训):
+    # 濒死带(分域等价物 = p1/p2 域谓词,血带结构锚单一源在谓词内)
+    # ∧ 轴 B 空(strategy_state.target_comp None = 无方向空窗,含 P2
+    # exit_p1 后 target 空窗形态)∧ 域外(裸金判定非域内亦非闩延命)
+    # ∧ ¬(_arms_hit ∨ _zone_hit) = M3 前置在本帧短路。设计出处 =
+    # p2_blood_band_unified_design/DESIGN.md §2.1 fail-closed 观测面 +
+    # supply_arbitration_design/DESIGN.md §5.1。
+    if not (_arms_hit or _zone_hit) and not (_zone_raw or _zone_latched):
+        _nd_p1 = predicates.p1_blood_floor(state)
+        if _nd_p1 or predicates.p2_blood_floor(state):
+            if getattr(state_of(session), 'target_comp', None) is None:
+                _count('l3_pregate_targetless_neardeath_p1' if _nd_p1
+                       else 'l3_pregate_targetless_neardeath_p2')
     if (_arms_hit or _zone_hit) and _cap_now is not None \
             and not _reward_defer:
         # 候选③危机带经验授权让位(g_20260904_054904 p2r1:hp=1 帧

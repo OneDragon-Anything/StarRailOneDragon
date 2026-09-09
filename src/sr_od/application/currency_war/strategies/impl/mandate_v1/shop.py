@@ -98,6 +98,12 @@ t3_unaffordable / t3_below_reserve / t3_p1_true_blocked(P1 真帧
 ``shop_merge_trigger_truncate``/``emitter_*`` 族随截断器退役(语义被
 投影与终结 op 吸收)。R197 症6 的 funding need 注册表派生
 (``mandate.cheapest_member_cost`` 单一源)原样保留。
+
+P77 缺口面装载批(ADR-0626)增补:m2_stockpile_spot2_buy(j=1 帧
+同名 2★ 直出现货经比较子买入的达成路线显影;义务 reason 键不扩闭集,
+P88 豁免集 15 键零扰动)/ m6_s_reserve_remeet_frames_sum(s_reserve
+拒帧的被拒现货再遇窗累计,自然帧 ceil;对价载体纯遥测,禁决策判据
+消费,让路裁决归 P56 设计批)。
 """
 from __future__ import annotations
 
@@ -109,6 +115,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS, get_char
 from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes_for_card,
+    reencounter_window_frames,
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel import cw_intention
@@ -529,6 +536,71 @@ def _line_switch_orphans(session: StrategySession,
     return sell_gate.line_switch_orphans_of(session, base, round_num)
 
 
+# ===== P77 缺口面装载(2★ 直出现货比较子 + s_reserve 拒绝对价;ADR-0626)=====
+
+def spot2_direct_out_card(cands: list[ShopCard], name: str, level: int,
+                          c_eff: int) -> ShopCard | None:
+    """j=1 帧的同名 2★ 直出现货比较子(P77 缺口面1,ADR-0626)。
+
+    账式(P77 §2.2 原式,零新自由参数):DIY 账 = 再收 2 张 1★
+    (2×基价)+ 付费刷新账 c_eff·E(D|j=1,k=3)(E 单一源 =
+    ``expected_refreshes_for_card``;溢价表 P77 §2.2:3费@L7=30.9 /
+    2费@L6=30.4 / 4费@L8=57.2 / 5费@L9=80.7 金【推】,全档>0);现货账
+    = 星级费用实付(card.cost,徽章 ×3 律,merge_mechanics §2.6)。
+    现货账 ≤ DIY 账 ⇔ 发卡。
+    - fail-closed 边界:p(level,基价)=0 帧 E=0 系函数约定(该级 DIY
+      结构性不可达,非「零刷新成本」),比较子判不可评 → None(维持
+      星过滤拒;P77 溢价表覆盖可行 DIY 域,域外延未证不入)。
+    - 席/金交互不在本函数(比较子只裁「值不值」):买不买仍走臂内既有
+      闸序(金闸前置 → M4 腾席,与 1★ 路径同序同闸,装载设计 §1.3;
+      买入后 cnt2=1 臂触发自灭,二-1 守卫防重复)。
+    - [A/B 切换面] 本函数 = 模块级槽位:基线臂经 monkeypatch 置恒 None
+      关闭(fixtures/cw_ab.py;strategy-work §3「A/B 对照手段不进生产
+      代码」)。j=2 帧归 M2b(P77 备注5:DIY 再买 1★ 严格占优,禁重开)。
+    """
+    char = CHARACTERS.get(name)
+    if char is None or not char.cost:
+        return None
+    base = int(char.cost)
+    cands2 = [c for c in cands if (c.star or 1) == 2]
+    if not cands2:
+        return None
+    if refresh_prob(level, base) <= 0.0:
+        return None
+    diy = 2 * base + c_eff * expected_refreshes_for_card(
+        level, base, target_star=2, owned=1)
+    spot = cands2[0]
+    return spot if (spot.cost or 3 * base) <= diy else None
+
+
+#: s_reserve 拒帧再遇窗的不可达域入账上限(p=0 帧窗无界,以量级上限计入
+#: 累计并申报「均值读数被稀释」;概率可行帧的窗 ≤ 10^3 量级,远不可达)。
+_REMEET_WINDOW_CAP_FRAMES: int = 999_999
+
+
+def _s_reserve_remeet_frames(level: int, bench, deployed,
+                             card: ShopCard) -> int:
+    """s_reserve 拒帧的对价侧(P77 缺口面3,ADR-0626):被拒现货的再遇窗
+    (自然帧,ceil)——「留保息 vs 收现货」权衡自此有量值载体。
+
+    纯遥测累计,禁决策判据消费;让路裁决(下界是否/如何为现货让路)
+    归 P56 设计批(P77 辖域申报:本命题不裁决)。held 折算 = 全局面
+    同名基础副本数(1★×1/2★×3/3★×9);窗式单一源 =
+    ``reencounter_window_frames``(P77 §1.4「再遇窗 1/q(自然帧)」)。
+    """
+    name = card.name or ''
+    char = CHARACTERS.get(name)
+    base = int(char.cost) if char is not None and char.cost \
+        else int(card.cost or 3)
+    held = sum({1: 1, 2: 3, 3: 9}.get(int(c.star or 1), 1)
+               for c in list(bench) + list(deployed)
+               if c is not None and (c.char_id or '') == name)
+    win = reencounter_window_frames(level, base, held)
+    if not math.isfinite(win):
+        return _REMEET_WINDOW_CAP_FRAMES
+    return int(math.ceil(win))
+
+
 # ===== 结算线地板(discretionary 买臂的买后裸金下界;ADR-0624)=====
 
 def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]:
@@ -862,6 +934,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
     tier_w, card_w = _frame_search_windows(session, state, _reg, counters)
     gold = int(state.gold or 0)
     bench_free = BENCH_CAPACITY - len(bench)
+    # 锁线转型域 D 帧旗(T-190 批 B;P88,ADR-0627):S_spec 收窄辖域,
+    # 仅 dominance/hub 两发射位消费。域谓词单一源 = mandate.
+    # swap_transition_narrow_frame(kernel _swap_transition_domain_of 同
+    # 一谓词,禁第二份合取);域外帧旗恒 False = 本批零行为面。
+    _narrow_frame = mandate.swap_transition_narrow_frame(state, session)
     # 拒因遥测逐帧刷新(ADR-0517 迁移步 2:拒因计数键逐动作化;期望态
     # 即真值,actions 传空——买走牌已由 project 从 state.shop 摘除)。
     # P86:乙臂枢纽资格集直传(拒因键 hub_option 的单一源直通面)。
@@ -1041,6 +1118,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # kernel 机器自身选择序定,本位不动)→ 注册表声明序(资格核枚举序;
     # 枢纽与在售方向件竞争按卡声明序首发判定)。覆盖数降序已否决(集合
     # 包含单调性 ≠ 基数单调性,非嵌套集合无授权比较,§4.4 显式否决)。
+    # 乙臂收窄分键帧内去重(T-190 批 B):D 帧停发为帧级事件,候选循环
+    # 内首见笔计数一次(与 dominance 位同款帧级口径)。
+    _hub_narrow_counted = False
     if _arms is not None and _arms.hub_names:
         _hub_set = set(_arms.hub_names)
         _hub_cands = sorted(
@@ -1129,6 +1209,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if not ok1:
                     _count('hub_option_reject_unaffordable')
                     continue
+                if _narrow_frame:
+                    # 锁线转型域收窄(T-190 批 B;P88,ADR-0627):D 帧
+                    # hub_option_buy 停发(S_spec 辖域前置)。hub 辖
+                    # unlocked 与 locked D 域结构性不相交(设计 v2 修订 10
+                    # 空开火面申报)——本谓词 = P86 辖域变更的防御性哨兵,
+                    # 预期恒 0 开火,判读禁并桶进 dominance 位键
+                    #(press_narrowed_transition_domain_hub 独立分键)。
+                    if not _hub_narrow_counted:
+                        _count('press_narrowed_transition_domain_hub')
+                        _hub_narrow_counted = True
+                    continue
                 _count('hub_option_buy_hit')
                 # F-3 载体(P86 正本 §6.1;P75 §7.4 先例):乙臂获取名集
                 # 单一写点(session 载体,零分支去重)。**先登记后 emit**:
@@ -1201,8 +1292,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # (锁定采购集超集)而 arm0_need 只量 k_members——囤腿件走合成→上板,
     # 部署/升级授权面只量可部署现量,两口径禁混。
     # 触发 = m ∈ buy_members ∧ cnt1(m)==1 ∧ cnt2(m)==0(二-1:cnt2>0 帧
-    # 臂①不判,防制造 cnt1=2∧有2★ 死库存)∧ 店内有该成员 **1★** 在售
-    #(N7 星过滤:候选锚按 name 过滤不分星,店含同名 2★ 直出卡会取错);
+    # 臂①不判,防制造 cnt1=2∧有2★ 死库存)∧ 店内有该成员 **1★** 在售,
+    # 或仅同名 **2★ 直出**在售(P77 缺口面1 比较子,ADR-0626;N7 星过滤:
+    # 候选锚按 name 过滤不分星,取卡按星择路——1★ 直取,2★ 过比较子);
     # 单提案至多购 1 张(F2 防御性上限——merge §2.5 自动多买在 j=1 帧的
     # 辖域未核,宁少买不多买,确认后如允许多买走规格修订)。
     # 拒因序 = 金闸前置 → M4 腾席(落地审清单存-1,20260905_cp1_landing_review/问题清单.md:j=1 囤腿优先级低于缺员,
@@ -1210,8 +1302,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 计数粒度申报 = 每成员命中一笔(帧内多成员可累计,与 visit 粒度键
     # 对拍时须声明,清单低-2)。bench 满 → M4 腾席(Y5:02 §3 M2 硬约束
     # 同构,腾席后仍满记 'bench_full' 普通席闸键,非 merge_bench_full);
-    # 金不足记 stockpile_unaffordable;cnt 达标但店内仅同名 2★ 直出卡 ⇒
-    # m2_stockpile_star_mismatch 分键(W4 零静默,与 M2b 分键,清单低-1)。
+    # 金不足记 stockpile_unaffordable;cnt 达标但店内仅同名 2★ 直出卡:
+    # 过比较子(ADR-0626)后仍不买(p=0 不可评域/溢价≤0)⇒
+    # m2_stockpile_star_mismatch 分键(W4 零静默,与 M2b 分键,清单低-1);
+    # 过比较子后闸失败落各自闸键,不再落本键(语义拆分申报随批)。
     def _cnt(name: str, star: int) -> int:
         """同名同星副本计数(全局面 bench∪deployed;14号稿 §3.5 单一源:
         按 (名,星) 分星计数,2★ 成件不折算 1★)。"""
@@ -1223,12 +1317,23 @@ def decide_shop_action(state: GameState, session: StrategySession,
             continue
         all_cands = _shop_candidates(m, 'm2_stockpile')   # L2 统一过滤位
         cands1 = [c for c in all_cands if (c.star or 1) == 1]
-        if not cands1:
+        # P77 缺口面1(ADR-0626):j=1 帧同名 2★ 直出现货此前被星过滤
+        # 单侧拒,现过比较子(DIY 账 vs 现货账)后同闸序放行;比较子
+        # None(p=0 不可评域/溢价≤0/无 2★)维持星过滤拒。
+        _spot2 = spot2_direct_out_card(
+            all_cands, m, int(state.level or 1),
+            int(state.shop_refresh_cost or REFRESH_COST_BASE)) \
+            if not cands1 else None
+        if _spot2 is not None:
+            card = _spot2
+            cost = card.cost or 3 * int(CHARACTERS[m].cost)
+        elif cands1:
+            card = cands1[0]
+            cost = card.cost if card.cost else 3
+        else:
             if all_cands:
-                _count('m2_stockpile_star_mismatch')   # W4:仅 2★ 直出卡帧,分键非静默
+                _count('m2_stockpile_star_mismatch')   # W4:比较子后仍不买(不可评域/溢价≤0),分键非静默
             continue
-        card = cands1[0]
-        cost = card.cost if card.cost else 3
         ok1, _ = mandate.check_affordable(gold, cost)
         if not ok1:
             _count('stockpile_unaffordable')
@@ -1279,6 +1384,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _count('bench_full')
             continue
         _on_target_buy(card.name or m)
+        if _spot2 is not None:
+            _count('m2_stockpile_spot2_buy')   # W4(ADR-0626):2★ 现货达成路线显影;义务 reason 键不扩闭集
         return _emit_buy(card, 'm2_stockpile')
 
     # M2b 升星合并完成买入(实机复盘 g_20260904_054904 p2r1 候选②):
@@ -1314,6 +1421,13 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # (stop_flag 已摘,见 mandate.dominance_buy_eligible docstring——
     # 泄金阶梯档 0,ADR-0604 §2,三处消费位同步摘;本臂物理位次先于
     # 下方档 1/档 2,支配性优先序先于带参臂,发射序申报同 §2。)
+    # 锁线转型域收窄(T-190 批 B;P88,ADR-0627):D 帧停发 dominance_buy
+    #(S_spec 辖域前置;豁免闭集 = LAUNCH_CAUSE_BY_ARM ∖ PRESS_NARROWED_
+    # ARMS 由「仅本臂与 hub 位挂 _narrow_frame」结构性承载)。分键取
+    # 「将发射笔」口径 = 候选全门通过后的首见笔计数一次(帧级),防
+    # 「辖域覆盖比 = 开火数/全部 dominance 买入数」(设计 §4.1-⑦①)
+    # 判读畸变;T-193 结算线地板分键为候选级事件,先于本检查照常显影。
+    _dom_narrow_counted = False
     _dom_ok = contracts.ensure_contract(
         ('mandate', 'dominance_buy'),
         contracts.ContractCtx(k_members=k_members, k_target=k,
@@ -1351,6 +1465,15 @@ def decide_shop_action(state: GameState, session: StrategySession,
             _sl_ok, _ = check_settlement_line(gold, cost, g_star)
             if not _sl_ok:
                 _count('dominance_settlement_floor_reject')
+                continue
+            if _narrow_frame:
+                # P88 收窄:锁线转型域帧停发——金维支配性论证(1★ 全额退
+                # 净 0)前提 = 席位免费,D 帧席位最贵态(被阻线内义务净
+                # EV>0,P41③/P76 丙),放行辖域不含 D 帧(调和引理;
+                # mandate.dominance_buy_eligible docstring 辖域注同源)。
+                if not _dom_narrow_counted:
+                    _count('press_narrowed_transition_domain')
+                    _dom_narrow_counted = True
                 continue
             if _reopen_armed:
                 _count('shop_reopen_discretionary_actions')
@@ -1922,6 +2045,16 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if not okm:
                     if _mkey == 's_reserve':
                         _count('m6_s_reserve_reject')
+                        # P77 缺口面3 对价载体(ADR-0626):拒帧再遇窗入
+                        # 累计(自然帧 ceil;纯遥测禁决策消费,让路裁决
+                        # 归 P56 设计批)——「留保息 vs 收现货」有权衡量值。
+                        if name:
+                            counters['m6_s_reserve_remeet_frames_sum'] = (
+                                counters.get(
+                                    'm6_s_reserve_remeet_frames_sum', 0)
+                                + _s_reserve_remeet_frames(
+                                    int(state.level or 1), bench, deployed,
+                                    card))
                     continue
                 ok1, _ = mandate.check_affordable(gold, cost)
                 if not ok1:
