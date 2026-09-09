@@ -171,6 +171,10 @@ class CwScreenExpertInvite(SrOperation):
             log.info('[cw-bookcard] 选卡后弹窗仍在 → round_retry')
             return self.round_retry(wait=1)
         log.info('[cw-bookcard] 弹窗关 → 收案(专家入商店,交正常商店逻辑)')
+        # BoardState 写端(设计 §3.4.5:专家邀请函=书册卡羁绊,选卡写入
+        # chosen_expert;单次逻辑写入,§3.4 申报豁免)。出口验真(弹窗关)
+        # 通过才到此处 = 选卡落地。
+        self._record_chosen_expert(idx, card_bonds)
         # 到账登记(§3.3 对照):「现金为王」= gold +4(待实读,绑 shop_wave_top
         # gold 可信源覆盖点);选角色分支 = 专家入商店由正常商店逻辑接管,
         # 无 session 局状态字段变更 → 不登记(§3 C 区无对应行,理由区口径)。
@@ -182,3 +186,28 @@ class CwScreenExpertInvite(SrOperation):
             register_confirm_arrival(_sess, 'ConfirmExpertCash', '现金为王',
                                      produced_by='CwScreenExpertInvite')
         return self.round_success(wait=2)
+
+    def _record_chosen_expert(self, idx: int, card_bonds: list[str | None]) -> None:
+        """选卡落地记录面:写 ``chosen_expert``(设计 §3.4.5;单次逻辑写入,
+        §3.4 申报豁免;调用点 = 出口验真通过后)。
+
+        真选守卫照 chosen_tome 式(CwScreenBookcard):仅卡分支写,值 = 该卡
+        羁绊原文名(choose_expert_index 仅在羁绊读出时返非负下标);「现金
+        为王」兜底分支不写——chosen_expert 语义 = 受邀专家(羁绊),现金 =
+        无专家受邀,该事实由 ConfirmExpertCash +4 金到账登记通道承载(照旧
+        不动)。记录面失败不阻塞收案。"""
+        _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+        if _sess is None or not (0 <= idx < len(card_bonds)):
+            return
+        _bond = card_bonds[idx]
+        if not _bond:
+            return
+        try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            _bs = board_state_of(_sess)
+            _bs.write_logic(_bs.chosen_expert, _bond,
+                            produced_by='CwScreenExpertInvite')
+        except Exception as e:   # noqa: BLE001  记录面失败不阻塞收案
+            log.warning('[cw-bookcard] chosen_expert 记录失败(不阻塞): %s', e)

@@ -96,7 +96,7 @@ def exec_state_of(session: object) -> ExecState:
 
 @dataclass
 class ExecState:
-    """一局的执行层状态(24 具名 = 清册 16 + 账外第二波 6 + 账外第三波
+    """一局的执行层状态(27 具名(含 _pending_chosen_supply)
     2;生命周期/防重入语义逐字段自原宿主平移,值域与缺省一致——载体每局
     新建即天然清零)。账外收编账本 = ADR-0563「落位裁量」节。
 
@@ -174,6 +174,13 @@ class ExecState:
     # 写端 = 画面 op/发射位,原挂 session 属历史宿主错位)——
     # 补给绕行已完成(节点内一次性)。
     _supply_detour_done: bool = False
+    # 补给选定暂存(§3.4.5 chosen_supply 出口验真后写端的中转载体)。
+    # 写点 = CwScreenSupplyNode._do_action 选定列确认时(真选分支;兜底
+    # 点卡/刷新轮不写 = 真选守卫);清点 = 出口验真(标识-补给阶段消失)
+    # 写入 BoardState 后取走,及重入轮入口(上轮确认未落地即弃,防陈旧
+    # 选跨轮/跨节点误写)。节点级生命周期——下一补给节点选定即覆盖,不
+    # 跨节点消费;None = 无挂起选定。
+    _pending_chosen_supply: tuple[str, str, bool] | None = None
     # 备战挂起对账单元队列(单元收尾逐个清)。
     cw_prep_pending_accts: list = field(default_factory=list)
     # 接管采集已完成(节点内一次性)。

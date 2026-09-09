@@ -89,13 +89,52 @@ class CwScreenSupplyNode(SrOperation):
         screen = self.last_screenshot
         # 验证完成:已不在本节点画面 = overlay 消失 / 进了下一节点 → 节点完成,交还外层。
         if not self._in_node(screen):
+            # 出口验真通过(补给屏已关)= 上轮选定确认落地 → 写记录面。
+            self._record_chosen_supply()
             # (gate 清尾批 2026-09-03:原此处向已退役的 gate 稳定门预置基线;
             #  wait_stable_frame 在 旧内环拆除后已无生产调用方,基线写端
             #  无读端 → 调用删除。外循环重判兜底,等待语义不变。)
             return self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)')
+        # 仍在节点内 = 上轮选定确认未落地 → 丢弃上轮选定暂存(防陈旧选
+        # 跨轮/跨节点误写;本轮选定会重新暂存)。
+        self._pop_pending_chosen_supply()
         # 仍在节点内 → 做一个动作;round_retry 重跑本节点(计 node_max_retry_times 预算,超 → FAIL bail)。
         self._do_action(screen)
         return self.round_retry(wait=1.5)
+
+    def _pop_pending_chosen_supply(self) -> tuple[str, str, bool] | None:
+        """取走补给选定暂存(取即清;无 match = 无会话载体 → None)。"""
+        _match = getattr(self.ctx, 'cw_match', None)
+        if _match is None:
+            return None
+        _st = exec_state_of(_match.session)
+        _picked = _st._pending_chosen_supply
+        _st._pending_chosen_supply = None
+        return _picked
+
+    def _record_chosen_supply(self) -> None:
+        """出口验真(标识-补给阶段消失)后写 ``chosen_supply``(设计 §3.4.5
+        单选事件屏 chosen_* 写端;单次逻辑写入,§3.4 申报豁免)。
+
+        值 = 节点级选定暂存(写点 = _do_action 真选分支;载体与生命周期见
+        ``ExecState._pending_chosen_supply``)。暂存空 = 兜底点卡/刷新轮,
+        照 chosen_tome 真选守卫不写(None 保持「无记录」)。记录面失败不
+        阻塞节点完成。"""
+        _picked = self._pop_pending_chosen_supply()
+        if _picked is None:
+            return
+        _match = getattr(self.ctx, 'cw_match', None)
+        if _match is None:
+            return
+        try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            _bs = board_state_of(_match.session)
+            _bs.write_logic(_bs.chosen_supply, _picked,
+                            produced_by='CwScreenSupplyNode')
+        except Exception as e:   # noqa: BLE001  记录面失败不阻塞
+            log.warning(f'[cw-supply] chosen_supply 记录失败(不阻塞): {e}')
 
     def _in_node(self, screen) -> bool:
         # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
@@ -225,6 +264,12 @@ class CwScreenSupplyNode(SrOperation):
                 set_last_supply_pick(_opt.char, _opt.equip, _opt.has_diamond,
                                      refreshed=_refresh_used,
                                      options=picked['options'])
+                # BoardState 选定暂存(chosen_supply 出口验真后写端的中转,
+                # 设计 §3.4.5):此处只暂存不写——写点在 handle 出口验真
+                # (标识-补给阶段消失)通过后,照 chosen_tome「出口验真后写」
+                # 口径;重入轮入口会先清本暂存,恒反映最近一次确认尝试。
+                exec_state_of(match.session)._pending_chosen_supply = (
+                    _opt.char, _opt.equip, _opt.has_diamond)
             log.info('[cw-supply] options=%s pick=idx%s %s click@(%d,%d)',
                      [(o.char, o.equip, o.has_diamond) for o, _ in opts], pick.idx, reason, target.x, target.y)
         else:

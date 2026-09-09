@@ -96,4 +96,30 @@ class CwScreenWishTrial(SrOperation):
             log.info('[cw-wish] 确认后 overlay 仍在 → round_retry')
             return self.round_retry(wait=1)
         log.info('[cw-wish] 祈愿试炼 overlay 关 → 回备战')
+        # 出口验真通过(标识消失)= 选卡落地 → 写记录面。
+        self._record_chosen(objs, pick_idx)
         return self.round_success(wait=2)
+
+    def _record_chosen(self, objs: list[str] | None, pick_idx: int) -> None:
+        """选卡落地记录面:写 ``chosen_wish``(设计 §3.4.5 单选事件屏
+        chosen_* 写端;单次逻辑写入,§3.4 申报豁免)。
+
+        值 = 选中卡 objective 原文名(OCR 分桶 join 语义)。守卫口径=事实落地选择记录(含策略降级路径的选择,区别于 tome 的决策不可判不写式);
+        chosen_tome 式(CwScreenBookcard):objective 未读到(None)/选中槽
+        文本为空 = 盲选 fallback 第 1 张,不写(None 保持「无记录」)。
+        记录面失败不阻塞本轮成功。"""
+        _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+        if _sess is None or not objs or not (0 <= pick_idx < len(objs)):
+            return
+        _text = objs[pick_idx].strip()
+        if not _text:
+            return
+        try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            _bs = board_state_of(_sess)
+            _bs.write_logic(_bs.chosen_wish, _text,
+                            produced_by='CwScreenWishTrial')
+        except Exception as e:   # noqa: BLE001  记录面失败不阻塞
+            log.warning(f'[cw-wish] chosen_wish 记录失败(不阻塞): {e}')

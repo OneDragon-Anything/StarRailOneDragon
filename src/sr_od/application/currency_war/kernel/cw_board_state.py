@@ -827,7 +827,7 @@ class BoardState:
     chosen_supply: Field[tuple[str, str, bool] | None] = field(default_factory=Field)  # (角色, 装备, 有钻石)
     chosen_megastar: Field[str | None] = field(default_factory=Field)   # 盛会之星(§3.4.5)
     chosen_partner: Field[str | None] = field(default_factory=Field)    # 伙伴(候选阵营)
-    chosen_wish: Field[str | None] = field(default_factory=Field)       # 祈愿试炼目标文本(暂无建档,接线前补档)
+    chosen_wish: Field[str | None] = field(default_factory=Field)       # 祈愿试炼目标文本(档=货币战争-祈愿试炼,写端=cw_screen_wish_trial)
     chosen_fortune: Field[str | None] = field(default_factory=Field)    # 命运卜者(暂无画面建档)
     chosen_hack: Field[str | None] = field(default_factory=Field)       # 骇入策划(暂无画面建档)
     chosen_expert: Field[str | None] = field(default_factory=Field)     # 专家邀请函

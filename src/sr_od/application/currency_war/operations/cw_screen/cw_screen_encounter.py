@@ -25,7 +25,7 @@
   保留作兜底;rect 覆盖同卡身带)。
 """
 import time
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
@@ -47,6 +47,11 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
 from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        StrategySession,
+    )
 
 
 class CwScreenEncounter(SrOperation):
@@ -100,6 +105,31 @@ class CwScreenEncounter(SrOperation):
         log.warning(f'[cw-encounter] 刷新未生效(次数 {old_count}→{_cnt2},卡面未变;'
                     f'点偏或未激活分支刷新布局)→ 按原评分选(失败安全)')
         return False, []
+
+    def _record_chosen(self, session: 'StrategySession | None',
+                       options: list[EncounterOption], idx: int) -> None:
+        """选卡落地记录面:出口验真通过后写 ``chosen_encounter``(设计
+   边界注:刷新验效后的单次补读失败帧,候选可能残旧(点击决策同帧同源承诺对卡面内容不成立)——同型既有遥测 record_event_choice,低概率接受
+        §3.4.5 单选事件屏 chosen_* 写端;单次逻辑写入,§3.4 申报豁免)。
+
+        守卫口径=事实落地选择记录(区别于 tome 的决策不可判不写式;先例结构沿用 CwScreenBookcard):候选未读到 / 无策略
+        会话 / 决策越界 = 盲选 fallback,不写(None 保持「无记录」,防把
+        盲选固化成假值)。值 = (难度档, 奖励文本),奖励文本 = 选中卡奖励
+        带原文 join(未读到 = 空串;难度档恒为卡身份真值)。记录面失败不
+        阻塞本轮成功(同刷新计数写端 try/except 口径)。"""
+        if session is None or not options or not (0 <= idx < len(options)):
+            return
+        try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            _opt = options[idx]
+            _bs = board_state_of(session)
+            _bs.write_logic(_bs.chosen_encounter,
+                            (_opt.difficulty, '/'.join(_opt.rewards)),
+                            produced_by='CwScreenEncounter')
+        except Exception as e:   # noqa: BLE001  记录面失败不阻塞
+            log.warning(f'[cw-encounter] chosen_encounter 记录失败(不阻塞): {e}')
 
     @operation_node(name='遭遇节点', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
@@ -196,5 +226,11 @@ class CwScreenEncounter(SrOperation):
         # 选择 + 验关(遭遇其一 消失 = overlay 关)。原「点了就 success」不验 → bug#1/隐藏多步 flat-loop
         # (partner reset 根因同类;write-operation「点了≠成了」;docstring 已记「插空白点击取消选中→死循环」风险)。
         # 验关用标题「遭遇节点」(4 字 vs 备战「遭遇」标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)
-        return confirm_and_verify(self, confirm_point=select_btn,
-                                  entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+        rs = confirm_and_verify(self, confirm_point=select_btn,
+                                entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+        if rs.is_success:
+            # 出口验真通过(遭遇节点 关)= 本轮选卡落地 → 写记录面(值取
+            # 本轮现读候选与决策,与落地点击同帧同源)。
+            self._record_chosen(match.session if match is not None else None,
+                                options, idx)
+        return rs
