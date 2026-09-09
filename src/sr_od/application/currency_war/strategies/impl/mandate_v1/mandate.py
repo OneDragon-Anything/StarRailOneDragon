@@ -437,13 +437,17 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     return gold > saturation_line(cap_resolved) and bench_free > 0
 
 
-def core_single_card_buy_eligible(locked_buy: bool, bench_free: int) -> bool:
+def core_single_card_buy_eligible(locked_buy: bool) -> bool:
     """C1 直通核心卡支配性支资格门(设计《直通核心卡信号层入口》§2 案A;
-    零参数结构,ADR-0569):锁线态 ∧ bench 有空槽。
+    零参数结构,ADR-0569):锁线态资格门。席位维自恒买腾席批(T-115,
+    ADR-0580)下放商店发射位循环内——席满帧须入循环走腾席购买支
+    (帧门前件收窄防「席满帧循环外拦死 → 腾席支永不触达」的假修;
+    哨兵键与出口键闭集见恒买腾席方案 v2 §5.6,.debug/temp 在案)。
 
-    与 dominance_buy_eligible 同构分工:本门只辖帧级前件,逐卡判据
+    与 dominance_buy_eligible 同构分工:本门只辖锁线态前件,逐卡判据
     (CORE_SINGLE_CARD_REGISTRY 名单 / refund_full_star_ok 1★ 全额退 /
-    t5_p1_false 不破息)在商店线发射位现算。锁线态判据 = 锁定采购集
+    t5_p1_false 不破息 / check_seats 席位)在商店线发射位循环内现算。
+    锁线态判据 = 锁定采购集
     已解析(cw_intention.locked_buy_membership 非 None ⟺ locked_comp
     非空);未锁帧通道不评估(设计判据式前件;phase 与 locked_comp
     同点同置/同点清,单判惯例同 cw_intention.locked_line_recipe_floor_
@@ -455,7 +459,7 @@ def core_single_card_buy_eligible(locked_buy: bool, bench_free: int) -> bool:
     run_mandate 的 OpenShop 发射节流(_emit_open_shop),本通道在商店
     决策访问位下游,无闩读/写。
     """
-    return locked_buy and bench_free > 0
+    return locked_buy
 
 
 # ===== M1″ 锁线转型域执行条件发射门(T-127 方案 §2.3;P79-3 落码)=====

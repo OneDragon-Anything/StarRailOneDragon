@@ -15,6 +15,7 @@ from sr_od.application.currency_war.sim.checks.ledger import (
     check_buys_at_full_bench,
     check_coldstart_seed_squander,
     check_comp_tx_atomicity,
+    check_core_ruling_seat_violation,
     check_degrade_recover_mutex,
     check_deploy_after_buy_semantics,
     check_deploy_fills_cap,
@@ -115,6 +116,9 @@ _BATCH_CHECKS = {
     # --- 动作 v2(契约包 C1,步2):显式动作一致性/围栏配对 ---
     'comp_tx_atomicity': check_comp_tx_atomicity,
     'skip_fence_pairing': check_skip_fence_pairing,
+    # --- T-115 恒买腾席判红检测器(写端位出口键完备性;ADR-0580)---
+    # seen 帧零出口键 = 席满静默违复活(计数式轮级回退红则,残注①)
+    'core_ruling_seat_violation': check_core_ruling_seat_violation,
     # --- 刷新预算帽族(刷帽检查;两口径各自的常量单一源见各 docstring) ---
     'directed_refresh_game_cap_lock': check_directed_refresh_game_cap,
 }
@@ -155,6 +159,9 @@ def run_batch_level_checks(ledgers: list[list[dict]],
     """
     from sr_od.application.currency_war.sim.checks.launch import (
         check_sim_launch_short_circuit as _launch_sentinel,
+    )
+    from sr_od.application.currency_war.sim.checks.ledger import (
+        core_ruling_seat_bucket_disclosure,
     )
     out: dict[str, dict] = {
         'late_deploy_full': check_late_deploy_full(ledgers),
@@ -198,6 +205,11 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         # ——发射帧决策照常/金照花 = 金出口族 A/B 假阴性形态回归)
         'sim_launch_short_circuit':
             _launch_sentinel(ledgers),
+        # T-115 恒买腾席支出口键分布披露(数据面;非违规——seen 开火性
+        # × buy_hit/seat_swap 转化 × no_fuel/双 unaffordable 桶分布,
+        # 方案 v2 §11.2 种子批验收线)
+        'core_ruling_seat_buckets':
+            core_ruling_seat_bucket_disclosure(ledgers),
         # (v2 四层/press/供给标签六检查项已随 decision_v2 退役链删除——统一迁移批 ② MAP B 类/A9。)
     }
     if pool_map is not None:

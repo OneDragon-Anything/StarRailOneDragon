@@ -1770,3 +1770,106 @@ def check_directed_refresh_game_cap(rows: list[dict]) -> list[str]:
 
 
 
+# --- T-115 恒买腾席判红检测器(写端位出口键完备性;ADR-0580)--------
+
+#: C1/④ 腿写端位出口键闭集(恒买腾席方案 v2 §5.6)。镜像纪律(同
+#: XP_TO_NEXT_LEVEL 先例):发射位计数键单一源在 shop.py 三腿发射位
+#: (字面 _count 键),本元组 = 检查器侧镜像;值漂移由双向锁暴露
+#: (测试仓 test_cw_core_seat_vacate.py:三腿 16 键逐一发射断言 ∈ 本集)。
+_CORE_EXIT_KEYS: frozenset[str] = frozenset({
+    # 未锁线恒买腿(T-115 规则③;席满静默病灶本体)
+    'core_unlocked_buy_hit', 'core_unlocked_seat_swap',
+    'core_unlocked_no_fuel', 'core_unlocked_unaffordable_strict',
+    'core_unlocked_unaffordable_fundable',
+    # 锁线支配支腿(资格门席位维已下放循环内,for-else 尾键收窄)
+    'core_dominance_buy_hit', 'core_locked_seat_swap',
+    'core_locked_no_fuel', 'core_locked_unaffordable_strict',
+    'core_locked_unaffordable_fundable', 'core_numeric_fail_closed',
+    # ④转线腿
+    'transition_component_buy_hit', 'transition_seat_swap',
+    'transition_no_fuel', 'transition_unaffordable_strict',
+    'transition_unaffordable_fundable',
+})
+_CORE_SEEN_KEY = 'core_candidate_seen'
+#: 观察桶键后缀(非红,分键披露):诚实停摆/金不足双桶。
+_CORE_OBS_BUCKET_SUFFIXES = ('_no_fuel', '_unaffordable_strict',
+                             '_unaffordable_fundable')
+
+
+def check_core_ruling_seat_violation(rows: list[dict]) -> list[str]:
+    """恒买裁定席满静默违判红(T-115/ADR-0580;恒买腾席方案 v2 §6)。
+
+    判据(严格红域 = 写端位出口键完备性):``core_candidate_seen``
+    (C1 候补支触发,帧级)落键而 §5.6 出口键闭集零落 = 席满帧静默弃买
+    复活(病灶形态:s8r8 金 95 希儿在售被拒零显影,8 刷零买零卖)。
+    落码后此域不可达,红 = 实现缺陷/回归。
+
+    载体边界与红则形态(如实申报):判红载体 = 轮级 ``obs.cw4_counters``
+    增量快照(engine_p1 行装配在役);shop_waves 波行无 counters,逐帧
+    配对不可得 ⇒ 红则取**计数式轮级回退**(收口复审残注①钉死):
+    ``Σseen > Σ出口键``。多候补帧逐帧出口 ≥1 ⇒ Σ出口 ≥ Σseen 恒成立
+    不假红;违例即本轮至少一个 seen 帧零出口(静默违)。已知近似申报:
+    ①轮级并集口径对「同轮混合帧」有稀释(任一出口键补位即掩盖同轮他
+    帧静默;三腿并集含 ④腿键再稀释一档),逐帧精确配对候零行为加列
+    contingency(方案 v2 §6.1 申报面,本批未落);②锁线腿/④腿辖域 =
+    出口键完备性观测(候裁2:锁线腿逐帧严格红域候 ADR-0569 判据式与
+    裁定辖域关系裁定),轮级计数式对三腿统一计 Σ 属同一载体近似。
+    行无 obs.cw4_counters 键(旧账本)= 无判红载体,跳过不报(缺证据
+    不定罪,ADR-0589 无键回退先例)。
+
+    观察桶(非红):出口键 = *_no_fuel(无合法 victim 诚实停摆)/
+    *_unaffordable_strict / *_unaffordable_fundable(A4 双桶)——本
+    检查不产出违规;分布判读走批级披露 core_ruling_seat_buckets。
+    """
+    out: list[str] = []
+    for row in rows:
+        obs = (row.get('obs') or {}).get('cw4_counters')
+        if not isinstance(obs, dict):
+            continue
+        seen = int(obs.get(_CORE_SEEN_KEY, 0) or 0)
+        if seen <= 0:
+            continue
+        exits = sum(int(obs.get(k, 0) or 0) for k in _CORE_EXIT_KEYS)
+        if seen > exits:
+            out.append(
+                f"p{row.get('plane')}r{row.get('round_num')}: "
+                f"恒买候补帧静默违(seen={seen} > 出口键Σ={exits}"
+                f"——席满弃买零显影复活,T-115 判红)")
+    return out
+
+
+def core_ruling_seat_bucket_disclosure(ledgers: list[list[dict]]) -> dict:
+    """恒买腾席支出口键分布披露(批级数据面;非违规,violations 恒 0)。
+
+    判读面:seen 总量(开火性)× 出口键逐键分布——buy_hit/seat_swap =
+    买/转化开火;*_no_fuel = 诚实停摆桶;*_unaffordable_strict/
+    *_fundable = A4 金闸双桶(候裁4 卖前金读,均不动作)。供种子批
+    验收「零红 + seat_swap>0 + 桶分布披露」线(方案 v2 §11.2)。
+    """
+    seen = 0
+    exits: dict[str, int] = {}
+    games_with_seen = 0
+    for rows in ledgers:
+        _game_seen = 0
+        for row in rows:
+            obs = (row.get('obs') or {}).get('cw4_counters')
+            if not isinstance(obs, dict):
+                continue
+            n = int(obs.get(_CORE_SEEN_KEY, 0) or 0)
+            if n > 0:
+                seen += n
+                _game_seen += n
+            for k in _CORE_EXIT_KEYS:
+                v = int(obs.get(k, 0) or 0)
+                if v:
+                    exits[k] = exits.get(k, 0) + v
+        if _game_seen:
+            games_with_seen += 1
+    buckets = {k: v for k, v in exits.items()
+               if k.endswith(_CORE_OBS_BUCKET_SUFFIXES)}
+    return {'violations': 0, 'seen': seen,
+            'games_with_seen': games_with_seen,
+            'exits': exits, 'observation_buckets': buckets}
+
+
+

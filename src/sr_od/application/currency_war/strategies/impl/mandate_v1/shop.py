@@ -56,7 +56,13 @@ shop_no_target_arm_a_dead_defer(甲臂判死出辖帧,P35 病灶帧行为改变
 (丙臂守息合法空帧,契约 k_fallback_source 证据通道显影)/
 hub_option_candidate_seen / hub_option_buy_hit / hub_option_arbitration_
 yield / hub_option_reject_{merge_material,seats,interest,unaffordable}
-(乙臂发射五前件合取的拒因归真族)。
+(乙臂发射五前件合取的拒因归真族)。T-115 恒买腾席批(ADR-0580 席满
+转化支)增补:三腿席满腾席/诚实停摆/金闸双桶出口键闭集
+{core_unlocked,core_locked,transition} × {seat_swap,no_fuel,
+unaffordable_strict,unaffordable_fundable}(seen 帧必落 ≥1,sim 判红
+检测器 sim/checks/ledger.check_core_ruling_seat_violation 判据)+
+core_numeric_fail_closed 尾键收窄(席满停摆帧不再共火,for-else 语义)
++ dead_gold_press_bench_full_gate(②(b) 外门席满支静默显影,B2 移位案)。
 
 键语义申报:``shop_visit_idle_gold`` = CloseShop 收尾且金 ≥10 的
 **visit**(单动作迁移批自旧 ``shop_wave_idle_gold`` 改名——「波」结构
@@ -1375,6 +1381,93 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 收窄,与 T5 位同款申报)——S 预留硬约束③对象列(EV 买/M6/
     # dominance_buy)不辖本通道,设计判据式无 s_reserve 前件。未锁线恒买
     # 腿**不继承** t5(裁定「恒买」= 无条件;ADR-0580)。
+    # 席满转化支(T-115 恒买腾席批,ADR-0580):三腿(未锁线恒买/锁线
+    # 支配支/④转线)席满帧经共享 helper 腾席——卖 1 张燃料件释放 1 席,
+    # 卖 1 张即止,下一决策迭代原臂原判据买入;无合法 victim = 诚实
+    # 停摆(no_fuel 显影)。锁线腿资格门席位维已下放循环内(mandate.
+    # core_single_card_buy_eligible 收窄为锁线态单判)。出口键闭集 =
+    # seen 帧必落 ≥1(sim 判红检测器判据,sim/checks/ledger.py)。
+    # ---- 恒买腾席支共享件(T-115;ADR-0580 席满转化支,方案 v2 §5)----
+    # victim 面唯一入口(预挂义务①):排除集 = 统一装配 A 全量形态
+    #(单一入口 sell_gate,channel='m4_fuel',与 M2 缺员/m2_stockpile
+    # 两腾席位同源装配;候选 = mandate.fuel_sell_candidates 1★ 零重叠
+    # 边际≈0,T3 被保件稳定移尾);首候选过 ④不可逆护栏 = 发射资格。
+    # 帧内惰性缓存:单动作契约下同一决策帧 bench/排除面不变,金闸双桶
+    # 探测与席满腾席共享一次装配(_mm_dedup 同集防 merge_material 事件
+    # 双计,P56 投影位同款纪律)。腾席成本面 = 1★ 全额退精确 0
+    #(P76 甲;方案 v2 §3),机会成本 = victim 压库贡献二阶小量。
+    _core_victim_cache: list[tuple[BenchChar | None, bool]] = []
+
+    def _core_victim() -> tuple[BenchChar | None, bool]:
+        """(victim, 可卖)帧内探测:victim = 首燃料候选,可卖 = 过
+        check_irreversible(线内件禁卖)。无候选/不过护栏 = (None, False)。"""
+        if _core_victim_cache:
+            return _core_victim_cache[0]
+        _m4_excl = sell_gate.sell_exclusions(session, k_members,
+                                             channel='m4_fuel',
+                                             current_round=int(
+                                                 state.round_num or 1))
+        cands = mandate.fuel_sell_candidates(bench, k_members,
+                                             state=state,
+                                             exclude_names=_m4_excl,
+                                             defer_names=_t3_protect,
+                                             counters=counters,
+                                             dedup_names=_mm_dedup)
+        victim = cands[0] if cands else None
+        ok4 = False
+        if victim is not None:
+            ok4, _ = mandate.check_irreversible(victim.char_id or '',
+                                                k_members)
+        if not ok4:
+            victim = None
+        _core_victim_cache.append((victim, ok4))
+        return _core_victim_cache[0]
+
+    def _core_gold_bucket(prefix: str, cost: int) -> None:
+        """金闸双桶分键(A4;候裁4 默认案 = 恒买「金物理约束」按卖前金
+        读,ADR-0580 硬闸只继承席/金字面——金不足不卖筹;扩展案须按
+        P78-5′ 通道对价段显式立项,本批禁夹带):金不足帧按「卖后可足/
+        卖后仍不足」分桶显影,两桶均不卖不买(判读面保住)。fundable
+        判据 = 存在可卖 victim 且 gold + refund(victim) ≥ cost。"""
+        victim, ok4 = _core_victim()
+        _ref = _shop_sell_refund(victim) if victim is not None else None
+        if ok4 and victim is not None and _ref is not None \
+                and gold + _ref >= cost:
+            _count(f'{prefix}_unaffordable_fundable')
+        else:
+            _count(f'{prefix}_unaffordable_strict')
+
+    def _core_seat_vacate(prefix: str) -> SellBench | None:
+        """腾席购买支(镜像 m2_stockpile 腾席位,三腿共享单函数):席满
+        帧卖 1 张燃料件释放 1 席,卖 1 张即止(下一决策迭代席空,原臂
+        原判据买入)。无合法 victim = 诚实停摆(权限模型:骨架义务 M2 族
+        > 裁定族买,禁卖义务件凑恒买;P78-1 本 visit 窗口件经排除集
+        同落此支),计 {prefix}_no_fuel 并返回 None。发射契约与两既有
+        腾席位逐字段一致(reason 缺省 '' 仅孤儿证明标记;转化分键 =
+        convert_reason,ADR-0611 §3-5)。"""
+        victim, ok4 = _core_victim()
+        if not ok4:
+            _count(f'{prefix}_no_fuel')
+            return None
+        idx = (state.bench or []).index(victim)
+        _vname = victim.char_id or ''
+        # T3 末位牺牲序命中 + 卖出销账(同两既有腾席位;纯归因分键计数
+        # 已随 2026-09-08 用户归因遥测删除指令拆除)
+        _prot = _vname in _t3_protect
+        if _prot:
+            mandate.stall_buys_consume(session, _vname)
+        _note_sell(_vname)
+        # 出口键(§5.6 闭集;发射 = 席换手,判红检测器与判读面载体)
+        _count(f'{prefix}_seat_swap')
+        return SellBench(bench_idx=idx,
+                         income=_shop_sell_refund(victim),
+                         expect=_vname,
+                         reason=('line_switch_collapse'
+                                 if _vname in _sw_orphans else ''),
+                         convert_reason=(
+                             'fuel_victim_protect_demoted'
+                             if _prot else ''))
+
     _core_locked = _buy_members is not None
     _core_cands = [c for c in _buy_view('core_single_card_buy')
                    if line_identity_tier(c.name or '')
@@ -1390,49 +1483,74 @@ def decide_shop_action(state: GameState, session: StrategySession,
             # 性是 dominance 族语义,恒买语义 = 持有价值非燃料可逆
             #(ADR-0580 申报)。auth_basis 以 unlocked 形态 + 独立计数键
             # 与锁线路径可辨不混桶(A2 二选一申报:两件都落)。
+            # 门序 = 金→席腾席(T-115 恒买腾席批):买射出 = 全门合取,
+            # 合取可交换 ⇒ 席空帧发射/弃买逐位不变;变化仅席满帧新增
+            # 腾席发射与帧内分键混合比(计数面)。金闸前置 = m2_stockpile
+            # 同纪律(金不足不卖筹,禁「先卖再报」不可逆净损)。
             for card in _core_cands:
                 cost = card.cost if card.cost else 3
+                ok1, _ = mandate.check_affordable(gold, cost)
+                if not ok1:
+                    _core_gold_bucket('core_unlocked', cost)
+                    continue
                 ok2, _ = mandate.check_seats(
                     bench_free, 0, needs_bench=True, needs_board=False,
                     name='', deployed_names=deployed_names)
                 if not ok2:
-                    break       # 帧级门已拦 bench 满(与锁线腿同防御)
-                ok1, _ = mandate.check_affordable(gold, cost)
-                if not ok1:
-                    continue
+                    # check_seats 本调用形(not ok2)⟺ bench 满(name 空/
+                    # needs_board=False,无同名/板满维)——腾席支。
+                    _swap = _core_seat_vacate('core_unlocked')
+                    if _swap is not None:
+                        return _swap
+                    break   # 诚实停摆(no_fuel 已计):席满停摆帧终止本腿
                 _count('core_unlocked_buy_hit')
                 return _emit_buy(card, 'core_single_card_buy:unlocked')
         elif contracts.ensure_contract(
                 ('mandate', 'core_single_card_buy_eligible'),
                 contracts.ContractCtx(locked_buy_members=_buy_members),
                 counters) and mandate.core_single_card_buy_eligible(
-                    _core_locked, bench_free):
+                    _core_locked):
             _core_rounds = horizon.r_remaining(
                 session, int(state.plane or 1), int(state.round_num or 1))
             _core_ibar = net_income(int(state.round_num or 1), 0)
+            # 门序 = 星级→息档→金→席腾席(T-115 恒买腾席批;席位维自帧门
+            # 下放循环内,合取重排对席空帧零漂移——论证同未锁线腿)。
             for card in _core_cands:
                 cost = card.cost if card.cost else 3
                 star = card.star or 1
                 if not refund_full_star_ok(star, cost):
                     continue    # 支配性背书仅全额可退 1★(共享单一源,禁内联星级判断)
-                ok2, _ = mandate.check_seats(
-                    bench_free, 0, needs_bench=True, needs_board=False,
-                    name='', deployed_names=deployed_names)
-                if not ok2:
-                    break       # 帧级门已拦 bench 满,此处共享单一源防御(dominance 同款)
                 if not predicates.t5_p1_false(
                         gold, cost, _core_rounds, _core_ibar,
                         cap_resolved):
                     continue    # 不破息带:L>0 帧不放行(统一式 L 项判定)
                 ok1, _ = mandate.check_affordable(gold, cost)
                 if not ok1:
+                    _core_gold_bucket('core_locked', cost)
                     continue
+                ok2, _ = mandate.check_seats(
+                    bench_free, 0, needs_bench=True, needs_board=False,
+                    name='', deployed_names=deployed_names)
+                if not ok2:
+                    # 席满入循环走腾席支(A1:席维已自帧门下放,此处为
+                    # 帧内真席门,非死防御)。check_seats 本调用形
+                    #(not ok2)⟺ bench 满。
+                    _swap = _core_seat_vacate('core_locked')
+                    if _swap is not None:
+                        return _swap
+                    break   # 席满停摆:no_fuel 已计;break 跳过 for-else 尾键
                 _count('core_dominance_buy_hit')    # 支配性支命中(§7 三键分账)
                 # 同帧多候补 = 等价免费期权,任意分配序不劣(设计 §2);
                 # 发射序 = 店面确定性序。动作形态默认 = 囤(bench 持有,
                 # 不上场;deploy 围栏不因持有而变化,设计 §4)。
                 return _emit_buy(card, 'core_single_card_buy')
-            _count('core_numeric_fail_closed')  # 数值支域帧:支未落码 fail-closed 显影(§7)
+            else:
+                # 尾键收窄(T-115 恒买腾席批 A1):for-else = 循环无 break
+                # 自然走完(星级/息档/金闸 continue 路径)才落——席满停摆
+                # 帧(no_fuel break)不落数值域键,消除「no_fuel 与本键
+                # 共火」;金闸弃帧经双桶键显影后同走完路径照落(机制面
+                # 如实申报)。语义 = 数值支域帧 fail-closed 显影(§7)。
+                _count('core_numeric_fail_closed')
 
     # T-115 规则④ 转线前瞻放行臂(ADR-0580;C1 邻位,③优先 = C1 先行
     # return 兑现,命中③即不评④)。数据源单一源 =
@@ -1447,6 +1565,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 未买帧拒因 = transition_component(D7 键序,shop_unbought_reasons
     # 同源分层)。
     if not cw_intention.committed_from(session, state):
+        # 门序 = 星级→金→席腾席(T-115 恒买腾席批:④腿同批接腾席支,
+        # 候裁3 复审同意;合取重排对席空帧零漂移,论证同 C1 两腿)。
         for card in _buy_view('transition_component_buy'):   # L2 统一过滤位
             name = card.name or ''
             if not name or line_identity_tier(name) != TIER_TRANSITION:
@@ -1454,14 +1574,20 @@ def decide_shop_action(state: GameState, session: StrategySession,
             cost = card.cost if card.cost else 3
             if not refund_full_star_ok(card.star or 1, cost):
                 continue    # 1★ 全额退:转线件可逆性硬闸(与 C1 同源)
+            ok1, _ = mandate.check_affordable(gold, cost)
+            if not ok1:
+                _core_gold_bucket('transition', cost)
+                continue
             ok2, _ = mandate.check_seats(
                 bench_free, 0, needs_bench=True, needs_board=False,
                 name='', deployed_names=deployed_names)
             if not ok2:
-                break       # 帧级门已拦 bench 满(支配族同款防御)
-            ok1, _ = mandate.check_affordable(gold, cost)
-            if not ok1:
-                continue
+                # check_seats 本调用形(not ok2)⟺ bench 满——腾席支
+                #(T-192 划界:不触 segments.py ④例外臂检测器锁)。
+                _swap = _core_seat_vacate('transition')
+                if _swap is not None:
+                    return _swap
+                break       # 席满停摆(transition_no_fuel 已计)
             _count('transition_component_buy_hit')
             return _emit_buy(card, 'transition_component_buy')
 
@@ -1592,6 +1718,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
     #(禁为花而买垃圾)。发射即按 prio 买因登记入统一发射登记簿
     #(窗口段:press 类活跃 = 登记轮==当前轮,同 visit 卖回全通道被禁,
     # W1;F1 锁线清空语义废除,P78-3/W3,载体注释在 mandate_state)。
+    # 外门三条件合取(gold/席/reward)显式拆分(T-115 恒买腾席批;候裁1
+    # 移位案采纳,B2):席满支 = 本臂结构性不出手的静默显影位,键
+    # dead_gold_press_bench_full_gate 只在 bench_free≤0 支计——原拟内门
+    # 落点不可达 = 死键(B2 证;死键纪律:落键前核实外门无同维短路)。
+    # 行为零变化:原合取首支照旧,新支只计数。
     if gold < g_star and bench_free > 0 \
             and reward_node_suppressed(state):
         _dead_gold = gold - 10 * (gold // 10)
@@ -1633,6 +1764,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 _dg_cause = ('obligation', 'hold', 'press')[_dg_prio]
                 return _emit_buy(card, 'dead_gold_press_buy',
                                  launch_cause=_dg_cause)
+    elif gold < g_star and bench_free <= 0 \
+            and reward_node_suppressed(state):
+        # 外门 else 席满支(结构性可达:B2 移位案;零行为,只显影)。
+        _count('dead_gold_press_bench_full_gate')
 
     # ---- 泄金阶梯档 1:可上场非定向买(press_buy_deployable;ADR-0604
     # §2,R2 审 F8/F10/F12 落点)----
