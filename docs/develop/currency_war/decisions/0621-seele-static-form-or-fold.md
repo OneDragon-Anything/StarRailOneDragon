@@ -9,7 +9,7 @@ COMP_LIBRARY 静态套「希儿量子」成型判据为 AND 完全体(form_tiers
 
 ## 决策
 
-1. **判据常量真源归位注册表数据层**:`cw_comps.SEELE_OR_LEGS=(('量子同频',2),('贝洛伯格',2))`、`SEELE_CARRY_CHAR='希儿'`。静态条目在 import 期消费常量,常量若留 cw_intention 会反向 import 成环,故真源落 cw_comps;cw_intention 侧同值常量暂为**双定义恒等态**(过渡),由测试仓恒等锁钉死两侧相等,改指 cw_comps 的一行机械改挂账随 T-35 批(cw_intention 触达批)执行。
+1. **判据常量真源归位注册表数据层**:`cw_comps.SEELE_OR_LEGS=(('量子同频',2),('贝洛伯格',2))`、`SEELE_CARRY_CHAR='希儿'`。静态条目在 import 期消费常量,常量若留 cw_intention 会反向 import 成环,故真源落 cw_comps;cw_intention 侧同值常量原为双定义恒等态(过渡),由测试仓恒等锁钉死;**改指 cw_comps 已随 T-35 批落地**:cw_intention 侧改为 from cw_comps import,原恒等锁升格为对象身份接线锁(test_constants_single_source_wiring,`is` 守卫——本地第二份定义复发时值可等而对象必异,锁必红),单一源关闭态。
 2. **静态条目挂 or_legs+required_deployed**,与 ADR-0613 pair 物化路径同构:同一折法 form_progress、同一判据常量,零第二套判定。
 3. **OR 组承接同键档位(键级辖域)**:form_progress 中 form_tiers 与 or_legs 同键的档位不计入 AND 账(分子分母同免);档位值保留作结构载体——囤货采购集羁绊展开/_line_hoard/locked_faction_scope/换线距离账读其键值面,清空即残(银狼/佩拉/桑博掉出采购集)。
 4. **量 2 vs 量 3 维持候玩家裁决**(transition_combos.md:27 量 2 定义行 vs combo_methodology.md:133/170 量 3「关键补充(用户修正)」):确认后改档动 SEELE_OR_LEGS 一处+恒等锁两侧,另须同步第三表面 `_seele_system_support` 的 ÷2 分母(cw_intention.py:583-587;公式体用字面量不消费常量,恒等锁钉不住——落地审 B-3)。
