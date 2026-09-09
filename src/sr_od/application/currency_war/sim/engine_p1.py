@@ -1441,6 +1441,23 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 'none' 不再刷新,= 段内视图不漂)。
                 sess.shop_state_frame = st
                 sess.shop_frame_class = 'full'
+                # BoardState 记录模型合成口(迁移批次一;设计 §2.1/§3.2.5,
+                # 正本 = BoardState-数据结构设计.md):sim 真值帧同步记观察
+                # (evidence 恒 sim:synthesized),bench 槽位保序 = 记录模型
+                # 按实机真值箱占席(sim「无箱实体」只是内部口径约定不进
+                # 记录)。纯记录零决策面:sim 账本/行为逐位不变,消费切换
+                # 归迁移批次二。best-effort 不炸引擎(记录层故障不毒化 sim)。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of as _bs_of,
+                )
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    synthesize_from_game_state as _bs_synth,
+                )
+                try:
+                    _bs_synth(_bs_of(sess), st, at_round=f'p{_seg_plane}-r{rn}')
+                except Exception as _bs_e:   # noqa: BLE001
+                    from one_dragon.utils.log_utils import log as _log
+                    _log.debug('[cw-sim] BoardState 合成口跳过: %s', _bs_e)
                 acts = strat.decide_shop_screen(sess, config)
                 # 采购面三观察·帧级只读投影(见轮首「采购面三观察计数」
                 # 块;位次 = 本段入口刷新后 = 意向状态已刷新,与策略决策帧

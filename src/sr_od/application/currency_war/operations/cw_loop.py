@@ -2241,6 +2241,14 @@ class CwLoop(SrOperation):
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
             self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
+            # BoardState 心跳观察者采样(迁移批次一;正本 = BoardState-数据
+            # 结构设计.md §2.4 关键结构 2):备战环入口读单调写点序号,连续
+            # ≥2 环零推进 = 观察断流诊断(log.warning 不停机,处置交既有
+            # 守卫链)。纯采样零行为面。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                note_board_state_heartbeat,
+            )
+            note_board_state_heartbeat(self.ctx)
             # 达标即出战臂(14号稿 §9.6,第七局复盘病灶:达标后 3 轮
             # RunDeploy 合法 no-op 靠守卫停机才重置):判据核 = kernel
             # ``readiness_launch_decision`` 单一源(sim 决策下沉两小批①

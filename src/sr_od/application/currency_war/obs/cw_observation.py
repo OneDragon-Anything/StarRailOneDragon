@@ -2378,7 +2378,145 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     #   M72 停机后游戏自己打完了 P2-9;此类需当场交互的采集,现场窗口=倒计时前,分小批+
     #   批间验证落位;②事件 overlay(选择伙伴)盖棋盘时拖拽全部静默失败,批次必须验证;
     # ③VLM 看不清星数(开商店帧误报"银狼3星"),定位 3 星用 read_star 全帧扫描。
+    # BoardState 观察流接线(迁移批次一;正本 = BoardState-数据结构设计.md §2.1/
+    # §8.7):既有读取完成后把本帧真读字段同步记入 BoardState 单例(零新增 OCR,
+    # 消费切换归批次二,GameState 消费者行为零变化)。
+    _feed_board_state(ctx, state, phase, screen, _spec, had_hp_real=_had_real)
     return state
+
+
+def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
+                      screen: MatLike, spec: frozenset[str] | None, *,
+                      had_hp_real: bool) -> None:
+    """BoardState 观察流(read_game_state 专属;迁移批次一接线)。
+
+    read_game_state 是全部 phase 观察(prep_clean/prep_shop_open/
+    battle_or_transit/全量)的唯一漏斗——本口把「本帧真读到」的字段记入
+    BoardState 单例(board_state_of(session)),零新增 OCR:
+    - 真读(真值位/非 None)→ observe;失读 → carry(§2.2 失读处置①,
+      沿用+来源帧标注);hp 开局先验形态(读不到∧session 无真值)→ prior
+      写入(§3.1.6,evidence=prior:adr-0559);
+    - 逐字段门 = 本函数的 spec 门(PHASE_FIELD_SPEC 同源):spec 不含的字段
+      本帧根本没读,不进 BoardState(禁拿 GameState 兜底默认值当观察——
+      gold 失读 raw=0/hp 失读沿用值都不经此口);
+    - hp 写入闸(§3.2.13/§8.8):hp 仅 spec 含 'hp' 且 hp_readable(真读)
+      才 observe——商店开态帧该区不显示的假值(如旧 100 兜底)结构性进
+      不了记录;
+    - shop 附加域:spec 含 shop_cards 且读得牌 → observe payload;离开
+      商店画面 → leave_screen(None = 结构事实,§2.2 例外);
+    - 刷新费通道(§3.3.4/ADR-0622,任务书件 6):商店开态帧现场读刷新钮
+      标价(惰性 import 防与 cw_shop_refresh_obs 循环);识别失败 = carried
+      (禁兜底改值);免费帧「不写」调用方闸归 §3.3.7 接线批(批次二)。
+    - streak:本函数只做 carried 沿用(session 结算带符号真值);备战幅度
+      读数无方向,禁覆盖带符号值(§3.2.12)。
+
+    best-effort:任何异常不阻塞 read_game_state 返回(记录层故障不毒化
+    决策链;诊断走 [cw!][bs-feed] 日志)。
+    """
+    try:
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            NodeKey,
+            ShopCard,
+            ShopPayload,
+            board_state_of,
+        )
+        match = getattr(ctx, 'cw_match', None)
+        session = getattr(match, 'session', None) if match is not None else None
+        if session is None:
+            return
+        bs = board_state_of(session)
+        frame = f'p{state.plane}-r{state.round_num}'
+
+        def _w(key: str) -> bool:
+            """本帧是否读了该字段(spec 同源;None 阶段=全量恒 True)。"""
+            return spec is None or key in spec
+
+        # 节点(phase_round 全阶段必读;node_type 仅 spec 门内为帧读值)。
+        # P1-1(落地审):kind 未读帧(battle_or_transit spec 无 node_type /
+        # 备战帧三源仲裁全空)禁合成 'prep' 占位假值(§2.2 失读口径;与本口
+        # 「禁拿兜底默认值当观察」同义)——kind 从 bs.node 现值继承合成新键
+        # (plane/round 真读更新),evidence 标继承;无现值且未读 → 不写
+        # (禁猜)。kind 的权威写端 = 结算屏三源仲裁(§3.5.2/§3.2.1),批次二
+        # 接线;继承窗口内 kind=「上一已知节点类型」,备战帧真读即覆盖。
+        node_type = state.node_type if _w('node_type') else None
+        if node_type is not None:
+            bs.observe(bs.node, NodeKey(plane=int(state.plane or 1),
+                                        round_num=int(state.round_num or 1),
+                                        kind=str(node_type)))
+        else:
+            _prev_node = bs.node.value
+            if _prev_node is not None:
+                bs.observe(bs.node,
+                           NodeKey(plane=int(state.plane or 1),
+                                   round_num=int(state.round_num or 1),
+                                   kind=_prev_node.kind),
+                           evidence='kind_inherited')
+            # 无现值且未读:node 不写,保持 None(诚实缺位)
+        if _w('gold'):
+            if state.gold_readable:
+                bs.observe(bs.gold, int(state.gold))
+            else:
+                bs.carry(bs.gold, frame=frame)   # raw 0 是 miss 兜底,禁入记录
+        if _w('level'):
+            if state.level_readable:
+                bs.observe(bs.level, int(state.level))
+            else:
+                bs.carry(bs.level, frame=frame)   # 启发式兜底值不是观察(§2.2)
+        if _w('xp') and state.xp_progress is not None:
+            bs.observe(bs.xp, tuple(state.xp_progress))
+        if _w('hp'):
+            if state.hp_readable:
+                bs.observe(bs.hp, int(state.hp))
+            elif state.hp is not None and not had_hp_real:
+                # 对账层开局先验形态(session 无真值,ADR-0559)
+                bs.write_prior(bs.hp, int(state.hp), evidence='prior:adr-0559')
+            elif state.hp is not None:
+                bs.carry(bs.hp, frame=frame)   # 同节点沿用真值(ADR-0431)
+        if _w('enemy_difficulty'):
+            if getattr(state, 'enemy_difficulty_live', False) \
+                    and state.enemy_difficulty is not None:
+                bs.observe(bs.enemy_difficulty, int(state.enemy_difficulty))
+            else:
+                bs.carry(bs.enemy_difficulty, frame=frame)   # session 恒值=沿用
+        if _w('level_up_cost') and state.level_up_cost is not None:
+            bs.observe(bs.level_up_cost, int(state.level_up_cost))
+        if _w('streak') and state.streak is not None:
+            bs.carry(bs.streak, frame=frame)   # 结算带符号真值的跨帧沿用
+        if _w('board'):
+            if state.board_readable and state.board:
+                bs.observe(bs.board, dict(state.board))
+            else:
+                bs.carry(bs.board, frame=frame)
+        if _w('shop_cards'):
+            if state.shop:
+                # cost_source 原值透传不折叠(P2-4 落地审:roster_fallback
+                # 的「徽章失读」证据分级禁丢;词表见 BoardState.ShopCard)
+                cards = [ShopCard(name=c.name, faction=c.faction,
+                                  cost=int(c.cost or 0), star=int(c.star or 1),
+                                  cost_source=str(c.cost_source or 'roster'))
+                         for c in state.shop]
+                probs = ({int(k): float(v) for k, v in
+                          (state.refresh_probs or {}).items()}
+                         if state.refresh_probs else {})
+                bs.observe(bs.shop, ShopPayload(cards=cards,
+                                                refresh_probs=probs))
+            # 空牌面 = OCR 失读帧:不写(宁缺勿造;§2.2 口径由 carry 通道
+            # 不适用于 payload 域,保持现值等下一帧)
+        elif bs.shop.value is not None:
+            bs.leave_screen(bs.shop)   # 离开商店画面 = 结构事实(§2.2 例外)
+        if phase in (PHASE_PREP_SHOP_OPEN,):
+            # 刷新费现场识别通道(ADR-0622;§3.3.4 识别失败=None 禁兜底)
+            from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
+                read_shop_refresh_price,
+            )
+            price = read_shop_refresh_price(ctx, screen)
+            if price is not None:
+                bs.observe(bs.shop_refresh_cost, int(price))
+            else:
+                bs.carry(bs.shop_refresh_cost, frame=frame)
+        bs.mark_frame_obs('view' if spec is not None else 'full')
+    except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化决策链
+        log.warning('[cw!][bs-feed] BoardState 观察流跳过: %s', e)
 
 
 # → 无法可靠选 deploy comp 卡 + pref 定位。pixel-diff(buy 前/后 bench 截图 diff)找新占槽 = bought 卡落点,
