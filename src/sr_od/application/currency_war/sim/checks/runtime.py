@@ -200,11 +200,27 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
     三键形状之外的形态(如 bench 握料未上板)落 other;分诊立项前
     仍须挑局复盘取实证(match-review)。miss_reason_games 给各键
     前 5 个局索引(seed = seed_base+idx,供复盘重放)。
+
+    形态分键(观测面扩键,零判定阈值/零策略行为变更):「从未出
+    第二引擎」与「第二引擎延迟」两形态分开披露——
+    ``never_second_engine`` = 首引擎后至局终仍未凑出次引擎的局数
+    (gap=99 哨兵;结构问题形态),``never_games`` = 其前 5 个局索引
+    (重放口径同 miss_reason_games);``delayed_miss``/``delayed_avg_gap``
+    = 有限延迟形态(gap>3 且有限)的局数与仅有限 gap 均值(节奏
+    问题形态)。分键语义 = 泛找批报告 F2 的区分定义:混键病灶 =
+    99 缺省进 avg_gap,「从未变多」与「延迟变长」在均值上不可分、
+    掩蔽归因。既有键语义零漂移:avg_gap 仍为含 99 缺省的混合均值
+    (报告连续性),deadline_miss 仍为两形态并集(never+delayed),
+    miss_reasons 期限窗分键仍辖两形态全部 miss 局。出处:泛找批
+    报告 F2/F2a(.debug/temp/currency_war/findprob_20260910_泛找批_
+    20260910_062008/report.md,易失产物暂记)。
     """
     gaps: list[int] = []
     reasons = {'supply_break': 0, 'gold_hoarded': 0,
                'diverted_spend': 0, 'other': 0}
     reason_games: dict[str, list[int]] = {k: [] for k in reasons}
+    finite_miss_gaps: list[int] = []   # 延迟形态:有限 gap>3(不含 99 缺省)
+    never_games: list[int] = []        # 从未形态局索引(前 5,重放定位)
     for gi, rows in enumerate(ledgers):
         first = second = None
         for row in rows:
@@ -219,8 +235,12 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
             continue
         gap = (second - first) if second is not None else 99
         gaps.append(gap)
+        if gap == 99 and len(never_games) < 5:
+            never_games.append(gi)
         if gap <= 3:
             continue
+        if second is not None:
+            finite_miss_gaps.append(gap)
         # --- miss 原因分键(期限窗 = (F, F+3];截断于局末) ---
         window = [row for row in rows
                   if first < (row.get('round_num') or 0) <= first + 3]
@@ -262,11 +282,21 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
     return {'violations': 0, 'first_engine_games': len(gaps),
             'deadline_miss': miss,
             'avg_gap': round(sum(gaps) / len(gaps), 2) if gaps else None,
+            'never_second_engine': sum(1 for g in gaps if g == 99),
+            'never_games': never_games,
+            'delayed_miss': len(finite_miss_gaps),
+            'delayed_avg_gap': round(sum(finite_miss_gaps)
+                                     / len(finite_miss_gaps), 2)
+            if finite_miss_gaps else None,
             'miss_reasons': reasons,
             'miss_reason_games': reason_games,
             'miss_reason_note': '主因分键(互斥,优先级 '
                                 '供给断>金滞留>摇摆挤占>其他;'
-                                '观测面近似非因果,立项前挑局复盘)'}
+                                '观测面近似非因果,立项前挑局复盘)',
+            'form_split_note': 'never=从未出次引擎(结构形态)/'
+                               'delayed=限期后有限延迟(节奏形态);'
+                               'avg_gap 仍为含 99 缺省的混合均值'
+                               '(旧口径零漂移)'}
 
 
 
