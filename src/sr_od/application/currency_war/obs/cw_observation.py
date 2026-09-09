@@ -2168,7 +2168,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 刷新实付金 = 基价常量(ADR-0456):「文本-刷新金币数」rect 读到的是
     # 面板徽标(=min(gold//10,5) 利息数值)非刷价,OCR 退出主链(决策热路径
     # 净少一次 OCR);state.shop_refresh_cost 恒 REFRESH_COST_BASE,消费点
-    # ``or 2`` 语义不变。旁证读数走 read_shop_refresh_cost(独立调用)。
+    # ``or 2`` 语义不变。(历史旁证读数 read_shop_refresh_cost 现零调用方,
+    # 保留纯函数形态供未来复采;见 D88 勘误。)
     state.shop_refresh_cost = REFRESH_COST_BASE
     # streak:优先 session.last_streak(结算「连胜×N」带符号,方向可靠;fixture 核实 2026-08-11);
     # 无 session(离线/测试)→ read_streak 备战 magnitude fallback。
