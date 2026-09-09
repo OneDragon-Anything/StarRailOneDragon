@@ -101,7 +101,7 @@ if TYPE_CHECKING:
         StrategySession,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-        MandateState,
+        StrategyState,
     )
 
 # M1″ seam 门开关常量(唯一写点的值源;出处 = ADR-0530)。True = 开闸
@@ -612,7 +612,7 @@ def shop_wanted_defer(session: StrategySession, state: GameState | None,
         ct['shop_wanted_deferred'] = ct.get('shop_wanted_deferred', 0) + 1
 
 
-def _wanted_reopen_budget(st: MandateState, phase: tuple,
+def _wanted_reopen_budget(st: StrategyState, phase: tuple,
                           counters: dict) -> bool:
     """重进安全阀记账(§6.2):键式计数超 WANTED_REOPEN_CAP ⇒ 熔断计数
     + 裁决放弃态,返回 False。记账点 = 门 1 实清与两腿发射(每次潜在

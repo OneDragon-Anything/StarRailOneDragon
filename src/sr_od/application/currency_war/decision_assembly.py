@@ -134,7 +134,16 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
     """
     from types import MappingProxyType
     st = obs.state
-    last = getattr(session, 'last_state', None)
+    # Snapshot 消费切换(迁移批次三,设计 §8.7:mandate_v1 内部改读;
+    # 决策轨迹逐位一致为验收门):回退锚从 last_state 原帧切 BoardState
+    # 视图(kernel/cw_bs_view.strategy_input_state,消费切换调用面单一源)
+    # ——已建模域取记录值(常态帧与旧直读逐位一致,批次二等价门),
+    # 未建模域同帧透传。obs.state(本帧观察)优先级不变,本锚只在帧值
+    # 缺席时兜底(与旧 last_state 兜底同位)。
+    from sr_od.application.currency_war.kernel.cw_bs_view import (
+        strategy_input_state,
+    )
+    last = strategy_input_state(session)
     return Snapshot(
         schema_version=SNAPSHOT_SCHEMA_VERSION,
         classification=SubstateClassification(

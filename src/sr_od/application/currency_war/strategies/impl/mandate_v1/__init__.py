@@ -12,14 +12,16 @@ cw_plane_table/cw_state/cw_comps)与同层 statefn 模块,禁回调 op 层与判
 禁相对导入(项目 AGENTS 硬约束)。
 
 装配副作用(本包被导入即生效):向 kernel 的策略状态工厂注入槽注册
-``MandateState`` 工厂(kernel 依赖矩阵禁 kernel→impl 边,写路径的惰性
-冷建经槽反转;先例 = obs 缓存清理/合成特效帧门注入槽)。
+``StrategyState`` 工厂(kernel 依赖矩阵禁 kernel→impl 边,写路径的惰性
+冷建经槽反转;先例 = obs 缓存清理/合成特效帧门注入槽)。类名 = 设计
+正本 §8.5/§8.6-6 改名归位后的目标名(迁移批次三;历史名 MandateState
+为同对象别名保留)。
 """
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     install_strategy_state_factory,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-    MandateState,
+    StrategyState,
 )
 
-install_strategy_state_factory(MandateState)
+install_strategy_state_factory(StrategyState)

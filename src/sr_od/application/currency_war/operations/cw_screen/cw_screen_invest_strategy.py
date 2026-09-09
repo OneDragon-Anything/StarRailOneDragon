@@ -263,6 +263,30 @@ class CwScreenInvestStrategy(SrOperation):
                 safe_click(self, Point(_tx + CwScreenInvestStrategy._REFRESH_BTN_DX, _ty),
                            tag='cw-strat')
                 _ex._invest_refresh_used_slots.add(_i)   # 发射即记(防重入优先,不等验效)
+                # 节点屏刷新计数组写端(迁移批次三,设计 §3.4.4/§8.7 批次三
+                # 件 6):策略屏刷新已用**随刷新点击置位、不等验效**,选择
+                # 落地不置位;逐卡键 = 注册表规范卡名(normalize_invest_name
+                # 归一后入键,与 STRATEGY_EFFECTS 同键空间,§3.4.4 键口径)。
+                # 单次逻辑写入(§3.4 申报豁免:自身动作事实,无可核对的
+                # 后续定型帧;之后仍受观察覆盖辖)。best-effort 记录面:
+                # 失败不阻塞刷新链(与升级挂点同纪律)。
+                try:
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        board_state_of,
+                    )
+                    from sr_od.application.currency_war.kernel.cw_investments import (
+                        normalize_invest_name,
+                    )
+                    _bs_rc = board_state_of(match.session)
+                    _used = dict(_bs_rc.strategy_refresh_used.value or {})
+                    _k = normalize_invest_name(names[_i])
+                    _used[_k] = int(_used.get(_k, 0)) + 1
+                    _bs_rc.write_logic(
+                        _bs_rc.strategy_refresh_used, _used,
+                        produced_by='CwScreenInvestStrategy',
+                        evidence=f'refresh_click@slot{_i}')
+                except Exception as e:   # noqa: BLE001  记录面失败不阻塞
+                    log.warning(f'[cw-strat] 刷新计数记录失败(不阻塞): {e}')
                 time.sleep(CwScreenInvestStrategy.REFRESH_ANIM_WAIT_S)
                 # 验效双通道(遭遇屏先例):①计数扣减(权威——次数由游戏扣,
                 # 卡面碰巧同签名也认);②卡名签名变化(兜底)。双输 = 未生效
@@ -389,6 +413,45 @@ class CwScreenInvestStrategy(SrOperation):
                 board_state_of(match.session).active_strategies,
                 list(match.session.active_strategies),
                 produced_by='CwScreenInvestStrategy')
+            # 效果账本选卡登记挂点(迁移批次三,设计 §5.1「买卡=激活登记」
+            # /§8.7 批次三件 4;免战牌同点自动登记——件 5「§3.2.19 载体归一
+            # 的另一半,禁只做一半」)。chosen 命中效果注册表(规范名归一
+            # 后)才登记;acquired_t = 登记时点节点序快照((plane-1)*9+round,
+            # 基 1,ActiveEffect 坐标系;节点值优先 BoardState 单例,引导窗
+            # 回退 last_state 框架末次读值)。登记面 best-effort:失败不阻塞
+            # 选卡主链(与升级挂点同纪律);账本当前零决策消费(§5.1 过渡
+            # 口径:挂点接线未完成面一律观察覆盖兜底)。
+            try:
+                from sr_od.application.currency_war.kernel.cw_investments import (
+                    STRATEGY_EFFECTS,
+                    normalize_invest_name,
+                )
+                _spec = STRATEGY_EFFECTS.get(normalize_invest_name(chosen))
+                if _spec is not None:
+                    _bs_reg = board_state_of(match.session)
+                    _nd = _bs_reg.node.value
+                    if _nd is not None:
+                        _t = (_nd.plane - 1) * 9 + _nd.round_num
+                    else:
+                        _st_l = getattr(match.session, 'last_state', None)
+                        _t = (((getattr(_st_l, 'plane', 1) or 1) - 1) * 9
+                              + (getattr(_st_l, 'round_num', 1) or 1)
+                              ) if _st_l is not None else None
+                    _bs_reg.effects.register_strategy(_spec, _t)
+                    # 桥·burst 形态(迁移批次三 B1,设计 §3.3.5/§5.1):登记
+                    # 时点把免费刷新 burst 额度一次性累加进余额(固定理财
+                    # 即时段 2 等;载体 = payload.free_refresh_burst,零额度
+                    # no-op)。每节点/容量两形态在 cw_loop tick 挂点,不经此。
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        apply_effect_burst_grant,
+                    )
+                    apply_effect_burst_grant(
+                        _bs_reg, _spec,
+                        frame=f'p{_nd.plane}-r{_nd.round_num}'
+                        if _nd is not None else '')
+                    log.info(f'[cw-strat] 效果账本登记:{_spec.name}(t={_t})')
+            except Exception as e:   # noqa: BLE001  登记面失败不阻塞
+                log.warning(f'[cw-strat] 效果账本登记失败(不阻塞): {e}')
             from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
                 register_confirm_arrival,
             )

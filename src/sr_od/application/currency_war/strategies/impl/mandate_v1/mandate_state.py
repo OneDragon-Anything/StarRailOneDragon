@@ -1,5 +1,29 @@
-"""货币战争 mandate_v1 策略器状态对象(MandateState;session.md as-designed
-§3.1 裁决 1 的落地载体)。
+"""货币战争 mandate_v1 策略器状态对象(StrategyState;session.md as-designed
+§3.1 裁决 1 的落地载体 + 设计正本 §8.5/§8.6-6 改名归位,迁移批次三)。
+
+**命名归位**(§8.6-6):本类即设计所称 StrategyState(原草板 StrategyMemory
+的目标名)——批次三把类名从历史名 MandateState 改名归位,类型本体、字段
+集、生命周期零变化(同对象别名 ``MandateState`` 在模块尾保留,测试/sim
+既有 import 面兼容,退役清理归批次四)。**归属判据**(设计 §1):换一个
+策略实现就不存在的字段归这里;归策略实现层私有,框架策略器基类仅以泛型
+参数携带(``CwStrategy``/``CwFlowStrategy`` 链的 ``_TState``),kernel/
+one_dragon 零 import 本类。
+
+设计 §8.5 结构草图的五个语义槽在本类的落位(as-built 映射;草图 = 槽位
+清单,本类 = 默认策略实现的全量 realization):
+
+- **K 方向**(配方方向)→ ``target_comp``/``locked_line``/``bridge_id``/
+  ``transition_framework``/``target_drought``/``pending_deploys`` 意向面族;
+- **义务账本** → ``cw4_fuel_filler_stall_buys``(统一发射登记簿,五出口
+  生命周期)/``v3_release``(泄息指令)族;
+- **CommitSignals** → ``commit_signals``(定型信号累积器,惰性建);
+- **S1 开店闩** → ``cw4_shopped_phase``(同一备战期开店意图一次性);
+- **S2 wanted 残差** → ``cw4_shop_wanted_pending``(+ ``cw4_wanted_
+  abandon_phase``/``cw4_wanted_reopens`` 同族裁决态);
+- **刷新推论** → ``v3_dir_refresh_used``/``v2_round_refreshes`` 等刷新
+  计数与推论面;
+- **S3 升级检查不立变量**(ADR-0596 墓碑测试在册)——升级检查 = 期望态
+  新鲜度派生,非存储旗标,本类禁新增对应字段。
 
 职责来源裁定(用户 2026-09-06,session.md 头注):session 只承载「从游戏
 画面观察到的数据」;策略推导产生的中间状态(目标意向/定型信号/回退集/
@@ -27,7 +51,7 @@ cw4_fuel_filler_stall_buys 统一发射登记簿,字段退役删除。原
 
 边界(kernel 消费面):kernel 判据层对策略状态的消费经
 ``kernel.cw_strategy_session.strategy_state_of`` 访问函数(返回
-``MandateState | None``,None = 无状态对象的裸构造/第三方策略面——
+``StrategyState | None``,None = 无状态对象的裸构造/第三方策略面——
 调用方按原 getattr 缺省语义保守处理),kernel 不持有本类字段注解、
 运行时零本包 import(TYPE_CHECKING 承载)。
 """
@@ -44,15 +68,17 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class MandateState:
+class StrategyState:
     """mandate_v1 策略器一局状态(局首由工厂冷建,局终随 session 销毁)。
 
-    生命周期契约(session.md §3.1 条款 2):每局新建即天然清零,禁跨局
-    复用实例;意向状态机段级重入守卫(``v3_intention_key``)语义自原
-    session 字段原样平移,不变。字段分组与产生者/消费者/生命周期注释
-    平移自原 ``kernel/cw_strategy_session.py`` 对应字段(语义零变更,
-    值域与缺省一致——含 on_match_start 原逐项初始化值,改由缺省值承载:
-    状态对象每局冷建 = 天然初值,清零段整体消失)。
+    即设计正本 §8.5 的 StrategyState(改名归位见模块 docstring;§8.5 五
+    语义槽映射亦在彼)。生命周期契约(session.md §3.1 条款 2):每局新建
+    即天然清零,禁跨局复用实例;意向状态机段级重入守卫
+    (``v3_intention_key``)语义自原 session 字段原样平移,不变。字段
+    分组与产生者/消费者/生命周期注释平移自原 ``kernel/cw_strategy_
+    session.py`` 对应字段(语义零变更,值域与缺省一致——含
+    on_match_start 原逐项初始化值,改由缺省值承载:状态对象每局冷建 =
+    天然初值,清零段整体消失)。
     """
 
     # ===== 意向面(方向重估策略推导;局/轮;写者 = flow 层 _refresh_direction,
@@ -315,7 +341,7 @@ class MandateState:
     scratch: dict[str, Any] = field(default_factory=dict)
 
 
-def state_of(session: StrategySession) -> MandateState:
+def state_of(session: StrategySession) -> StrategyState:
     """策略器侧状态读口:取 ``session.strategy_state`` 并收窄类型。
 
     None/异型(裸构造 session、第三方策略未覆写 create_state)→ 惰性
@@ -323,23 +349,23 @@ def state_of(session: StrategySession) -> MandateState:
     的实现面)。mandate_v1 链内统一经本函数消费状态对象。
     """
     st = getattr(session, 'strategy_state', None)
-    if not isinstance(st, MandateState):
-        st = MandateState()
+    if not isinstance(st, StrategyState):
+        st = StrategyState()
         session.strategy_state = st
     return st
 
 
 def ensure_strategy_state(strat: object, session: StrategySession,
                           initial_v2_state: tuple | None = None
-                          ) -> MandateState:
+                          ) -> StrategyState:
     """sim 侧统一构建口(设计 §3.4-1):经被测策略工厂补建状态对象。
 
     - ``strat`` 按鸭子类型取 ``create_state``(注解 object:注入桩可无该
       钩子,工厂不可得 → 冷建兜底);
-    - ``session.strategy_state`` 已是 MandateState → 直返(注入/进场态
+    - ``session.strategy_state`` 已是 StrategyState → 直返(注入/进场态
       复用 session 通道);
     - 缺失 → 调 ``strat.create_state`` 工厂(与 live 同源生命周期);工厂
-      不可得(注入桩)→ 冷建 MandateState 兜底。**config 实参传 None**
+      不可得(注入桩)→ 冷建 StrategyState 兜底。**config 实参传 None**
       (sim 面无 config 可注入)——``create_state`` 工厂契约 = 可忽略
       config/容忍 None(见 flow.CwFlowStrategy.create_state docstring),
       工厂实现禁读 config 取值;
@@ -347,11 +373,17 @@ def ensure_strategy_state(strat: object, session: StrategySession,
       (原 sim 直写 session.v2_state 的替代;禁裸 setattr session)。
     """
     st = getattr(session, 'strategy_state', None)
-    if not isinstance(st, MandateState):
+    if not isinstance(st, StrategyState):
         factory = getattr(strat, 'create_state', None)
         built = factory(None) if callable(factory) else None   # None 契约见 docstring
-        st = built if isinstance(built, MandateState) else MandateState()
+        st = built if isinstance(built, StrategyState) else StrategyState()
         session.strategy_state = st
     if initial_v2_state is not None:
         st.v2_state = initial_v2_state
     return st
+
+
+#: 历史名兼容别名(批次三改名归位 §8.6-6;同对象,``is X``/``isinstance``
+#: 全兼容——测试仓/sim/cw_replay 既有 ``import MandateState`` 面零改动,
+#: 统一清理归批次四退役批)。新代码一律用 :class:`StrategyState`。
+MandateState = StrategyState

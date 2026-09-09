@@ -147,6 +147,23 @@ class CwScreenEncounter(SrOperation):
                 # 发出点击即置位(不等验效):防「点偏未生效 → 重入屏再试」的反复尝试;
                 # 优势布局每局只授 1 次,单次尝试语义与游戏规则对齐。
                 exec_state_of(match.session)._encounter_refresh_used = True
+                # 节点屏刷新计数组写端(迁移批次三,设计 §3.4.1/§8.7 批次三
+                # 件 6):遭遇刷新已用**随刷新点击置位、不等验效**,选择落地
+                # 不置位(与 exec_state 防重入旗标同点同口径;旗标 = 执行侧
+                # 防重入载体,本写端 = 记录模型账,§3.4.1)。单次逻辑写入
+                # (§3.4 申报豁免:自身动作事实)。best-effort 记录面。
+                try:
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        board_state_of,
+                    )
+                    _bs_er = board_state_of(match.session)
+                    _bs_er.write_logic(
+                        _bs_er.encounter_refresh_used,
+                        int(_bs_er.encounter_refresh_used.value or 0) + 1,
+                        produced_by='CwScreenEncounter',
+                        evidence='refresh_click')
+                except Exception as e:   # noqa: BLE001  记录面失败不阻塞
+                    log.warning(f'[cw-encounter] 刷新计数记录失败(不阻塞): {e}')
                 refreshed, new_opts = self._try_refresh(
                     cnt[1], self._card_signature(options), cnt[0])
                 if refreshed:

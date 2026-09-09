@@ -95,8 +95,17 @@ def _point(x: int, y: int):
 
 
 def _anchor_state(snapshot: Snapshot, session: StrategySession) -> GameState:
-    """快照数值域 → GameState 骨架(plane/round/level 等带 session 锚回退)。"""
-    last = getattr(session, 'last_state', None)
+    """快照数值域 → GameState 骨架(plane/round/level 等带 session 锚回退)。
+
+    锚回退源 = BoardState 视图(Snapshot 消费切换,迁移批次三,设计 §8.7:
+    mandate_v1 内部改读;kernel/cw_bs_view.strategy_input_state 调用面
+    单一源)——已建模域取记录值(常态帧与旧直读逐位一致),未建模域同
+    帧透传;快照字段优先级不变,锚只在快照值缺席时兜底。
+    """
+    from sr_od.application.currency_war.kernel.cw_bs_view import (
+        strategy_input_state,
+    )
+    last = strategy_input_state(session)
     st = GameState()
     st.plane = snapshot.plane or (last.plane if last is not None else 1)
     st.round_num = snapshot.round_num or (last.round_num if last is not None else 1)
@@ -143,7 +152,13 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     st.dual_track_phase = not committed_from(session)
     st.active_strategies = list(getattr(session, 'active_strategies', None) or [])
     st.equips = list(getattr(session, 'last_owned_equips', None) or [])
-    last = getattr(session, 'last_state', None)
+    # refresh_probs / hp 回退锚 = BoardState 视图(Snapshot 消费切换,
+    # 迁移批次三,设计 §8.7;同 _anchor_state 口径——两域均为视图透传/
+    # 帧同源,hp 为 gated_hp 门后帧值,cw_bs_view 模块 docstring 申报)。
+    from sr_od.application.currency_war.kernel.cw_bs_view import (
+        strategy_input_state,
+    )
+    last = strategy_input_state(session)
     probs = getattr(last, 'refresh_probs', None) if last is not None else None
     st.refresh_probs = dict(probs) if probs else None
     # hp 过现役同一新鲜度门(session 锚;None 现读=沿用链,禁 0/100 兜底改值)。

@@ -85,6 +85,7 @@ from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     StrategySession,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
+    StrategyState,
     state_of,
 )
 from sr_od.application.currency_war.strategies.impl.pick_bias import (
@@ -173,8 +174,14 @@ class CwFlowStrategy(CwStrategy):
             tracker = _ms.v3_alarm = BloodAlarmTracker()
         hp_after = getattr(obs, 'hp_after', None)
         node_type = getattr(obs, 'node_type', None) or ''
-        # N2 同源:obs.plane 权威(结算时位面可能已推进);state 基准申报见 drain docstring
-        state = getattr(session, 'last_state', None) or GameState()
+        # N2 同源:obs.plane 权威(结算时位面可能已推进);state 基准申报见 drain docstring。
+        # 消费切换(迁移批次二):基准态 = BoardState 视图
+        # (kernel/cw_bs_view.strategy_input_state;已建模域=记录值,
+        # 席位/透传域=last_state 原帧,行为等价申报见模块 docstring)。
+        from sr_od.application.currency_war.kernel.cw_bs_view import (
+            strategy_input_state,
+        )
+        state = strategy_input_state(session)
         plane = getattr(obs, 'plane', None) or state.plane
         if not node_type:
             # supply 失活治本(supply失活升级线 第6/7次复现):空 node_type 轮
@@ -252,22 +259,19 @@ class CwFlowStrategy(CwStrategy):
                      '(掉血数据恢复)', token, plane, round_num, nt)
         return nt
 
-    def create_state(self, config: CurrencyWarConfig) -> object:
+    def create_state(self, config: CurrencyWarConfig) -> StrategyState:
         """策略器状态对象工厂(session.md §3.1/§5.1;ADR-0563 决策-2)。
 
-        每局冷建 MandateState(本核即 mandate_v1 流程核,create_session
+        每局冷建 StrategyState(本核即 mandate_v1 流程核,create_session
         唯一冷建口接线;sim 初始相位注入经 ensure_strategy_state 构造入口,
         不经本工厂)。**live 初值 v3_phase='FORM' 归 create_session**
         (ADR-0583:原 on_match_start 的唯一非零缺省随生命周期收编迁入
         冷建口;工厂本体保持缺省 '',直调工厂的 sim 注入桩面语义不变)。
         **config 契约:可忽略、可为 None**——sim 侧
         ``ensure_strategy_state`` 注入桩面调 ``factory(None)``,工厂实现
-        禁依赖 config 取值;MandateState 无 config 依赖,恒冷建即安全。
+        禁依赖 config 取值;StrategyState 无 config 依赖,恒冷建即安全。
         """
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-            MandateState,
-        )
-        return MandateState()
+        return StrategyState()
 
     def create_session(self, config) -> StrategySession:
         """空白 session(rng 留默认,由 run loop 按 ``config.strategy_seed`` 覆盖)。
@@ -286,15 +290,12 @@ class CwFlowStrategy(CwStrategy):
             pass
         sess = StrategySession()
         # 策略器状态工厂接线(session.md §3.1/§5.1):create_session 即冷建
-        # 当局 MandateState——状态生命周期与 session 同源(§3.4-1 统一构建口)。
+        # 当局 StrategyState——状态生命周期与 session 同源(§3.4-1 统一构建口)。
         sess.strategy_state = self.create_state(config)
         # live 相位观测初值(ADR-0583:原 on_match_start 的唯一非零缺省;
         # 工厂产物保持缺省 ''——sim 直构 session 的旧读数保真,见 §2.3 拆分表)。
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-            MandateState,
-        )
         _ms = sess.strategy_state
-        if isinstance(_ms, MandateState):
+        if isinstance(_ms, StrategyState):
             _ms.v3_phase = 'FORM'
         return sess
 

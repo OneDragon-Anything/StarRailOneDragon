@@ -457,6 +457,20 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                     _ct_mis.get('s1_reset_mischannel', 0) + 1
     if _ok and isinstance(action, BuyCard) and action.card.name:
         strategy_state_of(match.session).cw4_visit_bought_names.append(action.card.name)
+        # 效果账本购买计数推进(迁移批次三,设计 §5.1「刷新=计数累加」的
+        # 购买侧;载体 = CounterKey.BUY,§5.3 返利族「每购 3 张 5 费」计数
+        # 面)。挂点 = 执行落地门(未落地不计数,同刷新计数组纪律)。
+        # best-effort 记录面,失败不阻塞执行回执链。
+        try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                CounterKey,
+            )
+            board_state_of(match.session).effects.bump_key(CounterKey.BUY)
+        except Exception as e:   # noqa: BLE001  记录面失败不阻塞
+            log.warning(f'[cw-buy] 效果账本 BUY 计数失败(不阻塞): {e}')
     if _ok and isinstance(action, RefreshShop):
         # 刷新执行事实组接线(迁移批次二,设计 §3.3.6-§3.3.8;写入=仅逻辑,
         # 记录挂执行回执点 = 落地门,未落地不计数)。免费帧闸(§3.3.7 申报):
@@ -474,6 +488,16 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         record_refresh_execution(
             _bs, free=_free,
             frame=f'p{getattr(_cur, "plane", 1) or 1}-r{getattr(_cur, "round_num", 1) or 1}')
+        # 效果账本刷新计数推进(迁移批次三,§5.1「刷新=计数累加」;载体 =
+        # CounterKey.REFRESH,§5.3 采购专员族门槛 7/5 计数面)。同挂执行
+        # 落地门;best-effort 记录面。
+        try:
+            from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                CounterKey,
+            )
+            _bs.effects.bump_key(CounterKey.REFRESH)
+        except Exception as e:   # noqa: BLE001  记录面失败不阻塞
+            log.warning(f'[cw-buy] 效果账本 REFRESH 计数失败(不阻塞): {e}')
     if _ok and not _aop.terminal:
         _skip_guard = (isinstance(action, BuyCard)
                        and bench_occupied(_cur.bench) >= BENCH_CAPACITY)

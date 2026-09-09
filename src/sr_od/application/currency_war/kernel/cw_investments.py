@@ -373,6 +373,22 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=STRATEGY_ECONOMY['躺平'], duties=DutyFlags(track=True, respond=True),
         duration_nodes=3,
         notes='禁买+禁刷 3 节点后 +20 金'),
+    # 免战牌:官方「进入战斗节点时,直接跳过战斗并进入下一个节点,可生效2次。
+    # 获得30点经验。」(cw_invest_data.py:109,PlazaAugment 151301)。建模批件
+    # 落注册表条目(设计 §8.7 批次三件 5):次数类余量首例
+    # (duration_uses=2 → remaining_uses,§3.2.19 正本=effect_inventory
+    # .remaining_uses,§8.6-3),递减挂点 = 跳过执行落地(prep_actions
+    # _launch_attempt「按钮-跳过」成功回执),用尽移除。+30 经验 = 选牌当场
+    # 即时经验(§4 投资选择通用通道,xp_instant 词表;§5.2 显式豁免——即时
+    # 到账不入缺口清单,经观察覆盖收口)。trigger=NODE_ENTER(跳过发生在
+    # 进入战斗节点时点);归 STATE 族(发给自己的经验)而跳过机制本体由
+    # 次数余量维度承载,不占 BattlefieldEffect 改写载荷。
+    '免战牌': EffectSpec(
+        id='151301', name='免战牌', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.STATE,
+        payload=EconomyEffect(xp_instant=30), duties=DutyFlags(track=True),
+        duration_uses=2,
+        notes='跳过战斗×2(remaining_uses 正本);+30 经验选牌当场'),
 }
 
 

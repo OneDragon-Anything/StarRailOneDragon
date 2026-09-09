@@ -23,7 +23,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar
 
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
@@ -59,8 +59,17 @@ if TYPE_CHECKING:
 # 期 0b kernel/cw_strategy_session 的 SrContext 处理)。
 CurrencyWarConfig = 'CurrencyWarConfig'
 
+#: 策略器私有状态的泛型参数(设计正本 §1/§8.5/§8.6-6,迁移批次三「下沉
+#: 策略实现层」):StrategyState 归**策略实现层私有**,框架策略器基类仅以
+#: 泛型参数携带(本 ABC = 设计所称「策略器基类」,``BaseStrategy[TState]``
+#: 形态的落位),框架(kernel/one_dragon)不感知具体类型、零 import 具体
+#: 类——具体绑定由各策略实现在自己的类声明上完成(内置 =
+#: ``strategies/impl/mandate_v1/mandate_state.StrategyState``,经
+#: CwFlowStrategy 链绑定)。布局守卫 = sr-od-test 布局/泛型约束锁。
+_TState = TypeVar('_TState')
 
-class CwStrategy(ABC):
+
+class CwStrategy(ABC, Generic[_TState]):
     """一整套货币战争局内打法(可替换的决策大脑;/§11.3)。
 
     **无状态策略**:实例**不持有可变的每局状态**,所有跨步状态走 ``StrategySession``(框架每局
@@ -95,15 +104,17 @@ class CwStrategy(ABC):
         **唯一冷建口**(ADR-0583):策略器状态经 ``create_state`` 工厂在此接线
         (flow 具现),live 初值一并在此落位;不存在第二状态冷建路径。"""
 
-    def create_state(self, config: CurrencyWarConfig) -> object:
-        """策略器状态对象工厂(session.md as-designed §3.1/§5.1)。
+    def create_state(self, config: CurrencyWarConfig) -> _TState | None:
+        """策略器状态对象工厂(session.md as-designed §3.1/§5.1;设计正本
+        §8.5:返回类型 = 本策略实现的私有状态类型,经泛型参数 :data:`_TState`
+        承载,基类不感知具体字段)。
 
         每局冷建一局存活的策略器状态对象,写入 ``session.strategy_state``
         (黑盒契约:框架只搬运引用,不读不写内部;所有权归策略器)。
         **非 abstract 契约成员,基类缺省返回 None**(第三方兼容条款 B4,收缩
         口径见 ADR-0563:缺省 None 不炸构造与 create_session;工厂实现
         契约 = 可忽略 config/容忍 None——sim 注入桩面传 None);内置
-        mandate_v1 覆写返回 ``MandateState``。"""
+        mandate_v1 覆写返回其 StrategyState(改名归位,§8.6-6)。"""
         return None
 
     # ===== 分画面决策入口(ADR-0517 目标模型:op 的策略接触面 = 入口观察

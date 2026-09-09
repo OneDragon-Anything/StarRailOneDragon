@@ -2282,9 +2282,44 @@ class CwLoop(SrOperation):
             # ≥2 环零推进 = 观察断流诊断(log.warning 不停机,处置交既有
             # 守卫链)。纯采样零行为面。
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
                 note_board_state_heartbeat,
             )
             note_board_state_heartbeat(self.ctx)
+            # 效果账本节点 tick 挂点(迁移批次三,设计 §5.1「节点推进=倒计时
+            # 递减」/§8.4 用法块「进节点边界(备战帧观察后调用)」)。同节点
+            # 去重与登记当节点不推进的守卫都在 tick_node 内(键 = 节点序
+            # 快照);到期移除条目 = 尾款触发面,此处只做观测留证——尾款
+            # 金面走观察覆盖兜底(设计 §4.1 九卡纠偏:躺平类延迟金不经
+            # instant_gold 写字段,禁此处 logic 直写金币防双计)。best-effort:
+            # 账本推进失败不阻塞备战主链。
+            try:
+                _bs_tick = board_state_of(self.ctx.cw_match.session)
+                _nd_tick = _bs_tick.node.value
+                _ord_tick = ((_nd_tick.plane - 1) * 9 + _nd_tick.round_num
+                             ) if _nd_tick is not None else None
+                _adv, _ex_list = _bs_tick.effects.advance_node(_ord_tick)
+                for _ex_eff in _ex_list:
+                    log.warning('[cw!][effect] 效果到期移除:%s(尾款触发面;'
+                                '金面走观察覆盖兜底,设计 §4.1/§5.1)',
+                                _ex_eff.spec.name)
+                # 账本→字段桥(迁移批次三 B1,设计 §5.1/§3.3.5-6/§3.2.5):
+                # per_node 余额累加仅在真实推进时(每节点恰一次,闸门=
+                # advance_node advanced 位);容量投影每 pass 重锚(观察构造器
+                # 按默认容量建视图会覆盖投影值,备战帧观察后须回写)。均
+                # write_logic 记录面,best-effort 不阻塞备战主链。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    grant_effect_node_refresh_balance,
+                    project_effect_capacity,
+                )
+                if _adv:
+                    grant_effect_node_refresh_balance(
+                        _bs_tick,
+                        frame=f'p{_nd_tick.plane}-r{_nd_tick.round_num}'
+                        if _nd_tick is not None else '')
+                project_effect_capacity(_bs_tick)
+            except Exception as e:   # noqa: BLE001  观测面失败不阻塞
+                log.warning(f'[cw-loop] 效果账本 tick 失败(不阻塞): {e}')
             # 达标即出战臂(14号稿 §9.6,第七局复盘病灶:达标后 3 轮
             # RunDeploy 合法 no-op 靠守卫停机才重置):判据核 = kernel
             # ``readiness_launch_decision`` 单一源(sim 决策下沉两小批①

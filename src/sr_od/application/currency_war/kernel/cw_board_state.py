@@ -429,6 +429,83 @@ def record_refresh_execution(bs: BoardState, *, free: bool,
                        produced_by='RefreshShop', evidence=_ev)
 
 
+# ============================================================ 账本→字段桥(§5.1/§3.2.5/§3.3.5-6,迁移批次三 B1)
+
+def apply_effect_burst_grant(bs: BoardState, spec: Any, *,
+                             frame: str = '') -> None:
+    """桥·burst 形态(选卡一次性):登记时点把效果声明的免费刷新额度一次
+    性累加进余额(§3.3.5 burst 族:免费午餐 11/及时雨 4/固定理财即时段 2
+    等;载体 = payload.free_refresh_burst)。只在本挂点累加一次——「一次性」
+    语义由登记时点单次调用承载,其余挂点不得重复调本函数。
+
+    采样点 = 选卡登记挂点(CwScreenInvestStrategy 确认落地,登记成功后
+    紧随调用);写入 = write_logic(§3.3.6 余额写入=仅逻辑)。额度 0 或
+    payload 无此字段(如 BattlefieldEffect 族)= no-op。
+    """
+    n = int(getattr(getattr(spec, 'payload', None), 'free_refresh_burst', 0) or 0)
+    if n <= 0:
+        return
+    _ev = f'effect_burst@{frame}' if frame else 'effect_burst'
+    balance = bs.free_refresh_balance.value or 0
+    bs.write_logic(bs.free_refresh_balance, int(balance) + n,
+                   produced_by='EffectLedgerBridge', evidence=_ev)
+
+
+def grant_effect_node_refresh_balance(bs: BoardState, *,
+                                      frame: str = '') -> None:
+    """桥·per_node 形态(每节点 +N):节点边界一次,把全部在场条目声明的
+    每节点免费刷新额度累加进余额。载体两字段(§3.3.5):
+    EconomyEffect.free_refresh_per_node(加油站/搜打撤=1)+ BattlefieldEffect
+    .free_refresh_on_node_enter(双手狸开键盘!=2),payload 按鸭子属性读、
+    缺省 0(两族并存条目求和)。
+
+    采样点 = 节点 tick 挂点(cw_loop 备战分支),**仅在 advance_node 返回
+    advanced=True 时调用**(每节点恰一次,重复调用即双计);写入 =
+    write_logic(§3.3.6)。当前注册表活载体 = 双手狸(2/节点);固定理财
+    位面开始段(PLANE_START)不属本形态,未建模挂账不改本桥。
+    """
+    per_node = 0
+    for e in bs.effects.entries:
+        payload = e.spec.payload
+        per_node += int(getattr(payload, 'free_refresh_per_node', 0) or 0)
+        per_node += int(getattr(payload, 'free_refresh_on_node_enter', 0) or 0)
+    if per_node <= 0:
+        return
+    _ev = f'effect_per_node@{frame}' if frame else 'effect_per_node'
+    balance = bs.free_refresh_balance.value or 0
+    bs.write_logic(bs.free_refresh_balance, int(balance) + per_node,
+                   produced_by='EffectLedgerBridge', evidence=_ev)
+
+
+def project_effect_capacity(bs: BoardState) -> None:
+    """桥·容量投影(§3.2.5):按账本在册容量时限声明回写备战席容量——
+    激活期 capacity=N、条目到期移除后自动回默认 9。
+
+    声明契约:容量条目的 payload 携带 ``capacity_limit: int``(激活期容量;
+    注册表现零条目携带——§5.2 缺口登记「禁到注册表找规格」,载体归注册表
+    建模批候选,声明字段名由此钉死,首批容量条目入册即自动生效)。多声明
+    取 min(叠加收紧向)。当前零携带 → 投影恒等于默认 9(幂等 no-op,行为
+    与接线前逐位一致)。
+
+    采样点 = 备战帧观察后(cw_loop 备战分支,**每 pass 重锚**):观察构造器
+    (bench_view_from_obs)按默认容量建视图,会覆盖投影值,故观察后须重锚;
+    bench 从未观察(值 None)= 无容器可写,跳过(容量随 bench 首帧进入
+    记录)。建模批补首张容量条目时须同批补观察构造器的容量感知,防观察
+    覆盖 logic 值刷缺陷台账(本桥 docstring 即该义务的挂点)。
+    """
+    limits = [int(getattr(e.spec.payload, 'capacity_limit', 0) or 0)
+              for e in bs.effects.entries]
+    limits = [n for n in limits if n > 0]
+    target = min(limits) if limits else BENCH_CAPACITY_DEFAULT
+    view = bs.bench.value
+    if view is None or view.capacity == target:
+        return
+    bs.write_logic(bs.bench,
+                   BenchView(slots=list(view.slots), capacity=target),
+                   produced_by='EffectLedgerBridge',
+                   evidence='capacity_project')
+
+
 # ============================================================ 备战席观察写端(§3.2.5)
 
 
@@ -1019,7 +1096,11 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
       0 基下标 1:1 映射物理槽位(BenchChar → kind='unit',None → 'empty'),
       记录模型按实机真值箱占席——sim「无箱实体」只是内部口径约定,
       不进记录模型(占席谓词 = :func:`slot_occupies`,箱/秘典占席);
-    - at_round = 轮键('p{plane}-r{round}' 形,登记期快照)。
+    - at_round = 轮键('p{plane}-r{round}' 形,登记期快照);
+    - **payload 域离屏分支**(§2.2 例外,第 15 轮对抗审 C8 补):shop 真值
+      缺席 = 结构离屏(置 None+left_screen,等价 leave_screen);encounter/
+      supply 两域 sim 不建模,恒离屏口径——三 payload 域在合成帧恒反映
+      「当前画面事实」,禁旧 payload 连旧 evidence 残留。
     """
     _ev = f'{SIM_SYNTHESIZED}@{at_round}' if at_round else SIM_SYNTHESIZED
     # node_type None(裸 GameState 未建模该帧)不写 node——禁 'prep' 占位
@@ -1074,6 +1155,19 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
                  if st.refresh_probs else {})
         bs.observe(bs.shop, ShopPayload(cards=cards, refresh_probs=probs),
                    evidence=_ev)
+    else:
+        # 画面附加域离屏分支(§2.2 显式例外;第 15 轮对抗审 C8):sim 真值
+        # 帧无商店牌 = 「不在商店」的结构事实——非当前画面置 None(等价
+        # leave_screen,evidence=left_screen),禁沿用旧 payload 连旧 evidence
+        # (残留会把离屏帧误读成「商店仍开着」)。此为「空则不写」的漏申报
+        # 面补口:payload 域的语义 = 当前画面的 payload(§8.4)。
+        bs.leave_screen(bs.shop)
+    # encounter/supply 两 payload 域:sim 的 GameState 不建模这两域(attr
+    # 缺席 = sim 模型里结构离屏)——同口径置 left_screen,保持「三 payload
+    # 域在合成帧恒反映当前画面事实」的域语义;观察真值不进合成(sim 无
+    # 识别过程),禁合成假值。
+    bs.leave_screen(bs.encounter)
+    bs.leave_screen(bs.supply)
     if st.active_strategies:
         bs.observe(bs.active_strategies, list(st.active_strategies),
                    evidence=_ev)

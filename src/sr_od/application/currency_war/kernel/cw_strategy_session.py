@@ -162,11 +162,6 @@ class StrategySession:
     # 已持有投资策略(局中选,可多张;选卡 handler 采集,read_game_state
     # 拷贝到 state 供 _refresh_cap 等消费)。
     active_strategies: list[str] = field(default_factory=list)
-    # 在场效果清单:spec 注册表在 cw_investments.STRATEGY_EFFECTS,
-    # 机制 = ActiveEffectInventory(纯数据+读端)。写端现状仅升级挂点;
-    # 决策路径当前不读本字段(交付门约束)。
-    effect_inventory: ActiveEffectInventory = field(
-        default_factory=lambda: ActiveEffectInventory())
     # owned 穿戴池快照(ADR-0358):CwOpEquipAll 每轮 read_equips 后写;
     # _pseudo_state 拷入决策 state.equips → decisions 遥测可见。
     last_owned_equips: list[str] = field(default_factory=list)
@@ -226,10 +221,25 @@ class StrategySession:
     # 该四字段族零行为读端,零行为差申报见 ADR-0583 §2.5)。
     pending_round_outcomes: list[RoundOutcome] = field(default_factory=list)
     # —— 策略器状态黑盒引用(session.md §3.1 裁决 1)——
-    # 类型由实现包自定义(mandate_v1 = MandateState);框架经 create_state
-    # 工厂按局冷建、只搬运引用不识内部(所有权归策略器;生命周期 =
-    # 一局,局终随 session 销毁)。第三方策略未覆写 create_state → None
-    # (其策略器沿用惰性建模式;B4 兼容承诺的收缩口径 = 「缺省 None 不炸
-    # 构造与 create_session」,不承诺框架行为面读点容忍 None 态——
+    # 类型由实现包自定义(mandate_v1 = StrategyState,§8.6-6 改名归位);
+    # 框架经 create_state 工厂按局冷建、只搬运引用不识内部(所有权归策略器;
+    # 生命周期 = 一局,局终随 session 销毁)。第三方策略未覆写 create_state
+    # → None(其策略器沿用惰性建模式;B4 兼容承诺的收缩口径 = 「缺省 None
+    # 不炸构造与 create_session」,不承诺框架行为面读点容忍 None 态——
     # None 契约与调用方前提见 strategy_state_of docstring/ADR-0563)。
     strategy_state: object = None
+
+    # ---- 在场效果账本兼容读口(迁移批次三载体归一,设计 §5.1/§8.4)----
+    # 正本 = ``BoardState.effects``(§8.4 单例字段;session 旁表同局同实例)。
+    # 历史字段本体已从本类移除——原 ``session.effect_inventory`` 独立实例
+    # 与 BoardState.effects 并存即双账本漂移面,归一后本属性只读透传,
+    # 既有写点(prep_actions 升级标记)与读点(pick_bias)经属性零改动
+    # 兼容。禁赋值(无 setter):账本写入一律经 inventory 方法
+    # (register/tick/bump/consume_use/on_*),直挂实例 = 绕过单一实例。
+    @property
+    def effect_inventory(self) -> ActiveEffectInventory:
+        """在场效果清单兼容读口(正本 = BoardState.effects,§5.1/§8.4)。"""
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+        )
+        return board_state_of(self).effects
