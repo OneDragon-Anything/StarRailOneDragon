@@ -2037,7 +2037,7 @@ class CwScreenPrep(CwScreenOpBase):
         六段循环同调,自身**不触发**注册表——触发统一归
         :meth:`_act_execute` 分派面,防双计)。OpenShop = 流程层商店编排
         [spend 单元记账 + _open_shop_phase];其余 = 执行器 F3 验证链。
-        发射型(在册唯一成员 = 遭遇刷新计数,申报面见基类
+        发射型(在册成员 = F-3 裁决两件:遭遇/策略屏刷新计数,申报面见基类
         EMIT_TRIGGERED_DECLARED)由各自执行链在点击发射点经
         fire_emit_hooks 触发,不经本口。
 
