@@ -1161,6 +1161,21 @@ def check_phantom_equip_no_wear(rows: list[dict]) -> list[str]:
 
 
 
+def _pair_target_anchor(comp: str) -> frozenset[str] | None:
+    """过渡配方伪 comp 名 → 体系键锚集(非过渡配方名 → None=原子段)。
+
+    名格式 = ``'过渡配方·' + '+'.join(pair)``(cw_intention.pair_target_comp
+    单一构造点);锚集 = 拆 '+' 后的体系键集合。ADR-0616 §3.3 裁决②
+    (编排者 2026-09-10,T-166 批1 任务书前置裁决记录):门槛过滤先行
+    落地后,1 元对为在册边缘帧,合法新增「{A,B}→{A}→{A,B'}」席位退场/
+    补位链——同锚子集/超集转换是席位进出,不是方向切线,本函数是该
+    豁免的锚集解析半部。"""
+    prefix = '过渡配方·'
+    if not comp.startswith(prefix):
+        return None
+    return frozenset(comp[len(prefix):].split('+'))
+
+
 def check_degrade_recover_mutex(rows: list[dict]) -> list[str]:
     """批⑯ F5(degrade_recover_mutex;条件违规;ADR-0289 清偿)。
 
@@ -1180,6 +1195,14 @@ def check_degrade_recover_mutex(rows: list[dict]) -> list[str]:
     A 段末,r_c - r_b 必然 >3,摇摆全部漏判(实测三批 sim 档案
     重测,摇摆率被该缺陷低估约一半;检测器实现层缺陷,判据表
     语义无歧义:回锁 = 该配方首次重新出现之轮)。
+
+    同锚子集/超集转换豁免(ADR-0616 §3.3 裁决②,编排者解除该文件
+    「零改动」条款后落码;T-194 先例:语义修正保留守卫意图即合法):
+    过渡配方伪 comp 的体系键锚集互为子集/超集的相邻转换(席位退场/
+    补位链,{A,B}→{A}→{A,B'} 型,1 元对为 ADR §2.1 在册边缘帧)并入
+    前段延续——锚系未换,方向未切线,按段首语义并入不计新段;跨锚
+    转换(锚集不交或交叉非包含,如 {A,B}→{A,C} 二席换人)仍各立段
+    照判。守卫意图不变:A→B→A relapse 指纹与 ≤3 轮辖域零松动。
     """
     out: list[str] = []
     history: list[tuple[int, str]] = []   # (段首轮号, comp)
@@ -1190,10 +1213,19 @@ def check_degrade_recover_mutex(rows: list[dict]) -> list[str]:
         if not comp:
             continue
         rn = row.get('round_num') or 0
-        if history and history[-1][1] == comp:
-            # 同段延续:保留段首(首次出现轮),不取段末覆盖——
-            # 段末覆盖会把「回锁后稳定」段的 r_c 推远,漏判 relapse
-            continue
+        if history:
+            if history[-1][1] == comp:
+                # 同段延续:保留段首(首次出现轮),不取段末覆盖——
+                # 段末覆盖会把「回锁后稳定」段的 r_c 推远,漏判 relapse
+                continue
+            cur_anchor = _pair_target_anchor(comp)
+            last_anchor = _pair_target_anchor(history[-1][1])
+            if (cur_anchor is not None and last_anchor is not None
+                    and (cur_anchor <= last_anchor
+                         or last_anchor <= cur_anchor)):
+                # 同锚子集/超集转换 = 席位退场/补位,并入前段延续
+                # (段首轮号不更新,与前段同段判读;裁决②豁免语义)
+                continue
         history.append((rn, comp))
     for i in range(1, len(history) - 1):
         r_a, a = history[i - 1]

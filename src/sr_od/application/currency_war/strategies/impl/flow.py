@@ -443,12 +443,18 @@ class CwFlowStrategy(CwStrategy):
         # docstring);①锁局 locked_comp 优先,本分支不辖;P2+/空对不物化
         # (不越 ADR-0357 辖域)。
         if comp is None and state.plane == 1:
-            # P1 目标不空窗(经济冻结批):配方对退场帧(支持度掉出锁门槛/
-            # 断供驱逐重派生为空)不落 None——按 p1_early_pair 无门槛 top-2
-            # 方向物化(单一源=cw_intention.p1_early_pair,ADR-0372 买入门
-            # 同款读法:空窗期同样有方向,不该因为不够锁而没方向)。旧形态
-            # None → 消费者(部署/评分/准备域引擎)全盲,0 买 0 刷经济冻结
-            # (实机局 g_20260904_042657 p1r7-r9)。P1 外不辖(维持旧辖域:
+            # P1 目标不空窗(经济冻结批):配方对退场帧(p1_pair=() 空窗)
+            # 不落 None——按 p1_early_pair 方向物化(单一源=
+            # cw_intention.p1_early_pair;ADR-0372 买入门同款读法:空窗期
+            # 同样有方向,不该因为不够锁而没方向;实机局
+            # g_20260904_042657 p1r7-r9 经济冻结根)。旧形态 None →
+            # 消费者(部署/评分/准备域引擎)全盲,0 买 0 刷。
+            # **冻结语义衔接(ADR-0616 §2.2/§3.3 裁决①)**:F=True 帧
+            # update_intention 已把 p1_pair 钉在 frozen_pair(重派生抑制),
+            # 本段首选取 ist.p1_pair 即物化冻结方向,冻结期方向零漂移;
+            # 空窗帧的 early 面已并批在任纪律(同一夺席算子作用于无门槛
+            # 合格集,cw_intention.p1_early_pair 内聚,裁决① T-166 批1)
+            # ——本段只消费产出,不复制派生。P1 外不辖(维持旧辖域:
             # P2+ 终局线走 locked_comp / 强制 assignment 通道)。
             pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
                 or p1_early_pair(state, ist)
