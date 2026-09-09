@@ -1062,8 +1062,20 @@ def merge_buy_completes(name: str, star: int,
     判据 = 同名同星计数(备战栏+场上)+ 本次购买 ≥ 3(ADR-0453 允许条件,
     merge_mechanics §2.5);等价于 k == 3 − 已有数 mod 3。不满足 → 满栏
     照旧拒买(ADR-0283 守卫语义保留为兜底)。
+
+    own≥1 门(T-184,ADR-0619):own=0(全场 bench∪deployed
+    无同名同星)时合成买不成立,按满栏非合成买拒收——merge_mechanics
+    §2.5 的满栏例外以「已有素材/载体在场、买入可完成合成」为前提,
+    own=0 时首张买入既无空槽落位、也无进行中的合成可完成,游戏侧该
+    点击被拒(金不扣、牌不下架)。缺此门的旧形态:own=0+店内 3 张
+    误判可合成 → k=3 全为尾挂张、合成载体落 idx9 被 ``del bench[9:]``
+    截删,双账同错且共同偏离游戏拒买真值。边界:§2.5「连升同理」
+    (own=0 于基础星、栏满连买 3 张)为自标低置信口述未亲见,本门
+    按拒买语义实现;若拖动对账网实证连升可行,须回本单一源改门。
     """
     own = same_star_count(name, star or 1, bench, deployed) % 3
+    if own == 0:
+        return False
     k = merge_buy_k(name, star, bench, deployed, shop)
     return own + k >= 3
 
@@ -1079,7 +1091,10 @@ def _apply_full_bench_merge_buy(bench: list[BenchChar | None],
     该买完成一次合成(``merge_buy_completes``,不满足 = 满栏拒买,
     ADR-0283 兜底)。应用 = k = ``merge_buy_k`` 张临时挂槽位表尾参与
     ``_merge_bench``(3 合 1 是全场;own+k ≡ 0 mod 3,合成本身恒耗尽
-    尾挂张),截回定长 9。返回应用张数 k;前置不满足返回 None(调用方
+    尾挂张),截回定长 9。载体落点语义依赖 own≥1:own=1/2 时合成组
+    含场内张,载体落在 idx<9 或场上,截断不伤;own=0 域(全尾挂、
+    载体落 idx9 必被截删)由 ``merge_buy_completes`` 的 own≥1 门排除
+    (T-184,ADR-0619)。返回应用张数 k;前置不满足返回 None(调用方
     据此 no-op)。
 
     双账同构依据(T-182,2026-09-09 05:52 运行局双响事故):满栏时游戏
