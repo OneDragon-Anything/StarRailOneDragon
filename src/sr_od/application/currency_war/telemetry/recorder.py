@@ -4,7 +4,8 @@
 shop_snapshots/exec_events/invest_cards/obs_conflicts/runs)的写入端已随
 用户 2026-09-10 直迁裁定整段删除(处置表单一源 =
 docs/develop/currency_war/game_state/retirement.md §2;历史档案只读,
-判读面走 telemetry/query 与 cli 的旧视图,不迁移)。本模块保留:
+判读唯一读面 = telemetry/journal_query 新账视图族——W3 删旧读面后
+telemetry/query 只余纯函数单一源)。本模块保留:
 
 - TelemetryRecorder:进程级落盘根槽载体(replay_dir/enabled;测试经
   telemetry.state.set_recorder_replay_dir 换根,装配面语义不变)+ 缺陷

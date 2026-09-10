@@ -15,11 +15,14 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
 - **game_id 跨段继承**:段首帧非 (p1,r1) 起 = 续局,继承上一段所在局;
   game_id = 首段 run_id 时间戳派生(``g_YYYYMMDD_HHMMSS``)——纯数据派生,
   跨重启稳定,不依赖生成时进程状态。
-- **自包含切片**:档案内嵌该局全部关联 jsonl 行切片(decisions/outcomes/
-  shop_snapshots/exogenous/invest_cards/spend_ledger),``--match`` 视图
-  把切片物化到临时目录后走**同一套** query_* 视图函数——与 ``--run``
-  聚合输出保证一致(单一源,不建第二套视图实现)。
+- **自包含切片**:档案内嵌该局全部关联 jsonl 行切片(W3 起为 op_journal +
+  统一 state 新账两项;旧 12 流切片键已随删除波 1 写入端退役拆除——存量
+  档案 v12 及以前内嵌的旧流切片照常可读,裸数据归档只读),``--match``
+  视图把切片物化到临时目录后走 journal_query 视图族读新账。
   obs_conflicts.jsonl 例外:跨局 journal 无 run_id 键且体积大,不入切片。
+- **归局骨架(W3 起三源)**:journal 实机形态段(``run_YYYYMMDD_HHMMSS``,
+  过滤 sim/测试段——journal 单文件多写者,哨兵同口径)+ 旧流段(存量语料
+  重装配仍可归局);两源段按段首 ts 合并进同一时序插位。
 - **写盘原子性**:档案与 index 均 tmp 写入 + ``os.replace`` 原子改名,
   并发/中断读者不会读到半截 JSON。
 
@@ -34,6 +37,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import re
 import tempfile
 from collections import Counter
 from datetime import datetime
@@ -57,6 +61,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_s
 from sr_od.application.currency_war.telemetry.journal_query import (
     JOURNAL_REL,
     ROW_WRITE,
+    node_key_of,
     read_journal_stats,
     row_kind,
 )
@@ -158,14 +163,19 @@ _WATERMARK_NAME: str = '.watermark.json'
 
 # 结算屏真值链可信门槛 = HP_CONF_TRUSTED(query.py,单一源;语义与边界见其注释)
 
-#: 入切片的 jsonl 流(按 run_id 过滤;obs_conflicts 为跨局 journal 不入)。
-#: v12 起含统一 state 新账(R3-1 消费方迁移批):行带 run_id,同一过滤口径;
-#: 文件缺席(journal 常开后生产恒产,缺席 = 旧产物)= 空切片,读侧判「无对局产物」不判「丢数据」。
+#: 入切片的 jsonl 流(按 run_id 过滤)。W3(R5 直迁第三波):旧 12 流切片
+#: 键随删除波 1 写入端退役拆除——保留 op_journal(工程诊断保留流)与统一
+#: state 新账两项;旧流文件缺 = 空切片(存量档案内嵌切片不受影响,裸数据
+#: 归档只读可考古)。
 _SLICE_FILES: tuple[str, ...] = (
-    'decisions.jsonl', 'outcomes.jsonl', 'shop_snapshots.jsonl',
-    'exogenous.jsonl', 'invest_cards.jsonl', 'spend_ledger.jsonl',
     'op_journal.jsonl', 'state/journal.jsonl',
 )
+
+#: journal 段归局的 run_id 实机形态(段过滤单一判据;与哨兵脚本组
+#: cw_sentinel/cw_runs_gap/cw_early_stop 的 RUN_ID_RE 同口径——journal
+#: 单文件多写者,sim/测试段 fake_/sim_ 前缀与 harness 短 id 段不采信,
+#: T-257 实证 live journal 混有 sim fake 段)。
+_JOURNAL_RUN_ID_RE = re.compile(r'^run_[0-9]{8}_[0-9]{6}$')
 
 #: 行为观测计数流(cw4_counters 局终快照;跨局 journal 无 run_id——
 #: 归局靠 ts 时间窗匹配,故不进按 run_id 过滤的 _SLICE_FILES)
@@ -305,7 +315,7 @@ def _first_frame_key(rows: list[dict[str, Any]], run_id: str) -> tuple[int, int]
 
 
 def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
-    """按局分组全量段(outcomes 首现序为骨架,决策独有段按段首 ts 插回时序位)
+    """按局分组全量段(journal 实机段 + 旧流段三源骨架,段首 ts 插回时序位)
     → 有序列表。
 
     返回元素:``{game_id, segments: [run_id...], start_ts, end_ts}``。
@@ -315,25 +325,42 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
     plane/round/hp 连续性只作复核素材,不作分组判据(首帧判据已覆盖
     实证形态;连续性兜底留给未来出现「续局段恰好从 (p1,r1) 误读起」时)。
 
-    时序插位(v11 修,ADR-0615):旧法把决策独有段(零结算段)排序后整体
-    **补尾**,续局归组「并入 games[-1]」无时序门 → 该段被错组到时间上晚于
-    它的最后一局名下(实证:run_20260908_210431 曾被组到比其段末帧晚 8.5
-    小时的 g_20260909_053235 名下,锚点档案 g_20260908_165445 静默丢段)。
-    按段首 ts(跨 decisions/outcomes 两流最小值)插回时序位后,后继带
-    outcome 新局入流不再夺走前局的续段。边界:段首 ts 缺失(空串)的段
-    无法比较,保持补尾退化(旧行为);同 ts 平手按 run_id 字典序保确定性。
+    段骨架三源(W3):journal 实机形态段(唯一活账;`_JOURNAL_RUN_ID_RE`
+    过滤 sim/测试段)+ outcomes 首现序 + decisions 独有段——journal 时代
+    旧流恒空(删除波 1 停写),历史目录重装配走旧流段路径,新局全走
+    journal 段路径;两源段按段首 ts 统一插位,去重(journal 段优先)。
+    时序插位(v11 修,ADR-0615):旧法把决策独有段排序后整体**补尾**,
+    续局归组「并入 games[-1]」无时序门 → 该段被错组到时间上晚于它的最后
+    一局名下(实证:run_20260908_210431 曾被组到比其段末帧晚 8.5 小时的
+    g_20260909_053235 名下,锚点档案 g_20260908_165445 静默丢段)。按段首
+    ts(跨源最小行 ts)插回时序位后,后继带 outcome 新局入流不再夺走前局
+    的续段。边界:段首 ts 缺失(空串)的段无法比较,保持补尾退化(旧行为);
+    同 ts 平手按 run_id 字典序保确定性。
     """
     outcomes = read_jsonl(Path(replay_dir) / 'outcomes.jsonl')
     decisions = read_jsonl(Path(replay_dir) / 'decisions.jsonl')
     runs = read_jsonl(Path(replay_dir) / 'runs.jsonl')
+    # 新账段(W3 唯一活账;宽容消费单一源 read_journal_stats,同流两读法
+    # 两契约曾致装配端崩——R3.1 落地审 F1;只采实机形态段,见常量注)
+    jrows, _jstats = read_journal_stats(replay_dir)
+    j_seg_order = [rid for rid in _journal_run_order(jrows)
+                   if _JOURNAL_RUN_ID_RE.match(rid)]
+    j_first_ts: dict[str, str] = {}
+    j_first_frame: dict[str, tuple[int, int] | None] = {}
+    for rid in j_seg_order:
+        seg_rows = [r for r in jrows if r.get('run_id') == rid]
+        ts_list = sorted(_row_ts(r) for r in seg_rows if _row_ts(r))
+        j_first_ts[rid] = ts_list[0] if ts_list else ''
+        j_first_frame[rid] = _journal_first_frame(seg_rows)
     # 段出现序骨架:outcomes 首现序
     seg_order: list[str] = []
     for o in outcomes:
         rid = o.get('run_id')
         if rid and (not seg_order or seg_order[-1] != rid) and rid not in seg_order:
             seg_order.append(rid)
-    # 段首 ts 单遍账(run_id → 最小行 ts;跨 decisions/outcomes,排序与插位共用)
-    _first_ts: dict[str, str] = {}
+    # 段首 ts 单遍账(run_id → 最小行 ts;跨 decisions/outcomes/journal,
+    # 排序与插位共用;journal 段 ts 预先入账)
+    _first_ts: dict[str, str] = dict(j_first_ts)
     for r in (*decisions, *outcomes):
         _rid = r.get('run_id')
         _ts = _row_ts(r)
@@ -343,8 +370,11 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
         if _cur is None or _ts < _cur:
             _first_ts[_rid] = _ts
     known = set(seg_order)
-    extra = sorted((r for r in {d.get('run_id') for d in decisions}
-                    if r and r not in known),
+    # 插位候选 = 旧流决策独有段 ∪ journal 实机段(与骨架段去重;按段首 ts
+    # 时序插位)
+    extra = sorted(({r for r in {d.get('run_id') for d in decisions}
+                     if r and r not in known}
+                    | {r for r in j_seg_order if r not in known}),
                    key=lambda r: (_first_ts.get(r, ''), r))
     for rid in extra:
         _rid_ts = _first_ts.get(rid, '')
@@ -358,7 +388,9 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
         seg_order.insert(_pos, rid)
     games: list[dict[str, Any]] = []
     for rid in seg_order:
-        fk = _first_frame_key(decisions, rid) or _first_frame_key(outcomes, rid)
+        fk = (_first_frame_key(decisions, rid)
+              or _first_frame_key(outcomes, rid)
+              or j_first_frame.get(rid))
         is_continuation = (fk is not None and fk != (1, 1)) and bool(games)
         if is_continuation:
             games[-1]['segments'].append(rid)
@@ -368,9 +400,41 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
         segs = set(g['segments'])
         all_ts = sorted(_row_ts(r) for src in (decisions, outcomes, runs)
                         for r in src if r.get('run_id') in segs and _row_ts(r))
+        # journal 段行 ts 并入起止窗(旧流停写后新局的段窗唯一来源)
+        all_ts += [j_first_ts[rid] for rid in sorted(segs)
+                   if j_first_ts.get(rid, '')]
+        all_ts.sort()
         g['start_ts'] = all_ts[0] if all_ts else ''
         g['end_ts'] = all_ts[-1] if all_ts else ''
     return games
+
+
+def _journal_run_order(jrows: list[dict[str, Any]]) -> list[str]:
+    """journal 行流内的段首现序(段 = run_id 变化处开新段;保序去重)。"""
+    order: list[str] = []
+    for r in jrows:
+        rid = r.get('run_id')
+        if rid and rid not in order:
+            order.append(rid)
+    return order
+
+
+def _journal_first_frame(seg_rows: list[dict[str, Any]],
+                         ) -> tuple[int, int] | None:
+    """journal 段首帧键(段内最早带节点派生的行的 node 键;与旧流首帧判据
+    同型——(p1,r1) = 新局)。行 ts 升序取首;无节点行(纯 receipts/事件段)
+    = None(判新局,保守——续局段恒带备战帧节点)。"""
+    best: tuple[str, tuple[int, int]] | None = None
+    for r in seg_rows:
+        ts = _row_ts(r)
+        if not ts:
+            continue
+        if best is not None and ts >= best[0]:
+            continue
+        key = node_key_of(r)
+        if key is not None:
+            best = (ts, key)
+    return best[1] if best else None
 
 
 def _load_slice(replay_dir: Path, segments: set[str]) -> dict[str, list[dict[str, Any]]]:
@@ -425,8 +489,8 @@ def _annotate_orphan_op_rows(rows: list[dict[str, Any]] | None) -> None:
 
 def _best_decision_frame(dec_rows: list[dict[str, Any]],
                          key: tuple[int, int]) -> dict[str, Any] | None:
-    """同轮取 actions 最多、并列取 ts 最晚的决策帧(口径与
-    ``query._load_decisions_rounds`` 一致,档案装配自持一份避免私有函数耦合)。"""
+    """同轮取 actions 最多、并列取 ts 最晚的决策帧(档案装配自持一份,
+    不与判读读面共享私有函数)。"""
     best: dict[str, Any] | None = None
     for d in dec_rows:
         try:
@@ -816,9 +880,9 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     返回:(rounds, loss_nodes, boundaries, hp_pay_defects)。boundaries =
     {run_id: {unexplained_delta, consumed_by_chain}}(v9 段界重锚差显影)。
     """
-    dec = slice_rows['decisions.jsonl']
-    outs = slice_rows['outcomes.jsonl']
-    snaps = slice_rows['shop_snapshots.jsonl']
+    dec = slice_rows.get('decisions.jsonl') or []
+    outs = slice_rows.get('outcomes.jsonl') or []
+    snaps = slice_rows.get('shop_snapshots.jsonl') or []
     keys: set[tuple[int, int]] = set()
     for r in dec + outs:
         try:
@@ -879,10 +943,11 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     node_type_by_key: dict[tuple[int, int], str | None] = {}
     for key in sorted(keys):
         frame = _best_decision_frame(dec, key)
-        # 同轮全帧动作合并(流内序;口径同 query._load_decisions_rounds):
+        # 同轮全帧动作合并(流内序;口径以本实现为唯一载体,判读读面不共享):
         # 代表帧只承载字段展示,动作计数不能只看代表帧——载体帧与决策帧
         # 同为单动作时「并列取末帧」让载体帧胜出,该轮买/升/刷全计 0
-        # (实证 g_20260903_232823 p1r1/r2;计划口径边界同 query 侧 docstring)。
+        # (实证 g_20260903_232823 p1r1/r2;计划口径边界见 query.plan_gold_flow
+        #  docstring「口径边界」)。
         round_actions: list[dict[str, Any]] = []
         for d in dec:
             try:
@@ -1043,7 +1108,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
     # 的物理先序,F5① tiebreaker);结算/回落保持 v8 遍历序 = 单段局(无
     # 事件/无重锚形态)逐字节退化的技术前提。
     event_items: list[dict[str, Any]] = []
-    for r in slice_rows['exogenous.jsonl']:
+    for r in slice_rows.get('exogenous.jsonl') or []:
         if (r.get('kind') or '') != 'hp_pay':
             continue
         ch = r.get('choice') or {}
@@ -1166,8 +1231,8 @@ def _resume_reconciliation(segments: list[str],
     - 单段局 / 无续局段 → 空列表(判读「无恢复事件」与「未装配」以
       schema_version ≥ 6 区分)。
     """
-    dec = slice_rows['decisions.jsonl']
-    outs = slice_rows['outcomes.jsonl']
+    dec = slice_rows.get('decisions.jsonl') or []
+    outs = slice_rows.get('outcomes.jsonl') or []
     by_seg: dict[str, list[dict[str, Any]]] = {}
     for d in dec:
         rid = d.get('run_id')
@@ -1310,12 +1375,12 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         rd, slice_rows, segments, result)
     seg_summaries = [
         {'run_id': rid,
-         'first_frame': _first_frame_key(slice_rows['decisions.jsonl'], rid)
-         or _first_frame_key(slice_rows['outcomes.jsonl'], rid),
+         'first_frame': _first_frame_key(slice_rows.get('decisions.jsonl') or [], rid)
+         or _first_frame_key(slice_rows.get('outcomes.jsonl') or [], rid),
          'summary': runs_by_seg.get(rid),
          # 零结算段自标识(v11 加法,见 _settlement_gap;非零结算段键缺省)
-         **_settlement_gap(slice_rows['decisions.jsonl'],
-                           slice_rows['outcomes.jsonl'], rid,
+         **_settlement_gap(slice_rows.get('decisions.jsonl') or [],
+                           slice_rows.get('outcomes.jsonl') or [], rid,
                            runs_by_seg.get(rid))}
         for rid in segments]
     # 孤立续局(本段是续局但上一局不在库)留痕:首段首帧非 (p1,r1)
@@ -1360,11 +1425,11 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         'loss_nodes': loss_nodes,
         # hp 变化事件显影列(v9 加法,装配端纯读;旧档案恒空 = 采集面修复
         # 只及新局)与 modeled 期望账对账偏差列(v9 加法,留证不阻塞)
-        'hp_events': _hp_pay_events(slice_rows['exogenous.jsonl']),
+        'hp_events': _hp_pay_events(slice_rows.get('exogenous.jsonl') or []),
         'hp_pay_defects': hp_pay_defects,
         # 离场事件派生列(v10 加法,ADR-0605;装配端纯读,旧档案重装配补齐):
         # 执行期 deploy 换血卖出逐件落账缺口(075840 Saber 实锤)的判读面。
-        'departures': _derive_departures(slice_rows['decisions.jsonl'],
+        'departures': _derive_departures(slice_rows.get('decisions.jsonl') or [],
                                          segments),
         'opening': _build_opening(slice_rows, runs_by_seg),
         'endgame': {'result': result or 'abandoned',
@@ -1376,7 +1441,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                     # 局级终局快照(M2 增强批 ③;None=零决策迹局):
                     # 终局阵容/金/等级,取值口径见 _final_snapshot。
                     'final_snapshot': _final_snapshot(
-                        slice_rows['decisions.jsonl']),
+                        slice_rows.get('decisions.jsonl') or []),
                     # 局终行(局终域识别,R5 W2;None=末段无局终行):
                     # runs 收编载体的档案显影位,局边界判定读此键。
                     'match_final': match_final_view(
@@ -1389,9 +1454,9 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
 def _build_opening(slice_rows: dict[str, list[dict[str, Any]]],
                    runs_by_seg: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """开局面:词缀/难度/投资卡简报(invest_cards 全行带 chosen 位)。"""
-    briefing = [r for r in slice_rows['exogenous.jsonl']
+    briefing = [r for r in slice_rows.get('exogenous.jsonl') or []
                 if (r.get('kind') or '') == 'briefing']
-    invest = slice_rows['invest_cards.jsonl']
+    invest = slice_rows.get('invest_cards.jsonl') or []
     return {
         'difficulty': next((r.get('difficulty') for r in runs_by_seg.values()
                             if r.get('difficulty')), ''),

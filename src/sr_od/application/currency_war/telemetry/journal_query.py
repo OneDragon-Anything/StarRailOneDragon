@@ -5,9 +5,9 @@
 正本面 = ``docs/develop/currency_war/game_state/journal.md`` §5/§7;设计
 工作稿存 .debug/temp 为易失档,禁作正本指针):判读/装配/策略回溯 = 按行
 直接读(单行自足);跨行对照 = 行间差分(人读/离线),**零机制化重放**。
-本模块 = 旧 12 流读面(:mod:`telemetry.query` 十三视图)之外的「读新账」读面,
-两读面并存(journal.md §7 并存期:旧视图只读保留至 M5);判读 CLI 经
-``--source journal`` 选择本读面。
+本模块 = 统一 state 新账的**唯一**判读读面(W3 起,正本 =
+r5-migration-plan.md §2 W3:journal 为唯一被读账本;旧 12 流视图族已随
+删除波 1 写入端退役拆除);判读 CLI query 命令唯一走本读面。
 
 行模型(journal.md §1 两行型,写端 = kernel/cw_board_state ``_swap``/
 ``note_obs_event``,落盘 = kernel/cw_state_journal 批量 flush 追加 JSONL):

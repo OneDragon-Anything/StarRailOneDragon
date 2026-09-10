@@ -16,8 +16,8 @@
 前置/种子复核核 = sim/checks/selfcalc(检查器迁移面同吃);D2/D7/D8/
 D9 = 段级检查器函数直接复用(现函数逻辑即检测器);D6 语境条目 =
 机械不复算(时序歧义),只打包邻近轮意向交复盘者。输入形状与段级
-检查器同构(``rows: list[dict]``),生产数据入口 =
-``ledger_hooks.merge_round_rows`` 合并行。
+检查器同构(``rows: list[dict]``),输入 = 按 (plane, round, ts) 合并
+排序后的账本轮行。
 """
 
 from __future__ import annotations
@@ -330,7 +330,7 @@ def d5_seed_resell_scope(rows: list[dict]) -> list[dict]:
 
     「≤2 轮」窗口轴 = **行序单调轴**(ADR-0593 后果.5(L3)):round_num 是
     位面内编号跨位面重启(cw_state 注),行输入本就按 ts 单调排序
-    (sim 轮装配 ts 递增/生产 merge_round_rows 按 (plane,round,ts)),
+    (sim 轮装配 ts 递增/生产账本行按 (plane,round,ts) 排序),
     行下标差即全局轮距——位面间紧邻(如 p1 末轮买→p2 r1 卖)不漏报,
     跨面远距不再因编号回绕产生假阳。
     """

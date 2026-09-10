@@ -869,8 +869,7 @@ def check_observation_keys_live(rows: list[dict]) -> list[str]:
     判据(结构锁,非行为锁):P1 段每行账本必须带三个观测硬依赖键,
     且形状合法——
     - ``state.bench_full_flag``:bool(满栏旗标;消费 = 锁#10 D1 弱序
-      量产对账;缺键/None = 写端断线,生产 merge_round_rows 读端会
-      静默退 0);
+      量产对账;缺键/None = 写端断线,下游读端会静默退 0);
     - ``state.board_next_tier``:dict[str, int](Δp_tier 档位分解标定
       前置键;值域 2-12 = FACTIONS tier 阈值域);
     - ``sim.alloc_frame``:None 或含 active/domain 的 dict,active=True

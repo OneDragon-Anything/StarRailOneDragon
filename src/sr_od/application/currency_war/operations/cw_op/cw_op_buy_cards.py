@@ -415,6 +415,12 @@ class BuyCardsOutcome:
     buy_unidentified: bool
     buy_pre_bench: list[BenchChar]
     buy_pre_deployed: list[BenchChar]
+    # [索引定义] visit_actions = 本访问段发射过的动作对象列表(list 下标 =
+    # 发射序,先进先出;元素 = 真实 Action 实例,含未落地动作);取值时机 =
+    # run_buy_waves 出口快照(单元收口后不再变)。消费方 = 安灯执行失败
+    # 停机钩子(W3/T-255:serialize_action 后喂 classify_spend_unit 单一源,
+    # 替代已停写的 decisions plan 行读面)。
+    visit_actions: list
 
 
 def apply_action_outcome(_aop: 'ShopActionOp',
@@ -1120,7 +1126,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         buy_purchases=ledger.buy_purchases, buy_has_sell=ledger.buy_has_sell,
         buy_unidentified=ledger.buy_unidentified,
         buy_pre_bench=_buy_pre_bench,
-        buy_pre_deployed=_buy_pre_deployed)
+        buy_pre_deployed=_buy_pre_deployed,
+        visit_actions=visit_actions)
     return None, outcome
 
 

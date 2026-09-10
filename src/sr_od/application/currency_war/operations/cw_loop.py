@@ -1046,8 +1046,8 @@ class CwLoop(SrOperation):
         self._cw_back_btn_count: int = 0
         # (策略失活早停状态对 _cw_strategy_dead_streak/_cw_dead_prev_key 已随
         #  decisions 流写入端退役删除——删除波 1:数据源(决策行)停写后
-        #  新局恒「零心跳行」,检查保留会误杀每一局;消费面退役与数据源
-        #  同批,离线检查网(run_checks_on_replay)仍可判存量语料。)
+        #  新局恒「零心跳行」,检查保留会误杀每一局;消费面与离线检查网
+        #  随数据源同批退役,存量语料判读走判读 CLI 新账视图/按局档案。)
         # 备战收益耗尽出战臂(ADR-0554)状态:上一备战环 success(判据输入,
         # CwScreenPrep 返回后写)+ 发射失败连击(与达标臂 _cw_readiness_fail_n
         # 同构,达 3 放弃短路回落守卫停机)。
@@ -1436,6 +1436,39 @@ class CwLoop(SrOperation):
             # 内,晚于 end_ts 会掉窗丢计数;契约见 match_archive.record_-
             # cw4_counters_snapshot 注释)。best-effort,不阻塞收口。
             self._record_cw4_counters_snapshot()
+            # match_final 局终收口行(W3 在线接线,非正常终局形态;判定序
+            # 停止>败局>plane==3>abnormal 与 close_run result 同源;写口
+            # 段内幂等 G12,best-effort;先于 close_run 落局时间窗)。
+            try:
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
+                    write_match_final,
+                )
+                from sr_od.application.currency_war.obs.cw_observation import (
+                    resolve_final_type,
+                )
+                _mf_type = resolve_final_type(
+                    stop_requested=_stopped,
+                    saw_defeat=self._settle.saw_defeat_settlement,
+                    plane_reached=(_st.plane if _st is not None else 1),
+                    rounds_played=_has_outcome)
+                _mf_session = (getattr(_m, 'session', None)
+                               if _m is not None else None)
+                _mf_bs = (board_state_of(_mf_session)
+                          if _mf_session is not None else None)
+                if _mf_bs is not None and _mf_type is not None:
+                    write_match_final(
+                        _mf_bs, final_type=_mf_type,
+                        plane=(_st.plane if _st is not None else 1),
+                        round_num=(_st.round_num if _st is not None else 1),
+                        hp=(int(_final_hp) if _final_hp else None),
+                        gold=getattr(_st, 'gold', None) if _st is not None else None,
+                        streak=getattr(_st, 'streak', None) if _st is not None else None,
+                        backfilled=(_mf_type == 'abnormal'),
+                        note=('online:w75_stopped' if _stopped
+                              else 'online:w75_abandoned'))
+            except Exception as e:   # noqa: BLE001  观测旁路,不阻塞收口
+                log.warning('[cw][loop] match_final 收口行写入失败(不阻塞): %s', e)
             state.close_run(
                 result='stopped' if _stopped else 'abandoned',
                 plane_reached=_st.plane if _st is not None else 1,
@@ -2505,8 +2538,8 @@ class CwLoop(SrOperation):
             # 稳定门退役后挂点 = 干净备战观察;见 cw_screen_prep._run_loop 采集块)。
             # (策略失活早停块已随 decisions 流写入端退役删除——删除波 1:
             #  心跳决策行停写后新局恒「零心跳行」,检查保留 = 误杀每一局;
-            #  消费面与数据源同批退役,存量语料判读走离线检查网
-            #  run_checks_on_replay,dd-031 判据单一源 = telemetry/query。)
+            #  消费面、数据源与离线失活判据族同批封闭退役,现役防线 =
+            #  哨兵 journal 面断流探测(skills 侧 cw_sentinel)。)
             # 迁移审计 w62(git 历史) 件1(ADR-0329):恢复局(locked-resume)检测与直接出战。
             # 判据(设计章1.2)= 新 match(无本局记录)+ 首个备战相位 round>1 → 候选;
             # 一次「点商店→验收起」探针(章1.3)区分锁定/未锁(锁定唯一可观测特征
@@ -2779,10 +2812,46 @@ class CwLoop(SrOperation):
                                   and _st.hp is not None else 0),
                     )
                     self._allocator_update(_outcome)
+                    # match_final 局终收口行(W3 在线接线,W2 落地审 §⑤
+                    # 遗留义务;runs 断流探测与判读的唯一收口证据源):
+                    # 在线判定面单一源 = resolve_final_type(判定序
+                    # 停止>败局>plane==3 精确值>abnormal,与本地 won 判定
+                    # 同口径);写口自带段内幂等查重(G12),best-effort
+                    # 不阻塞收口流转。先于 close_run(行 ts 落局时间窗,
+                    # 同 cw4 计数行时序契约)。
+                    try:
+                        from sr_od.application.currency_war.kernel.cw_board_state import (
+                            board_state_of,
+                            write_match_final,
+                        )
+                        from sr_od.application.currency_war.obs.cw_observation import (
+                            resolve_final_type,
+                        )
+                        _mf_type = resolve_final_type(
+                            stop_requested=bool(getattr(
+                                self.ctx.run_context, 'is_context_stop',
+                                False)),
+                            saw_defeat=_died_this_run,
+                            plane_reached=_outcome.final_plane,
+                            rounds_played=True)
+                        _mf_bs = board_state_of(self.ctx.cw_match.session)
+                        if _mf_bs is not None and _mf_type is not None:
+                            write_match_final(
+                                _mf_bs, final_type=_mf_type,
+                                plane=_outcome.final_plane,
+                                round_num=_outcome.final_round,
+                                hp=(_outcome.final_hp
+                                    if _outcome.final_hp else None),
+                                gold=getattr(_st, 'gold', None),
+                                streak=getattr(_st, 'streak', None),
+                                note='online:lobby_return')
+                    except Exception as e:   # noqa: BLE001  观测旁路
+                        log.warning('[cw][loop] match_final 收口行写入失败'
+                                    '(不阻塞): %s', e)
                     # run 收口(删除波 1:runs summary 写行随旧流写入端退役;
                     # close_run 零落盘,置跨局 run_id 重铸位)。B4 的 outcome
                     # 真值同源喂分配器;局终元数据 journal 归宿 = 局终域
-                    # match_final 行(写点接线归后续批)。
+                    # match_final 行(上方 W3 在线接线)。
                     # 行为观测计数落盘(先于 run 收口,时序契约同上行收口路径)。
                     self._record_cw4_counters_snapshot()
                     state.close_run(
