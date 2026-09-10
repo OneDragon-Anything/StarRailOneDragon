@@ -33,6 +33,9 @@ from sr_od.application.currency_war.kernel.cw_launch_admission import (
     offtarget_sell_allowed,
     protect_names_of,  # noqa: F401  re-export 兼容(测试/既有消费路径)
 )
+from sr_od.application.currency_war.kernel.cw_overlay_registry import (
+    derive_decision,
+)
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
@@ -363,6 +366,19 @@ class CwOpDeploy(SrOperation):
         '幻影满板矛盾帧(CV 采样无空槽 ∧ 仲裁值未达 cap)'
     STATUS_LANDED_NONE: ClassVar[str] = \
         '部署未落地(计划非空但 placed=0,失败帧已存证)'
+    # T-277 新增(T-268 治本/DD-037 修订,ADR-0601 §4-7 枚举):遮蔽域
+    # 落地判定 UNKNOWN——拖拽落地验证窗被部署自身触发的 decision
+    # overlay 遮蔽(列车同行跨档部署触发「选择伙伴」为驱动形态,两例
+    # 实机归因持久收编 = DD-037 修订节「背景」),像素
+    # 判据双向无发言权 ⇒ 既不判成功也不判「无效拖拽」,以具名状态经
+    # gate_fail 通道 round_fail 交框架失败链——下一轮 cw_loop 0 系
+    # overlay 分支接管(CwScreenPartner 处置)→ 再下轮重派发(去重 →
+    # NOOP 收敛)。**槽位不回收、计数不回滚、剩余单位留 bench**;批内
+    # 已落地件如实保留故 placed 可 >0(非「闸返回恒 placed=0」的失配
+    # 闸形态)。收敛责任 = 既有守卫指纹制(prep_no_progress_state_
+    # fingerprint,cw_loop):UNKNOWN 轮正常计数,恒指纹 3 环停机兜底。
+    STATUS_LANDING_VERDICT_UNKNOWN: ClassVar[str] = \
+        '落地判定未知(部署触发遮蔽,槽位不回收,0a/overlay 分支接管)'
     # T-174 新增(ADR-0610,dd-037 契约:出口状态可区分,判读侧分键):
     # 出口不变量断言失败具名状态(成功出口 DEPLOYED/NOOP 收尾复验 +
     # NO_BENCH 早退点复验「上阵 ≥1 ⇒ 前排≥1」,不过时的 fail 形态;
@@ -457,13 +473,22 @@ class CwOpDeploy(SrOperation):
         # 第一道);本检查降级为窗口期第二道执行断言,不升 guard_screen
         #(deploy 派发不带回环守卫,test_cw_t163_popup_dispatch 边界申报锁
         # 语义不变)。
-        for _scr, _area in (('货币战争-盛会之星', '标识-盛会之星'),
-                            ('货币战争-列车同行', '标识-选择伙伴'),
-                            ('货币战争-祈愿试炼', '标识-祈愿试炼')):
-            if self.round_by_find_area(self.last_screenshot, _scr, _area, crop_first=False).is_success:
-                log.warning(f'[cw!][deploy] 事件 overlay({_scr})在 → 执行断言 fail(重判归分发层)')
+        # T-277(T-268 治本 G3):检查集从硬编码三屏扩为 registry
+        # ``derive_decision()`` 全集(单一源,删第二份清单;9 条 ⊇ 旧三屏,
+        # 纯收紧)——旧三屏漏检 registry 内其余 decision overlay(实机
+        # 09-08 16:58 变体:「请选择投资策略」在场时 deploy 三次拖拽全空耗,
+        # 投资策略恰在 registry 内故被本批补上)。**口径 = registry 内**,
+        # 不等于第一道(0 系分派锚表)口径:选择装备/骇入策划/命运卜者
+        # 强化/位面详情等 registry 外 overlay 屏在本检查仍漏检(已知残余,
+        # 口径申报见 docs/develop/currency_war/flow/action_exec.md §5 前置节)。
+        for _spec in derive_decision():
+            if self.round_by_find_area(self.last_screenshot, _spec.screen_name,
+                                       _spec.anchor_area,
+                                       crop_first=False).is_success:
+                log.warning(f'[cw!][deploy] 事件 overlay({_spec.screen_name})'
+                            '在 → 执行断言 fail(重判归分发层)')
                 return self.round_fail(
-                    f'{CwOpDeploy.STATUS_EVENT_OVERLAY}({_scr})')
+                    f'{CwOpDeploy.STATUS_EVENT_OVERLAY}({_spec.screen_name})')
 
         bench = self._row_centers('备战栏')
         save_decision_frame(self, 'deploy', self.last_screenshot)   # 识别完成点原始帧留证(部署仲裁基准)
@@ -698,7 +723,13 @@ class CwOpDeploy(SrOperation):
         #    (交框架失败链,不再 ✓ 蒙混);③ placed>0 = 真部署,STATUS_DEPLOYED。
         # ④ 入口失配闸命中(ADR-0601 §3)= 具名失配状态 round_fail,且在闸
         #    返回点**立即 return**(见 _deploy_deterministic 调用后分支)——
-        #    先于①②③判定,闸返回恒 placed=0,不会被 NOOP 分支吞掉。
+        #    先于①②③判定,失配闸形态 placed=0,不会被 NOOP 分支吞掉。
+        # ⑤ 遮蔽域落地判定 UNKNOWN(T-277,T-268 治本;DD-037 修订四态出口)
+        #    = STATUS_LANDING_VERDICT_UNKNOWN round_fail,同 gate_fail 通道
+        #    立即 return——**可带 placed>0**(批内已落地件如实保留:槽位不
+        #    回收/计数不回滚),本注释块旧断言「闸返回恒 placed=0」对 UNKNOWN
+        #    形态过期(T-268 R2 确认轮 F-5④ 锚点勘误:该断言原位即本注释块,
+        #    非 L1086-1088 批内动态停区)。
         if _placed == 0:
             if _plan_empty:
                 # 文案口径(T-167 连带修正):「发射方同源谓词抑制」
@@ -1299,9 +1330,22 @@ class CwOpDeploy(SrOperation):
                 _skipped += 1
                 _bump_r288_skip_counter(_sess, _rf_lock_conflict)
                 continue
+            # T-277 遮蔽哨(T-268 治本决策点 2;位次 = 迭代体内一切像素读
+            # 之前——上方 cap 复查/同名去重/底线门均不读像素,下方 fresh
+            # 复查是首个像素读):探测命中 decision overlay → UNKNOWN 终止
+            # 本轮(剩余单位留 bench),不再发起本槽及后续 drag——哨兵应在
+            # 一切像素读之前(全覆盖型遮蔽源下像素复查先行有误跳过面)。
+            # 哨与 fresh 复查共享同一 fresh 帧,零新增截图成本。
+            _scr_slot = self.screenshot()
+            if self._decision_overlay_screen(_scr_slot) is not None:
+                log.warning(f'[cw!][deploy] 拖拽循环遮蔽哨:decision overlay '
+                            f'在场 → 终止本轮(placed={placed} 如实保留;'
+                            '剩余单位留 bench,交 overlay 分支接管)')
+                return placed, False, \
+                    CwOpDeploy.STATUS_LANDING_VERDICT_UNKNOWN
             # live 2026-08-15(match4 deploy storm 根因):起始帧 slot_occupied 瞬时假阳(商店关闭/卖出
             # 动画残影 → 对空槽白烧 3×2s drag 重试)。每槽 drag 前 fresh 复查占用,空 → 跳过。
-            if not slot_occupied(self.screenshot(), int(bench[bi].x), int(bench[bi].y)):
+            if not slot_occupied(_scr_slot, int(bench[bi].x), int(bench[bi].y)):
                 log.info(f'[cw-deploy] deterministic: bench槽{bi+1} fresh 复查空(起始帧假阳/已上阵) → 跳过')
                 _skipped += 1
                 continue
@@ -1352,11 +1396,13 @@ class CwOpDeploy(SrOperation):
             # mouseDown;drag=按下+移动;左上小圆是星标非头像)。**拖拽统一走 ``DragCwChar.drag_char``**(中心拖
             # + hold0 + retry + 验源槽像素变),本处不再内联 drag_to。
             if DragCwChar.drag_char(self, src, dst):
-                # P4R 落点验证(1-1 事故「前排1 ✓」假成功根因):源槽像素变
-                # ≠ 上阵成功——拖拽可能实际落后台/无效位(游戏拒收弹回或落
-                # 点无效),出战即「前台区域无角色」。目标槽 ~2s 内出现占用
-                # 才计 placed;未验出 = 无效拖拽,回收目标槽 + 存证。
-                if self._wait_slot_occupied(dst, 2.0):
+                # T-277:落地判定三态化(_landing_verdict;P4R 落点验证语义
+                # 收编为其 landed 支)。判定序:像素验出占用 → landed;未验
+                # 出 + 遮蔽在场 → UNKNOWN(遮蔽域像素双向无发言权,既不判
+                # 成功也不判无效——两例实机假失败归因 T-268);未验出 + 无
+                # 遮蔽 → invalid(现行「无效拖拽」,1-1 防线零放宽)。
+                _verdict = self._landing_verdict(dst, 2.0)
+                if _verdict == CwOpDeploy._VERDICT_LANDED:
                     placed += 1
                     # 5.1.7 补(2026-08-13):同轮 drag 成功 → 刚 deploy 的角色入去重集,
                     # 防 bench 同角色 2 张时第 2 张重复 drag(场上已有该角色 → 上场失败)。
@@ -1381,6 +1427,21 @@ class CwOpDeploy(SrOperation):
                     _fb = ' (fallback)' if (pref == 'front') != (_row_cn == '前') else ''
                     log.info(f'[cw-deploy] deterministic: bench槽{bi+1}(pref={pref}) → {_row_cn}排{ti+1} ✓{_fb}'
                              f' (落点已验)')
+                elif _verdict == CwOpDeploy._VERDICT_UNKNOWN:
+                    # 遮蔽域(T-268 主形态):不回收槽位、不计数、立即终止
+                    # 本轮拖拽循环(含 P24 段,剩余单位留 bench),经
+                    # gate_fail 通道交框架失败链——下一轮 0 系 overlay 分支
+                    # 接管 → 再下轮重派发(去重 → NOOP 收敛)。存证帧 =
+                    # 0a 处置效果复盘输入。
+                    import contextlib
+                    with contextlib.suppress(Exception):
+                        self.save_screenshot(
+                            prefix=f'deploy_landing_unknown_slot{bi + 1}')
+                    log.warning(f'[cw!][deploy] deterministic: bench槽{bi+1} → '
+                                f'{_row_cn}排{ti+1} 落地判定 UNKNOWN(遮蔽域;'
+                                f'槽位不回收,剩余单位留 bench)失败帧已存证')
+                    return placed, False, \
+                        CwOpDeploy.STATUS_LANDING_VERDICT_UNKNOWN
                 else:
                     import contextlib
                     with contextlib.suppress(Exception):
@@ -1397,7 +1458,9 @@ class CwOpDeploy(SrOperation):
                 # 同 1-1 事故形态)→ 不计 placed,存证。
                 time.sleep(0.3)
                 if not slot_occupied(self.screenshot(), int(src.x), int(src.y)):
-                    if self._wait_slot_occupied(dst, 2.0):
+                    # T-277:同一三态判定(与拖成-判负形同 helper 同判定序)。
+                    _verdict = self._landing_verdict(dst, 2.0)
+                    if _verdict == CwOpDeploy._VERDICT_LANDED:
                         placed += 1
                         if _cid:
                             _deployed_cids.add(_cid)
@@ -1411,6 +1474,16 @@ class CwOpDeploy(SrOperation):
                         time.sleep(1.2)   # 拖后特效等待(同上)
                         log.info(f'[cw-deploy] deterministic: bench槽{bi+1} fresh 复查源槽已空'
                                  f' + 落点已验 → 判拖成(验证滞后)')
+                    elif _verdict == CwOpDeploy._VERDICT_UNKNOWN:
+                        import contextlib
+                        with contextlib.suppress(Exception):
+                            self.save_screenshot(
+                                prefix=f'deploy_landing_unknown_slot{bi + 1}')
+                        log.warning(f'[cw!][deploy] deterministic: bench槽{bi+1} 源槽已空'
+                                    f' 但落地判定 UNKNOWN(遮蔽域;槽位不回收,'
+                                    '剩余单位留 bench)失败帧已存证')
+                        return placed, False, \
+                            CwOpDeploy.STATUS_LANDING_VERDICT_UNKNOWN
                     else:
                         import contextlib
                         with contextlib.suppress(Exception):
@@ -1476,11 +1549,29 @@ class CwOpDeploy(SrOperation):
                 _fpts = front if _frow == 'front' else back
                 if _fslot >= len(_fpts):
                     continue   # 计划越界防御(布局档中途变化)
-                if not slot_occupied(self.screenshot(), int(bench[_fi].x), int(bench[_fi].y)):
+                # T-277 P24 遮蔽哨(F-5②,R2 残扫低项):主循环末槽后、
+                # fill 段前的窄时序窗弹 overlay 时,上方计划重采样可能读到
+                # overlay 像素产出幻影槽计划——哨置于循环体一切像素读之前
+                # (fresh 复查共享同一帧),拖拽发起前接住,UNKNOWN 截断,
+                # 残余盲拖面归零(原形态至多 1 次盲拖且由 verdict 兜住,
+                # 哨位前置后收紧为 0)。
+                _scr_fill_slot = self.screenshot()
+                if self._decision_overlay_screen(_scr_fill_slot) is not None:
+                    log.warning(f'[cw!][deploy] 补部署遮蔽哨:decision overlay '
+                                f'在场 → 终止本轮(placed={placed} 如实保留;'
+                                '剩余 fill 单位留 bench,交 overlay 分支接管)')
+                    return placed, False, \
+                        CwOpDeploy.STATUS_LANDING_VERDICT_UNKNOWN
+                if not slot_occupied(_scr_fill_slot, int(bench[_fi].x), int(bench[_fi].y)):
                     _skipped += 1
                     continue   # fresh 复查空(已上阵/假阳),同主循环语义
-                if DragCwChar.drag_char(self, bench[_fi], _fpts[_fslot]) \
-                        and self._wait_slot_occupied(_fpts[_fslot], 2.0):
+                _fill_dragged = DragCwChar.drag_char(
+                    self, bench[_fi], _fpts[_fslot])
+                # T-277:同三态判定(与主循环同 helper 同判定序)。
+                _fill_verdict = (self._landing_verdict(_fpts[_fslot], 2.0)
+                                 if _fill_dragged else None)
+                if _fill_dragged and \
+                        _fill_verdict == CwOpDeploy._VERDICT_LANDED:
                     placed += 1
                     _fcid = _bench_cid.get(_fi)
                     if _fcid:
@@ -1488,7 +1579,18 @@ class CwOpDeploy(SrOperation):
                     time.sleep(1.2)   # 拖后特效等待(主循环同款)
                     log.info(f'[cw-deploy] 补部署(dd-016/P24): bench槽{_fi + 1} → '
                              f'{"前" if _frow == "front" else "后"}排{_fslot + 1} ✓(落点已验)')
-                elif DragCwChar.drag_char(self, bench[_fi], _fpts[_fslot]):
+                elif _fill_dragged and \
+                        _fill_verdict == CwOpDeploy._VERDICT_UNKNOWN:
+                    import contextlib
+                    with contextlib.suppress(Exception):
+                        self.save_screenshot(
+                            prefix=f'deploy_landing_unknown_slot{_fi + 1}')
+                    log.warning(f'[cw!][deploy] 补部署(dd-016): bench槽{_fi + 1} '
+                                f'落地判定 UNKNOWN(遮蔽域;槽位不回收,剩余 '
+                                'fill 单位留 bench)失败帧已存证')
+                    return placed, False, \
+                        CwOpDeploy.STATUS_LANDING_VERDICT_UNKNOWN
+                elif _fill_dragged:
                     # 第一段 drag 真、落点未验出 → 与主循环同款判无效(不计 placed)
                     log.warning(f'[cw!] [deploy] 补部署(dd-016): bench槽{_fi + 1} 落点'
                                 f'未验出占用 → 判无效拖拽(源变≠上阵)')
@@ -1512,6 +1614,64 @@ class CwOpDeploy(SrOperation):
         # 计数 + 停机留证),op 侧不再自持第二份熔断计数;placed=0 且计划
         # 非空 → 节点 STATUS_LANDED_NONE round_fail 如实上报。
         return placed, not order, None
+
+    # 落地判定三态(T-277,T-268 治本;verdict helper 私有返回值常量,
+    # 禁散字符串):landed=像素验出占用(现行语义);invalid=非遮蔽域
+    # 判负(现行 1-1 防线零放宽);unknown=遮蔽域诚实未知(主形态)。
+    _VERDICT_LANDED: ClassVar[str] = 'landed'
+    _VERDICT_INVALID: ClassVar[str] = 'invalid'
+    _VERDICT_UNKNOWN: ClassVar[str] = 'unknown'
+
+    def _decision_overlay_screen(self, scr: MatLike) -> str | None:
+        """registry decision 集 presence 探测(T-277 遮蔽域判定源)。
+
+        返回命中的 screen_name(None = 无 decision overlay 在场)。锚 =
+        registry 声明主锚(五消费面统一锚,ADR-0269 单一锚纪律;decision
+        9 条全部单锚声明)。**presence 近似**(T-268 命题 §1):锚在场即
+        判遮蔽,不求交 overlay 实际覆盖面——方向保守(把遮蔽域裁决扩到
+        「overlay 在场但未盖该槽」的帧),无假成功面(遮蔽域裁决 =
+        UNKNOWN,不产生 placed)。
+        """
+        for _spec in derive_decision():
+            if self.round_by_find_area(scr, _spec.screen_name,
+                                       _spec.anchor_area,
+                                       crop_first=False).is_success:
+                return _spec.screen_name
+        return None
+
+    def _landing_verdict(self, dst: Point, timeout_s: float = 2.0) -> str:
+        """拖拽落地判定三态化(T-268 治本,纯 UNKNOWN 方案;R2 确认轮
+        裁剪 ΔC 计数器改判辅助支)。
+
+        判定序:
+        1. ``_wait_slot_occupied(dst, timeout_s)`` 真 → landed(现行语义,
+           ``_wait_slot_occupied`` 原语本体不动,单一职责);
+        2. 判负 → fresh 帧 registry decision presence 探测;未命中 →
+           invalid(现行「无效拖拽」判负原样,1-1 防线零放宽);
+        3. 命中遮蔽 → unknown:遮蔽域内像素判据与游戏真值 L 独立
+           (渲染空白=假阴/渲染出卡面=假阳,双向;判定依据持久收编 =
+           DD-037 修订节「背景/决策」)——既不判成功也
+           不判无效,调用方以 STATUS_LANDING_VERDICT_UNKNOWN 截断本轮。
+
+        ADR-0601 合规:遮蔽探测读「批内已部分执行后的动态状态」、行为
+        = 截断剩余拖拽 ⇒ 执行细节(非 §3-D2 闸);unknown 非跨轮失败
+        记忆(§5 禁令不触,单次判定即交框架失败链);收敛责任 = cw_loop
+        守卫指纹制(prep_no_progress_state_fingerprint),UNKNOWN 轮正常
+        计数,恒指纹 3 环停机兜底,零死循环面。
+
+        timeout_s = 2.0 沿 P4R 落点验证既有预算(验证窗 W=[t,t+2s],
+        遮蔽域内像素判据与等待时长无关——拉长窗不改变 verdict,否决
+        理由持久收编 = DD-037 修订节 Considered Options)。
+        """
+        if self._wait_slot_occupied(dst, timeout_s):
+            return self._VERDICT_LANDED
+        _hit = self._decision_overlay_screen(self.screenshot())
+        if _hit is not None:
+            log.warning(f'[cw!][deploy] 落点 2s 未验出占用 ∧ decision '
+                        f'overlay({_hit})在场 → 落地判定 UNKNOWN(遮蔽域'
+                        '像素双向无发言权;槽位不回收,交 overlay 分支接管)')
+            return self._VERDICT_UNKNOWN
+        return self._VERDICT_INVALID
 
     def _wait_slot_occupied(self, pt: Point, timeout_s: float = 2.0) -> bool:
         """落点验证原语(P4R 返工):目标槽 ~timeout_s 内出现占用 = 上阵落地。

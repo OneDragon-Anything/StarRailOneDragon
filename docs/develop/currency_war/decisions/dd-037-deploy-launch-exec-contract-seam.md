@@ -34,6 +34,8 @@ bench」,仙舟基础线优先防挤占)→ `placed=0/0(跳过 1)` → 组合动
    `STATUS_NOOP`(「无部署可做(计划空,bench为合法稳态)」),计划非空 →
    `round_fail('部署未落地')`;只有 `placed>0` 才报 ✓「已部署角色」。
    no-op 与真实部署在返回状态上可区分,空计划不再伪装成进展。
+   **修订(T-277)**:出口枚举由三分扩四态(失配闸第④分支由 ADR-0601
+   §3 扩入;遮蔽域 UNKNOWN 第⑤形态见文末修订节)。
 
 ## Considered Options
 
@@ -66,3 +68,41 @@ bench」,仙舟基础线优先防挤占)→ `placed=0/0(跳过 1)` → 组合动
   体系,若上役需同样接 has_deployable 门(挂账于本 ADR);③`director_v2.py`
   的 v3 引擎 loop(sim 侧)——不落实机拖拽,不经本接缝。
 - 回滚:git revert 单提交;行为无开关(默认无开关纪律)。
+
+## 修订(T-277,2026-09-11):出口契约四态化(遮蔽域 UNKNOWN)
+
+**背景**:部署拖拽真实落地时,游戏以 decision overlay 覆盖棋盘(列车同行
+跨档部署触发「选择伙伴」为驱动形态),落地验证像素轮询读到 overlay 像素
+恒假阴 → 真部署被判「无效拖拽」→ `placed=0` 假失败(`STATUS_LANDED_NONE`)
+——即本 ADR 第 2 点契约硬化原本要如实暴露的「真失败」形态,被证明存在
+非执行失败的成因(遮蔽假阴,T-268 两例实机归因)。若维持三分出口,遮蔽
+帧会被误报为部署失败,污染环级守卫信号——与本 ADR「no-op 状态可观测、
+守卫信号不被污染」的立约初衷相悖。
+
+**决策**:deploy 出口扩为四态(第五形态归第④ gate_fail 通道)——
+1. 计划空 ∧ 0 落地 = `STATUS_NOOP`(合法稳态,原文①);
+2. 计划非空 ∧ placed=0(非遮蔽域)= `STATUS_LANDED_NONE`(真失败,原文②);
+3. placed>0 = `STATUS_DEPLOYED`(原文③);
+4. 失配闸命中 = 具名失配状态 round_fail(ADR-0601 §3 扩入;闸形态
+   placed=0);
+5. **遮蔽域落地判定 UNKNOWN(T-277 新增)** = `STATUS_LANDING_VERDICT_
+   UNKNOWN` round_fail,同 gate_fail 通道立即 return——像素判据在遮蔽域
+   双向无发言权,既不判成功也不判「无效拖拽」;**槽位不回收、计数不回滚
+   、剩余单位留 bench,批内已落地件如实保留故可带 placed>0**(与闸形态
+   placed=0 的关键区别);收敛责任 = cw_loop 环级守卫指纹制(UNKNOWN 轮
+   正常计数,恒指纹 3 环停机兜底),自愈链 = 下一轮 0 系 overlay 分支
+   接管(CwScreenPartner 处置)→ 再下轮重派发(去重 → NOOP 收敛)。
+
+**Considered Options**:
+- 遮蔽帧信像素拉长验证窗:否——遮蔽域内像素判据与等待时长无关,纯加延迟;
+- 关 overlay 再重验:否——decision 语义 overlay(closable=False 红线),
+  关闭即丢决策内容,处置权归分发层 handler;
+- 计数器(ΔC)辅助改判:裁剪(R2 确认轮)——非覆盖型遮蔽实机零观测,
+  保留引入有界假成功向量(fresh OCR +1 误读 ∧ 本拖真失败 ⇒ 假改判),
+  与 fail-closed 传统相悖;纯 UNKNOWN 方案下遮蔽域不消费计数器。
+
+**后果**:守卫信号不再被遮蔽假失败污染(消灭假失败遥测/槽位回收污染/
+盲拖);代价 = 遮蔽帧每轮约一轮 UNKNOWN 交接(与原假失败后的重试代价
+相当),换 0a handler 正确处置。方案/命题/实证正本 = T-268-治本方案.md
+v3 + T-268-命题草案.md v4 + T-268-归因对账报告.md(`.debug/temp/
+currency_war/`,不入 git;本文为其出口契约语义的持久收编)。
