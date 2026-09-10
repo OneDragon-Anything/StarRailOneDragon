@@ -970,6 +970,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             while len(_seen) < _seg_plane - 1:
                 _seen.append(_NPP)
             _seen.append(len(nodes))
+        else:
+            # T-263 对齐写点(P1 段):生产语义 = cw_screen_prep 每位面首帧
+            # 写 plane_node_table + plane_lengths_seen(store_plane_table),
+            # 此前 sim P1 段不写表 → 前窗查表谓词(front_window_frame,
+            # ADR-0635)在 sim 结构性盲(P2 进场写点只辖 _seg_plane>=2)。
+            # 纯 session 真值回填:零 rng 消耗、零既有消费面变化(表此前
+            # 在 P1 段无读者);plane_lengths_seen 结果与旧回退路径逐位
+            # 一致(P1 段 append 9,P2 进场 while 短路后 append 本段长)。
+            sess.plane_node_table = list(nodes)
+            sess.plane_node_table_plane = _seg_plane
+            if sess.plane_lengths_seen is None:
+                sess.plane_lengths_seen = []
+            if not sess.plane_lengths_seen:
+                sess.plane_lengths_seen.append(len(nodes))
         for rn in range(1, _seg_rounds + 1):
             _ts += 1
             st.round_num = rn

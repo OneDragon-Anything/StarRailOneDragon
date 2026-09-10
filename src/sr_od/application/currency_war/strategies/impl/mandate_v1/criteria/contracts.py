@@ -305,6 +305,15 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         None, 'R2 预算门 Σ预留卡价 ρ 公共单一源(注册表现读纯函数;'
         'R2 门与 P71-b 预算闸同源消费,ADR-0560 提升批)',
         'P54-r2-interest-floor §②+ADR-0560'),
+    ('refresh', 'all_channel_buy_exists'): Contract(
+        None, 'P92 全通道可实现买入集判定尺(R1 发射前存在性门;'
+        'p40 R0-1 席满维在册语义落地,非新门——math_proofs P92 '
+        '「在册结构的严格化」口径;T-263 批)',
+        'math_proofs P92 行+p40-refresh-ev §② R0-1'),
+    ('refresh', 'qualified_member_costs'): Contract(
+        None, '合格集费带单一源(P91 压库同轴带 + R2 预留卡价同源消费;'
+        '注册表现读纯函数;T-263 批)',
+        'math_proofs P91 行+p54-r2-interest-floor §②'),
     # —— criteria/stockpile ——
     ('stockpile', 'stockpile_buy'): Contract(
         _s_reserve_line_formed,

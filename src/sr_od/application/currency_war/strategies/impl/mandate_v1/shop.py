@@ -104,6 +104,24 @@ P77 缺口面装载批(ADR-0626)增补:m2_stockpile_spot2_buy(j=1 帧
 P88 豁免集 15 键零扰动)/ m6_s_reserve_remeet_frames_sum(s_reserve
 拒帧的被拒现货再遇窗累计,自然帧 ceil;对价载体纯遥测,禁决策判据
 消费,让路裁决归 P56 设计批)。
+
+T-263 前窗/定向刷新批(ADR-0635;命题 = math_proofs P90-P94)增补:
+p90_front_table_missing(P1 帧节点表缺,前窗 fail-closed 显影)/
+p90_zerostack_frame_armed(前窗∧四体系零成型帧)/
+p90_zerostack_advancing_buy(零成型帧四体系推进件买入 = 排序层前移
+命中)/ p90_front_window_buy(前窗买入总笔)/ p90_front_buy_cross_tier
+(前窗跨档买入笔数,P90① 成本界检验)/ p90_front_buy_over_bound
+(1-2 费前窗买入息损 >1 断言键,结构性恒 0,违反即 P90 推导失效)/
+p90_front_buy_cost3p(前窗 3 费以上买入越域观测,P90 辖 1-2 费)/
+p94_no_activatable(零成型帧店无推进件)/ p94_exemption_refuse
+(P94 放行层豁免拒绝——u_x 🔴 在册标定债,豁免恒拒;**p94_exemption_
+grant 结构性恒 0**,无代码路径可增,P94 证明+标定批落授权,禁把死
+通道读成生效件)/ p91_active_band_frame(P91 活跃搜索费带非空帧)/
+p91_m6_same_axis_hit / p91_m6_off_axis_hit(M6 压库同轴/异轴选择帧
+对键)/ p91_refresh_up_switch(R1 刷-升选择切换帧)/
+p92_no_buy_refresh_blocked(P92 全通道可实现买入集空帧拦刷 = 面②
+审计①桶计数)/ must_spend_r1_no_buy_blocked(必花域内 P92 拦刷的
+域内 liveness 显影,与 must_spend_r1_budget_fail 混桶禁)。
 """
 from __future__ import annotations
 
@@ -139,6 +157,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     clicks_to_next_level,
     effective_refresh_prob,
     in_must_spend_zone,
+    interest,
     xp_click_cost,
 )
 from sr_od.application.currency_war.kernel.cw_reward_node import (
@@ -168,6 +187,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     mandate,
     proof,
     sell_gate,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
+    provisional,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     buy as crit_buy,
@@ -744,6 +766,24 @@ def decide_shop_action(state: GameState, session: StrategySession,
         """
         _buy_name = getattr(card, 'name', '') or ''
         record_fresh_buy(session, state, _buy_name)
+        # T-263 前窗买入分键(P90① 检验点;置于合成早退前 = 全路径覆盖)。
+        # 息损 = 买入跨档数(cap 消费帧 cap_resolved,与策略息账同源);
+        # over_bound 断言键依据 P90①「1-2 费单价下单笔最多穿 1 档」,
+        # 违反即推导失效(防御性,结构性恒 0);cost3p = P90 辖域外
+        # (1-2 费)观测,买入经各臂自身授权发生,分键供越域审计。
+        if _front_window:
+            _fw_cost = card.cost if card.cost else 3
+            _count('p90_front_window_buy')
+            if _fw_cost >= 3:
+                _count('p90_front_buy_cost3p')
+            _fw_loss = interest(gold, cap_resolved) - interest(
+                max(0, gold - _fw_cost), cap_resolved)
+            if _fw_loss >= 1:
+                _count('p90_front_buy_cross_tier')
+            if _fw_cost <= 2 and _fw_loss > 1:
+                _count('p90_front_buy_over_bound')
+            if _zw_armed and predicates.advances_four_system(_buy_name):
+                _count('p90_zerostack_advancing_buy')
         # 合成检出计数单一源 = kernel same_star_count(店内外身份计数
         # 共用,禁消费方手搓内联——落地审 §2-Ⓑ 附条件收敛行)。
         if (getattr(card, 'star', 1) or 1) == 1 \
@@ -939,6 +979,28 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # swap_transition_narrow_frame(kernel _swap_transition_domain_of 同
     # 一谓词,禁第二份合取);域外帧旗恒 False = 本批零行为面。
     _narrow_frame = mandate.swap_transition_narrow_frame(state, session)
+    # ---- T-263 前窗/零成型帧旗(P90 面①;谓词单一源 = statefn/predicates,
+    # 命题 = math_proofs P90-P94,ADR-0635)----
+    # 前窗 = P1 首个战斗节点前窗(节点表查表定义,01 §8-1 位面参数化);
+    # 零成型 = 四体系激活档全 0(per-体系谓词,engines_count 合计标量
+    # 禁用口径)。表缺 = 前窗行为 fail-closed 不发生(现行为),分键显影。
+    _front_window = predicates.front_window_frame(state, session)
+    if getattr(state, 'plane', None) == 1 \
+            and not predicates.front_window_table_ready(session):
+        _count('p90_front_table_missing')
+    _zw_armed = False
+    if _front_window and predicates.zero_form_frame(deployed):
+        _zw_armed = True
+        _count('p90_zerostack_frame_armed')
+        if not any(predicates.advances_four_system(
+                getattr(c, 'name', '') or '') for c in (state.shop or [])):
+            # 面①(b) 四分键之三:触发帧店无可激活件(输入死观测位)
+            _count('p94_no_activatable')
+        elif provisional.is_none('U_X'):
+            # 面①(b) 四分键之三:放行层豁免拒绝——P94 待证明件,u_x 属
+            # 在册【拟】🔴 标定债,豁免恒拒(fail-closed 维持现行为;
+            # p94_exemption_grant 无代码路径,待 P94 证明+标定批落授权)。
+            _count('p94_exemption_refuse')
     # 拒因遥测逐帧刷新(ADR-0517 迁移步 2:拒因计数键逐动作化;期望态
     # 即真值,actions 传空——买走牌已由 project 从 state.shop 摘除)。
     # P86:乙臂枢纽资格集直传(拒因键 hub_option 的单一源直通面)。
@@ -970,7 +1032,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
 
     def _buy_view(arm_key: str) -> list[ShopCard]:
         """店内卡全集的 L2 过滤视图:剔除「本轮已卖名集」命中卡,
-        按触发臂分键显影(arm_key 只进计数键,不进判据)。"""
+        按触发臂分键显影(arm_key 只进计数键,不进判据)。
+        零成型帧(前窗∧四体系零成型,P90 面①(b) 排序层)追加稳定
+        排序——四体系推进件前移(P20 方向级背书,非金量纲、不构成
+        支出放行:全臂既有门照过,仅改同门通过时的取件序);非零成型
+        帧零漂移。"""
         out: list[ShopCard] = []
         for c in (state.shop or []):
             n = c.name or ''
@@ -978,6 +1044,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 _count(f'{arm_key}_round_sold_excluded')
                 continue
             out.append(c)
+        if _zw_armed:
+            out.sort(key=lambda c: 0 if predicates.advances_four_system(
+                c.name or '') else 1)
         return out
 
     def _shop_candidates(m: str, arm_key: str = ''):
@@ -2023,7 +2092,28 @@ def decide_shop_action(state: GameState, session: StrategySession,
                                       k_fallback_band=_kfb_tok,
                                       k_fallback_source=_kfb_source),
                 counters)
-            for card in _buy_view('m6'):   # L2 统一过滤位
+            # T-263 P91(a) 压库同轴(ADR-0635):活跃搜索费带 = 合格集
+            # 成员费带(qualified_member_costs 单一源,与 R2 预留卡价
+            # 同源过滤);带非空帧候选稳定排序「带内先于带外」——同费
+            # 非目标压库使活跃方向每刷命中率单调不减(P91(a)),异轴对
+            # 活跃方向恒零影响(P49)。前窗帧追加 1-2 费优先(P90 成本界
+            # 背书的排序语义,非窗口禁令——ADR-0635 偏差申报)。稳定
+            # 排序复合:最终序 = (零成型推进件, 同轴带内, 1-2 费)。
+            _p91_band = frozenset(crit_refresh.qualified_member_costs(
+                buy_members, bench, deployed, int(state.level or 1)))
+            if _p91_band:
+                _count('p91_active_band_frame')
+            _m6_cands = _buy_view('m6')   # L2 统一过滤位
+            if _p91_band:
+                _m6_cands = sorted(
+                    _m6_cands,
+                    key=lambda c: 0 if (c.cost if c.cost else 3) in _p91_band
+                    else 1)
+            if _front_window:
+                _m6_cands = sorted(
+                    _m6_cands,
+                    key=lambda c: 0 if (c.cost if c.cost else 3) <= 2 else 1)
+            for card in _m6_cands:
                 name = card.name or ''
                 # 线内追星段排除(落地审清单存疑收口,N2/§3.7):线内副本
                 # 的买入全链归义务通道(M2 j=0→1 / 臂① j=1∧cnt2=0 / M2b
@@ -2059,6 +2149,11 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 ok1, _ = mandate.check_affordable(gold, cost)
                 if not ok1:
                     continue
+                if _p91_band:
+                    # P91 同轴/异轴选择帧对键(零静默:两键覆盖全部 M6
+                    # 买入,带空帧不计——无方向帧无同轴语义)
+                    _count('p91_m6_same_axis_hit' if cost in _p91_band
+                           else 'p91_m6_off_axis_hit')
                 return _emit_buy(card, 'm6_stockpile')
 
     # ---- 出口③(Φ_stall 过渡件垫件出口;17 号稿 §2.3/§7.3-§7.5,消费位
@@ -2490,6 +2585,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
                         _rounds, _ibar, cap_resolved)
             _ledger = min(_t_stay, _t_up)
             _lvl_star = _lvl if _t_stay <= _t_up else _lvl + 1
+            if _lvl_star != _lvl:
+                # P91(b) 刷-升切换分键(P5/P39 在册通道的形式二消费位,
+                # T-263 补零静默观测,ADR-0635)
+                _count('p91_refresh_up_switch')
             r2_reserve = g_star + _r2_card_reserve(k_members, bench,
                                                    deployed, state,
                                                    level=_lvl_star)
@@ -2527,14 +2626,64 @@ def decide_shop_action(state: GameState, session: StrategySession,
             if crit_refresh.r2_budget(
                     gold, r2_reserve,
                     int(state.shop_refresh_cost or REFRESH_COST_BASE)):
-                if _reopen_armed:
-                    _count('shop_reopen_discretionary_actions')
-                # reason = 触发源记录字段(非指令;sim obs 分键消费,
-                # 执行层不读——cw_state.RefreshShop.reason 值域契约)。
-                return RefreshShop(
-                    cost=int(state.shop_refresh_cost or REFRESH_COST_BASE),
-                    reason=_r1_src)
-            if _zone_hit:
+                # ---- P92 全通道可实现买入集存在性门(T-263,ADR-0635;
+                # math_proofs P92「在册结构的严格化非新门」)----
+                # p40 R0-1 在册语义的席满维/可购性维落地:四买入通道
+                # (dominance/义务 M2/EV/合成完备购)帧级可达全假 ⇒
+                # 任何店产不触发买入 ⇒ 付费刷新净差 = −(c_eff+L) < 0
+                # 严格,拦刷(fail-closed,落凑息/CloseShop 既有续流)。
+                # 判定尺单一源 = crit_refresh.all_channel_buy_exists;
+                # seat_recoverable 传 P56 投影 liquid_refund>0(腾席可达
+                # 代理,偏宽=门偏不拦=保守端,判定尺 docstring 申报)。
+                # P36-a 让位:危机不变式先于本门(01 §3.4 既有序;现行
+                # 决策链无危机直通支,executor 结构位承载)。
+                _p92_ready = contracts.ensure_contract(
+                    ('refresh', 'all_channel_buy_exists'),
+                    contracts.ContractCtx(gold=gold), counters)
+                _p92_ok = False
+                if _p92_ready:
+                    _p92_missing = sorted(
+                        {int(CHARACTERS[m].cost) for m in missing
+                         if CHARACTERS.get(m) is not None
+                         and CHARACTERS[m].cost})
+                    _p92_stockpile = sorted(
+                        {int(CHARACTERS[m].cost) for m in buy_members
+                         if CHARACTERS.get(m) is not None
+                         and CHARACTERS[m].cost
+                         and _cnt(m, 1) == 1 and _cnt(m, 2) == 0})
+                    _p92_pairs = sorted(
+                        {int(CHARACTERS[n].cost)
+                         for n in set(bench_names) | set(deployed_names)
+                         if n and _cnt(n, 1) == 2 and _cnt(n, 2) == 0
+                         and CHARACTERS.get(n) is not None
+                         and CHARACTERS[n].cost})
+                    _p92_ok = crit_refresh.all_channel_buy_exists(
+                        gold=gold, g_star=g_star, cap_resolved=cap_resolved,
+                        bench_free=bench_free,
+                        seat_recoverable=(liquid_refund > 0),
+                        missing_costs=_p92_missing,
+                        stockpile_costs=_p92_stockpile,
+                        merge_pair_costs=_p92_pairs,
+                        level=_lvl,
+                        ev_face_open=not provisional.is_none('U_X'),
+                        window_nonempty=bool(card_w))
+                if _p92_ready and _p92_ok:
+                    if _reopen_armed:
+                        _count('shop_reopen_discretionary_actions')
+                    # reason = 触发源记录字段(非指令;sim obs 分键消费,
+                    # 执行层不读——cw_state.RefreshShop.reason 值域契约)。
+                    return RefreshShop(
+                        cost=int(state.shop_refresh_cost
+                                 or REFRESH_COST_BASE),
+                        reason=_r1_src)
+                if _p92_ready:
+                    # 面② 审计①桶计数(全通道口径判定尺,禁以 P40 E
+                    # 口径单独判定);必花域内加计域内 liveness 键
+                    # (与 budget_fail 混桶禁)。
+                    _count('p92_no_buy_refresh_blocked')
+                    if _zone_hit:
+                        _count('must_spend_r1_no_buy_blocked')
+            elif _zone_hit:
                 # 刷新臂 liveness 显影(52 轮 sim 设计输入②):域内刷新
                 # 尝试被可负担性硬闸拦 = 显式分键,禁恒零盲区
                 #(directed_refresh_game_cap_lock 绿灯掩盖恒零教训)。

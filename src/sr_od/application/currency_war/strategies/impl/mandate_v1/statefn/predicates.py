@@ -374,8 +374,124 @@ def t5_p1_false(gold: int, spend: int, rounds: int, net_income: int,
     return loss_exact(gold, spend, rounds, net_income, cap_resolved) == 0
 
 
+# ===== T-263 前窗/零成型谓词族(P90 面①;设计正本 =
+# .debug/temp/currency_war/attacks/t175_exit_margin/设计方案.md §4.1,
+# 命题 = math_proofs P90-P94 行)=====
+
+#: 零战斗节点词集(节点表查表的战斗性判定的非战斗半边):生产表中文词
+#: (P1_NODE_TEMPLATE 词表,tools/cw_node_validate)+ sim 表英文词
+#: (engine_p1.P2_NODE_SEQUENCE 同词表);英文半边的单一源 =
+#: kernel cw_line_switch._ZERO_LOSS_NODE_KINDS 同集(此处展开因该常量
+#: 为模块私有,战斗性判定需中英并集,勿再散落第三份)。
+_FRONT_NONCOMBAT_NODES: frozenset[str] = frozenset(
+    {'reward', 'supply', '奖励', '补给'})
+
+
+def front_window_table_ready(session) -> bool:
+    """前窗查表前提探针(front_window_frame 的表在场半边;调用方用于
+    「P1 帧但表缺」的零静默分键,避免调用侧复刻锚定逻辑)。"""
+    return (getattr(session, 'plane_node_table_plane', None) == 1
+            and bool(getattr(session, 'plane_node_table', None)))
+
+
+def front_window_frame(state: GameState, session) -> bool:
+    """P1 前窗备战帧谓词(v3 面①;位面参数化 = 节点表查表定义,禁位面
+    字面量,01 §8-1)。
+
+    语义 = plane==1 ∧ 当前轮 ≤ 首个战斗节点槽位(前窗 = 首战前窗,含
+    首战备战帧——v3 面①(b)「r3 备战帧上」的 r3 即查表产物,P1 众数
+    表下 = 第 3 轮)。节点表单一源 = ``session.plane_node_table``
+    (开局帧实读槽序,cw_screen_prep.store_plane_table 每位面首帧写 /
+    sim engine P1 段同构写);位面锚 = ``plane_node_table_plane``(防
+    旧表滞留跨位面误读);战斗性判定 = 槽词不在 ``_FRONT_NONCOMBAT_
+    NODES`` 零战斗词集(中英并集,出处见常量注)。
+
+    fail-closed 边界:表缺/锚不符 ⇒ False(前窗行为不发生 = 现行为),
+    调用方分键 ``p90_front_table_missing`` 显影;表全为零战斗词(脏表,
+    每位面必有战斗的结构下退化域)⇒ 静默 False **不落分键**(落地审
+    H4 修:显影主张收窄至表缺/锚不符两支)。
+    """
+    if getattr(state, 'plane', None) != 1:
+        return False
+    if getattr(session, 'plane_node_table_plane', None) != 1:
+        return False
+    table = getattr(session, 'plane_node_table', None) or []
+    first_battle_idx: int | None = None
+    for i, node in enumerate(table):
+        if str(node).strip() not in _FRONT_NONCOMBAT_NODES:
+            first_battle_idx = i
+            break
+    if first_battle_idx is None:
+        return False   # 脏表退化域:静默 False(边界注见 docstring)
+    return 1 <= int(getattr(state, 'round_num', 0) or 0) \
+        <= first_battle_idx + 1
+
+
+def zero_form_frame(deployed: list) -> bool:
+    """零成型帧谓词(P90 收窄辖域 e=0;P94 谓词原文 = per-体系
+    ``board_factions[s] < FACTIONS[s].tiers[0]``,希儿系复合判据单列)。
+
+    四体系 = 三羁绊系(阈值对 = knowledge/cw_engine_facts.
+    TRANSITION_TRAITS 的同注册表派生式——SYSTEM_CARDS × FACTIONS tiers[0];
+    strategies→knowledge 非法桶边故本地同式派生,零漂移契约同款:
+    同一注册表派生不存在字面双源,禁写字面阈值)+ 希儿系(复合判据
+    单一实现 = kernel ``seele_system_formed``)。板面计数 = 已上场全
+    羁绊计数(kernel ``deployed_bond_counts`` 单一源,bench 持有不计
+    ——激活档是板面档)。``engines_count`` 为四体系合计标量,禁作
+    per-体系谓词(设计轮一低 8③ 口径),本函数逐体系比较。
+    """
+    from sr_od.application.currency_war.data.cw_factions import FACTIONS
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        deployed_bond_counts,
+        seele_system_formed,
+    )
+    from sr_od.application.currency_war.kernel.cw_system_cards import (
+        SYSTEM_CARDS,
+    )
+    system_tiers = tuple(
+        (card.judge_factions[0], FACTIONS[card.judge_factions[0]].tiers[0])
+        for card in SYSTEM_CARDS.values() if card.card_id != 'seele')
+    deployed_names = {d.char_id or '' for d in (deployed or [])
+                      if d is not None and (d.char_id or '')}
+    board_factions = deployed_bond_counts(deployed_names)
+    for bond, tier in system_tiers:
+        if board_factions.get(bond, 0) >= tier:
+            return False
+    return not seele_system_formed(board_factions, deployed_names)
+
+
+def advances_four_system(name: str) -> bool:
+    """四体系推进件判定(零成型帧排序层前移对象;P20 方向级背书,
+    非金量纲、不构成支出放行)。
+
+    推进件 = 店内卡所属阵营/流派命中三羁绊体系键(SYSTEM_CARDS ×
+    FACTIONS 注册表同注册表派生,zero_form_frame 同源注释)∨ 希儿系
+    贡献件(kernel ``is_seele_system_member`` 单一源,入参 = 该卡自身
+    bonds:希儿本人 + 量子/贝放大器)。零成型帧上全部体系 < tiers[0],
+    任一体系成员买入都单调推进激活进度(P90 收益面 iii)。
+    """
+    if not name:
+        return False
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        is_seele_system_member,
+    )
+    from sr_od.application.currency_war.kernel.cw_system_cards import (
+        SYSTEM_CARDS,
+    )
+    ch = CHARACTERS.get(name)
+    if ch is None:
+        return False
+    bonds = {card.judge_factions[0]
+             for card in SYSTEM_CARDS.values() if card.card_id != 'seele'}
+    if bonds & ({*ch.factions} | {*ch.flows}):
+        return True
+    return is_seele_system_member(name, {*ch.factions} | {*ch.flows})
+
+
 __all__ = [
-    'BenchEffectContext', 'RUST_AFFIX_NAME', 'arm1_existence',
-    'bench_effect_context', 'bench_effect_qualified', 'line_members',
-    't5_p1_false', 'zero_overlap',
+    'BenchEffectContext', 'RUST_AFFIX_NAME', 'advances_four_system',
+    'arm1_existence', 'bench_effect_context', 'bench_effect_qualified',
+    'front_window_frame', 'front_window_table_ready', 'line_members',
+    't5_p1_false', 'zero_form_frame', 'zero_overlap',
 ]

@@ -96,6 +96,36 @@ def hard_node_reinforce_gate(node_type: str | None, gold: int,
     return True, ''
 
 
+def qualified_member_costs(buy_members: tuple[str, ...],
+                           bench: list, deployed: list,
+                           level: int) -> list[int]:
+    """合格集成员费带 = 未 2★ 成型 ∧ 该级可刷出(refresh_prob>0)成员的
+    注册表 cost 列表(P91 活跃搜索方向费带单一源;P40 合格集资格过滤与
+    ``r2_card_reserve`` 同款语义,本函数为该过滤的公共承载位——R2 预留
+    卡价 min 消费与 P91 压库同轴带偏好同源,禁第二份过滤实现)。
+
+    过滤序 = 成型先序(2★ 出域先于可追性判定,test_cw_refresh_ledger
+    锁 A 锁定的判定顺序);注册表缺项/无 cost 成员跳过。返回升序列表,
+    空列表 = 合格集空(该级无可追成员)。
+    """
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+
+    costs: list[int] = []
+    for m in buy_members:
+        ch = CHARACTERS.get(m)
+        if ch is None or not ch.cost:
+            continue
+        copies = [c for c in list(bench) + list(deployed)
+                  if (getattr(c, 'char_id', '') or '') == m]
+        if any((getattr(c, 'star', 1) or 1) >= 2 for c in copies):
+            continue
+        if refresh_prob(int(level), int(ch.cost)) <= 0.0:
+            continue
+        costs.append(int(ch.cost))
+    return sorted(costs)
+
+
 def r2_card_reserve(k_members: tuple[str, ...],
                     bench: list, deployed: list,
                     state: GameState,
@@ -124,21 +154,86 @@ def r2_card_reserve(k_members: tuple[str, ...],
     部分 = 下一波 R2 重估补足的显式让渡,非破线刷新)。合格集空 ⇒ 0:
     该帧 R1 必先以 no_chaseable_member 关闭,R2 不可达,兜底值不进
     任何可达比较。
-    """
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
 
-    level_now = int(state.level or 1) if level is None else int(level)
-    costs: list[int] = []
-    for m in k_members:
-        ch = CHARACTERS.get(m)
-        if ch is None or not ch.cost:
-            continue
-        if refresh_prob(level_now, ch.cost) <= 0.0:
-            continue
-        copies = [c for c in list(bench) + list(deployed)
-                  if (getattr(c, 'char_id', '') or '') == m]
-        if any((getattr(c, 'star', 1) or 1) >= 2 for c in copies):
-            continue
-        costs.append(int(ch.cost))
+    实现注:T-263 批起成员过滤消费 ``qualified_member_costs`` 公共承载位
+    (P91 同轴带同源;本函数语义/签名/返回值零变化——纯内部重构,
+    test_cw_interest_floor 私有名直引面不受影响)。
+    """
+    costs = qualified_member_costs(k_members, bench, deployed,
+                                   int(state.level or 1) if level is None
+                                   else int(level))
     return min(costs) if costs else 0
+
+
+def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
+                           bench_free: int, seat_recoverable: bool,
+                           missing_costs: list[int],
+                           stockpile_costs: list[int],
+                           merge_pair_costs: list[int],
+                           level: int,
+                           ev_face_open: bool,
+                           window_nonempty: bool,
+                           ) -> bool:
+    """P92 全通道可实现买入集非空判定尺(math_proofs P92;面②六桶审计
+    ①桶判定的单一源,「在册结构的严格化非新门」口径)。
+
+    语义:「任何店产都不会触发买入」的全通道语义(p40 :25/:63)——
+    四买入通道(dominance 1★ 净 0 / 义务 M2 / EV 买面 / 合成完备购)
+    的帧级可达性并集。全部为假 ⇒ 付费刷新净差 = −(c_eff+L) < 0 严格
+    (P92 命题),消费位(R1 发射前)据此拦阻。与在册 R0-1 的分工:
+    R0-1(E=∅,成员合格性维)在 r1_commitment_account 先行;本判定尺
+    补其在册语义的席满维(p40 :63「bench 满到没过渡牌可买」)与可购性
+    维(金不足且不可腾),两维在现行实现缺位。
+
+    逐通道口径(出处):
+    - dominance:``mandate.dominance_buy_eligible`` 直调(金>g* ∧ 席,
+      零第二实现)+ 结算线 ADR-0624 单一源 ``shop.check_settlement_line``
+      直调(最便宜 1★ 形态;落地审 H2 修:原内联 gold−1 ≥ g* 系第二
+      实现,该谓词设立理由恰是防穿线判据漂移)——任一店产 1★ 线外件
+      即触发,池非空故只查帧级资格;
+    - 义务 M2(缺员+臂①囤腿):∃成员「该级可刷出(refresh_prob>0)
+      ∧ 金 ≥ 注册表 cost ∧ 席可落」;席可落 = bench_free>0 ∨
+      ``seat_recoverable``(腾席可达代理,调用方传 P56 投影
+      liquid_refund>0——存在可变现 1★ 燃料件时 M4 腾席/M2 通道的
+      席位前置可满足。**代理偏宽申报**:高估腾席可达 ⇒ 门偏不拦 ⇒
+      保守端 = 现行为,P92 拦阻只在确定严格劣帧开火);
+    - EV 买面:``ev_face_open``(调用方传 not provisional.is_none
+      ('U_X');生产恒 None ⇒ 恒 False,如实建模现决策机器)∧ 席 ∧
+      ``window_nonempty``;
+    - 合成完备购(M2b):∃同名 1★×2 配对「refresh_prob(level,base)>0
+      ∧ 金 ≥ base」——**满栏不阻断**(merge §2.5 机制事实,p76「深追
+      不受席满阻断」,买入即自动合成净释放 1 席)。
+
+    输入全为帧级现读/注册表量,零新自由参数;调用方装配候选 cost 列表
+    (缺员/囤腿/配对),判定尺只做通道合取判定。
+    """
+    from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
+    from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
+        mandate,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.shop import (
+        check_settlement_line,
+    )
+
+    seat_ok = bench_free > 0 or seat_recoverable
+    # ① dominance 1★ 净 0(资格门单源直调 + 结算线 ADR-0624 单一源
+    # check_settlement_line 直调,最便宜 1★ 形态;落地审 H2 修)
+    if mandate.dominance_buy_eligible(gold, bench_free, cap_resolved) \
+            and check_settlement_line(gold, 1, g_star)[0]:
+        return True
+    # ② 义务 M2:缺员(0→1)与臂①囤腿(1→2)同通道两形态
+    if seat_ok:
+        for cost in missing_costs:
+            if refresh_prob(level, cost) > 0.0 and gold >= cost:
+                return True
+        for cost in stockpile_costs:
+            if refresh_prob(level, cost) > 0.0 and gold >= cost:
+                return True
+    # ③ EV 买面(生产 fail-closed:U_X None ⇒ 通道恒空)
+    if ev_face_open and seat_ok and window_nonempty:
+        return True
+    # ④ 合成完备购(满栏不阻断;第三张可刷出且买得起)
+    for base in merge_pair_costs:
+        if refresh_prob(level, base) > 0.0 and gold >= base:
+            return True
+    return False
