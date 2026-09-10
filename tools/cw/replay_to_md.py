@@ -190,6 +190,12 @@ _OP_EXOG_KINDS: frozenset[str] = frozenset({'briefing', 'event_choice'})
 #: 分支 0e1 与 §5 补给合成 outcome 钩子)
 _SYNTHETIC_SUPPLY_SOURCE = 'synthetic_supply'
 
+#: 收口终局行标记(T-185:result=stopped/abandoned 局对局收口时点补写的
+#: 末轮 outcome 行,写点 = cw_loop._write_terminal_outcome_row)。行内
+#: killed=False 是**对局级**「未通关」真值非战斗结算,hp/战斗/节点真值
+#: 全不发——显示面禁按战斗胜负语义渲染,专项标注分型(同合成行先例)。
+_TERMINAL_CLOSURE_SOURCE = 'terminal_closure'
+
 # ---------------------------------------------------------------------------
 # 基础渲染件
 # ---------------------------------------------------------------------------
@@ -1084,7 +1090,14 @@ def _battle_obs(op: dict[str, Any], ctx: dict[str, Any],
     o = op['outcome'] or {}
     killed = o.get('killed')
     hp_after = o.get('hp_after')
-    if killed is True:
+    if str(o.get('source') or '') == _TERMINAL_CLOSURE_SOURCE:
+        # 收口终局行(T-185):对局收口标记非战斗结算——killed=False 是
+        # 对局级「未通关」真值,走胜负分支会把停机收口轮渲染成战斗
+        # 结算(「存活(killed=False)」暗示该轮打完且活下来,同型误读);
+        # 专项标注分型(先例 = 补给合成行「合成快照非结算事件」)。
+        verdict = (f"收口(未通关·{str(o.get('match_result') or '') or '?'})"
+                   "·非战斗结算")
+    elif killed is True:
         verdict = '胜(killed)'
     elif hp_after == 0:
         verdict = '败(战后 HP=0)'
@@ -1264,7 +1277,14 @@ def _op_header(op: dict[str, Any], idx: int) -> str:
     if op['kind'] == 'env':
         ev.append('选择结果见 state.active_env')
     if op['ts']:
-        ts_label = '结算 ' if op['kind'] == 'battle' else ''
+        if op['kind'] == 'battle':
+            # 收口终局行的 battle op 时间戳标签用「收口」——「结算」暗示
+            # 战斗走到结算屏,与观察面专项标注同口径
+            _oc = op.get('outcome') or {}
+            ts_label = ('收口 ' if str(_oc.get('source') or '')
+                        == _TERMINAL_CLOSURE_SOURCE else '结算 ')
+        else:
+            ts_label = ''
         ev_s = (f'({ts_label}{_ts_short(op["ts"])}'
                 + (',' + ';'.join(ev) if ev else '') + ')')
     else:
@@ -1692,7 +1712,9 @@ def _render_gold_traj(rounds: list[dict[str, Any]], archive: dict[str, Any],
 
 def _render_fill_traj(outcomes: list[dict[str, Any]]) -> list[str]:
     """进度 fill 轨迹(审计渲染缺 R5 的全局面:「打赢但进度填不满」死因主线
-    一表可见;合成补给行不入表——非结算事件)。"""
+    一表可见;合成补给行不入表——非结算事件;收口终局行(T-185)入表但
+    胜负列专项标注「收口(未通关)」——其 killed=False 是对局级终了真值
+    非该轮战斗结算,渲染成「败」会把停机收口轮误读成该轮打输)。"""
     rows = []
     for o in outcomes:
         if str(o.get('source') or '') == _SYNTHETIC_SUPPLY_SOURCE:
@@ -1702,8 +1724,11 @@ def _render_fill_traj(outcomes: list[dict[str, Any]]) -> list[str]:
         except (TypeError, ValueError):
             key = '—'
         killed = o.get('killed')
-        verdict = ('胜' if killed is True else
-                   '败' if killed is False or o.get('hp_after') == 0 else '—')
+        if str(o.get('source') or '') == _TERMINAL_CLOSURE_SOURCE:
+            verdict = f"收口(未通关·{str(o.get('match_result') or '') or '?'})"
+        else:
+            verdict = ('胜' if killed is True else
+                       '败' if killed is False or o.get('hp_after') == 0 else '—')
         rows.append((
             key, _fmt(o.get('node_type')), verdict,
             _dash(o.get('progress_fill_ratio')),

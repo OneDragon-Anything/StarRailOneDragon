@@ -211,12 +211,19 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
       即「零结算是事实而非丢数据」,claimed 值随行给出仅供对照。
     - 边界:仅决策帧为 0 的空段(如被代码闸拦下、一行未写)不标注
       (无判读价值);有任一 outcome 行(含 synthetic_supply/recovered/
-      loss_page 来源)即视为「有结算记录」,不标注。
+      loss_page 来源)即视为「有结算记录」,不标注。收口终局行
+      (T-185,source='terminal_closure')**不入**该判定——它不是战斗
+      结算行,恰是「本段零场战斗走到结算屏」的证据行(ADR-0615 的
+      零结算语义):计它入「有结算记录」会让零结算停机段的终局行
+      静默关闭本自标识(T-185 落地审建议-2),判读者按协议读到的是
+      「有 outcome 行的普通段」,零结算事实从此不可见。
     """
     has_decisions = any(r.get('run_id') == run_id for r in dec_rows)
     if not has_decisions:
         return {}
-    if any(r.get('run_id') == run_id for r in outcome_rows):
+    if any(r.get('run_id') == run_id
+           and r.get('source') != 'terminal_closure'
+           for r in outcome_rows):
         return {}
     n_dec = sum(1 for r in dec_rows if r.get('run_id') == run_id)
     return {'settlement_gap': {'decision_frames': n_dec,
@@ -610,7 +617,7 @@ def _sell_deployed_target_names(frame: dict[str, Any]) -> set[str]:
     ADR-0392)——这是唯一能落帧的生产形状:全仓唯一构造点 = kernel
     cw_state.SellDeployed(cw_evolution 谷底回滚 / sim engine,序列化字段
     deployed_idx/income/reason/expect,无 row/slot);cw_prep_actions 的
-    同名 row+slot 类零构造点、且策略辖外声明不发射(test_cw4_shop_line
+    同名 row+slot 类零构造点、且策略辖外声明不发射(test_cw_shop_line
     辖外锁),不会出现在 decisions 帧。
 
     换算命中而非下标直取:serialize_state 落遥测的 deployed 是**紧缩

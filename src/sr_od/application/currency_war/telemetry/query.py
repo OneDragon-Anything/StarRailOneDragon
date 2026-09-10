@@ -525,6 +525,13 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
     删除」(行留证据可见,判读侧自辨),链侧语义与 anomalies 一致(伪值入链
     会让后续真值轮 Δ 算错,g_20260830_150029 实证 Δ=+67 荒谬行)。缺
     hp_confidence 字段(旧数据/sim 账本行)按可信,不误标。
+
+    收口终局行(T-185,source='terminal_closure')分型:行尾标
+    `收口(match_result)` 替代「伪值」——终局行 hp_after=None 是诚实缺省
+    (不发 hp 真值)非 OCR 伪值,「伪值」标注语义不符;killed 显示 '?'
+    (其 killed=False 是对局级终了真值非战斗结算,按战斗语义显示 killed=0
+    会把停机收口轮误读成「该轮打输」;该轮战斗可能根本没打完,战斗
+    killed 属未采到)。
     """
     lines = []
     prev_hp: int | None = None
@@ -550,16 +557,20 @@ def query_hp(replay_dir: Path, run_id: str) -> list[str]:
         # 迁移审计 w317(git 历史):胜负(killed,None=未知)与 boss 身份(非空才显示;
         # None 元素=该位面徽章态采不到,保位过滤语义见 OutcomeRecord)
         _killed = o.get("killed")
-        k_s = '1' if _killed else ('0' if _killed is False else '?')
+        _is_terminal = str(o.get("source") or "") == "terminal_closure"
+        k_s = '?' if _is_terminal else (
+            '1' if _killed else ('0' if _killed is False else '?'))
         _bosses = [b for b in (o.get("boss_names") or []) if b]
         boss_s = f" boss=[{'|'.join(_bosses)}]" if _bosses else ""
-        # 伪值标注(显示层过滤):不可信行保留行留证据,行尾标「伪值」
-        fake_s = "" if _outcome_hp_trusted(o) else " 伪值"
+        # 行尾来源分型:终局行标「收口(形态)」;其余不可信行标「伪值」
+        src_s = (f" 收口({str(o.get('match_result') or '') or '?'})"
+                 if _is_terminal
+                 else ("" if _outcome_hp_trusted(o) else " 伪值"))
         lines.append(
             f"  p{o.get('plane')}r{o.get('round_num')} {o.get('node_type') or '?':8s}"
             f" hp={hp} Δ={delta_s}"
             f" 板深={depth_s} bench={bench if bench is not None else '-'}"
-            f" killed={k_s}{boss_s}{fake_s}")
+            f" killed={k_s}{boss_s}{src_s}")
         # 链推进同 anomalies 门:伪值不推进 prev_hp(推进即污染后续真值 Δ)
         if hp is not None and _outcome_hp_trusted(o):
             prev_hp = hp
