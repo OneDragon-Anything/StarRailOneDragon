@@ -10,7 +10,10 @@
   refresh_used=True 重新决策 → 按新决策选**。分支刷新能力 = 优势布局「分支刷新」授予
   (每局 1 次重置两卡难度/奖励;bwiki 优势布局表);session 级单次标志
   (``exec_state_of(session)._encounter_refresh_used``,与补给 ``_supply_refresh_used`` 同款)——
-  发出刷新点击即置位,不等验效(点偏不重试,失败安全按原评分选,防重入反复尝试)。
+  发出刷新点击即置位,不等验效(点偏不重试,防重入反复尝试)。验效双通道
+  已拆除(用户裁定 2026-09-10:动作 op 只管机械执行禁止验效,出处 = 验证
+  违规清查报告 H1):点钮+固定等待后无条件重读,卡面未变时新观察=旧
+  options,重决策结果天然等价,「刷没刷成」不判。
   ⚠️ **触发源缺位挂账**:``read_encounter_options`` 的 affixes 恒空(卡面 UI 不显词缀,
   词缀在未建档的「敌方信息覆盖层」里)→ decide_encounter 的全克判定当前恒不触发,
   本执行链就绪但待词缀读数通道建立后才可能开火(dd-004 §约束)。
@@ -79,7 +82,7 @@ class EncounterObservation:
     """遭遇屏观察 payload(五段之段1产物;试点步骤 2 实机转录形态)。
 
     - ``options``:候选卡读取(现役读链 ``read_encounter_options`` 产物);
-    - ``screen``:稳定帧引用(刷新链的剩余次数读/验效补读同帧同源)——
+    - ``screen``:稳定帧引用(刷新链的剩余次数读同帧同源)——
       实机识别域载体,识别机制不出端口(架构设计 §2.1);sim 适配器落位
       时该域 = None 帧语义(T5 前 sim 腿不适用,F11 例外清单)。
     """
@@ -112,7 +115,8 @@ class CwScreenEncounter(CwScreenOpBase):
     SELECT_BTN: ClassVar[Point] = Point(1082, 898)
     # 分支刷新圆钮 = 「剩余次数:N」文本左侧固定偏移(dd-004)。归档帧
     # sr-od-test/screens/货币战争-遭遇节点/default.webp CV 双法实测:圆钮 ≈(671,899)、
-    # 文本锚中心 ≈(771,899) → 偏移 = -100px;偏移错 → 验效失败走失败安全分支(照常选卡)。
+    # 文本锚中心 ≈(771,899) → 偏移 = -100px;偏移错 → 刷新未命中,重读=原
+    # options,重决策结果天然等价(照常选卡)。
     _REFRESH_BTN_DX: ClassVar[int] = -100
 
     def __init__(self, ctx: SrContext):
@@ -176,44 +180,30 @@ class CwScreenEncounter(CwScreenOpBase):
         return EncounterObservation(
             options=read_encounter_options(self.ctx, screen), screen=screen)
 
-    def _card_signature(self, options: list[EncounterOption]) -> list[tuple]:
-        """卡面签名(难度+奖励元组列表)——刷新验效的「卡面变了」判据。"""
-        return [(o.difficulty, tuple(o.rewards)) for o in options]
+    def _try_refresh(self, text_pt: tuple[int, int]) -> list[EncounterOption]:
+        """点分支刷新圆钮 + 固定等待 + 重读选项(机械执行半;验效半已拆)。
 
-    def _try_refresh(self, text_pt: tuple[int, int], old_sig: list[tuple],
-                     old_count: int) -> tuple[bool, list[EncounterOption]]:
-        """点分支刷新圆钮 + 验效。
-
-        Returns: (是否生效, 刷新后选项;未生效时为空列表)。
-        验效双通道(与投资策略 ADR-0146 同款):①剩余次数扣减(权威——次数由游戏扣,
-        卡面碰巧同签名也认);②卡面签名变化(次数读失败时的兜底)。双输 = 未生效
-        (点偏/无布局)→ 调用方按原评分选(失败安全,不重试)。
+        「刷没刷成」不判(用户裁定 2026-09-10:动作 op 只管机械执行禁止
+        验证):点偏/无布局时重读=原 options,调用方基于新观察自然重决策
+        结果天然等价;未生效治理归下一帧观察(发射即置位已拦重入,不重试)。
+        Returns: 刷新后现读候选(读缺 = 空列表,调用方保留原候选照常选)。
         """
         target = Point(text_pt[0] + CwScreenEncounter._REFRESH_BTN_DX, text_pt[1])
         log.info(f'[cw-encounter] 建议刷新 → 圆钮@({target.x},{target.y})(文本锚定)')
         self.ctx.controller.mouse_move(target)   # bug#1 缓解
         self.ctx.controller.click(target)
         # 用户口述口径(#23,2026-09-02):遭遇屏刷新后 2s 画面稳定——
-        # 原 1.2s 会在重掷尾帧读次数/卡面,误判「刷新未生效」(失败安全
-        # = 白白浪费一次刷新)。等满 2s 再验效。
+        # 原 1.2s 会在重掷尾帧读卡(读缺帧,白重读一次)。等满 2s 再重读
+        # (固定等待归产生动画的操作,非判效轮询)。
         time.sleep(2.0)
-        after = self.screenshot()
-        _cnt2 = read_encounter_refresh_count(self.ctx, after)
-        if _cnt2 is not None and _cnt2[0] < old_count:
-            log.info(f'[cw-encounter] 刷新生效(剩余次数 {old_count}→{_cnt2[0]})')
-            return True, []
-        _new = read_encounter_options(self.ctx, after)
-        if _new and self._card_signature(_new) != old_sig:
-            log.info(f'[cw-encounter] 刷新生效(卡面变化,次数读数={_cnt2})')
-            return True, _new
-        log.warning(f'[cw-encounter] 刷新未生效(次数 {old_count}→{_cnt2},卡面未变;'
-                    f'点偏或未激活分支刷新布局)→ 按原评分选(失败安全)')
-        return False, []
+        return read_encounter_options(self.ctx, self.screenshot())
 
     def _record_chosen(self, session: 'StrategySession | None',
                        options: list[EncounterOption], idx: int) -> None:
         """选卡落地记录面:出口验真通过后写 ``chosen_encounter``(设计
-   边界注:刷新验效后的单次补读失败帧,候选可能残旧(点击决策同帧同源承诺对卡面内容不成立)——同型既有遥测 record_event_choice,低概率接受
+        边界注:值取本轮决策所用候选——刷后重读成功=刷后帧,读缺=原帧,
+        与选卡决策同帧同源——同型既有遥测 record_event_choice,低概率
+        残旧接受
         §3.4.5 单选事件屏 chosen_* 写端;单次逻辑写入,§3.4 申报豁免)。
 
         守卫口径=事实落地选择记录(区别于 tome 的决策不可判不写式;先例结构沿用 CwScreenBookcard):候选未读到 / 无策略
@@ -291,6 +281,10 @@ class CwScreenEncounter(CwScreenOpBase):
                 idx = pick.idx
             reason = pick.reason
         # ===== 分支刷新执行链(dd-004):建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
+        # 验效双通道已拆(用户裁定 2026-09-10 动作 op 禁验效,清查报告 H1):
+        # 发射即置位 → 点钮+固定等待 → 无条件重读 → 带 refresh_used=True
+        # 自然重决策。「刷没刷成」不判:卡面未变时新观察=旧 options,重决策
+        # 结果天然等价;未生效治理归下一帧观察(防重入已拦,不重试)。
         refreshed = False
         if match is not None and pick is not None and pick.refresh:
             sess_used = getattr(exec_state_of(match.session), '_encounter_refresh_used', False)
@@ -300,23 +294,20 @@ class CwScreenEncounter(CwScreenOpBase):
             elif cnt is None or cnt[0] <= 0:
                 log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={cnt})→ 按原评分选')
             else:
-                # 发出点击即置位(不等验效):防「点偏未生效 → 重入屏再试」
-                # 的反复尝试;优势布局每局只授 1 次,单次尝试语义与游戏规则
-                # 对齐。防重入旗标留守 + 登记件经 on_outcome 注册表
-                # (发射型触发点,试点步骤 2 收编;两路径共用)。
+                # 发出点击即置位:优势布局每局只授 1 次,单次尝试语义与游戏
+                # 规则对齐(点偏不重试,防「重入屏再试」的反复尝试)。防重入
+                # 旗标留守 + 登记件经 on_outcome 注册表(发射型触发点,
+                # 试点步骤 2 收编;两路径共用)。
                 self._emit_refresh_click(match.session, pick)
-                refreshed, new_opts = self._try_refresh(
-                    cnt[1], self._card_signature(options), cnt[0])
-                if refreshed:
-                    if not new_opts:   # 验效走了次数通道,卡面未读 → 补读一次
-                        new_opts = read_encounter_options(self.ctx, self.screenshot())
-                    if new_opts:
-                        options = new_opts
-                        pick = match.strategy.decide_encounter(
-                            new_opts, _state, match.session, _cfg, refresh_used=True)
-                        if 0 <= pick.idx < len(new_opts):
-                            idx = pick.idx
-                        reason = pick.reason
+                refreshed = True
+                new_opts = self._try_refresh(cnt[1])
+                if new_opts:
+                    options = new_opts
+                    pick = match.strategy.decide_encounter(
+                        new_opts, _state, match.session, _cfg, refresh_used=True)
+                    if 0 <= pick.idx < len(new_opts):
+                        idx = pick.idx
+                    reason = pick.reason
         if refreshed:
             reason = f'{reason}+分支刷新'
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
@@ -433,6 +424,8 @@ class CwScreenEncounter(CwScreenOpBase):
                 idx = pick.idx
             reason = pick.reason
         # ===== 分支刷新执行链(dd-004):建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
+        # 验效双通道已拆(同旧路径,清查报告 H1):发射即置位 → 点钮+固定
+        # 等待 → 无条件重读 → 带 refresh_used=True 自然重决策。
         refreshed = False
         if match is not None and pick is not None and pick.refresh:
             sess_used = getattr(exec_state_of(match.session), '_encounter_refresh_used', False)
@@ -442,21 +435,18 @@ class CwScreenEncounter(CwScreenOpBase):
             elif cnt is None or cnt[0] <= 0:
                 log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={cnt})→ 按原评分选')
             else:
-                # 发出点击即置位(不等验效):发射型触发点两路径共用
-                #(见 _emit_refresh_click;语义口径同旧路径逐位)。
+                # 发出点击即置位:发射型触发点两路径共用(见
+                # _emit_refresh_click;语义口径同旧路径逐位)。
                 self._emit_refresh_click(match.session, pick)
-                refreshed, new_opts = self._try_refresh(
-                    cnt[1], self._card_signature(options), cnt[0])
-                if refreshed:
-                    if not new_opts:   # 验效走了次数通道,卡面未读 → 补读一次
-                        new_opts = read_encounter_options(self.ctx, self.screenshot())
-                    if new_opts:
-                        options = new_opts
-                        pick = match.strategy.decide_encounter(
-                            new_opts, _state, match.session, _cfg, refresh_used=True)
-                        if 0 <= pick.idx < len(new_opts):
-                            idx = pick.idx
-                        reason = pick.reason
+                refreshed = True
+                new_opts = self._try_refresh(cnt[1])
+                if new_opts:
+                    options = new_opts
+                    pick = match.strategy.decide_encounter(
+                        new_opts, _state, match.session, _cfg, refresh_used=True)
+                    if 0 <= pick.idx < len(new_opts):
+                        idx = pick.idx
+                    reason = pick.reason
         if refreshed:
             reason = f'{reason}+分支刷新'
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '

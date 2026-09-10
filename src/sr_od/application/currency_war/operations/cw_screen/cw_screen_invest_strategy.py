@@ -7,11 +7,14 @@ OCR 3 张投资策略卡名 → 经 ``match.strategy.decide_invest``(委托 ``cw
 逐卡刷新执行链(T-162 重立,ADR-0600;旧 ADR-0146 刷新流曾随 ADR-0519 C10 整段删除):
 ``decide_event`` 帧级触发(零阈值结构判据:全精确分类 ∧ 无 S1/S2 ∧ max_N≠1,
 推导见 ADR-0600 §3.2 + math_proofs P81)→ 返回 ``refresh_slots``
-→ 逐槽读计数(现读 >0)→ 文本锚定点刷新圆钮 → 验效双通道 → 重读重分类 →
+→ 逐槽读计数(现读 >0)→ 文本锚定点刷新圆钮 → 固定等待重读 → 重分类 →
 **用最终名集重调 decide_invest**(G1:重决策只经 flow.decide_invest 入口,
 D*① 三参只在此解析;handler 禁直调 kernel 判据)→ 按最终决策选卡。投资策略屏
-刷新是**逐卡刷新**(每卡独立按钮、独立计数,归档帧对实证);失败安全 = 停止
-刷新照常选当前最优(与遭遇屏同款)。已发射槽集挂 ``exec_state_of(session)``
+刷新是**逐卡刷新**(每卡独立按钮、独立计数,归档帧对实证)。验效双通道已
+拆除(用户裁定 2026-09-10:动作 op 只管机械执行禁止验效,出处 = 验证违规
+清查报告 H2):「刷没刷成」不判,链继续条件只由新观察的名集承载(读缺
+停链/新卡不可分类停链/新卡顶级停链,均为观察驱动)。已发射槽集挂
+``exec_state_of(session)``
 (局容器级),复位 = visit 起点单点(实例首帧入口锚验通过后清空)。
 
 卡名按行过滤(2026-08-04 snap 实测):标题「请选择投资策略」顶(y≈98)、卡名中(y≈490,
@@ -115,8 +118,8 @@ class CwScreenInvestStrategy(SrOperation):
     # 单帧证据不足判文本漂移形态,固定 area 不可行——遭遇屏 _REFRESH_BTN_DX
     # 先例)。偏移实测收口(V7,归档帧 sr-od-test/screens/货币战争-投资策略/
     # default.webp CV 环亮像素质心):钮心 x≈{388,887,1386}、计数文本中心
-    # x≈{477,975,1474}(y 同带 ≈855)→ dx ≈ −88。偏移错 → 验效双输 →
-    # 失败安全照常选(能力退化非事故,复测即修)。
+    # x≈{477,975,1474}(y 同带 ≈855)→ dx ≈ −88。偏移错 → 刷新未命中,
+    # 重读=原卡名集,重决策结果天然等价(能力退化非事故,复测即修)。
     _REFRESH_BTN_DX: ClassVar[int] = -88
     # 刷新后等待(执行层时序常量,非策略数值,沿 ADR-0529 先例;screen_flow_timing
     # #13:刷新动画 ~1s,旧实现 1.5s 覆盖)。
@@ -243,9 +246,8 @@ class CwScreenInvestStrategy(SrOperation):
             pick = None
 
         # ===== 逐卡刷新执行链(ADR-0600 §3.3;参照 cw_screen_encounter live 先例:
-        # 文本锚定钮 + 验效双通道 + 发射即置位防重入)=====
+        # 文本锚定钮 + 发射即置位防重入;验效双通道已拆,清查报告 H2)=====
         _refreshed_slots: list[int] = []
-        _refresh_noeffect = False
         _names_updated = False
         if (match is not None and pick is not None and pick.refresh_slots
                 and opts):
@@ -302,41 +304,25 @@ class CwScreenInvestStrategy(SrOperation):
                         evidence=f'refresh_click@slot{_i}')
                 except Exception as e:   # noqa: BLE001  记录面失败不阻塞
                     log.warning(f'[cw-strat] 刷新计数记录失败(不阻塞): {e}')
+                _refreshed_slots.append(_i)   # 发射即记遥测后缀(与登记件同点,不等重读)
                 time.sleep(CwScreenInvestStrategy.REFRESH_ANIM_WAIT_S)
-                # 验效双通道(遭遇屏先例):①计数扣减(权威——次数由游戏扣,
-                # 卡面碰巧同签名也认);②卡名签名变化(兜底)。双输 = 未生效
-                # (点偏/无授予)→ 停止刷新照常选当前最优,不重试(失败安全)。
+                # 验效双通道已拆(用户裁定 2026-09-10 动作 op 禁验效,清查报告
+                # H2):固定等待后无条件重读刷后帧(机械执行),「刷没刷成」不判
+                # ——卡名未变时新观察=旧名集,链继续条件只由新观察承载。
                 _after = self.screenshot()
-                _counts2 = read_invest_refresh_counts(self.ctx, _after, 'strategy')
-                _slot2 = (pair_refresh_counts_to_slots(
-                    _counts2, [x for _n, x, _y in opts])
-                    if _counts2 else [None] * len(opts))
-                _hit2 = _slot2[_i] if _i < len(_slot2) else None
-                _opts2 = self._read_options(_after)   # 刷后重读全帧卡名(验效② + G10 采集)
-                _eff = (_hit2 is not None and _hit2[0] < _hit[0]) or (
-                    len(_opts2) == len(opts) and _opts2[_i][0] != names[_i])
-                if not _eff:
-                    _refresh_noeffect = True
-                    self._ocr_map = _first_ocr_map   # 采集回退首帧(读缺帧不进 _cards)
-                    log.warning(f'[cw-strat] 槽{_i}刷新未生效(计数 {_hit[0]}→'
-                                f'{_hit2[0] if _hit2 is not None else None},卡名未变;'
-                                f'点偏或无授予)→ 停止刷新照常选(失败安全)')
-                    break
-                # 生效:以刷后帧为当前事实(重读帧本就全帧 OCR,_ocr_map 已同步
-                # 指向刷后帧 → G10 采集「刷后集合」成立);新卡重分类。
+                _opts2 = self._read_options(_after)   # 刷后重读全帧卡名(新观察 + G10 采集)
                 if len(_opts2) != len(opts):
-                    # 刷后帧读缺(碎片/过渡帧):刷新已生效(计数通道确认)但
-                    # 新名不可知 → 名集不更新、不重决策(G1 语义:重决策必须用
-                    # 最终名集,陈旧名 = 幻影卡),链停照常选(失败安全;采集
-                    # 回退首帧)。
-                    _refreshed_slots.append(_i)
+                    # 刷后帧读缺(碎片/过渡帧):新观察不可用 → 名集不更新、
+                    # 不重决策(G1 语义:重决策必须用最终名集,残缺名 = 幻影卡),
+                    # 链停照常选(失败安全;采集回退首帧)。
                     self._ocr_map = _first_ocr_map
-                    log.warning(f'[cw-strat] 槽{_i}刷新生效但刷后帧读缺'
+                    log.warning(f'[cw-strat] 槽{_i}刷后帧读缺'
                                 f'(opts2={len(_opts2)})→ 停止刷新照常选(失败安全)')
                     break
+                # 新观察可用:以刷后帧为当前事实(重读帧本就全帧 OCR,_ocr_map
+                # 已同步指向刷后帧 → G10 采集「刷后集合」成立);新卡重分类。
                 opts = _opts2
                 names = [n for n, _x, _y in opts]
-                _refreshed_slots.append(_i)
                 _names_updated = True
                 _new_exact, _nb, _nf, _ntop = _guard_classify(names[_i], config)
                 if not _new_exact:
@@ -366,11 +352,9 @@ class CwScreenInvestStrategy(SrOperation):
             chosen, choose_x, choose_y, reason = opts[0][0], opts[0][1], opts[0][2], 'fallback(no-decision)'
         else:
             chosen, choose_x, choose_y, reason = '?', 920, 490, 'fallback(no-ocr)'
-        # 刷新遥测后缀(零新通道,遭遇屏先例同构:逐槽后缀 + 未生效标记)。
+        # 刷新遥测后缀(零新通道,遭遇屏先例同构:逐槽后缀,发射即记)。
         if _refreshed_slots:
             reason = reason + ''.join(f'+槽{i}刷新' for i in _refreshed_slots)
-        if _refresh_noeffect:
-            reason = f'{reason}+refresh-noeffect'
         log.info(f'[cw-strat] options={names} chose={chosen!r}@({choose_x},{choose_y}) reason={reason}')
         # 持卡注入面(session.active_strategies)的 append 已移至确认成功后
         #(本文件尾块;ADR-0598 幻影卡收口)——旧时序 append 先于点卡确认,
@@ -380,10 +364,10 @@ class CwScreenInvestStrategy(SrOperation):
         # → invest_cards.jsonl;未注册名告警(注册表只 T0 子集,315 长尾靠采集渐进补全)。
         # G10(ADR-0600 §3.3):发生刷新时 opts/_ocr_map 已指向刷后重读帧 → 本采集
         # = 刷后集合(chosen 按最终集合)——「版本感知额外收益」与 F6 事后再核对
-        # 账锚两个申报的载体。**采集 = 实际所见帧**:多槽复合路径(前槽生效+后槽
-        # 验效双输/读缺)下 _ocr_map 回退首帧而 opts/names 保持上一生效刷后帧,
-        # 此时 effect_text 桶可能保留前帧描述、卡名恒准——遥测面混合口径,申报
-        # 接受(落地审 F-B,ADR-0600 §4),不扩代码。
+        # 账锚两个申报的载体。**采集 = 实际所见帧**:多槽复合路径(前槽已采纳
+        # +后槽读缺停链)下 _ocr_map 回退首帧而 opts/names 保持上一已采纳刷后
+        # 帧,此时 effect_text 桶可能保留前帧描述、卡名恒准——遥测面混合口径,
+        # 申报接受(落地审 F-B,ADR-0600 §4),不扩代码。
         _items = [(t, m.max.center.x, m.max.center.y)
                   for t, m in (self._ocr_map or {}).items() if m.max is not None]
         _anchors = [(i, x) for i, (_n, x, _y) in enumerate(opts)]
