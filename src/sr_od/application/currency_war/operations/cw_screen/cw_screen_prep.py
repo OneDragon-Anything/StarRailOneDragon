@@ -709,6 +709,7 @@ class CwScreenPrep(CwScreenOpBase):
             # 装配源契约不变(ADR-0530)。
             if session is not None:
                 from sr_od.application.currency_war.kernel.cw_board_state import (
+                    ChannelSig,
                     bench_view_from_obs,
                     board_state_of,
                     reconcile_pending_observation,
@@ -717,6 +718,12 @@ class CwScreenPrep(CwScreenOpBase):
                     is_merge_effect_window,
                 )
                 _bs_obs = board_state_of(session)
+                # R1 渠道签名(§3.2.1):备战帧观察写入 = 渠道①,actor=本 op、
+                # screen=备战建档名、quality=真读标记(承接现役真读/兜底可分
+                # 语义);reconcile 核对口 confirm 行 actor = 调用方 op(对账层)。
+                _prep_sig = ChannelSig(family='obs', actor='CwScreenPrep',
+                                       screen='货币战争-备战', mode='read',
+                                       quality={'bench': 'real_read'})
                 # 备战席观察写端(§3.2.5 观察写端=本屏;迁移批次二扩单件 1
                 # 「星级观察消费」):SIFT 身份+星级(read_star 链)已读,
                 # 零新增 OCR——记录模型 Unit.star 自此有消费路径(窟窿一
@@ -730,7 +737,7 @@ class CwScreenPrep(CwScreenOpBase):
                 # (上方 bench_from_compact(tracked)),记录侧同式沿用现值。
                 _bench_obs = bench_view_from_obs(obs.bench_chars)
                 if _bench_obs is not None:
-                    _bs_obs.observe(_bs_obs.bench, _bench_obs)
+                    _bs_obs.observe(_bs_obs.bench, _bench_obs, sig=_prep_sig)
                     # 合成升星预期核对闭环(§3.2.18 修法 a 核对半;confirm_point
                     # 绑定 prep_obs):一致转正/失配清账+缺陷留证/无挂起不动。
                     # P3-10(批次二复审):特效窗(星爆动画 ≥2 帧)内**顺延核对**
@@ -744,10 +751,13 @@ class CwScreenPrep(CwScreenOpBase):
                     else:
                         reconcile_pending_observation(
                             _bs_obs, _bs_obs.bench, _bench_obs,
-                            at_point='prep_obs')
+                            at_point='prep_obs', sig=_prep_sig)
                 else:
                     _bs_obs.carry(_bs_obs.bench,
-                                  frame=f'p{st.plane}-r{st.round_num}')
+                                  frame=f'p{st.plane}-r{st.round_num}',
+                                  sig=ChannelSig(
+                                      family='obs', actor='CwScreenPrep',
+                                      screen='货币战争-备战', mode='carried'))
                 from sr_od.application.currency_war.kernel.cw_bs_view import (
                     game_state_view,
                 )

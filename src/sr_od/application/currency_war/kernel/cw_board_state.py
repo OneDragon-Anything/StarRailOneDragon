@@ -26,6 +26,19 @@
 合成时同样记 observation,evidence 恒带 ``sim:synthesized``(§2.1);
 bench 槽位保序映射——记录模型按实机真值箱占席(§3.2.5),不采 sim
 「无箱实体」的内部口径约定。
+
+**统一 state 遥测升级(R1 影子双写段)**:写入 API 全部带可选渠道签名
+(:class:`ChannelSig`,渠道族封闭集 obs/logic_action/logic_hook + 字段级
+质量元数据);:attr:`BoardState.write_seq` 升格为**版本 id**(每次写入单调
+分配,不重不漏,:meth:`BoardState.current_version` 读口);每次写入落一行
+**自足状态流水**(行 = 改了什么 + 渠道签名 + 版本 id + 写入后完整 state
+快照,行行自足查询直接读——无快照锚/无对账自检/无前溯推导,禁回归)。
+落盘由 :mod:`sr_od.application.currency_war.kernel.cw_state_journal`
+承载,缺省关(影子双写:旧 12 流照常,新面经装配点显式接通)。新增**逻辑态
+派生域与画面上下文域**(设计 §3.1.4):``prev_screen``/``current_screen``
+(①观察汇聚写)+ ``node_inferred``/``node_observed``(③派生规则唯一写点,
+双腿判定规则本体照搬判定方案 R3)。设计正本 =
+``.debug/temp/currency_war/流程侧遥测-设计v3.1.md``(§3.2/§3.4)。
 """
 from __future__ import annotations
 
@@ -34,6 +47,7 @@ import dataclasses
 import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 
 from one_dragon.utils.log_utils import log
@@ -75,11 +89,59 @@ DEFAULT_BS_SCHEMA: dict[str, int] = {
     'event_choices': 1,     # 十事件屏 chosen_*(§3.4/§4 事件选择)
     'settlement': 1,        # 结算真值组 + hp 保底事件位(§3.5)
     'effects': 1,           # 在场效果激活账本(§5.1,非 Field 载体)
+    'derivation': 1,        # 逻辑态派生域与画面上下文域(R1 §3.1.4:派生规则唯一写点)
+    'receipts': 1,          # 动作回执域(R2 §3.1.1-4/§3.2.5:普通 Field 域滚动窗,唯一写点 = note_action_receipt)
 }
 
 #: 画面附加域(§2.2 显式例外):语义 = 「当前画面的 payload,非当前画面
 #: =None」——离开画面置 None 是结构事实非失读,不受 carried 硬边界辖。
 _PAYLOAD_DOMAINS: frozenset[str] = frozenset({'shop', 'encounter', 'supply'})
+
+
+# ---- 画面上下文域常量(R1 §3.1.4/§3.4;派生规则输入面)----
+
+#: 干净备战帧画面标识(画面建档 screen_name;备战腿触发面)。
+SCREEN_PREP_FRAME: str = '货币战争-备战'
+
+#: 弹窗族清单(R1 §3.4.1 规则一;成员照搬判定方案 R3 §3.3 规则一四类:
+#: 遭遇/投资策略/补给/商店面板——「按下一节点类型自动弹」中有独立分发分支
+#: 的四类;巨星/祈愿非节点边界标记不入清单,R3 §5-③.1 残留申报)。
+SCREEN_CONTEXT_POPUP_FAMILY: frozenset[str] = frozenset({
+    '货币战争-遭遇节点',
+    '货币战争-投资策略',
+    '货币战争-补给',
+    '货币战争-备战-开商店',
+})
+
+#: 弹窗腿守卫集(R1 §3.4.1;语义 = 「本节点备战帧未被分派过」的画面侧判据,
+#: 照搬 R3 §3.3 规则二 prev_branch ∈ {战斗等待(结算窗), 开局链}):
+#: - ``BATTLE_WAIT_CONTEXT`` = 战斗/结算窗段内相位 token(R3 的「战斗等待」
+#:   分支——段内多物理屏,观察阶段键 battle_or_transit 无法细分到建档名,
+#:   按分支级记录,边界申报见值注释);
+#: - 开局链成员 = 简报/位面过渡/投资环境(R3 §3.3 规则二②;写点 = cw_loop
+#:   分派分支的分支标识写入,R2 开局链写点)+ 等待 1-1(投资环境后的开局
+#:   补给动画等待段,无独立画面建档——分支级 token 同 ``BATTLE_WAIT_CONTEXT``
+#:   变体;R1「接线批核对后补」承接,判定方案 §3.6 S1 形态判据:等待期商店
+#:   面板先被采到 → 弹窗腿开局候选);
+#: - ``货币战争-BOSS简报`` = boss 流中段前驱(2026-09-10 用户裁定 E12 边序
+#:   勘误:实序 = 奖励关结算 → 0p 简报 → 商店自动开,screen_flow_timing.md
+#:   #26/#14/#27——弹窗腿前驱 = 0p 非结算窗,漏成员 = boss 节点漏触发;
+#:   写点同开局链 = cw_loop 0p 分支分支标识写入;自身不在弹窗族,纯 prev 供给)。
+BATTLE_WAIT_CONTEXT: str = '货币战争-战斗等待'
+SCREEN_CONTEXT_GUARD_PREV: frozenset[str] = frozenset({
+    BATTLE_WAIT_CONTEXT,
+    '货币战争-简报',
+    '货币战争-位面过渡',
+    '货币战争-投资环境',
+    '货币战争-BOSS简报',
+    '货币战争-等待1-1',
+})
+
+
+def node_ordinal_of(plane: int, round_num: int) -> int:
+    """节点序 = (plane-1)*9 + round_num(基 1;坐标系与效果账本 advance_node
+    去重键同源,判定方案 R3 §3.2 身份键)。"""
+    return (int(plane) - 1) * 9 + int(round_num)
 
 #: 帧观察完整度三档(§2.4 关键结构 2)。
 FrameObsLevel = Literal['full', 'view', 'none']
@@ -89,6 +151,136 @@ FieldSource = Literal['observation', 'logic', 'carried', 'prior']
 
 #: sim 合成口统一 evidence 标记(§2.1:sim 侧真值合成恒带)。
 SIM_SYNTHESIZED: str = 'sim:synthesized'
+
+
+# ============================================================ 渠道签名(R1 统一写入口)
+
+#: 渠道族封闭集(设计 §3.2.1;裁定 1 的三写入源,集外值 = 红):
+#: obs = 画面 op 观察 / logic_action = 动作 op 逻辑计算 / logic_hook = 流程
+#: hook 驱动的逻辑计算(含节点推进派生规则)。carried/prior/synthesized 不是
+#: 第四源,是 obs 族内的来源子模(由 mode 承载)。
+CHANNEL_FAMILIES: tuple[str, ...] = ('obs', 'logic_action', 'logic_hook')
+
+#: obs 族子模词表(§3.2.1 mode):真读 / 失读沿用 / 开局先验 / sim 真值合成。
+OBS_MODES: tuple[str, ...] = ('read', 'carried', 'prior', 'synthesized')
+
+#: logic 两族子模:恒 compute(逻辑计算,无观察质量语义)。
+LOGIC_MODES: tuple[str, ...] = ('compute',)
+
+#: actor 登记面在册名(§3.2.1:显式 sig 的写入者须在册,登记式封闭集防自由
+#: 串漂移;未来流程 hook 系统的写入者随其登记面申报——写入口只校验在册,
+#: 零接口预留)。种子 = 本批在册写入者;影子期「无 sig 调用」的合成签名
+#: actor 不做在册校验(过渡语义,M2/M3 接线批铺满显式 sig 后空 actor 行消失)。
+REGISTERED_ACTORS: set[str] = {
+    'cw_observation',          # 观察汇聚模块(read_game_state 唯一漏斗)
+    'CwScreenPrep',            # 备战画面 op(reconcile 核对口观察写入)
+    'derive_node_inferred',    # 派生规则·弹窗腿(§3.4.1 规则一)
+    'derive_node_observed',    # 派生规则·备战腿(§3.4.1 规则二)
+    'ResumeAttach',            # 接管协议(载体中继登记名,§3.2.4)
+    'MatchClose',              # 局终收口(局终域写点,接线归后续批)
+    'synthesize_from_game_state',  # sim 合成口(§2.1)
+    # —— R2 动作 op 写入接线(渠道② logic_action,§3.2.1 登记类属 =
+    # 「动作 op / handler 类名」;actor = 执行动作的 op 类,动作身份由
+    # 回执记录 op 字段承载)——
+    'PrepActionExecutor',      # 备战动作执行器(动作全集唯一分派点)
+    'CwOpBuyCards',            # 商店单动作循环(run_buy_waves)
+    'CwOpOpenShop',            # 开商店原子(op 函数与独立壳同名登记)
+    'CwOpCloseShop',           # 关商店原子
+    'CwLoop',                  # 外循环(开局链分支标识写点,obs 族 ①)
+    'EffectLedgerBridge',      # 效果账本→字段桥(容量投影/增额授予;v3.2-G4
+                               # §3.2.1 登记类属补项;现走 legacy 合成,显式
+                               # 签名化时的在册前置)
+}
+
+
+def register_sig_actors(*names: str) -> None:
+    """登记新的写入者名(登记面扩面唯一入口;重复登记幂等)。"""
+    REGISTERED_ACTORS.update(names)
+
+
+def actor_registered(name: str) -> bool:
+    """actor 是否已登记(测试与诊断用;写入口校验走 :func:`_validate_sig`)。"""
+    return name in REGISTERED_ACTORS
+
+
+def _journal_emit(row: dict) -> None:
+    """状态流水行外送(写入口共用;缺省关 + 局外拒写 + best-effort)。"""
+    sink = _STATE_JOURNAL_SINK
+    if sink is None:
+        return
+    try:
+        if not _current_run_id_safe():
+            return   # 局外写入拒绝(§3.2.3):不写假行,诚实缺失
+        sink(row)
+    except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化写入链
+        log.debug(f'[cw-bs] journal row skip: {e}')
+
+
+def _validate_sig(sig: ChannelSig, allowed_families: tuple[str, ...]) -> None:
+    """显式签名的写入口校验(§3.2.4 硬约束 2):渠道族须匹配该 API 的合法族、
+    actor 须在册;违反显式炸错(禁静默收下——渠道面漂移要在写点暴露)。"""
+    if sig.family not in allowed_families:
+        raise ValueError(
+            f'渠道族 {sig.family!r} 不属本写入口合法族 {allowed_families}'
+            f'(§3.2.4 硬约束 2 渠道封闭集)')
+    if sig.actor not in REGISTERED_ACTORS:
+        raise ValueError(
+            f'actor {sig.actor!r} 未登记(register_sig_actors 申报;§3.2.4 '
+            f'硬约束 2 登记面在册校验)')
+
+
+@dataclass(frozen=True)
+class ChannelSig:
+    """渠道签名(§3.2.1):每次写入携带的「谁写的、从哪写的、质量如何」
+    结构化标注,随状态流水行落盘。
+
+    - family = 渠道族(:data:`CHANNEL_FAMILIES` 封闭集,构造期校验);
+    - actor = 登记面在册的写入者名(:data:`REGISTERED_ACTORS`;显式 sig 经
+      写入口在册校验,合成 sig 过渡期豁免);
+    - screen = 画面标识(obs = 画面建档 screen_name;logic_hook = 关联画面;
+      logic_action = None);
+    - mode = 渠道族子模(obs 族 :data:`OBS_MODES` / logic 两族恒 compute,
+      构造期校验);
+    - quality = 字段级质量元数据(字段名 → 标记,承接现役 *_readable 语义:
+      真读/兜底可分;词表起步面见设计 §3.2.1,扩面逐字段登记申报);
+    - group_id = 一次逻辑计算打包的组标识(②= 'act:<op类名>@<seq>' /
+      ③= 'hook:<写入者登记名>@<seq>';组内行同 group)。
+
+    frozen = 行内 sig 不被事后改写(自足行即真相);quality dict 请勿就地
+    变更(冻结只保引用位,纪律面约束)。
+    """
+
+    family: str
+    actor: str
+    screen: str | None = None
+    mode: str | None = None          # None = 按 family 取缺省(obs→read/logic→compute)
+    quality: dict[str, str] = field(default_factory=dict)
+    group_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.family not in CHANNEL_FAMILIES:
+            raise ValueError(
+                f'渠道族 {self.family!r} 集外(封闭集 = {CHANNEL_FAMILIES};'
+                f'§3.2.1 硬约束 2)')
+        if self.mode is None:
+            object.__setattr__(
+                self, 'mode',
+                'compute' if self.family in ('logic_action', 'logic_hook')
+                else 'read')
+        legal = (LOGIC_MODES if self.family in ('logic_action', 'logic_hook')
+                 else OBS_MODES)
+        if self.mode not in legal:
+            raise ValueError(
+                f'mode {self.mode!r} 不属渠道族 {self.family} 的合法子模 '
+                f'{legal}(§3.2.1 mode 词表)')
+
+    def to_json(self) -> dict:
+        """行内 sig 形态(键序固定,同态同形)。"""
+        return {
+            'family': self.family, 'actor': self.actor, 'screen': self.screen,
+            'mode': self.mode, 'quality': dict(self.quality),
+            'group_id': self.group_id,
+        }
 
 #: 字段值类型参数(Field 泛型;值域由各字段注解承载,运行期不做 isinstance
 #: 门——观察值类型由写入端调用点保证)。
@@ -326,6 +518,50 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
                 f'预期[{expected}] 实读[{actual}](§2.3 观察赢)')
 
 
+# ============================================================ 状态流水 sink(R1 §3.2.3)
+
+#: 状态流水外送钩子(进程内单槽;缺省 None = 关——影子双写纪律「缺省关 +
+#: 启动点显式接通」,落盘实现与装配口 =
+#: :mod:`sr_od.application.currency_war.kernel.cw_state_journal`)。
+#: 槽契约:接收一行完整行 dict(自足快照行,§3.2.3),自担序列化/缓冲/落盘。
+_STATE_JOURNAL_SINK: Callable[[dict], None] | None = None
+
+#: run 归属供给槽(依赖倒置:kernel 禁依 telemetry——桶依赖矩阵锁
+#: sr-od-test test_cw_package_layout.LEGAL_EDGES;行内 run_id 由装配点注入
+#: 读取函数,生产武装点 = currency_war_app 装配段传 telemetry 现读口)。
+_RUN_ID_PROVIDER: Callable[[], str] | None = None
+
+
+def set_state_journal_sink(fn: Callable[[dict], None] | None) -> None:
+    """接通/复位状态流水外送钩子(None = 关,缺省态;同 :func:`set_defect_sink`
+    注入槽模式)。生产武装点 = currency_war_app 装配段(经
+    ``cw_state_journal.install_state_telemetry``)。"""
+    global _STATE_JOURNAL_SINK
+    _STATE_JOURNAL_SINK = fn
+
+
+def set_run_id_provider(fn: Callable[[], str] | None) -> None:
+    """注入 run 归属读取函数(None = 关;缺省态 = 视为局外全拒写——不写假行)。"""
+    global _RUN_ID_PROVIDER
+    _RUN_ID_PROVIDER = fn
+
+
+def state_telemetry_armed() -> bool:
+    """影子面是否武装(sink 在场)。派生域/上下文域写入同受此闸——关 =
+    全新面静默(行为与 R1 前逐位一致),开 = 影子面全启(设计 §3.7.1 影子段)。"""
+    return _STATE_JOURNAL_SINK is not None
+
+
+def _current_run_id_safe() -> str:
+    """run 归属现读(经供给槽;槽缺席/读取失败 = 视为局外,拒写假行)。"""
+    if _RUN_ID_PROVIDER is None:
+        return ''
+    try:
+        return str(_RUN_ID_PROVIDER() or '')
+    except Exception:   # noqa: BLE001  归属读取失败 = 视为局外(拒写假行)
+        return ''
+
+
 # ============================================================ 派生计算(不存储)
 
 
@@ -427,6 +663,76 @@ def record_refresh_execution(bs: BoardState, *, free: bool,
         paid = bs.paid_refresh_count.value or 0
         bs.write_logic(bs.paid_refresh_count, int(paid) + 1,
                        produced_by='RefreshShop', evidence=_ev)
+
+
+# ============================================================ 动作回执域(R2 §3.1.1-4/§3.2.5)
+
+#: 动作回执滚动窗容量(§3.1.1-4:有界列表,先进先出;容量 8 = 单节点动作
+#: 批的量级上界,失败可见性窗——回执蒸发窗下限,过窗历史归流水行行自足)。
+RECEIPTS_WINDOW_CAP: int = 8
+
+
+def board_state_from_ctx(ctx: object) -> BoardState | None:
+    """ctx → 局 BoardState(cw_match.session 旁表现读;无局/解析失败 = None)。
+
+    动作 op 写入点的统一供给口(R2):调用方零判空负担——无局(独立跑/
+    测试桩)静默 None,写入点自行跳过。"""
+    try:
+        match = getattr(ctx, 'cw_match', None)
+        session = getattr(match, 'session', None) if match is not None else None
+        if session is None:
+            return None
+        return board_state_of(session)
+    except Exception:   # noqa: BLE001  供给口不炸调用链
+        return None
+
+
+def note_action_receipt(bs: BoardState, *, op: str, applied: bool,
+                        reason: str = '', detail: str = '',
+                        screen: str = '',
+                        actor: str, extra: dict | None = None) -> None:
+    """动作执行回执写入(receipts 域**唯一写点**,渠道② logic_action;
+    §3.1.1-4/§3.2.5:各动作 op 执行回执处的普通 ``write_logic`` 写入)。
+
+    - **发出即簿记,不是验证**(M1③ 用户裁定):``applied`` = 动作 op
+      自身「是否发出」的机械事实透传,本口零成败判定——禁读屏核验、禁
+      落地推断(落地判定归观察侧 reconcile);失败动作也产行(applied=
+      false + reason),exec_events「正在蒸发的失败数据」教训的收编位;
+    - 回执记录 = ``{op, applied, reason, detail?, screen?, **extra}`` 普通
+      字典:op = 动作 op 名(类型名,exec_events 动作族承接);reason =
+      未发出/受阻原因码('' = 正常发出);detail = 机械执行摘要(做了什么
+      的人读面,恒透传);extra = 执行面结构化字段(plan_truncated/
+      refresh_skipped/blocked 等,§3.2.1 质量词表执行面);
+    - 滚动窗 = :data:`RECEIPTS_WINDOW_CAP` 条先进先出,整窗帧替换写入
+      (普通 Field 域,非专用行机制,E3);窗序 = 写入序,同态同形;
+    - 渠道签名:family=logic_action + actor(登记面在册,§3.2.1 ②类属 =
+      执行动作的 op 类名)+ group_id = ``act:<actor>@<seq>``(§3.2.1 ②
+      组标识格式);sig.screen 恒 None(逻辑计算无画面),画面桶由回执
+      记录 screen 字段承接(exec_events 词表);
+    - **影子闸**:未武装(:func:`state_telemetry_armed` 假)零写入零版本
+      消费(缺省关 + 启动点显式接通,§3.7.1 影子段纪律);局外(run_id
+      空)由行装配层拒写假行。best-effort:异常不阻塞动作链(记录层故障
+      不毒化执行)。
+    """
+    if not state_telemetry_armed():
+        return
+    try:
+        receipt: dict = {'op': str(op), 'applied': bool(applied),
+                         'reason': str(reason or '')}
+        if detail:
+            receipt['detail'] = str(detail)
+        if screen:
+            receipt['screen'] = str(screen)
+        if extra:
+            receipt.update(dict(extra))
+        old = bs.receipts.value or []
+        window = (list(old) + [receipt])[-RECEIPTS_WINDOW_CAP:]
+        seq = bs.write_seq + 1
+        sig = ChannelSig(family='logic_action', actor=actor, mode='compute',
+                         group_id=f'act:{actor}@{seq}')
+        bs.write_logic(bs.receipts, window, produced_by=actor, sig=sig)
+    except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化动作链
+        log.debug(f'[cw-bs] action receipt skip: {e}')
 
 
 # ============================================================ 账本→字段桥(§5.1/§3.2.5/§3.3.5-6,迁移批次三 B1)
@@ -640,14 +946,16 @@ def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
 
 def reconcile_pending_observation(bs: BoardState, target: Field,
                                   observed: Any, *,
-                                  at_point: str) -> str:
+                                  at_point: str,
+                                  sig: ChannelSig | None = None) -> str:
     """核对点闭环(§2.5 两步机制的核对半;迁移批次二扩单件 1)。
 
     对绑定 ``at_point`` 的该字段挂起预期与观察值比对:
     - 一致 → :meth:`confirm` 转正(source=logic;决策推算被核实);
     - 失配 → :meth:`discard_expected` 清账 + 缺陷台账留证
       (kind=expect_vs_obs_mismatch;§2.3 观察赢,观察覆盖已先行写入真值);
-    - 无挂起预期或条目绑定其他核对点 → 不动(返回 'none')。
+    - 无挂起预期或条目绑定其他核对点 → 不动(返回 'none');
+    - sig = 渠道②签名透传(confirm 行 actor = 调用方 op,§3.2.1 对账层)。
 
     返回 'confirmed' | 'discarded' | 'none'。
     """
@@ -656,7 +964,7 @@ def reconcile_pending_observation(bs: BoardState, target: Field,
     if entry is None or entry.confirm_point != at_point:
         return 'none'
     if entry.value == observed:
-        bs.confirm(entry, at_point=at_point)
+        bs.confirm(entry, at_point=at_point, sig=sig)
         return 'confirmed'
     bs.discard_expected(entry)
     _emit_defect(kind='expect_vs_obs_mismatch', field_name=name,
@@ -838,6 +1146,27 @@ class BoardState:
     settlement: Field[Settlement | None] = field(default_factory=Field)
     hp_floor_triggered: Field[bool] = field(default_factory=Field)   # hp 保底触发事件位(§3.5.3;纯观察登记,无判据载体)
 
+    # —— 逻辑态派生域与画面上下文域(R1 §3.1.4;bs_schema 域 'derivation')——
+    # 写点准入:上下文对唯一写点 = ①观察汇聚(observe_screen_context);
+    # node_* 唯一写点 = ③派生规则(双腿,同口触发)——其余渠道写入 = 越格。
+    prev_screen: Field[str] = field(default_factory=Field)       # 上一次分派观察的画面标识(开局前 '')
+    current_screen: Field[str] = field(default_factory=Field)    # 最近一次分派观察的画面标识(派生规则输入面)
+    # [索引定义] node_inferred = 节点序 ord=(plane-1)*9+round(基 1,与效果账本
+    # advance_node 同坐标系);弹窗腿推断值,run 内单调;None = 未定。
+    # 取值时机 = 派生规则写入期快照;写端 = derive_node_inferred(渠道③)。
+    node_inferred: Field[int] = field(default_factory=Field)
+    # [索引定义] node_observed = 同上坐标系;备战腿顶栏权威值(权威纠偏语义,
+    # 决策消费面 = 两字段最大值);写端 = derive_node_observed(渠道③)。
+    node_observed: Field[int] = field(default_factory=Field)
+
+    # —— 动作回执域(R2 §3.1.1-4/§3.2.5;bs_schema 域 'receipts')——
+    # [索引定义] receipts 值 = 动作执行回执的滚动窗:list 下标 i = 第 i 条
+    # 存活回执(窗序 = 写入序,先进先出,容量 = :data:`RECEIPTS_WINDOW_CAP`);
+    # 取值时机 = 写入期快照(帧替换,禁就地改窗内条目)。唯一写点 =
+    # :func:`note_action_receipt`(渠道② logic_action);失败动作也产行
+    # (applied=false + reason)——exec_events「失败可见性」收编载体。
+    receipts: Field[list[dict]] = field(default_factory=Field)
+
     # ---- 持续型效果账本(§5.1):不走 Field 封装 ----
     # 存储形态 = ActiveEffect 记录列表(现役 cw_effect_inventory 同构)。
     # session 级可变账本,不参与 frozen 帧替换(帧替换管观察/逻辑字段)。
@@ -856,6 +1185,13 @@ class BoardState:
     # 心跳观察者上次采样值(None=未采样);stall 计数 = 连续零推进次数。
     hb_prev_seq: int | None = None
     hb_stall_count: int = 0
+    # [索引定义] node_hist_ord = 本 run 已见最大有效节点序 effective_ord
+    # (effective_ord = max(node_inferred, node_observed),坐标系 =
+    # (plane-1)*9+round 基 1,与效果账本 advance_node 同键);派生规则推进
+    # 去重键 (run_id, effective_ord) 的 run 内载体(设计 v3.1-N2)——同序
+    # 恰一次推进,先到腿越 hist 即推进,后到腿同序零推进。取值时机 = 派生
+    # 写入期单调推进;None = 本 run 尚无派生推进。写端 = 派生规则(渠道③)。
+    node_hist_ord: int | None = None
 
     def __post_init__(self) -> None:
         """构造守卫(任务书件 5/§8.6-5):schema_version 正整数 + Field
@@ -881,13 +1217,144 @@ class BoardState:
         raise KeyError('target 不是本 BoardState 的字段现引用'
                        '(须传 bs.xxx;跨单例引用 = 写丢事故)')
 
-    def _swap(self, name: str, new_field: Field) -> None:
-        """帧替换写点:换新 frozen 帧 + 心跳推进(只增不减,§2.4)。"""
+    def _swap(self, name: str, new_field: Field, *,
+              sig: ChannelSig | None = None,
+              note: str = '',
+              legacy: tuple[str, str, str, str | None] | None = None) -> None:
+        """帧替换写点 + 版本 id 分配 + 状态流水行装配(R1 §3.2.2 规则 1:
+        单点分配——分配与状态变更同临界区,先变更后落行,同一函数内)。
+
+        - sig = 显式渠道签名(调用方已过 :func:`_validate_sig` 渠道面校验);
+        - legacy = sig 缺位时的合成签名四元组 (family, mode, actor, group_id)
+          ——影子期过渡语义:family/mode 按 API 语义封闭集合成,actor 取
+          produced_by 等调用方自报名(不做在册校验,铺满显式 sig 后消失);
+        - note = 可选行注记(权威纠偏记录等)。
+        """
+        old = getattr(self, name)
+        same_value = old.value == new_field.value
         setattr(self, name, new_field)
         self.write_seq += 1
+        if _STATE_JOURNAL_SINK is None:
+            return
+        try:
+            run_id = _current_run_id_safe()
+            if not run_id:
+                return   # 局外写入拒绝(§3.2.3):不写假行,诚实缺失
+            if sig is not None:
+                row_sig = sig
+            elif legacy is not None:
+                row_sig = ChannelSig(family=legacy[0], mode=legacy[1],
+                                     actor=legacy[2], group_id=legacy[3])
+            else:
+                row_sig = ChannelSig(family='obs', mode='read', actor='')
+            _journal_emit({
+                'v': self.write_seq,
+                'ts': datetime.now().isoformat(timespec='seconds'),
+                'run_id': run_id,
+                'row': 'write',
+                'field': name,
+                'after': _json_safe(new_field.value),
+                'same_value': bool(same_value),
+                'state': self.full_state_snapshot(),
+                'sig': row_sig.to_json(),
+                'note': note,
+                'evidence_refs': [],
+            })
+        except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化写入链
+            log.debug(f'[cw-bs] journal row skip: {e}')
+
+    def note_obs_event(self, event: str, field_name: str, observed: Any, *,
+                       sig: ChannelSig | None = None,
+                       verdict: str = '', obs_phase: str = '',
+                       evidence_refs: list | None = None) -> None:
+        """观察事件行(§3.2.3 行型 2;**零状态变更**的观察证据)。
+
+        - 同流、**占版本**、内嵌当时 state(v3.1-N1:obs_event 与写入行同流
+          同序,「run 段内行序 = 版本序」不变量覆盖全部行型);不触任何
+          Field(行行自足,查询不分行型);
+        - event 词表 = arbitrate(拒读/仲裁拒绝)| miss(失读留证)| popup;
+        - 产生面 = 登记清单(非全量;现役 obs_conflicts 写点逐点收编映射归
+          M2 观察接线批,本 API 为写入口面);
+        - sig = 渠道①签名(观察证据属 obs 族;缺位按 obs/read 合成)。
+        """
+        if sig is not None:
+            _validate_sig(sig, ('obs',))
+        if _STATE_JOURNAL_SINK is None:
+            return
+        try:
+            run_id = _current_run_id_safe()
+            if not run_id:
+                return   # 局外写入拒绝(§3.2.3)
+            self.write_seq += 1   # 占版本(无状态变更;v3.1-N1)
+            if sig is not None:
+                row_sig = sig
+            else:
+                row_sig = ChannelSig(family='obs', mode='read', actor='')
+            _journal_emit({
+                'v': self.write_seq,
+                'ts': datetime.now().isoformat(timespec='seconds'),
+                'run_id': run_id,
+                'row': 'obs_event',
+                'event': event,
+                'field': field_name,
+                'observed': _json_safe(observed),
+                'verdict': verdict,
+                'obs_phase': obs_phase,
+                'state': self.full_state_snapshot(),
+                'sig': row_sig.to_json(),
+                'note': '',
+                'evidence_refs': list(evidence_refs or []),
+            })
+        except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化写入链
+            log.debug(f'[cw-bs] obs_event row skip: {e}')
+
+    def current_version(self) -> int:
+        """策略侧版本读口(§3.2.2 规则 5:读不写、不占版本)= 已分配的最大
+        版本号(write_seq 升格值,心跳哨兵载体语义不变)。"""
+        return self.write_seq
+
+    def full_state_snapshot(self) -> dict:
+        """写入后完整 state 快照(§3.2.3 自足行的行内 state;JSON 安全化 +
+        序列化规范化——effects 按 spec id 排序,同态同形)。含 values(非 None
+        字段值)/ prov(非默认来源注记)/ pending_expected(挂起预期摘要)/
+        effects(就地可变域整窗)/ 工程结构。"""
+        values: dict[str, object] = {}
+        prov: dict[str, dict] = {}
+        for f in dataclasses.fields(self):
+            val = getattr(self, f.name, None)
+            if not isinstance(val, Field):
+                continue
+            if val.value is not None:
+                values[f.name] = _json_safe(val.value)
+            if val.source != 'observation' or val.evidence is not None:
+                prov[f.name] = {'source': val.source, 'evidence': val.evidence}
+        effects = sorted(
+            ({
+                'spec_id': str(getattr(e.spec, 'id', '')),
+                'spec_name': str(getattr(e.spec, 'name', '')),
+                'source': getattr(e, 'source', ''),
+                'acquired_t': getattr(e, 'acquired_t', None),
+                'remaining_nodes': getattr(e, 'remaining_nodes', None),
+                'remaining_uses': getattr(e, 'remaining_uses', None),
+                'counters': dict(getattr(e, 'counters', None) or {}),
+            } for e in self.effects.entries),
+            key=lambda d: d['spec_id'])
+        return {
+            'schema_version': self.schema_version,
+            'values': values,
+            'prov': prov,
+            'pending_expected': [dataclasses.asdict(e)
+                                 for e in self.pending_entries()],
+            'effects': effects,
+            'frame_obs': self.frame_obs,
+            'write_seq': self.write_seq,
+            'node_hist_ord': self.node_hist_ord,
+            'bs_schema': dict(self.bs_schema),
+        }
 
     def observe(self, target: Field, value: Any, *,
-                evidence: str | None = None) -> None:
+                evidence: str | None = None,
+                sig: ChannelSig | None = None) -> None:
         """观察写入:亲眼看,覆盖旧值(§2.1 observation)。
 
         - value=None 拒绝(§2.2 硬边界:失读不是观察值,走 :meth:`carry`
@@ -895,46 +1362,64 @@ class BoardState:
           不得清成 None);
         - 覆盖 logic 来源值且失配 → 缺陷台账留证(§2.3 观察赢),来源
           改回 observation;未核实的预期条目不受影响(§2.3:观察帧不得
-          确认或清除预期)。
+          确认或清除预期);
+        - sig = 渠道①签名(可选;R1 影子期缺位时按 obs/read 合成,M2 起
+          画面 op 观察链铺满显式签名)。
         """
         if value is None:
             raise ValueError('observe 不接受 None(§2.2:失读走 carry/'
                              'leave_screen,禁清正式值)')
+        if sig is not None:
+            _validate_sig(sig, ('obs',))
         name = self._field_name(target)
         if target.source == 'logic' and target.value is not None \
                 and target.value != value:
             _emit_defect(field_name=name, expected=target.value,
                          actual=value, evidence=evidence)
         self._swap(name, Field(value=value, source='observation',
-                               evidence=evidence))
+                               evidence=evidence),
+                   sig=sig, legacy=('obs', 'read', '', None))
 
-    def carry(self, target: Field, *, frame: str) -> None:
+    def carry(self, target: Field, *, frame: str,
+              sig: ChannelSig | None = None) -> None:
         """失读处置①(§2.2):沿用上次好值,evidence = carried:<来源帧>。
-        字段从未读过(处置②机制性 None)→ 保持 None 不写。"""
+        字段从未读过(处置②机制性 None)→ 保持 None 不写(不换帧不产行
+        不占版本,§3.2.2 规则 4)。"""
         if target.value is None:
             return
+        if sig is not None:
+            _validate_sig(sig, ('obs',))
         name = self._field_name(target)
         self._swap(name, Field(value=target.value, source='carried',
-                               evidence=f'carried:{frame}'))
+                               evidence=f'carried:{frame}'),
+                   sig=sig, legacy=('obs', 'carried', '', None))
 
     def write_prior(self, target: Field, value: Any, *,
-                    evidence: str) -> None:
+                    evidence: str,
+                    sig: ChannelSig | None = None) -> None:
         """先验写入(§2.1 prior 类,§3.1.6 开局 hp):evidence 必带
         ``prior:`` 前缀;本类仅限显式申报条目,禁扩散。"""
         if not evidence.startswith('prior:'):
             raise ValueError('prior 写入 evidence 必带 prior: 前缀(§2.1)')
+        if sig is not None:
+            _validate_sig(sig, ('obs',))
         name = self._field_name(target)
-        self._swap(name, Field(value=value, source='prior', evidence=evidence))
+        self._swap(name, Field(value=value, source='prior', evidence=evidence),
+                   sig=sig, legacy=('obs', 'prior', '', None))
 
-    def leave_screen(self, target: Field) -> None:
+    def leave_screen(self, target: Field,
+                     sig: ChannelSig | None = None) -> None:
         """画面附加域离屏(§2.2 显式例外):置 None 是结构事实非失读,
         不受 carried 硬边界辖。仅 shop/encounter/supply 三域合法,整局
         字段禁走此口(显式炸错防误用扩散)。"""
+        if sig is not None:
+            _validate_sig(sig, ('obs',))
         name = self._field_name(target)
         if name not in _PAYLOAD_DOMAINS:
             raise ValueError(f'{name} 非画面附加域,禁离屏清值(§2.2 硬边界)')
         self._swap(name, Field(value=None, source='observation',
-                               evidence='left_screen'))
+                               evidence='left_screen'),
+                   sig=sig, legacy=('obs', 'read', '', None))
 
     def expect(self, target: Field, value: Any, *,
                confirm_point: str = 'prep_obs', group_id: str = '',
@@ -950,14 +1435,17 @@ class BoardState:
         return entry
 
     def confirm(self, entry: PendingEntry, *,
-                at_point: str | None = None) -> None:
+                at_point: str | None = None,
+                sig: ChannelSig | None = None) -> None:
         """核对通过(§2.5 两步第二步):预期转正——写入字段(source=logic,
         保持 logic 不翻 observation,§8.1)并清账。
 
         - at_point 给定时须与条目绑定的核对点一致(§2.4 五键②),否则炸错;
         - 组条目全有全无:entry 带 group_id 时整组一并转正+清账(§2.4 五键③,
           禁单字段半确认中间态);
-        - 条目已被 last-wins 覆盖或已清账 → 炸错(禁确认过期条目)。
+        - 条目已被 last-wins 覆盖或已清账 → 炸错(禁确认过期条目);
+        - sig = 渠道②签名(对账层 confirm 行 actor = 调用方 op,§3.2.1;
+          可选,影子期缺位按 produced_by 合成)。
         """
         current = self.expected.get(entry.path)
         if current is not entry:
@@ -965,17 +1453,24 @@ class BoardState:
         if at_point is not None and at_point != entry.confirm_point:
             raise ValueError(f'核对点不符:条目绑 {entry.confirm_point},'
                              f'来点 {at_point}(§2.4 五键②)')
+        if sig is not None:
+            _validate_sig(sig, ('logic_action', 'logic_hook'))
         if entry.group_id:
             group = [e for e in self.expected.values()
                      if e.group_id == entry.group_id]
         else:
             group = [entry]
         for e in group:
-            self._swap(e.path, Field(value=e.value, source='logic'))
+            self._swap(e.path, Field(value=e.value, source='logic'),
+                       sig=sig,
+                       legacy=('logic_action', 'compute',
+                               e.produced_by or '', e.group_id or None))
             self.expected.pop(e.path, None)
 
     def write_logic(self, target: Field, value: Any, *,
-                    produced_by: str, evidence: str | None = None) -> None:
+                    produced_by: str, evidence: str | None = None,
+                    sig: ChannelSig | None = None,
+                    note: str = '') -> None:
         """单次逻辑写入(直接转正,不经预期条目表)。
 
         仅限设计**显式申报豁免**的写端——「不为它记待核实预期」(§3.4 通用
@@ -987,12 +1482,20 @@ class BoardState:
         设计缺口,先回设计文档申报再落码。
 
         produced_by = 产生者标识(op/handler 名,留证用);
-        evidence = 可选来源注记(如刷新执行的轮键 refresh_exec@p1-r2)。
+        evidence = 可选来源注记(如刷新执行的轮键 refresh_exec@p1-r2);
+        sig = 渠道②签名(可选;派生规则与未来流程 hook 系统的 ③ 写入走
+        本同一口,family=logic_hook——写入口不感知触发机制,零接口预留);
+        note = 可选行注记(权威纠偏记录等,§3.4.2)。
         """
+        if sig is not None:
+            _validate_sig(sig, ('logic_action', 'logic_hook'))
         name = self._field_name(target)
-        self._swap(name, Field(value=value, source='logic', evidence=evidence))
+        self._swap(name, Field(value=value, source='logic', evidence=evidence),
+                   sig=sig, note=note,
+                   legacy=('logic_action', 'compute', produced_by or '', None))
 
-    def relay(self, target: Field, value: Any) -> bool:
+    def relay(self, target: Field, value: Any,
+              sig: ChannelSig | None = None) -> bool:
         """载体中继(§2.1,**不设第五来源类**;迁移批次二收敛)。
 
         接管/初始化把会话已知事实补写进**从未写过的字段**:
@@ -1004,7 +1507,9 @@ class BoardState:
           列表/元组非空才中继——会话载体的默认空值(''/[])是「未知」不是
           「已知事实」,中继空值会把未知固化成正式值(遮蔽帧值、拦截后到
           真值、持卡名单 [] 为假事实);恢复局新 session 的镜像字段停在
-          空默认,靠本闸拒写,真值后到时字段仍未写过、可正常落。
+          空默认,靠本闸拒写,真值后到时字段仍未写过、可正常落;
+        - sig = 渠道③签名(§3.2.4 relay 契约 family=logic_hook;可选,影子期
+          缺位按 logic_hook/compute 合成)。
         """
         if target.value is not None:
             return False
@@ -1012,9 +1517,12 @@ class BoardState:
             return False
         if isinstance(value, (list, tuple, dict, set)) and not value:
             return False
+        if sig is not None:
+            _validate_sig(sig, ('logic_hook',))
         name = self._field_name(target)
         self._swap(name, Field(value=value, source='logic',
-                               evidence='session_carrier'))
+                               evidence='session_carrier'),
+                   sig=sig, legacy=('logic_hook', 'compute', '', None))
         return True
 
     def discard_expected(self, entry: PendingEntry) -> None:
@@ -1040,6 +1548,56 @@ class BoardState:
         """预期条目表快照(登记序)。"""
         return list(self.expected.values())
 
+    def observe_screen_context(self, screen_name: str, *,
+                               phase_round: tuple[int, int] | None = None,
+                               resumed: bool = False,
+                               sig: ChannelSig | None = None) -> None:
+        """画面上下域写入 + 节点推进派生(R1 §3.1.4/§3.4;观察汇聚模块唯一
+        写点,生产接线 = read_game_state 漏斗 ``_feed_board_state``,随分派
+        观察调用)。
+
+        - 上下文对(渠道①):旧 ``current_screen`` 转 ``prev_screen`` 后写
+          新值,成对变更同 group(§3.1.4);
+        - 派生(渠道③,同临界区——「先推进后选卡」时序语义由写入顺序自然
+          保证,§3.4.1):备战腿(:func:`derive_node_observed`)在干净备战帧
+          ∧ 顶栏可读时落权威值;弹窗腿(:func:`derive_node_inferred`)在
+          守卫通过时推断 +1。派生行各占版本、渠道签名 = logic_hook;
+        - phase_round = 本帧顶栏 (plane, round) 读数(备战腿直读输入;弹窗腿
+          缓存守卫输入,判定方案 R3 规则二③);
+        - resumed = 恢复局标记(真值随恢复检测接线批带入;真 = 弹窗腿禁用
+          不猜,R3 规则六)。
+
+        影子面闸:未武装(:func:`state_telemetry_armed` 假)时本口零调用——
+        生产调用点经闸门控,本函数体内不再重复判(测试直调不受闸辖)。
+        """
+        if not screen_name:
+            raise ValueError('observe_screen_context 拒绝空画面标识'
+                             '(§2.2 同义硬边界:无观察不写)')
+        seq = self.write_seq + 1
+        if sig is None:
+            sig = ChannelSig(family='obs', actor='cw_observation',
+                             screen=screen_name, mode='read',
+                             group_id=f'obs:cw_observation@{seq}')
+        else:
+            _validate_sig(sig, ('obs',))
+        prev_val = self.current_screen.value or ''
+        self._swap('prev_screen',
+                   Field(value=prev_val, source='observation'),
+                   sig=sig)
+        self._swap('current_screen',
+                   Field(value=screen_name, source='observation'),
+                   sig=sig)
+        # —— 双腿派生(渠道③;判定规则本体照搬判定方案 R3 §3.3)——
+        if screen_name == SCREEN_PREP_FRAME and phase_round is not None:
+            _derive_node_observed(
+                self, node_ordinal_of(*phase_round),
+                trigger_screen=screen_name, seq=seq)
+        elif (screen_name in SCREEN_CONTEXT_POPUP_FAMILY
+                and prev_val in SCREEN_CONTEXT_GUARD_PREV):
+            _derive_node_inferred(
+                self, prev_screen=prev_val, trigger_screen=screen_name,
+                phase_round=phase_round, resumed=resumed, seq=seq)
+
     # —— 心跳观察者(§2.4 关键结构 2)——
 
     def heartbeat(self) -> int:
@@ -1058,6 +1616,97 @@ class BoardState:
         cur = self.frame_obs
         self.frame_obs = 'none'
         return cur
+
+
+# ============================================================ 节点推进派生规则(R1 §3.4;渠道③)
+
+def _derive_write(bs: BoardState, target: Field, value: int, *,
+                  actor: str, trigger_screen: str, seq: int,
+                  note: str = '') -> None:
+    """派生规则写入(渠道③统一形态):签名 family=logic_hook、
+    actor=规则登记名、screen=关联画面、组 id = 'hook:<登记名>@<seq>'。"""
+    sig = ChannelSig(family='logic_hook', actor=actor, screen=trigger_screen,
+                     mode='compute', group_id=f'hook:{actor}@{seq}')
+    bs.write_logic(target, value, produced_by=actor, sig=sig, note=note)
+
+
+def _combined_node(bs: BoardState) -> int | None:
+    """决策消费面 = 两派生字段最大值(§3.1.4 权威纠偏语义;None 安全)。"""
+    vals = [f.value for f in (bs.node_inferred, bs.node_observed)
+            if f.value is not None]
+    return max(vals) if vals else None
+
+
+def _derive_node_observed(bs: BoardState, candidate: int, *,
+                          trigger_screen: str, seq: int) -> None:
+    """备战腿·权威(§3.4.1 规则二,本体照搬判定方案 R3 规则二/三):
+    干净备战帧 ∧ 顶栏 X-Y 可读 → ``node_observed`` = 顶栏节点序。
+
+    跃迁判定与推进去重(设计 v3.1-N2,去重键 = ``(run_id, effective_ord)``):
+    - candidate > hist → 推进写入(去重键未占,本腿越过 hist);
+    - candidate == hist → **观察真值补全照写**(行注记 ``same_advance``:
+      弹窗腿先推 N、备战帧同读 N 的常态形态,去重键已占,不构成第二次
+      跃迁;备战重入重读同形,值未变行自然带 ``same_value=true``)——
+      两类行计入行量预算(§3.2.3 体积申报 M1 实测);
+    - candidate < hist → 倒退读数,不写字段静默跳过(R3 规则三倒退免疫);
+    - 与 ``node_inferred`` 不一致时权威纠偏:以观察值为准拉齐推断字段,
+      纠偏事实入行 note(推断偏差显影不静默);决策消费面 max 不被失真
+      推断毒化;纠偏写点仍是派生域(域准入不破,§3.1.3)。
+    """
+    hist = bs.node_hist_ord
+    if hist is not None and candidate < hist:
+        return   # 倒退读数:v3.1-N2 静默跳过(R3 规则三倒退免疫)
+    note = 'same_advance' if hist is not None and candidate == hist else ''
+    _derive_write(bs, bs.node_observed, candidate,
+                  actor='derive_node_observed',
+                  trigger_screen=trigger_screen, seq=seq, note=note)
+    inferred = bs.node_inferred.value
+    if inferred is not None and inferred != candidate:
+        _derive_write(bs, bs.node_inferred, candidate,
+                      actor='derive_node_observed',
+                      trigger_screen=trigger_screen, seq=seq,
+                      note=f'权威纠偏:node_inferred {inferred}→{candidate}'
+                           f'(备战帧顶栏权威,推断偏差显影)')
+    if hist is None or candidate > hist:
+        bs.node_hist_ord = candidate   # 去重键占位:同序恰一次推进(v3.1-N2)
+
+
+def _derive_node_inferred(bs: BoardState, *, prev_screen: str,
+                          trigger_screen: str,
+                          phase_round: tuple[int, int] | None,
+                          resumed: bool, seq: int) -> None:
+    """弹窗腿·推断(§3.4.1 规则一,本体照搬判定方案 R3 规则二/三):
+    上画面 ∈ 前驱守卫族 ∧ 当前 ∈ 弹窗族 → ``node_inferred`` 推进 +1
+    (首局无前值且非恢复局 → 1)。
+
+    - 守卫族 = :data:`SCREEN_CONTEXT_GUARD_PREV`(中性名,语义 = 「本节点
+      备战帧未被分派过」= 结算窗 ∪ 开局链,v3.1-N5);弹窗族 =
+      :data:`SCREEN_CONTEXT_POPUP_FAMILY`;
+    - 缓存守卫(R3 规则二③本体):弹窗帧无进度屏显,顶栏读数 = 缓存 c——
+      要求 c == hist 才推断 +1;c 缺位或 ≠ hist → 零触发交腿 A 兜底;
+    - 恢复局禁用(R3 规则六):hist 空 ∧ resumed → 不猜;
+    - 推进去重(v3.1-N2):候选 ≤ hist 不写不锚(重入拒绝;去重键 =
+      (run_id, effective_ord) 已占,同序恰一次推进)。
+    """
+    hist = bs.node_hist_ord
+    effective = _combined_node(bs)
+    if hist is None:
+        if resumed:
+            return   # 恢复局腿 B 禁用不猜(R3 规则六),消化后备战帧腿 A 接管
+        candidate = 1
+    else:
+        if phase_round is None:
+            return   # 缓存守卫输入缺位:禁用不猜(交腿 A 兜底)
+        if node_ordinal_of(*phase_round) != hist:
+            return   # c != hist(缓存滞后/超前):零触发,交腿 A 兜底(R3 规则二③)
+        candidate = (effective + 1) if effective is not None else 1
+        if candidate <= hist:
+            return   # 推进去重(v3.1-N2:候选 ≤ hist 不写不锚,去重键已占)
+    _derive_write(bs, bs.node_inferred, candidate,
+                  actor='derive_node_inferred',
+                  trigger_screen=trigger_screen, seq=seq)
+    if hist is None or candidate > hist:
+        bs.node_hist_ord = candidate   # 去重键占位(同序恰一次推进)
 
 
 # ============================================================ 心跳观察者
@@ -1115,6 +1764,10 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
       画面才离屏」的语义分叉是有意申报(真值域 vs 识别域)。
     """
     _ev = f'{SIM_SYNTHESIZED}@{at_round}' if at_round else SIM_SYNTHESIZED
+    # sim 合成签名(R1 §3.2.1:obs 族子模 mode='synthesized'——sim 真值合成
+    # 与实机真读可分;actor = 本口登记名,质量语义与 evidence 标记同源)
+    _synth_sig = ChannelSig(family='obs', actor='synthesize_from_game_state',
+                            mode='synthesized')
     # node_type None(裸 GameState 未建模该帧)不写 node——禁 'prep' 占位
     # 假值(P1-1 同型泛化;engine 路径 node_type 恒引擎真值不受影响)
     _node_type = getattr(st, 'node_type', None)
@@ -1123,17 +1776,26 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
                    NodeKey(plane=int(getattr(st, 'plane', 1) or 1),
                            round_num=int(getattr(st, 'round_num', 1) or 1),
                            kind=str(_node_type)),
-                   evidence=_ev)
+                   evidence=_ev, sig=_synth_sig)
+    else:
+        _prev_node = bs.node.value
+        if _prev_node is not None:
+            bs.observe(bs.node,
+                       NodeKey(plane=int(getattr(st, 'plane', 1) or 1),
+                               round_num=int(getattr(st, 'round_num', 1) or 1),
+                               kind=_prev_node.kind),
+                       evidence='kind_inherited', sig=_synth_sig)
+        # 无现值且未读:node 不写,保持 None(诚实缺位)
     if getattr(st, 'gold_readable', True) and st.gold is not None:
-        bs.observe(bs.gold, int(st.gold), evidence=_ev)
+        bs.observe(bs.gold, int(st.gold), evidence=_ev, sig=_synth_sig)
     if getattr(st, 'level_readable', True):
-        bs.observe(bs.level, int(st.level), evidence=_ev)
+        bs.observe(bs.level, int(st.level), evidence=_ev, sig=_synth_sig)
     if st.xp_progress is not None:
-        bs.observe(bs.xp, tuple(st.xp_progress), evidence=_ev)
+        bs.observe(bs.xp, tuple(st.xp_progress), evidence=_ev, sig=_synth_sig)
     if st.streak is not None:
-        bs.observe(bs.streak, int(st.streak), evidence=_ev)
+        bs.observe(bs.streak, int(st.streak), evidence=_ev, sig=_synth_sig)
     if st.hp is not None:
-        bs.observe(bs.hp, int(st.hp), evidence=_ev)
+        bs.observe(bs.hp, int(st.hp), evidence=_ev, sig=_synth_sig)
     bench_slots: list[BenchSlot] = []
     for i, bc in enumerate(st.bench):
         if bc is None:
@@ -1151,9 +1813,9 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
         bench_slots.append(BenchSlot(kind='empty'))
     bs.observe(bs.bench,
                BenchView(slots=bench_slots, capacity=BENCH_CAPACITY_DEFAULT),
-               evidence=_ev)
+               evidence=_ev, sig=_synth_sig)
     if getattr(st, 'board_readable', True) and st.board:
-        bs.observe(bs.board, dict(st.board), evidence=_ev)
+        bs.observe(bs.board, dict(st.board), evidence=_ev, sig=_synth_sig)
     if st.shop:
         # cost_source 原值透传不折叠(P2-4;词表见 BoardState.ShopCard)
         cards = [ShopCard(name=str(getattr(c, 'name', '') or ''),
@@ -1166,21 +1828,21 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
         probs = ({int(k): float(v) for k, v in st.refresh_probs.items()}
                  if st.refresh_probs else {})
         bs.observe(bs.shop, ShopPayload(cards=cards, refresh_probs=probs),
-                   evidence=_ev)
+                   evidence=_ev, sig=_synth_sig)
     else:
         # 画面附加域离屏分支(§2.2 显式例外):sim 真值
         # 帧无商店牌 = 「不在商店」的结构事实——非当前画面置 None(等价
         # leave_screen,evidence=left_screen),禁沿用旧 payload 连旧 evidence
         # (残留会把离屏帧误读成「商店仍开着」)。此为「空则不写」的漏申报
         # 面补口:payload 域的语义 = 当前画面的 payload(§8.4)。
-        bs.leave_screen(bs.shop)
+        bs.leave_screen(bs.shop, sig=_synth_sig)
     # encounter/supply 两 payload 域:sim 的 GameState 不建模这两域(attr
     # 缺席 = sim 模型里结构离屏)——同口径置 left_screen,保持「三 payload
     # 域在合成帧恒反映当前画面事实」的域语义;观察真值不进合成(sim 无
     # 识别过程),禁合成假值。
-    bs.leave_screen(bs.encounter)
-    bs.leave_screen(bs.supply)
+    bs.leave_screen(bs.encounter, sig=_synth_sig)
+    bs.leave_screen(bs.supply, sig=_synth_sig)
     if st.active_strategies:
         bs.observe(bs.active_strategies, list(st.active_strategies),
-                   evidence=_ev)
+                   evidence=_ev, sig=_synth_sig)
     bs.mark_frame_obs('full')

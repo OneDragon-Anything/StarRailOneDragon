@@ -2394,6 +2394,48 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     return state
 
 
+def _bs_armed() -> bool:
+    """影子面武装位(统一 state 状态流水开关;缺省关,装配点显式接通——
+    cw_state_journal.install_state_telemetry)。懒 import 防模块环。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        state_telemetry_armed,
+    )
+    return state_telemetry_armed()
+
+
+def _phase_screen_context(phase: str | None, plane: int | None,
+                          round_num: int | None,
+                          ) -> tuple[str | None, tuple[int, int] | None]:
+    """阶段键 → 画面上下域标识 + 顶栏读数(R1 §3.1.4/§3.4;映射单一源)。
+
+    - prep_clean / None(全量路径,调用方 = 备战 heavy 环入口)→ 干净备战帧
+      (:data:`SCREEN_PREP_FRAME`)——备战腿触发面;
+    - prep_shop_open → 商店面板块('货币战争-备战-开商店',弹窗族成员)——
+      顶栏读数 = 缓存 c,弹窗腿缓存守卫输入(判定方案 R3 规则二③);
+    - battle_or_transit → 战斗/结算段内相位 token(分支级标识,弹窗腿守卫集
+      成员;段内多物理屏无法细分建档名,边界申报见 kernel 常量注释);
+    - 未注册阶段名(read_game_state fail-open 态)→ None = 不写(画面身份
+      未知禁猜,与「禁拿兜底默认值当观察」同义)。
+    """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BATTLE_WAIT_CONTEXT,
+        SCREEN_PREP_FRAME,
+    )
+    if plane is None or round_num is None:
+        return None, None
+    top: tuple[int, int] | None = (int(plane), int(round_num))
+    if phase is None or phase == PHASE_PREP_CLEAN:
+        return SCREEN_PREP_FRAME, top
+    if phase == PHASE_PREP_SHOP_OPEN:
+        from sr_od.application.currency_war.kernel.cw_obs_core import (
+            SHOP_SCREEN_NAME,
+        )
+        return SHOP_SCREEN_NAME, top
+    if phase == PHASE_BATTLE_OR_TRANSIT:
+        return BATTLE_WAIT_CONTEXT, top
+    return None, None   # fail-open 未知阶段:身份不猜不写
+
+
 def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
                       screen: MatLike, spec: frozenset[str] | None, *,
                       had_hp_real: bool) -> None:
@@ -2424,6 +2466,7 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
     """
     try:
         from sr_od.application.currency_war.kernel.cw_board_state import (
+            ChannelSig,
             NodeKey,
             ShopCard,
             ShopPayload,
@@ -2474,13 +2517,23 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
         if _w('xp') and state.xp_progress is not None:
             bs.observe(bs.xp, tuple(state.xp_progress))
         if _w('hp'):
+            # v3.2-G1:判读面质量标记照落 sig.quality(决策可信位
+            # hp_readable/hp_trusted 保留 GameState 决策域读面不经流水;
+            # 词表 = real_read/same_node_carried/prior,§3.2.1 起步词表)。
             if state.hp_readable:
-                bs.observe(bs.hp, int(state.hp))
+                bs.observe(bs.hp, int(state.hp), sig=ChannelSig(
+                    family='obs', actor='cw_observation', mode='read',
+                    quality={'hp': 'real_read'}))
             elif state.hp is not None and not had_hp_real:
                 # 对账层开局先验形态(session 无真值,ADR-0559)
-                bs.write_prior(bs.hp, int(state.hp), evidence='prior:adr-0559')
+                bs.write_prior(bs.hp, int(state.hp), evidence='prior:adr-0559',
+                               sig=ChannelSig(
+                                   family='obs', actor='cw_observation',
+                                   mode='prior', quality={'hp': 'prior'}))
             elif state.hp is not None:
-                bs.carry(bs.hp, frame=frame)   # 同节点沿用真值(ADR-0431)
+                bs.carry(bs.hp, frame=frame, sig=ChannelSig(
+                    family='obs', actor='cw_observation', mode='carried',
+                    quality={'hp': 'same_node_carried'}))   # ADR-0431
         if _w('enemy_difficulty'):
             if getattr(state, 'enemy_difficulty_live', False) \
                     and state.enemy_difficulty is not None:
@@ -2529,12 +2582,44 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
         # (source=logic + evidence='session_carrier',已有正式值一律跳过——
         # 禁把 handler 已写的 logic 翻成 observation);值恒等(同一事实),
         # 归档 bs_prov 按 evidence 可分。
-        bs.relay(bs.active_strategies, list(state.active_strategies))
-        bs.relay(bs.active_env, str(state.active_env))
-        bs.relay(bs.plane_bosses, list(state.plane_bosses))
-        bs.relay(bs.enemy_affixes, list(state.enemy_affixes))
+        # R1 渠道签名(§3.2.4 relay 契约):中继走渠道③ logic_hook 族,
+        # actor = 本汇聚模块;影子期显式签名,行内身份可对账。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            ChannelSig as _ChannelSig,
+        )
+        _relay_sig = _ChannelSig(family='logic_hook', actor='cw_observation',
+                                 mode='compute')
+        bs.relay(bs.active_strategies, list(state.active_strategies),
+                 sig=_relay_sig)
+        bs.relay(bs.active_env, str(state.active_env), sig=_relay_sig)
+        bs.relay(bs.plane_bosses, list(state.plane_bosses), sig=_relay_sig)
+        bs.relay(bs.enemy_affixes, list(state.enemy_affixes), sig=_relay_sig)
         _sel_diff = getattr(session, 'selected_difficulty', '') or ''
-        bs.relay(bs.selected_difficulty, str(_sel_diff))
+        bs.relay(bs.selected_difficulty, str(_sel_diff), sig=_relay_sig)
+        # —— 画面上下文 + 节点推进派生(R1 §3.1.4/§3.4;影子双写面)——
+        # 本口 = read_game_state 唯一漏斗 = 观察汇聚模块(上下文域唯一写点):
+        # 随分派观察写 prev/current 上下文对,同临界区跑双腿派生规则(备战腿
+        # 在干净备战帧直读顶栏;弹窗腿在守卫通过时推断;判定规则本体照搬
+        # 判定方案 R3)。阶段键 → 画面标识映射:battle_or_transit = 战斗/结算
+        # 段内相位(多物理屏,按 R3 prev_branch 语义记分支 token,弹窗腿守卫
+        # 集成员);phase None(全量路径,调用方 = 备战 heavy 环入口)按干净
+        # 备战帧记。**影子面闸**:未武装(流水开关关)时整段静默,行为与
+        # R1 前逐位一致(§3.7.1 影子段纪律)。
+        if _bs_armed():
+            _ctx_name, _ctx_top = _phase_screen_context(
+                phase, state.plane, state.round_num)
+            if _ctx_name is not None:
+                # D2 live 接线(R1 缺口承接):恢复局旗标(session 执行态,
+                # 写端 = cw_loop 恢复检测两确认点)透传进派生规则——恢复局
+                # 弹窗腿在 hist 空时禁用不猜(判定方案 R3 规则六)。
+                from sr_od.application.currency_war.kernel.cw_exec_state import (
+                    exec_state_of as _exec_state_of,
+                )
+                _resumed = bool(_exec_state_of(session).cw_resumed_match)
+                bs.observe_screen_context(
+                    _ctx_name, phase_round=_ctx_top, resumed=_resumed,
+                    sig=_ChannelSig(family='obs', actor='cw_observation',
+                                    screen=_ctx_name, mode='read'))
         bs.mark_frame_obs('view' if spec is not None else 'full')
     except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化决策链
         log.warning('[cw!][bs-feed] BoardState 观察流跳过: %s', e)

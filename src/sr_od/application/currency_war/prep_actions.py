@@ -743,6 +743,7 @@ class PrepActionExecutor:
         _pre_bench = self._bench_tracked_count()
         detail, emitted = self._execute_dispatch(action)
         self.last_detail = detail
+        self._note_action_receipt(action, emitted, detail)
         if isinstance(action, StartBattle):
             # 批4 挂账:StartBattle 发射位内部事实(A6 判效面,批4 随
             # J2/J3/J4 消费端同退役)。真执行链 = _execute_dispatch 发射位
@@ -832,6 +833,35 @@ class PrepActionExecutor:
                 log.warning('[cw][expect] apply_op_effect 失败(不阻塞): %s', e)
         log.info('[cw][exec] %s → %s', type(action).__name__,
                  detail or '(无摘要)')
+
+    def _note_action_receipt(self, action: PrepAction, emitted: bool,
+                             detail: str) -> None:
+        """动作执行回执 → BoardState receipts 域(R2 §3.1.1-4/§3.2.5;
+        渠道② logic_action,唯一写点 = kernel note_action_receipt)。
+
+        - **发出即簿记,不是验证**(M1③):applied = 分派面「是否发出」
+          事实透传(执行前输入契约拒绝 = 未发出,回执 reason 带机械摘要);
+          本写点零成败判定——不读屏、不做落地推断,「拖3次源槽未变」类
+          机械事实随 detail 在账,落地判定归观察侧 reconcile;
+        - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;W209j 停机
+          短路在本口之前抛出 = 执行被拒不产行——停机非动作);
+        - 影子闸(kernel 侧 armed 检查)关 = 零写入;无局(session 缺)跳过;
+          best-effort 不阻塞动作链。
+        """
+        try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_from_ctx,
+                note_action_receipt,
+            )
+            bs = board_state_from_ctx(self._ctx)
+            if bs is None:
+                return
+            note_action_receipt(
+                bs, op=type(action).__name__, applied=bool(emitted),
+                reason='' if emitted else detail, detail=detail,
+                screen=SCREEN_NAME, actor=type(self).__name__)
+        except Exception as e:  # noqa: BLE001  回执失败不阻塞执行
+            log.warning('[cw][receipt] 动作回执写入失败(不阻塞): %s', e)
 
     def _execute_dispatch(self, action: PrepAction) -> tuple[str, bool]:
         """动作分派(原 execute 主体;期望态钩子/闩在其上层 execute)。

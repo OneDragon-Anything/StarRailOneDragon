@@ -92,6 +92,16 @@ class CurrencyWarApp(SrApplication):
         # (缺省关=跳过缓存清理/门放行;session 全量重建承担状态隔离)。
         from sr_od.application.currency_war.decision_assembly import install_obs_ports
         install_obs_ports()
+        # R1 统一 state 状态流水武装(幂等;影子双写,旧 12 流照常):开关
+        # config.state_journal 缺省关 = 全新面静默(派生域/上下文域零写入、
+        # 零落盘);开 = state/journal.jsonl 与旧流并行写(行行自足快照,
+        # 设计 §3.7.1 影子段)。run 归属读取函数在此注入(kernel 禁依
+        # telemetry,依赖倒置;同 L0 安灯/出口钩子的装配点显式接通纪律)。
+        if CurrencyWarConfig(ctx.current_instance_idx).state_journal:
+            from sr_od.application.currency_war.kernel.cw_state_journal import (
+                install_state_telemetry,
+            )
+            install_state_telemetry(run_id_provider=state.current_run_id)
         SrApplication.__init__(
             self, ctx, currency_war_const.APP_ID,
             op_name=gt('货币战争', 'game'),

@@ -569,6 +569,37 @@ def accrue_release_spent(match: 'CurrencyWarMatch',
     st.v3_release_spent += max(0, int(getattr(action, 'cost', 0) or 0))
 
 
+def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
+                             applied: bool, reason: str = '',
+                             extra: dict | None = None) -> None:
+    """商店动作执行回执(R2 §3.2.5;receipts 域,渠道② logic_action)。
+
+    run_buy_waves 的**单一写点**:逐动作执行落地挂点 + 受阻挂点(刷新
+    硬墙跳过 / spend_gate 政策闸拒)都经本函数落一条回执行(每动作 op
+    一条 logic_action 行;受阻 = applied=false + reason + 执行面结构化
+    字段——exec_events「受阻/放弃可见」收编)。发出即簿记非验证(M1③):
+    applied = 动作 op 自身机械事实透传,零成败判定。影子闸/无局跳过在
+    kernel 口(:func:`~...kernel.cw_board_state.note_action_receipt`);
+    best-effort 不阻塞循环。
+    """
+    try:
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            note_action_receipt,
+        )
+        session = getattr(match, 'session', None)
+        if session is None:
+            return
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+        )
+        note_action_receipt(
+            board_state_of(session), op=type(action).__name__,
+            applied=bool(applied), reason=reason, screen=SHOP_SCREEN_NAME,
+            actor='CwOpBuyCards', extra=extra)
+    except Exception as e:  # noqa: BLE001  回执失败不阻塞循环
+        log.warning('[cw][receipt] 商店动作回执写入失败(不阻塞): %s', e)
+
+
 def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                   hp_value: int | None, hp_readable: bool,
                   hp_trusted: bool,
@@ -934,12 +965,25 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 # 不停(`w577_refresh_fee_and_andon/`,局22 误停根因)。
                 ledger.plan_truncated = True
                 ledger.refresh_skipped = 'max_cap'
+                # 受阻也簿记(R2 回执域):计划未尝试在账可见(exec_events
+                # 词表「放弃」族;plan_truncated/refresh_skipped 结构化入回执)。
+                note_shop_action_receipt(
+                    match, action, applied=False,
+                    reason='skipped:max_cap(刷新硬墙,计划未尝试)',
+                    extra={'plan_truncated': True,
+                           'refresh_skipped': 'max_cap'})
                 break
             if spend_gate is not None:
                 # 单动作政策闸(缺省 None 零漂移;发射帧仲裁专用,ADR-0566):
                 # 拒 = 本动作不执行 + 本访问收工(消费终止语义,见签名注)。
                 _g_ok, _g_why = spend_gate(action)
                 if not _g_ok:
+                    # 受阻也簿记(R2 回执域):闸拒动作在账可见(exec_events
+                    # 词表「受阻」族;终止单发射帧受限消费的判读输入面)。
+                    note_shop_action_receipt(
+                        match, action, applied=False,
+                        reason=f'blocked:spend_gate:{_g_why}',
+                        extra={'blocked': 'spend_gate'})
                     break
             _cur = match.session.shop_state_frame
             guard_proposal_vs_expected(action, _cur)
@@ -956,6 +1000,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 _ok = _sink.execute_action(op.ctx, action, _env).applied
             else:
                 _ok = _aop.execute(_env)
+            # 执行落地回执(R2 回执域,逐动作 op 一条 logic_action 行):
+            # applied = 动作 op 自身机械事实(未落地 = False + 摘要),
+            # 发出即簿记非验证——本行零新增读屏零成败判定。
+            note_shop_action_receipt(
+                match, action, applied=bool(_ok),
+                reason='' if _ok else f'执行未落地({type(_aop).__name__})')
             apply_action_outcome(_aop, action, _ok, _cur, match, ledger,
                                  visit_actions)
             # T-82 续段 token 写入(生产商店循环执行位):动作确认已执行

@@ -216,4 +216,14 @@ class ExecState:
     # cw_state.ledger_node_type(kernel 判据 + 遥测 recorder)。
     # None = 本局未建(读口惰性建)。
     plane_node_ledger: PlaneNodeLedger | None = None
+    # 恢复局旗标(D2 live 接线;R1 缺口承接,判定方案 R3 规则六)。True =
+    # 本局为恢复对局(新 match 但游戏在中局续跑)——弹窗腿在派生 hist 空时
+    # 禁用不猜(防把恢复局首弹窗误推断成开局节点 1),消化后备战帧腿 A 权威
+    # 接管。写端 = cw_loop 恢复检测两确认点(_iter==1 战斗帧恢复检测 /
+    # 备战帧 resume_candidate 确认,``_mark_session_resumed`` 单口);读端 =
+    # cw_observation._feed_board_state(经 observe_screen_context(resumed=…)
+    # 进派生规则,读值不落旗标——一次性会话语义,非消费即清)。session 级
+    # 生命周期:新 match 新执行态 = 缺省 False(正常新局恒 False,开局推断
+    # 合法不受误伤)。
+    cw_resumed_match: bool = False
 
