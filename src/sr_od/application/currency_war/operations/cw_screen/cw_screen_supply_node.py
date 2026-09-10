@@ -27,25 +27,70 @@ T#103:确认按钮进 screen_info(货币战争-补给 按钮-确认);卡身点�
 **行为等价红线(旧节点基类退役批)**:补给节点流转(节点屏↔补给屏)/committed-but-verifying
 语义/node_max_retry_times=8 预算/ADR-0264 关态稳定基线预置,全部原样平移(原基类
 _run_node 循环内联进 handle,零行为变更)。
+
+统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
+B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
+handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生命周期新路径;
+缺省 None = 生产直连旧路径,handle 原序列,生产行为零变化 §9.1)。迁移手法
+单一源 = 盛会之星先例(CwScreenMegastar,reviews/T-215-r1.md 验收):decide+act
+内聚于现役动作体 ``_do_action``(detour/刷新/选卡确认三形态,两路径共享零转录);
+本屏无 on_outcome 落地登记件(§6.4 收编面无补给行;``supply_refresh_used``
+BoardState 字段位 = 先申报禁静默、无写端,cw_board_state.py 字段行自注
+「收窄待证」——执行侧防重入旗标 ``_supply_refresh_used`` 留守 _do_action,
+不入注册表);chosen_supply 写端 = 出口验真通过分支单次逻辑写入豁免(§2.2/
+§6.5-6)留守 observe 门完成分支。节点完成判定 = 下一轮 observe 门 ``_in_node``
+复检(观察驱动节点循环,非生命周期验证段——用户裁定 2026-09-10 验证段废除,
+confirm 点击系统性不生效 = 动作链 bug 根修动作链)。本屏 sim 腿 = 引擎补给
+决策段已在(engine_p1 直调 kernel decide_supply,T5 接口收敛挂账)但本批未
+接线(sim 接线批后续),等价判据主承重 = 实机在册行为锁(test_cw_runnode_retire
++ test_cw_board_state_consume + 本批锁 test_cw_obs_arch_event_screens_step3)。
 """
 import time
-from typing import ClassVar
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
 from sr_od.application.currency_war.obs.cw_observation import read_game_state
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.application.currency_war.telemetry import recorder as cw_telemetry
 from sr_od.application.currency_war.telemetry.state import set_last_supply_pick
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenSupplyNode(SrOperation):
+@dataclass
+class SupplyObservation:
+    """补给屏观察 payload(五段之段1产物;试点步骤 3 实机转录形态)。
+
+    本屏观察轻(B3 族批量「盛会之星型」):observe 段 = 节点完成门
+    (``_in_node``;选项读取归 decide 段动作体 ``_do_action`` 现役内聚,
+    避免新增读屏)——payload 仅携带帧引用(实机识别域载体,识别机制不出
+    端口,架构设计 §2.1;sim 适配器落位 = sim 接线批,本批不建)。
+    """
+
+    screen: Any = None
+
+
+class SupplyLiveObservationAdapter:
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,试点步骤 3)。
+
+    本屏 observe = 节点完成门已归 ``lifecycle_observe``;适配器仅装配帧
+    引用。sim 实现 = sim 接线批辖域,本批不建。
+    """
+
+    def observe(self, op: 'CwScreenSupplyNode') -> SupplyObservation:
+        return op._observe_frame()
+
+
+class CwScreenSupplyNode(CwScreenOpBase):
     """补给节点:点卡身选中 + 确认,**验证 overlay 消失**才完成。
 
     选定+确认时点经 cw_telemetry.set_last_supply_pick 暂存选择快照
@@ -77,8 +122,19 @@ class CwScreenSupplyNode(SrOperation):
     REENTER_TRIES: ClassVar[int] = 3
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-补给节点')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-补给节点')
         self._refresh_used = False   # r1 review#1:节点实例态(只刷一次;游戏规则补给可刷 1 次)
+        # 适配器位缺省装配(试点步骤 3;先例 = CwScreenPrep/盛会之星):观察口 =
+        # 实机适配器(现役节点完成门 + 帧引用封口);动作口 = None = 直连现役
+        # 动作体 ``_do_action``(基类「None = 子类缺省实现自担」;注入替位 =
+        # 构造后直接赋值,测试桩)。on_outcome 注册表:本屏无落地登记件
+        #(§6.4 收编面无补给行,见模块 docstring 申报;注册表缺席 = 零动作)。
+        self._observation_adapter = SupplyLiveObservationAdapter()
+
+    def _observe_frame(self) -> SupplyObservation:
+        """轻观察帧装配(实机适配器①封口内容):节点完成门在 observe 段,
+        本方法仅携带当前帧引用(选项读取归 ``_do_action`` 现役内聚)。"""
+        return SupplyObservation(screen=self.last_screenshot)
 
     @operation_node(name='补给节点', is_start_node=True, node_max_retry_times=8)
     def handle(self) -> OperationRoundResult:
@@ -86,6 +142,13 @@ class CwScreenSupplyNode(SrOperation):
 
         每轮:验证完成(已离开本节点画面)→ success;否则做一动作 → round_retry(计预算,超 → FAIL)。
         """
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
+        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
+        # 周期新路径;缺省 None = 生产直连旧路径(下方原序列,试点等价门
+        # 通过前生产行为零变化)。判据用装配完整性(安装协议两端口成对),
+        # 不新建开关机制(开关生命周期纪律,strategy-work §3)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
         screen = self.last_screenshot
         # 验证完成:已不在本节点画面 = overlay 消失 / 进了下一节点 → 节点完成,交还外层。
         if not self._in_node(screen):
@@ -326,3 +389,47 @@ class CwScreenSupplyNode(SrOperation):
                      getattr(_post_state, 'hp', '?'), getattr(_post_state, 'gold', '?'))
         except Exception as e:   # noqa: BLE001  观测不阻塞对局
             log.warning('[cw-supply] 选卡确认后快照记录失败(不阻塞): %s', e)
+
+    # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
+
+    def lifecycle_observe(self
+                          ) -> tuple[SupplyObservation,
+                                     OperationRoundResult | None]:
+        """段1 observe:节点完成门(``_in_node``)→ 轻观察 payload。已离开
+        本节点画面 = 节点完成,早退交还外层(旧 handle 首闸逐位转录,含
+        chosen 写端挂点与完成语义);仍在节点内 = 先弃上轮陈旧选定暂存
+        (重入轮入口防跨轮/跨节点误写,旧 handle 语句逐位转录)→ 观察
+        payload 交后续段。"""
+        screen = self.last_screenshot
+        if not self._in_node(screen):
+            # 出口验真通过(补给屏已关)= 上轮选定确认落地 → 写记录面。
+            self._record_chosen_supply()
+            return (SupplyObservation(screen=screen),
+                    self.round_success(f'{self.op_name} 节点完成(已离开本节点画面)'))
+        # 仍在节点内 = 上轮选定确认未落地 → 丢弃上轮选定暂存(防陈旧选
+        # 跨轮/跨节点误写;本轮选定会重新暂存)。
+        self._pop_pending_chosen_supply()
+        _adp = self._observation_port()
+        obs = (_adp.observe(self) if _adp is not None
+               else self._observe_frame())
+        return obs, None
+
+    def lifecycle_decision_cycle(self, payload: SupplyObservation
+                                 ) -> OperationRoundResult:
+        """段3-5(单动作内聚):decide+act 内聚于 ``_do_action`` 现役动作体
+        (detour/刷新/选卡确认三形态一次一动作;决策/遥测/session 写端/
+        到账登记全部原位,两路径共享零转录)。段5 on_outcome = 本屏无落地
+        登记件(注册表缺席 = 零动作,见 __init__ 申报);节点完成判定 =
+        下一轮 observe 段 ``_in_node`` 复检(观察驱动节点循环:round_retry
+        重入后由观察门读新帧世界事实,非生命周期验证段——用户裁定
+        2026-09-10 验证段废除),round_retry 计 node_max_retry_times=8
+        预算不变,故段迹到 act 为止。"""
+        self._lifecycle_mark('decide')
+        _adp = self._action_port()
+        if _adp is not None:
+            _adp.execute(self, None)   # 注入替位(测试桩);动作体归一
+        else:
+            self._do_action(payload.screen)
+        self._lifecycle_mark('act')
+        # 仍在节点内 → round_retry 重跑本节点(计预算,超 → FAIL bail)。
+        return self.round_retry(wait=1.5)

@@ -12,9 +12,24 @@
 
 识别:OCR 左/右卡区域,找「提升费用」字样 → 那张是升费卡;无 → 任选(左)。
 选卡后可能自动弹「属性详情」面板 → 点右上 × 关闭。
+
+统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
+B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
+handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路径;缺省 None =
+生产直连旧路径,生产行为零变化 §9.1)。迁移手法单一源 = 盛会之星先例
+(reviews/T-215-r1.md 验收;T-215-r1 §五.5 统一形态注意项 = lifecycle_observe
+消费 ``_observation_port()`` 位):handle 体纯移入 ``_handle_overlay``
+(两路径共享零转录);**本屏无 op 内入口门**(入口判定归主循环 0 系分发,
+observe 段 = 轻观察帧引用,盛会之星同式);本屏无 on_outcome 落地登记件
+(§6.4 收编面无事件屏 chosen 行;planner 无 chosen_* 写端,选择落遥测
+record_event_choice)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
+事件浮层族即时落定),等价判据主承重 = 实机在册行为锁(test_cw_planner_
+strategy_wiring + test_cw_infra_locks + 本批锁
+test_cw_obs_arch_event_screens_step3)。
 """
 import time
-from typing import ClassVar
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
@@ -22,12 +37,38 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenPlanner(SrOperation):
+@dataclass
+class PlannerObservation:
+    """策划事件观察 payload(五段之段1产物;试点步骤 3 实机转录形态)。
+
+    observe 段 = 轻观察帧引用(卡面 OCR 读取归共享动作体现役内聚,避免新增
+    读屏;实机识别域载体,不出端口,架构设计 §2.1;sim 适配器 = 不适用,
+    F11 例外清单)。
+    """
+
+    screen: Any = None
+
+
+class PlannerLiveObservationAdapter:
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,试点步骤 3)。
+
+    本屏无 op 内入口门(分发即门),适配器仅装配帧引用。sim 实现 =
+    不适用(F11 例外清单),本批不建。
+    """
+
+    def observe(self, op: 'CwScreenPlanner') -> PlannerObservation:
+        return op._observe_frame()
+
+
+class CwScreenPlanner(CwScreenOpBase):
     """银狼 2 星奖励画面(用户 2026-08-31 定名;弹窗标题「我来当策划」,银狼升
     2★ 时触发——非随机事件):OCR 两卡 → 策略选卡 → 确认 → 关详情面板。
     两选项=扑满病毒(敌人变扑满)vs 银狼LV.999(费用升至 4,变 1 星银狼
@@ -67,7 +108,17 @@ class CwScreenPlanner(SrOperation):
     DETAIL_CLOSE: ClassVar[Point] = Point(1497, 238)
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-策划事件')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-策划事件')
+        # 适配器位缺省装配(试点步骤 3;先例 = CwScreenPrep/盛会之星):观察口 =
+        # 实机适配器(帧引用封口);动作口 = None = 直连现役共享体
+        # ``_handle_overlay``(多步链,无单意图 act 分派面)。on_outcome 注册
+        # 表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
+        # docstring)。
+        self._observation_adapter = PlannerLiveObservationAdapter()
+
+    def _observe_frame(self) -> PlannerObservation:
+        """轻观察帧装配(实机适配器①封口内容;卡面读取归共享体现役内聚)。"""
+        return PlannerObservation(screen=self.last_screenshot)
 
     def _card_point(self, idx: int) -> Point:
         """卡选中点击点 = area rect 相对几何推导(中心 x,71% 高度)。
@@ -92,6 +143,19 @@ class CwScreenPlanner(SrOperation):
 
     @operation_node(name='处理策划事件', is_start_node=True, node_max_retry_times=5)
     def handle(self) -> OperationRoundResult:
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
+        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
+        # 周期新路径;缺省 None = 生产直连旧路径(原序列整体移入
+        # _handle_overlay 共享体,试点等价门通过前生产行为零变化)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
+        return self._handle_overlay()
+
+    def _handle_overlay(self) -> OperationRoundResult:
+        """选卡+确认链(旧 handle 体纯移入,两路径共享零转录;试点步骤 3,
+        先例 = 盛会之星 ``_do_action`` 共享式)。策略接线(W953:唯一入口 =
+        策略对象,kernel 直调仅无 match 防御分支)/press_time 加固/详情面板
+        防御语义逐位保留。"""
         screen = self.screenshot()
         # 1. OCR 两卡区域文字(卡描述 y~300-420 带,左卡 x<960 / 右卡 x≥960)
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
@@ -165,3 +229,28 @@ class CwScreenPlanner(SrOperation):
             self, confirm_point=self.CONFIRM,
             entry_keyword='我来当策划', tag='cw-planner',
             press_time=self.CLICK_PRESS_TIME)
+
+    # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
+
+    def lifecycle_observe(self
+                          ) -> tuple[PlannerObservation,
+                                     OperationRoundResult | None]:
+        """段1 observe:本屏无 op 内入口门(入口判定归主循环 0 系分发,
+        分发即门)→ 轻观察 payload 直接交后续段(盛会之星同式,帧引用
+        载体)。"""
+        _adp = self._observation_port()
+        obs = (_adp.observe(self) if _adp is not None
+               else self._observe_frame())
+        return obs, None
+
+    def lifecycle_decision_cycle(self, payload: PlannerObservation
+                                 ) -> OperationRoundResult:
+        """段3-5(单动作内聚):decide+act 内聚于 ``_handle_overlay`` 共享体
+        (卡面 OCR/策略决策/遥测/点卡/详情面板防御/确认收尾全部原位,两路径
+        共享零转录)。段5 on_outcome = 本屏无落地登记件(注册表缺席 = 零
+        动作,见 __init__ 申报);轮次结果语义在共享体内逐位保留(段迹到
+        act)。"""
+        self._lifecycle_mark('decide')
+        rs = self._handle_overlay()
+        self._lifecycle_mark('act')
+        return rs

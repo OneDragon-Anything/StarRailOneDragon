@@ -11,20 +11,60 @@ x≈510/900/1290 / 确认 (1441-1543,584-615)。
 识别:「请选择」+「强化效果」关键词(id_mark 由 screen_info 承担)。
 策略:OCR 三卡文字 → decide_event 类打分(机制词缀向);v1 用
 decide_planner 同款文本规则(奥迹/伤害=战力类,留白=保守)。
+
+统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
+B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
+handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路径;缺省 None =
+生产直连旧路径,生产行为零变化 §9.1)。迁移手法单一源 = 盛会之星先例
+(reviews/T-215-r1.md 验收;T-215-r1 §五.5 统一形态注意项 = lifecycle_observe
+消费 ``_observation_port()`` 位):handle 体纯移入 ``_handle_overlay``
+(两路径共享零转录);**本屏无 op 内入口门**(入口判定归主循环 0 系分发,
+observe 段 = 轻观察帧引用);本屏无 on_outcome 落地登记件(§6.4 收编面无
+事件屏 chosen 行;fortune 无 chosen_* 写端,选择落遥测
+record_event_choice)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面
+段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁(本批锁
+test_cw_obs_arch_event_screens_step3)。
 """
 import time
-from typing import ClassVar
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenFortune(SrOperation):
+@dataclass
+class FortuneObservation:
+    """命运卜者观察 payload(五段之段1产物;试点步骤 3 实机转录形态)。
+
+    observe 段 = 轻观察帧引用(卡面 OCR 读取归共享动作体现役内聚;实机
+    识别域载体,不出端口,架构设计 §2.1;sim 适配器 = 不适用,F11 例外
+    清单)。
+    """
+
+    screen: Any = None
+
+
+class FortuneLiveObservationAdapter:
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,试点步骤 3)。
+
+    本屏无 op 内入口门(分发即门),适配器仅装配帧引用。sim 实现 =
+    不适用(F11 例外清单),本批不建。
+    """
+
+    def observe(self, op: 'CwScreenFortune') -> FortuneObservation:
+        return op._observe_frame()
+
+
+class CwScreenFortune(CwScreenOpBase):
     """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。"""
 
     # ⚠️ 待实机核(坐标单一源清点项):以下为 2026-08-21 live 实锤字面量
@@ -37,7 +77,17 @@ class CwScreenFortune(SrOperation):
     CONFIRM: ClassVar[Point] = Point(1491, 600)
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-命运卜者强化')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-命运卜者强化')
+        # 适配器位缺省装配(试点步骤 3;先例 = CwScreenPrep/盛会之星):观察口 =
+        # 实机适配器(帧引用封口);动作口 = None = 直连现役共享体
+        # ``_handle_overlay``(多步链,无单意图 act 分派面)。on_outcome 注册
+        # 表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
+        # docstring)。
+        self._observation_adapter = FortuneLiveObservationAdapter()
+
+    def _observe_frame(self) -> FortuneObservation:
+        """轻观察帧装配(实机适配器①封口内容;卡面读取归共享体现役内聚)。"""
+        return FortuneObservation(screen=self.last_screenshot)
 
     def _read_cards(self, screen) -> list[str]:
         """OCR 三卡文字 → x 近邻分流。"""
@@ -59,6 +109,18 @@ class CwScreenFortune(SrOperation):
 
     @operation_node(name='命运卜者强化', is_start_node=True, node_max_retry_times=5)
     def handle(self) -> OperationRoundResult:
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
+        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
+        # 周期新路径;缺省 None = 生产直连旧路径(原序列整体移入
+        # _handle_overlay 共享体,试点等价门通过前生产行为零变化)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
+        return self._handle_overlay()
+
+    def _handle_overlay(self) -> OperationRoundResult:
+        """选卡+确认链(旧 handle 体纯移入,两路径共享零转录;试点步骤 3,
+        先例 = 盛会之星 ``_do_action`` 共享式)。文本策略 v1/safe_click/
+        confirm_and_verify 收尾语义逐位保留。"""
         screen = self.screenshot()
         texts = self._read_cards(screen)
         # 文本策略 v1:战力关键词优先(伤害/强度/提高),无匹配选第一张
@@ -90,3 +152,27 @@ class CwScreenFortune(SrOperation):
         return confirm_and_verify(
             self, confirm_point=self.CONFIRM,
             entry_keyword='命运卜者', tag='cw-fortune')
+
+    # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
+
+    def lifecycle_observe(self
+                          ) -> tuple[FortuneObservation,
+                                     OperationRoundResult | None]:
+        """段1 observe:本屏无 op 内入口门(入口判定归主循环 0 系分发,
+        分发即门)→ 轻观察 payload 直接交后续段(盛会之星同式,帧引用
+        载体)。"""
+        _adp = self._observation_port()
+        obs = (_adp.observe(self) if _adp is not None
+               else self._observe_frame())
+        return obs, None
+
+    def lifecycle_decision_cycle(self, payload: FortuneObservation
+                                 ) -> OperationRoundResult:
+        """段3-5(单动作内聚):decide+act 内聚于 ``_handle_overlay`` 共享体
+        (卡面 OCR/文本策略/遥测/点卡/确认收尾全部原位,两路径共享零转录)。
+        段5 on_outcome = 本屏无落地登记件(注册表缺席 = 零动作,见 __init__
+        申报);轮次结果语义在共享体内逐位保留(段迹到 act)。"""
+        self._lifecycle_mark('decide')
+        rs = self._handle_overlay()
+        self._lifecycle_mark('act')
+        return rs
