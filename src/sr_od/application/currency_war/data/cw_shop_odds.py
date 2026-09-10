@@ -193,6 +193,28 @@ def expected_refreshes_for_card(level: int, cost: int, target_star: int,
     return expected_refreshes(p, v, a, non_target_taken, k, owned)
 
 
+def reencounter_window_frames(level: int, cost: int, held: int = 0) -> float:
+    """该卡再遇窗(自然帧)= 1/P(≥1 张/帧)——P77 §1.4「再遇窗 1/q」同式
+    (math_proofs/p77-shop-spot-availability-signal.md;消费位 = s_reserve
+    拒绝对价载体,shop.py ADR-0626)。
+
+    q = 单次刷新 5 格出现至少 1 张该卡的概率,超几何精确算
+    (``_refresh_dist`` k_need=1 的 P(0) 补);held = 已持有该卡基础副本数
+    (1星1/2星3/3星9 折算,``acquirability_factor`` 同口径)——持有越多
+    牌库越薄,窗越长。
+    :return: 期望等待帧数;p≤0(该级刷不出该费)或 P(≥1)=0 → inf。
+    """
+    p = refresh_prob(level, cost)
+    if p <= 0:
+        return float('inf')
+    v = DISTINCT_CARDS_PER_COST.get(cost, 13)
+    a = POOL_COPIES_PER_CARD.get(cost, 9)
+    q = 1.0 - _refresh_dist(p, v, a, c=0, k_need=1, j=held)[0]
+    if q <= 0:
+        return float('inf')
+    return 1.0 / q
+
+
 def acquirability_factor(core_chars: list[str], level: int,
                          held: dict[str, int] | None = None) -> float:
     """comp 核心角色的**牌池感知**可得性 [0,1](select_comp 用;ADR-0110 牌池模型,补 ADR-0092 理论法)。
