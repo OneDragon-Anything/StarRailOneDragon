@@ -1112,25 +1112,40 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
 
 
 def check_levelup_flat4_ledger_lock(rows: list[dict]) -> list[str]:
-    """批⑳ F3 裁决(LevelUp 单击价 flat 4 消费侧采纳锁;ADR-0289)。
+    """升级支出跟随决策费用载体锁(原 flat4 台账锁;T-240 语义重推)。
 
-    判据:批⑳ 裁决 levelup 单击价真值 = flat 4(lv5-8 净证;
-    lv3-4 推定),无逐级真值表——账本侧锁:每轮 spend.levelup
-    == 4 × 本轮 LevelUp 动作数。不一致 = 执行器支出通道未采纳
-    flat4(批⑨ F1 双模型并存回归)或账本写坏。批⑲ 原设计
-    (逐级真值表)已被本裁决作废(归档,见 ADR-0289)。
+    锁意图沿革:批⑳ F3 裁决 LevelUp 单击价真值 = flat 4(lv5-8 净证;
+    lv3-4 推定,ADR-0289),字面判据 spend.levelup == 4 × LevelUp 行数。
+    重推依据(锁的存在性纪律,禁机械跟绿):sim 支出载体自 ADR-0561
+    申报表 #5 统一 = action.cost(策略层 xp_click_cost 真值,折扣感知)
+    ——持商业间谍/成长的快乐(等级门)的局单击价 = 4−折扣 ≠ 4,注入臂
+    可持卡(engine_p1 策略选卡注入),字面 4 与载体真值在先矛盾;「4」
+    实为**无折扣局的快照**,非锁真不变量。重推后判据:
+
+        spend.levelup == Σ(LevelUp 行 cost)
+
+    (cost 缺读/0 按 engine_p1 同口径 ``getattr(a,'cost',0) or 4`` 兜,
+    旧档案行不因代际漂移。)无折扣局该判据退化为原字面 4×行数,零松绑;
+    折扣局单价真值(取价是否含对折扣)不在本锁辖域——由 kernel 侧
+    xp 折扣修复锁族(sr-od-test test_cw_economy xp 买费折扣修复锁族:
+    显示价直通/两支等价/成长的快乐真值表)把守,两域分工防同错互证。
+    拒付行(LevelUpRejected)不入 LevelUp 行数,与本判据无交互
+    (engine_p1 cap 守卫语义,批⑨ F1 双模型并存回归同前由本锁拦截:
+    执行器弃 action.cost 回退私价模型即 spend≠Σcost 必红)。
     """
     out: list[str] = []
     for row in rows:
         acts = row.get('actions') or []
-        n_lv = sum(1 for a in acts if a.get('__type__') == 'LevelUp')
+        lv_acts = [a for a in acts if a.get('__type__') == 'LevelUp']
         spent = ((row.get('sim') or {}).get('spend') or {}) \
             .get('levelup', 0)
-        if spent != 4 * n_lv:
+        expected = sum(int(a.get('cost', 0) or 4) for a in lv_acts)
+        if spent != expected:
             out.append(
                 f"p{row.get('plane')}r{row.get('round_num')}: "
-                f"levelup 支出 {spent} ≠ 4×{n_lv}(flat4 采纳回归"
-                f"——批⑳ F3 裁决)")
+                f"levelup 支出 {spent} ≠ 决策费用载体 {expected}"
+                f"({len(lv_acts)} 击;执行支出未跟随 action.cost——"
+                f"T-240 重推,原 flat4 字面判据已废止)")
     return out
 
 

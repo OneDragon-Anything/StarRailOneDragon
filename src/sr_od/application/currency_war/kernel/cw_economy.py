@@ -488,10 +488,34 @@ def refresh_cost_effective(state: GameState, refresh_count: int,
 
 
 def xp_click_cost(state: GameState) -> int:
-    """一次「购买经验」单击花金(state.level_up_cost OCR 实读优先;缺 → XP_CLICK_COST_FALLBACK;
-    商业间谍类 xp_buy_cost_discount 再减;ADR-0131)。"""
-    base = state.level_up_cost if state.level_up_cost else XP_CLICK_COST_FALLBACK
-    return max(0, base - _strategy_economy(state).xp_buy_cost_discount)
+    """一次「购买经验」单击花金(观察优先兜底逻辑,strategy-env-impacts §2
+    通用模式 1;ADR-0131;折扣语义 T-217/T-240 修复)。
+
+    两支语义(来源凭 ``state.level_up_cost`` 是否有值判别):
+    - **显示价支**(OCR 实读):传入值为最近备战帧观察价,游戏侧已算好
+      全部折扣(商业间谍/成长的快乐等)→ **原样直通不再减**,下限 0;
+      0 与缺省同义走兜底支(falsy 契约,与全部既有调用面一致)。
+      「最近观察值」= 写端仅在备战观察权重开启帧更新(cw_observation
+      read_level_up_cost),非本帧保证;取数后才拿卡/跨等级门档位的过期
+      窗口方向可自愈、有界(下一备战帧同屏重读)。
+    - **兜底支**(观察缺省):函数内减折扣 = 基准 XP_CLICK_COST_FALLBACK
+      (恒 4=用户口径,非按等级)−[xp_buy_cost_discount + 等级门折扣
+      (成长的快乐:xp_click_discount_from_level,``state.level ≥
+      xp_click_discount_from_level_at`` 时生效;哨兵 0=未持有)],
+      max(0) 钳。
+
+    出域声明:奋斗协议(xp_buy_hp_cost)血本位下购经验币种切换为血,
+    本金费函数不适用(血闸独立车道 blood_xp_gate 承接);按钮显示非金
+    数值时显示价支读数同样出域,不在本函数补模。
+    """
+    if state.level_up_cost:
+        return max(0, state.level_up_cost)
+    eff = _strategy_economy(state)
+    discount = eff.xp_buy_cost_discount
+    if (eff.xp_click_discount_from_level_at
+            and state.level >= eff.xp_click_discount_from_level_at):
+        discount += eff.xp_click_discount_from_level
+    return max(0, XP_CLICK_COST_FALLBACK - discount)
 
 
 
@@ -617,7 +641,8 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
             and state.hp is not None and state.hp >= 30):
         # ADR-0275:旧「4+level」简算与生产 flat-4(XP_CLICK_COST_FALLBACK,OCR 实读
         # 优先)互相矛盾;实机对拍(VLM 三帧 lv4/lv7 均 4 金/击)裁决 flat-4 →
-        # 统一走 xp_click_cost(单一源;商业间谍折扣同享)。
+        # 统一走 xp_click_cost(单一源;折扣族同享:商业间谍 + 成长的快乐等级门,
+        # 两支语义见该函数 docstring)。
         _click_cost = xp_click_cost(state)
         if state.gold < _click_cost + 10:
             return False
@@ -1311,13 +1336,13 @@ def refresh_ev_budget(state: GameState, session: StrategySession,
 
 
 def upgrade_plan_fee(state: GameState) -> int:
-    """下一级升级总费(逐帧现读:OCR 单击价优先,缺省 flat 常量)。"""
-    from sr_od.application.currency_war.kernel.cw_plane_table import clicks_to_level
-    from sr_od.application.currency_war.kernel.cw_state import (
-        XP_CLICK_COST_FALLBACK,
+    """下一级升级总费 = 到下一级单击数 × 单击价(取价委托 ``xp_click_cost``
+    单一源:观察优先/兜底减折扣语义只存在一处,禁第二处独立折扣实现——
+    「同一语义两处实现」即互补单侧错漂移温床,T-217 核对 §4/T-240)。"""
+    from sr_od.application.currency_war.kernel.cw_plane_table import (
+        clicks_to_level,
     )
-    click = state.level_up_cost or XP_CLICK_COST_FALLBACK
-    return clicks_to_level(state.level) * click
+    return clicks_to_level(state.level) * xp_click_cost(state)
 
 
 def _rounds_to_plane_end(state: GameState, session: StrategySession) -> int:
