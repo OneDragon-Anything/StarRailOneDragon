@@ -7,7 +7,7 @@
 
 ## 1. 本目录是什么
 
-统一 state(GameState)的设计文档正式目录,总-分结构:本文件=总纲,五个分篇各管一面。
+统一 state(GameState)的设计文档正式目录,总-分结构:本文件=总纲,七个分篇各管一面。
 总纲是 [BoardState-数据结构设计.md](../design/BoardState-数据结构设计.md)(下称「容器正本」)
 的**简化版**——只写设计理念与核心规范;字段清单、决策 op 写入面、效果族归属、迁移批次
 等完整规格以容器正本为准,本目录不重复(代码已实现的部分不在文档重复细节)。
@@ -93,16 +93,19 @@ journal.md §6 与容器正本 §8.4。
 |---|---|
 | [journal.md](journal.md) | 记录机制:账本文件、三渠道封闭集与渠道签名、版本 id 与单版本事务、自足快照行、落盘与查询 |
 | [node-domain.md](node-domain.md) | 节点域:字段双层、生效序读口与 hist 哨兵、守卫族、派生规则单一源引用 |
+| [node-derivation.md](node-derivation.md) | 节点推进判定方案(派生规则单一源持久家):四规则组本体/画面流转全景图/场景走查/实现位与载荷锚 |
 | [strategy-env-impacts.md](strategy-env-impacts.md) | 投资策略/环境逐效果在 state 里的影响(已确认条目+候逐条确定占位清单) |
 | [chain-observation.md](chain-observation.md) | 链观察对接:基线链/现行链双源、diff 证据、与遥测账本的挂接 |
 | [retirement.md](retirement.md) | 旧 12 流退役逐流处置与消费方迁移清单(只写排期与清单结构) |
+| [r5-migration-plan.md](r5-migration-plan.md) | R5 迁移规划(单源直迁八波):旧 12 流删除+GameState 本体退役+正名排期,重构 retirement.md 影子框架的裁决口径 |
 
 ## 5. 边界与姊妹文档
 
 - **容器正本**=[BoardState-数据结构设计.md](../design/BoardState-数据结构设计.md)
   ——字段级规格、op 写入面、效果族归属、迁移批次的唯一正本;本目录与其冲突时以
   正本+ADR-0630 修订节为准。
-- **派生规则单一源**=场景一判定方案(`.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md`;该档不入 git,持久裁定锚=ADR-0630 关联行与文档拆分裁定记档)——本目录引用不复写。
+- **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=ADR-0630 关联行与文档拆分裁定记档)——本目录引用不复写。
+- **旧流退役排期**=R5 迁移规划([r5-migration-plan.md](r5-migration-plan.md);单源直迁八波,重构 retirement.md 影子框架的裁决口径)。
 - **链观察设计件**=件 B(`.debug/temp/currency_war/节点链观察-设计v1.md`)——
   [chain-observation.md](chain-observation.md) 是其对接面精炼,不是第二正本。
 - **效果域内容语义**(计数器模型/生命周期/逐效果规格)= 独立效果域设计件,候讨论
