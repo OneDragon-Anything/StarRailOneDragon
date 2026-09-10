@@ -422,7 +422,7 @@ def check_reward_delta_pool_bucket_lock(pool_map: dict) -> dict:
 
     空 reward/supply 池(fallback/历史 Path 快照)不辖,violations=0
     (同 battle 锁空池语义;分布入池的回归防线 = 采样器版本锁 +
-    快照自洽锁,见 test_cw_adr0292_reward_pool_sampling)。
+    快照自洽锁,见 test_cw_reward_pool_sampling)。
     """
     if not (pool_map.get('reward') or pool_map.get('supply')):
         return {'violations': 0,
