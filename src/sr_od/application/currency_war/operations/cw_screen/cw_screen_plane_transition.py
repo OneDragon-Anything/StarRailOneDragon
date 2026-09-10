@@ -17,7 +17,7 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class CwScreenPlaneTransition(SrOperation):
-    """位面过渡:识别「点击空白处继续」→ 点空白 → 验提示消失。"""
+    """位面过渡:识别「点击空白处继续」→ 点空白 → 重入观察裁决交回(验证废除)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-位面过渡'
     PROMPT_AREA: ClassVar[str] = '提示-点击空白继续'
@@ -25,12 +25,24 @@ class CwScreenPlaneTransition(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-位面过渡')
+        # 点空白已发待重入裁决标志(验证废除形态,用户裁定 2026-09-10):
+        # 重入裁决见 handle——提示不在 + 已发 = 过渡完成 → success 交回
+        #(外循环 0q 的误分发计数只认 fail,完成路径必须 success)。
+        self._click_pending: bool = False
 
     @operation_node(name='位面过渡', is_start_node=True, node_max_retry_times=8)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        if not self.round_by_find_area(
-                screen, self.SCREEN_NAME, self.PROMPT_AREA, crop_first=False).is_success:
+        _hit = self.round_by_find_area(
+            screen, self.SCREEN_NAME, self.PROMPT_AREA, crop_first=False).is_success
+        # 重入裁决(观察驱动):上轮点空白已发 → 提示不在 = 过渡完成(提示
+        # 已消失)→ success 交回;提示在 = 点击未落地 → 重点(计节点预算)。
+        if self._click_pending:
+            self._click_pending = False
+            if not _hit:
+                log.info('[cw-flow-plane] 过渡完成(重入观察:提示已消失)')
+                return self.round_success('位面过渡完成(重入观察裁决)', wait=1.0)
+        if not _hit:
             # 提示未现:未到位(上位面未结束)或已过去 → fail 交编排壳/循环重新分流。
             return self.round_fail('位面过渡提示未出现')
         blank = area_center(self.ctx, self.BLANK_AREA, self.SCREEN_NAME)
@@ -41,10 +53,6 @@ class CwScreenPlaneTransition(SrOperation):
         self.ctx.controller.mouse_move(blank)
         self.ctx.controller.click(blank)
         time.sleep(1.0)   # click 异步落地 + 过渡翻页动画
-        # 出口验真转移:提示消失(点空白后仍见提示 = 未生效,重点计预算)。
-        if self.round_by_find_area(
-                self.screenshot(), self.SCREEN_NAME, self.PROMPT_AREA,
-                crop_first=False).is_success:
-            return self.round_retry('点空白后过渡提示仍在')
-        log.info('[cw-flow-plane] 过渡完成(提示已消失)')
-        return self.round_success('位面过渡完成', wait=1.0)
+        # 机械交回(验证废除):提示消失与否由下一轮重入观察裁决(本方法顶部)。
+        self._click_pending = True
+        return self.round_retry('点空白已发,重入观察裁决')

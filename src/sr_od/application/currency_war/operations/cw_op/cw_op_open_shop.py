@@ -15,27 +15,28 @@ def open_shop(op: SrOperation) -> OperationRoundResult:
     ``op`` = 宿主 op(编排壳直调时传壳自身,复用其 round_by_* 判定与
     测试替身桩;本文件 ``CwOpOpenShop`` 独立跑时传自身)。
 
-    幂等:已开(「按钮-收起」可见)→ 直接成功——自动开店场景点击落空
-    不判负(W970 §4.2 F7)。未开 → 点「按钮-商店」→ park_cursor →
-    固定等待 ``SHOP_OPEN_ANIM_S``(用户口述定值:干净的备战里打开商店
-    等 1 秒就够,DD-011 操作完成自等动画)→ 「按钮-收起」验证,未现 =
-    点击未生效,fail-closed retry(静默继续会以「店已开」假设读牌面,
-    r347 语义)。判稳标志 = 目标画面独有锚「按钮-收起」(「按钮-商店/
-    收起」同址,竞速下点击可命中反义按钮 → 收起消失 → retry,不假成功)。
+    幂等入口观察:已开(「按钮-收起」可见)→ 直接成功——自动开店场景
+    点击落空不判负(W970 §4.2 F7),重入轮由本观察裁决出口。未开 → 点
+    「按钮-商店」→ park_cursor → 固定等待 ``SHOP_OPEN_ANIM_S``(用户口述
+    定值:干净的备战里打开商店等 1 秒就够,DD-011 操作完成自等动画)→
+    **机械交回**(验证废除,用户裁定 2026-09-10:动作 op 只管机械执行
+    禁止验证;M1③ 发出即职责完成,调用方不问成败)——不再验「收起出现」,
+    店开没开由下一轮重入幂等观察 / 下一帧观察侧对账(0n 三锚/备战帧读
+    互斥)自然闭环。找不到商店/收起按钮 = 入口观察失败(动作没发出)→
+    fail 如实交回。
     """
     if op.round_by_find_area(op.screenshot(), SHOP_SCREEN_NAME,
                              '按钮-收起').is_success:
         return op.round_success('商店已开')
     if not op.round_by_find_and_click_area(
             op.screenshot(), '货币战争-备战', '按钮-商店').is_success:
-        return op.round_retry('找不到商店/收起按钮', wait=1)
+        # 入口观察失败 = 动作没发出(职责未完成)→ fail 如实交回(与
+        # 「点击已发」的机械 retry 区分,直调消费面按 is_success 分流)。
+        return op.round_fail('找不到商店/收起按钮')
     # 点击后 park:光标停在「按钮-商店」上会污染后继读屏(审计 P0 同型)
     op.park_cursor()
     time.sleep(SHOP_OPEN_ANIM_S)
-    if not op.round_by_find_area(op.screenshot(), SHOP_SCREEN_NAME,
-                                 '按钮-收起').is_success:
-        return op.round_retry('开店未生效(收起未出现)', wait=1)
-    return op.round_success('商店已开')
+    return op.round_retry('开商店点击已发,重入观察裁决', wait=1)
 
 
 class CwOpOpenShop(SrOperation):

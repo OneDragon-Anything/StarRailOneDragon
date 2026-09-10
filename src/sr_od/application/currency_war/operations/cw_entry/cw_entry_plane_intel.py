@@ -131,11 +131,10 @@ class CwEntryPlaneIntel(SrOperation):
                 return self.round_success(CwEntryPlaneIntel.STATUS_SKIP)
             return self.round_fail('实采成功但无产出(ctx.cw_plane_bosses 空),不落 session')
 
-        screen = self.screenshot()
-        if self.round_by_find_area(screen, _PD_SCREEN, '标识-位面详情标题',
-                                   crop_first=False).is_success:
-            # CwScreenPlaneIntel 出口契约保证已回备战;仍见详情屏 = 转场未落地
-            return self.round_retry('子op称成功但仍在位面详情屏,等转场')
+        # K2 拆除(验证废除,用户裁定 2026-09-10):原「子 op 称成功但仍在
+        # 位面详情屏 → round_retry」= 对子 op 回执的屏面验证,拆除——写回
+        # 的内容 = 中转池已采真值(与屏面转场无关),转场落地与否归外循环
+        # 下一帧重判(仍在详情屏时外循环重新分发,采集 op 幂等 skip 门兜住)。
 
         sess = self._session()
         if sess is None:

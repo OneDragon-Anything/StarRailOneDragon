@@ -84,6 +84,10 @@ class CwScreenFortune(CwScreenOpBase):
         # 表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
         # docstring)。
         self._observation_adapter = FortuneLiveObservationAdapter()
+        # 确认已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内入口
+        # 守卫),重入出口裁决区分「首发 miss」与「重入 miss(= overlay 已关
+        # → success 交回)」,见 _handle_overlay 顶部。
+        self._confirm_pending: bool = False
 
     def _observe_frame(self) -> FortuneObservation:
         """轻观察帧装配(实机适配器①封口内容;卡面读取归共享体现役内聚)。"""
@@ -120,7 +124,17 @@ class CwScreenFortune(CwScreenOpBase):
     def _handle_overlay(self) -> OperationRoundResult:
         """选卡+确认链(旧 handle 体纯移入,两路径共享零转录;试点步骤 3,
         先例 = 盛会之星 ``_do_action`` 共享式)。文本策略 v1/safe_click/
-        confirm_and_verify 收尾语义逐位保留。"""
+        确认机械交回语义逐位保留;验关半拆除(用户裁定 2026-09-10)。"""
+        # 重入裁决(观察驱动,M7 同化先例 + cw_entry_start 守卫先例):本屏
+        # 分发即门(无 op 内入口守卫),round_retry 重入不经外循环分发 →
+        # 顶部出口门补位:入口词不在 = overlay 已关(上轮确认已落地)→
+        # success 交回外循环;在 = 重走选卡+确认(计节点预算)。
+        if self._confirm_pending:
+            self._confirm_pending = False
+            if not self.round_by_ocr(self.screenshot(), '命运卜者',
+                                     lcs_percent=0.5).is_success:
+                return self.round_success('命运卜者强化已确认(重入观察裁决)',
+                                          wait=2.0)
         screen = self.screenshot()
         texts = self._read_cards(screen)
         # 文本策略 v1:战力关键词优先(伤害/强度/提高),无匹配选第一张
@@ -139,17 +153,17 @@ class CwScreenFortune(CwScreenOpBase):
         # 遥测:三选一卡文字+选择落账本(此前只 log)。
         record_event_choice('fortune_pick', texts, best_i,
                             reason=f'text_rule(best_score={best_s})')
-        # r315(等画面审查 P0②:全无出口验证,失败分支死码):
-        # 选卡=safe_click(bug#1 缓解);确认+验关统一走
-        # confirm_and_verify(入口关键词=命运卜者;确认落空→
-        # overlay 不关→round_retry 计预算兜底,不再无限重点)
+        # 选卡=safe_click(bug#1 缓解);确认=机械交回(点+固定等待,不验关;
+        # 重入裁决见本方法顶部)。原 r315「确认落空→round_retry 计预算兜底」
+        # 防线由重入裁决 + 预算耗尽 bail 承接。
         from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-            confirm_and_verify,
+            emit_overlay_confirm,
             safe_click,
         )
         safe_click(self, target, tag='cw-fortune')
         time.sleep(1.2)
-        return confirm_and_verify(
+        self._confirm_pending = True
+        return emit_overlay_confirm(
             self, confirm_point=self.CONFIRM,
             entry_keyword='命运卜者', tag='cw-fortune')
 

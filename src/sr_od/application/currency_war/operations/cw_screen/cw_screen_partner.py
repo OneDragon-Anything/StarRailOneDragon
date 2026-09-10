@@ -93,6 +93,9 @@ class CwScreenPartner(CwScreenOpBase):
         # 替位归 sim 接线批与动作回执双协议合流批)。on_outcome 注册表:本屏
         # 无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块 docstring)。
         self._observation_adapter = PartnerLiveObservationAdapter()
+        # 确认已发待重入裁决标志(验证废除形态):重入裁决见 handle 顶部
+        #(两步链的最终确认也置位,标识不在 = overlay 关 = 链完结)。
+        self._confirm_pending: bool = False
 
     def _observe_frame(self) -> PartnerObservation:
         """轻观察帧装配(实机适配器①封口内容):入口门在 observe 段,
@@ -172,6 +175,15 @@ class CwScreenPartner(CwScreenOpBase):
         # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
         # 周期新路径;缺省 None = 生产直连旧路径(下方原序列,试点等价门
         # 通过前生产行为零变化)。
+        # 重入裁决(观察驱动,验证废除形态)先于分流:确认已发 → 标识不在 =
+        # overlay 已关(两步链完结)→ success 交回;标识在 = 确认未落地 →
+        # 重走(计节点预算)。
+        if self._confirm_pending:
+            self._confirm_pending = False
+            if not self.round_by_find_area(
+                    self.last_screenshot, '货币战争-列车同行',
+                    '标识-选择伙伴').is_success:
+                return self.round_success(wait=2)
         if observation_source() is not None and action_sink() is not None:
             return self.run_lifecycle()
         screen = self.last_screenshot
@@ -182,8 +194,9 @@ class CwScreenPartner(CwScreenOpBase):
     def _handle_overlay(self, screen) -> OperationRoundResult:
         """门后选卡+确认链(旧 handle 门后体纯移入,两路径共享零转录;
         试点步骤 3,先例 = 盛会之星 ``_do_action`` 共享式)。chosen_partner
-        写端 = 选择 handler 单次逻辑写入豁免留守(§2.2);单轮内完成
-        选卡→确认→验关,轮次结果自本方法直返。"""
+        写端 = 选择 handler 单次逻辑写入豁免留守(§2.2);验关半拆除
+        (用户裁定 2026-09-10:动作 op 禁验证)——落地由 handle 顶部重入
+        裁决承载,本方法内轮次结果恒 retry/守卫语义。"""
         if not self.round_by_ocr(screen, '已选择').is_success:
             cands = self._read_candidates(screen)
             # r104:SIFT 立绘识别真身 → decide_partner 的 core_chars 匹配真正生效
@@ -231,9 +244,10 @@ class CwScreenPartner(CwScreenOpBase):
             self.ctx.controller.mouse_move(portrait)
             self.ctx.controller.click(portrait)
             time.sleep(0.7)
-            if not self.round_by_ocr(self.screenshot(), '已选择').is_success:
-                log.info('[cw-partner] candidate click 未选中(无「已选择」)→ round_retry')
-                return self.round_retry(wait=1)
+            # 选中态验拆除(验证废除):点立绘后不重读「已选择」判「选中
+            # 与否」——下一轮重入由顶部「已选择」观察裁决(未选中 = 重入
+            # 重点,计节点预算;观察在动作前 = 合法重判)。
+            return self.round_retry('候选立绘点击已发,重入观察裁决', wait=1)
         else:
             log.info('[cw-partner] 已选择态 → 跳 candidate click')
         # bug#1 吞(before_screenshot 移光标)→ overlay 不关 flat-loop(2026-08-06 r6 stall;手动 click 即关)。
@@ -256,30 +270,28 @@ class CwScreenPartner(CwScreenOpBase):
             )
             register_confirm_arrival(self.ctx.cw_match.session, 'ConfirmPartner',
                                      _pid, produced_by='CwScreenPartner')
-        if self.round_by_ocr(self.screenshot(), '选择伙伴').is_success:
-            # T#98:step 2「请选择强化角色」→ 点 stage 角色(前排-1)→ 确认(partner overlay 两步;
-            # 旧码只做 step 1 select candidate → confirm,step 2 select strengthen target 缺 → flat-loop)。
-            if self.round_by_find_area(self.screenshot(), '货币战争-盛会之星', '按钮-请选择强化角色').is_success:
-                # step2 strengthen target = overlay 中心立绘(~960,300;click-test 实锤:非 stage 前排(overlay 覆盖不可点)
-                # / 非 bench(不可点)。中心立绘 = 玩家角色 portrait → 点击选中「已选择」→ 确认即关 overlay)。
-                target = Point(960, 300)
-                log.info(f'[cw-partner] step2 请选择强化角色 → 点中心立绘 {target}')
-                self.ctx.controller.mouse_move(target)
-                self.ctx.controller.click(target)
-                time.sleep(0.7)
-                confirm2 = self._find_text_center(self.screenshot(), '确认选择')
-                if confirm2 is not None:
-                    self.ctx.controller.mouse_move(confirm2)
-                    self.ctx.controller.click(confirm2)
-                    time.sleep(1.0)
-                if self.round_by_find_area(self.screenshot(), '货币战争-列车同行', '标识-选择伙伴').is_success:
-                    log.info('[cw-partner] step2 后 overlay 仍在 → round_retry')
-                    return self.round_retry(wait=1)
-                log.info('[cw-partner] step2 完成 → overlay 关')
-                return self.round_success(wait=2)
-            log.info('[cw-partner] 确认后 overlay 仍在 → round_retry(confirm 未落地,bug#1)')
-            return self.round_retry(wait=1)
-        return self.round_success(wait=2)
+        # step2 观察(T#98,伙伴 overlay 两步链):确认后弹出「请选择强化角色」
+        # = 还有第二步 → 选强化目标 + 确认(观察分支:发现第二步并处理,
+        # 非判效)。step2 确认后不再原地判「overlay 关没关」——统一机械交回,
+        # 由 handle 顶部重入裁决(标识不在 = 链完结 → success 交回)。
+        if self.round_by_find_area(self.screenshot(), '货币战争-盛会之星',
+                                   '按钮-请选择强化角色').is_success:
+            # step2 strengthen target = overlay 中心立绘(~960,300;click-test 实锤:非 stage 前排(overlay 覆盖不可点)
+            # / 非 bench(不可点)。中心立绘 = 玩家角色 portrait → 点击选中「已选择」→ 确认即关 overlay)。
+            target = Point(960, 300)
+            log.info(f'[cw-partner] step2 请选择强化角色 → 点中心立绘 {target}')
+            self.ctx.controller.mouse_move(target)
+            self.ctx.controller.click(target)
+            time.sleep(0.7)
+            confirm2 = self._find_text_center(self.screenshot(), '确认选择')
+            if confirm2 is not None:
+                self.ctx.controller.mouse_move(confirm2)
+                self.ctx.controller.click(confirm2)
+                time.sleep(1.0)
+        # 机械交回(验证废除):step1/step2 确认是否落地由下一轮重入裁决
+        #(handle 顶部 pending 分支);未落地轮重走已选择态分支(计预算)。
+        self._confirm_pending = True
+        return self.round_retry(wait=1)
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

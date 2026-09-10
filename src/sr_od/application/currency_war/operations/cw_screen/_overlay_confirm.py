@@ -1,16 +1,22 @@
-"""select-and-confirm overlay 通用收尾助手(bug#1 缓解 + 出口验证)。
+"""select-and-confirm overlay 通用收尾助手(bug#1 缓解 + 机械确认发射)。
 
 货币战争事件节点(巨星/补给/遭遇/投资环境/投资策略/未达上限)都是同一交互结构:
-点选项选中 → 点确认推进。旧 handler 普遍「点了就 ``round_success``」**不验 overlay 关** →
+点选项选中 → 点确认推进。旧 handler 曾普遍「点了就 ``round_success``」不观察 →
 bug#1(``before_screenshot`` 移光标 → click 落空)/隐藏多步 overlay → overlay 不关 →
-外层 loop 反复重跑本节点(不计 retry)→ 卡到 MAX_ITER 才超时(伙伴 overlay reset 根因同类;
+外层 loop 反复重跑本节点 → 卡到 MAX_ITER 才超时(伙伴 overlay reset 根因同类;
 write-operation skill「反模式:点了≠成了」)。
 
-本模块给这类 handler 统一收尾:确认点击带 bug#1 ``mouse_move`` 缓解 + 确认后验入口关键词消失,
-没关则 ``round_retry``(计 ``node_max_retry_times`` 兜底退出,不再无限 flat-loop)。
+本模块给这类 handler 统一收尾:确认点击带 bug#1 ``mouse_move`` 缓解 + 固定等待,
+机械交回 ``round_retry``(观察驱动)。**不做落地判定**(用户裁定 2026-09-10:
+动作 op 只管机械执行,禁止做任何验证;M1③ 发出即职责完成,调用方不问成败):
+overlay 关没关由调用方节点下一轮重入的入口观察裁决——重入时入口词不在 = 已离开
+本画面 → success 交回(重入观察出口,先例 = ``cw_entry_start`` 守卫
+``_handle_entry_popup_spec`` / megastar 循环顶「已离开本节点画面?」同化先例);
+仍在 = 基于新观察重做确认动作(计 ``node_max_retry_times`` 预算,耗尽 FAIL
+bail = 有界终止单)。success/retry = 轮次流转语义,非动作成败回执。
 
-注:仅收尾「确认 + 验关」。选项**选中**的点击(卡身/候选/勾选)各 handler 用 ``safe_click``
-带 bug#1 缓解即可;确认统一走 ``confirm_and_verify``。
+注:仅收尾「确认 + 机械交回」。选项**选中**的点击(卡身/候选/勾选)各 handler
+用 ``safe_click`` 带 bug#1 缓解即可;确认统一走 ``emit_overlay_confirm``。
 """
 import time
 from typing import TYPE_CHECKING
@@ -92,40 +98,39 @@ def find_text_center(op: SrOperation, text: str) -> Point | None:
 def safe_click(op: SrOperation, point: Point, *, tag: str = 'cw-overlay') -> None:
     """bug#1 缓解点击:click 前 ``mouse_move``(零移动),防 ``before_screenshot`` 移光标 → click 落空。
 
-    给选项选中点击(卡身/候选/勾选)用。确认点击走 ``confirm_and_verify``(已含 mouse_move)。
+    给选项选中点击(卡身/候选/勾选)用。确认点击走 ``emit_overlay_confirm``(已含 mouse_move)。
     """
     log.info(f'[{tag}] safe_click {point}')
     op.ctx.controller.mouse_move(point)
     op.ctx.controller.click(point)
 
 
-def confirm_and_verify(
+def emit_overlay_confirm(
     op: SrOperation, *, confirm_point: Point, entry_keyword: str, lcs_percent: float = 0.5,
     confirm_wait: float = 1.0, success_wait: float = 2.0, tag: str = 'cw-overlay',
     press_time: float = 0.1,
 ) -> OperationRoundResult:
-    """点确认按钮(bug#1 ``mouse_move`` 缓解)→ 等 → 验 ``entry_keyword`` 消失 → 没关 ``round_retry``。
+    """点确认按钮(bug#1 ``mouse_move`` 缓解)+ 固定等待,机械交回 ``round_retry``。
+
+    验证废除形态(用户裁定 2026-09-10,替换原 ``confirm_and_verify`` 的
+    「点后重截验入口词消失」判效半):
 
     - 确认点击带 ``mouse_move``(bug#1 缓解,partner reset 根因同类)。
-    - ``press_time``:按下时长;默认 0.1(框架默认,既有 handler 零影响)。输入管线
-      半死态短按下可能不被采样(prep_actions 出战重发 0.15 人工解锁实证),需要者
-      显式传入(策划事件 match3 连败防御)。
-    - 确认后重截屏验 ``entry_keyword`` 消失(overlay 关 = 真推进;见 write-operation「op 出口验转移」)。
-    - 仍在 → ``round_retry``(计节点预算兜底退出;**不**盲目 ``round_success`` / ``round_wait`` 致无限 flat-loop)。
-      若是隐藏多步 overlay(如伙伴 step2),retry 会重入本节点并重打日志 → 下次 match 日志可见,可再补 handler。
-
-    ``entry_keyword`` = 该 overlay 的入口关键词(与 entry 检测同词,对称),消失即关。
+    - ``press_time``:按下时长;默认 0.1(框架默认)。输入管线半死态短按下
+      可能不被采样(prep_actions 出战重发 0.15 人工解锁实证),需要者显式传入。
+    - 确认后固定等待 ``confirm_wait``(确认关闭动画,DD-011 口径)→ 无条件
+      ``round_retry``(观察驱动):**不读屏判「是否生效」**——落地判定归下一轮
+      重入的入口观察(调用方节点顶部裁决)与观察侧 reconcile 对账,不在动作层。
+    - ``entry_keyword`` 仅作日志与调用方重入裁决的对照词(与 entry 检测同词);
+      ``success_wait`` 保留为调用方重入裁决 success 出口的交回等待值。
+    - 始终不落地 = 每圈耗 1 次节点预算,预算耗尽 FAIL bail(有界终止单,
+      防 26 分钟超时事故形态)。
     """
-    log.info(f'[{tag}] confirm@{confirm_point} (entry_keyword={entry_keyword!r})')
+    log.info(f'[{tag}] emit_confirm@{confirm_point} (entry_keyword={entry_keyword!r})')
     op.ctx.controller.mouse_move(confirm_point)
     op.ctx.controller.click(confirm_point, press_time=press_time)
     time.sleep(confirm_wait)
-    frame = op.screenshot()
-    if op.round_by_ocr(frame, entry_keyword, lcs_percent=lcs_percent).is_success:
-        log.info(f'[{tag}] 确认后 {entry_keyword!r} 仍在 → round_retry(确认未落地 bug#1 / 或隐藏多步 overlay)')
-        return op.round_retry(wait=1)
-    log.info(f'[{tag}] {entry_keyword!r} 已消失 → overlay 关,推进')
-    # (gate 清尾批 2026-09-03:原此处向已退役的 gate 稳定门预置基线;
-    #  wait_stable_frame 在 旧内环拆除后已无生产调用方,基线写端
-    #  无读端 → 调用删除。外循环重判兜底,等待语义不变。)
-    return op.round_success(wait=success_wait)
+    # 机械交回(观察驱动):下一轮重入由调用方节点顶部入口观察裁决出口
+    #(不在 = 已关 → success 交回;在 = 重做确认,计节点预算)。
+    _ = success_wait   # 保留签名兼容调用方出口等待取值;本函数零观察零判效
+    return op.round_retry(wait=1)

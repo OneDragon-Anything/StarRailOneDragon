@@ -84,6 +84,9 @@ class CwScreenEquipPick(CwScreenOpBase):
         # 表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
         # docstring)。
         self._observation_adapter = EquipPickLiveObservationAdapter()
+        # 选卡点击已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内
+        # 入口守卫),重入出口裁决见 _handle_overlay 顶部。
+        self._pick_pending: bool = False
 
     def _observe_frame(self) -> EquipPickObservation:
         """轻观察帧装配(实机适配器①封口内容;卡名读取归共享体现役内聚)。"""
@@ -118,8 +121,18 @@ class CwScreenEquipPick(CwScreenOpBase):
 
     def _handle_overlay(self) -> OperationRoundResult:
         """选卡链(旧 handle 体纯移入,两路径共享零转录;试点步骤 3,先例 =
-        盛会之星 ``_do_action`` 共享式)。key_equips 打分/重读选中态语义
-        逐位保留。"""
+        盛会之星 ``_do_action`` 共享式)。key_equips 打分语义逐位保留;重读
+        选中态验效半拆除(用户裁定 2026-09-10:动作 op 禁验证),落地由重入
+        出口门裁决。"""
+        # 重入裁决(观察驱动,M7 同化先例):本屏分发即门(无 op 内入口守卫),
+        # round_retry 重入不经外循环分发 → 顶部出口门补位:「请选择」不在 =
+        # overlay 已关(点卡即选已落地)→ success 交回外循环(出战按钮由
+        # 主流程处理);在 = 重走选卡(计节点预算)。
+        if self._pick_pending:
+            self._pick_pending = False
+            if not self.round_by_ocr(self.screenshot(), '请选择',
+                                     lcs_percent=0.5).is_success:
+                return self.round_success(status='装备选择完成(重入观察裁决)')
         screen = self.screenshot()
         texts = self._read_cards(screen)
         # 策略:key_equips 命中优先(与 decide_box_card 同语义)
@@ -154,14 +167,10 @@ class CwScreenEquipPick(CwScreenOpBase):
         self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target)
         time.sleep(1.2)
-        # 单选即定(出战按钮由主流程处理);重读验证选中态/标题仍在则 retry
-        screen2 = self.screenshot()
-        ocr2 = self.ctx.ocr_service.get_ocr_result_map(
-            image=screen2, rect=None, color_range=None, crop_first=False,
-        )
-        if any('请选择' in t for t in ocr2):
-            return self.round_retry(wait=1, status='装备选择未生效,重试')
-        return self.round_success(status=f'装备选择卡{best_i + 1}')
+        # 单选即定(出战按钮由主流程处理);机械交回(验证废除):「请选择」
+        # 标题在不在由下一轮重入出口门裁决(本方法顶部)。
+        self._pick_pending = True
+        return self.round_retry(wait=1, status='装备选择点击已发,重入观察裁决')
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

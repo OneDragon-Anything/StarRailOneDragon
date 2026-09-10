@@ -2,15 +2,22 @@
 
 **空决策形态合同**(screen_op.md §8.3 判据总表;T-121 方案 §2.1):纯推进画面
 (无选择面 ∧ 无投影账)的画面 op 只做「入口观察 + 推进处理 + 交回」——零策略器
-问询、零期望态、零决策行。合同强度:**新 op 一律单尝试**(``node_max_retry_times=1``,
-节点内零重试),重试预算归外循环(包装 ``on_fail_retry`` 映射 loop 级 round_retry,
-消费同一 retry 池);既有 op 的 as-built 重试语义不在本合同辖内(如
-``CwScreenPlaneTransition`` 自带 8 次内部重试)。
+问询、零期望态、零决策行。重试预算:节点预算 = 1 次推进 + 1 次重入观察裁决
+(``node_max_retry_times=2``);裁决仍不落地 → FAIL 交回,其余重试归外循环
+(包装 ``on_fail_retry`` 映射 loop 级 round_retry,消费同一 retry 池)。
 
-事实参照形 = ``CwScreenPlaneTransition``(入口锚校验 → 点空白 → 验提示消失 →
-交回)。本基类只统一「入口观察→推进→验效→返回」骨架与日志;**不承担 op_journal
-与决策帧留证**——那两样是 dispatch 包装(``cw_loop.CwLoop._dispatch_screen_op``)
-的职责,journal 记的是「分发了谁」,属外循环视角(ADR-0584 §2.2/§2.3)。
+**验证段退役**(用户裁定 2026-09-10:动作 op 只管机械执行,禁止做任何验证):
+原「推进后验效(锚消失才算成功)」骨架半拆除——落地判定归下一轮重入的入口
+观察(重入锚不在 = 已离开本画面 → success 交回;在 = 再做一次推进,计节点
+预算)。重入出口 = ``entry_ok`` 的合法观察(M7 同化先例:循环顶「已离开本
+节点画面?」→success),非动作层判效。首发锚 miss(误分发)仍 fail 交回,
+外循环守卫语义(P4R3 误分发计数等)原样。
+
+事实参照形 = ``CwScreenPlaneTransition``(入口锚校验 → 点空白 → 重入观察
+裁决 → 交回)。本基类只统一「入口观察→推进→重入裁决」骨架与日志;**不承担
+op_journal 与决策帧留证**——那两样是 dispatch 包装(``cw_loop.CwLoop
+._dispatch_screen_op``)的职责,journal 记的是「分发了谁」,属外循环视角
+(ADR-0584 §2.2/§2.3)。
 """
 from typing import ClassVar
 
@@ -23,34 +30,31 @@ from sr_od.operations.sr_operation import SrOperation
 
 
 class CwProgressionScreenOp(SrOperation):
-    """推进型画面 op 基类:入口观察 + 单次推进 + 可选验效 + 如实交回。"""
+    """推进型画面 op 基类:入口观察 + 单次推进 + 重入观察裁决交回(验证废除)。"""
 
     #: 画面档名(screen_info 的 screen_name);子类常量,参数化子类可经构造覆写
     SCREEN_NAME: ClassVar[str] = ''
     #: 入口锚 area 名(与外循环分发判定同源同参;空串 = 免锚,由子类自证)
     ENTRY_AREA: ClassVar[str] = ''
-    #: 验效锚 area 名(非空 = 推进后新帧该锚消失才算成功;空 = 无验效)
-    VERIFY_AREA: ClassVar[str] = ''
 
     def __init__(self, ctx: SrContext, op_name: str,
                  screen_name: str | None = None,
-                 entry_area: str | None = None,
-                 verify_area: str | None = None):
+                 entry_area: str | None = None):
         """构造参数可覆写类常量(参数化子类先例 = ``CwScreenBattleWait(ctx, st, config)``)。
 
         :param ctx: 运行上下文
         :param op_name: op 名(journal/日志读面)
         :param screen_name: 画面档名;None = 用类常量 SCREEN_NAME
         :param entry_area: 入口锚;None = 用类常量 ENTRY_AREA
-        :param verify_area: 验效锚;None = 用类常量 VERIFY_AREA
         """
         SrOperation.__init__(self, ctx, op_name=op_name)
         self._screen_name: str = screen_name if screen_name is not None \
             else self.SCREEN_NAME
         self._entry_area: str = entry_area if entry_area is not None \
             else self.ENTRY_AREA
-        self._verify_area: str = verify_area if verify_area is not None \
-            else self.VERIFY_AREA
+        # 推进已发标志(验证废除形态):区分「首发锚 miss = 误分发 fail 交回」
+        # 与「重入锚 miss = 已离开本画面 success 交回」(实例级,单 op 生命周期)。
+        self._advanced_once: bool = False
 
     def entry_ok(self, screen: MatLike | None) -> bool:
         """入口观察:本画面锚校验(缺省 = area 键原语;与分发判定同源)。
@@ -74,25 +78,32 @@ class CwProgressionScreenOp(SrOperation):
         """
         raise NotImplementedError
 
-    def verify_dismissed(self, screen: MatLike | None) -> bool:
-        """验效:推进后画面确已离开(缺省无验效 = 恒 True;验不消失 = fail)。"""
-        if not self._verify_area:
-            return True
-        return not self.round_by_find_area(
-            screen, self._screen_name, self._verify_area,
-            crop_first=False).is_success
-
-    @operation_node(name='推进处理', is_start_node=True, node_max_retry_times=1)
+    @operation_node(name='推进处理', is_start_node=True, node_max_retry_times=2)
     def handle(self) -> OperationRoundResult:
-        """空决策形态单节点:入口观察 → 推进(单尝试)→ 验效 → 如实返回。
+        """空决策形态单节点:入口观察 → 推进(单尝试)→ 重入观察裁决 → 交回。
 
-        失败一律 ``round_fail``(节点内零重试);重试预算由外循环包装的
-        ``on_fail_retry`` 映射承接。
+        轮次语义(验证废除形态,用户裁定 2026-09-10):
+        - 首发:锚 miss = 误分发 → fail 交回外循环重判;
+        - 推进已发 → ``round_retry``(机械交回,不读屏判效);
+        - 重入:锚 miss = 已离开本画面 → success 交回(出口 = 入口观察的
+          合法重判,M7 同化先例);锚仍在 = 再做一次推进(计节点预算);
+        - 预算(=2)耗尽 → FAIL 交回(有界终止单;其余重试归外循环)。
         """
-        if not self.entry_ok(self.last_screenshot):
+        _hit = self.entry_ok(self.last_screenshot)
+        if not _hit:
+            if self._advanced_once:
+                self._advanced_once = False
+                return self.round_success(
+                    f'{self.op_name}已推进(重入观察:已离开本画面)', wait=1)
             return self.round_fail(f'{self.op_name}入口锚未命中(交回外循环重判)')
         if not self.progress_once():
             return self.round_fail(f'{self.op_name}推进动作未落地')
-        if not self.verify_dismissed(self.screenshot()):
-            return self.round_fail(f'{self.op_name}推进后画面未消失')
-        return self.round_success(f'{self.op_name}已推进')
+        self._advanced_once = True
+        if not self._entry_area and type(self).entry_ok \
+                is CwProgressionScreenOp.entry_ok:
+            # 免锚 op(空锚且未覆写 entry_ok = 无「已离开」观察信号):
+            # 重入裁决不可达 → 发出即 success 交回(原无验效形态;有界性
+            # 归外循环重派/分发,bail 计数消费零漂移)。覆写 entry_ok 的
+            # 子类(双锚其一形态)有裁决信号,正常走重入裁决。
+            return self.round_success(f'{self.op_name}推进已发(免锚)')
+        return self.round_retry(f'{self.op_name}推进已发,重入观察裁决', wait=1)

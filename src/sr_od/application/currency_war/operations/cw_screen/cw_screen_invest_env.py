@@ -27,7 +27,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.obs.cw_node_obs import read_invest_refresh_counts
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    confirm_and_verify,
+    emit_overlay_confirm,
     safe_click,
 )
 from sr_od.application.currency_war.telemetry import recorder, schema
@@ -57,6 +57,8 @@ class CwScreenInvestEnv(SrOperation):
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
         self._ocr_map: dict | None = None   # ADR-0132:效果采集复用同一帧 OCR
+        # 确认已发待重入裁决标志(验证废除形态):重入裁决见 handle 顶部。
+        self._confirm_pending: bool = False
 
     def _read_options(self, screen) -> list[tuple[str, int]]:
         """OCR 3 张卡的 ``(名字, 名字 center-x)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -77,6 +79,15 @@ class CwScreenInvestEnv(SrOperation):
 
     @operation_node(name='投资环境', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
+        # 重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮入口锚不在
+        # = overlay 已关(环境选择落地)→ success 交回;锚仍在 = 确认未落地
+        # → 清标志重走(计节点预算)。
+        if self._confirm_pending:
+            self._confirm_pending = False
+            if not self.round_by_find_area(
+                    self.last_screenshot, '货币战争-投资环境',
+                    '标识-投资环境').is_success:
+                return self.round_success('投资环境已确认(重入观察裁决)', wait=2.0)
         screen = self.last_screenshot
         _hit = self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境').is_success
         log.info(f'[cw-env] enter find_area(标识-投资环境)={_hit}')
@@ -180,16 +191,19 @@ class CwScreenInvestEnv(SrOperation):
         except Exception:   # noqa: BLE001  观测面 best-effort
             pass
 
-        # 确认 + 验关(投资环境 消失 = overlay 关)。原「点了就 success」不验 → bug#1/卡未选中/隐藏多步 flat-loop
-        # (partner reset 根因同类;write-operation「点了≠成了」)。确认 center 从 screen_info 读,缺失兜底。
+        # 确认 + 机械交回(验证废除:不读屏判「overlay 关没关」,落地由下一轮
+        # 重入入口观察裁决——原「点了就 success」不观察 → bug#1/卡未选中/
+        # 隐藏多步 flat-loop 防线由重入裁决 + 预算耗尽 bail 承接)。确认 center
+        # 从 screen_info 读,缺失兜底。
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestEnv.SCREEN_NAME) or CwScreenInvestEnv.CONFIRM
-        _result = confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资环境',
-                                     tag='cw-env')
-        # 台账写点②:环境选择完成(overlay 真关)→ 重读备战节点行刷新权威表
-        # (环境可能增删/改节点,表必须反映变异后序列)。失败不重试阻塞——
-        # cw_screen_prep 每备战帧仍会逐帧识别,此处 miss 只延迟表刷新。
-        if _result.is_success:
-            self._refresh_node_ledger()
+        self._confirm_pending = True
+        _result = emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='投资环境',
+                                       tag='cw-env')
+        # 台账写点②:环境确认点击已发(固定等待后)→ 重读备战节点行刷新权威表
+        # (环境可能增删/改节点,表必须反映变异后序列)。读不到不重试不阻塞——
+        # cw_screen_prep 每备战帧仍会逐帧识别,此处 miss 只延迟表刷新
+        #(验证废除:不再以「overlay 真关」为刷新前提,变异窗兜账实一致)。
+        self._refresh_node_ledger()
         return _result
 
     def _refresh_node_ledger(self) -> None:

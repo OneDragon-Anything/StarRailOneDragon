@@ -53,7 +53,7 @@ from sr_od.application.currency_war.obs.cw_node_obs import (
     read_invest_refresh_counts,
 )
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    confirm_and_verify,
+    emit_overlay_confirm,
     safe_click,
 )
 from sr_od.application.currency_war.telemetry import recorder, schema
@@ -129,6 +129,12 @@ class CwScreenInvestStrategy(SrOperation):
         # 通过后)清一次 exec_state 已发射槽集,同 visit 重入(round_retry 同
         # 实例)不再清——防重入保留,跨 visit(新实例)必清。
         self._visit_reset_done: bool = False
+        # 确认已发待重入裁决的选卡名(验证废除形态,用户裁定 2026-09-10):
+        # 确认点击发出后置位,下一轮重入由入口观察裁决——锚不在 = overlay 已关
+        # (选卡落地)→ 此刻才 append active_strategies(ADR-0598 幻影卡收口
+        # 语义保持:确认未落地轮 = 重走重选,不留幻影;append 时点后移一轮,
+        # 由重入观察承载)。None = 无待裁决选卡。
+        self._confirm_pending: str | None = None
 
     def _read_options(self, screen) -> list[tuple[str, int, int]]:
         """OCR 3 张卡的 ``(名字, center-x, center-y)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -175,6 +181,15 @@ class CwScreenInvestStrategy(SrOperation):
 
     @operation_node(name='投资策略', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
+        # 重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮入口锚不在
+        # = overlay 已关(选卡落地)→ 补 append + success 交回;锚仍在 = 确认
+        # 未落地 → 清标志重走(计节点预算,重读重选)。
+        if self._confirm_pending is not None:
+            _p = self._confirm_pending
+            self._confirm_pending = None
+            if not self._entry_anchor_hit(self.last_screenshot):
+                self._append_confirmed_strategy(_p)
+                return self.round_success(f'{_p} 已确认(重入观察裁决)', wait=2.0)
         if not self._ensure_entry_screen():
             # 超窗走 round_retry 而非 round_fail(二次治本,2026-09-06
             # 04:16:38 实证复探窗 3.2s 仍不够覆盖个别过渡段):retry 消耗
@@ -389,72 +404,78 @@ class CwScreenInvestStrategy(SrOperation):
         target = Point(choose_x, _click_y)
         safe_click(self, target, tag='cw-strat')
         time.sleep(0.7)
-        # 确认 + 验关(投资策略 消失 = overlay 关)。原「点了就 success」不验 → bug#1/卡未选中/隐藏多步 flat-loop
-        # (partner reset 根因同类;write-operation「点了≠成了」;本 op docstring 已记「点名 540+ 次不选中→卡死 18min」)。
+        # 确认 + 机械交回(验证废除:不读屏判「overlay 关没关」,落地由下一轮
+        # 重入入口观察裁决——裁决点补 append,见 handle 顶部/_append_confirmed_strategy)。
         # 确认 center 从 screen_info 读,缺失兜底。
         _confirm = area_center(self.ctx, '按钮-确认', CwScreenInvestStrategy.SCREEN_NAME) or CwScreenInvestStrategy.CONFIRM
-        _rr = confirm_and_verify(self, confirm_point=_confirm, entry_keyword='投资策略',
-                                 tag='cw-strat')
-        # 持卡本体追加 + 到账登记(§3.3 #22 ConfirmStrategy;粗粒度
-        # expected,效果走台账不进 session 推进)。**append 只在确认落地
-        # 成功后**(ADR-0598 幻影卡收口:确认失败轮 = round_retry,卡未
-        # 到手不留幻影;下轮重入本节点重新选卡);去重防重复入列。
-        # (原「chosen 只点不存」bug 的修复语义由本块承载。)
-        if _rr.is_success and match is not None and chosen != '?':
-            if chosen not in match.session.active_strategies:
-                match.session.active_strategies.append(chosen)
-            # BoardState 写端(迁移批次二,§3.4.4/§4 投资选择行):持有投资
-            # 策略=本屏写入、局级累计(逐次选择追加);单次逻辑写入
-            # (§3.4 申报豁免)。品质锚挂建模批(设计 §3.4.4)。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
-                board_state_of,
-            )
-            board_state_of(match.session).write_logic(
-                board_state_of(match.session).active_strategies,
-                list(match.session.active_strategies),
-                produced_by='CwScreenInvestStrategy')
-            # 效果账本选卡登记挂点(迁移批次三,设计 §5.1「买卡=激活登记」
-            # /§8.7 批次三件 4;免战牌同点自动登记——件 5「§3.2.19 载体归一
-            # 的另一半,禁只做一半」)。chosen 命中效果注册表(规范名归一
-            # 后)才登记;acquired_t = 登记时点节点序快照((plane-1)*9+round,
-            # 基 1,ActiveEffect 坐标系;节点值优先 BoardState 单例,引导窗
-            # 回退 last_state 框架末次读值)。登记面 best-effort:失败不阻塞
-            # 选卡主链(与升级挂点同纪律);账本当前零决策消费(§5.1 过渡
-            # 口径:挂点接线未完成面一律观察覆盖兜底)。
-            try:
-                from sr_od.application.currency_war.kernel.cw_investments import (
-                    STRATEGY_EFFECTS,
-                    normalize_invest_name,
-                )
-                _spec = STRATEGY_EFFECTS.get(normalize_invest_name(chosen))
-                if _spec is not None:
-                    _bs_reg = board_state_of(match.session)
-                    _nd = _bs_reg.node.value
-                    if _nd is not None:
-                        _t = (_nd.plane - 1) * 9 + _nd.round_num
-                    else:
-                        _st_l = getattr(match.session, 'last_state', None)
-                        _t = (((getattr(_st_l, 'plane', 1) or 1) - 1) * 9
-                              + (getattr(_st_l, 'round_num', 1) or 1)
-                              ) if _st_l is not None else None
-                    _bs_reg.effects.register_strategy(_spec, _t)
-                    # 桥·burst 形态(迁移批次三 B1,设计 §3.3.5/§5.1):登记
-                    # 时点把免费刷新 burst 额度一次性累加进余额(固定理财
-                    # 即时段 2 等;载体 = payload.free_refresh_burst,零额度
-                    # no-op)。每节点/容量两形态在 cw_loop tick 挂点,不经此。
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
-                        apply_effect_burst_grant,
-                    )
-                    apply_effect_burst_grant(
-                        _bs_reg, _spec,
-                        frame=f'p{_nd.plane}-r{_nd.round_num}'
-                        if _nd is not None else '')
-                    log.info(f'[cw-strat] 效果账本登记:{_spec.name}(t={_t})')
-            except Exception as e:   # noqa: BLE001  登记面失败不阻塞
-                log.warning(f'[cw-strat] 效果账本登记失败(不阻塞): {e}')
-            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-                register_confirm_arrival,
-            )
-            register_confirm_arrival(match.session, 'ConfirmStrategy', chosen,
-                                     produced_by='CwScreenInvestStrategy')
+        self._confirm_pending = chosen if chosen != '?' else None
+        _rr = emit_overlay_confirm(self, confirm_point=_confirm, entry_keyword='投资策略',
+                                   tag='cw-strat')
         return _rr
+
+    def _append_confirmed_strategy(self, chosen: str) -> None:
+        """重入裁决出口的持卡登记面(ADR-0598 幻影卡收口语义承载):调用点 =
+        handle 顶部重入裁决(入口锚不在 = overlay 已关 = 选卡落地)。
+
+        持卡本体追加 + 到账登记(§3.3 #22 ConfirmStrategy;粗粒度 expected,
+        效果走台账不进 session 推进);去重防重复入列。原「chosen 只点不存」
+        bug 的修复语义由本块承载。"""
+        match = self.ctx.cw_match
+        if match is None or not chosen or chosen == '?':
+            return
+        if chosen not in match.session.active_strategies:
+            match.session.active_strategies.append(chosen)
+        # BoardState 写端(迁移批次二,§3.4.4/§4 投资选择行):持有投资
+        # 策略=本屏写入、局级累计(逐次选择追加);单次逻辑写入
+        # (§3.4 申报豁免)。品质锚挂建模批(设计 §3.4.4)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+        )
+        board_state_of(match.session).write_logic(
+            board_state_of(match.session).active_strategies,
+            list(match.session.active_strategies),
+            produced_by='CwScreenInvestStrategy')
+        # 效果账本选卡登记挂点(迁移批次三,设计 §5.1「买卡=激活登记」
+        # /§8.7 批次三件 4;免战牌同点自动登记——件 5「§3.2.19 载体归一
+        # 的另一半,禁只做一半」)。chosen 命中效果注册表(规范名归一
+        # 后)才登记;acquired_t = 登记时点节点序快照((plane-1)*9+round,
+        # 基 1,ActiveEffect 坐标系;节点值优先 BoardState 单例,引导窗
+        # 回退 last_state 框架末次读值)。登记面 best-effort:失败不阻塞
+        # 选卡主链(与升级挂点同纪律);账本当前零决策消费(§5.1 过渡
+        # 口径:挂点接线未完成面一律观察覆盖兜底)。
+        try:
+            from sr_od.application.currency_war.kernel.cw_investments import (
+                STRATEGY_EFFECTS,
+                normalize_invest_name,
+            )
+            _spec = STRATEGY_EFFECTS.get(normalize_invest_name(chosen))
+            if _spec is not None:
+                _bs_reg = board_state_of(match.session)
+                _nd = _bs_reg.node.value
+                if _nd is not None:
+                    _t = (_nd.plane - 1) * 9 + _nd.round_num
+                else:
+                    _st_l = getattr(match.session, 'last_state', None)
+                    _t = (((getattr(_st_l, 'plane', 1) or 1) - 1) * 9
+                          + (getattr(_st_l, 'round_num', 1) or 1)
+                          ) if _st_l is not None else None
+                _bs_reg.effects.register_strategy(_spec, _t)
+                # 桥·burst 形态(迁移批次三 B1,设计 §3.3.5/§5.1):登记
+                # 时点把免费刷新 burst 额度一次性累加进余额(固定理财
+                # 即时段 2 等;载体 = payload.free_refresh_burst,零额度
+                # no-op)。每节点/容量两形态在 cw_loop tick 挂点,不经此。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    apply_effect_burst_grant,
+                )
+                apply_effect_burst_grant(
+                    _bs_reg, _spec,
+                    frame=f'p{_nd.plane}-r{_nd.round_num}'
+                    if _nd is not None else '')
+                log.info(f'[cw-strat] 效果账本登记:{_spec.name}(t={_t})')
+        except Exception as e:   # noqa: BLE001  登记面失败不阻塞
+            log.warning(f'[cw-strat] 效果账本登记失败(不阻塞): {e}')
+        from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+            register_confirm_arrival,
+        )
+        register_confirm_arrival(match.session, 'ConfirmStrategy', chosen,
+                                 produced_by='CwScreenInvestStrategy')

@@ -48,14 +48,27 @@ class CwScreenBriefing(SrOperation):
 
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='货币战争-简报(开局序列)')
+        # 「下一步」已发待重入裁决标志(验证废除形态,用户裁定 2026-09-10):
+        # 重入裁决见 handle 顶部——标识不在 = 已离开简报(过渡完成)→
+        # success 交回编排壳;标识在 = 点击未落地 → 重点(计节点预算)。
+        self._click_pending: bool = False
 
     @operation_node(name='简报', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
+        # 重入裁决(观察驱动,验证废除形态):上轮「下一步」已发 → 标识不在
+        # = 已离开简报 → success 交回;标识在 = 点击未落地 → 重点。
+        _mark_hit = self.round_by_find_area(
+            screen, self.SCREEN_NAME, self.MARK_AREA, crop_first=False).is_success
+        if self._click_pending:
+            self._click_pending = False
+            if not _mark_hit:
+                log.info('[cw-flow-briefing] 已离开简报(重入观察裁决,观察直写 session 完成)')
+                return self.round_success('已离开简报(重入观察裁决)',
+                                          wait=BRIEFING_SETTLE_S)
         # ① 识别简报:id_mark「标识-本场对局首领」(简报独有,is_precise)。
         #    非简报屏(接管局/序列中后段首帧分流)→ fail 交编排壳按步分流。
-        if not self.round_by_find_area(
-                screen, self.SCREEN_NAME, self.MARK_AREA, crop_first=False).is_success:
+        if not _mark_hit:
             return self.round_fail('非简报屏')
         _match = getattr(self.ctx, 'cw_match', None)
         _session = _match.session if _match is not None else None
@@ -111,14 +124,11 @@ class CwScreenBriefing(SrOperation):
         )
         if not _click.is_success:
             return self.round_retry('未找到「下一步」按钮')
-        # ④ 出口验真转移:仍在简报(标识仍命中)= 未转移 → round_retry;已离开 →
-        # 固定时长交回(BRIEFING_SETTLE_S,#1 锚后动画完结)。
-        if self.round_by_find_area(
-                self.screenshot(), self.SCREEN_NAME, self.MARK_AREA,
-                crop_first=False).is_success:
-            return self.round_retry('点「下一步」后仍在简报屏(点击未生效),重点')
-        log.info('[cw-flow-briefing] 已离开简报(观察直写 session 完成)')
-        return self.round_success('已离开简报(写局状态完成)', wait=BRIEFING_SETTLE_S)
+        # ④ 机械交回(验证废除:不读屏判「是否已转移」——已离开与否由下一轮
+        # 重入的标识观察裁决,裁决 success 的交回等待 = BRIEFING_SETTLE_S,
+        # #1 锚后动画完结口径不变)。
+        self._click_pending = True
+        return self.round_retry('点「下一步」已发,重入观察裁决')
 
     def _collect_affix_effects(self, affixes_pos: dict[str, Point]) -> dict[str, str]:
         """固定采集:每词缀点采 OCR 效果 → 跟注册表文件(``affix_effects_data.py`` 最新)比,新名/不一致 → 截图 + 收集(写回注册表)。

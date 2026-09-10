@@ -14,9 +14,10 @@ archive 双锚——「按钮-装备推荐」(角色详情变体,4 张归档 fix
 收紧 lcs 无济于事)→ T-163 事故中该弹窗被 1b 垄断 26 分钟。位置约束的
 area 锚天然区分两变体(本弹窗底部按钮不在右侧面板锚区内)。
 
-验效(T-163,D3):VERIFY_AREA = 按钮-装备推荐——两变体关闭后面板锚消失;
-点空白零效果时锚仍在 → round_fail 交外循环 retry 池(卡死从不可见变
-分钟级可见失败),替代旧「无验效恒成功」形态。
+验效退役(验证废除批,用户裁定 2026-09-10:动作 op 禁验证):原 VERIFY_AREA
+= 按钮-装备推荐 的「点后验消失」半拆除——落地判定归基类重入观察裁决
+(点空白零效果时锚仍在 → 重入再做一次,预算耗尽 FAIL 交外循环 retry 池,
+卡死从不可见变分钟级可见失败;出口裁决 = entry_ok 双锚其一的合法观察)。
 """
 from cv2.typing import MatLike
 
@@ -27,12 +28,10 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenRoleDetailOverlay(CwProgressionScreenOp):
-    """详情弹窗:双锚其一(装备推荐/合成公式)命中,点面板外空白关+验效。"""
+    """详情弹窗:双锚其一(装备推荐/合成公式)命中,点面板外空白关+重入裁决交回。"""
 
     SCREEN_NAME = '货币战争-备战-角色详情'
     ENTRY_AREA = ''   # 入口实判为双锚其一(见 entry_ok);同源同参随 1b 锚化
-    #: 验效锚:右侧面板「装备推荐」(两变体关闭后均消失;ADR-0454 id_mark 成员)
-    VERIFY_AREA = '按钮-装备推荐'
     #: 关闭点击位:备战前后排之间的真空白(面板外,两 overlay 家族共用)
     BLANK_SCREEN = '货币战争-备战'
     BLANK_AREA = '区域-空白关闭'

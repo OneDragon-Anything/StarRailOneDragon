@@ -11,17 +11,16 @@ from sr_od.context.sr_context import SrContext
 
 
 class CwScreenPlaneDetail(CwProgressionScreenOp):
-    """位面详情:点「按钮-关闭位面详情」→ 验标题消失(有验效,合同可选臂)。"""
+    """位面详情:点「按钮-关闭位面详情」→ 重入观察裁决交回(验证废除)。"""
 
     SCREEN_NAME = '货币战争-位面详情'
     ENTRY_AREA = '标识-位面详情标题'
-    VERIFY_AREA = '标识-位面详情标题'
 
     def __init__(self, ctx: SrContext):
         CwProgressionScreenOp.__init__(self, ctx, op_name='货币战争-位面详情')
 
     def progress_once(self) -> bool:
-        # success_wait=1.5 同原分支内联值:点 X 后等过渡动画再验标题
+        # success_wait=1.5 同原分支内联值:点 X 后等过渡动画再交回裁决
         return self.round_by_find_and_click_area(
             self.last_screenshot, self.SCREEN_NAME, '按钮-关闭位面详情',
             success_wait=1.5).is_success

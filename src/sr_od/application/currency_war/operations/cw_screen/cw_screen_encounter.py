@@ -57,7 +57,7 @@ from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_refresh_count,
 )
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-    confirm_and_verify,
+    emit_overlay_confirm,
     safe_click,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
@@ -130,6 +130,11 @@ class CwScreenEncounter(CwScreenOpBase):
         self.register_outcome_hook(
             EncounterPick, self._on_refresh_emitted,
             trigger=OUTCOME_TRIGGER_EMITTED, name='encounter_refresh_used')
+        # 确认已发待重入裁决的选卡(验证废除形态,用户裁定 2026-09-10):
+        # (options, idx) 快照——确认点击发出后置位,下一轮重入由入口观察
+        # 裁决(标识不在 = overlay 已关 = 选卡落地)→ 此刻才写 chosen_encounter
+        #(出口验真通过才写的落地记录语义保持,时点后移一轮由重入承载)。
+        self._confirm_pending: tuple[list[EncounterOption], int] | None = None
 
     def _on_refresh_emitted(self, _outcome: ActionOutcome) -> None:
         """encounter_refresh_used 写端(on_outcome 注册表·发射型钩子体;
@@ -232,6 +237,21 @@ class CwScreenEncounter(CwScreenOpBase):
 
     @operation_node(name='遭遇节点', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
+        # 重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮入口锚不在
+        # = overlay 已关(选卡落地)→ 补写 chosen + success 交回;锚仍在 =
+        # 确认未落地 → 清标志重走(计节点预算,重读重选)。两路径共用
+        #(分流前挂,先于五段 lifecycle 的 observe 门)。
+        if self._confirm_pending is not None:
+            _opts, _idx = self._confirm_pending
+            self._confirm_pending = None
+            if not self.round_by_find_area(
+                    self.last_screenshot, CwScreenEncounter.SCREEN_NAME,
+                    '标识-遭遇节点', crop_first=False).is_success:
+                self._record_chosen(
+                    self.ctx.cw_match.session if self.ctx.cw_match is not None else None,
+                    _opts, _idx)
+                return self.round_success('遭遇节点选卡已确认(重入观察裁决)',
+                                          wait=2.0)
         # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
         # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
         # 周期新路径;缺省 None = 生产直连旧路径(下方原序列,试点等价门
@@ -307,16 +327,12 @@ class CwScreenEncounter(CwScreenOpBase):
                             [{'difficulty': o.difficulty, 'rewards': o.rewards}
                              for o in options],
                             idx, reason)
-        # 动作执行(点卡选中 → 确认验关)经分派面(试点步骤 2;先例 =
+        # 动作执行(点卡选中 → 确认机械交回)经分派面(试点步骤 2;先例 =
         # CwScreenPrep 旧路径同经 _act_execute:注册表触发点唯一 + 未来
-        # 落地型登记件两路径同享)。
-        rs = self._act_execute(pick, options, idx)
-        if rs.is_success:
-            # 出口验真通过(遭遇节点 关)= 本轮选卡落地 → 写记录面(值取
-            # 本轮现读候选与决策,与落地点击同帧同源)。
-            self._record_chosen(match.session if match is not None else None,
-                                options, idx)
-        return rs
+        # 落地型登记件两路径同享)。chosen 写端 = 确认发出后置 pending,
+        # 由 handle 顶部重入裁决承载(验证废除,出口验真语义时点后移)。
+        self._confirm_pending = (options, idx)
+        return self._act_execute(pick, options, idx)
 
     def _act_execute(self, pick: EncounterPick | None,
                      options: list[EncounterOption], idx: int
@@ -339,9 +355,9 @@ class CwScreenEncounter(CwScreenOpBase):
             rs = out
             progressed = out.is_success
         elif isinstance(out, tuple):
-            # 注入替位协议形状 (progressed, detail) → 按现役确认链收尾
-            # 常量重构(confirm_and_verify:成功 success_wait=2.0 / 验关
-            # 失败 round_retry wait=1)
+            # 注入替位协议形状 (progressed, detail) → 按确认链收尾常量重构
+            #(验证废除批注:确认链本体已机械交回,本替位桩语义 = 测试面
+            # 预置轮次结果;协议形状退役归批3a,本批不动)
             progressed, detail = out
             rs = (self.round_success(detail, wait=2.0) if progressed
                   else self.round_retry(detail, wait=1))
@@ -355,20 +371,19 @@ class CwScreenEncounter(CwScreenOpBase):
         """现役确认链缺省执行体(实机适配器②的封口内容;旧路径与五段循环
         同调,自身**不触发**注册表——触发统一归 :meth:`_act_execute` 分派
         面,防双计)。点卡选中(screen_info 坐标缺失走历史实测兜底常量)→
-        确认验关(遭遇节点标题消失 = overlay 关;原「点了就 success」不验
-        → bug#1/隐藏多步 flat-loop,docstring「插空白点击取消选中→死循环」
-        风险在案)。"""
+        确认机械交回(验证废除:不读屏判「overlay 关没关」,落地由 handle
+        顶部重入裁决承载;docstring「插空白点击取消选中→死循环」风险的
+        防线由重入裁决 + 预算耗尽 bail 承接)。"""
         card_left = area_center(self.ctx, '遭遇卡-其一', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_LEFT
         card_right = area_center(self.ctx, '遭遇卡-其二', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_RIGHT
         select_btn = area_center(self.ctx, '按钮-选择', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.SELECT_BTN
         card = card_left if idx == 0 else card_right
         safe_click(self, card, tag='cw-encounter')
         time.sleep(0.8)
-        # 选择 + 验关(遭遇其一 消失 = overlay 关)。原「点了就 success」不验 → bug#1/隐藏多步 flat-loop
-        # (partner reset 根因同类;write-operation「点了≠成了」;docstring 已记「插空白点击取消选中→死循环」风险)。
-        # 验关用标题「遭遇节点」(4 字 vs 备战「遭遇」标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)
-        return confirm_and_verify(self, confirm_point=select_btn,
-                                  entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+        # 选择确认机械交回(裁决词 = 标题「遭遇节点」,4 字 vs 备战「遭遇」
+        # 标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)。
+        return emit_overlay_confirm(self, confirm_point=select_btn,
+                                    entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
 
@@ -393,12 +408,11 @@ class CwScreenEncounter(CwScreenOpBase):
                                  ) -> OperationRoundResult:
         """段3-5 单动作决策循环(架构设计 §5.1 后三段):decide
         (strategy_input_state → decide_encounter)→ 分支刷新链(dd-004,
-        发射点 = ``_emit_refresh_click``)→ act(分派面:点卡+确认验关;
-        验关锚 = 动作适配器的落地回执载体 §6.2,落地回执通过 = chosen
-        写端挂点,选择 handler 单次逻辑写入豁免 §2.2)→ on_outcome(注册
-        表回执点)。生命周期无验证段(用户裁定 2026-09-10:动作未生效归
-        动作层修可靠性,禁验证残段)。旧 handle 决策/刷新段逐位转录
-        (试点步骤 2,零行为变更;chosen 豁免留守)。"""
+        发射点 = ``_emit_refresh_click``)→ act(分派面:点卡+确认机械交回;
+        chosen 写端 = 确认发出置 pending,重入裁决承载,选择 handler 单次
+        逻辑写入豁免 §2.2)→ on_outcome(注册表回执点)。生命周期无验证段
+        (用户裁定 2026-09-10:动作未生效归动作层修可靠性,禁验证残段)。
+        旧 handle 决策/刷新段逐位转录(试点步骤 2;chosen 豁免留守)。"""
         self._lifecycle_mark('decide')
         options = payload.options
         # (difficulty + comp 成型度:formed→高难度拿好奖励,未成型→低难度保生存)→ 选 idx。替代硬编码「选左」。

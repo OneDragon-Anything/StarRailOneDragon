@@ -115,6 +115,9 @@ class CwScreenPlanner(CwScreenOpBase):
         # 表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
         # docstring)。
         self._observation_adapter = PlannerLiveObservationAdapter()
+        # 确认已发待重入裁决标志(验证废除形态):本屏分发即门(无 op 内入口
+        # 守卫),重入出口裁决见 _handle_overlay 顶部。
+        self._confirm_pending: bool = False
 
     def _observe_frame(self) -> PlannerObservation:
         """轻观察帧装配(实机适配器①封口内容;卡面读取归共享体现役内聚)。"""
@@ -127,7 +130,7 @@ class CwScreenPlanner(CwScreenOpBase):
         ——绝对 y 常数对多布局不成立,见类属性注释)。两比例皆 rect 相对,
         布局再漂移时只更 yml rect,本方法零改;rect 缺失回退旧实证 rect。
         确认钮动画/多步 overlay 零覆盖声明:本方法只产选中点,确认收尾的
-        失败语义归 confirm_and_verify 验关(动画期误判可能仍开)。
+        交回语义 = 机械 round_retry(验证废除;重入裁决见 _handle_overlay 顶部)。
         """
         area = self.ctx.screen_loader.get_area(
             CwScreenPlanner.CARD_AREA_SCREEN,
@@ -155,7 +158,17 @@ class CwScreenPlanner(CwScreenOpBase):
         """选卡+确认链(旧 handle 体纯移入,两路径共享零转录;试点步骤 3,
         先例 = 盛会之星 ``_do_action`` 共享式)。策略接线(W953:唯一入口 =
         策略对象,kernel 直调仅无 match 防御分支)/press_time 加固/详情面板
-        防御语义逐位保留。"""
+        防御语义逐位保留;验关半拆除(用户裁定 2026-09-10)。"""
+        # 重入裁决(观察驱动,M7 同化先例 + cw_entry_start 守卫先例):本屏
+        # 分发即门(无 op 内入口守卫),round_retry 重入不经外循环分发 →
+        # 顶部出口门补位:入口词不在 = overlay 已关(上轮确认已落地)→
+        # success 交回外循环;在 = 重走选卡+确认(计节点预算)。
+        if self._confirm_pending:
+            self._confirm_pending = False
+            if not self.round_by_ocr(self.screenshot(), '我来当策划',
+                                     lcs_percent=0.5).is_success:
+                return self.round_success('策划事件已确认(重入观察裁决)',
+                                          wait=2.0)
         screen = self.screenshot()
         # 1. OCR 两卡区域文字(卡描述 y~300-420 带,左卡 x<960 / 右卡 x≥960)
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
@@ -216,16 +229,16 @@ class CwScreenPlanner(CwScreenOpBase):
             self.ctx.controller.click(self.DETAIL_CLOSE)
             time.sleep(0.8)
             return self.round_retry(wait=1)
-        # 4. 点确认+验关(r326/P1⑦ 等画面审查:确认落空→
-        # overlay 不关→外环反复重跑本节点——confirm_and_verify
-        # 统一收尾,计节点预算兜底替代无限重点)。
-        # r327(终审 E):验证词用全词「我来当策划」(入场锚同词,
+        # 4. 点确认+机械交回(r326/P1⑦ 防线语义由重入裁决+预算耗尽 bail
+        # 承接,验关半拆除——用户裁定 2026-09-10:动作 op 禁验证)。
+        # r327(终审 E):裁决词用全词「我来当策划」(入场锚同词,
         # cw_hacker_planner.yml:26 live-verified)——短词「策划」
         # 在艺术字漏读时可能假通过。
         from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-            confirm_and_verify,
+            emit_overlay_confirm,
         )
-        return confirm_and_verify(
+        self._confirm_pending = True
+        return emit_overlay_confirm(
             self, confirm_point=self.CONFIRM,
             entry_keyword='我来当策划', tag='cw-planner',
             press_time=self.CLICK_PRESS_TIME)

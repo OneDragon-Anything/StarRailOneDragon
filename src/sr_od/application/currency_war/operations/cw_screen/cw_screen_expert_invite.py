@@ -157,6 +157,10 @@ class CwScreenExpertInvite(CwScreenOpBase):
         # 注册表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
         # docstring)。
         self._observation_adapter = ExpertLiveObservationAdapter()
+        # 选卡点击已发待重入裁决的 (idx, card_bonds)(验证废除形态):
+        # 重入裁决由 choose 入口门承载(弹窗不在 = 选卡落地)→ 此刻才写
+        # chosen_expert + 到账登记;弹窗仍在 = 点击未落地 → 重走(计预算)。
+        self._pick_pending: tuple[int, list[str | None]] | None = None
 
     def _observe_frame(self) -> ExpertObservation:
         """轻观察帧装配(实机适配器①封口内容):弹窗在场门在 observe 段,
@@ -194,10 +198,31 @@ class CwScreenExpertInvite(CwScreenOpBase):
     @node_from(from_name='开卡')
     @operation_node(name='选卡', node_max_retry_times=6)
     def choose(self) -> OperationRoundResult:
-        """读板面阵营 → 默认策略选卡 → 点击 → 验弹窗关(收案)。
+        """读板面阵营 → 默认策略选卡 → 点击 → 机械交回(重入裁决收案)。
+
+        重入裁决(观察驱动,验证废除形态):上轮选卡已发 → 弹窗不在 = 选卡
+        落地 → 写 chosen_expert + 到账登记 + success 交回;弹窗仍在 = 未落地
+        → 重走(计节点预算)。
 
         装配点分流在本节点顶部(决策承载段;试点步骤 3;开卡节点两路径均
         留旧路径,见模块 docstring 申报面)。"""
+        # 重入裁决先于分流(两路径共用)。
+        if self._pick_pending is not None:
+            _idx, _bonds = self._pick_pending
+            self._pick_pending = None
+            if not self.round_by_find_area(
+                    self.screenshot(), INVITE_SCREEN, INVITE_MARK_AREA,
+                    crop_first=False).is_success:
+                self._record_chosen_expert(_idx, _bonds)
+                if _idx < 0:
+                    from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+                        register_confirm_arrival,
+                    )
+                    _sess = getattr(getattr(self.ctx, 'cw_match', None),
+                                    'session', None)
+                    register_confirm_arrival(_sess, 'ConfirmExpertCash', '现金为王',
+                                             produced_by='CwScreenExpertInvite')
+                return self.round_success('邀请函选卡已确认(重入观察裁决)', wait=2)
         # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
         # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
         # 周期新路径;缺省 None = 生产直连旧路径(下方原序列,试点等价门
@@ -213,10 +238,10 @@ class CwScreenExpertInvite(CwScreenOpBase):
         return self._handle_overlay(screen)
 
     def _handle_overlay(self, screen) -> OperationRoundResult:
-        """门后读板面+选卡+验关链(旧 choose 门后体纯移入,两路径共享零
+        """门后读板面+选卡+机械交回链(旧 choose 门后体纯移入,两路径共享零
         转录;试点步骤 3,先例 = 盛会之星 ``_do_action`` 共享式)。
-        chosen_expert 写端 = 出口验真通过分支单次逻辑写入豁免留守(§2.2);
-        ConfirmExpertCash 到账登记语义逐位保留。"""
+        chosen_expert/到账登记 = 重入裁决点承载(choose 顶部 pending 分支);
+        验关半拆除(用户裁定 2026-09-10)。"""
         board: dict[str, int] = {}
         try:
             from sr_od.application.currency_war.obs.cw_observation import read_board
@@ -238,27 +263,10 @@ class CwScreenExpertInvite(CwScreenOpBase):
         log.info('[cw-bookcard] 邀请函选卡: board=%s 卡羁绊=%s → %s @(%s,%s)',
                  board, card_bonds, pick_desc, pt.x, pt.y)
         time.sleep(1.2)   # 选卡 → 弹窗关闭动画窗
-        if self.round_by_find_area(
-                self.screenshot(), INVITE_SCREEN, INVITE_MARK_AREA,
-                crop_first=False).is_success:
-            log.info('[cw-bookcard] 选卡后弹窗仍在 → round_retry')
-            return self.round_retry(wait=1)
-        log.info('[cw-bookcard] 弹窗关 → 收案(专家入商店,交正常商店逻辑)')
-        # BoardState 写端(设计 §3.4.5:专家邀请函=书册卡羁绊,选卡写入
-        # chosen_expert;单次逻辑写入,§3.4 申报豁免)。出口验真(弹窗关)
-        # 通过才到此处 = 选卡落地。
-        self._record_chosen_expert(idx, card_bonds)
-        # 到账登记(§3.3 对照):「现金为王」= gold +4(待实读,绑 shop_wave_top
-        # gold 可信源覆盖点);选角色分支 = 专家入商店由正常商店逻辑接管,
-        # 无 session 局状态字段变更 → 不登记(§3 C 区无对应行,理由区口径)。
-        if idx < 0:
-            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-                register_confirm_arrival,
-            )
-            _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
-            register_confirm_arrival(_sess, 'ConfirmExpertCash', '现金为王',
-                                     produced_by='CwScreenExpertInvite')
-        return self.round_success(wait=2)
+        # 机械交回(验证废除):弹窗关没关由下一轮重入入口门裁决
+        #(裁决点 = choose 顶部 _pick_pending 分支)。
+        self._pick_pending = (idx, card_bonds)
+        return self.round_retry('邀请函选卡点击已发,重入观察裁决', wait=1)
 
     def _record_chosen_expert(self, idx: int, card_bonds: list[str | None]) -> None:
         """选卡落地记录面:写 ``chosen_expert``(设计 §3.4.5;单次逻辑写入,

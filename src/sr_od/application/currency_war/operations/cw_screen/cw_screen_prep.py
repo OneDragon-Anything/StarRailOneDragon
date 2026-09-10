@@ -2387,17 +2387,17 @@ class CwScreenPrep(CwScreenOpBase):
         match = self._match()
         if match is None:
             return False, '无 cw_match(对局未初始化)'
-        _r_open = open_shop(self)
-        if not _r_open.is_success:
-            return False, f'开店未生效({_r_open.status})'
+        # B3 拆除(验证废除,用户裁定 2026-09-10:调用方不问成败,M1③):
+        # open_shop/close_shop 的验关型失败回执消费删除——发出即职责完成,
+        # 店实际开没开/关没关由下一帧观察侧对账自然闭环(heavy 观察 gold
+        # 真值/0n 三锚/备战帧读互斥;波循环失败路径不开收语义不变)。
+        _ = open_shop(self)
         if action.read_only:
             self._observe(heavy=True)   # 开态观察刷新(gold 真值)
             # 帧代次 = none(ADR-0583 §3.4/D6 补):read_only 分支不接决策
             #(M-6 门)——heavy 观察不等于主观察帧,禁把本分支误标 full
             match.session.prep_frame_class = 'none'
-            _r_close = close_shop(self)
-            if not _r_close.is_success:
-                return False, f'read_only 关店未生效({_r_close.status})'
+            _ = close_shop(self)
             self._probe_node_type()
             return True, 'read_only 开店重读(gold 真值)'
         st = getattr(obs, 'state', None)
@@ -2441,9 +2441,10 @@ class CwScreenPrep(CwScreenOpBase):
         if _rr is not None or outcome is None:
             return (False, f'买牌循环未完成'
                     f'({_rr.status if _rr is not None else "无产出"})')
-        _r_close = close_shop(self)
-        if not _r_close.is_success:
-            return False, f'关店未生效({_r_close.status})'
+        # B3 拆除(同上,M1③ 调用方不问成败):关店发出即过,不再验
+        # 「收起消失」——店关没关由下一帧观察侧对账(0n 三锚/备战双锚)
+        # 自然闭环,误入口时外循环 0n 重入商店访问幂等收起自愈。
+        _ = close_shop(self)
         _summary = finalize_buy_phase(self, match, outcome,
                                       hp_value, hp_readable, hp_trusted)
         self._probe_node_type()

@@ -667,6 +667,11 @@ def _launch_frame_arbitration(op) -> dict:
         # 访问尝试边界),exit 覆盖全部出口(open 失败/abort/正常/异常)。
         _arb_token = record_op_enter('发射帧仲裁商店访问',
                                      *_op_journal_pos_of(op.ctx))
+        # B3 拆除(验证废除,用户裁定 2026-09-10;M1③ 调用方不问成败):
+        # open_shop 的 is_success=False 仅余「入口观察失败(动作没发出)」
+        # 一种来路(「点击已发」走机械 retry 语义由编排壳重入承载,直调场景
+        # 不再可得)——此分支语义 = 访问没发生,如实计 open_failed,非动作
+        # 验证。
         _r_open = open_shop(op)
         if not _r_open.is_success:
             _launch_arb_counter(op, cw_launch_arbitrage.KEY_OPEN_FAILED)
@@ -697,7 +702,7 @@ def _launch_frame_arbitration(op) -> dict:
             record_op_exit(_arb_token, outcome='fail', detail='abort')
             _arb_token = None
             return report
-        _r_close = close_shop(op)
+        _ = close_shop(op)   # B3 拆除:发出即过,不问成败(关店动作本身必发)
         if outcome is not None:
             report['executed'] = int(outcome.total_buy + outcome.total_level
                                      + outcome.total_refresh)
@@ -710,13 +715,11 @@ def _launch_frame_arbitration(op) -> dict:
             _final_gold = int(getattr(outcome.state, 'gold', 0) or 0)
             if report['executed'] > 0 and _final_gold < g_star:
                 _launch_arb_counter(op, cw_launch_arbitrage.KEY_CROSS_LINE)
-        if not _r_close.is_success:
-            log.warning('[cw-loop] 发射帧仲裁关店未生效(交发射核屏态复验裁定)')
-        # 正常出口行:关店未生效 = 访问非正常出口(与 0n 载体口径一致,
-        # visit_open_shop 关店失败同样返 False)。
-        record_op_exit(_arb_token,
-                       outcome='ok' if _r_close.is_success else 'fail',
-                       detail='' if _r_close.is_success else 'close_failed')
+        # B3 拆除(同上,M1③):close_shop 的验关型失败回执退役——直调场景
+        # close 的 is_success=False 来路已不存在(点击已发 = 机械 retry 语义,
+        # 幂等观察 success / 点击已发 retry;关没关由下一帧观察侧对账 0n
+        # 三锚/备战双锚自然闭环),出口行恒 ok。
+        record_op_exit(_arb_token, outcome='ok', detail='')
         _arb_token = None
         return report
     except Exception as e:   # noqa: BLE001  仲裁异常不阻塞发射(出战优先,

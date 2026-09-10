@@ -84,6 +84,10 @@ class CwScreenBookcard(CwScreenOpBase):
         # 表:本屏无落地登记件(§6.4 收编面无事件屏 chosen 行,见模块
         # docstring)。
         self._observation_adapter = BookcardLiveObservationAdapter()
+        # 选卡点击已发待重入裁决的星徽名(验证废除形态):重入裁决由入口门
+        # 承载(弹窗不在 = 选卡落地)→ 此刻才写 chosen_tome + 到账登记;
+        # 弹窗仍在 = 点击未落地 → 重走重选(计节点预算,不留幻影登记)。
+        self._pick_pending: str | None = None
 
     def _observe_frame(self) -> BookcardObservation:
         """轻观察帧装配(实机适配器①封口内容):入口门在 observe 段,
@@ -116,6 +120,18 @@ class CwScreenBookcard(CwScreenOpBase):
 
     @operation_node(name='星徽秘典', is_start_node=True, node_max_retry_times=5)
     def handle(self) -> OperationRoundResult:
+        # 重入裁决(观察驱动,验证废除形态):上轮选卡已发 → 弹窗不在 =
+        # 选卡落地 → 补写 chosen_tome + 到账登记 + success 交回;弹窗仍在 =
+        # 点击未落地 → 重走(计节点预算)。
+        if self._pick_pending is not None:
+            _p = self._pick_pending
+            self._pick_pending = None
+            if not self.round_by_find_area(
+                    self.last_screenshot, self.SCREEN_NAME, self.MARK_AREA,
+                    crop_first=False).is_success:
+                self._settle_picked_tome(_p)
+                return self.round_success('星徽秘典选卡完成(重入观察裁决)',
+                                          wait=CW_OVERLAY_SETTLE_S)
         # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
         # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
         # 周期新路径;缺省 None = 生产直连旧路径(下方原序列,试点等价门
@@ -129,10 +145,11 @@ class CwScreenBookcard(CwScreenOpBase):
         return self._handle_overlay(screen)
 
     def _handle_overlay(self, screen) -> OperationRoundResult:
-        """门后读卡+选卡+验关链(旧 handle 门后体纯移入,两路径共享零转录;
-        试点步骤 3,先例 = 盛会之星 ``_do_action`` 共享式)。chosen_tome
-        写端 = 出口验真通过分支单次逻辑写入豁免留守(§2.2);ConfirmTome
-        到账登记语义逐位保留。"""
+        """门后读卡+选卡+机械交回链(旧 handle 门后体纯移入,两路径共享零
+        转录;试点步骤 3,先例 = 盛会之星 ``_do_action`` 共享式)。验关半
+        拆除(用户裁定 2026-09-10):选卡点击发出 → 固定等待 → round_retry,
+        落地裁决由 handle 顶部重入入口门承载(chosen/到账登记 = 重入裁决点
+        ``_settle_picked_tome``)。"""
         cards = self._read_card_factions(screen)
         idx, pick_name = 0, '(fallback卡1)'
         if cards:
@@ -157,34 +174,36 @@ class CwScreenBookcard(CwScreenOpBase):
                  [c[0] for c in cards] or 'OCR未读到', pick_name, target.x, target.y)
         safe_click(self, target, tag='cw-flow-bookcard')
         time.sleep(1.0)   # 点卡即选,弹窗自关(现役 0i 实测口径)
-        # 出口验真转移:弹窗消失;仍在 = 选卡未生效,重试计预算。
-        if self.round_by_find_area(
-                self.screenshot(), self.SCREEN_NAME, self.MARK_AREA,
-                crop_first=False).is_success:
-            return self.round_retry('选卡后秘典弹窗仍在')
-        # 到账登记(§3.3 #28 ConfirmBook):owned += 星徽。装备名与注册表对齐
-        # 「X星徽」(OCR 卡名已去「星徽」后缀作阵营名,回拼;已是全名则原样)。
-        if pick_name and pick_name != '(fallback卡1)':
-            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-                register_confirm_arrival,
+        # 机械交回(验证废除):弹窗关没关由下一轮重入入口门裁决
+        #(裁决点 = handle 顶部 _pick_pending 分支)。
+        self._pick_pending = pick_name
+        return self.round_retry('选卡点击已发,重入观察裁决')
+
+    def _settle_picked_tome(self, pick_name: str) -> None:
+        """重入裁决出口的登记面(弹窗已关 = 选卡落地):到账登记(§3.3 #28
+        ConfirmBook:owned += 星徽)+ chosen_tome 写端。装备名与注册表对齐
+        「X星徽」(OCR 卡名已去「星徽」后缀作阵营名,回拼;已是全名则原样)。"""
+        if not pick_name or pick_name == '(fallback卡1)':
+            return
+        from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
+            register_confirm_arrival,
+        )
+        _eq_name = pick_name if pick_name.endswith('星徽') else f'{pick_name}星徽'
+        _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
+        register_confirm_arrival(_sess, 'ConfirmTome', _eq_name,
+                                 produced_by='CwScreenBookcard')
+        # BoardState 写端(P3-6 批次二落地审;§3.4.5:星徽秘典弹窗=卡名,
+        # 选卡写入 chosen_tome;单次逻辑写入,§3.4 申报豁免;CwScreenMegastar
+        # chosen_megastar 同式)。候选读取链在役+建档在册,tome 非「暂无
+        # 画面建档」屏——写端自此接通。
+        if _sess is not None:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
             )
-            _eq_name = pick_name if pick_name.endswith('星徽') else f'{pick_name}星徽'
-            _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
-            register_confirm_arrival(_sess, 'ConfirmTome', _eq_name,
-                                     produced_by='CwScreenBookcard')
-            # BoardState 写端(P3-6 批次二落地审;§3.4.5:星徽秘典弹窗=卡名,
-            # 选卡写入 chosen_tome;单次逻辑写入,§3.4 申报豁免;CwScreenMegastar
-            # chosen_megastar 同式)。候选读取链在役(:70-90)+建档在册,tome
-            # 非「暂无画面建档」屏——写端自此接通。
-            if _sess is not None:
-                from sr_od.application.currency_war.kernel.cw_board_state import (
-                    board_state_of,
-                )
-                board_state_of(_sess).write_logic(
-                    board_state_of(_sess).chosen_tome,
-                    pick_name,
-                    produced_by='CwScreenBookcard')
-        return self.round_success('星徽秘典选卡完成', wait=CW_OVERLAY_SETTLE_S)
+            board_state_of(_sess).write_logic(
+                board_state_of(_sess).chosen_tome,
+                pick_name,
+                produced_by='CwScreenBookcard')
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

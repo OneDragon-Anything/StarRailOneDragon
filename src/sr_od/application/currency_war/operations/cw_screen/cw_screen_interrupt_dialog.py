@@ -1,9 +1,11 @@
 """货币战争 中断挑战 dialog op(空决策形态;T-121/ADR-0584,A9)。
 
 ESC 误按/误点左上角弹出的「是否中断挑战」真模态(1g,历史 3 次实锤;
-2026-08-17 建档替原停机钩子)的处理迁移:点右上 X 关回备战,X 点击失败
-新帧重试同一点击(旧 ESC 兜底已废——弹窗已自关时 ESC 会落到备战层),
-无验效。
+2026-08-17 建档替原停机钩子)的处理迁移:点右上 X 关回备战,单尝试合同
+(验证废除批拆 op 内新帧重试:C10——X 不在(旧帧)的重试由外循环重派
+承载,重派即新帧)。**刻意不用 ESC**(bug#2,原分支注释随迁,
+禁在 op 内「顺手统一」成 ESC):面板已关时 ESC 落备战弹「中断挑战」;
+X 是弹窗内坐标永远安全。背景:2026-08-17 M53 停机建档。
 
 **语义红线(原分支注释随迁)**:点遮罩无效;bot 策略 = 点右上 X 关闭继续
 对局——不点「暂时离开」免中断对局,**绝不点「放弃并结算」**(不可逆放弃
@@ -32,14 +34,11 @@ class CwScreenInterruptDialog(CwProgressionScreenOp):
     def progress_once(self) -> bool:
         with contextlib.suppress(Exception):   # 遥测 best-effort
             recorder.record_exogenous(0, 'popup', detail='中断挑战dialog误触')
+        # 单尝试合同(验证废除,C10 拆 op 内新帧重试):一次 find+click,
+        # 按钮不在(旧帧/已自关)不再原地新帧重找——False 交基类 fail,
+        # 外循环重派 = 新帧重试在 loop 级承载(重派即新帧,语义等价)。
         _btn = self.round_by_find_and_click_area(
             self.last_screenshot, self.SCREEN_NAME, '按钮-关闭')
-        if not _btn.is_success:
-            # X 首击失败(多为旧帧)→ 新帧重试同一点击。替代旧 ESC 兜底:关闭
-            # 同一弹窗界面结果等价,且弹窗已自关时 ESC 会落到备战层(bug#2 面);
-            # 重试仍不落地 → False 交基类 fail,外循环有界重判(不再静默兜过)
-            _btn = self.round_by_find_and_click_area(
-                self.screenshot(), self.SCREEN_NAME, '按钮-关闭')
         if _btn.is_success:
             self.park_cursor(after_wait=0.1)
         return _btn.is_success

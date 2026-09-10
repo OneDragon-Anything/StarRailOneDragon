@@ -43,18 +43,8 @@ class CwEntryExit(SrOperation):
 
     STATUS_AT_LOBBY: ClassVar[str] = '已返回货币战争大厅'
 
-    #: overlay 关闭/绕过动作同键连续未生效上限(次):超限 round_fail 交外层。
-    #: 定向点击后动作未生效时本分支每轮重命中、不计尾部 _miss_rounds(那是
-    #: 全分支未命中计数),必须自带计数上界——success 边循环不消耗节点 retry
-    #: 预算(同 sim_uni_exit MAX_BACK_MENU_CYCLES 的 27min 空转教训)。
-    OVERLAY_ACTION_MAX: ClassVar[int] = 5
-
     def __init__(self, ctx: SrContext):
         SrOperation.__init__(self, ctx, op_name='退出货币战争对局')
-        #: overlay 子态定向动作连续未生效计数(键=overlay 名)。坐标系=本 op
-        #: 实例内一次退出尝试;实例即一次 CwEntryExit 调用,不做中途清零
-        #: (保守口径:同浮层一次退出尝试内至多 OVERLAY_ACTION_MAX 次动作)。
-        self._overlay_action_streaks: dict[str, int] = {}
 
     @operation_node(name='退出对局', is_start_node=True, node_max_retry_times=30)
     def exit_match(self) -> OperationRoundResult:
@@ -164,10 +154,13 @@ class CwEntryExit(SrOperation):
         #   deselect(装备详情浮窗 2026-08-14 live 验「点空白 → 关闭回备战」;
         #   建档 货币战争-备战/区域-空白关闭,与主消费路径 CwScreenRoleDetailOverlay
         #   同源同控件),连续未关升级门图标兜底。
-        # 有界性:定向点击后动作未生效时本分支每轮重命中、不计尾部 _miss_rounds,
-        # 故每子态带连续计数上界(OVERLAY_ACTION_MAX,SimUniExit MAX_BACK_MENU_
-        # CYCLES 同款教训:success 边循环不消耗 retry 预算),超限 round_fail
-        # 交外层重新导航。
+        # 有界性见 _overlay_branch(K1:retry 化,预算归节点 30)。
+        # 有界性(K1 拆除自带上界,验证废除 2026-09-10):overlay 分支改
+        # round_retry(计节点 retry 预算,node_max_retry_times=30)——原
+        # OVERLAY_ACTION_MAX=5 自带计数上界因「round_wait 不消耗预算」而生,
+        # retry 化后预算机制原生兜底(同分支每轮重命中 = 每轮耗 1 预算,
+        # 耗尽 FAIL 交外层重新导航,有界终止单保持);分支动作本身不再判
+        # 「未生效」(动作 op 禁验证,重入即基于新观察重判)。
         if self.round_by_ocr(screen, '补给阶段').is_success:
             return self._overlay_branch(
                 '补给阶段',
@@ -248,22 +241,19 @@ class CwEntryExit(SrOperation):
         return self._click_screen_area_center('货币战争-备战', '区域-空白关闭')
 
     def _overlay_branch(self, key: str, act: Callable[[], bool]) -> OperationRoundResult:
-        """overlay 子态定向动作的统一出口:动作已发 → round_wait;异常 → round_fail。
+        """overlay 子态定向动作的统一出口:动作已发 → round_retry(计节点
+        预算);area 缺失 → round_fail。
 
-        连续 OVERLAY_ACTION_MAX 次未生效(浮层没关/弹窗没弹,分支重命中)或
-        area 缺失即 fail 交外层重新导航——防「分支自命中但动作无效」的
-        round_wait 死循环(旧 ESC 分支的隐性安全网是 ESC 失效后无分支命中、
-        落尾部 _miss_rounds,定向点击没有这层,必须自带上界)。
+        K1 拆除(验证废除,用户裁定 2026-09-10:动作 op 禁「未生效」检出):
+        原 OVERLAY_ACTION_MAX 连续计数上界删除——round_wait 改 round_retry 后,
+        分支每轮重命中 = 每轮耗 1 次节点 retry 预算(exit_match 预算 30),
+        耗尽框架原生 FAIL 交外层重新导航(有界终止单,不再依赖自带上界)。
+        重试与否 = 每轮基于新观察的分支重判,非动作层验证重试。
         """
-        streak = self._overlay_action_streaks.get(key, 0) + 1
-        self._overlay_action_streaks[key] = streak
-        if streak > CwEntryExit.OVERLAY_ACTION_MAX:
-            return self.round_fail(
-                f'{key} 连续 {streak - 1} 次关闭/绕过动作未生效,交外层重新导航')
         if not act():
             return self.round_fail(f'{key} 关闭动作 area 缺失(ESC 已禁用),交外层重新导航')
-        log.info('[cw-exit] overlay[%s] 建档点击已发(连续第 %s 次)', key, streak)
-        return self.round_wait(wait=2)
+        log.info('[cw-exit] overlay[%s] 建档点击已发(重入观察重判,计节点预算)', key)
+        return self.round_retry(wait=2)
 
     def _ocr_click_pc_alt(self, screen, target_cn: str,
                           lcs_percent: float = 0.5) -> bool:

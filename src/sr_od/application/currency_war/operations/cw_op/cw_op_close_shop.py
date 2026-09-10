@@ -15,23 +15,24 @@ def close_shop(op: SrOperation) -> OperationRoundResult:
     ``op`` = 宿主 op(编排壳直调时传壳自身,复用其 round_by_* 判定与
     测试替身桩;本文件 ``CwOpCloseShop`` 独立跑时传自身)。
 
-    点「按钮-收起」→ 固定等待 ``SHOP_CLOSE_ANIM_S``(DD-011 操作完成
-    自等动画,screen_flow_timing #15 实测 ~1s)→ 「收起消失」验证
-    (刚点的元素消失 = 真转移信号;未消失 = 点击未落地 → fail-closed
-    retry,防下个 op 在「店仍开」假设上读关态字段)。找不到收起按钮 =
-    店可能已关(异常入口),同样 retry 不假成功。
+    幂等入口观察:「收起」不在 = 店已关(异常入口与上轮已点掉同判)→
+    直接成功(与 open_shop 幂等对称;W970 原「找不到收起不假成功」语义
+    随验证废除退役——店已关 = 本 op 目标已达成,非冒充)。店开 → 点
+    「按钮-收起」→ 固定等待 ``SHOP_CLOSE_ANIM_S``(DD-011 操作完成自等
+    动画,screen_flow_timing #15 实测 ~1s)→ **机械交回**(验证废除,
+    用户裁定 2026-09-10:动作 op 只管机械执行禁止验证;M1③ 发出即职责
+    完成,调用方不问成败)——不再验「收起消失」,关没关由下一轮重入幂等
+    观察/下一帧观察侧对账(0n 三锚/备战双锚)自然闭环。
     """
     if not op.round_by_find_and_click_area(
             op.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
-        return op.round_retry('找不到收起按钮(商店可能已关)', wait=1)
+        return op.round_success('商店已关(收起不在,幂等入口观察)')
     time.sleep(SHOP_CLOSE_ANIM_S)
-    if op.round_by_find_area(op.screenshot(), SHOP_SCREEN_NAME,
-                             '按钮-收起').is_success:
-        return op.round_retry('收起未生效(收起按钮仍在)', wait=1)
     # TODO(P2 黑板落地时启用):商店族字段清理挂点——W971 04-shop §2
     # 「CwOpCloseShop 完成承诺含商店族字段清理」;字段清理随黑板/流程层
     # 批次落地,本批只留挂点不实现。
-    return op.round_success('商店已收起')
+    # 机械交回(验证废除):收起消失与否由下一轮重入幂等观察裁决。
+    return op.round_retry('关商店点击已发,重入观察裁决', wait=1)
 
 
 class CwOpCloseShop(SrOperation):
