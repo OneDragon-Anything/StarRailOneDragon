@@ -103,12 +103,9 @@ class CurrencyWarConfig(YamlConfig):
         # 起局。默认开 = 安全闸宁拦勿放;闸本体见 kernel/cw_code_hash_gate
         # (豁免名单/口径申报单一源 = ADR-0581 与闸模块 docstring)。
         self.code_hash_gate: bool = self.get('code_hash_gate', True)
-        # 统一 state 状态流水开关(R1 影子双写,设计 §3.7.1):默认关 = 全新面
-        # (BoardState 派生域/画面上下文域写入 + state/journal.jsonl 落盘)
-        # 静默,行为与旧 12 流时代逐位一致;开 = 与旧流并行写影子面。
-        # 装配点 = currency_war_app 装配段(install_state_telemetry);
-        # 写入口/行 schema 单一源 = kernel/cw_state_journal。
-        self.state_journal: bool = self.get('state_journal', False)
+        # (统一 state 影子开关已随删除波 1 销案——用户 2026-09-10 直迁
+        #  裁定「journal 无条件常开,无开关」:装配段无条件武装
+        #  install_state_telemetry,无影子期。yml 残留键无害,get 不再读。)
         # r347(旧路径删除):gate_* 4 flag 已删(对拍验证过,观测
         # gate 无条件化——ADR-0216 对拍期结束;yml 残留键无害,
         # get() 不再读)。
@@ -136,8 +133,7 @@ class CurrencyWarConfig(YamlConfig):
             # code_hash_gate 也要持久化(同 max_rounds 先例):缺了则 GUI 保存
             # 静默抹掉 yml 手写的关闭值,闸被悄悄重新打开——配置丢失即行为漂移。
             'code_hash_gate': self.code_hash_gate,
-            # state_journal 同先例持久化(影子面开关;GUI 保存不得抹掉手写值)。
-            'state_journal': self.state_journal,
+            # (统一 state 影子开关键已随删除波 1 销案,save 不再写;yml 残留值无害。)
             # r347:gate_* flags 已删(无条件化),save 不再写。
         }
         YamlConfig.save(self)

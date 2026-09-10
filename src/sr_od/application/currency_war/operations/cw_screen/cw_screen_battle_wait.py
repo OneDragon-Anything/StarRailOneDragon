@@ -22,8 +22,9 @@ decisions/dd-019)。
   hp=0 补录);
 - 分支 6(战斗/过场屏总伤害/数据统计 → 点空白推进)。
 
-遥测连续性红线(W971 05-battle §1):decisions.jsonl / outcomes / match_archive
-的写入调用自 cw_loop 原样平移(见各方法注),字段面零变更。
+遥测连续性红线(W971 05-battle §1):观察半直写/结算链内存轨迹照旧维持;
+旧流(decisions/outcomes)写入调用已随删除波 1 退役,判读连续性由
+journal 行与冻结档案承载。
 
 自动战斗检测(W971 05-battle §2):**本批不做**(采集未完成)。接口预留 =
 本 op ①段(等结算画面)轮询中消费「自动战斗未开启」信号(画面右下角
@@ -56,7 +57,7 @@ from sr_od.application.currency_war.obs.cw_settlement_obs import (
     read_settle_damage_breakdown,
     settle_page1_progress_sign,
 )
-from sr_od.application.currency_war.telemetry import defects, recorder
+from sr_od.application.currency_war.telemetry import defects
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -246,7 +247,9 @@ class CwScreenBattleWait(SrOperation):
             self._st.saw_settlement = True   # ADR-0250:见结算屏 → 窗口关
         _st = self._st
         _residual = False if telemetry_only else self._mark_relaunch_residual()
-        _source = 'recovered' if _residual else ('loss_page' if telemetry_only else '')
+        # (_source 行来源标记(''/'recovered'/'loss_page')随 outcomes 流写入端
+        #  退役删除——删除波 1;_residual 残局判定保留,消费方 = 下方 plane
+        #  归属校正分支。)
         try:
             _session = self.ctx.cw_match.session
             _plane, _round = read_phase_round(self.ctx, screen)
@@ -358,14 +361,11 @@ class CwScreenBattleWait(SrOperation):
                 #(掉血三臂喂入/node_type 回落/谷底回滚登记 = flow 层
                 # _drain_pending_round_outcomes;处理即清)。
                 _session.pending_round_outcomes.append(_obs)
-            recorder.record_outcome(_obs, source=_source)
-            if not telemetry_only:
+                # (结算 outcomes 行与 battle_done 外生行已随旧流写入端退役
+                #  删除——删除波 1;结算真值现役归宿 = BoardState settlement
+                #  域 apply_settlement_cover(观察半直写链)。)
                 if _obs.hp_confidence >= 0.9:
                     _st.last_outcome_hp = _obs.hp_after
-                recorder.record_exogenous(
-                    _round, 'node_enter',
-                    detail=f'battle_done:{_obs.node_type}',
-                    state=_session.last_state)
                 # 结算屏覆盖点(EXPECTED_STATE §2:hp/gold/streak/level 全可信
                 # + 05-battle §1「结算屏 hp/gold/level 写 session」):hp 真值
                 # 链走结算观察直写→last_hp(上);gold/level/经验经

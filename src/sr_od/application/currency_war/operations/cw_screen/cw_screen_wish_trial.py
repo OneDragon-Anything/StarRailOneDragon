@@ -36,7 +36,6 @@ from sr_od.application.currency_war.cw_game_ports import action_sink, observatio
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
-from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 
 
@@ -145,8 +144,7 @@ class CwScreenWishTrial(CwScreenOpBase):
             except Exception as e:   # noqa: BLE001  策略失败 fallback 第1张
                 log.warning('[cw-wish] 策略决策异常(fallback 第1张): %s', e)
         log.info('[cw-wish] 祈愿决策: %s → 点 (%s,%s)', pick_desc, target.x, target.y)
-        # 遥测:试炼 objective 文本+选择落账本(此前只 log)。
-        record_event_choice('wish_trial', objs, pick_idx, reason=pick_desc)
+        # (wish_trial objective 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 点卡选中(bug#1 缓解:mouse_move 先,零移动落 click,防 before_screenshot 移光标)。
         self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target)

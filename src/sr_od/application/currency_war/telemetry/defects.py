@@ -265,30 +265,19 @@ def install_exit_hooks() -> None:
     """分包期 4 出口钩子注入(生产武装点=CurrencyWarApp.__init__,与
     ``set_l0_andon_handler`` 同点;幂等):把本模块真实现写进
     kernel/cw_telemetry_exit 的钩子槽,使 kernel/obs/decision 三桶的
-    telemetry 上行出口(落账/安灯/run_id 归属键)零直依本模块。"""
+    telemetry 上行出口(落账/安灯/run_id 归属键)零直依本模块。
+
+    删除波 1:exogenous/exec_events 实现槽随旧流写入端退役移除——
+    install_exit_hooks 不再注入两流实现(kernel 侧访问器一为 no-op 桩、
+    一已删除)。缺陷台账/obs 旁路/安灯/run_id 四槽照常。"""
     from sr_od.application.currency_war.kernel import cw_telemetry_exit
-    from sr_od.application.currency_war.telemetry.recorder import (
-        record_exogenous,  # 惰性:recorder 模块级依赖本模块,防环
-    )
 
     cw_telemetry_exit.install_exit_hooks(
         run_id_provider=current_run_id,
         record_defect=record_defect,
-        record_exogenous=record_exogenous,
         bypass_obs_conflict_to_defect=bypass_obs_conflict_to_defect,
-        record_exec_event=_exit_record_exec_event,
         l0_andon_flag_path=l0_andon_flag_path,
         write_l0_andon_flag=write_l0_andon_flag)
-
-
-
-def _exit_record_exec_event(run_id: str, round_num: int, action_family: str,
-                            screen: str, event: str, reason: str = '',
-                            retry_count: int = 0) -> None:
-    """出口钩子实现:影子执行事件 → 模块级 recorder(签名对齐 recorder 方法)。"""
-    _telstate.get_recorder().record_exec_event(
-        run_id=run_id, round_num=round_num, action_family=action_family,
-        screen=screen, event=event, reason=reason, retry_count=retry_count)
 
 
 
@@ -398,43 +387,11 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
 
 
 
-def _exec_family_surface(family: str) -> str:
-    """动作族 → 台账 surface(子串匹配族名;未映射原样落,枚举外值不炸)。"""
-    f = (family or '').lower()
-    if 'levelup' in f:
-        return 'level_xp'
-    if 'refresh' in f:
-        return 'shop_refresh'
-    if 'buy' in f or 'sell' in f:
-        return 'bench'
-    if 'deploy' in f:
-        return 'deployed'
-    if 'equip' in f:
-        return 'equip'
-    return family or 'exec'
-
-
-
-def bypass_exec_event_to_defect(rec: dict) -> None:
-    """record_exec_event 写入点旁路:失败类执行事件归一落 defect_ledger。
-
-    仅 fail/blocked/bail 进台账(执行缺陷);success_uncharged 非缺陷不进。
-    写端 severity 恒初判 L2 留证——执行失败的分级安灯由既有 cw_screen_prep
-    判定钩子承载(行为不变),台账先收口证据口径,分级升级属后续期。
-    """
-    if str(rec.get('event') or '') not in ('fail', 'blocked', 'bail'):
-        return
-    family = str(rec.get('action_family') or '')
-    record_defect(
-        _exec_family_surface(family), 'exec_fail',
-        expected=f'{family} 动作生效',
-        observed=f"{rec.get('event')}: {rec.get('reason')}",
-        round_num=int(rec.get('round_num') or 0),
-        refs=[{'stream': 'exec_events',
-               'key': (f"run={rec.get('run_id') or ''}|round={rec.get('round_num') or 0}"
-                       f"|family={family}|ts={rec.get('ts') or ''}")}],
-        note='旁路自 exec_events 写入点(原始证据层,refs 可下钻)',
-        gap_large=False, severity=SEVERITY_L2_RECORD)
+# `w512_obs_surfaces/` exec 失败旁路(bypass_exec_event_to_defect)已随
+# exec_events 流写入端退役(删除波 1):发射语义下动作 op 无成败知识
+# (receipts 零成败字段 + 观察侧 reconcile 对比),执行失败证据面随之
+# 消失;缺陷台账保留面的现役供给 = obs 冲突旁路 + 各显式判级点。
+# _exec_family_surface 映射随之删除(唯一消费方 = 该旁路)。
 
 
 

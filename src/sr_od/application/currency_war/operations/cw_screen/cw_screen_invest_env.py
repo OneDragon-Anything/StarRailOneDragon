@@ -30,7 +30,6 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
     emit_overlay_confirm,
     safe_click,
 )
-from sr_od.application.currency_war.telemetry import recorder, schema
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -160,17 +159,9 @@ class CwScreenInvestEnv(SrOperation):
             board_state_of(match.session).write_logic(
                 board_state_of(match.session).active_env, chosen,
                 produced_by='CwScreenInvestEnv')
-        # ADR-0132 采集:候选全集 + 效果原文(描述带 y 410-900)按卡分桶 → invest_cards.jsonl
-        # (kind=env;环境注册表虽全量,效果原文仍采 —— 对拍校验 + 版本变更感知)。
-        _items = [(t, m.max.center.x, m.max.center.y)
-                  for t, m in (self._ocr_map or {}).items() if m.max is not None]
-        _anchors = [(i, x) for i, (_n, x) in enumerate(opts)]
-        _buckets = schema.bucket_card_texts(_anchors, _items,
-                                                  CwScreenInvestEnv.NAME_CY_HI, 900)
-        _cards = [{"idx": i, "name": n, "x": x,
-                   "effect_text": " | ".join(_buckets.get(i, [])), "chosen": n == chosen}
-                  for i, (n, x) in enumerate(opts)]
-        recorder.record_invest_cards("env", _cards)
+        # (ADR-0132 候选卡面采集行已随 invest_cards 流写入端退役删除——
+        #  删除波 1;效果原文回流断供为裁定的接受后果,收编归宿 =
+        #  strategy_offer 画面 payload 域,候其落地批接线。)
 
         # 点最优卡底(task#20:Y 从 screen_info「区域-卡牌描述行」center 读;缺失兜底 CARD_CLICK_Y)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。

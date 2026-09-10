@@ -36,8 +36,8 @@ def _merge_equips(old_list, new_list) -> list:
 
     断点实锤:整批替换 ``exec_state_of(session).tracked_deployed = list(deployed)``
     时新读对象 equips=[] 默认 → ``deploy_bench._snapshot_equips_into_
-    tracking`` 写入的装备在下次对账即被冲(decisions.jsonl 希儿装备闪烁
-    实证:round6 三条快照仅一条有装备)。
+    tracking`` 写入的装备在下次对账即被冲(希儿装备闪烁实证——当年经
+    决策行快照显影:round6 三条快照仅一条有装备)。
 
     修法:按 char_id 把**旧 tracking 的 equips 续接到新读对象**(同名多副本
     逐个配对消耗,次序无关);新读自带的非空 equips(画面真值,如 deploy_bench

@@ -228,6 +228,7 @@ LOGIC_MODES: tuple[str, ...] = ('compute',)
 #: actor 不做在册校验(过渡语义,M2/M3 接线批铺满显式 sig 后空 actor 行消失)。
 REGISTERED_ACTORS: set[str] = {
     'cw_observation',          # 观察汇聚模块(read_game_state 唯一漏斗)
+    'obs_conflict',            # 观察冲突仲裁汇点(obs_conflict 证据行型 2)
     'CwScreenPrep',            # 备战画面 op(reconcile 核对口观察写入)
     'derive_node_inferred',    # 派生规则·弹窗腿(§3.4.1 规则一)
     'derive_node_observed',    # 派生规则·备战腿(§3.4.1 规则二)

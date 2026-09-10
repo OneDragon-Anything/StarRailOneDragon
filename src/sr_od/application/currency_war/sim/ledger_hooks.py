@@ -1,164 +1,47 @@
-"""局后钩子:Δ池自动再生与重放检查聚合(自 cw_telemetry 拆出,分包期6)。
+"""局后钩子:重放检查聚合(自 cw_telemetry 拆出,分包期6)。
 
-归属 sim 桶:Δ池再生直接调 sim 生成器;恢复/覆盖检查族与 run_checks
-聚合是 run 收口面,telemetry 的 state.start_run/recorder 经由本模块调用
-(模块级 import 无环:hooks→query/schema/checks,state 不在模块级反依)。
+归属 sim 桶:恢复/覆盖检查族与 run_checks 聚合是 run 收口读面,判读 CLI
+(checks)按需消费。删除波 1(用户 2026-09-10 直迁裁定):本模块原有的
+runs 流两个写入端已退役——①崩溃兜底回填(build_recovered_summary +
+recover_dangling_run_summaries,写 runs 行);②Δ池局终自动再生触发
+(_regenerate_delta_pool_after_run,挂 runs 行写入时点;池再生本体
+sim/cw_delta_pool_gen.regenerate_snapshot 保留,改手动/sim 批入口)。
+runs/outcomes 流冻结为存量语料,本模块现役面 = 纯读检查。
 """
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
-from sr_od.application.currency_war.kernel.cw_intention import _to_jsonable
-from sr_od.application.currency_war.telemetry import state as _telstate
 from sr_od.application.currency_war.telemetry.query import (
     _list_runs,
     check_strategy_live_streak,
     read_jsonl,
 )
-from sr_od.application.currency_war.telemetry.schema import RunSummary, append_jsonl
-from sr_od.application.currency_war.telemetry.state import log
 
 # ===== 局终 summary 多路径兜底(ADR-0273;批⑧ F2 runs.jsonl 断流)=====
 # 写端三路径:① 3c 回大厅(正常终局 win/loss);② 迁移审计 w75(git 历史) after_operation_done
 # 收口(停止/超时/异常退出 result='stopped'/'abandoned',cw_loop.py 类注);
-# ③ 本兜底(进程崩溃/重启杀局,start_run 每局起点补 source='recovered')。
-# r363 曾在 loop() 顶查 is_context_stop —— 但 operation.execute() 每轮前
-# (operation.py:408)先查 stop,stop 到达后 loop() 不再被调,原检查几乎永不
-# 触发(MCP stop 四局 [RUNS-GAP] 实锤),故收口迁 after_operation_done(ADR-0335)。
+# ③ 兜底回填(进程崩溃/重启杀局,start_run 每局起点补 source='recovered')。
+# 删除波 1:①②③全部随 runs 流写入端退役(收口位 = telemetry.state.close_run,
+# 零落盘);runs.jsonl 冻结为存量语料,下方幂等判据 helper 供读侧检查
+# (check_summary_write_path_coverage)继续消费存量档案。
 
 def _runs_summarized(replay_dir: Path) -> set[str]:
-    """runs.jsonl 已有 summary 行的 run_id 集(幂等判据单一源)。"""
+    """runs.jsonl 已有 summary 行的 run_id 集(幂等判据单一源;读侧检查用)。"""
     return {r.get('run_id') for r in read_jsonl(replay_dir / 'runs.jsonl')
             if r.get('run_id')}
 
 
 
-def build_recovered_summary(replay_dir: Path, run_id: str) -> RunSummary | None:
-    """从 outcomes/decisions 重建一局 summary(ADR-0273 数据治理:补算回填)。
-
-    - 末条真值按 (plane, round) 排序取最后(round_num 是位面内编号,跨位面
-      重建须按 (plane, round) 排序——批⑧边界声明);
-    - final_hp 取 conf≥0.9 末条 hp_after(镜像 loop `_last_true_hp` 语义:
-      死局 hp 读不到时兜底 100 毒化,高置信真值优先);final_hp≤0 → 'loss'
-      (战败结算屏 hp=0 补录链),否则 'abandoned'(FAIL/崩溃/重启局无终局判定);
-    - 无 outcomes → None(留缺口,不造伪值)。
-    """
-    outcomes = [o for o in read_jsonl(replay_dir / 'outcomes.jsonl')
-                if o.get('run_id') == run_id]
-    if not outcomes:
-        return None
-    outcomes.sort(key=lambda o: (o.get('plane') or 1, o.get('round_num') or 0,
-                                 o.get('ts') or ''))
-    last = outcomes[-1]
-    plane_reached = max((o.get('plane') or 1) for o in outcomes)
-    _conf_rows = [o for o in outcomes if (o.get('hp_confidence') or 0) >= 0.9]
-    final_hp = int((_conf_rows[-1] if _conf_rows else last).get('hp_after') or 0)
-    result = 'loss' if final_hp <= 0 else 'abandoned'
-    decisions = [d for d in read_jsonl(replay_dir / 'decisions.jsonl')
-                 if d.get('run_id') == run_id]
-    difficulty = next((d.get('difficulty') for d in decisions if d.get('difficulty')), '')
-    # gold 轨迹:每 (plane, round) 首采样(镜像 recorder 内存去重键 r363)
-    gold_traj: list[int] = []
-    _seen: set = set()
-    for d in decisions:
-        k = (d.get('plane'), d.get('round_num'))
-        if k in _seen:
-            continue
-        _seen.add(k)
-        gold_traj.append(int(d.get('gold') or 0))
-    # pivot:target_comp 序列连续去重后的转移数(内存 _comms 同语义)
-    comms: list[str] = []
-    for d in decisions:
-        t = d.get('target_comp') or ''
-        if t and (not comms or comms[-1] != t):
-            comms.append(t)
-    return RunSummary(
-        ts=datetime.now().isoformat(timespec='seconds'),
-        run_id=run_id, difficulty=difficulty,
-        result=result, plane_reached=plane_reached,
-        rounds_survived=int(last.get('round_num') or 0),
-        final_hp=final_hp, comps_committed=comms,
-        pivot_count=max(0, len(comms) - 1),
-        gold_trajectory=gold_traj,
-        notes='recovered:FAIL/crash/restart 兜底(ADR-0273)',
-        source='recovered',
-    )
-
-
-
 def recover_dangling_run_summaries(replay_dir: Path | str | None = None) -> list[str]:
-    """补齐 runs.jsonl 缺行(幂等;start_run 每局起点调,盖 FAIL/崩溃/重启路径)。
+    """已随 runs 流写入端退役(删除波 1)——no-op 兼容桩。
 
-    returns 本次补写的 run_id 列表(已 summaried 的不重复;无 outcomes 的跳过)。
+    旧语义 = 补齐 runs.jsonl 缺行(start_run 每局起点调;写 runs 行)。
+    start_run 调用点已同批删除;本桩仅为防外部残留调用炸栈,恒返回空表。
     """
-    d = Path(replay_dir) if replay_dir is not None else _telstate.get_recorder().replay_dir
-    if not (d / 'outcomes.jsonl').exists():
-        return []
-    known = _runs_summarized(d)
-    ids: list[str] = []
-    _seen: set = set()
-    for o in read_jsonl(d / 'outcomes.jsonl'):
-        rid = o.get('run_id')
-        if rid and rid not in known and rid not in _seen:
-            _seen.add(rid)
-            ids.append(rid)
-    rec = _telstate.get_recorder()
-    recovered: list[str] = []
-    for rid in ids:
-        summary = build_recovered_summary(d, rid)
-        if summary is None:
-            continue
-        append_jsonl(d / 'runs.jsonl', _to_jsonable(summary))
-        # 内存累积同步清理(防跨 run 泄漏;语义同 record_run_summary 尾部)
-        rec._gold_trajectory.pop(rid, None)
-        rec._comms.pop(rid, None)
-        rec._difficulty.pop(rid, None)
-        recovered.append(rid)
-    if recovered:
-        log.info('[cw][telemetry] summary 兜底回填 %d 局(ADR-0273):%s',
-                 len(recovered), ','.join(recovered))
-        # 迁移审计 w109(git 历史)(ADR-0344):兜底行也是 runs.jsonl 新增——同样触发池再生
-        # (崩溃恢复局的语料此刻才齐,不等到下一局正常局终)。
-        _regenerate_delta_pool_after_run()
-    return recovered
-
-
-
-def _regenerate_delta_pool_after_run() -> None:
-    """迁移审计 w109(git 历史)(ADR-0344):局终→Δ池快照自动再生 + 新鲜度自检。
-
-    事故背景:2026-08-25 查实池快照停在凌晨(41 局),当天 4 局未入
-    池——sim encounter/boss 零胜例把 P1 后段钉死全败,管线断 12
-    小时无任何报警。治本 = 再生随 runs.jsonl 写入端走(正常局终
-    record_run_summary + 崩溃兜底 recover_dangling_run_summaries),
-    加新鲜度检查项双端挂(sim 批 + 生产自检)。
-
-    best-effort 纪律:再生/自检失败只记日志,**绝不向局终收尾传播
-    异常**(遥测基建故障不许影响对局本体)。
-    """
-    try:
-        from sr_od.application.currency_war.sim.cw_delta_pool_gen import (
-            regenerate_snapshot,
-        )
-        fp = regenerate_snapshot(quiet=True)
-    except Exception as e:   # noqa: BLE001
-        log.warning('[cw][pool-pipeline] Δ池再生失败(不阻塞局终,ADR-0344): %s', e)
-        return
-    log.info('[cw][pool-pipeline] 局终自动再生 Δ池快照: %s', fp)
-    try:
-
-        from sr_od.application.currency_war.sim.checks.pool import check_pool_freshness
-        verdict = check_pool_freshness()
-        if verdict.get('violations'):
-            # 再生刚成功却仍滞后 = 新局语料没进池(如 outcomes 缺行)
-            # ——正是新鲜度检查要抓的病态,留痕不抛。
-            log.warning('[cw][pool-pipeline] 再生后池新鲜度仍滞后'
-                        '(ADR-0344): %s', verdict)
-    except Exception as e:   # noqa: BLE001
-        log.warning('[cw][pool-pipeline] 新鲜度自检异常(不阻塞): %s', e)
-
+    del replay_dir
+    return []
 
 
 def check_summary_write_path_coverage(replay_dir: Path, recent: int = 10) -> list[str]:

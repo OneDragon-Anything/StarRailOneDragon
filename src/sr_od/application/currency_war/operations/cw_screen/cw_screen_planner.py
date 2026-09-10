@@ -21,8 +21,8 @@ handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路�
 消费 ``_observation_port()`` 位):handle 体纯移入 ``_handle_overlay``
 (两路径共享零转录);**本屏无 op 内入口门**(入口判定归主循环 0 系分发,
 observe 段 = 轻观察帧引用,盛会之星同式);本屏无 on_outcome 落地登记件
-(§6.4 收编面无事件屏 chosen 行;planner 无 chosen_* 写端,选择落遥测
-record_event_choice)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
+(§6.4 收编面无事件屏 chosen 行;planner 无 chosen_* 写端,选择存证行已随
+删除波 1 退役)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
 事件浮层族即时落定),等价判据主承重 = 实机在册行为锁(test_cw_planner_
 strategy_wiring + test_cw_infra_locks + 本批锁
 test_cw_obs_arch_event_screens_step3)。
@@ -41,7 +41,6 @@ from sr_od.application.currency_war.cw_game_ports import action_sink, observatio
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
-from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 
 
@@ -209,11 +208,7 @@ class CwScreenPlanner(CwScreenOpBase):
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',
                  options[pick.idx].text[:24])
-        # 遥测:左右卡 OCR 文本+选择落账本(升费机会只有一次,
-        # 选错代价复盘依赖此行;此前只 log)。
-        record_event_choice('planner_event',
-                            [{'text': o.text} for o in options],
-                            pick.idx, pick.reason)
+        # (planner 左右卡存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 3. 点卡选中(⚠️ 避开卡内「详情」按钮区 x~880-950/y~420-450——局29 手动点
         # (755,400) 触发详情面板的实证;点卡身上部 y=310)
         self.ctx.controller.mouse_move(target)

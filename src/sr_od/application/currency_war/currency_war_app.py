@@ -92,16 +92,28 @@ class CurrencyWarApp(SrApplication):
         # (缺省关=跳过缓存清理/门放行;session 全量重建承担状态隔离)。
         from sr_od.application.currency_war.decision_assembly import install_obs_ports
         install_obs_ports()
-        # R1 统一 state 状态流水武装(幂等;影子双写,旧 12 流照常):开关
-        # config.state_journal 缺省关 = 全新面静默(派生域/上下文域零写入、
-        # 零落盘);开 = state/journal.jsonl 与旧流并行写(行行自足快照,
-        # 设计 §3.7.1 影子段)。run 归属读取函数在此注入(kernel 禁依
-        # telemetry,依赖倒置;同 L0 安灯/出口钩子的装配点显式接通纪律)。
-        if CurrencyWarConfig(ctx.current_instance_idx).state_journal:
-            from sr_od.application.currency_war.kernel.cw_state_journal import (
-                install_state_telemetry,
-            )
-            install_state_telemetry(run_id_provider=state.current_run_id)
+        # R1 统一 state 状态流水武装(幂等):删除波 1(用户 2026-09-10 直迁
+        # 裁定「journal 无条件常开,无 state_journal flag」)后装配段无条件
+        # 武装——旧 12 流中收编 9 流的写入端已删,journal 是流程侧唯一落盘流。
+        # run 归属读取函数在此注入(kernel 禁依 telemetry,依赖倒置;同 L0
+        # 安灯/出口钩子的装配点显式接通纪律)。
+        from sr_od.application.currency_war.kernel.cw_state_journal import (
+            install_state_telemetry,
+        )
+        install_state_telemetry(run_id_provider=state.current_run_id)
+        # obs_event 收编制 BoardState 供给(kernel 禁自寻会话;观察冲突证据
+        # 行型 2 的宿主供给,与 run_id provider 同点注入)。
+        from sr_od.application.currency_war.kernel import cw_telemetry_exit
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+        )
+
+        def _obs_event_board():
+            _sess = getattr(getattr(self.ctx, 'cw_match', None),
+                            'session', None)
+            return board_state_of(_sess) if _sess is not None else None
+
+        cw_telemetry_exit.set_obs_event_board_provider(_obs_event_board)
         SrApplication.__init__(
             self, ctx, currency_war_const.APP_ID,
             op_name=gt('货币战争', 'game'),

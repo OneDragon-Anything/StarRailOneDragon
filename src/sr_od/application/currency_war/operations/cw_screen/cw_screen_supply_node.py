@@ -57,12 +57,9 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.obs.cw_node_obs import read_supply_options
-from sr_od.application.currency_war.obs.cw_observation import read_game_state
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
-from sr_od.application.currency_war.telemetry import recorder as cw_telemetry
-from sr_od.application.currency_war.telemetry.state import set_last_supply_pick
 from sr_od.context.sr_context import SrContext
 
 
@@ -231,20 +228,8 @@ class CwScreenSupplyNode(CwScreenOpBase):
             log.warning('[cw-supply] detour:「返回备战界面」点击 miss → 放弃本次采集')
             return False
         time.sleep(CwScreenSupplyNode.TO_PREP_SETTLE_S)
-        # ② 显式采集性返回快照(标记 phase='supply_detour';actions=[] 非购买轮)
-        try:
-            _snap_screen = self.screenshot()
-            # ADR-0462:已点「返回备战界面」+ settle = 干净备战帧 → P1 全量基线读
-            _state = read_game_state(self.ctx, _snap_screen, phase='prep_clean')
-            cw_telemetry.record_decision(
-                _state, target_comp='', candidate_scores={}, eval_breakdown={},
-                actions=[], gold_point=True,
-                extra={'phase': 'supply_detour'})
-            log.info('[cw-supply] detour 备战快照已落盘 p%sr%s hp=%s gold=%s',
-                     getattr(_state, 'plane', '?'), getattr(_state, 'round_num', '?'),
-                     getattr(_state, 'hp', '?'), getattr(_state, 'gold', '?'))
-        except Exception as e:   # noqa: BLE001  观测不阻塞对局
-            log.warning('[cw-supply] detour 快照记录失败(不阻塞): %s', e)
+        # ② (detour 采集性 decisions 快照行已随 decisions 流写入端退役删除
+        #     ——删除波 1;detour 帧的现役证据 = journal 备战腿派生行。)
         # ③ 重进 overlay(实测:已选择/剩余次数状态重进后保留;备战屏「按钮-返回补给
         #    阶段」area 已建 + 实测有效;过渡 ~2s。area 全 miss 再用全屏 OCR 文本兜
         #    一枪——lcs_percent=0.8 防与「返回货币战争」误匹配)
@@ -312,21 +297,13 @@ class CwScreenSupplyNode(CwScreenOpBase):
             elif 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
                 reason = pick.reason
-                # 选定+确认时点暂存选择快照(角色/装备/钻;refreshed=刷新
-                # 是否已用),供 overlay 消失后 cw_loop 合成 supply 行消费。
-                # 附**实际识别到的选项清单**(动态列数,不假定结构)——
-                # 合成行与逐列内容对拍/漏读审计数据源。
+                # 选定快照(角色/装备/钻;refreshed=刷新是否已用;附实际识别
+                # 选项清单)——现役消费方 = 到账登记(equip)。(旧流暂存槽
+                # set_last_supply_pick 已随 outcomes 合成行退役删除——删除波 1。)
                 _opt = opts[pick.idx][0]
                 picked = {'char': _opt.char, 'equip': _opt.equip,
                           'has_diamond': _opt.has_diamond,
-                          'refreshed': _refresh_used,
-                          'options': [{'char': o.char, 'equip': o.equip,
-                                       'has_diamond': o.has_diamond}
-                                      for o, _p in opts],
-                          'n_options': len(opts)}
-                set_last_supply_pick(_opt.char, _opt.equip, _opt.has_diamond,
-                                     refreshed=_refresh_used,
-                                     options=picked['options'])
+                          'refreshed': _refresh_used}
                 # BoardState 选定暂存(chosen_supply 出口验真后写端的中转,
                 # 设计 §3.4.5):此处只暂存不写——写点在 handle 出口验真
                 # (标识-补给阶段消失)通过后,照 chosen_tome「出口验真后写」
@@ -361,34 +338,8 @@ class CwScreenSupplyNode(CwScreenOpBase):
             register_confirm_arrival(match.session, 'ConfirmSupply',
                                      picked['equip'],
                                      produced_by='CwScreenSupplyNode')
-        # 补给轮决策帧(w941 判定:备战采集 detour 整局一次 → 后续补给轮
-        # 恒零 decisions 行,轮窗边界模糊)。选卡确认后补记一帧合成快照:
-        # 确认成功时点 overlay 已消 → 帧面=干净备战帧(read_game_state
-        # prep_clean 同 detour 形态)。phase='supply_pick' = 本帧来源标注
-        # (decisions 行无 source 字段——source='synthetic_supply' 是结算行
-        # 词汇,telemetry/schema.py 本批禁碰;读端按 phase 分型)。
-        # gold_point=False:gold_trajectory 每回合一采样,首补给轮 detour 帧已
-        # 采过,本帧不重复入轨。观测失败不阻塞对局。
-        try:
-            _post_screen = self.screenshot()
-            _post_state = read_game_state(self.ctx, _post_screen, phase='prep_clean')
-            # 决策帧字段对齐(观察层数据移交批):选定快照进 extra
-            # (supply_pick 键,形状与暂存槽一致)——决策行不再只有
-            # 空壳快照,「这轮补给选了什么/牌面给了什么」单行可读,
-            # 不用等 outcomes 合成行 join。观测失败不阻塞对局。
-            _extra: dict = {'phase': 'supply_pick'}
-            if picked is not None:
-                _extra['supply_pick'] = dict(picked)
-            cw_telemetry.record_decision(
-                _post_state, target_comp='', candidate_scores={}, eval_breakdown={},
-                actions=[], gold_point=False,
-                extra=_extra)
-            log.info('[cw-supply] 选卡确认后快照已落盘 p%sr%s hp=%s gold=%s',
-                     getattr(_post_state, 'plane', '?'),
-                     getattr(_post_state, 'round_num', '?'),
-                     getattr(_post_state, 'hp', '?'), getattr(_post_state, 'gold', '?'))
-        except Exception as e:   # noqa: BLE001  观测不阻塞对局
-            log.warning('[cw-supply] 选卡确认后快照记录失败(不阻塞): %s', e)
+        # (选卡确认后合成 decisions 快照行已随 decisions 流写入端退役删除
+        #  ——删除波 1;选定事实现役归宿 = journal chosen 域 + 到账登记。)
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

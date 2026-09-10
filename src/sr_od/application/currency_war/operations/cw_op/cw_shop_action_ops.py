@@ -61,7 +61,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     simulate,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
-from sr_od.application.currency_war.telemetry import defects, recorder
+from sr_od.application.currency_war.telemetry import defects
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_state import Action
@@ -454,16 +454,8 @@ class LevelUpOp(ShopActionOp):
         # 用户口述口径(screen_flow_timing.md #22,2026-09-02):购买经验
         # 动画 ~1s(原 0.6s 不足;光标遮挡由段顶 park_cursor 防)。
         time.sleep(1.0)
-        # 血购执行回执(ADR-0577,批1 A 采集):单动作形态下本 execute 恰
-        # 一击,单击已扣血 → 逐击落一行(粒度=击数)。纯观测追加写,禁入
-        # 决策输入(隔离申报 ADR-0577;写点内部吞异常,失败不阻塞执行链)。
-        _hp_sess = getattr(env.match, 'session', None)
-        _hp_st = getattr(_hp_sess, 'last_state', None)
-        from sr_od.application.currency_war.prep_actions import (
-            record_hp_pay_event,
-        )
-        record_hp_pay_event(_hp_sess, getattr(_hp_st, 'plane', None),
-                            getattr(_hp_st, 'round_num', None))
+        # (血购执行回执行挂点已随 exogenous 流写入端退役删除——删除波 1;
+        #  血本位单点击扣血的机械事实面不变。)
         ledger.total_level += 1
         ledger.spend_executed += action.cost
         return True
@@ -479,13 +471,8 @@ class SellBenchOp(ShopActionOp):
         _expected = (state.bench[action.bench_idx]
                      if 0 <= action.bench_idx < len(state.bench) else None)
         _expected_name = (_expected.char_id if _expected is not None else None)
-        # 卖牌实收回金 = 执行前后 gold OCR 差,拖拽前取基数(候选 a 遥测)。
-        _gold_before = None
-        with contextlib.suppress(Exception):
-            from sr_od.application.currency_war.obs.cw_observation import (
-                read_gold,
-            )
-            _gold_before = read_gold(op.ctx, op.screenshot())
+        # (卖出前 gold 基数读数 _gold_before 已随 sell_income 外生行退役删除
+        #  ——删除波 1;卖牌实收回金 = 收入账 total_sell_income(计划值)。)
         from sr_od.application.currency_war.prep_actions import (
             drag_bench_to_sell,
         )
@@ -510,17 +497,6 @@ class SellBenchOp(ShopActionOp):
         ledger.total_sell += 1
         ledger.buy_has_sell = True   # 含卖出 → 本单元期望态不建(`w536`)
         ledger.total_sell_income += action.income or 0
-        try:
-            time.sleep(0.5)   # 卖出入账动画
-            from sr_od.application.currency_war.obs.cw_observation import (
-                read_gold,
-            )
-            _gold_after = read_gold(op.ctx, op.screenshot())
-            recorder.record_sell_income(state, action.bench_idx,
-                                        _expected_name or '',
-                                        _gold_before, _gold_after)
-        except Exception:   # noqa: BLE001  观测 best-effort
-            pass
         log.info('[cw-shop] Sell bench%d %s(+%s) ✓',
                  action.bench_idx, _expected_name, action.income or '?')
         return True
@@ -610,9 +586,8 @@ class RefreshShopOp(ShopActionOp):
         ledger.did_refresh = True
         try:
             _new_shop = _buy_cards_mod.read_shop_cards(op.ctx, op.screenshot())
-            recorder.record_shop_snapshot(
-                'refresh', _new_shop, state.gold - _refresh_fee,
-                state.plane, state.round_num)
+            # (refresh 牌面快照行已随 shop_snapshots 流写入端退役删除
+            #  ——删除波 1;牌面现役归宿 = journal 快照行自带 shop 域。)
             # 刷新有效性对拍(§2.5):三值,False=全同(未变)透传分类器。
             ledger.refresh_board_changed = refresh_effective(
                 _pre_shop_names or [], [c.name for c in _new_shop])

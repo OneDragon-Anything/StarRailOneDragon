@@ -13,12 +13,9 @@ X 是弹窗内坐标永远安全。背景:2026-08-17 M53 停机建档。
 exogenous popup 行随 op 迁移(r378b 测量链 review B1:误触弹窗是外生事件
 高频源,bug#2 ESC 三次实锤)。
 """
-import contextlib
-
 from sr_od.application.currency_war.operations.cw_screen._progression_base import (
     CwProgressionScreenOp,
 )
-from sr_od.application.currency_war.telemetry import recorder
 from sr_od.context.sr_context import SrContext
 
 
@@ -32,8 +29,7 @@ class CwScreenInterruptDialog(CwProgressionScreenOp):
         CwProgressionScreenOp.__init__(self, ctx, op_name='货币战争-中断挑战弹窗')
 
     def progress_once(self) -> bool:
-        with contextlib.suppress(Exception):   # 遥测 best-effort
-            recorder.record_exogenous(0, 'popup', detail='中断挑战dialog误触')
+        # (popup 外生存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 单尝试合同(验证废除,C10 拆 op 内新帧重试):一次 find+click,
         # 按钮不在(旧帧/已自关)不再原地新帧重找——False 交基类 fail,
         # 外循环重派 = 新帧重试在 loop 级承载(重派即新帧,语义等价)。

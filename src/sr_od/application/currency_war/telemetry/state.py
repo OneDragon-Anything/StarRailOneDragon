@@ -1,29 +1,25 @@
 """telemetry 模块级可变单例态簇(自 cw_telemetry 前置收敛,分包期6)。
 
-本模块是全部模块级可变单例(run_id/recorder/暂存缓冲/安灯 handler/缺陷
-复现位)的唯一拥有者:其他段(schema/recorder/defects/query/cli)一律以
+本模块是全部模块级可变单例(run_id/recorder/安灯 handler/缺陷复现位)的
+唯一拥有者:其他段(schema/recorder/defects/query/cli)一律以
 ``state.X`` 属性访问读取,赋值只发生在本模块内(含 global 声明的变更器
 函数),防 import 绑定快照读到过期值。
+
+删除波 1(用户 2026-09-10 直迁裁定)后本模块只剩「run 生命周期 + 落盘根
+槽 + 缺陷台账辅助态」:旧流写入端面临的所有暂存槽(supply pick/单元金收口/
+执行事实/简报局间缓冲)与 runs 收口写行随九流写入端退役删除;run 收口位
+保留(close_run——run_id 段归属供给 journal run_id provider,收口位驱动
+跨局重铸,语义见该函数注)。
 """
 
 from __future__ import annotations
 
-import contextlib
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from one_dragon.utils import log_utils  # 67-P1c 指纹哨兵日志
-from sr_od.application.currency_war.kernel.cw_state import (
-    GameState,
-    bench_occupied,
-)
-
-# 符号解耦(处死计划批 0):序列化权威副本迁 knowledge/cw_serialize,
-# 不再依赖 kernel/cw_intention(死刑判据文件)
-from sr_od.application.currency_war.knowledge.cw_serialize import _to_jsonable
-from sr_od.application.currency_war.telemetry.schema import ExogenousEvent
 
 if TYPE_CHECKING:
     # 惰性构造防模块级环:recorder/hooks 段在模块级依赖本模块(state),
@@ -33,16 +29,11 @@ if TYPE_CHECKING:
 
 log = log_utils.log
 
-        # 只写 defect_ledger 一条流:台账是「归一索引层」,spend_ledger 是
-        # 「原始证据层」(单元框架事实,消费端 query_spend_ledger 按
-        # SpendUnitRecord 字段解析)——缺陷行混入会被当伪单元误读。
-
-
 # ===== 模块级单例 + run_id 跟踪(ops 不改签名即可采集)=====
-# telemetry 是横切关注点,用模块级 recorder + current_run_id,避免给 BuyShopCards / loop
-# 线程传参。run_id 铸造单点 = ensure_run_started(入口链在写任何开局遥测行前铸造,
-# loop 侧认领,ADR-0588);BuyShopCards 用 current_run_id() 取,loop 在战斗后
-# record_outcome、局终 record_run_summary。
+# telemetry 是横切关注点,用模块级 recorder + current_run_id。run_id 铸造
+# 单点 = ensure_run_started(入口链在写任何开局遥测行前铸造,loop 侧认领,
+# ADR-0588)。退役后 run_id 的现役消费方 = journal 行归属(kernel
+# run_id provider 注入面)与缺陷台账行归属。
 # 默认 enabled=True(用户 2026-08-03 要数据调优;写 .debug/ 不入 git,I/O <1ms 不影响备战实时)。
 _RECORDER: TelemetryRecorder | None = None
 
@@ -56,129 +47,14 @@ _CURRENT_DIFFICULTY: str = ""
 # (重启后中途进局,ctx.cw_match=None 直达投资屏的形态)。
 _RUN_MATCH: object | None = None
 
-# r339:ctx.cw_match 弱引用槽(record_outcome 板深快照源;
-# cw_loop 启动 run 时注册,None=离线/测试容错)
-_CTX_MATCH_REF: list = [None]
-
-
-# —— 迁移审计 w306(git 历史):补给节点选择暂存槽(生产者=RunSupplyNode 选定/确认时;消费者=
-# cw_loop._record_supply_outcome 合成行落账时一次消费)。
-# 为什么是模块槽而不是 session 字段:StrategySession(cw_strategy.py,归属他批禁触)
-# 无法加正式字段;OperationRoundResult 状态串传 dict 是解析层凑合。单线程 op 链内
-# 生产→消费紧邻(选卡确认 → overlay 消失即合成),无并发风险;消费即清=残留不串轮。
-_LAST_SUPPLY_PICK: dict[str, Any] | None = None
-
-
-
-def set_last_supply_pick(char: str, equip: str, has_diamond: bool,
-                         refreshed: bool,
-                         options: list[dict[str, Any]] | None = None) -> None:
-    """生产者:补给节点本轮选定并确认的选项(char/equip 读自 read_supply_options;
-    refreshed=exec_state_of(session)._supply_refresh_used 时点值——刷新在确认前一轮发生,
-    True=该选项来自重掷后的牌面)。
-    options(迁移审计 w306c(git 历史)):**实际识别到的逐列内容** [{char,equip,has_diamond}...],
-    列数动态探测不写死(通常 4,augment 可变 3-5);读不到选项目标路径可不传。"""
-    global _LAST_SUPPLY_PICK
-    _LAST_SUPPLY_PICK = {'char': str(char or ''), 'equip': str(equip or ''),
-                         'has_diamond': bool(has_diamond), 'refreshed': bool(refreshed)}
-    if options:
-        _LAST_SUPPLY_PICK['options'] = [dict(o) for o in options]
-        _LAST_SUPPLY_PICK['n_options'] = len(options)
-
-
-
-def consume_last_supply_pick() -> dict[str, Any] | None:
-    """消费者:取走暂存的选择快照并清槽(一次消费;无暂存 → None)。"""
-    global _LAST_SUPPLY_PICK
-    pick = _LAST_SUPPLY_PICK
-    _LAST_SUPPLY_PICK = None
-    return pick
-
-
-
-# —— 金面收口:关店实读金暂存槽 ——
-# 为什么是槽而不是 shop.py 直接调 record_spend_unit:spend_ledger 行的唯一
-# 生产者是 director 的执行边界(行=单元框架事实),shop 只握有关店时点的
-# 真值列;行在 execute 返回后才落,shop 侧无法定向补列,故经暂存槽由既有
-# 落账入口消费(消费即清,残留不串单元)。与 _LAST_SUPPLY_PICK 同模式。
-_PENDING_UNIT_GOLD_CLOSE: dict[str, Any] | None = None
-
-
-
-def set_unit_gold_close(gold: int | None) -> None:
-    """生产者(shop.py 关店对拍点):无条件暂存关店实读金。
-
-    gold=None(read_gold 失读)也照记——unknown 占比要降到「读失败率」,
-    失读必须以 trusted=False 形态可见,不可静默缺失(否则「对拍通过」与
-    「失读」离线仍不可分)。
-    """
-    global _PENDING_UNIT_GOLD_CLOSE
-    _PENDING_UNIT_GOLD_CLOSE = {'gold': gold, 'trusted': gold is not None}
-
-
-
-def _consume_unit_gold_close() -> tuple[int | None, bool]:
-    """消费者(模块级 record_spend_unit 落账时):取走暂存并清槽。"""
-    global _PENDING_UNIT_GOLD_CLOSE
-    slot = _PENDING_UNIT_GOLD_CLOSE
-    _PENDING_UNIT_GOLD_CLOSE = None
-    if slot is None:
-        return None, False
-    return slot.get('gold'), bool(slot.get('trusted'))
-
-
-
-# —— 执行侧「计划≠尝试」可见化暂存槽(`w577_refresh_fee_and_andon/`,ADR-0456)——
-# 与 _PENDING_UNIT_GOLD_CLOSE 同模式同理由:shop.py 执行循环握有「计划了但
-# 未尝试/刷新点击后牌面变没变」的执行事实,spend_ledger 行由 director 边界
-# 落账,经本槽由既有落账入口消费(消费即清,残留不串单元)。
-_PENDING_UNIT_EXEC: dict[str, Any] | None = None
-
-
-
-def set_unit_exec_facts(*, plan_truncated: bool = False,
-                        refresh_skipped: str | None = None,
-                        refresh_attempted: bool = False,
-                        refresh_board_changed: bool | None = None) -> None:
-    """生产者(shop.py 执行循环):暂存本单元「计划≠尝试」执行事实。
-
-    plan_truncated=True = plan 含未尝试动作(硬墙跳过/至首个 RefreshShop
-    截断丢弃);refresh_attempted/board_changed 供分类器三分「点击落空 vs
-    免费生效」。只在有事实可报时调用(全缺省不必调)。
-    """
-    global _PENDING_UNIT_EXEC
-    _PENDING_UNIT_EXEC = {
-        'plan_truncated': bool(plan_truncated),
-        'refresh_skipped': refresh_skipped,
-        'refresh_attempted': bool(refresh_attempted),
-        'refresh_board_changed': refresh_board_changed,
-    }
-
-
-
-def _consume_unit_exec_facts() -> dict[str, Any]:
-    """消费者(模块级 record_spend_unit 落账时):取走暂存并清槽;无暂存=缺省。"""
-    global _PENDING_UNIT_EXEC
-    slot = _PENDING_UNIT_EXEC
-    _PENDING_UNIT_EXEC = None
-    return slot or {}
-
-
-
-def set_ctx_match(match) -> None:
-    """注册当前 ctx.cw_match(板深快照源;run 边界换新)。"""
-    _CTX_MATCH_REF[0] = match
-
-
 
 # ===== 落盘根装配槽(T-120 批 1,F4)=====
 # 为什么是槽:get_recorder() 单例构造不传 replay_dir(缺省 DEFAULT_REPLAY_DIR,
 # kernel/cw_observe 根常量块),假局档案要改指档案根原本只能私 poke
 # ``_RECORDER``——与 install_obs_ports「模块级槽 + 缺省关 + 装配点显式接通」
 # 同构的正规入口(方案 §4-2 落盘根装配槽申报)。缺省 None = 生产路径逐位
-# 不变;测试 harness 显式接指假局档案根。换根即重建单例:recorder 的内存
-# 累积(gold 轨迹/难度表)按根隔离,半途换根复用旧实例会把上一根的累积
-# 写进新根。
+# 不变;测试 harness 显式接指假局档案根。换根即重建单例:recorder 单例按根
+# 隔离,半途换根复用旧实例会把上一根的累积写进新根。
 _REPLAY_DIR_OVERRIDE: Path | None = None
 
 
@@ -199,7 +75,8 @@ def get_recorder() -> TelemetryRecorder:
 
     落盘根 = :func:`set_recorder_replay_dir` 接通的装配槽值;槽缺省 None
     时走生产缺省根(kernel/cw_observe.DEFAULT_REPLAY_DIR)——两者互斥,
-    槽只改根不改 enabled 等其余构造面。
+    槽只改根不改 enabled 等其余构造面。退役后现役写入面 = 缺陷台账
+    (record_defect);本单例同时是档案装配/计数快照的 replay_dir 供给口。
     """
     global _RECORDER
     if _RECORDER is None:
@@ -212,30 +89,21 @@ def get_recorder() -> TelemetryRecorder:
     return _RECORDER
 
 
-
 def start_run(difficulty: str = "") -> str:
-    """开始一次 run:生成 run_id(时间戳)+ start_run。返回 run_id。
+    """开始一次 run:生成 run_id(时间戳)。返回 run_id。
 
-    ADR-0588:生产铸造统一经 :func:`ensure_run_started`(入口链在写开局
-    遥测行前调用;直调本函数仅存在于测试)。函数体零改动保留——w603 简报
-    缓冲补写与测试桩面都锚在这里。
+    ADR-0588:生产铸造统一经 :func:`ensure_run_started`(入口链在写任何
+    开局遥测行前调用;直调本函数仅存在于测试)。
 
-    ADR-0273:开局先补上一局(们)缺的 summary 行 —— FAIL/崩溃/重启杀局路径
-    不走 3c/stop 收口,此处在下一局起点从 outcomes/decisions 重算兜底(幂等)。
+    删除波 1:局起点两件旧流伴生面随写入端退役——①runs 兜底回填
+    (sim/ledger_hooks.recover_dangling_run_summaries,写 runs 行);
+    ②简报行局间缓冲补写(写 exogenous 行)。run_id 铸造/指纹日志照常
+    (journal 行归属 + 构建指纹随局落日志)。
     """
     global _CURRENT_RUN_ID, _CURRENT_DIFFICULTY, _RUN_CLOSED
-    try:
-        from sr_od.application.currency_war.sim import ledger_hooks as _lh
-        _lh.recover_dangling_run_summaries()
-    except Exception as e:   # noqa: BLE001  兜底 best-effort,不阻塞开局
-        log.warning('[cw][telemetry] summary 兜底回填失败(不阻塞开局): %s', e)
     _CURRENT_RUN_ID = datetime.now().strftime('run_%Y%m%d_%H%M%S')
     _CURRENT_DIFFICULTY = difficulty
     _RUN_CLOSED = False
-    get_recorder().start_run(_CURRENT_RUN_ID, difficulty)
-    # `w603_telemetry_wiring/`:局前缓冲的简报行归属本局,新 run_id 就位后补写
-    with contextlib.suppress(Exception):
-        _flush_pending_briefing_rows()
     # 构建指纹随局落日志(`w596_equip_guards/`/`w593_equip_wear/` 方案①):局后判读把本局行为对到
     # 「哪个构建的进程」,消灭「整局构建性归零」这类跨局方差(局22 实证)。
     try:
@@ -245,7 +113,6 @@ def start_run(difficulty: str = "") -> str:
     except Exception as e:   # noqa: BLE001  观测件,失败不阻塞开局
         log.warning('[cw][build] 构建指纹读取失败(不阻塞): %s', e)
     return _CURRENT_RUN_ID
-
 
 
 def ensure_run_started(match: object, difficulty: str) -> str:
@@ -278,123 +145,70 @@ def ensure_run_started(match: object, difficulty: str) -> str:
     return _CURRENT_RUN_ID
 
 
-
 def current_run_id() -> str:
     return _CURRENT_RUN_ID
 
 
-
 def reset_run_state() -> None:
     """run 态簇的测试复位正规入口:清 _CURRENT_RUN_ID/_RUN_MATCH/_RUN_CLOSED
-    /_CURRENT_DIFFICULTY/_PENDING_BRIEFING_ROWS 五件。
+    /_CURRENT_DIFFICULTY 四件。
 
     为什么收口成单点(ADR-0588 ensure 门消费簇 × 测试复位链缺口):三件套
     分散在三处生产写点(start_run 铸造 / ensure_run_started 赋 token /
-    record_run_summary 置收口位),测试侧逐件 monkeypatch 清单漏一件即留
-    跨测试残留——实证:假局 harness 局终经生产 record_run_summary 裸写
+    close_run 置收口位),测试侧逐件 monkeypatch 清单漏一件即留
+    跨测试残留——实证:假局 harness 局终经生产收口位裸写
     _RUN_CLOSED=True,teardown 复位链不覆盖,后续未全簇桩化就直调
     ensure_run_started 的测试把「上局已收口」误判为真走重铸假分支(出处:
     .debug/temp/currency_war/attacks/three_review_20260908/三审报告-第二波.md
     F1,**易失产物**待 ADR 回填;门控三分支语义见 ADR-0588)。
 
-    难度列与简报缓冲两件同簇(出处:.debug/temp/currency_war/attacks/
+    难度列入簇(出处:.debug/temp/currency_war/attacks/
     three_review_20260908/三审报告-第三波.md F3,**易失产物**待 ADR 回填;
     单一入口判据承本函数既有先例):_CURRENT_DIFFICULTY 由 start_run 与
-    _CURRENT_RUN_ID 同语句铸造,消费 = recorder.record_decision 决策行
-    难度列;_PENDING_BRIEFING_ROWS 是简报行 run 归属缓冲(下一局
-    start_run 把缓冲行补写进新局)。两者残留病理 = 遥测内容污染(后续
-    仅桩 run_id 的测试写出带前局难度/错局归属的行),无分支翻转;入簇
-    而非散点补桩 = 簇成员随写点扩员自动进复位链,防逐件补桩清单再漏。
+    _CURRENT_RUN_ID 同语句铸造。残留病理 = 遥测内容污染,无分支翻转;
+    入簇而非散点补桩 = 簇成员随写点扩员自动进复位链,防逐件补桩清单再漏。
 
     生产路径零调用申报:生产 run 态由 ensure_run_started → start_run →
-    record_run_summary 自洽推进(收口位由下一局 start_run 复位),复位
+    close_run 自洽推进(收口位由下一局 start_run 复位),复位
     语义只属于测试 teardown,本函数禁入任何生产调用链。
 
-    边界:只复位 run 态簇五件;_RECORDER 与落盘根三槽有各自正规入口
+    边界:只复位 run 态簇四件;_RECORDER 与落盘根三槽有各自正规入口
     (:func:`set_recorder_replay_dir` / ``op_journal.set_journal_dir`` /
     ``decision_frame_hooks.set_decision_frame_dir``,第三槽出处 = 三审
     二波 F2 同报告 F1 节的复位链纪律),teardown 按槽分立调用,职责不混。
     """
     global _CURRENT_RUN_ID, _RUN_MATCH, _RUN_CLOSED
-    global _CURRENT_DIFFICULTY, _PENDING_BRIEFING_ROWS
+    global _CURRENT_DIFFICULTY
     _CURRENT_RUN_ID = ''
     _RUN_MATCH = None
     _RUN_CLOSED = False
     _CURRENT_DIFFICULTY = ''
-    _PENDING_BRIEFING_ROWS = []
 
 
-
-# ===== `w603_telemetry_wiring/` 简报行 run_id 归属(局间缓冲)=====
-# 生命周期:简报读取(局前)→ start_run 补写;进程终止未遇 start_run = 缓冲丢弃
-# (best-effort,与原「行被丢/带错 id」相比只改善不劣化)。上限 16 行 = 简报
-# retry 重跑上限(节点 max_retry_times=10)的宽裕倍数,防异常路径无限积压。
-_PENDING_BRIEFING_ROWS: list[dict[str, Any]] = []
-
-_PENDING_BRIEFING_MAX: int = 16
-
-#: run 关闭位:局终 summary 落盘后,直到下一局 start_run 前,_CURRENT_RUN_ID
-#: 指向已收口的局 —— 此窗口内的 briefing 行归属下一局(经缓冲)。
+#: run 关闭位:局终收口后,直到下一局 start_run 前,_CURRENT_RUN_ID
+#: 指向已收口的局 —— ensure_run_started 据此在下一局铸造新段
+#(journal 行 run 归属的生命周期承接口)。
 _RUN_CLOSED: bool = False
 
 
+def close_run(result: str = "", plane_reached: int = 0,
+              rounds_survived: int = 0, final_hp: int = 0,
+              notes: str = "") -> None:
+    """run 收口位(局终调;删除波 1 后**零落盘**)。
 
-def _buffer_briefing_row(round_num: int, detail: str,
-                         state: GameState | None) -> None:
-    """暂存局前简报行(ts 即刻取,state 快照即刻算;best-effort 不抛)。"""
-    global _PENDING_BRIEFING_ROWS
-    try:
-        snap: dict[str, Any] = {}
-        if state is not None:
-            snap = {'hp': getattr(state, 'hp', None),
-                    'gold': getattr(state, 'gold', None),
-                    'level': getattr(state, 'level', None),
-                    'plane': getattr(state, 'plane', None),
-                    'round_num': getattr(state, 'round_num', None),
-                    'bench_count': bench_occupied(
-                        getattr(state, 'bench', []) or [])}
-        _PENDING_BRIEFING_ROWS.append({
-            'ts': datetime.now().isoformat(timespec="seconds"),
-            'round_num': round_num, 'detail': detail, 'state_snapshot': snap,
-        })
-        if len(_PENDING_BRIEFING_ROWS) > _PENDING_BRIEFING_MAX:
-            _PENDING_BRIEFING_ROWS = _PENDING_BRIEFING_ROWS[-_PENDING_BRIEFING_MAX:]
-    except Exception:  # noqa: BLE001  缓冲 best-effort
-        pass
-
-
-
-def _flush_pending_briefing_rows() -> None:
-    """start_run 建新 run_id 后补写缓冲简报行(归属=新局;按暂存序)。"""
-    if not _PENDING_BRIEFING_ROWS:
-        return
-    pend = list(_PENDING_BRIEFING_ROWS)
-    _PENDING_BRIEFING_ROWS.clear()
-    for r in pend:
-        with contextlib.suppress(Exception):   # 补写 best-effort
-            get_recorder()._append("exogenous.jsonl", _to_jsonable(
-                ExogenousEvent(ts=r['ts'], run_id=_CURRENT_RUN_ID,
-                               round_num=r['round_num'], kind='briefing',
-                               detail=r['detail'],
-                               state_snapshot=r['state_snapshot'],
-                               choice=None)))
-
-
-
-def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
-                       final_hp: int, notes: str = "") -> None:
-    """便捷:用 current_run_id 记局终 summary。loop 局终调。
-
-    `w603_telemetry_wiring/`:落盘后置 run 关闭位 —— 此后到下一局 start_run 前的 briefing 行
-    归属下一局(缓冲补写),不再挂在已收口的旧 run_id 上。
+    `w603_telemetry_wiring/`:收口置 run 关闭位 —— 此后到下一局
+    start_run 前 ensure_run_started 铸新段(journal 行归属新 run_id)。
+    旧局终 summary 写行已随旧流写入端退役(删除波 1);形参保留
+    (调用点传值面不变),值只进日志不进任何流。局终元数据的 journal
+    归宿 = 局终域 match_final 行(写点接线归后续批,retirement.md runs 行)。
     """
     global _RUN_CLOSED
     if not _CURRENT_RUN_ID:
         return
-    get_recorder().record_run_summary(_CURRENT_RUN_ID, result, plane_reached,
-                                      rounds_survived, final_hp, notes=notes)
     _RUN_CLOSED = True
-
+    log.info('[cw][telemetry] run 收口:%s p%s-r%s hp=%s (%s)',
+             result or '-', plane_reached, rounds_survived, final_hp,
+             notes or '-')
 
 
 # —— 复现计数(分级判据③;进程内状态,按 run 切换清空)——
@@ -403,7 +217,6 @@ def record_run_summary(result: str, plane_reached: int, rounds_survived: int,
 _defect_seen: dict[tuple[str, str, str], int] = {}
 
 _defect_seen_run: str = ''
-
 
 
 def _mark_defect_reproduced(surface: str, kind: str, feature: str,
@@ -434,11 +247,8 @@ _L0_ANDON_HANDLER: Callable[[dict], bool] | None = None
 _L0_ANDON_FIRED_RUNS: set[str] = set()
 
 
-
 def set_l0_andon_handler(fn: Callable[[dict], bool] | None) -> None:
     """注入/清除安灯执行器。生产武装点=CurrencyWarApp.__init__(幂等);
     None=关闭停线通道(缺省;台账与判级不受影响)。"""
     global _L0_ANDON_HANDLER
     _L0_ANDON_HANDLER = fn
-
-

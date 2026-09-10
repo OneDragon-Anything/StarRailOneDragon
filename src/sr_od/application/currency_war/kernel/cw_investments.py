@@ -215,7 +215,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '长期主义+': EconomyEffect(gold_next_nodes_amount=9, gold_next_nodes_count=3),
     '长期主义': EconomyEffect(gold_next_nodes_amount=7, gold_next_nodes_count=3),
     '大裁员': EconomyEffect(free_refresh_burst=5, sell_price_mult=2.0),
-    # ↑ 免费刷 + 卖价×2
+    # ↑ 免费刷 + 卖价×2。5=已裁漂移,官方卡文=6(base 层 plaza:202101,权威序正本=ADR-0620):
+    #   纠偏 5→6 是行为面变更,归建模批走方案审/落地审;改 6 前以 5 为现行行为,读值方禁自行 +1。
     '嘴硬': EconomyEffect(instant_gold=6),
     '秘密典籍+': EconomyEffect(instant_gold=12),
     '秘密典籍': EconomyEffect(instant_gold=8),
@@ -535,7 +536,8 @@ _validate_strategy_effects()
 # session.active_strategies → cw_economy 按名聚合经济效果精确查 miss → **策略经济效果被
 # 静默丢弃**(真金影响);cw_events 品质查同样先吃 miss。
 # 先例:cw_chars_data L5「规范名:• 已统一为·」(数据层手改);本函数是查找层归一
-# (注册表数据不动,遥测/采集路径 invest_cards.jsonl 保留原始 OCR 名不改——原始证据不碰)。
+# (注册表数据不动,原采集路径保留原始 OCR 名不改——原始证据不碰;采集行
+# 已随 invest_cards 流写入端退役删除,归一口径照旧辖查表面)。
 # 无歧义性已量化(2026-08-26):INVESTMENT_STRATEGIES(335)/INVESTMENT_ENVS(83)中
 # 含 `·` 的条目 33+1(如 全都要·彩/采购专员·彩/银·金·彩),含 bullet 族字符
 # (•/‧/∙/・)的正规名 **0 条** → 归一不会撞任何真名。
@@ -1211,9 +1213,10 @@ def pick_value_of(name: str) -> int | None:
 
 
 # ===== ADR-0144 环境选卡价值基准分(83 条全量评估表派生)=====
-# 环境与策略结构倒挂(评估实证):synergy 主导 47/83(阵营定向),economy 16;无品质分级(全 '-')。
+# 环境与策略结构倒挂(评估实证,ADR-0144):synergy 主导 47/83(阵营定向);无品质分级(全 '-')。
+# 经济类计数无评估口径持久出处(ADR-0620 §3),分类表口径见 ENV_CATEGORY(经济 15/83),两口径禁互替。
 # 量化断层:yes-direct 仅 1 条(蓝海)—— 环境效果全是整局规则(费率覆写/分期/重复触发),EconomyEffect
-# 现有字段结构性装不下(EnvEconomyEffect 扩字段待后续);接线防一次性错装点名 6 条见 TSV notes。
+# 现有字段结构性装不下(EnvEconomyEffect 扩字段待后续);接线防一次性错装点名 6 条见 ADR-0144 决策 3。
 # **知识判据定序器声明(ADR-0524,16 号稿 §1.2)**:同 PICK_VALUE——分值仅在本表
 # (83 条环境)内选项间定序有效,禁作为基数与其它分值族加减;跨族仅 max() 覆盖。
 # 经济效果建模缺口(EnvEconomyEffect 扩字段)是升级为台账价值判据的真实卡点,

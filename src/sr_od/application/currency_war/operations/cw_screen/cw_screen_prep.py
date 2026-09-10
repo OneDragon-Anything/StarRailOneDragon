@@ -117,8 +117,6 @@ from sr_od.application.currency_war.run_state import (
 from sr_od.application.currency_war.telemetry import (
     defects,
     query,
-    recorder,
-    schema,
     state,
 )
 from sr_od.context.sr_context import SrContext
@@ -1679,7 +1677,6 @@ class CwScreenPrep(CwScreenOpBase):
             # 累计本访问已执行动作类型 + 当前提案。
             exec_state_of(session).last_prep_action_sig = tuple(
                 _visit_acts + [type(action).__name__])
-            self._record_step(obs, action)
             # 控制流(契约 §4:词表内特殊动作,不进 execute;defer 计数归框架)
             if isinstance(action, DeferSpheres):
                 exec_state_of(session).defer_count += 1
@@ -1916,7 +1913,6 @@ class CwScreenPrep(CwScreenOpBase):
             # 累计本访问已执行动作类型 + 当前提案。
             exec_state_of(session).last_prep_action_sig = tuple(
                 _visit_acts + [type(action).__name__])
-            self._record_step(payload, action)
             # 控制流(契约 §4:词表内特殊动作,不进 execute;defer 计数归框架)
             if isinstance(action, DeferSpheres):
                 exec_state_of(session).defer_count += 1
@@ -2243,31 +2239,15 @@ class CwScreenPrep(CwScreenOpBase):
 
     def _spend_unit_close(self, progressed: bool, detail: str = '',
                           boundary: str = 'closed') -> None:
-        """关购买单元:框架事实落 spend_ledger.jsonl(best-effort)。
-
-        boundary:closed=执行返回且进展 / failed=执行返回但未进展 /
-        aborted=执行抛异常。plan 与金真值不在此复制——读端 join
-        decisions/obs_conflicts(cw_telemetry.query_spend_ledger)。
-        """
+        """关购买单元:执行事实收口(购买单元框架行已随 spend_ledger 流
+        写入端退役删除——删除波 1;本方法保留 = 执行失败安灯钩子的判定
+        载体(单元 meta 计时/金基数),钩子本体常驻)。"""
         meta = self._unit_meta
         self._unit_meta = None
         if meta is None:
             return
-        try:
-
-            from sr_od.application.currency_war.telemetry.recorder import (
-                record_spend_unit,
-            )
-            record_spend_unit(
-                plane=meta['plane'], round_num=meta['round'],
-                unit_seq=meta['seq'], boundary=boundary,
-                progressed=progressed,
-                duration_s=time.monotonic() - meta['t0'],
-                detail=detail or '',
-                gold_before=meta['gold'],
-                gold_before_trusted=meta['gold_trusted'])
-        except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
-            log.debug(f'[cw-director] spend_ledger skip: {e}')
+        if detail or boundary != 'closed':
+            log.debug(f'[cw-director] spend unit closed: {boundary} {detail}')
         # [停机钩子·常驻兜底(od-dev-stop-hooks §2.1 分类),安灯式] 触发条件兜
         # 「购买单元执行失败(计划花费>0 金差≈0)」整类持续可能复发的失败 =
         # 安全网,非单次采证——原「临时采证,采完删」标注系误分类,改标防未来
@@ -2286,11 +2266,14 @@ class CwScreenPrep(CwScreenOpBase):
     def _exec_fail_hook_check(self, meta: dict, boundary: str) -> None:
         """安灯判定+触发(内部方法;谓词与 flag 写入是模块级纯函数,离线可测)。
 
-        数据源:decisions.jsonl 本轮 shop plan 行(plan/开店金,shop 开态可信)
-        + spend_ledger.jsonl 本单元行的 gold_close(shop.py 关店对拍点无条件
-        暂存、落账时消费填充——每单元必写、带 run_id/plane/round/unit_seq
-        单元身份)。历史局旧行(无 gold_close 字段)→ 回退 obs_conflicts
-        gold_delta 冲突行 + ts 邻近窗 join 兼容路径;新行读失败以 None 进
+        数据源(删除波 1 后旧流行冻结为存量语料:plan 行/单元行不再新增,
+        本安灯对新单元自然静默——「计划花费>0 金差≈0」判定的现役重接面 =
+        receipts 发射行+快照对比,候消费方切换批):
+        plan 行 = shop 决策行(plan/开店金,shop 开态可信);单元行 =
+        spend_ledger 关店对拍点无条件暂存、落账时消费填充——每单元必写、
+        带 run_id/plane/round/unit_seq 单元身份。历史局旧行(无 gold_close
+        字段)→ 回退观察冲突 gold_delta 冲突行 + ts 邻近窗 join 兼容路径;
+        新行读失败以 None 进
         分类器 = unknown = 不停(不猜)。
 
         为什么主源必须是单元行:冲突行是「仅 mismatch 才写」的条件性 journal、
@@ -2683,35 +2666,13 @@ class CwScreenPrep(CwScreenOpBase):
                 log.info(f'[cw-director][nodeseq] 未识别图标 idx={s.idx} hu={s.hu_dist:.1f} → 采 {fn}')
 
     def _record_step(self, obs: PrepObservation, action: PrepAction) -> None:
-        """F8:obs+action 序列落 telemetry(P1 仅落盘;replay 评分后置)。"""
-        try:
-            st = obs.state
-            _sess = self._session()
-            if st is not None:
-                st = st.copy()
-                # obs.state 是 OCR 现读态(equips 恒空),从 session owned 快照
-                # 补拷。copy 后再写——cw_comps 装备权重读 state.equips,
-                # 原地写会污染 director 后续决策输入(观测链修复禁越界)。
-                st.equips = list(getattr(_sess, 'last_owned_equips', []) or []) \
-                    if _sess is not None else []
-            recorder.record_decision(
-                st if st is not None else GameState(),
-                target_comp=(strategy_state_of(_sess).target_comp.name
-                             if _sess is not None and strategy_state_of(_sess).target_comp else ''),
-                candidate_scores={},
-                eval_breakdown={'prep_step': float(self._steps)},
-                actions=[action],   # type: ignore[list-item]  PrepAction 与旧 Action 并存(P2 归一)
-                gold_point=False,   # 步进记录不进 gold_trajectory(每回合一采样,shop 侧采)
-                extra={'formed_stop': bool(getattr(
-                    strategy_state_of(_sess), 'v3_formed_stop',
-                    False)),  # ADR-0343 豁免联动
-                    # P1 配方对平铺观测(P1 备战帧判读「终局线何时锁」的
-                    # 上游量;锁定产物/副方向取序见 p1_pair_label)
-                    'sess_p1_pair': schema.p1_pair_label(
-                        getattr(strategy_state_of(_sess), 'v3_intention', None))},
-            )
-        except Exception as e:  # noqa: BLE001  遥测失败不阻塞环
-            log.debug(f'[cw-director] telemetry skip: {e}')
+        """(已退役 no-op:步进 decisions 行随 decisions 流写入端删除——删除波 1。)
+
+        方法体保留空壳的原因:测试 harness(_cw_helpers.make_prep_round_
+        director)按桩面同源声明 monkeypatch 本方法,签名在场 = 桩面契约
+        不破;步进序列的现役证据 = journal 快照行(每帧自带全量 state)。
+        """
+        return
 
 
 def finalize_buy_phase(op: SrOperation, match, outcome,
@@ -2827,13 +2788,9 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
     if total_buy or total_level or total_refresh or total_sell:
         _spend = _spend_executed
         _final_gold = read_gold(op.ctx, op.screenshot())
-        # 金面收口:关店实读金无条件暂存(无论对拍是否冲突)——director
-        # 单元关闭落账时经 record_spend_unit 消费,填 spend_ledger 预留
-        # 字段 gold_close。此前只有 mismatch 才落冲突行,「对拍通过」与
-        # 「read_gold 失读」离线不可分(三态判定 unknown 面);失读(None)
-        # 照记(trusted=False),unknown 占比降到读失败率。分类器零改动。
-        from sr_od.application.currency_war.telemetry import state as _cw_tel
-        _cw_tel.set_unit_gold_close(_final_gold)
+        # (关店实读金暂存 set_unit_gold_close 已随 spend_ledger 流写入端
+        #  退役删除——删除波 1;金对拍冲突留证(下方 obs_conflict,收编
+        #  journal obs_event)照常。)
         # ADR-0329 件2:gold 差值对拍纳入卖入——卖出接线后,卖轮实际金 =
         # 开店金 − 花出 + 卖入(游戏侧卖出入账);旧口径不含卖入与实读金恒差
         # income → 每卖轮误报 gold_delta 冲突留证(design 章2.7 必改项)。
@@ -2848,20 +2805,10 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
                 verdict='留证-动作账vs读数不等(stylized漏读/cost错/未观收入)',
                 source='shop_spend_audit', plane=state.plane, round_num=state.round_num,
                 spend=_spend)
-    # `w577_refresh_fee_and_andon/`:「计划≠尝试」执行事实 → 单元账暂存(director 落账时经模块级
-    # record_spend_unit 消费进 spend_ledger;与 set_unit_gold_close 同槽
-    # 模式)。全缺省不调(免残留噪声);best-effort 不阻塞收工。
-    if _plan_truncated or _refresh_attempted \
-            or _refresh_skipped is not None:
-        with contextlib.suppress(Exception):
-            # 遥测模块显式别名(裸 state=GameState 变量,误绑会被
-            # suppress 吞成执行事实静默断流,同 free_refresh 留证段)
-            from sr_od.application.currency_war.telemetry import state as _cw_tel
-            _cw_tel.set_unit_exec_facts(
-                plan_truncated=_plan_truncated,
-                refresh_skipped=_refresh_skipped,
-                refresh_attempted=_refresh_attempted,
-                refresh_board_changed=_refresh_board_changed)
+    # (`w577_refresh_fee_and_andon/` 执行事实暂存 set_unit_exec_facts 已随
+    #  spend_ledger 流写入端退役删除——删除波 1;计划≠尝试可见化的现役
+    #  面 = receipts 发射行 extra(plan_truncated/refresh_skipped 结构化
+    #  在账,note_shop_action_receipt 写点)。)
     return (
         f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
         f'卖{total_sell}张(+{total_sell_income}金,守卫拦{outcome.total_sell_skip}) '

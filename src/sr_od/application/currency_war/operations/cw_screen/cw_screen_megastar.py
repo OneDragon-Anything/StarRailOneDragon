@@ -35,7 +35,6 @@ from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
-from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 
 
@@ -148,7 +147,6 @@ class CwScreenMegastar(CwScreenOpBase):
             options = read_megastar_options(self.ctx, screen)
             match = self.ctx.cw_match
             idx = 0
-            reason = 'default(no match/options)'
             if match is not None and options:
                 # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读;
                 # overlay 时用上次备战快照(语义同旧,值源切 BoardState)。
@@ -160,15 +158,11 @@ class CwScreenMegastar(CwScreenOpBase):
                 pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
                 if 0 <= pick.idx < len(options):
                     idx = pick.idx
-                reason = pick.reason
                 log.info(f'[cw-megastar] candidates={[o.char_id for o in options]} pick=idx{idx} {pick.reason}')
             else:
                 log.info(f'[cw-megastar] options={len(options)} match={match is not None} → default idx0')
-            # W312(遥测审计 G1):巨星候选面+选择落账本(此前只有结果回写
-            # session.chosen_megastar,候选与依据只 log)。
-            record_event_choice('megastar',
-                                [{'char_id': o.char_id} for o in options],
-                                idx, reason)
+            # (W312 巨星候选面存证行已随 exogenous 流写入端退役删除——删除波 1;
+            #  结果回写 session.chosen_megastar 照常。)
             # 候选坐标从 screen_info 读(task#103 化债,W265);缺失走历史实测兜底常量。
             candidate = ((area_center(self.ctx, '候选-左', '货币战争-盛会之星') or CwScreenMegastar.CANDIDATE_LEFT)
                          if idx == 0 else

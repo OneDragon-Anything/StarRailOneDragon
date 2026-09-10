@@ -2285,11 +2285,13 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     if _match is not None and _match.session is not None:
         state.active_strategies = list(_match.session.active_strategies)
         # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
-        # cw_screen_invest_strategy 落卡时暂存的「声明选中名」在此消费——写链
-        # 已先于暂存发生(handler 先 append session 再 record_invest_cards),
-        # 故本时点声明名应已在持卡列表;不在 = 写链断或选择落空 → 台账留证
-        #(中相关面,默认 L2;离线按复现分级)。消费即清,不串轮;无暂存
-        #(非投资轮)零开销。handler/策略决策零改动(纯旁路)。
+        # 「声明选中名」暂存槽在此消费——写链已先于暂存发生(handler 先
+        # append session 再暂存),故本时点声明名应已在持卡列表;不在 = 写链
+        # 断或选择落空 → 台账留证(中相关面,默认 L2;离线按复现分级)。
+        # 消费即清,不串轮;无暂存(非投资轮)零开销。handler/策略决策零
+        # 改动(纯旁路)。(注:暂存生产端已随 invest_cards 流写入端退役
+        # 删除——删除波 1;槽与消费面保留,候 strategy_
+        # offer 收编批重接生产端。)
         try:
             # 分包期 4:策略暂存槽迁 kernel/cw_observe、落账经 kernel/cw_telemetry_exit
             # 出口钩子位(零直依 telemetry)

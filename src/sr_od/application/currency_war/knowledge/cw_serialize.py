@@ -6,7 +6,7 @@
 
 为何归位 knowledge 而非留在 cw_intention:本节序列化的是**判读口径保真
 形状**——旧意向状态机(IntentionState,处死计划批 3 处死)删除后,历史
-遥测档案(实机 decisions.jsonl / sim P2 改写回写行)仍必须可读,序列化
+遥测档案(实机旧流决策行 / sim P2 改写回写行)仍必须可读,序列化
 形状随本模块存活,不随 IntentionState 类死。序列化用 dataclass 反射
 (``is_dataclass`` 鸭子类型),不 import 任何意向决策符号,依赖方向合法
 (知识层不依赖决策层,设计 01_strategy_layer.md §1)。

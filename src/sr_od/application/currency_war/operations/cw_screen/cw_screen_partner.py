@@ -38,7 +38,6 @@ from sr_od.application.currency_war.kernel.cw_events import PartnerOption
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
-from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 
 
@@ -219,11 +218,7 @@ class CwScreenPartner(CwScreenOpBase):
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0
                 reason = pick.reason
             log.info('[cw-partner] candidates=%s pick=idx%s %s', [o.char_id for o in options], idx, reason)
-            # 遥测:伙伴候选面+选择落账本(此前只有结果回写
-            # session.chosen_partner,候选与依据只 log)。
-            record_event_choice('partner',
-                                [{'char_id': o.char_id} for o in options],
-                                idx, reason)
+            # (伙伴候选面存证行已随 exogenous 流写入端退役删除——删除波 1。)
             # r358d(遥测接线):伙伴选择落 session(复盘维度;选中确认后写)。
             if match is not None and options and 0 <= idx < len(options):
                 match.session.chosen_partner = options[idx].char_id or ''

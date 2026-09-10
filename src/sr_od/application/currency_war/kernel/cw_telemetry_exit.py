@@ -3,11 +3,14 @@
 kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块的钩子位,
 三桶零直依 telemetry(分包目标矩阵 §3.2;单一测量源=scan_v3):
 
-- 落账出口:``record_defect`` / ``record_exogenous`` / ``bypass_obs_conflict_to_defect``
-  / ``record_exec_event``(decision 影子事件);
+- 落账出口:``record_defect`` / ``bypass_obs_conflict_to_defect``
+  (缺陷台账 = 保留专用流;exogenous/exec_events 旧流写入口已随退役删除——
+  ``record_exogenous`` 留 no-op 桩只护在飞挂起面调用方,见其注);
 - 安灯出口:``l0_andon_flag_path`` / ``write_l0_andon_flag``
   (游戏侧执行器 ``kernel.cw_observe.stop_for_l0_andon`` 消费);
-- run_id 归属键:``current_run_id`` provider(冲突行/结算行/影子文件名的局归属)。
+- run_id 归属键:``current_run_id`` provider(冲突行/结算行/影子文件名的局归属);
+- obs_event 收编制 provider:``obs_event_board``(观察冲突证据归宿 = 统一
+  state 账本行型 2;BoardState 单例供给由装配段注入,kernel 禁自寻会话)。
 
 注入纪律(与框架「副作用缺省关 + 启动点显式接通」一致):
 
@@ -46,29 +49,27 @@ DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK: str = 'blood_alarm_node_type_fallback'
 
 _run_id_provider: Callable[[], str] | None = None
 _record_defect: Callable[..., None] | None = None
-_record_exogenous: Callable[..., None] | None = None
 _bypass_obs_conflict_to_defect: Callable[[dict[str, Any]], None] | None = None
-_record_exec_event: Callable[..., None] | None = None
+_obs_event_board_provider: Callable[[], Any] | None = None
 _l0_andon_flag_path: Callable[[], Path] | None = None
 _write_l0_andon_flag: Callable[..., str] | None = None
 
 
 def install_exit_hooks(*, run_id_provider: Callable[[], str],
                        record_defect: Callable[..., None],
-                       record_exogenous: Callable[..., None],
                        bypass_obs_conflict_to_defect: Callable[[dict[str, Any]], None],
-                       record_exec_event: Callable[..., None],
                        l0_andon_flag_path: Callable[[], Path],
                        write_l0_andon_flag: Callable[..., str]) -> None:
-    """注入全部出口实现(显式逐槽,幂等;生产调用方=telemetry.install_exit_hooks)。"""
-    global _run_id_provider, _record_defect, _record_exogenous
-    global _bypass_obs_conflict_to_defect, _record_exec_event
+    """注入全部出口实现(显式逐槽,幂等;生产调用方=telemetry.install_exit_hooks)。
+
+    exogenous/exec_events 实现槽已随旧流写入端退役删除(删除波 1)——
+    两流的出口访问器或为 no-op 桩、或已移除,不再接受注入。"""
+    global _run_id_provider, _record_defect
+    global _bypass_obs_conflict_to_defect
     global _l0_andon_flag_path, _write_l0_andon_flag
     _run_id_provider = run_id_provider
     _record_defect = record_defect
-    _record_exogenous = record_exogenous
     _bypass_obs_conflict_to_defect = bypass_obs_conflict_to_defect
-    _record_exec_event = record_exec_event
     _l0_andon_flag_path = l0_andon_flag_path
     _write_l0_andon_flag = write_l0_andon_flag
 
@@ -104,30 +105,42 @@ def record_defect(surface: str, kind: str, expected: str, observed: str, *,
 def record_exogenous(round_num: int, kind: str, detail: str = '',
                      state: Any = None,
                      choice: dict[str, Any] | None = None) -> None:
-    """外生事件落账出口(简报行局间缓冲语义在 telemetry 真实现)。"""
-    fn = _record_exogenous
-    if fn is None:
-        return
-    fn(round_num, kind, detail, state, choice=choice)
+    """旧 exogenous 流出口(已退役 no-op 桩;删除波 1)。
+
+    保留原因:锚登记机制(未入库工作树文件,T-221 挂起面,本文件此前
+    是其唯一 kernel 侧上行出口)的调用方仍 import 本符号,其归宿候裁
+    (retirement.md §2 exogenous 行 §5-7 挂起)——候裁落地前本桩恒
+    no-op,既不断在飞调用方,也零旧流产出。候裁裁「路由退役」时随其
+    调用点整段删除,本桩同步消失。
+    """
+    return
 
 
 def bypass_obs_conflict_to_defect(rec: dict[str, Any]) -> None:
-    """obs_conflicts 行 → 缺陷台账旁路出口(口径映射在 telemetry 真实现)。"""
+    """观察冲突行 → 缺陷台账旁路出口(口径映射在 telemetry 真实现;
+    缺陷台账 = 保留专用流,本旁路照常供给,证据 refs 指冻结档案行)。"""
     fn = _bypass_obs_conflict_to_defect
     if fn is None:
         return
     fn(rec)
 
 
-def record_exec_event(run_id: str, round_num: int, action_family: str,
-                      screen: str, event: str, reason: str = '',
-                      retry_count: int = 0) -> None:
-    """执行事件落账出口(decision 影子事件;失败类旁路在 telemetry 真实现)。"""
-    fn = _record_exec_event
+def set_obs_event_board_provider(fn: Callable[[], Any] | None) -> None:
+    """注入/清除 obs_event 收编制 BoardState 供给槽(装配段显式接通;
+    None = 缺省关,观察冲突证据不进账本)。"""
+    global _obs_event_board_provider
+    _obs_event_board_provider = fn
+
+
+def obs_event_board() -> Any:
+    """现役 BoardState 单例供给(未注入/无会话 = None,调用方据此跳过)。"""
+    fn = _obs_event_board_provider
     if fn is None:
-        return
-    fn(run_id, round_num, action_family, screen, event,
-       reason=reason, retry_count=retry_count)
+        return None
+    try:
+        return fn()
+    except Exception:  # noqa: BLE001  供给 best-effort,不毒化观察链
+        return None
 
 
 def andon_exit_installed() -> bool:

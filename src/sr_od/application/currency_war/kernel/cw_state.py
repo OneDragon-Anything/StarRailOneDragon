@@ -45,8 +45,8 @@ XP_PER_BUY: int = 4
 XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
 XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
 
-# 刷新商店实付金 = 基价常量(建模值,非 OCR 读数)。出处:多局 decisions.jsonl
-# 相邻决策行金差对账(只含 LevelUp+Refresh 的最小对账对)全部 = 2,不随金币/
+# 刷新商店实付金 = 基价常量(建模值,非 OCR 读数)。出处:多局旧决策行
+# 相邻金差对账(只含 LevelUp+Refresh 的最小对账对)全部 = 2,不随金币/
 # 次数/等级变;invest_effects.md「刷新 45% 概率免费 → 期望刷价 1.1」隐含基价
 # 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
 # (数值 = min(gold//10,5) = 利息公式,非刷价;三流对拍定谳,ADR-0456)——

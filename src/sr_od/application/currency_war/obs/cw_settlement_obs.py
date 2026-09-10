@@ -437,8 +437,8 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
 
     ✅ 已接线(2026-08-07 起):CwScreenBattleWait._record_round_outcome 每轮胜结算屏调用 →
-    结算观察半直写(_write_settlement_observation,ADR-0583)→ performance.record +
-    telemetry.record_outcome(2026-08-16 补)。
+    结算观察半直写(_write_settlement_observation,ADR-0583)→ performance.record
+    (outcomes 流行写入已随删除波 1 退役,观察半不受影响)。
     """
     from sr_od.application.currency_war.kernel.cw_performance import RoundOutcome
     _items = ctx.ocr_service.get_ocr_result_list(

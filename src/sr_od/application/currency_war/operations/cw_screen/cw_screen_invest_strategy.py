@@ -59,7 +59,6 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
     emit_overlay_confirm,
     safe_click,
 )
-from sr_od.application.currency_war.telemetry import recorder, schema
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -360,26 +359,14 @@ class CwScreenInvestStrategy(SrOperation):
         #(本文件尾块;ADR-0598 幻影卡收口)——旧时序 append 先于点卡确认,
         # 确认失败轮(session.active_strategies 是息帽 resolved 链的输入源)
         # 留下幻影卡:幻影买断制 = 息线全关,比幻影 9/10 更烈。
-        # ADR-0132 采集:候选全集 + 效果原文(描述带 y 505-835,排除卡名行/确认/刷新次数 UI)按卡分桶
-        # → invest_cards.jsonl;未注册名告警(注册表只 T0 子集,315 长尾靠采集渐进补全)。
-        # G10(ADR-0600 §3.3):发生刷新时 opts/_ocr_map 已指向刷后重读帧 → 本采集
-        # = 刷后集合(chosen 按最终集合)——「版本感知额外收益」与 F6 事后再核对
-        # 账锚两个申报的载体。**采集 = 实际所见帧**:多槽复合路径(前槽已采纳
-        # +后槽读缺停链)下 _ocr_map 回退首帧而 opts/names 保持上一已采纳刷后
-        # 帧,此时 effect_text 桶可能保留前帧描述、卡名恒准——遥测面混合口径,
-        # 申报接受(落地审 F-B,ADR-0600 §4),不扩代码。
-        _items = [(t, m.max.center.x, m.max.center.y)
-                  for t, m in (self._ocr_map or {}).items() if m.max is not None]
-        _anchors = [(i, x) for i, (_n, x, _y) in enumerate(opts)]
-        _buckets = schema.bucket_card_texts(_anchors, _items,
-                                                  CwScreenInvestStrategy.NAME_CY_HI, 835)
-        _cards = [{"idx": i, "name": n, "x": x,
-                   "effect_text": " | ".join(_buckets.get(i, [])), "chosen": n == chosen}
-                  for i, (n, x, _y) in enumerate(opts)]
-        recorder.record_invest_cards("strategy", _cards)
-        for _c in _cards:
-            if _c["name"] not in ('?',) and get_strategy(_c["name"]) is None:
-                log.warning(f'[cw-strat] 投资策略名不在注册表(数据缺口,效果原文已采集): {_c["name"]!r}')
+        # ADR-0132 采集(候选卡面+效果原文按卡分桶)已随 invest_cards 流写入端
+        # 退役删除(删除波 1;效果原文回流断供为裁定的接受后果,收编归宿 =
+        # strategy_offer 画面 payload 域,候其落地批接线);未注册名告警
+        # (注册表只 T0 子集)保留,数据源 = 当前确认轮候选名。
+        for _c in (opts or []):
+            _n = _c[0] if isinstance(_c, tuple) else _c
+            if _n not in ('?',) and get_strategy(_n) is None:
+                log.warning(f'[cw-strat] 投资策略名不在注册表(数据缺口): {_n!r}')
 
         # 点最优卡的**卡名**选中(Y 从 screen_info「区域-卡名行」center 读;缺失兜底 CARD_CLICK_Y=474)。
         # safe_click 带 bug#1 mouse_move 缓解(partner reset 根因同类)。

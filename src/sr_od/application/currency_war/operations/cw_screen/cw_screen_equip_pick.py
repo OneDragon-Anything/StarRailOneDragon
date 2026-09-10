@@ -22,8 +22,8 @@ handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路�
 消费 ``_observation_port()`` 位):handle 体纯移入 ``_handle_overlay``
 (两路径共享零转录);**本屏无 op 内入口门**(入口判定归主循环 0 系分发
 双 id_mark,observe 段 = 轻观察帧引用);本屏无 on_outcome 落地登记件
-(§6.4 收编面无事件屏 chosen 行;equip_pick 无 chosen_* 写端,选择落遥测
-record_event_choice)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面
+(§6.4 收编面无事件屏 chosen 行;equip_pick 无 chosen_* 写端,选择存证行已
+随删除波 1 退役)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面
 段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁(本批锁
 test_cw_obs_arch_event_screens_step3)。
 """
@@ -39,7 +39,6 @@ from sr_od.application.currency_war.cw_game_ports import action_sink, observatio
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
-from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 
 
@@ -161,9 +160,7 @@ class CwScreenEquipPick(CwScreenOpBase):
         target = Point(self.CARD_XS[best_i], self.CARD_Y)
         log.info('[cw-equip-pick] 装备选择:卡=%s → 选卡%d(%s)',
                  [t[:10] for t in texts], best_i + 1, texts[best_i][:16] or 'OCR空')
-        # 遥测:三选一卡名+选择落账本(此前只 log)。
-        record_event_choice('equip_pick', texts, best_i,
-                            reason=f'key_equips/text_rule(best_score={best_s})')
+        # (event_choice 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target)
         time.sleep(1.2)

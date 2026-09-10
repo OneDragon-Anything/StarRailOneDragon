@@ -33,7 +33,6 @@ from sr_od.application.currency_war.obs.cw_briefing_obs import (
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     BRIEFING_SETTLE_S,
 )
-from sr_od.application.currency_war.telemetry import recorder as cw_telemetry
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -108,14 +107,8 @@ class CwScreenBriefing(SrOperation):
                 _session.enemy_difficulty = _diff
                 log.info('简报敌人难度读得(写 session): %s', _diff)
 
-        # 遥测存证(W518):开局简报三读数落 exogenous(kind='briefing',轮次 0 =
-        # 简报在 loop 前;口径对齐原 cw_loop 位面简报分支/HandleBriefing 先例)。
-        with contextlib.suppress(Exception):   # 遥测 best-effort
-            cw_telemetry.record_exogenous(
-                0, 'briefing',
-                detail=f'affixes={getattr(_session, "briefing_affixes", None)}'
-                       f' bosses={getattr(_session, "briefing_bosses", None)}'
-                       f' difficulty={getattr(_session, "enemy_difficulty", None)}')
+        # (开局简报三读数 exogenous 存证行已随 exogenous 流写入端退役删除
+        #  ——删除波 1;三读数 session 直写照常,判读面经 journal 开局域。)
 
         # ③ 点「下一步」离开简报(下一画面由上层编排/入口链调度)。
         _click = self.round_by_find_and_click_area(

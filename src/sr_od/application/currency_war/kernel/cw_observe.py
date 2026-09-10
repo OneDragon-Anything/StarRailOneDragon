@@ -140,12 +140,16 @@ def current_obs_phase() -> str | None:
 # 观察冲突证据链(用户 2026-08-16 指示):新旧观察冲突时持久化结构化证据,供后续调研
 # (M38 教训:lv4 毒化 3 个位面才被发现,中途无数 [cw!] 日志没人看 —— 冲突要进专属文件+截图,
 # 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
-_CONFLICT_JOURNAL = LIVE_DIR / 'obs_conflicts.jsonl'
+# 删除波 1(用户 2026-09-10 直迁裁定):独立证据文件的写入端退役,证据归宿
+# = 统一 state 账本行型 2(obs_event,BoardState
+# .note_obs_event;同流占版本内嵌当时 state),行结构/截图节流/告警门语义
+# 原样收编(retirement.md §2 obs_conflicts 行)。存档只读:历史冲突行仍可
+# 经判读 CLI 旧视图读(不迁移)。
 
 #: 冲突截图节流窗(秒):同 (field, verdict) 在窗内只存一张截图。
 #: 实证积压 18.8GB 的根因 —— 慢性状态冲突(deployed_align「补齐」每帧触发,board
 #: count 不等、level 乒乓)画面微变(gold 计数/动画帧)→ 内容哈希必新 → 每帧存 1.7MB。
-#: 慢性态一例截图即代表该态,罕见类(新 verdict)不受影响照存;JSONL 证据行不受节流
+#: 慢性态一例截图即代表该态,罕见类(新 verdict)不受影响照存;证据行不受节流
 #: (200B/行,统计价值保留)。300s = 每态每小时最多 ~12 张。
 _CONFLICT_SHOT_THROTTLE_S: float = 300.0
 _conflict_shot_ts: dict[tuple[str, str], float] = {}
@@ -160,7 +164,7 @@ GOLD_DELTA_ALARM_GAP: int = 10
 
 def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                  verdict: str = '', **ctx) -> None:
-    """观察冲突 hook:追加 JSONL 证据行 + 去重截图。best-effort,失败不抛不阻塞。
+    """观察冲突 hook:证据行进统一 state 账本(obs_event)+ 去重截图。best-effort,失败不抛不阻塞。
 
     :param field: 冲突字段(level/gold/hp/board...)
     :param old: 上次观察值(session 持久)
@@ -171,7 +175,6 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
     :param ctx: 附加上下文(plane/round/source/note...)
     """
     import datetime
-    import json as _json
     import time as _time
     try:
         shot = None
@@ -193,9 +196,24 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
             rec['run_id'] = _rid
         if shot:
             rec['shot'] = shot
-        _CONFLICT_JOURNAL.parent.mkdir(parents=True, exist_ok=True)
-        with _CONFLICT_JOURNAL.open('a', encoding='utf-8') as f:
-            f.write(_json.dumps(rec, ensure_ascii=False) + '\n')
+        # 证据归宿 = 账本行型 2(obs_event;占版本内嵌当时 state)。供给槽
+        # 缺省关(未装配/无会话)= 行不落——与账本自身「无 sink 拒写」语义
+        # 一致;旁路缺陷台账行不受此门照常供给。渠道签名(§3.2.1 ①类属):
+        # actor = 本仲裁汇点,行内身份可对账(签名必填纪律 R5 W1,ADR-0634)。
+        _bs = cw_telemetry_exit.obs_event_board()
+        if _bs is not None:
+            with contextlib.suppress(Exception):
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    ChannelSig,
+                )
+                _bs.note_obs_event(
+                    'arbitrate', str(field),
+                    {'old': old, 'new': new, **ctx},
+                    verdict=str(verdict or ''),
+                    obs_phase=str(_OBS_PHASE or ''),
+                    sig=ChannelSig(family='obs', actor='obs_conflict',
+                                   mode='read'),
+                    evidence_refs=([{'shot': str(shot)}] if shot else []))
         cw_log('obs', 'conflict', field, attn=True, old=old, new=new,
                verdict=verdict, shot=shot)
         # gold_delta 分级消费(审计建议,用户裁决落地):|gap|>10 升级为
@@ -211,8 +229,8 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                 _log.warning('[cw!][alarm][gold_delta] gap=%s old=%s new=%s '
                              'verdict=%s %s', _gap, old, new, verdict, ctx)
         # 统一缺陷台账旁路(纯观测):同一冲突归一落 defect_ledger.jsonl
-        #(本流=原始证据层保持原样,台账行经 refs 指回本行,不复制数据;
-        # 调用方零改动)。外层 try/except 已兜底,旁路失败不影响本流落盘。
+        #(缺陷台账 = 保留专用流;台账行 refs 指冻结档案冲突行,不复制数据;
+        # 调用方零改动)。外层 try/except 已兜底,旁路失败不影响证据行。
         # 落账经 kernel/cw_telemetry_exit 钩子位(缺省关,生产在
         # CurrencyWarApp.__init__ 注入真实现)。
         cw_telemetry_exit.bypass_obs_conflict_to_defect(rec)
@@ -299,10 +317,11 @@ def stop_for_l0_andon(payload: dict, ctx=None) -> bool:
         return False
 
 
-# ===== 策略激活对拍暂存槽(生产者=telemetry.record_invest_cards('strategy')
-# (telemetry→kernel 合法向),
-# 消费者=obs.cw_observation 构建 state 读 session.active_strategies 处
-# (obs→kernel 合法向)——槽模式与 _OBS_PHASE 同族:生产→消费紧邻、消费即清)=====
+# ===== 策略激活对拍暂存槽(消费者=obs.cw_observation 构建 state 读
+# session.active_strategies 处(obs→kernel 合法向)——槽模式与 _OBS_PHASE
+# 同族:生产→消费紧邻、消费即清。原生产者(投资策略卡采集遥测)已随
+# invest_cards 流写入端退役删除(删除波 1);槽与消费
+# 面保留,候 strategy_offer 收编批重接生产端)=====
 _PENDING_STRATEGY_PICK: str | None = None
 
 

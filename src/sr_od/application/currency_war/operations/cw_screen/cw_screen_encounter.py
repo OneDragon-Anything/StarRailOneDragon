@@ -67,7 +67,6 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base impor
     ActionOutcome,
     CwScreenOpBase,
 )
-from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
 
 if TYPE_CHECKING:
@@ -203,8 +202,8 @@ class CwScreenEncounter(CwScreenOpBase):
                        options: list[EncounterOption], idx: int) -> None:
         """选卡落地记录面:出口验真通过后写 ``chosen_encounter``(设计
         边界注:值取本轮决策所用候选——刷后重读成功=刷后帧,读缺=原帧,
-        与选卡决策同帧同源——同型既有遥测 record_event_choice,低概率
-        残旧接受
+        与选卡决策同帧同源(旧 event_choice 遥测存证已随删除波 1 退役),
+        低概率残旧接受
         §3.4.5 单选事件屏 chosen_* 写端;单次逻辑写入,§3.4 申报豁免)。
 
         守卫口径=事实落地选择记录(区别于 tome 的决策不可判不写式;先例结构沿用 CwScreenBookcard):候选未读到 / 无策略
@@ -313,12 +312,7 @@ class CwScreenEncounter(CwScreenOpBase):
             reason = f'{reason}+分支刷新'
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
                  f'pick=idx{idx} refreshed={refreshed} {reason}')
-        # 遥测:选项选择落账本(exogenous kind='event_choice')。
-        # 此前只 log——「选了其几/两卡奖励/reason」跨局归因在遥测上断链。
-        record_event_choice('encounter',
-                            [{'difficulty': o.difficulty, 'rewards': o.rewards}
-                             for o in options],
-                            idx, reason)
+        # (event_choice 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 动作执行(点卡选中 → 确认机械交回)经分派面(试点步骤 2;先例 =
         # CwScreenPrep 旧路径同经 _act_execute:注册表触发点唯一 + 未来
         # 落地型登记件两路径同享)。chosen 写端 = 确认发出后置 pending,
@@ -436,12 +430,7 @@ class CwScreenEncounter(CwScreenOpBase):
             reason = f'{reason}+分支刷新'
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
                  f'pick=idx{idx} refreshed={refreshed} {reason}')
-        # 遥测:选项选择落账本(exogenous kind='event_choice')。
-        # 此前只 log——「选了其几/两卡奖励/reason」跨局归因在遥测上断链。
-        record_event_choice('encounter',
-                            [{'difficulty': o.difficulty, 'rewards': o.rewards}
-                             for o in options],
-                            idx, reason)
+        # (event_choice 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # —— 段4 act(分派面;验关锚 = 适配器落地回执载体,§6.2)+
         #      段5 on_outcome(注册表回执点)
         self._lifecycle_mark('act')

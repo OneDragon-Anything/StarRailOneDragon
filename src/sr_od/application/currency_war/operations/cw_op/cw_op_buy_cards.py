@@ -17,7 +17,6 @@ from sr_od.application.currency_war.cw_game_ports import (
     observation_source,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
     SHOP_SCREEN_NAME,
@@ -51,7 +50,7 @@ from sr_od.application.currency_war.obs.cw_observation import (
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
-from sr_od.application.currency_war.telemetry import defects, recorder
+from sr_od.application.currency_war.telemetry import defects
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -825,13 +824,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             reconcile_expected(match.session, 'shop_wave_top', _act)
         except Exception as _e:  # noqa: BLE001  观测面不阻塞循环
             log.debug(f'[cw-shop] expected reconcile skip: {_e}')
-        # r97 供给快照(进店首见):全段牌面真值源之一(含 refresh 段)。
-        recorder.record_shop_snapshot('offer', state.shop, state.gold,
-                                      state.plane, state.round_num)
-        # A2:target 由策略器状态管理(方向刷新写,ADR-0583 内化)。日志/遥测披露值构造
-        # = 披露面,经访问函数防御 getattr(strategy_state_of None 契约,
-        # ADR-0563 B4 划分线:异型状态对象字段缺席退缺省,缺席语义 = 迁移前
-        # None 缺省字段的 '?'/''/-1.0,非行为面读点)
+        # (r97 供给快照行已随 shop_snapshots 流写入端退役删除——删除波 1;
+        #  牌面真值现役归宿 = journal 快照行自带 shop 域。)
+        # A2:target 由策略器状态管理(方向刷新写,ADR-0583 内化)。
         _tc = getattr(strategy_state_of(match.session), 'target_comp', None)
         target_name = _tc.name if _tc is not None else ''
         _fp_v = _form_progress(_tc, state) if _tc is not None else -1.0
@@ -843,68 +838,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                  f'plane={state.plane} round={state.round_num} node={_node} '
                  f'next={_next} board={state.board} '
                  f'target={target_name!r} fp={_fp_v:.2f} bench={bench_occupied(state.bench)}')
-        # 本读取只进 record_decision 落盘(ADR-0579),禁转决策分支。
-        _cand = dict(getattr(strategy_state_of(match.session), '_telemetry_last_candidate_scores', {}) or {})
-        if getattr(strategy_state_of(match.session), '_telemetry_last_candidate_scores_round', None) != state.round_num:
-            _cand = {}   # r3 review②:非本轮回合的分数是陈旧值 → 清空防 close_call 污染
-        # r73 RC6:fp 落遥测(披露面防御 getattr,同上 B4 划分线)
-        _eb: dict[str, float] = {}
-        if _tc is not None:
-            _eb['fp'] = round(_form_progress(_tc, state), 3)
-        # r101 session 态快照(redesign/102:完整决策输入落盘,回放/快照回归用)
-        _sess = match.session
-        # v2 相位披露值(披露面防御 getattr,同上 B4 划分线)
-        _v2_state = getattr(strategy_state_of(_sess), 'v2_state', None)
-        _extra = {
-            'sess_framework': getattr(strategy_state_of(_sess), 'transition_framework', '') or '',
-            'sess_dual_track': not committed_from(_sess),   # R1 唯一读端
-            'sess_drought': getattr(strategy_state_of(_sess), 'target_drought', None),
-            'sess_commit_scores': dict(getattr(getattr(strategy_state_of(_sess), 'commit_signals', None), 'scores', {}) or {}),
-            'sess_active_env': getattr(_sess, 'active_env', '') or '',
-            # ADR-0343:成型停手态(层2 写;检查器豁免/判读锚点)
-            'formed_stop': bool(getattr(strategy_state_of(_sess), 'v3_formed_stop', False)),
-            # ADR-0346 相位影子观测(零消费;每轮 decide_prep 入口算,session 写,此处只透传)
-            'phase': getattr(strategy_state_of(_sess), 'v3_phase', '') or '',
-            'form_ok': bool(getattr(strategy_state_of(_sess), 'v3_form_ok', False)),
-            # B_t 板面目标线承重计数(form_score 替代披露口径;写者单一源 =
-            # write_shop_mirrors,历史 form_score 只读退役)
-            'b_t': int(getattr(strategy_state_of(_sess), 'v3_b_t', 0) or 0),
-            # ADR-0347 授权依据 trace:当轮 DP 日志表姿态
-            'dp_posture': str(getattr(getattr(
-                getattr(strategy_state_of(_sess), 'v3_dp_posture', None),
-                'posture', None), 'tag', '') or ''),
-            # ADR-0348 ↺:扑满节点识别遥测
-            'piggy_reward': bool(getattr(strategy_state_of(_sess), 'v3_piggy_reward', False)),
-            # r226 策略 v2 遥测字段(ADR-0336 后 LineStrategy 已删:恒空,保留兼容)
-            'strategy_id': getattr(config, 'strategy_id', 'mandate_v1'),
-            # 臂位遥测(IMPL_DESIGN §4.1 R1-1;§6.4-R 步4)
-            'ev_arm': (getattr(config, 'ev_arm', '')
-                       if getattr(config, 'strategy_id', '') == 'mandate_v1'
-                       else ''),
-            'v2_mode': (_v2_state[0] if _v2_state else ''),
-            'v2_locked_line': getattr(strategy_state_of(_sess), 'locked_line', None) or '',
-            'v2_bridge': getattr(strategy_state_of(_sess), 'bridge_id', None) or '',
-            # w146 v3 意向状态落遥测(锁定时点/目标只有这里可读)
-            'v3_intention': serialize_intention(
-                getattr(strategy_state_of(_sess), 'v3_intention', None)),
-            # `w224_handoff/`/ADR-0399:P2 承接快照(纯观测透传)
-            'handoff': (getattr(strategy_state_of(_sess), 'v3_handoff', None).as_dict()
-                        if getattr(strategy_state_of(_sess), 'v3_handoff', None)
-                        is not None else None),
-        }
-        # 统一state R4返工(方案 A 钉读点):段入口观察完成时点捕获账本
-        # 版本——观察帧已发布(shop_state_frame)、预算披露/期望态对账已过、
-        # 尚未执行任何动作,即「决策开始依据该 state 版本计算」的此刻。
-        # 段内动作回执(note_shop_action_receipt)会逐条推进版本,本值随行
-        # 传入段尾 record_decision 落钉,钉值不漂移到落盘时点(ADR-0630:
-        # 决策行钉版本 ≤ 其动作的落地行版本)。读口读不写不占版本;
-        # 读取失败 → None = recorder 入口现读缺省(诚实缺省)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
-            board_state_of as _bso_seg,
-        )
-        _seg_pin_version: int | None = None
-        with contextlib.suppress(Exception):   # 观测 best-effort,不阻塞循环
-            _seg_pin_version = int(_bso_seg(match.session).current_version())
+        # (决策行披露值构造块 _cand/_eb/_extra 与统一 state 段入口版本钉
+        #  _seg_pin_version 已随 decisions 流写入端退役删除——删除波 1;
+        #  日志披露行(上方)保留。)
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----
         # 播种期对账(守卫两属消息分离的判定序):首动作前先对一次账,
         # 分叉在此出现 = 归「播种/入口账分叉」;此后投影后出现的分叉才归
@@ -926,39 +862,26 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             with contextlib.suppress(Exception):
                 _adv_seq()
             if _seg_frames > SHOP_SEGMENT_ACTION_CAP:
-                # 防御帧帽(对抗发现:决策循环不收敛的响亮暴露——占位
-                # decisions 行带分键计数 + 完整栈,再上抛;禁静默续跑/
+                # 防御帧帽(对抗发现:决策循环不收敛的响亮暴露——禁静默续跑/
                 # 禁吞异常续跑。收敛根因修复在决策侧席位门,本帽 = 执行
                 # 侧最后防线,与 prep 线 VISIT_ACTION_CAP 同构但更严:
                 # 商店段动作单价高(买/卖不可逆),超帽不交回外循环重试)。
-                from sr_od.application.currency_war.telemetry.recorder import (
-                    record_decision as _rd_cap,
-                )
                 _st_cap = match.session.shop_state_frame
                 _msg = (f'[cw!][plan] 决策循环帧数超帽'
                         f'({SHOP_SEGMENT_ACTION_CAP}),疑投影/策略器不收敛'
                         f'(末态 gold={_st_cap.gold} '
                         f'bench={bench_occupied(_st_cap.bench)})')
                 log.error('%s', _msg)
-                with contextlib.suppress(Exception):
-                    _rd_cap(_st_cap, target_name, {},
-                            {'plan_visit_action_cap': 1.0}, [])
                 raise RuntimeError(_msg)
-            # r95 审计必修②:决策异常也要留证(占位 decisions 行 + 完整栈
-            # 到 log,再向上抛,行为不变)。
+            # r95 审计必修②:决策异常留证(完整栈到 log,再向上抛,行为不变)。
             try:
                 action = match.strategy.decide_shop_action(match.session,
                                                            config)
             except Exception:
                 import traceback
 
-                from sr_od.application.currency_war.telemetry.recorder import (
-                    record_decision as _rd_err,
-                )
                 _tb = traceback.format_exc()
                 log.error('[cw!][plan] decide_shop_action 异常(留证后上抛):\n%s', _tb)
-                with contextlib.suppress(Exception):
-                    _rd_err(state, target_name, {}, {'plan_error': 1.0, 'plan_error_len': float(len(_tb))}, [])
                 raise
             if isinstance(action, CloseShop):
                 # 恒可用终结:本段收工(关店由编排壳承担)。CloseShopOp.execute
@@ -1043,18 +966,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 break
         log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
                  f'plan={[_fmt_action(a) for a in visit_actions]}')
-        # decisions 行(段粒度 = 旧波行同框架;actions = 本段执行累计,
-        # CloseShop 终结不入行——与旧「空序列=完成」的行形态对齐;单动作
-        # 下不存在「截断丢弃尾」,plan_truncated 仅由刷新硬墙置位)。
-        # 粒度申报(终结 op 语义 review 修复批):刷新 = 终结 op 执行后本段
-        # 即 break ⇒ 每次刷新独立成段 = 每刷一行 decisions;刷新不再与后继
-        # 动作共行。消费端(安灯/判读)按 type 计数,行数变多不改单行语义。
-        # ⚠️ equips 拷贝必须在决策之后(cw_comps 装备动态权重读
-        # state.equips,提前拷=改决策行为,w222 遥测缺口①)。
+        # (段尾 decisions 行已随 decisions 流写入端退役删除——删除波 1。)
+        # ⚠️ equips 拷贝必须在决策循环之后(cw_comps 装备动态权重读
+        # state.equips,提前拷=改决策行为,w222 遥测缺口①;原「决策之后」
+        # 的时序锚 = 段尾 decisions 行,行退役后时序约束不变,落在段循环
+        # 收尾处)。
         state.equips = list(getattr(match.session, 'last_owned_equips', []) or [])
-        recorder.record_decision(state, target_name, _cand, _eb,
-                                 visit_actions, extra=_extra,
-                                 state_ref_version=_seg_pin_version)
         # 连击续刷判定输入:本段是否「仅刷新且真点击」。
         _prev_refresh_only = bool(
             ledger.did_refresh and refresh_wave_is_refresh_only(visit_actions))

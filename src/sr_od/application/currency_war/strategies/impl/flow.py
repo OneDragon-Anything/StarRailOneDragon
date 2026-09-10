@@ -59,10 +59,7 @@ from sr_od.application.currency_war.kernel.cw_evolution import (
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
-    _v2_comps,
-    _visible_chars,
     hoard_target_set,
-    line_completion_feasibility,
     p1_early_pair,
     pair_target_comp,
     update_intention,
@@ -489,22 +486,10 @@ class CwFlowStrategy(CwStrategy):
             # 见 bump_lock_gen_feasibility_obs docstring)——随状态机贵段
             # 同频,每 game-round 恰一次。
             bump_lock_gen_feasibility_obs(session, state, ist, _lg_pre_event)
-            # 遥测供数(ADR-0579):候选线评分表落盘——选线时点的判断依据
-            # (轮入口快照,非店开时刻值;_telemetry_ 前缀 = 披露面自带隔离,
-            # 禁决策消费,守卫 = 全仓命中点计数锁)。纯遥测增量:唯一读点
-            # 只进 record_decision(深度复盘候选评分可见性,诊断.md §6)。
-            # (ADR-0583 §5.5-戊:本段与状态机同键面、同吃帧 state 的 hp——
-            # 候选评分遥测列随驱动输入门同步移门,误读轮的分值差属申报面
-            # 判读差异,非漂移。)
-            _vis = _visible_chars(state)
-            _ms._telemetry_last_candidate_scores = {
-                c.name: round(line_completion_feasibility(
-                    state, c, session, self.registry, _vis), 4)
-                for c in _v2_comps()
-                if c.name not in ist.evicted
-                and state.plane not in (c.weak_planes or ())
-            }
-            _ms._telemetry_last_candidate_scores_round = state.round_num
+            # (候选线评分遥测供数写入块已随 decisions 流写入端退役删除——
+            #  删除波 1:唯一读点 = 店内决策行的
+            #  披露值构造,行停写后供数失去消费方;session 字段载体在
+            #  mandate_state(禁碰面)留待其归属批清理。)
             # (P1→P2 接口机制·①锁线 v2 后处理已随五开关定谳清理删除,
             # ADR-0487:W793 A/B 触发面全开火仍主判据双败。[23] 锚经
             # update_intention 信号驱动锁线,不受影响。)

@@ -7,8 +7,9 @@
 判读时以本帧为 ground truth 对拍结构化行,而不是拿截图重新决策。
 
 背景(P35 局复盘缺口):复盘遇「OCR 文本与牌面解析对不上」时无画面
-实锤。本钩子在识别完成点无条件留原始帧,文件名 ts 与 decisions.jsonl
-行 ts(秒级)+ run_id 对齐还原归属。
+实锤。本钩子在识别完成点无条件留原始帧,文件名 ts 与旧流决策行行 ts
+(秒级)对齐还原归属(行写入已随删除波 1 退役;帧留证钩子保留——
+识别仲裁基准与账本形态无关)。
 
 挂点(4 类,均为识别完成点的原始帧):
 1. 商店入口观察帧(run_buy_waves 每段循环入口观察刚完成时,每段一帧;
@@ -107,7 +108,7 @@ def save_decision_frame(op: Operation, tag: str,
         用 op.screenshot() 截新帧——挂点已有帧时显式传入,避免二次截图错帧)
     :param tag: 挂点名(如 shop_entry/deploy/overlay_partner),同 tag 滚动治理
     :param screen: 当前游戏截图(RGB);None 时 op.screenshot() 现截
-    :return: 落盘文件名(与 decisions.jsonl 行 ts 秒级可对齐);None=跳过/失败
+    :return: 落盘文件名(与旧流决策行行 ts 秒级同源,ts 面语义不变);None=跳过/失败
 
     假环境改形(T-120 方案 §2.3 契约三则「留证面改形」):观察源端口
     在场(假环境)时,「识别完成点原始帧」不存在语义(无读图)——留证

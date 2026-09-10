@@ -1,7 +1,6 @@
 import json
 import time
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any, ClassVar
 
 from one_dragon.base.operation.operation_base import OperationResult as _OperationResult
@@ -18,9 +17,6 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 # 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
 # `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-from sr_od.application.currency_war.kernel.cw_performance import (
-    RoundOutcome,
-)
 from sr_od.application.currency_war.kernel.cw_state import MatchOutcome
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import (
@@ -126,7 +122,7 @@ from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
-from sr_od.application.currency_war.telemetry import query, recorder, state
+from sr_od.application.currency_war.telemetry import state
 from sr_od.application.currency_war.telemetry.op_journal import (
     record_op_enter,
     record_op_exit,
@@ -341,38 +337,6 @@ def write_no_progress_flag(count: int, sig: tuple, shot: str,
         f'   加 handler;已建档 → 查该动作执行链为何零变换;\n'
         f'2. 处理完删本 flag + 重启 MCP server。\n'
         f'shot={shot}', encoding='utf-8')
-    return str(p)
-
-
-def strategy_dead_flag_path():
-    """策略失活早停 flag 落点(与 prep_no_progress.flag 同目录族)。"""
-    return (get_project_root() / '.debug' / 'temp' / 'currency_war'
-            / 'strategy_dead_early_stop.flag')
-
-
-def write_strategy_dead_flag(streak: int, key: tuple | None, run_id: str,
-                             shot: str, path=None) -> str:
-    """策略失活早停存证 flag(od-dev-stop-hooks 三要素:触发定位/处理步骤/
-    删除条件,接管者不看代码即知发生了什么;测试传 tmp_path)。"""
-    p = path if path is not None else strategy_dead_flag_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    _pos = f'P{key[0]}-r{key[1]}' if key else '未知轮'
-    p.write_text(
-        '[HOOK-STOP] 策略失活早停(连续 2 个完整轮零策略心跳决策行;'
-        'ADR-0342/dd-031)\n'
-        '发生了什么:备战入口结算上一完整轮,decisions 连续 2 轮无任何'
-        '策略心跳行(sid 行或载体行)→ 判「外环停转」(继续跑=零信息量局),'
-        '停机保现场供重启加载策略。\n'
-        f'定位:run={run_id} 最后一轮={_pos} streak={streak} '
-        f'ts={time.strftime("%m-%d %H:%M:%S")} 截图={shot}\n'
-        '处理步骤:\n'
-        '1. 读 decisions.jsonl 对应轮确认确为零心跳——注意恢复局直出战与'
-        '补给节点两类合法流程轮已有载体/标记行(策略失活判据修复批),'
-        '若停机轮恰是这两类,先查载体行登记是否失效再判策略死;\n'
-        '2. 修复或重启载入策略代码;\n'
-        '3. 删除本 flag 后续跑。\n'
-        '删除条件:处理完即删,防误判为新停线;钩子本体常驻。\n',
-        encoding='utf-8')
     return str(p)
 
 
@@ -833,48 +797,6 @@ def _invest_overlay_dispatch(op, screen):
     return False, screen
 
 
-def register_flow_heartbeat(ctx, kind: str) -> None:
-    """流程性合法无声轮的心跳载体行(策略失活判据修复;恢复局锁定直出战
-    与补给节点两类分支按设计不产生任何策略决策行,整轮零心跳会被失活
-    连击误判「外环停转」——诊断档案「第五次停机」节定谳=误杀)。
-
-    本函数在该类分支消费一轮时显式登记一条 decisions 可见的心跳行,使
-    「外环在别的分支干活」不再被计零心跳,离线复盘亦可辨:
-    - locked_resume_direct_battle:真实执行的 StartBattle 载体行
-      (sid='',actions 非空——与 mandate 跳开店健康轮同构);
-    - supply_node_divert:补给节点流程 sid 标记行(actions 空,
-      strategy_id='cw:flow:supply_node_divert',自描述非店内决策)。
-    best-effort:遥测关闭 / last_state 缺席时静默跳过(与 record_exogenous
-    写入点同噪声口径,不阻塞游戏流)。
-    """
-    try:
-        _state = getattr(getattr(getattr(ctx, 'cw_match', None),
-                                 'session', None), 'last_state', None)
-        # recorder 单一源 = telemetry state 模块单例(与写入端同源);GameState
-        # 无 get_recorder——旧实现 `_state.get_recorder()` 恒 AttributeError
-        # 被下方 best-effort 吞掉 = 三类流程心跳(锁定直出战/补给/收益耗尽
-        # 出战)登记从未生效(局33 复盘定谳,机械面接线修复)。
-        if _state is None or not state.get_recorder().enabled:
-            return
-        if kind == 'locked_resume_direct_battle':
-            from sr_od.application.currency_war.kernel.cw_prep_actions import (
-                StartBattle,
-            )
-            actions: list = [StartBattle()]
-            sid = ''
-        else:
-            actions = []
-            sid = f'cw:flow:{kind}'
-        recorder.record_decision(_state, '', {}, {}, actions,
-                                 extra={'strategy_id': sid},
-                                 gold_point=False)
-        log.info('[cw-loop] 流程心跳载体行已登记(kind=%s P%s-r%s)',
-                 kind, getattr(_state, 'plane', '?'),
-                 getattr(_state, 'round_num', '?'))
-    except Exception as e:   # noqa: BLE001  遥测 best-effort,不阻塞游戏流
-        log.debug('[cw-loop] 流程心跳登记失败(不阻塞): %s', e)
-
-
 class _FnResult:
     """零参可调用步骤的结果轻壳(ADR-0584 §2.3 的 0n 适配形,二选一之「轻壳」)。
 
@@ -948,9 +870,9 @@ class CwLoop(SrOperation):
     #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
-    #: 收口终局行来源标记(T-185 实机末轮 outcome 采集补全):outcomes 行
-    #: source 值,行字段语义与读端消费边界见 _write_terminal_outcome_row。
-    TERMINAL_OUTCOME_SOURCE: ClassVar[str] = 'terminal_closure'
+    # (收口终局行 TERMINAL_OUTCOME_SOURCE 已随 outcomes 流写入端退役删除
+    #  ——删除波 1,用户 2026-09-10 直迁裁定;T-185 末轮补全面随之消亡,
+    #  结算真值的现役归宿 = BoardState settlement 域 apply_settlement_cover。)
     # (结算链常量族 SETTLE_PANEL_WAIT_S/SETTLE_DEFEAT_LATCH_MIN_T/
     #  RELAUNCH_SETTLE_GRACE_S/BLANK/SETTLEMENT_NEXT 已随 1f/2/3/3b/6 分支
     #  收编 CwScreenBattleWait(W971 05-battle §1),常量随 op 迁移单一源。)
@@ -1051,12 +973,11 @@ class CwLoop(SrOperation):
     def __init__(self, ctx: SrContext, max_rounds: int | None = None):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
         self._iter: int = 0
-        # 迁移审计 w75(git 历史)(ADR-0335):runs summary 收口——中止/卡死/停机局不走 3c 回大厅
-        # → record_run_summary 永不调(近 6 局无 runs 行实锤,r363 在 loop 顶
-        # 的 stop 检查因 execute() 先查 stop 几乎永不触发,四局 [RUNS-GAP]
-        # 哨兵连报)。机制:正常终局(3c)写 summary 后置本标记;``after_operation_done``
-        # 收口钩子(成功/失败/停止全路径必达)检查未写 → 补一条 stopped/abandoned
-        # (hp/plane/round 取最后已知值)。
+        # 迁移审计 w75(git 历史)(ADR-0335):run 收口——中止/卡死/停机局不走 3c 回大厅
+        # → 收口位永不置(哨兵 [RUNS-GAP] 连报史实,r363)。机制:正常终局(3c)
+        # 收口后置本标记;``after_operation_done`` 收口钩子(成功/失败/停止
+        # 全路径必达)检查未收口 → 补收口。删除波 1 后收口 = close_run
+        # (零落盘,置跨局 run_id 重铸位),runs 行写入已退役。
         self._summary_written: bool = False
         # 可控轮数(单/多轮验证 + 采样本):跑完 max_rounds 轮后,停在下一轮备战屏(analyze board/star)。
         # 轮锚点 = 分支3「挑战成功」结算(每打赢 1 轮 +1);停点 = 分支1 备战 gate(rounds_done≥max → 停)。
@@ -1076,7 +997,7 @@ class CwLoop(SrOperation):
         self._battle_ts: float | None = None
         # B4(ADR-0170):跨局分配器实例(进程级单例——后验跨局累积;失败安全:任何异常静默禁用)
         self._allocator = _get_or_init_allocator(self.ctx)
-        # 本局遥测 run_id(本地 decisions.jsonl 采集用;outcomes/summary 写端已接 2026-08-16)。
+        # 本局遥测 run_id(旧流采集面已随删除波 1 退役;现役消费 = journal 行归属)。
         # ADR-0588:铸造单点已前移到入口链(简报锚/投资屏分支,先于任何开局
         # 遥测行)——此处改「认领」:新局路径同容器 open run 已在,不重铸
         # (一段一 id);接管局/run_operation/恢复路径上 run 已收口(_RUN_CLOSED)
@@ -1123,9 +1044,10 @@ class CwLoop(SrOperation):
         self._cw_locked_round: int = 0         # 锁定确认时的轮次(遥测/日志锚)
         # 「返回投资策略选择」按钮出现计数(症状报警用:出现=上游策略屏处理失败)
         self._cw_back_btn_count: int = 0
-        # 迁移审计 w103(git 历史) 件1(ADR-0342):策略失活连击(连续完整轮无 strategy_id 决策行)
-        self._cw_strategy_dead_streak: int = 0
-        self._cw_dead_prev_key: tuple[int, int] | None = None
+        # (策略失活早停状态对 _cw_strategy_dead_streak/_cw_dead_prev_key 已随
+        #  decisions 流写入端退役删除——删除波 1:数据源(决策行)停写后
+        #  新局恒「零心跳行」,检查保留会误杀每一局;消费面退役与数据源
+        #  同批,离线检查网(run_checks_on_replay)仍可判存量语料。)
         # 备战收益耗尽出战臂(ADR-0554)状态:上一备战环 success(判据输入,
         # CwScreenPrep 返回后写)+ 发射失败连击(与达标臂 _cw_readiness_fail_n
         # 同构,达 3 放弃短路回落守卫停机)。
@@ -1149,14 +1071,9 @@ class CwLoop(SrOperation):
                 establish_new_match,
             )
             establish_new_match(self.ctx, self._cw_config)
-            # r339b:板深快照注册移**match new 后**(review 预核 A:
-            # 原在 start_run 处注册时 cw_match 恒 None——新局
-            # 首战快照死)。续跑局在 else 支支注册。
-            state.set_ctx_match(self.ctx.cw_match)
-        else:
-            # 续跑局:同样注册(r339b——原注册点对续跑局也晚于
-            # start_run,统一在两支各自 new/延用后注册)
-            state.set_ctx_match(self.ctx.cw_match)
+            # (r339b 板深快照注册 set_ctx_match 已随旧流快照消费方退役删除
+            #  ——删除波 1:槽唯一消费方 = outcomes/decisions 行的板深/session
+            #  快照,写入端退役后槽体一并删除。)
         # 入口链 ctx 中转吸收(P3b 收缩:仅剩职级难度——难度确认屏读存
         # ctx.cw_selected_difficulty,非简报信箱域)。简报词缀/boss/敌人难度
         # 的 ctx 信箱已退役(W971 §2.1「消灭 ctx 信箱」P3 批口径):唯一写点 =
@@ -1301,115 +1218,10 @@ class CwLoop(SrOperation):
         except Exception as e:   # noqa: BLE001  观测旁路,best-effort
             log.warning('[cw][counters] 计数快照落盘失败(不阻塞): %s', e)
 
-    def _run_has_outcome_at(self, plane: int, round_num: int) -> bool:
-        """本 run 在 (plane, round_num) 键是否已有 outcomes 行(终局行防重门)。
-
-        读失败方向不对称(落地审建议-1 裁决:宁缺勿污):
-        - **撕裂行逐行容错**:append-only 流的撕裂行只发生于尾行(生产
-          append 进行中崩溃的半写 JSON,sim/pool 消费端同款先例),跳过坏行
-          继续判——既有结算行照常命中,门功能不因撕裂失能;
-        - **文件级读失败 → fail-closed** 视同「键已有行」返回 True 不补行:
-          缺行的代价 = 回到 T-185 前的不可判(良性,可由判读者按缺数据
-          对待);误放行的代价 = 终局行以 ts 末行身份覆盖既有结算 killed
-          真值(恶性,权威口径静默失真)。
-        量级口径:全文件读(outcomes.jsonl 跨 run 累积全量,非本 run 行数);
-        收口时点一次性,量级可忽略。
-        """
-        try:
-            with Path(state.get_recorder().replay_dir,
-                      'outcomes.jsonl').open('r', encoding='utf-8') as f:
-                lines = f.readlines()
-        except FileNotFoundError:
-            return False   # 流尚未建 = 必无该键行(缺文件非读失败,放行)
-        except Exception:   # noqa: BLE001  文件级读失败 → fail-closed(理由见方法注)
-            return True
-        _bad = 0
-        _rid = state.current_run_id()
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                r = json.loads(line)
-            except ValueError:
-                _bad += 1   # 撕裂行(尾行形态):跳过继续判,不使整读抛异常
-                continue
-            if r.get('run_id') != _rid:
-                continue
-            try:
-                if (int(r.get('plane') or 0) == plane
-                        and int(r.get('round_num') or 0) == round_num):
-                    if _bad:
-                        log.warning('[cw][loop] 防重门跳过撕裂行 %s 条,键行命中'
-                                    '不补 P%s-r%s', _bad, plane, round_num)
-                    return True
-            except (TypeError, ValueError):
-                continue
-        if _bad:
-            log.warning('[cw][loop] 防重门跳过撕裂行 %s 条,无键行放行补行 '
-                        'P%s-r%s', _bad, plane, round_num)
-        return False
-
-    def _write_terminal_outcome_row(self, last_state: Any | None,
-                                    result_kind: str) -> None:
-        """收口终局结算行(T-185 实机末轮 outcome 采集补全;遥测采集侧,零决策行为)。
-
-        病灶(实机 killed 真值可判性):result=stopped/abandoned 局的对局循环
-        在末轮战斗结算前中止 → 该轮 outcomes 零行 → 按局存档末轮 outcome=null
-        → batch_stats 通关权威口径 killed(ADR-0306 件3,cw_batch_stats
-        _archive_rows)落不可判桶(2026-09-09 档案近 12 局 6 局不可判,4 局即
-        stopped 局)。本行在对局收口时点补写末轮终局行,与既有 outcomes 行
-        schema 同构(OutcomeRecord 单一 schema),使档案末轮 outcome 在档。
-
-        行语义(读端必读):
-        - ``killed=False`` = **对局级**「对局终了时通关击杀未达成」——中止局
-          可证未通关,不是该轮战斗结算真值(该轮战斗可能根本未打完);
-        - ``hp_after=None``/``hp_confidence=0.0``/``progress_delta=None``/
-          ``streak=None``/``node_type=''``:不发任何 hp/战斗/节点真值——
-          Δ池配对按 hp_after=None 前置剔除(pool.pair_outcome_rows_to_pool
-          调用方契约)、hp 步进链按可信门退出(_settlement_hp_usable→
-          _outcome_hp_trusted,0.0<0.9)、档案轮槽 hp/node_type 回落决策帧
-          (_hp_entry / nt_out or nt_state),全部既有读面零扰动零新过滤;
-        - ``source='terminal_closure'``/``match_result=result_kind``:行身份
-          双标记(判读分型;不以 'synthetic' 前缀命名,避开读端合成行排除面)。
-
-        防重门:该键已有本 run 结算行(停止点在结算读取之后的场景,如败局
-        多页链/通关结算链中途停)→ 不补——终局行 ts 更晚会以「ts 末行」
-        身份覆盖既有真值行(档案轮槽 outcome 取 ts 最末行),会把已判真的
-        killed=True/False 冲成对局级 False。best-effort:任何失败只记日志,
-        不阻塞 runs summary 收口(W75 红线)。
-        """
-        try:
-            if last_state is None:
-                return
-            _plane = int(getattr(last_state, 'plane', 0) or 0)
-            _round = int(getattr(last_state, 'round_num', 0) or 0)
-            if _plane <= 0 or _round <= 0:
-                return
-            if self._run_has_outcome_at(_plane, _round):
-                return
-            _m = self.ctx.cw_match
-            _session = getattr(_m, 'session', None) if _m is not None else None
-            # 披露面防御(同 _record_supply_outcome 口径):strategy_state_of
-            # None 契约,异型状态对象 target_comp 缺席退 '?'
-            _tc = getattr(strategy_state_of(_session), 'target_comp', None) \
-                if _session is not None else None
-            _comp_tag = _tc.name if _tc is not None else '?'
-            recorder.record_outcome(
-                RoundOutcome(
-                    round_num=_round, plane=_plane, node_type='',
-                    comp_tag=_comp_tag,
-                    hp_after=None, hp_confidence=0.0,
-                    killed=False,   # 对局级终了真值,见方法注(非战斗结算)
-                    progress_delta=None, streak=None,
-                    match_result=result_kind,
-                ),
-                source=self.TERMINAL_OUTCOME_SOURCE,
-            )
-            log.info('[cw][loop] 收口终局行落盘 %s P%s-r%s(match_result=%s)',
-                     self.TERMINAL_OUTCOME_SOURCE, _plane, _round, result_kind)
-        except Exception as e:   # noqa: BLE001  遥测 best-effort,不阻塞收口
-            log.warning('[cw][loop] 收口终局行落盘失败(不阻塞): %s', e)
+    # (收口终局行族 _run_has_outcome_at/_write_terminal_outcome_row 已随
+    #  outcomes 流写入端退役删除——删除波 1,T-185 末轮补全面随流消亡;
+    #  结算真值现役归宿 = BoardState settlement 域 apply_settlement_cover,
+    #  局终收口形态归宿 = 局终域 match_final 行,写点接线归后续批。)
 
     def _op_journal_pos(self) -> tuple[int, int]:
         """op 行位置键(ADR-0579):最后已知 (plane, round),缺省 (0, 0)。"""
@@ -1538,9 +1350,9 @@ class CwLoop(SrOperation):
 
 
     def _last_true_hp(self, fallback_hp: int | None) -> int | None:
-        """summary final_hp 真值源(r3 live 修):outcomes 内存轨迹的末条真 hp。
+        """收口 final_hp 真值源(r3 live 修):结算链内存轨迹的末条真 hp。
 
-        recorder 只存 gold 轨迹,hp 轨迹由 CwScreenBattleWait 结算链维持
+        hp 轨迹由 CwScreenBattleWait 结算链维持
         (SettlementState.last_outcome_hp,W971 05-battle §1 收编);
         死局回大厅 fallback_hp 常为 100 兜底(hp_readable=False 污染 last_state)。
         """
@@ -1594,20 +1406,21 @@ class CwLoop(SrOperation):
             log.warning('[cw][loop] BoardState 局终归档失败(不阻塞): %s', e)
 
     def _write_terminal_summary_if_needed(self) -> None:
-        """局终/中止 summary 补写(幂等:_summary_written 守卫)。
+        """局终/中止收口(幂等:_summary_written 守卫)。
 
-        正常终局(3c 回大厅)已写 → 跳过。停止/超时/异常 → 取最后已知值补写。
+        正常终局(3c 回大厅)已收口 → 跳过。停止/超时/异常 → 取最后已知值补收口。
         P4R4 假局守卫语义修正(run_20260903_004418 超时 fail / run_20260903_
         204908 stop 两实例 runs 缺行定位):旧守卫「零 outcome = 假局不写」
         把**部署死循环等零结算阶段的真局**也吞了(2 小时 400 轮循环、备战
-        观察全程活动,却因无战斗/补给结算行被当成开局失败)——runs 缺行根因。
+        观察全程活动,却因无战斗/补给结算行被当成开局失败)。
         新判定:**「从未观察到对局态」才算假局**(last_state 缺失 ∧ 零
-        outcome = 开局即失败,镜像 3c 守卫;此时拼 stopped 行才有污染分母
-        之嫌);只要观察过对局态或有过任一结算行,就是真局,必落终局行
-        (result=stopped/abandoned,hp/plane/round 取最后已知值)。
+        outcome = 开局即失败,镜像 3c 守卫);只要观察过对局态或有过任一
+        结算行,就是真局,必走收口。
 
-        本收口同时补写 outcomes 收口终局行(T-185,末轮 outcome 采集缺口;
-        字段语义/防重门/读端边界见 _write_terminal_outcome_row 方法注)。
+        删除波 1:runs summary 写行与 outcomes 收口终局行(T-185)随旧流
+        写入端退役;本收口现役面 = cw4 计数快照(审计流保留)+ run 收口位
+        (跨局 run_id 重铸承接口)+ BoardState 局终归档(补遗流保留)+
+        档案装配。
         """
         if self._summary_written:
             return
@@ -1622,15 +1435,11 @@ class CwLoop(SrOperation):
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
             _final_hp = self._last_true_hp(_st.hp if _st is not None
                                            and _st.hp is not None else 0)
-            # 行为观测计数落盘(先于 runs summary——计数行 ts 须落局时间窗
+            # 行为观测计数落盘(先于 run 收口——计数行 ts 须落局时间窗
             # 内,晚于 end_ts 会掉窗丢计数;契约见 match_archive.record_-
             # cw4_counters_snapshot 注释)。best-effort,不阻塞收口。
             self._record_cw4_counters_snapshot()
-            # 收口终局结算行(T-185):先于 runs summary 落(数据行先于收口
-            # 行的次序契约同 cw4 计数行);内部自吞异常,W75 runs 行不受影响。
-            self._write_terminal_outcome_row(
-                _st, 'stopped' if _stopped else 'abandoned')
-            state.record_run_summary(
+            state.close_run(
                 result='stopped' if _stopped else 'abandoned',
                 plane_reached=_st.plane if _st is not None else 1,
                 rounds_survived=_st.round_num if _st is not None else 1,
@@ -1658,61 +1467,9 @@ class CwLoop(SrOperation):
             log.warning('[cw][loop] 局终 summary 收口失败(不阻塞): %s', e)
 
 
-    def _record_supply_outcome(self, screen) -> None:
-        """迁移审计 w28(git 历史) 缺陷②:补给节点完成 → 合成一行 outcome(node_type='补给')。
-
-        补给是唯一无结算屏的节点(迁移审计 w23(git 历史) 定因:r5 34/34 全缺)——节点完成绕过
-        分支3 的结算写入点 → hp_after/金币/装备选择在 outcomes 零行。本方法在
-        CwScreenSupplyNode 成功完成点补一行:**复用 cw_telemetry.record_outcome 单一
-        写入入口**,带 source='synthetic_supply'(镜像 ADR-0273 行来源标记)防与
-        结算屏真值行混淆。hp 用 last_state 快照(最近备战观察;hp_readable=False
-        时置信度记 0,hp 字段不冒认真值)。plane/round 用 last-known(补给屏顶栏
-        被遮,read_phase_round 走缓存)。只写遥测,不喂结算观察半/last_hp
-        (不改策略行为面)。失败不阻塞对局(观测为辅)。
-        """
-        try:
-            _m = self.ctx.cw_match
-            if _m is None:
-                return
-            _session = _m.session
-            _plane, _round = read_phase_round(self.ctx, screen)
-            _st = _session.last_state
-            _hp = (_st.hp if _st is not None and _st.hp is not None else 0)
-            _conf = 1.0 if (_st is not None and getattr(_st, 'hp_readable', True)) else 0.0
-            # 快照新鲜性降权(ADR-0577,批2 C-伴生写端):快照 hp 的观察时点
-            # (last_hp_real_node = 备战域真读写入的全局节点号,值被真读到的
-            # 时刻的锚)早于最后可信结算(last_hp_t = 结算屏可信写点节点号)
-            # ⇒ 该值不反映结算后血面,conf 落 0.0——readable 位不是新鲜性
-            # 证据(025608 03:19:38 帧 readable=True 值陈旧的携带链实证),
-            # 赋值时刻同禁。任一锚 None(无结算/无真读)→ 无法判陈旧,维持
-            # readable 口径。v9 装配链对合成行一律不消费,本降权护的是 rounds
-            # 槽/query_hp/anomalies 等其余读面不冒真值。
-            if _conf > 0.0:
-                _obs_node = getattr(_session, 'last_hp_real_node', None)
-                _settle_node = getattr(_session, 'last_hp_t', None)
-                if (_obs_node is not None and _settle_node is not None
-                        and _obs_node <= _settle_node):
-                    _conf = 0.0
-            # 披露面防御 getattr(strategy_state_of None 契约,ADR-0563 B4 划分线):
-            # 异型状态对象字段缺席退 '?'(outcomes comp_tag 缺席语义,非行为面)
-            _tc = getattr(strategy_state_of(_session), 'target_comp', None)
-            _comp_tag = _tc.name if _tc is not None else '?'
-            # 消费 run_supply_node 选定时暂存的选择快照,并附完成时点 gold
-            # (gold_readable=False 不写——同 hp 不冒认真值;键缺失容忍=兜底点卡路径)。
-            _pick = state.consume_last_supply_pick() or {}
-            if _st is not None and getattr(_st, 'gold_readable', True):
-                _pick['gold'] = getattr(_st, 'gold', None)
-            _obs = RoundOutcome(
-                round_num=_round, plane=_plane, node_type='补给', comp_tag=_comp_tag,
-                hp_after=_hp, hp_confidence=_conf,
-                killed=True,   # 语义=节点通过(非战斗击杀;synthetic 行专用)
-            )
-            recorder.record_outcome(_obs, source='synthetic_supply',
-                                        supply_pick=_pick or None)
-            log.info('[cw-loop] 补给节点完成 → 合成 outcome 行 P%s-r%s hp=%s(conf=%s pick=%s)',
-                     _plane, _round, _hp, _conf, _pick or '-')
-        except Exception as e:  # noqa: BLE001  合成行失败不阻塞对局
-            log.warning('[cw-loop] 补给合成 outcome 失败(不阻塞): %s', e)
+    # (补给合成 outcome 行 _record_supply_outcome 已随 outcomes 流写入端
+    #  退役删除——删除波 1;补给节点完成事实的现役归宿 = 快照行自带域
+    #  (journal),选择快照暂存槽 set_last_supply_pick 同批退役。)
 
     @operation_node(name='对局循环', is_start_node=True, node_max_retry_times=400)
     def loop(self) -> OperationRoundResult:
@@ -1769,11 +1526,8 @@ class CwLoop(SrOperation):
                 log.warning('[cw][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'
                             '本 run_id 数据含残局段)', _st0.plane, _st0.round_num)
                 self._mark_session_resumed()   # D2:恢复局旗标(弹窗腿禁用供给面)
-                import contextlib
-                with contextlib.suppress(Exception):   # 遥测 best-effort
-                    recorder.record_exogenous(_st0.round_num, 'resumed_match',
-                                                  detail=f'P{_st0.plane}-r{_st0.round_num} 残局续跑',
-                                                  state=_st0)
+                # (resumed_match 外生行已随 exogenous 流写入端退役删除——删除波 1;
+                #  恢复局形态现役证据 = 弹窗腿禁用旗标 + journal 派生行段界。)
             # 接管局补采(boss+词缀)挂点 = 干净备战观察(W971 §2.1,CwScreenPrep
             # 环入口 gate 后稳定帧执行;稳定门退役后由备战观察承担)。
 
@@ -1933,17 +1687,13 @@ class CwLoop(SrOperation):
         # 开局投资环境由 0s 分支分发(OpeningSequence 拆解退役:外循环按画面自然流转)。
         if self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success:
             self._snap('supply')
-
-            def _on_supply(ok: bool, _res: Any) -> None:
-                # 迁移审计 w28(git 历史) 缺陷②:补给节点完成 → 合成 outcome 行(无结算屏节点的遥测补行;
-                # 仅成功时记,失败重试由下轮 0e 再入,不重复写)。
-                if ok:
-                    self._record_supply_outcome(screen)
+            # (补给合成 outcome 行 on_result 挂点已随 outcomes 流写入端退役
+            #  删除——删除波 1;派发契约 on_result 参数保留。)
 
             # 生命周期 owner:验证 overlay 消失才完成,超预算 bail(op 内 as-built)
             return self._dispatch_screen_op(
                 CwScreenSupplyNode(self.ctx), journal_name='补给节点',
-                frame_tag='overlay_supply', wait=2, on_result=_on_supply)
+                frame_tag='overlay_supply', wait=2)
 
         # 0f. 节点武装箱弹窗(「武装突入」类节点,2026-08-15 M19 首见停机建档)→
         #     CwScreenArmoryBox(点开箱 → 四选一 → 选卡点卡 → 验关;与备战补给箱
@@ -2679,8 +2429,6 @@ class CwLoop(SrOperation):
                                 self._cw_exhaust_attempts = 0
                                 self._battle_ts = time.monotonic()  # ADR-0250
                                 self._battle_wait_active = True
-                                register_flow_heartbeat(
-                                    self.ctx, 'exhaustion_battle_launch')
                                 log.info('[cw-loop] 备战收益耗尽(连续 %d 环 '
                                          '状态指纹零推进,窗口动作批并集 %s ∧ '
                                          '末批 RunDeploy)→ 出战: %s',
@@ -2758,55 +2506,10 @@ class CwLoop(SrOperation):
                 return self.round_wait(wait=2)
             # 接管局补采(boss+词缀)已迁 CwScreenPrep(W971 §2.1/01-opening §2.1:
             # 稳定门退役后挂点 = 干净备战观察;见 cw_screen_prep._run_loop 采集块)。
-            # 迁移审计 w103(git 历史) 件1(ADR-0342,dd-031 重写判据):策略失活早停——连续 2 个**完整轮**
-            # 无任何策略心跳决策行(心跳 = sid 行或载体行,单一源
-            # query._row_heartbeat;外环停转=整轮零心跳行)→ 停局重启加载
-            # 策略。「重大修复待加载=无条件早停」定调的运行期镜像:外环死了,
-            # 继续跑=零信息量局。dd-031 定谳(g_20260904_022537/010335 误杀局):
-            # sid 行唯一写点在店内决策(cw_op_buy_cards.py:658),mandate 合法
-            # 跳过开店(三开店站全关)时整轮只有载体行(sid='')——旧判据
-            # 「无 sid 行=死」把健康局误杀;辖域收敛为「外环停转」,策略内容
-            # 性死亡(兜底垃圾局)归离线检查网(行面无法区分策略动作与兜底动作)。
-            # 结算点=备战入口查**上一轮**(本轮决策尚未发生,
-            # 查本轮恒空会误杀);telemetry 关闭时本检查让位(无数据=无判据)。
-            if state.get_recorder().enabled:
-                _dk = read_phase_round(self.ctx, screen)
-                if _dk and _dk[0]:
-                    _key = (int(_dk[0]), int(_dk[1]))
-                    if _key != self._cw_dead_prev_key:
-                        _dead_key = self._cw_dead_prev_key
-                        _live = query.strategy_round_live(
-                            state.current_run_id() or '', _dead_key) \
-                            if _dead_key is not None else True
-                        self._cw_strategy_dead_streak = (
-                            query.dead_streak_transition(
-                                _dead_key, _key,
-                                self._cw_strategy_dead_streak, _live))
-                        if _dead_key is not None and not _live:
-                            log.warning('[cw!][loop] 策略失活轮 P%s-r%s'
-                                        '(streak=%d,该轮无任何策略心跳决策行)',
-                                        _dead_key[0], _dead_key[1],
-                                        self._cw_strategy_dead_streak)
-                        self._cw_dead_prev_key = _key
-                        if self._cw_strategy_dead_streak >= 2:
-                            log.warning('[cw!][loop] 策略失活连击 %d ≥2 → '
-                                        '停局(重启加载策略;ADR-0342/dd-031)',
-                                        self._cw_strategy_dead_streak)
-                            # flag 三要素(od-dev-stop-hooks 审计;修复批补齐,
-                            # 与环级无进展守卫同构):截图 + flag + 代码直调停机
-                            import contextlib
-                            _dead_shot = None
-                            with contextlib.suppress(Exception):
-                                _dead_shot = self.save_screenshot(
-                                    prefix='strategy_dead_early_stop')
-                            with contextlib.suppress(Exception):
-                                write_strategy_dead_flag(
-                                    self._cw_strategy_dead_streak, _dead_key,
-                                    state.current_run_id() or '', _dead_shot or '')
-                            self.ctx.run_context.stop_running(
-                                reason='hook:strategy_dead_early_stop')
-                            return self.round_wait(
-                                wait=1.0, status='策略失活早停(ADR-0342)')
+            # (策略失活早停块已随 decisions 流写入端退役删除——删除波 1:
+            #  心跳决策行停写后新局恒「零心跳行」,检查保留 = 误杀每一局;
+            #  消费面与数据源同批退役,存量语料判读走离线检查网
+            #  run_checks_on_replay,dd-031 判据单一源 = telemetry/query。)
             # 迁移审计 w62(git 历史) 件1(ADR-0329):恢复局(locked-resume)检测与直接出战。
             # 判据(设计章1.2)= 新 match(无本局记录)+ 首个备战相位 round>1 → 候选;
             # 一次「点商店→验收起」探针(章1.3)区分锁定/未锁(锁定唯一可观测特征
@@ -2835,11 +2538,6 @@ class CwLoop(SrOperation):
                         self._cw_locked_resume = True
                         self._cw_locked_round = _pr[1]
                         self._cw_locked_sync_done = False   # 新锁定局:首战前同步步待执行
-                        import contextlib
-                        with contextlib.suppress(Exception):   # 遥测 best-effort
-                            recorder.record_exogenous(
-                                _pr[1], 'locked_resume',
-                                detail=f'P{_pr[0]}-r{_pr[1]} shop-probe-zero')
                         log.warning('[cw!][loop] 恢复局锁定确认(P%s-r%s,商店探针'
                                     '零响应)→ 直接出战', _pr[0], _pr[1])
             if self._cw_locked_resume:
@@ -2850,18 +2548,9 @@ class CwLoop(SrOperation):
                     self._cw_locked_resume = locked_after_start_battle(progressed)
                     self._battle_ts = time.monotonic()   # ADR-0250:战斗窗口开
                     self._battle_wait_active = True   # 战斗窗口 → 下轮委托 CwScreenBattleWait
-                    import contextlib
-                    with contextlib.suppress(Exception):   # 遥测 best-effort
-                        state.get_recorder().record_exec_event(
-                            run_id=state.current_run_id() or '-',
-                            round_num=self._cw_locked_round,
-                            action_family='LockedResume_StartBattle',
-                            screen='battle_prep', event='start_battle',
-                            reason='locked_resume')
                     log.info('[cw-loop] 锁定恢复局 → 出战成功,锁解除(恢复正常循环)')
-                    # 流程心跳载体行(策略失活判据修复):锁定分支按设计
-                    # 零策略决策行,显式登记防失活连击误计本环。
-                    register_flow_heartbeat(self.ctx, 'locked_resume_direct_battle')
+                    # (exec_events 发射事件行与流程心跳载体行已随 decisions/
+                    #  exec_events 流写入端退役删除——删除波 1。)
                     return self.round_wait(wait=3)
                 log.warning('[cw!][loop] 锁定模式出战未落地(%s)→ retry(保锁定)',
                             detail)
@@ -2885,9 +2574,6 @@ class CwLoop(SrOperation):
             if _cur_slot is not None and _cur_slot.node_type == 'supply':
                 self.round_by_find_and_click_area(screen, '货币战争-备战', '按钮-返回补给阶段', success_wait=2)
                 log.info('[cw-loop] 补给节点(nodeseq current=supply)→ 点返回补给阶段 进补给屏(下轮 CwScreenSupplyNode)')
-                # 流程心跳载体行(策略失活判据修复):补给链无备战策略环,
-                # 本环整轮零决策行属流程性合法无声,登记标记防连击误计。
-                register_flow_heartbeat(self.ctx, 'supply_node_divert')
                 return self.round_wait(wait=2)
             # r332(批次3/终审①③:cw_loop 消费返回值——
             # 旧版忽略 execute() 结果 → director 失败后下轮
@@ -3096,15 +2782,13 @@ class CwLoop(SrOperation):
                                   and _st.hp is not None else 0),
                     )
                     self._allocator_update(_outcome)
-                    # 遥测写端(review 半接线修复,2026-08-16):runs.jsonl 生产侧此前无写入方。
-                    # result:plane>=3 = win(通关),否则 loss(死在 P3 内);gold 轨迹由 recorder
-                    # 内存累积自动带。B4 的 outcome 真值同源。
-                    # ⚠️ final_hp 语义修正(2026-08-17 r3 live):死局回大厅后 last_state.hp
-                    # 是结算屏后读不到的 100 兜底(hp_readable=False)——summary 曾记 100 而
-                    # 实际 1。改用 outcomes 侧最后真值(recorder 内存轨迹,conf=1.0 的末条)。
-                    # 行为观测计数落盘(先于 runs summary,时序契约同上行收口路径)。
+                    # run 收口(删除波 1:runs summary 写行随旧流写入端退役;
+                    # close_run 零落盘,置跨局 run_id 重铸位)。B4 的 outcome
+                    # 真值同源喂分配器;局终元数据 journal 归宿 = 局终域
+                    # match_final 行(写点接线归后续批)。
+                    # 行为观测计数落盘(先于 run 收口,时序契约同上行收口路径)。
                     self._record_cw4_counters_snapshot()
-                    state.record_run_summary(
+                    state.close_run(
                         result='win' if _outcome.won else 'loss',
                         plane_reached=_outcome.final_plane,
                         rounds_survived=_outcome.final_round,

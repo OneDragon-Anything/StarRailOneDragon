@@ -215,25 +215,21 @@ def reconcile_briefing_vs_plane_intel(briefing: list[str] | None,
                                       enabled: bool = True) -> None:
     """简报读数 vs 位面详情实采真值的对账存证(CwScreenPlaneIntel 采集完成后调,零决策行为)。
 
-    每位面配对(:func:`briefing_reconcile_pairs`)落 exogenous 行(kind=``briefing_reconcile``,
-    口径对齐 briefing 存证先例:round 0 / detail f-string / best-effort);不一致位面进
+    每位面配对(:func:`briefing_reconcile_pairs`)逐位面判定;不一致位面进
     defect 台账(L2 留证,不动行为)。门控 = config 布尔(验证期默认开)。
+    删除波 1:briefing_reconcile 对拍明细行已随 exogenous 流写入端退役——
+    配对面保留驱动「不一致 → defect 台账」判定,明细可离线重算
+    (:func:`briefing_reconcile_pairs` 纯函数保留)。
     """
     if not enabled:
         return
     with contextlib.suppress(Exception):   # 对账 best-effort,不阻断采集主流程
-        # 分包期 4:落账/外生事件经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
+        # 分包期 4:落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
         from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
             SEVERITY_L2_RECORD,
             record_defect,
-            record_exogenous,
         )
         pairs = briefing_reconcile_pairs(briefing, truth)
-        record_exogenous(
-            round_num, 'briefing_reconcile',
-            detail=';'.join(
-                f"p{p['plane']}:briefing={p['briefing']},truth={p['truth']},match={p['match']}"
-                for p in pairs))
         for p in pairs:
             if p['match'] is False:
                 record_defect(

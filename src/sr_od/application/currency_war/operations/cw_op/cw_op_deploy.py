@@ -682,9 +682,9 @@ class CwOpDeploy(SrOperation):
                         '(修复失败) → round_fail 交回')
             return self.round_fail(CwOpDeploy.STATUS_FRONT_INVARIANT_FAIL)
 
-        # r132 装备遥测采集(穿戴侧盲区修复):decisions.jsonl 的 deployed.equips 恒空
-        # (决策点 state 来自 session.tracking 深拷贝,tracking 无 equips 字段;r117 定位)
-        # → 判读永远看不见装备齐度。deploy 后此处是**全量读时机**(画面稳定/正对
+        # r132 装备读时机(穿戴侧盲区修复;原以 decisions 行携带为目的,行写入
+        # 已随删除波 1 退役,读时机保留——tracking 链是部署决策的活输入):
+        # deploy 后此处是**全量读时机**(画面稳定/正对
         # 备战)——读 equipped below icon 并写 exec_state_of(session).tracked_deployed[].equips,
         # 后续决策快照自动携带。best-effort,失败不阻塞。
         try:
