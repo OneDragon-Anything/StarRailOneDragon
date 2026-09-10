@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import re
 import time
+from dataclasses import dataclass
+from typing import Any
 
 import cv2
 import numpy as np
@@ -2656,3 +2658,143 @@ def new_bench_slots(ctx: SrContext, before: MatLike, after: MatLike) -> list[int
         if diff > BENCH_SLOT_DIFF_THRESHOLD:
             changed.append(i)
     return changed   # 已 left-to-right(slot idx 升序,range 1..9)
+
+
+# ============================================================ 局终判定面(R5 W2;归层=遥测层)
+#
+# 对局结束识别的判定核心,唯一落点 = 本节(消费方 = 未来 cw_loop 收口写点/
+# 启动扫描补写/判读回放,均判据只读、零新增画面建档)。判定面以现有建档
+# 判据为基:胜利/失败复用在产结算观察链判据(killed 显式败局 / 回大厅收口
+# 的 plane==3 通关语义),主动停止复用 run_context 停止语义,异常终局 =
+# 无收口证据的补写形态(标 abnormal,写口见 kernel ``write_match_final``)。
+
+
+def runs_result_to_final_type(result: str) -> str | None:
+    """现役 runs ``result`` 词表 → 局终类型收编映射(retirement.md §2 runs 行)。
+
+    win/loss/stopped 同名直映;abandoned 及其余非完结值(含空串)= abnormal
+    (非完结值域 = 异常终局家族,与档案装配器 ``_TERMINAL_RESULTS`` 的
+   完结判定同界);None 不出现——空串也归 abnormal,调用方无须判空。
+    """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        FINAL_ABNORMAL,
+        FINAL_LOSS,
+        FINAL_STOPPED,
+        FINAL_WIN,
+    )
+    if result == 'win':
+        return FINAL_WIN
+    if result == 'loss':
+        return FINAL_LOSS
+    if result == 'stopped':
+        return FINAL_STOPPED
+    return FINAL_ABNORMAL
+
+
+@dataclass(frozen=True)
+class MatchFinalDraft:
+    """局终判定产出(段级;喂 :func:`kernel.cw_board_state.write_match_final`
+    的判据半)。``ts`` = 判定锚行时间戳(回放对账用);``evidence`` = 命中的
+    证据通道名(runs_summary/terminal_closure/no_close_evidence——本函数三
+    通道;在线判定面 :func:`resolve_final_type` 不经本通道词表)。
+    """
+
+    final_type: str
+    plane: int | None = None
+    round_num: int | None = None
+    hp: int | None = None
+    ts: str = ''
+    evidence: str = ''
+
+
+def resolve_final_type(*, stop_requested: bool, saw_defeat: bool,
+                       plane_reached: int | None,
+                       rounds_played: bool = True) -> str | None:
+    """在线判定面核心(回大厅收口/收口兜底共用;纯函数)。
+
+    判定序 = 主动停止 > 失败 > 通关(与在产收口语义同序:cw_loop 3c 分支
+    ``won = plane==3 ∧ ¬败局闩``、W75 收口 ``stopped = is_context_stop``):
+
+    - ``stop_requested``(run_context 停止语义)→ 'stopped';
+    - ``saw_defeat``(败局闩 = 结算观察链见过显式败局帧)→ 'loss';
+    - ``plane_reached == 3`` 精确值(假 win 守卫同口径,ADR-0392 时代实证:
+      OCR 难度泄漏会读出 plane=8,禁 >=)且非败局 → 'win';
+    - 未打过任何结算轮(``rounds_played=False``)→ None(开局失败形态,
+      非终局——与 3c 假局守卫同判,禁拼假终局行);
+    - 其余(未停止、无败局、plane<3 的真实结束)→ 'abnormal'。
+
+    消费契约:返回值直接作 ``write_match_final(final_type=…)`` 入参;
+    None = 调用方跳过收口。
+    """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        FINAL_ABNORMAL,
+        FINAL_LOSS,
+        FINAL_STOPPED,
+        FINAL_WIN,
+    )
+    if stop_requested:
+        return FINAL_STOPPED
+    if saw_defeat:
+        return FINAL_LOSS
+    if plane_reached == 3:
+        return FINAL_WIN
+    if not rounds_played:
+        return None   # 开局失败形态:非终局(假局守卫同判)
+    return FINAL_ABNORMAL
+
+
+def _int_or_none(v: Any) -> int | None:
+    """行值 → int(None/bool/畸形 = None,不猜)。"""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    return int(v)
+
+
+def detect_match_final(*, run_id: str,
+                       runs_summary: dict | None = None,
+                       outcome_rows: list[dict] | None = None,
+                       journal_final: dict | None = None,
+                       ) -> MatchFinalDraft | None:
+    """段级局终判定(离线回放/判读读面形态;在线消费同判据经
+    :func:`resolve_final_type`)。
+
+    证据阶梯(先到先定,通道名记入 ``evidence``):
+    1. ``journal_final``(新账局终行在档)→ None(本段已收口,幂等跳过);
+    2. ``runs_summary``(现役收口行,收编对象)→ result 经
+       :func:`runs_result_to_final_type` 映射,plane/round/hp 取行值;
+    3. terminal_closure 结算行(source='terminal_closure',T-185 收口行;
+       match_result 值 = 收口时点的对局级结果)→ 同映射;
+    4. 无收口证据(断流/进程死亡)→ abnormal(补写形态判据,G8:启动
+       扫描按本判定补写,note=recovered 显影)。
+
+    ``outcome_rows`` = 本段结算观察行(现役结算观察链产物;阶梯 3 的证据源)。
+    纯读函数,零副作用。
+    """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        FINAL_ABNORMAL,
+    )
+    if journal_final is not None:
+        return None   # 新账已收口:幂等跳过
+    summary = runs_summary if isinstance(runs_summary, dict) else None
+    if summary is not None:
+        return MatchFinalDraft(
+            final_type=runs_result_to_final_type(str(summary.get('result') or '')),
+            plane=_int_or_none(summary.get('plane_reached')),
+            round_num=_int_or_none(summary.get('rounds_survived')),
+            hp=_int_or_none(summary.get('final_hp')),
+            ts=str(summary.get('ts') or ''),
+            evidence='runs_summary')
+    for r in (outcome_rows or []):
+        if str(r.get('source') or '') != 'terminal_closure':
+            continue
+        return MatchFinalDraft(
+            final_type=runs_result_to_final_type(
+                str(r.get('match_result') or '')),
+            plane=_int_or_none(r.get('plane')),
+            round_num=_int_or_none(r.get('round_num')),
+            hp=None,
+            ts=str(r.get('ts') or ''),
+            evidence='terminal_closure')
+    return MatchFinalDraft(final_type=FINAL_ABNORMAL, plane=None,
+                           round_num=None, hp=None, ts='',
+                           evidence='no_close_evidence')

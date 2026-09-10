@@ -395,3 +395,43 @@ def view_snapshot(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
                f' bench={bench_n} equips={_n("equips")}'
                f' effects={eff_n} pending_expected={pend_n}')
     return out
+
+
+# ============================================================ 局终行读取视图(R5 W2)
+
+def match_final_rows(rows: list[dict[str, Any]],
+                     run_id: str = '') -> list[dict[str, Any]]:
+    """局终行清单(宽容读取契约:识别判据 = write 行 ∧ field=match_final;
+    field 常量单一源 = kernel ``MATCH_FINAL_FIELD``)。行序 = 版本序。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        MATCH_FINAL_FIELD,
+    )
+    return [r for r in rows_of(rows, run_id)
+            if row_kind(r) == ROW_WRITE
+            and str(r.get('field') or '') == MATCH_FINAL_FIELD]
+
+
+def view_match_final(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
+    """局终行视图(R5 W2 判读读面:局终域 match_final 的读取视图)。
+
+    逐行 = 段级终局载荷(final_type/终局快照/段级时长/补写位);无行 =
+    「本段未收口」与「影子面未开」在头行不可分,行缺位本身即判读事实
+    (与 view_events 无行提示同口径)。
+    """
+    out = [f'[局终行] run={run_id or "(全部段)"} '
+           f'(局终域 match_final;一段一行,恢复局跨段多行)']
+    finals = match_final_rows(rows, run_id)
+    if not finals:
+        out.append('  (无局终行——段未收口或影子面未开)')
+        return out
+    for r in finals:
+        after = r.get('after') if isinstance(r.get('after'), dict) else {}
+        dur = after.get('duration_s')
+        dur_s = f'{float(dur):.0f}s' if isinstance(dur, (int, float)) else '?'
+        bf = '补写' if after.get('backfilled') else '-'
+        out.append(
+            f'  v={_v_s(r)} {row_ts(r)} type={after.get("final_type") or "?"}'
+            f' plane={after.get("plane", "?")} round={after.get("round_num", "?")}'
+            f' hp={after.get("hp", "?")} 时长={dur_s} {bf}'
+            f' note={r.get("note") or "-"} actor={_actor_s(r)}')
+    return out

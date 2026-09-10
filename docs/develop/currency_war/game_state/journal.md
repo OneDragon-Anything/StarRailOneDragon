@@ -105,7 +105,11 @@ API 面(宿主=BoardState 写入 API,符号=kernel/cw_board_state.py):
 ```
 
 `write_logic` 仅限设计显式申报豁免的写端(事件屏 chosen 族〔事件屏选择结果字段族
-`chosen_*`,定义见容器正本 §3.4〕/局级事实写端/刷新计数组/效果写端申报行/动作发射
+`chosen_*`,定义见容器正本 §3.4〕/局级事实写端〔局终域域键 `match_final`,唯一写口
+`write_match_final`,渠道③ actor=MatchClose:一段一行,载荷 = 终局类型封闭集 + 时点
+版本 id + code_commit/registry_fingerprint 版本戳 + 终局快照 + 段级时长,abnormal 补写行
+note=recovered 显影;辖域 = 段内补写与在线收口,启动扫描**历史段**补写走专用装配通道,
+不经本口——ADR-0630 修订节 2026-09-11〕/刷新计数组/效果写端申报行/动作发射
 写点 receipts/账本→字段桥),其余禁走此口。
 
 硬约束四条(机器面=测试锁):①禁旁路直写(grep 子串守卫锁+效果域直摸锁);②渠道族

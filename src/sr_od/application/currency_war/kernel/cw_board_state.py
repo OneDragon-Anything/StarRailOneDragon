@@ -55,16 +55,22 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import hashlib
+import json
+import subprocess
+import time
 import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     ActiveEffectInventory,
 )
+from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
 if TYPE_CHECKING:
     # 仅类型注解引用(项目规范);运行时按鸭子类型读 GameState 属性,
@@ -105,6 +111,9 @@ DEFAULT_BS_SCHEMA: dict[str, int] = {
                             # 新增顶栏原文观察层字段 top_bar_raw,用户终裁
                             # 2026-09-11;历史:1=R1 双腿双字段,2=单字段双层)
     'receipts': 1,          # 动作回执域(R2 §3.1.1-4/§3.2.5:普通 Field 域滚动窗,唯一写点 = note_action_receipt)
+    'match_final': 1,       # 局终域(R5 W2;§3.6.1 runs 收编载体:一段一行,
+                            # 恢复局跨段 = 多行,game 级聚合取段序末行;唯一
+                            # 写点 = write_match_final,actor=MatchClose)
 }
 
 #: 画面附加域(§2.2 显式例外):语义 = 「当前画面的 payload,非当前画面
@@ -204,6 +213,11 @@ CHANNEL_FAMILIES: tuple[str, ...] = ('obs', 'logic_action', 'logic_hook')
 
 #: obs 族子模词表(§3.2.1 mode):真读 / 失读沿用 / 开局先验 / sim 真值合成。
 OBS_MODES: tuple[str, ...] = ('read', 'carried', 'prior', 'synthesized')
+
+#: obs_event 事件词表封闭集(§3.2.3 行型 2:arbitrate=拒读/仲裁拒绝留证 /
+#: miss=失读留证 / popup=弹窗类流程异常留证)。集外值 = 红(硬约束 2 同纪律:
+#: 事件面漂移要在登记点暴露,禁自由串)。
+OBS_EVENT_EVENTS: tuple[str, ...] = ('arbitrate', 'miss', 'popup')
 
 #: logic 两族子模:恒 compute(逻辑计算,无观察质量语义)。
 LOGIC_MODES: tuple[str, ...] = ('compute',)
@@ -515,6 +529,128 @@ class Settlement:
     gold: int | None = None                         # 仅胜局(§3.5.1)
     level: int | None = None                        # 仅胜局结算页可读
     xp: int | None = None
+
+
+# ============================================================ 局终域(§3.6.1 runs 收编载体;持久裁定锚 = ADR-0630 修订节)
+
+#: 终局类型词表封闭集(retirement.md §2 runs 行:局终收口一行;收编映射 =
+#: 现役 runs result 词表 win/loss/stopped + 非完结/无收口行 = abnormal)。
+FINAL_WIN: str = 'win'
+FINAL_LOSS: str = 'loss'
+FINAL_STOPPED: str = 'stopped'
+FINAL_ABNORMAL: str = 'abnormal'
+MATCH_FINAL_TYPES: tuple[str, ...] = (
+    FINAL_WIN, FINAL_LOSS, FINAL_STOPPED, FINAL_ABNORMAL)
+
+#: 局终域字段名(行寻址键;判定面/装配器/判读读面同引此常量,禁散落字面量)。
+MATCH_FINAL_FIELD: str = 'match_final'
+
+
+def _resolve_code_commit() -> str:
+    """主仓 git 短哈希(版本戳取值,模块导入时点解析一次)。
+
+    best-effort 契约(同 telemetry/version_stamp.code_commit):非 git 环境/
+    命令失败 = 返 '',不产错误值。仓库根按本模块位置向上定位(pyproject.toml
+    锚),不用 cwd——server/GUI 工作目录不可信。
+    """
+    module_path = Path(__file__).resolve()
+    repo = next((c for c in module_path.parents
+                 if (c / 'pyproject.toml').is_file()), module_path.parents[4])
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                           cwd=str(repo), capture_output=True, text=True,
+                           timeout=5)
+        if r.returncode == 0:
+            return str(r.stdout).strip()
+    except Exception:   # noqa: BLE001  版本戳观测 best-effort
+        pass
+    return ''
+
+
+def _normalize_stamp_value(o: Any) -> Any:
+    """递归规范化为可稳定 JSON 化的结构(指纹口径,与
+    telemetry/version_stamp._normalize 逐位同语义——桶依赖矩阵禁
+    kernel→telemetry import,就地复刻;等值性由局终锁对拍钉住):
+    dataclass 转 dict(集合内成员 asdict 不递归,此处补)/dict 键 str 化并
+    按键排序/set 先试原生排序、不可比退 JSON 串序(恒全序,default=repr
+    兜住任意对象)/list·tuple 转 list。"""
+    if dataclasses.is_dataclass(o) and not isinstance(o, type):
+        return _normalize_stamp_value(dataclasses.asdict(o))
+    if isinstance(o, dict):
+        return {str(k): _normalize_stamp_value(v) for k, v in sorted(
+            ((str(k), v) for k, v in o.items()), key=lambda kv: kv[0])}
+    if isinstance(o, (set, frozenset)):
+        elems = [_normalize_stamp_value(x) for x in o]
+        try:
+            return sorted(elems)
+        except TypeError:
+            return sorted(elems, key=lambda x: json.dumps(
+                x, sort_keys=True, ensure_ascii=False, default=repr))
+    if isinstance(o, (list, tuple)):
+        return [_normalize_stamp_value(x) for x in o]
+    return o
+
+
+def _resolve_registry_fingerprint() -> str:
+    """决策注册表内容指纹(sha256 前 12 位;注册表值变更即变)。
+
+    「这局实际跑的参数」口径:追注册表现值不追 git 历史,工作区未提交改动
+    也反映在指纹里。终 dumps 挂 default=repr 兜底——未识别对象序列化为
+    repr 而非 TypeError(调用点在局终写口,指纹炸 = 终局行整行丢失)。
+    """
+    payload = json.dumps(
+        _normalize_stamp_value(dataclasses.asdict(DEFAULT_REGISTRY)),
+        sort_keys=True, ensure_ascii=False, default=repr)
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()[:12]
+
+
+#: 写入时点版本戳(正本 §3.6.1 runs 行「+ code_commit/registry_fingerprint
+#: 版本戳,沿用 version_stamp」;runs 退役后 = 策略版本戳唯一在档载体,
+#: 由 :meth:`write_match_final` 落账时填充)。模块级常量 = 进程导入时点
+#: 解析一次,同进程跑的局戳一致;取值单一源语义 = telemetry/version_stamp,
+#: 桶依赖矩阵禁 kernel→telemetry(sr-od-test test_cw_package_layout
+#: .LEGAL_EDGES),故同口径就地落常量,与单一源的等值性由
+#: test_cw_match_final::test_match_final_version_stamps 对拍钉住。
+_CODE_COMMIT: str = _resolve_code_commit()
+_REGISTRY_FINGERPRINT: str = _resolve_registry_fingerprint()
+
+
+@dataclass(frozen=True)
+class MatchFinal:
+    """局终域行载荷(一段一行;恢复局跨段 = 多行,game 级聚合取段序末行)。
+
+    - ``final_type`` = :data:`MATCH_FINAL_TYPES` 封闭集;abnormal = 异常终局
+      (哨兵叫停/进程死亡等无正常收口路径的形态,**段内补写**落行——哨兵
+      收口兜底路径按段尾账面补写,``backfilled`` = True + 行注记
+      ``recovered`` 显影,判读按注记区分真伪,§3.6.1 runs 行 G8 谓词;
+      启动扫描的**历史段**补写不经本载荷的运行时写口,走专用装配通道,
+      遥测正本 §3.2.2 规则 6②);
+    - ``at_version`` = 本行自身版本 id(:meth:`write_match_final` 装配时点
+      即将分配的 write_seq,与行头 ``v`` 恒等——终局时点的账面版本锚);
+    - ``code_commit``/``registry_fingerprint`` = 写入时点版本戳(§3.6.1
+      runs 行「沿用 version_stamp」:跑这局的代码版本 + 决策注册表内容
+      指纹;模块级常量 :data:`_CODE_COMMIT`/:data:`_REGISTRY_FINGERPRINT`,
+      进程内恒定)——runs 退役后策略版本戳的唯一在档载体;
+    - 终局快照七读数(level/hp/gold/streak/plane/round_num/node_kind)= 写入
+      时点各域现值直读入载荷;字段级来源注记**随快照行自带**(行内嵌完整
+      state + 逐字段 prov,§3.2.3 来源注记面),本结构不重复携带;
+    - ``duration_s`` = 段级对局时长(容器创建 → 局终判定;恢复局跨段 = 各段
+      各行,跨段总时长由判读侧按段序聚合,禁在行内猜)。
+    """
+
+    final_type: str
+    at_version: int
+    code_commit: str = ''
+    registry_fingerprint: str = ''
+    plane: int | None = None
+    round_num: int | None = None
+    node_kind: str | None = None
+    level: int | None = None
+    hp: int | None = None
+    gold: int | None = None
+    streak: int | None = None
+    duration_s: float | None = None
+    backfilled: bool = False
 
 
 # ============================================================ 缺陷台账挂点(§2.3)
@@ -1051,6 +1187,100 @@ def apply_settlement_cover(bs: BoardState, *, hp_after: int | None,
         xp=(int(xp[0]), int(xp[1])) if xp is not None else None))
 
 
+# ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
+
+#: 局终行落盘事件监听槽(复盘触发器挂点;缺省 None = 关,与缺陷/流水 sink
+#: 同构的「缺省关 + 启动点显式接通」纪律)。消费契约:接收一行事件 dict
+#: (run_id/final_type/plane/round_num/version/backfilled),自担节流与
+#: 落盘;**触发语义 = 写口受理成功即触发**(行落盘另以 sink 武装与 run_id
+#: 在场为准——未武装/局外 = 行不落而事件照发,事件 run_id='' 形态,消费方
+#: 自滤;详 :meth:`write_match_final` docstring)。复盘流程本体不挂本批
+#: (终局行 = 复盘入口,retirement.md §7 消费面行 9 触发面:runs 兜底与
+#: Δ池再生触发改挂局终域行落盘事件,挂接线批)。
+_MATCH_FINAL_LISTENER: Callable[[dict], None] | None = None
+
+
+def set_match_final_listener(fn: Callable[[dict], None] | None) -> None:
+    """接通/复位局终行落盘监听(None = 关,缺省态;装配点显式接通)。"""
+    global _MATCH_FINAL_LISTENER
+    _MATCH_FINAL_LISTENER = fn
+
+
+def write_match_final(bs: BoardState, *, final_type: str,
+                      plane: int | None = None,
+                      round_num: int | None = None,
+                      node_kind: str | None = None,
+                      level: int | None = None,
+                      hp: int | None = None,
+                      gold: int | None = None,
+                      streak: int | None = None,
+                      duration_s: float | None = None,
+                      backfilled: bool = False,
+                      note: str = '') -> bool:
+    """局终收口写口(局终域 **唯一写点**,渠道③ logic_hook 家族、
+    actor=MatchClose;§3.6.1 runs 收编载体,表 3-3 局终域③格;持久裁定锚
+    = ADR-0630 修订节)。
+
+    - **同版本原子**:终局类型 + 时点版本 id + 版本戳(code_commit/
+      registry_fingerprint,模块级常量) + 终局快照 + 段级时长一次逻辑
+      写入装配成单笔 :class:`MatchFinal` 载荷,经一次 ``_swap`` 落一行
+      (行内全量 state = 终局快照,字段来源注记随快照行自带);
+    - **写前查重 = 段内幂等**(§3.6.2 终局防重读门 G12 收编,运行时控制面
+      读口豁免类,载体 = 内存字段现读):本段已有终局行 → no-op 返 False;
+    - **异常终局 = 补写形态**(G8):``backfilled=True`` 时版本 id 照常分配
+      (写入口正常路径),行载荷 final_type='abnormal' + backfilled 位 +
+      行注记缺省 'recovered' 显影(判读可辨真伪)。**辖域 = 段内补写**
+      (哨兵收口兜底/在线路径异常形态,行挂当前段);启动扫描的**历史段**
+      补写禁走本口——本口 run_id 取供给槽现读,历史段行必被挂到现读段键
+      (错归属),须走专用装配通道(读流→构造→按显式 run_id 落行,遥测
+      正本 §3.2.2 规则 6②;先例 = recover_dangling_run_summaries,挂接线
+      批批首);
+    - duration_s 缺省 = 段级时长自算(容器创建 → 本调用,段级;恢复局跨段
+      = 各段各行,聚合归判读侧);
+    - 影子闸:行落盘受 sink 在场闸辖(未武装 = 版本照耗、Field 照写、行不
+      外送——与全部写入口一致);**监听器 = 写口受理成功(过封闭集与段内
+      幂等门)即触发**,行落盘与否另以 sink 武装/run_id 在场为准(未武装/
+      局外 = 行不落而事件照发,事件 run_id='' 形态)——消费方按此自滤;
+      监听 best-effort,异常不毒化终局流转。
+
+    返回 True = 本调用落了终局行;False = 本段已收口(幂等跳过)。
+    """
+    if final_type not in MATCH_FINAL_TYPES:
+        raise ValueError(
+            f'终局类型 {final_type!r} 集外(封闭集 = {MATCH_FINAL_TYPES};'
+            f'局终域行载荷词表)')
+    if bs.match_final.value is not None:
+        return False   # 段内幂等(G12 写前查重):同段恰一行
+    if duration_s is None:
+        duration_s = max(time.monotonic() - bs.created_monotonic, 0.0)
+    if not note and backfilled:
+        note = 'recovered'   # G8 补写行显影(判读按注记分型,防混计)
+    payload = MatchFinal(
+        final_type=final_type,
+        at_version=bs.write_seq + 1,   # 本行自身版本 id(与行头 v 恒等)
+        code_commit=_CODE_COMMIT,
+        registry_fingerprint=_REGISTRY_FINGERPRINT,
+        plane=plane, round_num=round_num, node_kind=node_kind,
+        level=level, hp=hp, gold=gold, streak=streak,
+        duration_s=duration_s, backfilled=bool(backfilled))
+    seq = bs.write_seq + 1
+    sig = ChannelSig(family='logic_hook', actor='MatchClose', screen=None,
+                     mode='compute', group_id=f'hook:MatchClose@{seq}')
+    bs.write_logic(bs.match_final, payload, produced_by='MatchClose',
+                   sig=sig, note=note)
+    fn = _MATCH_FINAL_LISTENER
+    if fn is not None:
+        try:
+            fn({'run_id': _current_run_id_safe(),
+                'final_type': final_type,
+                'plane': plane, 'round_num': round_num,
+                'version': payload.at_version,
+                'backfilled': bool(backfilled)})
+        except Exception as e:  # noqa: BLE001  挂点 best-effort
+            log.debug(f'[cw-bs] match_final listener skip: {e}')
+    return True
+
+
 # ============================================================ 单例宿主
 
 
@@ -1221,6 +1451,14 @@ class BoardState:
     # (applied=false + reason)——exec_events「失败可见性」收编载体。
     receipts: Field[list[dict]] = field(default_factory=Field)
 
+    # —— 局终域(R5 W2;§3.6.1 runs 收编载体;bs_schema 域 'match_final')——
+    # [索引定义] match_final 值 = :class:`MatchFinal` 终局行载荷(一段一行,
+    # 恢复局跨段 = 多行;game 级聚合取段序末行)。取值时机 = 局终判定成立
+    # 的当前 swap(单版本原子);None = 本段未收口。唯一写点 =
+    # :func:`write_match_final`(渠道③ actor=MatchClose);写前查重即本
+    # 字段现读(段内幂等,G12 收编)。
+    match_final: Field[MatchFinal | None] = field(default_factory=Field)
+
     # ---- 持续型效果账本(§5.1):不走 Field 封装 ----
     # 存储形态 = ActiveEffect 记录列表(现役 cw_effect_inventory 同构)。
     # session 级可变账本,不参与 frozen 帧替换(帧替换管观察/逻辑字段)。
@@ -1246,12 +1484,17 @@ class BoardState:
     # 恰一次推进,先到腿越 hist 即推进,后到腿同序零推进。取值时机 = 派生
     # 写入期单调推进;None = 本 run 尚无派生推进。写端 = 派生规则。
     node_hist_ord: int | None = None
+    # 段级时长锚(局终域 duration_s 自算源):容器创建时刻的 monotonic 读数
+    #(每局新建 = 天然段起点;恢复局跨段 = 各段各锚,聚合归判读侧)。
+    created_monotonic: float = 0.0
 
     def __post_init__(self) -> None:
         """构造守卫(任务书件 5/§8.6-5):schema_version 正整数 + Field
         冻结不变式断言(帧替换语义的结构前提,破即构造炸错不静默)。"""
         if not isinstance(self.schema_version, int) or self.schema_version <= 0:
             raise ValueError('schema_version 必须为正整数(§3.7.1)')
+        if not self.created_monotonic:
+            object.__setattr__(self, 'created_monotonic', time.monotonic())
         probe = Field(value=None)
         try:
             probe.value = 1  # type: ignore[misc]  # 刻意触发冻结守卫
@@ -1326,13 +1569,18 @@ class BoardState:
         - 同流、**占版本**、内嵌当时 state(v3.1-N1:obs_event 与写入行同流
           同序,「run 段内行序 = 版本序」不变量覆盖全部行型);不触任何
           Field(行行自足,查询不分行型);
-        - event 词表 = arbitrate(拒读/仲裁拒绝)| miss(失读留证)| popup;
+        - event 词表 = :data:`OBS_EVENT_EVENTS` 封闭集(arbitrate|miss|popup),
+          集外显式炸错;
         - 产生面 = 登记清单(非全量;现役 obs_conflicts 写点逐点收编映射归
           M2 观察接线批,本 API 为写入口面);
         - sig = 渠道①签名(观察证据属 obs 族;缺位按 obs/read 合成)。
         """
         if sig is not None:
             _validate_sig(sig, ('obs',))
+        if event not in OBS_EVENT_EVENTS:
+            raise ValueError(
+                f'obs_event 事件 {event!r} 集外(封闭集 = {OBS_EVENT_EVENTS};'
+                f'§3.2.3 行型 2 产生面登记清单,硬约束 2 同纪律)')
         if _STATE_JOURNAL_SINK is None:
             return
         try:
@@ -1751,11 +1999,21 @@ def _derive_node_observed(bs: BoardState, candidate: int, *,
     - candidate == hist → 同序照写(去重键已占,不构成第二次跃迁;值未变
       行自然带 ``same_value=true``,§3.2.3 体积申报 M1 实测);
     - candidate < hist → 倒退读数,不写字段静默跳过(R3 规则三倒退免疫;
-      v3.2-G10 obs_event 留证增强候件A/M2)。
+      v3.2-G10:倒退丢弃 obs_event 留证——拒读类证据占版本内嵌当时 state,
+      事件词表 'arbitrate',actor 保留触发规则登记名归因,family 走 obs 族
+      留证契约,同类型直定冲突先例)。
     """
     hist = bs.node_hist_ord
     if hist is not None and candidate < hist:
-        return   # 倒退读数:v3.1-N2 静默跳过(R3 规则三倒退免疫)
+        # v3.2-G10 倒退留证:零状态变更,占版本(obs_event 行型 2)
+        bs.note_obs_event(
+            'arbitrate', 'node_ord',
+            {'candidate': candidate, 'hist': hist},
+            verdict='倒退读数丢弃留证(R3 规则三倒退免疫;候选 < hist 不写字段)',
+            sig=ChannelSig(family='obs', actor='derive_node_observed',
+                           screen=trigger_screen, mode='read',
+                           group_id=f'hook:derive_node_observed@{seq}'))
+        return   # 倒退读数:不写字段(R3 规则三倒退免疫)
     _derive_write(bs, bs.node_ord, candidate,
                   actor='derive_node_observed',
                   trigger_screen=trigger_screen, seq=seq)

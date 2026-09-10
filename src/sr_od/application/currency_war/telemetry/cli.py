@@ -31,11 +31,12 @@ from sr_od.application.currency_war.telemetry.query import (
 )
 
 #: 新账专属视图(--source journal;旧 12 流无同名视图)
-_JOURNAL_ONLY_VIEWS: frozenset[str] = frozenset({'gold', 'events', 'snapshot'})
+_JOURNAL_ONLY_VIEWS: frozenset[str] = frozenset(
+    {'gold', 'events', 'snapshot', 'final'})
 
 #: 新账视图族全集(--source journal 的合法 --view)
 _JOURNAL_VIEWS: frozenset[str] = frozenset(
-    {'rounds', 'gold', 'hp', 'events', 'snapshot', 'all'})
+    {'rounds', 'gold', 'hp', 'events', 'snapshot', 'final', 'all'})
 
 
 def _len_rounds(archive: dict | None) -> int:
@@ -78,7 +79,7 @@ def _print_journal_views(rows: list[dict], run_id: str, view: str) -> None:
     """新账视图族输出(view ∈ _JOURNAL_VIEWS;all = 全族)。"""
     views = {'rounds': _jq.view_rounds, 'gold': _jq.view_gold,
              'hp': _jq.view_hp, 'events': _jq.view_events,
-             'snapshot': _jq.view_snapshot}
+             'snapshot': _jq.view_snapshot, 'final': _jq.view_match_final}
     for fn in (views.values() if view == 'all' else [views[view]]):
         for ln in fn(rows, run_id):
             print(ln)
@@ -159,7 +160,7 @@ def _cli_main() -> None:
                     choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec',
                              'hp', 'economy', 'goldflow', 'exogenous', 'execevents',
                              'invest', 'conflicts', 'spend', 'all',
-                             'gold', 'events', 'snapshot'])
+                             'gold', 'events', 'snapshot', 'final'])
     ap.add_argument('--source', default='old', choices=['old', 'journal'],
                     help='query 读面选择:old=旧 12 流视图(缺省,现状不变);'
                          'journal=统一 state 新账视图族(state/journal.jsonl'

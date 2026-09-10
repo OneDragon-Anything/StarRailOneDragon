@@ -41,6 +41,9 @@ from pathlib import Path
 from typing import Any
 
 from one_dragon.utils import log_utils
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    MATCH_FINAL_FIELD,
+)
 from sr_od.application.currency_war.kernel.cw_observe import (
     LIVE_DIR,
     MATCHES_ROOT,
@@ -53,7 +56,9 @@ from sr_od.application.currency_war.kernel.cw_state import (
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.telemetry.journal_query import (
     JOURNAL_REL,
+    ROW_WRITE,
     read_journal_stats,
+    row_kind,
 )
 from sr_od.application.currency_war.telemetry.query import (
     HP_CONF_TRUSTED,
@@ -229,6 +234,52 @@ def _settlement_gap(dec_rows: list[dict[str, Any]],
     return {'settlement_gap': {'decision_frames': n_dec,
                                'claimed_rounds_survived':
                                    (summary or {}).get('rounds_survived')}}
+
+
+# ===== 局终行识别(R5 W2;局终域 match_final,retirement.md §2 runs 行)=====
+
+# 局终行的 field 值单一源 = kernel MATCH_FINAL_FIELD(随写口声明;
+# 模块顶部统一 import,本节不再复制字面量)。
+
+
+def extract_match_final_rows(
+        journal_rows: list[dict[str, Any]] | None) -> dict[str, dict[str, Any]]:
+    """从统一 state 账本行识别局终行(段级;局边界判定的识别半)。
+
+    识别判据(封闭):``row=='write'`` ∧ ``field=='match_final'`` ∧ run_id
+    非空。返回 ``{run_id: 行}``——局终域 = 一段一行(写口段内幂等,写前
+    查重),同 run_id 多行(跨写口版本演进的理论形态)取 v 最大行,不抛;
+    无局终行(影子未开/段未收口)= 空 dict,判读可区分「未开」与「未收口」。
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for r in journal_rows or []:
+        if row_kind(r) != ROW_WRITE:
+            continue
+        if str(r.get('field') or '') != MATCH_FINAL_FIELD:
+            continue
+        rid = str(r.get('run_id') or '')
+        if not rid:
+            continue
+        cur = out.get(rid)
+        if cur is None or (r.get('v') or 0) >= (cur.get('v') or 0):
+            out[rid] = r
+    return out
+
+
+def match_final_view(row: dict[str, Any] | None) -> dict[str, Any] | None:
+    """局终行 → 档案视图(载荷 + 归属;None 透传)。after 载荷 = MatchFinal
+    序列化形态(final_type/at_version/终局快照/duration_s/backfilled);行
+    级来源注记随行内嵌 state 快照自带(切片在档可回查),视图不复制。"""
+    if row is None:
+        return None
+    after = row.get('after')
+    return {
+        'run_id': row.get('run_id'),
+        'v': row.get('v'),
+        'ts': row.get('ts') or '',
+        'note': str(row.get('note') or ''),
+        'final': after if isinstance(after, dict) else {},
+    }
 
 
 def _first_frame_key(rows: list[dict[str, Any]], run_id: str) -> tuple[int, int] | None:
@@ -1282,6 +1333,12 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                                 'registry_fingerprint':
                                     row.get('registry_fingerprint') or ''}
             break
+    # 局终行识别(R5 W2):game 终局 = 段序末段的局终行(局终域 = 段级
+    # 事实,恢复局跨段多行,聚合取末行);末段无局终行 = None(旧档案/
+    # 影子未开形态,判读按「新账无终局行」对待)。加法键不 bump
+    # SCHEMA_VERSION 申报:本键只能派生自新账行,存量档案源流已清无法
+    # 经重装配获得(bump 只产生无效重装配尝试),读侧宽容缺键。
+    _final_rows = extract_match_final_rows(slice_rows.get(JOURNAL_REL))
     return {
         'schema_version': SCHEMA_VERSION,
         'game_id': game['game_id'],
@@ -1320,6 +1377,10 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                     # 终局阵容/金/等级,取值口径见 _final_snapshot。
                     'final_snapshot': _final_snapshot(
                         slice_rows['decisions.jsonl']),
+                    # 局终行(局终域识别,R5 W2;None=末段无局终行):
+                    # runs 收编载体的档案显影位,局边界判定读此键。
+                    'match_final': match_final_view(
+                        _final_rows.get(segments[-1]) if segments else None),
                     'segment_summaries': seg_summaries},
         'slices': slice_rows,
     }
