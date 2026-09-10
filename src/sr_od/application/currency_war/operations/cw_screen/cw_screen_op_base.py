@@ -1,8 +1,8 @@
 """统一观察架构:画面 op 基类(试点步骤 1,实机侧)。
 
 设计正本 = ``docs/develop/currency_war/design/统一观察架构-画面op基类设计.md``
-(下称「架构设计」):本类承载 §5 的五段生命周期(observe→reconcile→decide→
-act→on_outcome)与 §6.4 的落地登记钩子注册表(带触发时点轴),是
+(下称「架构设计」):本类承载 §5 的五段生命周期(observe→reconcile→
+decide→act→on_outcome)与 §6.4 的落地登记钩子注册表(单一发射口),是
 「两个适配器 + 一份共用中段」结构(§1.1)的 op 侧机制骨架。
 
 试点范围申报(架构设计 §9.2 迁移步骤 1,实机侧):
@@ -26,10 +26,14 @@ act→on_outcome)与 §6.4 的落地登记钩子注册表(带触发时点轴),�
   等价门通过后的后续批。本文件不消费端口——装配点分流判据的调用点
   留在子类 run 入口(端口消费封闭集守卫的信号面保持干净)。
 
-on_outcome 触发时点轴(§6.4-R-E):登记件分两型——**落地回执门(默认)**:
-applied/progressed 为触发前提,未落地不触发;**发射型(例外,逐件显式
-申报)**:点击发射即置位、不等验效,在册成员申报面 = EMIT_TRIGGERED_
-DECLARED(新成员入册须先改该表再登记,禁静默选型)。
+on_outcome 触发契约(T-223 用户终裁 2026-09-10 最严读法,架构设计 §6.4
+v12):**单一发射口,发射即触发**——两 fire 口(落地回执门/发射型)合并,
+落地回执门(原 OUTCOME_TRIGGER_LANDED 型)退役:发出即职责完成,登记在
+发射时点触发;「动作是否落地」的判定完全归观察侧 reconcile 对账(挂起
+预期 vs 下一帧实读,失配 → 纠偏/缺陷台账,§6.5-1),动作层不携带成败/落地
+信息(端口回执 ``(progressed, detail)`` 与 ``ActionOutcome.progressed``
+均退役)。登记件逐件申报面 = ``EMIT_TRIGGERED_DECLARED``(原「选型申报」
+随两型制退役,逐件发射语义申报纪律保留:新登记件入册先改申报面)。
 """
 from __future__ import annotations
 
@@ -41,18 +45,16 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-#: 触发时点轴·落地回执门(默认):applied/progressed 为触发前提(§6.5-1)。
-OUTCOME_TRIGGER_LANDED: str = 'outcome'
-#: 触发时点轴·发射型(例外):点击发射即置位、不等验效(§6.5-4)。
-OUTCOME_TRIGGER_EMITTED: str = 'emit'
-
-#: 发射型登记件在册申报面(§6.4 触发时点轴;键 = 登记件名,值 = 出处申报)。
-#: 在册两件 = 攻击第 1 轮 F-3 裁决口径(架构设计 §6.4-R-E「在册成员两件
-#: (F3)」):遭遇刷新计数 + 策略屏逐卡刷新计数,同型同口径「随点击置位
-#: 不等验效」。遭遇件已随试点步骤 2 迁移接线(CwScreenEncounter 刷新链,
-#: 写端 = ``_on_refresh_emitted`` 注册表钩子,发射点 = ``_emit_refresh_
-#: click`` 两路径共用分派面);策略屏迁移时其写端(CwScreenInvestStrategy
-#: 刷新链)入本面接线注册,禁静默新增发射型成员。
+#: 登记件逐件申报面(§6.4;键 = 登记件名,值 = 发射时点/口径出处申报)。
+#: T-223 后登记件一律发射型(单一发射口,发射即触发),本面 = 逐件申报
+#: 纪律的载体(新成员先改本面再登记,禁静默新增;原「选型闸」语义随两型
+#: 制退役)。在册成员:
+#: - 遭遇刷新计数 + 策略屏逐卡刷新计数(原 F-3 裁决两件,口径续行):
+#:   随点击置位不等验效,选择落地不置位(防点偏未生效重入屏反复尝试);
+#: - 经验期望账本两通道(CwScreenPrep 在册):升级直击通道(LevelUp 发射
+#:   即推算最小击数)/ 买波通道(OpenShop 编排机械完成后携买波摘要 detail
+#:   推算)——「未落地不计数」防线由观察侧 reconcile 对账承接
+#:   (``_reconcile_xp_expect``,heavy 帧消费)。
 EMIT_TRIGGERED_DECLARED: dict[str, str] = {
     'encounter_refresh_used': (
         'CwScreenEncounter 刷新链(架构设计 §6.4-R-E 在册两件①;现役语义'
@@ -62,34 +64,39 @@ EMIT_TRIGGERED_DECLARED: dict[str, str] = {
         'CwScreenInvestStrategy 刷新链(架构设计 §6.4-R-E 在册两件②;'
         '逐卡 dict[str,int],策略屏迁移批其写端入本面接线,随点击置位'
         '不等验效)'),
+    'xp_ledger_levelup': (
+        'CwScreenPrep 经验期望账本·LevelUp 直击通道(on_outcome 注册件;'
+        '发射即按账本现值推算最小击数推进,级真值由下一帧观察 reconcile'
+        ' 纠偏;原落地回执门随 T-223 改发射时点触发)'),
+    'xp_ledger_buy_clicks': (
+        'CwScreenPrep 经验期望账本·OpenShop 买波通道(on_outcome 注册件;'
+        '商店编排机械完成后携买波摘要 detail 解析击数推进,对账纠偏同上;'
+        '原落地回执门随 T-223 改发射时点触发)'),
 }
 
 
 @dataclass
 class ActionOutcome:
-    """动作落地回执(§6.4 钩子契约输入面)。
+    """动作发射登记件(§6.4 钩子契约输入面;单一发射口)。
 
     - ``action``:触发登记的意图对象(词表成员,§6.1);
-    - ``progressed``:落地回执(实机 = 执行器 F3 验证链回执;sim = applied,
-      §6.3——规则性拒绝两域同判;sim 批对齐动作端口协议的 ExecResult
-      .applied 语义);
-    - ``detail``:执行摘要(经验账本等登记件的解析输入);
-    - ``evidence``:落地时点证据(发射型 = 点击发射词,如 refresh_click)。
+    - ``detail``:机械执行摘要(经验账本等登记件的解析输入;非成败回执——
+      调用方不问成败,T-223);
+    - ``evidence``:发射时点证据(如 refresh_click)。
+    - 原 progressed(落地回执)位随 T-223 端口回执退役删除:登记正确性
+      防线 = 发射即登记 + 观察侧 reconcile 对账(§6.5-1)。
     """
 
     action: Any
-    progressed: bool
     detail: str = ''
     evidence: str = ''
 
 
 @dataclass
 class _OutcomeHook:
-    """注册表条目:钩子 + 触发时点型 + 申报名(发射型须入 EMIT_TRIGGERED_\
-DECLARED)。"""
+    """注册表条目:钩子 + 申报名(登记件须入 EMIT_TRIGGERED_DECLARED)。"""
 
     hook: Callable[[ActionOutcome], None]
-    trigger: str
     name: str
 
 
@@ -110,13 +117,14 @@ class ScreenObservationPort(Protocol):
 class ScreenActionPort(Protocol):
     """动作适配器端口(架构设计 §6 动作端口契约的 op 侧装配位)。
 
-    意图 → 落地,回执 = ``(progressed, detail)``(落地判定在回执内,是
-    on_outcome 的触发前提;sim 批对齐动作端口协议的 ExecResult.applied
-    语义,§6.3)。验真锚语义(§6.2)封在实机实现内,不出端口。
+    意图 → 机械执行,**执行无返回**(T-223 最严读法:发出即职责完成,
+    调用方不问成败;端口回执 ``(progressed, detail)`` 退役)。「是否落地」
+    不是适配器的输出,落地判定完全归观察侧 reconcile 对账(挂起预期 vs
+    下一帧实读,§6.2/§6.5-1);执行异常仍上抛(框架异常路径,非验证)。
     """
 
-    def execute(self, op: CwScreenOpBase, action: Any) -> tuple[bool, str]:
-        """执行一个意图并回执落地判定。"""
+    def execute(self, op: CwScreenOpBase, action: Any) -> None:
+        """机械执行一个意图(无返回;落地判定归观察侧)。"""
         ...
 
 
@@ -124,7 +132,7 @@ class CwScreenOpBase(SrOperation):
     """画面 op 基类:五段生命周期 + on_outcome 落地登记注册表。
 
     - 五段(§5.1):observe(适配器①)→ reconcile(对账)→ decide(策略
-      消费)→ act(适配器②)→ on_outcome(落地登记);单帧段
+      消费)→ act(适配器②)→ on_outcome(发射登记);单帧段
       (observe/reconcile)每访问一次,decide→act→on_outcome 在单动作
       决策循环内逐动作迭代(备战 op 的 visit 语义;期望态两步由 decide/act
       段记预期、下一轮 reconcile 段核对闭环)。
@@ -133,10 +141,10 @@ class CwScreenOpBase(SrOperation):
       那就是动作 op 有 bug,不应该为了 bug 增加验证这种复杂度。」动作未
       生效的处置归动作层本身(修动作适配器的可靠性:点击链坐标/时序/确认
       序列),生命周期不设验证段、不设「验证失败→重试/恢复」分支;落地
-      判定(applied/progressed)是动作适配器的执行回执(§6.2),仅作
-      on_outcome 落地回执门的触发前提(§6.4),不是生命周期段。
-    - 注册表(§6.4):按意图类型登记,基类在动作落地回执点统一触发;
-      触发时点轴见模块 docstring。
+      判定完全归观察侧 reconcile 对账(T-223:适配器只机械执行,成败/落地
+      回执退役,§6.2/§6.5-1)。
+    - 注册表(§6.4):按意图类型登记,基类在动作发射点统一触发(单一
+      发射口,发射即触发);逐件申报面 = EMIT_TRIGGERED_DECLARED。
     - 适配器位:observation_adapter/action_adapter 可注入(构造参数);
       None = 子类缺省(实机适配器,内部复用现役识别链/点击链)。兼容注:
       ``__new__`` 绕道构造的测试桩经 getattr 兜底读位,缺位 = 直连现役链
@@ -166,70 +174,45 @@ class CwScreenOpBase(SrOperation):
         """动作适配器位;None = 直连现役点击链(子类缺省实现自担)。"""
         return getattr(self, '_action_adapter', None)
 
-    # ---- on_outcome 落地登记注册表(§6.4)----
+    # ---- on_outcome 落地登记注册表(§6.4;单一发射口)----
 
     def register_outcome_hook(self, action_type: type,
                               hook: Callable[[ActionOutcome], None], *,
-                              trigger: str = OUTCOME_TRIGGER_LANDED,
                               name: str = '') -> None:
-        """登记一个落地登记钩子(按意图具体类型分派)。
+        """登记一个发射登记钩子(按意图具体类型分派;单一发射型)。
 
-        - trigger 缺省 = 落地回执门(progressed 为触发前提);
-        - 发射型必须显式传 ``trigger=OUTCOME_TRIGGER_EMITTED`` 且 name 已入
-          EMIT_TRIGGERED_DECLARED 申报面(§6.4-R-E:逐件显式申报,禁静默
-          选型)——违规登记直接炸错,不静默收下。
+        - ``name`` 必须已入 ``EMIT_TRIGGERED_DECLARED`` 申报面(§6.4:逐件
+          显式申报发射时点/口径,禁静默新增)——未申报登记直接炸错,不
+          静默收下。原触发时点轴选型参数(落地门/发射型)随 T-223 两型制
+          退役:登记件一律发射型,发射即触发。
         """
-        if trigger not in (OUTCOME_TRIGGER_LANDED, OUTCOME_TRIGGER_EMITTED):
-            raise ValueError(f'未知触发时点型:{trigger!r}'
-                             f'(合法值 = outcome/emit,§6.4 触发时点轴)')
-        if trigger == OUTCOME_TRIGGER_EMITTED and name not in EMIT_TRIGGERED_DECLARED:
+        if name not in EMIT_TRIGGERED_DECLARED:
             raise ValueError(
-                f'发射型钩子 {name or action_type.__name__} 未入在册申报面'
-                f' EMIT_TRIGGERED_DECLARED(§6.4:发射型逐件显式申报,'
+                f'登记钩子 {name or action_type.__name__} 未入逐件申报面'
+                f' EMIT_TRIGGERED_DECLARED(§6.4:登记件逐件显式申报,'
                 f'新成员先改申报表再登记;在册 = '
                 f'{sorted(EMIT_TRIGGERED_DECLARED)})')
         registry = self._ensure_hook_registry()
         registry.setdefault(action_type, []).append(
-            _OutcomeHook(hook=hook, trigger=trigger, name=name))
+            _OutcomeHook(hook=hook, name=name))
 
-    def fire_outcome_hooks(self, action: Any, progressed: bool,
-                           detail: str = '', *,
+    def fire_outcome_hooks(self, action: Any, detail: str = '', *,
                            evidence: str = '') -> int:
-        """动作落地时点统一触发(§6.4)。
+        """动作发射时点统一触发(§6.4;单一发射口,发射即触发)。
 
-        落地回执门钩子仅在 ``progressed`` 时触发(未落地不触发,§6.5-1
-        语义不变承诺);发射型钩子不经本口(由执行链在点击发射点调
-        :meth:`fire_emit_hooks`)。注册表缺席(__new__ 桩形态)或该意图
-        未登记 = 零动作。返回触发钩子数(锁/遥测消费)。
+        两 fire 口(落地回执门/发射型)合并后的唯一触发口:该意图类型的
+        全部登记件在本口发射时点触发,与落地与否解耦(T-223:发出即职责
+        完成;「未落地不计数」防线由观察侧 reconcile 对账承接,§6.5-1)。
+        注册表缺席(__new__ 桩形态)或该意图未登记 = 零动作。返回触发
+        钩子数(锁/遥测消费)。
         """
-        if not progressed:
-            return 0
         registry = getattr(self, '_outcome_hooks', None)
         if not registry:
             return 0
-        outcome = ActionOutcome(action=action, progressed=True,
-                                detail=detail, evidence=evidence)
+        outcome = ActionOutcome(action=action, detail=detail,
+                                evidence=evidence)
         fired = 0
         for spec in registry.get(type(action), ()):
-            if spec.trigger != OUTCOME_TRIGGER_LANDED:
-                continue   # 发射型归 fire_emit_hooks,不在落地回执口混触
-            spec.hook(outcome)
-            fired += 1
-        return fired
-
-    def fire_emit_hooks(self, action: Any, *, evidence: str = '') -> int:
-        """发射型钩子触发口(执行链在**点击发射时点**调用;§6.5-4:随点击
-        置位不等验效,验效失败不影响该登记)。与落地与否解耦:本口不看
-        progressed。返回触发钩子数。"""
-        registry = getattr(self, '_outcome_hooks', None)
-        if not registry:
-            return 0
-        outcome = ActionOutcome(action=action, progressed=False,
-                                detail='', evidence=evidence or 'emit')
-        fired = 0
-        for spec in registry.get(type(action), ()):
-            if spec.trigger != OUTCOME_TRIGGER_EMITTED:
-                continue
             spec.hook(outcome)
             fired += 1
         return fired
@@ -288,9 +271,9 @@ class CwScreenOpBase(SrOperation):
     def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:
         """段3-5:单动作决策循环——decide→act→on_outcome 逐动作迭代。
 
-        迭代语义(终结出口/投影推进/失败处置)归画面 op 自身(§5.2:
-        CwScreenPrep 五段是本生命周期的原型);动作未生效归动作层处置
-        (修动作适配器,§5.1 验证段废除裁定),不在本循环留验证残段。
+        迭代语义(终结出口/投影推进)归画面 op 自身(§5.2:CwScreenPrep
+        五段是本生命周期的原型);动作未生效归动作层处置(修动作适配器,
+        §5.1 验证段废除裁定),不在本循环留验证残段。
         """
         raise NotImplementedError('lifecycle_decision_cycle 是画面 op 的必实现段'
                                   '(§5.1;段3-5 逐动作迭代)')

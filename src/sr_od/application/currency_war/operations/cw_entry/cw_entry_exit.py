@@ -236,7 +236,8 @@ class CwEntryExit(SrOperation):
         关闭机制依据:装备详情浮窗 2026-08-14 live 验「点画面空白处 → 关闭回
         备战」;area 中心 (960,530) = 前排 y467 底~后排 y600 顶之间的真空档
         (2026-08-14 实测修正,旧 700,400 前排有人时=前排-1 槽会误开角色详情)。
-        与 try_recovery / CwScreenRoleDetailOverlay 同源同控件。
+        与 CwScreenRoleDetailOverlay 同源同控件(原恢复原语 try_recovery
+        已随验证拆除退役,同款空白关闭语义由本方法与环入口清场承载)。
         """
         return self._click_screen_area_center('货币战争-备战', '区域-空白关闭')
 

@@ -385,13 +385,13 @@ def locked_resume_sync_and_battle(op, ctx):
     同步步**(deploy-swap/腾席/确定性部署整面跑一遍,零商店交互——锁定
     局「商店探针零响应」禁令只辖商店域,部署面不受辖)。
 
-    证据位语义(修订出处 = .debug/temp/currency_war/20260905_postresync_audit/
-    P1消费臂批落地审 R1):**RunDeploy ok=True 才置位**
-    ``op._cw_locked_sync_done``——失败(drag 白拖/W209j 刹车/板满门退化)
-    不置位,下环重试同步;连续失败达 ``_SYNC_RETRY_LIMIT``(3)后放弃
-    (error 告警显影,依据:同步步幂等但与 StartBattle 重试共用 retry 池,
-    无限重试抢预算;3 次覆盖 CV 幻影瞬态,持续失败=结构性)。锁定确认
-    分支复位证据位与失败计数。
+    证据位语义(批3a 修订,T-223 最严读法申报「发出即写」):同步步
+    RunDeploy **发射后立即置位** ``op._cw_locked_sync_done``——原「ok=True
+    才置位 + 失败重试(上限 3)」消费执行器成败回执,回执随 T-223 退役,
+    失败概念在发射型下消解,重试/放弃治理结构随之退役(发射次数预算
+    承载归批4 J2 形态,同源重推);「部署是否真落地」由下一帧观察侧
+    reconcile 对账暴露(同 T-82 token 门「发出即写」同款裁定)。锁定
+    确认分支复位证据位。
 
     隐藏前提声明(R3):同步步的「不误卖」依赖恢复局 session 必新鲜——
     恢复检测链(cw_resume_lock.is_new_match)恒走新容器,last_state=None
@@ -416,54 +416,51 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     StartBattle 发射位。
 
     - ``sync_once=True``(恢复局面面,调用面 = locked_resume_sync_and_
-      battle):首战前插备战同步步,**RunDeploy ok=True 才置位**证据位
-      ``op._cw_locked_sync_done``——失败(drag 白拖/W209j 刹车/板满门
-      退化)不置位下环重试;连续失败达 ``_SYNC_RETRY_LIMIT``(3)放弃
-      (error 显影;依据:同步幂等但与 StartBattle 重试共用 retry 池,
-      3 次覆盖 CV 幻影瞬态,持续失败=结构性)。锁定确认分支复位证据位
-      与失败计数。
+      battle):首战前插备战同步步,**发出即置位**证据位
+      ``op._cw_locked_sync_done``(批3a,T-223 回执退役后失败概念消解,
+      见 locked_resume_sync_and_battle docstring);连续失败放弃结构随
+      退役。锁定确认分支复位证据位。
     - ``sync_once=False``(达标臂面,调用面 = readiness_battle_launch):
       **不过闩**——每达标帧都 RunDeploy+StartBattle(部署面现读重建,
       已同步形态下 RunDeploy 合法 no-op 即零待部署;闩只辖恢复局面,
       达标臂第二次发射被「每局恰一次」闩吞 = C1 明令防的双源病)。
+
+    返回 ``(launch_ok, detail)`` = StartBattle 发射位**内部事实**(执行器
+    last_launch_ok 旁路;A6 出战链判效面,批4 随 J2/J3/J4 消费端同退役,
+    非 T-223 端口回执——端口本 身已无返回)。W209j 刹车短路(停机标志
+    已设)→ 返回 (False, '已停止[W209j刹车]'),交回外循环由 loop 顶退出。
     """
-    _SYNC_RETRY_LIMIT = 3
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
         RunDeploy,
         StartBattle,
     )
-    from sr_od.application.currency_war.prep_actions import PrepActionExecutor
+    from sr_od.application.currency_war.prep_actions import (
+        PrepActionExecutor,
+        StopBrakeShortCircuit,
+    )
     ex = PrepActionExecutor(op, ctx)
-    if sync_once:
-        if not getattr(op, '_cw_locked_sync_done', False):
-            _ok, _detail = ex.execute(RunDeploy())
-            if _ok:
+    try:
+        if sync_once:
+            if not getattr(op, '_cw_locked_sync_done', False):
+                ex.execute(RunDeploy())   # 机械执行无返回(T-223)
+                # 发出即写(批3a 申报,T-223 回执退役;失败概念消解)
                 op._cw_locked_sync_done = True
-                op._cw_locked_sync_fails = 0
-                log.info('[cw-loop] 恢复局备战同步步(RunDeploy)完成: %s',
-                         _detail)
+                log.info('[cw-loop] 恢复局备战同步步(RunDeploy)已发出: %s',
+                         getattr(ex, 'last_detail', ''))
             else:
-                _fails = getattr(op, '_cw_locked_sync_fails', 0) + 1
-                op._cw_locked_sync_fails = _fails
-                if _fails >= _SYNC_RETRY_LIMIT:
-                    # 连续失败达上限:放弃重试(同步幂等但与 StartBattle 重试
-                    # 共用 retry 池,无限重试抢预算;放弃侧代价 = 首战未同步,
-                    # error 显影交判读,不静默)
-                    op._cw_locked_sync_done = True
-                    log.error('[cw!][loop] 恢复局备战同步步连续 %d 次失败'
-                              '(最后一次: %s)→ 放弃重试,板面未同步开战',
-                              _fails, _detail)
-                else:
-                    log.warning('[cw!][loop] 恢复局备战同步步失败'
-                                '(第 %d/%d 次,%s)→ 下环重试,证据位不置位',
-                                _fails, _SYNC_RETRY_LIMIT, _detail)
+                log.debug('[cw-loop] 恢复局同步步已置位,跳过 RunDeploy')
         else:
-            log.debug('[cw-loop] 恢复局同步步已置位,跳过 RunDeploy')
-    else:
-        # 达标臂面:每帧 RunDeploy(部署面现读重建;已同步形态合法 no-op)
-        _ok, _detail = ex.execute(RunDeploy())
-        log.info('[cw-loop] 达标臂 RunDeploy: %s', _detail)
-    return ex.execute(StartBattle())
+            # 达标臂面:每帧 RunDeploy(部署面现读重建;已同步形态合法 no-op)
+            ex.execute(RunDeploy())
+            log.info('[cw-loop] 达标臂 RunDeploy: %s', getattr(ex, 'last_detail', ''))
+        ex.execute(StartBattle())
+    except StopBrakeShortCircuit as e:
+        log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)
+        return False, '已停止[W209j刹车]'
+    # StartBattle 发射位内部事实(A6 判效面,批4 同退役;getattr 容缺 =
+    # __new__/桩形态兼容)
+    return bool(getattr(ex, 'last_launch_ok', False) or False), \
+        getattr(ex, 'last_detail', '')
 
 
 def readiness_admission_report(state, comp) -> dict:
@@ -2775,7 +2772,6 @@ class CwLoop(SrOperation):
                         self._cw_locked_resume = True
                         self._cw_locked_round = _pr[1]
                         self._cw_locked_sync_done = False   # 新锁定局:首战前同步步待执行
-                        self._cw_locked_sync_fails = 0
                         import contextlib
                         with contextlib.suppress(Exception):   # 遥测 best-effort
                             recorder.record_exogenous(
@@ -2901,12 +2897,12 @@ class CwLoop(SrOperation):
                     self._director_fail_streak = 0
                     # 正常备战环跑完一轮 = 部署链健康 → 0j 恢复链重试预算复位
                     #(预算只辖「前台无角色→重部署」连续失败窗,非整局总量)。
-                    # F3/T-174(ADR-0610)复位条件收紧:StartBattle 验证失败
-                    # 的环在外循环仍记 round_success(「已试恢复交回」)——
-                    # 1-1 冻结局实证该形态每环误复位预算(两次显示 (1/2)),
-                    # 预算形同虚设、唯一止住循环的是环级守卫。故「发射但
-                    # 验证失败」(False)不复位;「本环未发射」(None)或发射
-                    # 成功(True)才复位。读后即清防跨环残留。
+                    # F3/T-174(ADR-0610)复位条件收紧:StartBattle 发射但
+                    # 内部发射事实为 False 的环在外循环仍记 round_success
+                    #(发出即终结交回)——1-1 冻结局实证该形态每环误复位预算
+                    #(两次显示 (1/2)),预算形同虚设、唯一止住循环的是环级
+                    # 守卫。故「发射但 False」不复位;「本环未发射」(None)
+                    # 或发射 True 才复位。读后即清防跨环残留。
                     _prep_sess = (self.ctx.cw_match.session
                                   if self.ctx.cw_match is not None else None)
                     _launch_ok = getattr(

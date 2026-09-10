@@ -1,10 +1,15 @@
 """货币战争 备战决策环 原子动作全集 + 执行器(P1;strategy/03(原 doc 15§4)/§13)。
 
 框架层:本模块**不含玩法判断**(何时收球/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
-只负责「执行一个动作 + 完成验证」。三失败路径(§13.2):
-- 验证失败 → execute 返回 progressed=False(CwScreenPrep 计 fail/屏蔽);
-- 参数非法 → validate 返回错误串(Director 拒绝执行 + 该步计 stall + telemetry);
+只负责「机械执行一个动作」(用户裁定 2026-09-10:动作 op 只管机械执行,
+禁止做任何验证——点击/拖拽后不读屏判「是否生效」,落地判定完全归观察侧
+reconcile 对账;T-223 终裁:执行回执 ``(progressed, detail)`` 退役,
+``execute`` 无返回,发出即职责完成)。失败路径(§13.2 修订):
+- 参数非法 → validate 返回错误串(Director 拒绝执行 + 交回留证);
+- 执行前输入契约拒绝(球/箱/按钮等目标不在,执行前观察,M6 边界面)→
+  本动作未发出,机械交回外循环重观察重决策;
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
+原第三路径「验证失败 → progressed=False」随验证拆除退役。
 
 slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1-4 / 后排 1-N;非 bench 列表下标!
 与族 A(cw_state.Action 策略动作)同名类(SellBench/DeployMove/SellDeployed)的坐标系对照:
@@ -59,29 +64,42 @@ from sr_od.application.currency_war.obs.cw_observation import read_gold
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-#: 点击后 overlay 弹出/关闭的事件驱动轮询预算(替代旧固定
-#: sleep 1.5s 后单次验证——overlay 通常更快就位,命中即返回;
-#: 慢时仍受上界,失败语义与旧固定等待一致。依据:单局耗时
-#: 审计报告 .debug/temp/currency_war/w417_duration_audit/
-#: REPORT.md「需验证·出战链」)。取旧固定值 1.5s + 一个轮询
-#: 间隔 0.3s,保证最坏情形覆盖面不缩水。
-_OVERLAY_POLL_TIMEOUT_S: float = 1.8
+#: overlay 弹出/关闭的固定动画等待(DD-011:等待归产生动画的操作)。
+#: 原为事件驱动轮询上界 1.8s(1.5s 旧固定值 + 0.3s 轮询间隔,依据:单局
+#: 耗时审计报告 .debug/temp/currency_war/w417_duration_audit/REPORT.md
+#: 「需验证·出战链」)——判效半拆除(用户裁定 2026-09-10)后收敛为固定
+#: 等待,值取原上界保最坏情形覆盖面不缩水;弹窗就位与否交下一帧观察。
+_OVERLAY_ANIM_WAIT_S: float = 1.8
 
 #: 商店收起动画时长(DD-011 操作完成自等动画;实测口径 screen_flow_timing
 #: #15「收起过场动画 ~1s 即备战画面稳定」,用户口述。op 完成后显式等待,替代
 #: 测量驱动 gate——画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
 SHOP_CLOSE_ANIM_S: float = 1.0
 #: 商店打开动画时长(DD-011 固定时长自等;用户口述定值 2026-09-02「干净的备战
-#: 里打开商店,只要等 1 秒就够了」。等待后验证「按钮-收起」出现 = 点击生效验证,
-#: 非动画判定。自动开店场景不经此处——cw_loop 备战分支按「备战阶段」识别)。
+#: 里打开商店,只要等 1 秒就够了」。开态判定由下一帧观察侧 0n 三锚承载。
+#: 自动开店场景不经此处——cw_loop 备战分支按「备战阶段」识别)。
 SHOP_OPEN_ANIM_S: float = 1.0
 
 
-def _read_level_raw(ctx: SrContext, screen) -> int | None:
-    """OCR 直读等级数字(「文本-等级」区,**无 _expected_level 兜底**;review MED-8)。
+class StopBrakeShortCircuit(RuntimeError):
+    """W209j 停机短路异常(ADR-0388 纵深防御第二层)。
 
-    read_level 的兜底曲线适合决策估值,不适合完成验证(期望值>实际时假成功)。漏读返 None,
-    调用方决定基线退路。放大读与读链单一源 = ``cw_observation.read_level_raw_opt``。
+    语义 = 运行中被停 → 拒绝执行任何动作(run 27 实证:director 环在
+    Deploy 钩子 stop_running 后仍发 StartBattle 点出战——环顶检查(第一层)
+    之外,本入口兜底覆盖绕环路径)。原表达通道 = 执行回执 ``(False, '已
+    停止[W209j刹车]')``,随 T-223 回执退役改为停机短路异常:执行器抛出,
+    调用方(cw_screen_prep 决策环 / cw_loop 发射核)捕获后交回外循环,
+    下轮 loop 顶见 STOP 退出。判据 = last_run_result 非空(start 清
+    None/stop 写入;run_state STOP 是 idle 初始态不能直接用)。
+    """
+
+
+def _read_level_raw(ctx: SrContext, screen) -> int | None:
+    """OCR 直读等级数字(「文本-等级」区,**无 _expected_level 兜底**)。
+
+    read_level 的兜底曲线适合决策估值,不适合作击数推导基线(期望值>实际时
+    推导失真)。漏读返 None,调用方决定基线退路。放大读与读链单一源 =
+    ``cw_observation.read_level_raw_opt``。
     """
     from sr_od.application.currency_war.obs.cw_observation import read_level_raw_opt
 
@@ -157,8 +175,9 @@ def record_hp_pay_event(session, plane: int | None, round_num: int | None,
     """血购执行回执遥测(exogenous.jsonl kind='hp_pay' 一行;ADR-0577)。
 
     - 两通道共用的**唯一写点实现**:店通道 LevelUpOp.execute(单击=一行)与
-      prep 通道 ``_level_up``(连点循环内每击一行,验证成功前每击已实际扣血)
-      在点击落地后调用。粒度 = 击数,判读口径:hp_pay 行数 = 血购击数,
+      prep 通道 ``_level_up``(连点循环内每击一行,每击发出即落行——血已
+      实扣的机械事实)
+      在每击点击后调用。粒度 = 击数,判读口径:hp_pay 行数 = 血购击数,
       血购总量 = Σhp_delta(装配端 hp_events 列消费,同 ADR)。
     - mode 与判定同源注册表派生(单一源 = ``cw_investments.blood_xp_mode``,
       ADR-0578:[40]② 血闸与遥测写点同源消费;active_strategies 中
@@ -619,8 +638,9 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
 class PrepActionExecutor:
     """备战原子/组合动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
-    宿主 op = CwScreenPrep(SrOperation);所有验证经 op.round_by_find_area / OCR,
-    拖拽统一走 DragCwChar.drag_char(中心拖 + hold0,2026-08-13 实测验证)。
+    宿主 op = CwScreenPrep(SrOperation);机械执行(点击/拖拽/等待),落地
+    判定归观察侧 reconcile(用户裁定 2026-09-10);拖拽统一走
+    DragCwChar.drag_char(中心拖 + hold0,2026-08-13 实测验证)。
     """
 
     SELL_POINT: ClassVar[Point] = Point(70, 846)      # 出售区(左下,同 deploy_bench/_handle_bench_full)
@@ -643,6 +663,13 @@ class PrepActionExecutor:
     def __init__(self, op: SrOperation, ctx: SrContext) -> None:
         self._op = op
         self._ctx = ctx
+        # 机械执行摘要(最近一次 execute 的 detail;登记件解析输入,非成败
+        # 回执——T-223 端口无返回,摘经由本属性旁路供 on_outcome detail)。
+        self.last_detail: str = ''
+        # 批4 挂账:StartBattle 发射位内部事实(A6 出战链判效面,批4 随
+        # J3/J4 消费端同退役)。消费方 = cw_loop 发射核(J2/J3 达标臂/锁定
+        # 重试)。getattr 容缺(__new__ 桩形态)。
+        self.last_launch_ok: bool | None = None
         # 槽位中心(screen_info 静态,构造时读一次;F3 参数校验 + 拖拽坐标共用)
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
@@ -690,35 +717,53 @@ class PrepActionExecutor:
                 return f'PickBoxCard card_idx={action.card_idx} 越界(1-4)'
         return None
 
-    # ===== 执行入口(三失败路径之「验证失败」→ (False, detail);异常自然上抛)=====
+    # ===== 执行入口(机械执行,无返回;执行前拒绝见 _execute_dispatch)=====
 
-    def execute(self, action: PrepAction) -> tuple[bool, str]:
-        """执行动作 → (progressed, detail)。progressed=完成验证过的进展。
+    def execute(self, action: PrepAction) -> None:
+        """机械执行一个动作(无返回;T-223:发出即职责完成,落地判定归
+        观察侧 reconcile)。
 
-        ⚖️ W209j 刹车语义(ADR-0388,纵深防御第二层):运行中被停 → 拒绝
-        执行任何动作(点击/拖拽/出战),直接返回停止态。run 27 实证:director
-        环在 Deploy 钩子 stop_running 后仍发 StartBattle 点出战(14:09:14
-        「出战成功」)——环顶检查(第一层)之外,本入口兜底覆盖绕环路径
-        (_force_battle 恢复原语等)。判据 = last_run_result 非空(start 清
-        None/stop 写入;run_state STOP 是 idle 初始态不能直接用)。
+        ⚠️ W209j 刹车(ADR-0388,纵深防御第二层):运行中被停 → 拒绝
+        执行任何动作(点击/拖拽/出战),抛 :class:`StopBrakeShortCircuit`
+        停机短路(原回执 ``(False, '已停止')`` 通道随回执退役改异常;
+        语义与触发判据不变,run 27 实证覆盖绕环路径)。调用方捕获后交回
+        外循环,下轮 loop 顶见 STOP 退出。
+
+        发出即登记(批3a:期望态推进门/闩/清键门由「回执门控」改「发出
+        即登记 + 对账纠偏」;执行前输入契约拒绝 = 动作未发出,不登记)。
         """
         _rc = getattr(self._ctx, 'run_context', None)
         if _rc is not None and getattr(_rc, 'last_run_result', None) is not None:
             log.info('[cw][battle] 停机标志已设 → 拒绝执行 %s'
                      '(W209j 刹车,ADR-0388)', type(action).__name__)
-            return False, '已停止[W209j刹车]'
-        # 落地门前捕获备战席占用(tracked 账现读):路径 (ii) 翻正判读
+            raise StopBrakeShortCircuit('已停止[W209j刹车]')
+        # 落地门前捕获备战席占用(tracked 账现读):S1 路径 (ii) 翻正判读
         # 需要 pre/post 两点,post 点必须在 dispatch 之后读(dispatch 内
         # 卖出/部署 handler 会同步销账)。
         _pre_bench = self._bench_tracked_count()
-        ok, detail, landed = self._execute_dispatch(action)
-        if ok and isinstance(action, RunEquip):
-            # M7 备战期装备闩置位(执行位,唯一写点 = mandate.mark_equip_
-            # pass_executed;发射位只读不写):本入口在 RunEquip 组合 op
-            # 成功返回时记账「本期穿戴 pass 已完整执行」——单动作备战环
-            # 下发射列表中 RunEquip 之前的可续动作先执行即终结本环,
-            # 发射即置闩会闩烧而装备未穿(与开店闩置位时机修复同型,
-            # 依据 = mandate.mark_equip_pass_executed docstring)。
+        detail, emitted = self._execute_dispatch(action)
+        self.last_detail = detail
+        if isinstance(action, StartBattle):
+            # 批4 挂账:StartBattle 发射位内部事实(A6 判效面,批4 随
+            # J2/J3/J4 消费端同退役)。真执行链 = _execute_dispatch 发射位
+            # 内部 ok(找不到按钮/未落地 = False);执行缝(假环境)不经
+            # 真分派 = applied 真值(F11 双轨申报)。同步写执行态(消费端
+            # = cw_loop 备战环出口 0j 预算复位判定 F3/T-174,读后即清)。
+            self.last_launch_ok = emitted
+            _m_sb = getattr(self._ctx, 'cw_match', None)
+            _sess_sb = getattr(_m_sb, 'session', None) if _m_sb is not None else None
+            if _sess_sb is not None:
+                exec_state_of(_sess_sb).last_prep_battle_launch_ok = emitted
+        if emitted and isinstance(action, RunEquip):
+            # M7 备战期装备闩置位(批3a 重推 = 发出即置 + 观察纠偏,申报
+            # 择一;原「组合 op 成功返回才置」消费 ok 回执,随回执退役改
+            # 发出即置——单动作备战环下发射列表中 RunEquip 之前的可续动作
+            # 先执行即终结本环,发射位(策略侧)置闩会闩烧而装备未穿的
+            # 论证不变(mandate.mark_equip_pass_executed docstring),本写点
+            # = 执行位派发事实。组合 op 执行后失败的面由装备期望态对账族
+            # 在下一入口暴露(纠偏/缺陷台账);执行前输入契约拒绝(守卫/
+            # 计划产出失败)= 未发出,不置闩,下帧照常重发。唯一写点 =
+            # mandate.mark_equip_pass_executed。
             try:
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
                     mark_equip_pass_executed,
@@ -730,11 +775,9 @@ class PrepActionExecutor:
                         _sess, getattr(_sess, 'last_state', None))
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][equip-latch] 置位失败(不阻塞): %s', e)
-        if ok and isinstance(action, RunTools):
-            # M7.5 工具期闩置位(工具执行批 ADR-0532;与 RunEquip 闩同型:
-            # 置位在执行位,发射位只读不写——单动作环下发射列表中
-            # RunTools 之前的可续动作先执行即终结本环,发射即置闩会闩烧
-            # 而工具未消耗)。唯一写点 = mandate.mark_tools_pass_executed。
+        if emitted and isinstance(action, RunTools):
+            # M7.5 工具期闩置位(工具执行批 ADR-0532;批3a 重推同装备闩:
+            # 发出即置 + 观察纠偏)。唯一写点 = mandate.mark_tools_pass_executed。
             try:
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
                     mark_tools_pass_executed,
@@ -746,14 +789,18 @@ class PrepActionExecutor:
                         _sess, getattr(_sess, 'last_state', None))
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][tools-latch] 置位失败(不阻塞): %s', e)
-        if ok:
-            # T-159 迁移 D:S1 清键落地门(唯一写点 = mandate.mark_s1_
-            # route_check,三路径封闭枚举)。挂钩形态与上方 mark_equip/
-            # mark_tools 写点族同位(progressed 返回时);发射位只读不写
-            # 的同型纪律在此不适用——本门消费「已落地」事实,发射侧天然
-            # 无此事实(猎点 8:旗标翻转全部挂在执行侧落地确认)。
-            # OpenShop 分支不经本执行器(cw_screen_prep 流程层编排),
-            # 开店落地不触清键面,与其置位语义(商店决策访问位)自洽。
+        if emitted:
+            # T-159 迁移 D:S1 清键门(唯一写点 = mandate.mark_s1_route_
+            # check,三路径封闭枚举)。批3a 跨批对齐写死:``landed`` 供给
+            # 改观察侧 reconcile 落地事实(接口本批定、批5 E1 落地供给),
+            # 过渡期恒传 False = fail-closed(宁「该清不清」不「乱清」,
+            # 后者可无限重复——T-167 交替活锁;「该清不清」侧 wanted 滞留
+            # 一拍自愈,非正确性损害,mandate docstring 在案)。RunDeploy
+            # 的 (i)-deploy_launch 路径过渡期不清,防线语义(no-op 不清)
+            # 完整存活。发射位只读不写的同型纪律在此不适用——本门消费
+            # 「已落地」事实,发射侧天然无此事实(猎点 8)。OpenShop 分支
+            # 不经本执行器(cw_screen_prep 流程层编排),开店落地不触清键
+            # 面,与其置位语义(商店决策访问位)自洽。
             try:
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
                     mark_s1_route_check,
@@ -765,15 +812,13 @@ class PrepActionExecutor:
                         _sess, getattr(_sess, 'last_state', None), action,
                         pre_bench_count=_pre_bench,
                         post_bench_count=self._bench_tracked_count(),
-                        landed=landed)
+                        landed=False)
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][s1-route] 清键门失败(不阻塞): %s', e)
-        # 期望态推进(EXPECTED_STATE §6 对抗 F8:两执行面同源接线)——
-        # 本执行器是 PrepActionExecutor.execute 与 decision_assembly.execute
-        # 的共同底层(decision 面经绑定回放委托到这里),登记挂本入口 = 两面
-        # 一次覆盖、零双写。progressed 才登记(失败=未执行,无逻辑后果);
-        # 登记失败不阻塞执行(观测面,best-effort)。
-        if ok:
+            # 期望态推进(EXPECTED_STATE §6 对抗 F8:两执行面同源接线)——
+            # 批3a:发出即登记 + 对账纠偏(原 progressed 门控退役;未发出
+            # 不登记)。本执行器是两执行面的共同底层,登记挂本入口 = 两面
+            # 一次覆盖、零双写;登记失败不阻塞执行(观测面,best-effort)。
             try:
                 from sr_od.application.currency_war.kernel.cw_expected_state import (
                     apply_op_effect,
@@ -785,27 +830,25 @@ class PrepActionExecutor:
                                     produced_by=type(self).__name__)
             except Exception as e:  # noqa: BLE001  登记失败不阻塞执行
                 log.warning('[cw][expect] apply_op_effect 失败(不阻塞): %s', e)
-        return ok, detail
+        log.info('[cw][exec] %s → %s', type(action).__name__,
+                 detail or '(无摘要)')
 
-    def _execute_dispatch(self, action: PrepAction) -> tuple[bool, str, bool]:
-        """动作分派(原 execute 主体;期望态钩子在其上层 execute)。
+    def _execute_dispatch(self, action: PrepAction) -> tuple[str, bool]:
+        """动作分派(原 execute 主体;期望态钩子/闩在其上层 execute)。
 
-        返回 ``(progressed, detail, landed)``。``landed`` = 真实落地结构化
-        位(F1b,T-167 无方向幻影部署事故修法):组合动作在分派位按执行
-        器具名常量**结构化判定**(禁由 detail 反推——detail = f'{name}
-        {status}' 带前缀显影文本,与裸 STATUS 常量永不相等,字符串比对
-        会让落地判定恒真、修复静默失效);非组合动作 progressed 即落地
-        (卖出类完成验证 = 源槽变,fail-closed 无 no-op success 形态的
-        泛化核查结论;装备/工具组合的假成功 skip 已由 T-163 D5 改
-        round_fail)。
+        返回 ``(机械执行摘要, 是否实际发出)``。``emitted`` = **发出事实**
+        (非落地判定、非成败回执):False 只用于「执行前输入契约拒绝/
+        环境无对象」(球/箱/按钮等目标不在,M6 边界面——动作没发出,期望
+        态/闩不登记);True = 点击/拖拽/组合 op 已发出。原 ``(ok, detail,
+        landed)`` 三元组随 T-223 退役(成败与落地均不再是执行器输出;
+        RunDeploy 落地结构化判定 F1b 迁观察侧对账,S1 门过渡期 landed=
+        False 见 execute)。
         """
         if isinstance(action, RunDeploy):
-            # 落地 = 执行器具名常量 STATUS_DEPLOYED(真部署);STATUS_NOOP
-            # (计划空合法稳态)/STATUS_NO_BENCH(无角色)均零落地 →
-            # landed=False,S1 清键门据此不清开店闩(F1b 活锁引擎拆除)。
+            # 画面检查属转移验证用途(cw_op_deploy 内,非路由闸门);
+            # STATUS 具名常量经 detail 显影透传(观察侧对账供给面)。
             return self._run_composite(
-                '部署', 'sr_od.application.currency_war.operations.cw_op.cw_op_deploy.CwOpDeploy',
-                landed_status_attr='STATUS_DEPLOYED')
+                '部署', 'sr_od.application.currency_war.operations.cw_op.cw_op_deploy.CwOpDeploy')
         if isinstance(action, RunEquip):
             # 计划随指令下发(ADR-0601 §3-C1,2026-09-09):装备走专用
             # 派发 _run_equip——分发段产出穿戴计划(_build_equip_wear_plan)
@@ -815,13 +858,18 @@ class PrepActionExecutor:
         if isinstance(action, RunTools):
             return self._run_composite('工具', 'sr_od.application.currency_war.operations.cw_op.cw_op_tools.CwOpTools',
                                        guard_screen='货币战争-备战')
+        if isinstance(action, StartBattle):
+            # A6 出战链(批4 拆):内部 ok(找不到按钮/未落地 = False)经
+            # 发出位返回;last_launch_ok/执行态写点在 wrapper 半部(execute,
+            # 执行缝替换分派时仍成立)。
+            ok, detail = self._start_battle()
+            return detail, ok
         if isinstance(action, (DeferSpheres, BailToOuter)):   # 本模块定义,无需导入
-            return False, '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)', False
-        ok, detail = self._dispatch_direct(action)
-        return ok, detail, ok
+            return '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)', False
+        return self._dispatch_direct(action)
 
-    def _dispatch_direct(self, action: PrepAction) -> tuple[bool, str]:
-        """直执行动作分派(非组合动作;progressed 即落地,见 _execute_dispatch)。"""
+    def _dispatch_direct(self, action: PrepAction) -> tuple[str, bool]:
+        """直执行动作分派(非组合动作)。返回 (机械执行摘要, 是否实际发出)。"""
         if isinstance(action, ClickSpheres):
             return self._click_spheres(action)
         if isinstance(action, OpenBox):
@@ -829,7 +877,8 @@ class PrepActionExecutor:
         if isinstance(action, OpenTome):
             return self._open_tome(action)
         if isinstance(action, PickBoxCard):
-            return self._pick_box_card(action)
+            _clicked, msg = self._pick_box_card(action)
+            return msg, _clicked
         if isinstance(action, SellBench):
             return self._sell_bench(action)
         if isinstance(action, SellDeployed):
@@ -842,27 +891,27 @@ class PrepActionExecutor:
             return self._ensure_shop(True)
         if isinstance(action, EnsureShopClosed):
             return self._ensure_shop(False)
-        if isinstance(action, StartBattle):
-            return self._start_battle()
-        return False, f'未知动作类型 {type(action).__name__}'
+        return f'未知动作类型 {type(action).__name__}', False
 
     # ===== 奖励域 =====
 
-    def _click_spheres(self, action: ClickSpheres) -> tuple[bool, str]:
-        """批式点球(大球优先):一次全点 → 等满动画 → 一次截图统一验证。
+    def _click_spheres(self, action: ClickSpheres) -> tuple[str, bool]:
+        """批式点球(大球优先):一次全点 → 等满动画(机械执行半)。
 
         2026-09-02 用户指导(screen_flow_timing.md #16):奖励球飞行动画
         最长 ~2s(去向 = 备战/商店/装备栏),原逐球「点击 + 1.2s 验证」×N
         慢(且实证日志有同 step 重复发球)。权衡(用户裁定):席满时部分球
         可能没点开——由后续 heavy 观察自然回补(球仍在 → 下轮再派)。
-        review H-3 语义保留:progressed = 验证球数减少 > 0;全没消失 =
-        席满点不动 → False 走环的 fail/恢复路径(§13.2)。
+        A2 拆除(用户裁定 2026-09-10):点后「重读验球消失」判效半删除,
+        球未消由下一帧观察回补;幻球检出+会话黑名单随 M5 裁定整体删除
+        (幻球 = 观察 bug,观察侧质量治理另立不入本线——读侧过滤函数与
+        其测试面归批5 dd-015 五文件面)。
         """
         budget = min(action.max_k, PrepActionExecutor.SPHERE_MAX_CLICKS)
         screen = self._op.screenshot()
         spheres = read_reward_spheres(self._ctx, screen)
         if not spheres:
-            return True, '无球(观察-执行竞态,无事可做)'   # LOW-2:不计验证失败
+            return '无球(观察-执行竞态,无事可做)', False   # LOW-2:环境无对象
         targets = sorted(spheres, key=lambda t: t[2], reverse=True)[:budget]
         clicked = 0
         for _color, center, _r in targets:
@@ -870,44 +919,14 @@ class PrepActionExecutor:
             self._ctx.controller.click(center)
             clicked += 1
             self._op.park_cursor(after_wait=0.1)
-        # 用户口径:飞行动画最长 ~2s → 等满再一次观察(非逐球等待)
+        # 用户口径:飞行动画最长 ~2s → 等满(固定等待归产生动画的操作)
         time.sleep(2.0)
-        screen = self._op.screenshot()
-        after = read_reward_spheres(self._ctx, screen)
-        verified = max(0, len(spheres) - len(after))
-        detail = f'点球 {clicked}/{budget} 验证消失 {verified}(剩 {len(after)})'
-        # 点击后零消失幻检(奖励域防幻检批;实机停机局实证:礼盒幻球点击
-        # 零消失 → 同分支无限重进,DD-030 才是唯一出口):验证期一球未消
-        # 且备战席**有空位**(席满点不动是既有裁定语义 = 真球保留待下轮,
-        # 不可拉黑)→ 点击目标复现在原位 = 幻球,登记会话黑名单 + 分键,
-        # 后续读侧过滤放弃该目标。
-        if verified == 0 and self._bench_has_free_slot():
-            from sr_od.application.currency_war.obs.cw_identity_obs import (
-                note_phantom_sphere,
-            )
-            for _color, center, _r in targets:
-                if any(abs(center.x - a[1].x) <= 18
-                       and abs(center.y - a[1].y) <= 18 for a in after):
-                    note_phantom_sphere(self._ctx, center)
-                    detail += f' 幻球({center.x},{center.y})→黑名单'
+        detail = (f'点球 {clicked}/{budget}(动画等待 2s;'
+                  f'球未消由下一帧观察回补)')
         if read_supply_boxes(self._ctx, screen):
             detail += ' 掉箱→下步 OpenBox 统筹'
         log.info(f'[cw][sphere] {detail}')
-        return verified > 0, detail
-
-    def _bench_has_free_slot(self) -> bool:
-        """备战席有空位?(幻球拉黑前置:席满点不动 = 真球保留,禁拉黑。)
-        CV 占用现读,便宜;读失败按「无空位」保守(不拉黑,回到重试语义)。"""
-        try:
-            from sr_od.application.currency_war.obs.currency_war_cv import (
-                slot_occupied,
-            )
-            pts = row_area_centers(self._ctx, '备战栏')
-            free = [p for p in pts if not slot_occupied(
-                self._op.screenshot(), int(p.x), int(p.y))]
-            return bool(free)
-        except Exception:   # noqa: BLE001  保守:读失败不拉黑
-            return False
+        return detail, True
 
     def _bench_tracked_count(self) -> int:
         """备战席占用数(tracked 账现读;T-159 路径 (ii) 席翻正判读输入)。
@@ -928,23 +947,31 @@ class PrepActionExecutor:
 
     def _poll_transition(self, check, timeout_s: float,
                          interval_s: float = 0.3) -> bool:
-        """点击后过渡的事件驱动等待:每 interval_s 轮询 check,
-        命中即返回 True;预算内未命中返回 False(失败语义与旧
-        「固定 sleep 后单次验证」一致,只是把死等换成轮询)。"""
-        deadline = time.monotonic() + timeout_s
-        while True:
-            if check():
-                return True
-            if time.monotonic() >= deadline:
-                return False
-            time.sleep(interval_s)
+        """[已退役 A3] 点击后过渡的事件驱动轮询判效原语。
 
-    def _open_box(self, action: OpenBox) -> tuple[bool, str]:
-        """开箱:点箱槽「开启」→ 验武装箱 overlay 弹出(标识-请选择)。"""
+        用户裁定 2026-09-10(动作 op 只管机械执行禁止验证):轮询读屏判
+        「点击是否生效」= 判效,拆除;等待半改 DD-011 固定等待
+        (``_OVERLAY_ANIM_WAIT_S``,等待归产生动画的操作),弹窗就位与否
+        交下一帧观察。方法体保留墓碑占位防同名复活,零调用。
+        """
+        raise AssertionError(
+            '_poll_transition 已随验证拆除退役(A3,用户裁定 2026-09-10;'
+            '等待归 _OVERLAY_ANIM_WAIT_S 固定等待,判效交下一帧观察)')
+
+    def _open_box(self, action: OpenBox) -> tuple[str, bool]:
+        """开箱:点箱槽「开启」→ 固定动画等待 → 同动作选卡闭环。
+
+        A3 拆除(用户裁定 2026-09-10):「轮询验 overlay 弹出」判效半删除,
+        改 DD-011 固定等待(等待归产生动画的操作);弹窗就位与否交下一帧
+        观察。同动作选卡闭环保留(第二次复跑诊断,21:06 链:OpenBox 与
+        选卡跨帧分离时,简易武装箱对话框在下一决策帧前已离场 → 选卡臂
+        永远够不着)——选卡子步的入口检查 = 选卡点击的前置读(需 overlay
+        在场才有卡名可读,机械目标获取面),子步未发出时不补登记期望态。
+        """
         screen = self._op.screenshot()
         boxes = read_supply_boxes(self._ctx, screen)
         if not boxes:
-            return False, '无补给箱'
+            return '无补给箱', False
         picked = boxes[0]
         if action.slot is not None:
             matched = next((b for b in boxes if b[0] == action.slot), None)
@@ -955,21 +982,15 @@ class PrepActionExecutor:
         open_point = Point(center.x, center.y + PrepActionExecutor.BOX_OPEN_DY)
         self._ctx.controller.mouse_move(open_point)   # bug#1 缓解
         self._ctx.controller.click(open_point)
-        if not self._poll_transition(
-                lambda: self._op.round_by_find_area(
-                    self._op.screenshot(),
-                    PrepActionExecutor.BOX_SCREEN, '标识-请选择').is_success,
-                _OVERLAY_POLL_TIMEOUT_S):
-            return False, f'武装箱 overlay 未弹(槽{slot} 点击落空?)'
-        log.info(f'[cw][box] 开箱槽{slot} → overlay 弹出 ✓')
-        # 同动作选卡闭环(第二次复跑诊断,21:06 链):OpenBox 与选卡跨帧
-        # 分离时,简易武装箱对话框在下一决策帧前已离场(box_overlay_open
-        # 判 False,点球点击又把对话框点掉)→ 选卡臂永远够不着。开箱
-        # 成功后必须在同一动作内立即选卡,失败显式回报。
-        _pick_ok, _pick_msg = self._pick_box_card(PickBoxCard())
-        if not _pick_ok:
-            log.warning(f'[cw][box] 开箱槽{slot} 选卡未生效:{_pick_msg}')
-            return False, f'开箱槽{slot} 但选卡未生效:{_pick_msg}'
+        # DD-011 固定动画等待(原轮询判效半拆除,A3;值取原轮询上界)
+        time.sleep(_OVERLAY_ANIM_WAIT_S)
+        # 同动作选卡闭环(第二次复跑诊断,21:06 链;子步点击事实门控
+        # 期望态补登记,非成败回执)。
+        _pick_clicked, _pick_msg = self._pick_box_card(PickBoxCard())
+        if not _pick_clicked:
+            log.warning(f'[cw][box] 开箱槽{slot} 选卡子步未发出:{_pick_msg}')
+            return (f'开箱槽{slot} 已点,选卡未发出({_pick_msg};'
+                    f'交下一帧观察)'), True
         # 期望态补登记:合并路径直调 _pick_box_card 绕过
         # execute() 的统一登记入口(外层只登记 OpenBox = 零状态变更)→
         # 对内层 PickBoxCard 补登记一次(last_owned_equips/动态权重
@@ -982,41 +1003,44 @@ class PrepActionExecutor:
             if _sess is not None:
                 apply_op_effect(_sess, PickBoxCard(), detail=_pick_msg,
                                 produced_by=type(self).__name__)
-        return True, f'开箱槽{slot}+选卡'
+        return f'开箱槽{slot}+选卡', True
 
-    def _open_tome(self, action: OpenTome) -> tuple[bool, str]:
-        """开秘密典籍:点槽两次(选中→开启)→ 验星徽四选一弹窗(标识-星徽秘典)。
+    def _open_tome(self, action: OpenTome) -> tuple[str, bool]:
+        """开秘密典籍:点槽两次(选中→开启)→ 固定动画等待。
 
-        点两次间隔 ~1s(第一次选中边框高亮,第二次弹窗);弹窗后 loop 0i 接管选卡
-        (本动作不选 —— 选卡是策略决策,板上阵营匹配在 0i handler)。
+        点两次间隔 ~1s(第一次选中边框高亮,第二次弹窗);弹窗后 loop 0i
+        接管选卡(本动作不选 —— 选卡是策略决策,板上阵营匹配在 0i handler)。
+        A3 拆除:「轮询验星徽四选一弹出」判效半删除,改固定等待;弹窗就位
+        与否交下一帧观察(0i 分发重判)。
         """
         from sr_od.application.currency_war.obs.cw_identity_obs import read_tomes
         screen = self._op.screenshot()
         tomes = read_tomes(self._ctx, screen)
         if not tomes:
-            return False, '无秘密典籍'
+            return '无秘密典籍', False
         picked = tomes[0]
         if action.slot is not None:
             matched = next((t for t in tomes if t[0] == action.slot), None)
             if matched is None:
-                return False, f'槽{action.slot} 无典籍(实读 {tomes})'
+                return f'槽{action.slot} 无典籍(实读 {tomes})', False
             picked = matched
         slot, center = picked
         self._ctx.controller.mouse_move(center)   # bug#1 缓解
         self._ctx.controller.click(center)        # 第一次:选中
         time.sleep(1.0)
         self._ctx.controller.click(center)        # 第二次:开启
-        if not self._poll_transition(
-                lambda: self._op.round_by_find_area(
-                    self._op.screenshot(),
-                    '货币战争-星徽秘典弹窗', '标识-星徽秘典').is_success,
-                _OVERLAY_POLL_TIMEOUT_S):
-            return False, f'星徽四选一未弹(槽{slot} 点两次落空?)'
-        log.info(f'[cw][tome] 开典籍槽{slot} → 星徽四选一弹出 ✓(选卡交 loop 0i)')
-        return True, f'开典籍槽{slot}'
+        # DD-011 固定动画等待(原轮询判效半拆除,A3)
+        time.sleep(_OVERLAY_ANIM_WAIT_S)
+        log.info(f'[cw][tome] 开典籍槽{slot} → 点两次已发(选卡交 loop 0i)')
+        return f'开典籍槽{slot}', True
 
     def _pick_box_card(self, action: PickBoxCard) -> tuple[bool, str]:
-        """选卡:OCR 卡名行 → (card_idx 指定 | 执行器默认:key_equips 命中 → 材料通用性 → 第1张)→ 点卡验关。"""
+        """选卡:OCR 卡名行 → (card_idx 指定 | 执行器默认:key_equips 命中 → 材料通用性 → 第1张)→ 点卡 + 固定等待。
+
+        返回 ``(选卡点击是否已发出, 摘要)``——点击事实(期望态登记门控),
+        非成败回执:overlay 关没关交下一帧观察(A3 判效半拆除,用户裁定
+        2026-09-10)。入口锚检查 = 选卡点击的前置读(需 overlay 在场才有
+        卡名可读,机械目标获取面)。"""
         overlay = self._op.screenshot()
         if not self._op.round_by_find_area(overlay, PrepActionExecutor.BOX_SCREEN, '标识-请选择').is_success:
             return False, '武装箱 overlay 未开(先 OpenBox)'
@@ -1029,7 +1053,7 @@ class PrepActionExecutor:
         names.sort(key=lambda t: t[1])
         if not names:
             # 简易武装箱变体兜底:卡名行 OCR 不可得(变体字型/布局)→
-            # 点首张装备卡(点卡选中即确认),靠 overlay 离场验证兜底。
+            # 点首张装备卡(点卡选中即确认)。
             _fb = _area_rect(self._ctx, '装备卡-1',
                              PrepActionExecutor.BOX_SCREEN)
             if _fb is None:
@@ -1044,12 +1068,9 @@ class PrepActionExecutor:
         card_point = Point(choose_x, PrepActionExecutor.CARD_Y)
         self._ctx.controller.mouse_move(card_point)   # bug#1 缓解
         self._ctx.controller.click(card_point)        # 点卡选中即确认(实测单步)
-        if not self._poll_transition(
-                lambda: not self._op.round_by_ocr(
-                    self._op.screenshot(), '武装箱', lcs_percent=0.5).is_success,
-                _OVERLAY_POLL_TIMEOUT_S):
-            return False, f'选卡 {chosen} 后 overlay 仍在'
-        log.info(f'[cw][box] 选卡 {chosen} → overlay 关 ✓')
+        # DD-011 固定动画等待(原轮询判效半拆除,A3)
+        time.sleep(_OVERLAY_ANIM_WAIT_S)
+        log.info(f'[cw][box] 选卡 {chosen} → 点击已发')
         return True, f'选卡 {chosen}'
 
     def _default_box_card(self, names: list[tuple[str, int]]) -> tuple[str, int]:
@@ -1088,30 +1109,32 @@ class PrepActionExecutor:
 
     # ===== 席位域 =====
 
-    def _sell_bench(self, action: SellBench) -> tuple[bool, str]:
+    def _sell_bench(self, action: SellBench) -> tuple[str, bool]:
         """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
-        drag_char 内验源槽空)。"""
+        拖拽原语内部源槽像素验 A8 面,批5 拆)。返回 (摘要, 是否发出)。"""
         ok = drag_bench_to_sell(self._op, self._ctx, action.slot - 1)
         if ok:
             self._track_remove_bench(action.slot)
             # 用户口述口径(screen_flow_timing.md #21,2026-09-02):卖出金币
             # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
             time.sleep(1.0)
-        return ok, f'卖备战槽{action.slot} {"✓" if ok else "拖3次源槽未变"}'
+        # 拖拽原语的源槽状态作信息性摘要记录(非成败门控;批5 A8 拆原语验)
+        return (f'卖备战槽{action.slot} {"✓" if ok else "拖3次源槽未变"}', True)
 
-    def _sell_deployed(self, action: SellDeployed) -> tuple[bool, str]:
-        """卖上阵角色:drag 排槽中心 → 出售区(落点经 ``sell_point`` 单一源);
-        drag_char 内验源槽空。"""
+    def _sell_deployed(self, action: SellDeployed) -> tuple[str, bool]:
+        """卖上阵角色:drag 排槽中心 → 出售区(落点经 ``sell_point`` 单一源)。
+        返回 (摘要, 是否发出)。"""
         pts = self._front_pts if action.row == 'front' else self._back_pts
         src = pts[action.slot - 1]
         ok = self._drag(src, sell_point(self._ctx))
         if ok:
             self._track_remove_deployed(action.row, action.slot)
             time.sleep(1.0)   # 同上 #21 口径:卖出动画 1s
-        return ok, f'卖{action.row}排{action.slot} {"✓" if ok else "拖3次源槽未变"}'
+        return (f'卖{action.row}排{action.slot} {"✓" if ok else "拖3次源槽未变"}',
+                True)
 
-    def _deploy_move(self, action: DeployMove) -> tuple[bool, str]:
-        """bench → 上阵单步拖拽(腾席链专用);drag_char 内验源槽空。"""
+    def _deploy_move(self, action: DeployMove) -> tuple[str, bool]:
+        """bench → 上阵单步拖拽(腾席链专用)。返回 (摘要, 是否发出)。"""
         pts = self._front_pts if action.to_row == 'front' else self._back_pts
         src = self._bench_pts[action.from_slot - 1]
         dst = pts[action.to_slot - 1]
@@ -1126,7 +1149,7 @@ class PrepActionExecutor:
             # 用户口述口径(#24,2026-09-02):羁绊达标触发的 overlay(盛会之星
             # 等)在徽章动画后再 ~2s 才弹出——固定等待覆盖不住。执行端等待后
             # 快查一次触发型 overlay 锚(模板毫秒级),命中 → detail 标注(拖拽
-            # 本身已成功);批尾 heavy 的 event_overlay 检测将看到它并 bail 交
+            # 本身已发出);批尾 heavy 的 event_overlay 检测将看到它并 bail 交
             # 外环 handler——防「decide 的下一步动作打在 overlay 上」。清单
             # 可扩(圣杯/银狼升星等实测出现时加锚)。
             _post = self._op.screenshot()
@@ -1134,8 +1157,9 @@ class PrepActionExecutor:
                     _post, '货币战争-盛会之星', '标识-盛会之星',
                     crop_first=False).is_success:
                 log.info('[cw][deploy] 拖后检出盛会之星 overlay(羁绊达标触发)')
-                return True, '部署✓ 但盛会之星 overlay 弹出(外环接管)'
-        return ok, f'部署槽{action.from_slot}→{action.to_row}{action.to_slot} {"✓" if ok else "拖3次源槽未变"}'
+                return ('部署已发,盛会之星 overlay 弹出(外环接管)', True)
+        return (f'部署槽{action.from_slot}→{action.to_row}{action.to_slot} '
+                f'{"✓" if ok else "拖3次源槽未变"}', True)
 
     def _drag(self, src: Point, dst: Point) -> bool:
         """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0+retry+验源槽像素变)。
@@ -1208,19 +1232,21 @@ class PrepActionExecutor:
 
     # ===== 商店域 =====
 
-    def _level_up(self) -> tuple[bool, str]:
-        """买经验至 level+1(循环点「购买经验」+ **OCR 直读**验证;gold 前置由策略保证)。
+    def _level_up(self) -> tuple[str, bool]:
+        """买经验(循环点「购买经验」机械执行;gold 前置由策略保证)。
 
-        MED-8:完成验证用 _read_level_raw(无 _expected_level 兜底)—— read_level 漏读时返
-        期望曲线值,落后攒金场景 expected>actual → 首点即假成功 + 污染 session 单调守卫。
+        A4 拆除(用户裁定 2026-09-10):逐击点后 OCR 验级判效半删除——
+        点击按授权击数机械执行(金本位 = kernel ``clicks_to_next_level``
+        推导击数;血本位 = 入口整级授权击数,血闸授权已是入口整级授权),
+        级真值由下一帧观察 reconcile(``_reconcile_xp_expect`` 经验对账族
+        承接);原过冲 fail-closed 防线改策略层授权口径(授权击数 = 上界,
+        循环结构性不超击)。
 
-        [40]② 血闸(ADR-0578,血本位协议限定;金模式零改动):循环前整级授权检
-        (全量口径 ``⌈need/4⌉×血单价``,hp 不可信 fail-closed)+ 循环内逐击双检——
-        ①支付能力地板 modeled_hp ≥ 单价;②过冲 fail-closed(已击数 ≥ 入口授权
-        击数而级未验证 → 授权级界已买满,级界状态未知帧文义公式对「下一级」无法
-        affirm → 停点,继续点 = 无授权扩仓 + 未知级界盲付;自愈 = 下一动作批入口
-        重授权)。实付上界 = 入口授权击数 × 单价 = 裁定授权血成本(复盘实证的
-        「授权 24 血、验级失败实付至 72 血」过冲结构性消灭)。
+        入口前检(M6 边界面,非判效):level 基线读不到拒绝盲点(击数无法
+        推导);血闸(ADR-0578,血本位协议限定;金模式零改动)整级授权检
+        (全量口径 ``⌈need/4⌉×血单价``,hp 不可信 fail-closed)。
+        r15 review P1 金检查保留:每点前读金,gold < 单击价(4)即停
+        (防排干买牌本金——执行前资源契约,非点击效果判断)。
         """
         match = self._ctx.cw_match
         session = match.session if match is not None else None
@@ -1229,13 +1255,14 @@ class PrepActionExecutor:
         if before is None and session is not None and session.last_level_obs:
             before = session.last_level_obs   # OCR 漏读基线退单调守卫值(只作比较基,不写回)
         if before is None:
-            return False, 'level 基线读不到(OCR 漏读),拒绝盲点'
+            return 'level 基线读不到(OCR 漏读),拒绝盲点', False
         from sr_od.application.currency_war.kernel.cw_discipline_rules import (
             hp_decision_trusted,
         )
         from sr_od.application.currency_war.kernel.cw_economy import (
             blood_xp_full_clicks,
             blood_xp_gate,
+            clicks_to_next_level,
         )
         from sr_od.application.currency_war.kernel.cw_investments import (
             blood_xp_mode,
@@ -1250,26 +1277,33 @@ class PrepActionExecutor:
             _trusted = hp_decision_trusted(_st) if _st is not None else False
             # 批入口整级授权检(全量口径);拒 → 与「level 基线读不到」同返回路径
             if not blood_xp_gate(_hp, _trusted, before, _cost):
-                return False, (f'血闸拒:hp={_hp} < 下一级血成本 '
-                               f'{blood_xp_full_clicks(before) * _cost}'
-                               f'(mode={_mode_name};[40]② 否则停,升级走买牌自然 XP)')
+                return (f'血闸拒:hp={_hp} < 下一级血成本 '
+                        f'{blood_xp_full_clicks(before) * _cost}'
+                        f'(mode={_mode_name};[40]② 否则停,升级走买牌自然 XP)',
+                        False)
             _auth_clicks = blood_xp_full_clicks(before)
+        else:
+            # 金本位授权击数 = kernel 击数推导(§6.6 单击价/击数单一源):
+            # 优先 last_state 现值(xp 进度精确),缺席退权威表全量口径
+            #(blood_xp_full_clicks = ⌈need/4⌉ 同式,xp 结转忽略);满级
+            #(0 击)= 无购买对象,机械不发。
+            _st = getattr(session, 'last_state', None)
+            _gold_clicks = (clicks_to_next_level(_st) if _st is not None
+                            else blood_xp_full_clicks(before))
+            if _gold_clicks <= 0:
+                lv_now = getattr(_st, 'level', before) if _st is not None else before
+                return f'已满级(level {lv_now}),无购买对象', False
+            _auth_clicks = min(_gold_clicks, PrepActionExecutor.LEVEL_MAX_CLICKS)
         btn = area_center(self._ctx, '备战标识-购买经验') or Point(296, 860)
-        _clicked = 0   # 实击数(失败路径回显真实停点;血模式地板/过冲可提前停)
-        for k in range(PrepActionExecutor.LEVEL_MAX_CLICKS):
+        _clicked = 0   # 实击数(机械回显真实停点;金地板可提前停)
+        for k in range(_auth_clicks):
             if _blood is not None and _hp is not None:
-                # ①逐击支付能力地板:modeled_hp(= hp_trusted − 已击数×单价)≥ 单价才可点下一击
+                # 逐击支付能力地板:modeled_hp(= hp_trusted − 已击数×单价)≥ 单价才可点下一击
                 if _hp - k * _cost < _cost:
                     log.info('[cw][levelup] 血模式 modeled hp %s 第%s击前不足单价 %s → 停点',
                              _hp - k * _cost, k + 1, _cost)
                     break
-                # ②过冲 fail-closed:入口授权击数已买满而级未验证成功 → 停点(P21
-                # 「证据缺失时禁令保持」同款;继续点 = 无授权扩仓)
-                if k >= _auth_clicks:
-                    log.info('[cw][levelup] 血模式授权击数 %s 已买满而级未验证 → 停点(过冲 fail-closed)',
-                             _auth_clicks)
-                    break
-            # r15 review P1:循环内金检查——旧版 12 连点无金门,策略侧金前置滞后一环时
+            # r15 review P1:循环内金检查——策略侧金前置滞后一环时
             # (如 P2 急救态 _saving_for_level 仍攒金但 plan 已发 LevelUp),gold 63→9
             # 一动作排干(M57 P2-1 实证)。每点前读金,gold < 单击价(4)即停(防排干买牌本金)。
             gold_now = read_gold(self._ctx, self._op.screenshot())
@@ -1279,7 +1313,7 @@ class PrepActionExecutor:
             _clicked += 1
             self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
             self._ctx.controller.click(btn)
-            # 血购回执(ADR-0577,批1 A 采集):每击已实际扣血,验证前逐击
+            # 血购回执(ADR-0577,批1 A 采集):每击已实际扣血,逐击
             # 落一行(粒度=击数);纯观测禁入决策输入,失败不阻塞(写点内部
             # 吞异常)。mode 从注册表派生,非血本位协议下为零行 no-op。
             _pp_st = getattr(session, 'last_state', None) if session is not None else None
@@ -1287,76 +1321,64 @@ class PrepActionExecutor:
                                 getattr(_pp_st, 'plane', None),
                                 getattr(_pp_st, 'round_num', None))
             # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
-            # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再读。
+            # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。
             self._op.park_cursor(before_wait=0.3, after_wait=0.15)
-            lv = _read_level_raw(self._ctx, self._op.screenshot())
-            # live 幽灵 lv10(2026-08-15 两局实锤):raw 读可吃到相邻数字(XP「10/20」的 10),接受任意
-            # >before 会把 6→10 假成功写进 last_level_obs 被单调守卫永久锁死(→ 永不买经验+攒金死)。
-            # 游戏机制:每点一次经验 +1 级 → 接受窗钳 before+2;窗外读数当漏读,继续循环。
-            if lv is not None and before < lv <= before + 2:
-                if session is not None:
-                    session.last_level_obs = lv
-                    # W612 挂点A(升级事件;四挂点中唯一无现成事件行者,裁决见
-                    # .debug/temp/currency_war/w612_effect_inventory/HOOKS.md):
-                    # 升级发生的集中执行点 = 效果最密集单点(商业间谍升级段/
-                    # 固定理财位面段/成长基金到级全在升级邻域),inventory 标记 +
-                    # record_exogenous 'level_up' 事件行一次接全。观测 best-effort,
-                    # 零决策语义(失败不阻塞,与本文件其余观测回路同纪律)。
-                    try:
-                        session.effect_inventory.on_level_up()
-                        from sr_od.application.currency_war.telemetry import (
-                            recorder as cw_telemetry,
-                        )
+        if _clicked <= 0:
+            return f'授权击数 {_auth_clicks} 击未发出(金地板/血地板先行停点)', False
+        # W612 挂点A(升级事件;发射时点登记,批3a:原「验级成功分支内」
+        # 挂点随判效拆除改发出即登记;级真值由下一帧观察 reconcile,锚点
+        # 吸收外生差):inventory 标记 + record_exogenous 'level_up' 事件行。
+        # 观测 best-effort,零决策语义(失败不阻塞,与本文件其余观测回路同纪律)。
+        try:
+            if session is not None:
+                session.effect_inventory.on_level_up()
+                from sr_od.application.currency_war.telemetry import (
+                    recorder as cw_telemetry,
+                )
+                _st = session.last_state
+                if _st is not None and _st.round_num:
+                    cw_telemetry.record_exogenous(
+                        _st.round_num, 'level_up',
+                        detail=f'level {before} 授权{_auth_clicks}击实击{_clicked}'
+                               f'(机械发射;级真值=下一帧观察)', state=_st)
+        except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
+            log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
+        detail = (f'买经验授权{_auth_clicks}击实击{_clicked}'
+                  f'(基线 level {before};级真值=下一帧观察 reconcile)')
+        log.info(f'[cw][levelup] {detail}')
+        return detail, True
 
+    def _ensure_shop(self, want_open: bool) -> tuple[str, bool]:
+        """开/关商店(点击 + 固定动画等待;开态判定交下一帧观察侧 0n 三锚)。
 
-                        _st = session.last_state
-                        if _st is not None and _st.round_num:
-                            cw_telemetry.record_exogenous(
-                                _st.round_num, 'level_up',
-                                detail=f'level {before}->{lv}', state=_st)
-                    except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
-                        log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
-                log.info(f'[cw][levelup] level {before}→{lv} ✓')
-                return True, f'level {before}→{lv}'
-        return False, f'点{_clicked}次经验 level 未变({before})'
-
-    def _ensure_shop(self, want_open: bool) -> tuple[bool, str]:
-        """开/关商店 + 锚点验证(按钮-收起 可见 = 开态)。
-
-        r312(ADR-0213 批次1):开/关向单次验证在动画窗(~3s,
-        r299 实测)可假阴性(开店「收起未出现」假失败喂恢复
-        机制噪声)。r347(旧路径删除):gate 无条件化(原 flag
-        分支删);异常=旧单次验证(离线契约,非 flag 路径)。
+        入口幂等检查 = 执行前观察(已开/已关 = 无动作可发,M6 边界面,非
+        判效)。A5 拆除(用户裁定 2026-09-10):点击 + 固定等待后「重读
+        按钮-收起」判效半删除(原单次验证在动画窗可假阴性喂恢复机制噪声
+        的 r312 论证随验证拆除一并退役)——开/关是否生效由下一帧观察
+        (0n 三锚/备战双锚)自然判定。
         """
         screen = self._op.screenshot()
         is_open = self._op.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success
         if want_open:
             if is_open:
-                return True, '商店已开'
-            # 手动开(用户口述 2026-09-02 场景②):干净备战画面点击商店打开——
-            # 固定等待 1.0s(用户口述定值)后验证「按钮-收起」出现(点击生效验证,
-            # 非动画判定)。自动开店场景不经此处:结算后由 cw_loop 备战分支按
+                return '商店已开(无动作可发)', False
+            # 手动开(用户口述 2026-09-02 场景②):干净备战画面点击商店打开。
+            # 自动开店场景不经此处:结算后由 cw_loop 备战分支按
             # 「备战阶段」识别等面板就位(W971 §2.5/§2.6 场景①),两场景互不竞速。
             self._op.round_by_find_and_click_area(
                 screen, SCREEN_NAME, '按钮-商店')
-            # 光标 parking(审计 R3):点击点在验证矩形正中(0px),不 park 则收起锚验证读被光标压
+            # 光标 parking(审计 R3):点击点在动画后观察矩形正中(0px),park 防光标压读
             self._op.park_cursor(before_wait=0.5, after_wait=0.1)
             time.sleep(SHOP_OPEN_ANIM_S)
-            ok = self._op.round_by_find_area(
-                self._op.screenshot(), SHOP_SCREEN_NAME,
-                '按钮-收起').is_success
-            return ok, f'开商店 {"✓" if ok else "收起未出现(开店未生效)"}'
+            return '开商店 点击已发(动画等待 1s;开态交下一帧观察)', True
         if not is_open:
-            return True, '商店已关'
+            return '商店已关(无动作可发)', False
         self._op.round_by_find_and_click_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起')
-        self._op.park_cursor(before_wait=0.5, after_wait=0.1)   # 同 R3:验证「收起消失」前 park
-        # DD-011:收起动画 ~1s(#15)自等;关态验证 = 「收起消失」(建档 area)。
+        self._op.park_cursor(before_wait=0.5, after_wait=0.1)   # 同 R3
+        # DD-011:收起动画 ~1s(#15)自等;关态由下一帧观察判定。
         time.sleep(SHOP_CLOSE_ANIM_S)
-        ok = not self._op.round_by_find_area(
-            self._op.screenshot(), SHOP_SCREEN_NAME,
-            '按钮-收起').is_success
-        return ok, f'关商店 {"✓" if ok else "收起仍在"}'
+        return '关商店 点击已发(动画等待 1s;关态交下一帧观察)', True
 
     # ===== 战斗域 =====
 
@@ -1545,7 +1567,7 @@ class PrepActionExecutor:
             self._op.screenshot(), screen_name_list=[guard_screen])
         return None if current == guard_screen else current
 
-    def _run_equip(self) -> tuple[bool, str, bool]:
+    def _run_equip(self) -> tuple[str, bool]:
         """RunEquip 专用派发:计划产出 → 空计划具名 NOOP / 计划随 op 下发。
 
         为什么不走 _run_composite:通用路径 ``op_cls(self._ctx).execute()``
@@ -1554,16 +1576,13 @@ class PrepActionExecutor:
         ``__init__(ctx, plan)`` 必填),「计划」概念不泄漏进部署/工具分派。
 
         空计划 = 合法稳态具名 NOOP(dd-037 形态):返回
-        ``(True, f'装备 计划空: {具名原因}', False)``——ok=True 闩照置
-        (execute 的 ``mark_equip_pass_executed`` 唯一写点只看 ok,hold 期
-        闭环不变量「每期 RunEquip 恰一次 ok=True 收敛」由此成立,dd-027
-        活锁三条件缺二);landed=False 对 S1 清键门行为中性(RunEquip 本
-        就不命中 mark_s1_route_check 三路径封闭枚举,landed 仅语义归正,
-        RunDeploy NOOP 的 landed=False 先例同构)。
+        ``(f'装备 计划空: {具名原因}', True)``——发出事实 = True,execute
+        的 ``mark_equip_pass_executed`` 唯一写点照置(dd-027 活锁三条件
+        闭环不变;批3a:原 ok=True 语义同值为「发出事实」)。
 
-        资源前置缺失走 fail_reason 通道 (False, …, False):闩不置,下帧
-        重派,与今日 op round_fail('模板库未加载')同形,Director
-        fail-stop 链兜底(ADR-0601 §5),无新环。
+        资源前置缺失走未发出通道 (detail, False):闩不置,下帧重派,与
+        今日 op round_fail('模板库未加载')同形,Director 交回外循环
+        重观察重派(ADR-0601 §5),无新环。
         """
         from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
             CwOpEquipAll,
@@ -1573,10 +1592,10 @@ class PrepActionExecutor:
         if _drift is not None:
             log.warning('[cw!][composite] 装备 派发前置:当前画面 %s 非干净备战'
                         ' → 不派,环重观察', _drift)
-            return False, f'装备 不在预期屏: {_drift}', False
+            return f'装备 不在预期屏: {_drift}', False
         build = _build_equip_wear_plan(self._ctx, self._op)
         if build.fail_reason:
-            return False, f'装备 {build.fail_reason}', False
+            return f'装备 {build.fail_reason}', False
         if not build.steps:
             # 空计划短路:不实例化 op。哨兵双挂点之计划面(equipped=0,
             # 计划面具名原因);front_only 回退分支不挂——与今日该分支
@@ -1585,34 +1604,29 @@ class PrepActionExecutor:
                 record_zero_wear_defect(self._ctx, 0,
                                         build.owned_wearable_names,
                                         build.empty_reason)
-            log.info('[cw-equip] 计划空(%s)→ 具名 NOOP(闩照置, landed=False)',
+            log.info('[cw-equip] 计划空(%s)→ 具名 NOOP(闩照置)',
                      build.empty_reason)
-            return True, f'装备 计划空: {build.empty_reason}', False
+            return f'装备 计划空: {build.empty_reason}', True
         result = CwOpEquipAll(self._ctx, build.steps).execute()
         # live 修复(2026-08-14,同 _run_composite):OperationResult 字段
-        # 是 success(非 is_success)。非空计划生产路径 landed=ok(无
-        # no-op success 形态;计划步失效/漂移均为 round_fail → ok=False)。
-        ok = bool(result is not None and getattr(result, 'success', False))
+        # 是 success(非 is_success)。op 级 success/status 作摘要透传
+        #(信息面;成败不再门控任何下游——批3a 发出即职责完成,穿戴
+        # 落地面由装备期望态对账族在下一入口暴露)。
         status = getattr(result, 'status', '')
-        log.info(f'[cw][composite] 装备 → {"✓" if ok else "✗"} {status}')
-        return ok, f'装备 {status}', ok
+        log.info(f'[cw][composite] 装备 → {status}')
+        return f'装备 {status}', True
 
     def _run_composite(self, name: str, op_path: str,
                        guard_screen: str | None = None,
-                       landed_status_attr: str | None = None,
-                       ) -> tuple[bool, str, bool]:
+                       ) -> tuple[str, bool]:
         """执行组合动作(按模块路径延迟导入,避免 prep_actions ↔ operations 循环导入)。
 
-        返回 ``(ok, detail, landed)``:``landed`` = 真实落地结构化位——
-        ``landed_status_attr`` 非 None 时 = status 与该具名常量的结构化
-        比对(常量在延迟导入的执行器类上解析;缺属性按未落地计,
-        fail-closed:S1 清键门宁「该清不清」不「乱清」,后者可无限重复,
-        实证 = T-167 交替活锁);None 时 = ok(无 no-op success 形态的
-        组合,T-163 D5 后装备/工具假成功已改 round_fail)。
+        返回 ``(摘要, 是否发出)``:守卫不派/环境不备 = 未发出(False);
+        组合 op 已实例化执行 = 发出(True,op 级结果仅作摘要透传)。
 
         :param guard_screen: 派发前置预期屏(T-163 D5,2026-09-08 用户架构
             裁定:「该不该执行」的判断归分发层)——非 None 时实例化组合 op
-            **前**判干净备战,不干净即不派、环重观察(返回 False 断批重规划;
+            **前**判干净备战,不干净即不派、环重观察(返回未发出断批重规划;
             批前提中途失效本就该重规划)。装备/工具两组合传入(对应 op 内
             旧 success-skip 闸门同批降级为执行断言);部署不传——其画面
             检查属转移验证用途(cw_op_deploy),非路由闸门,不越权接管。
@@ -1624,87 +1638,23 @@ class PrepActionExecutor:
             if current is not None:
                 log.warning('[cw!][composite] %s 派发前置:当前画面 %s 非干净备战'
                             ' → 不派,环重观察', name, current)
-                return False, f'{name} 不在预期屏: {current}', False
+                return f'{name} 不在预期屏: {current}', False
         module_path, cls_name = op_path.rsplit('.', 1)
         op_cls = getattr(importlib.import_module(module_path), cls_name)
         result = op_cls(self._ctx).execute()
         # live 修复(2026-08-14):OperationResult 字段是 success(非 is_success —— 那是
         # OperationRoundResult 的字段);旧 getattr 恒 False → 组合动作全被误判失败。
-        ok = bool(result is not None and getattr(result, 'success', False))
+        # (批3a:success 仅作日志摘要,成败不再门控下游——发出即职责完成。)
         status = getattr(result, 'status', '')
-        log.info(f'[cw][composite] {name} → {"✓" if ok else "✗"} {status}')
-        if landed_status_attr is not None:
-            # F1b 结构化落地判定:常量 vs 常量(status 原值对执行器具名
-            # 常量),不经 detail 文本(带前缀,禁比对——见 _execute_dispatch)。
-            landed = status == getattr(op_cls, landed_status_attr, object())
-        else:
-            landed = ok
-        return ok, f'{name} {status}', landed
+        log.info(f'[cw][composite] {name} → {status}')
+        return f'{name} {status}', True
 
 
-# ===== 恢复原语(§13.3;动作连败 2 次时先试,bail 是恢复失败后的上抛)=====
-
-
-def try_recovery(op: SrOperation, ctx: SrContext) -> tuple[str, bool]:
-    """恢复原语:已知弹层分型关闭(检测到才动,bug#2 合规),未知 → 点真空白(960,530)兜底。
-
-    返回 (原语描述, 是否关过已知弹层)。closed_known 供 Director 恢复无效时**分型**(review
-    H-2:关过已知弹层仍败 = 弹层顽固 → BailToOuter 交外环;无已知弹层仍败 = 状态/识别类
-    失败 → 本环屏蔽该动作)。调用后外层靠下一步动作是否恢复判断效果。
-    """
-    screen = op.last_screenshot
-    # 消耗品详情 modal(签名:消耗品 + 拖动到 双条件;L-2:双条件精确,单「消耗品」易误)。
-    # 2026-09-08 ESC 清零批:关 modal 右上 ×,复用同族建档「货币战争-道具详情
-    # 弹窗/按钮-关闭」(消耗品 modal 与聘用书 modal 同为道具详情弹窗家族,× 同位;
-    # 与主消费路径 CwScreenConsumableOverlay 同源同控件)。
-    # ⚠️ 待实机核(对称姊妹消费方 cw_screen_consumable_overlay 模块头):× 同位
-    # 为家族类推,消耗品帧上该坐标未实机复点——不中 → modal 留场交外层恢复(有界)。
-    if (op.round_by_ocr(screen, '消耗品', lcs_percent=0.9).is_success
-            and op.round_by_ocr(screen, '拖动到', lcs_percent=0.9).is_success):
-        _close = area_center(ctx, '按钮-关闭', '货币战争-道具详情弹窗')
-        if _close is None:
-            log.error('[cw!] try_recovery:按钮-关闭 area 缺失(货币战争-道具详情弹窗),modal 未关')
-            return '道具详情弹窗× area 缺失(ESC 已禁用)', False
-        ctx.controller.mouse_move(_close)   # bug#1 缓解(同概率表×分支)
-        ctx.controller.click(_close)
-        return '点×关消耗品详情', True
-    # 可合成列表 overlay(装备详情浮窗):点面板外空白关闭。
-    # 2026-09-08 ESC 清零批:浮窗无 X,关闭 = 选中驱动 deselect——2026-08-14
-    # live 验「点画面空白处 → 关闭回备战」(建档 货币战争-备战/区域-空白关闭,
-    # 与主消费路径 CwScreenRoleDetailOverlay 同源同控件)。
-    if op.round_by_ocr(screen, '可合成列表', lcs_percent=0.8).is_success:
-        _blank = area_center(ctx, '区域-空白关闭', SCREEN_NAME)
-        if _blank is None:
-            log.error('[cw!] try_recovery:区域-空白关闭 area 缺失(货币战争-备战),浮窗未关')
-            return '空白关闭点 area 缺失(ESC 已禁用)', False
-        ctx.controller.mouse_move(_blank)   # bug#1 缓解
-        ctx.controller.click(_blank)
-        return '点空白关可合成列表', True
-    # 角色详情面板 → 点面板外空白关闭(选中驱动 deselect;2026-09-08 ESC 清零批
-    # area 化:货币战争-备战/区域-空白关闭,中心 (960,530) 真空白 = 前后排之间;
-    # 700,400 旧值前排有人时=前排-1 槽,已修。与 CwScreenRoleDetailOverlay 同源)。
-    if op.round_by_ocr(screen, '角色详情', lcs_percent=0.8).is_success:
-        _blank_char = area_center(ctx, '区域-空白关闭', SCREEN_NAME)
-        if _blank_char is None:
-            log.error('[cw!] try_recovery:区域-空白关闭 area 缺失,角色详情未关')
-            return '空白关闭点 area 缺失', False
-        ctx.controller.mouse_move(_blank_char)   # live 2026-08-14:恢复点击也要 mouse_move(bug#1)
-        ctx.controller.click(_blank_char)
-        return '点空白关角色详情', True
-    # 概率表弹窗 → 点 ×(1501,263;VLM live 定位 2026-08-14,与原建档 1502,258 同点)。MED-5:
-    # area 化检测(标识-刷新概率表 id_mark)—— 旧全屏 OCR「概率」lcs=0.7 过松会误中商店文本。
-    # live 实锤(2026-08-14 1-2):恢复点击无 mouse_move 被 bug#1 吃掉 → 弹窗关不掉 → bail 链停机。
-    if op.round_by_find_area(screen, '货币战争-商店刷新概率表', '标识-刷新概率表',
-                             crop_first=False).is_success:
-        ctx.controller.mouse_move(Point(1501, 263))   # bug#1 缓解(live 实锤必须)
-        ctx.controller.click(Point(1501, 263))
-        return '点×关概率表', True
-    # 未知弹层兜底:点真空白 —— **仅当画面是备战屏**(r10 review 治本:M53 实锤在投资策略屏上
-    # 盲点 (960,530)=中卡描述区正中 → 误开星徽详情弹窗 → 15 streak 停机。固定点在未知屏上
-    # 永远是赌注;非备战屏不点,让环走 overlay 白名单 bail / 外环接管)。
-    if op.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验',
-                             crop_first=False).is_success:
-        ctx.controller.mouse_move(Point(960, 530))   # bug#1 缓解
-        ctx.controller.click(Point(960, 530))
-        return '点空白兜底(960,530,已验备战屏)', False
-    return '非备战屏不点(避免盲点误触,交 overlay 检测/外环)', False
+# ===== 恢复原语退役墓碑(A9,用户裁定 2026-09-10)=====
+#
+# 原 ``try_recovery(op, ctx)``(已知弹层分型关闭恢复原语)随 B1 验证段
+# 一并删除:其唯一消费位 = 验证失败 → 恢复分支(cw_screen_prep 旧路径/
+# 生命周期路径),判效半拆除后该分支不复存在。已知弹层清场职责由环入口
+# 清场注册表 ENTRY_OVERLAY_CLOSE 承接(观察侧,cw_screen_prep.lifecycle_
+# observe/_clear_entry_overlays 在用);未知弹层交外循环 overlay 白名单
+# 分发。本墓碑防同名/同职责结构静默复活。

@@ -849,17 +849,17 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
                         post_bench_count: int,
                         landed: bool) -> None:
     """S1 清键落地门唯一写点(T-159 迁移 D;调用位 = PrepActionExecutor
-    .execute progressed 返回,与 mark_equip/mark_tools 写点族同位)。
+    .execute 发出位——批3a:原「progressed 返回才调」随 T-223 端口回执
+    退役改为发出即调,``landed`` 过渡期恒 False fail-closed,批5 观察侧
+    reconcile 落地事实接管供给)。
 
     三路径封闭枚举(方案 §3.3,审 D1;三条均未命中一律不清):
     (i) route_tag 白名单落地(deploy_launch 由动作类型承载);RunDeploy
-         另须 ``landed=True``(F1b,T-167:执行器 progressed 含 STATUS_NOOP
-         合法稳态——no-op 部署零新信息,清闩 = 凭空再武装一次开店意图,
-         实证 = 同事故 25 次无信息量重开店交替活锁。landed 为必传参,由
-         执行器在分派位结构化判定后传入,禁由 detail 字符串反推:detail
-         是带前缀显影文本 f'{name} {status}',裸比对恒 False 会让 landed
-         恒 True、修复静默失效;缺省语义已按落地审低②删除——必传防
-         调用面静默沿用旧「progressed 即落地」口径);
+         另须 ``landed=True``(F1b,T-167:no-op 部署零新信息,清闩 = 凭空
+         再武装一次开店意图,实证 = 同事故 25 次无信息量重开店交替活锁。
+         landed 为必传参:禁由 detail 字符串反推——带前缀显影文本裸比对
+         恒 False;批5 供给接管前执行器恒传 False = 宁「该清不清」不
+         「乱清」,后者可无限重复);
     (ii) S2 在册 ∧ 本帧落地使备战席 free 由 0 翻正——任意 tag 含凑息/
          压库(义务残差优先,猎点 14;腾席即解除 wanted 封锁约束,tag
          不豁免);席位翻正读数 = 执行器 tracked 账 pre/post 现读;

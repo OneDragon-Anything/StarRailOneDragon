@@ -64,7 +64,6 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
     safe_click,
 )
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
-    OUTCOME_TRIGGER_EMITTED,
     ActionOutcome,
     CwScreenOpBase,
 )
@@ -126,14 +125,16 @@ class CwScreenEncounter(CwScreenOpBase):
         # (``_confirm_default``,基类「None = 子类缺省实现自担」)——注入替位
         # = 构造后直接赋值(测试桩),sim 适配器 = T5 后辖域本批不建。
         self._observation_adapter = EncounterLiveObservationAdapter()
-        # on_outcome 落地登记注册表(架构设计 §6.4;触发时点轴·发射型在册
-        # 成员① encounter_refresh_used):写端自 handle 内联位收编为注册表
-        # 钩子(位置迁移语义不变,§6.5-4/§6.5-6);触发点 = _emit_refresh_
-        # click(两路径共用分派面,恰触发一次——双计即计数毒化)。chosen_
-        # encounter = 选择 handler 单次逻辑写入豁免,不在收编面(§2.2)。
+        # on_outcome 落地登记注册表(架构设计 §6.4;单一发射口,发射即触发
+        # ——T-223 最严读法:两 fire 口合并,落地回执门退役):登记件
+        # encounter_refresh_used(逐件申报面 EMIT_TRIGGERED_DECLARED)写端
+        # 自 handle 内联位收编为注册表钩子(位置迁移语义不变,§6.5-4/
+        # §6.5-6);触发点 = _emit_refresh_click(两路径共用分派面,恰触发
+        # 一次——双计即计数毒化)。chosen_encounter = 选择 handler 单次
+        # 逻辑写入豁免,不在收编面(§2.2)。
         self.register_outcome_hook(
             EncounterPick, self._on_refresh_emitted,
-            trigger=OUTCOME_TRIGGER_EMITTED, name='encounter_refresh_used')
+            name='encounter_refresh_used')
         # 确认已发待重入裁决的选卡(验证废除形态,用户裁定 2026-09-10):
         # (options, idx) 快照——确认点击发出后置位,下一轮重入由入口观察
         # 裁决(标识不在 = overlay 已关 = 选卡落地)→ 此刻才写 chosen_encounter
@@ -164,12 +165,12 @@ class CwScreenEncounter(CwScreenOpBase):
 
     def _emit_refresh_click(self, session: 'StrategySession',
                             pick: EncounterPick) -> None:
-        """刷新点击发射时点(触发时点轴·发射型;§6.5-4 随点击置位不等
+        """刷新点击发射时点(单一发射口,发射即触发;§6.5-4 随点击置位不等
         验效)。防重入旗标 = 执行侧载体留守(非登记件);登记件写端经
         on_outcome 注册表触发——本方法 = 两路径(旧 handle / 五段循环)
         共用分派面,触发唯一性先例 = CwScreenPrep._act_execute。"""
         exec_state_of(session)._encounter_refresh_used = True
-        self.fire_emit_hooks(pick, evidence='refresh_click')
+        self.fire_outcome_hooks(pick, evidence='refresh_click')
 
     def _observe_frame(self) -> EncounterObservation:
         """稳定帧观察链(实机适配器①封口内容):入口 2s 稳定期 → 重截 →
@@ -328,35 +329,19 @@ class CwScreenEncounter(CwScreenOpBase):
     def _act_execute(self, pick: EncounterPick | None,
                      options: list[EncounterOption], idx: int
                      ) -> OperationRoundResult:
-        """动作执行分派面(五段之 act 端口分派;两路径共用,落地登记注册
-        表的**唯一触发点**,先例 = CwScreenPrep._act_execute)。注入动作
-        适配器在场 → 按回执形态分流(原生轮次结果 = 验关锚 wait 语义零
-        重构;(progressed, detail) 协议形状 = 注入替位桩,按现役确认链
-        收尾常量重构);缺省 = 现役确认链直连(:meth:`_confirm_default`)。
-        on_outcome 注册表在本口落地回执点统一触发(落地回执门:progressed
-        为前提;本屏现役在册仅发射型 encounter_refresh_used,发射触发归
-        ``_emit_refresh_click``,不经本口——触发轴两型分离防双计)。"""
+        """动作执行分派面(五段之 act 端口分派;两路径共用)。注入动作
+        适配器在场 → 经适配器机械执行(§6.2 端口,T-223:执行无返回);
+        缺省 = 现役确认链直连(:meth:`_confirm_default`)。选择动作无落地
+        登记件(chosen_encounter = 重入裁决承载的 write_logic 豁免),发射
+        型 encounter_refresh_used 触发归 ``_emit_refresh_click``——本口
+        不再收落地回执(原 progressed 门调用位随 T-223 门退役删除,防
+        单一发射口下与刷新件混触双计)。"""
         _adp = self._action_port()
         if _adp is not None:
-            out = _adp.execute(self, pick)
-        else:
-            out = self._confirm_default(idx)
-        if isinstance(out, OperationRoundResult):
-            # 实机形态:现役确认链原生轮次结果(retry 预算/wait 语义零重构)
-            rs = out
-            progressed = out.is_success
-        elif isinstance(out, tuple):
-            # 注入替位协议形状 (progressed, detail) → 按确认链收尾常量重构
-            #(验证废除批注:确认链本体已机械交回,本替位桩语义 = 测试面
-            # 预置轮次结果;协议形状退役归批3a,本批不动)
-            progressed, detail = out
-            rs = (self.round_success(detail, wait=2.0) if progressed
-                  else self.round_retry(detail, wait=1))
-        else:
-            raise TypeError(f'动作适配器回执形态非法: {type(out).__name__}'
-                            f'(合法 = 轮次结果 ∨ (progressed, detail) 二元)')
-        self.fire_outcome_hooks(pick, progressed)
-        return rs
+            _adp.execute(self, pick)
+            # 适配器替位桩(测试面)= 机械交回常量(端口无回执后的唯一形态)
+            return self.round_success('确认已发(动作适配器机械交回)', wait=2.0)
+        return self._confirm_default(idx)
 
     def _confirm_default(self, idx: int) -> OperationRoundResult:
         """现役确认链缺省执行体(实机适配器②的封口内容;旧路径与五段循环

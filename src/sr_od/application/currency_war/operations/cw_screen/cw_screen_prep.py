@@ -106,8 +106,8 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base impor
 )
 from sr_od.application.currency_war.prep_actions import (
     PrepActionExecutor,
+    StopBrakeShortCircuit,
     row_area_centers,
-    try_recovery,
 )
 from sr_od.application.currency_war.run_state import (
     exec_fail_flag_path,
@@ -450,14 +450,14 @@ class PrepLiveActionAdapter:
     """实机适配器②(动作端口;统一观察架构 §6.2 点击链封口,试点步骤 1)。
 
     内部复用现役点击链(``CwScreenPrep._act_execute_default``:OpenShop 流程
-    层编排 + PrepActionExecutor F3 验证链),验真锚语义(§6.2)不出端口,
-    回执 = ``(progressed, detail)`` 落地判定。sim 实现 = 步骤 2 辖域
+    层编排 + PrepActionExecutor 机械执行),机械执行**无返回**(T-223:
+    发出即职责完成,端口回执 ``(progressed, detail)`` 退役;落地判定完全
+    归观察侧 reconcile,§6.2/§6.5-1)。sim 实现 = 步骤 2 辖域
     (引擎动作应用,§6.3),本批不建。
     """
 
-    def execute(self, op: CwScreenPrep,
-                action: PrepAction) -> tuple[bool, str]:
-        return op._act_execute_default(action)
+    def execute(self, op: CwScreenPrep, action: PrepAction) -> None:
+        op._act_execute_default(action)
 
 
 class CwScreenPrep(CwScreenOpBase):
@@ -468,17 +468,14 @@ class CwScreenPrep(CwScreenOpBase):
     不消耗 node 重试预算,operation.py:453-461 仅 RETRY 递增;strategy/03 §7)。
 
     统一观察架构试点(§9.2 迁移步骤 1,实机侧):本类是第一个基类
-    (CwScreenOpBase)子类——六段生命周期方法见文末「六段生命周期」段;
-    装配点(cw_game_ports)在场时 run() 经六段驱动,缺省 None = 生产直连
+    (CwScreenOpBase)子类——五段生命周期方法见文末「五段生命周期」段;
+    装配点(cw_game_ports)在场时 run() 经五段驱动,缺省 None = 生产直连
     旧路径(run() 原序列),试点等价门通过前生产行为零变化(§9.1)。
     """
 
-    # 环级预算(§7 环级:步数>60 或 stall≥5 且恢复已试尽 → 强制 StartBattle;实跑校准 §10)
+    # 环级预算(§7 环级:步数>60 → 强制出战兜底;实跑校准 §10)
     MAX_STEPS: ClassVar[int] = 60
     STALL_LIMIT: ClassVar[int] = 5
-    # 同动作验证连败 2 → 恢复原语(一次/动作实例)→ 恢复后仍连败 2 → 分型 bail/屏蔽(§7)
-    FAIL_TO_RECOVER: ClassVar[int] = 2
-    BAIL_SAME_REASON_DIAG: ClassVar[int] = 3   # 同因 bail ≥3 → [cw!] 升诊断(局级计数)
     # 单动作访问动作数上限(ADR-0517:防御上界——决策循环不收敛 = 投影或
     # 策略 bug,到顶交回外循环由 stall 防线接管,不静默续跑)
     VISIT_ACTION_CAP: ClassVar[int] = 16
@@ -488,11 +485,9 @@ class CwScreenPrep(CwScreenOpBase):
         self._executor: PrepActionExecutor | None = None
         self._steps: int = 0
         self._stall: int = 0
-        self._fail_counts: dict[str, int] = {}      # 动作实例键 → 连续验证失败次数
-        self._blocked: set[str] = set()             # 本环屏蔽动作实例键(§7;StartBattle 豁免)
-        self._recovered: set[str] = set()           # 已试过恢复原语的动作实例键(一次/实例)
-        self._recovery_closed_known: dict[str, bool] = {}   # 恢复时是否关过已知弹层(分型用)
-        self._recovery_tried: bool = False          # 本环恢复原语是否已试(强制出战门)
+        # 最近一次动作执行的机械摘要(登记件 detail 供给;T-223 端口无
+        # 回执后由 _act_execute_default 写入,on_outcome 触发时消费)。
+        self._last_mech_detail: str = ''
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
         # light 步沿用的 heavy 缓存(观察分层)
         self._cached_state: GameState | None = None
@@ -512,16 +507,17 @@ class CwScreenPrep(CwScreenOpBase):
         # 属性 → getattr 兜底直连现役链(与旧路径同语义)。
         self._observation_adapter = PrepLiveObservationAdapter()
         self._action_adapter = PrepLiveActionAdapter()
-        # on_outcome 落地登记注册表(架构设计 §6.4;触发时点轴 = 落地回执门
-        # 默认型):本 op 级登记件两件 = 经验期望账本推进(LevelUp 直击通道/
-        # OpenShop 买波通道)——执行落地(progressed)才推进,原 run() 内联
-        # 位逐位迁移(位置迁移,登记语义不变,§6.5)。执行器内登记件(刷新
-        # 计数组免费闸 record_refresh_execution、免战牌 consume_use,现役
-        # 接线点 = cw_op_buy_cards 执行落地门/prep_actions._launch_attempt
-        # 「按钮-跳过」执行落地回执)**不随本批收编**:该执行链为双路径共
-        # 链,迁移即生产行为变化——收编挂账至试点等价门通过后的执行器批
-        #(§6.4-R-J 非登记职责留守执行器;免费闸/随点击置位等 §6.5 六条
-        # 语义以现役位置逐字保绿)。
+        # on_outcome 落地登记注册表(架构设计 §6.4;单一发射口,发射即触发
+        # ——T-223 最严读法:两 fire 口合并,落地回执门退役):本 op 级
+        # 登记件两件 = 经验期望账本推进(LevelUp 直击通道/OpenShop 买波
+        # 通道),发射时点逐位迁移(位置迁移;「未落地不计数」防线由观察
+        # 侧 reconcile 对账承接 = _reconcile_xp_expect,§6.5-1)。执行器内
+        # 登记件(刷新计数组免费闸 record_refresh_execution、免战牌
+        # consume_use,现役接线点 = cw_op_buy_cards 执行落地门/prep_actions
+        # _launch_attempt)**不随本批收编**:该执行链为双路径共链,迁移即
+        # 生产行为变化——收编挂账至试点等价门通过后的执行器批(§6.4-R-J
+        # 非登记职责留守执行器;免费闸/随点击置位等 §6.5 六条语义以现役
+        # 位置逐字保绿)。
         self.register_outcome_hook(
             LevelUp, lambda _o: self._xp_apply_levelup(),
             name='xp_ledger_levelup')
@@ -1144,10 +1140,10 @@ class CwScreenPrep(CwScreenOpBase):
         return led
 
     def _xp_apply_levelup(self) -> None:
-        """直接 LevelUp 动作通道推进账本(腾席链「循环点至 level+1、首次
-        OCR 验证成功即停」;仅 progressed 调用 = 升级已验证达成,实际击数
-        = xp_clicks_to_level 最小击数,无超额点击)。未锚定 → 丢弃(对局
-        首帧锚定前的意图不推算,由锚点吸收)。"""
+        """直接 LevelUp 动作通道推进账本(腾席链买经验;发射时点触发,批3a:
+        原落地回执门随 T-223 退役——发射即按账本现值推算最小击数推进,
+        级真值由下一帧观察 reconcile 对账吸收,失配落缺陷台账)。未锚定
+        → 丢弃(对局首帧锚定前的意图不推算,由锚点吸收)。"""
         led = self._xp_ledger()
         if led is None or not led.anchored:
             return
@@ -1161,10 +1157,12 @@ class CwScreenPrep(CwScreenOpBase):
 
     def _xp_apply_buy_clicks(self, detail: str) -> None:
         """RunBuyPhase 通道推进账本:执行 detail 解析升级次数(执行侧实况
-        计数,shop.py total_level 口径;调用方仅 progressed 分支——单元
-        失败=未购买不推算)。已知盲区:shop._handle_bench_full 席满急救的
-        盲击购买经验不经单元摘要 → 不在账,该形态的不一致是本对账的预期
-        留证对象(verdict 注明,不改语义)。未锚定 → 丢弃(同上)。"""
+        计数,shop.py total_level 口径;发射时点触发,批3a:原 progressed
+        门随 T-223 退役——商店编排机械完成后携摘要 detail,解析不出击数
+        (单元中断等)自然零推进,差值由下一帧观察 reconcile 对账吸收)。
+        已知盲区:shop._handle_bench_full 席满急救的盲击购买经验不经单元
+        摘要 → 不在账,该形态的不一致是本对账的预期留证对象(verdict
+        注明,不改语义)。未锚定 → 丢弃(同上)。"""
         led = self._xp_ledger()
         if led is None or not led.anchored:
             return
@@ -1598,7 +1596,7 @@ class CwScreenPrep(CwScreenOpBase):
         for _pend in list(getattr(exec_state_of(session), 'cw_prep_pending_accts', None) or []):
             self._v2_post_frame_accounting(obs, _pend, session)
         exec_state_of(session).cw_prep_pending_accts = []
-        self._v2_post_frame_accounting(obs, {'key': None, 'progressed': False,
+        self._v2_post_frame_accounting(obs, {'key': None,
                                              'drag_expect': None, 'equip_expect': None,
                                              'dep_delta': 0, 'dep_pre': None,
                                              'unit_open': False}, session)
@@ -1635,6 +1633,9 @@ class CwScreenPrep(CwScreenOpBase):
         #      纪律重推)。已知画面出口(OpenShop/StartBattle)与控制流
         #      (DeferSpheres/BailToOuter)= 终结 op,执行即本访问结束交回
         #      外循环(下次入口重观察)。投影未建模的动作同判保守回退。
+        #      B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——
+        #      动作机械执行(端口无成败回执),无进展治理归外循环 stall
+        #      防线(F2),落地判定归观察侧 reconcile。
         _visit_acts: list[str] = []
         actions: list = []
         # T-82 段序号置位(备战期开始;唯一置位点 = 本 prep 访问循环入口):
@@ -1669,7 +1670,7 @@ class CwScreenPrep(CwScreenOpBase):
             exec_state_of(session).last_prep_action_sig = tuple(
                 _visit_acts + [type(action).__name__])
             self._record_step(obs, action)
-            # 控制流(契约 §4:词表内特殊动作,不进 execute 验证链;defer 计数归框架)
+            # 控制流(契约 §4:词表内特殊动作,不进 execute;defer 计数归框架)
             if isinstance(action, DeferSpheres):
                 exec_state_of(session).defer_count += 1
                 log.info(f'[cw][director] DeferSpheres(defer={exec_state_of(session).defer_count})'
@@ -1680,8 +1681,8 @@ class CwScreenPrep(CwScreenOpBase):
                 log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环'
                          '(词表退役兜底)')
                 return self.round_success(f'BailToOuter({action.reason}),交回外循环(词表退役兜底)', wait=1.0)
-            # F3 校验(契约 §2:参数非法与执行失败同型——交回重观察,不进
-            # 连败链的拒绝路径;拒绝执行 + 交回留证)
+            # F3 校验(契约 §2:参数非法交回留证;M6 边界面——执行前输入
+            # 契约检查,非动作后判效)
             err = self._executor.validate(action)
             key = action_key(action)
             if err is not None:
@@ -1705,57 +1706,53 @@ class CwScreenPrep(CwScreenOpBase):
                         _dep_pre = read_deployed_count(self.ctx, _dep_frame)
                     except Exception:   # noqa: BLE001  观测 best-effort
                         _dep_pre = None
-            acct: dict = {'last_obs': obs, 'key': key, 'progressed': False,
+            acct: dict = {'last_obs': obs, 'key': key,
                           'drag_expect': _drag_expect, 'equip_expect': _equip_expect,
                           'dep_delta': _dep_delta, 'dep_pre': _dep_pre, 'unit_open': False}
-            # —— ⑤ 执行 + 结束判定(OpenShop = 流程层商店编排;其余经执行器 F3 验证链)
+            # —— ⑤ 执行(机械执行,无成败回执;发出即职责完成)+ 结束判定
             #      执行体 = _act_execute(两路径共用抽提体):落地登记注册表
-            #      (§6.4 on_outcome)在其回执点统一触发,经验账本两件经钩子
-            #      推进(原内联位逐位迁移,登记语义不变)。
+            #      (§6.4 on_outcome)在其发射点统一触发(单一发射口,发射即
+            #      触发),经验账本两件经钩子推进(原内联位逐位迁移)。
             try:
-                progressed, detail = self._act_execute(action, obs)
+                self._act_execute(action, obs)
+            except StopBrakeShortCircuit as e:
+                # W209j 刹车短路(ADR-0388):停机标志已设,动作未发出 →
+                # 交回外循环,下轮 loop 顶见 STOP 退出(原回执 False 通道
+                # 随 T-223 退役改停机短路异常)。
+                log.info(f'[cw][director] 停机刹车({e}),动作未发出 → 交回外循环')
+                return self.round_success(f'停机刹车({e}),动作未发出,交回外循环', wait=1.0)
             except Exception as e:  # noqa: BLE001  执行异常上抛 = 本轮 fail
                 log.warning(f'[cw!][director] 执行异常 {key}: {e}')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
-            acct['progressed'] = progressed
-            # F3/T-174(ADR-0610):StartBattle 发射结果写执行态(环级;
-            # 消费端 = cw_loop 备战环出口的 0j 恢复链预算复位判定,读后
-            # 即清)。StartBattle 验证失败的环在外循环仍记 round_success
-            #(「已试恢复交回」),无本写入则复位判据无法区分真成功。
-            if isinstance(action, StartBattle):
-                exec_state_of(session).last_prep_battle_launch_ok = progressed
             # T-82 续段 token 写入(生产 prep 循环执行位;OpenShop 分支与
-            # 执行器分支在此合流):动作确认已执行后置位 (动作型名, 当前
-            # 段序号);执行失败(fail-stop 交回外循环 heavy 重观察)不写。
-            # 状态对象缺席 = 无缓存载体,跳过(B4 缺席退缺省口径)。
-            if progressed:
-                _st_tok = strategy_state_of(session)
-                if _st_tok is not None:
-                    _st_tok.cw4_frame_action_record = (
-                        type(action).__name__, _st_tok.cw4_segment_serial)
+            # 执行器分支在此合流):发出即写(批3a 申报择一;原 progressed
+            # 门退役)。状态对象缺席 = 无缓存载体,跳过(B4 缺席退缺省口径)。
+            _st_tok = strategy_state_of(session)
+            if _st_tok is not None:
+                _st_tok.cw4_frame_action_record = (
+                    type(action).__name__, _st_tok.cw4_segment_serial)
             _visit_acts.append(type(action).__name__)
             # 期望态记账暂存(ADR-0517:对账归下一入口时点;per-action heavy
-            # 重观察契约退役,对账族消费帧 = 下次入口 heavy)
+            # 重观察契约退役,对账族消费帧 = 下次入口 heavy。批3a:发出即
+            # 登记 + 对账纠偏——原 acct['progressed'] 字段随回执退役,期望态
+            # 对账族消费观察侧 reconcile 落地判定,失配 = 纠偏/缺陷台账)
             if exec_state_of(session).cw_prep_pending_accts is None:
                 exec_state_of(session).cw_prep_pending_accts = []
             exec_state_of(session).cw_prep_pending_accts.append(acct)
             # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建)
-            if isinstance(action, StartBattle) and progressed:
+            if isinstance(action, StartBattle):
+                # 出战提前终结(批3a:发出即终结——机械发射完成即交回外循环
+                # 战斗分支;发射位内部事实经执行器 last_launch_ok/exec_state
+                # 旁路供 cw_loop J2/J3/J4,批4 同退役)。
                 return self.round_success('出战(交回外循环战斗分支)', wait=3)
-            if not progressed:
-                # fail-stop(契约 §2):验证失败 → 恢复原语一次(关已知弹层)
-                # → 交回外循环 heavy 重观察(连续无进展由外循环 stall 防线留证)
-                try:
-                    _prim, _closed = try_recovery(self, self.ctx)
-                    log.info(f'[cw][director] {key} 验证失败 → 恢复原语({_prim})'
-                             ' → 交回外循环')
-                except Exception as e:  # noqa: BLE001  恢复异常不阻塞交回
-                    log.warning(f'[cw!][director] 恢复原语异常 {key}: {e}')
-                return self.round_success(f'{key} 验证失败({detail}),已试恢复,交回外循环', wait=1.0)
             if isinstance(action, OpenShop):
                 # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
                 return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
             # —— 投影(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算推进;
+            #      批3a 显式设计:发出即投影。原投影触发门(progressed)随
+            #      回执退役——动作未落地的假黑板风险由下一入口 heavy
+            #      reconcile 以实读纠投影承担(期望态对账族即纠偏通道,
+            #      失配 = 纠偏/缺陷台账),非只删门。
             #      未建模动作 → None = 保守回退:本访问终结交回外循环重观察)
             _proj = self._project_prep_obs(action, obs)
             if _proj is None:
@@ -1770,9 +1767,9 @@ class CwScreenPrep(CwScreenOpBase):
         return self.round_success(
             f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
 
-    # ===== 统一观察架构·六段生命周期(试点步骤 1,实机侧)=====
+    # ===== 统一观察架构·五段生命周期(试点步骤 1,实机侧)=====
     # 架构设计 §9.2 迁移步骤 1:本 op 为第一个基类(CwScreenOpBase)试点,
-    # 现役观察/对账/决策/执行/落地登记逻辑按 §5.1 六段归位。触发面 = 装配点
+    # 现役观察/对账/决策/执行/落地登记逻辑按 §5.1 五段归位。触发面 = 装配点
     # (cw_game_ports)在场时 run() 经 run_lifecycle() 驱动(§9.1 并存期);
     # 缺省 None = 旧路径(上方原序列)。两路径共用的执行体 = _act_execute;
     # 六条已锁语义(P2-1 bench 守卫/P3-10 特效窗门/免费闸/同节点去重/
@@ -1840,7 +1837,7 @@ class CwScreenPrep(CwScreenOpBase):
         for _pend in list(getattr(exec_state_of(session), 'cw_prep_pending_accts', None) or []):
             self._v2_post_frame_accounting(payload, _pend, session)
         exec_state_of(session).cw_prep_pending_accts = []
-        self._v2_post_frame_accounting(payload, {'key': None, 'progressed': False,
+        self._v2_post_frame_accounting(payload, {'key': None,
                                                  'drag_expect': None, 'equip_expect': None,
                                                  'dep_delta': 0, 'dep_pre': None,
                                                  'unit_open': False}, session)
@@ -1861,15 +1858,14 @@ class CwScreenPrep(CwScreenOpBase):
                               current_readable=bool(getattr(_os, 'hp_readable', True)))
 
     def lifecycle_decision_cycle(self, payload: PrepObservation) -> OperationRoundResult:
-        """段3-6 单动作决策循环(架构设计 §5.1 后四段逐动作迭代)。
+        """段3-5 单动作决策循环(架构设计 §5.1 后三段逐动作迭代)。
 
         decide(黑板 = session.prep_obs_frame,策略消费,F3 形状校验)→
-        act(适配器②:意图落地,现役点击链复用)→ on_outcome(落地登记
-        注册表,在 _act_execute 回执点统一触发,落地回执门)→ 验证(执行
-        侧验证回执消费:现役载体 = 执行器 F3 验证链 progressed + 延迟对账
-        族[下一访问入口 reconcile 段消费];失败编排恢复原语交回外循环)。
-        终结出口语义与旧路径逐字一致(空批/控制流/参数非法/出战/验证失败/
-        开店切换/投影未建模/访问上限)。"""
+        act(适配器②:意图机械执行,无成败回执)→ on_outcome(落地登记
+        注册表在 _act_execute 发射点统一触发,单一发射口发射即触发)。
+        生命周期无验证段(用户裁定 2026-09-10:动作未生效归动作层修可靠
+        性,落地判定归观察侧 reconcile)。终结出口语义 = 空批/控制流/参数
+        非法/出战(发出即终结)/开店切换/投影未建模/访问上限。"""
         match = self._match()
         session = match.session
         from sr_od.application.currency_war.currency_war_config import (
@@ -1911,7 +1907,7 @@ class CwScreenPrep(CwScreenOpBase):
             exec_state_of(session).last_prep_action_sig = tuple(
                 _visit_acts + [type(action).__name__])
             self._record_step(payload, action)
-            # 控制流(契约 §4:词表内特殊动作,不进 execute 验证链;defer 计数归框架)
+            # 控制流(契约 §4:词表内特殊动作,不进 execute;defer 计数归框架)
             if isinstance(action, DeferSpheres):
                 exec_state_of(session).defer_count += 1
                 log.info(f'[cw][director] DeferSpheres(defer={exec_state_of(session).defer_count})'
@@ -1922,8 +1918,8 @@ class CwScreenPrep(CwScreenOpBase):
                 log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环'
                          '(词表退役兜底)')
                 return self.round_success(f'BailToOuter({action.reason}),交回外循环(词表退役兜底)', wait=1.0)
-            # F3 校验(契约 §2:参数非法与执行失败同型——交回重观察,不进
-            # 连败链的拒绝路径;拒绝执行 + 交回留证)
+            # F3 校验(契约 §2:参数非法交回留证;M6 边界面——执行前输入
+            # 契约检查,非动作后判效)
             err = self._executor.validate(action)
             key = action_key(action)
             if err is not None:
@@ -1947,60 +1943,49 @@ class CwScreenPrep(CwScreenOpBase):
                         _dep_pre = read_deployed_count(self.ctx, _dep_frame)
                     except Exception:   # noqa: BLE001  观测 best-effort
                         _dep_pre = None
-            acct: dict = {'last_obs': payload, 'key': key, 'progressed': False,
+            acct: dict = {'last_obs': payload, 'key': key,
                           'drag_expect': _drag_expect, 'equip_expect': _equip_expect,
                           'dep_delta': _dep_delta, 'dep_pre': _dep_pre, 'unit_open': False}
-            # —— 段4 act(适配器②:意图落地)+ 段5 on_outcome(落地登记
-            #      注册表在 _act_execute 回执点统一触发,落地回执门:
-            #      progressed 为前提,未落地不触发,§6.5-1)
+            # —— 段4 act(适配器②:意图机械执行)+ 段5 on_outcome(落地
+            #      登记注册表在 _act_execute 发射点统一触发;单一发射口,
+            #      发射即触发,T-223:发出即职责完成)
             self._lifecycle_mark('act')
             try:
-                progressed, detail = self._act_execute(action, payload)
+                self._act_execute(action, payload)
+            except StopBrakeShortCircuit as e:
+                # W209j 刹车短路(ADR-0388):停机标志已设,动作未发出 →
+                # 交回外循环,下轮 loop 顶见 STOP 退出。
+                log.info(f'[cw][director] 停机刹车({e}),动作未发出 → 交回外循环')
+                return self.round_success(f'停机刹车({e}),动作未发出,交回外循环', wait=1.0)
             except Exception as e:  # noqa: BLE001  执行异常上抛 = 本轮 fail
                 log.warning(f'[cw!][director] 执行异常 {key}: {e}')
                 return self.round_fail(status=f'执行异常 {key}: {e}')
             self._lifecycle_mark('on_outcome')
-            acct['progressed'] = progressed
-            # —— 段6 验证(执行侧验证回执消费+结束判定)
-            self._lifecycle_mark('verify')
-            # F3/T-174(ADR-0610):StartBattle 发射结果写执行态(环级;
-            # 消费端 = cw_loop 备战环出口的 0j 恢复链预算复位判定,读后
-            # 即清)。StartBattle 验证失败的环在外循环仍记 round_success
-            #(「已试恢复交回」),无本写入则复位判据无法区分真成功。
-            if isinstance(action, StartBattle):
-                exec_state_of(session).last_prep_battle_launch_ok = progressed
             # T-82 续段 token 写入(生产 prep 循环执行位;OpenShop 分支与
-            # 执行器分支在此合流):动作确认已执行后置位 (动作型名, 当前
-            # 段序号);执行失败(fail-stop 交回外循环 heavy 重观察)不写。
-            # 状态对象缺席 = 无缓存载体,跳过(B4 缺席退缺省口径)。
-            if progressed:
-                _st_tok = strategy_state_of(session)
-                if _st_tok is not None:
-                    _st_tok.cw4_frame_action_record = (
-                        type(action).__name__, _st_tok.cw4_segment_serial)
+            # 执行器分支在此合流):发出即写(批3a 申报择一;原 progressed
+            # 门退役)。状态对象缺席 = 无缓存载体,跳过(B4 缺席退缺省口径)。
+            _st_tok = strategy_state_of(session)
+            if _st_tok is not None:
+                _st_tok.cw4_frame_action_record = (
+                    type(action).__name__, _st_tok.cw4_segment_serial)
             _visit_acts.append(type(action).__name__)
             # 期望态记账暂存(ADR-0517:对账归下一入口时点;per-action heavy
-            # 重观察契约退役,对账族消费帧 = 下次入口 heavy)
+            # 重观察契约退役,对账族消费帧 = 下次入口 heavy。批3a:发出即
+            # 登记 + 对账纠偏——原 acct['progressed'] 字段随回执退役)
             if exec_state_of(session).cw_prep_pending_accts is None:
                 exec_state_of(session).cw_prep_pending_accts = []
             exec_state_of(session).cw_prep_pending_accts.append(acct)
             # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建)
-            if isinstance(action, StartBattle) and progressed:
+            if isinstance(action, StartBattle):
+                # 出战提前终结(批3a:发出即终结;发射位内部事实经执行器
+                # last_launch_ok/exec_state 旁路供 cw_loop J2/J3/J4,批4 同退役)
                 return self.round_success('出战(交回外循环战斗分支)', wait=3)
-            if not progressed:
-                # fail-stop(契约 §2):验证失败 → 恢复原语一次(关已知弹层)
-                # → 交回外循环 heavy 重观察(连续无进展由外循环 stall 防线留证)
-                try:
-                    _prim, _closed = try_recovery(self, self.ctx)
-                    log.info(f'[cw][director] {key} 验证失败 → 恢复原语({_prim})'
-                             ' → 交回外循环')
-                except Exception as e:  # noqa: BLE001  恢复异常不阻塞交回
-                    log.warning(f'[cw!][director] 恢复原语异常 {key}: {e}')
-                return self.round_success(f'{key} 验证失败({detail}),已试恢复,交回外循环', wait=1.0)
             if isinstance(action, OpenShop):
                 # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
                 return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
             # —— 投影(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算推进;
+            #      批3a 显式设计:发出即投影,假黑板风险由下一入口 heavy
+            #      reconcile 以实读纠投影承担(期望态对账族即纠偏通道);
             #      未建模动作 → None = 保守回退:本访问终结交回外循环重观察)
             _proj = self._project_prep_obs(action, payload)
             if _proj is None:
@@ -2016,30 +2001,31 @@ class CwScreenPrep(CwScreenOpBase):
             f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
 
     def _act_execute(self, action: PrepAction,
-                     obs: PrepObservation | None = None) -> tuple[bool, str]:
-        """动作执行段(六段之 act 的端口分派面;两路径共用,落地登记注册表
-        的**唯一触发点**)。注入动作适配器在场 → 经适配器落地(§6.2 端口);
-        缺省 = 现役点击链直连(:meth:`_act_execute_default`)。on_outcome
-        注册表在本口落地回执点恰触发一次(每次落地恰一次由触发点唯一性
-        承载,禁在适配器/缺省体内重复触发——双计即免费闸/账本类登记件
-        毒化)。执行异常原样上抛,由调用方统一 round_fail。"""
+                     obs: PrepObservation | None = None) -> None:
+        """动作执行段(五段之 act 的端口分派面;两路径共用,落地登记注册表
+        的**唯一触发点**)。注入动作适配器在场 → 经适配器机械执行(§6.2
+        端口,无返回);缺省 = 现役点击链直连(:meth:`_act_execute_default`)。
+        on_outcome 注册表在本口发射点恰触发一次(T-223 单一发射口,发射即
+        触发;每次发射恰一次由触发点唯一性承载,禁在适配器/缺省体内重复
+        触发——双计即免费闸/账本类登记件毒化)。机械摘要经
+        ``_last_mech_detail`` 旁路供登记件 detail(非成败回执)。执行异常
+        原样上抛(含 W209j 停机短路),由调用方统一处置。"""
         _adp = self._action_port()
         if _adp is not None:
-            progressed, detail = _adp.execute(self, action)
+            _adp.execute(self, action)
         else:
-            progressed, detail = self._act_execute_default(action, obs)
-        self.fire_outcome_hooks(action, progressed, detail)
-        return progressed, detail
+            self._act_execute_default(action, obs)
+        self.fire_outcome_hooks(action, detail=self._last_mech_detail)
 
     def _act_execute_default(self, action: PrepAction,
-                             obs: PrepObservation | None = None) -> tuple[bool, str]:
+                             obs: PrepObservation | None = None) -> None:
         """现役点击链缺省执行体(实机适配器②的封口内容;旧路径 run() 与
-        六段循环同调,自身**不触发**注册表——触发统一归
+        五段循环同调,自身**不触发**注册表——触发统一归
         :meth:`_act_execute` 分派面,防双计)。OpenShop = 流程层商店编排
-        [spend 单元记账 + _open_shop_phase];其余 = 执行器 F3 验证链。
-        发射型(在册成员 = F-3 裁决两件:遭遇/策略屏刷新计数,申报面见基类
-        EMIT_TRIGGERED_DECLARED)由各自执行链在点击发射点经
-        fire_emit_hooks 触发,不经本口。
+        [spend 单元记账 + _open_shop_phase];其余 = 执行器机械执行。发射型
+        登记件(遭遇/策略屏刷新计数)由各自执行链在点击发射点触发,不经
+        本口。机械摘要写入 ``_last_mech_detail``(登记件 detail 供给;
+        T-223 端口无返回后的旁路通道)。
 
         ``obs`` = 当前黑板帧(调用方传入;缺省 = session.prep_obs_frame
         黑板现值——黑板两写点[入口观察/循环投影步]与决策循环局部帧恒
@@ -2055,6 +2041,7 @@ class CwScreenPrep(CwScreenOpBase):
             try:
                 progressed, detail = self._open_shop_phase(action, obs)
             except Exception as e:
+                self._last_mech_detail = f'执行异常:{e}'
                 if _unit:
                     self._spend_unit_close(progressed=False, detail=f'执行异常:{e}',
                                            boundary='aborted')
@@ -2062,11 +2049,12 @@ class CwScreenPrep(CwScreenOpBase):
             if _unit:
                 self._spend_unit_close(progressed=progressed, detail=detail,
                                        boundary='closed' if progressed else 'failed')
-            log.info(f'[cw][director] {action_key(action)} → {"✓" if progressed else "✗"} {detail}')
-            return progressed, detail
-        progressed, detail = self._executor.execute(action)
-        log.info(f'[cw][director] {action_key(action)} → {"✓" if progressed else "✗"} {detail}')
-        return progressed, detail
+            self._last_mech_detail = detail
+            log.info(f'[cw][director] {action_key(action)} → {detail}')
+            return
+        self._executor.execute(action)
+        self._last_mech_detail = getattr(self._executor, 'last_detail', '')
+        log.info(f'[cw][director] {action_key(action)} → {self._last_mech_detail}')
 
     def _takeover_collect_if_needed(self, match: CurrencyWarMatch,
                                     session: StrategySession
@@ -2366,7 +2354,7 @@ class CwScreenPrep(CwScreenOpBase):
         - read_only=True(腾席链 b 取 gold 真值 / 开态清洁面板):CwOpOpenShop
           (幂等,已开不点)→ heavy 观察(gold 开态真值进 session)→ **不调
           商店决策**(M-6 门保持:free=0 不进买牌)→ CwOpCloseShop → 节点探针
-          → 回备战(W970 §4.3.6;r364 进展保证 = 开店成功即 progressed)。
+          → 回备战(W970 §4.3.6)。
         - read_only=False:开店前 hp 三件组取**开店前的备战观察**(商店开态
           HP 区不可读,W970 §4.3.4 读互斥承接;结算真值链已在 gated_hp 收口,
           trusted 位 = 本帧可读)→ 商店单动作循环(run_buy_waves:入口观察 →
@@ -2466,7 +2454,6 @@ class CwScreenPrep(CwScreenOpBase):
         )
 
         key = acct.get('key')
-        progressed = bool(acct.get('progressed'))
         # 动作级板面对拍(后读;期望不等 = 未生效证据,纯留证)
         if acct.get('dep_pre') is not None:
             with contextlib.suppress(Exception):
@@ -2482,9 +2469,11 @@ class CwScreenPrep(CwScreenOpBase):
                         gap=float(_gap), gap_large=True,
                         reader_source='paddle_action_audit',
                         note='部署/卖出动作级即时对拍(§2.3;与 deployed_align 自动纠漂分立)')
-        # 期望态对账(仅 progressed 分支——验证失败 = 动作未发生,期望不适用)
+        # 期望态对账(批3a:无条件消费——原 progressed 门随回执退役,
+        # 对账族改消费观察侧 reconcile 落地判定;动作未发出的帧期望态与
+        # 实读天然一致 = 零失配零动作,失配帧 = 纠偏/缺陷台账留证)
         with contextlib.suppress(Exception):
-            if progressed and acct.get('drag_expect') is not None:
+            if acct.get('drag_expect') is not None:
                 self._reconcile_drag_expect(acct['drag_expect'])
         # 期望态层·买牌:RunBuyPhase 单元购买期望由
         # shop.py 买入点写入 exec_state_of(session).pending_buy_expect;本帧消费对账。
@@ -2492,8 +2481,7 @@ class CwScreenPrep(CwScreenOpBase):
             _pending_buy = exec_state_of(session).pending_buy_expect
             if _pending_buy is not None:
                 exec_state_of(session).pending_buy_expect = None
-                if progressed:
-                    self._reconcile_buy_expect(_pending_buy)
+                self._reconcile_buy_expect(_pending_buy)
         with contextlib.suppress(Exception):
             self._reconcile_xp_expect(obs)
         with contextlib.suppress(Exception):
@@ -2503,9 +2491,9 @@ class CwScreenPrep(CwScreenOpBase):
         with contextlib.suppress(Exception):
             self._reconcile_merge_preview(obs)
         with contextlib.suppress(Exception):
-            if progressed and acct.get('equip_expect') is not None:
+            if acct.get('equip_expect') is not None:
                 self._reconcile_equip_expect(acct['equip_expect'])
-        acct.update(key=None, progressed=False, drag_expect=None,
+        acct.update(key=None, drag_expect=None,
                     equip_expect=None, dep_delta=0, dep_pre=None,
                     unit_open=False)
 
