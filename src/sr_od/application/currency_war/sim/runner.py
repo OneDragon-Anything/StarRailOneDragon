@@ -454,8 +454,14 @@ def simulate_p1_batch(n: int = 500, *, use_refresh: bool = True,
         from sr_od.application.currency_war.sim.checks.runner import (
             run_batch_level_checks,
         )
+        # ADR-0629:second_engine_deadline 是「局终」语义检查,经
+        # full_ledgers 吃 results 原账本(P1+P2 全行)——_ledgers 的
+        # P1 段截断口径会把 P2 内形成的二引擎记成 never(T-211 归因
+        # 「never 21 超带」假警报根因);planes=1 批两者恒同零漂移。
+        # 其余批级检查判据轮域 P1 段锚定,维持 _ledgers 辖域(ADR-0362)。
         rep_checks.update(run_batch_level_checks(
-            _ledgers, report=report, pool_map=_pm))
+            _ledgers, report=report, pool_map=_pm,
+            full_ledgers=[r.ledger for r in results]))
         # ADR-0362(`w157_p2/`):P2 段检查器最小集——金轨迹非负 + 段形状
         # (辖 planes>=2 批次的 P2 段行;P1 批无 plane=2 行恒绿)
 

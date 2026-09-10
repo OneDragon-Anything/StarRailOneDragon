@@ -149,13 +149,23 @@ def run_checks_on_ledgers(ledgers: list[list[dict]]) -> dict[str, dict]:
 
 def run_batch_level_checks(ledgers: list[list[dict]],
                            report: dict | None = None,
-                           pool_map: dict | None = None) -> dict:
+                           pool_map: dict | None = None,
+                           full_ledgers: list[list[dict]] | None = None) -> dict:
     """清偿批批级聚合入口:披露/哨兵/条件型检查一次跑全。
 
     逐局违规锁已在 _BATCH_CHECKS(run_checks_on_ledgers 自动扫);
     本入口辖批级聚合(吃全批账本)、池级条件(encounter 预算)、
     报告级披露(死旋钮/锚登记)。simulate_p1_batch 的接线归
     cw_sim.py(worker X 合流后;冲突隔离,本批不碰 cw_sim)。
+
+    :param full_ledgers: 全量账本(P1+P2 全行,results 原账本)。
+        缺省回退 ledgers(纯 P1 批两者恒同,零漂移)。「局终」语义
+        的检查必须喂全量账本——``second_engine_deadline`` 的 never
+        判据辖 P2 转型期二引擎形成窗,P1 段截断口径会把 P2 内形成
+        的二引擎记成 never(T-211 归因「never 21 超带」假警报根因;
+        ADR-0629)。其余批级检查的判据轮域是 P1 段锚定(r≥6/r≥7/
+        rn==6 等),P2 行 round_num 段内重计(1..7)会别名撞进同
+        数值 P1 轮域——禁喂全量账本,维持 ledgers 辖域(ADR-0362)。
     """
     from sr_od.application.currency_war.sim.checks.launch import (
         check_sim_launch_short_circuit as _launch_sentinel,
@@ -169,7 +179,9 @@ def run_batch_level_checks(ledgers: list[list[dict]],
         'late_board_short_idle': check_late_board_short_idle(ledgers),
         'no_streak_buy_freeze': check_no_streak_buy_freeze(ledgers),
         'hoard_gold_no_engine': check_hoard_gold_no_engine(ledgers),
-        'second_engine_deadline': check_second_engine_deadline(ledgers),
+        # 局终口径检查:吃 full_ledgers(缺省回退 ledgers;ADR-0629)
+        'second_engine_deadline': check_second_engine_deadline(
+            full_ledgers if full_ledgers is not None else ledgers),
         'endgold_residue_channel_probe':
             check_endgold_residue_channel_probe(ledgers),
         'p2_precache_gate_closure':

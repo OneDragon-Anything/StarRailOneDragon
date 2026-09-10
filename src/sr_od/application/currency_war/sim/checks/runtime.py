@@ -174,6 +174,27 @@ def _is_engine_supply_card(card: dict) -> bool:
             or card.get('name') == _ENGINE_SUPPLY_CHAR)
 
 
+# 局轮轴常量:P1 段轮域 1-9,P2 首轮 ts=10(单一源 = engine_p1 账本行
+# ts 注释「跨位面累计;P1 段 == rn」;_Plane1View 切片注释同源)。
+_P1_ROUNDS: int = 9
+
+
+def _game_round_of_row(row: dict) -> int:
+    """账本行的跨位面单调局轮轴(「局终」口径的全局面轮序;ADR-0629)。
+
+    单一源 = 账本行 ts 写入端(跨位面累计,P1 段 == rn):P2 段行
+    round_num 段内重计(1..P2_ROUNDS),拿 round_num 直接做跨段
+    gap/期限窗算术会在位面边界回卷(如 P2r2 对 P1r6 算出负 gap)。
+    缺 ts(测试合成夹具/无 ts 的只读面)回退 rn+P1 域偏移,plane=1
+    行恒等 rn——纯 P1 账本上本轴与旧 round_num 口径逐位相同。
+    """
+    ts = row.get('ts')
+    if isinstance(ts, int):
+        return ts
+    rn = row.get('round_num') or 0
+    return rn + (_P1_ROUNDS if (row.get('plane') or 1) >= 2 else 0)
+
+
 def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
     """成型批 second_engine_deadline(次引擎期限观测+miss 原因分键;披露型)。
 
@@ -214,6 +235,17 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
     miss_reasons 期限窗分键仍辖两形态全部 miss 局。出处:泛找批
     报告 F2/F2a(.debug/temp/currency_war/findprob_20260910_泛找批_
     20260910_062008/report.md,易失产物暂记)。
+
+    口径(局终=全账本;ADR-0629 口径单一源化):输入必须是**全量
+    账本**(P1+P2 全行;批接线经 run_batch_level_checks 的
+    ``full_ledgers`` 入参,runner.simulate_p1_batch 直传 results
+    原账本)——「至局终仍未凑出次引擎」的局终 = 模拟局真实末轮。
+    P2 转型期正是二引擎形成窗,P1 段截断口径会把 P2 内形成的二
+    引擎记成 never(T-211 归因实锤:s8550 批 P1 截断 21 vs 全局面
+    15,「never 21 超带」假警报的直接成因)。planes=1 批全量账本
+    ≡ P1 段账本,输出与历史批逐位零漂移;跨段 gap/期限窗一律经
+    _game_round_of_row 统一轮轴(P2 round_num 段内重计,禁直接做
+    差)。``caliber_note`` 键随输出自描述口径,防消费端再混用。
     """
     gaps: list[int] = []
     reasons = {'supply_break': 0, 'gold_hoarded': 0,
@@ -222,28 +254,33 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
     finite_miss_gaps: list[int] = []   # 延迟形态:有限 gap>3(不含 99 缺省)
     never_games: list[int] = []        # 从未形态局索引(前 5,重放定位)
     for gi, rows in enumerate(ledgers):
-        first = second = None
+        # 首达轮用统一轮轴取 min(rung≥1 / rung≥2 的行):全账本含 P2
+        # 段行(round_num 段内重计),扫描序做差会在位面边界回卷;
+        # rung≥2 ⊆ rung≥1 故 second_ax ≥ first_ax 恒成立。
+        first_ax: int | None = None
+        second_ax: int | None = None
         for row in rows:
             r = _rung_of_row(row)
-            rn = row.get('round_num') or 0
-            if first is None and r >= 1:
-                first = rn
-            if first is not None and second is None and r >= 2:
-                second = rn
-                break
-        if first is None:
+            if r < 1:
+                continue
+            ax = _game_round_of_row(row)
+            if first_ax is None or ax < first_ax:
+                first_ax = ax
+            if r >= 2 and (second_ax is None or ax < second_ax):
+                second_ax = ax
+        if first_ax is None:
             continue
-        gap = (second - first) if second is not None else 99
+        gap = (second_ax - first_ax) if second_ax is not None else 99
         gaps.append(gap)
         if gap == 99 and len(never_games) < 5:
             never_games.append(gi)
         if gap <= 3:
             continue
-        if second is not None:
+        if second_ax is not None:
             finite_miss_gaps.append(gap)
-        # --- miss 原因分键(期限窗 = (F, F+3];截断于局末) ---
+        # --- miss 原因分键(期限窗 = (F, F+3];统一轮轴跨段,截断于局终) ---
         window = [row for row in rows
-                  if first < (row.get('round_num') or 0) <= first + 3]
+                  if first_ax < _game_round_of_row(row) <= first_ax + 3]
         reason = 'other'
         if window:
             offered = any(_is_engine_supply_card(c)
@@ -296,7 +333,10 @@ def check_second_engine_deadline(ledgers: list[list[dict]]) -> dict:
             'form_split_note': 'never=从未出次引擎(结构形态)/'
                                'delayed=限期后有限延迟(节奏形态);'
                                'avg_gap 仍为含 99 缺省的混合均值'
-                               '(旧口径零漂移)'}
+                               '(旧口径零漂移)',
+            'caliber_note': '局终口径(全账本 P1+P2 轮轴;输入须为 '
+                            'full_ledgers,planes=1 批与旧 P1 段口径'
+                            '逐位同;ADR-0629)'}
 
 
 
