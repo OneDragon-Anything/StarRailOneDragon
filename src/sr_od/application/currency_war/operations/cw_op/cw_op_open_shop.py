@@ -14,7 +14,8 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
 
     三出口全簿记:点击已发 = applied=true;幂等已开(无动作可发)/入口
     观察失败(动作没发出)= applied=false + reason——失败可见性(exec_events
-    收编)。发出即簿记非验证(不读屏核验);影子闸/无局跳过在 kernel 口。
+    收编)。发出即簿记非验证(不读屏核验);journal 常开(ADR-0634)回执
+    写入无条件,无局跳过在 kernel 口。
     """
     try:
         from sr_od.application.currency_war.kernel.cw_board_state import (

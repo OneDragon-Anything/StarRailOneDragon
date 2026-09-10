@@ -1240,17 +1240,14 @@ class CwLoop(SrOperation):
         - 分支级标识变体:「等待 1-1」无独立画面建档,token 同
           ``BATTLE_WAIT_CONTEXT`` 申报(kernel 常量注释;R3 判定方案
           §3.3 规则二② 开局链五成员之一);
-        - 影子闸(armed 假)= 零调用(缺省关纪律);无局跳过;best-effort
-          不阻塞分派。
+        - journal 常开(R5 W1 影子闸折叠,ADR-0634)写入无条件;无局跳过;
+          best-effort 不阻塞分派。
         """
         try:
             from sr_od.application.currency_war.kernel.cw_board_state import (
                 ChannelSig,
                 board_state_from_ctx,
-                state_telemetry_armed,
             )
-            if not state_telemetry_armed():
-                return
             bs = board_state_from_ctx(self.ctx)
             if bs is None:
                 return

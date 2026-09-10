@@ -288,6 +288,7 @@ class CwScreenInvestStrategy(SrOperation):
                 # 失败不阻塞刷新链(与升级挂点同纪律)。
                 try:
                     from sr_od.application.currency_war.kernel.cw_board_state import (
+                        ChannelSig,
                         board_state_of,
                     )
                     from sr_od.application.currency_war.kernel.cw_investments import (
@@ -300,7 +301,10 @@ class CwScreenInvestStrategy(SrOperation):
                     _bs_rc.write_logic(
                         _bs_rc.strategy_refresh_used, _used,
                         produced_by='CwScreenInvestStrategy',
-                        evidence=f'refresh_click@slot{_i}')
+                        evidence=f'refresh_click@slot{_i}',
+                        sig=ChannelSig(family='logic_action',
+                                       actor='CwScreenInvestStrategy',
+                                       mode='compute'))
                 except Exception as e:   # noqa: BLE001  记录面失败不阻塞
                     log.warning(f'[cw-strat] 刷新计数记录失败(不阻塞): {e}')
                 _refreshed_slots.append(_i)   # 发射即记遥测后缀(与登记件同点,不等重读)
@@ -400,12 +404,15 @@ class CwScreenInvestStrategy(SrOperation):
         # 策略=本屏写入、局级累计(逐次选择追加);单次逻辑写入
         # (§3.4 申报豁免)。品质锚挂建模批(设计 §3.4.4)。
         from sr_od.application.currency_war.kernel.cw_board_state import (
+            ChannelSig,
             board_state_of,
         )
         board_state_of(match.session).write_logic(
             board_state_of(match.session).active_strategies,
             list(match.session.active_strategies),
-            produced_by='CwScreenInvestStrategy')
+            produced_by='CwScreenInvestStrategy',
+            sig=ChannelSig(family='logic_action',
+                           actor='CwScreenInvestStrategy', mode='compute'))
         # 效果账本选卡登记挂点(迁移批次三,设计 §5.1「买卡=激活登记」
         # /§8.7 批次三件 4;免战牌同点自动登记——件 5「§3.2.19 载体归一
         # 的另一半,禁只做一半」)。chosen 命中效果注册表(规范名归一

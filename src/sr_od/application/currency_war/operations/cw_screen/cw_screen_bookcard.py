@@ -198,12 +198,16 @@ class CwScreenBookcard(CwScreenOpBase):
         # 画面建档」屏——写端自此接通。
         if _sess is not None:
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
                 board_state_of,
             )
+            # 渠道②签名(§3.2.1 ②类属 = op 类名;R5 W1 起必填,ADR-0634)
             board_state_of(_sess).write_logic(
                 board_state_of(_sess).chosen_tome,
                 pick_name,
-                produced_by='CwScreenBookcard')
+                produced_by='CwScreenBookcard',
+                sig=ChannelSig(family='logic_action',
+                               actor='CwScreenBookcard', mode='compute'))
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----
 

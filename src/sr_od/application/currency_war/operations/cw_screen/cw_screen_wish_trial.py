@@ -177,11 +177,15 @@ class CwScreenWishTrial(CwScreenOpBase):
             return
         try:
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
                 board_state_of,
             )
             _bs = board_state_of(_sess)
             _bs.write_logic(_bs.chosen_wish, _text,
-                            produced_by='CwScreenWishTrial')
+                            produced_by='CwScreenWishTrial',
+                            sig=ChannelSig(family='logic_action',
+                                           actor='CwScreenWishTrial',
+                                           mode='compute'))
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-wish] chosen_wish 记录失败(不阻塞): {e}')
 

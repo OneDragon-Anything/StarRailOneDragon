@@ -91,8 +91,8 @@ def _journal_source(args, replay_dir: Path) -> None:
     rows = _jq.read_journal(replay_dir)
     if not rows:
         print(f'(无统一 state 新账: {_jq.journal_path(replay_dir)} 不存在或为空'
-              '——新账由影子开关 config.state_journal 接通(缺省关),'
-              '开启后与旧流并行写)')
+              '——journal 无条件常开(R5 W1/ADR-0634),空 = 本目录无对局产物'
+              '或账本未随局产生)')
         return
     if args.recent:
         print(f"—— 最近 {args.recent} 局(新账 {_jq.JOURNAL_REL})——")
@@ -127,7 +127,7 @@ def _journal_source(args, replay_dir: Path) -> None:
         print(f"=== {archive.get('game_id')} (新账视图) ==="
               f" [{' + '.join(segs)}] 行={len(jrows)}")
         if not jrows:
-            print('(档案切片无新账行——装配时点新账不在产物目录(影子未开);'
+            print('(档案切片无新账行——装配时点账本不在产物目录;'
                   '需补切片可 assemble --game 重装配)')
             return
         _print_journal_views(jrows, '', args.view)

@@ -285,11 +285,15 @@ class CwScreenExpertInvite(CwScreenOpBase):
             return
         try:
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
                 board_state_of,
             )
             _bs = board_state_of(_sess)
             _bs.write_logic(_bs.chosen_expert, _bond,
-                            produced_by='CwScreenExpertInvite')
+                            produced_by='CwScreenExpertInvite',
+                            sig=ChannelSig(family='logic_action',
+                                           actor='CwScreenExpertInvite',
+                                           mode='compute'))
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞收案
             log.warning('[cw-bookcard] chosen_expert 记录失败(不阻塞): %s', e)
 

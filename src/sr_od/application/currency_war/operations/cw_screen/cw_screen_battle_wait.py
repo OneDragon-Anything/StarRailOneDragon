@@ -395,6 +395,10 @@ class CwScreenBattleWait(SrOperation):
                     # §3.5.1):与上写入点同时序——结算真值组(hp/streak 带
                     # 方向/gold·level·xp 仅胜局)覆盖进记录;金/等级/经验
                     # 缺席(败局页无该面板)不写,与 _lst 分支同口径。
+                    # settlement 行注记带 battle_done:<节点类型> 语义——旧
+                    # exogenous 'node_enter' 外生行的「出节点」半随删除波 1
+                    # 退役后,其判读语义由本行承接(R5 迁移规划 W1 ⑤/
+                    # ADR-0634;同时点同载荷,行行自足快照更强)。
                     from sr_od.application.currency_war.kernel.cw_board_state import (
                         apply_settlement_cover,
                         board_state_of,
@@ -416,7 +420,8 @@ class CwScreenBattleWait(SrOperation):
                         xp=((_assets.get('xp_cur'), _assets.get('xp_next'))
                             if (_assets.get('xp_cur') is not None
                                 and _assets.get('xp_next') is not None)
-                            else None))
+                            else None),
+                        note=f'battle_done:{getattr(_obs, "node_type", None)}')
                     _act = {
                         'gold': (_assets.get('gold'),
                                  _assets.get('gold') is not None),

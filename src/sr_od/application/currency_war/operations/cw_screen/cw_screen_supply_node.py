@@ -188,11 +188,15 @@ class CwScreenSupplyNode(CwScreenOpBase):
             return
         try:
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
                 board_state_of,
             )
             _bs = board_state_of(_match.session)
             _bs.write_logic(_bs.chosen_supply, _picked,
-                            produced_by='CwScreenSupplyNode')
+                            produced_by='CwScreenSupplyNode',
+                            sig=ChannelSig(family='logic_action',
+                                           actor='CwScreenSupplyNode',
+                                           mode='compute'))
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-supply] chosen_supply 记录失败(不阻塞): {e}')
 

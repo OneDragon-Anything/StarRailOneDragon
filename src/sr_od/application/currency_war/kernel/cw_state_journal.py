@@ -1,22 +1,25 @@
-"""统一 state 状态流水落盘(R1 影子双写段)。
+"""统一 state 状态流水落盘(R5 W1 起无条件常开)。
 
 设计裁定正本 = ``docs/develop/currency_war/decisions/0630-unified-state-journal.md``
-(ADR-0630,含修订节;记录机制 as-built 正本面 =
-``docs/develop/currency_war/game_state/journal.md``。设计工作稿存
-.debug/temp 为易失档,禁作正本指针)。形态:流程侧唯一落盘流
-``state/journal.jsonl``,每次 state 写入一行,行 = 改了什么 + 渠道签名 +
-版本 id + **写入后完整 state 快照**——行行自足,查询直接读行(journal.md
-§1);无快照锚、无周期节奏、无对账自检、无前溯推导(v2 增量账+快照锚+
-对账自检整套随 v3 根本性纠正作废,禁回归,ADR-0630 裁定 1)。
+(ADR-0630,含修订节)+ ``docs/develop/currency_war/decisions/0634-state-journal-always-on.md``
+(ADR-0634,影子双写推翻:journal 无条件常开,无开关无影子期;记录机制
+as-built 正本面 = ``docs/develop/currency_war/game_state/journal.md``)。
+形态:流程侧唯一落盘流 ``state/journal.jsonl``,每次 state 写入一行,行 =
+改了什么 + 渠道签名 + 版本 id + **写入后完整 state 快照**——行行自足,
+查询直接读行(journal.md §1);无快照锚、无周期节奏、无对账自检、无前溯
+推导(v2 增量账+快照锚+对账自检整套随 v3 根本性纠正作废,禁回归,
+ADR-0630 裁定 1)。
 
 落盘形态(journal.md §5):内存追加 + 规范化序列化,磁盘批量 flush(缓冲满
 阈值落盘)——同步关键路径零逐行 open/write;崩溃丢失窗 = 未 flush 尾部,该窗
 内时点无行 = 诚实缺失,无补建机制。
 
-影子双写纪律(journal.md §7):本模块缺省零活动(副作用缺省关);生产武装点 =
-``currency_war_app`` 装配段(config 开关 ``state_journal`` 缺省关),开启后
-与旧 12 流并行写,旧流消费方零感知。单文件 + 行内 run_id 列(per-run 分文件
-候选已否决,journal.md §1);局外写入拒绝(run_id 空 = 不写假行,journal.md §5)。
+常开语义(ADR-0634):本模块无开关,生产装配单点 = ``currency_war_app``
+装配段无条件调 :func:`install_state_telemetry`;写路径(字段写入/版本分配)
+不因本模块存在与否分支,行落盘另以 sink 在场与 run_id 在场为准——缺实例
+(单元测试/工具环境)= 行不落,诚实缺失。单文件 + 行内 run_id 列(per-run
+分文件候选已否决,journal.md §1);局外写入拒绝(run_id 空 = 不写假行,
+journal.md §5)。
 
 本模块只管「行进了内存之后」的事(缓冲/序列化/落盘/装配);行的组装与
 版本分配在写入口(kernel/cw_board_state ``BoardState._swap``,分配与状态
@@ -96,29 +99,30 @@ class StateJournal:
         return self.flush()
 
 
-#: 进程内单槽(装配口;缺省 None = 影子面全关)。
+#: 进程内单槽(装配口;缺省 None = 无落盘实例——写路径照常,仅行不落)。
 _ACTIVE_JOURNAL: StateJournal | None = None
 
 
 def state_journal_instance() -> StateJournal | None:
-    """现役流水实例(未武装 = None)。"""
+    """现役流水实例(无实例 = None)。"""
     return _ACTIVE_JOURNAL
 
 
 def install_state_telemetry(path: Path | str | None = None, *,
                             flush_every: int = DEFAULT_FLUSH_EVERY,
                             run_id_provider: Callable[[], str] | None = None) -> StateJournal:
-    """武装影子面(幂等:重入先复位再装,防双槽叠加)。
+    """装配状态流水(幂等:重入先复位再装,防双槽叠加)。
 
+    - R5 W1 常开化(ADR-0634):本口无开关语义,生产 = currency_war_app
+      装配段无条件调用;影子双写/缺省关纪律已销案(ADR-0630 决策 6 被推翻);
     - path = 流水落盘路径;None = 生产缺省 ``<live 根>/state/journal.jsonl``
       (§3.0 落盘根:与旧流同根,哨兵/装配路径习惯延续);
     - run_id_provider = run 归属读取函数(必传,生产 = telemetry 现读口;
       kernel 禁依 telemetry——桶依赖矩阵锁,依赖倒置经本参数注入);
-      None = 行全视为局外拒写(影子面只启半,生产勿用);
+      None = 行全视为局外拒写(装配只启半,生产勿用);
     - 装配 = StateJournal 实例 + 注册为 BoardState 写入口的行外送钩子与
       run 归属供给槽(:func:`cw_board_state.set_state_journal_sink` /
-      ``set_run_id_provider``)——派生域/上下文域写入同受 sink 在场闸辖
-      (影子面整体启停,一个开关)。
+      ``set_run_id_provider``)——写路径不因本槽分支,sink 缺席 = 行不落。
     """
     global _ACTIVE_JOURNAL
     reset_state_telemetry()
@@ -135,16 +139,16 @@ def install_state_telemetry(path: Path | str | None = None, *,
     if run_id_provider is not None:
         set_run_id_provider(run_id_provider)
     _ACTIVE_JOURNAL = journal
-    log.info('[cw][state-journal] 影子面武装:path=%s flush_every=%d(影子双写,'
-             '旧 12 流照常)', journal.path, journal._flush_every)
+    log.info('[cw][state-journal] journal 装配(常开):path=%s flush_every=%d',
+             journal.path, journal._flush_every)
     return journal
 
 
 def reset_state_telemetry() -> None:
-    """复位影子面(收口 flush + 摘钩子与 run 归属供给槽;测试 teardown 与
+    """复位流水实例(收口 flush + 摘钩子与 run 归属供给槽;测试 teardown 与
     重装前调)。
 
-    为什么收口成单点:槽 = 进程级全局,残留会把后续局的影子行带进旧句柄
+    为什么收口成单点:槽 = 进程级全局,残留会把后续局的流水行带进旧句柄
     (与 telemetry.state 复位簇同病理);生产重装经 install 的幂等口,
     本函数亦为其前置。
     """

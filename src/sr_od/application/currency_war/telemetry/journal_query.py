@@ -172,8 +172,8 @@ def row_kind(row: dict[str, Any]) -> str:
 
 
 def row_sig(row: dict[str, Any]) -> dict[str, Any]:
-    """渠道签名(核心字段;缺位 = 空 dict——影子过渡期合成签名恒在,
-    显式缺位只在手工构造/未来演进行出现,读面不设门槛)。"""
+    """渠道签名(核心字段;缺位 = 空 dict——签名自 R5 W1 起写入必填
+    (ADR-0634),缺位只在旧期历史行/手工构造出现,读面不设门槛)。"""
     sig = row.get('sig')
     return sig if isinstance(sig, dict) else {}
 
@@ -273,7 +273,7 @@ def _value_chain(rows: list[dict[str, Any]], run_id: str,
                        f' actor={_actor_s(r)}')
         prev = cur
     if seen == 0:
-        out.append(f'  (无 {name} 读数行——影子面未开、字段未写入或行被裁剪)')
+        out.append(f'  (无 {name} 读数行——字段未写入或行被裁剪)')
     return out
 
 
@@ -415,14 +415,14 @@ def view_match_final(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
     """局终行视图(R5 W2 判读读面:局终域 match_final 的读取视图)。
 
     逐行 = 段级终局载荷(final_type/终局快照/段级时长/补写位);无行 =
-    「本段未收口」与「影子面未开」在头行不可分,行缺位本身即判读事实
+    「本段未收口」与「旧产物无账本」在头行不可分,行缺位本身即判读事实
     (与 view_events 无行提示同口径)。
     """
     out = [f'[局终行] run={run_id or "(全部段)"} '
            f'(局终域 match_final;一段一行,恢复局跨段多行)']
     finals = match_final_rows(rows, run_id)
     if not finals:
-        out.append('  (无局终行——段未收口或影子面未开)')
+        out.append('  (无局终行——段未收口或旧产物无账本)')
         return out
     for r in finals:
         after = r.get('after') if isinstance(r.get('after'), dict) else {}

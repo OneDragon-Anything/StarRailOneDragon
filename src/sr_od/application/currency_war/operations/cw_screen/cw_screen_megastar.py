@@ -177,12 +177,16 @@ class CwScreenMegastar(CwScreenOpBase):
                     # BoardState 写端(迁移批次二,§3.4.5:各屏选卡写入
                     # chosen_*;单次逻辑写入,§3.4 申报豁免)。
                     from sr_od.application.currency_war.kernel.cw_board_state import (
+                        ChannelSig,
                         board_state_of,
                     )
                     board_state_of(_match.session).write_logic(
                         board_state_of(_match.session).chosen_megastar,
                         _match.session.chosen_megastar,
-                        produced_by='CwScreenMegastar')
+                        produced_by='CwScreenMegastar',
+                        sig=ChannelSig(family='logic_action',
+                                       actor='CwScreenMegastar',
+                                       mode='compute'))
             time.sleep(0.6)
         # confirm(候选已选一次 → confirm 跳过 step2(可选)→ overlay 关;retry 重 confirm 防 bug#1 落空)。
         # 确认钮中心从 screen_info 读(task#103 化债,W265);缺失兜底常量。

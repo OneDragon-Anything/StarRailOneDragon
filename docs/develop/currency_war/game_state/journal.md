@@ -33,8 +33,9 @@ carried/prior/synthesized 是 obs 族内子模,**非第四源**。
 
 **渠道签名 ChannelSig** 每次写入必带:
 
-- `family`+`mode`:见上;显式签名过「渠道族×actor 在册」双校验,缺位合成 legacy 签名
-  (影子期过渡,显式铺满后退役义务挂迁移批)。
+- `family`+`mode`:见上;显式签名过「渠道族×actor 在册」双校验;**签名必填**
+  (ADR-0634:影子期「缺位合成 legacy 签名」过渡路径已随直迁退役,缺位 =
+  调用期炸错,全行 actor 在册非空)。
 - `actor`:登记面在册的写入者名(画面 op 类名/观察汇聚模块/动作 op 类名/派生规则登记名
   /接管协议/局终收口等;类属注防 family 反查漏行)。
 - `screen`/`frame`:画面建档名与 carried 行的沿用来源帧键(carried 行必带 frame)。
@@ -118,9 +119,12 @@ note=recovered 显影;辖域 = 段内补写与在线收口,启动扫描**历史�
 ## 7. 旧 12 流退役与消费方迁移
 
 退役理由、12 流逐流处置表、消费方迁移清单、退役前置条件与批次排期 =
-[retirement.md](retirement.md)(单一源,本文不复写)。影子双写纪律:config 开关
-缺省关;开启后 journal 与旧流并行写,旧流消费方零感知;装配点=app 装配段显式接通,
-收口单点 reset。
+[retirement.md](retirement.md)(单一源,本文不复写);排期与裁决口径的现行
+正本 = [r5-migration-plan.md](r5-migration-plan.md)(单源直迁八波)。
+**常开语义(ADR-0634,影子双写裁定已推翻)**:journal 无条件常开——无开关、
+无装配条件分支;生产装配单点 = app 装配段显式接通,收口单点 reset;写路径
+不因账本存在与否分支,行落盘另以 sink 在场与 run_id 在场为准(缺实例 =
+行不落,诚实缺失)。
 
 ## 8. 两文件模型与策略侧
 

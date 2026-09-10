@@ -144,10 +144,10 @@ log = log_utils.log
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
 #: v12(统一 state 消费方迁移批 R3-1,设计 §3.6.2 档案行「装配器 v12+:切片
 #: = 两文件」):+切片 ``state/journal.jsonl``(统一 state 新账,行行自足
-#: 快照行;写端 = kernel/cw_state_journal,影子开关缺省关——影子期新账在
-#: 产物目录才入切片,缺席 = 空切片,判读可区分「未开」与「无行」)。加法
-#: 切片,旧档案经 load_archive 版本检查自动重装配补齐;设计清单的第二文件
-#: (策略侧决策行)候其落地批再加切片,防空引用。
+#: 快照行;写端 = kernel/cw_state_journal,无条件常开(R5 W1/ADR-0634)——
+#: 新账在产物目录才入切片,缺席 = 空切片,判读可区分「无对局产物」与
+#: 「无行」)。加法切片,旧档案经 load_archive 版本检查自动重装配补齐;
+#: 设计清单的第二文件(策略侧决策行)候其落地批再加切片,防空引用。
 SCHEMA_VERSION: int = 12
 
 #: 档案目录名(telemetry/matches;生产布局见 matches_dir)
@@ -160,7 +160,7 @@ _WATERMARK_NAME: str = '.watermark.json'
 
 #: 入切片的 jsonl 流(按 run_id 过滤;obs_conflicts 为跨局 journal 不入)。
 #: v12 起含统一 state 新账(R3-1 消费方迁移批):行带 run_id,同一过滤口径;
-#: 文件缺席(影子开关缺省关)= 空切片,读侧判「未开」不判「丢数据」。
+#: 文件缺席(journal 常开后生产恒产,缺席 = 旧产物)= 空切片,读侧判「无对局产物」不判「丢数据」。
 _SLICE_FILES: tuple[str, ...] = (
     'decisions.jsonl', 'outcomes.jsonl', 'shop_snapshots.jsonl',
     'exogenous.jsonl', 'invest_cards.jsonl', 'spend_ledger.jsonl',
@@ -249,7 +249,7 @@ def extract_match_final_rows(
     识别判据(封闭):``row=='write'`` ∧ ``field=='match_final'`` ∧ run_id
     非空。返回 ``{run_id: 行}``——局终域 = 一段一行(写口段内幂等,写前
     查重),同 run_id 多行(跨写口版本演进的理论形态)取 v 最大行,不抛;
-    无局终行(影子未开/段未收口)= 空 dict,判读可区分「未开」与「未收口」。
+    无局终行(段未收口/旧产物无账本)= 空 dict,判读可区分「未收口」与「无产物」。
     """
     out: dict[str, dict[str, Any]] = {}
     for r in journal_rows or []:
@@ -1335,7 +1335,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
             break
     # 局终行识别(R5 W2):game 终局 = 段序末段的局终行(局终域 = 段级
     # 事实,恢复局跨段多行,聚合取末行);末段无局终行 = None(旧档案/
-    # 影子未开形态,判读按「新账无终局行」对待)。加法键不 bump
+    # 旧产物无账本形态,判读按「新账无终局行」对待)。加法键不 bump
     # SCHEMA_VERSION 申报:本键只能派生自新账行,存量档案源流已清无法
     # 经重装配获得(bump 只产生无效重装配尝试),读侧宽容缺键。
     _final_rows = extract_match_final_rows(slice_rows.get(JOURNAL_REL))

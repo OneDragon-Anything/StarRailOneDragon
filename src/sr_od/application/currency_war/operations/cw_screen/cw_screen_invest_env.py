@@ -154,11 +154,14 @@ class CwScreenInvestEnv(SrOperation):
             # 环境=本屏写入、选完即关整局保留;单次逻辑写入(§3.4 申报豁免:
             # 选择落地无定型帧可核对,后果走观察覆盖)。
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
                 board_state_of,
             )
             board_state_of(match.session).write_logic(
                 board_state_of(match.session).active_env, chosen,
-                produced_by='CwScreenInvestEnv')
+                produced_by='CwScreenInvestEnv',
+                sig=ChannelSig(family='logic_action',
+                               actor='CwScreenInvestEnv', mode='compute'))
         # (ADR-0132 候选卡面采集行已随 invest_cards 流写入端退役删除——
         #  删除波 1;效果原文回流断供为裁定的接受后果,收编归宿 =
         #  strategy_offer 画面 payload 域,候其落地批接线。)

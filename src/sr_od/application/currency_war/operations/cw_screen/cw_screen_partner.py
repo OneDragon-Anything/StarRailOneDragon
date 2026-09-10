@@ -225,12 +225,15 @@ class CwScreenPartner(CwScreenOpBase):
                 # BoardState 写端(迁移批次二,§3.4.5:各屏选卡写入
                 # chosen_*;单次逻辑写入,§3.4 申报豁免)。
                 from sr_od.application.currency_war.kernel.cw_board_state import (
+                    ChannelSig,
                     board_state_of,
                 )
                 board_state_of(match.session).write_logic(
                     board_state_of(match.session).chosen_partner,
                     match.session.chosen_partner,
-                    produced_by='CwScreenPartner')
+                    produced_by='CwScreenPartner',
+                    sig=ChannelSig(family='logic_action',
+                                   actor='CwScreenPartner', mode='compute'))
             if cands and 0 <= idx < len(cands):
                 _name, cx, cy = cands[idx]
                 portrait = Point(cx, cy - CwScreenPartner.PORTRAIT_DY_ABOVE_LABEL)

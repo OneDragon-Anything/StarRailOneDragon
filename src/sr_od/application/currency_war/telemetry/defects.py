@@ -50,13 +50,26 @@ DEFECT_GAP_LARGE_GOLD: int = 10
 
 
 #: obs_conflict field → 台账 surface 映射(枚举=既有冲突点全集;未映射的
-#: 新字段原样落 surface,消费端按字符串聚合,枚举外值不炸)。
+#: 新字段原样落 surface,消费端按字符串聚合,枚举外值不炸)。R5 W1 依
+#: 迁移规划 obs_event 收编条目对齐调用点全集:deploy_paddle(部署 paddle
+#: 识别)与 back_layout_*/layout_mismatch 系(后排布局选档)补入——证据
+#: 行收编 journal 后 field 键仍沿本枚举聚合台账 surface(R5 W1/ADR-0634)。
+#: tracking/star(cw_reconcile 对账域)同为活键补入:surface 保持 field
+#: 同名——冲突值跨 bench|deployed 两侧(账面整体快照/跨侧角色星),归并
+#: 任一单侧域会错置漂移归因;补枚举前经兜底 `get(field, field)` 即落同名,
+#: 行为零变,补入仅闭合键清单(R5 W1 键封闭判据)。
 OBS_FIELD_TO_SURFACE: dict[str, str] = {
     'gold': 'gold', 'gold_delta': 'gold',
     'hp': 'hp', 'level': 'level_xp',
     'board': 'deployed', 'deployed_align': 'deployed',
     'deployed_count_2src': 'deployed', 'deploy_cap_domain': 'deployed',
-    'deploy_cap_vs_level': 'deployed',
+    'deploy_cap_vs_level': 'deployed', 'deploy_paddle': 'deployed',
+    'back_layout_channel_conflict': 'deployed',
+    'back_layout_unknown': 'deployed',
+    'back_layout_cv_transient': 'deployed',
+    'back_layout_unarchived_grid': 'deployed',
+    'layout_mismatch_by_system_unit': 'deployed',
+    'tracking': 'tracking', 'star': 'star',
     'streak': 'streak', 'phase_round': 'phase_round', 'bench': 'bench',
 }
 

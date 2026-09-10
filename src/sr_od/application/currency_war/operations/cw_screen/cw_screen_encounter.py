@@ -151,6 +151,7 @@ class CwScreenEncounter(CwScreenOpBase):
             return
         try:
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
                 board_state_of,
             )
             _bs = board_state_of(_match.session)
@@ -158,7 +159,9 @@ class CwScreenEncounter(CwScreenOpBase):
                 _bs.encounter_refresh_used,
                 int(_bs.encounter_refresh_used.value or 0) + 1,
                 produced_by='CwScreenEncounter',
-                evidence='refresh_click')
+                evidence='refresh_click',
+                sig=ChannelSig(family='logic_action',
+                               actor='CwScreenEncounter', mode='compute'))
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-encounter] 刷新计数记录失败(不阻塞): {e}')
 
@@ -215,13 +218,17 @@ class CwScreenEncounter(CwScreenOpBase):
             return
         try:
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
                 board_state_of,
             )
             _opt = options[idx]
             _bs = board_state_of(session)
             _bs.write_logic(_bs.chosen_encounter,
                             (_opt.difficulty, '/'.join(_opt.rewards)),
-                            produced_by='CwScreenEncounter')
+                            produced_by='CwScreenEncounter',
+                            sig=ChannelSig(family='logic_action',
+                                           actor='CwScreenEncounter',
+                                           mode='compute'))
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-encounter] chosen_encounter 记录失败(不阻塞): {e}')
 

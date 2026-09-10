@@ -577,7 +577,8 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
     硬墙跳过 / spend_gate 政策闸拒)都经本函数落一条回执行(每动作 op
     一条 logic_action 行;受阻 = applied=false + reason + 执行面结构化
     字段——exec_events「受阻/放弃可见」收编)。发出即簿记非验证(M1③):
-    applied = 动作 op 自身机械事实透传,零成败判定。影子闸/无局跳过在
+    applied = 动作 op 自身机械事实透传,零成败判定。journal 常开(ADR-0634)
+    回执写入无条件,无局跳过在
     kernel 口(:func:`~...kernel.cw_board_state.note_action_receipt`);
     best-effort 不阻塞循环。
     """
