@@ -1843,9 +1843,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     elif isinstance(a, LevelUp):
                         # cap 守卫:level >= LEVEL_CAP 时 LevelUp 拒付
                         # (不扣金/不进 XP),账本记 LevelUpRejected 行
-                        # (不占 LevelUp 类型行:flat4 台账锁判据 =
-                        # spend.levelup == 4 × LevelUp 行数,拒付行混入会
-                        # 误报),计数进 sim.level_cap_rejects 披露。
+                        # (不占 LevelUp 类型行:升级支出锁判据 =
+                        # spend.levelup == Σ(LevelUp 行 cost,缺读兜 4;
+                        # ADR-0632 重推,原 flat4 字面「4 × 行数」判据已废止),
+                        # 拒付行混入会虚增合计误报),计数进
+                        # sim.level_cap_rejects 披露。
                         # 【sim-only 已知差异·申报保留,ADR-0561 申报表 #6】
                         # 实机 lv10 才禁用购买经验,lv9 是正常付费档,本守卫
                         # 在 lv9 拒付与实机方向相反;LEVEL_CAP=9 冻结有在案
