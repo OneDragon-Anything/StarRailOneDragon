@@ -18,6 +18,7 @@
 1. **玩法机制**(游戏怎么运转;自足无前置):
    - [combat.md](combat.md) — 战斗侧:伤害三乘区 / 星级收益 / 扣血结构(为什么装备与星级重要)
    - [economy.md](economy.md) — 经济侧:牌池 / 刷新概率 / 商店槽位行为(买与刷的机制边界)
+   - [xp-rules.md](xp-rules.md) — 节点基础经验:节点经验结算(+2/+0/BOSS+12 挂确认)/ 购买经验 4 金=+4XP / 升级门槛表(实机 145 局统计)
    - [board_structure.md](board_structure.md) — 板面格子结构:前台 4/后台 6 恒定,钻石/召唤物才扩后台;等级只定上场人数 cap(推翻旧 level 驱动布局模型)
    - [merge_mechanics.md](merge_mechanics.md) — 升星合成:买牌落点(备战→触发合成改落点)/场上吸收/备战最左/连锁合成(口述·权威;bot 期望态层与拖动对账的合成期望规格)
    - [equipment_mechanics.md](equipment_mechanics.md) — 装备机制与使用策略(证据三级标注,码源+口述):穿着即合成/前后台限定/商店自带装备/唯一件/工具 7 件全量+使用语义(策略决策件挂策略池)/冶金炉回收流水线(经济账框架,P14 生产化)
@@ -44,6 +45,7 @@
 |---|---|
 | 人怎么打(开局/经济/等级/阵容/装备的直觉假设全景及其证明状态) | [user_playstyle.md](user_playstyle.md) ★直觉假设登记簿(证明状态随 [math_proofs](math_proofs.md),ADR-0482) |
 | 经济机制:牌池/退金/刷新概率/多刷/保血边界/阶段共识 | [economy.md](economy.md) |
+| 节点经验:基础经验(+2/+0/BOSS+12 挂确认)/购买经验 4 金=+4XP/升级门槛表 | [xp-rules.md](xp-rules.md) |
 | 升星合成:买牌落点/场上吸收/备战最左/连锁合成(买一张=可能升两级) | [merge_mechanics.md](merge_mechanics.md) |
 | 战斗机制:伤害三乘区/星级收益/血量星/连胜经济/练度 | [combat.md](combat.md) |
 | 过渡体系:P1 骨架/过渡成型停手线/换血点/P2 护航(已抛弃史料)/买牌纪律 | [transitions.md](transitions.md) |
