@@ -188,6 +188,42 @@ def _seg_offered_cards(row: dict) -> list[dict]:
 
 
 
+def _seg_buys(row: dict) -> list[dict]:
+    """本轮 BuyCard 笔清单({name,cost,channel,reason};账本 actions
+    逐笔落,零新解析)。例外①的 channel 判定、例外⑦的 reason 判定与
+    mixed 披露面共用本推导——多消费位同源笔结构,防各自内联漂移。"""
+    return [{'name': (a.get('card') or {}).get('name'),
+             'cost': (a.get('card') or {}).get('cost'),
+             'channel': a.get('channel'),
+             'reason': a.get('reason')}
+            for a in row.get('actions') or []
+            if a.get('__type__') == 'BuyCard']
+
+
+
+#: 例外⑦ 判定集(T-207):sell_gate.LAUNCH_CAUSE_BY_ARM 的 obligation
+#: 静态值域镜像(现值四键)。镜像纪律(checks 层纯函数、零生产 import;
+#: 先例 = ledger._CORE_EXIT_KEYS / 本文件 _LEVELUP_AUTH_WHITELIST):
+#: 新义务臂入生产映射表即自动被⑦覆盖,生产表 obligation 行扩集而本集
+#: 不跟 = 测试仓镜像一致性锁翻红,禁在此手工预添。
+#: 注释双钉(防语义桥接静默变义,未来触碰任一 = 审查点名锚):
+#: ① 桥接假设——「obligation 类 ⟺ 该臂义务裁定授权不带息线检查」,
+#:    今日四键逐一成立(02_mandate_layer.md §3 M2 行/§4 拦截闭集、
+#:    11_shop_decisions.md §2 M2b 与 §6.3 P54 A3、14_p1_consume_arms.md
+#:    §3.1),非结构必然;
+#: ② 已知例外面——生产表 'dead_gold_press_buy': 'press' 静态行带
+#:    「②(b) 按 prio 三分,发射位显式传因覆写本行」先例(sell_gate.py):
+#:    某笔 ②(b) 发射的实际因类可非静态行而 BuyCard.reason 不变,⑦按
+#:    reason→静态类判与发射登记实际类可分歧——今日无害(②(b) 自带
+#:    死金带内地板 cost ≤ gold − 10×⌊gold/10⌋,结构性不可穿线,勿需
+#:    ⑦);未来放松该地板或类重组时,先回审本条。
+_OBLIGATION_CAUSE_ARMS: frozenset[str] = frozenset({
+    'm2_line_member', 'm2_locked_member',
+    'm2_stockpile', 'm2_merge_completion',
+})
+
+
+
 def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     """[6]/[19] 破息例外记账(段级):发生破息的那笔购买必须落在例外
     条件内。
@@ -217,6 +253,24 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
     合法跌破息基、下探至 boss_floor 属设计内行为(ADR-0426 同一语义);
     花后金仍 ≥ boss_floor → 豁免;跌破 boss_floor → 不豁免照报
     (越权信号,ADR-0426 边界原文)。
+    ⑦ **obligation 因果类笔在场**(T-207):本轮任一 BuyCard 笔
+    ``reason`` 落 obligation 因果类(镜像集 ``_OBLIGATION_CAUSE_ARMS``,
+    单一源 = sell_gate.LAUNCH_CAUSE_BY_ARM 的 obligation 静态值域)→
+    整轮豁免。授权正本:02_mandate_layer.md §3 M2 行「店面出现即买,
+    不走息律门」+ §4 拦截闭集(息律明文无权)、11_shop_decisions.md
+    §6.3(P54 A3 义务买入破线让渡保留)、user_playstyle [13]
+    2026-09-07 精确化注(金紧期息线带内过渡配方件仍优先买入);囤腿
+    m2_stockpile 另据 14_p1_consume_arms.md §3.1 义务通道裁决。
+    **轴选择 = 笔级 reason(通道授权轴),显式非 channel 身份轴**:
+    义务裁定按发射臂立,授权绑通道不绑卡身份,reason 是唯一与授权
+    同源的轴;channel 轴有实证毒化面——宽集成员(m2_locked_member)
+    的卡可 classify 为 'off'(cw_line_defs.classify_buy 纯身份判定,
+    不读购买路径;例证 = 花火,faction 盛会之星/flows 战技点、量子同频
+    与 ENGINE_FACTIONS 零交,sim 实测 channel='off'),按 channel 判
+    会漏宽集义务笔、且会毒化例外①的「无 off」构成判读。轮级豁免
+    粒度与④⑤一致;同轮非 obligation 笔的显影让渡由
+    ``seg_check_obligation_exempt_mixed_visibility`` 披露分键
+    (T-207 §5.3),hold 类(候裁面)不命中本条。
     ④⑤同时把升级/刷新/买件花费分解(spend_breakdown)写进事件,
     归因不需人工分账(`w649_mutation/` B2)。
     仍不满足 = 买件引发的凭空破息(真破息候选,行为判读输入)。
@@ -236,12 +290,7 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
             continue
         if g0 < 50 or gold_end >= 50 or not _seg_spent(row):
             continue
-        bought = [{'name': (a.get('card') or {}).get('name'),
-                   'cost': (a.get('card') or {}).get('cost'),
-                   'channel': a.get('channel'),
-                   'reason': a.get('reason')}
-                  for a in row.get('actions') or []
-                  if a.get('__type__') == 'BuyCard']
+        bought = _seg_buys(row)
         node = (row.get('sim') or {}).get('node') or ''
         _spend = (row.get('sim') or {}).get('spend') or {}
         spend_lv = int(_spend.get('levelup') or 0)
@@ -263,6 +312,11 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
             if gold_end >= DEFAULT_REGISTRY.boss_floor:
                 exceptions.append('boss_floor_authorized')
             # else: boss 窗越权跌破地板(ADR-0426 边界),不豁免照报
+        # 例外⑦ obligation 因果类(T-207):轮内任一 BuyCard 笔 reason
+        # 落义务值域 → 整轮豁免(判定集 = _OBLIGATION_CAUSE_ARMS 镜像,
+        # 漂移由测试仓镜像一致性锁辖;授权正本与轴选择见 docstring⑦)。
+        if any(b.get('reason') in _OBLIGATION_CAUSE_ARMS for b in bought):
+            exceptions.append('obligation_cause_buy')
         if exceptions:
             continue
         last_cards = ((row.get('sim') or {}).get('shop_waves') or [{}])[-1] \
@@ -282,6 +336,87 @@ def seg_check_break_interest_exception(rows: list[dict]) -> list[dict]:
             'spend_breakdown': {'levelup': spend_lv, 'refresh': spend_rf,
                                 'buys': dict(_spend.get('buys') or {})},
             'buys': bought, 'final_shop_panel': last_cards,
+        })
+    return out
+
+
+
+# --- 例外⑦ mixed 让渡披露面(T-207 §5.3;纯观察面)--------------------
+
+#: 披露分组桶(hold/press/other 三桶):**披露可读性分组,非判定集**——
+#: ⑦判定集只有 _OBLIGATION_CAUSE_ARMS(镜像一致性锁辖漂移);本两桶
+#: 漂移无害(未入桶的臂落 other,事件仍携每笔 reason 全文,对账不丢
+#: 笔)。stall_protect 与未映射臂 = other。
+_DISCLOSURE_HOLD_ARMS: frozenset[str] = frozenset({
+    'core_single_card_buy', 'core_single_card_buy:unlocked',
+    'transition_component_buy', 'hub_option_buy',
+})
+_DISCLOSURE_PRESS_ARMS: frozenset[str] = frozenset({
+    'dominance_buy', 'm6_stockpile', 'press_buy_deployable', 'ev_buy',
+    'dead_gold_press_buy',
+})
+
+
+def _obligation_disclosure_group(reason: object) -> str:
+    """非 obligation 笔的披露分组(hold/press/other;桶语义见上)。"""
+    r = reason or ''
+    if r in _DISCLOSURE_HOLD_ARMS:
+        return 'hold'
+    if r in _DISCLOSURE_PRESS_ARMS:
+        return 'press'
+    return 'other'
+
+
+def seg_check_obligation_exempt_mixed_visibility(
+        rows: list[dict]) -> list[dict]:
+    """例外⑦豁免破息轮的 mixed 构成披露(T-207 §5.3;非违规检查)。
+
+    辖域 = 与 seg_check_break_interest_exception 同口径的破息轮
+    (plane=1,g0 ≥ 50 ∧ 末金 < 50 ∧ 有花费)中「⑦成立(轮内存在
+    obligation 因果类笔)∧ 轮内还含非 obligation 笔」的轮。⑦整轮豁免
+    让同轮 hold/press 笔的破息从段级/D7 常设法网消失——轮级粒度的
+    定义性行为(与④⑤「spend>0 整轮豁免」同粒度,非新造),本函数把
+    这笔让渡记回可见:事件携非 obligation 笔清单按因果类分组
+    (hold/press/other),每笔带 {name,cost,channel,reason} 全文。
+    **不挂 suspects 可疑项面、不动 runner 注册表**(可疑项是「请裁决」
+    语义,信息披露不进;hold 半边候裁批若需常设红面,挂载点 =
+    suspects 平行包装,归其批自决)。消费位 = 验收/泛找批对账脚本
+    直调 + 测试锁(fixture 构造 mixed 帧 → 断言披露输出)。
+    obligation-only 轮 = ⑦自辖域零输出;hold-only 轮⑦不成立,
+    主检查器照报,本函数亦不辖。
+    """
+    out: list[dict] = []
+    for row in rows:
+        if (row.get('plane') or 1) != 1:
+            continue
+        g0 = _seg_gold0(row)
+        gold_end = row.get('gold')
+        if g0 is None or not isinstance(gold_end, int):
+            continue
+        if g0 < 50 or gold_end >= 50 or not _seg_spent(row):
+            continue
+        bought = _seg_buys(row)
+        oblig = [b for b in bought
+                 if b.get('reason') in _OBLIGATION_CAUSE_ARMS]
+        if not oblig:
+            continue    # ⑦不成立(含 hold-only 轮):主检查器辖域
+        mixed = [b for b in bought
+                 if b.get('reason') not in _OBLIGATION_CAUSE_ARMS]
+        if not mixed:
+            continue    # obligation-only:⑦自辖域,零输出
+        groups: dict[str, list[dict]] = {'hold': [], 'press': [],
+                                         'other': []}
+        for b in mixed:
+            groups[_obligation_disclosure_group(b.get('reason'))].append(b)
+        out.append({
+            'plane': 1, 'round_num': row.get('round_num'),
+            'detail': f'⑦豁免破息轮 {g0}->{gold_end} 同轮非 obligation '
+                      f'笔 {len(mixed)} 笔(hold={len(groups["hold"])} '
+                      f'press={len(groups["press"])} '
+                      f'other={len(groups["other"])})'
+                      '——mixed 让渡披露(T-207 §5.3)',
+            'gold_before': g0, 'gold_after': gold_end,
+            'obligation_buys': oblig, 'mixed_groups': groups,
         })
     return out
 
@@ -326,7 +461,7 @@ def seg_check_formed_still_buying_transition(rows: list[dict]) -> list[dict]:
       假红,写端位无此时序歧义;②committed_from 读端需会话/状态
       对象,checks 层纯函数纪律不经决策栈(同 terminal_release
       账本位先例)。定型后 ④ 臂收窄由发射侧辖域闸与 shop 锁
-      (test_cw4_shop_line TestTransitionReleaseArm)辖,本检查不重复。
+      (test_cw_shop_line TestTransitionReleaseArm)辖,本检查不重复。
 
     T-153 迁移(C6/ADR-0593):豁免面本身不变(时序歧义理由成立,机械
     不复算定型位)——但 ④ 臂放行的买入不再静默:语境条目(④臂买入+
