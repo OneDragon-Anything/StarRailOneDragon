@@ -366,7 +366,8 @@ class DecisionTrace:
     shop_rejects: dict[str, str] = field(default_factory=dict)   # 商店波未买牌拒因串({牌名: 拒因};生产端=cw4/shop.shop_unbought_reasons,旧行缺省空 dict)
     refresh_trigger: dict[str, int] = field(default_factory=dict)  # 刷新触发源分键({reason: 次数};生产端=recorder 自决策行 actions 统计(sim 账本行同名键同语义),'' 归 other 桶;旧行缺省空 dict)
     dp_posture: dict[str, Any] = field(default_factory=dict)     # 影子 DP 姿态(tag/level_up/refresh_budget/v)
-    ledger_fingerprint: str = ""                  # 台账指纹(效果感知解回放对齐)
+    # (ledger_fingerprint 台账指纹已随 DP 世界模型退役删除——写端恒缺键、
+    #  全域零读端;旧语料行该键按缺键读,schema 兼容。)
     # —— r101 session 态快照(redesign/102 前提改造:回放 harness/快照回归库需要完整
     # 决策输入;缺这些,单帧重放 plan 会系统性偏差——session 态决定 decision_target
     # 走哪条路线/攒息门/定型判定)。全可选,旧记录缺省 None 不破坏 schema。
@@ -384,10 +385,9 @@ class DecisionTrace:
     v2_mode: str = ""                             # economy/war(滞回当前模式)
     v2_locked_line: str = ""                      # 锁定线 id(""=未锁)
     v2_bridge: str = ""                           # 当前桥线 id(""=无)
-    # r359(回放忠实化,ADR-0231):v2 相位机元组(应急/追赶 latch
-    # 全量)——重放 decide_prep 分支忠实还原的缺失件。可选,旧记录
-    # 缺省 None;list 形态 = v2_state 元组逐位。
-    sess_v2_state: list | None = None
+    # (sess_v2_state v2 相位机元组(r359 回放忠实化采集,ADR-0231)已随
+    #  v2 退役链删除——生产写端 v2_state 恒 None、全域零读端;旧语料行
+    #  该键按缺键读 None,schema 兼容。)
     # —— 迁移审计 w114(git 历史)/ADR-0346 相位影子观测(经济循环总模型步①;零消费):
     # phase(v2 相位机退役,无写端恒缺省)/form_ok(sim71 批死镜像处置后
     # 写端 = write_shop_mirrors 接 readiness_form_ok 板面现读;旧记录
@@ -484,16 +484,9 @@ class DecisionTrace:
     # ADR-0503 开臂判据②的「实花面分项账」数据源:危机帧兑换按本字段计,
     # sess_release_budget 记账面(预算许可)不作兑现证据。
     sess_release_spent: int | None = None
-    # 位面 2 支出授权·历史数据字段(只读口径,ADR-0492 定谳清理):写入面
-    # (strategy 披露键 + recorder 透传)已随机制删除,新数据恒 None;
-    # 字段保留供存量 runs.jsonl 判读脚本消费。
-    # sess_p2_auth_intercept:金堆积候选帧逐帧拦截原因枚举(取值
-    # ''/t1_locked/t2_form/no_t3/t4_gold/v6_active/authorized/
-    # hoard_invalid);sess_p2_auth_water:滚动 3 备战帧窗水位
-    # {window_start_gold, window_end_gold, window_income, window_spend,
-    # rounds}。
-    sess_p2_auth_intercept: str | None = None
-    sess_p2_auth_water: dict | None = None
+    # (位面 2 支出授权历史字段 sess_p2_auth_intercept/sess_p2_auth_water
+    #  已删(ADR-0492 定谳清理链收尾:写端早已随机制删除,全域零读端);
+    #  旧语料行该两键按缺键读 None,schema 兼容。)
     # (支出门·买侧收门拒因枚举计数 sess_spend_gate_block 已随
     #  spend_gate 开关族删除——旧方案清退批,清查报告 OLD_MIX_AUDIT
     #  §1.3;存量 runs.jsonl 判读脚本按缺键读 None。)

@@ -884,9 +884,6 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             'v2_mode': (_v2_state[0] if _v2_state else ''),
             'v2_locked_line': getattr(strategy_state_of(_sess), 'locked_line', None) or '',
             'v2_bridge': getattr(strategy_state_of(_sess), 'bridge_id', None) or '',
-            # r359(回放忠实化,ADR-0231):v2 相位机元组全量落盘
-            'sess_v2_state': list(strategy_state_of(_sess).v2_state)
-            if getattr(strategy_state_of(_sess), 'v2_state', None) else None,
             # w146 v3 意向状态落遥测(锁定时点/目标只有这里可读)
             'v3_intention': serialize_intention(
                 getattr(strategy_state_of(_sess), 'v3_intention', None)),
