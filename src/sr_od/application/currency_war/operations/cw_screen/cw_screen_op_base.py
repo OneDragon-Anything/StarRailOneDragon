@@ -1,8 +1,8 @@
 """统一观察架构:画面 op 基类(试点步骤 1,实机侧)。
 
 设计正本 = ``docs/develop/currency_war/design/统一观察架构-画面op基类设计.md``
-(下称「架构设计」):本类承载 §5 的六段生命周期(observe→reconcile→decide→
-act→on_outcome→验证)与 §6.4 的落地登记钩子注册表(带触发时点轴),是
+(下称「架构设计」):本类承载 §5 的五段生命周期(observe→reconcile→decide→
+act→on_outcome)与 §6.4 的落地登记钩子注册表(带触发时点轴),是
 「两个适配器 + 一份共用中段」结构(§1.1)的 op 侧机制骨架。
 
 试点范围申报(架构设计 §9.2 迁移步骤 1,实机侧):
@@ -121,20 +121,27 @@ class ScreenActionPort(Protocol):
 
 
 class CwScreenOpBase(SrOperation):
-    """画面 op 基类:六段生命周期 + on_outcome 落地登记注册表。
+    """画面 op 基类:五段生命周期 + on_outcome 落地登记注册表。
 
-    - 六段(§5.1):observe(适配器①)→ reconcile(对账)→ decide(策略
-      消费)→ act(适配器②)→ on_outcome(落地登记)→ 验证;单帧段
-      (observe/reconcile)每访问一次,decide→act→on_outcome→验证在单动作
+    - 五段(§5.1):observe(适配器①)→ reconcile(对账)→ decide(策略
+      消费)→ act(适配器②)→ on_outcome(落地登记);单帧段
+      (observe/reconcile)每访问一次,decide→act→on_outcome 在单动作
       决策循环内逐动作迭代(备战 op 的 visit 语义;期望态两步由 decide/act
       段记预期、下一轮 reconcile 段核对闭环)。
+    - 验证不是生命周期段(用户裁定 2026-09-10):「动作 op 只管机械执行,
+      禁止做任何验证,也禁止在画面 op 做验证。如果观察正确,动作 op 没生效,
+      那就是动作 op 有 bug,不应该为了 bug 增加验证这种复杂度。」动作未
+      生效的处置归动作层本身(修动作适配器的可靠性:点击链坐标/时序/确认
+      序列),生命周期不设验证段、不设「验证失败→重试/恢复」分支;落地
+      判定(applied/progressed)是动作适配器的执行回执(§6.2),仅作
+      on_outcome 落地回执门的触发前提(§6.4),不是生命周期段。
     - 注册表(§6.4):按意图类型登记,基类在动作落地回执点统一触发;
       触发时点轴见模块 docstring。
     - 适配器位:observation_adapter/action_adapter 可注入(构造参数);
       None = 子类缺省(实机适配器,内部复用现役识别链/点击链)。兼容注:
       ``__new__`` 绕道构造的测试桩经 getattr 兜底读位,缺位 = 直连现役链
       (与旧路径同语义,行为面等价)。
-    - 段迹:``_lifecycle_trace`` 只增不改,六段各留一字段名(生命周期锁与
+    - 段迹:``_lifecycle_trace`` 只增不改,五段各留一字段名(生命周期锁与
       离线判读消费;旧路径不写迹)。
     """
 
@@ -235,12 +242,12 @@ class CwScreenOpBase(SrOperation):
             self._outcome_hooks = registry
         return registry
 
-    # ---- 六段生命周期模板(§5.1)----
+    # ---- 五段生命周期模板(§5.1)----
 
     def run_lifecycle(self) -> OperationRoundResult:
-        """六段生命周期模板:observe→reconcile→decide→act→on_outcome→验证。
+        """五段生命周期模板:observe→reconcile→decide→act→on_outcome。
 
-        单帧段(observe/reconcile)每访问一次;后四段在子类的单动作决策
+        单帧段(observe/reconcile)每访问一次;后三段在子类的单动作决策
         循环内逐动作迭代。早退(观察段交回)时后续段不执行。各段执行经
         :meth:`_lifecycle_mark` 留段迹(只增不改)。
         """
@@ -253,14 +260,14 @@ class CwScreenOpBase(SrOperation):
         return self.lifecycle_decision_cycle(payload)
 
     def _lifecycle_mark(self, segment: str) -> None:
-        """段迹登记(六段时点轴;只增不改,锁与判读消费)。"""
+        """段迹登记(五段时点轴;只增不改,锁与判读消费)。"""
         trace = getattr(self, '_lifecycle_trace', None)
         if trace is None:
             trace = []
             self._lifecycle_trace = trace
         trace.append(segment)
 
-    # ---- 六段子类钩子(试点步骤 1 由 CwScreenPrep 以现役逻辑实现)----
+    # ---- 五段子类钩子(试点步骤 1 由 CwScreenPrep 以现役逻辑实现)----
 
     def lifecycle_observe(self) -> tuple[Any, OperationRoundResult | None]:
         """段1 observe:适配器①取观察 payload(§5.1)。
@@ -279,10 +286,11 @@ class CwScreenOpBase(SrOperation):
         return None
 
     def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:
-        """段3-6:单动作决策循环——decide→act→on_outcome→验证 逐动作迭代。
+        """段3-5:单动作决策循环——decide→act→on_outcome 逐动作迭代。
 
-        迭代语义(终结出口/投影推进/失败恢复)归画面 op 自身(§5.2:
-        CwScreenPrep 五段是本生命周期的原型)。
+        迭代语义(终结出口/投影推进/失败处置)归画面 op 自身(§5.2:
+        CwScreenPrep 五段是本生命周期的原型);动作未生效归动作层处置
+        (修动作适配器,§5.1 验证段废除裁定),不在本循环留验证残段。
         """
         raise NotImplementedError('lifecycle_decision_cycle 是画面 op 的必实现段'
-                                  '(§5.1;段3-6 逐动作迭代)')
+                                  '(§5.1;段3-5 逐动作迭代)')

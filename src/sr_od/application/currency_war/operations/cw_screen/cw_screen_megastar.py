@@ -5,12 +5,14 @@
 
 统一观察架构逐屏迁移首批(试点步骤 2;架构设计 §9.2 迁移步骤 4 + 开放
 问题清单 B3「盛会之星 = 纯选卡最简代表屏」):本类是 CwScreenOpBase 子类,
-handle 顶部装配点分流(两端口完整在场 → 六段生命周期新路径;缺省 None =
+handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路径;缺省 None =
 生产直连旧路径,生产行为零变化 §9.1)。本屏无 on_outcome 落地登记件
 (§6.4 收编面无事件屏 chosen 行;chosen_megastar = 选择 handler 单次逻辑
-写入豁免留守 ``_do_action``);六段形态 = observe(节点完成门,轻观察)→
-decide+act 内聚于 ``_do_action`` 现役动作体(两路径共享零转录)→ 验证 =
-下一轮 observe 门复检(committed-but-verifying 节点循环)。本屏 sim 腿 =
+写入豁免留守 ``_do_action``);五段形态 = observe(节点完成门,轻观察)→
+decide+act 内聚于 ``_do_action`` 现役动作体(两路径共享零转录);节点
+完成判定 = 下一轮 observe 门复检(观察驱动节点循环,非生命周期验证段
+——用户裁定 2026-09-10:验证段废除,动作未生效归动作层修可靠性)。
+本屏 sim 腿 =
 不适用(F11 例外清单:sim 无对应画面段,事件浮层族即时落定),等价判据
 主承重 = 实机在册行为锁(锁面 = sr-od-test test_cw_obs_arch_event_screens.py
 + test_cw_runnode_retire.py)。
@@ -39,7 +41,7 @@ from sr_od.context.sr_context import SrContext
 
 @dataclass
 class MegastarObservation:
-    """盛会之星观察 payload(六段之段1产物;试点步骤 2 实机转录形态)。
+    """盛会之星观察 payload(五段之段1产物;试点步骤 2 实机转录形态)。
 
     本屏观察轻(B3「纯选卡最简」):observe 段 = 节点完成门(候选读取归
     decide 段动作体 ``_do_action`` 现役内聚,避免新增读屏)——payload 仅
@@ -64,12 +66,16 @@ class MegastarLiveObservationAdapter:
 class CwScreenMegastar(CwScreenOpBase):
     """盛会之星:候选立绘 → decide_megastar 选巨星 + 确认(旧巨星节点执行器内联)。
 
-    **完成验证模型 = op 内验证 + 节点预算**(NAMING.md §6 选型判据「多步序列/
-    每步可独立失败/历史卡死」侧;旧节点基类退役批内联,行为等价红线):
-    每轮验证「仍在巨星 overlay」(标识-盛会之星)→ 未离开 = 选候选/确认一个
-    动作 → round_retry(计 node_max_retry_times=8 预算,超 → FAIL bail);
-    overlay 消失 = 完成 → round_success。committed-but-verifying 循环与
-    ADR-0264 关态稳定基线预置原样平移(旧基类节点循环语义)。
+    **节点完成模型 = observe 门复检 + 节点预算**(NAMING.md §6 选型判据
+    「多步序列/每步可独立失败/历史卡死」侧;旧节点基类退役批内联,行为
+    等价红线):每轮 observe 门读「仍在巨星 overlay?」(标识-盛会之星)
+    → 仍在 = 本节点尚有动作待执行(选候选/确认一个动作)→ round_retry
+    (计 node_max_retry_times=8 预算,超 → FAIL bail);overlay 消失 =
+    完成 → round_success。节点循环 = 观察驱动的框架节点迭代(下一轮
+    observe 读新帧世界事实,非生命周期验证段——用户裁定 2026-09-10
+    验证段废除;confirm 点击系统性不生效 = 动作链 bug,根修动作链不加
+    验证)。committed-but-verifying 节点循环与 ADR-0264 关态稳定基线
+    预置原样平移(旧基类节点循环语义)。
 
     **玩法机制(米游社 wiki content/6239 + 实机日志/截图核实,2026-08-07)**:
     盛会之星 = 阵营羁绊;「巨星」= 选 1 名盛会之星角色当巨星,给全队独特 buff。
@@ -116,7 +122,7 @@ class CwScreenMegastar(CwScreenOpBase):
     def handle(self) -> OperationRoundResult:
         """committed-but-verifying 节点循环(旧基类逻辑内联,零行为变更)。"""
         # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
-        # 两端口完整在场(= 测试 harness 显式装配)→ 六段生命周期新路径;
+        # 两端口完整在场(= 测试 harness 显式装配)→ 五段生命周期新路径;
         # 缺省 None = 生产直连旧路径(下方原序列,生产行为零变化)。
         if observation_source() is not None and action_sink() is not None:
             return self.run_lifecycle()
@@ -206,13 +212,13 @@ class CwScreenMegastar(CwScreenOpBase):
             register_confirm_arrival(_match.session, 'ConfirmMegastar', _cid,
                                      produced_by='CwScreenMegastar')
 
-    # ---- 六段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
+    # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
 
     def lifecycle_observe(self
                           ) -> tuple[MegastarObservation,
                                      OperationRoundResult | None]:
         """段1 observe:节点完成门(``_in_node`` 复检含选中标记复位副作用,
-        须在门内)→ 轻观察 payload。未离开本节点画面 = 节点完成,早退交还
+        须在门内)→ 轻观察 payload。已离开本节点画面 = 节点完成,早退交还
         外层(旧 handle 首闸逐位转录,含完成 settle 等待语义)。"""
         screen = self.last_screenshot
         if not self._in_node(screen):
@@ -229,10 +235,11 @@ class CwScreenMegastar(CwScreenOpBase):
         """段3-4(单动作内聚):decide+act 内聚于 ``_do_action`` 现役动作体
         (选候选 ∨ 确认一个动作;候选决策/遥测/session 写端/到账登记全部
         原位,两路径共享零转录)。段5 on_outcome = 本屏无落地登记件(注册
-        表缺席 = 零动作,见 __init__ 申报);段6 验证 = 下一轮 observe 段
-        ``_in_node`` 复检(committed-but-verifying 节点循环语义,round_retry
-        计 node_max_retry_times=8 预算不变)——非单轮内联段,故段迹到
-        act 为止。"""
+        表缺席 = 零动作,见 __init__ 申报);节点完成判定 = 下一轮 observe
+        段 ``_in_node`` 复检(观察驱动节点循环:round_retry 重入后由观察
+        门读新帧世界事实,非生命周期验证段——用户裁定 2026-09-10 验证段
+        废除;confirm 点击系统性不生效 → 修动作链),round_retry 计
+        node_max_retry_times=8 预算不变,故段迹到 act 为止。"""
         self._lifecycle_mark('decide')
         _adp = self._action_port()
         if _adp is not None:
