@@ -180,27 +180,102 @@ def resolve_switch_params() -> tuple[float, int, float] | None:
     return float(theta.value), int(d_min.value), float(delta.value)
 
 
+@dataclass(frozen=True)
+class LockSandwichFrame:
+    """锁线夹界帧(P76 §4.3/§4.4 各项的帧级数值载体;规约态——接线批装配,
+    本批全仓零消费点,ADR-0628)。
+
+    字段坐标系(写入端 = 接线批装配器;取值时机 = 锁线评估帧现算):
+    - ``e_p_next``:E[P′] 等待一帧后的期望完成概率(P38 同机,集中协议);
+    - ``o_plus``:O⁺ 反超期权上界 = Σ P_i^port·(V_i−V_*)⁺(§4.4 union
+      bound+优势上界;值因子挂 V_ms 同源,§7 #1);
+    - ``f_plus``:F⁺ 兜底保留上界 = (1−P)·Σ(P_miss·C_rescue+1)
+      (u=1 消参,§7 #5);
+    - ``b_plus``:B⁺ 压库收益上界(P49 线性律);
+    - ``c_hold``:C = C_hold(H_{−*}) 携带成本——差分口径仅侧线件
+      (修正 4:按组合全集计则双计 ℓ* 件携带,压低阈值偏早锁);
+    - ``d_death``:D = Δλ_death·(g+Φ) 死亡风险增量(P51 区间敞口口径,
+      禁边际引用/禁 hp 价值换算;λ 挂【拟】)。
+
+    任一字段 None = 该项帧级未装配 ⇒ 门整体「不可评」(§7 #1 数值门禁
+    消费;reason 带成因分键,仿 theta_unavailable 归因可辨纪律)。
+    """
+
+    e_p_next: float | None = None
+    o_plus: float | None = None
+    f_plus: float | None = None
+    b_plus: float | None = None
+    c_hold: float | None = None
+    d_death: float | None = None
+
+
 def evidence_gate(missing: list[tuple[int, float]],
-                  refresh_budget: int) -> tuple[bool, str]:
-    """证据门 P38(④-3 表第二行:新建)。
+                  refresh_budget: int,
+                  frame: LockSandwichFrame | None = None) -> tuple[bool, str]:
+    """证据门 P38(④-3 表第二行:新建;P76 §5.5 夹界形态重写,ADR-0628)。
 
     ``missing`` = [(缺口张数, 单张出现概率 q), ...](线距离分解,
-    cw_line_switch/odds 侧产物);``refresh_budget`` = 本窗口可用刷新数。
+    cw_line_switch/odds 侧产物);``refresh_budget`` = 本窗口可用刷新数
+    ——**仅作 p_complete 试验数条件,不再构成否决**(§5.5.2 域 α 重判:
+    锁线是配置承诺不是购买,其价值不需要刷新预算——预算耗尽不构成
+    「不锁」的理由)。
 
-    实现 = **序数形态**(零参数):对候选线的缺口集算 p_complete
-    (statefn/vopt,P38 ③层闭式),可补齐线中取最大者过门;无缺口
-    (missing 空)⇒ 直接过门。P_complete 阈值【拟】槽位未立(标定批
-    挂账),阈值形态落码前禁自造数值门——fail 方向:缺输入(空缺口
-    集/零预算且仍有缺口)⇒ 不过门(线维持现状)。
+    判定 = P76 §4.4 可计算夹界(落码形态;替换旧序数 pc>0——§5.5.3
+    「θ̂_nec > 0 的域禁 0 阈值」):
+
+    - θ̂_suff = clamp(E[P′] + (O⁺+F⁺+B⁺−C−D)/Δ + ε₂, 0, 1)——右侧全上界
+      +ε₂ 集中度二阶带余量(丙.4 净支配的落码归宿),P ≥ θ̂_suff ⇒ 锁不劣;
+    - θ̂_nec = clamp(E[P′] − (C+D)/Δ, 0, 1)——右侧下界 O=F=B=0,
+      P < θ̂_nec ⇒ 锁劣;
+    - 两截断之间 = 夹界未决 ⇒ 不过门(维持现状,旧 fail 方向);
+    - suff 截断前原始值 >1 ⇒ A-丁.2 病态域(终局期权压过 C+D,夹界空)
+      ⇒ 出口 = 不进单线锁判定(§4.4 处置:等反超/换线机器接管),
+      独立分键,不与带内未决混计;
+    - 闭式解 <0(域 α 深处)⇒ 截 0 = 无条件锁(戊.2「该域应最早锁」的
+      结构涌现)。
+
+    Δ=V_C−V_F 与 ε₂ 走 provisional【拟】槽位(§7 #1:θ* 点值与数值门
+    禁消费——None 期门输出「不可评」+成因分键,绝不向骨架层渗漏为否决,
+    NMF §5.3)。丁.4 引理域 V_C>V_F:Δ≤0 系域外输入,同归不可评。
+    本门当前未接线(修正 5):全仓零调用点,接线批按本形态装配帧消费。
     """
     if not missing:
         return True, 'complete'
-    if refresh_budget <= 0:
-        return False, 'no_budget'
-    pc = p_complete(missing, refresh_budget)
-    if pc > 0.0:
-        return True, f'p_complete={pc:.4f}'
-    return False, 'p_complete_zero'
+    if frame is None:
+        frame = LockSandwichFrame()
+    causes: list[str] = []
+    delta_calib = provisional.get('V_C_MINUS_V_F')
+    if delta_calib is None:
+        causes.append('delta')
+    e2_calib = provisional.get('E2_CONCENTRATION_BAND')
+    if e2_calib is None:
+        causes.append('e2')
+    for name in ('e_p_next', 'o_plus', 'f_plus', 'b_plus',
+                 'c_hold', 'd_death'):
+        if getattr(frame, name) is None:
+            causes.append(name)
+    delta = delta_calib.value if delta_calib is not None else None
+    if delta is not None and delta <= 0:
+        causes.append('delta_non_positive')
+    if causes:
+        return False, ('sandwich_unavailable['
+                       + ','.join(sorted(causes)) + ']')
+
+    e2 = e2_calib.value
+    p = p_complete(missing, refresh_budget)
+    cost_side = frame.c_hold + frame.d_death
+    gain_side = frame.o_plus + frame.f_plus + frame.b_plus
+    suff_raw = frame.e_p_next + (gain_side - cost_side) / delta + e2
+    if suff_raw > 1.0:
+        return False, 'sandwich_pathological'
+    th_suff = min(1.0, max(0.0, suff_raw))
+    th_nec = min(1.0, max(0.0, frame.e_p_next - cost_side / delta))
+    if p >= th_suff:
+        return True, f'sandwich_suff(p={p:.4f},suff={th_suff:.4f})'
+    if p < th_nec:
+        return False, f'sandwich_below_nec(p={p:.4f},nec={th_nec:.4f})'
+    return False, (f'sandwich_band(p={p:.4f},nec={th_nec:.4f},'
+                   f'suff={th_suff:.4f})')
 
 
 def best_alt_comp(state: GameState, session: StrategySession,

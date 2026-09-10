@@ -9,7 +9,7 @@ score(line) = P_complete(下一成型档缺口 | 剩余回合、金日程、等�
 
 - 完成概率 = **P38** 证明件（五层模型，已对抗收口）；
 - 两臂开门：完成概率阈值臂 OR 环境主导比臂（ENV_DOMINANCE_RATIO【拟，标定批】）；
-- 阈值与信号面指针（引用行，§1 本体不动）：完成概率阈值 θ* 的推导见 **P76**（[p76](../proofs/p76-lock-timing-option-pricing.md)；已证·修订版，阅读门已收口（轻量复核 8/8，2026-09-07））；商店当帧可得性信号经 **P77**（[p77](../proofs/p77-shop-spot-availability-signal.md)）裁决为**购买估值面**信号、非方向信念面——证据门不加现货频次臂（P77 = 已证·候对抗审，引用状态按此标注；消费资格以 math_proofs 索引状态列为准）；
+- 阈值与信号面指针（引用行，§1 本体不动）：完成概率阈值 θ* 的推导见 **P76**（[p76](../proofs/p76-lock-timing-option-pricing.md)；已证·修订版，阅读门已收口（轻量复核 8/8，2026-09-07））；商店当帧可得性信号经 **P77**（[p77](../proofs/p77-shop-spot-availability-signal.md)）裁决为**购买估值面**信号、非方向信念面——证据门不加现货频次臂（P77 = 已证·候对抗审，引用状态按此标注；消费资格以 math_proofs 索引状态列为准）；实现锚（as-built，ADR-0628）：证据门函数 `strategies/impl/mandate_v1/proof.py::evidence_gate` 已按 P76 §4.4 夹界形态落码——序数 `pc>0` 退役、`no_budget` 预算解耦（预算仅作 p_complete 试验数条件，P76 §5.5.2），θ̂_suff/θ̂_nec 两端截断 + A-丁.2 病态域出口；Δ=V_C−V_F 与 ε₂ 走 provisional【拟】槽位（`V_C_MINUS_V_F`/`E2_CONCENTRATION_BAND`，None 封印期对缺口非空帧恒「不可评」+成因分键）；该门当前未接线（全仓零调用点），接线批装配帧消费；
 - 权重 w：默认全 1；偏离只经机制层知识（词缀/投资策略的克制亲和，载体 = MECHANIC_SYNERGIES/MECHANIC_COUNTERS 注册表）或用户口述；**频率永不入权**（[38]）；
 - 候选侧可达性：COMP_LIBRARY 登记 external_deps（局外依赖形态）；证据门对其作**候选侧可达性软通道**——试用账号零达成的形态在登记位扣减（知识登记，非硬过滤，同 downgrade_paths 先例）；
 - 平局：与当前持有重叠件多者 > 现持有 core 数多者 > 注册序（确定性，无随机）。
@@ -90,6 +90,7 @@ P16 换线判据（E_rounds 超几何精确口径 + θ 滞回 + D_min 驻留，�
 
 | 版本 | 日期 | 变更 | 依据 |
 |---|---|---|---|
+| 8 | 2026-09-10 | §1 指针行补证据门实现锚（as-built）：`evidence_gate` 按 P76 §4.4 夹界形态落码（序数 pc>0 退役/no_budget 预算解耦/θ̂_suff+θ̂_nec 两端截断+A-丁.2 病态域出口/Δ 与 ε₂ 走 provisional 槽位 None 封印不可评；门未接线，接线批装配帧消费） | math_proofs P76 §5.5 落码批（进度账本 T-124；[ADR-0628](../decisions/0628-p76-sandwich-evidence-gate.md)；编排者四问裁决=夹界结构+槽位封印/A/B 移交接线批/本批不接线） |
 | 6 | 2026-09-10 | §3 意向层并轨指针：未锁线配方对/意向重评层方向切线判据 = ADR-0616 四层谓词（门槛先行×在任优先单席易手×排除谓词合成中性计票×可行性门；谓词结构消环零新阈值族，意向层滞回唯一合法路径 = P31 并轨 P16 参数族）+ 三谓词分界（配方对「席位翻不翻」/锁线换线「换不换」/锁线买面「买不买」，共享 `e_rounds`+`r_remaining` 读法）；§4 P1 配方对物化派生语义更新（「无门槛 top-2」→ 四层谓词函数族 + `p1_early_pair` 无门槛并批面）+ [23] 冻结语义扩展（form_ok 事件闩冻结方向，解冻闭集 p1_pair 域恰三项；「冻结辖终局线不辖 P1 配方」表述失效）+ 违宪注位面字面量行号锚摘除（按 ADR-0616 §8 符号名双锚条款） | ADR-0616 §10 三同步债②（[0616-t166-pair-direction-predicate-ontology.md](../decisions/0616-t166-pair-direction-predicate-ontology.md)；T-166 批1 落码 = kernel/cw_intention 四层谓词函数族 + flow.py 物化段冻结语义） |
 | 7 | 2026-09-10 | 三审文档精度微批：§4 标题实现锚修正（`flow.py:247-294` 行号区间已漂移——现指结算函数段，`update_target` 函数名已随 ADR-0583 重塑拆分退役；改挂现役符号名 `_refresh_direction_views` 等意向段函数族并摘行号区间，ADR-0616 §8 行号锚符号名双锚条款）+ §4 正文 `update_target` 首现处补现行载体映射注；§3 as-built 锚 `entry.py:487` 行号摘除（该文件在飞活跃，`proof.should_switch` 符号名保留）；版本 5 行「变更」单元格管道修复（表尾孤儿句「持有语义三面承载…」并入单元格） | 文档微批簇三审结论 F4/F5/F7（T-205 修正批，2026-09-10 实码 grep 复核） |
 | 5 | 2026-09-09 | 新增 §5 无目标期资金配置三臂判据接线语义（帧域与辖域[必答⑥出辖]/甲臂强锁门逐字+漏授角缺口/乙臂资格核+发射位+三层仲裁序/丙臂守息缺省合法空/四面退役声明）；as-built 反向自 kernel/cw_intention 三臂节 + mandate_v1 乙臂发射位；持有语义三面承载=登记资格域∪装配身份段∪部署域观测（ADR-0618 攻击r1闭环节） | math_proofs P86 落码批（进度账本 T-177；命题/证明/落码三件 = proofs/p86-*.md + [ADR-0618](../decisions/0618-p86-no-target-three-arms.md)） |

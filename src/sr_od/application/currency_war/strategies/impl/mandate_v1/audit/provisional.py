@@ -114,6 +114,19 @@ _SLOTS: dict[str, _Slot] = {
     'ENCOUNTER_G_GOLD': _Slot('E3 金币×2 金额观察值(ADR-0536 §3;P64 定谳'
                               '非机制常量、≥3 局定带门未过保持 None;与 DSTAT '
                               '槽双槽互锁)'),
+    # —— 锁线夹界槽位(math_proofs P76 §5.5 落码批,ADR-0628;规约态,
+    # evidence_gate 全仓零消费点,接线批装配后才进决策路径)——
+    # 完成溢价 Δ=V_C−V_F:P76 §7 #1 挂 V_ms【拟】同源单标定禁双源,标定批
+    # 自 V_ms 交付;None 期 evidence_gate 夹界「不可评」+delta 成因分键
+    # (仿 theta_unavailable 分键纪律)。丁.4 引理域 V_C>V_F:注入非正值
+    # 系域外,门侧 fail-closed 同归不可评。
+    'V_C_MINUS_V_F': _Slot('P76 §4.3 锁线夹界完成溢价 Δ=V_C−V_F(§7 #1 '
+                           '同源单标定;None=evidence_gate 不可评)'),
+    # ε₂ 集中度二阶带(丙.4 净二阶带内支配的带宽):P76 §4.4「ε₂ 并入夹界
+    # 余量(落码形态)」的归宿——θ̂_suff 抬升量,保证「P ≥ θ̂_suff ⇒ 锁不劣」
+    # 在二阶带内成立;None 期充分侧不可评(禁在余量未定时声明锁不劣)。
+    'E2_CONCENTRATION_BAND': _Slot('P76 §3.4/§4.4 集中度二阶带 ε₂(夹界余量;'
+                                   'None=夹界充分侧不可评)'),
 }
 
 #: 槽位值存储(缺省全 None = fail-closed)
