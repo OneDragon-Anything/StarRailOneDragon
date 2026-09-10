@@ -1559,7 +1559,7 @@ class CwScreenPrep(CwScreenOpBase):
         if match is None or match.strategy is None:
             return self.round_fail(status='无 cw_match(对局未初始化)')
         # 装配点分流(统一观察架构 §9.1 并存期):cw_game_ports 两端口完整
-        # 在场(= 测试 harness 显式装配)→ 六段生命周期新路径;缺省 None =
+        # 在场(= 测试 harness 显式装配)→ 五段生命周期新路径;缺省 None =
         # 生产直连旧路径(下方原序列,试点等价门通过前生产行为零变化)。
         # 判据用装配完整性(安装协议两端口成对),不新建开关机制
         #(开关生命周期纪律,strategy-work §3)。
@@ -1793,7 +1793,7 @@ class CwScreenPrep(CwScreenOpBase):
                                      OperationRoundResult | None]:
         """段1 observe(架构设计 §5.1):适配器①取观察 payload。
 
-        环装配前置(旧路径 run() 前置段的六段归位,语义逐位同):动作批
+        环装配前置(旧路径 run() 前置段的五段归位,语义逐位同):动作批
         签名先清 None(消费方 = cw_loop 备战分支;early return 保持 None
         防跨环误延)+ 执行器构建(act 段载体)+ light 沿用缓存复位。
         入口序列 = 过渡相位前置(§3.4:环入口清场注册表 ENTRY_OVERLAY_

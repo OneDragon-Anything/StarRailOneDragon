@@ -293,6 +293,9 @@ def launch_admission_report(state, comp, *, line_members) -> dict:
     from sr_od.application.currency_war.kernel.cw_state import (
         deployed_occupied,
     )
+    # 裸过滤债(ADR-0557 既有代码):内联 None 过滤未收敛到 deployed 迭代
+    # 单一源 iter_occupied_deployed(同模块 launch_board_quality_report
+    # 同型位已收敛);纯注记申报,收敛属行为面另行批次处置。
     deployed = [d for d in (state.deployed or []) if d is not None]
     bench = [b for b in (state.bench or []) if b is not None]
     cores = set(getattr(comp, 'core_chars', []) or [])
