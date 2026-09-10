@@ -128,7 +128,12 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     凑息禁令(血线硬地板解锁包件②,≤15 族在册授权):死亡线帧不凑息
     ——金不卖回,当轮转化优先(14号稿 §5.4 Y7 口径);返回
     ([], 'blood_floor') 零静默分键。state=None = 语境缺失,禁令按保守端
-    照禁(fail-closed:禁令是授权约束,缺读不构成豁免)。
+    照禁(fail-closed:禁令是授权约束,缺读不构成豁免)。P2 半边 =
+    p2_blood_floor_unlock 合成(设计出处 = p2_blood_band_unified_design/
+    DESIGN.md §2.1 凑息禁令直移植,裁定条目 = 241 §15.2 覆①消费让位;
+    授权闩 False 期间恒不触发,P2 帧凑息行为零变更),拒因键
+    'p2_blood_floor' 与 P1 域 'blood_floor' 分键禁并(键族零交集,
+    统一设计稿 §4-8)。
 
     合成素材拒入守卫(G-S1,ADR-0558):候选与场上(state.deployed ∪ bench,含
     自身)另有同名同星副本 ⇒ 2/3 合成进度素材,拒因键
@@ -149,9 +154,12 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
+        p2_blood_floor_unlock,
     )
     if state is None or p1_blood_floor(state):
         return [], 'blood_floor'
+    if p2_blood_floor_unlock(state):
+        return [], 'p2_blood_floor'
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
         saturation_line,
     )

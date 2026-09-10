@@ -278,9 +278,16 @@ def _guarantee_floor_holds(state: GameState, session: StrategySession | None,
             return True          # 终局域:末位面末战,域③前提失效
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
+        p2_blood_floor_unlock,
     )
     if p1_blood_floor(state):
         return True              # 生存域:死亡带转化优先,本门让位
+    if p2_blood_floor_unlock(state):
+        # P2 濒死带生存域同构让位(解锁包件① P2 半边的保底金面;设计出处 =
+        # p2_blood_band_unified_design/DESIGN.md §2.1 同构移植,授权闩合成
+        # 经 p2_blood_floor_unlock)。死亡吸收态截断「未来效用」前提的论证
+        # (P23)位面无关,P1 半边同款;闩 False 期间恒不触发,行为零变更。
+        return True              # P2 濒死带生存域:本门让位(闩合成 fail-closed)
     if cap_resolved == 0:
         return True              # 买断制:息账消解,下界无推导基座
     from sr_od.application.currency_war.kernel.cw_registry import (
@@ -359,9 +366,17 @@ def level_spend_blocked(state: GameState, session: StrategySession,
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
+        p2_blood_floor_unlock,
     )
     if p1_blood_floor(state):
         return False    # 死亡线:转化优先,停付线让位(解锁包件①)
+    if p2_blood_floor_unlock(state):
+        # P2 濒死带同构让位(解锁包件① P2 半边;设计出处 =
+        # p2_blood_band_unified_design/DESIGN.md §2.1「解锁包三件同构移植」,
+        # 裁定条目 = 241 §15.2 覆①消费让位)。授权闩 False 期间恒不触发
+        # ⇒ P2 深血线停付族(p2_crisis_band 危机支/血预算)照常全额管辖,
+        # 行为零变更(fail-closed,§3.2-3)。
+        return False    # P2 濒死带:转化优先,停付族让位(闩合成 fail-closed)
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         blood_budget_levelup_blocked,
         p2_crisis_band,

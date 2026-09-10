@@ -104,6 +104,84 @@ CurrencyWarConfig = 'CurrencyWarConfig'
 #: 与点4 报警线 20/30 分层并存——15 管转型期单场,20/30 管全局累计)
 VALLEY_ROLLBACK_LOSS: int = 15
 
+# ===== 面③出辖观察件(锁生成可行性;纯观测零行为)=====
+# 设计出处 = p2_blood_band_unified_design/DESIGN.md §2.3-5(a)
+# lock_gen_feasibility_obs_* 族(低血带新开 lock 开启率/切阵后 N 轮内亡率/
+# 死区面计数)。落位申报:消费位在本文件(strategies 侧)而非
+# kernel.cw_intention——分键带判定需消费 p1/p2_blood_floor 域谓词与
+# λ 血带锚(strategies 层判据单一源),kernel 观察位禁反向 import
+# strategies(布局依赖矩阵);本观察件随 update_intention 生产驱动面
+# (CwFlowStrategy._refresh_direction 贵段)同频触发。
+#: 分键前缀(键族与 241/245 键族零交集,统一设计稿 §4-8;键写入
+#: strategy_state.cw4_counters,经局终快照链/sim 轮差分入账本)。
+LOCK_GEN_FEASIBILITY_OBS_PREFIX: str = 'lock_gen_feasibility_obs_'
+
+#: 锁开事件判定 = last_event 转移入锁类前缀(信号锁 'lock:'/强锁
+#: 'forced_lock:'/P2 移交 'handoff_lock:';撤销/驱逐/降格前缀不辖)。
+_LOCK_EVENT_PREFIXES: tuple[str, ...] = ('lock:', 'forced_lock:',
+                                         'handoff_lock:')
+
+
+def bump_lock_gen_feasibility_obs(session: StrategySession | None,
+                                  state: GameState,
+                                  ist: IntentionState,
+                                  pre_last_event: str) -> None:
+    """面③出辖观察件计数(纯观测零行为,只写计数不改任何判定/发射)。
+
+    三键:
+    - ``..._lock_open_total``:锁开事件分母(信号锁/强锁/移交锁全计,
+      由 last_event 转移入 ``_LOCK_EVENT_PREFIXES`` 判定);
+    - ``..._lock_open_lowband``:分子——锁开帧在 λ 低血带(带判定 =
+      ``hp_decision_trusted`` ∧ ``HP_BAND_NEAR_DEATH`` 血带结构锚单一源,
+      禁字面量第二份;引血带键 = 合法概率路由,统一设计稿 §5-F4 自检:
+      观察分键的带判定不做任何行为分支)。「低血带新开 lock 开启率」
+      由读端按两键比值派生,禁把率写进计数(只记不判);
+    - ``..._boss_neardeath_p1|p2``:boss 节点濒死帧死区面计数(R1 存疑-1
+      兑付:λ 表濒死 boss 格全禁/空 ⇒ lock 生成可行性门在 boss 窗濒死帧
+      行为化即恒闭,死区人口分授权域申报不留白;P1/P2 授权域不同禁混键,
+      §4-8;boss token 词表与 discipline.plane_last_battle 同款)。
+
+    辖域:随状态机贵段同频(每 game-round 恰一次);降格终局吸收态帧
+    (状态机短路)不计。第三测量「切阵后 N 轮内亡率」(771014 型 =
+    p2 濒死带 ∧ 新开 lock ∧ ≤2 轮内 hp0)不在本载体:策略层结构性不可见
+    hp0(结算 drain 跳过 hp_after=0 帧,flow._process_settlement_strategy_
+    half 的 ``hp_after`` 真值门;hp0 即局终无后续决策帧),归档案层
+    离线派生(decisions 锁事件 × rounds hp 轨迹 join),申报义务在案。
+    """
+    if ist.demoted_endgame:
+        return   # 降格终局吸收态:状态机短路帧不计(与意向帧计数同拍缺席)
+    counters = getattr(state_of(session), 'cw4_counters', None)
+    if not isinstance(counters, dict):
+        return
+    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+        hp_decision_trusted,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.lambda_death import (
+        HP_BAND_NEAR_DEATH,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
+        p1_blood_floor,
+        p2_blood_floor,
+    )
+    if ist.last_event != pre_last_event \
+            and ist.last_event.startswith(_LOCK_EVENT_PREFIXES):
+        _k_total = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'lock_open_total'
+        counters[_k_total] = counters.get(_k_total, 0) + 1
+        hp = getattr(state, 'hp', None)
+        if hp is not None and hp_decision_trusted(state) \
+                and hp <= HP_BAND_NEAR_DEATH:
+            _k_low = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'lock_open_lowband'
+            counters[_k_low] = counters.get(_k_low, 0) + 1
+    node = (getattr(session, 'node_type_current', None)
+            or state.node_type or '')
+    if node == 'boss':
+        if p1_blood_floor(state):
+            _k_dz = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'boss_neardeath_p1'
+        elif p2_blood_floor(state):
+            _k_dz = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'boss_neardeath_p2'
+        else:
+            return   # 域外帧不入键(hp 缺读/带外帧防污染死区读数)
+        counters[_k_dz] = counters.get(_k_dz, 0) + 1
 
 class CwFlowStrategy(CwStrategy):
     """主流程驱动核(生命周期 + 战略层意向 + pick 族 + 备战主流程栈)。
@@ -405,7 +483,12 @@ class CwFlowStrategy(CwStrategy):
             # ADR-0366:session 透传(plane_remaining_nodes 读本位面轮数真值);
             # registry 透传(C4 存活轮数门在 v2 换线通道的判据注入,A/B 臂
             # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
+            _lg_pre_event = ist.last_event
             update_intention(state, ist, session, registry=self.registry)
+            # 面③出辖观察件(锁生成可行性;纯观测零行为,载体与辖域声明
+            # 见 bump_lock_gen_feasibility_obs docstring)——随状态机贵段
+            # 同频,每 game-round 恰一次。
+            bump_lock_gen_feasibility_obs(session, state, ist, _lg_pre_event)
             # 遥测供数(ADR-0579):候选线评分表落盘——选线时点的判断依据
             # (轮入口快照,非店开时刻值;_telemetry_ 前缀 = 披露面自带隔离,
             # 禁决策消费,守卫 = 全仓命中点计数锁)。纯遥测增量:唯一读点

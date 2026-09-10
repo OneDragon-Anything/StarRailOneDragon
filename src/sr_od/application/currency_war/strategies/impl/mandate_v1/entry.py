@@ -46,7 +46,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
-from sr_od.application.currency_war.kernel.cw_economy import blood_xp_gate_for
+from sr_od.application.currency_war.kernel.cw_economy import (
+    blood_xp_gate_for,
+    in_must_spend_zone,
+)
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     BailToOuter,
     ClickSpheres,
@@ -697,6 +700,25 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 对立面:P56 下界语义零触碰,升级仍由 M3 判据独裁)。
     _reconcile_posture_authorization(session, state, out, k_members,
                                      registry=registry)
+
+    # 形态⑥观测(纯观测零行为,fail-closed 期只记不判):target 空窗
+    # ∧ 濒死带(p1/p2 域谓词,血带结构锚单一源在谓词内)∧ 域外(裸金
+    # 判定)∧ 持金 ∧ 本帧零金消费——金滞留入败局的形态显影。键声明 =
+    # supply_arbitration_design/DESIGN.md §5.1 terminal_targetless_idle
+    # (不分位面,键名从其申报);设计出处 = p2_blood_band_unified_design/
+    # DESIGN.md §2.1 fail-closed 观测面。载体辖域申报 = 备战决策帧主通道
+    # (emit ①/①′ 实体面提前返回帧不入键);OpenShop 计入消费面
+    #(开店即买入意图,金将在店帧消费,非滞留)。判定面零行为:计数不改
+    # 发射序列,守卫锁 = test_cw_p2_blood_band.py。
+    if (state is not None and state.gold > 0
+            and getattr(state_of(session), 'target_comp', None) is None
+            and not in_must_spend_zone(state.gold, session)
+            and not any(isinstance(e.action, (LevelUp, OpenShop))
+                        for e in out)
+            and (predicates.p1_blood_floor(state)
+                 or predicates.p2_blood_floor(state))):
+        _ct['terminal_targetless_idle'] = \
+            _ct.get('terminal_targetless_idle', 0) + 1
 
     # ⑥ 无动作 ⇒ 出战(序列终点)
     # F1(T-167)后本出口的可达面恢复:无方向态 M1″ 换阵臂被「换阵可

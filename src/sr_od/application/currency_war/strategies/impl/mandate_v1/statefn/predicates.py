@@ -238,6 +238,74 @@ def p1_blood_floor(state) -> bool:
     return hp is not None and hp <= HP_BAND_NEAR_DEATH
 
 
+#: P2 低血带授权域统一裁定的授权闩(单点布尔;设计出处 =
+#: .debug/temp/currency_war/_archive_20260908/p2_blood_band_unified_design/
+#: DESIGN.md §1.2「判定面与消费面分层」+ 候裁条目定稿 = 同目录
+#: supply_arbitration_design/DESIGN.md §15.2「P2 低血带授权域统一裁定」覆①②)。
+#: 语义 =「P2 域 hp 族授权已被用户裁定 + 命题双门(濒死带格级重推命题)同时收口」;
+#: 收口前恒 False ⇒ 面①(消费让位)面②(濒死定向豁免)全部 P2 行为支
+#: fail-closed,只落观测分键(设计稿 §2.1/§3.2-3:无第三态、禁调参挂账)。
+#: **为什么是代码常量不是配置开关**:本位不是 A/B 悬置开关(禁悬置默认关,
+#: 策略开关生命周期门),而是「授权事件未发生」的 fail-closed 结构态——
+#: 翻 True 的唯一合法动作 = 授权批用户裁定 + 命题门收口后的落码批
+#: (改本常量 + ADR 文号回填),禁任何运行期改道。
+P2_BLOOD_BAND_AUTHORITY_OPEN: bool = False
+
+
+def p2_blood_floor(state) -> bool:
+    """P2 濒死带域谓词(p1_blood_floor 的 P2+ 半边同构件;设计出处 =
+    p2_blood_band_unified_design/DESIGN.md §2.1,与 241 §15.2 覆①②共谓词,
+    禁第二谓词)。
+
+    只答「帧在域内」,**不含授权闩**——置位生效(解锁包三件消费)一律经
+    :func:`p2_blood_floor_unlock` 的合成(授权闩 ∧ 本谓词;设计稿 §1.2:
+    禁以任一门单独充当另一门的判据)。
+
+    与 p1_blood_floor 的逐行同构关系(设计稿 §2.1「同构不同域,禁搭车」):
+    - 信任门 = ``hp_decision_trusted``(kernel 单一源,同 p1);
+    - **位面域 = plane ≥ 2**(与 p1 的 plane==1 互补且不交;p1 帧误开
+      P2 解锁包同理 = 授权域外搭车,不可接受);
+    - 阈值常量单一源 = ``lambda_death.HP_BAND_NEAR_DEATH``(血带结构锚,
+      禁本处字面量第二份,predicates 既有纪律同款);
+    - P1 域零改动:本谓词不触 p1_blood_floor 任何一行(设计稿 §1.3-1),
+      neardeath_unlock 闩(entry.py)触发面照旧不动、禁另立第二闩(§1.3-3)。
+    与在产 p2_crisis_band(≈41,更宽域)的关系:并存两域,危机带更宽、
+    濒死带(≤15)更窄;本谓词不改 p2_crisis_band 任何语义(§1.3-4),
+    其让位仅在 p2_blood_floor 帧 ∧ 裁定+命题双门收口后发生(p2_crisis_band
+    未收口前照常全额管辖)。
+    """
+    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+        hp_decision_trusted,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.lambda_death import (
+        HP_BAND_NEAR_DEATH,
+    )
+    if state is None or not hp_decision_trusted(state):
+        return False
+    if (getattr(state, 'plane', None) or 0) < 2:
+        return False
+    hp = getattr(state, 'hp', None)
+    return hp is not None and hp <= HP_BAND_NEAR_DEATH
+
+
+def p2_blood_floor_unlock(state) -> bool:
+    """P2 濒死带解锁包消费位(唯一合成口;设计出处 =
+    p2_blood_band_unified_design/DESIGN.md §1.2/§2.1)。
+
+    合成 = ``P2_BLOOD_BAND_AUTHORITY_OPEN ∧ p2_blood_floor(state)``——
+    授权闩管「域已授权」、谓词内含 ``hp_decision_trusted`` 管「值可信」,
+    两门正交(245 §2.3 正交合成声明,任一门禁单独充当另一门判据)。
+    面①(消费让位:M3 停付让位/凑息禁令/转化优先)与面②(濒死定向
+    豁免,行为交付挂空)的全部消费位一律经本口,禁直调 p2_blood_floor
+    或读闩常量自拼(合成单点 = 防「闩开了谓词漏判」/「谓词真了闩没开」
+    两种半门误放)。闩 False 期间恒 False ⇒ 全消费位 fail-closed,
+    行为零变更(收口前全局 fail-closed,设计稿 §3.2-3)。
+    """
+    if not P2_BLOOD_BAND_AUTHORITY_OPEN:
+        return False
+    return p2_blood_floor(state)
+
+
 @dataclass(frozen=True)
 class BenchEffectContext:
     """「挂后台效果」资格谓词的语境输入(R32-中⑤ 前置半步 0)。
