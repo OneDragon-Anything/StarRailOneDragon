@@ -1114,7 +1114,7 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
 def check_levelup_flat4_ledger_lock(rows: list[dict]) -> list[str]:
     """升级支出跟随决策费用载体锁(原 flat4 台账锁;T-240 语义重推)。
 
-    锁意图沿革:批⑳ F3 裁决 LevelUp 单击价真值 = flat 4(lv5-8 净证;
+    锁意图沿革:LevelUp 单击价真值初裁 = flat 4(lv5-8 净证;
     lv3-4 推定,ADR-0289),字面判据 spend.levelup == 4 × LevelUp 行数。
     重推依据(锁的存在性纪律,禁机械跟绿):sim 支出载体自 ADR-0561
     申报表 #5 统一 = action.cost(策略层 xp_click_cost 真值,折扣感知)
@@ -1130,8 +1130,9 @@ def check_levelup_flat4_ledger_lock(rows: list[dict]) -> list[str]:
     xp 折扣修复锁族(sr-od-test test_cw_economy xp 买费折扣修复锁族:
     显示价直通/两支等价/成长的快乐真值表)把守,两域分工防同错互证。
     拒付行(LevelUpRejected)不入 LevelUp 行数,与本判据无交互
-    (engine_p1 cap 守卫语义,批⑨ F1 双模型并存回归同前由本锁拦截:
-    执行器弃 action.cost 回退私价模型即 spend≠Σcost 必红)。
+    (engine_p1 cap 守卫语义,双模型并存回归同前由本锁拦截(载体单一源
+    = ADR-0561 申报表 #5):执行器弃 action.cost 回退私价模型即
+    spend≠Σcost 必红)。
     """
     out: list[str] = []
     for row in rows:
