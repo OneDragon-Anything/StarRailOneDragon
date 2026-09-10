@@ -40,6 +40,7 @@ from sr_od.application.currency_war.telemetry.schema import (
     RunSummary,
     SpendUnitRecord,
     append_jsonl,
+    apply_action_reason,
     p1_pair_label,
     rho_shop_obs,
     salvageable_1star_value,
@@ -103,7 +104,8 @@ class TelemetryRecorder:
                         target_comp: str, candidate_scores: dict[str, float],
                         eval_breakdown: dict[str, float], actions: list[Action],
                         extra: dict[str, Any] | None = None,
-                        gold_point: bool = True) -> None:
+                        gold_point: bool = True,
+                        state_ref_version: int | None = None) -> None:
         """记一条决策迹(decisions.jsonl)。target_comp='' 表示 reactive 无 target。
 
         extra(strategy/05 live 观测):dp_posture/active_strategies/ledger_fingerprint
@@ -111,6 +113,11 @@ class TelemetryRecorder:
         gold_point(r68 review):是否作为 ``gold_trajectory`` 采样点 —— 语义是**每回合**
         gold(经济复盘),每回合一采样;CwScreenPrep 逐步记录(_record_step)传 False
         防每回合混入 N 条步进值拉歪轨迹。
+        state_ref_version(R4返工方案 A 钉读点):调用方在「决策读取完成时点」
+        捕获的账本版本(段入口观察完成处捕 ``current_version()``);有交错
+        写入的调用点(商店段:段内动作回执推进版本)必须显式传入,钉值才
+        不漂移到落盘时点。None(缺省)= 入口现读——只对观察完成与落盘之间
+        零状态写入交错的调用点等价于观测完成版本。
         """
         # hp None 化(W823,ADR-0491):对账层已不再产 100 兜底——无真值帧
         # state.hp 本身即 None,直通写入即可(r1 特例臂退役);沿用/结算/
@@ -124,7 +131,7 @@ class TelemetryRecorder:
             target_comp=target_comp,
             candidate_scores=dict(candidate_scores),
             eval_breakdown=dict(eval_breakdown),
-            actions=[serialize_action(a) for a in actions],
+            actions=[apply_action_reason(serialize_action(a)) for a in actions],
             hp=_hp_out, hp_readable=bool(getattr(state, 'hp_readable', True)), gold=state.gold,
             gold_readable=bool(getattr(state, 'gold_readable', True)),   # ADR-0282
             level_readable=bool(getattr(state, 'level_readable', True)),  # level 保真位透传(False=启发式兜底帧)
@@ -197,6 +204,31 @@ class TelemetryRecorder:
         # 缺 match 注册=离线/测试,字段保持 None 缺省)。
         _m = _telstate._CTX_MATCH_REF[0]
         _sess = getattr(_m, 'session', None) if _m is not None else None
+        # 统一state R4(返工方案 A 钉读点):state_ref 版本钉 = 「决策读取
+        # 完成时点」的账本版本(ADR-0630 关联序:决策行钉版本 ≤ 其动作的
+        # 落地行版本)。真实时序 = 段入口观察完成(决策开始依据该 state 版本
+        # 计算的此刻)捕获 current_version() → 决策计算 → 段内动作回执逐条
+        # 推进版本 → 行落盘。捕获时点归调用方:有交错写入的调用点(商店段,
+        # 本行自身动作回执即交错写入者)经 state_ref_version 显式传入观测
+        # 完成版本;None(缺省)= 入口现读,只对观察完成与落盘之间零状态
+        # 写入交错的调用点(prep 步进行/补给快照/流程心跳等)等价于观测
+        # 完成版本——调用点清点与读点来源逐点申报见交付报告。
+        # 回溯语义 = 读该 run 流 v 行 state 字段(行行自足);影子关/清理
+        # 淘汰 → 行缺失 = unverified,不猜。pin_scope='board_state' = M4
+        # 窗内钉面标记(v3.3-M1:钉面≠决策实际消费的 GameState/last_state
+        # 面,消费切换子集落地前禁无标记对账)。best-effort:无 match 注册/
+        # 读取失败 → 缺省 ''(诚实缺省)。
+        with contextlib.suppress(Exception):   # 观测 best-effort,不阻断落盘
+            if _sess is not None and run_id:
+                if state_ref_version is not None:
+                    _pin_v = int(state_ref_version)
+                else:
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        board_state_of,
+                    )
+                    _pin_v = int(board_state_of(_sess).current_version())
+                trace.state_ref = f'{run_id}#{_pin_v}'
+                trace.pin_scope = 'board_state'
         # 刷新触发源分键(g_20260906_021859 起连续两局零产出,接线缺
         # 证实):sim 账本行键 refresh_trigger = 刷新动作 reason 计数
         #(engine_p1 轮内累计);生产端本行自 actions 现算(RefreshShop
@@ -559,7 +591,8 @@ def snapshot_expected_paths(session) -> list[dict[str, Any]]:
 def record_decision(state: GameState, target_comp: str,
                     candidate_scores: dict[str, float], eval_breakdown: dict[str, float],
                     actions: list[Action], gold_point: bool = True,
-                    extra: dict[str, Any] | None = None) -> None:
+                    extra: dict[str, Any] | None = None,
+                    state_ref_version: int | None = None) -> None:
     """便捷:用 current_run_id 记一条决策迹。BuyShopCards plan 后调。
 
     live 观测扩容(strategy/05):自动附影子 DP 姿态(12 号分歧频率数据源)与
@@ -569,7 +602,7 @@ def record_decision(state: GameState, target_comp: str,
     六字段)——**合并**(非覆盖)自动附的 dp_posture/ledger;局30 实证:
     shop.py 传 extra= 时本函数签名没有该参数 → TypeError → 买牌 op 全程
     异常 → 金 3→110 全程闲置,整局报废。教训:便捷函数签名必须与 recorder
-    方法对齐。
+    方法对齐(state_ref_version 同此,r4 返工方案 A 透传)。
     """
     if not _telstate._CURRENT_RUN_ID:
         return
@@ -592,7 +625,8 @@ def record_decision(state: GameState, target_comp: str,
         _extra.update(extra)   # 调用方显式字段(sess_* 快照)合并在自动字段上
     _telstate.get_recorder().record_decision(_telstate._CURRENT_RUN_ID, _telstate._CURRENT_DIFFICULTY, state,
                                    target_comp, candidate_scores, eval_breakdown, actions,
-                                   extra=_extra, gold_point=gold_point)
+                                   extra=_extra, gold_point=gold_point,
+                                   state_ref_version=state_ref_version)
 
 
 

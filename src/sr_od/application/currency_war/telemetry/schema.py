@@ -271,6 +271,47 @@ def serialize_action(action: Action) -> dict[str, Any]:
 
 
 
+# ===== 动作计划理由溯源(统一state R4;ADR-0630 策略侧决策行动作计划
+# 逐项理由溯源,判据名持久索引)=====
+
+ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
+    'reason', 'route_tag', 'auth_basis', 'convert_reason',
+)
+"""动作项理由溯源提取键序单一源(测试锁面 = test_cw_decision_trace_r4 锁②e)。
+
+- 语义:决策行 actions 逐项附 ``reason`` 键(判据命中 id 持久索引),取值 =
+  按本键序从**现役决策构建链已有字段**提取首个非空值——纯提取禁新算
+  (理由事实是决策时点记录,代码演进后重跑不可靠;留事实,不重算过程值)。
+- 键序依据:动作自带归因字段优先(reason = 买入臂/卖出通道/刷新触发源/
+  控制流原因),发射臂标签次之(route_tag = mandate_v1 Emitted.reason 经
+  bridge.decide_from_turn 透传),授权/豁免记录兜底(LevelUp.auth_basis /
+  SellBench.convert_reason,「记录非指令」形态)。
+- 键集扩条只改本元组;各键的值域闭集归其定义模块(sell_gate/
+  cw_prep_actions.SELL_BENCH_REASONS 等),本元组不做第二登记。
+"""
+
+
+def action_reason_of(item: dict[str, Any]) -> str:
+    """序列化动作项 dict → 理由溯源串(纯函数;键序单一源见上)。"""
+    for k in ACTION_REASON_SOURCE_KEYS:
+        v = item.get(k)
+        if v:
+            return str(v)
+    return ''
+
+
+def apply_action_reason(item: dict[str, Any]) -> dict[str, Any]:
+    """给序列化动作项归一附 ``reason`` 键(只加键不改既有键;原地返回)。
+
+    接线点 = ``TelemetryRecorder.record_decision``(decisions 行写路径
+    单一点);op_journal 等其他流的 serialize_action 产物不经本函数,
+    变更面严格限于决策行。
+    """
+    item['reason'] = action_reason_of(item)
+    return item
+
+
+
 def p1_pair_label(ist: Any) -> str:
     """P1 配方对 → 遥测标签串('A+B' 体系键串;空窗/无意向 = '')。
 
@@ -505,6 +546,27 @@ class DecisionTrace:
     # None = 无 match 注册(离线/测试缺省);dict 且 node_type_next='' =
     # session 在场但台账未命中(不猜)。可选末尾追加字段,旧记录缺省 None。
     p26_prep_obs: dict[str, Any] | None = None
+    # —— 统一state R4 策略侧遥测演进(ADR-0630 策略侧 state_ref 版本钉;
+    # 返工方案 A 钉读点 = 决策读取完成时点)——
+    # 决策行关联流程侧账本版本钉:``state_ref = '{run_id}#{v}'``,v =
+    # 「决策读取完成时点」的 ``kernel.cw_board_state.board_state_of(session)
+    # .current_version()``(读口:读不写、不占版本)。捕获时点 = 段入口观察
+    # 完成处(决策开始依据该 state 版本计算),由调用方捕获经
+    # ``record_decision(state_ref_version=)`` 传入落钉——观察完成与行落盘
+    # 之间段内动作回执会推进版本,钉值不得漂移到落盘时点(ADR-0630 关联
+    # 序:决策行钉版本 ≤ 其动作的落地行版本;观察与落盘间零写入交错的
+    # 调用点,recorder 入口现读等价)。回溯语义 = 直接读该 run 记录流中
+    # v 行的 state 字段(行行自足,零重放);行缺失(清理淘汰/崩溃丢失窗/
+    # 影子关)= unverified,不猜。'' = 无 match 注册(离线/测试)或读取
+    # 失败——诚实缺省。可选末尾追加字段,旧记录缺省 '' 不破坏 schema
+    # (判读读面宽容)。
+    state_ref: str = ""
+    # M4 窗内钉面标记(v3.3-M1 定谳):``'board_state'`` = 本钉解析出的是
+    # BoardState 面,非决策实际消费的 GameState/last_state 面(两容器事件
+    # 轴错位已在 ADR-0630 申报;消费切换子集 hp/gold/level/node 投影落地前,
+    # 禁无标记的对账假结论)。子集切换落地后本标记撤销(回空串)。
+    # '' = 旧记录/无钉。
+    pin_scope: str = ""
 
 
 

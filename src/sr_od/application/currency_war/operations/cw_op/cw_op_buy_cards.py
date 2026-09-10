@@ -895,6 +895,19 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         if getattr(strategy_state_of(_sess), 'v3_handoff', None)
                         is not None else None),
         }
+        # 统一state R4返工(方案 A 钉读点):段入口观察完成时点捕获账本
+        # 版本——观察帧已发布(shop_state_frame)、预算披露/期望态对账已过、
+        # 尚未执行任何动作,即「决策开始依据该 state 版本计算」的此刻。
+        # 段内动作回执(note_shop_action_receipt)会逐条推进版本,本值随行
+        # 传入段尾 record_decision 落钉,钉值不漂移到落盘时点(ADR-0630:
+        # 决策行钉版本 ≤ 其动作的落地行版本)。读口读不写不占版本;
+        # 读取失败 → None = recorder 入口现读缺省(诚实缺省)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of as _bso_seg,
+        )
+        _seg_pin_version: int | None = None
+        with contextlib.suppress(Exception):   # 观测 best-effort,不阻塞循环
+            _seg_pin_version = int(_bso_seg(match.session).current_version())
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----
         # 播种期对账(守卫两属消息分离的判定序):首动作前先对一次账,
         # 分叉在此出现 = 归「播种/入口账分叉」;此后投影后出现的分叉才归
@@ -1043,7 +1056,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # state.equips,提前拷=改决策行为,w222 遥测缺口①)。
         state.equips = list(getattr(match.session, 'last_owned_equips', []) or [])
         recorder.record_decision(state, target_name, _cand, _eb,
-                                 visit_actions, extra=_extra)
+                                 visit_actions, extra=_extra,
+                                 state_ref_version=_seg_pin_version)
         # 连击续刷判定输入:本段是否「仅刷新且真点击」。
         _prev_refresh_only = bool(
             ledger.did_refresh and refresh_wave_is_refresh_only(visit_actions))
