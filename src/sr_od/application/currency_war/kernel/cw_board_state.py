@@ -35,15 +35,21 @@ bench 槽位保序映射——记录模型按实机真值箱占席(§3.2.5),不�
 快照,行行自足查询直接读——无快照锚/无对账自检/无前溯推导,禁回归)。
 落盘由 :mod:`sr_od.application.currency_war.kernel.cw_state_journal`
 承载,缺省关(影子双写:旧 12 流照常,新面经装配点显式接通)。新增**逻辑态
-派生域与画面上下文域**(设计 §3.1.4):``prev_screen``/``current_screen``
+派生域与画面上下文域**(ADR-0630 决策 1+修订节 2;字段面 as-built =
+``docs/develop/currency_war/game_state/node-domain.md`` §2):``prev_screen``/``current_screen``
 (①观察汇聚写)+ ``top_bar_raw``(顶栏原文,**观察层**,observe() 只落原始
 读数)+ ``node_ord``(**逻辑层序键**,派生规则唯一写点;用户终裁 2026-09-11
 字段层次终极版:观察层只放画面原始读数,序键是逻辑层字段,四条腿全部
 write_logic,无 observe 写序键的例外)。
 四规则组:①备战腿顶栏权威/②位面过渡腿 0q→(plane+1,1)/③BOSS简报腿
 0p→当前+1+boss 类型/④弹窗腿守卫族;推进去重键 =(run_id, effective_ord),
-类型派生 = 专属画面直定+未定型查链预留)。设计正本 =
-``.debug/temp/currency_war/流程侧遥测-设计v3.4.md``(§3.2/§3.4.1)。
+类型派生 = 专属画面直定+未定型查链预留)。本段持久正本 =
+``docs/develop/currency_war/decisions/0630-unified-state-journal.md``
+(ADR-0630,含修订节:守卫族终版/单字段双值结构/字段层次终极版;设计
+工作稿存 .debug/temp 为易失档,禁作正本指针)。派生规则判定本体单一源 =
+场景一判定方案(现行版次以文件头为准;该档不入 git,持久裁定锚 = ADR-0630
+关联行与 ``docs/game/currency_war/research/screen_flow_timing.md``
+#26/#14/#27)。
 """
 from __future__ import annotations
 
@@ -1719,11 +1725,14 @@ def _derive_write(bs: BoardState, target: Field, value: int | NodeKey, *,
 
 
 def effective_node_ord(bs: BoardState) -> int | None:
-    """生效序读口(派生计算,非存储字段;决策消费面 = 本口,M4 节点投影
-    切换的衔接面)= max(node_ord 字段现值, node_hist_ord)——字段现值 =
-    最近一次派生写入(四腿全逻辑层),hist = run 内已见最大值(去重键载体);
-    两者之差仅存在于纠偏写序中间态,取 max 即生效语义,None 安全
-    (双空 = 未定)。"""
+    """生效序读口(派生计算,非存储字段;判定基准读口,非决策消费切换目标
+    ——「node 投影改读派生域」M4 工作项已作废:cw_bs_view 现读 bs.node 镜像
+    合规,无切换义务,ADR-0630 修订节 2/正本消费面申报)
+    = max(node_ord 字段现值, node_hist_ord)——单字段双值结构(ADR-0630 修订
+    节 2):字段现值 = 最近一次派生写入(四腿全逻辑层 write_logic),hist =
+    run 内已见最大值(跃迁去重键 ``(run_id, effective_ord)`` 载体);两者之
+    差仅存在于纠偏写序中间态,取 max 即生效语义,None 安全(双空 = 未定);
+    消费面恒逻辑层,观察层(top_bar_raw)不参与序比较。"""
     vals = [v for v in (bs.node_ord.value, bs.node_hist_ord)
             if v is not None]
     return max(vals) if vals else None

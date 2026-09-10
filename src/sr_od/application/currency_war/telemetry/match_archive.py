@@ -51,6 +51,10 @@ from sr_od.application.currency_war.kernel.cw_state import (
     deployed_slot_no,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
+from sr_od.application.currency_war.telemetry.journal_query import (
+    JOURNAL_REL,
+    read_journal_stats,
+)
 from sr_od.application.currency_war.telemetry.query import (
     HP_CONF_TRUSTED,
     _outcome_hp_trusted,
@@ -312,10 +316,30 @@ def assign_games(replay_dir: Path | str) -> list[dict[str, Any]]:
 
 
 def _load_slice(replay_dir: Path, segments: set[str]) -> dict[str, list[dict[str, Any]]]:
-    """按段集合过滤各 jsonl 流(只读;文件缺 = 空列表)。"""
+    """按段集合过滤各 jsonl 流(只读;文件缺 = 空列表)。
+
+    统一 state 新账键(``state/journal.jsonl``)走宽容读单一源
+    (``journal_query.read_journal_stats``,与判读 CLI 同一契约——同流
+    两读法两契约曾致装配端在截断尾上崩,R3.1 落地审 F1):半行/坏行 =
+    逐行跳过 + 计数 log 申报(设计 §3.3 撕裂行消费契约;申报语义先例 =
+    cw_loop ``_run_has_outcome_at``),非零计数才告警(常态零噪音)。
+    旧 12 流仍走严格 ``read_jsonl``:框架自写行,坏行 = 事故,静默跳过
+    会藏事故;字节层宽容只属新账(其物理截断可劈开多字节字符)。
+    """
     out: dict[str, list[dict[str, Any]]] = {}
     for name in _SLICE_FILES:
-        rows = read_jsonl(replay_dir / name)
+        if name == JOURNAL_REL:
+            rows, stats = read_journal_stats(replay_dir)
+            if stats.total_skipped or stats.byte_repair_lines:
+                log.warning(
+                    '[cw][archive] %s(根 %s)宽容读取:跳过坏行 %d'
+                    '(JSON 层 %d + 非对象 %d),字节层替换修复 %d 行'
+                    '(设计 §3.3 撕裂行契约:截断尾 = 崩溃丢失窗合法形态,'
+                    '跳过不解析)', name, replay_dir, stats.total_skipped,
+                    stats.bad_json_lines, stats.non_dict_lines,
+                    stats.byte_repair_lines)
+        else:
+            rows = read_jsonl(replay_dir / name)
         out[name] = [r for r in rows if r.get('run_id') in segments]
     _annotate_orphan_op_rows(out.get('op_journal.jsonl'))
     return out

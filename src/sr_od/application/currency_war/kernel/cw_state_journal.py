@@ -1,19 +1,22 @@
 """统一 state 状态流水落盘(R1 影子双写段)。
 
-设计正本 = ``.debug/temp/currency_war/流程侧遥测-设计v3.1.md`` §3.2.3/§3.3
-(v3 根本性纠正定稿形态):流程侧唯一落盘流 ``state/journal.jsonl``,每次
-state 写入一行,行 = 改了什么 + 渠道签名 + 版本 id + **写入后完整 state
-快照**——行行自足,查询直接读行;无快照锚、无周期节奏、无对账自检、
-无前溯推导(该套机制随 v3 令作废,禁回归)。
+设计裁定正本 = ``docs/develop/currency_war/decisions/0630-unified-state-journal.md``
+(ADR-0630,含修订节;记录机制 as-built 正本面 =
+``docs/develop/currency_war/game_state/journal.md``。设计工作稿存
+.debug/temp 为易失档,禁作正本指针)。形态:流程侧唯一落盘流
+``state/journal.jsonl``,每次 state 写入一行,行 = 改了什么 + 渠道签名 +
+版本 id + **写入后完整 state 快照**——行行自足,查询直接读行(journal.md
+§1);无快照锚、无周期节奏、无对账自检、无前溯推导(v2 增量账+快照锚+
+对账自检整套随 v3 根本性纠正作废,禁回归,ADR-0630 裁定 1)。
 
-落盘形态(§3.2.3):内存追加 + 规范化序列化,磁盘批量 flush(缓冲满阈值
-落盘)——同步关键路径零逐行 open/write;崩溃丢失窗 = 未 flush 尾部,该窗
+落盘形态(journal.md §5):内存追加 + 规范化序列化,磁盘批量 flush(缓冲满
+阈值落盘)——同步关键路径零逐行 open/write;崩溃丢失窗 = 未 flush 尾部,该窗
 内时点无行 = 诚实缺失,无补建机制。
 
-影子双写纪律(§3.7.1):本模块缺省零活动(副作用缺省关);生产武装点 =
+影子双写纪律(journal.md §7):本模块缺省零活动(副作用缺省关);生产武装点 =
 ``currency_war_app`` 装配段(config 开关 ``state_journal`` 缺省关),开启后
 与旧 12 流并行写,旧流消费方零感知。单文件 + 行内 run_id 列(per-run 分文件
-候选已否决,§3.0);局外写入拒绝(run_id 空 = 不写假行,§3.2.3)。
+候选已否决,journal.md §1);局外写入拒绝(run_id 空 = 不写假行,journal.md §5)。
 
 本模块只管「行进了内存之后」的事(缓冲/序列化/落盘/装配);行的组装与
 版本分配在写入口(kernel/cw_board_state ``BoardState._swap``,分配与状态
@@ -28,9 +31,9 @@ from typing import Any
 
 from one_dragon.utils.log_utils import log
 
-#: 缺省批量 flush 阈值(行数;崩溃丢失窗上限 = 阈值;量级对齐设计 §3.2.3
-#: 「批量 flush,行缓冲上限随实现批定」——首版取 64,实测后随 §5-1 体积
-#: 口径耦合调)。
+#: 缺省批量 flush 阈值(行数;崩溃丢失窗上限 = 阈值;量级对齐 journal.md §5
+#: 「批量 flush(阈值随实现批定)」——首版取 64,实测后随单局体积口径
+#: (ADR-0630 后果节 M1 三口径)耦合调)。
 DEFAULT_FLUSH_EVERY: int = 64
 
 

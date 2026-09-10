@@ -1,13 +1,16 @@
 """统一 state 账本判读读面(R3-1 消费方迁移第一批:离线工具族读新账)。
 
-设计正本 = ``.debug/temp/currency_war/流程侧遥测-设计v3.3.md`` §3.3/§3.6.2
-(消费方迁移清单·判读 CLI 行):判读/装配/策略回溯 = 按行直接读(单行自足);
-跨行对照 = 行间差分(人读/离线),**零机制化重放**。本模块 = 旧 12 流读面
-(:mod:`telemetry.query` 十三视图)之外的「读新账」读面,两读面并存(§3.7.1
-并存期:旧视图只读保留至 M5);判读 CLI 经 ``--source journal`` 选择本读面。
+设计裁定正本 = ADR-0630(``docs/develop/currency_war/decisions/
+0630-unified-state-journal.md``,后果节消费方迁移/M4 档案行;记录机制 as-built
+正本面 = ``docs/develop/currency_war/game_state/journal.md`` §5/§7;设计
+工作稿存 .debug/temp 为易失档,禁作正本指针):判读/装配/策略回溯 = 按行
+直接读(单行自足);跨行对照 = 行间差分(人读/离线),**零机制化重放**。
+本模块 = 旧 12 流读面(:mod:`telemetry.query` 十三视图)之外的「读新账」读面,
+两读面并存(journal.md §7 并存期:旧视图只读保留至 M5);判读 CLI 经
+``--source journal`` 选择本读面。
 
-行模型(§3.2.3 两行型,写端 = kernel/cw_board_state ``_swap``/``note_obs_event``,
-落盘 = kernel/cw_state_journal 批量 flush 追加 JSONL):
+行模型(journal.md §1 两行型,写端 = kernel/cw_board_state ``_swap``/
+``note_obs_event``,落盘 = kernel/cw_state_journal 批量 flush 追加 JSONL):
 - 行型 1 ``row='write'``:v/ts/run_id/row/field/after/same_value/state/sig/
   note/evidence_refs;
 - 行型 2 ``row='obs_event'``:v/ts/run_id/row/event/field/observed/verdict/
@@ -20,13 +23,28 @@ obs_phase/evidence_refs)缺位不炸——取值口回退行内快照或显式�
 面对的是崩溃截断尾、跨版本行与未来字段演进;判读工具炸在坏行上会让整段
 语料不可读(obs_conflicts journal 截断行容错读先例,replay_to_md 同判据)。
 
+**撕裂行消费契约全消费方覆盖**(journal.md §5 宽容消费契约,v3.5-低-2:
+批量 flush 的半行/
+坏行 = 逐行跳过 + 坏行计数留痕,判读 CLI/装配器/哨兵统一遵守;写端批量
+flush 崩溃丢失窗 = 未 flush 尾部,半行 = 合法输入):读入口单一源 =
+:func:`read_journal_stats`(逐层计数:JSON 层坏行/非对象行/字节层替换
+修复行,R3.2 起),装配消费方(telemetry.match_archive ``_load_slice``)
+共用该单一源并经 log 申报计数(申报语义先例 =
+cw_loop ``_run_has_outcome_at`` 跳过+计数+log 留痕);字节层宽容 = 以
+``errors='replace'`` 解码(物理截断可劈开多字节字符,替换不抛),含
+U+FFFD 的行计 ``byte_repair_lines`` 后仍走 JSON 判定(坏行照跳)。
+
 消费方迁移覆盖清单(逐消费方 = 已迁/候 v3.4/不适用)单一源 = 批交付报告
-``.debug/temp/currency_war/统一state-R3.1-交付报告.md`` §5(易失产物域,
-持久指针 = 本段);sim 账本/复测批判读与校准脚本读入口清单亦载该节。
+``.debug/temp/currency_war/统一state-R3.1-交付报告.md`` §5(11 行)+
+``.debug/temp/currency_war/统一state-R3.2-交付报告.md``(F5 补行 3 行:
+cw_replay_reader/cw_divergence_stats/cw_node_validate,合计 14 行;易失
+产物域,持久指针 = 本段);sim 账本/复测批判读与校准脚本读入口清单亦载
+R3.1 §5。
 """
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -49,29 +67,73 @@ def journal_path(replay_dir: Path | str) -> Path:
 # ============================================================ 宽容读取
 
 
-def read_journal(replay_dir: Path | str) -> list[dict[str, Any]]:
-    """读新账 → 行 dict 列表(宽容:文件缺 = [];坏行/非 dict 行跳过)。
+@dataclass(frozen=True)
+class JournalReadStats:
+    """宽容读取逐层计数(设计 §3.3 撕裂行消费契约的「计数留痕」载体)。
+
+    - ``bad_json_lines``:JSON 解析失败行(截断尾/半行/坏行;跳过);
+    - ``non_dict_lines``:JSON 合法但非对象行(跳过);
+    - ``byte_repair_lines``:UTF-8 字节层替换修复行(文本含 U+FFFD;
+      该行随后仍走 JSON 判定,坏则同时计入 ``bad_json_lines``——两层
+      计数量测不同层,双双申报不互斥)。
+    """
+
+    bad_json_lines: int = 0
+    non_dict_lines: int = 0
+    byte_repair_lines: int = 0
+
+    @property
+    def total_skipped(self) -> int:
+        """被跳过的行总数(JSON 层两层之和;修复后照读的行不在内)。"""
+        return self.bad_json_lines + self.non_dict_lines
+
+
+def read_journal_stats(
+        replay_dir: Path | str) -> tuple[list[dict[str, Any]], JournalReadStats]:
+    """读新账 → (行 dict 列表, 宽容读取计数)。宽容读入口单一源。
 
     为什么不走 query.read_jsonl:那边 json.loads 失败直接抛(旧流是本框架
     自己写的行,坏行 = 事故);新账按设计就是「截断尾合法存在」的流
-    (§3.3 flush 纪律:崩溃丢失窗 = 未 flush 尾部),读面必须容忍。
+    (§3.3 flush 纪律:崩溃丢失窗 = 未 flush 尾部),读面必须容忍并计数。
+    字节层 ``errors='replace'``:物理截断可劈开多字节字符,替换不抛;
+    计数口径按「行内出现 U+FFFD」近似(合法数据天然不含 U+FFFD,误计
+    风险可忽略)。装配消费方(match_archive ``_load_slice``)与判读读面
+    (:func:`read_journal`)共用本实现——同流两读法曾各持一契约,装配端
+    严格读在截断尾上崩(R3.1 落地审 F1/F3),收拢后契约单源。
     """
     p = journal_path(replay_dir)
     if not p.exists():
-        return []
+        return [], JournalReadStats()
     out: list[dict[str, Any]] = []
-    with p.open('r', encoding='utf-8') as f:
+    bad = non_dict = repaired = 0
+    with p.open('r', encoding='utf-8', errors='replace') as f:
         for line in f:
+            if '\ufffd' in line:
+                repaired += 1
             line = line.strip()
             if not line:
                 continue
             try:
                 row = json.loads(line)
             except json.JSONDecodeError:
+                bad += 1
                 continue
             if isinstance(row, dict):
                 out.append(row)
-    return out
+            else:
+                non_dict += 1
+    return out, JournalReadStats(bad_json_lines=bad, non_dict_lines=non_dict,
+                                 byte_repair_lines=repaired)
+
+
+def read_journal(replay_dir: Path | str) -> list[dict[str, Any]]:
+    """读新账 → 行 dict 列表(宽容:文件缺 = [];坏行/非 dict 行跳过)。
+
+    :func:`read_journal_stats` 的丢弃计数包装(判读 CLI 用;计数申报面
+    归装配消费方——CLI 行为面锁保持不变)。
+    """
+    rows, _ = read_journal_stats(replay_dir)
+    return rows
 
 
 def rows_of(rows: list[dict[str, Any]], run_id: str = '') -> list[dict[str, Any]]:

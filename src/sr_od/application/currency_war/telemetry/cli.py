@@ -120,7 +120,9 @@ def _journal_source(args, replay_dir: Path) -> None:
         atexit.register(shutil.rmtree, tmp_root, ignore_errors=True)
         _arch.materialize_slice(archive, tmp_root)
         jrows = _jq.read_journal(tmp_root)
-        segs = [s.get('run_id') for s in (archive.get('segments') or [])]
+        # str 守卫(F2,R3.1 落地审):畸形/未来格式档案的段条目缺 run_id 时
+        # join 不 TypeError——降级显示 None(判读可见档案畸形),禁静默丢段
+        segs = [str(s.get('run_id')) for s in (archive.get('segments') or [])]
         print(f"=== {archive.get('game_id')} (新账视图) ==="
               f" [{' + '.join(segs)}] 行={len(jrows)}")
         if not jrows:
