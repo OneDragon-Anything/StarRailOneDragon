@@ -516,7 +516,7 @@ on_outcome  落地登记钩子(共用):动作落地回执触发统一登记集
 | CwScreenPrep.run 五段(①观察→②对账→③决策→④期望态→⑤执行) | **本生命周期的原型**:备战 op 已按五段组织,基类化 = 把②对账/验证抽到基类共用,①观察/⑤执行换成端口调用,落地登记收编为 on_outcome(§6.4)。备战 op 为第一个试点(§9.2) |
 | cw_loop.loop() 外循环画面分派 | **保留**:继续承担画面识别与 op 分发(它是 screen_identity 的现役实现);基类化不动外循环,只改被分发 op 的内部结构。简报/难度确认补入分派面 = 相位 1 行(§3.2);0 系 overlay 分支与环内清场表格化为过渡相位表(§3.4) |
 | CwEntryStart 入口流(大厅导航→难度确认) | **保留在统一循环外**(§4.2):菜单导航仅实机存在;其职级读数经 ctx 中转交接,到达难度确认屏即触发对局侧接管 |
-| 各事件屏 op(CwScreenEncounter 等:读→决策→点击→验关内联于 handle()) | 逐屏迁移到基类生命周期(§9 分屏渐进);迁移前现状不动 |
+| 各事件屏 op(CwScreenEncounter 等:读→决策→点击→验关内联于 handle()) | 逐屏迁移到基类生命周期(§9 分屏渐进;粒度 = B3 三段走:先「遭遇 = 带刷新链最复杂、盛会之星 = 纯选卡最简」两代表屏立验证断言集模板,其余按族批量)。已按该式迁移的屏(遭遇 CwScreenEncounter/盛会之星 CwScreenMegastar)= 基类子类 + handle 顶部装配点分流(两端口完整在场 → 六段;缺省 None = 旧路径,先例同备战 op 行)+ 实机适配器封口:遭遇屏的 encounter_refresh_used 写端收编 on_outcome 注册表(发射型,触发点两路径共用分派面),chosen_* 写端豁免留守;盛会之星无落地登记件,decide+act 内聚于现役动作体。sim 腿不适用例外清单(B3-F11)随迁移批落测试 docstring;未迁屏现状不动 |
 | 过渡相位现役件(简报/位面详情/敌人情报/中断弹窗/清场注册表) | 收编为过渡相位表(§3.4 收编映射表);迁移前现状不动 |
 | decision_assembly.snapshot_from_obs | **保留**(装配缝):PrepObservation → Snapshot 的映射半部;其回退锚已切 strategy_input_state(迁移批次三),继续作备战装配点 |
 | strategies/impl/flow.py(CwFlowStrategy 分画面决策入口) | **不替代**:decide() 段的下游就是这些入口;策略器契约面(ADR-0583)不动 |

@@ -2,26 +2,66 @@
 
 其余 overlay 已按 NAMING §2 迁独立 cw_screen_*.py(委托壳溶解:入口门由
 主循环 0 系分支承担,处理本体 = 各画面 op 真身);本文件仅存巨星内联实现。
+
+统一观察架构逐屏迁移首批(试点步骤 2;架构设计 §9.2 迁移步骤 4 + 开放
+问题清单 B3「盛会之星 = 纯选卡最简代表屏」):本类是 CwScreenOpBase 子类,
+handle 顶部装配点分流(两端口完整在场 → 六段生命周期新路径;缺省 None =
+生产直连旧路径,生产行为零变化 §9.1)。本屏无 on_outcome 落地登记件
+(§6.4 收编面无事件屏 chosen 行;chosen_megastar = 选择 handler 单次逻辑
+写入豁免留守 ``_do_action``);六段形态 = observe(节点完成门,轻观察)→
+decide+act 内聚于 ``_do_action`` 现役动作体(两路径共享零转录)→ 验证 =
+下一轮 observe 门复检(committed-but-verifying 节点循环)。本屏 sim 腿 =
+不适用(F11 例外清单:sim 无对应画面段,事件浮层族即时落定),等价判据
+主承重 = 实机在册行为锁(锁面 = sr-od-test test_cw_obs_arch_event_screens.py
++ test_cw_runnode_retire.py)。
 """
 import time
-from typing import ClassVar
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.obs.cw_node_obs import read_megastar_options
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     CW_OVERLAY_SETTLE_S,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenMegastar(SrOperation):
+@dataclass
+class MegastarObservation:
+    """盛会之星观察 payload(六段之段1产物;试点步骤 2 实机转录形态)。
+
+    本屏观察轻(B3「纯选卡最简」):observe 段 = 节点完成门(候选读取归
+    decide 段动作体 ``_do_action`` 现役内聚,避免新增读屏)——payload 仅
+    携带稳定帧引用(实机识别域载体,不出端口;架构设计 §2.1)。
+    """
+
+    screen: Any = None
+
+
+class MegastarLiveObservationAdapter:
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,试点步骤 2)。
+
+    本屏 observe = 节点完成门已归 ``CwScreenMegastar.lifecycle_observe``
+    (门判定含选中标记复位副作用,须在门内);适配器仅装配稳定帧引用。
+    sim 实现 = 不适用(F11 例外清单:sim 无对应画面段),本批不建。
+    """
+
+    def observe(self, op: 'CwScreenMegastar') -> MegastarObservation:
+        return MegastarObservation(screen=op.last_screenshot)
+
+
+class CwScreenMegastar(CwScreenOpBase):
     """盛会之星:候选立绘 → decide_megastar 选巨星 + 确认(旧巨星节点执行器内联)。
 
     **完成验证模型 = op 内验证 + 节点预算**(NAMING.md §6 选型判据「多步序列/
@@ -51,7 +91,15 @@ class CwScreenMegastar(SrOperation):
     CONFIRM: ClassVar[Point] = Point(1490, 560)
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-巨星节点')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-巨星节点')
+        # 适配器位缺省装配(试点步骤 2;先例 = CwScreenPrep):观察口 =
+        # 实机适配器(本屏轻观察封口);动作口 = None = 直连现役动作体
+        # ``_do_action``(基类「None = 子类缺省实现自担」;committed-but-
+        # verifying 单动作内聚于该方法,两路径共享零转录,禁适配器私有
+        # 动作类型词表 §6.1)。on_outcome 注册表:本屏无落地登记件
+        #(§6.4 收编面无事件屏 chosen 行;chosen_megastar 豁免留守;
+        # register_confirm_arrival 到账登记 = expected_state 载体非本表辖)。
+        self._observation_adapter = MegastarLiveObservationAdapter()
 
     def _in_node(self, screen) -> bool:
         # 巨星 overlay:盛会之星标题在(用 screen_info 标题 area 位置区分,非全屏 LCS)。原用「确认选择
@@ -67,6 +115,11 @@ class CwScreenMegastar(SrOperation):
     @operation_node(name='巨星处理', is_start_node=True, node_max_retry_times=8)
     def handle(self) -> OperationRoundResult:
         """committed-but-verifying 节点循环(旧基类逻辑内联,零行为变更)。"""
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
+        # 两端口完整在场(= 测试 harness 显式装配)→ 六段生命周期新路径;
+        # 缺省 None = 生产直连旧路径(下方原序列,生产行为零变化)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
         screen = self.last_screenshot
         # 验证完成:已不在本节点画面 = overlay 消失 / 进了下一节点 → 节点完成,交还外层。
         if not self._in_node(screen):
@@ -152,3 +205,40 @@ class CwScreenMegastar(SrOperation):
             )
             register_confirm_arrival(_match.session, 'ConfirmMegastar', _cid,
                                      produced_by='CwScreenMegastar')
+
+    # ---- 六段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
+
+    def lifecycle_observe(self
+                          ) -> tuple[MegastarObservation,
+                                     OperationRoundResult | None]:
+        """段1 observe:节点完成门(``_in_node`` 复检含选中标记复位副作用,
+        须在门内)→ 轻观察 payload。未离开本节点画面 = 节点完成,早退交还
+        外层(旧 handle 首闸逐位转录,含完成 settle 等待语义)。"""
+        screen = self.last_screenshot
+        if not self._in_node(screen):
+            # (gate 清尾批 2026-09-03:原此处向已退役的 gate 稳定门预置基线;
+            #  wait_stable_frame 在 旧内环拆除后已无生产调用方,基线写端
+            #  无读端 → 调用删除。外循环重判兜底,等待语义不变。)
+            return (MegastarObservation(screen=screen),
+                    self.round_success('巨星节点完成(已离开本节点画面)',
+                                       wait=CW_OVERLAY_SETTLE_S))
+        return MegastarObservation(screen=screen), None
+
+    def lifecycle_decision_cycle(self, payload: MegastarObservation
+                                 ) -> OperationRoundResult:
+        """段3-4(单动作内聚):decide+act 内聚于 ``_do_action`` 现役动作体
+        (选候选 ∨ 确认一个动作;候选决策/遥测/session 写端/到账登记全部
+        原位,两路径共享零转录)。段5 on_outcome = 本屏无落地登记件(注册
+        表缺席 = 零动作,见 __init__ 申报);段6 验证 = 下一轮 observe 段
+        ``_in_node`` 复检(committed-but-verifying 节点循环语义,round_retry
+        计 node_max_retry_times=8 预算不变)——非单轮内联段,故段迹到
+        act 为止。"""
+        self._lifecycle_mark('decide')
+        _adp = self._action_port()
+        if _adp is not None:
+            _adp.execute(self, None)   # 注入替位(测试桩);动作体归一
+        else:
+            self._do_action(payload.screen)
+        self._lifecycle_mark('act')
+        # 仍在节点内 → round_retry 重跑本节点(计预算,超 → FAIL bail)。
+        return self.round_retry(wait=1.5)

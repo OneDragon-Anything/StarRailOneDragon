@@ -23,16 +23,32 @@
   档案帧回验:sr-od-test/screens/货币战争-遭遇节点/default.webp 上 标识-遭遇节点 /
   按钮-选择 均 conf≈0.999 命中。卡身 rect center 未单独实锤(历史实测点 (665,500)/(1288,550)
   保留作兜底;rect 覆盖同卡身带)。
+统一观察架构逐屏迁移首批(试点步骤 2;架构设计 §9.2 迁移步骤 4 + 开放
+问题清单 B3「遭遇 = 带刷新链最复杂代表屏」):本类是 CwScreenOpBase 子类,
+handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 六段生命周期新路径;
+缺省 None = 生产直连旧路径,handle 原序列,生产行为零变化 §9.1)。迁移
+手法单一源 = CwScreenPrep 先例(reviews/T-189-r1.md 验收):encounter_
+refresh_used 写端收编 on_outcome 注册表(触发时点轴·发射型,§6.4-R-E
+在册成员①;触发点 = ``_emit_refresh_click`` 两路径共用分派面,唯一性同
+``_act_execute`` 先例);chosen_encounter 写端 = 选择 handler 单次逻辑写入
+豁免(§2.2/§6.5-6 豁免面不扩散)留守出口验真通过分支。本屏 sim 腿 =
+不适用(F11 例外清单:T5 前引擎无遭遇决策段),等价判据主承重 = 实机
+在册行为锁 + 写入流对拍(锁面 = sr-od-test test_cw_obs_arch_event_screens.py)。
 """
 import time
-from typing import TYPE_CHECKING, ClassVar
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
-from sr_od.application.currency_war.kernel.cw_events import EncounterOption
+from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
+from sr_od.application.currency_war.kernel.cw_events import (
+    EncounterOption,
+    EncounterPick,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_state import GameState
@@ -44,9 +60,13 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
     confirm_and_verify,
     safe_click,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    OUTCOME_TRIGGER_EMITTED,
+    ActionOutcome,
+    CwScreenOpBase,
+)
 from sr_od.application.currency_war.telemetry.recorder import record_event_choice
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
@@ -54,7 +74,33 @@ if TYPE_CHECKING:
     )
 
 
-class CwScreenEncounter(SrOperation):
+@dataclass
+class EncounterObservation:
+    """遭遇屏观察 payload(六段之段1产物;试点步骤 2 实机转录形态)。
+
+    - ``options``:候选卡读取(现役读链 ``read_encounter_options`` 产物);
+    - ``screen``:稳定帧引用(刷新链的剩余次数读/验效补读同帧同源)——
+      实机识别域载体,识别机制不出端口(架构设计 §2.1);sim 适配器落位
+      时该域 = None 帧语义(T5 前 sim 腿不适用,F11 例外清单)。
+    """
+
+    options: list[EncounterOption]
+    screen: Any = None
+
+
+class EncounterLiveObservationAdapter:
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,试点步骤 2)。
+
+    内部复用现役读链(``CwScreenEncounter._observe_frame``:稳定帧时序 +
+    选项读取)——识别机制(OCR/截图)不出端口(§2.1 契约三则)。sim
+    实现 = T5 后辖域(引擎遭遇决策段接入),本批不建(F11 例外清单)。
+    """
+
+    def observe(self, op: 'CwScreenEncounter') -> EncounterObservation:
+        return op._observe_frame()
+
+
+class CwScreenEncounter(CwScreenOpBase):
     """遭遇节点二选一:decide_encounter 选卡(必要时先分支刷新)→ 点卡选中 + 选择确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-遭遇节点'   # screen_info 画面(currency_war_encounter.yml)
@@ -70,7 +116,60 @@ class CwScreenEncounter(SrOperation):
     _REFRESH_BTN_DX: ClassVar[int] = -100
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-遭遇节点')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-遭遇节点')
+        # 适配器位缺省装配(试点步骤 2;先例 = CwScreenPrep):观察口 = 实机
+        # 适配器(现役读链封口);动作口 = None = 直连现役确认链
+        # (``_confirm_default``,基类「None = 子类缺省实现自担」)——注入替位
+        # = 构造后直接赋值(测试桩),sim 适配器 = T5 后辖域本批不建。
+        self._observation_adapter = EncounterLiveObservationAdapter()
+        # on_outcome 落地登记注册表(架构设计 §6.4;触发时点轴·发射型在册
+        # 成员① encounter_refresh_used):写端自 handle 内联位收编为注册表
+        # 钩子(位置迁移语义不变,§6.5-4/§6.5-6);触发点 = _emit_refresh_
+        # click(两路径共用分派面,恰触发一次——双计即计数毒化)。chosen_
+        # encounter = 选择 handler 单次逻辑写入豁免,不在收编面(§2.2)。
+        self.register_outcome_hook(
+            EncounterPick, self._on_refresh_emitted,
+            trigger=OUTCOME_TRIGGER_EMITTED, name='encounter_refresh_used')
+
+    def _on_refresh_emitted(self, _outcome: ActionOutcome) -> None:
+        """encounter_refresh_used 写端(on_outcome 注册表·发射型钩子体;
+        §6.4 收编行「遭遇刷新计数」)。原 handle 内联位逐位迁移:随刷新
+        点击置位、不等验效(选择落地不置位;发射证据 refresh_click),
+        单次逻辑写入(§3.4 申报豁免:自身动作事实),best-effort 记录面
+        失败不阻塞。"""
+        _match = self.ctx.cw_match
+        if _match is None:
+            return
+        try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            _bs = board_state_of(_match.session)
+            _bs.write_logic(
+                _bs.encounter_refresh_used,
+                int(_bs.encounter_refresh_used.value or 0) + 1,
+                produced_by='CwScreenEncounter',
+                evidence='refresh_click')
+        except Exception as e:   # noqa: BLE001  记录面失败不阻塞
+            log.warning(f'[cw-encounter] 刷新计数记录失败(不阻塞): {e}')
+
+    def _emit_refresh_click(self, session: 'StrategySession',
+                            pick: EncounterPick) -> None:
+        """刷新点击发射时点(触发时点轴·发射型;§6.5-4 随点击置位不等
+        验效)。防重入旗标 = 执行侧载体留守(非登记件);登记件写端经
+        on_outcome 注册表触发——本方法 = 两路径(旧 handle / 六段循环)
+        共用分派面,触发唯一性先例 = CwScreenPrep._act_execute。"""
+        exec_state_of(session)._encounter_refresh_used = True
+        self.fire_emit_hooks(pick, evidence='refresh_click')
+
+    def _observe_frame(self) -> EncounterObservation:
+        """稳定帧观察链(实机适配器①封口内容):入口 2s 稳定期 → 重截 →
+        选项读取。时序口径逐位保留(用户口述口径 #23,screen_flow_timing:
+        入口帧可能在稳定期内,立即读难度卡有读缺风险)。"""
+        time.sleep(2.0)
+        screen = self.screenshot()
+        return EncounterObservation(
+            options=read_encounter_options(self.ctx, screen), screen=screen)
 
     def _card_signature(self, options: list[EncounterOption]) -> list[tuple]:
         """卡面签名(难度+奖励元组列表)——刷新验效的「卡面变了」判据。"""
@@ -133,6 +232,13 @@ class CwScreenEncounter(SrOperation):
 
     @operation_node(name='遭遇节点', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
+        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 六段生命
+        # 周期新路径;缺省 None = 生产直连旧路径(下方原序列,试点等价门
+        # 通过前生产行为零变化)。判据用装配完整性(安装协议两端口成对),
+        # 不新建开关机制(开关生命周期纪律,strategy-work §3)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
         screen = self.last_screenshot
         # live 2026-08-15:改 id_mark area(标识-遭遇节点)—— OCR「遭遇其一」在截断帧(「遭遇其」)miss;
         # 独立屏实锤(返回备战界面右上,同补给/投资策略)。
@@ -174,26 +280,11 @@ class CwScreenEncounter(SrOperation):
             elif cnt is None or cnt[0] <= 0:
                 log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={cnt})→ 按原评分选')
             else:
-                # 发出点击即置位(不等验效):防「点偏未生效 → 重入屏再试」的反复尝试;
-                # 优势布局每局只授 1 次,单次尝试语义与游戏规则对齐。
-                exec_state_of(match.session)._encounter_refresh_used = True
-                # 节点屏刷新计数组写端(迁移批次三,设计 §3.4.1/§8.7 批次三
-                # 件 6):遭遇刷新已用**随刷新点击置位、不等验效**,选择落地
-                # 不置位(与 exec_state 防重入旗标同点同口径;旗标 = 执行侧
-                # 防重入载体,本写端 = 记录模型账,§3.4.1)。单次逻辑写入
-                # (§3.4 申报豁免:自身动作事实)。best-effort 记录面。
-                try:
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
-                        board_state_of,
-                    )
-                    _bs_er = board_state_of(match.session)
-                    _bs_er.write_logic(
-                        _bs_er.encounter_refresh_used,
-                        int(_bs_er.encounter_refresh_used.value or 0) + 1,
-                        produced_by='CwScreenEncounter',
-                        evidence='refresh_click')
-                except Exception as e:   # noqa: BLE001  记录面失败不阻塞
-                    log.warning(f'[cw-encounter] 刷新计数记录失败(不阻塞): {e}')
+                # 发出点击即置位(不等验效):防「点偏未生效 → 重入屏再试」
+                # 的反复尝试;优势布局每局只授 1 次,单次尝试语义与游戏规则
+                # 对齐。防重入旗标留守 + 登记件经 on_outcome 注册表
+                # (发射型触发点,试点步骤 2 收编;两路径共用)。
+                self._emit_refresh_click(match.session, pick)
                 refreshed, new_opts = self._try_refresh(
                     cnt[1], self._card_signature(options), cnt[0])
                 if refreshed:
@@ -216,7 +307,57 @@ class CwScreenEncounter(SrOperation):
                             [{'difficulty': o.difficulty, 'rewards': o.rewards}
                              for o in options],
                             idx, reason)
-        # 卡身/选择坐标从 screen_info 读;缺失走历史实测兜底常量。
+        # 动作执行(点卡选中 → 确认验关)经分派面(试点步骤 2;先例 =
+        # CwScreenPrep 旧路径同经 _act_execute:注册表触发点唯一 + 未来
+        # 落地型登记件两路径同享)。
+        rs = self._act_execute(pick, options, idx)
+        if rs.is_success:
+            # 出口验真通过(遭遇节点 关)= 本轮选卡落地 → 写记录面(值取
+            # 本轮现读候选与决策,与落地点击同帧同源)。
+            self._record_chosen(match.session if match is not None else None,
+                                options, idx)
+        return rs
+
+    def _act_execute(self, pick: EncounterPick | None,
+                     options: list[EncounterOption], idx: int
+                     ) -> OperationRoundResult:
+        """动作执行分派面(六段之 act 端口分派;两路径共用,落地登记注册
+        表的**唯一触发点**,先例 = CwScreenPrep._act_execute)。注入动作
+        适配器在场 → 按回执形态分流(原生轮次结果 = 验关锚 wait 语义零
+        重构;(progressed, detail) 协议形状 = 注入替位桩,按现役确认链
+        收尾常量重构);缺省 = 现役确认链直连(:meth:`_confirm_default`)。
+        on_outcome 注册表在本口落地回执点统一触发(落地回执门:progressed
+        为前提;本屏现役在册仅发射型 encounter_refresh_used,发射触发归
+        ``_emit_refresh_click``,不经本口——触发轴两型分离防双计)。"""
+        _adp = self._action_port()
+        if _adp is not None:
+            out = _adp.execute(self, pick)
+        else:
+            out = self._confirm_default(idx)
+        if isinstance(out, OperationRoundResult):
+            # 实机形态:现役确认链原生轮次结果(retry 预算/wait 语义零重构)
+            rs = out
+            progressed = out.is_success
+        elif isinstance(out, tuple):
+            # 注入替位协议形状 (progressed, detail) → 按现役确认链收尾
+            # 常量重构(confirm_and_verify:成功 success_wait=2.0 / 验关
+            # 失败 round_retry wait=1)
+            progressed, detail = out
+            rs = (self.round_success(detail, wait=2.0) if progressed
+                  else self.round_retry(detail, wait=1))
+        else:
+            raise TypeError(f'动作适配器回执形态非法: {type(out).__name__}'
+                            f'(合法 = 轮次结果 ∨ (progressed, detail) 二元)')
+        self.fire_outcome_hooks(pick, progressed)
+        return rs
+
+    def _confirm_default(self, idx: int) -> OperationRoundResult:
+        """现役确认链缺省执行体(实机适配器②的封口内容;旧路径与六段循环
+        同调,自身**不触发**注册表——触发统一归 :meth:`_act_execute` 分派
+        面,防双计)。点卡选中(screen_info 坐标缺失走历史实测兜底常量)→
+        确认验关(遭遇节点标题消失 = overlay 关;原「点了就 success」不验
+        → bug#1/隐藏多步 flat-loop,docstring「插空白点击取消选中→死循环」
+        风险在案)。"""
         card_left = area_center(self.ctx, '遭遇卡-其一', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_LEFT
         card_right = area_center(self.ctx, '遭遇卡-其二', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.CARD_RIGHT
         select_btn = area_center(self.ctx, '按钮-选择', CwScreenEncounter.SCREEN_NAME) or CwScreenEncounter.SELECT_BTN
@@ -226,8 +367,97 @@ class CwScreenEncounter(SrOperation):
         # 选择 + 验关(遭遇其一 消失 = overlay 关)。原「点了就 success」不验 → bug#1/隐藏多步 flat-loop
         # (partner reset 根因同类;write-operation「点了≠成了」;docstring 已记「插空白点击取消选中→死循环」风险)。
         # 验关用标题「遭遇节点」(4 字 vs 备战「遭遇」标签 2 字,LCS 0.5<0.8 不误匹配;live 2026-08-15)
-        rs = confirm_and_verify(self, confirm_point=select_btn,
-                                entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+        return confirm_and_verify(self, confirm_point=select_btn,
+                                  entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
+
+    # ---- 六段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
+
+    def lifecycle_observe(self
+                          ) -> tuple[EncounterObservation,
+                                     OperationRoundResult | None]:
+        """段1 observe:画面身份门(标识-遭遇节点)→ 实机适配器①稳定帧
+        观察(2s 稳定期 + 选项读取)。门失败 = round_fail 早退(旧 handle
+        首闸逐位转录),后续段不执行。"""
+        screen = self.last_screenshot
+        # live 2026-08-15:改 id_mark area(标识-遭遇节点)—— OCR「遭遇其一」在截断帧(「遭遇其」)miss;
+        # 独立屏实锤(返回备战界面右上,同补给/投资策略)。
+        if not self.round_by_find_area(screen, CwScreenEncounter.SCREEN_NAME,
+                                       '标识-遭遇节点', crop_first=False).is_success:
+            return EncounterObservation(options=[]), self.round_fail('非遭遇节点屏')
+        _adp = self._observation_port()
+        obs = (_adp.observe(self) if _adp is not None
+               else self._observe_frame())
+        return obs, None
+
+    def lifecycle_decision_cycle(self, payload: EncounterObservation
+                                 ) -> OperationRoundResult:
+        """段3-6 单动作决策循环(架构设计 §5.1 后四段):decide
+        (strategy_input_state → decide_encounter)→ 分支刷新链(dd-004,
+        发射点 = ``_emit_refresh_click``)→ act(分派面:点卡+确认验关)
+        → on_outcome(注册表回执点)→ 验证(confirm_and_verify 验关锚,
+        出口验真通过 = chosen 写端挂点)。旧 handle 决策/刷新段逐位转录
+        (试点步骤 2,零行为变更;chosen 豁免留守)。"""
+        self._lifecycle_mark('decide')
+        options = payload.options
+        # (difficulty + comp 成型度:formed→高难度拿好奖励,未成型→低难度保生存)→ 选 idx。替代硬编码「选左」。
+        match = self.ctx.cw_match
+        idx, reason = 0, 'default(no-options/match)'
+        pick = None
+        _state = GameState()
+        if match is not None and options:
+            # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读;
+            # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 BoardState)。
+            from sr_od.application.currency_war.kernel.cw_bs_view import (
+                strategy_input_state,
+            )
+            _state = strategy_input_state(match.session)
+            _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
+            pick = match.strategy.decide_encounter(options, _state, match.session, _cfg)
+            if 0 <= pick.idx < len(options):
+                idx = pick.idx
+            reason = pick.reason
+        # ===== 分支刷新执行链(dd-004):建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
+        refreshed = False
+        if match is not None and pick is not None and pick.refresh:
+            sess_used = getattr(exec_state_of(match.session), '_encounter_refresh_used', False)
+            cnt = read_encounter_refresh_count(self.ctx, payload.screen)
+            if sess_used:
+                log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
+            elif cnt is None or cnt[0] <= 0:
+                log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={cnt})→ 按原评分选')
+            else:
+                # 发出点击即置位(不等验效):发射型触发点两路径共用
+                #(见 _emit_refresh_click;语义口径同旧路径逐位)。
+                self._emit_refresh_click(match.session, pick)
+                refreshed, new_opts = self._try_refresh(
+                    cnt[1], self._card_signature(options), cnt[0])
+                if refreshed:
+                    if not new_opts:   # 验效走了次数通道,卡面未读 → 补读一次
+                        new_opts = read_encounter_options(self.ctx, self.screenshot())
+                    if new_opts:
+                        options = new_opts
+                        pick = match.strategy.decide_encounter(
+                            new_opts, _state, match.session, _cfg, refresh_used=True)
+                        if 0 <= pick.idx < len(new_opts):
+                            idx = pick.idx
+                        reason = pick.reason
+        if refreshed:
+            reason = f'{reason}+分支刷新'
+        log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
+                 f'pick=idx{idx} refreshed={refreshed} {reason}')
+        # 遥测:选项选择落账本(exogenous kind='event_choice')。
+        # 此前只 log——「选了其几/两卡奖励/reason」跨局归因在遥测上断链。
+        record_event_choice('encounter',
+                            [{'difficulty': o.difficulty, 'rewards': o.rewards}
+                             for o in options],
+                            idx, reason)
+        # —— 段4 act(分派面)+ 段5 on_outcome(注册表回执点)+ 段6 验证
+        self._lifecycle_mark('act')
+        rs = self._act_execute(pick, options, idx)
+        self._lifecycle_mark('on_outcome')
+        # —— 段6 验证:出口验真通过 = 选卡落地 → chosen 写端
+        #(选择 handler 单次逻辑写入豁免,§2.2;不入注册表收编面)。
+        self._lifecycle_mark('verify')
         if rs.is_success:
             # 出口验真通过(遭遇节点 关)= 本轮选卡落地 → 写记录面(值取
             # 本轮现读候选与决策,与落地点击同帧同源)。

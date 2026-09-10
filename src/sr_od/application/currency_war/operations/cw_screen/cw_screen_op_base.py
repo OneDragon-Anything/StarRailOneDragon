@@ -49,14 +49,15 @@ OUTCOME_TRIGGER_EMITTED: str = 'emit'
 #: 发射型登记件在册申报面(§6.4 触发时点轴;键 = 登记件名,值 = 出处申报)。
 #: 在册两件 = 攻击第 1 轮 F-3 裁决口径(架构设计 §6.4-R-E「在册成员两件
 #: (F3)」):遭遇刷新计数 + 策略屏逐卡刷新计数,同型同口径「随点击置位
-#: 不等验效」。两屏 op 均未迁移(§9.2 迁移序,现子类仅 CwScreenPrep),
-#: 先以申报面登记占位;策略屏迁移时其写端(CwScreenInvestStrategy 刷新链)
-#: 入本面接线注册,禁静默新增发射型成员。
+#: 不等验效」。遭遇件已随试点步骤 2 迁移接线(CwScreenEncounter 刷新链,
+#: 写端 = ``_on_refresh_emitted`` 注册表钩子,发射点 = ``_emit_refresh_
+#: click`` 两路径共用分派面);策略屏迁移时其写端(CwScreenInvestStrategy
+#: 刷新链)入本面接线注册,禁静默新增发射型成员。
 EMIT_TRIGGERED_DECLARED: dict[str, str] = {
     'encounter_refresh_used': (
         'CwScreenEncounter 刷新链(架构设计 §6.4-R-E 在册两件①;现役语义'
         ' = 「发出点击即置位,防点偏未生效重入屏反复尝试」,证据词'
-        ' refresh_click,验效失败帧仍 +1)'),
+        ' refresh_click,验效失败帧仍 +1;试点步骤 2 已接线)'),
     'strategy_refresh_used': (
         'CwScreenInvestStrategy 刷新链(架构设计 §6.4-R-E 在册两件②;'
         '逐卡 dict[str,int],策略屏迁移批其写端入本面接线,随点击置位'
