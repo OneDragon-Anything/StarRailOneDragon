@@ -25,7 +25,7 @@
   保留作兜底;rect 覆盖同卡身带)。
 统一观察架构逐屏迁移首批(试点步骤 2;架构设计 §9.2 迁移步骤 4 + 开放
 问题清单 B3「遭遇 = 带刷新链最复杂代表屏」):本类是 CwScreenOpBase 子类,
-handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 六段生命周期新路径;
+handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生命周期新路径;
 缺省 None = 生产直连旧路径,handle 原序列,生产行为零变化 §9.1)。迁移
 手法单一源 = CwScreenPrep 先例(reviews/T-189-r1.md 验收):encounter_
 refresh_used 写端收编 on_outcome 注册表(触发时点轴·发射型,§6.4-R-E
@@ -76,7 +76,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class EncounterObservation:
-    """遭遇屏观察 payload(六段之段1产物;试点步骤 2 实机转录形态)。
+    """遭遇屏观察 payload(五段之段1产物;试点步骤 2 实机转录形态)。
 
     - ``options``:候选卡读取(现役读链 ``read_encounter_options`` 产物);
     - ``screen``:稳定帧引用(刷新链的剩余次数读/验效补读同帧同源)——
@@ -157,7 +157,7 @@ class CwScreenEncounter(CwScreenOpBase):
                             pick: EncounterPick) -> None:
         """刷新点击发射时点(触发时点轴·发射型;§6.5-4 随点击置位不等
         验效)。防重入旗标 = 执行侧载体留守(非登记件);登记件写端经
-        on_outcome 注册表触发——本方法 = 两路径(旧 handle / 六段循环)
+        on_outcome 注册表触发——本方法 = 两路径(旧 handle / 五段循环)
         共用分派面,触发唯一性先例 = CwScreenPrep._act_execute。"""
         exec_state_of(session)._encounter_refresh_used = True
         self.fire_emit_hooks(pick, evidence='refresh_click')
@@ -233,7 +233,7 @@ class CwScreenEncounter(CwScreenOpBase):
     @operation_node(name='遭遇节点', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run):
-        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 六段生命
+        # cw_game_ports 两端口完整在场(= 测试 harness 显式装配)→ 五段生命
         # 周期新路径;缺省 None = 生产直连旧路径(下方原序列,试点等价门
         # 通过前生产行为零变化)。判据用装配完整性(安装协议两端口成对),
         # 不新建开关机制(开关生命周期纪律,strategy-work §3)。
@@ -321,7 +321,7 @@ class CwScreenEncounter(CwScreenOpBase):
     def _act_execute(self, pick: EncounterPick | None,
                      options: list[EncounterOption], idx: int
                      ) -> OperationRoundResult:
-        """动作执行分派面(六段之 act 端口分派;两路径共用,落地登记注册
+        """动作执行分派面(五段之 act 端口分派;两路径共用,落地登记注册
         表的**唯一触发点**,先例 = CwScreenPrep._act_execute)。注入动作
         适配器在场 → 按回执形态分流(原生轮次结果 = 验关锚 wait 语义零
         重构;(progressed, detail) 协议形状 = 注入替位桩,按现役确认链
@@ -352,7 +352,7 @@ class CwScreenEncounter(CwScreenOpBase):
         return rs
 
     def _confirm_default(self, idx: int) -> OperationRoundResult:
-        """现役确认链缺省执行体(实机适配器②的封口内容;旧路径与六段循环
+        """现役确认链缺省执行体(实机适配器②的封口内容;旧路径与五段循环
         同调,自身**不触发**注册表——触发统一归 :meth:`_act_execute` 分派
         面,防双计)。点卡选中(screen_info 坐标缺失走历史实测兜底常量)→
         确认验关(遭遇节点标题消失 = overlay 关;原「点了就 success」不验
@@ -370,7 +370,7 @@ class CwScreenEncounter(CwScreenOpBase):
         return confirm_and_verify(self, confirm_point=select_btn,
                                   entry_keyword='遭遇节点', lcs_percent=0.8, tag='cw-encounter')
 
-    # ---- 六段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
+    # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
 
     def lifecycle_observe(self
                           ) -> tuple[EncounterObservation,
@@ -391,11 +391,13 @@ class CwScreenEncounter(CwScreenOpBase):
 
     def lifecycle_decision_cycle(self, payload: EncounterObservation
                                  ) -> OperationRoundResult:
-        """段3-6 单动作决策循环(架构设计 §5.1 后四段):decide
+        """段3-5 单动作决策循环(架构设计 §5.1 后三段):decide
         (strategy_input_state → decide_encounter)→ 分支刷新链(dd-004,
-        发射点 = ``_emit_refresh_click``)→ act(分派面:点卡+确认验关)
-        → on_outcome(注册表回执点)→ 验证(confirm_and_verify 验关锚,
-        出口验真通过 = chosen 写端挂点)。旧 handle 决策/刷新段逐位转录
+        发射点 = ``_emit_refresh_click``)→ act(分派面:点卡+确认验关;
+        验关锚 = 动作适配器的落地回执载体 §6.2,落地回执通过 = chosen
+        写端挂点,选择 handler 单次逻辑写入豁免 §2.2)→ on_outcome(注册
+        表回执点)。生命周期无验证段(用户裁定 2026-09-10:动作未生效归
+        动作层修可靠性,禁验证残段)。旧 handle 决策/刷新段逐位转录
         (试点步骤 2,零行为变更;chosen 豁免留守)。"""
         self._lifecycle_mark('decide')
         options = payload.options
@@ -451,16 +453,17 @@ class CwScreenEncounter(CwScreenOpBase):
                             [{'difficulty': o.difficulty, 'rewards': o.rewards}
                              for o in options],
                             idx, reason)
-        # —— 段4 act(分派面)+ 段5 on_outcome(注册表回执点)+ 段6 验证
+        # —— 段4 act(分派面;验关锚 = 适配器落地回执载体,§6.2)+
+        #      段5 on_outcome(注册表回执点)
         self._lifecycle_mark('act')
         rs = self._act_execute(pick, options, idx)
         self._lifecycle_mark('on_outcome')
-        # —— 段6 验证:出口验真通过 = 选卡落地 → chosen 写端
-        #(选择 handler 单次逻辑写入豁免,§2.2;不入注册表收编面)。
-        self._lifecycle_mark('verify')
+        # —— 落地回执通过分支:rs.is_success(确认链落地回执,§6.5-1
+        #      落地回执门同口径)= 本轮选卡落地 → chosen 写端(选择
+        #      handler 单次逻辑写入豁免,§2.2;不入注册表收编面)。
         if rs.is_success:
-            # 出口验真通过(遭遇节点 关)= 本轮选卡落地 → 写记录面(值取
-            # 本轮现读候选与决策,与落地点击同帧同源)。
+            # 出口落地回执通过 = 选卡落地 → 写记录面(值取本轮现读候选
+            # 与决策,与落地点击同帧同源)。
             self._record_chosen(match.session if match is not None else None,
                                 options, idx)
         return rs
