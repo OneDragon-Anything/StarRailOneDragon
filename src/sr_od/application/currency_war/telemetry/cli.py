@@ -9,6 +9,7 @@ from sr_od.application.currency_war.kernel.cw_observe import (
     DEFAULT_REPLAY_DIR,
 )
 from sr_od.application.currency_war.sim.ledger_hooks import run_checks_on_replay
+from sr_od.application.currency_war.telemetry import journal_query as _jq
 from sr_od.application.currency_war.telemetry import match_archive as _arch
 from sr_od.application.currency_war.telemetry.query import (
     _list_runs,
@@ -28,6 +29,13 @@ from sr_od.application.currency_war.telemetry.query import (
     query_tiers,
     read_jsonl,
 )
+
+#: 新账专属视图(--source journal;旧 12 流无同名视图)
+_JOURNAL_ONLY_VIEWS: frozenset[str] = frozenset({'gold', 'events', 'snapshot'})
+
+#: 新账视图族全集(--source journal 的合法 --view)
+_JOURNAL_VIEWS: frozenset[str] = frozenset(
+    {'rounds', 'gold', 'hp', 'events', 'snapshot', 'all'})
 
 
 def _len_rounds(archive: dict | None) -> int:
@@ -66,6 +74,69 @@ def _match_view_lines(slice_dir: Path, segments: list[str],
     return out
 
 
+def _print_journal_views(rows: list[dict], run_id: str, view: str) -> None:
+    """新账视图族输出(view ∈ _JOURNAL_VIEWS;all = 全族)。"""
+    views = {'rounds': _jq.view_rounds, 'gold': _jq.view_gold,
+             'hp': _jq.view_hp, 'events': _jq.view_events,
+             'snapshot': _jq.view_snapshot}
+    for fn in (views.values() if view == 'all' else [views[view]]):
+        for ln in fn(rows, run_id):
+            print(ln)
+
+
+def _journal_source(args, replay_dir: Path) -> None:
+    """``--source journal`` 读面(query 专属;设计 §3.6.2 判读 CLI 行:新视图族
+    从账本按行读 + 行间差分,零重放;与旧流读面并存至 M5)。"""
+    rows = _jq.read_journal(replay_dir)
+    if not rows:
+        print(f'(无统一 state 新账: {_jq.journal_path(replay_dir)} 不存在或为空'
+              '——新账由影子开关 config.state_journal 接通(缺省关),'
+              '开启后与旧流并行写)')
+        return
+    if args.recent:
+        print(f"—— 最近 {args.recent} 局(新账 {_jq.JOURNAL_REL})——")
+        for rid in _jq.journal_runs(rows)[-args.recent:]:
+            seg = _jq.rows_of(rows, rid)
+            last = seg[-1]
+            vals = _jq.state_values(last)
+            node = vals.get('node')
+            node_s = (f"P{node.get('plane')}r{node.get('round_num')}"
+                      if isinstance(node, dict) else '?')
+            print(f"{rid}: 行={len(seg)} 节点={node_s}"
+                  f" | 末ts={_jq.row_ts(last)}"
+                  f" hp={vals.get('hp', '?')} gold={vals.get('gold', '?')}")
+        return
+    if args.match:
+        # --match + 新账:档案切片已含 state/journal.jsonl(v12 装配器),
+        # 物化后读同一相对路径(与 --run 同一读面实现,单一源)
+        archive = _arch.load_archive(replay_dir, args.match)
+        if archive is None:
+            print(f'(档案不存在: {args.match}——先 assemble --game {args.match})')
+            return
+        import atexit
+        import shutil
+        import tempfile
+        tmp_root = Path(tempfile.mkdtemp(prefix='cw_match_j_'))
+        atexit.register(shutil.rmtree, tmp_root, ignore_errors=True)
+        _arch.materialize_slice(archive, tmp_root)
+        jrows = _jq.read_journal(tmp_root)
+        segs = [s.get('run_id') for s in (archive.get('segments') or [])]
+        print(f"=== {archive.get('game_id')} (新账视图) ==="
+              f" [{' + '.join(segs)}] 行={len(jrows)}")
+        if not jrows:
+            print('(档案切片无新账行——装配时点新账不在产物目录(影子未开);'
+                  '需补切片可 assemble --game 重装配)')
+            return
+        _print_journal_views(jrows, '', args.view)
+        return
+    rid = args.run or (_jq.journal_runs(rows) or [''])[-1]
+    if not rid:
+        print('(新账行缺 run_id——无 run 归属行可读)')
+        return
+    print(f"=== {rid} (新账 {_jq.JOURNAL_REL}) ===")
+    _print_journal_views(rows, rid, args.view)
+
+
 def _cli_main() -> None:
     import argparse
     import sys
@@ -85,7 +156,13 @@ def _cli_main() -> None:
     ap.add_argument('--view', default='rounds',
                     choices=['rounds', 'supply', 'anomalies', 'tiers', 'planexec',
                              'hp', 'economy', 'goldflow', 'exogenous', 'execevents',
-                             'invest', 'conflicts', 'spend', 'all'])
+                             'invest', 'conflicts', 'spend', 'all',
+                             'gold', 'events', 'snapshot'])
+    ap.add_argument('--source', default='old', choices=['old', 'journal'],
+                    help='query 读面选择:old=旧 12 流视图(缺省,现状不变);'
+                         'journal=统一 state 新账视图族(state/journal.jsonl'
+                         ' 行行自足,宽容读取;并存期并存面,设计 §3.6.2 判读'
+                         ' CLI 行——旧视图只读保留至 M5)')
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR))
     ap.add_argument('--sim-batch', default='', metavar='BATCH',
                     help='查 sim 批次账本:BATCH=批次目录名(缺省=最新;'
@@ -94,6 +171,16 @@ def _cli_main() -> None:
                          '账本深度/核心维度);planexec 不适用(sim 无'
                          '执行层分离);ts=轮序号(生产 ISO 串)')
     args = ap.parse_args()
+    # 读面配对校验(显式拒绝优于静默回落:静默 = 判读人以为在读新账实际在读旧流)
+    if args.cmd == 'query' and args.source == 'journal':
+        if args.view not in _JOURNAL_VIEWS:
+            ap.error(f'--source journal 不支持视图 {args.view}'
+                     f'(新账族 = {sorted(_JOURNAL_VIEWS)})')
+    elif args.view in _JOURNAL_ONLY_VIEWS:
+        ap.error(f'--view {args.view} 属新账视图族,须搭配 --source journal')
+    if args.source == 'journal' and args.cmd != 'query':
+        ap.error('--source journal 只辖 query 读面(checks/assemble 单路径;'
+                 '装配切片面已自动含新账)')
     if args.sim_batch:
         # ⑤:sim 批次便捷入口——批次目录结构与生产 replay 同构
         # ({decisions,outcomes,shop_snapshots}.jsonl),视图零分叉
@@ -110,6 +197,10 @@ def _cli_main() -> None:
         print(f"[sim 批次] {replay_dir.name}")
     else:
         replay_dir = Path(args.replay_dir)
+    if args.source == 'journal':
+        # 新账读面(query 专属;checks/assemble 已在配对校验拦下)
+        _journal_source(args, replay_dir)
+        return
     runs = _list_runs(replay_dir)
     if args.cmd == 'checks':
         print('[checks] 生产遥测栈适配检查(coldstart)')

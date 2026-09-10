@@ -133,7 +133,13 @@ log = log_utils.log
 #: g_20260909_012536,4 次出战尝试未成战后无进展守卫停机,rounds_survived=1
 #: ——两段本就零结算,非遥测丢失)。本字段在场 = 本段零结算,判读直接可见。
 #: 旧档案经 load_archive 版本检查自动重装配补齐。加法字段。
-SCHEMA_VERSION: int = 11
+#: v12(统一 state 消费方迁移批 R3-1,设计 §3.6.2 档案行「装配器 v12+:切片
+#: = 两文件」):+切片 ``state/journal.jsonl``(统一 state 新账,行行自足
+#: 快照行;写端 = kernel/cw_state_journal,影子开关缺省关——影子期新账在
+#: 产物目录才入切片,缺席 = 空切片,判读可区分「未开」与「无行」)。加法
+#: 切片,旧档案经 load_archive 版本检查自动重装配补齐;设计清单的第二文件
+#: (策略侧决策行)候其落地批再加切片,防空引用。
+SCHEMA_VERSION: int = 12
 
 #: 档案目录名(telemetry/matches;生产布局见 matches_dir)
 MATCHES_DIRNAME: str = 'matches'
@@ -143,11 +149,13 @@ _WATERMARK_NAME: str = '.watermark.json'
 
 # 结算屏真值链可信门槛 = HP_CONF_TRUSTED(query.py,单一源;语义与边界见其注释)
 
-#: 入切片的 jsonl 流(按 run_id 过滤;obs_conflicts 为跨局 journal 不入)
+#: 入切片的 jsonl 流(按 run_id 过滤;obs_conflicts 为跨局 journal 不入)。
+#: v12 起含统一 state 新账(R3-1 消费方迁移批):行带 run_id,同一过滤口径;
+#: 文件缺席(影子开关缺省关)= 空切片,读侧判「未开」不判「丢数据」。
 _SLICE_FILES: tuple[str, ...] = (
     'decisions.jsonl', 'outcomes.jsonl', 'shop_snapshots.jsonl',
     'exogenous.jsonl', 'invest_cards.jsonl', 'spend_ledger.jsonl',
-    'op_journal.jsonl',
+    'op_journal.jsonl', 'state/journal.jsonl',
 )
 
 #: 行为观测计数流(cw4_counters 局终快照;跨局 journal 无 run_id——
@@ -1571,11 +1579,14 @@ def materialize_slice(archive: dict[str, Any], tmp_root: Path) -> Path:
     """档案切片 → 临时 replay 目录(供 ``--match`` 复用 query_* 视图)。
 
     写切片文件后原目录可直接传给 query 视图函数——与 ``--run`` 走同一套
-    实现,输出保证一致(单一源)。
+    实现,输出保证一致(单一源)。相对路径切片(v12 ``state/journal.jsonl``)
+    按同名相对路径落盘,新账读面(telemetry.journal_query)读同一相对位置。
     """
     tmp_root.mkdir(parents=True, exist_ok=True)
     for name, rows in (archive.get('slices') or {}).items():
-        with (tmp_root / name).open('w', encoding='utf-8') as f:
+        out_p = tmp_root / name
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        with out_p.open('w', encoding='utf-8') as f:
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False,
                                    separators=(',', ':')) + '\n')
