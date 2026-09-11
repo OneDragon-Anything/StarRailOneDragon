@@ -2612,9 +2612,9 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
             # 灰态判别走逻辑面金价对比(不可用态判别两案比选定谳:暗钮模板
             # =表现层拟合,单帧定阈无鲁棒性证据且 UI 改版即碎,冻结后备;
             # 金价对比 =语义层直编机制规则「置灰⟺金<标价」,price 灰态可读
-            # 经归档灰态帧真 OCR 实证)。gold 复用本函数已读的 state.gold
-            # (同帧零新增读);失读保真传 None(禁 0 假值)→ affordable=None
-            # 按失读处理,不猜可负担。
+            # 经归档灰态帧真 OCR 实证)。gold 复用调用方 read_game_state
+            # 本帧已读的 state.gold(同帧零新增读);失读保真传 None(禁 0
+            # 假值)→ affordable=None 按失读处理,不猜可负担。
             _btn = read_shop_refresh_button(
                 ctx, screen,
                 gold=(int(state.gold) if state.gold_readable else None))
