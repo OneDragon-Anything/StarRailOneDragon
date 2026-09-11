@@ -538,13 +538,21 @@ def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
     - 补给轮 ``income.streak`` 必须为 0(实发口径未钉死,仍按 ADR-0351
       零发放建模——补给多发残差 = base+利息照发,见 ``supply_rows``/
       ``supply_issued_extra`` 披露面挂账,待直读样本转正后修正);
-    - 奖励轮 streak 分量照发 ``streak_gold(进轮连胜)``(含 counter0=1;
-      ADR-0351「奖励轮不发金」半句被全量数据推翻),base 须与
-      REWARD_BASE_GOLD_BY_ROUND 成对(cw_sim 收入段已成对,本检查
-      锁 streak 侧);
+    - 奖励轮 streak 分量照发 ``streak_gold(进轮连胜) × win_reward_mult``
+      (含 counter0=1;ADR-0351「奖励轮不发金」半句被全量数据推翻;
+      倍率施于连胜分量含奖励轮 = fields.md §4.1「收入修饰」,T-64 接线),
+      base 须与 REWARD_BASE_GOLD_BY_ROUND 成对(cw_sim 收入段已成对,
+      本检查锁 streak 侧);
     - 战斗轮 streak==0 且上一轮为败掉的战斗类节点 → 须发
-      ``LOSS_GOLD_BY_NODE[上一轮节点]``(败轮金路径精确重算,
-      ``loss_gold_rows`` 披露命中数);其余发 ``streak_gold(进轮连胜)``。
+      ``LOSS_GOLD_BY_NODE[上一轮节点]``(败轮金路径精确重算,不乘
+      win_reward_mult;``loss_gold_rows`` 披露命中数);其余发
+      ``streak_gold(进轮连胜) × win_reward_mult``。
+
+    ``win_reward_mult`` 行键消费:账本行 ``sim.win_reward_mult`` = 写账
+    当轮的有效倍率(T-64 起 engine_p1 每行披露;聚合单一源 =
+    aggregate_economy 取最大,ADR-0623)。**缺键 = 接线前旧批次**,按
+    1.0 折算(与旧口径逐位等价——重放兼容,非缺键守卫辖域;node/
+    income 缺键仍按下方守卫计违规)。
 
     任一行 ``income.streak != 精确重算`` 即违规(双向:少发/多发都报)。
 
@@ -586,21 +594,27 @@ def check_streak_combat_only_income(ledgers: list[list[dict]]) -> dict:
             ledger_sum += inc_streak
             rn = row.get('round_num') or 0
             enter_streak = enter_streaks.get(rn, 0)
+            # 当轮有效倍率(None 判别非 or 折叠,禁真值折叠 ADR-0598
+            # 同族纪律;缺键 = 接线前旧批次 → 1.0 与旧口径逐位等价)
+            _row_mult = sim.get('win_reward_mult')
+            mult = 1.0 if _row_mult is None else float(_row_mult)
             # 精确重算(镜像 cw_sim 收入段分支;败态判据 delta<=0 与
-            # sim 结算段 win=delta>0 一致)
+            # sim 结算段 win=delta>0 一致;倍率公式 = kernel
+            # _streak_component 同式 int(round(表值×倍率)),独立重写
+            # 保镜像双记语义,禁改调 kernel 同函数自证)
             if node == 'supply':
                 expect = 0
                 supply_rows += 1
                 supply_issued_extra += ((inc.get('base') or 0)
                                         + (inc.get('interest') or 0))
             elif node == 'reward':
-                expect = streak_gold(enter_streak)
+                expect = int(round(streak_gold(enter_streak) * mult))
             elif (enter_streak == 0 and _prev is not None
                     and _prev[1] in LOSS_GOLD_BY_NODE and _prev[2] <= 0):
                 expect = LOSS_GOLD_BY_NODE[_prev[1]]
                 loss_gold_rows += 1
             else:
-                expect = streak_gold(enter_streak)
+                expect = int(round(streak_gold(enter_streak) * mult))
             if inc_streak != expect:
                 violations += 1
             recompute_sum += expect

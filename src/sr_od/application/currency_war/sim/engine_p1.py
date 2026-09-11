@@ -443,7 +443,7 @@ def _residual_fill_deploy(
     - 零支出零破息约束:上场动作仅 bench→空槽(pop-append),不买、不卖、
       不刷新、不 swap——金账恒等式(gold_before+inc−buys−levelup−refresh
       +income)不含本动作,任何 Δp>0 受益在 C=I=0 下严格非负(P-F1,
-      docs/develop/currency_war/proofs/p24-residual-fill-dominance.md)。
+      docs/develop/sr_od/application/currency_war/proofs/p24-residual-fill-dominance.md)。
     - 显式保留集投影已随 v3_hoard 通道退役删除(A6 裁决;dd-038
       统一迁移批 / commit b94e9cfb,2026-09-04 用户裁定清理)——
       写端已亡,保留集恒空;「与在场(deployed)同名」的素材副本
@@ -823,14 +823,17 @@ def sim_round_income(plane: int, round_num: int, node: str, gold: int,
       奖励轮查表同款;P2r1/P3r1 单键误返 3 hazard 随单一源结构性消灭);
       息帽归一 interest_cap_resolved 链(替换本模块裸 INTEREST_CAP=5
       第二值源,缺省帽派生自 cw_plane_table.GOLD_CAP_INTEREST//10)。
-    - **挂账不校**(差异清单见 T-21 交付报告):win_reward_mult 仅作
-      单一源验证/接线缝参数,引擎现势传缺省 1.0——伟大征服 ×3 未入
-      sim 收入路径,归 BoardState 设计「收入修饰」行「sim 修正随之」
-      桶;败补通道维持 ADR-0439 口径(combat 轮进轮连胜 0 且上一战斗
-      轮败 → 连胜槽替换 LOSS_GOLD_BY_NODE[prev_node],镜像
-      checks.runtime 精确重算锁),不经 kernel lost_node 败补支——
-      该支 = 玩家裁定记录模型,与类型表的竞争口径判别数据不足
-      (ADR-0623 决策3 待定谳),sim 常量修正随定谳结果。
+    - **已接线(T-64,BoardState「sim 修正随之」桶闭合)**:win_reward_mult
+      施于连胜分量含奖励轮(fields.md §4.1「收入修饰」),值 = 唯一调用点
+      按持卡聚合 ``aggregate_economy`` 传入(取最大不叠乘,ADR-0623;
+      缺省局恒 1.0 逐位零漂移),账本行 sim.win_reward_mult 披露当轮
+      有效倍率(checks.runtime 精确重算锁镜像消费位;缺键 = 接线前
+      旧批次,镜像按 1.0 折算)。
+    - **挂账不校**:败补通道维持 ADR-0439 口径(combat 轮进轮连胜 0
+      且上一战斗轮败 → 连胜槽替换 LOSS_GOLD_BY_NODE[prev_node],不乘
+      win_reward_mult;镜像 checks.runtime 精确重算锁),不经 kernel
+      lost_node 败补支——该支 = 玩家裁定记录模型,与类型表的竞争口径
+      判别数据不足(ADR-0623 决策3 待定谳),sim 常量修正随定谳结果。
     """
     inc = round_start_income(plane, round_num, node, gold, streak,
                              win_reward_mult=win_reward_mult,
@@ -1179,13 +1182,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 形状对默认路径不变)。
             _agg_inv = (aggregate_economy(st.active_strategies)
                         if st.active_strategies else None)
+            # T-64:win_reward_mult 接线(fields.md §4.1 施于连胜分量
+            # 含奖励轮;聚合取最大不叠乘 = ADR-0623)——无持卡恒 1.0
+            # (缺省局零漂移);值随账本行披露供 checks.runtime 镜像消费
+            _win_mult = (_agg_inv.win_reward_mult
+                         if _agg_inv is not None else 1.0)
             _node = nodes[rn - 1]
             # 轮首收入三支值分量 = 注册表单一源消费口(sim_round_income;
             # T-21 校准:base 平面感知键 + 息帽 interest_cap_resolved 归一;
-            # 败轮金 ADR-0439 路径、奖励轮照发口径与挂账通道见该 docstring)
+            # 败轮金 ADR-0439 路径与 T-64 倍率接线见该 docstring)
             _inc = sim_round_income(
                 st.plane, rn, _node, _gold_before, streak,
                 prev_node=_prev_node, prev_combat_lost=_prev_combat_lost,
+                win_reward_mult=_win_mult,
                 interest_flat=(_agg_inv.interest_flat_per_node
                                if _agg_inv is not None else 0),
                 interest_cap_override=(_agg_inv.interest_cap_override
@@ -1584,7 +1593,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 sess.shop_frame_class = 'full'
                 # BoardState 记录模型合成口(迁移批次一;设计 §2.1/§3.2.5,
                 # 字段级规格正本 =
-                # docs/develop/currency_war/game_state/fields.md):sim 真值帧同步记观察
+                # docs/develop/sr_od/application/currency_war/game_state/fields.md):sim 真值帧同步记观察
                 # (evidence 恒 sim:synthesized),bench 槽位保序 = 记录模型
                 # 按实机真值箱占席(sim「无箱实体」只是内部口径约定不进
                 # 记录)。纯记录零决策面:sim 账本/行为逐位不变。best-effort
@@ -3073,6 +3082,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     'p2_win_p': _p2_wp,
                     'gold_before': _gold_before,
                     'income': _inc, 'spend': _spend,
+                    # 当轮有效连胜倍率(T-64 接线披露位;缺省局恒 1.0)。
+                    # 消费 = checks.runtime 精确重算锁镜像;缺键 = 接线前
+                    # 旧批次,镜像按 1.0 折算(重放兼容)
+                    'win_reward_mult': _win_mult,
                     'depth': _depth,
                     # core_count 语义=core_routed(core_count_for 按
                     # target 路由;known-line-no-core=None)。**此前的
