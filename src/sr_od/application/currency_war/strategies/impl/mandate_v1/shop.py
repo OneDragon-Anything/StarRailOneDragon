@@ -334,6 +334,34 @@ def _r2_card_reserve(k_members: tuple[str, ...],
                                         state, level=level)
 
 
+def _merge_pair_names(bench: list[BenchChar],
+                      deployed: list[BenchChar]) -> set[str]:
+    """合成完备购形态对名集(M2b 循环与 P92 ④通道装配两处共吃的单一
+    源,禁第二实现):全局面(bench∪deployed)同名副本恰 2 张 ∧ 均
+    1★ 的角色名。
+
+    机器口径申报(消费纪律):本谓词 = M2b 机器实现口径,非机制全集
+    ——机制上「同名 1★ 凑满 3 即合成」(merge_mechanics.md §2 主例:
+    备战 1★×2 + 场上 2★×1 → 买第三张 1★ 触发合成),机器只实现「恰
+    2 张全 1★」单跳形态;「1★×2 与 ≥2★ 同名并存」的买三张通道机器
+    未实现(两真实合成通道残余,申报候立项)。未来 M2b 若补该形态,
+    本谓词须同步收扩——否则 P92 门将从「对齐机器」翻成「误杀真
+    通道」。
+
+    归一化/计数键逐字符同 ``decide_shop_action`` 内 ``_cnt``(同名同
+    星副本计数):星级 ``(c.star or 1)``(None 视同 1★)、键
+    ``(c.char_id or '')``、计数宇宙 bench∪deployed。资格维不在本
+    谓词辖域(调用方各自过滤:M2b 循环天然辖于 buy_members,P92 装配
+    显式 ∩ buy_members——资格维对齐 M2b 实现,T-295 对抗审问题 6
+    转正,reviews/T-295-方案对抗审.md)。
+    """
+    copies: dict[str, list[int]] = {}
+    for c in list(bench) + list(deployed):
+        copies.setdefault(c.char_id or '', []).append(c.star or 1)
+    return {n for n, ss in copies.items()
+            if len(ss) == 2 and all(s == 1 for s in ss)}
+
+
 def _frame_search_windows(session: StrategySession, state: GameState,
                           registry, counters: dict) -> tuple[frozenset[int],
                                                             frozenset[int]]:
@@ -1504,9 +1532,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
     #(同名同星 2→3),机制上买入后全局面同名同星 3→1 净席 −1,无溢出
     # 散牌 ⇒ 免 bench_free 门(与机制对齐,非行为放宽;理由键不变;
     # 机制出处=merge_mechanics.md §2.5 满栏例外+§2.5 上限「绝不多买」)。
+    # 形态维单一源(与 P92 ④通道装配共吃 _merge_pair_names;对
+    # buy_members 域内名,本守卫与旧「恰 2 张全 1★」三行过滤逐条等价,
+    # 机制锚同上 §3.6 满栏例外注)。
+    _pairs = _merge_pair_names(bench, deployed)
     for m in buy_members:
-        copies = [c for c in bench + deployed if (c.char_id or '') == m]
-        if len(copies) != 2 or any((c.star or 1) >= 2 for c in copies):
+        if m not in _pairs:
             continue
         all_cands = _shop_candidates(m, 'm2_merge_completion')   # L2 统一过滤位
         shop_cands = [c for c in all_cands if (c.star or 1) == 1]
@@ -2692,10 +2723,17 @@ def decide_shop_action(state: GameState, session: StrategySession,
                          if CHARACTERS.get(m) is not None
                          and CHARACTERS[m].cost
                          and _cnt(m, 1) == 1 and _cnt(m, 2) == 0})
+                    # ④候选 = 形态对名集 ∩ buy_members(资格维对齐 M2b
+                    # 循环同函数上方同一变量=同一单源;形态维单一源 =
+                    # _merge_pair_names)。T-295 对抗审问题 6 转正
+                    #(reviews/T-295-方案对抗审.md):旧装配遍历
+                    # bench∪deployed 全体不滤买入资格,∉采购集的 1★×2
+                    # 对被算「④可达」→ 全通道死帧族假可达放行白刷。
+                    # CHARACTERS 防御保留(识别面残名)。
                     _p92_pairs = sorted(
                         {int(CHARACTERS[n].cost)
-                         for n in set(bench_names) | set(deployed_names)
-                         if n and _cnt(n, 1) == 2 and _cnt(n, 2) == 0
+                         for n in _merge_pair_names(bench, deployed)
+                         if n in set(buy_members)
                          and CHARACTERS.get(n) is not None
                          and CHARACTERS[n].cost})
                     _p92_ok = crit_refresh.all_channel_buy_exists(

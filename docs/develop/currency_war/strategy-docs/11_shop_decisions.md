@@ -79,7 +79,7 @@ o_chaseable_member);此帧升级只剩人口臂(§2 arm1)可触发。
 
 ### 3.1 存在性门与方向通道(T-263;ADR-0635;math_proofs P90-P94)
 
-- **P92 全通道可实现买入集存在性门**(`criteria/refresh.all_channel_buy_exists` 单一源;p40 R0-1 席满维在册语义落地,「在册结构的严格化非新门」口径):R1 链 r2_budget 通过后、RefreshShop 发射前,判定四买入通道(dominance 1★ 净 0 / 义务 M2〔缺员+囤腿〕/ EV 买面 / 合成完备购)的帧级可达并集——可达性 = 可刷出(REFRESH_PROB>0)× 可负担 × 席位,**不看当前店面内容**(刷新收益面 = 重采样后店产);全死 ⇒ 拦刷(净差 = −(c_eff+L) < 0 严格),分键 `p92_no_buy_refresh_blocked`(+必花域内 `must_spend_r1_no_buy_blocked`)。合成完备购满栏不阻断(merge §2.5);腾席可达代理 = P56 投影 liquid_refund>0(偏宽 = 门偏不拦 = 保守端申报)。P36-a 让位:危机不变式先于本门(01 §3.4 既有序)。
+- **P92 全通道可实现买入集存在性门**(`criteria/refresh.all_channel_buy_exists` 单一源;p40 R0-1 席满维在册语义落地,「在册结构的严格化非新门」口径):R1 链 r2_budget 通过后、RefreshShop 发射前,判定四买入通道(dominance 1★ 净 0 / 义务 M2〔缺员+囤腿〕/ EV 买面 / 合成完备购)的帧级可达并集——可达性 = 可刷出(REFRESH_PROB>0)× 可负担 × 席位,**不看当前店面内容**(刷新收益面 = 重采样后店产);全死 ⇒ 拦刷(净差 = −(c_eff+L) < 0 严格),分键 `p92_no_buy_refresh_blocked`(+必花域内 `must_spend_r1_no_buy_blocked`)。合成完备购满栏不阻断(merge §2.5);④通道候选装配 = 形态对名集 ∩ buy_members(资格∧形态两维与 M2b 合成完备购循环同函数同源,ADR-0648);腾席可达代理 = P56 投影 liquid_refund>0(偏宽 = 门偏不拦 = 保守端申报)。P36-a 让位:危机不变式先于本门(01 §3.4 既有序)。
 - **P91 定向刷新方向通道(两通道;多目标 E[refreshes] 排序键禁设 = 出辖调和注)**:①压库同轴——合格集费带单一源 = `qualified_member_costs`(非 2★ ∧ 该级可刷出成员 cost;`r2_card_reserve` 同源消费),M6 候选带非空帧稳定排序「带内先于带外」(P91(a):同费非目标压库使命中率单调不减),分键 `p91_active_band_frame` / `p91_m6_same_axis_hit` / `p91_m6_off_axis_hit`;②刷-升——§3 形式二 L* 选择即 P5/P39 在册消费,分键 `p91_refresh_up_switch`。排序语义 = R0 合格集等权(目标间排序键待 λ 纯金流重述或支配性消参过审)。
 - **P90 前窗(P1 首战节点前窗,节点表查表)**:前窗∧四体系零成型帧(`zero_form_frame` per-体系谓词),扫描买入臂候选稳定排序推进件前移(P20 方向级,非金量纲不构成支出放行);P94 放行层 fail-closed 恒拒(grant 键结构性恒 0,u_x 标定债);前窗买入分键(跨档笔数/息损断言/3 费越域观测)见 shop.py 分键登记段。sim 侧 plane_node_table 已随批对齐生产写点语义。
 
