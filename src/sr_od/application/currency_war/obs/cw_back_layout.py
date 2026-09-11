@@ -3,12 +3,18 @@
 
 机制(用户口述权威,docs/game/currency_war/research/board_structure.md):
 - **等级只定上场人数 cap,不定格子数**;正常恒 前台 4 格 + 后台 6 格;
-- **后台格数 = 6 + (cap − level)**(口述公式):钻石/召唤物使 cap 超过 level,
-  差值即后台扩展量——diff 0 → 6 格基线;diff ≥2 → 8 格(393-1529 带,狸猫局
-  交互实拍,screen_info ``后排8槽-1..8``);diff==1(钻石+1)→ 7 格**已建档**
-  (2026-08-26 佩佩局交互实锤+覆盖拖测;几何=**整排居中重排** 中心
-  534..1386,screen_info ``后排7槽-1..7``;居中勘误见 :data:`_LAYOUT_PREFIX`
-  注与 ADR-0390)。
+- **后台格数 = 6 + (cap − level)**(口述公式),**值域 {6..9},上限 9**
+  (用户口述 2026-09-11 重申:平常 6,宝钻/召唤物最多 9):钻石/召唤物使
+  cap 超过 level,差值即后台扩展量——diff 0 → 6 格基线;diff==1(钻石+1)
+  → 7 格**已建档**(2026-08-26 佩佩局交互实锤+覆盖拖测;几何=**整排居中
+  重排** 中心 534..1386,screen_info ``后排7槽-1..7``;居中勘误见
+  :data:`_LAYOUT_PREFIX` 注与 ADR-0390);diff 2 → 8 格(393-1529 带,
+  狸猫局交互实拍,screen_info ``后排8槽-1..8``);diff≥3 → 裁决值 9,
+  坐标 9 档未建档由 **8 格超集**运行(见下条 4 与 :data:`_CAP_DIFF_MAX` 注)。
+- **back_max 容器接线(语义裁决·闸门二)**:裁决值经
+  :func:`_observe_back_layout_to_container` 随 ``resolve_back_slots``
+  observe 进 ``BoardState.back_layout``(决策视图 back_max 供数自此取
+  容器动态真值;superset 标记判据见写端 docstring)。
 
 **双通道对账**(口述指令 2026-08-26 追加,两通道都做):
 
@@ -54,14 +60,18 @@ cap 差驱动,diff==1,与 level 无关;ADR-0385 已落地,本复核补实拍证�
 ≤ 40 容差——W285 记的「~40px 偏差」对象是**当时运行选档(8 档右心
 1458)**,属选档瞬时不一致(自检按设计留证),非 7 档坐标错。
 
-**后台 9 格档(未建档,记 ADR-0420 待办)**:e4972b43(cap13 lv8)实拍
-后台 **9 格**,几何与居中重排族自洽(暗框/占位 std 剖面峰落 392..1528、
-pitch 142)。**不登记**:①选档无通路——公式封顶 8、CV 端点探针在 9 格
+**后台 9 格档(用户确认档位,坐标建档待办,提级——原「极端待办」)**:
+用户口述真值(2026-09-07/09-11)确认 9 格可达(宝钻/召唤物扩展封顶 9),
+e4972b43(cap13 lv8)实拍后台 **9 格**,几何与居中重排族自洽(暗框/占位
+std 剖面峰落 392..1528、pitch 142)。**坐标不登记**:①CV 端点探针在 9 格
 居中重排下饱和于 8(端探针 464/1458 仍落在 8/9 格共有的槽带内,单值
 std 分不开 8/9,且外缘探针受占用态干扰,单帧不可标);②坐标只有单帧
 静态剖面、无交互实锤(布局/坐标建档唯一终审=交互实锤)——登记即重蹈
-ADR-0281 幻影档覆辙。闭合路径:实机召唤物局经 MCP 交互(拖角色逐位)
-实锤 392..1528 + CV 外缘判别另标后,upsert 后排9槽-1..9 + 登记档位。
+ADR-0281 幻影档覆辙。建档前 9 格局按 **8 格超集**运行(裁决值 9 与坐标
+档分离;容器侧 evidence ``superset`` 标记承载近似语义)。闭合路径:实机
+召唤物局经 MCP 交互(拖角色逐位)实锤 392..1528 + CV 外缘判别另标后,
+upsert 后排9槽-1..9 + 登记档位(:data:`_LAYOUT_PREFIX` 增 9 键即可,
+公式/裁决链零改)。
 
 单一真相源 = screen_info(6 槽 = ``后排-1..6``;7 槽 = ``后排7槽-1..7``;
 8 槽 = ``后排8槽-1..8``)。
@@ -99,12 +109,17 @@ _LAYOUT_PREFIX: dict[int, str] = {
 #: 基线后台格数(口述:正常恒 前台 4 + 后台 6)
 _BACK_SLOTS_BASE: int = 6
 
-#: cap 差域上界(``cw_observation.DEPLOY_CAP_MAX_DIFF`` 同源)。W292 修订
-#: (ADR-0420):diff>2 已有实拍实证(e4972b43:lv8 cap13 diff=5,后台真值
-#: 9 格),cap 采信走 cw_observation 双帧一致门;**公式仍封顶本值**(召唤物
-#: 局公式本身存疑,见 :data:`FORMULA_SUMMON_TENSION_NOTED`,封顶 8 格超集
-#: = 读全扩展带的保守面,后台真 9 格时漏最右 1 格的缺口记 ADR-0420 待办)
-_CAP_DIFF_MAX: int = 2
+#: 公式裁决值域上界(cap 差域 = {0..3} → 格数值域 {6..9})。**上限 9 = 用户
+#: 口述真值**(2026-09-11 重申确认,board_structure.md 量化公式节;宝钻/召唤
+#: 物扩展下后台最多 9 格)。历史修订:旧值 2(封顶 8 格超集)按上限 9 真值
+#: 勘误——diff>2 已有实拍实证(e4972b43:lv8 cap13 diff=5,后台真值 9 格,
+#: 与「线性外推 11」矛盾、与封顶 9 吻合);diff>2 的公式形状(召唤物修正项
+#: 与否,ADR-0385 件 10)仍待实机,**封顶 9 即用户确认的保守终态**。注意与
+#: ``cw_observation.DEPLOY_CAP_MAX_DIFF``(cap 采信域,域外走双帧一致门)
+#: 语义务异:那边管「cap 读数信不信」,这边管「格数裁决值封到几」。
+#: 裁决值 9 与坐标档分离:9 档坐标未交互建档,坐标选档退 8 格超集
+#: (``resolve_back_slots`` 的 ``n = n_raw if n_raw in _LAYOUT_PREFIX else 8``)。
+_CAP_DIFF_MAX: int = 3
 
 #: 后排 y 带(所有布局共用;槽 rect 高约 600-739)
 _BACK_Y1, _BACK_Y2 = 600, 739
@@ -311,21 +326,23 @@ def _layout_prefixes() -> dict[int, str]:
 
 
 def back_slots_from_cap_diff(diff: int) -> int:
-    """口述公式:后台格数 = 6 + (cap − level)(纯函数,布局选档锁的测试面)。
+    """口述公式:后台格数 = 6 + (cap − level)(纯函数,布局选档锁的测试面);
+    **裁决值域 {6..9}**(上限 9 = 用户口述真值 2026-09-11,机制正本
+    board_structure.md 量化公式节;e4972b43 diff=5 实拍 9 格吻合封顶)。
 
     - diff < 0(cap<level 读错族,cw_screen_prep 另有 obs_conflict 留证)按 0;
-    - diff > 2(``DEPLOY_CAP_MAX_DIFF`` 域外)按 2 —— diff>2 已有真实高档
-      实拍(e4972b43 diff=5 后台 9 格,W292/ADR-0420),但公式对召唤物局
-      本身存疑(见下),封顶 8 格超集是保守面,9 格闭合待 ADR-0420 待办;
-    - 公式值未建档(diff≥3 域外族)→ **保守退 8 格超集**(扩展带读全不丢系统
-      单位;拖到不存在的位 8 被游戏拒 = 廉价失败方向);diff==1 → 7 格已建档
-      直读(2026-08-26 佩佩局)。
+    - diff > 3(域外)按 3 封顶(= 9 格上限)——diff>2 的公式形状(召唤物
+      修正项与否,ADR-0385 件 10 张力)待实机,封顶 9 即用户确认的保守
+      终态(见 :data:`_CAP_DIFF_MAX` 注);
+    - **裁决值与坐标档分离**:本函数只出裁决值(9 = 用户确认可达的真实
+      档位);9 档坐标未交互建档,坐标/运行档由调用侧
+      :func:`resolve_back_slots`(运行值 ``n``:未建档 → 8 格超集)退
+      **8 格超集**(扩展带读全不丢系统单位;拖到不存在的位被
+      游戏拒 = 廉价失败方向;留证钩子按 n_raw 未建档触发)。diff==1 →
+      7 格已建档直读(2026-08-26 佩佩局)。
     """
     d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
-    n = _BACK_SLOTS_BASE + d
-    if n in _LAYOUT_PREFIX:
-        return n
-    return 8   # 7 格档未建档 → 8 格超集(见模块 docstring;留证在调用侧)
+    return _BACK_SLOTS_BASE + d
 
 
 #: **公式-历史实证张力(ADR-0385 件3,待召唤物局数据解)**:唯一历史 8 格
@@ -469,14 +486,61 @@ def _occupancy_consistency_arbitrate(ctx: SrContext, screen: MatLike,
     return winners[0] if len(winners) == 1 else None
 
 
+def _observe_back_layout_to_container(ctx, n: int | None,
+                                      n_raw: int | None) -> None:
+    """三信号裁决值落 BoardState.back_layout 容器(back_max 语义裁决·闸门二
+    写端接线;值源切换定谳 = W5 方案稿 §2.3 + 机制正本
+    docs/game/currency_war/research/board_structure.md 量化公式节)。
+
+    - **挂点 = resolve_back_slots 收尾(三信号裁决单一源)**:部署拖拽/
+      装备/备战识别/重定位读板等既有选档调用链的每次裁决都随写(执行器
+      已在役,缺的只是落容器)——零新增读(CV/仲裁本就是裁决的副产品);
+      决策层(kernel 视图 back_max 供数)自此可见动态真值;
+    - 值 = 运行档 ``n``(已建档 6/7/8 直读;域外 9 → 8 格超集运行)——
+      **裁决值与坐标档分离**:容器记运行值,evidence 补 ``superset``
+      标记(标记判据 = 裁决 raw 值未建档,与留证采集钩子同一条判据;
+      设计正本 §3.2.7「域外一律按 8 格超集读全扩展带」同口径,防超集
+      近似被当精确值消费);
+    - 裁决未知帧(n_raw=None:双弃权/防抖未过)不写——宁缺勿造,容器
+      frozen 帧语义保持上一已知值,禁把兜底运行值当观察;无 session
+      (离线/测试桩/MCP 纯读)不写;
+    - best-effort:容器写失败不反噬选档主链(记录层故障不毒化决策链)。
+    """
+    if n is None or n_raw is None:
+        # n_raw=None = 裁决未知帧(防抖未过的 CV 弃权子路径——对账冲突路径
+        # 防抖失败会回退 formula_raw,不会出现 n_raw=None):兜底运行档 8
+        # 禁以「无 superset 标记的精确值」形态入容器(宁缺勿造;上行
+        # docstring 语义即此,守卫兑现)。
+        return
+    try:
+        match = getattr(ctx, 'cw_match', None)
+        session = getattr(match, 'session', None) if match is not None \
+            else None
+        if session is None:
+            return
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            ChannelSig,
+            board_state_of,
+        )
+        superset = n_raw is not None and n_raw not in _LAYOUT_PREFIX
+        bs = board_state_of(session)
+        bs.observe(bs.back_layout, int(n),
+                   evidence='superset' if superset else None,
+                   sig=ChannelSig(family='obs', actor='cw_back_layout',
+                                  mode='read'))
+    except Exception:   # noqa: BLE001  容器接线 best-effort,不阻塞选档
+        pass
+
+
 def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
                        level: int | None = None,
                        cap: int | None = None,
                        level_trusted: bool | None = None) -> dict:
     """双通道对账全量解析(ADR-0385;选档与钩子共用的单一判定源)→ dict:
 
-    - ``formula_raw``/``formula_n``:公式原始格数/映射后格数(**未建档**值
-      (9+)映射 8 格超集;已建档的 6/7/8 原样返回;公式弃权帧 = None);
+    - ``formula_raw``/``formula_n``:公式裁决值(值域 {6..9},上限 9 =
+      用户口述真值;**坐标档映射在本表 ``n``**:未建档的 9 由运行值退
+      8 格超集;公式弃权帧 = None);
     - ``cv_n``:CV 实测格数(None=不可判;防抖未通过时为 None 语义=退公式);
     - ``cv_readings``:防抖重读序列(W209h;仅新格数读数触发时非 None);
     - ``n_raw``:对账后原始格数(不一致采 CV;未建档值保留原值供钩子判档;
@@ -486,7 +550,10 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     - ``cap``/``level``/``diff``:读数快照(判读/留证);
     - ``unknown``/``frozen``/``unknown_streak``:布局未知态三键(§3.2④/
       T-7)——unknown=本帧双弃权;frozen=连续未知达 ``UNKNOWN_FREEZE_FRAMES``
-      (写类冻结止损);unknown_streak=当前连续计数(任一已知帧清零)。
+      (写类冻结止损);unknown_streak=当前连续计数(任一已知帧清零);
+    - **容器接线(back_max 语义裁决·闸门二)**:已知帧裁决值随写
+      ``BoardState.back_layout``(值/superset 标记判据与跳过条件见
+      :func:`_observe_back_layout_to_container`;零新增读,best-effort)。
 
     **公式输入净化(§3.2①,T-8 消费端)**:``level_trusted`` 三态——
     ``False`` = level 为 derived/启发式(未过可信门)→ 公式通道**弃权**
@@ -528,8 +595,8 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     else:
         diff = (cap - level) if (cap is not None and level) else 0
         d = 0 if diff < 0 else min(diff, _CAP_DIFF_MAX)
-        formula_raw = _BACK_SLOTS_BASE + d            # 未映射真值(7 = 未建档档)
-        formula_n = back_slots_from_cap_diff(diff)    # 映射后(7 → 8 格超集)
+        formula_raw = _BACK_SLOTS_BASE + d            # 裁决真值(值域 6..9;9 = 未建档档)
+        formula_n = back_slots_from_cap_diff(diff)    # 同上(坐标档映射在下方 n:未建档 → 8 格超集)
     cv_n = cv_back_slots(screen) if screen is not None else None
     cv_readings: list[int | None] | None = None
     _arb_n: int | None = None   # 冲突最终裁决档(None=无冲突/保 CV 旧规)
@@ -698,6 +765,9 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     else:
         n_raw = formula_raw
     n = n_raw if n_raw in _LAYOUT_PREFIX else 8   # 未建档新档位 → 8 格超集(模块 docstring 条4)
+    # back_max 语义裁决·闸门二:裁决值落容器(视图 back_max 供数自此见
+    # 动态真值;挂点与值/superset 标记判据见写端 docstring)。
+    _observe_back_layout_to_container(ctx, n, n_raw)
     p = _layout_prefixes().get(n, _LAYOUT_PREFIX[_BACK_SLOTS_BASE])
     try:
         global _last_sel_log

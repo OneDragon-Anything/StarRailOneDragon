@@ -87,7 +87,7 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
 
     ①板满:``deployed_count == deploy_cap``——**cap 口径 = 当前可上阵数**
     (GameState.max_units() / MandateFrame.deploy_cap:level+宝钻、封顶
-    10),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,ADR-0392 定长槽表
+    = 4+back_max 动态真值〔BoardState.back_layout,值域 10-13〕),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,ADR-0392 定长槽表
     的物理长度)。结论出处:2026-09-03 零刷新诊断批(ZERO_REFRESH_DIAG
     §4.2)实证 M3 升级门 13/13 波恒 False 的根因即此——旧条件拿 10 当
     板满阈值,而板面实际上板量受等级驱动 cap 约束(P1 期 3→5 量级),
@@ -98,7 +98,9 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
     经 ensure_contract 前提 ``_arm1_cap_level_driven``(deploy_cap=None
     ⇒ 违例弃权)已不可达**(契约层弃权优先于函数内兜底,IMPL_ADV_R200
     OBS-3 收口);保留仅作函数局部完备性(直调/测试面),非生产语义。
-    cap>10 时按 10 封顶(max_units 同款)。②③见下,不变。
+    cap>10 时按 10 封顶(本函数局部表示域钳制 = ADR-0392 十槽槽表面,
+    扩板另案;max_units 本体封顶已随 back_max 动态真值,本处不随)。
+    ②③见下,不变。
     ②阵营相关等待件:bench 存在与当前板面(deployed∪bench 域成员性,
     P39 裁定宽域:不限星级)共享阵营/流派羁绊的单位;③上场边际贡献>0:
     由①②结构承载(w>0 板面谓词,NMF §3.3 #3——臂一只需 w>0,无需 w

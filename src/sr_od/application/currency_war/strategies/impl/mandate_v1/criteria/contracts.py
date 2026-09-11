@@ -136,7 +136,8 @@ def _arm1_cap_level_driven(ctx: ContractCtx) -> bool:
     """先例③前提:arm1 板满口径=等级驱动 cap(禁固定常数)。
 
     ZERO_REFRESH_DIAG §4.2 实证:cap 口径=当前可上阵数
-    (GameState.max_units():level+宝钻、封顶 10);旧条件拿固定槽表
+    (GameState.max_units():level+宝钻、封顶 = 4+back_max 动态真值
+    〔BoardState.back_layout,值域 10-13〕);旧条件拿固定槽表
     常数 10 当阈值 ⇒ deployed_count 构造性不可达 ⇒ 触发面恒空。
     前提=消费位传入了现读 cap(ctx.deploy_cap 非 None;
     ``deploy_cap=None`` 走固定常数兜底即违例)。

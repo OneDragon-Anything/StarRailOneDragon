@@ -725,7 +725,9 @@ def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
     """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
     单一源 ``cw_comps.form_progress``)∧ 板满(占用数 ≥ cap——cap =
     可上阵数占用数口径,与 select_swap_plan 板满门同一派生链
-    ``GameState.max_units``(level+宝钻、封顶 DEPLOYED_CAPACITY),
+    ``GameState.max_units``(level+宝钻、封顶 = 4+back_max 动态真值
+    〔BoardState.back_layout,值域 10-13〕;物理槽表常数 DEPLOYED_
+    CAPACITY 禁作阈值,理由见下),
     喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
     熔断的振荡防护前提(买/演进层仍要 fenced 件)消失、且 bench target
     无空槽可进——此时 off-line fenced 件让位。

@@ -162,7 +162,8 @@ class MandateFrame:
 
     字段取值时机=生成期快照(从 PrepObservation 现读拷贝);坐标系:
     bench slot=物理槽位 1-9。``deploy_cap`` 真值源=``GameState.
-    max_units()`` 派生链(R4 统一:level+宝钻、封顶 10,与 shop 侧
+    max_units()`` 派生链(R4 统一:level+宝钻、封顶 = 4+back_max 动态
+    真值〔BoardState.back_layout,值域 10-13〕,与 shop 侧
     同链单源;FIX_REVIEW_20260903 ②-1 双源漂移修复——旧观察复合
     ``obs.deploy_vacancy+len(deployed)`` 已废),state 缺读=None。
     """
@@ -1219,7 +1220,8 @@ def run_mandate(frame: MandateFrame,
     # M3 升级整批(触发信号 = arm1_existence(statefn/predicates);
     # arm2 调度门只延迟不否决;P48 整买纪律 D-BUYNOTE 内嵌)。
     # cap 接线=消费点现读 state.max_units()(R4 单一真值源:level+宝钻、
-    # 封顶 10,与 shop 侧同链;FIX_REVIEW ②-1 双源漂移修复——旧观察复合
+    # 封顶 = 4+back_max 动态真值〔BoardState.back_layout,值域 10-13〕,
+    # 与 shop 侧同链;FIX_REVIEW ②-1 双源漂移修复——旧观察复合
     # cap 已废)——板满按当前 cap 判,非固定槽表常数(2026-09-03 零刷新
     # 诊断批定谳的域错位形态)。契约核验(FIX_REVIEW R1 漏接位补齐):
     # arm1/lv9_stop/spend_unified 三消费位经 ensure_contract;固定常数/

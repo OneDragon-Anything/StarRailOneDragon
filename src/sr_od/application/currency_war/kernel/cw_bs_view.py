@@ -46,9 +46,14 @@ changes/2026-09-06-redesign/w5-透传域建模方案.md``)。
   引导窗(equips 观察写端 = 装备分配链装备区现读 + 载体中继兜底,
   接线滞后窗值冻结申报见喂入口 equips 段)。
 - front_max:常量供数(DEPLOYED_FRONT_CAPACITY,恒 4 非观察事实);
-- back_max:**透传保留**(值源切换语义裁决另立批——画面格数 vs 模型
-  后排容量两语义未定谳前维持帧值,消费面 rebuild/evolution 排容量/
-  max_units/invariant 语义零变化);
+- back_max:容器动态真值供数(W5 §2.3 定谳 + back_max 语义裁决四闸门:
+  读 ``bs.back_layout``——三信号裁决值,值域 6-9(平常 6,宝钻/召唤物
+  扩展,上限 9,机制正本 = board_structure.md 量化公式节);9 档坐标
+  未交互建档,建档前域外按 8 格超集运行 + evidence ``superset`` 标记。
+  无值透传帧兜底引导窗——容器空壳期零行为变化,写端接线后自动携带
+  真值(天然灰度)。写端 = obs 选档链 ``resolve_back_slots`` 容器接线
+  + sim 合成口扩员;消费面 max_units 封顶 / back_overflow 阈值 /
+  back_left 空位同读一个字段,供数切换后自动同源);
 - dual_track_phase:透传保留(策略侧派生旗标,committed_from 权威经
   mandate adapter 装配回填;非游戏可观察事实不入容器,W6 消费切换时
   消费面改读派生函数);
@@ -258,10 +263,16 @@ def game_state_view(bs: BoardState, frame: GameState | None) -> GameState:
     else:
         st.equips = list(fr.equips)
     # front_max = 常量供数(恒 4,非观察事实,不立字段派生直接取常量);
-    # back_max = **透传保留**(值源切换挂 back_max 语义裁决批:画面后排
-    # 格数 vs 模型定长槽表后排容量两语义未定谳,消费面语义零变化)。
+    # back_max = 容器动态真值(W5 §2.3 定谳 + back_max 语义裁决·闸门一):
+    # 供数读 bs.back_layout(三信号裁决值,值域 6-9;9 档未建档前域外由
+    # 8 格超集 + superset 标记承载),无值透传帧兜底引导窗——容器空壳期
+    # 零行为变化(天然灰度),写端接线后自动携带真值。禁退回「恒透传帧」:
+    # 容器有值时帧值是旧观察残留,退回即「链按 6 格自洽地错」复发。
     st.front_max = DEPLOYED_FRONT_CAPACITY
-    st.back_max = fr.back_max
+    if bs is not None and bs.back_layout.value is not None:
+        st.back_max = int(bs.back_layout.value)
+    else:
+        st.back_max = fr.back_max
     # dual_track_phase:透传保留(策略侧派生旗标,adapter 装配回填为权威
     # 读法;W6 消费切换时消费面改读 committed_from 派生函数)。
     st.dual_track_phase = getattr(fr, 'dual_track_phase', False)

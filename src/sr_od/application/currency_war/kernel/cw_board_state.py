@@ -236,6 +236,8 @@ LOGIC_MODES: tuple[str, ...] = ('compute',)
 #: 过渡路径已退役,ADR-0634),全部行 actor 在册非空。
 REGISTERED_ACTORS: set[str] = {
     'cw_observation',          # 观察汇聚模块(read_game_state 唯一漏斗)
+    'cw_back_layout',          # 后排布局选档(back_layout 观察写端:三信号
+                               # 裁决值经 resolve_back_slots 收尾落容器)
     'obs_conflict',            # 观察冲突仲裁汇点(obs_conflict 证据行型 2)
     'CwScreenPrep',            # 备战画面 op(reconcile 核对口观察写入)
     'CwScreenBattleWait',      # 战斗/结算画面 op(结算覆盖写端,§3.5.1)
@@ -1517,7 +1519,7 @@ class BoardState:
     front_row: Field[list[Unit]] = field(default_factory=Field)  # 前排成员(§3.2.3)
     back_row: Field[list[Unit]] = field(default_factory=Field)   # 后排成员(§3.2.4)
     bench: Field[BenchView] = field(default_factory=Field)       # 备战席统一槽位视图(§3.2.5;capacity 随效果改写)
-    back_layout: Field[int] = field(default_factory=Field)       # 后台格数 6/7/8(§3.2.7;域外=8 格超集+superset 标记)
+    back_layout: Field[int] = field(default_factory=Field)       # 后台格数(值域 6-9:平常 6,宝钻/召唤物扩展,上限 9;6/7/8 已交互建档,9 档坐标未建档——域外按 8 格超集运行+evidence superset 标记,§3.2.7)
 
     # —— 经济与成长 ——
     gold: Field[int] = field(default_factory=Field)              # None=不可读(§3.2.9)
@@ -2401,6 +2403,14 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
     # deploy_cap(§2.3 W5 入容器):sim 真值直写;None(未建模帧)不写。
     if st.deploy_cap is not None:
         bs.observe(bs.deploy_cap, int(st.deploy_cap), evidence=_ev,
+                   sig=_synth_sig)
+    # back_layout(back_max 语义裁决·闸门二,sim 合成口扩员——W5 §2.6
+    # 清单增补第八域,与实机喂入口域覆盖集对齐):sim 真值直写(动态真值
+    # = GameState.back_max,场景侧设定;实机写端 = 选档裁决链,两写端
+    # 同域不同源,sim 无识别过程故恒真值);缺席不写(禁合成假值,同
+    # 七域纪律)。
+    if st.back_max is not None:
+        bs.observe(bs.back_layout, int(st.back_max), evidence=_ev,
                    sig=_synth_sig)
     # 开局域/席位/装备(W5 合成口与实机喂入口域覆盖集对齐;§2.6):
     # sim 无识别过程,真值域恒 observation + evidence=sim:synthesized。

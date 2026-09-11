@@ -31,9 +31,10 @@ from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 _SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
 BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
 # deployed 槽位语义(ADR-0392):定长 10 槽表——下标 0-3 = 前排槽 1-4、
-# 4-9 = 后排槽 1-6。后排实际格数随布局档 6/7/8 变(cw_back_layout,
-# = 6+(cap−level),ADR-0385)——超过 6 的扩展格属画面布局域,不进本表示
-# (表长恒 10;取舍与理由见 ADR-0392「后排布局档取舍」节)。
+# 4-9 = 后排槽 1-6。后排实际格数 = 6 + (cap−level) 值域 6-9(cw_back_layout
+# 三信号裁决,ADR-0385;上限 9 = 用户口述,board_structure.md)——超过 6 的
+# 扩展格属画面布局域,不进本表示(表长恒 10;取舍与理由见 ADR-0392
+# 「后排布局档取舍」节,扩展格 7-9 的跟踪缺口在 9 档可达后常规化,扩板另案)。
 DEPLOYED_FRONT_CAPACITY: int = 4
 DEPLOYED_BACK_CAPACITY: int = 6
 DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
@@ -245,7 +246,12 @@ class GameState:
     enemy_affixes: list[str] = field(default_factory=list)   # 当前位面/节点敌人词缀(MECHANIC_COUNTERS/SYNERGIES 用)
     # 持有装备名(OCR 装备区填;comp 相关 equip_fit 用,详 cw_comps)。阶段 4 接线前默认空。
     equips: list[str] = field(default_factory=list)
-    front_max: int = 4    # 前/后排槽位上限(满 10 = 4 前 + 6 后)
+    front_max: int = 4    # 前排槽位上限(恒 4,非观察事实;板容量封顶 = 4 + back_max,见下)
+    # [供数收口] 本字段 = 全部容量消费的供数收口(max_units 封顶/back_overflow
+    # 阈值/back_left 空位/排路由),动态真值 = BoardState.back_layout(三信号
+    # 裁决,值域 6-9:平常 6,宝钻/召唤物扩展上限 9,机制正本 =
+    # board_structure.md;9 档坐标未建档,域外按 8 格超集 + superset 标记
+    # 运行)。默认 6 = 机制基线,仅作容器空壳引导窗兜底,勿当真值源。
     back_max: int = 6
     # 商店开态概率条真值 {费用档 1-5: 概率}(轮岗接线:投资环境轮岗每备战阶段随机
     # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
@@ -280,7 +286,9 @@ class GameState:
         return deepcopy(self)
 
     def max_units(self) -> int:
-        """可上阵数:deploy_cap 真值(= level + 宝钻,ADR-0286)优先,level 兜底;封顶 10(4前+6后)。
+        """可上阵数:deploy_cap 真值(= level + 宝钻,ADR-0286)优先,level 兜底;
+        封顶 = front_max + back_max = 4 + back_max(back_max 动态真值 =
+        BoardState.back_layout,值域 6-9 → 封顶值域 10-13;基线局 4+6=10)。
 
         全部消费点(decision_v2/kernel/operations)经本单点收口——cap 接线只改此处即全接。
         deploy_cap < level(防抖漏网噪声)视为不可信,兜底 level。

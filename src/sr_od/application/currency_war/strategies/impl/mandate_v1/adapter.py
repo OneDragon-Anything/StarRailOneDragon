@@ -141,7 +141,20 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     st.deployed = [d for d in snapshot.deployed if d is not None]
     st.deploy_cap = snapshot.deploy_cap
     st.front_max = snapshot.front_size
-    st.back_max = snapshot.back_size
+    # back_max:供数切容器 back_layout(back_max 语义裁决·闸门三;值源
+    # 定谳 = W5 方案稿 §2.3)。快照 back_size 名义观察值实恒基线 6——
+    # 写端 = len(「后排-N」)按基准前缀数区域,7/8/9 扩展档用独立前缀区
+    # 根本不进计数(裁决材料 F3 假动态),mandate 决策链的空位/改排/
+    # 板满/补缺容量语义自此与 kernel 视图同源。**snapshot.back_size 字段
+    # 保留勿删**(sim 合成快照契约位,MandateFrame 侧消费不变);**禁在
+    # 快照侧直读选档函数造第二值源**(容器是唯一动态真值源,读数归视图
+    # 单一源)。session None 时视图退 GameState 缺省 6(与快照缺省同值,
+    # 引导窗语义)。
+    from sr_od.application.currency_war.kernel.cw_bs_view import (
+        strategy_input_state,
+    )
+    last = strategy_input_state(session)
+    st.back_max = last.back_max
     # R1(蓝图 §4.3)+ 迁移迁移批 2(方向层接管)(方向层接管) 接管:committed 唯一合法读端
     # (prep_brain.committed_from,内部 = cw_intention 权威派生);
     # state.dual_track_phase 为老栈决策核的既有消费面,装配时显式回填
@@ -153,14 +166,12 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     st.active_strategies = list(getattr(session, 'active_strategies', None) or [])
     st.equips = list(getattr(session, 'last_owned_equips', None) or [])
     # refresh_probs / hp 回退锚 = BoardState 视图(Snapshot 消费切换,
-    # 迁移批次三,设计 §8.7;同 _anchor_state 口径)。hp 值源 W5 起为
+    # 迁移批次三,设计 §8.7;同 _anchor_state 口径,视图取值复用上方
+    # back_max 供数的同一 `last`——同帧同视图,禁二次取视图造成同函数
+    # 内两份快照)。hp 值源 W5 起为
     # **门前真值**(cw_bs_view 收编:视图 hp = 容器记录值,门不再由写侧
     # 预施)——本函数 = hp 消费读点,门在此显式施(值源切换申报见
     # w5-透传域建模方案 §2.4;门幂等保证旧链帧值路径零行为差)。
-    from sr_od.application.currency_war.kernel.cw_bs_view import (
-        strategy_input_state,
-    )
-    last = strategy_input_state(session)
     probs = getattr(last, 'refresh_probs', None) if last is not None else None
     st.refresh_probs = dict(probs) if probs else None
     # hp 过现役同一新鲜度门(session 锚;None 现读=沿用链,禁 0/100 兜底改值)。
