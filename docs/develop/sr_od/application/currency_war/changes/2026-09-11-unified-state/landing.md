@@ -100,6 +100,7 @@
 - game_state/README.md §3.3 域清单字段面收全 ← 阶段5-8
 - game_state/README.md §1/§5 过渡注清除（详设归拢后）← 末阶段
 - 六处代码 docstring 引用改指正本 game_state/（入口=总纲，字段级面指分篇；cw_board_state/cw_bs_view/cw_observation/cw_shop_refresh_obs/engine_p1/cw_anchor）← 末阶段
+- game_state/README.md §5 件 B(节点链观察-设计v1)指针已 re-anchor 至 details/recovered/ 落位件(2026-09-12 指针回填批完成;.debug/temp 原件仍留未删)← 末阶段核对即可
 
 ## 排除声明
 - T-8 属统一观察架构迭代，不在本迭代面；

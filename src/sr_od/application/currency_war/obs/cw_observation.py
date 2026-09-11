@@ -2391,7 +2391,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     #   M72 停机后游戏自己打完了 P2-9;此类需当场交互的采集,现场窗口=倒计时前,分小批+
     #   批间验证落位;②事件 overlay(选择伙伴)盖棋盘时拖拽全部静默失败,批次必须验证;
     # ③VLM 看不清星数(开商店帧误报"银狼3星"),定位 3 星用 read_star 全帧扫描。
-    # BoardState 观察流接线(迁移批次一;字段级详设(迭代期) = BoardState-数据结构设计.md §2.1/
+    # BoardState 观察流接线(迁移批次一;字段级详设(迭代期) =
+    # docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md §2.1/
     # §8.7):既有读取完成后把本帧真读字段同步记入 BoardState 单例(零新增 OCR,
     # 消费切换归批次二,GameState 消费者行为零变化)。
     _feed_board_state(ctx, state, phase, screen, _spec, had_hp_real=_had_real)

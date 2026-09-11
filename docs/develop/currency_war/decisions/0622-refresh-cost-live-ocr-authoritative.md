@@ -24,7 +24,7 @@
 - 边界:免费帧不写语义不变;预算内基价常量(2 金)仍可作为消费端先验,但不再是字段写入依据。
 
 ## Links
-- docs/develop/currency_war/design/BoardState-数据结构设计.md §3.3.4
+- docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md §3.3.4
 - ADR-0456(徽标退役;本 ADR 推翻其「不重建」延伸)、ADR-0091(同型先例:刷新概率表实机 OCR 权威)
 
 ## Implementation (2026-09-09)

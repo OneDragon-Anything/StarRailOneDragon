@@ -90,6 +90,7 @@ journal.md §6 与迭代设计件 §8.4。(原 `expect()`/`confirm()`/`discard_e
 | 分篇 | 管什么 |
 |---|---|
 | [journal.md](journal.md) | 记录机制:账本文件、三渠道封闭集与渠道签名、版本 id 与单版本事务、自足快照行、落盘与查询 |
+| [effect-domain.md](effect-domain.md) | 效果域:在场效果账本的内容语义(计数器模型/实例清单/分类词表/生命周期/逐效果规格) |
 | [node-domain.md](node-domain.md) | 节点域:字段双层、生效序读口与 hist 哨兵、守卫族、派生规则单一源引用 |
 | [node-derivation.md](node-derivation.md) | 节点推进判定方案(派生规则单一源持久家):四规则组本体/画面流转全景图/场景走查/实现位与载荷锚 |
 | [strategy-env-impacts.md](strategy-env-impacts.md) | 投资策略/环境逐效果在 state 里的影响(已确认条目+候逐条确定占位清单) |
@@ -104,10 +105,11 @@ journal.md §6 与迭代设计件 §8.4。(原 `expect()`/`confirm()`/`discard_e
   随归拢并入本目录);与其冲突时以本总纲+ADR-0630 修订节为准。
 - **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=ADR-0630 关联行与文档拆分裁定记档)——本目录引用不复写。
 - **旧流退役排期**=R5 迁移规划([r5-migration-plan.md](r5-migration-plan.md);单源直迁八波,重构 retirement.md 影子框架的裁决口径)。
-- **链观察设计件**=件 B(`.debug/temp/currency_war/节点链观察-设计v1.md`)——
+- **链观察设计件**=件 B(docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/recovered/节点链观察-设计v1.md;2026-09-11 自 `.debug/temp` 找回入库,落位清单=recovered/_INDEX.md)——
   [chain-observation.md](chain-observation.md) 是其对接面精炼,不是第二正本。
-- **效果域内容语义**(计数器模型/生命周期/逐效果规格)= 独立效果域设计件,候讨论
-  成文;本目录只记捕获面(效果变化随快照行自带)与逐效果 state 影响登记。
+- **效果域内容语义**(计数器模型/生命周期/逐效果规格)=
+  [effect-domain.md](effect-domain.md)(2026-09-11 成文入库);本目录只记捕获面
+  (效果变化随快照行自带)与逐效果 state 影响登记。
 - **策略侧遥测**(决策行)= 两文件模型的另一文件,归策略侧设计正文;state 引用
   只经版本钉 state_ref=`(run_id, v)`,且决策输入禁读状态流水(ADR-0577)。
 - 玩法语义(各效果游戏机制原文/节点流转时序)挂靠

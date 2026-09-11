@@ -56,4 +56,4 @@ mandate_v1 契约域数十处注释/注册表锚引用「IMPL_DESIGN §x / R19x 
 ## 5. 辖域边界(如实申报,不扩面)
 
 - `ZERO_REFRESH_DIAG §3/§4`(contracts.py 多处 anchor 值)、`SEEDS_EMPTY_LEDGER_DIAG`、`FIX_REVIEW_20260903`、`CALIB_REPORT(_V2)`、`g_20260904_054904` 等诊断/评审报告引用**不在本批锚族**(任务面=IMPL_DESIGN §x/R19x);其中 ZERO_REFRESH_DIAG.md 经查 `.debug` 亦已不在盘,同属断锚,待编排者裁决是否另批处置。
-- `strategies/impl` 域「设计正本 §8.5/§8.6-6」所指=docs/develop/currency_war/design/BoardState-数据结构设计.md(现行存活,§8.5 在位),非断锚,仅措辞未带路径,不动。
+- `strategies/impl` 域「设计正本 §8.5/§8.6-6」所指=docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md(已迁移至此,2026-09-11 迁移;§8.5 在位),非断锚,仅措辞未带路径,不动。

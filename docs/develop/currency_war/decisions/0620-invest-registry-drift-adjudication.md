@@ -1,7 +1,7 @@
 # ADR-0620: 注册表数据漂移定谳——大裁员免费刷新 6v5 与「经济类环境 16/83」无出处统计
 
 - 状态:定谳入册(纯文档批,零代码改动;两项代码面纠偏申报候裁,见 §5)
-- 关联:ADR-0150(base×overlay 两层架构与生成器)、ADR-0131(STRATEGY_ECONOMY 经济效果建模)、ADR-0205(注册表全量调研纠错先例)、`design/BoardState-数据结构设计.md` §2.7/§3(G5 反转在案,本 ADR 为决策正本)、任务账本 T-157(本批;发现来源 = T-155 投资选卡重设计的对抗审查,报告在 `.debug/temp/currency_war/attacks/t155_invest_redesign/`(易失目录,不入 git),持久结论以本 ADR 为准)
+- 关联:ADR-0150(base×overlay 两层架构与生成器)、ADR-0131(STRATEGY_ECONOMY 经济效果建模)、ADR-0205(注册表全量调研纠错先例)、`docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md` §2.7/§3(G5 反转在案,本 ADR 为决策正本)、任务账本 T-157(本批;发现来源 = T-155 投资选卡重设计的对抗审查,报告在 `.debug/temp/currency_war/attacks/t155_invest_redesign/`(易失目录,不入 git),持久结论以本 ADR 为准)
 - 文件面:本 ADR + `decisions/INDEX.md` 追加行 + BoardState-数据结构设计.md 两处 G5 锚点补本 ADR 引用。禁碰代码。
 
 ## 1. 背景

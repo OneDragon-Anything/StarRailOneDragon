@@ -1,8 +1,8 @@
 """货币战争 BoardState 局内记录(迁移批次一骨架)。
 
 **正本入口** = ``docs/develop/currency_war/game_state/README.md``(总纲);
-**字段级详设**(迭代期,寿命=迭代) = ``docs/develop/sr_od/application/currency_war/
-changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md``
+**字段级详设**(迭代期,寿命=迭代) =
+``docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md``
 (下按节号引用)。BoardState = 当前仍为真的局内已知事实快照:单例,每局新建,
 只描述「此刻」;画面 op 与决策 op 写,策略器读(设计 §1)。历史序列归遥测,
 不经本结构。
