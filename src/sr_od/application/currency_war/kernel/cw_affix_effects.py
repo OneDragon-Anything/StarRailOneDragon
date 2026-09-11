@@ -12,6 +12,11 @@
   落码写端(桥/贡献算术/负写端三形,分形判据见其行注);桥与贡献算术宿主 =
   kernel/cw_effect_inventory.py 文末「装备改写写端」段(免模块级成环,与
   板面重写桥同宿主纪律)。
+- **工具执行批·执行写端分派** ``apply_tool_execution_write``:工具类效果
+  (category='工具' 七件)拖拽/使用回执的执行写端组合口——按
+  EQUIP_WRITE_SIDES 登记形分派到写端桥(入席/入区/库存特权化/穿域特权化),
+  op 域既有与负写端(观察收口)零写留证;穿域特权化腿宿主同在
+  cw_effect_inventory(与诸桥同宿主纪律)。
 - **词缀运行时登记挂点共用体** ``register_affixes_from_names``:简报/位面详情
   两读链的产出点经它入效果账本(生产调用方 = CwScreenBriefing._read_and_advance
   开局首读 / CwScreenPlaneIntel.close_and_report 补采落点)。
@@ -35,6 +40,9 @@ affix_effects_data 追加新词缀后,新改写源若未申报,下一轮测试�
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 from sr_od.application.currency_war.data.affix_effects_data import AFFIX_EFFECTS
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 from sr_od.application.currency_war.kernel import (
@@ -42,14 +50,28 @@ from sr_od.application.currency_war.kernel import (
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     SOURCE_AFFIX,
+    STAFF_PROJECTOR_COST_GATE,
     BattlefieldEffect,
     DurationKind,
     DutyFlags,
     EffectKind,
     EffectSpec,
     TriggerKind,
+    grant_equip_item,
+    spawn_equip_bench_unit,
+    transform_equip_to_privilege,
+    transform_worn_equip_to_privilege,
 )
 from sr_od.application.currency_war.kernel.cw_investments import EconomyEffect
+
+if TYPE_CHECKING:
+    # 仅类型注解引用(项目规范允许);BoardState/Unit 真类在 cw_board_state,
+    # 其模块头 import 本模块的兄弟模块(cw_effect_inventory),模块级 import
+    # 有成环风险,与登记挂点共用体的运行期惰性 import 纪律同型。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        Unit,
+    )
 
 # ===== 词缀源效果规格(键 = affix_effects_data 词缀名;spec.id 同键)=====
 AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
@@ -213,14 +235,17 @@ def scan_rewrite_equipments() -> dict[str, str]:
 #: 回执),接线前记录面维持观察覆盖。
 EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
     '财富宝钻': '金面:装备者每3备战阶段+1金(确定性→逻辑写;写端=贡献算术'
-              'equip_diamond_phase_gold,组合写归节点边界金结算载体——窗口与'
-              '轮首收入共享,禁单独直写);容量面:+1团队规模——deploy_cap 识别'
-              '真值观察写端照常跟踪,效果侧不建 cap 改写(宝钻豁免申报面)',
+              'equip_diamond_phase_gold,组合写归节点边界金结算载体 settle_node_'
+              'boundary_gold——窗口与轮首收入共享,禁单独直写;逐件进度折算的'
+              '本拍增量由调用侧供给,载体禁内发明进度存储);容量面:+1团队规模'
+              '——deploy_cap 识别真值观察写端照常跟踪,效果侧不建 cap 改写(宝钻'
+              '豁免申报面)',
     '财富': '金面:进新节点+4金(确定性→逻辑写;写端=贡献算术 equip_node_gold_'
-          'grant,轮首收入族同型,组合写归节点边界金结算载体)',
+          'grant,轮首收入族同型,组合写归节点边界金结算载体 settle_node_'
+          'boundary_gold)',
     '精密拆装扳手': '金面:重复获得拆装扳手改+1金(确定性→逻辑写;写端=贡献算术'
-                 'equip_wrench_duplicate_gold,获得时点窗口与到账战利品共享,'
-                 '组合写归获得结算载体);装备归属面:∞次取下全装备回区,op 域'
+                 'equip_wrench_duplicate_gold,组合写收口=settle_wrench_duplicate_'
+                 'gold,获得回执时点窗口独占);装备归属面:∞次取下全装备回区,op 域'
                  '既有写端(RunTools/SellBench,流向锚=cw_equip_env 装备转移链)',
     '极·阿瓦隆': '生命面:获得宝具时+50小队生命(确定性→逻辑写;写端=桥 apply_'
               'equip_acquire_hp,获得时点窗口独占,hp 写入闸辖——hp 未读跳过;'
@@ -239,15 +264,17 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
                       '效果侧不建 cap 改写(宝钻同款豁免;负写端=观察收口)',
     '数据拷贝仪': '单位面:装备者每参与3战获自身1星复制(计数臂确定性→逻辑写;写端'
                '=桥 spawn_equip_bench_unit,成熟回执时点窗口独占;参与计数进度'
-               '载体归接线批);任意获得30%概率臂随机→观察收口',
-    '数据拷贝仪Max': '单位面:计数臂同数据拷贝仪(参与2战→逻辑写,写端=入席桥);'
-                 '立即获得银狼LV.999 腿星级未采证禁猜→观察收口',
+               '载体=settle_copy_machine_participation(现值观察面=前台+后台在册'
+               '单位));任意获得30%概率臂随机→观察收口',
+    '数据拷贝仪Max': '单位面:计数臂同数据拷贝仪(参与2战→逻辑写,写端=入席桥,'
+                 '阈值表=COPY_MACHINE_MATURE_BATTLES);立即获得银狼LV.999 腿星级'
+                 '未采证禁猜→观察收口',
     '数据拷贝仪Pro': '单位面:计数臂同数据拷贝仪(参与3战→逻辑写,写端=入席桥)',
     '员工投影仪': '单位面:拖拽→备战席该角色1星复制进席(确定性→逻辑写;官方前置'
                '门=拖动目标3费及以下;写端=桥 spawn_equip_bench_unit 费用门形,'
-               '拖拽回执时点窗口独占;现观察覆盖兜底)',
+               '拖拽回执时点窗口独占;执行分派=apply_tool_execution_write)',
     '完美投影仪': '单位面:同员工投影仪(无费用门;确定性→逻辑写,写端=桥 spawn_'
-              'equip_bench_unit 无门形);现观察覆盖兜底',
+              'equip_bench_unit 无门形);执行分派=apply_tool_execution_write',
     '分身墨镜': '单位面:官方文「获得时解锁并获得1星专家【银狼】」=获得时点确定性'
              '发放,前台强度40%为数值行非发放条件(确定性→逻辑写;写端=桥 spawn_'
              'equip_bench_unit,获得回执时点);现观察覆盖兜底',
@@ -258,7 +285,8 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
     '特权赋予卡': '装备面:拖拽后进阶装备变对应特权装备/角色已穿进阶装备随机一件变'
               '特权(确定性变换→逻辑写;映射=·特权后缀 36/36 全覆盖;写端=桥 '
               'transform_equip_to_privilege 库存腿,拖拽回执时点;拖角色腿=穿域'
-              '改写归工具执行批;现观察覆盖兜底)',
+              '特权化桥 transform_worn_equip_to_privilege,双腿分派=apply_tool_'
+              'execution_write)',
     '拆装扳手': '装备归属面:角色装备全量回区(确定性→逻辑写;写端=op 域既有'
              'SellBench 卖出回区/RunTools 拆装扳手腿,流向锚=cw_equip_env 装备'
              '转移链);工具消耗品−1',
@@ -267,7 +295,8 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
     '极·干将莫邪': '装备面:同干将莫邪(70%概率投影特权装备);观察收口',
     '诅咒·干将莫邪': '装备面:投影同干将莫邪+进战斗前随机3件临时变简易(随机→观察收口)',
     '好运令牌': '装备面:拖拽后从四件推荐进阶装备选一件获得(选定后确定→逻辑写;写端'
-             '=桥 grant_equip_item,选定回执时点窗口独占;现观察覆盖兜底)',
+             '=桥 grant_equip_item,选定回执时点窗口独占;执行分派=apply_tool_'
+             'execution_write)',
     '随便骰子': '装备归属面:穿戴者每节点自动随机填充两件装备(随机→观察收口;自动行为'
              '写入类)',
     '随便骰子·特权': '装备归属面:同随便骰子(填充特权装备;随机→观察收口)',
@@ -279,7 +308,9 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
 #: cw_effect_inventory 文末「装备改写写端」段头注):
 #: - ``bridge:<函数名>``      写端桥——触发窗口独占的确定性直写;
 #: - ``contribution:<函数名>`` 贡献算术——触发窗口与未接写端共享,零直写,
-#:                             组合写归节点边界金/获得结算载体(接线批);
+#:                             组合写收口 = 节点边界金结算载体
+#:                             (settle_node_boundary_gold/settle_wrench_
+#:                             duplicate_gold,cw_effect_inventory 文末);
 #: - ``op:<锚>``              op 域既有写端(本批零新增);
 #: - ``observation``           负写端——随机面/真值同拍送达面/字段缺位面。
 EQUIP_WRITE_SIDES: dict[str, str] = {
@@ -402,6 +433,120 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     for spec in hits:
         effects.register_affix(spec, acquired_t)
     return [spec.name for spec in hits]
+
+
+# ===== 工具执行批·执行写端分派(T-63 载体:工具类效果的执行写端组合口)=====
+# 官方工具族七件(category='工具')拖拽/使用回执的统一执行写端入口:按
+# EQUIP_WRITE_SIDES 登记形分派——写端桥形逐腿执行(入席/入区/库存特权化/
+# 穿域特权化),op 形与负写端(observation)零写留证,贡献算术形零写并指回
+# 其组合写收口。**基础行为不在本口**:消耗品 −1、目标单位装备取下等 op 基础
+# 行为归 RunTools 写端(fields.md §4.2),本口只管**效果**写端(两面对照
+# 分工,防双写)。生产挂点 = 工具拖拽回执点(现役执行侧工具零操作,接线归
+# 工具执行辖批;接线前零调用零行为差)。
+
+#: 拖拽入席腿的费用门表(员工投影仪=3,官方「3费及以下」;完美投影仪无门;
+#: 数值单一源 = cw_effect_inventory.STAFF_PROJECTOR_COST_GATE)。
+_TOOL_SPAWN_COST_GATE: dict[str, int] = {
+    '员工投影仪': STAFF_PROJECTOR_COST_GATE,
+    '完美投影仪': 0,
+}
+
+
+@dataclass(frozen=True)
+class ToolExecutionReport:
+    """工具执行写端分派结果(留证/测试用;零决策消费)。"""
+
+    tool: str        # 工具名(cw_equipment_data 键,category='工具')
+    side: str        # EQUIP_WRITE_SIDES 登记形(bridge:/op:/observation/contribution:)
+    leg: str         # 执行腿面:spawn/grant/inventory/worn/none
+    performed: bool  # 是否发生 BoardState 逻辑写(False = 零写分支/拒落)
+    detail: str = ''
+
+
+def apply_tool_execution_write(
+        bs: BoardState, tool: str, *,
+        target_char_id: str | None = None, target_cost: int | None = None,
+        chosen_equip: str | None = None, target_equip_name: str | None = None,
+        target_unit: Unit | None = None, chosen_worn_equip: str | None = None,
+        frame: str = '') -> ToolExecutionReport:
+    """工具拖拽/使用回执 → 按申报表执行效果写端,返回分派报告。
+
+    - ``tool`` 必须是注册表在册工具(category='工具');集外名/非工具名
+      = 调用错显式炸错(本口辖域 = 工具族七件,禁静默吞);
+    - **入席腿**(员工投影仪/完美投影仪):需 ``target_char_id`` +
+      ``target_cost``(拖动目标角色与其费用,查表单一源在调用侧;费用
+      None = 调用错——缺费用会假过员工投影仪 3 费门,禁缺省放行);
+      1★ 复制、门形随 :data:`_TOOL_SPAWN_COST_GATE`;
+    - **入区腿**(好运令牌):需 ``chosen_equip``(从该角色四件推荐进阶
+      装备中选定的一件;非进阶类别 = 调用错);
+    - **特权化双腿**(特权赋予卡):``target_equip_name`` 给定 = 库存腿
+      (库存中该件变换);否则需 ``target_unit`` + ``chosen_worn_equip``
+      = 穿域腿(该单位已穿进阶单件变换;非进阶类别 = 调用错);两者皆缺
+      = 调用错;
+    - **零写形**(拆装扳手 op 域既有/冶金炉族观察收口/精密扳手贡献算术):
+      performed=False 留证返回,detail 载处置说明;
+    - 桥的零写分支(席满/容器未观察/无此件)透传为 performed=False——
+      落位真值由下一观察帧给出,与本口零写形同形不同因(detail 区分)。
+    """
+    eq = EQUIPMENTS.get(tool)
+    if eq is None or eq.category != '工具':
+        raise ValueError(
+            f'tool 须为注册表在册工具(category=工具),得 {tool!r}')
+    side = EQUIP_WRITE_SIDES[tool]
+    if side == 'bridge:spawn_equip_bench_unit':
+        if not target_char_id or target_cost is None:
+            raise ValueError(
+                f'{tool} 入席腿需 target_char_id + target_cost(费用缺失会假过'
+                f'费用门,禁缺省);得 {target_char_id!r}/{target_cost!r}')
+        gate = _TOOL_SPAWN_COST_GATE.get(tool, 0)
+        ok = spawn_equip_bench_unit(bs, target_char_id, 1, target_cost,
+                                    cost_gate=gate, frame=frame)
+        return ToolExecutionReport(
+            tool=tool, side=side, leg='spawn', performed=ok,
+            detail=f'cost={target_cost} gate={gate}'
+                   + ('' if ok else '(拒落:超门/席满/席未观察)'))
+    if side == 'bridge:grant_equip_item':
+        if not chosen_equip:
+            raise ValueError(f'{tool} 入区腿需 chosen_equip,得 {chosen_equip!r}')
+        if EQUIPMENTS[chosen_equip].category != '进阶':
+            raise ValueError(
+                f'chosen_equip 须为进阶类别(推荐四件域),得 {chosen_equip!r}')
+        ok = grant_equip_item(bs, chosen_equip, frame=frame)
+        return ToolExecutionReport(tool=tool, side=side, leg='grant',
+                                   performed=ok,
+                                   detail=chosen_equip if ok else '库存未观察')
+    if side == 'bridge:transform_equip_to_privilege':
+        if target_equip_name is not None:
+            target = transform_equip_to_privilege(bs, target_equip_name,
+                                                  frame=frame)
+            return ToolExecutionReport(
+                tool=tool, side=side, leg='inventory',
+                performed=target is not None,
+                detail=target or '库存未观察/无此件')
+        if target_unit is not None and chosen_worn_equip is not None:
+            if EQUIPMENTS[chosen_worn_equip].category != '进阶':
+                raise ValueError(
+                    f'chosen_worn_equip 须为进阶类别(已穿进阶域),'
+                    f'得 {chosen_worn_equip!r}')
+            target = transform_worn_equip_to_privilege(
+                bs, target_unit, chosen_worn_equip, frame=frame)
+            return ToolExecutionReport(
+                tool=tool, side=side, leg='worn', performed=target is not None,
+                detail=target or '目标单位未定位(状态漂移,零写)')
+        raise ValueError(
+            f'{tool} 特权化双腿需 target_equip_name(库存腿)或 '
+            f'target_unit + chosen_worn_equip(穿域腿)')
+    if side.startswith('op:'):
+        return ToolExecutionReport(
+            tool=tool, side=side, leg='none', performed=False,
+            detail='op 域既有写端(装备转移链),执行侧直调,本口零写')
+    if side.startswith('contribution:'):
+        return ToolExecutionReport(
+            tool=tool, side=side, leg='none', performed=False,
+            detail='贡献算术金面归获得回执窗收口 settle_wrench_duplicate_gold;'
+                   '使用面=op 域既有')
+    return ToolExecutionReport(tool=tool, side=side, leg='none', performed=False,
+                               detail='负写端=观察收口,零逻辑写')
 
 
 _validate_affix_specs()
