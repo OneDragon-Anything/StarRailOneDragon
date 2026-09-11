@@ -1,31 +1,38 @@
 # sim 接线对照表(GameState ↔ sim 引擎)
 
 > as-built 存量清查(2026-08-24 首版;此后每批接线变更同步更新本表):
-> GameState 36 个字段在
+> GameState 35 个字段在
 > P1 模拟器(`engine_p1.simulate_p1`)中的接线状态,三档归类 + 逐字段
 > 一行。用途:新字段的「三消费面」检查(策略/遥测/sim 代理,ADR-0219
 > 纪律)以此为底账;改 sim 接线时更新对应行。
 >
-> 对账:**已接 18(首版 13 + ADR-0271 接入 board + ADR-0276 接入
+> 对账:**已接 17(首版 13 + ADR-0271 接入 board + ADR-0276 接入
 > node_type/streak[session 口径]+ ADR-0286 接入 xp_progress/
 > refresh_probs/deploy_cap[宝钻通道参数化,默认频率 0]+ 动作 v2 契约
 > 接入 action_log[动作 v2 账本])+ 必须接线 12 + 观测冗余豁免 6 =
-> 36**。(首版任务书的分档口径与字段总数不符,按实测
-> 归类对账;此后字段增补:ADR-0286 新增 deploy_cap
-> 字段 → 总数 36→37;后续批次新增 enemy_difficulty_live(判读用保真位)、
-> 动作 v2 契约
-> 新增 action_log → 37→39;ADR-0428 新增 hp_trusted → 39→40,入
-> 观测冗余豁免档——决策消费经 `hp_readable or hp_trusted`,sim 帧
-> readable=True 短路,行为逐位等价;观测修复批新增 level_readable →
-> 40→41,入同档;2026-09-08 死字段清理:自建表起恒缺省、零接线零
-> 消费的 5 个「结构未建」占位字段(match_type/plane_modifiers/
-> shop_locked/megastar_char/partner_char)从 GameState 删除 → 41→36,
-> 该档随之撤档——字段复现需求随依赖结构建设时按新字段流程重立。)
+> 35**(与 GameState dataclass 实测字段数一致;2026-09-11 重对账,
+> 实测面 = cw_state.py GameState 字段定义)。历史数字链(37→39→40
+> →41→36)是**表行数口径,恒比 GameState 真实字段数多 1**——首版
+> 已接表误列了 bench_full_flag 行,而它**不是 GameState 字段**(「备战
+> 席已满」警告位通道已退役出 dataclass,席满判定 = `bench_is_full()`
+> 占用派生,cw_state.py 该方法注释自证);其现役载体 = sim 账本行
+> state 键(engine_p1 决策入口快照写点 `'bench_full_flag'`),现役
+> 消费面 = checks/ledger.py 的账本行键 schema 校验(非布尔即报
+> 「满栏旗标写端断线」);生产读端已随 W3 退役(merge_round_rows,
+> 退役锁在册 = sr-od-test `test_cw_w3_journal_only_reads.py`),判读
+> 走 journal 新账视图族(telemetry/journal_query)。本行已移出字段表,
+> 表行数与字段数归一 = 35。(历史批次字段增减:ADR-0286 新增
+> deploy_cap;enemy_difficulty_live、action_log、hp_trusted、
+> level_readable 依次新增入观测冗余豁免档;2026-09-08 死字段清理:
+> 自建表起恒缺省、零接线零消费的 5 个「结构未建」占位字段
+> match_type/plane_modifiers/shop_locked/megastar_char/partner_char
+> 从 GameState 删除,该档随之撤档——字段复现需求随依赖结构建设时
+> 按新字段流程重立。)
 >
 > 优先级:P1 = 影响当期 sim A/B 结论有效性;P2 = 决策消费存在但当前
 > 栈(decision_v2)影响面小;P3 = 随依赖结构建设顺带接入。
 
-## 一、已接线(18;sim 语义 = 生产语义或其 P1 域内真值)
+## 一、已接线(17;sim 语义 = 生产语义或其 P1 域内真值)
 
 | 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
 |---|---|---|---|---|
@@ -42,7 +49,6 @@
 | shop_refresh_cost | 恒基价 2(读 `st.shop_refresh_cost or 2`);注入局免费刷额度内刷价 0(ADR-0364,`free_refresh_per_node`) | 基价常量 `REFRESH_COST_BASE`(ADR-0456:实付恒 2,旧「OCR 刷新金币数」rect 实为面板徽标=利息数值,已退役出决策链) | 已接(P1 无投资减免域内 2=真值;注入局额度内 0=cw_economy._refresh_cost 同语义) | P3 |
 | front_max | 默认 4(常量=机制真值) | 前排槽上限 | 已接(常量) | — |
 | back_max | 默认 6(常量=机制真值) | 后排槽上限 | 已接(常量) | — |
-| bench_full_flag | 恒 None → `bench_is_full()` 走 BENCH_CAPACITY=9 计数兜底 | OCR「备战席已满」警告 | 已接(兜底口径=生产 OCR 缺失路径同源;ADR-0271 后计数为真备战数) | — |
 | xp_progress | 买牌/买经验累 XP_PER_BUY,轮末升级按 XP_TO_NEXT_LEVEL 清零结转(ADR-0286) | XP 条 OCR;economy clicks_to_next_level/追级门 | 已接(ADR-0286 真值化——旧恒 None,clicks_to_next_level 恒按 0 进度估) | — |
 | refresh_probs | 每备战期 20%(ROTATION_CHANCE)掷轮岗,随机可翻倍档 ×2 与 REFRESH_PROB 组合(cw_shop_odds.rotation_probs);draw_shop(开态+每次刷新)消费轮岗后表(ADR-0286) | 商店开态概率条 OCR(轮岗:每备战阶段随机翻倍一档);decision_v2 成本采样实读消费 | 已接(ADR-0286 轮岗建模——lv1-3 纯 1 费无可翻倍档恒 None,与生产同态) | — |
 | deploy_cap | 宝钻通道参数化 diamond_cap_prob(每备战期以此概率 +1 宝钻,cap=level+宝钻数;默认 0 = 通道建好不注入,与旧树同态) | read_deploy_cap_debounced 防抖真值(cap<level/\|cap−level\|>2 重读一帧仍异拒 None);max_units() 优先消费、level 兜底 | 已接(通道;频率待实机语料统计后标定,ADR-0286) | P3 |

@@ -64,19 +64,19 @@ sim 只做一件事:**在 shop 决策面上评估策略 A/B**——同 seed 同�
 
 **目标态:全部动作的 GameState 字段转移必须经 `kernel/cw_state.simulate` 调用完成;禁止在执行引擎内为 GameState 字段另写一份转移逻辑(下称「内联重实现」)。**
 
-- **现状(如实)**:动作 v2 族(SellDeployed/SwapDeploy/CompTransaction)已走投影(已达成);商店四动作(BuyCard/LevelUpShop/RefreshShop/SellBench)仍在引擎内联——修复=四动作切 simulate 单一源,**P0 在途**。P0 落地前,涉四动作的 sim 行为判读以 §2.3 申报清单与引擎注释为准;**§2.2 表格是 P0 落地后的契约,不是现状描述**。
+- **现状(如实,ADR-0561 已实施)**:动作 v2 族(SellDeployed/SwapDeploy/CompTransaction)与商店四动作中的 BuyCard/SellBench 已走投影(已达成;防回漂三锁在册,载体 = sr-od-test `test_cw_sim_shop_single_source.py`);LevelUp/RefreshShop 仍引擎内联 = **显式申报保留面**(ADR-0561 决策 2:LevelUp 切源会连带「cap10 + 攒够即升即时升级」双重行为变更,破零漂移门;RefreshShop 的 simulate 分支只扣金不重采样,切源丢免费刷注入/重采样/刷后 break-redecide 三重行为)——保留面放开前置归 LEVEL_CAP 行为变更批(§2.3-3)。涉保留面的 sim 行为判读以 §2.3 申报清单与引擎注释为准;§2.2 表格中已切投影动作的行为 = 现状契约,保留面两动作与契约的差异 = 申报差异,非契约偏离。
 - why:历史审计(逐动作 sim/live 对照,方法=同输入下比对 sim 引擎与 simulate 投影的逐字段结果)曾实测 13 条语义分歧,系统性根因即四动作内联双源——同名动作两套代码,每处分歧都要逐点人工对账,且 simulate 修 bug 时 sim 侧不自动跟。
 - **可判定边界(什么叫违规)**:投影辖「GameState 字段转移」(金/池/bench/deployed/XP 等字段怎么变);引擎辖「账本转录 + 投影 deepcopy 域外对象」——simulate 返回 deepcopy 后引用不跨界(`engine_p1.py` v2 路径头注自证),因此引擎在调用投影后补做的**池登记(ret/take)、买入 XP 转录、金出入转录不属于内联重实现**,列为显式白名单;理由=deepcopy 所迫,且这些对象不随 GameState 投影。白名单之外,引擎代码直接改写 GameState 字段以实现动作语义即违规。
-- 伴随纪律(**目标态,载体在途**):**逐动作语义对拍锁**——每类动作一条测试,同 seed 同输入下 sim 引擎执行路径与 simulate 投影逐字段 diff 恒空;确有 sim-only 语义差的项进显式白名单数据结构(每条注明差异语义与不可外推理由,§2.3 为其文档面)。**现状两者均不存在**,随 P0 落地建立(待办见 §7.2);建成后白名单外出现 diff = 缺陷。
+- 伴随纪律:**逐动作语义对拍**——已切投影动作(BuyCard/SellBench)由 ADR-0561 防回漂三锁承载(锁1 spy 结构锁:执行必经 `_simulate_state`;锁2 桩行为锁:带装卖出装备回池;锁3 grep 锁:禁内联特征式回潜;载体 = sr-od-test `test_cw_sim_shop_single_source.py`);**sim-only 白名单数据结构仍未建**(§7.2 待办),建成前白名单面 = §2.3 申报清单文档承载;建成后白名单外出现 diff = 缺陷。
 
 ### 2.2 逐动作契约要点
 
-> **本表为 P0 落地后的目标态契约(不是现状)**;现状偏差见 §2.1 现状标注与 §2.3 申报清单。
+> 本表为动作语义契约(ADR-0561 后 as-built 口径):已切投影动作(BuyCard/SellBench/动作 v2 族)行为 = 现状;保留面(LevelUp/RefreshShop)与表内契约的差异 = 显式申报(§2.1/§2.3),非契约偏离。
 
 | 动作 | 权威语义源(simulate 分支) | sim 侧契约要点 |
 |---|---|---|
 | BuyCard | BuyCard 分支(含满栏合成买 merge_buy 分支) | 张数计算、店槽下架、`_merge_bench` 合成连锁、金账扣减全走投影;新鲜度登记用与 live 同源的策略层函数 |
-| LevelUpShop | LevelUp 分支 | 花费读动作携带 cost(策略按 OCR 真值优先、常量兜底)——**在途(P1):现状引擎硬编码扣常量 4、不读动作 cost,见 sim-wiring level_up_cost 行**;等级上界与 XP 表单一源在 kernel 常量 |
+| LevelUpShop | LevelUp 分支 | 花费载体读动作携带 cost(策略按 OCR 真值优先、常量兜底,ADR-0561 申报表 #5 载体面已落;值仍 4 = 兜底,真值注入未接,见 sim-wiring level_up_cost 行)——**引擎内联保留面(ADR-0561 决策 2)**;等级上界与 XP 表单一源在 kernel 常量 |
 | RefreshShop | RefreshShop 分支 | 刷→扣基价→重采样→**终结语义**(刷后必须重观察重决策,不得沿用旧牌面续决策);免费刷语义见 §2.3 |
 | SellBench | SellBench 分支 | 回金走 `sell_refund` 单一源;**卖出必须回收装备进 `st.equips`**(C6 守恒,§6);陈旧提案拒绝语义(expect 校验)随投影继承 |
 | SellDeployed / SwapDeploy / CompTransaction | 动作 v2 同一入口 | applied/rejected 逐条转录账本;合成连锁(fill 路径 `_merge_bench`)随投影;已消费店槽的同批买入作废并立即重决策 |
@@ -98,7 +98,6 @@ sim 只做一件事:**在 shop 决策面上评估策略 A/B**——同 seed 同�
 | 7 | 收球/开箱缺建模 | 球掉角色占备战席、席满中断-腾席-续收流程,sim 无对应实体 | 备战席占用 sim 偏松,满栏族指标(满栏拒买/合成买触发率)sim 偏乐观 |
 | 8 | CompTransaction live 缺席 | sim 可测整档替换策略行为;live 该动作通道未启用(词表保留) | 涉该动作的 sim 结论不可外推 |
 | 9 | 敌方上下文恒空 | enemy_difficulty/affixes/plane_bosses sim 不填(生成器未落,见 sim-power-model §6.7) | 难度敏感面零变化;涉难度结论失真 |
-| 10 | 引擎内联 SellBench 不回收装备 | 引擎内联卖出分支不把被卖备战件的装备归还 `st.equips`(bench 角色可带装:装备分配回写与合成迁移都会落 bench),C6 守恒在引擎路径静默失守且不触发对账门(对账门只在投影路径生效)——**随 P0 切投影自然消解**(§7.2 复核) | 卖出后装备覆盖类记账指标失真 |
 
 **维护纪律**:新增 sim-only 差异(或消除既有差异)必须同步改本表;A/B 报告模板引用本表做免责声明源。
 
@@ -287,7 +286,7 @@ sim 批 runner 在批末对满足任一判据的局触发复盘包生成:
 ### 7.1 已达成项自查(✓ 仅对「已达成 + 有载体」项打)
 
 - 归因域边界声明完整,prep 域无真值源已申报:§1.2 ✓
-- sim-only 差异申报清单 10 条完整(含引擎内联 SellBench 不回收装备、lv9 拒付方向分歧):§2.3 ✓
+- sim-only 差异申报清单 9 条完整(lv9 拒付方向分歧等;「引擎内联 SellBench 不回收装备」差异已随 ADR-0561 切投影消解,按本表维护纪律移出申报清单):§2.3 ✓
 - 检查器四分类完备(校准漂移哨兵有类可归、报告措辞判据边界已声明),方向声明强制与覆盖洞「补/豁免」二选一已立规:§3 ✓(规则面;升格结构化字段等载体见 §7.2)
 - 保真度参数有权威源/触发/过期判据,复测触发有感知通道与责任落点,降级期结论口径已定义,禁 sim 自身为靶:§4 ✓
 - 不变量清单与对账门完备性要求:§6 ✓(清单面;不变量辖守检查器为代码既有物)
@@ -296,8 +295,7 @@ sim 批 runner 在批末对满足任一判据的局触发复盘包生成:
 
 | 项 | 状态 | 出处 |
 |---|---|---|
-| 商店四动作切 simulate 单一源 | **P0 在途**(实施批落地中);落地后 §2.2 表转为现状契约,并复核 §2.3-10 自然消解 | §2.1 |
-| 逐动作语义对拍锁测试 + sim-only 白名单数据结构 | 不存在,P0 落地件 | §2.1 |
+| sim-only 白名单数据结构(逐动作对拍的 diff 白名单机械载体) | 防回漂三锁已在册(`test_cw_sim_shop_single_source.py`,ADR-0561 决策 4,辖 Buy/SellBench 切投影面);白名单数据结构仍待办,建成前白名单面 = §2.3 申报清单承载 | §2.1 |
 | 动作转移单一源机械守卫(AST/结构扫描:引擎对 GameState 字段的动作语义直写零容忍,白名单=§2.1 显式列表;先例=`sr-od-test` 的 `test_cw4_contracts.py` TestNoBypassDirectCalls——AST 扫描+全限定路径白名单+负测试) | 立项建议,载体待办(落测试仓) | §2.1 |
 | 机会错失类检查器实现 | 设计已定(§3.2),实现待办 | §3.2 |
 | 决策质量类检查器 | 规划,前置=EV 复算独立载体 | §3.3 |
