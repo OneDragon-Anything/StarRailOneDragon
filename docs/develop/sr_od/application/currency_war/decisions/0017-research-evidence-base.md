@@ -28,5 +28,5 @@ p2 死多因子,单杠杆调(D-11/14)皆不治;需权威机制依据定方向而
 - 边界:来源 V4.x,版本变需复核;米游社 content_id 未取到(JS 渲染)。
 
 ## Links
-- `· docs/develop/sr_od/application/currency_war/strategy/`(策略方向) / `docs/game/currency_war/data/`(游戏数据)
+- `· docs/develop/currency_war/strategy/`(策略方向) / `docs/game/currency_war/data/`(游戏数据)
 - 关联 D-NN:D-14(leveling 印证)、D-91(概率/费用图鉴)、D-95(A8 均衡混搭入策略)

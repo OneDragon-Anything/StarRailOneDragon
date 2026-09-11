@@ -28,5 +28,5 @@ review 抓到 `affix_effects_data.py` 工作区损坏(形单影只值 `85%160%/3
 - 边界:适用于"静态游戏数据"自动采集(词缀/装备效果等);动态状态不适用。
 
 ## Links
-- `· docs/develop/sr_od/application/currency_war/strategy/`(briefing/affix)
+- `· docs/develop/currency_war/strategy/`(briefing/affix)
 - 关联 D-NN:D-82(live 验证健康)、D-17(研究证据基同类:数据权威源)
