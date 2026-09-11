@@ -147,11 +147,22 @@ class ExecState:
     # BailToOuter 同因计数(局级,环重建不清零——ping-pong 诊断;≥3 记
     # [cw!])。流程侧。
     bail_reason_counts: dict[str, int] = field(default_factory=dict)
-    # 执行侧跟踪账(随动更新;双账断言 screen_op.md §2.3(ii))。tracked_
-    # bench_chars 形状契约(ADR-0316):买牌后 mutate_bench_deployed 就地
-    # pad 成定长 9 槽**含 None**;tracked_deployed 为槽位表。
-    tracked_bench_chars: list[BenchChar] = field(default_factory=list)
-    tracked_deployed: list[BenchChar] = field(default_factory=list)
+    # 执行侧跟踪账(随动更新;双账断言 screen_op.md §2.3(ii))。两账形状
+    # 契约 = pad 态定长槽表**含 None**(ADR-0316/0392;tracked_bench_chars
+    # T-308 后=reconcile 写回经 bench_from_compact 重建的槽位表,恒 pad 态;
+    # tracked_deployed = deployed_from_compact 写回/mutate 入口 pad_deployed
+    # 的定长 10 槽表)——注解按契约含 None(T-308 落地审义务,G2 全闭环)。
+    tracked_bench_chars: list[BenchChar | None] = field(default_factory=list)
+    tracked_deployed: list[BenchChar | None] = field(default_factory=list)
+    # bench 布局代次(T-308 S3 churn 事件通道,最小面)。[索引定义] 坐标系
+    # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
+    # 递增(kernel/cw_reconcile,唯一写点)/ 投影播种期快照(每段入口观察)+
+    # 单动作循环每动作消费前现读检差(cw_op_buy_cards,唯一消费点)。命中 =
+    # 布局已重排,在飞动作的 bench_idx 代际失效 → dd-020 截断+按 tracked
+    # 重播种+重入决策。当前架构 reconcile 均在 visit 外跑,visit 内恒不变
+    #(S2+S1 后纯未来防御:防 visit 中段未来引入读屏/对账点时布局变化
+    # 无人知晓)。局级生命周期(载体每局新建即天然清零)。
+    bench_layout_epoch: int = 0
     # —— 同轮买卖互斥事实账本(r408;随 cw_round_ledger 宿主迁出)——
     # 同轮轮键(决策层轮键重置段维护);register_round_sold 带轮键自校验。
     v2_round_key: tuple | None = None

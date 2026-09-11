@@ -30,6 +30,7 @@ from __future__ import annotations
 import contextlib
 import time
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -54,10 +55,10 @@ from sr_od.application.currency_war.kernel.cw_state import (
     LevelUp,
     RefreshShop,
     SellBench,
-    bench_from_compact,
     bench_occupied,
     merge_buy_k,
     mutate_bench_deployed,
+    pad_bench,
     simulate,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
@@ -198,6 +199,34 @@ def _reseed_bench_layout(state: GameState,
     return True
 
 
+def reseed_bench_if_layout_stale(state: GameState, session,
+                                 seed_epoch: int) -> str:
+    """S3 布局代次检差三步的封装(ADR-0646;单动作循环每动作消费前调用)。
+
+    检差:exec_state 布局代次 vs 播种期快照——命中 = visit 内布局已重排
+    (reconcile 纠漂递增,唯一写点 kernel/cw_reconcile),已发射动作的
+    bench_idx 代际失效,不可只换 state.bench。三步语义:
+    ①截断在飞计划(dd-020 截断语义,plan_truncated 记账由调用方承担——
+      本函数零 ledger 依赖,保持纯投影面可单测);
+    ②按 tracked 重播种(下标直拷 pad 后经 ``_reseed_bench_layout``,
+      含槽号健康门——脏槽号拒绝重播种维持旧布局);
+    ③重入决策(调用方 continue,decide 消费重播种后黑板帧)。
+
+    Returns:
+        'clean' = 代次未变(常态,当前架构 S2+S1 后恒此值——reconcile 均在
+        visit 外跑);'reseeded' = 检差命中且重播种成功(调用方重入决策);
+        'failed' = 检差命中但重播种被槽号健康门拒绝(布局不可信,调用方应
+        fail-stop 本段收工交回外循环重观察——禁在不可信布局上继续发射)。
+    """
+    if exec_state_of(session).bench_layout_epoch == seed_epoch:
+        return 'clean'
+    tracked = pad_bench(deepcopy(
+        getattr(exec_state_of(session), 'tracked_bench_chars', None) or []))
+    if not _reseed_bench_layout(state, tracked):
+        return 'failed'
+    return 'reseeded'
+
+
 def guard_expected_vs_tracked(state: GameState, session,
                               stage: str = 'project') -> None:
     """expected-vs-tracked 双账断言(ADR-0517 §守卫两属 (ii))。
@@ -208,20 +237,22 @@ def guard_expected_vs_tracked(state: GameState, session,
 
     两级分型(签名比较先做多集(multiset)等价,再走两属归因):
     - **多集等价(槽位布局漂移,降级不炸)**:成员账对齐、仅槽位排列
-      分歧——对账 churn(卖出/合并/换位)后 tracked/实况槽位重排,
-      投影副本未跟随重播种,两侧落槽规则一致但「洞在哪」不同源
-      (OpenShop 双账槽位漂移事故形态:expected=[符玄,阮·梅,阮·梅] vs
-      tracked=[阮·梅,符玄,阮·梅],真实 bench 洞@2、投影副本洞@1)。
+      分歧——历史 bug 态(tracked 紧凑 × slot 稀疏)下对账 churn 后两域
+      落洞不同源。根因申报(T-308/ADR-0646 已治本):漂移之根 =
+      reconcile 写回紧凑列表制造**布局双源**——两域在播种时刻即读出
+      不同布局(投影=bench_from_compact 槽号重构、tracked=mutate 下标
+      演化),每次落洞动作放大一次差异。治本 = S2 写回经
+      bench_from_compact 重建槽位表(kernel/cw_reconcile,deployed 侧
+      同构先例补齐)+ S1 tracked 域消费点下标直拷(播种同源,本守卫的
+      tracked 构造即其一点);本重播种保留为 guard 内自愈通道 + S3
+      epoch 检差(``reseed_bench_if_layout_stale``)的复用件,历史
+      bug 态(tracked 未及 S2 重建)残留时仍可显影自愈。
       处置 = WARNING + 台账分键 ``bench_slot_layout_drift`` 留证
       (判读工具可查)+ 按 tracked 真值就地重播种投影 bench
       (``_reseed_bench_layout``,含槽号健康门)——回写源选 tracked
       而非 ``match.bench_slot_map`` 的依据:后者只在买组确认后产出
       (守卫炸点在组中,来不及)且只含所购名→槽、不承载 churn 重排
       与洞位;tracked 账纯内存随执行与对账更新,是重排侧,零读屏。
-      根因申报:漂移之根 = simulate 落洞规则基于自身布局副本、不随
-      churn 重排——治本需把对账 churn 事件接进投影链(跨 reconcile/
-      投影两域边界,独立批),本重播种只保本 visit 内存态,属显式
-      声明的症状治理 + 排期,非遗漏。
     - **真多集分歧**:按 stage 两属归因,断言炸出(消息见下)。
       stage='seed'(播种后、首动作前):tracked 非空时本对账按构造
       恒等(state.bench 即自 tracked 播种),唯一可达场景 = tracked 主
@@ -236,9 +267,13 @@ def guard_expected_vs_tracked(state: GameState, session,
     同构化——mutate 带 shop 视图走 `_apply_full_bench_merge_buy` 同
     分支,不再丢件漏记)。豁免面外的真分叉 = 断言炸出。
     """
-    tracked = bench_from_compact(
-        [bc for bc in (getattr(exec_state_of(session), 'tracked_bench_chars', None) or [])
-         if bc is not None])
+    # T-308/ADR-0646 S1:tracked 输入域下标直拷(pad 补 None;deepcopy 隔离
+    # ——旧 bench_from_compact 冲突分支经 bench_place 就地改 bc.slot,守卫
+    # 读路径存在写副作用,直拷后自然关闭)。禁读 slot 字段:tracked 域
+    # slot 与下标的一致性由 S2 写回端保证,消费端下标即布局(与 SIFT 现读
+    # 域「slot 与读序同帧同源」是两套命题,分界见 ADR-0646)。
+    tracked = pad_bench(deepcopy(
+        getattr(exec_state_of(session), 'tracked_bench_chars', None) or []))
     expect_sig = _bench_identity_signature(state.bench)
     tracked_sig = _bench_identity_signature(tracked)
     if expect_sig != tracked_sig:
@@ -255,8 +290,8 @@ def guard_expected_vs_tracked(state: GameState, session,
                     observed=f'tracked={tracked_sig}',
                     verdict=('留证-双账槽位布局漂移(多集等价,仅槽序分歧;'
                              '降级不炸,已按 tracked 真值重播种投影 bench;'
-                             '根因=simulate 落洞规则不随 churn 重排,'
-                             'churn 事件接投影链为排期治本批)'),
+                             '根因=播种双源已随 T-308/ADR-0646 S2+S1 治本,'
+                             '本行为历史 bug 态残留自愈面,复发=回退哨兵)'),
                     reader_source='guard_expected_vs_tracked',
                     gap_large=False,
                     note='双账对拍守卫降级分支(多集等价;真分歧仍 AssertionError)')
@@ -482,11 +517,14 @@ class SellBenchOp(ShopActionOp):
             log.warning('[cw-shop] Sell bench%d %s 拖3次源槽未变',
                         action.bench_idx, _expected_name)
             return False
-        # tracking 同步:置 None 不紧缩(ADR-0316);紧凑态先归一为槽位表
-        # 语义再 mutate(索引=槽位,防清错槽)。
+        # tracking 同步:置 None 不紧缩(ADR-0316)。T-308/ADR-0646 S1:
+        # 下标直拷(pad 补 None)替代 bench_from_compact 槽号重构——S2 写回
+        # 端保证 tracked 恒槽位表后本归一恒等;历史 bug 态(紧凑)下布局以
+        # 列表下标为准(与 mutate 入口 pad 同构),不再按 slot 重构(陈旧
+        # slot 会把卡放错槽;错位卖出由下方 mutate 代际校验拦截 no-op,
+        # 安全非等价——故 S2 先于 S1 生效)。
         _tracked = exec_state_of(match.session).tracked_bench_chars
-        _tracked[:] = bench_from_compact(
-            [bc for bc in _tracked if bc is not None])
+        pad_bench(_tracked)
         mutate_bench_deployed(_tracked, exec_state_of(match.session).tracked_deployed, action)
         # ADR-0328 执行域对齐:卖出件入同轮已卖集(执行成功是卖出事实的
         # 权威,register_round_sold 带轮键自校验)。

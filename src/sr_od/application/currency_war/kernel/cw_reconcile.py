@@ -209,8 +209,49 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     new_b = [(bc.char_id, bc.star) for bc in (bench or []) if bc is not None]
     new_d = [(bc.char_id, bc.star) for bc in (deployed or []) if bc is not None]
     drifted = (old_b != new_b) or (old_d != new_d)
+    # 布局代次写回事实位(T-308 S3):bench 侧是否实际写回(健康门通过)。
+    # drifted 分支据此决定是否递增 bench_layout_epoch——deployed 驱动的
+    # 纠漂不递增(bench 布局未变);误递增无害(重播种幂等)、漏递增有害
+    #(布局变化无人知晓),故取「bench 写回 ∧ drifted」。
+    _bench_written = False
     if bench is not None:
-        exec_state_of(session).tracked_bench_chars = _merge_equips(exec_state_of(session).tracked_bench_chars, bench)
+        # T-308/ADR-0646 S2 主修:写回经 bench_from_compact 重建槽位表——
+        # 与下方 deployed 侧 deployed_from_compact 同构(ADR-0392 单一源
+        # 适配先例,bench 侧为同构修法补齐,非发明新机制)。SIFT 读的
+        # slot = 画面物理槽号(read_bench_chars→identify_slots 逐槽赋值,
+        # 与读序同帧同源;亲读结论见 ADR-0646),重建后列表布局=画面布局、
+        # slot=下标+1 天然一致,紧凑态从写入端消失,两域播种自动同源——
+        # 消灭 tracked 下标布局 vs BenchChar.slot 脱节的持续制造点
+        #(本函数旧写回直拷 SIFT 紧凑列表,违反 ADR-0316 形状契约)。
+        # 前置槽号健康门(与 cw_shop_action_ops._reseed_bench_layout 同式):
+        # 占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY——把 bench_from_compact 对
+        # 无效槽号的静默 fallback(冲突走 bench_place 首空槽)在写回点升级
+        # 为显式拒绝,防脏读数固化为形状自洽的槽位表(布局错而守卫恒过,
+        # 比现状更难发现)。违者拒绝写回保旧+留证:经 _conflict 通道
+        #(obs_conflict 行经旁路进缺陷台账;kernel 层落账走出口约束,
+        # 与 _reseed 的 telemetry kind 行分属两层,语义等价留证)。
+        from sr_od.application.currency_war.kernel.cw_state import (
+            BENCH_CAPACITY,
+            bench_from_compact,
+        )
+        _slots = [bc.slot for bc in bench if bc is not None]
+        _healthy = (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
+                        for s in _slots)
+                    and len(set(_slots)) == len(_slots))
+        if _healthy:
+            exec_state_of(session).tracked_bench_chars = bench_from_compact(
+                _merge_equips(exec_state_of(session).tracked_bench_chars, bench))
+            _bench_written = True
+        else:
+            log.warning(f'[cw!][{source}] 对账写回拒绝:bench 槽号不健康'
+                        f'(唯一∧1..{BENCH_CAPACITY})slots={sorted(_slots)}'
+                        f' → 保旧 tracking(脏读数不固化为槽位表)')
+            _conflict('bench', '占用槽号唯一∧全在1..9',
+                      f'slots={sorted(_slots)}', screen,
+                      verdict=('保旧-写回槽号健康门拒绝(SIFT 读 slot 重复/'
+                               '越界,拒写防脏布局固化为槽位表;T-308/'
+                               'ADR-0646;处理:频发→查 SIFT 槽位识别)'),
+                      source=source)
     if deployed is not None:
         # ADR-0392:tracked_deployed 是槽位表——_merge_equips 出紧缩占用序,
         # 写回前经 deployed_from_compact 转槽位表(单一源适配)。
@@ -222,6 +263,13 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                     f' deployed {old_d}→{new_d}')
         _conflict('tracking', f'{old_b}|{old_d}', f'{new_b}|{new_d}', screen,
                   verdict='采新-对账纠漂(SIFT 实读)', source=source)
+        # T-308/ADR-0646 S3:布局代次递增(churn 事件通道最小面)。对账纠漂
+        # = 布局可能重排,visit 内未来消费者(单动作循环每动作消费前检差)
+        # 据此截断在飞计划并按 tracked 重播种。当前架构 reconcile 均在
+        # visit 外跑,恒无消费者(S2+S1 后 epoch 只递增不消费,纯未来防御:
+        # 防 visit 中段未来引入读屏/对账点时布局变化无人知晓)。
+        if _bench_written:
+            exec_state_of(session).bench_layout_epoch += 1
     # 钩子归位——「对账&hook」位统一消费留证
     # 队列(原 reconcile 深处散调;计数节流每 5 次留一张不变,
     # _star_stop_hook 内帧态门保留=双层保护)。

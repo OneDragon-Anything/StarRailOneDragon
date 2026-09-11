@@ -33,9 +33,9 @@ from sr_od.application.currency_war.kernel.cw_state import (
     LevelUp,
     RefreshShop,
     SellBench,
-    bench_from_compact,
     bench_occupied,
     ledger_node_type,
+    pad_bench,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import (
@@ -191,9 +191,10 @@ def sell_guard_ok(expected: str | None, live: str | None) -> bool:
     生成期快照 ``state.bench[idx].char_id``(期望名)vs 执行期实况
     ``tracked_bench_chars`` 现槽名——不符 = 槽位内容已被本循环前序动作消费
     (3合1 merge 删件/前笔卖出)→ 整笔跳过(stale_proposal,与 cw_state 拒绝
-    语义同词)。两表同源于循环顶(``state.bench = bench_from_compact(tracked)``),
-    mid-loop 漂移必被抓。残余风险(不防「tracked 名字本身错」)= buy-OCR 误读,
-    属既有跟踪保真度问题(迁移审计 w57(git 历史) F6),不在本批根治。
+    语义同词)。两表同源于循环顶(``state.bench`` 按 tracked 下标直拷播种,
+    T-308/ADR-0646 S1),mid-loop 漂移必被抓。残余风险(不防「tracked 名字
+    本身错」)= buy-OCR 误读,属既有跟踪保真度问题(迁移审计 w57(git 历史)
+    F6),不在本批根治。
     """
     return bool(expected) and live is not None and live == expected
 
@@ -346,7 +347,11 @@ def build_post_buy_incremental_state(
         return None   # 空 tracked:真空/丢跟踪不可区分 → fail-closed 回退全量读
     post = deepcopy(last_state)
     post.gold = gold_read
-    post.bench = bench_from_compact(deepcopy(tracked_bench_chars))
+    # T-308/ADR-0646 S1:tracked 输入域下标直拷(pad 补 None;禁读 slot 字段
+    # ——tracked 域 slot 与下标的一致性由 S2 写回端保证,消费端下标即布局)。
+    # 旧 bench_from_compact 槽号重构仅对 SIFT 现读域(slot 与读序同帧同源)
+    # 合法,见 ADR-0646 消费点分界。
+    post.bench = pad_bench(deepcopy(tracked_bench_chars))
     _apply_hp(post, hp_value, hp_readable, hp_trusted)
     return post
 
@@ -779,11 +784,17 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 双账分叉事故,诊断档
         # .debug/temp/currency_war/20260905_openshop_fork_diag/report.md)。
         if exec_state_of(match.session).tracked_bench_chars:
-            # ADR-0316:tracked 是占用列表(带 1-based slot)→ 槽位表
-            state.bench = bench_from_compact(
+            # ADR-0316 + T-308/ADR-0646 S1:tracked 恒为槽位表(reconcile
+            # 写回端 S2 经 bench_from_compact 重建保证)→ 播种 = 下标直拷
+            # pad(布局单一源=列表下标;槽号重构仅对 SIFT 现读域合法,
+            # tracked 域禁读 slot 字段——分界见 ADR-0646)。
+            state.bench = pad_bench(
                 deepcopy(exec_state_of(match.session).tracked_bench_chars))  # copy 防下游 plan 污染持久态
             log.info(f'[cw] tracked_bench_chars(seed)='
                      f'{[(c.char_id, c.star) for c in state.bench if c is not None]}')
+        # T-308 S3:播种期布局代次快照(单动作循环每动作消费前检差用;
+        # 空播种段同样取值——检差面不依赖是否播种)。
+        _seed_epoch = exec_state_of(match.session).bench_layout_epoch
         match.session.last_state = state
         # 黑板写路径(W971 §2,P2):入口观察态(牌面现读+hp 覆盖+node_type/
         # dual/focus 拷入+gold 救援+tracked 播种 + 单动作投影段)直写
@@ -861,6 +872,29 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _seg_frames = 0
         while True:
             _seg_frames += 1
+            # T-308/ADR-0646 S3 布局代次检差(每动作消费前):命中 = visit 内
+            # 布局已重排(reconcile 纠漂递增 epoch),已发射动作的 bench_idx
+            # 代际失效,不可只换 state.bench → 三步:①截断在飞计划(dd-020
+            # 截断语义,plan_truncated 记账)→ ②按 tracked 重播种(helper
+            # 内含槽号健康门)→ ③重入决策(decide 消费重播种后黑板帧)。
+            # 重播种被健康门拒绝 = 布局不可信 → fail-stop 本段收工交回外
+            # 循环重观察(dd-020 fail-stop 语义;禁在不可信布局上继续发射)。
+            from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
+                reseed_bench_if_layout_stale,
+            )
+            _stale = reseed_bench_if_layout_stale(state, match.session,
+                                                  _seed_epoch)
+            if _stale == 'reseeded':
+                _seed_epoch = exec_state_of(match.session).bench_layout_epoch
+                ledger.plan_truncated = True
+                log.warning('[cw!][plan] 布局代次检差命中:在飞计划截断(dd-020),'
+                            '已按 tracked 重播种投影 bench,重入决策')
+                continue
+            if _stale == 'failed':
+                ledger.plan_truncated = True
+                log.warning('[cw!][plan] 布局代次检差命中但重播种被槽号健康门'
+                            '拒绝 → fail-stop 本段收工,交回外循环重观察')
+                break
             # 帧序推进(T-113/ADR-0579):段序号与 decisions 行同源,动作行
             # frame_seq 关联键读取端(op_journal.current_frame_seq)。
             from sr_od.application.currency_war.telemetry.op_journal import (

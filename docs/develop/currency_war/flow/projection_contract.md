@@ -23,7 +23,7 @@
 
 执行侧载体（消费方读写的落地对象）：
 
-- `kernel/cw_exec_state.py::ExecState`：局容器级执行状态。`tracked_bench_chars`/`tracked_deployed` 双账（形状契约 = ADR-0316/0392 槽位表、pad 后含 None）、`deploy_fail_counts` 失败记忆、`expected_state` 期望态容器等。
+- `kernel/cw_exec_state.py::ExecState`：局容器级执行状态。`tracked_bench_chars`/`tracked_deployed` 双账（形状契约 = ADR-0316/0392 槽位表、pad 后含 None；T-308/ADR-0646 起 tracked_bench_chars 恒 pad 态由 reconcile 写回端经 `bench_from_compact` 重建保证，消费端下标即布局）、`deploy_fail_counts` 失败记忆、`expected_state` 期望态容器等。
 - 期望态路径寻址：`kernel/cw_expected_state.py::ExpectedEntry.path`，身份寻址字符串（§2.4）。
 - 帧级透传槽：`MandateState.cw4_m1p_arm_pending`（换血臂发射⇔执行归因透传，§4.3）。
 
@@ -126,7 +126,6 @@
 | # | 文件::符号 | 缺口 | 影响 |
 |---|---|---|---|
 | G1 | `kernel/cw_state.py::BenchChar.slot` | 投影面最核心槽位字段**自身零定义注释**：坐标系/取值时机/双容器语义（bench 域 = 1-based 物理槽号权威输入；deployed 域 = 排内槽号信息位、派生自下标）只散在 GameState 容器注释与 Action 对照表；`cw_state.py::_card_to_bench` 构造的 `slot=0`「未落槽」哨兵值也无处声明 | 跨模块读者只能靠猜；slot=0 哨兵与 1-based 值域混存于同一字段无声明 |
-| G2 | `kernel/cw_exec_state.py::ExecState.tracked_bench_chars` / `tracked_deployed` | 类型注解 `list[BenchChar]` 与形状契约不符——契约 = pad 态定长槽表**含 None**（字段注释引 ADR-0316 自证），正确注解 = `list[BenchChar \| None]`；坐标系（槽位表下标、元素 slot 为信息位）未按注释模板声明 | 注解是类型层面的坐标系声明；消费方（`assembly._tracking_view`、`cw_expected_state`）全按含 None 处理，注解失真会误导新消费方裸迭代 |
 | G3 | `kernel/cw_expected_state.py::apply_op_effect`（path 构造）与 `ExpectedEntry` docstring | 期望态路径命名空间同一括号形态两种基：`tracked_bench_chars[N]` = 1-based 物理槽号、`tracked_deployed[N]` = 0-based 槽位表下标、`deployed.{row}.{slot}` = 1-based；`ExpectedEntry` docstring 只写「槽位路径」未分基 | 现状零行为分叉（清账同串匹配 + 身份匹配豁免位移）；判读/离线工具按 path 直读槽号会错位 |
 | G4 | `kernel/cw_prep_actions.py::SellBench.slot` / `SellDeployed.row+slot` / `DeployMove.from_slot/to_slot`（族 B 全部槽位字段） | 坐标系有声明（模块头+类 docstring：物理槽位），**取值时机零声明**；「族 B 无 expect 代际校验、依赖单动作循环生成即执行短间隙」的结构边界未写在动作定义处（只散在 prep_visit/action_exec 的循环语义） | 族 B 动作一旦进入跨帧队列即无代际防线；登记为契约边界，接线跨帧队列前必须先补 expect 类防线或取值时机声明 |
 | G5 | `obs/cw_identity_obs.py::find_supply_boxes` / `find_tomes` / `read_supply_boxes` / `read_tomes` | 返回值 `slot_idx` 的基（1-based，来自 `_ctx_slots` 的 `range(1, count+1)`）只在实现里，函数级 docstring 未声明；对照同文件 `bench_item_slots` 的「注释规范硬门」写法属漏网 | 消费方 `OpenBox.slot`/`OpenTome.slot` 的 validate（1-9）与匹配（`b[0]==action.slot`）全依赖此基；声明缺失=新读取方易按 0-based 惯例错拿 |
