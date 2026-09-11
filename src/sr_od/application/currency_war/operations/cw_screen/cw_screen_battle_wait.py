@@ -409,10 +409,9 @@ class CwScreenBattleWait(CwScreenOpBase):
                 # —— 观察半直写(ADR-0583 §2.5;原 on_round_end 观察段逐行平移,
                 # 写点与原调用同点同时序)——
                 _write_settlement_observation(_session, _obs, _now_t)
-                # —— 结算行入观察累积槽(ADR-0583 §2.5 观察半直写)。
-                # 原消费端(策略器决策入口惰性 drain:掉血三臂喂入/node_type
-                # 回落/谷底回滚登记)已随 T-64 退役批删除(04_survival_budget
-                # §7 #7/#8)——本槽现为只写不读的观察累积面。
+                # —— 策略半入槽(ADR-0583 §2.5):策略器下一决策入口惰性 drain
+                #(掉血三臂喂入/node_type 回落/谷底回滚登记 = flow 层
+                # _drain_pending_round_outcomes;处理即清)。
                 _session.pending_round_outcomes.append(_obs)
                 # (结算 outcomes 行与 battle_done 外生行已随旧流写入端退役
                 #  删除——删除波 1;结算真值现役归宿 = BoardState settlement
@@ -590,9 +589,13 @@ class CwScreenBattleWait(CwScreenOpBase):
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
             self._unknown_streak = 0
             log.info('[cw-bwait][battle_end] 结算屏首见(战斗结束锚点)')
+            from sr_od.application.currency_war.operations.settle_collect_hooks import (
+                settle_frame_collect,
+            )
+            settle_frame_collect(screen)
             # #25 用户裁定:按钮出现后结算数据 ~1.5s 才渲染完,读点前等 1.5s
             # + 重截(交接文件 REAL_MACHINE_EFFICIENCY_HANDOFF.md damage 0/15
-            # 事故时序根因)。
+            # 事故时序根因);采集钩子仍抓首见帧(时序价值在动画帧)。
             time.sleep(1.5)
             screen = self.screenshot()
             self._record_round_outcome(screen)
@@ -654,6 +657,10 @@ class CwScreenBattleWait(CwScreenOpBase):
             self._unknown_streak = 0
             if _1f_sign == 'neg':
                 self._st.saw_defeat_settlement = True
+            from sr_od.application.currency_war.operations.settle_collect_hooks import (
+                settle_frame_collect,
+            )
+            settle_frame_collect(screen)
             # 面板渲染延迟门(SETTLE_PANEL_WAIT_S;1f 是失败页主通道)
             _pnl = read_settle_damage_breakdown(self.ctx, screen)
             if (self.round_by_ocr(screen, '点击空白加速').is_success
@@ -705,6 +712,10 @@ class CwScreenBattleWait(CwScreenOpBase):
         _accel_hit = self.round_by_ocr(screen, '点击空白加速')
         if _accel_hit.is_success:
             self._unknown_streak = 0
+            from sr_od.application.currency_war.operations.settle_collect_hooks import (
+                settle_frame_collect,
+            )
+            settle_frame_collect(screen)
             try:
                 _texts1 = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
                     image=screen, rect=None, crop_first=False)]
@@ -758,6 +769,10 @@ class CwScreenBattleWait(CwScreenOpBase):
                     self._st.last_outcome_hp = 0
                     self._st.saw_defeat_settlement = True
                     log.info('[cw-bwait] 战败结算屏 → hp=0 补录 outcomes 真值源')
+                from sr_od.application.currency_war.operations.settle_collect_hooks import (
+                    settle_frame_collect,
+                )
+                settle_frame_collect(screen)
                 self.ctx.controller.click(CwScreenBattleWait.SETTLEMENT_NEXT)
                 self.park_cursor(after_wait=0.1)
                 return self.round_wait(wait=1)
