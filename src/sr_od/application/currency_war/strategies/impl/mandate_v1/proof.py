@@ -313,9 +313,13 @@ def best_alt_comp(state: GameState, session: StrategySession,
         if comp.name == cur_name or comp.name in excluded:
             continue
         try:
-            if shop_supply(comp, state) <= 0:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_bridge as _bsb,
+            )
+            _bs_supply = _bsb(state)
+            if shop_supply(comp, _bs_supply) <= 0:
                 continue
-            e = cw_line_switch.e_rounds(comp, state, registry,
+            e = cw_line_switch.e_rounds(comp, _bs_supply, registry,
                                         session=session)
         except Exception:   # noqa: BLE001  候选评估退化态:跳过该候选(可观测)
             continue
@@ -382,7 +386,10 @@ def should_switch(state: GameState, session: StrategySession,
         _count(session, 'switchline_no_target')
         return SwitchOutcome(False, 'no_target')
     try:
-        e_cur = cw_line_switch.e_rounds(cur, state, reg, session=session)
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge as _bsb,
+        )
+        e_cur = cw_line_switch.e_rounds(cur, _bsb(state), reg, session=session)
     except Exception:   # noqa: BLE001  线距离退化态:维持原线,可观测
         _count(session, 'switchline_e_cur_undefined')
         return SwitchOutcome(False, 'e_cur_undefined')
@@ -394,7 +401,7 @@ def should_switch(state: GameState, session: StrategySession,
             _count(session, 'switchline_no_alt')
             return SwitchOutcome(False, 'no_alt')
     ok, _reason = cw_line_switch.should_switch_e(
-        e_cur, cw_line_switch.e_rounds(alt_comp, state, reg,
+        e_cur, cw_line_switch.e_rounds(alt_comp, _bsb(state), reg,
                                        session=session),
         ls.dwell, reg)
     if not ok:

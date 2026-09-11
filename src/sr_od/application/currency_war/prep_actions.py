@@ -284,7 +284,10 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
         )
         from sr_od.application.currency_war.kernel.cw_state import GameState
         _st = (_match.session.last_state if _match is not None else None) or GameState()
-        _form = form_progress(_tgt_comp, _st)
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
+        _form = form_progress(_tgt_comp, board_state_bridge(_st))
     # W629-R1 扩口(批 2):state/last_state 通道读点点名迁移——
     # committed 读端唯一化(decision_v2.prep_brain.committed_from,
     # 内部 = cw_intention 权威派生);旧形为 last_state 通道裸直读

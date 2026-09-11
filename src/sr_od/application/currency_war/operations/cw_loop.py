@@ -424,13 +424,17 @@ def readiness_admission_report(state, comp) -> dict:
     **帧对齐说明**(预估读 session.last_state,一轮滞后可接受)见彼处
     docstring。
     """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
     from sr_od.application.currency_war.kernel.cw_launch_admission import (
         launch_admission_report,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
     )
-    return launch_admission_report(state, comp, line_members=line_members)
+    return launch_admission_report(board_state_bridge(state), comp,
+                                   line_members=line_members)
 
 
 def readiness_battle_launch(op, ctx):
@@ -2217,8 +2221,12 @@ class CwLoop(SrOperation):
             )
             _tc = getattr(strategy_state_of(self.ctx.cw_match.session), 'target_comp', None)
             _ms = getattr(self.ctx.cw_match.session, 'last_state', None)
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_bridge,
+            )
             _arm_core = readiness_launch_decision(
-                _ms, _tc, line_members=_line_members)
+                board_state_bridge(_ms), _tc,
+                line_members=_line_members)
             _arm_armed = _arm_core['armed']
             # 质量闸观测分键(ADR-0570 待标定①实机观测 sink:推迟帧/评估
             # 异常帧;best-effort,容器缺席静默跳过,与 readiness_overlay_

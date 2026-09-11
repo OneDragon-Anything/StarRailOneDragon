@@ -14,6 +14,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    bench_slots_of,
+    deployed_slots_of,
+)
 from sr_od.application.currency_war.kernel.cw_comps import (
     ScoreContext,
     clamp,
@@ -23,7 +28,6 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     weighted_mean,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
-    GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
 
@@ -185,7 +189,7 @@ class PerformanceTracker:
         return clamp(1.0 - trend / HP_LOSS_FULL, 0.0, 1.0)
 
 
-def star_achievement(comp: Comp, state: GameState) -> float:
+def star_achievement(comp: Comp, bs: BoardState) -> float:
     """核心角色星级达成(0..1;review round-4 HIGH-1:限时 AV 星级=输出,高星核心角色更强)。
 
     核心角色(``char_id in comp.core_chars``)在 bench/deployed 的 star —— 取 **bot 跟踪** star
@@ -194,8 +198,8 @@ def star_achievement(comp: Comp, state: GameState) -> float:
     """
     if not comp.core_chars:
         return 0.0
-    stars = [bc.star for bc in [x for x in state.bench if x is not None]
-             + list(iter_occupied_deployed(state.deployed))
+    stars = [bc.star for bc in [x for x in bench_slots_of(bs) if x is not None]
+             + list(iter_occupied_deployed(deployed_slots_of(bs)))
              if bc.char_id in comp.core_chars]
     if not stars:
         return 0.0
@@ -205,7 +209,7 @@ def star_achievement(comp: Comp, state: GameState) -> float:
 
 # ===== comp_viability(评 current 已 commit comp;先验 + 观测 blend)=====
 
-def comp_viability(comp: Comp, state: GameState, ctx: ScoreContext,
+def comp_viability(comp: Comp, bs: BoardState, ctx: ScoreContext,
                    tracker: PerformanceTracker) -> float:
     """评 **current 已 commit** comp 的可行性(pivot/eval 用;先验 + 观测 blend,0..1)。
 
@@ -220,10 +224,10 @@ def comp_viability(comp: Comp, state: GameState, ctx: ScoreContext,
     """
     obs = tracker.perf_for_comp(comp.name)
     prior = weighted_mean([
-        (0.40, form_progress(comp, state)),
-        (0.25, equip_fit(comp, state)),
+        (0.40, form_progress(comp, bs)),
+        (0.25, equip_fit(comp, bs)),
         (0.20, mechanics_fit(comp, ctx.mechanics)),
-        (0.15, star_achievement(comp, state)),   # review round-4 HIGH-1:限时 AV 星级=输出
+        (0.15, star_achievement(comp, bs)),   # review round-4 HIGH-1:限时 AV 星级=输出
     ])
     if obs is None:
         return clamp(prior, 0.0, 1.0)   # 冷启动:纯先验(obs_weight=0)
@@ -240,7 +244,7 @@ TREND_THRESHOLD: float = HP_LOSS_FULL * 0.5   # trend 超此(归一化掉血 15+
 LOCK_NODES: set[str] = {"boss", "遭遇", "精英"}   # 锁不住血的节点类型(普通关可能锁血翻盘)
 
 
-def is_run_dead(state: GameState, tracker: PerformanceTracker,
+def is_run_dead(bs: BoardState, tracker: PerformanceTracker,
                 next_node_type: str) -> bool:
     """死局检测(三门):HP 低 + trend 高 + 下回合是锁不住血节点 → True。
 
@@ -250,6 +254,6 @@ def is_run_dead(state: GameState, tracker: PerformanceTracker,
     trend = tracker.recent_hp_loss_trend(window=3)
     if trend is None:
         return False
-    if state.hp is not None and state.hp < DEAD_HP and trend > TREND_THRESHOLD:
+    if bs.hp.value is not None and bs.hp.value < DEAD_HP and trend > TREND_THRESHOLD:
         return next_node_type in LOCK_NODES
     return False

@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_bridge,
+)
 from sr_od.application.currency_war.kernel.cw_comps import (
     augment_affinity,
     form_progress,
@@ -540,7 +543,8 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
     if not options:
         return EncounterPick(idx=0, reason="no-options")
     mechs = [_option_mechanics(o, target_comp) for o in options]
-    form = form_progress(target_comp, state) if target_comp is not None else 0.5
+    form = (form_progress(target_comp, board_state_bridge(state))
+            if target_comp is not None else 0.5)
     formed = form >= 0.4 and state.deployed_count() >= max(2, state.max_units() // 2)
 
     # 全分支词缀都克 comp(mechanics_fit < 0.4)+ 刷新未用 → 刷新换批(避开高危)

@@ -29,6 +29,9 @@ from dataclasses import dataclass, field
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_bridge,
+)
 from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
     Comp,
@@ -718,7 +721,7 @@ def _comp_formed(comp: Comp, state: GameState) -> bool:
     from sr_od.application.currency_war.kernel.cw_launch_admission import (
         readiness_form_ok,
     )
-    return readiness_form_ok(state, comp)
+    return readiness_form_ok(board_state_bridge(state), comp)
 
 
 def _core_names(opt: UpgradeOption) -> tuple[list[str], list[str]]:
@@ -800,8 +803,9 @@ def propose_upgrades(state: GameState, session=None) -> list[UpgradeOption]:
     opts: list[UpgradeOption] = []
     owned = _owned_names(state)
     from sr_od.application.currency_war.kernel.cw_recipe import decision_target
-    _intent_target = decision_target(session, state) if session is not None \
-        else None
+    _intent_target = (decision_target(session, board_state_bridge(state))
+                         if session is not None else
+                         None)
 
     def _mk(kind: str, faction: str, target: int, comp_name: str,
             source: str) -> None:
@@ -825,7 +829,7 @@ def propose_upgrades(state: GameState, session=None) -> list[UpgradeOption]:
         faction, target = mapping
         if card.card_id == 'seele' and '希儿' not in owned:
             continue   # 希儿卡:引擎不在手无机会
-        if card_pieces(card, state) < 1:
+        if card_pieces(card, board_state_bridge(state)) < 1:
             continue   # 零件局:无可上机会
         _mk('new_faction' if _board_tier(state, faction) == 0 else 'tier_up',
             faction, target, card.card_id, 'card')

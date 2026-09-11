@@ -16,8 +16,11 @@
 """
 from __future__ import annotations
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    plane_of,
+)
 from sr_od.application.currency_war.kernel.cw_comps import Comp
-from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
 
@@ -76,7 +79,7 @@ def recipe_char_wanted(char_id: str, framework: str) -> bool:
 # 统一走 env/augment affinity,定型时转变成本≈0 → 恒等衔接。
 
 
-def decision_target(session, state: GameState) -> Comp | None:
+def decision_target(session, bs: BoardState) -> Comp | None:
     """决策中心取 target 的**单一入口**(消费方零改动)。
 
     用法:决策路径处把 ``strategy_state_of(session).target_comp`` 的直接读换成本函数
@@ -97,10 +100,12 @@ def decision_target(session, state: GameState) -> Comp | None:
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
     (C 方案对抗报告 攻击面 3 实证)。
     """
+    from types import SimpleNamespace as _PlaneShim
+
     from sr_od.application.currency_war.kernel.cw_intention import (
         committed_from,
     )
-    if not committed_from(session, state):
+    if not committed_from(session, _PlaneShim(plane=plane_of(bs))):
         fw = getattr(strategy_state_of(session), 'transition_framework', '')
         if fw:
             rc = _RECIPES.get(fw)

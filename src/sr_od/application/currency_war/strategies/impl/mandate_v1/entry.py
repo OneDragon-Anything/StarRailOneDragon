@@ -866,7 +866,10 @@ def _reconcile_posture_authorization(session: StrategySession,
     # return,本分键永不可达;抑制先行声明 = 方案 §0.2(抑制 = 结构性
     # 无授权,支付能力检查无须求值)。判据单一源 = kernel.cw_reward_node
     # (与 M3 三消费位同谓词,None fail-open)。
-    if reward_node_suppressed(state):
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
+    if reward_node_suppressed(board_state_bridge(state)):
         un = {'auth_id': f'{state.plane}-{state.round_num}',
               'channel': 'levelup',
               'reason': 'reward_node_no_power_need',

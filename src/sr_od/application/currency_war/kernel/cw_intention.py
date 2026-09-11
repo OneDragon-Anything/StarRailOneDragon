@@ -54,6 +54,9 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
     refresh_prob,
 )
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_bridge,
+)
 from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
     CORE_SINGLE_CARD_REGISTRY,
@@ -888,7 +891,7 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
     """
     reg = registry or DEFAULT_REGISTRY
     target = pair_target_comp(pair)
-    e_f = (e_rounds(target, state, reg, session=session)
+    e_f = (e_rounds(target, board_state_bridge(state), reg, session=session)
            if target is not None else math.inf)
     r_rem = r_remaining(session, int(state.plane or 1),
                         int(state.round_num or 1))
@@ -1663,7 +1666,8 @@ def update_intention(state: GameState, ist: IntentionState,
                         alt_name, thk = ev
                         q = _core_miss_q(core, state.level)
                         alt_comp = get_comp(alt_name)
-                        e_alt = (e_rounds(alt_comp, state, reg,
+                        e_alt = (e_rounds(alt_comp,
+                                          board_state_bridge(state), reg,
                                           session=session)
                                  if alt_comp is not None else math.inf)
                         ist.phase = 'weak'
@@ -1871,7 +1875,8 @@ def update_intention(state: GameState, ist: IntentionState,
                         ist.p1_pair_refreeze_hold = ()   # 换向解封
                     else:
                         _t = pair_target_comp(pair)
-                        fp_v = (form_progress(_t, state)
+                        fp_v = (form_progress(_t,
+                                              board_state_bridge(state))
                                 if _t is not None else 0.0)
                         if fp_v < 1.0:
                             # fp 回落 = 方向丢失;此后再达成才是新
@@ -1903,7 +1908,8 @@ def update_intention(state: GameState, ist: IntentionState,
                 if pair and not ist.p1_pair_refreeze_hold:
                     if fp_v is None:
                         _t = pair_target_comp(pair)
-                        fp_v = (form_progress(_t, state)
+                        fp_v = (form_progress(_t,
+                                              board_state_bridge(state))
                                 if _t is not None else 0.0)
                     if fp_v >= 1.0:
                         ist.p1_pair_frozen = True

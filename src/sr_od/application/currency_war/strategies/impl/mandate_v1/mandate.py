@@ -509,8 +509,11 @@ def swap_transition_narrow_frame(state: GameState | None,
     tgt = getattr(_ms, 'target_comp', None)
     fp: float | None = None
     if tgt is not None:
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
         try:
-            fp = float(form_progress(tgt, state))
+            fp = float(form_progress(tgt, board_state_bridge(state)))
         except Exception:   # noqa: BLE001  成型度不可得 = 不收窄(保守侧)
             fp = None
     board_full = deployed_occupied(state.deployed) >= state.max_units()
@@ -566,14 +569,18 @@ def _deploy_advances_form(comp: object | None,
         return False
     from types import SimpleNamespace
 
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
-    _before = form_progress(comp, state)
+    _before = form_progress(comp, board_state_bridge(state))
     _board2 = dict(getattr(state, 'board', None) or {})
     for _f in tuple(ch.factions or ()) + tuple(ch.flows or ()):
         _board2[_f] = _board2.get(_f, 0) + 1
     # form_progress 只读 state.board(单一源直读);假想面板用轻量视图
     # 复用同一实现,禁第二套进度算式。
-    _after = form_progress(comp, SimpleNamespace(board=_board2))
+    _after = form_progress(comp, SimpleNamespace(
+        board=SimpleNamespace(value=_board2)))
     return _after > _before
 
 
@@ -1299,12 +1306,16 @@ def run_mandate(frame: MandateFrame,
     # blood_xp_gate_defer ≠ crisis_level_spend_defer)。扑满环境帧守卫
     # 解除抑制(守卫单一源同 kernel),写点同时复活 v3_piggy_reward
     # 遥测真值(ADR-0348 ↺,ADR-0580)。
-    _reward_defer = reward_node_suppressed(state)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
+    _reward_defer = reward_node_suppressed(board_state_bridge(state))
     if _reward_defer:
         _count('reward_node_defer')
     if getattr(state, 'node_type', None) == 'reward':
         # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
-        state_of(session).v3_piggy_reward = is_piggy_reward_frame(state)
+        state_of(session).v3_piggy_reward = is_piggy_reward_frame(
+            board_state_bridge(state))
     # 形态⑥第二破口观测(纯观测零行为;M3 前置短路帧显影,补「零分键
     # 零静默」)。分键形态钉死四元合取(241 §15.1 R3-低3 兑付:防宽化为
     # 「一切前置短路帧」——域内闩失效帧/cap 不可读帧不入键),键带授权域

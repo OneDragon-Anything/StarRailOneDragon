@@ -42,15 +42,20 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     ROTATION_CHANCE,
     rotation_probs,
 )
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    deployed_slots_of,
+    level_of,
+    round_num_of,
+)
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_state import GameState
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
 
-def deployed_star_depth(st: GameState) -> int:
+def deployed_star_depth(bs: BoardState) -> int:
     """净星深 = 上场件 Σ(star−1)(全量口径,同 ADR-0399
     HandoffSnapshot star_sum−deployed_n;纯 state 可算、生产/sim/
     离线回放三面同式)。
@@ -64,7 +69,7 @@ def deployed_star_depth(st: GameState) -> int:
     """
     return sum(
         int(getattr(d, 'star', 1) or 1) - 1
-        for d in (st.deployed or []) if d is not None)
+        for d in deployed_slots_of(bs) if d is not None)
 
 
 def _star_depth_from_rows(rows) -> int:
@@ -75,7 +80,7 @@ def _star_depth_from_rows(rows) -> int:
                for x in (rows or []) if isinstance(x, dict))
 
 
-def p2_form_key(st: GameState, calib: P2CombatCalib) -> float:
+def p2_form_key(bs: BoardState, calib: P2CombatCalib) -> float:
     """form=板面质量键(ADR-0377:engines+level 折算;
     ADR-0401 扩展:+星级深度折算)。
 
@@ -84,20 +89,20 @@ def p2_form_key(st: GameState, calib: P2CombatCalib) -> float:
     star_depth = ``deployed_star_depth`` 单一源(core2 维/board_tier
     的星级分量因果通道,交接 sim 报告 §⑥/交接门报告挂账的 sim 建模缺口)。
     """
-    star_depth = deployed_star_depth(st)
-    return (float(_settle_rung(st)) + calib.form_level_weight * (
-        st.level - calib.form_level_base)
+    star_depth = deployed_star_depth(bs)
+    return (float(_settle_rung(bs)) + calib.form_level_weight * (
+        level_of(bs) - calib.form_level_base)
         + calib.form_star_weight * star_depth)
 
 
-def p2_win_p(st: GameState, node: str, round_num: int,
+def p2_win_p(bs: BoardState, node: str, round_num: int,
              calib: P2CombatCalib) -> float:
     """参数化胜率:clip(p0 + β·form − γ·drift(round))。
 
     drift = max(0, round−1)(r1 无漂移;敌人强度逐轮增长的最小参数化)。
     """
     lo, hi = calib.win_p_clip
-    form = p2_form_key(st, calib)
+    form = p2_form_key(bs, calib)
     drift = max(0, round_num - 1)
     return min(hi, max(lo, calib.p0 + calib.beta * form
                        - calib.gamma * drift))
@@ -117,14 +122,14 @@ def p2_loss_band(node: str, round_num: int,
     return calib.band_boss
 
 
-def p2_combat_delta(st: GameState, node: str, round_num: int,
+def p2_combat_delta(bs: BoardState, node: str, round_num: int,
                     rng: random.Random,
                     calib: P2CombatCalib) -> tuple[int, float]:
     """P2 战斗类节点参数化结算(胜→win_delta/负→分段带内均匀)。
 
     返回 (delta, win_p)——win_p 随账本披露(检查器带锚/敏感性判读消费)。
     """
-    wp = p2_win_p(st, node, round_num, calib)
+    wp = p2_win_p(bs, node, round_num, calib)
     if rng.random() < wp:
         return calib.win_delta, wp
     lo, hi = p2_loss_band(node, round_num, calib)
@@ -177,7 +182,7 @@ def boss_delta(dir_round: int, rng: random.Random,
     return int(-(36.0 * multiplier + rng.uniform(0, 10.0)))
 
 
-def _settle_rung(st: GameState) -> int:
+def _settle_rung(bs: BoardState) -> int:
     """ADR-0279:结算时点成型度 rung(boss_settle_delta 与 battle/
     encounter(v11,ADR-0407)Δ池 rung 分桶的采样键**单一源**)。
 
@@ -187,13 +192,13 @@ def _settle_rung(st: GameState) -> int:
     缺星徽贡献,星徽局 rung 系统性偏低落错桶)+上场名单(希儿系单卡判据)。
     """
     from sr_od.application.currency_war.kernel.cw_state import _recount_board
-    _bf = _recount_board(st.deployed)
-    _names = frozenset(d.char_id for d in (st.deployed or [])
+    _bf = _recount_board(deployed_slots_of(bs))
+    _names = frozenset(d.char_id for d in deployed_slots_of(bs)
                        if getattr(d, 'char_id', ''))
     return _engines_count(_bf, _names)
 
 
-def boss_settle_delta(st: GameState, dir_round: int,
+def boss_settle_delta(bs: BoardState, dir_round: int,
                       rng: random.Random) -> int:
     """ADR-0308:boss Δ池桶不可达时的回退结算(胜负面=实测阶梯)。
 
@@ -205,7 +210,7 @@ def boss_settle_delta(st: GameState, dir_round: int,
     仅当 ``live_delta_for`` 返 None(无可及桶)时由调用方使用;
     Δ池可及桶命中时经验分布优先(池是实机真值,sim 规则表是补洞)。
     """
-    if rng.random() < node_win_p('boss', st.round_num):
+    if rng.random() < node_win_p('boss', round_num_of(bs)):
         return BOSS_WIN_DELTA
     return boss_delta(dir_round, rng)
 
@@ -432,7 +437,7 @@ def _battles_before_engines(res, target: int = 2) -> int | None:
                if rn < e2 and nt in ('battle', 'encounter', 'boss'))
 
 
-def _deployable_depth(st: GameState) -> int:
+def _deployable_depth(bs: BoardState) -> int:
     """板深 = **Σboard(全集口径)**(ADR-0312,桶键统一)。
 
     池语料的板深 = decisions 行 state.board 求和(实机全集口径,双标签
@@ -449,7 +454,7 @@ def _deployable_depth(st: GameState) -> int:
     真平——P1 配对实证「主通道断裂」的 encounter 维由扩容+键查证裁决:
     板深维不可兑换,rung 维可辨)。
     """
-    return sum((st.board or {}).values())
+    return sum((bs.board.value or {}).values())
 
 
 def _roll_rotation(rng: random.Random, level: int) -> dict[int, float] | None:

@@ -34,8 +34,12 @@ from dataclasses import dataclass, field
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    bench_slots_of,
+    deployed_slots_of,
+)
 from sr_od.application.currency_war.kernel.cw_state import (
-    GameState,
     iter_occupied_deployed,  # ADR-0392 helper 导入
 )
 
@@ -198,17 +202,17 @@ def _char_traits(ch) -> tuple[str, ...]:
     return (ch.factions or ()) + (ch.flows or ())
 
 
-def _owned_names(state: GameState) -> set[str]:
+def _owned_names(bs: BoardState) -> set[str]:
     """在场∪bench 的角色名集合(char_id 已识别者;tracking 未识别的槽不计)。"""
     names: set[str] = set()
-    for c in list(iter_occupied_deployed(state.deployed)) \
-            + [x for x in state.bench if x is not None]:
+    for c in list(iter_occupied_deployed(deployed_slots_of(bs))) \
+            + [x for x in bench_slots_of(bs) if x is not None]:
         if getattr(c, 'char_id', ''):
             names.add(c.char_id)
     return names
 
 
-def _faction_count(state: GameState, faction: str) -> int:
+def _faction_count(bs: BoardState, faction: str) -> int:
     """板上某羁绊的计数(身份口径优先,board OCR 兜底,取 max)。
 
     deployed 与 board 应一致(cw_state 头注);单侧 miss(OCR 漏/重建缺身份)时
@@ -217,18 +221,18 @@ def _faction_count(state: GameState, faction: str) -> int:
     口径:CHARACTERS[char_id] 羁绊全集,
     多羁绊角色每系都计)。
     """
-    cnt_board = state.board.get(faction, 0)
-    cnt_ident = board_by_row(state.deployed).count(faction)
+    cnt_board = (bs.board.value or {}).get(faction, 0)
+    cnt_ident = board_by_row(deployed_slots_of(bs)).count(faction)
     return max(cnt_board, cnt_ident)
 
 
-def _seele_on_board(state: GameState) -> bool:
+def _seele_on_board(bs: BoardState) -> bool:
     """希儿在场(= 上阵 deployed;bench 不算「在场」)。"""
     return any(c.char_id == _SEELE
-               for c in iter_occupied_deployed(state.deployed))
+               for c in iter_occupied_deployed(deployed_slots_of(bs)))
 
 
-def card_active(card: SystemCard, state: GameState) -> bool:
+def card_active(card: SystemCard, bs: BoardState) -> bool:
     """体系判定(C2 冻结判据语义,逐字对 p1_definition):
 
     - 仙舟3 = 仙舟 ≥3;
@@ -237,15 +241,15 @@ def card_active(card: SystemCard, state: GameState) -> bool:
     - 希儿系 = 希儿在场 AND(量子同频 ≥2 OR 贝洛伯格 ≥2)。
     """
     if card.card_id == 'xianzhou3':
-        return _faction_count(state, '仙舟') >= _XIANZHOU_TIER
+        return _faction_count(bs, '仙舟') >= _XIANZHOU_TIER
     if card.card_id == 'dot2':
-        return _faction_count(state, '持续伤害') >= _DOT_TIER
+        return _faction_count(bs, '持续伤害') >= _DOT_TIER
     if card.card_id == 'train2':
-        return _faction_count(state, '列车同行') >= _TRAIN_TIER
+        return _faction_count(bs, '列车同行') >= _TRAIN_TIER
     if card.card_id == 'seele':
-        if not _seele_on_board(state):
+        if not _seele_on_board(bs):
             return False
-        return any(_faction_count(state, f) >= FACTIONS[f].tiers[0]
+        return any(_faction_count(bs, f) >= FACTIONS[f].tiers[0]
                    for f in card.judge_factions)
     raise ValueError(f'未知体系卡: {card.card_id}')
 
@@ -300,7 +304,7 @@ def system_judge_factions() -> frozenset[str]:
     return frozenset(out)
 
 
-def card_pieces(card: SystemCard, state: GameState) -> int:
+def card_pieces(card: SystemCard, bs: BoardState) -> int:
     """该体系当前件数(来牌主判据):在场+bench 的该系件数(含引擎件)。
 
     - 阵营系(仙舟/DOT/列车):按阵营成员身份计(deployed∪bench);
@@ -308,15 +312,15 @@ def card_pieces(card: SystemCard, state: GameState) -> int:
       身份口径)——引擎+放大器合为「件数」近似。
     """
     if card.card_id == 'seele':
-        owned = _owned_names(state)
+        owned = _owned_names(bs)
         if _SEELE not in owned:
             return 0   # 无希儿时量子/贝不能独立当过渡(放大器不算来牌方向)
         # 引擎(希儿)+ 放大器(量子/贝成员)按**角色去重**计件(多羁绊角色
         # 双分支只计一次;希儿本人既是引擎又属双分支,也只计一次)
         members: set[str] = set()
         for fac in _card_factions(card):
-            for c in list(iter_occupied_deployed(state.deployed)) \
-            + [x for x in state.bench if x is not None]:
+            for c in list(iter_occupied_deployed(deployed_slots_of(bs))) \
+            + [x for x in bench_slots_of(bs) if x is not None]:
                 if not getattr(c, 'char_id', ''):
                     continue
                 ch = CHARACTERS.get(c.char_id)
@@ -327,8 +331,8 @@ def card_pieces(card: SystemCard, state: GameState) -> int:
         return len(members)
     fac = _card_factions(card)[0]
     n = 0
-    for c in list(iter_occupied_deployed(state.deployed)) \
-            + [x for x in state.bench if x is not None]:
+    for c in list(iter_occupied_deployed(deployed_slots_of(bs))) \
+            + [x for x in bench_slots_of(bs) if x is not None]:
         if not getattr(c, 'char_id', ''):
             continue
         ch = CHARACTERS.get(c.char_id)
@@ -337,13 +341,13 @@ def card_pieces(card: SystemCard, state: GameState) -> int:
     return n
 
 
-def card_state_of(card: SystemCard, state: GameState) -> CardState:
+def card_state_of(card: SystemCard, bs: BoardState) -> CardState:
     """组装单张卡的 CardState(件数/激活/引擎完备度)。"""
     return CardState(
         card_id=card.card_id,
-        pieces=card_pieces(card, state),
-        active=card_active(card, state),
-        engine_complete=card_engine_complete(card, _owned_names(state)),
+        pieces=card_pieces(card, bs),
+        active=card_active(card, bs),
+        engine_complete=card_engine_complete(card, _owned_names(bs)),
     )
 
 
@@ -358,7 +362,7 @@ def _affix_weight(card: SystemCard, affixes: list[str]) -> float:
     return w
 
 
-def pick_card_combination(state: GameState, intent: str | None = None,
+def pick_card_combination(bs: BoardState, intent: str | None = None,
                            affixes: list[str] | None = None) -> CombinationDecision:
     """组合选择(p1_definition 组合规则 1-3;C2 冻结入口形状,权重草案级;ADR-0311)。
 
@@ -371,7 +375,7 @@ def pick_card_combination(state: GameState, intent: str | None = None,
     - 空窗(四系件数为 0 且无可达)→ blank_window=True,chosen=[]。
     """
     affixes = list(affixes or [])
-    states = {cid: card_state_of(card, state) for cid, card in SYSTEM_CARDS.items()}
+    states = {cid: card_state_of(card, bs) for cid, card in SYSTEM_CARDS.items()}
     scores: dict[str, float] = {}
     for cid, cs in states.items():
         card = SYSTEM_CARDS[cid]
@@ -412,7 +416,7 @@ def pick_card_combination(state: GameState, intent: str | None = None,
 
 # ===== 空窗期规则(组合规则4;p1_definition 二.4)=====
 
-def blank_window_policy(state: GameState) -> BlankWindowDecision:
+def blank_window_policy(bs: BoardState) -> BlankWindowDecision:
     """空窗期规则入口(四体系一个都没凑成,通常仅前 1-2 轮)。
 
     - 买侧 = 目标件出现只买它,否则压当前目标费用带([30] 压库模型:买同费件,
@@ -420,7 +424,7 @@ def blank_window_policy(state: GameState) -> BlankWindowDecision:
     - 上场侧 = 现有牌最优羁绊组合(归部署围栏/decision_v2,本入口只管买侧);
     - **绝不为凑数 D 牌**([31]):off-target 件一律不进 buy_idx。
     """
-    active_any = any(card_active(card, state) for card in SYSTEM_CARDS.values())
+    active_any = any(card_active(card, bs) for card in SYSTEM_CARDS.values())
     if active_any:
         return BlankWindowDecision(
             is_blank=False, target_char_ids=[], target_factions=[],
@@ -434,12 +438,13 @@ def blank_window_policy(state: GameState) -> BlankWindowDecision:
     for cid, card in SYSTEM_CARDS.items():
         if cid == 'seele':
             continue   # 希儿系放大器不独立当方向(无希儿时量子/贝不能独立当过渡)
-        if card_pieces(card, state) >= 1:
+        if card_pieces(card, bs) >= 1:
             target_factions.append(_card_factions(card)[0])
     target_chars = list(engine_chars)
     # buy_idx:店内目标件(具名引擎件,或来牌方向阵营的件)
     buy_idx: list[int] = []
-    for i, card in enumerate(state.shop):
+    _payload = bs.shop.value
+    for i, card in enumerate(list(_payload.cards) if _payload is not None else []):
         if card.name and card.name in engine_chars:
             buy_idx.append(i)
             continue

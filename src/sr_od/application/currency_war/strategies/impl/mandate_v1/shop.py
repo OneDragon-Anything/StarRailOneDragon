@@ -1874,12 +1874,16 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 单一源 docstring)。同帧双闸分键不混桶:reward_node_defer ≠
     # blood_xp_gate_defer ≠ crisis_level_spend_defer。扑满环境帧守卫
     # 解除抑制,写点同时复活 v3_piggy_reward 遥测真值(ADR-0348 ↺)。
-    _reward_defer = reward_node_suppressed(state)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
+    _reward_defer = reward_node_suppressed(board_state_bridge(state))
     if _reward_defer:
         _count('reward_node_defer')
     if getattr(state, 'node_type', None) == 'reward':
         # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
-        state_of(session).v3_piggy_reward = is_piggy_reward_frame(state)
+        state_of(session).v3_piggy_reward = is_piggy_reward_frame(
+            board_state_bridge(state))
     _cap_now = state.max_units()
     _lvl_readable = bool(getattr(state, 'level_readable', True))
     _arm1 = False
@@ -1989,7 +1993,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 落点不可达 = 死键(B2 证;死键纪律:落键前核实外门无同维短路)。
     # 行为零变化:原合取首支照旧,新支只计数。
     if gold < g_star and bench_free > 0 \
-            and reward_node_suppressed(state):
+            and reward_node_suppressed(board_state_bridge(state)):
         _dead_gold = gold - 10 * (gold // 10)
         _dg_gap = {m for m in buy_members if m not in owned}
         for _dg_prio in range(3):
@@ -2030,7 +2034,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 return _emit_buy(card, 'dead_gold_press_buy',
                                  launch_cause=_dg_cause)
     elif gold < g_star and bench_free <= 0 \
-            and reward_node_suppressed(state):
+            and reward_node_suppressed(board_state_bridge(state)):
         # 外门 else 席满支(结构性可达:B2 移位案;零行为,只显影)。
         _count('dead_gold_press_bench_full_gate')
 

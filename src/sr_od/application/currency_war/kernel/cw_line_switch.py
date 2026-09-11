@@ -34,12 +34,18 @@ from __future__ import annotations
 
 import math
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    bench_slots_of,
+    gold_of,
+    level_of,
+    round_num_of,
+)
 from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     StrategySession,
     strategy_state_of,
@@ -130,7 +136,7 @@ def e_rounds(comp: Comp, state: GameState,
     与既有调用形状零漂移。
     """
     reg = registry or DEFAULT_REGISTRY
-    dist = line_distance(comp, state)
+    dist = line_distance(comp, bs)
     if dist <= 0:
         return 0.0
     from sr_od.application.currency_war.kernel.cw_state import (
@@ -140,11 +146,12 @@ def e_rounds(comp: Comp, state: GameState,
     p = 0.0
     for f in (getattr(comp, 'form_tiers', None) or {}):
         # 标签独立并集:1−∏(1−p_f)(联合概率高估为设计内承认近似,见模块注释)
-        p_f = p_bar_faction(f, state.level)
+        p_f = p_bar_faction(f, level_of(bs))
         p = p_f if p <= 0 else 1 - (1 - p) * (1 - p_f)
     if p <= 0:
         return math.inf
-    cost = state.shop_refresh_cost or 2
+    _rc = bs.shop_refresh_cost.value
+    cost = _rc if _rc is not None else 2
     if session is not None:
         from sr_od.application.currency_war.kernel.cw_economy import (
             cap_resolved_of_session,
@@ -153,14 +160,14 @@ def e_rounds(comp: Comp, state: GameState,
         floor = saturation_line(cap_resolved_of_session(session))
     else:
         floor = reg.interest_floor()
-    affordable = max(0, ((state.gold or 0) - floor) // cost)
-    bench_free = max(0, BENCH_CAPACITY - bench_occupied(state.bench or []))
+    affordable = max(0, (gold_of(bs) - floor) // cost)
+    bench_free = max(0, BENCH_CAPACITY - bench_occupied(bench_slots_of(bs)))
     rolls = min(affordable, bench_free)    # 买刷截断到 bench 空位
     per_round = (1 + rolls) * p
     return dist / per_round
 
 
-def switch_allowed(state: GameState, session: StrategySession) -> bool:
+def switch_allowed(bs: BoardState, session: StrategySession) -> bool:
     """辖域门:位面前中段可换;末窗禁换(设计内辖域声明,DESIGN §③)。
 
     末窗=本位面末 3 轮(9 轮位面即 r≥7;7 轮位面 P2 即 r≥5)——末窗换线
@@ -168,7 +175,7 @@ def switch_allowed(state: GameState, session: StrategySession) -> bool:
     禁换;真值源=``cw_plane_table.nodes_of_plane``(位面轮数,ADR-0366)。
     """
     from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
-    return state.round_num <= nodes_of_plane(session) - 3
+    return round_num_of(bs) <= nodes_of_plane(session) - 3
 
 
 def should_switch_e(e_cur: float, e_alt: float, dwell_rounds: int,
@@ -231,7 +238,7 @@ def node_loss_kind(node_type: str) -> str:
 #  保留——cw_plane_table.p_win_p2 阈值层映射仍消费。)
 
 
-def best_alt_line(state: GameState, session: StrategySession, config,
+def best_alt_line(bs: BoardState, session: StrategySession, config,
                   score_ctx, registry: DecisionV2Registry | None = None
                   ) -> tuple[object, float]:
     """候选集中 E_rounds 最小且有限的备选线((comp, e) ;无候选 → (None, inf))。
@@ -251,12 +258,12 @@ def best_alt_line(state: GameState, session: StrategySession, config,
     cur_name = _tc.name if _tc is not None else ''
     excluded = set(getattr(strategy_state_of(session), 'drought_excluded', None) or ())
     best: tuple[object, float] = (None, math.inf)
-    for _s, c in select_comp_scored(state, score_ctx, config, top_n=8):
+    for _s, c in select_comp_scored(bs, score_ctx, config, top_n=8):
         if c.name == cur_name or c.name in excluded:
             continue
-        if shop_supply(c, state) <= 0:
+        if shop_supply(c, bs) <= 0:
             continue
-        e = e_rounds(c, state, reg, session=session)
+        e = e_rounds(c, bs, reg, session=session)
         if e < best[1]:
             best = (c, e)
     return best

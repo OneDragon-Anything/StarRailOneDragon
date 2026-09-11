@@ -1442,6 +1442,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _tc_launch = getattr(strategy_state_of(sess), 'target_comp', None)
             if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                     and _tc_launch is not None):
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_bridge,
+                )
                 from sr_od.application.currency_war.kernel.cw_launch_admission import (
                     LAUNCH_QUALITY_DEFER_FRAMES_KEY,
                     LAUNCH_QUALITY_EVAL_ERROR_KEY,
@@ -1451,7 +1454,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     line_members,
                 )
                 _core = readiness_launch_decision(
-                    st, _tc_launch, line_members=line_members)
+                    board_state_bridge(st), _tc_launch,
+                    line_members=line_members)
                 # 质量闸观测分键(ADR-0570 待标定①观测 sink:推迟帧/评估
                 # 异常帧;best-effort,容器缺席静默跳过,与
                 # launch_frame_idle_gold 同写入族;键名单一源 = kernel 常量,
@@ -2521,7 +2525,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # vs 实机 32% 裂口的最大已定量化分量;encounter 亦 rung 键
             # (v11/ADR-0407,depth 键下期望伤害真平故迁 rung);
             # boss 键=净星深(迁移审计 w240(git 历史)/ADR-0404,修升星方向冲突)。
-            _dep = _deployable_depth(st)
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_bridge as _bs_bridge,
+            )
+            # 波1 判据核切容器签名:本段判据输入(board/deployed/level
+            # 判据不变量)在段首装箱一次,段内复用。
+            _bs_cal = _bs_bridge(st)
+            _dep = _deployable_depth(_bs_cal)
             # `w193_p2sim/`/ADR-0377:参数化校准层辖 plane≥2 战斗类结算——绕过
             # Δ池 plane=2 合并采样(防饥饿守卫已抹平其条件性,ADR-0362
             # 判「假条件化」;Phase 3 桶键 form×round 到量[n≥5]后让位
@@ -2531,7 +2541,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if (st.plane >= 2 and _p2c.calibrated
                     and nodes[rn - 1] in ('battle', 'encounter', 'boss')):
                 delta, _p2_wp = p2_combat_delta(
-                    st, nodes[rn - 1], rn, rng, _p2c)
+                    _bs_cal, nodes[rn - 1], rn, rng, _p2c)
             else:
                 # ADR-0362:P2 段(uncalibrated 臂)结算查 Δ池 plane=2 桶
                 # (位面内兜底,不跨位面回退);缺桶回退层见 node_delta 的
@@ -2550,24 +2560,24 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 位面维透传(P1 先行):P1 层现值/P2 别名,取表见
                     # cw_coarse_battle 模块头;默认 plane=1 = 旧调用零漂移。
                     delta = _cb.sample_battle_delta(
-                        _node, _settle_rung(st), st.hp, rng,
+                        _node, _settle_rung(_bs_cal), st.hp, rng,
                         difficulty=getattr(st, 'enemy_difficulty', None),
                         plane=st.plane)
                 else:
                     if _node == 'battle':
-                        _ld = live_delta_for('battle', _settle_rung(st), rng,
+                        _ld = live_delta_for('battle', _settle_rung(_bs_cal), rng,
                                              pool_map=pool_map, plane=st.plane)
                     elif _node == 'boss':
                         # 迁移审计 w240(git 历史)/ADR-0404:boss 采样键=净星深(修 Σboard 升星
                         # 方向冲突,见 live_delta_for docstring)。
                         _ld = live_delta_for(
-                            'boss', deployed_star_depth(st), rng,
+                            'boss', deployed_star_depth(_bs_cal), rng,
                             pool_map=pool_map, plane=st.plane)
                     elif _node == 'encounter':
                         # v11/ADR-0407:encounter 采样键=rung(与 battle 同源
                         # _settle_rung——depth 键下期望伤害真平,`w250_delta_pool/` 查证;
                         # live_delta_for 桶缺逐级下探路径与 battle 共用)。
-                        _ld = live_delta_for('encounter', _settle_rung(st), rng,
+                        _ld = live_delta_for('encounter', _settle_rung(_bs_cal), rng,
                                              pool_map=pool_map, plane=st.plane)
                     elif _node in ('reward', 'supply'):
                         # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
@@ -2593,7 +2603,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # ADR-0308 最终兜底语义(本路径不再消费;测试/
                         # 单元引用不受影响)。
                         delta = _cb.sample_battle_delta(
-                            _node, _settle_rung(st), st.hp, rng,
+                            _node, _settle_rung(_bs_cal), st.hp, rng,
                             difficulty=getattr(st, 'enemy_difficulty', None),
                             plane=st.plane)
                     else:
@@ -2675,7 +2685,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 桥池 fixed+core/三人组单一口径(旧 v1 线库 core_cards
             # 随 ADR-0336 删除),旧 core_trio_count 绑死仙舟非仙舟
             # 线局恒 0,审查二轮#8)
-            _depth = _deployable_depth(st)
+            _depth = _deployable_depth(_bs_bridge(st))
             res.depth_trail.append(_depth)
             # r393(装备层执行代理):supply 节点 = 3 选 1 装备——
             # decide_supply(纯逻辑,与 run_supply_node 同源)选 →

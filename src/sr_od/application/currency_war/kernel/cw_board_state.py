@@ -2511,3 +2511,164 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
         bs.observe(bs.active_strategies, list(st.active_strategies),
                    evidence=_ev, sig=_synth_sig)
     bs.mark_frame_obs('full')
+
+
+# ============================================================ 决策面公共读口
+# (迁移批次三·W6 波1:kernel 决策簇签名切 BoardState 后的值读单一源。
+#  旧 GameState 标量字段的缺省值形态(非 Optional:int 0/1)在容器侧是
+#  None(未观察),读口负责镜像旧缺省,禁各消费点自写兜底造成第二源。)
+
+
+def plane_of(bs: BoardState) -> int:
+    """位面读口(旧 ``GameState.plane`` 缺省 1 的镜像;未观察帧 = 引导窗)。"""
+    node = bs.node.value
+    return int(node.plane) if node is not None else 1
+
+
+def round_num_of(bs: BoardState) -> int:
+    """轮次读口(旧 ``GameState.round_num`` 缺省 1 的镜像)。"""
+    node = bs.node.value
+    return int(node.round_num) if node is not None else 1
+
+
+def node_kind_of(bs: BoardState) -> str | None:
+    """节点类型读口(旧 ``GameState.node_type``:None=未识别)。"""
+    node = bs.node.value
+    return str(node.kind) if node is not None else None
+
+
+def gold_of(bs: BoardState) -> int:
+    """金读口(旧 ``GameState.gold`` 非 Optional 缺省 0 的镜像;可读保真位
+    另经 :attr:`Field.source` 判,读口只供值)。"""
+    v = bs.gold.value
+    return int(v) if v is not None else 0
+
+
+def level_of(bs: BoardState) -> int:
+    """等级读口(旧 ``GameState.level`` 非 Optional 缺省 1 的镜像)。"""
+    v = bs.level.value
+    return int(v) if v is not None else 1
+
+
+def deployed_slots_of(bs: BoardState) -> list:
+    """上阵席位读口(波1 公共读口单一源):front_row/back_row(容器席位)
+    → ADR-0392 定长 10 槽表(0-3 前/4-9 后,元素 BenchChar|None)。
+
+    换算单一源 = :func:`unit_rows_to_deployed`;两行全未观察 = 旧
+    ``GameState.deployed`` 缺省形态([None]×10)。
+    """
+    front = bs.front_row.value
+    back = bs.back_row.value
+    if front is None and back is None:
+        from sr_od.application.currency_war.kernel.cw_state import (
+            DEPLOYED_CAPACITY,
+        )
+        return [None] * DEPLOYED_CAPACITY
+    return unit_rows_to_deployed(list(front or []), list(back or []))
+
+
+def bench_slots_of(bs: BoardState) -> list:
+    """备战席读口(波1 公共读口单一源):BenchView → 定长 9 槽表
+    (元素 BenchChar|None,下标 i = 物理槽 i+1)。换算单一源 =
+    :func:`bench_slots_to_legacy`;未观察 = 旧 ``GameState.bench`` 缺省
+    形态([None]×9)。"""
+    view = bs.bench.value
+    if view is None:
+        from sr_od.application.currency_war.kernel.cw_state import (
+            BENCH_CAPACITY,
+        )
+        return [None] * BENCH_CAPACITY
+    return bench_slots_to_legacy(view)
+
+
+def max_units_of(bs: BoardState) -> int:
+    """可上阵数容器版派生(波1 公共读口单一源;旧 ``GameState.max_units``
+    逐式镜像):deploy_cap 真值(≥level 才采信,ADR-0286 防抖漏网兜底
+    level)封顶 = 前排恒 4 + back_layout 动态真值(缺省 6 = 机制基线,
+    值域 6-9,与旧 back_max 字段缺省同源)。"""
+    from sr_od.application.currency_war.kernel.cw_state import (
+        DEPLOYED_FRONT_CAPACITY,
+    )
+    level = level_of(bs)
+    cap = bs.deploy_cap.value
+    base = cap if (cap is not None and cap >= level) else level
+    back = bs.back_layout.value
+    back_max = int(back) if back is not None else 6
+    return min(base, DEPLOYED_FRONT_CAPACITY + back_max)
+
+
+def board_state_bridge(st: object) -> BoardState:
+    """GameState 帧值 → 独立 BoardState 视图(W6 决策面切换的过渡桥)。
+
+    **存在理由(波次过渡,退役挂波5 喂入反转)**:波1-3 逐波切 kernel
+    决策簇签名,跨桶调用点(mandate/flow/sim/ops)此时仍持有 GameState
+    局部帧(商店黑板逐动作投影推进的演化帧,容器单例承载不了帧内演化),
+    本桥把该帧值装箱成一次性 BoardState 供新签名消费——值域 = 旧消费链
+    同源(合成口 :func:`synthesize_from_game_state` + 合成口未覆盖的三
+    标量域 level_up_cost/shop_refresh_cost/selected_difficulty 补写)。
+    波4 黑板容器化 + 波5 真值直写落地后,跨桶调用点直读 session 容器,
+    本函数随之删除。
+    """
+    if st is None:
+        # 无帧调用面(如 session.last_state 缺席):全域未观察空视图,
+        # 消费面按「缺读保守侧」取值(与旧 GameState() 空帧同向)。
+        return BoardState(schema_version=BS_SCHEMA_VERSION)
+    from sr_od.application.currency_war.kernel.cw_state import (
+        GameState as _GameStateDefaults,
+    )
+
+    class _DuckFrame:
+        """鸭子帧属性缺读回落 GameState 缺省(桥输入兼容轻量桩帧——
+        旧链消费只读桩提供的字段;桥经合成口搬运全域,缺属性按同帧
+        GameState() 缺省解释,与「缺读=缺省保守值」惯例一致)。"""
+
+        __slots__ = ('_st', '_base')
+
+        def __init__(self, st_: object, base_: object) -> None:
+            object.__setattr__(self, '_st', st_)
+            object.__setattr__(self, '_base', base_)
+
+        def __getattr__(self, name: str):
+            st = object.__getattribute__(self, '_st')
+            base = object.__getattribute__(self, '_base')
+            try:
+                return getattr(st, name)
+            except AttributeError:
+                return getattr(base, name)
+
+    st_view: object = (_DuckFrame(st, _GameStateDefaults())
+                       if not isinstance(st, _GameStateDefaults) else st)
+    bs = BoardState(schema_version=BS_SCHEMA_VERSION)
+    # 桥载体为一次性视图,禁向状态流水落行(行=改了什么的局内账,桥帧
+    # 非局内事实);单线程写路径,沉挂全局 sink 后还原。
+    global _STATE_JOURNAL_SINK
+    _saved_sink = _STATE_JOURNAL_SINK
+    _STATE_JOURNAL_SINK = None
+    try:
+        _ev = SIM_SYNTHESIZED
+        _sig = ChannelSig(family='obs', actor='synthesize_from_game_state',
+                          mode='synthesized')
+        synthesize_from_game_state(bs, st_view)
+        # 节点缺席补写(合成口在 node_type 未识别帧不写 node——sim 引擎
+        # 恒有真值不受影响;桥的输入是任意 GameState 帧,plane/round_num
+        # 是非 Optional 标量,丢节点 = 读口回落缺省 1/1 与帧值漂移)。
+        # kind 空串 = 帧未识别的忠实镜像(消费面只做实值等值/成员检查,
+        # 行为与 None 同向;禁写 'prep' 等词表值冒充真值)。
+        if bs.node.value is None:
+            _pl = int(getattr(st_view, 'plane', 1) or 1)
+            _rn = int(getattr(st_view, 'round_num', 1) or 1)
+            bs.observe(bs.node,
+                       NodeKey(plane=_pl, round_num=_rn, kind=''),
+                       evidence=_ev, sig=_sig)
+        if getattr(st, 'level_up_cost', None) is not None:
+            bs.observe(bs.level_up_cost, int(st.level_up_cost),
+                       evidence=_ev, sig=_sig)
+        if getattr(st, 'shop_refresh_cost', None) is not None:
+            bs.observe(bs.shop_refresh_cost, int(st.shop_refresh_cost),
+                       evidence=_ev, sig=_sig)
+        if getattr(st, 'selected_difficulty', None):
+            bs.observe(bs.selected_difficulty, str(st.selected_difficulty),
+                       evidence=_ev, sig=_sig)
+    finally:
+        _STATE_JOURNAL_SINK = _saved_sink
+    return bs

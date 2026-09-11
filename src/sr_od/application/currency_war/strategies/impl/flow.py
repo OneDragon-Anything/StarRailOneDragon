@@ -443,8 +443,12 @@ class CwFlowStrategy(CwStrategy):
         _ms.v3_b_t = board_target_line_weight(dep_names)
         # form_ok 镜像现读写端(死镜像处置,见 docstring;判据单一源 =
         # readiness_form_ok,与发射 armed 同式)
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
         _ms.v3_form_ok = readiness_form_ok(
-            state, getattr(state_of(session), 'target_comp', None))
+            board_state_bridge(state),
+            getattr(state_of(session), 'target_comp', None))
         _ms.v3_mirror_key = (getattr(state, 'plane', 1) or 1,
                              getattr(state, 'round_num', 0) or 0)
 

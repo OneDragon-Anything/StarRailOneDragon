@@ -26,6 +26,9 @@ from dataclasses import dataclass, field
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_bridge,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS,
@@ -1482,8 +1485,9 @@ def assemble_swap_plan_inputs(
     tgt_comp = None
     try:
         if not committed_from(session, state):
-            tgt_comp = decision_target(session, state) if state is not None \
-                else None
+            tgt_comp = (decision_target(session, board_state_bridge(state))
+                        if state is not None else
+                        None)
     except Exception:   # noqa: BLE001  双轨读端缺供给 → 退 target_comp
         tgt_comp = None
     if tgt_comp is None:
@@ -1505,7 +1509,7 @@ def assemble_swap_plan_inputs(
         [d for d in deployed if d is not None])
     if tgt_comp is not None and state is not None:
         try:
-            _fp = float(form_progress(tgt_comp, state))
+            _fp = float(form_progress(tgt_comp, board_state_bridge(state)))
         except Exception:   # noqa: BLE001  成型度不可得 = 臂关(保守)
             _fp = 0.0       # fenced 臂维持 0.0 保守侧;fp 留 None ⇒ 转型臂
             # fp_unreadable 弃权(ADR-0534 §1 fp 缺读两臂同 fail-closed)

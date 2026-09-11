@@ -34,12 +34,20 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    bench_slots_of,
+    deployed_slots_of,
+    gold_of,
+    level_of,
+    plane_of,
+    round_num_of,
+)
 from sr_od.application.currency_war.kernel.cw_investments import INVESTMENT_ENVS
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
-    GameState,
     effective_hp_threshold,
 )
 
@@ -1216,16 +1224,18 @@ def hp_charge_stack_chars() -> frozenset[str]:
 
 # ===== 评分 helper(comp 相关)=====
 
-def _owned_chars(state: GameState) -> set[str]:
+def _owned_chars(bs: BoardState) -> set[str]:
     """已持有的角色名集合(bench + deployed)。"""
-    return {bc.char_id for bc in (*state.bench, *state.deployed)
+    return {bc.char_id for bc in (*bench_slots_of(bs), *deployed_slots_of(bs))
             if bc is not None and bc.char_id}
 
 
-def form_progress(comp: Comp, state: GameState) -> float:
+def form_progress(comp: Comp, bs: BoardState) -> float:
     """成型度 0..1:各核心阵营 tier 进度的均值(min(board,form_tiers)/form_tiers)。
 
     10 的 helper(comp_viability 先验用);纯阵营 tier,不含角色(避免与 char_quality 三重计分)。
+    入参 = 容器视图(W6 决策面切统一容器;假想面板轻量桩只需提供
+    ``board.value`` 属性,见调用点 _deploy_advances_form 鸭型位)。
 
     OR 腿与 carry 条件折法(T-171 批序 1,ADR-0613;OR 组承接键,ADR-0621;
     本函数 = 成型判据唯一折法,fp=1.0 ⟺ 成型谓词「form_tiers 未被承接档
@@ -1238,7 +1248,7 @@ def form_progress(comp: Comp, state: GameState) -> float:
       希儿量子 form_tiers={量4,贝2} 全被 ``SEELE_OR_LEGS`` 承接,成型
       判据即文档 OR 口径;pair 伪 comp 两键集恒不相交,本规则对其逐位
       零差)。档位值保留的用途见 ``Comp.or_legs`` 注;
-    - ``required_deployed`` 逐名折一条 0/1 虚拟腿(在板=1;state 无
+    - ``required_deployed`` 逐名折一条 0/1 虚拟腿(在板=1;入参无
       deployed 视图(轻量假想面板)按 0 计 = 保守向,缺读≠满成)。
     两字段经 ``getattr`` 缺省空读(真实 Comp 恒有字段;测试鸭型桩与
     旧序列化载体两态按「无 OR/carry 条件」解释,与空字段同值,不炸)。
@@ -1252,26 +1262,32 @@ def form_progress(comp: Comp, state: GameState) -> float:
         return 0.0
     or_legs = getattr(comp, 'or_legs', None) or []
     or_owned = {f for f, _t in or_legs}   # OR 组承接键(同键档位免 AND 账)
+    _board = getattr(bs, 'board', None)
+    board = getattr(_board, 'value', None) or {}
     total = 0.0
     n = 0
     for f, tier in comp.form_tiers.items():
         if tier <= 0 or f in or_owned:
             continue
-        total += min(state.board.get(f, 0), tier) / tier
+        total += min(board.get(f, 0), tier) / tier
         n += 1
     if or_legs:
         best = 0.0
         for f, tier in or_legs:
             if tier <= 0:
                 continue
-            best = max(best, min(state.board.get(f, 0), tier) / tier)
+            best = max(best, min(board.get(f, 0), tier) / tier)
         total += best
         n += 1
     required = getattr(comp, 'required_deployed', None) or ()
     if required:
-        deployed_names = {d.char_id
-                          for d in (getattr(state, 'deployed', None) or ())
-                          if d is not None and getattr(d, 'char_id', None)}
+        # 席位经容器行读(无该属性 = 轻量假想面板,按 0 计保守向)
+        _front = getattr(getattr(bs, 'front_row', None), 'value', None)
+        _back = getattr(getattr(bs, 'back_row', None), 'value', None)
+        deployed_names = {
+            u.char_id
+            for u in (*(_front or ()), *(_back or ()))
+            if u is not None and getattr(u, 'char_id', None)}
         for name in comp.required_deployed:
             total += 1.0 if name in deployed_names else 0.0
             n += 1
@@ -1280,19 +1296,19 @@ def form_progress(comp: Comp, state: GameState) -> float:
     return clamp(total / n, 0.0, 1.0)
 
 
-def progress(comp: Comp, state: GameState) -> float:
+def progress(comp: Comp, bs: BoardState) -> float:
     """comp_score 用:0.6 阵营 tier 进度 + 0.4 核心角色持有(归一化 0..1)。
 
     与 form_progress 区别:progress 加了 core_char 持有项(选 target 时评估契合用);
     eval 驱动买牌用 target_progress(只度量剩余进度)。
     """
-    fp = form_progress(comp, state)
-    owned = _owned_chars(state)
+    fp = form_progress(comp, bs)
+    owned = _owned_chars(bs)
     core_frac = (sum(1 for c in comp.core_chars if c in owned) / len(comp.core_chars)) if comp.core_chars else 0.0
     return clamp(0.6 * fp + 0.4 * core_frac, 0.0, 1.0)
 
 
-def shop_supply(comp: Comp, state: GameState) -> float:
+def shop_supply(comp: Comp, bs: BoardState) -> float:
     """comp 核心阵营的**本回合** shop 可得性 [0,1](shop-aware)。
 
     现仅用于 **drought bail 判定**(连续 N 回合 supply<1.0 → 弃不可达 target 重选;default 栈 drought bail 已退役,本函数保留为挂账层消费面),
@@ -1312,30 +1328,33 @@ def shop_supply(comp: Comp, state: GameState) -> float:
     """
     if not comp.factions:
         return 1.0
-    if not state.shop:
+    _payload = bs.shop.value
+    shop_cards = list(_payload.cards) if _payload is not None else []
+    if not shop_cards:
         return 1.0   # 无商店相位(奖励关/事件节点)——无观测≠断供,drought 中性
-    shop_factions = {c.faction for c in state.shop}
+    shop_factions = {c.faction for c in shop_cards}
     # 核心阵营(form_tiers)优先:非核心阵营在 shop 不算「供得上核心」(否则 drought 误归 0,漏掉不可达 target)。
     core = set(comp.form_tiers.keys()) if comp.form_tiers else set(comp.factions)
     if any(f in shop_factions for f in core):
         return 1.0
     if any(f in shop_factions for f in comp.factions):
         return 0.5   # 仅非核心阵营在 shop → 半信号
-    board_factions = set(state.board.keys())
+    board = getattr(bs, 'board', None)
+    board_factions = set((getattr(board, 'value', None) or {}).keys())
     if any(f in board_factions for f in comp.factions):
         return 0.3   # 仅 board 有,shop 买不到更多 → 弱成型信号
     return 0.0
 
 
-def equip_fit(comp: Comp, state: GameState) -> float | None:
+def equip_fit(comp: Comp, bs: BoardState) -> float | None:
     """装备契合度(comp 相关,0..1):持有 comp.key_equips 越多越高(超线性 ^0.7 奖励集齐)。
 
     ⚠️ comp 驱动(用户):不设通用 equip_score,一切从 target_comp.key_equips 出发。
     key_equips 可含重复(阿雅需 2 反重力皮靴)→ 按 multiplicity 匹配持有数。
-    无装备数据(state.equips 空)/ comp 无关键装备 → **None**(动态权重:无数据不进加权,
+    无装备数据(容器 equips 域空)/ comp 无关键装备 → **None**(动态权重:无数据不进加权,
     权重重分配给有数据项,治死重常量地板)。
     """
-    equips = list(getattr(state, 'equips', []) or [])
+    equips = list(bs.equips.value or [])
     if not comp.key_equips or not equips:
         return None
     remaining = list(equips)
@@ -1477,22 +1496,22 @@ def strength_base(comp: Comp) -> float:
     return {"S": 1.0, "A": 0.7, "B": 0.4}.get(comp.strength, 0.5)
 
 
-def current_enemy_mechanics(state: GameState,
+def current_enemy_mechanics(bs: BoardState,
                             registry: DecisionV2Registry | None = None) -> set[str]:
-    """当前敌人机制 tag 集合(从 state.enemy_affixes 经 AFFIX_MECHANIC_MAP 映射;未知词缀原样透传;
+    """当前敌人机制 tag 集合(从容器 enemy_affixes 域经 AFFIX_MECHANIC_MAP 映射;未知词缀原样透传;
     W875 补全包词缀经 merged_mechanic_tables 按开关并表,全关=基表零漂移)。"""
     affix_map, _, _ = merged_mechanic_tables(registry)
-    return {affix_map.get(a, a) for a in state.enemy_affixes}
+    return {affix_map.get(a, a) for a in (bs.enemy_affixes.value or [])}
 
 
-def make_score_context(state: GameState, bosses: list[str] | None = None) -> ScoreContext:
-    """从 GameState 快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。"""
+def make_score_context(bs: BoardState, bosses: list[str] | None = None) -> ScoreContext:
+    """从容器视图快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。"""
     return ScoreContext(
-        bosses=bosses or list(state.plane_bosses),
-        mechanics=current_enemy_mechanics(state),
-        env=state.active_env,
-        held_strategies=list(state.active_strategies),   # 机会型 pivot(选完策略后方向重估)
-        plane=state.plane, round_num=state.round_num, gold=state.gold,
+        bosses=bosses or list(bs.plane_bosses.value or []),
+        mechanics=current_enemy_mechanics(bs),
+        env=(bs.active_env.value or ''),
+        held_strategies=list(bs.active_strategies.value or []),   # 机会型 pivot(选完策略后方向重估)
+        plane=plane_of(bs), round_num=round_num_of(bs), gold=gold_of(bs),
     )
 
 
@@ -1530,7 +1549,7 @@ def weighted_mean(items: list[tuple[float, float | None]]) -> float:
     return sum(w * v for w, v in valid) / total_w
 
 
-def comp_score(comp: Comp, state: GameState, ctx: ScoreContext) -> float:
+def comp_score(comp: Comp, bs: BoardState, ctx: ScoreContext) -> float:
     """候选 comp 综合分(select_comp 评分 candidate 用;无观测项 —— 未 commit 的 candidate 无观测)。
 
     多维度 comp 相关(用户:一切挂钩目标阵容):成型进度 + 机制双向 + 环境 + boss + 装备 + 强度。
@@ -1584,14 +1603,14 @@ def _priority_boost(comp: Comp, config) -> float:
     return boost
 
 
-def _difficulty_phase_factor(comp: Comp, state: GameState) -> float:
+def _difficulty_phase_factor(comp: Comp, bs: BoardState) -> float:
     """阶段感知因子(用户:成型难度 + 早期战力都是关键维度):早期/穷 → 偏 easy 成型 + early_power 高。
 
     早期偏 easy **且** early_power 高,避免选易成型但早期弱的 comp
     (反例:DOT队 easy 但 DoT 慢热,plane1 弱)。先验待实玩校准(多局验证)。
     """
     from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
-    early = (state.round_num + (state.plane - 1) * NODES_PER_PLANE) <= 3 or state.gold < 30   # 全局 elapsed 判早期(60-A1 ×6→单一源)
+    early = (round_num_of(bs) + (plane_of(bs) - 1) * NODES_PER_PLANE) <= 3 or gold_of(bs) < 30   # 全局 elapsed 判早期(60-A1 ×6→单一源)
     if not early:
         return 1.0
     form_fac = {"easy": 1.15, "medium": 1.0, "hard": 0.85}.get(comp.form_difficulty, 1.0)
@@ -1614,7 +1633,7 @@ def _formation_cost_factor(comp: Comp) -> float:
     return max(0.85, 1.3 - total * 0.055)
 
 
-def _board_alignment(comp: Comp, state: GameState) -> float:
+def _board_alignment(comp: Comp, bs: BoardState) -> float:
     """board-alignment boost(CW deployed-lock → 选 board 支持的 comp)。
 
     comp 阵营在 board 有 count≥2(deep-stack)→ ×1.2;全不在 board → ×0.3(deployed-lock 下不可成型,
@@ -1623,7 +1642,7 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
     """
     if not comp.factions:
         return 1.0
-    board = state.board
+    board = bs.board.value or {}
     factions = comp.all_factions   # ADR-0152:弹性羁绊铺板不算 off-target(核心+弹性任一在板即支持)
     if any(board.get(f, 0) >= 2 for f in factions):
         return 1.2   # deep-stack → boost
@@ -1636,7 +1655,7 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
     return 1.0
 
 
-def _held_base_copies(state: GameState) -> dict[str, int]:
+def _held_base_copies(bs: BoardState) -> dict[str, int]:
     """玩家持有的每角色**基础副本数**(牌池消耗 j;ADR-0110 acq 牌池感知用)。
 
     bench + deployed 各单位按 star 折基础副本(3合1:1星=1 / 2星=3 / 3星=9 / 4星=27 张基础副本)。
@@ -1644,8 +1663,8 @@ def _held_base_copies(state: GameState) -> dict[str, int]:
     state.bench/deployed 由 session.tracked_* seed(带 char_id+star;shop.py:185);空(首轮/无身份)→ {}。
     """
     counts: dict[str, int] = {}
-    bench = list(getattr(state, 'bench', []) or [])
-    deployed = list(getattr(state, 'deployed', []) or [])
+    bench = bench_slots_of(bs)
+    deployed = deployed_slots_of(bs)
     for bc in (*bench, *deployed):
         if bc is None:
             continue   # ADR-0316 bench 槽位表空槽
@@ -1657,17 +1676,17 @@ def _held_base_copies(state: GameState) -> dict[str, int]:
     return counts
 
 
-def select_comp(state: GameState, ctx: ScoreContext, config,
+def select_comp(bs: BoardState, ctx: ScoreContext, config,
                 top_n: int = 1) -> list[Comp]:
     """按 comp_score 选 target(分数降序,返回 top_n)。
 
     评分 = comp_score(多维)+ 用户 4 轴 steer(硬过滤 build_around/forbid + 软加权 priority)
     + 阶段成型难度因子(早期偏 easy)。optionality 时传 top_n=2-3 备选几套(P1-1:核心来了再 commit)。
     """
-    return [c for _s, c in select_comp_scored(state, ctx, config, top_n=top_n)]
+    return [c for _s, c in select_comp_scored(bs, ctx, config, top_n=top_n)]
 
 
-def select_comp_scored(state: GameState, ctx: ScoreContext, config,
+def select_comp_scored(bs: BoardState, ctx: ScoreContext, config,
                        top_n: int = 1) -> list[tuple[float, Comp]]:
     """``select_comp`` 的带分版(遥测要**实际排序分**——含 steer/acq/
     board_alignment 等乘子的最终分,非裸 comp_score;close_call 分差分析量纲对齐)。
@@ -1675,7 +1694,7 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
     返回 ``[(final_score, Comp)]`` 降序;top_n 截断。排序逻辑与 select_comp 完全
     同源(单一实现,select_comp 是本函数的投影)。
     """
-    held = _held_base_copies(state)   # ADR-0110:acq 扣玩家持有副本(牌池有限)
+    held = _held_base_copies(bs)   # ADR-0110:acq 扣玩家持有副本(牌池有限)
     # 持有策略**绑定授予**的角色(星徽套组「获得1个【X】」)计入持有副本 —— 送卡 = 已持有,
     # acq 不按全牌池低估(机会型 pivot 的 acq 解锁;仅对本 comp 核心生效,他 comp 不吃这份加成)。
     _granted: dict[str, int] = {}
@@ -1698,8 +1717,8 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
         for _c, _k in _granted.items():
             if _c in comp.core_chars:
                 _h[_c] = _h.get(_c, 0) + _k
-        s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
-        s *= _difficulty_phase_factor(comp, state)
+        s = comp_score(comp, bs, ctx) + _priority_boost(comp, config)
+        s *= _difficulty_phase_factor(comp, bs)
         # 成型加速乘子:持有策略双命中(fit=1.0,套组三件套到手)→ ×1.25(期望成型提前一档);
         # 中性 0.5 → ×1.0(不加不减)。加性 W_HELD 会被 acq/难度乘子稀释,乘子保证机会信号不被淹没。
         _hf = held_strategy_fit(comp, ctx.held_strategies)
@@ -1707,14 +1726,14 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
         # acquirability(ADR-0110 牌池感知):P(单次刷新≥1 张该角色),扣玩家持有副本(牌库有限,用户根因)。
         # acq 收窄口径:0.5+0.5·acq —— acq 作次级 tiebreak(非主导,board 支持优先),
         # 防选「core 易刷但 board 不支持」的 comp → spread。牌池感知后范围 ~0.005-0.3 → 乘子 0.50-0.65。
-        s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, state.level, _h))
+        s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, level_of(bs), _h))
         # 定义型 augment 近乎硬绑(ADR-0152):黑塔纪元类(affinity≥0.9)拿到即改写本局
         # —— ×1.5 压过板面对他 comp 的既有投入(实测:lv5 板{列车:2} 时 held ×1.4 不足以翻转
         # progress 0.45×0.5 的领先;M1 资源入口)。与 held 乘子叠乘(fit=1.0 时总 ~×2.1)。
         if any(augment_affinity(a).get(comp.name, 0.0) >= 0.9
                for a in ctx.held_strategies):
             s *= 1.5
-        s *= _board_alignment(comp, state)
+        s *= _board_alignment(comp, bs)
         s *= _formation_cost_factor(comp)
         # B3(线组合首口,「错线 commit」的治法):boss 克线从 0.1 权重
         # 评分项升格为**开局先验冲击乘子**——matchup<0.5(克)开局即压,不会被过渡牌堆高骗过
@@ -1722,7 +1741,7 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
         # ×1.05-1.1(温和,防 W_BOSS 双计 —— 评分项仍在,本乘子是开局/无板面投入时的主导信号,
         # 有板面投入时被 _board_alignment 稀释)。影子安全:boss_fit None → ×1.0(=现状)。
         try:
-            _bf = boss_fit(comp, list(state.plane_bosses))
+            _bf = boss_fit(comp, list(bs.plane_bosses.value or []))
             if _bf is not None:
                 s *= (0.7 + 0.6 * _bf)
         except Exception:   # noqa: BLE001  影子失败安全
@@ -1732,21 +1751,21 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
     return scored[:top_n]
 
 
-def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dict[str, float | None]:
+def comp_score_breakdown(comp: Comp, bs: BoardState, ctx: ScoreContext) -> dict[str, float | None]:
     """comp_score 的特征分解(telemetry 采集用:给人肉眼复盘 + 未来 ML side door)。
 
     schema 稳定(字段名跨版本不变);数值随版本/实玩变。*_fit 无数据项值为 None(动态权重)。
     详 cw_telemetry。
     """
     return {
-        "progress": progress(comp, state),
+        "progress": progress(comp, bs),
         "mechanics_fit": mechanics_fit(comp, ctx.mechanics),
         "env_fit": env_fit(comp, ctx.env),
         "held_strategy_fit": held_strategy_fit(comp, ctx.held_strategies),
         "boss_fit": boss_fit(comp, ctx.bosses),
-        "equip_fit": equip_fit(comp, state),
+        "equip_fit": equip_fit(comp, bs),
         "strength": strength_base(comp),
-        "form_progress": form_progress(comp, state),
+        "form_progress": form_progress(comp, bs),
     }
 
 
@@ -2079,7 +2098,7 @@ PIVOT_GAP_FLOOR: float = 0.05      # 信号1 阈值绝对下限(评审🟡6:easi
 #                                   0.039 < comp_score 单轮自然抖动 ~0.06-0.1 → losing 窗口噪声级 churn)
 
 
-def target_committed(target: Comp, state: GameState) -> bool:
+def target_committed(target: Comp, bs: BoardState) -> bool:
     """target 是否已 commit。单一真相源(T#97);maybe_pivot(强粘)+ cw_events prefilter(拒 off-target)共用。
 
     commit = 已成型(form_progress≥COMMIT_FRAC)**或** 轮数兜底(累计轮≥COMMIT_ROUND **且** form_progress>0)。
@@ -2088,10 +2107,10 @@ def target_committed(target: Comp, state: GameState) -> bool:
     test_maybe_pivot_better_comp_emerges 锁此)。
     spread board(target 有零星投入但散)轮数兜底仍生效 → 防散板振荡。
     """
-    fp = form_progress(target, state)
+    fp = form_progress(target, bs)
     from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
     return (fp >= COMMIT_FRAC
-            or ((state.plane - 1) * NODES_PER_PLANE + state.round_num >= COMMIT_ROUND and fp > 0))
+            or ((plane_of(bs) - 1) * NODES_PER_PLANE + round_num_of(bs) >= COMMIT_ROUND and fp > 0))
 
 
 # pivot 冷却(防过度换线):换线漂移会让 P1 后段板面永远半成型——
@@ -2108,7 +2127,7 @@ PIVOT_COOLDOWN_ROUNDS: int = 3
 PIVOT_SURVIVAL_COOLDOWN_ROUNDS: int = 1   # 保命 pivot 冷却(防连续翻转自激)
 
 
-def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None,
+def maybe_pivot(bs: BoardState, ctx: ScoreContext, config, target: Comp | None,
                 tracker: PerformanceTracker | None = None) -> Comp | None:
     """是否转型到新 target(返回新 Comp 或 None 不转)。
     转型信号(比较型,03 正确性-4):**信号 3(保命)优先于 1/2**():
@@ -2129,10 +2148,10 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # 冷却门只是省算力优化,不再是守卫。
     _sess_inv = getattr(ctx, 'session', None)
     _cd_inv = getattr(_sess_inv, 'pivot_cooldown_until', 0) if _sess_inv else 0
-    if state.round_num <= _cd_inv:
+    if round_num_of(bs) <= _cd_inv:
         log.info('[cw-pivot] p=%s r=%s 冷却中(至r%s,不变量:两次pivot至少隔冷却轮,'
                  '无例外;板面靠买牌/合星/升级补)',
-                 state.plane, state.round_num, _cd_inv)
+                 plane_of(bs), round_num_of(bs), _cd_inv)
         return None
     # 双轨期(P1 未定型)信号1/2 全关(用户定调,实机四线摇摆实证):
     # target_comp 是从近空板上按分选的(分=噪声),每来一张牌重排 → 每 1-4 轮 pivot →
@@ -2147,13 +2166,18 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # F1(commit 强粘):已 commit(判据见模块级 ``target_committed`` / COMMIT_FRAC / COMMIT_ROUND)
     # 不因易 comp 降阈被弃(COMMIT_* 为 maybe_pivot + cw_events prefilter 共用)。
     _diff_rank = {"easy": 0, "medium": 1, "hard": 2}
-    candidates = select_comp(state, ctx, config, top_n=len(COMP_LIBRARY))
+    candidates = select_comp(bs, ctx, config, top_n=len(COMP_LIBRARY))
     if not candidates:
         return None
     best = candidates[0]
     # 保命独占语义:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn:
     # best 随 board/shop 每轮变 → target 振荡 + 高难度 comp 永不成型 → 死亡螺旋)。
-    _pivot_hp = int(0.75 * effective_hp_threshold(state))
+    from types import SimpleNamespace as _HpShim
+    _hp_shim = _HpShim(selected_difficulty=(bs.selected_difficulty.value or ''),
+                       plane=plane_of(bs), round_num=round_num_of(bs),
+                       level=level_of(bs),
+                       board=(bs.board.value or {}))
+    _pivot_hp = int(0.75 * effective_hp_threshold(_hp_shim))
     # 信号3保命优先于一切(含定型;实机 P2 振荡实证)——P2 hp 常驻<阈值
     # → 保命每步触发「切 board progress 更高的 easy 线(列车)」,而 CommitSignals
     # 定型每步又切回终局(反甲白厄 10.53 ready)→ 同轮内 3-4 次翻转,买牌方向
@@ -2161,8 +2185,9 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # 修:**定型后保命 pivot 需落点 form_progress 显著更高**(≥当前+0.25,一次
     # 性大步换线),不再是「有任何 progress 的最快 easy」——平级/略优不换,
     # 消除与定型的每步拉锯;血线危机交买牌/装备侧加速(不弃线)。
-    _committed_target = (target is not None and target_committed(target, state))
-    if state.hp is not None and state.hp < _pivot_hp:   # None=无真值:不触发保命 pivot(可信位门在决策侧)
+    _hp = bs.hp.value   # 门前真值(本函数消费侧原样,可信位门在决策侧)
+    _committed_target = (target is not None and target_committed(target, bs))
+    if _hp is not None and _hp < _pivot_hp:   # None=无真值:不触发保命 pivot(可信位门在决策侧)
         # 冷却守卫已提函数顶(不变量单一入口),危机路径不再自查。
         # 位面过滤:当前位面乏力的 comp 不进保命候选(转过去 = 更死);
         # 全被滤光时回退原池(比「无候选」好)。DOT队 P2 被抽陀螺是首个案例。
@@ -2171,54 +2196,54 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         # 收窄:仅本位面末段(round≥7)生效 —— 早段(P2 还远)保命只看当前位面,
         # 别为远期弱项否决当下救急线。
         # 当前+下一位面都 OK 才是合格落点;全滤光仍回退原池(有落点好过无)。
-        _next_plane = min(state.plane + 1, 3)
-        _plane_ok = [c for c in candidates if state.plane not in c.weak_planes
-                     and (state.round_num < 7 or _next_plane not in c.weak_planes)]
+        _next_plane = min(plane_of(bs) + 1, 3)
+        _plane_ok = [c for c in candidates if plane_of(bs) not in c.weak_planes
+                     and (round_num_of(bs) < 7 or _next_plane not in c.weak_planes)]
         _pool = _plane_ok or candidates
         # 双轨期保命**严格 easy(不回退原池)** ——
         # hard 0-progress = 换个姿势死;
         # 且要求**与当前板共享阵营**(min reset:保命转线别推倒仅有的羁绊)。
         # 非双轨(已定型/已进 P2)保 fallback 原语义(有落点好过无)。
-        if getattr(state, 'dual_track_phase', False):
-            _board_factions = set(state.board.keys())
+        if getattr(bs, 'dual_track_phase', False):
+            _board_factions = set(bs.board.value or {})
             easy = [c for c in _pool if c.form_difficulty == 'easy'
                     and _board_factions & set(c.factions)]
             if not easy:
                 log.info('[cw-pivot] p=%s r=%s hp=%s<%s 双轨期保命无 strict-easy 共享线 → '
                          '保持现状(板面靠买牌/合星/升级补,不推倒)',
-                         state.plane, state.round_num, state.hp, _pivot_hp)
+                         plane_of(bs), round_num_of(bs), _hp, _pivot_hp)
                 return None
         else:
             easy = [c for c in _pool if c.form_difficulty == "easy"] or _pool
-        with_progress = [c for c in easy if form_progress(c, state) > 0]
+        with_progress = [c for c in easy if form_progress(c, bs) > 0]
         if with_progress:
             fastest = min(with_progress, key=lambda c: c.typical_form_round or 99)
             if target is None or fastest.name != target.name:
                 # 定型后保命换线门槛——落点 progress 须显著更高(≥当前+0.25)
                 if _committed_target:
-                    _cur_fp = form_progress(target, state)
-                    _new_fp = form_progress(fastest, state)
+                    _cur_fp = form_progress(target, bs)
+                    _new_fp = form_progress(fastest, bs)
                     if _new_fp < _cur_fp + 0.25:
                         log.info('[cw-pivot] p=%s r=%s hp=%s 信号3保命:已定型(%s fp=%.2f) '
                                  '落点 %s fp=%.2f 未显著更高 → 保持(危机交买牌/装备侧;r118)',
-                                 state.plane, state.round_num, state.hp,
+                                 plane_of(bs), round_num_of(bs), _hp,
                                  target.name, _cur_fp, fastest.name, _new_fp)
                         return None
                 log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 %s->%s [board有progress优先]',
-                         state.plane, state.round_num, state.hp, _pivot_hp,
+                         plane_of(bs), round_num_of(bs), _hp, _pivot_hp,
                          target.name if target else 'None', fastest.name)
                 return fastest
             return None   # 已在该 easy comp → 保持(不让信号 1/2 churn 切走)
         # 有 progress)被 easy 过滤排除,旧 fallback `pool=with_progress if with_progress else easy` → 选最快
-        if target is not None and form_progress(target, state) > 0:
+        if target is not None and form_progress(target, bs) > 0:
             # target 有 progress(medium 也算)→ 保持(不弃有 progress 的去追 0-progress easy;转 0-foundation 必死)。
             log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 无easy有progress → 保持 %s(有progress,不转0-foundation)',
-                     state.plane, state.round_num, state.hp, _pivot_hp, target.name)
+                     plane_of(bs), round_num_of(bs), _hp, _pivot_hp, target.name)
             return None
         fastest = min(easy, key=lambda c: c.typical_form_round or 99)
         if target is None or fastest.name != target.name:
             log.info('[cw-pivot] p=%s r=%s hp=%s<%s 信号3保命 无progress → 最快easy %s',
-                     state.plane, state.round_num, state.hp, _pivot_hp, fastest.name)
+                     plane_of(bs), round_num_of(bs), _hp, _pivot_hp, fastest.name)
             return fastest
         return None
     # commit 锁:已 commit 的 target **不被信号1(涌现)翻转**。comp_score 随 board 每 round 抖动(board 因
@@ -2227,7 +2252,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
     # commit 即锁定:只有信号3(HP 危机,上方已优先处理)/信号2(ceiling 不可达)/drought_bail(连续无供给)
     # /losing-streak(obs 驱动保命)能解锁。人玩同理:commit 后不因「略优 comp」弃成型,只危机才转。
     if target is None or best.name != target.name:
-        _committed = target is not None and target_committed(target, state)
+        _committed = target is not None and target_committed(target, bs)
         _losing = tracker is not None and target is not None and tracker.is_losing_streak(target.name)
         # 定义型 augment 解锁 commit 锁(ADR-0152):黑塔纪元类(affinity≥0.9)到手 =
         # 局内最大机会事件(M1 资源入口),与 losing streak 同级解锁 —— 否则 commit 后 augment
@@ -2239,10 +2264,10 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         # 装备过渡期持有永不过渡 → 旧残留+新全攒),弱信号 0.3(board 已有)放行。
         # 与 drought 重选供给门同款。
         # 空 shop(无观测,常见于离线/测试)= 不判(数据不足非断供)。
-        _best_supply = shop_supply(best, state) if state.shop else 1.0
+        _best_supply = shop_supply(best, bs) if bs.shop.value else 1.0
         if _best_supply <= 0.0:
             log.info('[cw-pivot] p=%s r=%s 换线供给门:%s 完全断供(shop+board 无核心)→ 拒转(保持 %s;防转进死线锁死 form/装备)',
-                     state.plane, state.round_num, best.name,
+                     plane_of(bs), round_num_of(bs), best.name,
                      target.name if target else 'None')
             if target is not None:
                 best = target   # 保持现线(gap=0 → 信号1不转)
@@ -2250,20 +2275,20 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                 return None     # 无 target + 断供线不直选(下轮 emergent 重看)
         elif _defining_new:
             log.info('[cw-pivot] p=%s r=%s hp=%s 定义型augment解锁 %s->%s (资源入口,绕过 gap/commit 锁)',
-                     state.plane, state.round_num, state.hp,
+                     plane_of(bs), round_num_of(bs), _hp,
                      target.name if target else 'None', best.name)
             return best
         if _committed and not _losing:
             log.info('[cw-pivot] p=%s r=%s hp=%s target=%s 已commit → 锁定,跳过信号1(防振荡;best=%s 不转)',
-                     state.plane, state.round_num, state.hp,
+                     plane_of(bs), round_num_of(bs), _hp,
                      target.name if target else 'None', best.name)
-        elif getattr(state, 'dual_track_phase', False):
+        elif getattr(bs, 'dual_track_phase', False):
             # 双轨期信号1/2 关(实机四线摇摆实证):未成型板上 comp_score 分差是噪声,
             # 每 1-4 轮 pivot 推倒重来 = P1 全输。target 由定型(CommitSignals)/drought/
             # 定义型augment(上方已处理)管;涌现分差不构成换线证据。
             log.info('[cw-pivot] p=%s r=%s hp=%s 双轨期 → 信号1/2 关(target=%s 保持;涌现分差'
                      '在未成型板上是噪声,防四线摇摆)',
-                     state.plane, state.round_num, state.hp,
+                     plane_of(bs), round_num_of(bs), _hp,
                      target.name if target else 'None')
         else:
             if target is None:
@@ -2271,15 +2296,15 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
                 # churn」而设,target=None 无可弃)→ 直接选 best。动态权重让 comp_score 诚实化
                 # (无数据不再注水 0.5 常量)→ 早期诚实低分也该有 target,不该卡 gap 阈留 None。
                 log.info('[cw-pivot] p=%s r=%s hp=%s 无 target → 直接选 best %s(未承诺,gap 检查不适用)',
-                         state.plane, state.round_num, state.hp, best.name)
+                         plane_of(bs), round_num_of(bs), _hp, best.name)
                 return best
-            target_score = comp_score(target, state, ctx) if target is not None else 0.0
-            best_score = comp_score(best, state, ctx)
+            target_score = comp_score(target, bs, ctx) if target is not None else 0.0
+            best_score = comp_score(best, bs, ctx)
             gap = best_score - target_score
             _required_gap = PIVOT_SCORE_GAP
             _easier = (target is not None
                        and _diff_rank.get(best.form_difficulty, 1) < _diff_rank.get(target.form_difficulty, 1)
-                       and form_progress(target, state) < 1.0)
+                       and form_progress(target, bs) < 1.0)
             if _easier:
                 _required_gap = PIVOT_SCORE_GAP * PIVOT_EASIER_FACTOR   # 未 commit + 易 comp → 降阈
             _tag = ' [易comp降阈]' if _easier else ''
@@ -2305,13 +2330,13 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
             _required_gap = max(_required_gap, PIVOT_GAP_FLOOR)
             if gap > _required_gap:
                 log.info('[cw-pivot] p=%s r=%s hp=%s 信号1涌现 %s->%s (best %.3f vs tgt %.3f, gap %+.3f>%.2f%s; bd=%s)',
-                         state.plane, state.round_num, state.hp,
+                         plane_of(bs), round_num_of(bs), _hp,
                          target.name if target else 'None', best.name,
                          best_score, target_score, gap, _required_gap, _tag,
-                         {k: round(v, 2) for k, v in comp_score_breakdown(best, state, ctx).items() if v is not None})
+                         {k: round(v, 2) for k, v in comp_score_breakdown(best, bs, ctx).items() if v is not None})
                 return best
             log.info('[cw-pivot] p=%s r=%s hp=%s 信号1未达 %s vs %s (gap %+.3f<=%.2f%s 保持)',
-                     state.plane, state.round_num, state.hp,
+                     plane_of(bs), round_num_of(bs), _hp,
                      best.name, target.name if target else 'None', gap, _required_gap, _tag)
     # 信号 2:ceiling 不可达(target 成型轮次 > 剩余轮次)
     if target is not None and target.typical_form_round > 0:
@@ -2321,14 +2346,14 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
             NODES_PER_PLANE,
             TOTAL_NODES,
         )
-        elapsed = state.round_num + (state.plane - 1) * NODES_PER_PLANE
+        elapsed = round_num_of(bs) + (plane_of(bs) - 1) * NODES_PER_PLANE
         remaining = max(TOTAL_NODES - elapsed, 0)
-        if target.typical_form_round > remaining and form_progress(target, state) < 1.0:
+        if target.typical_form_round > remaining and form_progress(target, bs) < 1.0:
             # 切成型最快的(easy 优先);已成型(form_progress=1.0)豁免 —— 不该放弃已完成的 comp
             easy = [c for c in candidates if c.form_difficulty == "easy"] or candidates
             new = min(easy, key=lambda c: c.typical_form_round or 99)
             log.info('[cw-pivot] p=%s r=%s 信号2ceiling %s->%s (form_round %s>剩%s)',
-                     state.plane, state.round_num, target.name, new.name,
+                     plane_of(bs), round_num_of(bs), target.name, new.name,
                      target.typical_form_round, remaining)
             return new
     return None
@@ -2380,7 +2405,7 @@ MEGASTAR_BY_ATTRIBUTE: dict[str, str] = {
 }
 
 
-def select_megastar(state: GameState, target: Comp | None,
+def select_megastar(bs: BoardState, target: Comp | None,
                     available_megastars: list[str]) -> str | None:
     """选 1 名盛会之星作巨星(盛会之星羁绊核心决策;按 target_comp 选,不单独评分)。
 

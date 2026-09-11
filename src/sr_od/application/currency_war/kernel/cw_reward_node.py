@@ -22,7 +22,10 @@ entry posture 授权链首位)与 ②(b) 帧型判据全部消费本模块的同
 from __future__ import annotations
 
 from sr_od.application.currency_war.data.cw_invest_data import PLAZA_PORTALS
-from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    node_kind_of,
+)
 
 #: 扑满环境名单(单一源派生):PLAZA_PORTALS 效果文本含「奖励节点替换」
 #: 的环境名——当前在册命中 = id105 经济过热 / id119 经济严重过热
@@ -35,7 +38,7 @@ PIGGY_ENV_NAMES: frozenset[str] = frozenset(
     p.name for p in PLAZA_PORTALS if '奖励节点替换' in p.effect)
 
 
-def is_piggy_reward_frame(state: GameState | None) -> bool:
+def is_piggy_reward_frame(bs: BoardState | None) -> bool:
     """扑满例外守卫:奖励型节点 ∧ 本局环境在扑满名单 → 抑制解除。
 
     环境读点 = ``state.active_env``(单一源 = 观测装配回写链:
@@ -43,12 +46,12 @@ def is_piggy_reward_frame(state: GameState | None) -> bool:
     禁绕开观测装配直读 session)。环境名不可辨(空串/不在名单)→
     False(守卫关,抑制照常,理由见模块 docstring 失效方向②)。
     """
-    if state is None:
+    if bs is None:
         return False
-    return str(getattr(state, 'active_env', '') or '') in PIGGY_ENV_NAMES
+    return str(bs.active_env.value or '') in PIGGY_ENV_NAMES
 
 
-def reward_node_suppressed(state: GameState | None) -> bool:
+def reward_node_suppressed(bs: BoardState | None) -> bool:
     """规则①抑制谓词:可辨奖励帧 ∧ 非扑满环境 → 升级抑制。
 
     None fail-open(node_type 不可辨 → False)理由见模块 docstring
@@ -61,8 +64,8 @@ def reward_node_suppressed(state: GameState | None) -> bool:
     凑息接线承载(其触发 = gold<g*,节点无关,见 mandate 接线注释);
     None 帧上 M3 因规则① fail-open 照常求值(两臂并存,义务臂先判)。
     """
-    if state is None:
+    if bs is None:
         return False
-    if str(getattr(state, 'node_type', None) or '') != 'reward':
+    if str(node_kind_of(bs) or '') != 'reward':
         return False
-    return not is_piggy_reward_frame(state)
+    return not is_piggy_reward_frame(bs)

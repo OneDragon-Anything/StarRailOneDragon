@@ -28,11 +28,19 @@ from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
 )
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    bench_slots_of,
+    deployed_slots_of,
+    max_units_of,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from sr_od.application.currency_war.kernel.cw_comps import Comp
-    from sr_od.application.currency_war.kernel.cw_state import GameState
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+    )
 
 # 部署围栏集 = RECIPE ∪ ENGINE(桥派生单一源 = cw_line_defs;r357 收口:
 # 围栏必须随桥派生集走,局部 frozenset 双源已被 r271 批清退)。
@@ -105,7 +113,7 @@ def protect_names_of(comp) -> frozenset[str]:
     return frozenset(names)
 
 
-def readiness_form_ok(state, comp) -> bool:
+def readiness_form_ok(bs, comp) -> bool:
     """配方完备判据(form_progress≥1.0;单一源)。
 
     = comp/state 输入齐备 ∧ ``cw_comps.form_progress(comp, state) >= 1.0``
@@ -115,11 +123,11 @@ def readiness_form_ok(state, comp) -> bool:
     在本判据之上叠加质量合取,本函数自身语义零改)。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
-    return (comp is not None and state is not None
-            and form_progress(comp, state) >= 1.0)
+    return (comp is not None and bs is not None
+            and form_progress(comp, bs) >= 1.0)
 
 
-def launch_board_quality_report(state, comp) -> dict:
+def launch_board_quality_report(bs, comp) -> dict:
     """armed 质量维报告(ADR-0570;纯函数,配方完备帧调用)。
 
     质量判据(零自由参数,两端均机制定义量):
@@ -162,7 +170,7 @@ def launch_board_quality_report(state, comp) -> dict:
         deployed_occupied,
         iter_occupied_deployed,
     )
-    deployed = list(iter_occupied_deployed(state.deployed or []))
+    deployed = list(iter_occupied_deployed(deployed_slots_of(bs)))
     view = set(getattr(comp, 'all_factions', None) or [])
     # 自家核准集 = comp 成员名单(core∪shared),注册表制裁的结构量——
     # 空羁绊单卡(白厄)与视图外 shared 件(不死途/布洛妮娅/刃)经此
@@ -180,17 +188,17 @@ def launch_board_quality_report(state, comp) -> dict:
             continue   # 未识别件承重不认(fail-closed)
         if (set(ch.factions) | set(ch.flows)) & view:
             line_weight += 1
-    occupied = deployed_occupied(state.deployed or [])
+    occupied = deployed_occupied(deployed_slots_of(bs))
     cids = {d.char_id for d in deployed if d.char_id}
     try:
-        cap = int(state.max_units())
+        cap = int(max_units_of(bs))
     except Exception:   # noqa: BLE001  cap 缺读 = 发射门 None 兜底同口径
         cap = 10 ** 6
     plan_available = has_deployable(
-        [b for b in (state.bench or []) if b is not None],
+        [b for b in bench_slots_of(bs) if b is not None],
         deployed_cids=cids,
         deployed_fac=deployed_bond_counts(cids),
-        board=dict(getattr(state, 'board', None) or {}),
+        board=dict(bs.board.value or {}),
         cap=cap,
         target_factions=set(getattr(comp, 'factions', None) or ()),
         target_cores=set(getattr(comp, 'core_chars', None) or ()),
@@ -205,7 +213,7 @@ def launch_board_quality_report(state, comp) -> dict:
                                 and bool(plan_available)}
 
 
-def readiness_launch_decision(state: GameState, comp: Comp | None,
+def readiness_launch_decision(bs: BoardState, comp: Comp | None,
                               *, line_members: Callable[[Comp], set[str]]
                               ) -> dict:
     """达标臂判据核(单一源;sim 决策下沉两小批之①上收,裁决 = ADR-0557;
@@ -237,13 +245,13 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
         桶禁直引 strategies,由调用方注入同一函数对象——与
         launch_admission_report 同契约)。
     """
-    armed = readiness_form_ok(state, comp)
+    armed = readiness_form_ok(bs, comp)
     quality = None
     quality_eval_error = False
     admission = None
     if armed:
         try:
-            quality = launch_board_quality_report(state, comp)
+            quality = launch_board_quality_report(bs, comp)
         except Exception:   # noqa: BLE001  质量评估异常 fail-open(算不出
             # 不关闸,防死锁优先;论证 = ADR-0570 §判据 fail-open 分界)
             quality = None
@@ -256,7 +264,7 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
     if armed:
         try:
             admission = launch_admission_report(
-                state, comp, line_members=line_members)
+                bs, comp, line_members=line_members)
         except Exception:   # noqa: BLE001  准入预估 best-effort(观测不炸)
             admission = None
     return {'armed': armed, 'auth_basis': 'readiness_form_ok',
@@ -264,7 +272,7 @@ def readiness_launch_decision(state: GameState, comp: Comp | None,
             'quality_eval_error': quality_eval_error}
 
 
-def launch_admission_report(state, comp, *, line_members) -> dict:
+def launch_admission_report(bs, comp, *, line_members) -> dict:
     """达标臂 G1 准入预估(§9.2 准入三元 + victim 收口,发射面显影用)。
 
     返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 可上阵
@@ -296,8 +304,8 @@ def launch_admission_report(state, comp, *, line_members) -> dict:
     # 裸过滤债(ADR-0557 既有代码):内联 None 过滤未收敛到 deployed 迭代
     # 单一源 iter_occupied_deployed(同模块 launch_board_quality_report
     # 同型位已收敛);纯注记申报,收敛属行为面另行批次处置。
-    deployed = [d for d in (state.deployed or []) if d is not None]
-    bench = [b for b in (state.bench or []) if b is not None]
+    deployed = [d for d in deployed_slots_of(bs) if d is not None]
+    bench = [b for b in bench_slots_of(bs) if b is not None]
     cores = set(getattr(comp, 'core_chars', []) or [])
     line = set(line_members(comp))
     protect = protect_names_of(comp)
@@ -305,10 +313,10 @@ def launch_admission_report(state, comp, *, line_members) -> dict:
     # 板满口径 = 占用数 vs max_units(与 swap 臂同裁决:禁物理槽位门,
     # T-127 §2.2 顺手修);cap 缺读 = 质量闸兜底同口径(不显影板满)。
     try:
-        _cap = int(state.max_units())
+        _cap = int(max_units_of(bs))
     except Exception:   # noqa: BLE001  cap 缺读 = 发射门 None 兜底同口径
         _cap = 10 ** 6
-    board_full = deployed_occupied(state.deployed or []) >= _cap
+    board_full = deployed_occupied(deployed_slots_of(bs)) >= _cap
     bench_core_waiting = False
     for b in bench:
         name = b.char_id or ''
