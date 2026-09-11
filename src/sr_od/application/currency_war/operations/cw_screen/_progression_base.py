@@ -18,19 +18,41 @@
 op_journal 与决策帧留证**——那两样是 dispatch 包装(``cw_loop.CwLoop
 ._dispatch_screen_op``)的职责,journal 记的是「分发了谁」,属外循环视角
 (ADR-0584 §2.2/§2.3)。
+
+**只读/导航变体收编**(统一观察架构·画面op基类收编;ADR-0584 空决策
+合同逐字保留,11 子类零改动):本类改挂 ``CwScreenOpBase`` 作只读/导航
+变体(B4 选项②形态,decide 空申报 = 本屏无策略消费的合同声明)——
+``handle`` 顶部装配点分流(架构设计 §9.1 并存纪律:``cw_game_ports``
+两端口完整在场 → ``run_lifecycle()`` 走变体五段;缺省 None = 现役骨架
+逐位执行,生产行为零变化)。空决策骨架映射为变体五段:observe = 入口/
+重入观察裁决(重入出口随骨架住本段——推进型不属「裁决留守分流前」
+定谳辖域,该定谳针对「已发旗标 + 确认/点击待重入」形态)、reconcile =
+空申报(空决策形态无对账面)、decide = 空申报、act = ``progress_once``
+推进半、on_outcome = 无登记件(注册表缺席 = 零动作)。两路径共享
+``entry_ok``/``progress_once`` 单一实现(子类覆写在两条路径同样生效)。
 """
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from cv2.typing import MatLike
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.currency_war.cw_game_ports import (
+    action_sink,
+    observation_source,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwProgressionScreenOp(SrOperation):
-    """推进型画面 op 基类:入口观察 + 单次推进 + 重入观察裁决交回(验证废除)。"""
+class CwProgressionScreenOp(CwScreenOpBase):
+    """推进型画面 op 基类:入口观察 + 单次推进 + 重入观察裁决交回(验证废除)。
+
+    统一观察架构只读/导航变体(B4 选项②形态;ADR-0584 空决策合同逐字
+    保留,11 子类零改动)。
+    """
 
     #: 画面档名(screen_info 的 screen_name);子类常量,参数化子类可经构造覆写
     SCREEN_NAME: ClassVar[str] = ''
@@ -47,7 +69,7 @@ class CwProgressionScreenOp(SrOperation):
         :param screen_name: 画面档名;None = 用类常量 SCREEN_NAME
         :param entry_area: 入口锚;None = 用类常量 ENTRY_AREA
         """
-        SrOperation.__init__(self, ctx, op_name=op_name)
+        CwScreenOpBase.__init__(self, ctx, op_name=op_name)
         self._screen_name: str = screen_name if screen_name is not None \
             else self.SCREEN_NAME
         self._entry_area: str = entry_area if entry_area is not None \
@@ -82,6 +104,11 @@ class CwProgressionScreenOp(SrOperation):
     def handle(self) -> OperationRoundResult:
         """空决策形态单节点:入口观察 → 推进(单尝试)→ 重入观察裁决 → 交回。
 
+        装配点分流(架构设计 §9.1 并存期;只读/导航变体收编):两端口完整
+        在场 → ``run_lifecycle()`` 走变体五段(下方钩子);缺省 None =
+        生产直连下方现役骨架(原序列逐位保留,生产行为零变化)。两路径
+        轮次语义同形,节点预算归本装饰器、不随路径变。
+
         轮次语义(验证废除形态,用户裁定 2026-09-10):
         - 首发:锚 miss = 误分发 → fail 交回外循环重判;
         - 推进已发 → ``round_retry``(机械交回,不读屏判效);
@@ -89,6 +116,8 @@ class CwProgressionScreenOp(SrOperation):
           合法重判,M7 同化先例);锚仍在 = 再做一次推进(计节点预算);
         - 预算(=2)耗尽 → FAIL 交回(有界终止单;其余重试归外循环)。
         """
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
         _hit = self.entry_ok(self.last_screenshot)
         if not _hit:
             if self._advanced_once:
@@ -107,3 +136,56 @@ class CwProgressionScreenOp(SrOperation):
             # 子类(双锚其一形态)有裁决信号,正常走重入裁决。
             return self.round_success(f'{self.op_name}推进已发(免锚)')
         return self.round_retry(f'{self.op_name}推进已发,重入观察裁决', wait=1)
+
+    # ---- 变体五段(空决策骨架的段映射;两路径共享零转录)----
+
+    def lifecycle_observe(self) -> tuple[Any, OperationRoundResult | None]:
+        """段1 observe:入口/重入观察裁决(现役骨架锚 miss 两分支逐位转录)。
+
+        - 锚 miss + 未推进 = 首发(误分发)→ ``round_fail`` 早退交回
+          外循环重判(ADR-0584 外循环守卫语义原样);
+        - 锚 miss + 已推进 = 已离开本画面 → 清旗标、``round_success``
+          (wait=1)早退——重入裁决出口 = ``entry_ok`` 的合法观察,随
+          骨架五段映射住本段;
+        - 命中 → 不早退,进后续段(payload = ``None``:空决策形态无观察
+          产物,act 半经 ``progress_once`` 自取 ``last_screenshot``)。
+        """
+        if not self.entry_ok(self.last_screenshot):
+            if self._advanced_once:
+                self._advanced_once = False
+                return None, self.round_success(
+                    f'{self.op_name}已推进(重入观察:已离开本画面)', wait=1)
+            return None, self.round_fail(
+                f'{self.op_name}入口锚未命中(交回外循环重判)')
+        return None, None
+
+    def lifecycle_reconcile(self, payload: Any) -> None:
+        """段2 reconcile:空申报(空决策形态无对账面,ADR-0584)。"""
+        return None
+
+    def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:
+        """段3-5:decide 空申报 + act 推进半 + on_outcome 无登记件。
+
+        decide 空申报 = 本屏无策略消费的合同声明(B4 选项②原语义;非
+        缺省缺位——ADR-0584 零策略器问询,将来某推进屏长出策略消费时
+        按总纲 §2.1-2 规则改直迁全五段形态,属行为变更批单独申报);
+        act = ``progress_once`` 推进半(现役骨架逐位转录);on_outcome =
+        无登记件(注册表缺席 = 零动作,推进型无 §6.4 收编面)。"""
+        self._lifecycle_mark('decide')
+        self._lifecycle_mark('act')
+        if not self.progress_once():
+            rs = self.round_fail(f'{self.op_name}推进动作未落地')
+        else:
+            self._advanced_once = True
+            if not self._entry_area and type(self).entry_ok \
+                    is CwProgressionScreenOp.entry_ok:
+                # 免锚 op(空锚且未覆写 entry_ok = 无「已离开」观察信号):
+                # 重入裁决不可达 → 发出即 success 交回(原无验效形态;有界性
+                # 归外循环重派/分发,bail 计数消费零漂移)。覆写 entry_ok 的
+                # 子类(双锚其一形态)有裁决信号,正常走重入裁决。
+                rs = self.round_success(f'{self.op_name}推进已发(免锚)')
+            else:
+                rs = self.round_retry(f'{self.op_name}推进已发,重入观察裁决',
+                                      wait=1)
+        self._lifecycle_mark('on_outcome')
+        return rs
