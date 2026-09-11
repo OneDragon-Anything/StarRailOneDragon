@@ -53,7 +53,7 @@ heavy 帧消费：tracking 对账（SIFT 真值重置 session tracking，漂移�
 
 **live 决策链（as-built，亲验）**：`cw_screen_prep.py`（主流程/破墙段）→ `strategies/impl/mandate_v1/bridge.py::MandateV1Strategy.decide_prep_screen`（黑板读 `session.prep_obs_frame`，缺失即抛错）→ `bridge.py::decide_from_turn`（纯函数：调 emit）→ `entry.py::emit`（决策入口三遍编排）。
 
-`entry.emit` 编排序（docstring 与代码体一致）：① prep 实体面（boxes→OpenBox / tomes→OpenTome / spheres→ClickSpheres / event_overlay→BailToOuter，优先于三遍）→ ② 证明 pass（信号臂/K/stop_flag/线级状态机/换线）→ ③ 升档器求值位 → ④ 骨架 pass（M1-M7，`mandate.py`）→ ⑤ EV pass（criteria，臂①旁路）→ ⑥ 无动作 ⇒ StartBattle（序列终点 = 备战环正常出口）。动作词表 = emit/adapter 自有的 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle 等（`adapter.py::_OP_SPECS` 全集映射表），输出 `list[PrepAction]`——单动作循环取**首项**消费（执行序 = 逐帧取首项,即单动作选择序）。
+`entry.emit` 编排序（docstring 与代码体一致）：① prep 实体面（boxes→OpenBox / tomes→OpenTome / spheres→席满让路门——席自由(free>0)照常 ClickSpheres,席满(free==0)按 `entry.SPHERE_DEFER_PROBE_K` 单探针后让路 fall-through 落后续步骤,决策申报 = ADR-0642 / event_overlay→BailToOuter，优先于三遍）→ ② 证明 pass（信号臂/K/stop_flag/线级状态机/换线）→ ③ 升档器求值位 → ④ 骨架 pass（M1-M7，`mandate.py`）→ ⑤ EV pass（criteria，臂①旁路）→ ⑥ 无动作 ⇒ StartBattle（序列终点 = 备战环正常出口）。动作词表 = emit/adapter 自有的 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle 等（`adapter.py::_OP_SPECS` 全集映射表），输出 `list[PrepAction]`——单动作循环取**首项**消费（执行序 = 逐帧取首项,即单动作选择序）。
 
 ### 2.1 旧备战骨架：已删除（ADR-0517 迁移批死码清理,ADR-0518）
 

@@ -131,6 +131,35 @@ def _sphere_bench_free(obs: PrepObservation) -> int:
     _free = getattr(obs, 'free_bench_slots', None)
     return BENCH_CAPACITY if _free is None else max(0, int(_free))
 
+
+#: 席满让路门探针预算 K(预注册 = 1;ADR-0642;T-281 方案稿 §3.3 夹逼,
+#: 非自由调参):上界 K≤2 源于无进展守卫阈值 3 的竞速约束
+#(守卫 tick 读 last_prep_action_sig 在备战 op 返回后,第 4 环决策先于
+#: 该环 tick——K≥3 时让路环恰逢守卫触发环,让路只剩单环机会);下界
+#: K≥1 = 保留单次探针区分「机制性拒绝」vs「单帧偶发落空」,并对
+#: 「席满全阻断」建档注释假设保留最小实证敞口(色→内容映射未证,
+#: ADR-0596 §4.9③);K=2 无信息增益仅多 1 环延迟。零新拍定值:由
+#: 守卫常量与在册机制假设夹逼出可行域后取 1。
+SPHERE_DEFER_PROBE_K: int = 1
+
+
+def _sphere_progress_sig(state: GameState | None,
+                         obs: PrepObservation) -> int:
+    """席满让路门成效计数签名((轮次, 席计数, 球计数) 压缩整型;ADR-0642)。
+
+    三分量全部 obs/state 现成字段,零新识别;压缩进 int 保持 cw4_counters
+    数值账本面(sim 轮差分对逐值做 int() 算术,sim/engine_p1.py,禁存
+    tuple/str)。装箱域:席/球计数各 4 bit,>15 回绕 = 误判「有成效」
+    → 多一环探针点击,良性偏置。噪声口径:刻意不采 raw gold(OCR 噪声
+    会误复位使门失效,ADR-0554 修订节 5 同源教训);球计数经 Hough 检出
+    存在抖动,每次误变只多一环探针,无进展守卫(阈值 3)仍兜底。
+    """
+    _round = int(getattr(state, 'round_num', 1) or 1) \
+        if state is not None else 1
+    _bench_n = len(getattr(obs, 'bench_chars', None) or ())
+    _sphere_n = len(getattr(obs, 'spheres', None) or ())
+    return ((_round * 16) + (_bench_n & 0xF)) * 16 + (_sphere_n & 0xF)
+
 log = logging.getLogger(__name__)
 
 # ===== 帧稳定截断分类(契约 v2 §3.2 备战线域逐类)=====
@@ -392,44 +421,88 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     if obs.tomes:
         return [Emitted(OpenTome(slot=obs.tomes[0][0]), True, 'prep_tome')]
     if obs.spheres:
-        # 席满前置谓词(T-159 迁移 B;ADR-0596 §4.9③)两腿:
-        # 「bench_free>0 ∨ 球均不占席」。第二腿按 CV 颜色位判定
-        #(SPHERE_OCCUPYING_COLORS 占席颜色集);席满 ∧ 球判占席 → 先发
-        # 单次 M4 腾席(候选/排除同源 = fuel_sell_candidates + 统一装配
-        # A channel='m4_fuel',白名单 tag 落地经路径 (i) 清 S1);腾不出 →
-        # sphere_blocked_bench_full 遥测 + 球残留跳过(不停机,落入常规
-        # 步骤序——2026-09-02 席满球裁定 screen_flow_timing #16 的容忍
-        # 语义:该裁定辖点击验证容忍度,非禁止为球腾席;覆盖留痕 = 方案
-        # §4 猎点 13 + 进度账本)。
+        # 席满让路门(T-297 落码;ADR-0642;方案正本 = T-281 修复方案稿
+        # v2.1,重写自 ADR-0596 §4.9③ 迁移 B 两腿谓词的收球行为,结构
+        # 保活面见下方死码块)。门显式条件化(方案 §3.2/B5):
+        # - 格3 席自由(free>0):自愈形态(screen_flow_timing #16),
+        #   行为等价——动作序列与状态迁移与改前一致,新增仅 streak 归零
+        #   记账写入;单帧偶发失败由既有逐帧重试自愈,不让路不计数。
+        # - 格1/格2 席满(free==0):机制性拒绝形态(2026-09-11 实机
+        #   12 击零消失实证,与 cw_identity_obs.py 建档注释一致)——
+        #   每搁浅情节首环发单探针(K=1 预注册,区分「机制性拒绝」vs
+        #   「单帧偶发落空」),次环起让路 fall-through:球分支零发射、
+        #   不 return,落入 ①′→②→③⑤→⑥ 常规链(席满帧常规链恢复
+        #   求值;三 SellBench 发射位受既有 sell_gate 契约核验与息线
+        #   冻结门辖域,非本批新判据;空批 → ⑥ StartBattle 合法交回)。
+        # - 成效重置:席自由化 ∨ 成效计数签名变化(轮次/席计数/球计数
+        #   任一,见 _sphere_progress_sig)。设计动机(B5 对偶面):若
+        #   「席满可点开」形态真实存在(金球内容即时入账方向),每次成功
+        #   点开必减球计数 → 重置 → 连续收球不被打断——宁多收球在门
+        #   语义层保住。
+        # 遥测键登记(单一源 = 本写点;design_telemetry.md 已随文档树
+        # 重组灭失,键节落写点旁):sphere_defer_streak(席满搁浅情节内
+        # 探针计数,成效重置;会话级=局级,接管局冷建=保守侧恢复点击)/
+        # sphere_defer_progress_sig(成效签名快照,门簿记账非行为计数)/
+        # sphere_defer_yield(让路帧计数)/ sphere_blocked_bench_full
+        #(死码块内,现状恒零写)。与 exec_state.defer_count 零读写关系
+        #(该字段为既有死词汇,纠偏见 cw_exec_state.py;方案 §3.6/B7)。
+        _ct_sp = state_of(session).cw4_counters
         _sf_free = _sphere_bench_free(obs)
+        if _sf_free > 0:
+            if isinstance(_ct_sp, dict):
+                _ct_sp['sphere_defer_streak'] = 0
+            return [Emitted(ClickSpheres(max_k=min(3, len(obs.spheres))),
+                            True, 'prep_spheres')]
+        _prog_sig = _sphere_progress_sig(state, obs)
+        _streak = 0
+        if isinstance(_ct_sp, dict) \
+                and _ct_sp.get('sphere_defer_progress_sig') == _prog_sig:
+            _streak = int(_ct_sp.get('sphere_defer_streak', 0) or 0)
+        _streak += 1
+        if isinstance(_ct_sp, dict):
+            _ct_sp['sphere_defer_streak'] = _streak
+            _ct_sp['sphere_defer_progress_sig'] = _prog_sig
+        if _streak <= SPHERE_DEFER_PROBE_K:
+            # 单探针:同发射形态 = 现状 prep_spheres 动作(零新动作类)。
+            return [Emitted(ClickSpheres(max_k=min(3, len(obs.spheres))),
+                            True, 'prep_spheres')]
+        if isinstance(_ct_sp, dict):
+            _ct_sp['sphere_defer_yield'] = \
+                _ct_sp.get('sphere_defer_yield', 0) + 1
+        # 让路 fall-through:不发球动作,落入下方常规步骤序(ADR-0642)。
+        # —— 旧谓词第二腿 + 腾席臂(迁移 B 原案;ADR-0596 §4.9③「结构
+        # 保活」明文):**保留原位,当前不可达**(结构性死码,非退役)。
+        # 触发条件 `_sf_occupied` 要求 SPHERE_OCCUPYING_COLORS 非空(见
+        # 模块头:现役缺省空集 = 宁多收球不误卖),整块不可达;备选A
+        # 激活(晶矿 odds 采集批登记占席色,方案 §4)时恢复可达 = 让路
+        # 帧腾席先于收球。禁删除:退役-复活双倍审面(方案稿 §7.1 编排者
+        # 终态;读者陷阱以本标注显影,与 defer_count 纠偏同批零行为代价)。
         _sf_occupied = any(
             (color or '') in SPHERE_OCCUPYING_COLORS
             for color, _pt, _r in obs.spheres)
-        if _sf_free > 0 or not _sf_occupied:
-            return [Emitted(ClickSpheres(max_k=min(3, len(obs.spheres))),
-                            True, 'prep_spheres')]
-        _sf_k = predicates.line_members(
-            getattr(state_of(session), 'target_comp', None))
-        _sf_excl = sell_gate.sell_exclusions(
-            session, _sf_k, channel='m4_fuel', current_round=_round_num)
-        _sf_cands = mandate.fuel_sell_candidates(
-            list(obs.bench_chars), _sf_k, state=state,
-            exclude_names=_sf_excl,
-            counters=state_of(session).cw4_counters,
-            dedup_names=set())
-        if _sf_cands:
-            # 轮内卖出登记(泄金阶梯档 2 新鲜度排除写端,ADR-0604 §3;
-            # 球路径 M4 腾席与 prep/shop 域 M4 同口径——漏记 = 卖X 后同轮
-            # 压库买回 X 的净零自旋在该路径残余可达)。
-            mandate.record_round_sold(session, state,
-                                      _sf_cands[0].char_id or '')
-            return [Emitted(SellBench(slot=_sf_cands[0].slot), True,
-                            'm4_fuel_sell')]
-        _ct_sf = state_of(session).cw4_counters
-        if isinstance(_ct_sf, dict):
-            _ct_sf['sphere_blocked_bench_full'] = \
-                _ct_sf.get('sphere_blocked_bench_full', 0) + 1
-        # 球残留跳过:不 return,落入下方常规步骤序(下帧 ① 再尝试)
+        if _sf_occupied:
+            _sf_k = predicates.line_members(
+                getattr(state_of(session), 'target_comp', None))
+            _sf_excl = sell_gate.sell_exclusions(
+                session, _sf_k, channel='m4_fuel', current_round=_round_num)
+            _sf_cands = mandate.fuel_sell_candidates(
+                list(obs.bench_chars), _sf_k, state=state,
+                exclude_names=_sf_excl,
+                counters=state_of(session).cw4_counters,
+                dedup_names=set())
+            if _sf_cands:
+                # 轮内卖出登记(泄金阶梯档 2 新鲜度排除写端,ADR-0604 §3;
+                # 球路径 M4 腾席与 prep/shop 域 M4 同口径——漏记 = 卖X 后同轮
+                # 压库买回 X 的净零自旋在该路径残余可达)。
+                mandate.record_round_sold(session, state,
+                                          _sf_cands[0].char_id or '')
+                return [Emitted(SellBench(slot=_sf_cands[0].slot), True,
+                                'm4_fuel_sell')]
+            _ct_sf = state_of(session).cw4_counters
+            if isinstance(_ct_sf, dict):
+                _ct_sf['sphere_blocked_bench_full'] = \
+                    _ct_sf.get('sphere_blocked_bench_full', 0) + 1
+            # 球残留跳过:不 return,落入下方常规步骤序(下帧 ① 再尝试)
     if obs.event_overlay:
         return [Emitted(BailToOuter(reason=obs.event_overlay), True,
                         'event_overlay')]

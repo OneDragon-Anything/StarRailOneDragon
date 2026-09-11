@@ -102,8 +102,9 @@ class ExecState:
 
     生命周期分级(迁移核对判据:落点生命周期 ≥ 原生命周期,session.md
     §7.2-3):局级(失败记忆/互斥账/bail 计数/tracked 账/期望账)、跨环
-    (发射连败)、节点/visit(防重入/期望覆盖)、环级(defer 门,Director
-    环入口清零语义保留在写端)。
+    (发射连败)、节点/visit(防重入/期望覆盖)、环级(defer 门——
+    生命周期分级纠偏见 ADR-0642:唯一复位 = 战斗结算写端,环入口清零
+    无写点)。
     """
 
     # 腾席链 DeployMove 失败记忆(char_id → 失败计数)。拖拽被拒 → 跳过
@@ -133,8 +134,12 @@ class ExecState:
     # 「可否再刷」权威判定 = 逐卡计数现读(cw_node_obs reader),本集唯一
     # 职责 = 同 visit 防重入(双保险不同源,观察赢规则照常辖)。
     _invest_refresh_used_slots: set[int] = field(default_factory=set)
-    # 奖励球留置计数(环级——Director 每次环入口清零,清零语义在写端;
-    # 策略/框架经 DeferSpheres +1;门=2 防空转环)。框架流程侧。
+    # 奖励球留置计数码(纠偏 = ADR-0642/T-297,覆写两处失实:①注释曾
+    # 宣称「门=2 防空转环」——全库无任何比较消费点;②「环级——Director
+    # 每次环入口清零」——无环级清零写点,唯一复位 = 战斗结算
+    # cw_screen_battle_wait.py 写端)。DeferSpheres 全库零发射者,字段
+    # 保留候死词汇清理批,退役需随删 director 两消费分支 + 复位点。
+    # 框架流程侧。
     defer_count: int = 0
     # star 回退停机钩子计数(char → 连续回退次数;连续 2 节点回退 = 真识别
     # 问题 → 停机保画面排查;读回恢复即清零)。执行侧停机钩子载体。
