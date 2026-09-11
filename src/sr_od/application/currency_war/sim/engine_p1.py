@@ -110,12 +110,13 @@ def _overlay_xp_per_refresh(strategy_names: list[str]) -> int:
     return total
 
 # 收入模型(r305 真值接入:sim 与决策共用 cw_economy 单一源;
-# ADR-0439 收入口径修正:败轮节点金 + 奖励轮 base/streak 成对查表)
+# T-21 校准:值分量经 round_start_income 单一源,常量仅存 re-export)
 from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402,F401
     BASE_INCOME,
     ECONOMY_CALIB_VERSION,
     LOSS_GOLD_BY_NODE,
     REWARD_BASE_GOLD_BY_ROUND,
+    round_start_income,
     streak_gold,
 )
 from sr_od.application.currency_war.sim.pool import (  # noqa: E402
@@ -183,9 +184,6 @@ def _overlay_xp_per_refresh(strategy_names: list[str]) -> int:
 # HP 上界(批㉘ F6,ADR-0287):游戏机制真值无文档证据,暂 cap 100
 # (实机满血样本核真后更新;检查项 hp_upper_bound_truth 锁 hp>100 恒 0)
 HP_UPPER_BOUND: int = 100
-
-
-INTEREST_CAP: int = 5
 
 
 # sim 执行层付费升级上界,守卫与轮末升级循环共用本常量防两处漂移。
@@ -807,6 +805,43 @@ def _line_member_names(sess) -> frozenset[str]:
     return frozenset(line_members(comp))
 
 
+def sim_round_income(plane: int, round_num: int, node: str, gold: int,
+                     streak: int, *, prev_node: str | None = None,
+                     prev_combat_lost: bool = False,
+                     win_reward_mult: float = 1.0,
+                     interest_flat: int = 0,
+                     interest_cap_override: int | None = None) -> dict[str, int]:
+    """sim 轮首收入行的注册表值分量(base/interest/streak;T-21 校准落点)。
+
+    三支值整体改调 kernel 单一源 :func:`round_start_income`(BoardState
+    设计 §4.2 轮首收入行「两域禁第二份」;对拍锁 = sr-od-test
+    test_cw_sim_income_baseline)——原手搓分支即该函数 docstring 点名的
+    禁用形态(REWARD_BASE_GOLD_BY_ROUND 按 round 单键直查 + 非奖励轮恒
+    BASE_INCOME),本口是值分量的唯一消费缝,禁在引擎内回退手算。
+
+    - **已校准**:base 平面感知键(P1 r1/r2 的常规/补给/败补轮 5→3/4,
+      奖励轮查表同款;P2r1/P3r1 单键误返 3 hazard 随单一源结构性消灭);
+      息帽归一 interest_cap_resolved 链(替换本模块裸 INTEREST_CAP=5
+      第二值源,缺省帽派生自 cw_plane_table.GOLD_CAP_INTEREST//10)。
+    - **挂账不校**(差异清单见 T-21 交付报告):win_reward_mult 仅作
+      单一源验证/接线缝参数,引擎现势传缺省 1.0——伟大征服 ×3 未入
+      sim 收入路径,归 BoardState 设计「收入修饰」行「sim 修正随之」
+      桶;败补通道维持 ADR-0439 口径(combat 轮进轮连胜 0 且上一战斗
+      轮败 → 连胜槽替换 LOSS_GOLD_BY_NODE[prev_node],镜像
+      checks.runtime 精确重算锁),不经 kernel lost_node 败补支——
+      该支 = 玩家裁定记录模型,与类型表的竞争口径判别数据不足
+      (ADR-0623 决策3 待定谳),sim 常量修正随定谳结果。
+    """
+    inc = round_start_income(plane, round_num, node, gold, streak,
+                             win_reward_mult=win_reward_mult,
+                             interest_flat=interest_flat,
+                             interest_cap=interest_cap_override)
+    _streak = inc.streak
+    if inc.branch == 'combat' and streak == 0 and prev_combat_lost \
+            and prev_node in LOSS_GOLD_BY_NODE:
+        _streak = LOSS_GOLD_BY_NODE[prev_node]   # ADR-0439 败轮金路径
+    return {'base': inc.base, 'interest': inc.interest, 'streak': _streak}
+
 
 def simulate_p1(seed: int, *, use_refresh: bool = True,
                 strategy=None, session=None,
@@ -1144,42 +1179,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 形状对默认路径不变)。
             _agg_inv = (aggregate_economy(st.active_strategies)
                         if st.active_strategies else None)
-            _icap = INTEREST_CAP
-            if _agg_inv is not None and _agg_inv.interest_cap_override is not None:
-                _icap = _agg_inv.interest_cap_override
             _node = nodes[rn - 1]
-            # ADR-0439 收入口径(实机 gold 差分实证,108 局/767 轮):
-            # - 败轮金:连胜结算 streak==0 且上一轮是败掉的战斗类节点 →
-            #   发 LOSS_GOLD_BY_NODE[prev_node](普通 2/遭遇 4/boss 4),
-            #   替换旧 streak_gold(0)=1(弹窗口径,与实发不符);
-            # - 奖励轮:streak 分量照发 streak_gold(streak)(含 counter0=1;
-            #   ADR-0351「奖励轮不发金」半句被全量数据推翻)+ base 查表
-            #   REWARD_BASE_GOLD_BY_ROUND——**成对改**:旧 BASE_INCOME=5
-            #   恰好盖住这 1 金,单改 streak 会变多发(净差≈0);
-            # - 补给轮不动(仍零 streak + base+利息;实发零发放的证据
-            #   样本不足,条件升级挂账 ADR-0439)。
-            if _node == 'supply':
-                _streak_amt = 0
-            elif _node == 'reward':
-                _streak_amt = streak_gold(streak)
-            elif streak == 0 and _prev_combat_lost \
-                    and _prev_node in LOSS_GOLD_BY_NODE:
-                _streak_amt = LOSS_GOLD_BY_NODE[_prev_node]
-            else:
-                _streak_amt = streak_gold(streak)
-            # 利息 flat 分量(前置缺陷 R92-4 修复;缺陷登记原文已删档,
-            # 取回口径=ADR-0644):
-            # 狸财经狸 interest_flat_per_node=每节点固定息,**与 interest_cap 无关**
-            # (EconomyEffect 字段注释语义)——量值与存在性单一源 = cw_investments
-            # 注册表(STRATEGY_ECONOMY),sim 侧不另设常量。无持卡/flat=0 时 +0,
-            # 主路径逐位零漂移(与既有 interest_cap_override 消费同构)。
-            _flat = (_agg_inv.interest_flat_per_node
-                     if _agg_inv is not None else 0)
-            _inc = {'base': (REWARD_BASE_GOLD_BY_ROUND.get(rn, BASE_INCOME)
-                             if _node == 'reward' else BASE_INCOME),
-                    'interest': min(_icap, st.gold // 10) + _flat,
-                    'streak': _streak_amt,
-                    'event': _inc_event}
+            # 轮首收入三支值分量 = 注册表单一源消费口(sim_round_income;
+            # T-21 校准:base 平面感知键 + 息帽 interest_cap_resolved 归一;
+            # 败轮金 ADR-0439 路径、奖励轮照发口径与挂账通道见该 docstring)
+            _inc = sim_round_income(
+                st.plane, rn, _node, _gold_before, streak,
+                prev_node=_prev_node, prev_combat_lost=_prev_combat_lost,
+                interest_flat=(_agg_inv.interest_flat_per_node
+                               if _agg_inv is not None else 0),
+                interest_cap_override=(_agg_inv.interest_cap_override
+                                       if _agg_inv is not None else None))
+            _inc['event'] = _inc_event
             if _agg_inv is not None and _agg_inv.gold_per_node:
                 _inc['invest'] = _agg_inv.gold_per_node
             st.gold += sum(_inc.values())
