@@ -537,6 +537,16 @@ class CwOpDeploy(SrOperation):
             assemble_swap_plan_inputs as _aswap,
         )
         _sess = _match.session if _match is not None else None
+        # T-279 R1(ADR-0640):m1p 计划载荷早消费(读后即清,与
+        # cw4_m1p_arm_pending 同帧级同宿)——读位前移到卖出臂门之外:
+        # 部署段 R1-a/R1-b 在**任何**卖出臂分支形态下都要知道本 execute
+        # 是否 m1p 轮(载荷只作部署段核对/钉定,不改卖出仲裁权)。
+        _m1p_plan: dict | None = None
+        _m1p_sold_names: list[str] = []   # 卖出臂实际卖出名序(R1-a 核对源)
+        if _sess is not None:
+            _m1p_plan = getattr(strategy_state_of(_sess),
+                                'cw4_m1p_plan_pending', None)
+            strategy_state_of(_sess).cw4_m1p_plan_pending = None
         _swap_ctx = None
         if _sess is not None:
             _tracked_n = swap_arm_deployed_count(
@@ -624,7 +634,7 @@ class CwOpDeploy(SrOperation):
                     #(一次消费;缺省 None = 非 m1p 帧,卖出计 regular 键零漂移)
                     _m1p_arm = getattr(strategy_state_of(_sess), 'cw4_m1p_arm_pending', None)
                     strategy_state_of(_sess).cw4_m1p_arm_pending = None
-                    _n = self._sell_offtarget_deployed(
+                    _n, _m1p_sold_names = self._sell_offtarget_deployed(
                         front, back, set(_swap_ctx.target_factions), templates,
                         max_sell=_bench_tgt_n,
                         target_cores=set(_swap_ctx.target_cores),
@@ -642,7 +652,8 @@ class CwOpDeploy(SrOperation):
                 log.info('[cw-deploy] deploy-swap 跳过:bench 无目标视图件(留 off-target bodies;'
                          ' 根因=buy 未买 target / economy 未攒金升级;F1 合取②)')
         _placed, _plan_empty, _gate_fail = self._deploy_deterministic(
-            bench, front, back, templates)   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
+            bench, front, back, templates,   # D-7:CV 确定性部署(CV 占用 + position_pref 选排)
+            m1p_plan=_m1p_plan, m1p_sold_names=_m1p_sold_names)
         if _gate_fail is not None:
             # F2 板满失配窄豁免(T-174,ADR-0610):「仲裁真满板 ∧ 前排 4 槽
             # 全空 ∧ 后排有人(非系统单位)」= 合法的场内换排工作形态——
@@ -984,9 +995,28 @@ class CwOpDeploy(SrOperation):
             log.info('[cw-deploy] equips 采集:tracked %d 件写入(决策快照将携带)', _n)
 
     def _deploy_deterministic(self, bench: list[Point], front: list[Point], back: list[Point],
-                              templates: AvatarTemplates | None) -> tuple[int, bool, str | None]:
+                              templates: AvatarTemplates | None,
+                              m1p_plan: dict | None = None,
+                              m1p_sold_names: list[str] | None = None
+                              ) -> tuple[int, bool, str | None]:
         """D-7 确定性部署:CV 知占用 → 每个有角色的备战槽按**角色前后台属性**(position_pref)拖到对应排的
         空槽(target 阵营先)→ CV 验「源备战槽空了」=成功。
+
+        :param m1p_plan: M1″ 计划载荷(mandate 发射位透传,T-279 R1/
+            ADR-0640;None = 非 m1p 轮)。在场时部署段消费计划单一源:
+            R1-a 直投 = 卖出臂实际卖出名序 == 计划卖序(单 victim、名字
+            级,F2 三点式①)∧ up 名单全部仍在 bench(SIFT 名集,②)∧
+            仲裁占用数 == 计划时点占用 −1(③)∧ 容量可容 → order = 计划
+            up 槽位序,不经 kernel 重选(卖出后板面 ≡ 计划假想态,计划已
+            对该假想态算好 up 集);任一前提破(含多卖帧/卖出失败帧,
+            F2 显式定义为 R1-b 路径)= R1-b:装配单一源
+            ``assemble_swap_plan_inputs`` 对卖出后现读重 derive,
+            ``transition_domain`` 钉计划时点域事实(卖出后 board_full
+            翻假会让域谓词现算丢收窄辖域),替换 deploy_target_sets
+            独立装配。辖域(对抗审 F4)= m1_swap_redeploy 轮,非 m1p 轮
+            维持 deploy_target_sets 口径。
+        :param m1p_sold_names: 卖出臂本 execute 实际卖出名序(SIFT 拖拽
+            成功序;R1-a 前提①的数据源)。
 
         返回 ``(placed, plan_empty, gate_fail)``(dd-037 契约 + ADR-0601 §4 扩展):
         placed = 落点验证过的实际上阵数;plan_empty = 主计划为空(kernel 选人
@@ -1189,6 +1219,68 @@ class CwOpDeploy(SrOperation):
         # 复查/动态 cap/逐件 r288 仲裁/落点验证)保留作运行时防线。
         _cores = (strategy_state_of(_sess).target_comp.core_chars
                   if (_sess is not None and strategy_state_of(_sess).target_comp is not None) else None) or []
+        # T-279 R1(ADR-0640):m1p 轮部署段消费计划单一源。R1-a 直投
+        # 候选核对 = F2 名字级单通道三点式(单通道 = 名字域,禁跨通道
+        # board 字典全等——OCR 欠计先例会打穿校验):①victim 身份 =
+        # 卖出臂实际卖出名序 == 计划卖序(单 victim;多卖帧/卖出失败帧
+        # 显式定义走 R1-b);②up 成员仍在 bench(SIFT 名集,同名不与
+        # 在场重复);③占用数与计划假想一致(计划时点占用 −1 victim)
+        # ∧ 容量可容(cap 失读帧无法核验 → R1-b 保守)。任一破 → R1-b:
+        # 装配单一源对卖出后现读重 derive,transition_domain 钉计划时点
+        # 域事实,覆写下方 _sel_dep 的目标视图(辖域 = m1p 轮,F4)。
+        _m1p_direct_slots: list[int] | None = None   # None = 非 R1-a
+        if m1p_plan is not None and _sess is not None:
+            _up_names = list(m1p_plan.get('up') or [])
+            _sell_names = list(m1p_plan.get('sell') or [])
+            _ok = bool(_up_names) and _cap is not None \
+                and len(_sell_names) == 1 \
+                and list(m1p_sold_names or []) == _sell_names \
+                and _deployed == (int(m1p_plan.get('occ') or -1) - 1)
+            _slots: list[int] = []
+            if _ok:
+                for _n in _up_names:
+                    _slot = next((_bi for _bi, _cid in _bench_cid.items()
+                                  if _cid == _n), None)
+                    if _slot is None or _slot in _slots \
+                            or _n in _deployed_cids:
+                        _ok = False
+                        break
+                    _slots.append(_slot)
+            if _ok and _deployed + len(_slots) <= _cap:
+                _m1p_direct_slots = _slots
+                log.info('[cw-deploy] m1p 计划 up 直投(R1-a):'
+                         f'{_up_names} → slots={[_s + 1 for _s in _slots]}'
+                         '(卖出名序=计划卖序,占用/容量核对过,ADR-0640)')
+            else:
+                try:
+                    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+                        assemble_swap_plan_inputs as _aswap_rb,
+                    )
+                    from sr_od.application.currency_war.kernel.cw_state import (
+                        BenchChar as _BCH,
+                    )
+                    _ctx_rb = _aswap_rb(
+                        _sess, state=_sess.last_state,
+                        deployed=[_BCH(slot=0, char_id=_c)
+                                  for _c in sorted(_deployed_cids)],
+                        bench=assemble_bench_list(
+                            bench_occ, _bench_cid, _bench_pos,
+                            _item_slots_exact),
+                        cap=None, deployed_n=_deployed,
+                        front_slots=len(front), back_slots=len(back),
+                        transition_domain=bool(
+                            m1p_plan.get('trans_domain')))
+                except Exception:   # noqa: BLE001  重 derive 缺供给 = 保原视图
+                    _ctx_rb = None
+                if _ctx_rb is not None:
+                    _tgt = frozenset(_ctx_rb.target_factions)
+                    _fw_carry = frozenset(_ctx_rb.fw_carry)
+                    _cores = list(_ctx_rb.target_cores)
+                log.info('[cw-deploy] m1p 直投前提破(F2 三点式)→ R1-b '
+                         f'卖出后现读重 derive(sold={m1p_sold_names}, '
+                         f"plan.sell={_sell_names}, deployed={_deployed}, "
+                         f"plan.occ={m1p_plan.get('occ')}, tgt={sorted(_tgt)}"
+                         ', ADR-0640)')
         _board_in = dict(_sess.last_state.board
                          if (_sess is not None and _sess.last_state is not None)
                          else {}) or {}
@@ -1225,14 +1317,27 @@ class CwOpDeploy(SrOperation):
         # kernel 恒拒由此真实激活(写入端存在性锁 = test_cw_deploy_pseudo_slot)。
         _bench_list: list = assemble_bench_list(
             bench_occ, _bench_cid, _bench_pos, _item_slots_exact)
-        _up_rel, _held_rel, _held_reasons = _sel_dep(
-            _bench_list, deployed_cids=set(_deployed_cids),
-            deployed_fac=dict(_deployed_fac), board=_board_in,
-            cap=(_cap if _cap is not None and _cap > 0 else 10 ** 6),
-            target_factions=_tgt, target_cores=set(_cores),
-            fw_carry=_fw_carry, locked_factions=_locked_fac,
-            recipe_floor_lock_exempt=_rf_lock_conflict)
-        order = [bench_occ[_k] for _k in _up_rel]
+        if _m1p_direct_slots is not None:
+            # T-279 R1-a 直投:order = 计划 up 槽位序(计划序),不经
+            # kernel 重选(卖出后板面 ≡ 计划假想态,计划已对该假想态算好
+            # up 集,ADR-0640)。held 簿记空 = 本帧未走 kernel 仲裁,禁伪
+            # 拒因遥测(fuel-filler/分键两块空转无害,_up_rel 仍投影本帧
+            # 上场面供乙臂行权显影消费)。
+            _slot_to_rel = {_s: _k for _k, _s in enumerate(bench_occ)}
+            _up_rel = [_slot_to_rel[_s] for _s in _m1p_direct_slots
+                       if _s in _slot_to_rel]
+            _held_rel: list[int] = []
+            _held_reasons: dict[int, str] = {}
+            order: list[int] = list(_m1p_direct_slots)
+        else:
+            _up_rel, _held_rel, _held_reasons = _sel_dep(
+                _bench_list, deployed_cids=set(_deployed_cids),
+                deployed_fac=dict(_deployed_fac), board=_board_in,
+                cap=(_cap if _cap is not None and _cap > 0 else 10 ** 6),
+                target_factions=_tgt, target_cores=set(_cores),
+                fw_carry=_fw_carry, locked_factions=_locked_fac,
+                recipe_floor_lock_exempt=_rf_lock_conflict)
+            order = [bench_occ[_k] for _k in _up_rel]
         _held = [bench_occ[_k] for _k in _held_rel]
         if _held:
             log.info(f'[cw-deploy] 留 bench(kernel 围栏/底线/去重/cap,dd-037):'
@@ -1729,8 +1834,13 @@ class CwOpDeploy(SrOperation):
                                  swap_ctx: object | None = None,
                                  bench_chars: list | None = None,
                                  m1p_arm: str | None = None,
-                                 deployed_chars: list | None = None) -> int:
+                                 deployed_chars: list | None = None
+                                 ) -> tuple[int, list[str]]:
         """D-10:卖 deployed 中的 **off-target** 单位(留 target),给 bench target 腾位。
+
+        :returns: ``(sold, sold_names)``——卖出数 + 实际卖出名序(SIFT
+            名,拖拽成功序;T-279 R1 起部署段 R1-a 直投核对消费实际卖出
+            名 = 计划卖序,F2 名字级 victim 身份判据的数据源)。
 
         SIFT ``read_deployed_chars`` 识别 deployed 身份 → off-target(羁绊 ∌ target)拖出售区。
         target 单位保留(替旧 sell-all 毁掉板上 target)。卖数 ≤ ``max_sell``(**1:1 替换上限** = bench
@@ -1768,6 +1878,7 @@ class CwOpDeploy(SrOperation):
             ) if templates else [])
         _sell = Point(70, 846)
         sold = 0
+        sold_names: list[str] = []   # 拖拽成功序(T-279 R1 部署段核对源)
         _excluded_n = 0
         _sess = (self.ctx.cw_match.session
                  if (self.ctx.cw_match is not None
@@ -1852,6 +1963,8 @@ class CwOpDeploy(SrOperation):
             src = row[d.slot - 1]
             if DragCwChar.drag_char(self, src, _sell):
                 sold += 1
+                if d.char_id:
+                    sold_names.append(d.char_id)
                 # m1p 驱动归因分键(39 跳登记:sell-offtarget 闭环哪几次属
                 # m1p 驱动不可辨):发射位透传臂(transition/formed/base)
                 # 计 sell_offtarget_arm_{arm},非 m1p 帧计 regular。
@@ -1870,7 +1983,7 @@ class CwOpDeploy(SrOperation):
         if deployed:
             log.info(f'[cw-deploy] read_deployed_chars={[(d.char_id, d.position_pref, d.slot) for d in deployed]};'
                      f' sold {sold}/{max_sell} off-target (target_factions={sorted(target_factions)})')
-        return sold
+        return sold, sold_names
 
     def _reconcile_tracking(self, templates: AvatarTemplates | None) -> None:
         """D-12(3.3.2 · 观测回路):deploy 后用 SIFT 身份 + ``read_star`` 实机星级 重置 session.tracking。

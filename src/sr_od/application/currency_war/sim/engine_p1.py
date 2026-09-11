@@ -130,7 +130,12 @@ if TYPE_CHECKING:
     # 模块级反向 import 会与 engine_p2→engine_p1 构成环,故挂 TYPE_CHECKING。
     # SwapPlan 仅作注解引用(kernel 与 sim 无环,但函数内已惰性导入,
     # 注解面统一挂 TYPE_CHECKING 保持「运行期零依赖」同款纪律)。
-    from sr_od.application.currency_war.kernel.cw_deploy_logic import SwapPlan
+    # SwapPlanContext 同上(T-279 R1 计划 ctx 注解面;运行期消费位均
+    # 函数内惰性导入)。
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        SwapPlan,
+        SwapPlanContext,
+    )
     from sr_od.application.currency_war.sim.engine_p2 import P2ReplayEntry
 
 
@@ -385,6 +390,42 @@ def _lag_excluding_fenced_holds(lag_idx: list[int], replay_occ: list[int],
                and replay_occ[i] not in main_held_slots)
 
 
+def _fill_lag_replay(st: GameState,
+                     target_factions: frozenset[str],
+                     target_cores: frozenset[str],
+                     fw_carry: frozenset[str],
+                     locked_factions: frozenset[str],
+                     recipe_floor_lock_exempt: bool = False,
+                     last_held_slots: set[int] | None = None) -> int:
+    """统一 lag 口径:对补部署后的 bench 残余重放围栏,「围栏认可未上」
+    件数即 deploy_lag_units(W678:围栏 hold 不计漏上,豁免集 =
+    ``last_held_slots``)。原为 ``_residual_fill_deploy`` 内嵌段,T-279
+    R1-a 计划直投路径需同一 lag 口径,提取共用(行为逐位同旧)。"""
+    from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
+    _lag_slots = [i for i, bc in enumerate(st.bench) if bc is not None]
+    _lag_keep = [bc for bc in st.bench if bc is not None]
+    if not _lag_keep:
+        return 0
+    _lag_idx, _ = _dl.select_deployments(
+        _lag_keep,
+        deployed_cids={d.char_id
+                       for d in iter_occupied_deployed(st.deployed)
+                       if d.char_id},
+        deployed_fac=_board_factions_of(st.deployed),
+        board=dict(st.board),
+        cap=st.max_units(),
+        target_factions=target_factions,
+        target_cores=target_cores,
+        fw_carry=fw_carry,
+        locked_factions=locked_factions,
+        recipe_floor_lock_exempt=recipe_floor_lock_exempt,
+    )
+    # W678 豁免(与主趟路径同口径):重放认可的件若槽位属末次仲裁
+    # hold 集 ⇒ 不计 lag(上下文翻转件,非漏上)。
+    return _lag_excluding_fenced_holds(
+        _lag_idx, _lag_slots, last_held_slots or set())
+
+
 def _residual_fill_deploy(
     st: GameState,
     target_factions: frozenset[str],
@@ -475,30 +516,106 @@ def _residual_fill_deploy(
             break
         st.board = _board_counts_of(st.deployed)
         _keep = [(i, bc) for i, bc in _keep if st.bench[i] is not None]
-    # 统一 lag:补部署后残余(围栏认可未上件)
-    _lag_slots = [i for i, bc in _occ if st.bench[i] is not None]
-    _lag_keep = [bc for i, bc in _occ if st.bench[i] is not None]
-    _lag = 0
-    if _lag_keep:
-        _lag_idx, _ = _dl.select_deployments(
-            _lag_keep,
-            deployed_cids={d.char_id
-                           for d in iter_occupied_deployed(st.deployed)
-                           if d.char_id},
-            deployed_fac=_board_factions_of(st.deployed),
-            board=dict(st.board),
-            cap=st.max_units(),
-            target_factions=target_factions,
-            target_cores=target_cores,
-            fw_carry=fw_carry,
-            locked_factions=locked_factions,
-            recipe_floor_lock_exempt=recipe_floor_lock_exempt,
-        )
-        # W678 豁免(与主趟路径同口径):重放认可的件若槽位属末次仲裁
-        # hold 集 ⇒ 不计 lag(上下文翻转件,非漏上)。
-        _lag = _lag_excluding_fenced_holds(
-            _lag_idx, _lag_slots, _last_held_slots)
+    # 统一 lag:补部署后残余(围栏认可未上件;重放单一实现 =
+    # _fill_lag_replay,T-279 R1-a 直投路径共用)
+    _lag = _fill_lag_replay(st, target_factions, target_cores, fw_carry,
+                            locked_factions, recipe_floor_lock_exempt,
+                            _last_held_slots)
     return _res_up, _res_held, _lag
+
+
+def _m1p_plan_fill_deploy(st: GameState, plan: SwapPlan,
+                          ctx: SwapPlanContext | None, sess) \
+        -> tuple[int, int, int]:
+    """M1″ 换血轮轮末补部署——计划单一源消费(T-279 R1;ADR-0640)。
+
+    病灶(C-A2 强信号缺口 2/263,局 18 P2r4 黄泉/局 58 P2r5 佩拉):
+    计划面(select_swap_plan,all_factions/锁线域收窄键集)与执行面
+    (轮末补部署,手搓 comp.factions)双 target 视图,单空槽补部署被
+    执行面改判给另一件,本轮新购义务件滞留备战席且零处置记录。修法 =
+    执行面收口到计划单一源(装配单一源契约 ADR-0530/0534 延伸至部署
+    补上段,ADR-0640 新裁决条文)。
+
+    - **R1-a 直投(首选)**:卖出成功帧(sim ``m1p_swap_execute`` 卖的
+      就是 ``plan.sell_names``,卖出后板面 ≡ 计划假想板面——同一 victim、
+      同帧无漂移),计划已对该假想态算好 up 集,直接逐名部署,无需重选。
+      前提校验(对抗审 F2 名字级单通道三点式,任一不满足 → R1-b):
+      ①victim 已按计划卖出(调用方仅在本帧 m1p 卖出成功后调用,转录行
+      name = 计划卖序);②up 成员仍在 bench(名字级,
+      ``swap_plan_up_names`` 单一换算);③占用数与计划假想一致(计划
+      时点占用 −1 victim)∧ up 名不与在场重复 ∧ 容量可容。
+    - **R1-b 防御态**:装配单一源 ``assemble_swap_plan_inputs`` 对卖出后
+      现读状态重 derive,``transition_domain`` 钉计划时点域事实
+      (``ctx.transition_domain``;卖出后 board_full 翻假会让域谓词现算
+      失真丢收窄辖域,域辖域不可从卖出后状态重推),再走
+      ``_residual_fill_deploy`` 同一补部署机器(不动点循环/lag 口径继承)。
+      局 18 实证:同帧收窄键集 up=[黄泉]=计划 pick、all_factions up=
+      [丹恒·腾荒]——不钉域则防御路径复现缺口,钉定是等价性的必要前提
+      (对抗审 F3 条件式【推】)。
+    - **辖域(对抗审 F4 裁决)**= m1_swap_redeploy 轮:非 m1p 显式动作轮
+      维持现状围栏 fill(原目标集),本函数只被 m1p 卖出成功帧调用,
+      通用化收口归后续卡(证据义务 = R2 显影显式动作轮滞留面)。
+
+    返回 ``(residual_deployed, residual_held 恒 0, deploy_lag_units)``
+    ——与 ``_residual_fill_deploy`` 同三元组 schema(skip_fence 行消费
+    面零迁移)。
+    """
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        assemble_swap_plan_inputs,
+        swap_plan_up_names,
+    )
+    up_names = swap_plan_up_names(plan, ctx)
+    occ_now = sum(1 for _ in iter_occupied_deployed(st.deployed))
+    occ_plan = len(ctx.deployed) if ctx is not None else None
+    bench_names = {b.char_id for b in st.bench
+                   if b is not None and b.char_id}
+    dep_names = {d.char_id for d in iter_occupied_deployed(st.deployed)
+                 if d.char_id}
+    direct_ok = (ctx is not None and bool(up_names)
+                 and occ_plan is not None and occ_now == occ_plan - 1
+                 and all(n in bench_names for n in up_names)
+                 and not (set(up_names) & dep_names)
+                 and occ_now + len(up_names) <= st.max_units())
+    if direct_ok:
+        _placed = 0
+        for _n in up_names:
+            _slot = next((i for i, b in enumerate(st.bench)
+                          if b is not None and b.char_id == _n), -1)
+            if _slot < 0 or deployed_place(
+                    st.deployed, st.bench[_slot]) is None:
+                break   # 防御:前提已验不可达;部分放置如实计数
+            st.bench[_slot] = None
+            _placed += 1
+        st.board = _board_counts_of(st.deployed)
+        if _placed == len(up_names):
+            _lag = _fill_lag_replay(
+                st, ctx.target_factions, ctx.target_cores, ctx.fw_carry,
+                ctx.locked_factions, ctx.recipe_floor_lock_exempt)
+            return _placed, 0, _lag
+        # 部分放置(前提中途破,直投不完整)→ 落 R1-b 对当前态补余
+        # (已放置件在板,重 derive 从现读出发,不回滚)
+    # R1-b:卖出后现读重 derive(域辖域钉计划时点事实);装配不可得
+    # (sim 供给齐备不可达,防御缺省)退计划 ctx 视图——最近真值源。
+    _ctx2 = None
+    try:
+        _ctx2 = assemble_swap_plan_inputs(
+            sess, state=st,
+            deployed=list(iter_occupied_deployed(st.deployed)),
+            bench=[b for b in st.bench if b is not None],
+            cap=st.max_units(),
+            transition_domain=(ctx.transition_domain
+                               if ctx is not None else None))
+    except Exception:   # noqa: BLE001  重 derive 缺供给 = 退计划视图
+        _ctx2 = None
+    if _ctx2 is None:
+        _ctx2 = ctx
+    if _ctx2 is None:
+        return _residual_fill_deploy(st, frozenset(), frozenset(),
+                                     frozenset(), frozenset())
+    return _residual_fill_deploy(
+        st, _ctx2.target_factions, _ctx2.target_cores, _ctx2.fw_carry,
+        _ctx2.locked_factions,
+        recipe_floor_lock_exempt=_ctx2.recipe_floor_lock_exempt)
 
 
 def project_sell_buyback(acts: list[dict]) -> list[dict]:
@@ -542,7 +659,8 @@ def project_sell_buyback(acts: list[dict]) -> list[dict]:
     return loops
 
 
-def _m1p_plan_and_record(st: GameState, sess) -> tuple[SwapPlan, dict]:
+def _m1p_plan_and_record(st: GameState, sess) \
+        -> tuple[SwapPlan, dict, SwapPlanContext | None]:
     """M1″ 计划计算 + 发射意图记录(sim 决策面共用同一份计划对象)。
 
     语义出处:ADR-0530(board-full swap redeploy);执行面接入与本
@@ -551,8 +669,12 @@ def _m1p_plan_and_record(st: GameState, sess) -> tuple[SwapPlan, dict]:
     自述「sim 不建模执行侧 swap 卖出语义」)——实测该边界让换血行为
     在 sim 结构性不可见(板满帧计划非空、零卖出动作,模拟批#5 最大
     发现;账本 T-169 污染声明),本批按最小执行面接通:计划对象同时
-    供引擎执行转录消费(见 ``m1p_swap_execute``),记录 dict 形状不变
-    (nonempty/abstain/sell/up/reasons,下游判读零迁移)。
+    供引擎执行转录消费(见 ``m1p_swap_execute``),记录 dict 形状 =
+    nonempty/abstain/sell/up/**up_names**/reasons(T-279 R2 追加
+    up_names = 上序名单名字级,``swap_plan_up_names`` 单一换算;追加键
+    下游零迁移)。第三个返回值 = 装配 ctx(计划时点快照;引擎执行转录
+    与轮末补部署 ``_m1p_plan_fill_deploy`` 消费,发射⇔补上同吃同一
+    份装配,禁二次装配出第二份输入)。
 
     谓词 = 生产同款单一源 ``assemble_swap_plan_inputs`` + ``select_swap_
     plan``(st = 买/升级后黑板,deployed/bench = 占用件现读,cap =
@@ -562,6 +684,7 @@ def _m1p_plan_and_record(st: GameState, sess) -> tuple[SwapPlan, dict]:
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assemble_swap_plan_inputs,
         select_swap_plan,
+        swap_plan_up_names,
     )
     from sr_od.application.currency_war.kernel.cw_state import (
         iter_occupied_deployed,
@@ -578,17 +701,19 @@ def _m1p_plan_and_record(st: GameState, sess) -> tuple[SwapPlan, dict]:
         'abstain': plan.abstain,
         'sell': list(plan.sell_names),
         'up': len(plan.up_bench),
+        'up_names': swap_plan_up_names(plan, ctx),
         'reasons': dict(reasons),
     }
-    return plan, record
+    return plan, record, ctx
 
 
 def m1p_intent_record(st: GameState, sess) -> dict:
     """M1″ 发射意图记录(兼容入口;计划本体经 ``_m1p_plan_and_record``)。
 
-    返回记录 dict 形状与执行面接入前逐位同(nonempty/abstain/sell/up/
-    reasons);引擎现走 ``_m1p_plan_and_record`` 取计划执行,本包装仅供
-    锁测试与只读探针消费(test_cw_swap_plan 意图面双向断言)。
+    返回记录 dict 形状 = nonempty/abstain/sell/up/up_names/reasons
+    (up_names 随 T-279 R2 追加);引擎现走 ``_m1p_plan_and_record``
+    取计划执行,本包装仅供锁测试与只读探针消费(test_cw_swap_plan
+    意图面双向断言)。
     """
     return _m1p_plan_and_record(st, sess)[1]
 
@@ -2116,20 +2241,29 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 两小批②短路帧:生产无 M1″ 决策帧(备战动作链被发射短路)
             # ⇒ 恒 None(非观测异常,如实无帧)。
             _m1p_obs: dict | None = None
+            # T-279 R1:计划对象/装配 ctx/卖出旗带出本块,轮末部署块
+            # R1-a 直投消费(变量先置缺省——达标臂发射帧整块跳过时,
+            # 部署块分支仍需可读)。
+            _m1p_plan: SwapPlan | None = None
+            _m1p_ctx: SwapPlanContext | None = None
+            _m1p_sold = False
             if _round_launch is None:
                 try:
-                    _m1p_plan, _m1p_obs = _m1p_plan_and_record(st, sess)
+                    _m1p_plan, _m1p_obs, _m1p_ctx = \
+                        _m1p_plan_and_record(st, sess)
                 except Exception:   # noqa: BLE001  观测 best-effort(launch 同款)
-                    _m1p_plan, _m1p_obs = None, None
+                    _m1p_plan, _m1p_obs, _m1p_ctx = None, None, None
                 # M1″ 执行面 sim 转录(T-169;总图设计 R2 §2 sim 边界行,
                 # 修订 ADR-0530「sim 不建模执行侧」申报):计划非空 = 生产
                 # 发射 RunDeploy(m1_swap_redeploy) 帧 → sim 逐件卖 victim
                 # (卖出臂单一源执行,见 m1p_swap_execute),腾出的 vacancy
                 # 由轮末部署块补上——显式动作旗置位走 skip_fence+残余补
-                # 部署路径(裁决1「显式>围栏」同语义;补上件 =
-                # select_deployments 同源仲裁,与生产 CwOpDeploy 卖出臂+
-                # 部署 op 两段同构)。计划空/卖出被拒帧零状态写入(原
-                # 「零行为面」语义在这些帧保持)。
+                # 部署路径(裁决1「显式>围栏」同语义;T-279 R1/ADR-0640
+                # 起 m1p 卖出成功帧的补上 = 计划单一源消费
+                # _m1p_plan_fill_deploy:R1-a 计划 up 直投/防御退 R1-b
+                # 卖出后现读重 derive,与生产 CwOpDeploy 卖出臂+部署 op
+                # 消费计划单一源两段同构)。计划空/卖出被拒帧零状态写入
+                #(原「零行为面」语义在这些帧保持)。
                 if _m1p_plan is not None and _m1p_plan.nonempty:
                     st, _m1p_sold = m1p_swap_execute(
                         st, _m1p_plan, acts=_acts, spend=_spend,
@@ -2209,13 +2343,24 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _res_up = 0
             _res_held = 0
             if _explicit_deploy_seen:
-                _res_up, _res_held, _deploy_lag_units = \
-                    _residual_fill_deploy(st, _tf, _tc, _fw, _lf,
-                                          recipe_floor_lock_exempt=_rf)
+                # T-279 R1(ADR-0640):m1p 换血卖出成功帧 → 补部署消费
+                # 计划单一源(R1-a 计划 up 直投,前提破退 R1-b 卖出后
+                # 现读重 derive,域辖域钉计划时点事实);非 m1p 显式动作
+                # 轮(CompTransaction 等)维持现状围栏 fill(F4 辖域
+                # 裁决:同款双源暴露面在彼处无分母无证据,不扩面)。
+                if _m1p_sold:
+                    _res_up, _res_held, _deploy_lag_units = \
+                        _m1p_plan_fill_deploy(st, _m1p_plan, _m1p_ctx,
+                                              sess)
+                else:
+                    _res_up, _res_held, _deploy_lag_units = \
+                        _residual_fill_deploy(st, _tf, _tc, _fw, _lf,
+                                              recipe_floor_lock_exempt=_rf)
                 _acts.append({
                     '__type__': 'skip_fence',
-                    'reason': ('explicit_action_v2+residual_fill'
-                               if _res_up else 'explicit_action_v2'),
+                    'reason': (('m1p_plan_up' if _m1p_sold
+                                else 'explicit_action_v2')
+                               + ('+residual_fill' if _res_up else '')),
                     'residual_deployed': _res_up,
                     'residual_held': _res_held,
                 })
@@ -2842,10 +2987,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 计划已经执行转录(卖出臂真卖,T-169 执行面接入;键缺省
                 # = 计划空/执行异常,锁测试双向断言与换血可见性判读锚)。
                 # abstain = 弃权键(cap_unreadable/membership_unreadable/
-                # input_missing);sell = 卖序;up = 上序件数;reasons =
-                # 逐件拒因。卖出动作明细 = actions 流 SellDeployed 行
-                # (reason='m1_swap_redeploy'),补上 = 同轮 skip_fence 行
-                # residual_deployed 计数(执行语义见 m1p_swap_execute)。
+                # input_missing);sell = 卖序;up = 上序件数;up_names =
+                # 上序名单(T-279 R2 名字级,义务件处置四态直读的判读锚);
+                # reasons = 逐件拒因。卖出动作明细 = actions 流 SellDeployed
+                # 行(reason='m1_swap_redeploy'),补上 = 同轮 skip_fence 行
+                # residual_deployed 计数(执行语义见 m1p_swap_execute;
+                # T-279 R1 起补上消费计划单一源,skip_fence reason 分键
+                # m1p_plan_up,语义见 _m1p_plan_fill_deploy/ADR-0640)。
                 'm1p': _m1p_obs,
                 # 采购面三观察计数(见轮首「采购面三观察计数」块):
                 # locked_b=本轮最大锁定采购集 |B|(0=帧全未锁);

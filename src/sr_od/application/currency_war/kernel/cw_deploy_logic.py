@@ -1182,6 +1182,13 @@ class SwapPlanContext:
     #: 语义宿主 = kernel.cw_evolution 的分级保护机器,本臂不新增
     #: 资格语义,只放开既有 1★ 限制并以其余守卫全保留为界)。
     evolution_swap_armed: bool = False
+    #: 锁线转型域事实快照(装配时点 = ``_swap_transition_domain_of`` 同点
+    #: 现算,ADR-0640):``target_factions`` 是否经收窄。为什么存快照而
+    #: 非消费位现算:域谓词含 board_full 腿,M1″ 卖出后补部署的重 derive
+    #: 帧(board_full 翻假)现算必丢收窄辖域——域辖域是**计划时点事实**,
+    #: 不可从卖出后状态重推;消费面(mandate 发射载荷/sim R1-b 重 derive
+    #: 钉定参)读本字段。手装 ctx 缺省 False = 域外(与裸构造语义一致)。
+    transition_domain: bool = False
 
 
 # ===== 换阵可兑现谓词(F1 单一源;T-167 发射-执行接缝合拢)=====
@@ -1339,6 +1346,24 @@ class SwapPlan:
         return bool(self.sell_names) and bool(self.up_bench)
 
 
+def swap_plan_up_names(plan: SwapPlan | None,
+                       ctx: SwapPlanContext | None) -> list[str]:
+    """``SwapPlan.up_bench`` 下标 → 备战名单(名字级单一换算,T-279 R2)。
+
+    ``up_bench`` 元素是 ``ctx.bench``(**装配时点紧缩占用序**)的下标、
+    非名字(F3:消费面按对象断言会脆,必须先换名再核对/记录)——本
+    函数是该换算的唯一实现,记录面(sim ``_m1p_plan_and_record`` 的
+    ``up_names``)与发射载荷面(mandate ``cw4_m1p_plan_pending['up']``)
+    同吃,禁消费位各写第二份下标换算。越界下标跳过(防御,装配⇔消费
+    同 ctx 引用时不可达)。
+    """
+    if plan is None or ctx is None:
+        return []
+    bench = getattr(ctx, 'bench', None) or []
+    return [getattr(bench[i], 'char_id', '') or ''
+            for i in plan.up_bench if isinstance(i, int) and 0 <= i < len(bench)]
+
+
 def evolution_swap_arm_trigger(membership: frozenset[str] | None,
                                bench: list[BenchChar] | None, *,
                                locked: bool,
@@ -1396,6 +1421,7 @@ def assemble_swap_plan_inputs(
         front_slots: int = DEPLOYED_FRONT_CAPACITY,
         back_slots: int = DEPLOYED_BACK_CAPACITY,
         fresh_buys: frozenset[str] | None = None,
+        transition_domain: bool | None = None,
 ) -> SwapPlanContext | None:
     """swap 计划输入装配单一源(发射侧与执行侧**同函数、同一装配契约**;
     ADR-0530)。
@@ -1419,6 +1445,12 @@ def assemble_swap_plan_inputs(
     :param deployed_n: 板满计数覆盖(执行侧喂 ``swap_arm_deployed_count``
         真读槽位口径;None = 按 ``deployed`` 占用件数计——同一占用数
         口径,含 SIFT 未识别占位件)。
+    :param transition_domain: 锁线转型域事实钉定(ADR-0640;M1″ 卖出后
+        补部署重 derive 路径专用):None(缺省)= 域谓词现算,逐位同旧;
+        True/False = 调用方钉域事实(计划时点快照,``SwapPlanContext.
+        transition_domain`` 同源)——为什么可钉:域谓词含 board_full 腿,
+        卖出后帧 board_full 翻假,现算必丢收窄辖域,而收窄辖域是计划
+        时点事实;钉定仍经本装配函数单一传导收窄(禁消费位内联第二份)。
     """
     if state is None and cap is None:
         return None
@@ -1498,8 +1530,12 @@ def assemble_swap_plan_inputs(
     recipe_floor_lock_exempt = locked_line_recipe_floor_conflict(ist)
     fw_name = getattr(strategy_state_of(session), 'transition_framework', '') or ''
     _tgt_fw, fw_carry = deploy_target_sets(tgt_comp, fw_name)
-    if _swap_transition_domain_of(SWAP_TRANSITION_ARM_ENABLED, locked,
-                                  fp, board_full):
+    # 域事实单点:缺省 = 谓词现算(逐位同旧);钉定参在场 = 计划时点
+    # 事实覆盖(仅 M1″ 卖出后重 derive 路径传入,见参数 docstring)。
+    _domain = _swap_transition_domain_of(
+        SWAP_TRANSITION_ARM_ENABLED, locked, fp, board_full) \
+        if transition_domain is None else bool(transition_domain)
+    if _domain:
         # 锁线**转型域**装配级键集收窄(T-127 方案 v3.1 §3.1 行 #4,读法 D;
         # 辖域钉转型域 = 落地审 F1 修订:锁线∧成型帧(fp≥1.00)键集回全量,
         # 成型臂释放件不经收窄绕过资格族)。收窄只发生在本装配函数(单一
@@ -1543,6 +1579,7 @@ def assemble_swap_plan_inputs(
         recipe_floor_lock_exempt=recipe_floor_lock_exempt,
         target_comp=tgt_comp,
         evolution_swap_armed=evolution_armed,
+        transition_domain=_domain,   # 装配时点域事实快照(字段注释/ADR-0640)
     )
 
 

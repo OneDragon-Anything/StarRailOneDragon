@@ -1440,12 +1440,15 @@ def run_mandate(frame: MandateFrame,
     # 本帧发射位有 m1p 换血时在发射处置为 plan.arm,消费点 =
     # CwOpDeploy.deploy 卖出臂(读后即清)。非 m1p 帧恒 None ⇒ 执行侧
     # 卖出计 regular 键,零漂移。无条件复位防「m1p 帧后接 M1 帧(下方
-    # 块被跳过)且执行未及消费」的跨帧残留误归因。
+    # 块被跳过)且执行未及消费」的跨帧残留误归因。计划载荷
+    # (cw4_m1p_plan_pending,T-279 R1)同帧级同宿复组。
     state_of(session).cw4_m1p_arm_pending = None
+    state_of(session).cw4_m1p_plan_pending = None
     if not any(isinstance(e.action, RunDeploy) for e in out):
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             assemble_swap_plan_inputs,
             select_swap_plan,
+            swap_plan_up_names,
         )
         _m1p_reasons: dict[str, str] = {}
         # 装配产物持引用(发射门消费 membership/bench 压席成员面,同一
@@ -1509,6 +1512,22 @@ def run_mandate(frame: MandateFrame,
                 # 执行侧透传:本帧发射位 m1p 换血及其臂,供 CwOpDeploy
                 # 卖出臂归因分键(键族 sell_offtarget_arm_*,缺省 None)
                 state_of(session).cw4_m1p_arm_pending = _m1p.arm
+                # 计划载荷透传(T-279 R1;ADR-0640):sell/up 名单 +
+                # 计划时点转型域事实(ctx 装配快照) + 计划时点板占用数,
+                # 供 CwOpDeploy 部署段消费计划单一源(R1-a 直投核对 =
+                # 对抗审 F2 名字级三点式;R1-b 域辖域钉定——卖出后
+                # board_full 翻假,域谓词现算会丢收窄辖域)。载荷仅作
+                # 核对与快路径准入,不改卖出仲裁权(卖谁仍由执行侧
+                # 现读仲裁 = ADR-0590 后果⑤在册分工,ADR-0640 分工
+                # 裁决二选一取「维持现分工」支)。
+                state_of(session).cw4_m1p_plan_pending = {
+                    'sell': list(_m1p.sell_names),
+                    'up': swap_plan_up_names(_m1p, _m1p_ctx),
+                    'trans_domain': bool(getattr(_m1p_ctx,
+                                                 'transition_domain',
+                                                 False)),
+                    'occ': len(frame.deployed),
+                }
         else:
             _count('m1p_plan_empty')
 
