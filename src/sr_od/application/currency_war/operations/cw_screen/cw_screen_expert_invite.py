@@ -27,8 +27,8 @@ step3::test_expert_open_card_node_stays_legacy 源面锁)。迁移手法单一�
 lifecycle_observe 消费 ``_observation_port()`` 位):门后读板面+选卡+验关链
 纯移入 ``_handle_overlay``(两路径共享零转录);本屏无 on_outcome 落地登记件
 (§6.4 收编面无事件屏 chosen 行;chosen_expert = 出口验真通过分支单次逻辑
-写入豁免 §2.2/§6.5-6,留守共享体;ConfirmExpertCash 到账登记 = expected_state
-载体非注册表辖)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
+直写(write_logic,ADR-0651 两态制),留守共享体;ConfirmExpertCash 逻辑
+推进 = gold +4 直推,非注册表辖)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
 事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
 (test_cw_board_state_consume chosen_expert 锁 + test_cw_node_screens 接线锁
 + 本批锁 test_cw_obs_arch_event_screens_step3)。

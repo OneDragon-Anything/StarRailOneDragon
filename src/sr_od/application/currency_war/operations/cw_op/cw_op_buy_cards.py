@@ -513,21 +513,27 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                        and bench_occupied(_cur.bench) >= BENCH_CAPACITY)
         _proj = _aop.project(_cur)
         if isinstance(action, BuyCard) and _proj is not None:
-            # 合成升星预期写端(§3.2.18 窟窿一修法 a,迁移批次二扩单件 1):
-            # BuyCard 投影发生 3 合 1 升星 → 预期条目表记 bench 投影视图
-            # (字段值不动,策略器读不到;confirm_point=prep_obs,下一备战
-            # 帧观察核对转正/失配清账留证,§2.5 两步闭环)。last-wins:同段
-            # 级联合并只留末张预期。纯记录面,决策零影响(bench 为消费视图
-            # 透传域,§8.7 批次二 as-built)。
+            # 合成升星逻辑直写(§3.2.18 窟窿一修法 a;两态制 ADR-0651:
+            # expect/confirm 两步废除,推算值直接写字段):BuyCard 投影
+            # 发生 3 合 1 升星 → 投影 bench 视图经 write_logic 直写
+            # (source=logic,策略器立即可读);下一备战帧实读照常覆盖
+            # (观察赢),失配 = 投影模型 bug,缺陷台账留证后修推算代码。
+            # last-wins:同段级联合并只留末张投影。纯记录面,决策零影响
+            # (bench 为消费视图透传域,§8.7 批次二 as-built)。
             from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
                 bench_view_of_slots,
                 board_state_of,
                 detect_merge_upgrade,
             )
             if detect_merge_upgrade(_cur, _proj):
                 _bs_m = board_state_of(match.session)
-                _bs_m.expect(_bs_m.bench, bench_view_of_slots(_proj.bench),
-                             confirm_point='prep_obs', produced_by='BuyCard')
+                _bs_m.write_logic(
+                    _bs_m.bench, bench_view_of_slots(_proj.bench),
+                    produced_by='BuyCard',
+                    sig=ChannelSig(family='logic_action', actor='CwOpBuyCards',
+                                   mode='compute',
+                                   group_id=f'act:CwOpBuyCards@{_bs_m.write_seq + 1}'))
         match.session.shop_state_frame = _proj
         _post_frame = _proj
         if not _skip_guard:
@@ -827,21 +833,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         exc_info=True)
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好)段级清零。
         strategy_state_of(match.session).cw4_visit_bought_names = []
-        # 期望态覆盖点·商店段顶(条目绑覆盖点机制保留,EXPECTED_STATE §2)。
-        try:
-            from sr_od.application.currency_war.kernel.cw_expected_state import (
-                reconcile_expected,
-            )
-            _store = getattr(exec_state_of(match.session), 'expected_state', None) or {}
-            _act = {}
-            for _p, _e in list(_store.items()):
-                if _e.confirm_point != 'shop_wave_top':
-                    continue
-                _act[_p] = (getattr(state, 'gold', None),
-                            getattr(state, 'gold_readable', True))
-            reconcile_expected(match.session, 'shop_wave_top', _act)
-        except Exception as _e:  # noqa: BLE001  观测面不阻塞循环
-            log.debug(f'[cw-shop] expected reconcile skip: {_e}')
+        # (期望态覆盖点·商店段顶的对账块已随 ADR-0651 两态制废除:金账
+        #  delta 为逻辑直推字段,本帧 state.gold 实读即观察覆盖真值,
+        #  失配 = 推算 bug,缺陷台账留证——无挂账对账环节。)
         # (r97 供给快照行已随 shop_snapshots 流写入端退役删除——删除波 1;
         #  牌面真值现役归宿 = journal 快照行自带 shop 域。)
         # A2:target 由策略器状态管理(方向刷新写,ADR-0583 内化)。

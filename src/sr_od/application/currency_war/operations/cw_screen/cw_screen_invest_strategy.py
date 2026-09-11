@@ -452,8 +452,6 @@ class CwScreenInvestStrategy(SrOperation):
                 log.info(f'[cw-strat] 效果账本登记:{_spec.name}(t={_t})')
         except Exception as e:   # noqa: BLE001  登记面失败不阻塞
             log.warning(f'[cw-strat] 效果账本登记失败(不阻塞): {e}')
-        from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-            register_confirm_arrival,
-        )
-        register_confirm_arrival(match.session, 'ConfirmStrategy', chosen,
-                                 produced_by='CwScreenInvestStrategy')
+        # (原 register_confirm_arrival('ConfirmStrategy') 已随 ADR-0651
+        #  两态制废除:active_strategies 本体追加 + write_logic 直写均在
+        #  上方确认成功写点,无挂账登记环节。)

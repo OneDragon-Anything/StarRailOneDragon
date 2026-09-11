@@ -10,13 +10,17 @@
 §8.8 治理三件:派生量(席空数/席满判定/board 下档阈值)是计算函数不存储;
 识别质量位是写入闸门不存储(失读统一口径 = §2.2 carried/机制性 None)。
 
-**三个关键结构**(设计 §2.4,随本批建立):
-1. 预期条目表(:class:`PendingEntry`)——逻辑写入两步机制的本体(§2.5):
-   expect 记待核实预期(字段值不动,策略器读不到),核对通过经 confirm
-   转正写入(source=logic),失败经 discard_expected 清账(观察赢,§2.3)。
-2. 帧观察完整度标注 + 心跳——标注(full/view/none)消费即清;停更检测
+**两个关键结构**(设计 §2.4;预期条目表已随两态制废除):
+1. 帧观察完整度标注 + 心跳——标注(full/view/none)消费即清;停更检测
    哨兵用只增不减的写点序号 :attr:`BoardState.write_seq`,不用标注现值。
-3. bs_schema——域粒度版本映射(缺域键 = 该域未建模,§3.7.1)。
+2. bs_schema——域粒度版本映射(缺域键 = 该域未建模,§3.7.1)。
+
+**两态直写**(ADR-0651,2026-09-11 用户裁定):字段来源只保留 observation
+与 logic 两种——逻辑推算值经 :meth:`BoardState.write_logic` 直接写字段
+(source=logic,策略器立即可读),expect/confirm 两步机制(预期条目表/
+PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
+代码 bug(修推算代码,不靠运行时挂账对账兜底)。观察赢原则不变(§2.3):
+下一帧实读覆盖 logic,失配缺陷台账留证。
 
 **单例宿主** = session 旁表(:func:`board_state_of`;同 ``cw_exec_state``
 旁表模式,弱引用表 + 桩面兜底)——session 对象 = 局身份,新局新 session
@@ -365,12 +369,14 @@ _T = TypeVar('_T')
 
 @dataclass(frozen=True)
 class Field(Generic[_T]):
-    """一个字段:值 + 来源 + 可选源注记。只存正式值——待核实的预期不在这里
-    (§2.5,预期走 :meth:`BoardState.expect` 入预期条目表)。
+    """一个字段:值 + 来源 + 可选源注记。只存正式值——来源两态
+    (observation/logic,ADR-0651;来源子模 carried/prior 见 §2.1)。
 
     - observation = 亲眼看到的(识别结果/sim 真值合成,evidence 恒带标记);
-    - logic = 决策动作的预期效果,经核对点确认后写入,**保持 logic 不翻
-      observation**(§8.1),直到下一次观察覆盖;
+    - logic = 决策动作按游戏规则推算的预期效果,经
+      :meth:`BoardState.write_logic` 直接写入(策略器立即可读),**保持
+      logic 不翻 observation**(§8.1),直到下一次观察覆盖(失配 = 推算
+      bug,缺陷台账留证,修推算代码);
     - carried = 沿用上次好值,evidence 必带 ``carried:<来源帧>``
       (§2.1/§2.2 失读处置①);
     - prior = 历史遥测先验(开局 hp,§3.1.6),evidence 必带 ``prior:<来源>``;
@@ -383,27 +389,6 @@ class Field(Generic[_T]):
     value: Any | None = None
     source: FieldSource = 'observation'
     evidence: str | None = None
-
-
-@dataclass(frozen=True)
-class PendingEntry:
-    """预期条目表一条(§2.4 关键结构 1;五键对齐现役 ExpectedEntry,
-    ``cw_expected_state.ExpectedEntry``)。
-
-    - path = 字段名寻址(本模块字段是定长 schema,名即路径);
-    - value = 待核实的预期值(§2.5:执行后应该变成什么样);
-    - confirm_point = 绑定的核对点——条目只在绑定的核对点可确认转正;
-    - group_id = 组内条目全有全无清账,禁单字段半确认中间态;
-    - at_round = 轮键('p{plane}-r{round}' 形,登记期快照);
-    - produced_by = 产生者(op 名/sim 段名,留证用)。
-    """
-
-    path: str
-    value: Any
-    confirm_point: str = 'prep_obs'
-    group_id: str = ''
-    at_round: str = ''
-    produced_by: str = ''
 
 
 # ============================================================ 单位与槽位(§8.2)
@@ -689,8 +674,7 @@ _DEFECT_SINK: Callable[[dict], None] | None = None
 
 
 def set_defect_sink(fn: Callable[[dict], None] | None) -> None:
-    """注入缺陷台账外送钩子(None = 关,缺省态;同 ``cw_expected_state
-    .set_evidence_sink`` 注入槽模式)。"""
+    """注入缺陷台账外送钩子(None = 关,缺省态;注入槽模式)。"""
     global _DEFECT_SINK
     _DEFECT_SINK = fn
 
@@ -705,8 +689,8 @@ def consume_defect_sink() -> list[dict]:
 def _emit_defect(*, field_name: str, expected: Any, actual: Any,
                  evidence: str | None,
                  kind: str = 'observe_vs_logic_mismatch') -> None:
-    """缺陷台账留证(§2.3 观察赢;kind 扩展 = 预期核对点失配
-    expect_vs_obs_mismatch,§2.5 两步闭环)。best-effort:
+    """缺陷台账留证(§2.3 观察赢):观察覆盖 logic 值失配 = 推算 bug,
+    留证后修推算代码(ADR-0651;不做运行时挂账对账)。best-effort:
     外送钩子异常不阻塞观察主链。"""
     row: dict = {'kind': kind, 'field': field_name,
                  'expected': expected, 'actual': actual,
@@ -1037,7 +1021,7 @@ def bench_view_from_obs(bench_chars: list) -> BenchView | None:
     - **空集 = 失读非全空**(P2-1 批次二落地审):overlay 残留/动画帧/识别
       退化都会产空集,≠实席真清空——返 None,调用方走 carried(§2.2 处置①;
       先例 = 商店空牌面「宁缺勿造不写」),禁把「9 槽全空」当 observation
-      入记录(席空数派生误报 free=9/挂起合成升星预期被空视图误清);
+      入记录(席空数派生误报 free=9 会污染席满决策);
     - 槽位越界条目丢弃并 log 留证(物理槽 1..capacity 外 = 读链漂移信号,
       静默丢弃 = 身份静默丢失);
     - 非 None 返回 = 槽位保序映射(下标 i = 物理槽 i+1,与 sim 合成口同构)。
@@ -1064,15 +1048,14 @@ def bench_view_from_obs(bench_chars: list) -> BenchView | None:
 
 def archive_snapshot(bs: BoardState) -> dict:
     """局终 BoardState 归档快照(§6.2 局终归档喂遥测,先于连刷重建;
-    §8.8 遥测行形状正本的三键:bs_prov/bs_pending/bs_extra)。
+    §8.8 遥测行形状正本的两键:bs_prov/bs_extra)。
 
     - bs_prov = 非默认来源注记(稀疏化,不逐字段灌满):source 非
       observation、或 observation 带 evidence 的字段才入——默认 observation
       无注记的字段 = 「本帧真读」语义,键面留白;
-    - bs_pending = 预期条目表快照(局终尚有挂起预期 = 未闭合写端信号,
-      归档保留供判读);
     - bs_extra = 工程结构(schema 版本/域版本/心跳/效果账本规模)+
       全部非 None 字段值(JSON 安全形态,供离线判读)。
+      (bs_pending 挂起预期摘要已随两态制废除退役——ADR-0651。)
 
     返回 dict 直接入档(由局终装配器并档);序列化失败逐字段跳过
     (归档 best-effort,不阻塞局终流转)。
@@ -1091,7 +1074,6 @@ def archive_snapshot(bs: BoardState) -> dict:
     return {
         'schema_version': bs.schema_version,
         'bs_prov': prov,
-        'bs_pending': [dataclasses.asdict(e) for e in bs.pending_entries()],
         'bs_extra': {
             'values': extra_values,
             'bs_schema': dict(bs.bs_schema),
@@ -1115,12 +1097,12 @@ def _json_safe(value: Any) -> Any:
     return str(value)
 
 
-# ============================================================ 合成升星预期写端(§3.2.18 窟窿一,修法 a)
+# ============================================================ 合成升星逻辑直写构造源(§3.2.18 窟窿一,修法 a)
 
 def bench_view_of_slots(bench_list: list) -> BenchView:
     """GameState.bench 槽位表(0 基下标 + None 洞)→ BenchView(记录模型
     形状契约;槽 i = 物理槽 i+1,与 sim 合成口同构映射)。投影面用
-    (BuyCard 升星预期写端的期望值构造源)。"""
+    (BuyCard 升星投影的逻辑直写值构造源,ADR-0651)。"""
     slots: list[BenchSlot] = []
     for i, bc in enumerate(bench_list or []):
         if bc is None:
@@ -1158,36 +1140,6 @@ def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
         return best
     before, after = _max_star(cur), _max_star(proj)
     return any(after.get(cid, 0) > s for cid, s in before.items())
-
-
-def reconcile_pending_observation(bs: BoardState, target: Field,
-                                  observed: Any, *,
-                                  at_point: str,
-                                  sig: ChannelSig) -> str:
-    """核对点闭环(§2.5 两步机制的核对半;迁移批次二扩单件 1)。
-
-    对绑定 ``at_point`` 的该字段挂起预期与观察值比对:
-    - 一致 → :meth:`confirm` 转正(source=logic;决策推算被核实);
-    - 失配 → :meth:`discard_expected` 清账 + 缺陷台账留证
-      (kind=expect_vs_obs_mismatch;§2.3 观察赢,观察覆盖已先行写入真值);
-    - 无挂起预期或条目绑定其他核对点 → 不动(返回 'none');
-    - sig = 渠道②签名透传(confirm 行 actor = 调用方 op,§3.2.1 对账层;
-      R5 W1 起签名必填,legacy 合成已退役——ADR-0634)。
-
-    返回 'confirmed' | 'discarded' | 'none'。
-    """
-    name = bs._field_name(target)
-    entry = bs.expected.get(name)
-    if entry is None or entry.confirm_point != at_point:
-        return 'none'
-    if entry.value == observed:
-        bs.confirm(entry, at_point=at_point, sig=sig)
-        return 'confirmed'
-    bs.discard_expected(entry)
-    _emit_defect(kind='expect_vs_obs_mismatch', field_name=name,
-                 expected=entry.value, actual=observed,
-                 evidence=f'at:{at_point}')
-    return 'discarded'
 
 
 # ============================================================ 结算覆盖写端(§3.5.1)
@@ -1377,7 +1329,7 @@ def board_state_of(session: object) -> BoardState:
 class BoardState:
     """局内记录:当前局内状态的唯一一份快照(单例,只描述此刻,§8.4)。
 
-    写入纪律(§2.4):op 层一律经 observe/carry/write_prior/expect/confirm
+    写入纪律(§2.4):op 层一律经 observe/carry/write_prior/write_logic
     API 写入,不直接摸字段;写点以写时刻的单例现引用为基底构造新帧
     (frozen 帧替换——旧 Field 引用保持旧值,持旧引用的读者不被污染)。
 
@@ -1515,9 +1467,7 @@ class BoardState:
     # session 级可变账本,不参与 frozen 帧替换(帧替换管观察/逻辑字段)。
     effects: ActiveEffectInventory = field(default_factory=ActiveEffectInventory)
 
-    # ---- 工程结构(非 Field,§2.4 三个关键结构 + 心跳观察者)----
-    # 预期条目表:path → PendingEntry(last-wins 同 path 覆盖)。
-    expected: dict[str, PendingEntry] = field(default_factory=dict)
+    # ---- 工程结构(非 Field,§2.4 关键结构 + 心跳观察者)----
     # 域粒度版本映射(§3.7.1;缺域键 = 该域未建模)。
     bs_schema: dict[str, int] = field(
         default_factory=lambda: dict(DEFAULT_BS_SCHEMA))
@@ -1656,8 +1606,8 @@ class BoardState:
     def full_state_snapshot(self) -> dict:
         """写入后完整 state 快照(§3.2.3 自足行的行内 state;JSON 安全化 +
         序列化规范化——effects 按 spec id 排序,同态同形)。含 values(非 None
-        字段值)/ prov(非默认来源注记)/ pending_expected(挂起预期摘要)/
-        effects(就地可变域整窗)/ 工程结构。"""
+        字段值)/ prov(非默认来源注记)/ effects(就地可变域整窗)/ 工程结构。
+        (pending_expected 挂起预期摘要键已随两态制废除退役——ADR-0651。)"""
         values: dict[str, object] = {}
         prov: dict[str, dict] = {}
         for f in dataclasses.fields(self):
@@ -1683,8 +1633,6 @@ class BoardState:
             'schema_version': self.schema_version,
             'values': values,
             'prov': prov,
-            'pending_expected': [dataclasses.asdict(e)
-                                 for e in self.pending_entries()],
             'effects': effects,
             'frame_obs': self.frame_obs,
             'write_seq': self.write_seq,
@@ -1701,9 +1649,8 @@ class BoardState:
         - value=None 拒绝(§2.2 硬边界:失读不是观察值,走 :meth:`carry`
           或画面附加域 :meth:`leave_screen`;字段一旦有过正式值任何失读
           不得清成 None);
-        - 覆盖 logic 来源值且失配 → 缺陷台账留证(§2.3 观察赢),来源
-          改回 observation;未核实的预期条目不受影响(§2.3:观察帧不得
-          确认或清除预期);
+        - 覆盖 logic 来源值且失配 → 缺陷台账留证(§2.3 观察赢;失配 =
+          推算 bug,修推算代码——ADR-0651);
         - sig = 渠道①签名(必填;R5 W1 起缺位合成路径已退役,ADR-0634);
         - note = 可选行注记(结算事实等语义,ADR-0634 battle_done 收编)。
         """
@@ -1758,69 +1705,26 @@ class BoardState:
                                evidence='left_screen'),
                    sig=sig)
 
-    def expect(self, target: Field, value: Any, *,
-               confirm_point: str = 'prep_obs', group_id: str = '',
-               at_round: str = '', produced_by: str = '') -> PendingEntry:
-        """记待核实预期(§2.5 两步第一步):入预期条目表,字段值暂不动
-        (策略器读不到)。五键见 :class:`PendingEntry`;同字段后写覆盖
-        前写(last-wins)。"""
-        name = self._field_name(target)
-        entry = PendingEntry(path=name, value=value,
-                             confirm_point=confirm_point, group_id=group_id,
-                             at_round=at_round, produced_by=produced_by)
-        self.expected[name] = entry
-        return entry
-
-    def confirm(self, entry: PendingEntry, *,
-                at_point: str | None = None,
-                sig: ChannelSig) -> None:
-        """核对通过(§2.5 两步第二步):预期转正——写入字段(source=logic,
-        保持 logic 不翻 observation,§8.1)并清账。
-
-        - at_point 给定时须与条目绑定的核对点一致(§2.4 五键②),否则炸错;
-        - 组条目全有全无:entry 带 group_id 时整组一并转正+清账(§2.4 五键③,
-          禁单字段半确认中间态);
-        - 条目已被 last-wins 覆盖或已清账 → 炸错(禁确认过期条目);
-        - sig = 渠道②签名(对账层 confirm 行 actor = 调用方 op,§3.2.1;
-          必填,R5 W1 起 legacy 合成已退役——ADR-0634)。
-        """
-        current = self.expected.get(entry.path)
-        if current is not entry:
-            raise KeyError('条目已失效(last-wins 被覆盖或已清账),禁确认')
-        if at_point is not None and at_point != entry.confirm_point:
-            raise ValueError(f'核对点不符:条目绑 {entry.confirm_point},'
-                             f'来点 {at_point}(§2.4 五键②)')
-        _validate_sig(sig, ('logic_action', 'logic_hook'))
-        if entry.group_id:
-            group = [e for e in self.expected.values()
-                     if e.group_id == entry.group_id]
-        else:
-            group = [entry]
-        for e in group:
-            self._swap(e.path, Field(value=e.value, source='logic'),
-                       sig=sig)
-            self.expected.pop(e.path, None)
-
     def write_logic(self, target: Field, value: Any, *,
                     produced_by: str, evidence: str | None = None,
                     sig: ChannelSig,
                     note: str = '') -> None:
-        """单次逻辑写入(直接转正,不经预期条目表)。
+        """逻辑直写(两态制标准写通道,ADR-0651):决策动作按游戏规则推算
+        的预期效果**直接写入字段**(source=logic),策略器立即可读——
+        「在观察态到来之前供决策使用」是逻辑态的全部职能。
 
-        仅限设计**显式申报豁免**的写端——「不为它记待核实预期」(§3.4 通用
-        机制:事件屏 chosen_* 由选择 handler 单次逻辑写入;§4 事件选择行;
-        §3.3.6-8 刷新计数组=仅逻辑)。豁免语义 = 该写端的真值在写入时点
-        即确定(选择事实/自身动作事实),不存在可核对的后续定型帧,不是
-        免检通道:字段值之后仍受观察覆盖辖(§2.3 观察赢)。其余决策动作
-        禁走此口,必须走 expect/confirm 两步(§2.5);判断不符的调用 =
-        设计缺口,先回设计文档申报再落码。
-
-        produced_by = 产生者标识(op/handler 名,留证用);
-        evidence = 可选来源注记(如刷新执行的轮键 refresh_exec@p1-r2);
-        sig = 渠道②③签名(必填;派生规则与流程 hook 系统的 ③ 写入走
-        本同一口,family=logic_hook——写入口不感知触发机制,零接口预留;
-        R5 W1 起 legacy 合成已退役,ADR-0634);
-        note = 可选行注记(权威纠偏记录等,§3.4.2)。
+        - 历史「仅限显式申报豁免写端」的限制随 expect/confirm 两步机制
+          废除一并解除(ADR-0651):凡逻辑推算写入统一走本口,不再有
+          「记待核实预期→核对转正」的第二步;
+        - 非免检通道:字段值之后仍受观察覆盖辖(§2.3 观察赢),推算与
+          实读失配 = 推算代码 bug,缺陷台账留证后修推算代码——运行时
+          不挂账、不对账兜底;
+        - produced_by = 产生者标识(op/handler 名,留证用);
+        - evidence = 可选来源注记(如刷新执行的轮键 refresh_exec@p1-r2);
+        - sig = 渠道②③签名(必填;派生规则与流程 hook 系统的 ③ 写入走
+          本同一口,family=logic_hook——写入口不感知触发机制,零接口预留;
+          R5 W1 起 legacy 合成已退役,ADR-0634);
+        - note = 可选行注记(权威纠偏记录等,§3.4.2)。
         """
         _validate_sig(sig, ('logic_action', 'logic_hook'))
         name = self._field_name(target)
@@ -1857,28 +1761,11 @@ class BoardState:
                    sig=sig)
         return True
 
-    def discard_expected(self, entry: PendingEntry) -> None:
-        """核对失败清账(§8.4 用法块第 4 步:点击落空 → 观察赢 + 条目清账,
-        不写字段);组条目同式整组清。"""
-        current = self.expected.get(entry.path)
-        if current is not entry:
-            return
-        group_ids = {entry.group_id} if entry.group_id else set()
-        self.expected.pop(entry.path, None)
-        if group_ids:
-            for p in [p for p, e in self.expected.items()
-                      if e.group_id in group_ids]:
-                del self.expected[p]
-
     def logic_written_fields(self) -> list[str]:
-        """全部 logic 来源字段名(已确认、尚未被观察重锚——对账巡检用,§8.4)。"""
+        """全部 logic 来源字段名(已直写、尚未被观察重锚——对账巡检用,§8.4)。"""
         return [f.name for f in dataclasses.fields(self)
                 if isinstance(getattr(self, f.name), Field)
                 and getattr(self, f.name).source == 'logic']
-
-    def pending_entries(self) -> list[PendingEntry]:
-        """预期条目表快照(登记序)。"""
-        return list(self.expected.values())
 
     def observe_screen_context(self, screen_name: str, *,
                                phase_round: tuple[int, int] | None = None,

@@ -9,8 +9,9 @@ telemetry/query 只余纯函数单一源)。本模块保留:
 
 - TelemetryRecorder:进程级落盘根槽载体(replay_dir/enabled;测试经
   telemetry.state.set_recorder_replay_dir 换根,装配面语义不变)+ 缺陷
-  台账写入(record_defect;保留专用流,候裁面见处置表 defect_ledger 行);
-- snapshot_expected_paths:期望态摘要纯函数(sim 账本落盘与生产观察共用)。
+  台账写入(record_defect;保留专用流,候裁面见处置表 defect_ledger 行)。
+  (snapshot_expected_paths 挂起期望快照 helper 已随 ADR-0651 两态制
+  退役删除——expected_state 条目表拆除无快照可取。)
 
 旧内存累积面(gold 轨迹/comps 序列/难度表)随 runs 流写入端一并退役——
 其唯一消费方是局终 summary 派生列,退役后无写入消费方。
@@ -22,7 +23,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_observe import DEFAULT_REPLAY_DIR
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
     SEVERITY_L2_RECORD,
@@ -91,30 +91,3 @@ class TelemetryRecorder:
             confidence=confidence)
         self._append("defect_ledger.jsonl", _to_jsonable(rec))
 
-
-def snapshot_expected_paths(session) -> list[dict[str, Any]]:
-    """决策时点挂起期望态摘要(W971 期望态 infra 遥测批;读 infra 接口,
-    本函数不修改期望态本体)。
-
-    exec_state_of(session).expected_state = 未确认条目表(kernel/cw_expected_state.
-    ExpectedEntry);摘要 = path/value/produced_by/at_round/kind(kind 供判读
-    分型:merge_group=合成链模型错 / tracked=识别缺陷 等,五分类语义见
-    cw_expected_state.reconcile_expected)。value 非标量(BuyExpect 载体等)
-    str 化防序列化炸;无容器/空表 = []。现役消费方 = sim 账本落盘
-    (sim/engine_p1;生产 decisions 行已随旧流退役,快照 helper 因 sim
-    共用单一源而保留)。"""
-    out: list[dict[str, Any]] = []
-    store = getattr(exec_state_of(session), 'expected_state', None) or {}
-    for path, e in store.items():
-        try:
-            v = getattr(e, 'value', None)
-            if not isinstance(v, (int, float, bool, str, type(None))):
-                v = str(getattr(v, 'summary', None) or v)
-            out.append({'path': str(getattr(e, 'path', path) or path),
-                        'value': v,
-                        'produced_by': str(getattr(e, 'produced_by', '')),
-                        'at_round': str(getattr(e, 'at_round', '')),
-                        'kind': str(getattr(e, 'kind', ''))})
-        except Exception:  # noqa: BLE001  单条目异常不拖垮整行快照
-            continue
-    return out

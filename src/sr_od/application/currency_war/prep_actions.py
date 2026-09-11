@@ -772,10 +772,10 @@ class PrepActionExecutor:
                         landed=False)
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][s1-route] 清键门失败(不阻塞): %s', e)
-            # 期望态推进(EXPECTED_STATE §6 对抗 F8:两执行面同源接线)——
-            # 批3a:发出即登记 + 对账纠偏(原 progressed 门控退役;未发出
-            # 不登记)。本执行器是两执行面的共同底层,登记挂本入口 = 两面
-            # 一次覆盖、零双写;登记失败不阻塞执行(观测面,best-effort)。
+            # 逻辑效果推进(两态制 ADR-0651:op 可推算效果直接写 session
+            # 字段,两执行面同源接线)——本执行器是两执行面的共同底层,
+            # 推进挂本入口 = 两面一次覆盖、零双写;推进失败不阻塞执行
+            #(观测面,best-effort)。
             try:
                 from sr_od.application.currency_war.kernel.cw_expected_state import (
                     apply_op_effect,
@@ -785,7 +785,7 @@ class PrepActionExecutor:
                 if session is not None:
                     apply_op_effect(session, action, detail=detail,
                                     produced_by=type(self).__name__)
-            except Exception as e:  # noqa: BLE001  登记失败不阻塞执行
+            except Exception as e:  # noqa: BLE001  推进失败不阻塞执行
                 log.warning('[cw][expect] apply_op_effect 失败(不阻塞): %s', e)
         log.info('[cw][exec] %s → %s', type(action).__name__,
                  detail or '(无摘要)')
@@ -801,8 +801,8 @@ class PrepActionExecutor:
           机械事实随 detail 在账,落地判定归观察侧 reconcile;
         - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;W209j 停机
           短路在本口之前抛出 = 执行被拒不产行——停机非动作);
-        - 影子闸(kernel 侧 armed 检查)关 = 零写入;无局(session 缺)跳过;
-          best-effort 不阻塞动作链。
+        - journal 常开(R5 W1 影子闸折叠,ADR-0634)回执写入无条件;无局
+          (session 缺)跳过;best-effort 不阻塞动作链。
         """
         try:
             from sr_od.application.currency_war.kernel.cw_board_state import (
@@ -977,10 +977,10 @@ class PrepActionExecutor:
             log.warning(f'[cw][box] 开箱槽{slot} 选卡子步未发出:{_pick_msg}')
             return (f'开箱槽{slot} 已点,选卡未发出({_pick_msg};'
                     f'交下一帧观察)'), True
-        # 期望态补登记:合并路径直调 _pick_box_card 绕过
-        # execute() 的统一登记入口(外层只登记 OpenBox = 零状态变更)→
-        # 对内层 PickBoxCard 补登记一次(last_owned_equips/动态权重
-        # 消费面),detail 复用可解析形态「选卡 <名>」;登记失败不阻塞。
+        # 逻辑效果补推进(两态制 ADR-0651):合并路径直调 _pick_box_card
+        # 绕过 execute() 的统一推进入口(外层只推 OpenBox = 零状态变更)→
+        # 对内层 PickBoxCard 补推进一次(last_owned_equips 本体 +1),
+        # detail 复用可解析形态「选卡 <名>」;推进失败不阻塞。
         with contextlib.suppress(Exception):
             from sr_od.application.currency_war.kernel.cw_expected_state import (
                 apply_op_effect,

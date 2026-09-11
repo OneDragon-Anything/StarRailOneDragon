@@ -78,10 +78,10 @@
                             ↓  (唯一的入口分叉)
    ┌──────────────── 共用中段(一份代码)────────────────┐
    │ 观察数据写入 state(BoardState 同一套写入 API:       │
-   │   observe / expect / confirm / carry /              │
+   │   observe / write_logic / carry /                   │
    │   leave_screen / relay)                             │
-   │ → 对账(reconcile_pending_observation:              │
-   │   挂起预期 vs 本帧观察,一致转正/失配清账留证)      │
+   │ → 对账(观察赢:实读覆盖 logic 直写值,               │
+   │   失配 = 推算/动作 bug 缺陷台账留证,ADR-0651)       │
    │ → 策略器消费 state(strategy_input_state 决策视图    │
    │   → 策略决策,输出意图)                             │
    └─────────────────────────────────────────────────────┘
@@ -490,8 +490,8 @@ reconcile → decide → act → on_outcome),不是循环外的特殊代码。�
 observe()   适配器①分派:取观察 payload(实机=识别链 / sim=引擎真值)
    ↓
 reconcile   对账:payload 写入 BoardState(observe/carry/leave_screen/relay)
-            + reconcile_pending_observation(挂起预期 vs 本帧观察:
-            一致 → confirm 转正;失配 → discard + 缺陷台账留证)
+            + 观察赢(实读覆盖 logic 直写值:一致静默;
+            失配 → 缺陷台账留证,ADR-0651 两态制)
    ↓
 decide()    策略消费:strategy_input_state(session) 决策视图 → 策略入口
             (decide_prep_screen / decide_shop_action / pick 族)→ 意图
@@ -511,15 +511,16 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
   坐标/时序/确认序列),禁止以验证+重试结构兜底。v9 及之前版本的第六段「验证
   (执行侧验证:实机重读/金对拍/期望态对账;sim:applied 回执+规则性
   拒绝)」就此废除,其承载面的归属:
-  - 期望态对账本就归观察侧闭环——「decide/act 段记预期 + 下一轮
-    reconcile 段核对」(见下「期望态两步」条),与被废段无关;
+  - 期望态对账本就归观察侧闭环——op 逻辑效果经 `write_logic` 直写字段
+    (ADR-0651 两态制),下一轮观察实读覆盖(观察赢,失配 = 推算/动作 bug
+    缺陷留证),与被废段无关;
   - sim 的 applied 回执与规则性拒绝(如满栏非合成拒买)= 动作应用语义
     (§6.3),在 act 段的适配器回执内产生,不是生命周期段;
   - 「点击是否落地」的判定自 T-223 终裁(2026-09-10 最严读法)起**不属
     动作适配器**:适配器只机械执行(发出即职责完成,成败回执退役——
     端口回执 (progressed, detail) 与 ActionOutcome.progressed 均退役),
-    落地判定完全归观察侧 reconcile 对账(挂起预期 vs 下一帧实读,§5.1
-    期望态两步)。原 v11 表述「判定 = 动作适配器的执行回执(§6.2 验真
+    落地判定完全归观察侧 reconcile 对账(逻辑直写值 vs 下一帧实读,
+    观察赢——ADR-0651 两态制)。原 v11 表述「判定 = 动作适配器的执行回执(§6.2 验真
     锚),是 on_outcome 落地回执门的触发前提」就此废止;对账失配的治理
     = 修观察质量或动作适配器可靠性(点击链坐标/时序/确认序列),禁在
     动作层新增验证+重试结构。v12 落文 = 目标语义;现役判效面尚在,拆除
@@ -537,9 +538,10 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
   (§7-T5 扩域收敛);收敛前,备战线在 sim 的策略面缺位如实申报——
   sim 批次对该线的结论辖域 = 「引擎内嵌块的行为分布」,非「策略决策的
   行为分布」。
-- 期望态两步(expect 记预期 → confirm 转正)由「decide/act 段记预期 +
-  下一轮 reconcile 段核对」闭环承载;`reconcile_pending_observation`
-  (kernel/cw_board_state)是唯一核对口。
+- 期望态对账(两态制 ADR-0651 形态):op 逻辑效果经 `write_logic` 直写
+  字段(策略器立即可读),下一轮 reconcile 段观察实读覆盖(观察赢,
+  失配 = 推算/动作 bug 缺陷留证);原「expect 记预期 → confirm 转正 +
+  reconcile_pending_observation 核对口」两步机制已废除。
 - on_outcome 的触发契约(T-223 最严读法,v12):输入 = 意图 + 发射时点
   证据;**单一发射口,发射即触发(发出即职责完成,成败回执退役)**——
   原「未落地不触发」默认语义随落地回执门(OUTCOME_TRIGGER_LANDED 型)
@@ -565,7 +567,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 | strategies/impl/flow.py(CwFlowStrategy 分画面决策入口) | **不替代**:decide() 段的下游就是这些入口;策略器契约面(ADR-0583)不动 |
 | sim 引擎决策段(decide_shop_screen 循环 + 合成口;部署/装备内嵌块) | 商店段收编为 sim 适配器②「引擎动作应用」+ 基类生命周期驱动;部署/装备内嵌块 = decide 段 sim 替代形态的待收敛面(§5.1 申报,§7-T5 扩域);synthesize_from_game_state 升格为 sim 适配器①(§2.4) |
 | cw_game_ports(T-120 批 0 协议) | 两端口的装配机制(§2.5;CwActionSink 即动作端口协议位,§6.3) |
-| 执行落地门 inline 钩子(批次二/三散点:record_refresh_execution 接线点 / bump_key / 合成升星 expect / 免战牌 consume_use) | **收编为基类 on_outcome 钩子**(§6.4)——位置迁移,登记件语义不变;触发前提自 v12 起改发射语义(T-223:落地门退役,§6.4/§6.5-1) |
+| 执行落地门 inline 钩子(批次二/三散点:record_refresh_execution 接线点 / bump_key / 合成升星投影直写 / 免战牌 consume_use) | **收编为基类 on_outcome 钩子**(§6.4)——位置迁移,登记件语义不变;触发前提自 v12 起改发射语义(T-223:落地门退役,§6.4/§6.5-1) |
 
 ### 5.3 框架归属与依赖方向
 
@@ -639,7 +641,7 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 「动作映射」:**点击链**(怎么落)。**验真锚(怎么确认落地)自 v12 起
 退役**(T-223 用户终裁 2026-09-10 最严读法):适配器只管机械执行,不做
 落地判定——「是否落地」不是适配器的输出,落地判定完全归观察侧 reconcile
-对账(挂起预期 vs 下一帧实读,§5.1 期望态两步)。逐动作映射细则见
+对账(逻辑直写值 vs 下一帧实读,观察赢——ADR-0651 两态制)。逐动作映射细则见
 §6.6 清单表:
 
 - **点击链载体**:PrepActionExecutor(备战单动作执行器,CwScreenPrep 持有)、
@@ -656,8 +658,8 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
   (compare_buy_expect)+ 落槽 pixel-diff(new_bench_slots);部署 =
   paddle 部署数变化;装备 = 期望态核对(compare_equip_expect);浮层确认
   = overlay 标题消失(lcs 阈值)。按判定性质拆两半处置:
-  ①**期望态对账族**(compare_buy_expect/compare_equip_expect/挂起预期
-  条目)= 本就归观察侧闭环(下一轮 reconcile 核对,§5.1 期望态两步),
+  ①**期望态对账族**(compare_buy_expect/compare_equip_expect)= 本就归
+  观察侧闭环(下一轮 reconcile 实读覆盖,观察赢——ADR-0651 两态制),
   语义保留、归属确认观察侧;
   ②**执行侧原地判效**(点击后重读判「是否生效」+ 未生效重试:备战标识
   消失/牌名集变化/落槽 pixel-diff/部署数变化/overlay 标题消失)= 验证
@@ -722,7 +724,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 |---|---|---|
 | 刷新执行事实组 record_refresh_execution(total/paid/免费余额,免费闸) | cw_op_buy_cards 执行落地门(批次二) | on_outcome(RefreshShop 发射)统一触发 |
 | 效果账本计数 bump_key(CounterKey.REFRESH@刷新回执 + BUY@购买回执) | cw_op_buy_cards 执行落地门(批次三件④) | 同上,与 record_refresh_execution 同点成组 |
-| 合成升星预期 detect_merge_upgrade → expect(bs.bench, 投影 BenchView, confirm_point='prep_obs') | BuyCard 执行落地门投影点(批次二扩单①) | on_outcome(BuyCard 发射)触发 expect;核对手仍归下一 reconcile(不变) |
+| 合成升星投影 detect_merge_upgrade → write_logic(bs.bench, 投影 BenchView) 直写(ADR-0651 两态制) | BuyCard 执行落地门投影点(批次二扩单①) | on_outcome(BuyCard 发射)触发直写;实读覆盖归下一 reconcile 观察赢(不变) |
 | 免战牌递减 consume_use(归零移除) | prep_actions `_launch_attempt`「按钮-跳过」发射落地回执(批次三件⑥) | on_outcome(跳过发射)触发 |
 | 节点屏刷新计数组·遭遇(encounter_refresh_used write_logic,随点击置位不等验效) | CwScreenEncounter 刷新链(handle 置位 :177-179/写端 :190-194,批次三件⑦已接) | on_outcome(遭遇刷新点击)触发 |
 | 节点屏刷新计数组·策略屏(strategy_refresh_used 逐卡 dict[str,int] write_logic,随点击置位不等验效) | CwScreenInvestStrategy 刷新链(handle 发射即记 :265/逐槽写端 :281-287,批次三件⑦已接) | on_outcome(策略屏刷新点击,逐卡键入账)触发 |
@@ -732,15 +734,16 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
   detail) 均退役,调用方不问成败);outcome 携带面 = sim 动作应用语义
   (applied 真值/income/verification,§6.3 分轨申报),实机侧发射型不
   携带落地判定;钩子集按意图类型注册(RefreshShop → 刷新计数组 +
-  bump_key;BuyCard → 合成升星 expect + BUY bump;跳过 → consume_use;
+  bump_key;BuyCard → 合成升星投影直写(write_logic)+ BUY bump;跳过 → consume_use;
   ……);基类在 act() 发射后统一调用,**实机/sim 两条路径走同一份钩子
   代码**。
 - **触发时点轴(R-E;T-223 最严读法重写,v12)**:原两型制(落地回执门
   〔默认〕+ 发射型〔例外〕)收敛为**单一发射型**——发射即触发,发出即
   登记。**落地回执门(OUTCOME_TRIGGER_LANDED 型)退役**:原默认型在册
-  成员(刷新执行事实组/bump_key/合成升星 expect/免战牌 consume_use)随
+  成员(刷新执行事实组/bump_key/合成升星投影直写/免战牌 consume_use)随
   批 3a 改发射时点触发,其「未落地不计数」防线由观察侧 reconcile 对账
-  承接(挂起预期 vs 下一帧实读,失配 → 纠偏/缺陷台账,§6.5-1);落码前
+  承接(逻辑直写值 vs 下一帧实读,失配 → 纠偏/缺陷台账,观察赢——
+  ADR-0651 两态制);落码前
   现役门语义照旧(与批 3 同窗切换防空窗)。**发射型在册两件(F3)口径
   续行不受影响**(它们本就是发射型,置位时点/防重入口径逐字保持):
   ①遭遇刷新计数 encounter_refresh_used(refresh_click 证据,现役语义 =
@@ -792,7 +795,8 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 1. **未落地不计数 → 发射即登记 + 对账纠偏(T-223 改写,v12)**:原承诺
    「执行落地判定先行,progressed/applied 是 on_outcome 的触发前提」随
    落地回执门退役废止;替代防线 = 发射即登记 + 观察侧 reconcile 对账
-   (挂起预期 vs 下一帧实读,失配 → 冲销/纠偏/缺陷台账留证)。RefreshShop
+   (逻辑直写值 vs 下一帧实读,失配 → 冲销/纠偏/缺陷台账留证,观察赢
+   ——ADR-0651 两态制)。RefreshShop
    执行事实组、bump_key「只推进 duties.track 条目」的计数正确性改由对账
    通道承载(对账族改消费观察侧 reconcile 落地判定,批3a 落码);落码前
    现役门语义照旧(同窗切换防空窗)。
@@ -809,11 +813,12 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
    置位(防「点偏未生效→重入屏再试」的口径不变;on_outcome 的触发时点
    = 点击发射即申报 refresh_click,验效失败不影响该登记——与现役逐字
    一致,不受本次退役影响)。
-5. **预期条目表语义**:last-wins / group_id 全有全无 / confirm_point 绑定
-   ——合成升星 expect 的五键与核对口(reconcile_pending_observation)
-   不经本收编改动。
-6. **write_logic 豁免面不扩散**:节点屏刷新计数组等「单次逻辑写豁免」
-   的申报范围不变(自身动作事实),on_outcome 收编不新增豁免类型。
+5. **逻辑直写标准通道(ADR-0651 两态制)**:原「write_logic 豁免面不扩散」
+   的申报制随两步机制废除一并解除——凡按游戏规则推算的写入统一走
+   write_logic(策略器立即可读),非免检:字段值之后仍受观察覆盖辖
+   (观察赢,失配 = 推算 bug 缺陷留证)。原预期条目表语义
+   (last-wins/group_id 全有全无/confirm_point 绑定)已随条目表废除,
+   on_outcome 收编不涉及。
 
 裁决归属:批次范围枚举的正本仍是记录模型设计 §8.7;本收编是**接线点位置
 迁移**,不重写批次范围;范围与钩子清单的对应关系以 §6.4 表为准(§10.3)。
@@ -831,7 +836,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 
 | 意图类型(词表符号) | 实机适配器映射(点击链) | sim 适配器映射(引擎调用) | 落地登记钩子(on_outcome) | 现状归属 |
 |---|---|---|---|---|
-| BuyCard 买牌 | cw_op_buy_cards:点卡身→确认;验真=金账对拍 + compare_buy_expect 期望态对账 + 落槽 pixel-diff(new_bench_slots);满栏自动多买上限 = 3−(已有 mod 3) | cw_state.simulate(BuyCard) 投影 + 引擎 apply(扣金/落席/合成) | 合成升星 expect(detect_merge_upgrade)+ BUY bump_key + pending_buy_expect 暂存 | 投影=kernel 单一源已就位;满栏上限口径=merge_mechanics(对账项,同 §7 行 3) |
+| BuyCard 买牌 | cw_op_buy_cards:点卡身→确认;验真=金账对拍 + compare_buy_expect 期望态对账 + 落槽 pixel-diff(new_bench_slots);满栏自动多买上限 = 3−(已有 mod 3) | cw_state.simulate(BuyCard) 投影 + 引擎 apply(扣金/落席/合成) | 合成升星投影直写(detect_merge_upgrade→write_logic,ADR-0651)+ BUY bump_key + pending_buy_expect 暂存 | 投影=kernel 单一源已就位;满栏上限口径=merge_mechanics(对账项,同 §7 行 3) |
 | RefreshShop 刷新 | 点刷新钮;验真=牌名集变化 ∨ 金币扣减(点击核对,不存快照字段) | simulate(RefreshShop) + 引擎重抽五张(draw_shop,rng) | record_refresh_execution(免费闸照旧)+ REFRESH bump_key | 计数登记=kernel 已就位(接线点收编中);重抽=引擎校准层合法 |
 | LevelUp / LevelUpShop 升级 | 循环点「购买经验」至 level+1(prep_actions);验真=等级 +1 ∨ 金扣减 | simulate(LevelUp) + 引擎等级/XP 推进 | 升级标记挂点(prep_actions 既有,经属性归一接账本);XP 簿记=执行侧保留 | 单击价/击数推导=kernel 已就位(xp_click_cost/clicks_to_next_level,FALLBACK 遗留随批次二) |
 | SellBench 卖备战席 | 拖拽至卖出区;验真=备战席少该牌 + 退款金入账(期望态对账) | simulate(SellBench) + 引擎退款(cw_state.sell_refund 口径) | 拖拽期望态对账(compute_drag_expect,执行侧保留) | 退款公式=kernel 已就位;sim 卖牌退款调用点对账=§7 行 4 |

@@ -102,8 +102,8 @@ class CwScreenMegastar(CwScreenOpBase):
         # ``_do_action``(基类「None = 子类缺省实现自担」;committed-but-
         # verifying 单动作内聚于该方法,两路径共享零转录,禁适配器私有
         # 动作类型词表 §6.1)。on_outcome 注册表:本屏无落地登记件
-        #(§6.4 收编面无事件屏 chosen 行;chosen_megastar 豁免留守;
-        # register_confirm_arrival 到账登记 = expected_state 载体非本表辖)。
+        # (§6.4 收编面无事件屏 chosen 行;chosen_megastar = 选择 handler
+        # 单次逻辑直写,write_logic,ADR-0651)。
         self._observation_adapter = MegastarLiveObservationAdapter()
 
     def _in_node(self, screen) -> bool:
@@ -199,16 +199,9 @@ class CwScreenMegastar(CwScreenOpBase):
             self.ctx.controller.mouse_move(confirm)
             self.ctx.controller.click(confirm)
             time.sleep(0.9)
-        # 到账登记(§3.3 #29 ConfirmMegastar):chosen_megastar 更新(粗粒度
-        # expected;本体已在候选选中时写 session,此处按确认动作落地登记)。
-        _cid = (getattr(_match.session, 'chosen_megastar', '')
-                if _match is not None else '')
-        if _cid:
-            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-                register_confirm_arrival,
-            )
-            register_confirm_arrival(_match.session, 'ConfirmMegastar', _cid,
-                                     produced_by='CwScreenMegastar')
+        # (原「到账登记」ConfirmMegastar 块已随 ADR-0651 两态制废除:
+        #  chosen_megastar 写端 = 候选选中时点的 session 写 + write_logic
+        #  直写(上方分支),无挂账登记环节。)
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 2,先例 = CwScreenPrep)----
 

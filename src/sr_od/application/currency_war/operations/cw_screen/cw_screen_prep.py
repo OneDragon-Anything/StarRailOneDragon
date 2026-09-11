@@ -169,59 +169,8 @@ def vacancy_from_reads(cap: int | None, dep_n: int | None, cv_occ: int,
     return cached_vacancy, False, True
 
 
-def prep_obs_actual_for(session, entry, st, obs,
-                        bench_ids: str, deployed_ids: str) -> tuple | None:
-    """prep_obs 覆盖点单条目实读构造(纯函数,EXPECTED_STATE §2 最大覆盖点;
-    缺口件1配套:到账登记区条目的「可信读即清账不 diff」语义在此承载)。
-
-    返回 ``(实读值, 可信)``;None = 该条目本帧不读(不进 actual → 保留)。
-    - tracked/merge_group:身份串(比对按身份匹配豁免位移,裁决器语义不变);
-    - gold:仅 shop 开态可信(F2/F5 可信门),关态不读;
-    - owned / strategy(到账登记区粗粒度条目,值 = 「+N(...)」「已选…」推进
-      描述):字段本体确认到账 → 回填条目自身值走相等清账(§3 C 区只清账
-      不 diff);本体缺失 → 保留不清(宁缺勿造);
-    - pending_reward / xp_ledger:既有口径原样。
-    """
-    p, kind = entry.path, entry.kind
-    if kind in ('tracked', 'merge_group'):
-        return (f'{bench_ids}|{deployed_ids}', True)
-    if kind == 'gold':
-        if not getattr(obs, 'state_gold_trusted', False):
-            return None
-        g = getattr(st, 'gold', None)
-        return (g, g is not None)
-    if kind == 'xp_ledger':
-        _xp = getattr(st, 'xp_progress', None)
-        _lv = int(getattr(st, 'level', 0) or 0)
-        return (f'lv{_lv} xp{(_xp[0] if _xp else 0)}',
-                bool(_xp) and _lv > 0)
-    if kind == 'owned':
-        name = (p[len('owned['):-1] if p.startswith('owned[') else '')
-        own = getattr(session, 'last_owned_equips', None) or []
-        present = name in own
-        # P4R4 缺陷①(第六局复盘 §六⑤):装备到手即被穿(EquipAll 把
-        # owned 移到角色 equips),只查 owned 会让「+1」条目永不确认 →
-        # 跨轮挂账不清(p2r2 拖到 p2r4 实证)。已穿在任意上阵角色身上
-        # 同样视为到账确认。
-        worn = any(name in (getattr(d, 'equips', None) or [])
-                   for d in (getattr(obs, 'deployed_chars', None) or []))
-        if '−1' in str(entry.value):
-            # 减量条目(穿戴消耗,§3 B-6):登记时件已在场,件消失 = 到账。
-            return (entry.value, not present)
-        if worn:
-            return (entry.value, True)   # 已穿 = 到账,清账不 diff
-        return (entry.value if present else name, present)
-    if kind == 'pending_reward':
-        return ('sphere' if getattr(obs, 'spheres', None) else 'gone', True)
-    if kind == 'strategy':
-        # 投资策略确认(active_strategies[N])与巨星/伙伴 chosen_* 本体读。
-        if p.startswith('active_strategies['):
-            nm = p[len('active_strategies['):-1]
-            has = nm in (getattr(session, 'active_strategies', None) or [])
-            return (entry.value if has else nm, has)
-        v = getattr(session, p, '')
-        return (entry.value, bool(v))
-    return None
+# (prep_obs_actual_for 单条目实读构造器已随 ADR-0651 两态制废除——
+#  prep_obs 覆盖点逐条目 diff 对账随 expected_state 条目表一并拆除。)
 
 
 def store_plane_table(sess, seq: list[str], plane: int | None) -> bool:
@@ -563,34 +512,10 @@ class CwScreenPrep(CwScreenOpBase):
                         current_readable=bool(
                             getattr(st, 'hp_readable', True)))
             session.last_state = st
-            # 期望态覆盖点·备战观察(与读屏路径同一 actual 构造器
-            # prep_obs_actual_for——条目实读形状按 kind 分派,真值来源
-            # 换端口;best-effort,失败不阻塞环)
-            try:
-                from sr_od.application.currency_war.kernel.cw_expected_state import (
-                    reconcile_expected,
-                )
-                _ids = ' | '.join(
-                    f'{bc.char_id}@{bc.star}★'
-                    for bc in (obs.bench_chars or [])
-                    if getattr(bc, 'char_id', ''))
-                _dids = ' | '.join(
-                    f'{bc.char_id}@{bc.star}★'
-                    for bc in (obs.deployed_chars or [])
-                    if getattr(bc, 'char_id', ''))
-                _act: dict = {}
-                for _p, _e in list(
-                        (getattr(exec_state_of(session), 'expected_state', None)
-                         or {}).items()):
-                    if _e.confirm_point != 'prep_obs':
-                        continue   # 条目绑覆盖点(F7):不可确认点透传
-                    _r = prep_obs_actual_for(session, _e, st, obs,
-                                             _ids, _dids)
-                    if _r is not None:
-                        _act[_p] = _r
-                reconcile_expected(session, 'prep_obs', _act)
-            except Exception as _e:  # noqa: BLE001  观测面不阻塞环
-                log.debug(f'[cw-director] expected reconcile skip: {_e}')
+            # (期望态覆盖点·备战观察块已随 ADR-0651 两态制废除:op 逻辑
+            #  效果 = apply_op_effect 直接写 session 字段,实读帧观察覆盖
+            #  (观察赢);无挂账 diff 对账环节。tracked 族对账防抖语义
+            #  (reconcile_tracking)原地保留 = observation 写入路径防抖。)
             # light 沿用缓存更新(trusted 位随 state,MED-1 同读屏路径)
             self._cached_state = st
             self._cached_bench = list(obs.bench_chars)
@@ -714,7 +639,6 @@ class CwScreenPrep(CwScreenOpBase):
                     ChannelSig,
                     bench_view_from_obs,
                     board_state_of,
-                    reconcile_pending_observation,
                 )
                 from sr_od.application.currency_war.kernel.cw_reconcile import (
                     is_merge_effect_window,
@@ -722,38 +646,33 @@ class CwScreenPrep(CwScreenOpBase):
                 _bs_obs = board_state_of(session)
                 # R1 渠道签名(§3.2.1):备战帧观察写入 = 渠道①,actor=本 op、
                 # screen=备战建档名、quality=真读标记(承接现役真读/兜底可分
-                # 语义);reconcile 核对口 confirm 行 actor = 调用方 op(对账层)。
+                # 语义)。
                 _prep_sig = ChannelSig(family='obs', actor='CwScreenPrep',
                                        screen='货币战争-备战', mode='read',
                                        quality={'bench': 'real_read'})
-                # 备战席观察写端(§3.2.5 观察写端=本屏;迁移批次二扩单件 1
-                # 「星级观察消费」):SIFT 身份+星级(read_star 链)已读,
-                # 零新增 OCR——记录模型 Unit.star 自此有消费路径(窟窿一
-                # 事实基线:识别线在役,缺的是 BoardState 消费)。
-                # P2-1(批次二落地审):空集 = 失读非全空(overlay 残留/动画帧/
-                # 识别退化)——bench_view_from_obs 返 None 时走 carried
-                # (§2.2 处置①;宁缺勿造,先例=商店空牌面 cw_observation
-                # ._feed_board_state shop_cards 分支),禁把「9 槽全空」当
-                # observation 入记录(席空数派生误报 free=9/挂起合成升星
-                # 预期被空视图误清)。tracked 沿用已有 GameState 侧兜底
-                # (上方 bench_from_compact(tracked)),记录侧同式沿用现值。
+                # 备战席观察写端(§3.2.5 观察写端=本屏):SIFT 身份+星级
+                # (read_star 链)已读,零新增 OCR。P2-1(批次二落地审):
+                # 空集 = 失读非全空(overlay 残留/动画帧/识别退化)——
+                # bench_view_from_obs 返 None 时走 carried(§2.2 处置①;
+                # 宁缺勿造,先例=商店空牌面 cw_observation._feed_board_state
+                # shop_cards 分支),禁把「9 槽全空」当 observation 入记录
+                # (席空数派生误报 free=9 污染席满决策)。tracked 沿用已有
+                # GameState 侧兜底(上方 bench_from_compact(tracked)),
+                # 记录侧同式沿用现值。
                 _bench_obs = bench_view_from_obs(obs.bench_chars)
                 if _bench_obs is not None:
-                    _bs_obs.observe(_bs_obs.bench, _bench_obs, sig=_prep_sig)
-                    # 合成升星预期核对闭环(§3.2.18 修法 a 核对半;confirm_point
-                    # 绑定 prep_obs):一致转正/失配清账+缺陷留证/无挂起不动。
-                    # P3-10(批次二复审):特效窗(星爆动画 ≥2 帧)内**顺延核对**
-                    # ——窗内观测=门后保旧星(reconcile_tracking 防抖口径),
-                    # 与投影新星比对必失配,照常核对 = 误清挂起预期 +
-                    # bs_defect 噪声行;留表下帧干净帧核对(观察覆盖照常,
-                    # 下帧真值到 → observe 覆盖 + 核对转正,自愈链不变)。
+                    # 合成特效窗态门(P3-10 批次二复审,两态制 ADR-0651 等价
+                    # 形态):星爆动画窗(≥2 帧)内 read_star 读旧星(reconcile_
+                    # tracking 防抖同口径,读数物理不可信)——本帧**不写观察**
+                    # (保 bench 的 logic 投影值,§2.2 失读处置①的同族语义),
+                    # 下帧干净帧实读覆盖:投影与实读一致 = 零缺陷行;失配 =
+                    # 投影 bug 留证。原「挂起预期顺延核对」的防噪声语义由此
+                    # 承接(原核对半随 expected 机制废除)。
                     if is_merge_effect_window(screen):
-                        log.info('[cw][bs] 特效窗内挂起合成升星预期顺延下帧'
-                                 '核对(防重叠型误报,P3-10)')
+                        log.info('[cw][bs] 合成特效窗内读数不可信 → 本帧观察'
+                                 '不写(保 logic 投影值,下帧干净帧覆盖)')
                     else:
-                        reconcile_pending_observation(
-                            _bs_obs, _bs_obs.bench, _bench_obs,
-                            at_point='prep_obs', sig=_prep_sig)
+                        _bs_obs.observe(_bs_obs.bench, _bench_obs, sig=_prep_sig)
                 else:
                     _bs_obs.carry(_bs_obs.bench,
                                   frame=f'p{st.plane}-r{st.round_num}',
@@ -787,36 +706,8 @@ class CwScreenPrep(CwScreenOpBase):
                             current_readable=bool(
                                 getattr(st, 'hp_readable', True)))
                 session.last_state = st
-                # 期望态覆盖点·备战观察(EXPECTED_STATE §2 最大覆盖点):
-                # tracked/xp/owned 族实读确认清账;可信门(F5)= gold 仅 shop
-                # 开态可信(obs.state_gold_trusted),不可信读数不进 actual →
-                # 期望条目保留不清账。hp 族归 reconcile_hp 单源门(不在此列)。
-                # 全程 best-effort,失败不阻塞环。
-                try:
-                    from sr_od.application.currency_war.kernel.cw_expected_state import (
-                        reconcile_expected,
-                    )
-                    _ids = ' | '.join(
-                        f'{bc.char_id}@{bc.star}★'
-                        for bc in (obs.bench_chars or [])
-                        if getattr(bc, 'char_id', ''))
-                    _dids = ' | '.join(
-                        f'{bc.char_id}@{bc.star}★'
-                        for bc in (obs.deployed_chars or [])
-                        if getattr(bc, 'char_id', ''))
-                    _act: dict = {}
-                    for _p, _e in list(
-                            (getattr(exec_state_of(session), 'expected_state', None)
-                             or {}).items()):
-                        if _e.confirm_point != 'prep_obs':
-                            continue   # 条目绑覆盖点(F7):不可确认点透传
-                        _r = prep_obs_actual_for(session, _e, st, obs,
-                                                 _ids, _dids)
-                        if _r is not None:
-                            _act[_p] = _r
-                    reconcile_expected(session, 'prep_obs', _act)
-                except Exception as _e:  # noqa: BLE001  观测面不阻塞环
-                    log.debug(f'[cw-director] expected reconcile skip: {_e}')
+                # (期望态覆盖点·备战观察块已随 ADR-0651 两态制废除:无
+                #  挂账条目可对账;tracked/gold 实读写入链照常——观察赢。)
             # substate 消费:observe_full 的可读性
             # 标注落 PrepObservation(下游对账/日志可判;轻步
             # 沿用缓存,同 _cached_state 语义)。
@@ -1838,9 +1729,9 @@ class CwScreenPrep(CwScreenOpBase):
 
         - BoardState 帧写入半已在适配器①识别链内完成(read_game_state
           ._feed_board_state 观察流[observe/carry/prior/leave_screen/relay]
-          + _observe 的备战席观察写端[P2-1 空集失读守卫/P3-10 特效窗顺延
-          门] + reconcile_pending_observation 核对口 + game_state_view 消费
-          视图)——识别质量机制归实机实现内部,对端口契约不可见(§2.3);
+          + _observe 的备战席观察写端[P2-1 空集失读守卫/P3-10 特效窗
+          观察顺延门] + game_state_view 消费视图)——识别质量机制归实机
+          实现内部,对端口契约不可见(§2.3);
         - 本段 = op 级对账:上一访问逐动作暂存的期望态记账(acct 族)在
           本帧定型帧统一消费(ADR-0517 决策 8:入口观察即对账)+ 观察终饰
           (dual 态拷回/gated_hp 单写者门)。"""

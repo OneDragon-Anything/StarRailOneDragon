@@ -235,35 +235,15 @@ class CwOpTools(SrOperation):
 
     def _register_consume(self, session, outcome: str, removed: list[str],
                           added: list[str], tool: str, target: str) -> None:
-        """确认通道登记(21 号稿 §3.2 四态;best-effort 不阻塞主流程)。
+        """工具消费确认通道(两态制 ADR-0651 后 = 纯日志留证位)。
 
-        consumed/partial 按逐名 diff 登记 owned 期望态(cancel 空登记)。
-        """
-        if outcome == 'cancel' or session is None:
+        原「逐名 diff 登记 owned 期望态」随 expected_state 条目表废除——
+        消费真值 = ``_exec_plan`` 的拖后现读对拍(post_names,观察),无
+        挂账条目可登记;本方法保留为消费事实日志面(判读留证)。"""
+        if outcome == 'cancel':
             return
-        try:
-            from sr_od.application.currency_war.kernel.cw_expected_state import (
-                ExpectedEntry,
-                expected_round_key,
-                register_expected,
-            )
-            at_round = expected_round_key(session)
-            for n in removed:
-                register_expected(session, ExpectedEntry(
-                    path=f'owned[{n}]', value='−1(工具消耗,待实读)',
-                    produced_by='CwOpTools', at_round=at_round, kind='owned'))
-            for n in added:
-                register_expected(session, ExpectedEntry(
-                    path=f'owned[{n}]', value='+1(工具变异新件,待实读)',
-                    produced_by='CwOpTools', at_round=at_round, kind='owned'))
-            if outcome == 'partial':
-                register_expected(session, ExpectedEntry(
-                    path='tool_partial_consume',
-                    value=f'{tool}→{target} 部分消费(removed={removed} '
-                          f'added={added})',
-                    produced_by='CwOpTools', at_round=at_round, kind='owned'))
-        except Exception as e:  # noqa: BLE001  观测面不阻塞
-            log.info('[cw-tools] 期望登记跳过: %s', e)
+        log.info('[cw-tools][fact] tool=%s target=%s outcome=%s '
+                 'removed=%s added=%s', tool, target, outcome, removed, added)
 
     def _exec_plan(self, plan: ToolDragPlan) -> tuple[str, list[str], list[str]]:
         """单计划执行:drag → 现读对拍 → (outcome, removed, added)。"""

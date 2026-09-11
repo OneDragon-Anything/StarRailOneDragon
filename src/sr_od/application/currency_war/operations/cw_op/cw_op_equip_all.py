@@ -134,23 +134,18 @@ _SETTLE_DIFF_THRESHOLD: float = 2.0   # 稳帧判据:相邻两帧全图像素差
 def register_equip_worn(session, item_name: str, char_name: str,
                         row: str, slot: int,
                         produced_by: str = 'CwOpEquipAll') -> None:
-    """装备分布期望态(§3 B-6 行 M7 装备拖拽;DD-019 后果节「装备分布」缺口)。
+    """装备分布逻辑推进(两态制 ADR-0651;原 §3 B-6 行 M7 装备拖拽期望态)。
 
     落点已验(avatar-slot CV-diff 判穿)后调:``last_owned_equips`` −1 件 +
-    ``tracked_deployed`` 目标角色 equips +1 件(字段本体推进)+ 两条目登记
-    (owned 减/角色 equips 增;值带「待实读」= prep_obs 覆盖点可信读只清账
-    不 diff)。槽位坐标系:deployed 槽位表下标 = 前排 slot−1 / 后排
+    ``tracked_deployed`` 目标角色 equips +1 件(字段本体推进——推算值直接
+    写,策略器立即可读;实读帧照常覆盖,失配 = 推算 bug 留证修码)。
+    槽位坐标系:deployed 槽位表下标 = 前排 slot−1 / 后排
     DEPLOYED_FRONT_CAPACITY+slot−1(与 apply_op_effect SellDeployed 同式)。
     best-effort:session 缺失 / infra 异常不阻塞穿戴主循环。
     """
     if session is None:
         return
     try:
-        from sr_od.application.currency_war.kernel.cw_expected_state import (
-            ExpectedEntry,
-            expected_round_key,
-            register_expected,
-        )
         from sr_od.application.currency_war.kernel.cw_state import (
             DEPLOYED_FRONT_CAPACITY,
         )
@@ -164,16 +159,8 @@ def register_equip_worn(session, item_name: str, char_name: str,
         if 0 <= idx < len(dep) and dep[idx] is not None:
             dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
                 + [item_name]
-        at_round = expected_round_key(session)
-        register_expected(session, ExpectedEntry(
-            path=f'owned[{item_name}]', value='−1(穿戴,待实读)',
-            produced_by=produced_by, at_round=at_round, kind='owned'))
-        register_expected(session, ExpectedEntry(
-            path=f'tracked_deployed[{idx}]',
-            value=f'{char_name} 穿{item_name}(待实读)',
-            produced_by=produced_by, at_round=at_round, kind='tracked'))
     except Exception as e:  # noqa: BLE001  观测面不阻塞穿戴
-        log.info('[cw-equip] 装备分布期望登记跳过: %s', e)
+        log.info('[cw-equip] 装备分布逻辑推进跳过: %s', e)
 
 
 def _owned_wearable_names(hits: list) -> list[str]:

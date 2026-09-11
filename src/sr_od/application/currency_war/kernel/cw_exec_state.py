@@ -178,11 +178,9 @@ class ExecState:
     # 经验期望账本(cw_screen_prep.XpLedger;纯记账+对账,零决策)。
     # None = 本局未锚定(账本未建)。
     xp_expect_ledger: object = None
-    # 期望态容器(W971 EXPECTED_STATE FINAL v3.1,P4):尚未被实读覆盖确认
-    # 的期望态条目表(path → ExpectedEntry)。写者 = apply_op_effect(两执行
-    # 面同源)+ 登记口;读者 = reconcile_expected(覆盖点)+ 遥测快照。
-    # None = 未初始化(惰性建,兼容旧回放构造);正式容器由登记口置 dict。
-    expected_state: dict[str, object] | None = None
+    # (期望态条目表容器 expected_state 已随 ADR-0651 两态制废除——
+    #  ExpectedEntry 登记/覆盖点 diff 对账整套拆除;op 逻辑效果 =
+    #  cw_expected_state.apply_op_effect 直接写 session 字段。)
     # 备战单轮最后动作签名(账外收编:备战单轮 op 写,外循环无进展守卫
     # 读;None = 无在途动作签名)。
     last_prep_action_sig: tuple | None = None

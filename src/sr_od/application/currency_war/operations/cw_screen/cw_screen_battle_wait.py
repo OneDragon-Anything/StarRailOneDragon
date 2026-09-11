@@ -366,15 +366,14 @@ class CwScreenBattleWait(SrOperation):
                 #  域 apply_settlement_cover(观察半直写链)。)
                 if _obs.hp_confidence >= 0.9:
                     _st.last_outcome_hp = _obs.hp_after
-                # 结算屏覆盖点(EXPECTED_STATE §2:hp/gold/streak/level 全可信
+                # 结算屏真值覆盖(EXPECTED_STATE §2 原口径的观察半,两态制
+                # ADR-0651 后 = 纯观察直写:hp/gold/streak/level 全可信
                 # + 05-battle §1「结算屏 hp/gold/level 写 session」):hp 真值
                 # 链走结算观察直写→last_hp(上);gold/level/经验经
-                # parse_settlement_assets 写 last_state 并做覆盖点对账
-                # (expected vs actual diff → 留证)。best-effort,失败不阻塞。
+                # parse_settlement_assets 写 last_state。best-effort,失败
+                # 不阻塞。(原「覆盖点 diff 对账」半随 expected_state 条目表
+                # 一并废除——失配 = 推算 bug,缺陷台账留证,无挂账环节。)
                 try:
-                    from sr_od.application.currency_war.kernel.cw_expected_state import (
-                        reconcile_expected,
-                    )
                     from sr_od.application.currency_war.obs.cw_settlement_obs import (
                         parse_settlement_assets,
                     )
@@ -422,17 +421,8 @@ class CwScreenBattleWait(SrOperation):
                                 and _assets.get('xp_next') is not None)
                             else None),
                         note=f'battle_done:{getattr(_obs, "node_type", None)}')
-                    _act = {
-                        'gold': (_assets.get('gold'),
-                                 _assets.get('gold') is not None),
-                        'xp_ledger': (
-                            f'lv{_assets.get("level") or 0} '
-                            f'xp{_assets.get("xp_cur") or 0}',
-                            _assets.get('level') is not None),
-                    }
-                    reconcile_expected(_session, 'settlement', _act)
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
-                    log.warning('[cw-bwait] 结算覆盖点对账失败(不阻塞): %s', e)
+                    log.warning('[cw-bwait] 结算覆盖写失败(不阻塞): %s', e)
             log.info('[cw-bwait] 结算观测 plane=%s round=%s hp_after=%s conf=%s '
                      'comp=%s node=%s%s',
                      _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag,

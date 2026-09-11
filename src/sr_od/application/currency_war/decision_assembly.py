@@ -44,12 +44,9 @@ def install_obs_ports() -> None:
     同点接通 kernel 侧合成特效帧态门(``cw_reconcile`` 注入槽,分包矩阵禁
     kernel→obs 直依;缺省关 = 门放行走既有连续 2 次确认防抖主干)。
 
-    同点接通期望态留证 sink(``cw_expected_state.set_evidence_sink``,追加
-    ``expected_reconcile.jsonl``;缺省关 = 只 log 不落盘,测试零真实 IO)。
+    (原「期望态留证 sink」expected_reconcile.jsonl 装配已随 ADR-0651
+    两态制废除——覆盖点 diff 对账随条目表拆除,无 diff 行可落盘。)
     """
-    from sr_od.application.currency_war.kernel.cw_expected_state import (
-        set_evidence_sink,
-    )
     from sr_od.application.currency_war.kernel.cw_reconcile import set_merge_effect_gate
     from sr_od.application.currency_war.obs.cw_identity_obs import (
         is_merge_effect_frame,
@@ -63,9 +60,6 @@ def install_obs_ports() -> None:
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
 
-    set_evidence_sink(_expected_reconcile_sink_for_test(
-        _reconcile_dir()))
-
     # 缺陷台账生产武装点(迁移批次二,任务书件 7):BoardState 观察覆盖
     # logic 值失配行(kernel/cw_board_state._emit_defect,批次一为缺省关)
     # 经 sink 落 bs_defect.jsonl(与 expected_reconcile.jsonl 同目录同追加
@@ -77,31 +71,11 @@ def install_obs_ports() -> None:
 
 
 def _reconcile_dir() -> Path:
-    """expected_reconcile.jsonl 目录(项目根锚定绝对路径;P4R4 缺陷②:
+    """bs_defect.jsonl 目录(项目根锚定绝对路径;P4R4 缺陷②:
     旧相对路径依赖 server cwd,cwd 漂移进程把追加写去别处 = 主文件
     「零新增」假截断)。"""
     from one_dragon.utils.file_utils import get_project_root
     return (get_project_root() / '.debug' / 'temp' / 'currency_war')
-
-
-def _expected_reconcile_sink_for_test(base_dir: Path):
-    """sink 工厂(注入点可测形态):返回按 base_dir 追加写的 sink 闭包。
-
-    打开模式恒 'a'(跨进程/跨重启追加不截断——第六局复盘缺陷②,单测
-    锁定 append 语义防回退);失败静默(观测面)。生产 = 工厂(项目根
-    .debug/temp/currency_war),由 install_obs_ports 装配。"""
-    import json
-
-    def _sink(row: dict) -> None:
-        try:
-            p = Path(base_dir) / 'expected_reconcile.jsonl'
-            p.parent.mkdir(parents=True, exist_ok=True)
-            with p.open('a', encoding='utf-8') as f:
-                f.write(json.dumps(row, ensure_ascii=False, default=str) + '\n')
-        except Exception:  # noqa: BLE001  留证 best-effort
-            pass
-
-    return _sink
 
 
 def _bs_defect_sink_for_test(base_dir: Path):

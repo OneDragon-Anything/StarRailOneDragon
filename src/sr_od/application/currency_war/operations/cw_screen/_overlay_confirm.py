@@ -34,53 +34,40 @@ if TYPE_CHECKING:
 
 def register_confirm_arrival(session: 'StrategySession | None', op: str, item: str,
                              produced_by: str = 'overlay_confirm') -> None:
-    """overlay 选卡确认到账登记(EXPECTED_STATE §3 C 区到账登记区;
-    DD-019 后果节「handler 侧到账登记」缺口接线)。
+    """overlay 选卡确认逻辑推进(两态制 ADR-0651:推算值直接写 session 字段,
+    策略器立即可读;实读帧照常覆盖)。
 
-    语义按 op 对照 §3.3 表分道,不逐一硬编码:
-    - ConfirmSupply/ConfirmBox/ConfirmTome(dict 形态 apply_op_effect 已实现):
-      owned += item(apply 同时推进 session.last_owned_equips 本体)+ 登记;
-    - ConfirmStrategy:apply 登记 active_strategies[item] 条目(本体追加由
-      handler 在确认成功后承担,效果走台账不进 session 推进,§3.3 #22);
-    - ConfirmMegastar/ConfirmPartner(chosen_*,infra 未建 dict op):经公开
-      接口 register_expected 直登 kind='strategy',值带「待实读」= 覆盖点
-      (prep_obs)可信读只清账不 diff;
-    - ConfirmExpertCash(专家邀请函「现金为王」):gold +4(待实读),绑
-      shop_wave_top 覆盖点(gold 可信源)。
+    语义按 op 分道:
+    - ConfirmSupply/ConfirmBox/ConfirmTome(dict 形态 apply_op_effect):
+      owned += item(推进 session.last_owned_equips 本体);
+    - ConfirmStrategy:本函数零写——active_strategies 本体追加由 handler
+      在确认成功后既有写点承担(cw_screen_invest_strategy);
+    - ConfirmMegastar/ConfirmPartner:本函数零写——chosen_* 写端 = 各
+      handler 的 ``BoardState.write_logic``(选择落地即写,cw_screen_megastar
+      /cw_screen_partner);
+    - ConfirmExpertCash(专家邀请函「现金为王」):gold +4 逻辑直推
+      session.last_state.gold(+4 = 弃卡取现金的固定回金,原「待实读」
+      登记条目随两态制废除转直推;shop_wave_top 实读覆盖修正)。
 
-    best-effort:session 缺失 / infra 异常不阻塞确认收尾(账实一致由覆盖点
-    实读兜底;选角色分支=专家入商店由商店逻辑接管,无 session 局状态变更,
-    §3 C 区无对应行,不登记)。
+    best-effort:session 缺失 / infra 异常不阻塞确认收尾(选角色分支=
+    专家入商店由商店逻辑接管,无 session 局状态变更,不推进)。
     """
     if session is None or not item:
         return
     try:
         from sr_od.application.currency_war.kernel.cw_expected_state import (
-            ExpectedEntry,
             apply_op_effect,
-            expected_round_key,
-            register_expected,
         )
-        if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmStrategy',
-                  'ConfirmTome'):
+        if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome'):
             apply_op_effect(session, {'op': op, 'item': item},
                             produced_by=produced_by)
             return
-        at_round = expected_round_key(session)
-        if op in ('ConfirmMegastar', 'ConfirmPartner'):
-            register_expected(session, ExpectedEntry(
-                path=('chosen_megastar' if op == 'ConfirmMegastar'
-                      else 'chosen_partner'),
-                value=f'{item}(待实读)', produced_by=produced_by,
-                at_round=at_round, kind='strategy',
-                confirm_point='prep_obs'))
-        elif op == 'ConfirmExpertCash':
-            register_expected(session, ExpectedEntry(
-                path='gold', value='+4(现金为王,待实读)',
-                produced_by=produced_by, at_round=at_round,
-                kind='gold', confirm_point='shop_wave_top'))
+        if op == 'ConfirmExpertCash':
+            st = getattr(session, 'last_state', None)
+            if st is not None:
+                st.gold = (getattr(st, 'gold', 0) or 0) + 4
     except Exception as e:  # noqa: BLE001  观测面不阻塞确认
-        log.info(f'[cw-overlay] 到账登记跳过: {e}')
+        log.info(f'[cw-overlay] 逻辑推进跳过: {e}')
 
 
 def find_text_center(op: SrOperation, text: str) -> Point | None:

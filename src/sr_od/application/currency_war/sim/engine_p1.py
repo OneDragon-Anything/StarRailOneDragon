@@ -82,9 +82,9 @@ from sr_od.application.currency_war.sim.cw_sim_invest import (
     sample_invest_profile,
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
-from sr_od.application.currency_war.telemetry.recorder import (
-    snapshot_expected_paths as _expected_paths_snapshot,
-)
+
+# (expected_paths 快照 import 已随 ADR-0651 两态制退役删除——telemetry
+#  .recorder.snapshot_expected_paths 同批拆除。)
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4
@@ -969,12 +969,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 默认 0 非 None;结算逐轮覆写见下方结算段)。案 b 臂 build_state 已带。
     if st.streak is None:
         st.streak = streak_signed
-    # 期望态离线口径(W971 sim 适配批;EXPECTED_STATE FINAL v3.1 P4):
-    # sim 不经实机识别,无「期望后待实读确认」的条目来源——容器显式置
-    # 空 dict(区别于 None 的「未初始化」态),登记/对账按零挂起期望
-    # 运转;构造侧字段信源取缺省确定值(ShopCard.cost_source='roster',
-    # 费用识别批留的 sim/replay 构造路径缺省),不依赖徽章直读。
-    exec_state_of(sess).expected_state = {}
+    # (期望态离线口径段已随 ADR-0651 两态制删除:expected_state 条目表
+    #  容器不存在,sim 无挂账对账环节;op 效果 = 字段直推。)
     # `w162_inject/`/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
     # 语义位 = session(持久宿主,handler 写点单一源参照)+ state(生产
     # 由 cw_observation 每帧同步,此处注入点直写两处 = 等价语义)。
@@ -2896,10 +2892,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'form_ok': _round_form_ok,
                 # form_score 已退役(历史账本只读);替代披露口径 = b_t
                 'b_t': _round_b_t,
-                # 决策时点挂起期望态快照(期望态 infra 遥测批;sim 引擎未接
-                # 期望态推进,exec_state_of(sess).expected_state 缺省 None → 恒 [];与生产
-                # decisions 行同构,读端三态同口径)
-                'expected_paths': _expected_paths_snapshot(sess),
+                # (expected_paths 挂起期望快照键已随 ADR-0651 两态制退役:
+                #  条目表拆除无快照可写,sim 新行不再携带;schema 字段按
+                #  历史数据只读口径保留,读端旧行分型不变。)
                 'dp_posture': _round_dp_posture,
                 # `w611_econ_cycle/` 储备/义务披露(轮入口快照;生产 decisions 行 sess_* 同语义)
                 'reserve_cap': _round_reserve_cap,

@@ -11,8 +11,8 @@ handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路�
 消费 ``_observation_port()`` 位):门后读卡+选卡+验关链纯移入
 ``_handle_overlay``(两路径共享零转录);本屏无 on_outcome 落地登记件
 (§6.4 收编面无事件屏 chosen 行;chosen_tome = 出口验真通过分支单次逻辑
-写入豁免 §2.2/§6.5-6,留守共享体;ConfirmTome 到账登记 = expected_state
-载体非注册表辖)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
+直写(write_logic,ADR-0651 两态制),留守共享体;ConfirmTome 逻辑推进
+= owned 本体直推,非注册表辖)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
 事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
 (test_cw_fake_channels_outerloop 典籍通道真 op 锁 +
 test_cw_board_state_consume chosen_tome 锁 + 本批锁

@@ -130,22 +130,9 @@ from sr_od.application.currency_war.telemetry.op_journal import (
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-
-def prep_stall_pending_expected(session) -> tuple[str, ...]:
-    """stall 线索:prep_obs 覆盖点可确认的滞留期望条目(路径@轮次,排序稳定)。
-
-    条目绑覆盖点口径(EXPECTED_STATE §6/对抗 F7,DD-019 后果节「stall 消费」
-    缺口):绑其他覆盖点(shop_wave_top/settlement)的条目在备战覆盖点**不可
-    确认** → 不计入(防把正常透传误当滞留);tracked 族防抖窗内条目由裁决器
-    保留,其登记/清账变化会刷新 stall 签名,恒定滞留才与「字段长期未覆盖」
-    同现。返回值进环级无进展守卫的触发留证行 = 「字段长期 expected 未覆盖」
-    的结构化线索(停留在不可识别画面过久)。
-    """
-    store = getattr(exec_state_of(session), 'expected_state', None) or {}
-    return tuple(sorted(f'{e.path}@{e.at_round}'
-                        for e in store.values()
-                        if e.confirm_point == 'prep_obs'))
-
+# (期望态滞留 stall 线索 prep_stall_pending_expected 已随 ADR-0651 两态制
+#  废除:expected_state 条目表拆除后无挂账滞留可报;无进展守卫的线索面 =
+#  prep_no_progress_state_fingerprint 状态指纹 + 动作批并集,语义不变。)
 
 #: gold 分量可信陈值载体(session 属性名;T-167 gold 分量钉死)。
 #: 键式 = 标量 int。
@@ -1372,7 +1359,8 @@ class CwLoop(SrOperation):
 
     def _archive_board_state(self, terminal: str) -> None:
         """局终 BoardState 归档(迁移批次二;设计 §6.2 时序 = **先于连刷
-        重建**,§8.8 三键形态 bs_prov/bs_pending/bs_extra)。
+        重建**,§8.8 两键形态 bs_prov/bs_extra——bs_pending 挂起预期摘要键
+        已随 ADR-0651 两态制退役)。
 
         双终局点接线:①正常终局(win/loss,回大厅收口、cw_match 清 None
         前);②非正常收口(stopped/abandoned,_write_terminal_summary_if_
@@ -2508,14 +2496,6 @@ class CwLoop(SrOperation):
                           self._prep_np_count, list(_np_actions),
                           sorted(getattr(self, '_prep_np_actions',
                                          frozenset())) or '空', _np_shot)
-                _pend = prep_stall_pending_expected(
-                    self.ctx.cw_match.session)
-                log.error('[cw!][loop] 环级无进展守卫:连续 %d 个备战环状态'
-                          '指纹零推进(F2 单键)→ 停机留证(末环动作批 %s)'
-                          '(pending_expected=%s flag=prep_no_progress.flag '
-                          'shot=%s)',
-                          self._prep_np_count, list(_np_actions),
-                          list(_pend) or '无', _np_shot)
                 self.ctx.run_context.stop_running(
                     reason='hook:prep_no_progress')
                 return self.round_fail(

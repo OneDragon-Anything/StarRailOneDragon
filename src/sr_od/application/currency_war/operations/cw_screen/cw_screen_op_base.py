@@ -263,8 +263,8 @@ class CwScreenOpBase(SrOperation):
                                   '(§5.1;适配器①分派)')
 
     def lifecycle_reconcile(self, payload: Any) -> None:
-        """段2 reconcile:对账(§5.1)——payload 写入 BoardState +
-        reconcile_pending_observation 核对口 + 入口暂存对账族消费。
+        """段2 reconcile:对账(§5.1)——payload 写入 BoardState(观察赢,
+        ADR-0651 两态制)+ 入口暂存对账族消费。
         缺省空实现(观察轻的画面无对账面)。"""
         return None
 

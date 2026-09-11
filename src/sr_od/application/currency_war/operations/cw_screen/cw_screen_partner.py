@@ -256,18 +256,9 @@ class CwScreenPartner(CwScreenOpBase):
         self.ctx.controller.mouse_move(confirm)
         self.ctx.controller.click(confirm)
         time.sleep(1.0)
-        # 到账登记(§3.3 #30 ConfirmPartner):chosen_partner 更新(粗粒度
-        # expected;本体在候选选中时已写 session,产出=画面特殊位置显示,
-        # 不占装备区格子 → 无 owned 语义,不登记装备)。retry 轮重登记同
-        # path 覆盖(last-wins),无副作用。
-        _pid = getattr(getattr(self.ctx, 'cw_match', None).session,
-                       'chosen_partner', '') if self.ctx.cw_match is not None else ''
-        if _pid:
-            from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
-                register_confirm_arrival,
-            )
-            register_confirm_arrival(self.ctx.cw_match.session, 'ConfirmPartner',
-                                     _pid, produced_by='CwScreenPartner')
+        # (原「到账登记」ConfirmPartner 块已随 ADR-0651 两态制废除:
+        #  chosen_partner 写端 = 候选选中时点的 session 写 + write_logic
+        #  直写(本 handler),无挂账登记环节。retry 轮重复确认零副作用。)
         # step2 观察(T#98,伙伴 overlay 两步链):确认后弹出「请选择强化角色」
         # = 还有第二步 → 选强化目标 + 确认(观察分支:发现第二步并处理,
         # 非判效)。step2 确认后不再原地判「overlay 关没关」——统一机械交回,
