@@ -475,6 +475,19 @@ class CwScreenBattleWait(CwScreenOpBase):
                         note=f'battle_done:{getattr(_obs, "node_type", None)}')
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 结算覆盖写失败(不阻塞): %s', e)
+                # 效果账本结算挂点(BoardState 设计 §5.1 挂点清单「结算挂点
+                # (on_battle_end)」生产接线;宿主 = settlement 锚行组成部分,
+                # 统一观察架构 §12.7-6:锚为账本既有挂点提供确定性触发时点,
+                # 挂点语义零改动)。现役注册表零 BATTLE_END 条目(effect-domain
+                # §7.4 零条目 = 零驱动)→ 行为面 = 结算事件标记计数;条目
+                # 计数/余量推进待建模批立 BATTLE_END 条目后经同一挂点自动
+                # 生效。best-effort 同升级标记挂点纪律(prep_actions 升级标记
+                # 先例:观测失败不阻塞结算链)。
+                try:
+                    _session.effect_inventory.on_battle_end()
+                except Exception as e:  # noqa: BLE001  观测面不阻塞对局
+                    log.warning('[cw-bwait] effect inventory 结算挂点失败'
+                                '(不阻塞): %s', e)
             log.info('[cw-bwait] 结算观测 plane=%s round=%s hp_after=%s conf=%s '
                      'comp=%s node=%s%s',
                      _plane, _round, _obs.hp_after, _obs.hp_confidence, _comp_tag,
