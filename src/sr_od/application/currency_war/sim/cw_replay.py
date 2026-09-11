@@ -32,6 +32,12 @@ LIMITS(诚实边界):
   T-290),锁定后帧的分支级决策可比;仅 v3_intention=None 的行
   (旧记录/无意向帧)意向仍从默认态演化——该类行分支级分歧看
   新采集的局。
+- 执行态回读面(T-312):state 携观察可信位(hp_readable/hp_trusted/
+  level_readable/gold_readable/board_readable/deploy_cap)逐帧回读——
+  血预算停升级门的 hp fail-closed(双 False 帧按血线内拒付,单一源 =
+  hp_decision_trusted)在回放同口径复现,升级类分歧不再是结构性不可比;
+  行顶 xp_expect_ledger(经验期望账本,零决策对账面)回读挂 exec_state,
+  经验账判读与实跑同源。旧 schema 行缺键走缺省,零漂移。
 - target/commit 层不重算(target 用快照当时值);deployed 按快照
   重建(含 star/equips——r358 三维判读所需)。
 """
@@ -73,6 +79,18 @@ def _rebuild_state(snap: dict) -> GameState:
             setattr(st, k, v)
     _xp = snap.get('xp_progress')
     st.xp_progress = tuple(_xp) if _xp else None
+    # 执行态观察可信位回读(T-312):hp_readable/hp_trusted 是血预算停升级
+    # 门的 fail-closed 输入(单一源 = cw_discipline_rules.hp_decision_trusted,
+    # 双 False 帧 = 生产按血线内处理拒付升级),不回读则回放恒按缺省 True
+    # 放行——升级类分歧的结构性不可比源(p1r4 实证帧)。level_readable =
+    # arm0 资格闸的可信位消费,gold_readable/board_readable = 值来源保真位,
+    # deploy_cap = max_units 真值优先项(level+宝钻)。行缺键(旧 schema)
+    # 不写 = 走 GameState 缺省,与既有回放行为逐位一致零漂移。
+    for k in ('hp_readable', 'hp_trusted', 'level_readable', 'gold_readable',
+              'board_readable', 'deploy_cap'):
+        v = snap.get(k)
+        if v is not None:
+            setattr(st, k, v)
     st.board = dict(snap.get('board') or {})
     st.shop = [ShopCard(x=c.get('x', 0), faction=c.get('faction') or '?',
                         name=c.get('name') or '', cost=c.get('cost') or 1,
@@ -275,6 +293,27 @@ def _restore_session(strat, d: dict, sess) -> None:
                 tuple(_lbl.removeprefix('过渡配方·').split('+')))
         else:
             _ms.target_comp = get_comp(_lbl)
+    # 经验期望账本回读(T-312):行顶 xp_expect_ledger dict(XpLedger 全量
+    # 序列化)→ exec_state 挂载(生产挂载点 = cw_screen_prep._xp_ledger,
+    # exec_state_of(session).xp_expect_ledger 同槽)。账本零决策消费(纯
+    # 记账+对账面),回读目的 = 回放会话的经验账与实跑同源,防「回放侧
+    # 从零演化」的判读失真。round_key 落盘为 list → tuple 还原;未知键
+    # 宽容忽略(_intention_from_trace 同款读法,档案跨 schema 版本不炸)。
+    # None 行(未锚定帧/旧记录)不写,缺省 None 零漂移。
+    _xl = d.get('xp_expect_ledger')
+    if isinstance(_xl, dict):
+        from dataclasses import fields as _dc_fields
+
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            exec_state_of,
+        )
+        from sr_od.application.currency_war.kernel.cw_prep_expect import (
+            XpLedger,
+        )
+        _keys = {f.name for f in _dc_fields(XpLedger)}
+        exec_state_of(sess).xp_expect_ledger = XpLedger(**{
+            k: (tuple(v) if k == 'round_key' and isinstance(v, list) else v)
+            for k, v in _xl.items() if k in _keys})
 
 
 def main() -> None:
