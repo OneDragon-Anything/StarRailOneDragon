@@ -8,13 +8,16 @@
 - **装备注册表改写成员扫描** ``scan_rewrite_equipments`` × ``EQUIP_REWRITE_DECLARATIONS``:
   cw_equipment_data 全量中改写金/小队生命/生命上限/容量/单位/装备面的成员逐件申报
   写入归属——装备效果大量随投资卡发放后成常驻写入源,不点名=无人看管。
+- **词缀运行时登记挂点共用体** ``register_affixes_from_names``:简报/位面详情
+  两读链的产出点经它入效果账本(生产调用方 = CwScreenBriefing._read_and_advance
+  开局首读 / CwScreenPlaneIntel.close_and_report 补采落点)。
 
 **边界**:
 - STRATEGY_EFFECTS 只产策略源(cw_investments overlay 头注,键空间/孤儿校验独立);
   环境源('portal')登记端未建,ActiveEffect.source 词表预留。
-- 本模块只建**规格与申报**,不做运行时接线:词缀登记挂点(简报/位面详情词缀读链 →
-  ``ActiveEffectInventory.register_affix``)与改写面写端(LevelUp 金/装备库存/
-  hp_max)均未接线,现状一律观察覆盖兜底——各 spec 的 notes 记写入归属。
+- 改写面写端(LevelUp 金/装备库存/hp_max)不在本模块:确定性→逻辑写候选/
+  随机→观察收口的归属单一源 = 各 spec 的 notes 与 EQUIP_REWRITE_DECLARATIONS
+  申报,写端落码归写端批,接线前一律观察覆盖兜底。
 - 开局不利不入 SPEC:其确定性写端已有专用载体 kernel/cw_opening_hp.opening_hp_prior
   (_AFFIX_HP_DELTA,ADR-0559),再建 EffectSpec = −20 数值第二份(双源漂移),
   见 AFFIX_SPEC_EXEMPT。
@@ -30,6 +33,7 @@ from __future__ import annotations
 from sr_od.application.currency_war.data.affix_effects_data import AFFIX_EFFECTS
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    SOURCE_AFFIX,
     BattlefieldEffect,
     DurationKind,
     DutyFlags,
@@ -224,6 +228,61 @@ EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
     '随便骰子': '装备归属面:穿戴者每节点自动随机填充两件装备(随机→观察收口;自动行为写入类)',
     '随便骰子·特权': '装备归属面:同随便骰子(填充特权装备;随机→观察收口)',
 }
+
+
+# ===== 词缀运行时登记挂点·共用体(简报/位面详情两读链同一登记体)=====
+# 登记判据 = 词缀名命中结构化注册(AFFIX_EFFECT_SPECS;效果清单实例以词缀名
+# 为 spec.id 键)。注册表外词缀(纯数值/无改写面)零动作,照旧观察覆盖兜底;
+# 开局不利走 AFFIX_SPEC_EXEMPT 豁免(专用写端载体,禁第二份数值源)。
+# 登记面 best-effort:调用方以 try/except 包裹、失败不阻塞读链主链(与策略源
+# 选卡登记挂点同纪律,effect-domain.md §7.3「登记挂点纪律」)。
+def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
+    """词缀 OCR 名集 → 命中结构化注册的词缀入效果账本(source='affix')。
+
+    - **幂等**:已在册词缀源条目(spec.id = 词缀名)跳过——简报重入/retry、
+      位面详情补采重跑同词缀集不得双登记(实例按 spec_key 唯一,
+      effect-domain.md §9.1 销案「同卡叠加语义」同源)。
+    - **注册表命中才登记**:AFFIX_EFFECT_SPECS 之外的词缀无结构化规格 →
+      零动作;改写面写端不归登记挂点(归属单一源 = 各 spec.notes 与
+      EQUIP_REWRITE_DECLARATIONS,接线前观察覆盖兜底)。
+    - acquired_t = 登记时点节点序快照((plane-1)*9+round,基 1,ActiveEffect
+      坐标系;BoardState 节点单例优先,引导窗回退 session.last_state,与
+      策略源登记挂点同式);余期播种/推进/到期与策略源共用同一套挂点逻辑
+      (声明式驱动:节点 tick/计数 bump 按 duties 与 duration 语义自动辖及
+      词缀条目,挂点代码零来源特判)。
+    - 返回本次实际登记的词缀名列表(调用方留证日志;零命中返回空表)。
+
+    board_state_of 运行期函数内 import:board_state 所在模块头 import 本模块
+    的兄弟模块(cw_effect_inventory),保持本模块零运行期容器依赖、可离线
+    单测(与 cw_effect_inventory 的惰性 import 纪律同型)。
+    """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_of,
+    )
+
+    bs = board_state_of(session)
+    effects = bs.effects
+    registered_ids = {e.spec.id for e in effects.by_source(SOURCE_AFFIX)}
+    hits: list[EffectSpec] = []
+    for name in dict.fromkeys(names):   # 名集内去重保序(读链不应产重名,防御)
+        if name in registered_ids:
+            continue
+        spec = AFFIX_EFFECT_SPECS.get(name)
+        if spec is not None:
+            hits.append(spec)
+    if not hits:
+        return []
+    _nd = bs.node.value
+    if _nd is not None:
+        acquired_t: int | None = (_nd.plane - 1) * 9 + _nd.round_num
+    else:
+        _st_last = getattr(session, 'last_state', None)
+        acquired_t = (((getattr(_st_last, 'plane', 1) or 1) - 1) * 9
+                      + (getattr(_st_last, 'round_num', 1) or 1)
+                      ) if _st_last is not None else None
+    for spec in hits:
+        effects.register_affix(spec, acquired_t)
+    return [spec.name for spec in hits]
 
 
 _validate_affix_specs()

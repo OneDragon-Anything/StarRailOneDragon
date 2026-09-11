@@ -228,9 +228,13 @@ class ActiveEffectInventory:
         """词缀效果获得 → 入清单(source=affix;结构化注册 =
         kernel/cw_affix_effects.AFFIX_EFFECT_SPECS,spec.id = 词缀名)。
 
-        生产登记挂点(简报/位面详情词缀读链)未接线——接线归词缀消费批;
-        接线前词缀改写面一律观察覆盖兜底,本方法只承诺登记语义与策略源
-        同轨(余期播种/推进/到期共用同一套挂点逻辑)。
+        生产登记挂点已接线:简报读链(CwScreenBriefing._read_and_advance
+        开局首读)与位面详情补采通道(CwScreenPlaneIntel.close_and_report)
+        经共用登记体 cw_affix_effects.register_affixes_from_names 调本方法
+        (幂等 + 注册表命中才登记,best-effort 不阻塞读链主链)。词缀改写面
+        写端仍一律观察覆盖兜底(写入归属单一源 = 各 spec.notes 与
+        cw_affix_effects.EQUIP_REWRITE_DECLARATIONS 申报面);本方法承诺
+        登记语义与策略源同轨(余期播种/推进/到期共用同一套挂点逻辑)。
         """
         return self._register(spec, SOURCE_AFFIX, acquired_t)
 

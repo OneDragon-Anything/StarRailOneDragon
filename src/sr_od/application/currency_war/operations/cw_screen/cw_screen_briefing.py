@@ -151,6 +151,21 @@ class CwScreenBriefing(CwScreenOpBase):
                     _updates = self._collect_affix_effects(dict(_affixes_pos))
                     if _updates:
                         write_affix_effects(_updates)
+                # 词缀运行时登记挂点(效果账本 source='affix';与上面读+采同一
+                # 幂等守卫辖内——session 已有词缀的重入轮不重登记,登记体自身
+                # 再按在册条目幂等兜底)。命中结构化注册(cw_affix_effects
+                # .AFFIX_EFFECT_SPECS)才入账本;best-effort 失败不阻塞点
+                # 「下一步」(与采集同纪律,登记面纪律=effect-domain.md §7.3)。
+                try:
+                    from sr_od.application.currency_war.kernel.cw_affix_effects import (
+                        register_affixes_from_names,
+                    )
+                    _reg = register_affixes_from_names(
+                        _session, [n for n, _ in _affixes_pos])
+                    if _reg:
+                        log.info('[cw-briefing] 词缀效果账本登记: %s', _reg)
+                except Exception as e:   # noqa: BLE001  登记面失败不阻塞
+                    log.warning(f'[cw-briefing] 词缀效果账本登记失败(不阻塞): {e}')
         # 位面序真值:每次进简报屏都重读覆写(不做「已存跳过」幂等守卫——守卫会把
         # 上一局残留当本局真值;retry 重跑同屏重读成本 = 一次区域 OCR,可接受)。
         # 读得 → LCS 清洗归一(boss_fit 消费端规范名)→ session 直写;读空 → 清 None

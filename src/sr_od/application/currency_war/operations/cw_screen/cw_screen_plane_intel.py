@@ -640,6 +640,26 @@ class CwScreenPlaneIntel(SrOperation):
         # 已离开位面详情 → 写中转(消费接线批挂账)
         self.ctx.cw_plane_bosses = list(self._plane_bosses)   # type: ignore[attr-defined]
         self.ctx.cw_plane_affixes = list(self._affixes)   # type: ignore[attr-defined]
+        # 词缀运行时登记挂点(效果账本 source='affix'):登记在本产出点,先于
+        # ctx 中转的消费侧落 session(两消费方「仅空时写」不影响登记事实——
+        # 本处读数即画面真值)。命中结构化注册(cw_affix_effects
+        # .AFFIX_EFFECT_SPECS)才入账本;登记体按在册条目幂等,接管局补采
+        # 重跑不双登记;best-effort 失败不阻塞台账落账与 success(登记面
+        # 纪律 = effect-domain.md §7.3)。
+        if self._affixes:
+            try:
+                from sr_od.application.currency_war.kernel.cw_affix_effects import (
+                    register_affixes_from_names,
+                )
+                _sess_reg = getattr(getattr(self.ctx, 'cw_match', None),
+                                    'session', None)
+                if _sess_reg is not None:
+                    _reg = register_affixes_from_names(
+                        _sess_reg, list(self._affixes))
+                    if _reg:
+                        _log.info('[cw-plane-intel] 词缀效果账本登记: %s', _reg)
+            except Exception as e:   # noqa: BLE001  登记面失败不阻塞
+                _log.warning(f'[cw-plane-intel] 词缀效果账本登记失败(不阻塞): {e}')
         # 台账写点①落账(session 权威表;详情条源为主——该位面全节点彩色预览,
         # boss 位按「首领=位面最后节点」位置先验回填,回填依据 = 本 op 详情条
         # 「首领节点」标签验证语义;备战行源已在入口合并,此处再并一次兜全)。
