@@ -8,6 +8,10 @@
 - **装备注册表改写成员扫描** ``scan_rewrite_equipments`` × ``EQUIP_REWRITE_DECLARATIONS``:
   cw_equipment_data 全量中改写金/小队生命/生命上限/容量/单位/装备面的成员逐件申报
   写入归属——装备效果大量随投资卡发放后成常驻写入源,不点名=无人看管。
+- **装备改写成员写端落码登记** ``EQUIP_WRITE_SIDES``:申报表 25 件逐件登记
+  落码写端(桥/贡献算术/负写端三形,分形判据见其行注);桥与贡献算术宿主 =
+  kernel/cw_effect_inventory.py 文末「装备改写写端」段(免模块级成环,与
+  板面重写桥同宿主纪律)。
 - **词缀运行时登记挂点共用体** ``register_affixes_from_names``:简报/位面详情
   两读链的产出点经它入效果账本(生产调用方 = CwScreenBriefing._read_and_advance
   开局首读 / CwScreenPlaneIntel.close_and_report 补采落点)。
@@ -15,9 +19,10 @@
 **边界**:
 - STRATEGY_EFFECTS 只产策略源(cw_investments overlay 头注,键空间/孤儿校验独立);
   环境源('portal')登记端未建,ActiveEffect.source 词表预留。
-- 改写面写端(LevelUp 金/装备库存/hp_max)不在本模块:确定性→逻辑写候选/
-  随机→观察收口的归属单一源 = 各 spec 的 notes 与 EQUIP_REWRITE_DECLARATIONS
-  申报,写端落码归写端批,接线前一律观察覆盖兜底。
+- 改写面写端:装备申报面已按归属判据落码(EQUIP_WRITE_SIDES 三形登记;
+  写端桥为账本→字段桥,生产挂点接线归工具执行/节点结算/获得回执各辖批,
+  接线前一律观察覆盖兜底);词缀面写端(LevelUp 金/装备库存/hp_max)不在
+  本模块,归属单一源 = 各 spec 的 notes,仍观察覆盖兜底。
 - 开局不利不入 SPEC:其确定性写端已有专用载体 kernel/cw_opening_hp.opening_hp_prior
   (_AFFIX_HP_DELTA,ADR-0559),再建 EffectSpec = −20 数值第二份(双源漂移),
   见 AFFIX_SPEC_EXEMPT。
@@ -32,6 +37,9 @@ from __future__ import annotations
 
 from sr_od.application.currency_war.data.affix_effects_data import AFFIX_EFFECTS
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
+from sr_od.application.currency_war.kernel import (
+    cw_effect_inventory as _effect_inventory,
+)
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
     SOURCE_AFFIX,
     BattlefieldEffect,
@@ -198,36 +206,147 @@ def scan_rewrite_equipments() -> dict[str, str]:
 
 
 # ===== 装备改写成员写入归属申报表(键集必须恰等于 scan_rewrite_equipments 命中集)=====
-#: 归属判据:结果可准确计算(确定性公式+已知输入)→ 逻辑写;含概率/随机 →
-#: 不建逻辑写端,观察收口。「未接线」= 写端载体未落,现状一律观察覆盖兜底。
+#: 归属判据(效果写入归属判据正本 = docs/develop/currency_war/game_state/
+#: effect-domain.md §6.3;详设 = BoardState 数据结构设计 §5.3):结果可准确
+#: 计算(确定性公式+已知输入)→ 逻辑写;含概率/随机 → 不建逻辑写端,观察
+#: 收口。「现观察覆盖兜底」= 生产挂点接线归各辖批(工具执行/节点结算/获得
+#: 回执),接线前记录面维持观察覆盖。
 EQUIP_REWRITE_DECLARATIONS: dict[str, str] = {
-    '财富宝钻': '金面:装备者每3备战阶段+1金(确定性→逻辑写候选,未接线);容量面:+1团队规模'
-              '——deploy_cap 识别真值观察写端照常跟踪,效果侧不建 cap 改写(宝钻豁免申报面)',
-    '财富': '金面:进新节点+4金(确定性→逻辑写候选,轮首收入族同型,未接线)',
-    '精密拆装扳手': '金面:重复获得拆装扳手改+1金(确定性→逻辑写);装备归属面:∞次取下全装备回区;现观察覆盖兜底',
-    '极·阿瓦隆': '生命面:获得宝具时+50小队生命(确定性→逻辑写候选,未接线;hp 写入闸辖)',
-    '诅咒·阿瓦隆': '生命面:战斗结算−6小队生命(确定性→逻辑写候选,与结算覆盖同时序,未接线)',
-    '罪孽王冠': '生命面:战败扣双倍小队生命(确定性→逻辑写候选,未接线);注册表正文 OCR 截断(「扣除双倍小队」后残缺)',
-    '生命之环': '生命上限面:+15%(确定性→逻辑写候选);hp_max 字段缺位,观察收口+缺口申报',
-    '生命之环·特权': '生命上限面:+30%(确定性→逻辑写候选);hp_max 字段缺位,观察收口+缺口申报',
-    '诅咒·宝石剑泽尔里奇': '容量面:−1团队规模——deploy_cap 识别真值观察写端照常跟踪,效果侧不建 cap 改写(宝钻同款豁免)',
-    '数据拷贝仪': '单位面:装备者每参与3战获自身1星复制(计数臂确定性→逻辑写候选;任意获得30%概率臂随机→观察收口)',
-    '数据拷贝仪Max': '单位面:同数据拷贝仪(参与2战/伤害增幅50%;另含立即获得银狼LV.999)',
-    '数据拷贝仪Pro': '单位面:同数据拷贝仪(参与3战/伤害增幅50%)',
-    '员工投影仪': '单位面:拖拽→备战席该角色1星复制进席(确定性→逻辑写候选;官方前置门=拖动目标3费及以下);写端=工具拖拽执行,现观察覆盖兜底',
-    '完美投影仪': '单位面:同员工投影仪(无费用门);现观察覆盖兜底',
-    '分身墨镜': '单位面:前台强度40%时解锁并获1星专家银狼(条件解锁,未接线观察覆盖兜底)',
-    '分身墨镜Max': '单位面:同分身墨镜(50%/2星银狼;未接线观察覆盖兜底)',
-    '冶金炉': '装备面:拖装备变同类型随机=产出不可预知→观察收口;拖角色=全拆+三件同刷随机→观察收口',
-    '特权赋予卡': '装备面:拖拽后进阶装备变对应特权装备/角色已穿进阶装备随机一件变特权(确定性变换;拖拽执行落地,现观察覆盖兜底)',
-    '拆装扳手': '装备归属面:角色装备全量回区(确定性→逻辑写;现有流向锚=cw_equip_env 装备转移链);工具消耗品−1',
-    '干将莫邪': '装备面:战斗开始时投影随机进阶装备——战斗内临时面,非备战期装备库存持久改写;观察覆盖兜底',
-    '极·干将莫邪': '装备面:同干将莫邪(70%概率投影特权装备);观察覆盖兜底',
+    '财富宝钻': '金面:装备者每3备战阶段+1金(确定性→逻辑写;写端=贡献算术'
+              'equip_diamond_phase_gold,组合写归节点边界金结算载体——窗口与'
+              '轮首收入共享,禁单独直写);容量面:+1团队规模——deploy_cap 识别'
+              '真值观察写端照常跟踪,效果侧不建 cap 改写(宝钻豁免申报面)',
+    '财富': '金面:进新节点+4金(确定性→逻辑写;写端=贡献算术 equip_node_gold_'
+          'grant,轮首收入族同型,组合写归节点边界金结算载体)',
+    '精密拆装扳手': '金面:重复获得拆装扳手改+1金(确定性→逻辑写;写端=贡献算术'
+                 'equip_wrench_duplicate_gold,获得时点窗口与到账战利品共享,'
+                 '组合写归获得结算载体);装备归属面:∞次取下全装备回区,op 域'
+                 '既有写端(RunTools/SellBench,流向锚=cw_equip_env 装备转移链)',
+    '极·阿瓦隆': '生命面:获得宝具时+50小队生命(确定性→逻辑写;写端=桥 apply_'
+              'equip_acquire_hp,获得时点窗口独占,hp 写入闸辖——hp 未读跳过;'
+              '现观察覆盖兜底)',
+    '诅咒·阿瓦隆': '生命面:战斗结算−6小队生命(确定性;结算屏真值同拍已含该效果'
+                '——独立 logic 直写=双计/部分预测刷缺陷台账,观察收口;确定性'
+                '算术归 sim 真值面与战前决策消费)',
+    '罪孽王冠': '生命面:战败扣双倍小队生命(确定性;损失幅度=战斗事实非独立可算'
+             '面——独立直写=部分预测刷缺陷台账,观察收口;确定性算术归 sim 真值'
+             '面与战前决策消费);注册表正文 OCR 截断(「扣除双倍小队」后残缺)',
+    '生命之环': '生命上限面:+15%(确定性→逻辑写候选);hp_max 字段缺位,观察收口'
+              '+缺口申报',
+    '生命之环·特权': '生命上限面:+30%(确定性→逻辑写候选);hp_max 字段缺位,观察'
+                 '收口+缺口申报',
+    '诅咒·宝石剑泽尔里奇': '容量面:−1团队规模——deploy_cap 识别真值观察写端照常跟踪,'
+                      '效果侧不建 cap 改写(宝钻同款豁免;负写端=观察收口)',
+    '数据拷贝仪': '单位面:装备者每参与3战获自身1星复制(计数臂确定性→逻辑写;写端'
+               '=桥 spawn_equip_bench_unit,成熟回执时点窗口独占;参与计数进度'
+               '载体归接线批);任意获得30%概率臂随机→观察收口',
+    '数据拷贝仪Max': '单位面:计数臂同数据拷贝仪(参与2战→逻辑写,写端=入席桥);'
+                 '立即获得银狼LV.999 腿星级未采证禁猜→观察收口',
+    '数据拷贝仪Pro': '单位面:计数臂同数据拷贝仪(参与3战→逻辑写,写端=入席桥)',
+    '员工投影仪': '单位面:拖拽→备战席该角色1星复制进席(确定性→逻辑写;官方前置'
+               '门=拖动目标3费及以下;写端=桥 spawn_equip_bench_unit 费用门形,'
+               '拖拽回执时点窗口独占;现观察覆盖兜底)',
+    '完美投影仪': '单位面:同员工投影仪(无费用门;确定性→逻辑写,写端=桥 spawn_'
+              'equip_bench_unit 无门形);现观察覆盖兜底',
+    '分身墨镜': '单位面:官方文「获得时解锁并获得1星专家【银狼】」=获得时点确定性'
+             '发放,前台强度40%为数值行非发放条件(确定性→逻辑写;写端=桥 spawn_'
+             'equip_bench_unit,获得回执时点);现观察覆盖兜底',
+    '分身墨镜Max': '单位面:同分身墨镜(获得时点 2星专家【银狼】,官方文明示星级;'
+                '确定性→逻辑写,写端=入席桥);现观察覆盖兜底',
+    '冶金炉': '装备面:拖装备变同类型随机=产出不可预知→观察收口;拖角色=全拆+三件'
+            '同刷随机→观察收口',
+    '特权赋予卡': '装备面:拖拽后进阶装备变对应特权装备/角色已穿进阶装备随机一件变'
+              '特权(确定性变换→逻辑写;映射=·特权后缀 36/36 全覆盖;写端=桥 '
+              'transform_equip_to_privilege 库存腿,拖拽回执时点;拖角色腿=穿域'
+              '改写归工具执行批;现观察覆盖兜底)',
+    '拆装扳手': '装备归属面:角色装备全量回区(确定性→逻辑写;写端=op 域既有'
+             'SellBench 卖出回区/RunTools 拆装扳手腿,流向锚=cw_equip_env 装备'
+             '转移链);工具消耗品−1',
+    '干将莫邪': '装备面:战斗开始时投影随机进阶装备——战斗内临时面,非备战期装备库存'
+             '持久改写;观察收口',
+    '极·干将莫邪': '装备面:同干将莫邪(70%概率投影特权装备);观察收口',
     '诅咒·干将莫邪': '装备面:投影同干将莫邪+进战斗前随机3件临时变简易(随机→观察收口)',
-    '好运令牌': '装备面:拖拽后从四件推荐进阶装备选一件获得(选定后确定→逻辑写候选);现观察覆盖兜底',
-    '随便骰子': '装备归属面:穿戴者每节点自动随机填充两件装备(随机→观察收口;自动行为写入类)',
+    '好运令牌': '装备面:拖拽后从四件推荐进阶装备选一件获得(选定后确定→逻辑写;写端'
+             '=桥 grant_equip_item,选定回执时点窗口独占;现观察覆盖兜底)',
+    '随便骰子': '装备归属面:穿戴者每节点自动随机填充两件装备(随机→观察收口;自动行为'
+             '写入类)',
     '随便骰子·特权': '装备归属面:同随便骰子(填充特权装备;随机→观察收口)',
 }
+
+
+# ===== 装备改写成员写端落码登记(键集必须恰等于 EQUIP_REWRITE_DECLARATIONS)=====
+#: 逐件登记落码写端,值词表四形(窗口独占性分形判据 =
+#: cw_effect_inventory 文末「装备改写写端」段头注):
+#: - ``bridge:<函数名>``      写端桥——触发窗口独占的确定性直写;
+#: - ``contribution:<函数名>`` 贡献算术——触发窗口与未接写端共享,零直写,
+#:                             组合写归节点边界金/获得结算载体(接线批);
+#: - ``op:<锚>``              op 域既有写端(本批零新增);
+#: - ``observation``           负写端——随机面/真值同拍送达面/字段缺位面。
+EQUIP_WRITE_SIDES: dict[str, str] = {
+    '财富宝钻': 'contribution:equip_diamond_phase_gold',
+    '财富': 'contribution:equip_node_gold_grant',
+    '精密拆装扳手': 'contribution:equip_wrench_duplicate_gold',
+    '极·阿瓦隆': 'bridge:apply_equip_acquire_hp',
+    '诅咒·阿瓦隆': 'observation',
+    '罪孽王冠': 'observation',
+    '生命之环': 'observation',
+    '生命之环·特权': 'observation',
+    '诅咒·宝石剑泽尔里奇': 'observation',
+    '数据拷贝仪': 'bridge:spawn_equip_bench_unit',
+    '数据拷贝仪Max': 'bridge:spawn_equip_bench_unit',
+    '数据拷贝仪Pro': 'bridge:spawn_equip_bench_unit',
+    '员工投影仪': 'bridge:spawn_equip_bench_unit',
+    '完美投影仪': 'bridge:spawn_equip_bench_unit',
+    '分身墨镜': 'bridge:spawn_equip_bench_unit',
+    '分身墨镜Max': 'bridge:spawn_equip_bench_unit',
+    '冶金炉': 'observation',
+    '特权赋予卡': 'bridge:transform_equip_to_privilege',
+    '拆装扳手': 'op:SellBench/RunTools 装备转移链(cw_equip_env 既有流向锚)',
+    '干将莫邪': 'observation',
+    '极·干将莫邪': 'observation',
+    '诅咒·干将莫邪': 'observation',
+    '好运令牌': 'bridge:grant_equip_item',
+    '随便骰子': 'observation',
+    '随便骰子·特权': 'observation',
+}
+
+
+def _validate_equip_write_sides() -> None:
+    """EQUIP_WRITE_SIDES 构建校验(import 即炸,与 _validate_affix_specs 同纪律):
+
+    ① 键集恰等于 EQUIP_REWRITE_DECLARATIONS(每件申报恰一个落码写端,零静默);
+    ② 值词表封闭:bridge:/contribution: 目标函数必须在 cw_effect_inventory
+       可解析且可调用(改名/删除即炸);op: 锚非空;observation 无载荷;
+    ③ 落码形(bridge/contribution/op)申报 notes 必含「逻辑写」、observation
+       形必含「观察收口」——登记与归属申报互证,防单边漂移。
+    覆盖完备性(扫描命中集 vs 申报表键集)归测试锁(模块 docstring「防漂移锁」)。
+    """
+    if set(EQUIP_WRITE_SIDES) != set(EQUIP_REWRITE_DECLARATIONS):
+        raise ValueError(
+            'EQUIP_WRITE_SIDES 键集必须恰等于 EQUIP_REWRITE_DECLARATIONS:'
+            f'多={sorted(set(EQUIP_WRITE_SIDES) - set(EQUIP_REWRITE_DECLARATIONS))} '
+            f'少={sorted(set(EQUIP_REWRITE_DECLARATIONS) - set(EQUIP_WRITE_SIDES))}')
+    for name, side in EQUIP_WRITE_SIDES.items():
+        notes = EQUIP_REWRITE_DECLARATIONS[name]
+        if side == 'observation':
+            if '观察收口' not in notes:
+                raise ValueError(f'负写端行申报必含「观察收口」:{name!r}')
+        elif side.startswith(('bridge:', 'contribution:')):
+            fn = getattr(_effect_inventory, side.split(':', 1)[1], None)
+            if not callable(fn):
+                raise ValueError(
+                    f'写端目标在 cw_effect_inventory 不可解析:{name!r} → {side!r}')
+            if '逻辑写' not in notes:
+                raise ValueError(f'落码形行申报必含「逻辑写」归属成文:{name!r}')
+        elif side.startswith('op:'):
+            if not side[3:].strip():
+                raise ValueError(f'op 形写端必带既有锚:{name!r}')
+            if '逻辑写' not in notes:
+                raise ValueError(f'op 形行申报必含「逻辑写」归属成文:{name!r}')
+        else:
+            raise ValueError(
+                f'EQUIP_WRITE_SIDES 值词表外:{name!r} → {side!r}'
+                '(合法形 = bridge:/contribution:/op:/observation)')
 
 
 # ===== 词缀运行时登记挂点·共用体(简报/位面详情两读链同一登记体)=====
@@ -286,3 +405,4 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
 
 
 _validate_affix_specs()
+_validate_equip_write_sides()
