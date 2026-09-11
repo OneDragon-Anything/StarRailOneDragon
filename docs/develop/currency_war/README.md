@@ -22,6 +22,11 @@
 ### [sim/](sim/) —— sim 设计文档
 - [sim-design](sim/sim-design.md)(sim 体系设计总纲:架构边界/动作语义契约/检查器分类/保真度纪律/复盘通道/守恒不变量) / [sim-power-model](sim/sim-power-model.md)(战力模型设计件,需求定义,ADR-0512) / [sim-wiring](sim/sim-wiring.md)(GameState↔sim 接线对照 as-built 底账)
 
+### [design/](design/) —— 系统组件设计件
+- [统一观察架构-画面op基类设计](design/统一观察架构-画面op基类设计.md) / [设计-C1直通核心入口](design/设计-C1直通核心入口.md)
+- BoardState-数据结构设计(统一 state 容器数据结构与画面字段规格)已迁为迭代设计件(寿命=迭代):
+  `docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md`(正本入口=game_state/README.md)
+
 ### [decisions/](decisions/) —— 决策日志(ADR,一个决策一文件;INDEX 索引)
 
 ### [config.md](config.md) —— 用户配置设计(配置语义单一源;用户偏好才进配置,ADR-0203)

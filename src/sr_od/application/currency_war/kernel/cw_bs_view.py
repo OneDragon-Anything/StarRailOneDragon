@@ -1,5 +1,6 @@
-"""BoardState → GameState 消费适配器(迁移批次二;设计正本 =
-``docs/develop/currency_war/design/BoardState-数据结构设计.md`` §8.7 批次二;
+"""BoardState → GameState 消费适配器(迁移批次二;字段级详设(迭代期) =
+``docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/
+details/BoardState-数据结构设计.md`` §8.7 批次二(正本入口=game_state/README.md);
 透传域收编设计正本 = ``docs/develop/sr_od/application/currency_war/
 changes/2026-09-06-redesign/w5-透传域建模方案.md``)。
 

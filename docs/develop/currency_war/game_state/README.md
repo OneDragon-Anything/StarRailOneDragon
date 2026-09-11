@@ -8,9 +8,8 @@
 ## 1. 本目录是什么
 
 统一 state(GameState)的设计文档正式目录,总-分结构:本文件=总纲,七个分篇各管一面。
-总纲是 [BoardState-数据结构设计.md](../design/BoardState-数据结构设计.md)(下称「容器正本」)
-的**简化版**——只写设计理念与核心规范;字段清单、决策 op 写入面、效果族归属、迁移批次
-等完整规格以容器正本为准,本目录不重复(代码已实现的部分不在文档重复细节)。
+总纲即正本入口——只写设计理念与核心规范;字段清单、决策 op 写入面、效果族归属、迁移批次
+等字段级完整规格现居迭代设计件 `docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md`(寿命=迭代,随批次落地归拢并入正本,本目录不长期依赖;代码已实现的部分不在文档重复细节)。
 
 上位裁定与 why:**ADR-0630**(统一 state 状态流水:BoardState 收编升级+三渠道写入口+
 自足快照变更账)。ADR-0630 含修订节,冲突处以修订节为准——守卫族终版、单字段双值结构、
@@ -51,7 +50,7 @@
 配套口:`carry()`(失读沿用,evidence 带 carried:来源帧)/`write_prior()`
 (先验写入,如开局 hp 先验)/`leave_screen()`(画面附加域离屏置 None)/`relay()`
 (接管中继)/`note_obs_event()`(零状态变更的观察事件留证行)。完整 API 契约见
-journal.md §6 与容器正本 §8.4。(原 `expect()`/`confirm()`/`discard_expected()`
+journal.md §6 与迭代设计件 §8.4。(原 `expect()`/`confirm()`/`discard_expected()`
 两步机制已随 ADR-0651 废除。)
 
 ### 3.2 权威序
@@ -61,7 +60,7 @@ journal.md §6 与容器正本 §8.4。(原 `expect()`/`confirm()`/`discard_expe
 - **节点生效序**:权威序字段的读口 = 生效序读口,语义=逻辑层现值与 run 内高水位
   取大(公式体单一源见 [node-domain.md](node-domain.md) §3);消费面恒取逻辑层。
 - **节点类型三源仲裁**:结算屏权威(ADR-0239)> 节点序列台账现读 > 帧标签 OCR
-  (容器正本 §3.2.1)。
+  (迭代设计件 §3.2.1)。
 
 ### 3.3 域清单
 
@@ -100,9 +99,9 @@ journal.md §6 与容器正本 §8.4。(原 `expect()`/`confirm()`/`discard_expe
 
 ## 5. 边界与姊妹文档
 
-- **容器正本**=[BoardState-数据结构设计.md](../design/BoardState-数据结构设计.md)
-  ——字段级规格、op 写入面、效果族归属、迁移批次的唯一正本;本目录与其冲突时以
-  正本+ADR-0630 修订节为准。
+- **字段级详设(迭代期)**=docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md
+  ——字段级规格、op 写入面、效果族归属、迁移批次枚举的迭代设计件(寿命=迭代,
+  随归拢并入本目录);与其冲突时以本总纲+ADR-0630 修订节为准。
 - **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=ADR-0630 关联行与文档拆分裁定记档)——本目录引用不复写。
 - **旧流退役排期**=R5 迁移规划([r5-migration-plan.md](r5-migration-plan.md);单源直迁八波,重构 retirement.md 影子框架的裁决口径)。
 - **链观察设计件**=件 B(`.debug/temp/currency_war/节点链观察-设计v1.md`)——
