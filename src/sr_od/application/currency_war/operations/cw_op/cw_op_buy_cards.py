@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
@@ -46,6 +46,9 @@ from sr_od.application.currency_war.obs.cw_observation import (
     read_gold,
     read_gold_opt,  # noqa: F401  模块属性路由:cw_shop_action_ops 经本模块名取读函数(替身缝)
     read_shop_cards,
+)
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
 )
 from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
@@ -1159,7 +1162,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     return None, outcome
 
 
-class CwOpBuyCards(SrOperation):
+class CwOpBuyCards(CwScreenOpBase):
     """备战-开商店原子 op:执行商店单动作循环(ADR-0517 迁移批;
     前身份 = 商店动作波循环,W970 批 A 契约 §4.2)。
 
@@ -1167,17 +1170,32 @@ class CwOpBuyCards(SrOperation):
     次序/替身桩行为等价);本类为独立可跑壳(``run_operation`` 单跑定位
     失败步)。hp 三件组缺省 (None, False, False) = 无覆盖(商店开态
     HP 区本就不可读,单跑调试语义);生产入口必须传 shop 关闭帧读链产物。
+
+    统一观察架构收编(B4 挂账批,账本 T-45):改挂 ``CwScreenOpBase``,
+    ``buy`` 节点顶部装配点分流(架构设计 §9.1 并存纪律:两端口完整在场
+    → ``run_lifecycle()``;缺省 None = 生产直连旧路径,原序列逐位保留,
+    生产行为零变化)。变体形态申报 = **旧体委托**(直迁全五段的过渡
+    替代):入口观察/播种对账/单动作决策循环全部住 :func:`run_buy_waves`
+    段循环内(每段一次),本类不拆段循环——拆段会把「刷新终结交回重进」
+    的物理载体(段循环下一次迭代,ADR-0517)改成节点重入、并连带改节点
+    预算语义,违总纲契约 5 行为零变更红线;全五段直迁留待旧路径退役批。
+    变体五段在本类的映射:observe/reconcile = 空申报(无独立早退面/
+    对账面——两半住委托体内,非空决策合同声明)、decide/act 及其后 =
+    决策循环段承载委托体(:func:`_buy_round` 单一共享,新旧路径同一份;
+    策略消费在委托体内 ``decide_shop_action``,**不申报** B4 选项②空
+    决策合同——与只读/导航变体的空申报语义区分)、on_outcome = 无登记件
+    (注册表缺席 = 零动作)。
     """
 
     def __init__(self, ctx: SrContext, hp_value: int | None = None,
                  hp_readable: bool = False, hp_trusted: bool = False):
-        SrOperation.__init__(self, ctx, op_name='货币战争-买牌')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-买牌')
         self._hp_value = hp_value
         self._hp_readable = hp_readable
         self._hp_trusted = hp_trusted
 
-    @operation_node(name='买牌', is_start_node=True)
-    def buy(self) -> OperationRoundResult:
+    def _buy_round(self) -> OperationRoundResult:
+        """旧路径委托体(buy 节点旧路径与变体决策循环共享的单一实现)。"""
         rr, outcome = run_buy_waves(self, self.ctx.cw_match,
                                     self._hp_value, self._hp_readable,
                                     self._hp_trusted)
@@ -1186,3 +1204,42 @@ class CwOpBuyCards(SrOperation):
         return self.round_success(
             f'plan 买{outcome.total_buy}张 升{outcome.total_level}次 '
             f'刷{outcome.total_refresh}次 卖{outcome.total_sell}张')
+
+    @operation_node(name='买牌', is_start_node=True)
+    def buy(self) -> OperationRoundResult:
+        # 装配点分流(架构设计 §9.1 并存期;先例锚 = cw_screen_encounter
+        # 同式判据):两端口完整在场 → 变体五段(旧体委托);缺省 None =
+        # 生产直连下方旧路径(原序列逐位保留)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
+        return self._buy_round()
+
+    # ---- 变体五段(旧体委托形态;映射申报见类 docstring)----
+
+    def lifecycle_observe(self) -> tuple[Any, OperationRoundResult | None]:
+        """段1 observe:空申报(旧体委托变体)。
+
+        入口观察住 :func:`run_buy_waves` 段循环内(每段一次,含
+        ``cw_game_ports`` 端口改道),变体不拆段循环(拆段 = 「刷新终结
+        交回重进」物理载体与节点预算语义变更,总纲契约 5 红线)——
+        无独立早退面,恒不早退。
+        """
+        return None, None
+
+    def lifecycle_reconcile(self, payload: Any) -> None:
+        """段2 reconcile:空申报(播种对账 ``guard_expected_vs_tracked``
+        stage='seed' 住委托体段循环内,无独立对账面)。"""
+        return None
+
+    def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:
+        """段3-5:决策循环段承载委托体(:func:`_buy_round` 单一共享)。
+
+        策略消费(decide_shop_action)住委托体内,本段**不申报** B4
+        选项②空决策合同(与只读/导航变体的空申报语义区分);on_outcome
+        = 无登记件(注册表缺席 = 零动作)。
+        """
+        self._lifecycle_mark('decide')
+        self._lifecycle_mark('act')
+        rs = self._buy_round()
+        self._lifecycle_mark('on_outcome')
+        return rs

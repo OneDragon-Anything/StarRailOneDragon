@@ -1,9 +1,17 @@
 
 import time
+from typing import Any
 
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
+from sr_od.application.currency_war.cw_game_ports import (
+    action_sink,
+    observation_source,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.application.currency_war.prep_actions import SHOP_CLOSE_ANIM_S
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -32,6 +40,17 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
         log.warning('[cw][receipt] 关商店回执写入失败(不阻塞): %s', e)
 
 
+def _close_shop_already_closed(op: SrOperation) -> OperationRoundResult:
+    """幂等已关出口构造(单一构造点)。
+
+    旧路径 miss 臂与变体 observe 早退(收编批 T-45)共享同一构造:
+    applied=false 回执(无动作可发)+ success;禁第二份(两路径共享
+    零转录,总纲契约 1)。
+    """
+    _note_receipt(op, False, '商店已关(幂等入口观察,无动作可发)')
+    return op.round_success('商店已关(收起不在,幂等入口观察)')
+
+
 def close_shop(op: SrOperation) -> OperationRoundResult:
     """关商店原子核心(W970 批 A 契约 §4.2 ``CwOpCloseShop``)。
 
@@ -51,8 +70,7 @@ def close_shop(op: SrOperation) -> OperationRoundResult:
     """
     if not op.round_by_find_and_click_area(
             op.screenshot(), SHOP_SCREEN_NAME, '按钮-收起').is_success:
-        _note_receipt(op, False, '商店已关(幂等入口观察,无动作可发)')
-        return op.round_success('商店已关(收起不在,幂等入口观察)')
+        return _close_shop_already_closed(op)
     time.sleep(SHOP_CLOSE_ANIM_S)
     _note_receipt(op, True, '')
     # TODO(P2 黑板落地时启用):商店族字段清理挂点——W971 04-shop §2
@@ -62,16 +80,71 @@ def close_shop(op: SrOperation) -> OperationRoundResult:
     return op.round_retry('关商店点击已发,重入观察裁决', wait=1)
 
 
-class CwOpCloseShop(SrOperation):
+class CwOpCloseShop(CwScreenOpBase):
     """备战-开商店 → 货币战争-备战 原子 op(W970 批 A)。
 
     生产路径由 BuyShopCards 编排壳直调 :func:`close_shop`(宿主 op 复用);
     本类为独立可跑壳(W970 批 C 流程层接管后成为编排单元)。
+
+    统一观察架构收编(B4 挂账批,账本 T-45;变体形态先例 =
+    ``CwProgressionScreenOp``):改挂 ``CwScreenOpBase`` 作只读/导航变体
+    ——幂等原子动作零策略消费,decide 空申报 = 本屏无策略消费的合同
+    声明(B4 选项②)。``close`` 节点顶部装配点分流(架构设计 §9.1 并存
+    纪律):两端口完整在场(测试 harness 显式装配)→ ``run_lifecycle()``
+    走变体五段;缺省 None = 生产直连 :func:`close_shop` 旧路径,原序列
+    逐位保留,生产行为零变化。变体五段映射:observe = 幂等入口观察裁决
+    (纯读,「收起」不在 = 店已关 → 幂等出口早退;点击动作不进观察段)、
+    reconcile/decide = 空申报(幂等原子动作无对账面/无策略消费)、
+    act 及其后 = 整体委托 :func:`close_shop`(旧体单一共享零第二转录,
+    含「收起」融合判定点击的旧路径单一机械调用;其「点击已发
+    retry(wait=1) 重入观察裁决」出口原位保留)、on_outcome = 无登记件
+    (注册表缺席 = 零动作)。幂等观察无「已发」旗标:收起锚可见与否即
+    全部裁决,首入/重入同义——异于总纲契约 6「已发旗标」定谳辖域
+    (同推进型变体理由,重入出口随骨架映射住 observe 段)。
     """
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-关商店')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-关商店')
 
     @operation_node(name='关商店', is_start_node=True)
     def close(self) -> OperationRoundResult:
+        # 装配点分流(架构设计 §9.1 并存期;先例锚 = cw_screen_encounter
+        # 同式判据):两端口完整在场 → 变体五段;缺省 None = 生产直连
+        # 下方旧路径(原序列逐位保留)。节点预算归本装饰器,不随路径变。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
         return close_shop(self)
+
+    # ---- 变体五段(只读/导航形态;动作半与旧路径共享旧体,零第二转录)----
+
+    def lifecycle_observe(self) -> tuple[Any, OperationRoundResult | None]:
+        """段1 observe:幂等入口观察裁决(:func:`close_shop` miss 臂纯读转录)。
+
+        「按钮-收起」不在 = 店已关(异常入口与上轮已点掉同判)→ 幂等
+        出口早退(构造共享 :func:`_close_shop_already_closed`,回执 +
+        success 与旧路径 miss 臂逐位同);命中 → 不早退,动作半交决策
+        循环。纯读判定(:meth:`round_by_find_area`,不点击)——旧路径
+        的「收起」融合判定点击(单一机械调用)整体归委托体,观察段
+        零变异。
+        """
+        if not self.round_by_find_area(self.screenshot(), SHOP_SCREEN_NAME,
+                                       '按钮-收起').is_success:
+            return None, _close_shop_already_closed(self)
+        return None, None
+
+    def lifecycle_reconcile(self, payload: Any) -> None:
+        """段2 reconcile:空申报(幂等原子动作无对账面)。"""
+        return None
+
+    def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:
+        """段3-5:decide 空申报 + act 整体委托 :func:`close_shop`。
+
+        decide 空申报 = 本屏无策略消费的合同声明(B4 选项②原语义);
+        act 半 = 旧体委托(单一共享;重入观察裁决出口原位保留);
+        on_outcome = 无登记件(注册表缺席 = 零动作)。
+        """
+        self._lifecycle_mark('decide')
+        self._lifecycle_mark('act')
+        rs = close_shop(self)
+        self._lifecycle_mark('on_outcome')
+        return rs
