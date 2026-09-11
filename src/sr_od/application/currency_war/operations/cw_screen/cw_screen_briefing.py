@@ -9,10 +9,26 @@
 
 下游链路(不变):session.briefing_affixes → state.enemy_affixes → mechanics_fit;
 session.briefing_bosses(位面序真值,ADR-0397)→ state.plane_bosses → boss_fit。
+
+统一观察架构逐屏迁移(账本 T-8 五相位屏;架构设计 §9.1 并存纪律):本类是
+CwScreenOpBase 子类,handle 顶部装配点分流(重入裁决**之后**,先例锚 =
+cw_screen_encounter.py :241-251 重入裁决 / :252-258 装配点分流;总纲契约 6):
+cw_game_ports 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连
+旧路径(原序列,生产行为零变化)。五段形态:observe = 标识门(miss 未发 →
+fail 交编排壳;实机适配器① = 轻观察封口,盛会之星同式);decide+act 内聚
+``_read_and_advance``(词缀/ boss / 难度三字段 session 直写 + 词缀效果点采
++ 点「下一步」置位,两路径共享零转录);reconcile/on_outcome = 空申报。
+写端保持「session 写 + relay 载体中继」现役形态(相位 1 深度统一 = 不解决
+面,总纲 §1)。三字段三种写语义逐字保真:词缀幂等守卫辖「读+采」(session
+非空跳过读与点采)/ boss 恒覆写(防跨局残留)/ 敌人难度仅 None 时写。
+本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段),等价判据主承重 =
+实机在册行为锁 + 写入流对拍(锁面 = sr-od-test
+test_cw_obs_arch_phase_screens.py)。
 """
 import contextlib
 import time
-from typing import ClassVar
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
@@ -20,6 +36,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 
 # 日志走框架 logger 'OneDragon'(裸模块 logger 无 handler,日志不可见——W222 先例)。
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.obs.cw_briefing_obs import (
     clean_boss_names_by_lcs,
     load_affix_effects_from_file,
@@ -33,11 +50,38 @@ from sr_od.application.currency_war.obs.cw_briefing_obs import (
 from sr_od.application.currency_war.operations.cw_screen.cw_flow_const import (
     BRIEFING_SETTLE_S,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenBriefing(SrOperation):
+@dataclass
+class BriefingObservation:
+    """简报观察 payload(五段之段1产物;T-8 实机转录形态)。
+
+    过渡相位屏轻观察(详设 §4):标识门判定在段内(门失败 → round_fail
+    早退交编排壳按步分流);payload 仅携带稳定帧引用(三字段读链的同帧
+    载体;实机识别域载体,不出端口——sim 适配器落位时该域 = None 帧语义,
+    F11 例外清单本批不建)。
+    """
+
+    screen: Any = None
+
+
+class BriefingLiveObservationAdapter:
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-8)。
+
+    轻观察封口(先例 = 盛会之星轻观察适配器):标识门须在段内产出早退轮次,
+    归 ``lifecycle_observe``;适配器仅装配稳定帧引用。sim 实现 = 不适用
+    (F11 例外清单),本批不建。
+    """
+
+    def observe(self, op: 'CwScreenBriefing') -> BriefingObservation:
+        return BriefingObservation(screen=op.last_screenshot)
+
+
+class CwScreenBriefing(CwScreenOpBase):
     """简报:识别简报 → 读词缀/boss/难度直写 session → 词缀效果采集 → 点下一步(出口验真转移)。"""
 
     #: screen_info 画面(currency_war_briefing.yml):id_mark 标识-本场对局首领
@@ -46,7 +90,13 @@ class CwScreenBriefing(SrOperation):
     MARK_AREA: ClassVar[str] = '标识-本场对局首领'
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-简报(开局序列)')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-简报(开局序列)')
+        # 适配器位缺省装配(先例 = CwScreenPrep/CwScreenEncounter):观察口 =
+        # 实机适配器(轻观察封口);动作口 = None = 直连现役动作体(基类
+        # 「None = 子类缺省实现自担」)。on_outcome 注册表:本屏无登记件
+        # (三字段 session 直写 = 观察写端,非动作发射登记;写端切换 =
+        # 相位 1 深度统一辖域,本批留守)。
+        self._observation_adapter = BriefingLiveObservationAdapter()
         # 「下一步」已发待重入裁决标志(验证废除形态,用户裁定 2026-09-10):
         # 重入裁决见 handle 顶部——标识不在 = 已离开简报(过渡完成)→
         # success 交回编排壳;标识在 = 点击未落地 → 重点(计节点预算)。
@@ -55,20 +105,34 @@ class CwScreenBriefing(SrOperation):
     @operation_node(name='简报', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         screen = self.last_screenshot
-        # 重入裁决(观察驱动,验证废除形态):上轮「下一步」已发 → 标识不在
-        # = 已离开简报 → success 交回;标识在 = 点击未落地 → 重点。
         _mark_hit = self.round_by_find_area(
             screen, self.SCREEN_NAME, self.MARK_AREA, crop_first=False).is_success
+        # 重入裁决(观察驱动,验证废除形态):上轮「下一步」已发 → 标识不在
+        # = 已离开简报 → success 交回;标识在 = 点击未落地 → 重点。两路径
+        # 共用(分流前挂,先于五段 lifecycle 的 observe 门;总纲契约 6,
+        # 先例锚 cw_screen_encounter.py :241-251/:252-258)。
         if self._click_pending:
             self._click_pending = False
             if not _mark_hit:
                 log.info('[cw-flow-briefing] 已离开简报(重入观察裁决,观察直写 session 完成)')
                 return self.round_success('已离开简报(重入观察裁决)',
                                           wait=BRIEFING_SETTLE_S)
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run/
+        # CwScreenEncounter.handle):两端口完整在场 → 五段生命周期新路径;
+        # 缺省 None = 生产直连旧路径(下方原序列,生产行为零变化)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
         # ① 识别简报:id_mark「标识-本场对局首领」(简报独有,is_precise)。
         #    非简报屏(接管局/序列中后段首帧分流)→ fail 交编排壳按步分流。
         if not _mark_hit:
             return self.round_fail('非简报屏')
+        return self._read_and_advance(screen)
+
+    def _read_and_advance(self, screen) -> OperationRoundResult:
+        """简报观察 + 推进内聚体(五段 decide+act 两路径共享零转录;旧
+        handle :72-124 逐位平移):词缀(幂等守卫辖「读+采」)/ boss(恒
+        覆写)/ 敌人难度(仅 None 写)三字段 session 直写 + 词缀效果点采
+        + 点「下一步」+ 置位(落地判定归下一轮重入裁决)。"""
         _match = getattr(self.ctx, 'cw_match', None)
         _session = _match.session if _match is not None else None
 
@@ -147,3 +211,34 @@ class CwScreenBriefing(SrOperation):
             log.info('[cw-briefing] 词缀 %s 与注册表不一致/新名(注册:%r 采到:%r)→ 截图 + 收集',
                      name, _registered.get(name, ''), _effect)
         return updates
+
+    # ---- 五段生命周期(统一观察架构 §5.1;T-8,先例 = CwScreenEncounter)----
+
+    def lifecycle_observe(self
+                          ) -> tuple[BriefingObservation,
+                                     OperationRoundResult | None]:
+        """段1 observe:标识门(id_mark「标识-本场对局首领」;miss 未发 →
+        round_fail 早退交编排壳按步分流,旧 handle 首闸逐位转录)→ 轻观察
+        payload。重入裁决不在本段(总纲契约 6:留守 handle 分流前共享段)。"""
+        _adp = self._observation_port()
+        obs = (_adp.observe(self) if _adp is not None
+               else BriefingObservation(screen=self.last_screenshot))
+        _mark_hit = self.round_by_find_area(
+            self.last_screenshot, self.SCREEN_NAME, self.MARK_AREA,
+            crop_first=False).is_success
+        if not _mark_hit:
+            return obs, self.round_fail('非简报屏')
+        return obs, None
+
+    def lifecycle_decision_cycle(self, payload: BriefingObservation
+                                 ) -> OperationRoundResult:
+        """段3-5(单动作决策循环):decide+act 内聚 ``_read_and_advance``
+        (三字段 session 写 + 词缀点采 + 点「下一步」,两路径共享零转录);
+        on_outcome = 本屏无登记件(注册表缺席 = 零动作,__init__ 申报)。
+        轮次终结出口 = 确认机械交回 round_retry(落地判定归下一轮重入裁决,
+        验证废除形态)。"""
+        self._lifecycle_mark('decide')
+        self._lifecycle_mark('act')
+        rs = self._read_and_advance(payload.screen)
+        self._lifecycle_mark('on_outcome')
+        return rs

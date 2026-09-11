@@ -29,12 +29,29 @@ journal 行与冻结档案承载。
 自动战斗检测(W971 05-battle §2):**本批不做**(采集未完成)。接口预留 =
 本 op ①段(等结算画面)轮询中消费「自动战斗未开启」信号(画面右下角
 「我方行动中」文本,待建档)→ 自愈/报警;接通前战斗段依赖自动战斗已开。
+
+统一观察架构逐屏迁移(账本 T-8 五相位屏;架构设计 §9.1 并存纪律):本类
+是 CwScreenOpBase 子类,wait() 首行装配点分流(本屏**无重入裁决旗标** →
+分流在出口判定之前,详设关键取舍 4):两端口完整在场 → 五段生命周期新
+路径;缺省 None = 生产直连旧路径(原序列,生产行为零变化)。五段形态:
+observe = 出口判定早退(大厅终局锚 → terminal_lobby 交整局退出;完成白
+名单任一 → back_to_loop 交回循环分发;二者皆 miss → 稳定帧 payload);
+reconcile = 空申报(结算写端拆 reconcile 必改执行时序,撞 D-94「结算即写
+禁惰性化」红线,五段形状让位于零变更红线,详设关键取舍 1);decide+act
+内聚 ``_dispatch_frame``(现 wait() 分支链逐位转录、分支序禁重排,两路径
+共享零转录;结算登记 = 观察写端非动作发射登记,on_outcome 无登记件,
+§12.6-H6 候裁面本批不接线)。结构参数:SettlementState 跨局状态机注入
+(``__init__(ctx, st, config)``,RunLoop 持有)不变;``node_max_retry_times=
+400`` 归节点不随路径变。本屏 sim 腿 = 不适用(F11 例外清单:sim 事实来源
+为 coarse 结算产出非画面段),等价判据主承重 = 实机在册行为锁经
+execute()/wait() 走新路径全绿(B2-③ 主门;锁面 = sr-od-test
+test_cw_battle_wait_op.py 在册 + test_cw_obs_arch_phase_screens.py 新路径)。
 """
 from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
@@ -43,6 +60,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.kernel.cw_performance import (
     HP_CONFIDENCE_THRESHOLD,
@@ -57,9 +75,11 @@ from sr_od.application.currency_war.obs.cw_settlement_obs import (
     read_settle_damage_breakdown,
     settle_page1_progress_sign,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.application.currency_war.telemetry import defects
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_performance import (
@@ -68,6 +88,31 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
+
+
+@dataclass
+class BattleWaitObservation:
+    """战斗等待观察 payload(五段之段1产物;T-8 实机转录形态)。
+
+    驻留型轻观察(详设 §3):出口判定(终局锚/完成白名单)含早退轮次语义,
+    归 ``lifecycle_observe`` 段;payload 仅携带稳定帧引用(分支链读屏的
+    同帧载体;实机识别域载体,不出端口——sim 适配器落位时该域 = None 帧
+    语义,F11 例外清单本批不建)。
+    """
+
+    screen: Any = None
+
+
+class BattleWaitLiveObservationAdapter:
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-8)。
+
+    驻留型轻观察封口(先例 = 盛会之星轻观察适配器):出口判定须在段内产出
+    早退轮次,归 ``lifecycle_observe``;适配器仅装配稳定帧引用。sim 实现 =
+    不适用(F11 例外清单),本批不建。
+    """
+
+    def observe(self, op: CwScreenBattleWait) -> BattleWaitObservation:
+        return BattleWaitObservation(screen=op.last_screenshot)
 
 
 def _write_settlement_observation(session: StrategySession,
@@ -144,7 +189,7 @@ class SettlementState:
     saw_settlement: bool = False
 
 
-class CwScreenBattleWait(SrOperation):
+class CwScreenBattleWait(CwScreenOpBase):
     """战斗等待 op:等结算 → 结算处理 → 白名单完成判据 / 团灭终局分叉。"""
 
     #: 结算页1 掉血说明 tooltip 渲染延迟门(随迁自 cw_loop,注释原文见
@@ -173,7 +218,14 @@ class CwScreenBattleWait(SrOperation):
 
     def __init__(self, ctx: SrContext, st: SettlementState,
                  config: CurrencyWarConfig):
-        SrOperation.__init__(self, ctx, op_name='货币战争-战斗等待')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-战斗等待')
+        # 适配器位缺省装配(先例 = CwScreenPrep/CwScreenEncounter):观察口 =
+        # 实机适配器(驻留型轻观察封口);动作口 = None = 直连现役分支链
+        # (基类「None = 子类缺省实现自担」)。on_outcome 注册表:本屏无
+        # 登记件(结算登记 = 观察写端 apply_settlement_cover 观察半直写,
+        # 非动作发射登记;settlement 锚 boundary 触发口 = 架构设计 §12.6-H6
+        # 候裁面,本批不接线)。
+        self._observation_adapter = BattleWaitLiveObservationAdapter()
         self._st = st
         self._cw_config = config
         self._unknown_streak: int = 0
@@ -357,9 +409,10 @@ class CwScreenBattleWait(SrOperation):
                 # —— 观察半直写(ADR-0583 §2.5;原 on_round_end 观察段逐行平移,
                 # 写点与原调用同点同时序)——
                 _write_settlement_observation(_session, _obs, _now_t)
-                # —— 策略半入槽(ADR-0583 §2.5):策略器下一决策入口惰性 drain
-                #(掉血三臂喂入/node_type 回落/谷底回滚登记 = flow 层
-                # _drain_pending_round_outcomes;处理即清)。
+                # —— 结算行入观察累积槽(ADR-0583 §2.5 观察半直写)。
+                # 原消费端(策略器决策入口惰性 drain:掉血三臂喂入/node_type
+                # 回落/谷底回滚登记)已随 T-64 退役批删除(04_survival_budget
+                # §7 #7/#8)——本槽现为只写不读的观察累积面。
                 _session.pending_round_outcomes.append(_obs)
                 # (结算 outcomes 行与 battle_done 外生行已随旧流写入端退役
                 #  删除——删除波 1;结算真值现役归宿 = BoardState settlement
@@ -505,6 +558,13 @@ class CwScreenBattleWait(SrOperation):
 
     @operation_node(name='战斗等待', is_start_node=True, node_max_retry_times=400)
     def wait(self) -> OperationRoundResult:
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run/
+        # CwScreenEncounter.handle):两端口完整在场(= 测试 harness 显式装配)
+        # → 五段生命周期新路径;缺省 None = 生产直连旧路径(下方原序列,
+        # 生产行为零变化)。本屏无重入裁决旗标 → 分流在首行、出口判定之前
+        #(详设关键取舍 4)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
         screen = self.last_screenshot
         # ③出口 B:团灭终局链终点 = 回到大厅(「返回货币战争」落点)→
         # terminal 交回主循环 3c 收口(runs summary/分配器/存档在彼处,遥测
@@ -518,18 +578,21 @@ class CwScreenBattleWait(SrOperation):
         if self._hit_completion_anchor(screen):
             log.info('[cw-bwait] 完成判据白名单命中 → 交回循环分发')
             return self.round_success('back_to_loop')
+        return self._dispatch_frame(screen)
 
+    def _dispatch_frame(self, screen) -> OperationRoundResult:
+        """分支链逐位转录体(五段 decide+act 两路径共享零转录;旧 wait()
+        出口判定之后的分支序列平移,**分支序禁重排**——挑战成功结算/失败页
+        1f 全链/点空白加速/前往结算链/过场屏/战斗宽限/未知帧 bail 的序位即
+        语义;出口判定(终局锚/白名单)归 wait() 旧路径原位 + observe 段转录
+        (遭遇先例同式:门判定两路径各一份,判定纯读零副作用)。"""
         # ②段:挑战成功结算(读点 → 继续挑战;#25 读点前等 1.5s)
         if self.round_by_find_area(screen, '货币战争-结算', '按钮-继续挑战').is_success:
             self._unknown_streak = 0
             log.info('[cw-bwait][battle_end] 结算屏首见(战斗结束锚点)')
-            from sr_od.application.currency_war.operations.settle_collect_hooks import (
-                settle_frame_collect,
-            )
-            settle_frame_collect(screen)
             # #25 用户裁定:按钮出现后结算数据 ~1.5s 才渲染完,读点前等 1.5s
             # + 重截(交接文件 REAL_MACHINE_EFFICIENCY_HANDOFF.md damage 0/15
-            # 事故时序根因);采集钩子仍抓首见帧(时序价值在动画帧)。
+            # 事故时序根因)。
             time.sleep(1.5)
             screen = self.screenshot()
             self._record_round_outcome(screen)
@@ -591,10 +654,6 @@ class CwScreenBattleWait(SrOperation):
             self._unknown_streak = 0
             if _1f_sign == 'neg':
                 self._st.saw_defeat_settlement = True
-            from sr_od.application.currency_war.operations.settle_collect_hooks import (
-                settle_frame_collect,
-            )
-            settle_frame_collect(screen)
             # 面板渲染延迟门(SETTLE_PANEL_WAIT_S;1f 是失败页主通道)
             _pnl = read_settle_damage_breakdown(self.ctx, screen)
             if (self.round_by_ocr(screen, '点击空白加速').is_success
@@ -646,10 +705,6 @@ class CwScreenBattleWait(SrOperation):
         _accel_hit = self.round_by_ocr(screen, '点击空白加速')
         if _accel_hit.is_success:
             self._unknown_streak = 0
-            from sr_od.application.currency_war.operations.settle_collect_hooks import (
-                settle_frame_collect,
-            )
-            settle_frame_collect(screen)
             try:
                 _texts1 = [r.data for r in self.ctx.ocr_service.get_ocr_result_list(
                     image=screen, rect=None, crop_first=False)]
@@ -703,10 +758,6 @@ class CwScreenBattleWait(SrOperation):
                     self._st.last_outcome_hp = 0
                     self._st.saw_defeat_settlement = True
                     log.info('[cw-bwait] 战败结算屏 → hp=0 补录 outcomes 真值源')
-                from sr_od.application.currency_war.operations.settle_collect_hooks import (
-                    settle_frame_collect,
-                )
-                settle_frame_collect(screen)
                 self.ctx.controller.click(CwScreenBattleWait.SETTLEMENT_NEXT)
                 self.park_cursor(after_wait=0.1)
                 return self.round_wait(wait=1)
@@ -772,3 +823,41 @@ class CwScreenBattleWait(SrOperation):
                 log.warning('[cw-bwait] bail 留证失败: %s', e)
             return self.round_fail('战斗等待连续未识别,bail 交主循环兜底')
         return self.round_wait(wait=1.5)
+
+    # ---- 五段生命周期(统一观察架构 §5.1;T-8,驻留型)----
+
+    def lifecycle_observe(self
+                          ) -> tuple[BattleWaitObservation,
+                                     OperationRoundResult | None]:
+        """段1 observe:出口判定早退(旧 wait() 首两闸逐位转录)——大厅
+        终局锚命中 = terminal_lobby(交整局退出收口);完成白名单任一命中
+        (COMPLETION_ANCHORS + boss 简报片段判别 + 位面过渡 OCR)=
+        back_to_loop(交回循环分发);二者皆 miss = 稳定帧 payload 进决策
+        循环。早退 = 后续段不执行(基类模板语义)。"""
+        _adp = self._observation_port()
+        obs = (_adp.observe(self) if _adp is not None
+               else BattleWaitObservation(screen=self.last_screenshot))
+        screen = self.last_screenshot
+        if self.round_by_find_area(screen, '货币战争-大厅', '标识-创业指南',
+                                   crop_first=False).is_success:
+            log.info('[cw-bwait] 终局分叉:已回大厅 → terminal_lobby(交整局退出收口)')
+            return obs, self.round_success('terminal_lobby')
+        # ③出口 A:完成判据白名单任一命中 → 交回循环分发
+        if self._hit_completion_anchor(screen):
+            log.info('[cw-bwait] 完成判据白名单命中 → 交回循环分发')
+            return obs, self.round_success('back_to_loop')
+        return obs, None
+
+    def lifecycle_decision_cycle(self, payload: BattleWaitObservation
+                                 ) -> OperationRoundResult:
+        """段3-5(单动作决策循环):decide+act 内聚 ``_dispatch_frame``
+        (分支链逐位转录、分支序禁重排,两路径共享零转录;结算观察半直写
+        D-94 时序随分支链原位,on_outcome 无登记件——结算登记 = 观察写端
+        非动作发射登记,详设关键取舍 1:reconcile 恒空申报,禁为凑五段形状
+        拆写点)。轮次终结出口 = 白名单/终局锚早退(observe 段)或 bail
+        fail;驻留轮 = round_wait(等待语义不随路径变)。"""
+        self._lifecycle_mark('decide')
+        self._lifecycle_mark('act')
+        rs = self._dispatch_frame(payload.screen)
+        self._lifecycle_mark('on_outcome')
+        return rs

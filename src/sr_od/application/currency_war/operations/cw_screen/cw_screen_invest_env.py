@@ -12,15 +12,32 @@ board 不可读 → 传空 board stub(dot_punish 为次要细化,白名单主策
 卡底 Y + 确认坐标进 screen_info(``currency_war_invest_env``):``区域-卡牌描述行``(给 Y)
 + ``按钮-确认``(给 center),task#20 已完成;本 op 经 ``cw_obs_core.area_center`` 读,
 缺失才用兜底常量。
+
+统一观察架构逐屏迁移(账本 T-8 五相位屏;架构设计 §9.1 并存纪律):本类是
+CwScreenOpBase 子类,handle 顶部装配点分流(重入裁决**之后**,先例锚 =
+cw_screen_encounter.py :241-251 重入裁决 / :252-258 装配点分流,注释原文
+「两路径共用(分流前挂,先于五段 lifecycle 的 observe 门)」;总纲契约 6):
+cw_game_ports 两端口完整在场 → 五段生命周期新路径;缺省 None = 生产直连
+旧路径(原序列,生产行为零变化)。五段形态:observe = 入口门 + 1s 稳定帧
++ 候选读取(实机适配器①封口 = ``_observe_frame``,两路径共享同一读链)+
+T-162 刷新计数 log 观察通道(非登记件,ADR-0600 §2/§4 环境侧刷新执行不
+启用申报);decide+act 内聚 ``_decide_and_act``(选卡时点写 ``active_env``
+→ 点卡 → 台账变异窗 → 确认 → 台账写点②,两路径共享零转录);reconcile/
+on_outcome = 空申报(本屏无独立对账面、无登记件)。本屏 sim 腿 = 不适用
+(F11 例外清单:有 sim 事实来源但 sim 端口适配器未建,归 sim 接线批),
+等价判据主承重 = 实机在册行为锁 + 写入流对拍(锁面 = sr-od-test
+test_cw_obs_arch_phase_screens.py)。
 """
 import time
-from typing import ClassVar
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
+from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
 from sr_od.application.currency_war.kernel.cw_events import decide_event
 from sr_od.application.currency_war.kernel.cw_investments import is_known_env
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
@@ -30,11 +47,42 @@ from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import
     emit_overlay_confirm,
     safe_click,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
+    CwScreenOpBase,
+)
 from sr_od.context.sr_context import SrContext
-from sr_od.operations.sr_operation import SrOperation
 
 
-class CwScreenInvestEnv(SrOperation):
+@dataclass
+class InvestEnvObservation:
+    """投资环境观察 payload(五段之段1产物;T-8 实机转录形态)。
+
+    - ``hit``:入口锚「标识-投资环境」命中(误分发防线;miss → observe 段
+      round_fail 交回);
+    - ``options``:候选卡 ``(名字, center-x)`` 现役读链产物(左→右排序);
+    - ``screen``:稳定帧引用(实机识别域载体,不出端口;sim 适配器落位时
+      该域 = None 帧语义,F11 例外清单本批不建)。
+    """
+
+    hit: bool
+    options: list[tuple[str, int]]
+    screen: Any = None
+
+
+class InvestEnvLiveObservationAdapter:
+    """实机适配器①(观察端口;架构设计 §2.3 识别链封口,T-8)。
+
+    内部复用现役读链(``CwScreenInvestEnv._observe_frame``:入口门 + 1s
+    稳定帧 + 候选读取)——识别机制(OCR/截图)不出端口(§2.1 契约三则);
+    重入裁决不进适配器(总纲契约 6)。sim 实现 = T5 后辖域本批不建(F11
+    例外清单)。
+    """
+
+    def observe(self, op: 'CwScreenInvestEnv') -> InvestEnvObservation:
+        return op._observe_payload()
+
+
+class CwScreenInvestEnv(CwScreenOpBase):
     """投资环境 3 选 1:OCR 卡名 → decide_event 打分 → 点最优卡底 + 确认。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-投资环境'   # screen_info 画面(currency_war_invest_env.yml)
@@ -54,7 +102,13 @@ class CwScreenInvestEnv(SrOperation):
     CONFIRM: ClassVar[Point] = Point(1082, 982)   # 兜底;首选 area_center('按钮-确认')
 
     def __init__(self, ctx: SrContext):
-        SrOperation.__init__(self, ctx, op_name='货币战争-投资环境')
+        CwScreenOpBase.__init__(self, ctx, op_name='货币战争-投资环境')
+        # 适配器位缺省装配(先例 = CwScreenPrep/CwScreenEncounter):观察口 =
+        # 实机适配器(现役读链封口);动作口 = None = 直连现役确认链(基类
+        # 「None = 子类缺省实现自担」)。on_outcome 注册表:本屏无登记件
+        # (环境侧刷新执行不启用,ADR-0600 §2/§4;active_env = 选卡 handler
+        # 单次逻辑写入豁免,§3.4 申报豁免面留守 _decide_and_act)。
+        self._observation_adapter = InvestEnvLiveObservationAdapter()
         self._ocr_map: dict | None = None   # ADR-0132:效果采集复用同一帧 OCR
         # 确认已发待重入裁决标志(验证废除形态):重入裁决见 handle 顶部。
         self._confirm_pending: bool = False
@@ -76,39 +130,69 @@ class CwScreenInvestEnv(SrOperation):
         opts.sort(key=lambda t: t[1])
         return opts
 
+    def _observe_frame(self) -> tuple[bool, list[tuple[str, int]], Any]:
+        """入口门 + 1s 稳定帧 + 候选读取(实机适配器①封口内容;两路径共用
+        读链,总纲 §2.1-1 抽共享方法)。时序口径逐位保留:用户口述口径
+        (docs/game/currency_war/research/screen_flow_timing.md「用户口述
+        过场动画时序」#3,2026-09-02)「投资环境」标题出现后 1s 内三卡才
+        渲染稳定——入口帧可能在稳定期内,立即 OCR 读卡名有读缺/读半字风险
+        (空候选 → fallback 盲点屏中)。等 1s 重截稳定帧再读再决策(与简报
+        0a0b 修复同型)。Returns: ``(入口锚命中, 候选, 稳定帧)``。"""
+        screen = self.last_screenshot
+        _hit = self.round_by_find_area(screen, CwScreenInvestEnv.SCREEN_NAME,
+                                       '标识-投资环境').is_success
+        log.info(f'[cw-env] enter find_area(标识-投资环境)={_hit}')
+        if not _hit:
+            return False, [], screen
+        time.sleep(1.0)
+        screen = self.screenshot()
+        return True, self._read_options(screen), screen
+
+    def _observe_payload(self) -> InvestEnvObservation:
+        """稳定帧观察链 → payload(适配器①与缺省直连共用的装配形态)。"""
+        _hit, opts, screen = self._observe_frame()
+        return InvestEnvObservation(hit=_hit, options=opts, screen=screen)
+
+    def _log_env_refresh_counts(self, screen) -> None:
+        """T-162 观察写入(ADR-0600 §3.4,G5;非执行链:零点击、零决策行为
+        ——环境屏刷新执行不启用,推导见 _decide_and_act 头退役注)。计数读
+        数落 log 遥测面,供 V5/V6 实证(无布局计数形态/授予口径/接管局重入
+        帧)与 BoardState §2.5 写入端(类尚未落码,落地时以本处为写入端)。
+        两路径共用(旧 handle 内联位平移)。"""
+        _env_counts = read_invest_refresh_counts(self.ctx, screen, 'env')
+        log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(T-162 观察通道,V5/V6)')
+
     @operation_node(name='投资环境', is_start_node=True, node_max_retry_times=10)
     def handle(self) -> OperationRoundResult:
         # 重入裁决(观察驱动,验证废除形态):上轮已发确认 → 本轮入口锚不在
         # = overlay 已关(环境选择落地)→ success 交回;锚仍在 = 确认未落地
-        # → 清标志重走(计节点预算)。
+        # → 清标志重走(计节点预算)。两路径共用(分流前挂,先于五段
+        # lifecycle 的 observe 门;总纲契约 6,先例锚 cw_screen_encounter
+        # .py :241-251/:252-258)。
         if self._confirm_pending:
             self._confirm_pending = False
             if not self.round_by_find_area(
                     self.last_screenshot, '货币战争-投资环境',
                     '标识-投资环境').is_success:
                 return self.round_success('投资环境已确认(重入观察裁决)', wait=2.0)
-        screen = self.last_screenshot
-        _hit = self.round_by_find_area(screen, '货币战争-投资环境', '标识-投资环境').is_success
-        log.info(f'[cw-env] enter find_area(标识-投资环境)={_hit}')
+        # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run/
+        # CwScreenEncounter.handle):两端口完整在场(= 测试 harness 显式装配)
+        # → 五段生命周期新路径;缺省 None = 生产直连旧路径(下方原序列,
+        # 生产行为零变化)。
+        if observation_source() is not None and action_sink() is not None:
+            return self.run_lifecycle()
+        _hit, opts, screen = self._observe_frame()
         if not _hit:
             return self.round_fail('非投资环境屏')
+        self._log_env_refresh_counts(screen)
+        return self._decide_and_act(opts)
 
-        # 用户口述口径(docs/game/currency_war/research/screen_flow_timing.md
-        # 「用户口述过场动画时序」#3,2026-09-02):「投资环境」标题出现后
-        # 1s 内三卡才渲染稳定——入口帧可能在稳定期内,立即 OCR 读卡名有
-        # 读缺/读半字风险(空候选 → fallback 盲点屏中)。等 1s 重截稳定帧
-        # 再读再决策(与简报 0a0b 修复同型)。
-        time.sleep(1.0)
-        screen = self.screenshot()
-        opts = self._read_options(screen)
-
-        # T-162 观察写入(ADR-0600 §3.4,G5;非执行链:零点击、零决策行为——环境屏刷新执行
-        # 不启用,推导见下方退役注)。计数读数落 log 遥测面,供 V5/V6 实证
-        # (无布局计数形态/授予口径/接管局重入帧)与 BoardState §2.5 写入端
-        # (类尚未落码,落地时以本处为写入端)。
-        _env_counts = read_invest_refresh_counts(self.ctx, screen, 'env')
-        log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(T-162 观察通道,V5/V6)')
-
+    def _decide_and_act(self, opts: list[tuple[str, int]]) -> OperationRoundResult:
+        """决策+动作内聚体(五段 decide+act 两路径共享零转录;旧 handle
+        :120-201 逐位平移):decide_event/decide_invest 决策(空候选 fallback
+        链)→ ``active_env`` 选卡时点写(点卡**前**,ADR-0598 投资两屏各自
+        实证语义,禁与策略屏重入裁决出口 append 统一)→ 点最优卡底 → 台账
+        变异窗 → 确认 → 台账写点②。"""
         # 事件面刷新执行不启用(ADR-0600 §2/§4,非「机制上不可能」):环境侧顶级类
         # 结构性不可判(InvestmentEnv 无 economy 字段,EnvEconomyEffect 缺口在册
         # 挂账 08 E1/E2)、S1 定义型键与环境名零交集、首开局帧 D*=∅ → 无可证
@@ -234,3 +318,33 @@ class CwScreenInvestEnv(SrOperation):
                      _plane, _round, '(有变更)' if _changed else '(无变更)', _seq)
             return
         log.info('[cw-env] 台账重读 miss(非 clean 帧),变异窗保留等下个写入端')
+
+    # ---- 五段生命周期(统一观察架构 §5.1;T-8,先例 = CwScreenEncounter)----
+
+    def lifecycle_observe(self
+                          ) -> tuple[InvestEnvObservation,
+                                     OperationRoundResult | None]:
+        """段1 observe:入口门 + 实机适配器①稳定帧观察(1s 稳定期 + 候选
+        读取)+ T-162 刷新计数 log 观察通道(时点 = 旧 handle 读链后逐位)。
+        门失败 = round_fail 早退(旧 handle 首闸逐位转录),后续段不执行。
+        重入裁决不在本段(总纲契约 6:留守 handle 分流前共享段)。"""
+        _adp = self._observation_port()
+        obs = (_adp.observe(self) if _adp is not None
+               else self._observe_payload())
+        if not obs.hit:
+            return obs, self.round_fail('非投资环境屏')
+        self._log_env_refresh_counts(obs.screen)
+        return obs, None
+
+    def lifecycle_decision_cycle(self, payload: InvestEnvObservation
+                                 ) -> OperationRoundResult:
+        """段3-5(单动作决策循环):decide+act 内聚 ``_decide_and_act``
+        (决策/active_env 选卡时点写/点卡/确认/台账全在现役时序,两路径
+        共享零转录);on_outcome = 本屏无登记件(注册表缺席 = 零动作,
+        __init__ 申报)。轮次终结出口 = 确认机械交回(落地判定归下一轮
+        重入裁决,验证废除形态)。"""
+        self._lifecycle_mark('decide')
+        self._lifecycle_mark('act')
+        rs = self._decide_and_act(payload.options)
+        self._lifecycle_mark('on_outcome')
+        return rs
