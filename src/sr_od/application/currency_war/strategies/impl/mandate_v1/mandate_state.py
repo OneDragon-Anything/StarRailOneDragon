@@ -140,7 +140,7 @@ class StrategyState:
     # ===== 策略行为观测分键(单一容器;策略 state=决策行 strategy-state
     # 载体,retirement.md §3 键收编定谳:全部键=策略行为键零效果域键,
     # 键全集登记单一源=封闭锁 test_cw4_key_closure)=====
-    # 局终可见性:旧 jsonl 计数流已随 R5 W4 流删退役(ADR-0650),
+    # 局终可见性:旧 jsonl 计数流已随 R5 W4 流删退役(r5-migration-plan.md §2 W4),
     # 局终级全键聚合 = 局终域行载荷 MatchFinal.cw4_counters(cw_loop 两
     # 收口点现读快照);sim 轮差分账本/A/B 披露照旧读本容器,不经流。
     cw4_counters: dict = field(default_factory=dict)

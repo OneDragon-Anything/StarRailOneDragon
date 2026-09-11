@@ -10,7 +10,7 @@
 连胜金(每节点收入 = 基础 + 连胜 + 利息)此前在 `cw_economy.streak_gold` 以
 if/elif 四档近似实现(r305 真值接入)。视觉 worker 已从奖励弹窗 49/49
 真实样本确立真值表(证据:`docs/game/currency_war/research/economy.md`
-§10.1 + `.debug/temp/currency_war/cw_dev/cw_reward_判读.md`):弹窗底部为
+§10.1 + `cw_reward_判读.md`(原始件已灭失,2026-09-12 清理)):弹窗底部为
 **固定规则表,与对局状态无关**——连胜 0-1→1 金 / 2-4→2 / 5→3 / 6+→4。
 
 数值语义 r305/r307(commit de447f0b)已与真值一致(sim 收入模型与

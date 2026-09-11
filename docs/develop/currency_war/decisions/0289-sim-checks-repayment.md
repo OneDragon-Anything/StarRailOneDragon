@@ -66,7 +66,7 @@
 ### 2. n=300 验证(新条目应全绿或披露)
 
 n=300 s0-299 pool=snapshot(指纹 d891233d28be3493)全检查网
-(输出:`.debug/temp/currency_war/cw_dev/sim_repay_n300_final.json`,
+(输出:`sim_repay_n300_final.json`(原始件已灭失,2026-09-12 清理),
 不入 git):**逐局锁 27 键中 22 绿**;**新发现红条目 5 项进「待裁」
 清单**(见下);批级 26 键全披露型(0 违规,依赖未接线项显式「跳过
 不判」);既有检查(delta_pool_bucket_min_n 7 / sim_endgold_calib 1)

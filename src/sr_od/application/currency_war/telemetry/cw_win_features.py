@@ -5,8 +5,8 @@ BoW 角色计数 / 星级分布 / 羁绊档位计数 / 装备件数 / total_cost
 node_type 等非 deployed 派生特征由训练表侧 join 提供,见
 ``features_from_deployed`` docstring 的消费契约。
 
-设计单一源 = ``.debug/temp/currency_war/cw_dev/win_model_design/ADR_草稿.md`` §1
-(TFT 特征 → CW 映射表)。本模块是**纯函数**(无 I/O / 无游戏依赖),
+设计单一源 = win_model_design/ADR_草稿.md §1(原始件已灭失(2026-09-12
+清理);TFT 特征 → CW 映射表)。本模块是**纯函数**(无 I/O / 无游戏依赖),
 sim 与离线训练脚本共用;M2 接入 sim 结算器时直接 import。
 
 数值单一源:
@@ -61,7 +61,7 @@ def features_from_deployed(deployed: list[dict]) -> dict[str, Any]:
       每羁绊激活到第几层,阈值对照 ``FACTIONS[*].tiers``);
     - ``max_tier``:最高激活档位(阵容成型度粗粒度代理);
     - ``tier3_count``:tier_hist 中档位==3 的羁绊个数。批39 压测实证
-      (``.debug/temp/currency_war/cw_dev/sim_压测_批39/报告.md``):
+      (sim_压测_批39/报告.md,原始件已灭失(2026-09-12 清理)):
       tier-3 羁绊数是 P1 boss 胜负近似分界(t3≤2 → 0/19 胜;t3=3 的
       板唯一胜)——max_tier 不区分「有几个 t3 羁绊」(3×tier-3 板与
       1×tier-3 板同值),tier3_count 补上这一维度。

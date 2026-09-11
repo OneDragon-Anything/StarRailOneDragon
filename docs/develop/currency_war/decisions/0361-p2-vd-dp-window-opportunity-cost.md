@@ -4,7 +4,7 @@
 
 - 日期:2026-08-28
 - 状态:accepted(直接落地)
-- 关联:W152 断点解剖(`.debug/temp/currency_war/cw_dev/deep_read/W152_报告.md`)、
+- 关联:W152 断点解剖(`deep_read/W152_报告.md`(原始件已灭失,2026-09-12 清理))、
   W153 公式批(P11/P12,`docs/game/currency_war/research/proofs/`)、W150/0359
   (让路批)、0356(出口金底线/回档口径)、W126/0349(V_D 批口径本体)、
   user_playstyle [17](溢余即花簇主条)/[27](掉血 B+P)/[18](hp 计价非触发)

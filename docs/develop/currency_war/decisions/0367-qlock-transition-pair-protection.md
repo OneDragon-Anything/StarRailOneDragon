@@ -4,7 +4,7 @@
 
 - 日期: 2026-08-29
 - 状态: accepted (采纳)
-- 关联: ADR-0357(P1 配方锁,①通道保留 comp 的设计源头)、ADR-0359(买侧锁定目标约束,scope 单一实现)、ADR-0360(evolve 保护四件,消费 locked_faction_scope)、ADR-0363(引擎下界守卫,保护基准扩辖对象)、W164(判读与 R1/R2 裁决原文,`.debug/temp/currency_war/cw_dev/deep_read/W164_报告.md`)
+- 关联: ADR-0357(P1 配方锁,①通道保留 comp 的设计源头)、ADR-0359(买侧锁定目标约束,scope 单一实现)、ADR-0360(evolve 保护四件,消费 locked_faction_scope)、ADR-0363(引擎下界守卫,保护基准扩辖对象)、W164(判读与 R1/R2 裁决原文,`deep_read/W164_报告.md`(原始件已灭失,2026-09-12 清理))
 
 ## 背景与问题
 

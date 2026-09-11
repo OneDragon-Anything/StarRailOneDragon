@@ -4,7 +4,7 @@
 
 - 日期:2026-08-29
 - 状态:accepted
-- 批:W170(设计报告 `.debug/temp/currency_war/cw_dev/deep_read/W170_报告.md`)
+- 批:W170(设计报告 `deep_read/W170_报告.md`(原始件已灭失,2026-09-12 清理))
 - 前置:ADR-0361(P2 同款机制参照)/ ADR-0367(transition_pair 契约)/
   W166 残差定性(strict_mal 13 局中 8 局=never-2-engine 成型局)/
   W161(P1 刷新归零三机制)

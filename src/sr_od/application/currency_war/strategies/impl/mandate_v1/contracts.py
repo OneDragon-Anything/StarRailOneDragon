@@ -18,8 +18,9 @@
   是框架信号,不混进 ops)。
 
 字段级语义/None 语义/来源/消费钩子的权威表 =
-``.debug/temp/currency_war/w583_stage2_contracts/SCHEMA_DRAFT.md`` §四
-(编排者审定版);sim 合成器(GameState→Snapshot)是无损门的第一个消费者。
+w583_stage2_contracts/SCHEMA_DRAFT.md §四(编排者审定版;原始件已灭失
+(2026-09-12 清理),权威表迁移挂账 = flow/projection_contract.md G8);
+sim 合成器(GameState→Snapshot)是无损门的第一个消费者。
 """
 from __future__ import annotations
 

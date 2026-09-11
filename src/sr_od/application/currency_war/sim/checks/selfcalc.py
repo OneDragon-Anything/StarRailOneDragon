@@ -4,7 +4,7 @@
 「自算复核通过才豁免」。本模块 = 各检查器迁移面与 D1-D11 检测器面共用
 的自算判定核(单一源;同判定核两处消费,禁第二实现——先例 = launch 判据
 核 kernel/cw_launch_admission 消费纪律)。输入形状 = 账本行 dict:sim 检查
-器与生产 ``ledger_hooks.merge_round_rows`` 合并行同构(ADR-0593
+器与生产 ``tools/cw/review_skeleton.merge_round_rows`` 合并行同构(ADR-0593
 §4.1);正面先例 = ADR-0564 §G4 roster-diff 差分自算、ADR-0589 执行点
 披露(dec_board_full/dec_bench_2star)。
 
@@ -179,7 +179,7 @@ def seed_identity_review(rows: list[dict], row_idx: int,
                          action: dict) -> str:
     """种子身份自算复核(C7 迁移核;engine_seed 辖域的自算底座)。
 
-    种子语义 = P1 未持有引擎件放行通道(ledger_hooks 判栈注释同义):
+    种子语义 = P1 未持有引擎件放行通道(语义锚 = ADR-0633 种子获取判据):
     复核 = 引擎件(注册表现算)∧ 购买时未持有(前轮末快照 + 同轮更早
     买入)。任一不成立 → mismatch(自报 engine_seed 但机械身份失配,
     即 T-153 C7 的「改标脱离检查网」攻击面显形)。

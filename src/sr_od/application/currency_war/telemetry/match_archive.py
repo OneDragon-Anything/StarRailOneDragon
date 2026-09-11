@@ -107,7 +107,7 @@ log = log_utils.log
 #: 局时间窗纯读派生归局)。旧档案/无计数流经 load_archive 版本检查自动
 #: 重装配补齐(无窗内行 → None=数据缺失;空 dict=局内真实零计数)。
 #: 加法字段。
-#: v7 注(W4 流删退役,r5-migration-plan.md §2 W4/ADR-0650):该顶层字段
+#: v7 注(W4 流删退役,r5-migration-plan.md §2 W4):该顶层字段
 #: 已随流载体 ``cw4_counters.jsonl`` 写端/装配面整体拆除——新装配档案无
 #: 此键;局终级全键聚合收编载体 = 局终域行载荷 ``MatchFinal.cw4_counters``
 #: (档案显影位 ``endgame.match_final.final.cw4_counters``)。**不 bump

@@ -4,8 +4,9 @@
 - 状态:implemented(工作树;commit 候编排者统一门,入库走 committer)
 - 关联:math_proofs P90/P91/P92/P94 行(T-175 设计批命题,轮三对抗审修订版)、
   命题文档 `docs/develop/currency_war/proofs/T-175-设计批-命题与因果链.md` §2/§8、
-  设计正本 `.debug/temp/currency_war/attacks/t175_exit_margin/设计方案.md` §4
-  (v3)、实施设计同目录 `T-263-实施设计.md`、p40-refresh-ev §② R0-1、
+  设计正本 = attacks/t175_exit_margin/设计方案.md §4(v3;原始件滞留 .debug
+  易失区未落位,2026-09-12 清理记档,不作持久索引)、实施设计 T-263-实施设计.md
+  (同前记档)、p40-refresh-ev §② R0-1、
   p54(息线 floor)/p47(L)/p49(跨档压缩恒 0)/merge_mechanics §2.5
 
 ## 背景

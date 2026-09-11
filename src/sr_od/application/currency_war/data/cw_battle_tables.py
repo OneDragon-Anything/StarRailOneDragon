@@ -35,8 +35,8 @@ BOSS_BY_DIR_ROUND: tuple[tuple[int, float, float], ...] = (
 # ===== 节点×轮次胜率阶梯(回退层胜负面单一源;ADR-0308,W31 实测) =====
 # 来源:replay outcomes 语料 plane=1 & killed 非空 & board_before 非空
 # = n=192(killed True 104 / False 88),按 (node_type, round) 统计的
-# killed 胜率——W31 报告(`.debug/temp/currency_war/cw_dev/deep_read/
-# W31_报告.md` §2)。替换旧拍脑袋胜负面:
+# killed 胜率——W31 报告(`deep_read/W31_报告.md` §2,原始件已灭失
+# (2026-09-12 清理))。替换旧拍脑袋胜负面:
 #   battle  方向二元门控(方向已立→胜)——胜率从未按节点实测;
 #   encounter 结构性恒败(p=0);
 #   boss    rung 表 (0, 0, 0.25) + rung2 桶外推(ADR-0306,跨节点

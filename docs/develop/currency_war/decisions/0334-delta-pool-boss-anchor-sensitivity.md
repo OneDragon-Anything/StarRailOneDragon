@@ -83,7 +83,7 @@
      (ADR-0306/0312 先例),否则检查网 anchor_registry_n300 永久
      披露指纹失配,跨批基线核对失去锚点。
 - **验证**(新池 46066bbe90647c02,采样器 v7 内容扩容;单进程串行;
-  报告 `.debug/temp/currency_war/cw_dev/w73_*`):
+  报告 `w73_*(原始件已灭失,2026-09-12 清理)`):
   - 先验:precheck_delta_core_key.py v2(239 配对,core 全可判);
   - 口径复审计:84 killed 已知行异号 0(脚本 w73_pool_diag.py);
   - 扩容预演+池级检查对照:生成器 build_pool 全量 + 旧池 JSON 备份

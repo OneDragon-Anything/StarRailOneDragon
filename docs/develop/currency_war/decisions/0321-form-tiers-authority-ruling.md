@@ -5,7 +5,7 @@
 - 状态:accepted
 - 日期:2026-08-25
 - 背靠:W55 R2 数据修正批 §4-2 提案(报告指针:
-  `.debug/temp/currency_war/cw_dev/deep_read/W55_报告.md` §1「form_tiers 三处
+  `deep_read/W55_报告.md` §1(原始件已灭失,2026-09-12 清理)「form_tiers 三处
   下限未收口」+ §4-2),指挥官批准立项;裁决基调=指挥官 2026-08-25 口述。
 - 落点:`cw_comps.py` 万敌/绯英/黄泉 form_tiers 注释块(W55 已带修正指针,
   本 ADR 为其 why 单一源)+ ADR-0152 加注。

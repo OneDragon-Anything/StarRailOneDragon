@@ -35,7 +35,7 @@ Accepted(2026-08-16;消费端逐口切流[首口 3★ 停手]/J1 影子回放/J2
 
 ## Consequences
 
-- **✅ J1 影子回放完成(2026-08-16 轮17)**:M1-M39 全量 decisions.jsonl 重放(69 持有线窗口,form_progress 代理 = target 阵营 board 覆盖度;comp→plaza_carry 映射节奏曲线)——**阳性覆盖 18/22(82%)死线窗口给出 abandon/amended;阴性组零误弃(0 例);判决点全部在窗口早期(早于人工复盘可辨放弃点)**。三条件全达标。46 窗口因无统计节奏曲线跳过(预注册不灌纪律)。报告:.debug/temp/currency_war/cw_dev/j1_report.md;脚本 j1_shadow_replay.py(进度代理与 comp→carry 映射是 v0 粗口径,正式切流时换 form_progress 真值)。
+- **✅ J1 影子回放完成(2026-08-16 轮17)**:M1-M39 全量 decisions.jsonl 重放(69 持有线窗口,form_progress 代理 = target 阵营 board 覆盖度;comp→plaza_carry 映射节奏曲线)——**阳性覆盖 18/22(82%)死线窗口给出 abandon/amended;阴性组零误弃(0 例);判决点全部在窗口早期(早于人工复盘可辨放弃点)**。三条件全达标。46 窗口因无统计节奏曲线跳过(预注册不灌纪律)。报告:j1_report.md(原始件已灭失,2026-09-12 清理);脚本 j1_shadow_replay.py(进度代理与 comp→carry 映射是 v0 粗口径,正式切流时换 form_progress 真值)。
 - J2(sim_env 注入池枯竭:枯竭局改善+正常局中性须同时成立)待消费端接线窗口。
 - 似然通道成熟度纪律:P0(单/共享池)/L1(结算屏读数)未过则对应通道权重压 0(提案风险 1)。
 - 提案原文删档;决策单一源移本 ADR。

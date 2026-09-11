@@ -3,7 +3,7 @@
 本模块原三判据面(wear_release/keep_policy/endgame_context)系
 「设计先行、接线未做」的占位:自入库(换核批1)起生产调用点为零,
 R189-5 修复池 D-B/D-P3 两项的定谳程序(P7 对账/实机对拍)均未执行;
-已随 equipment 三死判据面退役批物理删除(裁定与考古账=ADR-0649)。
+已随 equipment 三死判据面退役批物理删除(裁定与考古账:原 ADR 档已删,git da3a7370ce 可溯)。
 现行落点:
 
 - D-B 非 key_equips 穿戴释放:生产单一源 = kernel

@@ -111,7 +111,7 @@ guard_seele_scope_enabled` 默认开,关=逐位回 W188 后行为):
   ADR-0293 registry hash 锁同步。
 - sim A/B(n=300 同池 861fc9f6 重放同 seed,A=flag off 精确复现 W188 锚
   never2 9/strict_mal 20/own_gap [136,269]):数字见 W192 报告
-  (`.debug/temp/currency_war/cw_dev/deep_read/W192_报告.md`);
+  (`deep_read/W192_报告.md`(原始件已灭失,2026-09-12 清理));
   希儿系在手件数逐轮 diff 插桩(owned_drop/deployed_drop)为构造性主指标。
 - **sim 边界声明(W190 教训)**:第五卖件通道(`_handle_bench_full` 位置式
   卖出,operations/prep/shop.py:773-805)是实机执行层旁路,sim 不建模执行

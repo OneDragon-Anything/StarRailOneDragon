@@ -93,7 +93,7 @@ A/B 通道,关=回 W170 后行为;`cw_evolution.evolution_step` 完成提案
 - sim A/B(同进程同池 snapshot 861fc9f6,seeds 0-99,inject on,
   flag off/on 配对):never-2 与 own_gap 局数、峰值上场收敛、
   strict_mal/engines2/hp/出口金如实对照——数字见 W174 报告
-  (`.debug/temp/currency_war/cw_dev/deep_read/W174_报告.md`)。
+  (`deep_read/W174_报告.md`(原始件已灭失,2026-09-12 清理))。
 
 ## 影响
 

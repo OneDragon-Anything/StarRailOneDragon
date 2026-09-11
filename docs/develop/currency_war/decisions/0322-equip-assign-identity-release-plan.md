@@ -5,7 +5,7 @@
 - 状态:accepted(计划型 ADR——立框架防届时裸拆,放开动作本身归未来拆分批)
 - 日期:2026-08-25
 - 背靠:W55 R2 数据修正批 §4-3 提案(报告指针:
-  `.debug/temp/currency_war/cw_dev/deep_read/W55_报告.md` §1「到人矛盾
+  `deep_read/W55_报告.md` §1(原始件已灭失,2026-09-12 清理)「到人矛盾
   4 处」+ §4-3);R2 审查 §6「恒等绿无法暴露到人错配」判断;C5 契约
   (A/B 兼容)与 ADR-0310(line_v2 回退开关及删除门槛)。
 - 落点:计划对象 = `cw_comps.py`(`Comp.key_equips`/`derive_key_equips`)

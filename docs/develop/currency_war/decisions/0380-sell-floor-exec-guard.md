@@ -109,7 +109,7 @@ execute_replacement/_engine_completion_tx + _sell_tag 逐笔,池 861fc9f6 重放
 - sim A/B n=300(同池 861fc9f6 导出件重放,seeds 0-299,invest on,
   A=flag off,B=flag on 含件③):主指标=own_gap [136,269] 清零或归因改判/
   benign→mal=0/全指标不回退——数字见 W197 报告
-  (`.debug/temp/currency_war/cw_dev/deep_read/W197_报告.md`)。
+  (`deep_read/W197_报告.md`(原始件已灭失,2026-09-12 清理))。
 - 探针脚本与数据:`.debug/temp/currency_war/w197_comptx/`(w197_probe.py
   因果探针/w197_probe2.py 通道钉死/w197_ab.py A/B + json)。
 

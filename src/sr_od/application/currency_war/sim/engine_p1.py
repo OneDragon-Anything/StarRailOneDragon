@@ -1286,7 +1286,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 值而非轮末——席满/下档判读须与腾席/刷新动作同帧对齐,生产
             # decisions 行同口径)**=====
             # - bench_full_flag:满栏旗标(消费 = 锁#10 D1 弱序量产对账,
-            #   PREREG 兑现链 v3 判读;生产读端 merge_round_rows 按
+            #   PREREG 兑现链 v3 判读;生产读端 review_skeleton.merge_round_rows 按
             #   state.bench_full_flag 消费,sim 侧自此有真值源——W797
             #   不可测项「恒 null」的 sim 收口)。轮内 OR 聚合(生产
             #   merge 同式:「任一决策帧满栏」;bench 在轮内买入段才

@@ -1190,7 +1190,7 @@ class CwLoop(SrOperation):
             _m.exec_state.bail_reason_counts.pop(reason, None)
 
     def _cw4_counters_snapshot(self, session: Any) -> dict[str, int] | None:
-        """策略行为观测计数局终聚合快照(R5 W4 键收编载体,ADR-0650)。
+        """策略行为观测计数局终聚合快照(R5 W4 键收编载体,r5-migration-plan.md §2 W4)。
 
         旧计数流写端已随 W4 流删退役(流文件名一并注销);局终级全键
         聚合现归宿 = 局终域行载荷 ``MatchFinal.cw4_counters``(两收口

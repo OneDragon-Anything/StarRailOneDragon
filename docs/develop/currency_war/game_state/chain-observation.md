@@ -2,7 +2,7 @@
 
 > 本文档所属 = game_state 设计目录,总纲见 [README](README.md)(含 GameState/BoardState
 > 命名对应注)。
-> **内容源声明**:链观察的完整设计正本 = 件 B(`.debug/temp/currency_war/节点链观察-设计v1.md`;该档不入 git,持久裁定锚=账本 dag.jsonl T-217 设计分件裁定记档)。
+> **内容源声明**:链观察的完整设计正本 = 件 B(docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/recovered/节点链观察-设计v1.md;2026-09-11 自 .debug/temp 找回入库,落位清单=recovered/_INDEX.md,持久裁定锚=账本 dag.jsonl T-217 设计分件裁定记档)。
 > 本文是其**对接面精炼**——只写 state 字段、查询接口与遥测挂接,判定与识别细节以
 > 件 B 为准,禁整篇复写。
 

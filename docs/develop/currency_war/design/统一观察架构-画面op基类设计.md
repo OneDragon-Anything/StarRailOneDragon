@@ -30,9 +30,9 @@
 > (高 3/中 6/低 7)就地修订:sim 侧锚行落盘面如实申报(「两域」改
 > 实机先行)、指标 1 闭合公式重构(尝试口径四项)、levelup_landed 改
 > 收编现役 'level_up' 行禁双行、boundary 触发口与公式可测性立 H6/H7。
-> v10 对照说明见 `.debug/temp/currency_war/T-217-流程hook设计v1.md`
+> v10 对照说明见 docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-observation/recovered/T-217-流程hook设计v1.md
 > (R2);对照说明(v5-v9)见
-> `.debug/temp/currency_war/统一观察架构-修订对照说明.md`;
+> docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-observation/recovered/统一观察架构-修订对照说明.md;
 > v11 = 验证段废除(用户裁定 2026-09-10:动作 op 只管机械执行,禁止做
 > 任何验证)——§5.1 六段→五段(验证段删除及规范理由落文),§5.2 联动
 > (备战原型行/事件屏迁移行);v12 = T-223 用户终裁(2026-09-10)落地
@@ -43,7 +43,7 @@
 > §6.5-1 触发前提改观察侧对账承接、§6.3 applied 两域分轨申报(F11)、
 > §1.1/§1.3/§4.3/§5.1/§5.2/§6.6/§9.2/§10.3/§11-R8 引用面联动;§12 流程
 > hook 章本版不动(其旧轴/fire 口引用面联动候锚实现批①,清单见
-> `.debug/temp/currency_war/T-225-交付报告.md`,禁静默改);代码零
+> docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-observation/recovered/T-225-交付报告.md,禁静默改);代码零
 > 触碰——协议变更与执行器验证链拆除同窗落码(批3+批3a)防真空。
 
 ## 0. 名词
@@ -1094,8 +1094,8 @@ sim 侧倒计时实现(归入 §7-T4 收敛纪律)。
 > **开放问题编号解码**:本文正文的 A*/B*/C* 系编号(A1-A10/B1-B5/C1-C2,
 > 如 §3.3-A1/§9.1-B2/§6.6-A7)= 架构起草期的开放问题条目,其一句话
 > 申报与裁决状态的现行单一源 = 配套清单《统一观察架构-开放问题清单》
-> 的「全部开放问题重编号总表」节(`.debug/temp/currency_war/统一观察
-> 架构-开放问题清单.md`;迭代工作文件,终稿归宿随本文头部修订块的
+> 的「全部开放问题重编号总表」节(docs/develop/sr_od/application/currency_war/changes/
+> 2026-09-11-unified-observation/recovered/统一观察架构-开放问题清单.md;迭代工作文件,终稿归宿随本文头部修订块的
 > ADR 化同批治理)。本节 R1-R10 是随本文走稿的风险项编号,与清单内
 > `[R*]` 标注互指同一条目。
 

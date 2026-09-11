@@ -287,7 +287,7 @@ hist 不写不锚;去重键 = (run_id, effective_ord),同序恰一次推进)—�
 推进后 hist;商店面板未定型零写;0q 零类型写——过渡屏链 = 离开位面链,件B v1.2
 §3.1.1 F1 定谳,下位面类型由后继专属屏/备战帧链读链承接)+ ②商店查现行链
 (接口 = `chain_node_type` 预留,cw_board_state.py:1928-1935;消费件B 现行链
-字段 = `.debug/temp/currency_war/节点链观察-设计v1.md` 现行 v1.2;**链写端归
+字段 = `节点链观察-设计v1.md`(落位=recovered/,见 game_state/README.md §5)现行 v1.2;**链写端归
 件B 实施批 B-2/B-3,落地前恒 token=None = 诚实缺位,零内建回落**——降级窗
 申报,M3 走查按「预期空」对待,禁判「接线漏」)+ ③冲突留证(类型两源不一致 →
 obs_event arbitrate,最新直定赢;失配后续备战帧真读解析 → 逻辑层重算覆盖 +
