@@ -37,7 +37,8 @@ registry 属性经 bridge 自带(Q3 坑位①)。
 D-BUYNOTE(修复池执行层附注):M3 升级内嵌 P48 整买纪律
   (``criteria/levelup.spend_unified``,散买 XP 零收益拦截)。
 
-计数键(state_of(session).cw4_counters,登记见 design_telemetry 键节——步4b 新键):
+计数键(state_of(session).cw4_counters;键登记单一源=本清单与写点,原
+design_telemetry 键节已删档,取回口径=ADR-0644——步4b 新键):
 shop_ev_u_unavailable / shop_ev_shop_domain / shop_ev_no_candidate /
 shop_ev_all_vetoed / shop_ev_bench_wait / shop_r1_ev_unavailable /
 shop_visit_idle_gold /
@@ -46,7 +47,8 @@ shop_merge_trigger_truncate;K 空窗回退修复批(2026-09-03 第三病灶)
 增补 shop_k_fallback_p1_gap(空窗帧回退计数);复审返工批
 (FIX_REVIEW_20260903 R3)增补 shop_k_fallback_p1_lock_band(P1 锁线
 过渡带回退计数)/shop_k_fallback_p2plus(P2+ 带回退计数)——三带
-回退分键登记=design_telemetry「复审返工批」节。P86 无目标期三臂判据
+回退分键登记=各键写点(原 design_telemetry「复审返工批」节已删档,取回
+口径=ADR-0644)。P86 无目标期三臂判据
 落码批增补(判据=kernel 三臂;分键独立,禁混入历史 token 计数——
 shop_k_fallback_p2plus 语义重建为「回退采用」,落码后构成=甲臂方向
 采购集):shop_no_target_arm_a_adopted(甲臂方向采用帧)/

@@ -71,8 +71,8 @@ def streak_gold(streak: int) -> int:
 DEFAULT_INTEREST_CAP: int = GOLD_CAP_INTEREST // 10
 
 #: cap 视界上确界(注册表 interest_cap 值域上界 10;消费位按 canonical
-#: 枚举表(design_economy §E4.2)一律消费 cap_sup 而非决策帧现值
-#: cap_resolved(R63-1)。
+#: 枚举表纪律——原 design_economy §E4.2 已删档,取回口径=ADR-0644——
+#: 一律消费 cap_sup 而非决策帧现值 cap_resolved(R63-1)。
 INTEREST_CAP_SUP: int = 10
 
 
@@ -775,7 +775,8 @@ class NodeGoal:
 # MemoryError + 开发期注册表手误(运行时游戏数据不进台账链;未注册策略名静默跳过)→
 # **保留脏表回退比停机更危险**(静默掉回 0126 节奏 = 看着在跑实际在错)。删除;
 # DP 失败/越界 → _expected_level 平滑先验 + adaptive(V4.4 干净先验,非 0126 数值)。
-# 等级基准权威 = 用户口述 §7(economy_research;息引擎优先/§7-13 过渡 lv5-6)+ XP 反推真值。
+# 等级基准权威 = 用户口述定夺(docs/game/currency_war/research/economy.md §7 阶段经济共识;
+# 息引擎优先与中途过渡 lv5-6 条)+ XP 反推真值。
 
 
 def get_node_goal(plane: int, round_num: int, *,

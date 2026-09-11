@@ -1,12 +1,12 @@
-"""cw4 骨架义务执行器(M1-M7)——IMPL_DESIGN §6.4-R 步4,§3 执行序。
+"""cw4 骨架义务执行器(M1-M7)——换核批 1 落地;执行序规格=02_mandate_layer §3。
 
-单一 executor(每备战期骨架 pass),执行序(§3.1):
+单一 executor(每备战期骨架 pass),执行序(02_mandate_layer §3):
 crisis_refresh_invariant(结构位)→ M5(开局板)→ dominance_buy
 (M2 前置支配买入,mandate 邻位)→ M2(线成员买入)→ M4(腾席卖出)
 → M1(同帧部署)→ M3(升级整批)→ M1′(新人口位补部署)→ M6
 (溢余转压库)→ M7(装备转移)。
 
-四硬约束检查点(§3.2 唯一合法拦截集,封闭于①-④):①可负担(金域
+四硬约束检查点(02_mandate_layer §4 唯一合法拦截集,封闭于①-④):①可负担(金域
 g≥c,整批合计)/②席位(board/bench 槽位、等级 cap、同名同星≤1)/
 ③S 预留(整买目标预留金不被非 S 组成动作吃掉;辖 EV 买入面+M6+
 dominance_buy)/④不可逆护栏(卖出线内/骨架/插件件不在骨架动作集)。
@@ -927,7 +927,8 @@ def run_mandate(frame: MandateFrame,
     约定(直调/测试面兼容,生产链经 entry.emit 恒注入);备战栈无 sim
     调用方(ADR-0565 §4),本通道无 sim 路径。
 
-    计数键(state_of(session).cw4_counters,登记见 design_telemetry 键节):
+    计数键(state_of(session).cw4_counters;键登记单一源=下述各键写点注释,
+    原 design_telemetry 键节已删档,取回口径=ADR-0644):
     m2_retry_exhausted / dominance_bench_wait / m6_bench_full /
     m6_overflow_strand / bench_full_buy_abandon(R196 症4 落地:M2 bench
     满放弃买入帧的「bench 满拒买」事件计数,与 m2_retry_exhausted 的

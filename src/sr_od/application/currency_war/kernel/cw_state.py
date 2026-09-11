@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 
-# 卖出回金 = 招募费(cost)× 合成倍数,economy_research.md §2(strategy/)。1星=cost 🟢 BWIKI+4399+用户权威;
+# 卖出回金 = 招募费(cost)× 合成倍数,docs/game/currency_war/research/economy.md §3(卖出退金)。1星=cost 🟢 BWIKI+4399+用户权威;
 # 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」,
 # 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。
 _SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
@@ -1118,7 +1118,7 @@ def _apply_full_bench_merge_buy(bench: list[BenchChar | None],
 
 
 def sell_refund(star: int, cost: int) -> int:
-    """卖出回金(economy_research.md §2(strategy/);用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
+    """卖出回金(economy.md §3 卖出退金(docs/game/currency_war/research/);用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
 
     - 1星 = cost(🟢 BWIKI「按其费用获得回收金币」+ 4399 + 用户,权威;无合成 → 无手续费 → 买卖净0)。
     - 2星 = cost×3、3星 = cost×9、4星 = cost×27(合成成本),**star≥2 且 cost≥2 再 −1 手续费**。
@@ -1126,8 +1126,9 @@ def sell_refund(star: int, cost: int) -> int:
       sell-star 停机钩子 + VLM 读出售按钮「金币+3」)。用户:1费 2星不减、**2费开始才减1**(手续费 cost 相关
       非纯 star)。故 −1 条件 = ``star>=2 and cost>=2``。
     - 🟡 cost≥2 的 −1(2★2费=5)+ 3/4星 仍用户记忆 / 推测,待多 cost live 核;cost=1 各星已定(全额退)。
-      (该置信度分层已在设计件登记并处置:docs/develop/currency_war/archive/design/IMPL_FIX_LEMMAS.md 头注数值锚点行
-      置信度标 + IMPL_DESIGN.md §2.2 line_switch_sell 卖面保守端取值;live 核定检查项=同设计件 §5.4 实机验证阶梯。)
+      (置信度分层处置:卖面 refund 消费按保守端=下界组装(mult×c−fee_hi,fee_hi=1);
+      live 核定通道=单局复盘协议检查项,sr-od-currency-war-dev skill;
+      原设计件 IMPL_FIX_LEMMAS/IMPL_DESIGN 已删档,取回口径=ADR-0644。)
     """
     refund = max(cost, 1) * _SELL_MULT.get(star, 1)
     if star >= 2 and cost >= 2:

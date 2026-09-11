@@ -81,7 +81,8 @@ class CurrencyWarConfig(YamlConfig):
                 "decision_v2 栈已随统一迁移批 ② 删除,合法值=mandate_v1(存量 yml 请改)"
                 "(新核 cw4);请把实例配置里的 strategy_id 改为合法值")
         self.strategy_id: str = strategy_id
-        # ev_arm 臂位(R1-1;§4.2 三臂 A/B:mandate_v1 臂内实验因子——
+        # ev_arm 臂位(R1-1;三臂 A/B 实验设计的 mandate_v1 臂内实验因子,
+        # 实验设计原文已删档,取回口径=ADR-0644——
         # skeleton_only=臂① EV 发射面旁路 / full=臂② 全开)。开发/实验
         # 字段(不进 GUI,仅 yml 调试);legacy 臂(decision_v2)不写该字段。
         ev_arm: str = self.get('ev_arm', 'full')

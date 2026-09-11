@@ -1171,7 +1171,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _streak_amt = LOSS_GOLD_BY_NODE[_prev_node]
             else:
                 _streak_amt = streak_gold(streak)
-            # 利息 flat 分量(前置缺陷 R92-4,IMPL_DESIGN §2.12 前置缺陷清单):
+            # 利息 flat 分量(前置缺陷 R92-4 修复;缺陷登记原文已删档,
+            # 取回口径=ADR-0644):
             # 狸财经狸 interest_flat_per_node=每节点固定息,**与 interest_cap 无关**
             # (EconomyEffect 字段注释语义)——量值与存在性单一源 = cw_investments
             # 注册表(STRATEGY_ECONOMY),sim 侧不另设常量。无持卡/flat=0 时 +0,

@@ -624,7 +624,8 @@ def aggregate_economy(strategy_names: list[str]) -> EconomyEffect:
     买断制 0 单独持有时生效 —— 与其它利息策略并持时游戏取宽值,保守建模取 max 非 min);
     win_reward_mult 取**最大**(不叠乘)。
 
-    五族枚举补全(design_economy §E6 分型登记形态;前置缺陷 R83-1/R85-3):
+    五族枚举补全(分型登记形态;原 design_economy §E6 已删档,取回口径=
+    ADR-0644;前置缺陷 R83-1/R85-3):
     interest_flat_per_node / gold_at_node 族 / gold_at_level 族 /
     xp_click_discount_from_level 族此前在重建枚举中缺席,经 cw_economy
     聚合消费链静默丢值。分型语义=**数值字段加法求和 + 触发配对字段守卫

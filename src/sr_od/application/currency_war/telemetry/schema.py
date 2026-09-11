@@ -77,16 +77,15 @@ def rho_shop_obs(shop: list, pair: str = '') -> dict[str, Any]:
 
 
 
-# ===== F7 / D_ε 判读面观察键(判前锁 v6 挂账行 7/11/13;单一源=
-# docs/develop/currency_war/archive/design/IMPL_DESIGN.md §5.1 行 7/11/13 原文
-# + docs/develop/currency_war/archive/design/design_telemetry.md 对应键节)=====
+# ===== F7 / D_ε 判读面观察键(判前锁 v6 挂账行 7/11/13;键语义单一源=
+# 本文件键声明;清单与登记键节原文已删档,取回口径=ADR-0644)=====
 # 本段是**判读面键名声明**(v6 text 行判据=键名在本文件可检索),
 # 非记录端接线:三键的行为面/计数端载体分别在 decision 层计数器与
 # audit/provisional.py 槽位(判读批只产建议事件,编排器/人工单点注入),
 # 判读器与本文件只消费键名与语义,禁自造第二语义。
 
 F7_CONTINGENCY_ARMED: str = 'f7_contingency_armed'
-"""F7 应急中间姿态独立分键(§5.1 行 7)。
+"""F7 应急中间姿态独立分键(判前锁 v6 行 7,行判据=ab_core_swap._v6_row_specs)。
 
 - 语义:应急期 F7 恢复需求的行为耦合开关——置位=「验收级门红事件
   [速率门∨有效性门] ∧ 归因批未结案」的机械判据,归因结案自动复位;
@@ -98,7 +97,7 @@ F7_CONTINGENCY_ARMED: str = 'f7_contingency_armed'
 """
 
 DEPSILON_ADVISOR_VIOLATION: str = 'depsilon_advisor_violation'
-"""D_ε 顾问违例键 = 实现漂移哨兵(§5.1 行 11;R56-2 定谳)。
+"""D_ε 顾问违例键 = 实现漂移哨兵(判前锁 v6 行 11;R56-2 定谳)。
 
 - 语义:键 >0 ⇔ 门/检测两路实现漂移(检测侧=对遥测快照独立重评检测域
   的瞬时谓词重算,非共享单条谓词函数)。合法态下非豁免族顾问动作发射
@@ -114,7 +113,7 @@ DEPSILON_ADVISOR_VIOLATION: str = 'depsilon_advisor_violation'
 """
 
 F7_EXEMPT_EMISSION: str = 'f7_exempt_emission'
-"""F7 豁免发射计量观察键(§5.1 行 13;R59-1)。
+"""F7 豁免发射计量观察键(判前锁 v6 行 13;R59-1)。
 
 - 计数对象 = 真濒死帧[R40-1 三支完备式,含其与 D_ε 交]上 F7 越过
   D_ε 门的动作发射,分键含真濒死∧D_ε 子态。= R58-1 授权账已追认
@@ -125,7 +124,7 @@ F7_EXEMPT_EMISSION: str = 'f7_exempt_emission'
   恒 0 实现漂移哨兵/默认姿态未覆盖帧凑息卖出计数/应急中间姿态开关,
   均非豁免发射计数(R59-1 分键纪律)。
 - 行为锚:豁免发射帧 `depsilon_advisor_violation` 不计而本键 +1
-  (§6.4⑱(e));授权账追认判读报告含其频度/量级字段。
+  (原设计件测试位⑱(e),原文已删档,取回=ADR-0644);授权账追认判读报告含其频度/量级字段。
 """
 
 F7_DEPSILON_OBS_KEYS: tuple[str, ...] = (
@@ -141,8 +140,8 @@ F7_CONTINGENCY_ARMED_EVENT_FIELDS: tuple[str, ...] = (
     'ts',
 )
 """f7_contingency_armed 置位/复位事件判前锁记录格式字段单一源
-(§5.1 行 7「置位/复位事件进判前锁记录格式(门红事件 id+归因批
-id+时间戳)」;design_telemetry.md 键 f7_contingency_armed 节)。
+(判前锁 v6 行 7「置位/复位事件进判前锁记录格式(门红事件 id+归因批
+id+时间戳)」;键节原文已删档,取回=ADR-0644)。
 
 - 置位事件 = {gate_red_event_id[速率门∨有效性门],
   attribution_batch_id, ts};复位事件 = {结案结论, (a)-(d) 处置分支}

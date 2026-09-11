@@ -1,9 +1,12 @@
-"""cw4 证明层(线选择与终局)——IMPL_DESIGN §6.4-R 步4,④-3 裁决四函数位。
+"""cw4 证明层(线选择与终局)——换核批 1 落地(R189-1 ④-3 裁决四函数位;
+裁决原文已删档,取回口径=ADR-0644)。
 
 规格单一源:
-- IMPL_DESIGN §6.4-R R189-1 ④-3(证明层承载者=cw4/proof 四函数位全套新建,
-  现役件只作对拍锚;decision_v2 属冻结基线臂,改造它=改基线);
-- §2.7(换线 P16 + 停手线)+ §2.7.1(直通线入口注记七条);
+- 证明层承载者=本模块四函数位(should_switch/证据门/stop_buy/signal_arm)
+  全套新建,现役件只作对拍锚;decision_v2 属冻结基线臂,改造它=改基线;
+  换线生命周期/证据门/换线机器现行规格=12_line_and_intention.md;
+- 换线比较器(P16)与停手线判据、直通线入口=12_line_and_intention.md
+  §1-§3;直通线谱系与开局形态=13 号稿 COMP_LIBRARY 域;
 - R192 修注(should_switch 新核臂调用形态钉死):参数解析序 =
   provisional【拟】槽位(THETA/D_MIN/δ 滞回)→ 解析成功:以解析实参调用
   ``kernel/cw_line_switch.should_switch_e`` 比较(比较器签名不加重载、
@@ -16,8 +19,9 @@
   目标件存量)+ D-P4(切线滞回)——共根组 3「线级状态机事件集」的
   cw4 侧载体(事件/滞回字段集中于本模块 ``LineState``,各判据共用)。
 
-计数载体:``state_of(session).cw4_counters``(dict,bridge 每局创建;键登记见
-design_telemetry 键节——本模块产键:theta_unavailable(聚合)+
+计数载体:``state_of(session).cw4_counters``(dict,bridge 每局创建;键登记
+单一源=下方键清单与写点,原 design_telemetry 键节已删档,取回口径=
+ADR-0644——本模块产键:theta_unavailable(聚合)+
 theta_unavailable_theta/_d_min/_delta(成因分桶观察件;聚合与成因
 不同键防混计)/ switchline_skipped /
 switchline_exit_blocked / switchline_no_alt / switchline_no_target /

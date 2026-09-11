@@ -12,8 +12,9 @@
 数学**(判据本体函数零触碰)。
 
 辖外声明:换线判据族(should_switch/回锁窗/干旱计数)=影子面
-(IMPL_DESIGN §3.4 R197 症2 影子面声明),其行为接线=过线后批——本表
-只登记判据面函数位(§4.2.1 三函数位),前提核验随实装接线批落位。
+(R197 症2 裁决:换线权威=意向状态机,本模块只产遥测;02_mandate_layer
+§2/§7 权限划界),其行为接线=过线后批——本表
+只登记判据面三函数位,前提核验随实装接线批落位。
 """
 from __future__ import annotations
 
@@ -220,7 +221,7 @@ class Contract:
 
     precondition: Callable[[ContractCtx], bool] | None
     scope: str     # 辖域声明一句(该判据语境前提的适用面)
-    anchor: str    # 规格锚(IMPL_DESIGN 节/引理号/诊断报告节)
+    anchor: str    # 规格锚(现行文档节/引理号/符号名;历史 IMPL_DESIGN 节号已重锚,映射=ADR-0644)
 
 
 #: (模块, 函数) → Contract。键集与 criteria 全公开函数对拍(静态
@@ -231,43 +232,45 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('buy', 'ev_buy_candidates'): Contract(
         _s_reserve_line_formed,
         'EV 买候选(S 预留消费位):辖 EV 买面,前提=目标线成型',
-        'ZERO_REFRESH_DIAG §3 第 3 条(硬约束③拦截对象列)+IMPL_DESIGN §3.2 ③'),
+        'ZERO_REFRESH_DIAG §3 第 3 条(硬约束③拦截对象列)+02_mandate_layer §4 ③'),
     ('buy', 'ev_buy_veto'): Contract(
         None, 'EV 买否决门(随候选流一体;R7-1 发射面后半)',
-        'IMPL_DESIGN §4.2.1 buy.ev_buy_* 行'),
+        'BYPASS_TABLE 对应行(criteria/__init__.py 单一源;buy.ev_buy_* 行)'),
     # ('buy', 'p2_lock_buy') 契约键已随 P25 占位接管批删除(ADR-0569):
     # 占位函数与 BYPASS_TABLE 行同批清,P25 数值语义唯一载体 = C1 通道
     # 数值支(挂账不落码,设计 §4 P25 行),消双源。
     # —— criteria/sell ——
     ('sell', 'line_switch_sell'): Contract(
         None, '换线塌缩出口:前提=K 已切换(判据自带 k_switched 门)',
-        'IMPL_DESIGN §2.2 sell 行'),
+        '01_math_framework §3.2(卖)'),
     ('sell', 'sell_for_interest'): Contract(
         None, '凑息档 EV 面(T_SEARCH 缺省 fail-closed 自带)',
-        'IMPL_DESIGN §2.2 R20-1'),
+        '01_math_framework §3.2+P41 桶不动资格(R20-1)'),
     ('sell', 'funding_support_sell'): Contract(
         None, '支付支撑通道(两臂同开;触发=金不足自带 gold<need 门)',
-        'IMPL_DESIGN §4.2.1 R13-5/R14-4 行'),
+        '02_mandate_layer §2/§7+BYPASS_TABLE 行(R13-5/R14-4 支付支撑通道)'),
     # —— criteria/levelup ——
     ('levelup', 'arm2_schedule'): Contract(
-        None, 'arm2 调度门(结构守息门,零 λ 依赖)', 'IMPL_DESIGN §4.2.1 行'),
+        None, 'arm2 调度门(结构守息门,零 λ 依赖)', 'BYPASS_TABLE 对应行(门)'),
     ('levelup', 'saturation_floor'): Contract(
         None, '守息线 g*=10×cap_resolved 重导出(interest.saturation_line 单一源)',
-        'IMPL_DESIGN §2.3 R70-1'),
+        '01_math_framework §3.3+interest.saturation_line(R70-1 参数化)'),
     ('levelup', 'spend_unified'): Contract(
-        None, 'P48 整买纪律(M3 义务侧消费)', 'IMPL_DESIGN D-BUYNOTE'),
+        None, 'P48 整买纪律(M3 义务侧消费)',
+        'P48 命题+11_shop_decisions(D-BUYNOTE 修复池编号,原文=ADR-0644 取回)'),
     ('levelup', 'batch_form'): Contract(
-        None, '批量成型判据(M3 义务侧消费)', 'IMPL_DESIGN §2.3'),
+        None, '批量成型判据(M3 义务侧消费)', '01_math_framework §3.3'),
     ('levelup', 'lv9_stop'): Contract(
         None, '等级上限停(历史键名;单一源=注册表 level_max,消费位传'
         '上下文注册表 .level_max,sim 经注入视图;义务侧消费)',
-        'IMPL_DESIGN §2.3'),
+        '01_math_framework §3.3'),
     ('levelup', 'level_spend_blocked'): Contract(
         None, '危机带经验授权让位(候选③;判据自带 ALL IN 豁免与 '
         'hp 不可信 fail-closed,前提恒真)',
         'g_20260904_054904 候选③+P21/P48 λ>0 段(discipline 单一源)'),
     ('levelup', 'pop_slot'): Contract(
-        None, 'D-lv7 OPEN 检查点(满编+富金+候补升 cap)', 'IMPL_DESIGN D-lv7'),
+        None, 'D-lv7 OPEN 检查点(满编+富金+候补升 cap)',
+        'D-lv7 修复池(原文=ADR-0644 取回;现行=本判据与决策迹)'),
     ('levelup', 'levelup_budget_gate'): Contract(
         _budget_gate_ctx,
         'P72 (3) 全段预算闸(ADR-0576;P71-b 溢余段形态全段化):前提='
@@ -278,7 +281,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     # —— criteria/refresh ——
     ('refresh', 'r0_stop'): Contract(
         None, 'R0 维持结构门(结构位,输入=店面快照+金,恒良定义)',
-        'IMPL_DESIGN §4.2.1 R10-3 行'),
+        'BYPASS_TABLE 对应行(R10-3 结构位)'),
     ('refresh', 'r1_start'): Contract(
         _ev_input_from_slot,
         '付费刷新发射位:前提=EV 输入系 provisional V_GAP 槽位现读'
@@ -294,13 +297,13 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         _gold_minus_reserve_ctx,
         '付费刷新预算门:前提=金−预留语境(现读金与预留均在场;'
         'r2 不在硬约束③ S 预留拦截对象列)',
-        'ZERO_REFRESH_DIAG §3 第 3 条(规格辖域)+IMPL_DESIGN §2.4'),
+        'ZERO_REFRESH_DIAG §3 第 3 条(规格辖域)+01_math_framework §3.4'),
     ('refresh', 'crisis_refresh_invariant'): Contract(
         None, 'P36-a 危机不变式(executor 结构位,本域纯数供对拍)',
-        'IMPL_DESIGN §4.2.1 R1-11 行'),
+        'BYPASS_TABLE 对应行(结构不变式;R1-11)'),
     ('refresh', 'hard_node_reinforce_gate'): Contract(
         None, 'D-D 硬节点补强门(结构门,数值加权挂标定批)',
-        'IMPL_DESIGN D-D'),
+        'D-D 修复池(原文=ADR-0644 取回;现行=本判据)'),
     ('refresh', 'r2_card_reserve'): Contract(
         None, 'R2 预算门 Σ预留卡价 ρ 公共单一源(注册表现读纯函数;'
         'R2 门与 P71-b 预算闸同源消费,ADR-0560 提升批)',
@@ -318,28 +321,32 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
     ('stockpile', 'stockpile_buy'): Contract(
         _s_reserve_line_formed,
         'M6 压库买入(S 预留消费位):辖 M6,前提=目标线成型',
-        'ZERO_REFRESH_DIAG §3 第 3 条+IMPL_DESIGN §3.2 ③'),
+        'ZERO_REFRESH_DIAG §3 第 3 条+02_mandate_layer §4 ③'),
     # —— criteria/equipment ——
     ('equipment', 'wear_release'): Contract(
-        None, 'D-B 穿戴释放三态门(M7 消费的判据输入)', 'IMPL_DESIGN D-B'),
+        None, 'D-B 穿戴释放三态门(M7 消费的判据输入)',
+        '18_equip_wear_semantics(D-B 穿戴释放语义)'),
     ('equipment', 'affix_allocation'): Contract(
         None, 'D-F46 零调用面墓碑:词缀分配生产单一源 = '
         'cw_equip_env.resolve_affix_priority_order(cw_op_equip_all 消费);'
         '本函数系孤儿第二实现+死键,已随判据出处纠错批物理删除,'
-        '登记行保留契约枚举完备性', 'IMPL_DESIGN D-F46'),
+        '登记行保留契约枚举完备性', '18_equip_wear_semantics(D-F46 词缀分配)'),
     ('equipment', 'keep_policy'): Contract(
-        None, '近兑现距离绝不喂(P42 ③ 零参数公理)', 'IMPL_DESIGN §2.6'),
+        None, '近兑现距离绝不喂(P42 ③ 零参数公理)', '01_math_framework §3.6'),
     ('equipment', 'endgame_context'): Contract(
-        None, 'D-P3 收尾段语境输入(r_remaining 现读)', 'IMPL_DESIGN D-P3'),
+        None, 'D-P3 收尾段语境输入(r_remaining 现读)',
+        'D-P3 修复池(原文=ADR-0644 取回)'),
     # —— 第七面「换线」(proof 判据面函数位;影子面,前提核验随实装
     #    接线批落位——见模块 docstring 辖外声明)——
     ('proof', 'stop_buy'): Contract(
-        None, '停买谓词(分类,非发射;输入=K/持有名单)', 'IMPL_DESIGN §4.2.1'),
+        None, '停买谓词(分类,非发射;输入=K/持有名单)',
+        'BYPASS_TABLE 对应行(谓词)+02_mandate_layer §3'),
     ('proof', 'should_switch'): Contract(
         None, '换线事件发射位(影子面:登记遥测,不写 target_comp)',
-        'IMPL_DESIGN §4.2.1 R197 症2 行'),
+        'BYPASS_TABLE 对应行(换线事件影子面;R197 症2 换线权威=意向状态机)'),
     ('proof', 'signal_arm'): Contract(
-        None, '直通信号臂(两臂同开,证明层状态驱动)', 'IMPL_DESIGN §4.2.1 R11-3 行'),
+        None, '直通信号臂(两臂同开,证明层状态驱动)',
+        'BYPASS_TABLE 对应行(两臂同开;R11-3 直通信号臂)'),
     # —— 三先例的非 criteria 消费位 ——
     ('mandate', 'dominance_buy'): Contract(
         _s_reserve_line_formed,
@@ -347,7 +354,7 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'dominance_buy,其金位面实接线为结算线地板(shop.check_settlement_'
         'line,截断口径),与 s_reserve 可变现口径不同源不同面,'
         '非 mandate.check_s_reserve 消费位(T-193;ADR-0624)',
-        'ZERO_REFRESH_DIAG §3 第 3 条+IMPL_DESIGN §3.2 ③'),
+        'ZERO_REFRESH_DIAG §3 第 3 条+02_mandate_layer §4 ③'),
     ('mandate', 'core_single_card_buy_eligible'): Contract(
         _core_channel_locked_ctx,
         'C1 直通核心卡支配性支资格门:前提=锁线态(锁定采购集实解析在'
@@ -376,18 +383,19 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '供给在场而回退解析空集即违例(p1 带恒违例;p2plus 带无来源'
         '证据的空集违例)',
         'SEEDS_EMPTY_LEDGER_DIAG §3/§4(2026-09-03 第三病灶裁定)'
-        '+FIX_REVIEW_20260903 ②旧核缺口 1/2/3+IMPL_DESIGN §4.2.2 规格补注'
+        '+FIX_REVIEW_20260903 ②旧核缺口 1/2/3'
+        '+K 空窗回退规格补注(原 IMPL_DESIGN §4.2.2 R198b 标,ADR-0644)'
         '+P86 证明批 §4.6(带维度非对称期待)'),
 }
 
 
 def ensure_contract(fn_key: tuple[str, str], ctx: ContractCtx,
                     counters: dict | None = None) -> bool:
-    """判据契约核验(接线消费位入口;IMPL_DESIGN §4.2.2)。
+    """判据契约核验(接线消费位入口;纪律单一源=本模块 CONTRACTS)。
 
     返回 True=前提成立,判据照常求值/发射;False=前提不成立,该判据
     本帧**弃权** + ``criteria_contract_violation:<模块>.<函数>`` 计数
-    (键登记=design_telemetry 文末 R198 节,分键=判据名)。
+    (键写点=本函数计数器,分键=判据名;登记节原文已删档,取回=ADR-0644)。
 
     fail-closed 不抛异常不断局:键未登记(注册完备性缺口)与谓词异常
     均按违例处置(弃权+计数),由消费位跳过该判据本帧求值。

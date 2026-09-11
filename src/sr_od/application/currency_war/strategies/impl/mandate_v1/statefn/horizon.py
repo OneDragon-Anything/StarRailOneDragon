@@ -1,6 +1,6 @@
 """视界层:R_全局/R_剩余/R_截(schedule_of 单一源消费)+ Δ息流̂ 增量算子。
 
-单一源纪律(IMPL_DESIGN §6.1 / R3-2 定理 L-R3-2):长度唯一真值源 = 生产
+单一源纪律(R3-2 定理 L-R3-2;ADR-0366/0368 位面轮次单一源):长度唯一真值源 = 生产
 ``cw_plane_table.schedule_of(session)``(session 表真值,P3 进表自适应、脏表
 夹 [1,9];sim 引擎同源喂 plane_lengths_seen,两路共用同一消费函数)。
 **本层禁新建任何长度常量**——PLANE_LENGTHS_TRUTH 冻结元组形态已处死

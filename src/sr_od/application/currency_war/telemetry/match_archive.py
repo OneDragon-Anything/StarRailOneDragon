@@ -1326,7 +1326,8 @@ def record_cw4_counters_snapshot(replay_dir: Path | str,
     """落一行行为观测计数局终快照(``cw4_counters.jsonl`` 写端唯一入口)。
 
     - 数据源 = 局内 session 的 ``cw4_counters``(策略侧计数载体,键登记
-      见 strategies/impl/mandate_v1/design_telemetry 键节;sim 侧抽取
+      单一源 = strategies/impl/mandate_v1 各写点注释(原 design_telemetry
+      键节已删档,取回口径=ADR-0644);sim 侧抽取
       先例 = ab_core_swap.cw4_disclosure_from_session,本写端落**全量**
       键——披露键族是它的子集,归档面不预筛,筛桨留给消费端)。
     - 调用时序契约:必须在局终 runs summary **之前**写(行 ts 参与归局

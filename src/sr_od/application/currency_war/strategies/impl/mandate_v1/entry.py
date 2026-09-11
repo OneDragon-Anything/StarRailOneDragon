@@ -1,14 +1,15 @@
 """cw4 决策入口(entry 三遍编排 + 帧稳定截断发射器)。
 
-IMPL_DESIGN §6.4-R 步4 / R189-4 结构签名:
+换核批 1 结构签名(R189-4;迁移序原文已删档,取回口径=ADR-0644):
 
     def _emit(turn) -> list[PrepAction]:
         actions += self._mandate_pass(turn)    # 骨架动作流,逐条 mandate=True
         actions += self._criteria_pass(turn)   # EV 追加动作流,mandate=False
         return truncate_frame_stable(actions)  # 帧稳定截断(契约 v2 §3.2)
 
-三遍编排(§3.1):证明 pass → 升档器求值位 → 骨架 pass → EV pass。
-ev_arm 模式参数(skeleton_only/full,R1-1)决定 EV 发射面旁路集(§4.2.1)
+三遍编排(02_mandate_layer §3 骨架执行序):证明 pass → 升档器求值位 → 骨架 pass → EV pass。
+ev_arm 模式参数(skeleton_only/full,R1-1)决定 EV 发射面旁路集
+(criteria/__init__.py BYPASS_TABLE 单一源)
 并写遥测行(bridge 侧)。
 
 truncate_frame_stable 判 = 契约 v2 §3.2 备战线域 18 类逐类表(词表
@@ -28,10 +29,11 @@ EV 卖面全部系 bench 域操作(画面零迁移,契约 §2 可续),而骨架�
 意图(OpenShop)系截断点;EV 卖面插到首个截断点/终点动作**之前**
 (``_merge_ev_before_frame_end``),否则换线生效帧(M2 对新线缺口发
 OpenShop 的典型帧)的塌缩出口发射会落在截断点之后被静默丢弃
-(IMPL_ADV_R197 症1;IMPL_DESIGN §3.4「EV 只追加」的追加面=发射
+(IMPL_ADV_R197 症1;「EV 只追加」的义务先行语义=02_mandate_layer §2/§7
+权限划界,其追加面=发射
 组织面,执行序按依赖拓扑承载)。截断器丢弃尾动作一律计数
-``emitter_post_truncation_dropped``(零静默披露;登记=design_telemetry
-键节 R197 补登行)。
+``emitter_post_truncation_dropped``(零静默披露;键写点=本模块计数器,
+登记节原文已删档,取回口径=ADR-0644)。
 
 R197 修复批(症2)影子面声明:A/B 期换线权威 = decision_v2 意向状态机
 (方向重估经 flow 层方向刷新,ADR-0583 内化,两臂同源恒等);本模块
@@ -220,8 +222,9 @@ def truncate_frame_stable(actions: list[PrepAction],
     逐动作判「本动作执行后的画面状态能否静态推出」:可续/条件续 →
     继续发射;截断点 → 该动作作为序列最后一个动作发出;终点 → 序列
     终点(其后必须截断);unknown(词表外/无分类)→ fail-closed 截断
-    + 计数披露(``emitter_unknown_action_truncated``,键登记见
-    design_telemetry 键节——契约禁成遥测键第二登记源)。
+    + 计数披露(``emitter_unknown_action_truncated``;键登记单一源=
+    本写点,原 design_telemetry 键节已删档、取回口径=ADR-0644——
+    契约禁成遥测键第二登记源)。
 
     conditional 类的复检(R196 症5,契约 §3.2 依据列「名-槽一致性复检/
     前序累积静态推出,推不出即截断」):
@@ -716,7 +719,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                       if isinstance(e.action, SellBench)}
         missing = [m for m in k_members
                    if m not in set(bench_names) | set(deployed_names)]
-        # 判据契约核验(IMPL_DESIGN §4.2.2):前提不成立 ⇒ 本帧弃权
+        # 判据契约核验(单一源=criteria/contracts.py):前提不成立 ⇒ 本帧弃权
         # + criteria_contract_violation 计数,禁静默执行
         if missing and state is not None and contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
@@ -985,13 +988,13 @@ def _reconcile_posture_authorization(session: StrategySession,
 
 def _merge_ev_before_frame_end(skeleton: list[Emitted],
                                ev: list[Emitted]) -> list[Emitted]:
-    """EV 卖面与骨架动作的依赖拓扑合并(R197 症1;IMPL_DESIGN §3.1)。
+    """EV 卖面与骨架动作的依赖拓扑合并(R197 症1;执行序=02_mandate_layer §3)。
 
     EV 卖面(line_switch_sell/funding_support 的 SellBench)系 bench 域
     操作(画面零迁移,契约 §2 可续类);骨架的开店意图(OpenShop)系
     截断点。合并规则:EV 发射整体插到骨架序列中**首个截断点/终点动作
     之前**,骨架内部相对序与 EV 内部序均不变;骨架无截断点/终点 ⇒ EV
-    追加尾部(与 R196 前行为一致)。「EV 只追加」(§3.4)的追加面=
+    追加尾部(与 R196 前行为一致)。「EV 只追加」(02_mandate_layer §7 权限划界)的追加面=
     发射组织面;执行序按依赖拓扑承载——不重排则换线生效帧(K 已翻为
     K′、新线有缺口 ⇒ M2 发 OpenShop 的典型帧)的塌缩出口发射全部落
     在截断点之后,被截断器静默丢弃(IMPL_ADV_R197 症1)。
@@ -1034,7 +1037,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     _mm_dedup: set[str] = set()
     out: list[Emitted] = []
     # line_switch_sell(换线塌缩出口:k_switched 时对旧线件重评;
-    # 契约核验=IMPL_DESIGN §4.2.2,前提不成立 ⇒ 本帧弃权+计数;
+    # 契约核验(单一源=criteria/contracts.py),前提不成立 ⇒ 本帧弃权+计数;
     # 拒因分键接线(D1 整改):本位曾静默 continue,现同键计数显影)
     if contracts.ensure_contract(
             ('sell', 'line_switch_sell'),

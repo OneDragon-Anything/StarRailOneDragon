@@ -1,4 +1,5 @@
-"""【拟】未标定项 fail-closed 开关注册表(design_economy §E4.0 第 3 条)。
+"""【拟】未标定项 fail-closed 开关注册表(01_math_framework §6 第 3 形态;
+原 design_economy §E4.0 第 3 条已删档,取回口径=ADR-0644)。
 
 静态登记 NMF §3.3 清单(批时快照)+ 换线/升档器后补槽位
 (θ/D_min/δ/χ/p_rec/血线阈值/N_crisis 等)。**计数口径单一声明(IMPL_ADV_R194
@@ -23,8 +24,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class CalibValue:
-    """标定注入值(带 CI;端点选择随消费位走——组-端对照 design_economy
-    §E4.1,注入不预取端)。``injected_form=True`` = 注入形态(非生产开闸口径)。"""
+    """标定注入值(带 CI;端点选择随消费位走——组-端取端纪律,原 design_economy
+    §E4.1 组-端对照表已删档,取回口径=ADR-0644,注入不预取端)。``injected_form=True`` = 注入形态(非生产开闸口径)。"""
 
     value: float
     ci_lo: float | None = None

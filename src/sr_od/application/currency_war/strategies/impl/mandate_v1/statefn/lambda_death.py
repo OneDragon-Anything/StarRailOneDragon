@@ -1,6 +1,7 @@
 """λ_death 分层表(PL 键位面键)+ 区间敞口比较 + 差分复合项(第三口)。
 
-单一源与键结构(IMPL_DESIGN §1 lambda_death 行,R26-H1 重写):
+单一源与键结构(PL 键=位面键,R26-H1 重写;键结构与消费语义以
+P51_V3_REBUILD v3.3+本模块为单一源):
 - 加载对象 = P51 v3.3 **PL 键(位面键)主表**:键 = 难度带(2)×血带(3)×
   位面(P1/P2+)×节点类型(4),共 48 格(非空 38 / 空格 10);板面/bench 维
   **不入键**(PL 键实证,旧 v3.1/v3.2 板面键表系对照存档,禁再被消费位引用)。
@@ -9,7 +10,7 @@
   与空格回退处置)。**启动必载**(R2-4):import 时即加载;加载失败或格值
   None = 运行时损坏守卫 + 报警,不作合法缺省姿态(P51 工件主表采集物带 CI,
   连续模型标定后退役)。
-- λ 合法消费形态(P51 §5-11 / IMPL_DESIGN §2.0-2):区间敞口比较 + 保守端
+- λ 合法消费形态(P51 §5-11 / 00_framework §6 λ 表使用纪律):区间敞口比较 + 保守端
   + 单调约束;禁边际引用、禁闸门;阈值类消费一律扫描带形态(辖未来新消费位,
   现存消费位=空集,R30-4)。本模块对外只暴露:
   ① λ CI 端点查询(lambda_ci / cell)②区间敞口比较 API(布尔)③差分复合项
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
 #: 表工件路径(与本模块同目录 data/ 下;启动必载,R2-4)
 _TABLE_PATH: Path = Path(__file__).parent / 'data' / 'lambda_death_pl_v33.json'
 
-#: 血带边界(IMPL_DESIGN §1 lambda_death 行:hp≤15 / 15<hp≤40 / hp>40;
+#: 血带边界(PL 键血带维=P51_V3_REBUILD v3.3 键结构:hp≤15 / 15<hp≤40 / hp>40;
 #: hp 入路由键与「hp 不作因果输入」两条分写并存——用户裁定二,R27-3)
 HP_BAND_NEAR_DEATH: int = 15
 HP_BAND_MID: int = 40
@@ -161,8 +162,8 @@ def lambda_ci(key: str | None) -> tuple[float, float] | None:
 
     仅 ``可消费`` 格返回端点;禁用/仅方向/空格/域外 → None(消费端 fail-closed)。
     消费纪律:端点随消费位分键(λ̄_detection/λ̄_gate 同端不同计数值域,R52-2/
-    R55-1 定谳两端同取 CI 下端;卖面 V_power 系数取 CI 上端——组-端对照
-    design_economy §E4.1)。**本函数只供 statefn 层内部与已登记复合形态消费**,
+    R55-1 定谳两端同取 CI 下端;卖面 V_power 系数取 CI 上端——组-端取端纪律,
+    原 design_economy §E4.1 组-端对照表已删档,取回口径=ADR-0644)。**本函数只供 statefn 层内部与已登记复合形态消费**,
     判据模块禁自持端点构造 d̂(R19-3)。
     """
     c = cell(key)

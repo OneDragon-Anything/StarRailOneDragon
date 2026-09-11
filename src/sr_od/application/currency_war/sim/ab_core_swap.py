@@ -53,8 +53,9 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.bridge import (
 )
 
 #: 标定批 V1 注入值(V̄_net;值/出处/方法/状态的单一叙述源 =
-#: docs/develop/currency_war/archive/redesign/reports/core_swap/CALIB_REPORT.md 与 design_telemetry
-#: 「标定批」节;此处只做显式注入通道,禁散落第二处数值推导)。
+#: docs/develop/currency_war/archive/redesign/reports/core_swap/CALIB_REPORT.md(诊断报告族,
+#: 已退出工作树,处置候裁见 ADR-0644 §5)与原 design_telemetry
+#: 「标定批」节(取回口径=ADR-0644);此处只做显式注入通道,禁散落第二处数值推导)。
 #: 墓碑纪律(ADR-0516):V_GAP/V_MS 槽位的**行为面已随 V̄ 链退役**
 #: (值消费端清零)——本注入通道仅存 = 历史标定批形态的复现口径,
 #: formal AB 双臂已无行为差;注入改动的只有 sim 判前锁守卫的读数
@@ -342,7 +343,8 @@ def record_formal_ab_exemption(slot: str, ruling: str) -> None:
 def record_batch_event(event_id: str) -> None:
     """登记一个批事件(标定批/开闸批/落码批验收时刻)。
 
-    事件 id 约定(与 IMPL_DESIGN §5.1 v6 清单行 3/8/9/12 对应):
+    事件 id 约定(对应本模块 ``_v6_row_specs`` 行 3/8/9/12 的时间戳序
+    判据;清单原文已删档,取回口径=ADR-0644):
     ``theta_calib`` / ``p_open`` / ``eta_theta_calib`` / ``chi_calib`` /
     ``switchline_anchor_batch`` / ``bandwidth_calib`` 等;重复登记以首次
     为准(批边界不可漂移)。
@@ -398,12 +400,12 @@ def _text_of(rel: str) -> str:
 
 
 def _v6_row_specs() -> list[dict[str, Any]]:
-    """§5.1 判前锁 v6 挂账单一源清单的逐行可执行判据。
+    """判前锁 v6 挂账清单的逐行可执行判据(本函数=清单现行单一源)。
 
-    行号/条目=IMPL_DESIGN §5.1「判前锁 v6 挂账单一源清单」(R44-7;
-    16 行)+ 行 17(V_GAP 事故防护,IMPL_ADV_R200 症4 落地——v6 判前
-    锁清理批;清单单一源纪律:新增挂账条目入 §5.1 本表,本函数为可
-    执行镜像)。check 类型:``text``=仓库文本锚(自动);``mark``=文档/
+    行号/条目承自已删档设计件 §5.1 清单(R44-7;16 行)+ 行 17(V_GAP
+    事故防护,IMPL_ADV_R200 症4 落地——v6 判前锁清理批;本函数=该
+    清单的可执行镜像与现行单一源,新增挂账条目入本函数;原文取回
+    口径=ADR-0644)。check 类型:``text``=仓库文本锚(自动);``mark``=文档/
     流程证据的人工申报(``record_v6_landing``);``order``=批事件时间
     戳序(类条款行,R94-6:对账时点=该事件所在批验收时点,事件未到期
     不阻塞 v6 声明/正式 A/B,已到期则序违=未落地);``calib``=运行时
@@ -590,7 +592,8 @@ def require_v6_green_for_formal_ab() -> dict:
     """正式 A/B 入口判前锁 v6 检查单(未全绿 raise)。
 
     未落地(含序违)任一行 ⇒ raise——本批 sim 数据不得进 ab_judge 判读
-    门(IMPL_DESIGN §5.1 R19 硬前置的代码化);「未到期(类条款)」行
+    门(R19 验证缺口「判读前硬前置」条款的代码化,原文取回=ADR-0644);
+    「未到期(类条款)」行
     不阻塞(R94-6:对账时点=该事件所在批验收时点)。行 17(症4)把
     2026-09-03 零刷新事故的最小充分条件代码化:V_GAP=None 开 formal
     A/B 且无显式豁免批文 ⇒ 红。返回检查单全文 + prereg 落档块
@@ -600,8 +603,7 @@ def require_v6_green_for_formal_ab() -> dict:
     bad = [r for r in rows if r['status'].startswith('未落地')]
     if bad:
         raise RuntimeError(
-            '判前锁 v6 检查单未全绿,正式 A/B 不得开跑(IMPL_DESIGN '
-            '§5.1 R19 硬前置): '
+            '判前锁 v6 检查单未全绿,正式 A/B 不得开跑(判读前硬前置): '
             + '; '.join(f"行{r['row']}:{r['item']}" for r in bad))
     return {'rows': rows, 'ok': True,
             'prereg_manifest': formal_ab_prereg_manifest()}

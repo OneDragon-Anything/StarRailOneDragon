@@ -1,4 +1,5 @@
-"""货币战争新核包(mandate_v1 换核,IMPL_DESIGN §6.4-R 步 2 批)。
+"""货币战争新核包(mandate_v1 换核,statefn 层先行批;换核迁移序原文已删档,
+取回口径=ADR-0644)。
 
 落位(策略统一迁移批):``decision/cw4/`` 整体迁入 ``strategies/impl/mandate_v1/``(编号承 cw3 谱系);
 strategy_id=``mandate_v1``。本批只落 statefn 状态函数层(NMF §2 的 22 项
@@ -6,7 +7,7 @@ strategy_id=``mandate_v1``。本批只落 statefn 状态函数层(NMF §2 的 22
 判据(criteria)/骨架(mandate)/证明(proof)/入口(entry)/桥(bridge)随
 换核批 1 落地,不在本包内预留空壳。
 
-依赖方向单向(IMPL_DESIGN §1):入口 → 判据/义务 → 状态函数 → 数据注册表;
+依赖方向单向(01_math_framework §1 定位与权限总图):入口 → 判据/义务 → 状态函数 → 数据注册表;
 本包内部:statefn 只 import 数据/内核注册表(cw_chars/cw_shop_odds/cw_economy/
 cw_plane_table/cw_state/cw_comps)与同层 statefn 模块,禁回调 op 层与判据层。
 禁相对导入(项目 AGENTS 硬约束)。
