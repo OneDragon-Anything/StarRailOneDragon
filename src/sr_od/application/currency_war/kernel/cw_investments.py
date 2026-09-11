@@ -129,6 +129,14 @@ class EconomyEffect:
                                           # 不入经济账,仅本注释留档)
     refresh_shop_rewrite_every_3cost: int = 0  # 市场干预(银):下一次和每 4 次刷新全 3 费面
                                           # (池构成族突变旗标字段;5 次免费刷走 free_refresh_burst)
+    # —— 词缀源效果字段(敌人词缀改写源;结构化注册 =
+    #    kernel/cw_affix_effects.AFFIX_EFFECT_SPECS,非策略源——不经
+    #    STRATEGY_ECONOMY 键空间、不经 aggregate_economy 聚合通道)——
+    xp_click_surcharge_from_level: int = 0        # 成长的烦恼:该级起每次购经验多付金(配对字段 below)
+    xp_click_surcharge_from_level_at: int = 0     # 触发等级(8);镜像 xp_click_discount_from_level 对
+    hp_max_loss_pct_of_loss: int = 0              # 永久创伤:每损失生命值的同值百分比计入生命上限损耗
+                                          # (仅建档,不进经济分——gold_per_20hp_lost 同先例)
+    hp_max_loss_cap_pct: int = 0                  # 生命上限损耗上限(原生命上限百分比基准;永久创伤=60)
 
 
 def is_blood_economy(eff: EconomyEffect | None) -> bool:

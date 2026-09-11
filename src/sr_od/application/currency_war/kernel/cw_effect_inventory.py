@@ -36,7 +36,7 @@ class TriggerKind(StrEnum):
     BATTLE_END = 'battle_end'      # 战斗结算时(气氛组系)
     LEVEL_UP = 'level_up'          # 升级时(节节高升;商业间谍战场段)
     ON_REFRESH = 'on_refresh'      # 每次刷新时(淘金客/概率事件/采购专员计数)
-    ON_MERGE = 'on_merge'          # 合成时(武力刷新)
+    ON_MERGE = 'on_merge'          # 合成时(武力刷新=合成装备时,官方限定;角色升星是否同触发面待裁决——BoardState 设计 §5 星星相印)
     ON_SELL = 'on_sell'            # 出售时(降本增效语义面)
     SUPPLY_PHASE = 'supply_phase'  # 补给阶段
     CONDITIONAL = 'conditional'    # 条件窗口(躺平冻结/经验就是财富改道/成长基金到级)
@@ -76,6 +76,8 @@ class BattlefieldEffect:
     board_rewrite: str = ''                 # 板面重写语义('upgrade_all_cost+1'/'sell_all'/…)
     bench_reroll: str = ''                  # 备战席区间重掷(乱成一锅粥族;未建条目)
     counter_every: int = 0                  # 每 N 次刷新计数门槛(采购专员金 7/彩 5)
+    first_merge_equip_junk: float = 0.0     # 每位面首次合成进阶装备变垃圾袋概率(变宝为废=0.5;
+                                            # 随机面→不建逻辑写,观察收口)
 
 
 @dataclass(frozen=True)
@@ -120,6 +122,15 @@ class CounterKey:
     BUY = 'buy'           # 购买计数(返利系每 3 张 5 费)
 
 
+# ===== 效果来源词表(ActiveEffect.source 取值;防散落字符串)=====
+# 辖域:策略源=选卡登记(register_strategy);词缀源=敌人词缀改写源,结构化
+# 注册=kernel/cw_affix_effects.AFFIX_EFFECT_SPECS(register_affix 登记);
+# 环境源=投资环境辖域,登记端未建(schema 预留值)。
+SOURCE_STRATEGY: str = 'strategy'
+SOURCE_PORTAL: str = 'portal'
+SOURCE_AFFIX: str = 'affix'
+
+
 # 事件标记键(追踪端标记,非策略计数器;下划线前缀与策略计数器空间隔离)
 _EVENT_LEVEL_UP = '_event_level_up'
 _EVENT_BATTLE_END = '_event_battle_end'
@@ -129,8 +140,9 @@ _EVENT_BATTLE_END = '_event_battle_end'
 class ActiveEffect:
     """一条在场效果实例(spec + 来源 + 登记时点 + 余期/计数器)。"""
     spec: EffectSpec
-    source: str                # 'strategy' | 'portal' | 'affix'(P0 只产 'strategy',
-                               # 后两值是环境源/词缀源辖域的 schema 预留)
+    source: str                # 取值=SOURCE_* 词表('strategy'/'portal'/'affix');
+                               # strategy=策略源,affix=词缀源(登记端 register_affix),
+                               # portal=环境源(登记端未建,预留值)
     acquired_t: int | None     # 登记时点;节点序 = (plane-1)*9+round,**基 1**;
                                # 登记期快照(与 cw_loop _now_t 同式)
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
@@ -161,22 +173,48 @@ class ActiveEffectInventory:
         self._last_tick_node: int | None = None
 
     # —— 登记端 ——
-    def register_strategy(self, spec: EffectSpec, acquired_t: int | None) -> ActiveEffect:
-        """策略获得 → 入清单。acquired_t 坐标系见 ActiveEffect.acquired_t。
-
-        余期播种双轨:N_NODES → remaining_nodes=duration_nodes;
+    @staticmethod
+    def _seed_progress(spec: EffectSpec) -> tuple[int | None, int | None]:
+        """余期播种双轨(登记端共用):N_NODES → remaining_nodes=duration_nodes;
         duration_uses>0 → remaining_uses=duration_uses(次数类,免战牌首例,
         §3.2.19)。两类维度同装一条记录(§5.1 账本形状),互不排斥。
         """
+        return (
+            spec.duration_nodes if spec.duration == DurationKind.N_NODES else None,
+            spec.duration_uses if spec.duration_uses > 0 else None,
+        )
+
+    def _register(self, spec: EffectSpec, source: str,
+                  acquired_t: int | None) -> ActiveEffect:
+        """登记端共用体:spec + 来源 + 登记时点入清单(acquired_t 坐标系见
+        ActiveEffect.acquired_t;余期播种见 _seed_progress)。"""
+        remaining_nodes, remaining_uses = self._seed_progress(spec)
         entry = ActiveEffect(
-            spec=spec, source='strategy', acquired_t=acquired_t,
-            remaining_nodes=spec.duration_nodes if spec.duration == DurationKind.N_NODES else None,
-            remaining_uses=spec.duration_uses if spec.duration_uses > 0 else None,
+            spec=spec, source=source, acquired_t=acquired_t,
+            remaining_nodes=remaining_nodes, remaining_uses=remaining_uses,
         )
         self.entries.append(entry)
         return entry
 
+    def register_strategy(self, spec: EffectSpec, acquired_t: int | None) -> ActiveEffect:
+        """策略获得 → 入清单。"""
+        return self._register(spec, SOURCE_STRATEGY, acquired_t)
+
+    def register_affix(self, spec: EffectSpec, acquired_t: int | None) -> ActiveEffect:
+        """词缀效果获得 → 入清单(source=affix;结构化注册 =
+        kernel/cw_affix_effects.AFFIX_EFFECT_SPECS,spec.id = 词缀名)。
+
+        生产登记挂点(简报/位面详情词缀读链)未接线——接线归词缀消费批;
+        接线前词缀改写面一律观察覆盖兜底,本方法只承诺登记语义与策略源
+        同轨(余期播种/推进/到期共用同一套挂点逻辑)。
+        """
+        return self._register(spec, SOURCE_AFFIX, acquired_t)
+
     # —— 查表端(形状保证;决策消费归后续)——
+    def by_source(self, source: str) -> list[ActiveEffect]:
+        """按来源词表(SOURCE_*)过滤——词缀源读端(消费接线归后续)。"""
+        return [e for e in self.entries if e.source == source]
+
     def by_category(self, category: EffectKind) -> list[ActiveEffect]:
         return [e for e in self.entries if e.spec.category == category]
 
