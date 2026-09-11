@@ -5,7 +5,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 # 货币战争开发·维护·自主推进
 
-> 读者 = 无会话历史的干净智能体。本 skill 是 CW 的操作手册:知识在哪、按什么纪律改、用什么验证、实机怎么运维。**入口先分诊**(按当次任务定位主场与该走的门),门指向各域 references 的主线(策略=strategy-work 流水线,sim=sim-testing 三步+边界)——没走完主线不算完成。正文只留每轮要锚定的判据;细则按节下沉 `references/`(按需读),决策依据在 `design/decisions/`。
+> 读者 = 无会话历史的干净智能体。本 skill 是 CW 的操作手册:知识在哪、按什么纪律改、用什么验证、实机怎么运维。**入口先分诊**(按当次任务定位主场与该走的门),门指向各域 references 的主线(策略=strategy-work 流水线,sim=sim-testing 三步+边界)——没走完主线不算完成。正文只留每轮要锚定的判据;细则按节下沉 `references/`(按需读)。
 
 ## 入口分诊(按当次任务定位;「门」=该任务的硬判据)
 
@@ -19,7 +19,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | 阵容知识提炼 / 修订 / 版本重跑 | compo-knowledge(证据三层;先读再动) | compo-knowledge |
 | 数据采集 / 版本重采 / 新字段建模 | §单一源地图·数据行(权威序;生成器分层) | data-collection |
 | 自主推进(定时任务提醒 / worker 汇报与交付验收 / 哨兵报警响应 / 对抗) | 事件驱动模式 = od-dev-agent-autonomous-mode(公共 skill);CW 叠加细则 → autonomous-loop.md,各域交付按所属域主线验收 | autonomous-loop |
-| ADR / as-built 维护 | §文档同步(三同步) | — |
+| ADR / as-built 维护 | §文档同步 | — |
 | 未命中任何行(任务不属上表) | 大概率非 CW 专属:按任务性质走对应公共 skill(写 op→od-dev-write-operation / 画面建档→od-dev-screen-onboarding / 排查运行失败→od-dev-debug-automation);确属 CW 但表中无行 → 先查下方单一源地图,仍定位不了 → 给分诊表补行 | — |
 
 开发循环轮从分诊表进,走所属域的主线;分诊同时服务窄任务与新会话入口。会话开工的通用步(读进度账本/确认窗口/查钩子)与 commit 前的通用验证(ruff/全量测试)属项目级规范,在项目 AGENTS.md 类指令文件/公共 skill(od-dev-stop-hooks 等)承载,本 skill 不复述。
@@ -35,7 +35,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | **单局复盘协议**(局终深度复盘:粒度=外层循环画面op调用序,每op单独记录入口观察+决策循环+判定三槽;判定尺=玩法文档+在册裁定,算法自洽≠合格;产出含算法缺陷候选;实机监控局终派单执行,策略审查角色消费产出作病灶输入) | [references/match-review.md](references/match-review.md) |
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 攒批局中不改**;重启/早停/残局清理/监控栈与哨兵) | [references/runtime-ops.md](references/runtime-ops.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 叠加细则 = [references/autonomous-loop.md](references/autonomous-loop.md);进度结构见 od-dev-progress-tracking §2.5 |
-| 人怎么玩(直觉假设登记簿——策略命题权威=math_proofs 证明与 sim/实机实证,ADR-0482;改策略必读=了解在册假设及证明状态) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
+| 人怎么玩(直觉假设登记簿——策略命题权威=math_proofs 证明与 sim/实机实证;改策略必读=了解在册假设及证明状态) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
 | 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/currency_war/strategy/README.md`(分篇入口)+ `decisions/`(ADR;redesign.md 已砍除归档,ADR-0365) |
 | 决策 why(一决策一文件) | `docs/develop/currency_war/decisions/`(INDEX + ADR-NNNN) |
 | 单套 comp 打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
@@ -48,11 +48,10 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 
 分层判据:**游戏改了它变 → game 侧;代码改了它变 → develop 侧;进度/踩坑 → 本地进度账本,一律不进共享文档。**
 
-## 文档同步(行为变更三同步)
+## 文档同步(行为变更同步)
 
 策略行为/权重/算法语义/config·screen_info·GameState 字段/实跑根因任一变更 → commit 前:
-1. 加 ADR(`docs/develop/currency_war/decisions/00NN-<slug>.md`,arc42 格式;INDEX 追加;**Considered Options 栏最值钱**);
-2. strategy as-built 正文更新语义(值只进代码,文档写语义+指常量名);
-3. 代码注释引 ADR-NN。
+1. strategy as-built 正文更新语义(值只进代码,文档写语义+指常量名);
+2. 代码注释引 ADR-NN(仅指既有 ADR;ADR 仅经用户命令创建,默认无)。
 
-游戏知识变更(机制/阵容结论)进 `game/currency_war/research/` 对应篇(带证据分级),不进 develop;**攒 ADR = 漂移**(实跑演进当场记,攒了再补的成本远高于顺手写一条)。
+游戏知识变更(机制/阵容结论)进 `game/currency_war/research/` 对应篇(带证据分级),不进 develop;决策 why 当场记(实跑演进当场写进动机段/注释,攒了再补的成本远高于顺手写一条)。

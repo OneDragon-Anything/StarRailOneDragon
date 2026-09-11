@@ -255,7 +255,7 @@
 
 - 新增/修订单套知识 → 改对应类文档(final_comps 单一源);结构化字段(factions/form_tiers/level_plan/key_equips 等)单一源在 `cw_comps.py COMP_LIBRARY`,知识文档只写字段承载不了的叙事——**改 COMP_LIBRARY 不触发文档同步义务,反之亦然**(不是字段镜像)。
 - 用户口述与攻略冲突时**以口述为准**;与统计数据冲突时,先查统计的口径(过滤/聚类方式)再下结论。
-- comp 增删是策略行为变更 → 走 SKILL.md §文档同步(ADR + strategy 正文)。
+- comp 增删是策略行为变更 → 走 SKILL.md §文档同步(strategy 正文;决策 why 归设计文档动机段与代码注释)。
 
 ## 版本更新重跑
 
