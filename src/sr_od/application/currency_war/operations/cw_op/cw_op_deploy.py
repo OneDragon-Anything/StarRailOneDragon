@@ -471,7 +471,7 @@ class CwOpDeploy(SrOperation):
         # (闩置位/部署实际没做,吞分发)。「overlay 弹出重判」归分发层
         #(cw_loop 0 系 overlay 分支先于备战链 + 宿主入口 overlay 防线为
         # 第一道);本检查降级为窗口期第二道执行断言,不升 guard_screen
-        #(deploy 派发不带回环守卫,test_cw_t163_popup_dispatch 边界申报锁
+        #(deploy 派发不带回环守卫,test_cw_popup_dispatch 边界申报锁
         # 语义不变)。
         # T-277(T-268 治本 G3):检查集从硬编码三屏扩为 registry
         # ``derive_decision()`` 全集(单一源,删第二份清单;9 条 ⊇ 旧三屏,
