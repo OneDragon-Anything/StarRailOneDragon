@@ -46,13 +46,17 @@ import psutil
 
 sys.stdout.reconfigure(encoding='utf-8')  # type: ignore[attr-defined]
 
-REP = Path(os.environ.get(
-    'CW_RUNSGAP_REP',
-    r'D:\code\workspace\StarRailOneDragon\.debug\currency_war\telemetry\live'))
+# 现役 live 根常量(生产账面位置单一字面量):REP 缺省与 LIVE_JOURNAL 同源。
+_DEFAULT_REP = Path(
+    r'D:\code\workspace\StarRailOneDragon\.debug\currency_war\telemetry\live')
+REP = Path(os.environ.get('CW_RUNSGAP_REP', str(_DEFAULT_REP)))
 # journal 唯一账面(删除波 1 后 runs/decisions 停写,state/journal.jsonl =
 # 流程侧唯一落盘流;journal.md §1。与旧流同根,state/ 子目录。
 JOURNAL = Path(os.environ.get(
     'CW_RUNSGAP_JOURNAL', str(REP / 'state' / 'journal.jsonl')))
+# 现役 live journal(SMOKE 干跑注入的禁写对象,守卫见 _smoke_guard;
+# 与 REP 缺省同根取 _DEFAULT_REP,防两份字面量漂移)。
+LIVE_JOURNAL = _DEFAULT_REP / 'state' / 'journal.jsonl'
 # 实机段形态(telemetry/state.start_run 铸造口径 run_%Y%m%d_%H%M%S);
 # fake_/sim_ 段与 harness 短 id 段一律不采信(隔离约定 =
 # sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES,这里按正选实现)。
@@ -93,6 +97,36 @@ def _acquire_lock() -> bool:
             pass   # 陈旧锁 → 覆盖
     LOCK.write_text(str(os.getpid()))
     return True
+
+
+def _smoke_guard() -> None:
+    """SMOKE_GAP 注入写入守卫:目标必须显式重定向,且不得为现役 live journal。
+
+    为什么(SMOKE 干跑隔离,三审应修项):SMOKE 注入段 run_20000101_* 恰配
+    实机段正则 RUN_ID_RE,三哨兵(cw_sentinel/cw_early_stop/本脚本)的实机段
+    过滤全部采信——假 match_final 行 + 陈旧 ts 落入尾窗时,cw_sentinel
+    _run_ended() 判「已终局」→ RUN-ENDED-IDLE 静默退出 / LOOP 报警被抑制
+    (吞报警向量),且账面污染永久(账面无清理期,直到 purge)。契约:
+    SMOKE_GAP=1 时 CW_RUNSGAP_JOURNAL 必须显式设置(缺省拒执行,含仅改
+    CW_RUNSGAP_REP 的派生缺省——那仍可能是一份现役账面),且解析后不得
+    等于 LIVE_JOURNAL(防显式传值仍指现役)。守卫在模块入口(单实例锁与
+    JournalTail 初始化之前)执行:拒执行路径零副作用——不占锁、不整账读、
+    无武装打印。现役 journal 的只读消费面(JournalTail 尾读/武装快照)
+    不受影响。
+    """
+    if 'CW_RUNSGAP_JOURNAL' not in os.environ:
+        print('[RUNSGAP-SMOKE-GUARD] 拒绝执行:SMOKE_GAP=1 干跑注入段'
+              '(run_20000101_* 形态)恰配实机段正则,缺省 JOURNAL 即现役 '
+              'live journal——假收口行可令哨兵误判已终局(吞报警)。请显式'
+              "重定向副本:$env:CW_RUNSGAP_JOURNAL='<非现役副本路径>'",
+              flush=True)
+        sys.exit(2)
+    if (os.path.normcase(str(JOURNAL.resolve()))
+            == os.path.normcase(str(LIVE_JOURNAL.resolve()))):
+        print(f'[RUNSGAP-SMOKE-GUARD] 拒绝执行:CW_RUNSGAP_JOURNAL={JOURNAL} '
+              f'解析后指向现役 live journal({LIVE_JOURNAL}),SMOKE 注入禁写'
+              '现役账面。请改指非现役副本路径。', flush=True)
+        sys.exit(2)
 
 
 class JournalTail:
@@ -171,6 +205,11 @@ class JournalTail:
         return {rid for rid, seg in self.segs.items() if not seg['mf']}
 
 
+# SMOKE_GAP 注入守卫先于单实例锁:拒执行 = 零副作用退出(不占锁、不整账
+# 读、无武装打印);重定向放行后才照常武装。守卫契约见 _smoke_guard。
+if os.environ.get('CW_RUNSGAP_SMOKE_GAP') == '1':
+    _smoke_guard()
+
 if not _acquire_lock():
     sys.exit(0)
 
@@ -198,12 +237,13 @@ print(f'[runsgap] armed v3 @ {time.strftime("%H:%M:%S")} '
       f'{" [守卫:写点未观测到产出,收口断流报警抑制中]" if guard_quiet else ""} '
       f'log={LOG}', flush=True)
 
-# 干跑钩子(--selftest-dry 配套,生产不触发):SMOKE=1 武装快照验证即退;
+# 干跑钩子(手工干跑验证配套,生产不触发):SMOKE=1 武装快照验证即退;
 # SMOKE_GAP=1 时把 NEWSEG 指定段以未收口行注入 journal 文件(模拟新局出现
 # 后停止更新),缩窗后应走 [RUNS-GAP] 报警路径(守卫未激活时)或「守卫抑制」
 # 说明(武装时账面无任何 mf 行);SMOKE_UNGUARD=1 时再由后台线程延迟注入
 # 一条 match_final 行(模拟 W3 接线落地首局收口),应见「守卫解除」打印且
-# 随后未收口段恢复报警能力。
+# 随后未收口段恢复报警能力。注入写入点受模块入口 _smoke_guard 守卫:
+# 注入段恰配实机段正则,禁写现役 live journal(缺省/指现役在武装前即拒)。
 if os.environ.get('CW_RUNSGAP_SMOKE') == '1':
     sys.exit(0)
 if os.environ.get('CW_RUNSGAP_SMOKE_GAP') == '1':
