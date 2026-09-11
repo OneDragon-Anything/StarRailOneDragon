@@ -962,7 +962,7 @@ class PrepActionExecutor:
         if action.slot is not None:
             matched = next((b for b in boxes if b[0] == action.slot), None)
             if matched is None:
-                return False, f'槽{action.slot} 无补给箱(实读 {boxes})'
+                return f'槽{action.slot} 无补给箱(实读 {boxes})', False
             picked = matched
         slot, center = picked
         open_point = Point(center.x, center.y + PrepActionExecutor.BOX_OPEN_DY)
