@@ -1,9 +1,9 @@
 """货币战争 BoardState 局内记录(迁移批次一骨架)。
 
 **正本入口** = ``docs/develop/currency_war/game_state/README.md``(总纲);
-**字段级详设**(迭代期,寿命=迭代) =
-``docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md``
-(下按节号引用)。BoardState = 当前仍为真的局内已知事实快照:单例,每局新建,
+**字段级规格正本** = ``docs/develop/currency_war/game_state/fields.md``
+(本文注释所引节号体系 §1-§8 的解析归宿)。
+BoardState = 当前仍为真的局内已知事实快照:单例,每局新建,
 只描述「此刻」;画面 op 与决策 op 写,策略器读(设计 §1)。历史序列归遥测,
 不经本结构。
 
@@ -823,8 +823,8 @@ def cost_source_group(cost_source: str) -> str:
 
 
 # ============================================================ 双 ShopCard 映射单一源(W5 类型去重)
-# 方案正本 = docs/develop/sr_od/application/currency_war/changes/
-# 2026-09-06-redesign/w5-透传域建模方案.md §2.5:唯一容器类型 =
+# 方案语义正本 = docs/develop/currency_war/game_state/fields.md §3.3.1
+# (双 ShopCard 映射):唯一容器类型 =
 # :class:`ShopCard`(本模块);旧容器版(cw_state 侧同名类,带点击坐标 x
 # 与 merge_preview)随 W8 GameState 本体退役波消亡,过渡期两类型并存合法、
 # **转换只许在本节两个映射函数发生**(喂入面/合成口/消费视图/合成引擎

@@ -1572,8 +1572,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 sess.shop_state_frame = st
                 sess.shop_frame_class = 'full'
                 # BoardState 记录模型合成口(迁移批次一;设计 §2.1/§3.2.5,
-                # 字段级详设(迭代期) =
-                # docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md):sim 真值帧同步记观察
+                # 字段级规格正本 =
+                # docs/develop/currency_war/game_state/fields.md):sim 真值帧同步记观察
                 # (evidence 恒 sim:synthesized),bench 槽位保序 = 记录模型
                 # 按实机真值箱占席(sim「无箱实体」只是内部口径约定不进
                 # 记录)。纯记录零决策面:sim 账本/行为逐位不变。best-effort

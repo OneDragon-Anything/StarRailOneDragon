@@ -1,8 +1,8 @@
-"""BoardState → GameState 消费适配器(迁移批次二;字段级详设(迭代期) =
-``docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md``
-§8.7 批次二(正本入口=game_state/README.md);
-透传域收编设计正本入口 = ``docs/develop/currency_war/game_state/README.md``
-(总纲;透传域建模过程件 = ``docs/develop/sr_od/application/currency_war/changes/2026-09-06-redesign/w5-透传域建模方案.md``,寿命=迭代))。
+"""BoardState → GameState 消费适配器(迁移批次二;字段级规格正本 =
+``docs/develop/currency_war/game_state/fields.md``(总纲入口=同目录 README.md);
+透传域收编语义正本 = ``docs/develop/currency_war/game_state/fields.md``
+(§3.2.7.1 deploy_cap 双存/§3.2.13 hp 门前真值+消费侧施门/§3.3.1 双 ShopCard
+映射单一源/§8.6 透传残差申报))。
 
 **本模块是什么**:策略器决策输入的切换载体——旧读取对象
 (``session.last_state`` 原始观察帧)转 BoardState 适配层:对已建模域,

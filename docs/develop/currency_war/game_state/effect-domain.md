@@ -14,7 +14,7 @@
 2. **效果实例清单**(§4):实例的字段面、唯一性约束、伴生数值空间;
 3. **分类词表**(§5):八类效果语义与各类的 state 记录形态模板;
 4. **生命周期声明**(§7):TriggerKind × DurationKind 声明式驱动与事件映射;
-5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 11 条的在域形态。
+5. **逐效果规格**(§8):`STRATEGY_EFFECTS` 注册表全量 13 条的在域形态。
 
 不管什么(单一源在别处,本篇只引用,防双源):
 
@@ -41,8 +41,10 @@
   `session.effect_inventory` 为兼容读口,同一实例,防双账本。
 - 写端(挂点)五处在产,全部经 inventory 方法(§7.3 映射表),零旁路直改;机器面 =
   效果域直摸锁(journal.md §6 硬约束①族)。
-- 读端 = 查表方法(`by_category`/`by_trigger`/`first`/`counter`/`predict_for`)。对决策的
-  输出 = 在场事实与进展读数;哪些效果需要决策姿态响应,由效果规格 duties 声明承载(§8)。
+- 读端 = 查表方法(`by_category`/`by_trigger`/`by_source`/`first`/`counter`/
+  `predict_for`;`by_source` 按 source='strategy'/'affix' 词表分源读,词缀源读端)。
+  对决策的输出 = 在场事实与进展读数;哪些效果需要决策姿态响应,由效果规格 duties
+  声明承载(§8)。
 
 ### 2.2 键域边界(哪些键是效果域键)
 
@@ -103,8 +105,10 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 
 ## 5. 分类词表(八类)
 
-基数申报(诚实口径):`STRATEGY_EFFECTS` = **11 条,实码全量**(构建层校验与数据层
-不漂移;`len` 实测);评估面 `STRATEGY_ECONOMY` = 92 条;策略全集
+基数申报(诚实口径):`STRATEGY_EFFECTS` = **13 条,实码全量**(构建层校验与数据层
+不漂移;`len` 实测;含本金充裕/本金充裕+ 条件免费刷新两条,§8 节点推进族);词缀源
+注册表 `AFFIX_EFFECT_SPECS` = 3 条 + 豁免表 `AFFIX_SPEC_EXEMPT` = 1 条(§7.6);
+评估面 `STRATEGY_ECONOMY` = 92 条;策略全集
 `INVESTMENT_STRATEGIES` = 335 条;官方 base 全集 `PLAZA_AUGMENTS` = 334 条
 (`len` 实测;目录口径 = 两 overlay 键并集 = **96 卡**,83 候 + 13 已确认,与 impacts
 §4 目录一致)。讨论口径「89 条经济效果」非设计基数,与实码 92 的精确对应
@@ -200,45 +204,94 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 | 动作执行落地 | 刷新 `bump_key(CounterKey.REFRESH)`(operations/cw_op/cw_op_buy_cards.py:508)/ 购买 `bump_key(CounterKey.BUY)`(:481);均挂执行落地门,未落地不计数 | ON_REFRESH;BUY 计数键(返利系门槛的驱动源) | 动作类 counter +1 |
 | 跳过消耗 | `consume_use`(prep_actions.py:1512,跳过执行成功回执) | 次数类余量(免战牌) | uses 计数 +1(目标模型)/ 递减镜像(现表示法,§4) |
 | 升级标记 | `on_level_up`(prep_actions.py:1350) | LEVEL_UP | 事件标记(`_EVENT_LEVEL_UP`,下划线前缀与策略计数器键空间隔离,:124) |
-| 选卡落地 | `register_strategy`(operations/cw_screen/cw_screen_invest_strategy.py:440;免战牌同点自动登记 :416-440)+ burst 桥 `apply_effect_burst_grant`(:448) | INSTANT | 登记入清单 + 一次性发放 |
+| 选卡落地 | `register_strategy`(operations/cw_screen/cw_screen_invest_strategy.py:440;免战牌同点自动登记 :416-440)+ burst 桥 `apply_effect_burst_grant`(:448)+ 板面重写桥 `apply_board_rewrite`(同点紧随) | INSTANT | 登记入清单 + 一次性发放 |
 
-- **账本→字段桥**(效果发放换算成 state 字段写入的固定函数口,kernel/cw_board_state.py
-  :1004/:1025/:1052):`apply_effect_burst_grant`(选卡时点一次性批量授予)/
-  `grant_effect_node_refresh_balance`(每节点余额累加,闸门 = 推进有效位)/
-  `project_effect_capacity`(容量投影)。
+- **账本→字段桥**(效果发放换算成 state 字段写入的固定函数口,kernel/cw_board_state.py):
+  `apply_effect_burst_grant`(选卡时点一次性批量授予)/
+  `grant_effect_node_refresh_balance`(每节点余额累加,闸门 = 推进有效位;**条件判定
+  族已同桥 wire**——按金现值逐条目评估:金 > 阈值每额外步长金 +1 次、至多封顶,金未读
+  None 保守零授予)/`project_effect_capacity`(容量投影)/`apply_board_rewrite`
+  (板面重写:出售面逻辑写、替换面零逻辑写,归属单一源 = fields.md §5.3 两行)。
 - **到期与尾款**:到期条目移除 = 尾款触发面;尾款金面走**观察覆盖兜底**,禁到期挂点
   logic 直写金币防双计(`advance_node` 契约,:234-236);确需单列逻辑写的建模者
   (如超发货币回流腿)按 impacts 条目申报接线。
 - **登记挂点纪律**:登记面 best-effort,失败不阻塞选卡主链(cw_screen_invest_strategy.py
   :424-454);递减/消耗挂点与登记挂点解耦——登记面缺位的局 `consume_use` 返回 None
-  零动作,保守端 = 记录缺失,不虚构递减(:261-275)。
-- **结算挂点现状**:`on_battle_end` 已定义未接线(kernel/cw_effect_inventory.py:281-284,
-  零生产调用方);接线随战斗结算链实施批,启用前提 = 注册表存在 BATTLE_END 条目
-  (§7.4)。
+  零动作,保守端 = 记录缺失,不虚构递减(:261-275)。词缀源登记挂点 = 词缀读链产出点
+  `cw_affix_effects.register_affixes_from_names`(简报屏/位面详情屏两链,§7.6)。
+- **结算挂点现状**:`on_battle_end` **已接线**(kernel/cw_effect_inventory.py 定义;
+  生产宿主 = CwScreenBattleWait 结算覆盖带 `_record_round_outcome` 非 telemetry_only
+  分支,apply_settlement_cover 同分支同时序,独立 best-effort try 不与结算覆盖写端
+  共享异常域)。注册表现役零 BATTLE_END 条目(§7.4)→ 行为面 = 结算事件标记
+  (`_EVENT_BATTLE_END`);条目计数/余量推进随建模批立 BATTLE_END 条目后经同一挂点
+  自动生效,无需再改接线。
 
 ### 7.4 零注册枚举值申报
 
-`BATTLE_END`/`ON_MERGE`/`ON_SELL`/`SUPPLY_PHASE` 四值现役零条目——枚举值**保留**
-(词缀源/环境源与新卡建模的语义对齐预留),零条目 = 零驱动,不建事件。候选驱动卡
-(按卡文触发语义归类):武力刷新(合成装备,ON_MERGE)/按劳分配·剩余价值·无伤通关
-(战斗结算,BATTLE_END)/人力重组出售面(ON_SELL)/补给时点族(SUPPLY_PHASE)——
-启用 = 各自建模批先立规格条目、再接事件源,启用前按 §6 观察收口兜底。
+`BATTLE_END`/`ON_SELL`/`SUPPLY_PHASE` 三值现役零条目——枚举值**保留**(环境源与新卡
+建模的语义对齐预留),零条目 = 零驱动,不建事件。`ON_MERGE` 已有词缀源条目(**变宝
+为废**,`AFFIX_EFFECT_SPECS`,§7.6);投资策略侧 ON_MERGE 仍零条目,候选驱动卡 =
+武力刷新(合成装备,官方限定「合成装备时」)。其余候选驱动卡(按卡文触发语义归类):
+按劳分配·剩余价值·无伤通关(战斗结算,BATTLE_END)/人力重组出售面(ON_SELL)/
+补给时点族(SUPPLY_PHASE)——启用 = 各自建模批先立规格条目、再接事件源,启用前按
+§6 观察收口兜底。
 
 ### 7.5 事件框架销案(hook 机制不建)
 
 效果域的事件驱动 = 单版本事务内既有挂点(§7.3)+ state 内部派生;**不建**独立战斗
 结算事件、事件选择事件与 hook 订阅框架。依据:①注册表支撑为零——`STRATEGY_EFFECTS`
-11 条零 BATTLE_END、零选择触发条目(§8 全表);②结算数据链路已在产零缺口(结算屏
+零 BATTLE_END、零选择触发条目(§8 全表);②结算数据链路已在产零缺口(结算屏
 观察 → settlement 域覆盖 → 策略器惰性消费);③inventory 查询口 `by_trigger`/
 `predict_for`/`event_count` 无生产调用方(grep 可复核);④总纲设计理念「无独立事件流,
 一切派生产出都是 state 写入」(总纲 §2 理念 2)。
 
-## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 11 条)
+### 7.6 词缀源(source='affix')
+
+词缀效果已结构化建模(注册表 = `kernel/cw_affix_effects.py`;词缀与投资策略/环境
+并列的第三效果源,实例同入一本账、经 source 维分源):
+
+- **规格注册表** = `AFFIX_EFFECT_SPECS` 三条(键=词缀名,spec.id 同键;构建层校验
+  `_validate_affix_specs` 与策略源同纪律:孤儿键/id 漂移/payload↔category 不一致/
+  pending 缺保守支任一命中 import 即炸)+ 豁免表 `AFFIX_SPEC_EXEMPT` 一条
+  (**开局不利**——开局 hp 专用载体 cw_opening_hp 承载,ADR-0559,禁第二份 −20 数值
+  源)。在册三条:**成长的烦恼**(8 级后每次购经验 −1 金,LevelUp 金面)/
+  **变宝为废**(每位面首次合成进阶装备 50% 变垃圾袋,ON_MERGE 装备库存改写,
+  载体 `BattlefieldEffect.first_merge_equip_junk`)/ **永久创伤**(受击失生命上限
+  20%、至多 60%——hp_max 字段缺位,观察收口+缺口申报,fields.md §5.2)。
+- **登记端** = `register_affix`(播种与策略源同轨)+ 运行时挂点共用体
+  `register_affixes_from_names`(简报屏/位面详情屏两词缀读链产出点,best-effort
+  同登记挂点纪律);**读端** = `by_source('affix')`。
+- **词缀与装备改写成员的扫描纪律**:词缀谓词扫描 `scan_rewrite_affixes` ∪ 装备谓词
+  扫描 `scan_rewrite_equipments`(申报表 `EQUIP_REWRITE_DECLARATIONS` 恰等锁看管)
+  是效果面完备性判据(fields.md §7)源 c/源 e 的代码化——新词缀/装备改写成员入册
+  时同批入申报表,防「没被点名就无人看管」。
+- **改写面写端归属**:按 fields.md §5.3 归属判据逐条成文于各 spec notes——成长的
+  烦恼=确定性逻辑写(predict 开,写端接线归消费批,接线前观察覆盖兜底)/变宝为废=
+  随机面观察收口/永久创伤=hp_max 缺位观察收口。**词缀源不经 `aggregate_economy`
+  聚合通道**(键空间独立,`EconomyEffect` 词缀字段族仅建档;若未来词缀修饰要进经济
+  聚合,须先过聚合分型登记门)。
+
+## 8. 逐效果规格(`STRATEGY_EFFECTS` 全量 13 条)
 
 通用形态:实例 = {spec_key, 登记节点, counter?}(§4);登记挂点统一 = 选卡落地(§7.3);
-证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。
+证据槽行号 = 落文时点快照。按驱动族分组;同组共性只在组首写一次。词缀源三条的逐条
+规格在册于 `cw_affix_effects` spec notes(归属申报同源),不在本节 STRATEGY_EFFECTS
+辖域(§7.6)。
 
 ### 节点推进族
+
+#### 本金充裕(301001)/ 本金充裕+(301002)
+
+- **论断**:NODE_ENTER / while_held / ECONOMY;duties 全空(counter 不建);免费刷腿
+  = **条件判定族**,经节点桥 `grant_effect_node_refresh_balance` 按金现值逐条目评估
+  自动生效(金 > 50 每额外 10 金 +1 次、至多 3;金未读 None 保守零授予,次拍恢复不
+  补发);即时金腿 26(棱彩加强值只在 instant_gold)。
+- **证据**:规格 cw_investments.py(条件三元组 free_refresh_cond_gold_above/step/cap
+  =50/10/3,STRATEGY_EFFECTS 两条 EffectSpec payload 引 STRATEGY_ECONOMY 同一实例);
+  官方原文 cw_invest_data.py:251-252。
+- **推理链**:条件判定 = 节点进入时点的现值评估,非累计量 → counter 空;同节点重复
+  采样经 advanced 位禁双计;并存叠加=两实例各评估(桥逐条目读即正确形态,条件
+  三元组不可折叠单字段,未纳入 aggregate_economy——有意设计,非偏差)。
 
 #### 固定理财(201801)
 

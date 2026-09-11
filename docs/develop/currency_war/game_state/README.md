@@ -7,9 +7,10 @@
 
 ## 1. 本目录是什么
 
-统一 state(GameState)的设计文档正式目录,总-分结构:本文件=总纲,七个分篇各管一面。
-总纲即正本入口——只写设计理念与核心规范;字段清单、决策 op 写入面、效果族归属、迁移批次
-等字段级完整规格现居迭代设计件 `docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md`(寿命=迭代,随批次落地归拢并入正本,本目录不长期依赖;代码已实现的部分不在文档重复细节)。
+统一 state(GameState)的设计文档正式目录,总-分结构:本文件=总纲,九个分篇各管一面。
+总纲即正本入口——只写设计理念与核心规范;字段级完整规格(字段清单、决策 op 写入面、
+效果族归属、生命周期与治理面)的正本 = [fields.md](fields.md)(沿用原详设节号体系,
+代码注释所引节号以该篇为解析归宿);本目录自足,不依赖任何迭代过程件。
 
 上位裁定与 why:**ADR-0630**(统一 state 状态流水:BoardState 收编升级+三渠道写入口+
 自足快照变更账)。ADR-0630 含修订节,冲突处以修订节为准——守卫族终版、单字段双值结构、
@@ -50,7 +51,8 @@
 配套口:`carry()`(失读沿用,evidence 带 carried:来源帧)/`write_prior()`
 (先验写入,如开局 hp 先验)/`leave_screen()`(画面附加域离屏置 None)/`relay()`
 (接管中继)/`note_obs_event()`(零状态变更的观察事件留证行)。完整 API 契约见
-journal.md §6 与迭代设计件 §8.4。(原 `expect()`/`confirm()`/`discard_expected()`
+journal.md §6,符号单一源 = kernel/cw_board_state.py(字段级规格 =
+[fields.md](fields.md) §8)。(原 `expect()`/`confirm()`/`discard_expected()`
 两步机制已随 ADR-0651 废除。)
 
 ### 3.2 权威序
@@ -60,27 +62,33 @@ journal.md §6 与迭代设计件 §8.4。(原 `expect()`/`confirm()`/`discard_e
 - **节点生效序**:权威序字段的读口 = 生效序读口,语义=逻辑层现值与 run 内高水位
   取大(公式体单一源见 [node-domain.md](node-domain.md) §3);消费面恒取逻辑层。
 - **节点类型三源仲裁**:结算屏权威(ADR-0239)> 节点序列台账现读 > 帧标签 OCR
-  (迭代设计件 §3.2.1)。
+  ([fields.md](fields.md) §3.2.1;仲裁细则单一源 = node-domain.md)。
 
 ### 3.3 域清单
 
 统一 state 按域组织(域=字段分组,读不分域;写入域准入白名单=ADR-0630 决策 2 硬
-约束,逐格以实码写点全集为准):
+约束,逐格以实码写点全集为准;域键=bs_schema 键,字段全集逐字段规格 =
+[fields.md](fields.md)):
 
-| 域 | 代表字段 | 主写渠道 |
+| 域(bs_schema 键) | 字段全集 | 主写渠道 |
 |---|---|---|
-| 节点域 | top_bar_raw / node_ord / node(NodeKey)/ node_path | ①观察+③派生(见 node-domain.md) |
-| 画面上下文域 | prev_screen / current_screen | ①观察 |
-| 单位域 | front_row / back_row / bench / back_layout | ①观察+②动作+③效果桥 |
-| 经济域 | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
-| 计数域 | 免费刷新余额/付费与总刷新计数/节点屏刷新计数 | ②动作+③效果桥 |
-| 效果账本域 | effects(在场效果实例) | inventory 方法域(随快照行自带) |
-| 动作发射事实域 | receipts(滚动窗,容量常量 RECEIPTS_WINDOW_CAP) | ②动作 |
-| 局级事实域 | selected_difficulty / active_env / active_strategies / plane_bosses / enemy_affixes / board | ①观察+②动作+③中继 |
-| 画面 payload 域 | shop / encounter / supply(非当前画面=None) | ①观察 |
-| 交互状态域 | 分类子态 / event_overlay | ①观察+③接管协议 |
-| 结算域 | settlement(hp/streak/gold/level 结算真值) | ①观察 |
-| 局终域 | match_final(一段终态一行;恢复局跨段多行) | ③局终收口 |
+| 节点域(node) | node(NodeKey)/ node_path | ①观察+③派生(见 node-domain.md) |
+| 派生域(derivation) | top_bar_raw(观察层)/ node_ord(逻辑层)/ prev_screen / current_screen / node_hist_ord(哨兵) | ①观察+③派生(见 node-domain.md §2-§3) |
+| 单位域(units) | front_row / back_row / bench(BenchView)/ back_layout / deploy_cap | ①观察+②动作+③效果桥 |
+| 经济域(economy) | gold / hp / level / xp / streak / level_up_cost / shop_refresh_cost | ①观察+②动作 |
+| 商店刷新计数域(refresh_counters) | free_refresh_balance / paid_refresh_count / total_refresh_count / prev_node_spent | ②动作+③效果桥(写入=仅逻辑) |
+| 节点屏刷新计数域(node_screen_refresh) | encounter_refresh_used / supply_refresh_used / env_refresh_used / strategy_refresh_used(逐卡) | ②动作(遭遇/策略两写端在产;环境/补给零写端在册) |
+| 持久账本域(inventory) | equips / consumables(免战牌载体归一入效果账本,不在本域) | ①观察+②动作 |
+| 奖励球域(spheres) | spheres | ①观察 |
+| 交互状态域(substate) | prep_substate(分类子态四档)/ event_overlay | ①观察+③接管协议 |
+| 画面 payload 域(shop/encounter/supply) | shop / encounter / supply(非当前画面=None) | ①观察 |
+| 选择结果域(event_choices) | chosen_encounter / chosen_supply / chosen_megastar / chosen_partner / chosen_wish / chosen_fortune / chosen_hack / chosen_expert / chosen_tome / chosen_equip | ②选择 handler 单次逻辑写 |
+| 结算域(settlement) | settlement(hp/streak/gold/level 结算真值)/ hp_floor_triggered(纯观察登记) | ①观察 |
+| 局级事实域(match_facts) | selected_difficulty / game_mode / enemy_difficulty / plane_bosses / enemy_affixes / active_env / active_strategies / board | ①观察+②动作+③中继 |
+| 效果账本域(effects) | effects(ActiveEffectInventory 实例清单;非 Field 载体) | inventory 方法域(随快照行自带) |
+| 动作回执域(receipts) | receipts(滚动窗,容量常量 RECEIPTS_WINDOW_CAP) | ②动作 |
+| 局终域(match_final) | match_final(一段终态一行;恢复局跨段多行) | ③局终收口 |
+| 工程结构(非 Field) | schema_version / bs_schema / frame_obs / write_seq / hb_prev_seq / hb_stall_count / created_monotonic | 构造/迁移写 |
 
 渠道族封闭集 = obs(画面 op 观察)/ logic_action(动作 op 逻辑计算)/ logic_hook
 (state 内部派生逻辑计算);carried/prior/synthesized 是 obs 族内子模,非第四源。
@@ -89,6 +97,7 @@ journal.md §6 与迭代设计件 §8.4。(原 `expect()`/`confirm()`/`discard_e
 
 | 分篇 | 管什么 |
 |---|---|
+| [fields.md](fields.md) | 字段级完整规格(原详设节号体系 §1-§8):逐字段语义/写端/边界、决策 op 写入面、效果族写入归属、生命周期与治理面;代码注释所引节号的解析归宿 |
 | [journal.md](journal.md) | 记录机制:账本文件、三渠道封闭集与渠道签名、版本 id 与单版本事务、自足快照行、落盘与查询 |
 | [effect-domain.md](effect-domain.md) | 效果域:在场效果账本的内容语义(计数器模型/实例清单/分类词表/生命周期/逐效果规格) |
 | [node-domain.md](node-domain.md) | 节点域:字段双层、生效序读口与 hist 哨兵、守卫族、派生规则单一源引用 |
@@ -100,9 +109,8 @@ journal.md §6 与迭代设计件 §8.4。(原 `expect()`/`confirm()`/`discard_e
 
 ## 5. 边界与姊妹文档
 
-- **字段级详设(迭代期)**=docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md
-  ——字段级规格、op 写入面、效果族归属、迁移批次枚举的迭代设计件(寿命=迭代,
-  随归拢并入本目录);与其冲突时以本总纲+ADR-0630 修订节为准。
+- **字段级规格**=[fields.md](fields.md)(本目录分篇,正本)——字段清单/决策 op
+  写入面/效果族归属/生命周期/治理面;与其冲突时以 ADR-0630 修订节为准。
 - **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=ADR-0630 关联行与文档拆分裁定记档)——本目录引用不复写。
 - **旧流退役排期**=R5 迁移规划([r5-migration-plan.md](r5-migration-plan.md);单源直迁八波,重构 retirement.md 影子框架的裁决口径)。
 - **链观察设计件**=件 B(docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/recovered/节点链观察-设计v1.md;2026-09-11 自 `.debug/temp` 找回入库,落位清单=recovered/_INDEX.md)——

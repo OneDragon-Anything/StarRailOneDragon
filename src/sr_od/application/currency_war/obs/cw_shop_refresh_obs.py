@@ -1,7 +1,7 @@
 """货币战争 商店开态刷新钮标价的现场 OCR 读取(ADR-0622 现场识别通道)。
 
-字段语义与写端裁决 = ADR-0622 + 字段级详设(迭代期) =
-``docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md`` §3.3.4:刷新费 shop_refresh_cost 的值必须来自商店
+字段语义与写端裁决 = ADR-0622 + 字段级规格正本 =
+``docs/develop/currency_war/game_state/fields.md`` §3.3.4:刷新费 shop_refresh_cost 的值必须来自商店
 开态刷新钮标价的**现场读数**(识别失败=None,禁兜底改值;免费帧不写,None≠标价 0)。
 历史通道均不复活:面板徽标 OCR 读的是利息数值非刷价(ADR-0456,旁证 reader 在
 ``cw_observation.read_shop_refresh_cost``);「刷新前后金币差倒推」已随 ADR-0622
