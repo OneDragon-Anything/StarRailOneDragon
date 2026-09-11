@@ -15,6 +15,10 @@ payload 承载效果数值/战场语义;经济/状态类复用 ``cw_investments.
 
 **上游关系**:本模块是效果规格的登记侧;消费端派生视图(DP 日程/突变聚合,
 原 v0 规划)不存在,消费接缝出现时按需重建。
+
+**文末附加段**:账本→字段桥·板面重写(:func:`apply_board_rewrite`)——
+唯一一处越过「纯 inventory 机制」的写入桥(把 board_rewrite 声明翻译成
+BoardState 字段写入归属),宿主放本侧的原因与惰性 import 纪律见该段头注。
 """
 from __future__ import annotations
 
@@ -22,9 +26,15 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
+
 if TYPE_CHECKING:
     # 仅类型注解引用(项目规范允许);运行时 payload 按对象持有,
     # 类型一致性校验在 cw_investments 构建层(那里有真类)做 isinstance。
+    # BoardState 仅注解用:cw_board_state 模块头反向 import 本模块(容器
+    # effects 字段载体),模块级 import 会成环;板面重写桥(§文末)运行期
+    # 经函数内惰性 import 取 ChannelSig/BenchView 真类。
+    from sr_od.application.currency_war.kernel.cw_board_state import BoardState
     from sr_od.application.currency_war.kernel.cw_investments import EconomyEffect
 
 
@@ -73,7 +83,9 @@ class BattlefieldEffect:
     steal_on_level_up: int = 0              # 升级时偷商店最贵 N 张(商业间谍=3)
     auto_buy_owned: bool = False            # 自动购买场上已有角色(Gemi狸)
     free_refresh_on_node_enter: int = 0     # 进节点免费刷 N 次(Gemi狸=2)
-    board_rewrite: str = ''                 # 板面重写语义('upgrade_all_cost+1'/'sell_all'/…)
+    board_rewrite: str = ''                 # 板面重写语义(取值 = 板面重写语义词表
+                                            # BOARD_REWRITE_*;写归属桥 =
+                                            # apply_board_rewrite)
     bench_reroll: str = ''                  # 备战席区间重掷(乱成一锅粥族;未建条目)
     counter_every: int = 0                  # 每 N 次刷新计数门槛(采购专员金 7/彩 5)
     first_merge_equip_junk: float = 0.0     # 每位面首次合成进阶装备变垃圾袋概率(变宝为废=0.5;
@@ -129,6 +141,18 @@ class CounterKey:
 SOURCE_STRATEGY: str = 'strategy'
 SOURCE_PORTAL: str = 'portal'
 SOURCE_AFFIX: str = 'affix'
+
+
+# ===== 板面重写语义词表(BattlefieldEffect.board_rewrite 取值;防散落字符串)=====
+# 在册条目 = 全员晋升/人力重组(cw_investments.STRATEGY_EFFECTS,官方文
+# cw_invest_data.py:67/:68);写入归属两行单一源 = BoardState 数据结构设计 §5
+# (docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/
+# details/BoardState-数据结构设计.md,迭代期详设;持久正本 =
+# docs/develop/currency_war/game_state/effect-domain.md §8 同名条)。
+BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
+                                                        # 高 1 费随机角色(最大 5 费)
+BOARD_REWRITE_SELL_ALL: str = 'sell_all'                # 全场出售+再发牌:清场退款,
+                                                        # 再发 2★ 随机角色进席
 
 
 # 事件标记键(追踪端标记,非策略计数器;下划线前缀与策略计数器空间隔离)
@@ -346,3 +370,134 @@ class ActiveEffectInventory:
             if not e.spec.duties.track:
                 continue
             e.counters[key] = e.counters.get(key, 0) + n
+
+
+# ============================================================ 账本→字段桥·板面重写
+# (BoardState 数据结构设计 §5 全员晋升/人力重组两行;effect-domain.md §8 同名条。
+# 与 cw_board_state 的 apply_effect_burst_grant 等三桥同族,但宿主不在
+# cw_board_state——其模块头 import 本模块,桥落本侧可免模块级成环;
+# ChannelSig/BenchView 运行期函数内惰性取。挂点 = 选卡时点(设计 §3.2.3
+# 「效果写端(选卡时点、非 op)」),生产接线位 = cw_screen_invest_strategy
+# 确认落地登记点(register_strategy/apply_effect_burst_grant 同点),接线归
+# operations/ 辖批——本桥只承诺语义。)
+
+
+@dataclass(frozen=True)
+class BoardRewriteReport:
+    """板面重写桥执行报告(留证/测试用;零决策消费)。"""
+
+    rewrite: str                   # board_rewrite 语义值(BOARD_REWRITE_* 词表)
+    refund_gold: int               # sell_all 出售面退款合计(sell_refund 口径);
+                                   # upgrade_all 恒 0(无出售面)
+    sold_units: int                # sell_all 已读出的出售单位数(前台+后台+备战席;
+                                   # 字段从未观察 = 0,不代表实际卖数)
+    cleared_fields: tuple[str, ...] = ()   # 实际执行逻辑清空的 BoardState 字段名
+
+
+def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
+                        frame: str = '') -> BoardRewriteReport | None:
+    """桥·板面重写形态(选卡时点一次性):按设计 §5 写入归属两行落
+    EffectSpec.board_rewrite 的语义。返回执行报告;非板面重写条目(payload
+    无 board_rewrite 或为空)返回 None 零动作。
+
+    **归属两行(单一源 = BoardState 数据结构设计 §5)**:
+    - 全员晋升(BOARD_REWRITE_UPGRADE_ALL):替换面 = 随机(全场升为高 1 费
+      随机角色),不可准确算 → **零逻辑写端,观察收口**(§5.3 归属判据随机
+      分支)——本桥对它零写入,报告作负写端留证;附带「获得 2 个拆装扳手」
+      = 装备库存精确增量,但注册表无结构化载体(§5.2 缺口登记),经装备
+      观察覆盖收口,不在本桥建模。
+    - 人力重组(BOARD_REWRITE_SELL_ALL):出售面 = 确定性 → 逻辑写(§5.3
+      归属判据确定性分支)——前台/后台/备战席清空 + 退款按卖价公式入金
+      (单一源 = cw_state.sell_refund,费用查表单一源 = cw_state
+      .bench_char_cost,未知 char_id 退中费 3);随后发牌面(2★3费×1 +
+      2★2费×2 + 2★1费×2)= 随机 → **不建逻辑写,进席落位走观察覆盖**——
+      本桥禁替发牌面造单位,清空后的补位真值由下一备战帧观察给出。
+
+    **字段从未观察(value=None)= 无容器可写,跳过**(同族先例 =
+    project_effect_capacity):选卡后的下一备战帧观察必全量重读板面,
+    跳过不损真值到达。gold 未读(None)= 无累加基座,跳过金写入(禁把
+    退款当余额);退款合计为 0(出售域全未读/空场)同样跳过——禁把观察
+    金翻标成 logic(§2.1 来源标记到字段)。bench 清空保留现容量(节省
+    工位类容量改写归容量投影桥辖域,两桥互不越界)。
+
+    **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 的 BoardState 全量
+    经 synthesize_from_game_state 由 sim 真值 GameState 合成(evidence 恒
+    sim:synthesized),若在 sim 侧调本桥,logic 值立即被下一段合成覆盖且
+    与引擎事实不一致(sim 引擎不执行出售/重写)。sim 若建模这两卡的板面
+    后果,改动面 = sim 真值 GameState(卖全场+退款+发牌),经合成口自动
+    以 observation 落记录——效果在真值层生效,记录层不插 logic 补丁。现役
+    sim 对这两卡零板面建模(选卡仅记名+经济腿),属 sim 模型既有边界。
+
+    **未知语义值 = 保守 no-op + 留证**(禁猜):新板面重写卡入册时须同步
+    扩本桥归属分支,防注册表声明了语义而写端静默丢。
+    """
+    rewrite = str(getattr(getattr(spec, 'payload', None), 'board_rewrite', '')
+                  or '')
+    if not rewrite:
+        return None
+    if rewrite not in (BOARD_REWRITE_UPGRADE_ALL, BOARD_REWRITE_SELL_ALL):
+        log.warning('[cw!][effect-bridge] 未知板面重写语义 %r(spec=%s)'
+                    ' → 保守 no-op(禁猜;扩归属分支后生效)', rewrite, spec.name)
+        return None
+
+    if rewrite == BOARD_REWRITE_UPGRADE_ALL:
+        # 整场上阵替换形态:随机面零逻辑写端(设计 §5 全员晋升行),报告
+        # 仅作负写端留证;本分支禁新增任何写入。
+        return BoardRewriteReport(rewrite=rewrite, refund_gold=0, sold_units=0)
+
+    # —— sell_all:全场出售+再发牌形态 ——
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BenchSlot,
+        BenchView,
+        ChannelSig,
+    )
+
+    # 卖价/费用单一源在 cw_state(与预期态/策略侧同源);函数内 import 维持
+    # 本模块「模块头零包内 import」契约(机制层离线可单测)。
+    from sr_od.application.currency_war.kernel.cw_state import (
+        bench_char_cost,
+        sell_refund,
+    )
+
+    front = bs.front_row.value
+    back = bs.back_row.value
+    view = bs.bench.value
+    bench_units = [s.unit for s in view.slots
+                   if s.kind == 'unit' and s.unit is not None] \
+        if view is not None else []
+    sold = list(front or []) + list(back or []) + bench_units
+    refund = sum(sell_refund(int(u.star), bench_char_cost(u)) for u in sold)
+
+    ev = f'effect_board_rewrite@{frame}' if frame else 'effect_board_rewrite'
+    # 组签名:一次出售清空 = 一次逻辑计算,组内行同 group(§3.2.1 group_id
+    # 语义);actor 复用同族登记名 EffectLedgerBridge(REGISTERED_ACTORS 在册)。
+    sig = ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
+                     mode='compute',
+                     group_id=f'hook:EffectLedgerBridge@{bs.write_seq + 1}')
+
+    cleared: list[str] = []
+    if front is not None:
+        bs.write_logic(bs.front_row, [], produced_by='EffectLedgerBridge',
+                       evidence=ev, sig=sig)
+        cleared.append('front_row')
+    if back is not None:
+        bs.write_logic(bs.back_row, [], produced_by='EffectLedgerBridge',
+                       evidence=ev, sig=sig)
+        cleared.append('back_row')
+    if view is not None:
+        bs.write_logic(
+            bs.bench,
+            # 槽位表原位清空:槽数保持观察现值,全槽置空;容量保留现值
+            #(容量改写辖域 = 容量投影桥 project_effect_capacity,互不越界)。
+            BenchView(slots=[BenchSlot(kind='empty')] * len(view.slots),
+                      capacity=view.capacity),
+            produced_by='EffectLedgerBridge', evidence=ev, sig=sig)
+        cleared.append('bench')
+    # refund==0(出售域从未读过/空场)= 无可入账增量,禁把观察金翻标成
+    # logic(§2.1 来源标记到字段)——零退款时金字段保持原来源不动。
+    if bs.gold.value is not None and refund > 0:
+        bs.write_logic(bs.gold, int(bs.gold.value) + refund,
+                       produced_by='EffectLedgerBridge', evidence=ev, sig=sig)
+    return BoardRewriteReport(rewrite=rewrite, refund_gold=refund,
+                              sold_units=len(sold),
+                              cleared_fields=tuple(cleared))

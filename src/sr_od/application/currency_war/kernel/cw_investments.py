@@ -39,6 +39,8 @@ from sr_od.application.currency_war.data.cw_invest_data import (
     PLAZA_PORTALS,
 )
 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+    BOARD_REWRITE_SELL_ALL,
+    BOARD_REWRITE_UPGRADE_ALL,
     BattlefieldEffect,
     DurationKind,
     DutyFlags,
@@ -361,9 +363,10 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     '全员晋升': EffectSpec(
         id='102701', name='全员晋升', trigger=TriggerKind.INSTANT,
         duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
-        payload=BattlefieldEffect(board_rewrite='upgrade_all_cost+1'),
+        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_UPGRADE_ALL),
         duties=DutyFlags(predict=True),
-        notes='board/target 全量失效→方向重估强制重派生是后续批辖域'),
+        notes='board/target 全量失效→方向重估强制重派生是后续批辖域;'
+              '写归属=替换面随机零逻辑写(详设 §5 全员晋升行)'),
     # 人力重组:官方「出售场上和备战席的所有角色。获得1个随机的2星3费角色、2个2星2费
     # 角色和2个2星1费角色」。⚠️ 注册表 STRATEGY_ECONOMY 无此条(经济面未建模,发牌资产
     # 走战力评估)——语义实为全场出售的板面重写,按 BATTLEFIELD 建模(效果规格判读
@@ -371,9 +374,10 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
     '人力重组': EffectSpec(
         id='102801', name='人力重组', trigger=TriggerKind.INSTANT,
         duration=DurationKind.ONCE, category=EffectKind.BATTLEFIELD,
-        payload=BattlefieldEffect(board_rewrite='sell_all'),
+        payload=BattlefieldEffect(board_rewrite=BOARD_REWRITE_SELL_ALL),
         duties=DutyFlags(predict=True),
-        notes='全场出售事件;执行时序编排(卖→免费买→狂刷)=W610-P1 M8,本批不接'),
+        notes='全场出售事件;执行时序编排(卖→免费买→狂刷)=W610-P1 M8,本批不接;'
+              '写归属=出售面逻辑写/发牌面观察收口(详设 §5 人力重组行)'),
     # 躺平:官方「你无法在商店购买角色和刷新,持续3个节点。在此之后,获得20金币」。
     # inventory 余期追踪首例(remaining_nodes 3→0 移除);冻结姿态属姿态面辖域。
     '躺平': EffectSpec(
