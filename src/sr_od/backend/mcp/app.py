@@ -83,13 +83,8 @@ def make_open_game(backend: SrBackendContext) -> Callable:
         op_factory = (lambda ctx: OpenGame(ctx)) if not enter else (lambda ctx: OpenAndEnterGame(ctx))
         ok, future = backend.start_run('mcp', op_factory)
         if not ok:
-            st = backend.query_status()
-            return {
-                'started': False,
-                'error': '已有运行在进行中',
-                'source': st.source,
-                'hint': '先 get_run_status 查状态,或 stop_run 停止',
-            }
+            # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
+            return backend.run_refusal_response('先 get_run_status 查状态,或 stop_run 停止')
         if not block:
             st = backend.query_status()
             return {

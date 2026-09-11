@@ -37,14 +37,8 @@ def make_run_one_dragon(backend: SrBackendContext) -> Callable:
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'started': False, 'error': str(e)}
         if not ok:
-            # 并发拒绝时返回当前占用者信息，方便 agent 决定轮询还是停止。
-            st = backend.query_status()
-            return {
-                'started': False,
-                'error': '已有运行在进行中',
-                'source': st.source,
-                'hint': '先 get_run_status 查状态,或 stop_run 停止',
-            }
+            # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
+            return backend.run_refusal_response('先 get_run_status 查状态,或 stop_run 停止')
         if not block:
             # 长耗时自动化默认不阻塞 MCP 调用，避免 agent 等待期间失去交互能力。
             st = backend.query_status()
@@ -88,14 +82,8 @@ def make_run_standalone_app(backend: SrBackendContext) -> Callable:
         except Exception as e:  # noqa: BLE001 工具层兜底
             return {'started': False, 'error': str(e)}
         if not ok:
-            # 并发拒绝时返回当前占用者信息，方便 agent 决定轮询还是停止。
-            st = backend.query_status()
-            return {
-                'started': False,
-                'error': '已有运行在进行中',
-                'source': st.source,
-                'hint': '先 get_run_status 查状态,或 stop_run 停止',
-            }
+            # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
+            return backend.run_refusal_response('先 get_run_status 查状态,或 stop_run 停止')
         if not block:
             # 独立应用也可能跑很久，默认立刻返回并交给 get_run_status 轮询。
             st = backend.query_status()
@@ -230,14 +218,8 @@ def make_run_operation(backend: SrBackendContext) -> Callable:
         except Exception as e:  # noqa: BLE001 工具层兜底(resolve/validate/_start 异常)
             return {'started': False, 'error': str(e)}
         if not ok:
-            # 并发拒绝:返回当前占用者信息,方便 agent 决定轮询还是停止。
-            st = backend.query_status()
-            return {
-                'started': False,
-                'error': '已有运行在进行中',
-                'source': st.source,
-                'hint': '先 get_run_status 查状态,或 stop_run 停止',
-            }
+            # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
+            return backend.run_refusal_response('先 get_run_status 查状态,或 stop_run 停止')
         if not block:
             st = backend.query_status()
             return {

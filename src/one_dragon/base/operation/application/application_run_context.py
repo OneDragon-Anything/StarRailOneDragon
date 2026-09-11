@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, TypeVar
 
 from one_dragon.base.controller.stop_guard import StopRunInterrupted
+from one_dragon.base.operation import window_run_mutex
 from one_dragon.base.operation.context_event_bus import ContextEventBus
 from one_dragon.base.operation.notify_pool import NotifyPool
 from one_dragon.base.operation.operation_base import OperationResult
@@ -114,6 +116,15 @@ class ApplicationRunContext:
 
         # 通知池，应用开始时清空重用
         self.notify_pool: NotifyPool = NotifyPool()
+
+        # 跨进程窗口运行锁(机制见 window_run_mutex 模块头注):start_running 取得、
+        # _finish_running 释放,使「单跑道」约束跨进程成立(server / GUI / 直驱脚本
+        # 同驱一窗口时第二家拒绝启动,2026-08-24 双进程交替操作事故的根治)。
+        # _window_mutex_blocker = 最近一次取锁失败的占用者描述,供调用方拼
+        # 「游戏窗口被他进程占用」类消息;持锁中与无阻塞时为 None。
+        self._window_mutex: window_run_mutex.WindowRunMutex | None = None
+        self._window_mutex_guard: threading.Lock = threading.Lock()
+        self._window_mutex_blocker: str | None = None
 
         # 停机中断闩(ADR-0396):True = 本次运行被停止信号中断且尚未被消费。
         # 仅 stop_running 在「运行中/暂停中被停」时置位;start_running 清位;
@@ -386,6 +397,9 @@ class ApplicationRunContext:
             dispatch_event: 是否发送停止事件。
             stop_reason: 停止来源(stop_running 传入),仅用于幂等 no-op 日志。
         """
+        # 窗口锁与运行态同生命周期:收口即还锁(幂等,未持锁时 no-op)。
+        # 幂等 no-op 也覆盖「已被停止后再收口」的重复路径——锁已在首次收口释放。
+        self._release_window_mutex()
         if self.is_context_stop:
             if self.last_run_result is None:
                 self.last_run_result = result
@@ -406,6 +420,49 @@ class ApplicationRunContext:
             )
         return result
 
+    @property
+    def window_mutex_blocker(self) -> str | None:
+        """最近一次 start_running 因跨进程窗口占用被拒的占用者描述。
+
+        供运行槽等调用方在启动失败时拼「游戏窗口被他进程占用」类状态消息;
+        取锁成功或已释放后为 None。非占用类拒绝(进程内已有运行等)不写此字段。
+        """
+        return self._window_mutex_blocker
+
+    def _acquire_window_mutex(self) -> bool:
+        """取得跨进程窗口运行锁;被占时记录占用者描述并返回 False。
+
+        锁键从控制器游戏窗口标题推导(两边进程配置一致即同键);标题不可得时
+        回退全局默认键(保守互斥,见 window_run_mutex.resolve_lock_key)。
+        """
+        mutex = window_run_mutex.WindowRunMutex(
+            window_run_mutex.default_lock_dir(),
+            window_run_mutex.resolve_lock_key(self.ctx.controller),
+        )
+        acquired = mutex.acquire()
+        with self._window_mutex_guard:
+            self._window_mutex = mutex if acquired else None
+            self._window_mutex_blocker = (
+                None if acquired else mutex.other_holder_description()
+            )
+        if not acquired:
+            log.error('游戏窗口被他进程占用(%s),本次运行拒绝启动',
+                      mutex.other_holder_description())
+        return acquired
+
+    def _release_window_mutex(self) -> None:
+        """释放跨进程窗口运行锁(幂等);同时清空占用描述。
+
+        取锁在运行线程,释放可能在停止信号线程(stop_running 经 _finish_running),
+        句柄换出与释放按 guard 串行,防止取/放交叠漏锁。
+        """
+        with self._window_mutex_guard:
+            mutex = self._window_mutex
+            self._window_mutex = None
+            self._window_mutex_blocker = None
+        if mutex is not None:
+            mutex.release()
+
     def start_running(self) -> bool:
         """
         开始运行。
@@ -416,6 +473,8 @@ class ApplicationRunContext:
         Returns:
             bool: 是否成功开始运行
         """
+        with self._window_mutex_guard:
+            self._window_mutex_blocker = None  # 新一次尝试,清上一轮占用描述
         if not self.is_context_stop:
             log.error("请先结束其他运行中的功能 再启动")
             return False
@@ -423,17 +482,28 @@ class ApplicationRunContext:
             log.error("未初始化控制器")
             return False
 
-        if self.ctx.controller.init_before_context_run():
-            self.last_run_result = None
-            self._stop_interrupted = False  # 新运行开始,清停机中断闩(ADR-0396)
-            self._run_state = ApplicationRunContextStateEnum.RUNNING
-            self.event_bus.dispatch_event(
-                ApplicationRunContextStateEventEnum.START, self._run_state
-            )
-            return True
-        else:
-            log.error("运行前初始化失败")
+        # 跨进程窗口互斥:进程内单跑道检查通过后、进入 RUNNING 前先取窗口锁。
+        # 拿锁失败 = 另一进程正在驱动同一游戏窗口,缺省拒绝(安全优先,不排队)。
+        # 锁先于控制器初始化取得:初始化失败或后续异常都走释放,锁不跨运行泄漏。
+        if not self._acquire_window_mutex():
             return False
+        try:
+            if self.ctx.controller.init_before_context_run():
+                self.last_run_result = None
+                self._stop_interrupted = False  # 新运行开始,清停机中断闩(ADR-0396)
+                self._run_state = ApplicationRunContextStateEnum.RUNNING
+                self.event_bus.dispatch_event(
+                    ApplicationRunContextStateEventEnum.START, self._run_state
+                )
+                return True
+            else:
+                log.error("运行前初始化失败")
+                self._release_window_mutex()
+                return False
+        except Exception:
+            # 取锁后任何异常都先还锁再上抛,避免锁悬到进程退出才由系统回收。
+            self._release_window_mutex()
+            raise
 
     def stop_running(self, reason: str = '') -> ApplicationRunResult:
         """

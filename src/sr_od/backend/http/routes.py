@@ -156,9 +156,8 @@ async def handle_game_enter(backend: SrBackendContext, request: Request | None =
 
     ok, future = backend.start_run('http', lambda ctx: OpenAndEnterGame(ctx))
     if not ok:
-        st = backend.query_status()
-        return JSONResponse({'started': False, 'error': '已有运行在进行中',
-                             'source': st.source, 'hint': '先 /game/status 查状态,或 /game/stop 停止'})
+        # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
+        return JSONResponse(backend.run_refusal_response('先 /game/status 查状态,或 /game/stop 停止'))
     if not block:
         st = backend.query_status()
         return JSONResponse({'started': True, 'source': 'http', 'started_at': st.started_at,

@@ -45,13 +45,8 @@ async def handle_game_run_one_dragon(backend: SrBackendContext, request: Request
     except BackendNotReadyError as e:
         return _err(str(e))
     if not ok:
-        st = backend.query_status()
-        return JSONResponse({
-            'started': False,
-            'error': '已有运行在进行中',
-            'source': st.source,
-            'hint': '先 /game/status 查状态,或 /game/stop 停止',
-        })
+        # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
+        return JSONResponse(backend.run_refusal_response('先 /game/status 查状态,或 /game/stop 停止'))
     if not block:
         # 非阻塞模式只返回启动摘要；运行详情统一由 /game/status 查询。
         st = backend.query_status()
@@ -86,13 +81,8 @@ async def handle_game_run_standalone(backend: SrBackendContext, request: Request
     except BackendNotReadyError as e:
         return _err(str(e))
     if not ok:
-        st = backend.query_status()
-        return JSONResponse({
-            'started': False,
-            'error': '已有运行在进行中',
-            'source': st.source,
-            'hint': '先 /game/status 查状态,或 /game/stop 停止',
-        })
+        # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
+        return JSONResponse(backend.run_refusal_response('先 /game/status 查状态,或 /game/stop 停止'))
     if not block:
         # 非阻塞模式只返回启动摘要；运行详情统一由 /game/status 查询。
         st = backend.query_status()
@@ -178,13 +168,8 @@ async def handle_game_run_operation(
     except Exception as e:  # noqa: BLE001 resolve/validate/_start 异常兜底
         return JSONResponse({'started': False, 'error': str(e)})
     if not ok:
-        st = backend.query_status()
-        return JSONResponse({
-            'started': False,
-            'error': '已有运行在进行中',
-            'source': st.source,
-            'hint': '先 /game/status 查状态,或 /game/stop 停止',
-        })
+        # 拒绝响应区分「本进程已有 run」与「游戏窗口被他进程占用」,方便归因。
+        return JSONResponse(backend.run_refusal_response('先 /game/status 查状态,或 /game/stop 停止'))
     if not block:
         st = backend.query_status()
         return JSONResponse({

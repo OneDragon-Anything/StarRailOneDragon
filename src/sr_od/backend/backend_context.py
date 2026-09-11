@@ -33,6 +33,7 @@ from one_dragon.base.controller.stop_guard import (
 )
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
+from one_dragon.base.operation import window_run_mutex
 from one_dragon.base.operation.application import application_const
 from one_dragon.base.operation.application.application_run_context import (
     RunFinishReason,
@@ -147,6 +148,11 @@ class RunSlot:
         self.failed_node: str | None = None
         self.future: Future | None = None
         self.current_op: Operation | None = None
+        # 最近一次 _start 拒绝的原因;None = 拒绝源于本进程已有运行(历史语义)。
+        # 跨进程窗口占用与本进程已有 run 须可区分(2026-08-24 双进程交替操作事故
+        # 的排查教训:笼统的「已有运行在进行中」把排障引向错误进程),受理成功时
+        # 清空。start 类入口经 run_refusal_response 消费。
+        self.last_refusal_reason: str | None = None
 
     def is_running(self) -> bool:
         """当前槽是否有未完成的运行。"""
@@ -194,7 +200,19 @@ class RunSlot:
             raise ValueError('op_factory 与 app_id 必须二选一')
         with self._lock:
             if self.future is not None and not self.future.done():
+                # 本进程已有 run 的拒绝:清掉可能残留的上一次拒绝原因,让拒绝
+                # 响应回落「已有运行在进行中」历史文案(每次拒绝只记自己的因)。
+                self.last_refusal_reason = None
                 return False, None                         # 单跑道:已在跑就拒(拒绝路径不刷新配置)
+            # 跨进程窗口占用探测:本槽空闲但游戏窗口被他进程驱动时,受理前即拒
+            # (2026-08-24 双进程交替操作事故)。权威判定仍在运行门
+            # (ApplicationRunContext.start_running 真实取锁),此处是快速拒绝的
+            # 提示层;探测存在竞态窗口,竞态漏过时由运行门兜住、运行快速失败。
+            blocker = window_run_mutex.describe_window_blocker(self._ctx.controller)
+            if blocker is not None:
+                self.last_refusal_reason = f'游戏窗口被他进程占用({blocker})'
+                return False, None
+            self.last_refusal_reason = None
             self.terminal_state = None
             self.last_status = None
             self.failed_node = None
@@ -244,10 +262,19 @@ class RunSlot:
                     app_id, run_context.current_instance_idx, group_id
                 )
                 if run_result.finish_reason == RunFinishReason.NOT_STARTED:
-                    result = OperationResult(
-                        success=False,
-                        status=f'应用运行失败: {run_result.finish_reason}',
-                    )
+                    # 未启动时透出跨进程窗口占用(若有):占用拒绝与其它未启动
+                    # 原因须可区分,否则 agent 只见 NOT_STARTED 无从归因。
+                    blocker = getattr(run_context, 'window_mutex_blocker', None)
+                    if isinstance(blocker, str) and blocker:
+                        result = OperationResult(
+                            success=False,
+                            status=f'应用未启动: 游戏窗口被他进程占用({blocker})',
+                        )
+                    else:
+                        result = OperationResult(
+                            success=False,
+                            status=f'应用运行失败: {run_result.finish_reason}',
+                        )
                 else:
                     result = run_context.last_application_result
                     if result is None:
@@ -259,7 +286,16 @@ class RunSlot:
                 # —— op 路径:槽自管生命周期(open_game / 自定义 op 通用)——
                 run_context.current_instance_idx = instance_idx if instance_idx is not None else ctx.current_instance_idx
                 if not run_context.start_running():
-                    result = OperationResult(success=False, status='start_running 失败(有其它运行)')
+                    # 失败原因区分跨进程窗口占用与进程内其它运行(运行门在
+                    # window_mutex_blocker 记录占用描述;isinstance 防测试替身)。
+                    blocker = getattr(run_context, 'window_mutex_blocker', None)
+                    if isinstance(blocker, str) and blocker:
+                        result = OperationResult(
+                            success=False,
+                            status=f'start_running 失败(游戏窗口被他进程占用: {blocker})',
+                        )
+                    else:
+                        result = OperationResult(success=False, status='start_running 失败(有其它运行)')
                 else:
                     op: Operation | None = None
                     try:
@@ -1283,6 +1319,30 @@ class SrBackendContext:
     def query_status(self) -> RunStatusResult:
         """查询当前或最近一次运行状态(单槽,直接委托)。"""
         return self.run_slot._query_status()
+
+    def run_refusal_response(self, hint: str) -> dict:
+        """start 类入口被拒(``_start`` 返回 ok=False)时的统一拒绝响应。
+
+        error 优先取 ``run_slot.last_refusal_reason``:跨进程窗口占用与本进程
+        已有 run 必须可区分(2026-08-24 双进程交替操作事故的排查教训——笼统的
+        「已有运行在进行中」会把 agent 的处置引向错误进程)。
+
+        Args:
+            hint: 各入口按自身协议给出的下一步提示(如 MCP 查 get_run_status)。
+
+        Returns:
+            ``{started: False, error, source, hint}``;source 为当前/最近运行触发方。
+        """
+        st = self.query_status()
+        # isinstance 防御:测试替身的 run_slot 常是 MagicMock,非 str 原因回落历史文案。
+        reason = self.run_slot.last_refusal_reason
+        error = reason if isinstance(reason, str) and reason else '已有运行在进行中'
+        return {
+            'started': False,
+            'error': error,
+            'source': st.source,
+            'hint': hint,
+        }
 
     def stop(self) -> dict:
         """停止当前运行(单槽)。无运行时返回 ``{stopped: False, error}``。"""
