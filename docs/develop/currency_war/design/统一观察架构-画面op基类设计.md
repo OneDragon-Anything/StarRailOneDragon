@@ -30,9 +30,9 @@
 > (高 3/中 6/低 7)就地修订:sim 侧锚行落盘面如实申报(「两域」改
 > 实机先行)、指标 1 闭合公式重构(尝试口径四项)、levelup_landed 改
 > 收编现役 'level_up' 行禁双行、boundary 触发口与公式可测性立 H6/H7。
-> v10 对照说明见 docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-observation/recovered/T-217-流程hook设计v1.md
+> v10 对照说明见 docs/develop/currency_war/design/T-217-流程hook设计v1.md
 > (R2);对照说明(v5-v9)见
-> docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-observation/recovered/统一观察架构-修订对照说明.md;
+> docs/develop/currency_war/design/统一观察架构-修订对照说明.md;
 > v11 = 验证段废除(用户裁定 2026-09-10:动作 op 只管机械执行,禁止做
 > 任何验证)——§5.1 六段→五段(验证段删除及规范理由落文),§5.2 联动
 > (备战原型行/事件屏迁移行);v12 = T-223 用户终裁(2026-09-10)落地
@@ -43,8 +43,14 @@
 > §6.5-1 触发前提改观察侧对账承接、§6.3 applied 两域分轨申报(F11)、
 > §1.1/§1.3/§4.3/§5.1/§5.2/§6.6/§9.2/§10.3/§11-R8 引用面联动;§12 流程
 > hook 章本版不动(其旧轴/fire 口引用面联动候锚实现批①,清单见
-> docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-observation/recovered/T-225-交付报告.md,禁静默改);代码零
+> docs/develop/currency_war/design/T-225-交付报告.md,禁静默改);代码零
 > 触碰——协议变更与执行器验证链拆除同窗落码(批3+批3a)防真空。
+> v13 = 余项收口正本对齐(统一观察架构迭代末阶段,T-8/T-47/T-48/T-45
+> 交付后):§5.2/§3.4 迁移面清零(全量已迁现状 + 推进型变体收编行 +
+> 过渡相位件已迁口径)、§6.4 在册两件②策略屏写端已接线、§9.2 余项
+> 收口完成态(相位 1 深度统一仍待独立批)、§2.5/§9.1 并存面刷新;
+> 头部四处对照说明/清单指针与 §11 开放问题清单指针 re-anchor 至
+> design/ 正本同域持久位。
 
 ## 0. 名词
 
@@ -301,7 +307,9 @@ synthesize_from_game_state(kernel/cw_board_state)是该映射的第一版,本架
 `cw_game_ports.py`(T-120 批 0,惰性纯协议)已定义这对端口的契约:
 CwObservationSource(screen_identity / observe_prep(phase) /
 observe_shop_cards / overlay_options)+ CwActionSink(execute_action →
-ExecResult),模块级安装槽,缺省 None = 生产直连现役路径。本架构采纳它作为
+ExecResult),模块级安装槽,缺省 None = 生产直连现役路径(装配点分流面
+现状 = cw_screen/ 全目录画面 op 与 cw_op/ 商店系三件均已带分流,生产恒走
+旧路径,并存面与退役候批面见 §9.1)。本架构采纳它作为
 两适配器的**装配机制**(安装只发生在显式装配点,进程内单装配,卸载复位);
 契约面按 §2.1-§2.4 与 §6 的规格补齐消费语义。协议现存的「读什么字段」
 (phase 键)与「在哪个画面」(screen_identity)两词表二分被本架构保留——
@@ -386,11 +394,11 @@ sim 侧唯一需要「翻译」的地方:**引擎没有画面,只有开局与轮
 
 | 过渡相位 | 现役对应件 | 收编后 |
 |---|---|---|
-| 简报/BOSS 简报 | CwScreenBriefing(cw_loop 0r 分支)+ 职级 ctx 中转吸收(`_absorb_selected_difficulty`,cw_loop.py:1167 附近) | 过渡相位表行(基类驱动过渡 op);职级/boss/词缀写端 = 简报观察 payload(§2.2 简报行) |
+| 简报/BOSS 简报 | CwScreenBriefing 双登记点共驱(cw_loop 0r 位面简报分支 + 入口流简报屏段 cw_entry_start——观察直写 session,HandleBriefing 已退役)+ 职级 ctx 中转吸收(`_absorb_selected_difficulty`,cw_loop.py:1071,调用点 :1068) | 已迁(T-8):两登记点共同驱动同一基类驱动过渡 op;职级/boss/词缀写端 = 简报观察 payload(§2.2 简报行;切换 = 相位 1 深度统一批辖) |
 | 难度确认 | CwEntryStart 难度确认段(入口流,§4.2) | 启动序列末尾 = 相位 1 入口;selected_difficulty 写端顺势归位(§4.4) |
-| 位面详情 | CwScreenPlaneDetail(cw_loop 0a4 主循环兜底) | 过渡相位表行 |
-| 敌人情报(位面情报采集) | CwScreenPlaneIntel(采集子 op;接管补采 = cw_screen_prep `_takeover_collect_if_needed`;入口流补采 = cw_entry_plane_intel) | 过渡相位表行(采集 = 轻观察 + skip 决策的一次性过渡生命周期) |
-| 中断弹窗 | CwScreenInterruptDialog(cw_loop 分发;真 modal 红线 = 绝不点「放弃并结算」)+ cw_screen_prep 环入口清场(`_clear_entry_overlays`,关闭注册表 = ENTRY_OVERLAY_CLOSE:cw_screen_prep.py:141,派生映射 = cw_overlay_registry) | 过渡相位表行;清场注册表收编为过渡相位表的「可一键关闭」子集 |
+| 位面详情 | CwScreenPlaneDetail(cw_loop 0a4 主循环兜底) | 已迁(T-47 随推进型变体收编:CwProgressionScreenOp 子类零改动,骨架即变体五段) |
+| 敌人情报(位面情报采集) | CwScreenPlaneIntel(采集子 op;接管补采挂点在备战屏 = cw_screen_prep `_takeover_collect_if_needed`;入口流补采 = cw_entry_plane_intel) | 已迁(T-48 直迁,薄转录:采集体抽 `_collect_cycle` 两路径方法级共享,双节点图边保留;两处调用挂点不变;采集 = 轻观察 + skip 决策的一次性过渡生命周期) |
+| 中断弹窗 | CwScreenInterruptDialog(cw_loop 分发;真 modal 红线 = 绝不点「放弃并结算」)+ cw_screen_prep 环入口清场(`_clear_entry_overlays`,关闭注册表 = ENTRY_OVERLAY_CLOSE:cw_screen_prep.py:143,派生映射 = cw_overlay_registry) | 已迁(T-47 随推进型变体收编:子类零改动,真 modal 红线承载于 `progress_once` 覆写原位);清场注册表留守原位,「可一键关闭」子集收编候相位 1 深度统一批 |
 
 **sim 侧**:过渡相位 = 引擎段边界申报的一种——进位面段申报简报相位
 (申报值 = 引擎段身份,开放问题 A1 已裁决 = 引擎内段身份申报;§3.3
@@ -419,7 +427,8 @@ reconcile → decide → act → on_outcome),不是循环外的特殊代码。�
   〔难度确认/模式选择/简报〕合称信号,本架构取难度确认屏),职级读数经
   ctx 中转(ctx.cw_selected_difficulty)交给对局侧(两个吸收点:
   cw_strategy_manager.establish_new_match 装配段 :78-79 / cw_loop
-  ._absorb_selected_difficulty 简报段 :1173-1177,符号名+行号双锚;
+  ._absorb_selected_difficulty(:1071,调用点 :1068;P3 收缩后仅辖职级
+  难度,简报三字段已由 CwScreenBriefing 直写 session),符号名+行号双锚;
   迁移面申报见 §9.2 步骤 4)。菜单
   导航的判据(按钮锚/返回最高职级)属入口流词汇,不进相位表。
   **实机职级选择调用点(F5)= CwEntryStart 难度确认段**
@@ -562,8 +571,9 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 | CwScreenPrep.run 五段(①观察→②对账→③决策→④期望态→⑤执行) | **本生命周期的原型**:备战 op 已按五段组织,基类化 = 把②对账抽到基类共用,①观察/⑤执行换成端口调用,落地登记收编为 on_outcome(§6.4);第六段「验证」经用户裁定 2026-09-10 废除(§5.1),备战现役「验证失败→恢复原语」编排属违规面,处置归备战修复批(本架构批只排查申报)。备战 op 为第一个试点(§9.2) |
 | cw_loop.loop() 外循环画面分派 | **保留**:继续承担画面识别与 op 分发(它是 screen_identity 的现役实现);基类化不动外循环,只改被分发 op 的内部结构。简报/难度确认补入分派面 = 相位 1 行(§3.2);0 系 overlay 分支与环内清场表格化为过渡相位表(§3.4) |
 | CwEntryStart 入口流(大厅导航→难度确认) | **保留在统一循环外**(§4.2):菜单导航仅实机存在;其职级读数经 ctx 中转交接,到达难度确认屏即触发对局侧接管 |
-| 各事件屏 op(CwScreenEncounter 等:读→决策→点击→验关内联于 handle()) | 逐屏迁移到基类生命周期(§9 分屏渐进;粒度 = B3 三段走:先「遭遇 = 带刷新链最复杂、盛会之星 = 纯选卡最简」两代表屏立验证断言集模板,其余按族批量)。已按该式迁移的屏(遭遇 CwScreenEncounter/盛会之星 CwScreenMegastar + 第二批量八屏:补给 CwScreenSupplyNode/伙伴 CwScreenPartner/骇入策划 CwScreenPlanner/祈愿试炼 CwScreenWishTrial/命运卜者 CwScreenFortune/星徽秘典 CwScreenBookcard/装备三选一 CwScreenEquipPick/专家邀请函 CwScreenExpertInvite)= 基类子类 + 决策承载节点顶部装配点分流(两端口完整在场 → 五段;缺省 None = 旧路径,先例同备战 op 行)+ 实机适配器封口:遭遇屏的 encounter_refresh_used 写端收编 on_outcome 注册表(发射型,触发点两路径共用分派面),chosen_* 写端豁免留守;余屏均无落地登记件(§6.4 收编面对事件选卡屏零行;supply_refresh_used BoardState 字段位先申报禁写端),结构 = 共享动作体型——盛会之星 decide+act 内聚 ``_do_action``;第二批量七选卡屏门后体纯移入 ``_handle_overlay`` 两路径共享零转录(无门屏 planner/fortune/equip_pick 入口判定归主循环分发,observe 段 = 轻观察帧引用);补给内聚 ``_do_action`` 且节点完成判定 = 下一轮 observe 门 ``_in_node`` 复检;专家邀请函分流在选卡节点(开卡节点 = 纯导航留旧路径,申报面 = 迁移锁源面锁)。sim 腿不适用例外清单(B3-F11)随迁移批落测试 docstring;投资两屏/结算/简报相位未迁屏现状不动 |
-| 过渡相位现役件(简报/位面详情/敌人情报/中断弹窗/清场注册表) | 收编为过渡相位表(§3.4 收编映射表);迁移前现状不动 |
+| 各事件屏 op(CwScreenEncounter 等:读→决策→点击→验关内联于 handle()) | 逐屏迁移到基类生命周期(§9 分屏渐进;粒度 = B3 三段走:先「遭遇 = 带刷新链最复杂、盛会之星 = 纯选卡最简」两代表屏立验证断言集模板,其余按族批量)。已按该式迁移的屏(遭遇 CwScreenEncounter/盛会之星 CwScreenMegastar + 第二批量八屏:补给 CwScreenSupplyNode/伙伴 CwScreenPartner/骇入策划 CwScreenPlanner/祈愿试炼 CwScreenWishTrial/命运卜者 CwScreenFortune/星徽秘典 CwScreenBookcard/装备三选一 CwScreenEquipPick/专家邀请函 CwScreenExpertInvite)= 基类子类 + 决策承载节点顶部装配点分流(两端口完整在场 → 五段;缺省 None = 旧路径,先例同备战 op 行)+ 实机适配器封口:遭遇屏的 encounter_refresh_used 写端收编 on_outcome 注册表(发射型,触发点两路径共用分派面),chosen_* 写端豁免留守;余屏均无落地登记件(§6.4 收编面对事件选卡屏零行;supply_refresh_used BoardState 字段位先申报禁写端),结构 = 共享动作体型——盛会之星 decide+act 内聚 ``_do_action``;第二批量七选卡屏门后体纯移入 ``_handle_overlay`` 两路径共享零转录(无门屏 planner/fortune/equip_pick 入口判定归主循环分发,observe 段 = 轻观察帧引用);补给内聚 ``_do_action`` 且节点完成判定 = 下一轮 observe 门 ``_in_node`` 复检;专家邀请函分流在选卡节点(开卡节点 = 纯导航留旧路径,申报面 = 迁移锁源面锁)。sim 腿不适用例外清单(B3-F11)随迁移批落测试 docstring。余下相位屏已全量迁毕:五相位屏(T-8:投资环境/投资策略/战斗等待——分流在 `wait()` 首行/简报——cw_loop 0r 位面简报分支与入口流简报屏段双登记点共驱/BOSS 简报)+ 收尾五屏(T-48:位面过渡/武装箱弹窗/未达上限弹窗/等待1-1/位面情报采集——分流在 `collect()` 节点首行,双节点图边保留),cw_screen/ 目录收口锁在册(AST 全目录断言:凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代;锁 = test_cw_obs_arch_closing_screens.py::test_closure_all_cw_screen_ops_inherit_base);cw_op/ 商店系三件亦经 B4 挂账批收编(T-45,见 §9.2) |
+| CwProgressionScreenOp(第二画面 op 基类:只读/导航变体,ADR-0584 空决策合同) | 收编为 CwScreenOpBase 变体(T-47):改挂基类 + `handle` 顶部装配点分流(两端口完整在场 → `run_lifecycle()` 变体五段;缺省 None = 现役骨架逐位执行);变体五段 = observe 入口/重入观察裁决(锚 miss 未推进 → fail 交回;miss 已推进 → 清旗标 success 出口)/reconcile + decide 空申报(空决策合同,零策略器问询)/act = `progress_once()` 推进半(免锚臂发出即 success)/on_outcome 无登记件;ADR-0584 合同逐字保留(预算 2 归装饰器/重入裁决/免锚形态),11 子类零改动随之收敛(仅覆写 `entry_ok`/`progress_once`/类常量) |
+| 过渡相位现役件(简报/位面详情/敌人情报/中断弹窗/清场注册表) | 已按 §3.4 收编映射表迁毕:简报/BOSS 简报(T-8)与位面过渡/武装箱/未达上限/等待1-1/位面情报采集(T-48)= 基类直迁过渡 op,位面详情/中断弹窗 = 推进型变体件随 T-47 收编(子类零改动);清场注册表(ENTRY_OVERLAY_CLOSE)留守 cw_screen_prep 环入口清场原位,「可一键关闭」子集收编候相位 1 深度统一批 |
 | decision_assembly.snapshot_from_obs | **保留**(装配缝):PrepObservation → Snapshot 的映射半部;其回退锚已切 strategy_input_state(迁移批次三),继续作备战装配点 |
 | strategies/impl/flow.py(CwFlowStrategy 分画面决策入口) | **不替代**:decide() 段的下游就是这些入口;策略器契约面(ADR-0583)不动 |
 | sim 引擎决策段(decide_shop_screen 循环 + 合成口;部署/装备内嵌块) | 商店段收编为 sim 适配器②「引擎动作应用」+ 基类生命周期驱动;部署/装备内嵌块 = decide 段 sim 替代形态的待收敛面(§5.1 申报,§7-T5 扩域);synthesize_from_game_state 升格为 sim 适配器①(§2.4) |
@@ -727,8 +737,8 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 | 效果账本计数 bump_key(CounterKey.REFRESH@刷新回执 + BUY@购买回执) | cw_op_buy_cards 执行落地门(批次三件④) | 同上,与 record_refresh_execution 同点成组 |
 | 合成升星投影 detect_merge_upgrade → write_logic(bs.bench, 投影 BenchView) 直写(ADR-0651 两态制) | BuyCard 执行落地门投影点(批次二扩单①) | on_outcome(BuyCard 发射)触发直写;实读覆盖归下一 reconcile 观察赢(不变) |
 | 免战牌递减 consume_use(归零移除) | prep_actions `_launch_attempt`「按钮-跳过」发射落地回执(批次三件⑥) | on_outcome(跳过发射)触发 |
-| 节点屏刷新计数组·遭遇(encounter_refresh_used write_logic,随点击置位不等验效) | CwScreenEncounter 刷新链(handle 置位 :177-179/写端 :190-194,批次三件⑦已接) | on_outcome(遭遇刷新点击)触发 |
-| 节点屏刷新计数组·策略屏(strategy_refresh_used 逐卡 dict[str,int] write_logic,随点击置位不等验效) | CwScreenInvestStrategy 刷新链(handle 发射即记 :265/逐槽写端 :281-287,批次三件⑦已接) | on_outcome(策略屏刷新点击,逐卡键入账)触发 |
+| 节点屏刷新计数组·遭遇(encounter_refresh_used write_logic,随点击置位不等验效) | 已收编本面(试点步骤 2 接线,注册表在册):触发点 = 刷新链两路径共用分派面,原 inline 位(handle 置位 :177-179/写端 :190-194,批次三件⑦接)随迁,登记语义不变(§6.5) | on_outcome(遭遇刷新点击)触发 |
+| 节点屏刷新计数组·策略屏(strategy_refresh_used 逐卡 dict[str,int] write_logic,随点击置位不等验效) | 已收编本面接线(T-8 策略屏迁移批):刷新链点击处经 `_emit_refresh_click` 单一分派面发射(触发点唯一,两路径共用),写端逐位随迁钩子体——原 inline 位(handle 发射即记 :265/逐槽 :281-287,批次三件⑦接)随迁,登记语义不变(§6.5) | on_outcome(策略屏刷新点击,逐卡键入账)触发 |
 
 - **钩子契约(T-223 修订,v12)**:on_outcome(action, outcome, evidence)
   ——成败回执面退役(ActionOutcome.progressed 与端口回执 (progressed,
@@ -751,10 +761,12 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
   CwScreenEncounter.handle 置位语句 cw_screen_encounter.py:177-179「发出
   点击即置位,防点偏未生效重入屏反复尝试」、BoardState 写端 :190-194,
   验效失败帧仍 +1);②策略屏逐卡刷新计数 strategy_refresh_used(逐卡
-  dict[str,int],随策略屏刷新点击置位、不等验效;写端 =
-  CwScreenInvestStrategy 刷新链 handle 发射即记 :265/逐槽 write_logic
-  :281-287;记录模型设计 §3.4.4,测试锁 test_cw_board_state_batch3.py:
-  341 在册)。新登记件入册一律发射型,无选型申报面(原「申报所属型、
+  dict[str,int],随策略屏刷新点击置位、不等验效;写端已按本面接线
+  (T-8 策略屏迁移批)= `register_outcome_hook` 注册件 +
+  `_emit_refresh_click` 单一分派面发射,原 inline 写端(handle 发射
+  即记 :265/逐槽 write_logic :281-287)逐位随迁钩子体,值/evidence/
+  produced_by 逐位对拍锁在册;记录模型设计 §3.4.4,测试锁
+  test_cw_board_state_batch3.py:341 在册)。新登记件入册一律发射型,无选型申报面(原「申报所属型、
   禁静默选型」纪律随两型制退役;发射时点逐件申报的纪律保留)。
   **v10 轴扩展申报:第三型「边界型(boundary)」不受本次退役影响**——
   流程边界事件触发的观测锚(进节点/进位面/结算),非动作发射辖域,触发
@@ -1001,6 +1013,11 @@ sample_node_sequence / P2_NODE_SEQUENCE 与替换函数的关系(替换前后序
 - 一次迁一个画面 op;旧路径保留到该画面的等价门通过;两路径并存期由
   cw_game_ports 装配点分流(「缺省 None = 生产直连」模式,不新建开关机制,
   符合 strategy-work「开关生命周期」对开关形态的收敛要求)。
+- **并存面现状(末阶段正本对齐,T-8/T-47/T-48/T-45 交付后)**:装配点
+  分流面已覆盖 cw_screen/ 全目录画面 op + cw_op/ 商店系三件(迁移面
+  清零);生产仍恒走旧路径(装配点缺省 None,各迁移批生产行为零变化)
+  ——并存期旧路径退役候批面 = 上述全量,退役归等价门(实机腿)通过后
+  的后续批(实机验证候统一 state 门开启)。
 - **验收门分主次(F2)**:①**主门 = 行为等价双腿**——(a)在册行为锁经
   op execute() 走新基类全绿(实机腿);(b)BoardState 写入流分域夹具对拍
   (实机 = 固定截图夹具 → 实机适配器 payload → bs 全帧对拍,回归 pin 钉
@@ -1036,13 +1053,19 @@ sample_node_sequence / P2_NODE_SEQUENCE 与替换函数的关系(替换前后序
 3. 等价门:主门 = 行为锁经 execute() 走新基类全绿 + 写入流分域夹具对拍
    (§9.1);次门 = 策略面回归哨兵(商店子相位)跑通;通过后跑 sim A/B
    一批(辖域申报见 §9.1)。
-4. 通过后按同式迁下一画面。建议顺序:商店开态(已被备战 op 涵盖,随试点
-   自然覆盖)→ 遭遇节点 op → 补给 → 事件屏族 → 结算覆盖;简报/难度确认
-   相位(相位 1)的统一依赖 kernel 选职级缺省函数落地(A10 已裁决选项②,
-   小件随基类批),排在事件屏
-   族之后。**相位 1 统一的迁移面申报(F5)**:ctx.cw_selected_difficulty
-   中转的**两个吸收点**并入迁移面——cw_loop._absorb_selected_difficulty
-   (简报段:1173-1177)与 cw_strategy_manager.establish_new_match
+4. **余项收口完成态(T-8/T-47/T-48 交付,cw_op 挂账批 T-45 补齐)**:
+   事件屏族/投资两屏/结算(战斗等待)/简报/BOSS 简报(T-8)、推进型变体
+   11 屏(T-47)、收尾五屏(T-48)均已迁毕,cw_screen/ 全目录收口锁在册
+   (AST 断言:凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代);
+   cw_op/ 商店系三件(CwOpBuyCards/CwOpOpenShop/CwOpCloseShop)经 B4
+   挂账批收编(T-45:open/close = 只读/导航变体,buy_cards = 旧体委托
+   变体,五段映射申报住类 docstring),B4 判据第 1 条点名清单全量达成。
+   **相位 1 深度统一仍待独立批**:kernel 选职级缺省函数落地 + 简报/
+   难度确认屏写端切观察 + selected_difficulty 两吸收点注销(A10 已裁决
+   选项②;前置 = 难度确认屏对局类型建档采证,§4.4 as-built 缺口)。
+   **相位 1 统一的迁移面申报(F5)**:ctx.cw_selected_difficulty
+   中转的**两个吸收点**并入该批迁移面——cw_loop._absorb_selected_difficulty
+   (定义 :1071,调用点 :1068)与 cw_strategy_manager.establish_new_match
    (装配段:78-79,符号名+行号双锚);统一后由相位 1 观察写端接管,
    迁移批须逐点对账注销。
 
@@ -1094,10 +1117,9 @@ sim 侧倒计时实现(归入 §7-T4 收敛纪律)。
 > **开放问题编号解码**:本文正文的 A*/B*/C* 系编号(A1-A10/B1-B5/C1-C2,
 > 如 §3.3-A1/§9.1-B2/§6.6-A7)= 架构起草期的开放问题条目,其一句话
 > 申报与裁决状态的现行单一源 = 配套清单《统一观察架构-开放问题清单》
-> 的「全部开放问题重编号总表」节(docs/develop/sr_od/application/currency_war/changes/
-> 2026-09-11-unified-observation/recovered/统一观察架构-开放问题清单.md;迭代工作文件,终稿归宿随本文头部修订块的
-> ADR 化同批治理)。本节 R1-R10 是随本文走稿的风险项编号,与清单内
-> `[R*]` 标注互指同一条目。
+> 的「全部开放问题重编号总表」节(docs/develop/currency_war/design/
+> 统一观察架构-开放问题清单.md,正本同域持久件)。本节 R1-R10 是随本文
+> 走稿的风险项编号,与清单内 `[R*]` 标注互指同一条目。
 
 - **R1 引擎段边界申报的侵入面**(§3.3):相位翻译推荐「引擎在段边界显式
   申报当前画面」——这是 sim 引擎侧的一次性小改动,紧邻「rng 消耗序不变」
