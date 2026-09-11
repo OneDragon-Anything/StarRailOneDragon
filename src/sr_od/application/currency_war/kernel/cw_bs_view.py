@@ -1,32 +1,64 @@
 """BoardState → GameState 消费适配器(迁移批次二;设计正本 =
-``docs/develop/currency_war/design/BoardState-数据结构设计.md`` §8.7 批次二)。
+``docs/develop/currency_war/design/BoardState-数据结构设计.md`` §8.7 批次二;
+透传域收编设计正本 = ``docs/develop/sr_od/application/currency_war/
+changes/2026-09-06-redesign/w5-透传域建模方案.md``)。
 
 **本模块是什么**:策略器决策输入的切换载体——旧读取对象
 (``session.last_state`` 原始观察帧)转 BoardState 适配层:对已建模域,
 值取自 BoardState 单例(经 :func:`cw_observation._feed_board_state` /
-sim 合成口逐帧喂入,来源四分类带 evidence);对**未建模/执行域**,显式
-透传入参帧(申报面非残差:各域有"不入 BoardState 记录模型"的显式理由,
-见下方清单;收敛前提 = 该域本身建模入 BoardState,归建模批,非退役批)。
-返回值 = 标准 :class:`GameState`(形状兼容,消费方零改动)。
+备战装配环席位写端 / sim 合成口逐帧喂入,来源两态带 evidence);对
+尚未建模域,显式透传入参帧(各域有"不入 BoardState 记录模型"的显式
+理由,见下方清单)。返回值 = 标准 :class:`GameState`(形状兼容,消费方
+零改动)。
 
 **等价性语义(行为等价门)**:
-- 已建模域:BoardState 值由同一帧的观察流镜像而来,常态帧与旧直读
+- 已建模域:BoardState 值由同一观察漏斗镜像而来,常态帧与旧直读
   逐位一致;失读帧按 §2.2 记录模型语义返回沿用值(carried)而非原始帧
-  的兜底值(raw 0/启发式值)——这是记录模型的核心语义,属于「同函数
-  同输入序下更诚实的输入」的申报面,回放语料(无 OCR 失读)逐位零差;
-- 透传域:值与旧形态逐位一致(同一入参帧原样搬运)。
+  的兜底值(raw 0/启发式值)——「同函数同输入序下更诚实的输入」申报面,
+  回放语料(无 OCR 失读)逐位零差;
+- payload 域(shop/refresh_probs)例外:**无值 = 结构离屏,返回空牌面,
+  禁透传入参帧旧牌面**(残留会把离屏帧误读成「商店仍开着」,决策买牌
+  空转);开店态 OCR 失读帧容器保持上一开店帧旧牌面(喂入口失读不写),
+  视图如实返回该沿用牌面——与「帧实读空表→决策保守跳过」的旧形态是
+  申报过的行为差(失读窗内发射买牌由执行侧核对兜底)。
 
-**未建模/透传域清单**(各域理由申报;域建模入 BoardState 后对应透传分支
-自然由建模批收编):hp(门权威随帧:
-last_state.hp = gated_hp 门后消费值,BoardState.hp = 门前真值,消费施门
-归策略侧 kernel 不可反向依赖——记录/消费分离,模块内 hp 注释)/
-bench/deployed(席位身份识别在 PrepObservation/执行侧 SIFT,未入
-BoardState 观察流)/deploy_cap(宝钻 cap=现场实时读值,§3.2.7 豁免显式
-申报)/plane_bosses/enemy_affixes/active_env/equips(开局域与持久账本组
-的画面写端挂建模批;当前经入参帧透传)/shop/refresh_probs(商店域决策
-帧 = 波顶融合态 shop_state_frame,不是本适配器的辖域)/
-board_next_tier(派生键:帧缺省时由 :func:`board_next_tier_of` 自
-BoardState.board 现算补齐)。
+**域清单**(建模收编状态,各域理由/边界申报):
+- hp(W5 专项):视图供**门前真值**(记录/消费分离)——``st.hp`` =
+  BoardState.hp 值(含 carried 沿用;无值透传帧引导窗);
+  ``hp_readable`` = ``bs.hp.source == 'observation'``(**最近观察**语义:
+  真读或结算覆盖,ADR-0282 两来源 True 时可信度等同真读的如实化——
+  结算覆盖帧 readable=True 属非常态帧行为差申报);``hp_trusted`` =
+  来源映射(observation/carried→True,prior/logic→False;与现役
+  real_read/same_node_carried 词表一一同构,ADR-0431 帧龄门语义)。
+  消费侧施门 = 策略实现层(gated_hp)在**读点**显式施(mandate adapter
+  decision_state / encounter λ 键读点;kernel 不可反向依赖策略实现),
+  session 政策窗口径(gap==1 / 不可信放宽 gap≤3)不变。
+- bench/deployed(席位):容器值收编(BenchView→槽位表 /
+  front_row+back_row→deployed 槽表,换算单一源在 kernel/cw_board_state
+  映射层);观察写端 = 备战装配环(防 SIFT 双跑,漏斗声明修订见
+  cw_observation._feed_board_state)。
+- deploy_cap:容器识别真值(ADR-0420 采信门输出;与 back_layout 双存
+  属 §8.8 在册例外,字段注释见 BoardState.deploy_cap)。
+- shop/refresh_probs:payload 收编(离屏语义见上);牌转换 = 双 ShopCard
+  归一映射单一源(kernel/cw_board_state.shop_cards_to_legacy,x 置 0 不
+  消费——执行侧 buy 发射从 screen_info 现取)。
+- active_env/plane_bosses/enemy_affixes/equips:容器值收编,无值透传帧
+  引导窗(equips 观察写端 = 装备分配链装备区现读 + 载体中继兜底,
+  接线滞后窗值冻结申报见喂入口 equips 段)。
+- front_max:常量供数(DEPLOYED_FRONT_CAPACITY,恒 4 非观察事实);
+- back_max:**透传保留**(值源切换语义裁决另立批——画面格数 vs 模型
+  后排容量两语义未定谳前维持帧值,消费面 rebuild/evolution 排容量/
+  max_units/invariant 语义零变化);
+- dual_track_phase:透传保留(策略侧派生旗标,committed_from 权威经
+  mandate adapter 装配回填;非游戏可观察事实不入容器,W6 消费切换时
+  消费面改读派生函数);
+- focus_factions:视图恒 None(与 dual_track_phase 同族——策略侧回填
+  字段,真家 StrategyState;本视图不透传不建模,W6 处置执行侧回填点);
+- board_next_tier(派生键:帧缺省时由 :func:`board_next_tier_of` 自
+  BoardState.board 现算补齐)。
+
+调用点数以批首 grep 清点为准(现树 src 直调 ``strategy_input_state``
+15 处 + ``game_state_view`` 直调 1 处)。
 """
 from __future__ import annotations
 
@@ -88,16 +120,32 @@ def game_state_view(bs: BoardState, frame: GameState | None) -> GameState:
         st.streak = int(bs.streak.value)
     else:
         st.streak = fr.streak
-    # hp = **帧透传**(显式申报,非疏漏):旧链 last_state.hp 是过
-    # gated_hp 新鲜度门后的消费值(director 写门控值,cw_screen_prep
-    # 单写者语义;r68 教训「消费方必须同门」= ADR-0583 §2.4),而
-    # BoardState.hp 是记录模型真值(§2.2 门前观察,§3.5.1 结算覆盖),
-    # 门 = session 政策(kernel 不可反向依赖策略实现)。记录归记录、
-    # 消费归消费:决策视图的 hp 取帧值(门已施),BoardState 保留真值
-    # 供归档/对账。
-    st.hp = fr.hp
-    st.hp_readable = getattr(fr, 'hp_readable', False)
-    st.hp_trusted = getattr(fr, 'hp_trusted', False)
+    # hp(W5 专项):视图供**门前真值**(记录/消费分离,施门迁消费侧)。
+    # 旧链在写侧预施门(last_state.hp = gated_hp 门后值,单写者纪律
+    # ADR-0583 §2.4「消费方必须同门」),消费侧再施门 = 值二手化——本
+    # 改动后门输入 = 容器真值,门在消费读点显式施(mandate adapter
+    # decision_state / encounter λ 键读点;写侧门保留至旧链删除),
+    # session 政策语义(gap 窗)原样。等价三支:①门参数同源(门本体与
+    # session.last_hp/last_hp_t 不动);②真值同源(容器 observe/carry 与
+    # 旧链 last_hp_real 同一观察漏斗,差异 = 沿用值带来源帧标注 +
+    # 结算覆盖刷新方向,失读窗取更新值为申报的行为差);③门幂等(门后
+    # 值再过门不变)。失败帧(无真值)透传帧引导窗。
+    if bs is not None and bs.hp.value is not None:
+        st.hp = int(bs.hp.value)
+        # readable = **最近观察**语义(source=='observation' = 真读或结算
+        # 覆盖,ADR-0282「两来源 True 时可信度等同真读」的如实化——结算
+        # 邻接帧 readable=True 属非常态帧行为差申报);carried/prior 非
+        # 本帧真读 → False。
+        st.hp_readable = bs.hp.source == 'observation'
+        # trusted = 来源映射(observation=真读含结算覆盖 / carried=同记录
+        # 沿用链 → True;prior=先验 / logic=推算值(现无 hp 写端)→ False)。
+        # 与现役帧位差异窗 = 跨节点沿用帧(旧帧位 False,本映射 True,
+        # 值 = 最新已知真值)——失读帧行为差申报面。
+        st.hp_trusted = bs.hp.source in ('observation', 'carried')
+    else:
+        st.hp = fr.hp
+        st.hp_readable = getattr(fr, 'hp_readable', False)
+        st.hp_trusted = getattr(fr, 'hp_trusted', False)
     if bs is not None and bs.level_up_cost.value is not None:
         st.level_up_cost = int(bs.level_up_cost.value)
     else:
@@ -150,18 +198,72 @@ def game_state_view(bs: BoardState, frame: GameState | None) -> GameState:
     if not st.board_next_tier and st.board:
         st.board_next_tier = board_next_tier_of(st.board)
 
-    # —— 透传域(未建模/执行域,理由申报见模块 docstring 清单)——
-    st.deployed = list(fr.deployed)
-    st.bench = list(fr.bench)
-    st.deploy_cap = fr.deploy_cap
-    st.shop = list(fr.shop)
-    st.refresh_probs = dict(fr.refresh_probs) if fr.refresh_probs else None
-    st.active_env = fr.active_env
-    st.plane_bosses = list(fr.plane_bosses)
-    st.enemy_affixes = list(fr.enemy_affixes)
-    st.equips = list(fr.equips)
-    st.front_max = fr.front_max
+    # —— W5 收编域(容器值优先,无值透传帧引导窗;payload 域离屏例外)——
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        bench_slots_to_legacy,
+        shop_cards_to_legacy,
+        unit_rows_to_deployed,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        DEPLOYED_FRONT_CAPACITY,
+    )
+    # 席位(bench/deployed):观察写端 = 备战装配环(见模块 docstring);
+    # 换算单一源 = kernel 映射层,消费形状零变化(定长槽表 + None 填充)。
+    if bs is not None and bs.bench.value is not None:
+        st.bench = bench_slots_to_legacy(bs.bench.value)
+    else:
+        st.bench = list(fr.bench)
+    if bs is not None and (bs.front_row.value is not None
+                           or bs.back_row.value is not None):
+        st.deployed = unit_rows_to_deployed(
+            list(bs.front_row.value or []),
+            list(bs.back_row.value or []))
+    else:
+        st.deployed = list(fr.deployed)
+    # deploy_cap:容器识别真值(ADR-0420 采信门输出);无值透传帧引导窗。
+    if bs is not None and bs.deploy_cap.value is not None:
+        st.deploy_cap = int(bs.deploy_cap.value)
+    else:
+        st.deploy_cap = fr.deploy_cap
+    # shop/refresh_probs(payload 域,**离屏禁帧兜底**):容器无值 = 结构
+    # 离屏 → 空牌面/None,透传旧牌面会把离屏帧误读成「商店仍开着」;
+    # 开店态失读帧 = 容器沿用上一开店牌面(喂入口失读不写),行为差申报
+    # 见模块 docstring。牌转换 = 双 ShopCard 归一映射单一源;x/merge_
+    # preview 两执行/读取器域字段按同帧下标对齐透传(失配窗置 0,申报见
+    # 映射函数)。
+    _bs_payload = bs.shop.value if bs is not None else None
+    if _bs_payload is not None:
+        st.shop = shop_cards_to_legacy(list(_bs_payload.cards),
+                                       frame_cards=list(fr.shop))
+        st.refresh_probs = (dict(_bs_payload.refresh_probs)
+                            if _bs_payload.refresh_probs else None)
+    else:
+        st.shop = []
+        st.refresh_probs = None
+    # 开局域/词缀/装备(容器值收编,无值透传帧引导窗)。
+    if bs is not None and bs.active_env.value is not None:
+        st.active_env = str(bs.active_env.value)
+    else:
+        st.active_env = fr.active_env
+    if bs is not None and bs.plane_bosses.value is not None:
+        st.plane_bosses = list(bs.plane_bosses.value)
+    else:
+        st.plane_bosses = list(fr.plane_bosses)
+    if bs is not None and bs.enemy_affixes.value is not None:
+        st.enemy_affixes = list(bs.enemy_affixes.value)
+    else:
+        st.enemy_affixes = list(fr.enemy_affixes)
+    if bs is not None and bs.equips.value is not None:
+        st.equips = list(bs.equips.value)
+    else:
+        st.equips = list(fr.equips)
+    # front_max = 常量供数(恒 4,非观察事实,不立字段派生直接取常量);
+    # back_max = **透传保留**(值源切换挂 back_max 语义裁决批:画面后排
+    # 格数 vs 模型定长槽表后排容量两语义未定谳,消费面语义零变化)。
+    st.front_max = DEPLOYED_FRONT_CAPACITY
     st.back_max = fr.back_max
+    # dual_track_phase:透传保留(策略侧派生旗标,adapter 装配回填为权威
+    # 读法;W6 消费切换时消费面改读 committed_from 派生函数)。
     st.dual_track_phase = getattr(fr, 'dual_track_phase', False)
     return st
 

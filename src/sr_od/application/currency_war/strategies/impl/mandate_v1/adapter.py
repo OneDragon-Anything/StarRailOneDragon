@@ -153,8 +153,10 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     st.active_strategies = list(getattr(session, 'active_strategies', None) or [])
     st.equips = list(getattr(session, 'last_owned_equips', None) or [])
     # refresh_probs / hp 回退锚 = BoardState 视图(Snapshot 消费切换,
-    # 迁移批次三,设计 §8.7;同 _anchor_state 口径——两域均为视图透传/
-    # 帧同源,hp 为 gated_hp 门后帧值,cw_bs_view 模块 docstring 申报)。
+    # 迁移批次三,设计 §8.7;同 _anchor_state 口径)。hp 值源 W5 起为
+    # **门前真值**(cw_bs_view 收编:视图 hp = 容器记录值,门不再由写侧
+    # 预施)——本函数 = hp 消费读点,门在此显式施(值源切换申报见
+    # w5-透传域建模方案 §2.4;门幂等保证旧链帧值路径零行为差)。
     from sr_od.application.currency_war.kernel.cw_bs_view import (
         strategy_input_state,
     )
@@ -165,8 +167,14 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     _t = ((st.plane - 1) * 9 + st.round_num) if (st.plane and st.round_num) else None
     _cur = snapshot.hp if snapshot.hp is not None else (
         last.hp if last is not None else None)   # 无真值=诚实未知(不兜底,W823)
-    st.hp = gated_hp(_cur, session, _t, current_readable=snapshot.hp_readable)
-    st.hp_readable = snapshot.hp_readable
+    # readable 单一源 = 视图映射(last.hp_readable,源 =
+    # bs.hp.source=='observation' 最近观察)——禁与门输入值双源(快照位
+    # 残根会让「值与新鲜度旗标出自不同观察」;生产路径快照位本就派生自
+    # 同一视图,端口路径 fallback 同帧透传,两形态同值)。
+    _view_readable = bool(getattr(last, 'hp_readable', False)) \
+        if last is not None else False
+    st.hp = gated_hp(_cur, session, _t, current_readable=_view_readable)
+    st.hp_readable = _view_readable
     return st
 
 

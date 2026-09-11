@@ -679,6 +679,35 @@ class CwScreenPrep(CwScreenOpBase):
                                   sig=ChannelSig(
                                       family='obs', actor='CwScreenPrep',
                                       screen='货币战争-备战', mode='carried'))
+                # 上场席位观察写端(W5 §2.2 B 组,与 bench 写端同环同纪律):
+                # deployed_rows_from_obs 空集守卫(P2-1 同款:空集 = 失读非
+                # 全空 → carry,禁「全场无人」假观察);特效窗门同 bench
+                # (star 读数物理不可信);front_row/back_row 分排观察照写,
+                # 换算归 kernel 映射层(deployed_rows_from_obs)。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    deployed_rows_from_obs,
+                )
+                _dep_rows = deployed_rows_from_obs(obs.deployed_chars)
+                _dep_carried_sig = ChannelSig(
+                    family='obs', actor='CwScreenPrep',
+                    screen='货币战争-备战', mode='carried')
+                if _dep_rows is not None:
+                    if is_merge_effect_window(screen):
+                        # 与 bench 特效窗门同语义:窗内不写(保 logic 投影值,
+                        # 下帧干净帧实读覆盖),不落 carried 假新鲜度。
+                        pass
+                    else:
+                        _bs_obs.observe(_bs_obs.front_row, _dep_rows[0],
+                                        sig=_prep_sig)
+                        _bs_obs.observe(_bs_obs.back_row, _dep_rows[1],
+                                        sig=_prep_sig)
+                else:
+                    _bs_obs.carry(_bs_obs.front_row,
+                                  frame=f'p{st.plane}-r{st.round_num}',
+                                  sig=_dep_carried_sig)
+                    _bs_obs.carry(_bs_obs.back_row,
+                                  frame=f'p{st.plane}-r{st.round_num}',
+                                  sig=_dep_carried_sig)
                 from sr_od.application.currency_war.kernel.cw_bs_view import (
                     game_state_view,
                 )
@@ -1272,7 +1301,14 @@ class CwScreenPrep(CwScreenOpBase):
         回退采帧解锁条件),单票不判死。节奏 = 同款 heavy 定型帧消费,best-effort。
         """
         try:
-            st = obs.state
+            # det 侧吃**同帧 raw**(heavy 装配点缓存的原始读帧),不吃
+            # obs.state(记录容器视图):merge_preview 是 ✦ 读取器信号,
+            # 派生读取器域不入记录容器——视图 shop 牌收编后该域恒缺省 0,
+            # 拿视图当 det 会把「读不到 ✦」伪证成「无副本」(对账票毒化)。
+            # _cached_state = 本 heavy 帧原始 read_game_state 产物(视图
+            # 替换只落 obs.state,缓存持有 raw,见 _observe heavy 段)。
+            st = (self._cached_state
+                  if self._cached_state is not None else obs.state)
             if st is None or not obs.shop_open:
                 return
             our, det, unnamed = _merge_preview_inputs(st)

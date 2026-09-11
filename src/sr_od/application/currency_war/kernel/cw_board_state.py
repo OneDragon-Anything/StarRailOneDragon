@@ -818,6 +818,68 @@ def cost_source_group(cost_source: str) -> str:
         else COST_SOURCE_REGISTRY
 
 
+# ============================================================ 双 ShopCard 映射单一源(W5 类型去重)
+# 方案正本 = docs/develop/sr_od/application/currency_war/changes/
+# 2026-09-06-redesign/w5-透传域建模方案.md §2.5:唯一容器类型 =
+# :class:`ShopCard`(本模块);旧容器版(cw_state 侧同名类,带点击坐标 x
+# 与 merge_preview)随 W8 GameState 本体退役波消亡,过渡期两类型并存合法、
+# **转换只许在本节两个映射函数发生**(喂入面/合成口/消费视图/合成引擎
+# 统一经此,禁散落内联转换——双源漂移温床)。本节 = kernel 内旧类型的
+# 唯一合法引用面(静态锁辖域,测试锁 test_cw_w5_* 守)。
+
+def shop_card_to_container(card) -> ShopCard:
+    """旧容器牌 → 容器牌(喂入口/sim 合成口的值构造单一源)。
+
+    字段映射(name/faction/cost/star/cost_source)原值透传不折叠;
+    x/merge_preview 是旧版独有的执行/读取器域字段,容器不入存储
+    (坐标单一真相源 = screen_info;merge_preview = 派生核对信号)。
+    """
+
+    return ShopCard(name=str(getattr(card, 'name', '') or ''),
+                    faction=str(getattr(card, 'faction', '') or ''),
+                    cost=int(getattr(card, 'cost', 0) or 0),
+                    star=int(getattr(card, 'star', 1) or 1),
+                    cost_source=str(getattr(card, 'cost_source', '')
+                                    or 'roster'))
+
+
+def shop_cards_to_legacy(cards: list[ShopCard],
+                         frame_cards: list | None = None) -> list:
+    """容器牌列表 → 旧容器牌列表(消费视图/合成引擎边界的值构造单一源)。
+
+    - 五记录字段(name/faction/cost/star/cost_source)自容器透传;
+    - ``x``(点击坐标)置 0 不消费:决策消费不用坐标,执行侧 buy 发射
+      从 screen_info「商店牌-N」区域现取(黑板帧链自持 x,不经本函数);
+    - ``merge_preview`` 不转换(派生计算不入存储,✦ 读取器降级核对
+      信号的消费方自算或吃同帧 raw);
+    - ``frame_cards`` = 同帧 raw 牌列表(可选):长度一致时按下标对齐
+      透传 x/merge_preview 两执行/读取器域字段——容器 payload 与 raw 帧
+      出自同一观察帧时序(喂入口保序),失配窗(失读帧/跨帧)置缺省 0,
+      语义申报 = 执行域字段引导窗,不影响记录值。
+
+    :param cards: 容器牌列表(:attr:`ShopPayload.cards`);
+    :param frame_cards: 同帧 raw 牌(旧容器 ShopCard)列表或 None。
+    """
+    from sr_od.application.currency_war.kernel.cw_state import (
+        ShopCard as _LegacyShopCard,
+    )
+    out: list = []
+    n = len(cards)
+    aligned = (frame_cards is not None and len(frame_cards) == n)
+    for i, c in enumerate(cards):
+        fr = frame_cards[i] if aligned else None
+        out.append(_LegacyShopCard(
+            x=int(getattr(fr, 'x', 0) or 0) if fr is not None else 0,
+            faction=str(c.faction or ''),
+            name=str(c.name or ''),
+            cost=int(c.cost or 0),
+            star=int(c.star or 1),
+            merge_preview=int(getattr(fr, 'merge_preview', 0) or 0)
+            if fr is not None else 0,
+            cost_source=str(c.cost_source or 'roster')))
+    return out
+
+
 # ============================================================ 刷新执行事实组(§3.3.5-§3.3.9)
 
 def record_refresh_execution(bs: BoardState, *, free: bool,
@@ -1042,6 +1104,111 @@ def bench_view_from_obs(bench_chars: list) -> BenchView | None:
                         'slot=%s char=%s(SIFT/星级读链漂移信号)',
                         s, getattr(bc, 'char_id', '?'))
     return BenchView(slots=slots, capacity=BENCH_CAPACITY_DEFAULT)
+
+
+def deployed_rows_from_obs(deployed_chars: list) -> tuple[list[Unit], list[Unit]] | None:
+    """上场席位 SIFT 读链 → (front_row, back_row)(观察写端的值构造;§3.2.3/§3.2.4)。
+
+    - **空集 = 失读非全空**(与 :func:`bench_view_from_obs` P2-1 同款纪律):
+      overlay 残留/动画帧/识别退化都会产空集——返 None,调用方走 carried
+      (§2.2 处置①),禁把「全场无人」当 observation 入记录;
+    - 坐标系换算(设计 §8.2,换算归映射层):SIFT 产 BenchChar.slot =
+      行内 1 基画面槽号(前排 1..4/后排 1..N),Unit.slot 同系直传(仅
+      信息位);分排 = 按 ``position_pref``('front'/'back')路由;
+    - 装备不入本观察:SIFT 身份链不读 below-avatar 装备(备战席负探针在
+      案;上场位装备读在 read_row_equipped 独立通道,接线挂装备建模批),
+      Unit.equips 恒空表,不造假值。
+    """
+    if not deployed_chars:
+        return None
+    front: list[Unit] = []
+    back: list[Unit] = []
+    for bc in deployed_chars:
+        cid = str(getattr(bc, 'char_id', '') or '')
+        if not cid:
+            continue   # 未识别槽不进记录(宁缺勿造,与 SIFT 产出契约同)
+        row = str(getattr(bc, 'position_pref', '') or '')
+        unit = Unit(char_id=cid,
+                    star=int(getattr(bc, 'star', 1) or 1),
+                    equips=[],
+                    slot=int(getattr(bc, 'slot', 0) or 0))
+        (front if row == 'front' else back).append(unit)
+    if not front and not back:
+        return None   # 全部条目无身份 = 失读形态
+    return front, back
+
+
+def bench_slots_to_legacy(view: BenchView) -> list:
+    """BenchView(容器备战席)→ GameState.bench 槽位表(视图收编换算单一源)。
+
+    下标语义两端同构(容器 slots[i] = 物理槽 i+1,旧表下标 i = 物理槽
+    i+1,ADR-0316),逐槽 1:1;Unit → BenchChar:阵营不入容器(§3.2.3),
+    经角色注册表查表派生(唯一例外开拓者形态随排,由 char_id 自带形态
+    名承载);备战席装备 = 容器 Unit.equips(本域观察恒空表,见
+    :func:`deployed_rows_from_obs` 边界申报)。槽位越界/空槽 → None。
+    """
+    from sr_od.application.currency_war.data.cw_chars import get_char
+    from sr_od.application.currency_war.kernel.cw_state import BenchChar
+    out: list = []
+    for i, slot in enumerate(view.slots):
+        u = getattr(slot, 'unit', None)
+        if getattr(slot, 'kind', 'empty') != 'unit' or u is None:
+            out.append(None)
+            continue
+        ch = get_char(str(u.char_id or ''))
+        out.append(BenchChar(
+            slot=i + 1,
+            char_id=str(u.char_id or ''),
+            faction=(ch.factions[0] if (ch is not None and ch.factions)
+                     else ('' if ch is not None else '?')),
+            star=int(u.star or 1),
+            equips=list(u.equips or []),
+        ))
+    return out
+
+
+def unit_rows_to_deployed(front_row: list[Unit], back_row: list[Unit]) -> list:
+    """(front_row, back_row)(容器席位)→ GameState.deployed 槽位表(ADR-0392
+    0 基:0-3 前排/4-9 后排;视图收编换算单一源)。
+
+    坐标系换算(设计 §8.2 注):Unit.slot = 行内 1 基画面槽号(信息位)→
+    旧表下标 = 前排 slot-1 / 后排 3+slot;slot 缺席(0)按占用序顺延兜底
+    (与旧紧缩构造兼容)。阵营派生同 :func:`bench_slots_to_legacy`。
+    """
+    from sr_od.application.currency_war.data.cw_chars import get_char
+    from sr_od.application.currency_war.kernel.cw_state import (
+        DEPLOYED_CAPACITY,
+        BenchChar,
+    )
+    out: list = [None] * DEPLOYED_CAPACITY
+
+    def _place(units: list[Unit], base: int) -> None:
+        cursor = 0
+        for u in units:
+            ch = get_char(str(u.char_id or ''))
+            bc = BenchChar(
+                slot=int(u.slot or 0),
+                char_id=str(u.char_id or ''),
+                faction=(ch.factions[0] if (ch is not None and ch.factions)
+                         else ('' if ch is not None else '?')),
+                star=int(u.star or 1),
+                position_pref='front' if base == 0 else 'back',
+                equips=list(u.equips or []),
+            )
+            idx = (int(u.slot or 0) - 1 + base) if (int(u.slot or 0) >= 1) else -1
+            if not (base <= idx < base + (4 if base == 0 else DEPLOYED_CAPACITY - 4)) \
+                    or out[idx] is not None:
+                while cursor < (4 if base == 0 else DEPLOYED_CAPACITY) \
+                        and out[cursor] is not None:
+                    cursor += 1
+                idx = cursor if cursor < (4 if base == 0 else DEPLOYED_CAPACITY) \
+                    else -1
+                cursor += 1
+            if idx >= 0:
+                out[idx] = bc
+    _place(list(front_row or []), 0)
+    _place(list(back_row or []), 4)
+    return out
 
 
 # ============================================================ 局终归档快照(§6.2/§8.8)
@@ -1359,6 +1526,18 @@ class BoardState:
     streak: Field[int] = field(default_factory=Field)            # 带符号:正=连胜/负=连败(§3.2.12)
     hp: Field[int] = field(default_factory=Field)                # 写入闸 §3.2.13:非真读帧不经 observe(§8.8 假值防线)
     level_up_cost: Field[int] = field(default_factory=Field)     # 单击买经验价(§3.2.11;None=未读到禁兜底)
+    # [索引定义] deploy_cap = 部署容量识别真值(= level + 财富宝钻数,可叠加)。
+    # 坐标系 = 「X/Y」指示的 Y 人数口径;取值时机 = 备战帧观察期快照(ADR-0420
+    # 双帧一致采信门输出,写端 = cw_observation._feed_board_state spec 门
+    # 'deploy_cap' 键,防抖核 = cw_observation._debounce_cap 单一源)。
+    # W5 定谳入容器(W5-透传域建模方案 §2.3;推翻设计正本 §3.2.7「现场实时
+    # 读值豁免」在册前提,正本更新义务见方案稿 §2.3):与 back_layout 双存
+    # 属 §8.8 在册例外形态(识别口径 vs 推导口径各有消费面,先例 = board、
+    # level_up_cost)——cap=识别源(采信门输出),back_layout=三信号裁决结果
+    # (cw_back_layout);理论关系 back_layout ≈ 6+(cap−level) 仅域内成立,
+    # 域外态 back_layout 是 8 格超集,反推会把近似当真值,故不派生改双存。
+    # 两域冲突走缺陷台账,不互改。
+    deploy_cap: Field[int] = field(default_factory=Field)
 
     # —— 局级事实 ——
     selected_difficulty: Field[str] = field(default_factory=Field)   # 职级,开局写定恒稳(§3.1.1)
@@ -2219,6 +2398,38 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
         bs.observe(bs.streak, int(st.streak), evidence=_ev, sig=_synth_sig)
     if st.hp is not None:
         bs.observe(bs.hp, int(st.hp), evidence=_ev, sig=_synth_sig)
+    # deploy_cap(§2.3 W5 入容器):sim 真值直写;None(未建模帧)不写。
+    if st.deploy_cap is not None:
+        bs.observe(bs.deploy_cap, int(st.deploy_cap), evidence=_ev,
+                   sig=_synth_sig)
+    # 开局域/席位/装备(W5 合成口与实机喂入口域覆盖集对齐;§2.6):
+    # sim 无识别过程,真值域恒 observation + evidence=sim:synthesized。
+    if st.plane_bosses:
+        bs.observe(bs.plane_bosses, list(st.plane_bosses), evidence=_ev,
+                   sig=_synth_sig)
+    if st.enemy_affixes:
+        bs.observe(bs.enemy_affixes, list(st.enemy_affixes), evidence=_ev,
+                   sig=_synth_sig)
+    if st.active_env:
+        bs.observe(bs.active_env, str(st.active_env), evidence=_ev,
+                   sig=_synth_sig)
+    if st.equips:
+        bs.observe(bs.equips, list(st.equips), evidence=_ev, sig=_synth_sig)
+    # front_row/back_row:sim 槽位表(0 基 0-3 前/4-9 后)→ 行内 Unit
+    # (行内 1 基 slot 信息位;阵营不入容器,装备随 BenchChar 透传)。
+    _front_u: list[Unit] = []
+    _back_u: list[Unit] = []
+    for _i, _bc in enumerate(st.deployed or []):
+        if _bc is None or not getattr(_bc, 'char_id', ''):
+            continue
+        _u = Unit(char_id=str(_bc.char_id),
+                  star=int(getattr(_bc, 'star', 1) or 1),
+                  equips=list(getattr(_bc, 'equips', None) or []),
+                  slot=(_i + 1) if _i < 4 else (_i - 3))
+        (_front_u if _i < 4 else _back_u).append(_u)
+    if _front_u or _back_u:
+        bs.observe(bs.front_row, _front_u, evidence=_ev, sig=_synth_sig)
+        bs.observe(bs.back_row, _back_u, evidence=_ev, sig=_synth_sig)
     bench_slots: list[BenchSlot] = []
     for i, bc in enumerate(st.bench):
         if bc is None:
@@ -2240,14 +2451,9 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
     if getattr(st, 'board_readable', True) and st.board:
         bs.observe(bs.board, dict(st.board), evidence=_ev, sig=_synth_sig)
     if st.shop:
-        # cost_source 原值透传不折叠(P2-4;词表见 BoardState.ShopCard)
-        cards = [ShopCard(name=str(getattr(c, 'name', '') or ''),
-                          faction=str(getattr(c, 'faction', '') or ''),
-                          cost=int(getattr(c, 'cost', 0) or 0),
-                          star=int(getattr(c, 'star', 1) or 1),
-                          cost_source=str(getattr(c, 'cost_source', '')
-                                          or 'roster'))
-                 for c in st.shop]
+        # 牌转换 = 映射单一源(W5 双 ShopCard 归一;cost_source 原值透传
+        # 不折叠,roster_fallback 的「徽章失读」证据分级禁丢)
+        cards = [shop_card_to_container(c) for c in st.shop]
         probs = ({int(k): float(v) for k, v in st.refresh_probs.items()}
                  if st.refresh_probs else {})
         bs.observe(bs.shop, ShopPayload(cards=cards, refresh_probs=probs),

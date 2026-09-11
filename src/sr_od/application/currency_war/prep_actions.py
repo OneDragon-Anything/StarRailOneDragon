@@ -405,6 +405,26 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
         # 本写,语义与今日「0 穿 pass 首轮写端」等价)。
         if _match is not None and _match.session is not None:
             _match.session.last_owned_equips = [n for n, _, _ in hits]
+            # 装备库存观察写端(W5 §2.2:观察通道 = 本装备区现读环,与
+            # session 镜像写同点零新增读;中继兜底/滞后窗申报见
+            # cw_observation._feed_board_state equips 段)。全量 hits 原值
+            # 入记录(W209g 同口径,采集层无权丢数据)。记录层 best-effort:
+            # 异常不阻塞穿戴计划产出。
+            try:
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    ChannelSig as _eq_sig_cls,
+                )
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of as _bs_of_eq,
+                )
+                _bs_eq = _bs_of_eq(_match.session)
+                _bs_eq.observe(_bs_eq.equips, [str(n) for n, _, _ in hits],
+                               sig=_eq_sig_cls(family='obs',
+                                               actor='PrepActionExecutor',
+                                               screen=SCREEN_NAME,
+                                               mode='read'))
+            except Exception as _eq_e:   # noqa: BLE001  记录层不毒化决策链
+                log.debug(f'[cw-equip] equips 观察写端跳过: {_eq_e}')
         # ADR-0391 λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
         # 每次派发现读板面记 owned 全量快照(含工具;每 pass 恰一次 =
         # _run_equip 每次派发至多调本函数一次)——离线 diff 相邻轮
@@ -551,6 +571,21 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
                 and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
     if _match is not None and _match.session is not None:
         _match.session.last_owned_equips = [n for n, _, _ in hits]
+        # 装备库存观察写端(回退分支;语义与上方 M7 分支写端同款,W5 §2.2)
+        try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig as _eq_sig_cls,
+            )
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of as _bs_of_eq,
+            )
+            _bs_eq = _bs_of_eq(_match.session)
+            _bs_eq.observe(_bs_eq.equips, [str(n) for n, _, _ in hits],
+                           sig=_eq_sig_cls(family='obs',
+                                           actor='PrepActionExecutor',
+                                           screen=SCREEN_NAME, mode='read'))
+        except Exception as _eq_e:   # noqa: BLE001  记录层不毒化决策链
+            log.debug(f'[cw-equip] equips 观察写端跳过(回退分支): {_eq_e}')
     if not slots:
         # 「前排 avatar 全已穿」→ 空计划具名 NOOP(回退分支不挂哨兵,
         # 与今日该分支 success 跳过且无哨兵覆盖一致;今日 detail 字面

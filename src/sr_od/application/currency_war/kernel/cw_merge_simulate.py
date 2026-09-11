@@ -26,10 +26,15 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    ShopCard as _ContainerShopCard,
+)
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    shop_cards_to_legacy,
+)
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
     BenchChar,
-    ShopCard,
     bench_place,
     merge_buy_completes,
     merge_buy_k,
@@ -101,11 +106,15 @@ def merge_simulate(bench: list[BenchChar | None],
     if k > 0:
         # 满栏例外(§2.5):自动多买张数取 min(店内张数, 3−已有 mod 3),复用
         # merge_buy_k/merge_buy_completes 单一源(禁消费方手搓同式)。
+        # 假牌构造 = 容器类型 + 映射函数边界转换(双 ShopCard 归一,§2.5:
+        # 转换只许在映射函数发生;helper 只消费 name/star,转换体 x 置 0
+        # 不消费)。
         eff_k = k
         if len([b for b in bench_t if b is not None]) >= BENCH_CAPACITY:
             shop_cap = in_shop_count if in_shop_count is not None else 3
-            _shop = [ShopCard(x=0, name=name, star=star_n)
-                     for _ in range(max(0, min(shop_cap, 3)))]
+            _shop = shop_cards_to_legacy(
+                [_ContainerShopCard(name=name, star=star_n)
+                 for _ in range(max(0, min(shop_cap, 3)))])
             eff_k = merge_buy_k(name, star_n, bench_t, dep_t, shop=_shop)
             if not merge_buy_completes(name, star_n, bench_t, dep_t,
                                        shop=_shop) or eff_k <= 0:

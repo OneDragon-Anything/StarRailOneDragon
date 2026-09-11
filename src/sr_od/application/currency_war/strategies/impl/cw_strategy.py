@@ -296,8 +296,14 @@ def gated_hp(current_hp: int | None, session: StrategySession,
       + r6 现读失败 → 旧 gap==1 判陈旧回退 100 假值喂 pivot);窗口 3 外(结算连失,
       如 boss conf=0 冻结场景)仍拒 → 保持兜底值。
 
-    消费点:shop.py(buy 前)+ cw_screen_prep(环入口,传 obs.state.hp_readable)——
-    同门,否则先调方用假 hp 判 pivot、后调方真 hp
+    实调点(全仓 grep 口径;旧注「shop.py buy 前」系 ADR-0583 内化前
+    代码形态残留,商店线 buy 前吃门已由环入口终饰承载,shop.py 零调用):
+    cw_screen_prep 环入口×2(端口路径/读屏路径,写侧预施门,W5 收编后
+    保留至旧链删除)+ cw_screen_prep 终饰×2(观察终饰+lifecycle payload
+    终饰,同写侧)+ mandate_v1 adapter decision_state×1(消费侧,视图真值)
+    + mandate_v1 encounter λ 键读点×1(消费侧,_hp_gate_state,W5 补门
+    读点域)。同门纪律:
+    先调方用假 hp 判 pivot、后调方真 hp
     反向 pivot,同节点两次方向相反换线(r68 实证)。方向重估(ADR-0583 内化
     进策略器决策入口)消费的是**已被本门覆写后的帧 state**(cw_screen_prep
     环入口终饰在决策入口之前执行)→ 驱动输入恒为同门 hp,见 gated 门锁

@@ -2456,6 +2456,15 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
     - streak:本函数只做 carried 沿用(session 结算带符号真值);备战幅度
       读数无方向,禁覆盖带符号值(§3.2.12)。
 
+    **席位观察通道声明(漏斗单一性的在册边界,与 §3.2.5 观察写端申报
+    同源)**:bench/本口外的席位域观察写端 = 备战装配环
+    (operations/cw_screen/cw_screen_prep 的 heavy 装配块,bench 喂入先例
+    + deployed front_row/back_row 喂入)与装备分配链(prep_actions
+    装备区现读)——SIFT/装备区读是重读链,不进逐帧漏斗(防双跑成本);
+    spec 门(PHASE_FIELD_SPEC)因此**不加** bench/deployed/equips 键
+    (键辖域 = read_game_state 的读段,这些域不经本漏斗读;deploy_cap
+    键已在册,容器喂入沿用既有键门)。
+
     best-effort:任何异常不阻塞 read_game_state 返回(记录层故障不毒化
     决策链;诊断走 [cw!][bs-feed] 日志)。
     """
@@ -2463,7 +2472,6 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
         from sr_od.application.currency_war.kernel.cw_board_state import (
             ChannelSig,
             NodeKey,
-            ShopCard,
             ShopPayload,
             board_state_of,
         )
@@ -2549,6 +2557,17 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
         if _w('level_up_cost') and state.level_up_cost is not None:
             bs.observe(bs.level_up_cost, int(state.level_up_cost),
                        sig=_sig_read)
+        if _w('deploy_cap'):
+            # deploy_cap 观察写端(W5 入容器,§2.3;spec 键已在册,容器喂入
+            # 沿用既有键门):采信门输出才 observe——防抖核
+            # (read_deploy_cap_debounced/_debounce_cap,ADR-0420 双帧一致)
+            # 已在读取半部,None = 拒信/失读帧 → carry 沿用(§2.2 处置①;
+            # 宝钻只增不减,沿用值方向安全),禁拿 None/兜底当观察。
+            if state.deploy_cap is not None:
+                bs.observe(bs.deploy_cap, int(state.deploy_cap),
+                           sig=_sig_read)
+            else:
+                bs.carry(bs.deploy_cap, frame=frame, sig=_sig_carry)
         if _w('streak') and state.streak is not None:
             bs.carry(bs.streak, frame=frame,
                      sig=_sig_carry)   # 结算带符号真值的跨帧沿用
@@ -2559,12 +2578,13 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
                 bs.carry(bs.board, frame=frame, sig=_sig_carry)
         if _w('shop_cards'):
             if state.shop:
-                # cost_source 原值透传不折叠(P2-4 落地审:roster_fallback
-                # 的「徽章失读」证据分级禁丢;词表见 BoardState.ShopCard)
-                cards = [ShopCard(name=c.name, faction=c.faction,
-                                  cost=int(c.cost or 0), star=int(c.star or 1),
-                                  cost_source=str(c.cost_source or 'roster'))
-                         for c in state.shop]
+                # 牌转换 = kernel 映射单一源(W5 双 ShopCard 归一);
+                # cost_source 原值透传不折叠(roster_fallback 的「徽章失读」
+                # 证据分级禁丢,词表见 BoardState.ShopCard)
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    shop_card_to_container,
+                )
+                cards = [shop_card_to_container(c) for c in state.shop]
                 probs = ({int(k): float(v) for k, v in
                           (state.refresh_probs or {}).items()}
                          if state.refresh_probs else {})
@@ -2604,6 +2624,16 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
         bs.relay(bs.active_env, str(state.active_env), sig=_relay_sig)
         bs.relay(bs.plane_bosses, list(state.plane_bosses), sig=_relay_sig)
         bs.relay(bs.enemy_affixes, list(state.enemy_affixes), sig=_relay_sig)
+        # equips 装备库存(W5 申报面,方案 §2.2):观察写端 = 装备分配链
+        # 装备区现读(prep_actions._build_equip_wear_plan 两分支,本漏斗
+        # 无装备区读——零新增读原则);本口只做载体中继兜底(session 镜像
+        # last_owned_equips,从未写过才补)。**接线滞后窗值冻结申报**:
+        # 开箱/穿戴/卖出等动作时点的库存变化先落 session 镜像,bs 只在
+        # 下一次装备链现读时刷新——中继「已有正式值跳过」语义使滞后窗内
+        # 视图拿到的是上一次观察值(带 logic 源标记),比透传陈值可分。
+        _owned_equips: list = getattr(session, 'last_owned_equips', None) or []
+        bs.relay(bs.equips, [str(n) for n in _owned_equips],
+                 sig=_relay_sig)
         _sel_diff = getattr(session, 'selected_difficulty', '') or ''
         bs.relay(bs.selected_difficulty, str(_sel_diff), sig=_relay_sig)
         # —— 画面上下文 + 节点推进派生(R1 §3.1.4/§3.4;R5 W1 常开)——

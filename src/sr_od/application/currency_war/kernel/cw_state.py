@@ -252,7 +252,7 @@ class GameState:
     refresh_probs: dict[int, float] | None = None
     # 节点序列由 cw_node_reader.NodeSlot 承载(read_node_sequence 直连消费方)。
     dual_track_phase: bool = False           # ADR-0209 双轨期(P1 未定型;方向层接管起值源(ADR-0465) = cw_intention 权威派生经装配边界回填,读端 committed_from)
-    focus_factions: set[str] | None = None   # ADR-0209 flex 收敛白名单(方向刷新写入,ADR-0583;evaluate 消费)
+    focus_factions: set[str] | None = None   # ADR-0209 flex 收敛白名单(真家 = StrategyState,方向刷新写入;本字段仅执行侧从策略态回填(cw_op_buy_cards 装配点),决策读端走策略态;W6 消费切换时回填点随 last_state 链退役)
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
     # 动作v2 账本(契约包 C1,步2):显式动作(SellDeployed/SwapDeploy/
     # CompTransaction)的执行结果逐条记录(applied/rejected + reason)

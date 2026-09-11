@@ -259,10 +259,45 @@ def _count(session: StrategySession | None, key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
 
+def _hp_gate_state(state: GameState | None,
+                   session: StrategySession | None) -> GameState | None:
+    """hp 消费读点显式施门(W5 hp 专项:视图 hp = 门前真值,记录/消费
+    分离;本读点是视图 hp 的直读消费域——遭遇屏恰在 gap==1 窗,结算在
+    紧邻上一节点,门辖语义见宪法 00 §3 hp 授权消费面与 ADR-0583 §2.4
+    「消费方必须同门」)。门输入 readable = 视图映射单一源
+    (``state.hp_readable``,源 = bs.hp.source=='observation' 最近观察),
+    时基 t = state 节点序(与生产门同构)。session 无结算锚(last_hp/
+    last_hp_t 缺)时门恒等返回 = 旧行为,纯函数可单测。
+
+    :return: hp 已施门的 state 拷贝(其余字段共享引用,本判据链只读);
+        state 为 None 时原样返回 None。
+    """
+    if state is None:
+        return None
+    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
+        gated_hp,
+    )
+    t = ((int(state.plane) - 1) * 9 + int(state.round_num)
+         if getattr(state, 'plane', None) and getattr(state, 'round_num', None)
+         else None)
+    gated = gated_hp(state.hp, session, t,
+                     current_readable=bool(getattr(state, 'hp_readable',
+                                                   False)))
+    if gated == state.hp:
+        return state
+    import dataclasses
+    return dataclasses.replace(state, hp=gated)
+
+
 def decide_encounter_ev(options: list[EncounterOption], state: GameState | None,
                         session: StrategySession | None,
                         refresh_used: bool = False) -> EncounterPick:
     """E3 判据形态本体(纯函数;mandate_v1.decide_encounter 消费)。
+
+    hp 施门:入口处对 state 施新鲜度门(见 :func:`_hp_gate_state`)——
+    视图收编后 ``state.hp`` 是门前真值,λ 路由键的 hp 维必须与备战决策
+    同门,否则误读帧血带翻转→选支漂移(W5 方案 §2.4 读点清单点名域)。
+    旧链(帧值已门)再过门幂等,行为零变化。
 
     决策树(ADR-0536 §2):
     1. 无选项 → idx0(default,与生产 handler 一致);单卡帧(读缺)
@@ -280,6 +315,7 @@ def decide_encounter_ev(options: list[EncounterOption], state: GameState | None,
          → fail 向低难;若刷新未用 → 附探索性刷新建议(原对弃用、重掷
          分布未建模可为负——非免费期权)。
     """
+    state = _hp_gate_state(state, session)   # hp 消费读点显式施门(见 helper)
     if not options:
         return EncounterPick(idx=0, refresh=False, reason='e3:no-options')
     if len(options) == 1:
