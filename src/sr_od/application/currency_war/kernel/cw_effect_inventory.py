@@ -184,7 +184,10 @@ class ActiveEffectInventory:
     自动登记);节点 tick = cw_loop 备战分支(进节点边界);计数 bump =
     cw_op_buy_cards 执行落地门(刷新/购买);跳过递减 = prep_actions
     _launch_attempt(免战牌 §3.2.19);升级标记 = prep_actions._level_up
-    (既有)。结算挂点(on_battle_end)仍未接,原状申报。
+    (既有);结算挂点 = CwScreenBattleWait 结算观察写端(_record_round_outcome
+    非 telemetry_only 分支,apply_settlement_cover 同分支同时序;现役注册表
+    零 BATTLE_END 条目 = 零效果条目推进,零条目 = 零驱动,effect-domain
+    §7.4)。
     """
 
     def __init__(self) -> None:
@@ -345,8 +348,10 @@ class ActiveEffectInventory:
         self._events[_EVENT_LEVEL_UP] = self._events.get(_EVENT_LEVEL_UP, 0) + 1
 
     def on_battle_end(self) -> None:
-        """战斗结算事件标记(挂点候选 = 结算观测回路;现状未接,原 on_round_end
-        候选宿主已随 ADR-0583 删除)。"""
+        """战斗结算事件标记(生产挂点 = CwScreenBattleWait 结算观察写端
+        _record_round_outcome 非 telemetry_only 分支——真实结算才标记,
+        败局页 telemetry-only 补录不标记,与 apply_settlement_cover 同口径;
+        原 on_round_end 候选宿主已随 ADR-0583 删除)。"""
         self._events[_EVENT_BATTLE_END] = self._events.get(_EVENT_BATTLE_END, 0) + 1
 
     def event_count(self, kind: str) -> int:
@@ -381,9 +386,9 @@ class ActiveEffectInventory:
 # 与 cw_board_state 的 apply_effect_burst_grant 等三桥同族,但宿主不在
 # cw_board_state——其模块头 import 本模块,桥落本侧可免模块级成环;
 # ChannelSig/BenchView 运行期函数内惰性取。挂点 = 选卡时点(设计 §3.2.3
-# 「效果写端(选卡时点、非 op)」),生产接线位 = cw_screen_invest_strategy
-# 确认落地登记点(register_strategy/apply_effect_burst_grant 同点),接线归
-# operations/ 辖批——本桥只承诺语义。)
+# 「效果写端(选卡时点、非 op)」),生产接线 = CwScreenInvestStrategy
+# ._append_confirmed_strategy 确认落地登记点(register_strategy/
+# apply_effect_burst_grant 同点)。)
 
 
 @dataclass(frozen=True)

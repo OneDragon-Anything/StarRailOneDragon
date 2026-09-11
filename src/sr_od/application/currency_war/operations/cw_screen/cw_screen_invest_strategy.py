@@ -602,6 +602,22 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                     _bs_reg, _spec,
                     frame=f'p{_nd.plane}-r{_nd.round_num}'
                     if _nd is not None else '')
+                # 桥·板面重写形态(设计 §5 全员晋升/人力重组两行;生产接线 =
+                # 选卡确认落地登记点,与 register_strategy/burst 桥同点):board_
+                # rewrite 声明经桥落写端归属——出售面=逻辑写(清场+退款按卖价
+                # 公式)、整场替换面=零写端观察收口,报告留证;非重写条目返回
+                # None 零动作。归属判据单一源 = BoardState 设计 §5.3,桥内申报。
+                from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                    apply_board_rewrite,
+                )
+                _rw = apply_board_rewrite(
+                    _bs_reg, _spec,
+                    frame=f'p{_nd.plane}-r{_nd.round_num}'
+                    if _nd is not None else '')
+                if _rw is not None:
+                    log.info(f'[cw-strat] 板面重写桥:{_rw.rewrite}'
+                             f'(退款 {_rw.refund_gold}/清空域 '
+                             f'{",".join(_rw.cleared_fields) or "无"})')
                 log.info(f'[cw-strat] 效果账本登记:{_spec.name}(t={_t})')
         except Exception as e:   # noqa: BLE001  登记面失败不阻塞
             log.warning(f'[cw-strat] 效果账本登记失败(不阻塞): {e}')
