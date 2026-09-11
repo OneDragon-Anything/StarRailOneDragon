@@ -54,9 +54,9 @@
 
 | 脚本 | 角色 | 武装时机 |
 |---|---|---|
-| `cw_sentinel.py` | 事件哨兵 v5.1(HIT 分级:关键即退[崩溃栈/停机终态/超时]+**一般驻留续侦**[执行失败/stall_watch 首见必报+纪元内同签名去重,证据落 `cw_hit_alert.md`,**不退进程**];游标恒锚尾——武装/轮转/信道漂移一律从当前文件尾起扫,历史不重放,脏纪元自退三连实证已修;STALL/LOOP 卡死[无操作成功不算推进]+静默双窗+**节点滞留 NODE-DWELL**[同位面轮次 ≥900s]+局后空窗判 IDLE;活跃局判定含 decisions 新鲜度) | 随局武装,pos 删可选(v5.1 武装一律锚尾,水位不进游标;删=保险)。**空窗期不武装**(必报);`--selftest` 内置回归(15 用例);`--replay <log>` 历史回放标定 |
-| `cw_early_stop.py` | 早停(判据=口述[28] 框架:P1 出口金<50 或 HP=1 才候选;HP<70 降观察报警不停局) | **首条遥测落后**再武装(早武装=自愈退出) |
-| `cw_runs_gap.py` | runs 断流 | 随局 |
+| `cw_sentinel.py` | 事件哨兵 v5.2(HIT 分级:关键即退[崩溃栈/停机终态/超时]+**一般驻留续侦**[执行失败/stall_watch 首见必报+纪元内同签名去重,证据落 `cw_hit_alert.md`,**不退进程**];游标恒锚尾——武装/轮转/信道漂移一律从当前文件尾起扫,历史不重放,脏纪元自退三连实证已修;STALL/LOOP 卡死[无操作成功不算推进]+静默双窗+**节点滞留 NODE-DWELL**[同位面轮次 ≥900s]+局后空窗判 IDLE;活跃局判定=journal 尾实机段 match_final 收口+行 ts 新鲜度,v5.2/T-257 起 runs/outcomes/decisions 三流已停写退役)。**过渡期依赖(T-257 落地审定性)**:match_final 在线收口写点挂 W3 波接线,接线落地前 IDLE 不可达(局后有终态行则 `[sentinel-quiet]` 滞留在岗;无终态行纪元走满双窗报 `[SENTINEL-SILENCE]` 误报)+LOOP 局末残留窗抑制失效——方向=多报/在岗非漏报,按试用期纪律核读 | 随局武装,pos 删可选(v5.1 武装一律锚尾,水位不进游标;删=保险)。**空窗期不武装**(必报);`--selftest` 内置回归(15 用例);`--replay <log>` 历史回放标定;`--dry-ended <journal>` 活跃局判定单点干跑 |
+| `cw_early_stop.py` | 早停 v4(判据=用户裁定 P1 双指标验收[user_playstyle.md 口述登记 28]:P1 出口金<50 或 HP=1 才候选;HP<70 降观察报警不停局;数据源=state/journal.jsonl 行内 state 快照 v4/T-257) | **首条遥测落后**再武装(早武装=自愈退出) |
+| `cw_runs_gap.py` | journal 收口对账 v3(旧「runs 断流」的 journal 等价:实机段停更+主日志静默但段无 match_final 收口行 → 报警;报警词仍为 `[RUNS-GAP]`;数据源=state/journal.jsonl)。**过渡守卫**:match_final 写点挂 W3 波接线,接线落地前账面无任何收口行→候报自愈退出(武装打印标注);账面出现首个收口行自动恢复判据,W3 验收后守卫可删 | 随局 |
 
 - **武装命令口径**:三件统一 `$env:PYTHONUTF8='1'; uv run python skills\sr-od-currency-war-dev\scripts\<脚本>.py` 后台起(退出码即警报);**「起」永远走会话后台任务信道**(编排者 job 机制)——**禁 DETACHED/脱离会话的自起**:进程在但退出码无人接收 = 报警链自断,哨兵哑了(2026-08-25 用户纠正,run 15 P2 投资策略误报经信道送达并处置实证了信道价值)。查旧/杀净/核岗/打印武装命令用 `tools/cw/rewatch.py`(它不自起);查旧 = job 列表 + `Get-Process` 按 CommandLine 匹配 `sentinel|early_stop|runs_gap` 双查;事件哨兵 v5.1 起删 `cw_sentinel.pos` 可选(武装一律锚尾;rewatch 杀净时顺手删,留着也不碍事);job id 记进度账本「工作状态·持续运行」节。
 - **重武三步(硬序,防实例堆积)**:查旧(rewatch)→ kill 净(rewatch,含上一局残留)→ 编排者经会话后台任务信道 arm 新;起完 `rewatch --verify N` 核岗。**值守兜底定期核:哨兵实例数应=3(每脚本恰 1),多杀少补**。

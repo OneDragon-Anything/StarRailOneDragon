@@ -1,11 +1,13 @@
-"""r229c 事件哨兵 v5.1(HIT 分级驻留 + 游标恒锚尾;v4 循环/静默 + v5 STALL 语义 + 节点滞留)。
+"""r229c 事件哨兵 v5.2(HIT 分级驻留 + 游标恒锚尾;活跃局判定切 journal;v4 循环/静默 + v5 STALL 语义 + 节点滞留)。
 
 ## 检测面(当前语义)
 
 - [SENTINEL-HIT](v5.1 分级·关键即退):崩溃栈(Traceback/TypeError/
   AttributeError/StopIteration)/停机终态(STOPPED/停机待建档/plan_error)/
   超时——命中即退出推送。处置依据:审计 0 自愈、run 已断,「退出=事件」
-  是唯一即时信道,不能降级到轮询。
+  是唯一即时信道,不能降级到轮询。数据源 = server 主日志(op_journal 面,
+  删除波 1 未触及);『plan_error』词源=旧 decisions 流的决策崩溃措辞,
+  该流停写后此词在日志恒 0 命中(与 v5 时代一致,纯兜底词汇保留)。
 - [SENTINEL-HIT-CONT](v5.1 分级·一般驻留):『执行失败』(单 op 失败,
   有自愈实录 2026-09-08 08:09;且常来自共享日志的其他活动,对 CW 是外活动
   噪声)与『stall_watch』(停滞前兆,升级判定本就归 STALL)——首见打印 +
@@ -55,6 +57,7 @@
 | v4.1 | 活跃局判定第 4 条(decisions 新鲜度) | 2026-09-03 1-1 卡死 26min 零报警:runs/outcomes 双陈旧误判「已终局」,LOOP 整局被 suppress |
 | v5 | STALL 推进语义修复(无操作成功≠推进)+ 节点滞留 NODE-DWELL + 词汇审计(见下) | 2026-09-03 1-1 卡死段实机日志回放标定 |
 | v5.1 | HIT 分级(关键即退/一般驻留续侦+纪元内同因去重+证据文件)+ 游标恒锚尾不变量(武装/轮转/漂移一律从当前尾起扫,水位文件退役为纯活性心跳) | 2026-09-09 01:13-01:14 脏纪元三连自退实证(死亡实例留新鲜小值水位被信任=重放向量,哨兵逐格啃完脏纪元期间全盲)+ 2026-09-08 70min 补位空窗实证(HIT 即退纯损) |
+| v5.2 | 活跃局判定数据源切 journal(_run_ended 重写:尾实机段 match_final 收口+行 ts 新鲜;runs/outcomes/decisions 三流写入端已随删除波 1 停写,旧判定链武装即误判「已终局」);实机段形态过滤(run_%Y%m%d_%H%M%S,fake_/sim_/harness 段不采信——journal 多写者单文件新形态) | T-257(删除波 1 落地审新立项);journal 行结构=kernel/cw_board_state._swap/write_match_final,段隔离约定=sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES |
 
 ## 词汇审计(v5,对照流程侧代码与 .log/mcp_server.log 全文 grep)
 
@@ -86,10 +89,13 @@ v5 语义修复的根)。
 日志轮转/截断锚定新纪元当前尾,信道漂移切新文件当前尾。历史字节永不在
 扫描集合内,脏日志纪元(有历史 ERROR 行)结构性不重放。
 离线自测: 环境变量 CW_SENTINEL_LOG / CW_SENTINEL_POS 重定向日志与水位路径;
-  CW_SENTINEL_REPLAY_DIR(或 CW_SENTINEL_RUNS / CW_SENTINEL_OUTCOMES)重定向
-  活跃局判定文件;CW_SENTINEL_SILENCE / CW_SENTINEL_CONFIRM /
-  CW_SENTINEL_DWELL_SEC 覆盖阈值(仅自测);CW_SENTINEL_HIT_EVIDENCE 重定向
-  HIT 证据路径;CW_SENTINEL_HIT_EXIT_ALL=1 恢复 v5 全即退(缺省分级)。
+  CW_SENTINEL_REPLAY_DIR(或 CW_SENTINEL_JOURNAL)重定向活跃局判定账面
+  (v5.2 起 = state/journal.jsonl 单文件;旧 CW_SENTINEL_RUNS/OUTCOMES/
+  DECISIONS 三 env 随三流退役删除);CW_SENTINEL_SILENCE /
+  CW_SENTINEL_CONFIRM / CW_SENTINEL_DWELL_SEC / CW_SENTINEL_JOURNAL_FRESH /
+  CW_SENTINEL_JOURNAL_TAIL / CW_SENTINEL_RUN_RE 覆盖阈值与段形态(仅自测);
+  CW_SENTINEL_HIT_EVIDENCE 重定向 HIT 证据路径;
+  CW_SENTINEL_HIT_EXIT_ALL=1 恢复 v5 全即退(缺省分级)。
   python cw_sentinel.py --selftest: 内置回归(15 用例:局后空窗→IDLE /
   局中静默→SILENCE / 信道漂移[含漂移后 CONT 去重清零轻断言] / 活跃循环→LOOP /
   无操作成功循环→STALL 不被假推进掩盖 / 节点滞留→NODE-DWELL / 正常推进→不误报 /
@@ -97,6 +103,8 @@ v5 语义修复的根)。
   同因去重+运行边界清零 L4 / 异因仍报 L5 / 升级通道 L6 / 终局标记 L7)。
   python cw_sentinel.py --replay <日志文件>: 历史日志回放——全文件喂行处理逻辑,
   打印全部报警位点(每卡死段一次;不退出不 stop,验证用)。
+  python cw_sentinel.py --dry-ended <journal>: 活跃局判定单点干跑——对给定
+  journal 跑一次 _run_ended() 打印 ENDED=True/False 退出(判定矩阵验证用)。
 """
 import contextlib
 import json
@@ -105,6 +113,7 @@ import re
 import sys
 import time
 from collections import deque
+from datetime import datetime
 from pathlib import Path
 
 import psutil
@@ -165,12 +174,30 @@ def _acquire_lock() -> bool:
     LOCK.write_text(str(os.getpid()))
     return True
 _REPLAY_DIR = Path(os.environ.get('CW_SENTINEL_REPLAY_DIR', r'D:\code\workspace\StarRailOneDragon\.debug\currency_war\telemetry\live'))
-RUNS_JSONL = Path(os.environ.get('CW_SENTINEL_RUNS', str(_REPLAY_DIR / 'runs.jsonl')))
-OUTCOMES_JSONL = Path(os.environ.get('CW_SENTINEL_OUTCOMES', str(_REPLAY_DIR / 'outcomes.jsonl')))
-# v4.1 活跃局判定第 4 条:活跃局每备战环落决策帧,decisions 新鲜=局在跑。
-DECISIONS_JSONL = Path(os.environ.get(
-    'CW_SENTINEL_DECISIONS', str(_REPLAY_DIR / 'decisions.jsonl')))
-DECISIONS_FRESH_SEC = int(os.environ.get('CW_SENTINEL_DECISIONS_FRESH', 600))
+# v5.2 活跃局判定数据源切 journal(T-257):v4.1 的 runs/outcomes/decisions
+# 三流写入端已随删除波 1(T-243)从 src 删除——三流 mtime 冻结在停写时刻,
+# 判定链恒走「runs 尾行有 result+同 id outcomes 陈旧+decisions 陈旧」→
+# _run_ended() 恒 True → LOOP 报警整局被 suppress+局后空窗外的静默误判 IDLE
+# (实机窗武装必误报的机制)。journal = state/journal.jsonl 唯一账面。
+JOURNAL_JSONL = Path(os.environ.get(
+    'CW_SENTINEL_JOURNAL', str(_REPLAY_DIR / 'state' / 'journal.jsonl')))
+# journal 行内 ts(isoformat)距 now 小于此窗 → 活跃局(v4.1 判定链 3/4 的
+# journal 合并等价:journal 是每次 state 写入产行的高频账面,行新鲜即可靠
+# 区分;缺省 600 沿 v4.1 decisions 新鲜窗)。行 ts 而非文件 mtime:journal
+# 是多写者单文件(sim 批 fake_/sim_ 段、harness 短 id 段交错),文件 mtime
+# 会被非实机段写入污染。
+JOURNAL_FRESH_SEC = int(os.environ.get('CW_SENTINEL_JOURNAL_FRESH', 600))
+# 实机段形态(telemetry/state.start_run 铸造口径 run_%Y%m%d_%H%M%S);
+# fake_/sim_ 段与 harness 短 id 段不采信(隔离约定 =
+# sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES,三件哨兵同口径)。
+RUN_ID_RE = re.compile(os.environ.get('CW_SENTINEL_RUN_RE', r'^run_\d{8}_\d{6}$'))
+# _run_ended() 每次调用的尾读字节量:只需覆盖「尾实机段的收口行」
+# (match_final 局终才落=段尾),不追段首。缺省 4MB:真实 journal 实测(2026-09-11)
+# sim 测试段单次可写 4MB+ 行(fake 段 receipts 数千行),512KB 尾窗会被整段
+# 挤出导致「尾窗无实机段行」;4MB ≈ 典型 sim 单次写入量,实机段行不被挤出。
+# 成本可控:判定只在静默分支/LOOP 抑制时调用(非 5s 主循环节奏),4MB 读+
+# 解析 ≈ 秒级。仍可被更大写入挤出 → 错误方向=判活跃(保守,不吞告警)。
+JOURNAL_TAIL_CHUNK = int(os.environ.get('CW_SENTINEL_JOURNAL_TAIL', 4 * 1048576))
 
 # v2 原样:只报需介入的事件(第一版把对账纠漂/MISS 例行也报了,噪声淹没真警报)。
 # 词汇审计(v5)见文件头;『人工结束』『plan_error』处置理由亦在头注。
@@ -202,7 +229,6 @@ STALL_WIN = 600    # 卡死判定窗口(秒)
 STALL_N = 10       # 同特征行阈值
 SILENCE_SEC = int(os.environ.get('CW_SENTINEL_SILENCE', 360))  # 静默死锁阈值(秒)
 SILENCE_CONFIRM = int(os.environ.get('CW_SENTINEL_CONFIRM', 420))  # v3.4:二次确认窗
-OUTCOME_FRESH_SEC = 900  # v3.5:outcomes 近此窗口内有更新 → 视为有活跃局
 
 # ── 实质推进判据(v5,STALL/LOOP 单一源;详见文件头「实质推进」节)──────
 # plan 结果行:现行流程 = prep_director 发出的 OpenShop 行;旧核
@@ -281,55 +307,67 @@ def _delta(a: int, b: int) -> int:
     return (b - a) % 86400
 
 
-def _jsonl_tail(path: Path, chunk: int = 8192) -> dict | None:
-    """读 jsonl 尾行解析为 dict(只读尾部 chunk,容忍半行/损坏)。"""
+def _journal_tail_rows(chunk: int) -> list[dict] | None:
+    """读 journal 尾部 chunk 的全部可解析行(坏行逐行跳过 = journal.md §5
+    宽容消费契约);None = 文件不可读(调用方按「活跃」保守处理)。"""
     try:
-        with open(path, 'rb') as fh:
+        with open(JOURNAL_JSONL, 'rb') as fh:
             fh.seek(0, os.SEEK_END)
             size = fh.tell()
             fh.seek(max(0, size - chunk))
             tail = fh.read().decode('utf-8', errors='replace')
-        lines = [ln for ln in tail.splitlines() if ln.strip()]
-        if not lines:
-            return None
-        rec = json.loads(lines[-1])
-        return rec if isinstance(rec, dict) else None
-    except (OSError, json.JSONDecodeError):
+    except OSError:
         return None
+    rows: list[dict] = []
+    for ln in tail.splitlines():
+        ln = ln.strip()
+        if not ln:
+            continue
+        try:
+            rec = json.loads(ln)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(rec, dict):
+            rows.append(rec)
+    return rows
 
 
 def _run_ended() -> bool:
-    """v3.5 活跃局检查(离线,纯读文件):False=有活跃局(走原双窗),True=局已终局。
+    """v3.5 活跃局检查(离线,纯读 journal);v5.2 数据源切 journal。
 
-    判定链(任一命中「活跃」即返回 False):
-      1. runs.jsonl 尾行无 result(终局记录缺失/文件不可读)→ 可能有局在跑;
-      2. outcomes.jsonl 尾行 run_id ≠ runs 尾行 run_id → 更新的局已产出回合记录;
-      3. outcomes.jsonl 近 OUTCOME_FRESH_SEC 内有更新(新局开局初期未写终局记录);
-      4. decisions.jsonl 近 DECISIONS_FRESH_SEC 内有更新(v4.1,2026-09-03
-         实证缺陷:runs 行局终才写,旧局尾行 result 在位+outcomes 同 id
-         陈旧 ⇒ 整个新对局期间被误判「已终局」,LOOP 报警整局被 suppress
-         ——备战环卡死 26 分钟零报警;活跃局备战环每轮落决策帧,
-         mtime 新鲜即可靠区分)。
-    12:51 误报场景:runs 尾行 = run_20260825_115418 result=loss(已终局),
-    outcomes 尾行同 run_id 且 mtime 陈旧 → 判 ended → IDLE 优雅退出。
+    False=有活跃局(走原双窗),True=局已终局。判定链(任一命中「活跃」
+    即返回 False;数据全部只采实机形态段 RUN_ID_RE,fake_/sim_/harness 段
+    不采信——journal 多写者单文件,sim 段行不构成「有局/已终局」证据):
+      1. journal 不可读/无实机段行 → 活跃(保守,不弱化局中告警);
+      2. 尾实机段(末条实机段行的 run_id)无 match_final 收口行 → 活跃
+         (段未收口=局在打或异常未收口;后者由静默/STALL 通道报警,不该
+         在这里当「已终局」吞掉告警——v4.1 事故方向的守卫);
+      3. 末条实机段行 ts 距今 < JOURNAL_FRESH_SEC → 活跃(局终后下一局
+         开局初期行流尚未推进/局中长动画段的兜底,沿 v4.1 第 4 条语义)。
+      其余(尾段已收口+行流陈旧)= 局后空窗 → True(IDLE 优雅退出)。
+    对应关系(v4.1 判定链 → v5.2):旧 1「runs 尾行无 result」≈ 新 2
+    (match_final 是 runs 的 journal 收编载体,局终才落);旧 2「outcomes
+    有更新局」≈ 新 3(尾段行新鲜即有新活动);旧 3/4(outcomes/decisions
+    mtime 新鲜)≈ 新 3(journal 行频高于旧两流,判定更强)。
     """
-    last_run = _jsonl_tail(RUNS_JSONL)
-    if last_run is None or not last_run.get('result'):
-        return False  # 无终局记录 → 按活跃处理(保守,不弱化局中告警)
-    last_outcome = _jsonl_tail(OUTCOMES_JSONL)
-    if last_outcome is not None:
-        if last_outcome.get('run_id') != last_run.get('run_id'):
-            return False  # 更新的局在产出回合 → 活跃
-        try:
-            if time.time() - OUTCOMES_JSONL.stat().st_mtime < OUTCOME_FRESH_SEC:
-                return False  # 回合记录刚更新过 → 活跃(开局初期兜底)
-        except OSError:
-            pass
+    rows = _journal_tail_rows(JOURNAL_TAIL_CHUNK)
+    if not rows:   # None(不可读)或空(无行)→ 保守按活跃
+        return False
+    real = [r for r in rows
+            if isinstance(r.get('run_id'), str) and RUN_ID_RE.match(r['run_id'])]
+    if not real:
+        return False   # 尾窗内无实机段行 → 保守按活跃
+    last_rid = real[-1]['run_id']
+    if not any(r['run_id'] == last_rid and r.get('row') == 'write'
+               and r.get('field') == 'match_final' for r in real):
+        return False   # 尾实机段未收口 → 活跃(判定链 2)
     try:
-        if time.time() - DECISIONS_JSONL.stat().st_mtime < DECISIONS_FRESH_SEC:
-            return False  # 决策帧刚更新 → 活跃局(v4.1,见判定链 4)
-    except OSError:
-        pass
+        last_ts = datetime.fromisoformat(str(real[-1].get('ts') or ''))
+        age = time.time() - last_ts.timestamp()
+        if age < JOURNAL_FRESH_SEC:
+            return False   # 末条实机段行新鲜 → 活跃(判定链 3)
+    except (ValueError, OSError, OverflowError):
+        return False   # ts 缺失/不可解析 → 保守按活跃
     return True
 
 
@@ -630,9 +668,10 @@ def process_line(line: str, line_end: int | None) -> tuple[str, bool] | None:
             return (f'[SENTINEL-STALL] 近{span}秒同特征行≥{STALL_N}且无实质推进: {bad[:120]}',
                     True)
     if kind == 'loop':
-        # 局已终局(runs.jsonl 有 result)则抑制——08-25 17:07 实证:局末/server
-        # 重启间隙,窗口残留旧动作行 + 无新推进,非卡死(与 SILENCE 分支同源守卫;
-        # replay 模式不做此查——历史回放时 runs.jsonl 是当前态,不代表历史时刻)。
+        # 局已终局(journal 尾实机段有 match_final 收口行)则抑制——08-25 17:07
+        # 实证:局末/server 重启间隙,窗口残留旧动作行 + 无新推进,非卡死
+        # (与 SILENCE 分支同源守卫;replay 模式不做此查——历史回放时 journal
+        # 是当前态,不代表历史时刻)。
         if not REPLAY_MODE and _run_ended():
             print(f'[sentinel-loop-suppress] 循环特征命中但活跃局检查判定局已终局'
                   f'(残留窗口),清窗继续: {payload[:80]}', flush=True)
@@ -809,37 +848,35 @@ def _selftest() -> int:
             f'{hms} [operation.py 431] [INFO]: 指令[ 货币战争-对局循环 ] 节点 检测游戏窗口 -> 对局循环 返回状态 等待\n',
             f'{hms} [onnx_ocr_matcher.py 472] [DEBUG]: OCR结果 [] 耗时 0.27\n',
         ])
-        for name, runs_tail, outcomes_tail, expect in (
-            # 局后空窗:终局记录已落,无更新局 → IDLE(12:51 场景)
+        # v5.2 journal 夹具:行 ts 用陈旧常量(文件 mtime 不再参与判定,
+        # 行内 ts 才是新鲜度源——「陈旧」由 ts 表达)。
+        _STALE_TS = '2020-01-01T00:00:00'
+        def _jrow(rid: str, field: str = 'gold') -> str:
+            return json.dumps({'v': 1, 'ts': _STALE_TS, 'run_id': rid,
+                               'row': 'write', 'field': field, 'after': 1,
+                               'same_value': False, 'state': {'values': {}},
+                               'sig': {}, 'note': '', 'evidence_refs': []},
+                              ensure_ascii=False) + '\n'
+        for name, journal_text, expect in (
+            # 局后空窗:尾实机段已收口(match_final 在场)+行陈旧 → IDLE(12:51 场景)
             ('idle_after_run',
-             '{"run_id": "run_x", "result": "loss"}\n',
-             '{"run_id": "run_x", "round_num": 3}\n',
+             _jrow('run_20260901_000001') + _jrow('run_20260901_000001', 'match_final'),
              '[RUN-ENDED-IDLE]'),
-            # 局中静默:终局记录缺 result → 活跃 → 双窗后仍报 SILENCE
+            # 局中静默:尾实机段未收口(无 match_final)→ 活跃 → 双窗后仍报 SILENCE
             ('active_run_silence',
-             '{"run_id": "run_y", "result": ""}\n',
-             '{"run_id": "run_y", "round_num": 1}\n',
+             _jrow('run_20260901_000002'),
              '[SENTINEL-SILENCE]'),
         ):
             d = tdp / name
             d.mkdir()
             log = d / 'log.txt'
             log.write_text(log_lines, encoding='utf-8')
-            (d / 'runs.jsonl').write_text(runs_tail, encoding='utf-8')
-            (d / 'outcomes.jsonl').write_text(outcomes_tail, encoding='utf-8')
-            # decisions 也重定向+mtime 回拨:v4.1 判定链第 4 条会读真实
-            # decisions.jsonl——在岗局的决策帧新鲜会把「局后空窗」用例误判活跃
-            (d / 'decisions.jsonl').write_text('{"run_id": "run_x"}\n', encoding='utf-8')
-            # outcomes mtime 回拨 1h,排除 FRESH 兜底干扰
-            old = time.time() - 3600
-            os.utime(d / 'outcomes.jsonl', (old, old))
-            os.utime(d / 'decisions.jsonl', (old, old))
+            (d / 'state').mkdir()
+            (d / 'state' / 'journal.jsonl').write_text(journal_text, encoding='utf-8')
             env = dict(os.environ,
                        CW_SENTINEL_LOG=str(log), CW_SENTINEL_POS=str(d / 'pos'),
                        CW_SENTINEL_LOCK=str(d / 'lock'),
-                       CW_SENTINEL_RUNS=str(d / 'runs.jsonl'),
-                       CW_SENTINEL_OUTCOMES=str(d / 'outcomes.jsonl'),
-                       CW_SENTINEL_DECISIONS=str(d / 'decisions.jsonl'),
+                       CW_SENTINEL_JOURNAL=str(d / 'state' / 'journal.jsonl'),
                        CW_SENTINEL_SILENCE='3', CW_SENTINEL_CONFIRM='3',
                        CW_SENTINEL_POLL='1')
             r = subprocess.run([sys.executable, str(script)], env=env,
@@ -867,11 +904,15 @@ def _selftest() -> int:
         log_b.write_text('', encoding='utf-8')
         old = time.time() - 3600
         os.utime(log_b, (old, old))   # B 初始陈旧 → 武装时选 A
-        (d / 'runs.jsonl').write_text('{"run_id": "run_z", "result": "loss"}\n', encoding='utf-8')
-        (d / 'outcomes.jsonl').write_text('{"run_id": "run_z", "round_num": 2}\n', encoding='utf-8')
-        (d / 'decisions.jsonl').write_text('{"run_id": "run_z"}\n', encoding='utf-8')
-        os.utime(d / 'outcomes.jsonl', (old, old))
-        os.utime(d / 'decisions.jsonl', (old, old))
+        # v5.2:静默尾段预期「已收口+陈旧」→ _run_ended()=True → IDLE 退出路径
+        _stale_ts = '2020-01-01T00:00:00'
+        (d / 'state').mkdir()
+        (d / 'state' / 'journal.jsonl').write_text(''.join(
+            json.dumps({'v': 1, 'ts': _stale_ts, 'run_id': 'run_20260901_000003',
+                        'row': 'write', 'field': f, 'after': 1, 'same_value': False,
+                        'state': {'values': {}}, 'sig': {}, 'note': '',
+                        'evidence_refs': []}, ensure_ascii=False) + '\n'
+            for f in ('gold', 'match_final')), encoding='utf-8')
         proc, out = _spawn_resident(d, 'drift', extra_env={
             'CW_SENTINEL_LOG': str(log_a), 'CW_SENTINEL_LOG2': str(log_b),
             'CW_SENTINEL_SILENCE': '8', 'CW_SENTINEL_CONFIRM': '3',
@@ -1129,17 +1170,24 @@ def _selftest() -> int:
         cases.append(('L6_stall_escalation', '第10条STALL退出+CONT恰1', ok, _last_line(o)))
 
     # L7 终局标记修复锁(行为增量):『指令[...] 执行失败』行喂到后进入静默
-    # 双窗(短阈值;runs 尾行无 result 使 _run_ended() 为假;夹具不得混入
-    # 『执行成功』——该行在 v5/v5.1 都会置位标记,混入即毁判别力)。v5 下该行
-    # 的标记置位到不了(HIT 判定即提前返回,准确说是仅 执行失败 行的置位丢失,
-    # 执行成功 行本就置位);v5.1 续侦喂行后应走 [sentinel-quiet] 路径:
-    # 无 SILENCE 报警、进程在岗。
+    # 双窗(短阈值;journal 尾实机段未收口使 _run_ended() 为假(v5.2);
+    # 夹具不得混入『执行成功』——该行在 v5/v5.1 都会置位标记,混入即毁判别力)。
+    # v5 下该行的标记置位到不了(HIT 判定即提前返回,准确说是仅 执行失败 行
+    # 的置位丢失,执行成功 行本就置位);v5.1 续侦喂行后应走 [sentinel-quiet]
+    # 路径:无 SILENCE 报警、进程在岗。
     # 变异 M7:续侦面恢复提前 return → 置位到不了 → 走 SILENCE 报警分支,红。
     with tempfile.TemporaryDirectory(prefix='cw_sentinel_L7_') as td:
         d = Path(td)
         log = d / 'log.txt'
         log.write_text('', encoding='utf-8')
-        (d / 'runs.jsonl').write_text('{"run_id": "run_l7", "result": ""}\n', encoding='utf-8')
+        (d / 'state').mkdir()
+        (d / 'state' / 'journal.jsonl').write_text(
+            json.dumps({'v': 1, 'ts': '2020-01-01T00:00:00',
+                        'run_id': 'run_20260901_000004', 'row': 'write',
+                        'field': 'gold', 'after': 1, 'same_value': False,
+                        'state': {'values': {}}, 'sig': {}, 'note': '',
+                        'evidence_refs': []}, ensure_ascii=False) + '\n',
+            encoding='utf-8')   # 尾段未收口(无 match_final)→ 判活跃
         proc, out = _spawn_resident(d, 'L7', extra_env={
             'CW_SENTINEL_SILENCE': '3', 'CW_SENTINEL_CONFIRM': '3'})
         time.sleep(2.2)
@@ -1159,8 +1207,8 @@ def _selftest() -> int:
 
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--selftest':
-    print('[selftest] v5.1 十五用例回归:空窗/静默/漂移/循环/STALL/滞留/推进'
-          ' + v5.1 七锁(轮转锚尾/武装锚尾/新行双路/同因去重/异因仍报/升级通道/终局标记)')
+    print('[selftest] v5.2 十五用例回归:空窗/静默[journal 判定]/漂移/循环/STALL/滞留/推进'
+          ' + 七锁(轮转锚尾/武装锚尾/新行双路/同因去重/异因仍报/升级通道/终局标记)')
     sys.exit(_selftest())
 
 if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--replay':
@@ -1168,6 +1216,14 @@ if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--replay':
         print('用法: cw_sentinel.py --replay <日志文件>', flush=True)
         sys.exit(2)
     sys.exit(_replay(sys.argv[2]))
+
+if __name__ == '__main__' and len(sys.argv) > 1 and sys.argv[1] == '--dry-ended':
+    # v5.2 活跃局判定单点干跑(T-257):对给定 journal(缺省=现役路径)跑一次
+    # _run_ended() 打印 ENDED=… 退出;纯判定面输出,不进监视循环不占锁。
+    if len(sys.argv) > 2:
+        JOURNAL_JSONL = Path(sys.argv[2])
+    print(f'ENDED={_run_ended()} (journal={JOURNAL_JSONL})', flush=True)
+    sys.exit(0)
 
 if not REPLAY_MODE and not _acquire_lock():
     sys.exit(0)
@@ -1314,14 +1370,14 @@ while True:
     # 工具崩,可解析占位两全(仅 mtime 被消费,值本身无人读)。
     MARKER.write_text('-1' if pos is None else str(pos))
     if time.time() - last_line_wall > SILENCE_SEC:
-            # v3.5(12:51 误报修):静默判定前先做「活跃局检查」(离线读
-            # telemetry/live/runs.jsonl + outcomes.jsonl)。局已自然终局 → 局后空窗
-            # 是正常交接状态,IDLE 提示 + 优雅退出,不走 SILENCE 报警;
+            # v3.5(12:51 误报修):静默判定前先做「活跃局检查」(v5.2 起离线读
+            # state/journal.jsonl 尾窗;v5.1 及以前读 runs/outcomes/decisions,
+            # 三流已随删除波 1 停写退役)。局已自然终局 → 局后空窗是正常交接
+            # 状态,IDLE 提示 + 优雅退出,不走 SILENCE 报警;
             # 局仍活跃 → 维持原双窗逻辑(结算屏/动画段误报防护不弱化)。
             if _run_ended():
-                _last = _jsonl_tail(RUNS_JSONL) or {}
                 print(f'[RUN-ENDED-IDLE] 静默{int(time.time()-last_line_wall)}s 且活跃局检查判定'
-                      f'局已终局(runs.jsonl 尾行 result={_last.get("result", "?")})'
+                      f'局已终局(journal={JOURNAL_JSONL.name} 尾实机段已收口)'
                       f'——局后空窗属正常交接,哨兵退出不报警', flush=True)
                 sys.exit(0)
             if _seen_terminal:
