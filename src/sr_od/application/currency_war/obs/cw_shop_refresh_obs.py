@@ -161,8 +161,14 @@ class ShopRefreshButton:
     - **免费态**(免费余额>0):金色圆钮,钮内「免费刷新」+剩余次数数字;
     - **耗尽态**(余额 0,可负担):白亮圆钮,「刷新」+金币图标+标价;
     - **不可用灰态**(金<标价):渲染与耗尽态**逐字相同**,仅按钮变暗——
-      文本面无法表达,判别 = 逻辑面对比(金现读 vs 标价,T-15 未尽事项
-      方案 b;暗钮模板方案 a 留作 OCR 链失效时的后备,模板源帧已落档)。
+      文本面无法表达。判别面**定谳 = 逻辑面金价对比**(金现读 vs 标价):
+      语义层直编机制规则「置灰⟺金<标价」(T-15 行为实锤:灰态点击金/牌
+      均不变;金≥标价白亮可点),标价在灰态可读经归档灰态帧真 OCR 实证
+      (测试真帧锁)。暗钮模板案 = 表现层拟合,冻结为后备:单帧定阈无鲁
+      棒性证据且 UI 改版即碎;触发条件 = 标价通道在灰态持续失读使金价
+      对比失效,届时模板源帧已落档
+      (``.debug/currency_war/evidence/20260912_t15_t13_t18/
+      t13_refresh_disabled_gold1_dark_button.png``)可随时启用。
 
     字段语义:
     - ``free``:True=免费态(锚命中);False=付费域(锚未中∧标价读出,
@@ -190,7 +196,9 @@ def read_shop_refresh_button(ctx: SrContext, screen: MatLike,
     :param screen: 商店开态整帧(RGB,controller 截图);None=测试注入态
       (mock ocr_service 不承载像素,仓内既有约定)。
     :param gold: 同帧金币现读(调用方已读则传入复用,本函数不重复读金);
-      只用于灰态判别,失读传 None(→ ``affordable``=None)。
+      只用于灰态判别,失读传 None(→ ``affordable``=None)。现役两消费链
+      均已传入:执行侧 = RefreshShopOp 刷前现读金;观察侧 = 喂入口复用
+      本帧 state.gold(失读保真 None,禁 0 假值)。
     :return: :class:`ShopRefreshButton`(判不出 = ``free``=None,**禁兜底**)。
 
     判定序:锚命中 → 免费态(次数从「文本-刷新价格」rect 同位读——免费帧
