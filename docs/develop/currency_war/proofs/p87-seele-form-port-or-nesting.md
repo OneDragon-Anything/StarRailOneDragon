@@ -11,7 +11,7 @@
 > 写端;希儿系对 form_tiers 只含他体系档 + `SEELE_OR_LEGS` or_legs +
 > `required_deployed=('希儿',)`)/ `form_progress`(kernel/cw_comps.py,
 > 成型判据唯一折法,fp=1.0 ⟺ 成型谓词);行为锁 =
-> sr-od-test test_cw_t171_form_or.py(16 锁,变异红证在 ADR-0613 §验收)。
+> sr-od-test test_cw_form_or.py(28 锁,变异红证在 ADR-0613 §验收)。
 
 ## 命题(形式化)
 
