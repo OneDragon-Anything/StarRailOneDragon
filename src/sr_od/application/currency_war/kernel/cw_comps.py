@@ -16,13 +16,13 @@ auto-chess 胜负手 = commit 哪个阵容 + 何时转型 + 巨星绑谁;本模�
    反重力皮靴对昼神阿雅(需 2 靴)是命脉、对别的 comp 不一定;正当防卫词缀对万敌燃血是利、对阿雅是克。
 2. **debuff 可能是 buff** —— 同一词缀对不同阵容方向相反(mechanics_fit 双向:counter 降 + synergy 升)。
 3. **COMP_LIBRARY 多维打分 + 运行时按场面选** —— 不锁死一套,按成型难度/boss/环境/词缀灵活选易成型又够强的。
-4. **经济统一论** —— 每 comp 自带 ``level_plan``(成型路线),驱动战术层花超额金(接法见 cw_economy,ADR-0145 拆分)。
+4. **经济统一论** —— 每 comp 自带 ``level_plan``(成型路线),驱动战术层花超额金(接法见 cw_economy 的经济效果拆分)。
 
 **核心/弹性羁绊二分(ADR-0152)**:``factions`` = 核心羁绊(成型判定);``flex_factions`` = 弹性次要
 (plaza 实证「核心保证四列车即可,其他自由搭配」—— 板朝 flex 铺不罚,env/策略亲和照吃)。
 **augment 定义型 comp**(:``AUGMENT_COMP_AFFINITY``):黑塔纪元/飞光类棱彩策略拿到即近乎硬绑
 (镜像 ENV_COMP_AFFINITY;held_strategy_fit 消费)。**全局过渡池**(:``TRANSITION_POOL``):
-plaza Early 六巨头(藿藿/饮月/三月七/爻光/椒丘/艾丝妲),ADR-0149 过渡工程消费。
+plaza Early 六巨头(藿藿/饮月/三月七/爻光/椒丘/艾丝妲),过渡工程(买入分级加权+卖出保留判定)消费。
 
 ⚠️ meta(版本依赖):core_chars/form_tiers/strength/form_difficulty 是 V4.4 估值(plaza 校准 +
 米游社合集 76807134),replay + 实玩迭代。装备 Final-only = plaza UI 限制(时序看合成首选,非玩法事实)。
@@ -100,7 +100,7 @@ class Comp:
     mechanic_attributes: list[str] = field(default_factory=list)  # comp 机械属性 tag(mechanics_fit 经 MECHANIC 表判)
     shared_chars: list[str] = field(default_factory=list)    # 与其他 comp 共享的 core(转型可复用)
     transition_chars: list[str] = field(default_factory=list)  # 早期打工牌(后期卖)
-    # ADR-0139:comp 特定站位要求(角色→"front"/"back"),覆盖命途 position_pref 默认 ——
+    # comp 特定站位要求(角色→"front"/"back"),覆盖命途 position_pref 默认 ——
     # 攻略实证:爻光必后台(绯英攻略反向论证:后台跑条给前台多开大,总伤更高)、万敌独前排(燃血吃受击)、
     # 知更鸟前台(追击支撑)。空 = 全按命途默认。
     char_positions: dict[str, str] = field(default_factory=dict)
@@ -223,7 +223,7 @@ class ScoreContext:
     bosses: list[str | None] = field(default_factory=list)      # 当前/将遇 boss 名(boss_fit;None=徽章态缺失位,ADR-0398)
     mechanics: set[str] = field(default_factory=set)             # 激活机制 tag(current_enemy_mechanics)
     env: str = ""                                                # 已选投资环境名(env_fit)
-    held_strategies: list[str] = field(default_factory=list)      # 已持有投资策略(ADR-0135 held_strategy_fit;机会型 pivot)
+    held_strategies: list[str] = field(default_factory=list)      # 已持有投资策略(held_strategy_fit;机会型 pivot)
     plane: int = 1
     round_num: int = 1
     gold: int = 0
@@ -235,7 +235,7 @@ MECHANIC_COUNTERS: dict[str, list[str]] = {
     # 机制 tag → 它克制的 comp 机械属性
     "反伤": ["高频低单次"],        # 正当防卫:克高频低单次(反甲白厄式)
     "冻结": ["慢速", "战技点依赖"],  # 极速制冷/坠入陷阱/冷冻冬眠:克慢速 + 战技点消耗队
-    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(cw_events decide_event 消费,ADR-0203 单一源;原 config dot_punish_envs 已删)
+    "净化": ["DoT", "减益"],       # 净化身心:克 DoT/减益主派(cw_events decide_event 消费,机制注册表单一源;原 config dot_punish_envs 已删)
     "掉血削上限": ["燃血"],        # 永久创伤:克燃血(掉血→减上限双损)⚠️ 燃血的反例 counter
     "治疗削弱": ["治疗护盾"],      # 重症难题:克治疗/护盾主坦队
     "幸运削弱": ["幸运一击"],      # 丢失幸运:克幸运一击/群攻(知更鸟)
@@ -342,7 +342,7 @@ def effective_mechanic_attributes(comp: Comp,
 # 自动写入采到的新词缀/校准)。本文件不 import 该注册表,mechanics_fit 亦不消费;
 # 消费方为 cw_briefing_obs.load_affix_effects_from_file(ast 提取)。
 # comp.countered_by_bosses 已按 BOSS_NICKNAMES 归一规范公司名(boss_fit 双侧
-# normalize_boss_name 接通 ADR-0160 后俗称键可命中,但规范名直写消除双名空间)。
+# normalize_boss_name 接通俗称归一注册表后俗称键可命中,但规范名直写消除双名空间)。
 
 # ===== 环境 → 阵营/comp 亲和(P1-2 T0 env 近乎硬绑 + R2-9 env→faction)=====
 # 累积型角色强环境机制 tag 集(`w607_affix_consumption/` H1 锁线环境判据的数据层):
@@ -362,13 +362,12 @@ STRONG_ENV_MECHS: dict[str, frozenset[str]] = {
 RUST_AFFIX_NAME: str = '库藏生锈'
 
 
-# ===== 中期护航三套(ADR-0140)——已删除(清退评估批,2026-09) =====
+# ===== 中期护航三套——已删除(清退评估批,2026-09) =====
 # EscortComp/ESCORT_COMPS/escort_for(含「成长型不护航」GROWTH_MECHANICS,
 # 仅 escort_for 消费,同链死亡)整段移除:生产消费点早已清零,清查报告
 # OLD_MIX_AUDIT §7.2 裁定随先例(M6 费用档星目标)删除;测试词汇对照
 # (test_cw_affix_megastar serves 对照 / test_cw_decisions escort_for 单测)
-# 同批删除。ADR 留档见 docs/develop/currency_war/decisions/(ADR-0140 原始
-# 引入记录仍在,本注释仅为防复活的墓碑指针)。
+# 同批删除。本注释仅为防复活的墓碑指针。
 
 # ENV_FACTION_MAP 从投资环境注册表派生(单一真相源:概念股/邀请的 faction 字段;改注册表自动传导)
 ENV_FACTION_MAP: dict[str, list[str]] = {
@@ -435,7 +434,7 @@ def augment_env_affinity(name: str) -> dict[str, float]:
 # 全局过渡池(ADR-0152,按跨阶段存活率拆两级;plaza 784 篇 P(进终局|Early在场) 实证):
 #   EARLY_CORE_POOL(存活 ≥0.8):「有体系牌来就拿下」—— 买了就是开局(期权重叠,不存在过渡浪费);
 #   TEMPO_POOL(存活 <0.45):纯保血打工(骨架件)—— 1星买卖近无损,毕业即卖(1-8 分界换血)。
-# 消费方:ADR-0149 过渡工程(买入分级加权 + 卖出保留判定)—— 接线前是数据先验,勿删。
+# 消费方:过渡工程(买入分级加权 + 卖出保留判定)—— 接线前是数据先验,勿删。
 EARLY_CORE_POOL: list[str] = [
     "千冶·刃",   # 存活 0.96,Early 174 篇 —— 断层级早期核心
     "姬子·启行", "远坂凛", "丹恒·腾荒", "缇宝", "三月七", "花火",
@@ -523,7 +522,7 @@ def skeleton_factions() -> set[str]:
         if ch.cost <= 2:
             for f in ch.factions:
                 cheap[f] = cheap.get(f, 0) + 1
-    # 狼狩封存(四体系封闭裁定;同 cw_bridge_pool ADR-0350 前注):不再作为
+    # 狼狩封存(四体系封闭裁定;同 cw_bridge_pool.py 前注):不再作为
     # 过渡骨架判据候选——判据筛选合格也不入集。
     _SEALED_SKELETON_FACTIONS: frozenset[str] = frozenset({'狼狩'})
     return {name for name, info in FACTIONS.items()
@@ -605,7 +604,7 @@ COMP_LIBRARY: list[Comp] = [
             8: LevelGoal("roll", target_cost=0, target_chars=["姬子·启行", "花火", "瓦尔特"],
                          star_goals={"姬子·启行": 3, "花火": 2}),
             # (旧注「缺 lv9 → 落通用曲线 stable 零 D」的回退已随 _DEFAULT_LEVEL_
-            # GOAL 退役(ADR-0519),lv9 无 plan 时仅节点地板辖;显式 lv9 roll
+            # GOAL 退役(「未证即退役」裁定),lv9 无 plan 时仅节点地板辖;显式 lv9 roll
             # 保留:5费概率高,找 瓦尔特/花火 升星,姬子顺带。)
             9: LevelGoal("roll", target_cost=5, target_chars=["姬子·启行", "花火", "瓦尔特"],
                          star_goals={"姬子·启行": 3, "花火": 2}),
@@ -678,7 +677,7 @@ COMP_LIBRARY: list[Comp] = [
         # 前期狼尊开 3 欢愉过渡 → 上 8 踢狼尊换主角 → 上 9 找杨叔(瓦尔特)大成。爻光穿鞋频召阿哈叠层
         key_equips=["火力风暴潮", "永动机", "冷笑话引擎", "高周波电锯"],
         mechanic_attributes=["欢愉叠层", "成型羁绊队"], shared_chars=["瓦尔特", "爻光", "火花"],   # 成型羁绊队:欢愉 4-6 档乘区(w878)
-        char_positions={"爻光": "back"},   # ADR-0139:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版)
+        char_positions={"爻光": "back"},   # 站位:爻光必后台(攻略反向论证:后台跑条给绯英多开大,总伤更高;前台倍率<20%残血版)
         transition_chars=["花火"], typical_form_round=6,   # 评审🟡2:爻光 25/25 常驻是 core 非 transition;常驻是火花(16/25,4费)非花火
         # ===== v2:欢愉族家族·绯英档(资源锚 6 级;无信号时的默认落点)=====
         family="欢愉族", branch_key="绯英档(资源锚 6 级;无信号默认落点)", branch_of="狼尊欢愉",
@@ -1037,7 +1036,7 @@ COMP_LIBRARY: list[Comp] = [
     ),
     Comp(
         # 打法知识:docs/game/currency_war/research/final_comps/README.md 类索引(游戏知识,非字段镜像,无同步义务)
-        char_positions={"知更鸟": "front"},   # ADR-0139:知更鸟前台(追击攻略:鸟前台支撑中后期;砂金/灵砂/符玄等生存位也优先前台)
+        char_positions={"知更鸟": "front"},   # 站位:知更鸟前台(追击攻略:鸟前台支撑中后期;砂金/灵砂/符玄等生存位也优先前台)
         name="追击飞霄", factions=["追击"], core_chars=["飞霄", "知更鸟", "那刻夏", "不死途"],
         form_tiers={"追击": 3}, strength="B", form_difficulty="medium", early_power="低",
         # V4.4 合集(76807134)追击 B 级 = 飞霄-led(纯追击);攻略(76883466):飞霄天赋追击永久+6%增伤,≥3追击=300%倍率
@@ -1071,7 +1070,7 @@ COMP_LIBRARY: list[Comp] = [
         # 要凑」)→ 降为 2+2(核心=万敌双标签引擎,其余 flex);千冶·刃 40/40 全勤补 core(旧漏)。
         # 遐蝶(n=6)= 同族副 carry(夜神6+燃血6),挂 shared 备转型。
         mechanic_attributes=["燃血"],
-        char_positions={"万敌": "front"},   # ADR-0139:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
+        char_positions={"万敌": "front"},   # 站位:万敌独前排(燃血角斗场吃受击掉血;弃1人口换触发密度)
         key_equips=["火力风暴潮", "热血沸腾拳", "绝对热量", "高周波电锯"],   # 评审🟡4:plaza 热血沸腾拳40>绝对热量26 顺序修正(风暴潮54 断层第一)
         countered_by_bosses=["永久创伤"],   # 掉血削上限克燃血(不可玩);利:忍无可忍/正当防卫/灼热轰炸(debuff=buff)
         shared_chars=["风堇", "长夜月", "遐蝶"], transition_chars=["椒丘", "艾丝妲"],   # 长夜月是 core(夜半记录)
@@ -1285,7 +1284,7 @@ def progress(comp: Comp, state: GameState) -> float:
     """comp_score 用:0.6 阵营 tier 进度 + 0.4 核心角色持有(归一化 0..1)。
 
     与 form_progress 区别:progress 加了 core_char 持有项(选 target 时评估契合用);
-    eval 驱动买牌用 target_progress(只度量剩余进度;详 ADR-0145 拆分史)。
+    eval 驱动买牌用 target_progress(只度量剩余进度)。
     """
     fp = form_progress(comp, state)
     owned = _owned_chars(state)
@@ -1333,7 +1332,7 @@ def equip_fit(comp: Comp, state: GameState) -> float | None:
 
     ⚠️ comp 驱动(用户):不设通用 equip_score,一切从 target_comp.key_equips 出发。
     key_equips 可含重复(阿雅需 2 反重力皮靴)→ 按 multiplicity 匹配持有数。
-    无装备数据(state.equips 空)/ comp 无关键装备 → **None**(ADR-0107 动态权重:无数据不进加权,
+    无装备数据(state.equips 空)/ comp 无关键装备 → **None**(动态权重:无数据不进加权,
     权重重分配给有数据项,治死重常量地板)。
     """
     equips = list(getattr(state, 'equips', []) or [])
@@ -1358,7 +1357,7 @@ def mechanics_fit(comp: Comp, mechanics: set[str],
     查全局 MECHANIC_COUNTERS/SYNERGIES 判(数据驱动,comp 不必逐词缀列举;W875 补全包
     子集经 merged_mechanic_tables 按开关并表,全关=基表零漂移;W878 复活包 tag 载体经
     effective_mechanic_attributes 按开关滤除,全关=原属性集零漂移)。
-    无机制信息(无敌人词缀 / comp 无生效机械属性)→ **None**(ADR-0107 动态权重剔除,治死重)。
+    无机制信息(无敌人词缀 / comp 无生效机械属性)→ **None**(动态权重剔除,治死重)。
     典型:万敌[燃血] + 反伤 → synergy 升(debuff=buff);阿雅[速度依赖] + 禁速 → counter 降。
     """
     eff_attrs = effective_mechanic_attributes(comp, registry)
@@ -1379,10 +1378,10 @@ def mechanics_fit(comp: Comp, mechanics: set[str],
 def boss_fit(comp: Comp, bosses: list[str | None]) -> float | None:
     """boss 克制(boss 名维度):命中 comp.countered_by_bosses → 降。
 
-    无 boss 信息 / comp 无 countered_by_bosses → **None**(ADR-0107 动态权重剔除,治死重)。
+    无 boss 信息 / comp 无 countered_by_bosses → **None**(动态权重剔除,治死重)。
     有 boss + comp 有 countered_by_bosses 但未命中 → 0.5(真实中性:boss 在但不利害此 comp,有数据)。
 
-    **ADR-0160(15 号 v0)接通**:①俗称归一(BOSS_NICKNAMES:剧目→造梦兄弟影业等,
+    **俗称归一注册表接通**:①俗称归一(BOSS_NICKNAMES:剧目→造梦兄弟影业等,
     修名字空间错位 —— 旧 countered_by_bosses 用俗称 vs plane_bosses 规范名,永命中不了,
     task#73 遗留);②comp 无 countered_by_bosses 但有 mechanic_attributes → 退
     ``cw_enemy_data.matchup`` 结构层(boss 机制 tag × comp 属性,可解释 reasons;
@@ -1409,7 +1408,7 @@ def boss_fit(comp: Comp, bosses: list[str | None]) -> float | None:
 
 
 def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
-    """**已持有策略**契合(ADR-0135 机会型 pivot 核心;用户「拿到适配策略主动转阵容」)。
+    """**已持有策略**契合(机会型 pivot 核心;用户「拿到适配策略主动转阵容」)。
 
     每张持有策略的绑定(``strategy_bindings``,ADR-0134 派生)∩ comp(阵营/core 角色)命中 → 该策略
     对此 comp 加成。归一 0..1:0.5 中性(无策略/无命中),每命中 +0.25 封顶 1.0(星徽套组双命中
@@ -1447,7 +1446,7 @@ def held_strategy_fit(comp: Comp, active_strategies: list[str]) -> float | None:
 def env_fit(comp: Comp, env: str) -> float | None:
     """投资环境契合:① T0 env 近乎硬绑(P1-2 ENV_COMP_AFFINITY);② env 加成对应阵营(R2-9)。
 
-    未选投资环境(env 空)→ **None**(ADR-0107 动态权重剔除,治死重)。env 已选但不加成此 comp → 0.5
+    未选投资环境(env 空)→ **None**(动态权重剔除,治死重)。env 已选但不加成此 comp → 0.5
     (真实中性:env 在但不利好此 comp,有数据)。
     ⚠️ ADR-0152 评审🔴2(T0 定向优先):env 在 affinity 表内时**非定向 comp 一律中性 0.5,不走
     faction 匹配** —— 否则 flex 全集匹配 1.0 盖过定向 0.9/0.95(实测反转:仙舟概念股下绯英欢愉
@@ -1492,7 +1491,7 @@ def make_score_context(state: GameState, bosses: list[str] | None = None) -> Sco
         bosses=bosses or list(state.plane_bosses),
         mechanics=current_enemy_mechanics(state),
         env=state.active_env,
-        held_strategies=list(state.active_strategies),   # ADR-0135 机会型 pivot(选完策略后方向重估)
+        held_strategies=list(state.active_strategies),   # 机会型 pivot(选完策略后方向重估)
         plane=state.plane, round_num=state.round_num, gold=state.gold,
     )
 
@@ -1505,20 +1504,20 @@ def make_score_context(state: GameState, bosses: list[str] | None = None) -> Sco
 # 高强度不可成型。算账:万敌(progress0.125,str0.4) vs 列车同行(prog0,str1.0),旧 0.084<0.1(列车同行赢);
 # 新 0.45*0.125+0.05*0.4=0.076 > 0.45*0+0.05*1.0=0.05(万敌赢)= 选可成型。
 #
-# 动态权重(ADR-0107,治本 review#5 死重):权重不再因「数据未接通」而失效 —— *_fit 无数据返 None,
-# weighted_mean 剔除 None 项 + 权重重分配给有数据项。故 W_BOSS 复位 0.10(ADR-0106 暂置 0 的 stopgap
+# 动态权重(治本 review#5 死重):权重不再因「数据未接通」而失效 —— *_fit 无数据返 None,
+# weighted_mean 剔除 None 项 + 权重重分配给有数据项。故 W_BOSS 复位 0.10(早期暂置 0 的 stopgap
 # 不再需要:boss 无数据时 boss_fit 返 None → 自动剔除,不再贡献死重常量;数据接通即生效)。
 W_PROG: float = 0.45    # 成型进度(form + core_char)—— 偏好可成型 comp
 W_MECH: float = 0.15    # 机制契合(双向 debuff=buff)
 W_ENV: float = 0.15     # 投资环境契合
-W_HELD: float = 0.15    # 已持有策略契合(ADR-0135 机会型 pivot;无持有 → None 动态剔除,权重重分配)
+W_HELD: float = 0.15    # 已持有策略契合(机会型 pivot;无持有 → None 动态剔除,权重重分配)
 W_BOSS: float = 0.10    # boss 克制(无数据 → boss_fit 返 None → 动态剔除;countered_by_bosses 接通即生效)
 W_EQUIP: float = 0.10   # 装备契合(comp 相关)
 W_STR: float = 0.05     # research meta 强度
 
 
 def weighted_mean(items: list[tuple[float, float | None]]) -> float:
-    """动态加权平均(ADR-0107):None 项(无数据)剔除,权重重分配给有数据项。
+    """动态加权平均:None 项(无数据)剔除,权重重分配给有数据项。
 
     治本(review#5):消除 *_fit 无数据返 0.5 的「常量地板」—— 全 comp 同值的项不区分却仍占权重,
     挤压 progress/strength 区分力(dead weight)。None 项不进加权 → 有数据项有效权重升 → 区分力恢复。
@@ -1535,7 +1534,7 @@ def comp_score(comp: Comp, state: GameState, ctx: ScoreContext) -> float:
     """候选 comp 综合分(select_comp 评分 candidate 用;无观测项 —— 未 commit 的 candidate 无观测)。
 
     多维度 comp 相关(用户:一切挂钩目标阵容):成型进度 + 机制双向 + 环境 + boss + 装备 + 强度。
-    动态归一(ADR-0107):*_fit 无数据返 None → 该项剔除、权重重分配(治死重常量地板)。
+    动态归一:*_fit 无数据返 None → 该项剔除、权重重分配(治死重常量地板)。
     评 **current 已 commit** comp 用 cw_performance.comp_viability(加观测 blend),不用本函数。
     """
     return weighted_mean([
@@ -1629,7 +1628,7 @@ def _board_alignment(comp: Comp, state: GameState) -> float:
     if any(board.get(f, 0) >= 2 for f in factions):
         return 1.2   # deep-stack → boost
     if not board:
-        return 1.0   # ADR-0135:空板 = 无部署证据 → 不罚(罚的前提是 deployed-lock 有错配证据;
+        return 1.0   # 空板 = 无部署证据 → 不罚(罚的前提是 deployed-lock 有错配证据;
         # 无证据惩罚会只打到 factions 非空的 comp —— 反甲白厄(factions 空,
         # 故意设计)躲过 → 早期选择被数据伪影抬轿,机会型 pivot 也被它压死)
     if not any(board.get(f, 0) >= 1 for f in factions):
@@ -1677,7 +1676,7 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
     同源(单一实现,select_comp 是本函数的投影)。
     """
     held = _held_base_copies(state)   # ADR-0110:acq 扣玩家持有副本(牌池有限)
-    # ADR-0135:持有策略**绑定授予**的角色(星徽套组「获得1个【X】」)计入持有副本 —— 送卡 = 已持有,
+    # 持有策略**绑定授予**的角色(星徽套组「获得1个【X】」)计入持有副本 —— 送卡 = 已持有,
     # acq 不按全牌池低估(机会型 pivot 的 acq 解锁;仅对本 comp 核心生效,他 comp 不吃这份加成)。
     _granted: dict[str, int] = {}
     from sr_od.application.currency_war.kernel.cw_investments import (
@@ -1701,12 +1700,12 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
                 _h[_c] = _h.get(_c, 0) + _k
         s = comp_score(comp, state, ctx) + _priority_boost(comp, config)
         s *= _difficulty_phase_factor(comp, state)
-        # ADR-0135 成型加速乘子:持有策略双命中(fit=1.0,套组三件套到手)→ ×1.25(期望成型提前一档);
+        # 成型加速乘子:持有策略双命中(fit=1.0,套组三件套到手)→ ×1.25(期望成型提前一档);
         # 中性 0.5 → ×1.0(不加不减)。加性 W_HELD 会被 acq/难度乘子稀释,乘子保证机会信号不被淹没。
         _hf = held_strategy_fit(comp, ctx.held_strategies)
         s *= 1.0 + 0.4 * ((_hf if _hf is not None else 0.5) - 0.5) * 2
         # acquirability(ADR-0110 牌池感知):P(单次刷新≥1 张该角色),扣玩家持有副本(牌库有限,用户根因)。
-        # acq 收窄口径(ADR-0105):0.5+0.5·acq —— acq 作次级 tiebreak(非主导,board 支持优先),
+        # acq 收窄口径:0.5+0.5·acq —— acq 作次级 tiebreak(非主导,board 支持优先),
         # 防选「core 易刷但 board 不支持」的 comp → spread。牌池感知后范围 ~0.005-0.3 → 乘子 0.50-0.65。
         s *= (0.5 + 0.5 * acquirability_factor(comp.core_chars, state.level, _h))
         # 定义型 augment 近乎硬绑(ADR-0152):黑塔纪元类(affinity≥0.9)拿到即改写本局
@@ -1717,7 +1716,7 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
             s *= 1.5
         s *= _board_alignment(comp, state)
         s *= _formation_cost_factor(comp)
-        # B3(ADR-0172 线组合首口,提案 21 §1b-1「错线 commit」的治法):boss 克线从 0.1 权重
+        # B3(线组合首口,「错线 commit」的治法):boss 克线从 0.1 权重
         # 评分项升格为**开局先验冲击乘子**——matchup<0.5(克)开局即压,不会被过渡牌堆高骗过
         # form_progress 阈值。乘子语义:克(0.0-0.4)→ ×0.6-0.85;中性(0.5)→ ×1.0;利(0.6+)→
         # ×1.05-1.1(温和,防 W_BOSS 双计 —— 评分项仍在,本乘子是开局/无板面投入时的主导信号,
@@ -1736,7 +1735,7 @@ def select_comp_scored(state: GameState, ctx: ScoreContext, config,
 def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dict[str, float | None]:
     """comp_score 的特征分解(telemetry 采集用:给人肉眼复盘 + 未来 ML side door)。
 
-    schema 稳定(字段名跨版本不变);数值随版本/实玩变。*_fit 无数据项值为 None(ADR-0107)。
+    schema 稳定(字段名跨版本不变);数值随版本/实玩变。*_fit 无数据项值为 None(动态权重)。
     详 cw_telemetry。
     """
     return {
@@ -1751,7 +1750,7 @@ def comp_score_breakdown(comp: Comp, state: GameState, ctx: ScoreContext) -> dic
     }
 
 
-# ===== M7 装备角色级分配(ADR-0154;方法论 M7:装备是角色特定的,51% 文本覆盖)=====
+# ===== M7 装备角色级分配(方法论 M7:装备是角色特定的,51% 文本覆盖)=====
 
 EQUIP_CAPACITY: int = 3   # 每单位装备上限(below-avatar 最多 3 件,D-49 布局约束)
 
@@ -1846,7 +1845,7 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     3. **剩余通用 owned** 按 deployed 顺序兜底(前排在前 —— 受击/反甲类在前排生效)。
     ``occupied[(row, slot)]`` = 已穿列表(容量扣减,EQUIP_CAPACITY);deployed 元素需带
     char_id/position_pref/slot(BenchChar)。comp=None → 全走 3(通用兜底)。
-    纯函数(可离线测);CwOpEquipAll 消费(ADR-0154)。
+    纯函数(可离线测);CwOpEquipAll 消费。
 
     ``priority_order``(18 号稿 §3.3 签名扩展,ADR-0526):可选分配优先序
     (list[str],角色名);None(缺省)= 现行内部派生序,**零行为漂移**。
@@ -2269,7 +2268,7 @@ def maybe_pivot(state: GameState, ctx: ScoreContext, config, target: Comp | None
         else:
             if target is None:
                 # 无 target(尚未承诺)→ 无忠诚对象,signal1 的 gap 检查不适用(它为防「弃 current target
-                # churn」而设,target=None 无可弃)→ 直接选 best。动态权重(ADR-0107)让 comp_score 诚实化
+                # churn」而设,target=None 无可弃)→ 直接选 best。动态权重让 comp_score 诚实化
                 # (无数据不再注水 0.5 常量)→ 早期诚实低分也该有 target,不该卡 gap 阈留 None。
                 log.info('[cw-pivot] p=%s r=%s hp=%s 无 target → 直接选 best %s(未承诺,gap 检查不适用)',
                          state.plane, state.round_num, state.hp, best.name)

@@ -97,7 +97,7 @@ def xp_clicks_to_level(level: int, xp_cur: int,
         return 1
     return (gap + xp_per_buy - 1) // xp_per_buy
 
-# 保血阈值(策略校准参数,ADR-0203/0204 从 config 迁入代码单一源;值随实机校准走 git,不走用户 yml)。
+# 保血阈值(策略校准参数,自 config 迁入代码单一源;值随实机校准走 git,不走用户 yml)。
 # **保守起步,待实机校准**:A1-A4 = 40(低难不变,可适当卖血保经济);A5+ 升阶(高难敌人更凶 → 更早弃息保血)。
 HP_SAFE_THRESHOLD: int = 40    # 保血阈值默认(未检测职级时;语义「安全地板」,kernel 单一源)
 DIFFICULTY_HP_TABLE: dict[str, int] = {
@@ -194,7 +194,7 @@ class GameState:
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
-    hp: int | None = None  # 小队生命值(锁血决策用)。**None 化(ADR-0491)**:无真值即 None——读不到且 session 无沿用真值(last_hp_real)时 = None,不再兜底 100(ADR-0282「开局兜底 100」由 ADR-0491 正式废止:开局血量随难度/词缀变不恒 100,兜底值是「看起来像真值」的假值)。读不到但有真值 → 对账层沿用 last_hp_real(int)。消费点对 None 一律保守(血线触发条件不触发/授权位门 fail-closed),hp_readable/hp_trusted 两位语义不变。默认构造 GameState()=未观测态(hp=None;hp_readable 默认 True 仅供 sim 恒真读帧约定,真读帧由读取端显式写)。开局无真值帧由对账层填**初值表先验**(实证档 A8/108 → 82/62,readable=False,先验非真读;ADR-0559,cw_opening_hp),无实证档仍 None)
+    hp: int | None = None  # 小队生命值(锁血决策用)。**None 化(ADR-0491)**:无真值即 None——读不到且 session 无沿用真值(last_hp_real)时 = None,不再兜底 100(「开局兜底 100」旧语义已废止:开局血量随难度/词缀变不恒 100,兜底值是「看起来像真值」的假值)。读不到但有真值 → 对账层沿用 last_hp_real(int)。消费点对 None 一律保守(血线触发条件不触发/授权位门 fail-closed),hp_readable/hp_trusted 两位语义不变。默认构造 GameState()=未观测态(hp=None;hp_readable 默认 True 仅供 sim 恒真读帧约定,真读帧由读取端显式写)。开局无真值帧由对账层填**初值表先验**(实证档 A8/108 → 82/62,readable=False,先验非真读;ADR-0559,cw_opening_hp),无实证档仍 None)
     # hp 值来源可读位(ADR-0282;False=读不到,hp 此时为沿用值/兜底值;遥测保真,决策不用)。
     # 两来源,True 时可信度等同真读:
     # ①真读=OCR 备战 HP 区;②结算=结算屏「小队生命值」经新鲜度门写入。
@@ -670,8 +670,8 @@ class RefreshShop:
     # R1 发射位,今日唯一刷新发射点;L2 补位=买卡、L3 末位=升级,
     # 结构上不产刷新动作,槽位留作未来发射点扩展):
     # - 'r1'                 = 息线门 R1(域外常规承诺账);
-    # - 'must_spend_r1_yielded' = 必花域内 R1 切分线(20 号稿/ADR-0528
-    #   核算账降排序 yielded 支);
+    # - 'must_spend_r1_yielded' = 必花域内 R1 切分线(核算账降排序
+    #   yielded 支);
     # - '' = 旧调用/未标(引擎 obs 归 'other' 桶)。
     reason: str = ''
 
@@ -694,8 +694,8 @@ class CloseShop:
 class PickEvent:
     """选事件选项(投资环境/策略/遭遇/补给)。
 
-    refresh(T-162 重立,ADR-0600;旧「ADR-0146 缺口1 阈值建议」已随 ADR-0519
-    C10 退役,现判据 = 零阈值结构存在性,推导与优势论证见 ADR-0600 §3.2 +
+    refresh(T-162 重立,ADR-0600;旧「阈值建议」判据已退役,
+    现判据 = 零阈值结构存在性,推导与优势论证见 ADR-0600 §3.2 +
     math_proofs P81,env kind 不启用见 ADR-0600 §2/§4):「建议刷新」布尔 =
     ``refresh_slots`` 非空。**纯建议**——是否真刷由 handler 决定(逐槽计数
     现读 >0 才点;刷新失败/次数 0 → 照常选当前最优,失败安全 = 现状行为)。
@@ -1490,7 +1490,7 @@ def effective_hp_threshold(state: GameState) -> int:
     否则回退 ``HP_SAFE_THRESHOLD``(40)。
 
     高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
-    ADR-0204 从 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
+    自 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
 
     ⚖️ ADR-0176(桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(ADR-0174 桥),
     改由 18 号首达生存模型解出 —— ``plane_hp_ratio``(hp_floor(P_win 地板比),随板强/剩余日程

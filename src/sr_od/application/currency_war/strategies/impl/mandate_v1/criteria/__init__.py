@@ -62,9 +62,9 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
         '门', '不旁路', 'R10-3(结构位,与 crisis_refresh_invariant 同族)'),
     ('refresh', 'r1_start'): (
         '发射位', '旁路', 'R2-2 原判(零调用面墓碑:刷新.r1_start 函数'
-        '自 ADR-0516 起无生产调用点,目录行保留旁路枚举完备性)'),
+        '随 V̄ 链退役起无生产调用点,目录行保留旁路枚举完备性)'),
     ('refresh', 'r1_commitment_account'): (
-        '发射位', '旁路', 'R2-2 原判同位(ADR-0516 新语义:形式二可负担性'
+        '发射位', '旁路', 'R2-2 原判同位(现行语义:形式二可负担性'
         '判据,全游戏定义量输入、无 provisional 槽位依赖;arm1 旁路集'
         '成员)'),
     ('refresh', 'r2_budget'): (

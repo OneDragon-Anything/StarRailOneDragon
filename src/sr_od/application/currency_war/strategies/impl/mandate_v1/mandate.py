@@ -1688,7 +1688,7 @@ def m7_wearable_exists(owned: list[str]) -> bool:
 
 def _cap_of(session: StrategySession) -> int:
     """cap_resolved 现读(单一源 = kernel.cw_economy.cap_resolved_of_
-    session,ADR-0516 cap 三源归一:商店线 R1/R2 的 g*、schedule_upgrade
+    session;cap 三源归一:商店线 R1/R2 的 g*、schedule_upgrade
     ② 前置、U_L 检验 loss_exact cap 共用同一式;投资覆写语境归一)。"""
     from sr_od.application.currency_war.kernel.cw_economy import (
         cap_resolved_of_session,

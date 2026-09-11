@@ -917,7 +917,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
     1-2 轮(点6 谷底预案),bench 溢出才卖)。DOT 同体线自然退化为加深
     (旧档空 → undeploy/sell 空,纯 deploy)。
 
-    ADR-0339 件3:保留优先级里**种子 2 轮窗件最优先**——旧档
+    种子窗口件保留规则:保留优先级里**种子 2 轮窗件最优先**——旧档
     换血卖出窗口内 engine_seed 买入(买侧见即买 vs 换血卖侧互踩,seed16
     姬子·启行 r4 买 r5 换血卖);窗口内种子下场进 bench,溢出卖出改吃
     非种子件(窗口 ≤2 轮,延迟卖出有界)。
@@ -1027,7 +1027,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         old_line, session, seele_scope=seele_scope,
         seele_core_in_hand=_seele_core)
     retained = sorted(old_line, key=lambda d: (
-        # ADR-0339 件3:种子窗口件保留最优先(见 docstring)。
+        # 种子窗口件保留最优先(见 docstring)。
         # ADR-0360 件3(同型扩位):锁定目标件/引擎件与种子窗同级
         # 最优先——溢出卖出先吃非保护件(ADR-0360 归因:60 笔目标件离场 59 笔
         # 被动;strict 局挤出后 59% 不回场;[23] 锁定目标件/[31] top4
@@ -1308,7 +1308,7 @@ _ENCOUNTER_NODES = {'遭遇', 'boss'}   # 冻结扩到遭遇前:不启动新替�
 
 
 def _fresh_seed(d, state: GameState, session) -> bool:
-    """ADR-0339 件3:该上场件是否为种子 2 轮窗内的 engine_seed 买入
+    """种子窗口件判据:该上场件是否为种子 2 轮窗内的 engine_seed 买入
     (seed_age_blocked 同判据;session 缺省/无记录=False)。"""
     if session is None:
         return False

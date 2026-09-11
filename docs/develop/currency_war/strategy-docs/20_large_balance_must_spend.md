@@ -31,7 +31,7 @@
 G_must = 10 × cap_resolved_of_session
     ——单一源 = cw_economy.py:107 归一链(interest_cap_resolved),
     与息线 g*、arm2 守息门同源;禁内联裸 cap(cw_economy.py:100-103
-    明文纪律,ADR-0516 cap 三源归一)
+    明文纪律,cap 三源归一)
     语境值(【注】):默认 5 ⇒ 50 / 息律投资 10 ⇒ 100 / 开源节流 9 ⇒ 90 /
     买断制 0 ⇒ 0(出辖,见下)
 ```

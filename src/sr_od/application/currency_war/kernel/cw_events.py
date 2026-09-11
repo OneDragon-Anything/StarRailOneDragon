@@ -38,18 +38,18 @@ if TYPE_CHECKING:
 # comp.countered_by_bosses + 机制建模),非阵营级——不做阵营降权。
 
 # 用户转向轴(投资策略/环境;develop config.md §3):priority 软加分 + forbid 重罚。
-# (用户偏好配置,宪法允许面:分值是用户语义的载体非策略经验量,ADR-0519 边界声明。)
+# (用户偏好配置,宪法允许面:分值是用户语义的载体非策略经验量。)
 STEERING_PRIORITY_BONUS: float = 30.0     # soft:倾向选,可被 comp-hit(65-110)/增强定义(120)压过
 STEERING_FORBID_PENALTY: float = 10000.0  # hard−:有替代永不选
 
 # (品质→敌难度机制 = 游戏定义:金 +3 / 棱彩 +6(核心机制 38-40)。旧选卡
-# 难度惩罚 棱彩−12/−24、金−6/−12 已退役 2026-09-04,ADR-0519「未证即退役」:
+# 难度惩罚 棱彩−12/−24、金−6/−12 已退役 2026-09-04(「未证即退役」裁定:
 # 机制方向是游戏文本,但惩罚幅度无游戏定义或证明出处,选卡侧无法从定义量
 # 推出「难度+3 值多少分」——幅度退役置 0。连同退役:_option_rarity LCS
 # 品质兜底与 INVESTMENT_STRATEGIES_KEYS 缓存(唯一消费 = 该惩罚)。)
 
 
-# 「克 DoT/减益」的机制属性集合(与 MECHANIC_COUNTERS 值域对齐;ADR-0203)
+# 「克 DoT/减益」的机制属性集合(与 MECHANIC_COUNTERS 值域对齐)
 _DOT_PUNISHED_MECHS: frozenset[str] = frozenset({'DoT', '减益'})
 
 
@@ -158,7 +158,7 @@ def _invest_d_star(state: GameState, locked_comp: str,
 
 
 def _opt_counters_dot(opt: str) -> bool:
-    """选项(词缀/环境名)是否克制 DoT/减益主派 —— 机制注册表单一源(ADR-0203)。
+    """选项(词缀/环境名)是否克制 DoT/减益主派 —— 机制注册表单一源。
 
     名 → ``AFFIX_MECHANIC_MAP`` 机制 tag → ``MECHANIC_COUNTERS`` 克制属性,与「净化身心」
     同类的任意 anti-DoT 词缀/环境都覆盖(不止单点名);子串包含匹配保留旧 OCR 容错语义
@@ -173,7 +173,7 @@ def _opt_counters_dot(opt: str) -> bool:
 
 
 
-# (事件面经验加减分族已退役 2026-09-04,ADR-0519「未证即退役」,保守缺省
+# (事件面经验加减分族已退役 2026-09-04,「未证即退役」裁定,保守缺省
 # 全部置 0/移除,墓碑注逐项:
 # - 旧 EVENT_REFRESH_SCORE_FLOOR=50(≈评估分中位估计)→ 阈值式刷新判据
 #   退役;T-162 已重立刷新判据——判据换了推导(结构存在性,非分值阈值),
@@ -181,7 +181,7 @@ def _opt_counters_dot(opt: str) -> bool:
 # - 旧低血生存钩子:策略 SURVIVAL_PICKS +15 / env ENV_SURVIVAL_BONUS
 #   {白银时代+15,敌后破坏+15,人身意外险+10} → 0(hp 语义可标不可定价);
 # - 旧 P2 装备流 EQUIP_FLOW_PICKS plane≥2 +25(11 局实锤)→ 0(经验
-#   拟合,辖域+幅度双未证;若重立须按观测参数化,见 ADR-0519 重derive 节)。)
+#   拟合,辖域+幅度双未证;若重立须按观测参数化)。)
 
 def decide_event(options: list[str], config, state: GameState,
                  locked_comp: str = '', demoted_endgame: bool = False,
@@ -215,10 +215,10 @@ def decide_event(options: list[str], config, state: GameState,
        品质回落(纯字典序,零拍值,ADR-0524):仅未评估卡可达,主键=品质序
        (棱彩>金>银,游戏定义),次键=economy 效果有无;回落域整体
        压低于评估分域(评估分有知识判据依据,回落只是「未评估时别全盲」)
-    叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源,ADR-0203)/
+    叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源)/
     用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
-    未注册非 env = 0 分。(原 config event_whitelist 已删 ADR-0204;品质难度
-    惩罚/低血生存钩子/P2 装备流加分已退役,见模块墓碑注与 ADR-0519;
+    未注册非 env = 0 分。(原 config event_whitelist 已删;品质难度
+    惩罚/低血生存钩子/P2 装备流加分已退役,见模块墓碑注;
     刷新建议阈值同退役,刷新判据已由 T-162 换推导重立,见函数尾刷新判据段。)
 
     **裁定回避(集合级排除,非分值族;[40]①「主动选择=回避」,ADR-0578)**:
@@ -226,7 +226,7 @@ def decide_event(options: list[str], config, state: GameState,
     不进上述任何分值族的竞争——三态触发序在评分循环之后收口:①可入选非血集
     非空 → 其 argmax;②仅非禁血卡可选 → 血卡间常规评估序 argmax;③全禁帧
     → 全体 argmax(现状退化零漂移)。排除是结构规则不是定价:任何罚值都是
-    拍值(ADR-0519),且给血计分触 [40]③ 定价禁域。血卡排位于「可入选非血卡」
+    拍值,且给血计分触 [40]③ 定价禁域。血卡排位于「可入选非血卡」
     之后、「被禁非血卡」之前(user-forbid「有替代永不选」的血卡替代在 ② 兑现)。
     S2 谓词与血本位字段零交集(四族闭集不含 hp_gold_swap/xp_buy_hp_cost,
     ADR-0597 对账);归因串 ``econ-engine``/``align×N``/``align-locked``/
@@ -242,7 +242,7 @@ def decide_event(options: list[str], config, state: GameState,
     # 品质回落字典序的序数编码(ADR-0524):品质序=游戏定义(棱彩>金>银),
     # 主键 rank(0/1/2)+ 次键 econ(0/1);×2 保证次键永不翻转主键——
     # 两个常数都是纯位置编码,不是拍定的语义幅度(旧 50/30/10/+20 已删,
-    # 序到分的映射无推导,ADR-0519 C9/C12 同判)。
+    # 序到分的映射无推导,同「未证即退役」判)。
     _rarity_lex_rank: dict[str, int] = {'银': 0, '金': 1, '棱彩': 2}
     # D* 单帧单读(ADR-0597):每决策帧现算一次快照,帧内不重读——
     # T-152「K 活读数轮内重排」病灶在消费面结构性不可发生。
@@ -405,7 +405,7 @@ def decide_event(options: list[str], config, state: GameState,
         best_reason = f'blood-forced({best_reason})'
     # ===== T-162 事件面刷新判据(ADR-0600 §3.1;推导 = ADR-0600 §3.2 +
     # math_proofs P81;零阈值结构存在性判据,逐槽弱占优论证承载;旧评估分
-    # 阈值判据已随 ADR-0519 C10 退役,推导已换代,退役史归 ADR)=====
+    # 阈值判据已退役,推导已换代(T-162 重立),退役史归档)=====
     # G8 消费序依赖(安全面,勿改序):下列 _cand_* 存档量只在帧级触发
     # (三卡全精确分类)前提下消费——先判帧级闸、后取分类。精确 miss 槽的
     # 存档值(如经 resolve_strategy_canonical LCS 兜底的 _cand_blood)视为
@@ -498,7 +498,7 @@ class EncounterPick:
 def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> float:
     """该分支词缀对 target_comp 的契合(``mechanics_fit`` 0..1;<0.4 克、>0.5 利 debuff=buff)。
 
-    无 target_comp / 无词缀信号(mechanics_fit 返 None,ADR-0107)→ 中性 0.5(纯按难度选,不触发刷新)。
+    无 target_comp / 无词缀信号(mechanics_fit 返 None)→ 中性 0.5(纯按难度选,不触发刷新)。
     """
     if target_comp is None:
         return 0.5
@@ -509,7 +509,7 @@ def _option_mechanics(option: EncounterOption, target_comp: Comp | None) -> floa
 
 
 def _reward_value(rewards: list[str]) -> float:
-    """奖励文本 → 价值分(ADR-0519 后恒中性 0.5)。
+    """奖励文本 → 价值分(经验加减分族退役后恒中性 0.5)。
 
     旧先验阶梯(棱彩/特权 1.0 > 进阶 0.8 > 简易/银 0.65 > 经验/金币/装备
     0.6 > 无文本 0.5,自注「实玩校准点」)属经验拟合,「未证即退役」——
@@ -780,7 +780,7 @@ def decide_planner(options: list[PlannerOption], state: GameState,
       升费兑现更高);银狼确定不在场(board 有信息但无银狼)⇒ **降档**(100−60,
       落到弱化档之下=投资无处兑现);信息缺失不降权(在场判定保守)。
     - **弱化档**(「弱化」/「降低敌人」):全场即时战力(55;原低血 +20 钩子
-      已随 ADR-0519 C15 退役,hp 可标不可定价)。
+      已退役,hp 可标不可定价)。
     - **装备档**(其余):_equip_value 回落(装备注册表);target key_equip 命中
       ⇒ **装备域内命中优先键**(+15,只在装备档内排前,不跨域压弱化档)。
     - 未识别文字:0 分(idx 顺序兜底)。
@@ -809,8 +809,8 @@ def decide_planner(options: list[PlannerOption], state: GameState,
                 score -= 60.0
                 reason += '-银狼不在场无处兑现'
         elif '弱化' in t or '降低敌人' in t:
-            # 低血加分(+20「+低血保命」)已随 ADR-0519 C15 退役:hp 可标
-            # 不可定价,经验加分无推导(与 C6/C7 同型)。
+            # 低血加分(+20「+低血保命」)已退役:hp 可标
+            # 不可定价,经验加分无推导(与其余经验加分项同型)。
             score, reason = 55.0, '全场弱化(即时战力)'
         else:
             score = float(_equip_value(t)) if t else 0.0

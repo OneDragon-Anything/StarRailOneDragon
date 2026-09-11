@@ -595,7 +595,7 @@ class CwFlowStrategy(CwStrategy):
         不变)。env kind 开局屏 comp 未定帧,D* 通常 ∅ → 落 S4 评估(行为同旧)。
         ADR-0209(接线 1/6):选卡结果喂 CommitSignals(策略 2.0/环境 1.0 权重;
         affinity 表把所选卡映射到 comp 分贡献)——**纯遥测保留,决策面零消费**
-        (ADR-0519 C5 现状即合规;投资源不参与证明自身的反自馈 = D*② ①层排除
+        (投资源不参与证明自身的反自馈检查现状即合规 = D*② ①层排除
         承载,ADR-0597 §5.3)。"""
         # 入口内务(ADR-0583 §3.2:pick 入口入触发面;消费最近一次备战黑板帧)
         self._consume_prep_direction_frame(session)

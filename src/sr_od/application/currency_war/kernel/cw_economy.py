@@ -61,7 +61,7 @@ def streak_gold(streak: int) -> int:
 
 
 # ===== 息账/收入日程(自 strategies statefn/interest+income 下沉单一源,
-# ===== ADR-0516:kernel 判据(schedule_upgrade 的 U_L 阈值检验)消费
+# ===== kernel 判据(schedule_upgrade 的 U_L 阈值检验)消费
 # ===== loss_exact/net_income,下沉保持「kernel 禁 import strategies」桶
 # ===== 依赖矩阵;statefn 两模块改 import 重定向,消费方调用零改——
 # ===== 与 schedule_upgrade 下沉同款先例)=====
@@ -97,7 +97,7 @@ def interest_cap_resolved(interest_cap_override: int | None = None) -> int:
 
 
 def cap_resolved_of_session(session: StrategySession | None) -> int:
-    """cap_resolved 现读(session resolved 链;ADR-0516 cap 三源归一)。
+    """cap_resolved 现读(session resolved 链;息帽三源归一)。
 
     覆写单一源 = ``aggregate_economy(session.active_strategies).
     interest_cap_override``(注册表派生、零新参数;ADR-0598 息帽死链
@@ -426,8 +426,8 @@ STREAK_CAP: int = 5                   # streak 经济封顶档(连胜金一般 �
 
 # streak 带符号(连胜 + / 连败 −,结算源 session.last_streak 方向可靠);连败 fold 半已由 HP-gating 覆盖(02 R2-4b)。
 # 「连胜 ≥2 破息」旧阈值常量已删(P43 §⑤ 处死名单:与已证破息-保息判据
-# 冲突的未核经验值;决策语义现由息线判据默认承载,激活腿 Δp 通道被
-# ADR-0516 封锁——登记 = ADR-0599 §F3,math_proofs P43)。
+# 冲突的未核经验值;决策语义现由息线判据默认承载,激活腿 Δp 通道
+# 封锁——登记 = ADR-0599 §F3,math_proofs P43)。
 
 # 连胜-保息抉择(攻略专题「连胜与卖血抉择」三变量模型,663 帖精读实证):
 # 攻略明文两分支 —— 已连胜→破息保连(#205「如果连胜就多D几个,利息保3」息档降到 30;
@@ -703,7 +703,7 @@ def _xp_gold_floor(state: GameState, want_level: bool) -> int:
 SHOP_REFRESH_COST: int = 2   # 刷新基价【注】游戏定义真值:实付恒 2 金,不随金位/次数/等级变(ADR-0456 三流对账定谳)
 
 
-# (通用升级曲线 _DEFAULT_LEVEL_GOAL 已退役 2026-09-04,ADR-0519「未证即退役」:
+# (通用升级曲线 _DEFAULT_LEVEL_GOAL 已退役 2026-09-04,「未证即退役」裁定:
 # 旧值 = auto-chess meta 社区先验(前期 roll 找低费核心→中期 5-7 level_up→
 # lv8 roll 找 5 费→lv9 stable),无游戏定义或证明出处。保守缺省:comp 未填
 # level_plan 时不再退回通用曲线(_resolve_level_goal 返 None),升级压力仅由
@@ -729,7 +729,7 @@ def _resolve_level_goal(state: GameState, target: Comp | None) -> LevelGoal | No
 def _expected_level(round_num: int, plane: int) -> int:
     """阶段期望等级(里程碑刻度,663 帖攻略精读实证)。
 
-    【拟】ADR-0519 组5-A:本曲线属社区先验,处置 = 立证明骨架
+    【拟】社区先验待证挂账:本曲线处置 = 立证明骨架
     (docs/develop/currency_war/proofs/p58-expected-level-schedule.md 草案,
     由游戏定义量——XP 费用表/收入日程/出战位解锁/商店刷率峰值级——
     派生等级日程),证明完成前数值维持现状;届时按证明输出重derive 或退役。
@@ -999,7 +999,7 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
 
 def _upgrade_ul_threshold_ok(state: GameState,
                              session: StrategySession) -> bool:
-    """② 臂 U_L 阈值检验(ADR-0516 形式二修正①;裸直觉补检验)。
+    """② 臂 U_L 阈值检验(升级判据形式二修正①;裸直觉补检验)。
 
     升级 iff ``c_eff·(E(D|L) − E(D|L+1)) + ΔV_pop > U_L + C_int``——
     全部游戏定义量:c_eff=刷价现读;E(D|L)=expected_refreshes_for_card
@@ -1007,14 +1007,14 @@ def _upgrade_ul_threshold_ok(state: GameState,
     clicks_to_next_level×xp_click_cost(XP 表/OCR 实读);C_int=息损
     P47 L 递推(loss_exact,gold 支 U_L 后 R_剩余 轮,Ī=收入日程现算;
     cap 参数 = cap_resolved_of_session 现读——裸缺省 5 在息律投资
-    cap=10 局会低估 C_int,ADR-0516 cap 三源归一)。
+    cap=10 局会低估 C_int,息帽三源归一)。
     ΔV_pop 按 P39 式 = w·1[板满 ∧ bench 有 2★ 等待件](w 待标定禁计值
     → 指示=1 时视为翻转项,方向门;指示=0 时纯概率账须独自过阈)。
-    反例锚(ADR-0516):希儿 lv7 省刷费 28 < 升级金 40,纯概率账亏 12,
+    反例锚:希儿 lv7 省刷费 28 < 升级金 40,纯概率账亏 12,
     靠人口位翻转——缺本检验的裸「峰值级>当前级」会在该带过度升级。
     R_剩余视界=r_remaining(决策帧现算,禁写死;本模块下沉实现)。
 
-    单核代表降级申报(ADR-0516):规格的 E 为缺件集 ΣE_i(strategy-docs
+    单核代表降级申报:规格的 E 为缺件集 ΣE_i(strategy-docs
     11 篇 §3);本实现取单目标核心代表——缺件集成员装配需 strategies
     侧 line_members,违背「kernel 禁 import strategies」桶边界,故申报
     降级而非静默偏差。保守性边界:多成员同受升级受益帧 benefit 低估
@@ -1082,8 +1082,8 @@ def schedule_upgrade(state: GameState, session: StrategySession,
 
     ``registry``:显式注入优先(A/B 注入面,P6 契约:同一调用链全部接缝
     必须传**同一个** registry 实例——prep_brain._budget 单源装配);
-    缺省落 _registry_of(session) → DEFAULT_REGISTRY。**cap 归一注**
-    (ADR-0516):本函数的 ② 前置息线与 U_L 检验息损 cap 已归一到
+    缺省落 _registry_of(session) → DEFAULT_REGISTRY。**cap 归一注**:
+    本函数的 ② 前置息线与 U_L 检验息损 cap 已归一到
     ``cap_resolved_of_session``(session resolved 链)单一源,registry
     注入不再移动这两处——registry 仍辖同链其余接缝(refresh_ev_budget/
     reserve_cap 的预算面)。
@@ -1105,7 +1105,7 @@ def schedule_upgrade(state: GameState, session: StrategySession,
        (M3 消费位 = criteria/levelup._realize_chain_ready 同步锚对,
        同款辖域注见彼处);奖励帧政策的命题化归审查建议②命题批。
     ② 概率级([3]/[7]):目标核心概率峰值级 > 当前级 ∧ 息引擎已立
-       (g ≥ 息线,[12] 息引擎前置)∧ **U_L 阈值检验**(ADR-0516 形式二
+       (g ≥ 息线,[12] 息引擎前置)∧ **U_L 阈值检验**(形式二
        修正①:``c_eff·(E(D|L)−E(D|L+1)) + ΔV_pop > U_L + C_int``,
        装配=``_upgrade_ul_threshold_ok``;裸直觉缺此检验会在小移位带
        过度升级——希儿 lv7 反例,见该函数 docstring)。
@@ -1142,11 +1142,11 @@ def schedule_upgrade(state: GameState, session: StrategySession,
                     for b in (state.bench or [])):
         return True
     # ② 概率级:息引擎已立 ∧ 目标峰值级在当前级之上 ∧ U_L 阈值检验
-    # (ADR-0516 形式二修正①:升级 iff c_eff·ΔE + ΔV_pop > U_L + C_int;
+    # (升级判据形式二修正①:升级 iff c_eff·ΔE + ΔV_pop > U_L + C_int;
     # 裸「峰值级>当前级」直觉缺此检验会在小移位带过度升级——希儿 lv7
     # 省 28 < 升 40 反例,纯概率亏 12)
     # 息线口径 = cap_resolved_of_session(session resolved 链)单一源
-    # (ADR-0516 cap 三源归一:旧 reg.interest_cap×10 与 session 链
+    # (息帽三源归一:旧 reg.interest_cap×10 与 session 链
     # 不同源——A/B 旋钮辖 decision_v2 预算面,不辖本前置)
     if (state.gold or 0) < saturation_line(cap_resolved_of_session(session)):
         return False
@@ -1368,7 +1368,7 @@ def reserve_cap(state: GameState, session: StrategySession | None) -> int:
     (session resolved 链单一源,与排程判据 ② 前置同链;ADR-0598 息帽
     死链修复随批接线:旧 ``registry.interest_cap × 10`` 把策略息帽覆写
     挡在刷新授权车道外——买断制(cap=0)囤金经本车道部分存活,利息
-    上调(cap=10)守息线被低估;归一方向 = ADR-0516 cap 三源归一同款)。
+    上调(cap=10)守息线被低估;归一方向 = 息帽三源归一同款)。
     写法保证「守息线 ≤ 封顶线」结构性成立——两者同源(cap_resolved),
     不可能出现守息线高于持有增益归零点(息帽截断点)的态。
     """

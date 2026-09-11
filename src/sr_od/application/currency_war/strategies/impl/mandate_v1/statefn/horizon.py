@@ -25,7 +25,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest 
 )
 
 # R_剩余族(r_global/r_remaining/r_remaining_in_plane)实现已下沉
-# kernel/cw_plane_table(ADR-0516:kernel 判据消费 R_剩余,保持桶依赖
+# kernel/cw_plane_table(kernel 判据消费 R_剩余,保持桶依赖
 # 矩阵 kernel 禁 import strategies);本模块经 import 重定向保留调用面,
 # 消费方零改——单一源在 kernel,与 schedule_upgrade 下沉同款先例。
 

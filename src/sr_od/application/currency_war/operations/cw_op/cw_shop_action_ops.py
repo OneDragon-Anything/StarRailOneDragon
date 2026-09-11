@@ -18,7 +18,7 @@
 策略器 bug 响亮暴露——``guard_proposal_vs_expected``(提案动作的对象在
 期望态中存在且未被消费,防策略器算术 bug)+ ``guard_expected_vs_tracked``
 (期望态投影链 vs 执行侧 tracked 账双账对拍,投影建模 bug 的唯一在环
-检测器——ADR-0516 投影口径族史证明 project 建模错是常态)。双账断言
+检测器——历次投影口径返工史证明 project 建模错是常态)。双账断言
 零读屏(tracked 账纯内存随动),不违决策 1/8「循环内不读屏」。
 
 执行侧观测通道(ADR-0517 §执行侧观测通道去向,候选 a):卖回金实收
@@ -259,7 +259,7 @@ def guard_expected_vs_tracked(state: GameState, session,
       账为空而屏幕 bench 非空 ⇒ 跟踪账丢件/识别幻影检测器;投影链无责。
       stage='project'(默认,动作投影后):分叉 = project/mutate 模型
       分叉——投影建模 bug 的唯一在环检测器(错误卖出会实际执行、损害
-      不可逆,ADR-0516 投影口径族史)。
+      不可逆,历次投影口径返工史为证)。
 
     已申报豁免(非分叉 bug 的已知建模分叉,豁免帧由调用方判定):
     满栏买入(豁免面 = 游戏接受而两模型都不收编的残余窗:非合成满栏买

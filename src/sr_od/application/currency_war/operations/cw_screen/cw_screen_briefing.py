@@ -5,7 +5,7 @@
 - 观察写局状态 **直写 session**(01-opening §1:替代 ctx 信箱;match 已由
   入口链 ``establish_new_match`` 前移建立,W971 §2.1——session 必在);
 - 词缀效果采集仍 best-effort(失败不阻塞点「下一步」,01 §1);
-- 完成承诺 = DD-011 形态①固定时长(BRIEFING_SETTLE_S,#1 锚后 ~1s)。
+- 完成承诺 = 固定时长(BRIEFING_SETTLE_S,#1 锚后 ~1s)。
 
 下游链路(不变):session.briefing_affixes → state.enemy_affixes → mechanics_fit;
 session.briefing_bosses(位面序真值,ADR-0397)→ state.plane_bosses → boss_fit。

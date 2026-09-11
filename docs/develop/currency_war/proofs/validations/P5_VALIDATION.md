@@ -2,7 +2,7 @@
 
 > 验证对象:`docs/game/currency_war/research/proofs/p05-refresh-vs-levelup.md`(索引行 = `math_proofs.md` P5 行)+ 其计算脚本 `tools/cw/proofs/w120_p5_refresh_levelup.py`
 > 验证日期:2026-09(重建纪元五门验证批);本报告只读验证,未改任何生产/证明文件。
-> 阅读门:全量 `docs/game/currency_war/`(README/economy §1-§3/user_playstyle)+ 注册表直调(`cw_shop_odds` 全文、`cw_state`/`cw_economy` 常量、`cw_chars` 派生)+ `06_input_model` §3 + 公理栈(零调参 ADR-0026/参数溯源/超额收益隔离/纯金流)。无跳过项。
+> 阅读门:全量 `docs/game/currency_war/`(README/economy §1-§3/user_playstyle)+ 注册表直调(`cw_shop_odds` 全文、`cw_state`/`cw_economy` 常量、`cw_chars` 派生)+ `06_input_model` §3 + 公理栈(零调参/参数溯源/超额收益隔离/纯金流)。无跳过项。
 
 ## 0. 验证方法与复算声明
 

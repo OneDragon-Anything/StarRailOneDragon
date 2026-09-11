@@ -55,7 +55,7 @@ bench 域(0.35)下 merge_progress 与 core_star 同量级对消(注释自认「�
 | 锚点 | 直调结果 | 判定 |
 |---|---|---|
 | `merge_progress_unit = 3.0` | `cw_registry.py` L471 ✓;注释自认「初值=core_star_unit 同量级(同一 2★ 目的地的期权),**未网格标定**」(ADR-0340) | ✓ 值符;标定状态=⑤门事项 |
-| `core_star_unit = 3.0` | `cw_registry.py` L461 ✓(ADR-0339) | ✓ |
+| `core_star_unit = 3.0` | `cw_registry.py` L461 ✓ | ✓ |
 | 「bench 域权重 0.35」 | `bench_form_weight = 0.35`(L437) ✓ | ✓ |
 | `merge_completion_exempt` 默认开 | `cw_registry.py` L87:`= True`,注释「默认开;False=回退非正分拒」+ ADR-0438 A/B 数据 ✓ | ✓;**但 `arbiter.py` L814-815 注释仍写「默认关=零漂移锚」——陈旧注释与代码默认值矛盾**(见修正建议 3) |
 | 机制前提(3合1 自动触发/同名同星 ≤2/落点规则) | `merge_mechanics.md` §1/§3 单源 ✓;`cw_state.merge_buy_completes/merge_buy_k`(:840-874)与 §2.5「min(店内张数, 3−已有数 mod 3)」逐字一致 | ✓ |
@@ -98,7 +98,7 @@ bench 域(0.35)下 merge_progress 与 core_star 同量级对消(注释自认「�
 |---|---|---|
 | **V(1★→2★) 条件 Δp**(P30① 核心项) | 【拟】🔴**至今未标定**——直调证实:`cw_registry.py` :1184-1189 `realization_merge_timing_enabled=False` 占位,「开臂前置=V(1★→2★) 条件 Δp 标定批(PREREG 锁 #1:标定前不把未证不等式钉进排序锁)」 | 见下判定 |
 | `merge_progress_unit=3.0` / `core_star_unit=3.0` | 【拟】**无 CI、未网格标定**(注释自认),但**在生产评分中活跃**(scoring.py :298-303)→ 决定 merge 候选的板面分值幅度 | 影响排序幅度,非闸门(见判定 2) |
-| `bench_form_weight=0.35` | 【拟】(ADR-0295 系),P30② 只用它做结构对消证明,结论不依赖其具体值(同量级对消在任意共同权重下成立) | 支配性用法 ✓ |
+| `bench_form_weight=0.35` | 【拟】(旧策略代拟合系),P30② 只用它做结构对消证明,结论不依赖其具体值(同量级对消在任意共同权重下成立) | 支配性用法 ✓ |
 | `c`/退金/池参数 | 【注】注册表 | ✓ |
 
 **判定(公理裁定)**:

@@ -1,7 +1,7 @@
-"""货币战争 开局序列 / overlay 族 op 完成承诺常量(DD-011 形态①固定时长)。
+"""货币战争 开局序列 / overlay 族 op 完成承诺常量(固定时长完成承诺)。
 
 单一源声明:本模块只承载 cw_flow 新 op 的完成承诺时长;商店开/收动画等既有
-DD-011 常量仍在 ``prep_actions``(SHOP_CLOSE_ANIM_S / SHOP_OPEN_ANIM_S)。
+常量仍在 ``prep_actions``(SHOP_CLOSE_ANIM_S / SHOP_OPEN_ANIM_S)。
 值依据均为用户口述时序(docs/game/currency_war/research/screen_flow_timing.md),
 待实机校准时只改这里。
 """

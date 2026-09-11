@@ -240,7 +240,7 @@ def _prioritize_wearable(
     return prioritized + rest
 
 
-# ===== hold 触发权归策略侧(ADR-0526 判据表;ADR-0531 收窄;ADR-0601 §3-C1)=====
+# ===== hold 触发权归策略侧(ADR-0526 判据表;ADR-0601 §3-C1)=====
 # hold/释放判据已整编迁移至 kernel/cw_equip_env(函数名清单与唯一消费位 =
 # prep_actions._build_equip_wear_plan 分发段);收窄后的逐件判定亦随求值块
 # 迁出(2026-09-09 批),本层零时机判断(与 ADR-0461 裁定 3 同理由),
@@ -296,7 +296,7 @@ def get_equip_tm_grays_cached(ctx: SrContext) -> dict[str, MatLike] | None:
 
 
 def get_avatar_templates_cached(ctx: SrContext) -> AvatarTemplates | None:
-    """加载立绘 SIFT 模板(ADR-0154 M7 身份用;缓存 ctx.cw_portrait_templates,
+    """加载立绘 SIFT 模板(M7 角色身份用;缓存 ctx.cw_portrait_templates,
     与 deploy_bench 同源;模块级单一源供分发段 ``_build_equip_wear_plan`` 消费,
     ``CwOpEquipAll._get_avatar_templates`` 委托本函数)。"""
     cached = getattr(ctx, 'cw_portrait_templates', None)
@@ -462,7 +462,7 @@ class CwOpEquipAll(SrOperation):
         """单次 drag 穿戴 + 拖前稳帧确认 + avatar-slot CV-diff 验穿。返 (是否穿上, diff)。
 
         ``verify_y`` = 目标 avatar 的 below-icon 中心 y(默认前排 479;后排按 avatar_to_below
-        = rect.y2+14,ADR-0154 后排支持)。``hold_time``/``duration`` = 按压保持/移动时长
+        = rect.y2+14,后排位扩展支持)。``hold_time``/``duration`` = 按压保持/移动时长
         (补救链逐档升级,常量 _WEAR_RETRY_PARAMS)。拖前 ``_wait_stable_frame`` 确认画面已稳
         (动画未收尾时按压抓空 = 落空主形态);稳帧结果直接用作 CV-diff 基准帧。
         """
@@ -517,7 +517,7 @@ class CwOpEquipAll(SrOperation):
         return get_avatar_templates_cached(self.ctx)
 
     def _slot_drag_point(self, row: str, slot: int) -> tuple[Point, int] | None:
-        """(row, slot) → (avatar 拖拽点, below 验穿 y);ADR-0154 后排支持。
+        """(row, slot) → (avatar 拖拽点, below 验穿 y);后排位扩展支持。
 
         前排走 _front_avatar_points()(screen_info 前排-N rect 派生,D-36 验
         y350)+ BELOW_ICON_Y=479(D-41 验);

@@ -48,7 +48,7 @@ def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
     候选第三类(R8-6 收窄):活跃窗口档内 ∧ 1★(refund_full)——
     2★+ 档内单无 EV 背书不发射。**单卡消费位窗口**(IMPL_ADV_R200 症5①:
     硬编码 {1,2,3} 占位删除)= 确定性查表(
-    ``statefn/odds.card_search_window`` 塌缩带锚,ADR-0516 重锚)。T_SEARCH_A
+    ``statefn/odds.card_search_window`` 塌缩带锚)。T_SEARCH_A
     布尔门已退役出本消费位(T1 短路径,设计 13_buy_face_design §2.3):
     生产消费位传帧级现算 ``window``(空集=真无窗口帧,非门控);
     ``window=None`` 保留旧调用面(V_MS 门缺读空集——T_SEARCH_A 注入态

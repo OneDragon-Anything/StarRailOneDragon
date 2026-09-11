@@ -50,7 +50,7 @@
   - 唯一 P9 血脉消费点 = `sim/checks/ledger.py::check_hp1_dead_end_candidate`(violations 恒 0,披露型)+ `hp1_dead_end_rounds`(hp≤1 轮次列表,批报告聚合读),经 `sim/checks/runner.py` 注册——**纯判读/披露面,不进任何决策闸门,不自动停局**,与「候选线非触发线」及 [39](HP 不作为决策依据)的判读域定位**合规** ✓。
   - 其余 hp1 命中全部为注释/病灶描述(candidates.py L384、cw_economy.py L229、cw_strategy_session.py L46、cw_comps.py L2135)——判读/归因叙事,非决策 ✓。
   - 无任何决策路径以 hp≤1 为条件;决策侧不存在「hp==1 触发」闸门 ✓。
-  - 邻接披露(非 P9 违例,登记备查):决策面存在 **hp<30 急救门**(`cw_economy.py`,HP_LOSS_FULL=30)与 `cw_first_passage.py` 的 hp 入参 P(win) 投影(ADR-0161,salvage/计价消费)——这些是 [39](2026-08-31 收口:「hp 驱动决策域不再重推」)之前的旧层血驱动决策残留,P9 本身不消费它们,但若后续按 [39] 清算旧层,P9 的「cw_first_passage 已有该结构」这句依托也需随之改写。
+  - 邻接披露(非 P9 违例,登记备查):决策面存在 **hp<30 急救门**(`cw_economy.py`,HP_LOSS_FULL=30)与 `cw_first_passage.py` 的 hp 入参 P(win) 投影(salvage/计价消费)——这些是 [39](2026-08-31 收口:「hp 驱动决策域不再重推」)之前的旧层血驱动决策残留,P9 本身不消费它们,但若后续按 [39] 清算旧层,P9 的「cw_first_passage 已有该结构」这句依托也需随之改写。
 - **两处文本漂移(🟡)**:
   1. `ledger.py` check_hp1_dead_end_candidate 的 docstring(L890)仍写「**HP=1 ⟺ 0hp 保底已耗尽**」——这是 p09 正文已划掉的 F07 前旧双向断言,代码注释与修正后证明**直接矛盾**(注释里那条 ⟺ 恰是证明承认错的那句)。
   2. math_proofs P9 索引行语料锚「e0 板剩余≥2 全胜 <2%」未随 P3 作废改写(门①②)。

@@ -289,10 +289,10 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'ZERO_REFRESH_DIAG §4.1 实现缺口+§6 修法 2'),
     ('refresh', 'r1_commitment_account'): Contract(
         None,
-        'R1 启动门·形式二可负担性(ADR-0516):总账 c_eff·E(D|L*) + Σ卡费 '
+        'R1 启动门·形式二可负担性:总账 c_eff·E(D|L*) + Σ卡费 '
         '+ L ≤ g − g*,输入全为游戏定义量(REFRESH_PROB/XP 表/息律),'
         '无标定槽位依赖(旧 V_GAP 槽位比较项已随 V̄ 链退役)',
-        'ADR-0516(裁决=用户裁定禁胜率建模;形式二规格=P40/P47/P56 复用)'),
+        '用户裁定禁胜率建模(2026-09-04);形式二规格=P40/P47/P56 复用'),
     ('refresh', 'r2_budget'): Contract(
         _gold_minus_reserve_ctx,
         '付费刷新预算门:前提=金−预留语境(现读金与预留均在场;'

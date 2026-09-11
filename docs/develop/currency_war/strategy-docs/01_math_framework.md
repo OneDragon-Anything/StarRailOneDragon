@@ -67,7 +67,7 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 | 子面 | 权威判据 | 证明 |
 |---|---|---|
 | 是否升（存在性） | 臂一（阵容驱动）：谓词三元「板满 ∧ 等待件（阵营相关单位不限星级，玩家裁定）∧ 边际贡献>0」+ 硬可负担——**骨架义务 M3，arm2 无权否决存在性** | **P39** ② 臂一 |
-| 何时升（调度门） | 臂二（搜牌驱动）现行形态 = **arm2 结构守息门 g\* = 10×cap_resolved**（零 λ 依赖的结构安全阀）+ λ 顾问分位触发帧收紧（只延迟调度类批）；「只延迟不否决」权限语义不变；等级间选择（升级 vs 留级）另附 **U_L 阈值检验**：升级 iff c_eff·(E(D\|L) − E(D\|L+1)) + ΔV_pop > U_L + C_int（全游戏定义量；见 [11_shop_decisions.md](11_shop_decisions.md) §2，落码 = cw_economy.schedule_upgrade ② 臂） | MANDATE §3.5(3) R-SYNC 现行口径；11 §2（ADR-0516 修正①） |
+| 何时升（调度门） | 臂二（搜牌驱动）现行形态 = **arm2 结构守息门 g\* = 10×cap_resolved**（零 λ 依赖的结构安全阀）+ λ 顾问分位触发帧收紧（只延迟调度类批）；「只延迟不否决」权限语义不变；等级间选择（升级 vs 留级）另附 **U_L 阈值检验**：升级 iff c_eff·(E(D\|L) − E(D\|L+1)) + ΔV_pop > U_L + C_int（全游戏定义量；见 [11_shop_decisions.md](11_shop_decisions.md) §2，落码 = cw_economy.schedule_upgrade ② 臂） | MANDATE §3.5(3) R-SYNC 现行口径；11 §2 修正① |
 | 怎么买（形态） | **整买引理（Leontief 互补）**：只以补齐批形态发生；触发 iff 双臂门 ∧ g ≥ S | **P48** ①② |
 | 囤钱 vs 花钱 | **统一判据：花(a) ⇔ V_a(x) > ρ·(x/Ī) + L + ΔW_trunc(a)**；三账不同源防双计（时移/息差/存量清零） | **P48** ③ |
 | 多目标排队 | 比较器 = 每金价值率 ρ_i/S_i（域 = 全部目标视界内可完成；截断域走小枚举/DP） | **P48** ④ |
@@ -79,8 +79,8 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 
 权威判据 = **P40 三层门**（单一结构 R0→R1→R2）：
 
-- **R0 停止**：R0-1/R2 维持结构门（合格集、预算/息账递推，不依赖 V̄）；R0-2 = 结构判据——合格集空 ∨ 预算门不过即 fail-closed；V̄ 比较项（含保守闸形态）已随 V̄ 链整链退役（P53 修订单 R2/ADR-0516），**禁消费**；无目标刷新 fail-closed（r2 H1 事故的正确门）。
-- **R1 完成门（启动）**：现行形态 = **可负担性启动门（ADR-0516 形式二，V̄ 链退役）**——启动 iff `c_eff·E(D|L*) + Σ卡费 + L ≤ g − g*`（判据规格/输入面/决策规则见 [11_shop_decisions.md](11_shop_decisions.md) §3；L* = T_stay/T_up 取小，L = P47 loss_exact；合格集语义勘误见 ADR-0571）。P40 原始形态（c_eff·E[refreshes|j] + Σ卡费 + L ≤ V_gap）系留史——比较项 V_gap 已随 V̄ 链退役（P53 修订单 R2），禁消费；原始形态下的「标定通道 = sim 对拍批」表述同步作废（A/B 对拍无裁决权）。旧 V̄_net/V_GAP 比较项与 P57 双读法问题随链退役（P53 修订单 R2），窗口门重锚塌缩带 ω（ADR-0475 同源）。现行判据输入全为游戏定义量、零消费 V_gap——「V_gap 未标定 ⇒ R1 无付费刷新」的旧缺省句随 V_gap 消费位退役一并作废（R1 现行 fail-closed 面只由合格集空与预算比较承载，ADR-0516/ADR-0571）。
+- **R0 停止**：R0-1/R2 维持结构门（合格集、预算/息账递推，不依赖 V̄）；R0-2 = 结构判据——合格集空 ∨ 预算门不过即 fail-closed；V̄ 比较项（含保守闸形态）已随 V̄ 链整链退役（P53 修订单 R2），**禁消费**；无目标刷新 fail-closed（r2 H1 事故的正确门）。
+- **R1 完成门（启动）**：现行形态 = **可负担性启动门（形式二，V̄ 链退役）**——启动 iff `c_eff·E(D|L*) + Σ卡费 + L ≤ g − g*`（判据规格/输入面/决策规则见 [11_shop_decisions.md](11_shop_decisions.md) §3；L* = T_stay/T_up 取小，L = P47 loss_exact；合格集语义勘误见 ADR-0571）。P40 原始形态（c_eff·E[refreshes|j] + Σ卡费 + L ≤ V_gap）系留史——比较项 V_gap 已随 V̄ 链退役（P53 修订单 R2），禁消费；原始形态下的「标定通道 = sim 对拍批」表述同步作废（A/B 对拍无裁决权）。旧 V̄_net/V_GAP 比较项与 P57 双读法问题随链退役（P53 修订单 R2），窗口门重锚塌缩带 ω（ADR-0475 同源）。现行判据输入全为游戏定义量、零消费 V_gap——「V_gap 未标定 ⇒ R1 无付费刷新」的旧缺省句随 V_gap 消费位退役一并作废（R1 现行 fail-closed 面只由合格集空与预算比较承载，ADR-0571）。
 - **R2 预算门**：spend = c_eff·n + Σ命中卡价，息损项恒走 P47 L 递推；**现行落码形态 = 息线 floor**（刷新门预留 = g* + ρ[合格集最低费卡价]，与 P40 溢余段刷窗式逐位等价，P54 已对拍）。
 - 变体①-⑩（淘金客/概率事件/轮岗/市场干预/节点语境等）全部 = 参数替换，骨架不分叉（P40 §④）。
 - **支配性例外**：危机帧刷新通道不变式（P36-a）——「B>0 ∧ B≥刷价 ⟹ n≥1」是结构约束，已无条件落地（ADR-0506），先于 R0 存在性。
@@ -142,8 +142,8 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 | V_slot(bench 槽价) | 有空槽 = 0；free≤1 = max 被阻断动作净 EV；合成完备购不入阻断集 | **P41** ③ |
 | ΔP̂(完成概率增量) | P̂(集齐|H∪{x}, B−c) − P̂(集齐|H, B)，Π Binomial 尾（阈值边际 ≥8-10pp 或走 DP） | **P38** |
 | p̄(换线命中率) | 多项×超几何精确式 | **P16**（tools/cw/proofs/p16/pbar_exact.py） |
-| 刷新启动门（R1） | 形式二可负担性：T(L*) = c_eff·E(D|L\*)+Σ卡费+L ≤ g−g\*（L\* = T_stay/T_up 取小；E=expected_refreshes_for_card,L=P47 loss_exact） | **ADR-0516**（P40/P47/P56 接缝；V̄/P57 已退役） |
-| resolved 投资状态 | 息 cap/刷价/XP 流/池参数的语境修正开关 | cw_investments.STRATEGY_ECONOMY（overlay 登记）+ cw_effect_ledger.MechanismMutation（运行时突变视图） |
+| 刷新启动门（R1） | 形式二可负担性：T(L*) = c_eff·E(D|L\*)+Σ卡费+L ≤ g−g\*（L\* = T_stay/T_up 取小；E=expected_refreshes_for_card,L=P47 loss_exact） | 形式二路径总账裁定（P40/P47/P56 接缝；V̄/P57 已退役；判据规格见 11 §3） |
+| resolved 投资状态 | 息 cap/刷价/XP 流/池参数的语境修正开关 | cw_investments.STRATEGY_ECONOMY（overlay 登记,值单一源）;息 cap 的解析口 = `aggregate_economy(session.active_strategies).interest_cap_override`（kernel `cw_economy.cap_resolved_of_session`,并持取宽/None 回默认,ADR-0598;刷新/XP/池参数族的运行时突变解析面另见 INVEST_MUTATIONS 登记态） |
 
 ## 6. 数字三形态章程（正典化；全链硬规则）
 
@@ -163,7 +163,7 @@ EV 层：只增不减——在骨架之上追加优化动作，本篇 §3 七面
 
 **fail-closed 缺省**：未标定期该判据不产生动作（EV 层不发射），**绝不向骨架层渗漏为一个否决**（02 §5）。无标注数字不得进决策门。
 
-**在册【拟】清单**（13 项，沿用 NMF §3.3 编号，分级与退路以该表为准）：u_x/H_x、V_ms/V_gap（同源单标定禁双源；其中 V_gap 比较项已随 ADR-0516 退役，V_ms 维持在册）、w（臂一只用 w>0）、ρ 摊派、n̄ 估计器、A/T_search、λ_s/partner 到位率、v_F/v_B、c_frame/q、Δp（win_rate_dp_by_plane——已随 V̄ 链退役，ADR-0516，注册表字段同批退役，禁消费）、λ_death 连续模型（分层表带 CI 先行）、p_hit/q_conv、V̄（比较项不授权——已整链退役，ADR-0516/P53 修订单 R2，win_rate_dp_by_plane/vbar_hp_value_transitional 注册表字段退役，清单留名仅为历史对账）。
+**在册【拟】清单**（13 项，沿用 NMF §3.3 编号，分级与退路以该表为准）：u_x/H_x、V_ms/V_gap（同源单标定禁双源；其中 V_gap 比较项已随 V̄ 链退役批退役，V_ms 维持在册）、w（臂一只用 w>0）、ρ 摊派、n̄ 估计器、A/T_search、λ_s/partner 到位率、v_F/v_B、c_frame/q、Δp（win_rate_dp_by_plane——已随 V̄ 链退役，注册表字段同批退役，禁消费）、λ_death 连续模型（分层表带 CI 先行）、p_hit/q_conv、V̄（比较项不授权——已整链退役，P53 修订单 R2，win_rate_dp_by_plane/vbar_hp_value_transitional 注册表字段退役，清单留名仅为历史对账）。
 
 ## 7. 待证钩子（占位不授权；数据到位前默认行为 = 退常规门/骨架义务）
 

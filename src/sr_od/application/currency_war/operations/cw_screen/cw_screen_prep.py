@@ -1750,7 +1750,7 @@ class CwScreenPrep(CwScreenOpBase):
             if exec_state_of(session).cw_prep_pending_accts is None:
                 exec_state_of(session).cw_prep_pending_accts = []
             exec_state_of(session).cw_prep_pending_accts.append(acct)
-            # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建)
+            # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
             if isinstance(action, StartBattle):
                 # 出战提前终结(批3a:发出即终结——机械发射完成即交回外循环
                 # 战斗分支;发射位内部事实经执行器 last_launch_ok/exec_state
@@ -1985,7 +1985,7 @@ class CwScreenPrep(CwScreenOpBase):
             if exec_state_of(session).cw_prep_pending_accts is None:
                 exec_state_of(session).cw_prep_pending_accts = []
             exec_state_of(session).cw_prep_pending_accts.append(acct)
-            # —— 结束判定 → 交回外循环(DD-011 等待已由执行器/编排内建)
+            # —— 结束判定 → 交回外循环(动画等待已由执行器/编排内建)
             if isinstance(action, StartBattle):
                 # 出战提前终结(批3a:发出即终结;发射位内部事实经执行器
                 # last_launch_ok/exec_state 旁路供 cw_loop J2/J3/J4,批4 同退役)

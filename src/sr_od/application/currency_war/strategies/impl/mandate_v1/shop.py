@@ -271,7 +271,7 @@ def _shop_sell_refund(bc: BenchChar) -> int | None:
 def _r1_ledger_terms(buy_members: tuple[str, ...],
                      bench: list, deployed: list,
                      level: int) -> tuple[float, int]:
-    """R1 总账装配侧(ADR-0516 形式二):返回 (E(D|level), Σ卡费)。
+    """R1 总账装配侧(R1 门·形式二可负担性口径):返回 (E(D|level), Σ卡费)。
 
     合格集 E = 未达 2★ 的线成员(目标阵容件,P40 A4);E(D|L) =
     Σ成员 expected_refreshes_for_card(L, cost, target_star=2, owned=j)
@@ -367,7 +367,7 @@ def _frame_search_windows(session: StrategySession, state: GameState,
                                                             frozenset[int]]:
     """帧级搜索窗口(T1;设计 13_buy_face_design §2.3/§3.2)。
 
-    窗口判据重锚(ADR-0516 形式二;V̄ 链退役):旧 V̄ 门式
+    窗口判据重锚(V̄ 链退役随批):旧 V̄ 门式
     (``vbar.window_vbar`` 帧级现算 + P57 双读法参数化)随 V̄ 比较项
     一并退役,窗口改为塌缩带锚——费档在窗内 ⟺ 该级命中率 ≥ ω×峰值级
     命中率(``statefn/odds.tier/card_search_window``,ω 锚与
@@ -2620,7 +2620,7 @@ def decide_shop_action(state: GameState, session: StrategySession,
             else:
                 _count('shop_ev_no_candidate')     # D-P2idle:「无候选」可辨
         # 付费刷新(R1 发射位;终结 op——刷新即本画面访问结束,ADR-0517
-        # 决策 7)。R1 门形态 = ADR-0516 形式二可负担性;输入全为游戏定义
+        # 决策 7)。R1 门形态 = 形式二可负担性(路径总账判据);输入全为游戏定义
         # 量,零胜率建模。L* = 形式二等级选择输出(留级账 T_stay vs 升一
         # 级账 T_up 取小);P40 R2 息线熔断保留原语义。金基准 = 期望态
         # 现值(旧「买后投影金」专修无存在载体——每帧金即真值)。

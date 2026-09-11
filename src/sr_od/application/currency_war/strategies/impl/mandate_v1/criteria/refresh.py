@@ -32,7 +32,7 @@ def r1_start(ev_positive: bool | None) -> tuple[bool, str]:
     """付费刷新发射位(r1)。EV 正性判据输入 None(V̄ 封印/未标定)
     ⇒ 不刷(fail-closed)。
 
-    墓碑纪律标注(ADR-0516):生产消费者已随 V̄ 链退役——R1 启动门
+    墓碑纪律标注:生产消费者已随 V̄ 链退役——R1 启动门
     现行判据 = ``r1_commitment_account`` 路径总账(装配在 shop.py),
     本函数零调用面。保留 = 四函数位完备集(r0_stop/r1_start/r2_budget/
     crisis_refresh_invariant,R10-3 缺行封死),禁按旧 EV 正性语义
@@ -44,7 +44,7 @@ def r1_start(ev_positive: bool | None) -> tuple[bool, str]:
 
 
 def r1_commitment_account(total_ledger: float, budget: int) -> tuple[bool, str]:
-    """R1 启动门·形式二可负担性判定(ADR-0516;路径总账判据)。
+    """R1 启动门·形式二可负担性判定(路径总账判据)。
 
     刷新启动 iff ``c_eff·E(D|L*) + Σ卡费 + L(g, spend, R_剩余, Ī)
     ≤ 可用预算 = g − g*``(g* = saturation_line(cap_resolved)
@@ -57,7 +57,7 @@ def r1_commitment_account(total_ledger: float, budget: int) -> tuple[bool, str]:
     边界:``total_ledger`` 非有限(无可追成员:E=∅ 或该级不出此费)
     ⇒ 不启动——P40 R0-1「合格集空 ⇒ EV 恒负」的刷新侧特例;
     ``budget ≤ 0``(金在息线 g* 及以下)⇒ 恒不启动——息线双侧修正
-    (ADR-0516 修正③:停级买牌也压金破息,两侧都过 g* 账)由比较式
+    (停级买牌也压金破息,两侧都过 g* 账)由比较式
     结构承载,不另设门。
     """
     import math

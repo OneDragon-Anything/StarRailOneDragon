@@ -61,7 +61,7 @@ def p_shop(level: int, cost: int, j: int = 0, taken_c: int = 0) -> float:
 
 def _collapse_window_threshold(omega: float | None) -> float:
     """塌缩带比值线 ω 解析(缺省 = DEFAULT_REGISTRY.omega_collapse_ratio,
-    ADR-0475 同源单一值;窗口判据重锚 = ADR-0516)。
+    ADR-0475 同源单一值;窗口判据 = 塌缩带比值锚)。
 
     ω 处置申报【拟】:ω 是策略阈值参数,非游戏定义量——现值为 ADR-0475
     refresh_ev_budget 归零腿的复用值(未独立标定),登记待证形态、不扩
@@ -79,12 +79,12 @@ def _collapse_window_threshold(omega: float | None) -> float:
 def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]:
     """档级搜索窗口(档级消费位:压库/凑息/M6;P49 档匹配)。
 
-    判据(ADR-0516 重锚,承 ADR-0475 塌缩带归零线):费档 c 在搜索窗内
+    判据(塌缩带重锚,承 ADR-0475 塌缩带归零线):费档 c 在搜索窗内
     ⟺ refresh_prob(level,c) ≥ ω×refresh_prob(峰值级(c),c)——等级现读
     REFRESH_PROB,峰值级 = cw_plane_table.peak_refresh_level 查表 argmax,
     ω 见 ``_collapse_window_threshold``。全游戏定义量(概率表 + 峰值查表
     + 注册表 ω 字段),零胜率/零标定带数值。旧 V̄ 门式(p ≥ c_eff/V̄,
-    P57 双读法参数化)已随 V̄ 链退役(ADR-0516;statefn/vbar 墓碑),
+    P57 双读法参数化)已随 V̄ 链退役(statefn/vbar 墓碑),
     读法分歧问题随之消解;对拍锚(calib_v2_analysis.json 的 V̄=24.7 全表)
     同批作废。空集语义 = 该级全部费档塌缩(真无窗口帧,非门控)。
     """
@@ -104,7 +104,7 @@ def tier_search_window(level: int, omega: float | None = None) -> frozenset[int]
 def card_search_window(level: int, omega: float | None = None) -> frozenset[int]:
     """单卡搜索窗口(单卡消费位:ev_buy 追件;p40/p41 追特定卡)。
 
-    判据同 ``tier_search_window`` 的塌缩带锚(ADR-0516),概率口径换
+    判据同 ``tier_search_window`` 的塌缩带锚,概率口径换
     单店命中 ``p_shop``(满池 j=0/taken_c=0,经本模块同一实现——单一源):
     费档 c 在窗内 ⟺ p_shop(level,c) ≥ ω×p_shop(峰值级(c),c)。
     空集语义与作废对拍锚声明同 ``tier_search_window``。

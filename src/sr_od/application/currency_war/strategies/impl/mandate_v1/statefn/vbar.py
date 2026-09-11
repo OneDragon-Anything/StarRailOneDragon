@@ -1,4 +1,4 @@
-"""【退役墓碑 2026-09-04,ADR-0516】V̄ 合成价值链(v_bar_net /
+"""【退役墓碑 2026-09-04】V̄ 合成价值链(v_bar_net /
 window_vbar / per_battle_value / streak_floor_gold)整链退役。
 
 退役原因(用户裁定,2026-09-04):
@@ -19,5 +19,5 @@ window_vbar / per_battle_value / streak_floor_gold)整链退役。
 cw_economy.STREAK_GOLD_TABLE(表值不动,其他消费不受影响)。
 
 史料:增量 B 重推导与修订单 R1 见 math_proofs P53 行(已加退役标注);
-因子处置史(rung_value/h3_win_rate/expected_battle_loss 清退)= ADR-0515。
+因子处置史(rung_value/h3_win_rate/expected_battle_loss 清退)——三因子同属统计拟合量,已随早期因子清退批退役(理由见上)。
 """

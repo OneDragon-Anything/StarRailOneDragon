@@ -112,14 +112,14 @@ if TYPE_CHECKING:
 CORE_MISS_N: int = 6
 """撤销出口①阈值:意向核心 N 轮不可得 → 撤销(设计推断,sim 校准)。
 计数分母 = 该核心刷新窗已开的轮(窗口冻结语义,见 LineTrack)。"""
-# (SKELETON_ASSET_WEIGHT=0.5 已退役 2026-09-04,ADR-0519:设计推断无标定链,
+# (SKELETON_ASSET_WEIGHT=0.5 已退役 2026-09-04:设计推断无标定链,
 # 「未证即退役」;保守缺省 0 = 资产厚度只数终局件星级当量,纯游戏定义计数。)
 FAMILY_BOND_MIN_COUNT: int = 2
 """②类专属羁绊信号阈值:板上+bench 该羁绊计数 ≥ 此值 → 家族信号。
 
 【注】游戏定义量:信号族专属羁绊(银河学者/夜之半神/列车同行等)的
 羁绊首档均为 2 人(cw_factions 注册表 counts[0]),阈值 = 信号族最小
-激活档,非经验拟合(ADR-0519 组4-B 复核)。"""
+激活档,非经验拟合)。"""
 
 # ⑤无信号兜底线常量 FALLBACK_COMP_NAME('绯英欢愉')已退役(P86 落码批,
 # T-177;四面退役表 = p86-no-target-period-fund-allocation.md §4.2)。
@@ -237,14 +237,14 @@ class IntentionState:
     demoted_endgame: bool = False      # 降格终局标记(全不可达;「赢不了就少输」)
     evicted: set[str] = field(default_factory=set)        # 冻结超限移出候选集的线
     pair_evicted: set[str] = field(default_factory=set)
-    """R3 断供驱逐集(配方对域;**已退役恒空**,ADR-0519:断供驱逐分支
+    """R3 断供驱逐集(配方对域;**已退役恒空**:断供驱逐分支
     随未证阈值退役,本字段仅留序列化兼容与派生 exclude 参数占位)。"""
     pair_drought: dict[str, int] = field(default_factory=dict)
     """体系级断供计数器(体系键 → 连续无新件在店轮数;成员在店即清零,
-    无商店语境轮冻结)。ADR-0519 后仅遥测,不再触发驱逐。"""
+    无商店语境轮冻结)。断供驱逐退役后仅遥测,不再触发驱逐。"""
     shop_supply_streak: dict[str, int] = field(default_factory=dict)
     """体系级在店供给计数器(体系键 → 连续在店轮数;不在店清零,无商店
-    语境轮冻结)。ADR-0519 后仅遥测(旧「驱逐加速门」已随驱逐退役)。
+    语境轮冻结)。断供驱逐退役后仅遥测(旧「驱逐加速门」已随驱逐退役)。
     serialize_intention 全量序列化自动携带。"""
     # (supply_drought 方向侧供给衰减计数器已随兑现链开关族删除——旧方案
     #  清退批,清查报告 OLD_MIX_AUDIT §1.3。)
@@ -431,7 +431,7 @@ def _line_env_qualified(state: GameState, comp_name: str) -> bool | None:
     返回三态:
     - ``None`` = 判据不辖或信息缺失(comp 无 hp_charge_stack 累积成员 /
       强环境集未建模 / ``state.enemy_affixes`` 空=词缀可信位缺失)——调用方
-      必须放行(ADR-0107 动态权重剔除同款:缺信息不造硬结论,不猜);
+      必须放行(动态权重剔除同款:缺信息不造硬结论,不猜);
     - ``True`` = 词缀机制 tag 与强环境集命中;
     - ``False`` = 累积型线但环境不命中(「无环境不选」的事实面)。
 
@@ -516,7 +516,7 @@ SEELE_SYSTEM: str = '希儿系'
 
 #: P1 配方对平手序 = 注册表声明序(TRANSITION_TRAITS 声明序 + 希儿系垫底
 #: 单卡系)。旧「激活占比降序(列车 .360 > DOT .329 > 仙舟 .292,transition_
-#: combos 数据附录)」社区统计平手序已退役 2026-09-04(ADR-0519「未证即退役」;
+#: combos 数据附录)」社区统计平手序已退役 2026-09-04(「未证即退役」裁定;
 #: 平手 tiebreak 仅定确定性,不载经验排序)。
 _P1_PAIR_PREF: tuple[str, ...] = tuple(
     b for b, _t in TRANSITION_TRAITS) + (SEELE_SYSTEM,)
@@ -534,7 +534,7 @@ _P1_PAIR_PREF: tuple[str, ...] = tuple(
 # 量2/量3 挂确认注记随真源常量注释,此处不复制。
 
 P1_PAIR_LOCK_MIN_SUPPORT: float = 1.0
-"""配方对锁定门槛(门槛值不变,ADR-0519 C2):最高体系支持度 ≥ 此值才锁。
+"""配方对锁定门槛(门槛值不变):最高体系支持度 ≥ 此值才锁。
 
 【注】游戏定义激活当量:三羁绊系支持度 = 该体系羁绊计数 / 体系档
 (TRANSITION_TRAITS),1.0 = 体系羁绊满员;希儿系支持度 = 分级公式
@@ -542,7 +542,7 @@ P1_PAIR_LOCK_MIN_SUPPORT: float = 1.0
 (锁线证据 = 文档「引擎达成那一刻切希儿直通模式」的开线点),希儿
 单卡 = 0.5(开线候选,不再即锁——文档「希儿到手 ≠ 希儿线成型」,
 docs/game/currency_war/research/combo_methodology.md:138)。旧 0.5
-门槛与希儿系 0.6+0.2+0.2 放大器权重的退役裁定(ADR-0519 C2)不变;
+门槛与希儿系 0.6+0.2+0.2 放大器权重的退役裁定不变;
 被 T-171 支持度降档取代的仅是其 post-state「希儿系 = 在手二元
 1.0/0.0」条款——分级公式属重新推导(每一项来自文档档位结构
 transition_combos.md:27 与注册表计数),非旧手定权重复活(重推定性
@@ -630,7 +630,7 @@ def _p1_system_support(state: GameState) -> dict[str, float]:
     (``_seele_system_support`` 单一源,去重成员计数:希儿单卡 0.5
     开线候选、希儿+任 1 去重放大器满支持,推导链见其 docstring)。
     旧「希儿在手二元 1.0」post-state 条款被 T-171 支持度降档取代
-    (0.6+0.2+0.2 手定权重退役裁定本身仍属 ADR-0519,本式为文档口径
+    (0.6+0.2+0.2 手定权重已退役,本式为文档口径
     重推非旧值复活)。
     """
     counts: dict[str, int] = {}
@@ -769,7 +769,7 @@ def _p1_pair_eased(state: GameState,
       ord(最佳挑战者) > ord(最弱席)**严格大于**——平手 = 零优势证据,
       换席成本确定存在(囤货集作废、跟线投资重置),不换席弱支配换席
       (支配性论证消参数,零新数值);最弱席并列按 PREF 注册表声明序
-      定序(平手仅定确定性,不载经验排序,ADR-0519 同款)。
+      定序(平手仅定确定性,不载经验排序,同 P1 配方对平手序口径)。
     - 引理链(ADR §2.1):静态无环、至多 2 次易手收敛——A→B→A 振荡
       构造性不可达;恒自洽式 pair≠() ⟺ Q≠∅(gate_first 时 ⟺
       ``p1_gap_window``=False)由 |Q|=0 返回 () 保持。
@@ -841,7 +841,7 @@ def _derive_p1_pair(state: GameState,
     - ``incumbent`` = 重评时刻在任对现值 I(调用方传 ``ist.p1_pair`` /
       ``ist.transition_pair``;_lock 域切换帧传 () ——域切换不继承,
       合法换向)。I 先于本次计票,是排除谓词参照系非循环输入。
-    - 旧 ``exclude`` 参数随 ADR-0519 断供驱逐退役恒空,本批随消费点
+    - 旧 ``exclude`` 参数随断供驱逐退役恒空,本批随消费点
       删除(零行为差;ADR-0616 §10 登记项裁决归落码批)。
     - **「支持度只增」旧自述已废止**:卖出降计数(T2)与合成降计数
       (T3)两形态下支持度真实下降,sim 实证证伪「只增」前提;方向
@@ -895,7 +895,7 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
     return (not (math.isfinite(e_f) and e_f <= r_rem)), e_f, r_rem
 
 
-#: R3 断供驱逐已退役(2026-09-04,ADR-0519「未证即退役」):旧
+#: R3 断供驱逐已退役(2026-09-04,「未证即退役」裁定):旧
 #: PAIR_DROUGHT_EVICT_ROUNDS=5 为「保守先验」,探针批标定挂账未兑现,
 #: 任何实证引用无效——驱逐(换向动作)不再由未证阈值触发。断供/供给
 #: 计数器保留作遥测与撤销证据输入,不再写 pair_evicted;缺口披露:
@@ -905,7 +905,7 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
 
 #: 供给确认阈值(轮)。原 = 驱逐阈值取半派生,驱逐退役后唯一残消费 =
 #: 撤销出口③的证据合取项(线内在店断供 ≥ 此值 ∧ G ≤ ε 才允许降级)。
-#: 【拟】经验阈值待证(ADR-0519 登记);保守向 = 合取更严 → 撤销更难,
+#: 【拟】经验阈值待证(挂账);保守向 = 合取更严 → 撤销更难,
 #: 降级仍可逆(不写 evicted),与出口③「防误杀」设计同向。
 PAIR_SUPPLY_CONFIRM_ROUNDS: int = 2
 
@@ -914,7 +914,7 @@ def _update_pair_drought(state: GameState, ist: IntentionState,
                          visible: set[str]) -> None:
     """R3 断供供给计数器(每 game-round 恰一次,由 update_intention 驱动)。
 
-    ADR-0519 后仅计数不驱逐:对四体系全集维护 ``shop_supply_streak``
+    断供驱逐退役后仅计数不驱逐:对四体系全集维护 ``shop_supply_streak``
     (在店供给连续轮)与现任 pair 方向的 ``pair_drought``(断供连续轮),
     供遥测与撤销证据链消费;写 ``pair_evicted`` 的驱逐分支已随未证阈值
     退役(见上方常量注)。
@@ -1083,7 +1083,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
       成,OR 语义)、carry 挂 ``required_deployed``(希儿在板)——
       ADR-0613 取代 ADR-0459 ②的「桥池档+量子配方档」AND 全档口径
       (借 cw_recipe 完全体档把「凑到任一=成型」塌成「量3∧贝2 全档」,
-      且缺 carry 合取支;取代先例 = ADR-0608 对 ADR-0519 post-state)。
+      且缺 carry 合取支;取代先例 = ADR-0608 对未证 post-state 条款的取代)。
       跨体系 AND 保留:他体系档仍是 AND 腿,OR 只辖放大器组(防半对
       冒充)。⚠️ 既有双源分歧申报:列车同行档桥池=2(train_dot)、
       cw_recipe _RECIPES=4(框架单独成型档,语义不同层)——本函数取
@@ -1203,7 +1203,7 @@ def detect_signals(state: GameState) -> list[IntentionSignal]:
 
 
 def _asset_thickness(comp: Comp, state: GameState) -> float:
-    """候选线资产厚度(ADR-0519 后口径):
+    """候选线资产厚度(骨架件退役后口径):
 
     板上+bench 中该线终局件数(副本计星级当量:每副本按其 star 计)。
     终件 = core_chars。骨架件折算项已退役(旧 SKELETON_ASSET_WEIGHT=0.5
@@ -1555,8 +1555,8 @@ def update_intention(state: GameState, ist: IntentionState,
     # (原「门闩位面切换清零」分支只在闩置位后生效;门闩删除后默认行为
     # =位面切换不清 miss_count——维持删除前生产默认,零漂移。)
     # R3 断供驱逐(ADR-0465):每 game-round 恰一次的体系级断供计数
-    # (pair 方向在场时辖;断供计数写 pair_drought,驱逐分支已退役
-    # ADR-0519,pair_evicted 恒空集——派生 exclude 参数留兼容)。
+    # (pair 方向在场时辖;断供计数写 pair_drought,驱逐分支已随未证阈值
+    # 退役,pair_evicted 恒空集——派生 exclude 参数留兼容)。
     _update_pair_drought(state, ist, visible)
     sigs = [s for s in detect_signals(state) if s.comp_name not in ist.evicted]
     # 弱面位面过滤(经济冻结批,病灶③):注册表自注 weak_planes 含当前
@@ -2672,7 +2672,7 @@ def _to_jsonable(obj: Any) -> Any:
 def serialize_intention(ist: Any) -> dict[str, Any] | None:
     """v3 意向状态(IntentionState)→ JSON-safe dict。
 
-    ADR-0336 后锁定真值在 ``strategy_state_of(session).v3_intention``,但 decisions 行
+    line_strategy 退役后锁定真值在 ``strategy_state_of(session).v3_intention``,但 decisions 行
     只有恒空的 v1 遗留键(``v2_locked_line``/``v2_mode``)——实机判读
     「锁定时点/锁定目标」不可读,只能日志考古。本序列化把意向状态机
     全量落遥测(锁定目标改过渡配方(ADR-0357)的实机验证依赖它)。
@@ -2684,7 +2684,7 @@ def serialize_intention(ist: Any) -> dict[str, Any] | None:
       嵌套 LineTrack 同构)——IntentionState 字段演进(如配方锁设计件调整
       锁定语义)时自动跟上,不改本函数。
 
-    **可变容器深拷贝(ADR-0378)**:dict/list 字段值经
+    **可变容器深拷贝(活引用污染防线)**:dict/list 字段值经
     ``_to_jsonable`` 递归拷贝(嵌套 dataclass 走 asdict=深拷贝)——
     ``tracks: dict[str, LineTrack]`` 是**活引用**,旧版直接把引用
     落进账本行,session 后续轮原地改 LineTrack 会污染**已落账的
@@ -2703,7 +2703,7 @@ def serialize_intention(ist: Any) -> dict[str, Any] | None:
         elif is_dataclass(v):
             out[f.name] = _to_jsonable(v)
         elif isinstance(v, (dict, list)):
-            # ADR-0378:可变容器深拷贝落账(活引用污染防线,
+            # 可变容器深拷贝落账(活引用污染防线,
             # 见 docstring);tuple 不可变不辖(类型不漂移)
             out[f.name] = _to_jsonable(v)
         else:

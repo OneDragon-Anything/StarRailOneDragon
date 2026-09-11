@@ -118,7 +118,7 @@ def emit_overlay_confirm(
     - 确认点击带 ``mouse_move``(bug#1 缓解,partner reset 根因同类)。
     - ``press_time``:按下时长;默认 0.1(框架默认)。输入管线半死态短按下
       可能不被采样(prep_actions 出战重发 0.15 人工解锁实证),需要者显式传入。
-    - 确认后固定等待 ``confirm_wait``(确认关闭动画,DD-011 口径)→ 无条件
+    - 确认后固定等待 ``confirm_wait``(确认关闭动画,固定时长口径)→ 无条件
       ``round_retry``(观察驱动):**不读屏判「是否生效」**——落地判定归下一轮
       重入的入口观察(调用方节点顶部裁决)与观察侧 reconcile 对账,不在动作层。
     - ``entry_keyword`` 仅作日志与调用方重入裁决的对照词(与 entry 检测同词);

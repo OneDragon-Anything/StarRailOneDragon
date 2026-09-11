@@ -1,4 +1,4 @@
-# ⚠️ 本文件**拖拽机制已验证**(2026-08-13:中心拖+hold0,推翻 avatar 假设(原 ADR-0100,文件已删,见 ADR-0120);统一走 DragCwChar.drag_char);
+# ⚠️ 本文件**拖拽机制已验证**(2026-08-13:中心拖+hold0,推翻旧 avatar 假设,统一口径见 ADR-0120;统一走 DragCwChar.drag_char);
 # 其余部署逻辑(CV 占用 / SIFT 身份 / cap 门 / off-target 卖)仍待逐画面 review。
 
 """货币战争 部署 op(备战阶段:bench 角色 → 舞台空槽)。
@@ -6,7 +6,7 @@
 **部署逻辑(``_deploy_deterministic``,活跃路径)**:CV ``slot_occupied`` 知 bench / 前排 / 后排占用 → 每个
 有角色的备战槽按**角色前后台属性**(``Character.position_pref()``,cw_chars 注册表)拖到对应排的空槽(target
 阵营先)→ 验「源备战槽空了」=成功。**角色拖拽统一走 ``DragCwChar.drag_char``**(中心拖 + hold_time=0,2026-08-13
-实测推翻 avatar 假设(原 ADR-0100,文件已删,见 ADR-0120);avatar 偏移 / 长按全是旧错诊)。off-target deployed 挡 target 上场时,先
+实测推翻旧 avatar 假设(统一口径见 ADR-0120);avatar 偏移 / 长按全是旧错诊)。off-target deployed 挡 target 上场时,先
 ``_sell_offtarget_deployed`` 卖 off-target 腾位(卖拖拽同样走 drag_char)。
 
 **槽位坐标**:screen_info「货币战争-备战」(备战栏 9 / 前排 4 / 后排 N),经 ``_row_centers`` 读全部已建模
@@ -804,7 +804,7 @@ class CwOpDeploy(SrOperation):
             if ch is None:
                 continue   # 系统单位(cost==0)已在函数头统一剔除(ADR-0281 件4)
             # 登记挂账(T-174,ADR-0610):want = 注册表 position_pref,
-            # 不消费 comp char_positions 覆盖(ADR-0139;部署主循环
+            # 不消费 comp char_positions 覆盖(部署主循环
             # _bench_pos 吃覆盖)——覆盖与注册表冲突的 comp 存在「部署按
             # 覆盖上前排 → 本循环按注册表拖回后排」的口径双源,本批守卫
             # 不改该判定(守卫只禁清空移动),该形态以错排残留面出现,
@@ -1185,7 +1185,7 @@ class CwOpDeploy(SrOperation):
                     _bench_id[bc.slot - 1] = set(ch.factions) | set(ch.flows)
                     _bench_pos[bc.slot - 1] = ch.position_pref()
                     _bench_cid[bc.slot - 1] = bc.char_id
-        # ADR-0139:comp 特定站位覆盖命途默认(爻光必后台/万敌独前排——攻略实证,同 _pick_deploy_row 语义)
+        # comp 特定站位覆盖命途默认(爻光必后台/万敌独前排——攻略实证,同 _pick_deploy_row 语义)
         if (_sess is not None and strategy_state_of(_sess).target_comp is not None
                 and strategy_state_of(_sess).target_comp.char_positions):
             for bi2, cid2 in list(_bench_cid.items()):
@@ -1496,7 +1496,7 @@ class CwOpDeploy(SrOperation):
             dst = chosen_pts[ti]
             src = bench[bi]
             _row_cn = '前' if chosen_pts is front else '后'
-            # 5.1.9 重诊(2026-08-13 实测推翻 ADR-0100):整张卡可拖 —— 从**卡中心**拖 + 按下即移(hold_time=0)
+            # 5.1.9 重诊(2026-08-13 实测推翻旧 avatar 假设):整张卡可拖 —— 从**卡中心**拖 + 按下即移(hold_time=0)
             # 即拾取上阵(实测:中心 drag 飞霄 → 上阵 ✓)。avatar/左上星标/hold1s 全是旧错诊(详情=click 触发非
             # mouseDown;drag=按下+移动;左上小圆是星标非头像)。**拖拽统一走 ``DragCwChar.drag_char``**(中心拖
             # + hold0 + retry + 验源槽像素变),本处不再内联 drag_to。

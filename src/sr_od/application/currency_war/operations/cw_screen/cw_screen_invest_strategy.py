@@ -4,7 +4,7 @@
 OCR 3 张投资策略卡名 → 经 ``match.strategy.decide_invest``(委托 ``cw_events.decide_event``
 打分)→ 点**最优**卡 + 确认。替代原"盲点中卡"(无策略)。
 
-逐卡刷新执行链(T-162 重立,ADR-0600;旧 ADR-0146 刷新流曾随 ADR-0519 C10 整段删除):
+逐卡刷新执行链(T-162 重立,ADR-0600):
 ``decide_event`` 帧级触发(零阈值结构判据:全精确分类 ∧ 无 S1/S2 ∧ max_N≠1,
 推导见 ADR-0600 §3.2 + math_proofs P81)→ 返回 ``refresh_slots``
 → 逐槽读计数(现读 >0)→ 文本锚定点刷新圆钮 → 固定等待重读 → 重分类 →
@@ -236,7 +236,7 @@ class CwScreenInvestStrategy(SrOperation):
                 )
                 pick = match.strategy.decide_invest('strategy', names, strategy_input_state(match.session), match.session, config)
             else:
-                # 防御:无 match(局外独立跑)。ADR-0519 C6/C9 后 decide_event 不读
+                # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读
                 # hp/品质惩罚,hp 字段仅为 GameState 构造完整性。**显式跳过刷新链**
                 # (ADR-0600 §3.3 防御路径):刷新链依赖 exec_state_of(match.session) 与
                 # match 上下文,局外防御帧零行为增量(refresh_slots 不消费)。
