@@ -72,6 +72,9 @@ class EconomyEffect:
     - gold_per_node: 每次进入新节点给金
     - free_refresh_per_node: 每节点免费刷新次数(成本 0 的刷新)
     - free_refresh_burst: 一次性海量免费刷新(如高效决策 9999 次);限时窗口策略层不编排时机(执行层待办)
+    - free_refresh_cond_gold_above/step/cap: 条件判定族三元组(本金充裕系=50/10/3)——每次进入
+      新节点时,金 > above 每额外 step 金 +1 次免费刷新、至多 cap 次;发放经
+      grant_effect_node_refresh_balance 桥(节点 tick 采样,金=bs.gold 现值评估)
     - refresh_surprise_every: 每 N 次刷新刷出 5 张同费卡(采购专员;稳定器,提高刷新期望)
     - gold_per_three_5cost: 每购买 3 个 5 费角色给金
     - interest_cap_override: 利息档上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)
@@ -88,6 +91,13 @@ class EconomyEffect:
     gold_per_node: int = 0
     free_refresh_per_node: int = 0
     free_refresh_burst: int = 0
+    # 条件判定族三元组(本金充裕/+,官方卡文 cw_invest_data.py:251-252 id
+    # 301001/301002;BoardState 设计 §3.3.6 免费刷新余额判定输入):三字段
+    # 齐备(>0)才激活,半配对保守 no-op;不做 aggregate_economy 标量聚合
+    # (多条件条目各按现值评估,不可折叠单标量),桥逐条目读。
+    free_refresh_cond_gold_above: int = 0   # 触发金阈值(严格大于;本金充裕=50)
+    free_refresh_cond_gold_step: int = 0    # 每额外该值金 +1 次免费刷(本金充裕=10)
+    free_refresh_cond_cap: int = 0          # 单次触发至多授予次数封顶(本金充裕=3)
     refresh_surprise_every: int = 0
     gold_per_three_5cost: int = 0
     interest_cap_override: int | None = None
@@ -177,7 +187,12 @@ def _strat(name: str, rarity: str, effect: str, source: str = "",
 STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '高效决策': EconomyEffect(free_refresh_burst=9999),
     '采购专员·彩': EconomyEffect(refresh_surprise_every=5),
-    '本金充裕': EconomyEffect(instant_gold=26),
+    # 本金充裕系:官方「获得26/45金币。每次进入新节点时,若拥有超过50金币,
+    # 每额外10金币就会获得1次免费刷新(最多3次)」(cw_invest_data.py:251-252,
+    # id 301001/301002)。两卡条件腿卡文逐字同文 → 三元组同值;棱彩加强值
+    # 只在 instant_gold(26 vs 45)。条件腿发放经节点桥(§3.3.6)。
+    '本金充裕': EconomyEffect(instant_gold=26, free_refresh_cond_gold_above=50,
+                              free_refresh_cond_gold_step=10, free_refresh_cond_cap=3),
     '开源节流': EconomyEffect(instant_gold=10, interest_cap_override=9),
     '利息上调': EconomyEffect(instant_gold=25, interest_cap_override=10),
     '买断制': EconomyEffect(instant_gold=15, interest_cap_override=0, xp_per_node=4),
@@ -205,7 +220,8 @@ STRATEGY_ECONOMY: dict[str, EconomyEffect] = {
     '决议:娱乐星球': EconomyEffect(instant_gold=50),
     '公司严选': EconomyEffect(instant_gold=3),
     '节节高升': EconomyEffect(gold_per_level_up=1),
-    '本金充裕+': EconomyEffect(instant_gold=45),
+    '本金充裕+': EconomyEffect(instant_gold=45, free_refresh_cond_gold_above=50,
+                               free_refresh_cond_gold_step=10, free_refresh_cond_cap=3),
     '黄金垃圾': EconomyEffect(instant_gold=15),
     '退化': EconomyEffect(instant_gold=8, difficulty_delta=-5),
     '停云顾问': EconomyEffect(instant_gold=4),
@@ -402,6 +418,26 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         payload=EconomyEffect(xp_instant=30), duties=DutyFlags(track=True),
         duration_uses=2,
         notes='跳过战斗×2(remaining_uses 正本);+30 经验选牌当场'),
+    # 本金充裕/+:官方「获得26/45金币。每次进入新节点时,若拥有超过50金币,
+    # 每额外10金币就会获得1次免费刷新(最多3次)」(cw_invest_data.py:251-252,
+    # id 301001/301002)。条件判定族(BoardState 设计 §3.3.6 免费刷新余额的
+    # 条件性来源):触发=节点进入、条件=金>50、梯度=每 10 金 1 次、封顶=3;
+    # 发放经 grant_effect_node_refresh_balance 桥自动生效(§3.3.6「结构化后
+    # 经同一桥」):桥按 bs.gold 现值逐条目评估,金未读(None)保守零授予。
+    # counter 不建(无剩余/门槛累计量,授予量由当拍金现值决定,§3 计数器
+    # 模型无动态需求为空);duties 全空(无计数器/无预知/无姿态消费面)。
+    # payload 引 STRATEGY_ECONOMY 同一实例(单一源);棱彩加强值口径 =
+    # instant_gold 26/45,条件腿两卡逐字同文同值。
+    '本金充裕': EffectSpec(
+        id='301001', name='本金充裕', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['本金充裕'], duties=DutyFlags(),
+        notes='条件免费刷 50/10/3 经节点桥发放;instant_gold=26 选卡当场'),
+    '本金充裕+': EffectSpec(
+        id='301002', name='本金充裕+', trigger=TriggerKind.NODE_ENTER,
+        duration=DurationKind.WHILE_HELD, category=EffectKind.ECONOMY,
+        payload=STRATEGY_ECONOMY['本金充裕+'], duties=DutyFlags(),
+        notes='条件腿与本金充裕逐字同文(50/10/3);加强值=instant_gold 45'),
 }
 
 

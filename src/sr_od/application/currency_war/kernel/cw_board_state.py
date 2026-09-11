@@ -1024,22 +1024,39 @@ def apply_effect_burst_grant(bs: BoardState, spec: Any, *,
 
 def grant_effect_node_refresh_balance(bs: BoardState, *,
                                       frame: str = '') -> None:
-    """桥·per_node 形态(每节点 +N):节点边界一次,把全部在场条目声明的
-    每节点免费刷新额度累加进余额。载体两字段(§3.3.5):
-    EconomyEffect.free_refresh_per_node(加油站/搜打撤=1)+ BattlefieldEffect
-    .free_refresh_on_node_enter(双手狸开键盘!=2),payload 按鸭子属性读、
-    缺省 0(两族并存条目求和)。
+    """桥·per_node + 条件判定形态(每节点发放):节点边界一次,把全部在场
+    条目声明的每节点免费刷新额度累加进余额(§3.3.5-§3.3.6)。载体两族:
+
+    - **静态每节点**:EconomyEffect.free_refresh_per_node(加油站/搜打撤=1)
+      + BattlefieldEffect.free_refresh_on_node_enter(双手狸开键盘!=2),
+      payload 按鸭子属性读、缺省 0(两族并存条目求和);
+    - **条件判定**(本金充裕/+,EconomyEffect 条件三元组,§3.3.6「结构化后
+      经同一桥自动生效」):按 bs.gold 现值评估——金 > free_refresh_cond_gold_above
+      时每额外 free_refresh_cond_gold_step 金 +1 次、至多 free_refresh_cond_cap;
+      三字段齐备(>0)才激活,半配对保守 no-op。金未读(None)= 条件不可
+      评估 → 该条目本拍零授予(禁猜;下一节点金可读时恢复评估,授予量
+      随当拍现值,不补发历史拍)。
 
     采样点 = 节点 tick 挂点(cw_loop 备战分支),**仅在 advance_node 返回
-    advanced=True 时调用**(每节点恰一次,重复调用即双计);写入 =
-    write_logic(§3.3.6)。当前注册表活载体 = 双手狸(2/节点);固定理财
-    位面开始段(PLANE_START)不属本形态,未建模挂账不改本桥。
+    advanced=True 时调用**(每节点恰一次,重复调用即双计;条件形态与静态
+    形态同闸门——授予量随当拍金现值变化,触发时点恒为节点边界一次);
+    写入 = write_logic(§3.3.6)。静态活载体 = 双手狸(2/节点);条件活载体 =
+    本金充裕/+(50/10/3)。固定理财位面开始段(PLANE_START)不属本形态,
+    未建模挂账不改本桥。
     """
     per_node = 0
+    gold = bs.gold.value
     for e in bs.effects.entries:
         payload = e.spec.payload
         per_node += int(getattr(payload, 'free_refresh_per_node', 0) or 0)
         per_node += int(getattr(payload, 'free_refresh_on_node_enter', 0) or 0)
+        above = int(getattr(payload, 'free_refresh_cond_gold_above', 0) or 0)
+        step = int(getattr(payload, 'free_refresh_cond_gold_step', 0) or 0)
+        cap = int(getattr(payload, 'free_refresh_cond_cap', 0) or 0)
+        if above > 0 and step > 0 and cap > 0 and gold is not None:
+            surplus = int(gold) - above
+            if surplus > 0:
+                per_node += min(surplus // step, cap)
     if per_node <= 0:
         return
     _ev = f'effect_per_node@{frame}' if frame else 'effect_per_node'
