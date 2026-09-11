@@ -540,6 +540,9 @@ class SellBenchOp(ShopActionOp):
         mutate_bench_deployed(_tracked, exec_state_of(match.session).tracked_deployed, action)
         # ADR-0328 执行域对齐:卖出件入同轮已卖集(执行成功是卖出事实的
         # 权威,register_round_sold 带轮键自校验)。
+        # 归属申报:register_round_sold 首参 state 经 board_state_bridge
+        # 装箱 = 统一 state 过渡桥语义(T-70 线),本 hunk 实际随 T-13
+        # 提交入库而原提交信息未申报,此处补记归属供审计对账。
         from sr_od.application.currency_war.kernel.cw_board_state import (
             board_state_bridge,
         )

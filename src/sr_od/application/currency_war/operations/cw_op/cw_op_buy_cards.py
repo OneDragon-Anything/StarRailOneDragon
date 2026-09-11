@@ -360,7 +360,12 @@ def build_post_buy_incremental_state(
 
 
 def _form_progress(comp: 'Comp', state: GameState) -> float:
-    """fp 遥测helper(review 要求:fp 轨迹可观测;调用方保证 comp 非 None)。"""
+    """fp 遥测helper(review 要求:fp 轨迹可观测;调用方保证 comp 非 None)。
+
+    归属申报:state 经 board_state_bridge 装箱 = 统一 state 过渡桥语义
+    (T-70 线),本 hunk 实际随 T-13 提交入库而原提交信息未申报,此处
+    补记归属供审计对账。
+    """
     from sr_od.application.currency_war.kernel.cw_board_state import (
         board_state_bridge,
     )
