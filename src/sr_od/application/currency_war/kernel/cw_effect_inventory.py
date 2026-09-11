@@ -400,11 +400,17 @@ class BoardRewriteReport:
     """板面重写桥执行报告(留证/测试用;零决策消费)。"""
 
     rewrite: str                   # board_rewrite 语义值(BOARD_REWRITE_* 词表)
-    refund_gold: int               # sell_all 出售面退款合计(sell_refund 口径);
-                                   # upgrade_all 恒 0(无出售面)
+    refund_gold: int               # sell_all 出售面退款合计(sell_refund 口径,
+                                   # 只含已读单位);该值是否已入金看
+                                   # partial_read 与金字段本身(部分读时仅在
+                                   # 此留证、未入金);upgrade_all 恒 0(无出售面)
     sold_units: int                # sell_all 已读出的出售单位数(前台+后台+备战席;
                                    # 字段从未观察 = 0,不代表实际卖数)
     cleared_fields: tuple[str, ...] = ()   # 实际执行逻辑清空的 BoardState 字段名
+    partial_read: bool = False     # True = 出售域未全读(front_row/back_row/bench
+                                   # 任一从未观察)→ 退款公式输入不完整,退款
+                                   # 零写入等观察收口(effect-domain.md §6.3);
+                                   # upgrade_all 恒 False(无出售面)
 
 
 def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
@@ -428,10 +434,16 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
 
     **字段从未观察(value=None)= 无容器可写,跳过**(同族先例 =
     project_effect_capacity):选卡后的下一备战帧观察必全量重读板面,
-    跳过不损真值到达。gold 未读(None)= 无累加基座,跳过金写入(禁把
-    退款当余额);退款合计为 0(出售域全未读/空场)同样跳过——禁把观察
-    金翻标成 logic(§2.1 来源标记到字段)。bench 清空保留现容量(节省
-    工位类容量改写归容量投影桥辖域,两桥互不越界)。
+    跳过不损真值到达。**出售域未全读**(front_row/back_row/bench 任一
+    value=None,典型 = 接管局/观察缺口局)= 退款公式的输入不完整(未读
+    域实际卖数未知,refund 只是已读面的部分值)→ 不满足归属判据确定性
+    分支「确定性公式+已知输入」的前提(effect-domain.md §6.3)→ 退款
+    零写入留证(报告 partial_read=True + 日志),等观察收口——禁把部分
+    退款以 logic 标写成权威值(观察帧覆盖前记录层留错误金)。gold 未读
+    (None)= 无累加基座,跳过金写入(禁把退款当余额);退款合计为 0
+    (出售域全未读/空场)同样跳过——禁把观察金翻标成 logic(§2.1 来源
+    标记到字段)。bench 清空保留现容量(节省工位类容量改写归容量投影
+    桥辖域,两桥互不越界)。
 
     **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 的 BoardState 全量
     经 synthesize_from_game_state 由 sim 真值 GameState 合成(evidence 恒
@@ -480,6 +492,11 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
         if view is not None else []
     sold = list(front or []) + list(back or []) + bench_units
     refund = sum(sell_refund(int(u.star), bench_char_cost(u)) for u in sold)
+    # 出售域全读判据:front/back 均已读且 bench view 已读,退款公式的输入
+    # (实际卖数)才完整——任一子域从未观察时 refund 只是已读面的部分值,
+    # 归属判据确定性分支「确定性公式+已知输入」前提不成立
+    # (effect-domain.md §6.3),该退款禁入金(等观察收口)。
+    partial_read = front is None or back is None or view is None
 
     ev = f'effect_board_rewrite@{frame}' if frame else 'effect_board_rewrite'
     # 组签名:一次出售清空 = 一次逻辑计算,组内行同 group(§3.2.1 group_id
@@ -506,14 +523,23 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
                       capacity=view.capacity),
             produced_by='EffectLedgerBridge', evidence=ev, sig=sig)
         cleared.append('bench')
-    # refund==0(出售域从未读过/空场)= 无可入账增量,禁把观察金翻标成
-    # logic(§2.1 来源标记到字段)——零退款时金字段保持原来源不动。
-    if bs.gold.value is not None and refund > 0:
+    # 金写入门三条件齐备才 write_logic:基座已读 + 退款非零 + 出售域全读。
+    # 零退款(出售域从未读过/空场)无可入账增量;partial_read 时输入不完整
+    # (§6.3)——两种情形金字段都保持原来源不动,禁把观察金翻标成 logic
+    # (§2.1 来源标记到字段);部分读的已读面退款在报告留证(refund_gold ×
+    # partial_read)。
+    if partial_read and refund > 0:
+        log.warning(
+            '[cw!][effect-bridge] 板面重写出售域部分读(front=%s/back=%s'
+            '/bench=%s)→ 退款 %d 零写入等观察收口(§6.3 输入不完整)',
+            front is not None, back is not None, view is not None, refund)
+    if bs.gold.value is not None and refund > 0 and not partial_read:
         bs.write_logic(bs.gold, int(bs.gold.value) + refund,
                        produced_by='EffectLedgerBridge', evidence=ev, sig=sig)
     return BoardRewriteReport(rewrite=rewrite, refund_gold=refund,
                               sold_units=len(sold),
-                              cleared_fields=tuple(cleared))
+                              cleared_fields=tuple(cleared),
+                              partial_read=partial_read)
 
 
 # ============================================================ 账本→字段桥·装备改写写端
