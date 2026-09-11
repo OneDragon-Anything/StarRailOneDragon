@@ -62,6 +62,10 @@ from sr_od.application.currency_war.kernel.cw_state import (
     simulate,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
+
+# 刷新钮真值 reader 经模块属性路由消费(替身缝:测试 monkeypatch 模块属性,
+# 直接 from-import 会绑死旧引用绕开替身,同 _buy_cards_mod 约定)。
+from sr_od.application.currency_war.obs import cw_shop_refresh_obs
 from sr_od.application.currency_war.telemetry import defects
 
 if TYPE_CHECKING:
@@ -97,6 +101,14 @@ class ShopVisitLedger:
     bought_names: list[str] = field(default_factory=list)
     refresh_first_action: bool = True
     did_refresh: bool = False
+    # T-13 真值通道:刷前刷新钮按钮态 UI 读数(RefreshShopOp.execute 点击前
+    # 帧快照,一次刷新写一次;消费方 = cw_op_buy_cards.apply_action_outcome
+    # 免费闸)。None = 失读回退逻辑账(接线前保守形态),禁当 False。
+    refresh_free_truth: bool | None = None
+    # T-13 次数余量联动:免费态钮内剩余次数 UI 读数(同帧快照;消费方 =
+    # apply_action_outcome 与 free_refresh_balance 逻辑账刷前值对票,失配落
+    # 缺陷台账零决策)。
+    refresh_free_remaining_truth: int | None = None
     # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
     buy_purchases: list = field(default_factory=list)
     buy_has_sell: bool = False
@@ -528,10 +540,14 @@ class SellBenchOp(ShopActionOp):
         mutate_bench_deployed(_tracked, exec_state_of(match.session).tracked_deployed, action)
         # ADR-0328 执行域对齐:卖出件入同轮已卖集(执行成功是卖出事实的
         # 权威,register_round_sold 带轮键自校验)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
         from sr_od.application.currency_war.kernel.cw_round_ledger import (
             register_round_sold,
         )
-        register_round_sold([_expected_name], state, match.session)
+        register_round_sold([_expected_name], board_state_bridge(state),
+                            match.session)
         ledger.total_sell += 1
         ledger.buy_has_sell = True   # 含卖出 → 本单元期望态不建(`w536`)
         ledger.total_sell_income += action.income or 0
@@ -591,6 +607,21 @@ class RefreshShopOp(ShopActionOp):
         except Exception:   # noqa: BLE001  best-effort 不阻塞买牌
             _refresh_expect = None
             _reconcile = None
+        # 刷前刷新钮真值读(T-13 读链接入):按钮三态 + 免费态剩余次数。
+        # 经模块属性路由 = 测试替身缝(同 _buy_cards_mod 约定)。best-effort:
+        # 识别层故障不阻塞执行链,ledger 字段保持 None = 免费闸回退逻辑账。
+        _btn = None
+        try:
+            _btn = cw_shop_refresh_obs.read_shop_refresh_button(
+                op.ctx, op.screenshot(), gold=_pre_gold)
+        except Exception:   # noqa: BLE001  best-effort 不阻塞执行
+            _btn = None
+        if _btn is not None:
+            ledger.refresh_free_truth = _btn.free
+            ledger.refresh_free_remaining_truth = _btn.free_remaining
+            log.info('[cw-shop] refresh button truth: free=%s remaining=%s '
+                     'price=%s affordable=%s',
+                     _btn.free, _btn.free_remaining, _btn.price, _btn.affordable)
         op.ctx.controller.click(env.refresh_btn)
         log.info(f'[cw-shop] Refresh click @({env.refresh_btn.x},'
                  f'{env.refresh_btn.y})')

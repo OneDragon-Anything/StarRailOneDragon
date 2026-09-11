@@ -361,8 +361,11 @@ def build_post_buy_incremental_state(
 
 def _form_progress(comp: 'Comp', state: GameState) -> float:
     """fp 遥测helper(review 要求:fp 轨迹可观测;调用方保证 comp 非 None)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
-    return form_progress(comp, state)
+    return form_progress(comp, board_state_bridge(state))
 
 
 # 「购买经验」按钮(= 买经验升等级)screen_info area 名;中心运行时读(area_center)
@@ -487,8 +490,9 @@ def apply_action_outcome(_aop: 'ShopActionOp',
     if _ok and isinstance(action, RefreshShop):
         # 刷新执行事实组接线(迁移批次二,设计 §3.3.6-§3.3.8;写入=仅逻辑,
         # 记录挂执行回执点 = 落地门,未落地不计数)。免费帧闸(§3.3.7 申报):
-        # 免费帧不进付费计数;免费判定输入 = 免费刷新余额(效果账本激活面,
-        # 未建模局余额恒空 → 恒 paid,与接线前行为逐位一致)。
+        # 免费帧不进付费计数;免费判定输入 = 刷前按钮态真值优先(T-13 真值
+        # 通道,下方),失读回退免费刷新余额(效果账本激活面;余额未建模局
+        # 恒 paid = 接线前保守形态)。
         # shop_refresh_cost 本口不写(§3.3.4 写端=现场 OCR 唯一;免费帧
         # 「免费」读数 OCR 为 None → 喂入口 carried,不落 0,免费帧不写闸
         # 由观察通道结构性满足)。
@@ -497,10 +501,47 @@ def apply_action_outcome(_aop: 'ShopActionOp',
             record_refresh_execution,
         )
         _bs = board_state_of(match.session)
-        _free = (_bs.free_refresh_balance.value or 0) > 0
+        _logic_bal = _bs.free_refresh_balance.value
+        # 免费判定(§4.2 RefreshShop 行)真值优先(T-13 真值通道):刷前
+        # 按钮态 UI 读数在场即按 UI 事实(观察赢,fields.md §2.3)——覆盖
+        # 逻辑账未建模的授予/回收形态(概率事件 45% proc 不进余额账、高效
+        # 决策 45s 窗到期清零无逆向桥)。失读(None)回退逻辑账 = 接线前
+        # 保守形态,行为逐位不变(§4.2「余额未建模局恒 paid」)。
+        _truth = getattr(ledger, 'refresh_free_truth', None)
+        _free = _truth if _truth is not None else (_logic_bal or 0) > 0
+        if _truth is not None and _truth != ((_logic_bal or 0) > 0):
+            # 真值↔逻辑账分歧票(零决策留证):记账已按真值,分歧 =
+            # 发放/回收链建模缺口信号(欠发=真免费∧账空;幽灵=账>0∧UI 付费)。
+            defects.record_defect(
+                'shop_refresh', 'free_truth_logic_divergence',
+                expected=(f'按钮真值 free={_truth} 与逻辑账余额'
+                          f'({_logic_bal})判定一致'),
+                observed=(f'按钮真值 free={_truth} vs 逻辑账判定 '
+                          f'free={(_logic_bal or 0) > 0}(余额={_logic_bal})'),
+                plane=getattr(_cur, 'plane', 0) or 0,
+                round_num=getattr(_cur, 'round_num', 0) or 0,
+                verdict='留证-免费真值与逻辑账分歧(观察赢,按真值记账)',
+                reader_source='shop_refresh_button_truth',
+                note='T-13 真值通道接线票;欠发查授予桥漏型,幽灵查窗期回收')
         record_refresh_execution(
             _bs, free=_free,
             frame=f'p{getattr(_cur, "plane", 1) or 1}-r{getattr(_cur, "round_num", 1) or 1}')
+        # 次数余量联动票(T-13 机制语义):免费态 UI 次数 vs 逻辑账刷前值
+        # (两者同帧口径——UI 快照与余额读数都在点击前;失配 = 发放链或
+        # 消耗链漂移的唯一在环检测位,零决策留证)。
+        _ui_n = getattr(ledger, 'refresh_free_remaining_truth', None)
+        if _free and _ui_n is not None and _logic_bal is not None \
+                and _ui_n != int(_logic_bal):
+            defects.record_defect(
+                'shop_refresh', 'free_balance_ui_mismatch',
+                expected=f'UI 剩余次数={_ui_n} == 逻辑账余额={int(_logic_bal)}',
+                observed=f'UI 剩余次数={_ui_n} vs 逻辑账余额={int(_logic_bal)}',
+                plane=getattr(_cur, 'plane', 0) or 0,
+                round_num=getattr(_cur, 'round_num', 0) or 0,
+                verdict='留证-免费刷新余额联动不符(零决策)',
+                reader_source='shop_refresh_button_count',
+                note='T-13 次数余量联动票;发放桥(固定理财/大裁员/加油站/'
+                     '本金充裕条件族)与消耗闸的漂移归因入口')
         # 效果账本刷新计数推进(迁移批次三,§5.1「刷新=计数累加」;载体 =
         # CounterKey.REFRESH,§5.3 采购专员族门槛 7/5 计数面)。同挂执行
         # 落地门;best-effort 记录面。

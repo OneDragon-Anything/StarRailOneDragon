@@ -2598,13 +2598,20 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
             bs.leave_screen(bs.shop,
                             sig=_sig_read)   # 离开商店画面 = 结构事实(§2.2 例外)
         if phase in (PHASE_PREP_SHOP_OPEN,):
-            # 刷新费现场识别通道(ADR-0622;§3.3.4 识别失败=None 禁兜底)
+            # 刷新费现场识别通道(ADR-0622;§3.3.4 识别失败=None 禁兜底)。
+            # 写入口经按钮态 composite(T-13 读链接入):免费态按钮渲染的
+            # 剩余次数与标价**同 rect**——免费帧次数数字会被标价解析误读,
+            # 「免费帧不写」的免费判定输入 = 按钮态锚命中(结构性满足),
+            # 不再依赖「免费帧渲染无数字」旧假设(T-15 实机取证推翻:
+            # 免费帧 = 「免费刷新」+次数)。非免费帧 price 语义与旧直读
+            # 逐位一致(锚失读/未中分支 composite 内部同源 read_shop_
+            # refresh_price);免费帧 → carry 沿旧值(§3.3.4 None≠0 同门)。
             from sr_od.application.currency_war.obs.cw_shop_refresh_obs import (
-                read_shop_refresh_price,
+                read_shop_refresh_button,
             )
-            price = read_shop_refresh_price(ctx, screen)
-            if price is not None:
-                bs.observe(bs.shop_refresh_cost, int(price), sig=_sig_read)
+            _btn = read_shop_refresh_button(ctx, screen)
+            if _btn.free is not True and _btn.price is not None:
+                bs.observe(bs.shop_refresh_cost, int(_btn.price), sig=_sig_read)
             else:
                 bs.carry(bs.shop_refresh_cost, frame=frame, sig=_sig_carry)
         # —— 开局域/持卡/环境镜像(迁移批次二,§3.1/§3.4;任务书件 8)——
