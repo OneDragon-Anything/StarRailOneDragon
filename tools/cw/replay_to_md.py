@@ -1779,12 +1779,34 @@ def _render_pivot(rounds: list[dict[str, Any]], archive: dict[str, Any],
     return parts
 
 
+def _match_final_cw4_counters(archive: dict[str, Any]) -> Any:
+    """新档案显影位读取:endgame.match_final.final.cw4_counters(W4 流删
+    后局终级全键聚合的唯一档案显影位,装配端自局终行载荷纯读透传)。"""
+    endgame = archive.get('endgame')
+    match_final = (endgame.get('match_final')
+                   if isinstance(endgame, dict) else None)
+    final = (match_final.get('final')
+             if isinstance(match_final, dict) else None)
+    return (final.get('cw4_counters')
+            if isinstance(final, dict) else None)
+
+
 def _render_counters(archive: dict[str, Any], gaps: GapLog) -> list[str]:
-    """armed 与拒因分键统计(cw4_counters 有则渲染;None=无计数流)。"""
+    """armed 与拒因分键统计(cw4_counters 有则渲染;None=无计数载体)。
+
+    载体两代(retirement.md §3 定谳落码形态/W4 流删):旧档案 = 顶层
+    ``cw4_counters``(流装配,存量只读);新档案顶层键已拆,局终级全键
+    聚合显影于 ``endgame.match_final.final.cw4_counters``——顶层缺键时
+    回落该显影位,维持「局终快照→档案→复盘渲染」可见性链(W4 审计
+    N3:新显影位此前在判读工具零读者)。None 与空 dict 分型语义两代一致。
+    """
     parts = ['### armed 与拒因分键统计(cw4_counters 行为观测计数)', '']
     counters = archive.get('cw4_counters')
     if counters is None:
-        gaps.miss('cw4_counters(无计数流:本批改动前落的局/流缺失)')
+        counters = _match_final_cw4_counters(archive)
+    if counters is None:
+        gaps.miss('cw4_counters(无计数载体:旧档案无计数流/'
+                  '新档案局终行无策略载体)')
         parts += [MISSING, '']
         return parts
     if not isinstance(counters, dict):
