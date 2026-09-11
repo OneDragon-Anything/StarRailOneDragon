@@ -245,6 +245,36 @@ class CwOpTools(SrOperation):
         log.info('[cw-tools][fact] tool=%s target=%s outcome=%s '
                  'removed=%s added=%s', tool, target, outcome, removed, added)
 
+    def _apply_tool_effect_write(self, session, plan: ToolDragPlan) -> None:
+        """装备写端·工具执行写端分派(T-70 生产接线;载体 =
+        cw_affix_effects.apply_tool_execution_write,指定挂点 = 工具拖拽
+        回执点,T-63 交付申报):消费确认(consumed)回执 → 按申报表
+        EQUIP_WRITE_SIDES 执行效果写端。现役可准入两件的落点:冶金炉 =
+        负写端观察收口(本口零写留证)/特权赋予卡 = 库存腿(target = 被
+        变换的进阶成品)确定性变换直写;投影仪/令牌判据面 fail-closed 永
+        不进回执。两面对照分工(防双写):本口只管**效果**写端,消耗品 −1
+        与目标件消失的 op 基础面不入字段(现役消费事实 = 日志面,字段真值
+        由下一观察覆盖)。best-effort:分派失败不阻塞工具执行主链(与登记
+        挂点同纪律)。"""
+        if session is None:
+            return
+        try:
+            from sr_od.application.currency_war.kernel.cw_affix_effects import (
+                apply_tool_execution_write,
+            )
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+            )
+            report = apply_tool_execution_write(
+                board_state_of(session), plan.tool,
+                target_equip_name=plan.target,
+                frame=f'tool_{plan.tool}')
+            log.info('[cw-tools][effect-write] tool=%s side=%s leg=%s '
+                     'performed=%s detail=%s', report.tool, report.side,
+                     report.leg, report.performed, report.detail)
+        except Exception as e:  # noqa: BLE001  效果写端失败不阻塞执行链
+            log.warning('[cw!][tools] 工具效果写端分派失败(不阻塞): %s', e)
+
     def _exec_plan(self, plan: ToolDragPlan) -> tuple[str, list[str], list[str]]:
         """单计划执行:drag → 现读对拍 → (outcome, removed, added)。"""
         assert plan.tool_pos is not None and plan.target_pos is not None
@@ -320,6 +350,9 @@ class CwOpTools(SrOperation):
             if outcome == 'consumed':
                 log.info('[cw-tools] %s→%s 消费成功 removed=%s added=%s',
                          plan.tool, plan.target, removed, added)
+                # 消费回执 = 工具效果写端分派挂点(T-70 接线,回执事实 =
+                # consumed;效果写端与 op 基础行为两面对照,见方法注释)。
+                self._apply_tool_effect_write(_sess, plan)
             elif outcome == 'partial':
                 log.warning('[cw!][tools] tool_partial_consume %s→%s '
                             'removed=%s added=%s', plan.tool, plan.target,

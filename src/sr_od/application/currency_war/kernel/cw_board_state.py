@@ -1834,6 +1834,13 @@ class BoardState:
             'values': values,
             'prov': prov,
             'effects': effects,
+            # 装备效果进度侧栏快照捕获(接线批追加;effects 逐条序列化不含
+            # 侧栏,遥测/重放面缺口由本行收口——T-63 交付申报面)。键 =
+            # 侧栏键 (装备名, 装备者) 序列化为「装备名|装备者」串(JSON
+            # 安全);空侧栏 = 空 dict,行形状稳定。
+            'equip_progress': {f'{k[0]}|{k[1]}': v
+                               for k, v
+                               in self.effects.equip_progress.items()},
             'frame_obs': self.frame_obs,
             'write_seq': self.write_seq,
             'node_hist_ord': self.node_hist_ord,

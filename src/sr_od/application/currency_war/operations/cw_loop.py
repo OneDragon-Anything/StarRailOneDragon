@@ -2147,6 +2147,53 @@ class CwLoop(SrOperation):
                         _bs_tick,
                         frame=f'p{_nd_tick.plane}-r{_nd_tick.round_num}'
                         if _nd_tick is not None else '')
+                    # 装备写端·节点边界金结算(T-70 生产接线;载体 =
+                    # settle_node_boundary_gold,指定挂点 = 备战分支
+                    # advance_node 点,T-63 交付申报):轮首收入三支
+                    # (cw_economy.round_start_income 单一源)+ 装备贡献
+                    # (财富现读现算;宝钻 = 逐件进度载体缺位,透传 0 保守
+                    # 零授予,T-51 缺口申报维持)合并单次金面 write_logic,
+                    # live 写端收口——值随后受备战帧观察覆盖辖,失配 =
+                    # 推算 bug(设计 §2.3)。保守闸:最近结算败局(killed
+                    # =False)或结算/连胜不可知时整拍跳过——败补口径
+                    # (ADR-0623 决策3)与开局轮首入账待实机实证,该窗维持
+                    # 观察覆盖兜底(与接线前零行为差);金未读载体自跳。
+                    # 倍率/息修饰 = aggregate_economy 聚合链(载体 docstring
+                    # 指派归接线批的调用方契约)。best-effort 同本块纪律。
+                    if self.ctx.cw_match is not None:
+                        from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                            settle_node_boundary_gold,
+                        )
+                        from sr_od.application.currency_war.kernel.cw_investments import (
+                            aggregate_economy,
+                        )
+                        _sett_nb = _bs_tick.settlement.value
+                        _streak_nb = _bs_tick.streak.value
+                        if (_nd_tick is not None
+                                and _sett_nb is not None
+                                and _sett_nb.killed is True
+                                and _streak_nb is not None):
+                            _agg_nb = aggregate_economy(list(getattr(
+                                self.ctx.cw_match.session,
+                                'active_strategies', None) or []))
+                            _nb = settle_node_boundary_gold(
+                                _bs_tick,
+                                plane=_nd_tick.plane,
+                                round_num=_nd_tick.round_num,
+                                node_type=_nd_tick.kind,
+                                streak=int(max(0, _streak_nb)),
+                                win_reward_mult=_agg_nb.win_reward_mult,
+                                interest_flat=_agg_nb.interest_flat_per_node,
+                                interest_cap=_agg_nb.interest_cap_override,
+                                diamond_gold=0,
+                                frame=f'p{_nd_tick.plane}-r{_nd_tick.round_num}'
+                                if _nd_tick is not None else '')
+                            if _nb.written:
+                                log.info(
+                                    '[cw-loop] 节点边界金结算 logic 写入'
+                                    '(branch=%s total=%s=收入%s+财富%s+宝钻%s)',
+                                    _nb.branch, _nb.total, _nb.income_total,
+                                    _nb.wealth_gold, _nb.diamond_gold)
                 project_effect_capacity(_bs_tick)
             except Exception as e:   # noqa: BLE001  观测面失败不阻塞
                 log.warning(f'[cw-loop] 效果账本 tick 失败(不阻塞): {e}')
