@@ -82,6 +82,29 @@ class CwEntryExit(SrOperation):
         if self._ocr_click_pc_alt(screen, '返回货币战争', lcs_percent=0.8):
             return self.round_wait(wait=2)
 
+        # 结算-失败 步骤1(战败演出未完帧):「挑战结束+挑战进度+点击空白加速」
+        # 同屏,「前往结算」尚未出现——旧版全分支 miss 落尾部分支连点右上 X,
+        # 演出自动完成前 >10 轮即有界 fail 交外层(退局链实录缺陷,真帧
+        # 存档 sr-od-test/screens/货币战争-结算-失败/轮败-点击空白加速.webp)。识别 = 双 area 判定:标识-挑战进度
+        # (战败独有 id_mark)+ 提示-点击空白加速(步骤1 独有,演出完即被
+        # 「前往结算」按钮同槽顶替)。必须 area 判定而非全屏 OCR:位面过渡屏
+        # 「点击空白处继续」与本词共享子序列 4/6(LCS 0.67 过默认阈值),区分
+        # 全靠 rect 不相交(其提示 y930 起,本提示 rect y≤922),判据见
+        # docs/game/screens/currency_war_settlement_fail.md「状态流转」。
+        # 动作 = 点「货币战争-位面过渡/区域-空白点击」中心(1505,950):该坐标
+        # 的建档单一源,对局内主路径 CwScreenBattleWait.BLANK 同 Rect 在本结算
+        # 族帧上实证加速有效(右下真空档,避开中央演出元素)。
+        # 推进与「继续挑战」分支同型:点击即 round_wait;演出完成提示消失后由
+        # 上方「前往结算」分支接管,演出自然完成兜底(提示态非持久,无永动面)。
+        if (self.round_by_find_area(screen, '货币战争-结算-失败',
+                                    '标识-挑战进度').is_success
+                and self.round_by_find_area(screen, '货币战争-结算-失败',
+                                            '提示-点击空白加速').is_success):
+            if self._click_screen_area_center('货币战争-位面过渡', '区域-空白点击'):
+                log.info('[cw-exit] 结算-失败步骤1 → 点空白加速')
+                return self.round_wait(wait=2)
+            return self.round_fail('区域-空白点击 area 缺失,步骤1 加速无法发起')
+
         # 备战/对局中(无放弃提示)→ 点门形「退出对局」图标弹中断挑战弹窗
         # r317:「备战阶段」旧裸 OCR 必须收紧 lcs=0.8(find_by_ocr 直接 LCS 匹配
         # (无 difflib 前置过滤),默认 0.5 时在投资策略屏误命中「返回备战界面」)
