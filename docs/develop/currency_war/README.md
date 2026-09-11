@@ -24,8 +24,7 @@
 
 ### [design/](design/) —— 系统组件设计件
 - [统一观察架构-画面op基类设计](design/统一观察架构-画面op基类设计.md) / [设计-C1直通核心入口](design/设计-C1直通核心入口.md)
-- BoardState-数据结构设计(统一 state 容器数据结构与画面字段规格)已迁为迭代设计件(寿命=迭代):
-  `docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md`(正本入口=game_state/README.md)
+- BoardState-数据结构设计(统一 state 容器数据结构与画面字段规格):正本入口 = [game_state/README.md](game_state/README.md)(总纲;字段级完整规格在其 [fields.md](game_state/fields.md))
 
 ### [decisions/](decisions/) —— 决策日志(ADR,一个决策一文件;INDEX 索引)
 

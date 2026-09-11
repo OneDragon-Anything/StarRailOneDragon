@@ -149,10 +149,8 @@ SOURCE_AFFIX: str = 'affix'
 
 # ===== 板面重写语义词表(BattlefieldEffect.board_rewrite 取值;防散落字符串)=====
 # 在册条目 = 全员晋升/人力重组(cw_investments.STRATEGY_EFFECTS,官方文
-# cw_invest_data.py:67/:68);写入归属两行单一源 = BoardState 数据结构设计 §5
-# (docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/
-# details/BoardState-数据结构设计.md,迭代期详设;持久正本 =
-# docs/develop/currency_war/game_state/effect-domain.md §8 同名条)。
+# cw_invest_data.py:67/:68);写入归属两行单一源 =
+# docs/develop/currency_war/game_state/effect-domain.md §8 同名条(全员晋升/人力重组)。
 BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
                                                         # 高 1 费随机角色(最大 5 费)
 BOARD_REWRITE_SELL_ALL: str = 'sell_all'                # 全场出售+再发牌:清场退款,

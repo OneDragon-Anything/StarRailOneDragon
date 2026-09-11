@@ -1417,8 +1417,10 @@ def _track(ist: IntentionState, comp_name: str) -> LineTrack:
     return ist.tracks[comp_name]
 
 
-# ===== 锁线断头观测分键(纯观测件;设计出处 = 锁线断头 P2 定向通道
-# 设计稿 §6 分键清单(原始件已灭失,2026-09-12 清理))=====
+# ===== 锁线断头观测分键(纯观测件;设计语义 = 锁线断点按断点位置分键的
+# 定向观测,分键清单 = 下行前缀全集逐键注。原锁线断头 P2 定向通道设计稿
+# 未入库已灭失(原件名 lock_path_p2_channel_design/DESIGN.md);语义存档 =
+# math_proofs P65-P67 与 proofs/p65-promote-candidate-set-reachability.md)=====
 # 四分键禁合并为单一「锁线失败」键(设计稿 §6 断点定位粒度确认);全部
 # 只承归因不作目标值——42 跳对照警示:有锁对照批 hp 中位反而 0.0,锁定率
 # 与结局无单调关系,禁入验收通过线禁作优化目标。零行为守卫:观测位只
