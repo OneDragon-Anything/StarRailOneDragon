@@ -391,25 +391,47 @@ def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
 def deploy_target_sets(target_comp: object | None,
                        transition_framework: str = '',
                        ) -> tuple[set[str], set[str]]:
-    """deploy 围栏 target 集装配(r70 双轨口径单一源)。
+    """deploy 围栏 target 集装配(装配单一源的**围栏视图 helper**;案 B)。
 
-    返回 ``(target_factions, fw_carry)``:comp 阵营 ∪ 过渡框架阵营;
-    fw_carry = 框架(或通用)非 drop 件(先框架非 drop + 通用 carry,
-    散件 drop 不认)。消费面 = CwOpDeploy 执行侧与 mandate 发射侧
-    ``select_deployments``/``has_deployable`` 的同参装配——发射侧
+    视图归属定谳(.debug/progress/2026-09-11-cw-clear-run/定谳记录-deploy围栏.md
+    第六节:围栏目标视图 = 成型面装配语义,本函数退出独立第二装配入口地位):
+    - 双轨期(``transition_framework`` 非 ''):配方伪 comp all_factions
+      (``cw_recipe.recipe_comp`` 单一源;「过渡=配方即方向」,终局 comp 特有键
+      不混入——方向混装移除是定谳申报的行为差)。框架方向键面完备性由配方
+      数据承载(仙舟配方持续伤害键,B2 修正条件),**显式 ``∪ FRAMEWORK_
+      FACTIONS`` 退役**(并集语义只许配方一处,双源即分裂);
+    - 定型/无框架:终局 comp all_factions(= factions ∪ flex_factions,
+      与装配单一源 assemble_swap_plan_inputs 的 target 视图同链同值;
+      flex 键入场是定谳申报行为差③)。
+    返回 ``(target_factions, fw_carry)``:fw_carry = 框架(或通用)非 drop 件
+    (先框架非 drop + 通用 carry,散件 drop 不认;两分支同式,零漂移面)。
+    信任边界:``fw`` 非 '' 即双轨期信号(与 ``cw_recipe.decision_target`` 的
+    committed 门同向;定型后框架无写端=休眠,不存在 committed 携 fw 帧)。
+    防御退型:框架无配方注册(理论态)/comp 无 all_factions 属性(鸭子型
+    comp)→ 逐位退旧语义,零漂移。消费面 = CwOpDeploy 执行侧与 mandate
+    发射侧 ``select_deployments``/``has_deployable`` 的同参装配——发射侧
     抑制谓词(dd-037)接线后两侧各写一份即双源,禁复制。
     """
-    tgt = set(getattr(target_comp, 'factions', None) or ())
     fw = transition_framework or ''
     fw_carry: set[str] = set()
     if fw:
+        from sr_od.application.currency_war.kernel.cw_recipe import recipe_comp
         from sr_od.application.currency_war.kernel.cw_transition import (
             FRAMEWORK_FACTIONS,
             TRANSITION_PACK,
         )
-        tgt |= set(FRAMEWORK_FACTIONS.get(fw, ()))
+        rc = recipe_comp(fw)
+        if rc is not None:
+            tgt = set(rc.all_factions)
+        else:
+            # 未注册框架(理论态):退旧并集语义(零漂移保守侧)
+            tgt = set(getattr(target_comp, 'factions', None) or ()) \
+                | set(FRAMEWORK_FACTIONS.get(fw, ()))
         fw_carry = {n for n, (f, t) in TRANSITION_PACK.items()
                     if (f == fw or f == '通用') and t != 'drop'}
+    else:
+        tgt = set(getattr(target_comp, 'all_factions', None)
+                  or getattr(target_comp, 'factions', None) or ())
     return tgt, fw_carry
 
 
@@ -1458,6 +1480,12 @@ def assemble_swap_plan_inputs(
         transition_domain`` 同源)——为什么可钉:域谓词含 board_full 腿,
         卖出后帧 board_full 翻假,现算必丢收窄辖域,而收窄辖域是计划
         时点事实;钉定仍经本装配函数单一传导收窄(禁消费位内联第二份)。
+        非 m1p 显式动作轮推广原则(定谳记录-deploy围栏.md 攻击线 B6,
+        第六节 4 条):同一显式轮内,轮首/事务决议时点与轮末残余补部署
+        **同吃同一域事实**(快照在决议时点取,禁补部署侧对卖出后帧现算
+        ——与 m1p 局 18 实证「现算丢收窄辖域」同形);本参数即该原则的
+        m1p 接线形态,非 m1p 显式轮残余 fill 接线时复用同参同源钉定,
+        禁在消费位另立第二快照载体。
     """
     if state is None and cap is None:
         return None

@@ -30,8 +30,15 @@ from sr_od.application.currency_war.kernel.cw_transition import TRANSITION_PACK
 # form_tiers:仙舟 = 3仙舟(攻略口径 3仙舟+2DOT 的主羁绊档;DOT 由 flows 自然带);
 #             列车 = 4列车(数据口径主流档);量子 = 3量子+2贝。
 _RECIPES: dict[str, Comp] = {
+    # 仙舟 factions 补「持续伤害」(deploy 围栏视图定谳 B2 修正条件,依据 =
+    # .debug/progress/2026-09-11-cw-clear-run/定谳记录-deploy围栏.md 攻击线 B2):
+    # 框架 drop 件卡芙卡(星核猎手)/椒丘(狼狩)注册表均无仙舟阵营,其围栏
+    # tgt 身份只系于 FRAMEWORK_FACTIONS['仙舟'] 的持续伤害键;配方键面不完备时,
+    # 以配方为围栏视图的路径(装配单一源)会把自家 drop 件挤出 tgt 桶(r70
+    # 「框架牌不上场被卖」回归向量)。键面补全后框架并集语义被配方吸收,
+    # deploy_target_sets 的显式 ∪ 退役(装配单一源纪律:并集语义只许一处)。
     '仙舟': Comp(
-        name='过渡·仙舟配方', factions=['仙舟'],
+        name='过渡·仙舟配方', factions=['仙舟', '持续伤害'],
         core_chars=[n for n, (fw, tier) in TRANSITION_PACK.items()
                     if fw == '仙舟' and tier in ('carry', 'partial')],
         form_tiers={'仙舟': 3},
