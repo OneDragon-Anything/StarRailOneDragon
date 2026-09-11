@@ -1491,6 +1491,30 @@ class PrepActionExecutor:
                     if self._op.round_by_find_area(_post, _bscr, _banchor).is_success:
                         return False, f'出战被拒:弹窗 {_banchor}(标识消失为弹窗污染,非转移)'
                 log.info('[cw][battle] 出战成功 → 备战标识消失(无拦截弹窗)')
+                if _btn_area == '按钮-跳过':
+                    # 免战牌跳过递减挂点(迁移批次三,设计 §3.2.19 载体归一
+                    # 另一半/§8.7 批次三件 5):正本 = effect_inventory
+                    # .remaining_uses(§5.1),跳过**执行落地**(备战标识消失
+                    # 验证通过)= 次数递减,归零移除。与登记挂点解耦:未登记
+                    # (登记面缺位的局)→ consume_use 返 None 零动作,不炸
+                    # 发射回执。best-effort 记录面(与升级挂点同纪律)。
+                    try:
+                        from sr_od.application.currency_war.kernel.cw_board_state import (
+                            board_state_of,
+                        )
+                        from sr_od.application.currency_war.kernel.cw_investments import (
+                            STRATEGY_EFFECTS,
+                        )
+                        _mz = getattr(self._ctx, 'cw_match', None)
+                        _sz = getattr(_mz, 'session', None) if _mz is not None else None
+                        _spec_z = STRATEGY_EFFECTS.get('免战牌')
+                        if _sz is not None and _spec_z is not None:
+                            _left = board_state_of(_sz).effects.consume_use(
+                                _spec_z.id)
+                            log.info(f'[cw][battle] 免战牌跳过落地 → '
+                                     f'次数递减(余 {_left})')
+                    except Exception as e:   # noqa: BLE001  记录面不阻塞
+                        log.warning(f'[cw][battle] 免战牌递减记录失败(不阻塞): {e}')
                 return True, '出战成功'
         return False, '出战 click 未落地(6×0.5s 轮询+失焦守卫后仍在备战)'
 
