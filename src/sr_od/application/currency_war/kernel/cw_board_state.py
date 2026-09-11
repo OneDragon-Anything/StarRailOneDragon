@@ -666,6 +666,16 @@ class MatchFinal:
     streak: int | None = None
     duration_s: float | None = None
     backfilled: bool = False
+    cw4_counters: dict[str, int] | None = None
+    # 策略行为观测计数局终聚合(R5 W4 键收编载体,ADR-0650;键全集登记
+    # 单一源 = 封闭锁 sr-od-test test_cw4_key_closure,底稿 = W4 逐键审计
+    # 256 字面+16 闭族+9 开放族,全部=策略行为键,零效果域键)。取值 =
+    # 调用方收口时点自策略 state 容器(mandate_v1 MandateState.cw4_counters)
+    # 现读;写口落载荷时浅拷贝一份(本结构不持有容器引用,后写不串)。
+    # None = 无策略载体/历史段补写无源(诚实缺省,判读按「无计数载体」
+    # 分型);空 dict = 局内真实零计数——两型可辨,沿旧流装配语义
+    # (match_archive v7 顶层字段同一分型契约,该流面已随 W4 退役)。
+    # 旧档案局终行缺本键 = W4 前数据,按缺键读。
 
 
 # ============================================================ 缺陷台账挂点(§2.3)
@@ -1252,6 +1262,7 @@ def write_match_final(bs: BoardState, *, final_type: str,
                       streak: int | None = None,
                       duration_s: float | None = None,
                       backfilled: bool = False,
+                      cw4_counters: dict[str, int] | None = None,
                       note: str = '') -> bool:
     """局终收口写口(局终域 **唯一写点**,渠道③ logic_hook 家族、
     actor=MatchClose;§3.6.1 runs 收编载体,表 3-3 局终域③格;持久裁定锚
@@ -1261,6 +1272,9 @@ def write_match_final(bs: BoardState, *, final_type: str,
       registry_fingerprint,模块级常量) + 终局快照 + 段级时长一次逻辑
       写入装配成单笔 :class:`MatchFinal` 载荷,经一次 ``_swap`` 落一行
       (行内全量 state = 终局快照,字段来源注记随快照行自带);
+    - ``cw4_counters`` = 策略行为观测计数局终聚合(R5 W4 键收编载体,
+      ADR-0650;载体语义/None 与空 dict 分型见 :class:`MatchFinal` 字段
+      注)。快照副本由调用方在收口时点现读传入,本写口不触策略容器;
     - **写前查重 = 段内幂等**(§3.6.2 终局防重读门 G12 收编,运行时控制面
       读口豁免类,载体 = 内存字段现读):本段已有终局行 → no-op 返 False;
     - **异常终局 = 补写形态**(G8):``backfilled=True`` 时版本 id 照常分配
@@ -1298,7 +1312,8 @@ def write_match_final(bs: BoardState, *, final_type: str,
         registry_fingerprint=_REGISTRY_FINGERPRINT,
         plane=plane, round_num=round_num, node_kind=node_kind,
         level=level, hp=hp, gold=gold, streak=streak,
-        duration_s=duration_s, backfilled=bool(backfilled))
+        duration_s=duration_s, backfilled=bool(backfilled),
+        cw4_counters=(dict(cw4_counters) if cw4_counters is not None else None))
     seq = bs.write_seq + 1
     sig = ChannelSig(family='logic_hook', actor='MatchClose', screen=None,
                      mode='compute', group_id=f'hook:MatchClose@{seq}')

@@ -1202,21 +1202,21 @@ class CwLoop(SrOperation):
         if _m is not None and getattr(_m.exec_state, 'bail_reason_counts', None):
             _m.exec_state.bail_reason_counts.pop(reason, None)
 
-    def _record_cw4_counters_snapshot(self) -> None:
-        """行为观测计数局终落盘(best-effort 观测旁路,失败不阻塞收口)。
+    def _cw4_counters_snapshot(self, session: Any) -> dict[str, int] | None:
+        """策略行为观测计数局终聚合快照(R5 W4 键收编载体,ADR-0650)。
 
-        把 ``ctx.cw_match.session.cw4_counters`` 快照追加进 replay 流
-        (``cw4_counters.jsonl``),由 match_archive 装配端归局进档案顶层
-        同名字段(v7)。无 match/session/计数 → 落空快照(与无流可区分)。
+        旧计数流写端已随 W4 流删退役(流文件名一并注销);局终级全键
+        聚合现归宿 = 局终域行载荷 ``MatchFinal.cw4_counters``(两收口
+        路径在 ``write_match_final`` 调用点现读传入)。取值 = 策略 state
+        容器(``strategy_state_of(session).cw4_counters``)的**浅拷贝**
+        (快照语义,防收口后策略侧续写串账);session 缺/容器未初始化
+        (策略未进 mandate_v1)→ None = 诚实缺省,与「零计数空 dict」
+        可辨。
         """
-        if self.ctx.cw_match is None:
-            return
-        try:
-            from sr_od.application.currency_war.telemetry import match_archive
-            match_archive.record_cw4_counters_from_match(
-                state.get_recorder().replay_dir, self.ctx.cw_match)
-        except Exception as e:   # noqa: BLE001  观测旁路,best-effort
-            log.warning('[cw][counters] 计数快照落盘失败(不阻塞): %s', e)
+        if session is None:
+            return None
+        counters = getattr(strategy_state_of(session), 'cw4_counters', None)
+        return dict(counters) if isinstance(counters, dict) else None
 
     # (收口终局行族 _run_has_outcome_at/_write_terminal_outcome_row 已随
     #  outcomes 流写入端退役删除——删除波 1,T-185 末轮补全面随流消亡;
@@ -1415,9 +1415,10 @@ class CwLoop(SrOperation):
         结算行,就是真局,必走收口。
 
         删除波 1:runs summary 写行与 outcomes 收口终局行(T-185)随旧流
-        写入端退役;本收口现役面 = cw4 计数快照(审计流保留)+ run 收口位
-        (跨局 run_id 重铸承接口)+ BoardState 局终归档(补遗流保留)+
-        档案装配。
+        写入端退役;W4 流删:cw4 计数流写面亦退役,局终级全键聚合改由
+        match_final 载荷携带(上方写点 cw4_counters=)。本收口现役面 =
+        match_final 收口行(含计数聚合)+ run 收口位(跨局 run_id 重铸
+        承接口)+ BoardState 局终归档(补遗流保留)+ 档案装配。
         """
         if self._summary_written:
             return
@@ -1432,10 +1433,6 @@ class CwLoop(SrOperation):
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
             _final_hp = self._last_true_hp(_st.hp if _st is not None
                                            and _st.hp is not None else 0)
-            # 行为观测计数落盘(先于 run 收口——计数行 ts 须落局时间窗
-            # 内,晚于 end_ts 会掉窗丢计数;契约见 match_archive.record_-
-            # cw4_counters_snapshot 注释)。best-effort,不阻塞收口。
-            self._record_cw4_counters_snapshot()
             # match_final 局终收口行(W3 在线接线,非正常终局形态;判定序
             # 停止>败局>plane==3>abnormal 与 close_run result 同源;写口
             # 段内幂等 G12,best-effort;先于 close_run 落局时间窗)。
@@ -1465,6 +1462,9 @@ class CwLoop(SrOperation):
                         gold=getattr(_st, 'gold', None) if _st is not None else None,
                         streak=getattr(_st, 'streak', None) if _st is not None else None,
                         backfilled=(_mf_type == 'abnormal'),
+                        # 策略行为观测计数局终聚合(R5 W4 键收编载体;
+                        # 收口时点现读快照,先于 close_run,聚合随时点真值)。
+                        cw4_counters=self._cw4_counters_snapshot(_mf_session),
                         note=('online:w75_stopped' if _stopped
                               else 'online:w75_abandoned'))
             except Exception as e:   # noqa: BLE001  观测旁路,不阻塞收口
@@ -2817,8 +2817,7 @@ class CwLoop(SrOperation):
                     # 在线判定面单一源 = resolve_final_type(判定序
                     # 停止>败局>plane==3 精确值>abnormal,与本地 won 判定
                     # 同口径);写口自带段内幂等查重(G12),best-effort
-                    # 不阻塞收口流转。先于 close_run(行 ts 落局时间窗,
-                    # 同 cw4 计数行时序契约)。
+                    # 不阻塞收口流转。先于 close_run(行 ts 落局时间窗)。
                     try:
                         from sr_od.application.currency_war.kernel.cw_board_state import (
                             board_state_of,
@@ -2844,6 +2843,10 @@ class CwLoop(SrOperation):
                                     if _outcome.final_hp else None),
                                 gold=getattr(_st, 'gold', None),
                                 streak=getattr(_st, 'streak', None),
+                                # 策略行为观测计数局终聚合(R5 W4 键收编
+                                # 载体;收口时点现读快照,先于 close_run)。
+                                cw4_counters=self._cw4_counters_snapshot(
+                                    self.ctx.cw_match.session),
                                 note='online:lobby_return')
                     except Exception as e:   # noqa: BLE001  观测旁路
                         log.warning('[cw][loop] match_final 收口行写入失败'
@@ -2852,8 +2855,6 @@ class CwLoop(SrOperation):
                     # close_run 零落盘,置跨局 run_id 重铸位)。B4 的 outcome
                     # 真值同源喂分配器;局终元数据 journal 归宿 = 局终域
                     # match_final 行(上方 W3 在线接线)。
-                    # 行为观测计数落盘(先于 run 收口,时序契约同上行收口路径)。
-                    self._record_cw4_counters_snapshot()
                     state.close_run(
                         result='win' if _outcome.won else 'loss',
                         plane_reached=_outcome.final_plane,
