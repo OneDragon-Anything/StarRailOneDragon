@@ -143,6 +143,33 @@ def obs_event_board() -> Any:
         return None
 
 
+def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
+    """缺陷台账 refs 的 journal ``(run_id,v)`` 锚构造(保留流 refs 迁移单一源)。
+
+    依据 = retirement.md §2 defect_ledger 行「裁保留时 refs 改指 journal
+    ``(run_id,v)`` 键」(候裁 4 定谳保留专用流后的消费面迁移,R5 W7):旧流
+    (decisions/outcomes/obs_conflicts)写面已随删除波 1 退役,refs 指旧流行
+    = 下钻扑空;journal 行行自足(每行内嵌当时完整 state 快照),
+    ``(run_id, v)`` 唯一定位一行。锚取缺陷记录时刻现版 ``current_version()``
+    (读口不占版本)= 最近一行,其内嵌 state 供下钻对账;bypass 场景该值
+    恰为刚写入的 obs_event 证据行版本。
+
+    锚缺媒体(无 BoardState 供给/局外/零版本)时省略,refs 允许空(诚实
+    缺失);extra = 调用方语义键(arbitration 族 provenance 标签等),None 项
+    过滤。本函数在 kernel 出口模块 = 四域(obs/kernel/operations/telemetry)
+    调用点共一形态,禁散写第二套键格式。
+    """
+    bs = obs_event_board()
+    version = int(bs.current_version()) if bs is not None else 0
+    rid = current_run_id()
+    out: list[dict[str, str]] = []
+    if rid and version > 0:
+        out.append({'stream': 'journal',
+                    'key': f'run_id={rid}|v={version}'})
+    out.extend(e for e in extra if e)
+    return out
+
+
 def andon_exit_installed() -> bool:
     """安灯出口是否已注入(未注入=停线三要素不落 flag 仅停线;缺省关纪律)。"""
     return _write_l0_andon_flag is not None
@@ -190,10 +217,11 @@ def record_back_layout_divergence(formula_n: int, cv_n: int,
         auto_resolved=True,
         verdict=('留证-布局双通道分歧,已按三信号梯裁决;'
                  '本键计数=不一致率,复现帧对拍 cv_back_slots'),
-        refs=[{'stream': 'arbitration', 'key': f'source={source}'}],
+        refs=journal_refs({'stream': 'arbitration',
+                           'key': f'source={source}'}),
         reader_source=str(source),
-        note='布局档双通道仲裁分键(证据层见 obs_conflicts '
-             'back_layout_channel_conflict 行)')
+        note='布局档双通道仲裁分键(证据层 = journal obs_event arbitrate 行,'
+             'field=back_layout_channel_conflict 对账)')
 
 
 def record_back_layout_unknown(source: str = 'resolve_back_slots') -> None:
@@ -209,6 +237,8 @@ def record_back_layout_unknown(source: str = 'resolve_back_slots') -> None:
         auto_resolved=True,
         verdict=('留证-布局未知态(读类退 6 档基线,写类冻结止损;'
                  '频度锚点=15号稿 §7 批 B/C 验收)'),
-        refs=[{'stream': 'arbitration', 'key': f'source={source}'}],
+        refs=journal_refs({'stream': 'arbitration',
+                           'key': f'source={source}'}),
         reader_source=str(source),
-        note='布局未知态分键(证据层见 obs_conflicts back_layout 行)')
+        note='布局未知态分键(证据层 = journal obs_event arbitrate 行,'
+             'field=back_layout_unknown 对账)')

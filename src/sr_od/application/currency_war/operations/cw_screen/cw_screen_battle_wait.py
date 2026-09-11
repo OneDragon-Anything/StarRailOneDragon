@@ -66,6 +66,7 @@ from sr_od.application.currency_war.kernel.cw_performance import (
     HP_CONFIDENCE_THRESHOLD,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
+from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 from sr_od.application.currency_war.obs.cw_observation import read_phase_round
 from sr_od.application.currency_war.obs.cw_settlement_obs import (
     parse_progress_fill_ratio,
@@ -331,8 +332,9 @@ class CwScreenBattleWait(CwScreenOpBase):
                                 verdict='留证-结算屏真值覆盖 last-known',
                                 reader_source='settlement_vs_prep_round',
                                 gap_large=False, auto_resolved=True,
-                                refs=[{'stream': 'outcomes',
-                                       'key': f'plane={_plane}|round={_round}'}],
+                                # refs 旧挂点清理(W7 refs 迁移):outcomes
+                                # 流已退役,改指 journal (run_id,v) 锚。
+                                refs=journal_refs(),
                                 note='观测自检框架设计 §2.7:同轮双读不等留证;'
                                      '残留屏豁免')
                         _plane, _round = _scr
@@ -349,8 +351,9 @@ class CwScreenBattleWait(CwScreenOpBase):
                             verdict='留证-结算屏读数落后 last-known 判 OCR 假阳拒',
                             reader_source='settlement_vs_prep_round',
                             gap_large=False, auto_resolved=True,
-                            refs=[{'stream': 'outcomes',
-                                   'key': f'plane={_plane}|round={_round}'}],
+                            # refs 旧挂点清理(W7 refs 迁移):outcomes 流
+                            # 已退役,改指 journal (run_id,v) 锚。
+                            refs=journal_refs(),
                             note='观测自检框架设计 §2.7;残留屏豁免')
             # 披露面防御 getattr(strategy_state_of None 契约,ADR-0563 B4 划分线):
             # 异型状态对象字段缺席退 '?'(outcomes comp_tag 缺席语义,非行为面)

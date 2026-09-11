@@ -38,6 +38,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     pad_bench,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
+from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 from sr_od.application.currency_war.obs.cw_observation import (
     PHASE_PREP_SHOP_OPEN,
     ensure_portrait_templates,
@@ -1128,9 +1129,10 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 与身份回读是留证级。失败路径无 return/retry/屏蔽,买牌照常收工。
         with contextlib.suppress(Exception):
             _occ = bench_buy_occupancy_ok(len(ledger.bought_names), len(_new_slots))
-            _bench_refs = [{'stream': 'decisions',
-                            'key': (f'plane={state.plane}|round={state.round_num}'
-                                    f'|bought={len(ledger.bought_names)}')}]
+            # refs 旧挂点清理(W7 refs 迁移):decisions 流已随删除波 1
+            # 退役,改指 journal (run_id,v) 锚(plane/round/bought 数已在
+            # 行参/expected/observed 内联)。
+            _bench_refs = journal_refs()
             if _occ is False:
                 _occ_shot = None
                 with contextlib.suppress(Exception):   # 截图 best-effort

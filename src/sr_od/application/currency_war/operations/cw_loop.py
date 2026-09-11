@@ -1,4 +1,3 @@
-import json
 import time
 from collections.abc import Callable
 from typing import Any, ClassVar
@@ -1361,38 +1360,10 @@ class CwLoop(SrOperation):
         super().after_operation_done(result)
         self._write_terminal_summary_if_needed()
 
-    def _archive_board_state(self, terminal: str) -> None:
-        """局终 BoardState 归档(迁移批次二;设计 §6.2 时序 = **先于连刷
-        重建**,§8.8 两键形态 bs_prov/bs_extra——bs_pending 挂起预期摘要键
-        已随 ADR-0651 两态制退役)。
-
-        双终局点接线:①正常终局(win/loss,回大厅收口、cw_match 清 None
-        前);②非正常收口(stopped/abandoned,_write_terminal_summary_if_
-        needed)。live 流 = telemetry live 目录 ``board_state_archive.jsonl``
-        (与 decisions/outcomes 同 replay_dir);行附 terminal 终局型供判读
-        分桶。session 已销毁(假局守卫路径)→ 无从归档,静默跳过。
-        best-effort:归档失败不阻塞终局流转。
-        """
-        try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
-                archive_snapshot,
-                board_state_of,
-            )
-            _m = self.ctx.cw_match
-            _sess = getattr(_m, 'session', None) if _m is not None else None
-            if _sess is None:
-                return
-            row = archive_snapshot(board_state_of(_sess))
-            row['terminal'] = terminal
-            _path = (state.get_recorder().replay_dir
-                     / 'board_state_archive.jsonl')
-            _path.parent.mkdir(parents=True, exist_ok=True)
-            with _path.open('a', encoding='utf-8') as f:
-                f.write(json.dumps(row, ensure_ascii=False, default=str)
-                        + '\n')
-            log.info('[cw][loop] BoardState 局终归档落盘(%s)', terminal)
-        except Exception as e:   # noqa: BLE001  归档 best-effort,不阻塞
-            log.warning('[cw][loop] BoardState 局终归档失败(不阻塞): %s', e)
+    # (BoardState 局终归档写点 _archive_board_state 已随 R5 W7 退役删除
+    #  ——补遗流 board_state_archive 写面下线,能力归宿 W2 已落位
+    #  (bs_prov=快照来源注记/局终速查=match_final 行,retirement.md §2);
+    #  存量数据文件归档只读(不删不写,裸读考古,r5-migration-plan §4-6)。)
 
     def _write_terminal_summary_if_needed(self) -> None:
         """局终/中止收口(幂等:_summary_written 守卫)。
@@ -1408,9 +1379,11 @@ class CwLoop(SrOperation):
 
         删除波 1:runs summary 写行与 outcomes 收口终局行(T-185)随旧流
         写入端退役;W4 流删:cw4 计数流写面亦退役,局终级全键聚合改由
-        match_final 载荷携带(上方写点 cw4_counters=)。本收口现役面 =
-        match_final 收口行(含计数聚合)+ run 收口位(跨局 run_id 重铸
-        承接口)+ BoardState 局终归档(补遗流保留)+ 档案装配。
+        match_final 载荷携带(上方写点 cw4_counters=)。W7:补遗流
+        board_state_archive 写点(_archive_board_state)退役,存量
+        归档只读(不删不写,裸读考古;r5-migration-plan §4-6)。本收口现役
+        面 = match_final 收口行(含计数聚合)+ run 收口位(跨局 run_id
+        重铸承接口)+ 档案装配。
         """
         if self._summary_written:
             return
@@ -1468,10 +1441,6 @@ class CwLoop(SrOperation):
                 final_hp=int(_final_hp or 0),
                 notes=('stopped:operation 收口(W75)' if _stopped
                        else 'abandoned:operation 异常收口(W75)'))
-            # BoardState 局终归档(迁移批次二;§6.2 先于连刷重建——session
-            # 仍存活,本收口后进程退出/下局 establish_new_match 重建)。
-            self._archive_board_state(
-                'stopped' if _stopped else 'abandoned')
             self._summary_written = True
             log.info('[cw][loop] 局终 summary 收口:%s p%s-r%s hp=%s',
                      'stopped' if _stopped else 'abandoned',
@@ -2896,10 +2865,8 @@ class CwLoop(SrOperation):
                         rounds_survived=_outcome.final_round,
                         final_hp=self._last_true_hp(_outcome.final_hp),
                         notes='auto')
-                    # BoardState 局终归档(迁移批次二;§6.2 先于连刷重建——
-                    # cw_match=None 清引用前,session/BoardState 仍存活)。
-                    self._archive_board_state(
-                        'win' if _outcome.won else 'loss')
+                    # (BoardState 局终归档调用点已随 W7 写点退役删除——
+                    #  归档只读声明见 _write_terminal_summary_if_needed。)
                     self._summary_written = True
                     # 按局存档装配(终局旁路,零运行时侵入):挂在局终收口
                     #(原 on_match_end 调用点之后同一生命周期;该钩子已随

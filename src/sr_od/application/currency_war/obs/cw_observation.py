@@ -631,6 +631,7 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
         try:
             # 分包期 4:落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
             from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+                journal_refs,
                 record_defect,
             )
             record_defect(
@@ -644,8 +645,11 @@ def verify_node_type_votes(ctx: SrContext, screen: MatLike,
                          '复现升 L0 由安灯通道承接'),
                 reader_source='node_ledger_three_vote',
                 gap_large=False,
-                refs=[{'stream': 'decisions', 'key': f'plane={plane}|round={round_num}'}],
-                note='节点类型台账制:表=权威(位面详情采集+投资环境后重读两写点),'
+                # refs 旧挂点清理(W7 refs 迁移):decisions 流已退役,
+                # 改指 journal (run_id,v) 锚(plane/round 已在行参内联)。
+                refs=journal_refs(),
+                note='节点类型台账制:表=权威(位面详情采集+投资环境后重读两写点,'
+                     '证据=journal 行内嵌 state),'
                      '逐帧三票降为校验;boss 轮次门等语义门不变')
         except Exception:   # noqa: BLE001  观测 best-effort,不阻塞对局
             pass

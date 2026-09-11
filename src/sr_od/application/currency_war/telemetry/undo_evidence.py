@@ -9,13 +9,17 @@ record 模式,禁第二套机制)。
   流程审计面;写入点 = BuyCard 执行成功点)。
 
 既有覆盖(复用不另建):m2_retry_exhausted / bench_full_buy_abandon /
-shop_churn_pair_buy 等 cw4_counters 族 + decisions 行 drought 字段
-(重置/累计值本身可回放);策略桶受包依赖矩阵限制(strategies→telemetry
+shop_churn_pair_buy 等 cw4_counters 族 + 干旱当值内联本证据行
+expected/observed(decisions 行 drought 字段载体已随删除波 1 退役);
+策略桶受包依赖矩阵限制(strategies→telemetry
 非合法边),店侧熔断 veto 经 cw4_counters 分键承载,证据写入点收敛在
 operations 执行侧。
 """
 from __future__ import annotations
 
+from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+    journal_refs,
+)
 from sr_od.application.currency_war.telemetry import defects
 
 
@@ -53,7 +57,9 @@ def record_drought_buy_no_reset(*, member: str, system: str,
         expected=f'{system} 买入重置干旱计数',
         observed=(f'买 {member} 后 pair_drought[{system}]={drought} '
                   '未重置(重置单一源=商店可见性)'),
-        refs=[{'stream': 'decisions',
-               'key': f'pair_drought|{system}|{drought}|{member}'}],
+        # refs 旧挂点清理(W7 refs 迁移):decisions 流写面已随删除波 1
+        # 退役,干旱计数现役载体 = 策略 state 容器(值已在本行 expected/
+        # observed 内联),refs 改指 journal (run_id,v) 锚。
+        refs=journal_refs(),
         note='撤销操作证据留存:买入不重置,干旱解锁流程审计面',
         gap_large=False, severity=defects.SEVERITY_L2_RECORD)

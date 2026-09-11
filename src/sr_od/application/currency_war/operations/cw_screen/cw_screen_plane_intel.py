@@ -659,6 +659,9 @@ class CwScreenPlaneIntel(CwScreenOpBase):
                 or not detail_slots or self._prep_plane != self._cur_plane + 1):
             return
         self._prep_cross_done = True
+        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+            journal_refs,
+        )
         from sr_od.application.currency_war.telemetry import defects as cw_telemetry
         _prep = [getattr(s, 'node_type', None) for s in self._prep_node_types]
         _det = [getattr(s, 'node_type', None) for s in detail_slots]
@@ -679,8 +682,9 @@ class CwScreenPlaneIntel(CwScreenOpBase):
                          '互证:备战彩色/详情彩带读法域不同)'),
                 reader_source='prep_vs_plane_detail_seq',
                 gap_large=False,
-                refs=[{'stream': 'decisions',
-                       'key': f'plane={self._prep_plane}'}],
+                # refs 旧挂点清理(W7 refs 迁移):decisions 流已退役,
+                # 改指 journal (run_id,v) 锚(plane 已在行参内联)。
+                refs=journal_refs(),
                 note='观测自检框架设计 §1 行11:备战帧与位面详情帧序列对拍;'
                      'boss 槽/未识别位自然跳过不判')
         _log.info('[cw-plane-intel] 节点序列互证不一致(位面%d)位次%s → 台账留证',

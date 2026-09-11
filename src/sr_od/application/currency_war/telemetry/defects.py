@@ -11,6 +11,7 @@ from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
     SEVERITY_L0_ANDON,
     SEVERITY_L1_ALERT,
     SEVERITY_L2_RECORD,
+    journal_refs,
 )
 from sr_od.application.currency_war.telemetry import state as _telstate
 from sr_od.application.currency_war.telemetry.state import (
@@ -20,12 +21,14 @@ from sr_od.application.currency_war.telemetry.state import (
 )
 
 # ===== 统一缺陷台账(defect_ledger.jsonl;纯观测索引层,零行为变更)=====
-# 把散在 obs_conflicts(感知冲突)/ exec_events(执行失败)的缺陷口径归一:
-# 旧流是原始证据层保持原样,台账每行经 evidence.refs 指回原流行——审计先查
-# 台账,下钻再回原流。接线方式=在 obs_conflict / record_exec_event 写入点
-# 内部各加一行旁路(调用方零改动)。obs_conflicts 行内 run_id(`w603_telemetry_wiring/` 起)由
-# 唯一汇点 obs_conflict() 内部自取 current_run_id 补齐——历史行无此键
-# (读取端按「有键才过滤」容忍),join key 台账仍并行补齐。
+# 把散在观察冲突/执行失败的缺陷口径归一:台账每行经 evidence.refs 指回证据行
+# ——审计先查台账,下钻再回证据行。R5 W7 refs 迁移(retirement.md §2
+# defect_ledger 行,候裁 4 定谳):旧流(decisions/outcomes/obs_conflicts)
+# 写面已随删除波 1 退役,refs 统一改指 journal ``(run_id,v)`` 锚(构造
+# 单一源 = kernel.cw_telemetry_exit.journal_refs;无账本媒体时诚实省略)。
+# 证据行现役归宿 = journal obs_event arbitrate 行(field 对账);exec 失败
+# 旁路已随 exec_events 流退役消失(见文件尾注)。obs_conflicts 历史行内
+# run_id 由唯一汇点自取补齐——历史行无此键(读取端按「有键才过滤」容忍)。
 
 #: 分级三档(severity 写入端只给初判;离线可用 judge_severity 按演进后规则
 #: 重判,不重写历史)。判据(观测自检框架设计 §4,三条按序):
@@ -134,8 +137,8 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
     paddle 失读退化帧(paddle_n=None):单源 CV 行动(向板满侧),无
     paddle 真值 ⇒ gap 无差值语义——走 ``_DEGRADED`` 独立分键、gap 不填、
     不入逐次计数(退化帧不污染真分歧率,也不触发持续显影)。
-    证据层(obs_conflicts 原始行)由调用方的 obs_conflict 留证并行承载,
-    本行 refs 指认来源便于归因。
+    证据层(journal obs_event arbitrate 行)由调用方的 obs_conflict 留证
+    并行承载,本行 refs 指认来源便于归因。
     """
     rid = _telstate._CURRENT_RUN_ID
     if not rid:
@@ -150,11 +153,11 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
             verdict=('留证-paddle 失读退化帧(单源 CV 行动,无差值语义;'
                      '不计入双源分歧持续显影,检测链恢复后自消失;'
                      '若 CV 占用源同时坏,由真分歧分键独立显影)'),
-            refs=[{'stream': 'arbitration',
-                   'key': f'source={source}|degraded=1'}],
+            refs=journal_refs({'stream': 'arbitration',
+                               'key': f'source={source}|degraded=1'}),
             reader_source=str(source or ''),
-            note='paddle 失读退化行(与真分歧分键拆分;证据层见 obs_conflicts '
-                 'deployed_count_2src 行)')
+            note='paddle 失读退化行(与真分歧分键拆分;证据层 = journal '
+                 'obs_event arbitrate 行,field=deployed_count_2src 对账)')
         return
     gap = float(int(cv_n)) - float(int(paddle_n))
     record_defect(
@@ -167,10 +170,11 @@ def record_deployed_count_2src_divergence(paddle_n: int | None, cv_n: int,
         verdict=('留证-deployed 计数双源分歧,已按取低值仲裁'
                  '(规则与依据见 cw_observation.arbitrate_deployed_count;'
                  '本键计数=不一致率,同局 ≥3 次排期修 CV 占用源)'),
-        refs=[{'stream': 'arbitration', 'key': f'source={source}'}],
+        refs=journal_refs({'stream': 'arbitration',
+                           'key': f'source={source}'}),
         reader_source=str(source or ''),
-        note='deployed 计数双源仲裁分键(裁决事件层;证据层见 obs_conflicts '
-             'deployed_count_2src 行)')
+        note='deployed 计数双源仲裁分键(裁决事件层;证据层 = journal '
+             'obs_event arbitrate 行,field=deployed_count_2src 对账)')
     # 计数器生命周期:新局首条且历史局积压超限 ⇒ 清空只保当前局
     #(常驻进程跨局累积无界;历史局计数无跨局消费面,清零无损)。
     if (rid not in _DEPLOYED_2SRC_RUN_COUNTS
@@ -325,8 +329,9 @@ def write_l0_andon_flag(flag_path: Path, *, run_id: str, surface: str,
         f'观测:{observed}\n'
         f'缺陷台账:telemetry/live/defect_ledger.jsonl 同 run_id 行(refs={refs_txt})\n'
         f'截图:{shots_txt}\n'
-        '处理步骤:1. 看现场截图确认画面与缺陷面;2. 按 refs 下钻原流行\n'
-        '  (obs_conflicts/decisions/exec_events 等)判 reader 误读还是观测真漂移;\n'
+        '处理步骤:1. 看现场截图确认画面与缺陷面;2. 按 refs 下钻证据行\n'
+        '  (journal (run_id,v) 锚 = obs_event/写入行;历史行为冻结档案只读\n'
+        '  考古)判 reader 误读还是观测真漂移;\n'
         '  3. 修复后重启载入代码的进程,删除本 flag 再续跑。\n'
         '删除条件:安灯钩子本体是常驻行为(用户裁决),不随单次处理删除;\n'
         '  本 flag 处理完即删,防误判为未处理的新停线。\n'
@@ -390,13 +395,17 @@ def bypass_obs_conflict_to_defect(rec: dict) -> None:
         gap=gap, plane=int(rec.get('plane') or 0),
         round_num=int(rec.get('round_num') or 0),
         verdict=str(rec.get('verdict') or ''), shot=rec.get('shot'),
-        refs=[{'stream': 'obs_conflicts',
-               'key': f"field={field}|ts={rec.get('ts') or ''}"}],
+        # refs = journal (run_id,v) 锚(W7 refs 迁移,retirement.md §2
+        # defect_ledger 行):锚恰为上方汇点刚写入的 obs_event 证据行版本
+        #(obs_conflict 先 note_obs_event 后旁路,同栈无间写);旧
+        # obs_conflicts 流指针已随删除波 1 退役,新行按其下钻扑空。
+        refs=journal_refs(),
         reader_source=str(rec.get('source') or ''),
         gap_large=gap_large,
         auto_resolved=field in AUTO_RESOLVED_OBS_FIELDS,
         confidence=conf,
-        note='旁路自 obs_conflicts 写入点(原始证据层,refs 可下钻)')
+        note='旁路自 obs_conflict 汇点(证据行 = journal obs_event '
+             'arbitrate,refs 锚即该行;历史冻结档案只读考古)')
 
 
 

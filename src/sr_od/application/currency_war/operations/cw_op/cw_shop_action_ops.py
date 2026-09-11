@@ -62,6 +62,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     simulate,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
+from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 
 # 刷新钮真值 reader 经模块属性路由消费(替身缝:测试 monkeypatch 模块属性,
 # 直接 from-import 会绑死旧引用绕开替身,同 _buy_cards_mod 约定)。
@@ -680,11 +681,9 @@ class RefreshShopOp(ShopActionOp):
                     shot=_ineff_shot,
                     reader_source='refresh_set_compare',
                     gap_large=True,
-                    refs=[{'stream': 'decisions',
-                           'key': (f'plane={state.plane}'
-                                   f'|round={state.round_num}'
-                                   f'|refresh_wave='
-                                   f'{ledger.total_refresh + 1}')}],
+                    # refs 旧挂点清理(W7 refs 迁移):decisions 流已退役,
+                    # 改指 journal (run_id,v) 锚(plane/round 已在行参内联)。
+                    refs=journal_refs(),
                     note='观测自检框架设计 §2.5:全同=刷新未生效;'
                          '两连全同才确认(台账复现计数)')
             # 刷新期望 vs 实读对账(零决策记账):金腿 + 牌腿。
