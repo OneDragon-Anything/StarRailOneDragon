@@ -102,7 +102,7 @@ _LOSS_HIST: dict[str, dict[int, dict[int, int]]] = {
 # 不做均值匹配,直方原样采样)。(intercept, slope, pooled_mean)
 # 位面维同上(P1=现值,P2=别名)。
 # 重拟合(2026-09-02):原 intercept/slope 系已删语料(w324)回归值,
-# 该语料含结算瞬时 hp=0 伪读数(见 dd-012)——旧锁存在性纪律:拟合
+# 该语料含结算瞬时 hp=0 伪读数——旧锁存在性纪律:拟合
 # 依据语料已灭且确认污染,常量不得再以已灭语料为锚。现值改由对局
 # 档案真值语料(tools/cw/proofs/p15/ corpus_battle_loss.jsonl,冻结
 # 入库件;P1 败局非删失行 battle n=82 / encounter n=66)逐行最小
@@ -162,7 +162,7 @@ def _boss_clamp_params(plane: int) -> tuple[float, float]:
 # 变动)必须再递增。
 # F6 语料治理递增 2→3:P1 败局直方剔除伪影伤害档(±42/±43/−64/+46/
 # +84/+88/+45/+83;pooled_mean 随之重算)——P1 层数值真值变动。
-# 递增 3→4(2026-09-02,dd-012):P1 _LOSS_FIT intercept/slope 改由
+# 递增 3→4(2026-09-02):P1 _LOSS_FIT intercept/slope 改由
 # 对局档案真值语料重拟合(旧值系已灭且污染的 w324 语料回归值)。
 COARSE_CALIB_VERSION: int = 4
 

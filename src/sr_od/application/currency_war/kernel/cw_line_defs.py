@@ -2,7 +2,7 @@
 
 收敛曾经的头号双源:
 - 配方四阵营(仙舟/持续伤害/列车同行/护盾)与配方基础档此前在
-  line_strategy(ADR-0336 已删)与 deploy_bench 两处各写一份;
+  line_strategy(已删)与 deploy_bench 两处各写一份;
 - 引擎三阵营(_ENGINE_FACTIONS)手抄两份且可从 BRIDGE_POOL 派生。
 
 本模块 = 单一源;消费方一律 import,不再本地定义。
@@ -142,7 +142,7 @@ def core_count_for(target: str, board_names: set[str] | frozenset[str]) -> int |
     """按 target 语境的核心在场数(账本 core_count 单一口径;③ 攒数据地基)。
 
     核心定义两源(桥池 fixed+core / 仙舟三人组 _CORE_TRIO)按 target
-    路由(旧 v1 线库 core_cards 随 ADR-0336 删除——decision_v2 的
+    路由(旧 v1 线库 core_cards 已随 line_strategy 退役删除——decision_v2 的
     target 是 COMP_LIBRARY v2 套名,不消费线库):
     - 桥 id(先查 P1 池,再 P2 池)→ fixed+core 在场数;
     - 空 target → _CORE_TRIO(旧缺省口径,兼容语义);

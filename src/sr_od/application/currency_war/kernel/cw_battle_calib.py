@@ -269,7 +269,7 @@ def _direction_established(session: StrategySession) -> bool:
 
     ADR-0309 载体批后唯一策略载体 = decision_v2,方向真值在
     ``strategy_state_of(session).v3_intention`` 意向分层锁定(旧臂 line_v2 的
-    locked_line/bridge_id 读取随 ADR-0336 删除)。
+    locked_line/bridge_id 读取随 line_strategy 退役删除)。
     ADR-0357:P1 配方锁(p1_pair 体系对)同构认领方向——
     终局 comp 锁与配方对锁任一成立即方向已立(纯遥测口径)。
     """
@@ -286,7 +286,7 @@ def _target_comp_label(session: StrategySession) -> str:
 
     decision_v2 栈不写 ``locked_line``/``bridge_id``,意向真值在
     ``strategy_state_of(session).v3_intention.locked_comp``(COMP_LIBRARY 套名;旧 v1
-    字段回退随 ADR-0336 删除)。ADR-0357:P1 配方锁局无 comp 锁,
+    字段回退随 line_strategy 退役删除)。ADR-0357:P1 配方锁局无 comp 锁,
     标签=``过渡配方·A+B``(体系对;遥测可读性,不进任何决策)。
     """
     ist = getattr(strategy_state_of(session), 'v3_intention', None)
@@ -416,7 +416,7 @@ def _first_engines_round(res, target: int) -> int | None:
 
 
 def _battles_before_engines(res, target: int = 2) -> int | None:
-    """ADR-0305 件2(口径修正):首达 target 引擎数前经历的战斗结算数。
+    """首达 target 引擎数前经历的战斗结算数(口径修正件)。
 
     背景:0304 附带观察「v1 到达 rung2 的战斗轮次 30 vs v2 10」的
     口径未在代码定义(一次性诊断数字),0305 复测(20 局配对,seed

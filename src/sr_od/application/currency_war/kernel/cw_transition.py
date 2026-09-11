@@ -63,7 +63,7 @@ FRAMEWORK_FACTIONS: dict[str, tuple[str, ...]] = {
     '仙舟': ('仙舟', '持续伤害'),       # 3仙舟+2DOT(guide 口径)
     '列车': ('列车同行',),               # 4 列车
     '量子': ('量子同频', '贝洛伯格'),    # 3量子+2贝(希儿线主流构成)
-    # ADR-0350:狼狩/贝洛伯格两条已封存桥(hunt3/dot_belog)的
+    # 狼狩/贝洛伯格两条已封存桥(hunt3/dot_belog)的
     # 框架映射随桥删除(已封存线不再有框架豁免通道);
     # 量子键的贝洛伯格保留——那是希儿线主流构成(希儿系判据内)。
 }
@@ -162,7 +162,7 @@ def pick_framework(bench, deployed, shop=None, current: str = '', portal: str = 
 # → 最晚 P2-3 投资策略/环境(最后一次有经济量转型的节点,之后锁死)。
 # 权重 = 该信号对 comp 强度的证据量(词缀克制/定义型 augment 是强证据)。
 
-#: 信号源 → 权重(**仅遥测/诊断**,ADR-0519:信号定型门已退役,累积分
+#: 信号源 → 权重(**仅遥测/诊断**,信号定型门已退役,累积分
 # 只进 sess_commit_scores 遥测与 leader 囤牌倾向参考,禁作决策门消费;
 # 权重为相对证据强度的经验排序,未证——不进任何行为判据)。
 SIGNAL_WEIGHTS: dict[str, float] = {
@@ -178,7 +178,7 @@ SIGNAL_WEIGHTS: dict[str, float] = {
     'bonus_reward': 0.4,        # 奖励节点随机产出(最弱证据)
 }
 
-# (信号定型门已退役 2026-09-04,ADR-0519「未证即退役」:旧
+# (信号定型门已退役 2026-09-04,「未证即退役」裁定:旧
 # COMMIT_SIGNAL_THRESHOLD=5.0 / COMMIT_MIN_T=7 为拍死值(原注释只证了
 # 「不能更低」),且 ready() 全库零生产消费(定型权威 =
 # cw_intention.committed_authority:plane≥2 / 意向状态机 locked /
@@ -193,7 +193,7 @@ EARLY_POP_CAP: int = 5
 
 class CommitSignals:
     """选卡信号累积器(局级,挂 StrategySession;ADR-0209 接线残留的
-    遥测载体,ADR-0519 后**无决策消费**)。
+    遥测载体,定型门退役后**无决策消费**)。
 
     各信号源到达时调 ``add``(源名 + 该源的 comp 分贡献),累积到每条线;
     ``leader`` 给当前倾向(仅遥测/判读参考)。定型权威 =

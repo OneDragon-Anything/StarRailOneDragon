@@ -27,15 +27,15 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 ]
 
 # 枚举合法值(构造时校验,typo/大小写错静默落入默认)—— 现无枚举字段;economy_mode 及其
-# ALLOWED_ECONOMY 已删(ADR-0204:node_plan spend_mode 全区间有主,config 档位是死配置)。
+# ALLOWED_ECONOMY 已删(node_plan spend_mode 全区间有主,config 档位是死配置)。
 
 # boss 克制 = comp-vs-boss 机制级(comp.countered_by_bosses + boss_fit + task#73 机制建模),
 # 非阵营级 —— 原 DEFAULT_BOSS_COUNTER(boss→降权阵营)错模型已删(decide_boss_priority 删时一并清)。
 
-# 注:「净化身心克 DoT/减益」类游戏客观数据不进配置(ADR-0203:配置=用户偏好单一职责)——
+# 注:「净化身心克 DoT/减益」类游戏客观数据不进配置(配置=用户偏好单一职责)——
 # 单一源在 cw_comps.MECHANIC_COUNTERS(经 AFFIX_MECHANIC_MAP 归一),cw_events decide_event 消费。
 # 原 dot_punish_envs 配置字段已删(与注册表双源,且属版本一致的客观数据非用户偏好)。
-# 保血阈值/难度阶梯(hp_safe_threshold/difficulty_hp_override)亦删(ADR-0204):策略校准参数
+# 保血阈值/难度阶梯(hp_safe_threshold/difficulty_hp_override)亦删:策略校准参数
 # 归代码常量 cw_state.HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE;economy_mode(死配置)/
 # event_whitelist(引擎调参非用户偏好,priority/forbid 已覆盖)同批删。配置面单一源:
 # docs/develop/currency_war/config.md。
@@ -68,7 +68,7 @@ class CurrencyWarConfig(YamlConfig):
         self.strategy_forbid: list[str] = self.get('strategy_forbid', [])
         self.env_priority: list[str] = self.get('env_priority', [])
         self.env_forbid: list[str] = self.get('env_forbid', [])
-        # —— 开发/实验字段(ADR-0204 降级;不进未来 GUI,仅供 yml 调试)——
+        # —— 开发/实验字段(不进未来 GUI,仅供 yml 调试)——
         # strategy_seed:策略内部 rng 种子(None=真随机、固定 int=A/B 复现调试)。
         # ⚠️ 只种子化策略内部蒙特卡洛 D 牌随机;游戏侧行局演化(发牌/boss/掉血)服务端决定,种子化不到。
         # strategy_id 合法值域(统一迁移批 ②:decision_v2 栈删除,值域收缩={'mandate_v1'};
@@ -108,7 +108,7 @@ class CurrencyWarConfig(YamlConfig):
         #  裁定「journal 无条件常开,无开关」:装配段无条件武装
         #  install_state_telemetry,无影子期。yml 残留键无害,get 不再读。)
         # r347(旧路径删除):gate_* 4 flag 已删(对拍验证过,观测
-        # gate 无条件化——ADR-0216 对拍期结束;yml 残留键无害,
+        # gate 无条件化(对拍期已结束);yml 残留键无害,
         # get() 不再读)。
 
     def save(self) -> None:

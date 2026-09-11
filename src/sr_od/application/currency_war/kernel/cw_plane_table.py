@@ -176,7 +176,7 @@ def peak_refresh_level(cost: int) -> int:
     return best_l
 
 
-# ===== 视界层 R_剩余族(自 strategies statefn/horizon 下沉单一源,ADR-0516:
+# ===== 视界层 R_剩余族(自 strategies statefn/horizon 下沉单一源,
 # ===== kernel 判据(schedule_upgrade 的 U_L 阈值检验)消费 R_剩余,下沉
 # ===== 保持「kernel 禁 import strategies」桶依赖矩阵;statefn/horizon 改
 # ===== import 重定向,消费方调用零改——与 schedule_upgrade 下沉同款先例)=====

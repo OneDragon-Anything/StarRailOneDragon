@@ -1,4 +1,4 @@
-"""目标函数层 v0(ADR-0161):首达生存概率 + 风险姿态三区律。
+"""目标函数层 v0:首达生存概率 + 风险姿态三区律。
 
 **诊断**:全栈一致用「均值」计价(02 ΔE[生存]/04 悲观分位/ADR-0155 线性插值掉血),
 期望泛函在劣势局**方向性选错** —— 教学校验例:两线同 E[掉血]=20,HP=25 必活线 A 与 HP=15
@@ -32,7 +32,7 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (
 CV_PRIOR: float = 0.5   # 组内变异系数先验(K0 实测 0.4-0.62 的收缩中值)
 
 # 三区边界先验(K2 涌现对拍锚:DEAD_HP=20 三门 / HP<40 分档 / 满息 50)
-ZONE_CRITICAL_HP: int = 40     # 二区下界(ADR-0141/0143 分档;对拍锚)
+ZONE_CRITICAL_HP: int = 40     # 二区下界(分档先验;对拍锚)
 ZONE_DEATH_EDGE_HP: int = 20   # 三区下界(DEAD_HP=20;对拍锚)
 
 

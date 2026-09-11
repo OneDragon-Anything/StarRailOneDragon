@@ -292,7 +292,7 @@ def engine_char_names() -> frozenset[str]:
 def system_judge_factions() -> frozenset[str]:
     """体系卡判据阵营并集(仙舟/持续伤害/列车同行/量子同频/贝洛伯格)。
 
-    五家阵营的单一源(ADR-0301 找件判据等消费;第五张体系卡加入时自动传导)。
+    五家阵营的单一源(找件判据等消费;第五张体系卡加入时自动传导)。
     """
     out: set[str] = set()
     for card in SYSTEM_CARDS.values():

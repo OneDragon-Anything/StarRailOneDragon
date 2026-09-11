@@ -14,7 +14,7 @@
 - ``dead_run_salvage``:必死局回收(P(win)<ε 且置信 → 切后验方差最大的可达臂,零胜率
   成本收割样本);触发审计留证(复核「没误杀有救的局」≥95%)。
 
-P(win) 投影供给方:ADR-0161 first_passage(已有);漂移闭环(CUSUM+重抓)为 v1。
+P(win) 投影供给方:cw_first_passage(已有);漂移闭环(CUSUM+重抓)为 v1。
 """
 from __future__ import annotations
 

@@ -10,7 +10,7 @@
 - ``DifficultyAccount``:记账恒等式(base + Σaugment Δ + 品质通胀 + 动态项 + 节点曲线),
   OCR 读数对账接口(读到→修正,读不到→账本外推**不回退先验**);
 - ``marginal_value``:场合依赖价值 = f(gap 三态 + 阈值[地板 0/溢出 200+/P1 尖峰] +
-  版本证据态)——替换 ADR-0141 flat 惩罚(降为对拍锚);
+  版本证据态)——替换旧 flat 惩罚模型(旧模型降为对拍锚);
 - 溢出 gambit 分支(证据态守卫,refuted 自动退回常态)。
 
 测试面:合成账本对拍恒等式;三态价值(大胜≈0/边际峰值/无解→0);溢出反转
@@ -87,7 +87,7 @@ def marginal_value(d_now: float, d_delta: float, gap: float, *,
     # 钟形:g(|gap|),边际处峰值
     bell = max(0.0, 1.0 - abs(gap) / 30.0) ** 2
     v = -d_delta * bell       # 降难度(d_delta<0)在边际局正价值
-    # (旧 P1 尖峰 ×1.5 放大已退役 2026-09-04,ADR-0519「未证即退役」:
+    # (旧 P1 尖峰 ×1.5 放大已退役 2026-09-04,「未证即退役」裁定:
     # 「一层最凶」定性有实证但系数 1.5 拍定,保守缺省 = 不放大。)
     # 地板:压到 0 以下无增益
     if d_delta < 0 and d_now + d_delta < DIFFICULTY_FLOOR:

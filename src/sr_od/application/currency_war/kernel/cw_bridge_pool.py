@@ -3,7 +3,7 @@
 **手维护调研数据**(数据候选来自战力表 P1/P2 榜+transition_combos
 调研的 fixed/core 三档;本文件把调研结论结构化)。
 本文件仅存数据表;score_bridge/pick_bridge 等选桥函数簇已随旧
-line_strategy 退役(ADR-0336),决策路径由 cw_intention/line_defs 的
+line_strategy 退役,决策路径由 cw_intention/line_defs 的
 form_tiers 机制承载。
 
 设计要点(redesign §4.2):
@@ -70,7 +70,7 @@ BRIDGE_POOL: list[BridgeCombo] = [
         budget=5,
         phase='P1',
     ),
-    # ADR-0350:狼狩/贝洛伯格体系已封存(四体系封闭裁定),不入桥池;
+    # 狼狩/贝洛伯格体系已封存(四体系封闭裁定),不入桥池;
     # 贝洛伯格只在希儿系判据内保留计数(希儿系判定
     # `_seele_system_activated` 口径),不作独立伤害源。
 ]

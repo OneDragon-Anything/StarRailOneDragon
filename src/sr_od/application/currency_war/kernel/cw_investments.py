@@ -11,7 +11,7 @@
   - ``ENV_CATEGORY``/``ENV_FACTION``(环境 7 类分类 + 阵营绑定,ENV_FACTION_MAP 派生源);
   - ``_MANUAL_EXTRAS``(plaza 不收的补遗条目);
   - ``PICK_VALUE``/``ENV_PICK_VALUE``(ADR-0143/0144 选卡评估分;SURVIVAL_PICKS
-    等事件面钩子已退役,ADR-0519)。
+    等事件面钩子已退役)。
 - **合并层**:base × overlay → 注册表,构建时做孤儿校验(overlay 引用了 base 没有的键 →
   import 即炸,防版本更新后静默失联)。
 
@@ -423,7 +423,7 @@ def _validate_strategy_effects() -> None:
 # ===== curated overlay:环境分类 + 阵营绑定(手维护)=====
 # 表值大多可由名字派生:类别 = 名字的类别后缀(概念股/邀请/契约)本身;阵营 = 名字去类别后缀。
 # 真正的手维护信息只有例外条与不可派生名单;派生结果在构建期与逐位对拍基准比对
-# (派生化零行为变化,决策与逐位对拍记录见 ADR-0472)。
+# (派生化零行为变化,决策与逐位对拍记录见 git 历史)。
 _ENV_SUFFIX_DERIVED_NAMES: tuple[str, ...] = (
     # 概念股 15
     '追击概念股', '击破概念股', '群攻概念股', '能量概念股', '燃血概念股', '减益概念股',
@@ -785,7 +785,7 @@ def _derive_megastar_set_bindings(explicit: dict[str, tuple[frozenset[str], froz
 
     套组卡名单取自注册表(键以'星徽套组'结尾者);对应单件未建模 →
     ValueError(import 即炸,防新套组卡静默无绑定)。派生结果与改前
-    手写套组表逐位对拍一致(决策与对拍记录见 ADR-0472)。
+    手写套组表逐位对拍一致(对拍记录见 git 历史)。
     """
     out: dict[str, tuple[frozenset[str], frozenset[str]]] = {}
     for name in INVESTMENT_STRATEGIES:
@@ -1176,7 +1176,7 @@ if _PICK_ORPHANS:
 for _n, _v in PICK_VALUE.items():
     INVESTMENT_STRATEGIES[_n] = replace(INVESTMENT_STRATEGIES[_n], pick_value=_v)
 
-# (事件面经验加减分族已退役 2026-09-04,ADR-0519「未证即退役」,保守缺省 0:
+# (事件面经验加减分族已退役 2026-09-04,「未证即退役」裁定,保守缺省 0:
 # - SURVIVAL_PICKS(HP<40 生存类策略集,decide_event 低血 +15 钩子);
 # - EQUIP_FLOW_PICKS(P2 断崖装备流策略集,decide_event plane≥2 +25 钩子,
 #   11 局实锤经验拟合——辖域与幅度双未证,重立须按板面装备存量观测参数化。)
@@ -1319,4 +1319,4 @@ for _n, _v in ENV_PICK_VALUE.items():
 # 裸分(上界 72)」;禁读作基数参与跨族加减。
 ENV_FACTION_MATCH_FLOOR: dict[str, float] = {'概念股': 78.0, '邀请': 70.0, '契约': 72.0}
 # (旧 ENV_SURVIVAL_BONUS = {白银时代 15, 敌后破坏 15, 人身意外险 10} 已退役
-# 2026-09-04,ADR-0519「未证即退役」:低血环境钩子保守缺省 0,消费分支同批删除。)
+# 2026-09-04,「未证即退役」裁定:低血环境钩子保守缺省 0,消费分支同批删除。)
