@@ -127,3 +127,23 @@
 - **阻断摘要**：F1（T-17 三层方案已由旧账 T-308 于 bd27989d4 入库，迭代文档零提及，阶段范围须按「验证+P3 残余+实机候窗」重写）；F2（「T-17 先于 W6/W7/W8」引用不支撑主张、cw_state.py 前提已被交付推翻、与 sim state 门字面相抵，须显式裁决并改写）；F3（账本 deps 零建边，单源契约只活在散文里，ready 首行派单必违约）。三项均在 design.md §2/landing §3.4/账本映射的定稿关键路径上，按 iteration-design §6「未决 = 停在对抗审中」，攻击未收敛，不定稿。
 - 其余 10 项为定稿前应顺手修的偏差（F4-F9 建议随 F1-F3 一并处理；F10-F13 低 cost，其中 F5 须在 3.3 开工前修正，防 worker 误改公共仓 fork 单源）。
 - 攻击面留痕：三核均已过——核一（无前提：锚点/前提/依据逐条直调，F1/F2/F5/F6/F10 即战果）；核二（规范遵循：iteration-design 硬规则三条+od-dev-progress-tracking §5+AGENTS.md 纪律，F3/F8/F9/F11/F13 即战果）；核三（治本：各批修法对根成立，归层标注缺口见 F9）。
+
+## 四、裁决记档（设计批 T-33 修订轮，2026-09-12）
+
+> 13 项发现逐条裁决：**全部成立，无「不成立」记档**。修订已按任务书落盘至 design.md / landing.md / README.md / details/ 六份（attack.md 历史发现未改动，仅追加本节）；关键事实由修订批独立复核（bd27989d4 入库笔、T-280 报告 §③ 原文零 W6/W7/W8 字样、junction 目标本仓、cw_invest_data 效果文本、grep 25 处/12 文件均亲验一致）。逐条处置位置：
+
+| 发现 | 裁决 | 修订位置 |
+|---|---|---|
+| F1 | 成立 | details/execution-seam-projection.md §T-17 按 T-308 后世界态全节重写（症状改历史记档、锚点/先例/改动面校正、残余四件清单、禁重做已入库面）；landing §3.4 重写为残余收尾批（criteria 括注 T-308 兑现状态）；design.md §0 状态/正本落盘声明、§1 症状 3 校正、§2 IC-2 按契约已入库改写；README 文档节补 T-308/bd27989d4 引用 |
+| F2 | 成立 | design.md §2 跨迭代互斥改写「T-17 残余修复先于 W6」+ 废止旧主张（引用不支撑 + cw_state.py 前提被推翻）+ **编排者裁决原文照录** + r5 §2 相容性结论；landing §3.4 依赖行同步；live-verification §问题与约束补 sim 半句与 3.4 取证段挂门 |
+| F3 | 成立 | design.md 新增 §3 账本依赖边清单（8 条边 + 分判依据）；landing 各阶段「依赖」字段逐条标注「边见 design.md §3」一一对应；落账 = 账本动作申报 §3.1（编排者执行） |
+| F4 | 成立 | design.md §1 症状 3 补 mandate.py（T-16 m3_levelup_batch 段 × T-18 fuel_sell_candidates 段）与 cw_screen_prep.py（T-16 修点子集 × T-23 back_size 消费位）两处；landing §3.8/§3.10 依赖行互加 mandate.py 互斥；strategy-qualification §T-18 约束同步 |
+| F5 | 成立 | docs-hygiene §T-25 引用面第 2 条归属仓改本仓 skills/sr-od-currency-war-dev（junction 单源，公共仓无此 skill）；关键取舍改「单仓单笔」；landing §3.3 范围/文件面/验收凭据改单仓单笔 commit + 单仓 hash |
+| F6 | 成立 | design.md §2 新增 IC-7（T-13 计数消费 × 效果线计数生产，计数载体归 unified-state 效果线 T-11 wire）；free-refresh 方案 3/文件面/关键取舍按「效果文本 ≠ 计数载体」校正；landing §3.11 范围/依赖同步 |
+| F7 | 成立 | 两报告正本已复制进 details/sources/（附溯源 README，定稿批当场落盘消易失窗口）；design.md §0 正本落盘声明统一指落盘正本；landing §3.7 依赖与 sim-baseline §T-23 改引落盘正本；正本更新清单增末阶段核对条 |
+| F8 | 成立 | landing §3.2 范围补扩围面（正本到 .debug 悬空引用清单，清单 = reports/T-30-r1.md 第 4 节）；docs-hygiene §T-24 增「扩围面」条同口径 |
+| F9 | 成立 | 六份详设 13 个任务节全部补「根因归层」行（T-16/T-17 见 execution-seam，T-18/T-20 见 strategy-qualification，T-21/T-22/T-23 见 sim-baseline，T-13 见 free-refresh，T-24/T-25 见 docs-hygiene，T-14/T-26/T-27 见 live-verification）；T-19 归层补进 design.md §2 内联设计；design.md §1 归层行改为指认显式挂点 |
+| F10 | 成立 | landing §3.4/§3.5/§3.7 在飞面快照声明收归「GC-1 在飞面开工前核对（不预写快照）」；§3.2 同步措辞 |
+| F11 | 成立 | design.md §2 GC-3 测试分层单一源指针改指 sr-od-currency-war-dev SKILL.md「单一源地图·测试分层」行（strategy-work「验证」降为其下游指针） |
+| F12 | 成立 | 末阶段卡账本动作申报 = design.md §3 第 2 条（dag.py add 命令草案，deps = 全部落地阶段）；landing 末阶段小节补「账本承载」声明 |
+| F13 | 成立 | 账本动作申报 = design.md §3 第 3 条（T-24 计数勘正 note：定稿时点实测 25 处/12 文件）；docs-hygiene §T-24 命中面路径前缀补全（mandate_v1/criteria/{contracts,equipment,__init__}.py）与计数快照标注 |
