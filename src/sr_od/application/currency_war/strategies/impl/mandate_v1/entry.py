@@ -50,6 +50,9 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     blood_xp_gate_for,
     in_must_spend_zone,
 )
+from sr_od.application.currency_war.kernel.cw_intention import (
+    locked_buy_cap_hold,
+)
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     BailToOuter,
     ClickSpheres,
@@ -484,7 +487,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             _sf_k = predicates.line_members(
                 getattr(state_of(session), 'target_comp', None))
             _sf_excl = sell_gate.sell_exclusions(
-                session, _sf_k, channel='m4_fuel', current_round=_round_num)
+                session, _sf_k, channel='m4_fuel',
+                cap_hold=locked_buy_cap_hold(state),
+                current_round=_round_num)
             _sf_cands = mandate.fuel_sell_candidates(
                 list(obs.bench_chars), _sf_k, state=state,
                 exclude_names=_sf_excl,
@@ -724,6 +729,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             _f_round = int(getattr(state, 'round_num', 1) or 1)
             _f_excl = sell_gate.sell_exclusions(session, k_members,
                                                 channel='funding',
+                                                cap_hold=locked_buy_cap_hold(
+                                                    state),
                                                 current_round=_f_round)
             _f_need = mandate.cheapest_member_cost(frame)
             slots, _why = crit_sell.funding_support_sell(
@@ -739,7 +746,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             if not slots and state.gold < _f_need:
                 _f_fallback = sell_gate.funding_hold_fallback(
                     session, k_members, bench, gold=state.gold,
-                    need=_f_need, a_exclusions=_f_excl)
+                    need=_f_need, a_exclusions=_f_excl,
+                    cap_hold=locked_buy_cap_hold(state))
             for s in slots:
                 if s in sold_slots:
                     _ct['ev_conflict_dropped'] = \
@@ -1065,6 +1073,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
         # 三位同源,空排除形态在此闭死;批 3 窗口段生效)。
         _f_excl = sell_gate.sell_exclusions(
             session, k_members, channel='funding',
+            cap_hold=locked_buy_cap_hold(state),
             current_round=int(getattr(state, 'round_num', 1) or 1))
         fslots, _why = crit_sell.funding_support_sell(
             state.gold, mandate.cheapest_member_cost(frame), frame.bench,
@@ -1079,7 +1088,8 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
         if not fslots and state.gold < _fb_need:
             _f_fallback = sell_gate.funding_hold_fallback(
                 session, k_members, frame.bench, gold=state.gold,
-                need=_fb_need, a_exclusions=_f_excl)
+                need=_fb_need, a_exclusions=_f_excl,
+                cap_hold=locked_buy_cap_hold(state))
         for s in fslots:
             if s in sold_slots:
                 counters['ev_conflict_dropped'] = \

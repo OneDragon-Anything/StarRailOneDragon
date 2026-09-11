@@ -1134,7 +1134,9 @@ class SwapPlanContext:
       键,行 #4;未锁域 = all_factions 全量逐位同旧)——五消费位同吃
       本字段,单一源;
     - ``membership``:买面义务排除集(单一源 = ``cw_intention.
-      locked_buy_membership``;与 M4 燃料集 ``exclude_names`` 同参同源)。
+      locked_buy_membership`` 容量可行截断集 B',cap_hold 现读;与 M4
+      燃料集 ``exclude_names`` 同参同源——T-307/R1 起两侧同吃 B',
+      ADR-0647)。
       None = 缺读(谓词弃权,fail-closed);未锁定帧 = 空集(无锁定帧
       不存在 hoard 义务,非缺读);
     - ``fresh_buys``:轮内新鲜度排除名集(见 ``fresh_buys_of``);
@@ -1460,6 +1462,7 @@ def assemble_swap_plan_inputs(
         )
         from sr_od.application.currency_war.kernel.cw_intention import (
             committed_from,
+            locked_buy_cap_hold,
             locked_buy_membership,
             locked_faction_scope,
             locked_line_recipe_floor_conflict,
@@ -1510,13 +1513,17 @@ def assemble_swap_plan_inputs(
         fenced_on = fenced_swap_arm_of(_fp, _n, state.max_units())
     elif cap is not None:
         board_full = _n >= cap   # state 缺读退型:调用方 cap 口径(保守侧)
-    # 买面义务排除集(与 M4 燃料集同参同源):锁定帧 = locked_buy_
-    # membership;ist 缺失 = 缺读(None,谓词弃权);未锁定帧 = 空集。
+    # 买面义务排除集(与 M4 燃料集同参同源;T-307/R1 起两侧同吃截断集
+    # B',cap_hold = locked_buy_cap_hold 现读,ADR-0647):锁定帧 =
+    # locked_buy_membership 截断口径;ist 缺失 = 缺读(None,谓词弃权);
+    # 未锁定帧 = 空集。state 缺读帧 cap_hold=None ⇒ 保宽(fail-closed
+    # 零漂移端,与全消费位同向)。
     membership: frozenset[str] | None
     if ist is None:
         membership = None
     else:
-        _lm = locked_buy_membership(ist)
+        _lm = locked_buy_membership(
+            ist, cap_hold=locked_buy_cap_hold(state))
         membership = _lm if _lm is not None else frozenset()
     board = dict(getattr(state, 'board', None) or {}) if state is not None \
         else {}

@@ -89,6 +89,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
+    BENCH_CAPACITY,
     GameState,
     bench_char_cost,
     iter_occupied_deployed,  # ADR-0392 helper 导入
@@ -2433,7 +2434,9 @@ def locked_buy_scope(ist: IntentionState | None) -> frozenset[str] | None:
     return frozenset(scope) if scope else None
 
 
-def locked_buy_membership(ist: IntentionState | None) -> frozenset[str] | None:
+def locked_buy_membership(ist: IntentionState | None,
+                          cap_hold: int | None = None,
+                          ) -> frozenset[str] | None:
     """锁定帧(locked_comp 非空)买侧 line membership 的正典口径
     (消费域 = mandate_v1 商店线买入判定链:买入义务集 + 拒因遥测;
     卖免面/刷新账不辖,见消费域的买面/卖免面拆分注释)。
@@ -2455,6 +2458,17 @@ def locked_buy_membership(ist: IntentionState | None) -> frozenset[str] | None:
     故本函数不复用 ``locked_buy_scope`` 直取。需要完整约束基准(对件
     免 demote/fence 面)的消费方仍用 ``locked_buy_scope``。
 
+    **容量可行截断(T-307/R1,ADR-0647)**:``cap_hold`` 非 None 且
+    |B| > cap_hold 时返回截断义务集 B'——序 = core∪shared ≻ (p1_pair ∪
+    其余 hoard) 同级,级内 cost 升序、注册表声明序 tie-break
+    (``_obligation_rank``)。结构依据 = 义务完成金流成本:低费义务先
+    闭合(P41②/P76 甲 1★ 全额退净金 0 的可逆性不变量,低费成员往返
+    动作成本最低),零自由参数。缺员面 missing(B') 可清空 ⇒ M2 终止
+    条件恢复(T-295-P1 停摆不动点解除);被截成员退出 M2 义务基座,
+    其 M4/部署面保护必要性随之消失(义务基座 = M2 会重买的集合)。
+    ``cap_hold=None`` = 宽集(兼容缺省,零漂移;容量不可得帧的
+    fail-closed 方向 = 保宽,截断是收紧面不盲收)。
+
     触发条件 = ``locked_comp`` 非空(锁线状态已建立)。未锁帧(P1 配方
     锁帧 locked_comp 恒空,ADR-0357;空窗/weak/降格)→ 返回 None,
     消费方维持既有 ``line_members(target_comp)`` 口径——P1 无锁态行为
@@ -2466,10 +2480,65 @@ def locked_buy_membership(ist: IntentionState | None) -> frozenset[str] | None:
     if getattr(ist, 'p1_pair', ()):
         scope |= _pair_members(tuple(ist.p1_pair))
     comp = get_comp(ist.locked_comp)
+    core_shared: set[str] = set()
     if comp is not None:
         chars, _equips = _line_hoard(comp)
         scope |= chars
-    return frozenset(scope) if scope else None
+        core_shared = set(comp.core_chars) | set(comp.shared_chars)
+    if not scope:
+        return None
+    if cap_hold is not None and len(scope) > cap_hold:
+        return frozenset(_obligation_truncate(scope, core_shared, cap_hold))
+    return frozenset(scope)
+
+
+def _obligation_rank(names: set[str] | frozenset[str]) -> list[str]:
+    """截断级内序(T-307/R1,ADR-0647):cost 升序,注册表声明序
+    tie-break。确定性关键:候选序从注册表声明序出发(迭代 CHARACTERS
+    过滤),稳定排序保声明序——从 set 迭代会因哈希序使同费 tie-break
+    跨进程不确定(禁)。注册表外残名(识别占位类)排末尾(名序稳定),
+    不参与费率比较。"""
+    known = sorted(
+        (n for n in CHARACTERS if n in names),
+        key=lambda n: int(CHARACTERS[n].cost or 0))
+    return known + sorted(n for n in names if n not in CHARACTERS)
+
+
+def _obligation_truncate(scope: set[str], core_shared: set[str],
+                         cap_hold: int) -> list[str]:
+    """容量可行截断(T-307/R1,ADR-0647):core∪shared 优先全保
+    (级内超容时按级内序自截),余量按级内序补 (p1_pair ∪ 其余 hoard)。
+
+    前提:core_shared ⊆ scope(``_line_hoard`` chars 含 core∪shared 构造
+    保证)。级内序 = ``_obligation_rank``(cost 升序,声明序 tie-break)。
+    """
+    kept_core = _obligation_rank(core_shared)[:cap_hold]
+    rest_budget = cap_hold - len(kept_core)
+    if rest_budget <= 0:
+        return kept_core
+    rest_rank = _obligation_rank(scope - core_shared)
+    return kept_core + rest_rank[:rest_budget]
+
+
+def locked_buy_cap_hold(state: GameState | None) -> int | None:
+    """容量可行截断的容量上界单源(T-307/R1,ADR-0647)。
+
+    = ``BENCH_CAPACITY + max_units(level)``(现读;lv8 = 17 实用持有
+    容量,旧固定分母 BENCH_CAPACITY+DEPLOYED_CAPACITY=19 高估,|B|=18
+    已不可达而不告警)。缺读 fail-closed 方向 = 返回 None ⇒ 消费方保宽
+    (现行为,零漂移端)——容量不可得帧不做截断收紧。
+    """
+    if state is None:
+        return None
+    if int(getattr(state, 'level', 0) or 0) <= 0:
+        return None
+    try:
+        mu = int(state.max_units())
+    except Exception:   # noqa: BLE001  容量派生缺供给 = 保宽
+        return None
+    if mu <= 0:
+        return None
+    return BENCH_CAPACITY + mu
 
 
 def locked_line_recipe_floor_conflict(ist: IntentionState | None) -> bool:

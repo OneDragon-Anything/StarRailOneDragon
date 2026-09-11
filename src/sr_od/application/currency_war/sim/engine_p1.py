@@ -1610,7 +1610,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 块;位次 = 本段入口刷新后 = 意向状态已刷新,与策略决策帧
                 # 同语境;纯读,零行为面)。义务面口径与策略侧
                 # buy_members 同式:锁定帧 = locked_buy_membership,未锁
-                # 帧 = line_members(target_comp)(单一源直调,禁第二实现)。
+                # 帧 = line_members(target_comp)(单一源直调,禁第二实现;
+                # T-307/R1 零参调 = 宽集,观测面监控宽集超容,与 P60 门
+                # 同对象——截断集上检查恒假 = 死观测面,ADR-0647)。
                 # 位次申报(ADR-0583):旧序 = 战略层直调先于本块;
                 # 内化后刷新发生在驱动器首帧消费,本块后移到决策调用之后
                 # 以保持「读数 = 本段入口态刷新后视图」语境逐位不变。
@@ -2239,8 +2241,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 纯读)——不挤占行为投影 digest 判别域的声明自此收窄为
             # 「计划空帧纯读」(T-169 执行面接入后的如实申报)。
             # 两小批②短路帧:生产无 M1″ 决策帧(备战动作链被发射短路)
-            # ⇒ 恒 None(非观测异常,如实无帧)。
+            # ⇒ 恒 None(非观测异常,如实无帧)。T-307/R3-a(ADR-0647)
+            # 起短路形态由独立行内键 ``m1p_obs_skipped`` 显影(None 双义
+            # 拆解:观测异常 vs 发射短路无帧),见行组装邻位透传。
             _m1p_obs: dict | None = None
+            # R3-a 发射帧盲窗显影键:发射帧置 'launch_short_circuit',
+            # 非发射帧恒 None。独立行内键形态(否决哨兵 dict 注入 m1p:
+            # 防 isinstance(dict)/.get('nonempty') 判读路径误读——C-A2
+            # _c2_plan_point、dig 工具、锁测试双向断言均消费 m1p dict
+            # 形状)。
+            _m1p_obs_skipped: str | None = None
             # T-279 R1:计划对象/装配 ctx/卖出旗带出本块,轮末部署块
             # R1-a 直投消费(变量先置缺省——达标臂发射帧整块跳过时,
             # 部署块分支仍需可读)。
@@ -2271,6 +2281,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if _m1p_sold:
                         _m1p_obs['executed'] = True
                         _explicit_deploy_seen = True
+            else:
+                # R3-a(T-307/ADR-0647)发射帧盲窗置键:发射帧备战动作
+                # 链被发射短路,生产无 M1″ 决策帧——m1p=None 的成因在此
+                # 显影,判读面不再与观测异常帧混桶。
+                _m1p_obs_skipped = 'launch_short_circuit'
             # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
             # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
             # (cw_deploy_logic.select_deployments 纯函数,与 CwOpDeploy op
@@ -2994,6 +3009,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # residual_deployed 计数(执行语义见 m1p_swap_execute;
                 # T-279 R1 起补上消费计划单一源,skip_fence reason 分键
                 # m1p_plan_up,语义见 _m1p_plan_fill_deploy/ADR-0640)。
+                # R3-a(T-307/ADR-0647)发射帧盲窗显影键(独立行内键,
+                # 邻位透传):'launch_short_circuit' = 本轮为发射帧、生产
+                # 无 M1″ 决策帧(备战动作链被发射短路,m1p 恒 None 的
+                # 成因);None = 非发射帧(m1p 应在场)或观测异常帧。
+                # 遥测层改动,sim 结构性无行为面(纯观测键)。
+                'm1p_obs_skipped': _m1p_obs_skipped,
                 'm1p': _m1p_obs,
                 # 采购面三观察计数(见轮首「采购面三观察计数」块):
                 # locked_b=本轮最大锁定采购集 |B|(0=帧全未锁);

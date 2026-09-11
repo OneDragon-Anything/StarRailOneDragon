@@ -42,6 +42,9 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     in_must_spend_zone,
     xp_click_cost,
 )
+from sr_od.application.currency_war.kernel.cw_intention import (
+    locked_buy_cap_hold,
+)
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     LevelUp,
     OpenShop,
@@ -824,6 +827,7 @@ def wanted_closure_emit(session: StrategySession, state: GameState | None,
     # + 统一装配 A channel='m4_fuel');路线类 = m4_fuel_sell(§5.2 腿 2:
     # 同源候选即同路线类,不复刻第三枚举值——§3.3 封闭集无 wanted_close)。
     _m4_excl = sell_exclusions(session, k_members, channel='m4_fuel',
+                               cap_hold=locked_buy_cap_hold(state),
                                current_round=round_num)
     cands = fuel_sell_candidates(bench, k_members, state=state,
                                  exclude_names=_m4_excl, counters=counters,
@@ -1057,6 +1061,8 @@ def run_mandate(frame: MandateFrame,
                 state=state,
                 exclude_names=sell_exclusions(session, k,
                                               channel='interest',
+                                              cap_hold=locked_buy_cap_hold(
+                                                  state),
                                               current_round=frame.round_num),
                 defer_names=_t3_protect,
                 counters=counters,
@@ -1149,6 +1155,8 @@ def run_mandate(frame: MandateFrame,
                 # press 登记活跃帧腾席同禁,P78 INV 通道无关)。T3 同轮
                 # 保护仍走 defer_names(转化类末位牺牲,通道对价语义不动)。
                 _m4_excl = sell_exclusions(session, k, channel='m4_fuel',
+                                           cap_hold=locked_buy_cap_hold(
+                                               state),
                                            current_round=frame.round_num)
                 retries = 0
                 freed = False

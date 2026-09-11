@@ -470,24 +470,36 @@ def _autonomous_round(session: StrategySession) -> int | None:
 
 def _resolve_base(session: StrategySession,
                   k_members: tuple[str, ...],
+                  cap_hold: int | None = None,
                   ) -> tuple[frozenset[str] | None, set[str]]:
-    """义务基座解析单点(身份段第 1 构件;ADR-0580 §7 低-1 修复平移)。
+    """义务基座解析单点(身份段第 1 构件;ADR-0580 §7 低-1 修复平移;
+    T-307/R1 起基座 = 容量可行截断集 B',ADR-0647)。
 
-    锁线态 = ``locked_buy_membership(ist)`` 锁定采购集宽集,未锁态 =
-    ``k_members``。返回 (锁定解析结果, 基座集):解析结果供本模块内
-    两处单点消费(换线闭合读点的基座对账 + funding 兜底减法②,
-    P78-5 池定义「义务基座产物」同源),禁调用侧自选基座——宽−窄成员
-    被卖出 → shop 域 M2 重买 = Z1 锁线域残留病理(与 shop.py
-    ``buy_members`` 装配同一语义源 = cw_intention.locked_buy_membership)。
+    锁线态 = ``locked_buy_membership(ist, cap_hold=传参)`` 截断义务集
+    B'(**必改位**:零参宽集形态已被取代——宽−窄成员 M2 不再义务重买,
+    其保护必要性消失;不改 = M4/凑息/funding 全通道对被截成员持续禁卖
+    且 P60/单帧锁观测面照常零异常 = 静默半修,T-295 方案阻断③定谳),
+    未锁态 = ``k_members``。``cap_hold`` = 调用方从决策帧 GameState 现读
+    (``cw_intention.locked_buy_cap_hold(state)``;板面容量是帧事实,
+    session 无公共权威链,禁加镜像读——显式传参是唯一合法通道),
+    None = 保宽(fail-closed 零漂移端;无帧态调用位如兼容再出口)。
+    返回 (锁定解析结果, 基座集):解析结果供本模块内两处单点消费
+    (换线闭合读点的基座对账 + funding 兜底减法②,P78-5 池定义
+    「义务基座产物」同源),禁调用侧自选基座——基座 = M2 会重买的
+    集合(R1 后 = B'),Z1 锁线域残留病理防复发语义不变(与 shop.py
+    ``obligation_members`` 装配同一语义源 = cw_intention.locked_buy_
+    membership 截断口径)。
     """
     st = state_of(session)
-    locked = locked_buy_membership(getattr(st, 'v3_intention', None))
+    locked = locked_buy_membership(
+        getattr(st, 'v3_intention', None), cap_hold=cap_hold)
     base = set(locked) if locked is not None else set(k_members)
     return locked, base
 
 
 def identity_exclusions(session: StrategySession,
-                        k_members: tuple[str, ...]) -> set[str]:
+                        k_members: tuple[str, ...],
+                        *, cap_hold: int | None = None) -> set[str]:
     """装配 A 身份段(方案 v3 §2.2 第 1 段;P78 INV)。
 
     = 义务基座 ∪ 静态持有两集。静态/动态切分与「禁静态全集」论证
@@ -505,7 +517,7 @@ def identity_exclusions(session: StrategySession,
     期权价值被己方卖面销毁。取获取时点记录(非注册表帧集) =
     保护面只辖实际获取件,不随帧资格集波动扩张。
     """
-    _locked, base = _resolve_base(session, k_members)
+    _locked, base = _resolve_base(session, k_members, cap_hold=cap_hold)
     _close_switched_obligations(session, base)
     excl = set(base)
     excl |= set(sell_hold_exclusion_names())
@@ -515,7 +527,8 @@ def identity_exclusions(session: StrategySession,
 
 def sell_exclusions(session: StrategySession,
                     k_members: tuple[str, ...], *, channel: str,
-                    current_round: int | None = None) -> frozenset[str]:
+                    current_round: int | None = None,
+                    cap_hold: int | None = None) -> frozenset[str]:
     """统一装配 A 单一入口(P78 INV 主不变量;ADR-0585 §2/§3)。
 
     任何卖出通道的资格排除必须经本入口装配——「不许卖谁」独占于 A,
@@ -531,6 +544,9 @@ def sell_exclusions(session: StrategySession,
     (V2-09)。**L1 同轮硬面不消费本形参**(读端自治 fail-closed,ADR-0611
     对 V2-09 的显式翻转);垫保 carve-out 在轮号不可得帧不剔除
     (fail-closed 方向 = 硬面保持全集)。
+    ``cap_hold``:义务基座截断容量(T-307/R1,ADR-0647)= 调用方从
+    决策帧现读 ``cw_intention.locked_buy_cap_hold(state)``;None = 保宽
+    (fail-closed 零漂移端,无帧态调用位缺省)。
     """
     if channel not in SELL_CHANNELS:
         raise ValueError(
@@ -546,9 +562,10 @@ def sell_exclusions(session: StrategySession,
                     else _autonomous_round(session))
     _sw_orphans: frozenset[str] = frozenset()
     if _carve_round is not None:
-        _locked0, _base0 = _resolve_base(session, k_members)
+        _locked0, _base0 = _resolve_base(session, k_members,
+                                         cap_hold=cap_hold)
         _sw_orphans = line_switch_orphans_of(session, _base0, _carve_round)
-    excl = identity_exclusions(session, k_members)
+    excl = identity_exclusions(session, k_members, cap_hold=cap_hold)
     if current_round is not None:
         excl |= active_window(session, current_round)
     # L1 同轮硬面(ADR-0611 §3-1;r408「买后禁卖」恢复):
@@ -574,6 +591,7 @@ def funding_hold_fallback(session: StrategySession,
                           k_members: tuple[str, ...],
                           bench: list[BenchChar], *, gold: int, need: int,
                           a_exclusions: frozenset[str] | set[str],
+                          cap_hold: int | None = None,
                           ) -> list[BenchChar]:
     """funding 持有件兜底豁免(P78-5 四条件单一源;三消费位拼装用)。
 
@@ -594,7 +612,7 @@ def funding_hold_fallback(session: StrategySession,
     返回至多一件(单笔即止,need 即止);空列表 = 无合法兜底。
     """
     st = state_of(session)
-    _locked, base = _resolve_base(session, k_members)
+    _locked, base = _resolve_base(session, k_members, cap_hold=cap_hold)
     holds = sell_hold_exclusion_names()
     visit = set(getattr(st, 'cw4_visit_bought_names', ()) or ())
     pool = [b for b in bench
