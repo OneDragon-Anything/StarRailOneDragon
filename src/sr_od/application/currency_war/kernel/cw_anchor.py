@@ -5,6 +5,10 @@
 时点 × 该时点权威事实集 × 落载体登记。本模块承载 §12.3 的登记表机制
 (ANCHOR_REGISTRY 封闭集)、锚行七字段封装(AnchorEvent)与事件行载体
 接线(emit_anchor → ExogenousEvent 流,结构化载荷住 choice)。
+**载体墓碑(删除波 1 后现状)**:ExogenousEvent 流出口已退役为恒 no-op
+桩(cw_telemetry_exit.record_exogenous),armed 与否都不落行;登记表各
+行 host 所指原宿主写点已同步退役——载体与宿主归宿候裁挂起(retirement.md
+§2 exogenous 行),接线批落地前本模块在役面 = 登记/校验/幂等,零落行。
 
 **观测-only 边界(§12.0,用户裁定)**:本模块只做数据采集与计数登记,
 状态改写/效果施加明确出栈(效果施加语义归 §8.2 效果结构化词表线)——
@@ -149,7 +153,8 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
     'sell_landed': AnchorSpec(
         anchor_id='sell_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
-        host='卖牌执行点(sell_income 行现役写点,recorder.record_sell_income)',
+        host='原宿主=卖牌执行点 sell_income 行写点(recorder.record_sell_income,'
+             '已随删除波 1 退役;归宿候裁挂 retirement.md §2 exogenous 行)',
         carrier_kind='sell_income',
         sim_domain='实机先行',
         evidence_required=False,
@@ -159,8 +164,9 @@ ANCHOR_REGISTRY: dict[str, AnchorSpec] = {
     'refresh_landed': AnchorSpec(
         anchor_id='refresh_landed',
         trigger_type=ANCHOR_TRIGGER_LANDED,
-        host='三写点即锚面(spend_ledger 刷新字段 + shop_snapshots refresh'
-             ' 行 + record_refresh_execution/REFRESH bump)',
+        host='原宿主=三写点面(spend_ledger 刷新字段 + shop_snapshots refresh'
+             ' 行 + record_refresh_execution/REFRESH bump,均已随删除波 1 退役;'
+             '归宿候裁挂 retirement.md §2 exogenous 行)',
         carrier_kind=None,
         sim_domain='实机先行',
         evidence_required=False,
@@ -297,7 +303,8 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
                 node_seq: int | None = None, unit_seq: int | None = None,
                 evidence_refs: list[dict[str, str]] | None = None,
                 event_key: str = '', summary: str = '') -> bool:
-    """登记一次锚触发并经 ExogenousEvent 载体落行(§12.3 载体一)。
+    """登记一次锚触发并走 §12.3 载体一上行口(载体墓碑见模块头:ExogenousEvent
+    出口已退役恒 no-op 桩,受理后行不落盘,归宿候裁挂 retirement.md §2)。
 
     校验链(违规 = 红,炸错不静默):①封闭集(集外锚 = 红,锁①);
     ②scope 值域(§12.3);③effect_ref 恒空(结构锁,锁⑤——效果施加批
@@ -313,7 +320,8 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
 
     局外(run_id 空)= no-op 返 False(不写假行,与既有外生行门控同);
     载体为多写点面(carrier_kind=None)的锚拒绝路由(落盘面候 H2,如实
-    申报不假装)。返回 True = 已受理落行。
+    申报不假装)。返回 True = 已受理(受理≠落盘:载体出口退役现状下行
+    不落,墓碑见模块头)。
 
     本函数是观测-only 面:不触 run 状态、不写 BoardState/决策域、不施加
     效果(§12.0);best-effort 语义由调用方自担(出口槽未武装时本函数

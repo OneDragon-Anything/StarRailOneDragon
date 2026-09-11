@@ -34,12 +34,12 @@ cw_loop ``_run_has_outcome_at`` 跳过+计数+log 留痕);字节层宽容 = 以
 ``errors='replace'`` 解码(物理截断可劈开多字节字符,替换不抛),含
 U+FFFD 的行计 ``byte_repair_lines`` 后仍走 JSON 判定(坏行照跳)。
 
-消费方迁移覆盖清单(逐消费方 = 已迁/候 v3.4/不适用)单一源 = 批交付报告
-``.debug/temp/currency_war/统一state-R3.1-交付报告.md`` §5(11 行)+
-``.debug/temp/currency_war/统一state-R3.2-交付报告.md``(F5 补行 3 行:
-cw_replay_reader/cw_divergence_stats/cw_node_validate,合计 14 行;易失
-产物域,持久指针 = 本段);sim 账本/复测批判读与校准脚本读入口清单亦载
-R3.1 §5。
+消费方迁移覆盖清单(逐消费方 = 已迁/候/不适用)单一源 = retirement.md §7
+(``docs/develop/currency_war/game_state/retirement.md`` 消费方迁移清单,
+11 消费面;本模块 = 其中判读 CLI 面的新账读入口)。溯源注(易失产物域,
+非单一源):批交付报告 ``.debug/temp/currency_war/统一state-R3.1-交付
+报告.md`` §5 与 ``统一state-R3.2-交付报告.md`` 曾载逐消费方迁移核对明细
+(R3.2 补行 3:cw_replay_reader/cw_divergence_stats/cw_node_validate)。
 """
 from __future__ import annotations
 
@@ -429,9 +429,14 @@ def view_match_final(rows: list[dict[str, Any]], run_id: str = '') -> list[str]:
         dur = after.get('duration_s')
         dur_s = f'{float(dur):.0f}s' if isinstance(dur, (int, float)) else '?'
         bf = '补写' if after.get('backfilled') else '-'
+        # 版本两戳(W2-delta 审 N1:runs 退役后两戳 = 策略版本戳唯一在档
+        # 载体,判读 CLI 须可见,免翻 jsonl 载荷;旧产物无戳显 '?')。
+        commit = after.get('code_commit') or '?'
+        reg_fp = after.get('registry_fingerprint') or '?'
         out.append(
             f'  v={_v_s(r)} {row_ts(r)} type={after.get("final_type") or "?"}'
             f' plane={after.get("plane", "?")} round={after.get("round_num", "?")}'
             f' hp={after.get("hp", "?")} 时长={dur_s} {bf}'
+            f' commit={commit} reg={reg_fp}'
             f' note={r.get("note") or "-"} actor={_actor_s(r)}')
     return out

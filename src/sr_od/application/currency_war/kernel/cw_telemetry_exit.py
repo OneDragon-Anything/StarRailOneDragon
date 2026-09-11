@@ -107,8 +107,8 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
                      choice: dict[str, Any] | None = None) -> None:
     """旧 exogenous 流出口(已退役 no-op 桩;删除波 1)。
 
-    保留原因:锚登记机制(未入库工作树文件,T-221 挂起面,本文件此前
-    是其唯一 kernel 侧上行出口)的调用方仍 import 本符号,其归宿候裁
+    保留原因:锚登记机制(kernel/cw_anchor.py,已入库惰性未接线,本文件
+    此前是其唯一 kernel 侧上行出口)的调用方仍 import 本符号,其归宿候裁
     (retirement.md §2 exogenous 行 §5-7 挂起)——候裁落地前本桩恒
     no-op,既不断在飞调用方,也零旧流产出。候裁裁「路由退役」时随其
     调用点整段删除,本桩同步消失。
