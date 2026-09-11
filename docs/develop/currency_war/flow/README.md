@@ -42,7 +42,7 @@
 |---|---|---|---|
 | **契约** | `strategies/impl/cw_strategy.py` 的 `CwStrategy` ABC(抽象 12 + 非 abstract 工厂 1;接口面见 §2.2) | 定义各画面 op 调用策略器的全部决策入口与唯一冷建口(§2.2) | ABC 自身零内置逻辑(纯接口,create_state 工厂除外);零策略专属语义(update_target/意向 target 机器/生命周期事件钩子已出契约面,ADR-0583) |
 | **管理器** | `strategies/impl/cw_strategy_manager.py`(StrategyManager) | 按实例化/选择策略;注册面封闭集 = {mandate_v1}(decision_v2 已随 dd-038 删除) | 不承载判据;不知策略内部结构 |
-| **实现** | `strategies/impl/mandate_v1/`(单一核)+ `strategies/impl/flow.py`(`CwFlowStrategy` 中间辅助 ABC:唯一冷建口/方向节拍内化刷新/结算策略半惰性 drain/pick 族/商店单动作接口与驱动器缺省,`_abstract=True` 不注册;旧备战骨架已删,ADR-0517/0518) | 决策本体 | 禁自实现生命周期机制(幂等键/连败恢复/屏蔽/stall 门——归流程侧);禁绕契约自造接口 |
+| **实现** | `strategies/impl/mandate_v1/`(单一核)+ `strategies/impl/flow.py`(`CwFlowStrategy` 中间辅助 ABC:唯一冷建口/方向节拍内化刷新/pick 族/商店单动作接口与驱动器缺省,`_abstract=True` 不注册;旧备战骨架已删 ADR-0517/0518;结算策略半惰性 drain 三方法已删 ADR-0638) | 决策本体 | 禁自实现生命周期机制(幂等键/连败恢复/屏蔽/stall 门——归流程侧);禁绕契约自造接口 |
 | **注册壳** | `strategies/mandate_v1_strategy.py`(MandateV1Live) | 把实现包注册进策略扫描器 | 壳内零判据逻辑 |
 
 ### 2.2 契约接口全景(ADR-0583 形状;`cw_strategy.py` + `flow.py`)
@@ -66,10 +66,10 @@
 
 - `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + `cw_state.simulate` 纯投影推进,终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(ADR-0517/0518 单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
 - `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**(ADR-0583 §3):键守卫贵段(`update_intention` 状态机 + 候选评分遥测)每 game-round 恰一次 + 便宜派生视图段;触发信号 = 黑板帧代次标注(`session.prep_frame_class`/`shop_frame_class` ∈ full/view/none,写者 = 流程观察段具名写点,读者 = 决策入口,读后即清;驱动器不写帧类槽)。
-- `_drain_pending_round_outcomes`(flow 层私有)——结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记;处理即清;ADR-0583 §2.5)。
+- ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(ADR-0638,T-64 退役批)**:结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记臂前置零写端/三臂零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;`session.pending_round_outcomes` 槽保留为观察半累积面。
 - `write_shop_mirrors`(遥测镜像写者)。
 
-注(ADR-0583 生命周期):旧 `on_match_start/on_match_end` 删除(职责归 create_session 唯一冷建口/局终收口);旧 `on_round_end` 拆两半——观察半(performance.record/last_streak/last_hp 过置信门/last_hp_t)= battle_wait 结算点**即时直写**(`cw_screen_battle_wait._write_settlement_observation` 单一写点),策略半经 `session.pending_round_outcomes` 待加工槽惰性 drain。旧 `decide_prep_action` 薄委托已删(P5 挂账兑现)。
+注(ADR-0583 生命周期):旧 `on_match_start/on_match_end` 删除(职责归 create_session 唯一冷建口/局终收口);旧 `on_round_end` 拆两半——观察半(performance.record/last_streak/last_hp 过置信门/last_hp_t)= battle_wait 结算点**即时直写**(`cw_screen_battle_wait._write_settlement_observation` 单一写点),策略半原经 `session.pending_round_outcomes` 待加工槽惰性 drain——**该消费半已随 T-64 退役批删除(ADR-0638),槽保留为只写不读的观察累积面**。旧 `decide_prep_action` 薄委托已删(P5 挂账兑现)。
 
 **序列语义(历史注——波批时代的冻结条款,反向自旧 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段)**【ADR-0517/0518 迁移后本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结 op 与单动作循环取代([screen_op.md](screen_op.md) §3),本节保留作旧序列锁与历史 ADR 的解读钥匙——现行 fail-stop/控制流/生命周期机制条款仍有效】:
 - **帧稳定域**(历史):序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;发射时逐动作判"执行后画面状态能否静态推出",推不出即截断——截断器已退役,截断点语义由终结 op 吸收;流程侧保守口径(每动作落地后 heavy 重观察)已由「入口单次 heavy + 逐动作投影」取代。OpenShop/StartBattle 现为终结 op。
@@ -128,8 +128,8 @@
 流程层反向规格化同样过宪法四条（`../strategy-docs/00_framework.md` §1）。流程层的主辖域是编排与守卫，本无策略判据；但反向平移中发现下列**现状违例**（详见各篇 ⚠️ 标记）：
 
 1. **位面字面门**：`flow.py`（`state.plane == 1` 辖域,方向刷新派生视图段,ADR-0583）——修正方向：段索引/节点数一律由节点日程（`cw_plane_table.schedule_of`）派生查表，位面只作查表键。（另一处 `round_num >= 9` boss 先验随 ADR-0517 迁移批死码清理消失——载体 `_is_boss_round` 已删。）
-2. **hp 越权消费**：谷底回滚 `VALLEY_ROLLBACK_LOSS=15`（`flow.py` 结算策略半 drain 段,ADR-0583）——hp 掉量作质量信号触发回滚动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**，代码删除随迁移后批次。
-3. **无标数字**：`VALLEY_ROLLBACK_LOSS=15` 无三形态标注；随第 2 项退役一并消失。
+2. **hp 越权消费**：谷底回滚 `VALLEY_ROLLBACK_LOSS=15`（`flow.py` 结算策略半 drain 段,ADR-0583）——hp 掉量作质量信号触发回滚动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**，代码删除已随 T-64 退役批执行（ADR-0638），本项销案。
+3. **无标数字**：`VALLEY_ROLLBACK_LOSS=15` 无三形态标注；随第 2 项退役一并消失（已执行,ADR-0638）。
 
 ## 6. 入口链（enter/start）与弹窗守卫族
 

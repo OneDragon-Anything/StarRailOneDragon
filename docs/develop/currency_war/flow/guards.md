@@ -41,9 +41,9 @@
 
 ## 6. 执行失败安灯（`cw_screen_prep.py` `_spend_unit_close`（判定与记账同点：购买单元收尾）+ `_exec_fail_hook_check`（安灯判定+触发）；分类器在 `run_state.py`）
 
-> 【ADR-0517/0518 迁移后申报】安灯分类器**输入面未变**：decisions 行保持段尾累计行形态（段粒度 = 旧波行同框架,actions = 本段执行累计,CloseShop 终结不入行——「本轮 shop plan 行」载体仍在,`shop_visit.md` §2）;`plan_truncated` 豁免通道保留且语义收窄为「刷新硬墙跳过」（单动作下不存在截断丢弃尾）。`screen_op.md` §8.5 预期的「逐动作事件流」重锚未做（现输入面可支撑三态判定,无失效面）,留后续按需。
+> 【删除波 1 后口径,ADR-0643 随批更新;原 ADR-0517/0518 申报的「decisions 行载体仍在」已随 decisions 流停写失效】安灯分类器输入面 = 内存直读的一手执行事实:购买单元的 `BuyCardsOutcome` 暂存(visit_actions 经 serialize_action 与 decisions plan 行 `actions` 同 schema,非第二套分类)+ finalize 关店金现读回填的 gold_close。`plan_truncated` 豁免通道保留且语义收窄为「刷新硬墙跳过」（单动作下不存在截断丢弃尾）。`screen_op.md` §8.5 预期的「逐动作事件流」重锚未做（现输入面可支撑三态判定,无失效面）,留后续按需。
 
-- 判定与记账同点：购买单元收尾时跑分类器 `exec_fail_should_stop`——数据源 = decisions.jsonl 本轮 shop plan 行（plan/开店金，shop 开态可信）+ spend_ledger.jsonl 本单元行 gold_close（身份键完整；旧行回退 obs_conflicts join 兼容路径；读失败 None 进分类器 = unknown 不停，不猜）。
+- 判定与记账同点：购买单元收尾时跑分类器 `exec_fail_should_stop`——数据源 = 内存直读一手执行事实（单元暂存 `BuyCardsOutcome` 的 visit_actions/gold_open + finalize 关店金现读回填的 gold_close；facts 缺席或金读缺失 → unknown 不停，不猜）。旧数据源三流（decisions.jsonl plan 行 / spend_ledger.jsonl 单元行 / obs_conflicts join 兼容路径）已随删除波 1 停写，只辖存量语料（ADR-0641/0643）——现行下钻 = journal（`state/journal.jsonl`：receipts 回执窗 + state.values.gold 行行快照）与本钩子 flag 的 plan/gold 三件组（同 `run_state.py` flag 文本口径）。
 - "计划≠尝试"分流（ADR-0456）：plan_truncated（硬墙跳过/截断丢弃）豁免防误停；refresh_attempted/board_changed 进三态判定。
 - 触发：每局最多停一次（`_exec_fail_hook_fired`）→ 截图 + `cw_exec_fail_hook.flag`（plan 明细 + gold 开/关）→ `stop_running(reason='hook:exec_fail_mismatch')`。
 

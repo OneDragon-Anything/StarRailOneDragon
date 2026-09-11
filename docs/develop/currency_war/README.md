@@ -25,12 +25,13 @@
 ### [design/](design/) —— 系统组件设计件
 - [统一观察架构-画面op基类设计](design/统一观察架构-画面op基类设计.md) / [设计-C1直通核心入口](design/设计-C1直通核心入口.md)
 - BoardState-数据结构设计(统一 state 容器数据结构与画面字段规格):正本入口 = [game_state/README.md](game_state/README.md)(总纲;字段级完整规格在其 [fields.md](game_state/fields.md))
+- [冻结残余清单](design/冻结残余清单.md) —— 度量面/验证装置的「已知缺口、冻结不修、数据积累后按项重开校准」登记正本(冻结裁定 2026-09-02;登记 12 项、现存有效 11 项;2026-09-11 自 git 历史 commit 90f1acdb2^ 回灌,原文保真)
 
 ### [decisions/](decisions/) —— 决策日志(ADR,一个决策一文件;INDEX 索引)
 
 ### [config.md](config.md) —— 用户配置设计(配置语义单一源;用户偏好才进配置,ADR-0203)
 
-> 历史注记:本目录曾有 `strategy/`(v2 as-built 十二篇+底稿三件)、`AUTHORITY.md`、`archive/`(design/redesign 两树)与 `prereg/`——2026-09-04 用户裁定清理,内容已塌缩进 strategy-docs/ 与 flow/(逐节映射见塌缩批交付记录),原件全量可从 git 历史回溯。
+> 历史注记:本目录曾有 `strategy/`(v2 as-built 十二篇+底稿三件)、`AUTHORITY.md`、`archive/`(design/redesign 两树)与 `prereg/`——2026-09-04 用户裁定清理,内容已塌缩进 strategy-docs/ 与 flow/(逐节映射见塌缩批交付记录),原件全量可从 git 历史回溯;其中冻结残余清单(R66 七项+R68 二条+telemetry 三项,原载 IMPL_FIX_LEMMAS.md 与 design_telemetry.md)已于 2026-09-11 逐字回灌为 [design/冻结残余清单.md](design/冻结残余清单.md),恢复活文档单一源可达。
 
 ## 代码引用稳定路径
 

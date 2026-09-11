@@ -39,7 +39,7 @@
 | `cw_horizon.interest` | **模块已退役**(`cw_horizon` DP 面已删,非 DP 面迁至 `cw_plane_table`,见 develop/currency_war/strategy/01_posture.md「标定表/真值归属」);现行锚 = `cw_plane_table.interest()` = min(g//10, GOLD_CAP_INTEREST//10),`GOLD_CAP_INTEREST=50`(L31/L141-144) | 值口径一致,**引用名陈旧** |
 | 利息 cap=5 | `cw_registry.interest_cap=5`(L324);`cw_factions.INTEREST_THRESHOLD=50/INTEREST_RATE=0.1`(L134-135);sim `engine_p1.INTEREST_CAP=5` + `'interest': min(_icap, st.gold//10)`(L752,含投资覆写) | 一致 ✓ |
 | 息损=跨档数×R | `decision_v2/ev.py interest_cost`(L64-90):tiers_crossed × recovery_rounds,收入项不出现 | 一致 ✓ |
-| 基础奖励实测 | `economy.md §10.1`:1-1=3、1-2=4、1-9=5、P2r1=5(两批独立一致;1-3~1-8 无样本,两批冲突未消) | 见门③ |
+| 基础奖励实测 | `economy.md §10.1`:分段定谳 {1:3,2:4}+5(2026-09-11 回填——09-02 结算帧批 98 张直读补齐 1-3~1-8;本验证当时所引「1-1=3、1-2=4、1-9=5、P2r1=5,两批独立一致;1-3~1-8 无样本,两批冲突未消」的定谳前记载已结案) | 见门③ |
 
 **脚本可重跑性**:P7 无入库脚本(`tools/cw/proofs/` 无 p07 文件)——P7 为纯手算结构推导,原始批 W120 只产出了 p5 脚本。可重跑性由本报告 §1 复算表补(全部手算可复核)。
 

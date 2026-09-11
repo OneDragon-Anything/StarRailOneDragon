@@ -71,5 +71,5 @@ heavy 帧消费：tracking 对账（SIFT 真值重置 session tracking，漂移�
 
 ## 5. ⚠️ 现状违宪待改标记
 
-- ⚠️ **谷底回滚 hp 消费**（`flow.py` 结算策略半 drain 段,ADR-0583 内化后原位搬运）：`VALLEY_ROLLBACK_LOSS=15` 单场掉血门触发 `rollback_weakest` 回滚动作——hp 掉量作质量信号驱动动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；且 15 无三形态标注（宪法第 1/4 条）。**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7）**——代码删除随迁移后批次执行。
+- ~~⚠️ **谷底回滚 hp 消费**~~（**已销案,ADR-0638**）：`VALLEY_ROLLBACK_LOSS=15` 单场掉血门曾触发 `rollback_weakest` 回滚动作——hp 掉量作质量信号驱动动作，不在 hp 授权对账表（`../strategy-docs/04_survival_budget.md` §7）；且 15 无三形态标注（宪法第 1/4 条）。**已裁定退役（2026-09-04 用户裁定：未经数学证明即退役；04 §7 #7），代码删除已随 T-64+T-183 退役批执行（零行为,载体全删）。**
 - （旧备战骨架的位面字面门 `round_num >= 9` 与息引擎门双源漂移两项 ⚠️ 随 ADR-0517 迁移批死码清除消失——载体 `_is_boss_round`/`_levelup_engine_ok` 已删,见 §2.1。）

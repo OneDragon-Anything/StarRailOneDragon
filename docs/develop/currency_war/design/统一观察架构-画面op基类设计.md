@@ -1256,7 +1256,7 @@ sim 侧倒计时实现(归入 §7-T4 收敛纪律)。
 
 | 锚(登记名) | 触发时点型 | 权威数据(锚定什么) | 为什么此处锚最准 | 载体(复用/扩展) | 现状归属 | sim 适用 |
 |---|---|---|---|---|---|---|
-| buy_landed 买牌落地 | landed | 卡名/费用/星级(决策帧识别产物)+扣金(金账对拍)+落槽(pixel-diff,new_bench_slots)+合成判定(detect_merge_upgrade 返回 bool)与 expect 预期条目指针(两槽,随 H2 定形)+买因(LAUNCH_CAUSES 闭集值,经发射侧 reason 归一映射,同 §12.5-4 载体申报) | 落地回执时点是「买哪张/花多少/是否触发合成」三事实同点唯一可得处;事后 bench 重读只能推断到达且合成后身份已变(直出频率批 j=Σ3^(star−1) 持有量重建即事后推断成本实证) | BoardState 预期两步 + BUY bump(复用)+ ExogenousEvent kind='buy_landed'(扩展) | 新增(**前置依赖申报:触发口 on_outcome(BuyCard) 随 §6.4 执行器收编批成立——现役登记件还在 cw_op_buy_cards 执行落地门,R-J 挂账在案,禁绕收编私接触发**) | 实机先行 |
+| buy_landed 买牌落地 | landed | 卡名/费用/星级(决策帧识别产物)+扣金(金账对拍)+落槽(pixel-diff,new_bench_slots)+合成判定(detect_merge_upgrade 返回 bool)+买因(LAUNCH_CAUSES 闭集值,经发射侧 reason 归一映射,同 §12.5-4 载体申报) | 落地回执时点是「买哪张/花多少/是否触发合成」三事实同点唯一可得处;事后 bench 重读只能推断到达且合成后身份已变(直出频率批 j=Σ3^(star−1) 持有量重建即事后推断成本实证) | BoardState 合成升星投影直写(write_logic,ADR-0651)+ BUY bump(复用)+ ExogenousEvent kind='buy_landed'(扩展) | 新增(**前置依赖申报:触发口 on_outcome(BuyCard) 随 §6.4 执行器收编批成立——现役登记件还在 cw_op_buy_cards 执行落地门,R-J 挂账在案,禁绕收编私接触发**) | 实机先行 |
 | sell_landed 卖牌落地 | landed | 卖出对象(slot/char/star)+退款金(sell_refund 口径 + 售价修饰)+渠道(**闭集值域 SELL_CHANNELS + 发射侧 reason→channel 归一映射单一源**——发射侧 reason 为自由字符串('line_switch_collapse'/'m4_fuel_sell' 等)非闭集本身,归一映射的宿主与封闭性守卫随 H2 钉死,禁散点手搓映射) | 退款在执行点与其它金变动分离(decisions 行 actions = 执行前快照,现役 sell_income 行已立「实收回金只有执行点可知」口径);渠道身份只在发射侧可知,事后不可重建 | ExogenousEvent kind='sell_income'(复用,channel 字段补登)+ 装配 A 闭集消费(复用) | 收编 + 扩展 | 实机先行(渠道是决策层发射语义,sim 引擎卖牌无渠道概念——sim 侧锚行落盘面候批,渠道字段在 sim 无来源,如实申报) |
 | refresh_landed 刷新落地 | landed | 付费判定(免费闸)+刷价+前帧牌名集哈希(试验边界)+record_refresh_execution 计数组(total/paid/免费余额) | 「物理试验 = 每次付费刷新一帧牌面」的边界只有发射/落地时点可知(直出频率批靠组键近似重建:同名双卡按 1 计 + 跨段恢复局首帧多计 ≤1 试验;其报告的「分母高估 ≤3%」出自边界存疑带 2 局,非组键近似,归因如实分列);免费余额判定是执行侧事实,事后无从判 | spend_ledger 刷新字段(复用)+ shop_snapshots refresh 行(复用)+ record_refresh_execution/REFRESH bump(复用) | 收编(三写点即锚面;试验边界键显影挂 H2;**前置依赖申报:触发口随 §6.4 执行器收编批成立,R-J 挂账在案**) | 实机先行(恒 paid 不对称沿 §6.3 申报;锚行落盘面候批) |
 | levelup_landed 升级落地 | landed | 击数/扣金/XP 增量/等级意图值 | 击数是框架连点链的事实,屏上只有结果等级;血购已立「行数 = 击数」粒度先例(ExogenousEvent kind='hp_pay'),金本位升级同粒度的扩字段需求 | ExogenousEvent kind='level_up'(**复用现役行**,扩击数/扣金字段申报随 H2)+ 效果账本升级标记挂点(复用,同点在产:现役升级成功路径写外生事件行同点调 on_level_up,prep_actions 升级链 W612 挂点在案) | 收编 + 扩展(**禁双行:另立 kind='levelup_landed' 与现役 'level_up' 行构成同事件两行,违指标 3,申报否决**) | 实机先行(锚行落盘面候批;现役行本身即实机写点) |
@@ -1342,7 +1342,7 @@ DECLARED、不改既有 EMIT 表——本节末段已定锚登记行必带触发
 | # | 指标 | 定义与度量 | 合格线 |
 |---|---|---|---|
 | 1 | 事件完备率 | Σ锚行 = Σ真值事件。动作锚闭合公式(v10 重构,立「尝试口径」):**plan 动作数(decisions.actions,执行前快照)= 截断未尝试数(spend_ledger plan_truncated/refresh_skipped 显影)+ 尝试数;尝试数 = 落地锚行数 + 执行失败数(exec_events,生产写点唯一,覆盖面逐动作族申报为公式右侧完整性条件)+ 未知数**;节点锚 = 锚行数 vs 档案段数(settlement_gap 段豁免);刷新锚 = 锚行数 vs spend_ledger refresh_attempted 单元数 | 未知数 = 0(前提 = 截断显影项接入公式 + exec_event 覆盖面申报完备,二者随 H7 钉死);完备率 = 1.0(豁免白名单逐项申报) |
-| 2 | 对拍一致率 | 锚权威值 vs 帧观察推断值:锚行金差分 vs obs_conflicts 对拍行、锚点状态快照 vs 下一帧识别值、结算锚 vs hp 真值链;分歧行全部落 defect_ledger 可下钻 | 一致率 ≥ 现役事后推断基线(随批申报基线值);未解释分歧 = 0 |
+| 2 | 对拍一致率 | 锚权威值 vs 帧观察推断值:锚行金差分 vs obs_conflicts 对拍行(旧流对拍行已随删除波 1 停写——历史档案只读;新局对拍分歧行 = journal obs_event,ADR-0641)、锚点状态快照 vs 下一帧识别值、结算锚 vs hp 真值链;分歧行全部落 defect_ledger 可下钻 | 一致率 ≥ 现役事后推断基线(随批申报基线值);未解释分歧 = 0 |
 | 3 | 唯一性 | 每真值事件恰一行:幂等键 = (anchor_id + 时点键)唯一;node_enter 同 (plane,round) 唯一(tick_node 同节点去重守卫同款语义);重试路径双触发零双行 | 双行 = 0(测试锁③) |
 | 4 | 时延边界 | 锚时点不晚于下一帧观察:动作锚 ≤ 生命周期 act→on_outcome 段完成时点;boundary 锚 ≤ 分派/写端完成时点;锚行 ts 与次帧 observe ts 差可测 | 超界行 = 0(超界 = 对账语义降级为事后推断,即锚失效形态) |
 | 5 | 留证完备率 | 判定事实型锚(登记表 evidence_required=true,§12.3)的 evidence_refs 非空率;适用集 = 登记表逐锚申报值,初判全部 false,H3 定谳 star≥2 判定帧位后收窄 | 100%(留证在锚点定义内,非事后补采) |
@@ -1417,10 +1417,26 @@ DECLARED、不改既有 EMIT 表——本节末段已定锚登记行必带触发
 7. **遥测面 = 单管道**。锚行落盘走既有装配(match_archive 切片;
    **辖实机 live 流——sim 批账本不装配 match_archive,sim 侧锚行落盘面
    现状 = 暂缺,见 §12.3 载体一 sim 申报,候 H2**),缺陷走 defect_ledger,
-   对拍走 obs_conflicts——三面零扩表;防三源总声明:**帧观察(§2)→
+   对拍走 obs_conflicts(旧流对拍行已随删除波 1 停写——历史档案只读;
+   新局对拍分歧行 = journal obs_event,ADR-0641)——三面零扩表;防三源总声明:**帧观察(§2)→
    锚(§12)→ 遥测落盘是一条管道的三段**,锚不产生独立数据域,判读
    消费同一份档案;「锚 vs 帧」的分歧对拍正是 §12.4 指标 2 的数据面,
    两源互证不是两源并存。
+8. **节点推进权威 = 统一 state 派生规则,锚/台账不做第二计数器**
+   (as-built R1.2,2026-09-10;设计正本 = 流程侧遥测 v3.4 §3.4.1 四规则
+   组,ADR-0630 关联面)。节点计数唯一权威源 = 统一 state 派生规则
+   (kernel/cw_board_state.py,**字段层次终极形态,用户终裁 2026-09-11:
+   观察层(observe)只放画面原始读数——顶栏原文落 top_bar_raw 字段;节点
+   序键 node_ord = 逻辑层字段,四条腿(备战规则=解析顶栏文本成序键/弹窗
+   规则/0q/0p)全部 write_logic 写逻辑层,无 observe 写序键的例外;类型
+   派生同理逻辑层;生效序读口 = effective_node_ord 派生计算非存储字段**;
+   推进去重键 =(run_id,
+   effective_ord) 同序恰一次推进;类型派生 = 专属画面直定+商店面板未定型
+   查链预留)。据此:§12.2 的 node_enter/plane_enter
+   锚行只记边界事件事实(payload/触发时点),**禁携带或派生第二份节点序
+   计数**——锚行与派生域的节点序对拍 = 判读可辨的分歧行,不是双源合流;
+   PlaneNodeLedger 合并视图维持「判读侧台账」既有职责(§3.6 裁决),不做
+   计数源。
 
 ### 12.6 开放问题(候并入开放问题清单总表)
 
