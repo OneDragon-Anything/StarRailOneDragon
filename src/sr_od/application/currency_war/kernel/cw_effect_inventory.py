@@ -156,7 +156,7 @@ SOURCE_AFFIX: str = 'affix'
 # ===== 板面重写语义词表(BattlefieldEffect.board_rewrite 取值;防散落字符串)=====
 # 在册条目 = 全员晋升/人力重组(cw_investments.STRATEGY_EFFECTS,官方文
 # cw_invest_data.py:67/:68);写入归属两行单一源 =
-# docs/develop/currency_war/game_state/effect-domain.md §8 同名条(全员晋升/人力重组)。
+# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md §8 同名条(全员晋升/人力重组)。
 BOARD_REWRITE_UPGRADE_ALL: str = 'upgrade_all_cost+1'   # 整场上阵替换:全场升为
                                                         # 高 1 费随机角色(最大 5 费)
 BOARD_REWRITE_SELL_ALL: str = 'sell_all'                # 全场出售+再发牌:清场退款,
@@ -573,7 +573,7 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
 # ============================================================ 账本→字段桥·装备改写写端
 # (写入归属申报单一源 = kernel/cw_affix_effects.py EQUIP_REWRITE_DECLARATIONS
 # × EQUIP_WRITE_SIDES;归属判据 = BoardState 数据结构设计 §5.3 / 正本
-# docs/develop/currency_war/game_state/effect-domain.md §6.3。宿主放本侧与
+# docs/develop/sr_od/application/currency_war/game_state/effect-domain.md §6.3。宿主放本侧与
 # 板面重写桥同理:申报模块 cw_affix_effects 头 import 本模块,桥落本侧免
 # 模块级成环;BoardState 真类运行期函数内惰性取,维持「模块头零包内
 # import」契约。)

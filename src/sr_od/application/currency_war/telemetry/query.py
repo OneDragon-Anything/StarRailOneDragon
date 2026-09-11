@@ -1,6 +1,6 @@
 """判读查询纯函数层(自 cw_telemetry 拆出,分包期6;W3 收缩为单一源保留面)。
 
-W3(R5 单源直迁第三波,正本 = docs/develop/currency_war/game_state/
+W3(R5 单源直迁第三波,正本 = docs/develop/sr_od/application/currency_war/game_state/
 r5-migration-plan.md §2 W3):旧 12 流视图族(query_rounds/supply/anomalies/
 hp/economy/gold_flow/tiers/plan_vs_exec/spend_ledger/exogenous/exec_events/
 invest_cards/obs_conflicts 及其 join/helper)随流写入端退役(删除波 1)一并

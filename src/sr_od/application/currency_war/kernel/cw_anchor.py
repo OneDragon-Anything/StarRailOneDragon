@@ -1,6 +1,6 @@
 """流程转点观测锚·登记机制(kernel;统一观察架构 §12,实现批 T-221)。
 
-设计正本 = ``docs/develop/currency_war/design/统一观察架构-画面op基类设计.md``
+设计正本 = ``docs/develop/sr_od/application/currency_war/design/统一观察架构-画面op基类设计.md``
 §12:在流程确定性转点上触发的一次结构化观测(锚),三要素 = 确定性触发
 时点 × 该时点权威事实集 × 落载体登记。本模块承载 §12.3 的登记表机制
 (ANCHOR_REGISTRY 封闭集)、锚行七字段封装(AnchorEvent)与事件行载体

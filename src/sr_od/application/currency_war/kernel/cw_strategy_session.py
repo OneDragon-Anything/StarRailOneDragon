@@ -2,7 +2,7 @@
 
 `StrategySession` = 一局跨步状态载体(纯 dataclass 字段,零行为;
 框架每局新建、局终销毁)。职责单一(用户 2026-09-06 裁定,设计件
-`docs/develop/currency_war/flow/session.md` as-designed):本类**只承载
+`docs/develop/sr_od/application/currency_war/flow/session.md` as-designed):本类**只承载
 「从游戏画面观察到的数据」**(框架读屏与识别层守卫产生;策略器只读)
 + 框架设施(rng 种子契约锚 / performance 观测反馈)+ ``strategy_state``
 黑盒引用。策略器推导产生的中间状态归实现包私有的状态对象

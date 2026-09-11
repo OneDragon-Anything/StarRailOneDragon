@@ -1,7 +1,7 @@
 """货币战争 BoardState 局内记录(迁移批次一骨架)。
 
-**正本入口** = ``docs/develop/currency_war/game_state/README.md``(总纲);
-**字段级规格正本** = ``docs/develop/currency_war/game_state/fields.md``
+**正本入口** = ``docs/develop/sr_od/application/currency_war/game_state/README.md``(总纲);
+**字段级规格正本** = ``docs/develop/sr_od/application/currency_war/game_state/fields.md``
 (本文注释所引节号体系 §1-§8 的解析归宿)。
 BoardState = 当前仍为真的局内已知事实快照:单例,每局新建,
 只描述「此刻」;画面 op 与决策 op 写,策略器读(设计 §1)。历史序列归遥测,
@@ -45,7 +45,7 @@ R5 迁移规划 W1/ADR-0634,集内无空 actor 行);:attr:`BoardState.write_seq`
 另以 sink 在场与 run_id 在场为准,sink 缺席 = 行不落而写路径照常——记录被动,
 不改写路径语义)。新增**逻辑态
 派生域与画面上下文域**(ADR-0630 决策 1+修订节 2;字段面 as-built =
-``docs/develop/currency_war/game_state/node-domain.md`` §2):``prev_screen``/``current_screen``
+``docs/develop/sr_od/application/currency_war/game_state/node-domain.md`` §2):``prev_screen``/``current_screen``
 (①观察汇聚写)+ ``top_bar_raw``(顶栏原文,**观察层**,observe() 只落原始
 读数)+ ``node_ord``(**逻辑层序键**,派生规则唯一写点;用户终裁 2026-09-11
 字段层次终极版:观察层只放画面原始读数,序键是逻辑层字段,四条腿全部
@@ -53,7 +53,7 @@ write_logic,无 observe 写序键的例外)。
 四规则组:①备战腿顶栏权威/②位面过渡腿 0q→(plane+1,1)/③BOSS简报腿
 0p→当前+1+boss 类型/④弹窗腿守卫族;推进去重键 =(run_id, effective_ord),
 类型派生 = 专属画面直定+未定型查链预留)。本段持久正本 =
-``docs/develop/currency_war/decisions/0630-unified-state-journal.md``
+``docs/develop/sr_od/application/currency_war/decisions/0630-unified-state-journal.md``
 (ADR-0630,含修订节:守卫族终版/单字段双值结构/字段层次终极版;设计
 工作稿存 .debug/temp 为易失档,禁作正本指针)。派生规则判定本体单一源 =
 场景一判定方案(现行版次以文件头为准;该档不入 git,持久裁定锚 = ADR-0630
@@ -823,7 +823,7 @@ def cost_source_group(cost_source: str) -> str:
 
 
 # ============================================================ 双 ShopCard 映射单一源(W5 类型去重)
-# 方案语义正本 = docs/develop/currency_war/game_state/fields.md §3.3.1
+# 方案语义正本 = docs/develop/sr_od/application/currency_war/game_state/fields.md §3.3.1
 # (双 ShopCard 映射):唯一容器类型 =
 # :class:`ShopCard`(本模块);旧容器版(cw_state 侧同名类,带点击坐标 x
 # 与 merge_preview)随 W8 GameState 本体退役波消亡,过渡期两类型并存合法、

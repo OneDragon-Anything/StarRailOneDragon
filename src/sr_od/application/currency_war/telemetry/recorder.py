@@ -3,7 +3,7 @@
 旧 12 流中「策略源收编 9 流」(decisions/outcomes/exogenous/spend_ledger/
 shop_snapshots/exec_events/invest_cards/obs_conflicts/runs)的写入端已随
 用户 2026-09-10 直迁裁定整段删除(处置表单一源 =
-docs/develop/currency_war/game_state/retirement.md §2;历史档案只读,
+docs/develop/sr_od/application/currency_war/game_state/retirement.md §2;历史档案只读,
 判读唯一读面 = telemetry/journal_query 新账视图族——W3 删旧读面后
 telemetry/query 只余纯函数单一源)。本模块保留:
 

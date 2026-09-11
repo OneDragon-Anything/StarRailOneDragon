@@ -1,7 +1,7 @@
 """达标臂发射短路·反假阴性哨兵(sim 决策下沉两小批②;裁决 = ADR-0557;
 批 1 哨兵改造裁决 = ADR-0566)。
 
-背景(docs/develop/currency_war/decisions/0557-sim-sink-launch-criteria-
+背景(docs/develop/sr_od/application/currency_war/decisions/0557-sim-sink-launch-criteria-
 kernel.md):生产达标臂发射帧**短路备战动作链**;两小批② 之前 sim 只记
 观测键、决策照常跑金照花 ⇒ 金出口族改动在严格同池 A/B 的 ledger 上
 pre/post 逐位一致 = **结构性假阴性**。本哨兵把该缺口变成检查器可抓的

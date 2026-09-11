@@ -283,7 +283,7 @@ def main() -> int:
     check_pair_nonempty_and_evicted_hole()
     check_sort_keys_unchanged()
     print(f'P65 直证自检 v2 全过(状态网格 {n} 格;结论见 '
-          f'docs/develop/currency_war/proofs/p65-promote-candidate-set-reachability.md)')
+          f'docs/develop/sr_od/application/currency_war/proofs/p65-promote-candidate-set-reachability.md)')
     return 0
 
 

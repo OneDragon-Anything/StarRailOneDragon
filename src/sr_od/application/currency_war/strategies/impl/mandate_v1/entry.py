@@ -13,7 +13,7 @@ ev_arm 模式参数(skeleton_only/full,R1-1)决定 EV 发射面旁路集
 并写遥测行(bridge 侧)。
 
 truncate_frame_stable 判 = 契约 v2 §3.2 备战线域 18 类逐类表(词表
-as-built 权威 = docs/develop/currency_war/flow/action_exec.md §1——
+as-built 权威 = docs/develop/sr_od/application/currency_war/flow/action_exec.md §1——
 契约正本 CONTRACT_SERIES_DECISION.md 工作副本灭失(全仓零命中,
 .debug 不入 git),§1 即该词表行的首次文档落档,权威链重锚申报 =
 ADR-0585 §5 + dd-020 修订记录)+ §3.3 fail-closed(词表外/无分类

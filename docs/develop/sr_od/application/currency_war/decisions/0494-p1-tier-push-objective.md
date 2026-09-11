@@ -1,0 +1,40 @@
+# ADR-0494 · P1 档位推进目标函数(W803 实施批;缺口差分+死线+散装门+r6 预算承诺)
+
+> **引用勘误(2026-09-04 ADR 存量 review)**:`.debug/` 归档 → 本目录(decisions/)同名 ADR;`prereg/` → `docs/develop/sr_od/application/currency_war/proofs/`(math_proofs 索引)。文内出现处按此对照读取。
+
+## 背景
+
+W801 七局掉血帧阶跃实证:P1 出口 hp 的决定量是**离散战力档位**(激活羁绊档 ≥3 → 出口 59-72;≤2 → 9-48;≥85% 出口落差归档位),不是线的组成进度。现行 P1 评分主轴(配方完成度+九维板面差分+方向约束)度量「买哪条线」,「买线内件但不上场/不凑档」时与档位维度脱钩。W801 §3 判定既有杠杆族(授权/方向/时机型,含 ADR-0487 删码的 p1_iface 与 ADR-0492 删码的 p2_spend_auth)全部与「档位累积型目标变量」类型错配——缺的是**存量目标型杠杆**:改「花在什么上值多少分」的标尺,不改「让不让花/何时花」的门。
+
+设计单一源 = `docs/develop/currency_war/prereg/w803_tier_push_design/REPORT.md` v2(经 W805 攻击批六条修正+W805v2 复核合格;自 `.debug/temp/` 迁入);命题 = `game/currency_war/research/proofs/p32-p1-tier-push-ev.md`(P32:阶跃实证+EV 下界 +19 血当量);判前锁 = 同目录 `PREREG_tier_push_AB.md` v2(M1-M3/G0-G5,n=1000/臂)。
+
+## 决策
+
+落码四件(模块 `decision_v2/tier_push.py`,伞开关 `p1_tier_push_enabled` + 三子旗标 gate/deadline/r6_budget,全部默认关零漂移;开关生命周期第 1 态,开臂判据挂 PREREG v2,不过则删码留 ADR):
+
+1. **缺口差分项**(评分加项,买/升级/部署共用):`ΔG·W(r)·V_tier`;G = deployed 域注册表自算的「距最近成型档组最小缺件数」(三线:仙舟3 / 列车2∧DOT2 / 列车2∧希儿系成型;面板快照滞后一拍不用,W789 问题 0);逐帧存量差分无跨帧账本;线级取「差分·V_tier」最大者;V_tier 按线分权(仙舟锚定 `tier_push_v_anchor`/列车·DOT 降权/希儿最低,占位挂标定)。消费点在 off-lock 降级**之前**——线外候选经既有 W802 κ 折扣通道获得降级非禁绝语义,罚分本体零新增(W802 单一实现)。
+2. **r7 死线**:`W(r)` 三段(r1-r5 平缓 `tier_push_w_early`/r6-r7 陡升 `tier_push_w_r6`——r7 备战帧购买直接作用于 r7 遭遇战/r8+ 坍缩 `tier_push_w_late`,设计 §3②「r7 帧后」坍缩语义;占位,标定挂账);子旗标关恒 1.0(消融归因)。
+3. **散装板硬门**(filter 层后置步,`p1_tier_push_gate_enabled`):r4 起 `max_bond_tier(deployed)<2` 帧拒「对任何意向线缺口零增量」的纯散件买入;豁免判据与缺口差分**同一 dist 函数**(单一源,首张豁免防自锁);压库豁免 ≤2 费+每帧 ≤2 张+不穿透 bench 挤占门(needs_slot 不获豁免)。
+4. **r6 建档轮预算承诺**(`p1_tier_push_r6_budget_enabled`):arbiter gold_floor 的 EV 门式授权臂(V 含缺口差分项,与买侧 V 同单一源;Δstreak 由板面差分 win 维承载不另造账),击穿地板放行缺口前进的买入;**血线辖域门最小实现**:消费存活 `state.hp` + `posture_release.hp_decision_trusted` 单一守卫 + 报警线 `blood_margin_low_hp`(=40,[18] 纯语义阈值占位挂标定),hp<报警线授权否决(W774⑤ 已删码 ADR-0487,概念重建批若立项则切换状态源,接缝挂账设计 §8-5)。
+5. **刷新超几何项**:缺档成员 `Δp_tier·P(本刷出缺件)·W(r)`,沿 W795 侧一机制+金水位辖域门同款(花完 <息线 → 0);Δp_tier 单一源 = `realization_delta_p_tier`(W802/P29/W803 三处共享,禁第二源)。
+
+正交性:与 W802 realization(位面 2 侧兑现链)零机制重叠;禁触 `realization.py`/`allocator.py`。
+
+## Considered Options
+
+- **替换配方主轴 vs 加权融合**:替换无证据支持(W801 成型局全部同时是配方局,两轴正样本共线,脱钩只在负样本);选融合——配方完成度回答「买哪条线」(方向输入),缺口差分回答「离散战力兑现到哪档」,加权和进评分。
+- **流量积分账 vs 逐帧存量差分**:跨帧累计账本有「一帧误买入正账后卖出不回滚」的误差累积;选存量差分(每帧重算 G(t),候选分=差分,天然幂等)。
+- **血线状态源**:复用已删码的 W774⑤ 血线三带(悬空依赖,ADR-0487)vs 本设计自带最小实现;选后者——消费存活 `state.hp`+既有可信位守卫+既有报警线常量,零新悬空;重建批接缝挂账。
+- **散装门豁免两读法**(deployed 域 vs deployed∪bench 域):deployed 域会产生「档 0 板永远买不进第一张」的自锁;选 deployed∪bench 域(宽松+方向性,与缺口差分同一 dist 函数)。
+- **部署独立 sort_key vs 统一评分差分项**:部署候选经同一 `score_candidate` 差分即获边际排序(apply 管线显影),单造 sort_key 是第二排序源;选统一评分项。
+- **实验臂组合态(W805v2 复核缺口)**:A/B 实验臂**不同开** W802 开关(保持单因子归因);κ 通道语义归 W802 的 A/B 检验,W803 只承诺兼容不承诺检验。
+
+## 后果
+
+- 默认关零漂移:全部机制函数伞关恒 0/False;off 臂锁组(`test_cw_tier_push` 每锁带 off 臂断言)盘点义务随开臂批履行。
+- 标定挂账(开臂前 sim 批消偿):W(r) 形状、V_tier 线分权、压库豁免上界、报警线 40 占位阈值的权威边界;Δp_tier 档位分解标定与 W802/P29 同批消。
+- G0 判前实现检查(口径重放七局,仙舟线复现 4/3 分层)归 A/B 批判前步;「修实现不是修口径」反通关条款沿 PREREG v2。
+
+## 验证
+
+新锁组 7 例(PREREG v2 §5 六锁+零漂移锚:`test_cw_tier_push.py`,入 cw_quick)+受影响邻域+cw_quick 全绿+ruff;off 臂逐位断言(默认关=现行行为)。

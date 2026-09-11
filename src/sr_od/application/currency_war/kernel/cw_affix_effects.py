@@ -228,7 +228,7 @@ def scan_rewrite_equipments() -> dict[str, str]:
 
 
 # ===== 装备改写成员写入归属申报表(键集必须恰等于 scan_rewrite_equipments 命中集)=====
-#: 归属判据(效果写入归属判据正本 = docs/develop/currency_war/game_state/
+#: 归属判据(效果写入归属判据正本 = docs/develop/sr_od/application/currency_war/game_state/
 #: effect-domain.md §6.3;详设 = BoardState 数据结构设计 §5.3):结果可准确
 #: 计算(确定性公式+已知输入)→ 逻辑写;含概率/随机 → 不建逻辑写端,观察
 #: 收口。「现观察覆盖兜底」= 生产挂点接线归各辖批(工具执行/节点结算/获得

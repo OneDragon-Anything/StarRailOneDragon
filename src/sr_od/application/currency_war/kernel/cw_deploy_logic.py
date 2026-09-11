@@ -743,7 +743,7 @@ def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
 
 
 # ===== 转型臂(M1″ swap 谓词触发域扩展;bench→板 换血通道)=====
-# 语义出处:ADR-0534(docs/develop/currency_war/decisions/
+# 语义出处:ADR-0534(docs/develop/sr_od/application/currency_war/decisions/
 # 0534-swap-transition-arm.md)。病灶:基座/成型臂都不辖「锁线后
 # fp<1.00 转型期」(成型臂门 fp≥1.00),板满帧 fenced victim 全被
 # W209 熔断拒 ⇒ victim 空 ⇒ 换血死锁(实机「锁线 core 坐板凳、

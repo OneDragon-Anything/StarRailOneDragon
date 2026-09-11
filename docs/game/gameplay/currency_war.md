@@ -8,7 +8,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 
 # 货币战争 · 零和博弈(currency_war)
 
-> **本页 = 货币战争的认知入口**(想了解这个玩法的人 / agent 从这里进):先读下面「一段概览」与「按主题导读」,深入知识在 [game/currency_war/research](../currency_war/research/README.md)(判读与策略依据)与 [develop/currency_war](../../develop/currency_war/)(设计与实现);本页下半部「玩法机制」保留本页独有的稳定事实(口述 / 实测标注)。
+> **本页 = 货币战争的认知入口**(想了解这个玩法的人 / agent 从这里进):先读下面「一段概览」与「按主题导读」,深入知识在 [game/currency_war/research](../currency_war/research/README.md)(判读与策略依据)与 [develop/currency_war](../../develop/sr_od/application/currency_war/)(设计与实现);本页下半部「玩法机制」保留本页独有的稳定事实(口述 / 实测标注)。
 
 ## 一段概览:一局怎么打(从 research 提炼)
 
@@ -28,7 +28,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 | 投资策略 / 环境效果全景 | [invest_effects.md](../currency_war/research/invest_effects.md) |
 | 阵容理解方法 / 攻略黑话查证 | [combo_methodology.md](../currency_war/research/combo_methodology.md) |
 | 高玩方法论(M1-M16)/ 策略数学证明 | [plaza_methodology.md](../currency_war/research/plaza_methodology.md) / [math_proofs.md](../currency_war/research/math_proofs.md) |
-| bot 策略设计 as-built 与决策(ADR) | [docs/develop/currency_war/](../../develop/currency_war/)(strategy/ + decisions/) |
+| bot 策略设计 as-built 与决策(ADR) | [docs/develop/sr_od/application/currency_war/](../../develop/sr_od/application/currency_war/)(strategy/ + decisions/) |
 
 > 新读者的推荐顺序(依赖驱动:机制 → 纪律 → 过渡 → 阵容 → 方法论)见 [research/README.md「玩家理解序」](../currency_war/research/README.md)。
 

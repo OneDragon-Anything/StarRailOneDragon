@@ -4,7 +4,7 @@
 
 json 对局档案不便逐条阅读;本工具把单局档案渲染成一份 markdown 复盘稿。
 渲染基本单元 = **一次外层循环画面 op 调用**(协议 = ``sr-od-currency-war``
-skill ``references/match-review.md``;架构依据 = ``docs/develop/currency_war/
+skill ``references/match-review.md``;架构依据 = ``docs/develop/sr_od/application/currency_war/
 flow/screen_op.md`` §1「一次画面 op 调用 = 入口观察 + 逐动作决策循环」、
 ``flow/outer_loop.md`` §2.2 分支序表、``flow/prep_visit.md`` §1 投影规则):
 逐节点(P×R×)分组,组内按时间戳输出 op 记录,每个 op 单独一条,尾部留三个
@@ -186,7 +186,7 @@ _DECISION_OP_KINDS: frozenset[str] = frozenset(
 _OP_EXOG_KINDS: frozenset[str] = frozenset({'briefing', 'event_choice'})
 
 #: 合成补给结算行标记(补给是唯一无结算屏节点,outcome 行为快照合成,
-#: 「陈旧直到证伪」口径;见 docs/develop/currency_war/flow/outer_loop.md §2.2
+#: 「陈旧直到证伪」口径;见 docs/develop/sr_od/application/currency_war/flow/outer_loop.md §2.2
 #: 分支 0e1 与 §5 补给合成 outcome 钩子)
 _SYNTHETIC_SUPPLY_SOURCE = 'synthetic_supply'
 
@@ -2001,7 +2001,7 @@ def render_match(archive: dict[str, Any], replay_dir: Path,
               '(分支 1,flow/prep_visit.md §1);战斗窗/结算 = 每条 outcomes 行'
               '一个一体 op;补给/遭遇/投资选卡按各自数据面定位。协议 = '
               'sr-od-currency-war-dev skill references/match-review.md;'
-              '分支序 = docs/develop/currency_war/flow/outer_loop.md §2.2。', '']
+              '分支序 = docs/develop/sr_od/application/currency_war/flow/outer_loop.md §2.2。', '']
 
     open_ops = [o for o in ops if o['segment'] == 'open']
     node_ops = [o for o in ops if o['segment'] == 'nodes']

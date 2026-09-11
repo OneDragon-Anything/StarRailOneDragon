@@ -82,7 +82,7 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
                         click_cost: int) -> tuple[bool, str]:
     """P72 (3) 全段预算闸(ADR-0576):升级支出 s 的量闸(全段辖域)。
 
-    判据式(证明 = docs/develop/currency_war/proofs/
+    判据式(证明 = docs/develop/sr_od/application/currency_war/proofs/
     p72-full-band-budget-gate.md;P71-b (3) 辖域的全段化推广非推翻,
     溢余段逐字退化零漂移):
 

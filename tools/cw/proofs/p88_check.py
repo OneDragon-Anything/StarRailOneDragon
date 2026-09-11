@@ -1,6 +1,6 @@
 """P88 锁线转型域投机买入收窄·库容不变量与解封方向·复算脚本。
 
-命题(docs/develop/currency_war/proofs/p88.md;math_proofs.md P88 行):
+命题(docs/develop/sr_od/application/currency_war/proofs/p88.md;math_proofs.md P88 行):
 - 辖域单一源: D = _swap_transition_domain_of = armed ∧ locked ∧ fp<1.00 ∧ 板满;
 - 调和引理(路径级弱支配): 收窄的占位成本 = 滞留期各帧边际 V_slot 之和 ≥ 0,
   被阻义务兑现帧上 ≥ 该义务净 EV(严格);bench 恒 free≥2 时和 = 0(等价分支);

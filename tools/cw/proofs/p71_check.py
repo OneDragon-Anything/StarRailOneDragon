@@ -1,6 +1,6 @@
 """P71 升级通道预算闸·数值自检脚本。
 
-命题(P71-a/b/c,详 docs/develop/currency_war/proofs/p71-levelup-channel-budget-gate.md):
+命题(P71-a/b/c,详 docs/develop/sr_od/application/currency_war/proofs/p71-levelup-channel-budget-gate.md):
 - a: dep 满时人口位边际构造性为零;升级仅存通道 = 概率移位,形状由
   REFRESH_PROB 决定且对费档符号分化(3 费 lv8→9 恶化 / 4-5 费改善);
 - b: 预算闸 (3) 的溢余段简化 L≡0 与穿线段 L>0 的对照(P70 断言同源);

@@ -1,6 +1,6 @@
 """判读 CLI(``python -m`` 入口,自 cw_telemetry 拆出,分包期6)。
 
-W3(R5 单源直迁第三波,正本 = docs/develop/currency_war/game_state/
+W3(R5 单源直迁第三波,正本 = docs/develop/sr_od/application/currency_war/game_state/
 r5-migration-plan.md §2 W3):``--source`` 双读面拆除——旧 12 流视图族随
 流写入端退役(删除波 1)一并删除,journal(\\*:读面 = journal_query)成为
 ``query`` 唯一读面;``checks`` 子命令(sim/ledger_hooks 读生产旧流的检查

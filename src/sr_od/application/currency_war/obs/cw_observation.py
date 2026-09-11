@@ -2392,7 +2392,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     #   批间验证落位;②事件 overlay(选择伙伴)盖棋盘时拖拽全部静默失败,批次必须验证;
     # ③VLM 看不清星数(开商店帧误报"银狼3星"),定位 3 星用 read_star 全帧扫描。
     # BoardState 观察流接线(迁移批次一;字段级规格正本 =
-    # docs/develop/currency_war/game_state/fields.md §2.1/
+    # docs/develop/sr_od/application/currency_war/game_state/fields.md §2.1/
     # §8.7):既有读取完成后把本帧真读字段同步记入 BoardState 单例(零新增 OCR,
     # 消费切换归批次二,GameState 消费者行为零变化)。
     _feed_board_state(ctx, state, phase, screen, _spec, had_hp_real=_had_real)

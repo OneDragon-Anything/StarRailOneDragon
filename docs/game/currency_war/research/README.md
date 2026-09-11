@@ -70,6 +70,6 @@
 ## 关系图
 
 - **值(数据)的单一源 = 代码注册表**(`src/sr_od/application/currency_war/cw_*.py`);本目录记「凭什么信」。
-- **设计消费**:`docs/develop/currency_war/strategy/` 的 as-built 正文引用本目录结论(只引结论一句话+链接,不复制内容)。
+- **设计消费**:`docs/develop/sr_od/application/currency_war/strategy/` 的 as-built 正文引用本目录结论(只引结论一句话+链接,不复制内容)。
 - **上游**:原 ../sources/ 外部原文存档(已删[eb9c72a1],git 历史 `eb9c72a1~1` 可查);仍被引用的条目以各篇「原文细节补记」块为仅存记录,本目录结论的证据等级就地标注。
-- **裁定/教训不进本目录**:玩法取舍 → ADR(`docs/develop/currency_war/decisions/`);分析教训 → 本地 insights。
+- **裁定/教训不进本目录**:玩法取舍 → ADR(`docs/develop/sr_od/application/currency_war/decisions/`);分析教训 → 本地 insights。

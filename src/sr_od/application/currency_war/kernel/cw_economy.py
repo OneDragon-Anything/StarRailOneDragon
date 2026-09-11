@@ -389,7 +389,7 @@ BASE_INCOME: int = 5
 
 #: 败轮收入(节点级固定金;实机 gold 差分实证 2026-08-28,108 局/767 轮:
 #: 普通败轮残差众数 2(24/39)、遭遇 4(18/24)、boss 4(8/22,散布大置信中);
-#: 见 docs/develop/currency_war/decisions/0439-sim-economy-income-caliber.md)。
+#: 见 docs/develop/sr_od/application/currency_war/decisions/0439-sim-economy-income-caliber.md)。
 #: 独立常量、**不动 STREAK_GOLD_TABLE**:表是胜轮弹窗真值(streak≥1 域,
 #: ADR-0262 锁零触碰);败轮弹窗预期 1 与实发不符,走本表分支。
 LOSS_GOLD_BY_NODE: dict[str, int] = {'battle': 2, 'encounter': 4, 'boss': 4}
@@ -730,7 +730,7 @@ def _expected_level(round_num: int, plane: int) -> int:
     """阶段期望等级(里程碑刻度,663 帖攻略精读实证)。
 
     【拟】社区先验待证挂账:本曲线处置 = 立证明骨架
-    (docs/develop/currency_war/proofs/p58-expected-level-schedule.md 草案,
+    (docs/develop/sr_od/application/currency_war/proofs/p58-expected-level-schedule.md 草案,
     由游戏定义量——XP 费用表/收入日程/出战位解锁/商店刷率峰值级——
     派生等级日程),证明完成前数值维持现状;届时按证明输出重derive 或退役。
 

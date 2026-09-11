@@ -1,8 +1,8 @@
 """统一 state 账本判读读面(R3-1 消费方迁移第一批:离线工具族读新账)。
 
-设计裁定正本 = ADR-0630(``docs/develop/currency_war/decisions/
+设计裁定正本 = ADR-0630(``docs/develop/sr_od/application/currency_war/decisions/
 0630-unified-state-journal.md``,后果节消费方迁移/M4 档案行;记录机制 as-built
-正本面 = ``docs/develop/currency_war/game_state/journal.md`` §5/§7;设计
+正本面 = ``docs/develop/sr_od/application/currency_war/game_state/journal.md`` §5/§7;设计
 工作稿存 .debug/temp 为易失档,禁作正本指针):判读/装配/策略回溯 = 按行
 直接读(单行自足);跨行对照 = 行间差分(人读/离线),**零机制化重放**。
 本模块 = 统一 state 新账的**唯一**判读读面(W3 起,正本 =
@@ -35,7 +35,7 @@ cw_loop ``_run_has_outcome_at`` 跳过+计数+log 留痕);字节层宽容 = 以
 U+FFFD 的行计 ``byte_repair_lines`` 后仍走 JSON 判定(坏行照跳)。
 
 消费方迁移覆盖清单(逐消费方 = 已迁/候/不适用)单一源 = retirement.md §7
-(``docs/develop/currency_war/game_state/retirement.md`` 消费方迁移清单,
+(``docs/develop/sr_od/application/currency_war/game_state/retirement.md`` 消费方迁移清单,
 11 消费面;本模块 = 其中判读 CLI 面的新账读入口)。溯源注(易失产物域,
 非单一源):批交付报告 ``.debug/temp/currency_war/统一state-R3.1-交付
 报告.md`` §5 与 ``统一state-R3.2-交付报告.md`` 曾载逐消费方迁移核对明细

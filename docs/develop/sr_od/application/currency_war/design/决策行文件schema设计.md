@@ -4,7 +4,7 @@
 > 货币战争模块设计区 design/ 子目录(`docs/develop/sr_od/application/currency_war/design/`,
 > T-25 正本树迁移后新址)。本设计纯设计零代码;落码归「决策行文件落地批」(挂波已定谳
 > = W6 后,见 §8-1)。编排者排期正本 =
-> `docs/develop/currency_war/game_state/r5-migration-plan.md` §2(单源直迁八波 W1-W8);
+> `docs/develop/sr_od/application/currency_war/game_state/r5-migration-plan.md` §2(单源直迁八波 W1-W8);
 > 本文引用波号均锚定该文件,下文简写 W4/W6 即该表波次。
 >
 > **定谳依据(头部回填)**:C1-C8 与候裁 2/4 十个候裁位已经 T-68 对抗定谳批逐条两段式

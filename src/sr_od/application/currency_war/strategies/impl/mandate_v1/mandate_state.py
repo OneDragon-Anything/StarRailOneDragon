@@ -229,7 +229,7 @@ class StrategyState:
     #  生产写点的死链读点——覆写单一源 = session.active_strategies 经
     #  aggregate_economy 聚合(kernel cw_economy.cap_resolved_of_session
     #  消费)。保留字段 = 两源并存复发面,故删码;语义与决策史见
-    #  docs/develop/currency_war/decisions/0598。)
+    #  docs/develop/sr_od/application/currency_war/decisions/0598。)
 
     # ===== M2 停摆续段缓存(T-82 必花臂重试风暴;段标识/结论闩/帧动作
     # token 三载体;为什么需要 = 商店/备战帧循环对「输入不变 ⇒ 拒绝不变」

@@ -447,7 +447,7 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     落码,禁据上文支配性论述回滚——
     ① ADR-0616 命题 4:V_slot>0 带(bench_free ≤ 1)席位外部性否决,
     落点 = 本函数本体单点收紧(T-166 批 2 候派,现未落);
-    ② P88 调和引理(docs/develop/currency_war/proofs/p88.md):锁线
+    ② P88 调和引理(docs/develop/sr_od/application/currency_war/proofs/p88.md):锁线
     转型域 D 帧(armed ∧ locked ∧ fp<1.00 ∧ 板满)席位最贵态——线外
     1★ 候选占位成本 = 被阻线内义务净 EV>0(P41③/P76 丙),金维
     「净成本≈0」前提在 D 域席位维失效,支配性放行辖域不含 D 帧。

@@ -4,8 +4,8 @@
 点「继续挑战」)→ 完成判据白名单任一出现(备战系/补给/遭遇/投资策略/强敌来袭/
 位面过渡锚)→ round_success 交回主循环分发;「前往结算」链的团灭终局(多页 →
 返回货币战争 → 大厅)= 第三出口,round_success(status='terminal_lobby') 交整局
-退出(主循环 3c 收口)。决策记录 = DD-019(docs/develop/currency_war/archive/redesign/
-decisions/dd-019)。
+退出(主循环 3c 收口)。决策记录 = DD-019(docs/develop/sr_od/application/currency_war/decisions/
+dd-019-p4-battle-wait-op-expected-state.md)。
 
 结构判据(od-dev-write-operation「循环驱动玩法」):本 op = node-per-op 的
 **逻辑单元生命周期 owner**——战斗+结算是一个单元(开始=出战,结束=白名单锚/
@@ -487,6 +487,29 @@ class CwScreenBattleWait(CwScreenOpBase):
                     _session.effect_inventory.on_battle_end()
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] effect inventory 结算挂点失败'
+                                '(不阻塞): %s', e)
+                # 装备写端·拷贝仪参与计数结算(T-70 生产接线;载体 =
+                # settle_copy_machine_participation,指定挂点 = 战斗结算
+                # 覆盖带 on_battle_end 同分支同时序,T-63 交付申报):现值
+                # 观察面(前台+后台在册单位)逐件推进参与计数,整除阈值
+                # 成熟经入席桥落 1★ 复制;对局无拷贝仪穿戴 = 零扫描命中
+                # 零行为差。独立 best-effort try(同 on_battle_end 纪律,
+                # 不与结算覆盖写端共享异常域;失败不阻塞结算链)。
+                try:
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        board_state_of,
+                    )
+                    from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                        settle_copy_machine_participation,
+                    )
+                    for _cm in settle_copy_machine_participation(
+                            board_state_of(_session),
+                            frame=f'p{_plane}-r{_round}'):
+                        log.info('[cw-bwait] 拷贝仪成熟入席(equip=%s wearer='
+                                 '%s count=%s placed=%s)', _cm.equip,
+                                 _cm.wearer, _cm.count, _cm.placed)
+                except Exception as e:  # noqa: BLE001  观测面不阻塞对局
+                    log.warning('[cw-bwait] 拷贝仪参与结算挂点失败'
                                 '(不阻塞): %s', e)
             log.info('[cw-bwait] 结算观测 plane=%s round=%s hp_after=%s conf=%s '
                      'comp=%s node=%s%s',

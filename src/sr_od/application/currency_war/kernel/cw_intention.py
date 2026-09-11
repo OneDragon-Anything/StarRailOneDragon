@@ -2039,7 +2039,7 @@ def _line_hoard(comp: Comp) -> tuple[set[str], set[str]]:
 
 
 # ===== P86 无目标期三臂判据(落码批;命题/证明单一源 =
-# docs/develop/currency_war/proofs/p86-no-target-period-fund-allocation.md
+# docs/develop/sr_od/application/currency_war/proofs/p86-no-target-period-fund-allocation.md
 # (正本 §2/§4)+ p86-proof-batch.md(证明批 §3/§4/§6))=====
 # 辖域 = p2plus 无目标期帧(商店决策帧 ∧ target_comp=None ∧ 意向供给在场
 # ∧ 未降格终局;活跃域 = 位面 2,证明批引理 Z)。p1_gap/p1_lock_band 显式

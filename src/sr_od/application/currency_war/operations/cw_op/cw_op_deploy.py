@@ -480,7 +480,7 @@ class CwOpDeploy(SrOperation):
         # 投资策略恰在 registry 内故被本批补上)。**口径 = registry 内**,
         # 不等于第一道(0 系分派锚表)口径:选择装备/骇入策划/命运卜者
         # 强化/位面详情等 registry 外 overlay 屏在本检查仍漏检(已知残余,
-        # 口径申报见 docs/develop/currency_war/flow/action_exec.md §5 前置节)。
+        # 口径申报见 docs/develop/sr_od/application/currency_war/flow/action_exec.md §5 前置节)。
         for _spec in derive_decision():
             if self.round_by_find_area(self.last_screenshot, _spec.screen_name,
                                        _spec.anchor_area,
@@ -1852,7 +1852,7 @@ class CwOpDeploy(SrOperation):
             谓词在门位已读一次;传入免重读,同帧同域,SIFT 识别零二义);
             None = 本函数自读(旧路径,防御缺省)。
 
-        逐件单一判定(``swap_ctx`` 消费;ADR-0534 §4,docs/develop/currency_war/
+        逐件单一判定(``swap_ctx`` 消费;ADR-0534 §4,docs/develop/sr_od/application/currency_war/
         decisions/0534-swap-transition-arm.md):swap_ctx 在场时,每个卖出候选经
         kernel ``swap_sell_exclusion_reason``
         同一判定函数逐件定价——排除族(buy_membership/fresh_buy/membership_unreadable,

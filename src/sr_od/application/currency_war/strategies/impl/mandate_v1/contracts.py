@@ -1,6 +1,6 @@
 """货币战争 新循环契约(Snapshot 快照 + Decision 决策,W583 阶段2批①)。
 
-架构决策单一源 = ``docs/develop/currency_war/decisions/``(接口形态)与
+架构决策单一源 = ``docs/develop/sr_od/application/currency_war/decisions/``(接口形态)与
 设计审计报告 ``.debug/temp/currency_war/w561_arch_review/REPORT.md`` §三
 (签名/快照契约/分类通道/控制流通道)。本模块**纯数据契约**:零 IO、零
 识别调用、零决策逻辑;import 单向(只依赖 cw_state 既有结构,不反向依赖

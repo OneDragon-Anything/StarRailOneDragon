@@ -38,7 +38,7 @@ DEFAULT_CHARACTER_PRIORITY: list[str] = [
 # 保血阈值/难度阶梯(hp_safe_threshold/difficulty_hp_override)亦删:策略校准参数
 # 归代码常量 cw_state.HP_SAFE_THRESHOLD / DIFFICULTY_HP_TABLE;economy_mode(死配置)/
 # event_whitelist(引擎调参非用户偏好,priority/forbid 已覆盖)同批删。配置面单一源:
-# docs/develop/currency_war/config.md。
+# docs/develop/sr_od/application/currency_war/config.md。
 
 
 class CurrencyWarConfig(YamlConfig):

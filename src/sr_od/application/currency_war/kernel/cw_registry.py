@@ -18,7 +18,7 @@ kernel 与 decision_v2 必须共享**同一** registry 实例(A/B 注入契约:�
 - 地板初值镜像旧 line_strategy 同名常量(_EMERGENCY_HP 等;
   旧两臂 A/B 语义随 line_strategy 退役结束,注册表独立演进)。
 
-决策见 docs/develop/currency_war/decisions/0291-decision-v2-skeleton.md。
+决策见 docs/develop/sr_od/application/currency_war/decisions/0291-decision-v2-skeleton.md。
 
 ⚠️ 收入口径修正挂账(ADR-0439,sim 侧已落码):sim 败轮金 + 奖励轮
 成对修正使 P1 出口金约 +6.6 金/局(无反馈静态重放量化)——凡以 sim

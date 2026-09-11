@@ -157,7 +157,7 @@ def salvageable_1star_value(state: GameState) -> int:
     件的卖出回金和。
 
     - 口径出处:P10④「出口『财富』= 袋子金 + 可回收 1★ 值」——
-      ``docs/develop/currency_war/proofs/p10-exit-gold-floor.md``
+      ``docs/develop/sr_od/application/currency_war/proofs/p10-exit-gold-floor.md``
       §④ 与「对实现的检验点」3(判读防「袋穷板富」误读:出口金低但
       本值高 → 钱在卡上,非经济病;两字段必须并读)。
     - 计算式:Σ ``cw_state.sell_refund(1, cost)``。1★ 卖出全额退、无

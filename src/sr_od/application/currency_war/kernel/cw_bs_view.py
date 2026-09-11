@@ -1,6 +1,6 @@
 """BoardState → GameState 消费适配器(迁移批次二;字段级规格正本 =
-``docs/develop/currency_war/game_state/fields.md``(总纲入口=同目录 README.md);
-透传域收编语义正本 = ``docs/develop/currency_war/game_state/fields.md``
+``docs/develop/sr_od/application/currency_war/game_state/fields.md``(总纲入口=同目录 README.md);
+透传域收编语义正本 = ``docs/develop/sr_od/application/currency_war/game_state/fields.md``
 (§3.2.7.1 deploy_cap 双存/§3.2.13 hp 门前真值+消费侧施门/§3.3.1 双 ShopCard
 映射单一源/§8.6 透传残差申报))。
 

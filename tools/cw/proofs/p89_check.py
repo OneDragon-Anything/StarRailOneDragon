@@ -1,6 +1,6 @@
 """P89 换血持续预算的离散锚·复算脚本。
 
-命题(docs/develop/currency_war/proofs/p89.md;math_proofs.md P89 行):
+命题(docs/develop/sr_od/application/currency_war/proofs/p89.md;math_proofs.md P89 行):
 带源 = 真人尺保留率带 [0.59, 0.74](stage_transitions Q2)⟹
 - 正典式(卖出率): n_swap/9 ∈ [0.26, 0.41] ⟹ n_swap = {3}(整数唯一解);
 - 等价形(保留率): (9−n_swap)/9 ∈ [0.59, 0.74] ⟹ n_swap = {3}(互补恒等);

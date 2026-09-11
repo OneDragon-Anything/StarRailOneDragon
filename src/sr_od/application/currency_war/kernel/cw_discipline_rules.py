@@ -186,7 +186,7 @@ def hp_decision_trusted(state: GameState) -> bool:
 
 # p1_crisis_band(P1 ≈22 血危局带判据)不设:经用户裁决不授权、废弃
 # (发展为主,不做低血补救)——(b)2/(b)3 消费位永久挂空,处置记录 =
-# docs/develop/currency_war/strategy-docs/14_p1_consume_arms.md §11.8。
+# docs/develop/sr_od/application/currency_war/strategy-docs/14_p1_consume_arms.md §11.8。
 # 危局面合规件仅血线硬地板 ≤15 族,消费在 mandate_v1 criteria 层
 # (levelup.level_spend_blocked 停付让位 / sell_for_interest 凑息禁令),
 # 判据单一源 = statefn/predicates.p1_blood_floor,不在本模块设第二份。

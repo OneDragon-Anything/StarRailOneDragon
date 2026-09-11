@@ -8,11 +8,11 @@
 
 - 玩法知识:`docs/game/currency_war/research/README.md` 玩家理解序全读(机制 → 纪律 → 过渡 → 终局);
 - 游戏数据注册表通读:角色技能(`cw_chars`)、羁绊效果(`cw_factions`)、装备效果(`cw_equipment`)、投资策略/环境效果(`cw_invest_data`)、词缀效果(`affix_effects_data`);
-- **在册裁定面**:进度账本(`.debug/progress/` 当前迭代 `dag.jsonl`)的在册用户裁定条目(如 T-115 经济纪律族)与 `docs/develop/currency_war/strategy-docs/` 各篇的【已裁定】注记——判定前先取齐,引用时带条目号。
+- **在册裁定面**:进度账本(`.debug/progress/` 当前迭代 `dag.jsonl`)的在册用户裁定条目(如 T-115 经济纪律族)与 `docs/develop/sr_od/application/currency_war/strategy-docs/` 各篇的【已裁定】注记——判定前先取齐,引用时带条目号。
 
 ## 阶段 2 · 逐轮复盘(按外层循环调用序;**2026-09-07 用户裁定:粒度 = 外层循环画面 op 调用**)
 
-复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/currency_war/flow/screen_op.md` §1「一次画面 op 调用 = 入口观察 + 逐动作决策循环」;分支序表 = `flow/outer_loop.md` §2.2)。每节点(P×R×)作分组标题,组内 op 按实际调用序(时间戳)排列,**每个画面 op 调用单独一条记录**:
+复盘基本单元 = **一次画面 op 调用**(架构依据:`docs/develop/sr_od/application/currency_war/flow/screen_op.md` §1「一次画面 op 调用 = 入口观察 + 逐动作决策循环」;分支序表 = `flow/outer_loop.md` §2.2)。每节点(P×R×)作分组标题,组内 op 按实际调用序(时间戳)排列,**每个画面 op 调用单独一条记录**:
 
 ```
 ### P1·R1（节点类型）

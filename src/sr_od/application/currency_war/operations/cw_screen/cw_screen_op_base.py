@@ -1,6 +1,6 @@
 """统一观察架构:画面 op 基类(试点步骤 1,实机侧)。
 
-设计正本 = ``docs/develop/currency_war/design/统一观察架构-画面op基类设计.md``
+设计正本 = ``docs/develop/sr_od/application/currency_war/design/统一观察架构-画面op基类设计.md``
 (下称「架构设计」):本类承载 §5 的五段生命周期(observe→reconcile→
 decide→act→on_outcome)与 §6.4 的落地登记钩子注册表(单一发射口),是
 「两个适配器 + 一份共用中段」结构(§1.1)的 op 侧机制骨架。
