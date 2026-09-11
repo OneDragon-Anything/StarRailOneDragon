@@ -79,18 +79,34 @@ BYPASS_TABLE: dict[tuple[str, str], tuple[str, str, str]] = {
     # —— criteria/stockpile(01_math_framework §3.5;档匹配谓词/V_comp 表在 statefn/vopt)——
     ('stockpile', 'stockpile_buy'): (
         '发射位', '旁路', 'R2-2 原判'),
-    # —— criteria/equipment(01_math_framework §3.6;M7 基础穿戴在 mandate,D-B 释放门在此)——
+    # —— criteria/equipment(01_math_framework §3.6;M7 基础穿戴在 mandate)——
     ('equipment', 'wear_release'): (
-        '谓词', '不旁路', 'D-B 三态释放门(M7 消费的判据输入)'),
+        '谓词', '不旁路', 'D-B 零调用面墓碑:非 key 穿戴释放生产单一源 = '
+        'cw_equip_env.resolve_wear_release 五行表(prep_actions 消费;'
+        '18 号稿/ADR-0526),硬节点释放语义活载体 = row3+O1(21 号稿/'
+        'ADR-0531);本函数系占位残余(修复池 D-B 定谳程序未执行即随批1'
+        '入库),自入库起零生产调用,已随 equipment 三死判据面退役批物理'
+        '删除(裁定=ADR-0649),目录行保留旁路枚举完备性'),
     ('equipment', 'affix_allocation'): (
         '谓词', '不旁路', 'D-F46 零调用面墓碑:词缀分配生产单一源 = '
         'cw_equip_env.resolve_affix_priority_order(cw_op_equip_all 消费);'
         '本函数系孤儿第二实现+死键,已随判据出处纠错批物理删除,'
         '目录行保留旁路枚举完备性'),
     ('equipment', 'keep_policy'): (
-        '判据/闭式', '不旁路', '01_math_framework §3.6(排序/保守端)'),
+        '判据/闭式', '不旁路', 'P42 ③ 零调用面墓碑:命题在册已证'
+        '(01_math_framework §3.6「近兑现张任何时刻绝不喂」)但生产落码'
+        '载体缺位(kernel classify_item_hold 无兑现距离维度,现行架构无'
+        '组件定向喂件决策位);本占位自入库起零生产调用,已随 equipment '
+        '三死判据面退役批物理删除(裁定=ADR-0649),目录行保留旁路枚举'
+        '完备性;禁作命题种子复用——占位对 d*>1 默认返回「喂」,与 P42 ③'
+        '「默认保留不喂」方向相反且缺「P3 boss 掉落流终止冗余件开放」'
+        '唯一例外(ADR-0649)'),
     ('equipment', 'endgame_context'): (
-        '谓词', '不旁路', 'D-P3(收尾段语境输入)'),
+        '谓词', '不旁路', 'D-P3 零调用面墓碑:修复池项本身 OPEN 挂账不变'
+        '(定谳手段 = 实机 boss 掉血分布对拍,从未执行),本占位 '
+        'r_remaining<=3 系未证拍定值随之作废;已随 equipment 三死判据面'
+        '退役批物理删除(裁定=ADR-0649),复活须先「对拍定谳→三形态标注'
+        '→落码」全流程,目录行保留旁路枚举完备性'),
     # —— criteria/contracts(R198 判据契约层;基础设施非判据,恒开)——
     ('contracts', 'ensure_contract'): (
         '谓词', '不旁路', 'R198(判据契约纪律,单一源=criteria/contracts.py;'

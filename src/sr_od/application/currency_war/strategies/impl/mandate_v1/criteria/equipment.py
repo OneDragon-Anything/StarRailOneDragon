@@ -1,42 +1,22 @@
-"""criteria/equipment——装备面(§2.6;M7 基础穿戴义务在 mandate)。
+"""criteria/equipment——装备面(墓碑模块;M7 基础穿戴义务在 mandate)。
 
-修复池落点:D-B(非 key_equips 穿戴释放三态门 ``wear_release``——
-不再用无边界 opening 布尔拦穿)、D-P3(收尾段终局投资语境输入)。
-D-F46(词缀条件装备分配)的生产单一源 =
-``cw_equip_env.resolve_affix_priority_order``(cw_op_equip_all 消费);
-本模块原 ``affix_allocation`` 系其孤儿第二实现且键 'weakness' 死键,
-已随判据出处纠错批删除(墓碑见 criteria/__init__.py BYPASS_TABLE 行)。
+本模块原三判据面(wear_release/keep_policy/endgame_context)系
+「设计先行、接线未做」的占位:自入库(换核批1)起生产调用点为零,
+R189-5 修复池 D-B/D-P3 两项的定谳程序(P7 对账/实机对拍)均未执行;
+已随 equipment 三死判据面退役批物理删除(裁定与考古账=ADR-0649)。
+现行落点:
+
+- D-B 非 key_equips 穿戴释放:生产单一源 = kernel
+  ``cw_equip_env.resolve_wear_release`` 五行表(prep_actions 消费;
+  18 号稿/ADR-0526),硬节点释放语义活载体 = row3 + O1 战斗前置门
+  (21 号稿/ADR-0531)。
+- keep_policy(P42 ③):命题在册已证(01_math_framework §3.6「近兑现张
+  任何时刻绝不喂」)但生产落码载体缺位——kernel ``classify_item_hold``
+  无兑现距离维度,现行架构无「组件定向喂件」决策位;已删占位对 d*>1
+  默认返回「喂」,与命题「默认保留不喂」方向相反且缺「P3 boss 掉落流
+  终止冗余件开放」例外,禁作命题种子复用。
+- endgame_context(D-P3):修复池项 OPEN 挂账不变(定谳手段 = 实机 boss
+  掉血分布对拍,从未执行);已删占位的 r_remaining<=3 系未证拍定值随之
+  作废,复活须先「对拍定谳→三形态标注→落码」全流程。
 """
 from __future__ import annotations
-
-
-def wear_release(opening_achieved: bool, node_type: str | None,
-                 simple_item: bool) -> tuple[bool, str]:
-    """D-B 穿戴释放三态门(替代无边界 opening 布尔)。
-
-    ①简易件(simple_item:分层规则即穿,零门槛)⇒ 放行;
-    ②进阶成品:首引擎/过渡里程碑达成(opening_achieved)⇒ 收窄后
-      放行(「攒给成型核心」窗口显式释放);
-    ③强敌节点释放:node_type ∈ {encounter, boss} ⇒ 放行
-      (进阶成品上场通道,D-D 共根组 2 词缀/威胁语境维度)。
-    三态全不放行 = 旧「整局不穿 11-13 件积压到死」病灶(181254-B)。
-    """
-    if simple_item:
-        return True, 'simple_item'
-    if opening_achieved:
-        return True, 'opening_achieved'
-    if node_type in ('encounter', 'boss'):
-        return True, 'hard_node'
-    return False, 'saving_for_core'
-
-
-def keep_policy(redemption_distance: int) -> tuple[bool, str]:
-    """§2.6 keep_policy:近兑现距离 d*≤1 绝不喂(P42 ③ 零参数公理)。"""
-    if redemption_distance <= 1:
-        return False, 'near_redemption'
-    return True, ''
-
-
-def endgame_context(r_remaining: int) -> str:
-    """D-P3 收尾段语境(r7-r9 终局投资:星级/等级转向)。"""
-    return 'endgame' if r_remaining <= 3 else 'midgame'

@@ -1563,8 +1563,9 @@ def run_mandate(frame: MandateFrame,
             else:
                 _emit_open_shop('m6_stock')
 
-    # M7 装备转移(常态:关键装备穿上场单位;D-B 释放门 =
-    # criteria/equipment.wear_release 消费;基础载体 = RunEquip)。
+    # M7 装备转移(常态:关键装备穿上场单位;D-B 释放判据 = kernel
+    # cw_equip_env.resolve_wear_release 五行表,prep_actions 分发段
+    # 计划产出位消费(ADR-0526/0601);基础载体 = RunEquip)。
     # 发射门 = 变换可能性两件套(dd-027,2026-09-03 实机 RunEquip 备战环
     # 活锁定谳修法):
     # ①可穿存在性(m7_wearable_exists):owned 快照里有注册表已登记且非

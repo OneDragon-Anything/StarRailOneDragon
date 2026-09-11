@@ -324,18 +324,27 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         'ZERO_REFRESH_DIAG §3 第 3 条+02_mandate_layer §4 ③'),
     # —— criteria/equipment ——
     ('equipment', 'wear_release'): Contract(
-        None, 'D-B 穿戴释放三态门(M7 消费的判据输入)',
-        '18_equip_wear_semantics(D-B 穿戴释放语义)'),
+        None, 'D-B 零调用面墓碑:非 key 穿戴释放生产单一源 = kernel '
+        'cw_equip_env.resolve_wear_release 五行表(prep_actions 消费,'
+        '18 号稿/ADR-0526);本函数系占位残余自入库起零生产调用,已随 '
+        'equipment 三死判据面退役批物理删除(裁定=ADR-0649),登记行'
+        '保留契约枚举完备性', '18_equip_wear_semantics(D-B 穿戴释放)'),
     ('equipment', 'affix_allocation'): Contract(
         None, 'D-F46 零调用面墓碑:词缀分配生产单一源 = '
         'cw_equip_env.resolve_affix_priority_order(cw_op_equip_all 消费);'
         '本函数系孤儿第二实现+死键,已随判据出处纠错批物理删除,'
         '登记行保留契约枚举完备性', '18_equip_wear_semantics(D-F46 词缀分配)'),
     ('equipment', 'keep_policy'): Contract(
-        None, '近兑现距离绝不喂(P42 ③ 零参数公理)', '01_math_framework §3.6'),
+        None, 'P42 ③ 零调用面墓碑:命题在册已证(01_math_framework §3.6)'
+        '但生产落码载体缺位(kernel classify_item_hold 无兑现距离维度);'
+        '占位默认支与命题方向相反,禁作命题种子复用;已随 equipment '
+        '三死判据面退役批物理删除(裁定=ADR-0649),登记行保留契约枚举'
+        '完备性', '01_math_framework §3.6(P42 ③)'),
     ('equipment', 'endgame_context'): Contract(
-        None, 'D-P3 收尾段语境输入(r_remaining 现读)',
-        'D-P3 修复池(原文=ADR-0644 取回)'),
+        None, 'D-P3 零调用面墓碑:修复池项 OPEN 挂账不变,本占位 '
+        'r_remaining<=3 系未证拍定值随之作废,复活须先对拍定谳;已随 '
+        'equipment 三死判据面退役批物理删除(裁定=ADR-0649),登记行'
+        '保留契约枚举完备性', 'D-P3 修复池(原文=ADR-0644 取回)'),
     # —— 第七面「换线」(proof 判据面函数位;影子面,前提核验随实装
     #    接线批落位——见模块 docstring 辖外声明)——
     ('proof', 'stop_buy'): Contract(
