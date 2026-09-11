@@ -20,7 +20,7 @@ op 边界重建——同一协议两个消费面,判据单一源在协议文档�
         [--run-id <rid>] [--out <骨架.md>]
 
 输入形状自适应:行带 ``sim`` 键 = sim 批次账本行(直用);否则 = 生产
-决策帧(经 ``ledger_hooks.merge_round_rows`` 合并成账本同构形状,
+决策帧(经本文件 ``merge_round_rows`` 合并成账本同构形状,
 ADR-0593 §4.1 的生产数据入口)。输出缺省 stdout,``--out``
 落盘。
 """
@@ -37,6 +37,89 @@ from sr_od.application.currency_war.sim.checks.suspects import (
     run_suspect_checks,
 )
 
+#: 花费类动作白名单(合并行动作并集的入集判据)。
+# T-153(ADR-0593):SellBench 并入合并行动作并集——D1(同轮买卖分键
+# 复核)/D5(种子回卖辖域自算)检测器的生产覆盖面需要卖出动作行。
+# 段级既有消费面核对:_seg_spent/__type__ 白名单(BuyCard/LevelUp/
+# RefreshShop)与 check_overflow_gold_zero_buy_streak 花费判定均不含
+# SellBench,并入零影响;生产 SellBench 动作行缺 name/sell_reason 键
+# (slot 载体),检测器按缺键跳过并如实声明——join 通路属后续批。
+_SPEND_ACTION_TYPES = ('BuyCard', 'LevelUp', 'RefreshShop',
+                       'SellBench')
+
+
+def merge_round_rows(rows: list[dict]) -> list[dict]:
+    """生产决策帧(一帧一行,一轮多帧)→ 轮合并行(ledger 同构形状)。
+
+    出处声明:本函数原居 ``sim/ledger_hooks.py``,随其读侧检查族在
+    W3 波(账本 T-266)退役删除——本工具是未同步的残留消费面
+    (legacy-hygiene-ops T-19 流程层缺口),按其内联设计以原实现
+    逐行等价补齐于此;语义与实现单一源 = ADR-0593 §4.1 生产数据
+    入口(原实现可自 git 历史该模块复活比对)。
+
+    段级检查的输入口径 = 一轮一行(sim 账本);生产 decisions.jsonl
+    一轮 5-12 帧(pre-refresh/post-refresh/buy/deploy/equip 各一帧,
+    每帧 gold 是决策时点金)。合并口径:
+    - gold/hp/gold_readable/hp_readable = 本轮**首帧**(决策时点;
+      与段级 ``_seg_gold0``「首波 gold」同口径——末帧 gold 已含本轮
+      花销,拿去判「溢余未泄」会系统性偏小);
+    - actions = 全帧**花费类**动作并集(BuyCard/LevelUp/RefreshShop
+      + SellBench[T-153/ADR-0593:D1/D5 检测器生产覆盖面;生产卖出行
+      缺 name/sell_reason 键,检测器按缺键跳过];
+      生产 wrapper 动作 RunBuyPhase/RunDeploy/StartBattle 等非花费,
+      不入——段级 ``_seg_spent`` 按 __type__ 白名单判,混入无害但
+      并集只留花费类更省);
+    - formed_stop = 全帧或;
+    - state = 首帧 state 派生:board→board_factions(engines 代理的
+      生产同构键;生产 GameState 快照无 board_factions 键)、
+      deployed/bench/level/cap 照抄;
+    - sim.bench_full_skipped_buys = 任一帧 state.bench_full_flag 置 1
+      (bench 满想买买不了的段级豁免面,生产无 sim 计数键,用旗标
+      作保守镜像——旗标在 = 该轮存在满栏语境,宁豁免不误报)。
+    排序按 (plane, round, ts);纯读,不改输入行。
+    """
+    merged: dict[tuple, dict] = {}
+    for d in sorted(rows, key=lambda r: ((r.get('plane') or 0),
+                                         (r.get('round_num') or 0),
+                                         (r.get('ts') or ''))):
+        pl = d.get('plane') or 1
+        rn = d.get('round_num') or 0
+        key = (pl, rn)
+        st = d.get('state') or {}
+        if key not in merged:
+            merged[key] = {
+                'plane': pl, 'round_num': rn,
+                'gold': d.get('gold'),
+                'gold_readable': d.get('gold_readable', True),
+                'hp': d.get('hp'),
+                'hp_readable': d.get('hp_readable', True),
+                'formed_stop': bool(d.get('formed_stop')),
+                'actions': [], 'target_comp': d.get('target_comp') or '',
+                'state': {
+                    'board_factions': dict(st.get('board') or {}),
+                    'deployed': st.get('deployed') or [],
+                    'bench': st.get('bench') or [],
+                    'level': st.get('level'),
+                    'cap': st.get('deploy_cap'),
+                },
+                'sim': {
+                    'node': st.get('node_type') or '',
+                    'bench_full_skipped_buys':
+                        1 if st.get('bench_full_flag') else 0,
+                },
+            }
+        else:
+            m = merged[key]
+            m['formed_stop'] = m['formed_stop'] or bool(d.get('formed_stop'))
+            if d.get('target_comp'):
+                m['target_comp'] = d['target_comp']
+            if st.get('bench_full_flag'):
+                m['sim']['bench_full_skipped_buys'] = 1
+        merged[key]['actions'].extend(
+            a for a in d.get('actions') or []
+            if a.get('__type__') in _SPEND_ACTION_TYPES)
+    return [merged[k] for k in sorted(merged)]
+
 
 def load_rows(path: Path, run_id: str | None) -> tuple[list[dict], str]:
     """读档案行并按形状归一 → (账本行, 来源说明)。
@@ -44,9 +127,6 @@ def load_rows(path: Path, run_id: str | None) -> tuple[list[dict], str]:
     形状判据 = 行是否带 ``sim`` 键(sim 引擎轮装配写入;生产决策帧无)。
     生产帧走 merge_round_rows 合并(检测器与 sim 检查器共用同签名)。
     """
-    from sr_od.application.currency_war.sim.ledger_hooks import (
-        merge_round_rows,
-    )
     rows_all = [json.loads(ln) for ln in
                 path.read_text(encoding='utf-8').splitlines() if ln.strip()]
     if run_id:
