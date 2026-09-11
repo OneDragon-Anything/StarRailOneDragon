@@ -224,6 +224,25 @@ def run_batch_level_checks(ledgers: list[list[dict]],
             core_ruling_seat_bucket_disclosure(ledgers),
         # (v2 四层/press/供给标签六检查项已随 decision_v2 退役链删除——统一迁移批 ② MAP B 类/A9。)
     }
+    # T-190 批 C 检查项(C-A1..A4;设计 v2 §六批 C,ADR-0627 链):
+    # P2 买入→上板转化链诊断四件,只审计不修行为。辖 P2 域判据,
+    # 消费 full_ledgers 全行(P1 段截断口径会把 P2 行别名截掉,同
+    # second_engine_deadline 的 ADR-0629 full_ledgers 先例)。
+    from sr_od.application.currency_war.sim.checks.t190_c import (
+        check_t190_c1_bench_clog_attribution,
+        check_t190_c2_new_buy_swap_coverage,
+        check_t190_c3_exemption_fire,
+        check_t190_c4_funnel_reconcile,
+    )
+    _t190_full = full_ledgers if full_ledgers is not None else ledgers
+    out['t190_c1_bench_clog_attribution'] = \
+        check_t190_c1_bench_clog_attribution(_t190_full)
+    out['t190_c2_new_buy_swap_coverage'] = \
+        check_t190_c2_new_buy_swap_coverage(_t190_full)
+    out['t190_c3_exemption_fire'] = \
+        check_t190_c3_exemption_fire(_t190_full)
+    out['t190_c4_funnel_reconcile'] = \
+        check_t190_c4_funnel_reconcile(_t190_full)
     if pool_map is not None:
         out['encounter_rung_sample_budget'] = \
             check_encounter_rung_sample_budget(pool_map)
