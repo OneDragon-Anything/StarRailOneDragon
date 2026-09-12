@@ -153,7 +153,7 @@ class MandateFrame:
     """骨架 pass 输入帧(D-C44:黑板全量现读,每帧重建、零跨帧快照)。
 
     字段取值时机=生成期快照(从 PrepObservation 现读拷贝);坐标系:
-    bench slot=物理槽位 1-9。``deploy_cap`` 真值源=``CwWorkFrame.
+    bench slot=物理槽位 1-9。``deploy_cap`` 真值源=``CwSimFrame.
     max_units()`` 派生链(R4 统一:level+宝钻、封顶 = 4+back_max 动态
     真值〔GameState.back_layout,值域 10-13〕,与 shop 侧
     同链单源;FIX_REVIEW_20260903 ②-1 双源漂移修复——旧观察复合
@@ -168,7 +168,7 @@ class MandateFrame:
     node_type: str | None
     stop_flag: bool
     k_members: tuple[str, ...]
-    round_num: int = 1      # 位面内轮次(M5 开局板辖域=开局帧;CwWorkFrame 直读)
+    round_num: int = 1      # 位面内轮次(M5 开局板辖域=开局帧;CwSimFrame 直读)
 
     @property
     def bench_free(self) -> int:
@@ -1768,7 +1768,7 @@ def _s_reserve(frame: MandateFrame, session: StrategySession) -> int:
       条件式的调用方供给 resolved 值,默认局 50);
     - 窗口预留卡价:窗口预留槽未标定 ⇒ 空列表(缺输入不计,保守下界);
     - E[刷费]×2 = 双刷预算,按 ``shop_refresh_cost`` 基价(REFRESH_COST_BASE
-      建模常量,CwWorkFrame 字段口径:值恒基价 2)。
+      建模常量,CwSimFrame 字段口径:值恒基价 2)。
 
     默认局 = 0+50+0+4 = 54(旧值恒 0 系 b_target 零参退化,非规格)。
     """

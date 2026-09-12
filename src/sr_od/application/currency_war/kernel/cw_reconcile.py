@@ -410,7 +410,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
       loss 背书或观察缺口的跨节点下行采新留证)。
     - **决策层**:消费本函数返回的(决策用 hp, 是否真读)——沿用真值比假 100
       安全(低血先验触发保血方向对);全无真值(开局)→ None(诚实未知;
-      ADR-0282 兜底 100 由 ADR-0491 废止,CwWorkFrame.hp None 化)。
+      ADR-0282 兜底 100 由 ADR-0491 废止,CwSimFrame.hp None 化)。
     - **记录层**:遥测按返回的 readable 位分字段记(hp_readable=False=读不到,
       hp=沿用值),不把兜底/沿用值混进「真 100」。
 

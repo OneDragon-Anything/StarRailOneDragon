@@ -80,7 +80,7 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
     """P39 臂一三元触发信号(R2-2 移入 statefn;M3 消费)。
 
     ①板满:``deployed_count == deploy_cap``——**cap 口径 = 当前可上阵数**
-    (CwWorkFrame.max_units() / MandateFrame.deploy_cap:level+宝钻、封顶
+    (CwSimFrame.max_units() / MandateFrame.deploy_cap:level+宝钻、封顶
     = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,ADR-0392 定长槽表
     的物理长度)。结论出处:2026-09-03 零刷新诊断批(ZERO_REFRESH_DIAG
     §4.2)实证 M3 升级门 13/13 波恒 False 的根因即此——旧条件拿 10 当

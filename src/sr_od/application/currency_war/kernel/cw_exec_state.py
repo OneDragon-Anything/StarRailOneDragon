@@ -622,7 +622,7 @@ class PlaneNodeLedger:
 
     #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
     #: 的类型 token(battle/supply/encounter/reward/boss,与
-    #: ``cw_node_reader.NodeSlot.node_type`` / ``CwWorkFrame.node_type`` 同词汇表;
+    #: ``cw_node_reader.NodeSlot.node_type`` / ``CwSimFrame.node_type`` 同词汇表;
     #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
     #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
     #: ``seq[round_num - 1]``。

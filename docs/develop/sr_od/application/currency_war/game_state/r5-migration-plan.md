@@ -1,7 +1,9 @@
 # R5 迁移规划 v2——单源直迁:旧 12 流代码删除 + GameState 本体退役
 > **正名兑现注(W8 执行批)**:容器已正名 GameState(kernel/cw_game_state.py,
-> 原暂名 BoardState/原模块 cw_board_state.py);旧本体腾名 CwWorkFrame 定居
-> kernel/cw_vocab.py;本文保留规划原文,名称现态以本注为准。
+> 原暂名 BoardState/原模块 cw_board_state.py)。旧策略侧工作帧本体定居
+> kernel/cw_vocab.py,已正名 **CwSimFrame**(sim 推演内核正式类型;与
+> 容器的表示分界与逐字段映射对账 = [fields.md](fields.md) §9)。
+> 本文保留规划原文,名称现态以本注为准。
 > **持久家声明**(2026-09-11 晋升入库):本文自临时档 `.debug/temp/currency_war/R5-迁移规划.md`(v2.1)内容原样迁入;temp 原件降为工作副本,后续修订以本文件为准(单源直迁八波排期,重构 retirement.md 影子框架的裁决口径)。
 
 > **v2 重写声明**:用户裁定(2026-09-10,经编排者转达)**不用影子开关/影子期——直接迁移并删除旧代码**,

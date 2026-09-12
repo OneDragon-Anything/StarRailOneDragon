@@ -78,7 +78,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
     EncounterPick,
 )
 from sr_od.application.currency_war.kernel.cw_economy import sell_refund
-from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
@@ -173,7 +173,7 @@ def reward_subtype_value(rewards: list[str],
 
 
 def _branch_lambda(option: EncounterOption,
-                   state: CwWorkFrame | None) -> tuple[str | None,
+                   state: CwSimFrame | None) -> tuple[str | None,
                                                      LambdaCell | None,
                                                      str | None]:
     """分支 λ 键+格解析(共享 helper;label 与复合项两消费面同一解析链,
@@ -210,14 +210,14 @@ def _branch_lambda(option: EncounterOption,
 
 
 def _branch_lambda_label(option: EncounterOption,
-                         state: CwWorkFrame | None) -> tuple[str | None,
+                         state: CwSimFrame | None) -> tuple[str | None,
                                                            str | None]:
     """分支 λ 格 label 四态查询(可消费/仅方向/禁用/空格;None=域外)。"""
     _key, c, why = _branch_lambda(option, state)
     return (c.label if c is not None else None), why
 
 
-def _branch_composite(option: EncounterOption, state: CwWorkFrame | None,
+def _branch_composite(option: EncounterOption, state: CwSimFrame | None,
                       session: StrategySession | None) -> ExposureComposite | None:
     """λ 敞口差分复合项(d̂×(g+Ī×R_剩余);P51 第三口唯一合法数值算子)。
 
@@ -260,8 +260,8 @@ def _count(session: StrategySession | None, key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
 
-def _hp_gate_state(state: CwWorkFrame | None,
-                   session: StrategySession | None) -> CwWorkFrame | None:
+def _hp_gate_state(state: CwSimFrame | None,
+                   session: StrategySession | None) -> CwSimFrame | None:
     """hp 消费读点显式施门(W5 hp 专项:视图 hp = 门前真值,记录/消费
     分离;本读点是视图 hp 的直读消费域——遭遇屏恰在 gap==1 窗,结算在
     紧邻上一节点,门辖语义见宪法 00 §3 hp 授权消费面与 ADR-0583 §2.4
@@ -291,7 +291,7 @@ def _hp_gate_state(state: CwWorkFrame | None,
     return dataclasses.replace(state, hp=gated)
 
 
-def decide_encounter_ev(options: list[EncounterOption], state: CwWorkFrame | None,
+def decide_encounter_ev(options: list[EncounterOption], state: CwSimFrame | None,
                         session: StrategySession | None,
                         refresh_used: bool = False) -> EncounterPick:
     """E3 判据形态本体(纯函数;mandate_v1.decide_encounter 消费)。
@@ -335,7 +335,7 @@ def decide_encounter_ev(options: list[EncounterOption], state: CwWorkFrame | Non
         from sr_od.application.currency_war.kernel.cw_hp_policy import (
             decision_hp,
         )
-        from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame as _GS
+        from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame as _GS
         _view = _GS(gold=gold_of(state), plane=plane_of(state),
                     round_num=round_num_of(state), hp=decision_hp(state,
                                                                   session))

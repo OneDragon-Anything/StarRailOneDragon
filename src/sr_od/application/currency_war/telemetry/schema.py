@@ -11,7 +11,7 @@ from sr_od.application.currency_war.kernel.cw_economy import sell_refund
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     BuyCard,
-    CwWorkFrame,
+    CwSimFrame,
     bench_char_cost,
 )
 
@@ -152,7 +152,7 @@ id+时间戳)」;键节原文已删档,取回=ADR-0644)。
 
 # ===== 序列化(dataclass → JSON-safe dict)=====
 
-def salvageable_1star_value(state: CwWorkFrame) -> int:
+def salvageable_1star_value(state: CwSimFrame) -> int:
     """出口财富口径的「可回收 1★ 值」:手上(deployed+bench)全部 star==1
     件的卖出回金和。
 
@@ -225,8 +225,8 @@ def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
     return out
 
 
-def serialize_state(state: CwWorkFrame) -> dict[str, Any]:
-    """CwWorkFrame → JSON-safe dict(剔除大且无决策价值的字段由调用方按需;默认全量)。
+def serialize_state(state: CwSimFrame) -> dict[str, Any]:
+    """CwSimFrame → JSON-safe dict(剔除大且无决策价值的字段由调用方按需;默认全量)。
 
     ADR-0392:``deployed`` 槽位表 → **紧缩占用序**落遥测(None 空槽剔除)——
     下游视图(rounds/win_features/replay)零迁移,占用数=len 语义不变。
@@ -350,7 +350,7 @@ class DecisionTrace:
     difficulty: str = ""                          # A1..A8(调用方传)
     round_num: int = 0                            # 位面内轮次
     plane: int = 0
-    state: dict[str, Any] = field(default_factory=dict)        # CwWorkFrame 快照
+    state: dict[str, Any] = field(default_factory=dict)        # CwSimFrame 快照
     target_comp: str = ""                         # 选中的 target comp 名
     candidate_scores: dict[str, float] = field(default_factory=dict)  # {comp_name: comp_score}
     eval_breakdown: dict[str, float] = field(default_factory=dict)    # target comp 的特征分解

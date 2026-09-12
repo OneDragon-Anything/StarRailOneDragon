@@ -65,7 +65,7 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_co
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CompTransaction,
-    CwWorkFrame,
+    CwSimFrame,
     LevelUp,
     LevelUpShop,
     RefreshShop,
@@ -149,7 +149,7 @@ if TYPE_CHECKING:
 
 
 def _board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
-    """板面各阵营「下档阈值」观测键(生产 ``CwWorkFrame.board_next_tier``
+    """板面各阵营「下档阈值」观测键(生产 ``CwSimFrame.board_next_tier``
     的 sim 同构面;语义 = 左面板 "X/Y" 的 Y)。
 
     派生单一源 = ``kernel.cw_game_state.board_next_tier_of``(迁移批次二:
@@ -396,7 +396,7 @@ def _lag_excluding_fenced_holds(lag_idx: list[int], replay_occ: list[int],
                and replay_occ[i] not in main_held_slots)
 
 
-def _fill_lag_replay(st: CwWorkFrame,
+def _fill_lag_replay(st: CwSimFrame,
                      target_factions: frozenset[str],
                      target_cores: frozenset[str],
                      fw_carry: frozenset[str],
@@ -433,7 +433,7 @@ def _fill_lag_replay(st: CwWorkFrame,
 
 
 def _residual_fill_deploy(
-    st: CwWorkFrame,
+    st: CwSimFrame,
     target_factions: frozenset[str],
     target_cores: frozenset[str],
     fw_carry: frozenset[str],
@@ -530,7 +530,7 @@ def _residual_fill_deploy(
     return _res_up, _res_held, _lag
 
 
-def _m1p_plan_fill_deploy(st: CwWorkFrame, plan: SwapPlan,
+def _m1p_plan_fill_deploy(st: CwSimFrame, plan: SwapPlan,
                           ctx: SwapPlanContext | None, sess) \
         -> tuple[int, int, int]:
     """M1″ 换血轮轮末补部署——计划单一源消费(T-279 R1;ADR-0640)。
@@ -677,7 +677,7 @@ def project_sell_buyback(acts: list[dict]) -> list[dict]:
     return loops
 
 
-def _m1p_plan_and_record(st: CwWorkFrame, sess) \
+def _m1p_plan_and_record(st: CwSimFrame, sess) \
         -> tuple[SwapPlan, dict, SwapPlanContext | None]:
     """M1″ 计划计算 + 发射意图记录(sim 决策面共用同一份计划对象)。
 
@@ -734,7 +734,7 @@ def _m1p_plan_and_record(st: CwWorkFrame, sess) \
     return plan, record, ctx
 
 
-def m1p_intent_record(st: CwWorkFrame, sess) -> dict:
+def m1p_intent_record(st: CwSimFrame, sess) -> dict:
     """M1″ 发射意图记录(兼容入口;计划本体经 ``_m1p_plan_and_record``)。
 
     返回记录 dict 形状 = nonempty/abstain/sell/up/up_names/reasons
@@ -745,8 +745,8 @@ def m1p_intent_record(st: CwWorkFrame, sess) -> dict:
     return _m1p_plan_and_record(st, sess)[1]
 
 
-def m1p_swap_execute(st: CwWorkFrame, plan: SwapPlan, *, acts: list[dict],
-                     spend: dict, pool: _Pool) -> tuple[CwWorkFrame, bool]:
+def m1p_swap_execute(st: CwSimFrame, plan: SwapPlan, *, acts: list[dict],
+                     spend: dict, pool: _Pool) -> tuple[CwSimFrame, bool]:
     """M1″ 执行面 sim 转录:计划非空 → 逐件卖 victim(卖出臂)。
 
     T-169 最小执行面(总图设计 R2 §2 sim 边界行):生产链 = mandate 发射
@@ -777,7 +777,7 @@ def m1p_swap_execute(st: CwWorkFrame, plan: SwapPlan, *, acts: list[dict],
     :param acts: 轮账本动作流(调用方 ``_acts``,就地追加转录行);
     :param spend: 轮经济账(调用方 ``_spend``,sell_income 就地累加);
     :param pool: 有限牌池(卖出回池 ``ret``,与 SellBench 通道同守恒);
-    :returns: (卖出后的新 CwWorkFrame, 是否有任一 victim 真卖出)。
+    :returns: (卖出后的新 CwSimFrame, 是否有任一 victim 真卖出)。
     """
     sold_any = False
     new_st = st
@@ -998,9 +998,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # ADR-0439 败轮金路径)。案 b 臂进场真值自带带符号值。
         streak_signed = int(_p2_entry.streak or 0)
     else:
-        st = CwWorkFrame()
+        st = CwSimFrame()
         st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
-        # bench 槽位表(ADR-0316):CwWorkFrame() 已 pad 9 空槽,勿重置为
+        # bench 槽位表(ADR-0316):CwSimFrame() 已 pad 9 空槽,勿重置为
         # 紧缩 [](会让 bench_place 只见 0 槽 → 全部买入失败)
         for _ in range(START_BENCH_COUNT):
             cost = rng.choices(
@@ -1074,7 +1074,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 基线臂·开局环境选卡:3 候选 → decide_invest('env') 裁决。
         # 时点对齐生产 entry 流程(简报→投资环境屏);comp 未定(None)与
         # 生产开局环境屏同态。波 5 喂入反转:决策消费前先直写容器再喂
-        # 容器直读(旧裸传 CwWorkFrame 帧值在 kernel 新签名下是 AttributeError
+        # 容器直读(旧裸传 CwSimFrame 帧值在 kernel 新签名下是 AttributeError
         # 破口,cw_events.bs.board.value 读法;修复 = T-98 批首清单⑥)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_inv,
@@ -1317,7 +1317,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 实机后台格数 = 6 + (deploy_cap − level) = 6 + 宝钻数,值域
             # 6-9 封顶 9(board_structure.md 量化公式节;与 T-322 公式封顶
             # 修正 _CAP_DIFF_MAX=3 同值域)。默认 diamond_cap_prob=0 →
-            # back_max 恒 6 与 CwWorkFrame 缺省逐位同(零漂移);合成口
+            # back_max 恒 6 与 CwSimFrame 缺省逐位同(零漂移);合成口
             # back_layout 域「缺席不写」口径不受影响(缺省 6 恒非 None)。
             st.back_max = min(6 + _diamonds, 9)
             st.shop = cards_pool.draw_shop(st.level, probs=st.refresh_probs)

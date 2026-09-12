@@ -65,7 +65,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CloseShop,
     CompTransaction,
-    CwWorkFrame,
+    CwSimFrame,
     LevelUp,
     RefreshShop,
     SellBench,
@@ -288,7 +288,7 @@ def reseed_bench_if_layout_stale(state: GameState, session,
     return 'reseeded'
 
 
-def guard_expected_vs_tracked(state: CwWorkFrame, session,
+def guard_expected_vs_tracked(state: CwSimFrame, session,
                               stage: str = 'project') -> None:
     """expected-vs-tracked 双账断言(ADR-0517 §守卫两属 (ii))。
 
@@ -816,7 +816,7 @@ class RefreshShopOp(ShopActionOp):
         return True
 
 
-def _record_free_refresh_proc(op, state: CwWorkFrame, ledger: ShopVisitLedger,
+def _record_free_refresh_proc(op, state: CwSimFrame, ledger: ShopVisitLedger,
                               pre_gold, gold_after, pre_names,
                               new_shop) -> None:
     """免费刷新 proc 留证(ADR-0456;自 RefreshShopOp 抽出,单一行为)。"""

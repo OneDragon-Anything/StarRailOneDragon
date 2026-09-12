@@ -2,7 +2,7 @@
 
 SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店经济决策(买/卖/升/刷/事务)
 ——本模块是 mandate_v1 商店线的决策本体,黑板唯一输入 =
-``session.shop_state_frame``(CwWorkFrame,写者=商店入口观察段/单动作投影/
+``session.shop_state_frame``(CwSimFrame,写者=商店入口观察段/单动作投影/
 sim 引擎)。
 
 商店单动作形态(ADR-0517;前身份 = 波批 decide_shop_wave,迁移批改型):
@@ -1959,7 +1959,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
     _reward_defer = reward_node_suppressed(bs)
     if _reward_defer:
         _count('reward_node_defer')
-    # 节点判读 = kernel 单一源 node_kind_of(容器读口;旧 CwWorkFrame.
+    # 节点判读 = kernel 单一源 node_kind_of(容器读口;旧 CwSimFrame.
     # node_type 属性在 GameState 上不存在,getattr 恒 None ⇒ 写点曾失联
     # —— piggy_reward 全语料恒 False 的根因,识别面数据通路修复)。
     _node_kind = node_kind_of(bs)
@@ -2020,7 +2020,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                 bs, session):
             # [40]② 血闸(ADR-0578):支付能力检查(买不买得起下一级),与
             # level_spend_blocked 串联;拒因独立分键。金本位 gate 恒 True 直通。
-            # kernel 闸波 2 已切容器签名(hp 经政策层读口),CwWorkFrame 帧经
+            # kernel 闸波 2 已切容器签名(hp 经政策层读口),CwSimFrame 帧经
             # 过渡桥装箱(桥视图 hp source 失真语义见该桥 docstring)。
             _count('blood_xp_gate_defer')
         elif contracts.ensure_contract(

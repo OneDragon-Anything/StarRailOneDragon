@@ -141,7 +141,7 @@ DISCLOSURE_FAMILY_CLOSED_LIST: tuple[str, ...] = (
 #: 退役面字段(§2.3 逐项判据):统一 state 可算/已退役/死字段,不入新
 #: 文件行(瘦身判据「凡统一 state 可算的内容不存」的适用面)。
 RETIRED_FIELDS_NOT_EMITTED: tuple[str, ...] = (
-    'state',            # 全量 CwWorkFrame 快照;journal 行行自足,state_ref 钉行即含
+    'state',            # 全量 CwSimFrame 快照;journal 行行自足,state_ref 钉行即含
     'hp',               # 统一 state 经济域可算(钉行现值)
     'gold',             # 同上;gold 轨迹已改流水派生
     'hp_readable',      # 读值质量维 = journal 渠道签名与来源注记职责

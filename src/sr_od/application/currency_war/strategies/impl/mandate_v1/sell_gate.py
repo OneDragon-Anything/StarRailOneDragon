@@ -622,7 +622,7 @@ def _resolve_base(session: StrategySession,
     B'(**必改位**:零参宽集形态已被取代——宽−窄成员 M2 不再义务重买,
     其保护必要性消失;不改 = M4/凑息/funding 全通道对被截成员持续禁卖
     且 P60/单帧锁观测面照常零异常 = 静默半修,T-295 方案阻断③定谳),
-    未锁态 = ``k_members``。``cap_hold`` = 调用方从决策帧 CwWorkFrame 现读
+    未锁态 = ``k_members``。``cap_hold`` = 调用方从决策帧 CwSimFrame 现读
     (``cw_intention.locked_buy_cap_hold(state)``;板面容量是帧事实,
     session 无公共权威链,禁加镜像读——显式传参是唯一合法通道),
     None = 保宽(fail-closed 零漂移端;无帧态调用位如兼容再出口)。
@@ -771,7 +771,7 @@ def funding_hold_fallback(session: StrategySession,
       达成,严格有害;该量化同时封死逐帧级联清空兜底池而始终不达
       need 的路径。
 
-    ``deployed`` = 上场槽位表(CwWorkFrame.deployed,空板止损守卫输入;
+    ``deployed`` = 上场槽位表(CwSimFrame.deployed,空板止损守卫输入;
     None = 缺读,fail-closed 拒——资格判据禁缺读放行,与 hold 登记资格
     星/费缺读同纪律)。返回至多一件(单笔即止,need 即止);空列表 =
     无合法兜底(含守卫拒帧)。
@@ -844,7 +844,7 @@ def empty_board_sell_blocked(deployed: object, *,
     恢复正路 = 部署(P24 零支出)与买面,守卫零辖。若观测证明腾席抑制
     代价超界,回 ADR 对表加显式豁免(闭集增项),禁消费位手搓绕行。
 
-    ``deployed`` = 上场槽位表(CwWorkFrame.deployed 或任意可迭代表;None
+    ``deployed`` = 上场槽位表(CwSimFrame.deployed 或任意可迭代表;None
     或占用数 0 均判拒——None = 缺读 fail-closed 拒,资格判据禁缺读
     放行)。占用数单一源 = ``cw_state.deployed_occupied``(ADR-0392
     占用数;原内联第二实现改委托,禁双源)。``counters`` None = 不计数

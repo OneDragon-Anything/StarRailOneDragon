@@ -35,7 +35,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_s
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
-    CwWorkFrame,
+    CwSimFrame,
     DeployMove,
     LevelUp,
     RefreshShop,
@@ -79,7 +79,7 @@ if TYPE_CHECKING:
     )
 
 
-def _apply_hp(state: CwWorkFrame, hp_value: int | None,
+def _apply_hp(state: CwSimFrame, hp_value: int | None,
               readable: bool, trusted: bool) -> None:
     """hp 值+保真位同写(单一写点;覆盖丢位根治)。
 
@@ -324,13 +324,13 @@ def refresh_wave_is_refresh_only(actions: list) -> bool:
 
 
 def build_post_buy_incremental_state(
-        last_state: CwWorkFrame,
+        last_state: CwSimFrame,
         gold_read: int | None,
         tracked_bench_chars: list[BenchChar],
         hp_value: int | None,
         hp_readable: bool,
         hp_trusted: bool,
-) -> CwWorkFrame | None:
+) -> CwSimFrame | None:
     """买后重估增量态构造(执行边界压缩·买后验证增量的单一构造点)。
 
     机制不变量:买牌/卖牌/刷新不触 plane/round/board/level/xp/streak/
@@ -417,7 +417,7 @@ class BuyCardsOutcome:
     计算暂存消费);bought_names 已在 buy_cards 内消费(pixel-diff 落位),
     不外发。
     """
-    state: CwWorkFrame
+    state: CwSimFrame
     config: CurrencyWarConfig
     total_buy: int
     total_level: int
@@ -447,7 +447,7 @@ class BuyCardsOutcome:
 
 def apply_action_outcome(_aop: 'ShopActionOp',
                          action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
-                         _ok: bool, _cur: CwWorkFrame,
+                         _ok: bool, _cur: CwSimFrame,
                          match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
                          visit_actions: list) -> None:
     """执行结果落地门(调用环单一源;落地审补办清单 C1 调用环级锁的承载体。
@@ -673,7 +673,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
                          action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
-                         ok: bool, state: CwWorkFrame) -> None:
+                         ok: bool, state: CwSimFrame) -> None:
     """v3_release_spent 执行回执位记账(T-88 写点;裁决 = ADR-0571)。
 
     首版口径 = **只计刷新实花**(「宁窄勿虚」的遥测诚实性选择:买牌/
@@ -827,7 +827,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     # 判据单一源 = refresh_wave_is_refresh_only)。
     _entry_frame_marked = False
     _prev_refresh_only = False
-    state: CwWorkFrame | None = None
+    state: CwSimFrame | None = None
     for _ in range(MAX_REFRESH + 1):
         ledger.refresh_first_action = True   # 段级复位(仅刷新段判定输入)
         # did_refresh 段级复位(终结 op 语义 review 修复批暴露):两消费点
@@ -937,7 +937,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 观察帧,T-163 起恒定不随动作推进(帧级投影链已随 simulate 前瞻
         # 消费删除退役);仅供动作行 plane/round 基准与 pre_frame 序列化,
         # 决策/守卫/env 读点 = 容器(波 4 读者切换已承接)。
-        _cur: CwWorkFrame = state
+        _cur: CwSimFrame = state
         from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_entry,
         )

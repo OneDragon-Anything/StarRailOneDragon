@@ -620,7 +620,7 @@ class CwScreenPrep(CwScreenOpBase):
                               if slot_occupied(screen, int(p.x), int(p.y))}
         obs.back_occupied = {i + 1 for i, p in enumerate(back_pts)
                              if slot_occupied(screen, int(p.x), int(p.y))}
-        # 重:身份/星级/CwWorkFrame/cap(环入口 + 结构变化 = 每个执行过的游戏动作)
+        # 重:身份/星级/CwSimFrame/cap(环入口 + 结构变化 = 每个执行过的游戏动作)
         if heavy:
             # 可重定位读取(身份/gold==0 重读/substate)进组装层
             # 单一源(observe_full);director 保留副作用编排(session 写/审计/
@@ -679,7 +679,7 @@ class CwScreenPrep(CwScreenOpBase):
                 # 宁缺勿造,先例=商店空牌面 cw_observation._feed_board_state
                 # shop_cards 分支),禁把「9 槽全空」当 observation 入记录
                 # (席空数派生误报 free=9 污染席满决策)。tracked 沿用已有
-                # CwWorkFrame 侧兜底(上方 bench_from_compact(tracked)),
+                # CwSimFrame 侧兜底(上方 bench_from_compact(tracked)),
                 # 记录侧同式沿用现值。
                 _bench_obs = bench_view_from_obs(obs.bench_chars)
                 if _bench_obs is not None:
@@ -2904,7 +2904,7 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
     # full 帧构造性覆盖(同一物理 bench)。
     try:
         if match is not None and (total_buy or total_level or total_refresh):
-            # 买后重估容器喂入(容器化段 2:CwWorkFrame 增量构造随黑板槽
+            # 买后重估容器喂入(容器化段 2:CwSimFrame 增量构造随黑板槽
             # 退役改容器直写——gold 关店真读 → write_logic(bs.gold);
             # bench tracked 重播 → write_logic(bs.bench, BenchView 重建,
             # 构造单一源 = bench_view_of_slots);fail-closed 双维回退

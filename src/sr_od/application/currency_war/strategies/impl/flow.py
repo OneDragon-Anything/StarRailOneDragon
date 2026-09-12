@@ -76,7 +76,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
-    CwWorkFrame,
+    CwSimFrame,
     PickEvent,
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import (
@@ -255,7 +255,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     # ===== 镜像族观察写者(mandate_v1 单臂)=====
 
-    def write_shop_mirrors(self, state: CwWorkFrame | GameState,
+    def write_shop_mirrors(self, state: CwSimFrame | GameState,
                            session: StrategySession) -> None:
         """逐帧写 ``v3_b_t`` 板面目标线承重计数(纯遥测观测面)。
 

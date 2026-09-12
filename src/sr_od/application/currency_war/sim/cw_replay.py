@@ -7,7 +7,7 @@
 数据源:state/journal.jsonl(统一 state 状态流水,行行自足)——按
 (run, plane, round) 取每轮最后一次写入的行内 state 快照,经
 :func:`restore_state_snapshot` 恢复进容器后决策。旧 decisions.jsonl
-源与其 CwWorkFrame 重建/会话恢复面已随本切源退役(该流写入端已随删除
+源与其 CwSimFrame 重建/会话恢复面已随本切源退役(该流写入端已随删除
 波 1 停写,读死数据;退役面 = _rebuild_state/_restore_session/--diff
 分歧对比/意向 latch 回读/执行态可信位回读,归 git 历史)。
 

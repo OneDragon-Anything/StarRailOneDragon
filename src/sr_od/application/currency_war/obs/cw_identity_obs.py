@@ -4,9 +4,9 @@
 立绘 → 规范名(``read_deployed_chars`` / ``read_bench_chars``),用 ``currency_war_char_id`` 的
 SIFT 匹配器对模板库(生产用 ``currency_war/portrait_plaza`` 官方立绘库,见 ``currency_war_char_id`` docstring)。
 
-**与 bot 跟踪的关系**(设计):``CwWorkFrame.deployed`` / ``bench`` 默认由 **bot 跟踪**(buy/deploy
+**与 bot 跟踪的关系**(设计):``CwSimFrame.deployed`` / ``bench`` 默认由 **bot 跟踪**(buy/deploy
 动作推演,``simulate`` 维护,见 ``cw_state``)—— plan-time 快、无需 SIFT。本模块的视觉 reads 是
-**独立旁路**,用途:① 离线从截图重建 CwWorkFrame(测试 / replay,无需跑 bot);② bot 跟踪漂移时
+**独立旁路**,用途:① 离线从截图重建 CwSimFrame(测试 / replay,无需跑 bot);② bot 跟踪漂移时
 从画面恢复 / 校验。故**不**接进 ``read_game_state``(避免每帧 SIFT + 与 bot 跟踪双写冲突)。
 
 槽位坐标 = screen_info 固定 area(``前排-1..4`` / ``后排-1..6`` / ``备战栏-1..9``),经

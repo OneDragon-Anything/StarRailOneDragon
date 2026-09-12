@@ -54,7 +54,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 from sr_od.application.currency_war.obs.cw_node_obs import (
     read_encounter_options,
     read_encounter_refresh_count,
@@ -274,7 +274,7 @@ class CwScreenEncounter(CwScreenOpBase):
         match = self.ctx.cw_match
         idx, reason = 0, 'default(no-options/match)'
         pick = None
-        _state = CwWorkFrame()
+        _state = CwSimFrame()
         if match is not None and options:
             # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
             # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 GameState)。
@@ -396,7 +396,7 @@ class CwScreenEncounter(CwScreenOpBase):
         match = self.ctx.cw_match
         idx, reason = 0, 'default(no-options/match)'
         pick = None
-        _state = CwWorkFrame()
+        _state = CwSimFrame()
         if match is not None and options:
             # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
             # overlay 时 board 不可读 → 用上次备战快照(语义同旧,值源切 GameState)。

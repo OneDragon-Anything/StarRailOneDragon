@@ -7,6 +7,7 @@
 >
 > 节内引用的代码锚 = 符号名(模块/类/函数/常量),行号不书(随树漂移);数值/阈值
 > 只写常量名,单一源在代码。本文不引 changes/ 任何内容,自足可读。
+> §1-§8 = 原详设节号体系;§9 = 推演内核帧(CwSimFrame)映射对账(后增)。
 
 ## 1. 三个名词
 
@@ -1231,3 +1232,109 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
     计算不入存储)。
   - **遥测行形状规格**:state=GameState 兼容形状 + bs_prov/bs_extra 新顶层键;
     bs_prov 只记非默认来源(稀疏化,不逐字段灌满)。
+
+## 9. 与推演内核帧(CwSimFrame)的映射对账
+
+### 9.1 两个表示,平行不镜像
+
+系统里有两个「局面」表示,分工不同、长期并存:
+
+- **GameState(本容器)= 实机真值记录模型**:记录「当前仍为真的局内已知
+  事实」。它只承载实机会产生的观察与按游戏规则推算的逻辑值;sim 内部
+  机制需要的表示,凡实机不产生(或刻意不入记录),容器一律不建(§8.6
+  透传残差申报的收口口径)。
+- **CwSimFrame(推演内核帧,符号 = `kernel/cw_vocab.py`)= sim 模拟环境
+  的局面帧**:sim 引擎跑虚拟局的工作载体——环境真值(无失读态)、机制
+  完整表示(含商店牌位 x、备战排位偏好、动作账),值语义可变
+  (copy-on-write 试探:动作被拒时返回原帧副本续用,帧级回滚原语 =
+  `CwSimFrame.copy()` 深拷贝)。
+
+两者是平行表示,不存在「谁合并进谁」。内核帧机制本体为推演内核长期
+构件,不做物理删除退役。
+
+### 9.2 单向同步契约:帧 → 容器
+
+- **唯一同步通道 = `feed_sim_truth`**(写入实现 =
+  `synthesize_from_game_state`,observation 渠道,evidence 恒带
+  `sim:synthesized`):sim 引擎在决策消费点前把帧真值喂入容器,策略在
+  容器读口上决策。域覆盖增删只改该函数,禁引擎侧散落第二写点。
+- **容器值禁回写帧字段**:帧的真值来源 = 环境剧本构造(开局采样/重放
+  档案/段落进场态),不是容器;回读会把记录模型的缺读态(None/carried)
+  污染进机制真值。策略与引擎决策谓词经容器读口读值为合法——信息流
+  单向成环:帧 →喂入→ 容器 →读口→ 策略 →动作→ 帧;禁令辖的是把
+  容器值写进帧字段,不是禁读。
+- **不入同步面(内核独占表示,容器刻意不建)**:商店牌 `ShopCard.x`
+  (购买点击位)/`merge_preview`(升星预览)、备战侧 `position_pref`
+  (排位偏好)、动作账 `action_log`(§9.3)、帧本体 copy-on-write 语义。
+- **实机观测保真位不入同步面**:`hp_readable`/`hp_trusted`/`gold_readable`/
+  `board_readable`/`level_readable`/`enemy_difficulty_live` 是实机观测域
+  字段;sim 帧恒真读(缺省 True 即 sim 恒真读帧约定)。容器侧质量语义
+  由 `Field.source`/evidence/渠道签名承载,与这些位互不映射。
+- **快照边界**:容器快照(`full_state_snapshot`/`restore_state_snapshot`
+  往返)仅服务离线判读面,**禁用作推演内核回滚**——快照往返丢帧侧表示
+  (备战排位偏好/阵营原值/牌位 x/动作账/保真位族)。
+
+### 9.3 两本账:动作账与执行回执
+
+- 帧字段 `action_log` = **推演内核动作账**:机制判定(applied/rejected +
+  reason)逐条记录,随帧存留、随 `copy()` 回滚;消费面 = 检查族与 sim
+  账本转录。
+- 容器域 `receipts` = **实机执行回执**:记录「实机执行层发出了什么」
+  (发出即簿记,非验证;滚动窗,唯一写点 = `note_action_receipt`)。
+- 两本是不同语义世界的两本账,**禁互写**:sim 侧不写 receipts(模拟动作
+  不得污染实机执行回执);容器不承载 sim 拒绝记录。sim 账本的可见性走
+  既有转录面(sim ledger 的 actions 序列化 + SimResult)。
+
+### 9.4 逐字段映射对账表
+
+判定口径:**A 同域无损** / **B 有损·设计边界**(容器刻意不入的表示——
+机制必需表示留内核,或原值经派生替换/边缘语义归一)/ **C 容器无域**
+(实机观测或策略域字段,不入同步面)/ **D 容器有域·喂入口现不写**
+(现状申报;需增补时改 `feed_sim_truth` 单一源)/ **E 退役面**。
+分类计数:A 17 / B 4 / C 8 / D 4 / E 2,合计 35。
+
+| # | CwSimFrame 字段 | 容器表示 | 判定 | 备注 |
+|---|---|---|---|---|
+| 1 | gold | `bs.gold` | A | 观察直写 |
+| 2 | round_num | `node.round_num`(NodeKey) | A | |
+| 3 | plane | `node.plane`(NodeKey) | A | |
+| 4 | node_type | `node.kind` | A | 帧值为 None 且容器无现值时不写 node(禁假值占位);容器已有现值时写 kind_inherited 继承帧(plane/round 取帧值) |
+| 5 | level | `bs.level` | A | |
+| 6 | xp_progress | `bs.xp` | A | 元组直写 |
+| 7 | streak | `bs.streak` | A | |
+| 8 | hp | `bs.hp` | A | |
+| 9 | deploy_cap | `bs.deploy_cap` | A | |
+| 10 | back_max | `bs.back_layout` | A | 动态真值(三信号裁决,值域 6-9,§3.2.7) |
+| 11 | board | `bs.board` | A | |
+| 12 | plane_bosses | `bs.plane_bosses` | A | |
+| 13 | enemy_affixes | `bs.enemy_affixes` | A | |
+| 14 | active_env | `bs.active_env` | A | |
+| 15 | equips | `bs.equips` | A | |
+| 16 | active_strategies | `bs.active_strategies` | A | |
+| 17 | refresh_probs | `bs.shop.refresh_probs`(ShopPayload) | A | 已入商店 payload(§3.3) |
+| 18 | deployed | `front_row`+`back_row`(Unit 行) | B | 槽位/星级/装备无损;回程 `unit_rows_to_deployed` 按排还原排位偏好;阵营原值不保(容器刻意不入,经注册表派生替换,§8.6);排位偏好与实际排短暂不一致的形态被归一(`front_count_of` 口径注,边缘语义损耗申报) |
+| 19 | bench | `bs.bench`(BenchView) | B | **排位偏好 position_pref 丢**(Unit 无域,重建走缺省 'back')——机制必需表示留内核的核心实例;阵营同上派生;is_item_slot 经 `BenchSlot.kind='supply_box'` 保真(喂入写/恢复读同链) |
+| 20 | shop | `bs.shop`(ShopPayload.cards) | B | 五记录字段(name/faction/cost/star/cost_source)透传无损;**x/merge_preview 容器不入**(§3.3.1)——sim 买牌下架按 x,该表示留内核 |
+| 21 | action_log | 无容器域 | B | 动作账宿主 = 帧自身(§9.3) |
+| 22 | front_max | 无域(常量镜像) | C | 恒 4,非观察事实;容器常量 `DEPLOYED_FRONT_CAPACITY` 同值 |
+| 23 | level_readable | 无域(`Field.source` 近似,不映射) | C | 实机观测保真位;sim 恒 True |
+| 24 | gold_readable | 同上 | C | |
+| 25 | board_readable | 同上 | C | |
+| 26 | hp_readable | 同上 | C | |
+| 27 | hp_trusted | 同上 | C | |
+| 28 | enemy_difficulty_live | 无域 | C | 实机观测保真位 |
+| 29 | board_next_tier | 无容器域 | C | 实机 OCR 域(左面板 X/Y 的 Y),sim 不建模,喂入口不写 |
+| 30 | dual_track_phase | 无域 | E | 双轨期标记(ADR-0209);消费已随统一 state 决策面切换退役,字段随 last_state 链退役波消亡,不迁容器 |
+| 31 | focus_factions | 无域(真家 = StrategyState) | E | 同上 |
+| 32 | enemy_difficulty | `bs.enemy_difficulty` | D | 容器有域;喂入口现不写(现状申报);sim 决策消费需该域时增补 = 改 `feed_sim_truth` 单一源 |
+| 33 | level_up_cost | `bs.level_up_cost` | D | 同上(桥面 `board_state_bridge` 补写,喂入口不写) |
+| 34 | shop_refresh_cost | `bs.shop_refresh_cost` | D | 同上;sim 帧恒基价常量 `REFRESH_COST_BASE` |
+| 35 | selected_difficulty | `bs.selected_difficulty` | D | 同上(桥面补写) |
+
+**容器独有域(反向汇总)**:node_path / game_mode / refresh_counters(3)/
+node_screen_refresh(4)/ consumables / spheres / substate / event_overlay /
+event_choices(chosen_×10)/ settlement / hp_floor_triggered / prev_screen /
+current_screen / top_bar_raw / node_ord / receipts / match_final /
+encounter / supply = 记录模型扩面域,sim 帧不建模(环境剧本不产这些
+事实,设计事实非缺陷);encounter/supply 两 payload 域在喂入口恒离屏
+(§2.2 payload 离屏例外)。

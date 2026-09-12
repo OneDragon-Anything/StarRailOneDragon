@@ -882,7 +882,7 @@ class DecisionV2Registry:
     #:  §1.3 准僵尸裁定。)
     #: boss 税分位锚组 {P50, P75, P90}(sim 标定接口,非运行时值)
     boss_tax_anchor_group: tuple[float, float, float] = (32.0, 34.0, 36.0)
-    #: boss 税 p75 位面锚(消费点按位面取值;键 = CwWorkFrame.plane,1/2)。
+    #: boss 税 p75 位面锚(消费点按位面取值;键 = CwSimFrame.plane,1/2)。
     #: plane 1 = 现值原样(P1 语料标定,原 boss_tax_p75 标量同源值
     #:  34.0——该标量已随旧方案清退批删除,by_plane 为唯一取值口),零漂移锚;
     #: plane 2 槽位已就位但默认仍取现值——sim 侧位面观测
@@ -1197,7 +1197,7 @@ class DecisionV2Registry:
     #: 病灶,局22 实证)。node_type 缺失(None)维持现状 hold(保守降级:观察
     #: 缺失不改变既有行为,宁缺勿错)。行为无条件化(恒 True),依据同上。
     opening_hold_battle_gate_enabled: bool = True
-    #: H3 战斗类节点型名单(词汇表单一源=CwWorkFrame.node_type 顶部标签 OCR:
+    #: H3 战斗类节点型名单(词汇表单一源=CwSimFrame.node_type 顶部标签 OCR:
     #: boss/补给/遭遇/巨星/投资/战斗/精英/奖励)。巨星/投资等未知是否战斗
     #: →不入集=维持 hold(保守侧,不猜)。
     opening_hold_battle_nodes: frozenset[str] = frozenset(

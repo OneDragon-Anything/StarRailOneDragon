@@ -25,7 +25,7 @@ kernel 决策簇挂账读点(``cw_comps.maybe_pivot`` 保命分位 /
 重挂生产消费时必经本层读口,禁按旧注释直读 ``bs.hp.value``。
 
 门幂等(同 gap 窗内重复施门值不变):读口可在装配层与消费层叠加施门而不
-判分叉——过渡期(统一 state 迁移,详见 r5-migration-plan.md)CwWorkFrame 帧
+判分叉——过渡期(统一 state 迁移,详见 r5-migration-plan.md)CwSimFrame 帧
 hp 已被上游施门,经桥视图再过本门值不变。
 """
 from __future__ import annotations

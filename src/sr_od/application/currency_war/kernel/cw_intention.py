@@ -117,7 +117,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
-    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 
 # ===== 常量(设计推断,sim 校准;strategy_v4 点0 摆动域)=====
 CORE_MISS_N: int = 6
@@ -1560,7 +1560,7 @@ def update_intention(bs: GameState, ist: IntentionState,
                      session: StrategySession | None = None,
                      registry: DecisionV2Registry | None = None
                      ) -> IntentionState:
-    """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 CwWorkFrame)。
+    """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 CwSimFrame)。
 
     序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)
     → 未锁/弱意向解析(新信号锁线,否则⑤兜底方向)→ P3 入口强制锁线。
@@ -2354,7 +2354,7 @@ def k_empty_window_fallback(bs: GameState,
             .char_targets, 'p2plus')
 
 
-def committed_authority(state: GameState | CwWorkFrame | None,
+def committed_authority(state: GameState | CwSimFrame | None,
                         session: StrategySession | None) -> bool:
     """committed(已定型/非双轨期)权威判定(方向层单一派生源)。
 
@@ -2372,7 +2372,7 @@ def committed_authority(state: GameState | CwWorkFrame | None,
       grep 守卫锁),写端退役随老栈(strategy 层)老栈退役(ADR-0466/0469)。
     - **state 形态(W6 波3 切 GameState,hp施门下沉kernel政策层设计
       §2.4 shim 收编申报②)**:一等形态 = GameState(plane 经
-      ``plane_of`` 读口);过渡兼容支 = 老栈 CwWorkFrame 帧(plane 属性
+      ``plane_of`` 读口);过渡兼容支 = 老栈 CwSimFrame 帧(plane 属性
       直读)——尚存旧帧调用面属波4/波5 辖域文件(mandate_v1 装配/
       cw_screen_prep 旧链/prep_actions/session.last_state 槽),随各自
       退役波消亡,本支退役挂波5 last_state 链删除;禁新消费点再喂
@@ -2392,7 +2392,7 @@ def committed_authority(state: GameState | CwWorkFrame | None,
 
 
 def committed_from(session: StrategySession,
-                   state: GameState | CwWorkFrame | None = None) -> bool:
+                   state: GameState | CwSimFrame | None = None) -> bool:
     """committed(已定型/非双轨期)唯一合法读端(R1,蓝图 §4.3;
     cw_recipe 决策中心消费它成 kernel→decision 断环边,§3.3-①d;体内仅委托
     本模块 ``committed_authority``,kernel 内自洽)。
@@ -2570,7 +2570,7 @@ def _obligation_truncate(scope: set[str], core_shared: set[str],
     return kept_core + rest_rank[:rest_budget]
 
 
-def locked_buy_cap_hold(state: GameState | CwWorkFrame | None) -> int | None:
+def locked_buy_cap_hold(state: GameState | CwSimFrame | None) -> int | None:
     """容量可行截断的容量上界单源(T-307/R1,ADR-0647)。
 
     = ``BENCH_CAPACITY + max_units(level)``(现读;lv8 = 17 实用持有
@@ -2579,7 +2579,7 @@ def locked_buy_cap_hold(state: GameState | CwWorkFrame | None) -> int | None:
     (现行为,零漂移端)——容量不可得帧不做截断收紧。
 
     state 形态(W6 波3):容器一等形态(max_units_of 读口)∧ 老栈
-    CwWorkFrame 帧过渡兼容支(属性/方法直读)——过渡期调用面 11 点全在
+    CwSimFrame 帧过渡兼容支(属性/方法直读)——过渡期调用面 11 点全在
     mandate_v1(波4 辖域文件),零改续用;兼容支随波4 装配切容器消亡,
     禁新消费点再喂旧帧。
     """

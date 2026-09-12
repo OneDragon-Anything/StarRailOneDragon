@@ -48,7 +48,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
                      ) -> tuple[list[int], str]:
     """换线塌缩出口(§2.2 主比较式的发射位;k_switched=K 已按 K′ 更新)。
 
-    载体 = 容器 bs(prep 链容器化段 2 起 bs 单形态;CwWorkFrame 过渡支
+    载体 = 容器 bs(prep 链容器化段 2 起 bs 单形态;CwSimFrame 过渡支
     随段 2 帧兼容支删除消亡)。
 
     返回 (拟卖 bench slot 列表, 归因键)。发射前置:
@@ -267,7 +267,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
     载体 = 容器 bs 单形态(prep 链容器化段 2;prep 位/商店线消费恒直传
-    bs,CwWorkFrame 过渡支随段 2 帧兼容支删除消亡)。
+    bs,CwSimFrame 过渡支随段 2 帧兼容支删除消亡)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
     筹资面);变现对象 = 凑息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台

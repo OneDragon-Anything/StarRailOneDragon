@@ -1,16 +1,26 @@
-"""货币战争 动作契约词汇 + 旧工作帧(原 kernel/cw_state.py,W8 正名腾名改居)。
+"""货币战争 动作契约词汇 + sim 推演内核机制面。
 
-正名腾名(ADR-0630 后果节 + 候裁7/9 定谳记录):「CwWorkFrame」名让渡给统一
-容器(kernel/cw_game_state.CwWorkFrame);旧策略侧工作帧本体在本文件更名
-``CwWorkFrame`` 存续——其消费面 = sim 引擎内部真值模型 + session.last_state
-执行侧装配链(W6 尾波未立项、执行侧装配源迁移 = ADR-0530 尾批,均挂后续
-段删除)。本文件另定居动作契约族 14 符号(候裁9 终裁第③腿:无语义宿主,
-随本文件更名定居)。
+**推演内核正式类型 = ``CwSimFrame``**(sim 模拟环境的局面帧;命名与 sim
+包家族 cw_sim_invest/cw_sim_piggy 同构):sim 引擎整局推进的状态载体,
+机制契约 = 字段集/转移规则/copy-on-write 试探语义(动作被拒返回原帧副本
+续用),机制本体永不物理删除;与容器 GameState(实机真值记录模型)的
+表示分界、单向同步契约与逐字段映射对账正本 =
+docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
+本文件另定居动作契约族 14 符号(动作类 12 + ShopCard + CwSimFrame)。
 
-策略为纯规则路线(用户裁定 2026-09-12,落地批 = 账本 T-163):规则直接
-产出动作,决策零模拟试探。本文件的 ``simulate`` 是单步动作应用器
-(纯函数),消费位 = sim 引擎整局推进 / 假游戏环境 / 规则实现等价性验证
-(锁 M1 等)——策略域与实机操作链零消费:
+**过渡期双职责申报**:last_state 链退役波落地前,实机执行链
+(session.last_state 槽与 OCR 填帧链)仍以本类为观察工作载体——实机链
+消费点持有 ``CwSimFrame`` 注解 = 正式类型对既有消费面的收编延续,
+**不是 sim 专用**(防按名索骥误判 sim 泄漏进实机、或反向在 sim 批改实机
+链行为;也防按「CwSimFrame = sim 专用」立新哨兵误伤在飞实机过渡链)。
+退役指针 = last_state 链退役波(申报面 = kernel/cw_intention.py
+``committed_authority`` 形态注);该波落地后,类本体唯一存续职责 =
+推演内核。
+
+策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
+试探。本文件的 ``simulate`` 是单步动作应用器(纯函数),消费面终态 =
+sim 引擎整局推进 / 假游戏环境动作语义投影 / 规则实现等价性验证
+(锁 M1)——策略域与实机操作链零消费:
 - 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
   (容器读,纯规则分支),期望态推进 = 容器投影直写
   (``cw_game_state.apply_shop_action_logic`` + 合成升星腿)。
@@ -109,7 +119,7 @@ class ShopCard:
 
 
 @dataclass
-class CwWorkFrame:
+class CwSimFrame:
     """一回合决策时的局面快照(由 OCR 填充 + bot 跟踪)。"""
     gold: int = 0
     round_num: int = 1     # 位面内轮次 1-6
@@ -139,7 +149,7 @@ class CwWorkFrame:
     streak: int | None = None             # 连胜/连败数(带符号:正=连胜 / 负=连败,结算「连胜×N」前缀=方向,fixture 核实 2026-08-11;None=未读到)
     plane: int = 1         # 位面 1/2/3
     selected_difficulty: str = ""   # 本局职级 A1..A8 / A8-1..A8-50(难度确认屏检测;""=未检测→阈值回退默认;effective_hp_threshold 用;两阶难度详 docs/game/gameplay/currency_war.md:此=职级,enemy_difficulty=数值)
-    hp: int | None = None  # 小队生命值(锁血决策用)。**None 化(ADR-0491)**:无真值即 None——读不到且 session 无沿用真值(last_hp_real)时 = None,不再兜底 100(「开局兜底 100」旧语义已废止:开局血量随难度/词缀变不恒 100,兜底值是「看起来像真值」的假值)。读不到但有真值 → 对账层沿用 last_hp_real(int)。消费点对 None 一律保守(血线触发条件不触发/授权位门 fail-closed),hp_readable/hp_trusted 两位语义不变。默认构造 CwWorkFrame()=未观测态(hp=None;hp_readable 默认 True 仅供 sim 恒真读帧约定,真读帧由读取端显式写)。开局无真值帧由对账层填**初值表先验**(实证档 A8/108 → 82/62,readable=False,先验非真读;ADR-0559,cw_opening_hp),无实证档仍 None)
+    hp: int | None = None  # 小队生命值(锁血决策用)。**None 化(ADR-0491)**:无真值即 None——读不到且 session 无沿用真值(last_hp_real)时 = None,不再兜底 100(「开局兜底 100」旧语义已废止:开局血量随难度/词缀变不恒 100,兜底值是「看起来像真值」的假值)。读不到但有真值 → 对账层沿用 last_hp_real(int)。消费点对 None 一律保守(血线触发条件不触发/授权位门 fail-closed),hp_readable/hp_trusted 两位语义不变。默认构造 CwSimFrame()=未观测态(hp=None;hp_readable 默认 True 仅供 sim 恒真读帧约定,真读帧由读取端显式写)。开局无真值帧由对账层填**初值表先验**(实证档 A8/108 → 82/62,readable=False,先验非真读;ADR-0559,cw_opening_hp),无实证档仍 None)
     # hp 值来源可读位(ADR-0282;False=读不到,hp 此时为沿用值/兜底值;遥测保真,决策不用)。
     # 两来源,True 时可信度等同真读:
     # ①真读=OCR 备战 HP 区;②结算=结算屏「小队生命值」经新鲜度门写入。
@@ -234,7 +244,7 @@ class CwWorkFrame:
             self.deployed = list(self.deployed) \
                 + [None] * (DEPLOYED_CAPACITY - len(self.deployed))
 
-    def copy(self) -> CwWorkFrame:
+    def copy(self) -> CwSimFrame:
         return deepcopy(self)
 
     def max_units(self) -> int:
@@ -314,7 +324,7 @@ def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | No
 #   换算:bench 域 族 A 下标 = 族 B 物理槽位 − 1;deployed 域(ADR-0392)
 #   族 A 下标 = (row='front': slot−1 | row='back': 4+slot−1)。
 #
-# 两个坐标系的关键差异(为什么有两族):族 A 是**状态坐标系**(CwWorkFrame
+# 两个坐标系的关键差异(为什么有两族):族 A 是**状态坐标系**(CwSimFrame
 # 容器的下标,sim 与策略层用);族 B 是**画面坐标系**(屏幕物理槽位,执行器
 # 拖拽/点击用)。bench/deployed 两域族 A 均为定长槽位表(ADR-0316/0392),
 # 下标恒稳——生成期索引 = 执行期索引。
@@ -643,7 +653,7 @@ def _card_to_bench(card: ShopCard, position_pref: str = "back") -> BenchChar:
                      star=card.star, position_pref=position_pref)
 
 
-def _log_action(s: CwWorkFrame, action_name: str, result: str,
+def _log_action(s: CwSimFrame, action_name: str, result: str,
                 reason: str = '', **extra) -> None:
     """动作 v2 账本写入(契约包 C1 冻结 invariant:拒绝记录进账本)。"""
     entry: dict = {'action': action_name, 'result': result}
@@ -654,7 +664,7 @@ def _log_action(s: CwWorkFrame, action_name: str, result: str,
 
 
 def _resolve_comp_transaction(
-        s: CwWorkFrame, tx: CompTransaction) -> tuple[str, dict]:
+        s: CwSimFrame, tx: CompTransaction) -> tuple[str, dict]:
     """CompTransaction 全量校验(原子性前置;不改动状态)。
 
     返回 ``(reject_reason, plan)``:reject_reason 空 = 通过,plan 含
@@ -815,12 +825,12 @@ def _resolve_comp_transaction(
 
 
 def _tx_state_view(bench: list[BenchChar],
-                   deployed: list[BenchChar]) -> CwWorkFrame:
+                   deployed: list[BenchChar]) -> CwSimFrame:
     """mutate_bench_deployed 侧的事务校验视图:共享 bench/deployed 引用,
     金/上限取宽松值(金 10^9、level 10)——本函数域只做**索引域/身份
-    转移校验**(金/cap/排上限的权威校验在 simulate 侧,CwWorkFrame 全字段
+    转移校验**(金/cap/排上限的权威校验在 simulate 侧,CwSimFrame 全字段
     才是校验域;此处宽松 = 不因缺上下文误拒合法转移)。"""
-    view = CwWorkFrame()
+    view = CwSimFrame()
     view.gold = 10 ** 9
     view.level = 10
     view.bench = bench
@@ -856,7 +866,7 @@ def _deployed_clear_by_identity(deployed: list[BenchChar | None],
             return
 
 
-def _apply_comp_transaction(s: CwWorkFrame, tx: CompTransaction,
+def _apply_comp_transaction(s: CwSimFrame, tx: CompTransaction,
                             plan: dict) -> None:
     """应用已校验通过的事务(就地;调用前必须经 _resolve_comp_transaction)。
 
@@ -918,8 +928,8 @@ def _apply_comp_transaction(s: CwWorkFrame, tx: CompTransaction,
 
 
 
-def simulate(state: CwWorkFrame, action: Action) -> CwWorkFrame:
-    """单步动作应用(纯函数):返回应用 action 后的**新** CwWorkFrame
+def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
+    """单步动作应用(纯函数):返回应用 action 后的**新** CwSimFrame
     (不改原 state)。消费位 = sim 引擎整局逐步推进 / 假游戏环境动作转移 /
     规则实现等价性验证(锁 M1 等);策略决策零消费(T-163 纯规则路线)。
 
@@ -1142,7 +1152,7 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
                           shop: list[ShopCard] | None = None) -> None:
     """就地应用 action 的 bench/deployed 转移到持久跟踪状态(运行时同步用)。
 
-    与 ``simulate`` 的区别:``simulate`` 返回新 ``CwWorkFrame`` copy(整帧副本
+    与 ``simulate`` 的区别:``simulate`` 返回新 ``CwSimFrame`` copy(整帧副本
     语义,含 gold/level/shop 全字段);
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
     sell→置 None),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
@@ -1186,7 +1196,7 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
             deployed_place(deployed, bc)   # ADR-0392:按排路由落槽
     elif isinstance(action, SellDeployed):
         # 动作 v2(契约包 C1):runtime 跟踪侧只做身份转移(金/装备归
-        # CwWorkFrame 域,本函数不管——与 simulate 单一源规则一致)
+        # CwSimFrame 域,本函数不管——与 simulate 单一源规则一致)
         if 0 <= action.deployed_idx < len(deployed) \
                 and deployed[action.deployed_idx] is not None \
                 and (not action.expect

@@ -35,7 +35,7 @@ from sr_od.application.currency_war.kernel.cw_performance import (
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_prep_actions import PrepObservation
-    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 
 #: 策略器状态工厂注入槽(kernel 不识策略状态具体类型——依赖矩阵禁 kernel→impl
 #: 边,连 TYPE_CHECKING 也被布局锁 test_cw_package_layout 判违规;先例 =
@@ -116,7 +116,7 @@ class StrategySession:
     """
     # 备战快照(read_game_state;给节点 overlay handler 读 comp 近似——
     # overlay 时 board 不可读,用上次备战读的近似)。
-    last_state: CwWorkFrame | None = None
+    last_state: CwSimFrame | None = None
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp。
     last_hp: int | None = None
     # last_hp 的全局节点号((plane-1)*9+round):结算 hp 只在「紧邻上一节点」

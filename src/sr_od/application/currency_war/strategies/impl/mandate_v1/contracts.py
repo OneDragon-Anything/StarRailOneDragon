@@ -20,7 +20,7 @@
 字段级语义/None 语义/来源/消费钩子的权威表 =
 w583_stage2_contracts/SCHEMA_DRAFT.md §四(编排者审定版;原始件已灭失
 (2026-09-12 清理),权威表迁移挂账 = flow/projection_contract.md G8);
-sim 合成器(CwWorkFrame→Snapshot)是无损门的第一个消费者。
+sim 合成器(CwSimFrame→Snapshot)是无损门的第一个消费者。
 """
 from __future__ import annotations
 
@@ -149,7 +149,7 @@ class Snapshot:
       与容器下标相差 1)——动作参数取 slot、位置判据取下标。
     - 不可变性防线:frozen + 容器字段为只读结构(bench/deployed/
       shop_cards = tuple、board = 只读映射),合成侧对元素**深拷贝**——
-      快照与上游 CwWorkFrame 无共享可变态(「snap.bench[0] is st.bench[0]」
+      快照与上游 CwSimFrame 无共享可变态(「snap.bench[0] is st.bench[0]」
       恒 False,等价性用 == 断言)。快照派生/覆写唯一合法通道 =
       ``derive_snapshot``(禁内联 dataclasses.replace 破墙)。
     - 新鲜度维度:快照**不承载**字段级 stale 语义。理由 = 新鲜度是观察端

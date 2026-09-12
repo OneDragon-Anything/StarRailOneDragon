@@ -8,7 +8,7 @@ import prep_actions/cw_screen_prep 执行面词汇,留 decision 会构成
 decision→app 反向边(分包依赖矩阵:decision 只可依 kernel/data)。
 
 映射语义单一源 = ``.debug/temp/currency_war/w606_stage2_batch3/
-DIRECTOR_ADAPTER_DESIGN.md``。``decision_state`` CwWorkFrame 骨架输出
+DIRECTOR_ADAPTER_DESIGN.md``。``decision_state`` CwSimFrame 骨架输出
 已随 prep 链容器化段 2 退役(唯一消费 assembly.assemble 改容器单例
 直读,设计件 §2.4-5);预备域数值锚(旧 ``_anchor_state``)同批消亡
 ——决策面数值域统一读 session 容器单例。``action_to_atomop`` 的

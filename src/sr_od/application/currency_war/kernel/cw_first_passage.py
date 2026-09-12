@@ -196,13 +196,13 @@ def posture_guidance(posture: str) -> str:
 # ===== 集成接缝(供给方适配器;ADR-0170/0166)=====
 
 def board_tier_of(level: int, rb: float = 0.0) -> int:
-    """CwWorkFrame(等级, 刷牌加成)→ 板强档 0-3(HP_LOSS_MU 的键域;板强基线映射 b_eff 随 DP 退役
-    映射 —— 首达层的供给方适配:salvage/计价消费端拿 CwWorkFrame 即可算 P(win),不必自算板强)。"""
+    """CwSimFrame(等级, 刷牌加成)→ 板强档 0-3(HP_LOSS_MU 的键域;板强基线映射 b_eff 随 DP 退役
+    映射 —— 首达层的供给方适配:salvage/计价消费端拿 CwSimFrame 即可算 P(win),不必自算板强)。"""
     b = min(3.0, max(0.0, (level - 2) / 2.5) + rb)
     return min(3, max(0, int(b)))
 
 
 def p_win_projection(level: int, hp: int, nodes_left: int, rb: float = 0.0,
                      plane: int = 1) -> float:
-    """CwWorkFrame → P(win)(一站式;salvage 触发量与计价的入口;v1 位面条件化)。"""
+    """CwSimFrame → P(win)(一站式;salvage 触发量与计价的入口;v1 位面条件化)。"""
     return first_passage_win(board_tier_of(level, rb), hp, nodes_left, plane)

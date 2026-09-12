@@ -593,7 +593,7 @@ def best_alt_comp(bs, session: StrategySession,
                   registry: DecisionV2Registry | None) -> Comp | None:
     """换线候选线供给(R196 症1 接线;§2.7 接线义务的 alt 半边)。
 
-    候选集 = COMP_LIBRARY(证明层 comp 知识单一源,§1 proof 行「CwWorkFrame
+    候选集 = COMP_LIBRARY(证明层 comp 知识单一源,§1 proof 行「CwSimFrame
     + comp 知识(COMP_LIBRARY)」)− 当前线 − drought 排除线(session
     .drought_excluded,基线 best_alt_line 同款读法)。证据门 P38 序数形态
     以两个零参数前置承载:①静态可达(e_rounds 有限——p̄>0,缺口可刷到);

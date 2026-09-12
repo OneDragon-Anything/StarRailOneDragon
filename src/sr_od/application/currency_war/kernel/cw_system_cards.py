@@ -14,11 +14,11 @@
    身份口径改读
    ``cw_board_by_row.board_by_row(deployed)`` 全板合计视图(全仓按排聚合单一源;
    C6 契约);判据语义零变化(仍取 max(board OCR, 身份计数));``card_active`` 入口签名
-   保持 ``CwWorkFrame``(BoardByRow 经由内部消费);
+   保持 ``CwSimFrame``(BoardByRow 经由内部消费);
 2. C2 伪码返回 ``EngineState`` —— 本模块按规格返回 ``bool``(缺件审计走
    ``engine_missing``;EngineState 包装留给 decision_v2 接线面);
 3. C2 伪码 ``pick_card_combination(cards_state, intent, affixes)`` —— 本模块
-   直接接 ``CwWorkFrame``(CardState 在函数内组装后参与打分,类型已建)。
+   直接接 ``CwSimFrame``(CardState 在函数内组装后参与打分,类型已建)。
 
 消费方:decision_v2/candidates 层1 目标集换源、体系判定(board_rung
 口径重接)、空窗期买门。

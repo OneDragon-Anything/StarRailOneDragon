@@ -209,7 +209,7 @@ class CwScreenPlanner(CwScreenOpBase):
             from sr_od.application.currency_war.kernel.cw_events import decide_planner
             # 换源 T-146(登记集消点):防御视图 = 裸容器(全域未观察空视图;
             # decide_planner 局面消费面未观察态等价旧空帧);旧合成
-            # CwWorkFrame + 过渡桥装箱退役。
+            # CwSimFrame + 过渡桥装箱退役。
             pick = decide_planner(options,
                                   GameState(schema_version=BS_SCHEMA_VERSION),
                                   None)

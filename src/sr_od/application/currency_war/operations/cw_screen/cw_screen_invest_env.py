@@ -226,7 +226,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
         for _n in names:
             if not is_known_env(_n):
                 log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
-        # board 不可读 → 传空 CwWorkFrame(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
+        # board 不可读 → 传空 CwSimFrame(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match
         if names:
             if match is not None:

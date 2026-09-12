@@ -37,7 +37,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
 
 if TYPE_CHECKING:
     # 仅类型注解引用(老帧兼容支注解;运行时零依赖)。
-    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_BACK_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
@@ -756,7 +756,7 @@ def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
     """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
     单一源 ``cw_comps.form_progress``)∧ 板满(占用数 ≥ cap——cap =
     可上阵数占用数口径,与 select_swap_plan 板满门同一派生链
-    ``CwWorkFrame.max_units``(level+宝钻、封顶 = 4+back_max 动态真值
+    ``CwSimFrame.max_units``(level+宝钻、封顶 = 4+back_max 动态真值
     〔GameState.back_layout,值域 10-13〕;物理槽表常数 DEPLOYED_
     CAPACITY 禁作阈值,理由见下),
     喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
@@ -959,9 +959,9 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # 义务集排除独立承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
 
 
-def _fresh_phase(state: GameState | CwWorkFrame | None) -> tuple:
+def _fresh_phase(state: GameState | CwSimFrame | None) -> tuple:
     """相位键读法(双形态过渡):容器 = plane_of/round_num_of 读口;
-    老栈 CwWorkFrame 帧(测试夹具/波4 面调用) = 属性直读。兼容支随
+    老栈 CwSimFrame 帧(测试夹具/波4 面调用) = 属性直读。兼容支随
     调用面(波4 装配/测试重构)消亡,禁新消费点再喂旧帧。"""
     if state is None:
         return (None, 1)

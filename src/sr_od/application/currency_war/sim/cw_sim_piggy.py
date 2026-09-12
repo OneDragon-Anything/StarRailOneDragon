@@ -6,7 +6,7 @@
 同 seed 同池多臂注入 ``SimInvestProfile``(W162/ADR-0364 注入口),产出
 ``piggy_reward`` 扑满帧样本面(写点 = mandate_v1 两栈刷新,判据单一源
 kernel/cw_reward_node.is_piggy_reward_frame;识别面修复 = T-143,shop 栈
-写点曾因旧 ``CwWorkFrame.node_type`` 属性失联)。
+写点曾因旧 ``CwSimFrame.node_type`` 属性失联)。
 
 **辖域边界(读前必知)**:sim 不建模扑满战利品金流——注入臂的奖励轮
 收入 = 普通奖励节点注册表值,两臂收入面结构性零差。本批样本因此只承载

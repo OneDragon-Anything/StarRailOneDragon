@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
     from sr_od.application.currency_war.kernel.cw_vocab import ShopCard
-    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
@@ -614,11 +614,12 @@ def _strategy_economy(bs: GameState) -> EconomyEffect:
 
 
 
-def _refresh_cost(state: CwWorkFrame, refresh_used: int) -> int:
+def _refresh_cost(state: CwSimFrame, refresh_used: int) -> int:
     """第 refresh_used+1 次刷新的真实花金(ADR-0131):策略免费额度(如 加油站 每节点 1 次)内 = 0。
 
     (遗留评分面消费;生产刷新费单一源 = refresh_cost_effective,
-    本函数零生产调用,CwWorkFrame 形态随 W8 本体退役波消亡。)
+    本函数零生产调用;旧帧签名 = 过渡期遗留形态,随遗留消费面
+    退役收口。)
     """
     if refresh_used < aggregate_economy(
             list(getattr(state, 'active_strategies', None)
@@ -627,7 +628,7 @@ def _refresh_cost(state: CwWorkFrame, refresh_used: int) -> int:
     return SHOP_REFRESH_COST
 
 
-def refresh_cost_effective(state: CwWorkFrame, refresh_count: int,
+def refresh_cost_effective(state: CwSimFrame, refresh_count: int,
                            registry: DecisionV2Registry | None = None,
                            bs: GameState | None = None) -> int:
     """刷新 EV 判据用的参数化刷价(基价直通)。
@@ -894,7 +895,7 @@ def get_node_goal(plane: int, round_num: int, *,
         # 标量投影容器:直接按入参构造最小决策容器(供给核只读经济/板面
         # 字段;无 session、无现成容器)。字段契约单一源 =
         # kernel cw_game_state.scalar_projection_state(对旧「惰性构造
-        # CwWorkFrame + 过渡桥装箱」投影的逐字段镜像,等价锁
+        # CwSimFrame + 过渡桥装箱」投影的逐字段镜像,等价锁
         # = sr-od-test test_cw_w5_sim_retirement 投影等价测试;旧载体随
         # T-145 766 投影缝退役删除)。
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
@@ -928,7 +929,7 @@ def get_node_goal(plane: int, round_num: int, *,
 
 
 
-def economy_score(state: CwWorkFrame, economy_mode: str) -> float:
+def economy_score(state: CwSimFrame, economy_mode: str) -> float:
     """经济健康度:利息(存金到 50)+ 等级合适度 + streak 档位金(C 杠杆 2)。
 
     economy_mode 只调利息项(rush_level 弱化守息、interest_first 强化守息),等级项不变。
@@ -937,8 +938,8 @@ def economy_score(state: CwWorkFrame, economy_mode: str) -> float:
     """
     # ADR-0131(投资策略效果进经济分):利息上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)+
     # 每节点固定给金(定期福利 2/节点 ≈ 白拿 0.2 档息)+ 连胜奖励倍率(伟大征服 ×3 → streak 更值)。
-    # (遗留评分面:CwWorkFrame 形态随 W8 消亡;_strategy_economy 已切
-    #  容器帧,本面就地内联同源聚合,禁再引接缝。)
+    # (遗留评分面:旧帧签名过渡形态,随遗留消费面退役收口;
+    #  _strategy_economy 已切容器帧,本面就地内联同源聚合,禁再引接缝。)
     _se = aggregate_economy(list(getattr(state, 'active_strategies', None) or []))
     _icap = _se.interest_cap_override if _se.interest_cap_override is not None else INTEREST_THRESHOLD // 10
     interest_tiers = min(state.gold // 10, _icap)
@@ -1407,7 +1408,7 @@ def refresh_ev_budget(bs: GameState, session: StrategySession,
     (判据单一址=本函数的 ``_omega_collapse_zeroed``,届时零新概率口径)。
     """
     reg = registry or _registry_of(session)
-    # (本接缝族 CwWorkFrame 签名过渡注已随 W6 波 4 签名切换兑现删除:
+    # (本接缝族 CwSimFrame 签名过渡注已随 W6 波 4 签名切换兑现删除:
     #  is_emergency 直吃容器,桥装箱中间形态消亡。)
     if is_emergency(bs, session, reg):
         return 0

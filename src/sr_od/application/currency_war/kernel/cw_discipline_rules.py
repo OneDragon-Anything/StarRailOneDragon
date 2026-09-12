@@ -17,7 +17,7 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
         StrategySession,
     )
 
-def star_weighted_copies(name: str, state: CwWorkFrame) -> int:
+def star_weighted_copies(name: str, state: CwSimFrame) -> int:
     """同名星级加权副本数(bench+deployed;2★=2 份,3★=3 份)。"""
     n = sum(getattr(b, 'star', 1) or 1
             for b in (state.bench or []) if b is not None
@@ -39,7 +39,7 @@ def star_weighted_copies(name: str, state: CwWorkFrame) -> int:
 
 
 def sole_engine_sell_floor_plan(bcs: list,
-                                state: CwWorkFrame,
+                                state: CwSimFrame,
                                 registry: DecisionV2Registry | None = None,
                                 ) -> list[bool]:
     """ADR-0380:同批多笔卖出的逐笔下界判定(批量口径)。
@@ -76,7 +76,7 @@ def sole_engine_sell_floor_plan(bcs: list,
     return out
 
 
-def _sell_floor_counts(state: CwWorkFrame,
+def _sell_floor_counts(state: CwSimFrame,
                        reg: DecisionV2Registry) -> dict:
     """下界守卫计数底座(ADR-0373/0375/0380 单一源)。
 
@@ -148,7 +148,7 @@ def _sell_floor_decrement(name: str, bonds: set, counts: dict) -> None:
                 counts[k] -= 1
 
 
-def seed_age_blocked(bc, state: CwWorkFrame,
+def seed_age_blocked(bc, state: CwSimFrame,
                      session: StrategySession | None) -> bool:
     """engine_seed 年龄豁免——**结构性恒 False**(session.md §2.5 退役收口)。
 
@@ -179,17 +179,17 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
 )
 
 
-def hp_decision_trusted(frame: GameState | CwWorkFrame) -> bool:
+def hp_decision_trusted(frame: GameState | CwSimFrame) -> bool:
     """hp 决策可信位(单一源;**双形态过渡函数**,统一 state 迁移波 2 起):
 
     - **容器形态**(输入 = ``GameState``):委托
       ``cw_hp_policy.hp_decision_trusted_of``(定谳二单一源:
       ``bs.hp.source in ('observation', 'carried')``,语义见该函数
       docstring);
-    - **CwWorkFrame 形态**(输入 = 旧标量帧:``frame.hp`` 非 Field 载体):
-      旧双位读法 ``hp_readable or hp_trusted``——辖策略域未切换消费面
-      (statefn/flow 等,strategies 全簇随波 4 切),**随统一 state 迁移
-      W8 CwWorkFrame 本体删除消亡**(r5-migration-plan §6 残留表),禁在
+    - **CwSimFrame 形态**(输入 = 旧标量帧:``frame.hp`` 非 Field 载体):
+      旧双位读法 ``hp_readable or hp_trusted``——过渡期遗留消费面的兼容支
+      (实机链旧帧调用面),**随 last_state 链退役波收口**(申报面 =
+      kernel/cw_intention.py ``committed_authority`` 形态注),禁在
       该形态下新增消费点。
 
     同模块(及跨模块引用点)禁再手写双位判定(W393 A1.1 单一源纪律):
@@ -200,7 +200,7 @@ def hp_decision_trusted(frame: GameState | CwWorkFrame) -> bool:
     _hp = getattr(frame, 'hp', None)
     if hasattr(_hp, 'source'):    # 容器帧:hp 是 Field 载体(带 .source)
         return hp_decision_trusted_of(frame)
-    # CwWorkFrame 残留形态(getattr 读法,随 W8 消亡;AST 双位锁豁免位)
+    # CwSimFrame 残留形态(getattr 读法,随遗留调用面退役收口;AST 双位锁豁免位)
     return bool(getattr(frame, 'hp_readable', False)
                 or getattr(frame, 'hp_trusted', False))
 

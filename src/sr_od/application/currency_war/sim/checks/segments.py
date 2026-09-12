@@ -799,7 +799,7 @@ def seg_check_untrusted_hp_levelup(rows: list[dict]) -> list[dict]:
     策略变化引入不可信帧),检查器即刻命中,不依赖门被触发。
 
     可信位读取口径:hp_readable = 行顶层键(生产 decisions 帧同构;
-    cw_telemetry 显影同位)、hp_trusted = state 子字典键(CwWorkFrame
+    cw_telemetry 显影同位)、hp_trusted = state 子字典键(CwSimFrame
     快照位)。**键缺省 = 可信**——sim 账本恒真读不携带两键 → 恒零
     命中(纯防线验证面;旧批账本同样兼容)。
 

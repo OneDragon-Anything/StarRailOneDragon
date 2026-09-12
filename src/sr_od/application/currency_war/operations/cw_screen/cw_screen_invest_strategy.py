@@ -399,7 +399,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         _first_ocr_map = first_ocr_map   # 首帧 OCR 存底(刷新链读缺时采集回退用,G10)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _x, _y in opts]
-        # 不可读 → 传空 CwWorkFrame(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
+        # 不可读 → 传空 CwSimFrame(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match
         if names:
             if match is not None:
@@ -416,7 +416,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 # 依赖 exec_state_of(match.session) 与 match 上下文,局外防御
                 # 帧零行为增量(refresh_slots 不消费)。
                 # 换源 T-146(登记集消点):防御视图 = 裸容器(全域未观察空
-                # 视图);旧合成 CwWorkFrame + 过渡桥装箱退役。
+                # 视图);旧合成 CwSimFrame + 过渡桥装箱退役。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     BS_SCHEMA_VERSION,
                     GameState,

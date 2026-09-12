@@ -1,4 +1,4 @@
-"""货币战争 **备战屏**观测:备战截图 → ``CwWorkFrame``(``read_game_state``)。
+"""货币战争 **备战屏**观测:备战截图 → ``CwSimFrame``(``read_game_state``)。
 
 本模块只管**备战屏** reads(gold/hp/level/phase_round/board[+next_tier]/shop/bench_full)+ 组合入口
 ``read_game_state``。简报 reads 在 ``cw_briefing_obs``、结算 reads 在 ``cw_settlement_obs``、
@@ -66,7 +66,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     ledger_node_type,
     rebuild_deployed_from_board,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame, ShopCard
+from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame, ShopCard
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
     identify_character,
@@ -2010,8 +2010,8 @@ PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
 
 
 def read_game_state(ctx: SrContext, screen: MatLike,
-                    phase: str | None = None) -> CwWorkFrame:
-    """备战屏截图 → CwWorkFrame(喂 plan;逐字段 gate 单一源 = PHASE_FIELD_SPEC)。
+                    phase: str | None = None) -> CwSimFrame:
+    """备战屏截图 → CwSimFrame(喂 plan;逐字段 gate 单一源 = PHASE_FIELD_SPEC)。
 
     :param phase: 规范入口序列阶段键(ADR-0462:先清场、再识别、后动作)——
       ``prep_clean``=P1 干净备战期全量基线(含 hp 真读主路径);``prep_shop_open``
@@ -2040,7 +2040,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 产生的证据行打上假阶段名。实证:fail-open 探针经共享 obs_conflict 账本
         # 写入 282 行 obs_phase=no_such_phase(分诊报告 §1.3)。
         _obs_mod.set_obs_phase(phase)   # 冲突证据行带阶段(噪声判定位,ADR-0462)
-    state = CwWorkFrame()
+    state = CwSimFrame()
     # 本漏斗不读 bench 身份(v1 契约,见上方 docstring;席位通道声明 =
     # _feed_board_state docstring:「bench 观察写端 = 备战装配环 heavy 块」)
     # → 显式置不可读位:合成口(synthesize_from_game_state)据此跳写 bench,
@@ -2061,7 +2061,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # ADR-0282(hp 三层,用户设计):hp 走对账层 reconcile_hp——读不到(shop 开态
     # 血量区空)≠漂移是读失败,保旧沿用 session.last_hp_real(比假 100 安全,低血
     # 先验触发保血方向对);全无真值(开局)= 初值表先验(实证档 A8/108 → 82/62,
-    # readable=False;无实证档 → None 诚实未知;ADR-0559/0491,W823 CwWorkFrame.hp
+    # readable=False;无实证档 → None 诚实未知;ADR-0559/0491,W823 CwSimFrame.hp
     # None 化)。state.hp=决策用值,
     # state.hp_readable=是否真读(遥测分字段记,不混「真 100」)。
     # state.hp_trusted=值可信位(ADR-0428 语义细分;ADR-0431 帧龄门收紧,
@@ -2296,7 +2296,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 CwOpDeploy SIFT 处理)。
     # 不破坏):tracked 漂移时(sell 位置式 / deploy SIFT char_id='?' 未识别)截断多的 / 补 rebuild 无身份差额。
     # active_strategies:session(持久宿主,cw_screen_invest_strategy 写)→ state(_refresh_cap 等消费;
-    # live 修复 2026-08-15,原接线只加 CwWorkFrame 字段无来源恒空)。
+    # live 修复 2026-08-15,原接线只加 CwSimFrame 字段无来源恒空)。
     if _match is not None and _match.session is not None:
         state.active_strategies = list(_match.session.active_strategies)
         # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
@@ -2395,7 +2395,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     state.refresh_probs = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
     # 席满判定 = GameState 派生(kernel/cw_game_state.bench_is_full,§3.2.5):
     # 「备战席已满」警告出现太短暂无法可靠采样(玩家裁定 2026-09-09),本帧
-    # 不产席满警告读数、CwWorkFrame 亦无警告位字段;防复活墓碑 = 测试锁
+    # 不产席满警告读数、CwSimFrame 亦无警告位字段;防复活墓碑 = 测试锁
     # (调用 read_bench_full 通道即红)。
     if phase is not None:
         from sr_od.application.currency_war.kernel.cw_observe import set_obs_phase
@@ -2409,7 +2409,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # GameState 观察流接线(迁移批次一;字段级规格正本 =
     # docs/develop/sr_od/application/currency_war/game_state/fields.md §2.1/
     # §8.7):既有读取完成后把本帧真读字段同步记入 GameState 单例(零新增 OCR,
-    # 消费切换归批次二,CwWorkFrame 消费者行为零变化)。
+    # 消费切换归批次二,CwSimFrame 消费者行为零变化)。
     _feed_board_state(ctx, state, phase, screen, _spec, had_hp_real=_had_real)
     return state
 
@@ -2447,7 +2447,7 @@ def _phase_screen_context(phase: str | None, plane: int | None,
     return None, None   # fail-open 未知阶段:身份不猜不写
 
 
-def _feed_board_state(ctx: SrContext, state: CwWorkFrame, phase: str | None,
+def _feed_board_state(ctx: SrContext, state: CwSimFrame, phase: str | None,
                       screen: MatLike, spec: frozenset[str] | None, *,
                       had_hp_real: bool) -> None:
     """GameState 观察流(read_game_state 专属;迁移批次一接线)。
@@ -2459,7 +2459,7 @@ def _feed_board_state(ctx: SrContext, state: CwWorkFrame, phase: str | None,
       沿用+来源帧标注);hp 开局先验形态(读不到∧session 无真值)→ prior
       写入(§3.1.6,evidence=prior:adr-0559);
     - 逐字段门 = 本函数的 spec 门(PHASE_FIELD_SPEC 同源):spec 不含的字段
-      本帧根本没读,不进 GameState(禁拿 CwWorkFrame 兜底默认值当观察——
+      本帧根本没读,不进 GameState(禁拿 CwSimFrame 兜底默认值当观察——
       gold 失读 raw=0/hp 失读沿用值都不经此口);
     - hp 写入闸(§3.2.13/§8.8):hp 仅 spec 含 'hp' 且 hp_readable(真读)
       才 observe——商店开态帧该区不显示的假值(如旧 100 兜底)结构性进
@@ -2546,7 +2546,7 @@ def _feed_board_state(ctx: SrContext, state: CwWorkFrame, phase: str | None,
             bs.observe(bs.xp, tuple(state.xp_progress), sig=_sig_read)
         if _w('hp'):
             # v3.2-G1:判读面质量标记照落 sig.quality(决策可信位
-            # hp_readable/hp_trusted 保留 CwWorkFrame 决策域读面不经流水;
+            # hp_readable/hp_trusted 保留 CwSimFrame 决策域读面不经流水;
             # 词表 = real_read/same_node_carried/prior,§3.2.1 起步词表)。
             if state.hp_readable:
                 bs.observe(bs.hp, int(state.hp), sig=ChannelSig(

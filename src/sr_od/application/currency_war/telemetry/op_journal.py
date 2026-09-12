@@ -173,8 +173,8 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
     :param action: 已执行的动作对象(BuyCard/RefreshShop/LevelUpShop/CloseShop)
     :param seq: 段内动作序(1 起;visit_actions 追加后长度)
     :param exec_ok: 执行落地与否(False 行照落,exec_ok=False 判读面)
-    :param pre_frame: 动作执行前帧(CwWorkFrame;序列化做 diff 左侧)
-    :param post_frame: 动作执行后帧(CwWorkFrame;None=终结/投影跳过,delta 省略)
+    :param pre_frame: 动作执行前帧(CwSimFrame;序列化做 diff 左侧)
+    :param post_frame: 动作执行后帧(CwSimFrame;None=终结/投影跳过,delta 省略)
     """
     try:
         rid = current_run_id()

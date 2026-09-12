@@ -7,10 +7,16 @@ GameState(正名前暂名 BoardState,ADR-0630 后果节+W8 候裁7)= 当前仍�
 只描述「此刻」;画面 op 与决策 op 写,策略器读(设计 §1)。历史序列归遥测,
 不经本结构。
 
-**与现役 CwWorkFrame 的关系**:并行记录,本批(迁移批次一,设计 §8.7)不切
-消费——CwWorkFrame 消费者行为零变化;消费切换归迁移批次二。字段准入按设计
-§8.8 治理三件:派生量(席空数/席满判定/board 下档阈值)是计算函数不存储;
-识别质量位是写入闸门不存储(失读统一口径 = §2.2 carried/机制性 None)。
+**与推演内核帧 CwSimFrame 的关系**:平行表示,不是镜像——本容器 =
+实机真值记录模型(只记录实机会产生的已知事实);``CwSimFrame``
+(kernel/cw_vocab)= sim 模拟环境的局面帧(环境真值工作态)。内核帧 →
+容器唯一同步通道 = :func:`feed_sim_truth`(observation 渠道,evidence
+恒带 ``sim:synthesized``);容器值禁回写帧字段(策略与引擎经容器读口
+读值为合法)。逐字段映射对账正本 =
+docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
+字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board 下档阈值)
+是计算函数不存储;识别质量位是写入闸门不存储(失读统一口径 =
+§2.2 carried/机制性 None)。
 
 **两个关键结构**(设计 §2.4;预期条目表已随两态制废除):
 1. 帧观察完整度标注 + 心跳——标注(full/view/none)消费即清;停更检测
@@ -28,7 +34,7 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 旁表模式,弱引用表 + 桩面兜底)——session 对象 = 局身份,新局新 session
 即天然新建,符合「单例,每局新建」(§1/§6.2)。
 
-**sim 合成口** = :func:`synthesize_from_game_state`:sim 以 CwWorkFrame 真值
+**sim 合成口** = :func:`synthesize_from_game_state`:sim 以 CwSimFrame 真值
 合成时同样记 observation,evidence 恒带 ``sim:synthesized``(§2.1);
 bench 槽位保序映射——记录模型按实机真值箱占席(§3.2.5),不采 sim
 「无箱实体」的内部口径约定。
@@ -82,11 +88,11 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 
 if TYPE_CHECKING:
-    # 仅类型注解引用(项目规范);运行时按鸭子类型读 CwWorkFrame 属性,
+    # 仅类型注解引用(项目规范);运行时按鸭子类型读 CwSimFrame 属性,
     # 避免与 cw_state 建立运行时依赖(cw_state 将来消费本模块时不成环)。
     from sr_od.application.currency_war.kernel.cw_vocab import (
         BenchChar,
-        CwWorkFrame,
+        CwSimFrame,
         ShopCard,
     )
 
@@ -497,7 +503,7 @@ class ShopCard:
     cost: int = 0
     star: int = 1
     # 信源位(§3.3.1):**原值透传不折叠**(P2-4 落地审:证据分级禁丢)——
-    # 词表 = 现役 CwWorkFrame.ShopCard.cost_source 三值:badge=费用徽章直读 /
+    # 词表 = 现役 CwSimFrame.ShopCard.cost_source 三值:badge=费用徽章直读 /
     # roster=注册表查表(sim/replay 构造缺省) / roster_fallback=徽章失读
     # 退查表。设计的两值口径(badge=徽章直读 vs registry=注册表查表)的
     # 归并消费归批次二,消费前必须保住 roster_fallback 的「徽章失读」分级。
@@ -851,10 +857,11 @@ def cost_source_group(cost_source: str) -> str:
 # ============================================================ 双 ShopCard 映射单一源(W5 类型去重)
 # 方案语义正本 = docs/develop/sr_od/application/currency_war/game_state/fields.md §3.3.1
 # (双 ShopCard 映射):唯一容器类型 =
-# :class:`ShopCard`(本模块);旧容器版(cw_state 侧同名类,带点击坐标 x
-# 与 merge_preview)随 W8 CwWorkFrame 本体退役波消亡,过渡期两类型并存合法、
+# :class:`ShopCard`(本模块);帧版(cw_vocab 侧同名类,带点击坐标 x
+# 与 merge_preview)是观测/执行域卡(OCR 产物带点击坐标,黑板帧链自持 x)
+# 兼 sim 机制卡,**随推演内核收编长期并存**——两类型并存为长期形态,
 # **转换只许在本节两个映射函数发生**(喂入面/合成口/消费视图/合成引擎
-# 统一经此,禁散落内联转换——双源漂移温床)。本节 = kernel 内旧类型的
+# 统一经此,禁散落内联转换——双源漂移温床)。本节 = kernel 内帧版类型的
 # 唯一合法引用面(静态锁辖域,测试锁 test_cw_w5_* 守)。
 
 def shop_card_to_container(card) -> ShopCard:
@@ -1192,7 +1199,7 @@ def deployed_rows_from_obs(deployed_chars: list) -> tuple[list[Unit], list[Unit]
 
 
 def bench_slots_to_legacy(view: BenchView) -> list:
-    """BenchView(容器备战席)→ CwWorkFrame.bench 槽位表(视图收编换算单一源)。
+    """BenchView(容器备战席)→ CwSimFrame.bench 槽位表(视图收编换算单一源)。
 
     下标语义两端同构(容器 slots[i] = 物理槽 i+1,旧表下标 i = 物理槽
     i+1,ADR-0316),逐槽 1:1;Unit → BenchChar:阵营不入容器(§3.2.3),
@@ -1229,7 +1236,7 @@ def bench_slots_to_legacy(view: BenchView) -> list:
 
 
 def unit_rows_to_deployed(front_row: list[Unit], back_row: list[Unit]) -> list:
-    """(front_row, back_row)(容器席位)→ CwWorkFrame.deployed 槽位表(ADR-0392
+    """(front_row, back_row)(容器席位)→ CwSimFrame.deployed 槽位表(ADR-0392
     0 基:0-3 前排/4-9 后排;视图收编换算单一源)。
 
     坐标系换算(设计 §8.2 注):Unit.slot = 行内 1 基画面槽号(信息位)→
@@ -1328,7 +1335,7 @@ def _json_safe(value: Any) -> Any:
 # ============================================================ 合成升星逻辑直写构造源(§3.2.18 窟窿一,修法 a)
 
 def bench_view_of_slots(bench_list: list) -> BenchView:
-    """CwWorkFrame.bench 槽位表(0 基下标 + None 洞)→ BenchView(记录模型
+    """CwSimFrame.bench 槽位表(0 基下标 + None 洞)→ BenchView(记录模型
     形状契约;槽 i = 物理槽 i+1,与 sim 合成口同构映射)。投影面用
     (BuyCard 升星投影的逻辑直写值构造源,ADR-0651)。"""
     slots: list[BenchSlot] = []
@@ -2770,9 +2777,9 @@ def note_board_state_heartbeat(ctx_or_session: object) -> None:
 # ============================================================ sim 合成口
 
 
-def synthesize_from_game_state(bs: GameState, st: CwWorkFrame, *,
+def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
                                at_round: str = '') -> None:
-    """CwWorkFrame 真值 → 容器域写入(波 5 起为直写喂入口的写入实现)。
+    """CwSimFrame 真值 → 容器域写入(波 5 起为直写喂入口的写入实现)。
 
     引擎侧统一经 :func:`feed_sim_truth` 调本函数(best-effort 边界在
     喂入口);直接调用现仅余 kernel 内部面(喂入口写入实现与过渡桥自身
@@ -2783,7 +2790,7 @@ def synthesize_from_game_state(bs: GameState, st: CwWorkFrame, *,
       ``sim:synthesized``(at_round 非空时并入轮键后缀
       ``sim:synthesized@p{plane}-r{round}``,供遥测定位合成时点——P2-6
       落地审:参数必有消费);真值 None/未建模域不写(保持 None,禁合成假值);
-    - **bench 槽位保序映射**(§3.2.5 任务书件 7):CwWorkFrame.bench 的
+    - **bench 槽位保序映射**(§3.2.5 任务书件 7):CwSimFrame.bench 的
       0 基下标 1:1 映射物理槽位(BenchChar → kind='unit',None → 'empty'),
       记录模型按实机真值箱占席——sim「无箱实体」只是内部口径约定,
       不进记录模型(占席谓词 = :func:`slot_occupies`,箱/秘典占席);
@@ -2792,7 +2799,7 @@ def synthesize_from_game_state(bs: GameState, st: CwWorkFrame, *,
       None+left_screen,等价 leave_screen);encounter/supply 两域 sim 不建模,
       恒离屏口径——三 payload 域在合成帧恒反映「当前画面事实」,禁旧
       payload 连旧 evidence 残留。**空表与 None 同判 = 离屏**(边界申报):
-      sim 真值域无 OCR 失读态,CwWorkFrame.shop 空表 = 「不在商店」的真值
+      sim 真值域无 OCR 失读态,CwSimFrame.shop 空表 = 「不在商店」的真值
       形态(开店帧恒有五张);与 live 观察链「空牌面 = OCR 失读不写、非本
       画面才离屏」的语义分叉是有意申报(真值域 vs 识别域)。
     """
@@ -2801,7 +2808,7 @@ def synthesize_from_game_state(bs: GameState, st: CwWorkFrame, *,
     # 与实机真读可分;actor = 本口登记名,质量语义与 evidence 标记同源)
     _synth_sig = ChannelSig(family='obs', actor='synthesize_from_game_state',
                             mode='synthesized')
-    # node_type None(裸 CwWorkFrame 未建模该帧)不写 node——禁 'prep' 占位
+    # node_type None(裸 CwSimFrame 未建模该帧)不写 node——禁 'prep' 占位
     # 假值(P1-1 同型泛化;engine 路径 node_type 恒引擎真值不受影响)
     _node_type = getattr(st, 'node_type', None)
     if _node_type is not None:
@@ -2835,7 +2842,7 @@ def synthesize_from_game_state(bs: GameState, st: CwWorkFrame, *,
                    sig=_synth_sig)
     # back_layout(back_max 语义裁决·闸门二,sim 合成口扩员——W5 §2.6
     # 清单增补第八域,与实机喂入口域覆盖集对齐):sim 真值直写(动态真值
-    # = CwWorkFrame.back_max,场景侧设定;实机写端 = 选档裁决链,两写端
+    # = CwSimFrame.back_max,场景侧设定;实机写端 = 选档裁决链,两写端
     # 同域不同源,sim 无识别过程故恒真值);缺席不写(禁合成假值,同
     # 七域纪律)。
     if st.back_max is not None:
@@ -2916,7 +2923,7 @@ def synthesize_from_game_state(bs: GameState, st: CwWorkFrame, *,
         # (残留会把离屏帧误读成「商店仍开着」)。此为「空则不写」的漏申报
         # 面补口:payload 域的语义 = 当前画面的 payload(§8.4)。
         bs.leave_screen(bs.shop, sig=_synth_sig)
-    # encounter/supply 两 payload 域:sim 的 CwWorkFrame 不建模这两域(attr
+    # encounter/supply 两 payload 域:sim 的 CwSimFrame 不建模这两域(attr
     # 缺席 = sim 模型里结构离屏)——同口径置 left_screen,保持「三 payload
     # 域在合成帧恒反映当前画面事实」的域语义;观察真值不进合成(sim 无
     # 识别过程),禁合成假值。
@@ -2928,11 +2935,11 @@ def synthesize_from_game_state(bs: GameState, st: CwWorkFrame, *,
     bs.mark_frame_obs('full')
 
 
-def feed_sim_truth(bs: GameState, st: CwWorkFrame, *,
+def feed_sim_truth(bs: GameState, st: CwSimFrame, *,
                    at_round: str = '') -> None:
     """sim 真值直写喂入口(波 5 喂入反转的正式入口)。
 
-    方向契约(与过渡桥的反转边界):sim 引擎内部模型(CwWorkFrame 工作帧)
+    方向契约(与过渡桥的反转边界):sim 引擎内部模型(CwSimFrame 工作帧)
     的真值由**引擎侧主动直写**进 session 容器,消费端(策略/op)一律
     经 ``board_state_of(session)`` 直读容器——禁再造桥装箱一次性视图。
     写入实现 = :func:`synthesize_from_game_state`(域覆盖/evidence/
@@ -3033,37 +3040,37 @@ def restore_state_snapshot(bs: GameState, snap: dict) -> None:
 
 # ============================================================ 决策面公共读口
 # (迁移批次三·W6 波1:kernel 决策簇签名切 GameState 后的值读单一源。
-#  旧 CwWorkFrame 标量字段的缺省值形态(非 Optional:int 0/1)在容器侧是
+#  旧 CwSimFrame 标量字段的缺省值形态(非 Optional:int 0/1)在容器侧是
 #  None(未观察),读口负责镜像旧缺省,禁各消费点自写兜底造成第二源。)
 
 
 def plane_of(bs: GameState) -> int:
-    """位面读口(旧 ``CwWorkFrame.plane`` 缺省 1 的镜像;未观察帧 = 引导窗)。"""
+    """位面读口(旧 ``CwSimFrame.plane`` 缺省 1 的镜像;未观察帧 = 引导窗)。"""
     node = bs.node.value
     return int(node.plane) if node is not None else 1
 
 
 def round_num_of(bs: GameState) -> int:
-    """轮次读口(旧 ``CwWorkFrame.round_num`` 缺省 1 的镜像)。"""
+    """轮次读口(旧 ``CwSimFrame.round_num`` 缺省 1 的镜像)。"""
     node = bs.node.value
     return int(node.round_num) if node is not None else 1
 
 
 def node_kind_of(bs: GameState) -> str | None:
-    """节点类型读口(旧 ``CwWorkFrame.node_type``:None=未识别)。"""
+    """节点类型读口(旧 ``CwSimFrame.node_type``:None=未识别)。"""
     node = bs.node.value
     return str(node.kind) if node is not None else None
 
 
 def gold_of(bs: GameState) -> int:
-    """金读口(旧 ``CwWorkFrame.gold`` 非 Optional 缺省 0 的镜像;可读保真位
+    """金读口(旧 ``CwSimFrame.gold`` 非 Optional 缺省 0 的镜像;可读保真位
     另经 :attr:`Field.source` 判,读口只供值)。"""
     v = bs.gold.value
     return int(v) if v is not None else 0
 
 
 def level_of(bs: GameState) -> int:
-    """等级读口(旧 ``CwWorkFrame.level`` 非 Optional 缺省 1 的镜像)。"""
+    """等级读口(旧 ``CwSimFrame.level`` 非 Optional 缺省 1 的镜像)。"""
     v = bs.level.value
     return int(v) if v is not None else 1
 
@@ -3073,7 +3080,7 @@ def deployed_slots_of(bs: GameState) -> list:
     → ADR-0392 定长 10 槽表(0-3 前/4-9 后,元素 BenchChar|None)。
 
     换算单一源 = :func:`unit_rows_to_deployed`;两行全未观察 = 旧
-    ``CwWorkFrame.deployed`` 缺省形态([None]×10)。
+    ``CwSimFrame.deployed`` 缺省形态([None]×10)。
     """
     front = bs.front_row.value
     back = bs.back_row.value
@@ -3088,7 +3095,7 @@ def deployed_slots_of(bs: GameState) -> list:
 def bench_slots_of(bs: GameState) -> list:
     """备战席读口(波1 公共读口单一源):BenchView → 定长 9 槽表
     (元素 BenchChar|None,下标 i = 物理槽 i+1)。换算单一源 =
-    :func:`bench_slots_to_legacy`;未观察 = 旧 ``CwWorkFrame.bench`` 缺省
+    :func:`bench_slots_to_legacy`;未观察 = 旧 ``CwSimFrame.bench`` 缺省
     形态([None]×9)。"""
     view = bs.bench.value
     if view is None:
@@ -3098,11 +3105,11 @@ def bench_slots_of(bs: GameState) -> list:
 
 
 def back_capacity_of(bs: GameState) -> int:
-    """后排格数读口(旧 ``CwWorkFrame.back_max`` 容器版,波3 立口):
+    """后排格数读口(旧 ``CwSimFrame.back_max`` 容器版,波3 立口):
     back_layout 真值(值域 6-9,平常 6/宝钻扩展 7/8/9,>9 域外 8 格超集);
     未观察帧退机制基线 6(与旧字段缺省同源)。
 
-    ⚠️ 语义修正申报(W6 波3,调研草案 §4/风险 7):旧 ``CwWorkFrame.back_max``
+    ⚠️ 语义修正申报(W6 波3,调研草案 §4/风险 7):旧 ``CwSimFrame.back_max``
     静态 6 与实局 7/8 不符,本读口起消费面拿到动态真值——cap 封顶与
     后排容量门输出随之修正,行为差由 cap 域锁(test_cw_cap_domain/
     test_cw_cap_override_link)重推语义辖。单一源:``max_units_of`` 封顶
@@ -3112,7 +3119,7 @@ def back_capacity_of(bs: GameState) -> int:
 
 
 def deployed_count_of(bs: GameState) -> int:
-    """上阵占用数读口(旧 ``CwWorkFrame.deployed_count`` 逐式镜像,波3 立口;
+    """上阵占用数读口(旧 ``CwSimFrame.deployed_count`` 逐式镜像,波3 立口;
     换算单一源 = :func:`deployed_slots_of` + ``cw_state.deployed_occupied``,
     ADR-0392 占用数口径非 len)。"""
     from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
@@ -3120,7 +3127,7 @@ def deployed_count_of(bs: GameState) -> int:
 
 
 def front_count_of(bs: GameState) -> int:
-    """前排人数读口(旧 ``CwWorkFrame.front_count`` 逐式镜像,波3 立口):
+    """前排人数读口(旧 ``CwSimFrame.front_count`` 逐式镜像,波3 立口):
     按 ``BenchChar.position_pref == 'front'`` 计(与旧法同式,非按槽段
     计——BenchChar 站位偏好与所在排可短暂不一致,镜像以旧口径为准)。"""
     return sum(1 for c in deployed_slots_of(bs)
@@ -3128,14 +3135,14 @@ def front_count_of(bs: GameState) -> int:
 
 
 def back_count_of(bs: GameState) -> int:
-    """后排人数读口(旧 ``CwWorkFrame.back_count`` 逐式镜像,波3 立口;
+    """后排人数读口(旧 ``CwSimFrame.back_count`` 逐式镜像,波3 立口;
     口径同 :func:`front_count_of`)。"""
     return sum(1 for c in deployed_slots_of(bs)
                if c is not None and c.position_pref == 'back')
 
 
 def max_units_of(bs: GameState) -> int:
-    """可上阵数容器版派生(波1 公共读口单一源;旧 ``CwWorkFrame.max_units``
+    """可上阵数容器版派生(波1 公共读口单一源;旧 ``CwSimFrame.max_units``
     逐式镜像):deploy_cap 真值(≥level 才采信,ADR-0286 防抖漏网兜底
     level)封顶 = 前排恒 4 + back_layout 动态真值(缺省 6 = 机制基线,
     值域 6-9,与旧 back_max 字段缺省同源;封顶域单一源 =
@@ -3150,7 +3157,7 @@ def max_units_of(bs: GameState) -> int:
 
 
 def board_state_bridge(st: object) -> GameState:
-    """CwWorkFrame 帧值 → 独立 GameState 视图(W6 决策面切换的过渡桥)。
+    """CwSimFrame 帧值 → 独立 GameState 视图(W6 决策面切换的过渡桥)。
 
     **退役进行中(波 5 只清 sim 域,残余辖域面原样在树——哨兵登记集
     = 现实单一源,禁据本 docstring 误判消点进度)**:
@@ -3166,16 +3173,16 @@ def board_state_bridge(st: object) -> GameState:
     """
     if st is None:
         # 无帧调用面(如 session.last_state 缺席):全域未观察空视图,
-        # 消费面按「缺读保守侧」取值(与旧 CwWorkFrame() 空帧同向)。
+        # 消费面按「缺读保守侧」取值(与旧 CwSimFrame() 空帧同向)。
         return GameState(schema_version=BS_SCHEMA_VERSION)
     from sr_od.application.currency_war.kernel.cw_vocab import (
-        CwWorkFrame as _GameStateDefaults,
+        CwSimFrame as _GameStateDefaults,
     )
 
     class _DuckFrame:
-        """鸭子帧属性缺读回落 CwWorkFrame 缺省(桥输入兼容轻量桩帧——
+        """鸭子帧属性缺读回落 CwSimFrame 缺省(桥输入兼容轻量桩帧——
         旧链消费只读桩提供的字段;桥经合成口搬运全域,缺属性按同帧
-        CwWorkFrame() 缺省解释,与「缺读=缺省保守值」惯例一致)。"""
+        CwSimFrame() 缺省解释,与「缺读=缺省保守值」惯例一致)。"""
 
         __slots__ = ('_st', '_base')
 
@@ -3205,7 +3212,7 @@ def board_state_bridge(st: object) -> GameState:
                           mode='synthesized')
         synthesize_from_game_state(bs, st_view)
         # 节点缺席补写(合成口在 node_type 未识别帧不写 node——sim 引擎
-        # 恒有真值不受影响;桥的输入是任意 CwWorkFrame 帧,plane/round_num
+        # 恒有真值不受影响;桥的输入是任意 CwSimFrame 帧,plane/round_num
         # 是非 Optional 标量,丢节点 = 读口回落缺省 1/1 与帧值漂移)。
         # kind 空串 = 帧未识别的忠实镜像(消费面只做实值等值/成员检查,
         # 行为与 None 同向;禁写 'prep' 等词表值冒充真值)。
@@ -3236,12 +3243,12 @@ def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
 
     服务「只有标量、无 session/无现成容器」的调用面。现役唯一消费 =
     ``cw_economy.get_node_goal`` 全参支。本函数只退役旧载体(调用面惰性
-    构造 CwWorkFrame + :func:`board_state_bridge` 装箱),语义契约原样:
+    构造 CwSimFrame + :func:`board_state_bridge` 装箱),语义契约原样:
 
     - **ADR-0598 结构性豁免不扩修**:投影判据链以 session=None 求值 →
       息帽 resolved 链恒 base 口径、节点日程走缺表回退先验——契约不变,
       扩修挂该调用面的 session 通道批;
-    - **字段契约 = 桥对 ``CwWorkFrame(gold=…, level=…, hp=…, plane=…,
+    - **字段契约 = 桥对 ``CwSimFrame(gold=…, level=…, hp=…, plane=…,
       round_num=…, active_strategies=…)`` 投影输出的逐字段镜像**(等价锁 =
       sr-od-test test_cw_w5_sim_retirement 投影等价测试,值/来源/evidence/
       工程结构逐项对拍):node = NodeKey(plane, round_num, kind='')(帧未

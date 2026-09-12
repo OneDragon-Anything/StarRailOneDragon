@@ -6,7 +6,7 @@
 
 设计见 ``docs/develop/currency_war/strategy/07_plugin.md``;决策见
 ``docs/develop/sr_od/application/currency_war/decisions/INDEX.md`` 。本模块**纯逻辑**:所有钩子只吃
-``CwWorkFrame``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
+``CwSimFrame``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
 四个组件(本模块 3 个 + manager):

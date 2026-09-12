@@ -102,7 +102,7 @@ def levelup_budget_gate(bs: GameState,
     """P72 (3) 全段预算闸(ADR-0576):升级支出 s 的量闸(全段辖域)。
 
     载体 = 容器 bs 单形态(prep 链容器化段 2;entry 姿态镜像/商店线
-    两位/mandate 面消费恒直传 bs,CwWorkFrame 过渡支随段 2 帧兼容支删除
+    两位/mandate 面消费恒直传 bs,CwSimFrame 过渡支随段 2 帧兼容支删除
     消亡)。内部字段读经读口(``_plane_round_of``/``_max_units_of``)。
 
     判据式(证明 = docs/develop/sr_od/application/currency_war/proofs/
@@ -356,7 +356,7 @@ def level_spend_blocked(bs: GameState, session: StrategySession,
     67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
 
     载体 = 容器 bs 单形态(prep 链容器化段 2;entry 姿态镜像与商店线/
-    mandate 消费恒直传 bs,CwWorkFrame 过渡支随段 2 帧兼容支删除消亡)。
+    mandate 消费恒直传 bs,CwSimFrame 过渡支随段 2 帧兼容支删除消亡)。
     内部血线谓词(kernel ``blood_budget_levelup_blocked``/``p2_crisis_band``)
     已切容器签名,容器 bs 直读。
 
