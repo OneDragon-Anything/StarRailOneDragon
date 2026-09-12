@@ -55,6 +55,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     SellDeployed,
     StartBattle,
 )
+from sr_od.application.currency_war.kernel.cw_state import XP_CLICK_COST_FALLBACK
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_reward_spheres,
@@ -1098,10 +1099,19 @@ class PrepActionExecutor:
         return True, f'选卡 {chosen}'
 
     def _default_box_card(self, names: list[tuple[str, int]]) -> tuple[str, int]:
-        """执行器内嵌默认选卡(r104 起委托策略模块 decide_box_card;P5 上移已落地两处归一)。
+        """执行器默认选卡:局内决策单一源 = 策略模块 ``decide_box_card``(r104 委托)。
 
-        策略层打分:key_equips 命中 +100 / key 材料两跳 +30 / 材料通用性;
-        无 match(局外)回落旧内联(key_equips → 材料通用性 → 第1张)。
+        分层纪律(T-20 谓词单一源判例同款):match 在场(局内)时选卡打分
+        只住策略层(key_equips 命中 +100 / key 材料两跳 +30 / 材料通用性),
+        本执行器**禁第二打分实现**——``decide_box_card`` 异常留证(完整栈)
+        后显式上抛(与 ``cw_op_buy_cards.run_buy_waves`` 决策异常同款;本
+        模块 docstring 失败路径「执行异常 → 异常上抛,外层 op retry 接管」
+        同约),返回越界索引同 fail-closed 上抛;两者都禁无声回落内联打分
+        (策略 bug 永久遮蔽,2026-09-12 动作 op 规范判读应修②)。
+        仅局外(match None,无策略面可委托)保留机械默认:材料通用性
+        并列取第 1 张(旧 match 场 key_equips 预选腿随内联回落通道一并
+        退役——它原只辖「策略炸错回落」路径;回落路径行为锁 =
+        test_cw_screens_ops.test_pick_card_fallback_by_material_value)。
         """
         match = self._ctx.cw_match
         if match is not None:
@@ -1116,18 +1126,20 @@ class PrepActionExecutor:
                 idx = match.strategy.decide_box_card(
                     [n for n, _ in names], board_state_of(match.session),
                     match.session, getattr(match, 'config', None))
-                if 0 <= idx < len(names):
-                    return names[idx]
-            except Exception:   # noqa: BLE001  策略失败回落旧逻辑
-                pass
+            except Exception:   # noqa: BLE001  留证后显式上抛,禁无声回落
+                import traceback
+
+                log.error('[cw!][box] decide_box_card 异常(留证后上抛):\n%s',
+                          traceback.format_exc())
+                raise
+            if not (0 <= idx < len(names)):
+                raise ValueError(
+                    f'decide_box_card 返回越界索引 {idx}(实读卡数 '
+                    f'{len(names)});策略契约违约 fail-closed,禁回落内联选卡')
+            return names[idx]
         from sr_od.application.currency_war.kernel.cw_prep_expect import (
             material_value,
         )
-        if match is not None and strategy_state_of(match.session).target_comp is not None:
-            key_equips = set(strategy_state_of(match.session).target_comp.key_equips or [])
-            for n, x in names:
-                if n in key_equips:
-                    return n, x
         best = max(names, key=lambda t: material_value(t[0]))
         return best
 
@@ -1269,8 +1281,9 @@ class PrepActionExecutor:
         入口前检(M6 边界面,非判效):level 基线读不到拒绝盲点(击数无法
         推导);血闸(ADR-0578,血本位协议限定;金模式零改动)整级授权检
         (全量口径 ``⌈need/4⌉×血单价``,hp 不可信 fail-closed)。
-        r15 review P1 金检查保留:每点前读金,gold < 单击价(4)即停
-        (防排干买牌本金——执行前资源契约,非点击效果判断)。
+        r15 review P1 金检查保留:每点前读金,gold < 单击价(kernel
+        ``XP_CLICK_COST_FALLBACK``)即停(防排干买牌本金——执行前资源契约,
+        非点击效果判断)。
         """
         match = self._ctx.cw_match
         session = match.session if match is not None else None
@@ -1341,9 +1354,10 @@ class PrepActionExecutor:
                     break
             # r15 review P1:循环内金检查——策略侧金前置滞后一环时
             # (如 P2 急救态 _saving_for_level 仍攒金但 plan 已发 LevelUp),gold 63→9
-            # 一动作排干(M57 P2-1 实证)。每点前读金,gold < 单击价(4)即停(防排干买牌本金)。
+            # 一动作排干(M57 P2-1 实证)。每点前读金,gold < 单击价即停(防排干
+            # 买牌本金);单击价单一源 = kernel XP_CLICK_COST_FALLBACK。
             gold_now = read_gold(self._ctx, self._op.screenshot())
-            if gold_now is not None and gold_now < 4:
+            if gold_now is not None and gold_now < XP_CLICK_COST_FALLBACK:
                 log.info('[cw][levelup] gold %s < 单击价 → 停点(保买牌本金)', gold_now)
                 break
             _clicked += 1
