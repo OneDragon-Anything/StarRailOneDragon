@@ -25,8 +25,11 @@ journal.md §5)。
 为整体单元(段 = 行内 run_id 归属,整段淘汰禁切半段),已淘汰段的 state_ref
 钉 = 永久 unverified,淘汰动作在本模块 manifest(``journal.retirement.jsonl``,
 journal 同目录)逐段显影(archived_out;判读者钉解析失败时查 manifest 可辨
-「清理」与「丢数据」);保留窗下限 = 跨期语料窗(缺省常量,清理策略随真实
-数据积累再调,无观察窗计时)。清理时点 = 装配(:func:`install_state_telemetry`
+「清理」与「丢数据」)。淘汰分三道闸(策略语义正本 = journal.md §5「寿命
+(滚动清理)策略」):实机段龄窗(跨期语料窗承诺辖域 = 实机对局语料)/
+非实机段龄窗(sim 批与 harness 段短窗——全消费面不采信,30 天窗对其无效,
+是账面体积无上界的根源)/体积兜底窗(容量失控时从最老段清,可击穿实机窗,
+manifest 显影保考古)。清理时点 = 装配(:func:`install_state_telemetry`
 前置)——单进程写端未启动,零并发窗;活跃段(最新 run_id)永不清理。
 
 本模块只管「行进了内存之后」的事(缓冲/序列化/落盘/装配/寿命);行的组装与
@@ -37,6 +40,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from collections.abc import Callable
 from datetime import datetime
@@ -50,14 +54,45 @@ from one_dragon.utils.log_utils import log
 #: (ADR-0630 后果节 M1 三口径)耦合调)。
 DEFAULT_FLUSH_EVERY: int = 64
 
-#: journal 段保留窗(天;寿命契约保留窗下限 = 跨期语料窗,retirement.md
-#: §6-5。缺省 30 天 = 跨月对照语料窗的保守值;清理策略随常开化后真实数据
-#: 积累定,无观察窗计时——R5 直迁口径,r5-migration-plan.md §4-5)。
+#: 实机形态 run_id 正则(实机段分型判据;telemetry/state.start_run 铸造口径
+#: ``run_%Y%m%d_%H%M%S``)。与 telemetry/match_archive._JOURNAL_RUN_ID_RE 及
+#: 三件哨兵脚本的正选口径同源,一致性由测试锁钉住(正则各自持字面量:
+#: kernel 禁依 telemetry,哨兵是跨仓独立脚本,无共享 import 面)。
+REAL_RUN_ID_RE: re.Pattern[str] = re.compile(r'^run_[0-9]{8}_[0-9]{6}$')
+
+#: journal 段保留窗(天;实机段,寿命契约保留窗 = 跨期语料窗,retirement.md
+#: §6-5。30 天 = 跨月对照语料窗的保守值;窗口数值随常开化后真实数据积累定,
+#: 无观察窗计时——r5-migration-plan.md §4-5)。
 JOURNAL_RETENTION_DAYS: int = 30
+
+#: 非实机段保留窗(天;sim 批 fake_/sim_ 段与 harness 段)。依据 = 常开化后
+#: 真实积累实测(2026-09-12,T-77):现役账面 251.6MB 全部 12 段均为非实机段
+#: (零实机段)且段龄 <2 天——30 天窗对其永无效力,账面体积随 sim 批积累
+#: 无上界,是哨兵武装/装配整账读成本线性上涨的体积根源。全消费面(Δ池隔离
+#: QUARANTINED_RUN_PREFIXES/判读过滤/档案装配过滤/哨兵正选)均不采信非实机
+#: 段,保留价值 = 批后隔日复查判读,3 天保守足额。
+JOURNAL_NONLIVE_RETENTION_DAYS: int = 3
+
+#: 现役账面体积兜底上界(字节;三道闸的容量约束):分型天窗清完后仍超,
+#: 从最老段继续淘汰(不分型,实机段也在淘汰序内),直到 ≤ 上限或只剩不可清
+#: 段(活跃段/无 ts 段),超出部分如实保留(段整体单元禁切半段)。取值依据
+#: (T-77 实测):非实机段正常积累 ~60MB/日,3 天窗 ≈ 180MB 留余量;压测日
+#: 单段可达 ~145MB(fake_20260908),192MB = 约一个压测段 + 正常积累余量;
+#: 落码时点现役账面 251.6MB 恰超此窗,首次装配即触发首次真实回收。容量失控
+#: 可击穿实机段 30 天承诺窗——被清段经 manifest 逐段显影保考古
+#: (retirement.md §6-5「保留窗下限」语义:正常积累下承诺成立,容量约束优先)。
+JOURNAL_MAX_BYTES: int = 192 * 1024 * 1024
 
 #: 段淘汰 manifest 文件名(journal 同目录;逐段一行 archived_out 显影,
 #: 判读者 state_ref 钉解析失败时的「清理 vs 丢数据」判别面)。
 RETIREMENT_MANIFEST_NAME: str = 'journal.retirement.jsonl'
+
+#: manifest 行 ``reason`` 键值域(哪道闸清的;判读考古辨归因)。
+RETIRE_REASONS: dict[str, str] = {
+    'age_real': '实机段超跨期语料窗',
+    'age_non_real': '非实机段超短窗',
+    'size_budget': '体积兜底窗容量回收',
+}
 
 
 class StateJournal:
@@ -122,18 +157,25 @@ class StateJournal:
 def enforce_journal_retention(journal_path: Path | str, *,
                               now: datetime | None = None,
                               retention_days: int = JOURNAL_RETENTION_DAYS,
+                              nonlive_retention_days: int = JOURNAL_NONLIVE_RETENTION_DAYS,
+                              max_bytes: int = JOURNAL_MAX_BYTES,
                               ) -> dict[str, Any]:
     """run 段粒度滚动清理(寿命契约;装配前置时点调,单进程写端未启动)。
 
-    契约(retirement.md §6-5 直迁形态):
+    契约(retirement.md §6-5 直迁形态;策略语义正本 = journal.md §5):
     - 清理单元 = **run 段整体**(行内 run_id 归属;禁切半段——段内版本序
       完整性是 state_ref 钉解析的前提);
-    - 段龄判据 = 段内最大行 ts 距 ``now`` 超过 ``retention_days`` 天;
+    - 三道闸按序判定(测试可传参覆写常量):
+      ①实机段龄窗 ``retention_days``(跨期语料窗;只辖 :data:`REAL_RUN_ID_RE`
+      实机形态段);②非实机段龄窗 ``nonlive_retention_days``(sim/harness 段
+      短窗);③体积兜底窗 ``max_bytes``(前两道清完后文件仍超 → 按段末时间
+      从最老段继续淘汰,不分型,直到 ≤ 上限或只剩不可清段);
     - **活跃段永不清理**(最新段 = 现役局,可能与进程内缓冲/下一局续写
-      交叠,段龄判据对其无意义);
+      交叠,段龄判据对其无意义);无 ts 段不判龄不清理(宁保留不误删);
     - 被淘汰段逐段写 manifest(``journal.retirement.jsonl``,journal 同
-      目录)一行 ``{run_id, archived_out: true, rows, first_ts, last_ts,
-      retired_at}`` 显影——钉解析失败 = 查 manifest 辨「清理 vs 丢数据」;
+      目录)一行 ``{run_id, archived_out, rows, first_ts, last_ts,
+      retired_at, reason}`` 显影——钉解析失败 = 查 manifest 辨「清理 vs
+      丢数据」,reason 辨哪道闸;
     - 文件重写 = 临时文件 + ``os.replace`` 原子改名(中断读者不读半截);
     - 坏行/无 ts 行/无 run_id 行 = 原样保留(宽容契约:清理面不做判定,
       禁把半行当合法行删);
@@ -163,9 +205,11 @@ def enforce_journal_retention(journal_path: Path | str, *,
                 rows.append(line)   # 坏行原样保留(宽容契约,清理面不判定)
                 continue
             rows.append(parsed if isinstance(parsed, dict) else parsed)
-    # 段账:run_id → 行下标集 + 段内最大 ts
+    # 段账:run_id → 行下标集 + 段内最大 ts + 段字节量(体积窗判据;行字节
+    # 含换行,与逐行读出的文件内容一致)
     seg_rows: dict[str, list[int]] = {}
     seg_last_ts: dict[str, str] = {}
+    seg_bytes: dict[str, int] = {}
     for i, row in enumerate(rows):
         if not isinstance(row, dict):
             continue
@@ -176,25 +220,52 @@ def enforce_journal_retention(journal_path: Path | str, *,
         ts = str(row.get('ts') or '')
         if ts and ts > seg_last_ts.get(rid, ''):
             seg_last_ts[rid] = ts
+        seg_bytes[rid] = seg_bytes.get(rid, 0) + len(json.dumps(
+            row, ensure_ascii=False)) + 1
     summary['checked'] = len(seg_rows)
     if not seg_rows:
         return summary
     # 活跃段 = 段末行 ts 最大的段(流内行序 = 版本序,段末行最新)
     active_seg = max(seg_rows, key=lambda r: (seg_last_ts.get(r, ''), r))
     cutoff = now_epoch - retention_days * 86400.0
+    cutoff_nonlive = now_epoch - nonlive_retention_days * 86400.0
 
-    def _stale(rid: str) -> bool:
+    def _ts_epoch(rid: str) -> float | None:
         ts = seg_last_ts.get(rid, '')
         if not ts:
-            return False   # 无 ts 段不可判龄,不清理(宁保留不误删)
+            return None   # 无 ts 段不可判龄,不清理(宁保留不误删)
         try:
-            age = datetime.fromisoformat(ts).timestamp()
+            return datetime.fromisoformat(ts).timestamp()
         except ValueError:
-            return False
-        return age <= cutoff
+            return None
 
-    retired_ids = [rid for rid in seg_rows
-                   if rid != active_seg and _stale(rid)]
+    # 闸①②分型天窗:实机段按跨期语料窗,非实机段按短窗
+    retire_reason: dict[str, str] = {}
+    for rid in seg_rows:
+        if rid == active_seg:
+            continue
+        age = _ts_epoch(rid)
+        if age is None:
+            continue
+        if REAL_RUN_ID_RE.match(rid):
+            if age <= cutoff:
+                retire_reason[rid] = 'age_real'
+        elif age <= cutoff_nonlive:
+            retire_reason[rid] = 'age_non_real'
+    # 闸③体积兜底窗:天窗清完后按段末时间从最老段继续淘汰(不分型)
+    keep_bytes = sum(seg_bytes.values()) - sum(
+        seg_bytes.get(rid, 0) for rid in retire_reason)
+    if keep_bytes > max_bytes:
+        for rid in sorted(seg_rows, key=lambda r: (seg_last_ts.get(r, ''), r)):
+            if keep_bytes <= max_bytes:
+                break
+            if rid == active_seg or rid in retire_reason:
+                continue
+            if _ts_epoch(rid) is None:
+                continue   # 无 ts 段不清理(宁保留不误删)
+            retire_reason[rid] = 'size_budget'
+            keep_bytes -= seg_bytes.get(rid, 0)
+    retired_ids = list(retire_reason)
     if not retired_ids:
         return summary
     retired_idx: set[int] = set()
@@ -211,6 +282,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
                                  for i in idxs if isinstance(rows[i], dict))
                 mf.write(json.dumps({
                     'run_id': rid, 'archived_out': True,
+                    'reason': retire_reason[rid],
                     'rows': len(idxs),
                     'first_ts': ts_list[0] if ts_list else '',
                     'last_ts': ts_list[-1] if ts_list else '',
@@ -242,9 +314,14 @@ def enforce_journal_retention(journal_path: Path | str, *,
         summary['retired'] = []
         summary['rows_dropped'] = 0
         return summary
+    by_reason: dict[str, list[str]] = {}
+    for rid in retired_ids:
+        by_reason.setdefault(retire_reason[rid], []).append(rid)
     log.info('[cw][state-journal] 寿命契约清理:淘汰 %d 段 %d 行'
-             '(保留窗 %d 天): %s', len(retired_ids), summary['rows_dropped'],
-             retention_days, ', '.join(retired_ids))
+             '(清后 ~%.1fMB/上限 %dMB): %s',
+             len(retired_ids), summary['rows_dropped'],
+             keep_bytes / 1048576.0, max_bytes // 1048576,
+             '; '.join(f'{reason}={ids}' for reason, ids in by_reason.items()))
     return summary
 
 
