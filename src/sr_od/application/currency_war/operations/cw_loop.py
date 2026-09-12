@@ -631,8 +631,16 @@ def _launch_frame_arbitration(op) -> dict:
             return report
         report['entered'] = True
 
-        def _gate(action) -> tuple[bool, str]:
-            gold_now = int(getattr(session.shop_state_frame, 'gold', 0) or 0)
+            # 读金口径(W6 波 4 黑板容器化,设计件 §2.4-2):容器读口
+            # ``gold_of``(缺省 0 镜像,与原 ``int(... or 0)`` 兜底同型
+            # 零行为差;禁裸 bs.gold.value 引入 None 形态行为差)——黑板
+            # 槽退役后闸与决策同读容器,逐动作投影回写经
+            # apply_shop_action_logic 承接,同帧同值语义不变。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of,
+                gold_of,
+            )
+            gold_now = gold_of(board_state_of(session))
             ok, why = cw_launch_arbitrage.launch_arbitration_gate(
                 action, gold_now, _sess_hp)
             if not ok:
@@ -3026,4 +3034,5 @@ def _get_or_init_allocator(ctx: SrContext):
         log.info(f'[cw-alloc] 分配器初始化失败(禁用): {e}')
         _ALLOCATOR = None
     return _ALLOCATOR
+
 
