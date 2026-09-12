@@ -145,11 +145,13 @@ def parse_settlement_assets(ocr_texts: list[str]) -> dict[str, int | None]:
     return out
 
 
-def parse_streak(ocr_texts: list[str]) -> int:
-    """结算屏「连胜×N」/「连败×N」→ 带符号 streak(连胜 + / 连败 − / 未读到 0;纯函数可单测)。
+def parse_streak(ocr_texts: list[str]) -> int | None:
+    """结算屏「连胜×N」/「连败×N」→ 带符号 streak(连胜 + / 连败 −;纯函数可单测)。
 
     fixture 核实(2026-08-11):结算屏 OCR 含 '连胜×0' 形态,**前缀连胜/连败 = 方向**(read_streak
     备战只读 magnitude 无方向)。OCR 偶把 × 读成 x/X/*;前缀与尾随数字在同一 token。
+    失读(全帧无连胜/连败 token)→ None:『连胜×0』真 0 与失读 None 分写,None 化后
+    消费链守卫 = 结算观察半 None 跳过沿用 / is_losing_streak None 行跳过。
     """
     for t in ocr_texts:
         if '连胜' in t or '连败' in t:
@@ -157,7 +159,7 @@ def parse_streak(ocr_texts: list[str]) -> int:
             if m:
                 n = int(m.group(1))
                 return n if '连胜' in t else -n
-    return 0
+    return None
 
 
 def parse_settlement_progress(ocr_texts: list[str]) -> int | None:

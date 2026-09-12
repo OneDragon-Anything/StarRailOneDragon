@@ -147,7 +147,9 @@ class LevelUp(PrepAction):
 
 @dataclass
 class EnsureShopOpen(PrepAction):
-    """开商店(gold 只在开态可读)。⚠️ W970 批 C 退役(dd-017):生产路径改发
+    """开商店(gold 备战帧同可见可读:玩家确认 2026-09-09「干净备战帧金币可见」,
+    恢复局备战期金币无机制性例外——备战帧观察为 gold 覆盖写端之一,非「仅开态可读」)。
+    ⚠️ W970 批 C 退役(dd-017):生产路径改发
     :class:`OpenShop`(read_only 变体),本类仅存续于旧环/离线兼容面。"""
 
 

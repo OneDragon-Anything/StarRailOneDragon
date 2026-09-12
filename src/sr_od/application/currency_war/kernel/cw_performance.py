@@ -168,7 +168,8 @@ class PerformanceTracker:
         旧阈 0.6×30=18 挡掉其中大半;0.5×30=15 覆盖实测带(仍高于正常波动 <10)。
         """
         recent = [o for o in self.history[-(window + 2):] if not o.intentional_fold]
-        if any(o.streak <= -2 for o in recent):
+        # streak None = 失读行(parse_streak None 化)——跳过不判,与「真 0/真连败」分写
+        if any(o.streak is not None and o.streak <= -2 for o in recent):
             return True
         trend = self.recent_hp_loss_trend(comp_tag=comp_tag, window=window)
         if trend is None:
