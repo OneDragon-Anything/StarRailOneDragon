@@ -176,7 +176,7 @@ class EnterGame(SrOperation):
 
         target_word_list: list[str] = [
             '确认',  # 登陆失败 issue #442
-            '点击领取今日补贴',  # 小月卡
+            '点击领取今日补给',  # 小月卡
         ]
         ignore_list: list[str] = [
         ]

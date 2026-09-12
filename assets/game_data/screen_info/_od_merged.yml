@@ -5793,24 +5793,6 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
-- screen_id: currency_war_item_detail
-  screen_name: 货币战争-道具详情弹窗
-  pc_alt: false
-  area_list:
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1832
-    - 35
-    - 1892
-    - 95
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
 - screen_id: currency_war_lobby
   screen_name: 货币战争-大厅
   pc_alt: false
@@ -6863,52 +6845,6 @@
     template_match_threshold: null
     color_range: null
     goto_list: []
-- screen_id: currency_war_shop_card_detail
-  screen_name: 货币战争-商店卡牌详情
-  pc_alt: false
-  area_list:
-  - area_name: 按钮-购买
-    id_mark: true
-    pc_rect:
-    - 985
-    - 935
-    - 1375
-    - 1000
-    text: 购买
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-角色详情
-    id_mark: true
-    pc_rect:
-    - 555
-    - 935
-    - 935
-    - 1000
-    text: 角色详情
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭
-    id_mark: false
-    pc_rect:
-    - 1832
-    - 35
-    - 1892
-    - 95
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: currency_war
-    template_id: cw_lobby_close
-    template_match_threshold: 0.8
-    color_range: null
-    goto_list: []
 - screen_id: currency_war_shop_refresh_odds
   screen_name: 货币战争-商店刷新概率表
   pc_alt: false
@@ -7082,52 +7018,6 @@
     - 200
     - 1640
     - 500
-    text: ''
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-- screen_id: currency_war_stellar_jade_detail
-  screen_name: 货币战争-星琼详情
-  pc_alt: false
-  area_list:
-  - area_name: 标识-星琼标题
-    id_mark: true
-    pc_rect:
-    - 778
-    - 318
-    - 872
-    - 372
-    text: 星琼
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 标识-稀有货币
-    id_mark: true
-    pc_rect:
-    - 539
-    - 686
-    - 647
-    - 727
-    text: 稀有货币
-    lcs_percent: 0.75
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 按钮-关闭X
-    id_mark: false
-    pc_rect:
-    - 1437
-    - 321
-    - 1489
-    - 373
     text: ''
     lcs_percent: 0.5
     template_sub_dir: ''
@@ -9313,48 +9203,6 @@
     template_match_threshold: 0.7
     color_range: null
     goto_list: []
-  - area_name: 列车补给1
-    id_mark: false
-    pc_rect:
-    - 870
-    - 80
-    - 1050
-    - 130
-    text: 列车补给
-    lcs_percent: 0.55
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 列车补给2
-    id_mark: false
-    pc_rect:
-    - 870
-    - 50
-    - 1050
-    - 110
-    text: 列车补给
-    lcs_percent: 0.55
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
-  - area_name: 点击领取今日补贴
-    id_mark: false
-    pc_rect:
-    - 855
-    - 892
-    - 1078
-    - 932
-    text: 点击领取今日补贴
-    lcs_percent: 0.5
-    template_sub_dir: ''
-    template_id: ''
-    template_match_threshold: 0.7
-    color_range: null
-    goto_list: []
   - area_name: 点击空白处关闭
     id_mark: false
     pc_rect:
@@ -11450,6 +11298,162 @@
     - 1895
     - 570
     text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_stellar_jade_detail
+  screen_name: 货币战争-星琼详情
+  pc_alt: false
+  area_list:
+  - area_name: 标识-星琼标题
+    id_mark: true
+    pc_rect:
+    - 778
+    - 318
+    - 872
+    - 372
+    text: 星琼
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 标识-稀有货币
+    id_mark: true
+    pc_rect:
+    - 539
+    - 686
+    - 647
+    - 727
+    text: 稀有货币
+    lcs_percent: 0.75
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭X
+    id_mark: false
+    pc_rect:
+    - 1437
+    - 321
+    - 1489
+    - 373
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_item_detail
+  screen_name: 货币战争-道具详情弹窗
+  pc_alt: false
+  area_list:
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1832
+    - 35
+    - 1892
+    - 95
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+- screen_id: currency_war_shop_card_detail
+  screen_name: 货币战争-商店卡牌详情
+  pc_alt: false
+  area_list:
+  - area_name: 按钮-购买
+    id_mark: true
+    pc_rect:
+    - 985
+    - 935
+    - 1375
+    - 1000
+    text: 购买
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-角色详情
+    id_mark: true
+    pc_rect:
+    - 555
+    - 935
+    - 935
+    - 1000
+    text: 角色详情
+    lcs_percent: 0.5
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 按钮-关闭
+    id_mark: false
+    pc_rect:
+    - 1832
+    - 35
+    - 1892
+    - 95
+    text: ''
+    lcs_percent: 0.5
+    template_sub_dir: currency_war
+    template_id: cw_lobby_close
+    template_match_threshold: 0.8
+    color_range: null
+    goto_list: []
+- screen_id: express_supply
+  screen_name: 列车补给
+  pc_alt: false
+  area_list:
+  - area_name: 列车补给1
+    id_mark: false
+    pc_rect:
+    - 870
+    - 80
+    - 1050
+    - 130
+    text: 列车补给
+    lcs_percent: 0.55
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 列车补给2
+    id_mark: false
+    pc_rect:
+    - 870
+    - 50
+    - 1050
+    - 110
+    text: 列车补给
+    lcs_percent: 0.55
+    template_sub_dir: ''
+    template_id: ''
+    template_match_threshold: 0.7
+    color_range: null
+    goto_list: []
+  - area_name: 点击领取今日补给
+    id_mark: false
+    pc_rect:
+    - 855
+    - 892
+    - 1078
+    - 932
+    text: 点击领取今日补给
     lcs_percent: 0.5
     template_sub_dir: ''
     template_id: ''

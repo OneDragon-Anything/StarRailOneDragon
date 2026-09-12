@@ -101,7 +101,7 @@ def claim_express_supply(ctx: SrContext):
     :param ctx:
     :return:
     """
-    area = ctx.screen_loader.get_area('列车补给', '点击领取今日补贴')
+    area = ctx.screen_loader.get_area('列车补给', '点击领取今日补给')
     ctx.controller.click(area.center)
     time.sleep(3)  # 暂停一段时间再操作
     ctx.controller.click(area.center)  # 领取需要分两个阶段 点击两次
