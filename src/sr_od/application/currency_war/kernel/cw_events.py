@@ -5,6 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_comps import (
+    augment_affinity,
+    candidate_faction_universe,
+    form_progress,
+    get_comp,
+    gift_hit_tier,
+    mechanics_fit,
+    merged_mechanic_tables,
+)
+from sr_od.application.currency_war.kernel.cw_env_economy import (
+    ECON_VALUE_NORM,
+    env_economy_value,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_slots_of,
@@ -13,19 +26,15 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     max_units_of,
     plane_of,
 )
-from sr_od.application.currency_war.kernel.cw_comps import (
-    augment_affinity,
-    candidate_faction_universe,
-    form_progress,
-    get_comp,
-    mechanics_fit,
-    merged_mechanic_tables,
-)
 from sr_od.application.currency_war.kernel.cw_intention import (
     detect_signals,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     ENV_FACTION_MATCH_FLOOR,
+    ENV_GIFTS,
+    GIFT_FLOOR_ADVISOR_CORE,
+    GIFT_FLOOR_CORE,
+    GIFT_FLOOR_SHARED,
     EconomyEffect,
     get_env,
     get_strategy,
@@ -223,11 +232,21 @@ def decide_event(options: list[str], config, bs: GameState,
        品质回落(纯字典序,零拍值,ADR-0524):仅未评估卡可达,主键=品质序
        (棱彩>金>银,游戏定义),次键=economy 效果有无;回落域整体
        压低于评估分域(评估分有知识判据依据,回落只是「未评估时别全盲」)
+    env 分支内机制按 invest-env 迭代 design.md §2.3 汇合次序组合(单一真源,
+    max() 覆盖定序):全集门 → 裸分(env-eval)→ 送卡静态档(ENV_GIFTS 命中:
+    gift-core 66/gift-shared 60/advisor-core 54,消费契约 =
+    ``cw_comps.gift_hit_tier`` docstring;发卡角色全集外 → 0,
+    env-gift-off-universe)→ 经济域带(env_economy_value resolved ∧ > 0 →
+    S2 同款 111-119 带,归一 = ECON_VALUE_NORM,归因 env-econ)→ 阵营 floor
+    → steering。值域链:裸分 0-72 ⊇ 送卡档 54-66 < floor 70-78 < 域带
+    111-119——「静态结构证据 < 动态对齐 < 真金流」。
     叠加项(全部之后):机制克制惩罚(-100 档,MECHANIC_COUNTERS 单一源)/
     用户转向轴(策略/环境 priority +30 soft、forbid −10000 hard−,config.md §3)。
     未注册非 env = 0 分。(原 config event_whitelist 已删;品质难度
     惩罚/低血生存钩子/P2 装备流加分已退役,见模块墓碑注;
     刷新建议阈值同退役,刷新判据已由 T-162 换推导重立,见函数尾刷新判据段。)
+    刷新判据双轴:策略帧 = T-162/ADR-0600;环境帧 = invest-env 迭代 §2.8
+    (3.5 接线,取代 ADR-0600「env 帧恒不刷」F9 规则——行为翻转在册申报)。
 
     **裁定回避(集合级排除,非分值族;[40]①「主动选择=回避」,ADR-0578)**:
     血本位候选(判据 = ``cw_investments.is_blood_economy``,注册表派生零名单)
@@ -238,8 +257,10 @@ def decide_event(options: list[str], config, bs: GameState,
     之后、「被禁非血卡」之前(user-forbid「有替代永不选」的血卡替代在 ② 兑现)。
     S2 谓词与血本位字段零交集(四族闭集不含 hp_gold_swap/xp_buy_hp_cost,
     ADR-0597 对账);归因串 ``econ-engine``/``align×N``/``align-locked``/
-    ``align-signal`` 为本批新增,仅观测归因,不进任何检查器白名单
-    (ADR-0593 C1→D4 迁移兼容)。
+    ``align-signal`` 为 T-155 批新增,env 轴 ``env-off-universe``(全集门)/
+    ``env-econ``/``gift-core``/``gift-shared``/``advisor-core``/
+    ``env-gift-off-universe``(invest-env 3.5)同口径:全部仅观测归因,
+    不进任何检查器白名单(ADR-0593 C1→D4 迁移兼容)。
     """
     strategy_priority = list(getattr(config, 'strategy_priority', []) or [])
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
@@ -274,10 +295,16 @@ def decide_event(options: list[str], config, bs: GameState,
     # 评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严)/ s1 = 定义型档
     # / engine = S2 经济引擎档 / align_n = S3 对齐档 N。消费序安全依赖(G8):
     # 只在帧级触发(三卡全精确分类)前提下消费——先判帧级闸、后取分类。
+    # env 三件(3.5 环境刷新判据同款纪律):env = 环境注册表精确命中(env
+    # 帧级闸)/ env_off = 全集门失格(零价值槽判定;非 env 槽恒 False)/
+    # pri = user-priority 命中(零价值槽豁免:用户点名保选的集外槽不刷)。
     _cand_exact: list[bool] = []
     _cand_s1: list[bool] = []
     _cand_engine: list[bool] = []
     _cand_align_n: list[int] = []
+    _cand_env: list[bool] = []
+    _cand_env_off: list[bool] = []
+    _cand_pri: list[bool] = []
     for i, opt in enumerate(options):
         score = 0.0
         reason = 'eval'
@@ -359,6 +386,49 @@ def decide_event(options: list[str], config, bs: GameState,
             if _env_in_universe:
                 if _env.pick_value > 0 and float(_env.pick_value) > score:
                     score, reason = float(_env.pick_value), 'env-eval'
+                # 送卡静态档 max() 支(invest-env 迭代 3.5;details/
+                # env-value-models.md §2.1.3 消费位,分派映射 = 禁二次推导的
+                # 单一源契约,见 ``cw_comps.gift_hit_tier`` docstring 消费契约):
+                # 白得契约全员集外 → 失格 0(tier='off' ∧ 非 advisor ∧ 即时集
+                # 非空;advisor off = 不买无浪费、条件降档落底 = 未到手,均维持
+                # 裸分);命中档有 floor 常数 → max 提档(core/shared/advisor-core,
+                # advisor 由 grant.advisor 换族)。归因串仅观测,不进检查器白名单
+                # (ADR-0593 C1→D4 口径)。
+                _grant = ENV_GIFTS.get(_env.name)
+                if _grant is not None:
+                    _tier = gift_hit_tier(_grant, evicted)
+                    if (_tier == 'off' and not _grant.advisor
+                            and bool(_grant.chars_immediate)):
+                        score = 0.0
+                        reason = 'env-gift-off-universe'
+                    elif (not _grant.advisor and _tier == 'core'
+                            and score < GIFT_FLOOR_CORE):
+                        score, reason = float(GIFT_FLOOR_CORE), 'gift-core'
+                    elif (not _grant.advisor and _tier == 'shared'
+                            and score < GIFT_FLOOR_SHARED):
+                        score, reason = float(GIFT_FLOOR_SHARED), 'gift-shared'
+                    elif (_grant.advisor and _tier == 'core'
+                            and score < GIFT_FLOOR_ADVISOR_CORE):
+                        score, reason = (float(GIFT_FLOOR_ADVISOR_CORE),
+                                         'advisor-core')
+                    # 其余(advisor 的 shared/transition/off、条件降档后非
+                    # core/shared)无 floor 维持裸分(即时空 ∧ 条件全集外的
+                    # 推论支同落此——条件发放未到手,off 只是不提档)。
+                # 经济域带 max() 支(invest-env 迭代 3.5;design.md §2.3 门 4,
+                # 用户裁定「优先经济」的环境轴载体):整局金等价期望 resolved
+                # ∧ > 0 才进带(缺参/CI 不闭合 fail-closed → 消费端按无经济
+                # 通道处理,退裸分);域带常量复用策略卡 S2(三选一帧同质,
+                # F9 已证不同帧不同场竞争,共享域带 = 跨轴同序零新常数),
+                # 期望按 ECON_VALUE_NORM 归一带内(带内序 monotone,定序
+                # 实现常数,禁读基数)。经济入模环境全部 faction 空(design
+                # §2.2.1 注),与本分支上方全集门结构性无交集。
+                if _env.economy is not None:
+                    _econ_gold, _econ_ok = env_economy_value(_env.name, bs)
+                    if _econ_ok and _econ_gold > 0:
+                        _band = ECON_ENGINE_BAND_BASE + ECON_ENGINE_BAND_SPAN * (
+                            min(_econ_gold, ECON_VALUE_NORM) / ECON_VALUE_NORM)
+                        if _band > score:
+                            score, reason = _band, 'env-econ'
             else:
                 # 失格归因串(全无用帧胜出时可见);仅观测归因,不进任何
                 # 检查器白名单(ADR-0593 C1→D4 口径)。floor 不受门辖:
@@ -381,7 +451,8 @@ def decide_event(options: list[str], config, bs: GameState,
         # 选项归属:env 注册表命中走 env 轴,其余(策略/未注册)走 strategy 轴 —— env 名经 handler
         # 归一后才进决策(ADR-0144b),未注册项按事件主流(投资策略)处理。子串匹配与白名单一致(OCR 容错)。
         _pri = env_priority if _env is not None else strategy_priority
-        if any(p in opt for p in _pri):
+        _pri_hit = any(p in opt for p in _pri)
+        if _pri_hit:
             score += STEERING_PRIORITY_BONUS
             reason = 'user-priority'
         _forbid = env_forbid if _env is not None else strategy_forbid
@@ -399,6 +470,10 @@ def decide_event(options: list[str], config, bs: GameState,
         _cand_s1.append(bool(_aug))
         _cand_engine.append(_is_engine)
         _cand_align_n.append(_comp_hit)
+        _cand_env.append(_st is None and _env is not None)
+        _cand_env_off.append(_st is None and _env is not None
+                             and not _env_in_universe)
+        _cand_pri.append(_pri_hit)
         if score > best_score:
             best_score, best_idx, best_reason = score, i, reason
     # [40]① 血本位回避·三态触发序(ADR-0578;裁定「主动选择=不选」):
@@ -436,11 +511,11 @@ def decide_event(options: list[str], config, bs: GameState,
     # 不可分类禁止下游消费;改动此序 = 静默击穿 fail-closed(锁 6/锁 3 辖)。
     refresh_slots: tuple[int, ...] = ()
     if len(options) == 3 and all(_cand_exact):
-        # F9 env 帧结构检测(零 kind 参,decide_event 签名不变):三选项全部
-        # 精确命中环境注册表(get_env 同源查表)→ 判 env 帧 → 动作集恒空
-        # (执行不启用,ADR-0600 §2/§4)。策略∩环境注册表精确/归一后双 ∅(直调在案),
-        # 本支与上方 all(_cand_exact) 联手使 env 帧恒不刷;即使误判,后果方向
-        # = 漏刷(保守向,失败安全)。
+        # 全 env 帧守卫(零 kind 参,decide_event 签名不变):三选项全部精确命中
+        # 环境注册表(get_env 同源查表)→ env 帧,走下方环境判据分支,不进本策略
+        # 判据。策略∩环境注册表精确/归一后双 ∅(直调在案),all(_cand_exact) 已
+        # 蕴含非 env 帧,本守卫只防注册表交叉演化;即使误判,后果方向 = 漏刷
+        # (保守向,失败安全)。
         _env_frame = all(get_env(o) is not None for o in options)
         if not _env_frame:
             # 帧级触发门(ADR-0600 §3.1):
@@ -479,6 +554,26 @@ def decide_event(options: list[str], config, bs: GameState,
                     if len(_refresh_l1) == 1 and _refresh_l1[0] in _action:
                         _action.remove(_refresh_l1[0])
                     refresh_slots = tuple(_action)
+    elif len(options) == 3 and all(_cand_env):
+        # ===== 环境帧刷新判据(invest-env 迭代 3.5,design.md §2.8;取代
+        # ADR-0600 §2/§4「env 帧恒不刷」F9 规则——既有在册行为的翻转,启用
+        # 前置「环境侧顶级类建模」由经济域带/送卡档接线满足)=====
+        # 帧级门:候选恰 3 ∧ 全部精确命中环境注册表(all(_cand_env));未注册名
+        # 形变帧两轴闸都不触发 → 刷新集恒空(fail-closed,同 ADR-0600 G7 轴:
+        # 评分错只排错序、刷新错会弃掉真顶级卡,不对称风险取严)。
+        # 槽级动作集(design §2.8 分类,零自由参数):
+        # - 零价值 = 全集门失格 ∧ 未被 user-priority 命中 → 恒可刷(弱占优:
+        #   当前增益无消费方价值 0,替换样本任一环境价值 ≥ 0 且 P(>0) 显著,
+        #   免费刷新 = 白弃改善期权不刷才亏);
+        # - 被禁 = user-forbid 命中 → 恒可刷(优先于顶级保护,P5② 同构:
+        #   被禁者永不被选,保护无对象);
+        # - 顶级(经济域带 resolved ∨ 阵营 floor 命中)与其余(全集内裸分槽,
+        #   含送卡档与 unresolved 经济槽——后者基数化挂账 design §2.8)→
+        #   不入动作集即「保护不刷」,无需显式顶级分类(动作集 = 零价值 ∪ 被禁,
+        #   补集自然承载保护面)。
+        refresh_slots = tuple(
+            j for j in range(3)
+            if _cand_forbid[j] or (_cand_env_off[j] and not _cand_pri[j]))
     if refresh_slots:
         # 归因后缀仅观测归因,不进任何检查器白名单(ADR-0593 C1→D4 迁移
         # 兼容口径,沿 T-155 归因串先例)。
