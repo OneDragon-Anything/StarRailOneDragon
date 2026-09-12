@@ -1,102 +1,68 @@
 # 武装箱选卡价值升级 设计对抗报告
 
-> 无前提对抗审(干净上下文;对象 = design.md / landing.md / README.md,历史 attack.md 按任务纪律未读、未参考)。
-> 三核并重:核一无前提攻击(自行找面)/核二规范遵循(iteration-design 硬规则三条、strategy-work 硬门、阶段可验收性)/核三治本核验(根源两问、跨件半问)。
+> 无前提对抗审(干净上下文子 agent;对象 = 本目录 design.md / landing.md / README.md;历史 attack.md 按无前提纪律未读、未参考)。
+> 三核并重:核一无前提攻击(自行找面)/核二规范遵循(iteration-design 写作硬规则三条与阶段规范、strategy-work 各硬门)/核三治本核验(根源两问、跨件半问)。
+> 判据源全部直调:宪法 `strategy-docs/00_framework.md`、`01_math_framework.md`(§3.6);`strategy-work.md`(§1/§4/§6);`docs/develop/harness/iteration-design.md`;源迭代 `2026-09-12-supply-selection`(design.md + details/supply-value-spec.md + landing.md + README.md);现行代码真值(`strategies/impl/flow.py`、`kernel/cw_prep_expect.py`、`kernel/cw_events.py`、`prep_actions.py`、`kernel/cw_strategy_session.py`、`kernel/cw_exec_state.py`、`operations/cw_op/cw_op_equip_all.py`、`operations/cw_screen/_overlay_confirm.py`、`strategies/impl/mandate_v1/`、`strategies/impl/pick_bias.py`、`strategies/impl/cw_strategy.py`);注册表 `data/cw_equipment_data.py` + `kernel/cw_comps.py`(**实跑复核**);玩法研究 `research/equipment_mechanics.md`、`research/board_structure.md`;证明集 `proofs/math_proofs.md`(P42 行);测试仓五个文件;sim 面(`fixtures/cw_fake_game/fake_match.py`、`rules.py`、`src/.../sim/` 全域扫描)。
+> 数值/口径/引文/码点一律直调,禁转述;注册表与阵容统计类主张全部实跑复现(配方引用计数、自对配方全集、COMP_LIBRARY 重复 key_equips、key 互材料计数)。
 
-## 0. 判据源与实跑清单(全部直调原文/原码,禁转述)
+## 结论
 
-- 宪法/流程:`strategy-docs/00_framework.md`、`01_math_framework.md`(§3.6 装备行、§6 三形态)、`.dsh/skills/sr-od-currency-war-dev/references/strategy-work.md`(§1/§3/§4/§5/§6)、`docs/develop/harness/iteration-design.md`(§1.1/§5/§7)。
-- 源迭代:`2026-09-12-supply-selection/design.md` + `details/supply-value-spec.md` + `landing.md` + `README.md`(裁定汇编 1-8)。
-- 代码真值:`strategies/impl/flow.py`(decide_box_card:654-702、decide_invest:483-529、_refresh_direction_views:392-434、pick 族 target_comp 消费位 :541/:552/:567/:581/:602/:632)、`kernel/cw_prep_expect.py`(MATERIAL_VALUE_TABLE:32-35、material_value:38-40、模块 docstring:1-9)、`kernel/cw_events.py`(_EQUIP_VALUE:712-750、_equip_value:777-779、decide_supply:783-814)、`prep_actions.py`(:211-216 在册裁定注、:411/:577 观察写端、:986-1031 _open_box、:1062-1099 _pick_box_card、:1101-1144 _default_box_card)、`kernel/cw_strategy_session.py:165-167`、`kernel/cw_exec_state.py`(exec_state_of:71、_owned_add:278-282、apply_op_effect:285-373)、`operations/cw_screen/_overlay_confirm.py:35-70`、`operations/cw_op/cw_op_equip_all.py:134-163(register_equip_worn)`、`strategies/impl/pick_bias.py` 全文、`strategies/impl/cw_strategy.py:205-208`、`mandate_v1/bridge.py:72`(MandateV1Strategy 未覆写 decide_box_card,覆写面 = decide_prep_screen/decide_encounter/decide_shop_screen)、`mandate_v1/mandate.py:1640-1658`、`mandate_v1/entry.py:461-467/:665`、`kernel/cw_bench_equips.py:55-95`(穿着自动合成实锤)。
-- 注册表/玩法/证明:`data/cw_equipment_data.py` 全量直读 + **实跑**;`kernel/cw_comps.py:107` + **实跑**(COMP_LIBRARY 20 套);`docs/game/currency_war/research/equipment_mechanics.md`(§1.1/§4)、`board_structure.md:59-62`;`proofs/math_proofs.md` P42 行、`01_math_framework.md` §3.6;`docs/game/currency_war/data/equipment.md` 经 git 确认已删除(be62ed454「data/ 冗余清除」)——设计「过期局部文档」定性成立且实为已删文档。
-- 测试/sim:`test_cw_material_score.py`、`test_cw_screens_ops.py:41-108`、`test_cw_box_pick_arm.py`、`test_cw_box_open_pick_merged.py`、`test_cw_obs_arch_prep_writeflow.py:360-388`;`sr-od-test/fixtures/cw_fake_game/fake_match.py:740-794`、`rules.py:176-186`、`src/.../sim/` 全域 grep(OpenBox/PickBoxCard 零命中)。
-- 注册表实跑结果(本报告数值主张全部出自本次实跑):8 简易件各 **10 配方引用/11 槽**;红钻/蓝钻各 **12 槽**(11 配方);进阶类作材料 **0 引用**;自对配方恰 **10 条**(简易 8 + 红×2/蓝×2→宝钻),与 design.md §2.3 清单逐条一致;现行 COMP_LIBRARY(20 套)中 **5 套存在重复 key_equips**(昼神阿雅 2×反重力皮靴、狼尊欢愉 2×反重力皮靴、命运圣杯红A 2×动能激发剑、追击飞霄 2×火力风暴潮、专家桑博DOT 2×火力风暴潮);无任何套存在「key 件互为另一 key 材料」叠加实例;反甲白厄 key_equips = [以牙还牙甲×2、高周波电锯、以牙还牙甲·特权、热血沸腾拳],`get_comp` 解析正常。
+**发现 5 项:阻断 0 / 重要 2 / 次要 3。**
 
-## 1. 发现清单
+设计的核心机件经攻击未破:序数分档制与加法制的漂移面陈述、近兑现档的零参数推导、两本库存账的分工口径、需求守卫的 count 语义、零新数合宪性、sim 结构性不可见的三事实定谳、对源迭代 P-1 的吸收与两处修订申报,全部直调成立。无阻断级问题;**定稿前须清 A1、A2 两项重要发现**(A2 是被指名为锁对象的行内自相矛盾,不清则 B 组锁无法照表落)。
 
-### F1【阻断】equip_tier/pick_equipment 签名 key_equips frozenset 与需求件数 count 语义互斥,重复 key 阵容(5/20 套)的提权守卫按签名实现即失效
+## 发现清单
 
-- 位置:design.md §2.1(两签名 `key_equips: frozenset[str] = frozenset()`)vs §2.2(「**需求件数(K)** = `key_equips.count(K)`(key_equips 为可含重复的列表…如阿雅需 2 反重力皮靴,cw_comps.py:107)」)vs §2.3(near_redeem 的「∃ key_equip K(需求未满足)」同用该入参)。
-- 证据(直调+实跑):frozenset 既无 `.count()` 且构造即去重;设计自引的注册表注(cw_comps.py:107)与实跑证实 5/20 套重复 key_equips——设计自己用于旧锁重锚示例的反甲白厄就是 2×以牙还牙甲。按签名传 frozenset(comp.key_equips):阿雅持 1(已穿)时 need=1、total=1 → 1<1 假 → 第二只皮靴落 tier 0;设计语义 need=2 → tier 3。若实现者按字面调 `.count()` 则每次已锁态箱决策 AttributeError → `_default_box_card` fail-closed 上抛 → 箱选卡整链不可用。
-- 发作场景:实现者照 §2.1 签名落码 → 5 套在册阵容的 key 直击/近兑现提权在「已持部分」帧全部丢失;或按 §2.2 语义落码 → 与声名签名不符,验收无从判对错。
-- 修正方向:两签名改 `Sequence[str]`(或 `list[str]`);机器内部 ∈ 判定可自建 set,需求件数只在原序列上 count;B 组锁补一条重复需求帧(昼神阿雅:持 1 穿 1,offer 反重力皮靴 → tier 3)钉住 count 语义。
+### A1【重要】design.md §2.3 边界清单——「产物上身的路径已正确建模」与代码真值不符
 
-### F2【重要】landing 3.1「照执源迭代 P-1 全量范围」把 wear 行为变化(S13 stash 移除)带入本批,其验收判据却「归源迭代判据不在此重复断言」——行为变化上线而无归属验收批
+- **断言原文**:「缓和事实:穿戴 −1 两件简易各减、产物上身的路径已正确建模,栏内合成现无生产发射位(仅期望层建模)」。
+- **直调证据**:穿戴侧唯一账写端 `register_equip_worn`(`cw_op_equip_all.py:134-163`,调用点 :681)只做两件事:备用账 −**拖入件**、`tracked_deployed[*].equips` +**拖入件名**。穿着即合成(拖简易 onto 已穿简易的角色)发生时,游戏上身的是**合成产物**,拖入件名与已穿件名都消失——产物从不进任何账;备用账 −1 对该事件凑巧正确,穿戴账 +拖入件名则完全失真。机制文档 `equipment_mechanics.md` §1 代码出处节明文:「游戏内『穿着自动合成』的触发本身没有代码建模……equips 对账须认『账面 2 组件 == 画面 1 进阶』合法态」。**且该路径生产可达并直指 key 件**:`equip_allocation` 防误合成配对守卫例外①(`cw_comps.py` `_pairing_guard_ok`:「想要的配对,core 上穿着合成=快路径」)会**有意**把简易拖上已穿配对简易的 core 角色以合成 key 装备。
+- **发作场景**:锁定线缺 1 件 key(如反重力皮靴),守卫例外①触发穿着合成拿到它——账面该角色穿的是两只简易、key 件计 0。此后需求守卫(总持有 = 备用 + 穿戴,§2.2)对该 key 持续欠计数 → 已满足的 K 继续吃 tier 3 错提权;正是设计自declared的「欠计数 → 错提权」方向,但设计以「已正确建模」作为计数判据敏感度的**缓和事实**,该缓和在最能触发判据的帧类(key 件合成上身)不成立。
+- **修正方向**:改写该句为如实申报——「备用账 −1 已正确建模;wear_synth 产物上身未建模(机制 §1:触发无代码建模,账面 2 组件 == 画面 1 进阶合法态),穿戴账漂移由观察采集写端全量重写(`prep_actions.py:411`/`:577`,每派发覆盖)吸收,失真方向 = 欠计数 → 错提权,观测键挂账维持」。或把「产物替换入账」列为机器消费前置的建模义务显式挂账。装配路径例外①使欠计数帧非罕见边角,申报措辞必须与代码一致。
 
-- 位置:landing.md §3.1(范围「执行 …landing.md §3.1(P-1)全量范围…六消费位重接」;文件面含 `cw_screen_equip_pick.py`、`test_cw_supply_pick.py`;完成判据「wear S13 归源迭代判据不在此重复断言」)。
-- 证据(直调):源迭代 landing §3.1 明文 P-1 含「wear 一处行为变化 = 未锁态 stash_comp +100 移除…锁 S13」;源迭代 README 进度 0/5(未落地)。本批 3.1 若先落地即实施 S13 行为变化,但其判据被显式排除在本批完成判据外;源迭代后续若因范围被本批吸收而不再单跑 P-1,S13 行为锁永久无执行批。且本设计 §3 末行拒绝 sim 侧混入的理由恰是「文件面与验收面双膨胀」,3.1 现状对 wear 面构成同型张力。
-- 发作场景:worker 完成 3.1 全部声明判据(全绿)交付 → stash 契合行为已变但任何一方判据都未断言 S13;后续源迭代 P-1 若再跑,S13 锁才被补建——期间实机行为变化无回归资产。
-- 修正方向:二选一并显式——①3.1 完成判据纳入 S13(本批实施即本批断言);②3.1 范围收窄为「wear 仅符号重接、行为等价」,stash 移除留源迭代批。
+### A2【重要】design.md §2.6 行为变化表行 8c——帧算术自相矛盾,且钉不住它声称钉的语义
 
-### F3【重要】landing 3.1 对源 P-1 第二件做了未申报的实质修订:material_value 保持手表本体而非「改薄委托」——「全量范围照执」与「② 保持手表原值」在源 spec 文本下直接冲突
+- **断言原文**:行 8c「需求件数 >1 帧(昼神阿雅需 2 反重力皮靴:**持 1 穿 1**,offer 反重力皮靴)| 改后 tier3 提权(**总持有 2 < 需求 2**,守卫不误伤;钉 key_equips 原序列 count 语义)| 等价(守卫边界)」。
+- **直调矛盾**:按 §2.1/§2.2 自定口径,需求件数 = `key_equips.count(K)` = 2,总持有 = 备用 1 + 穿戴 1 = **2**;守卫条件 `total < demand` 即 2 < 2 = 假 → 需求已满足 → 正确改后行为是**落 tier 0 按 base**,行内却写「tier3 提权」并给出假不等式「总持有 2 < 需求 2」。同时该帧**区分度失效**:8c 的使命是钉 count 语义、排除 frozenset 实现(§2.1「行为表行 8c 锁钉住」),但「持 1 穿 1」帧下 count 实现(需求 2,总 2,已满足)与 frozenset 实现(需求 1,总 2,已满足)输出同为 tier 0——照表落锁锁不住任何分叉。
+- **发作场景**:3.2 落 B 组锁时照 8c 写帧:实现者要么按行内结论断言 tier3(与自家守卫公式冲突,停手令触发),要么按公式断言 tier0(锁与行文字面相悖);无论哪种,该锁都不构成 count 语义的回归资产。
+- **修正方向**:帧改为「**持 1(备用账 0 穿戴),offer 第 2 只**」——count 实现:1 < 2 → tier 3(提权,与现行等价);frozenset 实现:1 ≥ 1 → 已满足 → tier 0,区分度成立,行 8c 原使命达成;或改「持 0 穿 1」(顺带钉住穿戴账并入总和的半边)。等价标签与 R1 归属随帧修正复核。
 
-- 位置:landing.md §3.1(「执行 …P-1 全量范围…② 保持消费 `cw_prep_expect.material_value` 手表原值**不换源**…box 行为基线 = 现行 flow 实现 argmax 逐点一致」;V2 修订已申报但仅辖锁面)vs 源迭代 `details/supply-value-spec.md` §1.3 件 2(「`cw_prep_expect.material_value` 改薄委托」)。
-- 证据(直调+实跑):源 P-1 的「改薄委托」= material_value 转发注册表引用计数;实跑注册表计数 8 简易件全为 10——薄委托落地后 box ② 的分值即从手表(7/6/6/5/5/5/4/3)变为(10×8),档内序改取先、未锁态简易件分值放大,「argmax 逐点一致」基线不可能成立。3.1 要保住基线就必须**不做**薄委托(material_value 在 3.1 阶段保留手表本体),这是对源 spec 件 2 的实质修订,但 landing 只申报了 V2 锁修订、未申报本处。
-- 发作场景:worker 按「全量范围照执」读源 spec 件 2 执行薄委托 → box ② 值变 → 3.1 自己的「box 消费位基准帧逐点一致」判据红;或 worker 按本迭代 ② 执行 → 与源 spec 冲突无处对账。两单一源打架,违反 iteration-design 写作硬规则 2(实现者无需再设计)。
-- 修正方向:3.1 范围显式补一句申报「material_value 保持手表本体、不改薄委托(薄委托语义随 3.2 退役一并消灭)」;并在源 spec §1.3 件 2 与 §5 V2 行加修订指针(指向本迭代 landing 3.1 版),消两迭代单一源分叉。
+### B1【次要】design.md §1.4 族级清点——「已修轨迹」把未落地的源迭代 P-3 计为已修
 
-### F4【重要】§2.6 行 4b「等价」标签吞掉「mv 相等 ∧ base 不等」子情形——该子情形是未申报的行为变化,照表建锁会漏
+- **断言原文**:「已修轨迹:decide_invest(T-155/ADR-0597)→ decide_supply(源迭代 P-3)→ 本迭代 decide_box_card(第三件)」,并将剩余消费位列为六位(不含 decide_supply)。
+- **直调证据**:源迭代 README 进度 = 「落地:阶段 0/5 done」;`kernel/cw_equip_value.py` 不存在(P-1 未落地);现码 `flow.py:535` `decide_supply` 仍消费 `state_of(session).target_comp`。按当前代码真值,decide_supply **属于仍消费集合**,清点六位漏它;若本迭代先于源 P-3 落地,清点与代码相反。
+- **修正方向**:措辞改「decide_supply = 源迭代 P-3 辖(未落地;当前仍消费 target_comp)」,或移入待修清单;落地后由 P-3 出清。
 
-- 位置:design.md §2.6 行 4b(「档内两件 material_value 相等 | 取先 | base 相等 → 取先 | 等价」)。
-- 证据(直调注册表):现行档内并列判据 = material_value,新制 = base;两判据的并列域不同。实构反例:锁定电光履(key),其配方 = (光能电池, 轮滑鞋),offer 序 [光能电池, 轮滑鞋]——mv 相等(6=6)→ 现行取先 = 光能电池;base 不等(3 vs 4)→ 新制取轮滑鞋。该帧既非 4a(mv 不等)也非 4b 字面(4b 只断言 base 亦相等时取先),行为变化真实存在但全表无行申报、无锁辖。
-- 发作场景:B 组按 4b 建「等价回归帧」时若选中的恰是 mv 并列而 base 不并列的牌 → 锁红误判改动错;若避开 → 未申报变化无锁,回归裸奔。
-- 修正方向:行 4b 拆两子行——(mv 等 ∧ base 等)= 等价取先;(mv 等 ∧ base 不等)= **变化**(与 4a 同源,档内序换 base),后者补变化锚点锁(可用上述电光履帧,牌名注册表实名)。
+### B2【次要】design.md——过程叙事/非持久索引残留(写作硬规则 3)
 
-### F5【重要】§2.6 行 2「offer 全表外件」锁对象含混:相对哪张表未指明,两种读法一为等价误标变化、一为变化但帧述自相矛盾
+- **直调证据**:`iteration-design.md` §5 规则 3 卡点为「『本轮/修订后/已改』类措辞即打回」;AGENTS.md 注释规范同判「引用必须是持久索引」。命中三处:①§2.2「依据链(**F4 修正后口径**)」——F4 是上一轮对抗报告的发现号,attack.md 每轮整体重写、changes/ 收尾即删,该引用必死,依据链内容必须就地自足;②§2.1「(flow.py:675-680 **r130 修正注**)」——码点指针有效,但「r130」为会话局部轮次号,留码点去轮次号即可;③§1.1「依据 = flow.py:654-702 直读 + 2026-09-12 **本会话**全链盘点」——「本会话」非持久索引。
+- **修正方向**:F4 处直接陈述依据链(注册表等值 → 跨域旧序无据 → 输出先验取代);r130 只留 `flow.py:675-680`;「本会话」改「直调盘点」。注:§2.1/landing 3.1 对源迭代 V2 的「修订」为跨迭代修订申报(实质设计内容),不在此列。
 
-- 位置:design.md §2.6 行 2(「未锁态,offer 全表外件 | 恒第 1 张 | base 最大者 | **变化**」;§1.1 gap 1 同源表述)。
-- 证据(直调):读法 A(「表外」= 通用值表 `_EQUIP_VALUE` 外):四件全 base 0 → 新制并列取先 = 恒第 1 张 = 现行,该行实为**等价**;读法 B(「表外」= material_value 表外):则火力风暴潮(mv 0、base 6)亦属「mv 表外」,行内变化真实——但帧述「全表外件」与变化子情形(必须含值表内件)矛盾,照字面选牌建锁必然钉在等价帧上。两读法都不能按字面落锁。
-- 发作场景:B 组 worker 对行 2 建变化锚点锁 → 要么锁一个两制同结果的伪变化帧(恒绿、无断言力),要么自行猜读法(绕开停手令前置的「无需再设计」)。
-- 修正方向:行 2 收窄为「未锁态,offer 含 `_EQUIP_VALUE` 表内件 ∧ 全部 mv 表外」(例:现列 [垃圾袋, 火力风暴潮] → 改后风暴潮),并把「四件全值表外 → 两制同取第 1 张」如实移入等价面或 §1.4 不解决清单。
+### B3【次要】design.md §2.1 / landing.md 3.1——注册表形态快照锚不完整(特殊类垃圾袋漏项)
 
-### F6【次要】§2.2 漂移面「直击 [100,107]」忽略 +30/+mv 叠加分支——机制陈述不真,分离结论侥幸不受影响
+- **直调证据**:实跑全量 recipes:非零引用域共四类——简易 8 件各 10 条配方/11 成员槽(设计所述逐项吻合)、红钻/蓝钻各 12 槽(吻合)、**特殊类垃圾袋 2 槽**(`欢愉星徽 = (蓝钻,垃圾袋)` 与 `(红钻,垃圾袋)` 两条配方)、进阶类 0(吻合)。设计快照锚列了前三类中除垃圾袋外的全部,未声明锚辖域不含特殊类非钻成员。
+- **发作场景**:该锚的用途是注册表漂移检测;垃圾袋/欢愉星徽双配方域的漂移不可检。所述三事实均真,无行为影响(箱打分不消费该函数),故仅次要。
+- **修正方向**:快照补「垃圾袋(特殊)2 槽」一行,或显式声明锚辖域 =「简易域 + 钻 + 进阶,其余域不锚」。
 
-- 位置:design.md §2.2(「现行加法三档值域 = 直击 [100,107]、材料 [30,37]、通用 [0,7],三段分离」)。
-- 证据(直调+实跑):flow.py:694-699 三个加分项为独立 if(无 elif)——key 件同时是另一 key 件材料时得 100+30+mv,结构上限 137。现行 20 套 comp 实跑无「key 互为材料」实例,值域按当前数据凑巧成立;注册表变化即失真。「值对标签错」类精确性问题(五犯实证错误类),分离结论本身不受影响。
-- 修正方向:改述为「直击 [100,107](叠加分支结构上存在、现行库无实例,上限 137)」或加「以现行 COMP_LIBRARY 为域」限定。
+## 攻过未破角度清单(实际攻击过且未击穿的面)
 
-### F7【次要】pick_bias.py 不在 3.2 文件面:box 两常数随薄壳化成死值、:32 注释引用将退役的 material_value 表——「全仓零引用」判据按字面 grep 不可达
+1. **注册表直跑全套**:简易 8 件每件恰 10 条配方引用/11 成员槽、蓝钻/红钻 12 槽、进阶 0 引用、自对配方在册恰 10 条且逐名与 §2.3 所列完全一致(轮滑鞋×2→反重力皮靴……红钻×2/蓝钻×2→财富宝钻)——实跑逐项复现,无一偏差。
+2. **阵容统计主张**:COMP_LIBRARY 恰 20 套;重复 key_equips 恰 5 套且逐名逐数与 §2.1 一致(昼神阿雅 2×反重力皮靴、狼尊欢愉 2×反重力皮靴、命运圣杯红A 2×动能激发剑、追击飞霄 2×火力风暴潮、专家桑博DOT 2×火力风暴潮);「现行库无 key 互为另一 key 材料」实跑计数 = 0,支撑加法制值域 [100,107]/[30,37]/[0,7] 三段分离与上限 137 的陈述(值域以现行库为域的限定如实);`cw_comps.py:107` 注册表注原文吻合;`get_comp` 未知名返回 None 支撑 §2.4 fail-closed。
+3. **现行打分结构**:flow.py:654-702 与 §1.1 伪码逐分支吻合(effect_pick_bias 恒 0 实证:pick_bias.py 函数体恒返回 0.0;argmax 严格大于取先;无信息 fallback idx=0);`mandate_v1` 全目录无 decide_box_card 覆写(bridge/entry/mandate/adapter 扫描);契约签名 `cw_strategy.py:206-208` 吻合,薄壳化不改签名成立。
+4. **base 表真值**:EQUIP_GENERIC_VALUE 平移源 `_EQUIP_VALUE` 逐值核对——火力风暴潮 6/反重力皮靴 5/以牙还牙甲 4/轮滑鞋 4/光能电池 3/生命之花 0/幸运星 0(表外),值域 0-6 成立;行为表各行示例值全部核对通过。表自身出处(ADR-0298/0130/0555 对位锚法、禁拍值声明)在代码注释在册,且升格为共享机器系源迭代裁定 5/6(README 裁定汇编原文核对)——合宪性有上游裁定与审计链,非本迭代新拍值。
+5. **行为变化表 16 行**:逐行对现行语义手推复核——行 1(幸运星 mv3 > 风暴潮 mv0)、行 2(垃圾袋/风暴潮双表外取先)、行 3(花 7 > 鞋 6)、行 4c(电光履配方 (光能电池,轮滑鞋) 在册,mv 6=6 取先电池、新制 base 3<4 翻转)、行 7a((量产型装甲,幸运星) 配方在册,测试仓同款断言佐证)、行 7b/7c(自对 ==1 判 tier2、==3 排除帧)、行 8a/8b(守卫合计口径,含「最常见满足态」定性)、行 9(P1 伪 comp 提权退场,flow.py:401-426 物化注释吻合)、行 10(回落 max 取先语义)——除 8c 外全部成立。
+6. **近兑现定义与操作条件的等价性**:交叉对 `cnt(X)==0 ∧ cnt(另一侧)≥1` ⇔ 选前 min=0 ∧ 选后 min≥1;自对 `cnt==1` ⇔ 选前 0 对 ∧ 选后 1 对;cnt≥3 排除帧(3//2=1 首对已在)与「对数净增加」宽定义的拒绝理由(增量件归 P42 数值辖域)自洽;需求门(总持有)与对数判定(备用)两账分工无混用路径;多 K 并列 base 仲裁、拒绝「伙伴通用性最小化」代理假设(无推导背书不做)——零参数推导三段(tier3 严格支配/tier2≥tier1 发展优先/tier1>tier0 平移)无拍值。
+7. **库存两账与写端全清单**:备用账 `cw_strategy_session.py:167`;观察采集全量重写 `prep_actions.py:411`/`:571-577`;开箱选卡 +(`prep_actions.py:1024-1030` → `cw_exec_state.apply_op_effect` PickBoxCard 分支)、确认到账 +(`_overlay_confirm.py:61-63`)、穿戴 −/穿戴账 +(`cw_op_equip_all.py:152-155`/`:156-161`)、卖场上装备返还 +(`cw_exec_state.py:335-337`)——清单与代码一一对应;期望态对账网 `compare_equip_expect` 在册。`:211-216` 在册裁定注引文准确(发射位吃陈旧快照=合法化陈旧数据源、执行帧现读严格不劣),§2.5 对其辖域的区分(穿戴产出位可现读 vs 箱 overlay 无装备区读取通道「候实证」)与「发射后执行前漂移」失效面不存在的结构论证(双锚闭环 :986-1031/:1014/:1062-1099;entry.py:465 发射位只发空动作 PickBoxCard)逐点核实。m7 先例(mandate.py:1646-1661 可穿面存在性谓词、entry.py:665 持有快照)与本判据 ==0/==1 精确计数的敏感度差异如实声明。
+8. **sim 结构性不可见三事实**:`fake_match.py` `_pick_box_card`(:763-794)无任何策略调用、card_idx None 恒取第 1 张;箱选项 = 商店角色池名(`rules.py:176-186` box_card_options,k=4)落 BenchChar 入备战,与实机「4 选 1 装备」(board_structure.md:61 实机采证原文核对)不同物;`sim/` 全域 grep 无 OpenBox/PickBoxCard/decide_box_card。「A/B 不可作本批判据、验证 = B 组单元锁 + 实机判读」的申报符合 strategy-work §4 可观测性声明纪律。
+9. **测试面盘点**:`test_cw_material_score.py` 锚确为 `state_of(s).target_comp`,锚相关断言恰两条,重锚 locked_comp 后语义保持(手推:幸运星 tier1 > tier0、直击 tier3 > tier1,反甲白厄 key 需求未满足前提成立);`test_cw_screens_ops.py` material_value 锁恰两把(表值锁 + `test_pick_card_fallback_by_material_value` 回落行为锁),处置方案与 landing 一致;`test_cw_obs_arch_prep_writeflow.py` 扫描锚三断言('decide_box_card' 在场/禁 last_state 直读/board_state_of 接入)在 3.2 改造后均不受影响;`test_cw_box_pick_arm.py`/`test_cw_box_open_pick_merged.py` 锁发射臂与机械链,3.2 不触碰;`box_key_equip`/`box_key_material` 全仓无测试引用,退役无测试波及;`material_value`/`MATERIAL_VALUE_TABLE` src 消费面恰为 flow.py + prep_actions.py(含 :1114 注释),「两处消费后全仓退役、零引用可证」的 file 面(3.2 四文件 + 测试)完备。
+10. **源迭代衔接**:承接出处(§1.3 装备层两态迁移表 box 行、契约 3 锁线单源、decide_invest 先例)引文核对;对源 P-1 的两处修订申报属实——源 spec §1.3 件 2「薄委托」原文在案,且**实跑证实源 V2 锁(`equip_material_generality == 旧手表 ∀8 名`)与注册表真相互斥**(手表 7/6/6/5/5/5/4/3 vs 注册表同值),修订必要性与方向成立;「box 消费不变」裁定的出处(源 spec §4/§7)与其事实前提被推翻的收窄论证(证据在册 + 用户指令 + 裁定 5 同构)成立;S13 认领与「若源 P-1 已交付则缩减」的双态衔接闭合;裁定 1「钻单件价值高」引文准确。
+11. **证明与宪法对账**:P42 行(math_proofs.md:56「近兑现绝不喂(硬结论)/🔴 待标定 λ」)与 01_math_framework §3.6(P42 ①③ 行)引文吻合,且设计仅作「方向佐证、不作在册权威直接引证」的降级使用如实;00_framework「发展优先默认」出处实;手表出处文档 `data/equipment.md` 已在「data/ 冗余清除」批删除(git 实证)——「过期局部文档、虚构序」定性成立且偏保守;零新数核查:档位 3/2/1/0 为序数载体、需求件数/持有数为注册表与 state 计数、base 为继承表,无新调参数。
+12. **文档规范**:landing 三阶段小节七件齐、末阶段为正本更新且清单四行格式合规(含对源 spec 的修订指针回写);README 两节模板合规(无详设删行、落地 0/3 与三阶段对应、进度单源);design §0 状态=草案与「不可派落地批」门一致;两阶段判据均可独立验收、依赖单向;「明确不解决」清单(数值半部双前置、箱池构成、新鲜度门、equip_pick 换轨、supply bundle)逐项有辖域归属,无范围外溢;跨件半问已答(第三件同族升格为族级清点 + 归口 OQ-3/后续族级迭代,非逐件盲修)。
+13. **无前提自找面**(核一补充攻击,未破):特权变体装备名与 key 集合失配(与现行同为集匹配,无回归);锁定 comp key_equips 为空列表时与未锁态行为重合(无害);OCR 名不在注册表(tier0/base0 优雅退化);names 空/并列/重复卡(取先语义显式);守卫后冗余 key 件仍按 base 参与排序不打负分(软化正确);key_recipe_pairs 缺名空对( Registry 漂移降级显式)。
 
-- 位置:landing.md §3.2(文件面缺 `strategies/impl/pick_bias.py`;完成判据「material_value 迁移完成后全仓零引用(grep 证明)」)。
-- 证据(直调):pick_bias.py:29-31 `box_key_equip/box_key_material` 消费位仅 flow.py decide_box_card(3.2 薄壳化后归零)、:32 注释「材料通用性 _material_value 表维持其模块单一源…不变」;3.2 退役 material_value 后该注释指向已删符号,grep material_value 仍命中。
-- 发作场景:worker 或按字面扩删 pick_bias.py(越文件面),或留死常数+过期注释然后「零引用」判据造假/被解读收窄。
-- 修正方向:3.2 文件面补 pick_bias.py(box 两常数与注释随薄壳化退役;tome/wish 常数保留),或判据改「生产代码零 import、注释残留点名单」。
+## 证据强度说明
 
-### F8【次要】README 进度「落地:阶段 0/2 done」与 landing 阶段数(3.1/3.2/末阶段 = 3)不符;与源迭代 README 同口径(0/5,含末阶段)相互矛盾
-
-- 位置:README.md 进度节;iteration-design §4 模板「<阶段 x/y done>」未定义末阶段是否计数。
-- 证据:本迭代 landing 实有三阶段;源迭代 5 阶段计为 0/5(含末阶段)。同仓同模板两种口径,编排者照 README 立账易漏末阶段或重记。
-- 修正方向:改「0/3」对齐源迭代口径(含末阶段)。
-
-### F9【次要】§2.5 码点错位:「_pick_box_card 一体内完成(prep_actions.py:986-1031)」——该区间实为 _open_box,_pick_box_card 在 :1062-1099
-
-- 位置:design.md §2.5 防御注记。
-- 证据(直调)::986-1031 = `_open_box`(含同动作选卡闭环,:1014 直调 _pick_box_card);`_pick_box_card` 本体 :1062-1099。结构主张(决策与点卡同函数、无发射/执行分裂)两函数都成立,但符号名与区间错位属码点精度问题(五犯实证错误类)。
-- 修正方向:区间改「:986-1031(_open_box 闭环)/:1062-1099(_pick_box_card 本体)」双锚。
-
-### F10【次要】箱面钻/宝钻 0 分定价未入 §1.4 明确不解决清单——与裁定 1 的价值序存在潜在倒挂,现行打分同病(无回归),但边界应显式声明
-
-- 位置:design.md §1.4(不解决清单);§2.2(base 表外 0)。
-- 证据(直调):注册表红钻/蓝钻/财富宝钻 ∈ EQUIPMENTS(特殊类),`_EQUIP_VALUE`/`MATERIAL_VALUE_TABLE` 均无值 → 新旧两制皆 0 分,未锁态排全部有值件之后(幸运星 3 > 宝钻 0);源迭代裁定 1 对钻的定谳是「单件价值高(宝钻 = 团队规模上限+1)」。board_structure.md:61 只证箱 =「4 选 1 装备」,箱池是否含特殊类无在册证据——无证据即无回归实锤,但设计的「输出先验」主张适用域(值表 ~35/158 件覆盖面)未声明,§1.4 亦未把「箱面钻/宝钻定价」列入不解决。
-- 修正方向:§1.4 补一行「箱面特殊类(钻/宝钻)/工具/命运/骇客等值表外件的定价:维持表外 0,不解决(登记箱池构成实采钩子后重裁)」,并在 §2.2 注明输出先验的覆盖边界。
-
-## 2. 攻过未破角度清单(实际攻击过的面)
-
-1. **现行打分还原逐点核对**:§1.1 摘要四要素(key +100/材料 +30/mv 0-7/effect_pick_bias 恒 0)与 flow.py:654-702、pick_bias.py:30-31(100.0/30.0)、cw_prep_expect.py:32-35(花7/鞋6/电池6/钻头5/刀5/装甲5/枪4/星3)逐字一致;`effect_pick_bias` bias 恒 0.0 实证(pick_bias.py:49-61,bias 无任何写点);argmax 严格大于取先(:700-701);输入序 = `_pick_box_card` OCR 按 x 排序(:1078)「从左到右取先」成立;无信息 fallback idx=0(:663-664 与 best_s 初值 -1)。「四张全表外恒第 1 张」成立。
-2. **库存账写端全量核对**:观察采集全量重写两写端(prep_actions.py:411 M7 分支、:577 front_only 分支,全量 hits 含工具);开箱选卡 +(cw_exec_state.py:338-345 经 apply_op_effect,_open_box:1029 补推进);确认到账 +(_overlay_confirm.py:61-63 → ConfirmBox/ConfirmSupply/ConfirmTome);穿戴 −/+部署位(register_equip_worn:152-155/:158-161);卖场上装备返还 +(cw_exec_state.py:335-337);对账网 compare_equip_expect 存在(cw_prep_expect.py:614-638)。§1.2 清单与代码逐条对上。
-3. **在册裁定冲突分析**:prep_actions.py:211-216 原文辖「发射位无评估输入…现读严格不劣…免去发射后执行前漂移」——设计 §2.5 的辨析(开箱决策与点卡同函数闭环、entry.py:465 只发空 PickBoxCard、overlay 帧装备区读取无在册通道【候实证如实标注】)成立,本消费不与裁定冲突。
-4. **近兑现定义数学一致性**:交叉对(cnt(X)==0 ∧ 另侧≥1)与自对(cnt==1;0 不升、≥2 已可合、≥3 增量排除)对「选前 0 对 ∧ 选后 ≥1 对」逐域枚举成立;min/整除式与配方 (A,B)/(A,A) 结构一致;两账分工(对数=备用、需求门=总持有)与栏内合成输入面语义吻合;穿戴自动合成机制(wear_synth,cw_bench_equips.py:55-95 实机实锤)提供「选卡解锁 → 经穿戴链到 K」的生产可达路径,推导 2 的「立即交付」方向有机制支撑。
-5. **档序推导**:推导 1 同 K 共现帧的结局集包含论证(K+伙伴材料 ⊇ K)成立;P42 ①③ 引文与 math_proofs.md P42 行、01_math_framework §3.6 逐字一致(「近兑现张最贵,绝不喂」),且设计如实声明其为保留面结论、本档序为获取面同构应用、证据强度取最弱一环——引用纪律合规。P42 索引状态「R4 无阻断,对抗收口」可消费(阅读门公理 4)。
-6. **违宪扫描**:序数档 3/2/1/0 为纯位次载体(零基数解读);base 表 = `_EQUIP_VALUE` 逐值平移(源迭代定稿裁定「值不再重推,重拍 = 违禁拍值」承袭,ADR-0298/0130/0555 审计链);近兑现/需求守卫零新参数;无开关(§3 直接落码口径);sim 可见性申报(§2.7)与 strategy-work §4 申报义务吻合。
-7. **§2.7 三项 sim 定谳复核**:①`FakeMatch._pick_box_card` 无策略调用、card_idx None 恒取第 1(fake_match.py:775);②假箱选项 = 商店角色池名(rules.py:176-186)落 BenchChar 入备战(fake_match.py:786-790),与实机箱「4 选 1 装备」(board_structure.md:61 实机采证)不同物;③`sim/` 全域 grep OpenBox/PickBoxCard 零命中。「结构性不可见、A/B 不可作本批判据」定谳成立。
-8. **注册表统计全部实跑**:8×(10 配方/11 槽)、红蓝钻 12 槽、进阶 0 引用、自对 10 条逐条清单一致、V2 修订的「手表梯度与注册表真相互斥」成立(实跑 8 件计数同为 10,手表 7/6/6/5/5/5/4/3 无任何出处对应;源文档 equipment.md 经 git 确认已删除)。
-9. **唯一件佐证转述如实**:equipment_mechanics.md §4 原文分级(【代码实锤】6 条 3 组电光履/蓄能帆/绝对热量、语义【口述·印象级】未实测、规划含义【推断】)与设计 §2.2「辅助佐证不作主依据」的引用分级一致;3 组标记注册表直读核对无遗。
-10. **旧锁处置可执行性实核**:test_cw_material_score.py 两断言在 locked_comp 重锚后语义保持(反甲白厄 key 含以牙还牙甲,幸运星 tier1 < tier3、材料胜垃圾均复现);test_cw_screens_ops.py 两锁实况(手表值锁 :77-81、回落锁 :99-108)与处置方案对得上;test_cw_obs_arch_prep_writeflow.py:360-388 扫描锚(`decide_box_card` 在场断言)在 match 分支保留 decide_box_card 调用后存活——landing 3.2「扫描锚不受影响」预判正确。
-11. **正本更新清单目标存在性**:13_pick_family.md §1/§2 E18 行、08_events.md E18 行(含 material_value 引用与「待 derive」态)实存,清单描述与原文一致。
-12. **治本三核**:§1.3 归层(语义层价值模型缺维+锚定错位)成立;修法为根(序数维/两态锚/虚构表根源清除)非症状;跨件半问以「族级清点 + 归口 OQ-3」应答——flow 内剩余 6 个 target_comp 消费位逐一实核存在(decide_encounter/megastar/partner/star_tome/wish_trial/planner),已修轨迹 decide_invest(flow.py:503-508)属实,第三件非盲修、有族级处置声明。
-13. **关键取舍表 13 项逐条攻**:近兑现加法制弃用(支配保序论证成立)、宽定义弃用(首对解锁语义自洽)、计数加权弃用(P42 λ 前置如实)、需求守卫(零参数、含已穿形态)、两账分工、回落统一(裁定 6)、现读装备区弃用(裁定辖域辨析)、外溢自立迭代(iteration-design §1.1 合规、禁改源收尾清单)、sim 另立(文件面/验收面纪律)——均未破。
-14. **需求守卫模型假设边界**:「超需求零边际」对可叠加 key(火力风暴潮 stacking=True)在第 3 件起仍有正边际——但该假设已显式声明为模型假设、冗余件不打负分落 base 参与排序,属声明域内的取舍,攻击未破(如后续重审,入口 = comp 需求向量定义域)。
-
-## 3. 结论
-
-**本轮不收敛**:1 阻断(F1)+ 4 重要(F2-F5)+ 5 次要(F6-F10)。阻断项在共享机器接口签名的核心语义上(5/20 在册阵容受累),重要项集中在 landing 阶段的验收归属与行为变化表锁对象精度。修正后按对抗循环须以新干净上下文再攻一轮。
+- A1/A2 为**强证据**(代码与行内算术直读,不依赖转述),结论强度取强。
+- B1 依赖源迭代 README 进度行(0/5)与 flow.py:535 直读,强。
+- B2/B3 为规范与完备性判定,依据为 iteration-design 条文原文与实跑全量枚举,中强。
+- 设计侧多数关键主张(注册表计数、码点、引文)直调复核全部命中——本稿写作时点未发现「值对标签错」类错误;两处重要发现均为**语义/算术一致性**缺陷而非数值虚构。
