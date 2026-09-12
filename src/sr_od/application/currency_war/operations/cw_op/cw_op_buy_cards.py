@@ -441,7 +441,7 @@ class BuyCardsOutcome:
 
 
 def apply_action_outcome(_aop: 'ShopActionOp',
-                         action: 'BuyCard | RefreshShop | LevelUpShop | CloseShop',
+                         action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
                          _ok: bool, _cur: GameState,
                          match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
                          visit_actions: list) -> None:
@@ -658,7 +658,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
 
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
-                         action: 'BuyCard | RefreshShop | LevelUpShop | CloseShop',
+                         action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
                          ok: bool, state: GameState) -> None:
     """v3_release_spent 执行回执位记账(T-88 写点;裁决 = ADR-0571)。
 
