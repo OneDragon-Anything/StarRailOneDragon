@@ -21,6 +21,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    bench_slots_of,
+    deployed_slots_of,
+    max_units_of,
+)
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS as _ENGINE_FENCE,
 )
@@ -28,19 +33,13 @@ from sr_od.application.currency_war.kernel.cw_line_defs import (
     RECIPE_FACTIONS as _RECIPE,
 )
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    bench_slots_of,
-    deployed_slots_of,
-    max_units_of,
-)
-
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from sr_od.application.currency_war.kernel.cw_comps import Comp
     from sr_od.application.currency_war.kernel.cw_board_state import (
         BoardState,
     )
+    from sr_od.application.currency_war.kernel.cw_comps import Comp
 
 # 部署围栏集 = RECIPE ∪ ENGINE(桥派生单一源 = cw_line_defs;r357 收口:
 # 围栏必须随桥派生集走,局部 frozenset 双源已被 r271 批清退)。
@@ -93,7 +92,7 @@ def offtarget_sell_allowed(char_id: str, bonds: set[str],
     return not (bonds & DEPLOY_FENCE)
 
 
-def protect_names_of(comp) -> frozenset[str]:
+def protect_names_of(comp: Comp) -> frozenset[str]:
     """换阵卖出义务臂的保护域(新线禁卖集)= core∪shared∪替班者全集。
 
     替班者腿依据 = ``Comp.substitute_plan`` 字段契约原文「替班=『不卖、
@@ -113,7 +112,7 @@ def protect_names_of(comp) -> frozenset[str]:
     return frozenset(names)
 
 
-def readiness_form_ok(bs, comp) -> bool:
+def readiness_form_ok(bs: BoardState | None, comp: Comp | None) -> bool:
     """配方完备判据(form_progress≥1.0;单一源)。
 
     = comp/state 输入齐备 ∧ ``cw_comps.form_progress(comp, state) >= 1.0``
@@ -127,7 +126,7 @@ def readiness_form_ok(bs, comp) -> bool:
             and form_progress(comp, bs) >= 1.0)
 
 
-def launch_board_quality_report(bs, comp) -> dict:
+def launch_board_quality_report(bs: BoardState, comp: Comp) -> dict:
     """armed 质量维报告(ADR-0570;纯函数,配方完备帧调用)。
 
     质量判据(零自由参数,两端均机制定义量):
@@ -272,7 +271,8 @@ def readiness_launch_decision(bs: BoardState, comp: Comp | None,
             'quality_eval_error': quality_eval_error}
 
 
-def launch_admission_report(bs, comp, *, line_members) -> dict:
+def launch_admission_report(bs: BoardState, comp: Comp, *,
+                            line_members: Callable[[Comp], set[str]]) -> dict:
     """达标臂 G1 准入预估(§9.2 准入三元 + victim 收口,发射面显影用)。
 
     返回 dict(全 bool):``board_full``(三元①板满:占用部署数 ≥ 可上阵
