@@ -1227,7 +1227,7 @@ class SwapPlanContext:
     #: star_guard 对可读星级 >1 的 victim 让位——演进层 ADR-0382 分级
     #: 降级换血语义(弱序星级→费用)接入换血机器的参数化面,辖域 =
     #: 锁线转型域 ∧ 板满 ∧ bench 在册线件待上(ADR-0614;
-    #: 语义宿主 = kernel.cw_evolution 的分级保护机器,本臂不新增
+    #: 语义宿主 = kernel.cw_evolution 的分级保护机器(该模块已随 W8 退役删除,历史语义归 git),本臂不新增
     #: 资格语义,只放开既有 1★ 限制并以其余守卫全保留为界)。
     evolution_swap_armed: bool = False
     #: 锁线转型域事实快照(装配时点 = ``_swap_transition_domain_of`` 同点

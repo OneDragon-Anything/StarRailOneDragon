@@ -2916,7 +2916,7 @@ def feed_sim_truth(bs: BoardState, st: GameState, *,
     - 桥(:func:`board_state_bridge`)退役:sim 域与 cw_economy 以外的
       波 5b 批辖域调用点(engine_p1 四区段)已全部切本口;残余活调用
       = flow/cw_loop/ops 各域单点、prep_actions 根、cw_economy 标量投影
-      缝(无 session,结构性豁免)与 cw_evolution(GameState 工作帧世界,
+      缝(无 session,结构性豁免;cw_evolution 已随 W8 整模块退役删除)。
       零生产调用)——机器现实 = test_cw_w5_sim_retirement 登记集,禁据
       本 docstring 误判消点进度。
     """
@@ -3125,10 +3125,10 @@ def board_state_bridge(st: object) -> BoardState:
     = 现实单一源,禁据本 docstring 误判消点进度)**:
     - 已退出(波 5 实改):sim 域调用点(engine_p1 两处切直写喂入口
       :func:`feed_sim_truth`;cw_replay 面随旧格式退役);
-    - 仍在树(未消点,段③边界协调申报):cw_evolution(~20 处,工作帧
-      读口,随其签名切容器消点)、flow/cw_loop/cw_op 各域残余单点、
-      prep_actions 根,及 prep 链线辖域(mandate/proof/assembly/entry/
-      criteria,T-115/116 面);
+    - 仍在树(未消点,段③边界协调申报):flow/cw_loop/cw_op 各域残余
+      单点、prep_actions 根,及 prep 链线辖域(mandate/proof/assembly/
+      entry/criteria,T-115/116 面);(cw_evolution ~20 处已随 W8 整模块
+      退役删除消点);
     - 残余集与注释豁免面的机器现实 = test_cw_w5_sim_retirement 登记
       集(多/少皆红):少红 = 消点推进,同批删登记项;登记集清零后本
       函数物理删除(内部消费与删除同批)。
