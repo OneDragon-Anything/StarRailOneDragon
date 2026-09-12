@@ -400,34 +400,48 @@ _validate_estimates_governance()
 # ΔV(R) = Σ_{k ∈ picks(R)} [ μ_E(q_R; H_k) − Σ_q π_offer,k(q) · μ_E(q; H_k) ]
 # 层 E = 改写后取卡金流期望相对无改写 offer 的抬升(受限直接金流/XP 通道;
 # 明确排除刷新族/息档覆写/合成卖价/血本位等行为依赖通道,排除集清单 =
-# 详设 §2.2.2 econ_gold_v1 定义)。**v1 恒 fail-closed**:受限通道实测
-# μ_E 不随品质单调(银 3.31 > 金 2.42,金池直接金流均值反低于银——金/棱彩
-# 价值大头在功能半与被排除通道),直接入域带会产出「白银时代>黄金时代」
-# 噪声序;转正准入门 = ①全通道重算(排除集补参)+ ②序一致性检验(全通道
-# μ_E 品质序与品质游戏序/pick_value 品质中位序方向一致),两条件缺一不入,
-# 数据批另行立项。本段只落公式与参数注册表结构,消费端(design §2.3 门 3
-# 的 resolved ∧ expected_gold > 0)自动承载准入门第 2 条方向自洽。
+# 详设 §2.2.2 econ_gold_v1 定义)。**转正判定的当前态 = fail-closed**:受限
+# 通道实测 μ_E 不随品质单调(银 3.31 > 金 2.42),直入域带会产出病态序;
+# 转正准入门 = ①全通道重算(排除集补参)+ ②序一致性检验,两条件缺一不入
+# (详设 §2.2.2)。数据批已执行判定:第 1 条完成,第 2 条未过(全通道 μ_E
+# 点估计 银≥金 残差未翻转)→ 两参数表维持哨兵不落,本段行为零变化;判定
+# 依据、读数与回炉候选 = changes/2026-09-12-invest-env/details/
+# layer-e-promotion-batch.md,重采入口 = tools/cw/env_pool_rewrite_estimates.py。
+# 消费端(design §2.3 门 3 的 resolved ∧ expected_gold > 0)自动承载准入门
+# 第 2 条方向自洽。
 
 #: 取卡序 k(1 基,同 StrategyPoolRewrite.rewrite_picks 坐标系)→ 取卡后剩余
-#: 节点视界 H_k。【推】结构:总视界 27(schedule_of 先验 9+9+9),首取卡点 =
-#: 1-3 节点完成后(screen_flow_timing #11)→ H_1 ≈ 24 参照;H_2/H_3 需取卡
-#: 点位实采(详设 §2.2.2)→ v1 只在册 H_1,其余取卡序视界缺 = 缺参
-#: fail-closed(层 E 转正数据批补全;实采定位后演化只改本表)。
-_STRAT_PICK_HORIZONS: dict[int, int] = {1: 24}
+#: 节点视界 H_k。【拟·实采】档案取卡选定事件经 terminal_ts 时间夹逼到轮,
+#: 全局节点号按结构日程 P1=9/P2=7/P3=9 先验(总 25;P2=7 = economy.md §10.2
+#: 位面典型节点表 + boss@p2r7 档案实证),H = 25 − 已完成节点数:H_1=23
+#: (落点 85/86 局在 P1 r3)、H_2=15(69/72 局在 P2 r2);取卡序 3 的有效
+#: 样本 n=3 低于注册门 20 → 哨兵不落,时代/尾彩通道因 H_3 缺参 fail-closed。
+#: 重采入口 = tools/cw/env_pool_rewrite_estimates.py(实采定位演化只改本表;
+#: 口径与样本量 = changes/2026-09-12-invest-env/details/
+#: layer-e-promotion-batch.md)。v1 在册值 24 系日程回退口径(9+9+9)下的
+#: 参照值,被本实采取代。
+_STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 
 #: μ_E per (品质, 视界):品质子池受限通道金流均值(【拟】,EconomyEstimate
 #: 四元组,总纲 §2.2.4 注册表条目形同构;键第二维 = H_k,公式 μ_E(q; H)
 #: 视界入参化的直接承载)。品质键 = 注册表品质名('棱彩'/'金'/'银')。
-#: **不落参数申报**:初测读数(银 3.31/金 2.42/棱彩 4.16)系【拟】非决策级
-#: (档案帧未区分取卡 offer 与刷新后 offer,采样警告在册,详设 §2.2.2),
-#: 落参 = 层 E 转正数据批义务(准入门两条件过后);缺位 = 恒 fail-closed,
-#: 时代/头彩/尾彩维持裸分(现行为零变化)。
+#: **不落参数申报(转正数据批判定:准入门未过)**:全通道重算与序一致性
+#: 检验已执行(重采入口 = tools/cw/env_pool_rewrite_estimates.py;口径/
+#: 样本量/读数 = changes/2026-09-12-invest-env/details/
+#: layer-e-promotion-batch.md)——第 1 条(全通道补参)完成,第 2 条未过:
+#: 全通道 μ_E 点估计 银≥金 残差(H=23 +0.010 / H=15 +0.097,深居卡池抽样
+#: 噪声,成对差值 CI 全含 0),按详设 §2.2.2 裁决维持 fail-closed,本表
+#: 继续哨兵不落;序一致性复过且取卡序 3 视界/π 缺位补齐后随批落参。
+#: 缺位 = 恒 fail-closed,时代/头彩/尾彩维持裸分(现行为零变化)。
 STRAT_POOL_ECON_MEANS: dict[tuple[str, int], EconomyEstimate] = {}
 
 #: π_offer per 取卡序:无改写环境时第 k 次取卡的 offer 品质分布(【拟】;
 #: 键 = k 1 基,值 = 品质 → EconomyEstimate。「未解析」份额不单列建模,
 #: 入式前按已知三品质份额归一,归一口径随数据批申报)。缺位该 k =
-#: 缺参 fail-closed;落参 = 层 E 转正数据批义务。
+#: 缺参 fail-closed。**不落参数申报(与 μ 表同判,准入门未过)**:k=1/k=2
+#: 归一读数在案(银/金/棱彩 = 0.302/0.498/0.199 与 0.305/0.457/0.238,
+#: 净流匹配 105/76 帧组),取卡序 3 有效帧组 n=3 哨兵不落;落参时机 =
+#: STRAT_POOL_ECON_MEANS 表注所述准入门复过之后,两表同批。
 OFFER_QUALITY_DIST: dict[int, dict[str, EconomyEstimate]] = {}
 
 
