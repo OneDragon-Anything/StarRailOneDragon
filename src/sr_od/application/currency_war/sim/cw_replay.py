@@ -282,9 +282,12 @@ def _restore_session(strat, d: dict, sess) -> None:
     # 命名/注册表缺项)= None 诚实缺省。
     _vi = d.get('v3_intention')
     if isinstance(_vi, dict):
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+        )
         _ms.v3_intention = _intention_from_trace(_vi)
         _ms.target_comp = _materialize_target_comp(
-            _ms.v3_intention, getattr(sess, 'shop_state_frame', None))
+            _ms.v3_intention, board_state_of(sess))
     elif d.get('target_comp'):
         from sr_od.application.currency_war.kernel.cw_comps import get_comp
         from sr_od.application.currency_war.kernel.cw_intention import (
@@ -406,8 +409,14 @@ def main() -> None:
         snap = d.get('state') or {}
         st = _rebuild_state(snap)
         # 黑板先于意向回读就位:target 物化的 early 面需读快照板面
-        #(p1_early_pair 派生输入),调用序不可倒置。
-        sess.shop_state_frame = st
+        #(p1_early_pair 派生输入),调用序不可倒置。W6 波 4:黑板写点
+        # 退役,真值经 sim 合成口写容器(读写端同波,设计件 §1.3-1)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+            synthesize_from_game_state,
+        )
+        synthesize_from_game_state(board_state_of(sess), st,
+                                   at_round=f"p{getattr(st, 'plane', 1)}-r{getattr(st, 'round_num', 1)}")
         _restore_session(strat, d, sess)
         low_conf = (d.get('hp_readable') is False
                     or snap.get('gold_readable') is False)

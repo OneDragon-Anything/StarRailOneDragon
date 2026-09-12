@@ -99,7 +99,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
 def sell_for_interest(gold: int, bench: list[BenchChar],
                       cap_resolved: int,
                       k_members: tuple[str, ...],
-                      state: GameState | None = None,
+                      state: object | None = None,
                       *,
                       prefer_names: tuple[str, ...] = (),
                       counters: dict | None = None,
@@ -173,7 +173,14 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         return [], 'p2_blood_floor'
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
-    if empty_board_sell_blocked(state.deployed, counters=counters):
+    # deployed 双形态读(W6 波 4:商店线传容器 bs;存量面传帧)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        deployed_slots_of,
+    )
+    _deployed = deployed_slots_of(state) if isinstance(state, BoardState) \
+        else state.deployed
+    if empty_board_sell_blocked(_deployed, counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
         saturation_line,
@@ -239,7 +246,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
 
 def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          k_members: tuple[str, ...],
-                         state: GameState | None = None,
+                         state: object | None = None,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
                          defer_names: frozenset[str] | set[str] = frozenset(),
@@ -277,12 +284,20 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     # 板空帧筹资卖出同弱劣拒帧(收益侧=义务在 bench 域,守卫不评收益
     # 只钉卖出腿;恢复正路 = 部署与买面,不在卖出通道)。state 缺读 =
     # fail-closed 拒(资格判据禁缺读放行)。
-    if empty_board_sell_blocked(getattr(state, 'deployed', None),
+    # deployed 双形态读(W6 波 4:商店线传容器 bs;存量面传帧)——
+    # 与 sell_for_interest 守卫同式。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        deployed_slots_of,
+    )
+    _deployed = deployed_slots_of(state) if isinstance(state, BoardState) \
+        else getattr(state, 'deployed', None)
+    if empty_board_sell_blocked(_deployed,
                                 counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
     remaining = need_gold - gold
-    _deployed = list(getattr(state, 'deployed', None) or [])
+    _deployed = list(_deployed or [])   # 双形态读复用(守卫位已按容器/帧解析)
     # T3 末位牺牲序:被保件稳定移尾(转化类放行,非禁卖)
     for b in sorted(bench, key=lambda x: ((x.char_id or '') in defer_names,
                                           x.star, x.slot)):

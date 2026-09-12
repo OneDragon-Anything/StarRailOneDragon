@@ -315,7 +315,33 @@ def decide_encounter_ev(options: list[EncounterOption], state: GameState | None,
          → fail 向低难;若刷新未用 → 附探索性刷新建议(原对弃用、重掷
          分布未建模可为负——非免费期权)。
     """
-    state = _hp_gate_state(state, session)   # hp 消费读点显式施门(见 helper)
+    # hp 消费读点显式施门(见 helper)。W6 波 4 双形态归一:容器 bs 输入
+    # 先转帧形态本地视图(hp = 政策层读口 decision_hp 门后值,设计件
+    # 《商店黑板容器化方案》§2.2-2「商店链 hp 消费一律经 decision_hp」;
+    # gold/plane/round 经容器读口;gold_readable = source != 'prior' 保真
+    # 位映射)——下游 helper 的 duck 读零改。帧输入走原 _hp_gate_state 门
+    # (旧链再过门幂等,行为零变化)。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+    )
+    if isinstance(state, BoardState):
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            gold_of,
+            plane_of,
+            round_num_of,
+        )
+        from sr_od.application.currency_war.kernel.cw_hp_policy import (
+            decision_hp,
+        )
+        from sr_od.application.currency_war.kernel.cw_state import (
+            GameState as _GS,
+        )
+        _view = _GS(gold=gold_of(state), plane=plane_of(state),
+                    round_num=round_num_of(state), hp=decision_hp(state,
+                                                                  session))
+        _view.gold_readable = state.gold.source != 'prior'
+        state = _view
+    state = _hp_gate_state(state, session)   # 帧输入:hp 消费读点显式施门
     if not options:
         return EncounterPick(idx=0, refresh=False, reason='e3:no-options')
     if len(options) == 1:

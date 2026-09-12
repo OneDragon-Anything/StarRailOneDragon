@@ -1601,7 +1601,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 首段键新驱动机器、后续段键同只刷视图(每段视图刷新保持,
                 # 与旧「每段战略层直调重估」效果一致;段内投影帧槽值保持
                 # 'none' 不再刷新,= 段内视图不漂)。
-                sess.shop_state_frame = st
+                # W6 波 4:黑板槽写点退役(设计件 §1.3-1 读写端同波)——
+                # 决策读容器,真值喂入 = 下方 sim 合成口;标注槽(帧代次)
+                # 保留(消费读点 = flow._consume_shop_direction_frame,
+                # 帧本体 = 容器)。
                 sess.shop_frame_class = 'full'
                 # BoardState 记录模型合成口(迁移批次一;设计 §2.1/§3.2.5,
                 # 字段级规格正本 =
@@ -1623,7 +1626,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _bs_synth(_bs_of(sess), st, at_round=f'p{_seg_plane}-r{rn}')
                 except Exception as _bs_e:   # noqa: BLE001
                     from one_dragon.utils.log_utils import log as _log
-                    _log.debug('[cw-sim] BoardState 合成口跳过: %s', _bs_e)
+                    _log.warning('[cw-sim] BoardState 合成口跳过: %r', _bs_e)
                 # ADR-0488 席满观测键·派生支(迁移批次二;设计 §8.7 as-built
                 # 「席满观测键 ADR-0488 经合成口后 bench_is_full 供给」):
                 # 满栏旗标改经 BoardState 派生(席空数==0,§3.2.5 派生单一
@@ -1635,6 +1638,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 合成自愈。
                 _round_bench_full = _round_bench_full or bool(
                     _bs_bench_is_full(_bs_of(sess)))
+                if not st.shop:
+                    # 空牌面真值 = 离屏(sim 合成口同判,§2.1 空表=None 同
+                    # 判申报)——旧黑板路径决策空发射等价(无候选面),段到止。
+                    break
                 acts = strat.decide_shop_screen(sess, config)
                 # 采购面三观察·帧级只读投影(见轮首「采购面三观察计数」
                 # 块;位次 = 本段入口刷新后 = 意向状态已刷新,与策略决策帧
@@ -1761,8 +1768,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _bs_rej(st), _obs_ist, session=sess,
                             registry=_obs_registry)
                         _seg_hub = frozenset(_rej_arms.hub_names)
+                # 拒因遥测读点 = 容器(W6 波 4 读者切换;shop_unbought_
+                # reasons 已切容器签名;真值 = 段入口合成口已喂)。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of as _seg_bs_of,
+                )
                 _seg_rejects = shop_unbought_reasons(
-                    st, _k_comp, _obs_bm, acts, hub_names=_seg_hub)
+                    _seg_bs_of(sess), _k_comp, _obs_bm, acts,
+                    hub_names=_seg_hub)
                 _round_shop_rejects = _seg_rejects
                 if _waves:
                     _waves[-1]['rejects'] = dict(_seg_rejects)
@@ -1935,7 +1948,36 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 「已消费槽再买」的可执行性跳过(金/池/板不消费)
                         # 与店外构造(测试桩)的 legacy 执行披露;真策略
                         # 提案恒来自 st.shop,phantom_rebuys 锁真批次恒 0。
-                        _slot = next((c for c in st.shop if c is a.card),
+                        # 双 ShopCard 桥(W6 波 4 归一):决策核发射容器牌
+                        # (无 x),引擎真值帧 = 旧牌(带 x 槽位)——按
+                        # (name, star) 对齐到帧牌再应用(simulate 的 x 槽位
+                        # 删除/序列化 x 字段均以帧牌为准;单一转换 =
+                        # kernel shop_cards_to_legacy 同族镜像,禁散落
+                        # 第二转换面)。identity 命中优先(同帧同对象)。
+                        from sr_od.application.currency_war.kernel.cw_state import (
+                            ShopCard as _LegacyCard,
+                        )
+                        _a_card = a.card
+                        if not hasattr(_a_card, 'x'):
+                            _a_card = next(
+                                (c for c in st.shop
+                                 if c.name == _a_card.name
+                                 and int(c.star or 1)
+                                 == int(_a_card.star or 1)),
+                                _LegacyCard(
+                                    x=0,
+                                    faction=str(getattr(a.card, 'faction',
+                                                       '') or '?'),
+                                    name=str(getattr(a.card, 'name', '')
+                                             or ''),
+                                    cost=int(getattr(a.card, 'cost', 0)
+                                             or 0),
+                                    star=int(getattr(a.card, 'star', 1)
+                                             or 1),
+                                    cost_source=str(
+                                        getattr(a.card, 'cost_source', '')
+                                        or 'roster')))
+                        _slot = next((c for c in st.shop if c is _a_card),
                                      None)
                         if _slot is None:
                             _slot = next(
@@ -1974,7 +2016,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _pre_units = (bench_occupied(st.bench)
                                       + deployed_occupied(st.deployed))
                         _pre_gold = st.gold
-                        st = _simulate_state(st, a)
+                        st = _simulate_state(
+                            st, a if _a_card is a.card
+                            else BuyCard(card=_a_card, reason=a.reason))
                         _spent = _pre_gold - st.gold
                         if _spent <= 0:
                             # 防御:预检守卫与 simulate 判定同源,恒 applied;
@@ -1987,10 +2031,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         for _ in range(_k):
                             cards_pool.take(a.card.name)
                         _acts.append({'__type__': 'BuyCard',
-                                      'card': {'x': a.card.x,
-                                               'faction': a.card.faction,
-                                               'name': a.card.name,
-                                               'cost': a.card.cost},
+                                      'card': {'x': _a_card.x,
+                                               'faction': _a_card.faction,
+                                               'name': _a_card.name,
+                                               'cost': _a_card.cost},
                                       'reason': _ch,
                                       'channel': _channel,
                                       # T-153 披露键(纯观测;ADR-0593)

@@ -455,15 +455,18 @@ def line_switch_orphans_of(session: StrategySession, base: set[str],
 
 
 def _autonomous_round(session: StrategySession) -> int | None:
-    """读端自治轮号(黑板帧解析;与 ``fresh_buys_sell_face`` 同槽同序:
-    last_state 优先、shop_state_frame 兜底)。帧全缺 = None(调用方按
-    fail-closed 方向处置:硬面不 carve)。"""
-    for attr in ('last_state', 'shop_state_frame'):
-        frame = getattr(session, attr, None)
-        if frame is not None:
-            rn = getattr(frame, 'round_num', 1)
-            return int(rn) if rn is not None else 1
-    return None
+    """读端自治轮号(W6 波 4 黑板容器化:原 last_state 优先/
+    shop_state_frame 兜底的双槽解析改容器 node 读口——与登记相位写端
+    同源,设计件《商店黑板容器化方案》§2.4-2)。NodeKey 未定 = None
+    (调用方按 fail-closed 方向处置:硬面不 carve)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_of,
+        round_num_of,
+    )
+    node = board_state_of(session).node.value
+    if node is None:
+        return None
+    return int(round_num_of(board_state_of(session)))
 
 
 # ===== 种子年龄豁免登记簿(T-126 批 5;P78-7,ADR-0633)=====
@@ -536,48 +539,27 @@ def _seed_frame_axes(session: StrategySession) -> tuple[
         int | None, int | None, frozenset[str]]:
     """种子读端轴 (位面, 轮号, bench 名集)。
 
-    轴分工按各写点的粒度真相(对抗审发现 1 修复,ADR-0633 §3):
-    - **plane/round 轴 = last_state 优先**(写点 = 商店段入口观察
-      ``cw_op_buy_cards:781`` + 备战观察 ``cw_screen_prep:561/785``;
-      店内段内两帧同值,位面过渡以备战观察最新)——段入口粒度对
-      轮/位面恒安全(两者段内不变量);
-    - **bench 轴 = 双帧并集(任一帧见名在席即在席)**。生产两帧各有
-      滞后方向:last_state = 段入口快照(店内段滞后,缺本段新鲜买入
-      ——若单读此帧,新鲜种子账被活性闭合在获取 visit 内就地销毁,
-      相邻轮保护生产整面失效 = 对抗审发现 1 阻断);shop_state_frame =
-      逐动作投影帧(``cw_op_buy_cards:520``,活帧)但在 prep 语境滞留
-      上一商店 visit。并集 = 活性闭合须双侧证据皆缺才销(保护向
-      fail-closed;误保方向有界:窗界 ≤2 轮 + 位面闭合兜底)。sim 引擎
-      只写 shop_state_frame(engine_p1:1436)、生产 prep 只写 last_state,
-      双帧并集覆盖两语境——这也是初版单帧读被 sim 免疫假象掩盖的
-      根因(D5 回归验证器对生产 hole 假绿)。
-    帧全缺 = (None, None, 空集),消费侧 fail-closed。"""
-    last = getattr(session, 'last_state', None)
-    live = getattr(session, 'shop_state_frame', None)
-    if last is None and live is None:
-        return (None, None, frozenset())
-
-    def _axes(frame: object) -> tuple[int | None, int | None]:
-        plane = getattr(frame, 'plane', None)
-        rn = getattr(frame, 'round_num', None)
-        return (int(plane) if plane is not None else None,
-                int(rn) if rn is not None else None)
-
-    def _bench(frame: object) -> set[str]:
-        return {getattr(b, 'char_id', '') or ''
-                for b in (getattr(frame, 'bench', None) or [])
-                if b is not None}
-
-    cur_plane = cur_round = None
-    for frame in (last, live):
-        if frame is None:
-            continue
-        plane, rn = _axes(frame)
-        if cur_plane is None:
-            cur_plane = plane
-        if cur_round is None:
-            cur_round = rn
-    bench_names = _bench(last) | _bench(live)
+    轴源 = session 容器(W6 波 4 黑板容器化改道,设计件 §2.4-2):
+    - **plane/round 轴 = bs.node**(NodeKey;权威写端 = 派生规则四腿,
+      段入口粒度对轮/位面恒安全);
+    - **bench 轴 = bs.bench**(prep 帧观察值 + visit 内投影直写)。原
+      「双帧并集」的活性闭合语义由容器活值天然承载:逐动作投影直写
+      (apply_shop_action_logic bench 域)使店内新鲜买入即时在席,
+      last_state 段入口滞后窗与投影帧 prep 语境滞留窗一并消亡——
+      对抗审发现 1(新鲜种子账被活性闭合在获取 visit 内就地销毁)的
+      防线由容器活值续承。
+    NodeKey 未定帧 plane/round = None;bench 未观察 = 空集,消费侧
+    fail-closed。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        bench_slots_of,
+        board_state_of,
+    )
+    _bs = board_state_of(session)
+    node = _bs.node.value
+    cur_plane = int(node.plane) if node is not None else None
+    cur_round = int(node.round_num) if node is not None else None
+    bench_names = {getattr(b, 'char_id', '') or ''
+                   for b in bench_slots_of(_bs) if b is not None}
     return (cur_plane, cur_round, frozenset(bench_names))
 
 

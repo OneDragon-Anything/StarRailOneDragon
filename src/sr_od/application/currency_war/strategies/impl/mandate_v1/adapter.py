@@ -97,22 +97,28 @@ def _point(x: int, y: int):
 def _anchor_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     """快照数值域 → GameState 骨架(plane/round/level 等带 session 锚回退)。
 
-    锚回退源 = BoardState 视图(Snapshot 消费切换,迁移批次三,设计 §8.7:
-    mandate_v1 内部改读;kernel/cw_bs_view.strategy_input_state 调用面
-    单一源)——已建模域取记录值(常态帧与旧直读逐位一致),未建模域同
-    帧透传;快照字段优先级不变,锚只在快照值缺席时兜底。
+    锚回退源 = **session 容器直读**(W6 波 4 决策缝改造,设计件《商店黑
+    板容器化方案》§1.4 备战黑板处置:原
+    kernel/cw_bs_view.strategy_input_state 投影视图随取帧点改道消亡,
+    锚回退改容器单例一次取用——同帧同视图纪律,禁二次取容器)。
+    已建模域取记录值(常态帧与旧直读逐位一致:读口缺省镜像 = 波 1
+    公共读口),快照字段优先级不变,锚只在快照值缺席时兜底。
     """
-    from sr_od.application.currency_war.kernel.cw_bs_view import (
-        strategy_input_state,
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_of,
+        level_of,
+        node_kind_of,
+        plane_of,
+        round_num_of,
     )
-    last = strategy_input_state(session)
+    bs = board_state_of(session)
     st = GameState()
-    st.plane = snapshot.plane or (last.plane if last is not None else 1)
-    st.round_num = snapshot.round_num or (last.round_num if last is not None else 1)
+    st.plane = snapshot.plane or plane_of(bs)
+    st.round_num = snapshot.round_num or round_num_of(bs)
     st.node_type = (snapshot.node_type
                     or getattr(session, 'node_type_current', None)
-                    or (last.node_type if last is not None else None))
-    st.level = snapshot.level or (last.level if last is not None else 1)
+                    or node_kind_of(bs))
+    st.level = snapshot.level or level_of(bs)
     st.xp_progress = snapshot.xp_progress
     st.level_up_cost = snapshot.level_up_cost
     st.selected_difficulty = snapshot.selected_difficulty
@@ -150,19 +156,17 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     # 快照侧直读选档函数造第二值源**(容器是唯一动态真值源,读数归视图
     # 单一源)。session None 时视图退 GameState 缺省 6(与快照缺省同值,
     # 引导窗语义)。
-    from sr_od.application.currency_war.kernel.cw_bs_view import (
-        strategy_input_state,
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        back_capacity_of,
+        board_state_of,
     )
-    last = strategy_input_state(session)
-    st.back_max = last.back_max
-    # R1(蓝图 §4.3)+ 迁移迁移批 2(方向层接管)(方向层接管) 接管:committed 唯一合法读端
-    # (prep_brain.committed_from,内部 = cw_intention 权威派生);
-    # state.dual_track_phase 为老栈决策核的既有消费面,装配时显式回填
-    # (值源 = 方向层权威,P1 同 commit 面)。
-    from sr_od.application.currency_war.kernel.cw_intention import (
-        committed_from,
-    )
-    st.dual_track_phase = not committed_from(session)
+    # 同帧同视图:_anchor_state 已取容器单例,本函数取值复用同一实例
+    # (board_state_of 返回同一对象,无二次快照面)。
+    last = board_state_of(session)
+    st.back_max = back_capacity_of(last)
+    # (dual_track_phase 装配回填已随 W6 波 4 删除——调研草案 §6 残留表:
+    # 策略侧派生旗标不入容器,消费端改 committed 派生读,唯一合法读端 =
+    # cw_intention.committed_authority/committed_from。)
     st.active_strategies = list(getattr(session, 'active_strategies', None) or [])
     st.equips = list(getattr(session, 'last_owned_equips', None) or [])
     # refresh_probs / hp 回退锚 = BoardState 视图(Snapshot 消费切换,
@@ -172,18 +176,17 @@ def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
     # **门前真值**(cw_bs_view 收编:视图 hp = 容器记录值,门不再由写侧
     # 预施)——本函数 = hp 消费读点,门在此显式施(值源切换申报见
     # w5-透传域建模方案 §2.4;门幂等保证旧链帧值路径零行为差)。
-    probs = getattr(last, 'refresh_probs', None) if last is not None else None
-    st.refresh_probs = dict(probs) if probs else None
+    # refresh_probs 锚 = 容器 payload 域(离屏 None = 不可得,与视图 None
+    # 语义同门)。hp 锚 = bs.hp 门前真值(无真值=诚实未知,不兜底 W823)。
+    probs = (dict(last.shop.value.refresh_probs)
+             if last.shop.value is not None else None)
+    st.refresh_probs = probs if probs else None
     # hp 过现役同一新鲜度门(session 锚;None 现读=沿用链,禁 0/100 兜底改值)。
     _t = ((st.plane - 1) * 9 + st.round_num) if (st.plane and st.round_num) else None
-    _cur = snapshot.hp if snapshot.hp is not None else (
-        last.hp if last is not None else None)   # 无真值=诚实未知(不兜底,W823)
-    # readable 单一源 = 视图映射(last.hp_readable,源 =
-    # bs.hp.source=='observation' 最近观察)——禁与门输入值双源(快照位
-    # 残根会让「值与新鲜度旗标出自不同观察」;生产路径快照位本就派生自
-    # 同一视图,端口路径 fallback 同帧透传,两形态同值)。
-    _view_readable = bool(getattr(last, 'hp_readable', False)) \
-        if last is not None else False
+    _cur = snapshot.hp if snapshot.hp is not None else last.hp.value
+    # readable 单一源 = 容器来源位映射(source=='observation' 最近观察)
+    # ——禁与门输入值双源(同帧同视图,值与旗标同源)。
+    _view_readable = last.hp.source == 'observation'
     st.hp = gated_hp(_cur, session, _t, current_readable=_view_readable)
     st.hp_readable = _view_readable
     return st

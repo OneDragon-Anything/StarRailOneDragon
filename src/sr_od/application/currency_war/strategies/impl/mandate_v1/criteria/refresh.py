@@ -159,9 +159,17 @@ def r2_card_reserve(k_members: tuple[str, ...],
     (P91 同轴带同源;本函数语义/签名/返回值零变化——纯内部重构,
     test_cw_interest_floor 私有名直引面不受影响)。
     """
-    costs = qualified_member_costs(k_members, bench, deployed,
-                                   int(state.level or 1) if level is None
-                                   else int(level))
+    # 等级缺省读双形态(W6 波 4:商店线传容器 bs,存量面传帧)
+    if level is None:
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            BoardState,
+            level_of,
+        )
+        _lvl = level_of(state) if isinstance(state, BoardState) \
+            else int(state.level or 1)
+    else:
+        _lvl = int(level)
+    costs = qualified_member_costs(k_members, bench, deployed, _lvl)
     return min(costs) if costs else 0
 
 

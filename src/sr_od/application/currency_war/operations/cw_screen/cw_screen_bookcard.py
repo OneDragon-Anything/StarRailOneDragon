@@ -156,10 +156,10 @@ class CwScreenBookcard(CwScreenOpBase):
             _match = getattr(self.ctx, 'cw_match', None)
             if _match is not None:
                 # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读。
-                from sr_od.application.currency_war.kernel.cw_bs_view import (
-                    strategy_input_state,
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
                 )
-                _st = strategy_input_state(_match.session)
+                _st = board_state_of(_match.session)
                 _decided = _match.strategy.decide_star_tome(
                     [c[0] for c in cards], _st, _match.session,
                     getattr(_match, 'config', None))

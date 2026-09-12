@@ -209,10 +209,10 @@ class CwScreenPartner(CwScreenOpBase):
             if match is not None and options:
                 # 决策输入消费切换(迁移批次二):BoardState 视图
                 # (kernel/cw_bs_view.strategy_input_state)替 last_state 直读。
-                from sr_od.application.currency_war.kernel.cw_bs_view import (
-                    strategy_input_state,
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
                 )
-                _state = strategy_input_state(match.session)
+                _state = board_state_of(match.session)
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
                 pick = match.strategy.decide_partner(options, _state, match.session, _cfg)
                 idx = pick.idx if 0 <= pick.idx < len(cands) else 0

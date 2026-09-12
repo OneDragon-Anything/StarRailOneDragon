@@ -409,10 +409,10 @@ class CwScreenInvestStrategy(CwScreenOpBase):
             if match is not None:
                 # ADR-0144:真状态替空 stub。决策输入消费切换(迁移批次二):
                 # 值源 = BoardState 视图(cw_bs_view.strategy_input_state)。
-                from sr_od.application.currency_war.kernel.cw_bs_view import (
-                    strategy_input_state,
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
                 )
-                pick = match.strategy.decide_invest('strategy', names, strategy_input_state(match.session), match.session, config)
+                pick = match.strategy.decide_invest('strategy', names, board_state_of(match.session), match.session, config)
             else:
                 # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读
                 # hp/品质惩罚,hp 字段仅为 GameState 构造完整性。**显式跳过刷新链**
@@ -499,7 +499,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 # CommitSignals 双喂为既有 telemetry 累积器零决策消费,判读侧按
                 # 「同 visit 多次喂入」口径读(ADR-0600 §3.3 申报,禁为消重复改 flow)。
                 pick = match.strategy.decide_invest(
-                    'strategy', names, strategy_input_state(match.session),
+                    'strategy', names, board_state_of(match.session),
                     match.session, config)
 
         if pick is not None and 0 <= pick.option_idx < len(opts):

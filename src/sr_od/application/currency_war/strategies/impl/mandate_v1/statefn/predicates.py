@@ -52,7 +52,16 @@ def bench_effect_context(state: GameState | None, unit: BenchChar,
     if state is None:
         return BenchEffectContext(rust_affix_present=False, equipped=equipped,
                                   herta_star_supply=True)
-    rust = RUST_AFFIX_NAME in (getattr(state, 'enemy_affixes', None) or ())
+    # 双形态过渡(W6 波 4:商店线容器直喂 bs;prep 链/存量测试仍传帧;
+    # GameState 支随波 5 last_state 链退役消亡)。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+    )
+    if isinstance(state, BoardState):
+        affixes = list(state.enemy_affixes.value or ())
+    else:
+        affixes = list(getattr(state, 'enemy_affixes', None) or ())
+    rust = RUST_AFFIX_NAME in affixes
     herta = _herta_supply_present(state, k_members)
     return BenchEffectContext(rust_affix_present=rust, equipped=equipped,
                               herta_star_supply=herta)
@@ -69,11 +78,19 @@ def _herta_supply_present(state: GameState | None,
     """星级供强语境在场判定(例外①的观测面:augment 局 ∨ 板面 ∨ 线内)。"""
     if state is None:
         return True    # 缺读保守端(见 bench_effect_context 申报)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        deployed_slots_of,
+    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import proof
-    strategies = getattr(state, 'active_strategies', None) or ()
+    if isinstance(state, BoardState):
+        strategies = list(state.active_strategies.value or ())
+        deployed = deployed_slots_of(state)
+    else:
+        strategies = getattr(state, 'active_strategies', None) or ()
+        deployed = getattr(state, 'deployed', None) or []
     if any(s in proof.DIRECT_LINE_SIGNAL_STRATEGIES for s in strategies):
         return True
-    deployed = getattr(state, 'deployed', None) or []
     if any((getattr(d, 'char_id', '') or '') == _HERTA_SUPPLY_TARGET
            for d in deployed if d is not None):
         return True

@@ -75,6 +75,43 @@ def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
     return gold >= clicks_to_next * click_cost
 
 
+def _as_bs(state):
+    """双形态归一(W6 波 4:商店线传容器 bs 直读;prep 链传帧经桥装箱
+    ——桥退役挂波 5)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        board_state_bridge,
+    )
+    if isinstance(state, BoardState):
+        return state
+    return board_state_bridge(state)
+
+
+def _plane_round_of(state) -> tuple[int, int]:
+    """(plane, round_num) 双形态读(W6 波 4:商店线传容器 bs;prep 链
+    传帧;GameState 支随波 5 last_state 链退役消亡)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        plane_of,
+        round_num_of,
+    )
+    if isinstance(state, BoardState):
+        return plane_of(state), round_num_of(state)
+    return (int(getattr(state, 'plane', 1) or 1),
+            int(getattr(state, 'round_num', 1) or 1))
+
+
+def _max_units_dual(state) -> int:
+    """可上阵数双形态读(容器=max_units_of 读口;帧=方法派生)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        max_units_of,
+    )
+    if isinstance(state, BoardState):
+        return max_units_of(state)
+    return state.max_units()
+
+
 def levelup_budget_gate(state: GameState, session: StrategySession | None,
                         gold: int, cap_resolved: int,
                         k_members: tuple[str, ...], bench: list,
@@ -207,9 +244,6 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
         # P21 域内 ∧ 非支A 帧拒 XP;域外帧/支A 形态维持全豁免放行。
         # 位次申报:本支先于 ADR-0603 保底金门——P21 域内 XP 类即便
         # 生存域/保底让位也拒(类别白名单仅支A)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
-            board_state_bridge,
-        )
         from sr_od.application.currency_war.kernel.cw_discipline_rules import (
             all_in_xp_domain_hit,
         )
@@ -218,7 +252,7 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
         )
         if not _realize_chain_ready(state, bench, deployed) \
                 and all_in_xp_domain_hit(
-                    board_state_bridge(state), session,
+                    _as_bs(state), session,
                     DEFAULT_REGISTRY):
             return False, 'all_in_xp_category_filtered'
         if _guarantee_floor_holds(state, session, gold, clicks, click_cost,
@@ -276,8 +310,7 @@ def _guarantee_floor_holds(state: GameState, session: StrategySession | None,
         from sr_od.application.currency_war.kernel.cw_plane_table import (
             r_remaining,
         )
-        if r_remaining(session, int(state.plane or 1),
-                       int(state.round_num or 1)) <= 1:
+        if r_remaining(session, *_plane_round_of(state)) <= 1:
             return True          # 终局域:末位面末战,域③前提失效
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
@@ -319,7 +352,7 @@ def _realize_chain_ready(state: GameState, bench: list,
     from sr_od.application.currency_war.kernel.cw_state import (
         deployed_occupied,
     )
-    cap = state.max_units()
+    cap = _max_units_dual(state)
     if cap is None:
         return False
     if deployed_occupied(list(deployed or [])) < cap:
@@ -380,9 +413,6 @@ def level_spend_blocked(state: GameState, session: StrategySession,
         # ⇒ P2 深血线停付族(p2_crisis_band 危机支/血预算)照常全额管辖,
         # 行为零变更(fail-closed,§3.2-3)。
         return False    # P2 濒死带:转化优先,停付族让位(闩合成 fail-closed)
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge,
-    )
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         blood_budget_levelup_blocked,
         p2_crisis_band,
@@ -394,7 +424,7 @@ def level_spend_blocked(state: GameState, session: StrategySession,
     # kernel 血线门波 2 已切容器签名(hp 经政策层读口);本策略域 GameState
     # 帧经容器过渡桥装箱供帧(桥视图 hp source 失真语义见该桥 docstring,
     # 门幂等保证过渡期行为一致;策略域签名切换随 strategies 全簇批)。
-    _bs = board_state_bridge(state)
+    _bs = _as_bs(state)
     if blood_budget_levelup_blocked(_bs, session, reg):
         return True
     if _plane_last_battle(state, session):
@@ -407,13 +437,10 @@ def _plane_last_battle(state: GameState, session: StrategySession) -> bool:
     decision_v2.discipline.plane_last_battle 的重导出委托,禁第二实现;
     模块私有——非判据面函数,不入契约/旁路枚举表)。kernel 侧波 2 已切
     容器签名,GameState 帧经过渡桥装箱。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge,
-    )
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         plane_last_battle as _plb,
     )
-    return _plb(board_state_bridge(state), session)
+    return _plb(_as_bs(state), session)
 
 
 def pop_slot(deployed_count: int, deploy_cap: int, gold: int,

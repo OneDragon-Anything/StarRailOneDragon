@@ -45,11 +45,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_economy import reserve_cap
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    bench_slots_of,
+    deployed_slots_of,
+    gold_of,
+)
+from sr_od.application.currency_war.kernel.cw_economy import (
+    refresh_cost_effective,
+    reserve_cap,
+)
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
@@ -57,7 +65,7 @@ if TYPE_CHECKING:
     )
 
 
-def _crosses_engine_tier(state: GameState, name: str) -> bool:
+def _crosses_engine_tier(bs: BoardState, name: str) -> bool:
     """店内件「当帧跨档」判定(结构性:买入后四体系达成数 +1)。
 
     判据单一源=cw_deploy_logic.engines_count(与 deploy/形态维同一把
@@ -74,10 +82,10 @@ def _crosses_engine_tier(state: GameState, name: str) -> bool:
     if ch is None:
         return False
     bonds = set(ch.factions or ()) | set(ch.flows or ())
-    fac = dict(state.board or {})
+    fac = dict(bs.board.value or {})
     if not (bonds & {b for b, _t in TRANSITION_TRAITS}):
         return False
-    dep_names = {d.char_id for d in (state.deployed or []) if d is not None}
+    dep_names = {d.char_id for d in deployed_slots_of(bs) if d is not None}
     before = engines_count(fac, dep_names)
     for b in bonds:
         fac[b] = fac.get(b, 0) + 1
@@ -85,7 +93,7 @@ def _crosses_engine_tier(state: GameState, name: str) -> bool:
     return after > before
 
 
-def _scan_shop_buy_accounts(state: GameState,
+def _scan_shop_buy_accounts(bs: BoardState,
                             registry: DecisionV2Registry,
                             ) -> tuple[list[int], list[int]]:
     """店内件两路账单单次扫描(防双计;调用方按需取路)。
@@ -96,26 +104,28 @@ def _scan_shop_buy_accounts(state: GameState,
       先扣跨档件已占数,满槽后不再扩账);升序返回(容量口径取最便宜
       k 件=保守侧,买入质量序在 candidates/scoring 放行面)。
     """
+    costs: list[int] = []
+    fill: list[int] = []
     from sr_od.application.currency_war.kernel.cw_state import (
         bench_occupied,
         will_merge_on_buy,
     )
-    costs: list[int] = []
-    fill: list[int] = []
-    bench_free = max(0, registry.bench_capacity
-                     - bench_occupied(state.bench or []))
-    for sc in (state.shop or []):
+    _slots = bench_slots_of(bs)
+    _payload_cards = (bs.shop.value.cards if bs.shop.value is not None
+                      else [])
+    bench_free = max(0, registry.bench_capacity - bench_occupied(_slots))
+    for sc in _payload_cards:
         name = getattr(sc, 'name', '') or ''
         if not name:
             continue
-        merge = will_merge_on_buy(sc, state.bench, state.deployed)
+        merge = will_merge_on_buy(sc, _slots, deployed_slots_of(bs))
         if merge:
             costs.append(sc.cost or 3)   # 合成件不占槽
             continue
         if bench_free <= 0:
             continue    # A-1/A-2:未跨档期权件与满槽帧均不扩账
         bench_free -= 1
-        if _crosses_engine_tier(state, name):
+        if _crosses_engine_tier(bs, name):
             costs.append(sc.cost or 3)
         else:
             fill.append(sc.cost or 3)
@@ -123,7 +133,7 @@ def _scan_shop_buy_accounts(state: GameState,
     return costs, fill
 
 
-def _countable_buy_costs(state: GameState, session: StrategySession | None,
+def _countable_buy_costs(bs: BoardState, session: StrategySession | None,
                          registry: DecisionV2Registry) -> list[int]:
     """店内「非期权」正账件费用表(A-1 刀法)。
 
@@ -132,10 +142,10 @@ def _countable_buy_costs(state: GameState, session: StrategySession | None,
     (ADR-0446)退回后,跨档判定改本结构性口径——语义与 S1/S2 的
     「当帧跨档」同一集合(信号判定的核心即此跨档事实)。
     """
-    return _scan_shop_buy_accounts(state, registry)[0]
+    return _scan_shop_buy_accounts(bs, registry)[0]
 
 
-def bench_fill_account(state: GameState, registry: DecisionV2Registry) -> int:
+def bench_fill_account(bs: BoardState, registry: DecisionV2Registry) -> int:
     """O1 备战空位填补通道的容量分量(`w611_econ_cycle/` 设计 §1.2/§1.3)。
 
     溢余帧备战有空位时,店内其余件(非跨档非合成)按费用升序取「剩余
@@ -146,10 +156,10 @@ def bench_fill_account(state: GameState, registry: DecisionV2Registry) -> int:
     买入放行面([31] 限域质量序)在 candidates/scoring,随 `w607_affix_consumption/` 二波
     后接线;本分量先接通 flip/义务预算的容量判定与存息准入门。
     """
-    return sum(_scan_shop_buy_accounts(state, registry)[1])
+    return sum(_scan_shop_buy_accounts(bs, registry)[1])
 
 
-def channel_capacity(state: GameState, session: StrategySession,
+def channel_capacity(bs: BoardState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
@@ -160,31 +170,31 @@ def channel_capacity(state: GameState, session: StrategySession,
     """
     from sr_od.application.currency_war.kernel import cw_economy as _ke
     total = 0
-    if _ke.schedule_upgrade(state, session):
-        total += _ke.upgrade_plan_fee(state)
-    total += sum(_countable_buy_costs(state, session, registry))
-    total += bench_fill_account(state, registry)
-    rolls = _ke.refresh_ev_budget(state, session)
-    total += (state.shop_refresh_cost or 2) * rolls
+    if _ke.schedule_upgrade(bs, session):
+        total += _ke.upgrade_plan_fee(bs)
+    total += sum(_countable_buy_costs(bs, session, registry))
+    total += bench_fill_account(bs, registry)
+    rolls = _ke.refresh_ev_budget(bs, session)
+    total += refresh_cost_effective(None, 0, bs=bs) * rolls
     return total
 
 
-def overflow(state: GameState, session: StrategySession) -> int:
+def overflow(bs: BoardState, session: StrategySession) -> int:
     """溢余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。
 
     R* 单一源 = kernel cw_economy.reserve_cap(模块级 import:纯查表
     函数,无桩点契约;守息线分量已归一 session resolved 链,registry
     旋钮不再辖本缝——ADR-0598)。"""
-    return max(0, (state.gold or 0) - reserve_cap(state, session))
+    return max(0, gold_of(bs) - reserve_cap(bs, session))
 
 
-def obligation(state: GameState, session: StrategySession,
+def obligation(bs: BoardState, session: StrategySession,
                registry: DecisionV2Registry) -> int:
     """义务花销 f = min((g − R*)+, C_t)(设计 §1.4;0=无义务)。"""
-    r = overflow(state, session)
+    r = overflow(bs, session)
     if r <= 0:
         return 0
-    return min(r, channel_capacity(state, session, registry))
+    return min(r, channel_capacity(bs, session, registry))
 
 
 def tier_truncated_spend(gold: int, want: int, essential: bool) -> int:

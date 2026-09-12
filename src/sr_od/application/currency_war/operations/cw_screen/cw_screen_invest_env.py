@@ -41,7 +41,6 @@ from sr_od.application.currency_war.cw_game_ports import action_sink, observatio
 from sr_od.application.currency_war.kernel.cw_events import decide_event
 from sr_od.application.currency_war.kernel.cw_investments import is_known_env
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.obs.cw_node_obs import read_invest_refresh_counts
 from sr_od.application.currency_war.operations.cw_screen._overlay_confirm import (
     emit_overlay_confirm,
@@ -215,13 +214,17 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 # 但 HP 分档/持有策略该用真值。决策输入消费切换(迁移批次二):
                 # 值源 = BoardState 视图(kernel/cw_bs_view
                 # .strategy_input_state),原 last_state 直读退役。
-                from sr_od.application.currency_war.kernel.cw_bs_view import (
-                    strategy_input_state,
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
                 )
-                pick = match.strategy.decide_invest('env', names, strategy_input_state(match.session), match.session, config)
+                pick = match.strategy.decide_invest('env', names, board_state_of(match.session), match.session, config)
             else:
-                # W6 波3 贯通:decide_event 已切容器签名,防御帧经桥装箱。
-                pick = decide_event(names, config, board_state_bridge(GameState(hp=100, hp_readable=True)))  # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读 hp/品质惩罚,hp 字段仅为 GameState 构造完整性
+                # 防御:无 match(局外独立跑)——防御空容器直喂(容器签名;
+                # 经验分退役后 decide_event 不读 hp/品质惩罚,空容器安全)。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    BoardState as _BS_Empty,
+                )
+                pick = decide_event(names, config, _BS_Empty(schema_version=1))
         else:
             pick = None
         if pick is not None and 0 <= pick.option_idx < len(opts):

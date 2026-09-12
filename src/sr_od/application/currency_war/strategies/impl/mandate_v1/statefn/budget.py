@@ -103,7 +103,28 @@ def next_level_xp_cost(state: object, missing_copies: int) -> int:
         cur, need = 0, XP_TO_NEXT_LEVEL.get(level, 4)
     remain = max(0, need - cur - XP_PER_BUY * max(0, int(missing_copies)))
     clicks = -(-remain // XP_PER_BUY)
-    return clicks * xp_click_cost(state)
+    # 单击价 = 双形态读(W6 波 4 接缝族切容器帧;容器传 xp_click_cost,
+    # 帧输入按 xp_click_cost 原帧契约就地内联同式——兜底折扣族单一源
+    # 的两形态镜像,GameState 支随波 5 last_state 链退役消亡)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+    )
+    if isinstance(state, BoardState):
+        return clicks * xp_click_cost(state)
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        XP_CLICK_COST_FALLBACK,
+        aggregate_economy,
+    )
+    _lvl_cost = getattr(state, 'level_up_cost', None)
+    if _lvl_cost:
+        return max(0, int(_lvl_cost))
+    _eff = aggregate_economy(list(getattr(state, 'active_strategies',
+                                          None) or []))
+    _discount = _eff.xp_buy_cost_discount
+    if (_eff.xp_click_discount_from_level_at
+            and level >= _eff.xp_click_discount_from_level_at):
+        _discount += _eff.xp_click_discount_from_level
+    return max(0, XP_CLICK_COST_FALLBACK - _discount)
 
 
 def p38_budget_recursion(state: object, session: object,

@@ -32,6 +32,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+)
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
@@ -39,7 +42,6 @@ from sr_od.application.currency_war.kernel.cw_events import (
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepAction,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
 )
@@ -133,7 +135,7 @@ class MandateV1Strategy(CwFlowStrategy):
             ' _assemble_turn;直接实例化本类须走注册面)')
 
     def decide_encounter(self, options: list[EncounterOption],
-                         state: GameState, session: StrategySession,
+                         bs: BoardState, session: StrategySession,
                          config: CurrencyWarConfig,
                          refresh_used: bool = False) -> EncounterPick:
         """遭遇分支选卡:E3 判据形态(mandate_v1/encounter.py 单一源)。
@@ -152,7 +154,7 @@ class MandateV1Strategy(CwFlowStrategy):
         from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
             encounter,
         )
-        return encounter.decide_encounter_ev(options, state, session,
+        return encounter.decide_encounter_ev(options, bs, session,
                                              refresh_used=refresh_used)
 
     def decide_shop_screen(self, session: StrategySession,
@@ -172,12 +174,24 @@ class MandateV1Strategy(CwFlowStrategy):
         本体,槽值在入口消费复位后保持 'none',投影帧不触发刷新)。
         """
         from sr_od.application.currency_war.kernel import cw_state
-        state = session.shop_state_frame
-        if state is None:
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            ChannelSig,
+            ShopActionExecuted,
+            apply_shop_action_logic,
+            board_state_of,
+        )
+        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 投影推进
+        # 切 apply_shop_action_logic;在屏前置 = bs.shop.value is not None,
+        # 离屏 = 观察层失约抛错(黑板契约容器化等价物)。
+        bs = board_state_of(session)
+        if bs.shop.value is None:
             raise ValueError(
-                'mandate_v1.decide_shop_screen: session.shop_state_frame '
-                '缺失(黑板契约:商店观察段是唯一写者;None=观察层失约,'
-                '禁静默按空态决策)')
+                'mandate_v1.decide_shop_screen: 容器商店 payload 离屏'
+                '(shop=None;黑板契约:商店观察段是唯一写者;'
+                'None=观察层失约,禁静默按空态决策)')
+        _sig = ChannelSig(family='logic_action', actor='MandateV1Strategy',
+                          mode='compute',
+                          group_id=f'act:MandateV1Strategy@{bs.write_seq + 1}')
         # 本访问已买件(carried 融合:R2-N1 刚买件首卖偏好;驱动器在循环
         # 内登记,与生产执行侧同一载体)。
         state_of(session).cw4_visit_bought_names = []
@@ -203,12 +217,27 @@ class MandateV1Strategy(CwFlowStrategy):
                 type(a).__name__, _st_rec.cw4_segment_serial)
             if isinstance(a, (cw_state.RefreshShop, cw_state.CompTransaction)):
                 return out      # 终结 op:序列到止(重观察语境)
-            state = cw_state.simulate(state, a)
-            session.shop_state_frame = state
+            # 投影推进 = apply_shop_action_logic(设计件 §2.2-3 驱动器同路;
+            # 回执 kernel 判据派生,单动作核逐帧恰一动作 = 击数恒 1)。
+            _exec = ShopActionExecuted(
+                bought_count=1 if isinstance(a, cw_state.BuyCard) else None,
+                levelup_clicks=1 if isinstance(a, cw_state.LevelUp) else None,
+                refresh_paid=(int(getattr(a, 'cost', 0) or 0)
+                              if isinstance(a, cw_state.RefreshShop) else None))
+            apply_shop_action_logic(bs, a, executed=_exec,
+                                    produced_by=type(a).__name__, sig=_sig)
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                apply_shop_merge_leg,
+            )
+            apply_shop_merge_leg(bs, a, sig=_sig)
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            bench_is_full,
+            gold_of,
+        )
         raise RuntimeError(
             'decide_shop_screen 驱动器 512 帧未收敛(策略器 bug:'
-            f'末态 gold={state.gold} '
-            f'bench={cw_state.bench_occupied(state.bench)})')
+            f'末态 gold={gold_of(bs)} '
+            f'bench={bench_is_full(bs)})')
 
 
 def decide_from_turn(obs: PrepObservation, turn: TurnState,

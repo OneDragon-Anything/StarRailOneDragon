@@ -559,8 +559,16 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-buy] 效果账本 REFRESH 计数失败(不阻塞): {e}')
     if _ok and not _aop.terminal:
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            bench_slots_of as _sg_slots,
+        )
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of as _sg_bs,
+        )
         _skip_guard = (isinstance(action, BuyCard)
-                       and bench_occupied(_cur.bench) >= BENCH_CAPACITY)
+                       and bench_occupied(
+                           _sg_slots(_sg_bs(match.session)))
+                       >= BENCH_CAPACITY)
         _proj = _aop.project(_cur)
         # 商店动作投影直写·容器通道(波 4 黑板容器化步 1:投影直写接线,
         # 设计件《商店黑板容器化方案》§2.4-1;黑板帧投影 _proj 同步保留
@@ -624,10 +632,15 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         match.session.shop_state_frame = _proj
         _post_frame = _proj
         if not _skip_guard:
+            # 守卫输入 = 容器(W6 波 4 读者切换;期望态读值经投影口直写
+            # 的容器 bench,payload 域集同源;帧 _proj 保留 = 日志遥测)
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of as _gt_bs,
+            )
             from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
                 guard_expected_vs_tracked,
             )
-            guard_expected_vs_tracked(_proj, match.session)
+            guard_expected_vs_tracked(_gt_bs(match.session), match.session)
         ledger.refresh_first_action = False
     # 遥测(T-113/ADR-0579):逐动作执行回执行(op_journal.jsonl;全量叶级
     # delta 零漏报)。置于投影之后:_post_frame = 本动作后的期望态帧,防取到
@@ -895,24 +908,27 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 追加、无人清理,回退会复活陈旧名(实证 = 2026-09-05 OpenShop
         # 双账分叉事故,诊断档
         # .debug/temp/currency_war/20260905_openshop_fork_diag/report.md)。
+        # (tracked 播种已随 W6 波 4 黑板容器化取消——设计件 §2.1-5:容器
+        #  bench = prep 帧观察值(观察漏斗写端)+ visit 内投影直写;黑板帧
+        #  播种的唯一消费者 = 旧帧决策链,读者切换后无行为面。)
         if exec_state_of(match.session).tracked_bench_chars:
-            # ADR-0316 + T-308/ADR-0646 S1:tracked 恒为槽位表(reconcile
-            # 写回端 S2 经 bench_from_compact 重建保证)→ 播种 = 下标直拷
-            # pad(布局单一源=列表下标;槽号重构仅对 SIFT 现读域合法,
-            # tracked 域禁读 slot 字段——分界见 ADR-0646)。
-            state.bench = pad_bench(
-                deepcopy(exec_state_of(match.session).tracked_bench_chars))  # copy 防下游 plan 污染持久态
-            log.info(f'[cw] tracked_bench_chars(seed)='
-                     f'{[(c.char_id, c.star) for c in state.bench if c is not None]}')
+            log.info(f'[cw] tracked_bench_chars='
+                     f'{[(c.char_id, c.star) for c in exec_state_of(match.session).tracked_bench_chars if c is not None]}'
+                     f'(播种取消,仅日志显影)')
         # T-308 S3:播种期布局代次快照(单动作循环每动作消费前检差用;
         # 空播种段同样取值——检差面不依赖是否播种)。
         _seed_epoch = exec_state_of(match.session).bench_layout_epoch
         match.session.last_state = state
         # 黑板写路径(W971 §2,P2):入口观察态(牌面现读+hp 覆盖+node_type/
         # dual/focus 拷入+gold 救援+tracked 播种 + 单动作投影段)直写
-        # session.shop_state_frame——写者 = 入口观察段/决策循环投影步;读者 =
-        # decide_shop_action。
+        # session.shop_state_frame——W6 波 4 起决策读者已切容器(本写退化为
+        # last_state 遥测载体,槽本体退役挂步 4);容器写端 = 观察漏斗
+        # (_feed_board_state observe)+ gold 救援喂入口写 + 执行落地门投影。
         match.session.shop_state_frame = state
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of as _bs_of_entry,
+        )
+        _bs_of_entry = _bs_of_entry(match.session)
         # 帧代次标注(ADR-0583 §3.4):visit 首段入口观察 = full(方向视图
         # 由 decide_shop_action 入口消费刷新);续段刷新重观察 = none
         #(= 旧 _target_seeded「仅首段重估」语义,段内视图不随买入漂移)。
@@ -967,7 +983,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
             guard_expected_vs_tracked as _guard_seed,
         )
-        _guard_seed(state, match.session, stage='seed')
+        # 对账守卫输入 = 容器(W6 波 4,设计件 §2.5-2:期望态读值改
+        # 容器;tracked 播种取消后分叉归因「播种/入口账 vs 模型」语义不变)
+        _guard_seed(_bs_of_entry, match.session, stage='seed')
         visit_actions: list = []
         _seg_frames = 0
         while True:
@@ -982,7 +1000,10 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
                 reseed_bench_if_layout_stale,
             )
-            _stale = reseed_bench_if_layout_stale(state, match.session,
+            # 重播种写目标 = 容器 bench 域(设计件 §2.3 reseed 写点;
+            # 输入改容器单例,投影帧不再承载 bench)
+            _stale = reseed_bench_if_layout_stale(_bs_of_entry,
+                                                  match.session,
                                                   _seed_epoch)
             if _stale == 'reseeded':
                 _seed_epoch = exec_state_of(match.session).bench_layout_epoch
@@ -1007,11 +1028,21 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 # 禁吞异常续跑。收敛根因修复在决策侧席位门,本帽 = 执行
                 # 侧最后防线,与 prep 线 VISIT_ACTION_CAP 同构但更严:
                 # 商店段动作单价高(买/卖不可逆),超帽不交回外循环重试)。
-                _st_cap = match.session.shop_state_frame
+                # 帧帽诊断读 = 容器(W6 波 4 读者切换,设计件 §2.4-2)
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    bench_slots_of as _bslots_of,
+                )
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of as _bcap_of,
+                )
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    gold_of as _gold_of,
+                )
+                _st_cap = _bcap_of(match.session)
                 _msg = (f'[cw!][plan] 决策循环帧数超帽'
                         f'({SHOP_SEGMENT_ACTION_CAP}),疑投影/策略器不收敛'
-                        f'(末态 gold={_st_cap.gold} '
-                        f'bench={bench_occupied(_st_cap.bench)})')
+                        f'(末态 gold={_gold_of(_st_cap)} '
+                        f'bench={bench_occupied(_bslots_of(_st_cap))})')
                 log.error('%s', _msg)
                 raise RuntimeError(_msg)
             # r95 审计必修②:决策异常留证(完整栈到 log,再向上抛,行为不变)。
@@ -1060,12 +1091,19 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         extra={'blocked': 'spend_gate'})
                     break
             _cur = match.session.shop_state_frame
-            guard_proposal_vs_expected(action, _cur)
+            # 守卫/env 读点 = 容器(W6 波 4 读者切换,设计件 §2.4-2:
+            # guard_proposal_vs_expected 守卫输入 + ShopExecEnv.state
+            # 改容器单例;帧 _cur 保留 = 投影/回执日志遥测,槽退役挂 S3)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of as _bs_of_cur,
+            )
+            _cur_bs = _bs_of_cur(match.session)
+            guard_proposal_vs_expected(action, _cur_bs)
             _aop = shop_action_op_for(action)
             _env = ShopExecEnv(
                 op=op, match=match, config=config, click_pts=click_pts,
                 level_btn=level_btn, refresh_btn=refresh_btn,
-                ledger=ledger, state=_cur)
+                ledger=ledger, state=_cur_bs)
             # 执行器端口改道(T-120 方案 §2.4/§3.3,批 1):端口在场(假
             # 环境)时动作落假游戏状态机(sink 账本位随动,机械点击层
             # 被替换);缺省 None = 生产真实执行,行为逐位不变。

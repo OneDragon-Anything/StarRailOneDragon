@@ -10,8 +10,11 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import (
     INTEREST_THRESHOLD,
 )
-from sr_od.application.currency_war.kernel.cw_comps import (
-    LevelGoal,
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    gold_of,
+    level_of,
+    plane_of,
+    round_num_of,
 )
 from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
@@ -30,13 +33,11 @@ from sr_od.application.currency_war.kernel.cw_state import (
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
     GameState,
-    effective_hp_threshold,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_board_state import BoardState
-    from sr_od.application.currency_war.kernel.cw_comps import Comp
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
@@ -449,15 +450,26 @@ LEVEL_WEIGHT: float = 6.0             # 每级(相对期望)的分。2026-08-04 
 
 
 # —— 购买经验决策 helper(ADR-0129;机制常量 XP_TO_NEXT_LEVEL/XP_PER_BUY 在 cw_state 单一源)——
-def _strategy_economy(state: GameState) -> EconomyEffect:
+# ⚠️ 本接缝族签名已切 BoardState(W6 波 4,T-97;波 2 落码申报的
+# 「本接缝族签名切换随 mandate_v1 装配面切换批同波贯通」兑现——见
+# refresh_ev_budget docstring 过渡注)。字段读统一经容器读口单一源
+# (kernel/cw_board_state 决策面公共读口),禁各消费点自写兜底。
+
+def _strategy_economy(bs: BoardState) -> EconomyEffect:
     """当前持有投资策略的聚合经济效果(ADR-0131;active_strategies → 数值效果,策略层算账)。"""
-    return aggregate_economy(state.active_strategies)
+    return aggregate_economy(list(bs.active_strategies.value or []))
 
 
 
 def _refresh_cost(state: GameState, refresh_used: int) -> int:
-    """第 refresh_used+1 次刷新的真实花金(ADR-0131):策略免费额度(如 加油站 每节点 1 次)内 = 0。"""
-    if refresh_used < _strategy_economy(state).free_refresh_per_node:
+    """第 refresh_used+1 次刷新的真实花金(ADR-0131):策略免费额度(如 加油站 每节点 1 次)内 = 0。
+
+    (遗留评分面消费;生产刷新费单一源 = refresh_cost_effective,
+    本函数零生产调用,GameState 形态随 W8 本体退役波消亡。)
+    """
+    if refresh_used < aggregate_economy(
+            list(getattr(state, 'active_strategies', None)
+                 or [])).free_refresh_per_node:
         return 0
     return SHOP_REFRESH_COST
 
@@ -487,11 +499,11 @@ def refresh_cost_effective(state: GameState, refresh_count: int,
 
 
 
-def xp_click_cost(state: GameState) -> int:
+def xp_click_cost(bs: BoardState) -> int:
     """一次「购买经验」单击花金(观察优先兜底逻辑,strategy-env-impacts §2
-    通用模式 1;ADR-0131;折扣语义 T-217/T-240 修复)。
+    通用模式 1;ADR-0131;折扣语义修复正本 = ADR-0632;W6 波 4 切容器帧)。
 
-    两支语义(来源凭 ``state.level_up_cost`` 是否有值判别):
+    两支语义(来源凭 ``bs.level_up_cost`` 是否有值判别):
     - **显示价支**(OCR 实读):传入值为最近备战帧观察价,游戏侧已算好
       全部折扣(商业间谍/成长的快乐等)→ **原样直通不再减**,下限 0;
       0 与缺省同义走兜底支(falsy 契约,与全部既有调用面一致)。
@@ -500,7 +512,7 @@ def xp_click_cost(state: GameState) -> int:
       窗口方向可自愈、有界(下一备战帧同屏重读)。
     - **兜底支**(观察缺省):函数内减折扣 = 基准 XP_CLICK_COST_FALLBACK
       (恒 4=用户口径,非按等级)−[xp_buy_cost_discount + 等级门折扣
-      (成长的快乐:xp_click_discount_from_level,``state.level ≥
+      (成长的快乐:xp_click_discount_from_level,``level_of(bs) ≥
       xp_click_discount_from_level_at`` 时生效;哨兵 0=未持有)],
       max(0) 钳。
 
@@ -508,25 +520,36 @@ def xp_click_cost(state: GameState) -> int:
     本金费函数不适用(血闸独立车道 blood_xp_gate 承接);按钮显示非金
     数值时显示价支读数同样出域,不在本函数补模。
     """
-    if state.level_up_cost:
-        return max(0, state.level_up_cost)
-    eff = _strategy_economy(state)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        level_of,
+    )
+    lvl_cost = bs.level_up_cost.value
+    if lvl_cost:
+        return max(0, int(lvl_cost))
+    _level = level_of(bs)
+    eff = _strategy_economy(bs)
     discount = eff.xp_buy_cost_discount
     if (eff.xp_click_discount_from_level_at
-            and state.level >= eff.xp_click_discount_from_level_at):
+            and _level >= eff.xp_click_discount_from_level_at):
         discount += eff.xp_click_discount_from_level
     return max(0, XP_CLICK_COST_FALLBACK - discount)
 
 
 
-def clicks_to_next_level(state: GameState) -> int:
-    """从当前 XP 到升 1 级还需的单击次数(xp 未知按 0 进度向上取整;满级返 0)。"""
-    if state.level >= 10:
+def clicks_to_next_level(bs: BoardState) -> int:
+    """从当前 XP 到升 1 级还需的单击次数(xp 未知按 0 进度向上取整;满级返 0;
+    W6 波 4 切容器帧)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        level_of,
+    )
+    _level = level_of(bs)
+    if _level >= 10:
         return 0
-    if state.xp_progress:
-        cur, need = state.xp_progress
+    xp_v = bs.xp.value
+    if xp_v:
+        cur, need = int(xp_v[0]), int(xp_v[1])
     else:
-        cur, need = 0, XP_TO_NEXT_LEVEL.get(state.level, 4)
+        cur, need = 0, XP_TO_NEXT_LEVEL.get(_level, 4)
     return max(0, -(-(need - cur) // XP_PER_BUY))
 
 
@@ -613,93 +636,11 @@ def blood_xp_gate_for(bs: BoardState | None, session) -> bool:
                          level_of(bs), mode[1])
 
 
-def _want_level_up(state: GameState, target_comp: Comp | None,
-                   committed: bool | None = None) -> bool:
-    """是否处于「该买经验」期:comp level_goal 说 level_up,或落后 NodeGoal.target_level 地板。
-
-    ADR-0128(用户节奏 §7-7「不无脑停概率最高级,也不无脑推级」):comp 对**当前级**显式给了
-    roll/stable(= 停留本级 D 核心)→ comp 停留意图压过 node 地板 —— 钱该花在 D 牌不是经验;
-    未给(走通用曲线)才按 node 地板推。例:列车同行 lv7 roll 3星姬子(攻略 列车:53)→ 不推 8。
-    ADR-0149(用户 §7-12「连50金都没凑到,为什么要急着升级?」):P1 金 < INTEREST_THRESHOLD
-    非boss/非锁血 → 不追级 —— 息引擎未立时追级 = 挤占买牌本金(实机实证金≤35 全程追级
-    零息)。boss/锁血节点豁免(节奏窗口 > 息纪律)。
-    """
-    if state.level >= 10:
-        return False
-    # 退役批(ADR-0466/0467/0469) C5 换源(蓝图 §4.3-R1):committed 显式传参——None=旧口径
-    # (读 GameState 双轨标志;v1 消费面已随 strategy_v1 退役删除,ADR-0477);
-    # step 级调用方(kernel.cw_deploy_seat.level_up_gate 透传)从
-    # prep_brain.committed_from 取权威值传入,堵「装配边界漏回填双轨标志 →
-    # 缺省 False → committed 恒 True → fresh 帧按已定型激进化放升级」的病理。
-    if committed is None:
-        committed = not getattr(state, 'dual_track_phase', False)
-    # ADR-0149 P1 追级抑制:息引擎未立**不追级**(金<INTEREST_THRESHOLD 时不再攒金
-    # 买经验 —— 实机实证金≤35 全程追级零息病理)。⚠️ 语义边界(实机实证修正):只拦「攒金
-    # 追级」(金 < 单击价+10 = 连一次有效点击都做不了还想攒),**金够单击+保命地板(10)放行** ——
-    # 升级本身是人口投资,金 12-14 点一次 XP 是正确节奏非泄金(实机实证:旧 +20 地板把 lv4
-    # 卡到 P2)。lv<5 不拦(开场人口等级);boss/锁血豁免。
-    if (state.plane == 1 and state.level >= 5
-            and state.gold < INTEREST_THRESHOLD
-            and state.node_type not in ('boss',)
-            and state.hp is not None and state.hp >= 30):
-        # ADR-0275:旧「4+level」简算与生产 flat-4(XP_CLICK_COST_FALLBACK,OCR 实读
-        # 优先)互相矛盾;实机对拍(VLM 三帧 lv4/lv7 均 4 金/击)裁决 flat-4 →
-        # 统一走 xp_click_cost(单一源;折扣族同享:商业间谍 + 成长的快乐等级门,
-        # 两支语义见该函数 docstring)。
-        _click_cost = xp_click_cost(state)
-        if state.gold < _click_cost + 10:
-            return False
-    if target_comp is not None:
-        _own = target_comp.level_plan.get(state.level)
-        if _own is not None:
-            if _own.action == 'level_up':
-                return True
-            if _own.action in ('roll', 'stable'):
-                # 攻略评审定则:P2+ node 地板是**硬下限**(P2 敌强度跳升,人口不升=硬吃两仗,
-                # P2 冻 lv6 实证)——comp 停留意图只在 P1 压地板;P2+ 落后地板即追级
-                # (停留 roll 可在追上地板后继续)。
-                # 75-A2 修:committed 全调用点一致(双轨期 xp 门与 spend 门同姿态,
-                # 防「spend 攒息/xp 追级」门间对拉)。
-                # 急救 hp 门(HP_LOSS_FULL=30)——hp<30 濒死时买牌/合星是急救,
-                # 追级是远水(实证:P2r2 hp=1 金 35 被 P2 硬地板吸走 24g 买经验,死)。
-                # 修正(审计 cc119c14):hp<30 **进位面首 2 轮不拦** ——
-                # hp1 进 P2 → 全量拦 → 升 8 永解锁不了 → 6 人应战到死(实机局团灭实证)。
-                # 保命要靠升 7/8 填人口(carry 位),不是永远 6 人;上述案例的病理是
-                # 「金 35 全烧经验」,由 XP 单击量控(花后地板)兜,非全量禁。
-                if (state.hp is not None and state.hp < 30
-                        and not (state.plane >= 2 and state.round_num <= 2)):
-                    return False
-                return bool(state.plane >= 2 and state.level < get_node_goal(
-                    state.plane, state.round_num,
-                    gold=state.gold, level=state.level, hp=state.hp,
-                    committed=not state.dual_track_phase,
-                    strategies=state.active_strategies or None).target_level)
-    goal = _resolve_level_goal(state, target_comp)
-    if goal is not None and goal.action == 'level_up':
-        return True
-    return state.level < get_node_goal(state.plane, state.round_num,
-                                       gold=state.gold, level=state.level,
-                                       hp=state.hp,
-                                       committed=not state.dual_track_phase,
-                                       strategies=state.active_strategies or None).target_level
-def _xp_gold_floor(state: GameState, want_level: bool) -> int:
-    """买经验时的存金地板(用户节奏 user_playstyle §7(docs/game/currency_war/research/;**玩法理解**: gameplay/currency_war.md 策略模型 S1)。
-
-    非追级期(已到核心概率等级、goal 说 roll/stable)→ 50(攒息,零花才点经验);
-    追级期 → 20(「偶尔掉到 40/30」精神,保守取 20);HP 危险 → 10(保血优先)。
-    位面末修正:实机六局实证 P1 全程血量恒在危险带(15-49<阈值)→ 地板恒 10
-    → boss 前花光 → P2 进场赤贫(gold 5-28,零搜牌窗口,成型无从谈起)。位面末
-    回合(round_num≥8,P1/P2 过半位面)保 **20**(P2 首回合一级利息档 + 搜牌本钱);
-    hp<30 真濒死仍 10(保命绝对优先)。
-    """
-    if state.hp is not None and state.hp < 30:
-        return 10
-    if state.round_num >= 8:
-        return 20   # 位面末保本钱进下一位面(非 hp 危险分支的 10)
-    if state.hp is not None and state.hp < effective_hp_threshold(state):
-        return 10
-    return 20 if want_level else INTEREST_THRESHOLD
-
+# _want_level_up/_xp_gold_floor(旧栈「该买经验」判据对)已随 T-64+T-183
+# 退役批删除(T-183 语义判定:消费链 = v1/decision_v2 旧栈遗留,调用面
+# 已随旧栈消亡;接线归宿 = mandate_v1 契约域新立 comp 节奏锚命题件,
+# 候方案审后立项。方案正本 = .debug/temp/currency_war/T-64-交付报告.md
+# §2.2;ADR-0638)。
 
 
 
@@ -709,23 +650,8 @@ SHOP_REFRESH_COST: int = 2   # 刷新基价【注】游戏定义真值:实付恒
 # (通用升级曲线 _DEFAULT_LEVEL_GOAL 已退役 2026-09-04,「未证即退役」裁定:
 # 旧值 = auto-chess meta 社区先验(前期 roll 找低费核心→中期 5-7 level_up→
 # lv8 roll 找 5 费→lv9 stable),无游戏定义或证明出处。保守缺省:comp 未填
-# level_plan 时不再退回通用曲线(_resolve_level_goal 返 None),升级压力仅由
-def _resolve_level_goal(state: GameState, target: Comp | None) -> LevelGoal | None:
-    """当前等级该做什么(comp 自带 level_plan 优先;无则 None)。
-
-    level_plan 是**花费指令**(经济统一论):说 ``level_up`` → plan() 硬 gate 升级;
-    ``roll`` → D 找核心;``stable`` → 吃息。comp 未填 level_plan(多数 comp)时
-    返 None——消费端(_want_level_up)落节点地板路径;旧「通用 meta 曲线」
-    回退已随 ADR-0519 退役(见上墓碑注)。
-    """
-    if target is not None:
-        g = target.level_plan.get(state.level)
-        if g is not None:
-            return g
-    return None
-
-
-
+# level_plan 时不退回通用曲线(该回退路径的载体 _resolve_level_goal 已随
+# T-64+T-183 退役批删除),升级压力仅由
 # 节点地板(get_node_goal,预算收权核)+ 淘金客姿态等已证判据辖。)
 
 
@@ -820,8 +746,14 @@ def get_node_goal(plane: int, round_num: int, *,
         # 持息帽卡局的本投影帧判据按 base 口径——接缝无 session 入参
         # (标量投影形态,消费面 = entry 兼容调用,量级有界),扩修
         # 随该调用面的 session 通道批。
-        _rolls = min(6, refresh_ev_budget(_st, None))
-        if schedule_upgrade(_st, None):
+        # 接缝族已切容器签名(W6 波 4):标量投影帧经过渡桥装箱喂入
+        # (kernel 内部标量投影形态,非生产决策链;桥退役随波 5)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge as _bs_bridge,
+        )
+        _st_bs = _bs_bridge(_st)
+        _rolls = min(6, refresh_ev_budget(_st_bs, None))
+        if schedule_upgrade(_st_bs, None):
             return NodeGoal(min(10, level + 1), 'level', 'rush_level',
                             refresh_budget=_rolls)
         if _rolls > 0:
@@ -847,7 +779,9 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     """
     # ADR-0131(投资策略效果进经济分):利息上限覆写(开源节流 9 档/利息上调 10 档/买断制 0)+
     # 每节点固定给金(定期福利 2/节点 ≈ 白拿 0.2 档息)+ 连胜奖励倍率(伟大征服 ×3 → streak 更值)。
-    _se = _strategy_economy(state)
+    # (遗留评分面:GameState 形态随 W8 消亡;_strategy_economy 已切
+    #  容器帧,本面就地内联同源聚合,禁再引接缝。)
+    _se = aggregate_economy(list(getattr(state, 'active_strategies', None) or []))
     _icap = _se.interest_cap_override if _se.interest_cap_override is not None else INTEREST_THRESHOLD // 10
     interest_tiers = min(state.gold // 10, _icap)
     interest_val = interest_tiers * INTEREST_WEIGHT
@@ -874,20 +808,17 @@ def economy_score(state: GameState, economy_mode: str) -> float:
     return interest_val + level_val + streak_val
 
 
+# P2_REBUILD_GOLD_FLOOR(P2+ 穷金重建门限,ADR-0148 孤儿常量)已随 T-64+T-183
+# 退役批删除——src+测试仓全零消费(设计消费方 rush_level 降档逻辑已不存在;
+# 同族 roll_affordable 门 ADR-0147 亦退役,见下墓碑注)。
 
 
-# P2+ 穷金重建门限(ADR-0148,评审 f3ab d1):低于此金 → rush_level 降档 interest_first(息引擎重建)。
-# 与 roll_affordable 门(ADR-0147,放行边界 35)同族 —— 用户基准「P2 稳定≥50」的邻域;重建门限略低(30):
-# 升 8 需 ~40 金级投入(多击 XP + 板件),30 以下 rush 无意义;息引擎(50 封顶)可渐进重建,自愈式
-# (金回升 ≥ floor 自动回 rush_level,非进场粘滞)。
-P2_REBUILD_GOLD_FLOOR: int = 30
-
-
-def effective_refresh_prob(state: GameState, level: int, cost: int) -> float:
+def effective_refresh_prob(bs: BoardState, level: int, cost: int) -> float:
     """轮岗感知的有效刷新概率单一源。
 
-    消费点 = roll 可负担性门(本文件)与 mandate_v1 出口③ A 支对账
-    (shop.py),两处禁第二套对账语义——「bar=0 ∧ 表值>0」形态两消费点
+    消费点 = mandate_v1 出口③ A 支对账(shop.py;原同文件消费方
+    roll 可负担性门已随 T-64+T-183 退役批删除),禁第二套对账语义——
+    「bar=0 ∧ 表值>0」形态两消费点
     曾相反(出口③判确证零/economy 判表值非零),已按本优先级统一。
     优先级:
     - refresh_probs 不可得(None/非 dict)→ 基线表(read_refresh_probs
@@ -902,7 +833,10 @@ def effective_refresh_prob(state: GameState, level: int, cost: int) -> float:
     - 键在且 >0 → 实读真值(轮岗翻倍档直用)。
     """
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
-    rp = getattr(state, 'refresh_probs', None)
+    # refresh_probs = payload 域(W6 波 4 切容器):离屏/缺读 None → 基线表
+    # (与旧帧 None 语义同门)。
+    _payload = bs.shop.value
+    rp = _payload.refresh_probs if _payload is not None else None
     if not isinstance(rp, dict):
         return refresh_prob(level, cost)
     bar = rp.get(cost)
@@ -911,46 +845,9 @@ def effective_refresh_prob(state: GameState, level: int, cost: int) -> float:
     return bar
 
 
-def roll_affordable(state: GameState, config, target_comp) -> bool:
-    """roll 可负担性门(ADR-0147,评审 f3ab d2):E[刷到 2星核心]×单价 vs 预算金。
-
-    M20 死亡窗实证:roll 分支满血也放宽 cap=4 × 5 轮 plan,散板下 MC 期望恒正(任何牌都算
-    reinforce+4、金币边际成本≈0)→ 连刷烧光金 18→0 全买散件。本门用**金计价**替 MC 符号:
-    期望刷次(expected_refreshes_for_card,超几何精确;已实现未接线——本次接上)× 2 金
-    > 预算金(gold − xp_floor)→ roll 让位 node plan(P2 推 8),不放宽。用户基准「P2 少刷吃息」。
-    2星(3张)为目标档;3星 9 张期望太贵不进 D 决策。
-    """
-    goal = target_comp.level_plan.get(state.level)
-    if goal is None or goal.action != 'roll':
-        return False
-    cost = goal.target_cost or 3
-    # k=1「D 到下一张核心」:roll 分支实际行为 = 刷→见核心→买(增量凑件),非从 0 凑 2星
-    # (2星 3 张期望 22 刷/44 金,门会永不放行)。expected_refreshes_for_card 的
-    # target_star 只映射 2星/3星 → 直调底层 expected_refreshes(k=1)。
-    from sr_od.application.currency_war.data.cw_shop_odds import (
-        DISTINCT_CARDS_PER_COST,
-        POOL_COPIES_PER_CARD,
-        expected_refreshes,
-    )
-    _p = effective_refresh_prob(state, state.level, cost)
-    _v = DISTINCT_CARDS_PER_COST.get(cost, 13)
-    _a = POOL_COPIES_PER_CARD.get(cost, 9)
-    e_refreshes = expected_refreshes(_p, _v, _a, c=0, k=1)
-    # ADR-0202/53 号点消费:期望边际刷价按台账(免费额度余量折抵期望;v0 以额度摊销近似
-    # ——每节点 N 次免费 → 期望刷次中前 N 次零成本)。无 active_strategies = 旧行为(零漂移)。
-    _econ = getattr(state, 'active_strategies', None) or []
-    _free_per_node = 0
-    for _s in _econ:
-        from sr_od.application.currency_war.kernel.cw_investments import get_strategy
-        _se = get_strategy(_s)
-        if _se is not None and _se.economy is not None:
-            _free_per_node += _se.economy.free_refresh_per_node
-    if _free_per_node > 0 and e_refreshes > _free_per_node:
-        e_gold = (e_refreshes - _free_per_node) * SHOP_REFRESH_COST
-    else:
-        e_gold = e_refreshes * SHOP_REFRESH_COST if _free_per_node == 0 else 0.0
-    budget = state.gold - _xp_gold_floor(state, True)
-    return budget > e_gold and (e_gold == 0 or state.gold >= 2 * SHOP_REFRESH_COST)
+# roll_affordable(roll 可负担性门,ADR-0147)已随 T-64+T-183 退役批删除
+# (src 零调用;其判据语义「停 roll 要有配套的何时 roll 放行」的接线归宿 =
+# mandate_v1 契约域 comp 节奏锚命题件,候方案审后立项,ADR-0638)。
 
 
 def _char_synergies(name: str) -> set[str]:
@@ -1009,7 +906,26 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
     return reg if isinstance(reg, DecisionV2Registry) else DEFAULT_REGISTRY
 
 
-def _upgrade_ul_threshold_ok(state: GameState,
+def _pop_slot_indicator(bs: BoardState) -> bool:
+    """ΔV_pop 指示项(P39 修订式):板满(cap 满)∧ bench 有 2★ 等待件。
+
+    消费位 = schedule_upgrade ①臂 / _upgrade_ul_threshold_ok 翻转分量 /
+    mandate_v1 criteria/levelup._realize_chain_ready(P72 支A;ADR-0576)。
+    (原「三副本有意复制、改谓词三处同改」纪律随 W6 波 4 签名切换收敛为
+    本单一源——strategy 层消费位同批改委托,漂移风险由单源天然消解。)
+    """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        bench_slots_of,
+        deployed_count_of,
+        max_units_of,
+    )
+    if deployed_count_of(bs) < max_units_of(bs):
+        return False
+    return any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
+               for b in bench_slots_of(bs))
+
+
+def _upgrade_ul_threshold_ok(bs: BoardState,
                              session: StrategySession) -> bool:
     """② 臂 U_L 阈值检验(升级判据形式二修正①;裸直觉补检验)。
 
@@ -1051,17 +967,12 @@ def _upgrade_ul_threshold_ok(state: GameState,
     # ΔV_pop 指示项(P39 修订式;与 schedule_upgrade ①臂谓词成同步锚对,
     # 见 docstring 末段——改谓词两处同改;第三消费位 = criteria/levelup.
     # _realize_chain_ready(ADR-0576),三处同改)
-    from sr_od.application.currency_war.kernel.cw_state import (
-        deployed_occupied,
-    )
-    if deployed_occupied(state.deployed or []) >= state.max_units() \
-            and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
-                    for b in (state.bench or [])):
+    if _pop_slot_indicator(bs):
         return True
 
-    level = int(state.level or 1)
+    level = level_of(bs)
     core, cost = _target_core_cost(session)
-    j = _owned_core_copies(state, core) if core else 0
+    j = _owned_core_copies(bs, core) if core else 0
     e_l = expected_refreshes_for_card(level, cost, target_star=2, owned=j)
     e_l1 = expected_refreshes_for_card(level + 1, cost, target_star=2,
                                        owned=j)
@@ -1074,21 +985,20 @@ def _upgrade_ul_threshold_ok(state: GameState,
         return False
     if not (_math.isfinite(e_l) and _math.isfinite(e_l1)):
         return e_l <= 0.0 < e_l1     # 当前级不可追而上级可追:纯解锁收益
-    benefit = (state.shop_refresh_cost or SHOP_REFRESH_COST) * (e_l - e_l1)
+    benefit = refresh_cost_effective(None, 0, bs=bs) * (e_l - e_l1)
     if benefit <= 0:
         return False                 # 概率不升反降(内峰回落档):无收益面
-    u_gold = clicks_to_next_level(state) * xp_click_cost(state)
+    u_gold = clicks_to_next_level(bs) * xp_click_cost(bs)
     if u_gold <= 0:
         return True                  # 满级/零费边界:成本侧空,收益即过
-    rounds = r_remaining(session, int(state.plane or 1),
-                         int(state.round_num or 1))
-    ibar = net_income(int(state.round_num or 1), 0)
-    c_int = loss_exact(int(state.gold or 0), u_gold, rounds, ibar,
+    rounds = r_remaining(session, plane_of(bs), round_num_of(bs))
+    ibar = net_income(round_num_of(bs), 0)
+    c_int = loss_exact(gold_of(bs), u_gold, rounds, ibar,
                        cap=cap_resolved_of_session(session))
     return benefit > u_gold + c_int
 
 
-def schedule_upgrade(state: GameState, session: StrategySession,
+def schedule_upgrade(bs: BoardState, session: StrategySession,
                      registry: DecisionV2Registry | None = None) -> bool:
     """排程升级判据(确定性费用查表核;蓝图 §3.4 R4 接缝,ADR-0465)。
 
@@ -1139,19 +1049,13 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     from sr_od.application.currency_war.kernel.cw_investments import (
         refresh_invest_active,
     )
-    if refresh_invest_active(state):
+    if refresh_invest_active(list(bs.active_strategies.value or [])):
         return False    # 淘金客姿态:升级通道退役(sim 注入臂实证;谓词单一址)
-    from sr_od.application.currency_war.kernel.cw_state import (
-        deployed_occupied,
-    )
     # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a));
-    # 谓词与 _upgrade_ul_threshold_ok 的 ΔV_pop 指示项**成同步锚对**
-    # (同一 P39 指示项两个消费位,改谓词两处同改——见该函数 docstring;
-    # 第三消费位 = criteria/levelup._realize_chain_ready,ADR-0576,
-    # 三处同改)
-    if deployed_occupied(state.deployed or []) >= state.max_units() \
-            and any(b is not None and (getattr(b, 'star', 1) or 1) >= 2
-                    for b in (state.bench or [])):
+    # 谓词单一源 = _pop_slot_indicator(原「有意复制三副本」纪律随本批
+    # 签名切换收敛为 kernel 单一源——第三消费位 criteria/levelup
+    # 同批改委托,同步锚对语义由单一源天然承载)
+    if _pop_slot_indicator(bs):
         return True
     # ② 概率级:息引擎已立 ∧ 目标峰值级在当前级之上 ∧ U_L 阈值检验
     # (升级判据形式二修正①:升级 iff c_eff·ΔE + ΔV_pop > U_L + C_int;
@@ -1160,11 +1064,11 @@ def schedule_upgrade(state: GameState, session: StrategySession,
     # 息线口径 = cap_resolved_of_session(session resolved 链)单一源
     # (息帽三源归一:旧 reg.interest_cap×10 与 session 链
     # 不同源——A/B 旋钮辖 decision_v2 预算面,不辖本前置)
-    if (state.gold or 0) < saturation_line(cap_resolved_of_session(session)):
+    if gold_of(bs) < saturation_line(cap_resolved_of_session(session)):
         return False
-    if _target_peak_level(state, session) <= (state.level or 1):
+    if _target_peak_level(bs, session) <= level_of(bs):
         return False
-    return _upgrade_ul_threshold_ok(state, session)
+    return _upgrade_ul_threshold_ok(bs, session)
 
 
 def _vd_core_of(session: StrategySession) -> str:
@@ -1195,7 +1099,7 @@ def _vd_core_of(session: StrategySession) -> str:
     return intention_core(comp)
 
 
-def _target_peak_level(state: GameState, session: StrategySession) -> int:
+def _target_peak_level(bs: BoardState, session: StrategySession) -> int:
     """目标核心费用档 → 概率峰值级(解析链:意向锁定核心 → 缺省 3 费;
     核心解析单一源 = _vd_core_of 与其缺省扩展)。"""
     from sr_od.application.currency_war.data.cw_chars import CHARACTERS
@@ -1233,19 +1137,23 @@ def _target_core_cost(session: StrategySession) -> tuple[str, int]:
     return core, cost
 
 
-def _owned_core_copies(state: GameState, core: str) -> int:
+def _owned_core_copies(bs: BoardState, core: str) -> int:
     """目标核心已持有基础副本数 j(3合1 折算:star s → 3^(s-1);
     bench∪deployed 逐件计)。E_find 的 owned 修正输入
     (cw_shop_odds.acquirability_factor 同口径);身份未识别的槽不计
     ——保守方向=低估持有 → E_find 偏大 → 帽偏松(不缩供给侧)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        bench_slots_of,
+        deployed_slots_of,
+    )
     n = 0
-    for bc in (*state.bench, *state.deployed):
+    for bc in (*bench_slots_of(bs), *deployed_slots_of(bs)):
         if bc is not None and bc.char_id == core:
             n += 3 ** ((bc.star or 1) - 1)
     return n
 
 
-def _omega_collapse_zeroed(state: GameState, session: StrategySession,
+def _omega_collapse_zeroed(bs: BoardState, session: StrategySession,
                            registry: DecisionV2Registry,
                            target_cost: int) -> bool:
     """塌缩带判据(概率校准刷新预算的归零腿;ADR-0475)。
@@ -1266,15 +1174,15 @@ def _omega_collapse_zeroed(state: GameState, session: StrategySession,
     if not _vd_core_of(session):
         return False
     from sr_od.application.currency_war.data.cw_shop_odds import refresh_prob
-    peak = _target_peak_level(state, session)
+    peak = _target_peak_level(bs, session)
     denom = refresh_prob(peak, target_cost)
     if denom <= 0:
         return False
-    return refresh_prob(state.level or 1, target_cost) / denom \
+    return refresh_prob(level_of(bs), target_cost) / denom \
         < registry.omega_collapse_ratio
 
 
-def _find_budget_cap(state: GameState, session: StrategySession,
+def _find_budget_cap(bs: BoardState, session: StrategySession,
                      registry: DecisionV2Registry, target_cost: int,
                      core: str) -> int:
     """有望帧帽 ⌈−ln(1−q)·E_find⌉(概率校准刷新预算的帽腿;ADR-0475)。
@@ -1290,15 +1198,15 @@ def _find_budget_cap(state: GameState, session: StrategySession,
     from sr_od.application.currency_war.data.cw_shop_odds import (
         expected_refreshes_for_card,
     )
-    j = _owned_core_copies(state, core)
-    e = expected_refreshes_for_card(state.level or 1, target_cost,
+    j = _owned_core_copies(bs, core)
+    e = expected_refreshes_for_card(level_of(bs), target_cost,
                                     target_star=2, owned=j)
     if e == float('inf'):
         return REFRESH_ROLL_CAP
     return math.ceil(-math.log(1.0 - registry.refresh_find_quantile) * e)
 
 
-def refresh_ev_budget(state: GameState, session: StrategySession,
+def refresh_ev_budget(bs: BoardState, session: StrategySession,
                       registry: DecisionV2Registry | None = None) -> int:
     """刷新 EV 授权刷数(确定性预算式;蓝图 §3.4 R4 接缝,ADR-0465;
     概率校准分量=ADR-0475)。
@@ -1335,48 +1243,43 @@ def refresh_ev_budget(state: GameState, session: StrategySession,
     (判据单一址=本函数的 ``_omega_collapse_zeroed``,届时零新概率口径)。
     """
     reg = registry or _registry_of(session)
-    # is_emergency 波 2 已切容器签名(hp 经政策层读口);本接缝族
-    # (schedule_upgrade/refresh_ev_budget/reserve_cap)GameState 签名未切
-    # (标量评估面,非 hp 消费面),经容器过渡桥 board_state_bridge 装箱
-    # 供帧——桥视图上 hp source 恒 observation 的失真语义见该桥 docstring
-    # 与 hp 政策层申报(过渡期桥输入帧 hp 已被上游施门,门幂等保证无差);
-    # 本接缝族签名切换随 mandate_v1 装配面切换批同波贯通。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge,
-    )
-    if is_emergency(board_state_bridge(state), session, reg):
+    # (本接缝族 GameState 签名过渡注已随 W6 波 4 签名切换兑现删除:
+    #  is_emergency 直吃容器,桥装箱中间形态消亡。)
+    if is_emergency(bs, session, reg):
         return 0
-    over = (state.gold or 0) - reserve_cap(state, session)
+    over = gold_of(bs) - reserve_cap(bs, session)
     if over <= 0:
         return 0
-    cost = state.shop_refresh_cost or 2
+    # 刷价缺省 = 建模基价显式消费(refresh_cost_effective 单一源;
+    # 原帧 ``or 2`` falsy 兜底形态的消灭形态,数值恒同)。
+    cost = refresh_cost_effective(None, 0, bs=bs)
     core, target_cost = _target_core_cost(session)
-    if _omega_collapse_zeroed(state, session, reg, target_cost):
+    if _omega_collapse_zeroed(bs, session, reg, target_cost):
         return 0
     return min(min(REFRESH_ROLL_CAP, over // cost),
-               _find_budget_cap(state, session, reg, target_cost, core))
+               _find_budget_cap(bs, session, reg, target_cost, core))
 
 
-def upgrade_plan_fee(state: GameState) -> int:
+def upgrade_plan_fee(bs: BoardState) -> int:
     """下一级升级总费 = 到下一级单击数 × 单击价(取价委托 ``xp_click_cost``
     单一源:观察优先/兜底减折扣语义只存在一处,禁第二处独立折扣实现——
-    「同一语义两处实现」即互补单侧错漂移温床,T-217 核对 §4/T-240)。"""
+    「同一语义两处实现」即互补单侧错漂移温床,正本 = ADR-0632)。"""
     from sr_od.application.currency_war.kernel.cw_plane_table import (
         clicks_to_level,
     )
-    return clicks_to_level(state.level) * xp_click_cost(state)
+    return clicks_to_level(level_of(bs)) * xp_click_cost(bs)
 
 
-def _rounds_to_plane_end(state: GameState, session: StrategySession) -> int:
+def _rounds_to_plane_end(bs: BoardState, session: StrategySession) -> int:
     """到本位面末节点(= boss 节点)的剩余轮数(含当前轮;缺读兜底 0
     =不储蓄,保守侧:R* 退化为息线,义务面变宽但方向安全)。
     nodes_of_plane 自带缺表回退(先验 9+一次性告警),此处不再兜层。"""
     from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
     total = nodes_of_plane(session)
-    return max(0, total - state.round_num)
+    return max(0, total - round_num_of(bs))
 
 
-def reserve_cap(state: GameState, session: StrategySession | None) -> int:
+def reserve_cap(bs: BoardState, session: StrategySession | None) -> int:
     r"""R\*(t) = interest_floor + Σ 窗口内排程升级费(设计 §1.3)。
 
     窗口 h = min(3, 到本位面末节点轮数);只储蓄下一级费用——多级
@@ -1394,11 +1297,11 @@ def reserve_cap(state: GameState, session: StrategySession | None) -> int:
     不可能出现守息线高于持有增益归零点(息帽截断点)的态。
     """
     h = min(_RESERVE_WINDOW_ROUNDS,
-            _rounds_to_plane_end(state, session))
+            _rounds_to_plane_end(bs, session))
     floor = saturation_line(cap_resolved_of_session(session))
-    if h <= 0 or not schedule_upgrade(state, session):
+    if h <= 0 or not schedule_upgrade(bs, session):
         return floor
-    return floor + upgrade_plan_fee(state)
+    return floor + upgrade_plan_fee(bs)
 
 
 #: 储备窗口上界(轮;设计 §1.3:h = min(到下一 boss 节点轮数, 3)——

@@ -268,6 +268,8 @@ REGISTERED_ACTORS: set[str] = {
                                # 事实组 record_refresh_execution 的计数写入)
     'CwOpOpenShop',            # 开商店原子(op 函数与独立壳同名登记)
     'CwOpCloseShop',           # 关商店原子
+    'CwFlowStrategy',          # 商店序列驱动器·基类缺省(投影直写,波 4)
+    'MandateV1Strategy',       # 商店序列驱动器·mandate 覆写(投影直写,波 4)
     'CwLoop',                  # 外循环(开局链分支标识写点,obs 族 ①)
     'EffectLedgerBridge',      # 效果账本→字段桥(容量投影/增额授予;v3.2-G4
                                # §3.2.1 登记类属补项;R5 W1 起显式签名)
@@ -1182,7 +1184,15 @@ def bench_slots_to_legacy(view: BenchView) -> list:
     out: list = []
     for i, slot in enumerate(view.slots):
         u = getattr(slot, 'unit', None)
-        if getattr(slot, 'kind', 'empty') != 'unit' or u is None:
+        kind = getattr(slot, 'kind', 'empty')
+        if kind == 'supply_box':
+            # 占位件往返重建(与 bench_view_of_slots 的 supply_box 映射
+            # 配对):is_item_slot=True 的 BenchChar,守卫线(占位恒拒)
+            # 与部署装配点识别线消费同旗标。
+            out.append(BenchChar(slot=i + 1, char_id='', star=1,
+                                 is_item_slot=True))
+            continue
+        if kind != 'unit' or u is None:
             out.append(None)
             continue
         ch = get_char(str(u.char_id or ''))
@@ -1304,6 +1314,12 @@ def bench_view_of_slots(bench_list: list) -> BenchView:
     for i, bc in enumerate(bench_list or []):
         if bc is None:
             slots.append(BenchSlot(kind='empty'))
+        elif bool(getattr(bc, 'is_item_slot', False)):
+            # 占位件(补给箱/秘典等,``BenchChar.is_item_slot`` 旗标,sell_gate
+            # 占位恒拒防线与部署装配点识别线共用)→ supply_box kind 往返
+            # 保旗标——恒映射 'unit' 会让占位件在容器决策面退化成 '' 1★
+            # 可卖燃料(腾席守卫失守,波 4 落码审 A 组探针实证)。
+            slots.append(BenchSlot(kind='supply_box'))
         else:
             slots.append(BenchSlot(kind='unit', unit=Unit(
                 char_id=str(getattr(bc, 'char_id', '') or ''),
@@ -1582,6 +1598,66 @@ def apply_shop_action_logic(bs: BoardState, action: Any, *,
         return
     # 集外动作型:零写(登记面申报,等观察覆盖;禁扩静默)。
     return
+
+def apply_shop_merge_leg(bs: BoardState, action: Any, *,
+                         sig: ChannelSig) -> None:
+    """BuyCard 合成升星腿(设计件 §2.1-2「升星腿维持既有口」的驱动器侧
+    共享形态):scratch 槽表跑 ``mutate_bench_deployed``(kernel 落位/
+    合成单一源,与 simulate 同源)→ 同名最高星抬升(= 既有执行侧
+    ``detect_merge_upgrade`` 判据同式)时整表 write_logic 覆盖。
+
+    消费位 = 商店序列驱动器(flow 基类/mandate 覆写;sim/回放同路)。
+    执行落地门(生产 visit)在过渡期保留 ``detect_merge_upgrade(cur,
+    proj)`` 既有形态,黑板槽退役后与本口合流。调用序 = 先
+    :func:`apply_shop_action_logic`(简单落位)后本口(整表覆盖,后写赢)
+    ——两写合计对 simulate 输出等价(锁 M1)。
+    """
+    _validate_sig(sig, ('logic_action',))
+    from sr_od.application.currency_war.kernel.cw_state import (
+        BuyCard,
+        snapshot_copy,
+    )
+    if not isinstance(action, BuyCard):
+        return
+    bench_slots = bench_slots_of(bs)
+    deployed = deployed_slots_of(bs)
+    scratch_bench = [snapshot_copy(b) if b is not None else None
+                     for b in bench_slots]
+    scratch_dep = [snapshot_copy(d) if d is not None else None
+                   for d in deployed]
+
+    def _max_star(tbl) -> dict:
+        best: dict = {}
+        for c in tbl:
+            if c is not None and (getattr(c, 'char_id', '') or ''):
+                s = int(getattr(c, 'star', 1) or 1)
+                cid = str(c.char_id)
+                if s > best.get(cid, 0):
+                    best[cid] = s
+        return best
+
+    before = _max_star(list(scratch_bench) + list(scratch_dep))
+    mutate_bench_deployed_local(scratch_bench, scratch_dep, action)
+    after = _max_star(list(scratch_bench) + list(scratch_dep))
+    if any(after.get(cid, 0) > s for cid, s in before.items()):
+        bs.write_logic(bs.bench, bench_view_of_slots(scratch_bench),
+                       produced_by='BuyCard',
+                       evidence='proj_merge_upgrade',
+                       sig=ChannelSig(
+                           family='logic_action', actor=sig.actor,
+                           mode='compute',
+                           group_id=(f'act:{sig.actor}@'
+                                     f'{bs.write_seq + 1}')))
+
+
+def mutate_bench_deployed_local(bench, deployed, action):
+    """``cw_state.mutate_bench_deployed`` 惰性转发(本模块与 cw_state 的
+    运行时依赖纪律 = 函数级懒 import)。"""
+    from sr_od.application.currency_war.kernel.cw_state import (
+        mutate_bench_deployed,
+    )
+    mutate_bench_deployed(bench, deployed, action)
+
 
 # ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
 
@@ -2680,6 +2756,10 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
     for i, bc in enumerate(st.bench):
         if bc is None:
             bench_slots.append(BenchSlot(kind='empty'))
+        elif bool(getattr(bc, 'is_item_slot', False)):
+            # 占位件旗标往返(同 bench_view_of_slots 口径;sim 假环境经
+            # 观察面直喂占位件,恒 'unit' 映射会让腾席守卫在容器面失守)
+            bench_slots.append(BenchSlot(kind='supply_box'))
         else:
             bench_slots.append(BenchSlot(
                 kind='unit',

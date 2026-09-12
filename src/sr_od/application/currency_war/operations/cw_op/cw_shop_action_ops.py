@@ -38,6 +38,10 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    ChannelSig,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
@@ -127,14 +131,34 @@ class ShopExecEnv:
     level_btn: Point
     refresh_btn: Point
     ledger: ShopVisitLedger
-    state: GameState         # 当前期望态(执行时点读;满栏 k 计等消费)
+    # 当前期望态(W6 波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
+    # board_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
+    state: BoardState
+
+
+def _container_cards(state: BoardState) -> list:
+    """商店 payload 牌列表(容器;离屏 None = 空列表)。"""
+    payload = state.shop.value
+    return list(payload.cards) if payload is not None else []
+
+
+def _plane_of(state: BoardState) -> int:
+    from sr_od.application.currency_war.kernel.cw_board_state import plane_of
+    return plane_of(state)
+
+
+def _round_of(state: BoardState) -> int:
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        round_num_of,
+    )
+    return round_num_of(state)
 
 
 # ---------------------------------------------------------------------------
 # 守卫断言(决策 9:防 bug 路栏,非法 = 响亮暴露)
 # ---------------------------------------------------------------------------
 
-def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
+def guard_proposal_vs_expected(action: Action, state: BoardState) -> None:
     """proposal-vs-expected 断言(ADR-0517 §守卫两属 (i))。
 
     提案动作引用的对象在期望态中确实存在且未被消费——防策略器算术 bug
@@ -146,23 +170,29 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     本断言不受豁免——提案时点牌仍在店中,名恒可对)。
     """
     if isinstance(action, BuyCard):
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            bench_slots_of,
+        )
         _name = action.card.name or ''
+        _payload = state.shop.value
         if _name and not any((c.name or '') == _name
-                             for c in (state.shop or [])):
+                             for c in (_payload.cards
+                                       if _payload is not None else [])):
             raise AssertionError(
                 f'[cw-shop][guard] BuyCard 提案牌不在期望态店中:'
                 f'name={_name!r} cost={action.card.cost} '
-                f'shop={[(c.name or "") for c in (state.shop or [])]}'
+                f'shop={[(c.name or "") for c in (_payload.cards if _payload is not None else [])]}'
                 '(策略器 bug:跨代际/已消费提案,ADR-0517 决策 9)')
         return
     if isinstance(action, SellBench):
-        tgt = (state.bench[action.bench_idx]
-               if 0 <= action.bench_idx < len(state.bench) else None)
+        _slots = bench_slots_of(state)
+        tgt = (_slots[action.bench_idx]
+               if 0 <= action.bench_idx < len(_slots) else None)
         if tgt is None:
             raise AssertionError(
                 f'[cw-shop][guard] SellBench 提案指向空槽/越界:'
                 f'bench_idx={action.bench_idx} expect={action.expect!r} '
-                f'bench={[b.char_id if b else None for b in state.bench]}'
+                f'bench={[b.char_id if b else None for b in _slots]}'
                 '(策略器 bug:期望态无此对象,ADR-0517 决策 9)')
         if action.expect and (tgt.char_id or '') != action.expect:
             raise AssertionError(
@@ -179,7 +209,7 @@ def _bench_identity_signature(
             for b in (table or []) if b is not None]
 
 
-def _reseed_bench_layout(state: GameState,
+def _reseed_bench_layout(state: BoardState,
                          tracked: list[BenchChar | None]) -> bool:
     """投影 bench 布局按执行侧 tracked 槽位表就地回写(布局单一源重播种:
     churn 后 tracked/实况是重排侧真值,投影副本跟随)。
@@ -208,11 +238,25 @@ def _reseed_bench_layout(state: GameState,
                 gap_large=True,
                 note='重播种槽号健康门(占用表槽号唯一性与值域校验)')
         return False
-    state.bench[:] = list(tracked)
+    # 写目标 = 容器 bench 域(W6 波 4,设计件 §2.3:重播种写点 =
+    # write_logic(bs.bench, tracked 重建 BenchView),投影域集例外申报
+    # 面;原「投影帧就地回写」随黑板槽退役消亡)。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        bench_view_of_slots,
+    )
+    assert isinstance(state, BoardState)   # 容器形态唯一(波 4 起)
+    state.write_logic(state.bench, bench_view_of_slots(list(tracked)),
+                      produced_by='reseed_bench_layout',
+                      sig=ChannelSig(
+                          family='logic_action', actor='CwOpBuyCards',
+                          mode='compute',
+                          group_id=(f'act:CwOpBuyCards@'
+                                    f'{state.write_seq + 1}')))
     return True
 
 
-def reseed_bench_if_layout_stale(state: GameState, session,
+def reseed_bench_if_layout_stale(state: BoardState, session,
                                  seed_epoch: int) -> str:
     """S3 布局代次检差三步的封装(ADR-0646;单动作循环每动作消费前调用)。
 
@@ -287,7 +331,10 @@ def guard_expected_vs_tracked(state: GameState, session,
     # 域「slot 与读序同帧同源」是两套命题,分界见 ADR-0646)。
     tracked = pad_bench(deepcopy(
         getattr(exec_state_of(session), 'tracked_bench_chars', None) or []))
-    expect_sig = _bench_identity_signature(state.bench)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        bench_slots_of,
+    )
+    expect_sig = _bench_identity_signature(bench_slots_of(state))
     tracked_sig = _bench_identity_signature(tracked)
     if expect_sig != tracked_sig:
         from collections import Counter as _Counter
@@ -377,9 +424,30 @@ class BuyCardOp(ShopActionOp):
     def execute(self, env: ShopExecEnv) -> bool:
         from one_dragon.base.geometry.point import Point as _Pt
         action: BuyCard = self.action
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            bench_slots_of,
+        )
         op, match, ledger, state = env.op, env.match, env.ledger, env.state
-        pt = (min(env.click_pts, key=lambda p: abs(p.x - action.card.x))
-              if env.click_pts else _Pt(action.card.x, 288))
+        # 点击定位 = 所购牌在店 payload 的槽位下标 → screen_info
+        # 「商店牌-N」现取(W6 波 4 双 ShopCard 归一:容器牌无 x 坐标,
+        # 坐标单一真相源 = screen_info,设计件 §2.5-5)。身份匹配优先
+        # 同一性(action 由决策核自 payload 产出),退化按 (name, star)。
+        _slot_idx = None
+        _payload = state.shop.value
+        _cards = list(_payload.cards) if _payload is not None else []
+        for _i, _c in enumerate(_cards):
+            if _c is action.card:
+                _slot_idx = _i
+                break
+        if _slot_idx is None:
+            for _i, _c in enumerate(_cards):
+                if (_c.name or '') == (action.card.name or '') \
+                        and int(_c.star or 1) == int(action.card.star or 1):
+                    _slot_idx = _i
+                    break
+        pt = (env.click_pts[_slot_idx]
+              if _slot_idx is not None and _slot_idx < len(env.click_pts)
+              else (_Pt(0, 288) if not env.click_pts else env.click_pts[0]))
         # 买前裁该片矩形拷贝(`w536_merge_expect/`:「买了什么」的像素级
         # 证据,随期望态带到对账点;一帧原则,必须 copy 防帧缓存覆写)。
         _card_crop = None
@@ -463,18 +531,22 @@ class BuyCardOp(ShopActionOp):
         # 进 tracked mutate,满栏完成合成的买入在 tracked 侧同样合成腾槽
         # ——旧丢件行为使 tracked 漏记合成,同 visit 下一动作守卫对拍
         # 误炸;2026-09-09 05:52 运行局双响事故)。
+        _payload_cards = (state.shop.value.cards
+                          if state.shop.value is not None else [])
         mutate_bench_deployed(exec_state_of(match.session).tracked_bench_chars,
                               exec_state_of(match.session).tracked_deployed,
-                              action, shop=env.state.shop)
+                              action, shop=_payload_cards)
         if action.card.name:
             _cnt = 1
-            if bench_occupied(state.bench) >= BENCH_CAPACITY:
+            if bench_occupied(bench_slots_of(state)) >= BENCH_CAPACITY:
                 # 满栏例外(merge_mechanics §2.5 方案 A):一击多张,张数
                 # 单一源 = merge_buy_k(禁执行侧重算);金账无折扣 = 总价
                 # k×单价,执行账补差 (k−1)×单价。
                 _cnt = max(1, merge_buy_k(
-                    action.card.name, action.card.star or 1, state.bench,
-                    exec_state_of(match.session).tracked_deployed, state.shop))
+                    action.card.name, action.card.star or 1,
+                    bench_slots_of(state),
+                    exec_state_of(match.session).tracked_deployed,
+                    _payload_cards))
                 ledger.spend_executed += (action.card.cost or 0) * (_cnt - 1)
             from sr_od.application.currency_war.kernel.cw_prep_expect import (
                 BuyPurchase,
@@ -515,9 +587,13 @@ class SellBenchOp(ShopActionOp):
     def execute(self, env: ShopExecEnv) -> bool:
         action: SellBench = self.action
         op, match, ledger = env.op, env.match, env.ledger
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            bench_slots_of,
+        )
         state = env.state
-        _expected = (state.bench[action.bench_idx]
-                     if 0 <= action.bench_idx < len(state.bench) else None)
+        _slots = bench_slots_of(state)
+        _expected = (_slots[action.bench_idx]
+                     if 0 <= action.bench_idx < len(_slots) else None)
         _expected_name = (_expected.char_id if _expected is not None else None)
         # (卖出前 gold 基数读数 _gold_before 已随 sell_income 外生行退役删除
         #  ——删除波 1;卖牌实收回金 = 收入账 total_sell_income(计划值)。)
@@ -593,9 +669,13 @@ class RefreshShopOp(ShopActionOp):
         _refresh_expect = None
         _reconcile = None
         try:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                gold_of,
+            )
             if ledger.refresh_first_action:
-                _pre_gold = state.gold if state.gold > 0 else None
-                _pre_shop_names = [c.name for c in state.shop if c.name]
+                _pre_gold = gold_of(state) if gold_of(state) > 0 else None
+                _pre_shop_names = [c.name for c in _container_cards(state)
+                                   if c.name]
             else:
                 _pre_shot = op.screenshot()
                 _pre_gold = _buy_cards_mod.read_gold_opt(op.ctx, _pre_shot)
@@ -605,8 +685,8 @@ class RefreshShopOp(ShopActionOp):
                                    if c.name]
             _refresh_expect = build_refresh_expect(
                 _pre_gold, REFRESH_COST_BASE,
-                [(c.name, c.star) for c in state.shop],
-                state.plane, state.round_num)
+                [(c.name, c.star) for c in _container_cards(state)],
+                _plane_of(state), _round_of(state))
             _reconcile = refresh_reconcile_mismatches
         except Exception:   # noqa: BLE001  best-effort 不阻塞买牌
             _refresh_expect = None
@@ -676,7 +756,7 @@ class RefreshShopOp(ShopActionOp):
                     observed=('刷新后5牌与刷前全同(点击落空/费金照扣未刷/'
                               f'动画误读):'
                               f'{sorted(c.name for c in _new_shop)}'),
-                    plane=state.plane, round_num=state.round_num,
+                    plane=_plane_of(state), round_num=_round_of(state),
                     verdict='留证-刷新未生效嫌疑(费金照扣牌面未变)',
                     shot=_ineff_shot,
                     reader_source='refresh_set_compare',
@@ -709,7 +789,7 @@ class RefreshShopOp(ShopActionOp):
                         expected=(f'{_m["domain"]}/{_m["slot"]}: '
                                   f'{_m["expected"]}'),
                         observed=_m['observed'],
-                        plane=state.plane, round_num=state.round_num,
+                        plane=_plane_of(state), round_num=_round_of(state),
                         verdict='留证-刷新期望不符(零决策)',
                         reader_source='refresh_expect_reconcile',
                         note='期望三输入波前现读,None 跳过;'
@@ -736,7 +816,7 @@ def _record_free_refresh_proc(op, state: GameState, ledger: ShopVisitLedger,
     _flag_p.write_text(
         'FREE-REFRESH-PROC: 免费刷新实机正证据(非停机,bot 照常跑)\n'
         f'run={_cw_tel.current_run_id()} '
-        f'plane={state.plane} round={state.round_num} '
+        f'plane={_plane_of(state)} round={_round_of(state)} '
         f'wave={ledger.total_refresh} ts={_dt.now().isoformat(timespec="seconds")}\n'
         f'前后牌面: {sorted(pre_names or [])} -> '
         f'{sorted(c.name for c in new_shop)}\n'

@@ -961,8 +961,13 @@ def _reconcile_posture_authorization(session: StrategySession,
              if d is not None], cap):
         reason = 'arm1_board_not_full'
     else:
-        clicks = clicks_to_next_level(state)
-        cost = xp_click_cost(state)
+        # 成本计算 = 容器(W6 波 4 接缝族切容器帧后帧形态不再可喂;
+        # level/xp/level_up_cost 与本帧同源=观察漏斗写端,读容器单例)
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+        )
+        clicks = clicks_to_next_level(board_state_of(session))
+        cost = xp_click_cost(board_state_of(session))
         if not levelup.spend_unified(clicks, state.gold, cost):
             reason = 'spend_unified_batch_unaffordable'
         elif state.gold < clicks * cost:

@@ -1284,12 +1284,13 @@ def p2_supply_horizon(bs: BoardState,
     """
     reg = registry or DEFAULT_REGISTRY
     plane_left = plane_remaining_nodes(bs, session)
-    # hp 决策消费点(ADR-0583 §2.4 消费同门「上游门后值传递」支):旧帧
-    # hp = 门后消费值(上游 adapter 施门间接保证);过渡窗(桥喂入)该位
-    # 原样承载旧门后帧值,行为等价。⚠️ 挂账:波4 黑板容器直喂后本读点
-    # 须改经政策层读口 decision_hp(hp施门下沉kernel政策层设计 §2.4,
-    # 波2 产物)——已列波4 批首 grep 复核清单(T-96 报告 §5 申报)。
-    hp = int(bs.hp.value or 0)
+    # hp 决策消费点统一经政策层读口(挂账兑现:原「上游门后值传递」
+    # 过渡支随 W6 波 4 改经 decision_hp,hp施门下沉kernel政策层设计
+    # §2.4/§2.3;容器 hp = 门前真值,门在此消费点显式施)。
+    from sr_od.application.currency_war.kernel.cw_hp_policy import (
+        decision_hp,
+    )
+    hp = int(decision_hp(bs, session) or 0)
     blood_rounds = math.ceil(hp / float(reg.vd_p2_loss)) if hp > 0 else 0
     return min(plane_left, blood_rounds)
 
@@ -1457,13 +1458,16 @@ LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
 
 
 def _near_death_band(bs: BoardState,
-                     registry: DecisionV2Registry | None = None) -> bool:
+                     registry: DecisionV2Registry | None = None,
+                     session: StrategySession | None = None) -> bool:
     """濒死带观测判定(零新参数):0 < hp ≤ ``vd_p2_loss``,即血预算
     轮数 ⌈hp/vd_p2_loss⌉ == 1——与 ``p2_supply_horizon`` 血预算支同式,
     只辖观测分键(设计稿 §2.3 观测件;授权面出辖 §12-7 并案批)。"""
-    # hp 决策消费点:同 p2_supply_horizon 读法声明(上游门后值传递支;
-    # 波4 黑板直喂后随该挂账一并改经政策层读口 decision_hp)。
-    hp = int(bs.hp.value or 0)
+    # hp 决策消费点统一经政策层读口(挂账兑现,同 p2_supply_horizon)。
+    from sr_od.application.currency_war.kernel.cw_hp_policy import (
+        decision_hp,
+    )
+    hp = int(decision_hp(bs, session) or 0)
     if hp <= 0:
         return False
     return math.ceil(hp / float((registry or DEFAULT_REGISTRY).vd_p2_loss)) == 1
@@ -1739,6 +1743,9 @@ def update_intention(bs: BoardState, ist: IntentionState,
                         bs, ist, session, _reg_f, visible,
                         exclude=ist.locked_comp)
                     if alt is not None:
+                        from sr_od.application.currency_war.kernel.cw_hp_policy import (
+                            decision_hp as _decision_hp_disc,
+                        )
                         alt_name, g_alt = alt
                         _h = p2_supply_horizon(bs, session, _reg_f)
                         ist.phase = 'unlocked'
@@ -1753,7 +1760,7 @@ def update_intention(bs: BoardState, ist: IntentionState,
                             'g_alt': round(g_alt, 4),
                             'eps': _reg_f.revoke_miss_tolerance_eps,
                             'h_eff': _h,
-                            'hp': int(bs.hp.value or 0),  # 读法声明同 p2_supply_horizon(上游门后值传递支)
+                            'hp': int(_decision_hp_disc() or 0),  # 读法声明同 p2_supply_horizon(政策层读口)
                             'member_drought': track.member_drought,
                         }
                         ist.last_event = (
@@ -1813,7 +1820,7 @@ def update_intention(bs: BoardState, ist: IntentionState,
             # 预算支同式;G 数值分布不入计数容器,走既有 revoke_evidence
             # 遥测面)。授权设计(濒死换向豁免)出辖设计稿 §12-7 并案批,
             # fail-closed 前行为零变更。
-            _nd = _near_death_band(bs, _reg_f2)
+            _nd = _near_death_band(bs, _reg_f2, session)
             if _nd:
                 _bump_obs(session, 'neardeath_direction_obs_frame')
             sigs = [s for s in sigs
@@ -1977,7 +1984,7 @@ def update_intention(bs: BoardState, ist: IntentionState,
         # = 「整局零锁定」摆动局可逐门分解断点(禁合并单键)。
         if _p2_handoff:
             _bump_obs(session, 'p2_handoff_frame')
-            if _near_death_band(bs, registry):
+            if _near_death_band(bs, registry, session):
                 _bump_obs(session, 'neardeath_direction_obs_handoff_frame')
         _reg_h = registry or DEFAULT_REGISTRY
         if _p2_handoff and ist.p1_pair_frozen_obs:
@@ -2020,7 +2027,7 @@ def update_intention(bs: BoardState, ist: IntentionState,
             # G7 观测分键:候选空帧——unlocked 帧零候选 ⇒ handoff_lock
             # 零发射(「整局零锁定」摆动的最直接断点;设计稿 §6)。
             _bump_obs(session, 'p2_handoff_cand_empty')
-            if _near_death_band(bs, _reg_h):
+            if _near_death_band(bs, _reg_h, session):
                 _bump_obs(session, 'neardeath_direction_obs_handoff_empty')
 
     # 锁定率帧计数(设计稿 §6「锁定率入批统计披露」;分母 = 意向驱动帧,

@@ -1004,12 +1004,13 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
     「本轮已买」半边的消费面补全——该半边自 ADR-0530 起存活于本载体,
     读面此前仅 deploy 侧换出守卫,读源定谳考古修正见 ADR-0611 §3-1)。
 
-    读端自治(fail-closed 语义,ADR-0611):相位 (plane, round_num) 从
-    session 黑板帧自行解析(last_state 优先——生产 prep/shop 两域
-    逐帧写点齐备;shop_state_frame 兜底——sim/replay 驱动器写者,
-    写者白名单见 cw_strategy_session 字段注),不消费消费位显式传轮
-    ——``current_round`` 漏接线帧不再静默放行(对 V2-09 在 L1 硬面
-    的显式翻转;v1 缺口 C:漏接线静默裸奔,纪律覆盖改结构保证)。
+    读端自治(fail-closed 语义,ADR-0611):相位 (plane, round_num) 自
+    session 容器 node 读口解析(W6 波 4 黑板容器化:原 last_state 优先/
+    shop_state_frame 兜底的双槽解析随黑板槽退役改容器直读——登记相位
+    写端 ``record_fresh_buy._fresh_phase`` 本就取容器读口,读端同源消
+    过渡期双源窗),不消费消费位显式传轮——``current_round`` 漏接线帧
+    不再静默放行(对 V2-09 在 L1 硬面的显式翻转;v1 缺口 C:漏接线
+    静默裸奔,纪律覆盖改结构保证)。
 
     - 黑板帧可得:常规键对读(相位失配 = 空集,与 ``fresh_buys_of``
       同形态,轮界自动过期);
@@ -1025,16 +1026,19 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
     names = reg.get('names')
     if not isinstance(names, set):
         return frozenset()
-    for attr in ('last_state', 'shop_state_frame'):
-        frame = getattr(session, attr, None)
-        if frame is None:
-            continue
-        phase = (getattr(frame, 'plane', None),
-                 getattr(frame, 'round_num', 1))
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_of,
+        plane_of,
+        round_num_of,
+    )
+    _bs = board_state_of(session)
+    node = _bs.node.value
+    if node is not None:
+        phase = (plane_of(_bs), round_num_of(_bs))
         if reg.get('phase') != phase:
             return frozenset()   # 相位失配 = 跨轮,整体作废(零销账)
         return frozenset(names)
-    # 黑板帧不可得:fail-closed 排除当前记录全集(方向安全,上界单轮)
+    # 节点未定帧(开局前):fail-closed 排除当前记录全集(方向安全,上界单轮)
     return frozenset(names)
 
 

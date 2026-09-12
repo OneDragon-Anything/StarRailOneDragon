@@ -102,8 +102,14 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
             # P86:session/registry 透传甲臂 G 门(强锁门逐字需要 plane
             # 真值视界与当帧注册表 ε;落地审 F-2 两域禁分叉);投影失败帧
             # 走 hoard_readable=False 保守域,同 D1 面。
-            # W6 波3 贯通:hoard_target_set 已切容器签名,帧经过渡桥装箱。
-            ht = hoard_target_set(board_state_bridge(state), ist, session=session,
+            # W6 波4:容器输入直读(store 链 adapter 视图仍为帧形态时
+            # 经桥装箱——双形态归一)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                BoardState as _BS,
+            )
+            _bs_in = state if isinstance(state, _BS) \
+                else board_state_bridge(state)
+            ht = hoard_target_set(_bs_in, ist, session=session,
                                   registry=registry)
             hoard = frozenset(ht.char_targets) | frozenset(ht.equip_targets)
         except Exception:   # noqa: BLE001  投影失败显式暴露(D1):不再静默退空集
@@ -150,16 +156,20 @@ def _disclose_budget(state: Any, session: StrategySession,
       当轮义务来源」两契约对齐(F5 裁决二选一之①:reason 并入键戳
       清零块,杜绝跨轮陈读);不复用 v3_release_round(W332b 旧轮语义)。
     """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        gold_of,
+        plane_of,
+        round_num_of,
+    )
     st = state_of(session)
-    key = (int(getattr(state, 'plane', 0) or 0),
-           int(getattr(state, 'round_num', 0) or 0))
+    key = (plane_of(state), round_num_of(state))
     if st.v3_disclosure_key != key:
         st.v3_release_spent = 0
         st.v3_release_reason = ''
         st.v3_disclosure_key = key
     st.v3_reserve_cap = int(budget.reserve_cap)
     st.v3_reserve_overflow = max(
-        0, int(getattr(state, 'gold', 0) or 0) - int(budget.reserve_cap))
+        0, gold_of(state) - int(budget.reserve_cap))
     st.v3_release_budget = int(budget.obligation)
 
 
@@ -187,16 +197,22 @@ def _budget(state: Any, session: StrategySession,
     # ADR-0598 息帽死链修复随批接线:旧 registry.interest_cap×10 不随
     # 持卡语境动,买断制囤金经预算投影面部分存活)。
     floor = saturation_line(cap_resolved_of_session(session))
+    # 接缝族已切容器签名(W6 波 4):预算投影读容器单例(店开帧 gold
+    # 救援经喂入口写容器,披露面随之取真值);_disclose 的帧轴读同源。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_of,
+    )
+    _bs = board_state_of(session)
     budget = BudgetView(
         # P6 注入单源(W636 A):BudgetView 各字段消费同一 registry 实例,
         # 禁混用 state_of(session).v3_registry 死通道 / DEFAULT 缺省表。
         interest_floor=floor,
-        reserve_cap=reserve_cap(state, session),
-        obligation=obligation(state, session, registry),
-        schedule=schedule_upgrade(state, session, registry),
-        ev_auth=refresh_ev_budget(state, session, registry),
+        reserve_cap=reserve_cap(_bs, session),
+        obligation=obligation(_bs, session, registry),
+        schedule=schedule_upgrade(_bs, session, registry),
+        ev_auth=refresh_ev_budget(_bs, session, registry),
     )
-    _disclose_budget(state, session, budget)
+    _disclose_budget(_bs, session, budget)
     return budget
 
 

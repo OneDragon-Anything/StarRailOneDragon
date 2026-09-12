@@ -150,10 +150,10 @@ class CwScreenMegastar(CwScreenOpBase):
             if match is not None and options:
                 # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读;
                 # overlay 时用上次备战快照(语义同旧,值源切 BoardState)。
-                from sr_od.application.currency_war.kernel.cw_bs_view import (
-                    strategy_input_state,
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
                 )
-                _state = strategy_input_state(match.session)
+                _state = board_state_of(match.session)
                 _cfg = CurrencyWarConfig(self.ctx.current_instance_idx)
                 pick = match.strategy.decide_megastar(options, _state, match.session, _cfg)
                 if 0 <= pick.idx < len(options):

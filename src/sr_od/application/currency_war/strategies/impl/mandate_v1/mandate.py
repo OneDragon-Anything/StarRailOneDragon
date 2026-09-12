@@ -245,9 +245,34 @@ def check_irreversible(name: str, k_members: tuple[str, ...]) -> tuple[bool, str
 
 # ===== M4 判据(燃料件支配卖出;P41 零参数,mandate 邻位,R2-2)=====
 
+def _phase_key(state) -> tuple:
+    """(plane, round_num) 相位键双形态读(W6 波 4:商店线传容器 bs,
+    prep 链/存量测试传帧;GameState 支随波 5 last_state 链退役消亡)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        plane_of,
+        round_num_of,
+    )
+    if isinstance(state, BoardState):
+        return (plane_of(state), round_num_of(state))
+    return (getattr(state, 'plane', None),
+            getattr(state, 'round_num', 1))
+
+
+def _deployed_of(state) -> list:
+    """deployed 槽表双形态读(容器=deployed_slots_of 读口;帧=属性直读)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        deployed_slots_of,
+    )
+    if isinstance(state, BoardState):
+        return deployed_slots_of(state)
+    return list(getattr(state, 'deployed', None) or [])
+
+
 def fuel_sell_candidates(bench: list[BenchChar],
                          k_members: tuple[str, ...],
-                         state: GameState | None = None,
+                         state: object | None = None,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
                          defer_names: frozenset[str] | set[str] = frozenset(),
@@ -317,10 +342,9 @@ def fuel_sell_candidates(bench: list[BenchChar],
     候选」诚实停摆路径(m2_retry_exhausted/bench_full/{prefix}_no_fuel)。
     state 缺读(None)= fail-closed 拒(资格判据禁缺读放行)。
     """
-    if empty_board_sell_blocked(getattr(state, 'deployed', None),
-                                counters=counters):
+    _deployed = _deployed_of(state)
+    if empty_board_sell_blocked(_deployed, counters=counters):
         return []
-    _deployed = list(getattr(state, 'deployed', None) or [])
     out = []
     for b in bench:
         # 占位件恒拒(资格物理门,先于其余资格门短路):占席物品不可卖、
@@ -420,8 +444,7 @@ def record_round_sold(session, state, name: str) -> None:
     if not name:
         return
     reg = getattr(session, ROUND_SOLD_ATTR, None)
-    phase = (getattr(state, 'plane', None),
-             getattr(state, 'round_num', 1))
+    phase = _phase_key(state)
     if not isinstance(reg, dict) or reg.get('phase') != phase:
         reg = {'phase': phase, 'names': set()}
         setattr(session, ROUND_SOLD_ATTR, reg)
@@ -434,8 +457,7 @@ def round_sold_names(session, state) -> frozenset[str]:
     reg = getattr(session, ROUND_SOLD_ATTR, None)
     if not isinstance(reg, dict):
         return frozenset()
-    phase = (getattr(state, 'plane', None),
-             getattr(state, 'round_num', 1))
+    phase = _phase_key(state)
     if reg.get('phase') != phase:
         return frozenset()
     names = reg.get('names')
@@ -536,15 +558,29 @@ def swap_transition_narrow_frame(state: GameState | None,
         return False
     tgt = getattr(_ms, 'target_comp', None)
     fp: float | None = None
-    if tgt is not None:
-        from sr_od.application.currency_war.kernel.cw_board_state import (
-            board_state_bridge,
-        )
-        try:
-            fp = float(form_progress(tgt, board_state_bridge(state)))
-        except Exception:   # noqa: BLE001  成型度不可得 = 不收窄(保守侧)
-            fp = None
-    board_full = deployed_occupied(state.deployed) >= state.max_units()
+    # 双形态过渡(W6 波 4:商店线传容器 bs 直读;prep 链仍传帧经桥装箱)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        deployed_count_of,
+        max_units_of,
+    )
+    if isinstance(state, BoardState):
+        if tgt is not None:
+            try:
+                fp = float(form_progress(tgt, state))
+            except Exception:   # noqa: BLE001  成型度不可得 = 不收窄(保守侧)
+                fp = None
+        board_full = deployed_count_of(state) >= max_units_of(state)
+    else:
+        if tgt is not None:
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_bridge,
+            )
+            try:
+                fp = float(form_progress(tgt, board_state_bridge(state)))
+            except Exception:   # noqa: BLE001  成型度不可得 = 不收窄(保守侧)
+                fp = None
+        board_full = deployed_occupied(state.deployed) >= state.max_units()
     return _swap_transition_domain_of(
         SWAP_TRANSITION_ARM_ENABLED, locked, fp, board_full)
 
@@ -723,7 +759,7 @@ def shop_wanted_defer(session: StrategySession, state: GameState | None,
     """
     st = state_of(session)
     st.cw4_shop_wanted_pending = (
-        (getattr(state, 'plane', None), getattr(state, 'round_num', 1)),
+        _phase_key(state),   # 相位键双形态读(容器 bs / 帧,波 4 同上)
         'obligation',   # LAUNCH_CAUSES 闭集成员(单一源 = sell_gate)
         tuple(missing),
         tuple(in_shop_snapshot))
@@ -1417,9 +1453,14 @@ def run_mandate(frame: MandateFrame,
                 if levelup.lv9_stop(frame.level, _reg.level_max):
                     _count('l3_reject_level_cap')
                 else:
-                    clicks = clicks_to_next_level(
-                        _state_view(frame, session, state))
-                    cost = xp_click_cost(_state_view(frame, session, state))
+                    # 成本计算 = 容器(W6 波 4 接缝族切容器帧;
+                    # xp 现读透传修复(g_20260906_034515)由容器读天然承载
+                    # ——漏斗 level_up_cost/xp 观察写端与视图同源)
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        board_state_of,
+                    )
+                    clicks = clicks_to_next_level(board_state_of(session))
+                    cost = xp_click_cost(board_state_of(session))
                     if contracts.ensure_contract(
                             ('levelup', 'spend_unified'),
                             contracts.ContractCtx(gold=frame.gold), counters):

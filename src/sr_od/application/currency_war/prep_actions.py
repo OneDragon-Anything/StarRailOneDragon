@@ -1106,15 +1106,15 @@ class PrepActionExecutor:
         match = self._ctx.cw_match
         if match is not None:
             try:
-                # 策略输入单一源(kernel/cw_bs_view.strategy_input_state,
-                # 迁移批次二):与全 pick 族同款 BoardState 视图,禁回落
-                # last_state 直读——被删的 cw_screen_supply.pick_box_card
-                # 原本同款直读,迁移批已切,本执行器副本为最后一个未切点。
-                from sr_od.application.currency_war.kernel.cw_bs_view import (
-                    strategy_input_state,
+                # 决策输入 = session 容器单例(W6 波 4 取帧点改道容器直读,
+                # 与全 pick 族同款;decide_box_card 契约面已切 BoardState)。
+                # 禁回落 last_state 直读——被删的 cw_screen_supply.
+                # pick_box_card 原本同款直读,迁移批已切,直读 = 观察流旁路。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of,
                 )
                 idx = match.strategy.decide_box_card(
-                    [n for n, _ in names], strategy_input_state(match.session),
+                    [n for n, _ in names], board_state_of(match.session),
                     match.session, getattr(match, 'config', None))
                 if 0 <= idx < len(names):
                     return names[idx]
@@ -1315,14 +1315,19 @@ class PrepActionExecutor:
             _auth_clicks = blood_xp_full_clicks(before)
         else:
             # 金本位授权击数 = kernel 击数推导(§6.6 单击价/击数单一源):
-            # 优先 last_state 现值(xp 进度精确),缺席退权威表全量口径
-            #(blood_xp_full_clicks = ⌈need/4⌉ 同式,xp 结转忽略);满级
-            #(0 击)= 无购买对象,机械不发。
-            _st = getattr(session, 'last_state', None)
-            _gold_clicks = (clicks_to_next_level(_st) if _st is not None
-                            else blood_xp_full_clicks(before))
+            # 优先容器现值(W6 波 4 接缝族切容器帧;xp 进度精确),缺席退
+            # 权威表全量口径(blood_xp_full_clicks = ⌈need/4⌉ 同式,xp 结转
+            # 忽略);满级(0 击)= 无购买对象,机械不发。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                board_state_of as _bs_of_clicks,
+            )
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                level_of as _level_of_clicks,
+            )
+            _st = _bs_of_clicks(session)
+            _gold_clicks = clicks_to_next_level(_st)
             if _gold_clicks <= 0:
-                lv_now = getattr(_st, 'level', before) if _st is not None else before
+                lv_now = _level_of_clicks(_st)
                 return f'已满级(level {lv_now}),无购买对象', False
             _auth_clicks = min(_gold_clicks, PrepActionExecutor.LEVEL_MAX_CLICKS)
         btn = area_center(self._ctx, '备战标识-购买经验') or Point(296, 860)

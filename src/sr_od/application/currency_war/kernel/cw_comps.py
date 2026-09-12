@@ -2261,6 +2261,17 @@ def maybe_pivot(bs: BoardState, ctx: ScoreContext, config, target: Comp | None,
     # 信号路径绕过(危机豁免路径实证绕过过分散检查)。单一入口后调用侧的
     # 冷却门只是省算力优化,不再是守卫。
     _sess_inv = getattr(ctx, 'session', None)
+
+    def _committed_inv(_sess, _bs) -> bool:
+        """committed(非双轨期)派生读(单一源 = cw_intention
+        .committed_authority;原 ``bs.dual_track_phase`` 字段直读随容器
+        化退役——容器无此字段,getattr 恒 False = 方向层判定静默漂移
+        实位,T-96 验收承接②。函数级懒 import 防环:本模块与
+        cw_intention 互相消费)。"""
+        from sr_od.application.currency_war.kernel.cw_intention import (
+            committed_authority,
+        )
+        return committed_authority(_bs, _sess)
     _cd_inv = getattr(_sess_inv, 'pivot_cooldown_until', 0) if _sess_inv else 0
     if round_num_of(bs) <= _cd_inv:
         log.info('[cw-pivot] p=%s r=%s 冷却中(至r%s,不变量:两次pivot至少隔冷却轮,'
@@ -2321,7 +2332,7 @@ def maybe_pivot(bs: BoardState, ctx: ScoreContext, config, target: Comp | None,
         # hard 0-progress = 换个姿势死;
         # 且要求**与当前板共享阵营**(min reset:保命转线别推倒仅有的羁绊)。
         # 非双轨(已定型/已进 P2)保 fallback 原语义(有落点好过无)。
-        if getattr(bs, 'dual_track_phase', False):
+        if not _committed_inv(_sess_inv, bs):
             _board_factions = set(bs.board.value or {})
             easy = [c for c in _pool if c.form_difficulty == 'easy'
                     and _board_factions & set(c.factions)]
@@ -2399,7 +2410,7 @@ def maybe_pivot(bs: BoardState, ctx: ScoreContext, config, target: Comp | None,
             log.info('[cw-pivot] p=%s r=%s hp=%s target=%s 已commit → 锁定,跳过信号1(防振荡;best=%s 不转)',
                      plane_of(bs), round_num_of(bs), _hp,
                      target.name if target else 'None', best.name)
-        elif getattr(bs, 'dual_track_phase', False):
+        elif not _committed_inv(_sess_inv, bs):
             # 双轨期信号1/2 关(实机四线摇摆实证):未成型板上 comp_score 分差是噪声,
             # 每 1-4 轮 pivot 推倒重来 = P1 全输。target 由定型(CommitSignals)/drought/
             # 定义型augment(上方已处理)管;涌现分差不构成换线证据。
