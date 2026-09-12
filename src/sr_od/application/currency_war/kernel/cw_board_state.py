@@ -1382,6 +1382,207 @@ def apply_settlement_cover(bs: BoardState, *, hp_after: int | None,
         sig=_sig, note=note)
 
 
+# ============================================================ 商店动作投影直写
+# (波 4 黑板容器化;设计件 = changes/2026-09-11-unified-state/design/
+#  商店黑板容器化方案.md §2.1-2/§4-M1/M5)
+
+#: 投影公式语义源锁的登记面(设计件 §4-M5:直写域集/None 跳写清单/
+#: executed 回执字段集/支持动作集随本锁登记;未登记写点 = 缺陷,禁扩静默):
+#: - **域集封闭**(gold / bench / shop payload / xp 四域;CloseShop 的
+#:   leave_screen 与 reseed 的 bench write_logic 为同域通道形态);
+#: - **支持动作集** = BuyCard / SellBench / LevelUpShop(is-a LevelUp) /
+#:   RefreshShop / CloseShop(商店单动作循环在产动作面;fields.md §4.2
+#:   逐 op 行;SellDeployed/DeployMove/CompTransaction 不投影——等观察
+#:   覆盖,申报 = 商店 visit 在产动作集外);
+#: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold /
+#:   xp / 刷新费(paid=None 整动作跳写);
+#: - **executed 回执字段集** = bought_count(BuyCard 实购张数,满栏多买
+#:   k 执行期确定)/ levelup_clicks(LevelUpShop 实际击数)/ refresh_paid
+#:   (RefreshShop 实付刷新费,免费帧 0);回执缺字段 = 该动作本轮不投影。
+SHOP_PROJECTION_DOMAINS: tuple[str, ...] = (
+    'gold', 'bench', 'shop', 'xp')
+
+
+@dataclass(frozen=True)
+class ShopActionExecuted:
+    """商店动作执行落地门回执(:func:`apply_shop_action_logic` 形参)。
+
+    执行期决定量以落地门回执为准,禁按动作对象预估(设计件 §2.1-2):
+    BuyCard 满栏多买 k 张(LevelUp 满栏例外一击多张)与 LevelUpShop
+    实际击数(循环点击至 level+1)均由执行侧回执;缺字段(None)= 该
+    动作本轮不投影,等观察覆盖。
+    """
+
+    #: BuyCard 实购张数(满栏多买 k;单一源 = 执行侧 merge_buy_k 计数)
+    bought_count: int | None = None
+    #: LevelUpShop 实际击数(单动作形态恒 1;腾席链多击以回执为准)
+    levelup_clicks: int | None = None
+    #: RefreshShop 实付刷新费(免费帧 = 0 → gold 不写,fields.md §3.3.4)
+    refresh_paid: int | None = None
+
+
+def apply_shop_action_logic(bs: BoardState, action: Any, *,
+                            executed: ShopActionExecuted,
+                            produced_by: str, sig: ChannelSig) -> None:
+    """商店动作投影直写(逐动作执行落地门调用;语义单一源 = fields.md
+    §4.2 各 op 写入行,设计件《商店黑板容器化方案》§2.1-2/§4-M1/M5)。
+
+    逐域 write_logic(域集封闭 = :data:`SHOP_PROJECTION_DOMAINS`):
+
+    - **BuyCard** = gold −单价×实购张数 + bench 落位(简单腿)+ shop
+      payload −该张(k 张同身份)。合成升星面**不进本口**(设计件 §2.1-2:
+      升星腿维持既有 ``detect_merge_upgrade`` 整表直写先例,两写合计对
+      simulate 输出等价,锁 M1)——本口落位写须先于升星整表写(整表
+      覆盖语义,后写赢)。满栏且合成不可达 = 游戏拒买 no-op,与
+      simulate 一致零写(ADR-0283 兜底面)。payload 移除按 (name, star)
+      计数(k 张)——容器牌无 x 坐标(§2.5-5 坐标不入存储),与 simulate
+      的 x 槽位删除为同义多集操作(锁 M1 按 canonical 序对拍)。
+    - **SellBench** = bench −该牌 + gold +退款(退款锚 =
+      ``cw_state.sell_refund``,fields.md §4.2 SellBench 行;恒等式非
+      执行期决定量,无 executed 字段)。槽位空/越界 = 陈旧提案,守卫
+      ``guard_proposal_vs_expected`` 辖,本口零写。
+    - **LevelUpShop** = xp 按实际击数(``xp_apply_clicks`` 单一源:满级
+      封顶零推进)+ gold −击数×单击价(单价 = 动作对象决策期值)。
+      level 域**不在投影域集**(升档等观察覆盖,禁扩静默)。
+    - **RefreshShop** = gold −刷新费(paid=0 免费帧 −0/不写)+ 刷后
+      牌面等续段重观察(payload 不写)。
+    - **CloseShop** = ``leave_screen(bs.shop)``(结构离屏;离屏写渠道
+      = obs 族,内部按 sig.actor 转造 obs 签名)。
+
+    输入域 None 语义(域级独立跳写,禁缺省值参与计算):gold/xp/刷新费
+    任一为 None(未读)时该域跳过本轮直写、值留观察覆盖。集外动作型
+    (SellDeployed/DeployMove/CompTransaction 等)零写——等观察覆盖
+    (登记面 = :data:`SHOP_PROJECTION_DOMAINS` 注释,禁扩静默)。
+    """
+    _validate_sig(sig, ('logic_action',))
+    from sr_od.application.currency_war.kernel.cw_state import (
+        XP_TO_NEXT_LEVEL,
+        BenchChar,
+        BuyCard,
+        CloseShop,
+        LevelUp,
+        RefreshShop,
+        SellBench,
+        bench_char_cost,
+        bench_place,
+        card_cost,
+        merge_buy_completes,
+        sell_refund,
+        xp_apply_clicks,
+    )
+
+    def _w(target: Field, value: Any, evidence: str) -> None:
+        bs.write_logic(target, value, produced_by=produced_by,
+                       evidence=evidence, sig=sig)
+
+    # —— BuyCard ——
+    if isinstance(action, BuyCard):
+        card = action.card
+        k = executed.bought_count
+        if k is None:
+            return   # 回执缺字段:该动作本轮不投影(等观察覆盖)
+        k = max(1, int(k))
+        bench_slots = bench_slots_of(bs)
+        name = str(getattr(card, 'name', '') or '')
+        star = int(getattr(card, 'star', 1) or 1)
+        # 满栏且合成不可达 = 游戏拒买(simulate 同判 no-op,零写;
+        # 判据单一源 = merge_buy_completes,ADR-0283)。
+        has_free = any(b is None for b in bench_slots)
+        if not has_free:
+            _deployed = deployed_slots_of(bs)
+            _payload = bs.shop.value
+            _shop_view = (shop_cards_to_legacy(list(_payload.cards))
+                          if _payload is not None else [])
+            if not merge_buy_completes(name, star, bench_slots,
+                                       _deployed, _shop_view):
+                return
+        # gold −单价×k(None 域跳写)
+        g = bs.gold.value
+        if g is not None:
+            _w(bs.gold, int(g) - card_cost(card) * k, 'proj_buy_gold')
+        # shop payload −该张(k 张同 (name, star);离屏 None 跳写)
+        payload = bs.shop.value
+        if payload is not None:
+            kept: list[ShopCard] = []
+            _left = k
+            for c in payload.cards:
+                if _left > 0 and (c.name or '') == name \
+                        and int(c.star or 1) == star:
+                    _left -= 1
+                    continue
+                kept.append(c)
+            _w(bs.shop, ShopPayload(cards=kept,
+                                    refresh_probs=dict(payload.refresh_probs)),
+               'proj_buy_payload')
+        # bench 落位(简单腿;升星整表直写由执行侧既有口承接,须后写)
+        if has_free:
+            new_slots = list(bench_slots)
+            _bc = BenchChar(slot=0, char_id=name,
+                            faction=str(getattr(card, 'faction', '') or '?'),
+                            star=star)
+            if bench_place(new_slots, _bc) is not None:
+                _w(bs.bench, bench_view_of_slots(new_slots),
+                   'proj_buy_place')
+        return
+    # —— SellBench ——
+    if isinstance(action, SellBench):
+        idx = int(getattr(action, 'bench_idx', -1))
+        bench_slots = bench_slots_of(bs)
+        if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None:
+            return   # 陈旧提案(守卫辖),本口零写
+        sold = bench_slots[idx]
+        new_slots = list(bench_slots)
+        new_slots[idx] = None
+        _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
+        g = bs.gold.value
+        if g is not None:
+            refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
+                                 bench_char_cost(sold))
+            _w(bs.gold, int(g) + int(refund), 'proj_sell_refund')
+        return
+    # —— LevelUpShop(is-a LevelUp)——
+    if isinstance(action, LevelUp):
+        clicks = executed.levelup_clicks
+        if clicks is None:
+            return
+        clicks = max(0, int(clicks))
+        # 满级 lv10 购买无效(fields.md §4.2 LevelUp 行;simulate 同门:
+        # level>=10 零金零经验),与 simulate 逐位等价(锁 M1)。
+        if level_of(bs) >= 10:
+            return
+        g = bs.gold.value
+        if g is not None:
+            _w(bs.gold, int(g) - int(getattr(action, 'cost', 0) or 0) * clicks,
+               'proj_levelup_gold')
+        xp_v = bs.xp.value
+        if xp_v is not None:
+            _lvl = level_of(bs)
+            _new_lvl, _cur = xp_apply_clicks(_lvl, int(xp_v[0]), clicks)
+            _w(bs.xp, (_cur, XP_TO_NEXT_LEVEL.get(_new_lvl, _cur)),
+               'proj_levelup_xp')
+        return
+    # —— RefreshShop ——
+    if isinstance(action, RefreshShop):
+        paid = executed.refresh_paid
+        if paid is None:
+            return
+        paid = max(0, int(paid))
+        if paid > 0:
+            g = bs.gold.value
+            if g is not None:
+                _w(bs.gold, int(g) - paid, 'proj_refresh_gold')
+        # 刷后牌面 = 续段重观察(payload 不写;免费帧 gold 同不写)
+        return
+    # —— CloseShop(结构离屏;离屏渠道 = obs 族,actor 沿投影 sig)——
+    if isinstance(action, CloseShop):
+        if bs.shop.value is not None:
+            _off_sig = ChannelSig(family='obs', actor=sig.actor,
+                                  mode='read', group_id=sig.group_id)
+            bs.leave_screen(bs.shop, sig=_off_sig)
+        return
+    # 集外动作型:零写(登记面申报,等观察覆盖;禁扩静默)。
+    return
+
 # ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
 
 #: 局终行落盘事件监听槽(复盘触发器挂点;缺省 None = 关,与缺陷/流水 sink

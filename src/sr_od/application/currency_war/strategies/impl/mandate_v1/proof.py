@@ -466,7 +466,13 @@ def assemble_lock_frame(state: GameState, session: StrategySession,
     held = _held_counts(state)
     k_members = set(predicates.line_members(k))
     level = int(getattr(state, 'level', 1) or 1)
-    refresh_cost = int(getattr(state, 'shop_refresh_cost', 2) or 2)
+    # 刷新费缺省 = 建模基价常量单一源(SHOP_REFRESH_COST;原魔数 2 双写
+    # 收敛,budget.py 同族先例——数值恒同,禁字面量第二份)。
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        SHOP_REFRESH_COST as _SHOP_REFRESH_COST,
+    )
+    refresh_cost = int(getattr(state, 'shop_refresh_cost',
+                               _SHOP_REFRESH_COST) or _SHOP_REFRESH_COST)
     r_rem = r_remaining(session, int(getattr(state, 'plane', 1) or 1),
                         int(getattr(state, 'round_num', 1) or 1))
     trials = (0 if plan.exhausted

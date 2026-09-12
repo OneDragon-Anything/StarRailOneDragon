@@ -562,6 +562,43 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         _skip_guard = (isinstance(action, BuyCard)
                        and bench_occupied(_cur.bench) >= BENCH_CAPACITY)
         _proj = _aop.project(_cur)
+        # 商店动作投影直写·容器通道(波 4 黑板容器化步 1:投影直写接线,
+        # 设计件《商店黑板容器化方案》§2.4-1;黑板帧投影 _proj 同步保留
+        # = 读写双轨过渡,黑板槽仍供旧读者,步 2 读者切换后槽退役)。
+        # 写序申报:本口先写(含 bench 简单落位),下方升星整表直写后写
+        # 覆盖(后写赢)——两写合计对 simulate 输出等价(设计件 §4-M1)。
+        # 执行回执(设计件 §2.1-2):k = 执行侧实购张数(merge_buy_k 计数,
+        # ledger.buy_purchases 执行落地事实);LevelUpShop 单动作形态恒
+        # 1 击;非买/升动作无执行期决定量(空回执)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            ChannelSig as _ProjSig,
+        )
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            ShopActionExecuted as _ShopExecuted,
+        )
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            apply_shop_action_logic as _apply_shop_logic,
+        )
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of as _bs_of_proj,
+        )
+        _bs_proj = _bs_of_proj(match.session)
+        _executed = _ShopExecuted()
+        if isinstance(action, BuyCard):
+            _k = 1
+            if ledger.buy_purchases \
+                    and (ledger.buy_purchases[-1].name or '') \
+                    == (getattr(action.card, 'name', '') or ''):
+                _k = max(1, int(ledger.buy_purchases[-1].count or 1))
+            _executed = _ShopExecuted(bought_count=_k)
+        elif isinstance(action, LevelUp):
+            _executed = _ShopExecuted(levelup_clicks=1)
+        _apply_shop_logic(
+            _bs_proj, action, executed=_executed,
+            produced_by=type(action).__name__,
+            sig=_ProjSig(family='logic_action', actor='CwOpBuyCards',
+                         mode='compute',
+                         group_id=f'act:CwOpBuyCards@{_bs_proj.write_seq + 1}'))
         if isinstance(action, BuyCard) and _proj is not None:
             # 合成升星逻辑直写(§3.2.18 窟窿一修法 a;两态制 ADR-0651:
             # expect/confirm 两步废除,推算值直接写字段):BuyCard 投影
@@ -829,6 +866,25 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                          None, verdict=('采新-救援成功(首读假0,stylized漏)' if _gold_rescued is not None
                                         else '确认真0(4帧连读0)'),
                          source='shop_rescue')
+            # gold 救援喂入口写(波 4 黑板容器化,设计件《商店黑板容器化
+            # 方案》§2.4-4:gold 救援保留——识别质量机制非黑板拷入,结果
+            # 经既有观察喂入口写 bs.gold,禁静默丢失)。首读假 0 已由观察
+            # 漏斗 observe 落容器,救援值同渠道覆盖(观察赢,来源同级)。
+            if _gold_rescued is not None:
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    ChannelSig as _RescueSig,
+                )
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of as _bs_of_rescue,
+                )
+                _bs_rescue = _bs_of_rescue(match.session)
+                _bs_rescue.observe(
+                    _bs_rescue.gold, int(_gold_rescued),
+                    evidence='gold_rescue:shop_first_read_fake_zero',
+                    sig=_RescueSig(family='obs', actor='CwOpBuyCards',
+                                   mode='read',
+                                   group_id=(f'obs:CwOpBuyCards@'
+                                             f'{_bs_rescue.write_seq + 1}')))
         # 开店首读金快照(仅首段;救援后取值——救援值比假 0 更接近真值)
         if gold_open is None:
             gold_open = state.gold

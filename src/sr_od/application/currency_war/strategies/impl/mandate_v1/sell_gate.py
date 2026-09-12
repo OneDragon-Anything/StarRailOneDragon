@@ -864,9 +864,14 @@ def empty_board_sell_blocked(deployed: object, *,
 
     ``deployed`` = 上场槽位表(GameState.deployed 或任意可迭代表;None
     或占用数 0 均判拒——None = 缺读 fail-closed 拒,资格判据禁缺读
-    放行)。``counters`` None = 不计数(谓词纯判读形态,测试用)。
+    放行)。占用数单一源 = ``cw_state.deployed_occupied``(ADR-0392
+    占用数;原内联第二实现改委托,禁双源)。``counters`` None = 不计数
+    (谓词纯判读形态,测试用)。
     """
-    occupied = sum(1 for c in (deployed or ()) if c is not None)
+    from sr_od.application.currency_war.kernel.cw_state import (
+        deployed_occupied,
+    )
+    occupied = deployed_occupied(list(deployed or ()))
     if occupied > 0:
         return False
     if counters is not None:
