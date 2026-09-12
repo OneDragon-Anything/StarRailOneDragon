@@ -48,7 +48,8 @@ GameState、代码类名 **BoardState**(`kernel/cw_board_state.py:1096`)。旧 G
 **影子装配(缺省关)+D1 写入纪律锁**——前半保留、加粗部分按裁定转删除对象)/R1.1 守卫族扩员/
 R2 receipts 回执域+动作写点+D2/R1.2 派生规则②③腿+类型派生/R3.1+R3.2 判读面迁移(journal_query
 新读面+CLI `--source journal`+装配器 v12+宽容消费契约单一源)/R4 决策行 state_ref=`{run_id}#{v}`
-版本钉+pin_scope 在产(`telemetry/recorder.py:223-231`)/投影载体 `cw_bs_view.py`(BoardState 主值+
+版本钉(现行行面钉字段=state_ref 单字段,原过渡钉面标记 pin_scope 已退役删除——候裁 10
+终裁 C 案,历史档案判读知识见 schema 正本 §8-2)/投影载体 `cw_bs_view.py`(BoardState 主值+
 未建模域帧透传→GameState 形状,41 处调用点)。
 
 直迁口径下的缺口清单(=各波删除/新建对象的底册):
@@ -112,7 +113,7 @@ cw_loop.py+零散 ops(=W7 删除面);**读点**在判读 CLI/装配器/sim 账�
 | **W5 透传域建模收编** | `cw_bs_view.py` 透传清单逐域建模入统一容器:bench/deployed(席位模型)、deploy_cap、shop(牌面 payload)、plane_bosses、enemy_affixes、active_env、equips、refresh_probs、board_next_tier(派生);**hp 专项**:容器存门前真值,新鲜度/门控施门迁消费侧(session 政策语义保留,记录/消费分离不变);类型去重(双 ShopCard 归一;BenchChar 居所定谳) | 旧透传分支(投影内的 frame 透传段随投影整体退役挂 W6;本波删除面=各域的旧「不入容器」豁免申报与双类型) | W1(写入面稳定);候裁 5(ExpectedState 归一方案)先行 | 逐域行为锁(值源切换逐位等价:回放语料对拍);hp 门重构专项对拍(血线决策语义,门后值=门前真值+消费侧施门的等价证明);D1 锁扩面(新域写点全走写入口);落地审;实机窗口:1 局备战/商店/结算帧字段核对 |
 | **W6 决策面切统一容器(消费迁移完成波)** | 生产决策面签名与字段读切换(kernel 20 文件+strategies/impl mandate_v1+decision_assembly+cw_game_ports,建议包内三段串行:kernel→strategies→sim);sim 引擎内部模型切统一容器(engine_p1/engine_p2 真值直写,`synthesize_from_game_state` 反转为直写喂入口,旧格式回放重建 `cw_replay.py:56` 切新账);applied-gate 族改观察侧 reconcile(发射行 receipts+后续快照对比;`cw_reconcile.py` 守卫+留证骨架复用);Δ池语料源切 journal(再生管线转 journal 行;既有 META 内嵌池沿用);last_state 链改统一容器喂入(read_game_state 产出直 observe);投影 `cw_bs_view.py` 退役;ExpectedState 归一落地 | `GameState` 类型在决策/执行/sim/装配桶的全部引用(456 处的主体)、投影模块、last_state 三写点、action_log applied 消费路径、旧格式 sim 回放重建 | W5(建模绿)+W4(键新载体绿);候裁 5 定谳 | **零引用锁(src+测试仓 GameState=0)**;决策行为锁族全绿(mandate_v1/intention/economy 既有锁);sim 全量锁+零漂移锚(test_cw_sim_fidelity 指纹);applied-gate reconcile 双报对拍窗;回放语料逐位等价;落地审;实机窗口:≥2 完整局判读(决策语义直接暴露) |
 | **W7 旧 12 流写面删除** | 处置表定案流写点全部下线(recorder 旧流方法+cw_loop/ops 散布写点+battle_done 旧写+board_state_archive 写点+sim/ledger_hooks runs 兜底旧码);归档只读声明(数据文件不删不写,裸读考古);**retirement.md 影子框架重构文档批**(排期/前置六条按本规划改版)+ADR 同步 | 旧 12 流+补遗共 13 条流的**全部写面代码**(recorder 写方法、写点调用、recovered 兜底、battle_done 旧写、cw4 剩余写点);防双计无对象(单源后自然消失,勿实现) | W3+W4+W6 验收绿;候裁 2(invest_cards)定谳——**删除前定谳硬门**(效果原文回流断供不可逆) | 旧流文件名全仓零写点 grep 锁(先例 ADR-0571/D1 手法);全量测试绿;落地审;实机窗口:≥2 完整局(单源直迁后的第一手验证,判读全走新账) |
-| **W8 GameState 本体删除+正名** | ①`cw_state.py` **切割删除**:GameState 数据类+tracking/mutation 方法+last_state 链残留删除;共享词汇类型(BenchChar/动作类/常量/MatchOutcome 等)按候裁 9 定居所;②正名 BoardState→GameState(类名;模块文件名候裁 7);D1 锁 `_BOARD_STATE_MODULE` 常量+文档锚更新;pin_scope 标记值核对(候裁 10) | GameState 数据类本体、cw_state.py 中其专属方法、(若裁正名)`cw_board_state.py` 旧类名/模块名 | W7 验收绿+全仓 GameState 零引用(W6 锁持续绿) | 零引用锁持续绿;全量测试绿;grep 锁全绿(D1/停写/读面);CLI/装配回归;落地审;实机窗口:1 完整局(正名后回归) |
+| **W8 GameState 本体删除+正名** | ①`cw_state.py` **切割删除**:GameState 数据类+tracking/mutation 方法+last_state 链残留删除;共享词汇类型(BenchChar/动作类/常量/MatchOutcome 等)按候裁 9 定居所;②正名 BoardState→GameState(类名;模块文件名候裁 7);D1 锁 `_BOARD_STATE_MODULE` 常量+文档锚更新;pin_scope 零写入 grep 核对(候裁 10 终裁 C 案=字段整体退役删除,T-99 已执行,W8 仅存此核对) | GameState 数据类本体、cw_state.py 中其专属方法、(若裁正名)`cw_board_state.py` 旧类名/模块名 | W7 验收绿+全仓 GameState 零引用(W6 锁持续绿) | 零引用锁持续绿;全量测试绿;grep 锁全绿(D1/停写/读面);CLI/装配回归;落地审;实机窗口:1 完整局(正名后回归) |
 
 ### 删除时点论证(原「停写时点」)
 
@@ -215,6 +216,9 @@ W3/W4 并行(不同文件域:W5 在 kernel 容器与 obs 喂入面,W3 在 teleme
 9. **cw_state.py 残余词汇类型居所**(P8 切割前置):留原文件(文件更名,如 cw_vocab.py)vs 迁居
    kernel 既有模块;含双 ShopCard 归一后唯一居所(与 P5 衔接)。
 10. **pin_scope='board_state' 标记值**随正名是否改写(数据值兼容 vs 断代)——(P8,低)。
+    **已收口**:候裁 10 终裁 C 案=字段整体退役删除,T-99 已执行,本条不再有对象;
+    执行规格与判读知识归宿见定谳记录
+    `docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/定谳记录-候裁7910.md`。
 
 ## 8. 销案清单(本裁定明废,实施批禁再引用)
 
