@@ -30,7 +30,7 @@
 
 **设计依据**：details/encounter-criterion-spec.md §1-§3/§5-§8（锁表 W 组）
 
-**文件面**：`kernel/cw_encounter_selection.py`（新建）、`kernel/cw_game_state.py`（结算观测环/遭遇经验表新增 + Settlement 准入注释修订）、`kernel/cw_performance.py`（RoundOutcome 双扩字段 + docstring 如实化）、`strategies/impl/flow.py`（窗口提取与改投）、`strategies/impl/mandate_v1/bridge.py`（改投 + ADR 引用清理）、`strategies/impl/mandate_v1/encounter.py`（搁置注释 + ADR 引用清理）、`strategies/impl/mandate_v1/audit/provisional.py`（ADR 引用清理）、`operations/cw_screen/cw_screen_encounter.py`（journal 归因行）、`operations/cw_screen/cw_screen_battle_wait.py`（结算写点双落 + `difficulty_node` 快照装配——写点 = 结算观察半直写位 `_write_settlement_observation`，禁惰性 drain 位：取错帧且撞 D-94 红线）、`sr-od-test/test/sr_od/app/currency_war/test_cw_encounter_selection.py`（新建）
+**文件面**：`kernel/cw_encounter_selection.py`（新建）、`kernel/cw_game_state.py`（结算观测环/遭遇经验表新增 + Settlement 准入注释修订）、`kernel/cw_performance.py`（RoundOutcome 双扩字段 + docstring 如实化）、`strategies/impl/flow.py`（窗口提取与改投）、`strategies/impl/mandate_v1/bridge.py`（改投 + ADR 引用清理）、`strategies/impl/mandate_v1/encounter.py`（搁置注释 + ADR 引用清理）、`strategies/impl/mandate_v1/audit/provisional.py`（ADR 引用清理）、`operations/cw_screen/cw_screen_encounter.py`（journal 归因行）、`operations/cw_screen/cw_screen_battle_wait.py`（结算写点双落 + `difficulty_node` 快照装配 + **fill 暂存消费顺序修复**——写点 = 结算观察半直写位 `_write_settlement_observation`，禁惰性 drain 位：取错帧且撞 D-94 红线）、`sr-od-test/test/sr_od/app/currency_war/test_cw_encounter_selection.py`（新建）
 
 **依赖**：3.1（tiebreak 映射表；判据本体其余部分无依赖，可先行落）
 
@@ -46,7 +46,7 @@
 
 ## 3.3 E-3 需求线标定批（开闸）
 
-**范围**：实机窗口采集（**自备采集脚本**落 `.debug/`，禁依赖现役 settle_frame_collect 临时件）——遭遇决策帧与其后结算帧配对（D 值/填充率/档位/胜负），n≥5 起步（比例型单参数最小可行样本，采样随对局继续累积）→ f_min CI；**进度条语义定谳 = 开闸前置**（离线可先行：归档对局 fill 轨迹 vs 逐节点胜负对账，判别式 details §2）+ Δ_t 可加性配对定谳；g 曲线客户端配置表查表并行（命中 → 【注】切换，W8）；**f_min/g/Δ_t 三常量登记 01_math_framework §6 在册【拟】清单**（消费面/分级/fail-closed 退路/owner=编排者/期限=下一实机对局窗口——超期未决按 strategy-work §3（开关生命周期）回炉）；fill 读取率（结算遥测页 1 帧态）与分级混淆矩阵量测；**f_min=0.602 翻转线预置分支**：CI 跨线 → 按 01 §6 要素②「方向翻转 = 数据不足」处置（继续采样/维持暗装），禁硬选端点。f_min/g/Δ_t 注册落点定死 = `kernel/cw_encounter_selection.py` 常量区。**开闸门 = 三常量逐个满足 01 §6 要素①②③ ∧ 条语义已定谳，任一不可得/不合格 → 维持暗装并如实申报**。算法质量验证通道 = 实机本批（sim 无遭遇决策段，判据 sim 不可观测——3.2 申报）。
+**范围**：实机窗口采集（**自备采集脚本**落 `.debug/`，禁依赖现役 settle_frame_collect 临时件）——遭遇决策帧与其后结算帧配对（决策帧 D_enc 口读值/选档档位/填充率/胜负）——**按选档结果标定净值 Δ_t 与 f_min**（遭遇节点无备战帧、敌方信息浮层未建档 provisional.py:96-102，结果标定无需自身旗牌；浮层读点为升级路径），n≥5 起步（比例型单参数最小可行样本，采样随对局继续累积）→ f_min CI；**进度条语义定谳 = 开闸前置**（离线可先行：归档对局 fill 轨迹 vs 逐节点胜负对账，判别式 details §2）+ Δ_t 可加性配对定谳；g 曲线客户端配置表查表并行（命中 → 【注】切换，W8）；**f_min/g/Δ_t 三常量登记 01_math_framework §6 在册【拟】清单**（消费面/分级/fail-closed 退路/owner=编排者/期限=下一实机对局窗口——超期未决按 strategy-work §3（开关生命周期）回炉）；fill 读取率（结算遥测页 1 帧态）、**败局行入环率与败局 fill 可得率**、节点类型解析率、档位读出率与分级混淆矩阵量测；**f_min=0.602 翻转线预置分支**：CI 跨线 → 按 01 §6 要素②「方向翻转 = 数据不足」处置（继续采样/维持暗装），禁硬选端点。f_min/g/Δ_t 注册落点定死 = `kernel/cw_encounter_selection.py` 常量区。**开闸门 = 三常量逐个满足 01 §6 要素①②③ ∧ 条语义已定谳，任一不可得/不合格 → 维持暗装并如实申报**。算法质量验证通道 = 实机本批（sim 无遭遇决策段，判据 sim 不可观测——3.2 申报）。
 
 **设计依据**：details/encounter-criterion-spec.md §3（三态表/翻转分支/登记义务）+ §4（读链申报）+ §9 零调参对账
 
