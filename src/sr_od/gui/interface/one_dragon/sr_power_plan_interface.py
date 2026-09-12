@@ -17,6 +17,9 @@ from sr_od.config.team_config import TeamNumEnum, FileNumEnum
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
 
+#: 饰品提取「默认配队」选项的显示文本 对应存储值空串(运行时用存档当前队伍)
+DEFAULT_TEAM_NAME: str = '默认配队'
+
 
 class PowerPlanCard(MultiLineSettingCard):
 
@@ -43,12 +46,17 @@ class PowerPlanCard(MultiLineSettingCard):
         # 饰品提取的存档编号
         self.file_num_opt = ComboBox()
         self.file_num_opt.currentIndexChanged.connect(self.on_file_changed)
-        # 编队名称 (用于饰品提取)
-        self.team_name_input = LineEdit()
-        self.team_name_input.setFixedWidth(88)
-        self.team_name_input.setPlaceholderText('编队名称')
-        self.team_name_input.textChanged.connect(self._on_team_name_changed)
-        self.team_name_input.hide()
+        # 编队名称 (用于饰品提取) 可输入下拉框: 默认配队 + 配队1~9
+        self.team_name_combo = EditableComboBox()
+        self.team_name_combo.setFixedWidth(100)
+        self.team_name_combo.setPlaceholderText('编队名称')
+        # 预设编队名无法从游戏枚举 悬浮提示说明「配队N」的映射与自定义输入用法
+        self.team_name_combo.setToolTip(
+            '「默认配队」=使用存档当前队伍;\n'
+            '「配队N」=选择游戏内同名的预设编队(运行时按名称识别);\n'
+            '编队名不同可直接输入其他名字。'
+        )
+        self.team_name_combo.currentTextChanged.connect(self._on_team_name_changed)
 
         self.character_combo_box = EditableComboBox()
         self.character_combo_box.currentIndexChanged.connect(self.on_character_changed)
@@ -78,7 +86,7 @@ class PowerPlanCard(MultiLineSettingCard):
                     self.mission_combo_box,
                     self.team_num_opt,
                     self.file_num_opt,
-                    self.team_name_input,
+                    self.team_name_combo,
                     self.character_combo_box,
                 ],
                 [
@@ -98,10 +106,10 @@ class PowerPlanCard(MultiLineSettingCard):
     def init_category_combo_box(self) -> None:
         config_list = self.ctx.guide_data.get_category_list_in_power_plan()
         self.category_combo_box.set_items(config_list, self.plan.mission.cate)
-        # 饰品提取时输入队伍名称, 为空则为系统默认配队
+        # 饰品提取时选择或输入预设编队名称 默认配队则用存档当前队伍
         self.team_num_opt.setVisible(self.plan.mission.cate.cn != '饰品提取')
         self.file_num_opt.setVisible(self.plan.mission.cate.cn == '饰品提取')
-        self.team_name_input.setVisible(self.plan.mission.cate.cn == '饰品提取')
+        self.team_name_combo.setVisible(self.plan.mission.cate.cn == '饰品提取')
 
     def init_mission_combo_box(self) -> None:
         category = self.category_combo_box.currentData()
@@ -127,10 +135,20 @@ class PowerPlanCard(MultiLineSettingCard):
 
         # 饰品提取文件
         self.file_num_opt.set_items([i.value for i in FileNumEnum], self.plan.file_num)
-        # 饰品提取队伍
-        self.team_name_input.blockSignals(True)
-        self.team_name_input.setText(self.plan.team_name)
-        self.team_name_input.blockSignals(False)
+        # 饰品提取队伍: 首项「默认配队」=空串 其余为历史输入
+        self.team_name_combo.set_items(self._get_team_name_items(), self.plan.team_name)
+
+    def _get_team_name_items(self) -> list[ConfigItem]:
+        """
+        饰品提取预设编队下拉的选项
+        「配队N」要求游戏内预设编队同名(运行时按名称OCR匹配, 名字随队伍走比按位置点选稳);
+        当前值不在固定选项时兜底显示 避免旧配置被静默清空
+        """
+        items: list[ConfigItem] = [ConfigItem(DEFAULT_TEAM_NAME, '')]
+        items += [ConfigItem(f'配队{i}', f'配队{i}') for i in range(1, 10)]
+        if self.plan.team_name and self.plan.team_name not in {i.value for i in items}:
+            items.insert(1, ConfigItem(self.plan.team_name, self.plan.team_name))
+        return items
 
     def init_character_box(self) -> None:
         config_list = (
@@ -166,10 +184,10 @@ class PowerPlanCard(MultiLineSettingCard):
     def on_category_changed(self, idx: int) -> None:
         self.init_mission_combo_box()
 
-        # 饰品提取时输入队伍名称, 为空则为系统默认配队
+        # 饰品提取时选择或输入预设编队名称 默认配队则用存档当前队伍
         self.team_num_opt.setVisible(self.plan.mission.cate.cn != '饰品提取')
         self.file_num_opt.setVisible(self.plan.mission.cate.cn == '饰品提取')
-        self.team_name_input.setVisible(self.plan.mission.cate.cn == '饰品提取')
+        self.team_name_combo.setVisible(self.plan.mission.cate.cn == '饰品提取')
 
         self.update_by_history()
 
@@ -191,8 +209,9 @@ class PowerPlanCard(MultiLineSettingCard):
         self.plan.file_num = self.file_num_opt.currentData()
         self._emit_value()
 
-    def _on_team_name_changed(self) -> None:
-        self.plan.team_name = self.team_name_input.text()
+    def _on_team_name_changed(self, text: str) -> None:
+        # 「默认配队」选项存储为空串 运行时空串即使用存档当前队伍
+        self.plan.team_name = '' if text == DEFAULT_TEAM_NAME else text
         self._emit_value()
 
     def on_character_changed(self, idx: int) -> None:
