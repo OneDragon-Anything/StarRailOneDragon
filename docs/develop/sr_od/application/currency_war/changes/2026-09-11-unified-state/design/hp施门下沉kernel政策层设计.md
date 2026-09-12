@@ -217,13 +217,27 @@ def hp_decision_trusted_of(bs: BoardState) -> bool:
 | 策略消费侧 2 点（`adapter.decision_state` / `encounter._hp_gate_state`） | 调 `strategies gated_hp`（薄委托） | 零改动（薄委托行为等价） | 波 4 随 strategies 全簇切 `decision_hp`（跨件接口：波 4 商店/备战链 hp 消费同源） |
 | 写侧 4 点（`cw_screen_prep` 环入口×2+终饰×2） | 调 `strategies gated_hp`（帧值显式施门，旧链） | 零改动（薄委托） | 波 5 随旧链删除 |
 | sim | 无结算锚 → 门恒等支（engine_p1 不写 `last_hp`，grep 口径） | 不变 | 波 5 真值直写后同构 |
-| kernel 评估簇挂账 hp 读点（`cw_comps.maybe_pivot` / `cw_performance.is_run_dead`；生产调用面现空，测试仓经桥调用） | 直读 `bs.hp.value`（挂账层） | 零改动（挂账不施门）；**重挂生产消费必经政策层读口** | 波 4 批首 grep 复核 kernel 决策簇 hp 直读点全集——新增消费点一律走 `decision_hp`/`hp_decision_trusted_of` 或登记豁免（§4-L2 申报面） |
+| kernel 评估簇挂账 hp 读点（`cw_comps.maybe_pivot` / `cw_performance.is_run_dead`；生产调用面现空，测试仓经桥调用） | 直读 `bs.hp.value`；maybe_pivot 经 `_HpShim` 手抄镜像字段喂 `effective_hp_threshold`（GameState 签名） | `_HpShim` 消亡（阈值函数随波 2 切容器签名，§2.4 shim 收编申报）；hp 直读约束照旧——**重挂生产消费必经政策层读口** | 波 4 批首 grep 复核 kernel 决策簇 hp 直读点全集——新增消费点一律走 `decision_hp`/`hp_decision_trusted_of` 或登记豁免（§4-L2 申报面） |
 
 依据：调用点清单 = `gated_hp` docstring grep 口径；波次归属 = 调研草案 §3 波 2/波 4/
 波 5 行；策略消费侧波 4 全集以落地批批首 grep 复核为准（调研草案 §4 决策热点列在册
 hp 读点含 entry 3 处，随 strategies 全簇切换一并走 `decision_hp`）；波 2 文件面较
-调研草案行增 2 件（`kernel/cw_hp_policy.py` 新建、`strategies/impl/cw_strategy.py`
-薄委托改写）——**波 2 落地卡文件面以本表为准**。
+调研草案行增 3 面（`kernel/cw_hp_policy.py` 新建、`strategies/impl/cw_strategy.py`
+薄委托改写、`kernel/cw_state.py` 的 `effective_hp_threshold` 单函数容器签名切换，
+见下段 shim 收编申报）——**波 2 落地卡文件面以本表为准**。
+
+**过渡期鸭子 shim 散点收编申报**（跨波排期，禁留无消亡日的 shim）：现树 kernel 内
+两处手抄镜像字段清单的鸭子 shim（`cw_comps.maybe_pivot` 内 `_HpShim` 喂
+`effective_hp_threshold`；`cw_recipe.decision_target` 内 `_PlaneShim(plane=…)` 喂
+`committed_from`），均为「容器已切签名消费面 → 未切换签名的被喂函数」的过渡桥接：
+①`effective_hp_threshold`（cw_state，GameState 签名）随**波 2** 切容器签名（输入
+字段 selected_difficulty/plane/round_num/level/board 波 1 全就绪；hp 阈值域与政策层
+同批收编）——`_HpShim` 即消亡，maybe_pivot 改直传 bs；②`committed_from` /
+`committed_authority` 的 state 参数切 BoardState 挂**波 3**（cw_intention 切换面）——
+连带消费点 `cw_recipe.decision_target` 的 `_PlaneShim` 同波消亡（现态单字段喂入恰
+等价：committed_authority 仅读 state.plane，cw_intention:2348；被喂函数多读字段即
+喂不足成静默劣化面，波 3 立卡时 cw_recipe 该调用点列入批首 grep 复核清单）。两 shim
+消亡前禁新增同型鸭子桥——新消费点一律直接按容器形态调用。
 
 ### 2.5 边界
 
