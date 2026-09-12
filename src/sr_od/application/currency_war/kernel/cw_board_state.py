@@ -3037,13 +3037,17 @@ def max_units_of(bs: BoardState) -> int:
 def board_state_bridge(st: object) -> BoardState:
     """GameState 帧值 → 独立 BoardState 视图(W6 决策面切换的过渡桥)。
 
-    **退役进行中(波 5 桥退役辖域面已清,残余调用点 = prep 链线辖域)**:
-    sim 域(engine_p1/cw_replay)与 kernel/cw_evolution、flow、cw_loop、
-    ops 等波 5 辖域调用点已改直写喂入口(:func:`feed_sim_truth`)+容器
-    直读,随本批退出;残余调用面 = prep 链线文件(T-115:entry/criteria、
-    T-116:mandate/proof/assembly 等,其签名切容器时消点)——全部清零后
-    本函数物理删除(其自身 ~10 处调用与删除同批)。残余集有哨兵锁看守
-    (test_cw_w5_sim_retirement),禁新增调用点。
+    **退役进行中(波 5 只清 sim 域,残余辖域面原样在树——哨兵登记集
+    = 现实单一源,禁据本 docstring 误判消点进度)**:
+    - 已退出(波 5 实改):sim 域调用点(engine_p1 两处切直写喂入口
+      :func:`feed_sim_truth`;cw_replay 面随旧格式退役);
+    - 仍在树(未消点,段③边界协调申报):cw_evolution(~20 处,工作帧
+      读口,随其签名切容器消点)、flow/cw_loop/cw_op 各域残余单点、
+      prep_actions 根,及 prep 链线辖域(mandate/proof/assembly/entry/
+      criteria,T-115/116 面);
+    - 残余集与注释豁免面的机器现实 = test_cw_w5_sim_retirement 登记
+      集(多/少皆红):少红 = 消点推进,同批删登记项;登记集清零后本
+      函数物理删除(内部消费与删除同批)。
     """
     if st is None:
         # 无帧调用面(如 session.last_state 缺席):全域未观察空视图,
