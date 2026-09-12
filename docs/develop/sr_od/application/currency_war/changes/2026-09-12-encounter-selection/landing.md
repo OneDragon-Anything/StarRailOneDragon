@@ -30,7 +30,7 @@
 
 **设计依据**：details/encounter-criterion-spec.md §1-§3/§5-§8（锁表 W 组）
 
-**文件面**：`kernel/cw_encounter_selection.py`（新建）、`kernel/cw_game_state.py`（结算观测环/遭遇经验表新增 + Settlement 准入注释修订）、`kernel/cw_performance.py`（RoundOutcome 双扩字段 + docstring 如实化）、`telemetry/schema.py`（OutcomeRecord 双字段同步，恢复同 schema 性质）、`strategies/impl/flow.py`（窗口提取与改投）、`strategies/impl/mandate_v1/bridge.py`（改投 + ADR 引用清理）、`strategies/impl/mandate_v1/encounter.py`（搁置注释 + ADR 引用清理）、`strategies/impl/mandate_v1/audit/provisional.py`（ADR 引用清理）、`operations/cw_screen/cw_screen_encounter.py`（journal 归因行）、`operations/cw_screen/cw_screen_battle_wait.py`（结算写点双落 + `difficulty_node` 快照装配 + **败局行拓扑改造**：环写点 = RoundOutcome 创建点两路入环、同场去重合并、fill 暂存战斗窗生命周期、**环完整性对账门**（缺行 → 弃权暗装，锁 W14）——写点禁惰性 drain 位：取错帧且撞 D-94 红线）、`sr-od-test/test/sr_od/app/currency_war/test_cw_encounter_selection.py`（新建）
+**文件面**：`kernel/cw_encounter_selection.py`（新建）、`kernel/cw_game_state.py`（结算观测环/遭遇经验表新增 + Settlement 准入注释修订）、`kernel/cw_performance.py`（RoundOutcome 双扩字段 + docstring 如实化）、`telemetry/schema.py`（OutcomeRecord 双字段同步，恢复同 schema 性质）、`strategies/impl/flow.py`（窗口提取与改投）、`strategies/impl/mandate_v1/bridge.py`（改投 + ADR 引用清理）、`strategies/impl/mandate_v1/encounter.py`（搁置注释 + ADR 引用清理）、`strategies/impl/mandate_v1/audit/provisional.py`（ADR 引用清理）、`operations/cw_screen/cw_screen_encounter.py`（journal 归因行）、`operations/cw_screen/cw_screen_battle_wait.py`（结算链改造（`difficulty_node` 快照装配 + **败局行拓扑改造**：环写点 = RoundOutcome 创建点两路入环、同场去重合并、fill 暂存战斗窗生命周期、**环完整性对账 = E-3 离线项**（缺环率 = 开闸门成员）——写点禁惰性 drain 位：取错帧且撞 D-94 红线）、`sr-od-test/test/sr_od/app/currency_war/test_cw_encounter_selection.py`（新建）
 
 **依赖**：3.1（tiebreak 映射表；判据本体其余部分无依赖，可先行落）
 
