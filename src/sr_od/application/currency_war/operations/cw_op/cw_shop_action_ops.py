@@ -318,7 +318,7 @@ def guard_expected_vs_tracked(state: CwSimFrame, session,
     - **真多集分歧**:按 stage 两属归因,断言炸出(消息见下)。
       stage='seed'(visit 入口首动作前):期望侧 = 容器 bench(唯一实机
       漏斗写端 = 备战装配环 bench 观察块;合成口对未读域跳写,见
-      CwWorkFrame.bench_readable),两账多集分歧 = 观察漏斗与执行账
+      CwSimFrame.bench_readable),两账多集分歧 = 观察漏斗与执行账
       真实分叉(跟踪账丢件/观察失真),fail-stop 交回重观察——下一入口
       heavy 读屏重建可归零。
       stage='project'(默认,动作投影后):分叉 = 投影直写/mutate 模型

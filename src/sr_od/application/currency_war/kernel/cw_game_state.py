@@ -2881,7 +2881,7 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
     # 会把容器内 prep 装配环 bench 观察块(cw_screen_prep heavy 块,唯一
     # 实机漏斗写端)的真读覆盖成「9 槽全空」,与执行账 tracked 在商店段
     # guard_expected_vs_tracked 播种对账处对撞(违 _feed_board_state 席位
-    # 通道声明的「禁拿 CwWorkFrame 兜底默认值当观察」)。sim 真值帧恒
+    # 通道声明的「禁拿 CwSimFrame 兜底默认值当观察」)。sim 真值帧恒
     # 可读(缺省 True)不受影响;真真空写路径由 sim 帧承载。
     if getattr(st, 'bench_readable', True):
         bench_slots: list[BenchSlot] = []
