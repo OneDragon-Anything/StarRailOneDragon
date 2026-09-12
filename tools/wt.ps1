@@ -94,6 +94,8 @@ function Get-DirtyPaths {
         if ($IgnoreTestGitlink) {
             $probe = $pathPart.TrimEnd('/', '\')
             if ($probe -eq $TestRepoName -or $probe.StartsWith("$TestRepoName/") -or $probe.StartsWith("$TestRepoName\")) { continue }
+            # assets/models 快照是 new 时工具自己复制进去的(只读),不算脏;remove 时随树一起删
+            if ($probe -eq 'assets/models' -or $probe.StartsWith('assets/models/') -or $probe.StartsWith('assets\models\')) { continue }
         }
         $kept.Add($line)
     }
@@ -114,6 +116,21 @@ function Show-Tree {
 
 # ---------- 动作实现 ----------
 
+function Copy-Models {
+    # 模型真实位置 = assets/models(YOLO/OCR 等运行时下载,gitignore 覆盖),不是仓库根的 models/
+    $srcModels = Join-Path $repo 'assets\models'
+    if (-not (Test-Path -LiteralPath $srcModels)) { Info '主仓无 assets/models 目录,跳过复制'; return }
+    $dstModels = Join-Path $wtPath 'assets\models'
+    if (Test-Path -LiteralPath $dstModels) { Info '树内已有 assets/models,跳过复制(幂等)'; return }
+    Info '复制 assets/models 进树(robocopy /E /XJ,跳过 reparse point)...'
+    # /XJ:不跟随 junction/symlink(树内不引入 reparse point,remove 守卫才不会误拦)
+    & robocopy $srcModels $dstModels '/E' '/XJ' '/MT:8' '/NFL' '/NDL' '/NJH' '/NJS' '/NP' | Out-Null
+    $code = $LASTEXITCODE
+    # robocopy 退出码 0-7 均为成功语义(1=有复制,2=有多余项),>=8 才是失败
+    if ($code -ge 8) { Fail "assets/models 复制失败(robocopy exit $code)" 1 }
+    Info 'assets/models 复制完成'
+}
+
 function Do-New {
     if (Test-Path -LiteralPath $wtPath) {
         if (Test-Path -LiteralPath (Join-Path $wtPath '.git')) {
@@ -127,6 +144,8 @@ function Do-New {
     Invoke-Git -Repo $repo -Arguments @('worktree', 'add', $wtPath, '-b', $branch, $mainIntegration) | Out-Null
     Info "测试仓建树:$testWtPath(分支 $branch,基线 $testIntegration)"
     Invoke-Git -Repo $testRepo -Arguments @('worktree', 'add', $testWtPath, '-b', $branch, $testIntegration) | Out-Null
+
+    Copy-Models
 
     $srcEnv = Join-Path $repo '.env'
     $dstEnv = Join-Path $wtPath '.env'
