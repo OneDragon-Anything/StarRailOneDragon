@@ -230,10 +230,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         # 比现状更难发现)。违者拒绝写回保旧+留证:经 _conflict 通道
         #(obs_conflict 行经旁路进缺陷台账;kernel 层落账走出口约束,
         # 与 _reseed 的 telemetry kind 行分属两层,语义等价留证)。
-        from sr_od.application.currency_war.kernel.cw_state import (
-            BENCH_CAPACITY,
-            bench_from_compact,
-        )
+        from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY, bench_from_compact
         _slots = [bc.slot for bc in bench if bc is not None]
         _healthy = (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
                         for s in _slots)
@@ -255,7 +252,7 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
     if deployed is not None:
         # ADR-0392:tracked_deployed 是槽位表——_merge_equips 出紧缩占用序,
         # 写回前经 deployed_from_compact 转槽位表(单一源适配)。
-        from sr_od.application.currency_war.kernel.cw_state import deployed_from_compact
+        from sr_od.application.currency_war.kernel.cw_exec_state import deployed_from_compact
         exec_state_of(session).tracked_deployed = deployed_from_compact(
             _merge_equips(exec_state_of(session).tracked_deployed, deployed))
     if drifted:
@@ -396,7 +393,7 @@ def reconcile_hp(session, new_hp: int | None, screen=None, *,
       loss 背书或观察缺口的跨节点下行采新留证)。
     - **决策层**:消费本函数返回的(决策用 hp, 是否真读)——沿用真值比假 100
       安全(低血先验触发保血方向对);全无真值(开局)→ None(诚实未知;
-      ADR-0282 兜底 100 由 ADR-0491 废止,GameState.hp None 化)。
+      ADR-0282 兜底 100 由 ADR-0491 废止,CwWorkFrame.hp None 化)。
     - **记录层**:遥测按返回的 readable 位分字段记(hp_readable=False=读不到,
       hp=沿用值),不把兜底/沿用值混进「真 100」。
 

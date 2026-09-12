@@ -173,7 +173,7 @@ class MandateV1Strategy(CwFlowStrategy):
         帧代次标注槽**不在本驱动器写**(D6:投影只推进 ``shop_state_frame``
         本体,槽值在入口消费复位后保持 'none',投影帧不触发刷新)。
         """
-        from sr_od.application.currency_war.kernel import cw_state
+        from sr_od.application.currency_war.kernel import cw_vocab as cw_state
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             ShopActionExecuted,

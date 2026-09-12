@@ -752,7 +752,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         ``MandateV1Strategy.decide_shop_screen`` 覆写。驱动器投影**不写帧类槽**
         (D6:槽在入口消费复位后保持 'none',投影帧不触发刷新)。观察帧
         缺失 = 观察层失约,抛错。"""
-        from sr_od.application.currency_war.kernel import cw_state
+        from sr_od.application.currency_war.kernel import cw_vocab as cw_state
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             deployed_slots_of,

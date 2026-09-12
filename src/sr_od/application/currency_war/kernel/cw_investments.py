@@ -94,7 +94,7 @@ class EconomyEffect:
     free_refresh_per_node: int = 0
     free_refresh_burst: int = 0
     # 条件判定族三元组(本金充裕/+,官方卡文 cw_invest_data.py:251-252 id
-    # 301001/301002;BoardState 设计 §3.3.6 免费刷新余额判定输入):三字段
+    # 301001/301002;GameState 设计 §3.3.6 免费刷新余额判定输入):三字段
     # 齐备(>0)才激活,半配对保守 no-op;不做 aggregate_economy 标量聚合
     # (多条件条目各按现值评估,不可折叠单标量),桥逐条目读。
     free_refresh_cond_gold_above: int = 0   # 触发金阈值(严格大于;本金充裕=50)
@@ -490,7 +490,7 @@ STRATEGY_EFFECTS: dict[str, EffectSpec] = {
         notes='跳过战斗×2(remaining_uses 正本);+30 经验选牌当场'),
     # 本金充裕/+:官方「获得26/45金币。每次进入新节点时,若拥有超过50金币,
     # 每额外10金币就会获得1次免费刷新(最多3次)」(cw_invest_data.py:251-252,
-    # id 301001/301002)。条件判定族(BoardState 设计 §3.3.6 免费刷新余额的
+    # id 301001/301002)。条件判定族(GameState 设计 §3.3.6 免费刷新余额的
     # 条件性来源):触发=节点进入、条件=金>50、梯度=每 10 金 1 次、封顶=3;
     # 发放经 grant_effect_node_refresh_balance 桥自动生效(§3.3.6「结构化后
     # 经同一桥」):桥按 bs.gold 现值逐条目评估,金未读(None)保守零授予。

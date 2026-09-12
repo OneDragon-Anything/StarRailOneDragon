@@ -36,7 +36,7 @@ handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生�
 单一源 = 盛会之星先例(CwScreenMegastar,reviews/T-215-r1.md 验收):decide+act
 内聚于现役动作体 ``_do_action``(detour/刷新/选卡确认三形态,两路径共享零转录);
 本屏无 on_outcome 落地登记件(§6.4 收编面无补给行;``supply_refresh_used``
-BoardState 字段位 = 先申报禁静默、无写端,cw_board_state.py 字段行自注
+GameState 字段位 = 先申报禁静默、无写端,cw_game_state.py 字段行自注
 「收窄待证」——执行侧防重入旗标 ``_supply_refresh_used`` 留守 _do_action,
 不入注册表);chosen_supply 写端 = 出口验真通过分支单次逻辑写入豁免(§2.2/
 §6.5-6)留守 observe 门完成分支。节点完成判定 = 下一轮 observe 门 ``_in_node``
@@ -44,7 +44,7 @@ BoardState 字段位 = 先申报禁静默、无写端,cw_board_state.py 字段�
 confirm 点击系统性不生效 = 动作链 bug 根修动作链)。本屏 sim 腿 = 引擎补给
 决策段已在(engine_p1 直调 kernel decide_supply,T5 接口收敛挂账)但本批未
 接线(sim 接线批后续),等价判据主承重 = 实机在册行为锁(test_cw_runnode_retire
-+ test_cw_board_state_consume + 本批锁 test_cw_obs_arch_event_screens_step3)。
++ test_cw_game_state_consume + 本批锁 test_cw_obs_arch_event_screens_step3)。
 """
 import re
 import time
@@ -203,7 +203,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
         if _match is None:
             return
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
                 board_state_of,
             )
@@ -332,9 +332,9 @@ class CwScreenSupplyNode(CwScreenOpBase):
         # cw_loop 合成结算行,提前消费=结算行断粮)。
         picked: dict | None = None
         if match is not None and opts:
-            # 决策输入消费切换(迁移批次二):BoardState 视图
+            # 决策输入消费切换(迁移批次二):GameState 视图
             # (kernel/cw_bs_view.strategy_input_state)替 last_state 直读。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
             )
             _state = board_state_of(match.session)
@@ -367,7 +367,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
                 picked = {'char': _opt.char, 'equip': _opt.equip,
                           'has_diamond': _opt.has_diamond,
                           'refreshed': _refresh_used}
-                # BoardState 选定暂存(chosen_supply 出口验真后写端的中转,
+                # GameState 选定暂存(chosen_supply 出口验真后写端的中转,
                 # 设计 §3.4.5):此处只暂存不写——写点在 handle 出口验真
                 # (标识-补给阶段消失)通过后,照 chosen_tome「出口验真后写」
                 # 口径;重入轮入口会先清本暂存,恒反映最近一次确认尝试。

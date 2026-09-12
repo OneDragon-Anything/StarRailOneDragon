@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.kernel.cw_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
 # ===== 动作全集 =====
 

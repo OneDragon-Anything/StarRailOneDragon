@@ -15,7 +15,7 @@
   几何 = 居中重排族带 321..1599;CV 判别通路见 :func:`cv_back_slots`)。
 - **back_max 容器接线(语义裁决·闸门二)**:裁决值经
   :func:`_observe_back_layout_to_container` 随 ``resolve_back_slots``
-  observe 进 ``BoardState.back_layout``(决策视图 back_max 供数自此取
+  observe 进 ``GameState.back_layout``(决策视图 back_max 供数自此取
   容器动态真值;superset 标记判据见写端 docstring)。
 
 **双通道对账**(口述指令 2026-08-26 追加,两通道都做):
@@ -162,10 +162,10 @@ def back_layout_unknown_streak() -> int:
 
 
 # 复位入口注册到 kernel 槽(落地审 C4:策略 create_session 新局起点经
-# kernel.cw_state.reset_layout_unknown_state 槽式转发复位;import 期注册
+# kernel.cw_vocab.reset_layout_unknown_state 槽式转发复位;import 期注册
 # 保证「先 create_session 后首读」顺序下槽已就位;obs→kernel 合法向)。
 try:
-    from sr_od.application.currency_war.kernel import cw_state as _cws
+    from sr_od.application.currency_war.kernel import cw_vocab as _cws
     _cws._layout_unknown_reset = reset_layout_unknown_state
 except Exception:   # noqa: BLE001  注册 best-effort(缺省关)
     _cws = None
@@ -543,7 +543,7 @@ def _occupancy_consistency_arbitrate(ctx: SrContext, screen: MatLike,
 
 def _observe_back_layout_to_container(ctx, n: int | None,
                                       n_raw: int | None) -> None:
-    """三信号裁决值落 BoardState.back_layout 容器(back_max 语义裁决·闸门二
+    """三信号裁决值落 GameState.back_layout 容器(back_max 语义裁决·闸门二
     写端接线;值源切换定谳 = W5 方案稿 §2.3 + 机制正本
     docs/game/currency_war/research/board_structure.md 量化公式节)。
 
@@ -573,7 +573,7 @@ def _observe_back_layout_to_container(ctx, n: int | None,
             else None
         if session is None:
             return
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             board_state_of,
         )
@@ -607,7 +607,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
       T-7)——unknown=本帧双弃权;frozen=连续未知达 ``UNKNOWN_FREEZE_FRAMES``
       (写类冻结止损);unknown_streak=当前连续计数(任一已知帧清零);
     - **容器接线(back_max 语义裁决·闸门二)**:已知帧裁决值随写
-      ``BoardState.back_layout``(值/superset 标记判据与跳过条件见
+      ``GameState.back_layout``(值/superset 标记判据与跳过条件见
       :func:`_observe_back_layout_to_container`;零新增读,best-effort)。
 
     **公式输入净化(§3.2①,T-8 消费端)**:``level_trusted`` 三态——

@@ -16,7 +16,7 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 # 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
 # `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-from sr_od.application.currency_war.kernel.cw_state import MatchOutcome
+from sr_od.application.currency_war.kernel.cw_run_allocator import MatchOutcome
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import (
     read_game_state,
@@ -423,7 +423,7 @@ def readiness_admission_report(state, comp) -> dict:
     **帧对齐说明**(预估读 session.last_state,一轮滞后可接受)见彼处
     docstring。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_bridge,
     )
     from sr_od.application.currency_war.kernel.cw_launch_admission import (
@@ -637,7 +637,7 @@ def _launch_frame_arbitration(op) -> dict:
             # 零行为差;禁裸 bs.gold.value 引入 None 形态行为差)——黑板
             # 槽退役后闸与决策同读容器,逐动作投影回写经
             # apply_shop_action_logic 承接,同帧同值语义不变。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
                 gold_of,
             )
@@ -871,7 +871,7 @@ class CwLoop(SrOperation):
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
     # (收口终局行 TERMINAL_OUTCOME_SOURCE 已随 outcomes 流写入端退役删除
     #  ——删除波 1,用户 2026-09-10 直迁裁定;T-185 末轮补全面随之消亡,
-    #  结算真值的现役归宿 = BoardState settlement 域 apply_settlement_cover。)
+    #  结算真值的现役归宿 = GameState settlement 域 apply_settlement_cover。)
     # (结算链常量族 SETTLE_PANEL_WAIT_S/SETTLE_DEFEAT_LATCH_MIN_T/
     #  RELAUNCH_SETTLE_GRACE_S/BLANK/SETTLEMENT_NEXT 已随 1f/2/3/3b/6 分支
     #  收编 CwScreenBattleWait(W971 05-battle §1),常量随 op 迁移单一源。)
@@ -1219,7 +1219,7 @@ class CwLoop(SrOperation):
 
     # (收口终局行族 _run_has_outcome_at/_write_terminal_outcome_row 已随
     #  outcomes 流写入端退役删除——删除波 1,T-185 末轮补全面随流消亡;
-    #  结算真值现役归宿 = BoardState settlement 域 apply_settlement_cover,
+    #  结算真值现役归宿 = GameState settlement 域 apply_settlement_cover,
     #  局终收口形态归宿 = 局终域 match_final 行,写点接线归后续批。)
 
     def _op_journal_pos(self) -> tuple[int, int]:
@@ -1232,7 +1232,7 @@ class CwLoop(SrOperation):
 
         - 只写分支标识,**不碰分派逻辑**——分支判定/序位/守卫域零改动,
           本方法在分支命中点旁路调用(最小侵入面);
-        - 写入口 = BoardState :meth:`observe_screen_context` 唯一写口
+        - 写入口 = GameState :meth:`observe_screen_context` 唯一写口
           (域准入:上下文域 ①obs 家族;分支命中 = 锚级画面识别,mode=
           read,actor = 本外循环 op 类名);旧 current 转 prev 成对同组,
           下一次分派观察(漏斗/下一分支)即弹窗腿守卫集的 prev 输入;
@@ -1243,7 +1243,7 @@ class CwLoop(SrOperation):
           best-effort 不阻塞分派。
         """
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
                 board_state_from_ctx,
             )
@@ -1369,7 +1369,7 @@ class CwLoop(SrOperation):
         super().after_operation_done(result)
         self._write_terminal_summary_if_needed()
 
-    # (BoardState 局终归档写点 _archive_board_state 已随 R5 W7 退役删除
+    # (GameState 局终归档写点 _archive_board_state 已随 R5 W7 退役删除
     #  ——补遗流 board_state_archive 写面下线,能力归宿 W2 已落位
     #  (bs_prov=快照来源注记/局终速查=match_final 行,retirement.md §2);
     #  存量数据文件归档只读(不删不写,裸读考古,r5-migration-plan §4-6)。)
@@ -1411,7 +1411,7 @@ class CwLoop(SrOperation):
             # 停止>败局>plane==3>abnormal 与 close_run result 同源;写口
             # 段内幂等 G12,best-effort;先于 close_run 落局时间窗)。
             try:
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                     write_match_final,
                 )
@@ -2089,11 +2089,11 @@ class CwLoop(SrOperation):
         if (self.round_by_find_area(screen, '货币战争-备战', '备战标识-购买经验').is_success
                 and self.round_by_find_area(screen, '货币战争-备战', '按钮-出战').is_success):
             self._battle_ts = None   # ADR-0250:回备战 → 战斗窗口关(watch 恢复)
-            # BoardState 心跳观察者采样(迁移批次一;正本 = BoardState-数据
+            # GameState 心跳观察者采样(迁移批次一;正本 = GameState-数据
             # 结构设计.md §2.4 关键结构 2):备战环入口读单调写点序号,连续
             # ≥2 环零推进 = 观察断流诊断(log.warning 不停机,处置交既有
             # 守卫链)。纯采样零行为面。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
                 note_board_state_heartbeat,
             )
@@ -2120,7 +2120,7 @@ class CwLoop(SrOperation):
                 # advance_node advanced 位);容量投影每 pass 重锚(观察构造器
                 # 按默认容量建视图会覆盖投影值,备战帧观察后须回写)。均
                 # write_logic 记录面,best-effort 不阻塞备战主链。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     grant_effect_node_refresh_balance,
                     project_effect_capacity,
                 )
@@ -2199,7 +2199,7 @@ class CwLoop(SrOperation):
             )
             _tc = getattr(strategy_state_of(self.ctx.cw_match.session), 'target_comp', None)
             _ms = getattr(self.ctx.cw_match.session, 'last_state', None)
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_bridge,
             )
             _arm_core = readiness_launch_decision(
@@ -2832,7 +2832,7 @@ class CwLoop(SrOperation):
                     # 同口径);写口自带段内幂等查重(G12),best-effort
                     # 不阻塞收口流转。先于 close_run(行 ts 落局时间窗)。
                     try:
-                        from sr_od.application.currency_war.kernel.cw_board_state import (
+                        from sr_od.application.currency_war.kernel.cw_game_state import (
                             board_state_of,
                             write_match_final,
                         )
@@ -2874,7 +2874,7 @@ class CwLoop(SrOperation):
                         rounds_survived=_outcome.final_round,
                         final_hp=self._last_true_hp(_outcome.final_hp),
                         notes='auto')
-                    # (BoardState 局终归档调用点已随 W7 写点退役删除——
+                    # (GameState 局终归档调用点已随 W7 写点退役删除——
                     #  归档只读声明见 _write_terminal_summary_if_needed。)
                     self._summary_written = True
                     # 按局存档装配(终局旁路,零运行时侵入):挂在局终收口

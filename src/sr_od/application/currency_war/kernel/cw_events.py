@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     deployed_count_of,
     deployed_slots_of,
@@ -34,9 +34,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     resolve_strategy_canonical,
     strategy_bindings,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    PickEvent,
-)
+from sr_od.application.currency_war.kernel.cw_vocab import PickEvent
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
@@ -124,7 +122,7 @@ def is_economy_engine(economy: EconomyEffect | None) -> bool:
     return False
 
 
-def _invest_d_star(bs: BoardState, locked_comp: str,
+def _invest_d_star(bs: GameState, locked_comp: str,
                    demoted_endgame: bool,
                    evicted: frozenset[str] | set[str]) -> tuple[set[str], set[str], str]:
     """投资选卡的「预期终局方向」D* 解析(T-155;ADR-0597;级联单规则零阶段特判)。
@@ -191,7 +189,7 @@ def _opt_counters_dot(opt: str) -> bool:
 # - 旧 P2 装备流 EQUIP_FLOW_PICKS plane≥2 +25(11 局实锤)→ 0(经验
 #   拟合,辖域+幅度双未证;若重立须按观测参数化)。)
 
-def decide_event(options: list[str], config, bs: BoardState,
+def decide_event(options: list[str], config, bs: GameState,
                  locked_comp: str = '', demoted_endgame: bool = False,
                  evicted: frozenset[str] | set[str] = frozenset()) -> PickEvent:
     """事件选项打分(投资策略/环境 3 选 1;T-155 判据重构,ADR-0597)。
@@ -548,7 +546,7 @@ def _reward_value(rewards: list[str]) -> float:
 
 
 
-def decide_encounter(options: list[EncounterOption], bs: BoardState,
+def decide_encounter(options: list[EncounterOption], bs: GameState,
                      target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
     """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``CwScreenEncounter`` 调本函数 +
     ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
@@ -687,7 +685,7 @@ def _equip_value(equip: str) -> int:
 
 
 
-def decide_supply(options: list[SupplyOption], bs: BoardState,
+def decide_supply(options: list[SupplyOption], bs: GameState,
                   target_comp: Comp | None, config, refresh_used: bool = False) -> SupplyPick:
     """补给节点选装备 + 是否刷新(纯逻辑,design 07/08)。✅ 已接:``run_supply_node`` 调本函数 +
     ``read_supply_options``(cw_node_obs,OCR 每列角色+装备)。
@@ -791,7 +789,7 @@ class PlannerPick:
     reason: str = ''
 
 
-def decide_planner(options: list[PlannerOption], bs: BoardState,
+def decide_planner(options: list[PlannerOption], bs: GameState,
                    target_comp: Comp | None = None) -> PlannerPick:
     """银狼「我来当策划」二选一策略。
 

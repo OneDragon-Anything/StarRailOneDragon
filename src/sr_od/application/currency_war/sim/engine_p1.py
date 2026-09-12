@@ -73,7 +73,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     SellDeployed,
     ShopCard,
     SwapDeploy,
-    _bench_char_cost,
+    bench_char_cost,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import simulate as _simulate_state
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
@@ -794,7 +794,7 @@ def m1p_swap_execute(st: CwWorkFrame, plan: SwapPlan, *, acts: list[dict],
         if log.get('result') != 'applied':
             continue   # 单一源拒绝 → 零行为转录(与显式动作分支同口径)
         new_st = applied_st
-        refund = sell_refund(victim.star, _bench_char_cost(victim))
+        refund = sell_refund(victim.star, bench_char_cost(victim))
         spend['sell_income'] = spend.get('sell_income', 0) + refund
         if name:
             pool.ret(name)
@@ -2203,7 +2203,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             # 兜底 1 在已识别名域恒等;merge 后 bench 可有
                             # star≥2,按星退防合成件价值低估)。
                             _sell_v = sell_refund(_tgt.star,
-                                                  _bench_char_cost(_tgt))
+                                                  bench_char_cost(_tgt))
                             # T-153 生成侧自算披露(ADR-0593):孤儿性机械
                             # 腿执行点现读 = 被卖件是否当前线名册成员
                             # (线账闭合语境判据;义务登记簿引擎层不可见,
@@ -2292,7 +2292,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             # SellDeployed 的 income 未进 action_log(单动作
                             # 无事务汇总)——预状态现算(与 simulate 同口径)
                             _tx_income = sell_refund(
-                                _sold.star, _bench_char_cost(_sold))
+                                _sold.star, bench_char_cost(_sold))
                         if _applied:
                             # 迁移审计 w65(git 历史) 修法3(ADR-0323):显式动作**真执行**才置位
                             # (被拒不跳围栏,见上方分支注释)

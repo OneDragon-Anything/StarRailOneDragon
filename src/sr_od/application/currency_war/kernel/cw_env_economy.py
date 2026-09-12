@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_investments import get_env
-from sr_od.application.currency_war.kernel.cw_state import REFRESH_COST_BASE
+from sr_od.application.currency_war.kernel.cw_vocab import REFRESH_COST_BASE
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState

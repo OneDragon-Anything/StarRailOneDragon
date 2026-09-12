@@ -12,7 +12,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     BuyCard,
     CwWorkFrame,
-    _bench_char_cost,
+    bench_char_cost,
 )
 
 # 符号解耦(处死计划批 0 第 1 项):本模块消费的注册数据/序列化符号权威
@@ -162,7 +162,7 @@ def salvageable_1star_value(state: CwWorkFrame) -> int:
       本值高 → 钱在卡上,非经济病;两字段必须并读)。
     - 计算式:Σ ``cw_state.sell_refund(1, cost)``。1★ 卖出全额退、无
       手续费(sell_refund 单一源),故值 = Σ cost;费用单一源 =
-      ``cw_state._bench_char_cost``(char_id 未识别 → 3 中费保守估)。
+      ``cw_state.bench_char_cost``(char_id 未识别 → 3 中费保守估)。
     - 件集边界:只算 1★(2★+ 是沉没通道——合成已花成本,卖出还有
       手续费,不构成「活期金」);deployed 与 bench 并集,空槽 None
       跳过。
@@ -175,7 +175,7 @@ def salvageable_1star_value(state: CwWorkFrame) -> int:
             continue
         if int(getattr(d, 'star', 1) or 1) != 1:
             continue
-        total += sell_refund(1, _bench_char_cost(d))
+        total += sell_refund(1, bench_char_cost(d))
     return total
 
 

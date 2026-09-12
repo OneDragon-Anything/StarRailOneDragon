@@ -14,8 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     deployed_slots_of,
 )
@@ -27,9 +27,7 @@ from sr_od.application.currency_war.kernel.cw_comps import (
     mechanics_fit,
     weighted_mean,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    iter_occupied_deployed,  # ADR-0392 helper 导入
-)
+from sr_od.application.currency_war.kernel.cw_exec_state import iter_occupied_deployed
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_comps import Comp
@@ -189,7 +187,7 @@ class PerformanceTracker:
         return clamp(1.0 - trend / HP_LOSS_FULL, 0.0, 1.0)
 
 
-def star_achievement(comp: Comp, bs: BoardState) -> float:
+def star_achievement(comp: Comp, bs: GameState) -> float:
     """核心角色星级达成(0..1;review round-4 HIGH-1:限时 AV 星级=输出,高星核心角色更强)。
 
     核心角色(``char_id in comp.core_chars``)在 bench/deployed 的 star —— 取 **bot 跟踪** star
@@ -209,7 +207,7 @@ def star_achievement(comp: Comp, bs: BoardState) -> float:
 
 # ===== comp_viability(评 current 已 commit comp;先验 + 观测 blend)=====
 
-def comp_viability(comp: Comp, bs: BoardState, ctx: ScoreContext,
+def comp_viability(comp: Comp, bs: GameState, ctx: ScoreContext,
                    tracker: PerformanceTracker) -> float:
     """评 **current 已 commit** comp 的可行性(pivot/eval 用;先验 + 观测 blend,0..1)。
 
@@ -244,7 +242,7 @@ TREND_THRESHOLD: float = HP_LOSS_FULL * 0.5   # trend 超此(归一化掉血 15+
 LOCK_NODES: set[str] = {"boss", "遭遇", "精英"}   # 锁不住血的节点类型(普通关可能锁血翻盘)
 
 
-def is_run_dead(bs: BoardState, tracker: PerformanceTracker,
+def is_run_dead(bs: GameState, tracker: PerformanceTracker,
                 next_node_type: str) -> bool:
     """死局检测(三门):HP 低 + trend 高 + 下回合是锁不住血节点 → True。
 

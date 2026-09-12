@@ -34,8 +34,8 @@ from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     deployed_slots_of,
     gold_of,
@@ -50,9 +50,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    effective_hp_threshold,
-)
+from sr_od.application.currency_war.kernel.cw_economy import effective_hp_threshold
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_performance import PerformanceTracker
@@ -1347,13 +1345,13 @@ def gift_hit_tier(grant: GiftGrant, evicted: frozenset[str] | set[str] = frozens
 
 # ===== 评分 helper(comp 相关)=====
 
-def _owned_chars(bs: BoardState) -> set[str]:
+def _owned_chars(bs: GameState) -> set[str]:
     """已持有的角色名集合(bench + deployed)。"""
     return {bc.char_id for bc in (*bench_slots_of(bs), *deployed_slots_of(bs))
             if bc is not None and bc.char_id}
 
 
-def form_progress(comp: Comp, bs: BoardState) -> float:
+def form_progress(comp: Comp, bs: GameState) -> float:
     """成型度 0..1:各核心阵营 tier 进度的均值(min(board,form_tiers)/form_tiers)。
 
     10 的 helper(comp_viability 先验用);纯阵营 tier,不含角色(避免与 char_quality 三重计分)。
@@ -1419,7 +1417,7 @@ def form_progress(comp: Comp, bs: BoardState) -> float:
     return clamp(total / n, 0.0, 1.0)
 
 
-def progress(comp: Comp, bs: BoardState) -> float:
+def progress(comp: Comp, bs: GameState) -> float:
     """comp_score 用:0.6 阵营 tier 进度 + 0.4 核心角色持有(归一化 0..1)。
 
     与 form_progress 区别:progress 加了 core_char 持有项(选 target 时评估契合用);
@@ -1431,7 +1429,7 @@ def progress(comp: Comp, bs: BoardState) -> float:
     return clamp(0.6 * fp + 0.4 * core_frac, 0.0, 1.0)
 
 
-def shop_supply(comp: Comp, bs: BoardState) -> float:
+def shop_supply(comp: Comp, bs: GameState) -> float:
     """comp 核心阵营的**本回合** shop 可得性 [0,1](shop-aware)。
 
     现仅用于 **drought bail 判定**(连续 N 回合 supply<1.0 → 弃不可达 target 重选;default 栈 drought bail 已退役,本函数保留为挂账层消费面),
@@ -1469,7 +1467,7 @@ def shop_supply(comp: Comp, bs: BoardState) -> float:
     return 0.0
 
 
-def equip_fit(comp: Comp, bs: BoardState) -> float | None:
+def equip_fit(comp: Comp, bs: GameState) -> float | None:
     """装备契合度(comp 相关,0..1):持有 comp.key_equips 越多越高(超线性 ^0.7 奖励集齐)。
 
     ⚠️ comp 驱动(用户):不设通用 equip_score,一切从 target_comp.key_equips 出发。
@@ -1619,7 +1617,7 @@ def strength_base(comp: Comp) -> float:
     return {"S": 1.0, "A": 0.7, "B": 0.4}.get(comp.strength, 0.5)
 
 
-def current_enemy_mechanics(bs: BoardState,
+def current_enemy_mechanics(bs: GameState,
                             registry: DecisionV2Registry | None = None) -> set[str]:
     """当前敌人机制 tag 集合(从容器 enemy_affixes 域经 AFFIX_MECHANIC_MAP 映射;未知词缀原样透传;
     W875 补全包词缀经 merged_mechanic_tables 按开关并表,全关=基表零漂移)。"""
@@ -1627,7 +1625,7 @@ def current_enemy_mechanics(bs: BoardState,
     return {affix_map.get(a, a) for a in (bs.enemy_affixes.value or [])}
 
 
-def make_score_context(bs: BoardState, bosses: list[str] | None = None) -> ScoreContext:
+def make_score_context(bs: GameState, bosses: list[str] | None = None) -> ScoreContext:
     """从容器视图快速构造 ScoreContext(常用入口)。bosses 由外部 OCR 传入。"""
     return ScoreContext(
         bosses=bosses or list(bs.plane_bosses.value or []),
@@ -1672,7 +1670,7 @@ def weighted_mean(items: list[tuple[float, float | None]]) -> float:
     return sum(w * v for w, v in valid) / total_w
 
 
-def comp_score(comp: Comp, bs: BoardState, ctx: ScoreContext) -> float:
+def comp_score(comp: Comp, bs: GameState, ctx: ScoreContext) -> float:
     """候选 comp 综合分(select_comp 评分 candidate 用;无观测项 —— 未 commit 的 candidate 无观测)。
 
     多维度 comp 相关(用户:一切挂钩目标阵容):成型进度 + 机制双向 + 环境 + boss + 装备 + 强度。
@@ -1726,7 +1724,7 @@ def _priority_boost(comp: Comp, config) -> float:
     return boost
 
 
-def _difficulty_phase_factor(comp: Comp, bs: BoardState) -> float:
+def _difficulty_phase_factor(comp: Comp, bs: GameState) -> float:
     """阶段感知因子(用户:成型难度 + 早期战力都是关键维度):早期/穷 → 偏 easy 成型 + early_power 高。
 
     早期偏 easy **且** early_power 高,避免选易成型但早期弱的 comp
@@ -1756,7 +1754,7 @@ def _formation_cost_factor(comp: Comp) -> float:
     return max(0.85, 1.3 - total * 0.055)
 
 
-def _board_alignment(comp: Comp, bs: BoardState) -> float:
+def _board_alignment(comp: Comp, bs: GameState) -> float:
     """board-alignment boost(CW deployed-lock → 选 board 支持的 comp)。
 
     comp 阵营在 board 有 count≥2(deep-stack)→ ×1.2;全不在 board → ×0.3(deployed-lock 下不可成型,
@@ -1778,7 +1776,7 @@ def _board_alignment(comp: Comp, bs: BoardState) -> float:
     return 1.0
 
 
-def _held_base_copies(bs: BoardState) -> dict[str, int]:
+def _held_base_copies(bs: GameState) -> dict[str, int]:
     """玩家持有的每角色**基础副本数**(牌池消耗 j;ADR-0110 acq 牌池感知用)。
 
     bench + deployed 各单位按 star 折基础副本(3合1:1星=1 / 2星=3 / 3星=9 / 4星=27 张基础副本)。
@@ -1799,7 +1797,7 @@ def _held_base_copies(bs: BoardState) -> dict[str, int]:
     return counts
 
 
-def select_comp(bs: BoardState, ctx: ScoreContext, config,
+def select_comp(bs: GameState, ctx: ScoreContext, config,
                 top_n: int = 1) -> list[Comp]:
     """按 comp_score 选 target(分数降序,返回 top_n)。
 
@@ -1809,7 +1807,7 @@ def select_comp(bs: BoardState, ctx: ScoreContext, config,
     return [c for _s, c in select_comp_scored(bs, ctx, config, top_n=top_n)]
 
 
-def select_comp_scored(bs: BoardState, ctx: ScoreContext, config,
+def select_comp_scored(bs: GameState, ctx: ScoreContext, config,
                        top_n: int = 1) -> list[tuple[float, Comp]]:
     """``select_comp`` 的带分版(遥测要**实际排序分**——含 steer/acq/
     board_alignment 等乘子的最终分,非裸 comp_score;close_call 分差分析量纲对齐)。
@@ -1874,7 +1872,7 @@ def select_comp_scored(bs: BoardState, ctx: ScoreContext, config,
     return scored[:top_n]
 
 
-def comp_score_breakdown(comp: Comp, bs: BoardState, ctx: ScoreContext) -> dict[str, float | None]:
+def comp_score_breakdown(comp: Comp, bs: GameState, ctx: ScoreContext) -> dict[str, float | None]:
     """comp_score 的特征分解(telemetry 采集用:给人肉眼复盘 + 未来 ML side door)。
 
     schema 稳定(字段名跨版本不变);数值随版本/实玩变。*_fit 无数据项值为 None(动态权重)。
@@ -2335,7 +2333,7 @@ PIVOT_GAP_FLOOR: float = 0.05      # 信号1 阈值绝对下限(评审🟡6:easi
 #                                   0.039 < comp_score 单轮自然抖动 ~0.06-0.1 → losing 窗口噪声级 churn)
 
 
-def target_committed(target: Comp, bs: BoardState) -> bool:
+def target_committed(target: Comp, bs: GameState) -> bool:
     """target 是否已 commit。单一真相源(T#97);maybe_pivot(强粘)+ cw_events prefilter(拒 off-target)共用。
 
     commit = 已成型(form_progress≥COMMIT_FRAC)**或** 轮数兜底(累计轮≥COMMIT_ROUND **且** form_progress>0)。
@@ -2364,7 +2362,7 @@ PIVOT_COOLDOWN_ROUNDS: int = 3
 PIVOT_SURVIVAL_COOLDOWN_ROUNDS: int = 1   # 保命 pivot 冷却(防连续翻转自激)
 
 
-def maybe_pivot(bs: BoardState, ctx: ScoreContext, config, target: Comp | None,
+def maybe_pivot(bs: GameState, ctx: ScoreContext, config, target: Comp | None,
                 tracker: PerformanceTracker | None = None) -> Comp | None:
     """是否转型到新 target(返回新 Comp 或 None 不转)。
     转型信号(比较型,03 正确性-4):**信号 3(保命)优先于 1/2**():
@@ -2420,7 +2418,7 @@ def maybe_pivot(bs: BoardState, ctx: ScoreContext, config, target: Comp | None,
     best = candidates[0]
     # 保命独占语义:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn:
     # best 随 board/shop 每轮变 → target 振荡 + 高难度 comp 永不成型 → 死亡螺旋)。
-    # 阈值域直传容器帧(effective_hp_threshold 波 2 已切 BoardState 签名,
+    # 阈值域直传容器帧(effective_hp_threshold 波 2 已切 GameState 签名,
     # 过渡期 _HpShim 手抄镜像字段桥已随之消亡——输入字段职级/位面/轮次/
     # 等级容器侧全就绪,禁再新增同型鸭子桥)。
     _pivot_hp = int(0.75 * effective_hp_threshold(bs))
@@ -2656,7 +2654,7 @@ MEGASTAR_BY_ATTRIBUTE: dict[str, str] = {
 }
 
 
-def select_megastar(bs: BoardState, target: Comp | None,
+def select_megastar(bs: GameState, target: Comp | None,
                     available_megastars: list[str]) -> str | None:
     """选 1 名盛会之星作巨星(盛会之星羁绊核心决策;按 target_comp 选,不单独评分)。
 
