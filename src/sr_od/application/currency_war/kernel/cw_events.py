@@ -6,7 +6,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_board_state import (
-    board_state_bridge,
+    BoardState,
+    bench_slots_of,
+    deployed_count_of,
+    deployed_slots_of,
+    max_units_of,
+    plane_of,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     augment_affinity,
@@ -29,7 +34,6 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     strategy_bindings,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
-    GameState,
     PickEvent,
 )
 
@@ -119,7 +123,7 @@ def is_economy_engine(economy: EconomyEffect | None) -> bool:
     return False
 
 
-def _invest_d_star(state: GameState, locked_comp: str,
+def _invest_d_star(bs: BoardState, locked_comp: str,
                    demoted_endgame: bool,
                    evicted: frozenset[str] | set[str]) -> tuple[set[str], set[str], str]:
     """投资选卡的「预期终局方向」D* 解析(T-155;ADR-0597;级联单规则零阶段特判)。
@@ -146,10 +150,10 @@ def _invest_d_star(state: GameState, locked_comp: str,
         comp = get_comp(locked_comp)
         if comp is not None:
             return set(comp.factions), set(comp.core_chars), 'locked'
-    sigs = [s for s in detect_signals(state)
+    sigs = [s for s in detect_signals(bs)
             if s.layer != 1
             and s.comp_name not in evicted
-            and state.plane not in (getattr(get_comp(s.comp_name),
+            and plane_of(bs) not in (getattr(get_comp(s.comp_name),
                                             'weak_planes', ()) or ())]
     if not sigs:
         return set(), set(), ''
@@ -186,7 +190,7 @@ def _opt_counters_dot(opt: str) -> bool:
 # - 旧 P2 装备流 EQUIP_FLOW_PICKS plane≥2 +25(11 局实锤)→ 0(经验
 #   拟合,辖域+幅度双未证;若重立须按观测参数化)。)
 
-def decide_event(options: list[str], config, state: GameState,
+def decide_event(options: list[str], config, bs: BoardState,
                  locked_comp: str = '', demoted_endgame: bool = False,
                  evicted: frozenset[str] | set[str] = frozenset()) -> PickEvent:
     """事件选项打分(投资策略/环境 3 选 1;T-155 判据重构,ADR-0597)。
@@ -240,7 +244,7 @@ def decide_event(options: list[str], config, state: GameState,
     strategy_forbid = list(getattr(config, 'strategy_forbid', []) or [])
     env_priority = list(getattr(config, 'env_priority', []) or [])
     env_forbid = list(getattr(config, 'env_forbid', []) or [])
-    on_dot = sum(state.board.get(f, 0) for f in ('持续伤害', '减益')) >= 2
+    on_dot = sum((bs.board.value or {}).get(f, 0) for f in ('持续伤害', '减益')) >= 2
     penalty = 100
     # 品质回落字典序的序数编码(ADR-0524):品质序=游戏定义(棱彩>金>银),
     # 主键 rank(0/1/2)+ 次键 econ(0/1);×2 保证次键永不翻转主键——
@@ -250,7 +254,7 @@ def decide_event(options: list[str], config, state: GameState,
     # D* 单帧单读(ADR-0597):每决策帧现算一次快照,帧内不重读——
     # T-152「K 活读数轮内重排」病灶在消费面结构性不可发生。
     _d_facs, _d_chars, _d_src = _invest_d_star(
-        state, locked_comp, demoted_endgame, evicted)
+        bs, locked_comp, demoted_endgame, evicted)
 
     best_idx, best_score = 0, -1.0
     best_reason = ''
@@ -525,7 +529,7 @@ def _reward_value(rewards: list[str]) -> float:
 
 
 
-def decide_encounter(options: list[EncounterOption], state: GameState,
+def decide_encounter(options: list[EncounterOption], bs: BoardState,
                      target_comp: Comp | None, config, refresh_used: bool = False) -> EncounterPick:
     """遭遇节点选难度档 + 是否刷新(纯逻辑,design 08)。✅ 已接:``CwScreenEncounter`` 调本函数 +
     ``read_encounter_options``(cw_node_obs,OCR 卡标题「遭遇其X」→ difficulty)。affix 分支 N/A
@@ -543,9 +547,9 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
     if not options:
         return EncounterPick(idx=0, reason="no-options")
     mechs = [_option_mechanics(o, target_comp) for o in options]
-    form = (form_progress(target_comp, board_state_bridge(state))
+    form = (form_progress(target_comp, bs)
             if target_comp is not None else 0.5)
-    formed = form >= 0.4 and state.deployed_count() >= max(2, state.max_units() // 2)
+    formed = form >= 0.4 and deployed_count_of(bs) >= max(2, max_units_of(bs) // 2)
 
     # 全分支词缀都克 comp(mechanics_fit < 0.4)+ 刷新未用 → 刷新换批(避开高危)
     if not refresh_used and target_comp is not None and all(m < 0.4 for m in mechs):
@@ -563,7 +567,7 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
         # 奖励价值(用户指路;OCR 奖励带已读)——与难度联动:
         # 只有「敢难」时奖励差才兑现,不敢难时好奖励也白搭(不独立加分)
         rv = _reward_value(o.rewards)
-        if state.plane == 3:
+        if plane_of(bs) == 3:
             # ADR-0130:P3 永避高难遭遇(一次 -70 血无回报,成型也不赌)。
             s -= 0.5 * diff_norm
             s -= 0.1 * (1.0 - rv)   # P3 不为奖励冒险,仅轻微 tiebreak
@@ -572,7 +576,7 @@ def decide_encounter(options: list[EncounterOption], state: GameState,
             # 碾压(form≥0.9,gap≤−36,bell→0)敢难白拿;其余保守保血。
             gap = (0.4 - form) * 60
             press_v = encounter_tier_score(d_now=100.0, tier_delta=-2,
-                                           gap=gap, plane=state.plane)
+                                           gap=gap, plane=plane_of(bs))
             dare = press_v < 0.05
             s += (0.3 + 0.2 * (rv - 0.5)) * diff_norm if dare else -0.3 * diff_norm
         return s
@@ -664,7 +668,7 @@ def _equip_value(equip: str) -> int:
 
 
 
-def decide_supply(options: list[SupplyOption], state: GameState,
+def decide_supply(options: list[SupplyOption], bs: BoardState,
                   target_comp: Comp | None, config, refresh_used: bool = False) -> SupplyPick:
     """补给节点选装备 + 是否刷新(纯逻辑,design 07/08)。✅ 已接:``run_supply_node`` 调本函数 +
     ``read_supply_options``(cw_node_obs,OCR 每列角色+装备)。
@@ -768,7 +772,7 @@ class PlannerPick:
     reason: str = ''
 
 
-def decide_planner(options: list[PlannerOption], state: GameState,
+def decide_planner(options: list[PlannerOption], bs: BoardState,
                    target_comp: Comp | None = None) -> PlannerPick:
     """银狼「我来当策划」二选一策略。
 
@@ -794,8 +798,8 @@ def decide_planner(options: list[PlannerOption], state: GameState,
     has_wolf_line = bool(_tgt_chars & {'银狼LV.999'}) or bool(
         _tgt_factions & {'欢愉', '量子同频'})
     # 在场判定:bench+deployed 的 char_id(信息缺失=空列表→不降权,保守)
-    _pool = list(getattr(state, 'deployed', None) or []) + \
-        [b for b in (state.bench or []) if b is not None]
+    _pool = [d for d in deployed_slots_of(bs) if d is not None] + \
+        [b for b in bench_slots_of(bs) if b is not None]
     _owned = {getattr(bc, 'char_id', '') for bc in _pool
               if getattr(bc, 'char_id', '')}
     wolf_owned = ('银狼LV.999' in _owned) if _owned else True

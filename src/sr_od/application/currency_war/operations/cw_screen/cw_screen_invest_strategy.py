@@ -62,6 +62,9 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_bridge,
+)
 from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
 from sr_od.application.currency_war.kernel.cw_events import (
     decide_event,
@@ -415,7 +418,8 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 # hp/品质惩罚,hp 字段仅为 GameState 构造完整性。**显式跳过刷新链**
                 # (ADR-0600 §3.3 防御路径):刷新链依赖 exec_state_of(match.session) 与
                 # match 上下文,局外防御帧零行为增量(refresh_slots 不消费)。
-                pick = decide_event(names, config, GameState(hp=100, hp_readable=True))
+                # W6 波3 贯通:decide_event 已切容器签名,防御帧经桥装箱。
+                pick = decide_event(names, config, board_state_bridge(GameState(hp=100, hp_readable=True)))
         else:
             pick = None
 

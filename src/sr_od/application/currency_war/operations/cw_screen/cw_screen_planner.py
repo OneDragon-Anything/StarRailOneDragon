@@ -182,6 +182,9 @@ class CwScreenPlanner(CwScreenOpBase):
             if not (self.CARD_TEXT_Y_LO <= cy <= self.CARD_TEXT_Y_HI):
                 continue
             (left_text if cx < 960 else right_text).append(text)
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
         from sr_od.application.currency_war.kernel.cw_events import PlannerOption
         options = [PlannerOption(idx=0, text=' '.join(left_text)),
                    PlannerOption(idx=1, text=' '.join(right_text))]
@@ -203,7 +206,8 @@ class CwScreenPlanner(CwScreenOpBase):
                 options, _st, _match.session, _cfg)
         else:
             from sr_od.application.currency_war.kernel.cw_events import decide_planner
-            pick = decide_planner(options, GameState(), None)
+            # W6 波3 贯通:decide_planner 已切容器签名,防御帧经桥装箱。
+            pick = decide_planner(options, board_state_bridge(GameState()), None)
         target = self._card_point(pick.idx)
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',

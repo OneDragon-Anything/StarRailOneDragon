@@ -23,6 +23,11 @@ from __future__ import annotations
 
 from collections import Counter
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    bench_slots_of,
+    deployed_slots_of,
+)
 from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
 
 
@@ -125,8 +130,19 @@ def equips_ledger_multiset(bench: list[BenchChar], deployed: list[BenchChar],
     return out
 
 
-def state_equips_multiset(state: GameState) -> Counter:
-    """GameState 侧账本全景(对账快照入口)。"""
+def state_equips_multiset(state: BoardState | GameState) -> Counter:
+    """账本全景对账快照入口(W6 波3 容器一等形态)。
+
+    - BoardState:席位经波1 读口(bench_slots_of/deployed_slots_of),
+      owned 池 = ``equips.value``;消费面 = 观察对账/容器消费点;
+    - GameState:旧工作帧直读(simulate 守恒对账入口,cw_state 单一源
+      调用面,W5/W8 随 simulate 退役)——双形态过渡,退役随调用面,
+      禁新消费点再喂旧帧。
+    """
+    if isinstance(state, BoardState):
+        return equips_ledger_multiset(bench_slots_of(state),
+                                      deployed_slots_of(state),
+                                      state.equips.value or [])
     return equips_ledger_multiset(state.bench, state.deployed, state.equips)
 
 

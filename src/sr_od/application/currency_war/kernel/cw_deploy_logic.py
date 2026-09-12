@@ -27,7 +27,10 @@ from dataclasses import dataclass, field
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_board_state import (
-    board_state_bridge,
+    BoardState,
+    max_units_of,
+    plane_of,
+    round_num_of,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_line_defs import (
@@ -953,7 +956,18 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # 义务集排除独立承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
 
 
-def record_fresh_buy(session: object, state: GameState | None,
+def _fresh_phase(state: BoardState | GameState | None) -> tuple:
+    """相位键读法(双形态过渡):容器 = plane_of/round_num_of 读口;
+    老栈 GameState 帧(测试夹具/波4 面调用) = 属性直读。兼容支随
+    调用面(波4 装配/测试重构)消亡,禁新消费点再喂旧帧。"""
+    if state is None:
+        return (None, 1)
+    if isinstance(state, BoardState):
+        return (plane_of(state), round_num_of(state))
+    return (getattr(state, 'plane', None), getattr(state, 'round_num', 1))
+
+
+def record_fresh_buy(session: object, bs: BoardState | None,
                      name: str) -> None:
     """轮内新鲜度排除登记(买入意图逐名写入;发射位调用)。
 
@@ -965,8 +979,7 @@ def record_fresh_buy(session: object, state: GameState | None,
         return
     ex = exec_state_of(session)
     reg = ex.cw4_swap_fresh_buys
-    phase = (getattr(state, 'plane', None),
-             getattr(state, 'round_num', 1))
+    phase = _fresh_phase(bs)
     if not isinstance(reg, dict) or reg.get('phase') != phase:
         reg = {'phase': phase, 'names': set()}
         ex.cw4_swap_fresh_buys = reg
@@ -974,13 +987,12 @@ def record_fresh_buy(session: object, state: GameState | None,
 
 
 def fresh_buys_of(session: object,
-                  state: GameState | None) -> frozenset[str]:
+                  bs: BoardState | None) -> frozenset[str]:
     """读当前位面轮内有效的新鲜买入名集(跨轮 = 空集,自动失效)。"""
     reg = exec_state_of(session).cw4_swap_fresh_buys
     if not isinstance(reg, dict):
         return frozenset()
-    phase = (getattr(state, 'plane', None),
-             getattr(state, 'round_num', 1))
+    phase = _fresh_phase(bs)
     if reg.get('phase') != phase:
         return frozenset()
     names = reg.get('names')
@@ -1442,7 +1454,7 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
 def assemble_swap_plan_inputs(
         session: object,
         *,
-        state: GameState | None,
+        state: BoardState | None,
         deployed: list[BenchChar],
         bench: list[BenchChar],
         cap: int | None,
@@ -1513,7 +1525,8 @@ def assemble_swap_plan_inputs(
     tgt_comp = None
     try:
         if not committed_from(session, state):
-            tgt_comp = (decision_target(session, board_state_bridge(state))
+            # W6 波3:state 已切容器形态,decision_target 直吃容器(桥退役位)。
+            tgt_comp = (decision_target(session, state)
                         if state is not None else
                         None)
     except Exception:   # noqa: BLE001  双轨读端缺供给 → 退 target_comp
@@ -1537,14 +1550,14 @@ def assemble_swap_plan_inputs(
         [d for d in deployed if d is not None])
     if tgt_comp is not None and state is not None:
         try:
-            _fp = float(form_progress(tgt_comp, board_state_bridge(state)))
+            _fp = float(form_progress(tgt_comp, state))
         except Exception:   # noqa: BLE001  成型度不可得 = 臂关(保守)
             _fp = 0.0       # fenced 臂维持 0.0 保守侧;fp 留 None ⇒ 转型臂
             # fp_unreadable 弃权(ADR-0534 §1 fp 缺读两臂同 fail-closed)
         else:
             fp = _fp
-        board_full = _n >= state.max_units()
-        fenced_on = fenced_swap_arm_of(_fp, _n, state.max_units())
+        board_full = _n >= max_units_of(state)
+        fenced_on = fenced_swap_arm_of(_fp, _n, max_units_of(state))
     elif cap is not None:
         board_full = _n >= cap   # state 缺读退型:调用方 cap 口径(保守侧)
     # 买面义务排除集(与 M4 燃料集同参同源;T-307/R1 起两侧同吃截断集
@@ -1559,7 +1572,7 @@ def assemble_swap_plan_inputs(
         _lm = locked_buy_membership(
             ist, cap_hold=locked_buy_cap_hold(state))
         membership = _lm if _lm is not None else frozenset()
-    board = dict(getattr(state, 'board', None) or {}) if state is not None \
+    board = dict(state.board.value or {}) if state is not None \
         else {}
     try:
         _lf = locked_faction_scope(ist) or frozenset()

@@ -220,7 +220,8 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 )
                 pick = match.strategy.decide_invest('env', names, strategy_input_state(match.session), match.session, config)
             else:
-                pick = decide_event(names, config, GameState(hp=100, hp_readable=True))  # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读 hp/品质惩罚,hp 字段仅为 GameState 构造完整性
+                # W6 波3 贯通:decide_event 已切容器签名,防御帧经桥装箱。
+                pick = decide_event(names, config, board_state_bridge(GameState(hp=100, hp_readable=True)))  # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读 hp/品质惩罚,hp 字段仅为 GameState 构造完整性
         else:
             pick = None
         if pick is not None and 0 <= pick.option_idx < len(opts):

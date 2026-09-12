@@ -596,8 +596,12 @@ def _m1p_plan_fill_deploy(st: GameState, plan: SwapPlan,
     # (sim 供给齐备不可达,防御缺省)退计划 ctx 视图——最近真值源。
     _ctx2 = None
     try:
+        # W6 波3 贯通:assemble 已切容器签名,st 为 GameState 帧,经桥装箱。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge as _bs_red,
+        )
         _ctx2 = assemble_swap_plan_inputs(
-            sess, state=st,
+            sess, state=_bs_red(st),
             deployed=list(iter_occupied_deployed(st.deployed)),
             bench=[b for b in st.bench if b is not None],
             cap=st.max_units(),
@@ -679,6 +683,9 @@ def _m1p_plan_and_record(st: GameState, sess) \
     max_units 派生链)——与生产发射/执行两面同函数、同一装配契约,禁
     第二装配。零 rng 消耗、纯读(状态写入只发生在引擎执行转录块)。
     """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assemble_swap_plan_inputs,
         select_swap_plan,
@@ -687,8 +694,9 @@ def _m1p_plan_and_record(st: GameState, sess) \
     from sr_od.application.currency_war.kernel.cw_state import (
         iter_occupied_deployed,
     )
+    # W6 波3 贯通:同上,帧经桥装箱。
     ctx = assemble_swap_plan_inputs(
-        sess, state=st,
+        sess, state=board_state_bridge(st),
         deployed=list(iter_occupied_deployed(st.deployed)),
         bench=[b for b in st.bench if b is not None],
         cap=st.max_units())
@@ -1739,13 +1747,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     from sr_od.application.currency_war.kernel import (
                         cw_intention as _rej_intention,
                     )
+
+                    # W6 波3 贯通:k 空窗回退/三臂判据已切容器签名,帧经桥装箱。
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        board_state_bridge as _bs_rej,
+                    )
                     _rej_fb, _rej_tok = (
                         _rej_intention.k_empty_window_fallback(
-                            st, _obs_ist, session=sess,
+                            _bs_rej(st), _obs_ist, session=sess,
                             registry=_obs_registry))
                     if _rej_tok == 'p2plus':
                         _rej_arms = _rej_intention.no_target_arms(
-                            st, _obs_ist, session=sess,
+                            _bs_rej(st), _obs_ist, session=sess,
                             registry=_obs_registry)
                         _seg_hub = frozenset(_rej_arms.hub_names)
                 _seg_rejects = shop_unbought_reasons(
@@ -2751,12 +2764,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 if _is_supply:
                     # 补给节点:真两步 decide_supply(语义零改动,见下)
                     _opts = _sample_supply_opts(_basic_names)
-                    _pick = decide_supply(_opts, st, strategy_state_of(sess).target_comp, None,
+                    # W6 波3 贯通:decide_supply 已切容器签名;分支内局部导入
+                    # (函数前段 board_state_bridge 为他分支局部名,禁跨分支引用)。
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        board_state_bridge as _bs_sup,
+                    )
+                    _pick = decide_supply(_opts, _bs_sup(st), strategy_state_of(sess).target_comp, None,
                                           refresh_used=exec_state_of(sess)._supply_refresh_used)
                     if _pick.refresh and not exec_state_of(sess)._supply_refresh_used:
                         exec_state_of(sess)._supply_refresh_used = True
                         _opts = _sample_supply_opts(_basic_names)
-                        _pick = decide_supply(_opts, st, strategy_state_of(sess).target_comp, None,
+                        _pick = decide_supply(_opts, _bs_sup(st), strategy_state_of(sess).target_comp, None,
                                               refresh_used=True)
                     st.equips.append(_opts[_pick.idx].equip)
                     _equip_grants += 1   # `w614_sim_fidelity/` G1 发放落账
