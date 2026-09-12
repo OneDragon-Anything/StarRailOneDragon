@@ -181,6 +181,12 @@ CHARACTERS: dict[str, Character] = {c.name: c for c in [
     # → 无官方 art,模板=现场采集 portrait_plaza/佩佩/raw.png,2026-08-26 佩佩局实拍)。
     # cost=0 系统单位:恒最右、不可拖/不可卖(同狸猫对);无阵营无流派(增益挂件)。
     _ch("佩佩", 0, "back", "", "", "", source="live:招财狗/溜佩佩族召唤"),
+    # 狸职狸狸(投资策略「狸职手续」(id 204001):获得 3 个穿 1 件简易装备的【狸狸】;
+    # 2026-09-12 实机 1-3 备战帧实拍:浮窗名=狸职狸狸/后台,三只各带 1 件装备恒占最右格,
+    # 与 cw_identity_obs 系统单位恒最右模型吻合)。cost=0 系统单位(同狸猫对);
+    # 无阵营无流派。识别注意:与蓝/红狸同造型,灰度 SIFT 会互撞——已落同规格模板
+    # portrait_plaza/狸职狸狸(净艺术区+掩码)消除。
+    _ch("狸职狸狸", 0, "back", "", "", "", source="live:狸职手续204001"),
 ]}
 
 # 规范名集合(从 CHARACTERS 派生;供 COMP_LIBRARY.core_chars / config.character_priority 校验)
