@@ -1049,7 +1049,7 @@ def schedule_upgrade(bs: BoardState, session: StrategySession,
     from sr_od.application.currency_war.kernel.cw_investments import (
         refresh_invest_active,
     )
-    if refresh_invest_active(list(bs.active_strategies.value or [])):
+    if refresh_invest_active(type('_S', (), {'active_strategies': bs.active_strategies.value or []})()):
         return False    # 淘金客姿态:升级通道退役(sim 注入臂实证;谓词单一址)
     # ① 人口位:cap 满 ∧ bench 有成型件(2★)等上场([33]/[32](a));
     # 谓词单一源 = _pop_slot_indicator(原「有意复制三副本」纪律随本批

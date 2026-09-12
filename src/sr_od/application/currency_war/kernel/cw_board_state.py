@@ -1535,7 +1535,7 @@ def apply_shop_action_logic(bs: BoardState, action: Any, *,
                     continue
                 kept.append(c)
             _w(bs.shop, ShopPayload(cards=kept,
-                                    refresh_probs=dict(payload.refresh_probs)),
+                                    refresh_probs=(dict(payload.refresh_probs) if payload.refresh_probs is not None else None)),
                'proj_buy_payload')
         # bench 落位(简单腿;升星整表直写由执行侧既有口承接,须后写)
         if has_free:

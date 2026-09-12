@@ -275,9 +275,22 @@ def p1_blood_floor(state) -> bool:
     )
     if state is None or not hp_decision_trusted(state):
         return False
-    if getattr(state, 'plane', None) != 1:
-        return False
-    hp = getattr(state, 'hp', None)
+    # 双形态过渡(W6 波 4:上游消费面经桥装箱传容器 bs,如 flow
+    # .bump_lock_gen_feasibility_obs;存量调用面仍传帧。GameState 支随
+    # 波 5 last_state 链退役消亡)——plane/hp 读口分形,禁 getattr 鸭读
+    # 容器(恒 None = 域谓词静默恒 False,观测死区键失活实位)。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        plane_of,
+    )
+    if isinstance(state, BoardState):
+        if plane_of(state) != 1:
+            return False
+        hp = state.hp.value
+    else:
+        if getattr(state, 'plane', None) != 1:
+            return False
+        hp = getattr(state, 'hp', None)
     return hp is not None and hp <= HP_BAND_NEAR_DEATH
 
 
@@ -325,9 +338,19 @@ def p2_blood_floor(state) -> bool:
     )
     if state is None or not hp_decision_trusted(state):
         return False
-    if (getattr(state, 'plane', None) or 0) < 2:
-        return False
-    hp = getattr(state, 'hp', None)
+    # 双形态过渡(同 p1_blood_floor:桥装箱容器 bs 与存量帧两形并读)。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        plane_of,
+    )
+    if isinstance(state, BoardState):
+        if plane_of(state) < 2:
+            return False
+        hp = state.hp.value
+    else:
+        if (getattr(state, 'plane', None) or 0) < 2:
+            return False
+        hp = getattr(state, 'hp', None)
     return hp is not None and hp <= HP_BAND_NEAR_DEATH
 
 
@@ -454,7 +477,20 @@ def front_window_frame(state: GameState, session) -> bool:
     每位面必有战斗的结构下退化域)⇒ 静默 False **不落分键**(落地审
     H4 修:显影主张收窄至表缺/锚不符两支)。
     """
-    if getattr(state, 'plane', None) != 1:
+    # 双形态过渡(W6 波 4:商店线传容器 bs;存量面传帧;帧支随波 5
+    # last_state 链退役消亡)——位面/轮次锚取数分层,判据本体零改。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+        plane_of,
+        round_num_of,
+    )
+    if isinstance(state, BoardState):
+        plane = plane_of(state)
+        round_num = round_num_of(state)
+    else:
+        plane = getattr(state, 'plane', None)
+        round_num = getattr(state, 'round_num', 0)
+    if plane != 1:
         return False
     if getattr(session, 'plane_node_table_plane', None) != 1:
         return False
@@ -466,8 +502,7 @@ def front_window_frame(state: GameState, session) -> bool:
             break
     if first_battle_idx is None:
         return False   # 脏表退化域:静默 False(边界注见 docstring)
-    return 1 <= int(getattr(state, 'round_num', 0) or 0) \
-        <= first_battle_idx + 1
+    return 1 <= int(round_num or 0) <= first_battle_idx + 1
 
 
 def zero_form_frame(deployed: list) -> bool:

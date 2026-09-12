@@ -124,7 +124,7 @@ def next_level_xp_cost(state: object, missing_copies: int) -> int:
     if (_eff.xp_click_discount_from_level_at
             and level >= _eff.xp_click_discount_from_level_at):
         _discount += _eff.xp_click_discount_from_level
-    return max(0, XP_CLICK_COST_FALLBACK - _discount)
+    return clicks * max(0, XP_CLICK_COST_FALLBACK - _discount)
 
 
 def p38_budget_recursion(state: object, session: object,

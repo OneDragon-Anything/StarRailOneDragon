@@ -709,7 +709,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                            config: CurrencyWarConfig) -> Action:
         """商店单动作决策接口(ADR-0517 决策 1/2/5;ADR-0583 升格入契约面)。
 
-        输入 = ``session.shop_state_frame``(黑板:入口观察/单动作投影/
+        输入 = session 容器(board_state_of;黑板槽退役,设计件《商店黑板容器化方案》§2.2-1:入口观察/单动作投影/
         sim 引擎写);输出 = **恰一个动作**,全函数永不 None——「无动作
         可做」由 ``CloseShop`` 恒可用终结表达(决策 5/6)。决策本体 =
         ``mandate_v1/shop.decide_shop_action``(选择序 = 既有波批优先级

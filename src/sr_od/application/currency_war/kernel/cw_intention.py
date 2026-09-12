@@ -1760,7 +1760,7 @@ def update_intention(bs: BoardState, ist: IntentionState,
                             'g_alt': round(g_alt, 4),
                             'eps': _reg_f.revoke_miss_tolerance_eps,
                             'h_eff': _h,
-                            'hp': int(_decision_hp_disc() or 0),  # 读法声明同 p2_supply_horizon(政策层读口)
+                            'hp': int(_decision_hp_disc(bs, session) or 0),  # 读法声明同 p2_supply_horizon(政策层读口)
                             'member_drought': track.member_drought,
                         }
                         ist.last_event = (

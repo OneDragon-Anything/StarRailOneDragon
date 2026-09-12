@@ -2356,7 +2356,10 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             _causal: list[str] = []
             _chaseable = False
             if _rp is None:
-                _chaseable = True   # 概率条不可得:fail 向(视同可追)
+                _chaseable = True   # 概率条不可得:fail 向(视同可追)。
+                # 容器域读法(W6 波 4 契约:payload 在屏时 probs 恒非 None,
+                # 「概率条未读」= 空表 {}——falsy 判覆盖 None/{} 两形态,
+                # 与决策视图 adapter 的 probs 折 None 同门)
             else:
                 for _m in k_members:
                     if _cnt(_m, 2) > 0:
