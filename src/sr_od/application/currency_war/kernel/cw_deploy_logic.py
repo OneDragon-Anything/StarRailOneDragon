@@ -1474,12 +1474,13 @@ def assemble_swap_plan_inputs(
     """swap 计划输入装配单一源(发射侧与执行侧**同函数、同一装配契约**;
     ADR-0530)。
 
-    装配源契约(ADR-0530;对抗收口方案钉死原话)= 执行侧卖出决策实际消费的
-    快照链,不用 PrepObservation 另起一路:board/fp 消费调用方传入的
-    ``state``(执行侧传 ``session.last_state`` 滞后帧链,发射侧传决策帧
-    黑板——同函数、异参,输入源两侧分轨是既定事实);deployed/bench 消
-    费调用方现读(执行侧 = SIFT 读面,发射侧 = PrepObservation 帧)。
-    派生逻辑(target 视图双轨口径/fenced 臂/义务排除集/保护域)全在
+    装配源契约(ADR-0530;对抗收口方案钉死原话,last_state 链退役批
+    措辞更新)= 执行侧卖出决策实际消费的快照链,不用 PrepObservation
+    另起一路:board/fp 消费调用方传入的 ``state``(执行侧/发射侧/sim
+    引擎三方均传容器单例 board_state_of——T-146 装配源迁移把执行侧从
+    旧滞后帧链切容器;sim 侧经 feed_sim_truth 喂后读容器);deployed/
+    bench 消费调用方现读(执行侧 = SIFT 读面,发射侧 = PrepObservation
+    帧)。派生逻辑(target 视图双轨口径/fenced 臂/义务排除集/保护域)全在
     本函数,两侧禁自写第二份。两侧输入的逐字段对齐由 seam 核对批兑现
     (对齐证据 = 开闸小批前置义务,挂账 IMPL_REPORT),核对通过前发射
     位保持关闭。

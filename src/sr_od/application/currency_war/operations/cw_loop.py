@@ -154,32 +154,38 @@ def prep_no_progress_state_fingerprint(session) -> tuple:
     出现过 ⇒ 其意图在案),收窄只为防识别抖动(球体检测闪烁)误计数。
 
     gold 分量语义(T-167 钉死,持久家 = ADR-0554 修订节第 5 条;
-    docstring 与写入链一致性勘误):
-    session.last_state.gold 是 **raw 读数**——wholesale 写入链
-    (cw_screen_prep 观察段 `session.last_state = st` 整帧赋值)不按可信
-    位过滤,关店帧失读时 read_game_state 兜底 0 非 None,可读帧含 OCR
-    噪声(事故局 21:05:28 一帧 29→31 已见)。本函数钉死为「仅开态可信帧
+    last_state 链退役批换源申报):
+    分量源 = 容器 ``bs.gold``——观察漏斗(``_feed_board_state``)仅
+    gold_readable 帧观察写入,失读帧走 carry 不落值(关店帧 0 兜底
+    与 OCR 噪声结构性进不了记录)。本函数钉死为「仅开态可信帧
     (prep_obs_frame.state_gold_trusted = heavy ∧ 店开,单一写点
     cw_screen_prep)更新可信陈值(session 属性 PREP_GOLD_TRUSTED_ATTR),
     其余帧沿用陈值」:真买入/升级/刷新必经开店帧,真值写入即变指纹,
-    进展检测无损;卖出有 bench/deployed 身份串兜底;关店帧 gold 噪声
-    (0 兜底/OCR 抖动)不再归零计数——只此一处防止「恒态下指纹分量
-    抖动 = 永不触发」的失效方向。无陈值时(开局首店前)回退 raw 读数,
-    噪声至多延迟出口,不破坏正确性(守卫停机/哨兵兜底)。⚠️ 本函数带
-    一次 session 属性写入(可信陈值更新),属守卫消费链的记账副作用,
-    不改变「纯读 observe 现成字段」的识别面。
+    进展检测无损;卖出有 bench/deployed 身份串兜底;关店帧 gold 抖动
+    不再归零计数——防「恒态下指纹分量抖动 = 永不触发」的失效方向。
+    无陈值时(开局首店前)回退容器现值:未观察 = None,漏斗质量门保证
+    容器无噪声值,旧 raw 兜底的「噪声至多延迟出口」面随之消失(同向
+    更稳,守卫停机/哨兵兜底不变)。⚠️ 本函数带一次 session 属性写入
+    (可信陈值更新),属守卫消费链的记账副作用,不改变「纯读 observe
+    现成字段」的识别面。轮次分量源 = 容器节点读口(plane_of/round_num_
+    of,引导窗缺省镜像旧帧缺省;last_state 槽已随链退役批删除)。
     """
-    _st = getattr(session, 'last_state', None)
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        board_state_of,
+        plane_of,
+        round_num_of,
+    )
     _frame = getattr(session, 'prep_obs_frame', None)
     _ids = lambda chars: tuple(  # noqa: E731  身份串(零新识别,读 heavy 观察现成字段)
         getattr(bc, 'char_id', '') for bc in (chars or []))
-    _gold_raw = getattr(_st, 'gold', None)
-    if getattr(_frame, 'state_gold_trusted', False) and _gold_raw is not None:
-        setattr(session, PREP_GOLD_TRUSTED_ATTR, _gold_raw)
-    _gold = getattr(session, PREP_GOLD_TRUSTED_ATTR, _gold_raw)
+    _bs = board_state_of(session)
+    _gold_obs = _bs.gold.value
+    if getattr(_frame, 'state_gold_trusted', False) and _gold_obs is not None:
+        setattr(session, PREP_GOLD_TRUSTED_ATTR, _gold_obs)
+    _gold = getattr(session, PREP_GOLD_TRUSTED_ATTR, _gold_obs)
     return (
-        getattr(_st, 'plane', None),
-        getattr(_st, 'round_num', None),
+        plane_of(_bs),
+        round_num_of(_bs),
         getattr(session, 'last_node_type', None),
         _gold,
         _ids(getattr(_frame, 'bench_chars', None)),
@@ -345,8 +351,8 @@ def locked_resume_sync_and_battle(op, ctx):
     确认分支复位证据位。
 
     隐藏前提声明(R3):同步步的「不误卖」依赖恢复局 session 必新鲜——
-    恢复检测链(cw_resume_lock.is_new_match)恒走新容器,last_state=None
-    ⇒ deploy-swap 卖出通道整体跳过(_board 缺 board 不可判),同步步实际
+    恢复检测链(cw_resume_lock.is_new_match)恒走新容器,节点未观察
+    ⇒ deploy-swap 卖出通道整体跳过(board 未观察不可判),同步步实际
     只做确定性部署;若未来恢复检测放开 mid-run 复用 session,stale board
     会让同步步按旧目标线卖新局板面——届时须先加卖出输入守卫。
 
@@ -1342,7 +1348,8 @@ class CwLoop(SrOperation):
 
         hp 轨迹由 CwScreenBattleWait 结算链维持
         (SettlementState.last_outcome_hp,W971 05-battle §1 收编);
-        死局回大厅 fallback_hp 常为 100 兜底(hp_readable=False 污染 last_state)。
+        死局回大厅 fallback 兜底常为 100(hp_readable=False 污染读面的
+        旧码行;容器 hp 由结算覆盖/观察漏斗质量门写入,兜底面不复现)。
         """
         hp = self._settle.last_outcome_hp
         return hp if hp is not None else fallback_hp
@@ -1355,7 +1362,7 @@ class CwLoop(SrOperation):
         loop 顶检查几乎永不触发(MCP stop 四局 [RUNS-GAP] 哨兵连报实锤)。
         本钩子在 ``execute()`` 全路径收口(after_operation_done 对成功/失败/停止
         必达,operation.py:492):未写 summary 的对局在此补写,hp/plane/round
-        取最后已知值(session.last_state;hp 走 ``_last_true_hp`` 防 100 兜底毒化),
+        取最后已知值(session 容器单例;hp 走 ``_last_true_hp`` 防兜底值毒化),
         result='stopped'(停止) / 'abandoned'(超时/异常退出)。
         """
         super().after_operation_done(result)
@@ -1374,9 +1381,10 @@ class CwLoop(SrOperation):
         204908 stop 两实例 runs 缺行定位):旧守卫「零 outcome = 假局不写」
         把**部署死循环等零结算阶段的真局**也吞了(2 小时 400 轮循环、备战
         观察全程活动,却因无战斗/补给结算行被当成开局失败)。
-        新判定:**「从未观察到对局态」才算假局**(last_state 缺失 ∧ 零
-        outcome = 开局即失败,镜像 3c 守卫);只要观察过对局态或有过任一
-        结算行,就是真局,必走收口。
+        新判定:**「从未观察到对局态」才算假局**(容器节点未观察 ∧ 零
+        outcome = 开局即失败,镜像 3c 守卫;last_state 缺失判定随链退役
+        换源 = ``bs.node.value is None``,观察漏斗每帧刷新节点);只要
+        观察过对局态或有过任一结算行,就是真局,必走收口。
 
         删除波 1:runs summary 写行与 outcomes 收口终局行(T-185)随旧流
         写入端退役;W4 流删:cw4 计数流写面亦退役,局终级全键聚合改由
@@ -1389,64 +1397,63 @@ class CwLoop(SrOperation):
         if self._summary_written:
             return
         _m = self.ctx.cw_match
-        _st = (getattr(_m.session, 'last_state', None)
-               if _m is not None and _m.session is not None else None)
+        _sess = getattr(_m, 'session', None) if _m is not None else None
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+            plane_of,
+            round_num_of,
+            write_match_final,
+        )
+        _bs = board_state_of(_sess) if _sess is not None else None
+        _observed = _bs is not None and _bs.node.value is not None
         _has_outcome = not (self._settle.last_outcome_hp is None
                             and self._settle.rounds_done == 0)
-        if _st is None and not _has_outcome:
+        if not _observed and not _has_outcome:
             return   # 真假局:从未观察到对局态也无结算痕迹(开局即失败)
         try:
             _stopped = bool(getattr(self.ctx.run_context, 'is_context_stop', False))
-            _final_hp = self._last_true_hp(_st.hp if _st is not None
-                                           and _st.hp is not None else 0)
+            _bs_hp = (_bs.hp.value if _bs is not None else None)
+            _final_hp = self._last_true_hp(_bs_hp if _bs_hp is not None else 0)
             # match_final 局终收口行(W3 在线接线,非正常终局形态;判定序
             # 停止>败局>plane==3>abnormal 与 close_run result 同源;写口
             # 段内幂等 G12,best-effort;先于 close_run 落局时间窗)。
             try:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
-                    write_match_final,
-                )
                 from sr_od.application.currency_war.obs.cw_observation import (
                     resolve_final_type,
                 )
                 _mf_type = resolve_final_type(
                     stop_requested=_stopped,
                     saw_defeat=self._settle.saw_defeat_settlement,
-                    plane_reached=(_st.plane if _st is not None else 1),
+                    plane_reached=(plane_of(_bs) if _observed else 1),
                     rounds_played=_has_outcome)
-                _mf_session = (getattr(_m, 'session', None)
-                               if _m is not None else None)
-                _mf_bs = (board_state_of(_mf_session)
-                          if _mf_session is not None else None)
-                if _mf_bs is not None and _mf_type is not None:
+                if _bs is not None and _mf_type is not None:
                     write_match_final(
-                        _mf_bs, final_type=_mf_type,
-                        plane=(_st.plane if _st is not None else 1),
-                        round_num=(_st.round_num if _st is not None else 1),
+                        _bs, final_type=_mf_type,
+                        plane=(plane_of(_bs) if _observed else 1),
+                        round_num=(round_num_of(_bs) if _observed else 1),
                         hp=(int(_final_hp) if _final_hp else None),
-                        gold=getattr(_st, 'gold', None) if _st is not None else None,
-                        streak=getattr(_st, 'streak', None) if _st is not None else None,
+                        gold=(_bs.gold.value if _observed else None),
+                        streak=(_bs.streak.value if _observed else None),
                         backfilled=(_mf_type == 'abnormal'),
                         # 策略行为观测计数局终聚合(R5 W4 键收编载体;
                         # 收口时点现读快照,先于 close_run,聚合随时点真值)。
-                        cw4_counters=self._cw4_counters_snapshot(_mf_session),
+                        cw4_counters=self._cw4_counters_snapshot(_sess),
                         note=('online:w75_stopped' if _stopped
                               else 'online:w75_abandoned'))
             except Exception as e:   # noqa: BLE001  观测旁路,不阻塞收口
                 log.warning('[cw][loop] match_final 收口行写入失败(不阻塞): %s', e)
             state.close_run(
                 result='stopped' if _stopped else 'abandoned',
-                plane_reached=_st.plane if _st is not None else 1,
-                rounds_survived=_st.round_num if _st is not None else 1,
+                plane_reached=plane_of(_bs) if _observed else 1,
+                rounds_survived=round_num_of(_bs) if _observed else 1,
                 final_hp=int(_final_hp or 0),
                 notes=('stopped:operation 收口(W75)' if _stopped
                        else 'abandoned:operation 异常收口(W75)'))
             self._summary_written = True
             log.info('[cw][loop] 局终 summary 收口:%s p%s-r%s hp=%s',
                      'stopped' if _stopped else 'abandoned',
-                     _st.plane if _st is not None else 1,
-                     _st.round_num if _st is not None else 1, _final_hp)
+                     plane_of(_bs) if _observed else 1,
+                     round_num_of(_bs) if _observed else 1, _final_hp)
             # 按局存档装配随补写收口(P4R4:非正常终局此前只在 3c 装配,
             # 补写的 runs 行没有装配机会 → 对局档案缺该局;失败不阻塞)。
             try:
@@ -2768,21 +2775,35 @@ class CwLoop(SrOperation):
                     return self.round_success('开局失败/中断(未产生对局数据,不记 summary)')
                 if self.ctx.cw_match is not None:
                     # B4(ADR-0170 telemetry 接线):终局真实数据灌 MatchOutcome(原桩全默认)——
-                    # won=回大厅即本局结束;plane/round/hp 取 session.last_state(每回合框架刷新的
-                    # 最后快照;⚠️ CurrencyWarMatch 无 state 字段——review 子代理 P0 实锤,勿写
-                    # cw_match.state)。喂跨局分配器(0170,分级奖励);生命周期钩子
-                    # on_match_end 已随 ADR-0583 收编删除(原实现 = P1 no-op,零行为)。
-                    _st = self.ctx.cw_match.session.last_state
+                    # won=回大厅即本局结束;plane/round/hp 取 session 容器单例
+                    # (观察漏斗/结算覆盖链刷新的记录;last_state 槽随链退役
+                    # 批删除换源;⚠️ CurrencyWarMatch 无 state 字段——review
+                    # 子代理 P0 实锤,勿写 cw_match.state)。hp 语义随换源
+                    # 修正申报:旧帧沿用 hp(带门控/兜底形态)→ 容器 hp
+                    # (结算覆盖真值,apply_settlement_cover 置信门写入)——
+                    # 跨局分配输入更贴真实终局血量。喂跨局分配器(0170,分级
+                    # 奖励);生命周期钩子 on_match_end 已随 ADR-0583 收编删除
+                    #(原实现 = P1 no-op,零行为)。
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        board_state_of,
+                        plane_of,
+                        round_num_of,
+                        write_match_final,
+                    )
+                    _bs = board_state_of(self.ctx.cw_match.session)
+                    _observed = _bs.node.value is not None
                     # ⚠️ 假 win 守卫(2026-08-17 M70 事故):won 曾用 `plane >= 3`——恢复对局时 plane
                     # 被 OCR 读成 8(A8 难度泄漏)→ 8>=3 → 假通关进遥测。现要求 **plane==3 精确值**
                     # (值域守卫已在上游拒 8,此处双保险);且死局(本局见过战败结算屏)不判 win。
                     _died_this_run = self._settle.saw_defeat_settlement
+                    _final_plane = plane_of(_bs) if _observed else 1
+                    _final_round = round_num_of(_bs) if _observed else 1
+                    _bs_hp = _bs.hp.value
                     _outcome = MatchOutcome(
-                        won=(_st is not None and _st.plane == 3 and not _died_this_run),
-                        final_plane=_st.plane if _st is not None else 1,
-                        final_round=_st.round_num if _st is not None else 1,
-                        final_hp=(_st.hp if _st is not None
-                                  and _st.hp is not None else 0),
+                        won=(_final_plane == 3 and not _died_this_run),
+                        final_plane=_final_plane,
+                        final_round=_final_round,
+                        final_hp=(_bs_hp if _bs_hp is not None else 0),
                     )
                     self._allocator_update(_outcome)
                     # match_final 局终收口行(W3 在线接线,W2 落地审 §⑤
@@ -2792,10 +2813,6 @@ class CwLoop(SrOperation):
                     # 同口径);写口自带段内幂等查重(G12),best-effort
                     # 不阻塞收口流转。先于 close_run(行 ts 落局时间窗)。
                     try:
-                        from sr_od.application.currency_war.kernel.cw_game_state import (
-                            board_state_of,
-                            write_match_final,
-                        )
                         from sr_od.application.currency_war.obs.cw_observation import (
                             resolve_final_type,
                         )
@@ -2806,16 +2823,15 @@ class CwLoop(SrOperation):
                             saw_defeat=_died_this_run,
                             plane_reached=_outcome.final_plane,
                             rounds_played=True)
-                        _mf_bs = board_state_of(self.ctx.cw_match.session)
-                        if _mf_bs is not None and _mf_type is not None:
+                        if _mf_type is not None:
                             write_match_final(
-                                _mf_bs, final_type=_mf_type,
+                                _bs, final_type=_mf_type,
                                 plane=_outcome.final_plane,
                                 round_num=_outcome.final_round,
                                 hp=(_outcome.final_hp
                                     if _outcome.final_hp else None),
-                                gold=getattr(_st, 'gold', None),
-                                streak=getattr(_st, 'streak', None),
+                                gold=(_bs.gold.value if _observed else None),
+                                streak=(_bs.streak.value if _observed else None),
                                 # 策略行为观测计数局终聚合(R5 W4 键收编
                                 # 载体;收口时点现读快照,先于 close_run)。
                                 cw4_counters=self._cw4_counters_snapshot(

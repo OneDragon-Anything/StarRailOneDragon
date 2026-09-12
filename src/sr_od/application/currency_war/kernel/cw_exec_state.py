@@ -265,14 +265,30 @@ def _session_tracked(session) -> tuple[list[BenchChar], list[BenchChar | None]]:
     return list(m), list(d)
 
 
-def _advance_gold(session, delta: int) -> None:
-    """last_state.gold 逻辑推进(可为负;None 视 0 基线——金账由商店波顶/
-    结算屏可信读覆盖修正,观察赢)。"""
-    st = getattr(session, 'last_state', None)
-    if st is None:
-        return
-    base = getattr(st, 'gold', 0) or 0
-    st.gold = base + delta
+def _advance_gold(session, delta: int, *,
+                  produced_by: str = 'PrepActionExecutor') -> None:
+    """op 逻辑效果的金账直推(last_state 链退役后宿主 = 容器单例):
+    ``board_state_of(session).gold`` 经 logic_action 通道 write_logic
+    (可为负;现值 None 视 0 基线——金账由商店波顶/结算屏可信读覆盖
+    修正,观察赢)。渠道面 = family='logic_action' + actor
+    'PrepActionExecutor'(在册;登记类属 = 动作 op 逻辑效果推进宿主,
+    produced_by 携调用面标识留证)。
+    """
+    try:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            ChannelSig,
+            board_state_of,
+        )
+        bs = board_state_of(session)
+        base = bs.gold.value
+        bs.write_logic(bs.gold, int(base or 0) + int(delta),
+                       produced_by=produced_by,
+                       evidence='op_effect_gold_delta',
+                       sig=ChannelSig(family='logic_action',
+                                      actor='PrepActionExecutor',
+                                      mode='compute'))
+    except Exception:   # noqa: BLE001  逻辑推进不阻塞执行链(观察覆盖兜底)
+        pass
 
 
 def _owned_add(session, item: str) -> None:
@@ -352,6 +368,12 @@ def apply_op_effect(session, action: PrepAction | dict, *,
         if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome') and item:
             _owned_add(session, item)
             _eff(f'owned[{item}]', f'+1({op})', 'owned')
+        elif op == 'ConfirmExpertCash':
+            # 专家邀请函「现金为王」:弃卡取现金固定回金 +4 金账直推
+            # (原 _overlay_confirm 内联 last_state 直推随链退役迁入本口,
+            # 与 owned 确认族同一推进语义单一源;shop_wave_top 实读覆盖修正)。
+            _advance_gold(session, 4, produced_by=produced_by)
+            _eff('gold', '+4(现金为王弃卡回金)', 'gold')
         elif op == 'BuyCard':
             # dict 形 BuyCard(模拟/离线入口):合成引擎算购买数,金账
             # 逻辑推进;tracked 本体推进 = 执行器/调用方辖。

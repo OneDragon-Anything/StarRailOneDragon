@@ -615,7 +615,7 @@ def resolve_back_slots(ctx: SrContext, screen: MatLike | None,
     (n_raw 依 CV/仲裁;CV 也不可判 → 双弃权进未知态);``None`` = 调用方
     未声明 → 维持现行为(diff=0 退 6 档基线,零行为变更);``True`` =
     observed(参与仲裁,现行为)。可信位单一源 =
-    ``cw_identity_obs._level_trusted``(session.last_state.level_readable)。
+    ``cw_identity_obs._level_trusted``(容器 level Field.source)。
 
     对账:一致 → 公式值;CV 实测存在且不符 → **CV 值**(画面事实>推导)+
     :func:`note_channel_conflict` 留证两值;CV None → 公式值兜底。

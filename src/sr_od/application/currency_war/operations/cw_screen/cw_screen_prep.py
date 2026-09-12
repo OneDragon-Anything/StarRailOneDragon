@@ -501,7 +501,8 @@ class CwScreenPrep(CwScreenOpBase):
 
         读半部(轻字段扫读 + observe_full 重观察)整体换端口真值直出;
         装配半部(单写者 session 写点)与读屏路径同语义:bench 播种/
-        last_node_type/gated_hp 写 last_state/期望态对账/缓存/黑板帧。
+        last_node_type 写点/期望态对账/缓存/黑板帧(last_state 写点已随
+        链退役批删除,容器喂入 = 观察源实现方契约)。
         缺席申报:cap×paddle 双源 vacancy 仲裁在端口路径结构性不跑——
         假环境 vacancy 单一真值(cap−deployed),双源分歧问题不存在;
         坐标/视觉域字段(spheres/boxes/tomes/overlay 检测)恒空,消费方
@@ -511,8 +512,8 @@ class CwScreenPrep(CwScreenOpBase):
         obs = bundle.prep if bundle.prep is not None else PrepObservation()
         # 容器化段 2:obs.state 槽装配随槽退役消亡——容器喂入归观察源
         # 实现方契约(与读屏路径 read_game_state._feed_board_state 同语义,
-        # 设计件 §2.6 端口路径边界行);st 保持执行侧装配源用途(last_state
-        # 写点,波 5 面零触碰)。
+        # 设计件 §2.6 端口路径边界行);st 现役用途 = 节点类型会话缓存与
+        # 视觉域缓存装配(last_state 写点已随链退役批删除)。
         st = bundle.state
         # 期望态基座:bench 播种(与读屏路径 :551 同语义,来源换端口真值)
         st.bench = bench_from_compact(
@@ -523,21 +524,11 @@ class CwScreenPrep(CwScreenOpBase):
         if session is not None:
             if st.node_type:
                 session.last_node_type = st.node_type
-            # hp 双源收口:写 last_state 前过 gated_hp(与读屏路径同门)
-            _st_t = ((st.plane - 1) * 9 + st.round_num) \
-                if (st.plane and st.round_num) else None
-            from sr_od.application.currency_war.strategies.impl.cw_strategy import (
-                gated_hp as _gh,
-            )
-            st.hp = _gh(st.hp, session, _st_t,
-                        current_readable=bool(
-                            getattr(st, 'hp_readable', True)))
-            session.last_state = st
-            # (期望态覆盖点·备战观察块已随 ADR-0651 两态制废除:op 逻辑
-            #  效果 = apply_op_effect 直接写 session 字段,实读帧观察覆盖
-            #  (观察赢);无挂账 diff 对账环节。tracked 族对账防抖语义
-            #  (reconcile_tracking)原地保留 = observation 写入路径防抖。)
-            # light 沿用缓存更新(视觉域载荷;trusted 位随帧,MED-1 同读屏路径)
+            # (last_state 写点已随链退役批删除:遗留读者与执行侧装配源
+            #  全切容器单例,端口路径容器喂入 = 观察源实现方契约;原
+            #  「写 last_state 前过 gated_hp」门随写点退役,gated_hp 门
+            #  现役在册位 = prep 装配消费位(读屏路径同)。)
+            # light 沿用缓存更新(视觉域载荷;MED-1 同读屏路径)
             self._cached_shop_cards = list(getattr(st, 'shop', None) or [])
             self._cached_bench = list(obs.bench_chars)
             self._cached_deployed = list(obs.deployed_chars)
@@ -654,8 +645,8 @@ class CwScreenPrep(CwScreenOpBase):
             # (kernel/cw_bs_view.game_state_view)。read_game_state 内部
             # _feed_board_state 已把本帧镜像进 GameState 单例,视图已建模
             # 域取记录值(失读帧沿用语义)、未建模/执行域透传本帧——决策
-            # 消费自此以 GameState 为源;last_state 原帧保持既有执行侧
-            # 装配源契约不变(ADR-0530)。
+            # 消费自此以 GameState 为源(旧 last_state 装配源契约随 T-146
+            # 装配源迁移与链退役批终结,ADR-0530 换源核销)。
             if session is not None:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,
@@ -736,26 +727,11 @@ class CwScreenPrep(CwScreenOpBase):
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
             if not obs.state_gold_trusted:
                 log.debug('[cw][director] heavy 读 state 于 shop 关态 → gold 不可信')
-            # gold==0 重读已在 observe_full 内(单一源,防双源易漏同步)
-            if session is not None:
-                # 单写者语义(hp 双源收口):写
-                # last_state 前过 gated_hp(与 shop.py 同门同
-                # 单源 helper)——防「director 写门控值 →
-                # shop 写现读值」反向翻转(两写者保留
-                # (各有上下文)
-                # 但**写出的 hp 同源**:结算真值优先,新鲜度
-                # 门拒绝陈值。
-                _st_t = ((st.plane - 1) * 9 + st.round_num) \
-                    if (st.plane and st.round_num) else None
-                from sr_od.application.currency_war.strategies.impl.cw_strategy import (
-                    gated_hp as _gh,
-                )
-                st.hp = _gh(st.hp, session, _st_t,
-                            current_readable=bool(
-                                getattr(st, 'hp_readable', True)))
-                session.last_state = st
-                # (期望态覆盖点·备战观察块已随 ADR-0651 两态制废除:无
-                #  挂账条目可对账;tracked/gold 实读写入链照常——观察赢。)
+            # (last_state 写点已随链退役批删除:写点原带「写前过 gated_hp」
+            #  hp 双源收口门,门随写点退役——gated_hp 门现役在册位 = prep
+            #  装配消费位;hp 局内宿主 = 容器(观察漏斗质量门写入),期望态
+            #  覆盖点·备战观察块已随 ADR-0651 两态制废除,tracked/gold
+            #  实读写入链照常——观察赢。)
             # substate 消费:observe_full 的可读性
             # 标注落 PrepObservation(下游对账/日志可判;轻步
             # 沿用缓存,同 _cached_state 语义)。
@@ -2274,13 +2250,15 @@ class CwScreenPrep(CwScreenOpBase):
         W3/T-255:执行事实(计划≠尝试/gold 基线)改由
         :class:`BuyCardsOutcome`(run_buy_waves 一手产出)在单元收口侧
         直供,本方法不再预记 gold 观测(旧 _unit_meta gold/t0 键随
-        spend_ledger 读面迁移退役)。plane/round 取 session.last_state
-        (与 receipts 同 join 口径)。纯内存写,失败不影响环。
+        spend_ledger 读面迁移退役)。plane/round 取容器节点读口
+        (last_state 链退役换源,与 receipts 同 join 口径)。纯内存写,
+        失败不影响环。
         """
         sess = self._session()
-        ls = getattr(sess, 'last_state', None) if sess is not None else None
-        plane = int(getattr(ls, 'plane', 0) or 0)
-        rnd = int(getattr(ls, 'round_num', 0) or 0)
+        _nd = (board_state_of(sess).node.value
+               if sess is not None else None)
+        plane = int(_nd.plane) if _nd is not None else 0
+        rnd = int(_nd.round_num) if _nd is not None else 0
         # 同轮多单元序号恒递增:序只在 (plane, round) 变化(或新局清键)时
         # 重置为 1——run() 环节点重入不清序,消除同轮双单元撞 unit_seq=1
         #(ADR-0514:任何按 (round, unit_seq)
@@ -2575,9 +2553,9 @@ class CwScreenPrep(CwScreenOpBase):
             _run_id = current_run_id() or '(无)'
         except Exception:  # noqa: BLE001
             _run_id = '(读失败)'
-        _st = getattr(session, 'last_state', None)
-        _pos = (f"p{getattr(_st, 'plane', '?')}r{getattr(_st, 'round_num', '?')}"
-                if _st is not None else '(无 last_state)')
+        _nd = board_state_of(session).node.value
+        _pos = (f"p{_nd.plane}r{_nd.round_num}"
+                if _nd is not None else '(节点未观察)')
         # sentinel flag(三要素:触发定位 / 可执行处理步骤 / 删除条件;临时
         # 捕获类按 §2.1:删整段钩子 + 删 sentinel,不留开关)
         try:
@@ -2660,8 +2638,8 @@ class CwScreenPrep(CwScreenOpBase):
         决定(CloseShop = 商店画面 op 的一等终结动作),路由层不硬编码收起。
 
         hp 三件组缺省 (None, False, False):0n 入口无备战观察(商店开态
-        HP 区不可读,读互斥),session.last_state 可能是上一轮的陈旧值
-        不可用作决策依据 → 不覆盖,保留 read_game_state 产物,血线消费门
+        HP 区不可读,读互斥),容器 hp 记录可能是上一轮的陈旧值不可用作
+        决策依据 → 不覆盖,保留 read_game_state 产物,血线消费门
         按 fail-closed 拒收(_apply_hp 契约)。显式开店路径
         (_open_shop_phase)经参数传入开店前备战观察的 hp 三件组。
 
@@ -2814,10 +2792,13 @@ class CwScreenPrep(CwScreenOpBase):
                     # (current+upcoming+past 按 idx)的类型序。
                     _all = sorted(slots, key=lambda s: s.idx)
                     _seq = [s.node_type for s in _all if s.node_type]
-                    _st_now = (self.ctx.cw_match.session.last_state
+                    # 位面锚 = 容器节点读口(last_state 链退役换源;节点
+                    # 未观察 = None,槽序表首帧写入退开局语义不变)。
+                    _nd_now = (board_state_of(self.ctx.cw_match.session)
+                               .node.value
                                if self.ctx.cw_match is not None else None)
-                    _plane_now = (_st_now.plane
-                                  if _st_now is not None else None)
+                    _plane_now = (_nd_now.plane if _nd_now is not None
+                                  else None)
                     if store_plane_table(_sess, _seq, _plane_now):
                         log.info('[cw-director][nodeseq] 槽序表存 p%s %d 槽:%s',
                                  _plane_now, len(_seq), _seq)
@@ -2852,8 +2833,8 @@ class CwScreenPrep(CwScreenOpBase):
                             (s for s in _all if s.state == 'current'), None)
                         _align_ok = (
                             _align_cur is not None
-                            and _st_now is not None and _st_now.round_num
-                            and _align_cur.idx == int(_st_now.round_num) - 1)
+                            and _nd_now is not None and _nd_now.round_num
+                            and _align_cur.idx == int(_nd_now.round_num) - 1)
                         if (_ledger_now is not None and _plane_now
                                 and _ledger_seq and _align_ok
                                 and _ledger_now.env_grace_until <= _ltime.monotonic()):
@@ -2874,8 +2855,8 @@ class CwScreenPrep(CwScreenOpBase):
                     # 多次 probe(开店/关店/重开)时 upcoming 还是本轮
                     # 的,会把 current 写成下一节点(超前一位)。
                     # 只在上次 probe 是更早轮次时才左移;同轮保持原值。
-                    _anchor = (_st_now.plane, _st_now.round_num) \
-                        if _st_now is not None else None
+                    _anchor = (_nd_now.plane, _nd_now.round_num) \
+                        if _nd_now is not None else None
                     _prev_anchor = getattr(
                         _sess, 'nodeseq_probe_anchor', None)
                     if _anchor is not None and _anchor != _prev_anchor:

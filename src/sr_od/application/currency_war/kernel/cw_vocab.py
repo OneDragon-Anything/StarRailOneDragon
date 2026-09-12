@@ -8,14 +8,13 @@
 docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
 本文件另定居动作契约族 14 符号(动作类 12 + ShopCard + CwSimFrame)。
 
-**过渡期双职责申报**:last_state 链退役波落地前,实机执行链
-(session.last_state 槽与 OCR 填帧链)仍以本类为观察工作载体——实机链
-消费点持有 ``CwSimFrame`` 注解 = 正式类型对既有消费面的收编延续,
-**不是 sim 专用**(防按名索骥误判 sim 泄漏进实机、或反向在 sim 批改实机
-链行为;也防按「CwSimFrame = sim 专用」立新哨兵误伤在飞实机过渡链)。
-退役指针 = last_state 链退役波(申报面 = kernel/cw_intention.py
-``committed_authority`` 形态注);该波落地后,类本体唯一存续职责 =
-推演内核。
+**终态消费面声明**(过渡期双职责已收口):实机执行链的观察工作载体
+职责随 last_state 链退役批终结——session.last_state 槽已删除,三写点
+与 OCR 填帧链的局内事实宿主 = 容器单例(喂入 = read_game_state 漏斗
+``_feed_board_state`` / sim 合成口 ``synthesize_from_game_state``)。
+本类现役消费面 = 推演内核(sim 引擎/engine runner/机制等价性验证锁 M1
+/假环境动作语义投影),实机操作链零持有;退役指针(申报面 =
+kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
 
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。本文件的 ``simulate`` 是单步动作应用器(纯函数),消费面终态 =
@@ -25,7 +24,7 @@ sim 引擎整局推进 / 假游戏环境动作语义投影 / 规则实现等价�
   (容器读,纯规则分支),期望态推进 = 容器投影直写
   (``cw_game_state.apply_shop_action_logic`` + 合成升星腿)。
 
-字段多由实机 OCR 填充(见 strategy_design.md §8 接线);未填(None/默认)时决策安全降级。
+字段多由 sim 环境剧本/重放档案构造填充;未填(None/默认)时决策安全降级。
 
 **board 模型**(ADR-0312 口径统一):
 - ``board`` = 已上阵羁绊计数(**全集口径**:factions+flows+independent+星徽装备
@@ -219,8 +218,11 @@ class CwSimFrame:
     # 翻倍一档,概率条直接印在商店上,OCR 即真值;None=未读/商店关 → _sample_cost 退基线表)
     refresh_probs: dict[int, float] | None = None
     # 节点序列由 cw_node_reader.NodeSlot 承载(read_node_sequence 直连消费方)。
-    dual_track_phase: bool = False           # ADR-0209 双轨期(P1 未定型;方向层接管起值源(ADR-0465) = cw_intention 权威派生经装配边界回填,读端 committed_from)
-    focus_factions: set[str] | None = None   # ADR-0209 flex 收敛白名单(真家 = StrategyState,方向刷新写入;本字段仅执行侧从策略态回填(cw_op_buy_cards 装配点),决策读端走策略态;W6 消费切换时回填点随 last_state 链退役)
+    # (dual_track_phase/focus_factions 两字段已随 last_state 链退役批删除
+    #  (T-166 对账表 E 类行 30/31 兑现,不迁容器):双轨判定真家 =
+    #  cw_intention.committed_from(session) 权威派生;flex 白名单真家 =
+    #  StrategyState.focus_factions(方向刷新写入),决策读端走策略态。
+    #  帧回填点(原 cw_op_buy_cards 装配位)同批删除。)
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
     # 动作v2 账本(契约包 C1,步2):显式动作(SellDeployed/SwapDeploy/
     # CompTransaction)的执行结果逐条记录(applied/rejected + reason)

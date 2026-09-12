@@ -577,8 +577,9 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # /§8.7 批次三件 4;免战牌同点自动登记——件 5「§3.2.19 载体归一
         # 的另一半,禁只做一半」)。chosen 命中效果注册表(规范名归一
         # 后)才登记;acquired_t = 登记时点节点序快照((plane-1)*9+round,
-        # 基 1,ActiveEffect 坐标系;节点值优先 GameState 单例,引导窗
-        # 回退 last_state 框架末次读值)。登记面 best-effort:失败不阻塞
+        # 基 1,ActiveEffect 坐标系;GameState 节点单例,节点未观察
+        # (引导窗)= None 缺位,last_state 帧回退随链退役批删除)。
+        # 登记面 best-effort:失败不阻塞
         # 选卡主链(与升级挂点同纪律);账本当前零决策消费(§5.1 过渡
         # 口径:挂点接线未完成面一律观察覆盖兜底)。
         try:
@@ -590,13 +591,8 @@ class CwScreenInvestStrategy(CwScreenOpBase):
             if _spec is not None:
                 _bs_reg = board_state_of(match.session)
                 _nd = _bs_reg.node.value
-                if _nd is not None:
-                    _t = (_nd.plane - 1) * 9 + _nd.round_num
-                else:
-                    _st_l = getattr(match.session, 'last_state', None)
-                    _t = (((getattr(_st_l, 'plane', 1) or 1) - 1) * 9
-                          + (getattr(_st_l, 'round_num', 1) or 1)
-                          ) if _st_l is not None else None
+                _t = ((_nd.plane - 1) * 9 + _nd.round_num
+                      if _nd is not None else None)
                 _bs_reg.effects.register_strategy(_spec, _t)
                 # 桥·burst 形态(迁移批次三 B1,设计 §3.3.5/§5.1):登记
                 # 时点把免费刷新 burst 额度一次性累加进余额(固定理财

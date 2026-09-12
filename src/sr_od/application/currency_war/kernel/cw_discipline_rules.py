@@ -179,30 +179,22 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
 )
 
 
-def hp_decision_trusted(frame: GameState | CwSimFrame) -> bool:
-    """hp 决策可信位(单一源;**双形态过渡函数**,统一 state 迁移波 2 起):
+def hp_decision_trusted(frame: GameState) -> bool:
+    """hp 决策可信位(单一源;容器一等形态,W6 波 2 起):
 
-    - **容器形态**(输入 = ``GameState``):委托
-      ``cw_hp_policy.hp_decision_trusted_of``(定谳二单一源:
+    - 委托 ``cw_hp_policy.hp_decision_trusted_of``(定谳二单一源:
       ``bs.hp.source in ('observation', 'carried')``,语义见该函数
       docstring);
-    - **CwSimFrame 形态**(输入 = 旧标量帧:``frame.hp`` 非 Field 载体):
-      旧双位读法 ``hp_readable or hp_trusted``——过渡期遗留消费面的兼容支
-      (实机链旧帧调用面),**随 last_state 链退役波收口**(申报面 =
-      kernel/cw_intention.py ``committed_authority`` 形态注),禁在
-      该形态下新增消费点。
+    - (CwSimFrame 帧兼容支已随 last_state 链退役批删除——申报面 =
+      kernel/cw_intention.py ``committed_authority`` 形态注,指针兑现;
+      旧双位读法 ``hp_readable or hp_trusted`` 随旧链消亡,禁再喂旧帧。)
 
     同模块(及跨模块引用点)禁再手写双位判定(W393 A1.1 单一源纪律):
     语义=ADR-0282 对账层「沿用真值帧放行 vs 兜底假值帧拒」(ADR-0428
     收紧口径)——prior/logic 支两位皆 False 不评估,carried 沿用帧放行。
     新增 hp 守卫消费点一律走容器形态本 helper 或政策层读口。
     """
-    _hp = getattr(frame, 'hp', None)
-    if hasattr(_hp, 'source'):    # 容器帧:hp 是 Field 载体(带 .source)
-        return hp_decision_trusted_of(frame)
-    # CwSimFrame 残留形态(getattr 读法,随遗留调用面退役收口;AST 双位锁豁免位)
-    return bool(getattr(frame, 'hp_readable', False)
-                or getattr(frame, 'hp_trusted', False))
+    return hp_decision_trusted_of(frame)
 
 
 # p1_crisis_band(P1 ≈22 血危局带判据)不设:经用户裁决不授权、废弃

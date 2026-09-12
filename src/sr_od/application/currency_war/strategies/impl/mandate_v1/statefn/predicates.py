@@ -250,6 +250,8 @@ def p1_blood_floor(state: GameState) -> bool:
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.lambda_death import (
         HP_BAND_NEAR_DEATH,
     )
+    if state is None:
+        return False   # 缺供给 fail-closed(D2 语义族;None 守卫显式化)
     if not hp_decision_trusted(state):
         return False
     if plane_of(state) != 1:
@@ -300,6 +302,8 @@ def p2_blood_floor(state: GameState) -> bool:
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.lambda_death import (
         HP_BAND_NEAR_DEATH,
     )
+    if state is None:
+        return False   # 缺供给 fail-closed(D2 语义族;None 守卫显式化)
     if not hp_decision_trusted(state):
         return False
     if plane_of(state) < 2:

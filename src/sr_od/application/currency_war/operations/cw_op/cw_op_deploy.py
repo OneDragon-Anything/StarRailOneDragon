@@ -430,7 +430,7 @@ class CwOpDeploy(SrOperation):
 
     def _level_trusted(self) -> bool | None:
         """level authoritative 位(15 号稿 §3.2①/T-8):单一源 =
-        ``cw_identity_obs._level_trusted``(session.last_state.level_readable);
+        ``cw_identity_obs._level_trusted``(容器 level Field.source);
         None = 未声明(布局公式通道维持现行为)。"""
         from sr_od.application.currency_war.obs.cw_identity_obs import (
             _level_trusted as _single_source,

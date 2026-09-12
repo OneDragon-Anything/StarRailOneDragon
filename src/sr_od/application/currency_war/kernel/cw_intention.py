@@ -2354,7 +2354,7 @@ def k_empty_window_fallback(bs: GameState,
             .char_targets, 'p2plus')
 
 
-def committed_authority(state: GameState | CwSimFrame | None,
+def committed_authority(state: GameState | None,
                         session: StrategySession | None) -> bool:
     """committed(已定型/非双轨期)权威判定(方向层单一派生源)。
 
@@ -2370,18 +2370,13 @@ def committed_authority(state: GameState | CwSimFrame | None,
       .committed_from``(唯一读端,内部委托本函数)取值;
       state/session 侧双轨字段降级为兼容残留(读点归零,
       grep 守卫锁),写端退役随老栈(strategy 层)老栈退役(ADR-0466/0469)。
-    - **state 形态(W6 波3 切 GameState,hp施门下沉kernel政策层设计
-      §2.4 shim 收编申报②)**:一等形态 = GameState(plane 经
-      ``plane_of`` 读口);过渡兼容支 = 老栈 CwSimFrame 帧(plane 属性
-      直读)——尚存旧帧调用面属波4/波5 辖域文件(mandate_v1 装配/
-      cw_screen_prep 旧链/prep_actions/session.last_state 槽),随各自
-      退役波消亡,本支退役挂波5 last_state 链删除;禁新消费点再喂
+    - **state 形态 = 容器单例**(W6 波3 切换;plane 经 ``plane_of`` 读口)。
+      波5 过渡兼容支(CwSimFrame 帧 plane 属性直读)已随 last_state 链
+      退役批删除(本形态注即其退役指针,指针兑现);禁新消费点再喂
       旧帧或手造鸭子镜像(同型鸭子桥禁令,_PlaneShim 已随波3 消亡)。
     """
     if state is not None:
-        plane = (plane_of(state) if isinstance(state, GameState)
-                 else int(getattr(state, 'plane', 1)))
-        if plane >= 2:
+        if plane_of(state) >= 2:
             return True
     ist = getattr(strategy_state_of(session), 'v3_intention', None) if session is not None else None
     if ist is None:
@@ -2392,16 +2387,14 @@ def committed_authority(state: GameState | CwSimFrame | None,
 
 
 def committed_from(session: StrategySession,
-                   state: GameState | CwSimFrame | None = None) -> bool:
+                   state: GameState | None = None) -> bool:
     """committed(已定型/非双轨期)唯一合法读端(R1,蓝图 §4.3;
     cw_recipe 决策中心消费它成 kernel→decision 断环边,§3.3-①d;体内仅委托
     本模块 ``committed_authority``,kernel 内自洽)。
 
-    - 有现读 state(容器一等形态,见 committed_authority
-      形态注)→ 直取权威派生;
-    - 无现读 state 的调用面:plane 取 session 容器单例(board_state_of,
-      T-146 装配源换源——旧 session.last_state 槽直读退役;波5 喂入反转
-      后该槽随遗留读者面收尾批退役);
+    - 有现读 state(容器单例)→ 直取权威派生;
+    - 无现读 state 的调用面:plane 取 session 容器单例(board_state_of;
+      旧 session.last_state 槽直读已随链退役批删除,槽本体不复存在);
       也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
 
     grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;

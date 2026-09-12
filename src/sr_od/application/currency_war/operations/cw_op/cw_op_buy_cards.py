@@ -324,7 +324,7 @@ def refresh_wave_is_refresh_only(actions: list) -> bool:
 
 
 def build_post_buy_incremental_state(
-        last_state: CwSimFrame,
+        base_state: CwSimFrame,
         gold_read: int | None,
         tracked_bench_chars: list[BenchChar],
         hp_value: int | None,
@@ -346,12 +346,14 @@ def build_post_buy_incremental_state(
     而垫底 state.bench 是执行前快照——空 tracked 时沿用它会把陈旧 bench
     当真值喂给方向刷新(误读维度造值;消费位 = finalize 暂存帧,ADR-0583)。
     回退全量读后两种情形都得到 OCR 真值,代价只是罕见情形多一次整帧读。
+    (首参更名申报:原形参名 ``last_state`` 与已退役的 session 槽同名
+    无涉,随链退役批改名 ``base_state`` 防按名误判。)
     """
     if gold_read is None:
         return None
     if not tracked_bench_chars:
         return None   # 空 tracked:真空/丢跟踪不可区分 → fail-closed 回退全量读
-    post = deepcopy(last_state)
+    post = deepcopy(base_state)
     post.gold = gold_read
     # T-308/ADR-0646 S1:tracked 输入域下标直拷(pad 补 None;禁读 slot 字段
     # ——tracked 域 slot 与下标的一致性由 S2 写回端保证,消费端下标即布局)。
@@ -867,14 +869,10 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                                         state.round_num)
         if _ledger_node is not None:
             state.node_type = _ledger_node
-        # r73 review RC3 修:dual 态单一源挂 session,循环态每段拷贝;读端 =
-        # R1 唯一合法读端 committed_from(蓝图 §4.3,禁 session 直读散落)。
-        from sr_od.application.currency_war.kernel.cw_intention import (
-            committed_from,
-        )
-        state.dual_track_phase = not committed_from(match.session)
-        if getattr(strategy_state_of(match.session), 'transition_framework', ''):
-            state.focus_factions = getattr(strategy_state_of(match.session), 'focus_factions', set())
+        # (frame.dual_track_phase/focus_factions 回填点已随 last_state 链
+        #  退役批删除(T-166 对账表 E 类行 30/31 兑现):决策读端 =
+        #  committed_from(session) 派生与 StrategyState 真家,帧字段无
+        #  消费面,随帧退役不迁容器。)
         # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏 → 读 0 时重读几帧取首个 >0。
         # 观察冲突审计 #6:救援结果留证(救回/连读 0 统计,为 gold 双源排期供数据)。
         if state.gold == 0:
@@ -932,7 +930,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # T-308 S3:播种期布局代次快照(单动作循环每动作消费前检差用;
         # 空播种段同样取值——检差面不依赖是否播种)。
         _seed_epoch = exec_state_of(match.session).bench_layout_epoch
-        match.session.last_state = state
+        # (session.last_state 写点已随链退役批删除:段顶入口观察的局内
+        #  事实宿主 = 容器单例,喂入即下方 synthesize_from_game_state。)
         # journal 基准帧(黑板槽退役收口,ADR-0651 容器单源):段顶入口
         # 观察帧,T-163 起恒定不随动作推进(帧级投影链已随 simulate 前瞻
         # 消费删除退役);仅供动作行 plane/round 基准与 pre_frame 序列化,

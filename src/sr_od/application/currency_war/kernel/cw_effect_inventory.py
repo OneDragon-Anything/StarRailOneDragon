@@ -602,7 +602,8 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
       重入/retry 不得双登记(实例按 spec_key 唯一,effect-domain.md §9.1
       与词缀源同款纪律);
     - acquired_t = 登记时点节点序快照((plane-1)*9+round 基 1;GameState
-      节点单例优先,引导窗回退 session.last_state,与词缀源同坐标系);
+      节点单例;节点未观察(引导窗)= None 缺位,last_state 帧回退已随链
+      退役批删除);
     - 返回本次登记的 spec(幂等跳过/未知名返回 None,调用侧日志留证)。
 
     board_state_of 运行期函数内 import:GameState 容器模块头反向 import
@@ -632,16 +633,13 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
 
 def _portal_acquired_t(bs: object, session: object) -> int | None:
     """登记时点节点序快照((plane-1)*9+round,基 1;register_affixes_from_names
-    同式):节点单例已读优先,引导窗回退 session.last_state,皆缺 = None
-    (登记期快照缺位不炸登记面)。"""
+    同式):GameState 节点单例;节点未观察(引导窗)= None(登记期快照缺位
+    不炸登记面;last_state 帧回退已随链退役批删除,session 参数保留签名
+    兼容,不再消费)。"""
     _nd = getattr(bs, 'node', None)
     _nd_val = _nd.value if _nd is not None else None
     if _nd_val is not None:
         return (_nd_val.plane - 1) * 9 + _nd_val.round_num
-    _st_last = getattr(session, 'last_state', None)
-    if _st_last is not None:
-        return (((getattr(_st_last, 'plane', 1) or 1) - 1) * 9
-                + (getattr(_st_last, 'round_num', 1) or 1))
     return None
 
 

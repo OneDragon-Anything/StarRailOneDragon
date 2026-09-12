@@ -136,9 +136,10 @@ def state_equips_multiset(state: GameState | CwSimFrame) -> Counter:
 
     - GameState:席位经波1 读口(bench_slots_of/deployed_slots_of),
       owned 池 = ``equips.value``;消费面 = 观察对账/容器消费点;
-    - CwSimFrame:旧工作帧直读(simulate 守恒对账入口的遗留调用面)
-      ——双形态过渡,退役随调用面(last_state 链退役波收口),
-      禁新消费点再喂旧帧。
+    - CwSimFrame:帧直读(simulate 守恒对账入口)——该调用面属推演内核
+      机制面(T-166 正名后类本体的存续职责),**长期存续**,不属
+      last_state 链退役波辖域(旧「随链退役」措辞与本事实冲突,随链
+      退役批更正);禁实机链新消费点喂旧帧。
     """
     if isinstance(state, GameState):
         return equips_ledger_multiset(bench_slots_of(state),

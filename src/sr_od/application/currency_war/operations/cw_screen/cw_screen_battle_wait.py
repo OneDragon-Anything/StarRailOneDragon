@@ -429,33 +429,21 @@ class CwScreenBattleWait(CwScreenOpBase):
                 if _obs.hp_confidence >= 0.9:
                     _st.last_outcome_hp = _obs.hp_after
                 # 结算屏真值覆盖(EXPECTED_STATE §2 原口径的观察半,两态制
-                # ADR-0651 后 = 纯观察直写:hp/gold/streak/level 全可信
-                # + 05-battle §1「结算屏 hp/gold/level 写 session」):hp 真值
-                # 链走结算观察直写→last_hp(上);gold/level/经验经
-                # parse_settlement_assets 写 last_state。best-effort,失败
-                # 不阻塞。(原「覆盖点 diff 对账」半随 expected_state 条目表
-                # 一并废除——失配 = 推算 bug,缺陷台账留证,无挂账环节。)
+                # ADR-0651 后 = 纯观察直写:hp/gold/streak/level 全可信):
+                # hp 真值链走结算观察直写→last_hp(上);gold/level/经验经
+                # apply_settlement_cover 直写容器(原 last_state 帧写半随
+                # last_state 链退役批删除,容器半为唯一宿主)。best-effort,
+                # 失败不阻塞。(原「覆盖点 diff 对账」半随 expected_state
+                # 条目表一并废除——失配 = 推算 bug,缺陷台账留证,无挂账环节。)
                 try:
                     from sr_od.application.currency_war.obs.cw_settlement_obs import (
                         parse_settlement_assets,
                     )
                     _assets = parse_settlement_assets(_ocr_texts)
-                    _lst = _session.last_state
-                    if _lst is not None:
-                        if _assets.get('gold') is not None:
-                            _lst.gold = _assets['gold']
-                            _lst.gold_readable = True
-                        if _assets.get('level') is not None:
-                            _lst.level = _assets['level']
-                            _lst.level_readable = True
-                        if (_assets.get('xp_cur') is not None
-                                and _assets.get('xp_next') is not None):
-                            _lst.xp_progress = (_assets['xp_cur'],
-                                                _assets['xp_next'])
                     # GameState 结算覆盖写端(迁移批次二,任务书件 8/设计
-                    # §3.5.1):与上写入点同时序——结算真值组(hp/streak 带
-                    # 方向/gold·level·xp 仅胜局)覆盖进记录;金/等级/经验
-                    # 缺席(败局页无该面板)不写,与 _lst 分支同口径。
+                    # §3.5.1):结算真值组(hp/streak 带方向/gold·level·xp
+                    # 仅胜局)覆盖进记录;金/等级/经验缺席(败局页无该面板)
+                    # 不写。
                     # settlement 行注记带 battle_done:<节点类型> 语义——旧
                     # exogenous 'node_enter' 外生行的「出节点」半随删除波 1
                     # 退役后,其判读语义由本行承接(R5 迁移规划 W1 ⑤/
@@ -554,11 +542,16 @@ class CwScreenBattleWait(CwScreenOpBase):
                     and pnl['damage_unfinished_progress'] < 0))
         _t = None
         _match = self.ctx.cw_match
-        _lst = getattr(getattr(_match, 'session', None), 'last_state', None) \
-            if _match else None
-        if _lst is not None and getattr(_lst, 'plane', None) \
-                and getattr(_lst, 'round_num', None):
-            _t = (_lst.plane - 1) * 9 + _lst.round_num
+        _sess = getattr(_match, 'session', None) if _match else None
+        # 轮键锚 = 容器节点读口(last_state 链退役换源;节点未观察 = 证据
+        # 不足不置闩,与旧「last_state 缺失」分支同 fail-closed 方向)。
+        if _sess is not None:
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of,
+            )
+            _nd = board_state_of(_sess).node.value
+            if _nd is not None:
+                _t = (_nd.plane - 1) * 9 + _nd.round_num
         _min_t = CwScreenBattleWait.SETTLE_DEFEAT_LATCH_MIN_T
         if _neg and _t is not None and _t >= _min_t:
             self._st.saw_defeat_settlement = True

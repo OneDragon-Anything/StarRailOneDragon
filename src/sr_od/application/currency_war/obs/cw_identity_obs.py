@@ -543,23 +543,28 @@ def _ctx_slots(ctx: SrContext, prefix: str, count: int) -> list[tuple[int, Rect]
 
 
 def _session_level(ctx: SrContext) -> int | None:
-    """session 等级链(``last_level_obs`` 单调链 vs ``last_state.level`` 取大)→ 无 session/无值 → None。
+    """session 等级链(``last_level_obs`` 单调链 vs 容器 level 取大)→ 无 session/无值 → None。
 
     布局选档的 level 源(ADR-0281:后排槽数由 level 驱动;``_resolve_level`` 维护的
     单调链已防毒化)。离线/无 session 场景返 None(调用方退 6 槽基线)。
-    **T-8 单一源可信门**(15 号稿 §2.3/§6):``last_state.level_readable=False``
-    的帧(纯 ``_expected_level`` 启发式兜底)其 state 值**不参与取大**——
-    「兜底 4」与「真读 4」在字段上可分后,兜底值不得混进单调链。
+    **T-8 单一源可信门**(15 号稿 §2.3/§6):启发式兜底帧的 level 值**不参与
+    取大**——「兜底 4」与「真读 4」可分后,兜底值不得混进单调链。容器侧该
+    门由喂入结构性满足(``_feed_board_state`` 仅 authoritative 帧观察写
+    level,兜底帧走 carry 沿用),故取容器值直取即可信域(last_state 链
+    退役换源;level_readable 显式位不入容器,quality 语义由 Field.source
+    承载)。
     """
     try:
         m = ctx.cw_match
         if m is None or m.session is None:
             return None
         lv = getattr(m.session, 'last_level_obs', 0) or 0
-        st = m.session.last_state
-        if (st is not None and st.level
-                and getattr(st, 'level_readable', True)):
-            lv = max(lv, st.level)
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+        )
+        st_lv = board_state_of(m.session).level.value
+        if st_lv:
+            lv = max(lv, int(st_lv))
         return lv or None
     except Exception:   # noqa: BLE001
         return None
@@ -568,17 +573,24 @@ def _session_level(ctx: SrContext) -> int | None:
 def _level_trusted(ctx: SrContext) -> bool | None:
     """level authoritative 位单一读口(15 号稿 §2.3/§3.2①)→ 三态:
 
-    ``True``/``False`` = ``session.last_state.level_readable``(observed /
-    启发式兜底帧);无 session/state → ``None`` = 未声明(布局公式通道
-    维持现行为,零行为变更)。布局公式与 14 号稿 level 消费门共用本定义,
-    不得各写一份「什么算可信 level」。"""
+    ``True`` = 容器 level 当前值来自真读观察(Field.source='observation');
+    ``False`` = 沿用态(source='carried',启发式兜底帧不写容器,沿用值非
+    新证);无 session / level 从未观察 → ``None`` = 未声明(布局公式通道
+    维持现行为,零行为变更)。last_state 链退役换源:旧帧显式位
+    ``level_readable`` 的 observed/兜底两态由容器 source 镜像(喂入口
+    ``_feed_board_state`` 观察写=真读/carry=兜底帧),布局公式与 14 号稿
+    level 消费门共用本定义,不得各写一份「什么算可信 level」。"""
     try:
         m = ctx.cw_match
-        st = m.session.last_state if (m is not None and m.session is not None) \
-            else None
-        if st is None:
+        if m is None or m.session is None:
             return None
-        return bool(getattr(st, 'level_readable', True))
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+        )
+        _lv = board_state_of(m.session).level
+        if _lv.value is None:
+            return None
+        return _lv.source == 'observation'
     except Exception:   # noqa: BLE001
         return None
 
@@ -593,8 +605,8 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
     (未传 level 时 session 等级链);读不到 → 6 槽基线。
     **布局未知态**(15 号稿 §3.2④/T-7):单帧未知 → 只返前排(跳过后排读);
     冻结帧(连续 3 未知)→ 读类退 6 档基线继续读;每帧 JSONL 留证在
-    resolve 侧。level_trusted 接线:未显式传 level 时取
-    session.last_state.level_readable(derived 帧公式通道弃权)。
+    resolve 侧。level_trusted 接线:未显式传 level 时取容器 level
+    authoritative 位(``_level_trusted``,derived 帧公式通道弃权)。
     """
     from sr_od.application.currency_war.obs.cw_back_layout import (
         back_row_slot_rects_ctx,
@@ -602,8 +614,8 @@ def read_deployed_chars(ctx: SrContext, screen: MatLike, templates: AvatarTempla
         resolve_back_slots,
     )
     # 消费接线(15 号稿 §3.2①):显式传 level = 调用方自declare的读数,可信位
-    # 不越权代判(None=现行为);未传 = 走 session 等级链 → 接 last_state.
-    # level_readable 可信位(derived/启发式帧公式通道弃权)。
+    # 不越权代判(None=现行为);未传 = 走 session 等级链 → 接容器 level
+    # authoritative 位可信门(derived/启发式帧公式通道弃权)。
     _lt = None if level is not None else _level_trusted(ctx)
     _lay = resolve_back_slots(ctx, screen, level=level, level_trusted=_lt)
     if _lay.get('unknown') and not _lay.get('frozen'):
@@ -1498,16 +1510,22 @@ def note_phantom_sphere(ctx: SrContext, pt: Point) -> None:
         lst.append(pt)
         # telemetry 上行走出口钩子位(kernel;分包桶依赖矩阵 obs 禁直依
         # telemetry,与 obs_conflict 同款出口形态)
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+        )
         from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
             SEVERITY_L2_RECORD,
             record_defect,
         )
+        # 分键坐标 = 容器节点读口(last_state 链退役换源;未观察 = 0 缺省,
+        # best-effort 留证面不炸)。
+        _nd = board_state_of(s).node.value
         record_defect(
             'reward_sphere', 'reward_sphere_phantom',
             expected='点击后球消失(真球)',
             observed=f'点击后同位置仍检出幻球({pt.x},{pt.y})',
-            plane=int(getattr(getattr(s, 'last_state', None), 'plane', 0) or 0),
-            round_num=int(getattr(getattr(s, 'last_state', None), 'round_num', 0) or 0),
+            plane=int(_nd.plane if _nd is not None else 0),
+            round_num=int(_nd.round_num if _nd is not None else 0),
             gap_large=False, severity=SEVERITY_L2_RECORD,
             verdict=('留证-奖励域幻球(点击零消失):已入会话黑名单,后续读侧'
                      '过滤放弃该目标;同族=面板内非球物幻检(W261 装备 icon/'

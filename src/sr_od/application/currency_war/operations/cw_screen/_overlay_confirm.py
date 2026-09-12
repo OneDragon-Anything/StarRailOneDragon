@@ -38,16 +38,14 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
     策略器立即可读;实读帧照常覆盖)。
 
     语义按 op 分道:
-    - ConfirmSupply/ConfirmBox/ConfirmTome(dict 形态 apply_op_effect):
-      owned += item(推进 session.last_owned_equips 本体);
+    - ConfirmSupply/ConfirmBox/ConfirmTome/ConfirmExpertCash(dict 形态
+      apply_op_effect):owned += item / 现金为王 gold +4(推进宿主 =
+      容器单例金账,写通道单一源在 cw_exec_state);
     - ConfirmStrategy:本函数零写——active_strategies 本体追加由 handler
       在确认成功后既有写点承担(cw_screen_invest_strategy);
     - ConfirmMegastar/ConfirmPartner:本函数零写——chosen_* 写端 = 各
       handler 的 ``GameState.write_logic``(选择落地即写,cw_screen_megastar
-      /cw_screen_partner);
-    - ConfirmExpertCash(专家邀请函「现金为王」):gold +4 逻辑直推
-      session.last_state.gold(+4 = 弃卡取现金的固定回金,原「待实读」
-      登记条目随两态制废除转直推;shop_wave_top 实读覆盖修正)。
+      /cw_screen_partner)。
 
     best-effort:session 缺失 / infra 异常不阻塞确认收尾(选角色分支=
     专家入商店由商店逻辑接管,无 session 局状态变更,不推进)。
@@ -58,14 +56,11 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
         from sr_od.application.currency_war.kernel.cw_exec_state import (
             apply_op_effect,
         )
-        if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome'):
+        if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome',
+                  'ConfirmExpertCash'):
             apply_op_effect(session, {'op': op, 'item': item},
                             produced_by=produced_by)
             return
-        if op == 'ConfirmExpertCash':
-            st = getattr(session, 'last_state', None)
-            if st is not None:
-                st.gold = (getattr(st, 'gold', 0) or 0) + 4
     except Exception as e:  # noqa: BLE001  观测面不阻塞确认
         log.info(f'[cw-overlay] 逻辑推进跳过: {e}')
 
