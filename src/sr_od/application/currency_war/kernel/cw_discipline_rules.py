@@ -20,6 +20,9 @@ from sr_od.application.currency_war.kernel.cw_registry import (
 from sr_od.application.currency_war.kernel.cw_state import GameState
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+    )
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
@@ -176,7 +179,7 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
 )
 
 
-def hp_decision_trusted(frame) -> bool:
+def hp_decision_trusted(frame: BoardState | GameState) -> bool:
     """hp 决策可信位(单一源;**双形态过渡函数**,统一 state 迁移波 2 起):
 
     - **容器形态**(输入 = ``BoardState``):委托
@@ -208,7 +211,8 @@ def hp_decision_trusted(frame) -> bool:
 # 危局面合规件仅血线硬地板 ≤15 族,消费在 mandate_v1 criteria 层
 # (levelup.level_spend_blocked 停付让位 / sell_for_interest 凑息禁令),
 # 判据单一源 = statefn/predicates.p1_blood_floor,不在本模块设第二份。
-def plane_last_battle(bs, session) -> bool:
+def plane_last_battle(bs: BoardState,
+                      session: StrategySession | None) -> bool:
     """位面末最后一战([18]):当前节点=boss 且轮=位面节点数(真值源
     ``nodes_of_plane``——P2 boss@r7 判正;旧按 9 计 P2 永不触发,
     ADR-0366 口径断层修复)。波 2 签名切容器:节点类型/轮次经容器读口
@@ -222,7 +226,7 @@ def plane_last_battle(bs, session) -> bool:
     return node in ('boss',) and round_num_of(bs) >= nodes_of_plane(session)
 
 
-def all_in_xp_domain_hit(bs, session,
+def all_in_xp_domain_hit(bs: BoardState, session: StrategySession | None,
                          registry: DecisionV2Registry) -> bool:
     """ALL IN 窗 XP 类别过滤的辖域判据(ADR-0604 §4-F5;P21 域钉死)。
 
@@ -293,7 +297,8 @@ def p1_levelup_stop_hp(registry: DecisionV2Registry) -> int:
     return math.ceil(registry.blood_budget_stop_d * l_c)
 
 
-def blood_budget_levelup_blocked(bs, session,
+def blood_budget_levelup_blocked(bs: BoardState,
+                                 session: StrategySession | None,
                                  registry: DecisionV2Registry) -> bool:
     """血预算停手·停升级门(设计件 12 §3.1 P2 / §2.3-P1-b;ADR-0448)。
 
@@ -373,7 +378,8 @@ def p2_crisis_stop_hp(registry: DecisionV2Registry) -> int:
     return math.ceil(2 * registry.vd_p2_loss)
 
 
-def p2_crisis_band(bs, session, registry: DecisionV2Registry) -> bool:
+def p2_crisis_band(bs: BoardState, session: StrategySession | None,
+                   registry: DecisionV2Registry) -> bool:
     """P2 危机带谓词(plane≥2 ∧ 门后 hp 真值 ∧ hp ≤ 危机带线)。
 
     两个行为面的共域判据(消费点各取所需,谓词单一源):
