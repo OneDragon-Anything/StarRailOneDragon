@@ -2184,25 +2184,22 @@ class CwScreenPrep(CwScreenOpBase):
                     break
             except Exception:   # noqa: BLE001  离线契约
                 return
-            # journal 包装(语义逐位等价原 _dispatch_screen_op 消费形态:
-            # frame_tag=None 不落决策帧、返回轮次对象在清场语境无消费方
-            # → 丢弃、ok 判定同款 success 属性)。
+            # journal 包装单一源(r2 必修①):enter/execute/exit 模板与 ok
+            # 判定全部走 telemetry.op_journal.journal_wrapped_execute
+            #(判定 = resolve_dispatch_ok,与 _dispatch_screen_op 同源)——
+            # 手写第二份判定曾让 round-result 型成功恒记 fail(r1 缺陷 1)。
+            # 语义要点保持:返回轮次对象在清场语境无消费方 → 丢弃;
+            # frame_tag=None 不落决策帧(等价原 _dispatch_screen_op 消费形态)。
             from sr_od.application.currency_war.operations.cw_screen.cw_screen_expert_invite import (
                 CwScreenExpertInvite,
             )
             from sr_od.application.currency_war.telemetry.op_journal import (
                 _op_journal_pos_of,
-                record_op_enter,
-                record_op_exit,
+                journal_wrapped_execute,
             )
-            _token = record_op_enter('专家邀请函', *_op_journal_pos_of(self.ctx))
-            try:
-                _rs = CwScreenExpertInvite(self.ctx).execute()
-            except Exception as e:   # noqa: BLE001  出口行补发后原样上抛
-                record_op_exit(_token, outcome='error', detail=str(e)[:120])
-                raise
-            _ok = _rs is not None and getattr(_rs, 'success', False)
-            record_op_exit(_token, outcome='ok' if _ok else 'fail')
+            journal_wrapped_execute(
+                CwScreenExpertInvite(self.ctx), '专家邀请函',
+                _op_journal_pos_of(self.ctx))
             log.info('[cw][director] 书册卡 slot%s → 处理链经包装执行(op 行=专家邀请函)',
                      _bc_cards[0][0])
             try:

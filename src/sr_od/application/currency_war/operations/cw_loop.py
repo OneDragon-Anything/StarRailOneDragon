@@ -126,6 +126,7 @@ from sr_od.application.currency_war.telemetry.op_journal import (
     _op_journal_pos_of,
     record_op_enter,
     record_op_exit,
+    resolve_dispatch_ok,
 )
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
@@ -1322,12 +1323,11 @@ class CwLoop(SrOperation):
                 raw = op()
                 res = (_FnResult(bool(raw[0]), str(raw[1] if len(raw) > 1 else ''))
                        if isinstance(raw, tuple) else raw)
-            if isinstance(res, OperationRoundResult):
-                # 链形(0j/3c):轮次结果即分支出口,包装只补 journal/帧,不改分流。
-                ok = res.result not in (OperationRoundResultEnum.FAIL,
-                                        OperationRoundResultEnum.RETRY)
-            else:
-                ok = res is not None and getattr(res, 'success', False)
+            # ok 判定单一源(r2 必修①):判定体迁 telemetry.op_journal
+            # .resolve_dispatch_ok,与清场 journal 包装同源——round-result
+            # 型返回只有 is_success 属性,手写第二份判定会成功恒记 fail
+            #(r1 验收缺陷 1 实证)。
+            ok = resolve_dispatch_ok(res)
             hook_ret = on_result(ok, res) if on_result is not None else None
             record_op_exit(token, outcome='ok' if ok else 'fail')
         except Exception as e:   # noqa: BLE001  出口行补发后原样上抛(异常

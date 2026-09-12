@@ -238,6 +238,45 @@ def _op_journal_pos_of(ctx: Any) -> tuple[int, int]:
             int(_nd.round_num) if _nd is not None else 0)
 
 
+def resolve_dispatch_ok(res: Any) -> bool:
+    """op 执行返回值的 ok 判定(单一源;r2 必修①消双源)。
+
+    判定体 = cw_loop._dispatch_screen_op 原分支逐位:OperationRoundResult
+    走轮次枚举(FAIL/RETRY 之外 = ok,链形透传语义);其余(SrOperation
+    .execute 的 OperationResult)走 success 属性。禁在调用方手写第二份
+    ——round-result 型返回只有 ``is_success`` 属性,手写 ``getattr(res,
+    'success')`` 形态会让成功恒记 fail(r1 验收缺陷 1 实证)。
+    """
+    from one_dragon.base.operation.operation_round_result import (
+        OperationRoundResult,
+        OperationRoundResultEnum,
+    )
+    if isinstance(res, OperationRoundResult):
+        return res.result not in (OperationRoundResultEnum.FAIL,
+                                  OperationRoundResultEnum.RETRY)
+    return res is not None and getattr(res, 'success', False)
+
+
+def journal_wrapped_execute(op: Any, journal_name: str,
+                            pos: tuple[int, int]) -> tuple[bool, Any]:
+    """op.execute() 的 journal 包装单一源(enter/execute/exit 成对模板;
+    r2 必修①:清场件等「分发语境外的 op 行」复用,替代手写包装)。
+
+    异常补 error 出口行后原样上抛(ADR-0584 §5.2 同款);ok 判定 =
+    :func:`resolve_dispatch_ok`(与 _dispatch_screen_op 同源,防双源漂移)。
+    返回 ``(ok, res)``;调用方按语境决定 res 消费(清场语境丢弃)。
+    """
+    _token = record_op_enter(journal_name, *pos)
+    try:
+        _res = op.execute()
+    except Exception as e:   # noqa: BLE001  出口行补发后原样上抛
+        record_op_exit(_token, outcome='error', detail=str(e)[:120])
+        raise
+    _ok = resolve_dispatch_ok(_res)
+    record_op_exit(_token, outcome='ok' if _ok else 'fail')
+    return _ok, _res
+
+
 def record_op_enter(op_name: str, plane: int, round_num: int,
                     obs: dict[str, Any] | None = None) -> dict[str, Any] | None:
     """缺口③写点(enter):非决策 op 执行前调用,返回 exit 用的 token。
