@@ -193,7 +193,10 @@ class EnvEconomyEffect:
     - gold_after_refreshes: (刷新阈值, 返金)(长线利好 (30,20)/二手市场 (20,30);
       B 类,估值公式与参数归数据批)
     - refresh_cost_after: (刷新阈值, 新成本)(长线利好 (30,1);基价 2 为游戏定义)
-    - reward_node_bonus: 每奖励节点期望增益(仅 C 类估算条目;值+CI 在估算注册表)
+    - reward_node_bonus: C 类通道在场哨兵(1.0 = 通道在,经济过热/经济严重
+      过热;每奖励节点期望增益真值+CI 在估算注册表,按环境变体分键——
+      cw_env_economy._REWARD_BONUS_VARIANTS;非零而缺变体映射 = 登记笔误,
+      构建校验炸出)
     """
     gold_per_plane_start: tuple[int, ...] = ()
     gold_instant: int = 0
@@ -1442,9 +1445,16 @@ ENV_FACTION_MATCH_FLOOR: dict[str, float] = {'概念股': 78.0, '邀请': 70.0, 
 
 
 # ===== 环境经济通道注册表(2026-09-12 invest-env 迭代,design.md §2.2.2;白名单制)=====
-# A 类精确四条先行(design §2.2.1 通道分类);B 类两条(长线利好/二手市场)与
-# C 类两条(经济过热/经济严重过热)随数据批补表。表外环境 economy 恒 None,
-# 禁从效果原文自动猜装(ADR-0144 决策 3 六条防错装对账 = _validate_env_economy)。
+# A 类精确四条 + B 类两条(长线利好/二手市场)+ C 类两条(经济过热/经济严重
+# 过热),design §2.2.1 通道分类全量。表外环境 economy 恒 None,禁从效果原文
+# 自动猜装(ADR-0144 决策 3 六条防错装对账 = _validate_env_economy);
+# 轮岗/人才下沉无通道可装 → 「待建模」显式在册(cw_env_economy.
+# ENV_ECONOMY_PENDING_MODELING,区别于漏登记,design §2.2.4)。
+# B/C 通道的估算参数(概率/期望/增益)在 cw_env_economy.ENV_ECONOMY_ESTIMATES,
+# 本表只落游戏定义结构值。
+#: C 类通道在场哨兵(字段语义见 EnvEconomyEffect.reward_node_bonus;每奖励
+#: 节点期望增益真值+CI 在估算注册表,按环境变体分键,非本字段)
+_REWARD_NODE_BONUS_MARK: float = 1.0
 ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     # 每位面开局 (6,8,12) 金晶矿(id 103 原文直读;晶矿自动开启假设见 schema 注)
     '增发货币': EnvEconomyEffect(gold_per_plane_start=(6, 8, 12)),
@@ -1455,6 +1465,19 @@ ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
     '成功经验': EnvEconomyEffect(xp_after_level=(8, 3, 12)),
     # 每取一张策略 +2×已持有数(id 147);3-5 节点额外策略不计(策略域价值)
     '策略大师': EnvEconomyEffect(gold_per_strategy_coef=2),
+    # 花费金币刷新 30 次后 +20 金、之后刷价 2→1(id 120 原文直读;基价 2 =
+    # cw_state.REFRESH_COST_BASE 游戏定义)。付费阈值(总数阈值 = 二手市场行),
+    # 估值 = P(达 30)×[20 + (2−1)×E(后继刷新)],design §2.2.1 B 类公式
+    '长线利好': EnvEconomyEffect(gold_after_refreshes=(30, 20),
+                                 refresh_cost_after=(30, 1)),
+    # 商店刷新 20 次后 +30 金(id 106);【员工投影仪】件不入经济(装备资产,
+    # design §2.2.1 B 类行)。总刷新阈值,估值 = P(达 20)×30
+    '二手市场': EnvEconomyEffect(gold_after_refreshes=(20, 30)),
+    # 全部奖励节点替换为(超级)次元扑满、掉落(超)多战利品(id 105/119 原文
+    # 直读;效果无数值,增益真值+CI 在估算注册表按变体分键,当前零有效估计
+    # → 通道 fail-closed 裸分维持,数据批口径见 details/data-batch-estimates.md)
+    '经济过热': EnvEconomyEffect(reward_node_bonus=_REWARD_NODE_BONUS_MARK),
+    '经济严重过热': EnvEconomyEffect(reward_node_bonus=_REWARD_NODE_BONUS_MARK),
 }
 
 
