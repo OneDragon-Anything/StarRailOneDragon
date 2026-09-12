@@ -56,6 +56,7 @@ from sr_od.application.currency_war.operations.decision_frame_hooks import (
     save_decision_frame,
 )
 from sr_od.application.currency_war.operations.dev.drag_cw_char import DragCwChar
+from sr_od.application.currency_war.prep_actions import sell_point
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -1876,7 +1877,12 @@ class CwOpDeploy(SrOperation):
             exclude_system_units(
                 read_deployed_chars(self.ctx, self.last_screenshot, templates)
             ) if templates else [])
-        _sell = Point(70, 846)
+        # 出售区落点单一源(ADR-0329 W62 件2):与 prep 域 _sell_bench/
+        # _sell_deployed 共用 sell_point()(screen_info「区域-出售区」中心,
+        # 缺档兜底 = PrepActionExecutor.SELL_POINT);禁本域再落字面量副本
+        # ——售区中心修正时与单一源漂移 = 拖错落点(锁面
+        # test_cw_action_op_compliance 出售落点单一源锁)。
+        _sell = sell_point(self.ctx)
         sold = 0
         sold_names: list[str] = []   # 拖拽成功序(T-279 R1 部署段核对源)
         _excluded_n = 0
