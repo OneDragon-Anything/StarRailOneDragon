@@ -127,7 +127,8 @@ def _write_settlement_observation(session: StrategySession,
     结算点**即时直写**——备战帧 streak 对账锚与 gated_hp 真值源都依赖
     「结算即写」时序,禁惰性化(D-94 时序语义,r68 实证承袭)。
     独立成模块级函数:被测面 = 纯写点(观察层产物),单测直调即经生产
-    链路(op 回路是唯一调用方)。
+    链路(op 回路是唯一调用方)。now_t 产出位 = 观测回路的
+    ``cw_plane_table.node_t_of`` 派生(schedule 真值,与决策读口同式)。
     """
     session.performance.record(obs)
     # 结算「连胜×N」前缀=方向 → session.last_streak(备战帧 streak 权威/
@@ -385,7 +386,12 @@ class CwScreenBattleWait(CwScreenOpBase):
                 log.info('[cw-bwait] killed 进度符号判定:progress=%s → %s',
                          _obs.progress_delta, _obs.killed)
             # killed 文本兜底(双侧置信度门 + 轮次邻接门;DD-006)
-            _now_t = (_plane - 1) * 9 + _round if (_plane and _round) else None
+            # 时基经 kernel 单一源派生(schedule 前序位面实际长度和;与
+            # 决策读口同式禁单侧改式,契约见 cw_hp_policy 门本体)。
+            from sr_od.application.currency_war.kernel.cw_plane_table import (
+                node_t_of,
+            )
+            _now_t = node_t_of(_session, _plane, _round)
             if not telemetry_only and _obs.hp_confidence >= 0.9 and _now_t is not None:
                 if _obs.killed is None:
                     _prev_hp = getattr(_session, 'last_hp', None)

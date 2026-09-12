@@ -266,20 +266,21 @@ def _hp_gate_state(state: GameState | None,
     紧邻上一节点,门辖语义见宪法 00 §3 hp 授权消费面与 ADR-0583 §2.4
     「消费方必须同门」)。门输入 readable = 视图映射单一源
     (``state.hp_readable``,源 = bs.hp.source=='observation' 最近观察),
-    时基 t = state 节点序(与生产门同构)。session 无结算锚(last_hp/
-    last_hp_t 缺)时门恒等返回 = 旧行为,纯函数可单测。
+    时基 t 经 kernel 单一源派生(schedule_of 前序位面实际长度和,与生产门
+    同源同式)。session 无结算锚(last_hp/last_hp_t 缺)时门恒等返回 =
+    旧行为,纯函数可单测。
 
     :return: hp 已施门的 state 拷贝(其余字段共享引用,本判据链只读);
         state 为 None 时原样返回 None。
     """
     if state is None:
         return None
+    from sr_od.application.currency_war.kernel.cw_plane_table import node_t_of
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         gated_hp,
     )
-    t = ((int(state.plane) - 1) * 9 + int(state.round_num)
-         if getattr(state, 'plane', None) and getattr(state, 'round_num', None)
-         else None)
+    t = node_t_of(session, getattr(state, 'plane', None),
+                  getattr(state, 'round_num', None))
     gated = gated_hp(state.hp, session, t,
                      current_readable=bool(getattr(state, 'hp_readable',
                                                    False)))

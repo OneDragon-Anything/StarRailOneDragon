@@ -9,7 +9,7 @@ ADR-0465 起,本模块是生产路径消费的**真值/标定面**
 
 承载面(按消费面划定的最小集):
 - 位面日程几何:NODES_PER_PLANE/TOTAL_NODES/DEFAULT_PLANE_LENGTHS/
-  plane_offsets/plane_end_slots/schedule_of/nodes_of_plane;
+  plane_offsets/plane_end_slots/schedule_of/nodes_of_plane/node_t_of;
 - 升级费用查询:clicks_to_level/level_cost(逐帧现读单价由消费方
   economy_cycle.upgrade_plan_fee 承担,本表只供次数);
 - 息封顶常量:GOLD_CAP_INTEREST(息闭式本体 = kernel cw_economy
@@ -84,6 +84,28 @@ def schedule_of(session) -> tuple[int, int, int]:
         length = int(seen[i]) if i < len(seen) else PLANE_FALLBACK_PRIORS[i]
         out.append(min(max(length, 1), NODES_PER_PLANE))
     return tuple(out)
+
+
+def node_t_of(session: object, plane: object, round_num: object) -> int | None:
+    """hp 新鲜度门时基(全局节点号):前序位面**实际长度**和 + 位面内轮次。
+
+    长度源 = ``schedule_of(session)``(P1=9/P2=7/P3 进表自适应;ADR-0368
+    单一源)——替代表迁波曾内联的 ``(plane-1)*9`` 字面量(假设每位面 9
+    节点,P2 真值 7 时 P3 段系统性偏大 +2,判读底稿中危项 1,与 dd-003
+    「禁写死 9」同型)。session 缺席(None/裸对象)或日程未揭晓 → 回退
+    ``PLANE_FALLBACK_PRIORS``=(9,9,9),该态下取值与旧字面量逐位相同
+    (迁移期等价口径,sim/裸 session 零行为差)。plane/round 缺效(None/0)
+    → None = 门恒等支(与各消费位旧守卫同型)。
+
+    **同式契约**:hp 新鲜度门的 now_t 产出位(决策读口)与结算锚写点
+    (``cw_screen_battle_wait`` 的 ``session.last_hp_t``)必须同经本函数
+    派生,禁单侧改式(单侧改式 = gap 判域静默漂移,契约正文见
+    ``cw_hp_policy.apply_hp_freshness_gate`` 时基契约节)。
+    """
+    if not plane or not round_num:
+        return None
+    lengths = schedule_of(session)
+    return sum(lengths[:int(plane) - 1]) + int(round_num)
 
 
 def nodes_of_plane(session) -> int:

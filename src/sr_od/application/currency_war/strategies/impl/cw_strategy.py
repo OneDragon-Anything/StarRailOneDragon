@@ -300,8 +300,11 @@ def gated_hp(current_hp: int | None, session: StrategySession,
     ``gap=now_t-last_t``——现读可信仅 gap==1 结算值可覆盖,不可信放宽到
     gap≤3,窗外保持现读;None 现读非恒等豁免(锚全时窗内同样被结算值
     覆盖);门幂等。时基契约:now_t 与结算锚写点
-    (``cw_screen_battle_wait._write_settlement_observation`` 的 last_hp_t)
-    同式派生 ``(plane-1)*9+round_num``,禁单侧改式。
+    (``cw_screen_battle_wait`` 的 last_hp_t)同经
+    ``cw_plane_table.node_t_of`` 派生(schedule 真值;回退态与旧字面量
+    ``(plane-1)*9+round_num`` 逐位相同),禁单侧改式;迁移期 prep 写侧
+    预施门两处暂留旧式,申报见 ``cw_hp_policy.apply_hp_freshness_gate``
+    时基契约节。
 
     实调点申报纪律(全仓 grep 口径;新增调用点先对账「是否该直走政策层
     读口」):cw_screen_prep 环入口×2(端口路径/读屏路径,写侧预施门,

@@ -65,10 +65,16 @@ def apply_hp_freshness_gate(current_hp: int | None, last_hp: int | None,
       窗外 None 穿透为 None,消费面按 ADR-0495 保守(血线条件不触发/
       授权位 fail-closed)。
     - **幂等**:门后值再过门不变(同 gap 窗内重复施门值不变)。
-    - **时基契约**:``now_t``/``last_t`` 必须同式派生
-      ``(plane-1)*9+round_num``——结算锚写点
-      (``cw_screen_battle_wait._write_settlement_observation``)与决策
-      读口(:func:`decision_hp`)禁单侧改式,单侧改式 = gap 判域静默漂移。
+    - **时基契约**:``now_t``/``last_t`` 必须同式派生——产出位统一经
+      ``cw_plane_table.node_t_of``(前序位面实际长度和 + 轮次;schedule
+      回退态与旧字面量 ``(plane-1)*9+round_num`` 逐位相同)。结算锚写点
+      (``cw_screen_battle_wait`` → ``session.last_hp_t``)与决策读口
+      (:func:`decision_hp` 及策略层 gated_hp 消费位)禁单侧改式,单侧
+      改式 = gap 判域静默漂移。**迁移期申报**:cw_screen_prep 环入口路径
+      两处 now_t 写侧预施门仍为旧字面量(禁触在飞面,统一 state prep 链线
+      辖域;原终饰两点已随旧链删除消亡),其消费切换挂 prep 链批次(P3 段
+      该两处与锚新式混算 gap=3,值面影响=现读优先于结算优先的覆盖选择,
+      值通常一致;边界 P2r7→P3r1 与锚缺席态行为不变)。
       ``NodeKey`` 缺席 → ``now_t=None`` = 恒等支;与现役 adapter 形态
       (缺省 plane/round=1 → t=1)在锚在场时 gap≤0 判负同回
       ``current_hp``,行为等价。
@@ -83,14 +89,15 @@ def apply_hp_freshness_gate(current_hp: int | None, last_hp: int | None,
     return current_hp
 
 
-def _node_t_of(bs: BoardState) -> int | None:
-    """决策时基读口:``(plane-1)*9+round_num``(与结算锚写点同式,禁单侧
-    改式,见 :func:`apply_hp_freshness_gate` 时基契约);NodeKey 缺席 =
-    None = 门恒等支。"""
+def _node_t_of(bs: BoardState, session: StrategySession) -> int | None:
+    """决策时基读口(单一源 = ``cw_plane_table.node_t_of``,schedule 派生,
+    与结算锚写点同式禁单侧改式,见 :func:`apply_hp_freshness_gate` 时基
+    契约);NodeKey 缺席 = None = 门恒等支。"""
     node = bs.node.value
     if node is None:
         return None
-    return (int(node.plane) - 1) * 9 + int(node.round_num)
+    from sr_od.application.currency_war.kernel.cw_plane_table import node_t_of
+    return node_t_of(session, node.plane, node.round_num)
 
 
 def decision_hp(bs: BoardState, session: StrategySession) -> int | None:
@@ -107,7 +114,7 @@ def decision_hp(bs: BoardState, session: StrategySession) -> int | None:
     last_hp = getattr(session, 'last_hp', None)
     last_t = getattr(session, 'last_hp_t', None)
     return apply_hp_freshness_gate(
-        bs.hp.value, last_hp, last_t, _node_t_of(bs),
+        bs.hp.value, last_hp, last_t, _node_t_of(bs, session),
         bs.hp.source == 'observation')
 
 
