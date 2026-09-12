@@ -602,12 +602,20 @@ def _m1p_plan_fill_deploy(st: GameState, plan: SwapPlan,
     # (sim 供给齐备不可达,防御缺省)退计划 ctx 视图——最近真值源。
     _ctx2 = None
     try:
-        # W6 波3 贯通:assemble 已切容器签名,st 为 GameState 帧,经桥装箱。
+        # 波 5b 桥退役消点:assemble 已切容器签名,sim 工作帧真值经喂入口
+        # 直写容器后读容器(原过渡桥装箱一次性视图退役)。
         from sr_od.application.currency_war.kernel.cw_board_state import (
-            board_state_bridge as _bs_red,
+            board_state_of as _bs_red_of,
         )
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            feed_sim_truth as _bs_red_feed,
+        )
+        _bs_red_feed(_bs_red_of(sess), st,
+                     at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
+                              f'-r{int(getattr(st, "round_num", 1) or 1)}'
+                              f'-r1b')
         _ctx2 = assemble_swap_plan_inputs(
-            sess, state=_bs_red(st),
+            sess, state=_bs_red_of(sess),
             deployed=list(iter_occupied_deployed(st.deployed)),
             bench=[b for b in st.bench if b is not None],
             cap=st.max_units(),
@@ -1793,17 +1801,25 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         cw_intention as _rej_intention,
                     )
 
-                    # W6 波3 贯通:k 空窗回退/三臂判据已切容器签名,帧经桥装箱。
+                    # 波 5b 桥退役消点:k 空窗回退/三臂判据已切容器签名,
+                    # sim 工作帧真值经喂入口直写容器后读容器(原桥装箱退役)。
                     from sr_od.application.currency_war.kernel.cw_board_state import (
-                        board_state_bridge as _bs_rej,
+                        board_state_of as _bs_rej_of,
                     )
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        feed_sim_truth as _bs_rej_feed,
+                    )
+                    _bs_rej_feed(_bs_rej_of(sess), st,
+                                 at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
+                                          f'-r{int(getattr(st, "round_num", 1) or 1)}'
+                                          f'-rejtag')
                     _rej_fb, _rej_tok = (
                         _rej_intention.k_empty_window_fallback(
-                            _bs_rej(st), _obs_ist, session=sess,
+                            _bs_rej_of(sess), _obs_ist, session=sess,
                             registry=_obs_registry))
                     if _rej_tok == 'p2plus':
                         _rej_arms = _rej_intention.no_target_arms(
-                            _bs_rej(st), _obs_ist, session=sess,
+                            _bs_rej_of(sess), _obs_ist, session=sess,
                             registry=_obs_registry)
                         _seg_hub = frozenset(_rej_arms.hub_names)
                 # 拒因遥测读点 = 容器(W6 波 4 读者切换;shop_unbought_
@@ -2621,11 +2637,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # (v11/ADR-0407,depth 键下期望伤害真平故迁 rung);
             # boss 键=净星深(迁移审计 w240(git 历史)/ADR-0404,修升星方向冲突)。
             from sr_od.application.currency_war.kernel.cw_board_state import (
-                board_state_bridge as _bs_bridge,
+                board_state_of as _bs_cal_of,
             )
-            # 波1 判据核切容器签名:本段判据输入(board/deployed/level
-            # 判据不变量)在段首装箱一次,段内复用。
-            _bs_cal = _bs_bridge(st)
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                feed_sim_truth as _bs_cal_feed,
+            )
+            # 波 5b 桥退役消点:波1 判据核容器签名——本段判据输入(board/
+            # deployed/level 判据不变量)工作帧真值经喂入口直写容器后读
+            # 容器,段首一次,段内复用(原桥装箱一次性视图退役)。
+            _bs_cal_feed(_bs_cal_of(sess), st,
+                         at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
+                                  f'-r{int(getattr(st, "round_num", 1) or 1)}'
+                                  f'-settle')
+            _bs_cal = _bs_cal_of(sess)
             _dep = _deployable_depth(_bs_cal)
             # `w193_p2sim/`/ADR-0377:参数化校准层辖 plane≥2 战斗类结算——绕过
             # Δ池 plane=2 合并采样(防饥饿守卫已抹平其条件性,ADR-0362
@@ -2780,7 +2804,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 桥池 fixed+core/三人组单一口径(旧 v1 线库 core_cards
             # 随 ADR-0336 删除),旧 core_trio_count 绑死仙舟非仙舟
             # 线局恒 0,审查二轮#8)
-            _depth = _deployable_depth(_bs_bridge(st))
+            # 波 5b 桥退役消点:账本 depth 单一源——工作帧真值经喂入口
+            # 直写容器后读容器(结算段已喂过一次,此处重喂取结算后帧,
+            # 与原「每轮现装箱」值流逐位同)。
+            _bs_cal_feed(_bs_cal_of(sess), st,
+                         at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
+                                  f'-r{int(getattr(st, "round_num", 1) or 1)}'
+                                  f'-ledger')
+            _depth = _deployable_depth(_bs_cal_of(sess))
             res.depth_trail.append(_depth)
             # r393(装备层执行代理):supply 节点 = 3 选 1 装备——
             # decide_supply(纯逻辑,与 run_supply_node 同源)选 →
@@ -2846,17 +2877,25 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 if _is_supply:
                     # 补给节点:真两步 decide_supply(语义零改动,见下)
                     _opts = _sample_supply_opts(_basic_names)
-                    # W6 波3 贯通:decide_supply 已切容器签名;分支内局部导入
-                    # (函数前段 board_state_bridge 为他分支局部名,禁跨分支引用)。
+                    # 波 5b 桥退役消点:decide_supply 已切容器签名;分支内局部
+                    # 导入(函数前段容器读口为他分支局部名,禁跨分支引用)——
+                    # sim 工作帧真值经喂入口直写容器后读容器(原桥装箱退役)。
                     from sr_od.application.currency_war.kernel.cw_board_state import (
-                        board_state_bridge as _bs_sup,
+                        board_state_of as _bs_sup_of,
                     )
-                    _pick = decide_supply(_opts, _bs_sup(st), strategy_state_of(sess).target_comp, None,
+                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                        feed_sim_truth as _bs_sup_feed,
+                    )
+                    _bs_sup_feed(_bs_sup_of(sess), st,
+                                 at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
+                                          f'-r{int(getattr(st, "round_num", 1) or 1)}'
+                                          f'-supply')
+                    _pick = decide_supply(_opts, _bs_sup_of(sess), strategy_state_of(sess).target_comp, None,
                                           refresh_used=exec_state_of(sess)._supply_refresh_used)
                     if _pick.refresh and not exec_state_of(sess)._supply_refresh_used:
                         exec_state_of(sess)._supply_refresh_used = True
                         _opts = _sample_supply_opts(_basic_names)
-                        _pick = decide_supply(_opts, _bs_sup(st), strategy_state_of(sess).target_comp, None,
+                        _pick = decide_supply(_opts, _bs_sup_of(sess), strategy_state_of(sess).target_comp, None,
                                               refresh_used=True)
                     st.equips.append(_opts[_pick.idx].equip)
                     _equip_grants += 1   # `w614_sim_fidelity/` G1 发放落账

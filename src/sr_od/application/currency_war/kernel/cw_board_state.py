@@ -2752,7 +2752,8 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
     """GameState 真值 → 容器域写入(波 5 起为直写喂入口的写入实现)。
 
     引擎侧统一经 :func:`feed_sim_truth` 调本函数(best-effort 边界在
-    喂入口);直接调用仅余实机入口融合段等既有非 sim 端点。原「sim 合成口」
+    喂入口);直接调用现仅余 kernel 内部面(喂入口写入实现与过渡桥自身
+    装箱),实机入口融合段的旧直调已随 T-117 融合段改道消亡。原「sim 合成口」
     域覆盖口径不变:
 
     - sim 无识别过程 = 恒真值帧:可读字段全记 observation,evidence 恒带
@@ -2910,8 +2911,12 @@ def feed_sim_truth(bs: BoardState, st: GameState, *,
 
     - best-effort:记录层故障不毒化 sim(与 note_action_receipt 同纪律),
       异常 log 留痕后返回,容器保持上一拍帧;
-    - 桥(:func:`board_state_bridge`)退役挂 prep 链线(T-115/T-116)辖域
-      调用点清零;sim 域/本批辖域调用点已全部切本口,禁回流。
+    - 桥(:func:`board_state_bridge`)退役:sim 域与 cw_economy 以外的
+      波 5b 批辖域调用点(engine_p1 四区段)已全部切本口;残余活调用
+      = flow/cw_loop/ops 各域单点、prep_actions 根、cw_economy 标量投影
+      缝(无 session,结构性豁免)与 cw_evolution(GameState 工作帧世界,
+      零生产调用)——机器现实 = test_cw_w5_sim_retirement 登记集,禁据
+      本 docstring 误判消点进度。
     """
     try:
         synthesize_from_game_state(bs, st, at_round=at_round)

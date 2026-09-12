@@ -754,8 +754,12 @@ def get_node_goal(plane: int, round_num: int, *,
         # 持息帽卡局的本投影帧判据按 base 口径——接缝无 session 入参
         # (标量投影形态,消费面 = entry 兼容调用,量级有界),扩修
         # 随该调用面的 session 通道批。
-        # 接缝族已切容器签名(W6 波 4):标量投影帧经过渡桥装箱喂入
-        # (kernel 内部标量投影形态,非生产决策链;桥退役随波 5)。
+        # 接缝族已切容器签名(W6 波 4):标量投影帧经过渡桥装箱喂入。
+        # ⚠️ 结构性豁免(波 5b 桥退役消点修正登记,原「散文≠调用」误标
+        # 纠正:本处为活调用):本接缝无 session 入参(ADR-0598 标量投影
+        # 形态,消费面 = entry 兼容调用,量级有界),无容器可直读,桥装箱
+        # 是唯一装箱路径;退役挂该调用面的 session 通道批(或 T-7 随
+        # GameState 本体退役),禁据此声明「桥已无调用」。
         from sr_od.application.currency_war.kernel.cw_board_state import (
             board_state_bridge as _bs_bridge,
         )
