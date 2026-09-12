@@ -3,7 +3,10 @@
 两个行型(独立于 decisions.jsonl 的薄流;体积红线 = 永不并入 decisions 行,
 3.5KB 行基数上叠逐动作/逐 op 快照是体积爆炸路径):
 
-- kind='action':商店单动作执行回执(唯一写点 = apply_action_outcome 回执位),
+- kind='action':单动作执行回执(商店域唯一写点 = apply_action_outcome
+  回执位;备战域写点 = PrepActionExecutor._note_action_journal,T-16
+  执行缝账务包络扩围——备战帧金动作自此逐行在账,op 分键
+  「货币战争-备战动作」,行携执行点 ``gold_delta``),
   expected_delta = 执行前后帧序列化的**全量展平叶级 diff**——投影之外的真实
   变化必须出现在 delta 里(「投影没算到但真变了」正是深度复盘要抓的投影残差);
 - kind='op':非决策 op(战斗等待/入口链/位面切换)enter/exit 成对行。轮询
@@ -166,15 +169,26 @@ def _base_row(plane: int, round_num: int) -> dict[str, Any]:
 
 
 def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
-                          pre_frame: Any, post_frame: Any) -> None:
-    """缺口②写点:商店单动作执行回执行(apply_action_outcome 回执位调用)。
+                          pre_frame: Any, post_frame: Any, *,
+                          op_name: str = '货币战争-买牌',
+                          extra: dict[str, Any] | None = None) -> None:
+    """缺口②写点:单动作执行回执行(商店域唯一写点 =
+    apply_action_outcome 回执位;备战域写点 = PrepActionExecutor
+    ._note_action_journal,T-16 执行缝账务包络扩围)。
 
     :param match: 对局对象(session 载体;run_id 读取经 telemetry.state)
-    :param action: 已执行的动作对象(BuyCard/RefreshShop/LevelUpShop/CloseShop)
-    :param seq: 段内动作序(1 起;visit_actions 追加后长度)
+    :param action: 已执行的动作对象(商店 BuyCard/RefreshShop/LevelUpShop/
+      CloseShop;备战 pa.* 动作全集)
+    :param seq: 段内动作序(1 起;visit_actions 追加后长度)。备战域恒 0
+      = 无段序账(行序即时序,商店 seq 语义不适用)
     :param exec_ok: 执行落地与否(False 行照落,exec_ok=False 判读面)
     :param pre_frame: 动作执行前帧(CwSimFrame;序列化做 diff 左侧)
-    :param post_frame: 动作执行后帧(CwSimFrame;None=终结/投影跳过,delta 省略)
+    :param post_frame: 动作执行后帧(CwSimFrame;None=终结/投影跳过,delta 省略;
+      T-163 起商店恒 None,备战恒 None)
+    :param op_name: 行 op 键(复盘「分发了谁/金动归属」直读域分键):缺省
+      = 商店「货币战争-买牌」;备战域 = 「货币战争-备战动作」
+    :param extra: 行级结构化扩展(备战域携 ``gold_delta`` = 执行点金差,
+      T-16;商店域不用)
     """
     try:
         rid = current_run_id()
@@ -182,9 +196,11 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
             return
         rec = _base_row(int(getattr(pre_frame, 'plane', 0) or 0),
                         int(getattr(pre_frame, 'round_num', 0) or 0))
-        rec.update({'kind': 'action', 'op': '货币战争-买牌',
+        rec.update({'kind': 'action', 'op': op_name,
                     'seq': seq, 'frame_seq': current_frame_seq(),
                     'action': serialize_action(action), 'exec_ok': exec_ok})
+        if extra:
+            rec.update(dict(extra))
         if post_frame is not None:
             delta = flatten_diff(serialize_state(pre_frame),
                                  serialize_state(post_frame), cap=12)

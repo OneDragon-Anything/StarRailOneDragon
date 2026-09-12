@@ -22,12 +22,18 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_economy import XP_CLICK_COST_FALLBACK
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    _advance_gold,
+    exec_state_of,
+)
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     SHOP_SCREEN_NAME,
@@ -671,6 +677,16 @@ class PrepActionExecutor:
         # J3/J4 消费端同退役)。消费方 = cw_loop 发射核(J2/J3 达标臂/锁定
         # 重试)。getattr 容缺(__new__ 桩形态)。
         self.last_launch_ok: bool | None = None
+        # 执行点金差显影(备战执行缝账务包络,T-16;写点 = execute 每次
+        # 入口复位)。取值时机 = dispatch 后由 _executed_gold_delta 现算
+        # 写入,None = 该动作执行点金差不可推算(诚实缺失,非 0);消费方
+        # = 回执 extra 金差键与观察侧备战帧金对账。getattr 容缺
+        # (__new__ 桩形态,execute 入口显式复位不依赖构造)。
+        self.last_gold_delta: int | None = None
+        # LevelUp 机械半边的实击花金累计(写入端 = _level_up 点击环;
+        # 单击价单一源 = kernel xp_click_cost 逐击现算)。execute 入口
+        # 复位 None,dispatch 后由 _executed_gold_delta 消费。
+        self._last_levelup_spent: int | None = None
         # 槽位中心(screen_info 静态,构造时读一次;F3 参数校验 + 拖拽坐标共用)
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
@@ -738,13 +754,33 @@ class PrepActionExecutor:
             log.info('[cw][battle] 停机标志已设 → 拒绝执行 %s'
                      '(W209j 刹车,ADR-0388)', type(action).__name__)
             raise StopBrakeShortCircuit('已停止[W209j刹车]')
+        # 执行点金差显影账(T-16)每动作复位:上动作余量禁跨动作残留。
+        self._last_levelup_spent = None
         # 落地门前捕获备战席占用(tracked 账现读):S1 路径 (ii) 翻正判读
         # 需要 pre/post 两点,post 点必须在 dispatch 之后读(dispatch 内
         # 卖出/部署 handler 会同步销账)。
         _pre_bench = self._bench_tracked_count()
+        # 卖出对象 dispatch 前快照(执行点金差供给;dispatch 内 tracked
+        # 已同步移除,事后复查恒落空)。
+        _pre_sell_bc = self._pre_sell_tracked_bc(action)
         detail, emitted = self._execute_dispatch(action)
         self.last_detail = detail
-        self._note_action_receipt(action, emitted, detail)
+        gold_delta = self._executed_gold_delta(action, emitted, _pre_sell_bc)
+        self.last_gold_delta = gold_delta
+        if emitted and gold_delta:
+            # 执行缝金账直推(T-16 备战帧金动作入账;写通道单一源 =
+            # cw_exec_state._advance_gold 容器金账,logic_action 渠道,
+            # 观察赢覆盖修正不变)。备战帧 LevelUp 花金/卖出回金自此
+            # 入状态账,不再只存在于遥测文本(根因 = 执行缝三套账只辖
+            # 商店单元,定谳 = 2026-09-06 迭代 reviews/T-234-落地审.md)。
+            _m_gd = self._ctx.cw_match
+            _sess_gd = _m_gd.session if _m_gd is not None else None
+            if _sess_gd is not None:
+                _advance_gold(_sess_gd, int(gold_delta))
+        _gold_extra = ({'gold_delta': int(gold_delta)}
+                       if gold_delta not in (None, 0) else None)
+        self._note_action_receipt(action, emitted, detail, extra=_gold_extra)
+        self._note_action_journal(action, emitted, _gold_extra)
         if isinstance(action, StartBattle):
             # 批4 挂账:StartBattle 发射位内部事实(A6 判效面,批4 随
             # J2/J3/J4 消费端同退役)。真执行链 = _execute_dispatch 发射位
@@ -847,7 +883,8 @@ class PrepActionExecutor:
                  detail or '(无摘要)')
 
     def _note_action_receipt(self, action: PrepAction, emitted: bool,
-                             detail: str) -> None:
+                             detail: str,
+                             extra: dict | None = None) -> None:
         """动作执行回执 → GameState receipts 域(R2 §3.1.1-4/§3.2.5;
         渠道② logic_action,唯一写点 = kernel note_action_receipt)。
 
@@ -857,6 +894,8 @@ class PrepActionExecutor:
           机械事实随 detail 在账,落地判定归观察侧 reconcile;
         - 每动作 op 恰一条 logic_action 行(动作全集逐 op 覆盖;W209j 停机
           短路在本口之前抛出 = 执行被拒不产行——停机非动作);
+        - ``extra`` = 执行面结构化字段透传(§3.2.1 质量词表执行面;T-16 起
+          含金动作的 ``gold_delta`` 执行点金差,见 _executed_gold_delta);
         - journal 常开(R5 W1 影子闸折叠,ADR-0634)回执写入无条件;无局
           (session 缺)跳过;best-effort 不阻塞动作链。
         """
@@ -871,9 +910,124 @@ class PrepActionExecutor:
             note_action_receipt(
                 bs, op=type(action).__name__, applied=bool(emitted),
                 reason='' if emitted else detail, detail=detail,
-                screen=SCREEN_NAME, actor=type(self).__name__)
+                screen=SCREEN_NAME, actor=type(self).__name__, extra=extra)
         except Exception as e:  # noqa: BLE001  回执失败不阻塞执行
             log.warning('[cw][receipt] 动作回执写入失败(不阻塞): %s', e)
+
+    def _note_action_journal(self, action: PrepAction, emitted: bool,
+                             extra: dict | None) -> None:
+        """备战动作 journal 行(op_journal.jsonl kind='action';T-113/
+        ADR-0579 薄流的备战域扩围,T-16 执行缝账务包络):执行缝三套账的
+        journal 回执腿——备战帧金动作自此逐行在账(定谳缺口 = T-234 复盘
+        「备战帧 5 击零 journal 行」),op 分键「货币战争-备战动作」与商店
+        「货币战争-买牌」域分键,行携 ``gold_delta`` 执行点金差。
+
+        - seq 恒 0 = 备战域无段序账(行序即时序;商店 seq 语义不适用);
+          post_frame 恒 None = 行不带期望态 delta(T-163 起两域同口径);
+        - 仅发出动作产行(与商店域「未执行动作零行」同语义,调用点保证);
+        - 局外(run_id 空)零行;journal best-effort,失败不阻塞动作链。
+        """
+        if not emitted:
+            return
+        try:
+            from types import SimpleNamespace
+
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of,
+                plane_of,
+                round_num_of,
+            )
+            from sr_od.application.currency_war.telemetry.op_journal import (
+                record_action_journal,
+            )
+            match = self._ctx.cw_match
+            session = match.session if match is not None else None
+            if session is None:
+                return
+            _bs = board_state_of(session)
+            _pre = SimpleNamespace(plane=int(plane_of(_bs) or 0),
+                                   round_num=int(round_num_of(_bs) or 0))
+            record_action_journal(
+                match, action, 0, bool(emitted), _pre, None,
+                op_name='货币战争-备战动作', extra=extra)
+        except Exception as e:   # noqa: BLE001  journal best-effort
+            log.warning('[cw][journal] 备战动作行写入失败(不阻塞): %s', e)
+
+    def _pre_sell_tracked_bc(self, action: PrepAction) -> BenchChar | None:
+        """卖出对象 dispatch 前 tracked 快照(T-16 执行点金差供给;卖出外
+        动作 = None)。
+
+        [槽位定义] SellBench.slot = 备战栏物理槽位 1-9(1 基,tracked 表
+        slot 字段同系直接对位);SellDeployed (row, slot) = 物理排槽位
+        1 基(front 1-4 / back 1-N),下标换算 = 前排 slot-1 / 后排
+        4+slot-1(ADR-0392 定长 10 槽表,pad 后取)。取值时机 = execute()
+        内 dispatch **前** tracked 账现读(卖出 handler 在 dispatch 内
+        同步销账,dispatch 后按 tracked 复查恒落空——apply_op_effect
+        卖入会话推进在现役链路不可达的同根);消费 = dispatch 后
+        _executed_gold_delta 一次读用,不跨动作存活。tracked 不可读
+        (无局/形状异常)= None(金差诚实缺失,观察覆盖兜底)。
+        """
+        if not isinstance(action, (SellBench, SellDeployed)):
+            return None
+        try:
+            match = self._ctx.cw_match
+            session = match.session if match is not None else None
+            if session is None:
+                return None
+            es = exec_state_of(session)
+            if isinstance(action, SellBench):
+                return next((b for b in (es.tracked_bench_chars or [])
+                             if b is not None and b.slot == action.slot), None)
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
+                DEPLOYED_FRONT_CAPACITY,
+                pad_deployed,
+            )
+            tracked = pad_deployed(list(es.tracked_deployed or []))
+            idx = (action.slot - 1 if action.row == 'front'
+                   else DEPLOYED_FRONT_CAPACITY + action.slot - 1)
+            return tracked[idx] if 0 <= idx < len(tracked) else None
+        except Exception:   # noqa: BLE001  观测容缺,不阻塞执行链
+            return None
+
+    def _executed_gold_delta(self, action: PrepAction, emitted: bool,
+                             pre_sell_bc: BenchChar | None) -> int | None:
+        """执行点金差显影(备战执行缝账务包络,T-16):gold 域备战动作在
+        机械半边发出时点的金变化量。
+
+        公式单一源与边界:
+        - ``LevelUp`` = −实击花金(机械半边 ``_level_up`` 逐击累计,单击价
+          单一源 = kernel ``xp_click_cost``;与假环境 fixtures _apply_
+          levelup_clicks/_prep_gold_channel 同式同源);
+        - ``SellBench``/``SellDeployed`` = +sell_refund(星×招募费;对象 =
+          dispatch 前快照,费单一源 = kernel ``bench_char_cost``——与容器
+          投影写口 apply_prep_action_logic 同式;身份不可辨 = None 诚实
+          缺失,不做保守估值假账,观察覆盖兜底);
+        - ``ClickSpheres`` = None(球金通道随机,执行点不可推算——声明
+          盲区,观察覆盖兜底,禁拍值);
+        - 其余动作 = 0(发出零金动);未发出 = None(无金动无账)。
+        ``None`` 与 0 的消费语义:仅非 None 非 0 进回执 extra 金差键与
+        容器金账直推;None = 该动作本拍金账留观察覆盖。
+        """
+        if not emitted:
+            return None
+        if isinstance(action, LevelUp):
+            spent = getattr(self, '_last_levelup_spent', None)
+            return None if spent is None else -int(spent)
+        if isinstance(action, (SellBench, SellDeployed)):
+            if pre_sell_bc is None:
+                return None
+            if not str(getattr(pre_sell_bc, 'char_id', '') or ''):
+                return None   # 身份不可辨 → 回金不可算(诚实缺失)
+            from sr_od.application.currency_war.kernel.cw_economy import (
+                bench_char_cost,
+                sell_refund,
+            )
+            refund = sell_refund(int(getattr(pre_sell_bc, 'star', 1) or 1),
+                                 bench_char_cost(pre_sell_bc))
+            return int(refund)
+        if isinstance(action, ClickSpheres):
+            return None
+        return 0
 
     def _execute_dispatch(self, action: PrepAction) -> tuple[str, bool]:
         """动作分派(原 execute 主体;期望态钩子/闩在其上层 execute)。
@@ -1153,7 +1307,12 @@ class PrepActionExecutor:
 
     def _sell_bench(self, action: SellBench) -> tuple[str, bool]:
         """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
-        拖拽原语内部源槽像素验 A8 面,批5 拆)。返回 (摘要, 是否发出)。"""
+        拖拽原语内部源槽像素验 A8 面,批5 拆)。返回 (摘要, 是否发出)。
+
+        emitted = 拖拽真发出(源槽像素验 ok):拖3次源槽未变 = 动作未发出
+        (分派位契约「环境无对象/未发出 = False」;T-16 金账诚实性归位——
+        失败卖出若记 emitted=True,执行缝金账会把未发生的回金入账,且与
+        apply_op_effect 卖入推进双记账)。"""
         ok = drag_bench_to_sell(self._op, self._ctx, action.slot - 1)
         if ok:
             self._track_remove_bench(action.slot)
@@ -1161,11 +1320,12 @@ class PrepActionExecutor:
             # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
             time.sleep(1.0)
         # 拖拽原语的源槽状态作信息性摘要记录(非成败门控;批5 A8 拆原语验)
-        return (f'卖备战槽{action.slot} {"✓" if ok else "拖3次源槽未变"}', True)
+        return (f'卖备战槽{action.slot} {"✓" if ok else "拖3次源槽未变"}', ok)
 
     def _sell_deployed(self, action: SellDeployed) -> tuple[str, bool]:
         """卖上阵角色:drag 排槽中心 → 出售区(落点经 ``sell_point`` 单一源)。
-        返回 (摘要, 是否发出)。"""
+        返回 (摘要, 是否发出)。emitted 语义 = 同 _sell_bench(拖拽未过 =
+        未发出,防幻记回金)。"""
         pts = self._front_pts if action.row == 'front' else self._back_pts
         src = pts[action.slot - 1]
         ok = self._drag(src, sell_point(self._ctx))
@@ -1173,7 +1333,7 @@ class PrepActionExecutor:
             self._track_remove_deployed(action.row, action.slot)
             time.sleep(1.0)   # 同上 #21 口径:卖出动画 1s
         return (f'卖{action.row}排{action.slot} {"✓" if ok else "拖3次源槽未变"}',
-                True)
+                ok)
 
     def _deploy_move(self, action: DeployMove) -> tuple[str, bool]:
         """bench → 上阵单步拖拽(腾席链专用)。返回 (摘要, 是否发出)。"""
@@ -1306,6 +1466,7 @@ class PrepActionExecutor:
             blood_xp_full_clicks,
             blood_xp_gate,
             clicks_to_next_level,
+            xp_click_cost,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_auth,
@@ -1355,6 +1516,16 @@ class PrepActionExecutor:
             _auth_clicks = min(_gold_clicks, PrepActionExecutor.LEVEL_MAX_CLICKS)
         btn = area_center(self._ctx, '备战标识-购买经验') or Point(296, 860)
         _clicked = 0   # 实击数(机械回显真实停点;金地板可提前停)
+        _spent = 0     # 实击花金累计(T-16 执行点金差;单价 = xp_click_cost 逐击现算)
+        # 单击价容器读口(逐击现算:等级门折扣随升级跨档变化,禁循环外
+        # 单次快照;无局 = 兜底价。单一源 = kernel xp_click_cost,与假
+        # 环境执行缝同式)。
+        _bs_price = None
+        if session is not None:
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of,
+            )
+            _bs_price = board_state_of(session)
         for k in range(_auth_clicks):
             if _blood is not None and _hp is not None:
                 # 逐击支付能力地板:modeled_hp(= hp_trusted − 已击数×单价)≥ 单价才可点下一击
@@ -1370,7 +1541,10 @@ class PrepActionExecutor:
             if gold_now is not None and gold_now < XP_CLICK_COST_FALLBACK:
                 log.info('[cw][levelup] gold %s < 单击价 → 停点(保买牌本金)', gold_now)
                 break
+            _price = xp_click_cost(_bs_price) if _bs_price is not None \
+                else XP_CLICK_COST_FALLBACK
             _clicked += 1
+            _spent += _price
             self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
             self._ctx.controller.click(btn)
             # 血购回执行挂点已随 exogenous 流写入端退役删除
@@ -1389,7 +1563,8 @@ class PrepActionExecutor:
                 session.effect_inventory.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
             log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
-        detail = (f'买经验授权{_auth_clicks}击实击{_clicked}'
+        self._last_levelup_spent = _spent   # 执行点金差供给(_executed_gold_delta 消费)
+        detail = (f'买经验授权{_auth_clicks}击实击{_clicked}花金{_spent}'
                   f'(基线 level {before};级真值=下一帧观察 reconcile)')
         log.info(f'[cw][levelup] {detail}')
         return detail, True

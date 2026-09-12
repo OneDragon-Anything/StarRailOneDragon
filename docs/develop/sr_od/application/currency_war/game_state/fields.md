@@ -1281,6 +1281,9 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   账本转录。
 - 容器域 `receipts` = **实机执行回执**:记录「实机执行层发出了什么」
   (发出即簿记,非验证;滚动窗,唯一写点 = `note_action_receipt`)。
+  T-16 起金动作行携结构化 `gold_delta`(extra 机制,执行点金差;备战帧
+  LevelUp 花金/卖出回金的逐动作归属键),金账本体直推走
+  `cw_exec_state._advance_gold` 容器通道(logic_action 渠道)。
 - 两本是不同语义世界的两本账,**禁互写**:sim 侧不写 receipts(模拟动作
   不得污染实机执行回执);容器不承载 sim 拒绝记录。sim 账本的可见性走
   既有转录面(sim ledger 的 actions 序列化 + SimResult)。
