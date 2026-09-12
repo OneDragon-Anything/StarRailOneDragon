@@ -16,10 +16,13 @@
 
 **优先级建议**：5
 
+**对源 P-1 的两处显式修订申报**：①**件 2 暂缓薄委托**——源 spec §1.3 件 2 原文「`cw_prep_expect.material_value` 改薄委托」在本阶段不执行：薄委托即把 box ② 值换成注册表计数（简易全体 10），破坏本阶段「argmax 逐点一致」基线；material_value 保持手表本体至 3.2 随打分器整体退役（薄委托语义随之消灭，不再需要）；②**V2 重定义**（上文）。两处修订指针回写归末阶段（正本更新清单）。
+
 **完成判据**：
 - V1/V3 漂移锁 + V2 修订版（独立构造对拍 + 注册表形态快照）+ V4（独立第二构造）全绿
 - `pick_equipment` 未锁退化路径帧全绿（空 key_equips = 纯 base 排序；空 names → 0）
-- box 消费位基准帧：①③ 重接后与现行 flow 实现 argmax 逐点一致；supply/planner/sim 采样/sim 审计回归帧全绿（值零变化）；wear S13 归源迭代判据不在此重复断言
+- box 消费位基准帧：①③ 重接后与现行 flow 实现 argmax 逐点一致；supply/planner/sim 采样/sim 审计回归帧全绿（值零变化）
+- **S13 行为变化锚点全绿**（wear 未锁态 stash 契合不再胜出）——S13 随本阶段实施即随本阶段断言（本批认领验收；源迭代 P-1 后续再跑时 S13 已落地，其判据自然绿）
 - §12 通用工程门（引用，不复述）
 
 **验收凭据形式**：测试名清单 + ruff check
@@ -30,7 +33,7 @@
 
 **设计依据**：design.md §2.1/§2.2/§2.3/§2.4/§2.5/§2.6/§2.7/§2.8/§3
 
-**文件面**：`strategies/impl/flow.py`（decide_box_card 及其 docstring）、`prep_actions.py`（仅 `_default_box_card` 局外回落打分段）、`kernel/cw_prep_expect.py`（material_value 退役）、`sr-od-test/test/sr_od/app/currency_war/test_cw_material_score.py`（重锚）、`sr-od-test/test/sr_od/app/currency_war/test_cw_screens_ops.py`（两把 material_value 锁退役/重锚）、`sr-od-test/test/sr_od/app/currency_war/test_cw_armory_box_pick.py`（新建，B 组 + R1）
+**文件面**：`strategies/impl/flow.py`（decide_box_card 及其 docstring）、`prep_actions.py`（仅 `_default_box_card` 局外回落打分段）、`kernel/cw_prep_expect.py`（material_value 退役）、`strategies/impl/pick_bias.py`（box 两常数 `box_key_equip`/`box_key_material` 随薄壳化退役 + :32 过期注释清理；tome/wish 常数保留）、`sr-od-test/test/sr_od/app/currency_war/test_cw_material_score.py`（重锚）、`sr-od-test/test/sr_od/app/currency_war/test_cw_screens_ops.py`（两把 material_value 锁退役/重锚）、`sr-od-test/test/sr_od/app/currency_war/test_cw_armory_box_pick.py`（新建，B 组 + R1）
 
 **依赖**：3.1
 
@@ -39,7 +42,7 @@
 **完成判据**：
 - design.md §2.6 行为变化表逐行锁全绿：R1 = 行 4b/5/6 标准帧回归；变化行各自锚点锁（新文件 B 组，锁名清单进交付报告）
 - `test_cw_material_score.py` 重锚后全绿 + `test_cw_screens_ops.py` 处置后全绿 + box 相关既有锁（test_cw_box_pick_arm / test_cw_box_open_pick_merged / test_cw_obs_arch_prep_writeflow 扫描锚——扫描锚辖 `_default_box_card` 含机器委托调用，语义核对不受影响）全绿
-- `material_value` 迁移完成后全仓零引用（grep 证明随交付报告）
+- `material_value` 迁移完成后生产代码与注释零引用（src/ + 测试仓 grep 证明随交付报告；正本文档历史行归末阶段清零）
 - sim 可见性申报：§2.7 定谳（结构性不可见：无策略路由/选项为角色牌/引擎零箱动作）随交付报告申报，sim 不作本批判据
 - §12 通用工程门（引用，不复述）
 
@@ -60,3 +63,4 @@
 - `strategy-docs/13_pick_family.md` §判据表 E18 行（decide_box_card）：判据列重写为序数分档制 + 两态锚定 + 近兑现档指针；数值只写常量名/函数名（单一源在代码）← 3.2
 - `strategy-docs/08_events.md` §判据表 E18 行：材料估值表述（`cw_prep_expect.material_value` 引用与「待 derive」态）随退役/落地过期，同步改写 ← 3.2
 - `strategies/impl/flow.py` `decide_box_card` docstring 语义核对（语义面归本阶段核对，改写随 3.2 代码批内完成）← 3.2
+- `changes/2026-09-12-supply-selection/details/supply-value-spec.md` §1.3 件 2 与 §5 V2 行：加修订指针（件 2 薄委托暂缓——material_value 保持手表本体至本迭代 3.2 退役；V2 改独立构造对拍 + 简易域形态快照）← 3.1
