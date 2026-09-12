@@ -43,7 +43,10 @@ from sr_od.application.currency_war.kernel.cw_board_state import (
     plane_of,
     round_num_of,
 )
-from sr_od.application.currency_war.kernel.cw_investments import INVESTMENT_ENVS
+from sr_od.application.currency_war.kernel.cw_investments import (
+    INVESTMENT_ENVS,
+    GiftGrant,
+)
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
@@ -1248,6 +1251,98 @@ def candidate_faction_universe(evicted: frozenset[str] | set[str] = frozenset(),
         if c.name not in evicted
         for f in c.factions
     )
+
+
+def candidate_char_universe(evicted: frozenset[str] | set[str] = frozenset(),
+                            ) -> frozenset[str]:
+    """候选终局阵容角色全集 = ⋃ (core_chars ∪ shared_chars)(COMP_LIBRARY 派生,角色维单一源)。
+
+    消费点 = 送卡型环境判据的成员机器(所赠角色是否被候选终局阵容使用;与阵营维
+    全集门 ``candidate_faction_universe`` 完全同构——「送卡没人用 = 纯浪费」是
+    「加成阵营没人用 = 纯浪费」在角色粒度的镜像,2026-09-12 invest-env 迭代,
+    details/env-value-models.md §2.1.2)。
+
+    ⚠️ 跨迭代单一源边界(design.md §1.3-2 跨迭代契约):角色维两问不同答案、
+    分立双函数禁共用——本函数 = core∪shared(送卡型:shared 也是终局成员,
+    char_routes 同口径);策略对齐门 ``candidate_core_char_universe`` = core-only
+    (兄弟迭代 2026-09-12-strategy-universe-gate S3:对齐角色维只数 core)。
+
+    - ``evicted`` 与阵营维全集门同源同义(``decide_event`` 现有参数直通,零接口
+      新增)→ 阵容被排除后其独占角色自动退出全集(动态收窄免费获得);
+    - ``transition_chars`` 不入集(打工后卖,不构成路线,char_routes 注释同源);
+    - 单帧单读纪律同 D* 快照:消费支(送卡档 max() 支)在循环外取一次快照,
+      循环内复用,禁每候选重派生。
+    """
+    return frozenset(
+        ch
+        for c in COMP_LIBRARY
+        if c.name not in evicted
+        for ch in set(c.core_chars) | set(c.shared_chars)
+    )
+
+
+# ===== 送卡型档位阶梯(定序机器,零数值;details/env-value-models.md §2.1.2)=====
+# 档 = 角色在候选套中的身份,高→低 core/shared/transition/off;_GIFT_TIER_DOWN =
+# 条件降档链(规则 3:兑现概率 <1 且行为依赖,定序上只给弱一档的确定性)。
+_GIFT_TIER_RANK: dict[str, int] = {'off': 0, 'transition': 1, 'shared': 2, 'core': 3}
+_GIFT_TIER_DOWN: dict[str, str] = {
+    'core': 'shared', 'shared': 'transition', 'transition': 'off', 'off': 'off',
+}
+
+
+def _char_gift_tier(char: str, evicted: frozenset[str] | set[str]) -> str:
+    """单张赠卡在候选套中的最高身份档('off' = 三名单皆不在)。
+
+    同名角色跨套身份取最高(卡芙卡 = 千冶减益/DOT队/专家桑博DOT core ×3,
+    专家桑博DOT 亦列其 shared/transition——core 恒压过,与详设分档表口径一致)。
+    """
+    best, rank = 'off', 0
+    for comp in COMP_LIBRARY:
+        if comp.name in evicted:
+            continue
+        for names, tier in ((comp.core_chars, 'core'),
+                            (comp.shared_chars, 'shared'),
+                            (comp.transition_chars, 'transition')):
+            if char in names and _GIFT_TIER_RANK[tier] > rank:
+                best, rank = tier, _GIFT_TIER_RANK[tier]
+                if rank == _GIFT_TIER_RANK['core']:
+                    return best   # core 为最高档,无需继续扫
+    return best
+
+
+def gift_hit_tier(grant: GiftGrant, evicted: frozenset[str] | set[str] = frozenset(),
+                  ) -> str:
+    """送卡型环境 GiftGrant 的命中档('core'|'shared'|'transition'|'off')。
+
+    实现详设三规则(全部定序,零数值;details/env-value-models.md §2.1.2):
+    ① 即时优先——即时集非空取其最优档,不看条件集(确定性赠卡是估值承重面);
+    ② 条件降档——即时集为空取条件集最优档降一档(core→shared→transition→off);
+    ③ advisor 族切换由调用方做(同一套档位判定,floor 族 G/A 之差见
+    ``cw_investments.GIFT_FLOOR_*`` 锚点注;本函数不读 advisor)。
+
+    消费契约(3.5 阶段 cw_events env 分支送卡档 max() 支按此映射,禁二次推导):
+    - tier=='off' ∧ 非 advisor ∧ chars_immediate 非空 → 失格 0(归因
+      env-gift-off-universe;白得卡全员三名单皆不在 = 纯浪费,全集门同款失格);
+    - tier=='core'/'shared' ∧ 非 advisor → max(score, GIFT_FLOOR_CORE/SHARED);
+    - tier=='core' ∧ advisor → max(score, GIFT_FLOOR_ADVISOR_CORE);
+    - 其余(advisor 的 shared/transition/off、条件降档后非 core/shared)→ 无 floor
+      维持裸分(顾问是购买选项,off 只是不买、无浪费;条件发放未到手,同上)。
+    当前注册表下 11 条无一触发失格(逐条直调核验 = 详设 §2.1.1/§2.1.2 表;
+    门是 COMP_LIBRARY 演化时的结构性保障,不是现修行为)。
+
+    evicted 传导免费获得:候选套收窄 → 档随之下调或失格(详设 §2.1.4-5 直调例:
+    持续伤害契约排除三 DOT 套 → 椒丘落 transition → 裸分维持,失格门不咬
+    transition 命中;宿主套再被排除才整条 'off')。
+    """
+    if grant.chars_immediate:
+        return max((_char_gift_tier(ch, evicted) for ch in grant.chars_immediate),
+                   key=_GIFT_TIER_RANK.__getitem__)
+    if not grant.chars_conditional:
+        return 'off'
+    cond_best = max((_char_gift_tier(ch, evicted)
+                     for ch, _note in grant.chars_conditional),
+                    key=_GIFT_TIER_RANK.__getitem__)
+    return _GIFT_TIER_DOWN[cond_best]
 
 
 # ===== 评分 helper(comp 相关)=====

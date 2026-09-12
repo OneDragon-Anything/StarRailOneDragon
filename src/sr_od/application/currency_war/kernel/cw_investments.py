@@ -34,6 +34,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
+from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER
 from sr_od.application.currency_war.data.cw_invest_data import (
     PLAZA_AUGMENTS,
     PLAZA_PORTALS,
@@ -201,6 +202,35 @@ class EnvEconomyEffect:
     gold_after_refreshes: tuple[int, int] | None = None
     refresh_cost_after: tuple[int, int] | None = None
     reward_node_bonus: float = 0.0
+
+
+@dataclass(frozen=True)
+class GiftGrant:
+    """投资环境的**具名发放**结构(送卡型估值;2026-09-12 invest-env 迭代,
+    details/env-value-models.md §2.1.3;InvestmentEnv 同区 schema)。
+
+    发放按「取环境当场到手(即时)」与「满足条件后到手(条件)」两分——估值只对
+    确定性部分给足档,条件部分降档处理(详设 §2.1.2 规则 3)。送卡的价值判据 =
+    **所赠角色是否被候选终局阵容使用**(结构集合级,零数值零战力,开局静态可用;
+    宪法 00_framework §1.1 禁战力建模,卖价残值对「送的人有没有人用」零判别力)。
+    档位机器 = ``cw_comps.gift_hit_tier``;档位是定序实现常数非金流期望
+    (ADR-0524 定序/基数分账:(expected_gold, resolved) 契约装不下 66/60/54 档
+    语义),**不经经济入口**,消费位 = cw_events env 分支独立 max() 支(3.5 接线)。
+    字段语义(值全部 = cw_invest_data 效果原文直读):
+    - chars_immediate: 取环境当场发放的具名角色(效果原文「获得【X】」直读)
+    - chars_conditional: (角色, 条件描述原文摘要)二元组——注释性字段,不进判据
+      (可读性 + 实采对账用);不可具名的随机发放(如战技点契约「随机战技点
+      羁绊角色」)不入本字段,只随条件摘要留档
+    - advisor: True=专家顾问入商店语义(特邀专家;创造一个可购买的购买选项,
+      需再花店价且占购买预算,价值严格低于同档白得——资产账/可得性账分立,
+      详设 §2.1.2 规则 2);False=直接送卡(契约,白得资产)
+    - sell_value_note: 卖价残值注记(【注】下界;卖价 ≈ 按费用退金,度量费用
+      不度量阵容价值,不进任何分值族,详设 §2.1.2-2)
+    """
+    chars_immediate: tuple[str, ...] = ()
+    chars_conditional: tuple[tuple[str, str], ...] = ()
+    advisor: bool = False
+    sell_value_note: str = ''
 
 
 @dataclass(frozen=True)
@@ -1460,3 +1490,103 @@ def _validate_env_economy() -> None:
 for _n, _eff in ENV_ECONOMY.items():
     INVESTMENT_ENVS[_n] = replace(INVESTMENT_ENVS[_n], economy=_eff)
 _validate_env_economy()
+
+
+# ===== 环境送卡发放注册表(2026-09-12 invest-env 迭代;details/env-value-models.md §2.1)=====
+# 送卡型环境(契约 ×7 + 特邀专家 ×4)的具名发放登记,白名单制(表外环境一律无条目,
+# 禁从效果原文自动猜装,ENV_ECONOMY 同款纪律)。档位机器 = cw_comps.gift_hit_tier
+# (消费契约见其 docstring);档位是定序实现常数非金流期望(ADR-0524 定序/基数分账),
+# 不经经济入口,消费位 = cw_events env 分支独立 max() 支(3.5 接线)。
+# 逐条语义盘点与分档落点表 = details/env-value-models.md §2.1.1/§2.1.2;锁 = 测试仓
+# test_cw_env_gift.py(G1 分档表/G2 失格门构造/G8 互斥断言半边)。
+ENV_GIFTS: dict[str, GiftGrant] = {
+    # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):量子同频 125/公司 126/持续伤害 127/
+    # 战技点 128/星核猎手 129/欢愉 1201/命运圣杯 1202/特邀专家 141/142/143/148
+    '量子同频契约': GiftGrant(chars_conditional=(
+        ('符玄', '花火和缇宝升星时随机获得【符玄】或【希儿】'),
+        ('希儿', '花火和缇宝升星时随机获得【符玄】或【希儿】'),
+    )),
+    '公司契约': GiftGrant(
+        chars_immediate=('翡翠', '砂金'),
+        chars_conditional=(('托帕&账账', '累计获得40利息后'),),
+    ),
+    '持续伤害契约': GiftGrant(
+        chars_immediate=('椒丘', '卡芙卡'),
+        chars_conditional=(('黑天鹅', '不同持续伤害状态计数达到180'),),
+    ),
+    '战技点契约': GiftGrant(
+        chars_immediate=('丹恒·饮月', '花火'),
+        chars_conditional=(('火花',
+                            '打开20个晶矿后(并附1个随机战技点羁绊角色,不可具名不入全集机;'
+                            '之后每打开10个晶矿可重复)'),),
+    ),
+    '星核猎手契约': GiftGrant(
+        chars_immediate=('卡芙卡',),
+        chars_conditional=(('流萤',
+                            '刃或千冶·刃/卡芙卡/银狼LV.999或银狼同战一役后获得,'
+                            '2个节点后才能上场'),),
+    ),
+    '欢愉契约': GiftGrant(
+        chars_immediate=('银狼LV.999',),
+        chars_conditional=(
+            ('火花', '触发独立羁绊【头号玩家】选项时随机获得'),
+            ('开拓者·欢愉', '触发独立羁绊【头号玩家】选项时随机获得'),
+        ),
+    ),
+    '命运圣杯契约': GiftGrant(
+        chars_immediate=('远坂凛', '吉尔伽美什'),
+        chars_conditional=(('Archer', '完成两次圣杯试炼后'),),
+    ),
+    # 特邀专家 4 条 = 顾问入商店语义(advisor=True,付费购买期权);附加效果(停云
+    # 终结技增益/加拉赫按击破档给钻头/桑博节点礼盒)异质不入估值,仅占位登记
+    # (详设 §2.1.1 注;桑博礼盒无数值,invest_effects.md §5 同类裁定同源)
+    '特邀专家:停云': GiftGrant(chars_immediate=('停云',), advisor=True),
+    '特邀专家:加拉赫': GiftGrant(chars_immediate=('加拉赫',), advisor=True),
+    '特邀专家:银狼': GiftGrant(chars_conditional=(
+        ('银狼', '首次获得【银狼LV.999】时,顾问入商店'),
+    ), advisor=True),
+    '特邀专家:桑博': GiftGrant(chars_immediate=('桑博',), advisor=True),
+}
+
+# 送卡档位 floor 常数(定序实现常数;ENV_FACTION_MATCH_FLOOR 同族先例,ADR-0524):
+# 值只承载档间定序与对既有域带的位次,禁读基数参与跨族加减。锚点推导(顺序即设计
+# 内容,值是实现载体,details/env-value-models.md §2.1.2 表):
+GIFT_FLOOR_CORE: int = 66           # > 58(契约裸分上界,战技点契约)∧ < 70(最低阵营
+                                    #   floor,邀请)∧ ≤ 72(env 裸分上界,彩虹时代)
+GIFT_FLOOR_SHARED: int = 60         # < CORE ∧ > 58(同上锚);只作演化结构位(当前无落地条目)
+GIFT_FLOOR_ADVISOR_CORE: int = 54   # < SHARED(付费期权 < 白得,同档位类)∧ > 52(结构可比
+                                    #   簇上界,过剩经费/劳务派遣合同)∧ < 55(头彩:单取卡
+                                    #   品质升级的结构档让位其知识评估分)
+# advisor shared/transition、条件降档后非 core/shared 无 floor(维持裸分;特邀专家:
+# 停云/加拉赫/银狼全落此,floor 表行 4)——无常数,消费支按 gift_hit_tier 消费契约分流。
+
+
+def _validate_env_gifts() -> None:
+    """ENV_GIFTS 构建校验(import 即炸;details/env-value-models.md §2.1.3):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY 先例,防版本更新改名/
+    移除后静默失联);② 角色名漂移:发放角色(即时∪条件)必须在 CHARACTER_ROSTER
+    (版本漂移不静默,与孤儿键同批校验);③ 空发放集条目拒绝(既无即时又无条件
+    = 数据残缺,档位机器恒判 off,会把登记笔误放大成失格门误杀);④
+    ``set(ENV_GIFTS) ∩ set(ENV_ECONOMY) = ∅``——单一环境只落一个估值结构,防
+    双通道叠加(∩ ENV_POOL_REWRITE 半边由 3.6 品质改写建表时收全)。
+    """
+    orphans = [n for n in ENV_GIFTS if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(f"ENV_GIFTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _name, _grant in ENV_GIFTS.items():
+        _drift = [c for c in (*_grant.chars_immediate,
+                              *(c for c, _note in _grant.chars_conditional))
+                  if c not in CHARACTER_ROSTER]
+        if _drift:
+            raise ValueError(
+                f"ENV_GIFTS 角色名漂移({_name!r} 注册表无此人,版本改名?):{_drift}")
+        if not _grant.chars_immediate and not _grant.chars_conditional:
+            raise ValueError(f"ENV_GIFTS 空发放集:{_name!r} 既无即时又无条件发放,数据残缺")
+    _overlap = set(ENV_GIFTS) & set(ENV_ECONOMY)
+    if _overlap:
+        raise ValueError(
+            f"ENV_GIFTS ∩ ENV_ECONOMY 非空(单一环境只落一个估值结构):{sorted(_overlap)}")
+
+
+_validate_env_gifts()
