@@ -29,6 +29,8 @@ from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
 from sr_od.application.currency_war.kernel.cw_state import (
+    MAX_PLAYER_LEVEL,
+    REFRESH_COST_BASE,
     XP_CLICK_COST_FALLBACK,
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
@@ -543,7 +545,7 @@ def clicks_to_next_level(bs: BoardState) -> int:
         level_of,
     )
     _level = level_of(bs)
-    if _level >= 10:
+    if _level >= MAX_PLAYER_LEVEL:
         return 0
     xp_v = bs.xp.value
     if xp_v:
@@ -566,13 +568,14 @@ def blood_xp_full_clicks(level: int) -> int:
       该函数**:cur>0 是常态(买牌 XP 直抬进度 + 购经验溢出结转,cw_state
       .xp_apply_clicks),剩余口径系统性压低门槛、方向恒向放行,与 [40]②
       「否则停」的保护目的反向。
-    - 满级分支(R1):level≥10 → 0 击(购买经验无效,与 cw_state.xp_apply_clicks
-      / clicks_to_next_level 的满级返 0 同语义)——分支必须在公式本体,否则
-      字面公式对满级产出 ⌈兜底4/4⌉=1 击的 6 血门槛,与「恒放行」申报分叉。
+    - 满级分支(R1):level≥MAX_PLAYER_LEVEL → 0 击(购买经验无效,与
+      cw_state.xp_apply_clicks/clicks_to_next_level 的满级返 0 同语义)
+      ——分支必须在公式本体,否则字面公式对满级产出 ⌈兜底4/4⌉=1 击的
+      6 血门槛,与「恒放行」申报分叉。
     - 1/2 级(权威表未收录,游戏内近乎白送)按兜底 need=4 → 1 击,与
       clicks_to_next_level 既有兜底同语义。
     """
-    if level >= 10:
+    if level >= MAX_PLAYER_LEVEL:
         return 0
     return -(-XP_TO_NEXT_LEVEL.get(level, 4) // XP_PER_BUY)
 
@@ -605,7 +608,8 @@ def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
     return hp_trusted >= blood_xp_full_clicks(level) * cost
 
 
-def blood_xp_gate_for(bs: BoardState | None, session) -> bool:
+def blood_xp_gate_for(bs: BoardState | None,
+                      session: StrategySession) -> bool:
     """血闸消费面适配(mode 解析 + 容器帧输入接线;prep 批入口与 cw4
     三消费位共用,ADR-0578)。
 
@@ -644,7 +648,11 @@ def blood_xp_gate_for(bs: BoardState | None, session) -> bool:
 
 
 
-SHOP_REFRESH_COST: int = 2   # 刷新基价【注】游戏定义真值:实付恒 2 金,不随金位/次数/等级变(ADR-0456 三流对账定谳)
+#: 刷新基价【注】= 赋值别名,非第二源:正本 = ``cw_state.REFRESH_COST_BASE``
+#: (游戏定义真值:实付恒 2 金,不随金位/次数/等级变,ADR-0456 三流对账
+#: 定谳,出处注在彼处)。本名保留 = 存量消费面(proof/budget/本模块)零迁移;
+#: 改值只改 cw_state 正本,禁在此另写数值。
+SHOP_REFRESH_COST: int = REFRESH_COST_BASE
 
 
 # (通用升级曲线 _DEFAULT_LEVEL_GOAL 已退役 2026-09-04,「未证即退役」裁定:
