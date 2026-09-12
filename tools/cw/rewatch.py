@@ -5,15 +5,16 @@
 (输出全中文、面向 agent 可读)。
 
 ⚠️ 本工具**不自起哨兵**(历史教训:曾用 DETACHED 自起——进程在但退出码无人接收,
-报警链自断,哨兵哑了;2026-08-25 用户纠正后移除)。哨兵三件的「起」永远走**会话后台
+报警链自断,哨兵哑了;2026-08-25 用户纠正后移除)。哨兵的「起」永远走**会话后台
 任务信道**(退出码=警报,可送达编排者);本工具只管:
-  1. 查旧:按命令行匹配 cw_sentinel|cw_early_stop|cw_runs_gap 的 python 进程并列出;
+  1. 查旧:按命令行匹配 cw_sentinel|cw_early_stop|cw_runs_gap|cw_asset_sentinel
+     的 python 进程并列出;
   2. 杀净(树终杀+杀后复扫断言):匹配进程与其 psutil 树后代一并 kill(带
       2 秒宽限确认);杀后重扫断言零残留——复扫非空自动再杀(有界重试),
       仍非空 exit 2,「杀净」从尽力而为变成可验证出口;
   3. 打印标准武装命令(--print-commands,默认开):按参数列该由编排者以后台任务起的
-     命令(默认 sentinel+gap 两件;early_stop 有「首条遥测落后再武装」纪律,须显式
-     --early 才列入);
+     命令(默认 sentinel+gap 两件;early_stop 有「首条遥测落后再武装」、asset 是
+     「长驻型不随局」纪律,均须显式 --early / --asset 才列入);
   4. 核岗(--verify N):按在岗脚本件数核验,并把在岗状态(脚本名+pid+核对时刻)写入
      rewatch.status(不扫进程表也能看什么在岗);不等 → 非零退出码。
 
@@ -57,9 +58,13 @@ WATCHERS: dict[str, tuple[str, str]] = {
     'sentinel': ('cw_sentinel.py', '事件哨兵(高信号 pattern+卡死+静默双窗)'),
     'gap': ('cw_runs_gap.py', 'runs 断流哨兵'),
     'early': ('cw_early_stop.py', '早停哨兵(纪律:首条遥测落后再武装,须显式 --early)'),
+    # 资产哨兵是长驻型(不随局武装/重武),且资产监控面不随局变化——
+    # 武装一次基线常驻,故默认组合不含它,须显式 --asset
+    'asset': ('cw_asset_sentinel.py',
+              '资产完整性哨兵(OCR 模型+CW 模板库基线对比;长驻型,不随局,须显式 --asset)'),
 }
 
-WATCHER_CMD_NAMES = ('cw_sentinel', 'cw_early_stop', 'cw_runs_gap')
+WATCHER_CMD_NAMES = ('cw_sentinel', 'cw_early_stop', 'cw_runs_gap', 'cw_asset_sentinel')
 KILL_GRACE_SEC = 2.0
 # 杀净出口的「杀→复扫」总轮数上限(1 轮主杀 + 至多 2 轮复扫再杀;轮数耗尽
 # 仍非空 = exit 2 可验证失败)——有界重试,不做无限兜圈
@@ -222,7 +227,11 @@ def print_commands(wanted: list[str]) -> None:
     print('[武装命令] 以下命令请由编排者经会话后台任务机制执行(勿在本工具内起):')
     for key in wanted:
         script = SCRIPTS_DIR / WATCHERS[key][0]
-        note = ';注意首条遥测落后再武装纪律' if key == 'early' else ''
+        note = ''
+        if key == 'early':
+            note = ';注意首条遥测落后再武装纪律'
+        elif key == 'asset':
+            note = ';注意长驻型:不随局重武,自主推进期武装一次即可'
         print(f"  {key}: $env:PYTHONUTF8='1'; uv run python {script}({WATCHERS[key][1]}{note})")
     print('[武装命令] 事件哨兵起前删旧水位 cw_sentinel.pos(本工具杀净阶段已顺手处理)')
     print('[武装命令] 起完后用 `--verify N`(N=件数)核岗')
@@ -271,6 +280,9 @@ def main() -> None:
     parser.add_argument('--gap', action='store_true', help='武装命令列断流哨兵 cw_runs_gap.py')
     parser.add_argument('--early', action='store_true',
                         help='武装命令列早停哨兵 cw_early_stop.py(纪律:首条遥测落后再武装,须显式传)')
+    parser.add_argument('--asset', action='store_true',
+                        help='武装命令列资产完整性哨兵 cw_asset_sentinel.py'
+                             '(长驻型:不随局武装,自主推进期武装一次;须显式传)')
     parser.add_argument('--print-commands', dest='print_commands', action='store_true', default=True,
                         help='杀净后打印标准武装命令(默认开)')
     parser.add_argument('--no-print-commands', dest='print_commands', action='store_false',
@@ -280,8 +292,8 @@ def main() -> None:
     parser.add_argument('--selftest', action='store_true', help='干跑:只查旧+列计划,不杀不起')
     args = parser.parse_args()
 
-    # 默认两件(sentinel+gap);显式传了任一 flag 则按所传组合(early 只能显式加)
-    flags = [k for k in ('sentinel', 'gap', 'early') if getattr(args, k)]
+    # 默认两件(sentinel+gap);显式传了任一 flag 则按所传组合(early/asset 只能显式加)
+    flags = [k for k in ('sentinel', 'gap', 'early', 'asset') if getattr(args, k)]
     wanted = flags if flags else ['sentinel', 'gap']
 
     if args.verify is not None:
