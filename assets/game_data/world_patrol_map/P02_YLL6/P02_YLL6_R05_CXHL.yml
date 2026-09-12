@@ -66,7 +66,7 @@
   planet_name: "雅利洛-VI"
   region_name: "残响回廊"
   region_floor: 0
-  template_id: "mm_sp02"
+  template_id: "mm_sp_02"
   lm_pos: [389, 626]
   tp_pos: [389, 626]
 
@@ -75,7 +75,7 @@
   planet_name: "雅利洛-VI"
   region_name: "残响回廊"
   region_floor: 0
-  template_id: "mm_sp02"
+  template_id: "mm_sp_02"
   lm_pos: [733, 1280]
   tp_pos: [733, 1280]
 

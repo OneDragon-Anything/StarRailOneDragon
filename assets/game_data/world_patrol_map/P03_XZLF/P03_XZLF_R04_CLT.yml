@@ -88,15 +88,6 @@
   lm_pos: [745, 232]
   tp_pos: [745, 232]
 
-- uid: "BET"
-  cn: "宝饵堂"
-  planet_name: "仙舟「罗浮」"
-  region_name: "长乐天"
-  region_floor: 0
-  template_id: "mm_sp_03"
-  lm_pos: [745, 232]
-  tp_pos: [745, 232]
-
 - uid: "SHJ2"
   cn: "售货机2"
   planet_name: "仙舟「罗浮」"
