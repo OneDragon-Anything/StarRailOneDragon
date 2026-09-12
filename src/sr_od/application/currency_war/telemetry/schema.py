@@ -554,12 +554,6 @@ class DecisionTrace:
     # 失败——诚实缺省。可选末尾追加字段,旧记录缺省 '' 不破坏 schema
     # (判读读面宽容)。
     state_ref: str = ""
-    # M4 窗内钉面标记(v3.3-M1 定谳):``'board_state'`` = 本钉解析出的是
-    # BoardState 面,非决策实际消费的 GameState/last_state 面(两容器事件
-    # 轴错位已在 ADR-0630 申报;消费切换子集 hp/gold/level/node 投影落地前,
-    # 禁无标记的对账假结论)。子集切换落地后本标记撤销(回空串)。
-    # '' = 旧记录/无钉。
-    pin_scope: str = ""
 
 
 

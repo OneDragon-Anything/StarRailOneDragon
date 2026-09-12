@@ -88,7 +88,7 @@ W4 定谳(retirement.md §3):cw4_counters 全部键(336 实例 + 9 开放族)归
 | 段 | 要素归属 | 字段(现役名沿用) | 本设计处置 |
 |---|---|---|---|
 | 行头 | —(身份与 join key) | schema_version / ts / run_id / difficulty / plane / round_num / strategy_id / ev_arm | 字段集沿用;**schema_version 取新文件自带独立版本常量**(定谳 C7:初值 1,命名随落地批惯例对齐 `*_SCHEMA_VERSION` 先例,不动 telemetry/schema.py 模块级共用常量,见 §9) |
-| 钉 | ① state_ref 版本钉 | state_ref / pin_scope | 沿用(R4 已在产语义;pin_scope 生命周期见 §8-2) |
+| 钉 | ① state_ref 版本钉 | state_ref | 沿用(R4 已在产语义;历史档案钉面标记判读见 §8-2) |
 | 策略记忆 | ② 策略自身记忆 | **cw4_counters(新增,本设计核心)** + sess_* 披露族(成员封闭清单 = §2.4)+ v2_mode / v2_locked_line / v2_bridge / form_ok / b_t / formed_stop / piggy_reward / xp_expect_ledger / expected_paths / p26_prep_obs / shop_rejects / supply_pick | cw4_counters 新增(§3-§5,**首批发射**);披露族沿用现役字段语义、不改名不搬位,**首批发射不含、按消费需求逐批接线**(定谳 C4,§2.4);其余沿用现役字段语义,不改名不搬位 |
 | 决策记录 | ③ 决策函数关键记录 | target_comp / candidate_scores / eval_breakdown / v3_intention / handoff / sess_p1_pair / dp_posture / posture_unfulfilled | 沿用 |
 | 动作 | ④ 动作 op | actions(逐项附 reason,归因键序单一源 = ACTION_REASON_SOURCE_KEYS) | 沿用 |
@@ -368,8 +368,8 @@ W4 审计输入清单①「决策行收编须保局终级全键聚合可见性�
    框架旧排期编号,该表头自注「批次列的 M 编号为影子框架旧排期,现行排期以 R5 规划为
    准」,支持力弱;③「W6 后另批」原锚 ADR-0650 已删档,其内容现态锚 = retirement.md
    §2 cw4_counters 行与 §3 定谳落码形态。三锚无一是硬约束——本裁为排期裁量而非受锚
-   约束;裁据:state 链关键路径零插入(实机通关门不后移);新行无过渡语义(pin_scope
-   标记为空串、判据严格性满,§8-2/§8-3);链内无决策行归因面的在飞消费者。
+   约束;裁据:state 链关键路径零插入(实机通关门不后移);新行无过渡语义(行面无
+   钉面标记字段、判据严格性满,§8-2/§8-3);链内无决策行归因面的在飞消费者。
 
    **文件域交叠申报**:落地批写口接线落 mandate_v1 / cw_loop 域 + telemetry/schema.py
    扩展 + 测试仓锁面,与 T-6(W7 剩余面,cw_loop / schema.py 域交叠)**串行化**;W6 之后
@@ -380,12 +380,14 @@ W4 审计输入清单①「决策行收编须保局终级全键聚合可见性�
 
    r5/retirement 文字同步义务(r5 §2 W4 列范围② + §7 补波次行、retirement §7 #10 批次列
    改写)归 r5/retirement 修订批,不在本稿(头部依据段归属声明①)。
-2. **pin_scope 标记生命周期**:决策行钉面 = state_ref 指向 BoardState 面,而 W6 消费
-   切换完成前决策实际消费面 = GameState/last_state(两容器事件轴错位,ADR-0630 申报)。
-   现役契约:消费切换子集落地前钉带 `pin_scope='board_state'` 标记,切换落地后撤销
-   (回空串,schema.py `pin_scope` 字段)。本设计沿用该契约;挂波定谳 = W6 后(§8-1),
-   落地批产出的新行标记为空串(无过渡语义),带标记行仅存在于历史档案;带标记与空串
-   两种取值共存合法(旧读面按值分型)。
+2. **历史档案字段说明(钉面标记 pin_scope)**:历史档案(实机/sim decisions.jsonl
+   与外部存档)如出现钉面标记字段 `pin_scope`,取值 `'board_state'` = 「本行
+   state_ref 钉解析出的是 BoardState 面,非该行决策实际消费面」——过渡期消费切换
+   未完成时的对账防误判标记(两容器事件轴错位语境,ADR-0630);空缺 = 无标记。
+   判读现存历史数据按此语义分型。现行字段面不保留该字段:`DecisionTrace` 类与
+   决策行文件行均无此键(未投产定义退役:生产接线未做、v1 schema 零投产行,删 =
+   零断代零兼容成本);规范读端(`cw_replay_reader.from_dict`)对未知键忽略,携带
+   该键的历史行解析零破坏。现行行面钉字段 = state_ref 单字段(§2.1)。
 3. **瘦身判据的 W6 前提**:§2.3 退役面以「统一 state 可算」为判据,其中 hp/gold 类
    判据在 W6 后才严格成立(此前决策实际消费的 hp/gold 来自旧容器,不可由钉行还原)。
    但生产决策行自删除波 1 起本就停写,新文件不发射这些字段 = 相对现态零回归,故该

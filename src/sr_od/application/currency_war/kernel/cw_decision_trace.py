@@ -58,9 +58,8 @@ journal 已淘汰的同一 run_id 集。
 工具面去留)裁量;本批为纯新增发射面,零改任何既有读链。T2(判读面帧
 归因视图)非义务,不落本批,归宿维持挂候裁 6 同批。
 
-**pin_scope**(§8-2):挂波定谳 = W6 后,本发射面产出的新行标记为空串
-(无过渡语义);带 ``'board_state'`` 标记行仅存在于历史档案,两种取值
-共存合法(旧读面按值分型)。
+**钉面标记**:行面无钉面标记字段;历史档案如出现 ``pin_scope='board_state'``
+标记行,其判读语义与字段退役依据见 schema 正本 §8-2「历史档案字段说明」。
 """
 from __future__ import annotations
 
@@ -164,7 +163,7 @@ DERIVED_COLUMN_NOT_EMITTED: tuple[str, ...] = ('refresh_trigger',)
 ROW_KEY_ORDER: tuple[str, ...] = (
     'schema_version', 'ts', 'run_id', 'difficulty', 'plane', 'round_num',
     'strategy_id', 'ev_arm',            # 行头(身份与 join key)
-    'state_ref', 'pin_scope',           # 钉(state_ref 版本钉)
+    'state_ref',                        # 钉(state_ref 版本钉)
     *EMITTED_FIELDS,                    # 策略记忆(首批发射面)
 )
 
@@ -303,7 +302,7 @@ def record_decision_frame(session: object, *,
             anchor = {}   # 局段首行:窗口起点 = 局段起点(C(t_0) = ∅)
         cw4_payload = _window_diff(counters, anchor)
         _anchor_set(session, dict(counters))   # 浅拷贝快照,后写不串
-    # 钉(§2.1 state_ref = '{run_id}#{v}';pin_scope 恒空串,§8-2)
+    # 钉(§2.1 state_ref = '{run_id}#{v}')
     bs = board_state_of(session)   # 单例旁表现读;行头读口统一走四读口
     pin_v: int | None
     if state_ref_version is not None:
@@ -323,7 +322,6 @@ def record_decision_frame(session: object, *,
         'strategy_id': str(strategy_id or ''),
         'ev_arm': str(ev_arm or ''),
         'state_ref': f'{run_id}#{pin_v}' if pin_v is not None else '',
-        'pin_scope': '',
         'cw4_counters': cw4_payload,
     }
     sink = _DECISION_TRACE_SINK
