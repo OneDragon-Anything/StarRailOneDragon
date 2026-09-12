@@ -152,13 +152,13 @@ def vacancy_from_reads(cap: int | None, dep_n: int | None, cv_occ: int,
 
     - 语义:vacancy = max(0, cap − **仲裁后** deployed)。deployed 双源
       (paddle X vs CV 占用)先过仲裁注册面键 ``deployed_count``
-      (``arbitrate_deployed_count``,计数类取低值);此前发射门消费的
+      (``arbitrate_deployed_count``,计数类取低值);此前部署放行判定消费的
       vacancy 用未仲裁 dep_n,同一量两条口径并存无对账(§1 行 21,A5 根)。
     - 返回 ``(vacancy, divergent, stale)``:divergent=仲裁判真分歧
-      (取低值生效,§4.2 发射门延迟语义的准备面载体);paddle 缺席 = CV
+      (取低值生效,§4.2 放行判定延迟语义的准备面载体);paddle 缺席 = CV
       单源值(计数类声明的退化方向,非 stale,消费侧板满门另有重读+分键
       契约);stale=True = cap 缺(无 cap 无法成 vacancy)→ 缓存兜底
-      (**陈旧值显式申报**,B5——缓存值不再静默过发射门)。
+      (**陈旧值显式申报**,B5——缓存值不再静默过放行判定)。
     """
     arb_dep, divergent = arbitrate_deployed_count(dep_n, cv_occ)
     if cap is not None and arb_dep is not None:
@@ -796,9 +796,9 @@ class CwScreenPrep(CwScreenOpBase):
             dep_n = read_deployed_count(self.ctx, screen)
             _cv_occ = len(obs.front_occupied) + len(obs.back_occupied)
             # vacancy 消费仲裁值(15 号稿批 C/§4.1,A5 根:同一量两条口径并存
-            # 无对账——发射门消费的 vacancy 此前用未仲裁 dep_n):判定收在
+            # 无对账——部署放行判定消费的 vacancy 此前用未仲裁 dep_n):判定收在
             # 纯函数 :func:`vacancy_from_reads`(判据见其 docstring),
-            # divergent/stale 位随 obs 传播(§4.2 发射门延迟语义的准备面载体)。
+            # divergent/stale 位随 obs 传播(§4.2 放行判定延迟语义的准备面载体)。
             obs.deploy_vacancy, obs.deploy_divergent, obs.deploy_stale = \
                 vacancy_from_reads(cap, dep_n, _cv_occ, self._cached_vacancy)
             # deployed 总数双源对拍(同帧全齐):paddle X(读 deployed_count)
@@ -1619,7 +1619,7 @@ class CwScreenPrep(CwScreenOpBase):
         # —— 决策前置:~~席满破墙(M16)~~ 已随 read_bench_full 通道退役
         #      (迁移批次二,设计 §3.2.5:警告出现太短暂无法可靠采样,玩家
         #      裁定 2026-09-09;「双证据互督」随字段裁撤一并取消)。模态
-        #      恢复路径改由三既有防线承接:①发射门(ADR-0596 前置谓词:
+        #      恢复路径改由三既有防线承接:①部署放行判定(ADR-0596 前置谓词:
         #      bench_free>0 才发席耗动作,模态源头收敛);②环入口清场
         #      (_clear_entry_overlays,残留模态一键关);③外循环无进展
         #      守卫(动作批签名计数)。派生席满判定单一源 =
@@ -2112,7 +2112,7 @@ class CwScreenPrep(CwScreenOpBase):
         read_bench_full(警告 OCR)已裁撤——警告出现太短暂无法可靠采样
         (玩家裁定 2026-09-09);派生席满≠模态在场(持 9 席是合法运营态,
         按席满主动腾席会打穿策略持仓),本探测**不复活**。模态恢复路径 =
-        发射门(ADR-0596 前置谓词)+ 环入口清场(_clear_entry_overlays)
+        部署放行判定(ADR-0596 前置谓词)+ 环入口清场(_clear_entry_overlays)
         + 外循环无进展守卫。方法体保留为墓碑:调用即断言失败。"""
         raise RuntimeError(
             '_bench_full_break_round 已退役(read_bench_full 通道裁撤,'

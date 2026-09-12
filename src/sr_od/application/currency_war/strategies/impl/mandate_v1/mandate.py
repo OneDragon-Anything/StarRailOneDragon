@@ -171,7 +171,7 @@ class MandateFrame:
     round_num: int = 1      # 位面内轮次(M5 开局板辖域=开局帧;CwSimFrame 直读)
     # 装备域 owned 件名池快照(P4 观察接线,T-171):装配点 = entry.emit
     # 从黑板帧 obs.owned_equips 拷贝(全量含工具,W209g 口径)。None =
-    # 识别域未就绪(模板库/装备区缺失)或未供给,M7 发射门按空处理保守关;
+    # 识别域未就绪(模板库/装备区缺失)或未供给,M7 装备穿戴放行判定按空保守关;
     # [] = 真读到空。旧读点 = session.last_owned_equips 陈旧快照,已退役
     # (消费面与计划产出位同帧同源,防门①与产出位双源漂移)。
     owned_equips: list[str] | None = None
@@ -584,7 +584,8 @@ def core_single_card_buy_eligible(locked_buy: bool) -> bool:
     return locked_buy
 
 
-# ===== M1″ 锁线转型域执行条件发射门(T-127 方案 §2.3;P79-3 落码)=====
+# ===== M1″ 锁线转型域部署执行放行判定(设计文档旧称「发射门」=
+#       部署动作发出前的条件判定;T-127 方案 §2.3;P79-3 落码)=====
 
 def _deploy_advances_form(comp: object | None,
                           state: GameState, name: str) -> bool:
@@ -621,18 +622,20 @@ def _deploy_advances_form(comp: object | None,
 def _redeploy_emission_allowed(session: StrategySession,
                                state: GameState,
                                ctx: SwapPlanContext | None) -> bool:
-    """锁线转型域执行条件发射门(P79-3;T-127 方案 §2.3「发射门」)。
+    """锁线转型域部署执行放行判定(设计文档旧称「发射门」;P79-3;
+    T-127 方案 §2.3)。
 
     三轴(缺一即 defer,分键 redeploy_cost_gate_defer;与逐件资格拒因
     分列禁混桶):
-    ① 压席锁线成员存在 = bench ∩ membership 非空——A1 主体(换上的
-       是谁)缺位即无让位可言;
-    ② 成员类轴:压席成员中存在「上场能推进羁绊进度的替补成员」
+    ① 替补席线内成员存在 = bench ∩ membership 非空(板满压着上不了场的
+       目标线成员,旧称「压席成员」)——A1 主体(换上的是谁)缺位即无
+       让位可言;
+    ② 成员类轴:替补席线内成员中存在「上场能推进羁绊进度的替补成员」
        (``_deploy_advances_form``,按羁绊换的唯一成员类条件);
     ③ 换下代价轴(ADR-0614 §决策5 重推,三审 C-1 挂账兑现):卖出态由
        资格面 fail-closed 承载 P41 ②——非武装帧 2★+ 卖出已被 star_guard
        资格门持有(P79-3 辖域限定「资格门不被收益侧豁免」),存活
-       victim 恒 1★ = P41 甲.2 全档往返净 0 ⇒ 代价 0 ≤ 压席成本
+       victim 恒 1★ = P41 甲.2 全档往返净 0 ⇒ 代价 0 ≤ 席位占用成本(替补席被待上场成员压着的机会成本)
        (C_sat ≥ 0 恒成立,f≤1/f≥2 带同);**武装帧(evolution_swap_arm_
        trigger,ADR-0614)旧闭合失效**——2★ 卖出 = P41 往返净损 > 0,
        让位正当性改由病灶态机会账承载:板满∧席满∧线未成的卡死态下,
@@ -651,7 +654,7 @@ def _redeploy_emission_allowed(session: StrategySession,
     _waiting = [b for b in (getattr(ctx, 'bench', None) or [])
                 if (getattr(b, 'char_id', '') or '') in _membership]
     if not _waiting:
-        return False   # ①无压席成员
+        return False   # ①替补席无线内成员
     # 判读源与计划同源(落地审 F2):装配 ctx 携带本计划实际消费的
     # target comp(双轨口径随装配);手装 ctx/缺读退 state_of 二份
     # (缺读帧成员轴保守 defer,方向不变)。
@@ -988,7 +991,7 @@ def run_mandate(frame: MandateFrame,
     键 m2_stall_repeat_frame 同批新增,语义与商店域一致)/
     shop_latch_skip_dominance_buy / shop_latch_skip_m2_buy /
     shop_latch_skip_m6_stock(备战期开店闩跳过计数,分站记)/
-    equip_latch_skip_m7(装备期闩跳过计数,装备发射门门②)。
+    equip_latch_skip_m7(装备期闩跳过计数,装备穿戴放行判定门②)。
 
     备战期开店闩(``session.cw4_shopped_phase``):同一备战期内开店意图
     只消费一次。为什么是决策的推论而非限制:①商店域决策发生在店内一次
@@ -1505,9 +1508,9 @@ def run_mandate(frame: MandateFrame,
     # (ADR-0530:接线核对通过前不许发射,对齐证据 = 开闸前置义务;
     # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与发射契约
     # 留 bench 合法稳态同向)。
-    # 执行条件发射门(T-127 方案 §2.3,P79-3 落码):锁线转型域
-    # (arm='transition')发射前过「压席成员存在 ∧ 存在上场能推进羁绊
-    # 进度的替补成员」门,redeploy_cost_gate_defer 显影;成型/基座臂
+    # 部署执行放行判定(T-127 方案 §2.3,P79-3 落码):锁线转型域
+    # (arm='transition')动作发出前过「替补席线内成员存在 ∧ 存在上场能
+    # 推进羁绊进度的替补成员」门,redeploy_cost_gate_defer 显影;成型/基座臂
     # 不辖(§2.3 不动)。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
     # 本帧发射位有 m1p 换血时在发射处置为 plan.arm,消费点 =
@@ -1524,8 +1527,8 @@ def run_mandate(frame: MandateFrame,
             swap_plan_up_names,
         )
         _m1p_reasons: dict[str, str] = {}
-        # 装配产物持引用(发射门消费 membership/bench 压席成员面,同一
-        # 快照,禁发射门二次装配出第二份输入)。
+        # 装配产物持引用(放行判定消费 membership/bench 的替补席成员集合,
+        # 同一快照,禁放行判定二次装配出第二份输入)。
         # W6 波3 贯通 + prep 链容器化段 2:装配已切容器签名,置顶 bs 直传
         #(过渡桥装箱面消亡)。
         _m1p_ctx = assemble_swap_plan_inputs(
@@ -1568,9 +1571,9 @@ def run_mandate(frame: MandateFrame,
                 _count('m1p_input_seam_pending')
             elif _m1p.arm == 'transition' and not _redeploy_emission_allowed(
                     session, state, _m1p_ctx):
-                # 执行条件发射门未过(P79-3;T-127 §2.3):与逐件资格拒因
+                # 部署执行放行判定未过(P79-3;T-127 §2.3):与逐件资格拒因
                 # 分列禁混桶——资格拒 = 「能不能换」(victim 级),本键 =
-                # 「该不该这帧换」(帧级 defer,压席成员轴/代价轴)。
+                # 「该不该这帧换」(帧级 defer,替补席线内成员轴/代价轴)。
                 _count('redeploy_cost_gate_defer')
             else:
                 out.append(Emitted(RunDeploy(), True, 'm1_swap_redeploy'))
@@ -1580,8 +1583,8 @@ def run_mandate(frame: MandateFrame,
                     _count('swap_arm_transition_trigger')
                 elif _m1p.arm == 'formed':
                     _count('swap_arm_formed_trigger')
-                # 让渡 victim 逐件归因分键(T-127 §2.3/§6.3:压席轮数
-                # 判读可归因;只随发射显影,defer 帧由 defer 键单义承载)
+                # 被换下场成员逐件归因分键(T-127 §2.3/§6.3:替补席待上场
+                # 轮数判读可归因;只随发射显影,defer 帧由 defer 键单义承载)
                 if _m1p.arm == 'transition' and _m1p.sell_names:
                     _count(f"redeploy_transition_victim_"
                            f"{_m1p.sell_names[0]}")
@@ -1633,8 +1636,8 @@ def run_mandate(frame: MandateFrame,
     # M7 装备转移(常态:关键装备穿上场单位;D-B 释放判据 = kernel
     # cw_equip_env.resolve_wear_release 五行表,prep_actions 分发段
     # 计划产出位消费(ADR-0526/0601);基础载体 = RunEquip)。
-    # 发射门 = 变换可能性两件套(装备发射门,2026-09-03 实机 RunEquip 备战环
-    # 活锁定谳修法):
+    # 装备动作放行判定 = 变换可能性两件套(设计文档旧称「装备发射门」,
+    # 2026-09-03 实机 RunEquip 备战环活锁定谳修法):
     # ①可穿存在性(m7_wearable_exists):owned 快照里有注册表已登记且非
     #   工具类的件。快照源 = 决策帧 owned_equips(P4 观察接线,T-171;
     #   旧 session.last_owned_equips 陈旧快照读点退役——门①与计划产出位
@@ -1705,7 +1708,7 @@ def mark_equip_pass_executed(session: StrategySession,
     调用点 = 执行入口(prep_actions.PrepActionExecutor.execute)在
     RunEquip 组合 op 成功返回时——「一次完整穿戴 pass 已落地」的记账
     时点(含 0 穿完成态:候选全拉黑/hold 过滤后的完成 pass 信息完备,
-    装备发射门门②论证不变)。为什么不在发射位:备战环是单动作环,发射
+    装备穿戴放行判定门②论证不变)。为什么不在发射位:备战环是单动作环,发射
     列表中排在 RunEquip 之前的可续类动作(RunDeploy 等)先执行即投影
     未建模终结本环,RunEquip 意图未执行而闩已烧 → 后续环
     equip_latch_skip 挡死,装备滞留整个备战期(与开店闩置位时机修复
@@ -1735,7 +1738,7 @@ def mark_tools_pass_executed(session: StrategySession,
 
 
 def m7_wearable_exists(owned: list[str]) -> bool:
-    """M7 发射门①:owned 存在穿戴类件(注册表已登记 ∧ 非工具类)。
+    """M7 装备穿戴放行判定①:owned 存在穿戴类件(注册表已登记 ∧ 非工具类)。
 
     为什么不是「owned 非空」:快照写端按 ADR-0387 全量含工具件,持有面
     非空 ≠ 存在可穿件;谓词必须是变换面(穿上会改变装备分布)存在性。
@@ -1901,7 +1904,7 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     deployed_bond_counts 单一源)。
 
     ADR-0564:配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,
-    发射门与执行侧计划构造经同一 armed 布尔同值);返回值不变(bool),
+    放行判定与执行侧计划构造经同一 armed 布尔同值);返回值不变(bool),
     逐次调用经 _record_deploy_emit_held 落发射侧分键(帧级去重)。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (

@@ -2313,7 +2313,7 @@ class CwLoop(SrOperation):
                         self._cw_readiness_fail_n = 0
                         return self.round_wait(wait=3)
                     # 发射失败连续计数(防线 C1,出处 = 14 号稿 §7.1 as-built
-                    # 发射门准入三元语义):fp≥1.00 恒真 +
+                    # 开战放行判定三元语义):fp≥1.00 恒真 +
                     # StartBattle 持续失败 + round_wait 不耗 retry = 框架内
                     # 零防线自旋。连续 3 次失败放弃短路,回落守卫链(守卫
                     # 照常计数,卡死仍可停机),分键零静默;成功即复位。

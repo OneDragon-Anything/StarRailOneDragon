@@ -146,8 +146,8 @@ def launch_board_quality_report(bs: GameState, comp: Comp) -> dict:
       ——披露口径本体温测零改(ADR-0535),本报告附 ``b_t_disclosure``
       供判读对账。
     - ``deploy_plan_available`` = kernel ``has_deployable`` 判空(发射×执行契约
-      单一源,禁第二套围栏语义)。输入装配取 mandate 发射门同源缺省:
-      cap = ``state.max_units()``(装配缺读退 10**6,与发射门 None 兜底
+      单一源,禁第二套围栏语义)。输入装配取 mandate 部署放行判定同源缺省:
+      cap = ``state.max_units()``(装配缺读退 10**6,与放行判定 None 兜底
       同口径)、target = ``comp.factions``(framework carry/locked
       factions 在判据核不可得 → 严格子集,只可能偏「计划不可得」=
       fail-open 方向,不可能造成关闸后无动作的守卫停摆)。
@@ -191,7 +191,7 @@ def launch_board_quality_report(bs: GameState, comp: Comp) -> dict:
     cids = {d.char_id for d in deployed if d.char_id}
     try:
         cap = int(max_units_of(bs))
-    except Exception:   # noqa: BLE001  cap 缺读 = 发射门 None 兜底同口径
+    except Exception:   # noqa: BLE001  cap 缺读 = 放行判定 None 兜底同口径
         cap = 10 ** 6
     plan_available = has_deployable(
         [b for b in bench_slots_of(bs) if b is not None],
@@ -312,7 +312,7 @@ def launch_admission_report(bs: GameState, comp: Comp, *,
     # T-127 §2.2 顺手修);cap 缺读 = 质量闸兜底同口径(不显影板满)。
     try:
         _cap = int(max_units_of(bs))
-    except Exception:   # noqa: BLE001  cap 缺读 = 发射门 None 兜底同口径
+    except Exception:   # noqa: BLE001  cap 缺读 = 放行判定 None 兜底同口径
         _cap = 10 ** 6
     board_full = deployed_occupied(deployed_slots_of(bs)) >= _cap
     bench_core_waiting = False

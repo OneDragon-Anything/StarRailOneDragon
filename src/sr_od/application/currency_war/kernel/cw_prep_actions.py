@@ -264,7 +264,7 @@ class PrepObservation:
     deploy_vacancy: int = 0             # deploy_cap − deployed_count(heavy 刷新)
     deploy_divergent: bool = False      # vacancy 分母双源分歧位(15 号稿批 C:
                                         # True=deployed 计数取的是低值仲裁,
-                                        # 发射门按 §4.2 延迟;准备面载体)
+                                        # 部署放行判定按 §4.2 延迟;准备面载体)
     deploy_stale: bool = False          # vacancy 陈旧位(True=缓存沿用:
                                         # cap/paddle 双缺,B5 陈旧值过门申报)
     shop_open: bool = False             # 锚点「按钮-收起」可见(每步现读)

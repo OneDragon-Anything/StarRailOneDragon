@@ -1508,7 +1508,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
                     line_members,
                 )
-                # 波 5 喂入反转:发射门消费前直写容器、喂容器直读
+                # 波 5 喂入反转:开战放行判定消费前直写容器、喂容器直读
                 # (旧桥装箱一次性视图随桥退役拆除;消费时点不变)。
                 feed_sim_truth(board_state_of(sess), st,
                                at_round=f'p{_seg_plane}-r{rn}-launch')

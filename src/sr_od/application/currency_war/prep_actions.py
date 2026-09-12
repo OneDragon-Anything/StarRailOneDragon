@@ -1781,8 +1781,8 @@ class PrepActionExecutor:
 
         空计划 = 合法稳态具名 NOOP(发射契约形态):返回
         ``(f'装备 计划空: {具名原因}', True)``——发出事实 = True,execute
-        的 ``mark_equip_pass_executed`` 唯一写点照置(装备发射门活锁三条件
-        闭环不变;批3a:原 ok=True 语义同值为「发出事实」)。
+        的 ``mark_equip_pass_executed`` 唯一写点照置(装备穿戴放行判定活锁
+        三条件闭环不变;批3a:原 ok=True 语义同值为「发出事实」)。
 
         资源前置缺失走未发出通道 (detail, False):闩不置,下帧重派,与
         今日 op round_fail('模板库未加载')同形,Director 交回外循环

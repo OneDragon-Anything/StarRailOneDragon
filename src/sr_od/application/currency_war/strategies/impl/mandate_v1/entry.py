@@ -676,7 +676,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         # owned 快照在场即计已评估帧;零可执行件帧按拟执行动作分键显影
         #(m7_5_reject_{action},action = 判据面稳定标识;reason 是中文
         # 判读文本非键面,禁直拼)。无任何条目产出计 m7_5_reject_none。
-        # 观测面零策略语义:发射门(any usable)与闩不变。
+        # 观测面零策略语义:工具动作放行判定(any usable)与闩不变。
         _ct_tools['m7_5_evaluated'] = _ct_tools.get('m7_5_evaluated', 0) + 1
         if not any(a.usable for a in _tool_admitted):
             if any(a.usable for a in _tool_actions):
@@ -743,8 +743,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         node_type=getattr(session, 'node_type_current', None),
         stop_flag=stop_flag, k_members=k_members,
         round_num=_round_num,
-        # 装备域 owned 件名池直传(P4 观察接线,T-171):M7 发射门输入
-        # 与计划产出位同帧同源(None = 识别域未就绪,门按空保守关)。
+        # 装备域 owned 件名池直传(P4 观察接线,T-171):M7 装备穿戴放行
+        # 判定输入与计划产出位同帧同源(None = 识别域未就绪,门按空保守关)。
         owned_equips=getattr(obs, 'owned_equips', None))
     # registry 下传骨架 pass(等级帽单一源,ADR-0565 收口 = ADR-0606:
     # M3 链 lv9_stop/level_spend_blocked 消费注入表,与 ④′ 姿态对账

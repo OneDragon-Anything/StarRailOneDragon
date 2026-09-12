@@ -1,6 +1,25 @@
 """货币战争新核包(mandate_v1 换核,statefn 层先行批;换核迁移序原文已删档,
 取回口径=ADR-0644)。
 
+域内术语(本包注释用词的单一参考;前三个为玩法文档在册词,后两个为本
+包直白化后的标准称呼):
+- 锁线:把最终阵容(目标线)确定下来、此后围绕它买牌的阶段与状态。玩法
+  先例 = ``docs/game/currency_war/research/final_comps/README.md``
+  「见核心即锁线、围绕它买」;系统语义正本 =
+  ``docs/develop/sr_od/application/currency_war/strategy-docs/
+  12_line_and_intention.md``(代码对应 ``locked_comp`` 等符号)。
+- 腾席:腾出备战席位——bench 满先卖最弱杂件,或升人口扩容。用户玩法
+  纪律在册 = ``docs/game/currency_war/research/user_playstyle.md``
+  条目 [32]「腾席优先级」。
+- 让位:优先级让步——两判据冲突帧,低优先一方放弃(「X 让位给 Y」)。
+  玩法先例 = ``docs/game/currency_war/research/economy.md``(经济让位
+  保血)、``user_playstyle.md``(购买让位于息线)。
+- 放行判定:把一个备战动作(部署/装备穿戴等)真正发出之前的条件判定,
+  缺一即本帧不发、留待下帧。设计文档旧称「发射门」(T-127/P79-3 等
+  ADR 在册词),读旧文档时同义对照。
+- 替补席线内成员:在 bench 上、属于目标线、因板满尚未上场等待换上的
+  成员。设计文档旧称「压席成员」。
+
 落位(策略统一迁移批):``decision/cw4/`` 整体迁入 ``strategies/impl/mandate_v1/``(编号承 cw3 谱系);
 strategy_id=``mandate_v1``。本批只落 statefn 状态函数层(NMF §2 的 22 项
 状态量单一源)+ audit 零调参审计载体 + 「挂后台效果」资格谓词载体(前置半步 0);

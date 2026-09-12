@@ -42,7 +42,7 @@ def _eq(name: str, category: str, effect: str, stacking: bool, source: str = "",
 EQUIP_TOOL_CATEGORY: str = '工具'
 """注册表装备分类学里的「工具」类名(不可 drag 穿戴,只能拖到装备/角色上
 消耗使用)。分类全集单一源 = 本文件 ``Equipment.category`` 字段注释;
-穿戴类过滤的策略侧消费 = mandate_v1.mandate(发射门①谓词)、执行侧
+穿戴类过滤的策略侧消费 = mandate_v1.mandate(装备穿戴放行判定①谓词)、执行侧
 消费 = cw_op_equip_all(工具不进 drag 穿戴循环)——双方均 import 本常量,
 禁再写本地平行定义。"""
 

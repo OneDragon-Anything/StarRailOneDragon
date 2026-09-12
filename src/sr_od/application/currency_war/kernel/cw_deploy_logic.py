@@ -363,7 +363,7 @@ def has_deployable_reasoned(
     = ``select_deployments_reasoned`` 的薄包装:返回 ``(bool(up),
     reasons)``——判空语义与 ``has_deployable`` 完全一致,reasons =
     held 下标 → 拒因闭集(scatter_fence/rest_capacity/cap/name_dup/
-    recipe_floor/item_slot)。消费面 = mandate._deployable(发射门:
+    recipe_floor/item_slot)。消费面 = mandate._deployable(部署放行判定:
     ``deploy_emit_held_<reason>`` 发射侧分键的唯一拒因源)与本文件
     ``has_deployable``(委托)。禁第二套围栏语义(单一源同函数路径)。
     """
@@ -1217,8 +1217,8 @@ class SwapPlanContext:
     recipe_floor_lock_exempt: bool = False
     #: 装配实际消费的 target comp 视图本体(双轨口径:双轨期 =
     #: decision_target 伪 comp,定型后 = strategy_state.target_comp;
-    #: None = 手装 ctx/装配缺读)。消费面 = mandate 执行条件发射门的
-    #: 档关键件判读源(落地审 F2:判读源与本计划的 comp 同源,禁发射门
+    #: None = 手装 ctx/装配缺读)。消费面 = mandate 部署执行放行判定的
+    #: 档关键件判读源(落地审 F2:判读源与本计划的 comp 同源,禁放行判定
     #: 另读 state_of 二份——双轨帧两源可分歧,判据源分裂 = 同型分叉)。
     target_comp: object | None = None
     #: 演进降级换血臂武装位(缺省 False = 逐位同旧;装配函数单点计算,

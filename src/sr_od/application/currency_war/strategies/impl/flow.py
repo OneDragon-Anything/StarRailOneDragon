@@ -282,7 +282,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         判据」口径由 B_t 延续),写者本身零行为面。
         已知边界(如实声明):生产侧商店观察帧若 board 未播种,
         form_progress 现读恒 False——该帧族的 form_ok 读数是「观察帧
-        board 口径」,与发射门「轮入口全量 state 口径」存在帧差,判读
+        board 口径」,与部署放行判定「轮入口全量 state 口径」存在帧差,判读
         时以 sim 账本(全量 state)为准。
         """
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
