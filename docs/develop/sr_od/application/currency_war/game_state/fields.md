@@ -1182,6 +1182,14 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   标准通道)/`relay`(载体中继,空值闸)/`logic_written_fields`(对账巡检用)/
   `note_action_receipt`(receipts 唯一写点)/`write_match_final`(局终域唯一写点)。
   API 契约细则 = [journal.md](journal.md) §6。
+- 备战动作投影写口 = `apply_prep_action_logic`(kernel/cw_board_state.py,模块级
+  写口;备战动作零读屏期望态推进的容器半,消费位 =
+  `cw_screen_prep._project_prep_obs`)。域集封闭 = `PREP_PROJECTION_DOMAINS`
+  ——gold(SellBench 回金,退款公式单一源 = `cw_state.sell_refund`)+ bench(摘槽
+  重建 BenchView);集外动作零写(禁扩静默);域级 None 跳写(值留观察覆盖,§2.2);
+  陈旧提案守卫(槽位空/越界零写,等观察覆盖)。sig 必填 = family='logic_action'
+  (渠道签名纪律,ADR-0634)、actor 在册校验、group_id 按 `act:<op类名>@<seq>`
+  先例在口内补齐;投影直写值受观察覆盖辖(§2.3)。
 - 效果账本 = `ActiveEffectInventory`(登记/推进/计数/移除方法域;读端
   by_category/by_trigger/by_source/first/counter/predict_for);规格载体 =
   `EffectSpec` 四元组,声明式驱动单一源 = [effect-domain.md](effect-domain.md) §7。

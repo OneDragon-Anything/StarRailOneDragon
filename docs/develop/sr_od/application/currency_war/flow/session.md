@@ -33,7 +33,7 @@
 
 > **as-built 字段账对账**(实施批落位实际数,账外收编逐波清单单一源 = ADR-0563「落位裁量」节):实际落点 **MandateState 72 具名 + scratch dict** = 本篇清册 52 + 账外第一波 9 + 账外第二波 11;**ExecState 22 具名** = 本篇清册 16 + 账外第二波 6。两波账外字段均为实施批按 §6.1「账外字段一律视为范围遗漏」收编的实装 grep 发现项(产生者/消费者与清册同族),按本篇自己的对账规则回写入账,防止下批按清册找字段归属系统性误导。
 
-### 2.1 观察数据——留 session(28 项)
+### 2.1 观察数据——留 session(27 项)
 
 | 字段 | 产生者 | 消费者 | 生命周期 | 备注 |
 |---|---|---|---|---|
@@ -52,7 +52,9 @@
 | `chosen_megastar` / `chosen_partner` | 选择 handler | 遥测回写 state | 局 | 复盘维度 |
 | `star_pending_regression` | 识别防抖(合成动画窗确认) | star 真值采信 | 节点内 | 框架识别守卫 |
 | `briefing_affixes` / `briefing_bosses` / `selected_difficulty` / `enemy_difficulty` / `active_env` | 简报/入口屏/情报屏采集 | mechanics_fit/boss_fit/保血阈值 | 局 | ADR-0397/0398 保位勿滤 |
-| `prep_obs_frame` / `shop_state_frame` | 入口观察段(唯一读屏点) | decide_prep_screen/decide_shop_screen | 帧覆写 | 黑板模式观察帧;决策唯一输入源(W971) |
+| `prep_obs_frame` | 入口观察段(唯一读屏点) | decide_prep_screen | 帧覆写 | 备战黑板帧 = 纯视觉/占用观察载体(PrepObservation;帧保留域封闭清单见其 dataclass 定义,局内事实不在帧上);备战决策读 = session 容器单例 `board_state_of`(容器域)+ 帧视觉域并读;黑板写读契约与 None 帧失约保留(W971) |
+
+> 帧代次标注槽 `prep_frame_class`/`shop_frame_class` 留 session(帧语义注记,非游戏事实;ADR-0583 §3.4):`shop_frame_class` 标注对象 = **最近一次商店域容器观察写点**(入口观察段喂入/续段重观察)——商店黑板槽 `shop_state_frame` 已随两态制收口退役删除,容器 = 商店决策读单源;`prep_frame_class` 标注对象 = 同名黑板帧最近一次写入。本表按槽退役后现态列 27 项(统计行与 §4 结构图为清册时点数,含该槽)。
 
 ### 2.2 框架设施——留 session(2 项)
 
@@ -129,7 +131,7 @@
 
 - **被否选项 A:策略管理器每局复用同一策略实例**(策略器变有状态单例)——否决理由:①策略实例现在是跨局长命对象,「每局新建 session」的清零保证失效,漏清零字段成为跨局污染源(现状 `on_match_start` 逐字段清零已多次出漏,`flow.py:120-180` 的清零清单本身就是该形态的补丁史);②sim 与 live 共享同一实例定义时,实例级可变状态让并发跑批/回放对拍不可复现;③换核热替换面(A/B 切 strategy_id)要求实例可随时丢弃——实例带状态则丢弃即丢局中状态,语义断裂。
 - **被否选项 B:框架代管 dict(= memory 现状延伸)**——否决理由:①schema 不可见(asdict/telemetry 看不见),判读面盲区;②无类型与守卫,键名冲突靠纪律约束(memory 注释五条款全是纪律不是机制);③所有权名义归策略、宿主仍在框架载体——与目标态的定义矛盾,只是换个字段名继续混装。
-- **被否选项 C:状态作为独立参数贯穿全部契约接口签名**——否决理由:契约接口 + bridge/entry/mandate/shop 全链签名改一遍,爆炸面最大,且签名携带的输入本就经 session 黑板(prep_obs_frame/shop_state_frame 同款),单独走参数属双通道。
+- **被否选项 C:状态作为独立参数贯穿全部契约接口签名**——否决理由:契约接口 + bridge/entry/mandate/shop 全链签名改一遍,爆炸面最大,且签名携带的输入本就经 session 黑板(prep_obs_frame 同款),单独走参数属双通道。
 
 **契约条款**:
 1. `MandateState` 类型定义、字段、更新语义全部在实现包;kernel 判据层(cw_intention/cw_evolution 等)对策略状态的消费改经**访问函数**(取 `session.strategy_state` 后类型收窄),kernel 不再持有 `session.v3_*` 字段注解。

@@ -3,7 +3,7 @@
 ## 0. 元信息
 - 迭代目标：ADR-0630 统一 state 收编升级（`docs/develop/currency_war/decisions/0630-unified-state-journal.md`，冲突处以其修订节为准）+ 用户 2026-09-11 裁定：board state 收尾纳入通关迭代能力关键链。任务账本 = `.debug/progress/2026-09-11-cw-clear-run/dag.jsonl`。
 - 状态：对抗审中——批次一/二已落地审查，开放点已账本化（T-11/T-12/T-15），收敛后转定稿。
-- 文档清单：details/BoardState-数据结构设计.md —— 统一 state 容器数据结构与画面字段规格（详设件，寿命=迭代；正本家 = docs/develop/currency_war/game_state/（总纲+分篇），归拢后自足）。
+- 文档清单：details/BoardState-数据结构设计.md —— 统一 state 容器数据结构与画面字段规格（详设件，寿命=迭代；正本家 = docs/develop/currency_war/game_state/（总纲+分篇），归拢后自足）；changes/2026-09-12-prep-chain-containerization/ —— 外溢迭代：prep 链容器化（承接《商店黑板容器化方案》§1.4 裁定独立成迭代，辖 prep 链签名切容器与 prep/shop 两黑板槽退役）。
 
 ## 1. 问题与动机
 - 现状症状：旧 12 流散乱、写点不全、无渠道签名、无统一 state（退役理由口径，依据 = ADR-0630 背景节；旧 12 流 = 流程侧遥测的十余条独立落盘 JSONL 流，逐流清单见 r5-migration-plan「术语速查」）。

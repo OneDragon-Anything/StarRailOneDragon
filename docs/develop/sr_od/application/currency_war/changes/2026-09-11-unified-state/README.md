@@ -4,6 +4,7 @@
 - 设计总纲:[design.md](design.md)
 - 详设:[details/BoardState-数据结构设计.md](details/BoardState-数据结构设计.md)——统一 state 容器数据结构与画面字段规格
 - 落地:[landing.md](landing.md)
+- 外溢迭代:[../2026-09-12-prep-chain-containerization/README.md](../2026-09-12-prep-chain-containerization/README.md)——prep 链容器化（承接《商店黑板容器化方案》§1.4 外溢裁定，独立迭代：prep 链签名切容器+prep/shop 两黑板槽退役）
 
 ## 进度
 - 迭代设计:对抗审中（开放点已账本化 T-11/T-12/T-15）
