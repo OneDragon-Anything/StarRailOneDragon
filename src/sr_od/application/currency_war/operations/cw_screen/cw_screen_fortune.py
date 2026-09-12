@@ -34,6 +34,7 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
@@ -66,13 +67,16 @@ class FortuneLiveObservationAdapter:
 class CwScreenFortune(CwScreenOpBase):
     """命运卜者强化三选一:OCR 卡文字 → 文本策略选卡 → 确认。"""
 
-    # ⚠️ 待实机核(坐标单一源清点项):以下为 2026-08-21 live 实锤字面量
+    SCREEN_NAME: ClassVar[str] = '货币战争-命运卜者强化'   # screen_info 画面(cw_fortune_picker.yml)
+    # ⚠️ 待实机核(坐标单一源清点项):以下卡位/文字带为 2026-08-21 live 实锤字面量
     # (文件头实拍布局),未 area 化(本批实机纪律不可测,建档挂账实机批)。
     # 三卡卡身(选中点击点=卡下半部,避详情按钮 y~430-462;同策划事件教训)
     CARD_XS: ClassVar[tuple[int, ...]] = (510, 900, 1290)
     CARD_Y: ClassVar[int] = 480
     TEXT_Y_LO: ClassVar[int] = 290
     TEXT_Y_HI: ClassVar[int] = 410
+    # 确认按钮兜底常量(首选 area_center('按钮-确认选择'):建档 cw_fortune_picker.yml
+    # rect (1420,575,1560,625) 中心 (1490,600),与本常量同按钮差 1px;同策划事件坐标族)
     CONFIRM: ClassVar[Point] = Point(1491, 600)
 
     def __init__(self, ctx: SrContext):
@@ -160,8 +164,12 @@ class CwScreenFortune(CwScreenOpBase):
         safe_click(self, target, tag='cw-fortune')
         time.sleep(1.2)
         self._confirm_pending = True
+        # 确认点主源 = 建档「按钮-确认选择」中心(坐标单一真相源);area 缺失回退
+        # 兜底常量(megastar/invest_env 同款派生 + 缺损兜底模式)。
+        _confirm = (area_center(self.ctx, '按钮-确认选择', CwScreenFortune.SCREEN_NAME)
+                    or CwScreenFortune.CONFIRM)
         return emit_overlay_confirm(
-            self, confirm_point=self.CONFIRM,
+            self, confirm_point=_confirm,
             entry_keyword='命运卜者', tag='cw-fortune')
 
     # ---- 五段生命周期(统一观察架构 §5.1;试点步骤 3,先例 = 盛会之星)----

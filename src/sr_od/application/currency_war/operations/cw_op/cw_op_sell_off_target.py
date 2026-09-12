@@ -1,4 +1,11 @@
-# 已下线待重接(battle_prep 决策:late-game target 充足时重接;当前零调用,off-target 清理由 deploy_bench._sell_offtarget_deployed 承担;代码经 2026-08-24 复审,重接时按画面复核即可)
+# 【退役·禁接旧码】本文件已下线零调用(off-target 清理由 deploy_bench._sell_offtarget_deployed
+# 承担;battle_prep 决策:late-game target 充足时才评估重接)。画面 op 规范符合性判读(2026-09-12)
+# 定性本文件两处规范违例:①ESC 键关详情面板(od-dev-write-operation 必守不变量 3 禁令);
+# ②FRONT_SLOTS/BACK_SLOTS/SELL_BTN/FACTION_RECT 硬编码坐标(坐标单一真相源违例)。对应建档
+# (详情面板关闭控件/出售按钮/阵营栏)缺失,补档须实机 click 实锤(od-dev-screen-onboarding
+# §4 硬规则;出售 = 不可逆消耗类出口,离线归档帧推坐标不可实锤)。
+# **重接前置条件 = 先按 od-dev-screen-onboarding 给「货币战争-备战-角色详情」补建档,再按建档
+# 重写本 op;现状代码禁止原样复活(违例不随重接带入)。**
 
 """货币战争 清存量 off-target deployed(点 deployed 头像→详情面板露阵营+出售按钮)。
 

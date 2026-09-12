@@ -38,6 +38,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
+from sr_od.application.currency_war.kernel.cw_obs_core import area_center
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base import (
     CwScreenOpBase,
 )
@@ -100,8 +101,10 @@ class CwScreenPlanner(CwScreenOpBase):
     # 卡文字 OCR 过滤带(卡描述在 y~330-370;标题 y~376)
     CARD_TEXT_Y_LO: ClassVar[int] = 300
     CARD_TEXT_Y_HI: ClassVar[int] = 420
-    # 确认按钮(⚠️ 交互实锤:在**右侧偏下** (1440-1542,584-615),非画面中央!
-    # 旧写 (960,615) 是猜的——局29 事件 1.5h 未消费的另一半原因)
+    # 确认按钮兜底常量(首选 area_center('按钮-骇入确认'):建档 cw_hacker_planner.yml
+    # rect (1420,575,1560,625) 中心 (1490,600),与本常量同按钮差 1px——交互实锤在档:
+    # 在**右侧偏下** (1440-1542,584-615),非画面中央!旧写 (960,615) 是猜的——
+    # 局29 事件 1.5h 未消费的另一半原因)
     CONFIRM: ClassVar[Point] = Point(1491, 600)
     # 详情面板关闭 ×(归一化 780,220 → 1080p;23:30 实测点击生效)
     DETAIL_CLOSE: ClassVar[Point] = Point(1497, 238)
@@ -237,8 +240,12 @@ class CwScreenPlanner(CwScreenOpBase):
             emit_overlay_confirm,
         )
         self._confirm_pending = True
+        # 确认点主源 = 建档「按钮-骇入确认」中心(坐标单一真相源);area 缺失回退
+        # 兜底常量(megastar/invest_env 同款派生 + 缺损兜底模式)。
+        _confirm = (area_center(self.ctx, '按钮-骇入确认', CwScreenPlanner.CARD_AREA_SCREEN)
+                    or CwScreenPlanner.CONFIRM)
         return emit_overlay_confirm(
-            self, confirm_point=self.CONFIRM,
+            self, confirm_point=_confirm,
             entry_keyword='我来当策划', tag='cw-planner',
             press_time=self.CLICK_PRESS_TIME)
 

@@ -159,7 +159,20 @@ class CwScreenPartner(CwScreenOpBase):
 
     def _find_text_center(self, screen, text: str) -> Point | None:
         """OCR 找 ``text`` 的 center(没找到 None)。用于「确认选择」定位(避开 round_by_ocr_and_click 的
-        bug#1 裸 click —— 改 mouse_move + click)。"""
+        bug#1 裸 click —— 改 mouse_move + click)。
+
+        主源 = 建档「按钮-确认选择」rect 约束 OCR(坐标单一真相源 = screen_info;
+        命中即该按钮文本实际位置,与全屏 OCR 同帧同词同点)。rect 内未命中
+        (布局漂移/step2 异位形态)→ 降级全屏 OCR 兜底腿(原行为,miss 语义不变)。
+        """
+        _area = self.ctx.screen_loader.get_area('货币战争-列车同行', '按钮-确认选择')
+        if _area is not None and _area.pc_rect is not None:
+            ocr_map = self.ctx.ocr_service.get_ocr_result_map(
+                image=screen, rect=_area.pc_rect, color_range=None, crop_first=False,
+            )
+            mrl = ocr_map.get(text)
+            if mrl and mrl.max:
+                return mrl.max.center
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )

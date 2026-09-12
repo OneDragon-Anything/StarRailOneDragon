@@ -213,8 +213,9 @@ class CwScreenBattleWait(CwScreenOpBase):
     UNKNOWN_BAIL_N: ClassVar[int] = 10
     # 点空白区(加速战斗/关叠层;避开中央内容;随迁自 cw_loop.BLANK)
     BLANK: ClassVar[Rect] = Rect(1450, 920, 1560, 980)
-    # 结算「前进」按钮恒在底部中央(随迁自 cw_loop.SETTLEMENT_NEXT,
-    # 坐标出处见该处 git 历史:下一页/返回货币战争实测中心)。
+    # M39 长按兜底专用点(随迁自 cw_loop.SETTLEMENT_NEXT,「继续挑战」长按
+    # (960,898);普通点击已改点 OCR 命中位置——检测/点击分离时点击坐标须随
+    # 命中,画面 op 规范符合性判读 2026-09-12 整改项)。
     SETTLEMENT_NEXT: ClassVar[Point] = Point(960, 898)
 
     def __init__(self, ctx: SrContext, st: SettlementState,
@@ -740,7 +741,12 @@ class CwScreenBattleWait(CwScreenOpBase):
             self._record_loss_page(screen, pre_fp=_pre_fp)
             for _btn in ('前往结算', '下一页', '下一步', '返回货币战争'):
                 if self.round_by_ocr(screen, _btn, lcs_percent=0.8).is_success:
-                    self.ctx.controller.click(CwScreenBattleWait.SETTLEMENT_NEXT)
+                    # 点 OCR 命中位置(检测/点击同源:点刚判中的按钮文本中心,
+                    # 非固定点——四按钮位置不同则固定点落空)。二趟 miss = 无点击
+                    # 交下轮重判(失败安全,非静默假推进);pre_delay=0 保持原
+                    # 「检测即点」时序。
+                    self.round_by_ocr_and_click(screen, _btn, lcs_percent=0.8,
+                                                pre_delay=0)
                     self.park_cursor(after_wait=0.1)
                     return self.round_wait(wait=1)
             self.ctx.controller.click(CwScreenBattleWait.BLANK.center)
@@ -812,7 +818,10 @@ class CwScreenBattleWait(CwScreenOpBase):
                     settle_frame_collect,
                 )
                 settle_frame_collect(screen)
-                self.ctx.controller.click(CwScreenBattleWait.SETTLEMENT_NEXT)
+                # 点 OCR 命中位置(检测/点击同源,同 1f 分支注释;二趟 miss =
+                # 无点击交下轮重判;pre_delay=0 保持原「检测即点」时序)。
+                self.round_by_ocr_and_click(screen, btn, lcs_percent=0.8,
+                                            pre_delay=0)
                 self.park_cursor(after_wait=0.1)
                 return self.round_wait(wait=1)
 

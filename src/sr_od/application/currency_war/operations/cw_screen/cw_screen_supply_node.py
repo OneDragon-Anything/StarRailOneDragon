@@ -11,8 +11,9 @@
 
 动作(T#99 已接 decide_supply):``read_supply_options`` OCR 每列(角色+装备)→ ``decide_supply`` 按
 target_comp.key_equips 契合 + 装备通用价值选最优列 → 点该列卡身 + 确认。读不到选项 → CARD_BODY 兜底。
-钻(红/蓝=基本赢)视觉判定 + has_diamond 待补;刷新按钮实存(REFRESH_BTN 图标式,
-decide_supply 规则 2「全无钻+刷新未用→刷新找钻」消费)。
+钻(红/蓝=基本赢)视觉判定 + has_diamond 待补;刷新按钮实存(「剩余次数」文锚
+左侧圆钮,``_REFRESH_BTN_DX`` 文本锚定,decide_supply 规则 2「全无钻+刷新未用
+→刷新找钻」消费)。
 
 **ADR-0517 适配申报(§8.4 裁决建议按建议落)**:本节点已按单动作架构语义
 运转——每轮 ``handle`` = 入口重观察(``_in_node`` 验证 + ``read_supply_options``
@@ -45,11 +46,13 @@ confirm 点击系统性不生效 = 动作链 bug 根修动作链)。本屏 sim �
 接线(sim 接线批后续),等价判据主承重 = 实机在册行为锁(test_cw_runnode_retire
 + test_cw_board_state_consume + 本批锁 test_cw_obs_arch_event_screens_step3)。
 """
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from one_dragon.base.geometry.point import Point
+from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
@@ -61,6 +64,10 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base impor
     CwScreenOpBase,
 )
 from sr_od.context.sr_context import SrContext
+
+# 「剩余次数：N」正则(遭遇/投资屏 reader 同款形态,cw_node_obs._REMAIN_RE 族;
+# 全角/半角冒号都认,OCR 渲染不一)。
+_REMAIN_RE = re.compile(r'剩余次数\s*[：:]\s*(\d+)')
 
 
 @dataclass
@@ -108,8 +115,17 @@ class CwScreenSupplyNode(CwScreenOpBase):
     """
 
     CARD_BODY: ClassVar[Point] = Point(900, 550)  # 补给卡 body 不开对话(沿用 HandleSupply)
-    # 刷新按钮(图标式,VLM 判定 + refresh_ui_samples.jsonl 多局稳定坐标;2026-08-17)
-    REFRESH_BTN: ClassVar[Point] = Point(974, 854)
+    # 刷新圆钮 = 「剩余次数：N」文本左侧固定偏移(遭遇屏 _REFRESH_BTN_DX 同族先例,
+    # 文本锚定;运行时锚 = 建档「文本-剩余次数」rect 约束 OCR,单一真相源 =
+    # screen_info)。偏移实测收口(归档帧 sr-od-test/screens/货币战争-补给/
+    # {default,双排装备,col3_selected}.webp CV 双法:HoughCircles 钮心
+    # (1314.5-1315.5,983.5) r≈22-24 亮/灰态稳定;文本框中心 (1414,982.5)/建档
+    # rect 中心 (1415.5,983))→ dx ≈ -99.5 取 -100,dy=0。偏移错 → 刷新未命中,
+    # 重读 = 原 options,重决策结果天然等价(照常选卡;失败安全同遭遇屏先例)。
+    # (原固定常量 (974,854) 经归档帧复测落在卡列下方空白区 = 失效坐标,删除。)
+    _REFRESH_BTN_DX: ClassVar[int] = -100
+    # 刷新文本锚 = 建档「文本-剩余次数」area(货币战争-补给;OCR 带 rect 单一源)。
+    _REFRESH_TEXT_AREA: ClassVar[str] = '文本-剩余次数'
     # detour 实测时序(2026-08-27 实机冻结画面验证):回备战过渡 ~2.5s、
     # 重进 overlay 过渡 ~2s;重进重试上限(area 版),area×3 全 miss 再 OCR 文本
     # 兜一枪(全败=本轮零选择动作交下轮重试整个 detour,标记仅成功后落——
@@ -258,10 +274,43 @@ class CwScreenSupplyNode(CwScreenOpBase):
                     '(下轮重试;若持续=节点预算耗尽 FAIL bail)', CwScreenSupplyNode.REENTER_TRIES)
         return False
 
+    def _read_refresh_anchor(self, screen) -> Point | None:
+        """「剩余次数：N」文本锚(刷新圆钮文本锚定用;遭遇屏
+        ``read_encounter_refresh_count`` 同族形态)。
+
+        OCR 带 = 建档「文本-剩余次数」pc_rect 外扩余量(x ±30 / y ±15,固定常量:
+        防文字框与建档 rect 边缘相切时漏配;rect 单一真相源 = screen_info)。
+        ``crop_first=False`` 全帧识别按带过滤(避开小框裁剪漏检)。
+        正则命中 → 文本中心;读不到 → None(调用方失败安全:零点击 + 照常
+        置位已用旗标)。纯读。
+        """
+        if screen is None:
+            # 无帧(fake 渠道桩替读链环境):按锚读缺走失败安全,不喂 None 给
+            # 真 OCR 引擎(会崩 predict_det,痕 = 'NoneType' object has no
+            # attribute 'shape')。生产路径 screen 恒来自 screenshot() 非空。
+            return None
+        _area = self.ctx.screen_loader.get_area('货币战争-补给',
+                                                CwScreenSupplyNode._REFRESH_TEXT_AREA)
+        if _area is None or _area.pc_rect is None:
+            return None
+        _r = _area.pc_rect
+        _band = Rect(max(0, _r.x1 - 30), max(0, _r.y1 - 15),
+                     _r.x2 + 30, _r.y2 + 15)
+        ocr_map = self.ctx.ocr_service.get_ocr_result_map(
+            image=screen, rect=_band, color_range=None, crop_first=False,
+        )
+        for text, mrl in ocr_map.items():
+            if mrl.max is None:
+                continue
+            if _REMAIN_RE.search(text):
+                return Point(int(mrl.max.center.x), int(mrl.max.center.y))
+        return None
+
     def _do_action(self, screen) -> None:
         # T#99 接 decide_supply:OCR 补给选项(每列=角色+装备,动态列数)→ 策略按
         # target_comp.key_equips 契合 + 装备通用价值选(替代盲点 CARD_BODY)。钻识别双通道
-        # ✅(SIFT 主+文本兜底,cw_node_obs);刷新按钮 @≈(974,854),无钻+未刷 → 点刷新重掷。
+        # ✅(SIFT 主+文本兜底,cw_node_obs);刷新按钮 = 「剩余次数」文锚左侧
+        # _REFRESH_BTN_DX 偏移点,无钻+未刷 → 点刷新重掷。
         match = self.ctx.cw_match
         # 主流程:首次进入先做备战状态采集 detour(detour 后用新帧读选项;
         # 未成功重进 → 本轮不做任何选择动作,防在备战屏盲点卡身/误触发购买语义)
@@ -294,10 +343,20 @@ class CwScreenSupplyNode(CwScreenOpBase):
                 [o for o, _ in opts], _state, match.session, _cfg,
                 refresh_used=_refresh_used)
             if pick.refresh and not _refresh_used:   # 只刷一次(r1#1+r2#2:session 级)
-                refresh_target = CwScreenSupplyNode.REFRESH_BTN
+                _anchor = self._read_refresh_anchor(screen)
                 self._refresh_used = True
                 exec_state_of(match.session)._supply_refresh_used = True
                 reason = pick.reason
+                if _anchor is None:
+                    # 文本锚读缺 → 零点击 + 照常置位已用(流程收敛语义与旧码一致:
+                    # 旧码点失效常量 (974,854) 同样零效果,靠烧旗标让下轮照常
+                    # 选装;不烧旗标 = 「建议刷新→锚读缺→零动作」每轮空转烧尽
+                    # 节点预算的活锁形态,fake 渠道行为锁实证)。
+                    log.warning('[cw-supply] 建议刷新但「剩余次数」文本锚读缺 → '
+                                '零点击,照常置位已用(下轮按非刷新重选)')
+                    return
+                refresh_target = Point(_anchor.x + CwScreenSupplyNode._REFRESH_BTN_DX,
+                                       _anchor.y)
             elif 0 <= pick.idx < len(opts):
                 target = opts[pick.idx][1]
                 reason = pick.reason
