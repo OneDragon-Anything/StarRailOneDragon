@@ -102,7 +102,10 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
         (分包矩阵禁 kernel→obs 直依);缺省关 = 门放行,走既有连续 2 次确认主干。
 
     Returns:
-        是否发生了写回(False = 守卫拦截保旧)
+        是否发生了写回(False = 守卫拦截保旧)。边界:槽号健康门拒绝
+        (bench 侧保旧)**不**计入 False——该门只辖 bench 写回分支,
+        deployed 侧照常写回,函数整体仍返回 True;False 仅双空读守卫
+        与 session 为 None 两处早退产生。
     """
     if session is None:
         return False
@@ -257,11 +260,17 @@ def reconcile_tracking(session, bench, deployed, screen=None, *,
                 _merge_equips(exec_state_of(session).tracked_bench_chars, bench))
             _bench_written = True
         else:
+            # 留证排序 str 化:健康门防御的对象正是非 int 槽号,拒绝分支若
+            # 对混型列表(如 [None, 2])直接 sorted 会先 TypeError——防御
+            # 分支自伤,拒绝留证与保旧都未完成(T-308 落地审 P3 问题 2;
+            # 对照组 _reseed_bench_layout 同式留证包在 suppress 内,此处
+            # 取 str 化保排序可读且混型安全)。
+            _slots_disp = sorted(map(str, _slots))
             log.warning(f'[cw!][{source}] 对账写回拒绝:bench 槽号不健康'
-                        f'(唯一∧1..{BENCH_CAPACITY})slots={sorted(_slots)}'
+                        f'(唯一∧1..{BENCH_CAPACITY})slots={_slots_disp}'
                         f' → 保旧 tracking(脏读数不固化为槽位表)')
             _conflict('bench', '占用槽号唯一∧全在1..9',
-                      f'slots={sorted(_slots)}', screen,
+                      f'slots={_slots_disp}', screen,
                       verdict=('保旧-写回槽号健康门拒绝(SIFT 读 slot 重复/'
                                '越界,拒写防脏布局固化为槽位表;T-308/'
                                'ADR-0646;处理:频发→查 SIFT 槽位识别)'),
