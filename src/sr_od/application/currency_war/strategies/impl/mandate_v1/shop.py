@@ -190,9 +190,11 @@ from sr_od.application.currency_war.kernel.cw_state import (
     SellDeployed,
     ShopCard,
     bench_char_cost,
+    card_cost,
     merge_material_stale_names,
     same_star_count,
     sell_refund,
+    star_base_copies,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     entry,
@@ -492,7 +494,7 @@ def shop_unbought_reasons(bs: BoardState,
     bench_free = BENCH_CAPACITY - len(bench)
     for a in actions:
         if isinstance(a, BuyCard):
-            gold -= a.card.cost if a.card.cost else 3
+            gold -= card_cost(a.card)
             bench_free -= 1
         elif isinstance(a, (SellBench, SellDeployed)):
             # 卖出投影:席释放 + 回金(SellBench.income 缺失按 0 保守——
@@ -528,7 +530,7 @@ def shop_unbought_reasons(bs: BoardState,
                           if (c.char_id or '') == name]
                 cnt1 = sum(1 for c in copies if (c.star or 1) == 1)
                 cnt2 = len(copies) - cnt1
-                cost = min((c.cost if c.cost else 3)
+                cost = min((card_cost(c))
                            for c in (bs.shop.value.cards if bs.shop.value is not None else [])
                            if (c.name or '') == name)
                 if len(copies) == 2 and cnt2 == 0:
@@ -544,7 +546,7 @@ def shop_unbought_reasons(bs: BoardState,
                 else:
                     out[name] = 'owned'
                 continue
-            cost = min((c.cost if c.cost else 3) for c in (bs.shop.value.cards if bs.shop.value is not None else [])
+            cost = min((card_cost(c)) for c in (bs.shop.value.cards if bs.shop.value is not None else [])
                        if (c.name or '') == name)
             if bench_free <= 0:
                 out[name] = 'missing_bench_full'
@@ -697,8 +699,8 @@ def _s_reserve_remeet_frames(level: int, bench, deployed,
     name = card.name or ''
     char = CHARACTERS.get(name)
     base = int(char.cost) if char is not None and char.cost \
-        else int(card.cost or 3)
-    held = sum({1: 1, 2: 3, 3: 9}.get(int(c.star or 1), 1)
+        else card_cost(card)
+    held = sum(star_base_copies(c.star)
                for c in list(bench) + list(deployed)
                if c is not None and (c.char_id or '') == name)
     win = reencounter_window_frames(level, base, held)
@@ -861,7 +863,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
         # 违反即推导失效(防御性,结构性恒 0);cost3p = P90 辖域外
         # (1-2 费)观测,买入经各臂自身授权发生,分键供越域审计。
         if _front_window:
-            _fw_cost = card.cost if card.cost else 3
+            _fw_cost = card_cost(card)
             _count('p90_front_window_buy')
             if _fw_cost >= 3:
                 _count('p90_front_buy_cost3p')
@@ -903,7 +905,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                 session, _buy_name, cause=_cause,
                 round_num=int(round_num_of(bs) or 1),
                 star=getattr(card, 'star', 1) or 1,
-                cost=card.cost if card.cost else 3) \
+                cost=card_cost(card)) \
                 and _cause == 'obligation' and _buy_name:
             # 义务类镜像簿同步落(孤儿证明载体,见
             # _line_switch_orphans;义务类登记无资格断言恒落账,
@@ -1186,7 +1188,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             return []
         return sorted(
             (c for c in (bs.shop.value.cards if bs.shop.value is not None else []) if (c.name or '') == m),
-            key=lambda c: (c.cost if c.cost else 3))
+            key=lambda c: (card_cost(c)))
 
     # ---- ③ 选择序逐帧取首项 ----
 
@@ -1328,7 +1330,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
         _hub_set = set(_arms.hub_names)
         _hub_cands = sorted(
             (c for c in _buy_view('hub_option_buy')
-             if refund_full_star_ok(c.star or 1, c.cost if c.cost else 3)
+             if refund_full_star_ok(c.star or 1, card_cost(c))
              and (c.name or '') in _hub_set),
             key=lambda c: cw_intention.char_declaration_index(c.name or ''))
         # ↑ 候选序 = 注册表声明序(资格核枚举序同源)——店面槽位序不进
@@ -1362,7 +1364,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                     continue
                 if not _ok_seat_all:
                     continue    # 帧级席满:任何方向件本帧皆不可发射
-                _mcost = _mcands[0].cost if _mcands[0].cost else 3
+                _mcost = card_cost(_mcands[0])
                 _ok_aff, _ = mandate.check_affordable(gold, _mcost)
                 if _ok_aff:
                     _piece_in_shop.append(_m)
@@ -1397,7 +1399,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                 if same_star_count(_hname, 1, bench, deployed) >= 1:
                     _count('hub_option_reject_merge_material')
                     continue
-                cost = card.cost if card.cost else 3
+                cost = card_cost(card)
                 ok2, _ = mandate.check_seats(
                     bench_free, 0, needs_bench=True, needs_board=False,
                     name='', deployed_names=deployed_names)
@@ -1464,7 +1466,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             _cands = _shop_candidates(_m)
             if _cands:
                 _wanted_snap.append(
-                    (_m, _cands[0].cost if _cands[0].cost else 3))
+                    (_m, card_cost(_cands[0])))
         mandate.shop_wanted_defer(
             session, bs, missing, in_shop_snapshot=tuple(_wanted_snap))
     for m in missing:
@@ -1474,7 +1476,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
         if not shop_cands:
             continue
         card = shop_cands[0]
-        cost = card.cost if card.cost else 3
+        cost = card_cost(card)
         ok1, _ = mandate.check_affordable(gold, cost)
         if not ok1:
             continue
@@ -1534,7 +1536,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             cost = card.cost or 3 * int(CHARACTERS[m].cost)
         elif cands1:
             card = cands1[0]
-            cost = card.cost if card.cost else 3
+            cost = card_cost(card)
         else:
             if all_cands:
                 _count('m2_stockpile_star_mismatch')   # W4:比较子后仍不买(不可评域/溢价≤0),分键非静默
@@ -1623,7 +1625,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                 _count('m2b_star_mismatch')   # W4:仅 2★ 直出卡帧(与臂①分键,低-1)
             continue
         card = shop_cands[0]
-        cost = card.cost if card.cost else 3
+        cost = card_cost(card)
         ok1, _ = mandate.check_affordable(gold, cost)
         if not ok1:
             continue
@@ -1655,7 +1657,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
         # P24 为残余补部署支配定理,无买入命题,T-165 B4)
         for card in _buy_view('dominance_buy'):   # L2 统一过滤位(逐臂分键)
             name = card.name or ''
-            cost = card.cost if card.cost else 3
+            cost = card_cost(card)
             star = card.star or 1
             if not name:
                 continue
@@ -1826,7 +1828,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             # 腾席发射与帧内分键混合比(计数面)。金闸前置 = m2_stockpile
             # 同纪律(金不足不卖筹,禁「先卖再报」不可逆净损)。
             for card in _core_cands:
-                cost = card.cost if card.cost else 3
+                cost = card_cost(card)
                 ok1, _ = mandate.check_affordable(gold, cost)
                 if not ok1:
                     _core_gold_bucket('core_unlocked', cost)
@@ -1857,7 +1859,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             # 门序 = 星级→息档→金→席腾席(T-115 恒买腾席批;席位维自帧门
             # 下放循环内,合取重排对席空帧零漂移——论证同未锁线腿)。
             for card in _core_cands:
-                cost = card.cost if card.cost else 3
+                cost = card_cost(card)
                 star = card.star or 1
                 if not refund_full_star_ok(star, cost):
                     continue    # 支配性背书仅全额可退 1★(共享单一源,禁内联星级判断)
@@ -1912,7 +1914,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             name = card.name or ''
             if not name or line_identity_tier(name) != TIER_TRANSITION:
                 continue
-            cost = card.cost if card.cost else 3
+            cost = card_cost(card)
             if not refund_full_star_ok(card.star or 1, cost):
                 continue    # 1★ 全额退:转线件可逆性硬闸(与 C1 同源)
             ok1, _ = mandate.check_affordable(gold, cost)
@@ -1987,7 +1989,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             _buyable_cand = bench_free >= 1 and any(
                 (c.name or '') in k_members
                 and mandate.check_affordable(
-                    gold, c.cost if c.cost else 3)[0]
+                    gold, card_cost(c))[0]
                 for c in (bs.shop.value.cards if bs.shop.value is not None else []))
             _pop, _pop_why = crit_levelup.pop_slot(
                 len(deployed), _cap_now, gold, _bench_cand, g_star,
@@ -2077,7 +2079,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
         for _dg_prio in range(3):
             for card in _buy_view('dead_gold_press_buy'):   # L2 统一过滤位
                 name = card.name or ''
-                cost = card.cost if card.cost else 3
+                cost = card_cost(card)
                 if not name or cost > _dead_gold:
                     continue
                 tier = line_identity_tier(name)
@@ -2165,7 +2167,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                 name = card.name or ''
                 if not name or name in buy_members:
                     continue    # 线内件归 M2 义务通道(定向最高优先不变)
-                cost = card.cost if card.cost else 3
+                cost = card_cost(card)
                 _pf_ok, _ = check_settlement_line(gold, cost, g_star)
                 if not _pf_ok:
                     _count('press_buy_deployable_below_floor')
@@ -2262,12 +2264,12 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
             if _p91_band:
                 _m6_cands = sorted(
                     _m6_cands,
-                    key=lambda c: 0 if (c.cost if c.cost else 3) in _p91_band
+                    key=lambda c: 0 if (card_cost(c)) in _p91_band
                     else 1)
             if _front_window:
                 _m6_cands = sorted(
                     _m6_cands,
-                    key=lambda c: 0 if (c.cost if c.cost else 3) <= 2 else 1)
+                    key=lambda c: 0 if (card_cost(c)) <= 2 else 1)
             for card in _m6_cands:
                 name = card.name or ''
                 # 线内追星段排除(落地审清单存疑收口,N2/§3.7):线内副本
@@ -2283,7 +2285,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                 # 再卖X」净零自旋)。起位收编 = 全买入臂统一位
                 # (ADR-0611 §3-3),分键 m6_round_sold_excluded 键名
                 # 零断链;原档 2 手搓读法退役。
-                cost = card.cost if card.cost else 3
+                cost = card_cost(card)
                 okm, _mkey = crit_stockpile.stockpile_buy(
                     gold, s_reserve, bench_free, cost,
                     card.star or 1, tier_w) if _stock_ok else (False, '')
@@ -2390,7 +2392,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                                 and predicates.zero_overlap(c.name or '',
                                                             k_members)
                                 and refund_full_star_ok(
-                                    1, c.cost if c.cost else 3)]
+                                    1, card_cost(c))]
                     if not _ff_sale:
                         _count('fuel_not_on_sale')   # Φ_stall 成立而垫件缺
                     elif bench_free <= 0:
@@ -2398,7 +2400,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                     else:
                         for card in _ff_sale:
                             name = card.name or ''
-                            cost = card.cost if card.cost else 3
+                            cost = card_cost(card)
                             # 金位 fail 向(§7.3:g − cost ≥ s_reserve)
                             if gold - cost < s_reserve:
                                 _count('below_reserve')
@@ -2529,7 +2531,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
         # L2 统一过滤位随行(本轮已卖垫件不再买回,ADR-0611 §3-3)。
         _t5_sale = [c for c in _buy_view('t3_unlocked_hemostat')
                     if (c.name or '') and (c.star or 1) == 1
-                    and (c.cost if c.cost else 3) == 1
+                    and (card_cost(c)) == 1
                     and predicates.zero_overlap(c.name or '', k_members)
                     and refund_full_star_ok(1, 1)]
         if not _t5_sale:
@@ -2929,7 +2931,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                           if (c.name or '') == m]
             if shop_cands:
                 need = min(need, min(
-                    (c.cost if c.cost else 3) for c in shop_cands))
+                    (card_cost(c)) for c in shop_cands))
                 break
         # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;ADR-0585):
         # 义务基座(防义务件被筹资卖 → M2 重买换手)+ 静态持有两集

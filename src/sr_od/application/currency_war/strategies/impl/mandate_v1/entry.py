@@ -159,6 +159,19 @@ def _sphere_bench_free(obs: PrepObservation) -> int:
 #: 守卫常量与在册机制假设夹逼出可行域后取 1。
 SPHERE_DEFER_PROBE_K: int = 1
 
+#: 单批点球上界(收编自旧 decision 核的发射形态值,dd-038 迁移批随
+#: entry.py 入 mandate_v1;判读底稿低危项3补三形态归属标注):
+#: **归属 = 框架流程防线常量,非三形态决策值**(同 WANTED_REOPEN_CAP
+#: 豁免类——它上界化单帧发射的点击预算,不作任何做/不做闸门)。
+#: 机制依据 = 席满时球点不动(docs/game/screens/currency_war_prep.md
+#: 奖励球节):每球内容可能占席,批式连点越过自由席位数即空点,批间由
+#: 球计数自然回补(screen_flow_timing #16「部分没点开自然回补」用户
+#: 裁定容忍语义)。层位关系:执行层硬帽 = prep_actions.
+#: PrepActionExecutor.SPHERE_MAX_CLICKS=12(防识别抖动死循环,不互替);
+#: kernel ``ClickSpheres.max_k`` 缺省 1 = 保守缺省,本发射位显式覆写
+#: 为本常量(单一源,禁再内联字面 3)。
+SPHERE_CLICK_BATCH_MAX_K: int = 3
+
 
 def _sphere_progress_sig(bs: BoardState,
                          obs: PrepObservation) -> int:
@@ -488,8 +501,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         if _sf_free > 0:
             if isinstance(_ct_sp, dict):
                 _ct_sp['sphere_defer_streak'] = 0
-            return [Emitted(ClickSpheres(max_k=min(3, len(obs.spheres))),
-                            True, 'prep_spheres')]
+            return [Emitted(ClickSpheres(
+                        max_k=min(SPHERE_CLICK_BATCH_MAX_K, len(obs.spheres))),
+                        True, 'prep_spheres')]
         _prog_sig = _sphere_progress_sig(bs, obs)
         _streak = 0
         if isinstance(_ct_sp, dict) \
@@ -501,8 +515,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             _ct_sp['sphere_defer_progress_sig'] = _prog_sig
         if _streak <= SPHERE_DEFER_PROBE_K:
             # 单探针:同发射形态 = 现状 prep_spheres 动作(零新动作类)。
-            return [Emitted(ClickSpheres(max_k=min(3, len(obs.spheres))),
-                            True, 'prep_spheres')]
+            return [Emitted(ClickSpheres(
+                        max_k=min(SPHERE_CLICK_BATCH_MAX_K, len(obs.spheres))),
+                        True, 'prep_spheres')]
         if isinstance(_ct_sp, dict):
             _ct_sp['sphere_defer_yield'] = \
                 _ct_sp.get('sphere_defer_yield', 0) + 1

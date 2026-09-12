@@ -980,6 +980,21 @@ def same_star_count(name: str, star: int,
     return n
 
 
+def star_base_copies(star: int) -> int:
+    """星级 → 同名 **1★ 基础副本数** 折算(3**(star-1);【注】合成机制
+    真值:每升一星由 3 份低星合成,1★=1/2★=3/3★=9)。
+
+    单一源:折算的消费位(持有量入经济/牌池账等)一律经本函数,禁内联
+    dict 或裸幂式第二表达(旧内联形态 = shop.py 星级折算 dict 与
+    cw_comps/cw_economy/cw_intention 的散写 ``3 ** (star - 1)``,后者
+    随批收敛挂账)。star 缺效(非 1-3)→ 保守折 1 份(与旧 dict 缺省
+    ``.get(star, 1)`` 同值)。"""
+    s = int(star or 1)
+    if s < 1 or s > 3:
+        return 1
+    return 3 ** (s - 1)
+
+
 def merge_material_reject_reason(name: str, star: int,
                                  bench: list[BenchChar | None],
                                  deployed: list[BenchChar] | None = None,

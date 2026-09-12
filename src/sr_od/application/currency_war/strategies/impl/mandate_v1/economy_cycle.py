@@ -108,6 +108,7 @@ def _scan_shop_buy_accounts(bs: BoardState,
     fill: list[int] = []
     from sr_od.application.currency_war.kernel.cw_state import (
         bench_occupied,
+        card_cost,
         will_merge_on_buy,
     )
     _slots = bench_slots_of(bs)
@@ -120,15 +121,15 @@ def _scan_shop_buy_accounts(bs: BoardState,
             continue
         merge = will_merge_on_buy(sc, _slots, deployed_slots_of(bs))
         if merge:
-            costs.append(sc.cost or 3)   # 合成件不占槽
+            costs.append(card_cost(sc))   # 合成件不占槽
             continue
         if bench_free <= 0:
             continue    # A-1/A-2:未跨档期权件与满槽帧均不扩账
         bench_free -= 1
         if _crosses_engine_tier(bs, name):
-            costs.append(sc.cost or 3)
+            costs.append(card_cost(sc))
         else:
-            fill.append(sc.cost or 3)
+            fill.append(card_cost(sc))
     fill.sort()
     return costs, fill
 
