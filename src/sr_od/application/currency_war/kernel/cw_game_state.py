@@ -2949,13 +2949,9 @@ def feed_sim_truth(bs: GameState, st: CwSimFrame, *,
 
     - best-effort:记录层故障不毒化 sim(与 note_action_receipt 同纪律),
       异常 log 留痕后返回,容器保持上一拍帧;
-    - 桥(:func:`board_state_bridge`)退役:sim 域与 cw_economy 以外的
-      波 5b 批辖域调用点(engine_p1 四区段)已全部切本口;残余活调用
-      = flow/cw_loop/ops 各域单点、prep_actions 根(cw_evolution 已随
-      W8 整模块退役删除消点;cw_economy 标量投影缝已随 T-145 消点——
-      改直构造 :func:`scalar_projection_state`,桥引用随缝退役)——
-      机器现实 = test_cw_w5_sim_retirement 登记集,禁据
-      本 docstring 误判消点进度。
+    - 全仓零一次性帧装箱视图(过渡桥已随登记集清零物理删除,T-169):
+      sim 真值入容器唯一写端 = 本口,消费端一律 :func:`board_state_of`
+      直读——墓碑门 = test_cw_w5_sim_retirement 桥零字样扫描。
     """
     try:
         synthesize_from_game_state(bs, st, at_round=at_round)
@@ -3156,109 +3152,26 @@ def max_units_of(bs: GameState) -> int:
     return min(base, DEPLOYED_FRONT_CAPACITY + back_capacity_of(bs))
 
 
-def board_state_bridge(st: object) -> GameState:
-    """CwSimFrame 帧值 → 独立 GameState 视图(W6 决策面切换的过渡桥)。
-
-    **退役进行中(波 5 只清 sim 域,残余辖域面原样在树——哨兵登记集
-    = 现实单一源,禁据本 docstring 误判消点进度)**:
-    - 已退出(波 5 实改):sim 域调用点(engine_p1 两处切直写喂入口
-      :func:`feed_sim_truth`;cw_replay 面随旧格式退役);
-    - 仍在树(未消点,段③边界协调申报):flow/cw_loop/cw_op 各域残余
-      单点、prep_actions 根,及 prep 链线辖域(mandate/proof/assembly/
-      entry/criteria,T-115/116 面);(cw_evolution ~20 处已随 W8 整模块
-      退役删除消点);
-    - 残余集与注释豁免面的机器现实 = test_cw_w5_sim_retirement 登记
-      集(多/少皆红):少红 = 消点推进,同批删登记项;登记集清零后本
-      函数物理删除(内部消费与删除同批)。
-    """
-    if st is None:
-        # 无帧调用面(如 session.last_state 缺席):全域未观察空视图,
-        # 消费面按「缺读保守侧」取值(与旧 CwSimFrame() 空帧同向)。
-        return GameState(schema_version=BS_SCHEMA_VERSION)
-    from sr_od.application.currency_war.kernel.cw_vocab import (
-        CwSimFrame as _GameStateDefaults,
-    )
-
-    class _DuckFrame:
-        """鸭子帧属性缺读回落 CwSimFrame 缺省(桥输入兼容轻量桩帧——
-        旧链消费只读桩提供的字段;桥经合成口搬运全域,缺属性按同帧
-        CwSimFrame() 缺省解释,与「缺读=缺省保守值」惯例一致)。"""
-
-        __slots__ = ('_st', '_base')
-
-        def __init__(self, st_: object, base_: object) -> None:
-            object.__setattr__(self, '_st', st_)
-            object.__setattr__(self, '_base', base_)
-
-        def __getattr__(self, name: str):
-            st = object.__getattribute__(self, '_st')
-            base = object.__getattribute__(self, '_base')
-            try:
-                return getattr(st, name)
-            except AttributeError:
-                return getattr(base, name)
-
-    st_view: object = (_DuckFrame(st, _GameStateDefaults())
-                       if not isinstance(st, _GameStateDefaults) else st)
-    bs = GameState(schema_version=BS_SCHEMA_VERSION)
-    # 桥载体为一次性视图,禁向状态流水落行(行=改了什么的局内账,桥帧
-    # 非局内事实);单线程写路径,沉挂全局 sink 后还原。
-    global _STATE_JOURNAL_SINK
-    _saved_sink = _STATE_JOURNAL_SINK
-    _STATE_JOURNAL_SINK = None
-    try:
-        _ev = SIM_SYNTHESIZED
-        _sig = ChannelSig(family='obs', actor='synthesize_from_game_state',
-                          mode='synthesized')
-        synthesize_from_game_state(bs, st_view)
-        # 节点缺席补写(合成口在 node_type 未识别帧不写 node——sim 引擎
-        # 恒有真值不受影响;桥的输入是任意 CwSimFrame 帧,plane/round_num
-        # 是非 Optional 标量,丢节点 = 读口回落缺省 1/1 与帧值漂移)。
-        # kind 空串 = 帧未识别的忠实镜像(消费面只做实值等值/成员检查,
-        # 行为与 None 同向;禁写 'prep' 等词表值冒充真值)。
-        if bs.node.value is None:
-            _pl = int(getattr(st_view, 'plane', 1) or 1)
-            _rn = int(getattr(st_view, 'round_num', 1) or 1)
-            bs.observe(bs.node,
-                       NodeKey(plane=_pl, round_num=_rn, kind=''),
-                       evidence=_ev, sig=_sig)
-        if getattr(st, 'level_up_cost', None) is not None:
-            bs.observe(bs.level_up_cost, int(st.level_up_cost),
-                       evidence=_ev, sig=_sig)
-        if getattr(st, 'shop_refresh_cost', None) is not None:
-            bs.observe(bs.shop_refresh_cost, int(st.shop_refresh_cost),
-                       evidence=_ev, sig=_sig)
-        if getattr(st, 'selected_difficulty', None):
-            bs.observe(bs.selected_difficulty, str(st.selected_difficulty),
-                       evidence=_ev, sig=_sig)
-    finally:
-        _STATE_JOURNAL_SINK = _saved_sink
-    return bs
-
-
 def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
                             round_num: int,
                             strategies: list[str] | None = None) -> GameState:
     """无 session 标量投影容器(一次性视图;766 标量投影缝的退役替代装配)。
 
     服务「只有标量、无 session/无现成容器」的调用面。现役唯一消费 =
-    ``cw_economy.get_node_goal`` 全参支。本函数只退役旧载体(调用面惰性
-    构造 CwSimFrame + :func:`board_state_bridge` 装箱),语义契约原样:
+    ``cw_economy.get_node_goal`` 全参支。语义契约:
 
     - **ADR-0598 结构性豁免不扩修**:投影判据链以 session=None 求值 →
       息帽 resolved 链恒 base 口径、节点日程走缺表回退先验——契约不变,
       扩修挂该调用面的 session 通道批;
-    - **字段契约 = 桥对 ``CwSimFrame(gold=…, level=…, hp=…, plane=…,
-      round_num=…, active_strategies=…)`` 投影输出的逐字段镜像**(等价锁 =
-      sr-od-test test_cw_w5_sim_retirement 投影等价测试,值/来源/evidence/
-      工程结构逐项对拍):node = NodeKey(plane, round_num, kind='')(帧未
+    - **字段契约自辖于本 docstring**(历史差分等价锁已随过渡桥删除退役):
+      node = NodeKey(plane, round_num, kind='')(帧未
       识别的忠实镜像,禁写词表值冒充真值);gold/level/hp 观察直写;
       back_layout = 机制基线 6(旧帧 back_max 缺省);bench = 全空视图
       (旧帧 pad 缺省);shop/encounter/supply = 离屏;shop_refresh_cost =
       刷新基价(旧帧字段缺省,单一源 = cw_economy.REFRESH_COST_BASE);
       active_strategies 非空才写;xp/streak/deploy_cap/board/plane_bosses/
       enemy_affixes/active_env/equips/level_up_cost/selected_difficulty =
-      旧帧缺省值形态,镜像桥行为不写(保持 None);
+      不写(保持 None);
     - 一次性视图禁向状态流水落行(行 = 改了什么的局内账,投影非局内
       事实;与桥同款:单线程写路径,沉挂全局 sink 后还原);
     - actor 复用 sim 合成签名登记名(已在 REGISTERED_ACTORS 在册,投影

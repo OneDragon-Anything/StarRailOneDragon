@@ -1327,9 +1327,9 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 | 30 | dual_track_phase | 无域 | E | 双轨期标记(ADR-0209);消费已随统一 state 决策面切换退役,字段随 last_state 链退役波消亡,不迁容器 |
 | 31 | focus_factions | 无域(真家 = StrategyState) | E | 同上 |
 | 32 | enemy_difficulty | `bs.enemy_difficulty` | D | 容器有域;喂入口现不写(现状申报);sim 决策消费需该域时增补 = 改 `feed_sim_truth` 单一源 |
-| 33 | level_up_cost | `bs.level_up_cost` | D | 同上(桥面 `board_state_bridge` 补写,喂入口不写) |
+| 33 | level_up_cost | `bs.level_up_cost` | D | 同上 |
 | 34 | shop_refresh_cost | `bs.shop_refresh_cost` | D | 同上;sim 帧恒基价常量 `REFRESH_COST_BASE` |
-| 35 | selected_difficulty | `bs.selected_difficulty` | D | 同上(桥面补写) |
+| 35 | selected_difficulty | `bs.selected_difficulty` | D | 同上 |
 
 **容器独有域(反向汇总)**:node_path / game_mode / refresh_counters(3)/
 node_screen_refresh(4)/ consumables / spheres / substate / event_overlay /
