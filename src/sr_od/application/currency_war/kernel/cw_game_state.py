@@ -488,7 +488,8 @@ class ShopCard:
     升星预览不入存储——派生计算函数(bench/rows+注册表合成规则自算,
     merge_mechanics §2.7 口径);✦ 读取器读数仅核对信号(ADR-0416 降级)。
     牌位点击坐标不入存储——坐标单一真相源 = screen_info「商店牌-N」区域
-    (cw_obs_core.shop_card_click_points)。
+    (cw_obs_core.shop_card_click_points);入存储的是**槽号**(观察事实,
+    见 slot 字段),执行侧按槽号从 screen_info 现取坐标。
     """
 
     name: str = ''
@@ -501,6 +502,14 @@ class ShopCard:
     # 退查表。设计的两值口径(badge=徽章直读 vs registry=注册表查表)的
     # 归并消费归批次二,消费前必须保住 roster_fallback 的「徽章失读」分级。
     cost_source: str = 'badge'
+    # [索引定义] 物理槽位 = 商店牌行 1-5(左→右;坐标系 = screen_info
+    # 「商店牌-N」area 序号,1 基);取值时机 = 生成期快照(进店观察帧,
+    # 写入端 = 读链 read_shop_cards);0 = 未知(sim/replay 构造缺省)。
+    # 为什么必须入存储:payload 是紧凑列表(空槽跳过),而游戏买入后不压缩
+    # 剩余卡位(牌行打洞)——紧凑下标 ≠ 物理槽位,执行点击按下标取固定槽
+    # 坐标会落空槽框(实机局实证:「买牌点击不注册」根因;布局双源同族 =
+    # ADR-0646 bench 布局错位的商店牌行版)。
+    slot: int = 0
 
 
 @dataclass(frozen=True)
@@ -853,7 +862,8 @@ def shop_card_to_container(card) -> ShopCard:
 
     字段映射(name/faction/cost/star/cost_source)原值透传不折叠;
     x/merge_preview 是旧版独有的执行/读取器域字段,容器不入存储
-    (坐标单一真相源 = screen_info;merge_preview = 派生核对信号)。
+    (坐标单一真相源 = screen_info;merge_preview = 派生核对信号);
+    slot(物理槽号,观察事实)透传——执行点击按槽号取坐标的唯一依据。
     """
 
     return ShopCard(name=str(getattr(card, 'name', '') or ''),
@@ -861,7 +871,8 @@ def shop_card_to_container(card) -> ShopCard:
                     cost=int(getattr(card, 'cost', 0) or 0),
                     star=int(getattr(card, 'star', 1) or 1),
                     cost_source=str(getattr(card, 'cost_source', '')
-                                    or 'roster'))
+                                    or 'roster'),
+                    slot=int(getattr(card, 'slot', 0) or 0))
 
 
 def shop_cards_to_legacy(cards: list[ShopCard],
@@ -869,8 +880,11 @@ def shop_cards_to_legacy(cards: list[ShopCard],
     """容器牌列表 → 旧容器牌列表(消费视图/合成引擎边界的值构造单一源)。
 
     - 五记录字段(name/faction/cost/star/cost_source)自容器透传;
+    - ``slot``(物理槽号)自容器透传(执行/点击域事实,click_pts 按
+      槽号取坐标的依据);
     - ``x``(点击坐标)置 0 不消费:决策消费不用坐标,执行侧 buy 发射
-      从 screen_info「商店牌-N」区域现取(黑板帧链自持 x,不经本函数);
+      从 screen_info「商店牌-N」区域按 slot 现取(黑板帧链自持 x,不经
+      本函数);
     - ``merge_preview`` 不转换(派生计算不入存储,✦ 读取器降级核对
       信号的消费方自算或吃同帧 raw);
     - ``frame_cards`` = 同帧 raw 牌列表(可选):长度一致时按下标对齐
@@ -891,6 +905,7 @@ def shop_cards_to_legacy(cards: list[ShopCard],
         fr = frame_cards[i] if aligned else None
         out.append(_LegacyShopCard(
             x=int(getattr(fr, 'x', 0) or 0) if fr is not None else 0,
+            slot=int(c.slot or 0),
             faction=str(c.faction or ''),
             name=str(c.name or ''),
             cost=int(c.cost or 0),
@@ -2983,7 +2998,8 @@ def restore_state_snapshot(bs: GameState, snap: dict) -> None:
                           faction=str(c.get('faction') or '?'),
                           cost=int(c.get('cost') or 1),
                           star=int(c.get('star') or 1),
-                          cost_source=str(c.get('cost_source') or ''))
+                          cost_source=str(c.get('cost_source') or ''),
+                          slot=int(c.get('slot') or 0))
                  for c in d.get('cards') or [] if isinstance(c, dict)]
         probs = {int(k): float(v)
                  for k, v in (d.get('refresh_probs') or {}).items()}

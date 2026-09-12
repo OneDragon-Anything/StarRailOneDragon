@@ -1863,6 +1863,11 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
                 cost, star, cost_src = 0, 1, COST_SOURCE_ROSTER_FALLBACK
         cards.append(ShopCard(
             x=(rect.x1 + rect.x2) // 2,
+            # 物理槽号 = 本循环 area 序号(1-5):payload 是紧凑列表(空槽
+            # continue 跳过),游戏买入后不压缩剩余卡位,紧凑下标 ≠ 物理槽位
+            # ——执行点击按此槽号取「商店牌-N」坐标(缺此字段 = 牌行打洞后
+            # 全体点击右偏落空槽框,布局双源同族 ADR-0646 商店牌行版)。
+            slot=i,
             # '?'=未知(名未识别/不在注册表);''=已知无阵营(白厄类;2026-08-17 与 shop/identity 同语义)
             faction=(ch.factions[0] if (ch is not None and ch.factions)
                      else ('' if ch is not None else '?')),

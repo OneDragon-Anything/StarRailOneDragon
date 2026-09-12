@@ -82,6 +82,13 @@ from sr_od.application.currency_war.kernel.cw_run_allocator import (  # noqa: E4
 class ShopCard:
     """商店一张牌。"""
     x: int               # 牌位中心 x(购买点击坐标)
+    # [索引定义] 物理槽位 = 商店牌行 1-5(左→右;坐标系 = screen_info
+    # 「商店牌-N」area 序号,1 基);取值时机 = 生成期快照(进店观察帧,
+    # 写入端 = read_shop_cards);0 = 未知(sim/replay 构造缺省)。
+    # 语义:牌行是定长 5 格,payload 是紧凑列表(空槽跳过)而游戏买入后
+    # 不压缩剩余卡位——紧凑下标 ≠ 物理槽位,执行点击必须按此槽号取
+    # 「商店牌-slot」坐标(布局双源同族,ADR-0646 bench 版的商店牌行对应)。
+    slot: int = 0
     faction: str = "?"   # 阵营(OCR);未知 "?"
     name: str = ""       # 角色名(OCR);未知 ""
     cost: int = 0        # 费用(OCR);未知 0(eval 按默认 3 估,详见 cw_decisions)

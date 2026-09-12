@@ -431,10 +431,11 @@ class BuyCardOp(ShopActionOp):
             bench_slots_of,
         )
         op, match, ledger, state = env.op, env.match, env.ledger, env.state
-        # 点击定位 = 所购牌在店 payload 的槽位下标 → screen_info
+        # 点击定位 = 牌自带物理槽号 slot(读链写入)→ screen_info
         # 「商店牌-N」现取(W6 波 4 双 ShopCard 归一:容器牌无 x 坐标,
         # 坐标单一真相源 = screen_info,设计件 §2.5-5)。身份匹配优先
-        # 同一性(action 由决策核自 payload 产出),退化按 (name, star)。
+        # 同一性(action 由决策核自 payload 产出),退化按 (name, star)
+        # ——匹配下标仅作槽号缺失时的兜底锚,见下方点击解析。
         _slot_idx = None
         _payload = state.shop.value
         _cards = list(_payload.cards) if _payload is not None else []
@@ -448,9 +449,20 @@ class BuyCardOp(ShopActionOp):
                         and int(_c.star or 1) == int(action.card.star or 1):
                     _slot_idx = _i
                     break
-        pt = (env.click_pts[_slot_idx]
-              if _slot_idx is not None and _slot_idx < len(env.click_pts)
-              else (_Pt(0, 288) if not env.click_pts else env.click_pts[0]))
+        # 点击坐标 = 牌自带实测槽位(观察期读链写入的物理槽号)→ screen_info
+        # 「商店牌-N」中心。紧凑下标只在牌行满列期与物理槽位等价:游戏买入
+        # 后不压缩剩余卡位(牌行打洞),紧凑列表全体下标偏离物理槽位,按下标
+        # 取固定槽坐标 = 点击落空槽框(实机局实证:1 槽空、卡在 2-5 槽时恒打
+        # 1 槽框,「买牌点击不注册」根因;布局双源同族 = ADR-0646 bench 布局
+        # 错位的商店牌行版)。槽号缺省(0 = sim/离线构造、修复前旧档)退回
+        # 紧凑下标映射(旧行为)。
+        _slot_no = int(getattr(action.card, 'slot', 0) or 0)
+        if 1 <= _slot_no <= len(env.click_pts):
+            pt = env.click_pts[_slot_no - 1]
+        else:
+            pt = (env.click_pts[_slot_idx]
+                  if _slot_idx is not None and _slot_idx < len(env.click_pts)
+                  else (_Pt(0, 288) if not env.click_pts else env.click_pts[0]))
         # 买前裁该片矩形拷贝(`w536_merge_expect/`:「买了什么」的像素级
         # 证据,随期望态带到对账点;一帧原则,必须 copy 防帧缓存覆写)。
         _card_crop = None
@@ -466,7 +478,7 @@ class BuyCardOp(ShopActionOp):
                     _card_crop = _frame[_r.y1:_r.y2, _r.x1:_r.x2].copy()
                     break
         op.ctx.controller.click(pt)
-        log.info(f'[cw-shop] Buy click @({pt.x},{pt.y}) '
+        log.info(f'[cw-shop] Buy click slot={_slot_no} @({pt.x},{pt.y}) '
                  f'{action.card.faction}/{action.card.name}/'
                  f'{action.card.cost}')
         time.sleep(0.4)
