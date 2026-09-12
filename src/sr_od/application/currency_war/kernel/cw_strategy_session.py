@@ -35,7 +35,7 @@ from sr_od.application.currency_war.kernel.cw_performance import (
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_prep_actions import PrepObservation
-    from sr_od.application.currency_war.kernel.cw_state import GameState
+    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 
 #: 策略器状态工厂注入槽(kernel 不识 MandateState——依赖矩阵禁 kernel→impl
 #: 边,连 TYPE_CHECKING 也被布局锁 test_cw_package_layout 判违规;先例 =
@@ -116,7 +116,7 @@ class StrategySession:
     """
     # 备战快照(read_game_state;给节点 overlay handler 读 comp 近似——
     # overlay 时 board 不可读,用上次备战读的近似)。
-    last_state: GameState | None = None
+    last_state: CwWorkFrame | None = None
     # 改用结算 HP(结算屏「小队生命值NN」可靠)给下回合 prep state.hp。
     last_hp: int | None = None
     # last_hp 的全局节点号((plane-1)*9+round):结算 hp 只在「紧邻上一节点」
@@ -229,16 +229,16 @@ class StrategySession:
     strategy_state: object = None
 
     # ---- 在场效果账本兼容读口(迁移批次三载体归一,设计 §5.1/§8.4)----
-    # 正本 = ``BoardState.effects``(§8.4 单例字段;session 旁表同局同实例)。
+    # 正本 = ``GameState.effects``(§8.4 单例字段;session 旁表同局同实例)。
     # 历史字段本体已从本类移除——原 ``session.effect_inventory`` 独立实例
-    # 与 BoardState.effects 并存即双账本漂移面,归一后本属性只读透传,
+    # 与 GameState.effects 并存即双账本漂移面,归一后本属性只读透传,
     # 既有写点(prep_actions 升级标记)与读点(pick_bias)经属性零改动
     # 兼容。禁赋值(无 setter):账本写入一律经 inventory 方法
     # (register/tick/bump/consume_use/on_*),直挂实例 = 绕过单一实例。
     @property
     def effect_inventory(self) -> ActiveEffectInventory:
-        """在场效果清单兼容读口(正本 = BoardState.effects,§5.1/§8.4)。"""
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        """在场效果清单兼容读口(正本 = GameState.effects,§5.1/§8.4)。"""
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of,
         )
         return board_state_of(self).effects

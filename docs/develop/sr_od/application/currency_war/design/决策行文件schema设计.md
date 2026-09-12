@@ -47,7 +47,7 @@
   历史名 MandateState 为同对象别名)的 `cw4_counters: dict` 字段——策略行为观测计数
   的**写入侧累计器**,由策略求值与执行代码 40+ 写点直接下标累加,一局(局段)冷建、
   局终随 session 销毁。
-- **局终聚合**:局终域行载荷 `MatchFinal.cw4_counters`(kernel/cw_board_state.py;
+- **局终聚合**:局终域行载荷 `MatchFinal.cw4_counters`(kernel/cw_game_state.py;
   写口 = `write_match_final`,cw_loop 两收口点现读容器浅拷贝传入)。None = 无策略载体 /
   空 dict = 局内真实零计数,两型可辨。
 - **封闭锁**:键全集登记单一源 = 测试仓 `test_cw4_key_closure`(三层:字面键全集对齐 +
@@ -446,7 +446,7 @@ W4 审计输入清单①「决策行收编须保局终级全键聚合可见性�
   (推进型 op 零决策行)/ ADR-0643(invest 效果原文断供定谳,候裁 2 追认对象)
 - 源码:telemetry/schema.py(DecisionTrace 底稿与字段账)/ telemetry/recorder.py(保留面
   与写端退役事实)/ strategies/impl/mandate_v1/mandate_state.py(容器)/
-  kernel/cw_board_state.py(MatchFinal;BS_SCHEMA_VERSION 独立版本常量先例)/
+  kernel/cw_game_state.py(MatchFinal;BS_SCHEMA_VERSION 独立版本常量先例)/
   operations/cw_loop.py(两收口与快照 helper)/ strategies/impl/mandate_v1/entry.py
   (门簿记账读回点)/ strategies/impl/mandate_v1/mandate.py(deploy_emit held 族写点侧
   去重)/ strategies/impl/mandate_v1/contracts.py(SNAPSHOT_SCHEMA_VERSION 独立版本

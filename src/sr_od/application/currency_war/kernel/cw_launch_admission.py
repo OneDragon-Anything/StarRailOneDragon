@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
+from sr_od.application.currency_war.kernel.cw_game_state import (
     bench_slots_of,
     deployed_slots_of,
     max_units_of,
@@ -36,8 +36,8 @@ from sr_od.application.currency_war.kernel.cw_line_defs import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
     )
     from sr_od.application.currency_war.kernel.cw_comps import Comp
 
@@ -112,7 +112,7 @@ def protect_names_of(comp: Comp) -> frozenset[str]:
     return frozenset(names)
 
 
-def readiness_form_ok(bs: BoardState | None, comp: Comp | None) -> bool:
+def readiness_form_ok(bs: GameState | None, comp: Comp | None) -> bool:
     """配方完备判据(form_progress≥1.0;单一源)。
 
     = comp/state 输入齐备 ∧ ``cw_comps.form_progress(comp, state) >= 1.0``
@@ -126,7 +126,7 @@ def readiness_form_ok(bs: BoardState | None, comp: Comp | None) -> bool:
             and form_progress(comp, bs) >= 1.0)
 
 
-def launch_board_quality_report(bs: BoardState, comp: Comp) -> dict:
+def launch_board_quality_report(bs: GameState, comp: Comp) -> dict:
     """armed 质量维报告(ADR-0570;纯函数,配方完备帧调用)。
 
     质量判据(零自由参数,两端均机制定义量):
@@ -212,7 +212,7 @@ def launch_board_quality_report(bs: BoardState, comp: Comp) -> dict:
                                 and bool(plan_available)}
 
 
-def readiness_launch_decision(bs: BoardState, comp: Comp | None,
+def readiness_launch_decision(bs: GameState, comp: Comp | None,
                               *, line_members: Callable[[Comp], set[str]]
                               ) -> dict:
     """达标臂判据核(单一源;sim 决策下沉两小批之①上收,裁决 = ADR-0557;
@@ -271,7 +271,7 @@ def readiness_launch_decision(bs: BoardState, comp: Comp | None,
             'quality_eval_error': quality_eval_error}
 
 
-def launch_admission_report(bs: BoardState, comp: Comp, *,
+def launch_admission_report(bs: GameState, comp: Comp, *,
                             line_members: Callable[[Comp], set[str]]) -> dict:
     """达标臂 G1 准入预估(§9.2 准入三元 + victim 收口,发射面显影用)。
 

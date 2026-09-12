@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_state import GameState
+    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 
 # 硬节点类型(节点行识别词;D-D 语境维)
 HARD_NODE_TYPES: frozenset[str] = frozenset({'encounter', 'boss'})
@@ -126,7 +126,7 @@ def qualified_member_costs(buy_members: tuple[str, ...],
 
 def r2_card_reserve(k_members: tuple[str, ...],
                     bench: list, deployed: list,
-                    state: GameState,
+                    state: CwWorkFrame,
                     level: int | None = None) -> int:
     """R2 预算门 Σ预留卡价 ρ = 合格集最低费卡价(公共单一源;修 R2 批
     实现,原 shop 模块私有实现提升至此——落点裁定 = 方案审 v2:ρ 依赖
@@ -159,11 +159,11 @@ def r2_card_reserve(k_members: tuple[str, ...],
     """
     # 等级缺省读双形态(W6 波 4:商店线传容器 bs,存量面传帧)
     if level is None:
-        from sr_od.application.currency_war.kernel.cw_board_state import (
-            BoardState,
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            GameState,
             level_of,
         )
-        _lvl = level_of(state) if isinstance(state, BoardState) \
+        _lvl = level_of(state) if isinstance(state, GameState) \
             else int(state.level or 1)
     else:
         _lvl = int(level)

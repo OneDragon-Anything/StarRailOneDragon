@@ -141,7 +141,7 @@ def current_obs_phase() -> str | None:
 # (M38 教训:lv4 毒化 3 个位面才被发现,中途无数 [cw!] 日志没人看 —— 冲突要进专属文件+截图,
 # 离线可统计「哪个字段在哪个画面毒化频次最高」,驱动 reader 优先级)。
 # 删除波 1(用户 2026-09-10 直迁裁定):独立证据文件的写入端退役,证据归宿
-# = 统一 state 账本行型 2(obs_event,BoardState
+# = 统一 state 账本行型 2(obs_event,GameState
 # .note_obs_event;同流占版本内嵌当时 state),行结构/截图节流/告警门语义
 # 原样收编(retirement.md §2 obs_conflicts 行)。存档只读:历史冲突行仍可
 # 经判读 CLI 旧视图读(不迁移)。
@@ -203,7 +203,7 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
         _bs = cw_telemetry_exit.obs_event_board()
         if _bs is not None:
             with contextlib.suppress(Exception):
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig,
                 )
                 _bs.note_obs_event(

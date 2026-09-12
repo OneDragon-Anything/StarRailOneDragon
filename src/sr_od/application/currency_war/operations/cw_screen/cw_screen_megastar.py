@@ -148,9 +148,9 @@ class CwScreenMegastar(CwScreenOpBase):
             match = self.ctx.cw_match
             idx = 0
             if match is not None and options:
-                # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读;
-                # overlay 时用上次备战快照(语义同旧,值源切 BoardState)。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读;
+                # overlay 时用上次备战快照(语义同旧,值源切 GameState)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                 )
                 _state = board_state_of(match.session)
@@ -174,9 +174,9 @@ class CwScreenMegastar(CwScreenOpBase):
                 # r358d(遥测接线):巨星选择落 session(复盘「绑定与 comp 匹配」维度)。
                 if options and 0 <= idx < len(options):
                     _match.session.chosen_megastar = options[idx].char_id or ''
-                    # BoardState 写端(迁移批次二,§3.4.5:各屏选卡写入
+                    # GameState 写端(迁移批次二,§3.4.5:各屏选卡写入
                     # chosen_*;单次逻辑写入,§3.4 申报豁免)。
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
                         ChannelSig,
                         board_state_of,
                     )

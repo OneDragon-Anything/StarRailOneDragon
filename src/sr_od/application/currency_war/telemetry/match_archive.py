@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Any
 
 from one_dragon.utils import log_utils
-from sr_od.application.currency_war.kernel.cw_board_state import (
+from sr_od.application.currency_war.kernel.cw_game_state import (
     MATCH_FINAL_FIELD,
 )
 from sr_od.application.currency_war.kernel.cw_observe import (

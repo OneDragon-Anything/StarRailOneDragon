@@ -10,7 +10,7 @@
 
 ## 1. 三个名词
 
-- **GameState**(代码暂名 BoardState,符号 = `kernel/cw_board_state.py`)——当前仍为
+- **GameState**(正名兑现;原暂名 BoardState,符号 = `kernel/cw_game_state.py`)——当前仍为
   真的局内已知事实快照。单例,每局新建,只描述「此刻」,不是「本帧画面」;跨画面
   保留的字段与不经画面写入的账本也在其中。历史序列一律归遥测。画面 op 与决策 op
   写,策略器读。
@@ -24,7 +24,7 @@
 
 ### 2.1 一份数据,来源标记到字段
 
-每个字段 = `{值, 来源, evidence?}`(结构 = `Field[T]`,符号 = cw_board_state.py)。
+每个字段 = `{值, 来源, evidence?}`(结构 = `Field[T]`,符号 = cw_game_state.py)。
 来源两态 + 两个子模:
 
 - **observation(观察)**:亲眼看到的——用本帧识别结果覆盖旧值。sim 侧以 GameState
@@ -40,7 +40,7 @@
   (evidence=session_carrier),已有正式值的字段一律跳过。**空值=未知态禁中继**:
   会话默认空值('''/[])不是已知事实;**五镜像字段封闭集** = `active_strategies`/
   `active_env`/`plane_bosses`/`enemy_affixes`/`selected_difficulty`(锁锚 =
-  sr-od-test test_cw_board_state_batch4);新增第六镜像喂入点必须同步扩本集与该锁。
+  sr-od-test test_cw_game_state_batch4);新增第六镜像喂入点必须同步扩本集与该锁。
 
 evidence 为可选来源注记,记录证据分级(帧标签稳定范围、当场读还是开局恒值、
 `superset` 标记等,随各字段申报)。
@@ -497,7 +497,7 @@ ADR-0622;识别失败=None,禁兜底改值)——数字类误读用规则修复�
 #### 3.3.6 商店免费刷新余额 free_refresh_balance
 
 当前未消耗免费刷新次数。**写入=仅逻辑**(结构化族按效果激活经账本累加——**桥接
-载体**,kernel/cw_board_state.py):`apply_effect_burst_grant`(burst=选卡一次性,
+载体**,kernel/cw_game_state.py):`apply_effect_burst_grant`(burst=选卡一次性,
 活载体=固定理财即时段)/`grant_effect_node_refresh_balance`(per_node=每节点 +N,
 活载体=双手狸 2/节点;**条件判定族已同桥 wire**——按 bs.gold 现值逐条目评估,金未读
 None 保守零授予;闸门=advance_node 的 advanced 位每节点恰一次)。**无 UI 观察通道**
@@ -864,7 +864,7 @@ hp/streak 按结算真值覆盖;等级/经验仅胜局结算页可读——败�
   事件标记,条目推进随建模批立条目后经同一挂点自动生效)。词缀源登记挂点 =
   `register_affixes_from_names`(简报/位面详情两读链产出点)。
 - **账本→字段桥**(效果发放换算成 state 字段写入的固定函数口,kernel/
-  cw_board_state.py):`apply_effect_burst_grant`(选卡时点一次性批量授予)/
+  cw_game_state.py):`apply_effect_burst_grant`(选卡时点一次性批量授予)/
   `grant_effect_node_refresh_balance`(每节点余额累加+条件判定族按金现值评估)/
   `project_effect_capacity`(容量投影)/`apply_board_rewrite`(板面重写:全场出售面
   逻辑写、替换面零逻辑写)。
@@ -1112,7 +1112,7 @@ K 方向 · 义务账本 · CommitSignals · 旗标(S1 开店闩 / S2 wanted 残
 开局新建(无需任何特殊处理)→ 每个画面识别后观察覆盖(只写该画面可见的字段)→
 每个决策按写入规则推进 → 出战冻结 → 结算真值覆盖 → 下一回合带着旧值重建 → 局终
 归档喂遥测(**先于**连刷重建执行)→ 连刷重置协议(判定换了新局看两个信号:ctx
-局身份为 None + establish_new_match)。局终归档快照写端 = cw_board_state 局终归档段
+局身份为 None + establish_new_match)。局终归档快照写端 = cw_game_state 局终归档段
 (单版本原子;写前查重=本字段现读,段内幂等)。
 
 ### 6.3 接管恢复(恢复局)
@@ -1165,7 +1165,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
 
 ## 8. 代码层面结构(符号指针与治理面)
 
-> 容器与结构的单一源 = `kernel/cw_board_state.py`(骨架)与
+> 容器与结构的单一源 = `kernel/cw_game_state.py`(骨架)与
 > `kernel/cw_effect_inventory.py`(效果账本);本节只给符号指针与语义申报,不复写
 > 代码形状。
 
@@ -1182,7 +1182,7 @@ cap/back_layout」,观察写端照常跟踪真实 cap。
   标准通道)/`relay`(载体中继,空值闸)/`logic_written_fields`(对账巡检用)/
   `note_action_receipt`(receipts 唯一写点)/`write_match_final`(局终域唯一写点)。
   API 契约细则 = [journal.md](journal.md) §6。
-- 备战动作投影写口 = `apply_prep_action_logic`(kernel/cw_board_state.py,模块级
+- 备战动作投影写口 = `apply_prep_action_logic`(kernel/cw_game_state.py,模块级
   写口;备战动作零读屏期望态推进的容器半,消费位 =
   `cw_screen_prep._project_prep_obs`)。域集封闭 = `PREP_PROJECTION_DOMAINS`
   ——gold(SellBench 回金,退款公式单一源 = `cw_state.sell_refund`)+ bench(摘槽

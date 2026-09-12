@@ -26,10 +26,10 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
+from sr_od.application.currency_war.kernel.cw_game_state import (
     ShopCard as _ContainerShopCard,
 )
-from sr_od.application.currency_war.kernel.cw_board_state import (
+from sr_od.application.currency_war.kernel.cw_game_state import (
     shop_cards_to_legacy,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
@@ -42,7 +42,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     # 仅类型注解引用(旧 ShopCard = cw_state 动作域词汇;运行时经
     # 惰性 import 取 _card_to_bench,避免模块级反向依赖成环)。
-    from sr_od.application.currency_war.kernel.cw_state import ShopCard
+    from sr_od.application.currency_war.kernel.cw_vocab import ShopCard
 
 
 @dataclass
@@ -489,7 +489,7 @@ def _apply_full_bench_merge_buy(bench: list[BenchChar | None],
         return None
     _k = max(1, merge_buy_k(_name, _star, bench, deployed, shop))
     for _ in range(_k):
-        from sr_od.application.currency_war.kernel.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_vocab import (
             _card_to_bench,
         )
         bench.append(_card_to_bench(card))

@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
-    from sr_od.application.currency_war.kernel.cw_state import Comp
+    from sr_od.application.currency_war.kernel.cw_vocab import Comp
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
@@ -329,7 +329,7 @@ def _held_counts(bs) -> dict[str, int]:
     """逐角色名副本计数(bench∪deployed 容器席位 bot 记录库存;槽位模型
     None 跳过,空名不计)。``odds.slot_q_tag``/帧装配的池衰减 j/t 输入
     载体。换算单一源 = 波 1 席位读口族。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_slots_of,
         deployed_slots_of,
     )
@@ -355,7 +355,7 @@ def _missing_items(comp: Comp | None,
     实现(禁第二实现漂移);公开契约视图见前者。"""
     if comp is None:
         return []
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         level_of,
         shop_cards_to_legacy,
     )
@@ -472,7 +472,7 @@ def assemble_lock_frame(bs, session: StrategySession,
                                        missing_copies)
     held = _held_counts(bs)
     k_members = set(predicates.line_members(k))
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_slots_of,
         deployed_slots_of,
         gold_of,
@@ -593,7 +593,7 @@ def best_alt_comp(bs, session: StrategySession,
                   registry: DecisionV2Registry | None) -> Comp | None:
     """换线候选线供给(R196 症1 接线;§2.7 接线义务的 alt 半边)。
 
-    候选集 = COMP_LIBRARY(证明层 comp 知识单一源,§1 proof 行「GameState
+    候选集 = COMP_LIBRARY(证明层 comp 知识单一源,§1 proof 行「CwWorkFrame
     + comp 知识(COMP_LIBRARY)」)− 当前线 − drought 排除线(session
     .drought_excluded,基线 best_alt_line 同款读法)。证据门 P38 序数形态
     以两个零参数前置承载:①静态可达(e_rounds 有限——p̄>0,缺口可刷到);

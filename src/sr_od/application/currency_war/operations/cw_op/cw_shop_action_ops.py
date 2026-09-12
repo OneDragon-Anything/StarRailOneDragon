@@ -38,8 +38,8 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     ChannelSig,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
@@ -56,11 +56,11 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     pad_bench,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_k
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CloseShop,
     CompTransaction,
-    GameState,
+    CwWorkFrame,
     LevelUp,
     RefreshShop,
     SellBench,
@@ -76,7 +76,7 @@ from sr_od.application.currency_war.obs import cw_shop_refresh_obs
 from sr_od.application.currency_war.telemetry import defects
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_state import Action
+    from sr_od.application.currency_war.kernel.cw_vocab import Action
     from sr_od.operations.sr_operation import SrOperation  # noqa: F401
 
 
@@ -135,22 +135,22 @@ class ShopExecEnv:
     ledger: ShopVisitLedger
     # 当前期望态(W6 波 4 容器化,设计件 §2.4-2:执行侧读点改容器单例
     # board_state_of(match.session);满栏 k 计等消费经席位/payload 读口)
-    state: BoardState
+    state: GameState
 
 
-def _container_cards(state: BoardState) -> list:
+def _container_cards(state: GameState) -> list:
     """商店 payload 牌列表(容器;离屏 None = 空列表)。"""
     payload = state.shop.value
     return list(payload.cards) if payload is not None else []
 
 
-def _plane_of(state: BoardState) -> int:
-    from sr_od.application.currency_war.kernel.cw_board_state import plane_of
+def _plane_of(state: GameState) -> int:
+    from sr_od.application.currency_war.kernel.cw_game_state import plane_of
     return plane_of(state)
 
 
-def _round_of(state: BoardState) -> int:
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+def _round_of(state: GameState) -> int:
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         round_num_of,
     )
     return round_num_of(state)
@@ -160,7 +160,7 @@ def _round_of(state: BoardState) -> int:
 # 守卫断言(决策 9:防 bug 路栏,非法 = 响亮暴露)
 # ---------------------------------------------------------------------------
 
-def guard_proposal_vs_expected(action: Action, state: BoardState) -> None:
+def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     """proposal-vs-expected 断言(ADR-0517 §守卫两属 (i))。
 
     提案动作引用的对象在期望态中确实存在且未被消费——防策略器算术 bug
@@ -172,7 +172,7 @@ def guard_proposal_vs_expected(action: Action, state: BoardState) -> None:
     本断言不受豁免——提案时点牌仍在店中,名恒可对)。
     """
     if isinstance(action, BuyCard):
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,
         )
         _name = action.card.name or ''
@@ -211,7 +211,7 @@ def _bench_identity_signature(
             for b in (table or []) if b is not None]
 
 
-def _reseed_bench_layout(state: BoardState,
+def _reseed_bench_layout(state: GameState,
                          tracked: list[BenchChar | None]) -> bool:
     """投影 bench 布局按执行侧 tracked 槽位表就地回写(布局单一源重播种:
     churn 后 tracked/实况是重排侧真值,投影副本跟随)。
@@ -243,11 +243,11 @@ def _reseed_bench_layout(state: BoardState,
     # 写目标 = 容器 bench 域(W6 波 4,设计件 §2.3:重播种写点 =
     # write_logic(bs.bench, tracked 重建 BenchView),投影域集例外申报
     # 面;原「投影帧就地回写」随黑板槽退役消亡)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
         bench_view_of_slots,
     )
-    assert isinstance(state, BoardState)   # 容器形态唯一(波 4 起)
+    assert isinstance(state, GameState)   # 容器形态唯一(波 4 起)
     state.write_logic(state.bench, bench_view_of_slots(list(tracked)),
                       produced_by='reseed_bench_layout',
                       sig=ChannelSig(
@@ -258,7 +258,7 @@ def _reseed_bench_layout(state: BoardState,
     return True
 
 
-def reseed_bench_if_layout_stale(state: BoardState, session,
+def reseed_bench_if_layout_stale(state: GameState, session,
                                  seed_epoch: int) -> str:
     """S3 布局代次检差三步的封装(ADR-0646;单动作循环每动作消费前调用)。
 
@@ -286,7 +286,7 @@ def reseed_bench_if_layout_stale(state: BoardState, session,
     return 'reseeded'
 
 
-def guard_expected_vs_tracked(state: GameState, session,
+def guard_expected_vs_tracked(state: CwWorkFrame, session,
                               stage: str = 'project') -> None:
     """expected-vs-tracked 双账断言(ADR-0517 §守卫两属 (ii))。
 
@@ -333,7 +333,7 @@ def guard_expected_vs_tracked(state: GameState, session,
     # 域「slot 与读序同帧同源」是两套命题,分界见 ADR-0646)。
     tracked = pad_bench(deepcopy(
         getattr(exec_state_of(session), 'tracked_bench_chars', None) or []))
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         bench_slots_of,
     )
     expect_sig = _bench_identity_signature(bench_slots_of(state))
@@ -387,7 +387,7 @@ class ShopActionOp(ABC):
     def __init__(self, action: Action):
         self.action = action
 
-    def project(self, state: GameState) -> GameState:
+    def project(self, state: CwWorkFrame) -> CwWorkFrame:
         """确定性投影(纯计算,零读屏):simulate 单一源(合成连锁/
         满栏 §2.5/金/等级全在其内;模块头知识缺口申报)。"""
         return simulate(state, self.action)
@@ -426,7 +426,7 @@ class BuyCardOp(ShopActionOp):
     def execute(self, env: ShopExecEnv) -> bool:
         from one_dragon.base.geometry.point import Point as _Pt
         action: BuyCard = self.action
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,
         )
         op, match, ledger, state = env.op, env.match, env.ledger, env.state
@@ -589,7 +589,7 @@ class SellBenchOp(ShopActionOp):
     def execute(self, env: ShopExecEnv) -> bool:
         action: SellBench = self.action
         op, match, ledger = env.op, env.match, env.ledger
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of,
         )
         state = env.state
@@ -622,7 +622,7 @@ class SellBenchOp(ShopActionOp):
         # 归属申报:register_round_sold 首参 state 经 board_state_bridge
         # 装箱 = 统一 state 过渡桥语义(T-70 线),本 hunk 实际随 T-13
         # 提交入库而原提交信息未申报,此处补记归属供审计对账。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_bridge,
         )
         from sr_od.application.currency_war.kernel.cw_round_ledger import (
@@ -671,7 +671,7 @@ class RefreshShopOp(ShopActionOp):
         _refresh_expect = None
         _reconcile = None
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 gold_of,
             )
             if ledger.refresh_first_action:
@@ -801,7 +801,7 @@ class RefreshShopOp(ShopActionOp):
         return True
 
 
-def _record_free_refresh_proc(op, state: GameState, ledger: ShopVisitLedger,
+def _record_free_refresh_proc(op, state: CwWorkFrame, ledger: ShopVisitLedger,
                               pre_gold, gold_after, pre_names,
                               new_shop) -> None:
     """免费刷新 proc 留证(ADR-0456;自 RefreshShopOp 抽出,单一行为)。"""

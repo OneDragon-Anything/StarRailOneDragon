@@ -19,7 +19,7 @@
 7. **M1③ 纪律**:回执 =「发出即簿记」不是验证,动作 op 不掌握成败知识(v3.3-H1 发射事实行)。
 8. **E1 两文件模型**:「12 流收编成一条流」表述作废——目标 = 流程侧状态流 + 策略侧决策行两文件;其余流逐流评估三类处置(字段收编进 state 快照/保留专用/退役),禁一句话收编。
 
-实现分三批同车入库:T-229 R1(写入口+渠道签名+版本 id+自足快照流水+派生规则双腿+影子装配)、T-232 R1.1(守卫族扩员核验+E12 边序勘误+过渡帧封闭锁,纯注释+2 锁)、T-230 R2(receipts 回执域+16 动作写点+开局链五分支写点+D1 写入纪律锁+D2 resumed 接线)。三批共享 kernel/cw_board_state.py 与 obs/cw_observation.py——T-167 先例:共享文件禁分批提交(R1 单独入库 = 中间 HEAD 复现 D1/D2 缺口),故三面同车一笔。变更面 = kernel/cw_board_state.py、kernel/cw_state_journal.py(新)、kernel/cw_exec_state.py、obs/cw_observation.py、operations/cw_screen/cw_screen_prep.py、operations/cw_loop.py(开局链写点最小段)、operations/cw_op/cw_op_buy_cards.py、cw_op_open_shop.py、cw_op_close_shop.py、prep_actions.py、currency_war_config.py、currency_war_app.py + 测试仓 test_cw_state_journal.py(30 锁)/test_cw_state_action_receipts.py(38 锁)/test_cw_state_write_discipline.py(6 锁)。
+实现分三批同车入库:T-229 R1(写入口+渠道签名+版本 id+自足快照流水+派生规则双腿+影子装配)、T-232 R1.1(守卫族扩员核验+E12 边序勘误+过渡帧封闭锁,纯注释+2 锁)、T-230 R2(receipts 回执域+16 动作写点+开局链五分支写点+D1 写入纪律锁+D2 resumed 接线)。三批共享 kernel/cw_game_state.py 与 obs/cw_observation.py——T-167 先例:共享文件禁分批提交(R1 单独入库 = 中间 HEAD 复现 D1/D2 缺口),故三面同车一笔。变更面 = kernel/cw_game_state.py、kernel/cw_state_journal.py(新)、kernel/cw_exec_state.py、obs/cw_observation.py、operations/cw_screen/cw_screen_prep.py、operations/cw_loop.py(开局链写点最小段)、operations/cw_op/cw_op_buy_cards.py、cw_op_open_shop.py、cw_op_close_shop.py、prep_actions.py、currency_war_config.py、currency_war_app.py + 测试仓 test_cw_state_journal.py(30 锁)/test_cw_state_action_receipts.py(38 锁)/test_cw_state_write_discipline.py(6 锁)。
 
 ## 决策
 
@@ -44,7 +44,7 @@
 - 「12 流一句话收编成一条流」——否决(E1):目标 = 两文件;其余流逐流评估(字段收编/保留专用/退役)禁一句话收编;退役理由 = 流散乱+写点不全+无渠道签名+无统一 state,非查询/重放问题。
 - 独立事件流/效果域与 receipts 专用行机制(v2 effect_write 族/begin_hook_tx 事务口/snapshot 锚口)——否决(E3+范围收窄裁定):一切 hook/派生产出都是 state 写入;效果变化随快照行自带,F1 四后果(回放失真/digest 误报/前溯断裂/域写口)由 v3 形态自然消解;hook 订阅零接口预留。
 - receipts 含成败字段(applied/rejected 成败语义)——v3.3-H1 否决:发射事实行零成败字段(「发出即职责完成」,动作 op 不掌握成败知识,落地判定归观察侧 reconcile 对账);R2 过渡实现的 applied=是否发出机械事实与两条点击后重读路径 = H1 已接受设计缺陷辐射面,列 v3.3 折入硬义务(见决策 5 勘误)。
-- R1 单独先行入库、R2 随后——否决(T-167 先例,R1delta+R1.1 落地审 F4):三批共享 cw_board_state/cw_observation,R1 单独入库 = 中间 HEAD 必带 R2 hunks 或需 hunk 级拆分,且 D1/D2 落地面在 R2 文件,中间 HEAD 复现缺口;三面同车一笔。
+- R1 单独先行入库、R2 随后——否决(T-167 先例,R1delta+R1.1 落地审 F4):三批共享 cw_game_state/cw_observation,R1 单独入库 = 中间 HEAD 必带 R2 hunks 或需 hunk 级拆分,且 D1/D2 落地面在 R2 文件,中间 HEAD 复现缺口;三面同车一笔。
 
 ## 后果
 
@@ -54,7 +54,7 @@
 - **D4 勘误注**:R1 交付报告 §③「26 锁」实为 28 锁(对齐轮 N1 obs_event/N2 去重键增 2);§⑥ §3.2.4 偏差指针「申报 §5-7」指错条目、§3.1.2「唯一新增=四字段」漏 node_hist_ord 措辞冲突,勘误随报告面修正。
 - **基线勘误(3132/3134 口径)**:R1 落地审亲跑 L1 基线 = 3134 passed(N2 两锁已含);R2 报告「3132 + N2 增 2 + 本批 38 = 3172」分解叙事错位、总数对——对账以 3134 为 R1 后基线。
 - 三面合并后全量过滤基线:L3 = 3706 passed/113 skipped/1 xfailed/0 failed(R1delta+R1.1 审与 R2 审冻结窗双亲跑一致);L1 = 3180 passed/1 skipped。
-- **GameState 改名计划(逐字锚,用户 2026-09-10)**:「迁移完之后将 BoardState 改名成 GameState」——game_state 设计目录(docs/develop/sr_od/application/currency_war/game_state/)已统一用 GameState 命名;代码改名(kernel/cw_board_state.py `BoardState` → `GameState`)随旧流退役迁移批执行,改名前文档用 GameState、代码用 BoardState,两者指同一容器。
+- **GameState 改名计划(逐字锚,用户 2026-09-10)**:「迁移完之后将 BoardState 改名成 GameState」——game_state 设计目录(docs/develop/sr_od/application/currency_war/game_state/)已统一用 GameState 命名;代码改名(kernel/cw_game_state.py `BoardState` → `GameState`)随旧流退役迁移批执行,改名前文档用 GameState、代码用 BoardState,两者指同一容器。
 
 ## 修订(2026-09-10,R1.2 落码四规则组终版+节点域字段形态终极版;commit 门条件 = reviews/统一state-R1.2-落地审.md accept(条件记档)C-2 + reviews/统一state-R1.2纠偏-落地审.md accept(条件记档)§3 条件①)
 
@@ -65,7 +65,7 @@ R1.2 批(节点推进派生规则②位面过渡腿+③BOSS简报腿+类型派�
 3. **字段层次终极版**(用户终裁 2026-09-11;流程侧遥测设计 v3.5 §3.1.4 二次修正):观察层 = 画面原始读数,零计算——observe() 只落原文,禁写派生值;逻辑层 = 从观察数据计算的一切——备战腿「解析顶栏文本成序键」同为派生计算,落逻辑层,无 observe 写序键例外。**「结构性退役」辖域说死(v3.8-高-1,与两正本三方统一)**:本条「observe_vs_logic_mismatch 结构性退役」的辖域 = **专用纠偏写点退役**(无 observe 写序键路径 → 节点序不再设专用 observe 纠偏写点),**非失配检测消失**——失配经**字段通用机制**显影:observe 覆盖 logic 来源值且失配 → observe_vs_logic_mismatch 缺陷行(`_emit_defect`,R1.2 已实现,机制在位;节点域类型双写字段可真触发),两正本(遥测正本 §3.1.4/判定方案 R4 §3.2-7)同文。证据面 = top_bar_raw 原文事后 parse 对拍(reviews/统一state-R1.2纠偏-落地审.md F3' 记档;未来判读面如需自动对拍按该路径增补,不入 kernel 派生段)。
 4. **R1.2 纠偏二中间形态作废**(账本 T-235 回执二:单字段+备战腿 observe 写观察层+bs_schema bump 1→2+source=observation 序键锁;存活窗 2026-09-10 18:28-18:44)——已被纠偏三(字段层次终极版,同日账本回执三 18:53:19)完全取代,其独有面(source=observation 序键锁)不在终态;纠偏二的申报意图(双专名删除/读口派生/schema bump)由终态继承并重验。分层历史锚 = bs_schema 'derivation' 域历史注(1=双字段/2=纠偏二单字段 observe/3=终极版)。
 
-R1.2 四规则组终版语义本体(②公式落点 plane*9+1/③effective+1 禁写死 9/类型派生直定-零写-最新赢三分纪律/幂等锚)以实现 kernel/cw_board_state.py 与其行为锁为单一源,本节只记与本文原文相抵的裁定覆盖。R2 开局链五分支写点本体零变化(0p/0q 分支仍写上下文域,只是不再作弹窗腿 prev 判据成员)。
+R1.2 四规则组终版语义本体(②公式落点 plane*9+1/③effective+1 禁写死 9/类型派生直定-零写-最新赢三分纪律/幂等锚)以实现 kernel/cw_game_state.py 与其行为锁为单一源,本节只记与本文原文相抵的裁定覆盖。R2 开局链五分支写点本体零变化(0p/0q 分支仍写上下文域,只是不再作弹窗腿 prev 判据成员)。
 
 指针更新(v3.8-低-3,随批文档同步):①判定方案引用 R3.1 → **R4**(派生规则单一源升格,账本 T-217 18:52:46 拆分裁定);②R1.2 纠偏三废除的 **same_advance 行注记形态**(组 confirm 时代「后到腿同序补录」行注)未列本文正文,补记 = 已随单字段双层+单版本模型退役(T-235 18:53:19;单版本 = 一次逻辑写入一个版本,后到腿同值零推进语义由字段现值+去重键承担,无注记形态)。
 

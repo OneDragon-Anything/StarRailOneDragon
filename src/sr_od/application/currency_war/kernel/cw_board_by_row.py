@@ -18,7 +18,7 @@
 
 契约签名(草案级细节,冻结的是单一源语义):
 ``board_by_row(deployed: list[BenchChar]) -> BoardByRow``,另给
-``board_by_row_of(state)`` 便捷入口(消费方常持 GameState)。
+``board_by_row_of(state)`` 便捷入口(消费方常持 CwWorkFrame)。
 """
 from __future__ import annotations
 

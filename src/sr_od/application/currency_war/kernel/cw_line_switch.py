@@ -34,8 +34,8 @@ from __future__ import annotations
 
 import math
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     gold_of,
     level_of,
@@ -100,7 +100,7 @@ def p_bar_faction(tag: str, level: int) -> float:
     return min(1.0, p_hit_once)
 
 
-def tier_progress(comp: Comp, bs: BoardState) -> dict[str, tuple[int, int, int]]:
+def tier_progress(comp: Comp, bs: GameState) -> dict[str, tuple[int, int, int]]:
     """逐档进度 {档: (需求, 已持, 货架)}——线距离口径的分解单一源。
 
     消费端:``line_distance``(标量和)与 strategies 侧线缺口分解
@@ -124,7 +124,7 @@ def tier_progress(comp: Comp, bs: BoardState) -> dict[str, tuple[int, int, int]]
     return out
 
 
-def line_distance(comp: Comp, bs: BoardState) -> int:
+def line_distance(comp: Comp, bs: GameState) -> int:
     """distance(c) = need − held − shelf(需求张数 − 持有 − 货架可见可买)。
 
     held 取 board(场上)对阵营档位的占有(超档不计);shelf=本回合 shop
@@ -142,7 +142,7 @@ def line_distance(comp: Comp, bs: BoardState) -> int:
     return max(0, need - held - shelf)
 
 
-def e_rounds(comp: Comp, bs: BoardState,
+def e_rounds(comp: Comp, bs: GameState,
              registry: DecisionV2Registry | None = None,
              session: StrategySession | None = None) -> float:
     """E_rounds(c) ≈ distance / per_round(per_round 见模块注释)。
@@ -192,7 +192,7 @@ def e_rounds(comp: Comp, bs: BoardState,
     return dist / per_round
 
 
-def switch_allowed(bs: BoardState, session: StrategySession) -> bool:
+def switch_allowed(bs: GameState, session: StrategySession) -> bool:
     """辖域门:位面前中段可换;末窗禁换(设计内辖域声明,DESIGN §③)。
 
     末窗=本位面末 3 轮(9 轮位面即 r≥7;7 轮位面 P2 即 r≥5)——末窗换线
@@ -263,7 +263,7 @@ def node_loss_kind(node_type: str) -> str:
 #  保留——cw_plane_table.p_win_p2 阈值层映射仍消费。)
 
 
-def best_alt_line(bs: BoardState, session: StrategySession, config,
+def best_alt_line(bs: GameState, session: StrategySession, config,
                   score_ctx, registry: DecisionV2Registry | None = None
                   ) -> tuple[object, float]:
     """候选集中 E_rounds 最小且有限的备选线((comp, e) ;无候选 → (None, inf))。

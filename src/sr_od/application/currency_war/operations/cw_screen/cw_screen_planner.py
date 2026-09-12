@@ -185,7 +185,7 @@ class CwScreenPlanner(CwScreenOpBase):
             if not (self.CARD_TEXT_Y_LO <= cy <= self.CARD_TEXT_Y_HI):
                 continue
             (left_text if cx < 960 else right_text).append(text)
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_bridge,
         )
         from sr_od.application.currency_war.kernel.cw_events import PlannerOption
@@ -196,11 +196,11 @@ class CwScreenPlanner(CwScreenOpBase):
         # DecisionV2Strategy.decide_planner 委托同一 kernel 纯函数(kernel 版保底,
         # 本批零行为变化;局面感知升级归批4)。kernel 直调仅保留无 match 防御路径
         # (局外独立跑;规约=沿用 cw_screen_invest_env 同款写法)。
-        from sr_od.application.currency_war.kernel.cw_state import GameState
+        from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
         _match = getattr(self.ctx, 'cw_match', None)
         if _match is not None:
-            # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
             )
             _st = board_state_of(_match.session)
@@ -210,7 +210,7 @@ class CwScreenPlanner(CwScreenOpBase):
         else:
             from sr_od.application.currency_war.kernel.cw_events import decide_planner
             # W6 波3 贯通:decide_planner 已切容器签名,防御帧经桥装箱。
-            pick = decide_planner(options, board_state_bridge(GameState()), None)
+            pick = decide_planner(options, board_state_bridge(CwWorkFrame()), None)
         target = self._card_point(pick.idx)
         log.info('[cw][planner] 策划决策:%s → %s卡(%s)',
                  pick.reason, '左' if pick.idx == 0 else '右',

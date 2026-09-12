@@ -47,8 +47,8 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     board_state_of,
     deployed_slots_of,
@@ -173,7 +173,7 @@ SPHERE_DEFER_PROBE_K: int = 1
 SPHERE_CLICK_BATCH_MAX_K: int = 3
 
 
-def _sphere_progress_sig(bs: BoardState,
+def _sphere_progress_sig(bs: GameState,
                          obs: PrepObservation) -> int:
     """席满让路门成效计数签名((轮次, 席计数, 球计数) 压缩整型;ADR-0642)。
 
@@ -359,7 +359,7 @@ class UpgraderSignals:
     bloodline_shadow_armed: bool = False
 
 
-def _lambda_quantile_armed(bs: BoardState, hp: int | None,
+def _lambda_quantile_armed(bs: GameState, hp: int | None,
                            p_value: float) -> bool | None:
     """λ 顾问相对分位触发谓词(R28-1;R196 症3 影子/真键共用求值体)。
 
@@ -394,7 +394,7 @@ def _lambda_quantile_armed(bs: BoardState, hp: int | None,
     return (idx + 1) / len(order) <= p_value
 
 
-def _upgrader_evaluate(session: StrategySession, bs: BoardState,
+def _upgrader_evaluate(session: StrategySession, bs: GameState,
                        hp: int | None) -> UpgraderSignals:
     """升档器求值(§2.0-3 判危口径①②;本批 None 期 = 结构位 + 影子计数)。
 
@@ -871,7 +871,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
 
 
 def _reconcile_posture_authorization(session: StrategySession,
-                                     bs: BoardState,
+                                     bs: GameState,
                                      emitted: list[Emitted],
                                      k_members: tuple[str, ...] = (),
                                      registry: DecisionV2Registry | None = None,
@@ -1079,7 +1079,7 @@ def _merge_ev_before_frame_end(skeleton: list[Emitted],
 
 
 def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
-                   bs: BoardState, k_members: tuple[str, ...], *,
+                   bs: GameState, k_members: tuple[str, ...], *,
                    k_switched: bool,
                    old_line_members: tuple[str, ...],
                    skeleton_out: list[Emitted] | None = None) -> list[Emitted]:

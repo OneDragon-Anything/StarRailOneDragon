@@ -15,7 +15,7 @@ handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路�
 = owned 本体直推,非注册表辖)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应画面段,
 事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
 (test_cw_fake_channels_outerloop 典籍通道真 op 锁 +
-test_cw_board_state_consume chosen_tome 锁 + 本批锁
+test_cw_game_state_consume chosen_tome 锁 + 本批锁
 test_cw_obs_arch_event_screens_step3)。
 """
 import time
@@ -155,8 +155,8 @@ class CwScreenBookcard(CwScreenOpBase):
         if cards:
             _match = getattr(self.ctx, 'cw_match', None)
             if _match is not None:
-                # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                 )
                 _st = board_state_of(_match.session)
@@ -192,12 +192,12 @@ class CwScreenBookcard(CwScreenOpBase):
         _sess = getattr(getattr(self.ctx, 'cw_match', None), 'session', None)
         register_confirm_arrival(_sess, 'ConfirmTome', _eq_name,
                                  produced_by='CwScreenBookcard')
-        # BoardState 写端(P3-6 批次二落地审;§3.4.5:星徽秘典弹窗=卡名,
+        # GameState 写端(P3-6 批次二落地审;§3.4.5:星徽秘典弹窗=卡名,
         # 选卡写入 chosen_tome;单次逻辑写入,§3.4 申报豁免;CwScreenMegastar
         # chosen_megastar 同式)。候选读取链在役+建档在册,tome 非「暂无
         # 画面建档」屏——写端自此接通。
         if _sess is not None:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
                 board_state_of,
             )

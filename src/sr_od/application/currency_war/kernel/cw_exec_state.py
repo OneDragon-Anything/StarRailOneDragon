@@ -190,7 +190,7 @@ class ExecState:
     # 补给选定暂存(§3.4.5 chosen_supply 出口验真后写端的中转载体)。
     # 写点 = CwScreenSupplyNode._do_action 选定列确认时(真选分支;兜底
     # 点卡/刷新轮不写 = 真选守卫);清点 = 出口验真(标识-补给阶段消失)
-    # 写入 BoardState 后取走,及重入轮入口(上轮确认未落地即弃,防陈旧
+    # 写入 GameState 后取走,及重入轮入口(上轮确认未落地即弃,防陈旧
     # 选跨轮/跨节点误写)。节点级生命周期——下一补给节点选定即覆盖,不
     # 跨节点消费;None = 无挂起选定。
     _pending_chosen_supply: tuple[str, str, bool] | None = None
@@ -305,7 +305,7 @@ def apply_op_effect(session, action: PrepAction | dict, *,
         SellBench,
         SellDeployed,
     )
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         DEPLOYED_FRONT_CAPACITY,
         iter_occupied,
         sell_refund,
@@ -622,7 +622,7 @@ class PlaneNodeLedger:
 
     #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
     #: 的类型 token(battle/supply/encounter/reward/boss,与
-    #: ``cw_node_reader.NodeSlot.node_type`` / ``GameState.node_type`` 同词汇表;
+    #: ``cw_node_reader.NodeSlot.node_type`` / ``CwWorkFrame.node_type`` 同词汇表;
     #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
     #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
     #: ``seq[round_num - 1]``。

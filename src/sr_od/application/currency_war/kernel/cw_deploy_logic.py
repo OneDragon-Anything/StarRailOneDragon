@@ -27,8 +27,8 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     max_units_of,
     plane_of,
     round_num_of,
@@ -37,7 +37,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 
 if TYPE_CHECKING:
     # 仅类型注解引用(老帧兼容支注解;运行时零依赖)。
-    from sr_od.application.currency_war.kernel.cw_state import GameState
+    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS,
     RECIPE_BASE,
@@ -756,8 +756,8 @@ def fenced_swap_arm_of(fp: float, deployed_n: int, cap: int | None) -> bool:
     """换阵卖出义务臂触发判据(纯函数,锁测试面):线成型(fp≥1.00,
     单一源 ``cw_comps.form_progress``)∧ 板满(占用数 ≥ cap——cap =
     可上阵数占用数口径,与 select_swap_plan 板满门同一派生链
-    ``GameState.max_units``(level+宝钻、封顶 = 4+back_max 动态真值
-    〔BoardState.back_layout,值域 10-13〕;物理槽表常数 DEPLOYED_
+    ``CwWorkFrame.max_units``(level+宝钻、封顶 = 4+back_max 动态真值
+    〔GameState.back_layout,值域 10-13〕;物理槽表常数 DEPLOYED_
     CAPACITY 禁作阈值,理由见下),
     喂入单一源 = ``swap_arm_deployed_count``)。两条件并存 =
     熔断的振荡防护前提(买/演进层仍要 fenced 件)消失、且 bench target
@@ -959,18 +959,18 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # 义务集排除独立承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
 
 
-def _fresh_phase(state: BoardState | GameState | None) -> tuple:
+def _fresh_phase(state: GameState | CwWorkFrame | None) -> tuple:
     """相位键读法(双形态过渡):容器 = plane_of/round_num_of 读口;
-    老栈 GameState 帧(测试夹具/波4 面调用) = 属性直读。兼容支随
+    老栈 CwWorkFrame 帧(测试夹具/波4 面调用) = 属性直读。兼容支随
     调用面(波4 装配/测试重构)消亡,禁新消费点再喂旧帧。"""
     if state is None:
         return (None, 1)
-    if isinstance(state, BoardState):
+    if isinstance(state, GameState):
         return (plane_of(state), round_num_of(state))
     return (getattr(state, 'plane', None), getattr(state, 'round_num', 1))
 
 
-def record_fresh_buy(session: object, bs: BoardState | None,
+def record_fresh_buy(session: object, bs: GameState | None,
                      name: str) -> None:
     """轮内新鲜度排除登记(买入意图逐名写入;发射位调用)。
 
@@ -990,7 +990,7 @@ def record_fresh_buy(session: object, bs: BoardState | None,
 
 
 def fresh_buys_of(session: object,
-                  bs: BoardState | None) -> frozenset[str]:
+                  bs: GameState | None) -> frozenset[str]:
     """读当前位面轮内有效的新鲜买入名集(跨轮 = 空集,自动失效)。"""
     reg = exec_state_of(session).cw4_swap_fresh_buys
     if not isinstance(reg, dict):
@@ -1029,7 +1029,7 @@ def fresh_buys_sell_face(session: object) -> frozenset[str]:
     names = reg.get('names')
     if not isinstance(names, set):
         return frozenset()
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_of,
         plane_of,
         round_num_of,
@@ -1163,7 +1163,7 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
                                             False)):
         return 'star_guard'   # 星级不可读/非 1★ = fail 向不换(armed 让位见上注)
     # ---- ADR-0534 §2 合成素材守卫:含自身全场域同名同星计数 = 2 未完态拒 ----
-    from sr_od.application.currency_war.kernel.cw_state import same_star_count
+    from sr_od.application.currency_war.kernel.cw_vocab import same_star_count
     if same_star_count(name, star_n, _bench, _deployed) == 2:
         return 'merge_material_guard'
     return ''
@@ -1461,7 +1461,7 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
 def assemble_swap_plan_inputs(
         session: object,
         *,
-        state: BoardState | None,
+        state: GameState | None,
         deployed: list[BenchChar],
         bench: list[BenchChar],
         cap: int | None,

@@ -45,8 +45,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     deployed_slots_of,
     gold_of,
@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     )
 
 
-def _crosses_engine_tier(bs: BoardState, name: str) -> bool:
+def _crosses_engine_tier(bs: GameState, name: str) -> bool:
     """店内件「当帧跨档」判定(结构性:买入后四体系达成数 +1)。
 
     判据单一源=cw_deploy_logic.engines_count(与 deploy/形态维同一把
@@ -93,7 +93,7 @@ def _crosses_engine_tier(bs: BoardState, name: str) -> bool:
     return after > before
 
 
-def _scan_shop_buy_accounts(bs: BoardState,
+def _scan_shop_buy_accounts(bs: GameState,
                             registry: DecisionV2Registry,
                             ) -> tuple[list[int], list[int]]:
     """店内件两路账单单次扫描(防双计;调用方按需取路)。
@@ -134,7 +134,7 @@ def _scan_shop_buy_accounts(bs: BoardState,
     return costs, fill
 
 
-def _countable_buy_costs(bs: BoardState, session: StrategySession | None,
+def _countable_buy_costs(bs: GameState, session: StrategySession | None,
                          registry: DecisionV2Registry) -> list[int]:
     """店内「非期权」正账件费用表(A-1 刀法)。
 
@@ -146,7 +146,7 @@ def _countable_buy_costs(bs: BoardState, session: StrategySession | None,
     return _scan_shop_buy_accounts(bs, registry)[0]
 
 
-def bench_fill_account(bs: BoardState, registry: DecisionV2Registry) -> int:
+def bench_fill_account(bs: GameState, registry: DecisionV2Registry) -> int:
     """O1 备战空位填补通道的容量分量(`w611_econ_cycle/` 设计 §1.2/§1.3)。
 
     溢余帧备战有空位时,店内其余件(非跨档非合成)按费用升序取「剩余
@@ -160,7 +160,7 @@ def bench_fill_account(bs: BoardState, registry: DecisionV2Registry) -> int:
     return sum(_scan_shop_buy_accounts(bs, registry)[1])
 
 
-def channel_capacity(bs: BoardState, session: StrategySession,
+def channel_capacity(bs: GameState, session: StrategySession,
                      registry: DecisionV2Registry) -> int:
     """C_t = 升级计划费 + 非期权可买账 + 刷价×刷新预算。
 
@@ -180,7 +180,7 @@ def channel_capacity(bs: BoardState, session: StrategySession,
     return total
 
 
-def overflow(bs: BoardState, session: StrategySession) -> int:
+def overflow(bs: GameState, session: StrategySession) -> int:
     """溢余段 (g − R*)+(义务压力的原料;≤0 = 无义务帧)。
 
     R* 单一源 = kernel cw_economy.reserve_cap(模块级 import:纯查表
@@ -189,7 +189,7 @@ def overflow(bs: BoardState, session: StrategySession) -> int:
     return max(0, gold_of(bs) - reserve_cap(bs, session))
 
 
-def obligation(bs: BoardState, session: StrategySession,
+def obligation(bs: GameState, session: StrategySession,
                registry: DecisionV2Registry) -> int:
     """义务花销 f = min((g − R*)+, C_t)(设计 §1.4;0=无义务)。"""
     r = overflow(bs, session)

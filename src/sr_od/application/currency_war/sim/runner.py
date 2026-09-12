@@ -34,7 +34,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     deployed_occupied,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     SimInvestProfile,
 )
@@ -1067,11 +1067,11 @@ def _cli_main() -> None:
 
 
 
-def synthesize_snapshot(st: GameState,
+def synthesize_snapshot(st: CwWorkFrame,
                         substate_name: str = 'prep_shop'):
-    """GameState → Snapshot 同型合成器(sim 侧一次成本;`w583_stage2_contracts/` 阶段2批①)。
+    """CwWorkFrame → Snapshot 同型合成器(sim 侧一次成本;`w583_stage2_contracts/` 阶段2批①)。
 
-    快照 Schema 定稿的第一个消费者:本函数即「GameState→Snapshot 逐字段
+    快照 Schema 定稿的第一个消费者:本函数即「CwWorkFrame→Snapshot 逐字段
     映射表」的代码化,映射式与 SCHEMA_DRAFT.md §四「来源」列一一对应;
     无损验证门(sim 合成器门)= 对拍断言四件套,见
     sr-od-test/test/sr_od/app/currency_war/test_cw_w583_snapshot_contracts.py。
@@ -1087,7 +1087,7 @@ def synthesize_snapshot(st: GameState,
 
     只读保证:不 mutate ``st``(无损门含合成前后深比较反锁);容器字段对
     元素**深拷贝**进快照(bench/deployed/shop_cards 元素与 board 映射均与
-    上游 GameState 无共享可变态——快照 frozen 不变式的结构性防线,快照内
+    上游 CwWorkFrame 无共享可变态——快照 frozen 不变式的结构性防线,快照内
     变异不会回写上游;映射式不变,仅表示结构收紧为只读)。
     """
     import copy

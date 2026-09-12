@@ -1,8 +1,8 @@
 """货币战争 词缀源效果结构化注册 + 装备注册表改写成员扫描申报(非策略源效果辖域)。
 
-**辖域**(统一 state 迭代 BoardState 数据结构设计 §5.1「词缀效果辖域申报」与
+**辖域**(统一 state 迭代 GameState 数据结构设计 §5.1「词缀效果辖域申报」与
 §7 扫描范围源 c/源 e 的代码化;两份 data 注册表 = 效果文本真值,本模块 = 规格申报面):
-- **词缀源结构化注册** ``AFFIX_EFFECT_SPECS``:会改写 BoardState 字段的敌人词缀
+- **词缀源结构化注册** ``AFFIX_EFFECT_SPECS``:会改写 GameState 字段的敌人词缀
   (成长的烦恼/变宝为废/永久创伤)按 EffectSpec 四元组建格。键 = affix_effects_data
   词缀名,spec.id 同值——词缀无 plaza id 命名空间,效果清单 first() 以词缀名为键。
 - **装备注册表改写成员扫描** ``scan_rewrite_equipments`` × ``EQUIP_REWRITE_DECLARATIONS``:
@@ -65,11 +65,11 @@ from sr_od.application.currency_war.kernel.cw_effect_inventory import (
 from sr_od.application.currency_war.kernel.cw_investments import EconomyEffect
 
 if TYPE_CHECKING:
-    # 仅类型注解引用(项目规范允许);BoardState/Unit 真类在 cw_board_state,
+    # 仅类型注解引用(项目规范允许);GameState/Unit 真类在 cw_game_state,
     # 其模块头 import 本模块的兄弟模块(cw_effect_inventory),模块级 import
     # 有成环风险,与登记挂点共用体的运行期惰性 import 纪律同型。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
         Unit,
     )
 
@@ -102,7 +102,7 @@ AFFIX_EFFECT_SPECS: dict[str, EffectSpec] = {
         duties=DutyFlags(predict=True),
         notes='装备库存改写源:每位面首次合成进阶装备50%变垃圾袋;随机面不建逻辑写,观察收口'),
     # 永久创伤:官方「我方小队生命值降低时，会减少等同于生命值降低值20%的生命上限，
-    # 最多降低生命上限的60%。」hp_max 字段在 BoardState 缺位(健康充值/成本控制/
+    # 最多降低生命上限的60%。」hp_max 字段在 GameState 缺位(健康充值/成本控制/
     # 二极管/本词缀=来源四源,一并缺口申报)→ 观察收口;数值仅建档不进经济分
     # (gold_per_20hp_lost 同先例)。零响应登记(游戏侧自算,bot 无待办)。
     '永久创伤': EffectSpec(
@@ -158,7 +158,7 @@ def _validate_affix_specs() -> None:
 #: 任一关键词组**组内全现**即命中该面(组内=AND,组间=OR——单关键词组退化
 #: 为包含判定)。敌方侧生命类文本(熄火/强化/净化族)用「小队」「我方小队」
 #: 锚定排除。倒计时增减族(决战在即/战个痛快/时间刺客)不入谓词——倒计时
-#: 无 BoardState 字段载体,非本申报面辖域。
+#: 无 GameState 字段载体,非本申报面辖域。
 _AFFIX_REWRITE_FACES: tuple[tuple[str, tuple[tuple[str, ...], ...]], ...] = (
     ('gold', (('金币',),)),
     ('hp', (('小队生命值',),)),
@@ -229,7 +229,7 @@ def scan_rewrite_equipments() -> dict[str, str]:
 
 # ===== 装备改写成员写入归属申报表(键集必须恰等于 scan_rewrite_equipments 命中集)=====
 #: 归属判据(效果写入归属判据正本 = docs/develop/sr_od/application/currency_war/game_state/
-#: effect-domain.md §6.3;详设 = BoardState 数据结构设计 §5.3):结果可准确
+#: effect-domain.md §6.3;详设 = GameState 数据结构设计 §5.3):结果可准确
 #: 计算(确定性公式+已知输入)→ 逻辑写;含概率/随机 → 不建逻辑写端,观察
 #: 收口。「现观察覆盖兜底」= 生产挂点接线归各辖批(工具执行/节点结算/获得
 #: 回执),接线前记录面维持观察覆盖。
@@ -396,7 +396,7 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
       零动作;改写面写端不归登记挂点(归属单一源 = 各 spec.notes 与
       EQUIP_REWRITE_DECLARATIONS,接线前观察覆盖兜底)。
     - acquired_t = 登记时点节点序快照((plane-1)*9+round,基 1,ActiveEffect
-      坐标系;BoardState 节点单例优先,引导窗回退 session.last_state,与
+      坐标系;GameState 节点单例优先,引导窗回退 session.last_state,与
       策略源登记挂点同式);余期播种/推进/到期与策略源共用同一套挂点逻辑
       (声明式驱动:节点 tick/计数 bump 按 duties 与 duration 语义自动辖及
       词缀条目,挂点代码零来源特判)。
@@ -406,7 +406,7 @@ def register_affixes_from_names(session: object, names: list[str]) -> list[str]:
     的兄弟模块(cw_effect_inventory),保持本模块零运行期容器依赖、可离线
     单测(与 cw_effect_inventory 的惰性 import 纪律同型)。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_of,
     )
 
@@ -459,12 +459,12 @@ class ToolExecutionReport:
     tool: str        # 工具名(cw_equipment_data 键,category='工具')
     side: str        # EQUIP_WRITE_SIDES 登记形(bridge:/op:/observation/contribution:)
     leg: str         # 执行腿面:spawn/grant/inventory/worn/none
-    performed: bool  # 是否发生 BoardState 逻辑写(False = 零写分支/拒落)
+    performed: bool  # 是否发生 GameState 逻辑写(False = 零写分支/拒落)
     detail: str = ''
 
 
 def apply_tool_execution_write(
-        bs: BoardState, tool: str, *,
+        bs: GameState, tool: str, *,
         target_char_id: str | None = None, target_cost: int | None = None,
         chosen_equip: str | None = None, target_equip_name: str | None = None,
         target_unit: Unit | None = None, chosen_worn_equip: str | None = None,

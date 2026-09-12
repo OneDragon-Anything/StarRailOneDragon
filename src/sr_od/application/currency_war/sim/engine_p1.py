@@ -62,10 +62,10 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     iter_occupied_deployed,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_completes
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CompTransaction,
-    GameState,
+    CwWorkFrame,
     LevelUp,
     LevelUpShop,
     RefreshShop,
@@ -75,7 +75,7 @@ from sr_od.application.currency_war.kernel.cw_state import (
     SwapDeploy,
     _bench_char_cost,
 )
-from sr_od.application.currency_war.kernel.cw_state import simulate as _simulate_state
+from sr_od.application.currency_war.kernel.cw_vocab import simulate as _simulate_state
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     InvestInjectionState,
@@ -149,17 +149,17 @@ if TYPE_CHECKING:
 
 
 def _board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
-    """板面各阵营「下档阈值」观测键(生产 ``GameState.board_next_tier``
+    """板面各阵营「下档阈值」观测键(生产 ``CwWorkFrame.board_next_tier``
     的 sim 同构面;语义 = 左面板 "X/Y" 的 Y)。
 
-    派生单一源 = ``kernel.cw_board_state.board_next_tier_of``(迁移批次二:
+    派生单一源 = ``kernel.cw_game_state.board_next_tier_of``(迁移批次二:
     本函数 = **薄委托**,禁第三份推导——obs computed 支与 sim 观测键
     (ADR-0488 硬依赖键供给)同源由委托结构保证;consume 锁
     test_board_next_tier_of_matches_registry_formula)。
     消费方 = Δp_tier 档位分解标定批(观测披露面;兑现链开关族已随旧
     方案清退批删除,清查报告 OLD_MIX_AUDIT §1.3,键保留作判读面)。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_next_tier_of,
     )
     return board_next_tier_of(board_factions)
@@ -396,7 +396,7 @@ def _lag_excluding_fenced_holds(lag_idx: list[int], replay_occ: list[int],
                and replay_occ[i] not in main_held_slots)
 
 
-def _fill_lag_replay(st: GameState,
+def _fill_lag_replay(st: CwWorkFrame,
                      target_factions: frozenset[str],
                      target_cores: frozenset[str],
                      fw_carry: frozenset[str],
@@ -433,7 +433,7 @@ def _fill_lag_replay(st: GameState,
 
 
 def _residual_fill_deploy(
-    st: GameState,
+    st: CwWorkFrame,
     target_factions: frozenset[str],
     target_cores: frozenset[str],
     fw_carry: frozenset[str],
@@ -530,7 +530,7 @@ def _residual_fill_deploy(
     return _res_up, _res_held, _lag
 
 
-def _m1p_plan_fill_deploy(st: GameState, plan: SwapPlan,
+def _m1p_plan_fill_deploy(st: CwWorkFrame, plan: SwapPlan,
                           ctx: SwapPlanContext | None, sess) \
         -> tuple[int, int, int]:
     """M1″ 换血轮轮末补部署——计划单一源消费(T-279 R1;ADR-0640)。
@@ -606,10 +606,10 @@ def _m1p_plan_fill_deploy(st: GameState, plan: SwapPlan,
     try:
         # 波 5b 桥退役消点:assemble 已切容器签名,sim 工作帧真值经喂入口
         # 直写容器后读容器(原过渡桥装箱一次性视图退役)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_red_of,
         )
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             feed_sim_truth as _bs_red_feed,
         )
         _bs_red_feed(_bs_red_of(sess), st,
@@ -677,7 +677,7 @@ def project_sell_buyback(acts: list[dict]) -> list[dict]:
     return loops
 
 
-def _m1p_plan_and_record(st: GameState, sess) \
+def _m1p_plan_and_record(st: CwWorkFrame, sess) \
         -> tuple[SwapPlan, dict, SwapPlanContext | None]:
     """M1″ 计划计算 + 发射意图记录(sim 决策面共用同一份计划对象)。
 
@@ -699,7 +699,7 @@ def _m1p_plan_and_record(st: GameState, sess) \
     max_units 派生链)——与生产发射/执行两面同函数、同一装配契约,禁
     第二装配。零 rng 消耗、纯读(状态写入只发生在引擎执行转录块)。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_of,
         feed_sim_truth,
     )
@@ -734,7 +734,7 @@ def _m1p_plan_and_record(st: GameState, sess) \
     return plan, record, ctx
 
 
-def m1p_intent_record(st: GameState, sess) -> dict:
+def m1p_intent_record(st: CwWorkFrame, sess) -> dict:
     """M1″ 发射意图记录(兼容入口;计划本体经 ``_m1p_plan_and_record``)。
 
     返回记录 dict 形状 = nonempty/abstain/sell/up/up_names/reasons
@@ -745,8 +745,8 @@ def m1p_intent_record(st: GameState, sess) -> dict:
     return _m1p_plan_and_record(st, sess)[1]
 
 
-def m1p_swap_execute(st: GameState, plan: SwapPlan, *, acts: list[dict],
-                     spend: dict, pool: _Pool) -> tuple[GameState, bool]:
+def m1p_swap_execute(st: CwWorkFrame, plan: SwapPlan, *, acts: list[dict],
+                     spend: dict, pool: _Pool) -> tuple[CwWorkFrame, bool]:
     """M1″ 执行面 sim 转录:计划非空 → 逐件卖 victim(卖出臂)。
 
     T-169 最小执行面(总图设计 R2 §2 sim 边界行):生产链 = mandate 发射
@@ -777,7 +777,7 @@ def m1p_swap_execute(st: GameState, plan: SwapPlan, *, acts: list[dict],
     :param acts: 轮账本动作流(调用方 ``_acts``,就地追加转录行);
     :param spend: 轮经济账(调用方 ``_spend``,sell_income 就地累加);
     :param pool: 有限牌池(卖出回池 ``ret``,与 SellBench 通道同守恒);
-    :returns: (卖出后的新 GameState, 是否有任一 victim 真卖出)。
+    :returns: (卖出后的新 CwWorkFrame, 是否有任一 victim 真卖出)。
     """
     sold_any = False
     new_st = st
@@ -842,7 +842,7 @@ def sim_round_income(plane: int, round_num: int, node: str, gold: int,
                      interest_cap_override: int | None = None) -> dict[str, int]:
     """sim 轮首收入行的注册表值分量(base/interest/streak;T-21 校准落点)。
 
-    三支值整体改调 kernel 单一源 :func:`round_start_income`(BoardState
+    三支值整体改调 kernel 单一源 :func:`round_start_income`(GameState
     设计 §4.2 轮首收入行「两域禁第二份」;对拍锁 = sr-od-test
     test_cw_sim_income_baseline)——原手搓分支即该函数 docstring 点名的
     禁用形态(REWARD_BASE_GOLD_BY_ROUND 按 round 单键直查 + 非奖励轮恒
@@ -852,7 +852,7 @@ def sim_round_income(plane: int, round_num: int, node: str, gold: int,
       奖励轮查表同款;P2r1/P3r1 单键误返 3 hazard 随单一源结构性消灭);
       息帽归一 interest_cap_resolved 链(替换本模块裸 INTEREST_CAP=5
       第二值源,缺省帽派生自 cw_plane_table.GOLD_CAP_INTEREST//10)。
-    - **已接线(T-64,BoardState「sim 修正随之」桶闭合)**:win_reward_mult
+    - **已接线(T-64,GameState「sim 修正随之」桶闭合)**:win_reward_mult
       施于连胜分量含奖励轮(fields.md §4.1「收入修饰」),值 = 唯一调用点
       按持卡聚合 ``aggregate_economy`` 传入(取最大不叠乘,ADR-0623;
       缺省局恒 1.0 逐位零漂移),账本行 sim.win_reward_mult 披露当轮
@@ -998,9 +998,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # ADR-0439 败轮金路径)。案 b 臂进场真值自带带符号值。
         streak_signed = int(_p2_entry.streak or 0)
     else:
-        st = GameState()
+        st = CwWorkFrame()
         st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
-        # bench 槽位表(ADR-0316):GameState() 已 pad 9 空槽,勿重置为
+        # bench 槽位表(ADR-0316):CwWorkFrame() 已 pad 9 空槽,勿重置为
         # 紧缩 [](会让 bench_place 只见 0 槽 → 全部买入失败)
         for _ in range(START_BENCH_COUNT):
             cost = rng.choices(
@@ -1074,12 +1074,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 基线臂·开局环境选卡:3 候选 → decide_invest('env') 裁决。
         # 时点对齐生产 entry 流程(简报→投资环境屏);comp 未定(None)与
         # 生产开局环境屏同态。波 5 喂入反转:决策消费前先直写容器再喂
-        # 容器直读(旧裸传 GameState 帧值在 kernel 新签名下是 AttributeError
+        # 容器直读(旧裸传 CwWorkFrame 帧值在 kernel 新签名下是 AttributeError
         # 破口,cw_events.bs.board.value 读法;修复 = T-98 批首清单⑥)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_inv,
         )
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             feed_sim_truth as _feed_inv,
         )
         _feed_inv(_bs_of_inv(sess), st, at_round=f'p{int(getattr(st, "plane", 1) or 1)}-r0-env')
@@ -1256,10 +1256,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             elif _sink is not None and (_seg_plane, rn) in _sink.pick_slots:
                 # 波 5 喂入反转:消费前直写容器、喂容器直读(同 env 臂,
                 # 修 T-98 批首⑥破口)。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of as _bs_of_inv,
                 )
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     feed_sim_truth as _feed_inv,
                 )
                 _feed_inv(_bs_of_inv(sess), st,
@@ -1317,7 +1317,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 实机后台格数 = 6 + (deploy_cap − level) = 6 + 宝钻数,值域
             # 6-9 封顶 9(board_structure.md 量化公式节;与 T-322 公式封顶
             # 修正 _CAP_DIFF_MAX=3 同值域)。默认 diamond_cap_prob=0 →
-            # back_max 恒 6 与 GameState 缺省逐位同(零漂移);合成口
+            # back_max 恒 6 与 CwWorkFrame 缺省逐位同(零漂移);合成口
             # back_layout 域「缺席不写」口径不受影响(缺省 6 恒非 None)。
             st.back_max = min(6 + _diamonds, 9)
             st.shop = cards_pool.draw_shop(st.level, probs=st.refresh_probs)
@@ -1496,7 +1496,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _tc_launch = getattr(strategy_state_of(sess), 'target_comp', None)
             if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                     and _tc_launch is not None):
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                     feed_sim_truth,
                 )
@@ -1657,19 +1657,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 保留(消费读点 = flow._consume_shop_direction_frame,
                 # 帧本体 = 容器)。
                 sess.shop_frame_class = 'full'
-                # BoardState 记录模型真值直写(波 5 喂入反转;域覆盖规格
+                # GameState 记录模型真值直写(波 5 喂入反转;域覆盖规格
                 # = fields.md:sim 真值帧同步记观察
                 # (evidence 恒 sim:synthesized),bench 槽位保序 = 记录模型
                 # 按实机真值箱占席(sim「无箱实体」只是内部口径约定不进
                 # 记录)。纯记录零决策面:sim 账本/行为逐位不变。best-effort
                 # 不炸引擎(记录层故障不毒化 sim,best-effort 边界在喂入口)。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     bench_is_full as _bs_bench_is_full,
                 )
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of as _bs_of,
                 )
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     feed_sim_truth as _bs_feed,
                 )
                 # 波 5 喂入反转:直写喂入口(旧内联 try/except 合成块收编
@@ -1677,7 +1677,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _bs_feed(_bs_of(sess), st, at_round=f'p{_seg_plane}-r{rn}')
                 # ADR-0488 席满观测键·派生支(迁移批次二;设计 §8.7 as-built
                 # 「席满观测键 ADR-0488 经合成口后 bench_is_full 供给」):
-                # 满栏旗标改经 BoardState 派生(席空数==0,§3.2.5 派生单一
+                # 满栏旗标改经 GameState 派生(席空数==0,§3.2.5 派生单一
                 # 源),不再直接数 st.bench。**语义等值申报**:sim 无箱实体,
                 # 占席谓词(unit/empty)与 bench_occupied 非 None 计数逐位
                 # 等值——零行为漂移。轮内 OR 聚合语义不变(生产 merge 同式:
@@ -1805,10 +1805,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
 
                     # 波 5b 桥退役消点:k 空窗回退/三臂判据已切容器签名,
                     # sim 工作帧真值经喂入口直写容器后读容器(原桥装箱退役)。
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
                         board_state_of as _bs_rej_of,
                     )
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
                         feed_sim_truth as _bs_rej_feed,
                     )
                     _bs_rej_feed(_bs_rej_of(sess), st,
@@ -1826,7 +1826,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _seg_hub = frozenset(_rej_arms.hub_names)
                 # 拒因遥测读点 = 容器(W6 波 4 读者切换;shop_unbought_
                 # reasons 已切容器签名;真值 = 段入口合成口已喂)。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of as _seg_bs_of,
                 )
                 _seg_rejects = shop_unbought_reasons(
@@ -2010,7 +2010,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 删除/序列化 x 字段均以帧牌为准;单一转换 =
                         # kernel shop_cards_to_legacy 同族镜像,禁散落
                         # 第二转换面)。identity 命中优先(同帧同对象)。
-                        from sr_od.application.currency_war.kernel.cw_state import (
+                        from sr_od.application.currency_war.kernel.cw_vocab import (
                             ShopCard as _LegacyCard,
                         )
                         _a_card = a.card
@@ -2638,10 +2638,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # vs 实机 32% 裂口的最大已定量化分量;encounter 亦 rung 键
             # (v11/ADR-0407,depth 键下期望伤害真平故迁 rung);
             # boss 键=净星深(迁移审计 w240(git 历史)/ADR-0404,修升星方向冲突)。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of as _bs_cal_of,
             )
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 feed_sim_truth as _bs_cal_feed,
             )
             # 波 5b 桥退役消点:波1 判据核容器签名——本段判据输入(board/
@@ -2882,10 +2882,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 波 5b 桥退役消点:decide_supply 已切容器签名;分支内局部
                     # 导入(函数前段容器读口为他分支局部名,禁跨分支引用)——
                     # sim 工作帧真值经喂入口直写容器后读容器(原桥装箱退役)。
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
                         board_state_of as _bs_sup_of,
                     )
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
                         feed_sim_truth as _bs_sup_feed,
                     )
                     _bs_sup_feed(_bs_sup_of(sess), st,

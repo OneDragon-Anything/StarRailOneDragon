@@ -26,7 +26,7 @@ def _note_receipt(op: SrOperation, applied: bool, reason: str) -> None:
     写入无条件,无局跳过在 kernel 口。
     """
     try:
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_from_ctx,
             note_action_receipt,
         )

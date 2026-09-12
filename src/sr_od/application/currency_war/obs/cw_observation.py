@@ -1,4 +1,4 @@
-"""货币战争 **备战屏**观测:备战截图 → ``GameState``(``read_game_state``)。
+"""货币战争 **备战屏**观测:备战截图 → ``CwWorkFrame``(``read_game_state``)。
 
 本模块只管**备战屏** reads(gold/hp/level/phase_round/board[+next_tier]/shop/bench_full)+ 组合入口
 ``read_game_state``。简报 reads 在 ``cw_briefing_obs``、结算 reads 在 ``cw_settlement_obs``、
@@ -66,7 +66,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     ledger_node_type,
     rebuild_deployed_from_board,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState, ShopCard
+from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame, ShopCard
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
     identify_character,
@@ -1883,7 +1883,7 @@ def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
 def read_bench_full(ctx: SrContext, screen: MatLike) -> bool | None:
     """~~已退役~~(迁移批次二,设计 §3.2.5):「备战席已满」警告 OCR 不做
     识别——出现太短暂、无法可靠采样(玩家裁定 2026-09-09);席满判定 =
-    BoardState 派生(:func:`kernel.cw_board_state.bench_is_full`,占位
+    GameState 派生(:func:`kernel.cw_game_state.bench_is_full`,占位
     真值一份)。
 
     本函数保留为**墓碑**(发警告防复活):调用即断言失败。唯一在册
@@ -1891,7 +1891,7 @@ def read_bench_full(ctx: SrContext, screen: MatLike) -> bool | None:
     """
     raise RuntimeError(
         'read_bench_full 已退役(设计 §3.2.5/迁移批次二):警告 OCR 通道'
-        '不复活;席满判定用 kernel.cw_board_state.bench_is_full 派生')
+        '不复活;席满判定用 kernel.cw_game_state.bench_is_full 派生')
 
 
 # ===== 组合入口 =====
@@ -2005,8 +2005,8 @@ PHASE_FIELD_SPEC: dict[str, frozenset[str]] = {
 
 
 def read_game_state(ctx: SrContext, screen: MatLike,
-                    phase: str | None = None) -> GameState:
-    """备战屏截图 → GameState(喂 plan;逐字段 gate 单一源 = PHASE_FIELD_SPEC)。
+                    phase: str | None = None) -> CwWorkFrame:
+    """备战屏截图 → CwWorkFrame(喂 plan;逐字段 gate 单一源 = PHASE_FIELD_SPEC)。
 
     :param phase: 规范入口序列阶段键(ADR-0462:先清场、再识别、后动作)——
       ``prep_clean``=P1 干净备战期全量基线(含 hp 真读主路径);``prep_shop_open``
@@ -2035,7 +2035,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 产生的证据行打上假阶段名。实证:fail-open 探针经共享 obs_conflict 账本
         # 写入 282 行 obs_phase=no_such_phase(分诊报告 §1.3)。
         _obs_mod.set_obs_phase(phase)   # 冲突证据行带阶段(噪声判定位,ADR-0462)
-    state = GameState()
+    state = CwWorkFrame()
     # 金读走稳定门(read_gold_settled):开店帧收入计数器可能在跳,单帧读拿
     # 入账前旧值 = `w489_sim_real_gap/` 感知面「开局金系统性偏低」根因环;gold_readable 语义
     # 不变(None=读不到)。
@@ -2051,7 +2051,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # ADR-0282(hp 三层,用户设计):hp 走对账层 reconcile_hp——读不到(shop 开态
     # 血量区空)≠漂移是读失败,保旧沿用 session.last_hp_real(比假 100 安全,低血
     # 先验触发保血方向对);全无真值(开局)= 初值表先验(实证档 A8/108 → 82/62,
-    # readable=False;无实证档 → None 诚实未知;ADR-0559/0491,W823 GameState.hp
+    # readable=False;无实证档 → None 诚实未知;ADR-0559/0491,W823 CwWorkFrame.hp
     # None 化)。state.hp=决策用值,
     # state.hp_readable=是否真读(遥测分字段记,不混「真 100」)。
     # state.hp_trusted=值可信位(ADR-0428 语义细分;ADR-0431 帧龄门收紧,
@@ -2274,8 +2274,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 基于 _merged(徽标裁决后的最终计数)而非 computed 底座——否则徽标纠正
         # 上行时 next_tier 仍按旧计数停在前一档(低估修复,DD-021,见 _board_pairs)。
         # kernel 单一源委托(迁移批次二):同式推导收敛到
-        # cw_board_state.board_next_tier_of(sim 观测键 ADR-0488 同源)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        # cw_game_state.board_next_tier_of(sim 观测键 ADR-0488 同源)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_next_tier_of,
         )
         state.board_next_tier = board_next_tier_of(_merged)
@@ -2286,7 +2286,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # + 买/deploy 门失效。identity/前后排近似(计数门用,实际槽位 CwOpDeploy SIFT 处理)。
     # 不破坏):tracked 漂移时(sell 位置式 / deploy SIFT char_id='?' 未识别)截断多的 / 补 rebuild 无身份差额。
     # active_strategies:session(持久宿主,cw_screen_invest_strategy 写)→ state(_refresh_cap 等消费;
-    # live 修复 2026-08-15,原接线只加 GameState 字段无来源恒空)。
+    # live 修复 2026-08-15,原接线只加 CwWorkFrame 字段无来源恒空)。
     if _match is not None and _match.session is not None:
         state.active_strategies = list(_match.session.active_strategies)
         # `w512_obs_surfaces/`(观测自检设计 §2.9/§5-B6,策略激活态事件级对拍,消费侧):
@@ -2383,9 +2383,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
     # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
     state.refresh_probs = read_refresh_probs(ctx, screen) if _w('refresh_probs') else None
-    # 席满判定 = BoardState 派生(kernel/cw_board_state.bench_is_full,§3.2.5):
+    # 席满判定 = GameState 派生(kernel/cw_game_state.bench_is_full,§3.2.5):
     # 「备战席已满」警告出现太短暂无法可靠采样(玩家裁定 2026-09-09),本帧
-    # 不产席满警告读数、GameState 亦无警告位字段;防复活墓碑 = 测试锁
+    # 不产席满警告读数、CwWorkFrame 亦无警告位字段;防复活墓碑 = 测试锁
     # (调用 read_bench_full 通道即红)。
     if phase is not None:
         from sr_od.application.currency_war.kernel.cw_observe import set_obs_phase
@@ -2396,10 +2396,10 @@ def read_game_state(ctx: SrContext, screen: MatLike,
     #   M72 停机后游戏自己打完了 P2-9;此类需当场交互的采集,现场窗口=倒计时前,分小批+
     #   批间验证落位;②事件 overlay(选择伙伴)盖棋盘时拖拽全部静默失败,批次必须验证;
     # ③VLM 看不清星数(开商店帧误报"银狼3星"),定位 3 星用 read_star 全帧扫描。
-    # BoardState 观察流接线(迁移批次一;字段级规格正本 =
+    # GameState 观察流接线(迁移批次一;字段级规格正本 =
     # docs/develop/sr_od/application/currency_war/game_state/fields.md §2.1/
-    # §8.7):既有读取完成后把本帧真读字段同步记入 BoardState 单例(零新增 OCR,
-    # 消费切换归批次二,GameState 消费者行为零变化)。
+    # §8.7):既有读取完成后把本帧真读字段同步记入 GameState 单例(零新增 OCR,
+    # 消费切换归批次二,CwWorkFrame 消费者行为零变化)。
     _feed_board_state(ctx, state, phase, screen, _spec, had_hp_real=_had_real)
     return state
 
@@ -2418,7 +2418,7 @@ def _phase_screen_context(phase: str | None, plane: int | None,
     - 未注册阶段名(read_game_state fail-open 态)→ None = 不写(画面身份
       未知禁猜,与「禁拿兜底默认值当观察」同义)。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         BATTLE_WAIT_CONTEXT,
         SCREEN_PREP_FRAME,
     )
@@ -2437,19 +2437,19 @@ def _phase_screen_context(phase: str | None, plane: int | None,
     return None, None   # fail-open 未知阶段:身份不猜不写
 
 
-def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
+def _feed_board_state(ctx: SrContext, state: CwWorkFrame, phase: str | None,
                       screen: MatLike, spec: frozenset[str] | None, *,
                       had_hp_real: bool) -> None:
-    """BoardState 观察流(read_game_state 专属;迁移批次一接线)。
+    """GameState 观察流(read_game_state 专属;迁移批次一接线)。
 
     read_game_state 是全部 phase 观察(prep_clean/prep_shop_open/
     battle_or_transit/全量)的唯一漏斗——本口把「本帧真读到」的字段记入
-    BoardState 单例(board_state_of(session)),零新增 OCR:
+    GameState 单例(board_state_of(session)),零新增 OCR:
     - 真读(真值位/非 None)→ observe;失读 → carry(§2.2 失读处置①,
       沿用+来源帧标注);hp 开局先验形态(读不到∧session 无真值)→ prior
       写入(§3.1.6,evidence=prior:adr-0559);
     - 逐字段门 = 本函数的 spec 门(PHASE_FIELD_SPEC 同源):spec 不含的字段
-      本帧根本没读,不进 BoardState(禁拿 GameState 兜底默认值当观察——
+      本帧根本没读,不进 GameState(禁拿 CwWorkFrame 兜底默认值当观察——
       gold 失读 raw=0/hp 失读沿用值都不经此口);
     - hp 写入闸(§3.2.13/§8.8):hp 仅 spec 含 'hp' 且 hp_readable(真读)
       才 observe——商店开态帧该区不显示的假值(如旧 100 兜底)结构性进
@@ -2475,7 +2475,7 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
     决策链;诊断走 [cw!][bs-feed] 日志)。
     """
     try:
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             NodeKey,
             ShopPayload,
@@ -2536,7 +2536,7 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
             bs.observe(bs.xp, tuple(state.xp_progress), sig=_sig_read)
         if _w('hp'):
             # v3.2-G1:判读面质量标记照落 sig.quality(决策可信位
-            # hp_readable/hp_trusted 保留 GameState 决策域读面不经流水;
+            # hp_readable/hp_trusted 保留 CwWorkFrame 决策域读面不经流水;
             # 词表 = real_read/same_node_carried/prior,§3.2.1 起步词表)。
             if state.hp_readable:
                 bs.observe(bs.hp, int(state.hp), sig=ChannelSig(
@@ -2586,8 +2586,8 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
             if state.shop:
                 # 牌转换 = kernel 映射单一源(W5 双 ShopCard 归一);
                 # cost_source 原值透传不折叠(roster_fallback 的「徽章失读」
-                # 证据分级禁丢,词表见 BoardState.ShopCard)
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                # 证据分级禁丢,词表见 GameState.ShopCard)
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     shop_card_to_container,
                 )
                 cards = [shop_card_to_container(c) for c in state.shop]
@@ -2635,7 +2635,7 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
         # 归档 bs_prov 按 evidence 可分。
         # 渠道③签名(§3.2.4 relay 契约):中继走 logic_hook 族,actor =
         # 本汇聚模块,行内身份可对账(R5 W1 起签名必填,ADR-0634)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig as _ChannelSig,
         )
         _relay_sig = _ChannelSig(family='logic_hook', actor='cw_observation',
@@ -2682,7 +2682,7 @@ def _feed_board_state(ctx: SrContext, state: GameState, phase: str | None,
                                 screen=_ctx_name, mode='read'))
         bs.mark_frame_obs('view' if spec is not None else 'full')
     except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化决策链
-        log.warning('[cw!][bs-feed] BoardState 观察流跳过: %s', e)
+        log.warning('[cw!][bs-feed] GameState 观察流跳过: %s', e)
 
 
 # → 无法可靠选 deploy comp 卡 + pref 定位。pixel-diff(buy 前/后 bench 截图 diff)找新占槽 = bought 卡落点,
@@ -2734,7 +2734,7 @@ def runs_result_to_final_type(result: str) -> str | None:
     (非完结值域 = 异常终局家族,与档案装配器 ``_TERMINAL_RESULTS`` 的
    完结判定同界);None 不出现——空串也归 abnormal,调用方无须判空。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         FINAL_ABNORMAL,
         FINAL_LOSS,
         FINAL_STOPPED,
@@ -2751,7 +2751,7 @@ def runs_result_to_final_type(result: str) -> str | None:
 
 @dataclass(frozen=True)
 class MatchFinalDraft:
-    """局终判定产出(段级;喂 :func:`kernel.cw_board_state.write_match_final`
+    """局终判定产出(段级;喂 :func:`kernel.cw_game_state.write_match_final`
     的判据半)。``ts`` = 判定锚行时间戳(回放对账用);``evidence`` = 命中的
     证据通道名(runs_summary/terminal_closure/no_close_evidence——本函数三
     通道;在线判定面 :func:`resolve_final_type` 不经本通道词表)。
@@ -2784,7 +2784,7 @@ def resolve_final_type(*, stop_requested: bool, saw_defeat: bool,
     消费契约:返回值直接作 ``write_match_final(final_type=…)`` 入参;
     None = 调用方跳过收口。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         FINAL_ABNORMAL,
         FINAL_LOSS,
         FINAL_STOPPED,
@@ -2828,7 +2828,7 @@ def detect_match_final(*, run_id: str,
     ``outcome_rows`` = 本段结算观察行(现役结算观察链产物;阶梯 3 的证据源)。
     纯读函数,零副作用。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         FINAL_ABNORMAL,
     )
     if journal_final is not None:

@@ -37,7 +37,7 @@ telemetry.defects.install_exit_hooks)——同窗同显影,禁另起独立清理
 周期(双源漂移禁令)。
 
 本模块只管「行进了内存之后」的事(缓冲/序列化/落盘/装配/寿命);行的组装与
-版本分配在写入口(kernel/cw_board_state ``BoardState._swap``,分配与状态
+版本分配在写入口(kernel/cw_game_state ``GameState._swap``,分配与状态
 变更同临界区)。
 """
 from __future__ import annotations
@@ -398,8 +398,8 @@ def install_state_telemetry(path: Path | str | None = None, *,
     - run_id_provider = run 归属读取函数(必传,生产 = telemetry 现读口;
       kernel 禁依 telemetry——桶依赖矩阵锁,依赖倒置经本参数注入);
       None = 行全视为局外拒写(装配只启半,生产勿用);
-    - 装配 = StateJournal 实例 + 注册为 BoardState 写入口的行外送钩子与
-      run 归属供给槽(:func:`cw_board_state.set_state_journal_sink` /
+    - 装配 = StateJournal 实例 + 注册为 GameState 写入口的行外送钩子与
+      run 归属供给槽(:func:`cw_game_state.set_state_journal_sink` /
       ``set_run_id_provider``)——写路径不因本槽分支,sink 缺席 = 行不落。
     """
     global _ACTIVE_JOURNAL
@@ -427,7 +427,7 @@ def install_state_telemetry(path: Path | str | None = None, *,
                 log.warning('[cw!][state-journal] 段淘汰联动跟随失败(不阻塞装配): %s', e)
     journal = StateJournal(path, flush_every=flush_every)
 
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         set_run_id_provider,
         set_state_journal_sink,
     )
@@ -453,7 +453,7 @@ def reset_state_telemetry() -> None:
     if journal is not None:
         journal.close()
         _ACTIVE_JOURNAL = None
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         set_run_id_provider,
         set_state_journal_sink,
     )

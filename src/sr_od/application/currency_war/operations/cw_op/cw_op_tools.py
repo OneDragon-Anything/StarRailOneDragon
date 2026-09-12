@@ -262,7 +262,7 @@ class CwOpTools(SrOperation):
             from sr_od.application.currency_war.kernel.cw_affix_effects import (
                 apply_tool_execution_write,
             )
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
             )
             report = apply_tool_execution_write(

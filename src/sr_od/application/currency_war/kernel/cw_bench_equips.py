@@ -1,7 +1,7 @@
 """货币战争 bench 装备 tracking 单一源 + 对账断言(契约包 C6 契约 2,冻结决定)。
 
 **裁定背景**:画面机制上未上阵角色不显示装备 icon(机制盲区,非识别
-缺陷)→ **bot tracking 记账(``BenchChar.equips`` / ``GameState.equips`` owned 池)
+缺陷)→ **bot tracking 记账(``BenchChar.equips`` / ``CwWorkFrame.equips`` owned 池)
 是 bench 装备的单一源**,不建 bench 槽详情 reader(``read_bench_slot_detail``
 仅漂移恢复预留接口,草案级不承诺实现)。
 
@@ -23,13 +23,13 @@ from __future__ import annotations
 
 from collections import Counter
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     deployed_slots_of,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 
 
 class EquipsInconsistencyError(RuntimeError):
@@ -131,16 +131,16 @@ def equips_ledger_multiset(bench: list[BenchChar], deployed: list[BenchChar],
     return out
 
 
-def state_equips_multiset(state: BoardState | GameState) -> Counter:
+def state_equips_multiset(state: GameState | CwWorkFrame) -> Counter:
     """账本全景对账快照入口(W6 波3 容器一等形态)。
 
-    - BoardState:席位经波1 读口(bench_slots_of/deployed_slots_of),
+    - GameState:席位经波1 读口(bench_slots_of/deployed_slots_of),
       owned 池 = ``equips.value``;消费面 = 观察对账/容器消费点;
-    - GameState:旧工作帧直读(simulate 守恒对账入口,cw_state 单一源
+    - CwWorkFrame:旧工作帧直读(simulate 守恒对账入口,cw_state 单一源
       调用面,W5/W8 随 simulate 退役)——双形态过渡,退役随调用面,
       禁新消费点再喂旧帧。
     """
-    if isinstance(state, BoardState):
+    if isinstance(state, GameState):
         return equips_ledger_multiset(bench_slots_of(state),
                                       deployed_slots_of(state),
                                       state.equips.value or [])

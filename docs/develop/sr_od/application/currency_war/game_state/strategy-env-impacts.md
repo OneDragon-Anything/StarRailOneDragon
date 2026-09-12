@@ -95,7 +95,7 @@
 |---|---|
 | 官方原文 | `cw_invest_data.py` PlazaAugment id=204101,名=双手狸开键盘！,品质=金:「获得【Gemi狸】，它会帮你进行商店和战斗操作！进入新节点时，它会免费刷新商店2次，自动购买你场上拥有的角色。每买到1个角色，【Gemi狸】还会使我方全体获得1%幸运一击率。」(本条目确认范围=新节点触发的两句,见机制槽) |
 | 机制 | 本条目确认范围=节点进入触发两腿:①免费刷新余额 +2(确定性);②商店刷新后自动购买「场上已有角色」(代买:0 金直接进备战席,不产生购买动作;代买走了哪几张=随机面)。卡文其余句(Gemi狸代操作/每买 1 角+1% 幸运一击率)不在本条确认范围,候逐条确定。注册表 spec=`STRATEGY_EFFECTS`(`free_refresh_on_node_enter=2, auto_buy_owned=True`,cw_investments.py:330) |
-| state 影响 | 确定性半(免费刷余额 +2)=节点推进触发的效果域段逻辑写(计数域 `free_refresh_balance`;效果桥 `grant_effect_node_refresh_balance`,cw_board_state.py:804——现态挂点=cw_loop 备战分支 tick,advance_node 返回 advanced=True 时每节点恰一次,write_logic 容器正本 §3.3.6;目标态=派生管线效果域段,迁移三面挂 M3 差异清单、批位候效果域讨论——正本 §3.1.3/§3.7.2-M3,v3.8-中-1);随机半(代买走了哪几张)=不逻辑写,下一轮备战观察 observe() 自然拍到,reconcile(对账)核销——预期形状:商店可能少牌+备战席可能多牌,非异常 |
+| state 影响 | 确定性半(免费刷余额 +2)=节点推进触发的效果域段逻辑写(计数域 `free_refresh_balance`;效果桥 `grant_effect_node_refresh_balance`,cw_game_state.py:804——现态挂点=cw_loop 备战分支 tick,advance_node 返回 advanced=True 时每节点恰一次,write_logic 容器正本 §3.3.6;目标态=派生管线效果域段,迁移三面挂 M3 差异清单、批位候效果域讨论——正本 §3.1.3/§3.7.2-M3,v3.8-中-1);随机半(代买走了哪几张)=不逻辑写,下一轮备战观察 observe() 自然拍到,reconcile(对账)核销——预期形状:商店可能少牌+备战席可能多牌,非异常 |
 | 策略层消费 | track+predict(=注册表 duties 声明):predict=商店/备战席双对账必须预知(没预知会把消失牌判丢失、多出牌判异常);track=每节点白嫖 2 刷改变节点初刷新经济(免费刷不耗金,经济模型入参) |
 
 ### 采购专员·金/彩(2026-09-10 用户裁决:计数含免费刷)

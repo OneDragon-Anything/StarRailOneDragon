@@ -2,7 +2,7 @@
 
 SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店经济决策(买/卖/升/刷/事务)
 ——本模块是 mandate_v1 商店线的决策本体,黑板唯一输入 =
-``session.shop_state_frame``(GameState,写者=商店入口观察段/单动作投影/
+``session.shop_state_frame``(CwWorkFrame,写者=商店入口观察段/单动作投影/
 sim 引擎)。
 
 商店单动作形态(ADR-0517;前身份 = 波批 decide_shop_wave,迁移批改型):
@@ -139,8 +139,8 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel import cw_intention
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     deployed_slots_of,
     gold_of,
@@ -192,7 +192,7 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     same_star_count,
     star_base_copies,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CloseShop,
     DeployMove,
@@ -250,7 +250,7 @@ if TYPE_CHECKING:
         Comp,
     )
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-    from sr_od.application.currency_war.kernel.cw_state import Action
+    from sr_od.application.currency_war.kernel.cw_vocab import Action
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
@@ -340,7 +340,7 @@ def _r1_ledger_terms(buy_members: tuple[str, ...],
 
 def _r2_card_reserve(k_members: tuple[str, ...],
                      bench: list, deployed: list,
-                     bs: BoardState,
+                     bs: GameState,
                      level: int | None = None) -> int:
     """R2 预算门 Σ预留卡价 ρ(单一源已提升至 criteria/refresh.
     r2_card_reserve;P71 闸批别名重导出——本名保留使既有测试面
@@ -382,7 +382,7 @@ def _merge_pair_names(bench: list[BenchChar],
 def p92_seat_recoverable(session: StrategySession,
                          bench: list[BenchChar],
                          k_members: tuple[str, ...],
-                         bs: BoardState, *,
+                         bs: GameState, *,
                          cap_hold: int | None,
                          current_round: int,
                          defer_names: frozenset[str] | set[str],
@@ -423,7 +423,7 @@ def p92_seat_recoverable(session: StrategySession,
     return bool(cands)
 
 
-def _frame_search_windows(session: StrategySession, bs: BoardState,
+def _frame_search_windows(session: StrategySession, bs: GameState,
                           registry, counters: dict) -> tuple[frozenset[int],
                                                             frozenset[int]]:
     """帧级搜索窗口(T1;设计 13_buy_face_design §2.3/§3.2)。
@@ -446,7 +446,7 @@ def _frame_search_windows(session: StrategySession, bs: BoardState,
             card_search_window(level, omega))
 
 
-def shop_unbought_reasons(bs: BoardState,
+def shop_unbought_reasons(bs: GameState,
                           comp: Comp | None,
                           k_members: tuple[str, ...],
                           actions: list[Action],
@@ -753,7 +753,7 @@ def check_settlement_line(gold: int, cost: int, g_star: int) -> tuple[bool, str]
     return True, ''
 
 
-def decide_shop_action(bs: BoardState, session: StrategySession,
+def decide_shop_action(bs: GameState, session: StrategySession,
                        config: object, *, registry=None) -> Action:
     """商店单动作决策(ADR-0517 决策 1/2;前身份 = ``decide_shop_wave`` 波批)。
 
@@ -2012,7 +2012,7 @@ def decide_shop_action(bs: BoardState, session: StrategySession,
                 bs, session):
             # [40]② 血闸(ADR-0578):支付能力检查(买不买得起下一级),与
             # level_spend_blocked 串联;拒因独立分键。金本位 gate 恒 True 直通。
-            # kernel 闸波 2 已切容器签名(hp 经政策层读口),GameState 帧经
+            # kernel 闸波 2 已切容器签名(hp 经政策层读口),CwWorkFrame 帧经
             # 过渡桥装箱(桥视图 hp source 失真语义见该桥 docstring)。
             _count('blood_xp_gate_defer')
         elif contracts.ensure_contract(

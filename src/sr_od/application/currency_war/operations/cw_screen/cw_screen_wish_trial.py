@@ -21,7 +21,7 @@ handle 顶部装配点分流(两端口完整在场 → 五段生命周期新路�
 chosen 行;chosen_wish = 选择 handler 单次逻辑写入豁免 §2.2/§6.5-6,留守
 共享体出口验真通过分支)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无对应
 画面段,事件浮层族即时落定),等价判据主承重 = 实机在册行为锁
-(test_cw_board_state_consume chosen_wish 接线锁 + 本批锁
+(test_cw_game_state_consume chosen_wish 接线锁 + 本批锁
 test_cw_obs_arch_event_screens_step3)。
 """
 import time
@@ -130,8 +130,8 @@ class CwScreenWishTrial(CwScreenOpBase):
         if _match is not None:
             try:
                 objs = self._read_objectives(screen)
-                # 决策输入消费切换(迁移批次二):BoardState 视图替 last_state 直读。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                # 决策输入消费切换(迁移批次二):GameState 视图替 last_state 直读。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                 )
                 _st = board_state_of(_match.session)
@@ -176,7 +176,7 @@ class CwScreenWishTrial(CwScreenOpBase):
         if not _text:
             return
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
                 board_state_of,
             )

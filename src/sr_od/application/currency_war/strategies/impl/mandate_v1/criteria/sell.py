@@ -33,8 +33,8 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt impo
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
     )
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
@@ -42,13 +42,13 @@ if TYPE_CHECKING:
 def line_switch_sell(old_line_members: tuple[str, ...],
                      new_line_members: tuple[str, ...],
                      bench: list[BenchChar], deployed: list[BenchChar],
-                     bs: BoardState, *, k_switched: bool,
+                     bs: GameState, *, k_switched: bool,
                      counters: dict | None = None,
                      dedup_names: set[str] | None = None,
                      ) -> tuple[list[int], str]:
     """换线塌缩出口(§2.2 主比较式的发射位;k_switched=K 已按 K′ 更新)。
 
-    载体 = 容器 bs(prep 链容器化段 2 起 bs 单形态;GameState 过渡支
+    载体 = 容器 bs(prep 链容器化段 2 起 bs 单形态;CwWorkFrame 过渡支
     随段 2 帧兼容支删除消亡)。
 
     返回 (拟卖 bench slot 列表, 归因键)。发射前置:
@@ -88,7 +88,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧不塌缩清算,孤儿件留 bench 下帧再评(损失 = 清算延迟,非自旋)。
     # deployed 读 = 波 1 席位读口单一源。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         deployed_slots_of,
     )
     _deployed = deployed_slots_of(bs)
@@ -112,7 +112,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
 def sell_for_interest(gold: int, bench: list[BenchChar],
                       cap_resolved: int,
                       k_members: tuple[str, ...],
-                      state: BoardState,
+                      state: GameState,
                       *,
                       prefer_names: tuple[str, ...] = (),
                       counters: dict | None = None,
@@ -187,7 +187,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
     # deployed 读 = 波 1 席位读口单一源(守卫与资格循环两处共用同一次
     # 解析,禁双形态各读半份)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         deployed_slots_of,
     )
     _deployed = deployed_slots_of(state)
@@ -257,7 +257,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
 
 def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          k_members: tuple[str, ...],
-                         state: BoardState,
+                         state: GameState,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
                          defer_names: frozenset[str] | set[str] = frozenset(),
@@ -267,7 +267,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
     载体 = 容器 bs 单形态(prep 链容器化段 2;prep 位/商店线消费恒直传
-    bs,GameState 过渡支随段 2 帧兼容支删除消亡)。
+    bs,CwWorkFrame 过渡支随段 2 帧兼容支删除消亡)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
     筹资面);变现对象 = 凑息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台
@@ -298,7 +298,7 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     # 板空帧筹资卖出同弱劣拒帧(收益侧=义务在 bench 域,守卫不评收益
     # 只钉卖出腿;恢复正路 = 部署与买面,不在卖出通道)。
     # deployed 读 = 波 1 席位读口单一源。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         deployed_slots_of,
     )
     _deployed = deployed_slots_of(state)

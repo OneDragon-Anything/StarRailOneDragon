@@ -37,7 +37,7 @@ class ContractCtx:
       空/None=目标线未成型)。
     - gold:决策帧金(消费位口径——商店波为支出后投影金)。
     - reserve:S 预留值(消费位现读,如 b_target 组装结果)。
-    - deploy_cap:等级驱动可上阵 cap(GameState.max_units() 口径;
+    - deploy_cap:等级驱动可上阵 cap(CwWorkFrame.max_units() 口径;
       None=消费位退固定槽表常数,即 arm1 域错位形态)。
     - ev_slot:EV 输入槽位现读的**原始对象**(FIX_REVIEW_20260903
       防线硬化:由消费位硬编码声明位 ``ev_input_wired=True`` 改造)——
@@ -136,8 +136,8 @@ def _arm1_cap_level_driven(ctx: ContractCtx) -> bool:
     """先例③前提:arm1 板满口径=等级驱动 cap(禁固定常数)。
 
     ZERO_REFRESH_DIAG §4.2 实证:cap 口径=当前可上阵数
-    (GameState.max_units():level+宝钻、封顶 = 4+back_max 动态真值
-    〔BoardState.back_layout,值域 10-13〕);旧条件拿固定槽表
+    (CwWorkFrame.max_units():level+宝钻、封顶 = 4+back_max 动态真值
+    〔GameState.back_layout,值域 10-13〕);旧条件拿固定槽表
     常数 10 当阈值 ⇒ deployed_count 构造性不可达 ⇒ 触发面恒空。
     前提=消费位传入了现读 cap(ctx.deploy_cap 非 None;
     ``deploy_cap=None`` 走固定常数兜底即违例)。

@@ -92,7 +92,7 @@ def launch_spend_cost(action) -> int:
     - 其余(卖出/部署事务族):0——卖出回金不减仓,部署事务金效应
       预算闸不辖(闸辖「花」,不辖「换手」)。
     """
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         BuyCard,
         LevelUp,
         RefreshShop,

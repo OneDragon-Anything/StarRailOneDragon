@@ -106,7 +106,7 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
         SELL_BENCH_ORPHAN_REASONS,
     )
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         SELL_BENCH_CONVERT_REASONS,
     )
     out: list[dict] = []

@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     plane_of,
     round_num_of,
 )
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     )
 
 
-def register_round_sold(names, bs: BoardState,
+def register_round_sold(names, bs: GameState,
                         session: StrategySession) -> None:
     """卖出件入同轮已卖集(r408 对称臂;带轮键自校验,防跨轮误写)。
 

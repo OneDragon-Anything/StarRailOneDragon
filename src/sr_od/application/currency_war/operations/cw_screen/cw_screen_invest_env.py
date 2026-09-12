@@ -22,6 +22,7 @@ cw_game_ports 两端口完整在场 → 五段生命周期新路径;缺省 None 
 + 候选读取(实机适配器①封口 = ``_observe_frame``,两路径共享同一读链)+
 T-162 刷新计数 log 观察通道(非登记件,ADR-0600 §2/§4 环境侧刷新执行不
 启用申报);decide+act 内聚 ``_decide_and_act``(选卡时点写 ``active_env``
+→ portal 效果登记(active_env 写入同址,invest-env design §2.4,best-effort)
 → 点卡 → 台账变异窗 → 确认 → 台账写点②,两路径共享零转录);reconcile/
 on_outcome = 空申报(本屏无独立对账面、无登记件)。本屏 sim 腿 = 不适用
 (F11 例外清单:有 sim 事实来源但 sim 端口适配器未建,归 sim 接线批),
@@ -156,7 +157,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
         """T-162 观察写入(ADR-0600 §3.4,G5;非执行链:零点击、零决策行为
         ——环境屏刷新执行不启用,推导见 _decide_and_act 头退役注)。计数读
         数落 log 遥测面,供 V5/V6 实证(无布局计数形态/授予口径/接管局重入
-        帧)与 BoardState §2.5 写入端(类尚未落码,落地时以本处为写入端)。
+        帧)与 GameState §2.5 写入端(类尚未落码,落地时以本处为写入端)。
         两路径共用(旧 handle 内联位平移)。"""
         _env_counts = read_invest_refresh_counts(self.ctx, screen, 'env')
         log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(T-162 观察通道,V5/V6)')
@@ -190,7 +191,8 @@ class CwScreenInvestEnv(CwScreenOpBase):
         """决策+动作内聚体(五段 decide+act 两路径共享零转录;旧 handle
         :120-201 逐位平移):decide_event/decide_invest 决策(空候选 fallback
         链)→ ``active_env`` 选卡时点写(点卡**前**,ADR-0598 投资两屏各自
-        实证语义,禁与策略屏重入裁决出口 append 统一)→ 点最优卡底 → 台账
+        实证语义,禁与策略屏重入裁决出口 append 统一)→ portal 效果登记
+        (active_env 写入同址,best-effort)→ 点最优卡底 → 台账
         变异窗 → 确认 → 台账写点②。"""
         # 事件面刷新执行不启用(ADR-0600 §2/§4,非「机制上不可能」):环境侧顶级类
         # 结构性不可判(InvestmentEnv 无 economy 字段,EnvEconomyEffect 缺口在册
@@ -206,23 +208,23 @@ class CwScreenInvestEnv(CwScreenOpBase):
         for _n in names:
             if not is_known_env(_n):
                 log.warning(f'[cw-env] 投资环境名不在注册表(数据缺口): {_n!r} → 该项 env_fit 走中性 fallback')
-        # board 不可读 → 传空 GameState(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
+        # board 不可读 → 传空 CwWorkFrame(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match
         if names:
             if match is not None:
                 # ADR-0144:真状态替空 stub ——环境屏 overlay 下 board 不可读,
                 # 但 HP 分档/持有策略该用真值。决策输入消费切换(迁移批次二):
-                # 值源 = BoardState 视图(kernel/cw_bs_view
+                # 值源 = GameState 视图(kernel/cw_bs_view
                 # .strategy_input_state),原 last_state 直读退役。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                 )
                 pick = match.strategy.decide_invest('env', names, board_state_of(match.session), match.session, config)
             else:
                 # 防御:无 match(局外独立跑)——防御空容器直喂(容器签名;
                 # 经验分退役后 decide_event 不读 hp/品质惩罚,空容器安全)。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
-                    BoardState as _BS_Empty,
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    GameState as _BS_Empty,
                 )
                 pick = decide_event(names, config, _BS_Empty(schema_version=1))
         else:
@@ -238,10 +240,10 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # 原 bug:chosen 只点不存 → state.active_env 恒空 → env_fit 全 0.5 → T0 env 绑定静默失效。
         if match is not None and chosen != '?':
             match.session.active_env = chosen
-            # BoardState 写端(迁移批次二,§3.4.3/§4 投资选择行):已选投资
+            # GameState 写端(迁移批次二,§3.4.3/§4 投资选择行):已选投资
             # 环境=本屏写入、选完即关整局保留;单次逻辑写入(§3.4 申报豁免:
             # 选择落地无定型帧可核对,后果走观察覆盖)。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
                 board_state_of,
             )
@@ -250,6 +252,23 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 produced_by='CwScreenInvestEnv',
                 sig=ChannelSig(family='logic_action',
                                actor='CwScreenInvestEnv', mode='compute'))
+            # portal 登记端(invest-env 迭代 design.md §2.4):active_env 写入
+            # 同址登记环境效果(source='portal');结构化条目 = 经济环境
+            # (cw_effect_inventory.ENV_PORTAL_EFFECTS),其余已知名 UnitBuffRef
+            # 占位(效果原文存档,G 组 notes 附 GiftGrant 摘要)。best-effort:
+            # 失败不阻塞确认链(effect-domain.md §7.3 登记面纪律,词缀源挂点
+            # 同式);幂等在登记体内。本登记零决策消费(经济判据接登记数据
+            # 归后续批,design.md §1.3-5)。
+            try:
+                from sr_od.application.currency_war.kernel.cw_effect_inventory import (
+                    register_portal_from_env,
+                )
+                _portal = register_portal_from_env(match.session, chosen)
+                if _portal is not None:
+                    log.info(f'[cw-env] portal 效果账本登记: {_portal.name}'
+                             f'({_portal.category.value})')
+            except Exception as e:   # noqa: BLE001  登记面失败不阻塞
+                log.warning(f'[cw-env] portal 效果账本登记失败(不阻塞): {e}')
         # (ADR-0132 候选卡面采集行已随 invest_cards 流写入端退役删除——
         #  删除波 1;效果原文回流断供为裁定的接受后果,收编归宿 =
         #  strategy_offer 画面 payload 域,候其落地批接线。)

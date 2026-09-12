@@ -54,8 +54,8 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
     refresh_prob,
 )
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     bench_slots_of,
     deployed_slots_of,
     level_of,
@@ -114,7 +114,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
-    from sr_od.application.currency_war.kernel.cw_state import GameState
+    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
@@ -342,7 +342,7 @@ def intention_core(comp: Comp) -> str:
     return comp.core_chars[0] if comp.core_chars else ''
 
 
-def _visible_chars(bs: BoardState) -> set[str]:
+def _visible_chars(bs: GameState) -> set[str]:
     """当前可见角色规范名:shop 在店 + bench/deployed 到手(识别层已归一)。"""
     names: set[str] = set()
     _shop = bs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
@@ -354,7 +354,7 @@ def _visible_chars(bs: BoardState) -> set[str]:
             names.add(bc.char_id)
     return names
 
-def _bond_counts(bs: BoardState) -> dict[str, int]:
+def _bond_counts(bs: GameState) -> dict[str, int]:
     """板上 + bench 的羁绊计数(board 已含 deployed 聚合;bench 逐件加)。"""
     counts: dict[str, int] = dict(bs.board.value or {})
     for bc in bench_slots_of(bs):
@@ -363,7 +363,7 @@ def _bond_counts(bs: BoardState) -> dict[str, int]:
     return counts
 
 
-def plane_remaining_nodes(bs: BoardState, session=None) -> int:
+def plane_remaining_nodes(bs: GameState, session=None) -> int:
     """位面内剩余节点数(含当前轮;冻结超限的对照量)。
 
     ADR-0366:位面轮数按 ``nodes_of_plane(session)`` 本位面真值(P2=7;
@@ -376,7 +376,7 @@ def plane_remaining_nodes(bs: BoardState, session=None) -> int:
     return n - r + 1
 
 
-def total_remaining_nodes(bs: BoardState) -> int:
+def total_remaining_nodes(bs: GameState) -> int:
     """全局剩余节点数(可达性对照量;封顶 3 位面)。"""
     p = min(max(1, plane_of(bs)), 3)
     r = min(max(1, round_num_of(bs)), NODES_PER_PLANE)
@@ -404,7 +404,7 @@ def encounter_window_rounds(char_name: str, level: int) -> float:
     return 1.0 / q if q > 0 else float('inf')
 
 
-def _core_reachable(comp: Comp, bs: BoardState,
+def _core_reachable(comp: Comp, bs: GameState,
                      visible: set[str]) -> bool:
     """强制锁线对象限定:核心已在手 或 再遇窗口期望 ≤ 剩余节点数(点0〔修N4〕)。"""
     core = intention_core(comp)
@@ -415,7 +415,7 @@ def _core_reachable(comp: Comp, bs: BoardState,
     return encounter_window_rounds(core, level_of(bs)) <= total_remaining_nodes(bs)
 
 
-def _direct_line_qualified(bs: BoardState, comp_name: str) -> bool:
+def _direct_line_qualified(bs: GameState, comp_name: str) -> bool:
     """直通终局线资格判定(ADR-0338)。
 
     资格单一源 = 亲和表反查(**派生,不手写名单**):
@@ -433,7 +433,7 @@ def _direct_line_qualified(bs: BoardState, comp_name: str) -> bool:
     return comp_name in augment_env_affinity(bs.active_env.value or '')
 
 
-def _line_env_qualified(bs: BoardState, comp_name: str) -> bool | None:
+def _line_env_qualified(bs: GameState, comp_name: str) -> bool | None:
     """累积型线强环境判据(ADR-0461)。
 
     语义出处:「全局累积型角色越早越好,但需特定环境才强,**无环境不选**」
@@ -505,7 +505,7 @@ def _p1_transition_eligible(comp: Comp) -> bool:
     return bool(tier_keys & _ENGINE_BOND_KEYS)
 
 
-def _p1_gate_blocks(bs: BoardState, comp: Comp) -> bool:
+def _p1_gate_blocks(bs: GameState, comp: Comp) -> bool:
     """P1 终局专属线锁线证据门是否拦下该线(ADR-0341)。
 
     拦截 = 门开 ∧ plane==1 ∧ 非过渡线 ∧ 无①类资格(策略/环境亲和,
@@ -569,7 +569,7 @@ transition_combos.md:27 与注册表计数),非旧手定权重复活(重推定�
 # 拆过渡体系(S2 挤出 19/20 mal 局)=ADR-0357 主灶在①通道的残留。
 
 
-def _owned_chars(bs: BoardState) -> set[str]:
+def _owned_chars(bs: GameState) -> set[str]:
     """已到手角色名(bench+deployed;不含 shop 可见——[23] 锁定由
     贯穿件=到手,店里出现过不构成方向承诺)。"""
     return {bc.char_id for bc in [*bench_slots_of(bs), *deployed_slots_of(bs)]
@@ -632,7 +632,7 @@ def _seele_system_support(owned: set[str]) -> float:
     return min(1.0, max(c_quantum / 2, c_belobog / 2))
 
 
-def _p1_system_support(bs: BoardState) -> dict[str, float]:
+def _p1_system_support(bs: GameState) -> dict[str, float]:
     """四过渡体系的手上资产支持度(bench+deployed;注册表阵营∪流派口径,
     与 ``cw_battle_calib._engines_count`` 同式——多阵营件(桑博=贝+DOT)各系并计)。
 
@@ -663,7 +663,7 @@ def _p1_system_support(bs: BoardState) -> dict[str, float]:
     return sup
 
 
-def p1_gap_window(bs: BoardState) -> bool:
+def p1_gap_window(bs: GameState) -> bool:
     """P1 空窗期判定(只读):bench∪deployed 四体系最高支持度 <
     ``P1_PAIR_LOCK_MIN_SUPPORT``。
 
@@ -707,7 +707,7 @@ def _p1_fuel_excluded(bc: object, incumbent_members: frozenset[str]) -> bool:
     return cid not in incumbent_members
 
 
-def _p1_system_ordering(bs: BoardState,
+def _p1_system_ordering(bs: GameState,
                         incumbent: tuple[str, ...],
                         ) -> dict[str, float]:
     """四过渡体系的排序维支持度(ADR-0616 §2.3 命题 2 新定义;合成中性
@@ -762,7 +762,7 @@ def _p1_system_ordering(bs: BoardState,
     return out
 
 
-def _p1_pair_eased(bs: BoardState,
+def _p1_pair_eased(bs: GameState,
                    incumbent: tuple[str, ...] = (),
                    gate_first: bool = True,
                    ) -> tuple[tuple[str, ...], tuple[str, ...] | None]:
@@ -822,7 +822,7 @@ def _p1_pair_eased(bs: BoardState,
 
 
 def _p1_pair_gate(candidate: tuple[str, ...],
-                  bs: BoardState,
+                  bs: GameState,
                   registry: DecisionV2Registry | None = None,
                   session: StrategySession | None = None,
                   ) -> tuple[bool, float, int]:
@@ -840,7 +840,7 @@ def _p1_pair_gate(candidate: tuple[str, ...],
     return (not over), e_alt, r_rem
 
 
-def _derive_p1_pair(bs: BoardState,
+def _derive_p1_pair(bs: GameState,
                     incumbent: tuple[str, ...] = (),
                     registry: DecisionV2Registry | None = None,
                     session: StrategySession | None = None,
@@ -877,7 +877,7 @@ def _derive_p1_pair(bs: BoardState,
 
 
 def _p1_pair_overwindow(pair: tuple[str, ...],
-                        bs: BoardState,
+                        bs: GameState,
                         session: StrategySession | None = None,
                         registry: DecisionV2Registry | None = None,
                         ) -> tuple[bool, float, int]:
@@ -921,7 +921,7 @@ def _p1_pair_overwindow(pair: tuple[str, ...],
 PAIR_SUPPLY_CONFIRM_ROUNDS: int = 2
 
 
-def _update_pair_drought(bs: BoardState, ist: IntentionState,
+def _update_pair_drought(bs: GameState, ist: IntentionState,
                          visible: set[str]) -> None:
     """R3 断供供给计数器(每 game-round 恰一次,由 update_intention 驱动)。
 
@@ -960,7 +960,7 @@ def members_in_shop(sys: str, shop_names: set[str]) -> bool:
     return bool(_pair_members((sys,)) & shop_names)
 
 
-def p1_early_pair(bs: BoardState,
+def p1_early_pair(bs: GameState,
                   ist: IntentionState | None) -> tuple[str, ...]:
     """P1 早期新件买入门的配方对读口(ADR-0372;只读,不落字段)。
 
@@ -1009,7 +1009,7 @@ def p1_early_pair(bs: BoardState,
     return pair
 
 
-def p1_early_pair_members(bs: BoardState,
+def p1_early_pair_members(bs: GameState,
                           ist: IntentionState | None) -> frozenset[str]:
     """P1 锁线过渡带的囤货成员集(只读;FIX_REVIEW_20260903 R3① 单一源)。
 
@@ -1147,7 +1147,7 @@ def pair_target_comp(pair: tuple[str, ...]) -> Comp | None:
     )
 
 
-def detect_signals(bs: BoardState) -> list[IntentionSignal]:
+def detect_signals(bs: GameState) -> list[IntentionSignal]:
     """信号分层判定(①策略驱动 > ②类专属羁绊 > ③核心卡 > ④资源)。
 
     返回分层信号列表(未排序;消费方按 layer 升序 / weight 降序取最优);
@@ -1215,7 +1215,7 @@ def detect_signals(bs: BoardState) -> list[IntentionSignal]:
     return out
 
 
-def _asset_thickness(comp: Comp, bs: BoardState) -> float:
+def _asset_thickness(comp: Comp, bs: GameState) -> float:
     """候选线资产厚度(骨架件退役后口径):
 
     板上+bench 中该线终局件数(副本计星级当量:每副本按其 star 计)。
@@ -1265,7 +1265,7 @@ def core_miss_n_required(core: str, level: int, eps: float) -> int:
     return max(1, math.ceil(math.log(eps) / math.log(1.0 - q)))
 
 
-def p2_supply_horizon(bs: BoardState,
+def p2_supply_horizon(bs: GameState,
                       session: StrategySession | None = None,
                       registry: DecisionV2Registry | None = None) -> int:
     """P2 有效供给视界 H = min(位面剩余节点, ⌈hp / vd_p2_loss⌉)。
@@ -1295,7 +1295,7 @@ def p2_supply_horizon(bs: BoardState,
     return min(plane_left, blood_rounds)
 
 
-def line_completion_feasibility(bs: BoardState,
+def line_completion_feasibility(bs: GameState,
                                 comp: Comp | None,
                                 session: StrategySession | None = None,
                                 registry: DecisionV2Registry | None = None,
@@ -1349,7 +1349,7 @@ def line_completion_feasibility(bs: BoardState,
     return g
 
 
-def _best_supply_feasible_alt(bs: BoardState,
+def _best_supply_feasible_alt(bs: GameState,
                               ist: IntentionState,
                               session: StrategySession | None,
                               reg: DecisionV2Registry,
@@ -1381,7 +1381,7 @@ def _best_supply_feasible_alt(bs: BoardState,
     return best
 
 
-def _p2_signal_supply_ok(bs: BoardState,
+def _p2_signal_supply_ok(bs: GameState,
                          sig: IntentionSignal,
                          session: StrategySession | None,
                          reg: DecisionV2Registry,
@@ -1398,7 +1398,7 @@ def _p2_signal_supply_ok(bs: BoardState,
         bs, comp, session, reg, visible) > reg.revoke_miss_tolerance_eps
 
 
-def _revoke_alt_evidence(bs: BoardState, visible: set[str],
+def _revoke_alt_evidence(bs: GameState, visible: set[str],
                          locked_comp: str, evicted: set[str],
                          a_min: float) -> tuple[str, float] | None:
     """证据组 B:I_evidence = ∃ 异线 comp:``_core_reachable`` ∧
@@ -1457,7 +1457,7 @@ LOCK_PATH_OBS_KEY_PREFIXES: tuple[str, ...] = (
 )
 
 
-def _near_death_band(bs: BoardState,
+def _near_death_band(bs: GameState,
                      registry: DecisionV2Registry | None = None,
                      session: StrategySession | None = None) -> bool:
     """濒死带观测判定(零新参数):0 < hp ≤ ``vd_p2_loss``,即血预算
@@ -1487,7 +1487,7 @@ def _bump_obs(session: StrategySession | None, key: str) -> None:
     st.cw4_counters[key] = st.cw4_counters.get(key, 0) + 1
 
 
-def promote_candidates(bs: BoardState,
+def promote_candidates(bs: GameState,
                        ist: IntentionState,
                        session: StrategySession | None = None,
                        registry: DecisionV2Registry | None = None,
@@ -1527,7 +1527,7 @@ def promote_candidates(bs: BoardState,
     return out
 
 
-def _lock(ist: IntentionState, bs: BoardState, sig: IntentionSignal,
+def _lock(ist: IntentionState, bs: GameState, sig: IntentionSignal,
           forced: bool = False) -> None:
     ist.phase = 'locked'
     ist.locked_comp = sig.comp_name
@@ -1556,11 +1556,11 @@ def _lock(ist: IntentionState, bs: BoardState, sig: IntentionSignal,
     ist.last_event = ('forced_lock:' if forced else 'lock:') + sig.comp_name
 
 
-def update_intention(bs: BoardState, ist: IntentionState,
+def update_intention(bs: GameState, ist: IntentionState,
                      session: StrategySession | None = None,
                      registry: DecisionV2Registry | None = None
                      ) -> IntentionState:
-    """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 GameState)。
+    """每回合驱动锁线/撤销状态机(就地改 ist 并返回;不碰 CwWorkFrame)。
 
     序:降格终局短路 → 锁定态撤销检查(冻结 → miss-N → 高层信号)
     → 未锁/弱意向解析(新信号锁线,否则⑤兜底方向)→ P3 入口强制锁线。
@@ -2096,7 +2096,7 @@ _NO_TARGET_HUB_MIN_COVER: int = 2
 随命题文本声明,禁按经验常数理解或调整。"""
 
 
-def structural_candidate_lines(bs: BoardState,
+def structural_candidate_lines(bs: GameState,
                                ist: IntentionState) -> frozenset[str]:
     """𝕃(f) 结构候选线集(证明批 §3.2 定义):
 
@@ -2112,7 +2112,7 @@ def structural_candidate_lines(bs: BoardState,
         and plane_of(bs) not in (c.weak_planes or ()))
 
 
-def hub_covered_lines(bs: BoardState, ist: IntentionState,
+def hub_covered_lines(bs: GameState, ist: IntentionState,
                       char_name: str) -> frozenset[str]:
     """枢纽 h 的覆盖集 C_h(f)(char_routes 复用网络口径,core∪shared 计入)
     与结构候选线集的交集;乙臂资格核与同帧仲裁第一层的共享输入。"""
@@ -2143,7 +2143,7 @@ def char_declaration_index(name: str) -> int:
     return _CHAR_DECL_INDEX.get(name, len(_CHAR_DECL_INDEX))
 
 
-def hub_option_names(bs: BoardState, ist: IntentionState) -> tuple[str, ...]:
+def hub_option_names(bs: GameState, ist: IntentionState) -> tuple[str, ...]:
     """乙臂资格核(P86 证明批 §3.2 终裁形态;定理 B5):
 
     HUB(h) ⟺ cov(h) ≥ 2 ∧ h ∉ CORE_SINGLE_CARD_REGISTRY——覆盖数按
@@ -2174,7 +2174,7 @@ def hub_option_names(bs: BoardState, ist: IntentionState) -> tuple[str, ...]:
     return tuple(out)
 
 
-def arm_a_live_direction(bs: BoardState, ist: IntentionState,
+def arm_a_live_direction(bs: GameState, ist: IntentionState,
                          session: StrategySession | None = None,
                          registry: DecisionV2Registry | None = None,
                          visible: set[str] | None = None) -> str:
@@ -2209,7 +2209,7 @@ def arm_a_live_direction(bs: BoardState, ist: IntentionState,
     )[0].name
 
 
-def arm_a_corner_names(bs: BoardState, ist: IntentionState,
+def arm_a_corner_names(bs: GameState, ist: IntentionState,
                        session: StrategySession | None = None,
                        registry: DecisionV2Registry | None = None,
                        visible: set[str] | None = None) -> tuple[str, ...]:
@@ -2255,7 +2255,7 @@ class NoTargetArms:
     corner_names: tuple[str, ...] = ()
 
 
-def no_target_arms(bs: BoardState, ist: IntentionState,
+def no_target_arms(bs: GameState, ist: IntentionState,
                    session: StrategySession | None = None,
                    registry: DecisionV2Registry | None = None,
                    visible: set[str] | None = None) -> NoTargetArms:
@@ -2277,7 +2277,7 @@ def no_target_arms(bs: BoardState, ist: IntentionState,
                                            visible))
 
 
-def hoard_target_set(bs: BoardState, ist: IntentionState,
+def hoard_target_set(bs: GameState, ist: IntentionState,
                      session: StrategySession | None = None,
                      registry: DecisionV2Registry | None = None,
                      visible: set[str] | None = None) -> HoardTarget:
@@ -2324,7 +2324,7 @@ def hoard_target_set(bs: BoardState, ist: IntentionState,
     return HoardTarget(frozenset(), frozenset(), 'fallback_hold')
 
 
-def k_empty_window_fallback(bs: BoardState,
+def k_empty_window_fallback(bs: GameState,
                             ist: IntentionState,
                             session: StrategySession | None = None,
                             registry: DecisionV2Registry | None = None,
@@ -2354,7 +2354,7 @@ def k_empty_window_fallback(bs: BoardState,
             .char_targets, 'p2plus')
 
 
-def committed_authority(state: BoardState | GameState | None,
+def committed_authority(state: GameState | CwWorkFrame | None,
                         session: StrategySession | None) -> bool:
     """committed(已定型/非双轨期)权威判定(方向层单一派生源)。
 
@@ -2370,16 +2370,16 @@ def committed_authority(state: BoardState | GameState | None,
       .committed_from``(唯一读端,内部委托本函数)取值;
       state/session 侧双轨字段降级为兼容残留(读点归零,
       grep 守卫锁),写端退役随老栈(strategy 层)老栈退役(ADR-0466/0469)。
-    - **state 形态(W6 波3 切 BoardState,hp施门下沉kernel政策层设计
-      §2.4 shim 收编申报②)**:一等形态 = BoardState(plane 经
-      ``plane_of`` 读口);过渡兼容支 = 老栈 GameState 帧(plane 属性
+    - **state 形态(W6 波3 切 GameState,hp施门下沉kernel政策层设计
+      §2.4 shim 收编申报②)**:一等形态 = GameState(plane 经
+      ``plane_of`` 读口);过渡兼容支 = 老栈 CwWorkFrame 帧(plane 属性
       直读)——尚存旧帧调用面属波4/波5 辖域文件(mandate_v1 装配/
       cw_screen_prep 旧链/prep_actions/session.last_state 槽),随各自
       退役波消亡,本支退役挂波5 last_state 链删除;禁新消费点再喂
       旧帧或手造鸭子镜像(同型鸭子桥禁令,_PlaneShim 已随波3 消亡)。
     """
     if state is not None:
-        plane = (plane_of(state) if isinstance(state, BoardState)
+        plane = (plane_of(state) if isinstance(state, GameState)
                  else int(getattr(state, 'plane', 1)))
         if plane >= 2:
             return True
@@ -2392,7 +2392,7 @@ def committed_authority(state: BoardState | GameState | None,
 
 
 def committed_from(session: StrategySession,
-                   state: BoardState | GameState | None = None) -> bool:
+                   state: GameState | CwWorkFrame | None = None) -> bool:
     """committed(已定型/非双轨期)唯一合法读端(R1,蓝图 §4.3;
     cw_recipe 决策中心消费它成 kernel→decision 断环边,§3.3-①d;体内仅委托
     本模块 ``committed_authority``,kernel 内自洽)。
@@ -2400,7 +2400,7 @@ def committed_from(session: StrategySession,
     - 有现读 state(容器一等形态/过渡期旧帧,见 committed_authority
       形态注)→ 直取权威派生;
     - 无现读 state 的调用面:plane 取 session.last_state(框架末次读值;
-      过渡期该槽仍是 GameState 帧,经兼容支直读;波5 喂入反转后随槽
+      过渡期该槽仍是 CwWorkFrame 帧,经兼容支直读;波5 喂入反转后随槽
       退役改容器直供);
       也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
 
@@ -2415,7 +2415,7 @@ def committed_from(session: StrategySession,
     return committed_authority(getattr(session, 'last_state', None), session)
 
 
-def drive_intention(bs: BoardState, session: StrategySession,
+def drive_intention(bs: GameState, session: StrategySession,
                     registry: DecisionV2Registry | None = None) -> None:
     """意向状态机驱动点(P7 契约):每 game-round 恰一次。
 
@@ -2567,7 +2567,7 @@ def _obligation_truncate(scope: set[str], core_shared: set[str],
     return kept_core + rest_rank[:rest_budget]
 
 
-def locked_buy_cap_hold(state: BoardState | GameState | None) -> int | None:
+def locked_buy_cap_hold(state: GameState | CwWorkFrame | None) -> int | None:
     """容量可行截断的容量上界单源(T-307/R1,ADR-0647)。
 
     = ``BENCH_CAPACITY + max_units(level)``(现读;lv8 = 17 实用持有
@@ -2576,13 +2576,13 @@ def locked_buy_cap_hold(state: BoardState | GameState | None) -> int | None:
     (现行为,零漂移端)——容量不可得帧不做截断收紧。
 
     state 形态(W6 波3):容器一等形态(max_units_of 读口)∧ 老栈
-    GameState 帧过渡兼容支(属性/方法直读)——过渡期调用面 11 点全在
+    CwWorkFrame 帧过渡兼容支(属性/方法直读)——过渡期调用面 11 点全在
     mandate_v1(波4 辖域文件),零改续用;兼容支随波4 装配切容器消亡,
     禁新消费点再喂旧帧。
     """
     if state is None:
         return None
-    _is_bs = isinstance(state, BoardState)
+    _is_bs = isinstance(state, GameState)
     level = (level_of(state) if _is_bs
              else int(getattr(state, 'level', 0) or 0))
     if level <= 0:

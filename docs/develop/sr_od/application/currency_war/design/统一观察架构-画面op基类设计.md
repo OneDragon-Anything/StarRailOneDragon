@@ -124,14 +124,14 @@
    .extract_frame:80,遥测录局合法消费——白名单显式收录,标「非画面 op
    合法面」);另有注释 3 + def 1 不计入。立锁前重跑扫描确认基线未漂移。
 2. **evidence 标注是数据差异,不是分支逻辑**。sim 合成的观察恒带
-   `sim:synthesized`(kernel/cw_board_state.SIM_SYNTHESIZED),实机识别带
+   `sim:synthesized`(kernel/cw_game_state.SIM_SYNTHESIZED),实机识别带
    识别来源注记——这是「记录里多一个字段」的差异,不是 `if sim:` 分支。
    实机特有的失读分支(识别失败 → carry 沿用 / 先验写入 / payload 离屏)
    写在共用代码里,sim 永不触发它(sim 真值域没有「读不到」态)。
 3. **数学单一源原则**(用户原话级约束)。sim 给的观察数据直接复用项目的
    逻辑计算(升星推算/退款公式/收入三支/账本推进/派生键);凡 sim 私有的
    换算逻辑都该删掉,换成对公共函数(kernel 单一源)的调用。先例 =
-   `board_next_tier_of` 薄委托(kernel/cw_board_state 唯一实现,实机 obs
+   `board_next_tier_of` 薄委托(kernel/cw_game_state 唯一实现,实机 obs
    computed 支与 sim 观测键 engine_p1._board_next_tier_of 都委托它)。
 
 ### 1.2 为什么:已发生的分叉实例
@@ -269,7 +269,7 @@ owner 模块(cw_briefing_obs / cw_settlement_obs / cw_node_obs)。
 ### 2.4 sim 实现 = 引擎真值映射表
 
 sim 适配器① = 引擎 GameState → 同一套 payload 的映射。现役
-synthesize_from_game_state(kernel/cw_board_state)是该映射的第一版,本架构
+synthesize_from_game_state(kernel/cw_game_state)是该映射的第一版,本架构
 把它升格为 sim 适配器①的正式实现并扩展域覆盖。规则:
 
 - **逐字段直取**:引擎已有真值直接映射(gold/level/xp/hp/streak/board/
@@ -766,7 +766,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
   `_emit_refresh_click` 单一分派面发射,原 inline 写端(handle 发射
   即记 :265/逐槽 write_logic :281-287)逐位随迁钩子体,值/evidence/
   produced_by 逐位对拍锁在册;记录模型设计 §3.4.4,测试锁
-  test_cw_board_state_batch3.py:341 在册)。新登记件入册一律发射型,无选型申报面(原「申报所属型、
+  test_cw_game_state_batch3.py:341 在册)。新登记件入册一律发射型,无选型申报面(原「申报所属型、
   禁静默选型」纪律随两型制退役;发射时点逐件申报的纪律保留)。
   **v10 轴扩展申报:第三型「边界型(boundary)」不受本次退役影响**——
   流程边界事件触发的观测锚(进节点/进位面/结算),非动作发射辖域,触发
@@ -891,7 +891,7 @@ AST/全文检索,枚举全部定义与消费点)——「两份/三份/已就位
 | 5 | **轮首收入三支**(base / interest / streak + 修饰) | **kernel 收入函数族已落(T1a,ADR-0623)**:reward_base_gold / loss_compensation_base / round_start_income / RoundStartIncome(符号名锚 kernel/cw_economy);引擎收入段改调 + live 写端指派 = **T1b 未接**;败补口径 = **数据不足定谳**(ADR-0623 决策3,待玩家确认 + 补采口径在案);口径申报与 T1 拆分见 §7.1 | 部分就位(kernel 载体已落 / 引擎接线未接) | **T1b(接线批)**:sim 引擎收入段改调 kernel 函数族;实机 live 写端指派接同一函数(与 §10.1 尾批件合并执行);**假环境收入重述同批切源**——sr-od-test `fixtures/cw_fake_game/rules.py` 的 `income_for_round` 奖励轮 base 现按 round_num 单键直查 `REWARD_BASE_GOLD_BY_ROUND`(`reward_base_gold` docstring 明文的 hazard 形态:P2r1 误返 3,真值 5;FakeMatch 已支持 P2 段,hazard 域可达),切 `kernel.round_start_income`(event=0 语义保留,败补口径按在册「数据不足定谳、待玩家确认」申报)——切换致 P2 奖励轮 base 3→5 = 假局经济分布变更,随批升 env_version 申报;T1a 辖域排除三分量(gold_per_node 族 / gold_per_boss_node 族 / 战斗表现条件类)随 T1b 定承载(分量扩参 or 调用方聚合单列,§7.1 申报)。**net_income 决策消费点(F2 翻正,6 处,符号名+行号双锚)**:mandate_v1/shop.py ×4(:1016/:1364/:1987/:2148)+ mandate_v1/encounter.py:240(决策消费)+ cw_economy.py:1047-1048(_upgrade_ul_threshold_ok 内 loss_exact 前置,P47 递推 c_int=loss_exact 调用处)——处置已按 ADR-0623 决策2 委托改造收口(决策近似口径申报 = §7.1 决策近似口径行) |
 | 6 | 利息(gold, cap)+ flat 修饰 | kernel cw_economy.interest;sim 收入段内联 `min(cap, gold//10)+flat` | 引擎私有需搬迁 | T2:sim 收入段利息分量改调 kernel 函数(并入 T1 函数体) |
 | 7 | overlay 查询(xp_per_refresh 等按持卡名查 STRATEGY_EFFECTS) | **四份拷贝**:engine_p1 两份重复定义 + runner.py 一份 + engine_p2.py:39-55 一份(对抗审扫描勘误,原计三份) | 引擎私有需搬迁 | T3:提为 kernel 单一源查询函数,**四处**改薄委托(机械改动,低风险) |
-| 8 | 效果账本推进(tick / 桥三分:burst / per_node / 容量投影) | kernel cw_board_state 桥已就位(批次三补单⑧);sim 引擎经济聚合走 aggregate_economy 内联(收入段 _icap/_flat/gold_per_node) | 引擎私有需收敛 | T4:sim 效果修饰面收敛到账本桥/同源查询(与 T1 同批)。aggregate_economy 作为注册表查询面可保留;**修饰的应用点必须单一**——sim 若建模倒计时类效果,必须消费 kernel tick 挂点,禁引擎私有倒计时 |
+| 8 | 效果账本推进(tick / 桥三分:burst / per_node / 容量投影) | kernel cw_game_state 桥已就位(批次三补单⑧);sim 引擎经济聚合走 aggregate_economy 内联(收入段 _icap/_flat/gold_per_node) | 引擎私有需收敛 | T4:sim 效果修饰面收敛到账本桥/同源查询(与 T1 同批)。aggregate_economy 作为注册表查询面可保留;**修饰的应用点必须单一**——sim 若建模倒计时类效果,必须消费 kernel tick 挂点,禁引擎私有倒计时 |
 | 9 | 经济决策量(refresh_cost_effective / xp_click_cost / clicks_to_next_level / _expected_level) | kernel cw_economy;XP_CLICK_COST_FALLBACK 消费形态挂迁移批次二申报 | 已就位(遗留申报) | 无(FALLBACK 搬迁随批次二既有申报走,不另立任务) |
 | 10 | 派生键归并 / 刷新计数组写入 | kernel cost_source_group / record_refresh_execution | 已就位 | 无(接线点收编归 §6.4 on_outcome) |
 | 11 | 节点事件与备战决策面(遭遇/补给/选卡/**备战线**) | 实机:decide_encounter / decide_supply / decide_prep_screen 经策略器接口已接;sim:**备战线全程零覆盖(引擎不调 decide_prep_screen、不写 prep_obs_frame——部署/卖出/升级策略面测不出,§1.2 病例 4)**;补给直调 kernel 函数 decide_supply(cw_events)绕过策略器接口;遭遇不调(引擎内部采样);_event_gold 为 rng 校准层 | 部分缺位(策略面) | **T5(辖域扩,F1-③)**:sim 决策面统一走策略器接口——①备战线:引擎备战动作链改经基类生命周期调 decide_prep_screen(prep_obs_frame 由 sim 适配器①帧供给双落供帧,§2.4);②遭遇接入 decide_encounter;③补给改调 strat.decide_supply。均属有意行为变更,先过 §11-R3 裁决。_event_gold 属校准层(随机事件生成)非换算逻辑,合法保留。**注意(F7)**:动 decide() 段/收编面时,**禁把 v3_pending_rollback 当 bug 接上发射**(SwapDeploy 登记半边活口申报 = §6.6 同行,负向锁 = 登记槽非空告警) |
@@ -1425,7 +1425,7 @@ DECLARED、不改既有 EMIT 表——本节末段已定锚登记行必带触发
 8. **节点推进权威 = 统一 state 派生规则,锚/台账不做第二计数器**
    (as-built R1.2,2026-09-10;设计正本 = 流程侧遥测 v3.4 §3.4.1 四规则
    组,ADR-0630 关联面)。节点计数唯一权威源 = 统一 state 派生规则
-   (kernel/cw_board_state.py,**字段层次终极形态,用户终裁 2026-09-11:
+   (kernel/cw_game_state.py,**字段层次终极形态,用户终裁 2026-09-11:
    观察层(observe)只放画面原始读数——顶栏原文落 top_bar_raw 字段;节点
    序键 node_ord = 逻辑层字段,四条腿(备战规则=解析顶栏文本成序键/弹窗
    规则/0q/0p)全部 write_logic 写逻辑层,无 observe 写序键的例外;类型

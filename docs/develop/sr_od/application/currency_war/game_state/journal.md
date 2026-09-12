@@ -121,7 +121,7 @@ ts 与 `buffered` 行注记)/历史段补写窗(专用装配通道,不经运行�
 
 ## 6. 写入口 API 面与硬约束
 
-API 面(宿主=BoardState 写入 API,符号=kernel/cw_board_state.py):
+API 面(宿主=BoardState 写入 API,符号=kernel/cw_game_state.py):
 
 ```text
 渠道①:observe / carry / write_prior / leave_screen     (均带 sig)

@@ -283,9 +283,9 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
         from sr_od.application.currency_war.kernel.cw_comps import (
             form_progress,
         )
-        from sr_od.application.currency_war.kernel.cw_state import GameState
-        _st = (_match.session.last_state if _match is not None else None) or GameState()
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+        _st = (_match.session.last_state if _match is not None else None) or CwWorkFrame()
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_bridge,
         )
         _form = form_progress(_tgt_comp, board_state_bridge(_st))
@@ -415,10 +415,10 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
             # 入记录(W209g 同口径,采集层无权丢数据)。记录层 best-effort:
             # 异常不阻塞穿戴计划产出。
             try:
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig as _eq_sig_cls,
                 )
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of as _bs_of_eq,
                 )
                 _bs_eq = _bs_of_eq(_match.session)
@@ -577,10 +577,10 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
         _match.session.last_owned_equips = [n for n, _, _ in hits]
         # 装备库存观察写端(回退分支;语义与上方 M7 分支写端同款,W5 §2.2)
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig as _eq_sig_cls,
             )
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of as _bs_of_eq,
             )
             _bs_eq = _bs_of_eq(_match.session)
@@ -831,7 +831,7 @@ class PrepActionExecutor:
 
     def _note_action_receipt(self, action: PrepAction, emitted: bool,
                              detail: str) -> None:
-        """动作执行回执 → BoardState receipts 域(R2 §3.1.1-4/§3.2.5;
+        """动作执行回执 → GameState receipts 域(R2 §3.1.1-4/§3.2.5;
         渠道② logic_action,唯一写点 = kernel note_action_receipt)。
 
         - **发出即簿记,不是验证**(M1③):applied = 分派面「是否发出」
@@ -844,7 +844,7 @@ class PrepActionExecutor:
           (session 缺)跳过;best-effort 不阻塞动作链。
         """
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_from_ctx,
                 note_action_receipt,
             )
@@ -1117,10 +1117,10 @@ class PrepActionExecutor:
         if match is not None:
             try:
                 # 决策输入 = session 容器单例(W6 波 4 取帧点改道容器直读,
-                # 与全 pick 族同款;decide_box_card 契约面已切 BoardState)。
+                # 与全 pick 族同款;decide_box_card 契约面已切 GameState)。
                 # 禁回落 last_state 直读——被删的 cw_screen_supply.
                 # pick_box_card 原本同款直读,迁移批已切,直读 = 观察流旁路。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                 )
                 idx = match.strategy.decide_box_card(
@@ -1293,7 +1293,7 @@ class PrepActionExecutor:
             before = session.last_level_obs   # OCR 漏读基线退单调守卫值(只作比较基,不写回)
         if before is None:
             return 'level 基线读不到(OCR 漏读),拒绝盲点', False
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_auth,
         )
         from sr_od.application.currency_war.kernel.cw_discipline_rules import (
@@ -1335,10 +1335,10 @@ class PrepActionExecutor:
             # 优先容器现值(W6 波 4 接缝族切容器帧;xp 进度精确),缺席退
             # 权威表全量口径(blood_xp_full_clicks = ⌈need/4⌉ 同式,xp 结转
             # 忽略);满级(0 击)= 无购买对象,机械不发。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of as _bs_of_clicks,
             )
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 level_of as _level_of_clicks,
             )
             _st = _bs_of_clicks(session)
@@ -1532,7 +1532,7 @@ class PrepActionExecutor:
                     # (登记面缺位的局)→ consume_use 返 None 零动作,不炸
                     # 发射回执。best-effort 记录面(与升级挂点同纪律)。
                     try:
-                        from sr_od.application.currency_war.kernel.cw_board_state import (
+                        from sr_od.application.currency_war.kernel.cw_game_state import (
                             board_state_of,
                         )
                         from sr_od.application.currency_war.kernel.cw_investments import (

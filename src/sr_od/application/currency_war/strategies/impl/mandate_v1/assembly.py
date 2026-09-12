@@ -148,7 +148,7 @@ def _disclose_budget(state: Any, session: StrategySession,
       当轮义务来源」两契约对齐(F5 裁决二选一之①:reason 并入键戳
       清零块,杜绝跨轮陈读);不复用 v3_release_round(W332b 旧轮语义)。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         gold_of,
         plane_of,
         round_num_of,
@@ -191,7 +191,7 @@ def _budget(state: Any, session: StrategySession,
     floor = saturation_line(cap_resolved_of_session(session))
     # 接缝族已切容器签名(W6 波 4):预算投影读容器单例(店开帧 gold
     # 救援经喂入口写容器,披露面随之取真值);_disclose 的帧轴读同源。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_of,
     )
     _bs = board_state_of(session)
@@ -236,7 +236,7 @@ def assemble(snapshot: Snapshot, session: StrategySession,
     读端只有 recorder/engine_p1 遥测链)。决策输入 = session 容器单例
     (方向/预算投影直读容器,同帧同视图,一次置顶禁二次取容器)。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_of,
     )
 

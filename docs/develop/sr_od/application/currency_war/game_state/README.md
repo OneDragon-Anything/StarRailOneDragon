@@ -1,9 +1,9 @@
 # GameState 设计总纲
 
 > 本文档所属 = game_state 设计目录(本目录总纲)。
-> **命名对应注**:本文档所称 **GameState**(统一 state),当前代码中暂名 **BoardState**
-> (`src/sr_od/application/currency_war/kernel/cw_board_state.py`);改名随旧流退役迁移批
-> 执行,改名前文档用 GameState、代码用 BoardState,两者指同一容器。
+> **命名对应注**:本文档所称 **GameState**(统一 state),即代码类名
+> (`src/sr_od/application/currency_war/kernel/cw_game_state.py`;正名已兑现——
+> 原暂名 BoardState/原模块 cw_board_state.py,随 W8 本体切割批更名,两者指同一容器)。
 
 ## 1. 本目录是什么
 
@@ -41,7 +41,7 @@
 
 ### 3.1 写入口两分法:observe() / write_logic()
 
-写入 API 按数据层两分(符号=kernel/cw_board_state.py):
+写入 API 按数据层两分(符号=kernel/cw_game_state.py):
 
 | 写口 | 层 | 用途 |
 |---|---|---|
@@ -51,7 +51,7 @@
 配套口:`carry()`(失读沿用,evidence 带 carried:来源帧)/`write_prior()`
 (先验写入,如开局 hp 先验)/`leave_screen()`(画面附加域离屏置 None)/`relay()`
 (接管中继)/`note_obs_event()`(零状态变更的观察事件留证行)。完整 API 契约见
-journal.md §6,符号单一源 = kernel/cw_board_state.py(字段级规格 =
+journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 [fields.md](fields.md) §8)。(原 `expect()`/`confirm()`/`discard_expected()`
 两步机制已随 ADR-0651 废除。)
 

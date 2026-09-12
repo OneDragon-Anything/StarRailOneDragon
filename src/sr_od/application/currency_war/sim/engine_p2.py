@@ -28,7 +28,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     BenchChar,
     deployed_from_compact,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
@@ -99,9 +99,9 @@ class P2ReplayEntry:
             position_pref=u.get('position_pref', 'back'),
             equips=list(u.get('equips') or []))
 
-    def build_state(self) -> GameState:
-        """进场态 → GameState(plane=2;bench 保 9 槽 pad 语义)。"""
-        st = GameState()
+    def build_state(self) -> CwWorkFrame:
+        """进场态 → CwWorkFrame(plane=2;bench 保 9 槽 pad 语义)。"""
+        st = CwWorkFrame()
         st.plane, st.level, st.gold, st.hp = 2, self.level, self.gold, self.hp
         st.board = dict(self.board)
         for i, u in enumerate(self.bench[:BENCH_CAPACITY]):

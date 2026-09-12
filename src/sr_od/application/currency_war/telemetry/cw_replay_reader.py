@@ -4,7 +4,7 @@
 产物),字段名/形态写错全部静默——实证:dp_posture 写端 2026-08-26 起
 dict→str 收窄后,读端 ``isinstance(dp, dict)`` 恒 False 结构性漏报;actions
 元素只有 ``__type__`` 键、读 ``get('type')`` 恒 None;hp_trusted 位在 state
-子字典(GameState 序列化)顶层不存在。
+子字典(CwWorkFrame 序列化)顶层不存在。
 
 本模块是**读端的唯一规范入口**:
 

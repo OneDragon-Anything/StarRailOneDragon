@@ -62,7 +62,7 @@ cw_screen_encounter.py :241-251/:252-258):cw_game_ports 两端口完整在场 �
 终点,关闭节点漏跑);lifecycle 早退/成功轮次交回后节点图经既有边自然走到
 关闭节点,``run_lifecycle`` 返回值 = collect 节点 round 结果,流转语义不变。
 接口短横线:采集结果中转仍走 ``ctx.cw_plane_bosses``/``cw_plane_affixes``
-(消费接线批挂账,原样;五屏零 BoardState 写端,写入流对拍无适用面如实申
+(消费接线批挂账,原样;五屏零 GameState 写端,写入流对拍无适用面如实申
 报)。本屏 sim 腿 = 不适用(F11 例外清单:sim 无位面详情/敌人情报对应画面
 段),等价判据主承重 = 纯函数三件在册测试锁(零触碰)+ 新路径行为锁
 (test_cw_obs_arch_closing_screens.py)。

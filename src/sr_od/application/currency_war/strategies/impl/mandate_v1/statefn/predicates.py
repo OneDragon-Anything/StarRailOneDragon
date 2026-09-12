@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     deployed_slots_of,
     plane_of,
     round_num_of,
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
 
-def bench_effect_context(state: BoardState, unit: BenchChar,
+def bench_effect_context(state: GameState, unit: BenchChar,
                          k_members: tuple[str, ...] = (),
                          ) -> BenchEffectContext:
     """三消费位(fuel_sell 豁免/凑息档序资格/支付支撑变现)共享的语境
@@ -60,7 +60,7 @@ def bench_effect_context(state: BoardState, unit: BenchChar,
 _HERTA_SUPPLY_TARGET: str = '大黑塔'
 
 
-def _herta_supply_present(state: BoardState,
+def _herta_supply_present(state: GameState,
                           k_members: tuple[str, ...]) -> bool:
     """星级供强语境在场判定(例外①的观测面:augment 局 ∨ 板面 ∨ 线内)。"""
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import proof
@@ -80,8 +80,8 @@ def arm1_existence(deployed_count: int, bench_names: list[str],
     """P39 臂一三元触发信号(R2-2 移入 statefn;M3 消费)。
 
     ①板满:``deployed_count == deploy_cap``——**cap 口径 = 当前可上阵数**
-    (GameState.max_units() / MandateFrame.deploy_cap:level+宝钻、封顶
-    = 4+back_max 动态真值〔BoardState.back_layout,值域 10-13〕),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,ADR-0392 定长槽表
+    (CwWorkFrame.max_units() / MandateFrame.deploy_cap:level+宝钻、封顶
+    = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕),非固定槽表常数 ``DEPLOYED_CAPACITY``(=10,ADR-0392 定长槽表
     的物理长度)。结论出处:2026-09-03 零刷新诊断批(ZERO_REFRESH_DIAG
     §4.2)实证 M3 升级门 13/13 波恒 False 的根因即此——旧条件拿 10 当
     板满阈值,而板面实际上板量受等级驱动 cap 约束(P1 期 3→5 量级),
@@ -222,7 +222,7 @@ def arm0_level_lag(level: int, readable: bool, deployed: list[BenchChar], bench:
     return False, 'level_ge_need'
 
 
-def p1_blood_floor(state: BoardState) -> bool:
+def p1_blood_floor(state: GameState) -> bool:
     """血线硬地板(λ_death 死亡线;≤15 族,在册授权)。
 
     **定位 = 不影响发展主线的最后保命,非主要求生手段**:触发域 hp≤15
@@ -272,7 +272,7 @@ def p1_blood_floor(state: BoardState) -> bool:
 P2_BLOOD_BAND_AUTHORITY_OPEN: bool = False
 
 
-def p2_blood_floor(state: BoardState) -> bool:
+def p2_blood_floor(state: GameState) -> bool:
     """P2 濒死带域谓词(p1_blood_floor 的 P2+ 半边同构件;设计出处 =
     p2_blood_band_unified_design/DESIGN.md §2.1,与 241 §15.2 覆①②共谓词,
     禁第二谓词)。
@@ -308,7 +308,7 @@ def p2_blood_floor(state: BoardState) -> bool:
     return hp is not None and hp <= HP_BAND_NEAR_DEATH
 
 
-def p2_blood_floor_unlock(state: BoardState) -> bool:
+def p2_blood_floor_unlock(state: GameState) -> bool:
     """P2 濒死带解锁包消费位(唯一合成口;设计出处 =
     p2_blood_band_unified_design/DESIGN.md §1.2/§2.1)。
 
@@ -414,7 +414,7 @@ def front_window_table_ready(session) -> bool:
             and bool(getattr(session, 'plane_node_table', None)))
 
 
-def front_window_frame(state: BoardState, session) -> bool:
+def front_window_frame(state: GameState, session) -> bool:
     """P1 前窗备战帧谓词(v3 面①;位面参数化 = 节点表查表定义,禁位面
     字面量,01 §8-1)。
 

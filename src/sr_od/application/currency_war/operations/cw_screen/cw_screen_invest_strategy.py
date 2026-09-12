@@ -62,7 +62,7 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
-from sr_od.application.currency_war.kernel.cw_board_state import (
+from sr_od.application.currency_war.kernel.cw_game_state import (
     board_state_bridge,
 )
 from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
@@ -76,7 +76,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     is_blood_economy,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 from sr_od.application.currency_war.obs.cw_node_obs import (
     pair_refresh_counts_to_slots,
     read_invest_refresh_counts,
@@ -343,7 +343,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         if match is None:
             return
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
                 board_state_of,
             )
@@ -403,23 +403,23 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         _first_ocr_map = first_ocr_map   # 首帧 OCR 存底(刷新链读缺时采集回退用,G10)
         config = CurrencyWarConfig(self.ctx.current_instance_idx)
         names = [n for n, _x, _y in opts]
-        # 不可读 → 传空 GameState(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
+        # 不可读 → 传空 CwWorkFrame(decide_event 只用 board 判 DoT 克制,空 board = 不惩罚,安全)。
         match = self.ctx.cw_match
         if names:
             if match is not None:
                 # ADR-0144:真状态替空 stub。决策输入消费切换(迁移批次二):
-                # 值源 = BoardState 视图(cw_bs_view.strategy_input_state)。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                # 值源 = GameState 视图(cw_bs_view.strategy_input_state)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                 )
                 pick = match.strategy.decide_invest('strategy', names, board_state_of(match.session), match.session, config)
             else:
                 # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读
-                # hp/品质惩罚,hp 字段仅为 GameState 构造完整性。**显式跳过刷新链**
+                # hp/品质惩罚,hp 字段仅为 CwWorkFrame 构造完整性。**显式跳过刷新链**
                 # (ADR-0600 §3.3 防御路径):刷新链依赖 exec_state_of(match.session) 与
                 # match 上下文,局外防御帧零行为增量(refresh_slots 不消费)。
                 # W6 波3 贯通:decide_event 已切容器签名,防御帧经桥装箱。
-                pick = decide_event(names, config, board_state_bridge(GameState(hp=100, hp_readable=True)))
+                pick = decide_event(names, config, board_state_bridge(CwWorkFrame(hp=100, hp_readable=True)))
         else:
             pick = None
 
@@ -557,10 +557,10 @@ class CwScreenInvestStrategy(CwScreenOpBase):
             return
         if chosen not in match.session.active_strategies:
             match.session.active_strategies.append(chosen)
-        # BoardState 写端(迁移批次二,§3.4.4/§4 投资选择行):持有投资
+        # GameState 写端(迁移批次二,§3.4.4/§4 投资选择行):持有投资
         # 策略=本屏写入、局级累计(逐次选择追加);单次逻辑写入
         # (§3.4 申报豁免)。品质锚挂建模批(设计 §3.4.4)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             board_state_of,
         )
@@ -574,7 +574,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
         # /§8.7 批次三件 4;免战牌同点自动登记——件 5「§3.2.19 载体归一
         # 的另一半,禁只做一半」)。chosen 命中效果注册表(规范名归一
         # 后)才登记;acquired_t = 登记时点节点序快照((plane-1)*9+round,
-        # 基 1,ActiveEffect 坐标系;节点值优先 BoardState 单例,引导窗
+        # 基 1,ActiveEffect 坐标系;节点值优先 GameState 单例,引导窗
         # 回退 last_state 框架末次读值)。登记面 best-effort:失败不阻塞
         # 选卡主链(与升级挂点同纪律);账本当前零决策消费(§5.1 过渡
         # 口径:挂点接线未完成面一律观察覆盖兜底)。
@@ -599,7 +599,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 # 时点把免费刷新 burst 额度一次性累加进余额(固定理财
                 # 即时段 2 等;载体 = payload.free_refresh_burst,零额度
                 # no-op)。每节点/容量两形态在 cw_loop tick 挂点,不经此。
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     apply_effect_burst_grant,
                 )
                 apply_effect_burst_grant(
@@ -610,7 +610,7 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 # 选卡确认落地登记点,与 register_strategy/burst 桥同点):board_
                 # rewrite 声明经桥落写端归属——出售面=逻辑写(清场+退款按卖价
                 # 公式)、整场替换面=零写端观察收口,报告留证;非重写条目返回
-                # None 零动作。归属判据单一源 = BoardState 设计 §5.3,桥内申报。
+                # None 零动作。归属判据单一源 = GameState 设计 §5.3,桥内申报。
                 from sr_od.application.currency_war.kernel.cw_effect_inventory import (
                     apply_board_rewrite,
                 )

@@ -323,7 +323,7 @@ def emit_anchor(anchor_id: str, *, plane: int, round_num: int,
     申报不假装)。返回 True = 已受理(受理≠落盘:载体出口退役现状下行
     不落,墓碑见模块头)。
 
-    本函数是观测-only 面:不触 run 状态、不写 BoardState/决策域、不施加
+    本函数是观测-only 面:不触 run 状态、不写 GameState/决策域、不施加
     效果(§12.0);best-effort 语义由调用方自担(出口槽未武装时本函数
     经 cw_telemetry_exit 自动 no-op)。
     """

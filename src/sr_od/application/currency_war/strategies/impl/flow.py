@@ -40,8 +40,8 @@ from typing import TYPE_CHECKING, Literal
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel import cw_comps, cw_events
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     ShopActionExecuted,
     apply_shop_action_logic,
     bench_slots_of,
@@ -75,7 +75,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.kernel.cw_state import Action, GameState, PickEvent
+from sr_od.application.currency_war.kernel.cw_vocab import Action, CwWorkFrame, PickEvent
 from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     CwStrategy,
     StrategySession,
@@ -115,7 +115,7 @@ _LOCK_EVENT_PREFIXES: tuple[str, ...] = ('lock:', 'forced_lock:',
 
 
 def bump_lock_gen_feasibility_obs(session: StrategySession | None,
-                                  state: GameState,
+                                  state: CwWorkFrame,
                                   ist: IntentionState,
                                   pre_last_event: str) -> None:
     """面③出辖观察件计数(纯观测零行为,只写计数不改任何判定/发射)。
@@ -157,7 +157,7 @@ def bump_lock_gen_feasibility_obs(session: StrategySession | None,
     )
     # 双形态归一(W6 波 4:商店方向消费传容器 bs;备战方向消费仍传帧
     # 经桥装箱——桥退役挂波 5)。
-    if not isinstance(state, BoardState):
+    if not isinstance(state, GameState):
         state = board_state_bridge(state)
     if ist.last_event != pre_last_event \
             and ist.last_event.startswith(_LOCK_EVENT_PREFIXES):
@@ -172,7 +172,7 @@ def bump_lock_gen_feasibility_obs(session: StrategySession | None,
                 and hp <= HP_BAND_NEAR_DEATH:
             _k_low = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'lock_open_lowband'
             counters[_k_low] = counters.get(_k_low, 0) + 1
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         node_kind_of,
     )
     node = (getattr(session, 'node_type_current', None)
@@ -234,7 +234,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         ``v3_phase='FORM'`` 一并在此落位(旧 on_match_start 冷建与初值
         双写点收编;manager/sim/replay/direct 直调点全走本方法)。"""
         try:
-            from sr_od.application.currency_war.kernel.cw_state import (
+            from sr_od.application.currency_war.kernel.cw_vocab import (
                 reset_layout_unknown_state,
             )
             reset_layout_unknown_state()
@@ -253,7 +253,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     # ===== 镜像族观察写者(mandate_v1 单臂)=====
 
-    def write_shop_mirrors(self, state: GameState | BoardState,
+    def write_shop_mirrors(self, state: CwWorkFrame | GameState,
                            session: StrategySession) -> None:
         """逐帧写 ``v3_b_t`` 板面目标线承重计数(纯遥测观测面)。
 
@@ -283,7 +283,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         board 口径」,与发射门「轮入口全量 state 口径」存在帧差,判读
         时以 sim 账本(全量 state)为准。
         """
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             deployed_slots_of,
         )
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
@@ -292,7 +292,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         from sr_od.application.currency_war.kernel.cw_launch_admission import (
             readiness_form_ok,
         )
-        if isinstance(state, BoardState):
+        if isinstance(state, GameState):
             deployed = [d for d in deployed_slots_of(state)
                         if d is not None]
         else:
@@ -327,13 +327,13 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         _ms.v3_b_t = board_target_line_weight(dep_names)
         # form_ok 镜像现读写端(死镜像处置,见 docstring;判据单一源 =
         # readiness_form_ok,与发射 armed 同式)
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             plane_of as _plane_of,
         )
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             round_num_of as _round_num_of,
         )
-        _bs_m = state if isinstance(state, BoardState) \
+        _bs_m = state if isinstance(state, GameState) \
             else board_state_bridge(state)
         _ms.v3_form_ok = readiness_form_ok(
             _bs_m,
@@ -351,7 +351,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             ist = _ms.v3_intention = IntentionState()
         return ist
 
-    def _refresh_direction(self, state: GameState | BoardState,
+    def _refresh_direction(self, state: CwWorkFrame | GameState,
                            session: StrategySession) -> None:
         """方向重估全程(full 类帧入口;ADR-0583 §3.1)。
 
@@ -364,7 +364,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         _ms = state_of(session)
         ist = self._ensure_intention(_ms)
         # 双形态归一(同 bump_lock_gen_feasibility_obs 申报)
-        if not isinstance(state, BoardState):
+        if not isinstance(state, GameState):
             state = board_state_bridge(state)
         key = (plane_of(state), round_num_of(state))
         if _ms.v3_intention_key != key:
@@ -389,7 +389,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             # update_intention 信号驱动锁线,不受影响。)
         self._refresh_direction_views(state, session)
 
-    def _refresh_direction_views(self, state: GameState | BoardState,
+    def _refresh_direction_views(self, state: CwWorkFrame | GameState,
                                  session: StrategySession) -> None:
         """派生视图刷新(便宜段;view 类帧入口只走本段,不触状态机——
         ADR-0583 §3.2)。原 ``update_target`` 无守卫段逐字平移:get_comp
@@ -404,7 +404,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         # 把已锁配方对物化为伪 comp(单一口径=cw_intention.pair_target_comp
         # docstring);①锁局 locked_comp 优先,本分支不辖;P2+/空对不物化
         # (不越 ADR-0357 辖域)。
-        _plane_v = (plane_of(state) if isinstance(state, BoardState)
+        _plane_v = (plane_of(state) if isinstance(state, GameState)
                     else int(getattr(state, 'plane', 1) or 1))
         if comp is None and _plane_v == 1:
             # P1 目标不空窗(经济冻结批):配方对退场帧(p1_pair=() 空窗)
@@ -453,9 +453,9 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         state = getattr(frame, 'state', None) if frame is not None else None
         try:
             if cls == 'full':
-                self._refresh_direction(state or GameState(), session)
+                self._refresh_direction(state or CwWorkFrame(), session)
             else:
-                self._refresh_direction_views(state or GameState(), session)
+                self._refresh_direction_views(state or CwWorkFrame(), session)
         except Exception as e:   # noqa: BLE001  方向刷新失败不阻塞决策(沿用旧向)
             log.warning('[cw!][strategy] 方向刷新异常(沿用旧方向): %s', e)
 
@@ -481,7 +481,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
     # ===== pick 族(事件/选卡决策;判据单源 = kernel cw_events/cw_comps)=====
 
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
-                      bs: BoardState, session: StrategySession, config) -> PickEvent:
+                      bs: GameState, session: StrategySession, config) -> PickEvent:
         """投资策略/投资环境 3 选 1。P1 两 kind 同一实现(委托 ``decide_event``);分表现 P2+ 议题。
         ``state.board`` 由调用方传空 stub(overlay 叠备战时 board 不可读,§11.7)。
         T-155(ADR-0597,用户裁定 2026-09-08「投资选卡优先经济、然后是终局阵容,
@@ -528,19 +528,19 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             pass
         return pick
 
-    def decide_supply(self, options: list[SupplyOption], bs: BoardState,
+    def decide_supply(self, options: list[SupplyOption], bs: GameState,
                       session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
         """补给选装备/出钻。⚠️ OCR 未就绪(P1 契约成员 + 默认委托,handler 不 rewire,随阶段5)。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
         return cw_events.decide_supply(options, bs, state_of(session).target_comp, config, refresh_used)
 
-    def decide_encounter(self, options: list[EncounterOption], bs: BoardState,
+    def decide_encounter(self, options: list[EncounterOption], bs: GameState,
                          session: StrategySession, config, refresh_used: bool = False) -> EncounterPick:
         """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
         return cw_events.decide_encounter(options, bs, state_of(session).target_comp, config, refresh_used)
 
-    def decide_megastar(self, options: list[MegastarOption], bs: BoardState,
+    def decide_megastar(self, options: list[MegastarOption], bs: GameState,
                         session: StrategySession, config) -> MegastarPick:
         """巨星选候选:委托 ``cw_comps.select_megastar`` 拿角色名 → 名在 options 命中该 idx;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 匹配恒失败 → idx=0 = 今天盲点左候选,随阶段5)。
@@ -558,7 +558,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                         reason=f"select_megastar 命中 {chosen_name}")
         return MegastarPick(idx=0, reason="fallback 左候选(OCR 未就绪,char_id 空)")
 
-    def decide_partner(self, options: list[PartnerOption], bs: BoardState,
+    def decide_partner(self, options: list[PartnerOption], bs: GameState,
                        session: StrategySession, config) -> PartnerPick:
         """选择伙伴:优先 ``config.character_build_around`` / ``target.core_chars`` 命中;否则 idx=0。
         ⚠️ OCR 未就绪(char_id 全空 → 命中恒失败 → idx=0 = 今天盲点 stage 立绘,随阶段5)。"""
@@ -571,7 +571,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 return PartnerPick(idx=o.idx, reason=f"命中偏好/核心 {o.char_id}")
         return PartnerPick(idx=0, reason="fallback(OCR 未就绪,char_id 空)")
 
-    def decide_planner(self, options: list[PlannerOption], bs: BoardState,
+    def decide_planner(self, options: list[PlannerOption], bs: GameState,
                        session: StrategySession, config) -> PlannerPick:
         """银狼策划事件(r104 用户定调:接入策略模块由它定;委托 cw_events.decide_planner)。
 
@@ -580,7 +580,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
         return cw_events.decide_planner(options, bs, state_of(session).target_comp)
 
-    def decide_star_tome(self, options: list[str], bs: BoardState,
+    def decide_star_tome(self, options: list[str], bs: GameState,
                          session: StrategySession, config) -> int:
         """星徽秘典四选一(r104 接入策略模块;原 loop 内联 board 匹配迁此)。
 
@@ -618,7 +618,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 best_i, best_s = i, s
         return best_i
 
-    def decide_wish_trial(self, options: list[str], bs: BoardState,
+    def decide_wish_trial(self, options: list[str], bs: GameState,
                           session: StrategySession, config) -> int:
         """祈愿试炼选卡(r104 接入策略模块;原固定第1张)。
 
@@ -651,7 +651,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 best_i, best_s = i, s
         return best_i
 
-    def decide_box_card(self, names: list[str], bs: BoardState,
+    def decide_box_card(self, names: list[str], bs: GameState,
                         session: StrategySession, config) -> int:
         """武装箱/节点弹窗 4 选 1 装备卡(r104 接入策略模块)。
 
@@ -753,7 +753,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         (D6:槽在入口消费复位后保持 'none',投影帧不触发刷新)。观察帧
         缺失 = 观察层失约,抛错。"""
         from sr_od.application.currency_war.kernel import cw_state
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             deployed_slots_of,
         )
@@ -804,11 +804,11 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 return out      # 终结 op:序列到止(重观察语境)
             apply_shop_action_logic(bs, a, executed=_executed_of(a),
                                     produced_by=type(a).__name__, sig=_sig)
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 apply_shop_merge_leg,
             )
             apply_shop_merge_leg(bs, a, sig=_sig)
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_is_full,
         )
         raise RuntimeError(

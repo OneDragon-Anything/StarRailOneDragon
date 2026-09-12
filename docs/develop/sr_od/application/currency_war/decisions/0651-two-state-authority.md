@@ -6,7 +6,7 @@
 
 **错误哲学**:所有逻辑态的错误都是代码 bug——推算错了修推算代码,不靠运行时挂账对账兜底。观察赢原则不变(下一帧实读覆盖 logic)。
 
-**废除面**:cw_board_state.py expect/confirm/discard_expected/expected 条目表/PendingEntry;cw_expected_state.py 条目表簿记镜像。tracked 族 reconcile 防抖语义(star 回退防抖等)=observation 写入路径防抖,重归属而非废除。
+**废除面**:cw_game_state.py expect/confirm/discard_expected/expected 条目表/PendingEntry;cw_expected_state.py 条目表簿记镜像。tracked 族 reconcile 防抖语义(star 回退防抖等)=observation 写入路径防抖,重归属而非废除。
 
 **取代**:ADR-0644 §2 中 expect/confirm 相关行、BoardState-数据结构设计.md §2.5/§8.1-8、候裁 5(ExpectedState 归一)就此定谳=两态制下自然消解。
 

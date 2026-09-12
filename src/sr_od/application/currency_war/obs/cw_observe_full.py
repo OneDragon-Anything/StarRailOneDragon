@@ -45,7 +45,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
     - bench_chars/deployed_chars:SIFT 身份(templates 未加载
       → None,调用方沿用缓存);
-    - state:GameState(read_game_state);
+    - state:CwWorkFrame(read_game_state);
     - gold_reread:bool——是否走了 MED-2 gold==0 重读
       (**重新截图**重读——同帧重读结果恒同,无意义;
       op 可传则用 op.screenshot(),不可传(离线)跳过重读);

@@ -550,7 +550,7 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
         SELL_BENCH_ORPHAN_REASONS,
     )
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         SELL_BENCH_CONVERT_REASONS,
     )
     from sr_od.application.currency_war.sim.checks import selfcalc as _sl
@@ -994,7 +994,7 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
         SELL_BENCH_ORPHAN_REASONS,
     )
     from sr_od.application.currency_war.kernel.cw_economy import XP_TO_NEXT_LEVEL
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         SELL_BENCH_CONVERT_REASONS,
     )
     from sr_od.application.currency_war.sim.checks import selfcalc as _sl

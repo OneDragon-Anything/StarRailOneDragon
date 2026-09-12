@@ -10,7 +10,7 @@ kernel/obs/decision 三桶对 telemetry 的全部上行出口收敛为本模块�
   (游戏侧执行器 ``kernel.cw_observe.stop_for_l0_andon`` 消费);
 - run_id 归属键:``current_run_id`` provider(冲突行/结算行/影子文件名的局归属);
 - obs_event 收编制 provider:``obs_event_board``(观察冲突证据归宿 = 统一
-  state 账本行型 2;BoardState 单例供给由装配段注入,kernel 禁自寻会话)。
+  state 账本行型 2;GameState 单例供给由装配段注入,kernel 禁自寻会话)。
 
 注入纪律(与框架「副作用缺省关 + 启动点显式接通」一致):
 
@@ -127,14 +127,14 @@ def bypass_obs_conflict_to_defect(rec: dict[str, Any]) -> None:
 
 
 def set_obs_event_board_provider(fn: Callable[[], Any] | None) -> None:
-    """注入/清除 obs_event 收编制 BoardState 供给槽(装配段显式接通;
+    """注入/清除 obs_event 收编制 GameState 供给槽(装配段显式接通;
     None = 缺省关,观察冲突证据不进账本)。"""
     global _obs_event_board_provider
     _obs_event_board_provider = fn
 
 
 def obs_event_board() -> Any:
-    """现役 BoardState 单例供给(未注入/无会话 = None,调用方据此跳过)。"""
+    """现役 GameState 单例供给(未注入/无会话 = None,调用方据此跳过)。"""
     fn = _obs_event_board_provider
     if fn is None:
         return None
@@ -155,7 +155,7 @@ def journal_refs(*extra: dict[str, str] | None) -> list[dict[str, str]]:
     (读口不占版本)= 最近一行,其内嵌 state 供下钻对账;bypass 场景该值
     恰为刚写入的 obs_event 证据行版本。
 
-    锚缺媒体(无 BoardState 供给/局外/零版本)时省略,refs 允许空(诚实
+    锚缺媒体(无 GameState 供给/局外/零版本)时省略,refs 允许空(诚实
     缺失);extra = 调用方语义键(arbitration 族 provenance 标签等),None 项
     过滤。本函数在 kernel 出口模块 = 四域(obs/kernel/operations/telemetry)
     调用点共一形态,禁散写第二套键格式。

@@ -31,10 +31,10 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     ledger_node_type,
     pad_bench,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     DeployMove,
-    GameState,
+    CwWorkFrame,
     LevelUp,
     RefreshShop,
     SellBench,
@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     # 取读的替身缝(monkeypatch 面),cw_shop_action_ops 因此以函数内
     # lazy import 消费本文件;注解不经运行时求值,不新增模块级反向依赖。
     from sr_od.application.currency_war.kernel.cw_comps import Comp
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         Action,
         CloseShop,
         LevelUpShop,
@@ -79,7 +79,7 @@ if TYPE_CHECKING:
     )
 
 
-def _apply_hp(state: GameState, hp_value: int | None,
+def _apply_hp(state: CwWorkFrame, hp_value: int | None,
               readable: bool, trusted: bool) -> None:
     """hp 值+保真位同写(单一写点;覆盖丢位根治)。
 
@@ -324,13 +324,13 @@ def refresh_wave_is_refresh_only(actions: list) -> bool:
 
 
 def build_post_buy_incremental_state(
-        last_state: GameState,
+        last_state: CwWorkFrame,
         gold_read: int | None,
         tracked_bench_chars: list[BenchChar],
         hp_value: int | None,
         hp_readable: bool,
         hp_trusted: bool,
-) -> GameState | None:
+) -> CwWorkFrame | None:
     """买后重估增量态构造(执行边界压缩·买后验证增量的单一构造点)。
 
     机制不变量:买牌/卖牌/刷新不触 plane/round/board/level/xp/streak/
@@ -362,14 +362,14 @@ def build_post_buy_incremental_state(
     return post
 
 
-def _form_progress(comp: 'Comp', state: GameState) -> float:
+def _form_progress(comp: 'Comp', state: CwWorkFrame) -> float:
     """fp 遥测helper(review 要求:fp 轨迹可观测;调用方保证 comp 非 None)。
 
     归属申报:state 经 board_state_bridge 装箱 = 统一 state 过渡桥语义
     (T-70 线),本 hunk 实际随 T-13 提交入库而原提交信息未申报,此处
     补记归属供审计对账。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_bridge,
     )
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
@@ -414,7 +414,7 @@ class BuyCardsOutcome:
     计算暂存消费);bought_names 已在 buy_cards 内消费(pixel-diff 落位),
     不外发。
     """
-    state: GameState
+    state: CwWorkFrame
     config: CurrencyWarConfig
     total_buy: int
     total_level: int
@@ -444,9 +444,9 @@ class BuyCardsOutcome:
 
 def apply_action_outcome(_aop: 'ShopActionOp',
                          action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
-                         _ok: bool, _cur: GameState,
+                         _ok: bool, _cur: CwWorkFrame,
                          match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
-                         visit_actions: list) -> GameState | None:
+                         visit_actions: list) -> CwWorkFrame | None:
     """执行结果落地门(调用环单一源;落地审补办清单 C1 调用环级锁的承载体。
 
     C1 语义 = 旧 return True 使期望账投影与 tracked 实账分叉、guard 当轮
@@ -490,7 +490,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         # 面)。挂点 = 执行落地门(未落地不计数,同刷新计数组纪律)。
         # best-effort 记录面,失败不阻塞执行回执链。
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
             )
             from sr_od.application.currency_war.kernel.cw_effect_inventory import (
@@ -508,7 +508,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         # shop_refresh_cost 本口不写(§3.3.4 写端=现场 OCR 唯一;免费帧
         # 「免费」读数 OCR 为 None → 喂入口 carried,不落 0,免费帧不写闸
         # 由观察通道结构性满足)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of,
             record_refresh_execution,
         )
@@ -565,10 +565,10 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         except Exception as e:   # noqa: BLE001  记录面失败不阻塞
             log.warning(f'[cw-buy] 效果账本 REFRESH 计数失败(不阻塞): {e}')
     if _ok and not _aop.terminal:
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_slots_of as _sg_slots,
         )
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _sg_bs,
         )
         _skip_guard = (isinstance(action, BuyCard)
@@ -585,16 +585,16 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         # 执行回执(设计件 §2.1-2):k = 执行侧实购张数(merge_buy_k 计数,
         # ledger.buy_purchases 执行落地事实);LevelUpShop 单动作形态恒
         # 1 击;非买/升动作无执行期决定量(空回执)。
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig as _ProjSig,
         )
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             ShopActionExecuted as _ShopExecuted,
         )
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             apply_shop_action_logic as _apply_shop_logic,
         )
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_proj,
         )
         _bs_proj = _bs_of_proj(match.session)
@@ -622,7 +622,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
             # (观察赢),失配 = 投影模型 bug,缺陷台账留证后修推算代码。
             # last-wins:同段级联合并只留末张投影。纯记录面,决策零影响
             # (bench 为消费视图透传域,§8.7 批次二 as-built)。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 ChannelSig,
                 bench_view_of_slots,
                 board_state_of,
@@ -640,7 +640,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         if not _skip_guard:
             # 守卫输入 = 容器(W6 波 4 读者切换;期望态读值经投影口直写
             # 的容器 bench,payload 域集同源;帧 _proj 保留 = 日志遥测)
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of as _gt_bs,
             )
             from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
@@ -666,7 +666,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
                          action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
-                         ok: bool, state: GameState) -> None:
+                         ok: bool, state: CwWorkFrame) -> None:
     """v3_release_spent 执行回执位记账(T-88 写点;裁决 = ADR-0571)。
 
     首版口径 = **只计刷新实花**(「宁窄勿虚」的遥测诚实性选择:买牌/
@@ -703,17 +703,17 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
     字段——exec_events「受阻/放弃可见」收编)。发出即簿记非验证(M1③):
     applied = 动作 op 自身机械事实透传,零成败判定。journal 常开(ADR-0634)
     回执写入无条件,无局跳过在
-    kernel 口(:func:`~...kernel.cw_board_state.note_action_receipt`);
+    kernel 口(:func:`~...kernel.cw_game_state.note_action_receipt`);
     best-effort 不阻塞循环。
     """
     try:
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             note_action_receipt,
         )
         session = getattr(match, 'session', None)
         if session is None:
             return
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of,
         )
         note_action_receipt(
@@ -766,7 +766,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     返回 (失败 round 结果, 产出)。正常收工 → (None, outcome);
     未识别卡停机钩子触发 → (round_fail 留证结果, None)。
     """
-    from sr_od.application.currency_war.kernel.cw_state import CloseShop
+    from sr_od.application.currency_war.kernel.cw_vocab import CloseShop
     from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
         ShopExecEnv,
         ShopVisitLedger,
@@ -819,7 +819,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     # 判据单一源 = refresh_wave_is_refresh_only)。
     _entry_frame_marked = False
     _prev_refresh_only = False
-    state: GameState | None = None
+    state: CwWorkFrame | None = None
     for _ in range(MAX_REFRESH + 1):
         ledger.refresh_first_action = True   # 段级复位(仅刷新段判定输入)
         # did_refresh 段级复位(终结 op 语义 review 修复批暴露):两消费点
@@ -890,10 +890,10 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             # 经既有观察喂入口写 bs.gold,禁静默丢失)。首读假 0 已由观察
             # 漏斗 observe 落容器,救援值同渠道覆盖(观察赢,来源同级)。
             if _gold_rescued is not None:
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     ChannelSig as _RescueSig,
                 )
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of as _bs_of_rescue,
                 )
                 _bs_rescue = _bs_of_rescue(match.session)
@@ -930,11 +930,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 仅供投影/回执日志遥测链,决策/守卫/env 读点 = 容器(波 4 读者
         # 切换已承接)。值链语义与原黑板槽逐位等价(首动作 = 入口帧,
         # 后续 = 前一动作投影回执)。
-        _cur: GameState = state
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        _cur: CwWorkFrame = state
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_entry,
         )
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             synthesize_from_game_state as _syn_entry,
         )
         _bs_of_entry = _bs_of_entry(match.session)
@@ -1042,13 +1042,13 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 # 侧最后防线,与 prep 线 VISIT_ACTION_CAP 同构但更严:
                 # 商店段动作单价高(买/卖不可逆),超帽不交回外循环重试)。
                 # 帧帽诊断读 = 容器(W6 波 4 读者切换,设计件 §2.4-2)
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     bench_slots_of as _bslots_of,
                 )
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of as _bcap_of,
                 )
-                from sr_od.application.currency_war.kernel.cw_board_state import (
+                from sr_od.application.currency_war.kernel.cw_game_state import (
                     gold_of as _gold_of,
                 )
                 _st_cap = _bcap_of(match.session)
@@ -1106,7 +1106,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             # 守卫/env 读点 = 容器(波 4 读者切换,设计件 §2.4-2:
             # guard_proposal_vs_expected 守卫输入 + ShopExecEnv.state
             # 改容器单例);黑板槽读已随槽退役删除,_cur = visit 局部投影链。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of as _bs_of_cur,
             )
             _cur_bs = _bs_of_cur(match.session)

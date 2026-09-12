@@ -21,7 +21,7 @@ payload 承载效果数值/战场语义;经济/状态类复用 ``cw_investments.
 EQUIP_REWRITE_DECLARATIONS × EQUIP_WRITE_SIDES)、节点边界金结算载体
 (贡献算术的组合写收口 + 精密扳手获得回执窗)、穿域特权化腿(特权赋予卡
 拖角色腿,归工具执行批)、拷贝仪参与计数载体(装备效果进度侧栏)——把
-效果声明翻译成 BoardState 字段写入归属,宿主放本侧的原因与惰性 import
+效果声明翻译成 GameState 字段写入归属,宿主放本侧的原因与惰性 import
 纪律见各段头注。
 """
 from __future__ import annotations
@@ -35,17 +35,20 @@ from one_dragon.utils.log_utils import log
 if TYPE_CHECKING:
     # 仅类型注解引用(项目规范允许);运行时 payload 按对象持有,
     # 类型一致性校验在 cw_investments 构建层(那里有真类)做 isinstance。
-    # BoardState 仅注解用:cw_board_state 模块头反向 import 本模块(容器
+    # GameState 仅注解用:cw_game_state 模块头反向 import 本模块(容器
     # effects 字段载体),模块级 import 会成环;文末诸桥运行期
     # 经函数内惰性 import 取真类。cw_economy 仅注解用(LostNodeRef):
     # 它模块头拉 cw_investments → 后者 import 本模块,模块级 import 成环。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_economy import LostNodeRef
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         ChannelSig,
+        GameState,
         Unit,
     )
-    from sr_od.application.currency_war.kernel.cw_economy import LostNodeRef
-    from sr_od.application.currency_war.kernel.cw_investments import EconomyEffect
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        EconomyEffect,
+        EnvEconomyEffect,
+    )
 
 
 class TriggerKind(StrEnum):
@@ -56,7 +59,7 @@ class TriggerKind(StrEnum):
     BATTLE_END = 'battle_end'      # 战斗结算时(气氛组系)
     LEVEL_UP = 'level_up'          # 升级时(节节高升;商业间谍战场段)
     ON_REFRESH = 'on_refresh'      # 每次刷新时(淘金客/概率事件/采购专员计数)
-    ON_MERGE = 'on_merge'          # 合成时(武力刷新=合成装备时,官方限定;角色升星是否同触发面待裁决——BoardState 设计 §5 星星相印)
+    ON_MERGE = 'on_merge'          # 合成时(武力刷新=合成装备时,官方限定;角色升星是否同触发面待裁决——GameState 设计 §5 星星相印)
     ON_SELL = 'on_sell'            # 出售时(降本增效语义面)
     SUPPLY_PHASE = 'supply_phase'  # 补给阶段
     CONDITIONAL = 'conditional'    # 条件窗口(躺平冻结/经验就是财富改道/成长基金到级)
@@ -113,9 +116,12 @@ class EffectSpec:
     """一条投资策略的效果规格(四元组 + 二义标注)。
 
     - id/name 必须与 ``cw_invest_data.PLAZA_AUGMENTS`` 官方条目一致(构建层校验
-      id+name 双匹配,改名/移除 import 即炸)。
+      id+name 双匹配,改名/移除 import 即炸);环境源条目 id/name 对
+      ``PLAZA_PORTALS`` 同款校验(_validate_env_portal_effects)。
     - payload 类型与 category 的对应:ECONOMY/STATE→EconomyEffect、
-      BATTLEFIELD→BattlefieldEffect、UNIT_BUFF→UnitBuffRef(构建层校验)。
+      BATTLEFIELD→BattlefieldEffect、UNIT_BUFF→UnitBuffRef(构建层校验);
+      环境源经济条目 ECONOMY→EnvEconomyEffect(整局规则通道,与 per-node
+      形态的 EconomyEffect 分型,值单一源 = cw_investments.ENV_ECONOMY)。
     - pending/verdict:效果文本二义条目 pending=True,**不拍死**——verdict 保持
       None 直到实采定谳;消费端见 pending=True 必须走
       notes 声明的保守支。
@@ -126,7 +132,7 @@ class EffectSpec:
     trigger: TriggerKind
     duration: DurationKind
     category: EffectKind
-    payload: EconomyEffect | BattlefieldEffect | UnitBuffRef
+    payload: EconomyEffect | BattlefieldEffect | UnitBuffRef | EnvEconomyEffect
     duties: DutyFlags = DutyFlags()
     duration_nodes: int = 0       # N_NODES 类的持续节点数;**自然数计数非索引**(躺平=3);
                                   # 恒稳(注册期常量,登记时拷入 ActiveEffect.remaining_nodes)
@@ -147,7 +153,8 @@ class CounterKey:
 # ===== 效果来源词表(ActiveEffect.source 取值;防散落字符串)=====
 # 辖域:策略源=选卡登记(register_strategy);词缀源=敌人词缀改写源,结构化
 # 注册=kernel/cw_affix_effects.AFFIX_EFFECT_SPECS(register_affix 登记);
-# 环境源=投资环境辖域,登记端未建(schema 预留值)。
+# 环境源=投资环境辖域,结构化条目=ENV_PORTAL_EFFECTS(经济环境)+未入模
+# 占位(register_portal_from_env 登记,design.md §2.4)。
 SOURCE_STRATEGY: str = 'strategy'
 SOURCE_PORTAL: str = 'portal'
 SOURCE_AFFIX: str = 'affix'
@@ -174,7 +181,8 @@ class ActiveEffect:
     spec: EffectSpec
     source: str                # 取值=SOURCE_* 词表('strategy'/'portal'/'affix');
                                # strategy=策略源,affix=词缀源(登记端 register_affix),
-                               # portal=环境源(登记端未建,预留值)
+                               # portal=环境源(登记端 register_portal_from_env,
+                               # 结构化条目=ENV_PORTAL_EFFECTS,design.md §2.4)
     acquired_t: int | None     # 登记时点;节点序 = (plane-1)*9+round,**基 1**;
                                # 登记期快照(与 cw_loop _now_t 同式)
     remaining_nodes: int | None  # N_NODES 类余期;**自然数计数非索引**;None=不限;
@@ -187,7 +195,7 @@ class ActiveEffectInventory:
     """session 级在场效果清单。纯数据 + 读端/追踪端;零 import 包内模块(可离线单测)。
 
     写端(挂点)生产接线(迁移批次三,设计 §5.1/§8.7 批次三;单一实例 =
-    BoardState.effects,session.effect_inventory 为其兼容读口——载体归一
+    GameState.effects,session.effect_inventory 为其兼容读口——载体归一
     防双账本):选卡登记 = CwScreenInvestStrategy 确认落地(免战牌同点
     自动登记);节点 tick = cw_loop 备战分支(进节点边界);计数 bump =
     cw_op_buy_cards 执行落地门(刷新/购买);跳过递减 = prep_actions
@@ -208,7 +216,7 @@ class ActiveEffectInventory:
         self._last_tick_node: int | None = None
         # 装备效果进度侧栏(拷贝仪参与计数载体首用):键 = (装备名, 装备者
         # char_id),值 = 单调计数器。装备源效果无 EffectSpec 实例(T-51
-        # 申报面纪律:装备写端 = 桥/贡献算术直读 BoardState),其进展量
+        # 申报面纪律:装备写端 = 桥/贡献算术直读 GameState),其进展量
         # 无实例可挂,落本册侧栏——session 级生命周期与实例清单同源,
         # 计数语义同 §3 单调计数器模型(从 0 起、事件 +1、永不重置)。
         self.equip_progress: dict[tuple[str, str], int] = {}
@@ -254,6 +262,19 @@ class ActiveEffectInventory:
         登记语义与策略源同轨(余期播种/推进/到期共用同一套挂点逻辑)。
         """
         return self._register(spec, SOURCE_AFFIX, acquired_t)
+
+    def register_portal(self, spec: EffectSpec, acquired_t: int | None) -> ActiveEffect:
+        """投资环境效果获得 → 入清单(source=portal;结构化条目 =
+        :func:`ENV_PORTAL_EFFECTS`(经济环境),未入模环境走
+        :func:`register_portal_from_env` 运行期构造的 UnitBuffRef 占位
+        spec——两类条目同经本方法入册,登记语义与策略/词缀源同轨
+        (余期播种/推进/到期共用同一套挂点逻辑)。
+
+        生产登记挂点 = CwScreenInvestEnv._decide_and_act 确认链
+        (active_env 写入同址,invest-env 迭代 design.md §2.4;best-effort
+        失败不阻塞确认链,effect-domain.md §7.3 登记面纪律同词缀源)。
+        """
+        return self._register(spec, SOURCE_PORTAL, acquired_t)
 
     # —— 查表端(形状保证;决策消费归后续)——
     def by_source(self, source: str) -> list[ActiveEffect]:
@@ -413,10 +434,221 @@ class ActiveEffectInventory:
         return self.equip_progress[key]
 
 
+# ============================================================ portal 登记端(环境源)
+# (投资环境确认落地的效果登记,invest-env 迭代 design.md §2.4;生产挂点 =
+# CwScreenInvestEnv._decide_and_act 确认链,active_env 写入同址,best-effort
+# 不阻塞确认链。结构化条目 = 经济环境(ENV_ECONOMY 命中),payload 复用
+# ENV_ECONOMY 表内同一实例(单一源,不复制数值——与 STRATEGY_EFFECTS payload
+# 引 STRATEGY_ECONOMY 同实例的纪律同款);未入模环境登记 UnitBuffRef 占位
+# (效果原文存档,可见性优先,bot 零响应),G 组(ENV_GIFTS)占位 notes 附
+# GiftGrant 摘要(详设 env-value-models.md §2.3)。查询口 = inventory 现有
+# 遍历(by_source/by_category/first);本登记端零决策消费——经济判据接登记
+# 数据归后续批(design.md §1.3-5)。
+#
+# **表为什么是惰性构建函数而非模块级常量**:payload 需 cw_investments 真类
+# 实例,而 cw_investments 模块头反向 import 本模块(payload 类型面),模块级
+# import 它成环(文末诸桥同款约束);首调构建 + 缓存,校验沿
+# ``cw_investments._validate_strategy_effects`` 同款(孤儿键/id 双匹配/
+# payload↔category),测试收集期显式触发构建 = 等效 import 即炸门。)
+
+#: 经济环境 EffectSpec 条目缓存(首调 :func:`env_portal_effects` 填充;
+#: 直读禁——未构建时为 None,消费端一律走构建函数)。
+_ENV_PORTAL_EFFECTS: dict[str, EffectSpec] | None = None
+
+
+def env_portal_effects() -> dict[str, EffectSpec]:
+    """经济环境 EffectSpec 条目表(首调构建 + 缓存 + 校验,幂等)。
+
+    条目键 = 环境规范名;trigger/duration 按环境语义(整局/位面周期/
+    一次性);payload = ``cw_investments.ENV_ECONOMY`` 表内同一实例(单一源,
+    估值与登记不双份)。校验见 :func:`_validate_env_portal_effects`。
+    """
+    global _ENV_PORTAL_EFFECTS
+    if _ENV_PORTAL_EFFECTS is not None:
+        return _ENV_PORTAL_EFFECTS
+    from sr_od.application.currency_war.kernel.cw_investments import ENV_ECONOMY
+
+    specs: dict[str, EffectSpec] = {
+        # 每位面开局 (6,8,12) 金晶矿(id 103):位面周期发放面 → PLANE_START
+        # (词表本义「每个位面开始时(固定理财)」);整局持有 → PERMANENT。
+        '增发货币': EffectSpec(
+            id='103', name='增发货币', trigger=TriggerKind.PLANE_START,
+            duration=DurationKind.PERMANENT, category=EffectKind.ECONOMY,
+            payload=ENV_ECONOMY['增发货币'],
+            notes='整局规则面:每位面开局 6/8/12 金晶矿(位面周期);payload 单一源 = ENV_ECONOMY'),
+        # 选卡当场 +6 金(id 113):即时面 → INSTANT/ONCE(随机环境期望不计,
+        # design §2.6 取舍)。
+        '蓝海': EffectSpec(
+            id='113', name='蓝海', trigger=TriggerKind.INSTANT,
+            duration=DurationKind.ONCE, category=EffectKind.ECONOMY,
+            payload=ENV_ECONOMY['蓝海'],
+            notes='选卡当场 +6 金(一次性;随机环境期望不计)'),
+        # 升 8 级后 3 节点 +12XP/节点(id 138):条件窗口型 → CONDITIONAL
+        # (成长基金到级同族先例)。**不设 N_NODES 余期播种**:登记时点
+        #(开局选环境)≠条件达成时点(lv8),余期从登记起递减会提前耗尽——
+        # 期限语义(条件达成后 3 节点)归后续消费批排程,本登记端可见性优先,
+        # duration=PERMANENT 保占位不丢。
+        '成功经验': EffectSpec(
+            id='138', name='成功经验', trigger=TriggerKind.CONDITIONAL,
+            duration=DurationKind.PERMANENT, category=EffectKind.ECONOMY,
+            payload=ENV_ECONOMY['成功经验'],
+            notes='条件窗口:升8级后3节点每节点+12XP;期限不播种(登记时点≠条件达成时点,'
+                  '递减会提前耗尽,归消费批排程)'),
+        # 每取一张策略 +2×已持有数(id 147):触发面 = 每次取投资策略,TriggerKind
+        # 无 ON_PICK 值 → 占 CONDITIONAL + notes 声明(禁私加枚举值——触发词表
+        # 扩值须同步挂点面评审,登记端零消费不构成扩值依据)。
+        '策略大师': EffectSpec(
+            id='147', name='策略大师', trigger=TriggerKind.CONDITIONAL,
+            duration=DurationKind.PERMANENT, category=EffectKind.ECONOMY,
+            payload=ENV_ECONOMY['策略大师'],
+            notes='触发面 = 每次取投资策略(词表无 ON_PICK 值,占 CONDITIONAL 声明);'
+                  '金面 = +2×取卡前已持有数'),
+    }
+    _validate_env_portal_effects(specs)
+    _ENV_PORTAL_EFFECTS = specs
+    return specs
+
+
+def _validate_env_portal_effects(specs: dict[str, EffectSpec]) -> None:
+    """ENV_PORTAL_EFFECTS 构建校验(沿 ``cw_investments
+    ._validate_strategy_effects`` 同款,构建期炸):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(防版本更新改名/移除后静默失联);
+    ② id 双匹配:spec.id 必须等于 plaza id(改名且 id 仍在的漂移也炸);
+    ③ payload↔category 一致性:本表条目一律 ECONOMY ↔ EnvEconomyEffect;
+    ④ 覆盖方向:表键 ⊆ ENV_ECONOMY——结构化条目只对经济环境建,表外经济
+    环境(数据批 B/C 类补表后未跟上 spec)走占位登记不炸(登记端对 3.3
+    演化鲁棒:占位保守可见,零行为差),反方向(非经济环境建 spec)拒绝;
+    传递得 表 ∩ ENV_GIFTS = ∅(ENV_ECONOMY ∩ ENV_GIFTS = ∅ 构建期已断言)。
+    """
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        ENV_ECONOMY,
+        INVESTMENT_ENVS,
+        EnvEconomyEffect,
+    )
+
+    orphans = [n for n in specs if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(f"ENV_PORTAL_EFFECTS 孤儿键(base 无此环境?):{sorted(orphans)}")
+    for _name, _spec in specs.items():
+        if INVESTMENT_ENVS[_name].source != f"plaza:{_spec.id}":
+            raise ValueError(
+                f"ENV_PORTAL_EFFECTS id 漂移:{_name!r} spec.id={_spec.id} "
+                f"base={INVESTMENT_ENVS[_name].source}")
+        if _spec.category != EffectKind.ECONOMY or \
+                not isinstance(_spec.payload, EnvEconomyEffect):
+            raise ValueError(
+                f"ENV_PORTAL_EFFECTS payload↔category 不一致:{_name!r} "
+                f"category={_spec.category} payload={type(_spec.payload).__name__}"
+                f"(本表条目一律 ECONOMY ↔ EnvEconomyEffect)")
+        if _spec.pending and not _spec.notes:
+            raise ValueError(f"ENV_PORTAL_EFFECTS pending 条目必须写保守支 notes:{_name!r}")
+    _off_econ = set(specs) - set(ENV_ECONOMY)
+    if _off_econ:
+        raise ValueError(
+            f"ENV_PORTAL_EFFECTS 覆盖越界(非经济环境禁建结构化条目,走占位):{sorted(_off_econ)}")
+
+
+def _portal_placeholder_spec(env_name: str) -> EffectSpec | None:
+    """未入模环境的 UnitBuffRef 占位 spec(运行期构造,不入注册表):
+
+    - 效果原文存档(payload.effect_text = INVESTMENT_ENVS[name].effect 官方
+      全文,可见性优先——判读面可读,bot 零响应);
+    - G 组(ENV_GIFTS 命中)占位 notes 附 GiftGrant 摘要(即时/条件发放角色
+      + advisor 语义,详设 env-value-models.md §2.3「判读面可读」);
+    - trigger/duration 无行为消费(占位零响应),统一 PLANE_START/PERMANENT
+      (环境 = 选定后整局规则面语义),notes 声明占位形;
+    - id = plaza 数字 id(从 source 剥前缀;非 plaza 形 source 原样保留)。
+    """
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        ENV_GIFTS,
+        INVESTMENT_ENVS,
+    )
+    _env = INVESTMENT_ENVS[env_name]
+    grant = ENV_GIFTS.get(env_name)
+    if grant is not None:
+        _parts = ['GiftGrant']
+        if grant.chars_immediate:
+            _parts.append(f"即时[{'、'.join(grant.chars_immediate)}]")
+        if grant.chars_conditional:
+            _parts.append('条件[' + ';'.join(
+                f'{c}:{note}' for c, note in grant.chars_conditional) + ']')
+        if grant.advisor:
+            _parts.append('advisor=顾问入商店')
+        _notes = ('未入模占位(效果原文存档,bot 零响应;详设 env-value-models.md §2.3);'
+                  + ' '.join(_parts))
+    else:
+        _notes = '未入模占位(效果原文存档,bot 零响应;design.md §2.4)'
+    _pid = (_env.source.split(':', 1)[1]
+            if _env.source.startswith('plaza:') else _env.source)
+    return EffectSpec(
+        id=_pid, name=_env.name, trigger=TriggerKind.PLANE_START,
+        duration=DurationKind.PERMANENT, category=EffectKind.UNIT_BUFF,
+        payload=UnitBuffRef(effect_text=_env.effect), notes=_notes)
+
+
+def register_portal_from_env(session: object, env_name: str) -> EffectSpec | None:
+    """投资环境确认落地 → portal 源登记(design.md §2.4 登记端共用体;
+    形态先例 = cw_affix_effects.register_affixes_from_names 词缀源共用体)。
+
+    - **结构化命中**:归一名 ∈ :func:`env_portal_effects`(经济环境)→ 该
+      spec 入册(payload = ENV_ECONOMY 表内实例,单一源);
+    - **未入模占位**:已知名(INVESTMENT_ENVS 命中)非经济环境 →
+      :func:`_portal_placeholder_spec` 运行期构造 UnitBuffRef 占位入册
+      (效果原文存档;G 组 notes 附 GiftGrant 摘要);
+    - **未知名零动作**:注册表外(赛季新增/OCR 误识/锁定未命名)无效果原文
+      无从占位 → None(调用侧 is_known_env 已 warning,此处不再重复告警);
+    - **幂等**:portal 源已登记同名(spec.name = 归一名)跳过——环境确认链
+      重入/retry 不得双登记(实例按 spec_key 唯一,effect-domain.md §9.1
+      与词缀源同款纪律);
+    - acquired_t = 登记时点节点序快照((plane-1)*9+round 基 1;BoardState
+      节点单例优先,引导窗回退 session.last_state,与词缀源同坐标系);
+    - 返回本次登记的 spec(幂等跳过/未知名返回 None,调用侧日志留证)。
+
+    board_state_of 运行期函数内 import:BoardState 容器模块头反向 import
+    本模块(effects 字段载体),保持本函数可离线单测(惰性纪律同文末诸桥)。
+    """
+    from sr_od.application.currency_war.kernel.cw_investments import (
+        INVESTMENT_ENVS,
+        normalize_invest_name,
+    )
+
+    _name = normalize_invest_name(env_name)
+    if _name not in INVESTMENT_ENVS:
+        return None
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_of,
+    )
+    bs = board_state_of(session)
+    effects = bs.effects
+    if any(e.spec.name == _name for e in effects.by_source(SOURCE_PORTAL)):
+        return None
+    _spec = env_portal_effects().get(_name)
+    if _spec is None:
+        _spec = _portal_placeholder_spec(_name)
+    effects.register_portal(_spec, _portal_acquired_t(bs, session))
+    return _spec
+
+
+def _portal_acquired_t(bs: object, session: object) -> int | None:
+    """登记时点节点序快照((plane-1)*9+round,基 1;register_affixes_from_names
+    同式):节点单例已读优先,引导窗回退 session.last_state,皆缺 = None
+    (登记期快照缺位不炸登记面)。"""
+    _nd = getattr(bs, 'node', None)
+    _nd_val = _nd.value if _nd is not None else None
+    if _nd_val is not None:
+        return (_nd_val.plane - 1) * 9 + _nd_val.round_num
+    _st_last = getattr(session, 'last_state', None)
+    if _st_last is not None:
+        return (((getattr(_st_last, 'plane', 1) or 1) - 1) * 9
+                + (getattr(_st_last, 'round_num', 1) or 1))
+    return None
+
+
 # ============================================================ 账本→字段桥·板面重写
-# (BoardState 数据结构设计 §5 全员晋升/人力重组两行;effect-domain.md §8 同名条。
-# 与 cw_board_state 的 apply_effect_burst_grant 等三桥同族,但宿主不在
-# cw_board_state——其模块头 import 本模块,桥落本侧可免模块级成环;
+# (GameState 数据结构设计 §5 全员晋升/人力重组两行;effect-domain.md §8 同名条。
+# 与 cw_game_state 的 apply_effect_burst_grant 等三桥同族,但宿主不在
+# cw_game_state——其模块头 import 本模块,桥落本侧可免模块级成环;
 # ChannelSig/BenchView 运行期函数内惰性取。挂点 = 选卡时点(设计 §3.2.3
 # 「效果写端(选卡时点、非 op)」),生产接线 = CwScreenInvestStrategy
 # ._append_confirmed_strategy 确认落地登记点(register_strategy/
@@ -434,20 +666,20 @@ class BoardRewriteReport:
                                    # 此留证、未入金);upgrade_all 恒 0(无出售面)
     sold_units: int                # sell_all 已读出的出售单位数(前台+后台+备战席;
                                    # 字段从未观察 = 0,不代表实际卖数)
-    cleared_fields: tuple[str, ...] = ()   # 实际执行逻辑清空的 BoardState 字段名
+    cleared_fields: tuple[str, ...] = ()   # 实际执行逻辑清空的 GameState 字段名
     partial_read: bool = False     # True = 出售域未全读(front_row/back_row/bench
                                    # 任一从未观察)→ 退款公式输入不完整,退款
                                    # 零写入等观察收口(effect-domain.md §6.3);
                                    # upgrade_all 恒 False(无出售面)
 
 
-def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
+def apply_board_rewrite(bs: GameState, spec: EffectSpec, *,
                         frame: str = '') -> BoardRewriteReport | None:
     """桥·板面重写形态(选卡时点一次性):按设计 §5 写入归属两行落
     EffectSpec.board_rewrite 的语义。返回执行报告;非板面重写条目(payload
     无 board_rewrite 或为空)返回 None 零动作。
 
-    **归属两行(单一源 = BoardState 数据结构设计 §5)**:
+    **归属两行(单一源 = GameState 数据结构设计 §5)**:
     - 全员晋升(BOARD_REWRITE_UPGRADE_ALL):替换面 = 随机(全场升为高 1 费
       随机角色),不可准确算 → **零逻辑写端,观察收口**(§5.3 归属判据随机
       分支)——本桥对它零写入,报告作负写端留证;附带「获得 2 个拆装扳手」
@@ -473,11 +705,11 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
     标记到字段)。bench 清空保留现容量(节省工位类容量改写归容量投影
     桥辖域,两桥互不越界)。
 
-    **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 的 BoardState 全量
-    经 synthesize_from_game_state 由 sim 真值 GameState 合成(evidence 恒
+    **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 的 GameState 全量
+    经 synthesize_from_game_state 由 sim 真值 CwWorkFrame 合成(evidence 恒
     sim:synthesized),若在 sim 侧调本桥,logic 值立即被下一段合成覆盖且
     与引擎事实不一致(sim 引擎不执行出售/重写)。sim 若建模这两卡的板面
-    后果,改动面 = sim 真值 GameState(卖全场+退款+发牌),经合成口自动
+    后果,改动面 = sim 真值 CwWorkFrame(卖全场+退款+发牌),经合成口自动
     以 observation 落记录——效果在真值层生效,记录层不插 logic 补丁。现役
     sim 对这两卡零板面建模(选卡仅记名+经济腿),属 sim 模型既有边界。
 
@@ -499,17 +731,16 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
         return BoardRewriteReport(rewrite=rewrite, refund_gold=0, sold_units=0)
 
     # —— sell_all:全场出售+再发牌形态 ——
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BenchSlot,
-        BenchView,
-        ChannelSig,
-    )
-
     # 卖价/费用单一源在 cw_state(与预期态/策略侧同源);函数内 import 维持
     # 本模块「模块头零包内 import」契约(机制层离线可单测)。
     from sr_od.application.currency_war.kernel.cw_economy import (
         bench_char_cost,
         sell_refund,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        BenchSlot,
+        BenchView,
+        ChannelSig,
     )
 
     front = bs.front_row.value
@@ -572,10 +803,10 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
 
 # ============================================================ 账本→字段桥·装备改写写端
 # (写入归属申报单一源 = kernel/cw_affix_effects.py EQUIP_REWRITE_DECLARATIONS
-# × EQUIP_WRITE_SIDES;归属判据 = BoardState 数据结构设计 §5.3 / 正本
+# × EQUIP_WRITE_SIDES;归属判据 = GameState 数据结构设计 §5.3 / 正本
 # docs/develop/sr_od/application/currency_war/game_state/effect-domain.md §6.3。宿主放本侧与
 # 板面重写桥同理:申报模块 cw_affix_effects 头 import 本模块,桥落本侧免
-# 模块级成环;BoardState 真类运行期函数内惰性取,维持「模块头零包内
+# 模块级成环;GameState 真类运行期函数内惰性取,维持「模块头零包内
 # import」契约。)
 #
 # **窗口独占性分形**(确定性面两种落码形的分界):观察覆盖字段的 logic 直写,
@@ -592,12 +823,12 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
 #   的结算屏真值已含该效果,独立直写=双计)零直写,逐件申报见登记面。
 
 
-def _equip_bridge_sig(bs: BoardState) -> ChannelSig:
+def _equip_bridge_sig(bs: GameState) -> ChannelSig:
     """装备改写桥写入的渠道③签名(单一构造点;组 id 格式与板面重写桥一致
     = hook:<登记名>@<seq>;actor 复用同族登记名 EffectLedgerBridge,
     REGISTERED_ACTORS 在册)。ChannelSig 运行期惰性取(TYPE_CHECKING 面
     仅注解,模块头零包内 import 契约)。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import ChannelSig
+    from sr_od.application.currency_war.kernel.cw_game_state import ChannelSig
     return ChannelSig(family='logic_hook', actor='EffectLedgerBridge',
                       mode='compute',
                       group_id=f'hook:EffectLedgerBridge@{bs.write_seq + 1}')
@@ -620,7 +851,7 @@ STAFF_PROJECTOR_COST_GATE: int = 3
 EQUIP_PRIVILEGE_SUFFIX: str = '·特权'
 
 
-def held_equip_count(bs: BoardState, name: str) -> int:
+def held_equip_count(bs: GameState, name: str) -> int:
     """装备持有件数单一源(贡献算术/组合写的计数底座):前排已穿 + 后排已穿
     + 备战席已穿(记录内)+ 装备库存,四源求和。
 
@@ -645,7 +876,7 @@ def held_equip_count(bs: BoardState, name: str) -> int:
     return total
 
 
-def worn_equip_count(bs: BoardState, name: str) -> int:
+def worn_equip_count(bs: GameState, name: str) -> int:
     """装备已穿件数(「装备者」口径计数底座):前排 + 后排已穿。
 
     备战席已穿不计——负探针盲区同 :func:`held_equip_count` 边界;装备库存
@@ -658,7 +889,7 @@ def worn_equip_count(bs: BoardState, name: str) -> int:
     return total
 
 
-def equip_node_gold_grant(bs: BoardState) -> int:
+def equip_node_gold_grant(bs: GameState) -> int:
     """贡献算术·财富金面(进新节点 +4×持有件数):节点边界金结算载体的
     合计项之一,纯算术零直写。
 
@@ -672,7 +903,7 @@ def equip_node_gold_grant(bs: BoardState) -> int:
     return held_equip_count(bs, '财富') * WEALTH_GOLD_PER_NODE
 
 
-def equip_diamond_phase_gold(bs: BoardState, *, phases_elapsed: int) -> int:
+def equip_diamond_phase_gold(bs: GameState, *, phases_elapsed: int) -> int:
     """贡献算术·财富宝钻金面(装备者每 3 备战阶段 +1 金×已穿件数):
     节点边界金结算载体的合计项,纯算术零直写(依据同 :func:`equip_node_gold_grant`)。
 
@@ -693,7 +924,7 @@ def equip_diamond_phase_gold(bs: BoardState, *, phases_elapsed: int) -> int:
             * (phases_elapsed // DIAMOND_PHASE_STEP))
 
 
-def equip_wrench_duplicate_gold(bs: BoardState) -> int:
+def equip_wrench_duplicate_gold(bs: GameState) -> int:
     """贡献算术·精密拆装扳手金面(持有精密后再获得拆装扳手改 +1 金):
     获得结算载体的合计项,纯算术零直写——获得时点窗口与到账战利品共享
     (球/补给内容即时入账等观察覆盖,§4 ClickSpheres),单独直写=部分预测
@@ -703,7 +934,7 @@ def equip_wrench_duplicate_gold(bs: BoardState) -> int:
     return 1 if held_equip_count(bs, '精密拆装扳手') >= 1 else 0
 
 
-def apply_equip_acquire_hp(bs: BoardState, *, frame: str = '') -> int:
+def apply_equip_acquire_hp(bs: GameState, *, frame: str = '') -> int:
     """桥·获得时点小队生命增益(极·阿瓦隆 +50):获得回执时点 write_logic
     直写 hp + :data:`TREASURE_ACQUIRE_HP`。
 
@@ -722,7 +953,7 @@ def apply_equip_acquire_hp(bs: BoardState, *, frame: str = '') -> int:
     return TREASURE_ACQUIRE_HP
 
 
-def spawn_equip_bench_unit(bs: BoardState, char_id: str, star: int,
+def spawn_equip_bench_unit(bs: GameState, char_id: str, star: int,
                            cost: int, *, cost_gate: int = 0,
                            frame: str = '') -> bool:
     """桥·装备族单位入席腿(共享):把复制/发放单位落进备战席第一个空槽,
@@ -751,7 +982,7 @@ def spawn_equip_bench_unit(bs: BoardState, char_id: str, star: int,
     if view is None:
         return False
     # 真类运行期惰性取(模块头零包内 import 契约,板面重写桥同纪律)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         BenchSlot,
         BenchView,
         Unit,
@@ -770,7 +1001,7 @@ def spawn_equip_bench_unit(bs: BoardState, char_id: str, star: int,
     return True
 
 
-def grant_equip_item(bs: BoardState, name: str, *, frame: str = '') -> bool:
+def grant_equip_item(bs: GameState, name: str, *, frame: str = '') -> bool:
     """桥·装备单件入区(好运令牌选定回执等「选定后确定」面):装备库存
     追加一件,write_logic 直写。库存从未观察(None)= 无容器,跳过返回
     False。名单合法性归调用侧(机制层零数据注册表依赖;选件事实由回执
@@ -792,7 +1023,7 @@ def privilege_counterpart(name: str) -> str:
     return name + EQUIP_PRIVILEGE_SUFFIX
 
 
-def transform_equip_to_privilege(bs: BoardState, source_name: str, *,
+def transform_equip_to_privilege(bs: GameState, source_name: str, *,
                                  frame: str = '') -> str | None:
     """桥·进阶装备特权化(特权赋予卡,拖装备回执 = 库存腿):装备库存中
     名为 ``source_name`` 的件替换为对应·特权名,write_logic 直写(确定性
@@ -847,7 +1078,7 @@ class NodeBoundarySettlement:
 
 
 def settle_node_boundary_gold(
-        bs: BoardState, *, plane: int, round_num: int, node_type: str,
+        bs: GameState, *, plane: int, round_num: int, node_type: str,
         streak: int, lost_node: LostNodeRef | None = None,
         win_reward_mult: float = 1.0, interest_flat: int = 0,
         interest_cap: int | None = None, diamond_gold: int = 0,
@@ -903,7 +1134,7 @@ def settle_node_boundary_gold(
                                   written=True)
 
 
-def settle_wrench_duplicate_gold(bs: BoardState, *, frame: str = '') -> int:
+def settle_wrench_duplicate_gold(bs: GameState, *, frame: str = '') -> int:
     """获得回执窗金结算:精密扳手在场的拆装扳手获得改 +1 金(贡献算术
     :func:`equip_wrench_duplicate_gold` 的组合写收口)。
 
@@ -932,7 +1163,7 @@ def settle_wrench_duplicate_gold(bs: BoardState, *, frame: str = '') -> int:
 # cw_affix_effects.apply_tool_execution_write(申报表驱动,免环落申报侧)。)
 
 
-def transform_worn_equip_to_privilege(bs: BoardState, target: Unit,
+def transform_worn_equip_to_privilege(bs: GameState, target: Unit,
                                       worn_name: str, *,
                                       frame: str = '') -> str | None:
     """桥·穿域特权化(特权赋予卡拖角色腿):已穿进阶装备单件原位变换为
@@ -953,7 +1184,7 @@ def transform_worn_equip_to_privilege(bs: BoardState, target: Unit,
         raise ValueError(
             f'worn_name 须为 target 已穿装备(「选择一件」合法输入域),'
             f'得 {worn_name!r} ∉ {target.equips!r}')
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         BenchSlot,
         BenchView,
         Unit,
@@ -1026,7 +1257,7 @@ class CopyMachineSpawn:
                      # 参与计数是事实推进,不因落位失败回退,单调不重置)
 
 
-def settle_copy_machine_participation(bs: BoardState, *,
+def settle_copy_machine_participation(bs: GameState, *,
                                       frame: str = '') -> list[CopyMachineSpawn]:
     """拷贝仪参与计数载体·战斗参与结算:扫描**现值观察面**(前台+后台
     在册单位)上的拷贝仪穿戴者,逐件推进参与计数;计数整除阈值 = 成熟,

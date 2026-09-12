@@ -1,7 +1,7 @@
 """货币战争 hp 施门 kernel 政策层(决策消费面的统一门 + 可信位读口)。
 
 **辖域**:决策内存消费面消费 hp 前对「门前真值」施加的政策修正单点。
-容器 ``BoardState.hp`` 是门前真值(记录面,不经门,fields.md §3.2.13);
+容器 ``GameState.hp`` 是门前真值(记录面,不经门,fields.md §3.2.13);
 门后消费值不入记录。两层接口:
 
 1. :func:`apply_hp_freshness_gate` —— 结算新鲜度门**本体**(纯函数,显式参数、
@@ -24,7 +24,7 @@ kernel 决策簇挂账读点(``cw_comps.maybe_pivot`` 保命分位 /
 重挂生产消费时必经本层读口,禁按旧注释直读 ``bs.hp.value``。
 
 门幂等(同 gap 窗内重复施门值不变):读口可在装配层与消费层叠加施门而不
-判分叉——过渡期(统一 state 迁移,详见 r5-migration-plan.md)GameState 帧
+判分叉——过渡期(统一 state 迁移,详见 r5-migration-plan.md)CwWorkFrame 帧
 hp 已被上游施门,经桥视图再过本门值不变。
 """
 from __future__ import annotations
@@ -32,7 +32,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_board_state import BoardState
+    from sr_od.application.currency_war.kernel.cw_game_state import GameState
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
@@ -89,7 +89,7 @@ def apply_hp_freshness_gate(current_hp: int | None, last_hp: int | None,
     return current_hp
 
 
-def _node_t_of(bs: BoardState, session: StrategySession) -> int | None:
+def _node_t_of(bs: GameState, session: StrategySession) -> int | None:
     """决策时基读口(单一源 = ``cw_plane_table.node_t_of``,schedule 派生,
     与结算锚写点同式禁单侧改式,见 :func:`apply_hp_freshness_gate` 时基
     契约);NodeKey 缺席 = None = 门恒等支。"""
@@ -100,7 +100,7 @@ def _node_t_of(bs: BoardState, session: StrategySession) -> int | None:
     return node_t_of(session, node.plane, node.round_num)
 
 
-def decision_hp(bs: BoardState, session: StrategySession) -> int | None:
+def decision_hp(bs: GameState, session: StrategySession) -> int | None:
     """决策面 hp 读口(门后消费值;hp 决策消费点统一经本口,禁旁路直读
     ``bs.hp.value`` 手写第二门)。
 
@@ -118,7 +118,7 @@ def decision_hp(bs: BoardState, session: StrategySession) -> int | None:
         bs.hp.source == 'observation')
 
 
-def hp_decision_trusted_of(bs: BoardState) -> bool:
+def hp_decision_trusted_of(bs: GameState) -> bool:
     """hp 决策可信位容器版单一实现(定谳二):
     ``(bs.hp.source in ('observation', 'carried'))``。
 

@@ -43,7 +43,7 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
     - ConfirmStrategy:本函数零写——active_strategies 本体追加由 handler
       在确认成功后既有写点承担(cw_screen_invest_strategy);
     - ConfirmMegastar/ConfirmPartner:本函数零写——chosen_* 写端 = 各
-      handler 的 ``BoardState.write_logic``(选择落地即写,cw_screen_megastar
+      handler 的 ``GameState.write_logic``(选择落地即写,cw_screen_megastar
       /cw_screen_partner);
     - ConfirmExpertCash(专家邀请函「现金为王」):gold +4 逻辑直推
       session.last_state.gold(+4 = 弃卡取现金的固定回金,原「待实读」

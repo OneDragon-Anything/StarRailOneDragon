@@ -22,8 +22,8 @@ entry posture 授权链首位)与 ②(b) 帧型判据全部消费本模块的同
 from __future__ import annotations
 
 from sr_od.application.currency_war.data.cw_invest_data import PLAZA_PORTALS
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
     node_kind_of,
 )
 
@@ -38,7 +38,7 @@ PIGGY_ENV_NAMES: frozenset[str] = frozenset(
     p.name for p in PLAZA_PORTALS if '奖励节点替换' in p.effect)
 
 
-def is_piggy_reward_frame(bs: BoardState | None) -> bool:
+def is_piggy_reward_frame(bs: GameState | None) -> bool:
     """扑满例外守卫:奖励型节点 ∧ 本局环境在扑满名单 → 抑制解除。
 
     环境读点 = ``state.active_env``(单一源 = 观测装配回写链:
@@ -51,7 +51,7 @@ def is_piggy_reward_frame(bs: BoardState | None) -> bool:
     return str(bs.active_env.value or '') in PIGGY_ENV_NAMES
 
 
-def reward_node_suppressed(bs: BoardState | None) -> bool:
+def reward_node_suppressed(bs: GameState | None) -> bool:
     """规则①抑制谓词:可辨奖励帧 ∧ 非扑满环境 → 升级抑制。
 
     None fail-open(node_type 不可辨 → False)理由见模块 docstring

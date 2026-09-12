@@ -60,11 +60,11 @@ def install_obs_ports() -> None:
     set_obs_reset_hook(reset_phase_round_cache)
     set_merge_effect_gate(is_merge_effect_frame)
 
-    # 缺陷台账生产武装点(迁移批次二,任务书件 7):BoardState 观察覆盖
-    # logic 值失配行(kernel/cw_board_state._emit_defect,批次一为缺省关)
+    # 缺陷台账生产武装点(迁移批次二,任务书件 7):GameState 观察覆盖
+    # logic 值失配行(kernel/cw_game_state._emit_defect,批次一为缺省关)
     # 经 sink 落 bs_defect.jsonl(与 expected_reconcile.jsonl 同目录同追加
     # 形态);缺省关 = 只缓冲不落盘,测试零真实 IO。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         set_defect_sink,
     )
     set_defect_sink(_bs_defect_sink_for_test(_reconcile_dir()))
@@ -79,7 +79,7 @@ def _reconcile_dir() -> Path:
 
 
 def _bs_defect_sink_for_test(base_dir: Path):
-    """BoardState 缺陷台账 sink 工厂(形态同 expected_reconcile sink;
+    """GameState 缺陷台账 sink 工厂(形态同 expected_reconcile sink;
     单一文件 = bs_defect.jsonl,逐行 JSON,失败静默)。"""
     import json
 
@@ -113,7 +113,7 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
     """
     from types import MappingProxyType
 
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_of,
         level_of,
         node_kind_of,

@@ -32,8 +32,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
 )
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
@@ -135,7 +135,7 @@ class MandateV1Strategy(CwFlowStrategy):
             ' _assemble_turn;直接实例化本类须走注册面)')
 
     def decide_encounter(self, options: list[EncounterOption],
-                         bs: BoardState, session: StrategySession,
+                         bs: GameState, session: StrategySession,
                          config: CurrencyWarConfig,
                          refresh_used: bool = False) -> EncounterPick:
         """遭遇分支选卡:E3 判据形态(mandate_v1/encounter.py 单一源)。
@@ -174,7 +174,7 @@ class MandateV1Strategy(CwFlowStrategy):
         本体,槽值在入口消费复位后保持 'none',投影帧不触发刷新)。
         """
         from sr_od.application.currency_war.kernel import cw_state
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             ShopActionExecuted,
             apply_shop_action_logic,
@@ -226,11 +226,11 @@ class MandateV1Strategy(CwFlowStrategy):
                               if isinstance(a, cw_state.RefreshShop) else None))
             apply_shop_action_logic(bs, a, executed=_exec,
                                     produced_by=type(a).__name__, sig=_sig)
-            from sr_od.application.currency_war.kernel.cw_board_state import (
+            from sr_od.application.currency_war.kernel.cw_game_state import (
                 apply_shop_merge_leg,
             )
             apply_shop_merge_leg(bs, a, sig=_sig)
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_is_full,
             gold_of,
         )

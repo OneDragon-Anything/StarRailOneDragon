@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_economy import sell_refund
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     BuyCard,
-    GameState,
+    CwWorkFrame,
     _bench_char_cost,
 )
 
@@ -152,7 +152,7 @@ id+时间戳)」;键节原文已删档,取回=ADR-0644)。
 
 # ===== 序列化(dataclass → JSON-safe dict)=====
 
-def salvageable_1star_value(state: GameState) -> int:
+def salvageable_1star_value(state: CwWorkFrame) -> int:
     """出口财富口径的「可回收 1★ 值」:手上(deployed+bench)全部 star==1
     件的卖出回金和。
 
@@ -225,8 +225,8 @@ def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
     return out
 
 
-def serialize_state(state: GameState) -> dict[str, Any]:
-    """GameState → JSON-safe dict(剔除大且无决策价值的字段由调用方按需;默认全量)。
+def serialize_state(state: CwWorkFrame) -> dict[str, Any]:
+    """CwWorkFrame → JSON-safe dict(剔除大且无决策价值的字段由调用方按需;默认全量)。
 
     ADR-0392:``deployed`` 槽位表 → **紧缩占用序**落遥测(None 空槽剔除)——
     下游视图(rounds/win_features/replay)零迁移,占用数=len 语义不变。
@@ -350,7 +350,7 @@ class DecisionTrace:
     difficulty: str = ""                          # A1..A8(调用方传)
     round_num: int = 0                            # 位面内轮次
     plane: int = 0
-    state: dict[str, Any] = field(default_factory=dict)        # GameState 快照
+    state: dict[str, Any] = field(default_factory=dict)        # CwWorkFrame 快照
     target_comp: str = ""                         # 选中的 target comp 名
     candidate_scores: dict[str, float] = field(default_factory=dict)  # {comp_name: comp_score}
     eval_breakdown: dict[str, float] = field(default_factory=dict)    # target comp 的特征分解
@@ -542,7 +542,7 @@ class DecisionTrace:
     # —— 统一state R4 策略侧遥测演进(ADR-0630 策略侧 state_ref 版本钉;
     # 返工方案 A 钉读点 = 决策读取完成时点)——
     # 决策行关联流程侧账本版本钉:``state_ref = '{run_id}#{v}'``,v =
-    # 「决策读取完成时点」的 ``kernel.cw_board_state.board_state_of(session)
+    # 「决策读取完成时点」的 ``kernel.cw_game_state.board_state_of(session)
     # .current_version()``(读口:读不写、不占版本)。捕获时点 = 段入口观察
     # 完成处(决策开始依据该 state 版本计算),由调用方捕获经
     # ``record_decision(state_ref_version=)`` 传入落钉——观察完成与行落盘

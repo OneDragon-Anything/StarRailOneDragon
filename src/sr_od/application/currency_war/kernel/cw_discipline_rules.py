@@ -17,17 +17,17 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState
+from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
     )
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
 
-def star_weighted_copies(name: str, state: GameState) -> int:
+def star_weighted_copies(name: str, state: CwWorkFrame) -> int:
     """同名星级加权副本数(bench+deployed;2★=2 份,3★=3 份)。"""
     n = sum(getattr(b, 'star', 1) or 1
             for b in (state.bench or []) if b is not None
@@ -39,7 +39,7 @@ def star_weighted_copies(name: str, state: GameState) -> int:
 
 
 def sole_engine_sell_floor_plan(bcs: list,
-                                state: GameState,
+                                state: CwWorkFrame,
                                 registry: DecisionV2Registry | None = None,
                                 ) -> list[bool]:
     """ADR-0380:同批多笔卖出的逐笔下界判定(批量口径)。
@@ -76,7 +76,7 @@ def sole_engine_sell_floor_plan(bcs: list,
     return out
 
 
-def _sell_floor_counts(state: GameState,
+def _sell_floor_counts(state: CwWorkFrame,
                        reg: DecisionV2Registry) -> dict:
     """下界守卫计数底座(ADR-0373/0375/0380 单一源)。
 
@@ -148,7 +148,7 @@ def _sell_floor_decrement(name: str, bonds: set, counts: dict) -> None:
                 counts[k] -= 1
 
 
-def seed_age_blocked(bc, state: GameState,
+def seed_age_blocked(bc, state: CwWorkFrame,
                      session: StrategySession | None) -> bool:
     """engine_seed 年龄豁免——**结构性恒 False**(session.md §2.5 退役收口)。
 
@@ -179,17 +179,17 @@ from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
 )
 
 
-def hp_decision_trusted(frame: BoardState | GameState) -> bool:
+def hp_decision_trusted(frame: GameState | CwWorkFrame) -> bool:
     """hp 决策可信位(单一源;**双形态过渡函数**,统一 state 迁移波 2 起):
 
-    - **容器形态**(输入 = ``BoardState``):委托
+    - **容器形态**(输入 = ``GameState``):委托
       ``cw_hp_policy.hp_decision_trusted_of``(定谳二单一源:
       ``bs.hp.source in ('observation', 'carried')``,语义见该函数
       docstring);
-    - **GameState 形态**(输入 = 旧标量帧:``frame.hp`` 非 Field 载体):
+    - **CwWorkFrame 形态**(输入 = 旧标量帧:``frame.hp`` 非 Field 载体):
       旧双位读法 ``hp_readable or hp_trusted``——辖策略域未切换消费面
       (statefn/flow 等,strategies 全簇随波 4 切),**随统一 state 迁移
-      W8 GameState 本体删除消亡**(r5-migration-plan §6 残留表),禁在
+      W8 CwWorkFrame 本体删除消亡**(r5-migration-plan §6 残留表),禁在
       该形态下新增消费点。
 
     同模块(及跨模块引用点)禁再手写双位判定(W393 A1.1 单一源纪律):
@@ -200,7 +200,7 @@ def hp_decision_trusted(frame: BoardState | GameState) -> bool:
     _hp = getattr(frame, 'hp', None)
     if hasattr(_hp, 'source'):    # 容器帧:hp 是 Field 载体(带 .source)
         return hp_decision_trusted_of(frame)
-    # GameState 残留形态(getattr 读法,随 W8 消亡;AST 双位锁豁免位)
+    # CwWorkFrame 残留形态(getattr 读法,随 W8 消亡;AST 双位锁豁免位)
     return bool(getattr(frame, 'hp_readable', False)
                 or getattr(frame, 'hp_trusted', False))
 
@@ -211,14 +211,14 @@ def hp_decision_trusted(frame: BoardState | GameState) -> bool:
 # 危局面合规件仅血线硬地板 ≤15 族,消费在 mandate_v1 criteria 层
 # (levelup.level_spend_blocked 停付让位 / sell_for_interest 凑息禁令),
 # 判据单一源 = statefn/predicates.p1_blood_floor,不在本模块设第二份。
-def plane_last_battle(bs: BoardState,
+def plane_last_battle(bs: GameState,
                       session: StrategySession | None) -> bool:
     """位面末最后一战([18]):当前节点=boss 且轮=位面节点数(真值源
     ``nodes_of_plane``——P2 boss@r7 判正;旧按 9 计 P2 永不触发,
     ADR-0366 口径断层修复)。波 2 签名切容器:节点类型/轮次经容器读口
     (node_kind_of/round_num_of 镜像,桥视图 kind 空串 = 未识别忠实镜像
     同旧 `or ''`)。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         node_kind_of,
         round_num_of,
     )
@@ -226,7 +226,7 @@ def plane_last_battle(bs: BoardState,
     return node in ('boss',) and round_num_of(bs) >= nodes_of_plane(session)
 
 
-def all_in_xp_domain_hit(bs: BoardState, session: StrategySession | None,
+def all_in_xp_domain_hit(bs: GameState, session: StrategySession | None,
                          registry: DecisionV2Registry) -> bool:
     """ALL IN 窗 XP 类别过滤的辖域判据(ADR-0604 §4-F5;P21 域钉死)。
 
@@ -256,7 +256,7 @@ def all_in_xp_domain_hit(bs: BoardState, session: StrategySession | None,
     kernel(消费侧 criteria/levelup._realize_chain_ready 单一源,
     P39 指示项锚对契约),本谓词只答血侧半支。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
     )
     if not plane_last_battle(bs, session):
@@ -297,7 +297,7 @@ def p1_levelup_stop_hp(registry: DecisionV2Registry) -> int:
     return math.ceil(registry.blood_budget_stop_d * l_c)
 
 
-def blood_budget_levelup_blocked(bs: BoardState,
+def blood_budget_levelup_blocked(bs: GameState,
                                  session: StrategySession | None,
                                  registry: DecisionV2Registry) -> bool:
     """血预算停手·停升级门(设计件 12 §3.1 P2 / §2.3-P1-b;ADR-0448)。
@@ -344,7 +344,7 @@ def blood_budget_levelup_blocked(bs: BoardState,
         # 时停升级线无法判「线内/线外」——误放(线内追级)与误拦(少升
         # 一级)代价非对称,按线内处理拒升级。
         return True
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
     )
     plane = plane_of(bs)
@@ -378,7 +378,7 @@ def p2_crisis_stop_hp(registry: DecisionV2Registry) -> int:
     return math.ceil(2 * registry.vd_p2_loss)
 
 
-def p2_crisis_band(bs: BoardState, session: StrategySession | None,
+def p2_crisis_band(bs: GameState, session: StrategySession | None,
                    registry: DecisionV2Registry) -> bool:
     """P2 危机带谓词(plane≥2 ∧ 门后 hp 真值 ∧ hp ≤ 危机带线)。
 
@@ -397,7 +397,7 @@ def p2_crisis_band(bs: BoardState, session: StrategySession | None,
     未知帧多付一次搜索/少买一件,有金地板与 refresh 预算兜底;误拦
     代价=危机帧失去转化通道,非对称取不拦)。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
     )
     hp = decision_hp(bs, session)

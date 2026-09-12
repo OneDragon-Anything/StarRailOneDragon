@@ -9,7 +9,7 @@
 r5-migration-plan.md §2 W3:journal 为唯一被读账本;旧 12 流视图族已随
 删除波 1 写入端退役拆除);判读 CLI query 命令唯一走本读面。
 
-行模型(journal.md §1 两行型,写端 = kernel/cw_board_state ``_swap``/
+行模型(journal.md §1 两行型,写端 = kernel/cw_game_state ``_swap``/
 ``note_obs_event``,落盘 = kernel/cw_state_journal 批量 flush 追加 JSONL):
 - 行型 1 ``row='write'``:v/ts/run_id/row/field/after/same_value/state/sig/
   note/evidence_refs;
@@ -430,7 +430,7 @@ def match_final_rows(rows: list[dict[str, Any]],
                      run_id: str = '') -> list[dict[str, Any]]:
     """局终行清单(宽容读取契约:识别判据 = write 行 ∧ field=match_final;
     field 常量单一源 = kernel ``MATCH_FINAL_FIELD``)。行序 = 版本序。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         MATCH_FINAL_FIELD,
     )
     return [r for r in rows_of(rows, run_id)

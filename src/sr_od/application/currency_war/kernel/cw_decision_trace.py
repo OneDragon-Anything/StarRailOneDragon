@@ -74,7 +74,7 @@ from pathlib import Path
 from typing import Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_board_state import (
+from sr_od.application.currency_war.kernel.cw_game_state import (
     board_state_of,
     current_run_id_safe,
     plane_of,
@@ -93,7 +93,7 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import (
 # ============================================================ 常量(定谳落点)
 
 #: 行头 schema 版本(定谳 C7):**新文件自带独立版本常量**,初值 1 独立
-#: 谱系,命名对齐 ``*_SCHEMA_VERSION`` 仓内先例(kernel/cw_board_state
+#: 谱系,命名对齐 ``*_SCHEMA_VERSION`` 仓内先例(kernel/cw_game_state
 #: ``BS_SCHEMA_VERSION`` / mandate_v1 contracts ``SNAPSHOT_SCHEMA_VERSION``)。
 #: 禁动 telemetry/schema.py 模块级共用 ``SCHEMA_VERSION``——该常量被
 #: DecisionTrace/OutcomeRecord 等共用,模块级抬号会把未退役旧流行版本号
@@ -141,7 +141,7 @@ DISCLOSURE_FAMILY_CLOSED_LIST: tuple[str, ...] = (
 #: 退役面字段(§2.3 逐项判据):统一 state 可算/已退役/死字段,不入新
 #: 文件行(瘦身判据「凡统一 state 可算的内容不存」的适用面)。
 RETIRED_FIELDS_NOT_EMITTED: tuple[str, ...] = (
-    'state',            # 全量 GameState 快照;journal 行行自足,state_ref 钉行即含
+    'state',            # 全量 CwWorkFrame 快照;journal 行行自足,state_ref 钉行即含
     'hp',               # 统一 state 经济域可算(钉行现值)
     'gold',             # 同上;gold 轨迹已改流水派生
     'hp_readable',      # 读值质量维 = journal 渠道签名与来源注记职责
@@ -276,7 +276,7 @@ def record_decision_frame(session: object, *,
       显式传入;R4 语义沿用:显式 int 直用零回读,观察完成与落盘之间有
       交错写入的调用点必须显式传参防钉值漂移);None 缺省 = 入口现读
       ``board_state_of(session).current_version()``(读口读不写、不占
-      版本);读取失败/无 BoardState = state_ref 诚实缺省 ''(不猜);
+      版本);读取失败/无 GameState = state_ref 诚实缺省 ''(不猜);
     - ``strategy_id``/``ev_arm`` = 行头身份键,调用方传入(策略状态对象
       对 kernel 黑盒,无具名字段可现读;'' = 未采诚实缺省)。
 

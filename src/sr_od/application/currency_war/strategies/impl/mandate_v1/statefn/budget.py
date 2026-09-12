@@ -50,8 +50,8 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
     )
 
 #: 不动点迭代上限(利息 ≤ cap/轮 ⇒ 每轮预算扰动 ≤ cap,B 步长 = 刷价,
@@ -80,7 +80,7 @@ class BudgetPlan:
     exhausted: bool
 
 
-def next_level_xp_cost(bs: BoardState, missing_copies: int) -> int:
+def next_level_xp_cost(bs: GameState, missing_copies: int) -> int:
     """升级金 v1(单步口径;P38 levelup_cost 式 ⌈max(0,need−4·Σn_k)/4⌉×单价)。
 
     等级日程条件(P38「升级金按日程所在轮扣」——日程不升则不扣):
@@ -92,7 +92,7 @@ def next_level_xp_cost(bs: BoardState, missing_copies: int) -> int:
     ``xp_click_cost``(显示价优先/兜底折扣族单一源)。满级 = 0。
     多级日程(P38 A4)生产无逐级源,本函数只辖下一级 = 声明简化。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         level_of,
         plane_of,
         round_num_of,
@@ -117,7 +117,7 @@ def next_level_xp_cost(bs: BoardState, missing_copies: int) -> int:
     return clicks * xp_click_cost(bs)
 
 
-def p38_budget_recursion(bs: BoardState, session: object,
+def p38_budget_recursion(bs: GameState, session: object,
                          purchase_cost: float,
                          missing_copies: int) -> BudgetPlan:
     """P38 ⑤层金位递推单一源(见模块 docstring 正本式与逐项声明)。
@@ -128,7 +128,7 @@ def p38_budget_recursion(bs: BoardState, session: object,
     p_complete 承载,入账反会虚增 B<0 域);``missing_copies`` =
     可达缺口张数(买牌送 XP 抵扣分母,同口径)。
     """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         gold_of,
         plane_of,
         round_num_of,

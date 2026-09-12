@@ -16,8 +16,8 @@
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    BoardState,
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
 )
 from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
@@ -85,7 +85,7 @@ def recipe_char_wanted(char_id: str, framework: str) -> bool:
 # 统一走 env/augment affinity,定型时转变成本≈0 → 恒等衔接。
 
 
-def decision_target(session, bs: BoardState) -> Comp | None:
+def decision_target(session, bs: GameState) -> Comp | None:
     """决策中心取 target 的**单一入口**(消费方零改动)。
 
     用法:决策路径处把 ``strategy_state_of(session).target_comp`` 的直接读换成本函数
@@ -106,7 +106,7 @@ def decision_target(session, bs: BoardState) -> Comp | None:
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
     (C 方案对抗报告 攻击面 3 实证)。
 
-    波3 起 state 形态 = 容器直传(W6 波3 committed_from 签名切 BoardState,
+    波3 起 state 形态 = 容器直传(W6 波3 committed_from 签名切 GameState,
     hp施门下沉kernel政策层设计 §2.4 shim 收编申报②):``_PlaneShim``
     单字段鸭子桥同波消亡——committed_authority 仅读 plane,真容器
     ``plane_of`` 读口喂入恰等价,禁再新增同型鸭子桥(新消费点一律

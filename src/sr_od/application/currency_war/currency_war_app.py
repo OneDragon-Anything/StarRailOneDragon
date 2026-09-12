@@ -101,10 +101,10 @@ class CurrencyWarApp(SrApplication):
             install_state_telemetry,
         )
         install_state_telemetry(run_id_provider=state.current_run_id)
-        # obs_event 收编制 BoardState 供给(kernel 禁自寻会话;观察冲突证据
+        # obs_event 收编制 GameState 供给(kernel 禁自寻会话;观察冲突证据
         # 行型 2 的宿主供给,与 run_id provider 同点注入)。
         from sr_od.application.currency_war.kernel import cw_telemetry_exit
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of,
         )
 

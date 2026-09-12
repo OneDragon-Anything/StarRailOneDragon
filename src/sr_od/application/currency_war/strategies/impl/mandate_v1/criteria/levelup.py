@@ -12,8 +12,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
@@ -75,25 +75,25 @@ def spend_unified(clicks_to_next: int, gold: int, click_cost: int) -> bool:
     return gold >= clicks_to_next * click_cost
 
 
-def _plane_round_of(state: BoardState) -> tuple[int, int]:
+def _plane_round_of(state: GameState) -> tuple[int, int]:
     """(plane, round_num) 容器读(读口单一源,prep 链容器化段 2 起
     bs 单形态)。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
         round_num_of,
     )
     return plane_of(state), round_num_of(state)
 
 
-def _max_units_of(state: BoardState) -> int:
+def _max_units_of(state: GameState) -> int:
     """可上阵数容器读(读口单一源 max_units_of)。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         max_units_of,
     )
     return max_units_of(state)
 
 
-def levelup_budget_gate(bs: BoardState,
+def levelup_budget_gate(bs: GameState,
                         session: StrategySession | None,
                         gold: int, cap_resolved: int,
                         k_members: tuple[str, ...], bench: list,
@@ -102,7 +102,7 @@ def levelup_budget_gate(bs: BoardState,
     """P72 (3) 全段预算闸(ADR-0576):升级支出 s 的量闸(全段辖域)。
 
     载体 = 容器 bs 单形态(prep 链容器化段 2;entry 姿态镜像/商店线
-    两位/mandate 面消费恒直传 bs,GameState 过渡支随段 2 帧兼容支删除
+    两位/mandate 面消费恒直传 bs,CwWorkFrame 过渡支随段 2 帧兼容支删除
     消亡)。内部字段读经读口(``_plane_round_of``/``_max_units_of``)。
 
     判据式(证明 = docs/develop/sr_od/application/currency_war/proofs/
@@ -262,7 +262,7 @@ def levelup_budget_gate(bs: BoardState,
     return False, 'levelup_budget_gate_blocked'
 
 
-def _guarantee_floor_holds(bs: BoardState,
+def _guarantee_floor_holds(bs: GameState,
                            session: StrategySession | None,
                            gold: int, clicks: int, click_cost: int,
                            cap_resolved: int) -> bool:
@@ -319,7 +319,7 @@ def _guarantee_floor_holds(bs: BoardState,
     return gold - clicks * click_cost >= DEFAULT_REGISTRY.boss_floor
 
 
-def _realize_chain_ready(bs: BoardState, bench: list,
+def _realize_chain_ready(bs: GameState, bench: list,
                          deployed: list) -> bool:
     """P72 支A 谓词:C_realize=1 判定(升级收益的兑现链当帧可兑现)。
 
@@ -349,14 +349,14 @@ def batch_form(level: int, target_level: int) -> bool:
     return level < target_level
 
 
-def level_spend_blocked(bs: BoardState, session: StrategySession,
+def level_spend_blocked(bs: GameState, session: StrategySession,
                         registry: DecisionV2Registry | None = None) -> bool:
     """危机带内整批经验授权让位保命面(实机复盘 g_20260904_054904
     p2r1 候选③:hp=1 败即死帧 9×LevelUpShop 36g,m3_batch 批授权把
     67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
 
     载体 = 容器 bs 单形态(prep 链容器化段 2;entry 姿态镜像与商店线/
-    mandate 消费恒直传 bs,GameState 过渡支随段 2 帧兼容支删除消亡)。
+    mandate 消费恒直传 bs,CwWorkFrame 过渡支随段 2 帧兼容支删除消亡)。
     内部血线谓词(kernel ``blood_budget_levelup_blocked``/``p2_crisis_band``)
     已切容器签名,容器 bs 直读。
 
@@ -417,7 +417,7 @@ def level_spend_blocked(bs: BoardState, session: StrategySession,
     return p2_crisis_band(bs, session, reg)
 
 
-def _plane_last_battle(bs: BoardState,
+def _plane_last_battle(bs: GameState,
                        session: StrategySession) -> bool:
     """位面末最后一战判定(cw4 消费面;单一源 =
     decision_v2.discipline.plane_last_battle 的重导出委托,禁第二实现;

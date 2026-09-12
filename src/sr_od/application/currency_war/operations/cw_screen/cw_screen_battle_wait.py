@@ -424,7 +424,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                 # _drain_pending_round_outcomes;处理即清)。
                 _session.pending_round_outcomes.append(_obs)
                 # (结算 outcomes 行与 battle_done 外生行已随旧流写入端退役
-                #  删除——删除波 1;结算真值现役归宿 = BoardState settlement
+                #  删除——删除波 1;结算真值现役归宿 = GameState settlement
                 #  域 apply_settlement_cover(观察半直写链)。)
                 if _obs.hp_confidence >= 0.9:
                     _st.last_outcome_hp = _obs.hp_after
@@ -452,7 +452,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                                 and _assets.get('xp_next') is not None):
                             _lst.xp_progress = (_assets['xp_cur'],
                                                 _assets['xp_next'])
-                    # BoardState 结算覆盖写端(迁移批次二,任务书件 8/设计
+                    # GameState 结算覆盖写端(迁移批次二,任务书件 8/设计
                     # §3.5.1):与上写入点同时序——结算真值组(hp/streak 带
                     # 方向/gold·level·xp 仅胜局)覆盖进记录;金/等级/经验
                     # 缺席(败局页无该面板)不写,与 _lst 分支同口径。
@@ -460,7 +460,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                     # exogenous 'node_enter' 外生行的「出节点」半随删除波 1
                     # 退役后,其判读语义由本行承接(R5 迁移规划 W1 ⑤/
                     # ADR-0634;同时点同载荷,行行自足快照更强)。
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
                         apply_settlement_cover,
                         board_state_of,
                     )
@@ -485,7 +485,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                         note=f'battle_done:{getattr(_obs, "node_type", None)}')
                 except Exception as e:  # noqa: BLE001  观测面不阻塞对局
                     log.warning('[cw-bwait] 结算覆盖写失败(不阻塞): %s', e)
-                # 效果账本结算挂点(BoardState 设计 §5.1 挂点清单「结算挂点
+                # 效果账本结算挂点(GameState 设计 §5.1 挂点清单「结算挂点
                 # (on_battle_end)」生产接线;宿主 = settlement 锚行组成部分,
                 # 统一观察架构 §12.7-6:锚为账本既有挂点提供确定性触发时点,
                 # 挂点语义零改动)。现役注册表零 BATTLE_END 条目(effect-domain
@@ -506,7 +506,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                 # 零行为差。独立 best-effort try(同 on_battle_end 纪律,
                 # 不与结算覆盖写端共享异常域;失败不阻塞结算链)。
                 try:
-                    from sr_od.application.currency_war.kernel.cw_board_state import (
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
                         board_state_of,
                     )
                     from sr_od.application.currency_war.kernel.cw_effect_inventory import (

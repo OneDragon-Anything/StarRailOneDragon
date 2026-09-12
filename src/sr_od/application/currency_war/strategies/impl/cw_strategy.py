@@ -6,7 +6,7 @@
 
 设计见 ``docs/develop/currency_war/strategy/07_plugin.md``;决策见
 ``docs/develop/sr_od/application/currency_war/decisions/INDEX.md`` 。本模块**纯逻辑**:所有钩子只吃
-``GameState``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
+``CwWorkFrame``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
 四个组件(本模块 3 个 + manager):
@@ -41,11 +41,11 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     ExecState,
     bind_exec_state,
 )
-from sr_od.application.currency_war.kernel.cw_state import Action, PickEvent
+from sr_od.application.currency_war.kernel.cw_vocab import Action, PickEvent
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_board_state import BoardState
+    from sr_od.application.currency_war.kernel.cw_game_state import GameState
     from sr_od.application.currency_war.kernel.cw_prep_actions import PrepAction
     from sr_od.context.sr_context import SrContext
 
@@ -159,18 +159,18 @@ class CwStrategy(ABC, Generic[_TState]):
 
     @abstractmethod
     def decide_invest(self, kind: Literal["strategy", "env"], options: list[str],
-                      bs: BoardState, session: StrategySession,
+                      bs: GameState, session: StrategySession,
                       config: CurrencyWarConfig) -> PickEvent:
         """投资策略/投资环境 3 选 1(``kind`` 区分;P1 两 kind 走同一默认实现)。``options``=OCR 卡名列表。"""
 
     @abstractmethod
-    def decide_supply(self, options: list[SupplyOption], bs: BoardState,
+    def decide_supply(self, options: list[SupplyOption], bs: GameState,
                       session: StrategySession, config: CurrencyWarConfig,
                       refresh_used: bool = False) -> SupplyPick:
         """补给选装备/出钻。⚠️ OCR 未就绪(契约成员存在 + 默认委托,handler 不 rewire,随阶段5)。"""
 
     @abstractmethod
-    def decide_encounter(self, options: list[EncounterOption], bs: BoardState,
+    def decide_encounter(self, options: list[EncounterOption], bs: GameState,
                          session: StrategySession, config: CurrencyWarConfig,
                          refresh_used: bool = False) -> EncounterPick:
         """遭遇难度选(其一易/其四难 二选一)。✅ 已接 ``CwScreenEncounter``(L55 调)+ ``cw_events.decide_encounter``
@@ -178,32 +178,32 @@ class CwStrategy(ABC, Generic[_TState]):
         (OCR 卡标题→difficulty)。affix 分支 N/A(选项 UI 不显词缀,战后才显)。原「dormant 无选项UI」过期(2026-08-12 核实)。"""
 
     @abstractmethod
-    def decide_megastar(self, options: list[MegastarOption], bs: BoardState,
+    def decide_megastar(self, options: list[MegastarOption], bs: GameState,
                         session: StrategySession, config: CurrencyWarConfig) -> MegastarPick:
         """巨星选候选。⚠️ OCR 未就绪(契约成员存在 + 默认委托,handler 不 rewire,候选 char_id 空 → idx=0)。"""
 
     @abstractmethod
-    def decide_partner(self, options: list[PartnerOption], bs: BoardState,
+    def decide_partner(self, options: list[PartnerOption], bs: GameState,
                        session: StrategySession, config: CurrencyWarConfig) -> PartnerPick:
         """选择伙伴。⚠️ OCR 未就绪(契约成员存在 + 默认委托,handler 不 rewire,char_id 空 → idx=0)。"""
 
     @abstractmethod
-    def decide_planner(self, options: list[PlannerOption], bs: BoardState,
+    def decide_planner(self, options: list[PlannerOption], bs: GameState,
                        session: StrategySession, config: CurrencyWarConfig) -> PlannerPick:
         """银狼策划事件 3 选 1(r104 接入;ADR-0583 补入契约面)。``options`` = 选项卡 OCR 文本。"""
 
     @abstractmethod
-    def decide_star_tome(self, options: list[str], bs: BoardState,
+    def decide_star_tome(self, options: list[str], bs: GameState,
                          session: StrategySession, config: CurrencyWarConfig) -> int:
         """星徽典籍四选一,返回 options 索引(r104 接入;ADR-0583 补入契约面)。"""
 
     @abstractmethod
-    def decide_wish_trial(self, options: list[str], bs: BoardState,
+    def decide_wish_trial(self, options: list[str], bs: GameState,
                           session: StrategySession, config: CurrencyWarConfig) -> int:
         """祈愿试炼选卡,返回 options 索引(r104 接入;ADR-0583 补入契约面)。"""
 
     @abstractmethod
-    def decide_box_card(self, names: list[str], bs: BoardState,
+    def decide_box_card(self, names: list[str], bs: GameState,
                         session: StrategySession, config: CurrencyWarConfig) -> int:
         """武装箱/节点弹窗装备卡 4 选 1,返回 names 索引(r104 接入;ADR-0583 补入契约面)。"""
 

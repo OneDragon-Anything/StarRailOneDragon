@@ -99,8 +99,8 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest 
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
     )
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         SwapPlanContext,
@@ -109,7 +109,7 @@ if TYPE_CHECKING:
         DecisionV2Registry,
     )
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-    from sr_od.application.currency_war.kernel.cw_state import GameState
+    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
@@ -165,9 +165,9 @@ class MandateFrame:
     """骨架 pass 输入帧(D-C44:黑板全量现读,每帧重建、零跨帧快照)。
 
     字段取值时机=生成期快照(从 PrepObservation 现读拷贝);坐标系:
-    bench slot=物理槽位 1-9。``deploy_cap`` 真值源=``GameState.
+    bench slot=物理槽位 1-9。``deploy_cap`` 真值源=``CwWorkFrame.
     max_units()`` 派生链(R4 统一:level+宝钻、封顶 = 4+back_max 动态
-    真值〔BoardState.back_layout,值域 10-13〕,与 shop 侧
+    真值〔GameState.back_layout,值域 10-13〕,与 shop 侧
     同链单源;FIX_REVIEW_20260903 ②-1 双源漂移修复——旧观察复合
     ``obs.deploy_vacancy+len(deployed)`` 已废),state 缺读=None。
     """
@@ -180,7 +180,7 @@ class MandateFrame:
     node_type: str | None
     stop_flag: bool
     k_members: tuple[str, ...]
-    round_num: int = 1      # 位面内轮次(M5 开局板辖域=开局帧;GameState 直读)
+    round_num: int = 1      # 位面内轮次(M5 开局板辖域=开局帧;CwWorkFrame 直读)
 
     @property
     def bench_free(self) -> int:
@@ -248,19 +248,19 @@ def check_irreversible(name: str, k_members: tuple[str, ...]) -> tuple[bool, str
 
 # ===== M4 判据(燃料件支配卖出;P41 零参数,mandate 邻位,R2-2)=====
 
-def _phase_key(state: BoardState) -> tuple:
+def _phase_key(state: GameState) -> tuple:
     """(plane, round_num) 相位键容器读(读口单一源;载体 = prep 链容器化
     段 2 起 bs 单形态)。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         plane_of,
         round_num_of,
     )
     return (plane_of(state), round_num_of(state))
 
 
-def _deployed_of(state: BoardState) -> list:
+def _deployed_of(state: GameState) -> list:
     """deployed 槽表容器读(波 1 席位读口单一源 deployed_slots_of)。"""
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         deployed_slots_of,
     )
     return deployed_slots_of(state)
@@ -268,7 +268,7 @@ def _deployed_of(state: BoardState) -> list:
 
 def fuel_sell_candidates(bench: list[BenchChar],
                          k_members: tuple[str, ...],
-                         state: BoardState,
+                         state: GameState,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
                          defer_names: frozenset[str] | set[str] = frozenset(),
@@ -428,7 +428,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 ROUND_SOLD_ATTR: str = 'cw4_round_sold_names'
 
 
-def record_round_sold(session, state: BoardState, name: str) -> None:
+def record_round_sold(session, state: GameState, name: str) -> None:
     """轮内卖出登记(档 2 新鲜度排除写端;卖出发射位逐名调用)。
 
     ``state`` 仅取 (plane, round_num) 键维(经 ``_phase_key`` 容器读口,
@@ -446,7 +446,7 @@ def record_round_sold(session, state: BoardState, name: str) -> None:
     reg['names'].add(name)
 
 
-def round_sold_names(session, state: BoardState) -> frozenset[str]:
+def round_sold_names(session, state: GameState) -> frozenset[str]:
     """读当前位面轮内有效卖出名集(跨轮 = 空集,自动失效;读端不销账
     ——过期由键式相位失配整体作废,无逐名生命周期面)。"""
     reg = getattr(session, ROUND_SOLD_ATTR, None)
@@ -459,7 +459,7 @@ def round_sold_names(session, state: BoardState) -> frozenset[str]:
     return frozenset(names) if isinstance(names, set) else frozenset()
 
 
-def sold_this_round(session, state: BoardState, name: str) -> bool:
+def sold_this_round(session, state: GameState, name: str) -> bool:
     """本轮已卖名判定(L2 卖后禁买统一判定 helper;ADR-0611)。
     薄封装 ``round_sold_names`` 单一源(档 2 载体零新载体
     零新阈值);全买入臂候选过滤位统一经本 helper 消费,禁臂层手搓
@@ -525,7 +525,7 @@ PRESS_NARROWED_ARMS: frozenset[str] = frozenset({
 })
 
 
-def swap_transition_narrow_frame(state: BoardState,
+def swap_transition_narrow_frame(state: GameState,
                                  session: StrategySession) -> bool:
     """锁线转型域 D 帧判定(店侧 S_spec 收窄辖域;P88,ADR-0627)。
 
@@ -551,7 +551,7 @@ def swap_transition_narrow_frame(state: BoardState,
         return False
     tgt = getattr(_ms, 'target_comp', None)
     fp: float | None = None
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         deployed_count_of,
         max_units_of,
     )
@@ -593,7 +593,7 @@ def core_single_card_buy_eligible(locked_buy: bool) -> bool:
 # ===== M1″ 锁线转型域执行条件发射门(T-127 方案 §2.3;P79-3 落码)=====
 
 def _deploy_advances_form(comp: object | None,
-                          state: BoardState, name: str) -> bool:
+                          state: GameState, name: str) -> bool:
     """「档关键件」判定(读法 b 面板口径;编排者裁决钉源 = T-127 方案
     §2.3/§7 #5 与 math_proofs P79 消费限制行)。
 
@@ -625,7 +625,7 @@ def _deploy_advances_form(comp: object | None,
 
 
 def _redeploy_emission_allowed(session: StrategySession,
-                               state: BoardState,
+                               state: GameState,
                                ctx: SwapPlanContext | None) -> bool:
     """锁线转型域执行条件发射门(P79-3;T-127 方案 §2.3「发射门」)。
 
@@ -712,7 +712,7 @@ def route_tag_of(action: PrepAction) -> str:
     return getattr(action, 'route_tag', '') or ''
 
 
-def shop_wanted_defer(session: StrategySession, state: BoardState,
+def shop_wanted_defer(session: StrategySession, state: GameState,
                       missing: list[str],
                       in_shop_snapshot: tuple[tuple[str, int], ...]) -> None:
     """S2 置位(唯一写点;调用位 = shop.decide_shop_action 两席满残差
@@ -764,7 +764,7 @@ def _wanted_reopen_budget(st: StrategyState, phase: tuple,
     return True
 
 
-def wanted_closure_emit(session: StrategySession, state: BoardState,
+def wanted_closure_emit(session: StrategySession, state: GameState,
                         bench: list[BenchChar],
                         deployed: list[BenchChar],
                         deploy_cap: int | None, round_num: int,
@@ -788,7 +788,7 @@ def wanted_closure_emit(session: StrategySession, state: BoardState,
     s2 = getattr(st, 'cw4_shop_wanted_pending', None)
     if not (isinstance(s2, tuple) and len(s2) == 4):
         return []
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         gold_of,
         level_of,
         plane_of,
@@ -900,7 +900,7 @@ def wanted_closure_emit(session: StrategySession, state: BoardState,
     return []
 
 
-def mark_s1_route_check(session: StrategySession, state: GameState | None,
+def mark_s1_route_check(session: StrategySession, state: CwWorkFrame | None,
                         action: PrepAction, *,
                         pre_bench_count: int,
                         post_bench_count: int,
@@ -963,7 +963,7 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
 
 def run_mandate(frame: MandateFrame,
                 session: StrategySession,
-                state: BoardState,
+                state: GameState,
                 registry: DecisionV2Registry | None = None,
                 ) -> list[Emitted]:
     """骨架 pass(§3.1 执行序;返回发射列表,执行序=列表序)。
@@ -1043,7 +1043,7 @@ def run_mandate(frame: MandateFrame,
     def _count(key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         max_units_of,
         node_kind_of,
         plane_of,
@@ -1277,7 +1277,7 @@ def run_mandate(frame: MandateFrame,
     # M3 升级整批(触发信号 = arm1_existence(statefn/predicates);
     # arm2 调度门只延迟不否决;P48 整买纪律 D-BUYNOTE 内嵌)。
     # cap 接线=消费点现读 state.max_units()(R4 单一真值源:level+宝钻、
-    # 封顶 = 4+back_max 动态真值〔BoardState.back_layout,值域 10-13〕,
+    # 封顶 = 4+back_max 动态真值〔GameState.back_layout,值域 10-13〕,
     # 与 shop 侧同链;FIX_REVIEW ②-1 双源漂移修复——旧观察复合
     # cap 已废)——板满按当前 cap 判,非固定槽表常数(2026-09-03 零刷新
     # 诊断批定谳的域错位形态)。契约核验(FIX_REVIEW R1 漏接位补齐):
@@ -1692,7 +1692,7 @@ def run_mandate(frame: MandateFrame,
 
 
 def mark_equip_pass_executed(session: StrategySession,
-                             state: GameState | None) -> None:
+                             state: CwWorkFrame | None) -> None:
     """M7 备战期装备闩唯一写点(置位=执行位)。
 
     调用点 = 执行入口(prep_actions.PrepActionExecutor.execute)在
@@ -1714,7 +1714,7 @@ def mark_equip_pass_executed(session: StrategySession,
 
 
 def mark_tools_pass_executed(session: StrategySession,
-                             state: GameState | None) -> None:
+                             state: CwWorkFrame | None) -> None:
     """M7.5 备战期工具闩唯一写点(置位=执行位;工具执行批 ADR-0532)。
 
     调用点 = prep_actions.PrepActionExecutor.execute 在 RunTools 组合 op
@@ -1771,7 +1771,7 @@ def _s_reserve(frame: MandateFrame, session: StrategySession) -> int:
       条件式的调用方供给 resolved 值,默认局 50);
     - 窗口预留卡价:窗口预留槽未标定 ⇒ 空列表(缺输入不计,保守下界);
     - E[刷费]×2 = 双刷预算,按 ``shop_refresh_cost`` 基价(REFRESH_COST_BASE
-      建模常量,GameState 字段口径:值恒基价 2)。
+      建模常量,CwWorkFrame 字段口径:值恒基价 2)。
 
     默认局 = 0+50+0+4 = 54(旧值恒 0 系 b_target 零参退化,非规格)。
     """
@@ -1820,7 +1820,7 @@ DEPLOY_EMIT_TELEMETRY_ATTR: str = 'cw4_deploy_emit_frame'
 
 
 def _record_deploy_emit_held(session: StrategySession,
-                             state: BoardState,
+                             state: GameState,
                              frame: MandateFrame,
                              reasons: dict[int, str],
                              rf_ctx: bool,
@@ -1836,7 +1836,7 @@ def _record_deploy_emit_held(session: StrategySession,
         locked_factions;armed 帧无豁免对照补跑复用,禁二次装配)。
     """
     try:
-        from sr_od.application.currency_war.kernel.cw_board_state import (
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             plane_of,
         )
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
@@ -1878,7 +1878,7 @@ def _record_deploy_emit_held(session: StrategySession,
 
 
 def _deployable(frame: MandateFrame, session: StrategySession,
-                state: BoardState) -> bool:
+                state: GameState) -> bool:
     """RunDeploy 提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
 
     谓词单一源 = ``kernel.cw_deploy_logic.has_deployable_reasoned``
