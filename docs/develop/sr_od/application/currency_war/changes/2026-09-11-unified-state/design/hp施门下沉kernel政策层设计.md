@@ -8,6 +8,9 @@
 > 真值+消费侧施门；§2.1 Field 来源两态）；本文不复制正本内容，只定消费切换的落码契约。
 > 数值/阈值只写常量名，单一源在代码。本件含波 2 落地卡 criteria 的「读口专项锁」输入
 > （§4；挂账义务来源 = T-5 卡注：读口专项锁写进波 2 落地卡 criteria 防悬空）。
+> **状态**：已定稿（设计对抗批 T-90 收敛；对抗记录 =
+> `.debug/progress/2026-09-11-cw-clear-run/reports/T-90-r1.md`）。引用注：本文所引
+> 「决策行 schema 终版」= 正本树 `design/决策行文件schema设计.md`。
 
 ## 0. 术语（首次出现给定义）
 
@@ -42,16 +45,21 @@
 | 2 | 下行拒信门（真读较沿用上行 ≥ 疑误读阈即留证拒信，常量锚 = `cw_reconcile` 模块常量） | `kernel/cw_reconcile.py` | 写侧对账 | **不迁**（写侧对账，非决策消费面） |
 | 3 | hp_trusted 帧龄门（同节点沿用窗，ADR-0431，`_same_node_stale`） | `kernel/cw_reconcile.py` | 写侧对账 | **不迁**（同上；其消费语义由定谳二收编，§2.2） |
 | 4 | **结算新鲜度门**（本设计下沉对象） | `strategies/impl/cw_strategy.gated_hp` | 消费读点显式施（现役 6 调用点，§2.4 迁移表） | **下沉 kernel 政策层** |
-| 5 | 血线消费门（停升级线/急救分位/血预算停手；常量 = `emergency_hp` / `blood_budget_stop_d` / `vd_p1_loss_*` / `vd_p2_loss` 等） | `kernel/cw_economy.py` / `kernel/cw_discipline_rules.py` | —（是门的**消费者**，非施门者） | 波 2 本体切换；其 hp 读点改经政策层读口（§2.4） |
+| 5 | 血线消费门（停升级线/急救分位/血预算停手；常量 = `emergency_hp` / `blood_budget_stop_d` / `vd_p1_loss_*` / `vd_p2_loss` 等） | `kernel/cw_economy.py` / `kernel/cw_discipline_rules.py`（血线常量载体 = `kernel/cw_registry.py` DecisionV2Registry 字段） | —（是门的**消费者**，非施门者） | 波 2 本体切换；其 hp 读点改经政策层读口（§2.4） |
 
 依据：调用点清单 = `gated_hp` docstring 全仓 grep 口径（6 点）；血线消费面 =
 `cw_discipline_rules.blood_budget_levelup_blocked` / `all_in_xp_domain_hit` /
 `cw_economy.blood_xp_gate` / `is_emergency`（各函数 docstring 与签名）。
+kernel 评估簇挂账 hp 读点另有两处（`cw_comps.maybe_pivot` 保命分位 /
+`cw_performance.is_run_dead` 死局门，直读 `bs.hp.value`；生产调用面现空 = 挂账层，
+测试仓经桥调用）——不占门族行，读法约束见 §2.4 迁移表挂账行与 §4-L2。
 
 ### 1.2 症状与根因归层
 
-- **症状**：波 1 后 kernel 标量评估簇直读 `bs.hp.value`（门前真值，例 =
-  `cw_comps` hp 读点在码注释「门前真值，可信位门在决策侧」）；波 2 的 kernel 决策函数
+- **症状**：波 1 后 kernel 评估簇存在直读 `bs.hp.value`（门前真值）的读点（例 =
+  `cw_comps.maybe_pivot` / `cw_performance.is_run_dead` hp 读点在码注释「门前真值，
+  可信位门在决策侧」；两点现挂账层无生产调用，注释即旁路候补位的在码自申报）；
+  波 2 的 kernel 决策函数
   （cw_economy / cw_discipline_rules）切容器签名后同样拿到门前真值，而门函数居策略
   实现层——kernel 不能反向 import 策略层（§0 依赖方向纪律），施门只能：漏门（不同门 =
   行为分叉，实证 = `gated_hp` docstring r68「先调方假 hp、后调方真 hp，同节点两次方向
@@ -161,9 +169,15 @@ def apply_hp_freshness_gate(current_hp: int | None, last_hp: int | None,
                             last_t: int | None, now_t: int | None,
                             current_readable: bool) -> int | None:
     """结算新鲜度门本体。语义逐位等价 gated_hp：锚缺任一（last_hp/last_t/now_t
-    为 None）→ 恒等返回 current_hp；否则 gap=now_t−last_t，可信窗/放宽窗判定
-    返回 last_hp 或 current_hp。门幂等：门后值再过门不变。门不产兜底值
-    （None 入 None 出，ADR-0491 None 化语义）。"""
+    为 None）→ 恒等返回 current_hp（None 现读恒等支穿透，ADR-0491）；锚全时
+    gap=now_t−last_t：可信窗（gap==1）与放宽窗（current_readable=False 且
+    1<gap≤HP_FRESH_GAP_UNTRUSTED_MAX）→ 返回 last_hp，窗外返回 current_hp。
+    None 现读非恒等豁免——锚全时在窗内同样被结算值覆盖（现役同型语义：门只
+    决定「是否被结算值覆盖」，不产兜底值）。门幂等：门后值再过门不变。
+    时基契约：now_t/last_t 同式派生（(plane−1)×9+round_num），结算锚写点
+    （cw_screen_battle_wait._write_settlement_observation）与决策读口禁单侧
+    改式。NodeKey 缺席 → now_t=None=恒等支；与现役 adapter 形态（缺省
+    plane/round=1 → t=1）在锚在场时 gap≤0 判负同回 current_hp，行为等价。"""
 
 def decision_hp(bs: BoardState, session: StrategySession) -> int | None:
     """决策面 hp 读口（门后消费值）。装配序：门前真值 = bs.hp.value；
@@ -203,10 +217,13 @@ def hp_decision_trusted_of(bs: BoardState) -> bool:
 | 策略消费侧 2 点（`adapter.decision_state` / `encounter._hp_gate_state`） | 调 `strategies gated_hp`（薄委托） | 零改动（薄委托行为等价） | 波 4 随 strategies 全簇切 `decision_hp`（跨件接口：波 4 商店/备战链 hp 消费同源） |
 | 写侧 4 点（`cw_screen_prep` 环入口×2+终饰×2） | 调 `strategies gated_hp`（帧值显式施门，旧链） | 零改动（薄委托） | 波 5 随旧链删除 |
 | sim | 无结算锚 → 门恒等支（engine_p1 不写 `last_hp`，grep 口径） | 不变 | 波 5 真值直写后同构 |
+| kernel 评估簇挂账 hp 读点（`cw_comps.maybe_pivot` / `cw_performance.is_run_dead`；生产调用面现空，测试仓经桥调用） | 直读 `bs.hp.value`（挂账层） | 零改动（挂账不施门）；**重挂生产消费必经政策层读口** | 波 4 批首 grep 复核 kernel 决策簇 hp 直读点全集——新增消费点一律走 `decision_hp`/`hp_decision_trusted_of` 或登记豁免（§4-L2 申报面） |
 
 依据：调用点清单 = `gated_hp` docstring grep 口径；波次归属 = 调研草案 §3 波 2/波 4/
-波 5 行；波 2 文件面较调研草案行增 2 件（`kernel/cw_hp_policy.py` 新建、
-`strategies/impl/cw_strategy.py` 薄委托改写）——**波 2 落地卡文件面以本表为准**。
+波 5 行；策略消费侧波 4 全集以落地批批首 grep 复核为准（调研草案 §4 决策热点列在册
+hp 读点含 entry 3 处，随 strategies 全簇切换一并走 `decision_hp`）；波 2 文件面较
+调研草案行增 2 件（`kernel/cw_hp_policy.py` 新建、`strategies/impl/cw_strategy.py`
+薄委托改写）——**波 2 落地卡文件面以本表为准**。
 
 ### 2.5 边界
 
@@ -224,6 +241,11 @@ def hp_decision_trusted_of(bs: BoardState) -> bool:
    帧不写桥字段（未知态穿透）。波 4 黑板容器化后跨桶直读 session 容器，失真窗关闭
    （`board_state_bridge` docstring 退役条款）。
 5. **依赖方向**：政策层模块仅 import kernel 内类型；禁 import `strategies/`（§1.3-1）。
+6. **正本对账申报**：fields.md §3.2.13/§8.6 现行声明 hp 可信位语义单一源 =
+   `cw_bs_view`（W5 收编口径）；本件定谳二与 §2.1 读口落地后，语义单一源改指
+   `hp_decision_trusted_of` / `decision_hp`——fields.md 两节随波 2 落地改指（挂
+   landing.md 正本更新清单随批消费）。过渡窗内字段记录语义（门前真值 + 写端全集）
+   不变，本件只迁消费读口，非正本语义改写。
 
 ## 3. 关键取舍
 
@@ -248,6 +270,10 @@ def hp_decision_trusted_of(bs: BoardState) -> bool:
 | # | 锁 | 断格内容 |
 |---|---|---|
 | L1 | 门语义等价锁 | `apply_hp_freshness_gate` vs 旧 `gated_hp`：同输入序逐位等价；夹具覆盖 gap∈{0,1,2,3,4}×current_readable×锚缺席组合 + 幂等断言（门后值再过门不变）+ None 穿透断言 |
-| L2 | 决策消费同门锁 | 波 2 后 cw_economy/cw_discipline_rules 全模块 grep：`bs.hp.value`（或 `.hp` 字段直读）仅出现在政策层读口内部与 §2.5 豁免清单申报位；决策分支零旁路直读 |
+| L2 | 决策消费同门锁 | 波 2 后 kernel 决策簇全模块 grep（cw_economy / cw_discipline_rules 全量 + §2.4 挂账读点申报位）：`bs.hp.value`（或 `.hp` 字段直读）仅出现在政策层读口内部与 §2.5 豁免清单/§2.4 挂账申报位；决策分支零旁路直读 |
 | L3 | 可信位单一源锁 | ①`hp_decision_trusted_of` 唯一实现（`hp_decision_trusted` 容器形态委托之）；②容器消费面 `hp_readable or hp_trusted` 手写双位模式 grep=0；③`sig.quality['hp']` 词表封闭断言（三值全集，外来值抛错/留证） |
 | L4 | 薄委托零漂移锁 | `strategies/impl gated_hp` 任意输入委托输出 == kernel 门本体输出（防委托层再长肉）；写侧 4 调用点既有门行为锁（test_cw_strategy_helpers 族）续辖零改 |
+
+> 锁生命周期：L1/L4 的等价参照旧 `gated_hp` 随波 5 消亡——波 5 后两锁改钉
+> `decision_hp` 单一形态（件② M1「波 5 收敛后改钉单形态」同手法）；L4 内写侧 4
+> 调用点行为锁随波 5 旧链删除退役。
