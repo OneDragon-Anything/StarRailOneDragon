@@ -31,6 +31,10 @@ journal 同目录)逐段显影(archived_out;判读者钉解析失败时查 manif
 是账面体积无上界的根源)/体积兜底窗(容量失控时从最老段清,可击穿实机窗,
 manifest 显影保考古)。清理时点 = 装配(:func:`install_state_telemetry`
 前置)——单进程写端未启动,零并发窗;活跃段(最新 run_id)永不清理。
+同生命周期伴生流(telemetry defect_ledger)随本趟段裁决联动清理
+(:func:`set_retirement_follower` 槽注入,生产武装点 =
+telemetry.defects.install_exit_hooks)——同窗同显影,禁另起独立清理
+周期(双源漂移禁令)。
 
 本模块只管「行进了内存之后」的事(缓冲/序列化/落盘/装配/寿命);行的组装与
 版本分配在写入口(kernel/cw_board_state ``BoardState._swap``,分配与状态
@@ -180,7 +184,13 @@ def enforce_journal_retention(journal_path: Path | str, *,
     - 文件重写 = 临时文件 + ``os.replace`` 原子改名(中断读者不读半截);
     - 坏行/无 ts 行/无 run_id 行 = 原样保留(宽容契约:清理面不做判定,
       禁把半行当合法行删);
-    - 返回 ``{'checked': 段数, 'retired': [run_id...], 'rows_dropped': n}``。
+    - 返回 ``{'checked': 段数, 'retired': [run_id...], 'rows_dropped': n,
+      'segments': [run_id...], 'reasons': {run_id: reason}}``。``segments``
+      = 本账面全部段名册(首现序);``reasons`` = **本趟实际淘汰**段的归因,
+      与 ``retired`` 同生死(任一失败路径恒空)——联动跟随者(telemetry 侧
+      defect_ledger,经 :func:`set_retirement_follower` 注入)据此区分
+      「共享段跟随裁决」与「孤儿段自评」,并保证禁在 journal 行仍在账时
+      跟随淘汰(台账索引行先丢而证据行还在 = 索引面单边丢失,比双留更坏)。
 
     为什么挂在装配前置而非收口:装配时点单进程写端未启动(零并发窗),
     收口时点进程可能即将续写下一局(缓冲/flush 交叠窗);滚动语义由每次
@@ -188,7 +198,8 @@ def enforce_journal_retention(journal_path: Path | str, *,
     """
     path = Path(journal_path)
     summary: dict[str, Any] = {'checked': 0, 'retired': [],
-                               'rows_dropped': 0}
+                               'rows_dropped': 0,
+                               'segments': [], 'reasons': {}}
     if not path.exists():
         return summary
     # epoch 归一基准:naive 串按本地时区解释(生产写端 = 本地 naive ISO 串),
@@ -224,6 +235,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
         seg_bytes[rid] = seg_bytes.get(rid, 0) + len(json.dumps(
             row, ensure_ascii=False)) + 1
     summary['checked'] = len(seg_rows)
+    summary['segments'] = list(seg_rows)   # 段名册(首现序;联动跟随者判共享/孤儿)
     if not seg_rows:
         return summary
     # 活跃段 = 段末行 ts 最大的段(流内行序 = 版本序,段末行最新)
@@ -297,6 +309,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
     keep = [row for i, row in enumerate(rows) if i not in retired_idx]
     summary['retired'] = retired_ids
     summary['rows_dropped'] = len(retired_idx)
+    summary['reasons'] = dict(retire_reason)   # 与 retired 同生死(见返回契约)
     tmp_name: str | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -333,6 +346,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
             Path(tmp_name).unlink(missing_ok=True)   # 失败 tmp 残留即占盘
         summary['retired'] = []
         summary['rows_dropped'] = 0
+        summary['reasons'] = {}   # 与 retired 同生死:行仍在账,禁联动跟随淘汰
         return summary
     by_reason: dict[str, list[str]] = {}
     for rid in retired_ids:
@@ -343,6 +357,24 @@ def enforce_journal_retention(journal_path: Path | str, *,
              keep_bytes / 1048576.0, max_bytes // 1048576,
              '; '.join(f'{reason}={ids}' for reason, ids in by_reason.items()))
     return summary
+
+
+#: 段淘汰联动跟随者槽(注入式;None = 缺省关,装配点显式接通纪律)。
+#: 生产武装点 = telemetry.defects.install_exit_hooks(与出口钩子/安灯同点);
+#: kernel 禁依 telemetry(桶依赖矩阵锁),依赖倒置经本槽注入(同 run_id
+#: provider 先例)。签名 ``fn(telemetry_root, retirement_summary)``:
+#: telemetry_root = journal 所在 state 目录的父目录(生产 = telemetry live
+#: 根,跟随者自行定位其名下文件);retirement_summary =
+#: :func:`enforce_journal_retention` 返回段账(retired/reasons/segments 键)。
+_RETIREMENT_FOLLOWER: Callable[[Path, dict[str, Any]], None] | None = None
+
+
+def set_retirement_follower(
+        fn: Callable[[Path, dict[str, Any]], None] | None) -> None:
+    """注入/清除段淘汰联动跟随者(缺省关;测试 teardown 必调复位——槽为
+    进程级全局,残留会把后续测试的装配清理泄到无关路径)。"""
+    global _RETIREMENT_FOLLOWER
+    _RETIREMENT_FOLLOWER = fn
 
 
 #: 进程内单槽(装配口;缺省 None = 无落盘实例——写路径照常,仅行不落)。
@@ -378,9 +410,21 @@ def install_state_telemetry(path: Path | str | None = None, *,
     # 寿命契约清理(R5 W3 装配端):写端未启动的零并发窗,每进程装配触发
     # 一次段粒度滚动清理(见 enforce_journal_retention 注);失败不阻塞装配。
     try:
-        enforce_journal_retention(path)
+        summary = enforce_journal_retention(path)
     except Exception as e:  # noqa: BLE001  装配主路径不受清理面故障波及
         log.warning('[cw!][state-journal] 段清理失败(不阻塞装配): %s', e)
+    else:
+        # 段淘汰联动跟随(T-91):defect_ledger 等同生命周期伴生流随本趟
+        # 段裁决清理(同窗同显影,禁另起独立清理周期——双源漂移禁令);
+        # telemetry_root = journal state 目录父目录(生产 = telemetry live
+        # 根),测试 tmp 装配即派生 tmp 根、缺文件零成本 no-op。槽缺席 =
+        # 缺省关(单元测试/未武装装配零副作用);失败不阻塞装配。
+        follower = _RETIREMENT_FOLLOWER
+        if follower is not None:
+            try:
+                follower(path.parent.parent, summary)
+            except Exception as e:  # noqa: BLE001  跟随者故障不毒化装配
+                log.warning('[cw!][state-journal] 段淘汰联动跟随失败(不阻塞装配): %s', e)
     journal = StateJournal(path, flush_every=flush_every)
 
     from sr_od.application.currency_war.kernel.cw_board_state import (

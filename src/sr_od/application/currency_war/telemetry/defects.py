@@ -284,10 +284,23 @@ def install_exit_hooks() -> None:
     kernel/cw_telemetry_exit 的钩子槽,使 kernel/obs/decision 三桶的
     telemetry 上行出口(落账/安灯/run_id 归属键)零直依本模块。
 
+    同点扩装(T-91):journal 段淘汰的 defect_ledger 联动跟随清理
+    (kernel/cw_state_journal.set_retirement_follower 槽)——台账段随
+    journal run 段生命周期同窗清理/同显影,禁另起独立清理周期(双源漂移
+    禁令);缺省关,本函数即生产武装点(装配序在本 app 内先于
+    install_state_telemetry,清理趟触发时槽已就位)。本函数只武装槽位,
+    清理本体在 journal 装配趟执行(recorder.follow_journal_retirement)。
+
     删除波 1:exogenous/exec_events 实现槽随旧流写入端退役移除——
     install_exit_hooks 不再注入两流实现(kernel 侧访问器一为 no-op 桩、
     一已删除)。缺陷台账/obs 旁路/安灯/run_id 四槽照常。"""
-    from sr_od.application.currency_war.kernel import cw_telemetry_exit
+    from sr_od.application.currency_war.kernel import (
+        cw_state_journal,
+        cw_telemetry_exit,
+    )
+    from sr_od.application.currency_war.telemetry import recorder as _rec
+
+    cw_state_journal.set_retirement_follower(_rec.follow_journal_retirement)
 
     cw_telemetry_exit.install_exit_hooks(
         run_id_provider=current_run_id,
