@@ -224,6 +224,33 @@ def node_ordinal_of(row: dict[str, Any]) -> int | None:
     return (key[0] - 1) * 9 + key[1]
 
 
+def round_state_snapshots(
+        rows: list[dict[str, Any]], run_id: str = '') -> dict[
+        tuple[str, int, int], dict[str, Any]]:
+    """按 (run_id, plane, round_num) 取每轮**最后一次写入**的行内 state
+    快照(T-98 波 5 journal 切源读面:Δ池语料源与回放轮真值共用,轮归组
+    单一源禁第三份)。
+
+    轮键取自快照 values['node'](NodeKey 序列化形态;node 未建模帧 =
+    引导窗行,不入结果——诚实缺位);同轮多行取文件序最后一行(= 版本序
+    最新快照)。node 缺 kind 键宽容为 ''(消费方按需判)。"""
+    out: dict[tuple[str, int, int], dict[str, Any]] = {}
+    for row in rows_of(rows, run_id):
+        st = row.get('state')
+        if not isinstance(st, dict):
+            continue
+        node = state_values(row).get('node')
+        if not isinstance(node, dict):
+            continue
+        try:
+            key = (str(row.get('run_id') or ''),
+                   int(node['plane']), int(node['round_num']))
+        except (KeyError, TypeError, ValueError):
+            continue
+        out[key] = st
+    return out
+
+
 # ============================================================ 视图族
 # 返回形态与 query.py 视图同构(list[str] 判读行);输入 = 行列表(纯函数,
 # 便于对任意切片——live 全账/档案切片物化目录——复用同一实现)。

@@ -350,7 +350,8 @@ def _poverty_list(pool: dict, battle_killed: dict) -> list[str]:
     return out
 
 
-def build_pool(src_dir: Path, runs_filter: set[str] | None):
+def build_pool(src_dir: Path, runs_filter: set[str] | None = None,
+               ) -> tuple[dict, dict]:
     """构建 {节点: {位面: {桶键: [Δ]}}} + 构成 meta(auto 池同配对件)。
 
     桶键语义(ADR-0279,批⑬):battle=成型度 rung(结算前
@@ -514,6 +515,100 @@ def build_pool(src_dir: Path, runs_filter: set[str] | None):
                 '塌缩守卫:源行数账 < 现快照行数账×0.5 拒绝再生覆写、'
                 '保留现快照(2026-09-08 假游戏局 fake_20260908 触发'
                 '微语料三次静默覆写提交快照的实证防线)',
+    }
+    return pool, meta
+
+
+def build_pool_from_journal(src_dir: Path | None = None,
+                            runs_filter: set[str] | None = None,
+                            ) -> tuple[dict, dict]:
+    """journal 新账语料 → (Δ池, 构成 meta)(波 5 语料源切 journal)。
+
+    语料源 = ``<src_dir>/state/journal.jsonl``(统一 state 流水,行行自足;
+    读面单一源 = journal_query,轮归组 = round_state_snapshots)。旧
+    decisions/outcomes 双流已随删除波 1 停写(读死数据),本函数是切源后
+    的生成器读源;配对语义共用 pool.pair_outcome_rows_to_pool 单件
+    (禁第二镜像循环,ADR-0582 同律)。
+
+    - 轮真值 = 每轮最后一次写入的快照:hp_after=values.hp、node_type=
+      values.node.kind、Σboard/净星深/上场名单由 front_row/back_row Unit
+      序列化形态直算(与 decisions join 的键口径同义,boss 桶键 = 净星深
+      ADR-0404 同式);
+    - journal 无合成行/置信位概念 → synthetic_supply_dropped/
+      hp_conf_dropped 恒 0(四类剔除计数如实为零,非缺报);
+    - **再生门不动**:快照停更冻结(``_DELTA_POOL_FROZEN``)照常生效,
+      本函数只供切源后的语料审计与抽样对拍;重启再生须先经编排者裁决。
+    """
+    from sr_od.application.currency_war.telemetry.journal_query import (
+        JOURNAL_REL,
+        read_journal_stats,
+        round_state_snapshots,
+    )
+    src = Path(src_dir) if src_dir is not None else REPLAY_DIR
+    rows, read_stats = read_journal_stats(src)   # 读入口已拼 JOURNAL_REL
+    snaps = round_state_snapshots(rows)
+    boards: dict = {}
+    star_depths: dict = {}
+    deployed_names: dict = {}
+    seqs: dict[str, list[dict]] = {}
+    for (run, plane, rnd), snap in sorted(snaps.items()):
+        if runs_filter and run not in runs_filter:
+            continue
+        if _run_quarantine_reason(run) is not None:
+            continue
+        values = snap.get('values') if isinstance(snap.get('values'), dict) \
+            else {}
+        node = values.get('node') if isinstance(values.get('node'), dict) \
+            else {}
+        hp = values.get('hp')
+        if hp is None:
+            continue   # 无结算真值轮不入差分序列(诚实缺位)
+        board = values.get('board') or {}
+        units = [u for k in ('front_row', 'back_row')
+                 for u in (values.get(k) or []) if isinstance(u, dict)]
+        key = (run, plane, rnd)
+        boards[key] = sum(int(v) for v in board.values())
+        star_depths[key] = sum(max(0, int(u.get('star') or 1) - 1)
+                               for u in units)
+        deployed_names[key] = frozenset(
+            str(u.get('char_id') or '') for u in units if u.get('char_id'))
+        seqs.setdefault(run, []).append({
+            'run_id': run, 'plane': plane, 'round_num': rnd,
+            'hp_after': int(hp), 'node_type': str(node.get('kind') or ''),
+        })
+    from sr_od.application.currency_war.sim.pool import (
+        pair_outcome_rows_to_pool,
+    )
+    pool, stats = pair_outcome_rows_to_pool(
+        seqs, boards=boards, star_depths=star_depths,
+        deployed_names=deployed_names)
+    battle_killed: dict = stats['battle_killed']
+    meta = {
+        'source': 'journal(state/journal.jsonl;T-98 波 5 语料源切 journal)',
+        'source_dir': str(src),
+        'runs': stats['runs'],
+        'runs_filter': (sorted(runs_filter) if runs_filter else 'all'),
+        'skipped_lines': {
+            'journal_bad_json': read_stats.bad_json_lines,
+            'journal_non_dict': read_stats.non_dict_lines,
+            'journal_byte_repair': read_stats.byte_repair_lines,
+        },
+        'unlabeled_dropped': stats['unlabeled_dropped'],
+        'hp0_transient_dropped': stats['hp0_transient_dropped'],
+        'synthetic_supply_dropped': stats['synthetic_supply_dropped'],
+        'hp_conf_dropped': stats['hp_conf_dropped'],
+        'quarantined_hits': [],
+        'depth_bucket_w': DEPTH_BUCKET_W,
+        'battle_rung': {
+            str(b): dict(
+                {'n': len(v), 'mean': round(sum(v) / len(v), 2)},
+                **_win_stats(v, battle_killed.get(b, [])))
+            for b, v in sorted(
+                ((pool.get('battle') or {}).get(1) or {}).items())},
+        'source_rows': {'journal_rounds': len(snaps)},
+        'bucket_poverty': _poverty_list(pool, battle_killed),
+        'note': 'journal 源构建器(T-98);快照停更冻结期间仅作语料审计'
+                '与抽样对拍,快照覆写仍走 regenerate_snapshot 冻结门。',
     }
     return pool, meta
 

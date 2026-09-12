@@ -2841,6 +2841,79 @@ def feed_sim_truth(bs: BoardState, st: GameState, *,
                     at_round, e)
 
 
+def restore_state_snapshot(bs: BoardState, snap: dict) -> None:
+    """行内 state 快照 → 容器域恢复(T-98 波 5 回放/Δ池 journal 切源的
+    离线判读面;序列化 = :meth:`BoardState.full_state_snapshot`)。
+
+    - 直 setattr 重建 Field(绕 _swap:零流水行、零版本分配——恢复是
+      离线读面非生产写路径);values 键缺位 = 域保持 None(快照只存
+      非 None 值的口径往返一致);
+    - 复杂域按字段名重建(node/front_row/back_row/bench/shop/plane_bosses;
+      _json_safe 无类型标,恢复表 = 字段名单一源),其余域直透
+      (标量/list/dict 形态值);
+    - source/evidence 取 prov 面(缺 = observation/None 缺省);
+    - write_seq/工程结构不恢复(判读面不需要版本续接)。
+    """
+    values = snap.get('values') if isinstance(snap, dict) else None
+    if not isinstance(values, dict):
+        return
+    prov = snap.get('prov') if isinstance(snap.get('prov'), dict) else {}
+
+    def _unit(d: dict) -> Unit:
+        return Unit(char_id=str(d.get('char_id') or ''),
+                    star=int(d.get('star') or 1),
+                    equips=list(d.get('equips') or []),
+                    slot=int(d.get('slot') or 1))
+
+    def _bench_view(d: dict) -> BenchView:
+        slots: list[BenchSlot] = []
+        for sd in d.get('slots') or []:
+            sd = sd if isinstance(sd, dict) else {}
+            u = sd.get('unit')
+            slots.append(BenchSlot(
+                kind=str(sd.get('kind') or 'empty'),
+                unit=_unit(u) if isinstance(u, dict) else None))
+        return BenchView(slots=slots,
+                         capacity=int(d.get('capacity')
+                                      or BENCH_CAPACITY_DEFAULT))
+
+    def _shop_payload(d: dict) -> ShopPayload:
+        cards = [ShopCard(name=str(c.get('name') or ''),
+                          faction=str(c.get('faction') or '?'),
+                          cost=int(c.get('cost') or 1),
+                          star=int(c.get('star') or 1),
+                          cost_source=str(c.get('cost_source') or ''))
+                 for c in d.get('cards') or [] if isinstance(c, dict)]
+        probs = {int(k): float(v)
+                 for k, v in (d.get('refresh_probs') or {}).items()}
+        return ShopPayload(cards=cards, refresh_probs=probs)
+
+    rebuild = {
+        'node': lambda d: NodeKey(plane=int(d.get('plane') or 1),
+                                  round_num=int(d.get('round_num') or 1),
+                                  kind=str(d.get('kind') or '')),
+        'front_row': lambda lst: [_unit(u) for u in lst
+                                  if isinstance(u, dict)],
+        'back_row': lambda lst: [_unit(u) for u in lst
+                                 if isinstance(u, dict)],
+        'bench': _bench_view,
+        'shop': _shop_payload,
+    }
+    for name, raw in values.items():
+        target = getattr(bs, name, None)
+        if not isinstance(target, Field):
+            continue
+        fn = rebuild.get(name)
+        try:
+            value = fn(raw) if fn is not None else raw
+        except (TypeError, ValueError, KeyError, AttributeError):
+            continue   # 畸形域诚实跳过(宽容读契约同向)
+        p = prov.get(name) if isinstance(prov.get(name), dict) else {}
+        setattr(bs, name, Field(value=value,
+                                source=str(p.get('source') or 'observation'),
+                                evidence=p.get('evidence')))
+
+
 # ============================================================ 决策面公共读口
 # (迁移批次三·W6 波1:kernel 决策簇签名切 BoardState 后的值读单一源。
 #  旧 GameState 标量字段的缺省值形态(非 Optional:int 0/1)在容器侧是
