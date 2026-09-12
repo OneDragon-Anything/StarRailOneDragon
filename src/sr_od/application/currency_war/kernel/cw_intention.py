@@ -97,11 +97,13 @@ from sr_od.application.currency_war.kernel.cw_plugins import (
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    BENCH_CAPACITY,
+from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
-    iter_occupied_deployed,  # ADR-0392 helper 导入
     sell_refund,
+)
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    BENCH_CAPACITY,
+    iter_occupied_deployed,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_lazy,
@@ -112,9 +114,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
-    from sr_od.application.currency_war.kernel.cw_state import (
-        GameState,
-    )
+    from sr_od.application.currency_war.kernel.cw_state import GameState
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )

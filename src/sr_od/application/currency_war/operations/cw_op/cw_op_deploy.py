@@ -219,7 +219,7 @@ def assemble_bench_list(bench_occ: list, bench_cid: dict, bench_pos: dict,
     显式产出,非「空 id 推断」(「照旧上」fail-open 语义不涉本路径)。
     可离线直测(锁 = test_cw_deploy_pseudo_slot 写入端存在性锁)。
     """
-    from sr_od.application.currency_war.kernel.cw_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
     out: list = []
     for _bi in bench_occ:
         _cid_b = bench_cid.get(_bi, '')
@@ -1257,7 +1257,7 @@ class CwOpDeploy(SrOperation):
                     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
                         assemble_swap_plan_inputs as _aswap_rb,
                     )
-                    from sr_od.application.currency_war.kernel.cw_state import (
+                    from sr_od.application.currency_war.kernel.cw_exec_state import (
                         BenchChar as _BCH,
                     )
                     _ctx_rb = _aswap_rb(

@@ -23,7 +23,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import committed_from
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
-from sr_od.application.currency_war.kernel.cw_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     Snapshot,
 )
@@ -71,7 +71,7 @@ def _tracking_view(session: StrategySession, snapshot: Snapshot,
     与 session.tracked_* 断开对象别名——session 侧就地写端(shop 星级/
     装备拼接、deploy_bench 装备覆盖)不再穿透视图,反向亦然。
     """
-    from sr_od.application.currency_war.kernel.cw_state import snapshot_copy
+    from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
     tracked_bench = getattr(exec_state_of(session), 'tracked_bench_chars', None)
     bench = (tuple(None if b is None else snapshot_copy(b)
                    for b in tracked_bench)

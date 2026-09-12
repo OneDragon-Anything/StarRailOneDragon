@@ -161,7 +161,7 @@ def e_rounds(comp: Comp, bs: BoardState,
     dist = line_distance(comp, bs)
     if dist <= 0:
         return 0.0
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         BENCH_CAPACITY,
         bench_occupied,
     )

@@ -44,12 +44,25 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     economy_effect_of,
     normalize_invest_name,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    BENCH_CAPACITY,
-    DEPLOYED_CAPACITY,
+from sr_od.application.currency_war.kernel.cw_economy import (
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
+    card_cost,
+    sell_refund,
+)
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    BENCH_CAPACITY,
+    DEPLOYED_CAPACITY,
     BenchChar,
+    bench_occupied,
+    bench_place,
+    deployed_occupied,
+    deployed_place,
+    iter_occupied,
+    iter_occupied_deployed,
+)
+from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_completes
+from sr_od.application.currency_war.kernel.cw_state import (
     BuyCard,
     CompTransaction,
     GameState,
@@ -61,19 +74,8 @@ from sr_od.application.currency_war.kernel.cw_state import (
     ShopCard,
     SwapDeploy,
     _bench_char_cost,
-    bench_occupied,
-    bench_place,
-    card_cost,
-    deployed_occupied,
-    deployed_place,
-    iter_occupied,
-    iter_occupied_deployed,
-    merge_buy_completes,
-    sell_refund,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    simulate as _simulate_state,
-)
+from sr_od.application.currency_war.kernel.cw_state import simulate as _simulate_state
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     InvestInjectionState,
@@ -706,7 +708,7 @@ def _m1p_plan_and_record(st: GameState, sess) \
         select_swap_plan,
         swap_plan_up_names,
     )
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         iter_occupied_deployed,
     )
     # 波 5 喂入反转:计划谓词装配消费前直写容器、喂容器直读

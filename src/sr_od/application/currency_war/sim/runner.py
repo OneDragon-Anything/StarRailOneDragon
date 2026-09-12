@@ -30,11 +30,11 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
     normalize_invest_name,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
-    GameState,
     deployed_occupied,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     SimInvestProfile,
 )
@@ -1093,7 +1093,7 @@ def synthesize_snapshot(st: GameState,
     import copy
     from types import MappingProxyType
 
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         DEPLOYED_FRONT_CAPACITY,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (

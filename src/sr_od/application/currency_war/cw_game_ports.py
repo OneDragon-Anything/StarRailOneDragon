@@ -32,11 +32,7 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepObservation,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    Action,
-    GameState,
-    ShopCard,
-)
+from sr_od.application.currency_war.kernel.cw_state import Action, GameState, ShopCard
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext

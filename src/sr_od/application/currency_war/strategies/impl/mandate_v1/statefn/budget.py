@@ -44,7 +44,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
     xp_click_cost,
 )
 from sr_od.application.currency_war.kernel.cw_plane_table import r_remaining
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_economy import (
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
 )

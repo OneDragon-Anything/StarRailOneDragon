@@ -77,7 +77,8 @@ from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
 )
-from sr_od.application.currency_war.kernel.cw_state import GameState, sell_refund
+from sr_od.application.currency_war.kernel.cw_economy import sell_refund
+from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
@@ -334,9 +335,7 @@ def decide_encounter_ev(options: list[EncounterOption], state: GameState | None,
         from sr_od.application.currency_war.kernel.cw_hp_policy import (
             decision_hp,
         )
-        from sr_od.application.currency_war.kernel.cw_state import (
-            GameState as _GS,
-        )
+        from sr_od.application.currency_war.kernel.cw_state import GameState as _GS
         _view = _GS(gold=gold_of(state), plane=plane_of(state),
                     round_num=round_num_of(state), hp=decision_hp(state,
                                                                   session))

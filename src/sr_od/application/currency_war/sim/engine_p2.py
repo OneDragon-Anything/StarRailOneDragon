@@ -23,12 +23,12 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
     normalize_invest_name,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     BenchChar,
-    GameState,
     deployed_from_compact,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)

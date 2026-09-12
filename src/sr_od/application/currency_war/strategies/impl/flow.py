@@ -75,11 +75,7 @@ from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    Action,
-    GameState,
-    PickEvent,
-)
+from sr_od.application.currency_war.kernel.cw_state import Action, GameState, PickEvent
 from sr_od.application.currency_war.strategies.impl.cw_strategy import (
     CwStrategy,
     StrategySession,
@@ -782,7 +778,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 _slots = bench_slots_of(bs)
                 _k = 1
                 if all(b is not None for b in _slots):
-                    from sr_od.application.currency_war.kernel.cw_state import (
+                    from sr_od.application.currency_war.kernel.cw_merge_simulate import (
                         merge_buy_k,
                     )
                     _k = max(1, merge_buy_k(

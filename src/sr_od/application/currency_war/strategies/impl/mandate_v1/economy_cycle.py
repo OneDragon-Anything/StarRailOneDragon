@@ -106,9 +106,9 @@ def _scan_shop_buy_accounts(bs: BoardState,
     """
     costs: list[int] = []
     fill: list[int] = []
-    from sr_od.application.currency_war.kernel.cw_state import (
-        bench_occupied,
-        card_cost,
+    from sr_od.application.currency_war.kernel.cw_economy import card_cost
+    from sr_od.application.currency_war.kernel.cw_exec_state import bench_occupied
+    from sr_od.application.currency_war.kernel.cw_merge_simulate import (
         will_merge_on_buy,
     )
     _slots = bench_slots_of(bs)

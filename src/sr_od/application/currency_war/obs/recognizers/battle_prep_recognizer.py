@@ -38,7 +38,7 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     _area_rect,
     _ocr,
 )
-from sr_od.application.currency_war.kernel.cw_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.obs.cw_equipment import (
     ensure_equip_sift_templates,
     ensure_equip_tm_templates,

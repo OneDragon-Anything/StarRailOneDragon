@@ -55,7 +55,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     SellDeployed,
     StartBattle,
 )
-from sr_od.application.currency_war.kernel.cw_state import XP_CLICK_COST_FALLBACK
+from sr_od.application.currency_war.kernel.cw_economy import XP_CLICK_COST_FALLBACK
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_reward_spheres,
@@ -320,7 +320,7 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
-    from sr_od.application.currency_war.kernel.cw_state import ledger_node_type
+    from sr_od.application.currency_war.kernel.cw_exec_state import ledger_node_type
     _reg_eq = (getattr(getattr(_match, 'strategy', None), 'registry', None)
                or DEFAULT_REGISTRY)
     _node_type = (getattr(_st_hold, 'node_type', None)
@@ -1235,7 +1235,7 @@ class PrepActionExecutor:
             return
         # ADR-0392:tracked_deployed 槽位表(置 None 不移位);(row, slot)
         # 物理 1-based → 槽位下标(front: slot-1 / back: 4+slot-1)
-        from sr_od.application.currency_war.kernel.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
             DEPLOYED_FRONT_CAPACITY,
             pad_deployed,
         )
@@ -1260,7 +1260,7 @@ class PrepActionExecutor:
             if bc is not None and bc.slot != from_slot]
         # ADR-0392:tracked_deployed 槽位表——deployed_place 单一源落槽;
         # to_slot 是执行器物理槽位真值,落槽后覆写信息位。
-        from sr_od.application.currency_war.kernel.cw_state import deployed_place
+        from sr_od.application.currency_war.kernel.cw_exec_state import deployed_place
         for bc in moved:
             bc.position_pref = to_row
             deployed_place(exec_state_of(match.session).tracked_deployed, bc)

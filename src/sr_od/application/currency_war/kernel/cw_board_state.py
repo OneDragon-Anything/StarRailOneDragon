@@ -1182,7 +1182,7 @@ def bench_slots_to_legacy(view: BenchView) -> list:
     :func:`deployed_rows_from_obs` 边界申报)。槽位越界/空槽 → None。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.kernel.cw_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
     out: list = []
     for i, slot in enumerate(view.slots):
         u = getattr(slot, 'unit', None)
@@ -1218,7 +1218,7 @@ def unit_rows_to_deployed(front_row: list[Unit], back_row: list[Unit]) -> list:
     (与旧紧缩构造兼容)。阵营派生同 :func:`bench_slots_to_legacy`。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         DEPLOYED_CAPACITY,
         BenchChar,
     )
@@ -1479,21 +1479,27 @@ def apply_shop_action_logic(bs: BoardState, action: Any, *,
     (登记面 = :data:`SHOP_PROJECTION_DOMAINS` 注释,禁扩静默)。
     """
     _validate_sig(sig, ('logic_action',))
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         MAX_PLAYER_LEVEL,
         XP_TO_NEXT_LEVEL,
+        bench_char_cost,
+        card_cost,
+        sell_refund,
+        xp_apply_clicks,
+    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         BenchChar,
+        bench_place,
+    )
+    from sr_od.application.currency_war.kernel.cw_merge_simulate import (
+        merge_buy_completes,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
         BuyCard,
         CloseShop,
         LevelUp,
         RefreshShop,
         SellBench,
-        bench_char_cost,
-        bench_place,
-        card_cost,
-        merge_buy_completes,
-        sell_refund,
-        xp_apply_clicks,
     )
 
     def _w(target: Field, value: Any, evidence: str) -> None:
@@ -1623,10 +1629,8 @@ def apply_shop_merge_leg(bs: BoardState, action: Any, *,
     ——两写合计对 simulate 输出等价(锁 M1)。
     """
     _validate_sig(sig, ('logic_action',))
-    from sr_od.application.currency_war.kernel.cw_state import (
-        BuyCard,
-        snapshot_copy,
-    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
+    from sr_od.application.currency_war.kernel.cw_state import BuyCard
     if not isinstance(action, BuyCard):
         return
     bench_slots = bench_slots_of(bs)
@@ -1663,9 +1667,7 @@ def apply_shop_merge_leg(bs: BoardState, action: Any, *,
 def mutate_bench_deployed_local(bench, deployed, action):
     """``cw_state.mutate_bench_deployed`` 惰性转发(本模块与 cw_state 的
     运行时依赖纪律 = 函数级懒 import)。"""
-    from sr_od.application.currency_war.kernel.cw_state import (
-        mutate_bench_deployed,
-    )
+    from sr_od.application.currency_war.kernel.cw_state import mutate_bench_deployed
     mutate_bench_deployed(bench, deployed, action)
 
 
@@ -1718,7 +1720,7 @@ def apply_prep_action_logic(bs: BoardState, action: Any, *,
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
         SellBench,
     )
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         bench_char_cost,
         sell_refund,
     )
@@ -3045,7 +3047,7 @@ def deployed_slots_of(bs: BoardState) -> list:
     front = bs.front_row.value
     back = bs.back_row.value
     if front is None and back is None:
-        from sr_od.application.currency_war.kernel.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
             DEPLOYED_CAPACITY,
         )
         return [None] * DEPLOYED_CAPACITY
@@ -3059,9 +3061,7 @@ def bench_slots_of(bs: BoardState) -> list:
     形态([None]×9)。"""
     view = bs.bench.value
     if view is None:
-        from sr_od.application.currency_war.kernel.cw_state import (
-            BENCH_CAPACITY,
-        )
+        from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
         return [None] * BENCH_CAPACITY
     return bench_slots_to_legacy(view)
 
@@ -3084,7 +3084,7 @@ def deployed_count_of(bs: BoardState) -> int:
     """上阵占用数读口(旧 ``GameState.deployed_count`` 逐式镜像,波3 立口;
     换算单一源 = :func:`deployed_slots_of` + ``cw_state.deployed_occupied``,
     ADR-0392 占用数口径非 len)。"""
-    from sr_od.application.currency_war.kernel.cw_state import deployed_occupied
+    from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
     return deployed_occupied(deployed_slots_of(bs))
 
 
@@ -3109,7 +3109,7 @@ def max_units_of(bs: BoardState) -> int:
     level)封顶 = 前排恒 4 + back_layout 动态真值(缺省 6 = 机制基线,
     值域 6-9,与旧 back_max 字段缺省同源;封顶域单一源 =
     :func:`back_capacity_of`)。"""
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         DEPLOYED_FRONT_CAPACITY,
     )
     level = level_of(bs)

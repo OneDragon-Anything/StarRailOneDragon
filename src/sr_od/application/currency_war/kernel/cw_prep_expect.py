@@ -17,13 +17,13 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepAction,
     SellBench,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     BenchChar,
     bench_place,
     deployed_slot_no,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     _merge_bench as cw_merge_bench,
 )
 

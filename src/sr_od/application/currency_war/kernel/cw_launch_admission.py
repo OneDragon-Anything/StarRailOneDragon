@@ -165,7 +165,7 @@ def launch_board_quality_report(bs: BoardState, comp: Comp) -> dict:
         deployed_bond_counts,
         has_deployable,
     )
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         deployed_occupied,
         iter_occupied_deployed,
     )
@@ -298,9 +298,7 @@ def launch_admission_report(bs: BoardState, comp: Comp, *,
         调用方注入同一函数对象,禁各调用面自写第二实现)。
     """
     from sr_od.application.currency_war.data.cw_chars import get_char
-    from sr_od.application.currency_war.kernel.cw_state import (
-        deployed_occupied,
-    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
     # 裸过滤债(ADR-0557 既有代码):内联 None 过滤未收敛到 deployed 迭代
     # 单一源 iter_occupied_deployed(同模块 launch_board_quality_report
     # 同型位已收敛);纯注记申报,收敛属行为面另行批次处置。

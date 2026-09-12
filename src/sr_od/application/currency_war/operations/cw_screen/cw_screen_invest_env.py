@@ -266,7 +266,9 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # 变异源(用户口述),确认到节点行重读刷新之间查表与逐帧校验的不一致
         # 是合法变异,三票校验不得落缺陷台账。重读成功后关窗(置 0)。
         try:
-            from sr_od.application.currency_war.kernel.cw_state import get_node_ledger
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
+                get_node_ledger,
+            )
             _ledger = get_node_ledger(getattr(getattr(self.ctx, 'cw_match', None), 'session', None))
             if _ledger is not None:
                 _ledger.env_grace_until = time.monotonic() + CwScreenInvestEnv.ENV_GRACE_S
@@ -294,7 +296,7 @@ class CwScreenInvestEnv(CwScreenOpBase):
         读不到 clean 帧(转场动画)→ 1.5s 后重试一次,仍 miss 则保留窗口
         由下个写入端兜(不阻塞对局;合并语义 = None 位保旧,见 ledger_update_plane)。
         """
-        from sr_od.application.currency_war.kernel.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
             get_node_ledger,
             ledger_update_plane,
         )

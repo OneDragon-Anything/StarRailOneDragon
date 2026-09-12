@@ -17,7 +17,7 @@ from pathlib import Path
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepObservation,
 )
-from sr_od.application.currency_war.kernel.cw_state import snapshot_copy
+from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 from sr_od.application.currency_war.strategies.impl.mandate_v1.adapter import (
     PREP_SUBSTATE_NAME,

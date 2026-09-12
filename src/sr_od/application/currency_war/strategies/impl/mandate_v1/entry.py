@@ -92,7 +92,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
 )
-from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     mandate,
     proof,

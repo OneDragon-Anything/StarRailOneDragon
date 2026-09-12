@@ -21,100 +21,54 @@ from __future__ import annotations
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-
-if TYPE_CHECKING:
-    # 仅类型注解引用(项目规范);cw_board_state 已以同形态反向引用本模块,
-    # 运行时零依赖不成环(effective_hp_threshold 容器注解,波 2 签名切换)。
-    from sr_od.application.currency_war.kernel.cw_board_state import BoardState
-
-# 卖出回金 = 招募费(cost)× 合成倍数,docs/game/currency_war/research/economy.md §3(卖出退金)。1星=cost 🟢 BWIKI+4399+用户权威;
-# 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」,
-# 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。
-_SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
-BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
-# deployed 槽位语义(ADR-0392):定长 10 槽表——下标 0-3 = 前排槽 1-4、
-# 4-9 = 后排槽 1-6。后排实际格数 = 6 + (cap−level) 值域 6-9(cw_back_layout
-# 三信号裁决,ADR-0385;上限 9 = 用户口述,board_structure.md)——超过 6 的
-# 扩展格属画面布局域,不进本表示(表长恒 10;取舍与理由见 ADR-0392
-# 「后排布局档取舍」节,扩展格 7-9 的跟踪缺口在 9 档可达后常规化,扩板另案)。
-DEPLOYED_FRONT_CAPACITY: int = 4
-DEPLOYED_BACK_CAPACITY: int = 6
-DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
-
-# 购买经验机制(ADR-0129;用户实测口述 2026-08-15,A5+;telemetry 多局 XP 分母 4/6/20/40 对拍一致):
-# 「购买经验」每点一次 +XP_PER_BUY 经验、花小额金币(按钮实读 state.level_up_cost);经验攒够当前级
-# 门槛自动升级,溢出结转。等级门槛表(升下一级所需总经验):
-XP_PER_BUY: int = 4
-XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
-XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
-#: 玩家等级封顶(live 语义:10 级后购买经验无效;xp_apply_clicks/xp_clicks_to_level/
-#: simulate LevelUp 分支/cw_board_state 投影满级门同此单一源。sim 侧 LEVEL_CAP=9
-#: 是已知建模分歧,勿混用——本常量只辖 live 侧)。
-MAX_PLAYER_LEVEL: int = 10
-
-# 刷新商店实付金 = 基价常量(建模值,非 OCR 读数)。出处:多局旧决策行
-# 相邻金差对账(只含 LevelUp+Refresh 的最小对账对)全部 = 2,不随金币/
-# 次数/等级变;invest_effects.md「刷新 45% 概率免费 → 期望刷价 1.1」隐含基价
-# 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
-# (数值 = min(gold//10,5) = 利息公式,非刷价;三流对拍定谳,ADR-0456)——
-# 该 OCR 已退出 read_game_state 主链(cw_observation),决策/对账统一消费本常量。
-# 消费点沿用 ``or 2`` 兜底语义:字段恒为基价,兜底分支不再触发,零行为波及。
-REFRESH_COST_BASE: int = 2
 
 
-def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
-                    xp_per_buy: int = XP_PER_BUY) -> tuple[int, int]:
-    """N 次「购买经验」后的期望 (level, xp_cur)(纯函数;XP 期望态账本的推进算子)。
+# ===== 候裁9 词汇迁移·旧路径转发(过渡 shim)=====
+# 本批(T-7 W8)按定谳记录把共享词汇迁入语义宿主;下列 import 同时是
+# 本模块自身运行时的供给面。旧路径消费仅剩并行在飞批文件,待其落库
+# 后由收尾段 sweep 改指新居并删除本转发声明;禁新增旧路径消费。
+from sr_od.application.currency_war.kernel.cw_exec_state import (  # noqa: E402
+    BENCH_CAPACITY,  # noqa: F401
+    DEPLOYED_BACK_CAPACITY,  # noqa: F401
+    DEPLOYED_CAPACITY,  # noqa: F401
+    DEPLOYED_FRONT_CAPACITY,  # noqa: F401
+    PlaneNodeLedger,  # noqa: F401
+    BenchChar,  # noqa: F401
+    _apply_row_to_char, bench_from_compact,  # noqa: F401
+    bench_occupied, bench_place, deployed_from_compact,  # noqa: F401
+    deployed_occupied, deployed_place, deployed_slot_no,  # noqa: F401
+    fill_boss_by_position, get_node_ledger, iter_occupied,  # noqa: F401
+    iter_deployed_slots, iter_occupied_deployed, ledger_node_type,  # noqa: F401
+    ledger_update_plane,  # noqa: F401
+    pad_bench, pad_deployed, rebuild_deployed_from_board,  # noqa: F401
+    snapshot_copy,  # noqa: F401
+)
+from sr_od.application.currency_war.kernel.cw_merge_simulate import (  # noqa: E402
+    _apply_full_bench_merge_buy, _merge_bench,  # noqa: F401
+    count_merge_material_blocked, merge_buy_completes, merge_buy_k,  # noqa: F401
+    merge_material_reject_reason, merge_material_stale_names,  # noqa: F401
+    same_star_count, star_base_copies, will_merge_on_buy,  # noqa: F401
+)
+from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
+    DIFFICULTY_HP_TABLE, HP_SAFE_THRESHOLD, MAX_PLAYER_LEVEL,  # noqa: F401
+    REFRESH_COST_BASE,  # noqa: F401
+    XP_CLICK_COST_FALLBACK, XP_PER_BUY, XP_TO_NEXT_LEVEL,  # noqa: F401
+    bench_char_cost, card_cost, effective_hp_threshold,  # noqa: F401
+    sell_refund, xp_apply_clicks, xp_clicks_to_level,  # noqa: F401
+)
+from sr_od.application.currency_war.kernel.cw_bond_equips import (  # noqa: E402
+    _recount_board,  # noqa: F401
+)
+from sr_od.application.currency_war.kernel.cw_deploy_logic import (  # noqa: E402
+    board_unique_key,  # noqa: F401
+)
+from sr_od.application.currency_war.kernel.cw_run_allocator import (  # noqa: E402
+    MatchOutcome,  # noqa: F401
+)
 
-    语义 = ADR-0129 单一源:每击 +xp_per_buy 经验;攒满当前级门槛即升级、
-    溢出结转(与 cw_state LevelUp 动作应用 / sim 轮末升级清零结转同规则)。
-    封顶 MAX_PLAYER_LEVEL(10)级 = 生产 live 语义(满级后购买经验无效;
-    sim 侧 LEVEL_CAP=9 是已知建模分歧,勿混用)。
-
-    [字段定义] level = 游戏玩家等级 1-10(整局单调,坐标系 = 游戏 XP 条);
-    xp_cur = 当前级已攒经验;取值时机 = 意图应用时纯推算(非执行期现读);
-    写入端 = CwScreenPrep XP 期望态账本。clicks ≤ 0 → 原值返回(无意图零推进)。
-    """
-    if clicks <= 0 or level >= MAX_PLAYER_LEVEL:
-        return level, xp_cur   # 封顶/零意图:购买经验无效,零推进(live 语义)
-    cur = xp_cur + clicks * xp_per_buy
-    while level < MAX_PLAYER_LEVEL:
-        need = XP_TO_NEXT_LEVEL.get(level, 4)
-        if cur < need:
-            break
-        cur -= need
-        level += 1
-    return level, cur
-
-
-def xp_clicks_to_level(level: int, xp_cur: int,
-                       xp_per_buy: int = XP_PER_BUY) -> int:
-    """当前级攒到**恰升 1 级**所需的最少购买经验次数(纯函数)。
-
-    = ceil((need − cur) / xp_per_buy);cur 已达门槛 → 1(再点一次即升)。
-    消费端 = CwScreenPrep 直接 LevelUp 动作(腾席链「循环点至 level+1、
-    首次验证成功即停」通道):progressed=True 时实际击数 = 本值。
-    已升满 MAX_PLAYER_LEVEL(10)级 → 0(点击无效,调用方零推进)。
-    """
-    if level >= MAX_PLAYER_LEVEL:
-        return 0
-    need = XP_TO_NEXT_LEVEL.get(level, 4)
-    gap = need - xp_cur
-    if gap <= 0:
-        return 1
-    return (gap + xp_per_buy - 1) // xp_per_buy
-
-# 保血阈值(策略校准参数,自 config 迁入代码单一源;值随实机校准走 git,不走用户 yml)。
-# **保守起步,待实机校准**:A1-A4 = 40(低难不变,可适当卖血保经济);A5+ 升阶(高难敌人更凶 → 更早弃息保血)。
-HP_SAFE_THRESHOLD: int = 40    # 保血阈值默认(未检测职级时;语义「安全地板」,kernel 单一源)
-DIFFICULTY_HP_TABLE: dict[str, int] = {
-    "A1": 40, "A2": 40, "A3": 40, "A4": 40,
-    "A5": 45, "A6": 50, "A7": 52, "A8": 55,
-}
+#: 旧内部名别名续存(有用性盘点修正:T-94 记「外部 2 文件」实测外部 ~14 文件,
+#: 含在飞文件 cw_loop——别名删除随在飞落库后的 sweep 段;本别名只转发不改语义)。
+_bench_char_cost = bench_char_cost
 
 
 @dataclass
@@ -138,40 +92,6 @@ class ShopCard:
     # 供金账对账区分「徽章直读」与「查表派生」(2星/3星直出识别缺口闭环,
     # merge_mechanics §2.6/§2.7)。
     cost_source: str = 'roster'
-
-
-@dataclass
-class BenchChar:
-    """备战栏/已上阵角色(= strategy/06 的 ``Unit``;加 ``equips``)。"""
-    slot: int
-    char_id: str = ""    # 角色id(SIFT/OCR 名);未知 ""
-    faction: str = "?"   # 阵营
-    star: int = 1        # 星级
-    position_pref: str = "back"  # 命途定位 front/back(来自 get_role_position)
-    # Sequence(快照拷贝语义落码(ADR-0465 §9):TurnState 快照拷贝侧固化为 tuple;session/state
-    # 活对象仍 list)——读点(deploy_bench 装备校验/reconcile 配对)均为
-    # Sequence 消费,写端仅 session/state 活对象(list 语义保留)。
-    equips: list[str] | tuple[str, ...] = field(default_factory=list)
-    # 占槽物品标记(部署伪槽修复批 ②,防线字段;B1 返工=显式标记形态):
-    # True = 该槽画面是物品(箱/典籍/书册卡/揭示卡等)非角色。坐标系 =
-    # 备战栏 1-based slot(与 slot 字段同系);取值时机 = 部署装配期快照;
-    # 写入端 = 部署装配点(cw_op_deploy.assemble_bench_list 构造时显式写),
-    # 识别来源 = obs 单一源精确档(cw_identity_obs.bench_item_slots
-    # fuzzy=False)的命中产出;obs 未命中的槽位恒 False(缺省),与本字段
-    # 无关的 char_id='' 不触发(kernel 对 True 恒 held、拒因 'item_slot',
-    # 「照旧上」fail-open 语义不涉本字段)。sim 不产伪槽:缺省 False 零差。
-    is_item_slot: bool = False
-
-
-def snapshot_copy(bc: BenchChar) -> BenchChar:
-    """TurnState 快照语义的元素拷贝(落码判据见 ADR-0465 §9):浅拷贝 + equips 固化
-    为 tuple——视图/快照帧与 session.tracked_*(就地写端=shop.py
-    mutate_bench_deployed 星级/装备拼接、deploy_bench 装备覆盖)断开
-    对象别名,「快照不在帧间存活」由机制保证而非消费纪律约定。
-    成本已量化(ADR-0465 §9):每次 decide_prep ~19 元素 ×6 字段 <20µs,
-    占帧预算 <0.1%。隔离锁=test_cw_migration_budget_authority(迁移哨兵)。"""
-    from dataclasses import replace
-    return replace(bc, equips=tuple(bc.equips or ()))
 
 
 @dataclass
@@ -329,142 +249,12 @@ class GameState:
         return bench_occupied(self.bench) >= BENCH_CAPACITY
 
 
-def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
-                               max_count: int | None = None) -> list[BenchChar | None]:
-    """从 board(OCR 阵营计数真值)重建 ``deployed`` 槽位表(ADR-0392;下标
-    0-3=前排/4-9=后排,按 position_pref 路由落槽)→ ``deployed_count()``
-    对齐实际阵上数。
-
-    旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效,本 helper 从 board
-    重建 deployed。
-    max_count(= level)cap —— 多羁绊角色在 board 多阵营计数(大丽花=击破+盛会之星算 2),
-    sum(board) > 实际 deployed(level)→ deployed_count 虚高 → _saving_for_interest + bench-space 门
-    **误触**(board 没满却当满 → 不买 target 到 bench → 被 block)。cap at level = 实际 deployed 上限。
-    """
-    compact: list[BenchChar] = []
-    back_left = back_max
-    for faction, count in board.items():
-        for _ in range(count):
-            if max_count is not None and len(compact) >= max_count:
-                return deployed_from_compact(compact)
-            pref = "back" if back_left > 0 else "front"
-            if back_left > 0:
-                back_left -= 1
-            compact.append(BenchChar(slot=0, faction=faction, star=1,
-                                     position_pref=pref))
-    return deployed_from_compact(compact)
-
-
-# ===== bench 槽位语义 helpers(ADR-0316;消费端唯一合法入口)=====
-
-
-def iter_occupied(bench: list[BenchChar | None]):
-    """迭代占用槽(滤 None)——bench 迭代单一源,禁止裸 ``for b in bench``。"""
-    return (b for b in bench if b is not None)
-
-
-def bench_occupied(bench: list[BenchChar | None]) -> int:
-    """bench 占用槽数(容量判据单一源,禁止 ``len(bench)``)。"""
-    return sum(1 for b in bench if b is not None)
-
-
-def bench_place(bench: list[BenchChar | None], bc: BenchChar) -> int | None:
-    """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
-
-    放置时归一 ``bc.slot = 下标+1``(物理槽位 1-9,与 live 读链
-    ``read_bench_chars`` 的 1-based 槽号同坐标系)。
-    """
-    for i, b in enumerate(bench):
-        if b is None:
-            bc.slot = i + 1
-            bench[i] = bc
-            return i
-    return None
-
-
 def bench_clear(bench: list[BenchChar | None], idx: int) -> BenchChar | None:
     """清空占用槽(卖出/上阵语义:置 None 不移位);空槽/越界返回 None。"""
     if 0 <= idx < len(bench) and bench[idx] is not None:
         bc = bench[idx]
         bench[idx] = None
         return bc
-    return None
-
-
-def pad_bench(bench: list[BenchChar | None]) -> list[BenchChar | None]:
-    """pad None 到定长 BENCH_CAPACITY(就地补足,返回同引用)。"""
-    while len(bench) < BENCH_CAPACITY:
-        bench.append(None)
-    return bench
-
-
-def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
-    """紧缩序列 → 槽位表(顺序放置;BenchChar.slot 已带 1-based 物理槽号
-    时按槽放置)。旧语料/紧缩构造入槽位模型的适配单一源。"""
-    bench: list[BenchChar | None] = [None] * BENCH_CAPACITY
-    for bc in chars:
-        # 形状双源防御(ADR-0316 持久态契约):输入可能是 pad 态(定长 9 含
-        # None,如 mutate_bench_deployed 就地 pad 后的 exec_state_of(session).tracked_bench_chars)
-        # 或紧凑态(无 None)——两种形态都是本适配源的输入域,None 直接跳过。
-        if bc is None:
-            continue
-        slot = bc.slot if 1 <= bc.slot <= BENCH_CAPACITY else None
-        if slot is not None and bench[slot - 1] is None:
-            bench[slot - 1] = bc
-        else:
-            bench_place(bench, bc)
-    return bench
-
-
-# ===== deployed 槽位语义 helpers(ADR-0392;消费端唯一合法入口)=====
-
-
-def iter_occupied_deployed(deployed: list[BenchChar | None]):
-    """迭代占用槽(滤 None)——deployed 迭代单一源,禁止裸 ``for d in deployed``。"""
-    return (d for d in deployed if d is not None)
-
-
-def iter_deployed_slots(deployed: list[BenchChar | None]):
-    """迭代 (槽位下标, 占用角色) 对(滤 None)——deployed_idx 生成端用
-    (索引 = 槽位下标,生成期=执行期恒稳,ADR-0392)。"""
-    return ((i, d) for i, d in enumerate(deployed) if d is not None)
-
-
-def deployed_occupied(deployed: list[BenchChar | None]) -> int:
-    """deployed 占用槽数(容量判据单一源,禁止 ``len(deployed)``——定长下
-    len 恒 DEPLOYED_CAPACITY)。"""
-    return sum(1 for d in deployed if d is not None)
-
-
-def deployed_slot_no(idx: int) -> int:
-    """槽位下标 → 排内 1-based 槽号信息位(0-3→前排 1-4;4-9→后排 1-6)。"""
-    return idx - DEPLOYED_FRONT_CAPACITY + 1 if idx >= DEPLOYED_FRONT_CAPACITY \
-        else idx + 1
-
-
-def deployed_place(deployed: list[BenchChar | None], bc: BenchChar) -> int | None:
-    """放入指定排的首个空槽(上场落位语义):position_pref='front' → 前排区
-    0-3,'back' → 后排区 4-9(ADR-0392);放置时归一 ``bc.position_pref``、
-    ``bc.slot``(排内 1-based 槽号信息位)与实际落位下标一致。首选排满时
-    落全局首个空槽兜底,兜底跨排时 pref 随落位改写(写端治本,ADR-0605
-    §5.2:sell_recorded 通道解析键 = deployed_idx→(排,槽号) 固定双射换算
-    后按条目 pref/slot 命中,信息位与下标错位必漏匹配误归 unexplained;
-    权威槽位 = 下标,信息位恒为派生,与 _apply_row_to_char 换排归一同向)。
-    兜底保持「合法动作必成功」(旧行为 append 不看排,排容量门在上游)。
-    无任何空槽返回 None。入口防御 pad(短列表=紧缩前缀,兼容旧构造;
-    同 mutate_bench_deployed 的 pad_bench 入口防御)。
-    """
-    pad_deployed(deployed)
-    lo, hi = ((0, DEPLOYED_FRONT_CAPACITY) if bc.position_pref == 'front'
-              else (DEPLOYED_FRONT_CAPACITY, DEPLOYED_CAPACITY))
-    for rng in (range(lo, hi), range(DEPLOYED_CAPACITY)):
-        for i in rng:
-            if deployed[i] is None:
-                bc.position_pref = ('front' if i < DEPLOYED_FRONT_CAPACITY
-                                    else 'back')
-                bc.slot = deployed_slot_no(i)
-                deployed[i] = bc
-                return i
     return None
 
 
@@ -475,31 +265,6 @@ def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | No
         deployed[idx] = None
         return bc
     return None
-
-
-def pad_deployed(deployed: list[BenchChar | None]) -> list[BenchChar | None]:
-    """pad None 到定长 DEPLOYED_CAPACITY(就地补足,返回同引用;紧缩前缀
-    顺延占用 0..n-1——旧紧缩构造兼容,ADR-0392)。"""
-    while len(deployed) < DEPLOYED_CAPACITY:
-        deployed.append(None)
-    return deployed
-
-
-def deployed_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
-    """紧缩序列 → 槽位表(按 position_pref 路由落槽)。旧语料/紧缩构造入
-    槽位模型的适配单一源(None 直接跳过——形状双源防御,同 bench_from_compact)。"""
-    deployed: list[BenchChar | None] = [None] * DEPLOYED_CAPACITY
-    for bc in chars:
-        if bc is None:
-            continue
-        deployed_place(deployed, bc)
-    return deployed
-
-
-def deployed_to_compact(deployed: list[BenchChar | None]) -> list[BenchChar]:
-    """槽位表 → 紧缩占用序(槽位序)。sim 账本/遥测序列化保持紧缩序的
-    单一出口(下游 checks/视图零迁移,ADR-0392 同 ADR-0316 bench 决策)。"""
-    return [d for d in deployed if d is not None]
 
 
 # ===== Action(动作;simulate 前瞻用) =====
@@ -848,386 +613,12 @@ class CompTransaction:
 
 Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | CloseShop
           | PickEvent | SellDeployed | SwapDeploy | CompTransaction)
-# 动作集 v2(契约包 C1,步2)+ CloseShop 终结动作(ADR-0517 商店恒可用终结)
-
-
-@dataclass
-class MatchOutcome:
-    """一局货币战争的终局结算(框架构造,局终收口消费:跨局分配器/runs summary;/§11.4)。
-
-    ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(生命周期
-    钩子随 ADR-0583 收编删除后,消费面 = cw_loop 局终分支,
-    字段已被真实数据填充);**真实 outcome 填充(结算屏 OCR 读终局 HP/位面/轮次/通关)依赖结算屏
-    OCR 探查(现 run loop 是「点空白加速 → 继续挑战」,未见独立结算屏)。
-    """
-    won: bool = False        # 是否通关(3 位面全清)
-    final_plane: int = 1     # 到达位面
-    final_round: int = 1     # 位面内轮次
-    final_hp: int = 0        # 终局小队 HP
 
 
 def _card_to_bench(card: ShopCard, position_pref: str = "back") -> BenchChar:
     """买的牌落 bench。"""
     return BenchChar(slot=0, char_id=card.name, faction=card.faction,
                      star=card.star, position_pref=position_pref)
-
-
-def _merge_bench(bench: list[BenchChar | None],
-                 deployed: list[BenchChar] | None = None) -> None:
-    """3 合 1 升星:同名同星 ≥3(全场域 bench+deployed)→ 合并为 1 个 star+1。
-
-    游戏机制:招募 3 个相同星级同名角色自动升星。⚠️ **合并域 = 全场**——
-    deploy_bench L427 用户口径「3合1 是全场」;live 实证(2026-08-18 r17):
-    tracking 只看 bench 预估 2★,其中 1-2 张已 deploy → 与游戏全场口径错位 →
-    「预估 2★ 读回 1★」star 回退停机钩子两度触发。合成载体:场上同名卡
-    升星优先(触发处常见态),无场上卡则 bench 首张升星。
-
-    ADR-0316 槽位语义:bench 侧被合成的份**置 None 腾槽**(对照画面:
-    三份合成后腾出槽);ADR-0392:deployed 侧同样按身份置 None(deployed
-    亦为槽位表);合成载体留在原槽位。
-
-    deployed=None(旧调用兼容)= 只看 bench(等价旧行为)。
-    """
-    pools: list[list] = [bench]
-    if deployed is not None:
-        pools.append(deployed)
-    # 不动点循环:两轮上限在级联合并(3×1★→2★→…)不够;while 直到
-    # 一轮无合并——游戏语义即如此,且级联有限(星≤5)自然终止
-    while True:
-        merged_any = False
-        occupied = [c for c in bench if c is not None]
-        for c in occupied + [d for d in (deployed or []) if d is not None]:
-            if not c.char_id:
-                continue
-            # 全场同名同星组(对象引用,跨池)
-            group = [x for p in pools for x in (p if p is bench else p)
-                     if x is not None and x.char_id == c.char_id
-                     and x.star == c.star]
-            if len(group) < 3:
-                continue
-            take = group[:3]
-            # 载体:场上优先(身份比较——dataclass 值相等会让 `in` 误真)
-            carrier = next((x for x in take
-                            if deployed is not None
-                            and any(x is y for y in deployed)), take[0])
-            carrier.star += 1
-            # 合成装备继承(C6 装备守恒,🟡 游戏侧「合成吃装去向」未见实机证据,
-            # 按随载体继承建模保账本守恒——同 sell 回收的保守假设口径):
-            for x in take:
-                if x is not carrier:
-                    carrier.equips = list(carrier.equips) + list(x.equips)
-            # 删其余两张:bench/deployed 侧均按身份置 None(ADR-0316/0392
-            # 槽位语义,同名同星 dataclass 值相等会删错对象,身份索引)
-            for x in take:
-                if x is carrier:
-                    continue
-                if any(x is b for b in bench):
-                    for i, b in enumerate(bench):
-                        if b is x:
-                            bench[i] = None
-                            break
-                elif deployed is not None:
-                    _idx = next((i for i, y in enumerate(deployed)
-                                 if y is x), None)
-                    if _idx is not None:
-                        deployed[_idx] = None
-            merged_any = True
-            break   # 重扫(列表已变)
-        if not merged_any:
-            break
-
-
-def card_cost(card: ShopCard) -> int:
-    """牌的费用:OCR 读到用真值,未知按 3 估(费用 1-5 中位)。"""
-    return card.cost or 3
-
-
-def will_merge_on_buy(card: ShopCard, bench: list[BenchChar | None],
-                      deployed: list[BenchChar] | None = None) -> bool:
-    """买第 3 份同名同 1★ 即合成(S3/H3 口径,ADR-0325)。
-
-    判据 = ``_merge_bench`` 分组键同口径:**同名同 1★ 计数(全场
-    bench∪deployed)==2 且待买为 1★**——买后恰达 3 份触发合并。
-    显式**不用星级加权**(1 个 2★ 加权 2 但同星计数=1,不合成交
-    bench 净 +1;旧 candidates.will_merge 加权判据的误标例)。
-    消费点:candidates.will_merge(生成侧)。ADR-0453 起满栏
-    购买门/执行侧(simulate)改走一般式 merge_buy_completes/merge_buy_k
-    (k 可 >1);本函数保留 = k=1 特例的生成侧标记语义。
-    """
-    if (card.star or 1) != 1:
-        return False
-    n = 0
-    for b in bench or []:
-        if b is not None and b.char_id == card.name and b.star == 1:
-            n += 1
-    for d in deployed or []:
-        if d is not None and d.char_id == card.name and d.star == 1:
-            n += 1
-    return n == 2
-
-
-def same_star_count(name: str, star: int,
-                    bench: list[BenchChar | None],
-                    deployed: list[BenchChar] | None = None) -> int:
-    """全场域同名同星计数(bench∪deployed;``_merge_bench`` 分组键同口径)。"""
-    n = 0
-    for b in bench or []:
-        if b is not None and b.char_id == name and b.star == star:
-            n += 1
-    for d in deployed or []:
-        if d is not None and d.char_id == name and d.star == star:
-            n += 1
-    return n
-
-
-def star_base_copies(star: int) -> int:
-    """星级 → 同名 **1★ 基础副本数** 折算(3**(star-1);【注】合成机制
-    真值:每升一星由 3 份低星合成,1★=1/2★=3/3★=9)。
-
-    单一源:折算的消费位(持有量入经济/牌池账等)一律经本函数,禁内联
-    dict 或裸幂式第二表达(旧内联形态 = shop.py 星级折算 dict 与
-    cw_comps/cw_economy/cw_intention 的散写 ``3 ** (star - 1)``,后者
-    随批收敛挂账)。star 缺效(非 1-3)→ 保守折 1 份(与旧 dict 缺省
-    ``.get(star, 1)`` 同值)。"""
-    s = int(star or 1)
-    if s < 1 or s > 3:
-        return 1
-    return 3 ** (s - 1)
-
-
-def merge_material_reject_reason(name: str, star: int,
-                                 bench: list[BenchChar | None],
-                                 deployed: list[BenchChar] | None = None,
-                                 ) -> str:
-    """bench 侧卖出通道的合成素材拒入守卫(返回拒因键,'' = 可卖)。
-
-    判据:``c_excl = same_star_count(name, star, bench∪deployed) − 1``
-    (含自身全场域计数再扣 victim 自己)``≥ 1`` ⇒ 拒入资格集,拒因键
-    ``merge_material_guard``——与部署侧 ``cw_deploy_logic.
-    swap_sell_exclusion_reason`` 的拒因闭集**同名同键**(同一守卫语义
-    的两个卖出路径实现点;计数单一源 = ``same_star_count``,禁消费方
-    手搓同式)。辖域 = bench 四卖出通道(M4 燃料/凑息卖/支付变现/
-    换线塌缩),各通道原有资格谓词不动,只追加本子谓词。
-    数学依据:同名同星满 3 即自动升星且不变量「场上同名同星 ≤1」
-    (merge_mechanics.md §1/§2)⇒ c_excl≥2 稳态不可达,守卫生效域
-    恒为 c_excl=1(2/3 合成进度,差最后一张)——卖出即销毁距 2★
-    差一张的确定性进度期权,fail-closed 不卖。辖星 = 1(升星链语义
-    不在本守卫辖域;2★ 成件全场唯一,子谓词恒放行)。
-    设计出处:ADR-0558(合成素材拒入守卫,与部署侧 merge_material_guard
-    同键);案发对账 = g_20260906_081836 / g_20260906_095111 两局 P2r1
-    (2/3 进度素材被燃料类资格卖断)。
-    """
-    if (star or 1) != 1:
-        return ''
-    return ('merge_material_guard'
-            if same_star_count(name, 1, bench, deployed) - 1 >= 1 else '')
-
-
-def merge_material_stale_names(bench: list[BenchChar | None],
-                               deployed: list[BenchChar] | None = None,
-                               ) -> tuple[str, ...]:
-    """滞留素材名集(分键 ``merge_material_stale`` 的判定单一源)。
-
-    判定:全场域(bench∪deployed)同名同 1★ 计数 ≥2 的名 = 存在 2/3
-    合成进度素材对;计数单一源 = ``same_star_count``(与
-    ``merge_material_reject_reason`` 同源,禁消费方手搓同式)。
-    辖星 = 1(2★ 成件全场唯一,不构成素材对,同守卫口径)。
-    排序 = 字母序去重(确定性计数,禁集合迭代序入账本)。
-    「滞留」语义:对在场即 2/3 进度悬置;持续 N 轮计数仍增长 = N 轮
-    未合成(合成后计数停止增长,轮差分归零)——轮级时长由消费端按
-    键差分判读,本函数只答「当前帧哪些名滞留」。设计出处:ADR-0558
-    §4 滞留显影欠账(G-B1 第四级)。
-    """
-    names = {b.char_id or '' for b in bench or []
-             if b is not None and (b.star or 1) == 1}
-    names |= {d.char_id or '' for d in deployed or []
-              if d is not None and (d.star or 1) == 1}
-    return tuple(sorted(n for n in names if n
-                        and same_star_count(n, 1, bench, deployed) >= 2))
-
-
-def count_merge_material_blocked(counters: dict, name: str,
-                                 dedup_names: set[str] | None = None,
-                                 ) -> None:
-    """拒因分键 ``merge_material_guard_blocked`` 的**事件口径**计数单一源。
-
-    口径(C1,三审整改定谳):拦截**事件**计数,非评估次数——同一决策
-    帧内同一素材名只计 1(帧内多通道资格评估、投影读(P56 liquid_
-    refund)/腾席环重试对同名重复触达均去重),跨帧滞留素材每次新触达
-    仍计。去重载体 = ``dedup_names``(调用方按帧创建并传入;None =
-    无去重的单评语境,测试/离线直调)。评估次数口径为已废弃的实装
-    偏差(ADR-0558 §4「拦截事件判读」被投影读/重试环污染的整改)。
-    """
-    if dedup_names is not None:
-        if name in dedup_names:
-            return
-        dedup_names.add(name)
-    counters['merge_material_guard_blocked'] = \
-        counters.get('merge_material_guard_blocked', 0) + 1
-
-
-def merge_buy_k(name: str, star: int,
-                bench: list[BenchChar | None],
-                deployed: list[BenchChar] | None,
-                shop: list[ShopCard] | None = None) -> int:
-    """满栏合成买的一次点击购买张数 k(merge_mechanics.md §2.5 单一源)。
-
-    k = min(店内同名同星张数, 3 − 已有数 mod 3)——上限口径「绝不多买」:
-    只买到触发一次合成所需的量。返回值不含「是否真触发合成」判断
-    (那由 ``merge_buy_completes`` 判);店内外身份计数共用
-    ``same_star_count``/同键过滤,禁消费方各自手搓(双源漂移温床)。
-
-    消费点:candidates/arbiter 满栏购买门(ADR-0453)/simulate 满栏多买
-    (执行侧)/shop.py 买入意图记录(执行账 k×单价)。
-    """
-    star_n = star or 1
-    own = same_star_count(name, star_n, bench, deployed) % 3
-    in_shop = sum(1 for c in shop or []
-                  if getattr(c, 'name', '') == name
-                  and (getattr(c, 'star', 1) or 1) == star_n)
-    return min(in_shop, 3 - own)
-
-
-def merge_buy_completes(name: str, star: int,
-                        bench: list[BenchChar | None],
-                        deployed: list[BenchChar] | None,
-                        shop: list[ShopCard] | None = None) -> bool:
-    """本次点击(买 k = ``merge_buy_k`` 张)是否恰好完成一次合成。
-
-    判据 = 同名同星计数(备战栏+场上)+ 本次购买 ≥ 3(ADR-0453 允许条件,
-    merge_mechanics §2.5);等价于 k == 3 − 已有数 mod 3。不满足 → 满栏
-    照旧拒买(ADR-0283 守卫语义保留为兜底)。
-
-    own≥1 门(T-184,ADR-0619):own=0(全场 bench∪deployed
-    无同名同星)时合成买不成立,按满栏非合成买拒收——merge_mechanics
-    §2.5 的满栏例外以「已有素材/载体在场、买入可完成合成」为前提,
-    own=0 时首张买入既无空槽落位、也无进行中的合成可完成,游戏侧该
-    点击被拒(金不扣、牌不下架)。缺此门的旧形态:own=0+店内 3 张
-    误判可合成 → k=3 全为尾挂张、合成载体落 idx9 被 ``del bench[9:]``
-    截删,双账同错且共同偏离游戏拒买真值。边界:§2.5「连升同理」
-    (own=0 于基础星、栏满连买 3 张)为自标低置信口述未亲见,本门
-    按拒买语义实现;若拖动对账网实证连升可行,须回本单一源改门。
-    """
-    own = same_star_count(name, star or 1, bench, deployed) % 3
-    if own == 0:
-        return False
-    k = merge_buy_k(name, star, bench, deployed, shop)
-    return own + k >= 3
-
-
-def _apply_full_bench_merge_buy(bench: list[BenchChar | None],
-                                deployed: list[BenchChar] | None,
-                                card: ShopCard,
-                                shop: list[ShopCard] | None) -> int | None:
-    """满栏合成买分支应用(``simulate`` 与 ``mutate_bench_deployed`` 共用
-    单一源,T-182)。
-
-    调用语境 = ``bench_place`` 失败(bench 无空槽)后的满栏买入;前置 =
-    该买完成一次合成(``merge_buy_completes``,不满足 = 满栏拒买,
-    ADR-0283 兜底)。应用 = k = ``merge_buy_k`` 张临时挂槽位表尾参与
-    ``_merge_bench``(3 合 1 是全场;own+k ≡ 0 mod 3,合成本身恒耗尽
-    尾挂张),截回定长 9。载体落点语义依赖 own≥1:own=1/2 时合成组
-    含场内张,载体落在 idx<9 或场上,截断不伤;own=0 域(全尾挂、
-    载体落 idx9 必被截删)由 ``merge_buy_completes`` 的 own≥1 门排除
-    (T-184,ADR-0619)。返回应用张数 k;前置不满足返回 None(调用方
-    据此 no-op)。
-
-    双账同构依据(T-182,2026-09-09 05:52 运行局双响事故):满栏时游戏
-    对完成合成的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上
-    载体升星)——投影与 tracked 两本账必须同走本分支;旧 tracked 侧
-    丢件不合成使两账结构性分叉,守卫在同 visit 下一动作(投影侧已腾槽、
-    豁免条件失效)对拍误炸。
-    """
-    _name = card.name
-    _star = card.star or 1
-    if not merge_buy_completes(_name, _star, bench, deployed, shop):
-        return None
-    _k = max(1, merge_buy_k(_name, _star, bench, deployed, shop))
-    for _ in range(_k):
-        bench.append(_card_to_bench(card))
-    _merge_bench(bench, deployed)   # 全场域(3合1 是全场)
-    del bench[BENCH_CAPACITY:]
-    return _k
-
-
-def sell_refund(star: int, cost: int) -> int:
-    """卖出回金(economy.md §3 卖出退金(docs/game/currency_war/research/);用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
-
-    - 1星 = cost(🟢 BWIKI「按其费用获得回收金币」+ 4399 + 用户,权威;无合成 → 无手续费 → 买卖净0)。
-    - 2星 = cost×3、3星 = cost×9、4星 = cost×27(合成成本),**star≥2 且 cost≥2 再 −1 手续费**。
-    - **cost=1 exempt(无手续费)**:🟢 2026-08-13 live 实测 2★1费 万敌 出售 = **+3 金**(cost×3,无 −1;
-      sell-star 停机钩子 + VLM 读出售按钮「金币+3」)。用户:1费 2星不减、**2费开始才减1**(手续费 cost 相关
-      非纯 star)。故 −1 条件 = ``star>=2 and cost>=2``。
-    - 🟡 cost≥2 的 −1(2★2费=5)+ 3/4星 仍用户记忆 / 推测,待多 cost live 核;cost=1 各星已定(全额退)。
-      (置信度分层处置:卖面 refund 消费按保守端=下界组装(mult×c−fee_hi,fee_hi=1);
-      live 核定通道=单局复盘协议检查项,sr-od-currency-war-dev skill;
-      原设计件 IMPL_FIX_LEMMAS/IMPL_DESIGN 已删档,取回口径=ADR-0644。)
-    """
-    refund = max(cost, 1) * _SELL_MULT.get(star, 1)
-    if star >= 2 and cost >= 2:
-        refund -= 1   # 合成手续费:仅 star≥2 且 cost≥2(cost=1 exempt,实测 2★1费=3 无费;用户「2费开始减1」)
-    return max(refund, 0)
-
-
-def bench_char_cost(bc: BenchChar) -> int:
-    """备战角色的招募费(sell_refund / 经济决策用):char_id 已识别 → 查 CHARACTERS;未知 → 3(中费保守估)。
-
-    公共名(跨模块私有符号收敛:跨模块消费统一走本名;
-    下划线旧名保留为别名,存量消费点不破)。"""
-    c = CHARACTERS.get(bc.char_id) if getattr(bc, 'char_id', '') else None
-    return c.cost if c and c.cost else 3
-
-
-#: 旧内部名别名(存量消费点 = cw_state 模块内 / sim.engine_p1 /
-#: telemetry.schema;接缝面批后新代码一律用公共名 bench_char_cost)
-_bench_char_cost = bench_char_cost
-
-
-def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
-    """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
-    board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
-
-    口径(ADR-0312,W50 口径统一):**羁绊全集 + 星徽装备贡献**——
-    factions+flows+independent,开拓者按排归一,装备羁绊(星徽/卡带)
-    计入;与实机 ``board_from_tracked``(= 游戏左面板真值口径)同源,
-    per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
-    未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
-    单标签(空/'?' 不计,生产 OCR 空板同形)。值漂移由 checks 的
-    board↔deployed 一致性锁双向暴露。"""
-    from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
-    out: dict[str, int] = {}
-    for d in (deployed or []):
-        if d is None:   # ADR-0392 槽位表空槽
-            continue
-        tags = unit_bond_tags(d)
-        if tags:
-            for t in tags:
-                out[t] = out.get(t, 0) + 1
-            continue
-        # 身份未知兜底:faction 字段单标签(旧主阵营口径的未知路径,保留)
-        f = getattr(d, 'faction', '') or ''
-        if f and f != '?':
-            out[f] = out.get(f, 0) + 1
-    return out
-
-
-def _apply_row_to_char(bc: BenchChar, to_row: str) -> None:
-    """记录实际站位 + 开拓者换排形态归一(DeployMove/动作 v2 单一源)。
-
-    拖到另一排 = 命途切换(前台记忆/后台欢愉),羁绊随之变 → char_id
-    同步换成目标排形态,faction 跟随首阵营(下游 board/装备计算自然对)。
-    """
-    bc.position_pref = to_row
-    from sr_od.application.currency_war.data.cw_chars import get_char as _get_char
-    from sr_od.application.currency_war.data.cw_chars import (
-        is_trailblazer,
-        trailblazer_form,
-    )
-    if bc.char_id and is_trailblazer(bc.char_id):
-        bc.char_id = trailblazer_form(bc.char_id, to_row)
-        _tc = _get_char(bc.char_id)
-        if _tc is not None and _tc.factions:
-            bc.faction = _tc.factions[0]
 
 
 def _log_action(s: GameState, action_name: str, result: str,
@@ -1238,20 +629,6 @@ def _log_action(s: GameState, action_name: str, result: str,
         entry['reason'] = reason
     entry.update(extra)
     s.action_log.append(entry)
-
-
-def board_unique_key(bc: BenchChar) -> str | None:
-    """板上同名唯一性判据键(设计裁定:场上同角色仅 1)。
-
-    - ``char_id`` 空 = 未知身份 → None(不参与查重——两个未知不是可证明的重复);
-    - 开拓者各排形态(char_id 随排切换)归一为同一键(场上同样仅 1 个开拓者);
-    - 其余 = char_id 本身。
-    """
-    cid = getattr(bc, 'char_id', '') or ''
-    if not cid:
-        return None
-    from sr_od.application.currency_war.data.cw_chars import is_trailblazer
-    return '__trailblazer__' if is_trailblazer(cid) else cid
 
 
 def _resolve_comp_transaction(
@@ -1516,48 +893,6 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
             _apply_row_to_char(bc, f.row)
             deployed_place(s.deployed, bc)   # ADR-0392 槽位落位
     s.board = _recount_board(s.deployed)
-
-
-def effective_hp_threshold(bs: BoardState) -> int:
-    """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE``
-    有对应键 → 取覆盖值;否则回退 ``HP_SAFE_THRESHOLD``(40)。容器版单一实现
-    (输入 = ``BoardState``;职级/位面/轮次/等级经容器域读法——统一 state
-    迁移波 2 签名切换,输入字段 selected_difficulty/plane/round_num/level
-    容器侧全部就绪)。
-
-    高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
-    自 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
-
-    ⚖️ ADR-0176(桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(ADR-0174 桥),
-    改由 18 号首达生存模型解出 —— ``plane_hp_ratio``(hp_floor(P_win 地板比),随板强/剩余日程
-    变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
-    精确零漂移(M57 验证行为保持)。
-    """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        level_of,
-        plane_of,
-        round_num_of,
-    )
-    from sr_od.application.currency_war.kernel.cw_first_passage import (
-        board_tier_of,
-        plane_hp_ratio,
-    )
-    from sr_od.application.currency_war.kernel.cw_plane_table import (
-        NODES_PER_PLANE,
-        TOTAL_NODES,
-    )
-
-    diff = (bs.selected_difficulty.value or '').strip()
-    base = int(DIFFICULTY_HP_TABLE.get(diff, HP_SAFE_THRESHOLD))
-    plane = plane_of(bs)
-    if plane <= 1:
-        return base
-    # 剩余战斗日程估计(位面×轮次 → 节点序;round_num 越界防御夹 [1, NODES_PER_PLANE])
-    t = (min(3, plane) - 1) * NODES_PER_PLANE \
-        + min(max(1, round_num_of(bs)), NODES_PER_PLANE) - 1
-    nodes_left = max(1, TOTAL_NODES - t)
-    ratio = plane_hp_ratio(board_tier_of(level_of(bs)), nodes_left, plane=plane)
-    return min(100, int(base * ratio))
 
 
 
@@ -1893,129 +1228,6 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
                 _bench_clear_by_identity(bench, c)
                 _apply_row_to_char(c, f.row)
                 deployed_place(deployed, c)   # ADR-0392:按排路由落槽
-
-# ===== 位面节点序列台账(session 级权威表) ================================
-# 权威依据(用户口述,最高权威):位面内节点类型与数量**只有投资环境选择能改变**
-# (变异位唯一)→ 同一位面内节点序列是常量,可以「进位面时读一次建档 + 投资环境
-# 选完后重读刷新」,此后每帧备战画面**查表**得当前节点类型,逐帧识别降级为校验。
-# 旧逐帧识别的三类噪声(标签出现在即将到来节点下方 / 高亮态 Hu 不匹配 / 商店
-# 遮挡坏帧)因此只影响校验票,不再直接污染决策输入。
-
-
-@dataclass
-class PlaneNodeLedger:
-    """本局 per-plane 节点序列台账 + 逐帧校验的去重/豁免状态。
-
-    宿主:``ExecState.plane_node_ledger``(kernel/cw_exec_state.py;经
-    :func:`get_node_ledger` 惰性建。载体生命周期 = 一局,无跨局污染)。
-    """
-
-    #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
-    #: 的类型 token(battle/supply/encounter/reward/boss,与
-    #: ``cw_node_reader.NodeSlot.node_type`` / ``GameState.node_type`` 同词汇表;
-    #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
-    #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
-    #: ``seq[round_num - 1]``。
-    #: 写入端:①位面详情采集(CwScreenPlaneIntel,进位面时的两源互证产物);
-    #: ②投资环境选择完成后重读备战节点行(CwScreenInvestEnv,变异窗后的权威刷新)。
-    seq_by_plane: dict[int, list[str | None]] = field(default_factory=dict)
-
-    #: 每序列的写入来源('plane_detail' = 位面详情采集 / 'prep_row' = 备战节点行),
-    #: 判读侧区分表值的采集通道用(位面详情=彩色渲染态全量,备战行=含 past 遮挡)。
-    seq_source: dict[int, str] = field(default_factory=dict)
-
-    #: 位面 → 位面详情底部明文「敌人难度 N」参考值。**只存参考**——生产难度
-    #: 主源 = 备战旗牌两级管线(ADR-0449),本字段供离线对拍/缺口排查。
-    difficulty_ref: dict[int, int] = field(default_factory=dict)
-
-    #: 投资环境变异窗豁免截止(time.monotonic 时刻;0.0 = 无窗)。窗内查表与
-    #: 逐帧校验的不一致**不落**缺陷台账——环境选择到节点行重读之间节点行
-    #: 正在合法变异(用户口述:投资环境是唯一变异源),不一致是预期而非识别错误。
-    #: 写入端:CwScreenInvestEnv 确认前开窗、重读刷新台账后关窗(置 0)。
-    env_grace_until: float = 0.0
-
-    #: 已落过缺陷的 (plane, round) 键集(逐帧校验每帧都会跑,同一不一致只落一行)。
-    defect_seen: set[str] = field(default_factory=set)
-
-
-def get_node_ledger(session: object) -> PlaneNodeLedger | None:
-    """取执行侧载体上的台账,无则惰性建(None session → None,调用方跳过)。
-
-    宿主 = ``ExecState.plane_node_ledger``(产生者 = 画面 op 采集/重读
-    写入端,归执行侧载体;读写全经本函数与 :func:`ledger_node_type`,
-    消费点禁直摸载体字段)。
-    """
-    if session is None:
-        return None
-    ex = exec_state_of(session)
-    ledger = ex.plane_node_ledger
-    if ledger is None:
-        ledger = PlaneNodeLedger()
-        ex.plane_node_ledger = ledger
-    return ledger
-
-
-def ledger_node_type(session: object, plane: int | None,
-                     round_num: int | None) -> str | None:
-    """查表:当前位面第 ``round_num`` 轮的节点类型(1-based round → 0-based 下标)。
-
-    表缺 / 位面轮越界 / 该位次未识别(None)→ None(调用方退逐帧识别链,
-    **不猜**)。boss 位在序列里存 'boss' token(写入端按「首领=位面最后节点」
-    位置先验回填,与既有 boss 语义门同源)。
-    """
-    ledger = (None if session is None
-              else exec_state_of(session).plane_node_ledger)
-    if ledger is None or not plane or not round_num:
-        return None
-    seq = ledger.seq_by_plane.get(int(plane))
-    if not seq:
-        return None
-    idx = int(round_num) - 1
-    if not 0 <= idx < len(seq):
-        return None
-    return seq[idx]
-
-
-def ledger_update_plane(session: object, plane: int, seq: list[str | None],
-                        source: str) -> bool:
-    """按位合并写入一位面的序列(**同位次新非 None 覆盖,None 保旧**)。
-
-    合并而非覆盖的原因:备战行/详情条的 past 与 boss 位识别恒 None(Hu 不对
-    当前/过去/头像生效)→ 整表覆盖会把已识别位洗成 None;逐位合并让多位面
-    多时点的读数渐进拼出全序列(投资环境变异位由最新的非 None 读数天然覆盖)。
-    序列变长(如环境加节点)时右侧扩展。返回是否有实际变化(判读用)。
-    """
-    ledger = get_node_ledger(session)
-    if ledger is None or not plane or not seq:
-        return False
-    old = ledger.seq_by_plane.get(int(plane)) or []
-    n = max(len(old), len(seq))
-    merged: list[str | None] = []
-    changed = False
-    for i in range(n):
-        new_v = seq[i] if i < len(seq) else None
-        old_v = old[i] if i < len(old) else None
-        v = new_v if new_v is not None else old_v
-        merged.append(v)
-        if v != old_v:
-            changed = True
-    ledger.seq_by_plane[int(plane)] = merged
-    if changed or ledger.seq_source.get(int(plane)) != source:
-        ledger.seq_source[int(plane)] = source
-    return changed
-
-
-def fill_boss_by_position(seq: list[str | None]) -> list[str | None]:
-    """序列副本的最右 None 位回填 'boss'(位置先验:首领 = 位面最后节点)。
-
-    只在 boss 位经详情条「首领节点」标签验证过的写入端调用(CwScreenPlaneIntel);
-    备战行重读等未经标签验证的写入端不回填(boss 位在备战行为 past 态,
-    回填无依据)。原序列不动,返回副本。
-    """
-    out = list(seq)
-    if out and out[-1] is None:
-        out[-1] = 'boss'
-    return out
 
 
 # ===== 布局未知态的策略侧支撑(15 号稿批 C 落地审修订)=====

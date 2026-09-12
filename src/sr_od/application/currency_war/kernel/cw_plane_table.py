@@ -23,7 +23,6 @@ ADR-0465 起,本模块是生产路径消费的**真值/标定面**
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.kernel.cw_state import XP_PER_BUY, XP_TO_NEXT_LEVEL
 
 # ===== 日程/经济先验 =====
 NODES_PER_PLANE: int = 9
@@ -156,14 +155,30 @@ def p_win_p2(b: float) -> float:
     return lo + (hi - lo) * frac
 
 
-# XP 门槛表:cw_state 权威表从 3 级起(1/2 级游戏内近乎白送,表未收录)→ 本地先验补 1/2 级
-_XP_NEED: dict[int, int] = {1: 4, 2: 4, **XP_TO_NEXT_LEVEL}
+#: XP 门槛表:权威表 = cw_economy.XP_TO_NEXT_LEVEL(候裁9 迁居后单一源;
+#: 1/2 级游戏内近乎白送,权威表未收录 → 本地先验补 1/2 级)。惰性取表:
+#: 本模块保持 kernel 纯表叶位(零 kernel 模块级依赖),免词汇迁移环。
+_XP_NEED: dict[int, int] | None = None
+_XP_PER_BUY: int = 4
+
+
+def _xp_need() -> dict[int, int]:
+    global _XP_NEED
+    if _XP_NEED is None:
+        from sr_od.application.currency_war.kernel.cw_economy import (
+            XP_PER_BUY,
+            XP_TO_NEXT_LEVEL,
+        )
+        _XP_NEED = {1: 4, 2: 4, **XP_TO_NEXT_LEVEL}
+        global _XP_PER_BUY
+        _XP_PER_BUY = XP_PER_BUY
+    return _XP_NEED
 
 
 def clicks_to_level(level: int) -> int:
     """当前级 → 下一级所需购买经验次数(ceil;(need)/XP_PER_BUY;xp 结转忽略,原子近似)。"""
-    need = _XP_NEED.get(level, 84)
-    return max(1, -(-need // XP_PER_BUY))
+    need = _xp_need().get(level, 84)
+    return max(1, -(-need // _XP_PER_BUY))
 
 
 def level_cost(level: int) -> int:

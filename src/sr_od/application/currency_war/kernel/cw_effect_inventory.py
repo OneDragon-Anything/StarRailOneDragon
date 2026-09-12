@@ -507,7 +507,7 @@ def apply_board_rewrite(bs: BoardState, spec: EffectSpec, *,
 
     # 卖价/费用单一源在 cw_state(与预期态/策略侧同源);函数内 import 维持
     # 本模块「模块头零包内 import」契约(机制层离线可单测)。
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_economy import (
         bench_char_cost,
         sell_refund,
     )

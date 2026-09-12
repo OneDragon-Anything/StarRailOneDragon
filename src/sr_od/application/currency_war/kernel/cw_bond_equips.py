@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import (
     CHARACTERS,
@@ -30,6 +31,10 @@ from sr_od.application.currency_war.data.cw_chars import (
     trailblazer_form,
 )
 from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
+
+if TYPE_CHECKING:
+    # 仅类型注解引用(槽位表元素形态;运行时鸭子读,零依赖)。
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
 # 星徽:「装备者加入【X】羁绊。」(装备注册表 22 张星徽 desc 统一句式,
 # cw_equipment_data.py:102-123;数据层 plaza API 溯源)
@@ -143,3 +148,38 @@ def unit_bond_tags(bc) -> tuple[str, ...]:
                 seen.add(b)                # 星徽:额外增加一个羁绊(已有[自报/卡带/先到星徽]不重复)
                 tags.append(b)
     return tuple(tags)
+
+
+# ============================================================
+# 候裁9 词汇迁入(原 kernel/cw_state.py;第 4 归宿):板面计数派生
+# _recount_board(构建于本模块 unit_bond_tags 单一源之上,同域定居)。
+# ============================================================
+
+
+
+def _recount_board(deployed: list[BenchChar]) -> dict[str, int]:
+    """deployed 生命周期重算板面(动作 v2,契约包 C1):卖/换/事务后
+    board 必须与 deployed 名单一致——本函数是 cw_state 侧的派生单一源。
+
+    口径(ADR-0312,W50 口径统一):**羁绊全集 + 星徽装备贡献**——
+    factions+flows+independent,开拓者按排归一,装备羁绊(星徽/卡带)
+    计入;与实机 ``board_from_tracked``(= 游戏左面板真值口径)同源,
+    per-unit 标签函数单一源 = ``cw_bond_equips.unit_bond_tags``。
+    未识别身份(char_id 空/'?'/不在注册表)→ 回退 ``faction`` 字段
+    单标签(空/'?' 不计,生产 OCR 空板同形)。值漂移由 checks 的
+    board↔deployed 一致性锁双向暴露。"""
+    from sr_od.application.currency_war.kernel.cw_bond_equips import unit_bond_tags
+    out: dict[str, int] = {}
+    for d in (deployed or []):
+        if d is None:   # ADR-0392 槽位表空槽
+            continue
+        tags = unit_bond_tags(d)
+        if tags:
+            for t in tags:
+                out[t] = out.get(t, 0) + 1
+            continue
+        # 身份未知兜底:faction 字段单标签(旧主阵营口径的未知路径,保留)
+        f = getattr(d, 'faction', '') or ''
+        if f and f != '?':
+            out[f] = out.get(f, 0) + 1
+    return out

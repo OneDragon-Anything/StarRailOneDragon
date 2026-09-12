@@ -20,12 +20,10 @@ from sr_od.application.currency_war.kernel.cw_board_state import (
 )
 from sr_od.application.currency_war.kernel.cw_comps import RUST_AFFIX_NAME, Comp
 from sr_od.application.currency_war.kernel.cw_economy import loss_exact
-from sr_od.application.currency_war.kernel.cw_state import DEPLOYED_CAPACITY
+from sr_od.application.currency_war.kernel.cw_exec_state import DEPLOYED_CAPACITY
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_state import (
-        BenchChar,
-    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 
 
 def bench_effect_context(state: BoardState, unit: BenchChar,

@@ -40,9 +40,7 @@ from sr_od.application.currency_war.kernel.cw_investments import (
 from sr_od.application.currency_war.kernel.cw_observe import (
     DEFAULT_REPLAY_DIR as _AUTO_REPLAY_DIR,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    ShopCard,
-)
+from sr_od.application.currency_war.kernel.cw_state import ShopCard
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
 START_BENCH_COUNT: int = 4

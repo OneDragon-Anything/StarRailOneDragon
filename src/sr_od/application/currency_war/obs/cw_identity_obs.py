@@ -32,7 +32,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
-from sr_od.application.currency_war.kernel.cw_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
     identify_character,

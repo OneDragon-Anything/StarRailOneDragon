@@ -192,7 +192,7 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
                 rec['expected_delta'] = delta
             rec['gold'] = getattr(post_frame, 'gold', None)
             try:
-                from sr_od.application.currency_war.kernel.cw_state import (
+                from sr_od.application.currency_war.kernel.cw_exec_state import (
                     bench_occupied,
                 )
                 rec['bench_used'] = bench_occupied(post_frame.bench)

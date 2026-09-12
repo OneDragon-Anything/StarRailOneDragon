@@ -28,21 +28,172 @@ from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    MAX_PLAYER_LEVEL,
-    REFRESH_COST_BASE,
-    XP_CLICK_COST_FALLBACK,
-    XP_PER_BUY,
-    XP_TO_NEXT_LEVEL,
-    GameState,
-)
-from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_board_state import BoardState
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_state import ShopCard
+    from sr_od.application.currency_war.kernel.cw_state import GameState
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
+
+# ============================================================
+# 候裁9 词汇迁入(原 kernel/cw_state.py;T-7 W8 定谳记录第 3 归宿):
+# 金/经验/刷新/卖出回金/血线族(经济骨架同域)。
+# ============================================================
+
+
+# 卖出回金 = 招募费(cost)× 合成倍数,docs/game/currency_war/research/economy.md §3(卖出退金)。1星=cost 🟢 BWIKI+4399+用户权威;
+# 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」,
+# 3/4星推测同逻辑 🟡 待 hook 实机核 —— 拖卡到出售区看显示金额)。
+_SELL_MULT: dict[int, int] = {1: 1, 2: 3, 3: 9, 4: 27}   # 星级 → cost 倍数(3合1:1星1/2星3/3星9/4星27 张基础副本);sell_refund 对 star≥2 且 cost≥2 再 −1 手续费(cost=1 exempt,见 sell_refund)
+
+# 购买经验机制(ADR-0129;用户实测口述 2026-08-15,A5+;telemetry 多局 XP 分母 4/6/20/40 对拍一致):
+# 「购买经验」每点一次 +XP_PER_BUY 经验、花小额金币(按钮实读 state.level_up_cost);经验攒够当前级
+# 门槛自动升级,溢出结转。等级门槛表(升下一级所需总经验):
+XP_PER_BUY: int = 4
+XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
+XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
+#: 玩家等级封顶(live 语义:10 级后购买经验无效;xp_apply_clicks/xp_clicks_to_level/
+#: simulate LevelUp 分支/cw_board_state 投影满级门同此单一源。sim 侧 LEVEL_CAP=9
+#: 是已知建模分歧,勿混用——本常量只辖 live 侧)。
+MAX_PLAYER_LEVEL: int = 10
+
+
+def xp_apply_clicks(level: int, xp_cur: int, clicks: int,
+                    xp_per_buy: int = XP_PER_BUY) -> tuple[int, int]:
+    """N 次「购买经验」后的期望 (level, xp_cur)(纯函数;XP 期望态账本的推进算子)。
+
+    语义 = ADR-0129 单一源:每击 +xp_per_buy 经验;攒满当前级门槛即升级、
+    溢出结转(与 cw_state LevelUp 动作应用 / sim 轮末升级清零结转同规则)。
+    封顶 MAX_PLAYER_LEVEL(10)级 = 生产 live 语义(满级后购买经验无效;
+    sim 侧 LEVEL_CAP=9 是已知建模分歧,勿混用)。
+
+    [字段定义] level = 游戏玩家等级 1-10(整局单调,坐标系 = 游戏 XP 条);
+    xp_cur = 当前级已攒经验;取值时机 = 意图应用时纯推算(非执行期现读);
+    写入端 = CwScreenPrep XP 期望态账本。clicks ≤ 0 → 原值返回(无意图零推进)。
+    """
+    if clicks <= 0 or level >= MAX_PLAYER_LEVEL:
+        return level, xp_cur   # 封顶/零意图:购买经验无效,零推进(live 语义)
+    cur = xp_cur + clicks * xp_per_buy
+    while level < MAX_PLAYER_LEVEL:
+        need = XP_TO_NEXT_LEVEL.get(level, 4)
+        if cur < need:
+            break
+        cur -= need
+        level += 1
+    return level, cur
+
+
+def xp_clicks_to_level(level: int, xp_cur: int,
+                       xp_per_buy: int = XP_PER_BUY) -> int:
+    """当前级攒到**恰升 1 级**所需的最少购买经验次数(纯函数)。
+
+    = ceil((need − cur) / xp_per_buy);cur 已达门槛 → 1(再点一次即升)。
+    消费端 = CwScreenPrep 直接 LevelUp 动作(腾席链「循环点至 level+1、
+    首次验证成功即停」通道):progressed=True 时实际击数 = 本值。
+    已升满 MAX_PLAYER_LEVEL(10)级 → 0(点击无效,调用方零推进)。
+    """
+    if level >= MAX_PLAYER_LEVEL:
+        return 0
+    need = XP_TO_NEXT_LEVEL.get(level, 4)
+    gap = need - xp_cur
+    if gap <= 0:
+        return 1
+    return (gap + xp_per_buy - 1) // xp_per_buy
+
+# 刷新商店实付金 = 基价常量(建模值,非 OCR 读数)。出处:多局旧决策行
+# 相邻金差对账(只含 LevelUp+Refresh 的最小对账对)全部 = 2,不随金币/
+# 次数/等级变;invest_effects.md「刷新 45% 概率免费 → 期望刷价 1.1」隐含基价
+# 2(2×0.55=1.1)。右下角「文本-刷新金币数」rect 实际读到的是面板徽标
+# (数值 = min(gold//10,5) = 利息公式,非刷价;三流对拍定谳,ADR-0456)——
+# 该 OCR 已退出 read_game_state 主链(cw_observation),决策/对账统一消费本常量。
+# 消费点沿用 ``or 2`` 兜底语义:字段恒为基价,兜底分支不再触发,零行为波及。
+REFRESH_COST_BASE: int = 2
+
+# 保血阈值(策略校准参数,自 config 迁入代码单一源;值随实机校准走 git,不走用户 yml)。
+# **保守起步,待实机校准**:A1-A4 = 40(低难不变,可适当卖血保经济);A5+ 升阶(高难敌人更凶 → 更早弃息保血)。
+HP_SAFE_THRESHOLD: int = 40    # 保血阈值默认(未检测职级时;语义「安全地板」,kernel 单一源)
+DIFFICULTY_HP_TABLE: dict[str, int] = {
+    "A1": 40, "A2": 40, "A3": 40, "A4": 40,
+    "A5": 45, "A6": 50, "A7": 52, "A8": 55,
+}
+
+
+def card_cost(card: ShopCard) -> int:
+    """牌的费用:OCR 读到用真值,未知按 3 估(费用 1-5 中位)。"""
+    return card.cost or 3
+
+
+def sell_refund(star: int, cost: int) -> int:
+    """卖出回金(economy.md §3 卖出退金(docs/game/currency_war/research/);用户 2026-08-12 提醒卖出金币重要 + 核 2星)。
+
+    - 1星 = cost(🟢 BWIKI「按其费用获得回收金币」+ 4399 + 用户,权威;无合成 → 无手续费 → 买卖净0)。
+    - 2星 = cost×3、3星 = cost×9、4星 = cost×27(合成成本),**star≥2 且 cost≥2 再 −1 手续费**。
+    - **cost=1 exempt(无手续费)**:🟢 2026-08-13 live 实测 2★1费 万敌 出售 = **+3 金**(cost×3,无 −1;
+      sell-star 停机钩子 + VLM 读出售按钮「金币+3」)。用户:1费 2星不减、**2费开始才减1**(手续费 cost 相关
+      非纯 star)。故 −1 条件 = ``star>=2 and cost>=2``。
+    - 🟡 cost≥2 的 −1(2★2费=5)+ 3/4星 仍用户记忆 / 推测,待多 cost live 核;cost=1 各星已定(全额退)。
+      (置信度分层处置:卖面 refund 消费按保守端=下界组装(mult×c−fee_hi,fee_hi=1);
+      live 核定通道=单局复盘协议检查项,sr-od-currency-war-dev skill;
+      原设计件 IMPL_FIX_LEMMAS/IMPL_DESIGN 已删档,取回口径=ADR-0644。)
+    """
+    refund = max(cost, 1) * _SELL_MULT.get(star, 1)
+    if star >= 2 and cost >= 2:
+        refund -= 1   # 合成手续费:仅 star≥2 且 cost≥2(cost=1 exempt,实测 2★1费=3 无费;用户「2费开始减1」)
+    return max(refund, 0)
+
+
+def bench_char_cost(bc: BenchChar) -> int:
+    """备战角色的招募费(sell_refund / 经济决策用):char_id 已识别 → 查 CHARACTERS;未知 → 3(中费保守估)。
+
+    公共名(跨模块私有符号收敛:跨模块消费统一走本名;
+    下划线旧名保留为别名,存量消费点不破)。"""
+    c = CHARACTERS.get(bc.char_id) if getattr(bc, 'char_id', '') else None
+    return c.cost if c and c.cost else 3
+
+
+def effective_hp_threshold(bs: BoardState) -> int:
+    """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE``
+    有对应键 → 取覆盖值;否则回退 ``HP_SAFE_THRESHOLD``(40)。容器版单一实现
+    (输入 = ``BoardState``;职级/位面/轮次/等级经容器域读法——统一 state
+    迁移波 2 签名切换,输入字段 selected_difficulty/plane/round_num/level
+    容器侧全部就绪)。
+
+    高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
+    自 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
+
+    ⚖️ ADR-0176(桥接拆除):P2+ 位面上浮不再用手写 ×1.25/×1.5(ADR-0174 桥),
+    改由 18 号首达生存模型解出 —— ``plane_hp_ratio``(hp_floor(P_win 地板比),随板强/剩余日程
+    变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
+    精确零漂移(M57 验证行为保持)。
+    """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        level_of,
+        plane_of,
+        round_num_of,
+    )
+    from sr_od.application.currency_war.kernel.cw_first_passage import (
+        board_tier_of,
+        plane_hp_ratio,
+    )
+    from sr_od.application.currency_war.kernel.cw_plane_table import (
+        NODES_PER_PLANE,
+        TOTAL_NODES,
+    )
+
+    diff = (bs.selected_difficulty.value or '').strip()
+    base = int(DIFFICULTY_HP_TABLE.get(diff, HP_SAFE_THRESHOLD))
+    plane = plane_of(bs)
+    if plane <= 1:
+        return base
+    # 剩余战斗日程估计(位面×轮次 → 节点序;round_num 越界防御夹 [1, NODES_PER_PLANE])
+    t = (min(3, plane) - 1) * NODES_PER_PLANE \
+        + min(max(1, round_num_of(bs)), NODES_PER_PLANE) - 1
+    nodes_left = max(1, TOTAL_NODES - t)
+    ratio = plane_hp_ratio(board_tier_of(level_of(bs)), nodes_left, plane=plane)
+    return min(100, int(base * ratio))
 
 INTEREST_WEIGHT: float = 4.0          # 每档(10金)利息的分(权重算账见下方注释块)
 
@@ -914,6 +1065,9 @@ def _registry_of(session: StrategySession) -> DecisionV2Registry:
     """接缝函数的注册表解析(A/B 注入面:strategy_state_of(session).v3_registry 显式注入
     优先,缺省落 DEFAULT_REGISTRY——缺省栈无注入臂,P6 契约同 prep_brain
     装配签名)。"""
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        strategy_state_of,
+    )
     reg = getattr(strategy_state_of(session), 'v3_registry', None)
     return reg if isinstance(reg, DecisionV2Registry) else DEFAULT_REGISTRY
 
@@ -1099,6 +1253,9 @@ def _vd_core_of(session: StrategySession) -> str:
     from sr_od.application.currency_war.kernel.cw_intention import (
         IntentionState,
         intention_core,
+    )
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        strategy_state_of,
     )
     ist = getattr(strategy_state_of(session), 'v3_intention', None)
     if not isinstance(ist, IntentionState) or ist.phase != 'locked' \

@@ -58,9 +58,9 @@ from sr_od.application.currency_war.kernel.cw_reward_node import (
     is_piggy_reward_frame,
     reward_node_suppressed,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    BENCH_CAPACITY,
-    REFRESH_COST_BASE,
+from sr_od.application.currency_war.kernel.cw_economy import REFRESH_COST_BASE
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
+from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     count_merge_material_blocked,
     merge_material_reject_reason,
 )
@@ -108,7 +108,8 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
-    from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_state import GameState
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )

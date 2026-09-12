@@ -34,10 +34,6 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
         PrepAction,
     )
-    from sr_od.application.currency_war.kernel.cw_state import (
-        BenchChar,
-        PlaneNodeLedger,
-    )
 
 _EXEC_BY_SESSION: weakref.WeakKeyDictionary[object, ExecState] = \
     weakref.WeakKeyDictionary()
@@ -394,3 +390,345 @@ def _apply_buy_card(session, action: dict, _eff) -> None:
         _eff('gold', f"-{cost * max(1, res.buy_k or 1)}(买牌×{res.buy_k})",
              'gold')
 
+
+
+# ============================================================
+# 候裁9 词汇迁入(原 kernel/cw_state.py;T-7 W8 定谳记录第 1 归宿):
+# 席位/槽位跟踪域 + 节点台账 + 布局转发。宿主依据 = ExecState 自申报
+# tracked_bench_chars/tracked_deployed 定长槽表契约与 plane_node_ledger。
+# ============================================================
+
+BENCH_CAPACITY: int = 9  # 备战栏固定 9 槽(design doc 实测;不随等级变)
+# deployed 槽位语义(ADR-0392):定长 10 槽表——下标 0-3 = 前排槽 1-4、
+# 4-9 = 后排槽 1-6。后排实际格数 = 6 + (cap−level) 值域 6-9(cw_back_layout
+# 三信号裁决,ADR-0385;上限 9 = 用户口述,board_structure.md)——超过 6 的
+# 扩展格属画面布局域,不进本表示(表长恒 10;取舍与理由见 ADR-0392
+# 「后排布局档取舍」节,扩展格 7-9 的跟踪缺口在 9 档可达后常规化,扩板另案)。
+DEPLOYED_FRONT_CAPACITY: int = 4
+DEPLOYED_BACK_CAPACITY: int = 6
+DEPLOYED_CAPACITY: int = DEPLOYED_FRONT_CAPACITY + DEPLOYED_BACK_CAPACITY
+
+
+@dataclass
+class BenchChar:
+    """备战栏/已上阵角色(= strategy/06 的 ``Unit``;加 ``equips``)。"""
+    slot: int
+    char_id: str = ""    # 角色id(SIFT/OCR 名);未知 ""
+    faction: str = "?"   # 阵营
+    star: int = 1        # 星级
+    position_pref: str = "back"  # 命途定位 front/back(来自 get_role_position)
+    # Sequence(快照拷贝语义落码(ADR-0465 §9):TurnState 快照拷贝侧固化为 tuple;session/state
+    # 活对象仍 list)——读点(deploy_bench 装备校验/reconcile 配对)均为
+    # Sequence 消费,写端仅 session/state 活对象(list 语义保留)。
+    equips: list[str] | tuple[str, ...] = field(default_factory=list)
+    # 占槽物品标记(部署伪槽修复批 ②,防线字段;B1 返工=显式标记形态):
+    # True = 该槽画面是物品(箱/典籍/书册卡/揭示卡等)非角色。坐标系 =
+    # 备战栏 1-based slot(与 slot 字段同系);取值时机 = 部署装配期快照;
+    # 写入端 = 部署装配点(cw_op_deploy.assemble_bench_list 构造时显式写),
+    # 识别来源 = obs 单一源精确档(cw_identity_obs.bench_item_slots
+    # fuzzy=False)的命中产出;obs 未命中的槽位恒 False(缺省),与本字段
+    # 无关的 char_id='' 不触发(kernel 对 True 恒 held、拒因 'item_slot',
+    # 「照旧上」fail-open 语义不涉本字段)。sim 不产伪槽:缺省 False 零差。
+    is_item_slot: bool = False
+
+
+def snapshot_copy(bc: BenchChar) -> BenchChar:
+    """TurnState 快照语义的元素拷贝(落码判据见 ADR-0465 §9):浅拷贝 + equips 固化
+    为 tuple——视图/快照帧与 session.tracked_*(就地写端=shop.py
+    mutate_bench_deployed 星级/装备拼接、deploy_bench 装备覆盖)断开
+    对象别名,「快照不在帧间存活」由机制保证而非消费纪律约定。
+    成本已量化(ADR-0465 §9):每次 decide_prep ~19 元素 ×6 字段 <20µs,
+    占帧预算 <0.1%。隔离锁=test_cw_migration_budget_authority(迁移哨兵)。"""
+    from dataclasses import replace
+    return replace(bc, equips=tuple(bc.equips or ()))
+
+
+def rebuild_deployed_from_board(board: dict[str, int], back_max: int = 6,
+                               max_count: int | None = None) -> list[BenchChar | None]:
+    """从 board(OCR 阵营计数真值)重建 ``deployed`` 槽位表(ADR-0392;下标
+    0-3=前排/4-9=后排,按 position_pref 路由落槽)→ ``deployed_count()``
+    对齐实际阵上数。
+
+    旧 ``read_game_state`` 不填 deployed → 恒 ``[]`` → 所有门失效,本 helper 从 board
+    重建 deployed。
+    max_count(= level)cap —— 多羁绊角色在 board 多阵营计数(大丽花=击破+盛会之星算 2),
+    sum(board) > 实际 deployed(level)→ deployed_count 虚高 → _saving_for_interest + bench-space 门
+    **误触**(board 没满却当满 → 不买 target 到 bench → 被 block)。cap at level = 实际 deployed 上限。
+    """
+    compact: list[BenchChar] = []
+    back_left = back_max
+    for faction, count in board.items():
+        for _ in range(count):
+            if max_count is not None and len(compact) >= max_count:
+                return deployed_from_compact(compact)
+            pref = "back" if back_left > 0 else "front"
+            if back_left > 0:
+                back_left -= 1
+            compact.append(BenchChar(slot=0, faction=faction, star=1,
+                                     position_pref=pref))
+    return deployed_from_compact(compact)
+
+
+# ===== bench 槽位语义 helpers(ADR-0316;消费端唯一合法入口)=====
+
+
+def iter_occupied(bench: list[BenchChar | None]):
+    """迭代占用槽(滤 None)——bench 迭代单一源,禁止裸 ``for b in bench``。"""
+    return (b for b in bench if b is not None)
+
+
+def bench_occupied(bench: list[BenchChar | None]) -> int:
+    """bench 占用槽数(容量判据单一源,禁止 ``len(bench)``)。"""
+    return sum(1 for b in bench if b is not None)
+
+
+def bench_place(bench: list[BenchChar | None], bc: BenchChar) -> int | None:
+    """放入首个空槽(买入落位语义);无空槽返回 None(=bench_full 拒)。
+
+    放置时归一 ``bc.slot = 下标+1``(物理槽位 1-9,与 live 读链
+    ``read_bench_chars`` 的 1-based 槽号同坐标系)。
+    """
+    for i, b in enumerate(bench):
+        if b is None:
+            bc.slot = i + 1
+            bench[i] = bc
+            return i
+    return None
+
+
+def pad_bench(bench: list[BenchChar | None]) -> list[BenchChar | None]:
+    """pad None 到定长 BENCH_CAPACITY(就地补足,返回同引用)。"""
+    while len(bench) < BENCH_CAPACITY:
+        bench.append(None)
+    return bench
+
+
+def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
+    """紧缩序列 → 槽位表(顺序放置;BenchChar.slot 已带 1-based 物理槽号
+    时按槽放置)。旧语料/紧缩构造入槽位模型的适配单一源。"""
+    bench: list[BenchChar | None] = [None] * BENCH_CAPACITY
+    for bc in chars:
+        # 形状双源防御(ADR-0316 持久态契约):输入可能是 pad 态(定长 9 含
+        # None,如 mutate_bench_deployed 就地 pad 后的 exec_state_of(session).tracked_bench_chars)
+        # 或紧凑态(无 None)——两种形态都是本适配源的输入域,None 直接跳过。
+        if bc is None:
+            continue
+        slot = bc.slot if 1 <= bc.slot <= BENCH_CAPACITY else None
+        if slot is not None and bench[slot - 1] is None:
+            bench[slot - 1] = bc
+        else:
+            bench_place(bench, bc)
+    return bench
+
+
+# ===== deployed 槽位语义 helpers(ADR-0392;消费端唯一合法入口)=====
+
+
+def iter_occupied_deployed(deployed: list[BenchChar | None]):
+    """迭代占用槽(滤 None)——deployed 迭代单一源,禁止裸 ``for d in deployed``。"""
+    return (d for d in deployed if d is not None)
+
+
+def deployed_occupied(deployed: list[BenchChar | None]) -> int:
+    """deployed 占用槽数(容量判据单一源,禁止 ``len(deployed)``——定长下
+    len 恒 DEPLOYED_CAPACITY)。"""
+    return sum(1 for d in deployed if d is not None)
+
+
+def deployed_slot_no(idx: int) -> int:
+    """槽位下标 → 排内 1-based 槽号信息位(0-3→前排 1-4;4-9→后排 1-6)。"""
+    return idx - DEPLOYED_FRONT_CAPACITY + 1 if idx >= DEPLOYED_FRONT_CAPACITY \
+        else idx + 1
+
+
+def deployed_place(deployed: list[BenchChar | None], bc: BenchChar) -> int | None:
+    """放入指定排的首个空槽(上场落位语义):position_pref='front' → 前排区
+    0-3,'back' → 后排区 4-9(ADR-0392);放置时归一 ``bc.position_pref``、
+    ``bc.slot``(排内 1-based 槽号信息位)与实际落位下标一致。首选排满时
+    落全局首个空槽兜底,兜底跨排时 pref 随落位改写(写端治本,ADR-0605
+    §5.2:sell_recorded 通道解析键 = deployed_idx→(排,槽号) 固定双射换算
+    后按条目 pref/slot 命中,信息位与下标错位必漏匹配误归 unexplained;
+    权威槽位 = 下标,信息位恒为派生,与 _apply_row_to_char 换排归一同向)。
+    兜底保持「合法动作必成功」(旧行为 append 不看排,排容量门在上游)。
+    无任何空槽返回 None。入口防御 pad(短列表=紧缩前缀,兼容旧构造;
+    同 mutate_bench_deployed 的 pad_bench 入口防御)。
+    """
+    pad_deployed(deployed)
+    lo, hi = ((0, DEPLOYED_FRONT_CAPACITY) if bc.position_pref == 'front'
+              else (DEPLOYED_FRONT_CAPACITY, DEPLOYED_CAPACITY))
+    for rng in (range(lo, hi), range(DEPLOYED_CAPACITY)):
+        for i in rng:
+            if deployed[i] is None:
+                bc.position_pref = ('front' if i < DEPLOYED_FRONT_CAPACITY
+                                    else 'back')
+                bc.slot = deployed_slot_no(i)
+                deployed[i] = bc
+                return i
+    return None
+
+
+def pad_deployed(deployed: list[BenchChar | None]) -> list[BenchChar | None]:
+    """pad None 到定长 DEPLOYED_CAPACITY(就地补足,返回同引用;紧缩前缀
+    顺延占用 0..n-1——旧紧缩构造兼容,ADR-0392)。"""
+    while len(deployed) < DEPLOYED_CAPACITY:
+        deployed.append(None)
+    return deployed
+
+
+def deployed_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
+    """紧缩序列 → 槽位表(按 position_pref 路由落槽)。旧语料/紧缩构造入
+    槽位模型的适配单一源(None 直接跳过——形状双源防御,同 bench_from_compact)。"""
+    deployed: list[BenchChar | None] = [None] * DEPLOYED_CAPACITY
+    for bc in chars:
+        if bc is None:
+            continue
+        deployed_place(deployed, bc)
+    return deployed
+
+
+def _apply_row_to_char(bc: BenchChar, to_row: str) -> None:
+    """记录实际站位 + 开拓者换排形态归一(DeployMove/动作 v2 单一源)。
+
+    拖到另一排 = 命途切换(前台记忆/后台欢愉),羁绊随之变 → char_id
+    同步换成目标排形态,faction 跟随首阵营(下游 board/装备计算自然对)。
+    """
+    bc.position_pref = to_row
+    from sr_od.application.currency_war.data.cw_chars import get_char as _get_char
+    from sr_od.application.currency_war.data.cw_chars import (
+        is_trailblazer,
+        trailblazer_form,
+    )
+    if bc.char_id and is_trailblazer(bc.char_id):
+        bc.char_id = trailblazer_form(bc.char_id, to_row)
+        _tc = _get_char(bc.char_id)
+        if _tc is not None and _tc.factions:
+            bc.faction = _tc.factions[0]
+
+# ===== 位面节点序列台账(session 级权威表) ================================
+# 权威依据(用户口述,最高权威):位面内节点类型与数量**只有投资环境选择能改变**
+# (变异位唯一)→ 同一位面内节点序列是常量,可以「进位面时读一次建档 + 投资环境
+# 选完后重读刷新」,此后每帧备战画面**查表**得当前节点类型,逐帧识别降级为校验。
+# 旧逐帧识别的三类噪声(标签出现在即将到来节点下方 / 高亮态 Hu 不匹配 / 商店
+# 遮挡坏帧)因此只影响校验票,不再直接污染决策输入。
+
+
+@dataclass
+class PlaneNodeLedger:
+    """本局 per-plane 节点序列台账 + 逐帧校验的去重/豁免状态。
+
+    宿主:``ExecState.plane_node_ledger``(kernel/cw_exec_state.py;经
+    :func:`get_node_ledger` 惰性建。载体生命周期 = 一局,无跨局污染)。
+    """
+
+    #: 键 = 位面号(1-based);值 = 节点类型序列,**下标 i(0-based)= 该位面第 i+1 轮**
+    #: 的类型 token(battle/supply/encounter/reward/boss,与
+    #: ``cw_node_reader.NodeSlot.node_type`` / ``GameState.node_type`` 同词汇表;
+    #: None = 该位次未识别占位,合并时被后续非 None 读数覆盖)。
+    #: 取值时机:写入端每次整行重读时快照(见各写入端);读端 = 备战帧查
+    #: ``seq[round_num - 1]``。
+    #: 写入端:①位面详情采集(CwScreenPlaneIntel,进位面时的两源互证产物);
+    #: ②投资环境选择完成后重读备战节点行(CwScreenInvestEnv,变异窗后的权威刷新)。
+    seq_by_plane: dict[int, list[str | None]] = field(default_factory=dict)
+
+    #: 每序列的写入来源('plane_detail' = 位面详情采集 / 'prep_row' = 备战节点行),
+    #: 判读侧区分表值的采集通道用(位面详情=彩色渲染态全量,备战行=含 past 遮挡)。
+    seq_source: dict[int, str] = field(default_factory=dict)
+
+    #: 位面 → 位面详情底部明文「敌人难度 N」参考值。**只存参考**——生产难度
+    #: 主源 = 备战旗牌两级管线(ADR-0449),本字段供离线对拍/缺口排查。
+    difficulty_ref: dict[int, int] = field(default_factory=dict)
+
+    #: 投资环境变异窗豁免截止(time.monotonic 时刻;0.0 = 无窗)。窗内查表与
+    #: 逐帧校验的不一致**不落**缺陷台账——环境选择到节点行重读之间节点行
+    #: 正在合法变异(用户口述:投资环境是唯一变异源),不一致是预期而非识别错误。
+    #: 写入端:CwScreenInvestEnv 确认前开窗、重读刷新台账后关窗(置 0)。
+    env_grace_until: float = 0.0
+
+    #: 已落过缺陷的 (plane, round) 键集(逐帧校验每帧都会跑,同一不一致只落一行)。
+    defect_seen: set[str] = field(default_factory=set)
+
+
+def get_node_ledger(session: object) -> PlaneNodeLedger | None:
+    """取执行侧载体上的台账,无则惰性建(None session → None,调用方跳过)。
+
+    宿主 = ``ExecState.plane_node_ledger``(产生者 = 画面 op 采集/重读
+    写入端,归执行侧载体;读写全经本函数与 :func:`ledger_node_type`,
+    消费点禁直摸载体字段)。
+    """
+    if session is None:
+        return None
+    ex = exec_state_of(session)
+    ledger = ex.plane_node_ledger
+    if ledger is None:
+        ledger = PlaneNodeLedger()
+        ex.plane_node_ledger = ledger
+    return ledger
+
+
+def ledger_node_type(session: object, plane: int | None,
+                     round_num: int | None) -> str | None:
+    """查表:当前位面第 ``round_num`` 轮的节点类型(1-based round → 0-based 下标)。
+
+    表缺 / 位面轮越界 / 该位次未识别(None)→ None(调用方退逐帧识别链,
+    **不猜**)。boss 位在序列里存 'boss' token(写入端按「首领=位面最后节点」
+    位置先验回填,与既有 boss 语义门同源)。
+    """
+    ledger = (None if session is None
+              else exec_state_of(session).plane_node_ledger)
+    if ledger is None or not plane or not round_num:
+        return None
+    seq = ledger.seq_by_plane.get(int(plane))
+    if not seq:
+        return None
+    idx = int(round_num) - 1
+    if not 0 <= idx < len(seq):
+        return None
+    return seq[idx]
+
+
+def ledger_update_plane(session: object, plane: int, seq: list[str | None],
+                        source: str) -> bool:
+    """按位合并写入一位面的序列(**同位次新非 None 覆盖,None 保旧**)。
+
+    合并而非覆盖的原因:备战行/详情条的 past 与 boss 位识别恒 None(Hu 不对
+    当前/过去/头像生效)→ 整表覆盖会把已识别位洗成 None;逐位合并让多位面
+    多时点的读数渐进拼出全序列(投资环境变异位由最新的非 None 读数天然覆盖)。
+    序列变长(如环境加节点)时右侧扩展。返回是否有实际变化(判读用)。
+    """
+    ledger = get_node_ledger(session)
+    if ledger is None or not plane or not seq:
+        return False
+    old = ledger.seq_by_plane.get(int(plane)) or []
+    n = max(len(old), len(seq))
+    merged: list[str | None] = []
+    changed = False
+    for i in range(n):
+        new_v = seq[i] if i < len(seq) else None
+        old_v = old[i] if i < len(old) else None
+        v = new_v if new_v is not None else old_v
+        merged.append(v)
+        if v != old_v:
+            changed = True
+    ledger.seq_by_plane[int(plane)] = merged
+    if changed or ledger.seq_source.get(int(plane)) != source:
+        ledger.seq_source[int(plane)] = source
+    return changed
+
+
+def fill_boss_by_position(seq: list[str | None]) -> list[str | None]:
+    """序列副本的最右 None 位回填 'boss'(位置先验:首领 = 位面最后节点)。
+
+    只在 boss 位经详情条「首领节点」标签验证过的写入端调用(CwScreenPlaneIntel);
+    备战行重读等未经标签验证的写入端不回填(boss 位在备战行为 past 态,
+    回填无依据)。原序列不动,返回副本。
+    """
+    out = list(seq)
+    if out and out[-1] is None:
+        out[-1] = 'boss'
+    return out
+
+
+def iter_deployed_slots(deployed: list[BenchChar | None]):
+    """迭代 (槽位下标, 占用角色) 对(滤 None)——deployed_idx 生成端用
+    (索引 = 槽位下标,生成期=执行期恒稳,ADR-0392)。"""
+    return ((i, d) for i, d in enumerate(deployed) if d is not None)

@@ -495,7 +495,7 @@ class CwScreenPlaneIntel(CwScreenOpBase):
                     # 台账写点①·备战行源(两源之一):备战节点行先按位合并进表
                     # (详情条源稍后整面覆盖;合并语义=None 位保旧,见 ledger_update_plane)。
                     with contextlib.suppress(Exception):
-                        from sr_od.application.currency_war.kernel.cw_state import (
+                        from sr_od.application.currency_war.kernel.cw_exec_state import (
                             ledger_update_plane,
                         )
                         _sess = getattr(getattr(self.ctx, 'cw_match', None),
@@ -593,7 +593,7 @@ class CwScreenPlaneIntel(CwScreenOpBase):
             # 敌人难度参考值(位面详情底部明文):随选中位面变,逐位面读;
             # **只存参考**,生产难度主源 = 备战旗牌两级管线(ADR-0449)不变。
             with contextlib.suppress(Exception):
-                from sr_od.application.currency_war.kernel.cw_state import (
+                from sr_od.application.currency_war.kernel.cw_exec_state import (
                     get_node_ledger,
                 )
                 from sr_od.application.currency_war.obs.cw_observation import (
@@ -759,7 +759,7 @@ class CwScreenPlaneIntel(CwScreenOpBase):
         # boss 位按「首领=位面最后节点」位置先验回填,回填依据 = 本 op 详情条
         # 「首领节点」标签验证语义;备战行源已在入口合并,此处再并一次兜全)。
         with contextlib.suppress(Exception):
-            from sr_od.application.currency_war.kernel.cw_state import (
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
                 fill_boss_by_position,
                 ledger_update_plane,
             )

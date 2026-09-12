@@ -43,7 +43,7 @@ from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import SHOP_SLOTS
 from sr_od.application.currency_war.kernel import cw_line_switch
 from sr_od.application.currency_war.kernel.cw_plane_table import r_remaining
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     bench_occupied,
 )

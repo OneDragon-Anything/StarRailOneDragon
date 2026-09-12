@@ -11,7 +11,7 @@ n̄(resolved 自然 XP 流)= 买牌 +4/张 ∪ 投资每节点/每刷 XP 流逐�
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.kernel.cw_state import XP_PER_BUY
+from sr_od.application.currency_war.kernel.cw_economy import XP_PER_BUY
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
     saturation_line,
 )

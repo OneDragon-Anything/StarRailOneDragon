@@ -28,7 +28,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepAction,
     PrepObservation,
 )
-from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     AtomOp,
     Snapshot,

@@ -39,9 +39,7 @@ from sr_od.application.currency_war.kernel.cw_board_state import (
     bench_slots_of,
     deployed_slots_of,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    iter_occupied_deployed,  # ADR-0392 helper 导入
-)
+from sr_od.application.currency_war.kernel.cw_exec_state import iter_occupied_deployed
 
 # 符号解耦:铁三角权威副本在 knowledge/cw_line_facts,
 # 不再依赖 kernel/cw_line_defs(迁移挂账文件)

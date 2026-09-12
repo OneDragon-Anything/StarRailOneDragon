@@ -73,11 +73,11 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_membership,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    BenchChar,
+from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
     sell_refund,
 )
+from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
@@ -850,9 +850,7 @@ def empty_board_sell_blocked(deployed: object, *,
     占用数;原内联第二实现改委托,禁双源)。``counters`` None = 不计数
     (谓词纯判读形态,测试用)。
     """
-    from sr_od.application.currency_war.kernel.cw_state import (
-        deployed_occupied,
-    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
     occupied = deployed_occupied(list(deployed or ()))
     if occupied > 0:
         return False

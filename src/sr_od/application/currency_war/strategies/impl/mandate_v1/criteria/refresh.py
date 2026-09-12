@@ -10,9 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_state import (
-        GameState,
-    )
+    from sr_od.application.currency_war.kernel.cw_state import GameState
 
 # 硬节点类型(节点行识别词;D-D 语境维)
 HARD_NODE_TYPES: frozenset[str] = frozenset({'encounter', 'boss'})

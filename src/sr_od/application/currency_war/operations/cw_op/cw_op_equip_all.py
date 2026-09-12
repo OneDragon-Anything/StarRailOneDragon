@@ -146,7 +146,7 @@ def register_equip_worn(session, item_name: str, char_name: str,
     if session is None:
         return
     try:
-        from sr_od.application.currency_war.kernel.cw_state import (
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
             DEPLOYED_FRONT_CAPACITY,
         )
         owned = list(getattr(session, 'last_owned_equips', None) or [])

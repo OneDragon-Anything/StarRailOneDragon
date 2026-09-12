@@ -28,7 +28,8 @@ from sr_od.application.currency_war.kernel.cw_board_state import (
     bench_slots_of,
     deployed_slots_of,
 )
-from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
+from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_state import GameState
 
 
 class EquipsInconsistencyError(RuntimeError):

@@ -52,7 +52,7 @@ from sr_od.application.currency_war.kernel.cw_observe import (
     LIVE_DIR,
     MATCHES_ROOT,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
     deployed_slot_no,

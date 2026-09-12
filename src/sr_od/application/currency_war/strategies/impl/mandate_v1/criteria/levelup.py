@@ -336,9 +336,7 @@ def _realize_chain_ready(bs: BoardState, bench: list,
     闸+检查器双面重建部署语境,随 C_realize 完整评价面批落码;早稿
     pop_slot 放宽支系「融资腿」非合格判据(P72 §2.3 勘误锚承继)。
     """
-    from sr_od.application.currency_war.kernel.cw_state import (
-        deployed_occupied,
-    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import deployed_occupied
     cap = _max_units_of(bs)
     if deployed_occupied(list(deployed or [])) < cap:
         return False

@@ -41,10 +41,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     ExecState,
     bind_exec_state,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
-    Action,
-    PickEvent,
-)
+from sr_od.application.currency_war.kernel.cw_state import Action, PickEvent
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
 
 if TYPE_CHECKING:

@@ -23,6 +23,7 @@ drag 验证留在 op)。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
@@ -33,19 +34,21 @@ from sr_od.application.currency_war.kernel.cw_board_state import (
     round_num_of,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
+
+if TYPE_CHECKING:
+    # 仅类型注解引用(老帧兼容支注解;运行时零依赖)。
+    from sr_od.application.currency_war.kernel.cw_state import GameState
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS,
     RECIPE_BASE,
     RECIPE_FACTIONS,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_BACK_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
     BenchChar,
-    GameState,
     deployed_occupied,
 )
-from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
 
@@ -1536,7 +1539,10 @@ def assemble_swap_plan_inputs(
     except Exception:   # noqa: BLE001  双轨读端缺供给 → 退 target_comp
         tgt_comp = None
     if tgt_comp is None:
-        tgt_comp = getattr(strategy_state_of(session), 'target_comp', None)
+        from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        strategy_state_of,
+    )
+    tgt_comp = getattr(strategy_state_of(session), 'target_comp', None)
     target_factions = frozenset(getattr(tgt_comp, 'all_factions', None) or ())
     target_cores = frozenset(getattr(tgt_comp, 'core_chars', None) or ())
     # fenced 臂(fp 单一源 form_progress,板满 = 占用数 ≥ cap 占用数
@@ -1544,6 +1550,9 @@ def assemble_swap_plan_inputs(
     # 板满门同源,禁经调用方 cap 参数分叉出第二口径;执行侧 cap=None
     # (不消费谓词 cap 门)帧同吃现算)。fp/locked/board_full 同点装配:
     # 转型臂输入与 fenced 臂同源同值(装配单一源,ADR-0534 §8 对齐增行 15/16)。
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        strategy_state_of,
+    )
     ist = getattr(strategy_state_of(session), 'v3_intention', None)
     locked = bool(getattr(ist, 'locked_comp', None)) if ist is not None \
         else False   # 锁线布尔单源 = ist.locked_comp 非空(ADR-0534 §1)
@@ -1588,6 +1597,9 @@ def assemble_swap_plan_inputs(
     # ist.locked_comp 单源(helper 自身 fail-safe:清空路径/套名解析
     # 失败自动 False,无需调用侧兜底)。
     recipe_floor_lock_exempt = locked_line_recipe_floor_conflict(ist)
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        strategy_state_of,
+    )
     fw_name = getattr(strategy_state_of(session), 'transition_framework', '') or ''
     _tgt_fw, fw_carry = deploy_target_sets(tgt_comp, fw_name)
     # 域事实单点:缺省 = 谓词现算(逐位同旧);钉定参在场 = 计划时点
@@ -1797,3 +1809,24 @@ def select_swap_plan(ctx: SwapPlanContext | None,
     if reasons_out is not None:
         reasons_out.update(reasons)
     return plan
+
+
+# ============================================================
+# 候裁9 词汇迁入(原 kernel/cw_state.py;第 5 归宿):板上唯一性守卫
+# board_unique_key(唯一活消费方 = 部署围栏,本模块同域)。
+# ============================================================
+
+
+
+def board_unique_key(bc: BenchChar) -> str | None:
+    """板上同名唯一性判据键(设计裁定:场上同角色仅 1)。
+
+    - ``char_id`` 空 = 未知身份 → None(不参与查重——两个未知不是可证明的重复);
+    - 开拓者各排形态(char_id 随排切换)归一为同一键(场上同样仅 1 个开拓者);
+    - 其余 = char_id 本身。
+    """
+    cid = getattr(bc, 'char_id', '') or ''
+    if not cid:
+        return None
+    from sr_od.application.currency_war.data.cw_chars import is_trailblazer
+    return '__trailblazer__' if is_trailblazer(cid) else cid

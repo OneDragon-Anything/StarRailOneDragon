@@ -132,3 +132,26 @@ class ThompsonAllocator:
         return {k: {'mean': round(a.mean, 3), 'var': round(a.variance, 4),
                     'n_own': a.n_own, 'adherence': round(a.adherence_sum, 1)}
                 for k, a in self.arms.items()}
+
+
+# ============================================================
+# 候裁9 词汇迁入(原 kernel/cw_state.py;第 6 归宿):局终结算
+# MatchOutcome(docstring 点名消费语义 = 跨局分配器/runs summary)。
+# ============================================================
+
+# 动作集 v2(契约包 C1,步2)+ CloseShop 终结动作(ADR-0517 商店恒可用终结)
+
+
+@dataclass
+class MatchOutcome:
+    """一局货币战争的终局结算(框架构造,局终收口消费:跨局分配器/runs summary;/§11.4)。
+
+    ⚠️ 字段全默认 —— **P1 由 run loop 用 ``MatchOutcome()`` 桩构造**(生命周期
+    钩子随 ADR-0583 收编删除后,消费面 = cw_loop 局终分支,
+    字段已被真实数据填充);**真实 outcome 填充(结算屏 OCR 读终局 HP/位面/轮次/通关)依赖结算屏
+    OCR 探查(现 run loop 是「点空白加速 → 继续挑战」,未见独立结算屏)。
+    """
+    won: bool = False        # 是否通关(3 位面全清)
+    final_plane: int = 1     # 到达位面
+    final_round: int = 1     # 位面内轮次
+    final_hp: int = 0        # 终局小队 HP

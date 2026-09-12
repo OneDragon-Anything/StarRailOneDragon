@@ -57,15 +57,16 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     is_prep_like_frame,
 )
 from sr_od.application.currency_war.kernel.cw_observe import obs_conflict
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_economy import (
     REFRESH_COST_BASE,
     XP_TO_NEXT_LEVEL,
-    GameState,
-    ShopCard,
+)
+from sr_od.application.currency_war.kernel.cw_exec_state import (
     get_node_ledger,
     ledger_node_type,
     rebuild_deployed_from_board,
 )
+from sr_od.application.currency_war.kernel.cw_state import GameState, ShopCard
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     ensure_portrait_templates,
     identify_character,
@@ -377,7 +378,7 @@ def read_level(ctx: SrContext, screen: MatLike, plane: int, round_num: int) -> i
     _prior = getattr(_sess, 'last_level_obs', 0) or None
     xp = read_xp_progress(ctx, screen, expected_level=_prior)
     if xp is not None:
-        from sr_od.application.currency_war.kernel.cw_state import XP_TO_NEXT_LEVEL
+        from sr_od.application.currency_war.kernel.cw_economy import XP_TO_NEXT_LEVEL
         for lv, need in XP_TO_NEXT_LEVEL.items():
             if need == xp[1]:
                 return lv
@@ -1546,7 +1547,7 @@ def board_from_tracked(tracked: list) -> dict[str, int] | None:
         (官方 trait 3005)→ 跳过零贡献即精确;布洛妮娅(factions 空flows 燃血)正常贡献 flows;
         独立羁绊行计入(与左面板显示同口径)。
     """
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         iter_occupied_deployed,
     )
     _occ = list(iter_occupied_deployed(tracked or []))   # ADR-0392 槽位表滤 None
@@ -2331,7 +2332,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             state.enemy_affixes = list(_sess.briefing_affixes)
     # ADR-0392:deployed 是槽位表(定长 10 含 None)——对账/截断/补齐一律
     # 走占用序(紧缩视图),再转回槽位表;len() 恒 10 不可作计数。
-    from sr_od.application.currency_war.kernel.cw_state import (
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
         deployed_from_compact,
         iter_occupied_deployed,
     )

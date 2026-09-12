@@ -51,16 +51,18 @@ from sr_od.application.currency_war.kernel.cw_plugins import (
     PLUGIN_LIBRARY,
     plugin_disabled,
 )
-from sr_od.application.currency_war.kernel.cw_state import (
+from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
-    Action,
     BenchChar,
+    bench_occupied,
+    iter_occupied_deployed,
+)
+from sr_od.application.currency_war.kernel.cw_state import (
+    Action,
     CompTransaction,
     FillSpec,
     GameState,
-    bench_occupied,
-    iter_occupied_deployed,
     simulate,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
