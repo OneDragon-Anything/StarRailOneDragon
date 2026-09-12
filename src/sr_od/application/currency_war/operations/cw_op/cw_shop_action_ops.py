@@ -38,24 +38,26 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    GameState,
-    ChannelSig,
-)
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-from sr_od.application.currency_war.kernel.cw_obs_core import (
-    A_SHOP_CARD_PREFIX,
-    SHOP_SCREEN_NAME,
-    _area_rect,
-)
 from sr_od.application.currency_war.kernel.cw_economy import REFRESH_COST_BASE
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     BenchChar,
     bench_occupied,
+    exec_state_of,
     pad_bench,
 )
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    GameState,
+)
 from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_k
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    A_SHOP_CARD_PREFIX,
+    SHOP_SCREEN_NAME,
+    _area_rect,
+)
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
+from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CloseShop,
@@ -67,8 +69,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     mutate_bench_deployed,
     simulate,
 )
-from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
-from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 
 # 刷新钮真值 reader 经模块属性路由消费(替身缝:测试 monkeypatch 模块属性,
 # 直接 from-import 会绑死旧引用绕开替身,同 _buy_cards_mod 约定)。
@@ -389,8 +389,34 @@ class ShopActionOp(ABC):
 
     def project(self, state: CwWorkFrame) -> CwWorkFrame:
         """确定性投影(纯计算,零读屏):simulate 单一源(合成连锁/
-        满栏 §2.5/金/等级全在其内;模块头知识缺口申报)。"""
-        return simulate(state, self.action)
+        满栏 §2.5/金/等级全在其内;模块头知识缺口申报)。
+
+        双 ShopCard 桥(波 4 归一;sim 引擎决策核同族镜像):波 4 起决策核
+        发射容器牌(无 x 载体,坐标单一真相源=screen_info),simulate 的
+        槽位口径仍按 x——按 (name, star) 对齐到帧牌再应用,店面无同名牌
+        (跨代际提案)退兜底构造(x=0 = 离屏语义,金/席照常结算)。
+        """
+        action = self.action
+        if isinstance(action, BuyCard) and not hasattr(action.card, 'x'):
+            from dataclasses import replace as _dc_replace
+
+            from sr_od.application.currency_war.kernel.cw_vocab import (
+                ShopCard as _LegacyCard,
+            )
+            _a_card = next(
+                (c for c in state.shop
+                 if c.name == action.card.name
+                 and int(c.star or 1) == int(action.card.star or 1)),
+                _LegacyCard(
+                    x=0,
+                    faction=str(getattr(action.card, 'faction', '') or '?'),
+                    name=str(getattr(action.card, 'name', '') or ''),
+                    cost=int(getattr(action.card, 'cost', 0) or 0),
+                    star=int(getattr(action.card, 'star', 1) or 1),
+                    cost_source=str(getattr(action.card, 'cost_source', '')
+                                    or 'roster')))
+            action = _dc_replace(action, card=_a_card)
+        return simulate(state, action)
 
     @abstractmethod
     def execute(self, env: ShopExecEnv) -> bool:

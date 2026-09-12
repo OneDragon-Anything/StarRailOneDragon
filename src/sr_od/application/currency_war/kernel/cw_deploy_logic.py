@@ -27,27 +27,27 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
+from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     max_units_of,
     plane_of,
     round_num_of,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 
 if TYPE_CHECKING:
     # 仅类型注解引用(老帧兼容支注解;运行时零依赖)。
     from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
-from sr_od.application.currency_war.kernel.cw_line_defs import (
-    ENGINE_FACTIONS,
-    RECIPE_BASE,
-    RECIPE_FACTIONS,
-)
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_BACK_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
     BenchChar,
     deployed_occupied,
+)
+from sr_od.application.currency_war.kernel.cw_line_defs import (
+    ENGINE_FACTIONS,
+    RECIPE_BASE,
+    RECIPE_FACTIONS,
 )
 from sr_od.application.currency_war.kernel.cw_system_cards import SYSTEM_CARDS
 
@@ -1540,9 +1540,9 @@ def assemble_swap_plan_inputs(
         tgt_comp = None
     if tgt_comp is None:
         from sr_od.application.currency_war.kernel.cw_strategy_session import (
-        strategy_state_of,
-    )
-    tgt_comp = getattr(strategy_state_of(session), 'target_comp', None)
+            strategy_state_of,
+        )
+        tgt_comp = getattr(strategy_state_of(session), 'target_comp', None)
     target_factions = frozenset(getattr(tgt_comp, 'all_factions', None) or ())
     target_cores = frozenset(getattr(tgt_comp, 'core_chars', None) or ())
     # fenced 臂(fp 单一源 form_progress,板满 = 占用数 ≥ cap 占用数
