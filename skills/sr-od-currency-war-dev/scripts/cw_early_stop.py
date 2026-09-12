@@ -51,7 +51,9 @@ would-alert(判据面与 watch 同一 feed)。
 默认 70)、CW_EARLYSTOP_GOLD_TH(金验收线,默认 50)、CW_EARLYSTOP_LOCK。
 
 历史:v1(2026-08-24) P1 末 HP 读 outcomes 真值;v0 用 decisions 备战帧;
-v3 金主判据([28]);v4 尾读源切 journal(本版)。
+v3 金主判据([28]);v4 尾读源切 journal;v4.1(2026-09-12,T-77) tail-f
+长持句柄改短持周期读(kernel 寿命策略 purge 的 Windows 共享冲突治本面,
+判据/报警契约不变)。
 """
 import json
 import os
@@ -212,7 +214,6 @@ def watch() -> None:
         print(f'[NO_ACTIVE_RUN] {JOURNAL.name} mtime {int(age)}s 前,无局在跑', flush=True)
         sys.exit(0)
     cur: RunState | None = None
-    buf = ''
     last_row_wall = time.time()
     noted_idle = False
     print(f'[earlystop] armed v4 @ {time.strftime("%H:%M:%S")} th={TH} '
@@ -239,17 +240,35 @@ def watch() -> None:
             print(f'[earlystop] 回填当前局 {rid} P1 上下文 hp={hp} gold={gold}', flush=True)
             break
         break   # 尾行已是 P2+:当前局 P1 已结束,从头等下一局(不回填)
-    with JOURNAL.open(encoding='utf-8', errors='replace') as fh:
-        fh.seek(0, 2)  # 从文件尾开始:只看武装后的新局
-        while True:
-            line = fh.readline()
-            if line:
+    pos = JOURNAL.stat().st_size
+    while True:
+        # 短持周期读(v4.1,T-77):每轮 open→读到 EOF→close。v4 的 tail-f
+        # 形态(with 块内 while True 长持句柄)在 Windows 上让 kernel 寿命
+        # 策略的原子改名(os.replace)恒被共享冲突拒绝(WinError 5,读端
+        # Python open 无 FILE_SHARE_DELETE)——purge 永不落地,实测 5 轮
+        # 连败(2026-09-12)。短持后句柄只在读窗内存在,purge/轮转照常;
+        # 「文件变小」重置语义保留(轮询首检出 size<pos)。
+        size = JOURNAL.stat().st_size
+        if size < pos:   # 文件被替换(purge/重建) → 从头重置
+            pos = 0
+            cur = None
+            print('[earlystop] 文件变小(轮换/清理),重置追踪', flush=True)
+        if size > pos:
+            with JOURNAL.open('rb') as fh:
+                fh.seek(pos)
+                chunk = fh.read()
+            cut = chunk.rfind(b'\n')
+            if cut == -1:
+                time.sleep(10)   # 无完整新行(半行等下轮),不推进 pos
+                continue
+            pos += cut + 1
+            for full in chunk[:cut + 1].decode(
+                    'utf-8', errors='replace').splitlines():
+                full = full.strip()
+                if not full:
+                    continue
                 last_row_wall = time.time()
                 noted_idle = False
-                buf += line
-                if not buf.endswith('\n'):
-                    continue  # 半行,等写完
-                full, buf = buf, ''
                 parsed = _parse(full)
                 if parsed is None:
                     continue
@@ -263,17 +282,10 @@ def watch() -> None:
                 if msg:
                     print(msg, flush=True)
                     sys.exit(0)
-            else:
-                if JOURNAL.stat().st_size < fh.tell():  # 文件被替换(purge/重建) → 从头重置
-                    fh.seek(0)
-                    cur = None
-                    buf = ''
-                    print('[earlystop] 文件变小(轮换/清理),重置追踪', flush=True)
-                    continue
-                if not noted_idle and time.time() - last_row_wall > IDLE_NOTE_SEC:
-                    noted_idle = True
-                    print(f'[IDLE] {IDLE_NOTE_SEC}s 无新 journal 行(局可能已结束或战斗漫长)', flush=True)
-                time.sleep(10)
+        if not noted_idle and time.time() - last_row_wall > IDLE_NOTE_SEC:
+            noted_idle = True
+            print(f'[IDLE] {IDLE_NOTE_SEC}s 无新 journal 行(局可能已结束或战斗漫长)', flush=True)
+        time.sleep(10)
 
 
 if __name__ == '__main__':
