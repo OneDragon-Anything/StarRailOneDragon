@@ -29,7 +29,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_investments import get_env
+from sr_od.application.currency_war.kernel.cw_investments import (
+    ENV_POOL_REWRITE,
+    get_env,
+)
 from sr_od.application.currency_war.kernel.cw_vocab import REFRESH_COST_BASE
 
 if TYPE_CHECKING:
@@ -215,6 +218,14 @@ def env_economy_value(name: str, bs: GameState) -> tuple[float, bool]:
     (未入模 / 估算参数缺失 / CI 方向不闭合 / 剩余期望为 0),消费端按无
     经济通道处理。
 
+    **品质改写分派**(3.6,details/env-value-models.md §2.2.5):name ∈
+    ENV_POOL_REWRITE → :func:`_pool_rewrite_value`(层 E ΔV 公式,读
+    STRAT_POOL_ECON_MEANS/OFFER_QUALITY_DIST,任一缺参 fail-closed,
+    v1 恒然——受限通道 μ_E 非单调,层 E 转正须过准入门后落参);其余
+    name → 下方 A/B/C 通道公式。单一入口契约不变(design §2.2.3;
+    ENV_ECONOMY 与 ENV_POOL_REWRITE 构建期互斥,一个 name 至多落一个
+    估值结构,cw_investments._validate_env_pool_rewrite 收全)。
+
     通道(design §2.2.1;值除注明外全部为注册表游戏定义【注】):
     - gold_instant:选卡当场一次性金(零参数,精确);
     - gold_per_plane_start:每位面开局金 × 位面可达权(剩余口径:既往位面
@@ -246,6 +257,8 @@ def env_economy_value(name: str, bs: GameState) -> tuple[float, bool]:
     的语义(不确定度只辖参数依赖部分);E2 锁的翻转构造因此走「全部剩余
     期望都参数依赖」的帧(策略大师 held=2 后唯一剩余取卡在位面 2)。
     """
+    if name in ENV_POOL_REWRITE:
+        return _pool_rewrite_value(name, bs)
     env = get_env(name)
     if env is None or env.economy is None:
         return (0.0, False)
@@ -380,3 +393,89 @@ def _validate_estimates_governance() -> None:
 
 
 _validate_estimates_governance()
+
+
+# ===== 品质改写型层 E(ΔV 公式;2026-09-12 invest-env 迭代 3.6,
+# details/env-value-models.md §2.2.2/§2.2.5)=====
+# ΔV(R) = Σ_{k ∈ picks(R)} [ μ_E(q_R; H_k) − Σ_q π_offer,k(q) · μ_E(q; H_k) ]
+# 层 E = 改写后取卡金流期望相对无改写 offer 的抬升(受限直接金流/XP 通道;
+# 明确排除刷新族/息档覆写/合成卖价/血本位等行为依赖通道,排除集清单 =
+# 详设 §2.2.2 econ_gold_v1 定义)。**v1 恒 fail-closed**:受限通道实测
+# μ_E 不随品质单调(银 3.31 > 金 2.42,金池直接金流均值反低于银——金/棱彩
+# 价值大头在功能半与被排除通道),直接入域带会产出「白银时代>黄金时代」
+# 噪声序;转正准入门 = ①全通道重算(排除集补参)+ ②序一致性检验(全通道
+# μ_E 品质序与品质游戏序/pick_value 品质中位序方向一致),两条件缺一不入,
+# 数据批另行立项。本段只落公式与参数注册表结构,消费端(design §2.3 门 3
+# 的 resolved ∧ expected_gold > 0)自动承载准入门第 2 条方向自洽。
+
+#: 取卡序 k(1 基,同 StrategyPoolRewrite.rewrite_picks 坐标系)→ 取卡后剩余
+#: 节点视界 H_k。【推】结构:总视界 27(schedule_of 先验 9+9+9),首取卡点 =
+#: 1-3 节点完成后(screen_flow_timing #11)→ H_1 ≈ 24 参照;H_2/H_3 需取卡
+#: 点位实采(详设 §2.2.2)→ v1 只在册 H_1,其余取卡序视界缺 = 缺参
+#: fail-closed(层 E 转正数据批补全;实采定位后演化只改本表)。
+_STRAT_PICK_HORIZONS: dict[int, int] = {1: 24}
+
+#: μ_E per (品质, 视界):品质子池受限通道金流均值(【拟】,EconomyEstimate
+#: 四元组,总纲 §2.2.4 注册表条目形同构;键第二维 = H_k,公式 μ_E(q; H)
+#: 视界入参化的直接承载)。品质键 = 注册表品质名('棱彩'/'金'/'银')。
+#: **不落参数申报**:初测读数(银 3.31/金 2.42/棱彩 4.16)系【拟】非决策级
+#: (档案帧未区分取卡 offer 与刷新后 offer,采样警告在册,详设 §2.2.2),
+#: 落参 = 层 E 转正数据批义务(准入门两条件过后);缺位 = 恒 fail-closed,
+#: 时代/头彩/尾彩维持裸分(现行为零变化)。
+STRAT_POOL_ECON_MEANS: dict[tuple[str, int], EconomyEstimate] = {}
+
+#: π_offer per 取卡序:无改写环境时第 k 次取卡的 offer 品质分布(【拟】;
+#: 键 = k 1 基,值 = 品质 → EconomyEstimate。「未解析」份额不单列建模,
+#: 入式前按已知三品质份额归一,归一口径随数据批申报)。缺位该 k =
+#: 缺参 fail-closed;落参 = 层 E 转正数据批义务。
+OFFER_QUALITY_DIST: dict[int, dict[str, EconomyEstimate]] = {}
+
+
+def _pool_rewrite_value(name: str, bs: GameState) -> tuple[float, bool]:
+    """品质改写型层 E 增量期望(ΔV;入口 = env_economy_value 分派,§2.2.5)。
+
+    ΔV(R) = Σ_{k ∈ picks(R)} [ μ_E(q_R; H_k) − Σ_q π_offer,k(q) · μ_E(q; H_k) ]
+
+    - rewrite_quality 空(银·金·彩 = 结构改写/联席决策 = 数量通道)= 无层 E
+      语义 → 结构性 fail-closed(非缺参:即使参数表全满也 False——数量通道
+      不折金与 A 类策略大师同口径 §2.2.4,价值由裸分承载);
+    - 缺参 fail-closed:H_k / μ_E(q_R, H_k) / π_offer,k / μ_E(q, H_k) 任一
+      查表 miss → (0.0, False)(v1 恒然:两参数表空);
+    - CI 端点传播:基线项 Σ π·μ = 非负因子乘积和,端点 = Σ 端点积(单调
+      区间,既有通道 P×E 端点同口径);ΔV_k = μ_R − base 区间差
+      [μ_R.lo − base.hi, μ_R.hi − base.lo];多项 picks 端点相加(同号区间
+      相加精确);
+    - 方向门:CI 任一端点 ≤ 0 → (0.0, False)(与 A/B/C 通道同门;消费端
+      design §2.3 门 3 再加 expected_gold > 0——白银时代即使转正也因
+      ΔV ≤ 0 落回裸分,方向自洽)。
+
+    bs 参数:层 E v1 用全局先验视界(_STRAT_PICK_HORIZONS),不做剩余口径
+    条件化(H_k 随当前帧修正 = 转正数据批的参数化面);bs 保留于签名 =
+    单一入口契约形态一致,当前帧信息供转正批条件化使用。
+    """
+    rw = ENV_POOL_REWRITE[name]
+    if not rw.rewrite_quality:
+        return (0.0, False)
+    acc = [0.0, 0.0, 0.0]
+    for _k in rw.rewrite_picks:
+        _h = _STRAT_PICK_HORIZONS.get(_k)
+        if _h is None:
+            return (0.0, False)
+        _mu_r = STRAT_POOL_ECON_MEANS.get((rw.rewrite_quality, _h))
+        _pi_k = OFFER_QUALITY_DIST.get(_k)
+        if _mu_r is None or _pi_k is None:
+            return (0.0, False)
+        _base = [0.0, 0.0, 0.0]
+        for _q, _pi in _pi_k.items():
+            _mu_q = STRAT_POOL_ECON_MEANS.get((_q, _h))
+            if _mu_q is None:
+                return (0.0, False)
+            _base[0] += _pi.value * _mu_q.value
+            _base[1] += _pi.ci[0] * _mu_q.ci[0]
+            _base[2] += _pi.ci[1] * _mu_q.ci[1]
+        acc[0] += _mu_r.value - _base[0]
+        acc[1] += _mu_r.ci[0] - _base[2]
+        acc[2] += _mu_r.ci[1] - _base[1]
+    if acc[1] <= 0.0 or acc[2] <= 0.0:
+        return (0.0, False)
+    return (acc[0], True)

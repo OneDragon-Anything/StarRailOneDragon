@@ -1613,3 +1613,134 @@ def _validate_env_gifts() -> None:
 
 
 _validate_env_gifts()
+
+
+# ===== 环境品质改写注册表(2026-09-12 invest-env 迭代 3.6;
+# details/env-value-models.md §2.2;白名单制)=====
+# 品质改写型环境(时代 ×3 + 头彩/尾彩 + 银·金·彩 + 联席决策,恰 7 条)的池改写
+# 事实登记。表外环境一律无条目,禁从效果原文自动猜装(ENV_ECONOMY/ENV_GIFTS
+# 同款纪律)。两型两层拆分(详设 §2.2.2):层 E(基数,改写后取卡金流期望抬升
+# ΔV)经 env_economy_value 单一入口分派(cw_env_economy._pool_rewrite_value),
+# v1 恒 fail-closed——受限通道 μ_E 不随品质单调(银 3.31 > 金 2.42 实测),
+# 直接入域带会产出「白银时代>黄金时代」噪声序,层 E 转正须过准入门(全通道
+# 重算 + 序一致性检验,详设 §2.2.2,数据批另行立项);层 Q(定序残域,池内挑卡
+# 与功能价值)= 环境裸分维持(ENV_PICK_VALUE 七条零改动,ADR-0144 知识评估
+# 已对两半作过知识性净评),两层从不相加——max() 结构天然承载
+# 「层 E 有值时以域带参与、无值时裸分兜底」(总纲 design.md §2.3)。
+# 数量通道(联席额外三选一/银金彩刷新 +2)与 A 类策略大师同口径:策略域价值
+# 不折金不进层 E,消费端零改动,字段只登记事实(详设 §2.2.4)。
+# 锁 = 测试仓 test_cw_env_pool_rewrite.py(Q1-Q6)。
+@dataclass(frozen=True)
+class StrategyPoolRewrite:
+    """投资环境的**策略池品质改写**结构(品质改写型估值;2026-09-12 invest-env
+    迭代 3.6,details/env-value-models.md §2.2.5;与 EnvEconomyEffect/GiftGrant
+    同属 InvestmentEnv 的估值 schema 家族,落点集中本段避免触碰已交付段)。
+
+    字段语义(值全部 = cw_invest_data 效果原文直读;效果原文对账 id 见
+    ENV_POOL_REWRITE 各条注释):
+    - rewrite_quality: 改写目标品质('棱彩'/'金'/'银');空 = 非品质全改写型
+      (银·金·彩为 offer 结构改写、联席决策为数量通道,无层 E 语义)
+    - rewrite_picks: 被改写的取卡序号,**坐标系 = 本局投资策略取卡全局序,
+      1 基**(头彩效果原文点名「第一个投资策略」/尾彩点名「第三个投资策略」
+      → 固定取卡集基数 3 的序数承载,details/env-value-models.md §2.2.2;
+      时代 = (1,2,3) 全改写);取值时机 = 注册表登记期常量(效果原文直读,
+      非执行期现读)
+    - offer_structure: offer 结构改写语义标记('silver_gold_prism_slots' =
+      银·金·彩三槽按位面对应银/金/彩);注释性字段,层 E 公式不消费
+    - extra_pick_refreshes: 策略取卡刷新次数增量(银·金·彩 +2,策略屏逐卡
+      免费刷新计数,cw_node_obs.read_invest_refresh_counts('strategy') 通道;
+      数量通道登记,§2.2.4,v1 无消费端)
+    - extra_pick_node_range: 额外取卡发生的节点范围,**坐标系 = 本局全局节点
+      序,1 基,含两端**(联席决策效果原文「2-6 节点」直读;数量通道登记,
+      §2.2.4,v1 无消费端);None = 无额外取卡
+    - difficulty_exempt: 敌人难度不随高品质策略提高(白银时代第二条效果;
+      游戏【注·对拍】口径 = 白银 +0/黄金 +3/棱彩 +6 每拥有 1 个,
+      docs/game/currency_war/research/economy.md 难度精确口径行——数值在册
+      不折金,难度→收益需战力/胜率建模属宪法禁域 00_framework §1.1,§2.2.3)
+    - pending_notes: 效果原文歧义挂账(单张改写型 offer 覆盖面歧义:三卡全改
+      还是仅点名张;银·金·彩槽位-品质映射语义)——pending 条目必填
+      (_validate_env_pool_rewrite 构建闸,_validate_strategy_effects 先例
+      同款)
+    """
+    rewrite_quality: str = ''
+    rewrite_picks: tuple[int, ...] = ()
+    offer_structure: str = ''
+    extra_pick_refreshes: int = 0
+    extra_pick_node_range: tuple[int, int] | None = None
+    difficulty_exempt: bool = False
+    pending_notes: str = ''
+
+
+ENV_POOL_REWRITE: dict[str, StrategyPoolRewrite] = {
+    # 效果原文对账 id(cw_invest_data.PLAZA_PORTALS):彩虹 110/黄金 111/白银 112/
+    # 头彩 123/尾彩 124/银·金·彩 135/联席决策 122
+    '彩虹时代': StrategyPoolRewrite(rewrite_quality='棱彩', rewrite_picks=(1, 2, 3)),
+    '黄金时代': StrategyPoolRewrite(rewrite_quality='金', rewrite_picks=(1, 2, 3)),
+    # 白银时代第二效果「敌人难度不会由于选择高品质投资策略而提高」=
+    # difficulty_exempt 如实登记(§2.2.3 辖域声明:数值不折金,不产生分值)
+    '白银时代': StrategyPoolRewrite(rewrite_quality='银', rewrite_picks=(1, 2, 3),
+                                    difficulty_exempt=True),
+    # 头彩/尾彩 offer 覆盖面歧义(三卡全棱彩还是仅首/尾卡棱彩,效果原文
+    # 「第一个/第三个投资策略」直读按单张登记,实采定谳前保守)→ pending_notes 必填
+    '头彩': StrategyPoolRewrite(
+        rewrite_quality='棱彩', rewrite_picks=(1,),
+        pending_notes='效果原文「第一个投资策略」为棱彩;三卡全棱彩还是仅首卡'
+                      '棱彩歧义,按单张保守登记,实采挂账(详设 §2.2.1)'),
+    '尾彩': StrategyPoolRewrite(
+        rewrite_quality='棱彩', rewrite_picks=(3,),
+        pending_notes='效果原文「第三个投资策略」为棱彩;三卡全棱彩还是仅尾卡'
+                      '棱彩歧义,按单张保守登记,实采挂账(详设 §2.2.1)'),
+    # 银·金·彩 = offer 结构改写(三选项品质按槽位)+ 刷新 +2;槽位-品质映射
+    # 语义与「三品质各一」直觉不同(实测 offer 金重仓,详设 §2.2.2 π_offer
+    # 读数),实采挂账 → pending_notes 必填
+    '银·金·彩': StrategyPoolRewrite(
+        offer_structure='silver_gold_prism_slots', extra_pick_refreshes=2,
+        pending_notes='固定取卡节点三选项品质 = 银/金/彩按槽位;槽位-品质映射'
+                      '语义实采挂账(实测 offer 金重仓非三品质各一,详设 §2.2.2)'),
+    # 联席决策 = 数量通道(2-6 节点一次额外投资策略三选一);与 A 类策略大师
+    # 「额外取卡不计」同口径,价值由裸分承载(§2.2.4)
+    '联席决策': StrategyPoolRewrite(extra_pick_node_range=(2, 6)),
+}
+
+
+def _validate_env_pool_rewrite() -> None:
+    """ENV_POOL_REWRITE 构建校验(import 即炸;details/env-value-models.md §2.2.5):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_ECONOMY/ENV_GIFTS 先例,防版本
+    更新改名/移除后静默失联);② 三注册表互斥收全:``set(ENV_POOL_REWRITE) ∩
+    set(ENV_GIFTS) = ∅`` 且 ``∩ set(ENV_ECONOMY) = ∅``——集合交对称,本闸与
+    _validate_env_gifts 已收的 ∩ENV_ECONOMY 半边合起来 = 三表两两互斥
+    (单一环境只落一个估值结构,防双通道叠加;G8 半边声明的「∩ ENV_POOL_REWRITE
+    由 3.6 建表时收全」即本闸,不动已交付函数体);③ 结构完备:改写目标品质与
+    被改写取卡序要么齐备要么俱无(半残 = 登记笔误,层 E 公式不可算);④ pending
+    必填:单张改写型(有点名取卡序但非全改写,offer 覆盖面歧义)或 offer 结构
+    改写型(槽位语义歧义)必须写保守支 notes(_validate_strategy_effects
+    「pending 条目必须写保守支 notes」先例同款)。
+    """
+    orphans = [n for n in ENV_POOL_REWRITE if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(f"ENV_POOL_REWRITE 孤儿键(base 无此环境?):{sorted(orphans)}")
+    _overlap_gifts = set(ENV_POOL_REWRITE) & set(ENV_GIFTS)
+    if _overlap_gifts:
+        raise ValueError(
+            f"ENV_POOL_REWRITE ∩ ENV_GIFTS 非空(单一环境只落一个估值结构):"
+            f"{sorted(_overlap_gifts)}")
+    _overlap_econ = set(ENV_POOL_REWRITE) & set(ENV_ECONOMY)
+    if _overlap_econ:
+        raise ValueError(
+            f"ENV_POOL_REWRITE ∩ ENV_ECONOMY 非空(单一环境只落一个估值结构):"
+            f"{sorted(_overlap_econ)}")
+    for _name, _rw in ENV_POOL_REWRITE.items():
+        if bool(_rw.rewrite_quality) != bool(_rw.rewrite_picks):
+            raise ValueError(
+                f"ENV_POOL_REWRITE 结构半残:{_name!r} rewrite_quality="
+                f"{_rw.rewrite_quality!r} 与 rewrite_picks={_rw.rewrite_picks!r}"
+                f"须同有同无(层 E 公式不可算)")
+        _partial_rewrite = bool(_rw.rewrite_quality) and _rw.rewrite_picks != (1, 2, 3)
+        if (_partial_rewrite or _rw.offer_structure) and not _rw.pending_notes:
+            raise ValueError(
+                f"ENV_POOL_REWRITE pending 条目必须写保守支 notes:{_name!r}"
+                f"(offer 覆盖面/槽位语义歧义挂账)")
+
+
+_validate_env_pool_rewrite()
