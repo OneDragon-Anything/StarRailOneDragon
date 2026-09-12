@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from sr_od.application.currency_war.kernel.cw_board_state import (
     BoardState,
-    plane_of,
 )
 from sr_od.application.currency_war.kernel.cw_comps import Comp
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
@@ -106,13 +105,17 @@ def decision_target(session, bs: BoardState) -> Comp | None:
     劣化面。零漂移依据:decision_v2 生产路径 ``transition_framework`` 恒 ''
     (framework_startup 休眠开关关,无写端),双分支同返回 target_comp
     (C 方案对抗报告 攻击面 3 实证)。
-    """
-    from types import SimpleNamespace as _PlaneShim
 
+    波3 起 state 形态 = 容器直传(W6 波3 committed_from 签名切 BoardState,
+    hp施门下沉kernel政策层设计 §2.4 shim 收编申报②):``_PlaneShim``
+    单字段鸭子桥同波消亡——committed_authority 仅读 plane,真容器
+    ``plane_of`` 读口喂入恰等价,禁再新增同型鸭子桥(新消费点一律
+    直接按容器形态调用)。
+    """
     from sr_od.application.currency_war.kernel.cw_intention import (
         committed_from,
     )
-    if not committed_from(session, _PlaneShim(plane=plane_of(bs))):
+    if not committed_from(session, bs):
         fw = getattr(strategy_state_of(session), 'transition_framework', '')
         if fw:
             rc = _RECIPES.get(fw)

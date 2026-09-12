@@ -139,6 +139,9 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel import cw_intention
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_bridge,
+)
 from sr_od.application.currency_war.kernel.cw_card_identity import (
     TIER_REGISTRY_CORE,
     TIER_TRANSITION,
@@ -843,7 +846,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
         闭合在名不在 bench 的下一读点就地销,自愈有界)。
         """
         _buy_name = getattr(card, 'name', '') or ''
-        record_fresh_buy(session, state, _buy_name)
+        # W6 波3 贯通:record_fresh_buy 已切容器签名,帧经桥装箱。
+        record_fresh_buy(session, board_state_bridge(state), _buy_name)
         # T-263 前窗买入分键(P90① 检验点;置于合成早退前 = 全路径覆盖)。
         # 息损 = 买入跨档数(cap 消费帧 cap_resolved,与策略息账同源);
         # over_bound 断言键依据 P90①「1-2 费单价下单笔最多穿 1 档」,
@@ -1939,9 +1943,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
     # 单一源 docstring)。同帧双闸分键不混桶:reward_node_defer ≠
     # blood_xp_gate_defer ≠ crisis_level_spend_defer。扑满环境帧守卫
     # 解除抑制,写点同时复活 v3_piggy_reward 遥测真值(ADR-0348 ↺)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge,
-    )
+    # (board_state_bridge 自 W6 波3 起模块级导入,原函数内惰性 import
+    #  删除——惰性局部名会遮蔽全函数作用域,前置消费点 UnboundLocalError。)
     _reward_defer = reward_node_suppressed(board_state_bridge(state))
     if _reward_defer:
         _count('reward_node_defer')
@@ -3071,3 +3074,5 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     if bench_free <= 0:
                         _count('budget_gate_must_spend_deadend')
     return CloseShop()
+
+

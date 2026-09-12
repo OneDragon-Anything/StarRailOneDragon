@@ -9,9 +9,11 @@
 - 方向节拍内化(:meth:`_refresh_direction`;ADR-0583:方向重估从流程侧
   ops 直调收进策略器,触发信号 = 黑板帧刷新代次标注,键守卫贵段每
   game-round 恰一次 + 便宜派生视图段);
-- 结算策略半惰性加工(:meth:`_drain_pending_round_outcomes`;旧
-  on_round_end 拆两半——观察半归框架观察层即时直写,策略半经
-  ``session.pending_round_outcomes`` 待加工槽在此 drain);
+- **结算策略半已删(T-64 退役批,04_survival_budget §7 #7/#8)**:
+  ``_drain_pending_round_outcomes``/``_process_settlement_strategy_half``/
+  ``_alarm_node_type_fallback`` 三方法 = 零行为死链(掉血三臂喂入/
+  谷底回滚登记/``v3_prev_hp`` 更新,判据数据积累零决策消费端,ADR-0638);
+  ``session.pending_round_outcomes`` 槽保留为观察半累积面(消费侧已退);
 - pick 族(decide_invest/supply/encounter/megastar/partner/planner/
   star_tome/wish_trial/box_card);
 - 商店序列兼容驱动器 decide_shop_screen 缺省实现(降格出 ABC,
@@ -38,10 +40,10 @@ from typing import TYPE_CHECKING, Literal
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel import cw_comps, cw_events
-from sr_od.application.currency_war.kernel.cw_comps import get_comp
-from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-    BloodAlarmTracker,
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_bridge,
 )
+from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
@@ -54,9 +56,6 @@ from sr_od.application.currency_war.kernel.cw_events import (
     SupplyOption,
     SupplyPick,
 )
-from sr_od.application.currency_war.kernel.cw_evolution import (
-    rollback_weakest,
-)
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
     hoard_target_set,
@@ -64,10 +63,6 @@ from sr_od.application.currency_war.kernel.cw_intention import (
     pair_target_comp,
     update_intention,
 )
-from sr_od.application.currency_war.kernel.cw_performance import (
-    RoundOutcome,
-)
-from sr_od.application.currency_war.kernel.cw_plane_table import NODES_PER_PLANE
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
     DecisionV2Registry,
@@ -96,10 +91,6 @@ if TYPE_CHECKING:
 # config 属 app 桶,impl 桶禁 import(cw_strategy.py 字符串注解先例);
 # 实例由调用方按参注入。
 CurrencyWarConfig = 'CurrencyWarConfig'
-
-#: 谷底回滚线(点6:转型中遭遇单场掉血 >15 → 回滚一件最弱替换位;
-#: 与点4 报警线 20/30 分层并存——15 管转型期单场,20/30 管全局累计)
-VALLEY_ROLLBACK_LOSS: int = 15
 
 # ===== 面③出辖观察件(锁生成可行性;纯观测零行为)=====
 # 设计出处 = p2_blood_band_unified_design/DESIGN.md §2.3-5(a)
@@ -164,8 +155,14 @@ def bump_lock_gen_feasibility_obs(session: StrategySession | None,
             and ist.last_event.startswith(_LOCK_EVENT_PREFIXES):
         _k_total = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'lock_open_total'
         counters[_k_total] = counters.get(_k_total, 0) + 1
-        hp = getattr(state, 'hp', None)
-        if hp is not None and hp_decision_trusted(state) \
+        # W6 波3 贯通:hp 决策可信位读口已切容器形态(统一 state 迁移波 2,
+        # hp施门下沉kernel政策层设计 §2.3),帧值经过渡桥装箱读。
+        # ⚠️ 桥视图 hp source 恒 observation → 可信位在该视图恒 True——
+        # 过渡窗申报语义(hp施门下沉kernel政策层设计 §2.5 过渡桥失真申报:
+        # 桥输入帧 hp 已被上游施门,行为仍一致);本件纯观测零行为。
+        _bs = board_state_bridge(state)
+        hp = _bs.hp.value
+        if hp is not None and hp_decision_trusted(_bs) \
                 and hp <= HP_BAND_NEAR_DEATH:
             _k_low = LOCK_GEN_FEASIBILITY_OBS_PREFIX + 'lock_open_lowband'
             counters[_k_low] = counters.get(_k_low, 0) + 1
@@ -180,8 +177,14 @@ def bump_lock_gen_feasibility_obs(session: StrategySession | None,
             return   # 域外帧不入键(hp 缺读/带外帧防污染死区读数)
         counters[_k_dz] = counters.get(_k_dz, 0) + 1
 
-class CwFlowStrategy(CwStrategy):
+
+class CwFlowStrategy(CwStrategy[StrategyState]):
     """主流程驱动核(生命周期 + 战略层意向 + pick 族 + 备战主流程栈)。
+
+    泛型绑定(设计正本 §1/§8.5/§8.6-6,迁移批次三):本核即 mandate_v1
+    流程核,``_TState`` 在此绑定为本实现的私有状态类型 StrategyState
+    (基类 ``create_state`` 返回类型随之收窄)——框架基类仍只以泛型参数
+    携带,零感知字段;kernel/one_dragon 零 import 本类型(布局锁辖)。
 
     方法体逐字平移自 ``decision_v2/strategy.py`` DecisionV2Strategy
     同名方法(出处见各方法 docstring;行为零变更由 sim 契约锁承载)。
@@ -196,143 +199,8 @@ class CwFlowStrategy(CwStrategy):
         super().__init__()
         self.registry = registry or DEFAULT_REGISTRY
 
-    # ===== 生命周期(ADR-0583 收编:唯一冷建口 + 结算策略半惰性加工)=====
-
-    def _drain_pending_round_outcomes(self, session: StrategySession) -> None:
-        """结算策略半惰性加工(ADR-0583 §2.5:旧 on_round_end 拆两半的策略半)。
-
-        观察层(cw_screen_battle_wait 结算回路)在结算点即时直写观察字段
-        全集(performance.record/last_streak/last_hp+置信门/last_hp_t)并把
-        ``RoundOutcome`` 追加进 ``session.pending_round_outcomes``;本方法在
-        **下一次决策入口**(备战/商店/pick 任意入口,经
-        :meth:`_consume_prep_direction_frame`/:meth:`_consume_shop_direction_frame`
-        统一先 drain)逐行执行策略器内部加工,处理即清槽——每行只加工一次,
-        天然幂等,无需键守卫。
-
-        逐行 = 旧 on_round_end(flow 历史版:156-192)原样搬运:
-        掉血三臂喂入(BloodAlarmTracker)+ node_type 空值回落 + 谷底回滚登记
-        + ``v3_prev_hp`` 更新。**零行为差依据**(ADR-0583 §2.5 归属表读端
-        核查):``v3_alarm``/``v3_pending_rollback``/``v3_prev_hp`` 在 src 内
-        零行为读端(掉血判据数据积累期;``VALLEY_ROLLBACK_LOSS`` 已裁定退役,
-        本批只搬运不删除,删码归既定退役批)。
-
-        state 基准申报:原 on_round_end 收到的 state = battle_wait 传入的空
-        ``GameState()``(plane/round 回落与 t 计算实际取其缺省值);本方法无
-        state 参,基准 = ``session.last_state``(缺省回落空态)。该差异落在
-        上述零读端域内,无行为面;``t`` 数值因此更贴近真实节点序(原形态受
-        调用面空态钉在 (plane-1)*9+1)。
-
-        best-effort 语义与原调用面守卫一致(方向/结算加工失败不阻塞决策):
-        单行异常留证后续行留槽下个入口重试(已处理行已出槽,不重复计数)。
-        """
-        pending = getattr(session, 'pending_round_outcomes', None)
-        if not pending:
-            return
-        while pending:
-            obs = pending.pop(0)
-            try:
-                self._process_settlement_strategy_half(session, obs)
-            except Exception as e:   # noqa: BLE001  策略半加工失败不阻塞决策
-                log.warning('[cw!][strategy] 结算加工异常(下个入口重试余量): %s', e)
-                break
-
-    def _process_settlement_strategy_half(self, session: StrategySession,
-                                          obs: RoundOutcome) -> None:
-        """单行结算策略半加工(:meth:`_drain_pending_round_outcomes` 的逐行体;
-        独立成方法便于异常边界落在单行粒度)。"""
-        from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
-            state_of,
-        )
-        _ms = state_of(session)
-        tracker = _ms.v3_alarm
-        if tracker is None:
-            tracker = _ms.v3_alarm = BloodAlarmTracker()
-        hp_after = getattr(obs, 'hp_after', None)
-        node_type = getattr(obs, 'node_type', None) or ''
-        # N2 同源:obs.plane 权威(结算时位面可能已推进);state 基准申报见 drain docstring。
-        # 消费切换(迁移批次二):基准态 = BoardState 视图
-        # (kernel/cw_bs_view.strategy_input_state;已建模域=记录值,
-        # 席位/透传域=last_state 原帧,行为等价申报见模块 docstring)。
-        from sr_od.application.currency_war.kernel.cw_bs_view import (
-            strategy_input_state,
-        )
-        state = strategy_input_state(session)
-        plane = getattr(obs, 'plane', None) or state.plane
-        if not node_type:
-            # supply 失活治本(supply失活升级线 第6/7次复现):空 node_type 轮
-            # 被 BloodAlarmTracker 战斗节点门整轮丢弃 → 掉血数据缺失、生死窗
-            # 判读缺页。修法 = node_type 空值回落**对局档案装配轮行序**——
-            # 档案(match_archive)按局归并轮次、轮行自带序,但其装配是局后
-            # assemble_pending 产物,结算加工时点不可得 → 同一轮行序的
-            # 局内单一源 = 位面节点台账(PlaneNodeLedger:按位面归并、轮行
-            # 自带序;位面详情采集/投资环境重读两写点,15 号稿 §1 行 10
-            # 「权威表」),按 (plane, round_num) 查同轮 node_type;查不到 =
-            # 照旧空串(不猜)+ 分键留证。
-            node_type = self._alarm_node_type_fallback(
-                session, plane, getattr(obs, 'round_num', None)
-                or state.round_num)
-        t = (plane - 1) * NODES_PER_PLANE + state.round_num
-        hp_before = _ms.v3_prev_hp
-        if hp_before is not None and hp_after:
-            tracker.record(node_type, hp_before, hp_after, t, plane=plane)
-            # 点6 谷底回滚:转型中(上次替换名单非空)单场掉血 >15
-            # → 回滚一件最弱替换位后放缓(显式动作下轮发)
-            mem = _ms.v3_evolution
-            if mem is not None and getattr(mem, 'last_deployed', None) \
-                    and hp_before - hp_after > VALLEY_ROLLBACK_LOSS \
-                    and _ms.v3_pending_rollback is None:
-                act = rollback_weakest(state, mem)
-                if act is not None:
-                    _ms.v3_pending_rollback = act
-                    log.info('[cw][d2] 谷底回滚登记(单场 -%d > %d)',
-                             hp_before - hp_after, VALLEY_ROLLBACK_LOSS)
-        _ms.v3_prev_hp = hp_after if hp_after else hp_before
-
-    def _alarm_node_type_fallback(self, session, plane, round_num) -> str:
-        """掉血报警 node_type 空值回落(→ 生产词汇表 token | 空串)。
-
-        命中 = 台账该位次有非空类型 → 映射回生产词表喂
-        BloodAlarmTracker(掉血数据恢复);未命中(表缺/越界/该位次 None)
-        = 照旧空串不猜 + ``blood_alarm_node_type_fallback`` 分键留证
-        (单一源 = kernel.cw_telemetry_exit 常量)。best-effort 不抛。"""
-        token: str | None = None
-        try:
-            from sr_od.application.currency_war.kernel.cw_state import (
-                ledger_node_type,
-            )
-            token = ledger_node_type(session, plane, round_num)
-        except Exception:   # noqa: BLE001  台账缺失不阻塞结算喂入
-            token = None
-        # 词表单一源 = kernel.cw_state.NODE_TOKEN_TO_WORD(落地审 C1:自维护
-        # 删减副本漏 elite 致精英轮掉血恢复失效,从源头消掉)。
-        try:
-            from sr_od.application.currency_war.kernel.cw_state import (
-                NODE_TOKEN_TO_WORD,
-            )
-            nt = NODE_TOKEN_TO_WORD.get(str(token), '') if token else ''
-        except Exception:   # noqa: BLE001
-            nt = ''
-        try:
-            from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK,
-                record_defect,
-            )
-            record_defect(
-                'blood_alarm', DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK,
-                expected=f'node_type 非空(台账={token if token else "缺"})',
-                observed=f'回落={nt if nt else "空串(照旧)"}',
-                plane=int(plane or 0), round_num=int(round_num or 0),
-                gap_large=False, auto_resolved=bool(nt),
-                verdict=('台账命中-掉血数据恢复' if nt
-                         else '台账未命中-照旧空串(不猜)+分键留证'),
-                reader_source='on_round_end_node_type_fallback',
-                note='supply 失活治本:空 node_type 轮掉血数据不丢')
-        except Exception:   # noqa: BLE001  遥测 best-effort
-            pass
-        if nt:
-            log.info('[cw][d2] node_type 空值回落:台账 %s(%s-%s)→「%s」'
-                     '(掉血数据恢复)', token, plane, round_num, nt)
-        return nt
+    # ===== 生命周期(ADR-0583 收编:唯一冷建口 + 策略器状态工厂;结算策略半
+    # 惰性加工三方法已随 T-64 退役批删除,见模块 docstring 墓碑注)=====
 
     def create_state(self, config: CurrencyWarConfig) -> StrategyState:
         """策略器状态对象工厂(session.md §3.1/§5.1;ADR-0563 决策-2)。
@@ -485,7 +353,10 @@ class CwFlowStrategy(CwStrategy):
             # registry 透传(C4 存活轮数门在 v2 换线通道的判据注入,A/B 臂
             # 经构造参替换 registry 即可达;cw_intention 缺省 None=缺省表)
             _lg_pre_event = ist.last_event
-            update_intention(state, ist, session, registry=self.registry)
+            # W6 波3 贯通:kernel 意向面已切容器签名,黑板帧 GameState 帧
+            # 经过渡桥装箱(退役挂波4 黑板容器化,board_state_bridge docstring)。
+            update_intention(board_state_bridge(state), ist, session,
+                             registry=self.registry)
             # 面③出辖观察件(锁生成可行性;纯观测零行为,载体与辖域声明
             # 见 bump_lock_gen_feasibility_obs docstring)——随状态机贵段
             # 同频,每 game-round 恰一次。
@@ -529,11 +400,11 @@ class CwFlowStrategy(CwStrategy):
             # ——本段只消费产出,不复制派生。P1 外不辖(维持旧辖域:
             # P2+ 终局线走 locked_comp / 强制 assignment 通道)。
             pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
-                or p1_early_pair(state, ist)
+                or p1_early_pair(board_state_bridge(state), ist)
             if pair:
                 comp = pair_target_comp(pair)
         _ms.target_comp = comp
-        hoard = hoard_target_set(state, ist)
+        hoard = hoard_target_set(board_state_bridge(state), ist)
         _ms.v3_core_names = set(comp.core_chars) if comp else set()
         if ist.last_event and ist.last_event not in (
                 _ms.v3_last_intention_event,):
@@ -541,17 +412,18 @@ class CwFlowStrategy(CwStrategy):
                      ist.phase, hoard.mode, ist.last_event)
         _ms.v3_last_intention_event = ist.last_event
 
-    # ===== 决策入口统一内务:结算惰性 drain + 帧代次消费(ADR-0583 §3.2/§3.4)=====
+    # ===== 决策入口统一内务:黑板帧代次消费(ADR-0583 §3.2/§3.4;原前置的
+    # 结算惰性 drain 已随 T-64 退役批删除)=====
 
     def _consume_prep_direction_frame(self, session: StrategySession) -> None:
         """备战黑板帧代次消费(备战入口与 pick 族入口共用;ADR-0583 §3.2 触发面)。
 
         帧 = full → :meth:`_refresh_direction` 全程(键新则状态机 + 评分遥测);
         帧 = view(破墙派生帧/finalize 买后暂存帧)→ 只刷派生视图;帧 = none
-        → 只 drain 结算槽即返回。读后即复位 'none'(消费即清,防同帧重复刷新;
+        → 读后复位即返回(原前置的结算槽 drain 已随 T-64 退役批删除)。
+        读后即复位 'none'(消费即清,防同帧重复刷新;
         复位 = 读协议半部,非新鲜度宣告——帧类写点收敛归流程观察段,§3.4/D6)。
         刷新失败不阻塞决策(沿用原 ops 侧守卫语义,日志哨兵 [cw!] 保持)。"""
-        self._drain_pending_round_outcomes(session)
         cls = getattr(session, 'prep_frame_class', 'none')
         if cls not in ('full', 'view'):
             return
@@ -573,7 +445,6 @@ class CwFlowStrategy(CwStrategy):
         续段 none 帧 → 保持首段值(= 旧 ``_target_seeded``「仅首段重估」语义)。
         不捕获异常:与原 ops 侧 ``cw_op_buy_cards`` 首段直调的失败面一致
         (无守卫)。"""
-        self._drain_pending_round_outcomes(session)
         cls = getattr(session, 'shop_frame_class', 'none')
         if cls not in ('full', 'view'):
             return
@@ -607,8 +478,9 @@ class CwFlowStrategy(CwStrategy):
             state_of,
         )
         _ist = self._ensure_intention(state_of(session))
+        # W6 波3 贯通:cw_events 已切容器签名,黑板帧经桥装箱。
         pick = cw_events.decide_event(
-            options, config, state,
+            options, config, board_state_bridge(state),
             locked_comp=_ist.locked_comp,
             demoted_endgame=_ist.demoted_endgame,
             evicted=frozenset(_ist.evicted),
@@ -638,13 +510,13 @@ class CwFlowStrategy(CwStrategy):
                       session: StrategySession, config, refresh_used: bool = False) -> SupplyPick:
         """补给选装备/出钻。⚠️ OCR 未就绪(P1 契约成员 + 默认委托,handler 不 rewire,随阶段5)。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_supply(options, state, state_of(session).target_comp, config, refresh_used)
+        return cw_events.decide_supply(options, board_state_bridge(state), state_of(session).target_comp, config, refresh_used)
 
     def decide_encounter(self, options: list[EncounterOption], state: GameState,
                          session: StrategySession, config, refresh_used: bool = False) -> EncounterPick:
         """遭遇难度/词缀避开。⚠️ 后 dormant(遭遇=普通战斗无选项 UI);纯逻辑+测试暂留。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_encounter(options, state, state_of(session).target_comp, config, refresh_used)
+        return cw_events.decide_encounter(options, board_state_bridge(state), state_of(session).target_comp, config, refresh_used)
 
     def decide_megastar(self, options: list[MegastarOption], state: GameState,
                         session: StrategySession, config) -> MegastarPick:
@@ -684,7 +556,7 @@ class CwFlowStrategy(CwStrategy):
         升费卡打分含银狼线/在场判定(state.bench+deployed 的 char_id),
         state_of(session).target_comp 决定银狼线加成。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
-        return cw_events.decide_planner(options, state, state_of(session).target_comp)
+        return cw_events.decide_planner(options, board_state_bridge(state), state_of(session).target_comp)
 
     def decide_star_tome(self, options: list[str], state: GameState,
                          session: StrategySession, config) -> int:
@@ -758,10 +630,10 @@ class CwFlowStrategy(CwStrategy):
 
     def decide_box_card(self, names: list[str], state: GameState,
                         session: StrategySession, config) -> int:
-        """武装箱/节点弹窗 4 选 1 装备卡(r104 接入策略模块;原 pick_box_card 内联迁此)。
+        """武装箱/节点弹窗 4 选 1 装备卡(r104 接入策略模块)。
 
         打分:①target.key_equips 命中 +100(成型加速压倒一切);
-        ②合成材料通用性(_material_value 配方数;生命之花 7/轮滑鞋 6/光能电池 6);
+        ②合成材料通用性(material_value 配方数,kernel cw_prep_expect 单一源;生命之花 7/轮滑鞋 6/光能电池 6);
         ③target.key_equips 的合成材料(两跳:该材料能合出 key_equip)命中 +30。
         无信息 fallback idx=0。返回索引(调用方点卡)。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务

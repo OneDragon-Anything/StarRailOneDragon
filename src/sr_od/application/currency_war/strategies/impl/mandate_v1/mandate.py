@@ -1508,8 +1508,13 @@ def run_mandate(frame: MandateFrame,
         _m1p_reasons: dict[str, str] = {}
         # 装配产物持引用(发射门消费 membership/bench 压席成员面,同一
         # 快照,禁发射门二次装配出第二份输入)。
+        # W6 波3 贯通:assemble 已切容器签名,决策帧经桥装箱。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge as _bs_m1p,
+        )
         _m1p_ctx = assemble_swap_plan_inputs(
-            session, state=state, deployed=list(frame.deployed),
+            session, state=(_bs_m1p(state) if state is not None else None),
+            deployed=list(frame.deployed),
             bench=list(frame.bench), cap=frame.deploy_cap)
         _m1p = select_swap_plan(_m1p_ctx, reasons_out=_m1p_reasons)
         # 逐件拒因分键(ADR-0534 §7 键集;T-127 §2.3 分键闭集扩:收窄后

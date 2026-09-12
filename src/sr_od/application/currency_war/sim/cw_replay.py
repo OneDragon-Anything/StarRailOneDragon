@@ -229,6 +229,9 @@ def _materialize_target_comp(ist: IntentionState,
     plane,state 缺失时整段 P1 面(配方对/early)跳过——只回退
     locked_comp 硬源;调用序上黑板须先于本函数就位。
     """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
     from sr_od.application.currency_war.kernel.cw_comps import get_comp
     from sr_od.application.currency_war.kernel.cw_intention import (
         p1_early_pair,
@@ -238,7 +241,7 @@ def _materialize_target_comp(ist: IntentionState,
     if comp is None and state is not None \
             and int(getattr(state, 'plane', 1) or 1) == 1:
         pair = tuple(getattr(ist, 'p1_pair', ()) or ()) \
-            or p1_early_pair(state, ist)
+            or p1_early_pair(board_state_bridge(state), ist)
         if pair:
             comp = pair_target_comp(pair)
     return comp

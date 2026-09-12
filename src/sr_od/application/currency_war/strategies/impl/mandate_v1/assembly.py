@@ -20,6 +20,9 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_bridge,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import committed_from
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
@@ -99,7 +102,8 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
             # P86:session/registry 透传甲臂 G 门(强锁门逐字需要 plane
             # 真值视界与当帧注册表 ε;落地审 F-2 两域禁分叉);投影失败帧
             # 走 hoard_readable=False 保守域,同 D1 面。
-            ht = hoard_target_set(state, ist, session=session,
+            # W6 波3 贯通:hoard_target_set 已切容器签名,帧经过渡桥装箱。
+            ht = hoard_target_set(board_state_bridge(state), ist, session=session,
                                   registry=registry)
             hoard = frozenset(ht.char_targets) | frozenset(ht.equip_targets)
         except Exception:   # noqa: BLE001  投影失败显式暴露(D1):不再静默退空集

@@ -2590,20 +2590,56 @@ def bench_slots_of(bs: BoardState) -> list:
     return bench_slots_to_legacy(view)
 
 
+def back_capacity_of(bs: BoardState) -> int:
+    """后排格数读口(旧 ``GameState.back_max`` 容器版,波3 立口):
+    back_layout 真值(值域 6-9,平常 6/宝钻扩展 7/8,域外 8 格超集);
+    未观察帧退机制基线 6(与旧字段缺省同源)。
+
+    ⚠️ 语义修正申报(W6 波3,调研草案 §4/风险 7):旧 ``GameState.back_max``
+    静态 6 与实局 7/8 不符,本读口起消费面拿到动态真值——cap 封顶与
+    后排容量门输出随之修正,行为差由 cap 域锁(test_cw_cap_domain/
+    test_cw_cap_override_link)重推语义辖。单一源:``max_units_of`` 封顶
+    域与本读口同式,禁消费面内联第二份。"""
+    back = bs.back_layout.value
+    return int(back) if back is not None else 6
+
+
+def deployed_count_of(bs: BoardState) -> int:
+    """上阵占用数读口(旧 ``GameState.deployed_count`` 逐式镜像,波3 立口;
+    换算单一源 = :func:`deployed_slots_of` + ``cw_state.deployed_occupied``,
+    ADR-0392 占用数口径非 len)。"""
+    from sr_od.application.currency_war.kernel.cw_state import deployed_occupied
+    return deployed_occupied(deployed_slots_of(bs))
+
+
+def front_count_of(bs: BoardState) -> int:
+    """前排人数读口(旧 ``GameState.front_count`` 逐式镜像,波3 立口):
+    按 ``BenchChar.position_pref == 'front'`` 计(与旧法同式,非按槽段
+    计——BenchChar 站位偏好与所在排可短暂不一致,镜像以旧口径为准)。"""
+    return sum(1 for c in deployed_slots_of(bs)
+               if c is not None and c.position_pref == 'front')
+
+
+def back_count_of(bs: BoardState) -> int:
+    """后排人数读口(旧 ``GameState.back_count`` 逐式镜像,波3 立口;
+    口径同 :func:`front_count_of`)。"""
+    return sum(1 for c in deployed_slots_of(bs)
+               if c is not None and c.position_pref == 'back')
+
+
 def max_units_of(bs: BoardState) -> int:
     """可上阵数容器版派生(波1 公共读口单一源;旧 ``GameState.max_units``
     逐式镜像):deploy_cap 真值(≥level 才采信,ADR-0286 防抖漏网兜底
     level)封顶 = 前排恒 4 + back_layout 动态真值(缺省 6 = 机制基线,
-    值域 6-9,与旧 back_max 字段缺省同源)。"""
+    值域 6-9,与旧 back_max 字段缺省同源;封顶域单一源 =
+    :func:`back_capacity_of`)。"""
     from sr_od.application.currency_war.kernel.cw_state import (
         DEPLOYED_FRONT_CAPACITY,
     )
     level = level_of(bs)
     cap = bs.deploy_cap.value
     base = cap if (cap is not None and cap >= level) else level
-    back = bs.back_layout.value
-    back_max = int(back) if back is not None else 6
-    return min(base, DEPLOYED_FRONT_CAPACITY + back_max)
+    return min(base, DEPLOYED_FRONT_CAPACITY + back_capacity_of(bs))
 
 
 def board_state_bridge(st: object) -> BoardState:
