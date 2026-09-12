@@ -229,8 +229,9 @@ def obs_conflict(field: str, old, new, screen: MatLike | None = None, *,
                 _log.warning('[cw!][alarm][gold_delta] gap=%s old=%s new=%s '
                              'verdict=%s %s', _gap, old, new, verdict, ctx)
         # 统一缺陷台账旁路(纯观测):同一冲突归一落 defect_ledger.jsonl
-        #(缺陷台账 = 保留专用流;台账行 refs 指冻结档案冲突行,不复制数据;
-        # 调用方零改动)。外层 try/except 已兜底,旁路失败不影响证据行。
+        #(缺陷台账 = 保留专用流;台账行 refs 指 state journal (run_id,v) 锚行
+        #(构造单一源 = cw_telemetry_exit.journal_refs,无账本媒体时诚实省略),
+        # 不复制数据;调用方零改动)。外层 try/except 已兜底,旁路失败不影响证据行。
         # 落账经 kernel/cw_telemetry_exit 钩子位(缺省关,生产在
         # CurrencyWarApp.__init__ 注入真实现)。
         cw_telemetry_exit.bypass_obs_conflict_to_defect(rec)
