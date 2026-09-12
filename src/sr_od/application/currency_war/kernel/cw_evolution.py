@@ -34,10 +34,12 @@ from sr_od.application.currency_war.kernel.cw_board_state import (
     back_count_of,
     bench_slots_of,
     board_state_bridge,
+    board_state_of,
     deployed_count_of,
     deployed_slots_of,
     front_count_of,
     max_units_of,
+    note_action_receipt,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
@@ -102,7 +104,7 @@ def _seats(state: GameState) -> tuple[list, list]:
 
 
 def _tx_receipt_row(tx: CompTransaction, applied: bool, reason: str = '') -> dict:
-    """事务发射行(receipts 词表,§3.1.1-4;波3 applied-gate 改造件)。
+    """事务发射行(receipts 词表,§3.1.1-4;波 5 经 _emit_tx_receipt 接线生效)。
 
     op = 事务类型名;applied = 发出机械事实透传;deploy/undeploy/sell/fill
     计数 = 事务形状(执行面结构化字段,extra 语义)。"""
@@ -122,12 +124,13 @@ def _reconcile_tx_landing(pre_state: GameState, tx: CompTransaction,
     缺失不拦=放行该腿;fill 腿 shop 源无席位证据,不辖),失配 = 未落地
     (False)。
 
-    ⚠️ 双报对拍窗(调研草案风险 6,W6 波3):本判定与旧口径
-    (``action_log`` 末条 ``result=='applied'``)**并行双报,行为仍由旧
-    口径承载**,diff 留证申报后才切源——「发射后未落地」窗判定不同源,
-    禁拆批期间静默换源(旧口径退役挂波5/W8 simulate 退役)。
+    ⚠️ 双报对拍窗切源(调研草案风险 6,W6 波 3 立窗,波 5 收口):本判定
+    自波 5 起为**行为承载源之一**(与发出机械事实取合取,见 evolution_step
+    _try);旧口径(``action_log`` 末条 ``result=='applied'``)退役为发射行
+    applied 位的机械事实透传,双报分歧可见性随 receipts 行
+    applied/landing 双值落账。
     """
-    pre_dep, _pre_bench = _seats(pre_state)
+    pre_dep, pre_bench = _seats(pre_state)
     post_dep, _post_bench = _seats(post)
     dep_names_post = {d.char_id for d in post_dep if d is not None and d.char_id}
     exp_gone = {pre_dep[i].char_id for i in (tx.undeploy or [])
@@ -135,12 +138,41 @@ def _reconcile_tx_landing(pre_state: GameState, tx: CompTransaction,
     exp_gone |= {pre_dep[i].char_id for i, dom in (tx.sell or [])
                  if dom == 'deployed' and i < len(pre_dep)
                  and pre_dep[i] is not None and pre_dep[i].char_id}
-    exp_add = {pre_dep[i].char_id for i, _r in (tx.deploy or [])
-                if i < len(pre_dep) and pre_dep[i] is not None
-                and pre_dep[i].char_id}
+    # 入板腿期望 = deploy 的 bench 源件(bench_idx → 事务前 state.bench,
+    # 坐标系 = CompTransaction 字段口径节「bench_idx → state.bench」;双轨
+    # 期旧实现误用 bench_idx 索引 deployed 表 → 合法替换事务恒判失配,
+    # T-98 切源首日行为暴露后修正——对拍窗立窗本旨的兑现)。
+    exp_add = {pre_bench[i].char_id for i, _r in (tx.deploy or [])
+               if i < len(pre_bench) and pre_bench[i] is not None
+               and pre_bench[i].char_id}
     ok_gone = not (exp_gone & dep_names_post)     # 离板腿:预期离场件不在快照
     ok_add = exp_add <= dep_names_post            # 入板腿:预期入板件已在快照
     return ok_gone and ok_add
+
+
+def _emit_tx_receipt(bs, tx: CompTransaction, *, applied: bool,
+                     landing: bool, reason: str = '') -> None:
+    """事务发射行接入容器 receipts 域(批首清单①;波 3 applied-gate
+    改造件的接线半)。
+
+    - 行词表 = :func:`_tx_receipt_row`(op/applied/reason + 事务形状
+      deploy/undeploy/sell/fill),另附 ``landing`` = 观察侧落地判定
+      (:func:`_reconcile_tx_landing`):applied = 发出机械事实透传
+      (simulate 接受与否,「发出即簿记」口径,落地推断不入本位),
+      landing = 行为承载判据;两值并存保留双报可见性(对拍窗切源后,
+      分歧证据随 receipts 行落账,不再走独立 warning);
+    - bs=None(session 缺席的 kernel 纯函数调用面)= 无容器可发射,跳过
+      (诚实缺位);note_action_receipt 自身 best-effort,双层不毒化决策。
+    """
+    if bs is None:
+        return
+    row = _tx_receipt_row(tx, applied=applied, reason=reason)
+    row['landing'] = bool(landing)
+    note_action_receipt(
+        bs, op=row['op'], applied=row['applied'], reason=row['reason'],
+        actor='EvolutionEngine',
+        extra={k: v for k, v in row.items()
+               if k not in ('op', 'applied', 'reason')})
 
 
 @dataclass
@@ -1476,6 +1508,10 @@ def evolution_step(state: GameState, session=None,
         from sr_od.application.currency_war.kernel.cw_plane_table import nodes_of_plane
         final_window = state.round_num >= nodes_of_plane(session) - 1
 
+    # receipts 接线容器柄(批首清单①):session 缺席(kernel 纯函数调用
+    # 面)= 无容器,发射行跳过(诚实缺位,见 _emit_tx_receipt)。
+    _bs_rcpt = board_state_of(session) if session is not None else None
+
     def _try(opt: UpgradeOption) -> list[Action]:
         if _backoff_active(mem, opt, state):
             return []   # ADR-0360 件2:退避窗内同签名提案不重提
@@ -1507,19 +1543,18 @@ def evolution_step(state: GameState, session=None,
                      _ff_und_names)
             return []
         post = simulate(state, tx)
-        _old_applied = bool(post.action_log and
-                            post.action_log[-1].get('result') == 'applied')
-        # 双报对拍窗(风险 6):发射行 receipts 词表 + 观察侧 reconcile
-        # 判定并行计算留证;行为仍由旧口径(_old_applied)承载,diff 申报
-        # 后才切源(见 _reconcile_tx_landing docstring)。
+        # 双报对拍窗切源(风险 6,批首清单①随波 5 收口):行为承载源 =
+        # 发出机械事实 ∧ 观察侧落地判定(旧 action_log 末条单口径退役,
+        # 「发射后未落地」窗由 landing 腿接管;分歧可见性随 receipts 行
+        # applied/landing 双值落账,不再走独立 warning)。
+        _emitted = bool(post.action_log and
+                        post.action_log[-1].get('result') == 'applied')
+        _tx_reason = (post.action_log[-1].get('reason', '')
+                      if post.action_log else '')
         _rc_applied = _reconcile_tx_landing(state, tx, post)
-        if _rc_applied != _old_applied:
-            log.warning('[cw][ev][reconcile-diff] tx 判定双口径分歧 '
-                        '(old=%s,reconcile=%s,reason=%s)', _old_applied,
-                        _rc_applied,
-                        post.action_log[-1].get('reason', '')
-                        if post.action_log else '')
-        if not _old_applied:
+        if not (_emitted and _rc_applied):
+            _emit_tx_receipt(_bs_rcpt, tx, applied=_emitted,
+                             landing=_rc_applied, reason=_tx_reason)
             # ADR-0360 件2:事务被 simulate 拒 → 不发射 + 退避登记
             # (旧版拒了仍返回 tx,每轮原样重提零清障;迁移期 sim 实证:
             # 34/85 失败局
@@ -1527,8 +1562,7 @@ def evolution_step(state: GameState, session=None,
             log.info('[cw][ev][reject-backoff] 提案 %s%s%d(%s) 被拒(%s),'
                      '本轮不发射,退避 %d 轮',
                      opt.kind, opt.faction, opt.target_tier, opt.comp_name,
-                     post.action_log[-1].get('reason', '')
-                     if post.action_log else '',
+                     _tx_reason,
                      _REJECT_BACKOFF_ROUNDS)
             _record_reject(mem, opt, state)
             return []
@@ -1536,12 +1570,20 @@ def evolution_step(state: GameState, session=None,
         if fills:
             tx.fill = fills
             re = simulate(state, tx)
-            if not (re.action_log and
-                    re.action_log[-1].get('result') == 'applied'):
-                # 填位拖垮原子性:旧口径拒;reconcile 双报(对拍窗)不另计
-                log.debug('[cw][ev][reconcile] fill 剥离判定 reconcile=%s',
-                          _reconcile_tx_landing(state, tx, re))
-                tx.fill = None   # 填位拖垮原子性 → 剥离,另轮走常规填位
+            _fill_emitted = bool(re.action_log and
+                                 re.action_log[-1].get('result') == 'applied')
+            _fill_landing = _reconcile_tx_landing(state, tx, re)
+            if not (_fill_emitted and _fill_landing):
+                # 填位拖垮原子性 → 剥离,另轮走常规填位(判定源同切源口径:
+                # 发出 ∧ 落地;剥离不另记 receipts,事务行在切源后统一出)。
+                log.debug('[cw][ev][reconcile] fill 剥离判定 '
+                          '(emitted=%s,landing=%s)',
+                          _fill_emitted, _fill_landing)
+                tx.fill = None
+        # 成功行 = 事务最终形状(fill 含)落 receipts(applied/landing 恒真,
+        # 失败行已在上方拒绝支发射)。
+        _emit_tx_receipt(_bs_rcpt, tx, applied=True, landing=True,
+                         reason=_tx_reason)
         return [tx]
 
     if mem.pending is not None:
@@ -1571,14 +1613,16 @@ def evolution_step(state: GameState, session=None,
             sig_c = (_COMPLETION_REASON, sys_key, 0, '', '')
             if not _backoff_sig_active(mem, sig_c, state):
                 post = simulate(state, tx_c)
-                applied = post.action_log and \
-                    post.action_log[-1].get('result') == 'applied'
-                # 双报对拍窗:发射行词表 + reconcile 判定留证(行为照旧)。
+                _emitted_c = bool(post.action_log and
+                                  post.action_log[-1].get('result') == 'applied')
+                _txc_reason = (post.action_log[-1].get('reason', '')
+                               if post.action_log else '')
                 _rc_applied_c = _reconcile_tx_landing(state, tx_c, post)
-                if _rc_applied_c != bool(applied):
-                    log.warning('[cw][ev][reconcile-diff] 补完事务判定分歧 '
-                                '(old=%s,reconcile=%s)', bool(applied),
-                                _rc_applied_c)
+                # 判定源 = 对拍窗切源后口径:发出 ∧ 落地(成功行/失败行
+                # 均落 receipts,分歧可见性随行双值)。
+                _emit_tx_receipt(_bs_rcpt, tx_c, applied=_emitted_c,
+                                 landing=_rc_applied_c, reason=_txc_reason)
+                applied = _emitted_c and _rc_applied_c
                 freeze_ok = True
                 if applied and final_window and \
                         (tx_c.undeploy or tx_c.sell):

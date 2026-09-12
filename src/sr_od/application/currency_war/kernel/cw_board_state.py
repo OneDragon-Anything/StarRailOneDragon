@@ -259,7 +259,9 @@ REGISTERED_ACTORS: set[str] = {
     'derive_node_type',              # 派生规则·类型直定(§3.4.1 类型派生·R1.2)
     'ResumeAttach',            # 接管协议(载体中继登记名,§3.2.4)
     'MatchClose',              # 局终收口(局终域写点,接线归后续批)
-    'synthesize_from_game_state',  # sim 合成口(§2.1)
+    'synthesize_from_game_state',  # sim 合成口(§2.1;波 5 起为直写喂入口写入实现)
+    'feed_sim_truth',             # sim 真值直写喂入口(波 5 喂入反转正式入口)
+    'EvolutionEngine',            # 阵容演进引擎(事务发射行 receipts 写点,波 5 接线)
     # —— R2 动作 op 写入接线(渠道② logic_action,§3.2.1 登记类属 =
     # 「动作 op / handler 类名」;actor = 执行动作的 op 类,动作身份由
     # 回执记录 op 字段承载)——
@@ -2668,7 +2670,11 @@ def note_board_state_heartbeat(ctx_or_session: object) -> None:
 
 def synthesize_from_game_state(bs: BoardState, st: GameState, *,
                                at_round: str = '') -> None:
-    """sim 合成口:GameState 真值 → BoardState 观察(§2.1)。
+    """GameState 真值 → 容器域写入(波 5 起为直写喂入口的写入实现)。
+
+    引擎侧统一经 :func:`feed_sim_truth` 调本函数(best-effort 边界在
+    喂入口);直接调用仅余实机入口融合段等既有非 sim 端点。原「sim 合成口」
+    域覆盖口径不变:
 
     - sim 无识别过程 = 恒真值帧:可读字段全记 observation,evidence 恒带
       ``sim:synthesized``(at_round 非空时并入轮键后缀
@@ -2809,6 +2815,30 @@ def synthesize_from_game_state(bs: BoardState, st: GameState, *,
         bs.observe(bs.active_strategies, list(st.active_strategies),
                    evidence=_ev, sig=_synth_sig)
     bs.mark_frame_obs('full')
+
+
+def feed_sim_truth(bs: BoardState, st: GameState, *,
+                   at_round: str = '') -> None:
+    """sim 真值直写喂入口(波 5 喂入反转的正式入口)。
+
+    方向契约(与过渡桥的反转边界):sim 引擎内部模型(GameState 工作帧)
+    的真值由**引擎侧主动直写**进 session 容器,消费端(策略/op)一律
+    经 ``board_state_of(session)`` 直读容器——禁再造桥装箱一次性视图。
+    写入实现 = :func:`synthesize_from_game_state`(域覆盖/evidence/
+    payload 离屏口径单一源,本口零第二实现);喂入时点 = 决策消费点
+    之前(商店决策段/投资选卡/意向重估等),保证消费读到的容器帧与
+    引擎内部模型同拍。
+
+    - best-effort:记录层故障不毒化 sim(与 note_action_receipt 同纪律),
+      异常 log 留痕后返回,容器保持上一拍帧;
+    - 桥(:func:`board_state_bridge`)退役挂 prep 链线(T-115/T-116)辖域
+      调用点清零;sim 域/本批辖域调用点已全部切本口,禁回流。
+    """
+    try:
+        synthesize_from_game_state(bs, st, at_round=at_round)
+    except Exception as e:   # noqa: BLE001  记录层 best-effort,不毒化 sim
+        log.warning('[cw-bs][feed] sim 真值直写跳过(at_round=%s): %r',
+                    at_round, e)
 
 
 # ============================================================ 决策面公共读口

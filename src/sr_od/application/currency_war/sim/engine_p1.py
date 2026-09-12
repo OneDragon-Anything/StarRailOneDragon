@@ -83,6 +83,12 @@ from sr_od.application.currency_war.sim.cw_sim_invest import (
 )
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 
+if TYPE_CHECKING:
+    # 仅类型注解引用(sim_decision_registry 返回注解;项目规范允许)
+    from sr_od.application.currency_war.kernel.cw_registry import (
+        DecisionV2Registry,
+    )
+
 # (expected_paths 快照 import 已随 ADR-0651 两态制退役删除——telemetry
 #  .recorder.snapshot_expected_paths 同批拆除。)
 
@@ -352,7 +358,7 @@ P2_NODE_SEQUENCE: tuple[str, ...] = (
 
 
 
-def sim_decision_registry():
+def sim_decision_registry() -> DecisionV2Registry:
     """sim 环境的决策层注册表视图:level_max 对齐执行层 LEVEL_CAP。
 
     为什么:满级升级拒付空转的根源 = 决策层单一源 registry.level_max=10
@@ -684,7 +690,8 @@ def _m1p_plan_and_record(st: GameState, sess) \
     第二装配。零 rng 消耗、纯读(状态写入只发生在引擎执行转录块)。
     """
     from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge,
+        board_state_of,
+        feed_sim_truth,
     )
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assemble_swap_plan_inputs,
@@ -694,9 +701,13 @@ def _m1p_plan_and_record(st: GameState, sess) \
     from sr_od.application.currency_war.kernel.cw_state import (
         iter_occupied_deployed,
     )
-    # W6 波3 贯通:同上,帧经桥装箱。
+    # 波 5 喂入反转:计划谓词装配消费前直写容器、喂容器直读
+    # (旧桥装箱一次性视图随桥退役拆除;同函数同装配契约不变)。
+    feed_sim_truth(board_state_of(sess), st,
+                   at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
+                            f'-r{int(getattr(st, "round_num", 1) or 1)}-m1p')
     ctx = assemble_swap_plan_inputs(
-        sess, state=board_state_bridge(st),
+        sess, state=board_state_of(sess),
         deployed=list(iter_occupied_deployed(st.deployed)),
         bench=[b for b in st.bench if b is not None],
         cap=st.max_units())
@@ -1051,13 +1062,21 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             st.active_env = _inv.profile.active_env
     elif _sink is not None:
         # 基线臂·开局环境选卡:3 候选 → decide_invest('env') 裁决。
-        # 时点对齐生产 entry 流程(简报→投资环境屏);state 用开局真值帧
-        # (board 空 = overlay 上 board 不可读的生产语义,decide_event 的
-        # DoT 惩罚不触发);comp 未定(None)与生产开局环境屏同态。
+        # 时点对齐生产 entry 流程(简报→投资环境屏);comp 未定(None)与
+        # 生产开局环境屏同态。波 5 喂入反转:决策消费前先直写容器再喂
+        # 容器直读(旧裸传 GameState 帧值在 kernel 新签名下是 AttributeError
+        # 破口,cw_events.bs.board.value 读法;修复 = T-98 批首清单⑥)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of as _bs_of_inv,
+        )
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            feed_sim_truth as _feed_inv,
+        )
+        _feed_inv(_bs_of_inv(sess), st, at_round=f'p{int(getattr(st, "plane", 1) or 1)}-r0-env')
         _env_opts = _sink.sample_env_options()
         if _env_opts:
             _env_pick = strat.decide_invest(
-                'env', list(_env_opts), st, sess, config)
+                'env', list(_env_opts), _bs_of_inv(sess), sess, config)
             _env = _env_opts[_env_pick.option_idx]
             sess.active_env = _env
             st.active_env = _env
@@ -1225,10 +1244,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if _inv is not None:
                 _pk = _inv.picks_by_key.get((_seg_plane, rn))
             elif _sink is not None and (_seg_plane, rn) in _sink.pick_slots:
+                # 波 5 喂入反转:消费前直写容器、喂容器直读(同 env 臂,
+                # 修 T-98 批首⑥破口)。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    board_state_of as _bs_of_inv,
+                )
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    feed_sim_truth as _feed_inv,
+                )
+                _feed_inv(_bs_of_inv(sess), st,
+                          at_round=f'p{_seg_plane}-r{rn}-invest')
                 _opts = _sink.sample_strategy_options(sess.active_strategies)
                 if _opts:
                     _pe = strat.decide_invest(
-                        'strategy', list(_opts), st, sess, config)
+                        'strategy', list(_opts), _bs_of_inv(sess), sess, config)
                     _pk = _opts[_pe.option_idx]
                     _pick_rec = {'kind': 'strategy', 'plane': _seg_plane,
                                  'round': rn, 'options': list(_opts),
@@ -1274,6 +1303,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # cap 真值 = level + 宝钻数(生产 read_deploy_cap 语义);无宝钻 None
             # → max_units() 兜底 level(与生产防抖拒信路径同态)
             st.deploy_cap = st.level + _diamonds if _diamonds else None
+            # 宝钻联动后排格数真值(规格 = T-23-r1 §⑤.1,批首清单②):
+            # 实机后台格数 = 6 + (deploy_cap − level) = 6 + 宝钻数,值域
+            # 6-9 封顶 9(board_structure.md 量化公式节;与 T-322 公式封顶
+            # 修正 _CAP_DIFF_MAX=3 同值域)。默认 diamond_cap_prob=0 →
+            # back_max 恒 6 与 GameState 缺省逐位同(零漂移);合成口
+            # back_layout 域「缺席不写」口径不受影响(缺省 6 恒非 None)。
+            st.back_max = min(6 + _diamonds, 9)
             st.shop = cards_pool.draw_shop(st.level, probs=st.refresh_probs)
             _waves = [{'event': 'offer', 'gold': st.gold,
                        'cards': [{'name': c.name, 'faction': c.faction,
@@ -1451,7 +1487,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                     and _tc_launch is not None):
                 from sr_od.application.currency_war.kernel.cw_board_state import (
-                    board_state_bridge,
+                    board_state_of,
+                    feed_sim_truth,
                 )
                 from sr_od.application.currency_war.kernel.cw_launch_admission import (
                     LAUNCH_QUALITY_DEFER_FRAMES_KEY,
@@ -1461,8 +1498,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
                     line_members,
                 )
+                # 波 5 喂入反转:发射门消费前直写容器、喂容器直读
+                # (旧桥装箱一次性视图随桥退役拆除;消费时点不变)。
+                feed_sim_truth(board_state_of(sess), st,
+                               at_round=f'p{_seg_plane}-r{rn}-launch')
                 _core = readiness_launch_decision(
-                    board_state_bridge(st), _tc_launch,
+                    board_state_of(sess), _tc_launch,
                     line_members=line_members)
                 # 质量闸观测分键(ADR-0570 待标定①观测 sink:推迟帧/评估
                 # 异常帧;best-effort,容器缺席静默跳过,与
@@ -1602,17 +1643,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 与旧「每段战略层直调重估」效果一致;段内投影帧槽值保持
                 # 'none' 不再刷新,= 段内视图不漂)。
                 # W6 波 4:黑板槽写点退役(设计件 §1.3-1 读写端同波)——
-                # 决策读容器,真值喂入 = 下方 sim 合成口;标注槽(帧代次)
+                # 决策读容器,真值喂入 = 下方直写喂入口;标注槽(帧代次)
                 # 保留(消费读点 = flow._consume_shop_direction_frame,
                 # 帧本体 = 容器)。
                 sess.shop_frame_class = 'full'
-                # BoardState 记录模型合成口(迁移批次一;设计 §2.1/§3.2.5,
-                # 字段级规格正本 =
-                # docs/develop/sr_od/application/currency_war/game_state/fields.md):sim 真值帧同步记观察
+                # BoardState 记录模型真值直写(波 5 喂入反转;域覆盖规格
+                # = fields.md:sim 真值帧同步记观察
                 # (evidence 恒 sim:synthesized),bench 槽位保序 = 记录模型
                 # 按实机真值箱占席(sim「无箱实体」只是内部口径约定不进
                 # 记录)。纯记录零决策面:sim 账本/行为逐位不变。best-effort
-                # 不炸引擎(记录层故障不毒化 sim)。
+                # 不炸引擎(记录层故障不毒化 sim,best-effort 边界在喂入口)。
                 from sr_od.application.currency_war.kernel.cw_board_state import (
                     bench_is_full as _bs_bench_is_full,
                 )
@@ -1620,13 +1660,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     board_state_of as _bs_of,
                 )
                 from sr_od.application.currency_war.kernel.cw_board_state import (
-                    synthesize_from_game_state as _bs_synth,
+                    feed_sim_truth as _bs_feed,
                 )
-                try:
-                    _bs_synth(_bs_of(sess), st, at_round=f'p{_seg_plane}-r{rn}')
-                except Exception as _bs_e:   # noqa: BLE001
-                    from one_dragon.utils.log_utils import log as _log
-                    _log.warning('[cw-sim] BoardState 合成口跳过: %r', _bs_e)
+                # 波 5 喂入反转:直写喂入口(旧内联 try/except 合成块收编
+                # 进 kernel 喂入口;best-effort 纪律随迁,记录层故障不毒化 sim)。
+                _bs_feed(_bs_of(sess), st, at_round=f'p{_seg_plane}-r{rn}')
                 # ADR-0488 席满观测键·派生支(迁移批次二;设计 §8.7 as-built
                 # 「席满观测键 ADR-0488 经合成口后 bench_is_full 供给」):
                 # 满栏旗标改经 BoardState 派生(席空数==0,§3.2.5 派生单一
