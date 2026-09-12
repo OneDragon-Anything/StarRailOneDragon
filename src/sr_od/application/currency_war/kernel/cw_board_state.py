@@ -3037,14 +3037,13 @@ def max_units_of(bs: BoardState) -> int:
 def board_state_bridge(st: object) -> BoardState:
     """GameState 帧值 → 独立 BoardState 视图(W6 决策面切换的过渡桥)。
 
-    **存在理由(波次过渡,退役挂波5 喂入反转)**:波1-3 逐波切 kernel
-    决策簇签名,跨桶调用点(mandate/flow/sim/ops)此时仍持有 GameState
-    局部帧(商店黑板逐动作投影推进的演化帧,容器单例承载不了帧内演化),
-    本桥把该帧值装箱成一次性 BoardState 供新签名消费——值域 = 旧消费链
-    同源(合成口 :func:`synthesize_from_game_state` + 合成口未覆盖的三
-    标量域 level_up_cost/shop_refresh_cost/selected_difficulty 补写)。
-    波4 黑板容器化 + 波5 真值直写落地后,跨桶调用点直读 session 容器,
-    本函数随之删除。
+    **退役进行中(波 5 桥退役辖域面已清,残余调用点 = prep 链线辖域)**:
+    sim 域(engine_p1/cw_replay)与 kernel/cw_evolution、flow、cw_loop、
+    ops 等波 5 辖域调用点已改直写喂入口(:func:`feed_sim_truth`)+容器
+    直读,随本批退出;残余调用面 = prep 链线文件(T-115:entry/criteria、
+    T-116:mandate/proof/assembly 等,其签名切容器时消点)——全部清零后
+    本函数物理删除(其自身 ~10 处调用与删除同批)。残余集有哨兵锁看守
+    (test_cw_w5_sim_retirement),禁新增调用点。
     """
     if st is None:
         # 无帧调用面(如 session.last_state 缺席):全域未观察空视图,
