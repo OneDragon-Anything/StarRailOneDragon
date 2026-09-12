@@ -204,7 +204,7 @@ W3/W4 并行(不同文件域:W5 在 kernel 容器与 obs 喂入面,W3 在 teleme
 2. **invest_cards 效果原文回流**:strategy_offer 域建模(倾向,随 P5)vs 接受断供——**P7 删流硬门**。
 3. **cw_anchor 四 carrier_kind 归宿**(P2)。
 4. **defect_ledger 案 A/案 B + op_journal 同批裁决**:保留专用流在直迁口径下仍合法(保留=不删,
-   不入 P7 删除面);裁保留则 refs 迁 journal 键+寿命联动挂 P3——(P2 定谳)。
+   不入 P7 删除面);裁保留则 refs 迁 journal 键+寿命联动挂 T-6——(P2 定谳)。
 5. **ExpectedState 归一方案**:执行面写点迁 BoardState expect/confirm vs 申报保留执行域机制
    (P5/P6 前置)。
 6. **离线考古工具面**(tools/cw proofs、replay_to_md、cw_node_validate、cw_divergence_stats):

@@ -47,7 +47,7 @@
   引导窗(equips 观察写端 = 装备分配链装备区现读 + 载体中继兜底,
   接线滞后窗值冻结申报见喂入口 equips 段)。
 - front_max:常量供数(DEPLOYED_FRONT_CAPACITY,恒 4 非观察事实);
-- back_max:容器动态真值供数(W5 §2.3 定谳 + back_max 语义裁决四闸门:
+- back_max:容器动态真值供数(back_max 语义裁决四闸门:
   读 ``bs.back_layout``——三信号裁决值,值域 6-9(平常 6,宝钻/召唤物
   扩展,上限 9,机制正本 = board_structure.md 量化公式节);9 档坐标
   未交互建档,建档前域外按 8 格超集运行 + evidence ``superset`` 标记。
@@ -264,7 +264,7 @@ def game_state_view(bs: BoardState, frame: GameState | None) -> GameState:
     else:
         st.equips = list(fr.equips)
     # front_max = 常量供数(恒 4,非观察事实,不立字段派生直接取常量);
-    # back_max = 容器动态真值(W5 §2.3 定谳 + back_max 语义裁决·闸门一):
+    # back_max = 容器动态真值(back_max 语义裁决·闸门一):
     # 供数读 bs.back_layout(三信号裁决值,值域 6-9;9 档未建档前域外由
     # 8 格超集 + superset 标记承载),无值透传帧兜底引导窗——容器空壳期
     # 零行为变化(天然灰度),写端接线后自动携带真值。禁退回「恒透传帧」:

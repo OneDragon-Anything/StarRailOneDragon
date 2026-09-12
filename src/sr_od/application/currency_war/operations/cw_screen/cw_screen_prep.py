@@ -679,7 +679,7 @@ class CwScreenPrep(CwScreenOpBase):
                                   sig=ChannelSig(
                                       family='obs', actor='CwScreenPrep',
                                       screen='货币战争-备战', mode='carried'))
-                # 上场席位观察写端(W5 §2.2 B 组,与 bench 写端同环同纪律):
+                # 上场席位观察写端(与 bench 写端同环同纪律):
                 # deployed_rows_from_obs 空集守卫(P2-1 同款:空集 = 失读非
                 # 全空 → carry,禁「全场无人」假观察);特效窗门同 bench
                 # (star 读数物理不可信);front_row/back_row 分排观察照写,
