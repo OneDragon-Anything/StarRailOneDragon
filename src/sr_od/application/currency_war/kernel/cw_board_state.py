@@ -1433,7 +1433,13 @@ class ShopActionExecuted:
     bought_count: int | None = None
     #: LevelUpShop 实际击数(单动作形态恒 1;腾席链多击以回执为准)
     levelup_clicks: int | None = None
-    #: RefreshShop 实付刷新费(免费帧 = 0 → gold 不写,fields.md §3.3.4)
+    #: RefreshShop 实付刷新费(免费帧 = 0 → gold 不写,fields.md §3.3.4)。
+    #: 现役喂入方 = sim/replay 驱动器(flow/bridge decide_shop_screen,按
+    #: 动作 cost 派生);生产落地门(cw_op_buy_cards.apply_action_outcome)
+    #: **暂不喂本字段**——商店线 RefreshShop 是终结 op,生产投影门对终结
+    #: 动作整体跳写(期望态按下段入口重观察作废,终结不投影为申报过渡
+    #: 语义),单接本字段不可达;接线(含终结投影语义改)与 receipts 接线
+    #: 同批评估(账本 T-98 批首清单候选,波 5 sim 反转时裁决)。
     refresh_paid: int | None = None
 
 
@@ -1472,6 +1478,7 @@ def apply_shop_action_logic(bs: BoardState, action: Any, *,
     """
     _validate_sig(sig, ('logic_action',))
     from sr_od.application.currency_war.kernel.cw_state import (
+        MAX_PLAYER_LEVEL,
         XP_TO_NEXT_LEVEL,
         BenchChar,
         BuyCard,
@@ -1562,9 +1569,10 @@ def apply_shop_action_logic(bs: BoardState, action: Any, *,
         if clicks is None:
             return
         clicks = max(0, int(clicks))
-        # 满级 lv10 购买无效(fields.md §4.2 LevelUp 行;simulate 同门:
-        # level>=10 零金零经验),与 simulate 逐位等价(锁 M1)。
-        if level_of(bs) >= 10:
+        # 满级购买无效(fields.md §4.2 LevelUp 行;simulate 同门:
+        # 满级零金零经验),与 simulate 逐位等价(锁 M1)。
+        # 封顶单一源 = MAX_PLAYER_LEVEL(10)。
+        if level_of(bs) >= MAX_PLAYER_LEVEL:
             return
         g = bs.gold.value
         if g is not None:
