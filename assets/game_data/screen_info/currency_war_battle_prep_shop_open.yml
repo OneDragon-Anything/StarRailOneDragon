@@ -33,9 +33,9 @@ area_list:
 - area_name: 商店牌-1
   id_mark: false
   pc_rect:
-  - 392
+  - 377
   - 70
-  - 610
+  - 605
   - 260
   text: ''
   lcs_percent: 0.5
@@ -47,9 +47,9 @@ area_list:
 - area_name: 商店牌-2
   id_mark: false
   pc_rect:
-  - 645
+  - 646
   - 70
-  - 863
+  - 874
   - 260
   text: ''
   lcs_percent: 0.5
@@ -61,9 +61,9 @@ area_list:
 - area_name: 商店牌-3
   id_mark: false
   pc_rect:
-  - 898
+  - 914
   - 70
-  - 1116
+  - 1142
   - 260
   text: ''
   lcs_percent: 0.5
@@ -75,9 +75,9 @@ area_list:
 - area_name: 商店牌-4
   id_mark: false
   pc_rect:
-  - 1151
+  - 1183
   - 70
-  - 1369
+  - 1411
   - 260
   text: ''
   lcs_percent: 0.5
@@ -89,9 +89,9 @@ area_list:
 - area_name: 商店牌-5
   id_mark: false
   pc_rect:
-  - 1405
+  - 1452
   - 70
-  - 1623
+  - 1680
   - 260
   text: ''
   lcs_percent: 0.5
@@ -187,9 +187,9 @@ area_list:
 - area_name: 商店牌-1-费用
   id_mark: false
   pc_rect:
-  - 577
+  - 536
   - 284
-  - 639
+  - 605
   - 322
   text: ''
   lcs_percent: 0.5
@@ -201,9 +201,9 @@ area_list:
 - area_name: 商店牌-2-费用
   id_mark: false
   pc_rect:
-  - 846
+  - 805
   - 284
-  - 908
+  - 873
   - 322
   text: ''
   lcs_percent: 0.5
@@ -215,9 +215,9 @@ area_list:
 - area_name: 商店牌-3-费用
   id_mark: false
   pc_rect:
-  - 1115
+  - 1074
   - 284
-  - 1177
+  - 1142
   - 322
   text: ''
   lcs_percent: 0.5
@@ -229,9 +229,9 @@ area_list:
 - area_name: 商店牌-4-费用
   id_mark: false
   pc_rect:
-  - 1385
+  - 1343
   - 284
-  - 1447
+  - 1411
   - 322
   text: ''
   lcs_percent: 0.5
@@ -243,9 +243,9 @@ area_list:
 - area_name: 商店牌-5-费用
   id_mark: false
   pc_rect:
-  - 1650
+  - 1611
   - 284
-  - 1712
+  - 1680
   - 322
   text: ''
   lcs_percent: 0.5
