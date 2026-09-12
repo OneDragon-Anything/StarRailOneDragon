@@ -33,7 +33,8 @@ tools/wt.ps1 new <change-id>          # 幂等：已存在则跳过并回显既�
 
 **用**（worker）
 - 一切文件与 git 操作限本树内；例外只有共享记账（账本、交付报告走主仓路径）。
-- 树内禁 `git add sr-od-test`（主仓只认那个 gitlink 指针）、禁 `git clean`。
+- **子 agent 会话的工作目录恒为主工作区**：树内命令必须显式定位到本树（`cd <本树绝对路径>` 后执行，或 `git -C <本树路径>`、`uv run --directory <本树路径>`），文件读写用树内绝对路径——裸命令落在主仓，隔离就失效了。交付前自查：本批提交必须出现在 `git -C <本树> log` 里。
+- 树内禁 `git add sr-od-test`（主仓只认那个 gitlink 指针，测试改动在测试仓自己那层提交）、禁 `git clean`（会删掉树内 `.debug` 遥测）。
 - 测试在树内跑：`uv run pytest sr-od-test/`（配对检出已就位）。
 
 **并**（合并者，见 §6）：验收通过 → 任务进 `pending_merge` 泊位 → 合并者 rebase、跑全量测试、分诊、快进并入、抢救遥测 → 收敛 `done`。
