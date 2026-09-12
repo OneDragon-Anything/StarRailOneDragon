@@ -1,16 +1,19 @@
 """商店单动作动作 op 集(ADR-0517 决策 3/10;flow 实施批)。
 
-动作基类两方法(决策 10,用户 2026-09-06 确认):
+动作基类单方法(execute;原 execute+project 两方法契约(ADR-0517 决策 10)
+的 project 半已删——T-163 纯规则路线裁定(用户 2026-09-12):策略与实机
+操作链零 simulate 前瞻消费,期望态推进改走容器投影直写
+(``apply_shop_action_logic`` 简单腿 + ``apply_shop_merge_leg`` 合成升星腿,
+kernel 规则单一源,与序列驱动器同形;等价性由锁 M1 钉,
+test_cw_shop_projection_logic)):
 
 - ``execute(env)``:机械执行(点击/拖拽;op 框架既有的重试/等待语义
-  在此层),无判断;
-- ``project(state)``:纯计算更新期望态(金/板凳/持有副本/等级/合成
-  连锁),零读屏,可独立单测——实现 = ``cw_state.simulate`` 单一源
-  (合成连锁/满栏例外 §2.5 自动多买/金账全在其内,禁第二实现)。
+  在此层),无判断。
 
 **知识缺口申报(ADR-0517 决策 7 边界注;merge_mechanics 通篇未载)**:
 非满栏常态时合成槽位买的一击张数无 research 记载——本实现取保守假设
-**一击一张**(与 simulate 的常规买入分支一致),规则模型误差由入口
+**一击一张**(kernel 规则面同判:常态单击单张,满栏例外按 merge_buy_k
+一击多张),规则模型误差由入口
 对账兜底(下一画面入口观察 = 事实重建,决策 8)。实机冻结解除后补档
 验证:验证未过则该买面升格为终结 op(fallback 语义,见 CompTransactionOp)。
 
@@ -18,7 +21,7 @@
 策略器 bug 响亮暴露——``guard_proposal_vs_expected``(提案动作的对象在
 期望态中存在且未被消费,防策略器算术 bug)+ ``guard_expected_vs_tracked``
 (期望态投影链 vs 执行侧 tracked 账双账对拍,投影建模 bug 的唯一在环
-检测器——历次投影口径返工史证明 project 建模错是常态)。双账断言
+检测器——历次投影口径返工史证明投影建模错是常态)。双账断言
 零读屏(tracked 账纯内存随动),不违决策 1/8「循环内不读屏」。
 
 执行侧观测通道(ADR-0517 §执行侧观测通道去向,候选 a):卖回金实收
@@ -67,7 +70,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     RefreshShop,
     SellBench,
     mutate_bench_deployed,
-    simulate,
 )
 
 # 刷新钮真值 reader 经模块属性路由消费(替身缝:测试 monkeypatch 模块属性,
@@ -290,7 +292,8 @@ def guard_expected_vs_tracked(state: CwWorkFrame, session,
                               stage: str = 'project') -> None:
     """expected-vs-tracked 双账断言(ADR-0517 §守卫两属 (ii))。
 
-    期望态(project 链 = simulate 维护)vs 执行侧 tracked 账
+    期望态(容器投影直写链 = apply_shop_action_logic/合成升星腿维护;
+    T-163 起 simulate 前瞻投影已删)vs 执行侧 tracked 账
     (``tracked_bench_chars`` 经 mutate 随执行更新)的对拍——分叉的
     在环检测器。零读屏(tracked 纯内存)。
 
@@ -316,7 +319,7 @@ def guard_expected_vs_tracked(state: CwWorkFrame, session,
       stage='seed'(播种后、首动作前):tracked 非空时本对账按构造
       恒等(state.bench 即自 tracked 播种),唯一可达场景 = tracked 主
       账为空而屏幕 bench 非空 ⇒ 跟踪账丢件/识别幻影检测器;投影链无责。
-      stage='project'(默认,动作投影后):分叉 = project/mutate 模型
+      stage='project'(默认,动作投影后):分叉 = 投影直写/mutate 模型
       分叉——投影建模 bug 的唯一在环检测器(错误卖出会实际执行、损害
       不可逆,历次投影口径返工史为证)。
 
@@ -379,44 +382,14 @@ def guard_expected_vs_tracked(state: CwWorkFrame, session,
 # ---------------------------------------------------------------------------
 
 class ShopActionOp(ABC):
-    """商店动作 op 基类(ADR-0517 决策 10:execute + project 两方法)。"""
+    """商店动作 op 基类(execute 单方法;原 project 投影半已删,T-163
+    纯规则路线——期望态推进 = 容器投影直写,模块头申报)。"""
 
     #: 终结动作(执行即本画面访问结束,交回外循环;决策 4)
     terminal: bool = False
 
     def __init__(self, action: Action):
         self.action = action
-
-    def project(self, state: CwWorkFrame) -> CwWorkFrame:
-        """确定性投影(纯计算,零读屏):simulate 单一源(合成连锁/
-        满栏 §2.5/金/等级全在其内;模块头知识缺口申报)。
-
-        双 ShopCard 桥(波 4 归一;sim 引擎决策核同族镜像):波 4 起决策核
-        发射容器牌(无 x 载体,坐标单一真相源=screen_info),simulate 的
-        槽位口径仍按 x——按 (name, star) 对齐到帧牌再应用,店面无同名牌
-        (跨代际提案)退兜底构造(x=0 = 离屏语义,金/席照常结算)。
-        """
-        action = self.action
-        if isinstance(action, BuyCard) and not hasattr(action.card, 'x'):
-            from dataclasses import replace as _dc_replace
-
-            from sr_od.application.currency_war.kernel.cw_vocab import (
-                ShopCard as _LegacyCard,
-            )
-            _a_card = next(
-                (c for c in state.shop
-                 if c.name == action.card.name
-                 and int(c.star or 1) == int(action.card.star or 1)),
-                _LegacyCard(
-                    x=0,
-                    faction=str(getattr(action.card, 'faction', '') or '?'),
-                    name=str(getattr(action.card, 'name', '') or ''),
-                    cost=int(getattr(action.card, 'cost', 0) or 0),
-                    star=int(getattr(action.card, 'star', 1) or 1),
-                    cost_source=str(getattr(action.card, 'cost_source', '')
-                                    or 'roster')))
-            action = _dc_replace(action, card=_a_card)
-        return simulate(state, action)
 
     @abstractmethod
     def execute(self, env: ShopExecEnv) -> bool:
@@ -645,16 +618,18 @@ class SellBenchOp(ShopActionOp):
         mutate_bench_deployed(_tracked, exec_state_of(match.session).tracked_deployed, action)
         # ADR-0328 执行域对齐:卖出件入同轮已卖集(执行成功是卖出事实的
         # 权威,register_round_sold 带轮键自校验)。
-        # 归属申报:register_round_sold 首参 state 经 board_state_bridge
-        # 装箱 = 统一 state 过渡桥语义(T-70 线),本 hunk 实际随 T-13
-        # 提交入库而原提交信息未申报,此处补记归属供审计对账。
+        # 换源 T-146(登记集消点):轮键源 = session 容器单例(node = 本
+        # 节点备战帧写端,与波内帧 plane/round 同节点同值);旧过渡桥装箱
+        # 退役。register_round_sold 消费面 = plane/round 轮键(轮键不匹配
+        # 自拒 = 原防御语义不变)。
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_bridge,
+            board_state_of,
         )
         from sr_od.application.currency_war.kernel.cw_round_ledger import (
             register_round_sold,
         )
-        register_round_sold([_expected_name], board_state_bridge(state),
+        register_round_sold([_expected_name],
+                            board_state_of(match.session),
                             match.session)
         ledger.total_sell += 1
         ledger.buy_has_sell = True   # 含卖出 → 本单元期望态不建(`w536`)

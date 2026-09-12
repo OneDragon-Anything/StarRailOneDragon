@@ -163,22 +163,23 @@ class MandateV1Strategy(CwFlowStrategy):
 
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
         ``cw_op_buy_cards.run_buy_waves``);本驱动器保留给 sim 引擎/回放/既有序列锁——
-        驱动 = 逐帧调单动作核 + ``cw_state.simulate`` 纯投影推进期望态,
-        终结动作(RefreshShop/CompTransaction)截停序列、CloseShop 收尾
-        不入序列(与旧截断器的输出形态对齐)。与旧波批的输出等价是
-        条件命题(波批投影无残差时逐位一致;投影残差史见 ADR-0517
-        §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推语义。
-        观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。rng 中立。
-        覆写存在理由 = mandate 特有记账(下方已买件/段序号/续段 token);
-        帧代次标注槽**不在本驱动器写**(D6:投影只推进 ``shop_state_frame``
-        本体,槽值在入口消费复位后保持 'none',投影帧不触发刷新)。
+        驱动 = 逐帧调单动作核 + 容器投影直写推进期望态
+        (``apply_shop_action_logic`` 简单腿 + 合成升星腿;T-163 起零
+        simulate 前瞻消费),终结动作(RefreshShop/CompTransaction)截停
+        序列、CloseShop 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
+        批的输出等价是条件命题(波批投影无残差时逐位一致;投影残差史见
+        ADR-0517 §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推
+        语义。观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。rng 中立。
+        覆写存在理由 = mandate 特有记账(下方已买件/段序号/续段 token)。
         """
         from sr_od.application.currency_war.kernel import cw_vocab as cw_state
         from sr_od.application.currency_war.kernel.cw_game_state import (
             ChannelSig,
             ShopActionExecuted,
             apply_shop_action_logic,
+            bench_slots_of,
             board_state_of,
+            deployed_slots_of,
         )
         # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 投影推进
         # 切 apply_shop_action_logic;在屏前置 = bs.shop.value is not None,
@@ -201,12 +202,22 @@ class MandateV1Strategy(CwFlowStrategy):
         # 变性段,入口 +1 使上一 visit/上一域残留 token/闩按序号不等失效。
         state_of(session).cw4_segment_serial += 1
         out: list = []
+        _pre_bench: list = []
+        _pre_dep: list = []
+        _pre_shop: list | None = None
         for _ in range(512):   # 防御上界:决策循环不收敛 = 策略器 bug 响亮暴露
             a = self.decide_shop_action(session, config)
             if isinstance(a, cw_state.CloseShop):
                 return out
             if isinstance(a, (cw_state.BuyCard,)):
                 state_of(session).cw4_visit_bought_names.append(a.card.name or '')
+                # 买前快照三件组(升星腿 scratch 基点;必须在投影口写之前
+                # 取,失准形态申报见 apply_shop_merge_leg docstring)。
+                _pre_bench = list(bench_slots_of(bs))
+                _pre_dep = list(deployed_slots_of(bs))
+                _payload_now = bs.shop.value
+                _pre_shop = (list(_payload_now.cards)
+                             if _payload_now is not None else [])
             out.append(a)
             # T-82 续段 token 写入(sim/replay 驱动器位):驱动器采纳并
             # append = 动作确认执行(终结 op 由引擎执行后重观察,其执行
@@ -229,7 +240,9 @@ class MandateV1Strategy(CwFlowStrategy):
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 apply_shop_merge_leg,
             )
-            apply_shop_merge_leg(bs, a, sig=_sig)
+            # 升星腿对非 BuyCard 自 no-op,pre_* 透传即可。
+            apply_shop_merge_leg(bs, a, sig=_sig, pre_bench=_pre_bench,
+                                 pre_deployed=_pre_dep, pre_shop=_pre_shop)
         from sr_od.application.currency_war.kernel.cw_game_state import (
             bench_is_full,
             gold_of,

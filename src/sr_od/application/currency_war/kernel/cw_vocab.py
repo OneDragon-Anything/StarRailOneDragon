@@ -7,10 +7,13 @@
 段删除)。本文件另定居动作契约族 14 符号(候裁9 终裁第③腿:无语义宿主,
 随本文件更名定居)。
 
-策略采用「评估函数 + 贪心改进」架构(v2 决策链 = decision_v2 四层:
-候选生成→硬过滤→板面评分→预算仲裁;判据单一源 = kernel):
-- evaluate(state) 给局面打分(羁绊/经济/站位/角色质量);
-- 决策在硬规则门内,贪心选 eval 提升最大的动作;前瞻用 simulate(state, action)。
+策略为纯规则路线(用户裁定 2026-09-12,落地批 = 账本 T-163):规则直接
+产出动作,决策零模拟试探。本文件的 ``simulate`` 是单步动作应用器
+(纯函数),消费位 = sim 引擎整局推进 / 假游戏环境 / 规则实现等价性验证
+(锁 M1 等)——策略域与实机操作链零消费:
+- 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
+  (容器读,纯规则分支),期望态推进 = 容器投影直写
+  (``cw_game_state.apply_shop_action_logic`` + 合成升星腿)。
 
 字段多由实机 OCR 填充(见 strategy_design.md §8 接线);未填(None/默认)时决策安全降级。
 
@@ -271,7 +274,7 @@ def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | No
     return None
 
 
-# ===== Action(动作;simulate 前瞻用) =====
+# ===== Action(动作词表;sim 引擎推进/执行链投影/守卫消费) =====
 #
 # ── 索引字段定义约定(本族一切 idx/slot/index 字段的单一源;AGENTS.md 硬约束
 #    「索引/槽位字段必须带定义注释」的正文展开)──────────────────────────
@@ -901,7 +904,9 @@ def _apply_comp_transaction(s: CwWorkFrame, tx: CompTransaction,
 
 
 def simulate(state: CwWorkFrame, action: Action) -> CwWorkFrame:
-    """前瞻:返回应用 action 后的**新** CwWorkFrame(不改原 state)。
+    """单步动作应用(纯函数):返回应用 action 后的**新** CwWorkFrame
+    (不改原 state)。消费位 = sim 引擎整局逐步推进 / 假游戏环境动作转移 /
+    规则实现等价性验证(锁 M1 等);策略决策零消费(T-163 纯规则路线)。
 
     买入落 bench(3 合 1 自动升星);上阵(DeployMove)把角色从 bench 移到 deployed +
     board[faction]+=1(保留身份/站位供 char_quality 与站位分流用)。
@@ -1122,7 +1127,8 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
                           shop: list[ShopCard] | None = None) -> None:
     """就地应用 action 的 bench/deployed 转移到持久跟踪状态(运行时同步用)。
 
-    与 ``simulate`` 的区别:``simulate`` 返回新 ``CwWorkFrame`` copy(前瞻语义,含 gold/level/shop 全字段);
+    与 ``simulate`` 的区别:``simulate`` 返回新 ``CwWorkFrame`` copy(整帧副本
+    语义,含 gold/level/shop 全字段);
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
     sell→置 None),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
     ``session.bench``/``session.deployed``。转移规则与 simulate 一致(单一源,避双源漂移)。

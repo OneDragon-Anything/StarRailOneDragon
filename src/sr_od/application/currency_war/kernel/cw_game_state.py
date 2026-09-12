@@ -84,7 +84,11 @@ from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
 if TYPE_CHECKING:
     # 仅类型注解引用(项目规范);运行时按鸭子类型读 CwWorkFrame 属性,
     # 避免与 cw_state 建立运行时依赖(cw_state 将来消费本模块时不成环)。
-    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
+    from sr_od.application.currency_war.kernel.cw_vocab import (
+        BenchChar,
+        CwWorkFrame,
+        ShopCard,
+    )
 
 
 # ============================================================ 常量
@@ -663,7 +667,7 @@ class MatchFinal:
     # 策略行为观测计数局终聚合(R5 W4 键收编载体,ADR-0650;键全集登记
     # 单一源 = 封闭锁 sr-od-test test_cw4_key_closure,底稿 = W4 逐键审计
     # 256 字面+16 闭族+9 开放族,全部=策略行为键,零效果域键)。取值 =
-    # 调用方收口时点自策略 state 容器(mandate_v1 MandateState.cw4_counters)
+    # 调用方收口时点自策略 state 容器(mandate_v1 StrategyState.cw4_counters)
     # 现读;写口落载荷时浅拷贝一份(本结构不持有容器引用,后写不串)。
     # None = 无策略载体/历史段补写无源(诚实缺省,判读按「无计数载体」
     # 分型);空 dict = 局内真实零计数——两型可辨,沿旧流装配语义
@@ -1616,44 +1620,44 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
     return
 
 def apply_shop_merge_leg(bs: GameState, action: Any, *,
-                         sig: ChannelSig) -> None:
-    """BuyCard 合成升星腿(设计件 §2.1-2「升星腿维持既有口」的驱动器侧
-    共享形态):scratch 槽表跑 ``mutate_bench_deployed``(kernel 落位/
-    合成单一源,与 simulate 同源)→ 同名最高星抬升(= 既有执行侧
-    ``detect_merge_upgrade`` 判据同式)时整表 write_logic 覆盖。
+                         sig: ChannelSig,
+                         pre_bench: list[BenchChar | None],
+                         pre_deployed: list[BenchChar | None],
+                         pre_shop: list[ShopCard] | None = None) -> None:
+    """BuyCard 合成升星腿(设计件 §2.1-2「升星腿维持既有口」;生产落地门
+    (``cw_op_buy_cards.apply_action_outcome``)与序列驱动器(flow 基类/
+    mandate 覆写;sim/回放同路)共用的单一形态)。
 
-    消费位 = 商店序列驱动器(flow 基类/mandate 覆写;sim/回放同路)。
-    执行落地门(生产 visit)在过渡期保留 ``detect_merge_upgrade(cur,
-    proj)`` 既有形态,黑板槽退役后与本口合流。调用序 = 先
-    :func:`apply_shop_action_logic`(简单落位)后本口(整表覆盖,后写赢)
-    ——两写合计对 simulate 输出等价(锁 M1)。
+    ``pre_*`` 三件组 = 本动作**执行前**的容器快照(调用方在简单腿写之前
+    取:bench 槽位表/deployed 槽位表/商店 payload 牌列表);scratch 副本上
+    跑 ``mutate_bench_deployed``(kernel 落位/合成单一源,与 simulate 同源
+    同规则;``pre_shop`` 透传作 shop 视图)→ 同名最高星抬升
+    (``detect_merge_upgrade`` 判据)时整表 write_logic 覆盖(后写赢)。
+
+    快照基点 = 买前态是本口正确性前提,两失准形态已实证(直调对拍):
+    基点误取简单腿写后的容器会**重复落位**(所购牌已由简单腿在席,mutate
+    再放一次,非满栏合成买幻影多一份);``pre_shop`` 缺失时 mutate 走不了
+    满栏合成买分支(``_apply_full_bench_merge_buy`` 需 shop 视图,满栏
+    k>1 买漏合成)。两形态等价性由锁 M1 钉(test_cw_shop_projection_logic)。
+
+    调用序 = 先 :func:`apply_shop_action_logic`(简单落位)后本口(整表
+    覆盖)——两写合计对 simulate 输出等价(锁 M1)。
     """
     _validate_sig(sig, ('logic_action',))
+    from types import SimpleNamespace as _NS
+
     from sr_od.application.currency_war.kernel.cw_exec_state import snapshot_copy
     from sr_od.application.currency_war.kernel.cw_vocab import BuyCard
     if not isinstance(action, BuyCard):
         return
-    bench_slots = bench_slots_of(bs)
-    deployed = deployed_slots_of(bs)
     scratch_bench = [snapshot_copy(b) if b is not None else None
-                     for b in bench_slots]
+                     for b in pre_bench]
     scratch_dep = [snapshot_copy(d) if d is not None else None
-                   for d in deployed]
-
-    def _max_star(tbl) -> dict:
-        best: dict = {}
-        for c in tbl:
-            if c is not None and (getattr(c, 'char_id', '') or ''):
-                s = int(getattr(c, 'star', 1) or 1)
-                cid = str(c.char_id)
-                if s > best.get(cid, 0):
-                    best[cid] = s
-        return best
-
-    before = _max_star(list(scratch_bench) + list(scratch_dep))
-    mutate_bench_deployed_local(scratch_bench, scratch_dep, action)
-    after = _max_star(list(scratch_bench) + list(scratch_dep))
-    if any(after.get(cid, 0) > s for cid, s in before.items()):
+                   for d in pre_deployed]
+    mutate_bench_deployed_local(scratch_bench, scratch_dep, action,
+                                shop=pre_shop)
+    if detect_merge_upgrade(_NS(bench=pre_bench, deployed=pre_deployed),
+                            _NS(bench=scratch_bench, deployed=scratch_dep)):
         bs.write_logic(bs.bench, bench_view_of_slots(scratch_bench),
                        produced_by='BuyCard',
                        evidence='proj_merge_upgrade',
@@ -1664,11 +1668,13 @@ def apply_shop_merge_leg(bs: GameState, action: Any, *,
                                      f'{bs.write_seq + 1}')))
 
 
-def mutate_bench_deployed_local(bench, deployed, action):
+def mutate_bench_deployed_local(bench, deployed, action,
+                                shop=None) -> None:
     """``cw_state.mutate_bench_deployed`` 惰性转发(本模块与 cw_state 的
-    运行时依赖纪律 = 函数级懒 import)。"""
+    运行时依赖纪律 = 函数级懒 import);shop 视图透传(满栏合成买分支
+    ``_apply_full_bench_merge_buy`` 的素材消费源)。"""
     from sr_od.application.currency_war.kernel.cw_vocab import mutate_bench_deployed
-    mutate_bench_deployed(bench, deployed, action)
+    mutate_bench_deployed(bench, deployed, action, shop=shop)
 
 
 #: 备战投影直写域集封闭登记面(设计件《prep 链容器化方案》§2.4-3/§4-P5,
