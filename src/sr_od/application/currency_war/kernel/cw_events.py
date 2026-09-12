@@ -15,6 +15,7 @@ from sr_od.application.currency_war.kernel.cw_board_state import (
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     augment_affinity,
+    candidate_faction_universe,
     form_progress,
     get_comp,
     mechanics_fit,
@@ -217,7 +218,9 @@ def decide_event(options: list[str], config, bs: BoardState,
        _env.faction ∈ D*_factions(预裁③:floor 与 comp-hit 同批换源)。
        D*=∅(冷启动/降格帧)→ 全体 N=0、floor 不触,候选自然落 S2/S4
     5. S4 常规评估层(现状保留):策略评估分 pick_value(12-75,ADR-0143
-       知识判据定序器)/ env 裸分(ADR-0144)/ eval-lcs(策略 OCR 形变裸分,
+       知识判据定序器)/ env 裸分(ADR-0144;全集门前置——faction 非空 ∧ ∉
+       候选终局阵容全集的环境跳过本支,失格归因 ``env-off-universe`` 仅观测)/
+       eval-lcs(策略 OCR 形变裸分,
        **env 名跳过**——0144b 守卫,83 env 名 29 个 LCS 误中策略名)/
        品质回落(纯字典序,零拍值,ADR-0524):仅未评估卡可达,主键=品质序
        (棱彩>金>银,游戏定义),次键=economy 效果有无;回落域整体
@@ -255,6 +258,9 @@ def decide_event(options: list[str], config, bs: BoardState,
     # T-152「K 活读数轮内重排」病灶在消费面结构性不可发生。
     _d_facs, _d_chars, _d_src = _invest_d_star(
         bs, locked_comp, demoted_endgame, evicted)
+    # 候选全集单帧单读(与 D* 快照同款纪律):env 分支全集门的派生输入,
+    # 循环外一次派生,帧内禁重读。
+    _universe = candidate_faction_universe(evicted)
 
     best_idx, best_score = 0, -1.0
     best_reason = ''
@@ -346,8 +352,21 @@ def decide_event(options: list[str], config, bs: BoardState,
         # OCR 形变的 env 名(如 尾彩•变体)不进策略 LCS(上方 _env 精确查 miss 时仍可能污染 ——
         # 但 OCR 只出现在 handler 层归一名后才进决策,形变 env 名实际不达此处;守卫以精确查为准)。
         if _st is None and _env is not None:
-            if _env.pick_value > 0 and float(_env.pick_value) > score:
-                score, reason = float(_env.pick_value), 'env-eval'
+            # 候选全集门(形态 B;用户裁定 2026-09-12「我们有对应的终局阵容定义,
+            # 才选对应的投资环境」):faction 非空 ∧ faction ∉ 候选终局阵容全集
+            # → 跳过裸分支,分数维持 0(env 无品质字段、品质回落域在策略分支内,
+            # env 本就无回落——落 0 即天然垫底,零新常量);faction 空(时代/经济/
+            # 规则/随机送角色等阵容无关型)恒放行。
+            _env_in_universe = (not _env.faction) or (_env.faction in _universe)
+            if _env_in_universe:
+                if _env.pick_value > 0 and float(_env.pick_value) > score:
+                    score, reason = float(_env.pick_value), 'env-eval'
+            else:
+                # 失格归因串(全无用帧胜出时可见);仅观测归因,不进任何
+                # 检查器白名单(ADR-0593 C1→D4 口径)。floor 不受门辖:
+                # D* ⊆ 全集恒成立(锁线 comp 与 evicted 互斥/信号已按 evicted
+                # 过滤),阵营 floor 永不为全集外 faction 触发,无交叉处理。
+                reason = 'env-off-universe'
             if _env.faction and _env.faction in _d_facs:
                 # 阵营匹配定序门(ADR-0524 定形,16 号稿 §1.3):三档值 = category 间
                 # 定序档位(邀请 70 < 契约 72 < 概念股 78,评估实证序),承重语义 =

@@ -1222,6 +1222,34 @@ def hp_charge_stack_chars() -> frozenset[str]:
     )
 
 
+def candidate_faction_universe(evicted: frozenset[str] | set[str] = frozenset(),
+                               ) -> frozenset[str]:
+    """候选终局阵容阵营全集 = ⋃ comp.factions(COMP_LIBRARY 派生,阵营维单一源)。
+
+    消费点 = decide_event env 分支候选全集门(faction 非空的投资环境,faction ∉
+    本全集即失格,增益无消费方)。**阵营维全集 = 环境门与策略卡门共用的同一台
+    机器**——消费方只许 import 本函数,禁在门位二次建模;角色维两问不同答案
+    (环境送卡型看 core∪shared,策略对齐只数 core),分立镜像函数、禁共用本函数。
+
+    语义边界(用户裁定 2026-09-12「我们有对应的终局阵容定义,才选对应的投资
+    环境」):
+    - 只收 ``factions``(核心羁绊);``flex_factions`` 不入——弹性羁绊是阵容
+      能临时吃的,不是可能玩的方向;
+    - ``evicted`` 与 D*② 同源同义(「等同信号未发生」的 comp 名集合,
+      decide_invest 从意向状态直通,零接口新增)→ 阵容被 evicted 后其独占
+      阵容自动退出全集(动态收窄免费获得);
+    - 全集覆盖质量责任在 COMP_LIBRARY 手判层(终局阵容研究的派生),因研究
+      遗漏错杀的修正路径 = 修库,不是放松门;漂移防线 = 测试仓
+      test_cw_env_universe.py 模块头全集核对断言(改库先红,重核全集咬合面)。
+    """
+    return frozenset(
+        f
+        for c in COMP_LIBRARY
+        if c.name not in evicted
+        for f in c.factions
+    )
+
+
 # ===== 评分 helper(comp 相关)=====
 
 def _owned_chars(bs: BoardState) -> set[str]:
