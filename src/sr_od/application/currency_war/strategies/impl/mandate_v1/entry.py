@@ -47,11 +47,24 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    bench_slots_of,
+    board_state_of,
+    deployed_slots_of,
+    gold_of,
+    level_of,
+    max_units_of,
+    node_kind_of,
+    plane_of,
+    round_num_of,
+)
 from sr_od.application.currency_war.kernel.cw_comps import get_comp
 from sr_od.application.currency_war.kernel.cw_economy import (
     blood_xp_gate_for,
     in_must_spend_zone,
 )
+from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_cap_hold,
 )
@@ -104,7 +117,6 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
-    from sr_od.application.currency_war.kernel.cw_state import GameState
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
@@ -148,19 +160,21 @@ def _sphere_bench_free(obs: PrepObservation) -> int:
 SPHERE_DEFER_PROBE_K: int = 1
 
 
-def _sphere_progress_sig(state: GameState | None,
+def _sphere_progress_sig(bs: BoardState,
                          obs: PrepObservation) -> int:
     """席满让路门成效计数签名((轮次, 席计数, 球计数) 压缩整型;ADR-0642)。
 
-    三分量全部 obs/state 现成字段,零新识别;压缩进 int 保持 cw4_counters
+    载体 = 容器 bs(prep 链容器化段 1:签名切 bs)。轮次经
+    ``round_num_of`` 读口——未观察帧缺省 1 镜像旧「state is None → 1」
+    分支(波 1 读口等价契约,单一源 = 读口 docstring),分支退役零行为差。
+    三分量全部 bs/obs 现成字段,零新识别;压缩进 int 保持 cw4_counters
     数值账本面(sim 轮差分对逐值做 int() 算术,sim/engine_p1.py,禁存
     tuple/str)。装箱域:席/球计数各 4 bit,>15 回绕 = 误判「有成效」
     → 多一环探针点击,良性偏置。噪声口径:刻意不采 raw gold(OCR 噪声
     会误复位使门失效,ADR-0554 修订节 5 同源教训);球计数经 Hough 检出
     存在抖动,每次误变只多一环探针,无进展守卫(阈值 3)仍兜底。
     """
-    _round = int(getattr(state, 'round_num', 1) or 1) \
-        if state is not None else 1
+    _round = round_num_of(bs)
     _bench_n = len(getattr(obs, 'bench_chars', None) or ())
     _sphere_n = len(getattr(obs, 'spheres', None) or ())
     return ((_round * 16) + (_bench_n & 0xF)) * 16 + (_sphere_n & 0xF)
@@ -332,10 +346,18 @@ class UpgraderSignals:
     bloodline_shadow_armed: bool = False
 
 
-def _lambda_quantile_armed(state: GameState | None, hp: int | None,
+def _lambda_quantile_armed(bs: BoardState, hp: int | None,
                            p_value: float) -> bool | None:
     """λ 顾问相对分位触发谓词(R28-1;R196 症3 影子/真键共用求值体)。
 
+    载体 = 容器 bs(prep 链容器化段 1:签名切 bs)。域读:node 经
+    ``node_kind_of`` 读口(None=未识别镜像旧 getattr 缺省 '')/
+    difficulty 直读容器值(None=未读透传,λ 键 None 域语义不变)/plane
+    经 ``plane_of`` 读口(缺省 1 镜像)。旧「state is None → 不评估」
+    前置分支退役——生产不可达(heavy 观察恒产出视图帧,light 兼容
+    形态现生产无调用方),分支退役与引导窗缺省镜像逐位一致 = 设计件
+    changes/2026-09-12-prep-chain-containerization/design/
+    prep链容器化方案.md §2.2② 行为差申报面。
     求值 = 当前帧 PL 键的 λ 点估计(CI 上端,排序键同 ``lambda_u_order``
     的全序口径)在 C 集合可消费格 λ_U 降序全序中的分位序 ≤ p ⇒ 触发。
     键观测量缺失/域外/不可消费格 → None(不评估;域外同判 R52-4a)。
@@ -343,11 +365,9 @@ def _lambda_quantile_armed(state: GameState | None, hp: int | None,
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
         lambda_death,
     )
-    if state is None:
-        return None
-    node = getattr(state, 'node_type', None) or ''
-    key = lambda_death.make_key(getattr(state, 'enemy_difficulty', None),
-                                hp, getattr(state, 'plane', 1), node)
+    node = node_kind_of(bs) or ''
+    key = lambda_death.make_key(bs.enemy_difficulty.value,
+                                hp, plane_of(bs), node)
     ci = lambda_death.lambda_ci(key)
     if ci is None:
         return None
@@ -361,9 +381,15 @@ def _lambda_quantile_armed(state: GameState | None, hp: int | None,
     return (idx + 1) / len(order) <= p_value
 
 
-def _upgrader_evaluate(session: StrategySession, state: GameState | None,
-                       gold: int, hp: int | None) -> UpgraderSignals:
-    """升档器求值(§2.0-3 判危口径①②;本批 None 期 = 结构位 + 影子计数)。"""
+def _upgrader_evaluate(session: StrategySession, bs: BoardState,
+                       hp: int | None) -> UpgraderSignals:
+    """升档器求值(§2.0-3 判危口径①②;本批 None 期 = 结构位 + 影子计数)。
+
+    载体 = 容器 bs(prep 链容器化段 1);死参 ``gold`` 删除(现体零消费,
+    设计件 prep链容器化方案.md §2.2③)。委托 λ 谓词形态不变;血线硬
+    地板判断(hp ≤ ``HP_BAND_NEAR_DEATH``)零改,hp 形参保留(调用方
+    供给,非本函数域读)。
+    """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
         provisional,
     )
@@ -376,7 +402,7 @@ def _upgrader_evaluate(session: StrategySession, state: GameState | None,
     # lambda_shadow 保留为对照键(同条件置位,禁删)。p=None ⇒ 不求值。
     p = provisional.get('P_LAMBDA_QUANTILE')
     if p is not None:
-        armed = _lambda_quantile_armed(state, hp, float(p.value))
+        armed = _lambda_quantile_armed(bs, hp, float(p.value))
         if armed:
             sig.lambda_armed = True
             sig.lambda_shadow_armed = True   # 对照键保留
@@ -412,6 +438,11 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         state_of(session).cw4_counters = {}
 
     state = obs.state
+    # prep 链容器化段 1:决策判据载体一次置顶(五处签名与 K 空窗回退
+    # 直连容器单例;同帧同视图纪律 =《商店黑板容器化方案》§2.2-1,
+    # 禁函数内二次取容器)。emit 体其余 state 消费(prep 域全簇)维持
+    # 视图供数,寿命 = 段 2(设计件 prep链容器化方案.md §2.2/§2.4)。
+    bs = board_state_of(session)
     _round_num = int(getattr(state, 'round_num', 1) or 1) \
         if state is not None else 1
 
@@ -459,7 +490,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 _ct_sp['sphere_defer_streak'] = 0
             return [Emitted(ClickSpheres(max_k=min(3, len(obs.spheres))),
                             True, 'prep_spheres')]
-        _prog_sig = _sphere_progress_sig(state, obs)
+        _prog_sig = _sphere_progress_sig(bs, obs)
         _streak = 0
         if isinstance(_ct_sp, dict) \
                 and _ct_sp.get('sphere_defer_progress_sig') == _prog_sig:
@@ -540,16 +571,14 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 意向供给缺帧,保守侧不回退(与 shop.py 同款 fail 方向)。
     if k is None:
         from sr_od.application.currency_war.kernel import cw_intention
-        from sr_od.application.currency_war.kernel.cw_board_state import (
-            board_state_bridge,
-        )
         _ist = getattr(state_of(session), 'v3_intention', None)
         if _ist is not None and state is not None:
             # session/registry 透传(P86;落地审 F-2):甲臂 G 门按 plane
             # 真值视界与当帧注册表判定,与商店域同源(两域禁分叉)。
-            # W6 波3 贯通:k_empty_window_fallback 已切容器签名,帧经桥装箱。
+            # W6 波3 贯通 + prep 链容器化段 1 消桥:kernel 已容器签名,
+            # 直传置顶 bs(旧帧经桥装箱面消亡)。
             _fb, _band = cw_intention.k_empty_window_fallback(
-                board_state_bridge(state), _ist, session=session, registry=registry)
+                bs, _ist, session=session, registry=registry)
             if _fb:
                 k_members = tuple(sorted(_fb))
                 state_of(session).cw4_counters[f'prep_k_fallback_{_band}'] = \
@@ -657,9 +686,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 _tools_emitted.append(
                     Emitted(RunTools(), True, 'm7_5_tool_consume'))
 
-    # ③ 升档器求值位(先于一切卖面判据评估,§3.1)
-    _sig = _upgrader_evaluate(session, state,
-                              state.gold if state else 0,
+    # ③ 升档器求值位(先于一切卖面判据评估,§3.1;载体 = 置顶 bs,
+    # hp 调用方供给 = 视图帧读数,载体迁移非策略改动)
+    _sig = _upgrader_evaluate(session, bs,
                               getattr(state, 'hp', None))
     _ct = state_of(session).cw4_counters
     if _sig.lambda_shadow_armed:
@@ -717,7 +746,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 被截断器静默丢弃)。
     ev_out: list[Emitted] = []
     if not skeleton_only:
-        ev_out = _criteria_pass(frame, session, state, k_members,
+        ev_out = _criteria_pass(frame, session, bs, k_members,
                                 k_switched=k_switched,
                                 old_line_members=old_line_members,
                                 skeleton_out=out)
@@ -792,7 +821,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # unfulfilled 恒 None(实机局 g_20260904_042657 p1r7-r9 posture=
     # 'level' 全程零 LevelUp)。本对账只声明不兜底花钱(禁重引入「乱花」
     # 对立面:P56 下界语义零触碰,升级仍由 M3 判据独裁)。
-    _reconcile_posture_authorization(session, state, out, k_members,
+    _reconcile_posture_authorization(session, bs, out, k_members,
                                      registry=registry)
 
     # 形态⑥观测(纯观测零行为,fail-closed 期只记不判):target 空窗
@@ -828,12 +857,18 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
 
 
 def _reconcile_posture_authorization(session: StrategySession,
-                                     state: GameState | None,
+                                     bs: BoardState,
                                      emitted: list[Emitted],
                                      k_members: tuple[str, ...] = (),
                                      registry: DecisionV2Registry | None = None,
                                      ) -> dict | None:
     """姿态兑现对账(经济冻结批病灶②;授权面与执行面的唯一仲裁点)。
+
+    载体 = 容器 bs(prep 链容器化段 1:签名切 bs,域读经读口族;体内
+    旧 board_state_bridge ×2/board_state_of ×2 随切消点,复用形参)。
+    hp 消费经 ``decision_hp`` 政策读口(门前真值+消费侧施门单一源,
+    禁直读 ``bs.hp.value`` 引入施门旁路——《商店黑板容器化方案》
+    §2.2-2 同锚;视图帧 hp 直读面随载体切换退役)。
 
     授权面 = ``get_node_goal`` 确定性预算核(spend_mode 单一供给,遥测
     dp_posture 同源);执行面 = M3 升级链(arm1 存在性 → lv9 停 →
@@ -842,14 +877,18 @@ def _reconcile_posture_authorization(session: StrategySession,
     - ``state_of(session).v3_posture_unfulfilled`` 置位(遥测 posture_unfulfilled
       消费;形状与 decision_v2.posture_release.reconcile_spend 同构);
     - 计数键 ``posture_unfulfilled_level``(state_of(session).cw4_counters);
-    - log.info(带未兑现原因,判读可直接归因)。
+    - log.info(带未兑现原因,判读可直接归因;auth_id/日志串的 plane/
+      round 取读口值,格式不变)。
 
     只声明不兜底:不因授权未兑现而改发射(升级发射仍由 M3 判据独裁,
     P56 下界语义零触碰)。授权形态非 level / 已发射 LevelUp ⇒ 返回
-    None(且入口帧级复位保证无声明滞留)。state 缺席=无姿态供给,不评。
+    None(且入口帧级复位保证无声明滞留)。
     """
-    if state is None:
-        return None
+    _plane = plane_of(bs)
+    _round = round_num_of(bs)
+    _gold = gold_of(bs)
+    _level = level_of(bs)
+    _hp = decision_hp(bs, session)
     # 上下文注册表(判据出处纠错批:等级帽单一源接线;emit 注入链 =
     # MandateV1Strategy.registry,sim 帧注入视图随链到达)。None→缺省表
     # 兜底与 shop 栈 _reg 同款通道约定,直调/测试面兼容;生产链恒注入。
@@ -860,10 +899,10 @@ def _reconcile_posture_authorization(session: StrategySession,
         )
         _reg = DEFAULT_REGISTRY
     from sr_od.application.currency_war.kernel.cw_economy import get_node_goal
-    ng = get_node_goal(state.plane, state.round_num, gold=state.gold,
-                       level=state.level, hp=state.hp,
-                       strategies=list(getattr(state, 'active_strategies',
-                                               []) or []) or None)
+    ng = get_node_goal(_plane, _round, gold=_gold,
+                       level=_level, hp=_hp,
+                       strategies=list(bs.active_strategies.value or [])
+                       or None)
     if getattr(ng, 'spend_mode', '') != 'level':
         return None
     if any(isinstance(e.action, LevelUp) for e in emitted):
@@ -875,12 +914,10 @@ def _reconcile_posture_authorization(session: StrategySession,
     # ——置于血闸之后时,血本位奖励帧先命中 blood_xp_gate_blocked 提前
     # return,本分键永不可达;抑制先行声明 = 方案 §0.2(抑制 = 结构性
     # 无授权,支付能力检查无须求值)。判据单一源 = kernel.cw_reward_node
-    # (与 M3 三消费位同谓词,None fail-open)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge,
-    )
-    if reward_node_suppressed(board_state_bridge(state)):
-        un = {'auth_id': f'{state.plane}-{state.round_num}',
+    # (与 M3 三消费位同谓词,None fail-open)。载体 = 置顶 bs 直传
+    #(prep 链容器化段 1 消桥)。
+    if reward_node_suppressed(bs):
+        un = {'auth_id': f'{_plane}-{_round}',
               'channel': 'levelup',
               'reason': 'reward_node_no_power_need',
               'channels': {'levelup': 'reward_node_no_power_need'},
@@ -892,18 +929,18 @@ def _reconcile_posture_authorization(session: StrategySession,
                 counters.get('posture_reward_node_defer', 0) + 1
         log.info('[cw][cw4] posture level 授权奖励帧让位 '
                  '(plane=%s r%s): %s',
-                 state.plane, state.round_num, un['reason'])
+                 _plane, _round, un['reason'])
         return un
     # 候选③:危机带经验授权让位 = 显式降级而非「未兑现故障」——
     # M3 发射位(mandate/shop)被 level_spend_blocked 挂起时,授权面
     # 按 crisis_yield 声明(P48 λ>0 段转化优先;判据单一源同 M3 消费位),
     # 不落逐门故障定位(那些门本轮根本未被求值)。
-    if state is not None and contracts.ensure_contract(
+    if contracts.ensure_contract(
             ('levelup', 'level_spend_blocked'),
             contracts.ContractCtx(), getattr(state_of(session), 'cw4_counters',
                                              None) or {}) \
-            and crit_levelup.level_spend_blocked(state, session, _reg):
-        un = {'auth_id': f'{state.plane}-{state.round_num}',
+            and crit_levelup.level_spend_blocked(bs, session, _reg):
+        un = {'auth_id': f'{_plane}-{_round}',
               'channel': 'levelup',
               'reason': 'crisis_level_spend_blocked',
               'channels': {'levelup': 'crisis_level_spend_blocked'},
@@ -915,17 +952,15 @@ def _reconcile_posture_authorization(session: StrategySession,
                 counters.get('posture_crisis_level_defer', 0) + 1
         log.info('[cw][cw4] posture level 授权危机让位 '
                  '(hp=%s, plane=%s r%s): %s',
-                 state.hp, state.plane, state.round_num,
+                 _hp, _plane, _round,
                  un['reason'])
         return un
     # [40]② 血闸镜像(ADR-0578):发射位闸拒 → 授权面 crisis_yield 同款让位
     # 语义(支付能力检查独立于停付线,不可被域/地板豁免;金本位恒 True 直通)。
-    # kernel 闸波 2 已切容器签名(hp 经政策层读口),GameState 帧经过渡桥装箱。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge as _bsb,
-    )
-    if state is not None and not blood_xp_gate_for(_bsb(state), session):
-        un = {'auth_id': f'{state.plane}-{state.round_num}',
+    # kernel 闸波 2 已切容器签名(hp 经政策层读口);载体 = 置顶 bs 直传
+    #(prep 链容器化段 1 消桥:旧帧经桥装箱面消亡,视图→桥→容器往返恒等)。
+    if not blood_xp_gate_for(bs, session):
+        un = {'auth_id': f'{_plane}-{_round}',
               'channel': 'levelup',
               'reason': 'blood_xp_gate_blocked',
               'channels': {'levelup': 'blood_xp_gate_blocked'},
@@ -937,7 +972,7 @@ def _reconcile_posture_authorization(session: StrategySession,
                 counters.get('posture_blood_xp_gate_defer', 0) + 1
         log.info('[cw][cw4] posture level 授权血闸让位 '
                  '(hp=%s, plane=%s r%s): %s',
-                 state.hp, state.plane, state.round_num,
+                 _hp, _plane, _round,
                  un['reason'])
         return un
     # 逐门定位未兑现原因(与 run_mandate M3 链同序同判据,复用判据本体
@@ -949,28 +984,26 @@ def _reconcile_posture_authorization(session: StrategySession,
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
         levelup,
     )
-    cap = state.max_units()
-    if levelup.lv9_stop(state.level, _reg.level_max):
+    cap = max_units_of(bs)
+    if levelup.lv9_stop(_level, _reg.level_max):
         reason = 'lv9_stop'
     elif cap is None:
         reason = 'contract_cap_missing'
     elif not predicates.arm1_existence(
-            len([d for d in state.deployed if d is not None]),
-            [b.char_id or '' for b in state.bench if b is not None],
-            [d.char_id or '' for d in state.deployed
+            len([d for d in deployed_slots_of(bs) if d is not None]),
+            [b.char_id or '' for b in bench_slots_of(bs) if b is not None],
+            [d.char_id or '' for d in deployed_slots_of(bs)
              if d is not None], cap):
         reason = 'arm1_board_not_full'
     else:
         # 成本计算 = 容器(W6 波 4 接缝族切容器帧后帧形态不再可喂;
-        # level/xp/level_up_cost 与本帧同源=观察漏斗写端,读容器单例)
-        from sr_od.application.currency_war.kernel.cw_board_state import (
-            board_state_of,
-        )
-        clicks = clicks_to_next_level(board_state_of(session))
-        cost = xp_click_cost(board_state_of(session))
-        if not levelup.spend_unified(clicks, state.gold, cost):
+        # level/xp/level_up_cost 与本帧同源=观察漏斗写端,读容器单例;
+        # 原体内 board_state_of(session) ×2 随签名切 bs 复用形参消点)
+        clicks = clicks_to_next_level(bs)
+        cost = xp_click_cost(bs)
+        if not levelup.spend_unified(clicks, _gold, cost):
             reason = 'spend_unified_batch_unaffordable'
-        elif state.gold < clicks * cost:
+        elif _gold < clicks * cost:
             reason = 'unaffordable'
         else:
             # P72 (3) 全段预算闸镜像(ADR-0576;与 run_mandate M3 链
@@ -980,19 +1013,19 @@ def _reconcile_posture_authorization(session: StrategySession,
             _gate_ok, _gate_why = (False, '')
             if contracts.ensure_contract(
                     ('levelup', 'levelup_budget_gate'),
-                    contracts.ContractCtx(gold=state.gold, deploy_cap=cap),
+                    contracts.ContractCtx(gold=_gold, deploy_cap=cap),
                     getattr(state_of(session), 'cw4_counters', None) or {}):
                 from sr_od.application.currency_war.kernel.cw_economy import (
                     cap_resolved_of_session,
                 )
                 _gate_ok, _gate_why = levelup.levelup_budget_gate(
-                    state, session, state.gold,
+                    bs, session, _gold,
                     cap_resolved_of_session(session),
-                    k_members, list(state.bench or []),
-                    list(state.deployed or []), clicks, cost)
+                    k_members, bench_slots_of(bs),
+                    deployed_slots_of(bs), clicks, cost)
             reason = (_gate_why if not _gate_ok and _gate_why
                       else 'contract_other')
-    un = {'auth_id': f'{state.plane}-{state.round_num}',
+    un = {'auth_id': f'{_plane}-{_round}',
           'channel': 'levelup',
           'reason': reason,
           'channels': {'levelup': reason},
@@ -1004,7 +1037,7 @@ def _reconcile_posture_authorization(session: StrategySession,
             counters.get('posture_unfulfilled_level', 0) + 1
     log.info('[cw4][posture] level 授权未兑现(p%sr%s g=%s lv=%s):%s '
              '(posture_unfulfilled 置位,显式降级,不兜底花钱)',
-             state.plane, state.round_num, state.gold, state.level, reason)
+             _plane, _round, _gold, _level, reason)
     return un
 
 
@@ -1032,11 +1065,17 @@ def _merge_ev_before_frame_end(skeleton: list[Emitted],
 
 
 def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
-                   state: GameState | None, k_members: tuple[str, ...], *,
+                   bs: BoardState, k_members: tuple[str, ...], *,
                    k_switched: bool,
                    old_line_members: tuple[str, ...],
                    skeleton_out: list[Emitted] | None = None) -> list[Emitted]:
     """EV pass:criteria 七面按 §2 映射逐面追加(只增不减,§3.4)。
+
+    载体 = 容器 bs(prep 链容器化段 1:签名切 bs)。域读:金/轮次经
+    ``gold_of``/``round_num_of`` 读口(缺省 0/1 镜像旧帧直读,金轮位
+    读口 = 设计件 prep链容器化方案.md §2.2⑤ 行为差申报面);兜底上阵
+    输入 = ``deployed_slots_of(bs)``(换算单一源)。旧 `state is None`
+    守卫随载体退役——bs 恒存在,生产帧视图恒非 None(heavy 观察恒产出)。
 
     None 期缺省姿态:各面内部 fail-closed(未标定不发射);本函数
     只做发射面组织。冲突处理(R196 症2 落地):EV 项与已发射动作冲突
@@ -1065,7 +1104,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             ('sell', 'line_switch_sell'),
             contracts.ContractCtx(k_members=k_members), counters):
         slots, _key = crit_sell.line_switch_sell(
-            old_line_members, k_members, frame.bench, frame.deployed, state,
+            old_line_members, k_members, frame.bench, frame.deployed, bs,
             k_switched=k_switched, counters=counters,
             dedup_names=_mm_dedup)
     else:
@@ -1081,28 +1120,28 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     # 凑息档 EV 面 / 压库 / 装备精修 / 付费刷新:商店线辖域或【拟】
     # None 期 fail-closed,prep 帧无追加发射(判据本体已落
     # criteria/*,商店线接线随步6 前接线批——STEP34_REPORT 裁量呈报)。
-    # 支付支撑通道(两臂同开)
+    # 支付支撑通道(两臂同开;载体 = 置顶 bs,金/轮位经读口)
     missing = [m for m in k_members
                if m not in set(frame.bench_names) | set(frame.deployed_names)]
-    if missing and state is not None and contracts.ensure_contract(
+    if missing and contracts.ensure_contract(
             ('sell', 'funding_support_sell'),
-            contracts.ContractCtx(gold=state.gold), counters):
+            contracts.ContractCtx(gold=gold_of(bs)), counters):
         # T3 同轮保留集读端(第四消费位,与店侧 shop.py funding 发射位
         # 同款口径):被保垫件仅降序放行(转化类,非禁卖),命中卖出分键
         # funding_support_stall_convert + 卖出销账。
         _t3_protect = mandate.stall_protect_active(
-            session, int(getattr(state, 'round_num', 1) or 1),
+            session, round_num_of(bs),
             counters=counters)
         # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;ADR-0585,
         # 新格 A 同根格——与上方 skeleton_only 分支及店侧 funding 发射位
         # 三位同源,空排除形态在此闭死;批 3 窗口段生效)。
         _f_excl = sell_gate.sell_exclusions(
             session, k_members, channel='funding',
-            cap_hold=locked_buy_cap_hold(state),
-            current_round=int(getattr(state, 'round_num', 1) or 1))
+            cap_hold=locked_buy_cap_hold(bs),
+            current_round=round_num_of(bs))
         fslots, _why = crit_sell.funding_support_sell(
-            state.gold, mandate.cheapest_member_cost(frame), frame.bench,
-            k_members, state=state,
+            gold_of(bs), mandate.cheapest_member_cost(frame), frame.bench,
+            k_members, state=bs,
             exclude_names=_f_excl,
             counters=counters,
             defer_names=_t3_protect,
@@ -1110,12 +1149,12 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
         # 兜底豁免(P78-5:主路径空 ∧ 仍需筹资;pool 单一源同上)。
         _fb_need = mandate.cheapest_member_cost(frame)
         _f_fallback = []
-        if not fslots and state.gold < _fb_need:
+        if not fslots and gold_of(bs) < _fb_need:
             _f_fallback = sell_gate.funding_hold_fallback(
-                session, k_members, frame.bench, gold=state.gold,
+                session, k_members, frame.bench, gold=gold_of(bs),
                 need=_fb_need, a_exclusions=_f_excl,
-                deployed=state.deployed,
-                cap_hold=locked_buy_cap_hold(state))
+                deployed=deployed_slots_of(bs),
+                cap_hold=locked_buy_cap_hold(bs))
         for s in fslots:
             if s in sold_slots:
                 counters['ev_conflict_dropped'] = \

@@ -12,6 +12,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+    )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
@@ -112,12 +115,18 @@ def _max_units_dual(state) -> int:
     return state.max_units()
 
 
-def levelup_budget_gate(state: GameState, session: StrategySession | None,
+def levelup_budget_gate(bs: BoardState | GameState,
+                        session: StrategySession | None,
                         gold: int, cap_resolved: int,
                         k_members: tuple[str, ...], bench: list,
                         deployed: list, clicks: int,
                         click_cost: int) -> tuple[bool, str]:
     """P72 (3) 全段预算闸(ADR-0576):升级支出 s 的量闸(全段辖域)。
+
+    载体 = 容器 bs(prep 链容器化段 1:entry 姿态镜像/商店线两位消费
+    直传 bs;双形态注解 = mandate 面过渡期仍传帧,段 2 切,桥退役挂
+    波 5——与模块内 ``_as_bs`` 归一口同款过渡契约)。内部字段读按
+    字段对照表经双形态读口(``_plane_round_of``/``_max_units_dual``)。
 
     判据式(证明 = docs/develop/sr_od/application/currency_war/proofs/
     p72-full-band-budget-gate.md;P71-b (3) 辖域的全段化推广非推翻,
@@ -239,7 +248,7 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
     """
     if clicks * click_cost <= 0:
         return True, ''
-    if _plane_last_battle(state, session):
+    if _plane_last_battle(bs, session):
         # ALL IN 豁免支收窄(ADR-0604 §4-F5;辖域与支A 判据见 docstring):
         # P21 域内 ∧ 非支A 帧拒 XP;域外帧/支A 形态维持全豁免放行。
         # 位次申报:本支先于 ADR-0603 保底金门——P21 域内 XP 类即便
@@ -250,17 +259,17 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
         from sr_od.application.currency_war.kernel.cw_registry import (
             DEFAULT_REGISTRY,
         )
-        if not _realize_chain_ready(state, bench, deployed) \
+        if not _realize_chain_ready(bs, bench, deployed) \
                 and all_in_xp_domain_hit(
-                    _as_bs(state), session,
+                    _as_bs(bs), session,
                     DEFAULT_REGISTRY):
             return False, 'all_in_xp_category_filtered'
-        if _guarantee_floor_holds(state, session, gold, clicks, click_cost,
+        if _guarantee_floor_holds(bs, session, gold, clicks, click_cost,
                                   cap_resolved):
             return True, ''      # ALL IN 豁免(P72 §2.5;花后下界见上,ADR-0603)
         return False, 'guarantee_floor_defer'
-    if _realize_chain_ready(state, bench, deployed):
-        if _guarantee_floor_holds(state, session, gold, clicks, click_cost,
+    if _realize_chain_ready(bs, bench, deployed):
+        if _guarantee_floor_holds(bs, session, gold, clicks, click_cost,
                                   cap_resolved):
             return True, ''      # 支A:兑现链当帧可兑现(P39 ①臂姿态)
         return False, 'guarantee_floor_defer'
@@ -268,15 +277,16 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
     from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria.refresh import (
         r2_card_reserve,
     )
-    rho = r2_card_reserve(k_members, bench, deployed, state)
-    window_reserve = r2_card_reserve(k_members, bench, deployed, state)
+    rho = r2_card_reserve(k_members, bench, deployed, bs)
+    window_reserve = r2_card_reserve(k_members, bench, deployed, bs)
     tau = interest(gold, cap_resolved)
     if gold - clicks * click_cost >= tau * 10 + rho + window_reserve:
         return True, ''
     return False, 'levelup_budget_gate_blocked'
 
 
-def _guarantee_floor_holds(state: GameState, session: StrategySession | None,
+def _guarantee_floor_holds(bs: BoardState | GameState,
+                           session: StrategySession | None,
                            gold: int, clicks: int, click_cost: int,
                            cap_resolved: int) -> bool:
     """保底金门判据本体(T-149,ADR-0603):豁免支花后金下界,真 = 放行。
@@ -306,19 +316,19 @@ def _guarantee_floor_holds(state: GameState, session: StrategySession | None,
     模块私有:非判据面公开函数,不入契约/旁路枚举表(契约由
     levelup_budget_gate 键承载)。
     """
-    if _plane_last_battle(state, session):
+    if _plane_last_battle(bs, session):
         from sr_od.application.currency_war.kernel.cw_plane_table import (
             r_remaining,
         )
-        if r_remaining(session, *_plane_round_of(state)) <= 1:
+        if r_remaining(session, *_plane_round_of(bs)) <= 1:
             return True          # 终局域:末位面末战,域③前提失效
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         p1_blood_floor,
         p2_blood_floor_unlock,
     )
-    if p1_blood_floor(state):
+    if p1_blood_floor(bs):
         return True              # 生存域:死亡带转化优先,本门让位
-    if p2_blood_floor_unlock(state):
+    if p2_blood_floor_unlock(bs):
         # P2 濒死带生存域同构让位(解锁包件① P2 半边的保底金面;设计出处 =
         # p2_blood_band_unified_design/DESIGN.md §2.1 同构移植,授权闩合成
         # 经 p2_blood_floor_unlock)。死亡吸收态截断「未来效用」前提的论证
@@ -332,7 +342,7 @@ def _guarantee_floor_holds(state: GameState, session: StrategySession | None,
     return gold - clicks * click_cost >= DEFAULT_REGISTRY.boss_floor
 
 
-def _realize_chain_ready(state: GameState, bench: list,
+def _realize_chain_ready(bs: BoardState | GameState, bench: list,
                          deployed: list) -> bool:
     """P72 支A 谓词:C_realize=1 判定(升级收益的兑现链当帧可兑现)。
 
@@ -352,7 +362,7 @@ def _realize_chain_ready(state: GameState, bench: list,
     from sr_od.application.currency_war.kernel.cw_state import (
         deployed_occupied,
     )
-    cap = _max_units_dual(state)
+    cap = _max_units_dual(bs)
     if cap is None:
         return False
     if deployed_occupied(list(deployed or [])) < cap:
@@ -366,11 +376,17 @@ def batch_form(level: int, target_level: int) -> bool:
     return level < target_level
 
 
-def level_spend_blocked(state: GameState, session: StrategySession,
+def level_spend_blocked(bs: BoardState | GameState, session: StrategySession,
                         registry: DecisionV2Registry | None = None) -> bool:
     """危机带内整批经验授权让位保命面(实机复盘 g_20260904_054904
     p2r1 候选③:hp=1 败即死帧 9×LevelUpShop 36g,m3_batch 批授权把
     67% 金转为本帧零收益经验)。M3 发射位(mandate/shop 两域)消费。
+
+    载体 = 容器 bs(prep 链容器化段 1:entry 姿态镜像与商店线消费直传
+    bs;双形态注解 = mandate 面过渡期仍传帧,段 2 切,桥退役挂波 5)。
+    内部血线谓词(kernel ``blood_budget_levelup_blocked``/``p2_crisis_band``)
+    已切容器签名,经 ``_as_bs`` 归一口双形态兼容(p1/p2_blood_floor
+    谓词本体自带双形态读支)。
 
     ``registry`` = 上下文注册表(停付线字段 vd_p2_loss 族的单一源口径);
     三生产消费位(entry posture 镜像/shop M3/mandate 备战 M3)恒注入
@@ -404,9 +420,9 @@ def level_spend_blocked(state: GameState, session: StrategySession,
         p1_blood_floor,
         p2_blood_floor_unlock,
     )
-    if p1_blood_floor(state):
+    if p1_blood_floor(bs):
         return False    # 死亡线:转化优先,停付线让位(解锁包件①)
-    if p2_blood_floor_unlock(state):
+    if p2_blood_floor_unlock(bs):
         # P2 濒死带同构让位(解锁包件① P2 半边;设计出处 =
         # p2_blood_band_unified_design/DESIGN.md §2.1「解锁包三件同构移植」,
         # 裁定条目 = 241 §15.2 覆①消费让位)。授权闩 False 期间恒不触发
@@ -421,26 +437,27 @@ def level_spend_blocked(state: GameState, session: StrategySession,
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
-    # kernel 血线门波 2 已切容器签名(hp 经政策层读口);本策略域 GameState
-    # 帧经容器过渡桥装箱供帧(桥视图 hp source 失真语义见该桥 docstring,
-    # 门幂等保证过渡期行为一致;策略域签名切换随 strategies 全簇批)。
-    _bs = _as_bs(state)
+    # kernel 血线门波 2 已切容器签名(hp 经政策层读口);容器 bs 直读
+    #(prep 链容器化段 1),mandate 过渡帧经 ``_as_bs`` 桥装箱归一
+    #(桥视图 hp source 失真语义见该桥 docstring,门幂等保证过渡期行为一致)。
+    _bs = _as_bs(bs)
     if blood_budget_levelup_blocked(_bs, session, reg):
         return True
-    if _plane_last_battle(state, session):
+    if _plane_last_battle(bs, session):
         return False    # ALL IN 窗:停手让位(与血预算支同一豁免序)
     return p2_crisis_band(_bs, session, reg)
 
 
-def _plane_last_battle(state: GameState, session: StrategySession) -> bool:
+def _plane_last_battle(bs: BoardState | GameState,
+                       session: StrategySession) -> bool:
     """位面末最后一战判定(cw4 消费面;单一源 =
     decision_v2.discipline.plane_last_battle 的重导出委托,禁第二实现;
     模块私有——非判据面函数,不入契约/旁路枚举表)。kernel 侧波 2 已切
-    容器签名,GameState 帧经过渡桥装箱。"""
+    容器签名,mandate 过渡帧经 ``_as_bs`` 桥装箱双形态兼容。"""
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         plane_last_battle as _plb,
     )
-    return _plb(_as_bs(state), session)
+    return _plb(_as_bs(bs), session)
 
 
 def pop_slot(deployed_count: int, deploy_cap: int, gold: int,
