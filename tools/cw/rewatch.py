@@ -25,7 +25,8 @@
   uv run python tools/cw/rewatch.py --selftest         # 干跑:只查旧+列计划,不杀
 
 依赖:psutil(项目既有依赖,pyproject.toml 已声明);武装命令口径与 runtime-ops 一致:
-  PYTHONUTF8=1 + `uv run python skills/sr-od-currency-war-dev/scripts/<脚本>.py`。
+  PYTHONUTF8=1 + `uv run python <脚本真身路径>`——随局三件在 skill scripts 目录,
+  资产哨兵例外住 tools/cw/(路径例外单一源 = SCRIPT_HOME/_script_path)。
 """
 import argparse
 import contextlib
@@ -65,6 +66,19 @@ WATCHERS: dict[str, tuple[str, str]] = {
 }
 
 WATCHER_CMD_NAMES = ('cw_sentinel', 'cw_early_stop', 'cw_runs_gap', 'cw_asset_sentinel')
+
+# 例外件真身目录表(T-173-r1 验收缺陷 B):资产哨兵是仓库运维工具,住
+# tools/cw/ 而非 skill scripts 目录——路径例外单一源在本表,寻址一律走
+# _script_path,禁消费方散拼 SCRIPTS_DIR / 文件名(照拼出死命令,2026-09-13
+# 验收实测 print_commands 打印不存在的 skill 路径)。缺省不在表 = skill 件。
+TOOL_SCRIPTS_DIR = REPO_ROOT / 'tools' / 'cw'
+SCRIPT_HOME: dict[str, Path] = {'asset': TOOL_SCRIPTS_DIR}
+
+
+def _script_path(key: str) -> Path:
+    """哨兵脚本真身路径:例外件按 SCRIPT_HOME,其余件在 skill scripts 目录。"""
+    return SCRIPT_HOME.get(key, SCRIPTS_DIR) / WATCHERS[key][0]
+
 KILL_GRACE_SEC = 2.0
 # 杀净出口的「杀→复扫」总轮数上限(1 轮主杀 + 至多 2 轮复扫再杀;轮数耗尽
 # 仍非空 = exit 2 可验证失败)——有界重试,不做无限兜圈
@@ -226,7 +240,9 @@ def print_commands(wanted: list[str]) -> None:
     本工具不自起(DETACHED 自起=报警链自断,2026-08-25 用户纠正后移除)。"""
     print('[武装命令] 以下命令请由编排者经会话后台任务机制执行(勿在本工具内起):')
     for key in wanted:
-        script = SCRIPTS_DIR / WATCHERS[key][0]
+        # 寻址单一源 = _script_path(例外件 asset 在 tools/cw/,散拼
+        # SCRIPTS_DIR 会打印不存在的死命令,T-173-r1 验收缺陷 B)
+        script = _script_path(key)
         note = ''
         if key == 'early':
             note = ';注意首条遥测落后再武装纪律'

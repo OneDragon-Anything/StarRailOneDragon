@@ -47,7 +47,7 @@ CPU 成本对 60s 轮询不划算,且已实证的清空形态都是「数量/大
 
   $env:PYTHONUTF8='1'; uv run python tools/cw/cw_asset_sentinel.py            # 驻留(缺省 60s/轮)
   uv run python tools/cw/cw_asset_sentinel.py --once                          # 单轮体检即退
-  uv run python tools/cw/cw_asset_sentinel.py --rebaseline                    # 恢复完成后显式重建基线
+  uv run python tools/cw/cw_asset_sentinel.py --rebaseline                    # 显式重建基线(可穿越损坏态)
   uv run python tools/cw/cw_asset_sentinel.py --interval 300                  # 巡检间隔(秒)
 
 环境变量重定向(自测/多树隔离):CW_ASSET_SENTINEL_ROOT(资产根,缺省仓库根)、
@@ -55,7 +55,8 @@ CW_ASSET_SENTINEL_BASELINE / _EVIDENCE / _LOCK / _POS(四个运行态文件路�
 CW_ASSET_SENTINEL_INTERVAL(巡检间隔秒)。
 --selftest:内置合成树回归(不碰真实资产与 .debug)。
 
-退出码:0=干净/正常退出;2=基线损坏等配置态错误(禁静默重建基线);3=[ASSET-HIT]。
+退出码:0=干净/正常退出;2=基线损坏等配置态错误(仅无 --rebaseline 时,损坏态
+显式重建走 --rebaseline 穿越重建);3=[ASSET-HIT]。
 """
 import argparse
 import contextlib
@@ -606,7 +607,12 @@ def main() -> None:
     if not _acquire_lock():
         sys.exit(0)
 
-    baseline = load_baseline(BASELINE_PATH)
+    # 显式重建(--rebaseline)必须能穿越损坏基线:损坏态唯一出路就是重建,
+    # 若先 load 会在损坏时 exit 2 把重建口也堵死——报错与证据指引都说
+    # 「用 --rebaseline 重建」,堵死即指引自指死循环(T-173-r1 验收缺陷 A)。
+    # 无 --rebaseline 时损坏仍经 load_baseline exit 2 拒静默重建(防把已
+    # 发生的清空钉成新正常态,该语义不变)。
+    baseline = None if args.rebaseline else load_baseline(BASELINE_PATH)
     if args.rebaseline or baseline is None:
         snapshot = snapshot_all(REPO_ROOT)
         save_baseline(BASELINE_PATH, snapshot)
