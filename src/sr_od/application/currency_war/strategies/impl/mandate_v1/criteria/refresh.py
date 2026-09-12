@@ -193,10 +193,13 @@ def all_channel_buy_exists(gold: int, g_star: int, cap_resolved: int,
       即触发,池非空故只查帧级资格;
     - 义务 M2(缺员+臂①囤腿):∃成员「该级可刷出(refresh_prob>0)
       ∧ 金 ≥ 注册表 cost ∧ 席可落」;席可落 = bench_free>0 ∨
-      ``seat_recoverable``(腾席可达代理,调用方传 P56 投影
-      liquid_refund>0——存在可变现 1★ 燃料件时 M4 腾席/M2 通道的
-      席位前置可满足。**代理偏宽申报**:高估腾席可达 ⇒ 门偏不拦 ⇒
-      保守端 = 现行为,P92 拦阻只在确定严格劣帧开火);
+      ``seat_recoverable``(腾席可达判定,调用方传店帧腾席臂同参
+      ``mandate.fuel_sell_candidates`` 资格面非空——存在可变现 1★
+      燃料件,M4 腾席/M2 通道的席位前置可满足;判定与腾席发射位同一
+      单源,装配单一入口 = ``shop.p92_seat_recoverable``,禁金额投影
+      代理。旧「P56 投影 liquid_refund>0 代理」已退役:其排除集口径
+      (projection 并 T3 活跃集 ≠ 腾席臂 defer 放行)与布尔化
+      (Σ退金>0 ≠ 资格非空)两向漂移随收窄一次消除,判定本体零改);
     - EV 买面:``ev_face_open``(调用方传 not provisional.is_none
       ('U_X');生产恒 None ⇒ 恒 False,如实建模现决策机器)∧ 席 ∧
       ``window_nonempty``;

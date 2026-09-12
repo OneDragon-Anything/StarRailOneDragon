@@ -363,6 +363,50 @@ def _merge_pair_names(bench: list[BenchChar],
             if len(ss) == 2 and all(s == 1 for s in ss)}
 
 
+def p92_seat_recoverable(session: StrategySession,
+                         bench: list[BenchChar],
+                         k_members: tuple[str, ...],
+                         state: GameState, *,
+                         cap_hold: int | None,
+                         current_round: int,
+                         defer_names: frozenset[str] | set[str],
+                         counters: dict | None = None,
+                         dedup_names: set[str] | None = None) -> bool:
+    """P92「席可落」腾席可达判定(IC-1 单源;T-20 收窄落码)。
+
+    真值 = ``mandate.fuel_sell_candidates`` 资格面非空,排除集与店帧
+    实际腾席臂(M2 缺员腾席位/m2_stockpile 腾席位/恒买腾席支)同一
+    装配 A 形态(``sell_gate.sell_exclusions(channel='m4_fuel')``,单一
+    入口禁第二排除集),T3 同轮保留走 defer 末位(转化类放行,与腾席
+    臂同参)——「存在可变现 1★ 燃料件」即席可落,判定尺与腾席发射位
+    同源,禁平行第二实现。
+
+    收窄沿革(旧代理为何退役):旧装配传 P56 投影 ``liquid_refund>0``
+    (金额投影代理)。其申报的偏宽面(占位件被当可变现候选)已随该
+    投影读的单一源化(fuel_sell_candidates 占位件滤门)闭合;残余失真
+    是**口径错配**双向漂:①排除集——投影视图并 T3 活跃集
+    (sell_gate.py projection 支),而腾席臂对垫保是 defer 转化类放行
+    非排除 ⇒ T3 活跃帧投影读 0、席实际可腾,旧代理误判不可达 ⇒ P92
+    误拦(方向 = 过度拦刷,失刷新机会);②布尔化——「Σ退金>0」是
+    资金量语义非席可落能力布尔(零费候选角帧同误判)。本判定直引
+    腾席臂同参资格面,两向漂移一次消除;行为差方向 = P92 在 T3 活跃
+    帧少拦(差帧 ② 通道真实可达,旧拦为误拦),行为差锁 =
+    sr-od-test test_cw_seat_recoverable_narrow.py。
+    ``counters``/``dedup_names`` 照传帧级共享载体
+    (``merge_material_guard_blocked`` 事件口径每帧每素材至多 1,与
+    P56 投影读/凑息/支付变现触达位同款纪律)。
+    """
+    excl = sell_gate.sell_exclusions(session, k_members, channel='m4_fuel',
+                                     cap_hold=cap_hold,
+                                     current_round=current_round)
+    cands = mandate.fuel_sell_candidates(bench, k_members, state=state,
+                                         exclude_names=excl,
+                                         defer_names=defer_names,
+                                         counters=counters,
+                                         dedup_names=dedup_names)
+    return bool(cands)
+
+
 def _frame_search_windows(session: StrategySession, state: GameState,
                           registry, counters: dict) -> tuple[frozenset[int],
                                                             frozenset[int]]:
@@ -2734,8 +2778,9 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 # 任何店产不触发买入 ⇒ 付费刷新净差 = −(c_eff+L) < 0
                 # 严格,拦刷(fail-closed,落凑息/CloseShop 既有续流)。
                 # 判定尺单一源 = crit_refresh.all_channel_buy_exists;
-                # seat_recoverable 传 P56 投影 liquid_refund>0(腾席可达
-                # 代理,偏宽=门偏不拦=保守端,判定尺 docstring 申报)。
+                # seat_recoverable 传收窄判定 p92_seat_recoverable
+                #(腾席臂同参资格面非空,IC-1 单源;旧 P56 投影金额代理
+                # 退役,行为差锁 = test_cw_seat_recoverable_narrow)。
                 # P36-a 让位:危机不变式先于本门(01 §3.4 既有序;现行
                 # 决策链无危机直通支,executor 结构位承载)。
                 _p92_ready = contracts.ensure_contract(
@@ -2768,7 +2813,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     _p92_ok = crit_refresh.all_channel_buy_exists(
                         gold=gold, g_star=g_star, cap_resolved=cap_resolved,
                         bench_free=bench_free,
-                        seat_recoverable=(liquid_refund > 0),
+                        seat_recoverable=p92_seat_recoverable(
+                            session, bench, k_members, state,
+                            cap_hold=_cap_hold_now,
+                            current_round=int(state.round_num or 1),
+                            defer_names=_t3_protect, counters=counters,
+                            dedup_names=_mm_dedup),
                         missing_costs=_p92_missing,
                         stockpile_costs=_p92_stockpile,
                         merge_pair_costs=_p92_pairs,
@@ -3021,5 +3071,3 @@ def decide_shop_action(state: GameState, session: StrategySession,
                     if bench_free <= 0:
                         _count('budget_gate_must_spend_deadend')
     return CloseShop()
-
-
