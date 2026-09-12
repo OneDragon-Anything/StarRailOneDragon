@@ -118,7 +118,8 @@ def record_exogenous(round_num: int, kind: str, detail: str = '',
 
 def bypass_obs_conflict_to_defect(rec: dict[str, Any]) -> None:
     """观察冲突行 → 缺陷台账旁路出口(口径映射在 telemetry 真实现;
-    缺陷台账 = 保留专用流,本旁路照常供给,证据 refs 指冻结档案行)。"""
+    缺陷台账 = 保留专用流,本旁路照常供给,证据 refs 指 journal (run_id,v)
+    锚行(journal_refs 单一源构造,无账本媒体诚实省略)。"""
     fn = _bypass_obs_conflict_to_defect
     if fn is None:
         return

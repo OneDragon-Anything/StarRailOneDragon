@@ -2,7 +2,7 @@
 
 - 日期:2026-09-10
 - 状态:accepted
-- 关联:`docs/develop/currency_war/design/BoardState-数据结构设计.md`(容器正本)、统一观察架构-画面op基类设计.md §12(写入源正本)、节点推进判定方案 R4(v3.8-低-3 勘正:原指 R3.1——已升格派生规则单一源,现行文件 = `docs/develop/currency_war/game_state/node-derivation.md`;持久索引=docs/game/currency_war/research/screen_flow_timing.md #26/#14/#27)、ADR-0577(决策输入禁遥测)、ADR-0571(grep 守卫锁先例)、ADR-0560/ADR-0566(政策闸先验)、进度账本 T-229(R1 批)/T-232(R1.1 批)/T-230(R2 批);验收出处=reviews/统一state-R1-落地审.md accept(条件记档)+reviews/统一state-R1delta+R1.1-落地审.md accept(合并覆盖成立,T-229 commit 门放行)+reviews/统一state-R2-落地审.md accept(条件记档)。设计文档工作稿(流程侧遥测-设计v3.3.md 等)存 .debug/temp 为易失档,裁定与持久结论以本 ADR 为准
+- 关联:`docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/BoardState-数据结构设计.md`(容器正本)、统一观察架构-画面op基类设计.md §12(写入源正本)、节点推进判定方案 R4(v3.8-低-3 勘正:原指 R3.1——已升格派生规则单一源,现行文件 = `docs/develop/sr_od/application/currency_war/game_state/node-derivation.md`;持久索引=docs/game/currency_war/research/screen_flow_timing.md #26/#14/#27)、ADR-0577(决策输入禁遥测)、ADR-0571(grep 守卫锁先例)、ADR-0560/ADR-0566(政策闸先验)、进度账本 T-229(R1 批)/T-232(R1.1 批)/T-230(R2 批);验收出处=reviews/统一state-R1-落地审.md accept(条件记档)+reviews/统一state-R1delta+R1.1-落地审.md accept(合并覆盖成立,T-229 commit 门放行)+reviews/统一state-R2-落地审.md accept(条件记档)。设计文档工作稿(流程侧遥测-设计v3.3.md 等)存 .debug/temp 为易失档,裁定与持久结论以本 ADR 为准
 
 ## 背景
 
