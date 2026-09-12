@@ -1961,10 +1961,20 @@ def decide_shop_action(bs: GameState, session: StrategySession,
     _reward_defer = reward_node_suppressed(bs)
     if _reward_defer:
         _count('reward_node_defer')
-    if getattr(bs, 'node_type', None) == 'reward':
+    # 节点判读 = kernel 单一源 node_kind_of(容器读口;旧 CwWorkFrame.
+    # node_type 属性在 GameState 上不存在,getattr 恒 None ⇒ 写点曾失联
+    # —— piggy_reward 全语料恒 False 的根因,识别面数据通路修复)。
+    _node_kind = node_kind_of(bs)
+    if _node_kind == 'reward':
         # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
         state_of(session).v3_piggy_reward = is_piggy_reward_frame(
             bs)
+    elif _node_kind is not None:
+        # 可辨非奖励帧复位(纯遥测零决策面;字段语义 = telemetry schema
+        # piggy_reward「本帧是扑满奖励帧」,跨轮滞留 True 污染按行判读)。
+        # 不可辨帧(None,店开观察帧节点行被遮的结构性常态)不复位,维持
+        # 最近真值,与 reward_node_suppressed 的 None 失效方向同族。
+        state_of(session).v3_piggy_reward = False
     _cap_now = max_units_of(bs)
     _lvl_readable = bool(level_of(bs) is not None)
     _arm1 = False

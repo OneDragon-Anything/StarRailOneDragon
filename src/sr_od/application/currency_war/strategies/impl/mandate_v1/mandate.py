@@ -1357,9 +1357,15 @@ def run_mandate(frame: MandateFrame,
     _reward_defer = reward_node_suppressed(state)
     if _reward_defer:
         _count('reward_node_defer')
-    if node_kind_of(state) == 'reward':
+    _m3_node_kind = node_kind_of(state)
+    if _m3_node_kind == 'reward':
         # 每可辨奖励帧刷新扑满标记(真值随环境选择变化,防跨帧滞留旧值)
         state_of(session).v3_piggy_reward = is_piggy_reward_frame(state)
+    elif _m3_node_kind is not None:
+        # 可辨非奖励帧复位(纯遥测零决策面;字段语义 = telemetry schema
+        # piggy_reward「本帧是扑满奖励帧」,跨轮滞留 True 污染按行判读;
+        # 与 shop 栈写点同批同语义)。不可辨帧(None)不复位,维持最近真值。
+        state_of(session).v3_piggy_reward = False
     # 形态⑥第二破口观测(纯观测零行为;M3 前置短路帧显影,补「零分键
     # 零静默」)。分键形态钉死四元合取(241 §15.1 R3-低3 兑付:防宽化为
     # 「一切前置短路帧」——域内闩失效帧/cap 不可读帧不入键),键带授权域
