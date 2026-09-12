@@ -27,6 +27,20 @@ details/data-batch-estimates.md):
   (8 局:经济过热 ×7 + 经济严重过热 ×1)但遥测无扑满战利品独立字段,
   奖励轮金差分混入备战净支出(买/卖/刷/升级),无法把增益从收支里分离;
   注册表不落该参数 → C 类通道 fail-closed(裸分维持)。
+  采集通路现状(T-143 起):①识别面已通——sim 注入受控批入口
+  ``sr_od.application.currency_war.sim.cw_sim_piggy``(变体 normal/super
+  同 seed 对照)产出扑满帧样本面;实机侧 piggy_reward 遥测字段
+  (telemetry schema)写点已修复(mandate_v1 两栈,判据单一源
+  kernel/cw_reward_node)。②真值面仍缺(本参数落参的必要源)——档案
+  无扑满战利品独立字段,需实机门开后按扑满局战利品流观察定采集点另批
+  落地(现有 8 扑满局档案无新增信息)。
+  **落参就绪判据**(三件同时满足,届时重跑本脚本核对后手工落表):
+  ① 档案面:每变体可用「扑满奖励节点」样本 ≥ 20 轮(变体分键;经济
+  严重过热自然到局频率 ≈0.7%,按需加速到局),且增益分解口径成文
+  (战利品金对应字段、与基础/息/连胜的分离规则、失败轮(打不过=零奖励)
+  处置);② 统计面:增益均值 bootstrap 95% CI 下端 > 0(fail-closed 门
+  方向闭合,与注册表既有门同语义);③ 对拍面:sim 注入批识别面分布与
+  实机 piggy_reward 字段方向一致(变体分键无结构性矛盾)。
 
 用法:
   uv run python tools/cw/env_economy_estimates.py [--matches-dir DIR] [--ci 95]
