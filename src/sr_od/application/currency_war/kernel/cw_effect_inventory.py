@@ -601,11 +601,11 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
     - **幂等**:portal 源已登记同名(spec.name = 归一名)跳过——环境确认链
       重入/retry 不得双登记(实例按 spec_key 唯一,effect-domain.md §9.1
       与词缀源同款纪律);
-    - acquired_t = 登记时点节点序快照((plane-1)*9+round 基 1;BoardState
+    - acquired_t = 登记时点节点序快照((plane-1)*9+round 基 1;GameState
       节点单例优先,引导窗回退 session.last_state,与词缀源同坐标系);
     - 返回本次登记的 spec(幂等跳过/未知名返回 None,调用侧日志留证)。
 
-    board_state_of 运行期函数内 import:BoardState 容器模块头反向 import
+    board_state_of 运行期函数内 import:GameState 容器模块头反向 import
     本模块(effects 字段载体),保持本函数可离线单测(惰性纪律同文末诸桥)。
     """
     from sr_od.application.currency_war.kernel.cw_investments import (
@@ -616,7 +616,7 @@ def register_portal_from_env(session: object, env_name: str) -> EffectSpec | Non
     _name = normalize_invest_name(env_name)
     if _name not in INVESTMENT_ENVS:
         return None
-    from sr_od.application.currency_war.kernel.cw_board_state import (
+    from sr_od.application.currency_war.kernel.cw_game_state import (
         board_state_of,
     )
     bs = board_state_of(session)
