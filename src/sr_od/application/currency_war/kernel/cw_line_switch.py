@@ -172,13 +172,16 @@ def e_rounds(comp: Comp, bs: BoardState,
         p = p_f if p <= 0 else 1 - (1 - p) * (1 - p_f)
     if p <= 0:
         return math.inf
-    _rc = bs.shop_refresh_cost.value
-    cost = _rc if _rc is not None else 2
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        cap_resolved_of_session,
+        refresh_cost_effective,
+        saturation_line,
+    )
+    # 刷价单一源消费 = refresh_cost_effective(现值→None 退建模基价;
+    # economy 接缝注「字段读统一经容器读口单一源,禁各消费点自写兜底」
+    # ——禁在本判据内联第二份读式/裸魔数兜底)。
+    cost = refresh_cost_effective(None, 0, bs=bs)
     if session is not None:
-        from sr_od.application.currency_war.kernel.cw_economy import (
-            cap_resolved_of_session,
-            saturation_line,
-        )
         floor = saturation_line(cap_resolved_of_session(session))
     else:
         floor = reg.interest_floor()
