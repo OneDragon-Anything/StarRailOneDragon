@@ -270,7 +270,8 @@ class PrepObservation:
     front_occupied: set = field(default_factory=set)  # 前排占用物理槽位号(每步现读)
     back_occupied: set = field(default_factory=set)
     front_size: int = 4
-    back_size: int = 6
+    # (back_size 字段已删(波 5b 死字段退役,写读闭环终端消费者零;决策链
+    #  后排容量单一源 = 容器 back_capacity_of)。)
     overlay_state: str | None = None    # P5
     # 事件 overlay 检测(盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即 BailToOuter
     # 交外环分支 handler;实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)

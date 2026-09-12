@@ -78,7 +78,6 @@ def snapshot_to_obs(snapshot: Snapshot, session: StrategySession) -> PrepObserva
         front_occupied=set(snapshot.front_occupied),
         back_occupied=set(snapshot.back_occupied),
         front_size=snapshot.front_size,
-        back_size=snapshot.back_size,
         event_overlay=snapshot.event_overlay,
     )
 

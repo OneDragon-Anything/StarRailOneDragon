@@ -3,7 +3,7 @@
 实机观察 → Snapshot 的 observe 端口 ``snapshot_from_obs``(生产消费方 =
 strategies 注册壳 MandateV1Live 的装配缝;与 sim 合成器共享字段映射语义)。
 离线装配链 ``DecideAdapter``→prep_brain.decide 已随 v2 退役链删除(底稿
-MAP ⓪ A10;唯一外部消费 test_cw_expected_state 同批退役);纯映射半部
+MAP ⓪ A10);纯映射半部
 单一源 = strategies/impl/mandate_v1/adapter.py。
 
 为何在 app:本模块 import prep_actions/cw_screen_prep/obs 执行面词汇,且被
@@ -153,7 +153,6 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
         front_occupied=frozenset(obs.front_occupied),
         back_occupied=frozenset(obs.back_occupied),
         front_size=obs.front_size,
-        back_size=obs.back_size,
         shop_open=obs.shop_open,
         shop_cards=None,   # P1 恒 None(PrepObservation 同款)
         spheres=tuple(RewardSphere(color=c, x=p.x, y=p.y, radius=r)

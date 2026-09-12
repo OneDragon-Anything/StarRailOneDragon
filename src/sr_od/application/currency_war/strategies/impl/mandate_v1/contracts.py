@@ -34,8 +34,9 @@ from typing import Any
 from sr_od.application.currency_war.kernel.cw_state import BenchChar, ShopCard
 
 #: 快照 Schema 版本(字段只增不改删,废弃字段走两版过渡;不匹配显式报错,
-#: 替代静默回退——接口版本化决策,设计审计报告 §三.8)。
-SNAPSHOT_SCHEMA_VERSION = 1
+#: 替代静默回退——接口版本化决策,设计审计报告 §三.8)。v2(波 5b):back_size
+#: 死字段移除(T-23-r1 §⑤.2 版本演进收口),字段集变化按契约升版。
+SNAPSHOT_SCHEMA_VERSION = 2
 
 
 class SnapshotSchemaVersionError(ValueError):
@@ -186,7 +187,9 @@ class Snapshot:
     front_occupied: frozenset[int] = frozenset()
     back_occupied: frozenset[int] = frozenset()
     front_size: int = 4
-    back_size: int = 6
+    # (back_size 字段已删(波 5b 死字段退役,T-23-r1 §⑤.2 版本演进收口:
+    #  写读闭环 snapshot↔obs 互转、终端消费者零;决策链后排容量单一源 =
+    #  容器 back_capacity_of,经 adapter decision_state)。)
     # —— 商店域 ——
     shop_open: bool = False
     shop_cards: tuple[ShopCard, ...] | None = None  # None=本帧未读;卡内 name=''/cost=0=该维未识别

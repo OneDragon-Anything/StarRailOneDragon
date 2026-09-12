@@ -619,7 +619,8 @@ class CwScreenPrep(CwScreenOpBase):
         front_pts = row_area_centers(self.ctx, '前排')
         back_pts = row_area_centers(self.ctx, '后排')
         obs.front_size = len(front_pts)
-        obs.back_size = len(back_pts)
+        # (obs.back_size 写点随死字段退役删除(波 5b,终端消费者零——决策链
+        #  后排容量读容器 back_capacity_of);back_occupied 仍按后排点现读。)
         obs.front_occupied = {i + 1 for i, p in enumerate(front_pts)
                               if slot_occupied(screen, int(p.x), int(p.y))}
         obs.back_occupied = {i + 1 for i, p in enumerate(back_pts)
