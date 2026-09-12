@@ -46,6 +46,7 @@
 | 人怎么打(开局/经济/等级/阵容/装备的直觉假设全景及其证明状态) | [user_playstyle.md](user_playstyle.md) ★直觉假设登记簿(证明状态随 [math_proofs](math_proofs.md),ADR-0482) |
 | 经济机制:牌池/退金/刷新概率/多刷/保血边界/阶段共识 | [economy.md](economy.md) |
 | 节点经验:基础经验(+2/+0/BOSS+12 挂确认)/购买经验 4 金=+4XP/升级门槛表 | [xp-rules.md](xp-rules.md) |
+| 节点类型:三位面默认序列地面真值 / 普通奖励节点=战斗型(有结算屏,档案定谳) | [plane_schedule_observed.md](plane_schedule_observed.md) |
 | 升星合成:买牌落点/场上吸收/备战最左/连锁合成(买一张=可能升两级) | [merge_mechanics.md](merge_mechanics.md) |
 | 战斗机制:伤害三乘区/星级收益/血量星/连胜经济/练度 | [combat.md](combat.md) |
 | 过渡体系:P1 骨架/过渡成型停手线/换血点/P2 护航(已抛弃史料)/买牌纪律 | [transitions.md](transitions.md) |
