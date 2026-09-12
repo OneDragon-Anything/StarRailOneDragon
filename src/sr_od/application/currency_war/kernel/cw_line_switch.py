@@ -100,27 +100,49 @@ def p_bar_faction(tag: str, level: int) -> float:
     return min(1.0, p_hit_once)
 
 
-def line_distance(comp: Comp, state: GameState) -> int:
+def tier_progress(comp: Comp, bs: BoardState) -> dict[str, tuple[int, int, int]]:
+    """逐档进度 {档: (需求, 已持, 货架)}——线距离口径的分解单一源。
+
+    消费端:``line_distance``(标量和)与 strategies 侧线缺口分解
+    (evidence_gate 输入,proof.py)共用本式,禁第二实现漂移。
+    口径(原 line_distance 逐字,超档不计):held_t = min(需求, 板面档
+    计数);shelf_t = 本回合 shop 中该档阵营可见件数,仅当板面档计数
+    仍低于需求时计(买走即 held,不计入刷出期望)。
+    """
+    tiers = getattr(comp, 'form_tiers', None) or {}
+    board = bs.board.value or {}
+    out: dict[str, tuple[int, int, int]] = {}
+    for f, t in tiers.items():
+        held_t = min(t, board.get(f, 0))
+        shelf_t = 0
+        if held_t < t:
+            _payload = bs.shop.value
+            for c in (list(_payload.cards) if _payload is not None else []):
+                if (getattr(c, 'faction', '') or '') == f:
+                    shelf_t += 1
+        out[f] = (t, held_t, shelf_t)
+    return out
+
+
+def line_distance(comp: Comp, bs: BoardState) -> int:
     """distance(c) = need − held − shelf(需求张数 − 持有 − 货架可见可买)。
 
     held 取 board(场上)对阵营档位的占有(超档不计);shelf=本回合 shop
-    中「缺档阵营」的可见件数(买走即 held,不计入刷出期望)。
+    中「缺档阵营」的可见件数(买走即 held,不计入刷出期望)。逐档进度
+    分解单一源 = ``tier_progress``;全局 clamp 是本函数(E_rounds 标量
+    距离)的既有意口径——超持仓可跨档抵扣,与逐档 clamp 的缺口分解
+    (proof.py)服务不同消费端,两形态并存已申报。
     """
-    tiers = getattr(comp, 'form_tiers', None) or {}
-    if not tiers:
+    prog = tier_progress(comp, bs)
+    if not prog:
         return 0
-    board = state.board or {}
-    need = sum(tiers.values())
-    held = sum(min(t, board.get(f, 0)) for f, t in tiers.items())
-    shelf = 0
-    for c in (state.shop or []):
-        f = getattr(c, 'faction', '') or ''
-        if f in tiers and board.get(f, 0) < tiers[f]:
-            shelf += 1
+    need = sum(p[0] for p in prog.values())
+    held = sum(p[1] for p in prog.values())
+    shelf = sum(p[2] for p in prog.values())
     return max(0, need - held - shelf)
 
 
-def e_rounds(comp: Comp, state: GameState,
+def e_rounds(comp: Comp, bs: BoardState,
              registry: DecisionV2Registry | None = None,
              session: StrategySession | None = None) -> float:
     """E_rounds(c) ≈ distance / per_round(per_round 见模块注释)。
