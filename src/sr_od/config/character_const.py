@@ -170,14 +170,14 @@ ASTA = Character(id='asta', cn='艾丝妲', path=CHARACTER_PATH_HARMONY, combat_
 BAILU = Character(id='bailu', cn='白露', path=CHARACTER_PATH_ABUNDANCE, combat_type=LIGHTNING, level=5, technique_type=TECHNIQUE_BUFF)
 BLADE = Character(id='blade', cn='刃', path=CHARACTER_PATH_DESTRUCTION, combat_type=WIND, level=5, technique_type=TECHNIQUE_ATTACK)
 BRONYA = Character(id='bronya', cn='布洛妮娅', path=CHARACTER_PATH_HARMONY, combat_type=WIND, level=5, technique_type=TECHNIQUE_BUFF)
-CAELUM_DESTRUCTION = Character(id='caelum_destruction', cn='男主毁灭', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_BUFF)
-CAELUM_PRESERVATION = Character(id='caelum_preservation', cn='男主存护', path=CHARACTER_PATH_PRESERVATION, combat_type=FIRE, level=4, technique_type=TECHNIQUE_BUFF)
-CAELUM_HARMONY = Character(id='caelum_harmony', cn='男主同谐', path=CHARACTER_PATH_HARMONY, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
-CAELUM_REMEMBRANCE = Character(id='caelum_remembrance', cn='男主记忆', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=4, technique_type=TECHNIQUE_AREA)
-CAELUM_ELATION = Character(id='caelum_elation', cn='男主欢愉', path=CHARACTER_PATH_ELATION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_BUFF)
+CAELUM_DESTRUCTION = Character(id='caelum_destruction', cn='开拓者·毁灭·男', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_BUFF)
+CAELUM_PRESERVATION = Character(id='caelum_preservation', cn='开拓者·存护·男', path=CHARACTER_PATH_PRESERVATION, combat_type=FIRE, level=4, technique_type=TECHNIQUE_BUFF)
+CAELUM_HARMONY = Character(id='caelum_harmony', cn='开拓者·同谐·男', path=CHARACTER_PATH_HARMONY, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
+CAELUM_REMEMBRANCE = Character(id='caelum_remembrance', cn='开拓者·记忆·男', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=4, technique_type=TECHNIQUE_AREA)
+CAELUM_ELATION = Character(id='caelum_elation', cn='开拓者·欢愉·男', path=CHARACTER_PATH_ELATION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_BUFF)
 CLARA = Character(id='clara', cn='克拉拉', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_ATTACK)
 DANHENG = Character(id='danheng', cn='丹恒', path=CHARACTER_PATH_HUNT, combat_type=WIND, level=4, technique_type=TECHNIQUE_BUFF)
-DANHENGIMBIBITORLUNAE = Character(id='danhengimbibitorlunae', cn='丹恒·饮月', path=CHARACTER_PATH_DESTRUCTION, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
+DANHENGIMBIBITORLUNAE = Character(id='danhengimbibitorlunae', cn='丹恒•饮月', path=CHARACTER_PATH_DESTRUCTION, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 FUXUAN = Character(id='fuxuan', cn='符玄', path=CHARACTER_PATH_PRESERVATION, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_BUFF)
 GEPARD = Character(id='gepard', cn='杰帕德', path=CHARACTER_PATH_PRESERVATION, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF)
 GUINAIFEN = Character(id='guinaifen', cn='桂乃芬', path=CHARACTER_PATH_NIHILITY, combat_type=FIRE, level=4, technique_type=TECHNIQUE_ATTACK)
@@ -191,8 +191,8 @@ KAFKA = Character(id='kafka', cn='卡芙卡', path=CHARACTER_PATH_NIHILITY, comb
 LUKA = Character(id='luka', cn='卢卡', path=CHARACTER_PATH_NIHILITY, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_ATTACK)
 LUOCHA = Character(id='luocha', cn='罗刹', path=CHARACTER_PATH_ABUNDANCE, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF)
 LYNX = Character(id='lynx', cn='玲可', path=CHARACTER_PATH_ABUNDANCE, combat_type=QUANTUM, level=4, technique_type=TECHNIQUE_BUFF)
-MARCH7TH_PRESERVATION = Character(id='march7th_preservation', cn='三月七存护', path=CHARACTER_PATH_PRESERVATION, combat_type=ICE, level=4, technique_type=TECHNIQUE_ATTACK)
-MARCH7TH_HUNT = Character(id='march7th_hunt', cn='三月七巡猎', path=CHARACTER_PATH_HUNT, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
+MARCH7TH_PRESERVATION = Character(id='march7th_preservation', cn='三月七', path=CHARACTER_PATH_PRESERVATION, combat_type=ICE, level=4, technique_type=TECHNIQUE_ATTACK)
+MARCH7TH_HUNT = Character(id='march7th_hunt', cn='仙舟三月七', path=CHARACTER_PATH_HUNT, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
 NATASHA = Character(id='natasha', cn='娜塔莎', path=CHARACTER_PATH_ABUNDANCE, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_ATTACK)
 PELA = Character(id='pela', cn='佩拉', path=CHARACTER_PATH_NIHILITY, combat_type=ICE, level=4, technique_type=TECHNIQUE_ATTACK)
 QINGQUE = Character(id='qingque', cn='青雀', path=CHARACTER_PATH_ERUDITION, combat_type=QUANTUM, level=4, technique_type=TECHNIQUE_BUFF)
@@ -200,11 +200,11 @@ SAMPO = Character(id='sampo', cn='桑博', path=CHARACTER_PATH_NIHILITY, combat_
 SEELE = Character(id='seele', cn='希儿', path=CHARACTER_PATH_HUNT, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 SERVAL = Character(id='serval', cn='希露瓦', path=CHARACTER_PATH_ERUDITION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_ATTACK)
 SILVERWOLF = Character(id='silverwolf', cn='银狼', path=CHARACTER_PATH_NIHILITY, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_ATTACK)
-STELLE_DESTRUCTION = Character(id='stelle_destruction', cn='女主毁灭', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_BUFF)
-STELLE_PRESERVATION = Character(id='stelle_preservation', cn='女主存护', path=CHARACTER_PATH_PRESERVATION, combat_type=FIRE, level=4, technique_type=TECHNIQUE_BUFF)
-STELLE_HARMONY = Character(id='stelle_harmony', cn='女主同谐', path=CHARACTER_PATH_HARMONY, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
-STELLE_REMEMBRANCE = Character(id='stelle_remembrance', cn='女主记忆', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=4, technique_type=TECHNIQUE_AREA)
-STELLE_ELATION = Character(id='stelle_elation', cn='女主欢愉', path=CHARACTER_PATH_ELATION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_BUFF)
+STELLE_DESTRUCTION = Character(id='stelle_destruction', cn='开拓者·毁灭·女', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_BUFF)
+STELLE_PRESERVATION = Character(id='stelle_preservation', cn='开拓者·存护·女', path=CHARACTER_PATH_PRESERVATION, combat_type=FIRE, level=4, technique_type=TECHNIQUE_BUFF)
+STELLE_HARMONY = Character(id='stelle_harmony', cn='开拓者·同谐·女', path=CHARACTER_PATH_HARMONY, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF)
+STELLE_REMEMBRANCE = Character(id='stelle_remembrance', cn='开拓者·记忆·女', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=4, technique_type=TECHNIQUE_AREA)
+STELLE_ELATION = Character(id='stelle_elation', cn='开拓者·欢愉·女', path=CHARACTER_PATH_ELATION, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_BUFF)
 SUSHANG = Character(id='sushang', cn='素裳', path=CHARACTER_PATH_HUNT, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_ATTACK)
 TINGYUN = Character(id='tingyun', cn='停云', path=CHARACTER_PATH_HARMONY, combat_type=LIGHTNING, level=4, technique_type=TECHNIQUE_BUFF)
 TOPAZNUMBY = Character(id='topaznumby', cn='托帕&账账', path=CHARACTER_PATH_HUNT, combat_type=FIRE, level=5, technique_type=TECHNIQUE_BUFF)
@@ -213,7 +213,7 @@ YANQING = Character(id='yanqing', cn='彦卿', path=CHARACTER_PATH_HUNT, combat_
 YUKONG = Character(id='yukong', cn='驭空', path=CHARACTER_PATH_HARMONY, combat_type=IMAGINARY, level=4, technique_type=TECHNIQUE_BUFF_ATTACK)
 ARGENTI = Character(id='argenti', cn='银枝', path=CHARACTER_PATH_ERUDITION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 HANYA = Character(id='hanya', cn='寒鸦', path=CHARACTER_PATH_HARMONY, combat_type=PHYSICAL, level=4, technique_type=TECHNIQUE_ATTACK)
-RUANMEI = Character(id='ruanmei', cn='阮·梅', path=CHARACTER_PATH_HARMONY, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF,
+RUANMEI = Character(id='ruanmei', cn='阮•梅', path=CHARACTER_PATH_HARMONY, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF,
                     buff_lasting_seconds=999)
 XUEYI = Character(id='xueyi', cn='雪衣', path=CHARACTER_PATH_DESTRUCTION, combat_type=QUANTUM, level=4, technique_type=TECHNIQUE_ATTACK)
 DRRATIO = Character(id='drratio', cn='真理医生', path=CHARACTER_PATH_HUNT, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF)
@@ -250,12 +250,19 @@ HYSILENS = Character(id='hysilens', cn='海瑟音', path=CHARACTER_PATH_NIHILITY
 CERYDRA = Character(id='cerydra', cn='刻律德菈', path=CHARACTER_PATH_HARMONY, combat_type=WIND, level=5, technique_type=TECHNIQUE_BUFF)
 MYDEI = Character(id='mydei', cn='万敌', path=CHARACTER_PATH_DESTRUCTION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
 EVERNIGHT = Character(id='evernight', cn='长夜月', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF)
-DANHENGPERMANSORTERRAE = Character(id='danhengpermansorterrae', cn='丹恒·腾荒', path=CHARACTER_PATH_PRESERVATION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_BUFF)
+DANHENGPERMANSORTERRAE = Character(id='danhengpermansorterrae', cn='丹恒•腾荒', path=CHARACTER_PATH_PRESERVATION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_BUFF)
 CYRENE = Character(id='cyrene', cn='昔涟', path=CHARACTER_PATH_REMEMBRANCE, combat_type=ICE, level=5, technique_type=TECHNIQUE_AREA)
 THE_DAHLIA = Character(id='the_dahlia', cn='大丽花', path=CHARACTER_PATH_NIHILITY, combat_type=FIRE, level=5, technique_type=TECHNIQUE_AREA)
 YAO_GUANG = Character(id='yao_guang', cn='爻光', path=CHARACTER_PATH_ELATION, combat_type=ICE, level=5, technique_type=TECHNIQUE_BUFF, buff_lasting_seconds=999)
 SPARXIE = Character(id='sparxie', cn='火花', path=CHARACTER_PATH_ELATION, combat_type=FIRE, level=5, technique_type=TECHNIQUE_BUFF, buff_lasting_seconds=10)
-SILVERWOLF_999 = Character(id='silverwolf_999', cn='银狼Lv.999', path=CHARACTER_PATH_ELATION, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF_ATTACK_DISAPPEAR)
+SILVERWOLF_999 = Character(id='silverwolf_999', cn='银狼LV.999', path=CHARACTER_PATH_ELATION, combat_type=IMAGINARY, level=5, technique_type=TECHNIQUE_BUFF_ATTACK_DISAPPEAR)
+CIPHER = Character(id='cipher', cn='赛飞儿', path=CHARACTER_PATH_NIHILITY, combat_type=QUANTUM, level=5, technique_type=TECHNIQUE_ATTACK)
+ASHVEIL = Character(id='ashveil', cn='不死途', path=CHARACTER_PATH_HUNT, combat_type=LIGHTNING, level=5, technique_type=TECHNIQUE_ATTACK)
+EVANESCIA = Character(id='evanescia', cn='绯英', path=CHARACTER_PATH_ELATION, combat_type=PHYSICAL, level=5, technique_type=TECHNIQUE_ATTACK)
+MORTENAXBLADE = Character(id='mortenaxblade', cn='千冶•刃', path=CHARACTER_PATH_NIHILITY, combat_type=FIRE, level=5, technique_type=TECHNIQUE_ATTACK)
+GILGAMESH = Character(id='gilgamesh', cn='吉尔伽美什', path=CHARACTER_PATH_DESTRUCTION, combat_type=LIGHTNING, level=5, technique_type=TECHNIQUE_AREA)
+HIMEKONOVA = Character(id='himekonova', cn='姬子•启行', path=CHARACTER_PATH_ERUDITION, combat_type=FIRE, level=5, technique_type=TECHNIQUE_BUFF_ATTACK)
+ROBINSUMMERETTO = Character(id='robinsummeretto', cn='知更鸟•晴歌', path=CHARACTER_PATH_REMEMBRANCE, combat_type=WIND, level=5, technique_type=TECHNIQUE_BUFF)
 
 
 CHARACTER_LIST: List[Character] = [
@@ -346,7 +353,14 @@ CHARACTER_LIST: List[Character] = [
     THE_DAHLIA,
     YAO_GUANG,
     SPARXIE,
-    SILVERWOLF_999
+    SILVERWOLF_999,
+    CIPHER,
+    ASHVEIL,
+    EVANESCIA,
+    MORTENAXBLADE,
+    GILGAMESH,
+    HIMEKONOVA,
+    ROBINSUMMERETTO
 ]
 
 

@@ -14,6 +14,7 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import os_utils, cal_utils, cv2_utils
 
 TEMPLATE_RAW_FILE_NAME = 'raw.png'
+TEMPLATE_RAW_WEBP_FILE_NAME = 'raw.webp'
 TEMPLATE_MASK_FILE_NAME = 'mask.png'
 TEMPLATE_CONFIG_FILE_NAME = 'config.yml'
 TEMPLATE_FEATURES_FILE_NAME = 'features.xml'
@@ -594,8 +595,9 @@ def is_template_existed(sub_dir: str, template_id: str, need_raw: bool = True, n
     template_dir = get_template_dir_path(sub_dir, template_id)
     if not os.path.exists(template_dir) or not os.path.isdir(template_dir):
         return False
-    # raw.png / mask.png / config.yml 三者至少有一个
-    has_raw = os.path.exists(os.path.join(template_dir, TEMPLATE_RAW_FILE_NAME))
+    # raw.webp / raw.png 任一存在即有原图(webp 优先,见 get_template_raw_path)
+    has_raw = (os.path.exists(os.path.join(template_dir, TEMPLATE_RAW_WEBP_FILE_NAME))
+               or os.path.exists(os.path.join(template_dir, TEMPLATE_RAW_FILE_NAME)))
     has_mask = os.path.exists(os.path.join(template_dir, TEMPLATE_MASK_FILE_NAME))
     has_config = os.path.exists(os.path.join(template_dir, TEMPLATE_CONFIG_FILE_NAME))
     if not has_raw and not has_mask and not has_config:
@@ -611,11 +613,16 @@ def is_template_existed(sub_dir: str, template_id: str, need_raw: bool = True, n
 def get_template_raw_path(sub_dir: str, template_id: str) -> str:
     """
     模板原图的路径
+    优先 webp(入库省空间,无损),不存在则回退 png(历史模板兼容)
     :param sub_dir: 模板分类
     :param template_id: 模板id
     :return:
     """
-    return os.path.join(get_template_dir_path(sub_dir, template_id), TEMPLATE_RAW_FILE_NAME)
+    dir_path = get_template_dir_path(sub_dir, template_id)
+    webp_path = os.path.join(dir_path, TEMPLATE_RAW_WEBP_FILE_NAME)
+    if os.path.exists(webp_path):
+        return webp_path
+    return os.path.join(dir_path, TEMPLATE_RAW_FILE_NAME)
 
 
 @lru_cache
