@@ -18,23 +18,27 @@ gold_per_20hp_lost(schema 注明故意不进经济分)、固定理财位面开�
 
 **样本与滤波**(口径文档 = changes/2026-09-12-invest-env/details/
 data-batch-estimates.md 同源纪律):真实档案(文件名不含 fake);完成局
-(``endgame.result ∈ {win, loss}``)参与统计。π_offer/H_k 样本再排除「品质
-改写污染局」:chosen_env ∈ ENV_POOL_REWRITE,或任一取卡帧命中改写后续 offer
-的策略源(远见/彩虹期货±/黄金期货±/黄金投资/白银投资)——这些源会把
-基线取卡流的序号与品质分布整体挪位,混入即污染两参数。
+(``endgame.result ∈ {win, loss}``)参与统计。统计面再排除两类「整局剔除」
+污染——①品质改写局:chosen_env ∈ ENV_POOL_REWRITE,或任一取卡帧命中改写
+后续 offer 的策略源(远见/彩虹期货±/黄金期货±/黄金投资/白银投资),取卡流
+序号与品质分布被整体挪位;②扑满过热局:chosen_env 含 经济过热/经济严重
+过热(奖励节点被扑满主题替换,卖出收入/金路径/息档等窗口先验系非普通局
+形态)——净帧口径(对齐采样面「148 总/140 普通」裁定,T-152 扑满局同集)。
+已知覆盖限制:chosen_env 仅部分档案非空,缺读局的①②按 env 判别的半边
+失效(策略源判别不受影响;量化申报 = 口径文档 §2)。
 
 **日程与截断口径**:全局节点号按结构日程 P1=9/P2=7/P3=9 先验(总 25;
 P2=7 = economy.md §10.2 位面典型节点表 + boss@p2r7 档案实证;P3 语料零
-完成局取上端 9)。语料 114 完成局全部为败局,最大观测节点 < 总视界——
-窗口量对语料未达的尾段节点按 0 计入(截断保守低估,_REWARD_SLOTS
-「P3 结构零样本不计」先例同款);窗口参数因此系统性下偏,方向申报。
+完成局取上端 9)。语料完成局全部为败局,最大观测节点 < 总视界——窗口量对
+语料未达的尾段节点按 0 计入(截断保守低估,_REWARD_SLOTS「P3 结构零样本
+不计」先例同款);窗口参数因此系统性下偏,方向申报。
 
 **取卡点位 H_k 实采**:档案 opening.invest_cards 的 strategy 帧按 ts 分组
 (同 ts 三行 = 一次取卡事件,chosen=True 行标记真实选定);选定事件按时间
-序编号 k=1..n,映射到轮次区间(逐轮 terminal_ts 夹逼)→ 已完成节点数 =
-(位面−1)×9 + (轮−1),H_k = 27 − 已完成(日程先验 9/9/9=27,取卡发生在
-轮 r 进行中,当前轮计入剩余)。注册门:每 k 有效选定事件 n ≥ 20(与扑满
-采集门槛同族),不足则该位哨兵不落(禁拍值)。
+序编号 k=1..n,经逐轮 terminal_ts 夹逼定位帧所在轮(首个 terminal_ts ≥
+帧时刻),已完成节点数 = 位面偏移 + (轮−1)(偏移按上述结构日程),H_k =
+总视界 − 已完成(取卡发生在轮 r 进行中,当前轮计入剩余)。注册门:每 k
+有效选定事件 n ≥ 20(与扑满采集门槛同族),不足则该位哨兵不落(禁拍值)。
 
 **π_offer 归一口径**(data-batch-estimates.md §6 约定):offer 卡品质按注册
 表 rarity 查得;查不得计「未解析」,按已知三品质份额等比例摊入归一。采样
@@ -110,6 +114,12 @@ _QUALITY_PICK_SOURCES = frozenset({
     '远见', '彩虹期货', '彩虹期货+', '黄金期货', '黄金期货+',
     '黄金投资', '白银投资',
 })
+
+#: 扑满变体环境(净帧口径排除集):效果原文「本局的全部奖励节点替换为次元
+#: 扑满主题,掉落更多战利品」——卖出收入/金路径/息档等窗口先验系非普通局
+#: 形态,混入系统性抬高统计面。与 T-152 扑满局在册集(经济过热 ×7 + 经济
+#: 严重过热 ×1)同源;采样面裁定「148 总/140 普通」的「普通」即非扑满局。
+_PIGGY_ENVS = frozenset({'经济过热', '经济严重过热'})
 
 #: v1 在册 H_1 参照值(cw_env_economy._STRAT_PICK_HORIZONS 现值;对拍用)
 _V1_H1_REF = 24
@@ -194,11 +204,17 @@ def _scan_match(path: Path) -> MatchRecord:
     eg = j.get('endgame') or {}
     rec.completed = eg.get('result') in ('win', 'loss')
 
-    # 污染判别 ①:环境在册名 ∩ ENV_POOL_REWRITE
+    # 污染判别 ①:环境在册名 ∩ ENV_POOL_REWRITE(品质改写挪位取卡流)
+    # ∪ 扑满过热集(净帧口径,窗口先验非普通局形态)
     for e in ((j.get('opening') or {}).get('chosen_env') or []):
         name = e.get('name') if isinstance(e, dict) else str(e)
-        if name and normalize_invest_name(name) in ENV_POOL_REWRITE:
+        if not name:
+            continue
+        name = normalize_invest_name(name)
+        if name in ENV_POOL_REWRITE:
             rec.note_pollution(f'env={name}')
+        elif name in _PIGGY_ENVS:
+            rec.note_pollution(f'piggy={name}')
 
     # 取卡帧组:kind=strategy 按 ts 分组(同 ts = 同次取卡事件)
     groups: dict[datetime, list[str]] = {}
@@ -340,10 +356,14 @@ def pick_events(rec: MatchRecord) -> list[tuple[int, list[str]]]:
     return [(k, names) for k, names in out if k <= c]
 
 
-def collect(matches_dir: Path) -> tuple[int, list[MatchRecord], list[Path]]:
-    """全档案扫描 → (档案数, 匹配记录列表, 文件列表)。"""
-    files = sorted(p for p in matches_dir.glob('match_g_*.json')
-                   if _is_real_archive(p))
+def collect(matches_dir: Path) -> tuple[int, int, list[MatchRecord], list[Path]]:
+    """全档案扫描 → (目录文件数含 fake, 真实档案数, 匹配记录列表, 文件列表)。
+
+    fake 档案计数后照旧排除(样本口径「148 总/140 普通」的总数面需要它;
+    统计面永远只用真实档案)。
+    """
+    all_files = sorted(matches_dir.glob('match_g_*.json'))
+    files = [p for p in all_files if _is_real_archive(p)]
     records: list[MatchRecord] = []
     for f in files:
         try:
@@ -351,7 +371,7 @@ def collect(matches_dir: Path) -> tuple[int, list[MatchRecord], list[Path]]:
         except (json.JSONDecodeError, KeyError, AttributeError, TypeError) as exc:
             print(f'[warn] 档案解析失败跳过 {f.name}: {exc}')
             records.append(MatchRecord())   # 占位保持与文件索引对齐
-    return len(files), records, files
+    return len(all_files), len(files), records, files
 
 
 def pick_horizon_samples(
@@ -554,12 +574,16 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument('--matches-dir', type=Path, default=DEFAULT_MATCHES_DIR)
     args = ap.parse_args()
-    n_all, records, files = collect(args.matches_dir)
+    n_files, n_all, records, files = collect(args.matches_dir)
     n_completed = sum(1 for r in records if r.completed)
     n_polluted = sum(1 for r in records if r.polluted)
-    print(f'=== 样本 ===\n档案 {n_all} 局;完成局 {n_completed};'
-          f'污染局(env/取卡源命中,含完成局) {n_polluted};'
-          f'净流完成局 {sum(1 for r in records if r.completed and not r.polluted)}')
+    n_piggy = sum(1 for r in records
+                  if any(x.startswith('piggy=') for x in r.pollution_reasons))
+    print(f'=== 样本(净帧口径) ===\n档案文件 {n_files}(含 fake '
+          f'{n_files - n_all});真实 {n_all};扑满过热局 {n_piggy}'
+          f'(真实普通口径 {n_all - n_piggy});完成局 {n_completed};'
+          f'整局剔除污染局(改写 env/取卡源/扑满,含完成局) {n_polluted};'
+          f'净帧完成局 {sum(1 for r in records if r.completed and not r.polluted)}')
 
     # 原始轮次二次读取(H_k 时间夹逼 + boss 槽)
     rounds_by_index: dict[int, list[dict]] = {}
@@ -709,14 +733,29 @@ def main() -> None:
         pv_med[q] = statistics.median(vals) if vals else None
     print(f'  pick_value 非零中位序: {pv_med}(详设引 彩45/金35/银32)')
 
+    def pool_card_values(h: int, restricted: bool) -> dict[str, list[float]]:
+        """品质子池逐卡全通道值(μ 与成对差值 CI 共用的底层样本)。"""
+        return {q: [econ_value_full(
+            s.economy if s.economy is not None else EconomyEffect(),
+            h, ctx, restricted) for s in pools[q]] for q in _QUALITY_ORDER}
+
+    def diff_ci(vals_a: list[float], vals_b: list[float],
+                seed: int = _BOOTSTRAP_SEED) -> tuple[float, float]:
+        """成对差值 CI:两池独立重采样均差 percentile 95%(每对独立同种子,
+        与验收复核脚本同方案,输出可交叉对拍;2000 次,种子 20260912)。"""
+        rng = random.Random(seed)
+        ds = sorted(sum(rng.choices(vals_a, k=len(vals_a))) / len(vals_a)
+                    - sum(rng.choices(vals_b, k=len(vals_b))) / len(vals_b)
+                    for _ in range(_BOOTSTRAP_N))
+        lo_q = 0.5 * (1 - math.erf(_Z / math.sqrt(2)))
+        return (ds[int(lo_q * (_BOOTSTRAP_N - 1))],
+                ds[int((1 - lo_q) * (_BOOTSTRAP_N - 1))])
+
     def mu_table(restricted: bool,
                  horizons_local: dict[int, int]) -> dict:
         out: dict[tuple[str, int], tuple[float, tuple[float, float] | None, int]] = {}
         for k, h in sorted(horizons_local.items()):
-            for q in _QUALITY_ORDER:
-                vals = [econ_value_full(
-                    s.economy if s.economy is not None else EconomyEffect(),
-                    h, ctx, restricted) for s in pools[q]]
+            for q, vals in pool_card_values(h, restricted).items():
                 mean = sum(vals) / len(vals) if vals else 0.0
                 ci = bootstrap_mean_ci(vals, seed=_BOOTSTRAP_SEED + k)
                 out[(q, h)] = (mean, ci, len(vals))
@@ -753,6 +792,13 @@ def main() -> None:
             all_ok = all_ok and ok
             print(f'  H={h}: 银 {mus["银"]:.4f} / 金 {mus["金"]:.4f} / '
                   f'棱彩 {mus["棱彩"]:.4f} → {"✅ 一致" if ok else "❌ 违序"}')
+            # 成对差值 CI(统计辨析凭据,自本入口可复现;方案见 diff_ci)
+            _vals = pool_card_values(h, False)
+            for _a, _b in (('棱彩', '金'), ('金', '银'), ('棱彩', '银')):
+                _lo, _hi = diff_ci(_vals[_a], _vals[_b])
+                _verdict = ('显著>0' if _lo > 0
+                            else ('显著<0' if _hi < 0 else '含 0(不可分辨)'))
+                print(f'    μ({_a})−μ({_b}): [{_lo:+.4f}, {_hi:+.4f}] → {_verdict}')
         print(f'  pick_value 中位序辅助证据: {pv_med}')
 
     # ---- π_offer,k ----

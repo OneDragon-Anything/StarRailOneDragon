@@ -414,10 +414,11 @@ _validate_estimates_governance()
 #: 节点视界 H_k。【拟·实采】档案取卡选定事件经 terminal_ts 时间夹逼到轮,
 #: 全局节点号按结构日程 P1=9/P2=7/P3=9 先验(总 25;P2=7 = economy.md §10.2
 #: 位面典型节点表 + boss@p2r7 档案实证),H = 25 − 已完成节点数:H_1=23
-#: (落点 85/86 局在 P1 r3)、H_2=15(69/72 局在 P2 r2);取卡序 3 的有效
+#: (落点 79/80 局在 P1 r3)、H_2=15(63/66 局在 P2 r2);取卡序 3 的有效
 #: 样本 n=3 低于注册门 20 → 哨兵不落,时代/尾彩通道因 H_3 缺参 fail-closed。
-#: 重采入口 = tools/cw/env_pool_rewrite_estimates.py(实采定位演化只改本表;
-#: 口径与样本量 = changes/2026-09-12-invest-env/details/
+#: 样本面 = 净帧普通口径(扑满过热局整局剔除,对齐「148 总/140 普通」采样
+#: 面裁定)。重采入口 = tools/cw/env_pool_rewrite_estimates.py(实采定位
+#: 演化只改本表;口径与样本量 = changes/2026-09-12-invest-env/details/
 #: layer-e-promotion-batch.md)。v1 在册值 24 系日程回退口径(9+9+9)下的
 #: 参照值,被本实采取代。
 _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
@@ -429,9 +430,9 @@ _STRAT_PICK_HORIZONS: dict[int, int] = {1: 23, 2: 15}
 #: 检验已执行(重采入口 = tools/cw/env_pool_rewrite_estimates.py;口径/
 #: 样本量/读数 = changes/2026-09-12-invest-env/details/
 #: layer-e-promotion-batch.md)——第 1 条(全通道补参)完成,第 2 条未过:
-#: 全通道 μ_E 点估计 银≥金 残差(H=23 +0.010 / H=15 +0.097,深居卡池抽样
-#: 噪声,成对差值 CI 全含 0),按详设 §2.2.2 裁决维持 fail-closed,本表
-#: 继续哨兵不落;序一致性复过且取卡序 3 视界/π 缺位补齐后随批落参。
+#: 全通道 μ_E 点估计 银≥金 残差(H=23 +0.015 / H=15 +0.100,净帧口径,深居
+#: 卡池抽样噪声,成对差值 CI 全含 0),按详设 §2.2.2 裁决维持 fail-closed,
+#: 本表继续哨兵不落;序一致性复过且取卡序 3 视界/π 缺位补齐后随批落参。
 #: 缺位 = 恒 fail-closed,时代/头彩/尾彩维持裸分(现行为零变化)。
 STRAT_POOL_ECON_MEANS: dict[tuple[str, int], EconomyEstimate] = {}
 
@@ -439,8 +440,8 @@ STRAT_POOL_ECON_MEANS: dict[tuple[str, int], EconomyEstimate] = {}
 #: 键 = k 1 基,值 = 品质 → EconomyEstimate。「未解析」份额不单列建模,
 #: 入式前按已知三品质份额归一,归一口径随数据批申报)。缺位该 k =
 #: 缺参 fail-closed。**不落参数申报(与 μ 表同判,准入门未过)**:k=1/k=2
-#: 归一读数在案(银/金/棱彩 = 0.302/0.498/0.199 与 0.305/0.457/0.238,
-#: 净流匹配 105/76 帧组),取卡序 3 有效帧组 n=3 哨兵不落;落参时机 =
+#: 归一读数在案(银/金/棱彩 = 0.302/0.506/0.193 与 0.306/0.471/0.223,
+#: 净帧匹配 99/70 帧组),取卡序 3 有效帧组 n=3 哨兵不落;落参时机 =
 #: STRAT_POOL_ECON_MEANS 表注所述准入门复过之后,两表同批。
 OFFER_QUALITY_DIST: dict[int, dict[str, EconomyEstimate]] = {}
 
