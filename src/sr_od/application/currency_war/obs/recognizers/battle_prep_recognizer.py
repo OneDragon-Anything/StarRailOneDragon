@@ -169,7 +169,7 @@ class BattlePrepRecognizer(ScreenRecognizer):
         phase0 = _read_phase_round_pure(ctx, image)
         level0 = read_level(ctx, image, phase0[0], phase0[1]) if phase0 else read_level(ctx, image, 0, 0)
         # 后排装备槽按 cap 差公式选档(W209/ADR-0385 口述「后台格数=6+(cap−level)」;
-        # 旧 level 驱动已废)。7 格档未建档保守 8 格超集(select_back_layout 内辖留证)。
+        # 旧 level 驱动已废)。已建档 6/7/8/9 直读,>9 域外保守 8 格超集(select_back_layout 内辖留证)。
         from sr_od.application.currency_war.obs.cw_back_layout import (
             select_back_layout as _sel_bl,
         )

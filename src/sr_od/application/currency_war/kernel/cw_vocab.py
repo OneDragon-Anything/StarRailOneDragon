@@ -184,7 +184,7 @@ class CwWorkFrame:
     # [供数收口] 本字段 = 全部容量消费的供数收口(max_units 封顶/back_overflow
     # 阈值/back_left 空位/排路由),动态真值 = BoardState.back_layout(三信号
     # 裁决,值域 6-9:平常 6,宝钻/召唤物扩展上限 9,机制正本 =
-    # board_structure.md;9 档坐标未建档,域外按 8 格超集 + superset 标记
+    # board_structure.md;6/7/8/9 四档均已交互建档,>9 域外按 8 格超集 + superset 标记
     # 运行)。默认 6 = 机制基线,仅作容器空壳引导窗兜底,勿当真值源。
     back_max: int = 6
     # 商店开态概率条真值 {费用档 1-5: 概率}(轮岗接线:投资环境轮岗每备战阶段随机

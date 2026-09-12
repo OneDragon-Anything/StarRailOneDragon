@@ -1915,7 +1915,7 @@ class GameState:
     front_row: Field[list[Unit]] = field(default_factory=Field)  # 前排成员(§3.2.3)
     back_row: Field[list[Unit]] = field(default_factory=Field)   # 后排成员(§3.2.4)
     bench: Field[BenchView] = field(default_factory=Field)       # 备战席统一槽位视图(§3.2.5;capacity 随效果改写)
-    back_layout: Field[int] = field(default_factory=Field)       # 后台格数(值域 6-9:平常 6,宝钻/召唤物扩展,上限 9;6/7/8 已交互建档,9 档坐标未建档——域外按 8 格超集运行+evidence superset 标记,§3.2.7)
+    back_layout: Field[int] = field(default_factory=Field)       # 后台格数(值域 6-9:平常 6,宝钻/召唤物扩展,上限 9;6/7/8/9 四档均已交互建档——9 档凭据=cw_back_layout._LAYOUT_PREFIX 与 screen_info 后排9槽-1..9;>9 域外按 8 格超集运行+evidence superset 标记,§3.2.7)
 
     # —— 经济与成长 ——
     gold: Field[int] = field(default_factory=Field)              # None=不可读(§3.2.9)
@@ -1933,7 +1933,7 @@ class GameState:
     # 属 §8.8 在册例外形态(识别口径 vs 推导口径各有消费面,先例 = board、
     # level_up_cost)——cap=识别源(采信门输出),back_layout=三信号裁决结果
     # (cw_back_layout);理论关系 back_layout ≈ 6+(cap−level) 仅域内成立,
-    # 域外态 back_layout 是 8 格超集,反推会把近似当真值,故不派生改双存。
+    # 域外态(>9)back_layout 是 8 格超集,反推会把近似当真值,故不派生改双存。
     # 两域冲突走缺陷台账,不互改。
     deploy_cap: Field[int] = field(default_factory=Field)
 
@@ -3068,7 +3068,7 @@ def bench_slots_of(bs: GameState) -> list:
 
 def back_capacity_of(bs: GameState) -> int:
     """后排格数读口(旧 ``CwWorkFrame.back_max`` 容器版,波3 立口):
-    back_layout 真值(值域 6-9,平常 6/宝钻扩展 7/8,域外 8 格超集);
+    back_layout 真值(值域 6-9,平常 6/宝钻扩展 7/8/9,>9 域外 8 格超集);
     未观察帧退机制基线 6(与旧字段缺省同源)。
 
     ⚠️ 语义修正申报(W6 波3,调研草案 §4/风险 7):旧 ``CwWorkFrame.back_max``
