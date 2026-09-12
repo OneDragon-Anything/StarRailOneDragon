@@ -175,6 +175,14 @@ class CwWorkFrame:
     # 不可能再漂移);容量判据 = 占用数(``bench_occupied``),**禁止
     # len(bench)**;迭代一律 ``iter_occupied``(裸 for 会撞 None)。
     bench: list[BenchChar | None] = field(default_factory=list)
+    # bench 是否真读到(对齐 board_readable 门模式;消费口 = 合成口
+    # cw_game_state.synthesize_from_game_state 的 bench 写门)。空表双义与
+    # board 同形:「真真空(全部署)」≠「漏斗未读」——v1 漏斗不读 bench
+    # 身份(read_game_state,席位通道声明见 cw_observation._feed_board_state),
+    # 其帧恒带默认空表,合成若不设门会把容器内 prep 装配环的真读观察
+    # 覆盖成「9 槽全空」(未读域≠真空域;禁拿 CwWorkFrame 兜底默认值当
+    # 观察)。sim 真值帧恒可读(缺省 True),行为不变。
+    bench_readable: bool = True
     # 3 位面 boss 名(strategy/06;session.briefing_bosses 同步)。
     # 元素 None = 该位面徽章态无身份(ADR-0398,boss_fit 跳过 None 项)
     plane_bosses: list[str | None] = field(default_factory=list)

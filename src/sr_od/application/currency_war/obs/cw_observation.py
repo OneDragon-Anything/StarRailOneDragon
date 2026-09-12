@@ -2036,6 +2036,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         # 写入 282 行 obs_phase=no_such_phase(分诊报告 §1.3)。
         _obs_mod.set_obs_phase(phase)   # 冲突证据行带阶段(噪声判定位,ADR-0462)
     state = CwWorkFrame()
+    # 本漏斗不读 bench 身份(v1 契约,见上方 docstring;席位通道声明 =
+    # _feed_board_state docstring:「bench 观察写端 = 备战装配环 heavy 块」)
+    # → 显式置不可读位:合成口(synthesize_from_game_state)据此跳写 bench,
+    # 防未读域按默认空表覆盖容器内 prep 装配环的真读观察(未读域≠真空域)。
+    state.bench_readable = False
     # 金读走稳定门(read_gold_settled):开店帧收入计数器可能在跳,单帧读拿
     # 入账前旧值 = `w489_sim_real_gap/` 感知面「开局金系统性偏低」根因环;gold_readable 语义
     # 不变(None=读不到)。

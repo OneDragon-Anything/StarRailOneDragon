@@ -2854,28 +2854,36 @@ def synthesize_from_game_state(bs: GameState, st: CwWorkFrame, *,
     if _front_u or _back_u:
         bs.observe(bs.front_row, _front_u, evidence=_ev, sig=_synth_sig)
         bs.observe(bs.back_row, _back_u, evidence=_ev, sig=_synth_sig)
-    bench_slots: list[BenchSlot] = []
-    for i, bc in enumerate(st.bench):
-        if bc is None:
+    # bench 写门(对齐上方 board_readable 先例):未读域≠真空域。v1 漏斗
+    # (read_game_state)不读 bench 身份,其帧 bench 恒默认空表——无门合成
+    # 会把容器内 prep 装配环 bench 观察块(cw_screen_prep heavy 块,唯一
+    # 实机漏斗写端)的真读覆盖成「9 槽全空」,与执行账 tracked 在商店段
+    # guard_expected_vs_tracked 播种对账处对撞(违 _feed_board_state 席位
+    # 通道声明的「禁拿 CwWorkFrame 兜底默认值当观察」)。sim 真值帧恒
+    # 可读(缺省 True)不受影响;真真空写路径由 sim 帧承载。
+    if getattr(st, 'bench_readable', True):
+        bench_slots: list[BenchSlot] = []
+        for i, bc in enumerate(st.bench):
+            if bc is None:
+                bench_slots.append(BenchSlot(kind='empty'))
+            elif bool(getattr(bc, 'is_item_slot', False)):
+                # 占位件旗标往返(同 bench_view_of_slots 口径;sim 假环境经
+                # 观察面直喂占位件,恒 'unit' 映射会让腾席守卫在容器面失守)
+                bench_slots.append(BenchSlot(kind='supply_box'))
+            else:
+                bench_slots.append(BenchSlot(
+                    kind='unit',
+                    unit=Unit(char_id=str(getattr(bc, 'char_id', '') or ''),
+                              star=int(getattr(bc, 'star', 1) or 1),
+                              equips=list(getattr(bc, 'equips', None) or []),
+                              slot=i + 1)))
+        # 输出补齐到容量:定长槽位表是记录模型的形状契约(§3.2.5/ADR-0316 同构),
+        # 兼容旧紧缩构造(前缀顺延占用)不丢槽位语义。
+        while len(bench_slots) < BENCH_CAPACITY_DEFAULT:
             bench_slots.append(BenchSlot(kind='empty'))
-        elif bool(getattr(bc, 'is_item_slot', False)):
-            # 占位件旗标往返(同 bench_view_of_slots 口径;sim 假环境经
-            # 观察面直喂占位件,恒 'unit' 映射会让腾席守卫在容器面失守)
-            bench_slots.append(BenchSlot(kind='supply_box'))
-        else:
-            bench_slots.append(BenchSlot(
-                kind='unit',
-                unit=Unit(char_id=str(getattr(bc, 'char_id', '') or ''),
-                          star=int(getattr(bc, 'star', 1) or 1),
-                          equips=list(getattr(bc, 'equips', None) or []),
-                          slot=i + 1)))
-    # 输出补齐到容量:定长槽位表是记录模型的形状契约(§3.2.5/ADR-0316 同构),
-    # 兼容旧紧缩构造(前缀顺延占用)不丢槽位语义。
-    while len(bench_slots) < BENCH_CAPACITY_DEFAULT:
-        bench_slots.append(BenchSlot(kind='empty'))
-    bs.observe(bs.bench,
-               BenchView(slots=bench_slots, capacity=BENCH_CAPACITY_DEFAULT),
-               evidence=_ev, sig=_synth_sig)
+        bs.observe(bs.bench,
+                   BenchView(slots=bench_slots, capacity=BENCH_CAPACITY_DEFAULT),
+                   evidence=_ev, sig=_synth_sig)
     if getattr(st, 'board_readable', True) and st.board:
         bs.observe(bs.board, dict(st.board), evidence=_ev, sig=_synth_sig)
     if st.shop:
