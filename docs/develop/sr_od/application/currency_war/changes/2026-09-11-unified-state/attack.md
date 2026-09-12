@@ -89,9 +89,13 @@
 
 **L-4 landing 正本更新清单 docstring 收口清单模块名错位**：列「cw_board_state/cw_bs_view/cw_observation/engine_p1/cw_anchor」，实际 grep 命中为 cw_board_state/cw_bs_view/cw_observation/engine_p1/**cw_shop_refresh_obs**——cw_anchor 无 changes/ 引用、cw_shop_refresh_obs 漏列；「六处」对列名 5 个。
 
+> **裁决（2026-09-12 修订批）**：部分成立。成立部分 = cw_anchor 无 changes/ 引用（grep 证据：全仓引 changes/ 的代码文件仅 cw_board_state.py/cw_bs_view.py/cw_shop_refresh_obs.py 三处带路径，engine_p1.py:1575 与 cw_observation.py:2394 为裸名引用，cw_anchor.py 零命中）——已随修订落盘：landing 正本更新清单收口清单重列为 5 代码文件锚点并除去 cw_anchor。不成立部分 = 「cw_shop_refresh_obs 漏列」「列名 5 个」——修订批直读 landing 原文，该行本已列 cw_shop_refresh_obs（cw_board_state/cw_bs_view/cw_observation/cw_shop_refresh_obs/engine_p1/cw_anchor 六名齐列），与攻击转述不符；该子项按证据驳回记档，不影响 cw_anchor 修正。
+
 **L-5 design.md §2 依据编号不精确**：「依据 = ADR-0630 决策裁定 5」——三渠道封闭集实出自该 ADR 背景节裁定链第 5 条（其内自标「裁定 1」）与决策 2，无「决策裁定 5」编号。
 
 **L-6 无路径锚的速记词与跨迭代引用**：详设 §4.2「A8 盘点坐实」无出处路径（T1a/T1b 有 ADR-0623 锚可解析，A8 没有）；§8.7 批次三落位面引用「统一观察架构 §6.4/§6.5-1/§7.1」及旧账任务号（T-223/T-257/T-320）均无全路径。按 AGENTS.md 注释规范同类判据，持久索引应写全路径或语义描述。
+
+> **裁决（2026-09-12 修订批）**：部分成立。成立部分 = A8 无出处路径、§4.2/§8.7「统一观察架构 §x.x」短引、T-223 旧账任务号无落文锚——已随修订落盘：详设 §4.2 两处与 §8.7 三处补全路径锚（A8 锚=docs/develop/currency_war/design/统一观察架构-画面op基类设计.md §8.0 盘点基线；T-223 改锚落文处 v12）。不成立部分 = 「T-257/T-320 无全路径」——修订批全目录 grep：T-257 在本迭代目录零引用（攻击虚指）；T-320 仅出现于 details/recovered/_INDEX.md 索引行，该行自带原始路径与对应账本任务锚（可解析），非无锚引用。
 
 **L-7 recovered/ 目录为 changes/ 模板外构成**：details/recovered/ 收 6 份找回草稿+索引。_INDEX.md 的地位注记（「裁定以 ADR-0630 为准，非裁定源」）写得规范，但 README/design 未声明该目录存在与其「禁作施工基准」约束，目录本身在 iteration-design §1 构成清单之外。
 

@@ -115,14 +115,14 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 2. **hp 视图**看轨迹(注定不达标的局按早停纪律反思为什么没早停);档案 hp 真值链(hp_pay 事件行/段界重锚/终局兜底)的 schema 9 判读口径见上节;
 3. **tiers 视图**三维扫一遍(deployed 构成+装备+星级);
 4. **economy** 看滞留/收入核对;**supply** 看购买对错;
-5. **anomalies** 逐条定位根因(定位不了不进下一局);
+5. **events** 视图观察事件行(obs_event)逐条定位根因（定位不了不进下一局）——旧 anomalies 视图已随旧流拆除；冲突/异常证据面 = journal 行型 2 在账直读（obs_conflicts 历史行 = 冻结档案只读，删除波 1 起，ADR-0641）；
 6. 视图外维度按需取:优先档案 rounds 的字段面(含决策流程明细——pair/意向/姿态,带策略版本戳);仍不够的「为什么/如果」问题走**回放**(用当期代码对档案状态现算,单帧锁同款机制)——不为此读流;
 7. 结论:有异常 → 先确定异常来源,再找出治本的修复方案,然后将方案的实施状态记录到进度账本中合适的位置;同一个问题出现两次 → 必须走到治本方案这步,不许再当单局异常放下;单局结论不留;声明数据边界。
 8. **局终的深度复盘不在本流程**——实机监控局终派单走 [match-review.md](match-review.md)「单局复盘协议」(干净子 agent,逐节点玩家对拍);本流程管流程卫生与视图判读,协议管「打得对不对」。
 
 ## 已知缺口(判读时心里有数)
 
-- **字段可信度分级(历史全面审计)**——可信白名单:outcomes.hp_after(conf≥0.9)/plane/round_num/progress_delta、decisions.actions/target_comp/candidate_scores、shop_snapshots 的 offer 波牌面(gold 除外)、sess_*/v2_* 快照族、obs_conflicts。**历史脏区(修复前的旧数据)**:node_type 三源混写(英文 token/中文/旧兜底并存,后统一中文)、中止局无 runs 行、refresh 快照 gold 是算的(非真读)、首轮的 node_type 恒「普通战斗」、level 非单调偶发、board_before 是阵营人次非板深(多标签角色重复计)。判读旧局时这些字段降权。
+- **字段可信度分级(历史全面审计)**——可信白名单:outcomes.hp_after(conf≥0.9)/plane/round_num/progress_delta、decisions.actions/target_comp/candidate_scores、shop_snapshots 的 offer 波牌面(gold 除外)、sess_*/v2_* 快照族、obs_conflicts(冻结档案:该流已随删除波 1 停写,白名单仅辖存量档案判读;新局冲突证据 = journal obs_event 行型 2,ADR-0641/0643)。**历史脏区(修复前的旧数据)**:node_type 三源混写(英文 token/中文/旧兜底并存,后统一中文)、中止局无 runs 行、refresh 快照 gold 是算的(非真读)、首轮的 node_type 恒「普通战斗」、level 非单调偶发、board_before 是阵营人次非板深(多标签角色重复计)。判读旧局时这些字段降权。
 - **phase 字段是两层语义(误判过实盘病理,W688 定性)**:P1 段 phase 恒 unlocked=设计态——P1 的锁产物记在 p1_pair,别拿 phase 判「P1 与配方脱钩」;终局锁相位只对 plane≥2 段有意义。判读锁相关行为先分清问的是哪一层。
 - **补给合成行是快照不是事件(schema 9 起退出 hp 真值链)**:source='synthetic_supply' 的行(补给节点无结算屏,由停机前快照合成的 outcomes 行)hp 结构上无新鲜性保证;病灶实证 = 182456 合成行载 45,而帧序上 19 秒前已结算 31(陈旧一整轮战斗的鬼值)。判读先验 = **陈旧直到证伪**:合成行 hp 一律先当陈旧快照,除非有帧序证据证伪;旧档案合成行 conf 可能仍载 1.0(写端诚实性降权只及新局),conf=1.0 不构成可信证据。退链的中间窗口:补给节点后的首个战斗腿可能吸入「补给时点 → 结算时点」的未建模间隙,判读并读该补给行快照值拆账。
 - **补给合成行轮归因 +1(登记不修)**:轮号归因(read_phase_round 走缓存)对补给合成行轮可能偏 +1;装配端退链已消除链上危害,归因偏移留判读侧已知缺口——补给轮跨局对照时 ±1 校对轮号。
@@ -156,4 +156,4 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 
 ## 反例论据(为什么判读纪律这么严)
 
-历届单点断层各自存活 3+ 局才被抓;曾把单帧牌面当全序列、误判健康线而弃线——判读流程与跨局对照纪律每条都有对应的实盘反例(存档于 design/decisions/ 与进度账本历史)。
+历届单点断层各自存活 3+ 局才被抓;曾把单帧牌面当全序列、误判健康线而弃线——判读流程与跨局对照纪律每条都有对应的实盘反例(存档于进度账本历史)。

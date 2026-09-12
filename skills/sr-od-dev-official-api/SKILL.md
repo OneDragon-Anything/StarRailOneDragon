@@ -30,3 +30,4 @@ description: 需要米哈游官方数据(角色/物品等游戏内容:数字 ID�
 
 - `references/characters.md` — 角色数据:列表/详情接口、avatarId 位置、技能描述抽取、双语连表方式
 - `references/currency-war.md` — 货币战争:攻略广场 API(活动页后端)、CW 图鉴频道、icon 库映射约定
+- `references/map.md` — 观测枢大地图(srmap):地图树/楼层底图/锚点点位接口、官方坐标系换算、锄大地新地图产线素材源

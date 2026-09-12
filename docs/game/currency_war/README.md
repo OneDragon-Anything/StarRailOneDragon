@@ -2,7 +2,7 @@
 
 > 玩法概览(机制 / 流程 / 决策点)见 [docs/game/gameplay/currency_war.md](../gameplay/currency_war.md)。
 > **本目录 = 游戏玩法数据**(玩家视角事实:机制 / 数据,游戏版本改才变,**与自动化代码无关**)。
-> 自动化实现设计(bot 流程 / 策略 / 决策 why)见 [docs/develop/currency_war/](../../develop/currency_war/)。
+> 自动化实现设计(bot 流程 / 策略 / 决策 why)见 [docs/develop/sr_od/application/currency_war/](../../develop/sr_od/application/currency_war/)。
 > 依据 `od-dev-gameplay-automation` ADR-0008:docs/game/ 只放游戏玩法,自动化归 docs/develop/。判据:「游戏改了它变 → 本目录;代码改了它变 → docs/develop/」。
 
 ## `data/` —— 游戏数据(⚠️ 2026-08-18 大收敛:注册表全量建模的 doc 已删,数据单一源铁律)

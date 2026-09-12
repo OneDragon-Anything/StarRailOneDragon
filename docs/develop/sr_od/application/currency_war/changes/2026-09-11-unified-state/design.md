@@ -2,8 +2,8 @@
 
 ## 0. 元信息
 - 迭代目标：ADR-0630 统一 state 收编升级（`docs/develop/currency_war/decisions/0630-unified-state-journal.md`，冲突处以其修订节为准）+ 用户 2026-09-11 裁定：board state 收尾纳入通关迭代能力关键链。任务账本 = `.debug/progress/2026-09-11-cw-clear-run/dag.jsonl`。
-- 状态：对抗审中——批次一/二已落地审查，开放点已账本化（T-11/T-12/T-15），收敛后转定稿。
-- 文档清单：details/BoardState-数据结构设计.md —— 统一 state 容器数据结构与画面字段规格（详设件，寿命=迭代；正本家 = docs/develop/currency_war/game_state/（总纲+分篇），归拢后自足）；changes/2026-09-12-prep-chain-containerization/ —— 外溢迭代：prep 链容器化（承接《商店黑板容器化方案》§1.4 裁定独立成迭代，辖 prep 链签名切容器与 prep/shop 两黑板槽退役）。
+- 状态：定稿（待复验）（落地进度与开放点账本化状态见 README 进度节——进度只住 README 一处）
+- 文档清单：details/BoardState-数据结构设计.md —— 统一 state 容器数据结构与画面字段规格（详设件，寿命=迭代；正本家 = docs/develop/currency_war/game_state/（总纲+分篇），归拢后自足）；changes/2026-09-12-prep-chain-containerization/ —— 外溢迭代：prep 链容器化（承接《商店黑板容器化方案》§1.4 裁定独立成迭代，辖 prep 链签名切容器与 prep/shop 两黑板槽退役）；details/recovered/ —— 自 .debug 找回的设计底稿存档（正文零改动，禁作施工基准，裁定以 ADR-0630 为准，索引=其 _INDEX.md）。
 
 ## 1. 问题与动机
 - 现状症状：旧 12 流散乱、写点不全、无渠道签名、无统一 state（退役理由口径，依据 = ADR-0630 背景节；旧 12 流 = 流程侧遥测的十余条独立落盘 JSONL 流，逐流清单见 r5-migration-plan「术语速查」）。
@@ -12,6 +12,6 @@
 - 明确不解决：玩法策略语义——各效果游戏机制原文、策略判据归 game 子树与 strategy-docs，本迭代只管状态记录面。
 
 ## 2. 方案
-- 系统级变化：①旧 12 流退役（写面删除与消费迁移排期，单一源 = r5-migration-plan 八波）；②容器收编升级为统一 state（暂名 BoardState，终局正名 GameState——ADR-0630 后果节逐字锚）；③写入口三渠道封闭集（obs=画面 op 观察 / logic_action=动作 op 逻辑计算 / logic_hook=流程 hook 派生逻辑计算，依据 = ADR-0630 决策裁定 5）+ 自足快照 journal（行行自足、零重放，依据 = ADR-0630 决策 3）。
+- 系统级变化：①旧 12 流退役（写面删除与消费迁移排期，单一源 = r5-migration-plan 八波）；②容器收编升级为统一 state（暂名 BoardState，终局正名 GameState——ADR-0630 后果节逐字锚）；③写入口三渠道封闭集（obs=画面 op 观察 / logic_action=动作 op 逻辑计算 / logic_hook=流程 hook 派生逻辑计算，依据 = ADR-0630 用户裁定链「写入源有且只有三个」条——背景节裁定链第 5 条，其内自标「裁定 1」，渠道签名配套见同件决策 2）+ 自足快照 journal（行行自足、零重放，依据 = ADR-0630 决策 3）。
 - 详设划分与接口契约：详设一份（details/），承载字段级规格——容器结构（§8）、画面字段清单与写端（§3/§4）、效果族归属（§5）、批次范围枚举（§8.7）；单详设无跨详设接口。**正本定位：正本家 = docs/develop/currency_war/game_state/（总纲+分篇）**——总纲只写设计理念与核心规范，迭代期字段级完整规格暂居本迭代 details/，随批次落地归拢进 game_state/ 分篇（新建分篇承载，拆分粒度归拢时定），归拢后 game_state/ 自足；详见 landing.md「正本更新清单」。
 - 迁移排期单一源：`docs/develop/currency_war/game_state/r5-migration-plan.md`（正本区文件，八波排期与波序纪律），本迭代不复制。
