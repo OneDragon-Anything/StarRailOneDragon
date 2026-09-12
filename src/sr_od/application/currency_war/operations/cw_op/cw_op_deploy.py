@@ -1315,7 +1315,7 @@ class CwOpDeploy(SrOperation):
         # 容器 board 域未观察 = 机制性 None(§2.2;备战首帧板面空,写端
         # cw_observation 只 observe 非空板面,carry 无旧值可沿)→ 取空
         # dict:空板面 = 板上无羁绊计数,计划构造的正常合法输入,计划空
-        # 稳态契约 = dd-037(flow/action_exec.md §2)。``or {}`` 必须置于
+        # 稳态契约 = 发射×执行契约(flow/action_exec.md §2)。``or {}`` 必须置于
         # dict() 实参内才护得住真支 None(挂在三元 else 支只粘 else 支,
         # 文法陷阱);同型参照 = assemble_swap_plan_inputs 板面装配行。
         _board_in = dict(_bs.board.value or {}) if _bs is not None else {}
