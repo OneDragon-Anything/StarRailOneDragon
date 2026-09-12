@@ -1,20 +1,19 @@
 """货币战争 v2 决策纯映射层(decision 桶;原 w606 阶段2批③ adapter 的映射半部)。
 
 分包期 5 起原 adapter.py 拆两半:本模块只留**纯映射**——Snapshot →
-PrepObservation/GameState(decision 核内部输入视图)、PrepAction → AtomOp
+PrepObservation(视觉/占用观察视图)、PrepAction → AtomOp
 (动作 → 原子记账键)。装配半部(DecideAdapter/影子比对/observe 端口
 snapshot_from_obs/影子开关)落 app 桶 ``decision_assembly.py``:那些代码
 import prep_actions/cw_screen_prep 执行面词汇,留 decision 会构成
 decision→app 反向边(分包依赖矩阵:decision 只可依 kernel/data)。
 
 映射语义单一源 = ``.debug/temp/currency_war/w606_stage2_batch3/
-DIRECTOR_ADAPTER_DESIGN.md``;三映射面中 ``snapshot_to_obs``/``decision_state``
-含义务清单四字段(dual_track_phase/active_strategies/equips/refresh_probs)
-的 session 显式注入——``active_strategies`` 注入即修复现役 ``_pseudo_state``
-漏拷裂缝(消费点 = cw_intention._direct_line_qualified /
-cw_economy.level_up_gate 语义链),该修复是相对现役的预期
-行为差,归对拍已知合法差异白名单。``action_to_atomop`` 的 AtomOp 契约无
-参数字段:op_key 携参数指纹(幂等/屏蔽键粒度 = 动作类型+参数)。
+DIRECTOR_ADAPTER_DESIGN.md``。``decision_state`` GameState 骨架输出
+已随 prep 链容器化段 2 退役(唯一消费 assembly.assemble 改容器单例
+直读,设计件 §2.4-5);预备域数值锚(旧 ``_anchor_state``)同批消亡
+——决策面数值域统一读 session 容器单例。``action_to_atomop`` 的
+AtomOp 契约无参数字段:op_key 携参数指纹(幂等/屏蔽键粒度 =
+动作类型+参数)。
 
 本模块零 SrOperation 依赖、零识别调用;消费面只有 decision 桶内部
 (prep_brain)与测试。
@@ -29,7 +28,7 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepAction,
     PrepObservation,
 )
-from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY, GameState
+from sr_od.application.currency_war.kernel.cw_state import BENCH_CAPACITY
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     AtomOp,
     Snapshot,
@@ -48,8 +47,9 @@ PREP_SUBSTATE_NAME: str = 'prep_shop'
 # ------------------------------------------------- Snapshot → 决策输入(§3)
 
 def snapshot_to_obs(snapshot: Snapshot, session: StrategySession) -> PrepObservation:
-    """Snapshot → 现役 decide_prep_screen 的观察视图(设计 §3.1 逐字段表;
-    旧单动作别名 decide_prep_action 已随 ADR-0583 删除)。
+    """Snapshot → 备战观察视图(视觉/占用域;设计 §3.1 逐字段表的段 2
+    形态:state 装配随 ``PrepObservation.state`` 槽退役删除——局内事实由
+    决策面直读 session 容器单例,黑板帧 = 纯视觉/占用观察载体)。
 
     保守方向裁决(设计钉死,fixture 锁):free_bench_slots None →
     ``BENCH_CAPACITY``(宁多收球——点击失败可自愈、defer 门兜住;不误卖,
@@ -60,19 +60,14 @@ def snapshot_to_obs(snapshot: Snapshot, session: StrategySession) -> PrepObserva
             'snapshot_to_obs:非 confident 快照不可进 decide(框架门职责,'
             f'name={snapshot.classification.name})')
 
-    st = _anchor_state(snapshot, session)
-    spheres = [(s.color, _point(s.x, s.y), s.radius)
-               for s in snapshot.spheres]
-    boxes = [(None, _point(b.x, b.y)) for b in snapshot.boxes]
-    tomes = [(None, _point(t.x, t.y)) for t in snapshot.tomes]
     return PrepObservation(
-        state=st,
         state_gold_trusted=bool(snapshot.gold_trusted),
         bench_chars=[b for b in snapshot.bench if b is not None],
         deployed_chars=[d for d in snapshot.deployed if d is not None],
-        spheres=list(spheres),
-        boxes=list(boxes),
-        tomes=list(tomes),
+        spheres=[(s.color, _point(s.x, s.y), s.radius)
+                 for s in snapshot.spheres],
+        boxes=[(None, _point(b.x, b.y)) for b in snapshot.boxes],
+        tomes=[(None, _point(t.x, t.y)) for t in snapshot.tomes],
         free_bench_slots=(snapshot.free_bench_slots
                           if snapshot.free_bench_slots is not None
                           else BENCH_CAPACITY),
@@ -92,104 +87,6 @@ def _point(x: int, y: int):
     """交互面坐标 → Point(1080p 游戏空间,契约 RewardSphere 同坐标系)。"""
     from one_dragon.base.geometry.point import Point
     return Point(x, y)
-
-
-def _anchor_state(snapshot: Snapshot, session: StrategySession) -> GameState:
-    """快照数值域 → GameState 骨架(plane/round/level 等带 session 锚回退)。
-
-    锚回退源 = **session 容器直读**(W6 波 4 决策缝改造,设计件《商店黑
-    板容器化方案》§1.4 备战黑板处置:原
-    kernel/cw_bs_view.strategy_input_state 投影视图随取帧点改道消亡,
-    锚回退改容器单例一次取用——同帧同视图纪律,禁二次取容器)。
-    已建模域取记录值(常态帧与旧直读逐位一致:读口缺省镜像 = 波 1
-    公共读口),快照字段优先级不变,锚只在快照值缺席时兜底。
-    """
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_of,
-        level_of,
-        node_kind_of,
-        plane_of,
-        round_num_of,
-    )
-    bs = board_state_of(session)
-    st = GameState()
-    st.plane = snapshot.plane or plane_of(bs)
-    st.round_num = snapshot.round_num or round_num_of(bs)
-    st.node_type = (snapshot.node_type
-                    or getattr(session, 'node_type_current', None)
-                    or node_kind_of(bs))
-    st.level = snapshot.level or level_of(bs)
-    st.xp_progress = snapshot.xp_progress
-    st.level_up_cost = snapshot.level_up_cost
-    st.selected_difficulty = snapshot.selected_difficulty
-    st.streak = snapshot.streak
-    # gold:F2 门(gold_trusted=True 才采用,镜像现役 _pseudo_state 保守口径;
-    # gold_readable 保真位独立记录「读到了」这一观测事实)。
-    if snapshot.gold_trusted and snapshot.gold is not None:
-        st.gold = snapshot.gold
-    st.gold_readable = snapshot.gold is not None
-    st.hp_readable = snapshot.hp_readable
-    return st
-
-
-def decision_state(snapshot: Snapshot, session: StrategySession) -> GameState:
-    """Snapshot + session → 策略内部链消费的 GameState(设计 §3.2 逐字段表)。
-
-    与现役 ``_pseudo_state`` 的关键差异 = `w598_contracts_adversarial/` 映射义务清单四字段显式注入;
-    其中 ``active_strategies`` 注入修复现役伪态漏拷裂缝(见模块 docstring)。
-    """
-    from sr_od.application.currency_war.strategies.impl.cw_strategy import gated_hp
-
-    st = snapshot_to_obs(snapshot, session).state
-    st.board = dict(snapshot.board) if snapshot.board is not None else {}
-    st.board_readable = snapshot.board is not None
-    st.bench = [b for b in snapshot.bench if b is not None]   # __post_init pad 到定长
-    st.deployed = [d for d in snapshot.deployed if d is not None]
-    st.deploy_cap = snapshot.deploy_cap
-    st.front_max = snapshot.front_size
-    # back_max:供数切容器 back_layout(back_max 语义裁决·闸门三;值源
-    # 定谳 = W5 方案稿 §2.3)。快照 back_size 名义观察值实恒基线 6——
-    # 写端 = len(「后排-N」)按基准前缀数区域,7/8/9 扩展档用独立前缀区
-    # 根本不进计数(裁决材料 F3 假动态),mandate 决策链的空位/改排/
-    # 板满/补缺容量语义自此与 kernel 视图同源。**snapshot.back_size 字段
-    # 保留勿删**(sim 合成快照契约位,MandateFrame 侧消费不变);**禁在
-    # 快照侧直读选档函数造第二值源**(容器是唯一动态真值源,读数归视图
-    # 单一源)。session None 时视图退 GameState 缺省 6(与快照缺省同值,
-    # 引导窗语义)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        back_capacity_of,
-        board_state_of,
-    )
-    # 同帧同视图:_anchor_state 已取容器单例,本函数取值复用同一实例
-    # (board_state_of 返回同一对象,无二次快照面)。
-    last = board_state_of(session)
-    st.back_max = back_capacity_of(last)
-    # (dual_track_phase 装配回填已随 W6 波 4 删除——调研草案 §6 残留表:
-    # 策略侧派生旗标不入容器,消费端改 committed 派生读,唯一合法读端 =
-    # cw_intention.committed_authority/committed_from。)
-    st.active_strategies = list(getattr(session, 'active_strategies', None) or [])
-    st.equips = list(getattr(session, 'last_owned_equips', None) or [])
-    # refresh_probs / hp 回退锚 = BoardState 视图(Snapshot 消费切换,
-    # 迁移批次三,设计 §8.7;同 _anchor_state 口径,视图取值复用上方
-    # back_max 供数的同一 `last`——同帧同视图,禁二次取视图造成同函数
-    # 内两份快照)。hp 值源 W5 起为
-    # **门前真值**(cw_bs_view 收编:视图 hp = 容器记录值,门不再由写侧
-    # 预施)——本函数 = hp 消费读点,门在此显式施(值源切换申报见
-    # w5-透传域建模方案 §2.4;门幂等保证旧链帧值路径零行为差)。
-    # refresh_probs 锚 = 容器 payload 域(离屏 None = 不可得,与视图 None
-    # 语义同门)。hp 锚 = bs.hp 门前真值(无真值=诚实未知,不兜底 W823)。
-    probs = (dict(last.shop.value.refresh_probs)
-             if last.shop.value is not None else None)
-    st.refresh_probs = probs if probs else None
-    # hp 过现役同一新鲜度门(session 锚;None 现读=沿用链,禁 0/100 兜底改值)。
-    _t = ((st.plane - 1) * 9 + st.round_num) if (st.plane and st.round_num) else None
-    _cur = snapshot.hp if snapshot.hp is not None else last.hp.value
-    # readable 单一源 = 容器来源位映射(source=='observation' 最近观察)
-    # ——禁与门输入值双源(同帧同视图,值与旗标同源)。
-    _view_readable = last.hp.source == 'observation'
-    st.hp = gated_hp(_cur, session, _t, current_readable=_view_readable)
-    st.hp_readable = _view_readable
-    return st
 
 
 # ------------------------------------------- PrepAction → AtomOp 映射(§4)

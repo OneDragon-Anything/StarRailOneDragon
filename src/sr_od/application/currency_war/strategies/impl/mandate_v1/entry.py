@@ -450,14 +450,11 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     if getattr(state_of(session), 'cw4_counters', None) is None:
         state_of(session).cw4_counters = {}
 
-    state = obs.state
-    # prep 链容器化段 1:决策判据载体一次置顶(五处签名与 K 空窗回退
-    # 直连容器单例;同帧同视图纪律 =《商店黑板容器化方案》§2.2-1,
-    # 禁函数内二次取容器)。emit 体其余 state 消费(prep 域全簇)维持
-    # 视图供数,寿命 = 段 2(设计件 prep链容器化方案.md §2.2/§2.4)。
+    # prep 链容器化段 2:决策判据载体一次置顶(五处签名、prep 域全簇与
+    # K 空窗回退全部直连容器单例,obs.state 视图槽随黑板槽退役消亡;
+    # 同帧同视图纪律 =《商店黑板容器化方案》§2.2-1,禁函数内二次取容器)。
     bs = board_state_of(session)
-    _round_num = int(getattr(state, 'round_num', 1) or 1) \
-        if state is not None else 1
+    _round_num = round_num_of(bs)
 
     # ① prep 实体面
     if getattr(obs, 'box_overlay_open', False):
@@ -537,10 +534,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 getattr(state_of(session), 'target_comp', None))
             _sf_excl = sell_gate.sell_exclusions(
                 session, _sf_k, channel='m4_fuel',
-                cap_hold=locked_buy_cap_hold(state),
+                cap_hold=locked_buy_cap_hold(bs),
                 current_round=_round_num)
             _sf_cands = mandate.fuel_sell_candidates(
-                list(obs.bench_chars), _sf_k, state=state,
+                list(obs.bench_chars), _sf_k, state=bs,
                 exclude_names=_sf_excl,
                 counters=state_of(session).cw4_counters,
                 dedup_names=set())
@@ -548,7 +545,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 # 轮内卖出登记(泄金阶梯档 2 新鲜度排除写端,ADR-0604 §3;
                 # 球路径 M4 腾席与 prep/shop 域 M4 同口径——漏记 = 卖X 后同轮
                 # 压库买回 X 的净零自旋在该路径残余可达)。
-                mandate.record_round_sold(session, state,
+                mandate.record_round_sold(session, bs,
                                           _sf_cands[0].char_id or '')
                 return [Emitted(SellBench(slot=_sf_cands[0].slot), True,
                                 'm4_fuel_sell')]
@@ -565,10 +562,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 前——wanted 是未完成义务,滞留越久损失越大,方案 §5.2)。非空返回
     # = 臂动作即本帧发射(单动作环直通);空返回 = 臂无发射(门 0 失效/
     # 门 1 S1 已清/放弃态),照常落回常规步骤序。deploy_cap 真值链与
-    # ④ 骨架帧同源(state.max_units() 派生,R4 单一真值源)。
+    # ④ 骨架帧同源(max_units_of 读口派生,R4 单一真值源)。
     _arm_out = mandate.wanted_closure_emit(
-        session, state, list(obs.bench_chars), list(obs.deployed_chars),
-        (state.max_units() if state is not None else None), _round_num)
+        session, bs, list(obs.bench_chars), list(obs.deployed_chars),
+        max_units_of(bs), _round_num)
     if _arm_out:
         return _arm_out
 
@@ -587,11 +584,13 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     if k is None:
         from sr_od.application.currency_war.kernel import cw_intention
         _ist = getattr(state_of(session), 'v3_intention', None)
-        if _ist is not None and state is not None:
+        if _ist is not None:
             # session/registry 透传(P86;落地审 F-2):甲臂 G 门按 plane
             # 真值视界与当帧注册表判定,与商店域同源(两域禁分叉)。
             # W6 波3 贯通 + prep 链容器化段 1 消桥:kernel 已容器签名,
-            # 直传置顶 bs(旧帧经桥装箱面消亡)。
+            # 直传置顶 bs(旧帧经桥装箱面消亡)。旧「state 非 None」前置
+            # 随 obs.state 槽退役消亡(段 2:heavy 观察恒供数,该分支
+            # 生产不可达——设计件 §2.2② 同款申报)。
             _fb, _band = cw_intention.k_empty_window_fallback(
                 bs, _ist, session=session, registry=registry)
             if _fb:
@@ -620,7 +619,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     proof.update_line_state(session, k, bench_names, deployed_names)
     skeleton_only = (ev_arm == 'skeleton_only')
     switch = proof.should_switch(
-        state, session, config, registry, skeleton_only=skeleton_only)
+        bs, session, config, registry, skeleton_only=skeleton_only)
     # 换线事件本帧只登记,K 变更下一备战期生效(R1-3):登记 = 撤线窗口
     # 步进 + 换线遥测;K 翻转由方向重估(下帧决策入口)承载(ADR-0583)。
     # 【R197 症2 影子面声明(编排者裁=方案 a)】A/B 期 target_comp 权威
@@ -635,7 +634,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 输出只进 cw4_counters 分键,返回值不被消费做行为——封印期(Δ/ε₂/
     # V_ms/Δλ【拟】全 None)恒「不可评」诚实显影,绝不向骨架层渗漏为
     # 否决(NMF §6/§5.3);权威面切换候标定落地另案裁决批。
-    proof.evaluate_evidence_gate(state, session)
+    proof.evaluate_evidence_gate(bs, session)
     # k_switched 实值化(R196 症1):上一备战期线名快照 vs 本帧生效 K 名
     # ——不同即换线已在本帧生效(塌缩出口评估条件,line_switch_sell 只在
     # K 已更新的备战期评,§2.7);旧线成员自 COMP_LIBRARY 按名取回。
@@ -662,7 +661,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         evaluate_tool_actions as _eval_tools,
     )
     _tools_emitted: list[Emitted] = []
-    _tools_phase = (getattr(state, 'plane', None), _round_num)
+    _tools_phase = (plane_of(bs), _round_num)
     _owned_snap = list(getattr(session, 'last_owned_equips', None) or [])
     if _owned_snap:
         _ct_tools = state_of(session).cw4_counters
@@ -702,9 +701,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                     Emitted(RunTools(), True, 'm7_5_tool_consume'))
 
     # ③ 升档器求值位(先于一切卖面判据评估,§3.1;载体 = 置顶 bs,
-    # hp 调用方供给 = 视图帧读数,载体迁移非策略改动)
-    _sig = _upgrader_evaluate(session, bs,
-                              getattr(state, 'hp', None))
+    # hp 调用方供给 = decision_hp 政策读口(门前真值+消费侧施门单一源;
+    # 旧视图帧 hp 直读随 obs.state 槽退役消亡,§2.4-2 hp 消费统一收口))
+    _sig = _upgrader_evaluate(session, bs, decision_hp(bs, session))
     _ct = state_of(session).cw4_counters
     if _sig.lambda_shadow_armed:
         _ct['advisor_lambda_shadow_armed'] = \
@@ -721,10 +720,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         _ct['neardeath_unlock'] = _ct.get('neardeath_unlock', 0) + 1
 
     # ④ 骨架 pass
-    # cap 真值源=state.max_units() 派生链(R4 统一,FIX_REVIEW ②-1 双源
+    # cap 真值源=max_units_of 读口派生链(R4 统一,FIX_REVIEW ②-1 双源
     # 漂移修复:旧 ``obs.deploy_vacancy + len(deployed)`` 观察复合废弃
-    # ——与 shop 侧 arm1 消费位同链单源;state 缺读=None,消费点
-    # deploy_vacancy 保守 0)
+    # ——与 shop 侧 arm1 消费位同链单源)
     # 部署面 membership 消费口径声明(评估出处 = 策略审查报告 20260905-093104-strategy-review/策略审查-第十二跳.md):本帧 k_members
     # = predicates.line_members(core∪shared,部署语义口径)——部署/升级
     # 授权只量可上阵阵容;买入义务面口径 = buy_members(shop 域,含锁定
@@ -734,17 +732,17 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # F3(全 2★ 旧线重锚)经编排者裁决驳回(前提事实错误:第十局板面为
     # 全 1★ 旧线;§9.5 单一源资格已覆盖该病例),全 2★ 形态另案观察。
     frame = mandate.MandateFrame(
-        gold=state.gold if state else 0,
-        level=state.level if state else 3,
+        gold=gold_of(bs),
+        level=level_of(bs),
         bench=bench, deployed=deployed,
-        deploy_cap=(state.max_units() if state is not None else None),
+        deploy_cap=max_units_of(bs),
         node_type=getattr(session, 'node_type_current', None),
         stop_flag=stop_flag, k_members=k_members,
-        round_num=getattr(state, 'round_num', 1) if state else 1)
+        round_num=_round_num)
     # registry 下传骨架 pass(等级帽单一源,ADR-0565 收口 = ADR-0606:
     # M3 链 lv9_stop/level_spend_blocked 消费注入表,与 ④′ 姿态对账
     # 同一注入链)。
-    out: list[Emitted] = mandate.run_mandate(frame, session, state=state,
+    out: list[Emitted] = mandate.run_mandate(frame, session, state=bs,
                                              registry=registry)
     # ④ 合流(迁移 C):工具发射前置 = 同帧 LevelUp+RunTools 形态执行序
     # = RunTools 先于 LevelUp(编者⑤ 升级裁决输入新鲜度;行为锚 =
@@ -774,24 +772,24 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                    if m not in set(bench_names) | set(deployed_names)]
         # 判据契约核验(单一源=criteria/contracts.py):前提不成立 ⇒ 本帧弃权
         # + criteria_contract_violation 计数,禁静默执行
-        if missing and state is not None and contracts.ensure_contract(
+        if missing and contracts.ensure_contract(
                 ('sell', 'funding_support_sell'),
-                contracts.ContractCtx(gold=state.gold), _ct):
+                contracts.ContractCtx(gold=gold_of(bs)), _ct):
             # 排除集 = 统一装配 A 全量形态(单一入口 sell_gate;ADR-0585,
             # 方案 v3 §2.9 新格 A):本位旧形态**空排除**——锁线宽集成员
             # (zero_overlap 只拦窄 k_members)可被 prep funding 卖 → shop
             # 域 M2 重买 = 义务换手;义务基座(锁线宽窄解析单点)∪ 静态
             # 持有两集(P78-4)∪ 窗口段(批 3)在此并入。
-            _f_round = int(getattr(state, 'round_num', 1) or 1)
+            _f_round = _round_num
             _f_excl = sell_gate.sell_exclusions(session, k_members,
                                                 channel='funding',
                                                 cap_hold=locked_buy_cap_hold(
-                                                    state),
+                                                    bs),
                                                 current_round=_f_round)
             _f_need = mandate.cheapest_member_cost(frame)
             slots, _why = crit_sell.funding_support_sell(
-                state.gold, _f_need, bench,
-                k_members, state=state,
+                gold_of(bs), _f_need, bench,
+                k_members, state=bs,
                 exclude_names=_f_excl,
                 counters=_ct,
                 dedup_names=set())   # C1 事件口径:单帧去重(单调用语境)
@@ -799,12 +797,12 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             # sell_gate.funding_hold_fallback;减法①读到的是上一 visit
             # 买入名,方向偏保守无害,V2-10)。
             _f_fallback = []
-            if not slots and state.gold < _f_need:
+            if not slots and gold_of(bs) < _f_need:
                 _f_fallback = sell_gate.funding_hold_fallback(
-                    session, k_members, bench, gold=state.gold,
+                    session, k_members, bench, gold=gold_of(bs),
                     need=_f_need, a_exclusions=_f_excl,
-                    deployed=state.deployed,
-                    cap_hold=locked_buy_cap_hold(state))
+                    deployed=deployed_slots_of(bs),
+                    cap_hold=locked_buy_cap_hold(bs))
             for s in slots:
                 if s in sold_slots:
                     _ct['ev_conflict_dropped'] = \
@@ -847,14 +845,15 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # DESIGN.md §2.1 fail-closed 观测面。载体辖域申报 = 备战决策帧主通道
     # (emit ①/①′ 实体面提前返回帧不入键);OpenShop 计入消费面
     #(开店即买入意图,金将在店帧消费,非滞留)。判定面零行为:计数不改
-    # 发射序列,守卫锁 = test_cw_p2_blood_band.py。
-    if (state is not None and state.gold > 0
+    # 发射序列,守卫锁 = test_cw_p2_blood_band.py。载体 = 置顶 bs(段 2:
+    # 裸金判定经 gold_of 读口,缺省 0 镜像;旧 state-None 守卫消亡)。
+    if (gold_of(bs) > 0
             and getattr(state_of(session), 'target_comp', None) is None
-            and not in_must_spend_zone(state.gold, session)
+            and not in_must_spend_zone(gold_of(bs), session)
             and not any(isinstance(e.action, (LevelUp, OpenShop))
                         for e in out)
-            and (predicates.p1_blood_floor(state)
-                 or predicates.p2_blood_floor(state))):
+            and (predicates.p1_blood_floor(bs)
+                 or predicates.p2_blood_floor(bs))):
         _ct['terminal_targetless_idle'] = \
             _ct.get('terminal_targetless_idle', 0) + 1
 

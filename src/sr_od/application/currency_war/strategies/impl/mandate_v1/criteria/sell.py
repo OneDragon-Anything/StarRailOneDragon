@@ -34,20 +34,20 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_board_state import (
         BoardState,
     )
-    from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
+    from sr_od.application.currency_war.kernel.cw_state import BenchChar
 
 
 def line_switch_sell(old_line_members: tuple[str, ...],
                      new_line_members: tuple[str, ...],
                      bench: list[BenchChar], deployed: list[BenchChar],
-                     bs: BoardState | GameState, *, k_switched: bool,
+                     bs: BoardState, *, k_switched: bool,
                      counters: dict | None = None,
                      dedup_names: set[str] | None = None,
                      ) -> tuple[list[int], str]:
     """换线塌缩出口(§2.2 主比较式的发射位;k_switched=K 已按 K′ 更新)。
 
-    载体 = 容器 bs(prep 链容器化段 1:prep 位直传 bs;双形态注解 =
-    双形态读支与存量直调/测试面兼容,GameState 支随段 2/波 5 消亡)。
+    载体 = 容器 bs(prep 链容器化段 2 起 bs 单形态;GameState 过渡支
+    随段 2 帧兼容支删除消亡)。
 
     返回 (拟卖 bench slot 列表, 归因键)。发射前置:
     - K 未切换 ⇒ 无对象(空,'no_event');
@@ -85,14 +85,11 @@ def line_switch_sell(old_line_members: tuple[str, ...],
         return [], 'switchline_exit_blocked'
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧不塌缩清算,孤儿件留 bench 下帧再评(损失 = 清算延迟,非自旋)。
-    # deployed 双形态读(prep 链容器化段 1:prep 位传容器 bs;与
-    # funding_support_sell 守卫同式,GameState 支随段 2/波 5 消亡)。
+    # deployed 读 = 波 1 席位读口单一源。
     from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
         deployed_slots_of,
     )
-    _deployed = deployed_slots_of(bs) if isinstance(bs, BoardState) \
-        else bs.deployed
+    _deployed = deployed_slots_of(bs)
     if empty_board_sell_blocked(_deployed, counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
@@ -113,7 +110,7 @@ def line_switch_sell(old_line_members: tuple[str, ...],
 def sell_for_interest(gold: int, bench: list[BenchChar],
                       cap_resolved: int,
                       k_members: tuple[str, ...],
-                      state: object | None = None,
+                      state: BoardState,
                       *,
                       prefer_names: tuple[str, ...] = (),
                       counters: dict | None = None,
@@ -139,7 +136,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     ``predicates.item_slot_unsellable`` 跨通道共享谓词,与 M4 燃料通道
     同门——占席物品不可卖且无金币现值,空名 1★ 禁穿透资格循环;
     语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三通道
-    统一,``state=None`` 按装配缺省保守端处置)。序:``prefer_names``
+    统一)。序:``prefer_names``
     (刚买件名集合,R2-N1 发射约束:首卖刚买件使连带卖出损失=0;帧投影
     架构下刚买件尚未入 bench,按名匹配同资格在册件)优先,其余按
     (star, slot) 升序(funding_support 同款序)。
@@ -152,8 +149,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
 
     凑息禁令(血线硬地板解锁包件②,≤15 族在册授权):死亡线帧不凑息
     ——金不卖回,当轮转化优先(14号稿 §5.4 Y7 口径);返回
-    ([], 'blood_floor') 零静默分键。state=None = 语境缺失,禁令按保守端
-    照禁(fail-closed:禁令是授权约束,缺读不构成豁免)。P2 半边 =
+    ([], 'blood_floor') 零静默分键。P2 半边 =
     p2_blood_floor_unlock 合成(设计出处 = p2_blood_band_unified_design/
     DESIGN.md §2.1 凑息禁令直移植,裁定条目 = 241 §15.2 覆①消费让位;
     授权闩 False 期间恒不触发,P2 帧凑息行为零变更),拒因键
@@ -181,19 +177,18 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         p1_blood_floor,
         p2_blood_floor_unlock,
     )
-    if state is None or p1_blood_floor(state):
+    if p1_blood_floor(state):
         return [], 'blood_floor'
     if p2_blood_floor_unlock(state):
         return [], 'p2_blood_floor'
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
-    # deployed 双形态读(W6 波 4:商店线传容器 bs;存量面传帧)
+    # deployed 读 = 波 1 席位读口单一源(守卫与资格循环两处共用同一次
+    # 解析,禁双形态各读半份)。
     from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
         deployed_slots_of,
     )
-    _deployed = deployed_slots_of(state) if isinstance(state, BoardState) \
-        else state.deployed
+    _deployed = deployed_slots_of(state)
     if empty_board_sell_blocked(_deployed, counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
@@ -208,7 +203,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         if counters is not None:
             counters[key] = counters.get(key, 0) + n
 
-    _deployed = list(getattr(state, 'deployed', None) or [])
+    _deployed = list(_deployed)
     qualified: list[BenchChar] = []
     for b in bench:
         # 占位件物理门(先于其余资格门短路):占席物品不可卖、无金币
@@ -260,7 +255,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
 
 def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          k_members: tuple[str, ...],
-                         state: BoardState | GameState | None = None,
+                         state: BoardState,
                          *,
                          exclude_names: frozenset[str] | set[str] = frozenset(),
                          defer_names: frozenset[str] | set[str] = frozenset(),
@@ -269,8 +264,8 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
                          ) -> tuple[list[int], str]:
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
-    载体注解显式化(prep 链容器化段 1:prep 位直传 bs;商店线波 4 已
-    传 bs;``None`` = 旧调用面/手工帧兼容形态)。
+    载体 = 容器 bs 单形态(prep 链容器化段 2;prep 位/商店线消费恒直传
+    bs,GameState 过渡支随段 2 帧兼容支删除消亡)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
     筹资面);变现对象 = 凑息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台
@@ -299,22 +294,18 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
         return [], 'not_needed'
     # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     # 板空帧筹资卖出同弱劣拒帧(收益侧=义务在 bench 域,守卫不评收益
-    # 只钉卖出腿;恢复正路 = 部署与买面,不在卖出通道)。state 缺读 =
-    # fail-closed 拒(资格判据禁缺读放行)。
-    # deployed 双形态读(W6 波 4:商店线传容器 bs;存量面传帧)——
-    # 与 sell_for_interest 守卫同式。
+    # 只钉卖出腿;恢复正路 = 部署与买面,不在卖出通道)。
+    # deployed 读 = 波 1 席位读口单一源。
     from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
         deployed_slots_of,
     )
-    _deployed = deployed_slots_of(state) if isinstance(state, BoardState) \
-        else getattr(state, 'deployed', None)
+    _deployed = deployed_slots_of(state)
     if empty_board_sell_blocked(_deployed,
                                 counters=counters):
         return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
     remaining = need_gold - gold
-    _deployed = list(_deployed or [])   # 双形态读复用(守卫位已按容器/帧解析)
+    _deployed = list(_deployed or [])
     # T3 末位牺牲序:被保件稳定移尾(转化类放行,非禁卖)
     for b in sorted(bench, key=lambda x: ((x.char_id or '') in defer_names,
                                           x.star, x.slot)):

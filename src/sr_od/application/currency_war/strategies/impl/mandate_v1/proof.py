@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
-    from sr_od.application.currency_war.kernel.cw_state import Comp, GameState
+    from sr_od.application.currency_war.kernel.cw_state import Comp
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
@@ -325,12 +325,16 @@ def evidence_gate(missing: list[tuple[int, float]],
                    f'suff={th_suff:.4f})')
 
 
-def _held_counts(state: GameState) -> dict[str, int]:
-    """逐角色名副本计数(bench∪deployed bot 跟踪库存;槽位模型 None 跳过,
-    空名不计)。``odds.slot_q_tag``/帧装配的池衰减 j/t 输入载体。"""
+def _held_counts(bs) -> dict[str, int]:
+    """逐角色名副本计数(bench∪deployed 容器席位 bot 记录库存;槽位模型
+    None 跳过,空名不计)。``odds.slot_q_tag``/帧装配的池衰减 j/t 输入
+    载体。换算单一源 = 波 1 席位读口族。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        bench_slots_of,
+        deployed_slots_of,
+    )
     counts: dict[str, int] = {}
-    for bc in (list(getattr(state, 'bench', None) or [])
-               + list(getattr(state, 'deployed', None) or [])):
+    for bc in (list(bench_slots_of(bs)) + list(deployed_slots_of(bs))):
         name = getattr(bc, 'char_id', '') if bc is not None else ''
         if name:
             counts[name] = counts.get(name, 0) + 1
@@ -344,20 +348,21 @@ def _char_cost(name: str) -> int:
 
 
 def _missing_items(comp: Comp | None,
-                   state: GameState) -> list[tuple[str, int, float,
-                                                   dict[int, float]]]:
+                   bs) -> list[tuple[str, int, float,
+                                    dict[int, float]]]:
     """线缺口分解内部形态 [(档标签, 缺口张数, 聚合 q, 分费档明细)]——
     ``line_missing_decomposition`` 与 ``assemble_lock_frame`` 的共享单一
     实现(禁第二实现漂移);公开契约视图见前者。"""
-    if comp is None or state is None:
+    if comp is None:
         return []
     from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge,
+        level_of,
+        shop_cards_to_legacy,
     )
-    prog = cw_line_switch.tier_progress(comp, board_state_bridge(state))
+    prog = cw_line_switch.tier_progress(comp, bs)
     if not prog:
         return []
-    held = _held_counts(state)
+    held = _held_counts(bs)
     items: list[tuple[str, int, float, dict[int, float]]] = []
     for f, (need_t, held_t, shelf_t) in prog.items():
         m = need_t - held_t - shelf_t
@@ -367,19 +372,21 @@ def _missing_items(comp: Comp | None,
         # 同标签池衰减 j(无名货架卡不可入 held_counts,走 extra 通道)。
         extra: dict[int, int] = {}
         if shelf_t > 0:
-            for c in (state.shop or []):
+            _payload = bs.shop.value
+            _shop_view = (shop_cards_to_legacy(list(_payload.cards))
+                          if _payload is not None else [])
+            for c in _shop_view:
                 if (getattr(c, 'faction', '') or '') == f:
                     cost = int(getattr(c, 'cost', 0) or 0)
                     if cost:
                         extra[cost] = extra.get(cost, 0) + 1
-        bd = odds.slot_q_tag_by_cost(f, int(getattr(state, 'level', 1) or 1),
-                                     held, extra)
+        bd = odds.slot_q_tag_by_cost(f, level_of(bs), held, extra)
         items.append((f, m, sum(bd.values()), bd))
     return items
 
 
 def line_missing_decomposition(comp: Comp | None,
-                               state: GameState) -> list[tuple[int, float]]:
+                               bs) -> list[tuple[int, float]]:
     """线缺口分解 [(缺口张数 m, 单槽命中概率 q)]——``evidence_gate``
     输入单一源(接线批 T-213 前全仓无同形产物,T-124 审 Q2b 指认;
     ADR-0637)。
@@ -394,10 +401,10 @@ def line_missing_decomposition(comp: Comp | None,
     拒,静态不可达线诚实出「锁劣」向);缺口空 → 空表(调用方按
     complete 域处置,本函数不发 complete)。
     """
-    return [(m, q) for _tag, m, q, _bd in _missing_items(comp, state)]
+    return [(m, q) for _tag, m, q, _bd in _missing_items(comp, bs)]
 
 
-def assemble_lock_frame(state: GameState, session: StrategySession,
+def assemble_lock_frame(bs, session: StrategySession,
                         ) -> tuple[list[tuple[int, float]], int,
                                    LockSandwichFrame]:
     """证据门评估帧装配单一源(接线批 T-213/ADR-0637;试验数升级 =
@@ -449,7 +456,7 @@ def assemble_lock_frame(state: GameState, session: StrategySession,
     ``sandwich_unavailable``〔o_plus,d_death〕。
     """
     k = getattr(state_of(session), 'target_comp', None)
-    items = _missing_items(k, state)
+    items = _missing_items(k, bs)
     missing = [(m, q) for _tag, m, q, _bd in items]
     # 可达件(q>0)期望购买成本与张数:P38 ⑤层预算输入。q≤0 静态
     # 不可达件不计——它永不出现,购账不发生而 P=0 已由 p_complete
@@ -461,20 +468,27 @@ def assemble_lock_frame(state: GameState, session: StrategySession,
             continue
         purchase_cost += m * sum(c * p_c for c, p_c in bd.items()) / q
         missing_copies += m
-    plan = budget.p38_budget_recursion(state, session, purchase_cost,
+    plan = budget.p38_budget_recursion(bs, session, purchase_cost,
                                        missing_copies)
-    held = _held_counts(state)
+    held = _held_counts(bs)
     k_members = set(predicates.line_members(k))
-    level = int(getattr(state, 'level', 1) or 1)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        bench_slots_of,
+        deployed_slots_of,
+        gold_of,
+        level_of,
+        plane_of,
+        round_num_of,
+    )
+    level = level_of(bs)
     # 刷新费缺省 = 建模基价常量单一源(SHOP_REFRESH_COST;原魔数 2 双写
     # 收敛,budget.py 同族先例——数值恒同,禁字面量第二份)。
     from sr_od.application.currency_war.kernel.cw_economy import (
         SHOP_REFRESH_COST as _SHOP_REFRESH_COST,
     )
-    refresh_cost = int(getattr(state, 'shop_refresh_cost',
-                               _SHOP_REFRESH_COST) or _SHOP_REFRESH_COST)
-    r_rem = r_remaining(session, int(getattr(state, 'plane', 1) or 1),
-                        int(getattr(state, 'round_num', 1) or 1))
+    refresh_cost = int(bs.shop_refresh_cost.value
+                       or _SHOP_REFRESH_COST)
+    r_rem = r_remaining(session, plane_of(bs), round_num_of(bs))
     trials = (0 if plan.exhausted
               else SHOP_SLOTS * max(0, int(r_rem) + int(plan.refreshes)))
     # ε₂ 带值辖域(注册表有界维 m/r_rem;域外帧 fail-closed 归
@@ -485,8 +499,7 @@ def assemble_lock_frame(state: GameState, session: StrategySession,
 
     # H−* 侧线件清单 (名, 星, 费)(K 成员名 = predicates.line_members)
     side: list[tuple[str, int, int]] = []
-    for bc in (list(getattr(state, 'bench', None) or [])
-               + list(getattr(state, 'deployed', None) or [])):
+    for bc in (list(bench_slots_of(bs)) + list(deployed_slots_of(bs))):
         name = getattr(bc, 'char_id', '') if bc is not None else ''
         if name and name not in k_members:
             side.append((name, int(getattr(bc, 'star', 1) or 1),
@@ -521,10 +534,9 @@ def assemble_lock_frame(state: GameState, session: StrategySession,
         if bd:
             c_star = max(bd, key=bd.get)
             blocked.append(v_opt(level, c_star, 1.0, 0,
-                                 int(getattr(state, 'gold', 0) or 0),
+                                 gold_of(bs),
                                  refresh_cost))
-    free = BENCH_CAPACITY - bench_occupied(
-        getattr(state, 'bench', None) or [])
+    free = BENCH_CAPACITY - bench_occupied(bench_slots_of(bs))
     c_sat = min(1.0, sum(p_block_terms)) * v_slot(free, blocked)
     c_hold += c_sat
 
@@ -541,8 +553,7 @@ def assemble_lock_frame(state: GameState, session: StrategySession,
     return missing, trials, frame
 
 
-def evaluate_evidence_gate(state: GameState | None,
-                           session: StrategySession,
+def evaluate_evidence_gate(bs, session: StrategySession,
                            ) -> tuple[bool, str] | None:
     """证据门影子评估(接线批 T-213/ADR-0637;entry 证明 pass 每备战帧
     消费)。返回 ``(ok, reason)`` 仅供测试/调试,调用方**不消费返回值
@@ -558,13 +569,10 @@ def evaluate_evidence_gate(state: GameState | None,
     不可评 = 聚合键 + 成因分桶键(**聚合与成因不同键防混计**,R24-2
     theta_unavailable 同款纪律)。缺口空/无目标线帧不评估(锁线时机
     问题不存在;complete 直过路径留给门内语义,影子面不产计数噪声)。
-    state 缺席帧不评估。
     """
-    if state is None:
-        return None
     if getattr(state_of(session), 'target_comp', None) is None:
         return None
-    missing, trials, frame = assemble_lock_frame(state, session)
+    missing, trials, frame = assemble_lock_frame(bs, session)
     if not missing:
         return None
     _count(session, 'evidence_gate_evaluated')
@@ -581,7 +589,7 @@ def evaluate_evidence_gate(state: GameState | None,
     return ok, reason
 
 
-def best_alt_comp(state: GameState, session: StrategySession,
+def best_alt_comp(bs, session: StrategySession,
                   registry: DecisionV2Registry | None) -> Comp | None:
     """换线候选线供给(R196 症1 接线;§2.7 接线义务的 alt 半边)。
 
@@ -612,10 +620,7 @@ def best_alt_comp(state: GameState, session: StrategySession,
         if comp.name == cur_name or comp.name in excluded:
             continue
         try:
-            from sr_od.application.currency_war.kernel.cw_board_state import (
-                board_state_bridge as _bsb,
-            )
-            _bs_supply = _bsb(state)
+            _bs_supply = bs
             if shop_supply(comp, _bs_supply) <= 0:
                 continue
             e = cw_line_switch.e_rounds(comp, _bs_supply, registry,
@@ -627,7 +632,7 @@ def best_alt_comp(state: GameState, session: StrategySession,
     return best
 
 
-def should_switch(state: GameState, session: StrategySession,
+def should_switch(bs, session: StrategySession,
                   config: object, registry: DecisionV2Registry | None,
                   *, skeleton_only: bool = False,
                   alt_comp: Comp | None = None) -> SwitchOutcome:
@@ -685,22 +690,19 @@ def should_switch(state: GameState, session: StrategySession,
         _count(session, 'switchline_no_target')
         return SwitchOutcome(False, 'no_target')
     try:
-        from sr_od.application.currency_war.kernel.cw_board_state import (
-            board_state_bridge as _bsb,
-        )
-        e_cur = cw_line_switch.e_rounds(cur, _bsb(state), reg, session=session)
+        e_cur = cw_line_switch.e_rounds(cur, bs, reg, session=session)
     except Exception:   # noqa: BLE001  线距离退化态:维持原线,可观测
         _count(session, 'switchline_e_cur_undefined')
         return SwitchOutcome(False, 'e_cur_undefined')
     if alt_comp is None:
         # R196 症1:调用点缺省 ⇒ 证明层自派生(best_alt_comp;§2.7 接线
         # 义务——entry 生产调用点不再构造性恒 no_alt)
-        alt_comp = best_alt_comp(state, session, reg)
+        alt_comp = best_alt_comp(bs, session, reg)
         if alt_comp is None:
             _count(session, 'switchline_no_alt')
             return SwitchOutcome(False, 'no_alt')
     ok, _reason = cw_line_switch.should_switch_e(
-        e_cur, cw_line_switch.e_rounds(alt_comp, _bsb(state), reg,
+        e_cur, cw_line_switch.e_rounds(alt_comp, bs, reg,
                                        session=session),
         ls.dwell, reg)
     if not ok:

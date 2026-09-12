@@ -31,6 +31,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_economy import (
     SHOP_REFRESH_COST,
@@ -47,6 +48,11 @@ from sr_od.application.currency_war.kernel.cw_state import (
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
 )
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        BoardState,
+    )
 
 #: 不动点迭代上限(利息 ≤ cap/轮 ⇒ 每轮预算扰动 ≤ cap,B 步长 = 刷价,
 #: 4 轮内不收敛即判 2-循环取保守端)
@@ -74,60 +80,44 @@ class BudgetPlan:
     exhausted: bool
 
 
-def next_level_xp_cost(state: object, missing_copies: int) -> int:
+def next_level_xp_cost(bs: BoardState, missing_copies: int) -> int:
     """升级金 v1(单步口径;P38 levelup_cost 式 ⌈max(0,need−4·Σn_k)/4⌉×单价)。
 
     等级日程条件(P38「升级金按日程所在轮扣」——日程不升则不扣):
     日程源 = ``cw_economy.get_node_goal`` 预算收权核(无标量先验路径,
     零 hp 依赖零 seam 日志);target_level ≤ 当前级 ⇒ 视界内无升级
-    ⇒ 0。XP 缺口 = xp_progress 现读(缺省权威表兜底,与
+    ⇒ 0。XP 缺口 = 容器 xp 现读(缺省权威表兜底,与
     ``cw_economy.clicks_to_next_level`` 同表同兜底)减买牌送 XP
     (XP_PER_BUY × 缺口张数,P38 买牌同源抵扣);单击单价 =
     ``xp_click_cost``(显示价优先/兜底折扣族单一源)。满级 = 0。
     多级日程(P38 A4)生产无逐级源,本函数只辖下一级 = 声明简化。
     """
-    level = int(getattr(state, 'level', 1) or 1)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        level_of,
+        plane_of,
+        round_num_of,
+    )
+    level = level_of(bs)
     if level >= 10:
         return 0
     from sr_od.application.currency_war.kernel.cw_economy import (
         get_node_goal,
     )
-    goal = get_node_goal(int(getattr(state, 'plane', 1) or 1),
-                         int(getattr(state, 'round_num', 1) or 1))
+    goal = get_node_goal(plane_of(bs), round_num_of(bs))
     if goal.target_level <= level:
         return 0
-    prog = getattr(state, 'xp_progress', None)
+    prog = bs.xp.value
     if isinstance(prog, tuple) and len(prog) == 2:
         cur, need = int(prog[0]), int(prog[1])
     else:
         cur, need = 0, XP_TO_NEXT_LEVEL.get(level, 4)
     remain = max(0, need - cur - XP_PER_BUY * max(0, int(missing_copies)))
     clicks = -(-remain // XP_PER_BUY)
-    # 单击价 = 双形态读(W6 波 4 接缝族切容器帧;容器传 xp_click_cost,
-    # 帧输入按 xp_click_cost 原帧契约就地内联同式——兜底折扣族单一源
-    # 的两形态镜像,GameState 支随波 5 last_state 链退役消亡)
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
-    )
-    if isinstance(state, BoardState):
-        return clicks * xp_click_cost(state)
-    from sr_od.application.currency_war.kernel.cw_economy import (
-        XP_CLICK_COST_FALLBACK,
-        aggregate_economy,
-    )
-    _lvl_cost = getattr(state, 'level_up_cost', None)
-    if _lvl_cost:
-        return max(0, int(_lvl_cost))
-    _eff = aggregate_economy(list(getattr(state, 'active_strategies',
-                                          None) or []))
-    _discount = _eff.xp_buy_cost_discount
-    if (_eff.xp_click_discount_from_level_at
-            and level >= _eff.xp_click_discount_from_level_at):
-        _discount += _eff.xp_click_discount_from_level
-    return clicks * max(0, XP_CLICK_COST_FALLBACK - _discount)
+    # 单击价 = 显示价优先/兜底折扣族单一源(xp_click_cost)。
+    return clicks * xp_click_cost(bs)
 
 
-def p38_budget_recursion(state: object, session: object,
+def p38_budget_recursion(bs: BoardState, session: object,
                          purchase_cost: float,
                          missing_copies: int) -> BudgetPlan:
     """P38 ⑤层金位递推单一源(见模块 docstring 正本式与逐项声明)。
@@ -138,16 +128,21 @@ def p38_budget_recursion(state: object, session: object,
     p_complete 承载,入账反会虚增 B<0 域);``missing_copies`` =
     可达缺口张数(买牌送 XP 抵扣分母,同口径)。
     """
-    plane = int(getattr(state, 'plane', 1) or 1)
-    round_num = int(getattr(state, 'round_num', 1) or 1)
-    gold = int(getattr(state, 'gold', 0) or 0)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        gold_of,
+        plane_of,
+        round_num_of,
+    )
+    plane = plane_of(bs)
+    round_num = round_num_of(bs)
+    gold = gold_of(bs)
     cap = cap_resolved_of_session(session)
     floor = saturation_line(cap)
-    refresh_cost = (int(getattr(state, 'shop_refresh_cost', 0) or 0)
+    refresh_cost = (int(bs.shop_refresh_cost.value or 0)
                     or SHOP_REFRESH_COST)
     t_horizon = max(0, int(r_remaining(session, plane, round_num)))
-    lvl_cost = next_level_xp_cost(state, missing_copies)
-    streak = getattr(state, 'streak', None)
+    lvl_cost = next_level_xp_cost(bs, missing_copies)
+    streak = bs.streak.value
     streak_term = (streak_gold(int(streak))
                    if isinstance(streak, int) and streak > 0
                    else STREAK_PLAN_MEDIAN)

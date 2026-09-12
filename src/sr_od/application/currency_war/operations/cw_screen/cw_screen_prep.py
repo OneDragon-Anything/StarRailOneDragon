@@ -23,6 +23,9 @@ from sr_od.application.currency_war.cw_game_ports import (
     action_sink,
     observation_source,
 )
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    board_state_of,
+)
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
 from sr_od.application.currency_war.kernel.cw_overlay_registry import (
@@ -66,7 +69,6 @@ from sr_od.application.currency_war.kernel.cw_prep_expect import (
 from sr_od.application.currency_war.kernel.cw_state import (
     XP_TO_NEXT_LEVEL,
     BenchChar,
-    GameState,
     bench_from_compact,
     same_star_count,
     xp_apply_clicks,
@@ -259,40 +261,58 @@ _SHOP_MERGE_DEFECT_KIND = 'merge_preview_mismatch'
 
 
 
-def _shop_pool_inputs(st: GameState) -> tuple[list[tuple[str, int]], int]:
-    """商店帧 state.shop → (参评牌列表, 未识别张数)(纯函数)。
+def _shop_pool_inputs(bs) -> tuple[list[tuple[str, int]], int]:
+    """商店容器 payload → (参评牌列表, 未识别张数)(纯函数)。
 
     参评 = 有身份牌 ``(name, cost)``;未识别牌(name 空,SIFT miss 占位,
     cost=0)不进 check_shop_pool——空名+0 费会成 invalid_cost 假票,且
     「识别失败」已由置信度通道管辖,此处只计数随 refs 披露。
+    换算单一源 = ``cw_board_state.shop_cards_to_legacy``(双 ShopCard
+    类型归一波 4 立)。
     """
-    shop = list(getattr(st, 'shop', None) or [])
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        shop_cards_to_legacy,
+    )
+    payload = bs.shop.value
+    shop = shop_cards_to_legacy(list(payload.cards)) \
+        if payload is not None else []
     cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
     return cards, len(shop) - len(cards)
 
 
 
-def _merge_preview_inputs(st: GameState) -> tuple[dict[int, bool], dict[int, bool], int]:
-    """商店帧 state → (我方合成旗, 识别读数旗, 未识别张数)(纯函数;
+def _merge_preview_inputs(bs, frame_cards: list | None = None
+                          ) -> tuple[dict[int, bool], dict[int, bool], int]:
+    """商店容器 payload → (我方合成旗, 识别读数旗, 未识别张数)(纯函数;
     compare_merge_preview 接线的入参折算单一源)。
 
-    槽位键 = state.shop 列表下标(商店五格物理槽位,0 基左→右;同
-    read_shop_cards 顺序,即 cw_shop_obs.compare_merge_preview 的槽位坐标系)。
+    槽位键 = 商店五格物理槽位下标(0 基左→右;同 read_shop_cards 顺序,
+    即 cw_shop_obs.compare_merge_preview 的槽位坐标系)。
     - our:``cw_state.same_star_count`` 全场域同名同星持有 >0(合成预览语义
       单一源 = merge_mechanics.md §2.7:✦ 数 = 已持同名同星副本份数;商店牌
-      恒 1★,star 兜 1)。bench/deployed 取 state(由 session tracked 播种,
-      与卡池票同帧一致)。
+      恒 1★,star 兜 1)。bench/deployed 取容器席位读口(与卡池票同帧一致)。
     - det:该牌 merge_preview > 0(语义映射:0 是「无副本 ∨
       读不到」双义,映射为 False,our_suspect 祇当对账率归因,不逐票判死)。
+      ✦ 是读取器派生域不入容器存储,经 ``shop_cards_to_legacy`` 的
+      ``frame_cards`` 形参按同帧 raw 牌下标对齐透传(失配窗置缺省 0,
+      语义申报见该函数)。
     - 未识别牌(name 空,SIFT miss)两侧都算不出 → 不进 compare,只计数
       (同 _shop_pool_inputs 口径:识别失败归置信度通道,此处不评)。
     """
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        bench_slots_of,
+        deployed_slots_of,
+        shop_cards_to_legacy,
+    )
     our: dict[int, bool] = {}
     det: dict[int, bool] = {}
     unnamed = 0
-    bench = list(getattr(st, 'bench', None) or [])
-    deployed = list(getattr(st, 'deployed', None) or [])
-    for i, c in enumerate(list(getattr(st, 'shop', None) or [])):
+    bench = list(bench_slots_of(bs))
+    deployed = list(deployed_slots_of(bs))
+    payload = bs.shop.value
+    shop = shop_cards_to_legacy(list(payload.cards), frame_cards) \
+        if payload is not None else []
+    for i, c in enumerate(shop):
         if not getattr(c, 'name', ''):
             unnamed += 1
             continue
@@ -436,8 +456,11 @@ class CwScreenPrep(CwScreenOpBase):
         # 回执后由 _act_execute_default 写入,on_outcome 触发时消费)。
         self._last_mech_detail: str = ''
         self._bench_pts = []                        # screen_info 槽位中心(首步惰性读)
-        # light 步沿用的 heavy 缓存(观察分层)
-        self._cached_state: GameState | None = None
+        # light 步沿用的 heavy 缓存(观察分层)。容器化段 2:state 缓存槽
+        # 随黑板槽退役收缩为视觉域——bench/deployed/vacancy/gold_trusted
+        # 四件 + 商店牌读取器域载荷(✦ merge_preview 信号,不入容器存储,
+        # 供合成预览对账 det 侧同帧对齐;structurally 读取器域非局内事实)。
+        self._cached_shop_cards: list = []
         self._cached_bench: list[BenchChar] = []
         self._cached_deployed: list[BenchChar] = []
         self._cached_vacancy: int = 0
@@ -491,8 +514,11 @@ class CwScreenPrep(CwScreenOpBase):
         """
         bundle = src.observe_prep(self.ctx, 'prep_clean')
         obs = bundle.prep if bundle.prep is not None else PrepObservation()
-        st = obs.state if obs.state is not None else bundle.state
-        obs.state = st
+        # 容器化段 2:obs.state 槽装配随槽退役消亡——容器喂入归观察源
+        # 实现方契约(与读屏路径 read_game_state._feed_board_state 同语义,
+        # 设计件 §2.6 端口路径边界行);st 保持执行侧装配源用途(last_state
+        # 写点,波 5 面零触碰)。
+        st = bundle.state
         # 期望态基座:bench 播种(与读屏路径 :551 同语义,来源换端口真值)
         st.bench = bench_from_compact(
             list(obs.bench_chars
@@ -516,8 +542,8 @@ class CwScreenPrep(CwScreenOpBase):
             #  效果 = apply_op_effect 直接写 session 字段,实读帧观察覆盖
             #  (观察赢);无挂账 diff 对账环节。tracked 族对账防抖语义
             #  (reconcile_tracking)原地保留 = observation 写入路径防抖。)
-            # light 沿用缓存更新(trusted 位随 state,MED-1 同读屏路径)
-            self._cached_state = st
+            # light 沿用缓存更新(视觉域载荷;trusted 位随帧,MED-1 同读屏路径)
+            self._cached_shop_cards = list(getattr(st, 'shop', None) or [])
             self._cached_bench = list(obs.bench_chars)
             self._cached_deployed = list(obs.deployed_chars)
             self._cached_vacancy = obs.deploy_vacancy
@@ -708,12 +734,9 @@ class CwScreenPrep(CwScreenOpBase):
                     _bs_obs.carry(_bs_obs.back_row,
                                   frame=f'p{st.plane}-r{st.round_num}',
                                   sig=_dep_carried_sig)
-                from sr_od.application.currency_war.kernel.cw_bs_view import (
-                    game_state_view,
-                )
-                obs.state = game_state_view(_bs_obs, st)
-            else:
-                obs.state = st
+            # (obs.state 视图合成随黑板槽退役消亡——容器化段 2 消点:
+            #  game_state_view 全仓最后活调用清零,决策读自容器单例;
+            #  cw_bs_view 文件本体删除归波 5,设计件 §2.3/§2.6。)
             obs.state_gold_trusted = obs.shop_open   # F2:gold 仅 shop 开态可信(关态读空)
             if not obs.state_gold_trusted:
                 log.debug('[cw][director] heavy 读 state 于 shop 关态 → gold 不可信')
@@ -821,17 +844,17 @@ class CwScreenPrep(CwScreenOpBase):
                             dep_n, _cv_occ, 'director_heavy')
                     except Exception:   # noqa: BLE001  遥测 best-effort
                         pass
-            # 更新 light 沿用缓存(trusted 位随 state 缓存,MED-1 —— light 步不重判 shop 态,
-            # 缓存 state 生成时的可信度就是它的可信度)
-            self._cached_state = st
+            # 更新 light 沿用缓存(视觉域载荷;trusted 位随帧缓存,MED-1
+            # —— light 步不重判 shop 态,缓存生成时的可信度就是它的可信度)
+            self._cached_shop_cards = list(getattr(st, 'shop', None) or [])
             self._cached_bench = list(obs.bench_chars)
             self._cached_deployed = list(obs.deployed_chars)
             self._cached_vacancy = obs.deploy_vacancy
             self._cached_gold_trusted = obs.state_gold_trusted
         else:
-            # light:heavy 字段沿用缓存(上次真读值;不恒默认防永动机)
-            obs.state = self._cached_state
-            obs.state_gold_trusted = self._cached_gold_trusted   # MED-1:trusted 位随缓存 state
+            # light:heavy 字段沿用缓存(上次真读值;不恒默认防永动机)。
+            # state 缓存随黑板槽退役消亡(容器化段 2):视觉域四件照旧沿用。
+            obs.state_gold_trusted = self._cached_gold_trusted   # MED-1:trusted 位随缓存帧
             obs.bench_chars = list(self._cached_bench)
             obs.deployed_chars = list(self._cached_deployed)
             obs.deploy_vacancy = self._cached_vacancy
@@ -859,12 +882,13 @@ class CwScreenPrep(CwScreenOpBase):
         - ClickSpheres:执行器内验早停(掉箱即停),残球数不可静态精确
           预测 ⇒ 保守清空(下轮入口对账重建;多残球的收敛由重观察承担);
         - SellBench:该物理槽位件离席(bench_chars 摘除 +
-          free_bench_slots+1)+ state 侧金账 ``gold += sell_refund(star,
-          bench_char_cost)``——与 ``cw_state.simulate`` 卖出分支同式
-          (单一源公式;state 为 None 的观察帧跳过金账,保守侧=低估回金,
-          下一 heavy 重读对账)。保真边界:gold 可信位
-          (``state_gold_trusted``)不随投影翻转——投影金是账面值,可信
-          位语义(heavy 真读)保持不变,消费端按位判读。
+          free_bench_slots+1)+ 容器域投影直写(gold 回金 + bench 摘槽,
+          kernel 写口 ``apply_prep_action_logic`` 单一源,域集封闭
+          gold/bench,write_logic 渠道,ADR-0651)——与
+          ``cw_state.simulate`` 卖出分支同式(单一源公式;槽位空/越界 =
+          陈旧提案守卫零写,保守侧 = 等下一 heavy 重读对账)。保真边界:
+          gold 可信位(``state_gold_trusted``)不随投影翻转——投影金是
+          账面值,可信位语义(heavy 真读)保持不变,消费端按位判读。
 
         未建模面(保守回退,读屏量与旧 per-action heavy 持平、决策面更准):
         DeployMove/SellDeployed(deployed 占用集合的物理落位规则未建模)、
@@ -894,22 +918,20 @@ class CwScreenPrep(CwScreenOpBase):
         if isinstance(action, SellBench):
             _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
                       if bc is None or getattr(bc, 'slot', None) != action.slot]
-            _gold_delta = 0
-            _sold = next((bc for bc in (getattr(obs, 'bench_chars', None) or [])
-                          if bc is not None
-                          and getattr(bc, 'slot', None) == action.slot), None)
-            _state = getattr(obs, 'state', None)
-            if _sold is not None and _state is not None:
-                from sr_od.application.currency_war.kernel.cw_state import (
-                    bench_char_cost,
-                    sell_refund,
-                )
-                _gold_delta = sell_refund(_sold.star or 1,
-                                          bench_char_cost(_sold))
-                _state = dataclasses.replace(
-                    _state, gold=int(_state.gold or 0) + _gold_delta)
+            # 容器域投影直写(容器化段 2:黑板帧 state 复制腿消亡;
+            # gold 回金公式单一源 = cw_state.sell_refund,bench 摘槽 =
+            # BenchView 重建 write_logic——写口内自持陈旧提案守卫)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
+                apply_prep_action_logic,
+                board_state_of,
+            )
+            apply_prep_action_logic(
+                board_state_of(self._session()), action,
+                produced_by='CwScreenPrep',
+                sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
             return dataclasses.replace(
-                obs, bench_chars=_bench, state=_state,
+                obs, bench_chars=_bench,
                 free_bench_slots=(getattr(obs, 'free_bench_slots', 0) or 0) + 1)
         return None
 
@@ -958,7 +980,16 @@ class CwScreenPrep(CwScreenOpBase):
             mism = compare_drag_expect(expect, bench_read, deployed_read)
             if not mism:
                 return
-            obs_st = self._cached_state
+            # 缺陷行 plane/round 记账面读数 = 容器读口(容器化段 2:
+            # _cached_state 槽退役;读口缺省镜像 1 取代旧 getattr 0 兜底,
+            # 留证行数值口径变化已申报)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                plane_of as _p_of,
+            )
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                round_num_of as _r_of,
+            )
+            _bs_def = board_state_of(self._session())
             exp_txt = (f'{expect.kind} identity={expect.identity} '
                        f'from_slot={expect.from_slot}'
                        + (f' target={expect.target_row}{expect.target_slot}'
@@ -968,8 +999,8 @@ class CwScreenPrep(CwScreenOpBase):
             defects.record_defect(
                 _DRAG_DEFECT_SURFACE, _DRAG_DEFECT_KIND,
                 expected=exp_txt, observed=obs_txt,
-                plane=int(getattr(obs_st, 'plane', 0) or 0),
-                round_num=int(getattr(obs_st, 'round_num', 0) or 0),
+                plane=int(_p_of(_bs_def)),
+                round_num=int(_r_of(_bs_def)),
                 gap_large=True,
                 verdict=('留证-拖动后期望态与定型帧实读不一致(身份未识别槽不评;'
                          '单次 L1,复现自动升 L0,停线由分级安灯承接;本对账'
@@ -1012,7 +1043,14 @@ class CwScreenPrep(CwScreenOpBase):
             mism = compare_buy_expect(expect, bench_read, deployed_read)
             if not mism:
                 return
-            obs_st = self._cached_state
+            # 缺陷行 plane/round 记账面读数 = 容器读口(容器化段 2,同拖动通道)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                plane_of as _p_of,
+            )
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                round_num_of as _r_of,
+            )
+            _bs_def = board_state_of(self._session())
             exp_txt = (f'buy {expect.summary} 总价{expect.total_cost}'
                        + ('(低置信:满栏自动多买)' if expect.low_confidence else ''))
             obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
@@ -1025,8 +1063,8 @@ class CwScreenPrep(CwScreenOpBase):
                 _rec = state.get_recorder()
                 _dir = getattr(_rec, 'replay_dir', None) if _rec else None
                 if _dir:
-                    _tag = (f"p{int(getattr(obs_st, 'plane', 0) or 0)}"
-                            f"-r{int(getattr(obs_st, 'round_num', 0) or 0)}")
+                    _tag = (f"p{int(_p_of(_bs_def))}"
+                            f"-r{int(_r_of(_bs_def))}")
                     evidence = _save_buy_evidence(
                         str(_dir), _tag, expect, mism, frame,
                         _ctx_slots(self.ctx, '备战栏', 9))
@@ -1035,8 +1073,8 @@ class CwScreenPrep(CwScreenOpBase):
             defects.record_defect(
                 _DRAG_DEFECT_SURFACE, _BUY_DEFECT_KIND,
                 expected=exp_txt, observed=obs_txt,
-                plane=int(getattr(obs_st, 'plane', 0) or 0),
-                round_num=int(getattr(obs_st, 'round_num', 0) or 0),
+                plane=int(_p_of(_bs_def)),
+                round_num=int(_r_of(_bs_def)),
                 gap_large=True,
                 verdict=('留证-买牌后期望态与定型帧实读不一致(仅评增量槽;'
                          '身份未识别槽不评;单次 L1,复现自动升 L0,停线由'
@@ -1113,13 +1151,20 @@ class CwScreenPrep(CwScreenOpBase):
         失读 → 保 pending 不评下帧重试(宁缺勿造)。全程 best-effort。"""
         try:
             led = self._xp_ledger()
-            st = obs.state
-            if led is None or st is None:
+            session = self._session()
+            if led is None or session is None:
                 return
-            display = getattr(st, 'xp_progress', None)
-            level_obs = int(getattr(st, 'level', 0) or 0)
-            key = (int(getattr(st, 'plane', 0) or 0),
-                   int(getattr(st, 'round_num', 0) or 0))
+            # 容器化段 2:锚定/比对读数 = 容器读口(xp/level/plane/round;
+            # obs.state 视图槽退役,容器记录值为同一供数源)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                level_of,
+                plane_of,
+                round_num_of,
+            )
+            _bs = board_state_of(session)
+            display = _bs.xp.value
+            level_obs = int(level_of(_bs))
+            key = (int(plane_of(_bs)), int(round_num_of(_bs)))
             if not led.anchored:
                 if display is not None and level_obs > 0:
                     led.level, led.xp_cur = level_obs, display[0]
@@ -1199,9 +1244,14 @@ class CwScreenPrep(CwScreenOpBase):
             reading = read_displayed_factions(self.ctx, frame)
             result = compare_factions(computed, reading.entries,
                                       reading.unreadable)
-            st = obs.state
-            plane = int(getattr(st, 'plane', 0) or 0)
-            round_num = int(getattr(st, 'round_num', 0) or 0)
+            # 台账行 plane/round = 容器读口(容器化段 2)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                plane_of,
+                round_num_of,
+            )
+            _bs = board_state_of(session)
+            plane = int(plane_of(_bs))
+            round_num = int(round_num_of(_bs))
             if result.mismatch_count <= 0:
                 # 不一致为零也留一条 debug(含不评口径计数),频率统计靠台账
                 # 数据说话,不在此落账;行名并入见 faction_display_ok_debug_line
@@ -1250,13 +1300,21 @@ class CwScreenPrep(CwScreenOpBase):
         同款 heavy 定型帧消费,全程 best-effort。
         """
         try:
-            st = obs.state
-            if st is None or not obs.shop_open:
+            session = self._session()
+            if session is None or not obs.shop_open:
                 return
-            cards, unnamed = _shop_pool_inputs(st)
+            # 容器化段 2:牌面 = 容器 payload 域(离屏 None 天然跳过);
+            # level/plane/round = 容器读口。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                level_of,
+                plane_of,
+                round_num_of,
+            )
+            _bs = board_state_of(session)
+            cards, unnamed = _shop_pool_inputs(_bs)
             if not cards:
                 return
-            violations = check_shop_pool(cards, int(st.level or 0), None)
+            violations = check_shop_pool(cards, int(level_of(_bs)), None)
             if not violations:
                 return
             obs_txt = ';'.join(f'{v.name}/{v.cost}:{v.kind}({v.detail})'
@@ -1265,8 +1323,8 @@ class CwScreenPrep(CwScreenOpBase):
                 _SHOP_DEFECT_SURFACE, _SHOP_POOL_DEFECT_KIND,
                 expected='0 违例(五牌两查)',
                 observed=obs_txt,
-                plane=int(getattr(st, 'plane', 0) or 0),
-                round_num=int(getattr(st, 'round_num', 0) or 0),
+                plane=int(plane_of(_bs)),
+                round_num=int(round_num_of(_bs)),
                 gap_large=True,
                 verdict=('留证-商店牌卡池一致性违例(tier_locked=该费用档本'
                          '等级概率为0,牌识别错或等级读错;invalid_cost=费用'
@@ -1274,7 +1332,7 @@ class CwScreenPrep(CwScreenOpBase):
                          '降级未做;零决策记账,单次 L1,复现升 L0 由分级'
                          '安灯承接)'),
                 refs=[{'field': k, 'value': v} for k, v in (
-                    ('level', str(int(st.level or 0))),
+                    ('level', str(int(level_of(_bs)))),
                     ('cards', str(len(cards))),
                     ('unnamed', str(unnamed)),
                     ('pool_state', 'None(池查降级)'))],
@@ -1301,17 +1359,22 @@ class CwScreenPrep(CwScreenOpBase):
         回退采帧解锁条件),单票不判死。节奏 = 同款 heavy 定型帧消费,best-effort。
         """
         try:
-            # det 侧吃**同帧 raw**(heavy 装配点缓存的原始读帧),不吃
-            # obs.state(记录容器视图):merge_preview 是 ✦ 读取器信号,
-            # 派生读取器域不入记录容器——视图 shop 牌收编后该域恒缺省 0,
-            # 拿视图当 det 会把「读不到 ✦」伪证成「无副本」(对账票毒化)。
-            # _cached_state = 本 heavy 帧原始 read_game_state 产物(视图
-            # 替换只落 obs.state,缓存持有 raw,见 _observe heavy 段)。
-            st = (self._cached_state
-                  if self._cached_state is not None else obs.state)
-            if st is None or not obs.shop_open:
+            session = self._session()
+            if session is None or not obs.shop_open:
                 return
-            our, det, unnamed = _merge_preview_inputs(st)
+            # det 侧吃**同帧 raw 牌**(读取器域载荷缓存):merge_preview 是
+            # ✦ 读取器信号,派生读取器域不入记录容器——容器 payload 经
+            # ``shop_cards_to_legacy(frame_cards=同帧 raw 牌)`` 下标对齐
+            # 透传,失配窗置缺省 0(拿容器当 det 会把「读不到 ✦」伪证成
+            # 「无副本」,对账票毒化——缓存槽语义见 __init__ 注)。
+            # our 侧席位 = 容器读口(容器化段 2:_cached_state 槽退役)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                plane_of,
+                round_num_of,
+            )
+            _bs = board_state_of(session)
+            our, det, unnamed = _merge_preview_inputs(
+                _bs, frame_cards=(self._cached_shop_cards or None))
             if not our:
                 return
             result = compare_merge_preview(our, det)
@@ -1325,8 +1388,8 @@ class CwScreenPrep(CwScreenOpBase):
                 _SHOP_DEFECT_SURFACE, _SHOP_MERGE_DEFECT_KIND,
                 expected='0 mismatch(合成预览=我方同名同星持有>0 vs 识别✦>0)',
                 observed=obs_txt,
-                plane=int(getattr(st, 'plane', 0) or 0),
-                round_num=int(getattr(st, 'round_num', 0) or 0),
+                plane=int(plane_of(_bs)),
+                round_num=int(round_num_of(_bs)),
                 gap_large=True,
                 verdict=('留证-商店牌合成预览对账不一致(our_suspect=我方算'
                          '有副本而识别无✦=合成计算嫌疑或识别暗相漏检,双义'
@@ -1438,15 +1501,22 @@ class CwScreenPrep(CwScreenOpBase):
             mism = compare_equip_expect(expect, cells)
             if not mism:
                 return
-            obs_st = self._cached_state
+            # 缺陷行 plane/round 记账面读数 = 容器读口(容器化段 2,同拖动通道)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                plane_of as _p_of,
+            )
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                round_num_of as _r_of,
+            )
+            _bs_def = board_state_of(self._session())
             obs_txt = ';'.join(f"{m['slot']} 期望[{m['expected']}] "
                                f"实读[{m['observed']}]" for m in mism)
             defects.record_defect(
                 _EQUIP_DEFECT_SURFACE, _EQUIP_DEFECT_KIND,
                 expected=f'equip {expect.summary}',
                 observed=obs_txt,
-                plane=int(getattr(obs_st, 'plane', 0) or 0),
-                round_num=int(getattr(obs_st, 'round_num', 0) or 0),
+                plane=int(_p_of(_bs_def)),
+                round_num=int(_r_of(_bs_def)),
                 gap_large=True,
                 verdict=('留证-装备拖拽期望态与装备区实读不一致(穿戴读精度未验证'
                          '按不评口径;equip=中决策相关面,'
@@ -1499,7 +1569,7 @@ class CwScreenPrep(CwScreenOpBase):
         # 防跨环误延。写在 session(单轮 op 每环重建,实例属性不跨环存活)。
         exec_state_of(session).last_prep_action_sig = None
         self._executor = PrepActionExecutor(self, self.ctx)
-        self._cached_state = None
+        self._cached_shop_cards = []
         self._cached_bench = []
         self._cached_deployed = []
         self._cached_vacancy = 0
@@ -1549,22 +1619,11 @@ class CwScreenPrep(CwScreenOpBase):
         #      kernel.cw_board_state.bench_is_full(决策/拦截消费面);
         #      破墙主动探测不复活——派生席满≠模态在场(持 9 席是合法
         #      运营态,按席满主动腾席会打穿策略持仓)。
-        #      观察终饰(dual/gated_hp;方向重估已内化进策略器决策入口,
-        #      由帧代次标注触发,ADR-0583)
-        if obs.state is not None:
-            from sr_od.application.currency_war.kernel.cw_intention import (
-                committed_from,
-            )
-            from sr_od.application.currency_war.strategies.impl.cw_strategy import (
-                gated_hp,
-            )
-            _os = obs.state
-            # dual 态拷回(读端 = R1 唯一合法读端 committed_from)
-            _os.dual_track_phase = not committed_from(session, _os)
-            _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
-            _os.hp = gated_hp(_os.hp, session, _os_t,
-                              current_readable=bool(getattr(_os, 'hp_readable', True)))
-        # —— ③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 +
+        #      观察终饰(dual/gated_hp)已随黑板槽退役消亡(容器化段 2:
+        #      dual_track_phase 不入容器,消费读 committed_from 派生形态
+        #      波 3 已立,帧上二次拷回是残件;gated_hp 帧上二次施门删除,
+        #      hp 消费统一经 decision_hp 门前真值+施门)。
+        #      —— ③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 +
         #      每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次
         #      建期望态 → 逐动作「决策(黑板=投影态)→ F3 校验 → 期望态计算 →
         #      执行 → 投影」循环,循环内零读屏;三遍编排序保持(决策核输出
@@ -1734,7 +1793,7 @@ class CwScreenPrep(CwScreenOpBase):
         session = match.session
         exec_state_of(session).last_prep_action_sig = None
         self._executor = PrepActionExecutor(self, self.ctx)
-        self._cached_state = None
+        self._cached_shop_cards = []
         self._cached_bench = []
         self._cached_deployed = []
         self._cached_vacancy = 0
@@ -1766,11 +1825,13 @@ class CwScreenPrep(CwScreenOpBase):
         - BoardState 帧写入半已在适配器①识别链内完成(read_game_state
           ._feed_board_state 观察流[observe/carry/prior/leave_screen/relay]
           + _observe 的备战席观察写端[P2-1 空集失读守卫/P3-10 特效窗
-          观察顺延门] + game_state_view 消费视图)——识别质量机制归实机
-          实现内部,对端口契约不可见(§2.3);
+          观察顺延门])——识别质量机制归实机实现内部,对端口契约不可见
+          (§2.3;obs.state 消费视图随黑板槽退役消亡,容器化段 2);
         - 本段 = op 级对账:上一访问逐动作暂存的期望态记账(acct 族)在
-          本帧定型帧统一消费(ADR-0517 决策 8:入口观察即对账)+ 观察终饰
-          (dual 态拷回/gated_hp 单写者门)。"""
+          本帧定型帧统一消费(ADR-0517 决策 8:入口观察即对账)。原观察
+          终饰(dual 态拷回/gated_hp 单写者门)已随黑板槽退役消亡——
+          dual_track_phase 不入容器(消费读 committed_from 派生),hp
+          消费统一经 decision_hp(容器化段 2,设计件 §2.4-2)。"""
         session = self._match().session
         for _pend in list(getattr(exec_state_of(session), 'cw_prep_pending_accts', None) or []):
             self._v2_post_frame_accounting(payload, _pend, session)
@@ -1779,21 +1840,6 @@ class CwScreenPrep(CwScreenOpBase):
                                                  'drag_expect': None, 'equip_expect': None,
                                                  'dep_delta': 0, 'dep_pre': None,
                                                  'unit_open': False}, session)
-        # 观察终饰(dual/gated_hp;方向重估已内化进策略器决策入口,
-        # 由帧代次标注触发,ADR-0583)
-        if payload.state is not None:
-            from sr_od.application.currency_war.kernel.cw_intention import (
-                committed_from,
-            )
-            from sr_od.application.currency_war.strategies.impl.cw_strategy import (
-                gated_hp,
-            )
-            _os = payload.state
-            # dual 态拷回(读端 = R1 唯一合法读端 committed_from)
-            _os.dual_track_phase = not committed_from(session, _os)
-            _os_t = ((_os.plane - 1) * 9 + _os.round_num) if (_os.plane and _os.round_num) else None
-            _os.hp = gated_hp(_os.hp, session, _os_t,
-                              current_readable=bool(getattr(_os, 'hp_readable', True)))
 
     def lifecycle_decision_cycle(self, payload: PrepObservation) -> OperationRoundResult:
         """段3-5 单动作决策循环(架构设计 §5.1 后三段逐动作迭代)。
@@ -2302,9 +2348,19 @@ class CwScreenPrep(CwScreenOpBase):
             _ = close_shop(self)
             self._probe_node_type()
             return True, 'read_only 开店重读(gold 真值)'
-        st = getattr(obs, 'state', None)
-        hp_value = getattr(st, 'hp', None) if st is not None else None
-        hp_readable = bool(getattr(st, 'hp_readable', False))
+        # hp 三件组 = 容器读口供给(容器化段 2:obs.state 视图槽退役;
+        # 门后消费值统一经 decision_hp 政策读口——门前真值+消费侧施门
+        # 单一源,禁直读 bs.hp.value 施门旁路;readable = 来源位本帧真读,
+        # trusted 恒与 readable 同源,与旧视图帧形态一致)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_of,
+        )
+        from sr_od.application.currency_war.kernel.cw_hp_policy import (
+            decision_hp,
+        )
+        _bs_shop = board_state_of(self._session())
+        hp_value = decision_hp(_bs_shop, self._session())
+        hp_readable = bool(_bs_shop.hp.source == 'observation')
         hp_trusted = hp_readable
         return self.visit_open_shop(hp_value, hp_readable, hp_trusted)
 
@@ -2380,6 +2436,14 @@ class CwScreenPrep(CwScreenOpBase):
         # 动作级板面对拍(后读;期望不等 = 未生效证据,纯留证)
         if acct.get('dep_pre') is not None:
             with contextlib.suppress(Exception):
+                # 缺陷行 plane/round = 容器读口(容器化段 2,同对账族)。
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    plane_of as _p_of,
+                )
+                from sr_od.application.currency_war.kernel.cw_board_state import (
+                    round_num_of as _r_of,
+                )
+                _bs_def = board_state_of(session)
                 _dep_post = read_deployed_count(self.ctx, self.last_screenshot)
                 if _dep_post is not None and _dep_post - acct['dep_pre'] != acct['dep_delta']:
                     _gap = _dep_post - acct['dep_pre']
@@ -2387,8 +2451,8 @@ class CwScreenPrep(CwScreenOpBase):
                         'deployed', 'invariant_break',
                         expected=f'{key} 执行后 paddle={acct["dep_pre"] + acct["dep_delta"]}',
                         observed=f'paddle={_dep_post}',
-                        plane=int(getattr(obs.state, 'plane', 0) or 0),
-                        round_num=int(getattr(obs.state, 'round_num', 0) or 0),
+                        plane=int(_p_of(_bs_def)),
+                        round_num=int(_r_of(_bs_def)),
                         gap=float(_gap), gap_large=True,
                         reader_source='paddle_action_audit',
                         note='部署/卖出动作级即时对拍(§2.3;与 deployed_align 自动纠漂分立)')
@@ -2619,8 +2683,6 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
         read_gold_settled,
     )
     from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
-        _apply_hp,
-        build_post_buy_incremental_state,
         expected_gold_after_actions,
     )
     state = outcome.state
@@ -2645,50 +2707,65 @@ def finalize_buy_phase(op: SrOperation, match, outcome,
     # target='' 仙舟件全坐板凳,散 pair 白挨打 -8/-12/-28)。买完需用最新
     # bench 重估一次:桥/锁线当轮生效,紧随的消费面才有方向。幂等
     # (键守卫段同轮短路,已锁线不漂移)。**内化形态**:流程侧不再直调
-    # 策略器——买后 ``_post`` 暂存为黑板派生帧标 view,由下一决策入口
-    # (pick/备战)消费复现原重估语义(§3.3-③):pick 窗口 = 同 ``_post``
-    # 基底逐位同源;备战入口 = heavy full 帧构造性覆盖(同一物理 bench)。
+    # 策略器——买后容器喂入增量(gold 真读 + bench tracked 重播)标
+    # view 帧代次,由下一决策入口(pick/备战)消费复现原重估语义
+    # (§3.3-③):pick 窗口 = 同一容器喂入逐位同源;备战入口 = heavy
+    # full 帧构造性覆盖(同一物理 bench)。
     try:
         if match is not None and (total_buy or total_level or total_refresh):
-            _post = None
+            # 买后重估容器喂入(容器化段 2:GameState 增量构造随黑板槽
+            # 退役改容器直写——gold 关店真读 → write_logic(bs.gold);
+            # bench tracked 重播 → write_logic(bs.bench, BenchView 重建,
+            # 构造单一源 = bench_view_of_slots);fail-closed 双维回退
+            # (gold 失读/tracked 空)语义不变 = 全量 read_game_state 观察
+            # 喂入口(其内部 _feed_board_state 观察流照常写容器)。hp 覆盖
+            # 写面随黑板槽退役取消(波 4 步 4 同款结论:容器 hp 由备战帧
+            # 观察/结算覆盖既有写端承接,消费统一经 decision_hp)。
+            from sr_od.application.currency_war.kernel.cw_board_state import (
+                ChannelSig,
+                bench_view_of_slots,
+                board_state_of,
+            )
+            _post_bench = list(
+                getattr(exec_state_of(match.session), 'tracked_bench_chars',
+                        None) or [])
+            _inc_gold = None
             if not total_level:
-                # 执行边界压缩·买后验证增量:本单元动作(无升级)只改
-                # gold/bench(plane/round/board 等机制不变量,构造单一源 =
-                # build_post_buy_incremental_state)→ 单区金真读 + tracked
-                # 重播,替代整帧 OCR。fail-closed 双维回退全量读:金失读
-                # (None)/tracked 空(真空与丢跟踪不可区分,见构造点契约)。
-                # 金读走稳定门(read_gold_settled):关店帧入账计数器可能
-                # 仍在跳,单帧会采到入账前旧值(误读维度造值;门=两帧一致
-                # 才采信,不一致取末帧+留证)。
-                _inc_gold = None
+                # 单区金真读(执行边界压缩·买后验证增量):本单元动作
+                # (无升级)只改 gold/bench。金读走稳定门(read_gold_settled)
+                # :关店帧入账计数器可能仍在跳,单帧会采到入账前旧值
+                #(误读维度造值;门=两帧一致才采信,不一致取末帧+留证)。
                 with contextlib.suppress(Exception):
                     _inc_gold = read_gold_settled(op.ctx, op.screenshot())
-                if _inc_gold is not None:
-                    # node_type 不传 last_node_type(ADR-0587 收编去参):
-                    # 垫底帧 state 已带店开帧台账值,构造点 deepcopy 透传,
-                    # 旧实参会在非 None 时把台账值盖回跨轮滞后值。
-                    _post = build_post_buy_incremental_state(
-                        state, _inc_gold,
-                        exec_state_of(match.session).tracked_bench_chars,
-                        hp_value, hp_readable, hp_trusted)
-            if _post is None:
-                _post = read_game_state(op.ctx, op.screenshot(),
-                                        phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
-                _apply_hp(_post, hp_value, hp_readable, hp_trusted)
-                # node_type 不拷 session.last_node_type(ADR-0587 删旧覆盖):
-                # prep_clean 全量读已走台账优先链(cw_observation 节点类型段)
-                # 拿到新鲜值,旧无条件覆盖把刚取得的新鲜值降级为跨轮滞后值
-                # ——两值不等时这次覆盖只会把对的改错的。
+            if _inc_gold is not None and _post_bench:
+                _bs_post = board_state_of(match.session)
+                _sig_feed = ChannelSig(family='logic_action',
+                                       actor='CwScreenPrep',
+                                       group_id=(f'act:CwScreenPrep@'
+                                                 f'{_bs_post.write_seq + 1}'))
+                _bs_post.write_logic(_bs_post.gold, int(_inc_gold),
+                                     produced_by='CwScreenPrep',
+                                     evidence='post_buy_gold_close',
+                                     sig=_sig_feed)
+                _bs_post.write_logic(
+                    _bs_post.bench, bench_view_of_slots(_post_bench),
+                    produced_by='CwScreenPrep',
+                    evidence='post_buy_bench_tracked_replay',
+                    sig=_sig_feed)
+            else:
+                # fail-closed 回退:gold 失读 / tracked 空(真空与丢跟踪
+                # 不可区分,见构造点契约)= 全量干净备战基线读,容器喂入
+                # 由观察漏斗既有写端承接。
+                _ = read_game_state(op.ctx, op.screenshot(),
+                                    phase=PHASE_PREP_CLEAN)   # ADR-0462 关店后=干净备战基线
             # finalize 同位暂存(ADR-0583 §3.3-③;写者 = 流程侧,§3.4 具名清单)。
+            # 帧代次标 `view` = 派生喂入(增量重播)重锚(容器化段 2:
+            # `state=_post` 帧替换随 state 槽退役消亡,标注写点保留)。
             # 缺席守卫(方案审 L-b):外循环 0n 直入商店(接管/店已开路径,
             # ADR-0562 入口)无 prep 黑板帧 → 显式跳过暂存,该窄窗 pick 退回
-            # 'none' 类(申报见 ADR-0583 §5.5-丁);暂存帧仅 state/帧类两字段
-            # 有消费合法性(现帧其余 OCR 列相对 _post 已陈旧,消费面禁扩读)。
-            import dataclasses as _dc
+            # 'none' 类(申报见 ADR-0583 §5.5-丁)。
             _cur_frame = match.session.prep_obs_frame
             if _cur_frame is not None:
-                match.session.prep_obs_frame = _dc.replace(
-                    _cur_frame, state=_post)
                 match.session.prep_frame_class = 'view'
     except Exception as e:   # noqa: BLE001  重估暂存失败不阻塞买牌
         log.debug('[cw] 买后重估暂存失败(不阻塞): %s', e)

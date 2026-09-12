@@ -12,6 +12,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
+    deployed_slots_of,
+    plane_of,
+    round_num_of,
+)
 from sr_od.application.currency_war.kernel.cw_comps import RUST_AFFIX_NAME, Comp
 from sr_od.application.currency_war.kernel.cw_economy import loss_exact
 from sr_od.application.currency_war.kernel.cw_state import DEPLOYED_CAPACITY
@@ -19,48 +25,31 @@ from sr_od.application.currency_war.kernel.cw_state import DEPLOYED_CAPACITY
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_state import (
         BenchChar,
-        GameState,
     )
 
 
-def bench_effect_context(state: GameState | None, unit: BenchChar,
+def bench_effect_context(state: BoardState, unit: BenchChar,
                          k_members: tuple[str, ...] = (),
                          ) -> BenchEffectContext:
     """三消费位(fuel_sell 豁免/凑息档序资格/支付支撑变现)共享的语境
-    装配函数(IMPL_ADV_R200 症3:语境从 state 现读,禁各通道自拼)。
+    装配函数(IMPL_ADV_R200 症3:语境从容器现读,禁各通道自拼)。
 
     可观测来源(逐项):
-    - ``rust_affix_present``:``state.enemy_affixes`` 含
+    - ``rust_affix_present``:``bs.enemy_affixes`` 含
       ``RUST_AFFIX_NAME``(与 kernel/cw_registry H2② 同一判据源);
     - ``equipped``:被评估单位自身 ``unit.equips`` 非空(单位级现读,
       恒可得);
-    - ``herta_star_supply``:黑塔纪元 augment 局(``state.
+    - ``herta_star_supply``:黑塔纪元 augment 局(``bs.
       active_strategies`` 含 ``proof.DIRECT_LINE_SIGNAL_STRATEGIES``
-      成员,单一源)∨ 板面(``state.deployed``)存在星级供强承载对象
+      成员,单一源)∨ 板面(``deployed_slots_of``)存在星级供强承载对象
       「大黑塔」(名册锚=cw_chars CHARACTERS['大黑塔'],银河学者星级
       供强线)∨ 线内(K 成员含承载对象——换线过渡期语境)。
 
-    缺省保守端申报:``state=None``(旧调用面/手工帧)时两维语境不可
-    观测 ⇒ 按保护端处置——``herta_star_supply=True``(例外①在场)∧
-    ``rust_affix_present=False``(例外②的排除支「生锈在场∧未穿」不成立
-    ⇒ 资格保持):两维合成结果=载体件受保护(不可逆卖出面缺输入默认
-    不做,§2.2.1 同款 fail 方向)。生锈局滞留代价由 wear_release 通道
-    另行承载,不在此翻转卖面缺省。``equipped`` 恒单位级现读。影响面=
-    仅 bench_effect 载体件(现册仅「黑塔」),纯燃料件类级默认不受影响。
+    ``equipped`` 恒单位级现读。影响面=仅 bench_effect 载体件(现册仅
+    「黑塔」),纯燃料件类级默认不受影响。
     """
     equipped = bool(getattr(unit, 'equips', None))
-    if state is None:
-        return BenchEffectContext(rust_affix_present=False, equipped=equipped,
-                                  herta_star_supply=True)
-    # 双形态过渡(W6 波 4:商店线容器直喂 bs;prep 链/存量测试仍传帧;
-    # GameState 支随波 5 last_state 链退役消亡)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
-    )
-    if isinstance(state, BoardState):
-        affixes = list(state.enemy_affixes.value or ())
-    else:
-        affixes = list(getattr(state, 'enemy_affixes', None) or ())
+    affixes = list(state.enemy_affixes.value or ())
     rust = RUST_AFFIX_NAME in affixes
     herta = _herta_supply_present(state, k_members)
     return BenchEffectContext(rust_affix_present=rust, equipped=equipped,
@@ -73,22 +62,12 @@ def bench_effect_context(state: GameState | None, unit: BenchChar,
 _HERTA_SUPPLY_TARGET: str = '大黑塔'
 
 
-def _herta_supply_present(state: GameState | None,
+def _herta_supply_present(state: BoardState,
                           k_members: tuple[str, ...]) -> bool:
     """星级供强语境在场判定(例外①的观测面:augment 局 ∨ 板面 ∨ 线内)。"""
-    if state is None:
-        return True    # 缺读保守端(见 bench_effect_context 申报)
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
-        deployed_slots_of,
-    )
     from sr_od.application.currency_war.strategies.impl.mandate_v1 import proof
-    if isinstance(state, BoardState):
-        strategies = list(state.active_strategies.value or ())
-        deployed = deployed_slots_of(state)
-    else:
-        strategies = getattr(state, 'active_strategies', None) or ()
-        deployed = getattr(state, 'deployed', None) or []
+    strategies = list(state.active_strategies.value or ())
+    deployed = deployed_slots_of(state)
     if any(s in proof.DIRECT_LINE_SIGNAL_STRATEGIES for s in strategies):
         return True
     if any((getattr(d, 'char_id', '') or '') == _HERTA_SUPPLY_TARGET
@@ -245,7 +224,7 @@ def arm0_level_lag(level: int, readable: bool, deployed: list[BenchChar], bench:
     return False, 'level_ge_need'
 
 
-def p1_blood_floor(state) -> bool:
+def p1_blood_floor(state: BoardState) -> bool:
     """血线硬地板(λ_death 死亡线;≤15 族,在册授权)。
 
     **定位 = 不影响发展主线的最后保命,非主要求生手段**:触发域 hp≤15
@@ -273,24 +252,11 @@ def p1_blood_floor(state) -> bool:
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.lambda_death import (
         HP_BAND_NEAR_DEATH,
     )
-    if state is None or not hp_decision_trusted(state):
+    if not hp_decision_trusted(state):
         return False
-    # 双形态过渡(W6 波 4:上游消费面经桥装箱传容器 bs,如 flow
-    # .bump_lock_gen_feasibility_obs;存量调用面仍传帧。GameState 支随
-    # 波 5 last_state 链退役消亡)——plane/hp 读口分形,禁 getattr 鸭读
-    # 容器(恒 None = 域谓词静默恒 False,观测死区键失活实位)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
-        plane_of,
-    )
-    if isinstance(state, BoardState):
-        if plane_of(state) != 1:
-            return False
-        hp = state.hp.value
-    else:
-        if getattr(state, 'plane', None) != 1:
-            return False
-        hp = getattr(state, 'hp', None)
+    if plane_of(state) != 1:
+        return False
+    hp = state.hp.value
     return hp is not None and hp <= HP_BAND_NEAR_DEATH
 
 
@@ -308,7 +274,7 @@ def p1_blood_floor(state) -> bool:
 P2_BLOOD_BAND_AUTHORITY_OPEN: bool = False
 
 
-def p2_blood_floor(state) -> bool:
+def p2_blood_floor(state: BoardState) -> bool:
     """P2 濒死带域谓词(p1_blood_floor 的 P2+ 半边同构件;设计出处 =
     p2_blood_band_unified_design/DESIGN.md §2.1,与 241 §15.2 覆①②共谓词,
     禁第二谓词)。
@@ -336,25 +302,15 @@ def p2_blood_floor(state) -> bool:
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.lambda_death import (
         HP_BAND_NEAR_DEATH,
     )
-    if state is None or not hp_decision_trusted(state):
+    if not hp_decision_trusted(state):
         return False
-    # 双形态过渡(同 p1_blood_floor:桥装箱容器 bs 与存量帧两形并读)。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
-        plane_of,
-    )
-    if isinstance(state, BoardState):
-        if plane_of(state) < 2:
-            return False
-        hp = state.hp.value
-    else:
-        if (getattr(state, 'plane', None) or 0) < 2:
-            return False
-        hp = getattr(state, 'hp', None)
+    if plane_of(state) < 2:
+        return False
+    hp = state.hp.value
     return hp is not None and hp <= HP_BAND_NEAR_DEATH
 
 
-def p2_blood_floor_unlock(state) -> bool:
+def p2_blood_floor_unlock(state: BoardState) -> bool:
     """P2 濒死带解锁包消费位(唯一合成口;设计出处 =
     p2_blood_band_unified_design/DESIGN.md §1.2/§2.1)。
 
@@ -460,7 +416,7 @@ def front_window_table_ready(session) -> bool:
             and bool(getattr(session, 'plane_node_table', None)))
 
 
-def front_window_frame(state: GameState, session) -> bool:
+def front_window_frame(state: BoardState, session) -> bool:
     """P1 前窗备战帧谓词(v3 面①;位面参数化 = 节点表查表定义,禁位面
     字面量,01 §8-1)。
 
@@ -477,19 +433,8 @@ def front_window_frame(state: GameState, session) -> bool:
     每位面必有战斗的结构下退化域)⇒ 静默 False **不落分键**(落地审
     H4 修:显影主张收窄至表缺/锚不符两支)。
     """
-    # 双形态过渡(W6 波 4:商店线传容器 bs;存量面传帧;帧支随波 5
-    # last_state 链退役消亡)——位面/轮次锚取数分层,判据本体零改。
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        BoardState,
-        plane_of,
-        round_num_of,
-    )
-    if isinstance(state, BoardState):
-        plane = plane_of(state)
-        round_num = round_num_of(state)
-    else:
-        plane = getattr(state, 'plane', None)
-        round_num = getattr(state, 'round_num', 0)
+    plane = plane_of(state)
+    round_num = round_num_of(state)
     if plane != 1:
         return False
     if getattr(session, 'plane_node_table_plane', None) != 1:

@@ -105,14 +105,14 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
     实现**:sim 侧恒真位(confident/gold_trusted/shop_open/board…)在本函数
     全部按实机观测原样携带(None 合法)。bench 取紧缩型(仅已识别件,元素
     BenchChar.slot 1-based 保持)。
+    数值域锚 = **容器单源**(prep 链容器化段 2:旧「obs.state 帧值优先 +
+    容器兜底」两段优先级随黑板帧 state 槽退役收敛为纯容器读——帧值与
+    容器值常态帧逐位同源(视图即容器主值),引导窗差异 = 读口缺省镜像,
+    行为差申报见设计件 §2.3;gold 可读位 = 来源位非 prior,hp 可读位 =
+    来源位 observation)。
     """
     from types import MappingProxyType
-    st = obs.state
-    # Snapshot 消费切换(W6 波 4 决策缝改造:回退锚从投影视图改容器
-    # 直读——原 cw_bs_view.strategy_input_state 取帧点随改道消亡,同帧同
-    # 视图 = 容器单例一次取用)。obs.state(本帧观察)优先级不变,本锚
-    # 只在帧值缺席时兜底(与旧 last_state 兜底同位);读口缺省镜像 = 波 1
-    # 公共读口(常态帧与旧直读逐位一致)。
+
     from sr_od.application.currency_war.kernel.cw_board_state import (
         board_state_of,
         level_of,
@@ -121,32 +121,33 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
         round_num_of,
     )
     last = board_state_of(session)
+    _gold_val = last.gold.value
+    _gold_readable = last.gold.source != 'prior'
+    _hp_readable = last.hp.source == 'observation'
     return Snapshot(
         schema_version=SNAPSHOT_SCHEMA_VERSION,
         classification=SubstateClassification(
             name=substate_name, evidence=('cw_screen_prep:observe',),
             confident=True),
-        plane=(st.plane if st is not None else None)
-            or plane_of(last),
-        round_num=(st.round_num if st is not None else None)
-            or round_num_of(last),
-        node_type=(st.node_type if st is not None else None)
-            or getattr(session, 'node_type_current', None)
-            or node_kind_of(last),
-        selected_difficulty=(st.selected_difficulty if st is not None else ''),
-        gold=(st.gold if (st is not None and st.gold_readable) else None),
+        plane=plane_of(last),
+        round_num=round_num_of(last),
+        node_type=(getattr(session, 'node_type_current', None)
+                   or node_kind_of(last)),
+        selected_difficulty=(last.selected_difficulty.value or ''),
+        gold=(_gold_val if (_gold_readable and _gold_val is not None)
+              else None),
         gold_trusted=bool(obs.state_gold_trusted),
-        streak=(st.streak if st is not None else None),
-        level=(st.level if st is not None else None) or level_of(last),
-        xp_progress=(st.xp_progress if st is not None else None),
-        level_up_cost=(st.level_up_cost if st is not None else None),
+        streak=last.streak.value,
+        level=level_of(last),
+        xp_progress=last.xp.value,
+        level_up_cost=last.level_up_cost.value,
         bench=tuple(None if b is None else snapshot_copy(b)
                     for b in obs.bench_chars),
         deployed=tuple(None if d is None else snapshot_copy(d)
                        for d in obs.deployed_chars),
-        board=(MappingProxyType(dict(st.board))
-               if (st is not None and st.board_readable) else None),
-        deploy_cap=(st.deploy_cap if st is not None else None),
+        board=(MappingProxyType(dict(last.board.value))
+               if last.board.value is not None else None),
+        deploy_cap=last.deploy_cap.value,
         deploy_vacancy=obs.deploy_vacancy,
         free_bench_slots=obs.free_bench_slots,
         front_occupied=frozenset(obs.front_occupied),
@@ -161,6 +162,7 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
         tomes=tuple(Tome(x=p.x, y=p.y) for _s, p in obs.tomes),
         box_overlay_open=obs.box_overlay_open,
         event_overlay=obs.event_overlay,
-        hp=(st.hp if (st is not None and st.hp_readable) else None),
-        hp_readable=bool(st.hp_readable) if st is not None else False,
+        hp=(last.hp.value if (_hp_readable and last.hp.value is not None)
+            else None),
+        hp_readable=bool(_hp_readable),
     )

@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from sr_od.application.currency_war.kernel.cw_state import BenchChar, GameState
+from sr_od.application.currency_war.kernel.cw_state import BenchChar
 
 # ===== 动作全集 =====
 
@@ -239,13 +239,16 @@ class PrepObservation:
     P1 恒空字段(策略不得依赖):overlay_state / overlay_options / shop_cards /
     owned_equips(P4 工具域接线)。
 
-    分层语义:state/bench_chars/deployed_chars/deploy_vacancy 只在 heavy
+    分层语义:bench_chars/deployed_chars/deploy_vacancy 只在 heavy
     观察刷新(环入口 + 每个执行过的游戏动作后);light 步沿用上次 heavy 值(可能 stale,
     单线程内 stale 窗口 = 无动作步,安全)。轻字段(spheres/boxes/占用/shop_open/overlay)
     每步现读。
+    局内事实不在帧上(容器化段 2:state 槽退役,黑板帧 = 纯视觉/占用
+    观察载体,帧保留域封闭清单见设计件 §2.1-2;决策读 = session 容器
+    单例 board_state_of,同帧同视图纪律)。
+    state_gold_trusted = gold 仅 shop 开态可信(F2 门,heavy 刷新)。
     """
-    state: GameState | None = None        # heavy 重读;gold 仅 shop_open 时可信
-    state_gold_trusted: bool = False      # state.gold 是否可信(= heavy 时 shop 开)
+    state_gold_trusted: bool = False      # gold 是否可信(= heavy 时 shop 开)
     # 子态可读性(observe_full 产出;heavy 刷新/
     # light 沿用)——node_seq/shop_cards 本帧是否可读(按子态
     # 尽力读,跨步拼装全面性)。

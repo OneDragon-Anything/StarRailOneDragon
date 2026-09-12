@@ -241,16 +241,18 @@ def assemble(snapshot: Snapshot, session: StrategySession,
     幂等:同输入重入返回等值 TurnState(投影重算)。纪律边界(T-88
     披露面豁免,ADR-0571):决策投影不落 session;唯一例外 =
     ``_disclose_budget`` 写遥测披露面四字段 + 键戳(不入决策输入,
-    读端只有 recorder/engine_p1 遥测链)。
+    读端只有 recorder/engine_p1 遥测链)。决策输入 = session 容器单例
+    (prep 链容器化段 2:旧 ``decision_state`` GameState 骨架退役,
+    方向/预算投影直读容器,同帧同视图)。
     """
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.adapter import (
-        decision_state,
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_of,
     )
 
     reg = registry or DEFAULT_REGISTRY
-    state = decision_state(snapshot, session)
+    bs = board_state_of(session)
     return TurnState(
         snap=snapshot,
-        direction=_direction(state, session, snapshot, reg),
-        budget=_budget(state, session, reg),
+        direction=_direction(bs, session, snapshot, reg),
+        budget=_budget(bs, session, reg),
     )

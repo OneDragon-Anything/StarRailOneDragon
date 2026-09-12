@@ -1669,6 +1669,85 @@ def mutate_bench_deployed_local(bench, deployed, action):
     mutate_bench_deployed(bench, deployed, action)
 
 
+#: 备战投影直写域集封闭登记面(设计件《prep 链容器化方案》§2.4-3/§4-P5,
+#: 形态对齐 :data:`SHOP_PROJECTION_DOMAINS` 的商店登记面):本口只辖
+#: gold / bench 两域(集外动作零写,未登记写点 = 缺陷,禁扩静默):
+#: - **域集封闭** = gold(SellBench 回金,公式单一源 = ``cw_state.
+#:   sell_refund``)+ bench(SellBench 摘槽,BenchView 重建 write_logic,
+#:   重播种先例 =《商店黑板容器化方案》§2.3 布局代次行);
+#: - **OpenBox/OpenTome/ClickSpheres 投影只动视觉域**(boxes/tomes/spheres
+#:   在黑板帧上推进,容器零写);
+#: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold(gold
+#:   未读 None 时回金域跳写,值留观察覆盖;bench 摘槽不受 gold 缺读辖);
+#: - **陈旧提案守卫**:目标槽位空/越界 = 提案与容器失配,本口零写
+#:   (等观察覆盖,与商店 SellBench 支同纪律)。
+PREP_PROJECTION_DOMAINS: tuple[str, ...] = ('gold', 'bench')
+
+
+def apply_prep_action_logic(bs: BoardState, action: Any, *,
+                            produced_by: str, sig: ChannelSig) -> None:
+    """备战动作投影直写(逐动作零读屏的期望态纯计算推进的容器半;
+    设计件《prep 链容器化方案》§2.4-3)。落位 = 本写口单一源,消费位 =
+    ``cw_screen_prep._project_prep_obs``(SellBench 分支;黑板帧保留
+    视觉域半,state 复制腿随黑板槽退役消亡)。
+
+    域集封闭 = :data:`PREP_PROJECTION_DOMAINS`(gold/bench;集外动作
+    零写,登记面见其注释,禁扩静默):
+
+    - **SellBench** = bench −该槽 + gold +退款(退款锚 = ``cw_state.
+      sell_refund``,与 ``cw_state.simulate`` 卖出分支同式单一源)。
+      备战动作槽坐标 = ``SellBench.slot`` = bench 物理槽位 1-9(1 基,
+      MandateFrame/bench 读口同坐标系),读口 ``bench_slots_of`` 下标
+      i = 物理槽 i+1,换算在此单点完成。槽位空/越界 = 陈旧提案,本口
+      零写(等观察覆盖);槽位件缺星级/缺费 = ``bench_char_cost`` 注册
+      表单一源兜底,与旧投影腿同式。
+    - **OpenBox/OpenTome/ClickSpheres** = 视觉域推进(boxes/tomes/spheres
+      在黑板帧上),容器零写,本口直接返回。
+
+    输入域 None 语义(域级独立跳写):gold 未读(None)时回金域跳过、
+    值留观察覆盖;bench 摘槽不受 gold 缺读辖。投影直写值受后续观察覆盖
+    (fields.md §2.3 观察赢),失配 = 投影模型 bug 走缺陷台账。
+    sig 纪律 = family='logic_action'(渠道②;actor 在册校验,写入口
+    统一辖),group_id 按 ``act:<op类名>@<seq>`` 先例在口内补齐。
+    """
+    _validate_sig(sig, ('logic_action',))
+    # 动作类型 = cw_prep_actions 的 PrepAction 族 SellBench(与 cw_state
+    # 的商店 Action 族 SellBench 同名异类,坐标系互不相涉,禁混引)。
+    from dataclasses import replace as _dc_replace
+
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        SellBench,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        bench_char_cost,
+        sell_refund,
+    )
+    if not isinstance(action, SellBench):
+        # 集外动作型:零写(登记面申报,等观察覆盖;禁扩静默)。
+        return
+    _grp_sig = (sig if sig.group_id is not None else _dc_replace(
+        sig, group_id=f'act:{sig.actor}@{bs.write_seq + 1}'))
+
+    def _w(target: Field, value: Any, evidence: str) -> None:
+        bs.write_logic(target, value, produced_by=produced_by,
+                       evidence=evidence, sig=_grp_sig)
+
+    bench_slots = bench_slots_of(bs)
+    idx = int(getattr(action, 'slot', 0)) - 1   # 物理槽位 1 基 → 读口 0 基下标
+    if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None:
+        return   # 陈旧提案(守卫),本口零写
+    sold = bench_slots[idx]
+    new_slots = list(bench_slots)
+    new_slots[idx] = None
+    _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
+    g = bs.gold.value
+    if g is not None:
+        refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
+                             bench_char_cost(sold))
+        _w(bs.gold, int(g) + int(refund), 'proj_sell_refund')
+    return
+
+
 # ============================================================ 局终行写口(§3.6.1 runs 收编;ADR-0630 修订节)
 
 #: 局终行落盘事件监听槽(复盘触发器挂点;缺省 None = 关,与缺陷/流水 sink
