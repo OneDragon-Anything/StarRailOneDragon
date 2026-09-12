@@ -30,6 +30,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_board_state import (
+    BoardState,
     back_capacity_of,
     back_count_of,
     bench_slots_of,
@@ -150,7 +151,8 @@ def _reconcile_tx_landing(pre_state: GameState, tx: CompTransaction,
     return ok_gone and ok_add
 
 
-def _emit_tx_receipt(bs, tx: CompTransaction, *, applied: bool,
+def _emit_tx_receipt(bs: BoardState | None, tx: CompTransaction, *,
+                     applied: bool,
                      landing: bool, reason: str = '') -> None:
     """事务发射行接入容器 receipts 域(批首清单①;波 3 applied-gate
     改造件的接线半)。
