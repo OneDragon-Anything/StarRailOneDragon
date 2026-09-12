@@ -124,17 +124,6 @@ if TYPE_CHECKING:
 # pending 重新显影),fresh 载体 phase 键式跨轮自动失效,无持久状态。
 M1P_SEAM_VERIFIED: bool = True
 
-# 部署让渡总开关(T-127 方案 v3.1 §2.3/§7 #5;ADR-0590)。False = 保守
-# 档件形态(现役缺省):锁线转型域的 M1″ 发射仅当压席锁线成员中存在
-# 「档关键件」(部署其使 form_progress 上升,面板口径读法 b,编排者
-# 裁决钉源)时让位——非档成员按 [21] 上场窗口语义合法等待。True = 全量
-# 形态(候裁通过后翻):任何压席成员即可承载让位。开关生命周期合法
-# 形态申报:部署面让渡正当性是用户裁定输入非数学输出(P79-5),裁决
-# 挂账 = 进度账本 T-127 候裁行;候裁落地只翻本常量(成员类轴放开),
-# 守恒门保护对象切换(过渡档→终局线档,方案 §3.3)随候裁批另行走
-# ADR-0433 修订申报,不在本常量辖域。翻 False 即回滚,无悬置态。
-REDEPLOY_TRANSITION_ENABLED: bool = False
-
 # ===== M2 停摆续段缓存:非变异动作白名单·备战域(T-82 必花臂重试风暴;
 # 商店域对应集 = shop.M2_STALL_NONVARIANT_SHOP_ACTIONS,两域 φ 输入同构
 # 但动作词表不同,分集声明)=====
@@ -593,8 +582,8 @@ def core_single_card_buy_eligible(locked_buy: bool) -> bool:
 
 def _deploy_advances_form(comp: object | None,
                           state: GameState, name: str) -> bool:
-    """「档关键件」判定(读法 b 面板口径;编排者裁决钉源 = T-127 方案
-    §2.3/§7 #5 与 math_proofs P79 消费限制行)。
+    """「上场能推进羁绊进度的替补成员」判定(读法 b 面板口径;编排者
+    裁决钉源 = T-127 方案 §2.3/§7 #5 与 math_proofs P79 消费限制行)。
 
     = 部署该成员使 ``cw_comps.form_progress`` 严格上升——form 机制单一
     源即 form_progress,其读数 = 容器 board 面板口径(档案
@@ -632,9 +621,8 @@ def _redeploy_emission_allowed(session: StrategySession,
     分列禁混桶):
     ① 压席锁线成员存在 = bench ∩ membership 非空——A1 主体(换上的
        是谁)缺位即无让位可言;
-    ② 成员类轴:保守形态(REDEPLOY_TRANSITION_ENABLED=False)要求压席
-       成员中存在档关键件(``_deploy_advances_form``);全量形态本轴
-       放开(候裁挂账 = 进度账本 T-127 候裁行);
+    ② 成员类轴:压席成员中存在「上场能推进羁绊进度的替补成员」
+       (``_deploy_advances_form``,按羁绊换的唯一成员类条件);
     ③ 换下代价轴(ADR-0614 §决策5 重推,三审 C-1 挂账兑现):卖出态由
        资格面 fail-closed 承载 P41 ②——非武装帧 2★+ 卖出已被 star_guard
        资格门持有(P79-3 辖域限定「资格门不被收益侧豁免」),存活
@@ -658,11 +646,9 @@ def _redeploy_emission_allowed(session: StrategySession,
                 if (getattr(b, 'char_id', '') or '') in _membership]
     if not _waiting:
         return False   # ①无压席成员
-    if REDEPLOY_TRANSITION_ENABLED:
-        return True    # ②全量形态(③卖出态解析闭合恒过)
     # 判读源与计划同源(落地审 F2):装配 ctx 携带本计划实际消费的
     # target comp(双轨口径随装配);手装 ctx/缺读退 state_of 二份
-    # (缺读帧档关键件轴保守 defer,方向不变)。
+    # (缺读帧成员轴保守 defer,方向不变)。
     _comp = (getattr(ctx, 'target_comp', None)
              or getattr(state_of(session), 'target_comp', None))
     return any(_deploy_advances_form(_comp, state,
@@ -1514,8 +1500,9 @@ def run_mandate(frame: MandateFrame,
     # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与 dd-037
     # 留 bench 合法稳态同向)。
     # 执行条件发射门(T-127 方案 §2.3,P79-3 落码):锁线转型域
-    # (arm='transition')发射前过「压席成员存在 ∧ 保守形态档关键件」
-    # 门,redeploy_cost_gate_defer 显影;成型/基座臂不辖(§2.3 不动)。
+    # (arm='transition')发射前过「压席成员存在 ∧ 存在上场能推进羁绊
+    # 进度的替补成员」门,redeploy_cost_gate_defer 显影;成型/基座臂
+    # 不辖(§2.3 不动)。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
     # 本帧发射位有 m1p 换血时在发射处置为 plan.arm,消费点 =
     # CwOpDeploy.deploy 卖出臂(读后即清)。非 m1p 帧恒 None ⇒ 执行侧
