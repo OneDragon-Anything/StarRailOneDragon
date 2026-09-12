@@ -1499,7 +1499,7 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
     s.board = _recount_board(s.deployed)
 
 
-def effective_hp_threshold(bs: 'BoardState') -> int:
+def effective_hp_threshold(bs: BoardState) -> int:
     """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE``
     有对应键 → 取覆盖值;否则回退 ``HP_SAFE_THRESHOLD``(40)。容器版单一实现
     (输入 = ``BoardState``;职级/位面/轮次/等级经容器域读法——统一 state
@@ -1514,14 +1514,14 @@ def effective_hp_threshold(bs: 'BoardState') -> int:
     变化:强板 ratio→1 不盲目抬阈值,弱板长程 ratio 升高更早保血)。P1 分母恒等 → 对 base
     精确零漂移(M57 验证行为保持)。
     """
-    from sr_od.application.currency_war.kernel.cw_first_passage import (
-        board_tier_of,
-        plane_hp_ratio,
-    )
     from sr_od.application.currency_war.kernel.cw_board_state import (
         level_of,
         plane_of,
         round_num_of,
+    )
+    from sr_od.application.currency_war.kernel.cw_first_passage import (
+        board_tier_of,
+        plane_hp_ratio,
     )
     from sr_od.application.currency_war.kernel.cw_plane_table import (
         NODES_PER_PLANE,

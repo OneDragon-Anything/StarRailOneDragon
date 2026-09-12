@@ -207,11 +207,11 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
         # P21 域内 ∧ 非支A 帧拒 XP;域外帧/支A 形态维持全豁免放行。
         # 位次申报:本支先于 ADR-0603 保底金门——P21 域内 XP 类即便
         # 生存域/保底让位也拒(类别白名单仅支A)。
-        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-            all_in_xp_domain_hit,
-        )
         from sr_od.application.currency_war.kernel.cw_board_state import (
             board_state_bridge,
+        )
+        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+            all_in_xp_domain_hit,
         )
         from sr_od.application.currency_war.kernel.cw_registry import (
             DEFAULT_REGISTRY,
@@ -380,12 +380,12 @@ def level_spend_blocked(state: GameState, session: StrategySession,
         # ⇒ P2 深血线停付族(p2_crisis_band 危机支/血预算)照常全额管辖,
         # 行为零变更(fail-closed,§3.2-3)。
         return False    # P2 濒死带:转化优先,停付族让位(闩合成 fail-closed)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         blood_budget_levelup_blocked,
         p2_crisis_band,
-    )
-    from sr_od.application.currency_war.kernel.cw_board_state import (
-        board_state_bridge,
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
@@ -407,11 +407,11 @@ def _plane_last_battle(state: GameState, session: StrategySession) -> bool:
     decision_v2.discipline.plane_last_battle 的重导出委托,禁第二实现;
     模块私有——非判据面函数,不入契约/旁路枚举表)。kernel 侧波 2 已切
     容器签名,GameState 帧经过渡桥装箱。"""
-    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-        plane_last_battle as _plb,
-    )
     from sr_od.application.currency_war.kernel.cw_board_state import (
         board_state_bridge,
+    )
+    from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+        plane_last_battle as _plb,
     )
     return _plb(board_state_bridge(state), session)
 

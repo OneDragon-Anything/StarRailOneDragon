@@ -1280,11 +1280,11 @@ class PrepActionExecutor:
             before = session.last_level_obs   # OCR 漏读基线退单调守卫值(只作比较基,不写回)
         if before is None:
             return 'level 基线读不到(OCR 漏读),拒绝盲点', False
-        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-            hp_decision_trusted,
-        )
         from sr_od.application.currency_war.kernel.cw_board_state import (
             board_state_bridge,
+        )
+        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
+            hp_decision_trusted,
         )
         from sr_od.application.currency_war.kernel.cw_economy import (
             blood_xp_full_clicks,

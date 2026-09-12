@@ -169,12 +169,12 @@ def seed_age_blocked(bc, state: GameState,
 # hp_decision_trusted_of——kernel 决策分支禁旁路直读 bs.hp/state.hp,
 # 消费同门纪律承接 ADR-0583 §2.4)。
 
-from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
-    nodes_of_plane,
-)
 from sr_od.application.currency_war.kernel.cw_hp_policy import (  # noqa: E402
     decision_hp,
     hp_decision_trusted_of,
+)
+from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
+    nodes_of_plane,
 )
 
 

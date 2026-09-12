@@ -582,7 +582,7 @@ def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
     return hp_trusted >= blood_xp_full_clicks(level) * cost
 
 
-def blood_xp_gate_for(bs: 'BoardState' | None, session) -> bool:
+def blood_xp_gate_for(bs: BoardState | None, session) -> bool:
     """血闸消费面适配(mode 解析 + 容器帧输入接线;prep 批入口与 cw4
     三消费位共用,ADR-0578)。
 
@@ -983,7 +983,7 @@ def _char_synergies(name: str) -> set[str]:
 REFRESH_ROLL_CAP: int = 6
 
 
-def is_emergency(bs: 'BoardState',
+def is_emergency(bs: BoardState,
                  session: StrategySession,
                  registry: DecisionV2Registry) -> bool:
     """应急触发(绝对 HP 档简版;redesign §5.4 Phase A 口径)。
