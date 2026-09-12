@@ -1550,8 +1550,10 @@ def assemble_swap_plan_inputs(
     fenced_on = False
     fp: float | None = None
     board_full = False
-    _n = deployed_n if deployed_n is not None else len(
-        [d for d in deployed if d is not None])
+    # 占用数单一源 = deployed_occupied(容量判据禁裸 len/内联 None 过滤,
+    # 见该源 docstring;deployed_n 覆盖参数语义不变——执行侧真读槽位口径,
+    # None 退现算,同一占用数口径含 SIFT 未识别占位件)。
+    _n = deployed_n if deployed_n is not None else deployed_occupied(deployed)
     if tgt_comp is not None and state is not None:
         try:
             _fp = float(form_progress(tgt_comp, state))
