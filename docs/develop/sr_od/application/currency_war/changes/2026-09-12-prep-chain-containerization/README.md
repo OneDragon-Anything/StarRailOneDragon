@@ -11,5 +11,5 @@
 ## 进度
 - 迭代设计:定稿
 - 设计对抗:收敛 · 报告=[attack.md](attack.md)
-- 落地:0/4 done(明细见 landing.md)
-- 正本更新:未开始
+- 落地:4/4 done·正本更新清零·迭代收尾(明细见 landing.md;正本更新凭据=commit 2da261ac7)
+- 正本更新:完成(清单 4 行清零,commit 2da261ac7)
