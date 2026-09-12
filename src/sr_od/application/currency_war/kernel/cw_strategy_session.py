@@ -15,7 +15,7 @@
 ``strategy_state_of`` 访问函数取策略状态、``exec_state_of`` 取执行侧
 载体——kernel 不持有策略内部结构的字段注解,运行时零 impl 包 import,
 TYPE_CHECKING 承载)。类体逐字段无 app 引用;``prep_obs_frame``/
-``shop_state_frame``/``pending_buy_expect`` 相关注解字符串化(app 桶
+``pending_buy_expect`` 相关注解字符串化(app 桶
 类型仅注解引用)。
 """
 from __future__ import annotations
@@ -196,13 +196,12 @@ class StrategySession:
     # 破警告派生帧 / 兼容期旧接口薄委托。读者 = decide_prep_screen(黑板
     # 决策唯一输入源)。
     prep_obs_frame: 'PrepObservation | None' = None   # noqa: F821, UP037
-    # shop_state_frame:商店开画面融合观察态(GameState,波顶融合段产物)。
-    # 生命周期 = 画面态(每次进商店波循环覆写)。写者白名单 =
-    # buy_cards.run_buy_waves 波顶融合段 / sim 引擎。读者 = decide_shop_screen。
-    shop_state_frame: 'GameState | None' = None   # noqa: F821, UP037
     # —— 黑板帧刷新代次标注(ADR-0583 §3.4;帧语义标注,属观察层产物)——
-    # 值域 'full' | 'view' | 'none',缺省 'none'。坐标系:标注对象 = 同名黑板
-    # 帧槽(prep_obs_frame / shop_state_frame)的最近一次写入。写者 = 流程
+    # 值域 'full' | 'view' | 'none',缺省 'none'。坐标系:prep_frame_class
+    # 标注对象 = 同名黑板帧槽(prep_obs_frame)的最近一次写入;
+    # shop_frame_class 标注对象重锚 =「最近一次商店域容器观察写点」(入口
+    # 观察段 synthesize 喂入/续段重观察;商店黑板槽已随两态制收口退役,
+    # 容器 = 决策读单源)。写者 = 流程
     # 观察段具名写点(cw_screen_prep 入口 heavy/破墙/投影/read_only 分支、
     # finalize 买后暂存;cw_op_buy_cards 商店 visit 首段/续段;sim engine_p1
     # 每决策段;写点清单 = ADR-0583 §3.4,守卫 = 契约形状锁 L6);

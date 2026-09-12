@@ -444,7 +444,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                          action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
                          _ok: bool, _cur: GameState,
                          match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
-                         visit_actions: list) -> None:
+                         visit_actions: list) -> GameState | None:
     """执行结果落地门(调用环单一源;落地审补办清单 C1 调用环级锁的承载体。
 
     C1 语义 = 旧 return True 使期望账投影与 tracked 实账分叉、guard 当轮
@@ -457,6 +457,10 @@ def apply_action_outcome(_aop: 'ShopActionOp',
     (满栏买入豁免照旧:豁免面 = 游戏接受而两模型都不收编的残余窗;
     合成满栏买面已随 T-182 同构化——tracked mutate 带 shop 视图与
     simulate 同走 `_apply_full_bench_merge_buy`,不再丢件漏记)。
+
+    :return: 动作后期望态帧(未落地/终结动作 = None);调用方以非 None
+        回执推进 visit 投影链局部载体(黑板槽退役后投影链载体 =
+        run_buy_waves visit 局部 ``_cur``,容器单源 = ADR-0651 两态制)。
     """
     visit_actions.append(action)
     _post_frame = None   # 动作后投影帧(终结/未落地 = None → journal delta 省略)
@@ -570,9 +574,10 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                            _sg_slots(_sg_bs(match.session)))
                        >= BENCH_CAPACITY)
         _proj = _aop.project(_cur)
-        # 商店动作投影直写·容器通道(波 4 黑板容器化步 1:投影直写接线,
-        # 设计件《商店黑板容器化方案》§2.4-1;黑板帧投影 _proj 同步保留
-        # = 读写双轨过渡,黑板槽仍供旧读者,步 2 读者切换后槽退役)。
+        # 商店动作投影直写·容器通道(波 4 黑板容器化:投影直写接线,
+        # 设计件《商店黑板容器化方案》§2.4-1;黑板帧投影 _proj 保留 =
+        # 投影/回执日志遥测链,黑板槽已随两态制收口退役,链载体 =
+        # run_buy_waves visit 局部 _cur,波 5 simulate 单形态收敛时一并消)。
         # 写序申报:本口先写(含 bench 简单落位),下方升星整表直写后写
         # 覆盖(后写赢)——两写合计对 simulate 输出等价(设计件 §4-M1)。
         # 执行回执(设计件 §2.1-2):k = 执行侧实购张数(merge_buy_k 计数,
@@ -629,7 +634,6 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                     sig=ChannelSig(family='logic_action', actor='CwOpBuyCards',
                                    mode='compute',
                                    group_id=f'act:CwOpBuyCards@{_bs_m.write_seq + 1}'))
-        match.session.shop_state_frame = _proj
         _post_frame = _proj
         if not _skip_guard:
             # 守卫输入 = 容器(W6 波 4 读者切换;期望态读值经投影口直写
@@ -655,6 +659,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                                   _cur, _post_frame)
         except Exception:   # noqa: BLE001  journal best-effort
             pass
+    return _post_frame
 
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
@@ -737,7 +742,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     一次画面访问 = 轮「入口观察 + 逐动作决策循环」(ADR-0517 决策 1):
 
     - 入口观察(段顶,唯一读屏点):真实读屏 → 融合(hp/node_type/dual/
-      gold 救援/tracked 播种)→ 生成期望态(``session.shop_state_frame``);
+      gold 救援/tracked 播种)→ 容器喂入(``synthesize_from_game_state``,
+      决策读单源;黑板槽已退役,投影链载体 = visit 局部 ``_cur``);
     - 决策循环(零读屏,决策 1/8):``decide_shop_action`` 每次恰返回一个
       动作 → 守卫断言(proposal-vs-expected + expected-vs-tracked 双账,
       ``cw_shop_action_ops``)→ 执行(动作 op ``execute``,观测通道候选 a
@@ -919,12 +925,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 空播种段同样取值——检差面不依赖是否播种)。
         _seed_epoch = exec_state_of(match.session).bench_layout_epoch
         match.session.last_state = state
-        # 黑板写路径(W971 §2,P2):入口观察态(牌面现读+hp 覆盖+node_type/
-        # dual/focus 拷入+gold 救援+tracked 播种 + 单动作投影段)直写
-        # session.shop_state_frame——W6 波 4 起决策读者已切容器(本写退化为
-        # last_state 遥测载体,槽本体退役挂步 4);容器写端 = 观察漏斗
-        # (_feed_board_state observe)+ gold 救援喂入口写 + 执行落地门投影。
-        match.session.shop_state_frame = state
+        # 投影链局部载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口
+        # 观察帧起链,逐动作执行回执推进(apply_action_outcome 返回值);
+        # 仅供投影/回执日志遥测链,决策/守卫/env 读点 = 容器(波 4 读者
+        # 切换已承接)。值链语义与原黑板槽逐位等价(首动作 = 入口帧,
+        # 后续 = 前一动作投影回执)。
+        _cur: GameState = state
         from sr_od.application.currency_war.kernel.cw_board_state import (
             board_state_of as _bs_of_entry,
         )
@@ -1097,10 +1103,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         reason=f'blocked:spend_gate:{_g_why}',
                         extra={'blocked': 'spend_gate'})
                     break
-            _cur = match.session.shop_state_frame
-            # 守卫/env 读点 = 容器(W6 波 4 读者切换,设计件 §2.4-2:
+            # 守卫/env 读点 = 容器(波 4 读者切换,设计件 §2.4-2:
             # guard_proposal_vs_expected 守卫输入 + ShopExecEnv.state
-            # 改容器单例;帧 _cur 保留 = 投影/回执日志遥测,槽退役挂 S3)。
+            # 改容器单例);黑板槽读已随槽退役删除,_cur = visit 局部投影链。
             from sr_od.application.currency_war.kernel.cw_board_state import (
                 board_state_of as _bs_of_cur,
             )
@@ -1125,8 +1130,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             note_shop_action_receipt(
                 match, action, applied=bool(_ok),
                 reason='' if _ok else f'执行未落地({type(_aop).__name__})')
-            apply_action_outcome(_aop, action, _ok, _cur, match, ledger,
-                                 visit_actions)
+            _post = apply_action_outcome(_aop, action, _ok, _cur, match,
+                                         ledger, visit_actions)
             # T-82 续段 token 写入(生产商店循环执行位):动作确认已执行
             # 后置位 (动作型名, 当前段序号);未执行路径(闸拒/硬墙/
             # CloseShop 提前退出)不写。策略器入口读后即清,下一帧据其
@@ -1139,6 +1144,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             # 义务实花回执位记账(T-88;闸前不记——spend_gate 拒绝帧
             # 未执行,本位只在 execute 成功回执后累计,F4 栈守卫见函数注)。
             accrue_release_spent(match, action, _ok, _cur)
+            # 投影链推进(执行回执非 None 才推;终结/未落地 = 原帧保持,
+            # 与黑板槽写点旧序逐位等价——推进位在 accrue 之后,记账读
+            # 动作前帧语义不变)。
+            if _post is not None:
+                _cur = _post
             if _aop.terminal:
                 # 终结 op 统一退出(ADR-0517 决策 4/7;终结 op 语义 review
                 # V1/V2 修复,P35 实证):终结动作 execute 后黑板不投影
