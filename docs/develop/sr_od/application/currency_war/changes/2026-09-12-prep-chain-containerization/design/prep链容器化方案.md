@@ -18,7 +18,7 @@
 > `session.last_state` 写点行;game_state_view 活调用现树行号 = :714(判读报告 #4
 > 同)。本文一律「符号 + 现树行号」双锚,行号漂移以符号为准;波 4 段②落库后落地批
 > 批首按符号 grep 复核一次(判读报告「复核义务」同款)。
-> **状态**:草案(候设计对抗审)。
+> **状态**:定稿(对抗收敛,landing.md 已立,候编排者立落地批)。
 
 ## 0. 术语
 
@@ -63,7 +63,7 @@ ADR-0530)。即:**同帧三载体并存**——容器单例(记录正本,已就�
 | ① | entry.py:151 | `_sphere_progress_sig(state, obs)` | round_num(getattr 缺省 1) | 无(纯函数) |
 | ② | entry.py:335 | `_lambda_quantile_armed(state, hp, p_value)` | node_type/enemy_difficulty/plane | 无(纯函数) |
 | ③ | entry.py:364 | `_upgrader_evaluate(session, state, gold, hp)` | 经②委托;`gold` 形参现体零消费(函数体 :366-392 实证) | ② |
-| ④ | entry.py:830 | `_reconcile_posture_authorization(session, state, emitted, k_members, registry)` | plane/round_num/gold/level/hp/deployed/bench/max_units() | `crit_levelup.level_spend_blocked(state,…)`(:905)、`levelup.levelup_budget_gate(state,…)`(:988) |
+| ④ | entry.py:830 | `_reconcile_posture_authorization(session, state, emitted, k_members, registry)` | plane/round_num/gold/level/hp/active_strategies/deployed/bench/max_units() | `crit_levelup.level_spend_blocked(state,…)`(:905)、`levelup.levelup_budget_gate(state,…)`(:988) |
 | ⑤ | entry.py:1034 | `_criteria_pass(frame, session, state, k_members, …)` | gold/round_num/deployed | `crit_sell.line_switch_sell(…, state,…)`(:1068)、`crit_sell.funding_support_sell(…, state=state,…)`(:1105)、`locked_buy_cap_hold(state)`(:1101/:1118) |
 
 **emit 体既有桥装/视图消费点**(段内一并申报,不在五处锚内):
@@ -233,8 +233,12 @@ obs.state 的全部决策消费面已切容器(段 1 五处 + 段 2 prep 域全�
   视图独有的「引导窗透传帧值」半随签名切容器消亡,由读口缺省镜像承接(波 1 等价
   契约)。依据 = 调研草案 §2(投影退役前提)与 §4 对照表「有值即真读」保真位收敛行。
 - **消点动作清单**(段 2 执行)::711-714 视图合成删(含 cw_bs_view import);
-  :716 无 session 兜底支删;:833 light 缓存 state 沿用删(缓存收缩为视觉域四件);
-  :494-495 端口路径 obs.state 装配删;`PrepObservation.state` 字段删除
+  :716 无 session 兜底支删;:833 light 缓存 state 沿用删(`_cached_state` 槽随缓存
+  收缩为视觉域四件而删除;其三处留证读点同步改道——drag/buy/equip 期望态对账
+  缺陷行 plane/round(:961/:1015/:1441,record_defect 记账面非决策面)改读口
+  `plane_of`/`round_num_of`,读口缺省镜像 1 取代现 `getattr(…,0)` 兜底 0,留证行
+  数值口径变化申报);:494-495 端口路径 obs.state 装配删——`bundle.state` 随之
+  失去 prep 链消费归宿,端口路径边界申报见 §2.6;`PrepObservation.state` 字段删除
   (cw_prep_actions.py);snapshot_from_obs 的 `st = obs.state` 锚优先级
   (decision_assembly.py:110)改纯容器锚(回退链 = 读口族,现为「帧值优先+容器兜底」,
   改后 = 容器单源——行为差申报:帧值与容器值常态帧逐位同源(视图即容器主值),
@@ -254,7 +258,11 @@ obs.state 的全部决策消费面已切容器(段 1 五处 + 段 2 prep 域全�
    现存双形态读支 :61-63 在码,容器支保留、GameState 帧兼容支随本段删除——先例 =
    波 3 `_PlaneShim` 同波消亡申报)。`MandateFrame` 构造(:692-699):gold/level/
    deploy_cap/round_num 改读口;bench/deployed 维持视觉表(obs.bench_chars/
-   deployed_chars,帧域);node_type 维持 session.node_type_current。
+   deployed_chars,帧域);node_type 维持 session.node_type_current。emit 体非传参
+   state 直读三点随本段清零(P6 锁兜底面):`_round_num` 计算(:415-416,喂球路径
+   :495/wanted 实参 :525/tools 相位 :621)→ `round_num_of(bs)`;`wanted_closure_emit`
+   的 `state.max_units()` 实参(:525)→ `max_units_of(bs)`;tools 发射位
+   `_tools_phase` 的 plane 读(:621)→ `plane_of(bs)`。
 2. **对账族/观察终饰/缺陷行改道**:`_shop_pool_inputs`/`_merge_preview_inputs`
    (:262/:275,读 st.shop 旧容器版 ShopCard)→ 读 `bs.shop.value.cards` 容器版
    ShopCard(双类型归一波 4 已立;换算单一源 = `shop_cards_to_legacy`,cw_board_state
@@ -322,6 +330,7 @@ obs.state 的全部决策消费面已切容器(段 1 五处 + 段 2 prep 域全�
 | last_state 三写点+喂入反转 | **归波 5**(§2.5 边界表) | 调研草案 §3 波 5 行/§6 |
 | board_state_bridge 桥本体退役 | 本批消 prep 域调用点(:551/:882/:927,§2.2);桥本体与 sim 侧存量调用点归波 5(桥 docstring 退役条款) | cw_board_state.py:2908-2918 |
 | synthesize 反转 | 归波 5(内部模型直写);本批 finalize 喂入(§2.4-4)是生产侧观察喂入,非引擎反转面 | 判读报告 波 5 清单 |
+| cw_game_ports 端口路径(假环境) | 本批只删 prep 链的 obs.state 装配消费(:494-495);`ObservationBundle.state`(GameState 载体)随之失去 prep 消费归宿——**容器喂入归观察源实现方契约**(LiveCwObserver/FakeCwObserver 在 `observe_prep` 产物落地时经容器喂入口写,与读屏路径 read_game_state 同语义;协议本体与 cw_game_ports.py 本批零触碰,装配桶注解未切归波 4 剩余项,判读报告 #13);假环境 prep 测试的容器喂入改造并入段 2 测试面(测试仓文件面,批首 grep 补全义务同 §4 尾);生产 `observation_source()` 恒 None = 本边界零生产行为面 | cw_game_ports.py:47-56/:98;_observe_from_ports 端口分支(cw_screen_prep.py:481-528) |
 
 ### 2.7 数据流(目标态)
 
@@ -334,6 +343,7 @@ obs.state 的全部决策消费面已切容器(段 1 五处 + 段 2 prep 域全�
 | 观察终饰 | dual 派生读/hp 消费侧施门(decision_hp) | —— | 容器+派生 |
 | 买后重估 | 容器增量喂入 + 帧代次 `view` 标注 | write_logic(gold/bench) | —— |
 | sim | 不适用(prep 零覆盖) | —— | —— |
+| 端口路径(假环境) | 观察源实现方容器喂入(observe_prep 产物落地,§2.6 边界行) | 实现方契约喂入口 | bs 全域(读口族) |
 | last_state | 执行侧装配源(波 5 前,原帧直写不变) | —— | —— |
 
 对齐申报:容器写端零新增渠道(投影/喂入均 write_logic 既有渠道);新增写口一件
@@ -353,7 +363,8 @@ criteria/sell.py、criteria/levelup.py(+测试仓对应锁)。依赖 = **波 4 �
 删除+prep 域全簇+投影写口+finalize 喂入+adapter 缝收敛)。文件面 = cw_screen_prep.py、
 cw_prep_actions.py、mandate.py、proof.py、statefn/predicates.py、adapter.py、
 assembly.py、decision_assembly.py、kernel/cw_board_state.py(+测试仓对应锁)。
-依赖 = 段 1。完成判据 = §4-P3/P4/P5/P7/P8。
+依赖 = 段 1 + **波 4 落库**(段 2 文件面 adapter.py/decision_assembly.py/mandate.py/
+proof.py 与波 4 段②在飞清单重叠,文件互斥约束同 §1.3-1)。完成判据 = §4-P3/P4/P5/P7/P8。
 
 **段 3·商店黑板槽退役收尾(规模 S)**。范围 = §2.5 shop_state_frame 全部(M2 移缴
 面承接)。文件面 = cw_op_buy_cards.py、cw_strategy_session.py(+测试仓 M2 锁)。
@@ -402,6 +413,7 @@ apply_prep_action_logic 登记行、session 正本槽注、《商店黑板容器
 ——备战链 ≥1 完整局直接暴露(备战决策/投影推进/买后重估/last_state 链行为判读;
 局数候编排者,建议段 2 交付后 ≥1 局、全部段落地后随波 5 实机窗口合并判读)。
 测试仓基线参考:sr-od-test 对应域 = test_cw_mandate_decide / test_cw_p2_blood_band /
-test_cw_prep_flag_machine / test_cw_board_state_consume / test_cw_obs_arch_prep_writeflow
+test_cw_mandate_lifecycle(原 test_cw_prep_flag_machine,git mv 改名) /
+test_cw_board_state_consume / test_cw_obs_arch_prep_writeflow
 (last_state 写点锁,段内零变化断言)/ test_cw_migration_budget_authority(迁移哨兵);
 批首按消费函数名 grep 补全(调研草案 §1 方法论申报同款义务)。
