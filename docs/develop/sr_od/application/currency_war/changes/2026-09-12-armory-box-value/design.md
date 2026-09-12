@@ -61,9 +61,24 @@ def key_recipe_pairs(key_equips) -> dict[str, tuple[tuple[str, str], ...]]:
 
 `key_fit_names` 改为由 `key_recipe_pairs` 派生（keys ∪ 全部材料对成员）——同一推导单一源，源迭代消费位（supply +10/+3、equip_pick 子串集）签名与语义不变。对拍锁 V4 防两路漂移。
 
-### 2.2 打分器总形：序数分档制（档位优先，档内基分）
+机器第四件 = **通用选装入口**（本迭代新增语义的唯一住址）：
 
-**档位字典序取代加法制**——`decide_box_card` 打分改为按 `(tier, base)` 字典序取最大（并列取 OCR 从左到右序，即现行取先语义）：
+```python
+def equip_tier(name: str, *, key_equips: frozenset[str] = frozenset(),
+               owned: Sequence[str] = ()) -> int:
+    """装备名 → 档位 3/2/1/0（定义见 §2.2；owned = 库存账，近兑现判定输入）。"""
+
+def pick_equipment(names: list[str], *, key_equips: frozenset[str] = frozenset(),
+                   owned: Sequence[str] = (), with_generality: bool = True) -> int:
+    """装备名列表 → 选中索引（(tier, base) 字典序 argmax，并列取输入序先者）。
+    key_equips 空 = 未锁态（全体 tier 0 → 纯 base 排序）；names 空 → 返回 0。"""
+```
+
+打分语义（档位、近兑现、base 构成）唯一住机器，消费位只做锚定解析与传参——后续任何「多选一选装备」场景（装备三选一、未来新事件面）优先接本函数，禁第二套打分实现（裁定 6 同旨）。
+
+### 2.2 选装器总形：序数分档制（档位优先，档内基分）
+
+**档位字典序取代加法制**——打分核心即 §2.1 机器第四件 `pick_equipment`：输入装备名列表，按 `(tier, base)` 字典序取最大，返回选中索引（并列取输入序先者，武装箱场景输入序 = OCR 从左到右，即现行取先语义）；`decide_box_card` 退化为薄壳（解析 locked_comp 两态锚 + owned 账 → 调 `pick_equipment`），自身不再有任何打分实现：
 
 ```
 tier(X) = 3  若 X ∈ key_equips（锁定阵容关键装备直击）
@@ -131,6 +146,14 @@ X ∈ {A, B}  ∧  ledger.count(X) == 0  ∧  ledger.count(另一侧) ≥ 1
 
 本批改判据层。生产路径 sim 可见性**取决于 sim 武装箱选卡是否走 `match.strategy.decide_box_card`**——FakeMatch 的 PickBoxCard 分支（fake_match.py:592-593）与选项抽选池（rules.py:178）在库，选卡决策路由实现期核实：若 sim 内嵌默认选卡不经策略，则两态化/近兑现档在 sim 结构性不可见（须如实申报「结构性无帧」，禁把盲区读数当零值证据）；若经策略，还须确认 sim 会话的 `last_owned_equips` 与 `st.equips` 同步在场，否则近兑现档在 sim 恒退化（同样构成盲区）。A/B 仅作落地后确认，不构成数值裁决权（strategy-work §3）。
 
+### 2.8 通用化边界（后续消费位接入契约）
+
+`pick_equipment` 是「候选全部为装备、多选一」形态的通用入口，但**不是一切装备决策都能走它**：
+
+- **纯选装形态**（候选 = 纯装备列表：武装箱、装备三选一类）→ 直接接 `pick_equipment`，禁自写打分；
+- **bundle 加性形态**（补给节点 = 角色分 + 装备分合成总分再比大小）→ 字典序不可加，**不能**用本选装器，只共享价值件（数值表 / `key_recipe_pairs` / 近兑现判据）；补给装备维是否接近兑现档 = 源迭代（2026-09-12-supply-selection）辖域的设计增量，本迭代不代裁；
+- **equip_pick（装备三选一）**：现行通用信号 =「泛用关键词 +1」启发式，与数值表不同源；接 `pick_equipment` 意味着换轨其通用信号与档位结构（材料将降至直击之下），行为变化需单独裁定——非本迭代辖域，挂后续裁定，本迭代只保证机器接口对其可及。
+
 ## 3. 关键取舍
 
 | 备选 | 为何放弃 |
@@ -142,3 +165,4 @@ X ∈ {A, B}  ∧  ledger.count(X) == 0  ∧  ledger.count(另一侧) ≥ 1
 | 近兑现仲裁加「伙伴通用性最小化」次序 | 「伙伴机会成本 ≈ 通用性」是代理假设无推导；多个近兑现并列时任意确定性取先可接受，禁拍序 |
 | 选卡时现读装备区 | overlay 遮挡，物理不可读（2.5）；效果维护账 + 保守退化是当前唯一合法信号源 |
 | 把 box 行为变化塞回源迭代 landing 的 P-1/P-3 | 源迭代 P-1 明文「box 行为等价」、P-3 辖 decide_supply——box 行为变化在源阶段划分中无归属（盘点结论），外溢面自成新迭代（iteration-design §1.1），禁改源迭代收尾清单 |
+| 通用化做成「一个入口包打一切」（supply bundle 也走字典序选装器） | bundle 价值 = 角色分 + 装备分，须加性合成后比大小，字典序不可加（§2.8）；硬捏成单函数 = 一个函数承载两种组合语义。通用边界 = 价值件与选装器共享、组合形态各消费位自持（裁定 6 辖「表禁第二套」，不辖组合形态） |
