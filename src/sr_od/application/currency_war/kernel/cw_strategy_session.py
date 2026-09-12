@@ -6,7 +6,7 @@
 「从游戏画面观察到的数据」**(框架读屏与识别层守卫产生;策略器只读)
 + 框架设施(rng 种子契约锚 / performance 观测反馈)+ ``strategy_state``
 黑盒引用。策略器推导产生的中间状态归实现包私有的状态对象
-(mandate_v1 = ``MandateState``,经 ``create_state`` 工厂按局冷建);
+(mandate_v1 = ``StrategyState``,经 ``create_state`` 工厂按局冷建);
 执行层状态(op/流程侧产生:失败计数/防重入/对账期望账)归执行侧
 载体(``kernel/cw_exec_state.py`` 的 ``ExecState``,挂局容器
 ``CurrencyWarMatch.exec_state``)。
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_prep_actions import PrepObservation
     from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 
-#: 策略器状态工厂注入槽(kernel 不识 MandateState——依赖矩阵禁 kernel→impl
+#: 策略器状态工厂注入槽(kernel 不识策略状态具体类型——依赖矩阵禁 kernel→impl
 #: 边,连 TYPE_CHECKING 也被布局锁 test_cw_package_layout 判违规;先例 =
 #: set_merge_effect_gate/set_obs_reset_hook 注入槽)。注册点 =
 #: ``strategies/impl/mandate_v1/__init__``(包被导入即安装,三方策略不装

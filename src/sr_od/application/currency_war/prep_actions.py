@@ -27,6 +27,7 @@ from typing import ClassVar
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_economy import XP_CLICK_COST_FALLBACK
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
@@ -55,7 +56,6 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     SellDeployed,
     StartBattle,
 )
-from sr_od.application.currency_war.kernel.cw_economy import XP_CLICK_COST_FALLBACK
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_reward_spheres,
@@ -278,17 +278,21 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
     # P1 八战掉 62 血)。修正:过渡期**穿给当前上场的 5 人**——key_equips 命中件照穿
     # (未来迁给核心只付一次性拆卸),非 key 散件穿给当前板面高战力者(carry 优先);
     # 「攒给成型核心」只在**已定型**(非双轨)且 form 低时保留。
+    # 装配源换源(T-146 尾批,ADR-0530 决策2 核销;桥登记集 prep 根消点):
+    # 执行侧装配源 = session 容器单例(备战帧观察写端同链刷新);旧
+    # last_state 帧链 + 过渡桥装箱退役。容器与帧同帧同源
+    # (同一备战观察),读口 = 容器公共读口单一源。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        board_state_of,
+    )
+    _bs_c = (board_state_of(_match.session)
+             if (_match is not None and _match.session is not None) else None)
     _form = 0.0
-    if _tgt_comp is not None and deployed:
+    if _tgt_comp is not None and deployed and _bs_c is not None:
         from sr_od.application.currency_war.kernel.cw_comps import (
             form_progress,
         )
-        from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
-        _st = (_match.session.last_state if _match is not None else None) or CwWorkFrame()
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_bridge,
-        )
-        _form = form_progress(_tgt_comp, board_state_bridge(_st))
+        _form = form_progress(_tgt_comp, _bs_c)
     # W629-R1 扩口(批 2):state/last_state 通道读点点名迁移——
     # committed 读端唯一化(decision_v2.prep_brain.committed_from,
     # 内部 = cw_intention 权威派生);旧形为 last_state 通道裸直读
@@ -297,11 +301,11 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
     from sr_od.application.currency_war.kernel.cw_intention import (
         committed_from as _committed_from,
     )
-    _committed = (_committed_from(_match.session,
-                                  _match.session.last_state)
+    _committed = (_committed_from(_match.session, _bs_c)
                   if (_match is not None
-                      and getattr(_match.session, 'last_state', None)
-                      is not None) else False)   # 缺供给 = 双轨保守侧(D2)
+                      and _match.session is not None
+                      and _bs_c is not None
+                      and _bs_c.node.value is not None) else False)   # 缺供给 = 双轨保守侧(D2)
     # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励
     # 节点无战斗)穿装备零战斗变现,且阵容未起步(form≈0 时
     # 分配语义退化为「谁在场谁独占」——r2 一人穿 2 件实证);
@@ -309,33 +313,34 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
     # 攒到 r3 战斗轮再穿。与 r70「P1 白板也该穿」不冲突:
     # 白板 8 战指的是 r3+ 战斗期,不含奖励轮。
     # R3 修正(ADR-0257):开局 hold 不再依赖 target 存在。
-    _st_hold = (getattr(_match.session, 'last_state', None)
-                if _match is not None else None)
-    _round_now = (_st_hold.round_num
-                  if (_st_hold is not None
-                      and getattr(_st_hold, 'plane', 1) == 1) else None)
+    # hold 块换源(T-146):node 未观察 ⟺ 旧 last_state None(同帧同源,
+    # 容器 node = 备战帧顶栏解析写端);kind 空串按帧未识别镜像回 None。
+    _hold_node = (_bs_c.node.value if _bs_c is not None else None)
+    _round_now = (_hold_node.round_num
+                  if (_hold_node is not None
+                      and _hold_node.plane == 1) else None)
     # ADR-0461:hold 收窄+生锈豁免,开关走策略 registry
     # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
     # =全关,零漂移)。
+    from sr_od.application.currency_war.kernel.cw_exec_state import ledger_node_type
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
-    from sr_od.application.currency_war.kernel.cw_exec_state import ledger_node_type
     _reg_eq = (getattr(getattr(_match, 'strategy', None), 'registry', None)
                or DEFAULT_REGISTRY)
-    _node_type = (getattr(_st_hold, 'node_type', None)
-                  if _st_hold is not None else None)
-    if _node_type is None and _st_hold is not None and _round_now is not None:
+    _node_type = ((_hold_node.kind or None)
+                  if _hold_node is not None else None)
+    if _node_type is None and _hold_node is not None and _round_now is not None:
         _node_type = ledger_node_type(_match.session,
-                                      getattr(_st_hold, 'plane', 1),
+                                      _hold_node.plane,
                                       _round_now)
     # O1 门输入(21 号稿 §2.3):后随节点 = 本备战帧之后第一个节点的
     # 台账类型(r+1);缺档 None → 门不中(保守维持保留域判定,词汇表
     # 与 row1 同源 opening_hold_battle_nodes)。
     _next_node_type = (
-        ledger_node_type(_match.session, getattr(_st_hold, 'plane', 1),
+        ledger_node_type(_match.session, _hold_node.plane,
                          _round_now + 1)
-        if (_match is not None and _st_hold is not None
+        if (_match is not None and _hold_node is not None
             and _round_now is not None) else None)
     # W880 装备环境信号单源(设计 §2.2):构造点唯一 = 本函数(求值块
     # 搬迁后;原构造点 = op 主循环前段),一次打包传递;
@@ -347,7 +352,7 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
     from sr_od.application.currency_war.kernel.cw_equip_env import (
         build_equip_env_signals,
     )
-    _equip_signals = build_equip_env_signals(_st_hold)
+    _equip_signals = build_equip_env_signals(_bs_c)
     # 释放判据表(ADR-0526)+ 收窄(ADR-0531):
     # 五行评估单点在策略侧;row1(opening) 域扣留收窄为「三门全不中 ∧
     # 保留域命中」的逐件判定(classify_item_hold),帧级 ``.hold`` 只辖
@@ -433,14 +438,16 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
         # 每次派发现读板面记 owned 全量快照(含工具;每 pass 恰一次 =
         # _run_equip 每次派发至多调本函数一次)——离线 diff 相邻轮
         # 快照 = 各节点发放件数 → λ 与事件条件化修正(P14 记账)。
-        _st_ref = (getattr(_match.session, 'last_state', None)
-                   if _match is not None else None)
+        # (换源 T-146:plane/round 取容器 node;未观察显 '?' 同旧缺帧形态)
+        _ref_node = (_bs_c.node.value
+                     if (_match is not None and _bs_c is not None) else None)
         _own_ct: dict[str, int] = {}
         for n, _, _ in hits:
             _own_ct[n] = _own_ct.get(n, 0) + 1
         log.info('[cw!][grant] plane=%s round=%s owned=%s',
-                 getattr(_st_ref, 'plane', '?'),
-                 getattr(_st_ref, 'round_num', '?'), _own_ct)
+                 _ref_node.plane if _ref_node is not None else '?',
+                 _ref_node.round_num if _ref_node is not None else '?',
+                 _own_ct)
         # 判读锚点(P14 检验点 2):「缺什么囤什么」——目标 K 的
         # 组件需求 − 当前库存正差,判读/值守按此报装备面。
         if _tgt_comp is not None and _tgt_comp.key_equips:
@@ -761,20 +768,28 @@ class PrepActionExecutor:
             # 计划产出失败)= 未发出,不置闩,下帧照常重发。唯一写点 =
             # mandate.mark_equip_pass_executed。
             try:
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    board_state_of,
+                )
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
                     mark_equip_pass_executed,
                 )
                 _m = self._ctx.cw_match
                 _sess = _m.session if _m is not None else None
                 if _sess is not None:
+                    # 换源 T-146:phase 键 = 容器单例(mandate mark_* 族
+                    # 已切 GameState 形态,键值同帧同源)
                     mark_equip_pass_executed(
-                        _sess, getattr(_sess, 'last_state', None))
+                        _sess, board_state_of(_sess))
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][equip-latch] 置位失败(不阻塞): %s', e)
         if emitted and isinstance(action, RunTools):
             # M7.5 工具期闩置位(工具执行批 ADR-0532;批3a 重推同装备闩:
             # 发出即置 + 观察纠偏)。唯一写点 = mandate.mark_tools_pass_executed。
             try:
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    board_state_of,
+                )
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
                     mark_tools_pass_executed,
                 )
@@ -782,7 +797,7 @@ class PrepActionExecutor:
                 _sess = _m.session if _m is not None else None
                 if _sess is not None:
                     mark_tools_pass_executed(
-                        _sess, getattr(_sess, 'last_state', None))
+                        _sess, board_state_of(_sess))
             except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
                 log.warning('[cw][tools-latch] 置位失败(不阻塞): %s', e)
         if emitted:
@@ -798,6 +813,9 @@ class PrepActionExecutor:
             # 不经本执行器(cw_screen_prep 流程层编排),开店落地不触清键
             # 面,与其置位语义(商店决策访问位)自洽。
             try:
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    board_state_of,
+                )
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
                     mark_s1_route_check,
                 )
@@ -805,7 +823,7 @@ class PrepActionExecutor:
                 _sess = _m.session if _m is not None else None
                 if _sess is not None:
                     mark_s1_route_check(
-                        _sess, getattr(_sess, 'last_state', None), action,
+                        _sess, board_state_of(_sess), action,
                         pre_bench_count=_pre_bench,
                         post_bench_count=self._bench_tracked_count(),
                         landed=False)
@@ -1293,9 +1311,6 @@ class PrepActionExecutor:
             before = session.last_level_obs   # OCR 漏读基线退单调守卫值(只作比较基,不写回)
         if before is None:
             return 'level 基线读不到(OCR 漏读),拒绝盲点', False
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of as _bs_of_auth,
-        )
         from sr_od.application.currency_war.kernel.cw_discipline_rules import (
             hp_decision_trusted,
         )
@@ -1303,6 +1318,9 @@ class PrepActionExecutor:
             blood_xp_full_clicks,
             blood_xp_gate,
             clicks_to_next_level,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of as _bs_of_auth,
         )
         from sr_od.application.currency_war.kernel.cw_hp_policy import (
             decision_hp as _decision_hp_auth,

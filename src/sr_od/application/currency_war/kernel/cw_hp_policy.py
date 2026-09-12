@@ -18,7 +18,8 @@
 **消费同门申报纪律**(承接 ADR-0583 §2.4):新增 hp 决策消费点要么经
 :func:`decision_hp` / 上游门后值传递,要么登记豁免。豁免清单 = 记录面
 (journal 快照/遥测 recorder/局终写口)+ 写侧对账面(``cw_reconcile``)+
-投影过渡桥(``board_state_bridge`` 搬运)+ 逻辑写端(效果账本 hp 支付)。
+帧→视图一次性装配面(过渡桥语义,现役存续面见登记集哨兵)+
+逻辑写端(效果账本 hp 支付)。
 kernel 决策簇挂账读点(``cw_comps.maybe_pivot`` 保命分位 /
 ``cw_performance.is_run_dead`` 死局门,生产调用面现空、测试仓经桥调用)
 重挂生产消费时必经本层读口,禁按旧注释直读 ``bs.hp.value``。

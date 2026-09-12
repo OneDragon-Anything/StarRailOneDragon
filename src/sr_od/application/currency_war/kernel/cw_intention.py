@@ -54,15 +54,6 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
     refresh_prob,
 )
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    GameState,
-    bench_slots_of,
-    deployed_slots_of,
-    level_of,
-    max_units_of,
-    plane_of,
-    round_num_of,
-)
 from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
     CORE_SINGLE_CARD_REGISTRY,
@@ -83,6 +74,23 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     RECIPE_FLOOR_TRAIN_CAP,
     TRANSITION_TRAITS,
 )
+from sr_od.application.currency_war.kernel.cw_economy import (
+    bench_char_cost,
+    sell_refund,
+)
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    BENCH_CAPACITY,
+    iter_occupied_deployed,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
+    bench_slots_of,
+    deployed_slots_of,
+    level_of,
+    max_units_of,
+    plane_of,
+    round_num_of,
+)
 from sr_od.application.currency_war.kernel.cw_line_switch import (
     e_rounds,
 )
@@ -97,14 +105,6 @@ from sr_od.application.currency_war.kernel.cw_plugins import (
 from sr_od.application.currency_war.kernel.cw_registry import (
     DEFAULT_REGISTRY,
 )
-from sr_od.application.currency_war.kernel.cw_economy import (
-    bench_char_cost,
-    sell_refund,
-)
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BENCH_CAPACITY,
-    iter_occupied_deployed,
-)
 from sr_od.application.currency_war.kernel.cw_strategy_session import (
     strategy_state_lazy,
     strategy_state_of,
@@ -114,10 +114,10 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
-    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
+    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 
 # ===== 常量(设计推断,sim 校准;strategy_v4 点0 摆动域)=====
 CORE_MISS_N: int = 6
@@ -2397,11 +2397,11 @@ def committed_from(session: StrategySession,
     cw_recipe 决策中心消费它成 kernel→decision 断环边,§3.3-①d;体内仅委托
     本模块 ``committed_authority``,kernel 内自洽)。
 
-    - 有现读 state(容器一等形态/过渡期旧帧,见 committed_authority
+    - 有现读 state(容器一等形态,见 committed_authority
       形态注)→ 直取权威派生;
-    - 无现读 state 的调用面:plane 取 session.last_state(框架末次读值;
-      过渡期该槽仍是 CwWorkFrame 帧,经兼容支直读;波5 喂入反转后随槽
-      退役改容器直供);
+    - 无现读 state 的调用面:plane 取 session 容器单例(board_state_of,
+      T-146 装配源换源——旧 session.last_state 槽直读退役;波5 喂入反转
+      后该槽随遗留读者面收尾批退役);
       也不可得时仅凭 ist 判定(缺供给 = 保守 False,同 D2)。
 
     grep 守卫锁「session 侧双轨字段直读点归零(本函数之外)」;
@@ -2412,7 +2412,10 @@ def committed_from(session: StrategySession,
     """
     if state is not None:
         return committed_authority(state, session)
-    return committed_authority(getattr(session, 'last_state', None), session)
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        board_state_of,
+    )
+    return committed_authority(board_state_of(session), session)
 
 
 def drive_intention(bs: GameState, session: StrategySession,

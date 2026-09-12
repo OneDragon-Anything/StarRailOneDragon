@@ -139,17 +139,6 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
     refresh_prob,
 )
 from sr_od.application.currency_war.kernel import cw_intention
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    GameState,
-    bench_slots_of,
-    deployed_slots_of,
-    gold_of,
-    level_of,
-    max_units_of,
-    node_kind_of,
-    plane_of,
-    round_num_of,
-)
 from sr_od.application.currency_war.kernel.cw_card_identity import (
     TIER_REGISTRY_CORE,
     TIER_TRANSITION,
@@ -166,31 +155,40 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     record_fresh_buy,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
+    bench_char_cost,
     blood_xp_gate_for,
+    card_cost,
     clicks_to_next_level,
     effective_refresh_prob,
     in_must_spend_zone,
     interest,
     refresh_cost_effective,
-    xp_click_cost,
-)
-from sr_od.application.currency_war.kernel.cw_reward_node import (
-    is_piggy_reward_frame,
-    reward_node_suppressed,
-)
-from sr_od.application.currency_war.kernel.cw_economy import (
-    bench_char_cost,
-    card_cost,
     sell_refund,
+    xp_click_cost,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
     BenchChar,
 )
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
+    bench_slots_of,
+    deployed_slots_of,
+    gold_of,
+    level_of,
+    max_units_of,
+    node_kind_of,
+    plane_of,
+    round_num_of,
+)
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     merge_material_stale_names,
     same_star_count,
     star_base_copies,
+)
+from sr_od.application.currency_war.kernel.cw_reward_node import (
+    is_piggy_reward_frame,
+    reward_node_suppressed,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
@@ -1956,7 +1954,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
     # 单一源 docstring)。同帧双闸分键不混桶:reward_node_defer ≠
     # blood_xp_gate_defer ≠ crisis_level_spend_defer。扑满环境帧守卫
     # 解除抑制,写点同时复活 v3_piggy_reward 遥测真值(ADR-0348 ↺)。
-    # (board_state_bridge 自 W6 波3 起模块级导入,原函数内惰性 import
+    # (容器视图构造器自 W6 波3 起模块级导入,原函数内惰性 import
     #  删除——惰性局部名会遮蔽全函数作用域,前置消费点 UnboundLocalError。)
     _reward_defer = reward_node_suppressed(bs)
     if _reward_defer:

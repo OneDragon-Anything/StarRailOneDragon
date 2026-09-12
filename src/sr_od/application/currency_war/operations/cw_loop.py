@@ -420,11 +420,13 @@ def readiness_admission_report(state, comp) -> dict:
     (发射面观测批迁出:sim 桶不可依 app 桶——包依赖矩阵 LEGAL_EDGES,
     纯判据入 kernel 后 sim 引擎/cw_loop/测试三方共用;线成员谓词由本
     调用面注入同一单一源,禁各面自写第二实现)。判据语义、三元口径与
-    **帧对齐说明**(预估读 session.last_state,一轮滞后可接受)见彼处
-    docstring。
+    **帧对齐说明**(预估源 = 容器单例 board_state_of,T-146 装配源迁移
+    ——旧 last_state 滞后帧+过渡桥装箱退役;单例与滞后帧同为备战观察
+    写端刷新,预估显影非拦截,一轮滞后语义本就可接受)见彼处 docstring。
+    ``state`` = session(容器单例取源)。
     """
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_bridge,
+        board_state_of,
     )
     from sr_od.application.currency_war.kernel.cw_launch_admission import (
         launch_admission_report,
@@ -432,7 +434,7 @@ def readiness_admission_report(state, comp) -> dict:
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
         line_members,
     )
-    return launch_admission_report(board_state_bridge(state), comp,
+    return launch_admission_report(board_state_of(state), comp,
                                    line_members=line_members)
 
 
@@ -485,10 +487,11 @@ def readiness_battle_launch(op, ctx):
                  '(屏态过期,readiness_stale_screen)')
         return False, 'readiness_stale_screen'
     try:
-        _st_adm = getattr(_sess, 'last_state', None)
         _tc_adm = getattr(strategy_state_of(_sess), 'target_comp', None)
-        if _st_adm is not None and _tc_adm is not None:
-            _adm = readiness_admission_report(_st_adm, _tc_adm)
+        if _sess is not None and _tc_adm is not None:
+            # 换源 T-146:预估源 = 容器单例(读 side 改传 session,见
+            # readiness_admission_report docstring)
+            _adm = readiness_admission_report(_sess, _tc_adm)
             if (_adm['board_full'] and _adm['bench_core_waiting']
                     and _adm['victim_missing']):
                 counters = getattr(strategy_state_of(_sess), 'cw4_counters', None)
@@ -527,11 +530,16 @@ def _op_journal_pos_of(ctx: Any) -> tuple[int, int]:
 
     模块级形态供仲裁段第三载体行复用——仲裁宿主在测试缝里可为非 CwLoop
     桩,位置键只依赖 ctx 的 getattr 链,不依赖宿主方法。
+    (换源 T-146:plane/round = 容器 node;未观察 = 旧缺帧形态 (0, 0)。)
     """
-    _st = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    _st = getattr(_st, 'last_state', None) if _st is not None else None
-    return (int(getattr(_st, 'plane', 0) or 0),
-            int(getattr(_st, 'round_num', 0) or 0))
+    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        board_state_of,
+    )
+    _nd = (getattr(board_state_of(_sess).node, 'value', None)
+           if _sess is not None else None)
+    return (int(_nd.plane) if _nd is not None else 0,
+            int(_nd.round_num) if _nd is not None else 0)
 
 
 def _launch_frame_arbitration(op) -> dict:
@@ -1697,7 +1705,7 @@ class CwLoop(SrOperation):
 
         # 0f. 节点武装箱弹窗(「武装突入」类节点,2026-08-15 M19 首见停机建档)→
         #     CwScreenArmoryBox(点开箱 → 四选一 → 选卡点卡 → 验关;与备战补给箱
-        #     同下游不同入口,选卡公用 pick_box_card)。
+        #     同下游不同入口,选卡公用执行器 _pick_box_card(决策单一源=策略 decide_box_card))。
         if self.round_by_find_area(screen, '货币战争-武装箱弹窗', '标识-简易武装箱', crop_first=False).is_success:
             self._snap('armory_box')
             return self._dispatch_screen_op(
@@ -2108,9 +2116,13 @@ class CwLoop(SrOperation):
             try:
                 _bs_tick = board_state_of(self.ctx.cw_match.session)
                 _nd_tick = _bs_tick.node.value
-                _ord_tick = ((_nd_tick.plane - 1) * 9 + _nd_tick.round_num
-                             ) if _nd_tick is not None else None
-                _adv, _ex_list = _bs_tick.effects.advance_node(_ord_tick)
+                # advance_node(None) 守卫(迁移尾批附带项,None = 无条件推进
+                # 语义是测试/sim 直调形态;生产挂点 node 未观察帧整段跳过,
+                # 禁把「未观察」当「真进节点」无条件推进虚耗余期/虚累余额)
+                _adv, _ex_list = False, []
+                if _nd_tick is not None:
+                    _ord_tick = (_nd_tick.plane - 1) * 9 + _nd_tick.round_num
+                    _adv, _ex_list = _bs_tick.effects.advance_node(_ord_tick)
                 for _ex_eff in _ex_list:
                     log.warning('[cw!][effect] 效果到期移除:%s(尾款触发面;'
                                 '金面走观察覆盖兜底,设计 §4.1/§5.1)',
@@ -2198,12 +2210,13 @@ class CwLoop(SrOperation):
                 line_members as _line_members,
             )
             _tc = getattr(strategy_state_of(self.ctx.cw_match.session), 'target_comp', None)
-            _ms = getattr(self.ctx.cw_match.session, 'last_state', None)
+            # 换源 T-146:达标臂判据源 = 容器单例(旧 last_state 滞后帧 +
+            # 过渡桥装箱退役;同备战观察写端刷新,判据面逐字段重验在册)
             from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_bridge,
+                board_state_of,
             )
             _arm_core = readiness_launch_decision(
-                board_state_bridge(_ms), _tc,
+                board_state_of(self.ctx.cw_match.session), _tc,
                 line_members=_line_members)
             _arm_armed = _arm_core['armed']
             # 质量闸观测分键(ADR-0570 待标定①实机观测 sink:推迟帧/评估
@@ -2278,19 +2291,22 @@ class CwLoop(SrOperation):
                         )
                         _launch_arb_counter(self, _kla.KEY_ABANDONED_LAUNCH)
                         try:
+                            from sr_od.application.currency_war.kernel.cw_game_state import (
+                                board_state_of as _bso_arb,
+                            )
                             from sr_od.application.currency_war.telemetry.defects import (
                                 record_defect as _rd_arb,
                             )
-                            _ms_arb = getattr(
-                                getattr(self.ctx.cw_match, 'session', None),
-                                'last_state', None)
+                            _sess_arb = getattr(self.ctx.cw_match, 'session', None)
+                            _nd_arb = (_bso_arb(_sess_arb).node.value
+                                       if _sess_arb is not None else None)
                             _rd_arb(
                                 'launch', _kla.KEY_ABANDONED_LAUNCH,
                                 expected='仲裁关店后备战屏态恢复,发射核复验通过',
                                 observed='屏态复验 stale,本轮弃射落守卫链',
-                                plane=int(getattr(_ms_arb, 'plane', 0) or 0),
-                                round_num=int(getattr(_ms_arb, 'round_num', 0)
-                                              or 0),
+                                plane=int(_nd_arb.plane) if _nd_arb is not None else 0,
+                                round_num=int(_nd_arb.round_num)
+                                if _nd_arb is not None else 0,
                                 verdict=('可辨识残量申报:仲裁切屏与发射核'
                                          '复验竞态的单列计数,禁静默'),
                                 reader_source='launch_arbitrage',

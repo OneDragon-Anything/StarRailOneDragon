@@ -9,7 +9,7 @@ v3 §2.9 新格 A)、P56 投影脱节(新格 B)反复发病。本模块把「不
 v3 §3.2)。
 
 落点声明(方案 v3 §3.1):不放 kernel、不放 criteria——A 消费策略器
-会话态(MandateState.v3_intention / 统一发射登记簿),kernel 输入纯度
+会话态(StrategyState.v3_intention / 统一发射登记簿),kernel 输入纯度
 禁反向依赖;criteria 判据本体 = 纯函数,排除集由消费位传入。
 
 A 三段(方案 v3 §2.2;与 ADR-0580「资格判定 = 物理硬闸 ∧ 身份分层 ∧
@@ -70,14 +70,14 @@ from sr_od.application.currency_war.kernel.cw_card_identity import (
 from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     fresh_buys_sell_face,
 )
-from sr_od.application.currency_war.kernel.cw_intention import (
-    locked_buy_membership,
-)
 from sr_od.application.currency_war.kernel.cw_economy import (
     bench_char_cost,
     sell_refund,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_intention import (
+    locked_buy_membership,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
@@ -144,11 +144,11 @@ def launch_cause_of(reason: str) -> str | None:
     return LAUNCH_CAUSE_BY_ARM.get(reason)
 
 
-#: 统一发射登记簿载体属性(MandateState 字段名)。沿用 T3 垫保簿旧名:
+#: 统一发射登记簿载体属性(StrategyState 字段名)。沿用 T3 垫保簿旧名:
 #: 执行侧 cw_op_deploy.prune_fuel_filler_deployed /
 #: record_fuel_filler_held_postbuy 按鸭子属性读本名(属性契约级接线,
 #: 禁 import 策略模块),改名 = 静默断供给(读 None → 部署销恒 0);
-#: 语义已从 T3 专用簿升级为四因类登记簿,见 MandateState 字段注释。
+#: 语义已从 T3 专用簿升级为四因类登记簿,见 StrategyState 字段注释。
 LAUNCH_REGISTRY_ATTR: str = 'cw4_fuel_filler_stall_buys'
 
 #: 兼容别名(T3 时代常量;mandate.py 再出口与既有测试引用零断链)。
@@ -227,7 +227,7 @@ def register_launch(session: StrategySession,
 
 
 HUB_ACQUIRED_ATTR: str = 'cw4_hub_acquired_names'
-"""乙臂获取名集的 MandateState 载体属性名(写点 = shop.py 乙臂发射位
+"""乙臂获取名集的 StrategyState 载体属性名(写点 = shop.py 乙臂发射位
 单一写点;载体注释口径:duck-typed 属性契约,改名 = 静默断供给)。"""
 
 
@@ -472,7 +472,7 @@ def _autonomous_round(session: StrategySession) -> int | None:
 # ===== 种子年龄豁免登记簿(T-126 批 5;P78-7,ADR-0633)=====
 
 
-#: 种子获取名集的 MandateState 载体属性名({名: (位面, 获取轮)})。
+#: 种子获取名集的 StrategyState 载体属性名({名: (位面, 获取轮)})。
 #: duck-typed 属性契约(与 HUB_ACQUIRED_ATTR 同纪律):改名 = 静默断供给。
 SEED_ACQUISITIONS_ATTR: str = 'cw4_seed_acquisitions'
 

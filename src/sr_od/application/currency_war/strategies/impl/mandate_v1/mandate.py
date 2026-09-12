@@ -37,13 +37,19 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (
     _swap_transition_domain_of,
 )
 from sr_od.application.currency_war.kernel.cw_economy import (
+    REFRESH_COST_BASE,
     blood_xp_gate_for,
     clicks_to_next_level,
     in_must_spend_zone,
     xp_click_cost,
 )
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_cap_hold,
+)
+from sr_od.application.currency_war.kernel.cw_merge_simulate import (
+    count_merge_material_blocked,
+    merge_material_reject_reason,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     LevelUp,
@@ -57,12 +63,6 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     is_piggy_reward_frame,
     reward_node_suppressed,
-)
-from sr_od.application.currency_war.kernel.cw_economy import REFRESH_COST_BASE
-from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
-from sr_od.application.currency_war.kernel.cw_merge_simulate import (
-    count_merge_material_blocked,
-    merge_material_reject_reason,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     contracts,
@@ -99,17 +99,16 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest 
 )
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        GameState,
-    )
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         SwapPlanContext,
+    )
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        GameState,
     )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DecisionV2Registry,
     )
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-    from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         StrategySession,
     )
@@ -423,7 +422,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 # 后买回新线件 = 义务通道非压库),实证病灶(s108)无该域样本,扩域留
 # 观测键(m6_round_sold_excluded)判读后裁决(ADR-0604 §3 覆盖面申报)。
 
-#: 轮内卖出登记载体属性(session 级字段名;MandateState 具名字段族外的
+#: 轮内卖出登记载体属性(session 级字段名;StrategyState 具名字段族外的
 #: 键式 dict 载体,形态与 kernel ExecState.cw4_swap_fresh_buys 同构)。
 ROUND_SOLD_ATTR: str = 'cw4_round_sold_names'
 
@@ -900,7 +899,14 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
     return []
 
 
-def mark_s1_route_check(session: StrategySession, state: CwWorkFrame | None,
+def _phase_key_of(state: GameState | None) -> tuple[int | None, int]:
+    """phase 键单一换算(T-146 装配源换源适配):容器 node 读出
+    (plane, round_num);未观察帧 = 旧缺帧形态 (None, 1) 逐位镜像。"""
+    node = state.node.value if state is not None else None
+    return ((node.plane, node.round_num) if node is not None else (None, 1))
+
+
+def mark_s1_route_check(session: StrategySession, state: GameState | None,
                         action: PrepAction, *,
                         pre_bench_count: int,
                         post_bench_count: int,
@@ -932,7 +938,7 @@ def mark_s1_route_check(session: StrategySession, state: CwWorkFrame | None,
     if session is None:
         return
     st = state_of(session)
-    phase = (getattr(state, 'plane', None), getattr(state, 'round_num', 1))
+    phase = _phase_key_of(state)
     tag = route_tag_of(action)
     route = ''
     if tag in S1_RESET_ROUTE_TAGS:
@@ -1698,7 +1704,7 @@ def run_mandate(frame: MandateFrame,
 
 
 def mark_equip_pass_executed(session: StrategySession,
-                             state: CwWorkFrame | None) -> None:
+                             state: GameState | None) -> None:
     """M7 备战期装备闩唯一写点(置位=执行位)。
 
     调用点 = 执行入口(prep_actions.PrepActionExecutor.execute)在
@@ -1715,12 +1721,11 @@ def mark_equip_pass_executed(session: StrategySession,
     """
     if session is None:
         return
-    state_of(session).cw4_m7_equipped_phase = (getattr(state, 'plane', None),
-                                     getattr(state, 'round_num', 1))
+    state_of(session).cw4_m7_equipped_phase = _phase_key_of(state)
 
 
 def mark_tools_pass_executed(session: StrategySession,
-                             state: CwWorkFrame | None) -> None:
+                             state: GameState | None) -> None:
     """M7.5 备战期工具闩唯一写点(置位=执行位;工具执行批 ADR-0532)。
 
     调用点 = prep_actions.PrepActionExecutor.execute 在 RunTools 组合 op
@@ -1731,8 +1736,7 @@ def mark_tools_pass_executed(session: StrategySession,
     """
     if session is None:
         return
-    state_of(session).cw4_tools_phase = (getattr(state, 'plane', None),
-                               getattr(state, 'round_num', 1))
+    state_of(session).cw4_tools_phase = _phase_key_of(state)
 
 
 def m7_wearable_exists(owned: list[str]) -> bool:
@@ -1842,11 +1846,11 @@ def _record_deploy_emit_held(session: StrategySession,
         locked_factions;armed 帧无豁免对照补跑复用,禁二次装配)。
     """
     try:
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            plane_of,
-        )
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             has_deployable_reasoned,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            plane_of,
         )
         st = state_of(session)
         counters = getattr(st, 'cw4_counters', None)

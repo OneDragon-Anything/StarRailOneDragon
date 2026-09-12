@@ -518,9 +518,26 @@ class CwOpDeploy(SrOperation):
 
         # deployed-lock(doc gameplay:78)是误判,deployed 可卖(用户实机确认 gold 增加)。
         _match = self.ctx.cw_match
-        _board = (_match.session.last_state.board
-                  if (_match is not None and _match.session is not None
-                      and _match.session.last_state is not None) else None)
+        _sess0 = (_match.session
+                  if (_match is not None and _match.session is not None) else None)
+        # 装配源契约换源(ADR-0530 决策2「装配源契约钉死」的尾批兑现,T-146):
+        # 执行侧装配源 = session 容器单例(board_state_of;备战帧观察写端与
+        # 本 op 同一观察链刷新)。旧 last_state 滞后帧链退役——原「滞后帧+
+        # SIFT 分轨」十四字段对齐证据已按容器源逐字段重验(对齐表 =
+        # T-146-r1 报告 §4;state 依赖字段 board/fp/board_full/cap_hold 的
+        # 容器读口 = 波1 公共读口单一源,与本函数禁第二份)。
+        # 未观察帧语义镜像:旧链 last_state 缺 = state None = 装配不可得
+        # (fail-closed 臂关);容器等价形态 = node 未观察(container 全域
+        # 未观察空视图,与过渡桥 None 支同向)——同以
+        # state=None 传装配,保留原弃权语义逐位不变。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of as _bso,
+        )
+        _bs_full = _bso(_sess0) if _sess0 is not None else None
+        _bs = (_bs_full
+               if (_bs_full is not None and _bs_full.node.value is not None)
+               else None)
+        _board = _bs.board.value if _bs is not None else None
         # r120(断层①修复:配方从不成型的执行层根因):deploy 的 target 判定原读
         # strategy_state_of(session).target_comp(终局 comp)——双轨期预囤的框架件(藿藖/卡芙卡=仙舟)
         # 不是终局 comp 的阵营/core → deploy-swap 当 off-target 卖(局35 r7 卡芙卡
@@ -530,10 +547,10 @@ class CwOpDeploy(SrOperation):
         # 侧此前是缺口)。
         # swap 面输入装配单一源(kernel.assemble_swap_plan_inputs):发射面
         # (mandate M1″)与执行面(本函数)同函数同参——本侧装配源 =
-        # last_state滞后帧 + SIFT 读面(本函数这条链,ADR-0530 装配源契约);
-        # target 视图(双轨口径)/fenced 臂/保护域派生全在装配函数内,
-        # 禁自写第二份。装配不可得(None)= 按未装配处理(臂关/空保护,
-        # 原语义保守侧)。
+        # 容器单例(上方 _bs,ADR-0530 装配源契约的容器换源,T-146)+
+        # SIFT 读面;target 视图(双轨口径)/fenced 臂/保护域派生全在装配
+        # 函数内,禁自写第二份。装配不可得(None)= 按未装配处理(臂关/
+        # 空保护,原语义保守侧)。
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             assemble_swap_plan_inputs as _aswap,
         )
@@ -554,7 +571,7 @@ class CwOpDeploy(SrOperation):
                 _board, getattr(exec_state_of(_sess), 'tracked_deployed', None))
             _swap_ctx = _aswap(
                 _sess,
-                state=_sess.last_state,
+                state=_bs,
                 deployed=[],      # 板满喂入走 tracked 真读口径(上方计数)
                 bench=[],
                 cap=None,         # 执行侧不消费谓词 cap 门,只取视图/臂态
@@ -591,7 +608,7 @@ class CwOpDeploy(SrOperation):
             _bench_chars = read_bench_chars(self.ctx, self.last_screenshot,
                                             templates)
             # 演进降级换血臂 bench 域分轨重算(ADR-0614):装配喂入 bench=[]
-            #(上方装配块注,执行侧装配源 = last_state 滞后帧),本侧域 =
+            #(上方装配块注,执行侧装配源 = 容器单例),本侧域 =
             # SIFT 现读——与逐件判定(swap_sell_exclusion_reason 的
             # bench=/deployed= 覆盖参)及合取②③同域。谓词单一源 =
             # evolution_swap_arm_trigger(发射⇔执行同值,禁分轨态);
@@ -1039,6 +1056,15 @@ class CwOpDeploy(SrOperation):
         scr = self.screenshot()
         _match = self.ctx.cw_match
         _sess = (_match.session if (_match is not None and _match.session is not None) else None)
+        # 装配源换源(T-146,同 deploy() 主装配块口径):容器单例 + node
+        # 未观察 = None(旧 last_state 缺帧语义镜像)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of as _bso_dd,
+        )
+        _bs_full_dd = _bso_dd(_sess) if _sess is not None else None
+        _bs = (_bs_full_dd
+               if (_bs_full_dd is not None and _bs_full_dd.node.value is not None)
+               else None)
         # 5.1.8 deploy_cap(live 发现 drag 白拖根因 = cap 满,2026-08-12):deployed(CV front_occ+back_occ 实测阵上)
         # ≥ level(cap,D-19「cap=level」)→ 板满,bench 角色上不了 → 不拖(留 bench;防 drag 被拒源槽占 placed=0 白拖
         # + 用户 live 观察 bug4「未考虑上限」)。⚠️ CV 占用可幻影虚高(实机停机局实证:备战环
@@ -1076,8 +1102,12 @@ class CwOpDeploy(SrOperation):
         if _cap is None:
             _lv_chain = (getattr(_sess, 'last_level_obs', 0)
                          if _sess is not None else 0) or 0
-            _lv_state = (_sess.last_state.level
-                         if (_sess is not None and _sess.last_state is not None) else None)
+            # 兜底候选二(容器源,T-146 换源):容器 level 仅真读入记录
+            # (启发式兜底值禁入容器,字段注)——真读帧与旧 last_state.level
+            # 同值;纯启发式帧候选退出,失读走「不设板满门」便宜端(拖到
+            # 游戏拒自纠,低读阻塞的贵方向不引入)。
+            _lv_state = (_bs.level.value
+                         if (_bs is not None) else None)
             _cap_candidates = [c for c in (_lv_chain, _lv_state) if c is not None and c > 0]
             if _cap_candidates:
                 _cap = max(_cap_candidates)
@@ -1261,7 +1291,7 @@ class CwOpDeploy(SrOperation):
                         BenchChar as _BCH,
                     )
                     _ctx_rb = _aswap_rb(
-                        _sess, state=_sess.last_state,
+                        _sess, state=_bs,
                         deployed=[_BCH(slot=0, char_id=_c)
                                   for _c in sorted(_deployed_cids)],
                         bench=assemble_bench_list(
@@ -1282,9 +1312,8 @@ class CwOpDeploy(SrOperation):
                          f"plan.sell={_sell_names}, deployed={_deployed}, "
                          f"plan.occ={m1p_plan.get('occ')}, tgt={sorted(_tgt)}"
                          ', ADR-0640)')
-        _board_in = dict(_sess.last_state.board
-                         if (_sess is not None and _sess.last_state is not None)
-                         else {}) or {}
+        _board_in = dict(_bs.board.value if _bs is not None else None
+                         or {}) or {}
         try:
             from sr_od.application.currency_war.kernel.cw_intention import (
                 locked_faction_scope as _lfs,
@@ -1864,7 +1893,8 @@ class CwOpDeploy(SrOperation):
         ``deploy_swap_sell_rejected_*``),转型帧拒卖零静默;``fenced_arm_closed`` 且
         fenced 件保留 W209 撤销留证。``star``/``bench_chars``/deployed 现读喂入判定
         函数(星级/合成素材全场域计数需要现读域;发射侧用 ctx 帧域,同函数同判)。
-        swap_ctx 不可得(last_state 缺,装配未跑)时退旧路径(标量 fenced +
+        swap_ctx 不可得(容器 node 未观察,装配按缺供给弃权)时退旧路径
+        (标量 fenced +
         排除链静默关闭)——与缺读禁卖不对称,在册遗留缺口原样继承未扩大
         (排除静默关闭态的收紧候裁另案,ADR-0534 §4)。
 

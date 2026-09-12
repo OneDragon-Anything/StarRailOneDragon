@@ -327,8 +327,16 @@ def record_zero_wear_defect(ctx: SrContext, equipped: int,
         return
     from sr_od.application.currency_war.telemetry import defects as cw_telemetry
     _match = getattr(ctx, 'cw_match', None)
-    st = getattr(getattr(_match, 'session', None), 'last_state', None)
-    if st is None or int(getattr(st, 'round_num', 0) or 0) < 3:
+    # 换源 T-146(装配源迁移):plane/round = 容器单例 node(同备战观察
+    # 写端刷新);node 未观察沿用旧缺帧静默跳过语义。
+    _node_zw = None
+    _sess_zw = getattr(_match, 'session', None) if _match is not None else None
+    if _sess_zw is not None:
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+        )
+        _node_zw = board_state_of(_sess_zw).node.value
+    if _node_zw is None or int(_node_zw.round_num) < 3:
         return
     _reason = stop_reason or '循环自然结束(stall)'
     cw_telemetry.record_defect(
@@ -337,8 +345,8 @@ def record_zero_wear_defect(ctx: SrContext, equipped: int,
         observed=(f'worn_added=0 owned={wearable_owned} '
                   f'stop_reason={_reason} '
                   f'domain={classify_zero_wear_stop_reason(stop_reason)}'),
-        plane=int(getattr(st, 'plane', 1) or 1),
-        round_num=int(st.round_num),
+        plane=int(_node_zw.plane),
+        round_num=int(_node_zw.round_num),
         note=('观测面不停机;辖域二分(18 号稿 §1.2):'
               'strategy_by_design=by-design 残留;'
               'strategy_gap=策略语义缺口(词缀优先层/工具消费评估);'

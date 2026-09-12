@@ -75,18 +75,24 @@ class EquipEnvSignals:
 
 
 def build_equip_env_signals(state) -> EquipEnvSignals:
-    """state → 信号包(唯一读取点;state 缺失/字段缺失 = 安全默认,不抛错)。
+    """state → 信号包(唯一读取点;state 缺失/字段未观察 = 安全默认,不抛错)。
 
-    ``state`` = ``session.last_state``(可为 None,离线/旧栈);字段经 getattr
-    宽读,缺 = None / 空集。
+    ``state`` = session 容器单例(board_state_of;T-146 装配源换源,旧
+    ``session.last_state`` 帧链退役);容器/None 两态宽容读(鸭子 getattr
+    + Field .value 取值),词缀未观察/节点未观察 = 空集 / None。
     """
-    affixes = list(getattr(state, 'enemy_affixes', None) or []) if state is not None else []
-    plane = getattr(state, 'plane', None) if state is not None else None
-    round_num = getattr(state, 'round_num', None) if state is not None else None
+    if state is None:
+        return EquipEnvSignals(enemy_affixes=frozenset(),
+                               plane=None, round_num=None)
+    _aff = getattr(state, 'enemy_affixes', None)
+    _aff_val = getattr(_aff, 'value', _aff)   # 容器 Field→.value;帧 list→自身
+    affixes = list(_aff_val or [])
+    node = getattr(state, 'node', None)
+    node = getattr(node, 'value', None) if node is not None else None
     return EquipEnvSignals(
         enemy_affixes=frozenset(affixes),
-        plane=int(plane) if plane is not None else None,
-        round_num=int(round_num) if round_num is not None else None,
+        plane=int(node.plane) if node is not None else None,
+        round_num=int(node.round_num) if node is not None else None,
     )
 
 

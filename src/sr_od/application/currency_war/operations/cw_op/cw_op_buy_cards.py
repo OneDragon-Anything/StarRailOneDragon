@@ -362,22 +362,21 @@ def build_post_buy_incremental_state(
     return post
 
 
-def _form_progress(comp: 'Comp', state: CwWorkFrame) -> float:
+def _form_progress(comp: 'Comp', session) -> float:
     """fp 遥测helper(review 要求:fp 轨迹可观测;调用方保证 comp 非 None)。
 
-    归属申报:state 经 board_state_bridge 装箱 = 统一 state 过渡桥语义
+    归属申报:state 原经过渡桥装箱 = 统一 state 过渡桥语义
     (T-70 线),本 hunk 实际随 T-13 提交入库而原提交信息未申报,此处
-    补记归属供审计对账。**保留申报(T-146 登记集对账)**:输入 = 商店
-    波内投影帧(simulate 推演态),非 session 帧——桥对该输入域仍为
-    正当装配(波内 fp 轨迹遥测依赖推演 board);session 单例不含波内
-    推演,替换 = 遥测语义降级,伪装私有重建 = 第二桥。本面随桥本体
-    删除批(测试仓 harness 改指同批)一并收口,登记集照实登记。
+    补记归属供审计对账。**换源(T-146,T-163 后措辞更正)**:T-163 删帧
+    链后本 helper 输入域 = 段顶入口观察帧(非 simulate 推演态,旧措辞
+    「波内投影帧」作废);该帧在 visit 段顶已合成进 session 容器单例,
+    本读改直取单例(board 同帧同源),桥消费随之清零。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
     from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_bridge,
+        board_state_of,
     )
-    return form_progress(comp, board_state_bridge(state))
+    return form_progress(comp, board_state_of(session))
 
 
 # 「购买经验」按钮(= 买经验升等级)screen_info area 名;中心运行时读(area_center)
@@ -984,7 +983,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # A2:target 由策略器状态管理(方向刷新写,ADR-0583 内化)。
         _tc = getattr(strategy_state_of(match.session), 'target_comp', None)
         target_name = _tc.name if _tc is not None else ''
-        _fp_v = _form_progress(_tc, state) if _tc is not None else -1.0
+        _fp_v = _form_progress(_tc, match.session) if _tc is not None else -1.0
         # r295(判读必须看节点类型):state 行带 node(本节点类型)+next。
         _node = getattr(match.session, 'node_type_current', None) or '?'
         _upc = getattr(match.session, 'upcoming_types', None) or []

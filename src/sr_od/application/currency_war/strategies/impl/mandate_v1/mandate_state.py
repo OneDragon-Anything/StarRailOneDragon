@@ -3,9 +3,8 @@
 
 **命名归位**(§8.6-6):本类即设计所称 StrategyState(原草板 StrategyMemory
 的目标名)——类名已从历史名 MandateState 改名归位,类型本体、字段
-集、生命周期零变化(同对象别名 ``MandateState`` 在模块尾保留,测试/sim
-既有 import 面兼容;别名清理归迁移尾批,与执行侧装配源切换同批,
-设计 §8.7 尾批行)。**归属判据**(设计 §1):换一个
+集、生命周期零变化(历史名兼容别名已随迁移尾批清理,设计 §8.7 尾批
+行;消费面一律 import StrategyState)。**归属判据**(设计 §1):换一个
 策略实现就不存在的字段归这里;归策略实现层私有,框架策略器基类仅以泛型
 参数携带(``CwStrategy``/``CwFlowStrategy`` 链的 ``_TState``),kernel/
 one_dragon 零 import 本类。
@@ -391,10 +390,3 @@ def ensure_strategy_state(strat: object, session: StrategySession,
     if initial_v2_state is not None:
         st.v2_state = initial_v2_state
     return st
-
-
-#: 历史名兼容别名(改名归位 §8.6-6;同对象,``is X``/``isinstance``
-#: 全兼容——测试仓/sim/cw_replay 既有 ``import MandateState`` 面零改动;
-#: 别名统一清理归迁移尾批,设计 §8.7 尾批行认领)。新代码一律用
-#: :class:`StrategyState`。
-MandateState = StrategyState

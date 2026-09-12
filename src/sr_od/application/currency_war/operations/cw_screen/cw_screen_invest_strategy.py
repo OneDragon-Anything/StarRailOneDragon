@@ -62,9 +62,6 @@ from one_dragon.base.operation.operation_round_result import OperationRoundResul
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import action_sink, observation_source
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    board_state_bridge,
-)
 from sr_od.application.currency_war.kernel.cw_comps import augment_affinity
 from sr_od.application.currency_war.kernel.cw_events import (
     decide_event,
@@ -76,7 +73,6 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     is_blood_economy,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import area_center
-from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame
 from sr_od.application.currency_war.obs.cw_node_obs import (
     pair_refresh_counts_to_slots,
     read_invest_refresh_counts,
@@ -415,11 +411,18 @@ class CwScreenInvestStrategy(CwScreenOpBase):
                 pick = match.strategy.decide_invest('strategy', names, board_state_of(match.session), match.session, config)
             else:
                 # 防御:无 match(局外独立跑)。经验分退役后 decide_event 不读
-                # hp/品质惩罚,hp 字段仅为 CwWorkFrame 构造完整性。**显式跳过刷新链**
-                # (ADR-0600 §3.3 防御路径):刷新链依赖 exec_state_of(match.session) 与
-                # match 上下文,局外防御帧零行为增量(refresh_slots 不消费)。
-                # W6 波3 贯通:decide_event 已切容器签名,防御帧经桥装箱。
-                pick = decide_event(names, config, board_state_bridge(CwWorkFrame(hp=100, hp_readable=True)))
+                # hp/品质惩罚(唯一局面消费 = board.value or {},未观察等价
+                # 空表)。**显式跳过刷新链**(ADR-0600 §3.3 防御路径):刷新链
+                # 依赖 exec_state_of(match.session) 与 match 上下文,局外防御
+                # 帧零行为增量(refresh_slots 不消费)。
+                # 换源 T-146(登记集消点):防御视图 = 裸容器(全域未观察空
+                # 视图);旧合成 CwWorkFrame + 过渡桥装箱退役。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    BS_SCHEMA_VERSION,
+                    GameState,
+                )
+                pick = decide_event(names, config,
+                                    GameState(schema_version=BS_SCHEMA_VERSION))
         else:
             pick = None
 
