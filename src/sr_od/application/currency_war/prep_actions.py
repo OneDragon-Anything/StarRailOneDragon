@@ -1294,7 +1294,7 @@ class PrepActionExecutor:
         if before is None:
             return 'level 基线读不到(OCR 漏读),拒绝盲点', False
         from sr_od.application.currency_war.kernel.cw_board_state import (
-            board_state_bridge,
+            board_state_of as _bs_of_auth,
         )
         from sr_od.application.currency_war.kernel.cw_discipline_rules import (
             hp_decision_trusted,
@@ -1304,6 +1304,9 @@ class PrepActionExecutor:
             blood_xp_gate,
             clicks_to_next_level,
         )
+        from sr_od.application.currency_war.kernel.cw_hp_policy import (
+            decision_hp as _decision_hp_auth,
+        )
         from sr_od.application.currency_war.kernel.cw_investments import (
             blood_xp_mode,
         )
@@ -1312,13 +1315,14 @@ class PrepActionExecutor:
         _auth_clicks = 0
         if _blood is not None:
             _mode_name, _cost = _blood
-            _st = getattr(session, 'last_state', None)
-            _hp = getattr(_st, 'hp', None) if _st is not None else None
-            # 可信位单一源(kernel cw_discipline_rules)波 2 已切容器签名:
-            # GameState 帧经过渡桥装箱供帧(桥视图 hp source 失真语义见该桥
-            # docstring;hp=None 帧不写桥字段,判据 None 支 fail-closed 不受影响)。
-            _trusted = (hp_decision_trusted(board_state_bridge(_st))
-                        if _st is not None else False)
+            # 血闸 hp 消费经决策读口(prep 链容器化段 2 消点,kernel 判读
+            # S5:旧 last_state 帧 raw hp 直读未经新鲜度门+桥视图可信位
+            # 恒 observation 失真,与同闸 P21 面「同面同输入」申报不符;
+            # 现改 decision_hp 门后值+容器来源位可信位,两面对同一购买
+            # 动作输入同源——可信位单一源 = kernel cw_discipline_rules)。
+            _bs_auth = _bs_of_auth(session)
+            _hp = _decision_hp_auth(_bs_auth, session)
+            _trusted = hp_decision_trusted(_bs_auth)
             # 批入口整级授权检(全量口径);拒 → 与「level 基线读不到」同返回路径
             if not blood_xp_gate(_hp, _trusted, before, _cost):
                 return (f'血闸拒:hp={_hp} < 下一级血成本 '
