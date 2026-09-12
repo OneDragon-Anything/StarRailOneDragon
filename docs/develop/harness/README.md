@@ -30,6 +30,7 @@ harness 的根本目标是**人机知识对齐**：凡开发者（人）做本�
 | [context_layering.md](context_layering.md) | 上下文进哪档（always-on / on-demand / 强制）+「删了会出错吗」判据 |
 | [ai_tool_rules.md](ai_tool_rules.md) | 各 AI 工具 rules 机制 + frontmatter 跨工具兼容性 |
 | [agent_instruction_files.md](agent_instruction_files.md) | AGENTS.md / CLAUDE.md 等入口文件的维护规范 |
+| [agent_worktrees.md](agent_worktrees.md) | 并行开发的 worktree 批隔离：一个 change 一棵树、成对测试仓、合并者契约、账本集成 |
 | [settings_scope.md](settings_scope.md) | settings.json 各 key 的团队 / 个人 scope 归口 |
 
 ## 两条方向
