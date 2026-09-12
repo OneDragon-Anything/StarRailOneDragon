@@ -1557,12 +1557,12 @@ def comp_score(comp: Comp, bs: BoardState, ctx: ScoreContext) -> float:
     评 **current 已 commit** comp 用 cw_performance.comp_viability(加观测 blend),不用本函数。
     """
     return weighted_mean([
-        (W_PROG, progress(comp, state)),
+        (W_PROG, progress(comp, bs)),
         (W_MECH, mechanics_fit(comp, ctx.mechanics)),
         (W_ENV, env_fit(comp, ctx.env)),
         (W_HELD, held_strategy_fit(comp, ctx.held_strategies)),
         (W_BOSS, boss_fit(comp, ctx.bosses)),
-        (W_EQUIP, equip_fit(comp, state)),
+        (W_EQUIP, equip_fit(comp, bs)),
         (W_STR, strength_base(comp)),
     ])
 
