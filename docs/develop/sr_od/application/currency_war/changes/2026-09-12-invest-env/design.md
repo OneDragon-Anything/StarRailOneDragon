@@ -33,7 +33,7 @@
 明确不解决（各项自成后续迭代，防范围外溢）：
 
 1. ~~定向送卡型环境~~：用户裁定 2026-09-12 纳入本迭代 → details/env-value-models.md §2.1（结构对齐档：候选角色全集成员性 + 分档 floor，G 组锁）；「全集门只对 faction 非空候选生效」的边界不变。
-2. **策略卡同构 gap**（`decide_invest kind='strategy'`）：非对齐策略卡仍走裸分。用户裁定只点了投资环境，另行立项（已立项 = `2026-09-12-strategy-universe-gate`，含 335 卡全量分类盘点与 S1 定义型豁免前提守卫）。**跨迭代契约**：角色全集口径与 `candidate_char_universe` 落码单一源 = details/env-value-models.md §2.1.2/§2.1.3（core∪shared、transition 不计，`char_routes` 同源理由）；该迭代消费同一函数、禁两侧各自实现同名 helper（其「角色全集口径建议」流程改为对本口径确认/回写；cw_comps.py 落码互斥由编排者排序）。
+2. **策略卡同构 gap**（`decide_invest kind='strategy'`）：非对齐策略卡仍走裸分。用户裁定只点了投资环境，另行立项（已立项 = `2026-09-12-strategy-universe-gate`，含 335 卡全量分类盘点与 S1 定义型豁免前提守卫）。**跨迭代契约**：阵营维两迭代共用同一函数 `candidate_faction_universe`（单一源 = 本篇 §2.1.1）；角色维两问不同答案、分立双函数命名禁共用——本篇送卡型 `candidate_char_universe` = core∪shared（details/env-value-models.md §2.1.3），策略门 `candidate_core_char_universe` = core-only（S3 对齐角色维只数 core，其详设 §2）；共享边界单一源 = `2026-09-12-strategy-universe-gate` details/gate-and-audit-spec.md §8（cw_comps.py/cw_events.py/cw_investments.py 落码互斥由编排者排序）。
 3. **D 类环境价值化**：送卡型与品质改写型已由用户裁定 2026-09-12 纳入 → details/env-value-models.md（品质改写层 E v1 恒 fail-closed 走裸分，转正准入门 = 全通道 μ_E 重算 + 序一致性检验，在册）；仍不入：战力类（进化算法/战力×2）、随机/规则补给类、红钻蓝钻贵族/深井角斗场/命运礼物/英雄登场/三星佩佩等（价值待语义实采；红钻/蓝钻 = 星徽配方材料【注·配方表】，价值锚可部分收敛）。
 4. **时间贴现**：早金利息机会成本可算（息律 τ），v1 不加层。
 5. **判据消费接线**：portal 登记端只做「登记入账 + 查询口」，现有经济判据暂不接登记数据，按消费需求另批。
