@@ -878,8 +878,8 @@ def _reconcile_posture_authorization(session: StrategySession,
                                      ) -> dict | None:
     """姿态兑现对账(经济冻结批病灶②;授权面与执行面的唯一仲裁点)。
 
-    载体 = 容器 bs(prep 链容器化段 1:签名切 bs,域读经读口族;体内
-    旧 board_state_bridge ×2/board_state_of ×2 随切消点,复用形参)。
+    载体 = 容器 bs(prep 链容器化段 2:签名与域读全容器形态,域读经读口族,
+    体内无第二视图装配)。
     hp 消费经 ``decision_hp`` 政策读口(门前真值+消费侧施门单一源,
     禁直读 ``bs.hp.value`` 引入施门旁路——《商店黑板容器化方案》
     §2.2-2 同锚;视图帧 hp 直读面随载体切换退役)。

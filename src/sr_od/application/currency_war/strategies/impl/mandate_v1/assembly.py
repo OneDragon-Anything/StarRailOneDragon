@@ -20,9 +20,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_board_state import (
-    board_state_bridge,
-)
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_intention import committed_from
 from sr_od.application.currency_war.kernel.cw_registry import DEFAULT_REGISTRY
@@ -101,15 +98,10 @@ def _direction(state: Any, session: StrategySession, snapshot: Snapshot,
         try:
             # P86:session/registry 透传甲臂 G 门(强锁门逐字需要 plane
             # 真值视界与当帧注册表 ε;落地审 F-2 两域禁分叉);投影失败帧
-            # 走 hoard_readable=False 保守域,同 D1 面。
-            # W6 波4:容器输入直读(store 链 adapter 视图仍为帧形态时
-            # 经桥装箱——双形态归一)。
-            from sr_od.application.currency_war.kernel.cw_board_state import (
-                BoardState as _BS,
-            )
-            _bs_in = state if isinstance(state, _BS) \
-                else board_state_bridge(state)
-            ht = hoard_target_set(_bs_in, ist, session=session,
+            # 走 hoard_readable=False 保守域,同 D1 面。输入 = 容器单例
+            # (prep 链容器化段 2:assemble 一次置顶的决策判据载体直传,
+            # 禁二次取容器)。
+            ht = hoard_target_set(state, ist, session=session,
                                   registry=registry)
             hoard = frozenset(ht.char_targets) | frozenset(ht.equip_targets)
         except Exception:   # noqa: BLE001  投影失败显式暴露(D1):不再静默退空集
@@ -242,8 +234,7 @@ def assemble(snapshot: Snapshot, session: StrategySession,
     披露面豁免,ADR-0571):决策投影不落 session;唯一例外 =
     ``_disclose_budget`` 写遥测披露面四字段 + 键戳(不入决策输入,
     读端只有 recorder/engine_p1 遥测链)。决策输入 = session 容器单例
-    (prep 链容器化段 2:旧 ``decision_state`` GameState 骨架退役,
-    方向/预算投影直读容器,同帧同视图)。
+    (方向/预算投影直读容器,同帧同视图,一次置顶禁二次取容器)。
     """
     from sr_od.application.currency_war.kernel.cw_board_state import (
         board_state_of,
