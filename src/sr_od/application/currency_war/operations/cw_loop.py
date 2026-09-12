@@ -631,6 +631,7 @@ def _launch_frame_arbitration(op) -> dict:
             return report
         report['entered'] = True
 
+        def _gate(action) -> tuple[bool, str]:
             # 读金口径(W6 波 4 黑板容器化,设计件 §2.4-2):容器读口
             # ``gold_of``(缺省 0 镜像,与原 ``int(... or 0)`` 兜底同型
             # 零行为差;禁裸 bs.gold.value 引入 None 形态行为差)——黑板
@@ -3034,5 +3035,4 @@ def _get_or_init_allocator(ctx: SrContext):
         log.info(f'[cw-alloc] 分配器初始化失败(禁用): {e}')
         _ALLOCATOR = None
     return _ALLOCATOR
-
 
