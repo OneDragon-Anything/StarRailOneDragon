@@ -48,7 +48,7 @@
 | `last_level_obs` | read_level + 单调守卫 | 等级读数消误 | 局 | 识别层守卫状态 |
 | `active_strategies` | 选卡 handler 采集 | read_game_state 拷入 state | 局 | 已持投资策略 |
 | `effect_inventory` | 挂点采集(现仅升级挂点) | 决策路径待接线 | 局 | ActiveEffectInventory 纯数据 |
-| `last_owned_equips` | CwOpEquipAll read_equips | state.equips 遥测 | 帧 | ADR-0358 |
+| `last_owned_equips` | 备战入口观察装配点全量重写(主写端,P4 接线 T-171)+ 穿戴 pass 执行位步内覆写 | state.equips 遥测、载体中继兜底 | 帧 | ADR-0358;决策输入(门①/工具评估/计划产出位)已切黑板帧 owned_equips,勿回接本镜像 |
 | `chosen_megastar` / `chosen_partner` | 选择 handler | 遥测回写 state | 局 | 复盘维度 |
 | `star_pending_regression` | 识别防抖(合成动画窗确认) | star 真值采信 | 节点内 | 框架识别守卫 |
 | `briefing_affixes` / `briefing_bosses` / `selected_difficulty` / `enemy_difficulty` / `active_env` | 简报/入口屏/情报屏采集 | mechanics_fit/boss_fit/保血阈值 | 局 | ADR-0397/0398 保位勿滤 |

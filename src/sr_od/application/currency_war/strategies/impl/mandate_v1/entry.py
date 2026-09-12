@@ -663,7 +663,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     )
     _tools_emitted: list[Emitted] = []
     _tools_phase = (plane_of(bs), _round_num)
-    _owned_snap = list(getattr(session, 'last_owned_equips', None) or [])
+    # owned 快照源 = 黑板帧 owned_equips(P4 观察接线,T-171;旧
+    # session.last_owned_equips 陈旧快照读点退役——评估输入与计划产出位
+    # 同帧同源,开箱新件经下一入口观察进帧)。
+    _owned_snap = list(getattr(obs, 'owned_equips', None) or [])
     if _owned_snap:
         _ct_tools = state_of(session).cw4_counters
         _tool_actions = _eval_tools(
@@ -739,7 +742,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         deploy_cap=max_units_of(bs),
         node_type=getattr(session, 'node_type_current', None),
         stop_flag=stop_flag, k_members=k_members,
-        round_num=_round_num)
+        round_num=_round_num,
+        # 装备域 owned 件名池直传(P4 观察接线,T-171):M7 发射门输入
+        # 与计划产出位同帧同源(None = 识别域未就绪,门按空保守关)。
+        owned_equips=getattr(obs, 'owned_equips', None))
     # registry 下传骨架 pass(等级帽单一源,ADR-0565 收口 = ADR-0606:
     # M3 链 lv9_stop/level_spend_blocked 消费注入表,与 ④′ 姿态对账
     # 同一注入链)。

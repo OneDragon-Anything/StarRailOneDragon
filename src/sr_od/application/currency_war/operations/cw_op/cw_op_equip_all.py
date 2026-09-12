@@ -63,8 +63,9 @@ from sr_od.operations.sr_operation import SrOperation
 class EquipWearStep:
     """单件穿戴计划步(计划随指令下发的契约载体;ADR-0601 §3-C1)。
 
-    产出位 = 分发段 ``prep_actions._build_equip_wear_plan``(对执行帧
-    现读后由 kernel 判据单一源求值),随 ``CwOpEquipAll.__init__(ctx, plan)``
+    产出位 = 分发段 ``prep_actions._build_equip_wear_plan``(读备战入口
+    观察产物 PrepObservation,P4 观察接线 T-171 后零读屏,由 kernel 判据
+    单一源求值),随 ``CwOpEquipAll.__init__(ctx, plan)``
     构造下发;op 对计划只做机械执行(定位/拖拽/验穿/报告),禁二次求值。
 
     字段坐标系(索引/槽位字段定义注释约定):
@@ -625,8 +626,10 @@ class CwOpEquipAll(SrOperation):
             _owned_last = [n for n, _, _ in hits]
             # ADR-0358 修法 A 搬运链写端(W209g 断点②,ADR-0387 追加):
             # 写端**全量 hits**(工具进快照,采集层无权丢数据);每次现读
-            # 都覆写(穿戴后 owned 减少,末次读=最新持有面)。派发位另有
-            # 一次承接写(计划空帧全靠它),两写端值同构后写覆盖先写。
+            # 都覆写(穿戴后 owned 减少,末次读=最新持有面)。主写端 =
+            # 备战入口观察装配点(cw_screen_prep._observe heavy,P4 观察
+            # 接线 T-171);本执行位步内重写 = 穿戴推进后的最新持有面
+            # (定位读的合法执行层锚),两写端值同构后写覆盖先写。
             if _match is not None and _match.session is not None:
                 _match.session.last_owned_equips = list(_owned_last)
             # 拖点解析(front-only 步 = 前排空槽 avatar 序号;M7 步 =

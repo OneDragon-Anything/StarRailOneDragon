@@ -238,8 +238,8 @@ def action_key(action: PrepAction) -> str:
 class PrepObservation:
     """备战决策环统一观察(决策单一输入,组合现成 reader 不新写识别)。
 
-    P1 恒空字段(策略不得依赖):overlay_state / overlay_options / shop_cards /
-    owned_equips(P4 工具域接线)。
+    P1 恒空字段(策略不得依赖):overlay_state / overlay_options / shop_cards。
+    (owned_equips 原列本清单,已随 P4 观察接线转正——见下方装备域字段块。)
 
     分层语义:bench_chars/deployed_chars/deploy_vacancy 只在 heavy
     观察刷新(环入口 + 每个执行过的游戏动作后);light 步沿用上次 heavy 值(可能 stale,
@@ -280,3 +280,17 @@ class PrepObservation:
     event_overlay: str | None = None
     overlay_options: list | None = None # P5
     shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)
+    # ===== 装备域三路事实 P4 观察接线(ADR-0601 §3-C1 演进方向,T-171)=====
+    # 采集点 = observe_full heavy 装配层(obs 域统一采集单一源);deployed
+    # 名单已由上方 deployed_chars 覆盖,此三字段补 owned/occupied 两路。
+    # None = 识别域资源未就绪(模板库/区域/TM grays 缺,原因在采集层
+    # log 留证),消费方按各自 fail/保守通道处理;[]/{} = 真读到空。
+    owned_equips: list | None = None     # 装备区 owned 件名池(全量含工具,W209g 口径;heavy 刷新)
+    # occupied_equips 键坐标系:row ∈ 'front'|'back',slot = 画面物理槽位
+    # 1-based(前排 1-4 / 后排 1-选档 N,与 prep_actions §13.1 slot 语义同域);
+    # 取值时机 = 生成期快照(heavy 帧现读)。
+    occupied_equips: dict | None = None  # 已穿装备明细 {(row, 物理槽位): [件名]}
+    # 消费 = 装备计划步后排槽位戳记上界(执行域)。决策链后排容量单一源
+    # 仍 = 容器 back_capacity_of,勿回接本字段(波 5b 删除的 back_size 是
+    # 决策链死字段;本字段是执行域戳记消费,两者不同源不互通)。
+    back_layout_slots: int | None = None  # 后排布局选档槽数(select_back_layout 直传;None=布局未知态双弃权帧)

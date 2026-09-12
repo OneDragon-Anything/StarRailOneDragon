@@ -460,6 +460,10 @@ class CwScreenPrep(CwScreenOpBase):
         self._cached_deployed: list[BenchChar] = []
         self._cached_vacancy: int = 0
         self._cached_gold_trusted: bool = False
+        # 装备域三路 light 沿用缓存(P4 观察接线,T-171;None = 识别域未就绪)
+        self._cached_owned_equips: list | None = None
+        self._cached_occupied_equips: dict | None = None
+        self._cached_back_layout_slots: int | None = None
         # 购买单元记账态(纯观测;unit_seq 轮内序,
         # 按 _spend_unit_key=(plane, round) 重计,见 _spend_unit_open)
         self._spend_unit_seq: int = 0
@@ -631,6 +635,12 @@ class CwScreenPrep(CwScreenOpBase):
             else:
                 obs.bench_chars = list(self._cached_bench)
                 obs.deployed_chars = list(self._cached_deployed)
+            # 装备域三路回填(P4 观察接线,T-171):采集已归位 observe_full
+            # heavy 装配层,本点只做产物拷贝(单写者原则);None = 识别域
+            # 未就绪,照 None 落帧(消费方按 fail/保守通道处理,禁造空值)。
+            obs.owned_equips = _of.get('owned_equips')
+            obs.occupied_equips = _of.get('occupied_equips')
+            obs.back_layout_slots = _of.get('back_layout_slots')
             st = _of['state']
             session = self._session()
             # shop 关态帧节点行可读 → node_type 真值写 session(商店开态被遮恒 None,
@@ -721,6 +731,21 @@ class CwScreenPrep(CwScreenOpBase):
                     _bs_obs.carry(_bs_obs.back_row,
                                   frame=f'p{st.plane}-r{st.round_num}',
                                   sig=_dep_carried_sig)
+                # 装备库存观察写端(P4 观察接线,T-171;W5 §2.2):owned
+                # 采集已归位本入口观察链(observe_full heavy),写端随迁本
+                # 装配点——原写点 = prep_actions._build_equip_wear_plan 两
+                # 分支,随其三路现读退役消失。全量名单入记录(W209g 断点②
+                # 采集层无权丢数据,工具件照录);失读(None)= 识别域未就绪
+                # 不写保现值(宁缺勿造,同 bench 空集守卫族;装备区读不受
+                # 合成特效窗影响,无需 is_merge_effect_window 门)。
+                if obs.owned_equips is not None:
+                    _bs_obs.observe(_bs_obs.equips, list(obs.owned_equips),
+                                    sig=_prep_sig)
+                    # session 镜像全量重写(ADR-0358 搬运链写端随迁):
+                    # 商店线权重(state.equips 拷贝)与载体中继兜底的跨访问
+                    # 值源;穿戴/选卡/卖返等 logic 增量写点不变,本重写 =
+                    # 每次入口观察的真值刷新(频次高于旧派发位一次/期)。
+                    session.last_owned_equips = list(obs.owned_equips)
             # (obs.state 视图合成随黑板槽退役消亡——容器化段 2 消点:
             #  game_state_view 全仓最后活调用清零,决策读自容器单例;
             #  cw_bs_view 文件本体删除归波 5,设计件 §2.3/§2.6。)
@@ -823,6 +848,11 @@ class CwScreenPrep(CwScreenOpBase):
             self._cached_deployed = list(obs.deployed_chars)
             self._cached_vacancy = obs.deploy_vacancy
             self._cached_gold_trusted = obs.state_gold_trusted
+            # 装备域三路缓存(P4 接线):None(识别域未就绪)照缓存,None
+            # 沿用同族——light 步拿到的仍是上次 heavy 的识别域状态。
+            self._cached_owned_equips = obs.owned_equips
+            self._cached_occupied_equips = obs.occupied_equips
+            self._cached_back_layout_slots = obs.back_layout_slots
         else:
             # light:heavy 字段沿用缓存(上次真读值;不恒默认防永动机)。
             # state 缓存随黑板槽退役消亡(容器化段 2):视觉域四件照旧沿用。
@@ -830,6 +860,10 @@ class CwScreenPrep(CwScreenOpBase):
             obs.bench_chars = list(self._cached_bench)
             obs.deployed_chars = list(self._cached_deployed)
             obs.deploy_vacancy = self._cached_vacancy
+            # 装备域三路沿用(同分层语义;含 None = 上次 heavy 也未就绪)。
+            obs.owned_equips = self._cached_owned_equips
+            obs.occupied_equips = self._cached_occupied_equips
+            obs.back_layout_slots = self._cached_back_layout_slots
         # 黑板写路径(W971 §2,P2):备战观察结果直写 session(写者白名单 =
         # 本装配点;读者 = decide_prep_screen)。离线契约:无 match(局外
         # 单跑/mock)不写。帧对象原样入 session(实现决策:容器形态,

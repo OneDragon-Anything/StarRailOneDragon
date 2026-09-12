@@ -162,8 +162,12 @@ class StrategySession:
     # 已持有投资策略(局中选,可多张;选卡 handler 采集,read_game_state
     # 拷贝到 state 供 _refresh_cap 等消费)。
     active_strategies: list[str] = field(default_factory=list)
-    # owned 穿戴池快照(ADR-0358):CwOpEquipAll 每轮 read_equips 后写;
-    # _pseudo_state 拷入决策 state.equips → decisions 遥测可见。
+    # owned 穿戴池快照(ADR-0358;P4 观察接线后写端两处,T-171):
+    # ①备战入口观察装配点全量重写(cw_screen_prep._observe heavy ←
+    # observe_full 装备域采集,主写端);②穿戴 pass 执行位步内现读覆写
+    # (cw_op_equip_all 计划件定位读,执行层合法锚)。消费 = 商店线权重
+    # (state.equips 拷贝)与载体中继兜底;决策输入(门①/工具评估/计划
+    # 产出位)已切黑板帧 owned_equips,勿回接本镜像(陈旧快照面)。
     last_owned_equips: list[str] = field(default_factory=list)
     # 遥测接线(ADR-0229 缺口):选择类 handler 写 → read_game_state 回写
     # state 同名字段(复盘维度:巨星绑定/伙伴选择与 comp 匹配)。

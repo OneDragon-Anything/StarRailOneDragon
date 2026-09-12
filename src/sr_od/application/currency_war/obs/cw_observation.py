@@ -2655,13 +2655,15 @@ def _feed_board_state(ctx: SrContext, state: CwSimFrame, phase: str | None,
         bs.relay(bs.active_env, str(state.active_env), sig=_relay_sig)
         bs.relay(bs.plane_bosses, list(state.plane_bosses), sig=_relay_sig)
         bs.relay(bs.enemy_affixes, list(state.enemy_affixes), sig=_relay_sig)
-        # equips 装备库存(W5 申报面,方案 §2.2):观察写端 = 装备分配链
-        # 装备区现读(prep_actions._build_equip_wear_plan 两分支,本漏斗
-        # 无装备区读——零新增读原则);本口只做载体中继兜底(session 镜像
-        # last_owned_equips,从未写过才补)。**接线滞后窗值冻结申报**:
-        # 开箱/穿戴/卖出等动作时点的库存变化先落 session 镜像,bs 只在
-        # 下一次装备链现读时刷新——中继「已有正式值跳过」语义使滞后窗内
-        # 视图拿到的是上一次观察值(带 logic 源标记),比透传陈值可分。
+        # equips 装备库存(W5 申报面,方案 §2.2):观察写端 = 备战入口
+        # 观察链装备区采集(采集点 = observe_full heavy,写点 =
+        # cw_screen_prep._observe heavy 装配点;P4 观察接线 T-171 前 =
+        # prep_actions._build_equip_wear_plan 派发位现读,已随该批退役)。
+        # 本口只做载体中继兜底(session 镜像 last_owned_equips,从未写过
+        # 才补)。**接线滞后窗值冻结申报**:开箱/穿戴/卖出等动作时点的
+        # 库存变化先落 session 镜像(logic 增量写点),bs 在下一次备战
+        # 入口观察时刷新——中继「已有正式值跳过」语义使滞后窗内视图拿到
+        # 的是上一次观察值(带 logic 源标记),比透传陈值可分。
         _owned_equips: list = getattr(session, 'last_owned_equips', None) or []
         bs.relay(bs.equips, [str(n) for n in _owned_equips],
                  sig=_relay_sig)

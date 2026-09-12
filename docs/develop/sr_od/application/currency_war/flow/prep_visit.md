@@ -40,7 +40,8 @@ run()
 
 ### 1.1 观察分层（F1/F2 契约）
 
-- **heavy**（入口单次；ADR-0517 迁移后 = 画面 op 入口唯一读屏点——期望态重建,即对账。调用点 = 单轮入口 / OpenShop(read_only) 开态 gold 真值刷新）：SIFT 身份（bench/deployed）+ GameState 全量 + cap 读取；光标 parking 先行（防 OCR/SIFT 污染）。旧「每个执行过的游戏动作后必调 heavy」契约已随单动作循环退役（逐动作零读屏,期望态由投影纯计算推进;执行侧读数性通道的局部 park 由动作实现层自理,`_observe` docstring 载）。组装单一源 = `obs.cw_observe_full.observe_full`（tier='heavy'），director 只保留副作用编排（session 写/审计/缓存——单写者原则）。`PrepObservation` 字段清单 = `kernel/cw_prep_actions.py::PrepObservation`。
+- **heavy**（入口单次；ADR-0517 迁移后 = 画面 op 入口唯一读屏点——期望态重建,即对账。调用点 = 单轮入口 / OpenShop(read_only) 开态 gold 真值刷新）：SIFT 身份（bench/deployed）+ GameState 全量 + cap 读取 + 装备域三路（owned 件名池〔全量含工具〕/occupied 已穿明细/后排布局选档;P4 观察接线,T-171——原分发段 `_build_equip_wear_plan` 三路现读退役,采集单一源 = `obs.cw_observe_full.observe_full` heavy,写端 = 本 op 入口观察装配点 bs.equips observe + session 镜像全量重写）;光标 parking 先行（防 OCR/SIFT 污染）。旧「每个执行过的游戏动作后必调 heavy」契约已随单动作循环退役（逐动作零读屏,期望态由投影纯计算推进;执行侧读数性通道的局部 park 由动作实现层自理,`_observe` docstring 载）。组装单一源 = `obs.cw_observe_full.observe_full`（tier='heavy'），director 只保留副作用编排（session 写/审计/缓存——单写者原则）。`PrepObservation` 字段清单 = `kernel/cw_prep_actions.py::PrepObservation`。
+- **装备穿戴计划产出位**（`prep_actions._build_equip_wear_plan`）：改读入口观察产物（P4 接线,T-171）——三路事实源 = `session.prep_obs_frame` 装备域字段,产出位零读屏;识别域资源未就绪（字段 None）走 fail 通道（未发出闩不置）。kernel 判据单一源求值不变;「执行时刻屏态复验」(`_guard_screen_mismatch` 派发前置闸)职权留守分发层。
 - **light**（兼容形态,现生产无调用方）：轻字段（球/箱/典籍/overlay/占用/shop_open）每步现读；heavy 字段沿用缓存。
 - **可信门（F2/F5）**：gold 仅 shop 开态可信（`obs.state_gold_trusted = obs.shop_open`，关态读空）；hp 写 session 前过 `gated_hp` 新鲜度门（结算真值仅在可信窗口覆盖现读；`cw_strategy.py::gated_hp`）。
 - 黑板写路径：obs 直写 `session.prep_obs_frame`（写者白名单 = 入口观察段/循环投影步；读者 = decide_prep_screen；`cw_screen_prep.py`）。

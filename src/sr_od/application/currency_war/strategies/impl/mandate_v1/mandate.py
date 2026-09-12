@@ -169,6 +169,12 @@ class MandateFrame:
     stop_flag: bool
     k_members: tuple[str, ...]
     round_num: int = 1      # 位面内轮次(M5 开局板辖域=开局帧;CwSimFrame 直读)
+    # 装备域 owned 件名池快照(P4 观察接线,T-171):装配点 = entry.emit
+    # 从黑板帧 obs.owned_equips 拷贝(全量含工具,W209g 口径)。None =
+    # 识别域未就绪(模板库/装备区缺失)或未供给,M7 发射门按空处理保守关;
+    # [] = 真读到空。旧读点 = session.last_owned_equips 陈旧快照,已退役
+    # (消费面与计划产出位同帧同源,防门①与产出位双源漂移)。
+    owned_equips: list[str] | None = None
 
     @property
     def bench_free(self) -> int:
@@ -1630,8 +1636,10 @@ def run_mandate(frame: MandateFrame,
     # 发射门 = 变换可能性两件套(装备发射门,2026-09-03 实机 RunEquip 备战环
     # 活锁定谳修法):
     # ①可穿存在性(m7_wearable_exists):owned 快照里有注册表已登记且非
-    #   工具类的件。旧「last_owned_equips 非空即发」是持有面谓词,而快照
-    #   按 ADR-0387 全量含工具件(扳手/冶金炉等不可穿)——工具-only 库存
+    #   工具类的件。快照源 = 决策帧 owned_equips(P4 观察接线,T-171;
+    #   旧 session.last_owned_equips 陈旧快照读点退役——门①与计划产出位
+    #   同帧同源,防门开了而计划面无件的双源漂移)。快照按 ADR-0387 全量
+    #   含工具件(扳手/冶金炉等不可穿)——工具-only 库存
     #   谓词永真 ⇒ 每帧重发 RunEquip 且 0 穿 ⇒ 空批出口(StartBattle)
     #   永不可达,备战环活锁(实机 1-6 卡死,签名「序列完成(RunEquip)」)。
     # ②备战期闩(cw4_m7_equipped_phase):同 (plane, round) 备战期只发一次
@@ -1643,8 +1651,8 @@ def run_mandate(frame: MandateFrame,
     #   理由与本函数 docstring「备战期开店闩」节同型(单动作环下发射
     #   列表中 RunEquip 之前的可续类动作先执行即终结本环,RunEquip
     #   意图未执行,发射即置闩会让闩烧而装备未穿、后续环被闩挡死)。
-    if getattr(session, 'last_owned_equips', None) \
-            and m7_wearable_exists(session.last_owned_equips):
+    if frame.owned_equips \
+            and m7_wearable_exists(frame.owned_equips):
         if getattr(state_of(session), 'cw4_m7_equipped_phase', None) == phase:
             _count('equip_latch_skip_m7')
         else:
