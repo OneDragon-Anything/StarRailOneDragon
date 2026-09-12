@@ -432,6 +432,19 @@ class OnnxOcrMatcher(OcrMatcher, ZipDownloader):
         Returns:
             ocr_result_list: 识别结果列表
         """
+        # 模型缺失时 fail-loud:先走一次 init(文件在位即加载,缺失则自动下载),
+        # 仍失败则显式报错带恢复指引。此前 _model=None 直穿 self._model.ocr 会炸出
+        # 深处 AttributeError('NoneType' object has no attribute 'ocr'),批量测试
+        # 场景下表现为数百条与被测代码无关的环境假红,淹没真实失败集对照
+        # (判例:模型目录被误清后全量跑 275 红,抽样签名全部指向本文件旧 :438 行)。
+        if self._model is None and not self.init_model():
+            raise RuntimeError(
+                'OCR 模型未就绪(模型文件缺失且自动下载未成功)。'
+                '恢复指引:检查网络/代理后重试(任一 OCR 调用会自动从 '
+                'github/gitee 双源补下载),或启动一条龙 GUI 的 OCR 功能触发下载。'
+                '注意:assets/models/ 被 gitignore 覆盖不入 git,'
+                'git clean -x 类清理工作树会连带删除模型,需重新下载。'
+            )
         start_time = time.time()
         ocr_result_list: list[OcrMatchResult] = []
 
