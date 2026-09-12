@@ -1,11 +1,23 @@
-"""journal 收口断流探测器 v3(2026-09-11,T-257:尾读源切 journal)。
+"""journal 收口断流探测器 v3.1(2026-09-12,T-77:武装尾窗回读替代整账读)。
 
-## 为什么改造
+## 为什么改造(v3→v3.1)
 
-前身「runs 断流探测器」(2026-08-23)尾读 decisions.jsonl 采集 run_id、对账
-runs.jsonl 行——删除波 1(T-243)后 runs/decisions 两流写入端已从 src 删除
-(哨兵武装时两流 mtime 冻结在停写时刻:decisions 恒「停更」、runs 恒「缺行」,
-武装即误报)。本版把尾读源切到 journal(state/journal.jsonl,唯一账面)。
+v3 武装时 `JournalTail.full_scan()` 整账读全文件(`read_bytes`):现役账面
+251.6MB 实测一次武装 ~2.9s,且随账面体积线性上涨(T-74 验收 §5 立项,
+T-77 落地)。本版武装/重建改**尾窗回读**(常量 TAIL_BYTES,缺省 32MB,
+环境变量 CW_RUNSGAP_TAIL_BYTES 可调):只回读文件尾该字节数并解析到尾,
+武装成本恒定 ~O(TAIL_BYTES) 与账面体积无关。
+
+尾读语义申报(相对 v3 全账语义的变化面):
+- baseline 悬挂段:武装尾窗外的历史悬挂段不入状态 → 永不报警。与 v3 的
+  baseline 语义(武装时已悬挂段 = 排除集)等价,排除集变小无害;
+- 过渡守卫判据 mf_rows:全账计数降级为**尾窗内**计数。若全账 match_final
+  行都在尾窗外(W3 接线前的陈旧收口),守卫会误判激活 → 候报被抑制自愈
+  退出(方向 = 不误报,不吞真故障——守卫期本报警无判据能力,见武装块注);
+- 段状态:段首行在尾窗外的段缺段首,但段状态只按「见到过该段行/有无
+  match_final 收口行」累积,收口行必在段尾(局终才落),判定不受影响;
+- 体积窗清理(kernel/cw_state_journal.JOURNAL_MAX_BYTES)与轮转使文件变小
+  时,refresh 重建同样走尾读——读成本恒定。
 
 ## 检查项语义对照(旧→新,判据等价映射)
 
@@ -31,6 +43,9 @@ runs.jsonl 行——删除波 1(T-243)后 runs/decisions 两流写入端已从 s
 
 ## 历史版本
 
+- v3.1(2026-09-12,T-77):武装/重建尾窗回读替代整账读(账面体积有界化
+  = kernel 寿命策略体积窗;读成本恒定化 = 本版),语义申报见「为什么改造」。
+- v3(2026-09-11,T-257):尾读源切 journal。
 - v2(2026-08-26 效率修):增量尾随替代全量重读;单实例锁;日志信道自动
   探测。本版沿用其结构与锁/信道机制。
 - v1(2026-08-23):初版。
@@ -61,6 +76,11 @@ LIVE_JOURNAL = _DEFAULT_REP / 'state' / 'journal.jsonl'
 # fake_/sim_ 段与 harness 短 id 段一律不采信(隔离约定 =
 # sim/cw_delta_pool_gen.QUARANTINED_RUN_PREFIXES,这里按正选实现)。
 RUN_ID_RE = re.compile(os.environ.get('CW_RUNSGAP_RUN_RE', r'^run_\d{8}_\d{6}$'))
+# 武装/重建尾窗回读字节量(v3.1,T-77):替代 v3 整账读——现役账面 251.6MB
+# 实测整账读 ~2.9s 且随体积线性涨;尾读后武装成本恒定 ~O(TAIL_BYTES)。
+# 32MB 量级依据:覆盖「活跃段尾 + 收口行」与最近若干段;段首在窗外的段
+# 缺段首不影响判定(段状态按见行累积,收口行必在段尾),语义申报见文件头。
+TAIL_BYTES = int(os.environ.get('CW_RUNSGAP_TAIL_BYTES', str(32 * 1048576)))
 # 2026-08-26 信道自动探测:server 重启后日志落点漂移(.log/mcp_server.log 与
 # .debug/sr_od_mcp/main_server.log),取 mtime 最新;env CW_RUNSGAP_LOG 优先。
 _REPO = Path(r'D:\code\workspace\StarRailOneDragon')
@@ -130,8 +150,13 @@ def _smoke_guard() -> None:
 
 
 class JournalTail:
-    """journal 增量尾随(v2 JsonlTail 的 journal 段状态版):记 pos 只解析
-    新增字节;半行存内存下轮拼接;文件变小(轮换/清理)时全量重建。
+    """journal 增量尾随(v3.1 尾窗回读版):武装/重建只回读文件尾
+    TAIL_BYTES 并解析到尾;记 pos 只解析新增字节;半行存内存下轮拼接;
+    文件变小(轮转/清理)时重建同样走尾读——读成本恒定与账面体积无关。
+
+    尾读语义(vs 全账):尾窗外旧段不入状态 = baseline 排除集变小(无害);
+    守卫判据 mf_rows 降级为尾窗内计数(方向 = 守卫更保守,见文件头申报);
+    段首缺席不影响段状态累积(收口行必在段尾)。
 
     产出段状态(segs):run_id → {'mf': 段内已见 match_final 收口行}。
     只收实机形态段(RUN_ID_RE 过滤,sim/harness 段行不进状态)。
@@ -140,7 +165,7 @@ class JournalTail:
     def __init__(self, path: Path) -> None:
         self.path = path
         self.segs: dict[str, dict] = {}
-        self.mf_rows = 0   # 全账实机段 match_final 收口行总数(过渡守卫判据,见武装块注)
+        self.mf_rows = 0   # 尾窗内实机段 match_final 收口行计数(过渡守卫判据,v3.1 降级申报见文件头)
         self.pos = 0
         self._rem = ''
         self.full_scan()
@@ -152,8 +177,11 @@ class JournalTail:
         if not self.path.exists():
             self.pos = 0
             return
-        data = self.path.read_bytes()
-        self.pos = len(data)
+        size = self.path.stat().st_size
+        with self.path.open('rb') as fh:
+            fh.seek(max(0, size - TAIL_BYTES))
+            data = fh.read()
+        self.pos = size
         self._parse(data)
 
     def _parse(self, data: bytes) -> bool:
@@ -189,7 +217,7 @@ class JournalTail:
         except OSError:
             return False
         if size < self.pos:
-            print(f'[runsgap] {self.path.name} 变小(轮换/清理),全量重建', flush=True)
+            print(f'[runsgap] {self.path.name} 变小(轮换/清理),尾读重建', flush=True)
             self.full_scan()
             return False   # 重建的历史行不算新鲜(行 ts 是过去,非本批到达)
         if size == self.pos:
@@ -221,17 +249,19 @@ STALL_S = int(os.environ.get('CW_RUNSGAP_STALL', '300'))
 LOG_QUIET_S = float(os.environ.get('CW_RUNSGAP_LOG_AGE', '90'))
 
 jt = JournalTail(JOURNAL)
-baseline = jt.hanging_ids()   # 历史悬挂(如被 stop 截断的旧局)不报
+baseline = jt.hanging_ids()   # 历史悬挂(如被 stop 截断的旧局)不报;v3.1 起 = 尾窗内历史悬挂(语义等价申报见文件头)
 # 过渡守卫(T-257 落地审打回件;W3 批接线 match_final 在线收口写点,接线入库前
 # 生产局终了不产行——本报警判据「段无 match_final」在接线前对每局正常终了
-# 恒真,武装即每局必报)。守卫判据 = 全账实机段 match_final 行总数 jt.mf_rows:
+# 恒真,武装即每局必报)。守卫判据 = 实机段 match_final 收口行计数 jt.mf_rows
+# (v3.1 起 = 尾窗内计数,申报见文件头):
 # 为 0 = 写点在库产出能力从未被观测到,「段缺收口行」不可归因(未接线 vs
 # 写端异常分不开)→ 候报自愈退出;运行中账面出现首个 mf 行(= 接线落地且
 # 首局实跑收口)即解除,恢复正常报警。抑制窗口因此收敛于「接线 commit 前
 # 的实机窗」;W3 接线验收后守卫可删,删除前为无害保守。
 guard_quiet = jt.mf_rows == 0
-print(f'[runsgap] armed v3 @ {time.strftime("%H:%M:%S")} '
-      f'journal={JOURNAL} baseline 悬挂段={len(baseline)} '
+print(f'[runsgap] armed v3.1 @ {time.strftime("%H:%M:%S")} '
+      f'journal={JOURNAL} tail={TAIL_BYTES // 1048576}MB '
+      f'baseline 悬挂段={len(baseline)} '
       f'已收口段={sum(1 for s in jt.segs.values() if s["mf"])} '
       f'mf行={jt.mf_rows}'
       f'{" [守卫:写点未观测到产出,收口断流报警抑制中]" if guard_quiet else ""} '
