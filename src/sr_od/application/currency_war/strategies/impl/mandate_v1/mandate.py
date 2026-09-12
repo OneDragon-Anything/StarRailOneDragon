@@ -296,10 +296,26 @@ def fuel_sell_candidates(bench: list[BenchChar],
     义务买入腾位的转化类清算,非自旋;消费端命中时分键
     ``fuel_victim_protect_demoted`` 并卖出销账)。稳定排序:仅把被保件
     移尾,不改既有相对序——defer 空集时逐位等价旧序(零漂移)。
+
+    占位件恒拒(腾席资格物理门,T-18/旧账 T-294):备战槽非角色占位
+    物品(补给箱/星徽秘典/典籍书册等,``BenchChar.is_item_slot`` 识别
+    防线 = 部署装配点 assemble_bench_list 显式标记;知识锚 = board_
+    structure.md §备战栏「备战槽可被非角色物品占据」)恒不入候选——
+    游戏真值 = 占位件无卖出交互且无金币现值(实机采证 2026-09-12:
+    同参数拖拽出售,角色 9 连全卖、箱零效果;宝箱面 = 4 选 1 装备面板,
+    无金币现值、无出售项),任何星级不可变现。与部署侧 ``cw_deploy_
+    logic`` 'item_slot' 恒 held 同谓词同向(该面防误上,本面防误卖),
+    判读先于其余资格门。生产观察层 SIFT 不产占位件条目,sim 假环境经
+    观察面把占位件直喂 bench——本门 = 卖出发射前唯一资格防线;
+    ``getattr`` 缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
     """
     _deployed = list(getattr(state, 'deployed', None) or [])
     out = []
     for b in bench:
+        # 占位件恒拒(资格物理门,先于其余资格门短路):占席物品不可卖、
+        # 无金币现值,判据单一源 = 本函数 docstring「占位件恒拒」段。
+        if getattr(b, 'is_item_slot', False):
+            continue
         name = b.char_id or ''
         if name in exclude_names:
             continue
