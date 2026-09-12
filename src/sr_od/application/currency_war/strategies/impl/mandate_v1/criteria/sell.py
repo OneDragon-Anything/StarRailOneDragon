@@ -120,7 +120,10 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     ③ **槽位布尔门退役**:T_SEARCH_A 裸布尔检查退出本消费位(窗口数值
        链归 P57 裁决,与本重写分账)。
 
-    资格谓词不变(1★ ∧ 零重叠 ∧ 无后台效果,与 funding_support_sell 同一;
+    资格谓词不变(占位件物理门 ∧ 1★ ∧ 零重叠 ∧ 无后台效果,与
+    funding_support_sell 同一;占位件恒拒判据单一源 =
+    ``predicates.item_slot_unsellable`` 跨通道共享谓词,与 M4 燃料通道
+    同门——占席物品不可卖且无金币现值,空名 1★ 禁穿透资格循环;
     语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三通道
     统一,``state=None`` 按装配缺省保守端处置)。序:``prefer_names``
     (刚买件名集合,R2-N1 发射约束:首卖刚买件使连带卖出损失=0;帧投影
@@ -187,6 +190,11 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     _deployed = list(getattr(state, 'deployed', None) or [])
     qualified: list[BenchChar] = []
     for b in bench:
+        # 占位件物理门(先于其余资格门短路):占席物品不可卖、无金币
+        # 现值,判据单一源 = predicates.item_slot_unsellable(跨通道共享
+        # 谓词,与 M4 燃料/支付变现同门,禁内联复制)。
+        if predicates.item_slot_unsellable(b):
+            continue
         name = b.char_id or ''
         if b.star != 1:
             continue
@@ -241,10 +249,13 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     """「支付能力变现」子域(R13-5/R14-4:支付支撑通道,两臂同开)。
 
     触发 = 骨架义务动作金不足(gold < need_gold,硬约束①不满足侧的
-    筹资面);变现对象 = 凑息档序同资格(1★ ∧ 无后台效果 ∧ 零重叠,
-    语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三
-    通道统一;卖回量最小化 [11]);跨帧语义 = 变现金作用于下一备战期
-    义务动作(延迟=1 备战期间隔,进遥测 reason)。无对象 ⇒ 空。
+    筹资面);变现对象 = 凑息档序同资格(占位件物理门 ∧ 1★ ∧ 无后台
+    效果 ∧ 零重叠,占位件判据单一源 = ``predicates.item_slot_
+    unsellable`` 跨通道共享谓词,与 M4 燃料/凑息同门——空名 1★ 禁
+    穿透资格循环;语境经 ``predicates.bench_effect_context`` 共享装配
+    现读——症3 三通道统一;卖回量最小化 [11]);跨帧语义 = 变现金
+    作用于下一备战期义务动作(延迟=1 备战期间隔,进遥测 reason)。
+    无对象 ⇒ 空。
     ``exclude_names`` = 买面义务集成员禁入(P60,与凑息卖/M4 燃料同款)。
     ``defer_names``(T3 同轮保留;支付变现 = 转化类,**仅降序放行**,
     非绝对禁卖):集合内名字排候选末位——为骨架义务筹资的卖出优先级
@@ -275,6 +286,11 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     # T3 末位牺牲序:被保件稳定移尾(转化类放行,非禁卖)
     for b in sorted(bench, key=lambda x: ((x.char_id or '') in defer_names,
                                           x.star, x.slot)):
+        # 占位件物理门(先于其余资格门短路):占席物品不可卖、无金币
+        # 现值,判据单一源 = predicates.item_slot_unsellable(跨通道共享
+        # 谓词,与 M4 燃料/凑息同门,禁内联复制)。
+        if predicates.item_slot_unsellable(b):
+            continue
         name = b.char_id or ''
         if b.star != 1:
             continue

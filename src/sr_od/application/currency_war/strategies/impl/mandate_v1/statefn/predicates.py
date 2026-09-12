@@ -147,6 +147,30 @@ def zero_overlap(name: str, k: tuple[str, ...]) -> bool:
     return name not in k
 
 
+def item_slot_unsellable(unit: BenchChar) -> bool:
+    """占位件物理门(腾席卖出资格跨通道共享谓词;三通道资格循环首门)。
+
+    真值 = ``BenchChar.is_item_slot``(部署装配点 assemble_bench_list
+    显式标记,operations/cw_op/cw_op_deploy):备战槽非角色占席物品
+    (补给箱/星徽秘典/典籍书册等)无卖出交互且无金币现值——实机采证:
+    同参数拖拽出售,角色 9 连全卖、箱零效果;宝箱面 = 4 选 1 装备面板,
+    无金币现值、无出售项。任何星级不可变现 ⇒ 恒不入腾席卖出资格集。
+    知识锚 = docs/game/currency_war/research/board_structure.md §备战栏
+    「备战槽可被非角色物品占据」。
+
+    消费位 = ``mandate.fuel_sell_candidates``(M4 燃料)/ ``criteria/sell.
+    sell_for_interest``(凑息)/ ``criteria/sell.funding_support_sell``
+    (支付变现)三通道资格循环首门,判读先于其余资格门;生产观察层
+    SIFT 不产占位件条目,sim 假环境经观察面直喂 bench——本门 = 各卖出
+    通道发射前唯一的占位件资格防线。新卖出通道必须经本谓词,禁第三处
+    ``is_item_slot`` 内联读复制(静态锁 = sr-od-test
+    test_cw_sell_item_slot_predicate.py)。与部署侧 ``cw_deploy_logic``
+    'item_slot' 恒 held 同谓词同向(该面防误上,本面防误卖)。
+    ``getattr`` 缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
+    """
+    return getattr(unit, 'is_item_slot', False)
+
+
 def arm0_need(deployed: list[BenchChar], bench: list[BenchChar],
               k_members: tuple[str, ...]) -> int:
     """arm0 v2 上阵人数需求 = 期望态现量,零派生规则(14号稿 §4.2 A4:

@@ -307,8 +307,10 @@ def fuel_sell_candidates(bench: list[BenchChar],
     无金币现值、无出售项),任何星级不可变现。与部署侧 ``cw_deploy_
     logic`` 'item_slot' 恒 held 同谓词同向(该面防误上,本面防误卖),
     判读先于其余资格门。生产观察层 SIFT 不产占位件条目,sim 假环境经
-    观察面把占位件直喂 bench——本门 = 卖出发射前唯一资格防线;
-    ``getattr`` 缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
+    观察面把占位件直喂 bench——本门 = 卖出发射前唯一资格防线;判据
+    单一源已上收为跨通道共享谓词 ``predicates.item_slot_unsellable``
+    (凑息/支付变现通道同门消费,禁第三处内联复制),``getattr``
+    缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
 
     空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
     板空帧腾席卖出腿同弱劣拒帧 → 本函数返空,消费位走各自既有「无
@@ -322,8 +324,9 @@ def fuel_sell_candidates(bench: list[BenchChar],
     out = []
     for b in bench:
         # 占位件恒拒(资格物理门,先于其余资格门短路):占席物品不可卖、
-        # 无金币现值,判据单一源 = 本函数 docstring「占位件恒拒」段。
-        if getattr(b, 'is_item_slot', False):
+        # 无金币现值,判据单一源 = predicates.item_slot_unsellable
+        #(跨通道共享谓词;语义出处 = 本函数 docstring「占位件恒拒」段)。
+        if predicates.item_slot_unsellable(b):
             continue
         name = b.char_id or ''
         if name in exclude_names:
