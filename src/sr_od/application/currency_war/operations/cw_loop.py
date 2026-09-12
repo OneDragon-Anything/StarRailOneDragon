@@ -1704,8 +1704,9 @@ class CwLoop(SrOperation):
                 frame_tag='overlay_supply', wait=2)
 
         # 0f. 节点武装箱弹窗(「武装突入」类节点,2026-08-15 M19 首见停机建档)→
-        #     CwScreenArmoryBox(点开箱 → 四选一 → 选卡点卡 → 验关;与备战补给箱
-        #     同下游不同入口,选卡公用执行器 _pick_box_card(决策单一源=策略 decide_box_card))。
+        #     CwScreenArmoryBox(道具获得说明弹窗,点 × 关闭;M20 实锤改关闭模型,
+        #     弹窗内箱图标是展示图不可点)。四选一选卡职责在备战箱槽链
+        #     (_pick_box_card,决策单一源=策略 decide_box_card),本 op 只关弹窗。
         if self.round_by_find_area(screen, '货币战争-武装箱弹窗', '标识-简易武装箱', crop_first=False).is_success:
             self._snap('armory_box')
             return self._dispatch_screen_op(

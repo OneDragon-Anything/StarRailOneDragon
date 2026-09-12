@@ -20,7 +20,6 @@ slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1
 """
 from __future__ import annotations
 
-import contextlib
 import time
 from dataclasses import dataclass, field
 from typing import ClassVar
@@ -1002,14 +1001,21 @@ class PrepActionExecutor:
             '等待归 _OVERLAY_ANIM_WAIT_S 固定等待,判效交下一帧观察)')
 
     def _open_box(self, action: OpenBox) -> tuple[str, bool]:
-        """开箱:点箱槽「开启」→ 固定动画等待 → 同动作选卡闭环。
+        """开箱:找箱槽 → 点「开启」→ 固定动画等待(纯机械执行,ADR-0601)。
 
-        A3 拆除(用户裁定 2026-09-10):「轮询验 overlay 弹出」判效半删除,
-        改 DD-011 固定等待(等待归产生动画的操作);弹窗就位与否交下一帧
-        观察。同动作选卡闭环保留(第二次复跑诊断,21:06 链:OpenBox 与
-        选卡跨帧分离时,简易武装箱对话框在下一决策帧前已离场 → 选卡臂
-        永远够不着)——选卡子步的入口检查 = 选卡点击的前置读(需 overlay
-        在场才有卡名可读,机械目标获取面),子步未发出时不补登记期望态。
+        选卡动作不在本执行链(ADR-0601:动作 op 机械执行,决策归决策面;
+        原内联选卡 = 「决策与点卡同执行链闭环」违例,随动作 op 规范判读
+        拆除):点完开启本动作即结束——武装箱选择 overlay 在场由观察侧
+        每步现读(``PrepObservation.box_overlay_open``),策略器 prep 实体
+        面臂(mandate_v1 entry「箱对话框在场 ⇒ PickBoxCard」,臂序先于
+        boxes 重开臂)在下一决策帧提选卡动作,经 ``_dispatch_direct`` →
+        :meth:`_pick_box_card` 执行(选卡打分单一源 = 策略
+        ``decide_box_card``;与 ``_open_tome``「选卡交决策面」同构)。
+        历史注记:同动作内联选卡(commit 698631b19)的动机 = 当时跨帧
+        闭环链(观察臂)未接住 overlay;承接面失真要治在观察/建档面,
+        不在执行链内联第二决策点。
+        A3 拆除:「轮询验 overlay 弹出」判效半删除,改 DD-011 固定等待
+        (等待归产生动画的操作);弹窗就位与否交下一帧观察。
         """
         screen = self._op.screenshot()
         boxes = read_supply_boxes(self._ctx, screen)
@@ -1027,26 +1033,8 @@ class PrepActionExecutor:
         self._ctx.controller.click(open_point)
         # DD-011 固定动画等待(原轮询判效半拆除,A3;值取原轮询上界)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
-        # 同动作选卡闭环(第二次复跑诊断,21:06 链;子步点击事实门控
-        # 期望态补登记,非成败回执)。
-        _pick_clicked, _pick_msg = self._pick_box_card(PickBoxCard())
-        if not _pick_clicked:
-            log.warning(f'[cw][box] 开箱槽{slot} 选卡子步未发出:{_pick_msg}')
-            return (f'开箱槽{slot} 已点,选卡未发出({_pick_msg};'
-                    f'交下一帧观察)'), True
-        # 逻辑效果补推进(两态制 ADR-0651):合并路径直调 _pick_box_card
-        # 绕过 execute() 的统一推进入口(外层只推 OpenBox = 零状态变更)→
-        # 对内层 PickBoxCard 补推进一次(last_owned_equips 本体 +1),
-        # detail 复用可解析形态「选卡 <名>」;推进失败不阻塞。
-        with contextlib.suppress(Exception):
-            from sr_od.application.currency_war.kernel.cw_exec_state import (
-                apply_op_effect,
-            )
-            _sess = getattr(self._ctx.cw_match, 'session', None)
-            if _sess is not None:
-                apply_op_effect(_sess, PickBoxCard(), detail=_pick_msg,
-                                produced_by=type(self).__name__)
-        return f'开箱槽{slot}+选卡', True
+        log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(选卡交决策面 PickBoxCard 臂)')
+        return f'开箱槽{slot}', True
 
     def _open_tome(self, action: OpenTome) -> tuple[str, bool]:
         """开秘密典籍:点槽两次(选中→开启)→ 固定动画等待。

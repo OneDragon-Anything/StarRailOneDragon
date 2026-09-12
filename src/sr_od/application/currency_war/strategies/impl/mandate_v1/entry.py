@@ -458,9 +458,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
 
     # ① prep 实体面
     if getattr(obs, 'box_overlay_open', False):
-        # 武装箱选择对话框在场(OpenBox 已开箱)⇒ 补选卡动作闭环。第十八局
-        # 停场修复(g_20260905_175220 备战 2-2):此前 OpenBox→弹窗后决策
-        # 面无臂消费 box_overlay_open,OpenBox 重开空转 15 分钟(执行器
+        # 武装箱选择对话框在场 ⇒ 选卡动作闭环(本臂 = 选卡决策唯一发射点:
+        # OpenBox 动作纯机械执行不内联选卡,ADR-0601)。第十八局停场修复
+        # (g_20260905_175220 备战 2-2):此前 OpenBox→弹窗后决策面无臂
+        # 消费 box_overlay_open,OpenBox 重开空转 15 分钟(执行器
         # _pick_box_card/期望态投影/适配器注册均早在库,独缺发射位)。
         return [Emitted(PickBoxCard(), True, 'prep_box_pick')]
     if obs.boxes:
