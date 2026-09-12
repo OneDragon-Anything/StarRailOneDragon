@@ -41,9 +41,9 @@ SEVERITY_L2_RECORD: str = 'L2_record'
 DEFECT_KIND_BACK_LAYOUT_DIVERGENCE: str = 'back_layout_divergence'
 #: 布局未知态(公式/CV 双弃权,读写分级+冻结止损事件面)。
 DEFECT_KIND_BACK_LAYOUT_UNKNOWN: str = 'back_layout_unknown'
-#: 掉血报警 node_type 空值回落(flow 结算策略半 drain,ADR-0583;supply 失活治本批:
-#: 空 node_type 轮按位面节点台账查同轮类型,查不到=照旧空串+本分键)。
-DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK: str = 'blood_alarm_node_type_fallback'
+# DEFECT_KIND_BLOOD_ALARM_NODE_FALLBACK(掉血报警 node_type 空值回落分键)
+# 已随 T-64 退役批删除——唯一消费方 flow 结算策略半 drain 退役,
+# 04_survival_budget §7 #8,ADR-0638。
 
 # ===== 钩子槽(注入式; None=缺省关) =====
 

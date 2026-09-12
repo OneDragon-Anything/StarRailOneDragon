@@ -1999,18 +1999,11 @@ def fill_boss_by_position(seq: list[str | None]) -> list[str | None]:
     return out
 
 
-# ===== 布局/报警的策略侧支撑(15 号稿批 C 落地审修订)=====
-# 两个入口供 strategies 面消费(strategies 合法桶 = data/kernel/app,
-# 不得直依 obs):①布局未知态计数复位的槽式转发(obs 侧在 resolve 时
-# 注册真实现);②台账 token → 生产词汇表(BloodAlarmTracker 掉血窗
-# 判读用;与 obs._NODE_TYPE_KEYWORDS 方向不同表:那边 OCR 源词→token,
-# 本表 token→生产词,单一源=本表)。
-
-NODE_TOKEN_TO_WORD: dict[str, str] = {
-    'battle': '普通战斗', 'encounter': '遭遇', 'boss': 'boss',
-    'elite': '精英', 'supply': '补给', 'reward': '奖励',
-    'megastar': '巨星', 'invest': '投资',
-}
+# ===== 布局未知态的策略侧支撑(15 号稿批 C 落地审修订)=====
+# 布局未知态计数复位的槽式转发供 strategies 面消费(strategies 合法桶 =
+# data/kernel/app,不得直依 obs:obs 侧在 resolve 时注册真实现)。
+# (原②半段「台账 token → 生产词汇表」NODE_TOKEN_TO_WORD 已随 T-64 退役批
+# 删除——唯一消费方掉血三臂喂入链退役,04_survival_budget §7 #8,ADR-0638。)
 
 _layout_unknown_reset: Callable[[], None] | None = None
 

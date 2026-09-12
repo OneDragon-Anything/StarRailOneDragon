@@ -213,12 +213,12 @@ class StrategySession:
     # none = 投影/循环续段/pick 未持新观察(不触发刷新)。
     prep_frame_class: str = 'none'
     shop_frame_class: str = 'none'
-    # 结算策略半待加工槽(ADR-0583 §2.5:旧 on_round_end 拆两半)。观察层在
-    # 结算点(cw_screen_battle_wait 结算回路)追加 ``RoundOutcome``;策略器在
-    # 下一次决策入口惰性 drain(flow 层 _drain_pending_round_outcomes),
-    # 处理即清槽(每行只加工一次)。写者 = 观察层(单一写端);清者 = 策略器。
-    # 生命周期 = 槽内行存活到下一决策入口(死亡局无后续入口则不加工——
-    # 该四字段族零行为读端,零行为差申报见 ADR-0583 §2.5)。
+    # 结算观察累积槽(ADR-0583 §2.5:旧 on_round_end 拆两半的存活半)。观察层在
+    # 结算点(cw_screen_battle_wait 结算回路)追加 ``RoundOutcome`` 留档;
+    # 消费侧策略半惰性 drain 已随 T-64 退役批删除(04_survival_budget
+    # §7 #7/#8:掉血三臂/谷底回滚均零行为死链,ADR-0638)——本槽现为
+    # 只写不读的结算观察累积面,若后续无消费方,候遥测面清理批再评估。
+    # 写者 = 观察层(单一写端)。
     pending_round_outcomes: list[RoundOutcome] = field(default_factory=list)
     # —— 策略器状态黑盒引用(session.md §3.1 裁决 1)——
     # 类型由实现包自定义(mandate_v1 = StrategyState,§8.6-6 改名归位);

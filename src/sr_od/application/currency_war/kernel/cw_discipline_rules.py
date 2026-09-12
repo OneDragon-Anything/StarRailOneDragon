@@ -13,8 +13,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from dataclasses import dataclass, field  # noqa: E402
-
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
@@ -402,75 +400,7 @@ def p2_crisis_band(bs, session, registry: DecisionV2Registry) -> bool:
             and hp <= p2_crisis_stop_hp(registry))
 
 
-@dataclass
-class BloodAlarmTracker:
-    """掉血三臂判据的跨步记忆(挂 strategy_state_of(session).v3_alarm;重启丢 session 保守重置)。
-
-    - ``recent_losses``:(全局节点号, 战斗净掉血)滚动窗——窗口单位=
-      **连续战斗节点**(W51 语义修复:战斗节点计数器,非日历轮;点4
-      「3 轮内」按战斗语义读作「最近 3 个战斗节点」);②最近 3 个
-      战斗节点累计 ≥20(急性)/③最近 5 个战斗节点累计 ≥30(慢性漂移);
-      **跨位面重置**(慢性臂横跨整个位面的按轮漂移根修);
-    - ``consec_battle_fails``:①连续 2 场战斗失败;
-    - ``alarm_battles``:处置梯度计时——报警激活期间累计喂入的战斗
-      节点数(=1 → ①自然补强窗内;>1 → 窗耗尽未达标;报警解除清零);
-    - 非战斗节点:不入窗、不清臂(点4 冻结语义)。
-
-    写者 = flow 结算策略半惰性 drain(ADR-0583:原 on_round_end 拆两半后,
-    battle_wait 观察半入 pending 槽、决策入口 drain 喂入;结算真值;两栈共享)。
-    """
-
-    recent_losses: deque = field(default_factory=lambda: deque(maxlen=5))
-    consec_battle_fails: int = 0
-    alarm_battles: int = 0
-    plane: int | None = None
-
-    _BATTLE_NODES: frozenset[str] = frozenset(
-        {'battle', '普通战斗', 'boss', '精英', '遭遇'})
-
-    def record(self, node_type: str, hp_before: int, hp_after: int,
-               t: int, plane: int | None = None) -> None:
-        """结算策略半喂入(结算真值;hp_after 为空帧跳过)。
-
-        ``plane`` 传入时做跨位面重置判定(位面变更 → 三臂全清,
-        不带旧位面的掉血趋势进新位面)。
-        """
-        if plane is not None and plane != self.plane:
-            self.plane = plane
-            self.recent_losses.clear()
-            self.consec_battle_fails = 0
-            self.alarm_battles = 0
-        if node_type not in self._BATTLE_NODES:
-            return   # 非战斗节点不计入也不重置任何一臂
-        loss = max(0, hp_before - hp_after)
-        self.recent_losses.append((t, loss))
-        # ①连续失败代理:单场净掉血 ≥10 = 该场伤害达到条件败局期望量级,
-        # 记为结构性打输。阈值依据=math_proofs P15 条件败局伤害
-        # L_c(rung)=11.32−0.37·rung(registry.vd_p1_loss_* 单一源):
-        # rung 全域 0-8 的代表值——中点 rung4=9.84、代表帧 rung2=10.58,
-        # 取整 10。胜利恒 +2(口述 [27],user_playstyle.md)永不入档;
-        # 敌血近清空的小伤害败局(P 项小,同 [27])视为波动不计数。
-        if loss >= 10:
-            self.consec_battle_fails += 1
-        else:
-            self.consec_battle_fails = 0
-        # 处置梯度①计时(S4 上界 1 轮):报警激活期间累计的战斗节点数
-        if self.alarm_active():
-            self.alarm_battles += 1
-        else:
-            self.alarm_battles = 0
-
-    def alarm_active(self) -> bool:
-        """三臂并集:①连续 2 场战斗失败;②最近 3 个战斗节点累计 ≥20;
-        ③最近 5 个战斗节点累计 ≥30。累计阈值的持久依据=条件败局伤害
-        期望的整数倍(math_proofs P15:L_c(rung)=11.32−0.37·rung,
-        registry.vd_p1_loss_*;代表帧 rung2 → L_c≈10.6):
-        ②20≈2×L_c(21.2)=3 节点窗吞两次满额败局(容 1 个良性节点,
-        急性);③30≈3×L_c(31.7)=5 节点窗三次满额败局(慢性多数败
-        漂移);①连续 2 败与②同账——2×L_c 分摊到相邻两场。"""
-        if self.consec_battle_fails >= 2:
-            return True
-        losses = [loss for _t, loss in self.recent_losses]
-        if len(losses) >= 3 and sum(losses[-3:]) >= 20:
-            return True
-        return len(losses) >= 5 and sum(losses) >= 30
+# BloodAlarmTracker(掉血三臂跨步记忆)已随 T-64 退役批删除(2026-09-04
+# 用户裁定退役,04_survival_budget §7 #8:三臂零决策消费端 = write-only
+# 死链;ADR-0638)。若未来需要掉血趋势信号,按 #8 裁决走 λ_death 概率侧
+# 新立项,禁原地复活本类。

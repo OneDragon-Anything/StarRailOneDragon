@@ -115,14 +115,12 @@ class StrategyState:
     locked_line: str | None = None                     # 锁定线 id(None=未锁)
     bridge_id: str | None = None                       # 当前桥线 id(None=无)
 
-    # ===== 意向/演进/纪律(v3 决策框架载体;局/轮)=====
+    # ===== 意向(v3 决策框架载体;局/轮;原演进/纪律字段族已随 T-64 退役批
+    # 删除——v3_evolution/v3_alarm/v3_pending_rollback/v3_prev_hp 均零行为
+    # 死链,04_survival_budget §7 #7/#8,ADR-0638)=====
     v3_intention: object = None      # cw_intention.IntentionState(锁线/撤销状态机)
-    v3_evolution: object = None      # cw_evolution.EvolutionState(中断恢复/谷底回滚)
     v3_core_names: set = field(default_factory=set)   # 意向核心名集
     v3_mode: str = 'economy'         # 本轮模式('economy'|'war';纪律族每轮写)
-    v3_alarm: object = None          # discipline.BloodAlarmTracker(掉血三臂)
-    v3_pending_rollback: object = None   # 谷底回滚待发动作
-    v3_prev_hp: int | None = None        # 掉血三臂的上一节点 HP(结算真值链)
     v3_last_intention_event: str = ''    # 意向事件去重(判读日志锚)
     v3_intention_key: tuple | None = None   # 意向状态机驱动轮键(段级重入守卫)
 
