@@ -60,6 +60,7 @@ class InvestmentEnv:
     faction: str = ""   # 对应阵营(概念股/邀请 boosts 的羁绊;ENV_FACTION_MAP 派生用;无则 "")
     source: str = ""    # 溯源(plaza:<id> 或 content_id)
     pick_value: int = 0  # 选卡价值基准分 0-100(ADR-0144;0=未评估)
+    economy: EnvEconomyEffect | None = None  # 整局经济通道(白名单制;ENV_ECONOMY 构建期 replace 挂载,表外恒 None)
 
 
 @dataclass(frozen=True)
@@ -164,6 +165,42 @@ def is_blood_economy(eff: EconomyEffect | None) -> bool:
     if eff is None:
         return False
     return eff.xp_buy_hp_cost > 0 or eff.hp_gold_swap
+
+
+@dataclass(frozen=True)
+class EnvEconomyEffect:
+    """投资环境的**整局经济通道**结构(2026-09-12 invest-env 迭代,design.md §2.2.2)。
+
+    区别于 EconomyEffect 的 per-node/一次性形态:环境效果是整局规则改写
+    (位面开局分期/条件触发/费率覆写),字段按通道语义设计,全部带缺省值
+    (无通道 = 全缺省)。估值单一入口 = ``cw_env_economy.env_economy_value``
+    (A 类精确 + 估算参数 fail-closed;B/C 通道估值公式与参数归数据批)。
+    **白名单制**:只收 ENV_ECONOMY 显式登记条目,禁从效果原文自动猜装
+    (防错装对账 = _validate_env_economy,ADR-0144 决策 3 六条点名)。
+    字段语义(值全部 = cw_invest_data 效果原文直读):
+    - gold_per_plane_start: 每位面开局金,元组下标 = 位面−1(增发货币 (6,8,12);
+      晶矿→金兑现按自动开启建模——晶矿开启是玩家动作面,自动与否未实采
+      (战技点契约「打开20个晶矿后」为存在玩家动作的佐证),design.md §2.2.1
+      假设登记;证非自动则 bot 具备开矿动作前该通道 fail-closed)
+    - gold_instant: 获得时一次性金(蓝海 6;随机环境期望不计——选卡时未知
+      且分布含未入模者,design §2.6 取舍)
+    - xp_after_level: (等级, 节点数, 每节点XP)(成功经验 (8,3,12);「升 8
+      必然发生」假设显式登记(design §2.2.1,发展优先战略下 lv8 标配),
+      证伪改条件概率)
+    - gold_per_strategy_coef: 每取一张策略 +coef×取卡前已持有数(策略大师 2;
+      3-5 节点额外策略不计——策略域价值非经济通道,design §2.2.1)
+    - gold_after_refreshes: (刷新阈值, 返金)(长线利好 (30,20)/二手市场 (20,30);
+      B 类,估值公式与参数归数据批)
+    - refresh_cost_after: (刷新阈值, 新成本)(长线利好 (30,1);基价 2 为游戏定义)
+    - reward_node_bonus: 每奖励节点期望增益(仅 C 类估算条目;值+CI 在估算注册表)
+    """
+    gold_per_plane_start: tuple[int, ...] = ()
+    gold_instant: int = 0
+    xp_after_level: tuple[int, int, int] | None = None
+    gold_per_strategy_coef: int = 0
+    gold_after_refreshes: tuple[int, int] | None = None
+    refresh_cost_after: tuple[int, int] | None = None
+    reward_node_bonus: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -900,6 +937,10 @@ def blood_xp_mode(session) -> tuple[str, int] | None:
 # (ADR-0143 评估口径),非数学判据——形态 = 定序分:仅在本表(335 条策略)内选项间
 # 排大小有效;禁作为基数与其它分值族(comp-hit/augment/planner 等)做加减语义扩展。
 # 跨族交互仅保留 decide_event 的 max() 覆盖结构,禁新增「叠加进其它面判据」的消费点。
+# **层级归属声明(用户裁定:保留 kernel)**:本表与下文 ENV_PICK_VALUE/ENV_FACTION_MATCH_FLOOR
+# 及其消费核 decide_event,承载的是**内置默认策略器(mandate_v1 → CwFlowStrategy.decide_invest
+# 委托)的评估观点**,不是框架中立事实;第三方策略插件自带 decide_invest 实现时不消费本表。
+# 保留在 kernel = 延续判据单源现状(sim/回放经 strat.decide_invest 同链消费),语义以本声明为准。
 # 立项挂账:升级为台账价值判据(ΔP̂ 完成概率增量参数化)归事件面命题批(08 E1/E2)。
 PICK_VALUE: dict[str, int] = {
     "鲜血阶梯": 75,
@@ -1368,3 +1409,54 @@ for _n, _v in ENV_PICK_VALUE.items():
 ENV_FACTION_MATCH_FLOOR: dict[str, float] = {'概念股': 78.0, '邀请': 70.0, '契约': 72.0}
 # (旧 ENV_SURVIVAL_BONUS = {白银时代 15, 敌后破坏 15, 人身意外险 10} 已退役
 # 2026-09-04,「未证即退役」裁定:低血环境钩子保守缺省 0,消费分支同批删除。)
+
+
+# ===== 环境经济通道注册表(2026-09-12 invest-env 迭代,design.md §2.2.2;白名单制)=====
+# A 类精确四条先行(design §2.2.1 通道分类);B 类两条(长线利好/二手市场)与
+# C 类两条(经济过热/经济严重过热)随数据批补表。表外环境 economy 恒 None,
+# 禁从效果原文自动猜装(ADR-0144 决策 3 六条防错装对账 = _validate_env_economy)。
+ENV_ECONOMY: dict[str, EnvEconomyEffect] = {
+    # 每位面开局 (6,8,12) 金晶矿(id 103 原文直读;晶矿自动开启假设见 schema 注)
+    '增发货币': EnvEconomyEffect(gold_per_plane_start=(6, 8, 12)),
+    # 开局额外 +6 金(id 113;随机环境期望不计,design §2.6 取舍)
+    '蓝海': EnvEconomyEffect(gold_instant=6),
+    # 升 8 级后 3 节点各 +12XP(id 138)= 36XP;×1:1 折金等价
+    # (cw_env_economy.XP_GOLD_RATE 用户裁定暂定;「升 8 必然发生」假设在册)
+    '成功经验': EnvEconomyEffect(xp_after_level=(8, 3, 12)),
+    # 每取一张策略 +2×已持有数(id 147);3-5 节点额外策略不计(策略域价值)
+    '策略大师': EnvEconomyEffect(gold_per_strategy_coef=2),
+}
+
+
+def _validate_env_economy() -> None:
+    """ENV_ECONOMY 构建校验(import 即炸):
+
+    ① 孤儿键:键必须在 INVESTMENT_ENVS(沿 ENV_PICK_VALUE 先例,防版本更新
+    改名/移除后静默失联);② **ADR-0144 决策 3 六条防一次性错装逐条对账**——
+    点名六条(增发货币/成功经验/二手市场/长线利好/策略大师/劳务派遣合同)的
+    效果全是分期/条件/触发形态,禁装成 gold_instant 单通道(一次性错装);
+    劳务派遣合同(出售/合成触发金)现版本无对应通道字段,登记即错装 → 直接
+    拒绝(专属字段建模后再收此闸);③ 挂载一致性:replace 后
+    INVESTMENT_ENVS[name].economy 与表内实例同一对象(防后续构建段重挂漂移)。
+    """
+    orphans = [n for n in ENV_ECONOMY if n not in INVESTMENT_ENVS]
+    if orphans:
+        raise ValueError(f"ENV_ECONOMY 孤儿键(base 无此环境?):{sorted(orphans)}")
+    _anti_instant = ('增发货币', '成功经验', '二手市场', '长线利好', '策略大师')
+    for _n, _eff in ENV_ECONOMY.items():
+        if _n in _anti_instant and _eff.gold_instant != 0:
+            raise ValueError(
+                f"ENV_ECONOMY 防错装(ADR-0144 决策 3):{_n!r} 效果为分期/条件形态,"
+                f"禁装 gold_instant={_eff.gold_instant}(一次性错装)")
+    if '劳务派遣合同' in ENV_ECONOMY:
+        raise ValueError(
+            "ENV_ECONOMY 防错装(ADR-0144 决策 3):劳务派遣合同(出售/合成触发金)"
+            "无对应通道字段,禁以现有字段近似装表(专属字段建模后再收)")
+    for _n, _eff in ENV_ECONOMY.items():
+        if INVESTMENT_ENVS[_n].economy is not _eff:
+            raise ValueError(f"ENV_ECONOMY 挂载不一致:{_n!r} economy 未挂载或实例漂移")
+
+
+for _n, _eff in ENV_ECONOMY.items():
+    INVESTMENT_ENVS[_n] = replace(INVESTMENT_ENVS[_n], economy=_eff)
+_validate_env_economy()
