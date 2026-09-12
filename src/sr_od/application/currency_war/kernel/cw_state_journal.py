@@ -42,6 +42,7 @@ import json
 import os
 import re
 import tempfile
+import time
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -296,6 +297,7 @@ def enforce_journal_retention(journal_path: Path | str, *,
     keep = [row for i, row in enumerate(rows) if i not in retired_idx]
     summary['retired'] = retired_ids
     summary['rows_dropped'] = len(retired_idx)
+    tmp_name: str | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp_name = tempfile.mkstemp(dir=str(path.parent),
@@ -306,11 +308,29 @@ def enforce_journal_retention(journal_path: Path | str, *,
                     f.write(row + '\n')
                 else:
                     f.write(json.dumps(row, ensure_ascii=False) + '\n')
-        os.replace(tmp_name, path)
+        # 原子改名带退避重试:Windows 上读端(哨兵尾读/判读 CLI)以共享读
+        # 短持句柄打开目标时 MoveFileEx 报 WinError 5(共享冲突)——读端
+        # 读完即关,0.5s 退避重试即可过;耗尽则顺延下一轮装配。实测
+        # (T-77):常驻哨兵在岗时单次 replace 可连败,manifest 逐轮重复
+        # 记账(判别面语义一致但清理永不落地)——重试是共享冲突的治本面。
+        last_err: Exception | None = None
+        for _ in range(3):
+            try:
+                os.replace(tmp_name, path)
+                last_err = None
+                break
+            except OSError as e:
+                last_err = e
+                time.sleep(0.5)
+        if last_err is not None:
+            raise last_err
     except Exception as e:  # noqa: BLE001  重写失败不阻塞装配(原文件未损,
         # 下一轮装配重试;manifest 已记账 → 判别面仍一致:记录了的段可能
-        # 尚在,消费方以文件实况为准,manifest 只增不改)
+        # 尚在,消费方以文件实况为准,manifest 只增不改);失败 tmp 清除
+        # (实测残留 ~217MB/个,泄漏即占盘)。
         log.warning('[cw!][state-journal] journal 重写失败(段清理顺延): %s', e)
+        if tmp_name is not None:
+            Path(tmp_name).unlink(missing_ok=True)   # 失败 tmp 残留即占盘
         summary['retired'] = []
         summary['rows_dropped'] = 0
         return summary
