@@ -267,7 +267,7 @@ def reseed_bench_if_layout_stale(state: GameState, session,
     检差:exec_state 布局代次 vs 播种期快照——命中 = visit 内布局已重排
     (reconcile 纠漂递增,唯一写点 kernel/cw_reconcile),已发射动作的
     bench_idx 代际失效,不可只换 state.bench。三步语义:
-    ①截断在飞计划(dd-020 截断语义,plan_truncated 记账由调用方承担——
+    ①截断在飞计划(序列决策契约截断语义,plan_truncated 记账由调用方承担——
       本函数零 ledger 依赖,保持纯投影面可单测);
     ②按 tracked 重播种(下标直拷 pad 后经 ``_reseed_bench_layout``,
       含槽号健康门——脏槽号拒绝重播种维持旧布局);

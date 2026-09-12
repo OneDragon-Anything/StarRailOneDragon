@@ -2301,7 +2301,7 @@ class CwScreenPrep(CwScreenOpBase):
         if rc is not None:
             rc.stop_running(reason='hook:exec_fail_mismatch')
 
-    # ===== W970 批 C:流程层商店编排(RunBuyPhase 解体的承接,§4.3.2/§4.3.6,dd-017)=====
+    # ===== W970 批 C:流程层商店编排(RunBuyPhase 解体的承接,§4.3.2/§4.3.6)=====
 
     def _open_shop_phase(self, action: PrepAction,
                          obs: PrepObservation) -> tuple[bool, str]:

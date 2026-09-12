@@ -84,7 +84,7 @@
 | 字段 | 产生者 | 消费者 | 生命周期 | 迁出落点(目标态归属) |
 |---|---|---|---|---|
 | `deploy_fail_counts` | 部署拖拽执行失败 | DeployMove 跳过重试 | 局 | 执行侧(CwOpDeploy/PrepActionExecutor 载体) |
-| `equip_drag_fail_counts` | 装备拖拽执行失败(dd-015) | CwOpEquipAll 拉黑 | 局 | 同上 |
+| `equip_drag_fail_counts` | 装备拖拽执行失败 | CwOpEquipAll 拉黑 | 局 | 同上 |
 | `launch_dead_streak` | 出战发射连败 | 停机钩子 cw_launch_dead | 跨环 | 执行侧发射器载体 |
 | `megastar_candidate_clicked` | 巨星 handler 点击执行 | handler 防重入 | handler 访问内 | **`ctx.cw_match` 级局容器(定案,不留实施批裁量)**——字段定义理由(session 文件:123-124)恰是「防 new CwScreenMegastar instance 重置 instance flag → 重选卡死」,落 op 实例 = 每次新建实例清零 = 原始事故按定义复发(对抗审查 B1 改判;初版落点作废) |
 | `_supply_refresh_used` / `_encounter_refresh_used` | 补给/遭遇刷新点击执行 | handler 防重入(screen_op.md §8.4 裁 carried/执行侧) | 节点 | 画面 op 实例/节点级执行载体 |

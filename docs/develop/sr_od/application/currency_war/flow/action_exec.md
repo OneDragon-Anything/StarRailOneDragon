@@ -4,7 +4,7 @@
 
 ## 1. 动作词表（`kernel/cw_prep_actions.py`）
 
-> **契约正本落档申报（ADR-0585 §5，批 4）**：本节即序列决策契约（dd-020）备战线域词表 as-built 正本的**首次文档落档**——原正文权威 `CONTRACT_SERIES_DECISION.md`（`.debug` 工作副本）已灭失（全仓零命中，`.debug/` 不入 git），承接目标 `strategy/07_plugin.md` 从未创建；dd-020 权威链已重锚指向本节。判型机器可读形式 = `entry.py` 帧稳定截断分类区（`_TRUNCATION_POINTS/_TERMINAL/_CONTINUE/_CONDITIONAL` + `classify_frame_stability`）。
+> **契约正本落档申报（ADR-0585 §5，批 4）**：本节即**序列决策契约**备战线域词表 as-built 正本的**首次文档落档**——原正文权威 `CONTRACT_SERIES_DECISION.md`（`.debug` 工作副本）已灭失（全仓零命中，`.debug/` 不入 git），承接目标 `strategy/07_plugin.md` 从未创建；引用序列决策契约处一律以本节为权威正本。判型机器可读形式 = `entry.py` 帧稳定截断分类区（`_TRUNCATION_POINTS/_TERMINAL/_CONTINUE/_CONDITIONAL` + `classify_frame_stability`）。
 
 备战线 PrepAction 全集（18 类，`PREP_ACTION_TYPES` 白名单 `cw_prep_actions.py:178-184`；**新增动作必须同步登记白名单**——漏登记时 validate 拒"未知动作类型"，动作从未真正执行）：
 
@@ -21,18 +21,18 @@
 
 动作实例键 `action_key(action)` = 类型+行为参数（SellBench(3) 与 SellBench(5) 各自计数；归因字段经字段 metadata 不入键——归因标签不改变动作实例身份；`cw_prep_actions.py:190-206`）——屏蔽/失败计数的幂等粒度。
 
-## 2. 发射契约：三态可区分（dd-037 语义）
+## 2. 发射契约：三态可区分（发射×执行单一源契约）
 
 **每个执行面必须让 NOOP / 失败 / 成功三态在返回值上可区分，禁把"无动作可做"伪装成"做了"**：
 
 | 执行面 | 三态形态 |
 |---|---|
-| 部署 CwOpDeploy | ①计划空 ∧ 0 落地 = `STATUS_NOOP`（合法稳态，bench 留置，round_success）；②计划非空 ∧ placed=0（非遮蔽域）= round_fail（交框架失败链，"失败帧已存证"）；③placed>0 = `STATUS_DEPLOYED`；④入口失配闸命中 = round_fail 先于①②③（板满失配/幻影满板 = 发射面读与执行面读失配的暴露信号；**窄豁免（ADR-0610）**：板满失配 ∧ fresh 帧前排 4 槽全空 ∧ 后排非系统单位在场 = 合法场内换排工作形态 → 场内换排修复 → 出口复验前排 ≥1 → `STATUS_ROWFIX_RECOVERED`（新具名成功状态）/维持 fail；幻影满板与「满板∧前排有人」仍立即 return，ADR-0601 §3/§5 修订辖域）；⑤遮蔽域落地判定 UNKNOWN（T-277，DD-037 修订四态出口）= `STATUS_LANDING_VERDICT_UNKNOWN` round_fail，同 gate_fail 通道立即 return——部署拖拽自身触发的 decision overlay 遮蔽验证窗（列车同行跨档部署触发「选择伙伴」为驱动形态），像素判据双向无发言权，**槽位不回收、剩余单位留 bench、可带 placed>0**，0 系 overlay 分支接管自愈。执行契约 = 3 元组 `(placed, plan_empty, gate_fail)`；失败状态具名常量 5 个 = `STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`/`STATUS_LANDING_VERDICT_UNKNOWN`（`CwOpDeploy` 类常量，判读侧分键；ADR-0601 §4-7 枚举）。**出口不变量（ADR-0601 §5 T-174 修订/ADR-0610 §2.1）**：成功出口（`STATUS_DEPLOYED`/`STATUS_NOOP` 收尾复验、`STATUS_NO_BENCH` 早退点复验、`STATUS_ROWFIX_RECOVERED` 豁免路径复验）CV 现读承诺「上阵 ≥1 ⇒ 前排 ≥1」，不过 = `STATUS_FRONT_INVARIANT_FAIL` round_fail，禁静默 success |
+| 部署 CwOpDeploy | ①计划空 ∧ 0 落地 = `STATUS_NOOP`（合法稳态，bench 留置，round_success）；②计划非空 ∧ placed=0（非遮蔽域）= round_fail（交框架失败链，"失败帧已存证"）；③placed>0 = `STATUS_DEPLOYED`；④入口失配闸命中 = round_fail 先于①②③（板满失配/幻影满板 = 发射面读与执行面读失配的暴露信号；**窄豁免（ADR-0610）**：板满失配 ∧ fresh 帧前排 4 槽全空 ∧ 后排非系统单位在场 = 合法场内换排工作形态 → 场内换排修复 → 出口复验前排 ≥1 → `STATUS_ROWFIX_RECOVERED`（新具名成功状态）/维持 fail；幻影满板与「满板∧前排有人」仍立即 return，ADR-0601 §3/§5 修订辖域）；⑤遮蔽域落地判定 UNKNOWN（T-277，发射契约四态出口修订）= `STATUS_LANDING_VERDICT_UNKNOWN` round_fail，同 gate_fail 通道立即 return——部署拖拽自身触发的 decision overlay 遮蔽验证窗（列车同行跨档部署触发「选择伙伴」为驱动形态），像素判据双向无发言权，**槽位不回收、剩余单位留 bench、可带 placed>0**，0 系 overlay 分支接管自愈。执行契约 = 3 元组 `(placed, plan_empty, gate_fail)`；失败状态具名常量 5 个 = `STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`/`STATUS_LANDING_VERDICT_UNKNOWN`（`CwOpDeploy` 类常量，判读侧分键；ADR-0601 §4-7 枚举）。**出口不变量（ADR-0601 §5 T-174 修订/ADR-0610 §2.1）**：成功出口（`STATUS_DEPLOYED`/`STATUS_NOOP` 收尾复验、`STATUS_NO_BENCH` 早退点复验、`STATUS_ROWFIX_RECOVERED` 豁免路径复验）CV 现读承诺「上阵 ≥1 ⇒ 前排 ≥1」，不过 = `STATUS_FRONT_INVARIANT_FAIL` round_fail，禁静默 success |
 | 备战动作执行器 | `execute(action) -> (progressed: bool, detail: str)`：progressed=False 涵盖 NOOP 与失败时由 detail 区分（`cw_screen_prep.py:1368-1372` 消费） |
 | 商店编排 | `_open_shop_phase -> (progressed, detail)`；read_only 开店成功即 progressed（读数目标达成） |
 | 序列消费 | `StartBattle ∧ progressed` 才是出战完成；not progressed 一律 fail-stop 交回 |
 
-配套的**发射门**(发射方与执行方同源谓词,防空计划发射):部署候选单一源 = kernel `select_deployments` 现算（`cw_deploy_logic`；dd-037——旧 flow.py 发射门 `_deploy_up_candidates` 已随 ADR-0517 迁移批死码清理删除,ADR-0518）。发射门与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——**锁定线语境豁免（ADR-0564）**：豁免武装帧（`locked_comp` 成型目标档超门封顶，单源 `cw_intention.locked_line_recipe_floor_conflict`）且本帧无有效仙舟供给（`xianzhou_supply_exists`）时门让位；发射侧拒因/开火分键 = `deploy_emit_*`（mandate 发射门帧级去重），执行侧计划拒因/门命中分桶 = `deploy_exec_*`。
+配套的**发射门**(发射方与执行方同源谓词,防空计划发射):部署候选单一源 = kernel `select_deployments` 现算（`cw_deploy_logic`；发射×执行单一源——旧 flow.py 发射门 `_deploy_up_candidates` 已随 ADR-0517 迁移批死码清理删除,ADR-0518）。发射门与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——**锁定线语境豁免（ADR-0564）**：豁免武装帧（`locked_comp` 成型目标档超门封顶，单源 `cw_intention.locked_line_recipe_floor_conflict`）且本帧无有效仙舟供给（`xianzhou_supply_exists`）时门让位；发射侧拒因/开火分键 = `deploy_emit_*`（mandate 发射门帧级去重），执行侧计划拒因/门命中分桶 = `deploy_exec_*`。
 
 ## 3. 备战单动作消费（`cw_screen_prep.py` 备战单轮）
 
@@ -54,10 +54,10 @@
 
 - **前置**：registry decision 全集锚（`cw_overlay_registry.derive_decision()`，T-277 registry 化——旧硬编码三屏扩为全集单一源，纯收紧）任一命中 → `round_fail(STATUS_EVENT_OVERLAY+命中画面名)`（执行环境失配速报交回重判；op 内检查 = 派发间隙窗口期第二道执行断言，第一道 = cw_loop 0 系 overlay 分支 + 宿主入口防线；ADR-0601 §3，禁旧 success-skip 把弃执行记成成功）。口径 = registry 内：选择装备/骇入策划等 registry 外 overlay 屏在本检查仍漏检（已知残余，第一道防线辖）。
 - **输入装配**：槽位坐标全部从 screen_info 读（备战栏 9/前排 4/后排按 cap 差公式选档 `select_back_layout`，单一入口；7 格档未建档保守 8 格超集+留证）；cap = paddle 直读域防抖（权威，含宝钻/诅咒修正；失读才单调链 max 兜底——低读阻塞上阵贵、高读白拖一次便宜）。
-- **选人/围栏/排序单一源** = kernel `cw_deploy_logic.select_deployments`（dd-037：执行方只做输入装配 + 拖拽执行；发射方同源）。围栏集 = RECIPE ∪ ENGINE（桥派生，`cw_op_deploy.py:46-56`）；r387 cap 富余放行散牌填空（空位>必上件数）。
+- **选人/围栏/排序单一源** = kernel `cw_deploy_logic.select_deployments`（发射×执行单一源契约：执行方只做输入装配 + 拖拽执行；发射方同源）。围栏集 = RECIPE ∪ ENGINE（桥派生，`cw_op_deploy.py:46-56`）；r387 cap 富余放行散牌填空（空位>必上件数）。
 - **输入装配段计划构造**：op 对 `select_deployments_reasoned` 的装配调用同帧穿豁免实参（五消费点的计划构造面，ADR-0564——漏武装 = kernel 计划层仍 held 列车件 → 豁免执行侧静默失效）。
 - **拖拽循环运行时守卫**（保留作防线）：每槽动态 cap 复查（起始检查只做一次的历史事故）、同名在场禁双（`deploy_legal` 不变量）、列车配方底线仲裁（r288：判定单一源 = kernel `recipe_floor_holds`，op 侧经 `r288_hold_now` 适配器消费拖拽增量真值；含**锁定线语境豁免** ADR-0564——豁免武装帧无有效仙舟供给时门让位，供给保留条款不变；档值常量 = `RECIPE_FLOOR_TRAIN_CAP`/`RECIPE_FLOOR_XZ_BASE`）、fresh 复查源槽占用（起始帧假阳）、前排保证（前排全空先重排真 front 候选，无则强转）、系统单位剔除（cost==0 不可拖）。P24 残余补部署的列车件过滤经同一判定（`filter_fill_plan_by_floor`，kernel 留 bench 件不得绕回上板）。
-- **遮蔽哨 + 落地判定三态化**（T-277，T-268 治本；DD-037 修订四态出口）：拖拽循环与 P24 fill 循环每槽迭代体一切像素读之前置 registry decision presence 探测哨（`_decision_overlay_screen`，presence 近似——锚在场即判遮蔽，方向保守无假成功面），命中 = `STATUS_LANDING_VERDICT_UNKNOWN` 截断本轮（剩余单位留 bench，交 0 系 overlay 分支自愈）；拖拽落地判定经 `_landing_verdict` 三态统一入口（landed=像素验出占用现行语义 / invalid=非遮蔽域判负+回收槽，1-1 防线零放宽 / unknown=遮蔽域诚实未知）——遮蔽域内像素判据与游戏真值独立（渲染空白=假阴两例实机、渲染出卡面=假阳双向），既不判成功也不判无效（T-268 命题引理 1；纯 UNKNOWN 方案，ΔC 计数器改判支已裁剪 = R2 确认轮裁决，遮蔽域不消费计数器）。
+- **遮蔽哨 + 落地判定三态化**（T-277，T-268 治本；发射契约四态出口修订）：拖拽循环与 P24 fill 循环每槽迭代体一切像素读之前置 registry decision presence 探测哨（`_decision_overlay_screen`，presence 近似——锚在场即判遮蔽，方向保守无假成功面），命中 = `STATUS_LANDING_VERDICT_UNKNOWN` 截断本轮（剩余单位留 bench，交 0 系 overlay 分支自愈）；拖拽落地判定经 `_landing_verdict` 三态统一入口（landed=像素验出占用现行语义 / invalid=非遮蔽域判负+回收槽，1-1 防线零放宽 / unknown=遮蔽域诚实未知）——遮蔽域内像素判据与游戏真值独立（渲染空白=假阴两例实机、渲染出卡面=假阳双向），既不判成功也不判无效（T-268 命题引理 1；纯 UNKNOWN 方案，ΔC 计数器改判支已裁剪 = R2 确认轮裁决，遮蔽域不消费计数器）。
 - **换排纠正**（r241/r250）：场内错排者拖回正排；**禁清空前排守卫（ADR-0610）**：front→back 纠正若会把前排拖空则跳过（出战硬要求 > 站位偏好），守卫计数 = 调用内动态维护（初值 = 单帧采样，front→back 完成 −1 / back→front 完成 +1，禁循环内静态帧重采样——双前角色形态下静态读法双双放行清空前排），拦截分键 `rowfix_skip_front_invariant`；**前排保证后置（ADR-0610）**：纠正循环后前排仍空 ∧ 后排有人 → 挪一后排到前排 1（真 pref=front 优先）——出口不变量「上阵≥1⇒前排≥1」由此在函数出口成立，收尾出口断言现读复验（`STATUS_FRONT_INVARIANT_FAIL` 兜底）。
 - **拖后整队等待 2.0s**【注·口述口径 screen_flow_timing.md #10】：羁绊徽章动画窗。
 - **收尾**：SIFT 真值纠 tracking（观测回路）+ 装备快照回写 tracked_deployed.equips（画面真值覆盖，账本漂移告警留痕）。

@@ -1,6 +1,6 @@
 # ADR 0097 · 策略实现接线轮(node_plan / evaluate α-blend 接法 / transition_tempo / streak 杠杆 / A4.3 牌池)
 
-> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs + dd-NNN 系)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+> **版本界碑(2026-09-04 ADR 存量 review;对象属 decision_v2 栈或旧策略代,现行权威 = strategy-docs/flow/proofs)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb 删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
 
 > ⚠️ **三处被后续修订**(2026-08-15 复核):① streak「连胜/连败对称计档位金」被 ADR-0128 #1 改单边(货币战争无连败补偿,只计连胜);② node_plan Considered Options 否决 per-comp level_plan 的「双源」理由,被 ADR-0128 #4 以「comp 对当前级显式 roll/stable 停留标记」形式部分恢复(0021 原有 level_plan 接缝;非整条曲线,双源可控);③ node_plan 目标等级值后经 ADR-0126 live 校准、ADR-0127 H4 部分撤回。其余接线仍现行。
 

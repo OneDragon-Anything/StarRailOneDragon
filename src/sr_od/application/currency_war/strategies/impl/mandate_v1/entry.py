@@ -16,7 +16,7 @@ truncate_frame_stable 判 = 契约 v2 §3.2 备战线域 18 类逐类表(词表
 as-built 权威 = docs/develop/sr_od/application/currency_war/flow/action_exec.md §1——
 契约正本 CONTRACT_SERIES_DECISION.md 工作副本灭失(全仓零命中,
 .debug 不入 git),§1 即该词表行的首次文档落档,权威链重锚申报 =
-ADR-0585 §5 + dd-020 修订记录)+ §3.3 fail-closed(词表外/无分类
+ADR-0585 §5 + flow/action_exec.md §1 正本)+ §3.3 fail-closed(词表外/无分类
 动作 ⇒ 截断 + 计数披露,禁静默丢弃)。发射器实现期增补条目须回契约
 改版,禁只改代码。R196 修复批(症5)对齐:ClickSpheres=条件判(末批
 可能掉箱 ⇒ 其后截断)、conditional 五类名-槽一致性复检(推不出即截断,
@@ -159,7 +159,7 @@ def _sphere_bench_free(obs: PrepObservation) -> int:
 #: 守卫常量与在册机制假设夹逼出可行域后取 1。
 SPHERE_DEFER_PROBE_K: int = 1
 
-#: 单批点球上界(收编自旧 decision 核的发射形态值,dd-038 迁移批随
+#: 单批点球上界(收编自旧 decision 核的发射形态值,统一迁移批随
 #: entry.py 入 mandate_v1;判读底稿低危项3补三形态归属标注):
 #: **归属 = 框架流程防线常量,非三形态决策值**(同 WANTED_REOPEN_CAP
 #: 豁免类——它上界化单帧发射的点击预算,不作任何做/不做闸门)。
@@ -749,7 +749,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # = RunTools 先于 LevelUp(编者⑤ 升级裁决输入新鲜度;行为锚 =
     # test_cw_prep_flag_machine::test_runtools_emit_position)。RunTools
     # 投影未建模 ⇒ 当帧 visit 在工具消费后终结,其后动作下一帧带新输入
-    # 重评。dd-027 回排块(run_mandate 内)已不见 RunTools,零特例叠加。
+    # 重评。M7 发射序回排块(run_mandate 内)已不见 RunTools,零特例叠加。
     if _tools_emitted:
         out = _tools_emitted + out
 

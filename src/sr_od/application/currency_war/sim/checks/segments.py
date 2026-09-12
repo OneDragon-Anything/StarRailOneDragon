@@ -546,7 +546,7 @@ _LEVELUP_AUTH_WHITELIST = ('pop_slot', 'dp', 'static_ev', 'm3_batch')
 # ('p2_auth_xp' 臂已随位面 2 支出授权定谳清理删除,ADR-0492;XP sink
 # 在 W785 sink 分解中 0 帧/0 金,供给面从未开火。m3_batch = mandate_v1
 # 换核后的 M3 批量授权臂(arm1_existence=[33] 人口位语境 + P48 整买
-# spend_unified + dd-034 危机让位),定谳批补入——出处与逐臂论证 =
+# spend_unified + 危机带停付让位),定谳批补入——出处与逐臂论证 =
 # check_levelup_interest_engine_gate docstring。m3_batch 现带触发臂分键后缀(m3_batch:arm1/arm0/pop,授权可归因),匹配走前缀(见 seg_check_unjustified_levelup 门内),禁回退精确等值。)
 
 # 同 check_levelup_interest_engine_gate(ADR-0410 static_ev 并入;

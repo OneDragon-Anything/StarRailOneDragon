@@ -1,7 +1,7 @@
 # P56:discretionary 买面的可变现息线下界(条件式;T1 前件已落地)
 
 > 状态:**已推导(条件式)**——前件 = T1 语义重写(金位触发+目标量止盈+布尔门退役,设计 13_buy_face_design §2.2)落地并可对拍(本批交付,单帧锁=`sr-od-test/test/sr_od/app/currency_war/test_cw_p56_t1.py`)。升「已证」按 N9 路径 = 下界最紧性论证的独立裁决,对拍仅作确认性回填(A/B 判正不构成已证)。
-> 设计出处:13_buy_face_design §2.2(P56 草案 + R1-B1/R2-N4 修订);姊妹缺口申报 = dd-026 备选 4;floor 语义边界 = p54/dd-026。
+> 设计出处:13_buy_face_design §2.2(P56 草案 + R1-B1/R2-N4 修订);floor 语义边界 = p54(R2 息线 floor 同源)。
 
 ## 1. 命题
 
@@ -11,7 +11,7 @@ discretionary 买入(EV 买面、M6 压库)支出的金位约束取**可变现�
 gold − x + Σ(活期卡退金) ≥ g*
 活期卡 = bench 中 1★ 全额退件(资格谓词与 funding_support_sell 同一:
          star==1 ∧ 零重叠 ∧ 无后台效果)
-g* = saturation_line(cap_resolved) = 10×cap_resolved(dd-026 同源,零新常数)
+g* = saturation_line(cap_resolved) = 10×cap_resolved(与 p54 R2 floor 同源,零新常数)
 ```
 
 时,在 T1 前件落地的前提下,买后任意帧可通过凑息卖通道回拉满息档;净代价 = Σ被卖件压缩价值(逐件按 p49 ① (费档,等级) 表计价,域内量级跨 1-2 个数量级,不设全局小上界)。
@@ -47,4 +47,4 @@ g* = saturation_line(cap_resolved) = 10×cap_resolved(dd-026 同源,零新常数
 
 ## 6. 关联
 
-p48(命题 3 可变现口径)、p54/dd-026(floor 语义与姊妹缺口)、p49 ①(压缩损失计价表)、p47(L 计价,判据右端,不双计)、[41](资产形态修正先例);实现批 = P56/T1 批(shop.py / criteria/{buy,sell,stockpile}.py / statefn/{odds,vbar}.py)。
+p48(命题 3 可变现口径)、p54(floor 语义与姊妹缺口)、p49 ①(压缩损失计价表)、p47(L 计价,判据右端,不双计)、[41](资产形态修正先例);实现批 = P56/T1 批(shop.py / criteria/{buy,sell,stockpile}.py / statefn/{odds,vbar}.py)。

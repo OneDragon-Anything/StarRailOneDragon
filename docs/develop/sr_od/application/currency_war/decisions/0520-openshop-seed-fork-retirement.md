@@ -2,7 +2,7 @@
 
 - 状态:已实施(代码+测试+守卫文案)
 - 日期:2026-09-05
-- 关联:ADR-0517(§守卫两属断言)、ADR-0518(单动作实施)、dd-037(发射×执行契约);诊断报告 `.debug/temp/currency_war/20260905_openshop_fork_diag/report.md`
+- 关联:ADR-0517(§守卫两属断言)、ADR-0518(单动作实施)、flow/action_exec.md §2(发射×执行契约);诊断报告 `.debug/temp/currency_war/20260905_openshop_fork_diag/report.md`
 
 ## 背景
 

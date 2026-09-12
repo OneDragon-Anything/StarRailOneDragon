@@ -146,9 +146,9 @@ ZERO_WEAR_EXECUTION_PENDING: str = 'execution_pending'
 #: §4-9 申报一致);新增行须与写入端常量逐字同步(kernel 不反向
 #: import operations,只复制入场)。
 _ZERO_WEAR_EXECUTION_REASONS: frozenset[str] = frozenset({
-    'drag 落空(失败继续,dd-015)',
+    'drag 落空(失败继续)',
     'pool_empty(无穿戴候选)',
-    '分配对全部拉黑(drag 连败,dd-015)',
+    '分配对全部拉黑(drag 连败)',
     '画面非干净备战',
     # 装备计划失效(写入端 = CwOpEquipAll.STATUS_PLAN_STALE,ADR-0601
     # §3-C1/§4-9 具名常量):计划失效 = 本 pass 零穿戴已发生,归因在执行链

@@ -39,7 +39,7 @@ R2 四阻断钉死①输入快照契约(装配源 = 执行侧 last_state+SIFT �
    - 上序 = 对卖出后假想态复用 `select_deployments_reasoned`,底线留置件不作上序候选
      (拒因 `post_sell_held`),「白卖一件板面变弱」在谓词内不可达;
    - 双弃权键 fail-closed:`cap_unreadable` / `membership_unreadable` ⇒ 计划空
-     (dd-037「留 bench 合法稳态」不对称口径)。
+     (「留 bench 合法稳态」不对称口径,flow/action_exec.md §2 发射契约)。
 2. **共享输入装配函数**(`assemble_swap_plan_inputs`):发射侧(mandate M1″)与执行侧
    (CwOpDeploy 卖出臂)**同函数、同一装配契约,输入源两侧分轨**(发射 = 决策帧黑板,
    执行 = last_state + SIFT——装配源契约钉死为执行侧卖出决策实际消费的快照链)。
@@ -86,14 +86,14 @@ R2 四阻断钉死①输入快照契约(装配源 = 执行侧 last_state+SIFT �
   循环在发射、执行两路径同被关闭;板满帧 bench 线内件滞留形态获得可归因显影面
   (拒因逐件 + 分键族),开闸决策有数据门槛。
 - 代价/边界:发射位在开闸前恒不发(`m1p_input_seam_pending` 计数即板满形态出现率)——
-  留 bench 是合法稳态(dd-037),零行为风险换输入对齐义务;fresh 排除过度抑制合法
+  留 bench 是合法稳态(发射契约,flow/action_exec.md §2),零行为风险换输入对齐义务;fresh 排除过度抑制合法
   swap(方向安全,拒因可追溯);EV 凑息卖通道的义务集排除核对仍挂账(REVISION_R1
   §6.1);sim 探针数据与门归因要点已并入「探针」节(数值只在代码)。
 
 ## 锁面
 
 `sr-od-test/test/sr_od/app/currency_war/test_cw_swap_plan.py`(基础设施语义锁,
-docstring 逐条引本文与 dd-037);`test_cw_deploy_ops.py` 的 fenced 臂真值表锁经
+docstring 逐条引本文与 flow/action_exec.md §2 发射契约);`test_cw_deploy_ops.py` 的 fenced 臂真值表锁经
 re-export 同一性锁(`test_fenced_arm_single_source_identity`)继续覆盖。
 
 ## 修订(T-169):sim 缺板满换血执行面接通,「sim 不建模执行侧」申报退役

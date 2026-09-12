@@ -295,7 +295,7 @@ def compare_buy_expect(expect: BuyExpect,
     (SIFT 未识别/空读)= 无法建真值 → 跳过不评,不算一致也不算不一致;
     期望空槽而实读有身份 = 不一致(合成腾槽未发生/多买散牌证据)。
 
-    真实空槽优先降级(DD-005;安灯 p2r2 停线根因修复):游戏买牌落点
+    真实空槽优先降级(安灯 p2r2 停线根因修复):游戏买牌落点
     契约 = 放进板面「真实空槽」;期望态的落点前提 = 购买前 tracked 快照
     的空槽表,该表可能相对真实板面过期(tracked 缺某槽占用时模型把被占
     槽当空槽,存量漂移归 reconcile_tracking 既有通道)。因此槽位级不一致
@@ -359,7 +359,7 @@ def compare_buy_expect(expect: BuyExpect,
                                  exclude_bench_slot: int | None = None,
                                  exclude_dep_key: tuple[str, int] | None
                                  = None) -> bool:
-        # 真实空槽降级汇总判(DD-005):期望实体在别处出现 ∨ 实读是新实体
+        # 真实空槽降级汇总判:期望实体在别处出现 ∨ 实读是新实体
         exp_key = (exp.char_id, exp.star) if exp is not None else None
         if exp_key is not None \
                 and _found_elsewhere(exp_key, exclude_bench_slot,
@@ -380,7 +380,7 @@ def compare_buy_expect(expect: BuyExpect,
         want_id = exp.char_id if exp is not None else ''
         if got.char_id != want_id or _slot_diff(exp, got):
             if _snapshot_premise_broken(exp, got, exclude_bench_slot=slot):
-                continue   # 快照空槽表过期:降级不评(DD-005)
+                continue   # 快照空槽表过期:降级不评
             _add('bench', slot,
                  f'{want_id or "空"}{f"/{exp.star}星" if exp is not None else ""}',
                  f'{got.char_id}/{got.star}星')

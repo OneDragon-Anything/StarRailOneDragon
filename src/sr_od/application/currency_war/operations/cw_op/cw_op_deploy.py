@@ -167,7 +167,7 @@ def residual_fill_plan(held: list, front_empty: list, back_empty: list,
                        bench_pos: dict, bench_cid: dict,
                        deployed_cids: set, cap: int | None,
                        deployed_count: int) -> list[tuple[int, str, int]]:
-    """P24 残余补部署计划(纯函数,可离线测;dd-016)。
+    """P24 残余补部署计划(纯函数,可离线测)。
 
     主排序循环结束后空槽仍存在(cap 未满)且散牌留置(``_held``)非空时,
     对留置散牌生成补部署计划——判据 = P24 残余补部署支配定理:空 cap 槽上
@@ -367,10 +367,10 @@ class CwOpDeploy(SrOperation):
         '幻影满板矛盾帧(CV 采样无空槽 ∧ 仲裁值未达 cap)'
     STATUS_LANDED_NONE: ClassVar[str] = \
         '部署未落地(计划非空但 placed=0,失败帧已存证)'
-    # T-277 新增(T-268 治本/DD-037 修订,ADR-0601 §4-7 枚举):遮蔽域
+    # T-277 新增(T-268 治本/发射契约四态修订,ADR-0601 §4-7 枚举):遮蔽域
     # 落地判定 UNKNOWN——拖拽落地验证窗被部署自身触发的 decision
     # overlay 遮蔽(列车同行跨档部署触发「选择伙伴」为驱动形态,两例
-    # 实机归因持久收编 = DD-037 修订节「背景」),像素
+    # 实机归因两例在案),像素
     # 判据双向无发言权 ⇒ 既不判成功也不判「无效拖拽」,以具名状态经
     # gate_fail 通道 round_fail 交框架失败链——下一轮 cw_loop 0 系
     # overlay 分支接管(CwScreenPartner 处置)→ 再下轮重派发(去重 →
@@ -380,7 +380,7 @@ class CwOpDeploy(SrOperation):
     # fingerprint,cw_loop):UNKNOWN 轮正常计数,恒指纹 3 环停机兜底。
     STATUS_LANDING_VERDICT_UNKNOWN: ClassVar[str] = \
         '落地判定未知(部署触发遮蔽,槽位不回收,0a/overlay 分支接管)'
-    # T-174 新增(ADR-0610,dd-037 契约:出口状态可区分,判读侧分键):
+    # T-174 新增(ADR-0610,发射契约:出口状态可区分,判读侧分键):
     # 出口不变量断言失败具名状态(成功出口 DEPLOYED/NOOP 收尾复验 +
     # NO_BENCH 早退点复验「上阵 ≥1 ⇒ 前排≥1」,不过时的 fail 形态;
     # 三出口辖域见 ADR-0610 §2.1)+ 板满失配窄豁免成功具名状态
@@ -746,14 +746,14 @@ class CwOpDeploy(SrOperation):
         except Exception as e:   # noqa: BLE001  采集失败不影响部署
             log.debug('[cw-deploy] equips 采集失败(不阻塞): %s', e)
 
-        # dd-037 契约硬化:no-op 与真实部署在返回状态上可区分——
+        # 发射契约硬化:no-op 与真实部署在返回状态上可区分——
         # ① 计划空且 0 落地 = 合法稳态(bench 留置),STATUS_NOOP(非「已部署角色」,
         #    不再把空计划伪装成部署成功);② 计划非空但 placed=0 = 真失败,round_fail
         #    (交框架失败链,不再 ✓ 蒙混);③ placed>0 = 真部署,STATUS_DEPLOYED。
         # ④ 入口失配闸命中(ADR-0601 §3)= 具名失配状态 round_fail,且在闸
         #    返回点**立即 return**(见 _deploy_deterministic 调用后分支)——
         #    先于①②③判定,失配闸形态 placed=0,不会被 NOOP 分支吞掉。
-        # ⑤ 遮蔽域落地判定 UNKNOWN(T-277,T-268 治本;DD-037 修订四态出口)
+        # ⑤ 遮蔽域落地判定 UNKNOWN(T-277,T-268 治本;发射契约四态出口)
         #    = STATUS_LANDING_VERDICT_UNKNOWN round_fail,同 gate_fail 通道
         #    立即 return——**可带 placed>0**(批内已落地件如实保留:槽位不
         #    回收/计数不回滚),本注释块旧断言「闸返回恒 placed=0」对 UNKNOWN
@@ -766,7 +766,7 @@ class CwOpDeploy(SrOperation):
                 # 目标件/无可卖 off-target)发射面已弃权,RunDispatch 只会
                 # 由真实部署意图(M1′/达标臂)派发,本 no-op 是其合法稳态。
                 log.info('[cw-deploy] 无部署可做(计划空,候选全被规则留 bench;'
-                         'dd-037:no-op 状态,F1 同源谓词已抑制不可兑现发射)')
+                         '发射契约:no-op 状态,F1 同源谓词已抑制不可兑现发射)')
                 return self.round_success(CwOpDeploy.STATUS_NOOP, wait=1)
             return self.round_fail(CwOpDeploy.STATUS_LANDED_NONE)
         return self.round_success(CwOpDeploy.STATUS_DEPLOYED, wait=1)
@@ -925,7 +925,7 @@ class CwOpDeploy(SrOperation):
         ``_front_ok`` 同源(currency_war_cv.slot_occupied)。返回 False =
         「板有人而前排空」(不变量破);整板空 = 不变量前提不适用(合法
         稳态放行);前排槽未建模 = 识别退化态,断言不辖(交下游防线)。
-        已知残留:DD-030 幻影占用族可使「真板空」帧误判有人 → 假
+        已知残留:CV 幻影占用族可使「真板空」帧误判有人 → 假
         round_fail(有界:环重试 → 守卫兜底;双源仲裁缓解挂账 ADR-0610)。
         """
         if not front:
@@ -1036,7 +1036,7 @@ class CwOpDeploy(SrOperation):
         :param m1p_sold_names: 卖出臂本 execute 实际卖出名序(SIFT 拖拽
             成功序;R1-a 前提①的数据源)。
 
-        返回 ``(placed, plan_empty, gate_fail)``(dd-037 契约 + ADR-0601 §4 扩展):
+        返回 ``(placed, plan_empty, gate_fail)``(发射契约 + ADR-0601 §4 扩展):
         placed = 落点验证过的实际上阵数;plan_empty = 主计划为空(kernel 选人
         无上场候选)——调用方据此区分 no-op(合法稳态)与「计划非空却 0 落地」
         (真失败),两者返回状态可区分;gate_fail = 入口失配闸具名状态
@@ -1068,7 +1068,7 @@ class CwOpDeploy(SrOperation):
         # 5.1.8 deploy_cap(live 发现 drag 白拖根因 = cap 满,2026-08-12):deployed(CV front_occ+back_occ 实测阵上)
         # ≥ level(cap,D-19「cap=level」)→ 板满,bench 角色上不了 → 不拖(留 bench;防 drag 被拒源槽占 placed=0 白拖
         # + 用户 live 观察 bug4「未考虑上限」)。⚠️ CV 占用可幻影虚高(实机停机局实证:备战环
-        # CV 幻影占用合法化 no-op → 同签名零推进,DD-030 停机)——deployed 计数现走双源仲裁
+        # CV 幻影占用合法化 no-op → 同签名零推进,环级守卫停机)——deployed 计数现走双源仲裁
         #(见下方 arbitrate_deployed_count 注),不再直采 CV。
         # cap 真值优先 read_deploy_cap(OCR X/Y 的 Y,含宝钻/诅咒加成);读不到 fallback level(D-19 cap≈level)。
         # ⚠️ level≠cap 场景(诅咒-1 / 宝钻+1):用 level 会误判 cap 未满 → 白拖(D-53 注 level=cap 无加成,但加成时偏)。
@@ -1195,7 +1195,7 @@ class CwOpDeploy(SrOperation):
         # 否则保血资产(三月七/藿藿/饮月)被判 off-target 散牌留 bench → 白板挨打
         # (r70 审计「买了→不上场→被卖」三侧断裂的 deploy 侧)。定型后 framework 已清空,
         # 集合退化为原 target-only 行为。装配单一源 = kernel.deploy_target_sets
-        # (发射侧 mandate._deployable 同款消费,dd-037 禁两侧各写一份)。
+        # (发射侧 mandate._deployable 同款消费,发射契约禁两侧各写一份)。
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             deploy_target_sets as _deploy_target_sets,
         )
@@ -1241,7 +1241,7 @@ class CwOpDeploy(SrOperation):
                 deployed_bond_counts as _deployed_bond_counts,
             )
             _deployed_fac = _deployed_bond_counts(_deployed_cids)
-        # dd-037:选人/围栏/排序单一源 = kernel.select_deployments。此前 op 内
+        # 发射×执行单一源:选人/围栏/排序单一源 = kernel.select_deployments。此前 op 内
         # 复写一份 tgt/rest 切分 + 散牌围栏 + 点火排序,与
         # kernel 纯函数双源——run 20260904_28xx 局11 停机形态:配方底线规则只在
         # 执行方 drag 循环里,发射方(决策核)不知道 → 空计划 RunDeploy 被报
@@ -1375,7 +1375,7 @@ class CwOpDeploy(SrOperation):
             order = [bench_occ[_k] for _k in _up_rel]
         _held = [bench_occ[_k] for _k in _held_rel]
         if _held:
-            log.info(f'[cw-deploy] 留 bench(kernel 围栏/底线/去重/cap,dd-037):'
+            log.info(f'[cw-deploy] 留 bench(kernel 围栏/底线/去重/cap,发射契约):'
                      f'slots={[bench_occ[_k] + 1 for _k in _held_rel]}')
         # N3 闭环分键(17 号稿 §7.2):出口③买入的垫件在部署帧被围栏 held
         # 留 bench 时计数——消费 kernel 单一源拒因(N2),执行侧现读重建
@@ -1640,7 +1640,7 @@ class CwOpDeploy(SrOperation):
                     with contextlib.suppress(Exception):
                         self.save_screenshot(prefix=f'deploy_fail_slot{bi + 1}')
                     chosen.insert(0, ti)   # 目标槽没占住,回收给下个角色
-        # P24 残余补部署(dd-016):主排序完成后空槽仍在(cap 未满)且散牌
+        # P24 残余补部署:主排序完成后空槽仍在(cap 未满)且散牌
         # 留置非空 → 按计划补上。判据 = P24 残余补部署支配定理(空 cap 槽上
         # 任意合法单位 ΔEV≥0;复盘 g_20260902_181254 修复项 E:r2-r4 板 3/4
         # 空槽不上人)。计划 = 纯函数 residual_fill_plan(同名禁双/cap 门/
@@ -1657,13 +1657,13 @@ class CwOpDeploy(SrOperation):
             # - 计数:_deployed 是入口仲裁快照(此后不刷新),主循环增量只有
             #   placed(只数落点验证成功件)→ 传 _deployed+placed,与上方
             #   动态板满门同式,自然排尽/cap-stop break 两条退出路径同式覆盖;
-            #   cap 计数禁改走 CV 占用(DD-030 幻影占用面)。
+            #   cap 计数禁改走 CV 占用(幻影占用面)。
             # - 槽位:主循环的 front_empty/back_empty 虽是别名活值(chosen
             #   pop/insert 原地变异),但「源槽已变+落点未验出→判无效」的
             #   insert 回收会把实际已落位槽记成空(幻影空槽→fill 指向已占槽
             #   白拖)→ fresh 帧按主循环同款列表推导重采两排(最终布局档,
             #   延续 862-865 占用统一采样纪律)。禁按 placed 扣减现有列表
-            #   ——列表已被主循环原地扣减,再扣=双扣减,dd-016 静默修死。
+            #   ——列表已被主循环原地扣减,再扣=双扣减(P24 静默修死形态)。
             _scr_fill = self.screenshot()
             _fe_fill = [i for i, c in enumerate(front)
                         if not slot_occupied(_scr_fill, int(c.x), int(c.y))]
@@ -1674,7 +1674,7 @@ class CwOpDeploy(SrOperation):
             _fill_plan = residual_fill_plan(
                 _held_fill, _fe_fill, _be_fill, _bench_pos, _bench_cid,
                 _deployed_cids, _cap, _deployed + placed)
-            # r288 底线对 fill 段同样辖(dd-037):kernel 留 bench 的列车件
+            # r288 底线对 fill 段同样辖(发射契约):kernel 留 bench 的列车件
             # (列车≥2 档 ∧ 仙舟<3 基础线)不得经 P24 补部署绕回上板——
             # 补部署只覆盖「散牌留 bench」的填位语义,不覆盖配方底线仲裁。
             # 过滤纯函数化(ADR-0564):与主循环同消费 r288_hold_now,
@@ -1717,7 +1717,7 @@ class CwOpDeploy(SrOperation):
                     if _fcid:
                         _deployed_cids.add(_fcid)
                     time.sleep(1.2)   # 拖后特效等待(主循环同款)
-                    log.info(f'[cw-deploy] 补部署(dd-016/P24): bench槽{_fi + 1} → '
+                    log.info(f'[cw-deploy] 补部署(P24): bench槽{_fi + 1} → '
                              f'{"前" if _frow == "front" else "后"}排{_fslot + 1} ✓(落点已验)')
                 elif _fill_dragged and \
                         _fill_verdict == CwOpDeploy._VERDICT_UNKNOWN:
@@ -1725,17 +1725,17 @@ class CwOpDeploy(SrOperation):
                     with contextlib.suppress(Exception):
                         self.save_screenshot(
                             prefix=f'deploy_landing_unknown_slot{_fi + 1}')
-                    log.warning(f'[cw!][deploy] 补部署(dd-016): bench槽{_fi + 1} '
+                    log.warning(f'[cw!][deploy] 补部署(P24): bench槽{_fi + 1} '
                                 f'落地判定 UNKNOWN(遮蔽域;槽位不回收,剩余 '
                                 'fill 单位留 bench)失败帧已存证')
                     return placed, False, \
                         CwOpDeploy.STATUS_LANDING_VERDICT_UNKNOWN
                 elif _fill_dragged:
                     # 第一段 drag 真、落点未验出 → 与主循环同款判无效(不计 placed)
-                    log.warning(f'[cw!] [deploy] 补部署(dd-016): bench槽{_fi + 1} 落点'
+                    log.warning(f'[cw!] [deploy] 补部署(P24): bench槽{_fi + 1} 落点'
                                 f'未验出占用 → 判无效拖拽(源变≠上阵)')
                 else:
-                    log.info(f'[cw-deploy] 补部署(dd-016): bench槽{_fi + 1} 拖3次源槽未变,跳过')
+                    log.info(f'[cw-deploy] 补部署(P24): bench槽{_fi + 1} 拖3次源槽未变,跳过')
         # r349(局38 判读):合法跳过(去重/配方底线/源槽已空)≠ 上阵失败——
         # 旧 `placed < len(order)` 把「target 已在场,bench 同名拷贝被去重」
         # 误报 [cw!] 假警报(placed=0/2,局38 01:29 实证)。分母扣除跳过数。
@@ -1789,8 +1789,8 @@ class CwOpDeploy(SrOperation):
         2. 判负 → fresh 帧 registry decision presence 探测;未命中 →
            invalid(现行「无效拖拽」判负原样,1-1 防线零放宽);
         3. 命中遮蔽 → unknown:遮蔽域内像素判据与游戏真值 L 独立
-           (渲染空白=假阴/渲染出卡面=假阳,双向;判定依据持久收编 =
-           DD-037 修订节「背景/决策」)——既不判成功也
+           (渲染空白=假阴/渲染出卡面=假阳,双向;判定依据 = 渲染/真值独立实证两例
+           在案)——既不判成功也
            不判无效,调用方以 STATUS_LANDING_VERDICT_UNKNOWN 截断本轮。
 
         ADR-0601 合规:遮蔽探测读「批内已部分执行后的动态状态」、行为
@@ -1801,7 +1801,7 @@ class CwOpDeploy(SrOperation):
 
         timeout_s = 2.0 沿 P4R 落点验证既有预算(验证窗 W=[t,t+2s],
         遮蔽域内像素判据与等待时长无关——拉长窗不改变 verdict,否决
-        理由持久收编 = DD-037 修订节 Considered Options)。
+        理由在案)。
         """
         if self._wait_slot_occupied(dst, timeout_s):
             return self._VERDICT_LANDED

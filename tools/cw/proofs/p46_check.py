@@ -85,7 +85,7 @@ print('    verdict: overflow spend that stays >=50 has t=0; piercing below 50 '
       'pays real carry 3 -> P1 must be defined as t>=1 (tier-function diff), '
       'not merely g<=50')
 
-# B3 位面末(真全局轴+代码缺陷对账,裁决记录 redesign/decisions/dd-003)——R_全局 = 当前节点+后续位面按实际长度
+# B3 位面末(真全局轴+代码缺陷对账:total_remaining_nodes 恒按 9/位面计,已登记待修缺陷)——R_全局 = 当前节点+后续位面按实际长度
 # 正确口径:P1 r9 -> 0(本位面余)+7(P2)+9(P3 先验)=16;代码实现(total_remaining_nodes 写死全 9)给 19(+2 偏差,cap 吸收)
 t5, C5 = report('B3 plane-end(global axis)', 41, 2, 6)  # report() 以 9-r 求 R;传 r=6 得 R=3
 assert t5 == 1 and C5 == 3

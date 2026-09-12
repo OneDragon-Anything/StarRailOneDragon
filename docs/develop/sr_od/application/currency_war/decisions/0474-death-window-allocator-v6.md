@@ -1,6 +1,6 @@
 # ADR-0474: 死亡窗支出分配器 v6 落码(P_t 正式模型→decision_v2/allocator)
 
-> **版本界碑(2026-09-04 ADR 存量 review;allocator.py 已删;kernel 的 cw_run_allocator(ADR-0170)是另一活物,勿混淆)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+> **版本界碑(2026-09-04 ADR 存量 review;allocator.py 已删;kernel 的 cw_run_allocator(ADR-0170)是另一活物,勿混淆)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb 删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
 
 ## 状态
 accepted(2026-09-06)

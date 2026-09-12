@@ -25,7 +25,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 
 ### 2.1 判定原语
 
-- 画面锚 = `画面名.area名`（screen_info 建档；`round_by_find_area(..., crop_first=False)`）。全部分支判定锚登记在 `DISPATCH_AREA_ANCHORS`（`cw_loop.py::CwLoop.DISPATCH_AREA_ANCHORS`），iter1 预检可解析性——缺失逐条 log.error，把"配置缺失"在第一轮炸到日志面（dd-029，防 merged 漏再生的静默跳过）。
+- 画面锚 = `画面名.area名`（screen_info 建档；`round_by_find_area(..., crop_first=False)`）。全部分支判定锚登记在 `DISPATCH_AREA_ANCHORS`（`cw_loop.py::CwLoop.DISPATCH_AREA_ANCHORS`），iter1 预检可解析性——缺失逐条 log.error，把"配置缺失"在第一轮炸到日志面（防 merged 漏再生的静默跳过）。
 - 兜底 OCR 判定（`round_by_ocr`）必须带收紧的 `lcs_percent` 并优先改 area 化——历史误匹配事故（投资策略屏被未达上限分支吞等）均源于全屏 LCS 共享子序列。
 
 ### 2.2 分支序（浮层先于备战双锚；序位漏项 = 实机事故源，锁测试钉死）

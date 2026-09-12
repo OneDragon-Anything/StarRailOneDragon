@@ -452,8 +452,8 @@ def _residual_fill_deploy(
       不刷新、不 swap——金账恒等式(gold_before+inc−buys−levelup−refresh
       +income)不含本动作,任何 Δp>0 受益在 C=I=0 下严格非负(P-F1,
       docs/develop/sr_od/application/currency_war/proofs/p24-residual-fill-dominance.md)。
-    - 显式保留集投影已随 v3_hoard 通道退役删除(A6 裁决;dd-038
-      统一迁移批 / commit b94e9cfb,2026-09-04 用户裁定清理)——
+    - 显式保留集投影已随 v3_hoard 通道退役删除(A6 裁决;
+      统一迁移批 commit b94e9cfb,2026-09-04 用户裁定清理)——
       写端已亡,保留集恒空;「与在场(deployed)同名」的素材副本
       仍由围栏 dedup(r404-A2/5.1.7 在场唯一)自然 held(ADR-0473
       增补/W748 收窄后唯一存留面)。

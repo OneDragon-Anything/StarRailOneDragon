@@ -22,8 +22,8 @@ pass 归属单一语义)。
 
 D-C44(共根组 1):部署/买入意图的输入契约 = **买入结算后 bench/cap/
 dup 黑板全量现读**——本执行器每帧从 PrepObservation 现读重建,不以
-跨帧快照/旧集为输入(与 dd-016 执行守卫互补:守卫管动作,估值管判断,
-D-dup 谓词 = kernel.cw_deploy_logic.has_deployable 同源去重,dd-037 单一源)。
+跨帧快照/旧集为输入(与 P24 补部署执行守卫互补:守卫管动作,估值管判断,
+D-dup 谓词 = kernel.cw_deploy_logic.has_deployable 同源去重,发射×执行单一源)。
 """
 from __future__ import annotations
 
@@ -982,7 +982,7 @@ def run_mandate(frame: MandateFrame,
     键 m2_stall_repeat_frame 同批新增,语义与商店域一致)/
     shop_latch_skip_dominance_buy / shop_latch_skip_m2_buy /
     shop_latch_skip_m6_stock(备战期开店闩跳过计数,分站记)/
-    equip_latch_skip_m7(装备期闩跳过计数,dd-027 门②)。
+    equip_latch_skip_m7(装备期闩跳过计数,装备发射门门②)。
 
     备战期开店闩(``session.cw4_shopped_phase``):同一备战期内开店意图
     只消费一次。为什么是决策的推论而非限制:①商店域决策发生在店内一次
@@ -995,12 +995,12 @@ def run_mandate(frame: MandateFrame,
     永不可达;sim 每回合单次决策,该活环只在实机多帧备战环可见)。
     边界:闩置位在**商店决策访问位**(mandate_v1/shop.decide_shop_action
     入口=开店动作真执行、商店域决策已发生的时点),不在发射位——
-    备战环是单动作环,同发射列表里 dd-027 回排后的 RunEquip(可续类)
+    备战环是单动作环,同发射列表里 M7 发射序回排后的 RunEquip(可续类)
     先执行即投影未建模终结本环,发射列表中其后的 OpenShop 意图未执行;
     若发射即置闩,闩烧而店未开,后续环重跑 mandate 被闩挡死 ⇒ 空批
     StartBattle(2026-09-05 单动作备战环实机停机局的扩展诊断定谳:同局
     备战环连续三轮经济冻结后空批出战,「闩置位在发射位而非执行位」;
-    dd-027 修发射序回排后本闩置位时机是同型残留)。闩未置时发射位
+    发射序回排修订后本闩置位时机是同型残留)。闩未置时发射位
     照常重发(下帧重试);位面/轮次推进=新键自动失效(新店内容
     重新决策)。旧核 step1 RunBuyPhase 的每备战期一次店内完整决策与本
     闩同构,佐证非理由。
@@ -1489,7 +1489,7 @@ def run_mandate(frame: MandateFrame,
     # 口径 ∧ 义务集/轮内新鲜度排除后存在合格 victim ∧ 卖出后假想状态
     # 复用 select_deployments 判 up 非空——底线留置件不作上序候选,
     # 零新启发式)。发射载体 = RunDeploy(条件续类,entry.
-    # classify_frame_stability,不触发截断、不受 dd-027 回排辖);
+    # classify_frame_stability,不触发截断、不受 M7 发射序回排辖);
     # 卖谁由执行侧 CwOpDeploy 卖出臂现读仲裁(发射=存在性,执行=逐件;
     # 执行侧同吃义务集∪新鲜度排除,swap_sell_exclusion_reason 单一判定)。
     # 同帧 LevelUp 抑制(m1p_defer_levelup):升级开新 vacancy,下帧
@@ -1497,7 +1497,7 @@ def run_mandate(frame: MandateFrame,
     # 发射位门(state_of(session).cw4_m1p_seam_verified):装配两侧(发射⇔执行)
     # 输入对齐核对通过前置 False = 发射关闭、m1p_input_seam_pending 显影
     # (ADR-0530:接线核对通过前不许发射,对齐证据 = 开闸前置义务;
-    # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与 dd-037
+    # 唯一写点 = 核对完成后的接线批,缺省关 = fail-closed,与发射契约
     # 留 bench 合法稳态同向)。
     # 执行条件发射门(T-127 方案 §2.3,P79-3 落码):锁线转型域
     # (arm='transition')发射前过「压席成员存在 ∧ 存在上场能推进羁绊
@@ -1627,7 +1627,7 @@ def run_mandate(frame: MandateFrame,
     # M7 装备转移(常态:关键装备穿上场单位;D-B 释放判据 = kernel
     # cw_equip_env.resolve_wear_release 五行表,prep_actions 分发段
     # 计划产出位消费(ADR-0526/0601);基础载体 = RunEquip)。
-    # 发射门 = 变换可能性两件套(dd-027,2026-09-03 实机 RunEquip 备战环
+    # 发射门 = 变换可能性两件套(装备发射门,2026-09-03 实机 RunEquip 备战环
     # 活锁定谳修法):
     # ①可穿存在性(m7_wearable_exists):owned 快照里有注册表已登记且非
     #   工具类的件。旧「last_owned_equips 非空即发」是持有面谓词,而快照
@@ -1654,7 +1654,7 @@ def run_mandate(frame: MandateFrame,
     # 发射位 = entry.emit ②证明 pass 与③升档器求值位之间(判据单一源
     # = kernel/cw_equip_env.evaluate_tool_actions、G1 准入与工具期闩
     # cw4_tools_phase 同 phase 一次语义原样保留,仅发射位搬家)。为什么
-    # 必须移出而非前移:dd-027 回排块(下方,本体一行不动)对 out 列表内
+    # 必须移出而非前移:M7 发射序回排块(下方,本体一行不动)对 out 列表内
     # 任何 RunTools 无条件重排到首个截断/终结类动作之前——同帧含
     # LevelUp+OpenShop 的常态形态下 RunTools 必被重排到 LevelUp 之后,
     # LevelUp 先执行而投影未建模终结本 visit,RunTools 本帧从未执行
@@ -1662,7 +1662,7 @@ def run_mandate(frame: MandateFrame,
     # 本执行器内不再发射 RunTools(防双发射;回归锚 =
     # test_cw_prep_flag_machine::test_runtools_emit_position)。
 
-    # M7 发射序回排(dd-027 修订;实机局 g_20260904_010335 1-6/1-7 漏发
+    # M7 发射序回排(实机局 g_20260904_010335 1-6/1-7 漏发
     # 定谳):M7 在执行序末位评估,发射落在同帧开店意图(OpenShop=帧稳定
     # 契约 §3.2 截断点)之后 ⇒ 截断器 truncate_frame_stable 其后必截,
     # RunEquip 被静默丢弃而门②闩已在发射位消耗——同帧「开店 ∧ 可穿件」
@@ -1697,14 +1697,14 @@ def mark_equip_pass_executed(session: StrategySession,
     调用点 = 执行入口(prep_actions.PrepActionExecutor.execute)在
     RunEquip 组合 op 成功返回时——「一次完整穿戴 pass 已落地」的记账
     时点(含 0 穿完成态:候选全拉黑/hold 过滤后的完成 pass 信息完备,
-    dd-027 门②论证不变)。为什么不在发射位:备战环是单动作环,发射
+    装备发射门门②论证不变)。为什么不在发射位:备战环是单动作环,发射
     列表中排在 RunEquip 之前的可续类动作(RunDeploy 等)先执行即投影
     未建模终结本环,RunEquip 意图未执行而闩已烧 → 后续环
     equip_latch_skip 挡死,装备滞留整个备战期(与开店闩置位时机修复
     同型,见 run_mandate docstring「备战期开店闩」节)。键式与
     run_mandate 的 phase 同构(同一 state 读出,含缺省退化)。执行
     失败(ok=False)不经本函数=不置闩,下帧照常重发;意图持续不落地
-    由 DD-030 环级守卫兜底,非本闩职责。
+    由环级无进展守卫兜底,非本闩职责。
     """
     if session is None:
         return
@@ -1879,7 +1879,7 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     """RunDeploy 提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
 
     谓词单一源 = ``kernel.cw_deploy_logic.has_deployable_reasoned``
-    (dd-037):与执行方 CwOpDeploy 计划构造(select_deployments_reasoned)
+    (发射×执行单一源):与执行方 CwOpDeploy 计划构造(select_deployments_reasoned)
     同源同参语义——围栏/去重/cap/配方底线全在谓词内。计划空(含「候选
     全被规则留 bench」形态)⇒ False,不提案 RunDeploy(序内取下一动作)。
 

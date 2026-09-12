@@ -120,7 +120,7 @@ class CwStrategy(ABC, Generic[_TState]):
     @abstractmethod
     def decide_prep_screen(self, session: StrategySession,
                            config: CurrencyWarConfig) -> list[PrepAction]:
-        """备战画面黑板决策接口——**序列契约 v1**(dd-020 序列决策契约,
+        """备战画面黑板决策接口——**序列契约 v1**(序列决策契约,
         2026-09-03 冻结;前身 = ``decide_prep_action`` 单动作,W971 §2 黑板模式)。
 
         - 输入:``session`` 唯一数据总线——备战观察结果由观察层写入

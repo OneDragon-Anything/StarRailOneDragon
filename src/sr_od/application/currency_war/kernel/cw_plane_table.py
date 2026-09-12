@@ -90,7 +90,7 @@ def node_t_of(session: object, plane: object, round_num: object) -> int | None:
 
     长度源 = ``schedule_of(session)``(P1=9/P2=7/P3 进表自适应;ADR-0368
     单一源)——替代表迁波曾内联的 ``(plane-1)*9`` 字面量(假设每位面 9
-    节点,P2 真值 7 时 P3 段系统性偏大 +2,判读底稿中危项 1,与 dd-003
+    节点,P2 真值 7 时 P3 段系统性偏大 +2,判读底稿中危项 1,与 total_remaining_nodes 恒 9 待修缺陷
     「禁写死 9」同型)。session 缺席(None/裸对象)或日程未揭晓 → 回退
     ``PLANE_FALLBACK_PRIORS``=(9,9,9),该态下取值与旧字面量逐位相同
     (迁移期等价口径,sim/裸 session 零行为差)。plane/round 缺效(None/0)

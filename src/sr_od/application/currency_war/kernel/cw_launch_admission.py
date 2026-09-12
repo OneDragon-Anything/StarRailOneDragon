@@ -145,7 +145,7 @@ def launch_board_quality_report(bs: GameState, comp: Comp) -> dict:
       该口径与披露 B_t(kernel ``board_target_line_weight``)同族同源
       ——披露口径本体温测零改(ADR-0535),本报告附 ``b_t_disclosure``
       供判读对账。
-    - ``deploy_plan_available`` = kernel ``has_deployable`` 判空(dd-037
+    - ``deploy_plan_available`` = kernel ``has_deployable`` 判空(发射×执行契约
       单一源,禁第二套围栏语义)。输入装配取 mandate 发射门同源缺省:
       cap = ``state.max_units()``(装配缺读退 10**6,与发射门 None 兜底
       同口径)、target = ``comp.factions``(framework carry/locked

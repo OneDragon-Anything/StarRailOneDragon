@@ -180,7 +180,7 @@ class DecisionV2Registry:
     #: 保持处置梯度:40=报警加速、25=应急覆盖态清仓。
     emergency_hp: int = 25
     #: (crisis_hoard_gold 已随危机金出口族死链删除:零消费死旋钮,
-    #: dd-038 统一迁移批 / commit b94e9cfb,2026-09-04 用户裁定清理;
+    #: 统一迁移批 commit b94e9cfb,2026-09-04 用户裁定清理;
     #: 史料=ADR-0303。)
     #: (catchup_min_level/pop_baseline 已随 `w126_b_arm/`/ADR-0349 删除:追赶态退场,
     #: 通道 2 人口位([33])+通道 4 概率等级窗([3])+EV 总账涌现承接)
@@ -262,7 +262,7 @@ class DecisionV2Registry:
 
     # ===== 成型停手纪律([13] 停手线;ADR-0343;迁移审计 w119(git 历史)/ADR-0347 收编)=====
     #: (formed_stop_enabled 总开关已随零消费死旋钮清理删除——回退通道
-    #: 随 decision_v2 栈退役失效;dd-038 统一迁移批 / commit b94e9cfb,
+    #: 随 decision_v2 栈退役失效;统一迁移批 commit b94e9cfb,
     #: 2026-09-04 用户裁定清理;史料=ADR-0343。停手语义恒接线。)
     #: 停手辖轮**全局下界**(迁移审计 w97(git 历史)/迁移审计 w105(git 历史) 晚买证据窗=r7-r9);实际辖轮=
     #: max(锁定线 typical_form_round, 此值)——comp 派生(迁移审计 w115(git 历史)-B1,
@@ -348,8 +348,8 @@ class DecisionV2Registry:
     #: (scoring.vd_refresh_score,P5 定理:expected_refreshes×刷价 vs 收益侧),
     #: 预算前提=C_interest 在 50 档边界的输出(G2,不设常量金门))
     #: (piggy_refresh_ev 已随零消费死旋钮清理删除:消费端(scoring
-    #: vd_refresh_score 扑满 P8 账)已随 decision/ 包退役,dd-038 统一
-    #: 迁移批 / commit b94e9cfb,2026-09-04 用户裁定清理;史料=ADR-0349。)
+    #: vd_refresh_score 扑满 P8 账)已随 decision/ 包退役,统一
+    #: 迁移批 commit b94e9cfb,2026-09-04 用户裁定清理;史料=ADR-0349。)
     #: 买侧 C_interest 的回档折中视界(`w131_a2n_arm/`/ADR-0352):买候选跨息档的
     #: C = 档数 × min(R跨位面, 此值)。依据:P6 回档账下界(破档后
     #: 1-2 轮回档,真实息损 1-3 金)与平面 R 上界(P5⑤,≈20-23)的
@@ -445,8 +445,8 @@ class DecisionV2Registry:
     target_hold_value: float = 3.0
     target_hold_base: int = 9
     #: (bench_form_weight 已随零消费死旋钮清理删除:混合域形态计数
-    #: (deployed×1.0/bench×折减)消费端已随 decision/ 包退役,dd-038
-    #: 统一迁移批 / commit b94e9cfb,2026-09-04 用户裁定清理;
+    #: (deployed×1.0/bench×折减)消费端已随 decision/ 包退役,
+    #: 统一迁移批 commit b94e9cfb,2026-09-04 用户裁定清理;
     #: 史料见上记 commit。)
     #: 目标件持有进度项天花板系数(持有进度保留显影但
     #: 封顶折减——顶格不再=满形态;targets=min(此系数, n/base)
@@ -489,7 +489,7 @@ class DecisionV2Registry:
     #: 末窗承接门 gap 豁免(ADR-0405)承载)
     off_target_sell_bias: float = 0.5
     #: (crisis_buy_bias/crisis_buy_tags 已随危机战力买通道死链删除:
-    #: 零消费死旋钮,dd-038 统一迁移批 / commit b94e9cfb,2026-09-04
+    #: 零消费死旋钮,统一迁移批 commit b94e9cfb,2026-09-04
     #: 用户裁定清理;史料=ADR-0303。)
     #: (refresh_starve_discount/refresh_starve_gold/refresh_game_cap/
     #: levelup_reserve_gold 已随 `w126_b_arm/`/ADR-0349 删除:刷新×追级并存仲裁
@@ -749,7 +749,7 @@ class DecisionV2Registry:
     # ===== `w227_handoff_gate/`/ADR-0400 P1 末窗承接门(设计件 08 §4.2 Phase 1)=====
     #: (handoff_gate_min_round/handoff_gate_tier_target 已随承接门家族
     #: 死链删除:零消费死旋钮(末窗语境随 decision_v2 栈退役消亡;
-    #: handoff_ev_gap_bonus 存留——读端在位),dd-038 统一迁移批 /
+    #: handoff_ev_gap_bonus 存留——读端在位),统一迁移批
     #: commit b94e9cfb,2026-09-04 用户裁定清理;窗宽前移证据链与
     #: 已知耦合挂账=ADR-0418;史料见上节头指针与 git 历史。)
     #: EV 承接缺口项单位值(缺口 1 档 = 买侧 V 加此值;量级=forming_bias
@@ -855,7 +855,7 @@ class DecisionV2Registry:
     # ===== W332b 未成型期姿态:泄息通道(release)与换线判据参数 =====
     #: (危机金出口臂总开关 crisis_release_enabled 已随零消费死旋钮清理
     #: 删除:decision/ 整包退役后无读端(版本界碑见 ADR-0503 头注);
-    #: dd-038 统一迁移批 / commit b94e9cfb,2026-09-04 用户裁定清理。)
+    #: 统一迁移批 commit b94e9cfb,2026-09-04 用户裁定清理。)
     # (危机帧刷新通道不变式 crisis_refresh_invariant_enabled 字段已随
     #  ADR-0506 升格裁决整开关删除:不变式无条件生效——依据=P36-a 单篇
     #  结构证明(B>0⟹n≥1,零参数)+ prereg A/B 仅作确认;判据单一址=

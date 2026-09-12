@@ -64,18 +64,18 @@ from sr_od.application.currency_war.obs.cw_observation import read_gold
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
-#: overlay 弹出/关闭的固定动画等待(DD-011:等待归产生动画的操作)。
+#: overlay 弹出/关闭的固定动画等待(等待归产生动画的操作)。
 #: 原为事件驱动轮询上界 1.8s(1.5s 旧固定值 + 0.3s 轮询间隔,依据:单局
 #: 耗时审计报告 .debug/temp/currency_war/w417_duration_audit/REPORT.md
 #: 「需验证·出战链」)——判效半拆除(用户裁定 2026-09-10)后收敛为固定
 #: 等待,值取原上界保最坏情形覆盖面不缩水;弹窗就位与否交下一帧观察。
 _OVERLAY_ANIM_WAIT_S: float = 1.8
 
-#: 商店收起动画时长(DD-011 操作完成自等动画;实测口径 screen_flow_timing
+#: 商店收起动画时长(操作完成自等动画;实测口径 screen_flow_timing
 #: #15「收起过场动画 ~1s 即备战画面稳定」,用户口述。op 完成后显式等待,替代
 #: 测量驱动 gate——画面状态判断已外移建档识别层,等待时长归产生动画的操作声明)。
 SHOP_CLOSE_ANIM_S: float = 1.0
-#: 商店打开动画时长(DD-011 固定时长自等;用户口述定值 2026-09-02「干净的备战
+#: 商店打开动画时长(固定时长自等;用户口述定值 2026-09-02「干净的备战
 #: 里打开商店,只要等 1 秒就够了」。开态判定由下一帧观察侧 0n 三锚承载。
 #: 自动开店场景不经此处——cw_loop 备战分支按「备战阶段」识别)。
 SHOP_OPEN_ANIM_S: float = 1.0
@@ -182,7 +182,7 @@ class EquipPlanBuild:
     - ``steps``: 机械执行计划(EquipWearStep 列表,产出期快照,pass 内恒稳);
     - ``empty_reason``: 计划空时的具名原因(字面量与今日 op 停手归因逐字
       相等——``classify_zero_wear_stop_reason`` 词表与分键锁零漂移);
-      非空计划时为 ''(dd-037 NOOP 形态的产生位);
+      非空计划时为 ''(发射契约 NOOP 形态的产生位);
     - ``fail_reason``: 资源前置缺失原因(模板/tm_grays/rect None → 走本
       通道 ok=False 闩不置,同今日 op round_fail 同形);非空时 steps=[] 且
       不与 empty_reason 并用;
@@ -519,7 +519,7 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
             return EquipPlanBuild(
                 empty_reason=f'分配方案空:{_empty_reason}', branch='m7',
                 owned_wearable_names=[n for n, _ in wearable])
-        # dd-015:剔除已拉黑(件→角色)对后再产计划步(失败 1 次的保留,
+        # 拖拽失败降级:剔除已拉黑(件→角色)对后再产计划步(失败 1 次的保留,
         # 补救链重试一次;再败即拉黑,不再进后续派发的计划)。过滤随产出位
         # (读同一 exec_state.equip_drag_fail_counts;登记/键函数留执行位)。
         _fail_counts: dict = {}
@@ -527,10 +527,10 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
             _fail_counts = _match.exec_state.equip_drag_fail_counts
         alloc = filter_alloc_blacklisted(alloc, _fail_counts)
         if not alloc:
-            log.info('[cw-equip] 分配对全部拉黑(拖拽连败,dd-015)→ 计划空;'
+            log.info('[cw-equip] 分配对全部拉黑(拖拽连败)→ 计划空;'
                      ' 拉黑集=%s', sorted(_fail_counts))
             return EquipPlanBuild(
-                empty_reason='分配对全部拉黑(drag 连败,dd-015)', branch='m7',
+                empty_reason='分配对全部拉黑(drag 连败)', branch='m7',
                 owned_wearable_names=[n for n, _ in wearable])
         # (row, slot) 戳记(本批新落名):alloc 对 → 计划步目标物理槽位。
         # 遍历序与今日执行位解析一致(deployed_by_name 首个静态可解析者);
@@ -613,7 +613,7 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
     # comp 驱动穿戴(ADR-0101):优先穿 target_comp.key_equips 命脉件。
     _key_equips = (_tgt_comp.key_equips if _tgt_comp is not None else None)
     wearable = _prioritize_wearable(wearable, _key_equips)
-    # dd-015:回退路径同主路径纪律——拉黑件不重试;回退路径无角色身份
+    # 拖拽失败降级:回退路径同主路径纪律——拉黑件不重试;回退路径无角色身份
     # (拖点=空槽 avatar),拉黑键取 (件名, '')。
     _fail_counts_fb: dict = {}
     if _match is not None and _match.session is not None:
@@ -622,9 +622,9 @@ def _build_equip_wear_plan(ctx: SrContext, op: SrOperation) -> EquipPlanBuild:
                 if _fail_counts_fb.get(equip_drag_key(n, ''), 0)
                 < DRAG_FAIL_BLACKLIST_LIMIT]
     if not wearable:
-        log.info('[cw-equip] 回退路径候选全拉黑(dd-015)→ 计划空')
+        log.info('[cw-equip] 回退路径候选全拉黑 → 计划空')
         return EquipPlanBuild(
-            empty_reason='分配对全部拉黑(drag 连败,dd-015)',
+            empty_reason='分配对全部拉黑(drag 连败)',
             branch='front_only', owned_wearable_names=[])
     # 排序后候选 × 空槽序 zip(产出期快照;中途合成耗件 → 计划步定位
     # miss → STATUS_PLAN_STALE fail-fast,与 M7 主路径同一失效通道)。
@@ -947,7 +947,7 @@ class PrepActionExecutor:
         A2 拆除(用户裁定 2026-09-10):点后「重读验球消失」判效半删除,
         球未消由下一帧观察回补;幻球检出+会话黑名单随 M5 裁定整体删除
         (幻球 = 观察 bug,观察侧质量治理另立不入本线——读侧过滤函数与
-        其测试面归批5 dd-015 五文件面)。
+        其测试面归拖拽失败降级批五文件面)。
         """
         budget = min(action.max_k, PrepActionExecutor.SPHERE_MAX_CLICKS)
         screen = self._op.screenshot()
@@ -992,7 +992,7 @@ class PrepActionExecutor:
         """[已退役 A3] 点击后过渡的事件驱动轮询判效原语。
 
         用户裁定 2026-09-10(动作 op 只管机械执行禁止验证):轮询读屏判
-        「点击是否生效」= 判效,拆除;等待半改 DD-011 固定等待
+        「点击是否生效」= 判效,拆除;等待半改固定动画等待
         (``_OVERLAY_ANIM_WAIT_S``,等待归产生动画的操作),弹窗就位与否
         交下一帧观察。方法体保留墓碑占位防同名复活,零调用。
         """
@@ -1014,7 +1014,7 @@ class PrepActionExecutor:
         历史注记:同动作内联选卡(commit 698631b19)的动机 = 当时跨帧
         闭环链(观察臂)未接住 overlay;承接面失真要治在观察/建档面,
         不在执行链内联第二决策点。
-        A3 拆除:「轮询验 overlay 弹出」判效半删除,改 DD-011 固定等待
+        A3 拆除:「轮询验 overlay 弹出」判效半删除,改固定动画等待
         (等待归产生动画的操作);弹窗就位与否交下一帧观察。
         """
         screen = self._op.screenshot()
@@ -1031,7 +1031,7 @@ class PrepActionExecutor:
         open_point = Point(center.x, center.y + PrepActionExecutor.BOX_OPEN_DY)
         self._ctx.controller.mouse_move(open_point)   # bug#1 缓解
         self._ctx.controller.click(open_point)
-        # DD-011 固定动画等待(原轮询判效半拆除,A3;值取原轮询上界)
+        # 固定动画等待(原轮询判效半拆除,A3;值取原轮询上界)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(选卡交决策面 PickBoxCard 臂)')
         return f'开箱槽{slot}', True
@@ -1060,7 +1060,7 @@ class PrepActionExecutor:
         self._ctx.controller.click(center)        # 第一次:选中
         time.sleep(1.0)
         self._ctx.controller.click(center)        # 第二次:开启
-        # DD-011 固定动画等待(原轮询判效半拆除,A3)
+        # 固定动画等待(原轮询判效半拆除,A3)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][tome] 开典籍槽{slot} → 点两次已发(选卡交 loop 0i)')
         return f'开典籍槽{slot}', True
@@ -1099,7 +1099,7 @@ class PrepActionExecutor:
         card_point = Point(choose_x, PrepActionExecutor.CARD_Y)
         self._ctx.controller.mouse_move(card_point)   # bug#1 缓解
         self._ctx.controller.click(card_point)        # 点卡选中即确认(实测单步)
-        # DD-011 固定动画等待(原轮询判效半拆除,A3)
+        # 固定动画等待(原轮询判效半拆除,A3)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][box] 选卡 {chosen} → 点击已发')
         return True, f'选卡 {chosen}'
@@ -1422,7 +1422,7 @@ class PrepActionExecutor:
         self._op.round_by_find_and_click_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起')
         self._op.park_cursor(before_wait=0.5, after_wait=0.1)   # 同 R3
-        # DD-011:收起动画 ~1s(#15)自等;关态由下一帧观察判定。
+        # 收起动画 ~1s(#15)自等;关态由下一帧观察判定。
         time.sleep(SHOP_CLOSE_ANIM_S)
         return '关商店 点击已发(动画等待 1s;关态交下一帧观察)', True
 
@@ -1645,9 +1645,9 @@ class PrepActionExecutor:
         ADR-0601 §3-C1 计划产出位)后随 op 构造下发(CwOpEquipAll
         ``__init__(ctx, plan)`` 必填),「计划」概念不泄漏进部署/工具分派。
 
-        空计划 = 合法稳态具名 NOOP(dd-037 形态):返回
+        空计划 = 合法稳态具名 NOOP(发射契约形态):返回
         ``(f'装备 计划空: {具名原因}', True)``——发出事实 = True,execute
-        的 ``mark_equip_pass_executed`` 唯一写点照置(dd-027 活锁三条件
+        的 ``mark_equip_pass_executed`` 唯一写点照置(装备发射门活锁三条件
         闭环不变;批3a:原 ok=True 语义同值为「发出事实」)。
 
         资源前置缺失走未发出通道 (detail, False):闩不置,下帧重派,与

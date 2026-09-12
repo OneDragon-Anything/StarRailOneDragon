@@ -1,6 +1,6 @@
 # ADR-0503 危机金出口臂(危机态存息 posture 降级 + release 让位例外)
 
-> **版本界碑(2026-09-04 ADR 存量 review;危机金出口族随 v2 全族死(crisis_release_enabled 为零消费死旋钮))**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+> **版本界碑(2026-09-04 ADR 存量 review;危机金出口族随 v2 全族死(crisis_release_enabled 为零消费死旋钮))**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb 删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
 
 - **Status**: accepted(默认开=开关生命周期第 3 态,2026-09-14 开臂批翻默认;判据②③实机观察局为确认门,进行中挂账见尾注)
 - **Date**: 2026-09-12

@@ -1424,7 +1424,7 @@ def _board_pairs(ctx: SrContext, screen: MatLike, max_count: int = 9,
     聚焦裁切 OCR 才稳读 "X/Y"(全屏把 "2/3" 误读 "213"→ 旧 read_board 显脆,实为全屏密度问题;
     区域裁切可读对)。next_tier 未解析到 → 记 0(未知,read_board_next_tier 滤掉)。
 
-    count 优先级(board 计数系统性低估修复,DD-021;证据帧 obs_conflict_board__f1173e2d/
+    count 优先级(board 计数系统性低估修复;证据帧 obs_conflict_board__f1173e2d/
     3db91784/86ce9fd1:徽标"3"+链"2/4/6" 被旧链读成 1~2、"2/3" 斜杠丢失读成 1):
     ① 图标旁徽标数字(画面事实:纯数字 token 且位于名称列左侧,``_BOARD_BADGE_X_MAX``);
     ② "X/Y" 正则的 X(斜杠读全时);
@@ -1592,7 +1592,7 @@ def read_board_next_tier(ctx: SrContext, screen: MatLike) -> dict[str, int]:
     return {f: nt for f, (_c, nt) in _bp_pairs.items() if nt > 0}
 
 
-# ===== 商店牌费用徽章数字识别(2星直出缺口闭环,DD-018;merge_mechanics §2.6/§2.7)=====
+# ===== 商店牌费用徽章数字识别(2星直出缺口闭环;merge_mechanics §2.6/§2.7)=====
 # 依据:商店每张牌底部名字条右端有金色费用徽章,徽章内白色数字(1-3 位) =
 # 该牌当前星级的实付费用(费用倍数体系 merge_mechanics §2.6:费用 = 原费用 ×
 # 3^(星级−1),1★=原费、2★=×3、3★=×9;用户 2026-09-02 定稿:数字可为两位,
@@ -2282,7 +2282,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
         state.board = _merged
         # next_tier 从注册表 tier 表算(>count 的最小 tier;无更高档 → 0)。
         # 基于 _merged(徽标裁决后的最终计数)而非 computed 底座——否则徽标纠正
-        # 上行时 next_tier 仍按旧计数停在前一档(低估修复,DD-021,见 _board_pairs)。
+        # 上行时 next_tier 仍按旧计数停在前一档(低估修复,见 _board_pairs)。
         # kernel 单一源委托(迁移批次二):同式推导收敛到
         # cw_game_state.board_next_tier_of(sim 观测键 ADR-0488 同源)。
         from sr_od.application.currency_war.kernel.cw_game_state import (

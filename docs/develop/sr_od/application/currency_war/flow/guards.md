@@ -34,10 +34,10 @@
 - `UNKNOWN_STOP_THRESHOLD=15` 轮 ≈ 2min（旧 30s 放宽，换取停机钩子触发前充分自愈窗口）；重试退避 = 2s 起步每连续一次翻倍，封顶 `UNKNOWN_RETRY_BACKOFF_CAP_S=10`（画面被任何分支接走 → streak 归 1 退避自动复位）。
 - 触发动作：截图 + `unknown_state.flag`（处理流程：analyze_screen 离线判已建档命中 → 未命中按元素语义建档 + 0x 分支加 handler → 删 flag + 重启 server）→ `stop_running`。
 
-## 5. 策略失活早停（ADR-0342/dd-031；`cw_loop.py::CwLoop.loop` 策略失活早停检查段）
+## 5. 策略失活早停（ADR-0342；`cw_loop.py::CwLoop.loop` 策略失活早停检查段）
 
 - 判据：连续 **2 个完整轮**无任何策略心跳决策行（心跳 = sid 行或载体行，单一源 `query._row_heartbeat`；外环停转 = 整轮零心跳行）→ 停局重启加载策略（"重大修复待加载 = 无条件早停"的运行期镜像：外环死了继续跑 = 零信息量局）。
-- dd-031 定谳辖域收敛：sid 行唯一写点在店内决策；mandate 合法跳过开店（三开店站全关）时整轮只有载体行——旧判据"无 sid 行=死"把健康局误杀。结算点 = 备战入口查**上一轮**（本轮决策尚未发生，查本轮恒空会误杀）；telemetry 关闭时本检查让位。
+- 判据辖域定谳：sid 行唯一写点在店内决策；mandate 合法跳过开店（三开店站全关）时整轮只有载体行——旧判据"无 sid 行=死"把健康局误杀。结算点 = 备战入口查**上一轮**（本轮决策尚未发生，查本轮恒空会误杀）；telemetry 关闭时本检查让位。
 
 ## 6. 执行失败安灯（`cw_screen_prep.py` `_spend_unit_close`（判定与记账同点：购买单元收尾）+ `_exec_fail_hook_check`（安灯判定+触发）；分类器在 `run_state.py`）
 

@@ -190,7 +190,7 @@ class StrategySession:
     # 从局 seed 派生(sim/engine_p1.py)。本字段是公开随机接口的种子契约锚。
     rng: random.Random = field(default_factory=lambda: random.Random(0))
     performance: PerformanceTracker = field(default_factory=PerformanceTracker)  # 观测反馈(双侧 OCR)
-    # —— 黑板模式观察帧容器(W971 §2 黑板模式,dd-014)——
+    # —— 黑板模式观察帧容器(W971 §2 黑板模式)——
     # prep_obs_frame:备战观察结果(PrepObservation 整帧)。生命周期 =
     # 新鲜快照(每次备战观察覆写)。写者白名单 = cw_screen_prep._observe /
     # 破警告派生帧 / 兼容期旧接口薄委托。读者 = decide_prep_screen(黑板

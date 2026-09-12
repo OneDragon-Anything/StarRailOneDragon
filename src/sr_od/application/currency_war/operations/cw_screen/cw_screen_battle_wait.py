@@ -4,8 +4,8 @@
 点「继续挑战」)→ 完成判据白名单任一出现(备战系/补给/遭遇/投资策略/强敌来袭/
 位面过渡锚)→ round_success 交回主循环分发;「前往结算」链的团灭终局(多页 →
 返回货币战争 → 大厅)= 第三出口,round_success(status='terminal_lobby') 交整局
-退出(主循环 3c 收口)。决策记录 = DD-019(docs/develop/sr_od/application/currency_war/decisions/
-dd-019-p4-battle-wait-op-expected-state.md)。
+退出(主循环 3c 收口)。决策 why 归 git 历史(战斗等待 op 期望态接线;接线语义见下)。
+
 
 结构判据(od-dev-write-operation「循环驱动玩法」):本 op = node-per-op 的
 **逻辑单元生命周期 owner**——战斗+结算是一个单元(开始=出战,结束=白名单锚/
@@ -154,13 +154,13 @@ class SettlementState:
     记忆)。坐标系:
     - last_outcome_hp = outcomes 内存轨迹末条真 hp(summary final_hp 真值源;
       conf≥0.9 才更新,r3 live 修);
-    - saw_defeat_settlement = 败局闩(DD-006):本局见过任一显式败局结算帧
+    - saw_defeat_settlement = 败局闩:本局见过任一显式败局结算帧
       (3c 假 win 守卫消费);
     - last_outcome_t = 上一结算真值轮全局节点号(killed hp 对比兜底的轮次
       邻接门);
     - rounds_done = 已完成战斗轮数(C-1 新结算帧计数;轮锚点 = 挑战成功结算);
     - settle_page1_progress / settle_page1_settle = 结算页1 三项遥测暂存
-      (DD-006;页2 记录时合并消费,用后清);
+      (页2 记录时合并消费,用后清);
     - settle_p1_ts = 结算页1 面板渲染延迟门计时(SETTLE_PANEL_WAIT_S);
     - settle_stay = 结算屏停留计数(M39 长按兜底触发器,≥3 长按);
     - last_settle_fp / last_loss_fp = 同屏指纹防重(C-1 计数/败局行防重);
@@ -198,7 +198,7 @@ class CwScreenBattleWait(CwScreenOpBase):
     #: 该处 git 历史):面板进页 ~2-4s 才出现;门语义 = 面板 visible 或超时
     #: 才放行推进。超时兜底覆盖胜轮(面板整块不出现,帧实证)。
     SETTLE_PANEL_WAIT_S: ClassVar[float] = 4.0
-    #: 败局闩次级证据裁决的轮次下限(DD-006 裁决 5 二轮审计,随迁):
+    #: 败局闩次级证据裁决的轮次下限(二轮审计裁决 5,随迁):
     #: t = (plane-1)*9+round 过中位 + 面板负分量 双证据才置闩。
     SETTLE_DEFEAT_LATCH_MIN_T: ClassVar[int] = 14
     #: relaunch 残留结算屏判据宽限(随迁自 cw_loop RELAUNCH_SETTLE_GRACE_S)。
@@ -373,19 +373,19 @@ class CwScreenBattleWait(CwScreenOpBase):
                 log.info('[cw-bwait] loss_page 行不落:killed=%s 非显式败局(W239)',
                          _obs.killed)
                 return
-            # r68 页1 progress 合并(DD-006;暂存源 = SettlementState)
+            # r68 页1 progress 合并(暂存源 = SettlementState)
             if _obs.progress_delta is None:
                 _pg1 = _st.settle_page1_progress
                 if _pg1 is not None:
                     _obs.progress_delta = _pg1
                     log.info('[cw-bwait] progress 合并(第一页暂存):%s', _pg1)
                 _st.settle_page1_progress = None
-            # boss 胜局 win 真值(DD-006):进度符号先于 hp 对比兜底
+            # boss 胜局 win 真值:进度符号先于 hp 对比兜底
             if _obs.killed is None and _obs.progress_delta is not None:
                 _obs.killed = _obs.progress_delta > 0
                 log.info('[cw-bwait] killed 进度符号判定:progress=%s → %s',
                          _obs.progress_delta, _obs.killed)
-            # killed 文本兜底(双侧置信度门 + 轮次邻接门;DD-006)
+            # killed 文本兜底(双侧置信度门 + 轮次邻接门)
             # 时基经 kernel 单一源派生(schedule 前序位面实际长度和;与
             # 决策读口同式禁单侧改式,契约见 cw_hp_policy 门本体)。
             from sr_od.application.currency_war.kernel.cw_plane_table import (
@@ -548,7 +548,7 @@ class CwScreenBattleWait(CwScreenOpBase):
             log.warning('[cw-bwait] loss_page 补录失败(不阻塞): %s', e)
 
     def _defeat_latch_by_secondary(self, pnl: dict) -> None:
-        """进度符号漏读帧的败局闩次级证据裁决(DD-006 二轮审计②,随迁)。"""
+        """进度符号漏读帧的败局闩次级证据裁决(二轮审计②,随迁)。"""
         _neg = ((pnl.get('damage_base') is not None and pnl['damage_base'] < 0)
                 or (pnl.get('damage_unfinished_progress') is not None
                     and pnl['damage_unfinished_progress'] < 0))
@@ -563,10 +563,10 @@ class CwScreenBattleWait(CwScreenOpBase):
         if _neg and _t is not None and _t >= _min_t:
             self._st.saw_defeat_settlement = True
             log.info('[cw-bwait] 败局闩次级证据:面板负分量 + t=%s≥%s → 置闩'
-                     '(DD-006 二轮审计)', _t, _min_t)
+                     '(二轮审计)', _t, _min_t)
         else:
             log.info('[cw-bwait] 败局闩次级证据不足(负分量=%s, t=%s, 门限=%s)→ '
-                     '不置闩留证(DD-006 二轮审计)', _neg, _t, _min_t)
+                     '不置闩留证(二轮审计)', _neg, _t, _min_t)
 
     def _mark_relaunch_residual(self) -> bool:
         """relaunch 残留结算屏判据(迁移审计 w28,随迁;只标记不改行为)。"""
@@ -719,7 +719,7 @@ class CwScreenBattleWait(CwScreenOpBase):
             self._st.settle_p1_ts = None
             if _1f_sign is None:
                 self._defeat_latch_by_secondary(_pnl)
-            # 页1 三项遥测暂存(DD-006;填充率后帧覆盖语义随迁)
+            # 页1 三项遥测暂存(填充率后帧覆盖语义随迁)
             try:
                 _on_p1_1f = _1f_items is not None and any(
                     '点击空白加速' in (r.data or '') for r in _1f_items)

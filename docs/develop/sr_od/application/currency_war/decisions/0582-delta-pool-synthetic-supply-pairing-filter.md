@@ -1,7 +1,7 @@
 # ADR-0582: T-118 Δ池生成器治理——合成行/低可信行退出 hp 差分配对(共享配对件单件同源)+ battle rung 真值锚随批重推
 
 - 状态:已实施
-- 关联:ADR-0577(hp 事件模型 v9:合成行退出步进链的语义权威,本批把同一判据延伸到 Δ池消费面)、ADR-0567(v8 逐结算行化,合成行防御源头)、ADR-0292/0345(reward/supply 池采样与 regen-robust 锁,伪影哨兵带消费方)、DD-012(v12 hp0 瞬态剔除,移行桥接先例)、ADR-0362(plane 维键化)、ADR-0279(battle rung 真值表所属检查项)、ADR-0424(coarse 主路径下 Δ池仍辖 delta 对照臂与 reward/supply,治理必要性不变)、`sim/pool.py`(共享配对件本体)、`sim/cw_delta_pool_gen.py`(快照生成器)、`sim/checks/pool.py`(BATTLE_RUNG_TRUTH)
+- 关联:ADR-0577(hp 事件模型 v9:合成行退出步进链的语义权威,本批把同一判据延伸到 Δ池消费面)、ADR-0567(v8 逐结算行化,合成行防御源头)、ADR-0292/0345(reward/supply 池采样与 regen-robust 锁,伪影哨兵带消费方)、v12 hp0 瞬态剔除(移行桥接先例)、ADR-0362(plane 维键化)、ADR-0279(battle rung 真值表所属检查项)、ADR-0424(coarse 主路径下 Δ池仍辖 delta 对照臂与 reward/supply,治理必要性不变)、`sim/pool.py`(共享配对件本体)、`sim/cw_delta_pool_gen.py`(快照生成器)、`sim/checks/pool.py`(BATTLE_RUNG_TRUTH)
 - 证据链:`.debug/temp/currency_war/t70_delta_pool/回血22复核.md`(五路证据:行自陈标记/帧级真值矛盾/写端代码机制/指纹级配对复算/镜像律 155/170=91.2%)+ `治理方案审.md`(四条阻断与量化复算,指纹级 v0 复现 04d9cd7a)
 
 ## 1. 背景与问题

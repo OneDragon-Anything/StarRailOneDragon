@@ -104,7 +104,7 @@ V̄_net(r) = (rung_value[2] + Δp(e0→e1) × 单战价值) × r
 - P40(R1 承诺账本体与 ⑤ S1 自检——本篇修其比较项的视界因子,不动门形态);
 - CALIB_REPORT §2.1/§2.2(链的静态版与卡价相消裁决——A2 的出处);
 - REFRESH_CFO_REPORT §3/§5/§6(修 A 的实证依据与反事实表);
-- ADR-dd-025(决策记录);代码:`cw4/statefn/vbar.py` + `cw4/shop.py` r1 消费位。
+- 决策记录已并入本篇(动机与出处节);代码:`cw4/statefn/vbar.py` + `cw4/shop.py` r1 消费位。
 
 ## 修订单 R1(2026-09-04,增量 B——因子 provenance 重接地)
 

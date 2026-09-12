@@ -512,7 +512,7 @@ def _best_decision_frame(dec_rows: list[dict[str, Any]],
 
 
 def _latest_ts_frame(dec_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """全集取 ts 最晚一帧(「ts 最晚行」扫描单一源,DD-006 批审计消双源)。
+    """全集取 ts 最晚一帧(「ts 最晚行」扫描单一源,批审计消双源)。
 
     ts 并列取流内后行(追加写序即时钟;前提 = decisions.jsonl **单调追加**,
     同 ``_last_decision_frame`` 的显式声明);零行 → None。防漂移说明:本环

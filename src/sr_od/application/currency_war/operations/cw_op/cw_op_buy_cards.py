@@ -1012,11 +1012,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             _seg_frames += 1
             # T-308/ADR-0646 S3 布局代次检差(每动作消费前):命中 = visit 内
             # 布局已重排(reconcile 纠漂递增 epoch),已发射动作的 bench_idx
-            # 代际失效,不可只换 state.bench → 三步:①截断在飞计划(dd-020
+            # 代际失效,不可只换 state.bench → 三步:①截断在飞计划(序列决策契约
             # 截断语义,plan_truncated 记账)→ ②按 tracked 重播种(helper
             # 内含槽号健康门)→ ③重入决策(decide 消费重播种后黑板帧)。
             # 重播种被健康门拒绝 = 布局不可信 → fail-stop 本段收工交回外
-            # 循环重观察(dd-020 fail-stop 语义;禁在不可信布局上继续发射)。
+            # 循环重观察(序列决策契约 fail-stop 语义;禁在不可信布局上继续发射)。
             from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
                 reseed_bench_if_layout_stale,
             )
@@ -1028,7 +1028,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             if _stale == 'reseeded':
                 _seed_epoch = exec_state_of(match.session).bench_layout_epoch
                 ledger.plan_truncated = True
-                log.warning('[cw!][plan] 布局代次检差命中:在飞计划截断(dd-020),'
+                log.warning('[cw!][plan] 布局代次检差命中:在飞计划截断),'
                             '已按 tracked 重播种投影 bench,重入决策')
                 continue
             if _stale == 'failed':

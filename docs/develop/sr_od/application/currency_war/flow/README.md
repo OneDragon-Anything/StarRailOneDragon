@@ -41,7 +41,7 @@
 | 身份 | 载体 | 职责 | 禁止 |
 |---|---|---|---|
 | **契约** | `strategies/impl/cw_strategy.py` 的 `CwStrategy` ABC(抽象 12 + 非 abstract 工厂 1;接口面见 §2.2) | 定义各画面 op 调用策略器的全部决策入口与唯一冷建口(§2.2) | ABC 自身零内置逻辑(纯接口,create_state 工厂除外);零策略专属语义(update_target/意向 target 机器/生命周期事件钩子已出契约面,ADR-0583) |
-| **管理器** | `strategies/impl/cw_strategy_manager.py`(StrategyManager) | 按实例化/选择策略;注册面封闭集 = {mandate_v1}(decision_v2 已随 dd-038 删除) | 不承载判据;不知策略内部结构 |
+| **管理器** | `strategies/impl/cw_strategy_manager.py`(StrategyManager) | 按实例化/选择策略;注册面封闭集 = {mandate_v1}(decision_v2 已随 commit b94e9cfb 删除) | 不承载判据;不知策略内部结构 |
 | **实现** | `strategies/impl/mandate_v1/`(单一核)+ `strategies/impl/flow.py`(`CwFlowStrategy` 中间辅助 ABC:唯一冷建口/方向节拍内化刷新/pick 族/商店单动作接口与驱动器缺省,`_abstract=True` 不注册;旧备战骨架已删 ADR-0517/0518;结算策略半惰性 drain 三方法已删 ADR-0638) | 决策本体 | 禁自实现生命周期机制(幂等键/连败恢复/屏蔽/stall 门——归流程侧);禁绕契约自造接口 |
 | **注册壳** | `strategies/mandate_v1_strategy.py`(MandateV1Live) | 把实现包注册进策略扫描器 | 壳内零判据逻辑 |
 
@@ -93,7 +93,7 @@
 - **归因域限定**：sim 引擎唯一决策入口 = decide_shop_screen ⇒ 归因域 = shop 决策面（prep 面 sim 不可达），结论不得外推为全决策面处理效应。
 - **判读硬前置**（判前锁 v6 检查单）：任一行未落地 ⇒ 正式 A/B 被 raise 拦死（排程层防零刷新事故复发）；强制披露清单（fail-closed 关闭面的拒因计数——U_X/T_SEARCH_A 豁免 ⇒ EV 买/压库/凑息卖/换线塌缩五面两臂恒等关闭，headline 必须随附该降级分量）。
 - **遥测分栈**：DecisionTrace 按 (strategy_id, ev_arm) 二元组分栈；mandate 标记维度区分骨架/EV 动作。
-- **换核机制** = config 切 strategy_id（最小面），不改流程侧分发；单一核 = mandate_v1（cw4 分层包），decision_v2 为声明的 A/B 基线臂（A/B 过线 = 整体删除旧决策包的触发门，dd-001 时序裁决）。
+- **换核机制** = config 切 strategy_id（最小面），不改流程侧分发；单一核 = mandate_v1（cw4 分层包），decision_v2 为声明的 A/B 基线臂（A/B 过线 = 整体删除旧决策包的触发门；该触发门已随旧决策包删除终结）。
 
 ### 2.5 无状态策略与 session / 策略器状态
 

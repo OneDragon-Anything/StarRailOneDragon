@@ -81,7 +81,7 @@ class EquipWearStep:
     row: str
     slot: int
 
-# ===== 拖拽失败降级(dd-015;复盘 g_20260902_181254 修复项 A)=====
+# ===== 拖拽失败降级(复盘 g_20260902_181254 修复项 A)=====
 # 实证形态:同一(源件→目标)拖拽 diff=0.0 连败 4 轮,每轮整个装备步骤
 # 中止(~18s/轮)且无跨轮记忆。修法三件:失败计数登记(session 级,跨轮
 # 存活)→ 连败达限拉黑该(件,角色)对;单件失败跳过继续穿下一件(不再
@@ -100,7 +100,7 @@ def equip_drag_key(item_name: str, char_name: str) -> tuple[str, str]:
 
 
 def register_equip_drag_failure(counts: dict, key: tuple[str, str]) -> bool:
-    """登记一次拖拽失败 → 返回是否已达拉黑线(纯函数,dd-015)。
+    """登记一次拖拽失败 → 返回是否已达拉黑线(纯函数)。
 
     ``counts`` = exec_state_of(session).equip_drag_fail_counts(局级持久,跨轮累积);
     同一对达 ``DRAG_FAIL_BLACKLIST_LIMIT`` 后恒返回 True(幂等拉黑)。
@@ -110,7 +110,7 @@ def register_equip_drag_failure(counts: dict, key: tuple[str, str]) -> bool:
 
 
 def filter_alloc_blacklisted(alloc: list, counts: dict) -> list:
-    """分配序列剔除已拉黑的(件→角色)对(纯函数,dd-015)。
+    """分配序列剔除已拉黑的(件→角色)对(纯函数)。
 
     ``alloc`` 元素 = (角色名, 件名)(``equip_allocation`` 产出口径);
     拉黑对按 ``equip_drag_key`` 命中且计数达 ``DRAG_FAIL_BLACKLIST_LIMIT``
@@ -375,7 +375,7 @@ class CwOpEquipAll(SrOperation):
     # 保住期内穿戴极大性(合成产物当帧进入新计划)。
     STATUS_PLAN_STALE: ClassVar[str] = \
         '装备计划失效(计划步件两次现读不可定位,交回重派重算)'
-    # 空计划合法稳态(dd-037 对称出口):生产路径不可达(分发段 _run_equip
+    # 空计划合法稳态(发射契约对称出口):生产路径不可达(分发段 _run_equip
     # 已对空计划短路 NOOP+闩照置),仅为直接构造面(测试/未来调用方)提供
     # 对称出口,不承担闩闭合职责。
     STATUS_PLAN_EMPTY: ClassVar[str] = \
@@ -519,7 +519,7 @@ class CwOpEquipAll(SrOperation):
         后排从 screen_info rect 推导:drag_y = rect.y1+21(前排 329→350 校准外推),
         verify_y = rect.y2+14(avatar_to_below 同式,前排 467→481≈479 互证)。
 
-        dd-015 排障修正:后排 area 前缀原硬编码「后排」(6 槽档),而占用读侧
+        排障修正:后排 area 前缀原硬编码「后排」(6 槽档),而占用读侧
         (M7 ``_row_specs``)与部署侧均走 ``select_back_layout`` 档位前缀
         (「后排7槽」/「后排8槽」,ADR-0385)——布局非 6 槽时槽号→rect 错配
         半个槽位,拖点落在邻槽(装备穿到别人身上/落空,diff 恒 0.0 假失败,
@@ -589,7 +589,7 @@ class CwOpEquipAll(SrOperation):
         # 本循环只做:屏断言(E2/E3 执行断言)→ owned 现读(W209g 快照
         # 写端)→ 计划件定位(miss → 一次机械现读重试 → 仍 miss =
         # STATUS_PLAN_STALE fail-fast,下帧重派时分发段对 fresh 帧重算)
-        # → 拖点解析(缺失跳步)→ 拖拽补救链/CV-diff 验穿/dd-015 登记。
+        # → 拖点解析(缺失跳步)→ 拖拽补救链/CV-diff 验穿/失败拉黑登记。
         _match = self.ctx.cw_match
         _fail_counts: dict = {}
         if _match is not None and _match.session is not None:
@@ -602,7 +602,7 @@ class CwOpEquipAll(SrOperation):
         _is_m7 = any(s.char_name for s in self.plan)
         _skipped = 0   # 拖点解析失败跳步计数(计划 for 有界,无今日 stall 断面)
         if not self.plan:
-            # 空计划防御(dd-037 对称出口):生产路径不可达——分发段
+            # 空计划防御(发射契约对称出口):生产路径不可达——分发段
             # _run_equip 已对空计划短路(具名 NOOP + 闩照置);本分支只为
             # 直接构造面(测试/未来调用方)提供合法稳态,不承担闩闭合职责
             # (闩写点唯一在 prep_actions.execute 执行位)。
@@ -692,7 +692,7 @@ class CwOpEquipAll(SrOperation):
                 log.info('[cw-equip] %s → %s 穿了(diff=%.1f)',
                          name, step.char_name or '前排空槽', diff)
             else:
-                # dd-015 + pass 终止语义落名(R3):拖拽硬失败(补救链全档
+                # 拖拽失败降级 + pass 终止语义落名(R3):拖拽硬失败(补救链全档
                 # 仍败)与今日 break 语义一致——登记失败(≥2 次拉黑该对,
                 # 跨轮存活;只影响下一计划的过滤)、终止本 pass、round_
                 # success 已穿件数(闩照置)。剩余计划步交回下帧重派(重算
@@ -704,14 +704,14 @@ class CwOpEquipAll(SrOperation):
                 _bl = register_equip_drag_failure(
                     _fail_counts, equip_drag_key(name, step.char_name))
                 if _bl:
-                    log.warning('[cw!][equip] %s → %s 拖拽连败 %d 次 → 拉黑(dd-015,'
+                    log.warning('[cw!][equip] %s → %s 拖拽连败 %d 次 → 拉黑('
                                 ' diff=%.1f;后排拖点已随布局档修正)',
                                 name, step.char_name,
                                 _fail_counts[equip_drag_key(name, step.char_name)], diff)
                 else:
                     log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 终止本 pass,'
-                             '剩余计划步交回下帧重派(dd-015)', name, diff)
-                _stop_reason = 'drag 落空(失败继续,dd-015)'
+                             '剩余计划步交回下帧重派)', name, diff)
+                _stop_reason = 'drag 落空(失败继续)'
                 break
         if _is_m7:
             # 零穿戴哨兵(W596/W593 方案②;纯观测,不停机零行为变更)。

@@ -8,7 +8,7 @@
 位面 2 r1,hp36,金 29,板 7/7 满且 bench 持目标件,备战双锚在场、
 『出战 F』可用。日志:连续 3 备战环同签名动作批 `['RunDeploy']` ∧ 状态
 零推进 → 环级无进展守卫停机(`prep_no_progress.flag`)。每环 CwOpDeploy
-报「无部署可做(计划空,候选全被规则留 bench;dd-037 no-op)」→ 备战环
+报「无部署可做(计划空,候选全被规则留 bench;发射契约 no-op)」→ 备战环
 success 返回 → 顶层分发重判 → 同态循环。
 
 ## 根因
@@ -35,7 +35,7 @@ eligible(action_sig, last_prep_success) =
 ```
 - 触发位 = 环级无进展守卫既有触发位(连续 PREP_NO_PROGRESS_ROUNDS=3 环
   「同签名动作批 ∧ 状态零推进」),复用守卫计数,不立第二计数器;
-- dd-037 契约保证:计划空+0 落地 = STATUS_NOOP 走 success;计划非空+
+- 发射×执行契约保证(flow/action_exec.md §2):计划空+0 落地 = STATUS_NOOP 走 success;计划非空+
   0 落地(拖拽落空/遮罩挡拖)= round_fail。故「RunDeploy-only ∧ 上环
   success」唯一对应策略层自愿 no-op(候选被规则留 bench ∧ 买/升/刷
   全被策略拒绝 ∧ 零状态变换)= 收益耗尽;其他形态(OpenShop 重燃、

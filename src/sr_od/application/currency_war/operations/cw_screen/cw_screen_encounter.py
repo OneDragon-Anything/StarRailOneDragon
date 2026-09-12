@@ -5,7 +5,7 @@
 2026-08-04 实测交互模型(见 ``docs/game/screens/currency_war_encounter.md``):
   点卡身(选中)→ 点选择(确认),**中间不要插空白点击**(会取消选中 → 死循环)。
 
-✅ 分支刷新执行链(dd-004):``decide_encounter`` 建议刷新(pick.refresh,全分支词缀克
+✅ 分支刷新执行链:``decide_encounter`` 建议刷新(pick.refresh,全分支词缀克
   comp 时)→ OCR「剩余次数:N」>0 且本局未用 → 文本锚定点刷新圆钮 → **重读选项 →
   refresh_used=True 重新决策 → 按新决策选**。分支刷新能力 = 优势布局「分支刷新」授予
   (每局 1 次重置两卡难度/奖励;bwiki 优势布局表);session 级单次标志
@@ -16,7 +16,7 @@
   options,重决策结果天然等价,「刷没刷成」不判。
   ⚠️ **触发源缺位挂账**:``read_encounter_options`` 的 affixes 恒空(卡面 UI 不显词缀,
   词缀在未建档的「敌方信息覆盖层」里)→ decide_encounter 的全克判定当前恒不触发,
-  本执行链就绪但待词缀读数通道建立后才可能开火(dd-004 §约束)。
+  本执行链就绪但待词缀读数通道建立后才可能开火(设计约束)。
 
 ✅ Stage C2 已接:``decide_encounter``(按 comp 成型度选:未成型→低难保生存 /
   成型+词缀利→高难拿奖励 / 全分支克→刷新换批;用 pick.idx 选卡,**非默认选左**)。
@@ -111,7 +111,7 @@ class CwScreenEncounter(CwScreenOpBase):
     CARD_RIGHT: ClassVar[Point] = Point(1288, 550)
     # 底部「选择」按钮中心(未选中卡时灰置禁用,选中后才可点)。常量=兜底;首选 area_center('按钮-选择')。
     SELECT_BTN: ClassVar[Point] = Point(1082, 898)
-    # 分支刷新圆钮 = 「剩余次数:N」文本左侧固定偏移(dd-004)。归档帧
+    # 分支刷新圆钮 = 「剩余次数:N」文本左侧固定偏移。归档帧
     # sr-od-test/screens/货币战争-遭遇节点/default.webp CV 双法实测:圆钮 ≈(671,899)、
     # 文本锚中心 ≈(771,899) → 偏移 = -100px;偏移错 → 刷新未命中,重读=原
     # options,重决策结果天然等价(照常选卡)。
@@ -287,7 +287,7 @@ class CwScreenEncounter(CwScreenOpBase):
             if 0 <= pick.idx < len(options):
                 idx = pick.idx
             reason = pick.reason
-        # ===== 分支刷新执行链(dd-004):建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
+        # ===== 分支刷新执行链:建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
         # 验效双通道已拆(用户裁定 2026-09-10 动作 op 禁验效,清查报告 H1):
         # 发射即置位 → 点钮+固定等待 → 无条件重读 → 带 refresh_used=True
         # 自然重决策。「刷没刷成」不判:卡面未变时新观察=旧 options,重决策
@@ -384,7 +384,7 @@ class CwScreenEncounter(CwScreenOpBase):
     def lifecycle_decision_cycle(self, payload: EncounterObservation
                                  ) -> OperationRoundResult:
         """段3-5 单动作决策循环(架构设计 §5.1 后三段):decide
-        (strategy_input_state → decide_encounter)→ 分支刷新链(dd-004,
+        (strategy_input_state → decide_encounter)→ 分支刷新链(
         发射点 = ``_emit_refresh_click``)→ act(分派面:点卡+确认机械交回;
         chosen 写端 = 确认发出置 pending,重入裁决承载,选择 handler 单次
         逻辑写入豁免 §2.2)→ on_outcome(注册表回执点)。生命周期无验证段
@@ -409,7 +409,7 @@ class CwScreenEncounter(CwScreenOpBase):
             if 0 <= pick.idx < len(options):
                 idx = pick.idx
             reason = pick.reason
-        # ===== 分支刷新执行链(dd-004):建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
+        # ===== 分支刷新执行链:建议刷新 → 有次数且未用 → 点钮 → 重读重决策 =====
         # 验效双通道已拆(同旧路径,清查报告 H1):发射即置位 → 点钮+固定
         # 等待 → 无条件重读 → 带 refresh_used=True 自然重决策。
         refreshed = False

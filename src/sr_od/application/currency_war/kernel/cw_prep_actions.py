@@ -149,19 +149,19 @@ class LevelUp(PrepAction):
 class EnsureShopOpen(PrepAction):
     """开商店(gold 备战帧同可见可读:玩家确认 2026-09-09「干净备战帧金币可见」,
     恢复局备战期金币无机制性例外——备战帧观察为 gold 覆盖写端之一,非「仅开态可读」)。
-    ⚠️ W970 批 C 退役(dd-017):生产路径改发
+    ⚠️ W970 批 C 退役:生产路径改发
     :class:`OpenShop`(read_only 变体),本类仅存续于旧环/离线兼容面。"""
 
 
 @dataclass
 class EnsureShopClosed(PrepAction):
-    """关商店(HP 只在关态可读)。⚠️ W970 批 C 退役(dd-017):关店由商店决策空序列
+    """关商店(HP 只在关态可读)。⚠️ W970 批 C 退役:关店由商店决策空序列
     触发 CwOpCloseShop;开态清洁面板场景改发 :class:`OpenShop`(read_only)。"""
 
 
 @dataclass
 class OpenShop(PrepAction):
-    """开商店意图(W970 批 C/§4.3.6,dd-017;EnsureShop 意图退役后的承接形态)。
+    """开商店意图(W970 批 C/§4.3.6;EnsureShop 意图退役后的承接形态)。
 
     read_only=False:显式开店 → 流程层编排商店动作循环(观察→decide_shop_screen
     →波执行→空序列 CwOpCloseShop→节点探针)。

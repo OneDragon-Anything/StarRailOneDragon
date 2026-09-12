@@ -55,7 +55,7 @@ def find_area(
     if area is None:
         # 运行时 screen_loader 只加载 _od_merged.yml;代码引用的画面/区域名若
         # 未随 merged 再生(改名后未重生成),get_area 静默 None → 分发分支被
-        # 当成「未命中」跳过(dd-029 第三起实机卡死根因)。显式告警区分
+        # 当成「未命中」跳过(实机卡死级事故形态)。显式告警区分
         # 「配置缺失」与「画面上没找到」。
         log.warning('区域未配置(画面名或 area 名不在运行时 screen_info 中): %s.%s',
                     screen_name, area_name)

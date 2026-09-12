@@ -245,7 +245,7 @@ def prep_exhaustion_launch_eligible(action_sig: tuple | None,
       出战/停机出口按末批相位二选一,3 环内必有出口,结构性缺口闭合
       是确定性的(两种末批相位形态都锁,实机验收断言「必出战」
       只对末批=RunDeploy 相位成立);
-    - **上一备战环 success**:dd-037 契约保证「计划空+0 落地 = STATUS_
+    - **上一备战环 success**:发射契约保证「计划空+0 落地 = STATUS_
       NOOP 合法稳态」走 success、「计划非空+0 落地 = 执行面失败」走
       round_fail——success 即排除执行面失败形态(拖拽落空/遮罩挡拖拽);
     - None 批不累计(调用方共同出口归零)。
@@ -908,7 +908,7 @@ class CwLoop(SrOperation):
     #: 数值参数。
     INVEST_REPROBE_WAIT: ClassVar[float] = 0.6
 
-    #: 主循环全部分支判定锚 ``画面名.area名``(分发预检枚举源,dd-029)。
+    #: 主循环全部分支判定锚 ``画面名.area名``(分发预检枚举源)。
     #: 运行时画面加载只读 _od_merged.yml;分文件改名后 merged 漏再生时,分支
     #: 检测 get_area→None→AREA_NO_CONFIG 被 is_success 静默吞掉(第三起实机
     #: 卡死根因:选择伙伴遮罩下部署死局 ~8min,日志零线索)。本表在 iter1 对
@@ -961,7 +961,7 @@ class CwLoop(SrOperation):
     )
 
     def _dispatch_anchor_precheck(self) -> None:
-        """iter1 分发锚可解析预检(dd-029):任一锚不在运行时 screen_info
+        """iter1 分发锚可解析预检(防 merged 漏再生漂移):任一锚不在运行时 screen_info
         (merged)→ log.error 逐条点名。不中止运行(缺锚分支退化为「该画面
         不识别」,其余分支照常推进;中止会造成无对局可跑)。异常吞掉不阻塞
         (预检失败不能比事故本身更贵)。"""
@@ -973,7 +973,7 @@ class CwLoop(SrOperation):
             if missing:
                 log.error('[cw!][loop] 分发锚预检:%d 个锚不在运行时 screen_info'
                           '(画面改名后 merged 漏再生?)→ 对应分支每帧静默跳过'
-                          '(dd-029 形态):%s', len(missing), '; '.join(missing))
+                          '(历史事故形态):%s', len(missing), '; '.join(missing))
         except Exception as e:   # noqa: BLE001  预检失败不阻塞对局
             log.debug('[cw-loop] 分发锚预检失败(不阻塞): %s', e)
 
@@ -1491,7 +1491,7 @@ class CwLoop(SrOperation):
         # 收口钩子对成功/失败/停止全路径必达(operation.py:492),见类注。
         screen = self.last_screenshot
 
-        # iter1 分发锚可解析预检(dd-029):配置缺失第一轮炸到日志面,
+        # iter1 分发锚可解析预检:配置缺失第一轮炸到日志面,
         # 不等卡死 8 分钟后再排障。
         if self._iter == 1:
             self._dispatch_anchor_precheck()
@@ -2690,7 +2690,7 @@ class CwLoop(SrOperation):
                 screen = self.screenshot()
             def _on_prep_round(ok: bool, res: Any) -> OperationRoundResult | None:
                 # 备战环出口 success 记录(收益耗尽判据输入,ADR-0554):RunDeploy
-                # dd-037 契约下 success 含 STATUS_NOOP 合法稳态,fail = 执行面失败。
+                # 发射契约下 success 含 STATUS_NOOP 合法稳态,fail = 执行面失败。
                 self._prep_last_success = ok
                 if not ok:   # 迁移审计 w68(git 历史):OperationResult 无 __bool__,
                     # bool(FAIL)=True——裸 not _ok 恒 False,r332 停滞守卫成死码

@@ -1,6 +1,6 @@
 # 02 骨架行为层（mandate 层塌缩件）
 
-> 塌缩来源：`archive/design/DESIGN_MANDATE_LAYER.md`（骨架行为层根设计件；已删除，git 历史）——本篇收其现行语义（含 R-SYNC 同步后的 M3/M4/§3.3/§3.4 口径），设计期迁移路径与批注史不搬。落地载体 = `src/sr_od/application/currency_war/strategies/impl/mandate_v1/`（证明/骨架/判据/状态函数分层），单一核 **mandate_v1**（生产注册壳 = `strategies/mandate_v1_strategy.py`；设计期旧址 `decision/cw4/` 已随 decision/ 整包删除终结，dd-038/b94e9cfb——现行唯一策略载体即 mandate_v1）。
+> 塌缩来源：`archive/design/DESIGN_MANDATE_LAYER.md`（骨架行为层根设计件；已删除，git 历史）——本篇收其现行语义（含 R-SYNC 同步后的 M3/M4/§3.3/§3.4 口径），设计期迁移路径与批注史不搬。落地载体 = `src/sr_od/application/currency_war/strategies/impl/mandate_v1/`（证明/骨架/判据/状态函数分层），单一核 **mandate_v1**（生产注册壳 = `strategies/mandate_v1_strategy.py`；设计期旧址 `decision/cw4/` 已随 decision/ 整包删除终结，b94e9cfb——现行唯一策略载体即 mandate_v1）。
 > 前置阅读：[00_framework.md](00_framework.md)、[01_math_framework.md](01_math_framework.md)。
 > 术语：**骨架义务** = 不做会输的动作（无条件执行）；**EV** = 做了更赚的优化动作（只增不减）；**证明层** = 决定为谁做（线选择）。
 
@@ -79,7 +79,7 @@
 
 ## 7. 与决策机器的关系（权限划界）
 
-落地方式（现行态）= **mandate_v1 单核直替**：设计期「decision/cw4 与 decision_v2 并存跑三臂 A/B、过线 = 删除旧包触发门」的过渡方案已终结——decision/ 整包（含 decision_v2 各模块）已随统一迁移批删除（dd-038/b94e9cfb），注册面为封闭集 = {mandate_v1}（decision_v2 注册壳同批删除，`strategies/impl/cw_strategy_manager.py` 强制注册 mandate_v1 为唯一活策略核）。策略变更的验证方式 = **sim 侧代码版本对照**（同 seed 跑新旧代码版本、输出对照披露），A/B 对照**无裁决权**——验证权归数学证明与预注册判据（01 §3.4 同口径）。装配形态 = **单动作画面 op 架构**（ADR-0517 规格 + [ADR-0518](../decisions/0518-single-action-implementation.md) 实施落码,as-built）：骨架/EV 动作不做整波发射，由策略器逐动作提案——**策略器 = 全函数**（f(期望态) → 动作，永不返回 None；「无动作可做」的表达 = 直接选终结 op），**只读期望态**（入口观察生成、逐动作纯计算投影更新，循环内零读屏）；**优先级序 = 单动作选择序**（本篇 §3 的 M 序与 [11_shop_decisions.md](11_shop_decisions.md) §1 六序不变，逐帧取最优首项）。权限划界（原八台机器的处置语义，仍是权威）：
+落地方式（现行态）= **mandate_v1 单核直替**：设计期「decision/cw4 与 decision_v2 并存跑三臂 A/B、过线 = 删除旧包触发门」的过渡方案已终结——decision/ 整包（含 decision_v2 各模块）已随统一迁移批删除（b94e9cfb），注册面为封闭集 = {mandate_v1}（decision_v2 注册壳同批删除，`strategies/impl/cw_strategy_manager.py` 强制注册 mandate_v1 为唯一活策略核）。策略变更的验证方式 = **sim 侧代码版本对照**（同 seed 跑新旧代码版本、输出对照披露），A/B 对照**无裁决权**——验证权归数学证明与预注册判据（01 §3.4 同口径）。装配形态 = **单动作画面 op 架构**（ADR-0517 规格 + [ADR-0518](../decisions/0518-single-action-implementation.md) 实施落码,as-built）：骨架/EV 动作不做整波发射，由策略器逐动作提案——**策略器 = 全函数**（f(期望态) → 动作，永不返回 None；「无动作可做」的表达 = 直接选终结 op），**只读期望态**（入口观察生成、逐动作纯计算投影更新，循环内零读屏）；**优先级序 = 单动作选择序**（本篇 §3 的 M 序与 [11_shop_decisions.md](11_shop_decisions.md) §1 六序不变，逐帧取最优首项）。权限划界（原八台机器的处置语义，仍是权威）：
 
 | 机器 | 处置 |
 |---|---|
@@ -93,7 +93,7 @@
 
 ## 8. 可测命题（判据骨架）
 
-**命题 A（骨架-only，EV 全关进 sim）**：n=40 同 seed 配对，基线 = sim 对照臂（mandate_v1 现行全核形态的代码版本对照；设计期 legacy_v2/decision_v2 基线已随 decision/ 整包删除终结，dd-038）。判前锁预期：零动作轮 <5%、花费率 ≥0.6、bench 满拒买 <100 笔、SellBench ≥200 笔、P1 升级投入金 ≥5000、CompTransaction ≥700、成型率（≥2 体系）≥80% 局、P1 末 hp≤40 局 ≤18/40。目标②（过渡阵容稳定过位面 1）：P2 入口率 100% + P1 零死亡 + P1 末双体系 ≥80% + 进 P2 时 hp>40 局 ≥22/40 + 哨兵不越线。未达 = 假设证伪，回 §1 重新归因，禁调参续跑。
+**命题 A（骨架-only，EV 全关进 sim）**：n=40 同 seed 配对，基线 = sim 对照臂（mandate_v1 现行全核形态的代码版本对照；设计期 legacy_v2/decision_v2 基线已随 decision/ 整包删除终结，b94e9cfb）。判前锁预期：零动作轮 <5%、花费率 ≥0.6、bench 满拒买 <100 笔、SellBench ≥200 笔、P1 升级投入金 ≥5000、CompTransaction ≥700、成型率（≥2 体系）≥80% 局、P1 末 hp≤40 局 ≤18/40。目标②（过渡阵容稳定过位面 1）：P2 入口率 100% + P1 零死亡 + P1 末双体系 ≥80% + 进 P2 时 hp>40 局 ≥22/40 + 哨兵不越线。未达 = 假设证伪，回 §1 重新归因，禁调参续跑。
 
 **命题 B（骨架+EV 增量对照）**：两形态同 seed（骨架-only / 骨架+EV）经 sim 代码版本对照（设计期三臂形态含 legacy_v2 臂，已随 decision/ 整包删除终结）。EV 层存在的合法性检验：骨架+EV 相对骨架-only 无任何主指标增量 ⇒ EV 层降权为可选（优化器必须证明自己值钱）。**A/B 对照结论只作披露与假设检验，不作删除/换核触发**——验证权归证明与预注册判据（01 §3.4 同口径）。
 

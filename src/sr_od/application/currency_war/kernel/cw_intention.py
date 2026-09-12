@@ -17,7 +17,7 @@
   注册表派生零新参数)∧ 线内在店断供 ≥ PAIR_SUPPLY_CONFIRM_ROUNDS
   (观测证据合取,防误杀活线)且存在可行替代线(先验 G>ε ∧ 替代线
   核心在店/在手=已验证可达)——降级到 unlocked
-  交 dd-033 P2 移交重锁(可逆,不写 evicted)。分数涌现换线不进本模块。
+  交 P2 移交重锁(handoff_lock;可逆,不写 evicted)。分数涌现换线不进本模块。
 - [23]/[21] 的 P1 时序面(ADR-0341):贯穿件 P1 可买可囤([21] bench 等窗口),
   但**终局专属线(锁线方向不含过渡引擎)在 P1 的③/④锁线证据被资格门拦下**——
   资格 = ①类(策略/环境亲和;transitions §1「拿到逆天投资策略才配锁直通线」);
@@ -192,7 +192,7 @@ class LineTrack:
     有商店语境轮且 core∪shared 无任何成员在店 +1,有成员在店清零,
     无商店语境轮冻结。阈值复用 ``PAIR_SUPPLY_CONFIRM_ROUNDS``(出现
     观测按 1/轮累积、缺席证据按 (1−q)<1/轮 累积的同一离散化推导,
-    dd-034 候选①线级同构)。"""
+    与断供供给确认计数同构)。"""
 
 
 @dataclass
@@ -1725,7 +1725,7 @@ def update_intention(bs: GameState, ist: IntentionState,
             # 防误杀的关键**:G ≤ ε 只是先验不可行,引擎线(列车同行等
             # 成员持续在售)仍可能功能良好,A/B 实证(s3 局)无证据合取
             # 时会撤掉活线换死线——先验 + 观测断供双证据才构成「线死」。
-            # 降级到 unlocked 让 dd-033 的 P2 移交(handoff_lock)机制
+            # 降级到 unlocked 让 P2 移交(handoff_lock)机制
             # 下一轮确定性地重锁到可行线,换线不绕信号运气。与出口①
             # 同构的可逆性:降级不写 evicted,现线缺件兑现(买到)/血量
             # 回升(H 变大)/升级(q 变大)后 G 恢复即可经信号/移交重锁
@@ -1994,7 +1994,7 @@ def update_intention(bs: GameState, ist: IntentionState,
         # P2 移交候选补「锁线可行性」门(锁线可行性批):G > ε 才可锁
         # ——锁线前先验证可达性(供给概率×剩余轮×血预算,注册表派生
         # 零新参数),不可行线不进强锁候选;全不可行 ⇒ 无候选 ⇒ 保持
-        # unlocked(dd-033 ⑤兜底语义=「降级目标」面,不降格终局)。
+        # unlocked(⑤兜底语义=「降级目标」面,不降格终局)。
         # P3 分支不动(强锁/降格终局辖域原语义,本批只辖 P2)。
         cands = [c for c in _v2_comps()
                  if c.name not in ist.evicted

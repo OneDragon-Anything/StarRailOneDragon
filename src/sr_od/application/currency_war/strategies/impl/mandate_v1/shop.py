@@ -805,7 +805,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
     # 不在 mandate 发射位(备战环单动作环下发射≠执行,发射列表中
     # OpenShop 前的可续动作先执行即终结本环、OpenShop 未执行;发射即
     # 置闩会让闩烧而店未开、后续环被闩挡死空批出战。实证与修法裁决 =
-    # run_mandate docstring「备战期开店闩」节 + dd-027 同型残留)。
+    # run_mandate docstring「备战期开店闩」节;装备闩同型残留先例)。
     # read_only 开店(纯读数,不进本函数)不消耗闩:读数访问不改店面,
     # 期内买入决策仍待发。位面/轮次推进=新键自动失效,与 mandate 侧同。
     state_of(session).cw4_shopped_phase = ((bs.node.value.plane if bs.node.value is not None else None),
@@ -2433,7 +2433,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                             except Exception:   # noqa: BLE001 兜底 best-effort
                                 _lfs = frozenset()
                             # 豁免武装布尔(ADR-0564;豁免是帧属性,同一帧
-                            # 预检与部署必须同值——语义分裂 = dd-037 单一
+                            # 预检与部署必须同值——语义分裂 = 发射×执行单一
                             # 源契约破口;try/fail-closed 同 mandate.
                             # _deployable 形态)
                             try:

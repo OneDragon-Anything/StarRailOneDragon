@@ -1,6 +1,6 @@
 # 0290 - 决策框架治本:候选生成 × 期望评分 × 预算仲裁(取代通道堆叠)
 
-> **版本界碑(2026-09-04 ADR 存量 review;decision_v2 框架治本设计史)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb(dd-038)删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
+> **版本界碑(2026-09-04 ADR 存量 review;decision_v2 框架治本设计史)**:本 ADR 裁决的对象已亡——decision/ 整包(含 decision_v2 各模块)已随 b94e9cfb 删除,现行唯一策略载体 = mandate_v1(kernel 吸收下沉判据)。本件仅存史料价值(记录设计 why/翻案史);**文内一切「后续应做 X/须换成 Y」类前瞻指令一律视为已亡,勿执行**。
 
 - **Status**: accepted(2026-08-23;对抗审查修订后采纳——报告 audit/adversarial-framework-0290.md,四修订点已并入本文)。
   **迁移机制部分 superseded(2026-08-25,ADR-0310 载体批)**:Decision 里的「渐进迁移:

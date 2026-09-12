@@ -261,7 +261,7 @@ _PROGRESS_COL_FILL_RATIO = 0.3
 
 
 def settle_page1_progress_sign(ocr_texts: list[str]) -> str | None:
-    """结算页 1「挑战进度 ±N」符号三态('pos'/'neg'/None=OCR 未读到;纯函数;DD-006)。
+    """结算页 1「挑战进度 ±N」符号三态('pos'/'neg'/None=OCR 未读到;纯函数)。
 
     三用途:① boss 胜局页1 判别(='pos',见 ``is_boss_win_settle_page1``);
     ② 失败页分支置闩门(='neg' 显式负增量才认败局——None 是 OCR 偶漏,两种
@@ -282,7 +282,7 @@ def settle_page1_progress_sign(ocr_texts: list[str]) -> str | None:
 
 
 def is_boss_win_settle_page1(ocr_texts: list[str]) -> bool:
-    """结算页 1 的 boss 胜局形态判定(纯函数;DD-006)。
+    """结算页 1 的 boss 胜局形态判定(纯函数)。
 
     boss 胜局页 1 与战败结算页 1 同构(「挑战结束」标题 + 挑战进度条 +
     「点击空白加速」,均无「继续挑战」按钮)——失败链分支 1f 的模板门在
@@ -393,7 +393,7 @@ def parse_progress_fill_ratio(screen: MatLike | None) -> float | None:
     前缀列扫描对刻度分隔免疫)。红 = RGB 通道 R 显著高于 G/B(条体为红填充,
     槽底为暗色)。条不可见(红像素质量过低)/帧缺 → None,不冒认 0。
 
-    **只对页 1 帧调用**(DD-006):进度条只在页 1(「点击空白加速」帧)存在;
+    **只对页 1 帧调用**:进度条只在页 1(「点击空白加速」帧)存在;
     页 2 帧的同一矩形罩在 HP 心形图标上,橙金色像素满足红色判据 → 恒定假值
     (夜间语料批 3 局 boss 行同读 0.392 = 页 2 心形的确定性读数)。调用方
     (``read_round_outcome``)用页 1 标记词「点击空白加速」做帧态门。
@@ -477,7 +477,7 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
     _streak_after = parse_streak(ocr_texts)   # 结算「连胜×N」前缀=方向(C 杠杆 2/3;fixture 核实 2026-08-11)
     # 结算三项遥测(docs/develop/.../05_observation.md §3.1):挑战进度填充率(纯像素列扫描,
     # 零 OCR 成本)+ 伤害两分量(tooltip 区域裁剪 OCR)。填充率**只对页 1 帧读**
-    # (DD-006):页 2 帧矩形罩在 HP 心形上会恒定读出假值(0.392 三局同值实证)
+    # 页 2 帧矩形罩在 HP 心形上会恒定读出假值(0.392 三局同值实证)
     # ——「点击空白加速」是页 1 帧态标记词。本函数读点 = 调用帧:败局链(1f/3b)在
     # 挑战结束页1 调 → tooltip 瞬窗内可捕获;胜轮在页2 调 → tooltip 大概率已离屏,
     # None 由 cw_loop 页1 暂存合并兜底(_settle_page1_settle,同 progress 合并法)。

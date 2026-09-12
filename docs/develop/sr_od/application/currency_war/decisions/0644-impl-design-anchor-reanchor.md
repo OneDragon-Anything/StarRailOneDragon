@@ -2,7 +2,7 @@
 
 - **Status**: accepted(T-301 重锚批;纯文档零行为,重锚前该批引用禁当可执行规格)
 - **Date**: 2026-09-11
-- **关联**: ADR-0585 §5(CONTRACT_SERIES_DECISION 灭失重锚先例,同款处置模式)、ADR-0565:35(自认「契约 anchor 保留历史指针」,其 §2.3 锚随本批获得现行落点)、dd-007(Status 所引 IMPL_DESIGN §6.1 语义,映射见下表;ADR 正文 immutable 不回改)、ADR-0366/0368(位面轮次单一源)、dd-020(序列决策契约权威链)
+- **关联**: ADR-0585 §5(CONTRACT_SERIES_DECISION 灭失重锚先例,同款处置模式)、ADR-0565:35(自认「契约 anchor 保留历史指针」,其 §2.3 锚随本批获得现行落点)、已删过程件所载 IMPL_DESIGN §6.1 语义(Status 指针,映射见下表;ADR 正文 immutable 不回改)、ADR-0366/0368(位面轮次单一源)、flow/action_exec.md §1(序列决策契约权威正本)
 
 ## 1. 背景(断锚事实链)
 
@@ -35,7 +35,7 @@ mandate_v1 契约域数十处注释/注册表锚引用「IMPL_DESIGN §x / R19x 
 | IMPL_DESIGN §5.2(观察键全集) | 遥测键名与语义 | telemetry/schema.py(键声明单一源);登记节原文=git 取回 |
 | IMPL_DESIGN §5.4(实机验证阶梯/检查项⑮ fee live 核定) | 实机核验通道 | sr-od-currency-war-dev skill 单局复盘协议(references/match-review.md);fee 语义现行载体=kernel/cw_state.sell_refund docstring |
 | IMPL_DESIGN §6.1(位面长度单一源/R3-2) | schedule_of 真值 | ADR-0366/0368+kernel/cw_plane_table.schedule_of(既有持久索引,不变) |
-| IMPL_DESIGN §6.4-R(R189 换核重切:R189-1 四分歧裁决/R189-4 结构签名/R189-5 修复池收编/R189-6 迁移序) | 换核迁移序与批1 规格 | 历史批(已执行完毕,产出=现行代码)。活语义:结构签名/发射面截断判=序列决策契约(dd-020 权威链+flow/action_exec.md §1 as-built+kernel/cw_prep_actions,重锚申报=ADR-0585 §5);证明层四函数位=proof.py 本体;修复池 D-* 各项现行落点=mandate_v1 各实现本体与 18_equip_wear_semantics |
+| IMPL_DESIGN §6.4-R(R189 换核重切:R189-1 四分歧裁决/R189-4 结构签名/R189-5 修复池收编/R189-6 迁移序) | 换核迁移序与批1 规格 | 历史批(已执行完毕,产出=现行代码)。活语义:结构签名/发射面截断判=序列决策契约(flow/action_exec.md §1 as-built 正本+kernel/cw_prep_actions,重锚申报=ADR-0585 §5);证明层四函数位=proof.py 本体;修复池 D-* 各项现行落点=mandate_v1 各实现本体与 18_equip_wear_semantics |
 | R 批号族(R3-R94 对照表/R95 起对照表节/IMPL_ADV_RNNN 对抗审查报告/RN-x 修复注) | 修复史出处 | 修复史,不搬入现行文档(README §3 既定口径)。载体=上节取回口径(design_telemetry.md 文末对照表节/IMPL_FIX_LEMMAS.md 对照表)。现行行为语义一律以代码+strategy-docs+math_proofs 为准,批号仅作出处注 |
 | D-* 修复池编号(D-B/D-D/D-F46/D-P3/D-lv7/D-BUYNOTE/D-FM1 等) | R189-5 修复池收编项 | 编号出处=R189-5 表(git 取回);各项现行落点=mandate_v1 对应实现本体(criteria/equipment、criteria/refresh、criteria/levelup 等)与 18 号稿 |
 | design_economy(§E4.0 四审计形态/§E4.1 组-端对照表/§E4.2 canonical 枚举表/§E6 分型登记) | 判据正文分文档(同族灭失,commit 4e32b2e4) | 四审计形态=01_math_framework §6(数字三形态章程)+audit 包各模块本体;组-端取端纪律与 cap_sup 消费=各消费位注释+01_math_framework §6/§9;分型登记形态=kernel/cw_investments.aggregate_economy docstring;原文取回=`git show 4e32b2e4^:docs/develop/currency_war/archive/design/design_economy.md` |
@@ -45,7 +45,7 @@ mandate_v1 契约域数十处注释/注册表锚引用「IMPL_DESIGN §x / R19x 
 
 1. 代码注释/注册表锚中的「IMPL_DESIGN §x」字面逐处改指上表现行落点;R 批号与 D-* 编号保留(出处注性质),其解析口径统一=本 ADR。
 2. contracts.py `Contract.anchor` 字段值(纯描述性字符串,无运行时行为,无测试锁——test_cw_contracts 2026-09-09 起连「锚非空」断言已删)逐值改写为现行落点;`ZERO_REFRESH_DIAG`/`SEEDS_EMPTY_LEDGER_DIAG`/`FIX_REVIEW_20260903`/`CALIB_REPORT` 等诊断报告锚系另一族,不在本批辖域(见 §5)。
-3. docs 侧 `design/冻结残余清单.md` 头注的「解读按 git 历史原文」补两笔删除 commit 精确哈希;dd-007/ADR-0565 等 ADR 正文(immutable)不回改,其引用由本表承载。
+3. docs 侧 `design/冻结残余清单.md` 头注的「解读按 git 历史原文」补两笔删除 commit 精确哈希;已删过程件与 ADR-0565 等正文(immutable)不回改,其引用由本表承载。
 
 ## 4. Consequences
 

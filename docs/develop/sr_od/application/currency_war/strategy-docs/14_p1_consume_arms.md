@@ -26,7 +26,7 @@
 1. `02_mandate_layer.md` §3 M2 义务正文:「**线成员买入:序 1(结构可达终局件/核心/骨架)与序 2(场况插件)照买照囤**,店面出现即买,不走息律门」——**「囤」在义务正文里**,依据 [2](攒息期也要买过渡)、[11](攒息不拦无损购买)、[22](弃购代价=再遇窗口,P1)。
 2. 现行实现(设计时形态 shop.py:459)把 M2 收窄为 `missing = [m for m in k_members if m not in owned]`——只买未持有份。这是**实现覆盖缺口**,不是义务缺口;本设计把囤腿补回,义务归属、触发时机沿用 M2 现行定义。**成员集与腾席两处对齐(Y2/Y5 采纳,2026-09-05 对抗)**:①引文为设计时形态,现行(P59/P60 买面拆分后)M2 循环集合 = **`buy_members`**(锁定帧 = `locked_buy_membership` 采购集,⊃ k_members)——臂①成员集随之对齐 buy_members(§3.2),囤腿覆盖面 = 义务面全集,禁三发射位成员集分叉;②02 §3 M2 硬约束明文「bench 满时触发 M4 腾席而非跳过」,囤腿同构承接(§3.2 硬约束),**不**以「沿用 M2 定义」的说法隐含带过。零新增义务不变。
 3. 与第 10 局「P1 过渡目标视野全拒」判定不冲突:该判定否决的是另立 P1 目标视野/证据门作为第二目标源。本设计不新增任何目标来源——k_members(线成员名单)仍由证明层单一供给。
-4. M2b(dd-034,恰持 2 张买第 3 张完成合成)**判据语义保持不变**;唯一修订 = 席位门满栏例外对齐(B2 处置,§3.6)。
+4. M2b(恰持 2 张买第 3 张完成合成)**判据语义保持不变**;唯一修订 = 席位门满栏例外对齐(B2 处置,§3.6)。
 
 ## 3. 臂①:副本买入通道(j=1,第 2 份)
 
@@ -252,7 +252,7 @@ B3 直调证实:`_r1_ledger_terms`(shop.py:157-202)现行合格集已含「无 2
 | `strategies/impl/mandate_v1/shop.py` M2b 后 | 垫底级危机帧发射位(§5.2(b)2,辖域扩展附 ADR;候选资格对齐 fuel_sell_candidates 含 P60 排除集,C2;D=∅ 前置,Y6;候选过滤 star==1 同 N7)**——随 Z1 挂空,确认批后落** | 臂③(b)2 |
 | `strategies/impl/mandate_v1/shop.py` M6 段(:592-616)+ `criteria/stockpile.py` `stockpile_buy`(:11) | **M6 压库入口对账(N2 采纳;排除域收口 = 全部线内件,落码批 as-built 定稿)**:线内副本买入全链归义务通道(M2 j=0→1 / 臂① j=1∧cnt2=0 / M2b j=2 完成段,§3.4 边界表),M6 压库域收窄为**非线内件**(shop.py M6 循环排除 buy_members + `m6_line_member_excluded` 分键零静默)。旧「仅在 cnt1=0 帧排除、cnt1≥1 帧允许 M6 完成合成买入」字面**作废**:合成完成段已由 M2b 义务门管辖(带 star==1/cnt 判据),M6 无 cnt 判据的盲买可绕过臂① cnt2==0 守卫制造「cnt1=2∧有 2★」死库存(§3.7);「cnt1=2 ∧ 已有 2★」子形态仍属 §5.3 残量白名单(退出 = 目标档变更,§8④ 挂账重开条件不变) | N2/R4-3 |
 | **F1:本稿不落修法** | `_r1_ledger_terms` 不动;定位批按 §6.2 假设表出报告 | §6 |
-| `kernel/cw_deploy_logic.py` `has_deployable`/`select_deployments` + mandate.py 部署发射位(m1:338/m1′:386/提案合法门:521-563) | swap 分支(与发射门同批,dd-037 契约);**围栏拒因分键(N4 采纳,新增)**:held 路径(cap:369-370/同名去重:372-374/配方底线门:376-379/散牌围栏:301-306)加 reason 返回或 sim 侧重算,承载 arm0 探针分键——落码批与 swap 分支同批 | §9/N4 |
+| `kernel/cw_deploy_logic.py` `has_deployable`/`select_deployments` + mandate.py 部署发射位(m1:338/m1′:386/提案合法门:521-563) | swap 分支(与发射门同批,发射×执行契约);**围栏拒因分键(N4 采纳,新增)**:held 路径(cap:369-370/同名去重:372-374/配方底线门:376-379/散牌围栏:301-306)加 reason 返回或 sim 侧重算,承载 arm0 探针分键——落码批与 swap 分支同批 | §9/N4 |
 | **`operations/cw_op/cw_op_deploy.py` swap/victim 段(符号锚,Y2:设计时行号 :312-358 已漂移,现行 :417-502;三-1 采纳,新增行)** | **victim 判定收口位**:执行侧现行消费 all_factions+core_chars(r70 双轨口径)、无星级/退款资格过滤——收口为单一源(发射门同款:k_members ∩ 燃料资格函数「零重叠 ∧ 1★ 全退」),否则门/执行两套判据分叉,卡芙卡被卖 4 次同型事故复发口。**宿主分层裁决(轮 3 存疑处置)**:单一源宿主优先上收 kernel 层(operations → strategies 的 import 方向反分层),落码批在「kernel 新函数」vs「fuel_sell_candidates 上收」二选一并验 | §9 |
 | `kernel/cw_registry.py` | copies_cap 注释口径回写(§3.5) | B6 |
 | `criteria/buy.py` EV 面 | 不改(fail-closed 面保持;臂①走义务通道绕开) | 臂① |
@@ -321,7 +321,7 @@ victim 资格(fail-closed,发射门与执行侧单一源——三-1 采纳:
       ——即燃料/垫件类;线内件/骨架件/通用插件禁卖护栏照常
       (M4/02 §6.1,不因部署语义解除);victim 集空 ⇒ 不提案,
       记 deploy_swap_no_victim 拒因分键(禁静默)。
-硬约束:卖出属不可逆动作 ⇒ 02 §4.4 不可逆护栏;dd-037 契约:发射门谓词
+硬约束:卖出属不可逆动作 ⇒ 02 §4.4 不可逆护栏;发射×执行契约:发射门谓词
       与执行计划构造(has_deployable ↔ select_deployments)同批扩展,
       「发射了但计划空」noop 假成功防线不得绕过。
 态漂移兜底(三-5 采纳):执行侧为现读重建输入(D-C44,cw_op_deploy.py:342
@@ -332,17 +332,17 @@ victim 资格(fail-closed,发射门与执行侧单一源——三-1 采纳:
       由该键显式披露,禁静默降级。
 ```
 
-**前置项(E3 采纳,落码前必过)**:deploy cap/level 读链毒化复核——g_20260905_020939 三时间戳实证(02:12:51 cap_domain old=4→None;02:18:28 paddle 4/5 拒;02:23:07 唯一候选被 level 先验拒)。`deploy_vacancy` 是本发射门三元之一,读链毒化帧会**饿死 swap 触发**(假阴性:板满被读成不满/候选被 level 先验误拒),且与 dd-037「发射了但计划空」防线同帧竞争。swap 落码批开工前必须先复核该读链的 None 传播与 level 先验拒绝路径,修复或加护栏后才落发射位。
+**前置项(E3 采纳,落码前必过)**:deploy cap/level 读链毒化复核——g_20260905_020939 三时间戳实证(02:12:51 cap_domain old=4→None;02:18:28 paddle 4/5 拒;02:23:07 唯一候选被 level 先验拒)。`deploy_vacancy` 是本发射门三元之一,读链毒化帧会**饿死 swap 触发**(假阴性:板满被读成不满/候选被 level 先验误拒),且与发射契约「发射了但计划空」防线同帧竞争。swap 落码批开工前必须先复核该读链的 None 传播与 level 先验拒绝路径,修复或加护栏后才落发射位。
 
 判据合法性(零自由参数):换上的是线内核心(战力正改善),换下的是零重叠 1★ 全退件(净成本 0)⇒ 板面战力集合严格改善、金账不减——弱支配论证。**P24 不引背书**(其域 = C=I=0 零支出,本发射位含卖出),独立给上述论证。零重叠 2★ victim 不辖(fail-closed 不卖)。
 
 ### 9.3 vacancy 门语义重推
 
 1. 机制面(同名同星≤1,有空位才放得下):对纯落位成立;swap 先腾位再落位,不拦 swap 本身。
-2. **dd-037 防假成功**:历史执行计划只含 bench→空槽落位,板满发射必计划空 → noop 假成功 → 停机防线误触。**这是 vacancy 门的真实成因**(执行侧无腾位计划时的防呆),不是战力判断。
+2. **发射契约防假成功**:历史执行计划只含 bench→空槽落位,板满发射必计划空 → noop 假成功 → 停机防线误触。**这是 vacancy 门的真实成因**(执行侧无腾位计划时的防呆),不是战力判断。
 3. P24 域边界:门顺带充当零支出域边界。
 
-**重推结论**:门的前提是「执行计划无腾位分支」;swap 计划落地后前提消失。正确改法**不是删门**,是门语义从「有空位」换成「**有合法 swap 计划**」——has_deployable 单一源扩展 swap 分支(触发三元 = §9.2),与计划同批(dd-037 契约保持)。
+**重推结论**:门的前提是「执行计划无腾位分支」;swap 计划落地后前提消失。正确改法**不是删门**,是门语义从「有空位」换成「**有合法 swap 计划**」——has_deployable 单一源扩展 swap 分支(触发三元 = §9.2),与计划同批(发射×执行契约保持)。
 
 **卖出义务出口对账(三-3 采纳,裁决 = 选项①)**:swap 的卖出是 M1 借用卖出作为实现手段,构成 M4 之外的**第二卖出义务出口**,与 02 §7「只保留『卖杂件』一个义务出口 + 其余 fail-closed」的封闭语义冲突——[13] 的「换位」二字不足以承载卖出语义(选项②论证不成立,机制面拖拽换位与卖出是两个动作)。处置:swap 卖出立为 **M4 姊妹出口「部署腾席卖出」**(victim 资格 = M4 燃料判据同源收紧版),02 §7 sell 机器处置行补一句的修订需求**登记入册批执行**(本批禁改既有篇目);落地前该出口不得先于 02 修订存在。
 
@@ -376,7 +376,7 @@ P59(线成型门辖帧买入集与 off-line 围栏件不相交——**证伪**,�
 触发(备战环锚帧):form_progress(target_comp, state) ≥ 1.00(cw_comps
       现读单一源,与 P59/ADR-0522 触发门同源)
       ∧ 战斗就绪(结构谓词:备战环战斗入口可用 ∧ 无遮罩/overlay 阻断
-      ——选择伙伴遮罩 dd-029 家族须先清,遮罩处理归流程层既有防线)
+      ——选择伙伴遮罩家族须先清,遮罩处理归流程层既有防线)
       ⇒ 立即发射出战判定(RunDeploy 组合 + StartBattle),不等既有
       备战环动作链轮转。
 位次:达标即出战判定位于备战环动作链之前、守卫计数之前(§10 增注);
@@ -387,7 +387,7 @@ P59(线成型门辖帧买入集与 off-line 围栏件不相交——**证伪**,�
       发射位(那正是「禁旁路」要防的双源);`_cw_locked_sync_done`
       闩(cw_loop.py:223-227,直调核实)**只辖恢复局面**,达标臂调用
       面不过闩(否则第二次达标发射被「每锁定局恰一次」闩吞);
-      dd-037 计划空防线照常;卖出面继承 §9.5 双修正。
+      发射契约计划空防线照常;卖出面继承 §9.5 双修正。
 读数接口约束:15 号稿 §4 三约束同辖本臂——deployed/板满判定消费仲裁值
       (resolve_paddle_pair/arbitrate_deployed_count 链),divergent/
       stale 帧出战发射延迟一环(与 swap 同语义,§9.2 E3 前置项同门)。
@@ -414,7 +414,7 @@ LockedResume 直出战分支原样跳过全部备战交互直接 StartBattle,板
 触发(转型期支路):fp < 1.00(线未成型)∧ bench 存在目标 comp core 件
       ∧ 板满(部署数 = 槽位总数,ADR-0522 修订后 SIFT 真读口径)
       ⇒ 授权卖合格 victim 中「最低贡献」在场件腾位,bench core 随后
-      部署(发射-计划契约同 dd-037)。
+      部署(发射-计划契约同发射×执行契约)。
 victim 合格集与保护域关系(防与 P59 冲突,硬边界):**资格仍由 §9.5
       P59 修正后单一源 fail-closed 把守**(off-line ∧ fenced ∧ 非保护
       域;保护域 = core∪shared∪替班者全集)——贡献度**只作合格集内的
@@ -638,7 +638,7 @@ m1p 恒 None 的成因可辨),None = 非发射帧;C-A2 审计桶内分键
 
 | 项 | as-built 内容 | 落点 |
 |---|---|---|
-| armed 质量合取 | armed = 配方完备(`readiness_form_ok`,fp≥1.0 零改)∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕;承重满额 = comp 自家核准集(core∪shared,落地审 F1 修复:白厄类空羁绊单卡/不死途类视图外 shared 件经此计入承重)∪ comp.all_factions 视图的承重计数 ≥ `deployed_occupied`(零自由参数结构式 ⟺ 板面零线外件,线外 = 非核准 ∧ 视图外);计划不可得 = kernel `has_deployable` 判空(dd-037 单一源;fw_carry/locked_factions 判据核缺读 → 严格子集输入,只偏 fail-open 方向,结构性排除「关闸后无动作 → 守卫停摆」);质量评估异常 fail-open(`quality=None` + 显影旗 `quality_eval_error=True`,与「配方不完备」常态帧单义区分,残量禁静默,三审07轮 C1) | kernel/cw_launch_admission.py(`readiness_launch_decision`/`launch_board_quality_report`) |
+| armed 质量合取 | armed = 配方完备(`readiness_form_ok`,fp≥1.0 零改)∧〔板面承重满额 ∨ 部署计划不可得 fail-open〕;承重满额 = comp 自家核准集(core∪shared,落地审 F1 修复:白厄类空羁绊单卡/不死途类视图外 shared 件经此计入承重)∪ comp.all_factions 视图的承重计数 ≥ `deployed_occupied`(零自由参数结构式 ⟺ 板面零线外件,线外 = 非核准 ∧ 视图外);计划不可得 = kernel `has_deployable` 判空(发射×执行单一源;fw_carry/locked_factions 判据核缺读 → 严格子集输入,只偏 fail-open 方向,结构性排除「关闸后无动作 → 守卫停摆」);质量评估异常 fail-open(`quality=None` + 显影旗 `quality_eval_error=True`,与「配方不完备」常态帧单义区分,残量禁静默,三审07轮 C1) | kernel/cw_launch_admission.py(`readiness_launch_decision`/`launch_board_quality_report`) |
 | 推迟帧观测位 | 配方完备帧返回 quality 报告 `{load_bearing_full, deploy_plan_available, line_weight, occupied, b_t_disclosure, defer_by_quality}` + `quality_eval_error` 显影旗;分键 `launch_quality_defer_frames`(推迟帧)/`launch_quality_eval_error`(评估异常帧),键名常量单一源 = kernel `LAUNCH_QUALITY_*_KEY`(三审07轮 C2 禁字面量散写,grep 守卫锁在案);写点 = engine_p1 发射判定位 + cw_loop 达标臂判定位,best-effort 双面 sink(落地审 F6);推迟上界 = 换血翻真(P61 族承重单调)∨ 计划耗尽 ∨ 金尽收益耗尽臂(ADR-0554,判据与 armed 零耦合) | 同上 + engine_p1.py/cw_loop.py 写点 + ADR-0554 既有锁族 |
 | 原候选作废声明 | 「按 2★ 数/装备覆盖重校成型判据」作废(策略审查打回:板面强度评分进决策门违 00 §1 + P62 form_score 饱和零信息已证);P63(B_t-depth r=0.403)只作方向锚禁作判据资格;判据资格 = 机制定义量结构式(ADR-0482 两层权威序全门行使记录 = ADR-0570 §判据资格声明) | decisions/0570-launch-quality-load-bearing-conjunction.md |
 | 零改动对照面申报 | **本批**零改(工作树中 shop/entry/engine_p1 等另有并行批在飞改动,不属本批申报):停手链(`proof.stop_buy` 成员齐备谓词 + shop/entry 消费位)、镜像写端(v3_form_ok/v3_b_t)、发射帧仲裁(ADR-0566 位次链,仲裁段本体零触);armed=True ⟹ 配方完备单向蕴含保持发射帧镜像补写语义正确 | mandate_v1/proof.py、shop.py、entry.py、flow.py、sim/engine_p1.py |

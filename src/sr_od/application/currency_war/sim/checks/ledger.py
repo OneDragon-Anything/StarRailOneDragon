@@ -238,7 +238,7 @@ def check_levelup_interest_engine_gate(rows: list[dict]) -> list[str]:
     里程碑)漏更本白名单致预存红,定谳批补入:m3_batch 发射前置 =
     arm1_existence(板满∧等待件∧边际贡献>0,= [33] 人口位语境,与
     pop_slot 同语义的现役核表述)∧ spend_unified(P48 整买纪律,一次
-    买齐到下一级)∧ level_spend_blocked 让位(dd-034 危机带停付)∧
+    买齐到下一级)∧ level_spend_blocked 让位(危机带停付)∧
     lv9_stop——授权强度不低于旧三臂,出处 = strategy-docs
     02_mandate_layer.md §3 M3 行 / ADR-0518(单动作实施,shop.py M3
     发射位);

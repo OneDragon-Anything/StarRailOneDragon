@@ -322,7 +322,7 @@ def has_deployable(
     locked_factions: frozenset[str] | set[str] = frozenset(),
     recipe_floor_lock_exempt: bool = False,
 ) -> bool:
-    """「是否存在可部署件」的单一源谓词(dd-037)。
+    """「是否存在可部署件」的单一源谓词(发射×执行契约)。
 
     = ``has_deployable_reasoned(...)[0]``(委托,判空语义不变)——发射方
     (决策核准备战段)与执行方(CwOpDeploy)共用同一份围栏/去重/cap/
@@ -416,7 +416,7 @@ def deploy_target_sets(target_comp: object | None,
     防御退型:框架无配方注册(理论态)/comp 无 all_factions 属性(鸭子型
     comp)→ 逐位退旧语义,零漂移。消费面 = CwOpDeploy 执行侧与 mandate
     发射侧 ``select_deployments``/``has_deployable`` 的同参装配——发射侧
-    抑制谓词(dd-037)接线后两侧各写一份即双源,禁复制。
+    抑制谓词(发射×执行契约)接线后两侧各写一份即双源,禁复制。
     """
     fw = transition_framework or ''
     fw_carry: set[str] = set()
@@ -712,7 +712,7 @@ def can_deploy_single(
     调用方按 ``precheck_unavailable`` 分键处理(与围栏拒 'fenced' 禁
     混键,17 号稿 §7.1 fail 向)。``recipe_floor_lock_exempt`` 透传
     (ADR-0564;shop 预检两调用点接线义务——豁免是帧属性,同一帧
-    预检与部署语义分裂 = dd-037 单一源契约破口;缺省 False 逐位同旧)。
+    预检与部署语义分裂 = 发射×执行单一源契约破口;缺省 False 逐位同旧)。
     """
     bench2 = list(bench) + [candidate]
     idx = len(bench2) - 1
@@ -955,7 +955,7 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # 经 ``_emit_buy`` 收口调用(5edcf324)+ sim/engine_p1 决策帧。
 # 取舍声明:沿用发射位写入(与 ``cw4_fuel_filler_stall_buys`` 先例同位),
 # 被截断器丢弃的买入意图也入排除集 = 过度排除压制合法 swap,方向安全
-# (留置合法稳态,dd-037 口径),失真经 fresh_buy 拒因可追溯;单调性由
+# (留置合法稳态,发射契约口径),失真经 fresh_buy 拒因可追溯;单调性由
 # 义务集排除独立承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
 
 
@@ -1683,7 +1683,7 @@ def select_swap_plan(ctx: SwapPlanContext | None,
       上序候选**(拒因 ``post_sell_held``),「白卖一件板面变弱」形态
       在谓词内不可达;
     - **cap 缺读**(``cap is None``)⇒ 弃权 ``cap_unreadable``,与 M1/
-      M1′ vacancy=0 门同 fail-closed(dd-037);
+      M1′ vacancy=0 门同 fail-closed(发射契约);
     - **换阵可兑现门(F1;T-167 发射-执行接缝合拢)**:合取①目标视图
       非空(假 ⇒ 弃权 ``no_direction``,2026-09-08 实机无方向幻影部署
       软卡死的直接根除位)∧ 合取②bench 存在目标视图件(假 ⇒ 弃权

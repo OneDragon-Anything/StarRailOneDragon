@@ -81,9 +81,9 @@ bug#1 缓解:关键 click 前 `mouse_move`(零移动 click 不被框架 before_s
 
 ## 备注 / 待查
 
-- **分支刷新(2026-09-01 补录)**:底行「剩余次数：N」+ 圆箭头钮 = 优势布局「分支刷新」的刷新能力(每局 1 次,重置两卡难度/奖励)。证据:bwiki 优势布局表(`data/advantage_layouts.md`「分支刷新」行)+ competitors.md 节点表 + 归档帧 OCR(「剩余次数：1」)。bot 已接线消费(`cw_screen_encounter` 分支刷新执行链,dd-004);**点击行为与未激活布局时的 UI 形态待实机验证**。
-- **screen_info 现状**:**已建(2026-08-10)** —— id_mark `标识-遭遇节点`(「遭遇节点」)+ `遭遇卡-其一`/`遭遇卡-其二`(卡身点击选中)+ `按钮-选择` + `按钮-返回备战界面`。穷举交互验证(2026-08-11)已补:onboarding §4 全元素行为实测过(**分支刷新点击行为未经实机验证(待验证项挂实机合并批)**,见上条)。handler(`cw_screen_encounter.py`)已改经 `area_center` 读 screen_info 坐标(ClassVar 常量仅作缺失兜底;坐标单一源整改见 dd-004);档案帧 default.webp 回验 标识/按钮-选择 均 conf≈0.999 命中。
-- **策略化选卡**:当前默认选左卡(难度低、稳)。应按「敌方信息覆盖层」的难度分 + 词缀 + 奖励评估两卡价值 —— 属节点决策(节点决策文档现位于 `docs/develop/sr_od/application/currency_war/strategy-docs/13_pick_family.md` E3「遭遇分支难度/奖励」行;执行链决策记录见 `docs/develop/sr_od/application/currency_war/decisions/dd-004-encounter-refresh-execution-wiring.md`;原 `strategy/04_nodes.md` 已随策略文档结构重组迁并);「敌方信息覆盖层」screen_info 已建档(本 doc 上节),选卡策略的剩余前提 = 词缀 → `EncounterOption.affixes` 读数接线(见 dd-004 现状注)。
+- **分支刷新(2026-09-01 补录)**:底行「剩余次数：N」+ 圆箭头钮 = 优势布局「分支刷新」的刷新能力(每局 1 次,重置两卡难度/奖励)。证据:bwiki 优势布局表(`data/advantage_layouts.md`「分支刷新」行)+ competitors.md 节点表 + 归档帧 OCR(「剩余次数：1」)。bot 已接线消费(`cw_screen_encounter` 分支刷新执行链);**点击行为与未激活布局时的 UI 形态待实机验证**。
+- **screen_info 现状**:**已建(2026-08-10)** —— id_mark `标识-遭遇节点`(「遭遇节点」)+ `遭遇卡-其一`/`遭遇卡-其二`(卡身点击选中)+ `按钮-选择` + `按钮-返回备战界面`。穷举交互验证(2026-08-11)已补:onboarding §4 全元素行为实测过(**分支刷新点击行为未经实机验证(待验证项挂实机合并批)**,见上条)。handler(`cw_screen_encounter.py`)已改经 `area_center` 读 screen_info 坐标(ClassVar 常量仅作缺失兜底;坐标单一源=screen_info);档案帧 default.webp 回验 标识/按钮-选择 均 conf≈0.999 命中。
+- **策略化选卡**:当前默认选左卡(难度低、稳)。应按「敌方信息覆盖层」的难度分 + 词缀 + 奖励评估两卡价值 —— 属节点决策(节点决策文档现位于 `docs/develop/sr_od/application/currency_war/strategy-docs/13_pick_family.md` E3「遭遇分支难度/奖励」行;执行链接线见 `src/sr_od/application/currency_war/operations/cw_screen/cw_screen_encounter.py` 分支刷新执行链;原 `strategy/04_nodes.md` 已随策略文档结构重组迁并);「敌方信息覆盖层」screen_info 已建档(本 doc 上节),选卡策略的剩余前提 = 词缀 → `EncounterOption.affixes` 读数接线(见 `cw_screen_encounter.py` 模块 docstring 现状注)。
 - 「遭遇其X」的 X 不固定(其一/其二/其四实测)→ 检测用前缀「遭遇其」+「选择」+「遭遇节点」组合更稳。
 - **「返回备战界面」不扣「剩余次数」**(2026-08-11 实测确认:回备战后右上出现「返回遭遇选择」可回本屏,遭遇保留)。
 - fixture 已归档 `sr-od-test/screens/货币战争-遭遇节点/default.webp`(2026-08-10);分支刷新点击前/后实机帧 `分支刷新-前.png` / `分支刷新-后.png` 同目录(2026-09-02 实机采集批归档,点击行为复验仍候实机)。

@@ -5,7 +5,7 @@
 
 ## 0. 阅读门履行声明
 
-- 已读:p46 全文、p47(L 递推 + 命题三动态修正 + A6 双轴)、p41(V_opt 定价源,接口面)、p51 v3 全文(W 分解与消费约束)、p40/p42/p48/p49 的 p46 引用面、economy.md §1/§3/§10.1、user_playstyle [2][6][11][12][17][19][28][32][33][41] 原文、06_input_model §3(注册表地图)、dd-003(Z1 缺陷件)、DESIGN_MANDATE_LAYER(三轮实证)、流水账本 R9/五方联动批记录。
+- 已读:p46 全文、p47(L 递推 + 命题三动态修正 + A6 双轴)、p41(V_opt 定价源,接口面)、p51 v3 全文(W 分解与消费约束)、p40/p42/p48/p49 的 p46 引用面、economy.md §1/§3/§10.1、user_playstyle [2][6][11][12][17][19][28][32][33][41] 原文、06_input_model §3(注册表地图)、DESIGN_MANDATE_LAYER(三轮实证)、流水账本 R9/五方联动批记录。
 - 注册表直调:`cw_plane_table.interest`(= min(g//10, GOLD_CAP_INTEREST//10),封顶息函数 ✓)、`cw_state.sell_refund`(1★=cost;star≥2 且 cost≥2 −1;1费 exempt,live 实测 2★1费=+3 ✓)、`cw_economy.SHOP_REFRESH_COST=2` ✓、`cw_shop_odds`(SHOP_SLOTS=5 / POOL_COPIES_PER_CARD / REFRESH_PROB / expected_refreshes 存在,签名与 p49 转引一致)。
 - 无交集跳过:p42/p50 正文细节(仅分工声明涉及,已核其 p46 域外声明 t≡0 的逻辑,不涉本篇数值)。
 
@@ -28,7 +28,7 @@
 - 息律:`interest(g)=min(g//10,5)` 与 economy.md §10.1「gold//10 上限 5」实测口径一致 ✓。
 - 退金:`sell_refund` 逐条对上 p46 ③-1 的 fee 表(1★ 任意费 fee=0;1费各星 fee=0;cost≥2 合成回卖 fee=1;3★=cost×9−1 仍 🟡 待 live 核,p46 已如实登记)✓。
 - 各值:SHOP_REFRESH_COST=2(p40 转引一致)✓;Ī 带 [6,8] 中位 7 与 p47 口径一致;V_opt/fee 消费接口指向 p41 单一源,p46 不自设数值 ✓(V_opt 数值本身的验证属 p41 件,本件只验接口不越界)。
-- Z1 缺陷:dd-003 直读确认(`total_remaining_nodes` 写死 9,P1r9→19 vs 17;p46 R_全局 行的「正确口径 vs 待修缺陷」声明与 dd-003 一致;「L 换轨前必修」硬门在 Phase 2 冻结条件③在案)✓。
+- Z1 缺陷:亲跑证伪确认(`total_remaining_nodes` 写死 9,P1r9→19 vs 17;p46 R_全局 行的「正确口径 vs 待修缺陷」声明与实测一致;「L 换轨前必修」硬门在 Phase 2 冻结条件③在案)✓。
 
 **门②判定:通过(全部锚点直调吻合,无二手转引失真)。**
 

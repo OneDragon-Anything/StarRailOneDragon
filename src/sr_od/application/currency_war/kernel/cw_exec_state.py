@@ -109,7 +109,7 @@ class ExecState:
     # 腾席链 DeployMove 失败记忆(char_id → 失败计数)。拖拽被拒 → 跳过
     # 重试同目标(拖失败不消费 bench,下轮还在)。局级。
     deploy_fail_counts: dict = field(default_factory=dict)
-    # 装备拖拽失败记忆((装备名, 角色名) → 失败计数;dd-015)。连续失败
+    # 装备拖拽失败记忆((装备名, 角色名) → 失败计数)。连续失败
     # ≥2 次 = 该落点对拉黑。局级。
     equip_drag_fail_counts: dict = field(default_factory=dict)
     # 出战发射连败计数(prep_actions._start_battle 写;跨环重入存活——
@@ -123,7 +123,7 @@ class ExecState:
     # 补给刷新 1 次已用(跨 handler 实例持久;发出刷新点击即置位,不等
     # 验效,防重入反复尝试)。节点级(screen_op.md §8.4 裁执行侧)。
     _supply_refresh_used: bool = False
-    # 遭遇分支刷新 1 次已用(dd-004;同款跨 handler 语义)。节点级。
+    # 遭遇分支刷新 1 次已用(同款跨 handler 语义)。节点级。
     _encounter_refresh_used: bool = False
     # 投资策略逐卡刷新已发射槽集(ADR-0600 §3.3;发射即记不等验效,同款防重入;
     # [索引定义] 坐标系: 策略屏画面槽位下标左→右 0-2,与 PickEvent.
@@ -157,7 +157,7 @@ class ExecState:
     # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
     # 递增(kernel/cw_reconcile,唯一写点)/ 投影播种期快照(每段入口观察)+
     # 单动作循环每动作消费前现读检差(cw_op_buy_cards,唯一消费点)。命中 =
-    # 布局已重排,在飞动作的 bench_idx 代际失效 → dd-020 截断+按 tracked
+    # 布局已重排,在飞动作的 bench_idx 代际失效 → 序列决策契约截断+按 tracked
     # 重播种+重入决策。当前架构 reconcile 均在 visit 外跑,visit 内恒不变
     #(S2+S1 后纯未来防御:防 visit 中段未来引入读屏/对账点时布局变化
     # 无人知晓)。局级生命周期(载体每局新建即天然清零)。

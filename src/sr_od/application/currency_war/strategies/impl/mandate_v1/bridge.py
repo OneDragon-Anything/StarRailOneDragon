@@ -102,7 +102,7 @@ class MandateV1Strategy(CwFlowStrategy):
 
     def decide_prep_screen(self, session: StrategySession,
                            config: CurrencyWarConfig) -> list[PrepAction]:
-        """备战画面黑板决策(契约 v1/v2 接口;dd-020)。
+        """备战画面黑板决策(契约 v1/v2 接口;序列决策契约正本 = flow/action_exec.md §1)。
 
         输入 = ``session.prep_obs_frame``(黑板唯一写者=画面 op);内部
         装配缝(步3)经 ``_assemble_turn``(注册桥壳覆写注入装配链;
