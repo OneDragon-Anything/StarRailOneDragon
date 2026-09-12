@@ -123,6 +123,7 @@ from sr_od.application.currency_war.operations.decision_frame_hooks import (
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 from sr_od.application.currency_war.telemetry import state
 from sr_od.application.currency_war.telemetry.op_journal import (
+    _op_journal_pos_of,
     record_op_enter,
     record_op_exit,
 )
@@ -523,23 +524,6 @@ def _launch_arb_counter(op, key: str) -> None:
             counters[key] = counters.get(key, 0) + 1
     except Exception:   # noqa: BLE001  遥测 best-effort,不阻塞游戏流
         pass
-
-
-def _op_journal_pos_of(ctx: Any) -> tuple[int, int]:
-    """op 行位置键(ADR-0579):最后已知 (plane, round),缺省 (0, 0)。
-
-    模块级形态供仲裁段第三载体行复用——仲裁宿主在测试缝里可为非 CwLoop
-    桩,位置键只依赖 ctx 的 getattr 链,不依赖宿主方法。
-    (换源 T-146:plane/round = 容器 node;未观察 = 旧缺帧形态 (0, 0)。)
-    """
-    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
-    )
-    _nd = (getattr(board_state_of(_sess).node, 'value', None)
-           if _sess is not None else None)
-    return (int(_nd.plane) if _nd is not None else 0,
-            int(_nd.round_num) if _nd is not None else 0)
 
 
 def _launch_frame_arbitration(op) -> dict:
@@ -1898,11 +1882,13 @@ class CwLoop(SrOperation):
 
         # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档)。
         #     P4R 升级(1-1 事故 5h 死循环返工):确认关闭 → **带落点验证的
-        #     重部署**(CwOpDeploy,落点 CV 已收编)→ 验 deployed 前排 ≥1 →
-        #     本迭代内再出战;重试上限 FRONTLESS_REDEPLOY_LIMIT,超限
-        #     round_fail 交未知画面兜底链(旧「确认关闭→等下轮 CwScreenPrep
-        #     → StartBattle 假成功」形态 = 无限 round_wait,根因见弹窗污染
-        #     守卫 prep_actions.POST_LAUNCH_BLOCKERS)。
+        #     重部署**(CwOpDeploy,落点 CV 已收编)→ 本迭代内直接再出战;
+        #     重试上限 FRONTLESS_REDEPLOY_LIMIT,超限 round_fail 交未知画面
+        #     兜底链(旧「确认关闭→等下轮 CwScreenPrep→StartBattle 假成功」
+        #     形态 = 无限 round_wait,根因见弹窗污染守卫 prep_actions
+        #     .POST_LAUNCH_BLOCKERS)。T-176 V-1:出口像素判效读拆除,失败
+        #     信号 = 出战链弹窗守卫(游戏承载,见下方收编注)→ 本分支重试
+        #     预算兜底。
         if self.round_by_find_area(
                 screen, '货币战争-提示-前台无角色', '标识-无角色提示', crop_first=False).is_success:
 
@@ -1924,23 +1910,15 @@ class CwLoop(SrOperation):
                 _rd = CwOpDeploy(self.ctx).execute()
                 log.info('[cw-loop] 前台无角色重部署 → %s',
                          getattr(_rd, 'status', '') or ('成功' if getattr(_rd, 'success', False) else '失败'))
-                # 出口判据:deployed 前排 ≥1(独立于 CwOpDeploy 返回值——
-                # 假成功已在 deploy 侧落点验证收编,此处再验一层作 0j 出口承诺)。
-                from sr_od.application.currency_war.obs.currency_war_cv import (
-                    slot_occupied as _slot_occ,
-                )
-                from sr_od.application.currency_war.prep_actions import (
-                    row_area_centers as _row_centers,
-                )
-                time.sleep(1.0)   # 部署动画/特效窗(落点 CV 稳定)
-                _scr = self.screenshot()
-                _front_ok = any(
-                    _slot_occ(_scr, int(p.x), int(p.y))
-                    for p in _row_centers(self.ctx, '前排'))
-                if not _front_ok:
-                    log.warning('[cw!] [loop] 前台无角色重部署后前排仍空 → 交回重判'
-                                '(下轮再入本分支计重试)')
-                    return self.round_wait(wait=1.5)
+                # T-176 V-1 收编:外循环像素判效读(slot_occupied 判前排 ≥1)
+                # 已拆除——分发段判效与「动作 op 只管机械执行,落地判定归观察
+                # 侧」裁定冲突(统一观察架构 §5.1 v11/T-223)。失败信号改由
+                # 两道既有机制承载:①deploy 侧落点验证(LIVE_SEAL 收编面);
+                # ②出战链 POST_LAUNCH_BLOCKERS 弹窗守卫(游戏对「出战时前台
+                # 空」的弹窗信号,前排仍空再出战即弹「前台无角色」→ 守卫判
+                # False → round_retry 回本分支,重试计数+1,超限 round_fail
+                # 兜底——本分支的存在本身就是该信号的观察侧响应)。
+                time.sleep(1.0)   # 部署动画/特效窗(出战点击时序,防特效帧落空;机械等待非判效)
                 # 前排已有角色 → 本迭代内直接再出战(不再依赖下轮 CwScreenPrep
                 # 重派——旧链的假成功正是发生在这段间隙)。
                 from sr_od.application.currency_war.kernel.cw_prep_actions import (
@@ -1954,9 +1932,11 @@ class CwLoop(SrOperation):
                     self._frontless_redeploy = 0   # 出战真转移 → 重试预算复位
                     self._battle_ts = time.monotonic()
                     self._battle_wait_active = True
-                    log.info('[cw-loop] 前台无角色恢复链:重部署+验前排 ✓ → 出战成功')
+                    log.info('[cw-loop] 前台无角色恢复链:重部署 → 出战成功')
                     return self.round_wait(wait=3)
-                log.warning('[cw!] [loop] 前台无角色恢复链:重部署后出战未落地(%s)→ retry',
+                log.warning('[cw!] [loop] 前台无角色恢复链:重部署后出战未落地(%s)'
+                            '→ retry(下轮再入本分支计重试;失败信号 = '
+                            'POST_LAUNCH_BLOCKERS 弹窗守卫)',
                             _sb_detail)
                 return self.round_retry(wait=2)
 
@@ -2646,48 +2626,11 @@ class CwLoop(SrOperation):
             # 消除的是「静默」(无日志)而非「重试」;warning 进
             # 日志 = 哨兵(SENTINEL-HIT 检 [cw!])与人都能看到,
             # 停机决策留给观察者(对拍期不想因 gate bug 硬停局)。
-            # `w595_trial_reveal_card/` 试用角色揭示卡清场:发光金卡点开即**免费**得 2★ 试用角色(原地变
-            # 普通角色卡,后续 SIFT 自然识别)。无代价、无分支选择 → 非策略决策,
-            # 不进 director 动作全集;备战环派发前直接清掉(揭示后 director heavy
-            # 观察读到的已是揭示后的真实板面,不毒化对账)。上界 3 轮防识别抖动
-            # 死循环;揭示后卡片消失 → 自然防重入。
-            from sr_od.application.currency_war.kernel.cw_obs_core import (
-                is_prep_like_frame,
-            )
-            from sr_od.application.currency_war.obs.cw_identity_obs import (
-                _ctx_slots,
-                find_bookcards,
-                find_trial_reveal_cards,
-            )
-            for _reveal_i in range(3):
-                _cards = find_trial_reveal_cards(screen, _ctx_slots(self.ctx, '备战栏', 9))
-                if not _cards or not is_prep_like_frame(self.ctx, screen):
-                    break
-                _slot, _center = _cards[0]
-                self.ctx.controller.mouse_move(_center)   # bug#1 缓解(同出战/点球口径)
-                self.ctx.controller.click(_center)
-                log.info('[cw-loop] 试用角色揭示卡 slot%s → 点击揭示(免费 2★)', _slot)
-                time.sleep(1.2)   # 揭示动画窗(发光消散 + 角色卡落位)
-                screen = self.screenshot()
-            # 书册卡清场(2026-08-30 建档,与揭示卡同型预清场):开启后弹「专家邀请函」
-            # 五选一,CwScreenExpertInvite 全链处理(开卡→默认策略选卡→收案);替代原
-            # bookcard_confirm 停机钩子(钩子段已删,见 cw_identity_obs)。上界 2 轮
-            # 防识别抖动死循环;选中的专家入商店由正常商店逻辑接管。
-            for _bc_i in range(2):
-                _bc_cards = find_bookcards(screen, _ctx_slots(self.ctx, '备战栏', 9))
-                if not _bc_cards or not is_prep_like_frame(self.ctx, screen):
-                    break
-                # 经包装分发(ADR-0584 §5.3 收编件):预清场与 0k 分支是同一
-                # op,直调 .execute() 曾造成「0k 有 op 行、预清场无行」的双通
-                # 道行缺口(复盘同 op 归属不一致,S11 族近亲)。返回轮次对象
-                # 在清场语境无消费方(分支出口由备战环 dispatch 承担)→ 丢弃;
-                # wait=0 不注入等待(原直调零等待);frame_tag=None 留证面零扩。
-                self._dispatch_screen_op(
-                    CwScreenExpertInvite(self.ctx), journal_name='专家邀请函',
-                    frame_tag=None, wait=0)
-                log.info('[cw-loop] 书册卡 slot%s → 处理链经包装执行(op 行=专家邀请函)',
-                         _bc_cards[0][0])
-                screen = self.screenshot()
+            # T-176 V-2 收编:备战分支派发前的试用揭示卡/书册卡清场识别+点击
+            # 已迁 CwScreenPrep 环入口清场段(``_clear_prep_cards``,与
+            # ENTRY_OVERLAY_CLOSE 一键关注册表同位)——外循环只保留画面识别
+            # 分派,识别机制不出分发层(设计 §3.4 过渡相位件收编挂账兑现;
+            # 书册卡处理链经 journal 包装保 op 行,先例 = 本文件 0k 分支)。
             def _on_prep_round(ok: bool, res: Any) -> OperationRoundResult | None:
                 # 备战环出口 success 记录(收益耗尽判据输入,ADR-0554):RunDeploy
                 # 发射契约下 success 含 STATUS_NOOP 合法稳态,fail = 执行面失败。

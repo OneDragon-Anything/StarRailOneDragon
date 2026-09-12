@@ -1578,6 +1578,7 @@ class CwScreenPrep(CwScreenOpBase):
 
         # —— ① 数据观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
+        self._clear_prep_cards()
         self._try_collapse_open_shop()
         obs = self._observe(heavy=True)
         # 帧代次标注(ADR-0583 §3.4):入口 heavy 主观察帧 = full;消费归
@@ -1796,6 +1797,7 @@ class CwScreenPrep(CwScreenOpBase):
         self._cached_gold_trusted = False
         # —— 段1 观察:清场 + 开商店合法态收起(读互斥:hp 关态可读)→ heavy 全量观察写 session
         self._clear_entry_overlays()
+        self._clear_prep_cards()
         self._try_collapse_open_shop()
         _adp = self._observation_port()
         obs = (_adp.observe(self) if _adp is not None
@@ -2144,6 +2146,93 @@ class CwScreenPrep(CwScreenOpBase):
             except Exception:   # noqa: BLE001  离线契约
                 return
             time.sleep(ENTRY_OVERLAY_SETTLE_S)
+
+    def _clear_prep_cards(self) -> None:
+        """备战栏物件清场(T-176 V-2 收编:原 cw_loop 备战分支派发前清场
+        识别+点击逐位迁移至此——识别机制住画面 op 观察链,外循环只保留
+        分派;统一观察架构设计 §3.4 过渡相位件收编挂账兑现,与环入口
+        一键关注册表 ``_clear_entry_overlays`` 同位串联)。两段:
+
+        - 试用角色揭示卡(w595_trial_reveal_card):发光金卡点开即**免费**
+          得 2★ 试用角色(原地变普通角色卡,后续 SIFT 自然识别)。无代价、
+          无分支选择 → 非策略决策,不进 director 动作全集;环入口直接清掉
+          (揭示后 heavy 观察读到的已是揭示后的真实板面,不毒化对账)。
+          上界 3 轮防识别抖动死循环;揭示后卡片消失 → 自然防重入。
+        - 书册卡(2026-08-30 建档,与揭示卡同型预清场):开启后弹「专家邀请
+          函」五选一,经 journal 包装执行 CwScreenExpertInvite 全链(开卡→
+          默认策略选卡→收案;选中的专家入商店由正常商店逻辑接管)。包装保
+          op 行——与 0k 分支是同一 op,直调 .execute() 曾造成「分发处有行、
+          清场处无行」的双通道行缺口(复盘同 op 归属不一致,S11 族近亲,
+          ADR-0584 §5.3 收编件);位置键单一源 =
+          telemetry.op_journal._op_journal_pos_of。上界 2 轮防识别抖动
+          死循环。
+
+        fail-open(与 ``_clear_entry_overlays`` 同位先例同纪律):截图/识别
+        异常静默返回(=原外循环形态下异常交节点重试链,收编后交环内正常
+        观察/外循环重判兜底;离线 mock 契约不让测试在空帧上炸)。
+        """
+        from sr_od.application.currency_war.kernel.cw_obs_core import (
+            is_prep_like_frame,
+        )
+        from sr_od.application.currency_war.obs.cw_identity_obs import (
+            _ctx_slots,
+            find_bookcards,
+            find_trial_reveal_cards,
+        )
+        try:
+            screen = self.screenshot()
+        except Exception:   # noqa: BLE001  离线契约
+            return
+        for _reveal_i in range(3):
+            try:
+                _cards = find_trial_reveal_cards(
+                    screen, _ctx_slots(self.ctx, '备战栏', 9))
+                if not _cards or not is_prep_like_frame(self.ctx, screen):
+                    break
+                _slot, _center = _cards[0]
+                self.ctx.controller.mouse_move(_center)   # bug#1 缓解(同出战/点球口径)
+                self.ctx.controller.click(_center)
+                log.info('[cw][director] 试用角色揭示卡 slot%s → 点击揭示(免费 2★)', _slot)
+            except Exception:   # noqa: BLE001  离线契约
+                return
+            time.sleep(1.2)   # 揭示动画窗(发光消散 + 角色卡落位)
+            try:
+                screen = self.screenshot()
+            except Exception:   # noqa: BLE001  离线契约
+                return
+        for _bc_i in range(2):
+            try:
+                _bc_cards = find_bookcards(
+                    screen, _ctx_slots(self.ctx, '备战栏', 9))
+                if not _bc_cards or not is_prep_like_frame(self.ctx, screen):
+                    break
+            except Exception:   # noqa: BLE001  离线契约
+                return
+            # journal 包装(语义逐位等价原 _dispatch_screen_op 消费形态:
+            # frame_tag=None 不落决策帧、返回轮次对象在清场语境无消费方
+            # → 丢弃、ok 判定同款 success 属性)。
+            from sr_od.application.currency_war.operations.cw_screen.cw_screen_expert_invite import (
+                CwScreenExpertInvite,
+            )
+            from sr_od.application.currency_war.telemetry.op_journal import (
+                _op_journal_pos_of,
+                record_op_enter,
+                record_op_exit,
+            )
+            _token = record_op_enter('专家邀请函', *_op_journal_pos_of(self.ctx))
+            try:
+                _rs = CwScreenExpertInvite(self.ctx).execute()
+            except Exception as e:   # noqa: BLE001  出口行补发后原样上抛
+                record_op_exit(_token, outcome='error', detail=str(e)[:120])
+                raise
+            _ok = _rs is not None and getattr(_rs, 'success', False)
+            record_op_exit(_token, outcome='ok' if _ok else 'fail')
+            log.info('[cw][director] 书册卡 slot%s → 处理链经包装执行(op 行=专家邀请函)',
+                     _bc_cards[0][0])
+            try:
+                screen = self.screenshot()
+            except Exception:   # noqa: BLE001  离线契约
+                return
 
     def _try_collapse_open_shop(self) -> bool:
         """环入口遇开商店稳定态(战斗胜利后新回合游戏可能自动开)→

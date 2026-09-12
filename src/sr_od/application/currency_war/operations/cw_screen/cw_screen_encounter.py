@@ -80,12 +80,17 @@ class EncounterObservation:
     """遭遇屏观察 payload(五段之段1产物;试点步骤 2 实机转录形态)。
 
     - ``options``:候选卡读取(现役读链 ``read_encounter_options`` 产物);
-    - ``screen``:稳定帧引用(刷新链的剩余次数读同帧同源)——
+    - ``refresh_left``:「剩余次数:N」入口稳定帧读数(分支刷新前置闸的
+      语义事实;T-176 V-3 收编:原决策分支内现读识别函数上收入口观察,
+      一次读,决策循环只消费本域;None = 读缺/未授予——失败安全按无刷新
+      处理,读带注见 obs/cw_node_obs._REMAIN_RECT)。
+    - ``screen``:稳定帧引用(刷新链执行半部的文本锚定位同帧同源读)——
       实机识别域载体,识别机制不出端口(架构设计 §2.1);sim 适配器落位
       时该域 = None 帧语义(T5 前 sim 腿不适用,F11 例外清单)。
     """
 
     options: list[EncounterOption]
+    refresh_left: int | None = None
     screen: Any = None
 
 
@@ -176,22 +181,35 @@ class CwScreenEncounter(CwScreenOpBase):
 
     def _observe_frame(self) -> EncounterObservation:
         """稳定帧观察链(实机适配器①封口内容):入口 2s 稳定期 → 重截 →
-        选项读取。时序口径逐位保留(用户口述口径 #23,screen_flow_timing:
-        入口帧可能在稳定期内,立即读难度卡有读缺风险)。"""
+        选项读取 + 刷新剩余次数读(T-176 V-3:同一稳定帧一次读,payload
+        携带语义事实;决策分支不再现读识别函数)。时序口径逐位保留(用户
+        口述口径 #23,screen_flow_timing:入口帧可能在稳定期内,立即读
+        难度卡有读缺风险)。"""
         time.sleep(2.0)
         screen = self.screenshot()
+        _rd = read_encounter_refresh_count(self.ctx, screen)
         return EncounterObservation(
-            options=read_encounter_options(self.ctx, screen), screen=screen)
+            options=read_encounter_options(self.ctx, screen),
+            refresh_left=(_rd[0] if _rd is not None else None),
+            screen=screen)
 
-    def _try_refresh(self, text_pt: tuple[int, int]) -> list[EncounterOption]:
+    def _try_refresh(self, screen) -> list[EncounterOption]:
         """点分支刷新圆钮 + 固定等待 + 重读选项(机械执行半;验效半已拆)。
+
+        文本锚定位 = 执行前目标定位(执行实现层物理回答,读屏点先例 =
+        prep_actions 执行器定位族):从传入帧同帧同源读「剩余次数:N」文本
+        中心(与闸读数同帧,坐标与旧口径逐位一致),圆钮 = 文本左侧固定
+        偏移。传入帧读缺 → 返回空表(调用方保留原候选照常选)。
 
         「刷没刷成」不判(用户裁定 2026-09-10:动作 op 只管机械执行禁止
         验证):点偏/无布局时重读=原 options,调用方基于新观察自然重决策
         结果天然等价;未生效治理归下一帧观察(发射即置位已拦重入,不重试)。
         Returns: 刷新后现读候选(读缺 = 空列表,调用方保留原候选照常选)。
         """
-        target = Point(text_pt[0] + CwScreenEncounter._REFRESH_BTN_DX, text_pt[1])
+        _rd = read_encounter_refresh_count(self.ctx, screen)
+        if _rd is None:
+            return []
+        target = Point(_rd[1][0] + CwScreenEncounter._REFRESH_BTN_DX, _rd[1][1])
         log.info(f'[cw-encounter] 建议刷新 → 圆钮@({target.x},{target.y})(文本锚定)')
         self.ctx.controller.mouse_move(target)   # bug#1 缓解
         self.ctx.controller.click(target)
@@ -271,6 +289,11 @@ class CwScreenEncounter(CwScreenOpBase):
         screen = self.screenshot()
         # (difficulty + comp 成型度:formed→高难度拿好奖励,未成型→低难度保生存)→ 选 idx。替代硬编码「选左」。
         options = read_encounter_options(self.ctx, screen)
+        # 入口观察一次读(T-176 V-3 收编:刷新剩余次数归入口观察,决策分支
+        # 只消费局部值——决策循环内不读屏,screen_op §1;旧路径与五段路径
+        # 的 payload.refresh_left 同语义同帧)。
+        _rd = read_encounter_refresh_count(self.ctx, screen)
+        refresh_left = _rd[0] if _rd is not None else None
         match = self.ctx.cw_match
         idx, reason = 0, 'default(no-options/match)'
         pick = None
@@ -295,11 +318,10 @@ class CwScreenEncounter(CwScreenOpBase):
         refreshed = False
         if match is not None and pick is not None and pick.refresh:
             sess_used = getattr(exec_state_of(match.session), '_encounter_refresh_used', False)
-            cnt = read_encounter_refresh_count(self.ctx, screen)
             if sess_used:
                 log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
-            elif cnt is None or cnt[0] <= 0:
-                log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={cnt})→ 按原评分选')
+            elif refresh_left is None or refresh_left <= 0:
+                log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={refresh_left})→ 按原评分选')
             else:
                 # 发出点击即置位:优势布局每局只授 1 次,单次尝试语义与游戏
                 # 规则对齐(点偏不重试,防「重入屏再试」的反复尝试)。防重入
@@ -307,7 +329,7 @@ class CwScreenEncounter(CwScreenOpBase):
                 # 试点步骤 2 收编;两路径共用)。
                 self._emit_refresh_click(match.session, pick)
                 refreshed = True
-                new_opts = self._try_refresh(cnt[1])
+                new_opts = self._try_refresh(screen)
                 if new_opts:
                     options = new_opts
                     pick = match.strategy.decide_encounter(
@@ -415,17 +437,16 @@ class CwScreenEncounter(CwScreenOpBase):
         refreshed = False
         if match is not None and pick is not None and pick.refresh:
             sess_used = getattr(exec_state_of(match.session), '_encounter_refresh_used', False)
-            cnt = read_encounter_refresh_count(self.ctx, payload.screen)
             if sess_used:
                 log.info('[cw-encounter] 建议刷新但本局已用(分支刷新每局1次)→ 按原评分选')
-            elif cnt is None or cnt[0] <= 0:
-                log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={cnt})→ 按原评分选')
+            elif payload.refresh_left is None or payload.refresh_left <= 0:
+                log.info(f'[cw-encounter] 建议刷新但无剩余次数(读数={payload.refresh_left})→ 按原评分选')
             else:
                 # 发出点击即置位:发射型触发点两路径共用(见
                 # _emit_refresh_click;语义口径同旧路径逐位)。
                 self._emit_refresh_click(match.session, pick)
                 refreshed = True
-                new_opts = self._try_refresh(cnt[1])
+                new_opts = self._try_refresh(payload.screen)
                 if new_opts:
                     options = new_opts
                     pick = match.strategy.decide_encounter(

@@ -33,6 +33,20 @@ def set_merge_effect_gate(fn) -> None:
     _IS_MERGE_EFFECT_FRAME = fn
 
 
+# star 回退截图留证注入槽(T-176 G-13 收编:共用中段禁摸像素——kernel 不
+# import cv2,截图落盘实现住 app 装配模块,经 decision_assembly.install_obs_
+# ports 注入;先例 = 上方 ``set_merge_effect_gate`` 同款装配缝)。缺省关
+# (None)= 不落截图,flag 文本留证照写(best-effort 语义同向,不引入新故障面)。
+_STAR_EVIDENCE_SAVER = None
+
+
+def set_star_evidence_saver(fn) -> None:
+    """注入 star 回退截图留证实现(签名 ``(screen, char)``;生产武装点 =
+    decision_assembly.install_obs_ports)。"""
+    global _STAR_EVIDENCE_SAVER
+    _STAR_EVIDENCE_SAVER = fn
+
+
 def is_merge_effect_window(screen: MatLike | None) -> bool:
     """合成特效窗判定读口(P3-10 批次二复审):观察消费前的窗内统一判别口。
 
@@ -576,12 +590,11 @@ def _star_stop_hook(ctx, session, char: str, old_star: int, new_star: int,
             f'画面态:备战(角色在板上,星区可见);来源:{source}',
             encoding='utf-8')
         try:
-            import cv2
-            if screen is not None and screen.size:
-                _ok, _arr = cv2.imencode('.png', cv2.cvtColor(screen, cv2.COLOR_RGB2BGR))
-                if _ok:
-                    _arr.tofile(str(Path('.debug/temp/currency_war/shots')
-                                    / f'star_regress_{char}_{datetime.now():%H%M%S}.png'))
+            # 截图留证经注入槽(T-176 G-13 收编:cv2 落盘实现迁 app 装配
+            # 模块,kernel 保持纯逻辑;缺省关 = 不落截图只写 flag)。
+            _saver = _STAR_EVIDENCE_SAVER
+            if _saver is not None and screen is not None and screen.size:
+                _saver(screen, char)
         except Exception:  # noqa: BLE001  截图 best-effort
             pass
         log_utils.log.warning(

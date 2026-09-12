@@ -203,6 +203,25 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
         pass
 
 
+def _op_journal_pos_of(ctx: Any) -> tuple[int, int]:
+    """op 行位置键(ADR-0579):最后已知 (plane, round),缺省 (0, 0)。
+
+    位置键语义属 journal 行型本体,故住本模块(原住 cw_loop;清场件收编
+    备战 op 后跨 op 复用,迁此消「画面 op → 外循环模块」的依赖倒挂)。
+    模块级形态供仲裁段第三载体行复用——仲裁宿主在测试缝里可为非 CwLoop
+    桩,位置键只依赖 ctx 的 getattr 链,不依赖宿主方法。
+    (换源 T-146:plane/round = 容器 node;未观察 = 旧缺帧形态 (0, 0)。)
+    """
+    _sess = getattr(getattr(ctx, 'cw_match', None), 'session', None)
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        board_state_of,
+    )
+    _nd = (getattr(board_state_of(_sess).node, 'value', None)
+           if _sess is not None else None)
+    return (int(_nd.plane) if _nd is not None else 0,
+            int(_nd.round_num) if _nd is not None else 0)
+
+
 def record_op_enter(op_name: str, plane: int, round_num: int,
                     obs: dict[str, Any] | None = None) -> dict[str, Any] | None:
     """缺口③写点(enter):非决策 op 执行前调用,返回 exit 用的 token。
