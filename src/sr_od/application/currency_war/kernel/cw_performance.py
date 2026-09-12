@@ -250,6 +250,12 @@ def is_run_dead(bs: BoardState, tracker: PerformanceTracker,
 
     r6 F9:"普通关可能锁血翻盘"依赖锁血机制 —— 阶段 4 实机确认货币战争是否有锁血;
     无则删 next_node_type 门,纯 HP+trend 两门。trend None(冷启动)→ False(不误判死)。
+
+    [挂账读点·hp 政策层申报] 本函数现属挂账层(生产调用面空,测试仓经
+    桥调用),本行 hp 直读仅挂账期原样保留、行为零变化;重挂生产消费
+    **必经政策层读口**——门后值 = kernel/cw_hp_policy.decision_hp
+    (bs, session),可信位 = hp_decision_trusted_of(bs),禁按直读形态
+    旁路(消费同门,ADR-0583 §2.4)。
     """
     trend = tracker.recent_hp_loss_trend(window=3)
     if trend is None:

@@ -582,17 +582,19 @@ def blood_xp_gate(hp_trusted: int | None, hp_readable: bool,
     return hp_trusted >= blood_xp_full_clicks(level) * cost
 
 
-def blood_xp_gate_for(state: GameState | None, session) -> bool:
-    """血闸消费面适配(mode 解析 + state 输入接线;prep 批入口与 cw4 三消费位
-    共用,ADR-0578)。
+def blood_xp_gate_for(bs: 'BoardState' | None, session) -> bool:
+    """血闸消费面适配(mode 解析 + 容器帧输入接线;prep 批入口与 cw4
+    三消费位共用,ADR-0578)。
 
     - 金本位(session 无 active 血本位卡,``cw_investments.blood_xp_mode`` →
       None)→ True 直通:金模式升级零改动([40]② 辖域 = XP 购买通道的**血**
       支付形态)。
-    - state 缺席 → False fail-closed(与判据本体 None 支同论证)。
-    - hp/level 取 state 现值:与 P21 闸(``blood_budget_levelup_blocked``)同面
-      同输入;店开态 hp 结构性不可见时 state 沿用最近备战帧可信值(P21 同帧
-      正常工作,复盘 15 帧实证)。
+    - bs 缺席 → False fail-closed(与判据本体 None 支同论证)。
+    - hp 消费 = 政策层读口 ``decision_hp`` 门后值 + ``hp_decision_trusted``
+      可信位(统一 state 迁移波 2 起单一读口,消费同门 ADR-0583 §2.4):
+      与 P21 闸(``blood_budget_levelup_blocked``)同面同输入;店开态 hp
+      结构性不可见时容器沿用最近备战帧可信值(P21 同帧正常工作,
+      复盘 15 帧实证);level 取容器读口。
     """
     from sr_od.application.currency_war.kernel.cw_investments import (
         blood_xp_mode,
@@ -600,14 +602,15 @@ def blood_xp_gate_for(state: GameState | None, session) -> bool:
     mode = blood_xp_mode(session)
     if mode is None:
         return True
-    if state is None:
+    if bs is None:
         return False
+    from sr_od.application.currency_war.kernel.cw_board_state import level_of
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         hp_decision_trusted,
     )
-    return blood_xp_gate(state.hp, hp_decision_trusted(state),
-                         state.level, mode[1])
-
+    from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
+    return blood_xp_gate(decision_hp(bs, session), hp_decision_trusted(bs),
+                         level_of(bs), mode[1])
 
 
 def _want_level_up(state: GameState, target_comp: Comp | None,
@@ -679,9 +682,6 @@ def _want_level_up(state: GameState, target_comp: Comp | None,
                                        hp=state.hp,
                                        committed=not state.dual_track_phase,
                                        strategies=state.active_strategies or None).target_level
-
-
-
 def _xp_gold_floor(state: GameState, want_level: bool) -> int:
     """买经验时的存金地板(用户节奏 user_playstyle §7(docs/game/currency_war/research/;**玩法理解**: gameplay/currency_war.md 策略模型 S1)。
 
@@ -700,6 +700,9 @@ def _xp_gold_floor(state: GameState, want_level: bool) -> int:
         return 10
     return 20 if want_level else INTEREST_THRESHOLD
 
+
+
+
 SHOP_REFRESH_COST: int = 2   # 刷新基价【注】游戏定义真值:实付恒 2 金,不随金位/次数/等级变(ADR-0456 三流对账定谳)
 
 
@@ -707,9 +710,6 @@ SHOP_REFRESH_COST: int = 2   # 刷新基价【注】游戏定义真值:实付恒
 # 旧值 = auto-chess meta 社区先验(前期 roll 找低费核心→中期 5-7 level_up→
 # lv8 roll 找 5 费→lv9 stable),无游戏定义或证明出处。保守缺省:comp 未填
 # level_plan 时不再退回通用曲线(_resolve_level_goal 返 None),升级压力仅由
-# 节点地板(get_node_goal,预算收权核)+ 淘金客姿态等已证判据辖。)
-
-
 def _resolve_level_goal(state: GameState, target: Comp | None) -> LevelGoal | None:
     """当前等级该做什么(comp 自带 level_plan 优先;无则 None)。
 
@@ -724,6 +724,9 @@ def _resolve_level_goal(state: GameState, target: Comp | None) -> LevelGoal | No
             return g
     return None
 
+
+
+# 节点地板(get_node_goal,预算收权核)+ 淘金客姿态等已证判据辖。)
 
 
 def _expected_level(round_num: int, plane: int) -> int:
@@ -980,13 +983,22 @@ def _char_synergies(name: str) -> set[str]:
 REFRESH_ROLL_CAP: int = 6
 
 
-def is_emergency(state: GameState,
+def is_emergency(bs: 'BoardState',
+                 session: StrategySession,
                  registry: DecisionV2Registry) -> bool:
     """应急触发(绝对 HP 档简版;redesign §5.4 Phase A 口径)。
 
-    单一源在本文件(kernel);decision_v2.filters.is_emergency 为 import
-    重定向,消费方调用零改。"""
-    return state.hp is not None and state.hp <= registry.emergency_hp
+    单一源在本文件(kernel)。hp 消费 = 政策层读口 ``decision_hp``
+    门后值(统一 state 迁移波 2:消费同门 ADR-0583 §2.4,旧链由上游
+    施门间接保证,读点显式施门后门幂等保证行为一致);``session``
+    形参随波 2 签名切换补入(hp 消费函数统一持 session 装配结算锚,
+    依据 = ``blood_budget_levelup_blocked(bs, session, registry)``
+    同形态,禁函数内私有第二门)。None(无真值且窗外)= False 保守
+    (ADR-0495:应急带不误触发)。"""
+
+    from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
+    hp = decision_hp(bs, session)
+    return hp is not None and hp <= registry.emergency_hp
 
 
 def _registry_of(session: StrategySession) -> DecisionV2Registry:
@@ -1323,7 +1335,16 @@ def refresh_ev_budget(state: GameState, session: StrategySession,
     (判据单一址=本函数的 ``_omega_collapse_zeroed``,届时零新概率口径)。
     """
     reg = registry or _registry_of(session)
-    if is_emergency(state, reg):
+    # is_emergency 波 2 已切容器签名(hp 经政策层读口);本接缝族
+    # (schedule_upgrade/refresh_ev_budget/reserve_cap)GameState 签名未切
+    # (标量评估面,非 hp 消费面),经容器过渡桥 board_state_bridge 装箱
+    # 供帧——桥视图上 hp source 恒 observation 的失真语义见该桥 docstring
+    # 与 hp 政策层申报(过渡期桥输入帧 hp 已被上游施门,门幂等保证无差);
+    # 本接缝族签名切换随 mandate_v1 装配面切换批同波贯通。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
+    if is_emergency(board_state_bridge(state), session, reg):
         return 0
     over = (state.gold or 0) - reserve_cap(state, session)
     if over <= 0:

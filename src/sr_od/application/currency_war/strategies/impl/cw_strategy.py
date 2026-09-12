@@ -286,34 +286,39 @@ def discard_stale_match_container(ctx: SrContext, reason: str) -> bool:
 def gated_hp(current_hp: int | None, session: StrategySession,
              now_t: int | None,
              current_readable: bool = True) -> int | None:
-    """结算 HP 新鲜度门(r68/r69,单源 helper):结算真值仅在**可信窗口**内覆盖现读。
+    """结算 HP 新鲜度门(r68/r69;门本体已下沉 kernel 政策层,本函数 =
+    **薄委托**,签名与调用面不变、行为零变化)。
 
-    - 现读可信(``current_readable=True``)→ 仅紧邻上一节点(gap==1)的结算值可覆盖
-      (结算屏「小队生命值NN」权威;防陈 hp 冻结毒化)。
-    - 现读不可信(``False`` = 无真值/沿用帧,``hp_readable=False``;W823 None 化后
-      现读基准可为 None,门只决定「是否被结算值覆盖」,不产兜底值)→ 放宽到 gap≤3:hp 只在
-      战斗结算变,非战斗节点(奖励/补给/选卡)隔断时结算值本就仍真(r69 实证:r5 非战斗
-      + r6 现读失败 → 旧 gap==1 判陈旧回退 100 假值喂 pivot);窗口 3 外(结算连失,
-      如 boss conf=0 冻结场景)仍拒 → 保持兜底值。
+    本体归宿 = ``kernel/cw_hp_policy.apply_hp_freshness_gate``(单一源;
+    窗口政策两常量 ``HP_FRESH_GAP_TRUSTED``/``HP_FRESH_GAP_UNTRUSTED_MAX``
+    随本体入政策层)。kernel 决策簇 hp 消费**禁经本函数**(kernel 禁反向
+    import 策略实现层)——kernel 侧统一走 ``kernel/cw_hp_policy
+    .decision_hp`` 决策读口;本函数只辖策略实现层既有调用点(写侧预施门
+    + 消费侧 2 点)。
 
-    实调点(全仓 grep 口径;旧注「shop.py buy 前」系 ADR-0583 内化前
-    代码形态残留,商店线 buy 前吃门已由环入口终饰承载,shop.py 零调用):
-    cw_screen_prep 环入口×2(端口路径/读屏路径,写侧预施门,W5 收编后
-    保留至旧链删除)+ cw_screen_prep 终饰×2(观察终饰+lifecycle payload
-    终饰,同写侧)+ mandate_v1 adapter decision_state×1(消费侧,视图真值)
-    + mandate_v1 encounter λ 键读点×1(消费侧,_hp_gate_state,W5 补门
-    读点域)。同门纪律:
-    先调方用假 hp 判 pivot、后调方真 hp
-    反向 pivot,同节点两次方向相反换线(r68 实证)。方向重估(ADR-0583 内化
-    进策略器决策入口)消费的是**已被本门覆写后的帧 state**(cw_screen_prep
-    环入口终饰在决策入口之前执行)→ 驱动输入恒为同门 hp,见 gated 门锁
+    语义(逐位等价,详见本体 docstring):锚缺任一 → 恒等返回现读;锚全时
+    ``gap=now_t-last_t``——现读可信仅 gap==1 结算值可覆盖,不可信放宽到
+    gap≤3,窗外保持现读;None 现读非恒等豁免(锚全时窗内同样被结算值
+    覆盖);门幂等。时基契约:now_t 与结算锚写点
+    (``cw_screen_battle_wait._write_settlement_observation`` 的 last_hp_t)
+    同式派生 ``(plane-1)*9+round_num``,禁单侧改式。
+
+    实调点申报纪律(全仓 grep 口径;新增调用点先对账「是否该直走政策层
+    读口」):cw_screen_prep 环入口×2(端口路径/读屏路径,写侧预施门,
+    W5 收编后保留至旧链删除)+ cw_screen_prep 终饰×2(观察终饰+lifecycle
+    payload 终饰,同写侧)+ mandate_v1 adapter decision_state×1(消费侧,
+    视图真值)+ mandate_v1 encounter λ 键读点×1(消费侧,_hp_gate_state,
+    W5 补门读点域)。旧注「shop.py buy 前」系 ADR-0583 内化前代码形态
+    残留,商店线 buy 前吃门已由环入口终饰承载,shop.py 零调用。同门纪律:
+    先调方用假 hp 判 pivot、后调方真 hp 反向 pivot,同节点两次方向相反
+    换线(r68 实证)。方向重估(ADR-0583 内化进策略器决策入口)消费的是
+    **已被本门覆写后的帧 state**(cw_screen_prep 环入口终饰在决策入口
+    之前执行)→ 驱动输入恒为同门 hp,见 gated 门锁
     (test_cw_blackboard.py::TestDirectionRhythmL1L2L3L7::test_l7)。
     """
-    last_hp = getattr(session, 'last_hp', None)
-    last_t = getattr(session, 'last_hp_t', None)
-    if last_hp is None or now_t is None or last_t is None:
-        return current_hp
-    gap = now_t - last_t
-    if gap == 1 or (not current_readable and 1 < gap <= 3):
-        return last_hp
-    return current_hp
+    from sr_od.application.currency_war.kernel.cw_hp_policy import (
+        apply_hp_freshness_gate,
+    )
+    return apply_hp_freshness_gate(
+        current_hp, getattr(session, 'last_hp', None),
+        getattr(session, 'last_hp_t', None), now_t, current_readable)

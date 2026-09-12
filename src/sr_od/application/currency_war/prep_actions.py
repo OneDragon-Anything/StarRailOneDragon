@@ -1283,6 +1283,9 @@ class PrepActionExecutor:
         from sr_od.application.currency_war.kernel.cw_discipline_rules import (
             hp_decision_trusted,
         )
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
         from sr_od.application.currency_war.kernel.cw_economy import (
             blood_xp_full_clicks,
             blood_xp_gate,
@@ -1298,7 +1301,11 @@ class PrepActionExecutor:
             _mode_name, _cost = _blood
             _st = getattr(session, 'last_state', None)
             _hp = getattr(_st, 'hp', None) if _st is not None else None
-            _trusted = hp_decision_trusted(_st) if _st is not None else False
+            # 可信位单一源(kernel cw_discipline_rules)波 2 已切容器签名:
+            # GameState 帧经过渡桥装箱供帧(桥视图 hp source 失真语义见该桥
+            # docstring;hp=None 帧不写桥字段,判据 None 支 fail-closed 不受影响)。
+            _trusted = (hp_decision_trusted(board_state_bridge(_st))
+                        if _st is not None else False)
             # 批入口整级授权检(全量口径);拒 → 与「level 基线读不到」同返回路径
             if not blood_xp_gate(_hp, _trusted, before, _cost):
                 return (f'血闸拒:hp={_hp} < 下一级血成本 '

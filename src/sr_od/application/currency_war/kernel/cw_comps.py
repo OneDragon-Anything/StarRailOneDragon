@@ -2172,12 +2172,10 @@ def maybe_pivot(bs: BoardState, ctx: ScoreContext, config, target: Comp | None,
     best = candidates[0]
     # 保命独占语义:hp 危险时只认最快 easy comp,信号 1/2 不参与(防 churn:
     # best 随 board/shop 每轮变 → target 振荡 + 高难度 comp 永不成型 → 死亡螺旋)。
-    from types import SimpleNamespace as _HpShim
-    _hp_shim = _HpShim(selected_difficulty=(bs.selected_difficulty.value or ''),
-                       plane=plane_of(bs), round_num=round_num_of(bs),
-                       level=level_of(bs),
-                       board=(bs.board.value or {}))
-    _pivot_hp = int(0.75 * effective_hp_threshold(_hp_shim))
+    # 阈值域直传容器帧(effective_hp_threshold 波 2 已切 BoardState 签名,
+    # 过渡期 _HpShim 手抄镜像字段桥已随之消亡——输入字段职级/位面/轮次/
+    # 等级容器侧全就绪,禁再新增同型鸭子桥)。
+    _pivot_hp = int(0.75 * effective_hp_threshold(bs))
     # 信号3保命优先于一切(含定型;实机 P2 振荡实证)——P2 hp 常驻<阈值
     # → 保命每步触发「切 board progress 更高的 easy 线(列车)」,而 CommitSignals
     # 定型每步又切回终局(反甲白厄 10.53 ready)→ 同轮内 3-4 次翻转,买牌方向
@@ -2185,7 +2183,12 @@ def maybe_pivot(bs: BoardState, ctx: ScoreContext, config, target: Comp | None,
     # 修:**定型后保命 pivot 需落点 form_progress 显著更高**(≥当前+0.25,一次
     # 性大步换线),不再是「有任何 progress 的最快 easy」——平级/略优不换,
     # 消除与定型的每步拉锯;血线危机交买牌/装备侧加速(不弃线)。
-    _hp = bs.hp.value   # 门前真值(本函数消费侧原样,可信位门在决策侧)
+    # [挂账读点·hp 政策层申报] 本函数现属挂账层(生产调用面空,测试仓经
+    # 桥调用),hp 读约束照旧:重挂生产消费**必经政策层读口**——门后值 =
+    # kernel/cw_hp_policy.decision_hp(bs, session),可信位 =
+    # hp_decision_trusted_of(bs),禁按下方直读形态旁路(消费同门,
+    # ADR-0583 §2.4)。本行直读仅挂账期原样保留,行为零变化。
+    _hp = bs.hp.value
     _committed_target = (target is not None and target_committed(target, bs))
     if _hp is not None and _hp < _pivot_hp:   # None=无真值:不触发保命 pivot(可信位门在决策侧)
         # 冷却守卫已提函数顶(不变量单一入口),危机路径不再自查。

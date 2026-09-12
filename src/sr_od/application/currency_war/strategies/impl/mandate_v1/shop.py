@@ -899,11 +899,13 @@ def decide_shop_action(state: GameState, session: StrategySession,
         # 证据放行])。派生本体 = cw_intention.k_empty_window_fallback
         #(商店域与准备域共用,禁第二源);本处只保留消费面(回退采用+
         # 计数键)。ist 缺失 = 意向供给缺帧,保守侧不回退(现行 () 行为)。
+        # W6 波3 贯通:k 空窗回退/三臂判据已切容器签名,帧经桥装箱。
         k_fallback, _kfb_tok = cw_intention.k_empty_window_fallback(
-            state, _ist, session=session, registry=_reg)
+            board_state_bridge(state), _ist, session=session, registry=_reg)
         k_band = f'shop_k_fallback_{_kfb_tok}'
         if _kfb_tok == 'p2plus':
-            _arms = cw_intention.no_target_arms(state, _ist, session=session,
+            _arms = cw_intention.no_target_arms(board_state_bridge(state),
+                                                _ist, session=session,
                                                 registry=_reg)
             if not k_fallback:
                 _kfb_source = cw_intention.K_FALLBACK_SOURCE_THREE_ARM
@@ -1314,14 +1316,14 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 if _dir_name:
                     # 仲裁三层序(逐在售方向件判定,§4.4 候选级序):
                     _covers = _dir_name in cw_intention.hub_covered_lines(
-                        state, _ist, _hname)
+                        board_state_bridge(state), _ist, _hname)
                     _yield = False
                     for _m in _piece_in_shop:
                         # 第一层授权面(推论 B1.1 收窄):仅 C_x == {l_d} 的
                         # 单线方向件受支配序辖——枢纽覆盖多线时件级比较无
                         # 定理授权,一律降第三层声明序。
                         if _covers and cw_intention.hub_covered_lines(
-                                state, _ist, _m) == frozenset({_dir_name}):
+                                board_state_bridge(state), _ist, _m) == frozenset({_dir_name}):
                             continue    # 第一层支配序:枢纽先于单线方向件
                         if cw_intention.char_declaration_index(_hname) > \
                                 cw_intention.char_declaration_index(_m):
@@ -1946,9 +1948,12 @@ def decide_shop_action(state: GameState, session: StrategySession,
                 contracts.ContractCtx(), counters) \
                 and crit_levelup.level_spend_blocked(state, session, _reg):
             _count('crisis_level_spend_defer')
-        elif not blood_xp_gate_for(state, session):
+        elif state is None or not blood_xp_gate_for(
+                board_state_bridge(state), session):
             # [40]② 血闸(ADR-0578):支付能力检查(买不买得起下一级),与
             # level_spend_blocked 串联;拒因独立分键。金本位 gate 恒 True 直通。
+            # kernel 闸波 2 已切容器签名(hp 经政策层读口),GameState 帧经
+            # 过渡桥装箱(桥视图 hp source 失真语义见该桥 docstring)。
             _count('blood_xp_gate_defer')
         elif contracts.ensure_contract(
                 ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \

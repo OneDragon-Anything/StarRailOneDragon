@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from dataclasses import dataclass, field  # noqa: E402
+
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_registry import (
     DecisionV2Registry,
@@ -161,27 +163,45 @@ def seed_age_blocked(bc, state: GameState,
 # ===== 血预算停手/危机带判据族(自 decision_v2.discipline 下沉,迁移底稿
 # MAP ⓪ A3:mandate_v1 判据级消费的唯一 v2 import 收编进 kernel;discipline
 # 本名保留 re-export,消费方调用零改)。闭包 = 判据 1-2 层依赖:
-# nodes_of_plane(plane_last_battle 轮维)/hp_decision_trusted(可信位单一源,
-# 自 posture_release 下沉——posture_release 余部留 decision 桶经本模块消费)。
-
-from collections import deque  # noqa: E402
-from dataclasses import dataclass, field  # noqa: E402
+# nodes_of_plane(plane_last_battle 轮维)/hp 可信位与门后值读口(统一 state
+# 迁移波 2 起经 kernel 政策层 cw_hp_policy 单一读口:决策 hp 消费 =
+# decision_hp 门后值,可信位 = hp_decision_trusted 委托
+# hp_decision_trusted_of——kernel 决策分支禁旁路直读 bs.hp/state.hp,
+# 消费同门纪律承接 ADR-0583 §2.4)。
 
 from sr_od.application.currency_war.kernel.cw_plane_table import (  # noqa: E402
     nodes_of_plane,
 )
+from sr_od.application.currency_war.kernel.cw_hp_policy import (  # noqa: E402
+    decision_hp,
+    hp_decision_trusted_of,
+)
 
 
-def hp_decision_trusted(state: GameState) -> bool:
-    """hp 决策可信位(单一源):``state.hp_readable or state.hp_trusted``。
+def hp_decision_trusted(frame) -> bool:
+    """hp 决策可信位(单一源;**双形态过渡函数**,统一 state 迁移波 2 起):
+
+    - **容器形态**(输入 = ``BoardState``):委托
+      ``cw_hp_policy.hp_decision_trusted_of``(定谳二单一源:
+      ``bs.hp.source in ('observation', 'carried')``,语义见该函数
+      docstring);
+    - **GameState 形态**(输入 = 旧标量帧:``frame.hp`` 非 Field 载体):
+      旧双位读法 ``hp_readable or hp_trusted``——辖策略域未切换消费面
+      (statefn/flow 等,strategies 全簇随波 4 切),**随统一 state 迁移
+      W8 GameState 本体删除消亡**(r5-migration-plan §6 残留表),禁在
+      该形态下新增消费点。
 
     同模块(及跨模块引用点)禁再手写双位判定(W393 A1.1 单一源纪律):
     语义=ADR-0282 对账层「沿用真值帧放行 vs 兜底假值帧拒」(ADR-0428
-    收紧口径)——100 兜底帧(开局全无真值,两位皆 False)不评估,
-    shop 开态沿用 last_hp_real 的帧(hp_readable=False ∧ hp_trusted=True)
-    放行。新增 hp 守卫消费点一律走本 helper。
+    收紧口径)——prior/logic 支两位皆 False 不评估,carried 沿用帧放行。
+    新增 hp 守卫消费点一律走容器形态本 helper 或政策层读口。
     """
-    return state.hp_readable or state.hp_trusted
+    _hp = getattr(frame, 'hp', None)
+    if hasattr(_hp, 'source'):    # 容器帧:hp 是 Field 载体(带 .source)
+        return hp_decision_trusted_of(frame)
+    # GameState 残留形态(getattr 读法,随 W8 消亡;AST 双位锁豁免位)
+    return bool(getattr(frame, 'hp_readable', False)
+                or getattr(frame, 'hp_trusted', False))
 
 
 # p1_crisis_band(P1 ≈22 血危局带判据)不设:经用户裁决不授权、废弃
@@ -190,24 +210,33 @@ def hp_decision_trusted(state: GameState) -> bool:
 # 危局面合规件仅血线硬地板 ≤15 族,消费在 mandate_v1 criteria 层
 # (levelup.level_spend_blocked 停付让位 / sell_for_interest 凑息禁令),
 # 判据单一源 = statefn/predicates.p1_blood_floor,不在本模块设第二份。
-def plane_last_battle(state: GameState, session) -> bool:
+def plane_last_battle(bs, session) -> bool:
     """位面末最后一战([18]):当前节点=boss 且轮=位面节点数(真值源
     ``nodes_of_plane``——P2 boss@r7 判正;旧按 9 计 P2 永不触发,
-    ADR-0366 口径断层修复)。"""
-    node = getattr(session, 'node_type_current', None) or state.node_type or ''
-    return node in ('boss',) and state.round_num >= nodes_of_plane(session)
+    ADR-0366 口径断层修复)。波 2 签名切容器:节点类型/轮次经容器读口
+    (node_kind_of/round_num_of 镜像,桥视图 kind 空串 = 未识别忠实镜像
+    同旧 `or ''`)。"""
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        node_kind_of,
+        round_num_of,
+    )
+    node = getattr(session, 'node_type_current', None) or node_kind_of(bs) or ''
+    return node in ('boss',) and round_num_of(bs) >= nodes_of_plane(session)
 
 
-def all_in_xp_domain_hit(state: GameState, session,
+def all_in_xp_domain_hit(bs, session,
                          registry: DecisionV2Registry) -> bool:
     """ALL IN 窗 XP 类别过滤的辖域判据(ADR-0604 §4-F5;P21 域钉死)。
 
     = 位面末最后一战(``plane_last_battle`` 单一源,[18] 豁免窗)
     ∧ hp 真值可信(``hp_decision_trusted`` 单一源)
-    ∧ hp ≤ 停升级线(复用 p1/p2_levelup_stop_hp 锚表,零新参数——
+    ∧ 门后 hp ≤ 停升级线(复用 p1/p2_levelup_stop_hp 锚表,零新参数——
     「按下一节点型 L_c^stop 查表」的落码形态即在产停升级线同一线表,
     禁另建第二套血线表;辖域口径差申报 = ADR-0604 §4-D1:在产线
     P1=11 不分节点型 vs 设计锚 12/15/30,重校债归重设计落码批)。
+    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门,ADR-0583
+    §2.4;旧链由上游 adapter 施门间接保证,波 2 起读点显式施门,门幂等
+    保证过渡期行为一致)。
 
     辖域语义:ALL IN 窗内支出按「当轮可上场」类别白名单过滤(档 0
     d=0 形态/档 1/让位卖出后部署;XP 升级类仅支A 兑现链形态合法),
@@ -225,16 +254,21 @@ def all_in_xp_domain_hit(state: GameState, session,
     kernel(消费侧 criteria/levelup._realize_chain_ready 单一源,
     P39 指示项锚对契约),本谓词只答血侧半支。
     """
-    if not plane_last_battle(state, session):
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        plane_of,
+    )
+    if not plane_last_battle(bs, session):
         return False
-    if not hp_decision_trusted(state):
+    if not hp_decision_trusted(bs):
         return False
-    if state.hp is None:
+    hp = decision_hp(bs, session)
+    if hp is None:
         return False
-    if state.plane == 2:
-        return state.hp <= p2_levelup_stop_hp(registry)
-    if state.plane == 1:
-        return state.hp <= p1_levelup_stop_hp(registry)
+    plane = plane_of(bs)
+    if plane == 2:
+        return hp <= p2_levelup_stop_hp(registry)
+    if plane == 1:
+        return hp <= p1_levelup_stop_hp(registry)
     return False
 
 
@@ -261,13 +295,16 @@ def p1_levelup_stop_hp(registry: DecisionV2Registry) -> int:
     return math.ceil(registry.blood_budget_stop_d * l_c)
 
 
-def blood_budget_levelup_blocked(state: GameState, session,
+def blood_budget_levelup_blocked(bs, session,
                                  registry: DecisionV2Registry) -> bool:
     """血预算停手·停升级门(设计件 12 §3.1 P2 / §2.3-P1-b;ADR-0448)。
 
     P21 已证:存活到账判据 h > d·L_c 在 h ≤ d·L_c 域内恒假 → 升级收益
     恒 0、EV=−C−I 严格为负,且敏感网格 (p,Δp,d,c) 全负域——结论与
-    β 标定无关。备战帧 hp ≤ 停升级线(P1/P2 各自线)时拒绝购买经验。
+    β 标定无关。备战帧门后 hp ≤ 停升级线(P1/P2 各自线)时拒绝购买经验。
+    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门,ADR-0583
+    §2.4;旧链由上游 adapter 施门间接保证,波 2 起读点显式施门,门幂等
+    保证过渡期行为一致)。
 
     接缝语义(设计件 12 §5.2/§5.3,实现形态裁决):
     - **授权通道前置拒付过滤**,与息线门是独立谓词取 AND(血线胜)——
@@ -282,31 +319,36 @@ def blood_budget_levelup_blocked(state: GameState, session,
     模式对齐 sim 执行层 level_cap_rejects)。
 
     消费层可信位门(ADR-0448 血线谓词唯一收口,W580):
-    ``hp_decision_trusted`` 不过的帧((hp_readable, hp_trusted)=(False,
-    False):开局兜底 100 帧/shop 覆盖丢位帧)fail-closed 按血线内处理
-    (拒付升级)——线内升级 EV=−C−I 严格负(本函数数学),证据缺失时
-    禁令保持有效与误放的非对称代价(误放=血线内追级,误拦=少升一级)
-    同型于 ADR-0428 兜底假值帧拒语义。不降姿态/不维持上次决策:谓词
-    逐帧无状态且被三面共享,引入跨帧记忆=新状态机不成比例;只封
-    LevelUp 通道,买牌/刷新各有其门。置于 ALL IN 豁免之后:豁免语义
-    =「末战花光是时机不是血线判断」,在不可信帧上仍生效。
+    ``hp_decision_trusted`` 不过的帧(容器 source=prior/logic 支:开局
+    先验帧/推算帧)fail-closed 按血线内处理(拒付升级)——线内升级
+    EV=−C−I 严格负(本函数数学),证据缺失时禁令保持有效与误放的非对称
+    代价(误放=血线内追级,误拦=少升一级)同型于 ADR-0428 兜底假值帧拒
+    语义。不降姿态/不维持上次决策:谓词逐帧无状态且被三面共享,引入跨帧
+    记忆=新状态机不成比例;只封 LevelUp 通道,买牌/刷新各有其门。置于
+    ALL IN 豁免之后:豁免语义=「末战花光是时机不是血线判断」,在不可信
+    帧上仍生效。
     """
     if not registry.blood_budget_stop_enabled:
         return False
-    if plane_last_battle(state, session):
+    if plane_last_battle(bs, session):
         return False    # ALL IN 窗:停手让位([18] 唯一清零地板路径)
-    if not hp_decision_trusted(state):
+    if not hp_decision_trusted(bs):
         return True     # 不可信 hp 帧:fail-closed 按血线内处理(拒升级)
-    if state.hp is None:
+    hp = decision_hp(bs, session)
+    if hp is None:
         # hp 无真值帧 fail-closed(ADR-0495 消费点对 None 一律保守):
-        # GameState() 缺省 hp_readable=True(sim 恒真读帧约定)会骗过上面的
-        # 可信位门,但 hp=None 时停升级线无法判「线内/线外」——误放(线内
-        # 追级)与误拦(少升一级)代价非对称,按线内处理拒升级。
+        # 容器未写帧(值 None)会以缺省来源骗过上面的可信位门,但 hp=None
+        # 时停升级线无法判「线内/线外」——误放(线内追级)与误拦(少升
+        # 一级)代价非对称,按线内处理拒升级。
         return True
-    if state.plane == 2:
-        return state.hp <= p2_levelup_stop_hp(registry)
-    if state.plane == 1:
-        return state.hp <= p1_levelup_stop_hp(registry)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        plane_of,
+    )
+    plane = plane_of(bs)
+    if plane == 2:
+        return hp <= p2_levelup_stop_hp(registry)
+    if plane == 1:
+        return hp <= p1_levelup_stop_hp(registry)
     return False
 
 
@@ -333,14 +375,17 @@ def p2_crisis_stop_hp(registry: DecisionV2Registry) -> int:
     return math.ceil(2 * registry.vd_p2_loss)
 
 
-def p2_crisis_band(state: GameState, registry: DecisionV2Registry) -> bool:
-    """P2 危机带谓词(plane≥2 ∧ hp 真值 ∧ hp ≤ 危机带线)。
+def p2_crisis_band(bs, session, registry: DecisionV2Registry) -> bool:
+    """P2 危机带谓词(plane≥2 ∧ 门后 hp 真值 ∧ hp ≤ 危机带线)。
 
     两个行为面的共域判据(消费点各取所需,谓词单一源):
     - ``blood_budget_refresh_blocked`` P2 臂:带内搜索型刷新停付;
     - arbiter 危机买入闸门(``_crisis_buy_gate_open``):带内目标件
       买候选越过非正分门/息律门(P48 λ>0 段转化优先);
     - cw4 M3 危机让位(criteria/levelup.level_spend_blocked 危机支)。
+    hp 消费 = 政策层读口 ``decision_hp`` 门后值(消费同门,ADR-0583
+    §2.4;``session`` 形参随波 2 签名切换补入——hp 消费函数统一持
+    session 装配结算锚,与 blood_budget_levelup_blocked 同形态)。
     应急带(hp≤emergency_hp)不属本带语义管辖:应急覆盖态
     (层2 emergency_tags/危机囤金)自有一套处置,本谓词不重复触发
     (消费点在应急豁免**之后**取值,天然不含);hp 不可信/None 帧返回
@@ -348,9 +393,13 @@ def p2_crisis_band(state: GameState, registry: DecisionV2Registry) -> bool:
     未知帧多付一次搜索/少买一件,有金地板与 refresh 预算兜底;误拦
     代价=危机帧失去转化通道,非对称取不拦)。
     """
-    return (state.plane >= 2
-            and state.hp is not None
-            and state.hp <= p2_crisis_stop_hp(registry))
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        plane_of,
+    )
+    hp = decision_hp(bs, session)
+    return (plane_of(bs) >= 2
+            and hp is not None
+            and hp <= p2_crisis_stop_hp(registry))
 
 
 @dataclass

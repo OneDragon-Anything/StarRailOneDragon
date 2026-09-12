@@ -210,12 +210,15 @@ def levelup_budget_gate(state: GameState, session: StrategySession | None,
         from sr_od.application.currency_war.kernel.cw_discipline_rules import (
             all_in_xp_domain_hit,
         )
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
         from sr_od.application.currency_war.kernel.cw_registry import (
             DEFAULT_REGISTRY,
         )
         if not _realize_chain_ready(state, bench, deployed) \
                 and all_in_xp_domain_hit(
-                    state, session,
+                    board_state_bridge(state), session,
                     DEFAULT_REGISTRY):
             return False, 'all_in_xp_category_filtered'
         if _guarantee_floor_holds(state, session, gold, clicks, click_cost,
@@ -381,25 +384,36 @@ def level_spend_blocked(state: GameState, session: StrategySession,
         blood_budget_levelup_blocked,
         p2_crisis_band,
     )
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
     from sr_od.application.currency_war.kernel.cw_registry import (
         DEFAULT_REGISTRY,
     )
     reg = registry if registry is not None else DEFAULT_REGISTRY
-    if blood_budget_levelup_blocked(state, session, reg):
+    # kernel 血线门波 2 已切容器签名(hp 经政策层读口);本策略域 GameState
+    # 帧经容器过渡桥装箱供帧(桥视图 hp source 失真语义见该桥 docstring,
+    # 门幂等保证过渡期行为一致;策略域签名切换随 strategies 全簇批)。
+    _bs = board_state_bridge(state)
+    if blood_budget_levelup_blocked(_bs, session, reg):
         return True
     if _plane_last_battle(state, session):
         return False    # ALL IN 窗:停手让位(与血预算支同一豁免序)
-    return p2_crisis_band(state, reg)
+    return p2_crisis_band(_bs, session, reg)
 
 
 def _plane_last_battle(state: GameState, session: StrategySession) -> bool:
     """位面末最后一战判定(cw4 消费面;单一源 =
     decision_v2.discipline.plane_last_battle 的重导出委托,禁第二实现;
-    模块私有——非判据面函数,不入契约/旁路枚举表)。"""
+    模块私有——非判据面函数,不入契约/旁路枚举表)。kernel 侧波 2 已切
+    容器签名,GameState 帧经过渡桥装箱。"""
     from sr_od.application.currency_war.kernel.cw_discipline_rules import (
         plane_last_battle as _plb,
     )
-    return _plb(state, session)
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
+    return _plb(board_state_bridge(state), session)
 
 
 def pop_slot(deployed_count: int, deploy_cap: int, gold: int,

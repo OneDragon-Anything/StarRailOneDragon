@@ -21,9 +21,15 @@ from __future__ import annotations
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
+
+if TYPE_CHECKING:
+    # 仅类型注解引用(项目规范);cw_board_state 已以同形态反向引用本模块,
+    # 运行时零依赖不成环(effective_hp_threshold 容器注解,波 2 签名切换)。
+    from sr_od.application.currency_war.kernel.cw_board_state import BoardState
 
 # 卖出回金 = 招募费(cost)× 合成倍数,docs/game/currency_war/research/economy.md §3(卖出退金)。1星=cost 🟢 BWIKI+4399+用户权威;
 # 2星=cost×3−1、3星=cost×9−1、4星=cost×27−1(合成成本扣1手续费;2星用户印象「少1」,
@@ -1493,9 +1499,12 @@ def _apply_comp_transaction(s: GameState, tx: CompTransaction,
     s.board = _recount_board(s.deployed)
 
 
-def effective_hp_threshold(state: GameState) -> int:
-    """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE`` 有对应键 → 取覆盖值;
-    否则回退 ``HP_SAFE_THRESHOLD``(40)。
+def effective_hp_threshold(bs: 'BoardState') -> int:
+    """实际保血阈值:selected_difficulty(职级)检测到且 ``DIFFICULTY_HP_TABLE``
+    有对应键 → 取覆盖值;否则回退 ``HP_SAFE_THRESHOLD``(40)。容器版单一实现
+    (输入 = ``BoardState``;职级/位面/轮次/等级经容器域读法——统一 state
+    迁移波 2 签名切换,输入字段 selected_difficulty/plane/round_num/level
+    容器侧全部就绪)。
 
     高难(A8)敌人更凶 → 阈值调高,更早弃息保血。阈值表是策略校准参数(代码常量,
     自 config 迁入 —— 用户对「A7 该在 52 血弃息」没有个人意见,不属用户偏好)。
@@ -1509,19 +1518,26 @@ def effective_hp_threshold(state: GameState) -> int:
         board_tier_of,
         plane_hp_ratio,
     )
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        level_of,
+        plane_of,
+        round_num_of,
+    )
     from sr_od.application.currency_war.kernel.cw_plane_table import (
         NODES_PER_PLANE,
         TOTAL_NODES,
     )
 
-    diff = (getattr(state, "selected_difficulty", "") or "").strip()
+    diff = (bs.selected_difficulty.value or '').strip()
     base = int(DIFFICULTY_HP_TABLE.get(diff, HP_SAFE_THRESHOLD))
-    if state.plane <= 1:
+    plane = plane_of(bs)
+    if plane <= 1:
         return base
     # 剩余战斗日程估计(位面×轮次 → 节点序;round_num 越界防御夹 [1, NODES_PER_PLANE])
-    t = (min(3, state.plane) - 1) * NODES_PER_PLANE + min(max(1, state.round_num), NODES_PER_PLANE) - 1
+    t = (min(3, plane) - 1) * NODES_PER_PLANE \
+        + min(max(1, round_num_of(bs)), NODES_PER_PLANE) - 1
     nodes_left = max(1, TOTAL_NODES - t)
-    ratio = plane_hp_ratio(board_tier_of(state.level), nodes_left, plane=state.plane)
+    ratio = plane_hp_ratio(board_tier_of(level_of(bs)), nodes_left, plane=plane)
     return min(100, int(base * ratio))
 
 

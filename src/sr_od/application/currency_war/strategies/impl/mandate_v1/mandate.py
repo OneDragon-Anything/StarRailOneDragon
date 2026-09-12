@@ -1385,9 +1385,14 @@ def run_mandate(frame: MandateFrame,
         # 必花域/血线地板豁免(裁定字面「否则停」是支付能力非血线判断;血模式
         # 「破息批」无金可破,解锁包件①的转化语义本就不适用,方案审 N5/R2
         # 收窄申报)。拒因独立分键;金本位 gate 恒 True 直通。
+        # kernel 闸波 2 已切容器签名(hp 经政策层读口),GameState 帧经过渡桥
+        # 装箱(桥视图 hp source 失真语义见该桥 docstring,过渡期行为一致)。
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
         _blood_gate_blocked = (
             state is not None
-            and not blood_xp_gate_for(state, session))
+            and not blood_xp_gate_for(board_state_bridge(state), session))
         if _blood_gate_blocked:
             _count('blood_xp_gate_defer')
         elif _level_spend_blocked and not _zone_hit:

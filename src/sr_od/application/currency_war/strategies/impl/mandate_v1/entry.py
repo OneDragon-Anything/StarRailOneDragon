@@ -540,12 +540,16 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # 意向供给缺帧,保守侧不回退(与 shop.py 同款 fail 方向)。
     if k is None:
         from sr_od.application.currency_war.kernel import cw_intention
+        from sr_od.application.currency_war.kernel.cw_board_state import (
+            board_state_bridge,
+        )
         _ist = getattr(state_of(session), 'v3_intention', None)
         if _ist is not None and state is not None:
             # session/registry 透传(P86;落地审 F-2):甲臂 G 门按 plane
             # 真值视界与当帧注册表判定,与商店域同源(两域禁分叉)。
+            # W6 波3 贯通:k_empty_window_fallback 已切容器签名,帧经桥装箱。
             _fb, _band = cw_intention.k_empty_window_fallback(
-                state, _ist, session=session, registry=registry)
+                board_state_bridge(state), _ist, session=session, registry=registry)
             if _fb:
                 k_members = tuple(sorted(_fb))
                 state_of(session).cw4_counters[f'prep_k_fallback_{_band}'] = \
@@ -916,7 +920,11 @@ def _reconcile_posture_authorization(session: StrategySession,
         return un
     # [40]② 血闸镜像(ADR-0578):发射位闸拒 → 授权面 crisis_yield 同款让位
     # 语义(支付能力检查独立于停付线,不可被域/地板豁免;金本位恒 True 直通)。
-    if state is not None and not blood_xp_gate_for(state, session):
+    # kernel 闸波 2 已切容器签名(hp 经政策层读口),GameState 帧经过渡桥装箱。
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge as _bsb,
+    )
+    if state is not None and not blood_xp_gate_for(_bsb(state), session):
         un = {'auth_id': f'{state.plane}-{state.round_num}',
               'channel': 'levelup',
               'reason': 'blood_xp_gate_blocked',
