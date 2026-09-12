@@ -10,10 +10,14 @@ from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from sr_od.application.div_uni.operations.choose_oe_file import ChooseOeFile
 from sr_od.application.div_uni.operations.choose_oe_support import ChooseOeSupport
+from sr_od.application.sim_universe.operations.move_v1.sim_uni_move_to_enemy_by_mm import (
+    SimUniMoveToEnemyByMiniMap,
+)
 from sr_od.challenge_mission.choose_challenge_times import ChooseChallengeTimes
 from sr_od.context.sr_context import SrContext
 from sr_od.interastral_peace_guide.guide_def import GuideMission
 from sr_od.interastral_peace_guide.guide_transport import GuideTransport
+from sr_od.operations.battle.start_fight_for_elite import StartFightForElite
 from sr_od.operations.battle.wait_battle_result import WaitBattleResult
 from sr_od.operations.sr_operation import SrOperation
 from sr_od.screen_state import battle_screen_state
@@ -215,16 +219,30 @@ class ChallengeOrnamentExtraction(SrOperation):
         return self.round_by_find_area(screen, '大世界', '角色图标', retry_wait=1)
 
     @node_from(from_name='等待副本加载')
+    @operation_node(name='向红点移动')
+    def move_by_red(self) -> OperationRoundResult:
+        """
+        沿小地图红点索敌走位 到位即停 不主动攻击(开怪归下一节点)
+        """
+        op = SimUniMoveToEnemyByMiniMap(self.ctx, no_attack=True, stop_after_arrival=True)
+        return self.round_by_op_result(op.execute())
+
+    @node_from(from_name='向红点移动')
+    @operation_node(name='进入战斗')
+    def start_fight(self) -> OperationRoundResult:
+        op = StartFightForElite(self.ctx, skip_point_check=True, skip_resurrection_check=True)
+        return self.round_by_op_result(op.execute())
+
+    @node_from(from_name='进入战斗')
     @node_from(from_name='处理战斗结果', status='再来一次按钮')
     @operation_node(name='等待战斗结果')
     def wait_battle_result(self) -> OperationRoundResult:
         """
         等待战斗结果。
-        饰品提取副本 载入即自动开战(2026-08-30 两次实机实证),不需要模拟宇宙系
-        的索敌走位/秘技开怪——历史上借用的 SimUniMoveToEnemyByMiniMap/SimUniEnterFight
-        语义不合身:模拟宇宙的状态机与弹窗处理被带进本流程,是存档确认弹窗/
-        战斗失败卡死两起事故的共同根源。try_attack=True 兜底:载入后若未自动
-        开战则补一次攻击。
+        副本载入后不会自动开战,由前置的 向红点移动/进入战斗 索敌开怪,本节点只等
+        结果并兜底补一次攻击(try_attack)。周边防护独立成立:载入期提示类弹窗在
+        wait_mission_loaded 处理,战败退出在 after_battle_result/wait_back 处理,
+        不依赖本节点。
         """
         op = WaitBattleResult(self.ctx, try_attack=True)
         op_result = op.execute()
