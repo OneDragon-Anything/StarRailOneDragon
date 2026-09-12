@@ -30,7 +30,14 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_board_state import (
+    back_capacity_of,
+    back_count_of,
+    bench_slots_of,
     board_state_bridge,
+    deployed_count_of,
+    deployed_slots_of,
+    front_count_of,
+    max_units_of,
 )
 from sr_od.application.currency_war.kernel.cw_comps import (
     COMP_LIBRARY,
@@ -43,13 +50,13 @@ from sr_od.application.currency_war.kernel.cw_plugins import (
 )
 from sr_od.application.currency_war.kernel.cw_state import (
     BENCH_CAPACITY,
+    DEPLOYED_FRONT_CAPACITY,
     Action,
     BenchChar,
     CompTransaction,
     FillSpec,
     GameState,
     bench_occupied,
-    iter_deployed_slots,
     iter_occupied_deployed,
     simulate,
 )
@@ -80,6 +87,61 @@ _TIER_TIER_ORDER: dict[str, int] = {'T1': 0, 'T2': 1, 'T3': 2}
 
 
 # ===== 数据结构(C3 契约形状) =====
+
+def _seats(state: GameState) -> tuple[list, list]:
+    """席位读口(W6 波3):GameState 工作帧 → 波1 席位读口槽表
+    (deployed=10 槽/bench=9 槽,元素 BenchChar|None,ADR-0392 下标语义)。
+
+    本模块消费 simulate(GamesState 世界,W5 sim 反转/W8 本体删除随退役)
+    的工作帧,读面统一经波1 公共读口(board_state_bridge 单点装箱)——
+    禁再直读 ``state.deployed``/``state.bench``(字段读守卫);工作帧
+    本体随 simulate 退役波切容器直供。
+    """
+    bs = board_state_bridge(state)
+    return deployed_slots_of(bs), bench_slots_of(bs)
+
+
+def _tx_receipt_row(tx: CompTransaction, applied: bool, reason: str = '') -> dict:
+    """事务发射行(receipts 词表,§3.1.1-4;波3 applied-gate 改造件)。
+
+    op = 事务类型名;applied = 发出机械事实透传;deploy/undeploy/sell/fill
+    计数 = 事务形状(执行面结构化字段,extra 语义)。"""
+    return {'op': type(tx).__name__, 'applied': bool(applied),
+            'reason': str(reason or ''),
+            'deploy': len(tx.deploy or []), 'undeploy': len(tx.undeploy or []),
+            'sell': len(tx.sell or []), 'fill': len(tx.fill or [])}
+
+
+def _reconcile_tx_landing(pre_state: GameState, tx: CompTransaction,
+                          post: GameState) -> bool:
+    """事务落地判定·观察侧 reconcile(波3 applied-gate 新口径)。
+
+    「发射行 receipts + 后续快照对比」:事务后快照(post 帧)对 tx 预期
+    的席位守恒逐腿核对——deploy 件入板 ∧ undeploy/sell(deployed 域)件
+    离板。守卫骨架与 ``cw_reconcile.reconcile_tracking`` 同构(证据腿
+    缺失不拦=放行该腿;fill 腿 shop 源无席位证据,不辖),失配 = 未落地
+    (False)。
+
+    ⚠️ 双报对拍窗(调研草案风险 6,W6 波3):本判定与旧口径
+    (``action_log`` 末条 ``result=='applied'``)**并行双报,行为仍由旧
+    口径承载**,diff 留证申报后才切源——「发射后未落地」窗判定不同源,
+    禁拆批期间静默换源(旧口径退役挂波5/W8 simulate 退役)。
+    """
+    pre_dep, _pre_bench = _seats(pre_state)
+    post_dep, _post_bench = _seats(post)
+    dep_names_post = {d.char_id for d in post_dep if d is not None and d.char_id}
+    exp_gone = {pre_dep[i].char_id for i in (tx.undeploy or [])
+                if pre_dep[i] is not None and pre_dep[i].char_id}
+    exp_gone |= {pre_dep[i].char_id for i, dom in (tx.sell or [])
+                 if dom == 'deployed' and i < len(pre_dep)
+                 and pre_dep[i] is not None and pre_dep[i].char_id}
+    exp_add = {pre_dep[i].char_id for i, _r in (tx.deploy or [])
+                if i < len(pre_dep) and pre_dep[i] is not None
+                and pre_dep[i].char_id}
+    ok_gone = not (exp_gone & dep_names_post)     # 离板腿:预期离场件不在快照
+    ok_add = exp_add <= dep_names_post            # 入板腿:预期入板件已在快照
+    return ok_gone and ok_add
+
 
 @dataclass
 class UpgradeOption:
@@ -112,8 +174,9 @@ class EvolutionState:
     - ``pending``:冻结打断的「还没开始的那次」(遭遇/boss 前 1 轮不启动新替换);
       恢复 = 下个非遭遇轮 ``evolution_step`` 入口三条件重校验,成立则当轮执行。
     - ``paused``:谷底回滚后的放缓标志(下个非遭遇轮解暂停再续,不重演整组合)。
-    - ``last_deployed``/``last_retained``:上次替换的新档上场名单/旧档 bench 保留
-      名单(回滚窗 1-2 轮的消费锚,rollback_weakest 用)。
+    - ``last_deployed``/``last_retained``:上次替换的新档上场名单/旧档 bench
+      保留名单(原谷底回滚窗消费锚——rollback_weakest 已随 T-64 退役批
+      删除,字段留档不随删)。
     """
     pending: UpgradeOption | None = None
     paused: bool = False
@@ -264,8 +327,8 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
     ist = getattr(strategy_state_of(session), 'v3_intention', None)
     lock_scope = (locked_buy_scope(ist)
                   if isinstance(ist, IntentionState) else None)
-    bf = _board_factions_of(state.deployed)
-    names = {d.char_id for d in iter_occupied_deployed(state.deployed) if d.char_id}
+    bf = _board_factions_of(_seats(state)[0])
+    names = {d.char_id for d in iter_occupied_deployed(_seats(state)[0]) if d.char_id}
     formed = _engine_systems_formed(bf, names)
     eng_bonds = {b for b, _t in TRANSITION_TRAITS}
 
@@ -277,7 +340,7 @@ def _graded_undeploy_cands(state: GameState, session, pair: dict[str, int],
 
     g0: list[BenchChar] = []
     g1: list[BenchChar] = []
-    for d in iter_occupied_deployed(state.deployed):
+    for d in iter_occupied_deployed(_seats(state)[0]):
         if not d.char_id:
             continue
         if any(_is_member(k, d) for k in pair):
@@ -340,9 +403,9 @@ def _engine_completion_tx(state: GameState,
     pair = _pair_systems(session)
     if not pair:
         return None
-    bf = _board_factions_of(state.deployed)
-    deployed_names = {d.char_id for d in iter_occupied_deployed(state.deployed) if d.char_id}
-    pool = [bc for bc in (*state.bench, *state.deployed)
+    bf = _board_factions_of(_seats(state)[0])
+    deployed_names = {d.char_id for d in iter_occupied_deployed(_seats(state)[0]) if d.char_id}
+    pool = [bc for bc in (*_seats(state)[1], *_seats(state)[0])
             if bc is not None and bc.char_id]
     tier_of = dict(TRANSITION_TRAITS)
 
@@ -409,7 +472,7 @@ def _engine_completion_tx(state: GameState,
     # 未识别件(char_id 空)不参与折叠(身份未知不敢合并)。
     _seen_ids: set[str] = set()
     _cands_sorted = sorted(
-        (bc for bc in state.bench
+        (bc for bc in _seats(state)[1]
          if bc is not None and _is_member(sys_key, bc)
          and (not bc.char_id or bc.char_id not in deployed_names)),
         key=lambda bc: -(bc.star or 1))
@@ -431,11 +494,12 @@ def _engine_completion_tx(state: GameState,
     # (希儿恒保护;放大器件仅当希儿在手),undeploy 不下希儿系引擎件,
     # 「净效果引擎数不减」的结构保证对四体系成立)
     _seele_core = any(bc.char_id == '希儿' for bc in pool)
+    _dep_slots, _bench_slots = _seats(state)
     _protected_dep = _locked_protected_names(
-        state.deployed, session, seele_scope=seele_scope,
+        _dep_slots, session, seele_scope=seele_scope,
         seele_core_in_hand=_seele_core)
     _protected_bench = _locked_protected_names(
-        state.bench, session, seele_scope=seele_scope,
+        _bench_slots, session, seele_scope=seele_scope,
         seele_core_in_hand=_seele_core)
 
     def _is_protected(bc: BenchChar, extra: set[str]) -> bool:
@@ -448,11 +512,11 @@ def _engine_completion_tx(state: GameState,
     def _weak_key(bc: BenchChar) -> tuple[int, int]:
         return _weak_piece_key(bc)
 
-    room = state.max_units() - state.deployed_count()   # ADR-0392 占用数
+    room = max_units_of(board_state_bridge(state)) - deployed_count_of(board_state_bridge(state))   # ADR-0392 占用数
     undeploy_n = max(0, len(up_cands) - room)
     # undeploy 候选:deployed 非保护件,最弱先下
     undeploy_cands = sorted(
-        (d for d in iter_occupied_deployed(state.deployed)
+        (d for d in iter_occupied_deployed(_seats(state)[0])
          if d.char_id and not _is_protected(d, _protected_dep)),
         key=_weak_key)[:undeploy_n]
     # ADR-0382 保护集分级:常规候选枯竭(全保护,ADR-0382 记档 136 型
@@ -467,21 +531,21 @@ def _engine_completion_tx(state: GameState,
     if len(undeploy_cands) < undeploy_n:
         return None   # 无可下件(全保护)→ 不硬拆,归常规通道
     # bench 容量:终态 = 现 − deploy − sell_bench + undeploy ≤ BENCH_CAPACITY
-    bench_free = (BENCH_CAPACITY - bench_occupied(state.bench)
+    bench_free = (BENCH_CAPACITY - bench_occupied(_seats(state)[1])
                   - len(up_cands) + len(undeploy_cands))
     sell_n = max(0, -bench_free)
     sell_cands: list[BenchChar] = []
     if sell_n:
         sell_cands = sorted(
-            (b for b in state.bench
+            (b for b in _seats(state)[1]
              if b is not None and not _is_protected(b, _protected_bench)),
             key=_weak_key)[:sell_n]
         if len(sell_cands) < sell_n:
             return None   # 腾不出 bench 位 → 不发射
     # 排容量核算(undeploy 释放的排位给 deploy 用)
-    front_left = state.front_max - state.front_count() \
+    front_left = DEPLOYED_FRONT_CAPACITY - front_count_of(board_state_bridge(state)) \
         + sum(1 for d in undeploy_cands if d.position_pref == 'front')
-    back_left = state.back_max - state.back_count() \
+    back_left = back_capacity_of(board_state_bridge(state)) - back_count_of(board_state_bridge(state)) \
         + sum(1 for d in undeploy_cands if d.position_pref == 'back')
     deploy_entries = []
     for bc in up_cands:
@@ -490,10 +554,10 @@ def _engine_completion_tx(state: GameState,
             front_left -= 1
         else:
             back_left -= 1
-        deploy_entries.append((_identity_index(state.bench, bc), row))
-    undeploy_idx = [_identity_index(state.deployed, d)
+        deploy_entries.append((_identity_index(_seats(state)[1], bc), row))
+    undeploy_idx = [_identity_index(_seats(state)[0], d)
                     for d in undeploy_cands]
-    sell_entries = [(_identity_index(state.bench, b), 'bench')
+    sell_entries = [(_identity_index(_seats(state)[1], b), 'bench')
                     for b in sell_cands]
     reason = f'{_COMPLETION_REASON}:{sys_key}{tier}'
     tx = CompTransaction(deploy=deploy_entries, undeploy=undeploy_idx,
@@ -509,16 +573,16 @@ def _completion_freeze_exempt(state: GameState, post,
     _board_factions_of,
     _engines_count,
 )
-    pre_bf = _board_factions_of(state.deployed)
-    post_bf = _board_factions_of(post.deployed)
+    pre_bf = _board_factions_of(_seats(state)[0])
+    post_bf = _board_factions_of(_seats(post)[0])
     for sys_key in pair:
         if sys_key == '希儿系':
             continue   # 哨兵键非羁绊键:由下方引擎数总核覆盖
         if post_bf.get(sys_key, 0) < pre_bf.get(sys_key, 0):
             return False
-    pre_names = {d.char_id for d in iter_occupied_deployed(state.deployed)
+    pre_names = {d.char_id for d in iter_occupied_deployed(_seats(state)[0])
                  if d.char_id}
-    post_names = {d.char_id for d in iter_occupied_deployed(post.deployed)
+    post_names = {d.char_id for d in iter_occupied_deployed(_seats(post)[0])
                   if d.char_id}
     return _engines_count(post_bf, post_names) \
         >= _engines_count(pre_bf, pre_names)
@@ -599,8 +663,20 @@ def _locked_protected_names(old_line: list[BenchChar],
 
 
 def _identity_index(pool: list[BenchChar], target: BenchChar) -> int:
-    """按身份取索引(同名同星 dataclass 值相等会 index 错对象;ADR-0319 纪律)。"""
-    return next(i for i, y in enumerate(pool) if y is target)
+    """按身份取索引(同名同星 dataclass 值相等会 index 错对象;ADR-0319 纪律)。
+
+    波3 桥窗补充:池与 target 可能来自同一帧的两次读口装箱(每次桥呼
+    重建槽表实例),对象同一性在该窗内不可得——身份未命中回退**值相等
+    首匹配**(同帧单一视图内,与旧「target 即该列表首匹配生成」同选择;
+    值相等副本共存时取首个 = 与候选生成序一致)。回退支随桥退役删除。
+    """
+    for i, y in enumerate(pool):
+        if y is target:
+            return i
+    for i, y in enumerate(pool):
+        if y == target:
+            return i
+    raise ValueError('identity_index: target not in pool')
 
 
 # ===== ADR-0363 件1:引擎下界守卫(观察 helper) =====
@@ -642,8 +718,8 @@ def _lost_engine_systems(state: GameState,
     _board_factions_of,
     _engines_count,
 )
-    pre_bf = _board_factions_of(state.deployed)
-    pre_names = {d.char_id for d in iter_occupied_deployed(state.deployed) if d.char_id}
+    pre_bf = _board_factions_of(_seats(state)[0])
+    pre_names = {d.char_id for d in iter_occupied_deployed(_seats(state)[0]) if d.char_id}
     if _engines_count(pre_bf, pre_names) < 2:
         return set()
     post_bf = _board_factions_of(post_deployed)
@@ -680,13 +756,13 @@ def _char_factions(bc: BenchChar) -> set[str]:
 
 def _owned_names(state: GameState) -> set[str]:
     """在手角色名全集(bench ∪ deployed;「到手」口径)。"""
-    return {bc.char_id for bc in (*state.bench, *state.deployed)
+    return {bc.char_id for bc in (*_seats(state)[1], *_seats(state)[0])
             if bc is not None and bc.char_id}
 
 
 def _faction_in_hand(state: GameState, faction: str) -> int:
     """该羁绊在手人数(bench ∪ deployed;2换1 的「目标羁绊档」按在手计)。"""
-    return sum(1 for bc in (*state.bench, *state.deployed)
+    return sum(1 for bc in (*_seats(state)[1], *_seats(state)[0])
                if bc is not None and faction in _char_factions(bc))
 
 
@@ -784,7 +860,7 @@ def _status_quo_score(state: GameState) -> float:
     owned = _owned_names(state)
     core_n = sum(1 for comp in COMP_LIBRARY
                  if comp.core_chars and comp.core_chars[0] in owned
-                 and any(n in {d.char_id for d in iter_occupied_deployed(state.deployed)}
+                 and any(n in {d.char_id for d in iter_occupied_deployed(_seats(state)[0])}
                          for n in comp.core_chars[:1]))
     return best_tier * _TIER_WEIGHT + core_n * _CORE_ON_BOARD_W
 
@@ -890,7 +966,7 @@ def evaluate_upgrade(opt: UpgradeOption, state: GameState) -> UpgradeVerdict:
         return UpgradeVerdict(opt, False, core_ok, True, False,
                               '投影不大于现状(2换1 未占优)')
     # ③人口(信息位,不阻断:替换优先于人口保守)
-    population_ok = state.deployed_count() <= state.max_units()
+    population_ok = deployed_count_of(board_state_bridge(state)) <= max_units_of(board_state_bridge(state))
     return UpgradeVerdict(opt, True, core_ok, population_ok, True, '三条件齐备')
 
 
@@ -954,7 +1030,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         return (opt.faction in _char_factions(bc)) \
             or (bc.char_id in target_member_names)
 
-    bench_new = [bc for bc in state.bench
+    bench_new = [bc for bc in _seats(state)[1]
                  if bc is not None and _is_new_line(bc)]
     # 修法1(ADR-0323):部署名单**按名去重**——同名多副本只取最高星一件
     # 上场,其余副本留 bench 作 3合1 合成素材(合成进度,不卖;[22] 囤度内)。
@@ -973,10 +1049,10 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
                  if not bc.char_id or bc is _best_new.get(bc.char_id)]
     bench_new.sort(key=lambda bc: (
         0 if bc.char_id in target_member_names else 1, -bc.star))
-    deployed_keep = [d for d in iter_occupied_deployed(state.deployed)
+    deployed_keep = [d for d in iter_occupied_deployed(_seats(state)[0])
                      if _is_new_line(d)]
     # 旧档:非新线成员整档解除
-    old_line = [d for d in iter_occupied_deployed(state.deployed)
+    old_line = [d for d in iter_occupied_deployed(_seats(state)[0])
                if not _is_new_line(d)]
     # ADR-0363 件1:引擎下界守卫——事务净效果使过渡引擎数
     # (cw_battle_calib._engines_count 口径)从 ≥2 跌破 2 时,被拆引擎体系的
@@ -992,7 +1068,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         # 同名的卡投影时虚增引擎数(终态 deployed 不重复,同名不会都上场)
         # → 漏触发守卫;与上方部署名单的同名去重同基准,仅在投影侧提前。
         _proj_names = {d.char_id for d in deployed_keep if d.char_id}
-        proj_room = state.max_units() - len(deployed_keep)
+        proj_room = max_units_of(board_state_bridge(state)) - len(deployed_keep)
         proj_new = [bc for bc in bench_new[:max(0, proj_room)]
                     if not bc.char_id or bc.char_id not in _proj_names]
         lost = _lost_engine_systems(state, [*deployed_keep, *proj_new])
@@ -1017,16 +1093,16 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
         bench_new = [bc for bc in bench_new
                      if not bc.char_id or bc.char_id not in _kept_names]
     # 人口上限内的上场数(③摆不下也上:先换掉旧档,超 cap 再裁非核心新件)
-    room = state.max_units() - len(deployed_keep)
+    room = max_units_of(board_state_bridge(state)) - len(deployed_keep)
     bench_new = bench_new[:max(0, room)]
 
     # 去向:旧档下场进 bench 保回滚窗(高星/高费优先保留),溢出卖出
     # (ADR-0316:bench 占用数口径)
-    bench_free = BENCH_CAPACITY - (bench_occupied(state.bench)
+    bench_free = BENCH_CAPACITY - (bench_occupied(_seats(state)[1])
                                    - len(bench_new))
     _seele_core = any(
         (getattr(b, 'char_id', '') or '') == '希儿'
-        for b in (*state.bench, *state.deployed) if b is not None)
+        for b in (*_seats(state)[1], *_seats(state)[0]) if b is not None)
     _protected = _locked_protected_names(
         old_line, session, seele_scope=seele_scope,
         seele_core_in_hand=_seele_core)
@@ -1063,7 +1139,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
             deployed_keep = [*deployed_keep, *_floor_keep]
             # 留场件占 room → 新上场收紧(排容量核算在下方,留场件
             # 不释放排位,front/back 计数天然正确)
-            room = state.max_units() - len(deployed_keep)
+            room = max_units_of(board_state_bridge(state)) - len(deployed_keep)
             bench_new = bench_new[:max(0, room)]
             log.info('[cw][ev][sell-floor] 溢出卖出下界守卫:%s '
                      '体系件 %d 件留场(在手≤tier 不可卖,ADR-0380)',
@@ -1072,13 +1148,13 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
 
     # 索引(按事务前状态解析,契约口径;身份索引——同名同星 dataclass
     # 值相等会让 list.index 删错对象,同 cw_state._remove_by_identity 纪律)
-    undeploy_idx = [_identity_index(state.deployed, d) for d in retained]
-    sell_entries = [(_identity_index(state.deployed, d), 'deployed')
+    undeploy_idx = [_identity_index(_seats(state)[0], d) for d in retained]
+    sell_entries = [(_identity_index(_seats(state)[0], d), 'deployed')
                     for d in sold]
     # 排容量核算(下场后排空出;上限校验由 simulate 权威做,这里选排)
-    front_left = state.front_max - state.front_count() \
+    front_left = DEPLOYED_FRONT_CAPACITY - front_count_of(board_state_bridge(state)) \
         + sum(1 for d in (*retained, *sold) if d.position_pref == 'front')
-    back_left = state.back_max - state.back_count() \
+    back_left = back_capacity_of(board_state_bridge(state)) - back_count_of(board_state_bridge(state)) \
         + sum(1 for d in (*retained, *sold) if d.position_pref == 'back')
     deploy_entries = []
     for bc in bench_new:
@@ -1087,7 +1163,7 @@ def execute_replacement(verdict: UpgradeVerdict, state: GameState,
             front_left -= 1
         else:
             back_left -= 1
-        deploy_entries.append((_identity_index(state.bench, bc), row))
+        deploy_entries.append((_identity_index(_seats(state)[1], bc), row))
 
     old_label = '/'.join(sorted(f for f, n in state.board.items()
                                  if f not in target_factions)) or '加深'
@@ -1176,7 +1252,7 @@ def _substitute_candidates(state: GameState,
                 if primary in board_factions:
                     names |= {p.get('替班者', '') for p in comp.substitute_plan}
     names.discard('')
-    return [bc for bc in state.bench
+    return [bc for bc in _seats(state)[1]
             if bc is not None and bc.char_id in names]
 
 
@@ -1185,7 +1261,7 @@ def _fill_candidates(state: GameState, target: Comp | None) -> list[BenchChar]:
     subs = {bc.char_id for bc in _substitute_candidates(state, target)}
     family = target.family if target is not None and target.family else ''
     ranked: list[tuple[tuple[int, int], int, BenchChar]] = []
-    for i, bc in enumerate(state.bench):
+    for i, bc in enumerate(_seats(state)[1]):
         if bc is None:
             continue   # ADR-0316 槽位表空槽
         if _is_waiting_true_core(bc.char_id, state):
@@ -1229,15 +1305,15 @@ def fill_gap_after(tx: CompTransaction, state: GameState,
     槽位表视图取件不 pop,生成期索引 = 执行期索引,无左移修正(F3 根治;
     旧 pop 语义的逐选左移修正已删)。
     """
-    gap = state.max_units() - state.deployed_count()
+    gap = max_units_of(board_state_bridge(state)) - deployed_count_of(board_state_bridge(state))
     if gap <= 0:
         return []
     comp = target if target is not None else _target_of(state)
     cands = _fill_candidates(state, comp)
     fills: list[FillSpec] = []
     removed: set[int] = set()   # 已选 bench 源的槽位下标(同槽不重复选)
-    front_left = state.front_max - state.front_count()
-    back_left = state.back_max - state.back_count()
+    front_left = DEPLOYED_FRONT_CAPACITY - front_count_of(board_state_bridge(state))
+    back_left = back_capacity_of(board_state_bridge(state)) - back_count_of(board_state_bridge(state))
     for bc in cands:
         if len(fills) >= gap:
             break
@@ -1250,7 +1326,7 @@ def fill_gap_after(tx: CompTransaction, state: GameState,
             front_left -= 1
         else:
             back_left -= 1
-        orig = _identity_index(state.bench, bc)
+        orig = _identity_index(_seats(state)[1], bc)
         if orig in removed:
             continue   # 同槽防御(候选来自占用件,天然不同槽)
         removed.add(orig)
@@ -1293,7 +1369,7 @@ def fill_slot_policy(state: GameState,
     (带自己的低档一起上)/真核心 bench 等档(上场时机=新档成型时机)。
     ``family`` 可选:目标家族键(禁用矩阵/过半线判定;缺省不查)。
     """
-    gap = state.max_units() - state.deployed_count()
+    gap = max_units_of(board_state_bridge(state)) - deployed_count_of(board_state_bridge(state))
     if gap <= 0:
         return []
     target = _target_of(state)
@@ -1341,8 +1417,9 @@ def evolution_step(state: GameState, session=None,
     (含 CompTransaction 与 FillSpec 填位)。DOT 同体线自然退化为加深无替换
     (旧档空 → 纯 deploy 事务)。中断恢复:替换是原子动作,冻结打断的是
     「还没开始的那次」——恢复 = pending 三条件重校验,成立则当轮执行;
-    谷底回滚暂停(``memory.paused``)= 回滚一件最弱替换位后放缓
-    (``rollback_weakest``),下个非遭遇轮再续,不重演整组合。
+    谷底回滚暂停(``memory.paused``)的写入端 rollback_weakest 已随 T-64
+    退役批删除(04_survival_budget §7 #7),本恢复分支为防御性保留
+    (现无写端,paused 恒 False 不构成活路径)。
     ``memory`` 草案级可选参(缺省每次新建=无记忆;session 挂载归载体批)。
 
     ADR-0360 件1:``off_lock_penalty`` > 0 时,锁定帧下 off-lock
@@ -1421,7 +1498,7 @@ def evolution_step(state: GameState, session=None,
             # 名单」的部署观测行——一并补下场名单(格式/口径同 engine-complete 观测行注释,
             # 索引按事务前 state.deployed 解析,冻结支不执行,state 未变)。
             _ff_und_names = [d.char_id for d in
-                             (state.deployed[i]
+                             (_seats(state)[0][i]
                               for i in (tx.undeploy or [])) if d]
             log.info('[cw][ev][final-freeze] r%d 演进换档冻结'
                      '(%s,undeploy=%d sell=%d undeployed=%s)——末窗无回场,'
@@ -1430,8 +1507,19 @@ def evolution_step(state: GameState, session=None,
                      _ff_und_names)
             return []
         post = simulate(state, tx)
-        if not (post.action_log and
-                post.action_log[-1].get('result') == 'applied'):
+        _old_applied = bool(post.action_log and
+                            post.action_log[-1].get('result') == 'applied')
+        # 双报对拍窗(风险 6):发射行 receipts 词表 + 观察侧 reconcile
+        # 判定并行计算留证;行为仍由旧口径(_old_applied)承载,diff 申报
+        # 后才切源(见 _reconcile_tx_landing docstring)。
+        _rc_applied = _reconcile_tx_landing(state, tx, post)
+        if _rc_applied != _old_applied:
+            log.warning('[cw][ev][reconcile-diff] tx 判定双口径分歧 '
+                        '(old=%s,reconcile=%s,reason=%s)', _old_applied,
+                        _rc_applied,
+                        post.action_log[-1].get('reason', '')
+                        if post.action_log else '')
+        if not _old_applied:
             # ADR-0360 件2:事务被 simulate 拒 → 不发射 + 退避登记
             # (旧版拒了仍返回 tx,每轮原样重提零清障;迁移期 sim 实证:
             # 34/85 失败局
@@ -1450,6 +1538,9 @@ def evolution_step(state: GameState, session=None,
             re = simulate(state, tx)
             if not (re.action_log and
                     re.action_log[-1].get('result') == 'applied'):
+                # 填位拖垮原子性:旧口径拒;reconcile 双报(对拍窗)不另计
+                log.debug('[cw][ev][reconcile] fill 剥离判定 reconcile=%s',
+                          _reconcile_tx_landing(state, tx, re))
                 tx.fill = None   # 填位拖垮原子性 → 剥离,另轮走常规填位
         return [tx]
 
@@ -1482,6 +1573,12 @@ def evolution_step(state: GameState, session=None,
                 post = simulate(state, tx_c)
                 applied = post.action_log and \
                     post.action_log[-1].get('result') == 'applied'
+                # 双报对拍窗:发射行词表 + reconcile 判定留证(行为照旧)。
+                _rc_applied_c = _reconcile_tx_landing(state, tx_c, post)
+                if _rc_applied_c != bool(applied):
+                    log.warning('[cw][ev][reconcile-diff] 补完事务判定分歧 '
+                                '(old=%s,reconcile=%s)', bool(applied),
+                                _rc_applied_c)
                 freeze_ok = True
                 if applied and final_window and \
                         (tx_c.undeploy or tx_c.sell):
@@ -1499,7 +1596,7 @@ def evolution_step(state: GameState, session=None,
                     # state.deployed 解析(契约口径;本行发射于执行前,state
                     # 未变,槽位即生成期槽位;空槽防御性滤 None,ADR-0392)。
                     _und_names = [d.char_id for d in
-                                  (state.deployed[i]
+                                  (_seats(state)[0][i]
                                    for i in (tx_c.undeploy or [])) if d]
                     log.info('[cw][ev][engine-complete] r%d %s'
                              '(deploy=%d undeploy=%d sell=%d undeployed=%s)',
@@ -1554,54 +1651,6 @@ def _best_option(state: GameState, session=None,
     return best
 
 
-def rollback_weakest(state: GameState,
-                     memory: EvolutionState) -> Action | None:
-    """谷底回滚(点6:转型中单场掉血>15 触发,调用方观测)。
-
-    回滚**一件最弱替换位**后放缓(``memory.paused=True``),下个非遭遇轮
-    再续,不重演整组合:上次替换的新档上场名单里挑最弱(星级→费用),
-    有旧档保留件(bench 回滚窗)→ SwapDeploy 换回;无 → SellDeployed 退役。
-    """
-    if not memory.last_deployed:
-        return None
-    deployed_of_new = [d for d in iter_occupied_deployed(state.deployed)
-                       if d.char_id in memory.last_deployed]
-    if not deployed_of_new:
-        return None
-
-    def _weak_key(d: BenchChar) -> tuple[int, int]:
-        c = CHARACTERS.get(d.char_id)
-        return (d.star, c.cost if c is not None else 0)
-
-    weakest = min(deployed_of_new, key=_weak_key)
-    d_idx = next(i for i, d in iter_deployed_slots(state.deployed)  # ADR-0392 槽位下标
-                 if d is weakest)
-    retained = [b for b in state.bench
-                if b is not None and b.char_id in memory.last_retained]
-    if retained:
-        b_idx = next(i for i, b in enumerate(state.bench)
-                     if b is retained[0])
-        memory.paused = True
-        # §1.7 expect 代际校验:expect 从**候选生成时的 state 快照**
-        # 取名(本函数收到的 state 即选件快照,与 d_idx/b_idx 同源),禁止从
-        # 执行期 working 取——working 被同批先行动作改变,取名=校验恒过,
-        # 防线失效。发射即填,cw_state 侧不符 → stale_proposal 整动作拒。
-        return _swap_action(
-            d_idx, b_idx,
-            expect_deployed=state.deployed[d_idx].char_id,
-            expect_bench=retained[0].char_id)
-    memory.paused = True
-    return _sell_action(d_idx, expect=state.deployed[d_idx].char_id)
-
-
-def _swap_action(d_idx: int, b_idx: int, *,
-                 expect_deployed: str = '', expect_bench: str = '') -> Action:
-    from sr_od.application.currency_war.kernel.cw_state import SwapDeploy
-    return SwapDeploy(d_idx, b_idx, reason='valley_rollback',
-                      expect_deployed=expect_deployed,
-                      expect_bench=expect_bench)
-
-
-def _sell_action(d_idx: int, *, expect: str = '') -> Action:
-    from sr_od.application.currency_war.kernel.cw_state import SellDeployed
-    return SellDeployed(d_idx, reason='valley_rollback', expect=expect)
+# rollback_weakest/_swap_action/_sell_action(谷底回滚三件)已随 T-64 退役批
+# 删除(2026-09-04 用户裁定退役,04_survival_budget §7 #7:登记臂结构性
+# 不可达 = 零行为死链;ADR-0638)。
