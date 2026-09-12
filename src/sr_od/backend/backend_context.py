@@ -454,6 +454,126 @@ def _save_screenshot(image: 'MatLike') -> str:
     return str(img_path)
 
 
+# start 模式宽限期(秒):覆盖 gdigrab 打开 + 编码器会话初始化(实测约 1.5-2s 产出
+# 首帧),又要短于「活着但注定失败」的误报窗口——采集源/编码器错误均在 1s 内退出,
+# 2.5s 能把两类干净分开。
+_RECORDER_START_GRACE_SECONDS: float = 2.5
+
+
+def _resolve_ffmpeg_exe() -> str | None:
+    """延迟解析 ffmpeg 路径(imageio_ffmpeg → PATH),缺失返回 None。
+
+    延迟导入的原因:imageio-ffmpeg 是 dev 依赖,缺失时不能影响 server 启动,
+    只能在真正录屏时暴露。
+    """
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        import shutil
+        return shutil.which('ffmpeg')
+
+
+def _probe_h264_nvenc(ffexe: str) -> bool:
+    """探测本机 h264_nvenc 可用性:lavfi 合成源试编码 3 帧,可用返回 True。
+
+    为什么探测而不是直接录:无 NVIDIA 显卡/驱动的机器上 nvenc 在编码器初始化时
+    直接退出,录屏以失败告终。合成源试编码约 0.3s(实测)换确定性的编码器
+    选择,不可用时回退 libx264 软编(imageio-ffmpeg 自带),去除硬编码的
+    NVIDIA 硬依赖。探测异常(如缺 lavfi 滤镜)一律按不可用处理,走向软编。
+    """
+    try:
+        proc = subprocess.run(
+            [ffexe, '-hide_banner', '-loglevel', 'error',
+             '-f', 'lavfi', '-i', 'color=c=black:s=256x256:d=0.1',
+             '-frames:v', '3', '-c:v', 'h264_nvenc', '-f', 'null', '-'],
+            capture_output=True, timeout=10,
+        )
+        return proc.returncode == 0
+    except Exception:
+        return False
+
+
+def _record_dir() -> Path:
+    """录屏输出目录。独立成函数仅为让测试重定向到 tmp_path(禁写真实 .debug)。"""
+    return Path('.debug', 'record')
+
+
+def _build_record_cmd(
+    ffexe: str,
+    input_arg: str,
+    encoder: str,
+    out_path: str,
+    mode: str,
+    fps: int,
+    bitrate: str,
+    duration: float,
+) -> list[str]:
+    """组装 ffmpeg 录屏命令。fragmented 参数组仅 start 模式携带,见分支内注释。"""
+    cmd = [ffexe, '-hide_banner', '-loglevel', 'error',
+           '-f', 'gdigrab', '-framerate', str(fps), '-draw_mouse', '1',
+           '-i', input_arg,
+           '-c:v', encoder, '-preset', 'fast', '-b:v', bitrate,
+           '-pix_fmt', 'yuv420p']
+    if mode == 'fixed':
+        # -t 让 ffmpeg 录满自停:正常收尾写 moov trailer,产出干净 mp4。
+        cmd += ['-t', str(duration)]
+    else:
+        # start 模式 = kill-safe fragmented mp4。四件缺一不可(ffmpeg 7.1 gdigrab
+        # + nvenc 4K 桌面逐项实测定谳),少任何一件被 kill 后都不可播:
+        # - movflags 必须是 empty_moov(带下划线的 mp4 muxer 合法 flag);误拼
+        #   emptymoov 会让 ffmpeg 在解析 movflags 时直接退出、产出 0 字节文件
+        #   (.debug/record/ 下历史 0 字节 startstop 产物即此根因);
+        # - g=fps(1 秒一个关键帧)驱动 frag_keyframe 每秒切一个 fragment——
+        #   nvenc 默认关键帧间隔太长,不强制则 fragment 迟迟不落盘;
+        # - flush_packets=1 把每个 fragment 立刻写盘,否则低码率开头会滞留
+        #   在 AVIO 缓冲里,kill 时连 ftyp+moov 都没到磁盘;
+        # - h264_nvenc 须加 delay=0:其默认 delay=INT_MAX 把编码包攒到 EOF 才
+        #   一次性吐出,mid-run kill 全部丢失(fragmented muxer 无包可切)。
+        #   libx264 无 delay 选项,传了直接报错,故仅 nvenc 携带。
+        cmd += ['-g', str(fps),
+                '-movflags', '+frag_keyframe+empty_moov+default_base_moof',
+                '-flush_packets', '1']
+        if encoder == 'h264_nvenc':
+            cmd += ['-delay', '0']
+    cmd += [out_path, '-y']
+    return cmd
+
+
+def _drain_stderr(proc: subprocess.Popen, limit: int = 400) -> str:
+    """读出子进程 stderr 摘要文本(loglevel error 下输出量极小,不会撑爆管道)。
+
+    Args:
+        proc: 目标进程(通常已退出;stderr 可能为 None——继承句柄或假对象)。
+        limit: 摘要最大字符数。
+
+    Returns:
+        去掉换行后的 stderr 前 ``limit`` 字符;读不到返回空串。
+    """
+    stream = getattr(proc, 'stderr', None)
+    if stream is None:
+        return ''
+    try:
+        text = stream.read().decode('utf-8', errors='replace')
+    except Exception:
+        return ''
+    return ' '.join(text.split())[:limit]
+
+
+def _wait_recorder_early_death(proc: subprocess.Popen, grace_seconds: float) -> str | None:
+    """start 模式宽限等待:ffmpeg 在宽限期内退出则返回 stderr 摘要,存活返回 None。
+
+    为什么需要:Popen 成功不等于 ffmpeg 活着——坏 flag、编码器不可用、采集源
+    失败都会让它在启动后 1 秒内退出;不检查就会把死进程当「录屏中」报给调用方,
+    stop 收尾拿到 0 字节文件还报成功。
+    """
+    time.sleep(grace_seconds)
+    if proc.poll() is None:
+        return None
+    err = _drain_stderr(proc)
+    return err if err else f'ffmpeg 已退出(returncode={proc.returncode})'
+
+
 class SrBackendContext:
     """后端 context：持有 ``SrContext``，管理生命周期，暴露传输无关方法。
 
@@ -476,6 +596,8 @@ class SrBackendContext:
         self._recorder_lock = threading.Lock()
         self._recorder_proc: subprocess.Popen | None = None
         self._recorder_path: str | None = None
+        # 已探测的录屏视频编码器('h264_nvenc'|'libx264');None=未探测(首次录屏时探测一次)。
+        self._recorder_encoder: str | None = None
 
     @property
     def ctx(self) -> SrContext:
@@ -565,6 +687,27 @@ class SrBackendContext:
         # backend 截图供 MCP/HTTP 落盘 / 外传,同样不能带账号信息)。
         return controller.fill_uid_black(image)
 
+    def _resolve_game_hwnd_input(self) -> str | None:
+        """解析游戏窗口的 gdigrab 输入串 ``hwnd=<句柄>``;解析不出有效窗口返回 None。
+
+        为什么不让 gdigrab 按 title 找窗:gdigrab 的 ``title=`` 内部是 FindWindow
+        按标题取第一处命中,会命中同名隐藏 0×0 窗录到无效画面(录屏通道诊断结论,
+        产物存 .debug/record/);框架 ``PcGameWindow`` 用 pygetwindow 枚举 +
+        ``is_win_valid`` + ``win_rect``(零尺寸客户区判无效、最小化先恢复)解析出
+        的句柄与 bot 截图同源,是已验证的采集目标,以它为准。
+        """
+        try:
+            controller = self._ctx.controller
+            game_win = controller.game_win if controller is not None else None
+            if game_win is None:
+                return None
+            hwnd = game_win.get_hwnd()
+            if not hwnd or not game_win.is_win_valid or game_win.win_rect is None:
+                return None
+            return f'hwnd={int(hwnd)}'
+        except Exception:
+            return None
+
     def record_screen(
         self,
         mode: str = 'fixed',
@@ -576,33 +719,31 @@ class SrBackendContext:
     ) -> dict:
         """录屏(dev-only,需 dev 依赖 imageio-ffmpeg)。观察类,不占单跑道,可与 bot run 并行。
 
-        ffmpeg gdigrab 采集 + h264_nvenc(NVIDIA GPU)硬编码,跑在本 server 进程
-        (Session 1 / 交互桌面),故能录到游戏画面 —— 从 SSH / 服务会话(Session 0)直跑
-        ffmpeg 会 BitBlt ACCESS_DENIED,录不到交互桌面,这是录屏放 backend 的根本原因。
+        ffmpeg gdigrab 采集,跑在本 server 进程(Session 1 / 交互桌面),故能录到
+        游戏画面 —— 从 SSH / 服务会话(Session 0)直跑 ffmpeg 会 BitBlt
+        ACCESS_DENIED,录不到交互桌面,这是录屏放 backend 的根本原因。
+
+        编码器自动探测:h264_nvenc 可用(有 NVIDIA 显卡)则用之,否则回退 libx264
+        软编,结果带 ``encoder`` 字段可观测。
 
         Args:
-            mode: 'fixed'(默认)= 录 ``duration`` 秒后 ffmpeg 自停(-t,正常写 moov,mp4 干净),
-                阻塞返回; 'start'= 后台开始(返回 pid),之后调 ``mode='stop'`` 收尾
-                (用 fragmented mp4,kill 也安全可播); 'stop'= 停止进行中的录屏。
+            mode: 'fixed'(默认)= 录 ``duration`` 秒后 ffmpeg 自停(-t,正常写 moov,
+                mp4 干净),阻塞返回; 'start'= 后台开始(返回 pid),之后调
+                ``mode='stop'`` 收尾(启动后经宽限期存活检查,启动即死的 ffmpeg
+                直接报错而不是假成功;fragmented mp4,被 kill 也安全可播);
+                'stop'= 停止进行中的录屏。
             duration: fixed 模式录制秒数。
             out_name: 输出文件名(可带可不带 .mp4),存 ``.debug/record/``。
             fps: 帧率。
-            capture: 'window'= 按游戏窗口标题(游戏不在则退回 desktop);'desktop'= 全桌面。
+            capture: 'window'= 按框架解析的游戏窗口句柄(hwnd=,防同名隐藏窗,
+                解析不到退回 desktop);'desktop'= 全桌面。
             bitrate: 目标码率,如 ``6M``。
 
         Returns:
-            ``{success, path?, pid?, action, error?, hint?}``。无 ffmpeg 时 success=False +
-            error 提示装 dev 依赖(imageio-ffmpeg)。imageio-ffmpeg 为延迟导入,缺失不影响 server 启动。
+            ``{success, path?, pid?, action, error?, hint?, encoder?, returncode?}``。
+            无 ffmpeg 时 success=False + error 提示装 dev 依赖(imageio-ffmpeg)。
+            imageio-ffmpeg 为延迟导入,缺失不影响 server 启动。
         """
-        def _resolve_ffmpeg() -> str | None:
-            """延迟解析 ffmpeg 路径(imageio_ffmpeg → PATH),缺失返回 None(不影响启动)。"""
-            try:
-                import imageio_ffmpeg
-                return imageio_ffmpeg.get_ffmpeg_exe()
-            except Exception:
-                import shutil
-                return shutil.which('ffmpeg')
-
         with self._recorder_lock:
             if mode == 'stop':
                 proc = self._recorder_proc
@@ -617,9 +758,12 @@ class SrBackendContext:
                 except Exception:
                     with contextlib.suppress(Exception):
                         proc.kill()
-                return {'success': True, 'path': out, 'action': 'stopped'}
+                # fragmented mp4 被 TerminateProcess 截断也保持可播(参数组依据见
+                # _build_record_cmd start 分支),故 stop 无需优雅收尾。
+                return {'success': True, 'path': out, 'action': 'stopped',
+                        'returncode': proc.returncode}
 
-            ffexe = _resolve_ffmpeg()
+            ffexe = _resolve_ffmpeg_exe()
             if not ffexe:
                 return {
                     'success': False,
@@ -627,7 +771,7 @@ class SrBackendContext:
                     'hint': '确认已 uv sync --group dev;或把 ffmpeg 放到 PATH',
                 }
 
-            out_dir = Path('.debug/record')
+            out_dir = _record_dir()
             out_dir.mkdir(parents=True, exist_ok=True)
             if not out_name.lower().endswith('.mp4'):
                 out_name = out_name + '.mp4'
@@ -635,26 +779,19 @@ class SrBackendContext:
 
             input_arg = 'desktop'
             if capture == 'window':
-                try:
-                    title = self._ctx.controller.game_win.win_title
-                    if title:
-                        input_arg = f'title={title}'
-                except Exception:
-                    input_arg = 'desktop'
+                input_arg = self._resolve_game_hwnd_input() or 'desktop'
 
-            cmd = [ffexe, '-hide_banner', '-loglevel', 'error',
-                   '-f', 'gdigrab', '-framerate', str(fps), '-draw_mouse', '1',
-                   '-i', input_arg,
-                   '-c:v', 'h264_nvenc', '-preset', 'fast', '-b:v', bitrate,
-                   '-pix_fmt', 'yuv420p']
-            if mode == 'fixed':
-                cmd += ['-t', str(duration)]
-            else:  # start → fragmented mp4,被 kill 也安全可播
-                cmd += ['-movflags', '+frag_keyframe+emptymoov+default_base_moof']
-            cmd += [out_path, '-y']
+            encoder = self._recorder_encoder
+            if encoder is None:
+                encoder = 'h264_nvenc' if _probe_h264_nvenc(ffexe) else 'libx264'
+                self._recorder_encoder = encoder
+
+            cmd = _build_record_cmd(ffexe, input_arg, encoder, out_path, mode, fps, bitrate, duration)
 
             try:
-                proc = subprocess.Popen(cmd)
+                # stderr 接管道只为把 ffmpeg 的失败原因带回给调用方(loglevel
+                # error 输出量极小,长录也不会撑爆管道缓冲)。
+                proc = subprocess.Popen(cmd, stderr=subprocess.PIPE)
             except Exception as e:
                 return {'success': False, 'error': f'启动 ffmpeg 失败: {e}'}
 
@@ -664,13 +801,26 @@ class SrBackendContext:
                     ok = proc.returncode == 0
                 except subprocess.TimeoutExpired:
                     proc.kill()
+                    with contextlib.suppress(Exception):
+                        proc.wait()
                     ok = False
-                return {'success': ok, 'path': out_path if ok else None,
-                        'action': 'fixed', 'returncode': proc.returncode}
-            elif mode == 'start':
+                result: dict = {'success': ok, 'path': out_path if ok else None,
+                                'action': 'fixed', 'returncode': proc.returncode,
+                                'encoder': encoder}
+                if not ok:
+                    err = _drain_stderr(proc)
+                    result['error'] = err or f'ffmpeg 非零退出(returncode={proc.returncode})'
+                return result
+
+            if mode == 'start':
+                death_err = _wait_recorder_early_death(proc, _RECORDER_START_GRACE_SECONDS)
+                if death_err is not None:
+                    return {'success': False, 'action': 'start',
+                            'error': f'ffmpeg 启动后立即退出: {death_err}'}
                 self._recorder_proc = proc
                 self._recorder_path = out_path
-                return {'success': True, 'pid': proc.pid, 'path': out_path, 'action': 'started',
+                return {'success': True, 'pid': proc.pid, 'path': out_path,
+                        'action': 'started', 'encoder': encoder,
                         'hint': '后台录屏中;调 record_screen(mode="stop") 收尾'}
             with contextlib.suppress(Exception):
                 proc.kill()
