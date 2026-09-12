@@ -55,7 +55,7 @@ def register_confirm_arrival(session: 'StrategySession | None', op: str, item: s
     if session is None or not item:
         return
     try:
-        from sr_od.application.currency_war.kernel.cw_expected_state import (
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
             apply_op_effect,
         )
         if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome'):

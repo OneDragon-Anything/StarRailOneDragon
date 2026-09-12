@@ -816,7 +816,7 @@ class PrepActionExecutor:
             # 推进挂本入口 = 两面一次覆盖、零双写;推进失败不阻塞执行
             #(观测面,best-effort)。
             try:
-                from sr_od.application.currency_war.kernel.cw_expected_state import (
+                from sr_od.application.currency_war.kernel.cw_exec_state import (
                     apply_op_effect,
                 )
                 match = self._ctx.cw_match
@@ -1021,7 +1021,7 @@ class PrepActionExecutor:
         # 对内层 PickBoxCard 补推进一次(last_owned_equips 本体 +1),
         # detail 复用可解析形态「选卡 <名>」;推进失败不阻塞。
         with contextlib.suppress(Exception):
-            from sr_od.application.currency_war.kernel.cw_expected_state import (
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
                 apply_op_effect,
             )
             _sess = getattr(self._ctx.cw_match, 'session', None)

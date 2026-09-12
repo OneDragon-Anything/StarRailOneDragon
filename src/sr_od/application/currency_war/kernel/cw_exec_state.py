@@ -31,6 +31,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        PrepAction,
+    )
     from sr_od.application.currency_war.kernel.cw_state import (
         BenchChar,
         PlaneNodeLedger,
@@ -240,4 +243,154 @@ class ExecState:
     # 生命周期:新 match 新执行态 = 缺省 False(正常新局恒 False,开局推断
     # 合法不受误伤)。
     cw_resumed_match: bool = False
+
+
+# ============================================================ op 逻辑效果推进
+# (波 5b 自 kernel/cw_expected_state 迁入:模块名随期望态条目表概念退役,
+# ADR-0651 两态制存续函数整体搬迁,零行为变化;消费点 = root prep_actions
+# 执行器两处 + _overlay_confirm.register_confirm_arrival。
+# ⚠️ 动作词表/合成引擎依赖一律函数内惰性 import:cw_state 模块级反向
+# import 本模块(exec_state_of),模块级引入会成环——沿用本仓懒加载惯例。)
+
+def _char_fee(name: str) -> int | None:
+    """角色招募费(注册表单一源);未知 → None(回金不可算 → 不推字段,
+    观察帧覆盖兜底)。"""
+    try:
+        from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+        ch = CHARACTERS.get(name)
+        return int(getattr(ch, 'cost', 0) or 0) or None
+    except Exception:  # noqa: BLE001  注册表异常按未知处理
+        return None
+
+
+def _session_tracked(session) -> tuple[list[BenchChar], list[BenchChar | None]]:
+    m = getattr(exec_state_of(session), 'tracked_bench_chars', None) or []
+    d = getattr(exec_state_of(session), 'tracked_deployed', None) or []
+    return list(m), list(d)
+
+
+def _advance_gold(session, delta: int) -> None:
+    """last_state.gold 逻辑推进(可为负;None 视 0 基线——金账由商店波顶/
+    结算屏可信读覆盖修正,观察赢)。"""
+    st = getattr(session, 'last_state', None)
+    if st is None:
+        return
+    base = getattr(st, 'gold', 0) or 0
+    st.gold = base + delta
+
+
+def _owned_add(session, item: str) -> None:
+    """last_owned_equips 逻辑推进:+1 件(选卡/确认到账类)。"""
+    owned = list(getattr(session, 'last_owned_equips', None) or [])
+    owned.append(item)
+    session.last_owned_equips = owned
+
+
+def apply_op_effect(session, action: PrepAction | dict, *,
+                    produced_by: str = 'PrepActionExecutor',
+                    detail: str = '') -> list[dict]:
+    """原子 op 的逻辑效果推进(两态制标准语义,ADR-0651;两执行面同源入口)。
+
+    按游戏规则把 op 的可推算效果**直接写 session 字段**(gold delta/
+    owned 增减),返回推进清单 [{path, value, kind}](组合动作子动作
+    效果上抛形态,只含本函数实际写过的字段)。回金不可算(角色费未知/
+    无 tracked 身份)→ 不推字段、不挂账,观察帧覆盖兜底(ADR-0651:
+    推算不了不是挂账理由)。
+
+    显式不建模盲区(EXPECTED_STATE §6 原申报语义存续):``_handle_bench_full``
+    席满急救(买经验×10 + 卖前几槽)不经执行器 → 不在推进面,该形态由
+    观察覆盖兜底(声明而非遗漏)。
+    """
+    effects: list[dict] = []
+    if session is None:
+        return effects
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        PickBoxCard,
+        SellBench,
+        SellDeployed,
+    )
+    from sr_od.application.currency_war.kernel.cw_state import (
+        DEPLOYED_FRONT_CAPACITY,
+        iter_occupied,
+        sell_refund,
+    )
+
+    def _eff(path: str, value, kind: str) -> None:
+        effects.append({'path': path, 'value': value, 'kind': kind})
+
+    if isinstance(action, SellBench):
+        bench, _dep = _session_tracked(session)
+        bc = next((b for b in iter_occupied(bench) if b.slot == action.slot), None)
+        fee = _char_fee(bc.char_id) if bc is not None else None
+        if bc is not None and fee is not None:
+            refund = sell_refund(bc.star, fee)
+            _advance_gold(session, refund)
+            _eff('gold', f'+{refund}(sell_refund {bc.star}星×{fee}费)', 'gold')
+    elif isinstance(action, SellDeployed):
+        _bench, dep = _session_tracked(session)
+        idx = (action.slot - 1 if action.row == 'front'
+               else DEPLOYED_FRONT_CAPACITY + action.slot - 1)
+        bc = dep[idx] if 0 <= idx < len(dep) else None
+        fee = _char_fee(bc.char_id) if bc is not None else None
+        if bc is not None and fee is not None:
+            refund = sell_refund(bc.star, fee)
+            _advance_gold(session, refund)
+            _eff('gold', f'+{refund}(sell_refund {bc.star}星×{fee}费)', 'gold')
+            for eq in (getattr(bc, 'equips', None) or []):
+                _owned_add(session, eq)
+                _eff(f'owned[{eq}]', '+1(卖场上装备全额返还)', 'owned')
+    elif isinstance(action, PickBoxCard):
+        chosen = ''
+        for token in (detail or '').replace('选卡', ' ').split():
+            chosen = token.strip()
+            break
+        if chosen:
+            _owned_add(session, chosen)
+            _eff(f'owned[{chosen}]', '+1(武装箱选卡)', 'owned')
+    elif isinstance(action, dict):
+        # 确认类到账(dict 形态;{'op','item'}):owned 本体推进。
+        # ConfirmStrategy 不在此推(active_strategies 本体追加 = handler
+        # 确认成功后既有写点,cw_screen_invest_strategy)。
+        op = action.get('op', '')
+        item = action.get('item', '')
+        if op in ('ConfirmSupply', 'ConfirmBox', 'ConfirmTome') and item:
+            _owned_add(session, item)
+            _eff(f'owned[{item}]', f'+1({op})', 'owned')
+        elif op == 'BuyCard':
+            # dict 形 BuyCard(模拟/离线入口):合成引擎算购买数,金账
+            # 逻辑推进;tracked 本体推进 = 执行器/调用方辖。
+            _apply_buy_card(session, action, _eff)
+    else:
+        # 显式不推进理由(原 §3 铁律枚举,两态制下语义存续):
+        # - OpenBox/OpenTome:箱/典籍不消失(仅画面态,消耗在选卡确认);
+        # - OpenShop(含 read_only)/EnsureShop*:画面态周转,零局状态变更;
+        # - StartBattle:进战斗,hp/gold/streak 由结算屏观察覆盖接管;
+        # - RunDeploy/RunEquip:组合动作,tracked 本体推进 = 执行器
+        #   (_sync_tracking_after_sell/_track_move_deployed 单一写者);
+        # - LevelUp:经验账本推进 = CwScreenPrep._xp_apply_levelup
+        #   (XpLedger 通道);金账点击数不可推算 → 观察覆盖兜底;
+        # - DeployMove:tracked 位移 = 执行器 _track_move_deployed;
+        # - ClickSpheres:pending_reward 无 session 字段载体,零推进;
+        # - RunBuyPhase:BuyExpect 载体走 exec_state.pending_buy_expect
+        #   独立通道(shop.py 买组收尾写,heavy 定型帧消费)。
+        pass
+    return effects
+
+
+def _apply_buy_card(session, action: dict, _eff) -> None:
+    """dict 形 BuyCard 的金账推进(merge_simulate 单一引擎算购买数)。"""
+    from sr_od.application.currency_war.kernel.cw_merge_simulate import (
+        merge_simulate,
+    )
+    name = action.get('name', '')
+    star = int(action.get('star', 1) or 1)
+    k = int(action.get('k', 1) or 1)
+    cost = int(action.get('cost', 0) or 0)
+    bench, dep = _session_tracked(session)
+    res = merge_simulate(bench, dep, name, star, k=k,
+                         in_shop_count=action.get('in_shop_count'))
+    if cost:
+        _advance_gold(session, -cost * max(1, res.buy_k or 1))
+        _eff('gold', f"-{cost * max(1, res.buy_k or 1)}(买牌×{res.buy_k})",
+             'gold')
 
