@@ -103,4 +103,4 @@
 
 - 升档器（血线硬地板 + λ 顾问）规格 = 00 §4；其与 M3 的解锁接缝见本篇 §3 M3 行与 [04_survival_budget.md](04_survival_budget.md)。
 - M2 序 1/序 2 的「序」定义 = [11_shop_decisions.md](11_shop_decisions.md) §1；证据门 = [12_line_and_intention.md](12_line_and_intention.md) §1。
-- 骨架动作的发射载体（单动作选择序、动作词表、终结 op 集）= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)；装配形态 = 单动作画面 op 架构（ADR-0517 + [ADR-0518](../decisions/0518-single-action-implementation.md) 已落码,as-built：整波发射与截断器已退役，截断点语义由终结 op 吸收；执行载体 = `cw_shop_action_ops.py` 动作基类 execute+project + `run_buy_waves` 单动作循环）。
+- 骨架动作的发射载体（单动作选择序、动作词表、终结 op 集）= [../flow/README.md](../flow/README.md) §2 与 [../flow/action_exec.md](../flow/action_exec.md)；装配形态 = 单动作画面 op 架构（ADR-0517 + [ADR-0518](../decisions/0518-single-action-implementation.md) 已落码,as-built：整波发射与截断器已退役，截断点语义由终结 op 吸收；执行载体 = `cw_shop_action_ops.py` 动作基类 execute 单方法 + `run_buy_waves` 单动作循环；期望态推进 = 容器规则通道（`apply_shop_action_logic` 投影口 + `apply_shop_merge_leg` 合成升星腿,基点 = 买前快照三件组;execute+project 投影契约已随 T-163 删除,策略域零 simulate 前瞻消费——用户裁定 2026-09-12 纯规则路线））。

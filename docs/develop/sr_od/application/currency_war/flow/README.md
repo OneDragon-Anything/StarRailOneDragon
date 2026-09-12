@@ -25,7 +25,7 @@
 │   pick 族 9 接口与冷建/结算收编仍由 flow.py 中间 ABC 承载(ADR-0583)│
 ├─ 动作执行（kernel/cw_prep_actions.py 词表 + prep_actions.py 执行器│
 │ + cw_op_buy_cards.py 循环壳 + cw_shop_action_ops.py 商店动作 op    │
- │ (execute+project) + cw_op_deploy.py 部署）────────────────────┤
+ │ (execute 单方法) + cw_op_deploy.py 部署）────────────────────┤
 │ 三态发射契约（NOOP/失败/成功可区分）、重试/恢复原语、观测复查   │
 └────────────────────────────────────────────────────────────────┘
 ```
@@ -64,7 +64,7 @@
 
 **非契约成员(实现层,不在 ABC 面)**:
 
-- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + `cw_state.simulate` 纯投影推进,终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(ADR-0517/0518 单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
+- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 容器投影直写推进期望态(`apply_shop_action_logic` 简单腿 + `apply_shop_merge_leg` 合成升星腿,买前快照三件组基点;T-163 起零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(ADR-0517/0518 单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
 - `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**(ADR-0583 §3):键守卫贵段(`update_intention` 状态机 + 候选评分遥测)每 game-round 恰一次 + 便宜派生视图段;触发信号 = 黑板帧代次标注(`session.prep_frame_class`/`shop_frame_class` ∈ full/view/none,写者 = 流程观察段具名写点,读者 = 决策入口,读后即清;驱动器不写帧类槽)。
 - ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(ADR-0638,T-64 退役批)**:结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记臂前置零写端/三臂零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;`session.pending_round_outcomes` 槽保留为观察半累积面。
 - `write_shop_mirrors`(遥测镜像写者)。
@@ -104,7 +104,7 @@
 | 篇 | 一句话 |
 |---|---|
 | [outer_loop.md](outer_loop.md) | 外层循环：画面识别分支序、路由、轮次推进、停机/遥测钩子 |
-| [screen_op.md](screen_op.md) | **画面 op 统一规范（ADR-0517 规格,ADR-0518 已落码）**：单动作决策循环、动作基类 execute+project、终结 op 集、期望态生命周期、复合动作类、观测通道归属、开放问题落点 |
+| [screen_op.md](screen_op.md) | **画面 op 统一规范（ADR-0517 规格,ADR-0518 已落码）**：单动作决策循环、动作基类 execute 单方法（期望态推进 = 容器规则通道:投影口 + 合成升星腿,T-163）、终结 op 集、期望态生命周期、复合动作类、观测通道归属、开放问题落点 |
 | [prep_visit.md](prep_visit.md) | 备战访问：单轮形态（入口 heavy + 单动作决策循环 + 投影/保守回退）、备战决策 live 链（mandate_v1）、旧骨架删除注、完成判定与交还外循环 |
 | [shop_visit.md](shop_visit.md) | 商店访问：单动作循环（入口观察→逐动作→终结 op）、visit 级刷新硬墙、离店条件与收尾 |
 | [action_exec.md](action_exec.md) | 复合动作执行：词表、发射契约三态、重试/恢复语义、观测复查 |
