@@ -122,6 +122,36 @@ def self_advance(base: str) -> str | None:
     return None
 
 
+def expand_worn_products(worn: list[str]) -> list[str]:
+    """穿着即合成产物展开(P95 §2-A W1 谓词输入口径)。
+
+    「穿着即合成」下,已穿名单中构成图谱对的两基础件已被游戏自动合成
+    (无确认无日志);画面现读/跟踪账面在该时点附近可能仍见原始组件对。
+    本视图把可合成的组件对补入其产物,使「身上已有 X」对同名判定可见
+    (实证形态:光能电池×2 已游戏侧合成永动机,现读仍见原始对——同名
+    第二件永动机的判定输入须含永动机)。
+
+    集合语义:每件可达成产物至多补一次(消费方只做成员资格判定,不消费
+    件数);输入列表不 mutate。组件按多重集计数(自配对需同件 ×2)。
+    命题单篇 = docs/develop/sr_od/application/currency_war/proofs/
+    p95-allocation-feasibility-dominance.md;消费位 =
+    kernel/cw_comps._wearable_gate_ok。
+    """
+    from collections import Counter
+    have = Counter(worn)
+    out = list(worn)
+    for _adv, _recipes in _ADVANCE_RECIPES.items():
+        for _r in _recipes:
+            need: dict[str, int] = {}
+            for _c in _r:
+                need[_c] = need.get(_c, 0) + 1
+            if all(have.get(c, 0) >= k for c, k in need.items()):
+                if _adv not in out:
+                    out.append(_adv)
+                break
+    return out
+
+
 # ===== 装备策略接入(P14 期望模型的生产化;ADR-0391)=====
 # P14(docs/develop/sr_od/application/currency_war/proofs/p14-equipment-acquisition-ev.md)
 # 已证结论在此从证明脚本晋升为生产纯函数——装备分配准入/判读锚点消费;

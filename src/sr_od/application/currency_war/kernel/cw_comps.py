@@ -1793,6 +1793,70 @@ def _pairing_guard_ok(worn_basics: dict[str, list[str]], char: str, basic: str,
     return True
 
 
+def _wearable_gate_ok(worn_all: list[str], char: str, item: str) -> bool:
+    """穿着可行性三谓词纯判定(P95 支配命题 §2-A 的分配前排除实现;单源判定)。
+
+    命题单篇 = docs/develop/sr_od/application/currency_war/proofs/p95-allocation-feasibility-dominance.md
+    (「必拒对分配前排除严格支配分配后重试」;三谓词即「必拒判定可前置」的
+    机制事实)。``equip_allocation`` 的内嵌 ``_wearable_ok`` 与
+    ``equip_alloc_empty_reason``(分配空归因)共用本函数,保证「分配语义」与
+    「分配空诊断」永不漂移(同 ``_pairing_guard_ok`` 形态)。
+    ``worn_all`` = char 名 → 已穿全名单(画面已穿 + 本趟已分配;非仅基础件)。
+
+    - **W1 同名∧非两基础件合成图谱对 → 拒**:同名对 (item,item) ∈ 配方图
+      (8 基础件全有自配配方)= 合法穿着即合成通道,**不拦**(交配对守卫
+      例外①core 快路径/②回收线 2合1 既有辖域;本谓词拦域全为非基础件同名,
+      例外域全为基础件交叉配对,两域交 = 空,显式互斥)。同名对 ∉ 图谱
+      (非基础件同名)→ 拒——拦域判据 =「非两基础件合成图谱对」的结构
+      判据,非「不可合成」断言(蓝钻/红钻自配路线注册表在册而图谱按类别
+      排除)。判据形态 = ``self_advance(item) is None``:同名对只可能命中
+      图谱的自配半边。推断级判据:唯一实证为「同名 + 槽满混叠」帧(同名
+      单因未直证),定谳前按必拒保守拦截(P95 §3 边界②;错杀 = 件滞留
+      owned,漏放 = 白拖 + 拉黑记忆,不对称),实测定谳后收窄或确证。
+      输入经合成产物展开(P95 §2-A「worn = 现读 ∪ 合成产物展开」)。
+    - **W2 件专属前置 → 拒**:结构化条目(data/cw_equipment_wear_rules_data,
+      前置/可穿性建模单一源)声明前置(「需要空装备栏」族)∧ 不满足。
+      读法定谳前取最保守「身上有任意件即拒」(真值读法空间「全空 vs
+      ≥2 空槽」两读法下有件均拒,保守缺省无需先行定谳);新件漏建模由
+      互检显警兜(消费点 = equip_allocation 头部,禁解析散文)。
+    - **W3 骇客目标类 fail-closed → 拒**:类别可穿性门在册(同上结构化
+      载体)∧ char 不在白名单。白名单 = 银狼LV.999 为假说级(四条旁证收敛
+      无直接实证,禁当已证):定谳前 fail-closed 保守拒(错杀 = 件滞留;
+      漏放 = 白拖 + 拉黑 + 永久滞留,前者严格小),定谳后按真值收窄或
+      改写「不参与 drag 分配」。
+
+    已知输入失真面(部分有效申报):W1/W2 的 worn 输入与容量扣减同源
+    (below-avatar 画面现读),read_row_equipped mini icon 漏读(3 件读 1 实证)
+    使 worn 缩水 → 漏读帧拦不全;识别面批收口前谓词部分有效,禁把漏读帧
+    的漏拦读成谓词无效(P95 §2 附出辖声明)。
+    """
+    from sr_od.application.currency_war.data.cw_equipment_data import EQUIPMENTS
+    from sr_od.application.currency_war.data.cw_equipment_wear_rules_data import (
+        CATEGORY_WEAR_GATES,
+        EQUIP_WEAR_PREREQUISITES,
+        WEAR_PREREQ_EMPTY_SLOTS,
+    )
+    from sr_od.application.currency_war.data.cw_synthesis import (
+        expand_worn_products,
+        self_advance,
+    )
+    # W1:同名 ∧ 非两基础件合成图谱对(合成产物展开后判定)
+    for w in expand_worn_products(worn_all):
+        if w == item and self_advance(item) is None:
+            return False
+    # W2:件专属前置(定谳前保守读法 = 有任意件即拒)
+    entry = EQUIP_WEAR_PREREQUISITES.get(item)
+    if entry is not None and entry.predicate == WEAR_PREREQ_EMPTY_SLOTS and worn_all:
+        return False
+    # W3:类别可穿性门(fail-closed 白名单)
+    eq = EQUIPMENTS.get(item)
+    if eq is not None:
+        allowed = CATEGORY_WEAR_GATES.get(eq.category)
+        if allowed is not None and char not in allowed:
+            return False
+    return True
+
+
 def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str],
                              occupied: dict[tuple[str, int], list[str]] | None = None,
                              ) -> str:
@@ -1803,12 +1867,17 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
     - ``no_deployed``:场上无可命名角色(无处可穿);
     - ``capacity_full``:所有在场角色的装备容量都已占满;
     - ``pairing_guard``:有货有空位,但每个 (角色, 装备) 组合都被防误合成配对守卫拦下;
+    - ``wearable_gate``:有货有空位,但每个 (角色, 装备) 组合都被穿着可行性
+      三谓词(同名非图谱对/件前置/类别门)拦下——与 ``pairing_guard`` 同族
+      分键,stop_reason 同走「分配方案空:」前缀 → 哨兵归域 strategy_gap,
+      归域枚举零改动;
     - ``unknown``:存在可行组合但分配仍返回空(不该发生,出现即分配器与诊断漂移,优先查)。
 
     归因前提:仅当 ``equip_allocation`` **返回空** 时调用才精确——分配一旦产出
     件,容量/已穿基础件会随分配演进,诊断函数只复现「零分配起点」的状态。
     与 ``equip_allocation`` 同输入口径(occupied/completed 前提下守卫状态一致:
-    空分配 ⇔ 无任何 ``_assign`` 发生)。
+    空分配 ⇔ 无任何 ``_assign`` 发生)。可行性判定与分配器共用
+    ``_pairing_guard_ok``/``_wearable_gate_ok`` 单源(镜像纪律)。
     """
     occ = occupied or {}
     pool = list(owned)
@@ -1823,6 +1892,7 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
     rq = recycle_qualified(list(comp.key_equips) if comp is not None else None)
     is_basic = RESERVED_COMPONENTS.__contains__
     worn_basics: dict[str, list[str]] = {}
+    worn_all: dict[str, list[str]] = {}
     capacity: dict[str, int] = {}
     by_name: dict[str, list] = {}
     for d in deployed:
@@ -1831,6 +1901,7 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
             by_name.setdefault(n, []).append(d)
             for w in occ.get((getattr(d, 'position_pref', '') or '',
                               int(getattr(d, 'slot', 0) or 0)), []):
+                worn_all.setdefault(n, []).append(w)
                 if is_basic(w):
                     worn_basics.setdefault(n, []).append(w)
     for n, ds in by_name.items():
@@ -1839,14 +1910,23 @@ def equip_alloc_empty_reason(comp: Comp | None, deployed: list, owned: list[str]
         capacity[n] = max(0, EQUIP_CAPACITY * len(ds) - used)
     if not any(v > 0 for v in capacity.values()):
         return 'no_deployed' if not capacity else 'capacity_full'
+    # 可行组合遍历:配对守卫拦下 → 记 pairing 面;穿戴可行性门拦下 → 记
+    # wearable 面;两门全拦才落到函数尾——wearable 拦过即归 wearable_gate
+    # (三谓词拦截族),否则为纯配对守卫拦(现行为)。存在任一可行组合 =
+    # unknown(分配器与诊断漂移,优先查)。
+    wearable_blocked = False
     for n, cap in capacity.items():
         if cap <= 0:
             continue
         for e in pool:
-            if not is_basic(e) or _pairing_guard_ok(worn_basics, n, e,
-                                                    key_set, core_set, rq):
-                return 'unknown'    # 存在可行组合,分配器本不该返回空
-    return 'pairing_guard'
+            if is_basic(e) and not _pairing_guard_ok(worn_basics, n, e,
+                                                     key_set, core_set, rq):
+                continue
+            if not _wearable_gate_ok(worn_all.get(n, []), n, e):
+                wearable_blocked = True
+                continue
+            return 'unknown'    # 存在可行组合,分配器本不该返回空
+    return 'wearable_gate' if wearable_blocked else 'pairing_guard'
 
 
 def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
@@ -1901,6 +1981,18 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
        触发 2合1,产物=无用进阶,等冶金炉 3 件同刷);发不完留在 owned
        囤着(口述囤积原则「没什么用就先不装备囤着」)。死库存不穿 core
        ——穿着合成产物落在 core 身上=后续转移摩擦。
+
+    **穿着可行性三谓词**(P95 支配命题 §2-A 的分配前排除实现;判定单源 =
+    模块级 ``_wearable_gate_ok``,docstring 载三谓词全文与证据分级):对游戏
+    以概率 1 拒收的 (件,角色) 对,分配前排除严格支配分配后重试——W1 同名∧
+    非两基础件合成图谱对 / W2 件专属前置(「需要空装备栏」族,结构化载体
+    data/cw_equipment_wear_rules_data)/ W3 骇客目标类 fail-closed。与
+    ``_pairing_ok``/``_emblem_ok`` 同构并列,被拦件**留 pool**(跳过=留
+    owned,不 pop 丢弃);W1 拦域与配对守卫例外①②辖域显式互斥(两域交=空,
+    同名自配对合法穿着即合成通道不拦)。消费位 = key 环/core 吃满/非 core
+    保底/comp=None 轮转四处候选过滤(与 _emblem_ok 挂载点全集一致;P95
+    命题主语 = (件,角色) 对,必拒对全分配通道排除)。死库存回收线不挂:
+    池域 = 基础件,三谓词对基础件恒放行。
     """
     occ = occupied or {}
     pool = list(owned)
@@ -1928,20 +2020,36 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
     # 基础件判定 = RESERVED_COMPONENTS(7 标准 ∪ 光能电池,恰为全 8 件基础件
     # ——别用 SYNTHESIS_BASES,它漏光能电池,而光能电池系配方全部经它)
     _is_basic = RESERVED_COMPONENTS.__contains__
-    # 各角色已穿基础件(occupied 画面已穿 + 本趟已分配),配对守卫的输入
+    # 各角色已穿名单(occupied 画面已穿 + 本趟已分配):worn_basics = 基础件
+    # 子视图(配对守卫输入,口径不变);worn_all = 全名单(穿着可行性三谓词
+    # 的 W1/W2 输入,经合成产物展开消费)
     worn_basics: dict[str, list[str]] = {}
+    worn_all: dict[str, list[str]] = {}
     for d in deployed:
         n = getattr(d, 'char_id', None)
         if not n:
             continue
         for w in occ.get((getattr(d, 'position_pref', '') or '',
                           int(getattr(d, 'slot', 0) or 0)), []):
+            worn_all.setdefault(n, []).append(w)
             if _is_basic(w):
                 worn_basics.setdefault(n, []).append(w)
+
+    # 穿戴规则互检显警(结构化载体 ↔ 注册表散文;漏建模/孤儿/措辞漂移 →
+    # 显警不拦截,防新件静默漏消费。每次分配评估一次,量级 = 注册表件数)
+    from sr_od.application.currency_war.data.cw_equipment_wear_rules_data import (
+        check_equipment_wear_rule_coverage,
+    )
+    for _cov in check_equipment_wear_rule_coverage():
+        log.warning('[cw-equip] 装备穿戴规则互检显警: %s', _cov)
 
     def _pairing_ok(char: str, basic: str) -> bool:
         """基础件 basic 发给 char 是否安全(判定单源在模块级 ``_pairing_guard_ok``)。"""
         return _pairing_guard_ok(worn_basics, char, basic, _key_set, _core_set, _rq)
+
+    def _wearable_ok(char: str, item: str) -> bool:
+        """穿着可行性三谓词(判定单源在模块级 ``_wearable_gate_ok``)。"""
+        return _wearable_gate_ok(worn_all.get(char, []), char, item)
 
     def _emblem_ok(char: str, item: str) -> bool:
         """阵营星徽 → 排除已自报同阵营角色(复盘 g_20260902_181254 定谳)。
@@ -1961,6 +2069,7 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
         capacity[char] -= 1
         if _is_basic(item):
             worn_basics.setdefault(char, []).append(item)
+        worn_all.setdefault(char, []).append(item)
 
     out: list[tuple[str, str]] = []
     if comp is not None and comp.key_equips:
@@ -1991,6 +2100,8 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
                         continue
                     if not _emblem_ok(r, w):
                         continue    # 阵营星徽 → 同阵营角色 = 装备不上,换目标
+                    if not _wearable_ok(r, w):
+                        continue    # 穿着可行性门(必拒对排除)→ 件留 pool
                     pool.remove(w)
                     _assign(r, w)
             if not pool:
@@ -2033,26 +2144,28 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
         # core 先吃满(跳过会触发非预期合成的基础件 → 留 owned)
         for cn in _cores:
             while pool and capacity.get(cn, 0) > 0:
-                # 只取「可安全穿」的首件;被配对守卫拦下的件**留在 pool**
-                # (交给 _others 兜底/最终留 owned)——旧实现 pop 后丢弃,
-                # 一个穿残留基础件的 core 就能把整池吃光,身后无残留件的
-                # 角色一件分不到(分配空但 diag 判「存在可行组合」的
-                # unknown 漂移由此而来;违背上方「跳过=留 owned」注释与本
-                # 函数 docstring「发不完留在 owned 囤着」,缺陷语义修复)。
+                # 只取「可安全穿」的首件;被配对守卫/穿戴可行性门拦下的件
+                # **留在 pool**(交给 _others 兜底/最终留 owned)——旧实现
+                # pop 后丢弃,一个穿残留基础件的 core 就能把整池吃光,身后
+                # 无残留件的角色一件分不到(分配空但 diag 判「存在可行组合」
+                # 的 unknown 漂移由此而来;违背上方「跳过=留 owned」注释与
+                # 本函数 docstring「发不完留在 owned 囤着」,缺陷语义修复)。
                 _k = next((i for i, e in enumerate(pool)
                            if not (_is_basic(e) and not _pairing_ok(cn, e))
-                           and _emblem_ok(cn, e)),
+                           and _emblem_ok(cn, e)
+                           and _wearable_ok(cn, e)),
                           None)
                 if _k is None:
                     break   # 该 core 对整池都被守卫拦 → 一件不取,整池留 owned
                 _assign(cn, pool.pop(_k))
-        # 非 core:每人 1 件保底(同样过配对守卫)
+        # 非 core:每人 1 件保底(同样过配对守卫与穿戴可行性门)
         for d in _others:
             n = d.char_id
             if pool and capacity.get(n, 0) > 0:
                 idx = next((i for i, e in enumerate(pool)
                             if not (_is_basic(e) and not _pairing_ok(n, e))
-                            and _emblem_ok(n, e)), None)
+                            and _emblem_ok(n, e)
+                            and _wearable_ok(n, e)), None)
                 if idx is not None:
                     _assign(n, pool.pop(idx))
         return out
@@ -2066,12 +2179,13 @@ def equip_allocation(comp: Comp | None, deployed: list, owned: list[str],
             if not pool:
                 break
             if capacity.get(n, 0) > 0:
-                # 同 core 分配侧的修法:被配对守卫拦的件留 pool(轮转给
-                # 下一个人),不 pop 丢弃——否则一个有残留件的人会把整池
-                # 吃光,后面的人一件分不到。
+                # 同 core 分配侧的修法:被配对守卫/穿戴可行性门拦的件留
+                # pool(轮转给下一个人),不 pop 丢弃——否则一个有残留件的
+                # 人会把整池吃光,后面的人一件分不到。
                 _k = next((i for i, e in enumerate(pool)
                            if not (_is_basic(e) and not _pairing_ok(n, e))
-                           and _emblem_ok(n, e)),
+                           and _emblem_ok(n, e)
+                           and _wearable_ok(n, e)),
                           None)
                 if _k is None:
                     continue    # 该人对整池都被拦 → 跳过此人(件留 pool)
