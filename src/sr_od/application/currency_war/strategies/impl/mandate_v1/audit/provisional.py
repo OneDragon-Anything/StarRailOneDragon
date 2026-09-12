@@ -19,6 +19,7 @@ V̄ 拟合族类型级封印(R10-2):``V_BAR`` 槽位不提供数值取值接口
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 
@@ -150,14 +151,48 @@ def is_none(name: str) -> bool:
     return get(name) is None
 
 
+# ===== 槽位值域守卫(T-214;标定批 ADR-0639)=====
+# 位置论证:inject 系唯一开闸通道(provisional.py 头注),值域防线放
+# 消费位防不住其他槽位、放调用方防不住绕行——结构防线只能在通道本体
+# 做写入前校验(不合法拒绝)。未登记槽位 = 既有语义不变(无值域知识
+# 不装假守卫);守卫只辖 ``value``,CI 端点系消费位扫描用信息不入守卫。
+
+def _guard_delta_positive(value: CalibValue) -> str | None:
+    """Δ=V_C−V_F 合法域 = (0, ∞):丁.4 引理域 V_C>V_F(P76 §4.2),
+    非正值系域外输入(T-124 夹界批已在门内设 delta_non_positive 分支,
+    本守卫把同一域约束上移到注入通道,门内分支保留为纵深防御)。"""
+    return None if value.value > 0 else 'Δ=V_C−V_F 须 >0(丁.4 引理域)'
+
+
+def _guard_e2_probability_band(value: CalibValue) -> str | None:
+    """ε₂ 合法域 = [0, 1]:集中度二阶带加于 θ̂_suff(P76 §4.4 落码
+    形态),量纲 = 概率尺度;负带 = 抬低充分侧门槛(fail-open 向),
+    >1 = 夹界充分侧全域病态,同出域。"""
+    return None if 0.0 <= value.value <= 1.0 else 'ε₂ 系概率尺度带,合法域 [0,1]'
+
+
+#: 守卫登记表(键 = 槽位名;本批登记标定批两槽,其余槽位随其标定批补)
+_VALUE_GUARDS: dict[str, Callable[[CalibValue], str | None]] = {
+    'V_C_MINUS_V_F': _guard_delta_positive,
+    'E2_CONCENTRATION_BAND': _guard_e2_probability_band,
+}
+
+
 def inject(name: str, value: CalibValue) -> None:
-    """显式注入(唯一开闸通道;封印族拒绝)。测试注入后须 ``reset`` 复原,
-    防 session 内残留开闸状态(测试纪律:改全局态必须复原)。"""
+    """显式注入(唯一开闸通道;封印族拒绝;值域守卫槽越域即拒)。
+    测试注入后须 ``reset`` 复原,防 session 内残留开闸状态(测试纪律:
+    改全局态必须复原)。"""
     slot = _SLOTS.get(name)
     if slot is None:
         raise KeyError(f'unknown provisional slot: {name}')
     if slot.sealed:
         raise ValueError(f'slot {name} 系类型级封印族(R10-2),禁注入')
+    guard = _VALUE_GUARDS.get(name)
+    if guard is not None:
+        violation = guard(value)
+        if violation:
+            raise ValueError(
+                f'槽位 {name} 值域守卫拒绝注入:{violation}(T-214/ADR-0639)')
     _VALUES[name] = value
 
 

@@ -583,6 +583,11 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         proof.register_eviction(session, getattr(k, 'name', ''))
         counters = state_of(session).cw4_counters
         counters['switchline_event'] = counters.get('switchline_event', 0) + 1
+    # 证据门影子评估(接线批 T-213/ADR-0637;R197 症2 影子面同族):
+    # 输出只进 cw4_counters 分键,返回值不被消费做行为——封印期(Δ/ε₂/
+    # V_ms/Δλ【拟】全 None)恒「不可评」诚实显影,绝不向骨架层渗漏为
+    # 否决(NMF §6/§5.3);权威面切换候标定落地另案裁决批。
+    proof.evaluate_evidence_gate(state, session)
     # k_switched 实值化(R196 症1):上一备战期线名快照 vs 本帧生效 K 名
     # ——不同即换线已在本帧生效(塌缩出口评估条件,line_switch_sell 只在
     # K 已更新的备战期评,§2.7);旧线成员自 COMP_LIBRARY 按名取回。
@@ -750,6 +755,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 _f_fallback = sell_gate.funding_hold_fallback(
                     session, k_members, bench, gold=state.gold,
                     need=_f_need, a_exclusions=_f_excl,
+                    deployed=state.deployed,
                     cap_hold=locked_buy_cap_hold(state))
             for s in slots:
                 if s in sold_slots:
@@ -1095,6 +1101,7 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             _f_fallback = sell_gate.funding_hold_fallback(
                 session, k_members, frame.bench, gold=state.gold,
                 need=_fb_need, a_exclusions=_f_excl,
+                deployed=state.deployed,
                 cap_hold=locked_buy_cap_hold(state))
         for s in fslots:
             if s in sold_slots:

@@ -793,6 +793,10 @@ def decide_shop_action(state: GameState, session: StrategySession,
         缺口)、register_launch 已开账(≤1 轮滞留,轮界销兜底)——
         缺口有界低概率无决策行为差,sim 为测试载体生产不可达,接线
         位维持发射位不变(移位属行为面变更,候后续行为批)。
+
+        种子获取登记(P78-7,T-126 批 5,ADR-0633):见函数尾段——
+        种子账作废形态与上述 sim 边界同型(作废买入的种子账由活性
+        闭合在名不在 bench 的下一读点就地销,自愈有界)。
         """
         _buy_name = getattr(card, 'name', '') or ''
         record_fresh_buy(session, state, _buy_name)
@@ -851,6 +855,21 @@ def decide_shop_action(state: GameState, session: StrategySession,
             # 簿 ≡ 登记簿义务类视图)。
             _obligation_book(session)[_buy_name] = \
                 int(getattr(state, 'round_num', 1) or 1)
+        # 种子获取登记(P78-7,T-126 批 5,ADR-0633):1★ 引擎件 ∧
+        # 购买时未持有 = 种子账开立,相邻轮(≤2 轮窗)全通道禁卖——
+        # 同轮由 fresh_buys 硬面辖,本登记辖 ADR-0611 §4 P4 相邻轮残留
+        # 形态(ADR-0289 设计 0 容忍的生产落地)。资格谓词单一源 =
+        # sell_gate.seed_acquisition_eligible(禁调用侧手搓)。义务基座
+        # 成员重叠无害(身份段本就保护)。A4 硬闸之后落账 = 仅活决策
+        # 登记;合成补齐分支已提前 return(1★ 即刻离场,无种子账)。
+        if _buy_name and sell_gate.seed_acquisition_eligible(
+                _buy_name, getattr(card, 'star', 1) or 1,
+                getattr(state, 'bench', None),
+                getattr(state, 'deployed', None)):
+            sell_gate.register_seed_acquisition(
+                session, _buy_name,
+                plane=getattr(state, 'plane', None),
+                round_num=int(getattr(state, 'round_num', 1) or 1))
         return BuyCard(card=card, reason=reason)
 
     ev_arm = getattr(config, 'ev_arm', 'full')
@@ -2867,7 +2886,8 @@ def decide_shop_action(state: GameState, session: StrategySession,
         if not fslots and gold < need:
             _f_fallback = sell_gate.funding_hold_fallback(
                 session, k_members, bench, gold=gold, need=need,
-                a_exclusions=_f_excl, cap_hold=_cap_hold_now)
+                a_exclusions=_f_excl, deployed=state.deployed,
+                cap_hold=_cap_hold_now)
         for s in fslots:
             bc = next((b for b in bench if b.slot == s), None)
             idx = (state.bench or []).index(bc) if bc is not None else None

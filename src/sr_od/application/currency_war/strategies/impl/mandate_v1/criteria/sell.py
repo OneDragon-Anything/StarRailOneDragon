@@ -21,6 +21,10 @@ from sr_od.application.currency_war.kernel.cw_state import (
     sell_refund,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import provisional
+from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
+    EMPTY_BOARD_SELL_GUARD_KEY,
+    empty_board_sell_blocked,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
     refund_full_star_ok,
@@ -73,6 +77,10 @@ def line_switch_sell(old_line_members: tuple[str, ...],
         return [], 'no_event'
     if provisional.is_none('U_X') or provisional.is_none('V_MS'):
         return [], 'switchline_exit_blocked'
+    # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
+    # 板空帧不塌缩清算,孤儿件留 bench 下帧再评(损失 = 清算延迟,非自旋)。
+    if empty_board_sell_blocked(getattr(state, 'deployed', None), counters=counters):
+        return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
     for b in bench:
         name = b.char_id or ''
@@ -160,6 +168,10 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
         return [], 'blood_floor'
     if p2_blood_floor_unlock(state):
         return [], 'p2_blood_floor'
+    # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
+    # 板空帧卖储备换金 = 期权损失换零净金(1★ 全额退),弱劣拒帧。
+    if empty_board_sell_blocked(state.deployed, counters=counters):
+        return [], EMPTY_BOARD_SELL_GUARD_KEY
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
         saturation_line,
     )
@@ -250,6 +262,13 @@ def funding_support_sell(gold: int, need_gold: int, bench: list[BenchChar],
     """
     if gold >= need_gold:
         return [], 'not_needed'
+    # 空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
+    # 板空帧筹资卖出同弱劣拒帧(收益侧=义务在 bench 域,守卫不评收益
+    # 只钉卖出腿;恢复正路 = 部署与买面,不在卖出通道)。state 缺读 =
+    # fail-closed 拒(资格判据禁缺读放行)。
+    if empty_board_sell_blocked(getattr(state, 'deployed', None),
+                                counters=counters):
+        return [], EMPTY_BOARD_SELL_GUARD_KEY
     out: list[int] = []
     remaining = need_gold - gold
     _deployed = list(getattr(state, 'deployed', None) or [])

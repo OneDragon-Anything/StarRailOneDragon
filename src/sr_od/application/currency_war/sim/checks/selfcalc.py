@@ -64,16 +64,15 @@ def buy_identity(row: dict, action: dict) -> str:
 
 
 def is_engine_piece(name: str) -> bool:
-    """引擎件身份(注册表现算;classify_buy 的 engine 分支同判据)。"""
-    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
-    from sr_od.application.currency_war.kernel.cw_line_defs import (
-        ENGINE_FACTIONS,
+    """引擎件身份(kernel 单一源委托;T-126 批 5 收拢第二实现,P78-7)。
+
+    判定核单一源 = ``kernel.cw_card_identity.is_engine_piece``(本函数
+    原为同判据第二实现;ADR-0625 候裁 5 申报的「生产决策位无可直调
+    单一源」缺口随 kernel 侧补齐闭合,本委托保持消费方零改)。"""
+    from sr_od.application.currency_war.kernel.cw_card_identity import (
+        is_engine_piece as _kernel_pred,
     )
-    ch = CHARACTERS.get(name or '')
-    if ch is None:
-        return False
-    bonds = set(ch.factions) | set(ch.flows)
-    return bool(bonds & set(ENGINE_FACTIONS))
+    return _kernel_pred(name)
 
 
 def held_names_upto(rows: list[dict], idx: int) -> set[str]:

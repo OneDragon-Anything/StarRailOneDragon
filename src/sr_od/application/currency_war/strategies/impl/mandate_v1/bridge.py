@@ -85,6 +85,19 @@ class MandateV1Strategy(CwFlowStrategy):
                         '求值位→骨架 pass(M1-M7 义务)→EV pass(criteria'
                         ' 七面);序列契约 v2 帧稳定截断发射')
 
+    def __init__(self, registry: DecisionV2Registry | None = None) -> None:
+        """核构造 + 标定注入(标定批 T-278/ADR-0639)。
+
+        ``calibration.apply()`` 幂等(只填 None 槽),把 Δ/ε₂ 标定值
+        送入 provisional 槽位(生产注入单点;None 期证据门恒不可评
+        fail-closed 语义不变)。测试隔离:证据门锁经 ``provisional.
+        reset`` fixture 清场,与本注入位无关。"""
+        super().__init__(registry)
+        from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
+            calibration,
+        )
+        calibration.apply()
+
     def decide_prep_screen(self, session: StrategySession,
                            config: CurrencyWarConfig) -> list[PrepAction]:
         """备战画面黑板决策(契约 v1/v2 接口;dd-020)。

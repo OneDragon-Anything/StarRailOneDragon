@@ -26,7 +26,12 @@ theta_unavailable_theta/_d_min/_delta(成因分桶观察件;聚合与成因
 不同键防混计)/ switchline_skipped /
 switchline_exit_blocked / switchline_no_alt / switchline_no_target /
 switchline_e_cur_undefined / switchline_relock_window[R196 修复批:
-「不换线也记遥测」的归因分键补齐——四路 return 原先零计数])。
+「不换线也记遥测」的归因分键补齐——四路 return 原先零计数]/
+evidence_gate_evaluated / evidence_gate_sandwich_suff /
+evidence_gate_sandwich_band / evidence_gate_sandwich_below_nec /
+evidence_gate_sandwich_pathological / evidence_gate_unavailable(聚合)+
+evidence_gate_unavailable_<成因>(成因分桶观察件;接线批 T-213 影子
+评估键,ADR-0637——零行为面,键登记惯例=产键模块 docstring)。
 """
 from __future__ import annotations
 
@@ -34,14 +39,33 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.data.cw_shop_odds import SHOP_SLOTS
 from sr_od.application.currency_war.kernel import cw_line_switch
-from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import provisional
+from sr_od.application.currency_war.kernel.cw_plane_table import r_remaining
+from sr_od.application.currency_war.kernel.cw_state import (
+    BENCH_CAPACITY,
+    bench_occupied,
+)
+from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
+    calibration,
+    provisional,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
-from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
+from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
+    budget,
+    odds,
+    predicates,
+)
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.vopt import (
+    a7_lower_bound,
     p_complete,
+    p_miss,
+    v_comp_marginal,
+    v_opt,
+    v_slot,
 )
 
 if TYPE_CHECKING:
@@ -186,8 +210,8 @@ def resolve_switch_params() -> tuple[float, int, float] | None:
 
 @dataclass(frozen=True)
 class LockSandwichFrame:
-    """锁线夹界帧(P76 §4.3/§4.4 各项的帧级数值载体;规约态——接线批装配,
-    本批全仓零消费点,ADR-0628)。
+    """锁线夹界帧(P76 §4.3/§4.4 各项的帧级数值载体;装配器 =
+    ``assemble_lock_frame``,接线批 T-213/ADR-0637)。
 
     字段坐标系(写入端 = 接线批装配器;取值时机 = 锁线评估帧现算):
     - ``e_p_next``:E[P′] 等待一帧后的期望完成概率(P38 同机,集中协议);
@@ -199,10 +223,16 @@ class LockSandwichFrame:
     - ``c_hold``:C = C_hold(H_{−*}) 携带成本——差分口径仅侧线件
       (修正 4:按组合全集计则双计 ℓ* 件携带,压低阈值偏早锁);
     - ``d_death``:D = Δλ_death·(g+Φ) 死亡风险增量(P51 区间敞口口径,
-      禁边际引用/禁 hp 价值换算;λ 挂【拟】)。
+      禁边际引用/禁 hp 价值换算;λ 挂【拟】);
+    - ``band_domain_ok``:ε₂ 带值辖域位(r1 返工,T-278/ADR-0639 修订):
+      装配帧 (max m, r_remaining) 全落标定网格域
+      (``calibration.E2_DOMAIN_*``,注册表有界维)为 True;域外
+      False ⇒ 门出 unavailable[e2_domain](P76 丙.4「带外不声明」
+      的落码形态,禁欠覆盖的 θ̂_suff 静默进夹界;R 维全轴覆盖由
+      复现脚本数值验证承载;缺省 True = 手工构造帧兼容)。
 
-    任一字段 None = 该项帧级未装配 ⇒ 门整体「不可评」(§7 #1 数值门禁
-    消费;reason 带成因分键,仿 theta_unavailable 归因可辨纪律)。
+    任一数值字段 None = 该项帧级未装配 ⇒ 门整体「不可评」(§7 #1 数值
+    门禁消费;reason 带成因分键,仿 theta_unavailable 归因可辨纪律)。
     """
 
     e_p_next: float | None = None
@@ -211,6 +241,7 @@ class LockSandwichFrame:
     b_plus: float | None = None
     c_hold: float | None = None
     d_death: float | None = None
+    band_domain_ok: bool = True
 
 
 def evidence_gate(missing: list[tuple[int, float]],
@@ -219,7 +250,10 @@ def evidence_gate(missing: list[tuple[int, float]],
     """证据门 P38(④-3 表第二行:新建;P76 §5.5 夹界形态重写,ADR-0628)。
 
     ``missing`` = [(缺口张数, 单张出现概率 q), ...](线距离分解,
-    cw_line_switch/odds 侧产物);``refresh_budget`` = 本窗口可用刷新数
+    生产单一源 = ``line_missing_decomposition``);``refresh_budget`` =
+    传入 p_complete 的**试验数**(接线批调用方按 P38 ②层槽试验口径装配,
+    q = 单槽命中概率,见 ``assemble_lock_frame``;字面「刷新数」读法
+    退役)
     ——**仅作 p_complete 试验数条件,不再构成否决**(§5.5.2 域 α 重判:
     锁线是配置承诺不是购买,其价值不需要刷新预算——预算耗尽不构成
     「不锁」的理由)。
@@ -241,7 +275,10 @@ def evidence_gate(missing: list[tuple[int, float]],
     Δ=V_C−V_F 与 ε₂ 走 provisional【拟】槽位(§7 #1:θ* 点值与数值门
     禁消费——None 期门输出「不可评」+成因分键,绝不向骨架层渗漏为否决,
     NMF §5.3)。丁.4 引理域 V_C>V_F:Δ≤0 系域外输入,同归不可评。
-    本门当前未接线(修正 5):全仓零调用点,接线批按本形态装配帧消费。
+    本门已接线(接线批 T-213/ADR-0637:entry 证明 pass 影子评估,输出只
+    进分键计数零行为面;P76 修正 5 的零调用点状态自此终结,权威面切换
+    = 标定落地且门数值可评后的另案裁决批)。装配单一源 =
+    ``assemble_lock_frame``。
     """
     if not missing:
         return True, 'complete'
@@ -258,6 +295,12 @@ def evidence_gate(missing: list[tuple[int, float]],
                  'c_hold', 'd_death'):
         if getattr(frame, name) is None:
             causes.append(name)
+    if not frame.band_domain_ok:
+        # ε₂ 带值标定网格域外(装配端判定,calibration.E2_DOMAIN_*):
+        # 带外不消费带值——静默欠覆盖会使 θ̂_suff 偏低、「P≥θ̂_suff ⇒
+        # 锁不劣」保证失效(fail-open),故 fail-closed 归不可评
+        # (r1 返工,T-278/ADR-0639 修订;P76 丙.4「带外不声明」落码)。
+        causes.append('e2_domain')
     delta = delta_calib.value if delta_calib is not None else None
     if delta is not None and delta <= 0:
         causes.append('delta_non_positive')
@@ -280,6 +323,256 @@ def evidence_gate(missing: list[tuple[int, float]],
         return False, f'sandwich_below_nec(p={p:.4f},nec={th_nec:.4f})'
     return False, (f'sandwich_band(p={p:.4f},nec={th_nec:.4f},'
                    f'suff={th_suff:.4f})')
+
+
+def _held_counts(state: GameState) -> dict[str, int]:
+    """逐角色名副本计数(bench∪deployed bot 跟踪库存;槽位模型 None 跳过,
+    空名不计)。``odds.slot_q_tag``/帧装配的池衰减 j/t 输入载体。"""
+    counts: dict[str, int] = {}
+    for bc in (list(getattr(state, 'bench', None) or [])
+               + list(getattr(state, 'deployed', None) or [])):
+        name = getattr(bc, 'char_id', '') if bc is not None else ''
+        if name:
+            counts[name] = counts.get(name, 0) + 1
+    return counts
+
+
+def _char_cost(name: str) -> int:
+    """角色注册表费用(查表;未知名 = 0,消费端按「不计」域外处置)。"""
+    ch = CHARACTERS.get(name)
+    return int(getattr(ch, 'cost', 0) or 0) if ch is not None else 0
+
+
+def _missing_items(comp: Comp | None,
+                   state: GameState) -> list[tuple[str, int, float,
+                                                   dict[int, float]]]:
+    """线缺口分解内部形态 [(档标签, 缺口张数, 聚合 q, 分费档明细)]——
+    ``line_missing_decomposition`` 与 ``assemble_lock_frame`` 的共享单一
+    实现(禁第二实现漂移);公开契约视图见前者。"""
+    if comp is None or state is None:
+        return []
+    from sr_od.application.currency_war.kernel.cw_board_state import (
+        board_state_bridge,
+    )
+    prog = cw_line_switch.tier_progress(comp, board_state_bridge(state))
+    if not prog:
+        return []
+    held = _held_counts(state)
+    items: list[tuple[str, int, float, dict[int, float]]] = []
+    for f, (need_t, held_t, shelf_t) in prog.items():
+        m = need_t - held_t - shelf_t
+        if m <= 0:
+            continue   # 已满足件剔除(P38 配方)
+        # 货架件「买走即 held」口径(line_distance 同式):按费档直加
+        # 同标签池衰减 j(无名货架卡不可入 held_counts,走 extra 通道)。
+        extra: dict[int, int] = {}
+        if shelf_t > 0:
+            for c in (state.shop or []):
+                if (getattr(c, 'faction', '') or '') == f:
+                    cost = int(getattr(c, 'cost', 0) or 0)
+                    if cost:
+                        extra[cost] = extra.get(cost, 0) + 1
+        bd = odds.slot_q_tag_by_cost(f, int(getattr(state, 'level', 1) or 1),
+                                     held, extra)
+        items.append((f, m, sum(bd.values()), bd))
+    return items
+
+
+def line_missing_decomposition(comp: Comp | None,
+                               state: GameState) -> list[tuple[int, float]]:
+    """线缺口分解 [(缺口张数 m, 单槽命中概率 q)]——``evidence_gate``
+    输入单一源(接线批 T-213 前全仓无同形产物,T-124 审 Q2b 指认;
+    ADR-0637)。
+
+    件模型 = P38:form_tiers 逐档一项(段表登记批前现状口径,段表落地
+    由该批泛化);m_t = max(0, need−held−shelf) **逐档 clamp**——完成
+    事件 = 各档各自满足,一档超持不帮另一档补缺,与 ``line_distance``
+    的全局 clamp 标量口径(E_rounds 距离近似)有意分歧、不统一,分解
+    口径单一源 = ``cw_line_switch.tier_progress``;已满足件(m≤0)剔除
+    (P38 配方)。q_t = ``odds.slot_q_tag``(P38 ③层含池衰减,货架件
+    计入同档衰减)。q≤0 的项照常入表(p_complete 对 q≤0 返 0 → 必要侧
+    拒,静态不可达线诚实出「锁劣」向);缺口空 → 空表(调用方按
+    complete 域处置,本函数不发 complete)。
+    """
+    return [(m, q) for _tag, m, q, _bd in _missing_items(comp, state)]
+
+
+def assemble_lock_frame(state: GameState, session: StrategySession,
+                        ) -> tuple[list[tuple[int, float]], int,
+                                   LockSandwichFrame]:
+    """证据门评估帧装配单一源(接线批 T-213/ADR-0637;试验数升级 =
+    标定批 T-278/ADR-0639 按 P38 ⑤层金位递推):返回
+    ``(missing, trials, frame)``。
+
+    试验数口径(P38 ②层槽试验,docstring 钉死):``trials = SHOP_SLOTS
+    × (R_全局 + 可负担付费刷数)``。R_全局 = ``cw_plane_table.r_remaining``
+    (到局终剩余节点,NMF §2 单一源);付费刷数 = P38 ⑤层预算递推
+    (``statefn/budget.p38_budget_recursion``,金位逐轮模拟单一源;
+    B<0 = 缺口件买不起域 → trials=0 且 P:=0,P38「买到即计数前提
+    破产」保守分支)。**B<0 域的门内落点申报(r1 修正,原 below_nec
+    表述不实)**:exhausted ⇒ e_p_next=0 ⇒ θ̂_nec=clamp(0−cost/Δ)=0,
+    `p<th_nec` 恒假 ⇒ 实际落 sandwich_band,典型格(cost ≥ gain+
+    ε₂·Δ)落 suff 截 0=无条件放行锁——「永不完成线的锁背书」属换线
+    机器领地、P76 夹界模型外,禁靠截 0 语义默认放行:**P=0 域的
+    suff 放行显式裁决已列入装配批义务清单**(ADR-0639 §4)。刷新预算
+    解耦语义不回归(P76 §5.5.2:本域耗尽的是购卡预算)。逐项口径与
+    简化申报见 budget 模块 docstring(resolved 息帽泛化/升级金单步
+    v1/不动点保守端)。
+
+    六帧项逐条(P76 §4.4 可计算夹界;界方向逐条申报):
+    - ``e_p_next`` = p_complete(missing, trials − SHOP_SLOTS)——等待一帧 =
+      组合协议下本线只自然刷一次(一阶主通道,丙.4);S_side 分流不扣 =
+      对等待协议乐观 → E[P′] 高估 → suff/nec 两侧判据均保守(拒向)。
+    - ``f_plus`` = (1−P)·Σ_{x∈H−*}(P_miss,x·C_rescue,x + 1)——u=1 已消参
+      (P76 §7 #5 免标定);H−* = bench∪deployed 中不在 K 成员名的侧线件
+      (修正 4 差分口径);C_rescue,x = ``a7_lower_bound``(P41 A7 形,
+      c/p_shop),不可达件(p_shop=0)只保留 +1 手续费项——永不出现件
+      无重建期权,如实剔除。
+    - ``b_plus`` = Σ_{x∈H−*} ``v_comp_marginal``(P49 线性律)——毛值作
+      上界臂消费(不扣 C_sat 同槽双计,上界方向安全;净扣归标定批);
+      未知名/费档域外(0)不计。
+    - ``c_hold`` = C_int + C_sat。C_int = |H_S| 金(最小卖回协议手续费级
+      上界,乙.1 段 2;H_S = star≥2∧cost≥2 侧线件;1 金 = 甲.2 定理
+      手续费机制真值非拍定)。C_sat = ``v_slot(free, blocked)``×P_block
+      (乙.2;free>1 ⇒ v_slot=0 在库免手写门);P_block =
+      min(1, Σ_i p_shop,i)(乙.2 上界式的 Σ 项;压库候选率 P_comp v1
+      未入,申报);blocked = 各缺件主费档 ``v_opt(u=1)``(P76 §7 #3
+      V_opt 侧先行的落码形态;j=0 = 值侧满池上界,保 c_hold 上界形态)。
+    - ``o_plus`` = None(价值因子 (V_i−V_*)⁺ 挂 V_ms【拟】P76 §7 #1,
+      P_i^port 侧线组合评估面未落)——None 期门恒「不可评」诚实沉默。
+    - ``d_death`` = None(Δλ_death 两协议板强路径差量挂 λ 连续模型
+      【拟】P76 §7 #2;λ 表为 PL 键点值无协议差键)。
+
+    门可评前置(敞口更新,申报于 ADR-0637):Δ/ε₂ 注入(标定批
+    T-278 已落,``audit/calibration.apply``)**且** o_plus/d_death
+    装配落地(值因子标定批之后续装配批)之前,门对一切缺口帧恒
+    ``sandwich_unavailable``〔o_plus,d_death〕。
+    """
+    k = getattr(state_of(session), 'target_comp', None)
+    items = _missing_items(k, state)
+    missing = [(m, q) for _tag, m, q, _bd in items]
+    # 可达件(q>0)期望购买成本与张数:P38 ⑤层预算输入。q≤0 静态
+    # 不可达件不计——它永不出现,购账不发生而 P=0 已由 p_complete
+    # 承载,入账反会虚增 B<0 域(budget 模块 docstring 同申报)。
+    purchase_cost = 0.0
+    missing_copies = 0
+    for _tag, m, q, bd in items:
+        if q <= 0 or not bd:
+            continue
+        purchase_cost += m * sum(c * p_c for c, p_c in bd.items()) / q
+        missing_copies += m
+    plan = budget.p38_budget_recursion(state, session, purchase_cost,
+                                       missing_copies)
+    held = _held_counts(state)
+    k_members = set(predicates.line_members(k))
+    level = int(getattr(state, 'level', 1) or 1)
+    refresh_cost = int(getattr(state, 'shop_refresh_cost', 2) or 2)
+    r_rem = r_remaining(session, int(getattr(state, 'plane', 1) or 1),
+                        int(getattr(state, 'round_num', 1) or 1))
+    trials = (0 if plan.exhausted
+              else SHOP_SLOTS * max(0, int(r_rem) + int(plan.refreshes)))
+    # ε₂ 带值辖域(注册表有界维 m/r_rem;域外帧 fail-closed 归
+    # unavailable[e2_domain],禁欠覆盖带值进夹界——r1 返工,
+    # calibration 单一源;R 维全轴覆盖由脚本数值验证承载)
+    band_domain_ok = calibration.band_in_domain(
+        max((m for m, _q in missing), default=0), int(r_rem))
+
+    # H−* 侧线件清单 (名, 星, 费)(K 成员名 = predicates.line_members)
+    side: list[tuple[str, int, int]] = []
+    for bc in (list(getattr(state, 'bench', None) or [])
+               + list(getattr(state, 'deployed', None) or [])):
+        name = getattr(bc, 'char_id', '') if bc is not None else ''
+        if name and name not in k_members:
+            side.append((name, int(getattr(bc, 'star', 1) or 1),
+                         _char_cost(name)))
+
+    p_lock = 0.0 if plan.exhausted else p_complete(missing, trials)
+
+    f_sum = 0.0
+    b_plus = 0.0
+    for name, _star, cost in side:
+        j_x = held.get(name, 0)
+        t_x = sum(cnt for nm, cnt in held.items()
+                  if nm != name and _char_cost(nm) == cost)
+        ps = odds.p_shop(level, cost, j_x, t_x)
+        rescue = a7_lower_bound(level, cost, refresh_cost, j_x, t_x)
+        if math.isfinite(rescue) and ps > 0:
+            f_sum += p_miss(level, cost, j_x, t_x) * rescue + 1.0
+        else:
+            f_sum += 1.0   # 不可达件:只保留清算手续费项
+        if 1 <= cost <= 5:
+            b_plus += v_comp_marginal(cost, level, taken=t_x,
+                                      refresh_cost=refresh_cost)
+    f_plus = (1.0 - p_lock) * f_sum
+
+    h_s = sum(1 for _name, star, cost in side if star >= 2 and cost >= 2)
+    c_hold = float(h_s)
+    p_block_terms: list[float] = []
+    blocked: list[float] = []
+    for _tag, _m, q_i, bd in items:
+        if q_i > 0:
+            p_block_terms.append(1.0 - (1.0 - q_i) ** SHOP_SLOTS)
+        if bd:
+            c_star = max(bd, key=bd.get)
+            blocked.append(v_opt(level, c_star, 1.0, 0,
+                                 int(getattr(state, 'gold', 0) or 0),
+                                 refresh_cost))
+    free = BENCH_CAPACITY - bench_occupied(
+        getattr(state, 'bench', None) or [])
+    c_sat = min(1.0, sum(p_block_terms)) * v_slot(free, blocked)
+    c_hold += c_sat
+
+    frame = LockSandwichFrame(
+        e_p_next=(0.0 if plan.exhausted
+                  else p_complete(missing, max(0, trials - SHOP_SLOTS))),
+        o_plus=None,
+        f_plus=f_plus,
+        b_plus=b_plus,
+        c_hold=c_hold,
+        d_death=None,
+        band_domain_ok=band_domain_ok,
+    )
+    return missing, trials, frame
+
+
+def evaluate_evidence_gate(state: GameState | None,
+                           session: StrategySession,
+                           ) -> tuple[bool, str] | None:
+    """证据门影子评估(接线批 T-213/ADR-0637;entry 证明 pass 每备战帧
+    消费)。返回 ``(ok, reason)`` 仅供测试/调试,调用方**不消费返回值
+    做任何行为**。
+
+    影子面声明(R197 症2 同族;在册先例 = should_switch「已接线 +
+    fail-closed 封印休眠」,12 号稿 §3 as-built):输出只进
+    ``cw4_counters`` 分键计数——封印期(Δ/ε₂/V_ms/Δλ【拟】全 None)门恒
+    「不可评」诚实显影,**绝不向骨架层渗漏为否决**(NMF §6/§5.3);
+    权威面切换(S1→S3 证据门接管)= 标定落地且门数值可评后的另案裁决批。
+
+    键推导 = reason 前缀('(' 前段;reason 携数值禁作键,防键基数爆炸);
+    不可评 = 聚合键 + 成因分桶键(**聚合与成因不同键防混计**,R24-2
+    theta_unavailable 同款纪律)。缺口空/无目标线帧不评估(锁线时机
+    问题不存在;complete 直过路径留给门内语义,影子面不产计数噪声)。
+    state 缺席帧不评估。
+    """
+    if state is None:
+        return None
+    if getattr(state_of(session), 'target_comp', None) is None:
+        return None
+    missing, trials, frame = assemble_lock_frame(state, session)
+    if not missing:
+        return None
+    _count(session, 'evidence_gate_evaluated')
+    ok, reason = evidence_gate(missing, trials, frame)
+    key = reason.split('(', 1)[0]
+    if key.startswith('sandwich_unavailable'):
+        _count(session, 'evidence_gate_unavailable')
+        for cause in reason[len('sandwich_unavailable'):].strip('[]').split(','):
+            cause = cause.strip()
+            if cause:
+                _count(session, f'evidence_gate_unavailable_{cause}')
+    elif key:
+        _count(session, f'evidence_gate_{key}')
+    return ok, reason
 
 
 def best_alt_comp(state: GameState, session: StrategySession,

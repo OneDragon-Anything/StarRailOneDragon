@@ -21,6 +21,9 @@ from __future__ import annotations
 from sr_od.application.currency_war.kernel.cw_comps import (
     CORE_SINGLE_CARD_REGISTRY,
 )
+from sr_od.application.currency_war.kernel.cw_line_defs import (
+    ENGINE_FACTIONS,
+)
 from sr_od.application.currency_war.knowledge.cw_line_facts import (
     TRANSITION_PACK,
 )
@@ -64,6 +67,30 @@ def sell_hold_exclusion_names() -> frozenset[str]:
     """
     return (frozenset(CORE_SINGLE_CARD_REGISTRY)
             | transition_release_names())
+
+
+def is_engine_piece(name: str) -> bool:
+    """引擎件身份(注册表现算单一源;T-126 批 5 种子排除,P78-7)。
+
+    判据 = 角色注册表 factions∪flows 与引擎三阵营(ENGINE_FACTIONS,
+    桥池 engine_bonds 派生)交集非空——与 ``cw_line_defs.classify_buy``
+    的 ``'engine'`` 分支同判据;此前该谓词只在 sim/checks/selfcalc 有
+    一份实现(生产决策位无可直调单一源 = ADR-0625 候裁 5 申报缺口),
+    本函数补齐生产单一源,selfcalc 同名实现改为委托本函数(禁第二
+    实现)。种子身份 = 本谓词 ∧ 购买时未持有(第二合取需购买史语境,
+    由 sell_gate 种子登记簿在获取时点承载)。
+
+    import 边申报:cw_line_defs 头部迁移挂账的「勿新增消费」明示对象
+    = RECIPE_FACTIONS/RECIPE_BASE/recipe_tier 三符号(权威副本在
+    knowledge/cw_line_facts);ENGINE_FACTIONS 无 knowledge 侧权威
+    副本,本 import 是既有判定核的消费边非复制。
+    """
+    from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+    ch = CHARACTERS.get(name or '')
+    if ch is None:
+        return False
+    bonds = set(ch.factions) | set(ch.flows)
+    return bool(bonds & set(ENGINE_FACTIONS))
 
 
 def line_identity_tier(name: str, k_members: tuple[str, ...] = ()) -> str:

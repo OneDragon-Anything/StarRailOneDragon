@@ -83,6 +83,7 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state imp
 # (窗口段 API)。冗余别名 = 刻意再出口(PEP 484 re-export 形态)。
 from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import (
     consume_on_sell,
+    empty_board_sell_blocked,
     prune_on_deploy,
     register_launch,
     sell_exclusions,
@@ -308,7 +309,15 @@ def fuel_sell_candidates(bench: list[BenchChar],
     判读先于其余资格门。生产观察层 SIFT 不产占位件条目,sim 假环境经
     观察面把占位件直喂 bench——本门 = 卖出发射前唯一资格防线;
     ``getattr`` 缺省 False = 无标记形态不误伤(与部署侧同款防御读)。
+
+    空板止损守卫(T-32;单一源 = sell_gate.empty_board_sell_blocked):
+    板空帧腾席卖出腿同弱劣拒帧 → 本函数返空,消费位走各自既有「无
+    候选」诚实停摆路径(m2_retry_exhausted/bench_full/{prefix}_no_fuel)。
+    state 缺读(None)= fail-closed 拒(资格判据禁缺读放行)。
     """
+    if empty_board_sell_blocked(getattr(state, 'deployed', None),
+                                counters=counters):
+        return []
     _deployed = list(getattr(state, 'deployed', None) or [])
     out = []
     for b in bench:
@@ -382,7 +391,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 # ===== 轮内卖出登记(泄金阶梯档 2 候选集新鲜度排除;ADR-0604 §3)=====
 # 场景 = 同轮「卖X→买回X→再卖X」净零自旋(模拟批#5 s108 实证):凑息
 # 卖出抬高金位过 g* 后,同轮压库臂把刚卖的件买回,金位与席面净零循环
-# 烧动作。载体与 kernel.cw_deploy_logic.SWAP_FRESH_BUYS_ATTR 同构键式
+# 烧动作。载体与 kernel ExecState.cw4_swap_fresh_buys 同构键式
 # {'phase': (plane, round_num), 'names': set[str]},位面/轮次推进自动
 # 失效;方向 = 排除向(过度排除上界 ≤1 轮,轮界自动过期,有界可判读)。
 # 写端 = 各卖出发射位(prep 凑息/M4/wanted 腿2 + shop 域 _note_sell
@@ -393,7 +402,7 @@ def stall_buys_prune_deployed(session, deployed_names) -> int:
 # 观测键(m6_round_sold_excluded)判读后裁决(ADR-0604 §3 覆盖面申报)。
 
 #: 轮内卖出登记载体属性(session 级字段名;MandateState 具名字段族外的
-#: 键式 dict 载体,形态与 SWAP_FRESH_BUYS_ATTR 同构)。
+#: 键式 dict 载体,形态与 kernel ExecState.cw4_swap_fresh_buys 同构)。
 ROUND_SOLD_ATTR: str = 'cw4_round_sold_names'
 
 

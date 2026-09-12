@@ -175,9 +175,66 @@ def p_bar_exact(tag: str, level: int) -> float:
     return 1.0 - total_none
 
 
+def slot_q_tag_by_cost(tag: str, level: int,
+                       held_counts: dict[str, int] | None = None,
+                       extra_copies_by_cost: dict[int, int] | None = None,
+                       ) -> dict[int, float]:
+    """标签合格集的**分费档**槽级命中概率 {cost: q_c}(P38 ③层含池衰减)。
+
+    q_c = p(L,c)·(n_c·a_c − j_c)/(v_c·a_c − j_c − t_c):n_c = 该费档带
+    标签的卡种数,a_c/v_c = 池参数(注册表);j_c = 已持有该标签卡副本数
+    (该费档),t_c = 已持有同费非标签卡副本数——分子分母同扣 j,与
+    ``slot_q`` 的 IMPL_ADV_R200 症2 勘误约定同式(分母 = 同费剩余总副本,
+    「拥有的 j 张已离开牌库」)。``held_counts`` = 逐角色名副本计数
+    (消费方从 bench∪deployed bot 跟踪库存构造);``extra_copies_by_cost``
+    = 已定将买、按费档直加 j_c 的同标签副本(货架件「买走即 held」口径,
+    无名不可入 held_counts 时走此通道,不参与 t_c)。聚合视图 =
+    ``slot_q_tag``;分档视图供消费方取主档(如被阻断动作估值),同源
+    禁第二实现。费档分子/分母 ≤ 0 → 该档不计(池耗尽域外)。
+    """
+    held = held_counts or {}
+    extra = extra_copies_by_cost or {}
+    member_names = {n for n, ch in CHARACTERS.items()
+                    if getattr(ch, 'cost', 0) and _char_has_tag(ch, tag)}
+    out: dict[int, float] = {}
+    for cost, p in sorted(REFRESH_PROB.get(level, {}).items()):
+        if p <= 0:
+            continue
+        a = POOL_COPIES_PER_CARD[cost]
+        v = DISTINCT_CARDS_PER_COST[cost]
+        members = [n for n in member_names
+                   if getattr(CHARACTERS[n], 'cost', 0) == cost]
+        n_c = len(members)
+        if n_c <= 0:
+            continue
+        member_set = set(members)
+        j_c = sum(held.get(n, 0) for n in members) \
+            + int(extra.get(cost, 0))
+        t_c = sum(cnt for name, cnt in held.items()
+                  if name not in member_set
+                  and getattr(CHARACTERS.get(name), 'cost', None) == cost)
+        denom = v * a - j_c - t_c
+        numer = n_c * a - j_c
+        if denom <= 0 or numer <= 0:
+            continue
+        out[cost] = p * numer / denom
+    return out
+
+
+def slot_q_tag(tag: str, level: int,
+               held_counts: dict[str, int] | None = None,
+               extra_copies_by_cost: dict[int, int] | None = None) -> float:
+    """标签合格集槽级命中概率 q = Σ_c q_c(P38 ③层;分项单一源 =
+    ``slot_q_tag_by_cost``)。单卡标签退化域(n_c=1)与 ``slot_q`` 同式
+    一致(测试锁)。全档不计 → 0.0(静态不可达,诚实出「锁劣」向)。"""
+    return sum(slot_q_tag_by_cost(tag, level, held_counts,
+                                  extra_copies_by_cost).values())
+
+
 __all__ = [
     'DISTINCT_CARDS_PER_COST', 'POOL_COPIES_PER_CARD',
     'card_search_window', 'expected_refreshes',
     'p_bar_exact', 'p_shop', 'refresh_prob', 'slot_q',
+    'slot_q_tag', 'slot_q_tag_by_cost',
     'tier_search_window',
 ]

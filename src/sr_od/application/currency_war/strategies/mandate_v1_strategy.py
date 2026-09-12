@@ -6,7 +6,9 @@
 (只注册「定义于本模块」的类)要求壳子类在此定义。manager 另在 discover
 收尾强制注册本壳(不依赖扫描发现)。
 
-本壳(app 桶)同时承载**步3 装配缝**(§6.4-R R191 裁决):obs→Snapshot
+本壳(app 桶)同时承载**步3 装配缝**(换核 R191 裁决:装配链注入收拢
+本壳,impl 桶保持纯函数面;裁决原文已删档,取回口径=ADR-0644):
+obs→Snapshot
 装配半部(``decision_assembly.snapshot_from_obs``)与
 ``impl.mandate_v1.assembly.assemble`` import 执行面/app 桶词汇,impl 桶禁依
 (adapter 分拆先例)——装配链在此覆写注入,impl 桶保持纯函数面
