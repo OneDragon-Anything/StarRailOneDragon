@@ -891,30 +891,25 @@ def get_node_goal(plane: int, round_num: int, *,
                   ('g' if gold is not None else '-') + ('l' if level is not None else '-')
                   + ('h' if hp is not None else '-'))
     if None not in (gold, level, hp):
-        from sr_od.application.currency_war.kernel.cw_vocab import CwWorkFrame as _GS
-        # 标量投影帧:用入参重建最小决策帧(供给核只读经济/板面字段;
-        # v1 栈调用面无现成 CwWorkFrame——旧 DP 接缝同样只收标量)。
+        # 标量投影容器:直接按入参构造最小决策容器(供给核只读经济/板面
+        # 字段;无 session、无现成容器)。字段契约单一源 =
+        # kernel cw_game_state.scalar_projection_state(对旧「惰性构造
+        # CwWorkFrame + 过渡桥装箱」投影的逐字段镜像,等价锁
+        # = sr-od-test test_cw_w5_sim_retirement 投影等价测试;旧载体随
+        # T-145 766 投影缝退役删除)。
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
-        # → h=9−r 常 >0,R* 窗口分量在投影帧**照常储蓄**(预算收权攻击审读 F6b 纠偏:
-        # 原注释「投影帧不储蓄」与实现不符;方向保守无害)。
-        _st = _GS(gold=gold, level=level, plane=plane, round_num=round_num,
-                  hp=hp)
-        _st.active_strategies = list(strategies or [])
+        # → h=9−r 常 >0,R* 窗口分量在投影容器**照常储蓄**(预算收权攻击
+        # 审读 F6b 纠偏:原注释「投影帧不储蓄」与实现不符;方向保守无害)。
         # ⚠️ 结构性边界(ADR-0598 申报,不扩修):下行两接缝核以
         # session=None 调用 → 息帽 resolved 链恒 DEFAULT(base cap),
-        # 持息帽卡局的本投影帧判据按 base 口径——接缝无 session 入参
+        # 持息帽卡局的本投影判据按 base 口径——接缝无 session 入参
         # (标量投影形态,消费面 = entry 兼容调用,量级有界),扩修
         # 随该调用面的 session 通道批。
-        # 接缝族已切容器签名(W6 波 4):标量投影帧经过渡桥装箱喂入。
-        # ⚠️ 结构性豁免(波 5b 桥退役消点修正登记,原「散文≠调用」误标
-        # 纠正:本处为活调用):本接缝无 session 入参(ADR-0598 标量投影
-        # 形态,消费面 = entry 兼容调用,量级有界),无容器可直读,桥装箱
-        # 是唯一装箱路径;退役挂该调用面的 session 通道批(或 T-7 随
-        # CwWorkFrame 本体退役),禁据此声明「桥已无调用」。
         from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_bridge as _bs_bridge,
+            scalar_projection_state as _proj,
         )
-        _st_bs = _bs_bridge(_st)
+        _st_bs = _proj(gold=gold, level=level, hp=hp, plane=plane,
+                       round_num=round_num, strategies=strategies)
         _rolls = min(6, refresh_ev_budget(_st_bs, None))
         if schedule_upgrade(_st_bs, None):
             return NodeGoal(min(10, level + 1), 'level', 'rush_level',

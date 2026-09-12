@@ -2915,9 +2915,10 @@ def feed_sim_truth(bs: GameState, st: CwWorkFrame, *,
       异常 log 留痕后返回,容器保持上一拍帧;
     - 桥(:func:`board_state_bridge`)退役:sim 域与 cw_economy 以外的
       波 5b 批辖域调用点(engine_p1 四区段)已全部切本口;残余活调用
-      = flow/cw_loop/ops 各域单点、prep_actions 根、cw_economy 标量投影
-      缝(无 session,结构性豁免;cw_evolution 已随 W8 整模块退役删除)。
-      零生产调用)——机器现实 = test_cw_w5_sim_retirement 登记集,禁据
+      = flow/cw_loop/ops 各域单点、prep_actions 根(cw_evolution 已随
+      W8 整模块退役删除消点;cw_economy 标量投影缝已随 T-145 消点——
+      改直构造 :func:`scalar_projection_state`,桥引用随缝退役)——
+      机器现实 = test_cw_w5_sim_retirement 登记集,禁据
       本 docstring 误判消点进度。
     """
     try:
@@ -3193,6 +3194,72 @@ def board_state_bridge(st: object) -> GameState:
         if getattr(st, 'selected_difficulty', None):
             bs.observe(bs.selected_difficulty, str(st.selected_difficulty),
                        evidence=_ev, sig=_sig)
+    finally:
+        _STATE_JOURNAL_SINK = _saved_sink
+    return bs
+
+
+def scalar_projection_state(gold: int, level: int, hp: int, plane: int,
+                            round_num: int,
+                            strategies: list[str] | None = None) -> GameState:
+    """无 session 标量投影容器(一次性视图;766 标量投影缝的退役替代装配)。
+
+    服务「只有标量、无 session/无现成容器」的调用面。现役唯一消费 =
+    ``cw_economy.get_node_goal`` 全参支。本函数只退役旧载体(调用面惰性
+    构造 CwWorkFrame + :func:`board_state_bridge` 装箱),语义契约原样:
+
+    - **ADR-0598 结构性豁免不扩修**:投影判据链以 session=None 求值 →
+      息帽 resolved 链恒 base 口径、节点日程走缺表回退先验——契约不变,
+      扩修挂该调用面的 session 通道批;
+    - **字段契约 = 桥对 ``CwWorkFrame(gold=…, level=…, hp=…, plane=…,
+      round_num=…, active_strategies=…)`` 投影输出的逐字段镜像**(等价锁 =
+      sr-od-test test_cw_w5_sim_retirement 投影等价测试,值/来源/evidence/
+      工程结构逐项对拍):node = NodeKey(plane, round_num, kind='')(帧未
+      识别的忠实镜像,禁写词表值冒充真值);gold/level/hp 观察直写;
+      back_layout = 机制基线 6(旧帧 back_max 缺省);bench = 全空视图
+      (旧帧 pad 缺省);shop/encounter/supply = 离屏;shop_refresh_cost =
+      刷新基价(旧帧字段缺省,单一源 = cw_economy.REFRESH_COST_BASE);
+      active_strategies 非空才写;xp/streak/deploy_cap/board/plane_bosses/
+      enemy_affixes/active_env/equips/level_up_cost/selected_difficulty =
+      旧帧缺省值形态,镜像桥行为不写(保持 None);
+    - 一次性视图禁向状态流水落行(行 = 改了什么的局内账,投影非局内
+      事实;与桥同款:单线程写路径,沉挂全局 sink 后还原);
+    - actor 复用 sim 合成签名登记名(已在 REGISTERED_ACTORS 在册,投影
+      行为语义与合成口同族,零新登记面)。
+    """
+    bs = GameState(schema_version=BS_SCHEMA_VERSION)
+    global _STATE_JOURNAL_SINK
+    _saved_sink = _STATE_JOURNAL_SINK
+    _STATE_JOURNAL_SINK = None
+    try:
+        _ev = SIM_SYNTHESIZED
+        _sig = ChannelSig(family='obs', actor='synthesize_from_game_state',
+                          mode='synthesized')
+        bs.observe(bs.node,
+                   NodeKey(plane=int(plane), round_num=int(round_num),
+                           kind=''),
+                   evidence=_ev, sig=_sig)
+        bs.observe(bs.gold, int(gold), evidence=_ev, sig=_sig)
+        bs.observe(bs.level, int(level), evidence=_ev, sig=_sig)
+        bs.observe(bs.hp, int(hp), evidence=_ev, sig=_sig)
+        bs.observe(bs.back_layout, 6, evidence=_ev, sig=_sig)
+        bs.observe(bs.bench,
+                   BenchView(slots=[BenchSlot(kind='empty')]
+                             * BENCH_CAPACITY_DEFAULT,
+                             capacity=BENCH_CAPACITY_DEFAULT),
+                   evidence=_ev, sig=_sig)
+        bs.leave_screen(bs.shop, sig=_sig)
+        bs.leave_screen(bs.encounter, sig=_sig)
+        bs.leave_screen(bs.supply, sig=_sig)
+        if strategies:
+            bs.observe(bs.active_strategies, list(strategies),
+                       evidence=_ev, sig=_sig)
+        from sr_od.application.currency_war.kernel.cw_economy import (
+            REFRESH_COST_BASE,
+        )
+        bs.observe(bs.shop_refresh_cost, int(REFRESH_COST_BASE),
+                   evidence=_ev, sig=_sig)
+        bs.mark_frame_obs('full')
     finally:
         _STATE_JOURNAL_SINK = _saved_sink
     return bs
