@@ -1,4 +1,4 @@
-"""CW 哨兵清理与核岗工具(查旧 → 杀净 → 打印标准武装命令 → 核岗)。
+"""CW 哨兵清理与核岗工具(查旧/杀净/打印标准武装命令/核岗;杀净须显式 --kill)。
 
 背景:runtime-ops.md「哨兵重武三步」节的三次双实例事故反推——「重武」不是一条命令,
 是三步动作序列,局间交接时最容易跳步。本工具把清理与核岗固化,给编排者/值班提醒调用
@@ -9,17 +9,22 @@
 任务信道**(退出码=警报,可送达编排者);本工具只管:
   1. 查旧:按命令行匹配 cw_sentinel|cw_early_stop|cw_runs_gap|cw_asset_sentinel
      的 python 进程并列出;
-  2. 杀净(树终杀+杀后复扫断言):匹配进程与其 psutil 树后代一并 kill(带
-      2 秒宽限确认);杀后重扫断言零残留——复扫非空自动再杀(有界重试),
-      仍非空 exit 2,「杀净」从尽力而为变成可验证出口;
+  2. 杀净(--kill 显式才触发;树终杀+杀后复扫断言):匹配进程与其 psutil
+      树后代一并 kill(带 2 秒宽限确认);杀后重扫断言零残留——复扫非空自动
+      再杀(有界重试),仍非空 exit 2,「杀净」从尽力而为变成可验证出口;
   3. 打印标准武装命令(--print-commands,默认开):按参数列该由编排者以后台任务起的
      命令(默认 sentinel+gap 两件;early_stop 有「首条遥测落后再武装」、asset 是
      「长驻型不随局」纪律,均须显式 --early / --asset 才列入);
   4. 核岗(--verify N):按在岗脚本件数核验,并把在岗状态(脚本名+pid+核对时刻)写入
      rewatch.status(不扫进程表也能看什么在岗);不等 → 非零退出码。
 
+安全默认:无参数 = 只查旧(打印在岗清单+武装命令,零杀)。无参数调用的高频
+意图是核对在岗状态,不是清理——查旧无害、杀是破坏性动作,把杀放在显式位
+(--kill),防「想核岗手滑无参数」把在岗哨兵整链杀掉。
+
 用法(PowerShell,项目根):
-  uv run python tools/cw/rewatch.py                    # 查旧+杀净+打印武装命令
+  uv run python tools/cw/rewatch.py                    # 只查旧+打印武装命令(默认零杀)
+  uv run python tools/cw/rewatch.py --kill             # 查旧+杀净+打印武装命令
   uv run python tools/cw/rewatch.py --verify 2         # 编排者起完后核岗(期望 2 件)
   uv run python tools/cw/rewatch.py --print-commands --early  # 三件全列(含 early)
   uv run python tools/cw/rewatch.py --selftest         # 干跑:只查旧+列计划,不杀
@@ -291,7 +296,14 @@ def verify(expected: int) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='CW 哨兵清理与核岗工具(查旧→杀净→打印武装命令→核岗;不自起)')
+    parser = argparse.ArgumentParser(
+        description='CW 哨兵清理与核岗工具(查旧/核岗/打印武装命令;杀净须显式 --kill;不自起)',
+        epilog='示例:\n'
+               '  uv run python tools/cw/rewatch.py             # 只查旧+打印武装命令(默认零杀)\n'
+               '  uv run python tools/cw/rewatch.py --kill      # 查旧+杀净+打印武装命令\n'
+               '  uv run python tools/cw/rewatch.py --verify 2  # 核岗(期望 2 件在岗)\n'
+               '  uv run python tools/cw/rewatch.py --selftest  # 干跑:只查旧+列计划,不杀',
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--sentinel', action='store_true', help='武装命令列事件哨兵 cw_sentinel.py')
     parser.add_argument('--gap', action='store_true', help='武装命令列断流哨兵 cw_runs_gap.py')
     parser.add_argument('--early', action='store_true',
@@ -306,6 +318,9 @@ def main() -> None:
     parser.add_argument('--verify', type=int, metavar='N',
                         help='核岗模式:期望 N 件在岗(编排者起完后调用);不杀不起只核验+写状态文件')
     parser.add_argument('--selftest', action='store_true', help='干跑:只查旧+列计划,不杀不起')
+    parser.add_argument('--kill', action='store_true',
+                        help='杀净模式:杀掉查旧命中的哨兵进程(树终杀+杀后复扫断言)。'
+                             '缺省只查旧零杀——防核岗场景误杀在岗哨兵')
     args = parser.parse_args()
 
     # 默认两件(sentinel+gap);显式传了任一 flag 则按所传组合(early/asset 只能显式加)
@@ -323,6 +338,14 @@ def main() -> None:
         plan = ', '.join(wanted)
         print(f'[干跑] 计划武装组合: {plan}({"含 early,注意首条遥测纪律" if "early" in wanted else "early 未列"})')
         print('[干跑] --selftest 模式:不杀不起,到此为止')
+        return
+
+    if not args.kill:
+        # 安全默认:只查旧零杀——无参数调用的高频意图是核对在岗状态,不是清理;
+        # 杀是破坏性动作,必须显式 --kill。模式行让调用方明确确认「没有杀」。
+        print('[模式] 只查旧(零杀);杀净请显式加 --kill')
+        if args.print_commands:
+            print_commands(wanted)
         return
 
     kill_all(procs)
