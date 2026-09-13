@@ -3,7 +3,7 @@
 > 状态:**P36-a 已证(结构不变式,零自由参数;现状满足性=实证挂账,证明与实证分开陈述);P36-b 方向已证 + p_hit(d) 两源标定、q_conv 缺口如实(数值阶梯挂账,解锁条件=30 局开臂局);P36-c 仅命题化(机制参数未标定,不进判据)。**
 > 命题来源:w945 策略设计批 P-新1 草案(病灶=两局复盘,局号见「数据源声明」);定号=P36(索引行已登记)。
 > 标定数据:W946 离线标定批(纯账本读取,sim n=300 + 实机 31 局;全部判读数字已转录进本篇,原始数据按「数据源声明」的持久索引可复跑;临时批目录不复引)。
-> 实施状态:不变式**已无条件落地**(初版开关 `crisis_refresh_invariant_enabled` 经用户升格裁决整删;判据单一址=`posture_release.crisis_invariant_lane`);A/B 确认=预注册 `docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md[已删·git 84370361 可溯]`(M1 哑火帧占比 off 16.21%→on 0.71%);决策单一源=。
+> 实施状态:不变式**已无条件落地**(初版开关 `crisis_refresh_invariant_enabled` 经用户升格裁决整删;判据单一址=`posture_release.crisis_invariant_lane`);A/B 确认=预注册 `docs/develop/currency_war/prereg/w951_p36a_invariant_prereg.md[已删·git 84370361 可溯]`(M1 哑火帧占比 off 16.21%→on 0.71%)。
 > 组件引用:P23.4(死亡域金零值近似 + 攥金优势引理)、P23.1(统一 EV 门)、P16(超几何口径)、P21(濒死升级负判,反向护栏)、P34-b(q 先验机制同构)、(危机臂预算式)、(息档截断门)。
 
 ## 符号与建模假设

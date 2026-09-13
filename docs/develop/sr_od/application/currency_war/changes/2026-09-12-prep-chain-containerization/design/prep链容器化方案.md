@@ -405,7 +405,7 @@ apply_prep_action_logic 登记行、session 正本槽注、《商店黑板容器
 | P5 | prep 投影等价锁+登记面 | `apply_prep_action_logic` vs 旧投影 state 腿:SellBench 同输入逐域等价(gold 回金公式/摘槽);域集封闭断言(集外动作零写)+ None 跳写清单与登记面申报(形态对齐《商店黑板容器化方案》§4-M5) |
 | P6 | prep 域容器单源锁 | 段 2 后 prep 决策链(run_mandate/proof/criteria 族)`GameState` 形参与帧字段读 grep=0(predicates 容器支外的帧兼容支删除断言);对账族读容器 payload 断言 |
 | P7 | last_state 决策依赖清零锁 | 段 1 起持续绿:prep 决策链文件集(entry.py)对 `last_state` 直读 grep=0(写点与执行侧读者不辖,§2.5 边界表) |
-| P8 | 帧代次标注契约形状锁重推 | 既有 L6 形状锁按写点清单变更重推:prep 写点增 `apply_prep_action_logic` 投影 none 写/finalize view 写保留;shop 写点随段 3 收敛;标注槽保留断言() |
+| P8 | 帧代次标注契约形状锁重推 | 既有 L6 形状锁按写点清单变更重推:prep 写点增 `apply_prep_action_logic` 投影 none 写/finalize view 写保留;shop 写点随段 3 收敛;标注槽保留断言 |
 | M2 | shop_state_frame 零引用锁 | 段 3 后全仓(src+测试仓)`shop_state_frame` grep=0(《商店黑板容器化方案》§4-M2 移缴承接) |
 
 验证三元组:测试锁族(上表)+ 落地审(独立干净上下文 reviewer 逐 hunk)+ 实机窗口

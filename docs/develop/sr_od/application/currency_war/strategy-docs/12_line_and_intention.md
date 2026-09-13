@@ -78,7 +78,7 @@ P16 换线判据（E_rounds 超几何精确口径 + θ 滞回 + D_min 驻留，�
 
 ## 5. 无目标期资金配置（三臂判据；as-built 反向自 kernel/cw_intention「P86 无目标期三臂判据」节）
 
-> 判据本体与证明 = [P86](../proofs/p86-no-target-period-fund-allocation.md)（正本 §2/§4/§5）+ [P86 证明批](../proofs/p86-proof-batch.md)（定理 A/B1-B5/C/M、必答六件终裁、九锁增量）；本节只记接线语义。决策 why = 。
+> 判据本体与证明 = [P86](../proofs/p86-no-target-period-fund-allocation.md)（正本 §2/§4/§5）+ [P86 证明批](../proofs/p86-proof-batch.md)（定理 A/B1-B5/C/M、必答六件终裁、九锁增量）；本节只记接线语义。
 
 - **帧域与辖域**：无目标期帧 = 商店决策帧 ∧ `target_comp=None` ∧ 意向供给在场 ∧ 未降格终局；活跃域 = 位面 2（位面 3 入口即强锁或降格）。p1 两带（p1_gap/p1_lock_band）显式出辖（证明批必答⑥裁决①），weak/demoted_endgame 分带维持跨线骨架（`CROSS_LINE_SKELETON`）。
 - **甲臂（方向化囤货）**：候选机器强锁门逐字（`line_completion_feasibility` + `revoke_miss_tolerance_eps` + plane 条件 + 机器自身选择序）；判活帧囤货方向 = 首方向采购集，经 `hoard_target_set`/`k_empty_window_fallback` 向买面/卖免/刷新账三下游供血。已知缺口 = 缓锁豁免角漏授（core 可见 ∧ G≤ε，保守向，机器锁后 M2 自纠；`shop_no_target_arm_a_corner_defer` 分键显影）。
