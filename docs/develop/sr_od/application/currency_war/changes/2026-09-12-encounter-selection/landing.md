@@ -40,7 +40,7 @@
 **完成判据**：
 - W1-W6、W7、W8-W13 全绿（W14 = E-3 离线对账锁，见 3.3）；**W4 暗装锚全绿（行为零变化，含 D 真值缺失/窗口无 D_win 行分支）**
 - 死分键盘点清单交付（逐分键列消费面）；`test_cw_encounter_selection.py` 含 EV 核纯函数锁全绿（EV 核纯函数禁删——禁删约束经导入级锁承载，mandate_v1/encounter.py 保留）
-- 遭遇代表锁按新语义重推后全绿（锁红 ≠ 改动错，先对照 details §1-§3/§5）+ 既有 encounter/mandate 锁回归全绿——**回归锁载体承接申报：旧三载体（test_cw_mandate_encounter_ev / test_cw_mandate_decide / test_cw_battle_wait_op）经用户令测试清理批（1cc1958b）整体删除，回归锁责任由本阶段新建套件 `test_cw_encounter_selection.py` 扩容承接（strategy-work §5 最小锁面）；cw_screen_battle_wait.py:47「测试在册」注释失真随 E-2 注释修订一并修正**
+- 遭遇代表锁（新建套件内重立）按新语义重推后全绿（锁红 ≠ 改动错，先对照 details §1-§3/§5）+ 既有 encounter/mandate 锁回归全绿——**回归锁载体承接申报：用户令测试清理批（1cc1958b）删除整个 CW 测试域（test/sr_od/app/currency_war/ 目录级约 200 文件，含旧三载体 test_cw_mandate_encounter_ev / test_cw_mandate_decide / test_cw_battle_wait_op），本迭代文件面各文件既有回归面随之清零；回归锁责任由本阶段新建套件 `test_cw_encounter_selection.py` 扩容承接（strategy-work「锁的存在性纪律」）；E-2 文件面内「测试在册」失真注释约 10 处（battle_wait:47-48 实引两文件、cw_screen_encounter.py:39、cw_game_state.py 8 处）随 E-2 注释修订全量修正，全域约 70 处另批挂账**
 - §12 通用工程门（引用，不复述）
 
 **验收凭据形式**：测试名清单 + 回归文件 + 死分键盘点清单 + ruff check
@@ -82,6 +82,6 @@
 
 - `strategy-docs/13_pick_family.md` §判据表 E3 行（双轨 → 简单判据正稿 + EV 核搁置指针）← 3.2
 - `strategy-docs/08_events.md` E3 表行（判据轴换向：输出 vs 需求线；标定批指针）← 3.3
-- `docs/develop/sr_od/application/currency_war/strategy-docs/04_survival_budget.md` §7 hp 进决策授权对账表：登记裁定 6 行（授权日期 2026-09-12/形态 = 结算屏现成读数含 B/P 进遭遇决策/v1 不消费辖域/敌方通道退路）← E-4
+- `docs/develop/sr_od/application/currency_war/strategy-docs/04_survival_budget.md` §7 hp 进决策授权对账表：登记裁定 6 行（授权日期 2026-09-12/形态 = 结算屏现成读数含 B/P 进遭遇决策/v1 不消费辖域/敌方通道退路）← E-2（登记提前——观测环持久化形态 E-2 即生效，登记不得滞后于形态生效〔04 §7 表头「进入前须登记」〕）
 - `strategies/impl/mandate_v1/encounter.py` 搁置声明与代码批内一致性的语义面核对 ← 3.2
 - 0536 退役语义承接核对（E-2 改投后「遭遇判据语义承接 = 13_pick_family E3 行」仍成立）+ proofs/（p64、T-175:22-23 等）引用处置核对——存档性引用加注、现态引用改指代码本体/正本 ← 末阶段
