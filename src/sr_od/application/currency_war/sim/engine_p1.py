@@ -606,21 +606,33 @@ def _m1p_plan_fill_deploy(st: CwSimFrame, plan: SwapPlan,
     try:
         # 波 5b 桥退役消点:assemble 已切容器签名,sim 工作帧真值经喂入口
         # 直写容器后读容器(原过渡桥装箱一次性视图退役)。
+        # T-185 批A:装配入参(deployed/bench/cap)同步切容器读口
+        # (上方喂入口已保证容器与本帧同拍;纯读换源零行为面)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            bench_slots_of as _bs_red_bench,
+        )
         from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_red_of,
         )
         from sr_od.application.currency_war.kernel.cw_game_state import (
+            deployed_slots_of as _bs_red_dep,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
             feed_sim_truth as _bs_red_feed,
         )
-        _bs_red_feed(_bs_red_of(sess), st,
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            max_units_of as _bs_red_cap,
+        )
+        _bs_red = _bs_red_of(sess)
+        _bs_red_feed(_bs_red, st,
                      at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
                               f'-r{int(getattr(st, "round_num", 1) or 1)}'
                               f'-r1b')
         _ctx2 = assemble_swap_plan_inputs(
-            sess, state=_bs_red_of(sess),
-            deployed=list(iter_occupied_deployed(st.deployed)),
-            bench=[b for b in st.bench if b is not None],
-            cap=st.max_units(),
+            sess, state=_bs_red,
+            deployed=[d for d in _bs_red_dep(_bs_red) if d is not None],
+            bench=[b for b in _bs_red_bench(_bs_red) if b is not None],
+            cap=_bs_red_cap(_bs_red),
             transition_domain=(ctx.transition_domain
                                if ctx is not None else None))
     except Exception:   # noqa: BLE001  重 derive 缺供给 = 退计划视图
@@ -704,23 +716,25 @@ def _m1p_plan_and_record(st: CwSimFrame, sess) \
         select_swap_plan,
         swap_plan_up_names,
     )
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        iter_occupied_deployed,
-    )
     from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_slots_of,
         board_state_of,
+        deployed_slots_of,
         feed_sim_truth,
+        max_units_of,
     )
     # 波 5 喂入反转:计划谓词装配消费前直写容器、喂容器直读
     # (旧桥装箱一次性视图随桥退役拆除;同函数同装配契约不变)。
-    feed_sim_truth(board_state_of(sess), st,
+    # T-185 批A:装配入参切容器读口(喂入口已保证容器与本帧同拍)。
+    _bs_plan = board_state_of(sess)
+    feed_sim_truth(_bs_plan, st,
                    at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
                             f'-r{int(getattr(st, "round_num", 1) or 1)}-m1p')
     ctx = assemble_swap_plan_inputs(
-        sess, state=board_state_of(sess),
-        deployed=list(iter_occupied_deployed(st.deployed)),
-        bench=[b for b in st.bench if b is not None],
-        cap=st.max_units())
+        sess, state=_bs_plan,
+        deployed=[d for d in deployed_slots_of(_bs_plan) if d is not None],
+        bench=[b for b in bench_slots_of(_bs_plan) if b is not None],
+        cap=max_units_of(_bs_plan))
     reasons: dict[str, str] = {}
     plan = select_swap_plan(ctx, reasons_out=reasons)
     record = {
@@ -1369,8 +1383,23 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _round_bench_full = False
             # - board_next_tier:各阵营下档阈值(观测披露面;兑现链开关族
             #   已随旧方案清退批删除,键保留作判读面)。
+            # T-185 批A(喂点补齐,详设 sim-state-switch §4「读前必有喂」):
+            # 决策入口快照切容器直读,此处补喂保证容器与工作帧同拍
+            # (feed 零 rng 消耗零漂移;记录层 best-effort 同既有喂点)。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of as _bs_entry_of,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                deployed_slots_of as _bs_entry_dep,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                feed_sim_truth as _bs_entry_feed,
+            )
+            _bs_entry = _bs_entry_of(sess)
+            _bs_entry_feed(_bs_entry, st,
+                           at_round=f'p{_seg_plane}-r{rn}-entry')
             _round_board_next_tier = _board_next_tier_of(
-                _board_factions_of(st.deployed))
+                _board_factions_of(_bs_entry_dep(_bs_entry)))
             # - ADR-0474 分配器遥测键(消费 = 锁#11 D2 接管可观测性):
             #   alloc_frame = 本轮最后一段 decide_prep 的分配器帧位
             #   (strategy_state_of(session).v3_alloc_frame 每段覆写,末值 = 轮终帧披露;
@@ -1499,6 +1528,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
                     feed_sim_truth,
+                    gold_of,
                 )
                 from sr_od.application.currency_war.kernel.cw_launch_admission import (
                     LAUNCH_QUALITY_DEFER_FRAMES_KEY,
@@ -1510,10 +1540,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 )
                 # 波 5 喂入反转:开战放行判定消费前直写容器、喂容器直读
                 # (旧桥装箱一次性视图随桥退役拆除;消费时点不变)。
-                feed_sim_truth(board_state_of(sess), st,
+                _bs_launch = board_state_of(sess)
+                feed_sim_truth(_bs_launch, st,
                                at_round=f'p{_seg_plane}-r{rn}-launch')
                 _core = readiness_launch_decision(
-                    board_state_of(sess), _tc_launch,
+                    _bs_launch, _tc_launch,
                     line_members=line_members)
                 # 质量闸观测分键(ADR-0570 待标定①观测 sink:推迟帧/评估
                 # 异常帧;best-effort,容器缺席静默跳过,与
@@ -1544,7 +1575,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 该帧现读金(逐帧分布);②session.cw4_counters 增量
                     # 键 launch_frame_idle_gold(累计金,经 obs.cw4_counters
                     # 轮差分入账本;容器缺席静默跳过 = 缺省零漂移)。
-                    _idle_gold = int(getattr(st, 'gold', 0) or 0)
+                    # T-185 批A:金读数切容器读口(本块喂点后,同拍)。
+                    _idle_gold = gold_of(_bs_launch)
                     _cts_l = getattr(strategy_state_of(sess), 'cw4_counters', None)
                     if _cts_l is not None:
                         _cts_l['launch_frame_idle_gold'] = \
@@ -1593,7 +1625,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.kernel.cw_economy import (
                     saturation_line as _sat_a,
                 )
-                _g0_arb = int(getattr(st, 'gold', 0) or 0)
+
+                # T-185 批A:金读数切容器读口(发射块喂点后,同拍)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    board_state_of as _bs_arb_of,
+                )
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    gold_of as _gold_of_arb,
+                )
+                _g0_arb = _gold_of_arb(_bs_arb_of(sess))
                 _cts_a = getattr(strategy_state_of(sess), 'cw4_counters', None)
                 _launch_arb = {
                     'gold_before': _g0_arb,
@@ -1686,7 +1726,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 合成自愈。
                 _round_bench_full = _round_bench_full or bool(
                     _bs_bench_is_full(_bs_of(sess)))
-                if not st.shop:
+                # T-185 批A:空牌面判据切容器 payload 读(本段入口喂点后
+                # 同拍;合成口把帧空表归一为离屏 None,§2.1 空表=None 同判)。
+                if _bs_of(sess).shop.value is None:
                     # 空牌面真值 = 离屏(sim 合成口同判,§2.1 空表=None 同
                     # 判申报)——旧黑板路径决策空发射等价(无候选面),段到止。
                     break
@@ -1723,6 +1765,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _obs_locked_b = max(_obs_locked_b, len(_obs_bm))
                         if len(_obs_bm) > BENCH_CAPACITY + DEPLOYED_CAPACITY:
                             _obs_overcap_frames += 1
+                    # 席位/牌面/刷新费/金读数保持工作帧直读(T-185 批A 实测
+                    # 勘误):本块位次在 decide_shop_screen 之后,mandate
+                    # 驱动器已向容器做期望态投影直写(logic 源),容器此处
+                    # ≠帧真值——切容器读口会让观测面读到投影值(实测 r6
+                    # refresh_avail_frames/r9 must_spend 域漂移),故两点
+                    # 留帧读,容器切换归批B随引擎写面反转一并定谳。
                     _obs_owned = {(c.char_id or '')
                                   for c in list(st.bench or [])
                                   + list(st.deployed or [])
@@ -1747,6 +1795,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.kernel.cw_economy import (
                     in_must_spend_zone as _msz_pred,
                 )
+                # 金读数保持工作帧直读(T-185 批A 实测勘误,理由同上块:
+                # decide 后容器已被驱动器投影直写,≠帧真值)。
                 if _msz_pred(st.gold, sess):
                     _ms_zone += 1
                     # 层命中按动作类 isinstance 判定:
@@ -1855,8 +1905,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 标「本轮已写」:旧核每决策段自写、键戳恒盖 →
                     # 守卫不触发(旧核路径零漂移);缺写且策略带该钩子时
                     # 在此补写(新核路径,判据同源无第二实现)。
+                    # T-185 批A:轮键读数切容器读口(本段入口喂点后同拍;
+                    # 值 = (plane, round) 与帧键逐位同)。
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        plane_of as _bs_plane_mk,
+                    )
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        round_num_of as _bs_rn_mk,
+                    )
                     if getattr(strategy_state_of(sess), 'v3_mirror_key', None) \
-                            != (st.plane, st.round_num):
+                            != (_bs_plane_mk(_bs_of(sess)),
+                                _bs_rn_mk(_bs_of(sess))):
                         _wsm = getattr(strat, 'write_shop_mirrors', None)
                         if callable(_wsm):
                             _wsm(st, sess)
