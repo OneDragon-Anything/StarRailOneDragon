@@ -46,6 +46,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     get_node_ledger,
     ledger_node_type,
 )
+from sr_od.application.currency_war.kernel.cw_game_state import ShopSlot
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_BOARD,
     A_GOLD,
@@ -1755,132 +1756,173 @@ def resolve_cost_star(badge_cost: int | None, roster_cost: int) -> tuple[int, in
     return roster_cost, 1, COST_SOURCE_ROSTER_FALLBACK
 
 
-def read_shop_cards(ctx: SrContext, screen: MatLike) -> list[ShopCard]:
-    """SIFT 商店 5 张牌肖像 → list[ShopCard](x + faction + name + cost)。
+def read_shop_cards(ctx: SrContext,
+                    screen: MatLike) -> list[ShopSlot] | None:
+    """SIFT 商店牌行 → 定长 5 槽三态数组(ShopSlot;用户三态裁定 2026-09-13)。
 
-    每张牌:裁 screen_info ``商店牌-N``(**肖像区**,D-55 经 VLM 定位改自文字带)→ ``identify_character``
-    SIFT 对 ``currency_war/portrait_plaza`` 官方立绘库 → ``resolve_char_name`` 规范名;faction/cost 从 roster 派生。
-    未识别(低内点/歧义/不在 roster)→ name='' faction='?' cost=0(仍占位保 5 张,len 不变)。
+    返回 None = 店未开(收起锚 miss;调用方漏斗不写 payload)——旧紧缩
+    ``[]`` 混载「店未开/买空/失读」三事实的塌缩在此根治:买光 =
+    ``[empty×5]`` 是合法真值;unknown = 应为内容但识别失败(缺陷台账
+    留证,决策一律跳过)。
 
-    **D-55 由 OCR 改 SIFT**:OCR 牌名对开拓者(玩家自定义名,如 "Momojie")等读不到/匹配错;SIFT 看
-    肖像更稳。⚠️ 模板目录名须用**规范名**「开拓者·记忆/欢愉」非玩家 ID(2026-08-15 修:旧目录 Momojie/
-    → resolve_char_name 落 legacy 路径返 None = 「开拓者 roster 缺」根因;玩家 ID 随账号变,规范名不变);
-    肖像更稳(实测 shop_open 5/5 内点 33-68,VLM 定位肖像区)。faction 由 OCR 牌标签 → roster factions[0]
-    (SIFT 读不了文字标签;**board OCR 仍是阵营计数权威**)。**faction 语义(2026-08-17)**:
-    ``'?'``=未知(name 空/不在注册表);``''``=已知无阵营(白厄「救世主」类)。立绘库经
-    ``ensure_portrait_templates`` 按需加载
-    (buy 在 deploy 前,CwScreenPrep 备战单轮: buy→deploy,故不依赖 deploy 才加载的缓存)。
+    逐槽判定表(详设 shop-slot-model §2):rect 缺失 = unknown+缺陷
+    (建档漂移,旧 continue 静默跳过是病灶根);亮度均值 <50 = empty
+    (确定性占位带,实测真卡 min 67.4 vs 空槽 19.5);50-60 灰带 =
+    unknown+缺陷(疑暗卡不猜,原 [cw!] 日志升级 defect);≥60 进 SIFT:
+    命中 = content(识别链原样:x=faction/name/cost/badge 费用星级/
+    merge_preview),miss = unknown+读空缺陷(置信度面)。merge_preview
+    仅 content 槽计算(空/未知槽省一次顶部带 mask+TM)。
+
+    终判稳定门(对抗窄攻 F2,防过渡帧误判):全 empty 或含 unknown 的
+    判定成立前,0.8s 后新截屏重读一次——两帧逐槽一致才接受;不一致 =
+    动画/淡入过渡帧,以第二次为准并留证。重观察上限一次,不构成等待环。
+
+    D-55 由 OCR 改 SIFT:OCR 牌名对开拓者(玩家自定义名)读不到/匹配错;
+    模板目录名须用规范名「开拓者·记忆/欢愉」(2026-08-15 修)。faction
+    语义(2026-08-17):``'?'``=未知(name 空/不在注册表);``''``=已知
+    无阵营(白厄类)。立绘库经 ``ensure_portrait_templates`` 按需加载。
     """
     templates = ensure_portrait_templates(ctx)
-    # 商店开态前置门(M37/M38 误停机根因,2026-08-16):read_shop_cards 无脑裁牌区 rect 做 SIFT,
-    # 商店收起/未展开帧(牌区=节点进度条+功能按钮)上全 miss → 采集钩子把「非商店帧的空读」
-    # 误判「真有未识别卡」→ flag → shop.py 停机(实测:存证截图 analyze_screen 命中备战屏非
-    # 商店开态,VLM 客观描述证实 y70-260 无卡)。门:商店开态锚「按钮-收起」(text area,框架
-    # find_area_in_screen OCR+LCS)不命中 → 返空列表(「没有牌」≠「未识别」,不写 flag)。
+    # 商店开态前置门(M37/M38 误停机根因,2026-08-16):收起锚不命中 =
+    # 店未开,返 None(「不在商店」≠「没牌」≠「未识别」;r7 review P0-A
+    # 修过恒真比较,枚举等值比较保留)。
     _si = ctx.screen_loader.get_screen(SHOP_SCREEN_NAME)
     _collapse_area = next((a for a in _si.area_list if a.area_name == '按钮-收起'), None) if _si else None
     if _collapse_area is None:
-        # r9 review:锚缺失时门被静默跳过(fail-open)→ M37/M38 误停机回归无告警(改名/删 area)。
+        # 锚缺失 fail-open 告警(改名/删 area 的回归可见性,r9 review)。
         from one_dragon.utils import log_utils
         log_utils.log.warning('[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
     if _collapse_area is not None:
         from one_dragon.base.screen.screen_utils import find_area_in_screen
-        # ⚠️ r7 review P0-A:旧 `is not True` 恒真(FindAreaResultEnum.TRUE.value 是 int 1,
-        # `1 is not True` 恒成立)→ 门无条件返空 → read_shop_cards 自 e7bbd711(08-16 11:49)
-        # 起**全局恒空**(decisions 实证:此前 1031/1031 行 shop 非空,之后 234/234 shop=[]
-        # 且 0 BuyCard)——M46 起所有「一张不买」的真根因。改枚举等值比较。
         if find_area_in_screen(ctx, screen, _collapse_area).value != 1:
-            return []
-    cards: list[ShopCard] = []
-    for i in range(1, 6):
-        rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}', SHOP_SCREEN_NAME)
-        if rect is None:
-            continue
-        crop = screen[rect.y1:rect.y2, rect.x1:rect.x2]
-        # r13:空槽检测(六边形占位,SIFT inliers≈3 vs 真卡 30-120)——低等级商店后槽未解锁
-        # 是常态,空槽不是「未识别卡」(c1888c7d 帧实证:牌4/5 空槽 inliers=3 触发假 unknown)。
-        # r15 review:跳过不可静默(假空槽=买不到该卡且不可见)——55-75 灰带 [cw!] 留证
-        # (实测真卡 min 67.4 vs 空槽 19.5,余量 11%;采到暗卡击穿即闭环降阈值)。
-        _mean = float(crop.mean())
-        if _mean < 60:
-            if _mean >= 50:   # 灰带:可能是被特效/裁切偏移压暗的真卡
-                from one_dragon.utils import log_utils
-                log_utils.log.info(f'[cw!][read_shop_cards] 牌{i} 均值{_mean:.1f}(灰带 50-60,'
-                              f'疑暗卡被误判空槽,采到即闭环降阈值)')
-            continue
-        avatar_id, _inliers = (identify_character(crop, templates)
-                               if templates is not None else (None, 0))
-        # `w512_obs_surfaces/`(观测自检设计 §2.10/§5-B6 识别置信度遥测):非空槽(亮度≥60,
-        # 已过空槽门)SIFT 仍 miss → 「读空」事件带内点数落台账 confidence 面。
-        # 零即时告警(纯留证,恒 L2),离线统计「哪个 reader 在哪个画面退化」
-        # ——读空率环比翻倍是系统性识别退化的最早信号。写点锚定在既有 miss
-        # 事件上(非轮询);写失败不阻断牌面读取。
-        if avatar_id is None and templates is not None:
-            try:
-                # 分包期 4:落账经 kernel/cw_telemetry_exit 出口钩子位(零直依 telemetry)
-                from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-                    record_defect,
-                )
-                record_defect(
-                    'confidence', 'perception_conflict',
-                    expected=f'商店牌{i} SIFT 识别出身份',
-                    observed=f'miss(inliers={_inliers})',
-                    reader_source='read_shop_cards',
-                    confidence=float(_inliers),
-                    note='读空事件(置信度分布监控源;非即时告警)')
-            except Exception:   # noqa: BLE001  遥测 best-effort
-                pass
-        name = resolve_char_name(avatar_id) if avatar_id else ''
-        ch = get_char(name) if name else None
-        # 费用信源(2星/3星直出闭环):画面费用徽章读数优先(read_shop_card_cost,
-        # 模板快路+OCR 慢路两级);失读/倍数推不出 → roster 查表兜底(按原费用
-        # 记 1★)并标 cost_source='roster_fallback'(金账对账可区分信源)。
-        # 读数 ÷ roster 费 = 倍数 ∈ {1,3,9} → 星级 1/2/3(费用倍数体系,
-        # merge_mechanics §2.6;×27=4★ 超 CW 星级域,留证兜底)。
-        _badge = read_shop_card_cost(ctx, screen, i)
-        if ch is not None:
-            cost, star, cost_src = resolve_cost_star(_badge, ch.cost)
-            if _badge is not None and cost_src == COST_SOURCE_ROSTER_FALLBACK:
-                if _badge == ch.cost * 27:
-                    log.warning('[cw!] 商店牌%d 费用读数=%s = roster 费 %s 的 27 倍(=4★,'
-                                '超 CW 3★ 星级域)→ roster 兜底留证(复现即 gameplay 异常信号)',
-                                i, _badge, ch.cost)
-                else:
-                    log.warning('[cw!] 商店牌%d 费用读数=%s 非 roster 费 %s 的 1/3/9 倍'
-                                '(疑误读)→ roster 兜底留证', i, _badge, ch.cost)
-            elif star >= 2:
-                log.warning('[cw!] 商店牌%d 费用读数=%s ÷ roster 费 %s = %d 倍 → %d星直出'
-                            '实锤(费用=星级倍数,merge_mechanics §2.6)',
-                            i, _badge, ch.cost, _badge // ch.cost, star)
-        else:
-            # 名字未识别:徽章可读时费用信徽章(实付价真值),星级保守 1
-            # (2星直出+未知名字的形态待实机样本,金账对账兜底)。
-            if _badge is not None:
-                cost, star, cost_src = _badge, 1, 'badge'
+            return None
+
+    from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+        record_defect,
+    )
+
+    def _read_once(scr: MatLike) -> list[ShopSlot]:
+        out: list[ShopSlot] = []
+        for i in range(1, 6):
+            rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}',
+                              SHOP_SCREEN_NAME)
+            if rect is None:
+                try:  # noqa: SIM105  遥测 best-effort
+                    record_defect(
+                        'confidence', 'perception_conflict',
+                        expected=f'商店牌{i} rect 在 screen_info',
+                        observed='area 缺失(建档漂移)',
+                        reader_source='read_shop_cards', confidence=0.0,
+                        note='定长槽位 rect 缺失=unknown(不猜)')
+                except Exception:   # noqa: BLE001  遥测 best-effort
+                    pass
+                out.append(ShopSlot(kind='unknown'))
+                continue
+            crop = scr[rect.y1:rect.y2, rect.x1:rect.x2]
+            _mean = float(crop.mean())
+            if _mean < 50:
+                # 确定性占位带(实测空槽 19.5;低等级商店后槽未解锁是常态)
+                out.append(ShopSlot(kind='empty'))
+                continue
+            if _mean < 60:
+                # 灰带:疑暗卡被特效/裁切偏移压暗,不猜=unknown(r15 留证升级)
+                try:  # noqa: SIM105  遥测 best-effort
+                    record_defect(
+                        'confidence', 'perception_conflict',
+                        expected=f'商店牌{i} 亮度≥60(真卡)或 <50(空槽)',
+                        observed=f'均值{_mean:.1f}(灰带,疑暗卡)',
+                        reader_source='read_shop_cards', confidence=_mean,
+                        note='灰带不猜=unknown;采到暗卡击穿即闭环降阈值')
+                except Exception:   # noqa: BLE001  遥测 best-effort
+                    pass
+                out.append(ShopSlot(kind='unknown'))
+                continue
+            avatar_id, _inliers = (identify_character(crop, templates)
+                                   if templates is not None else (None, 0))
+            # 非空槽 SIFT 仍 miss → unknown + 读空事件落台账(置信度分布
+            # 监控源;读空率环比翻倍 = 系统性识别退化最早信号)。
+            if avatar_id is None:
+                if templates is not None:
+                    try:  # noqa: SIM105  遥测 best-effort
+                        record_defect(
+                            'confidence', 'perception_conflict',
+                            expected=f'商店牌{i} SIFT 识别出身份',
+                            observed=f'miss(inliers={_inliers})',
+                            reader_source='read_shop_cards',
+                            confidence=float(_inliers),
+                            note='读空事件(置信度分布监控源;非即时告警)')
+                    except Exception:   # noqa: BLE001  遥测 best-effort
+                        pass
+                out.append(ShopSlot(kind='unknown'))
+                continue
+            name = resolve_char_name(avatar_id) if avatar_id else ''
+            ch = get_char(name) if name else None
+            # 费用信源(2星/3星直出闭环):画面费用徽章读数优先(两级读),
+            # 失读/倍数推不出 → roster 查表兜底并标 cost_source=
+            # 'roster_fallback';读数 ÷ roster 费 ∈ {1,3,9} → 星级 1/2/3。
+            _badge = read_shop_card_cost(ctx, scr, i)
+            if ch is not None:
+                cost, star, cost_src = resolve_cost_star(_badge, ch.cost)
+                if _badge is not None and cost_src == COST_SOURCE_ROSTER_FALLBACK:
+                    if _badge == ch.cost * 27:
+                        log.warning('[cw!] 商店牌%d 费用读数=%s = roster 费 %s 的 27 倍(=4★,'
+                                    '超 CW 3★ 星级域)→ roster 兜底留证(复现即 gameplay 异常信号)',
+                                    i, _badge, ch.cost)
+                    else:
+                        log.warning('[cw!] 商店牌%d 费用读数=%s 非 roster 费 %s 的 1/3/9 倍'
+                                    '(疑误读)→ roster 兜底留证', i, _badge, ch.cost)
             else:
-                cost, star, cost_src = 0, 1, COST_SOURCE_ROSTER_FALLBACK
-        cards.append(ShopCard(
-            x=(rect.x1 + rect.x2) // 2,
-            # 物理槽号 = 本循环 area 序号(1-5):payload 是紧凑列表(空槽
-            # continue 跳过),游戏买入后不压缩剩余卡位,紧凑下标 ≠ 物理槽位
-            # ——执行点击按此槽号取「商店牌-N」坐标(缺此字段 = 牌行打洞后
-            # 全体点击右偏落空槽框,布局双源同族 ADR-0646 商店牌行版)。
-            slot=i,
-            # '?'=未知(名未识别/不在注册表);''=已知无阵营(白厄类;2026-08-17 与 shop/identity 同语义)
-            faction=(ch.factions[0] if (ch is not None and ch.factions)
-                     else ('' if ch is not None else '?')),
-            name=name,
-            cost=cost,
-            star=star,
-            cost_source=cost_src,
-            # 升星预览✦(迁移审计 w104(git 历史)/迁移审计 w282(git 历史),ADR-0416):与 SIFT 同 crop 只多一次顶部带 mask+TM,零额外裁切
-            merge_preview=read_merge_preview(crop),
-        ))
-    # ~~shop_unknown_card 采集钩子已删(2026-08-17 归因闭环)~~:38 张存档样本离线对拍全识别
-    # (73-119 内点,plaza 库)——全部是刷新动画/settle 瞬时帧 miss,非真未知卡;阮·梅/白厄挂账
-    # 同归因闭环(瞬时帧,非光照变体/库缺)。flag 写入无消费端(shop.py 停机判定走重读防抖,
-    # L287-299,保留作真未知防护),纯积压源,按「采完即删」约定移除。
-    return cards
+                # 名字未识别:徽章可读时费用信徽章(实付价真值),星级保守 1。
+                if _badge is not None:
+                    cost, star, cost_src = _badge, 1, 'badge'
+                else:
+                    cost, star, cost_src = 0, 1, COST_SOURCE_ROSTER_FALLBACK
+            card = ShopCard(
+                x=(rect.x1 + rect.x2) // 2,
+                # 物理槽号 = 循环 area 序号(1-5):执行点击按此取「商店牌-N」
+                # 坐标(紧凑下标≠物理槽位布局双源同族,ADR-0646 商店牌行版)。
+                slot=i,
+                faction=(ch.factions[0] if (ch is not None and ch.factions)
+                         else ('' if ch is not None else '?')),
+                name=name,
+                cost=cost,
+                star=star,
+                cost_source=cost_src,
+                # 升星预览✦(ADR-0416):与 SIFT 同 crop 只多一次顶部带
+                # mask+TM;仅 content 槽计算(空/未知槽省一次)。
+                merge_preview=read_merge_preview(crop),
+            )
+            out.append(ShopSlot(kind='content', card=card))
+        while len(out) < 5:
+            out.append(ShopSlot(kind='empty'))
+        return out
+
+    slots = _read_once(screen)
+
+    def _volatile(ss: list[ShopSlot]) -> bool:
+        return (all(s.kind == 'empty' for s in ss)
+                or any(s.kind == 'unknown' for s in ss))
+
+    if not _volatile(slots):
+        return slots
+    # 终判稳定门:易误判判定(全 empty/含 unknown)强制重观察一次——
+    # 防淡入帧亮度<50 被误判 empty → 买光店假象 → 误关店。不一致 =
+    # 过渡帧,以第二次为准留证;上限一次,不构成等待环。
+    import time as _time
+    _time.sleep(0.8)
+    slots2 = _read_once(ctx.controller.screenshot())
+    if slots2 != slots:
+        try:  # noqa: SIM105  遥测 best-effort
+            record_defect(
+                'confidence', 'perception_conflict',
+                expected=f'两帧逐槽一致(首帧={[s.kind for s in slots]})',
+                observed=f'过渡帧不一致(次帧={[s.kind for s in slots2]})',
+                reader_source='read_shop_cards', confidence=0.0,
+                note='稳定门:以第二次观察为准(重观察上限一次)')
+        except Exception:   # noqa: BLE001  遥测 best-effort
+            pass
+    return slots2
+
 
 
 def read_bench_full(ctx: SrContext, screen: MatLike) -> bool | None:
@@ -2345,7 +2387,7 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             enemy_affixes_val = list(_sess.briefing_affixes)
     # shop_cards:spec 无的阶段(prep_clean 面板未开,收起锚门本就返空 = 「没牌」
     # 观测真值;battle 帧同)直接置空列表,连锚判定都省(ADR-0462)。
-    shop_val = read_shop_cards(ctx, screen) if _w('shop_cards') else []
+    shop_val = read_shop_cards(ctx, screen) if _w('shop_cards') else None
     # r77(轮岗接线):商店开态顺手读概率条真值(60/22/15/3/0 类)——read 失败(None)时
     # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
     # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
@@ -2469,22 +2511,19 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                 else:
                     bs.carry(bs.board, frame=frame, sig=_sig_carry)
             if _w('shop_cards'):
-                if shop_val:
-                    # 牌转换 = kernel 映射单一源(W5 双 ShopCard 归一);
-                    # cost_source 原值透传不折叠(roster_fallback 的「徽章失读」
-                    # 证据分级禁丢,词表见 GameState.ShopCard)
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        shop_card_to_container,
-                    )
-                    cards = [shop_card_to_container(c) for c in shop_val]
+                if shop_val is not None:
+                    # 定长 5 槽直写(三态裁定:read 产物即槽数组;买光=
+                    # [empty×5] 合法真值,None 仅离屏)。内容牌换算单一源
+                    # = read 链内 shop_card_to_container(已换,此处透传)。
                     probs = ({int(k): float(v) for k, v in
                               (refresh_probs_val or {}).items()}
                              if refresh_probs_val else {})
-                    bs.observe(bs.shop, ShopPayload(cards=cards,
+                    bs.observe(bs.shop, ShopPayload(cards=shop_val,
                                                     refresh_probs=probs),
                                sig=_sig_read)
-                # 空牌面 = OCR 失读帧:不写(宁缺勿造;§2.2 口径由 carry 通道
-                # 不适用于 payload 域,保持现值等下一帧)
+                else:
+                    # None = 店未开(收起锚 miss)= 结构事实(§2.2 例外)
+                    bs.leave_screen(bs.shop, sig=_sig_read)
             elif bs.shop.value is not None:
                 bs.leave_screen(bs.shop,
                                 sig=_sig_read)   # 离开商店画面 = 结构事实(§2.2 例外)

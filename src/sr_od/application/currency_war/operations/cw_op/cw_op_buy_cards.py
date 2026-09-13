@@ -9,9 +9,6 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    shop_payload_content_cards,
-)
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import (
     action_sink,
@@ -22,6 +19,9 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_occupied,
     exec_state_of,
     ledger_node_type,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
@@ -1211,12 +1211,17 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     # - W944 治本(2026-08-31):blind sleep 改判据化自愈(_wait_shop_row_stable,
     #   与刷新分支同门同 rect);预算 2 次,耗尽才真停(模态弹窗压暗不因重读消失)。
     # - f570a76e 审查#1 修:去 total_buy 门——残缺牌面上的买牌决策同样要留证。
-    if _entry is not None and any(not c.name for c in _entry.shop):
-        _unk = [i + 1 for i, c in enumerate(_entry.shop) if not c.name]
+    # 硬必改(商店域审计 D 项):判据 any(not c.name) → kind=='unknown'
+    # (三态模型:empty=识别确证空位非未识别;content 恒有 name)。
+    if _entry is not None and any(
+            getattr(s, 'kind', '') == 'unknown' for s in _entry.shop):
+        _unk = [i + 1 for i, s in enumerate(_entry.shop)
+                if getattr(s, 'kind', '') == 'unknown']
         for _ in range(2):
             _wait_shop_row_stable(op)
             _reshop = read_shop_cards(op.ctx, op.screenshot())
-            _unk = [i + 1 for i, c in enumerate(_reshop) if not c.name]
+            _unk = [i + 1 for i, s in enumerate(_reshop or [])
+                    if s.kind == 'unknown']
             if not _unk:
                 log.info('[cw-shop][hook] 重读后全识别(动画/settle 瞬时)→ 不停机')
                 break

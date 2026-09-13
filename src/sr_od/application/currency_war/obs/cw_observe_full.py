@@ -127,7 +127,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         out['read_receipt'] = _st
         out['substate'] = {
             'node_seq': read_node_sequence(ctx, frame) is not None,
-            'shop_cards': read_shop_cards(ctx, frame) != [],
+            'shop_cards': read_shop_cards(ctx, frame) is not None,
         }
         # ===== 装备域 owned/occupied 采集(P4 观察接线,T-171)=====
         # 归位备战画面 op 入口观察链(heavy = 唯一读屏点):原分发段

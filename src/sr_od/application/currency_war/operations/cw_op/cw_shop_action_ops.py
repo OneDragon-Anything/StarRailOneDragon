@@ -41,9 +41,6 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    shop_payload_content_cards,
-)
 from sr_od.application.currency_war.kernel.cw_economy import REFRESH_COST_BASE
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
@@ -55,6 +52,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     ChannelSig,
     GameState,
+    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_k
 from sr_od.application.currency_war.kernel.cw_obs_core import (
@@ -716,10 +714,11 @@ class RefreshShopOp(ShopActionOp):
             else:
                 _pre_shot = op.screenshot()
                 _pre_gold = _buy_cards_mod.read_gold_opt(op.ctx, _pre_shot)
-                _pre_shop_names = [c.name
-                                   for c in _buy_cards_mod.read_shop_cards(
-                                       op.ctx, _pre_shot)
-                                   if c.name]
+                _pre_shop_names = [
+                    s.card.name for s in (
+                        _buy_cards_mod.read_shop_cards(op.ctx, _pre_shot)
+                        or [])
+                    if s.kind == 'content' and s.card and s.card.name]
             _refresh_expect = build_refresh_expect(
                 _pre_gold, REFRESH_COST_BASE,
                 [(c.name, c.star) for c in _container_cards(state)],
@@ -780,7 +779,9 @@ class RefreshShopOp(ShopActionOp):
             #  ——删除波 1;牌面现役归宿 = journal 快照行自带 shop 域。)
             # 刷新有效性对拍(§2.5):三值,False=全同(未变)透传分类器。
             ledger.refresh_board_changed = refresh_effective(
-                _pre_shop_names or [], [c.name for c in _new_shop])
+                _pre_shop_names or [],
+                [s.card.name for s in (_new_shop or [])
+                 if s.kind == 'content' and s.card and s.card.name])
             if ledger.refresh_board_changed is False:
                 _ineff_shot = None
                 with contextlib.suppress(Exception):
