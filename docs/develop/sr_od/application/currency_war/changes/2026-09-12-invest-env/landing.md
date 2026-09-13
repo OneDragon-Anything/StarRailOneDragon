@@ -26,7 +26,7 @@
 
 ## 3.2 经济 schema + A 类精确通道 + 价值函数
 
-**范围**：`kernel/cw_investments.py` 新增 `EnvEconomyEffect` schema + `ENV_ECONOMY` 表（A 类四条：增发货币/蓝海/成功经验/策略大师，白名单制 + ADR-0144 决策 3 六条防错装逐条对账记录）+ `InvestmentEnv.economy` 字段；新建 `kernel/cw_env_economy.py` 价值函数 `env_economy_value`（A 类精确部分 + 估算参数接口——B/C 参数 3.3 落表前按 resolved=False 消化缺参）。边界：不含 B/C 估值、不含品质改写分派、不含 decide_event 集成、不含登记端。
+**范围**：`kernel/cw_investments.py` 新增 `EnvEconomyEffect` schema + `ENV_ECONOMY` 表（A 类四条：增发货币/蓝海/成功经验/策略大师，白名单制 + 决策 3 六条防错装逐条对账记录）+ `InvestmentEnv.economy` 字段；新建 `kernel/cw_env_economy.py` 价值函数 `env_economy_value`（A 类精确部分 + 估算参数接口——B/C 参数 3.3 落表前按 resolved=False 消化缺参）。边界：不含 B/C 估值、不含品质改写分派、不含 decide_event 集成、不含登记端。
 
 **设计依据**：design.md §2.2.2（schema）/ §2.2.3（价值函数）
 

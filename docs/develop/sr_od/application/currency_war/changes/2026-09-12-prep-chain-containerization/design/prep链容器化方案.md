@@ -31,7 +31,7 @@
   「容器主值(含 carried 沿用)+ 未建模/执行域帧透传」合成的 GameState 消费视图。
   全仓生产活调用现剩 1 处 = `cw_screen_prep.py:714` 备战观察口(判读报告 #4)。
 - **prep 投影**: `_project_prep_obs`(cw_screen_prep.py:847)——逐动作零读屏的期望态
-  纯计算推进,黑板帧载体;动作后首读对账归下一入口 heavy(ADR-0517 决策 7/8/10)。
+  纯计算推进,黑板帧载体;动作后首读对账归下一入口 heavy(决策 7/8/10)。
 - **透传域建模(类 W5 手法)**: r5-migration-plan §2 W5 波「透传域建模收编」的手法
   ——投影/视图层未建模、原经帧透传的域,逐域建模入容器或裁定消费面归宿,使消费
   签名可整体切容器。本文沿用该手法处置备战链透传面,不新立第二清单(域归宿以
@@ -51,8 +51,7 @@
 写端已在同帧就位(read_game_state 内部 `_feed_board_state` + 备战席/上场席观察写端,
 cw_screen_prep.py:646-710)→ `obs.state = game_state_view(_bs_obs, st)` 合成决策视图
 (:714)→ 备战黑板帧带视图进决策 → `entry.emit` 取 `state = obs.state`(:414)分喂五处
-签名与其下游 prep 域全簇;原帧 `st` 另写 `session.last_state`(:737,执行侧装配源,
-ADR-0530)。即:**同帧三载体并存**——容器单例(记录正本,已就位)、决策视图
+签名与其下游 prep 域全簇;原帧 `st` 另写 `session.last_state`(:737,执行侧装配源)。即:**同帧三载体并存**——容器单例(记录正本,已就位)、决策视图
 (第二状态面,消费中转)、last_state 帧(执行侧装配)。
 
 **五处签名**(全部位于 entry.py,形参 `state: GameState | None`,实参 =
@@ -109,7 +108,7 @@ spec-invest 停机钩子(:2434,留证显示)、cw_deploy_logic/sell_gate 轮号�
   转换层;签名切容器后转换层失去存在理由。修法 = 决策读收口容器单例(流程层)、
   视图层消亡、黑板帧退役到纯视觉/占用观察载体(表示层)。
 - **归层依据**:《商店黑板容器化方案》§1.2 同构判定 + §1.4 外溢裁定(本批辖域来源);
-  两态制裁决 = ADR-0651 / fields.md §2.5。
+  两态制裁决 = / fields.md §2.5。
 
 ### 1.3 约束
 
@@ -121,10 +120,10 @@ spec-invest 停机钩子(:2434,留证显示)、cw_deploy_logic/sell_gate 轮号�
    整体改造,三写点删除随批(调研草案 §3 波 5 行/《商店黑板容器化方案》§1.4);
    本批零触碰写点,先接后删(读者改道后才删,本批不新增读者,§2.5)。
 3. **记录渠道封闭集**:容器写入只走 observe/carry/write_prior/write_logic/relay
-   (fields.md §2.4);prep 投影直写 = `write_logic` 渠道,sig 必填(ADR-0634 渠道
+   (fields.md §2.4);prep 投影直写 = `write_logic` 渠道,sig 必填(渠道
    签名纪律)。
 4. **观察赢**:投影直写值受后续观察覆盖,失配 = 投影模型 bug 走缺陷台账
-   (fields.md §2.3,ADR-0651 错误哲学);失读沿用 = 容器写端 carry(沿用+来源帧
+   (fields.md §2.3,错误哲学);失读沿用 = 容器写端 carry(沿用+来源帧
    标注),禁缺省值造值。
 5. **载体迁移非策略改动**:行为面目标 = 零变化;行为差逐项显式申报(§2 各处
    「行为差申报」行),禁静默语义修正。
@@ -166,7 +165,7 @@ spec-invest 停机钩子(:2434,留证显示)、cw_deploy_logic/sell_gate 轮号�
    删除前提,文件删除是波 5 交付)。
 4. **prep 投影切容器双轨形态**:容器域投影 = 新 kernel 写口 `apply_prep_action_logic`
    (§2.4-3);黑板帧投影保留视觉域半(state 复制腿删除)。
-5. **帧代次标注槽保留**(`prep_frame_class`/`shop_frame_class`,ADR-0583 §3.4):
+5. **帧代次标注槽保留**(`prep_frame_class`/`shop_frame_class`,):
    标注坐标系重锚 =「最近一次备战域容器观察/喂入写点」;`view` 值语义从「派生视图
    帧」重述为「派生喂入(增量重播)」,写者白名单清单随标注契约锁重推(§4-P8)。
 
@@ -406,7 +405,7 @@ apply_prep_action_logic 登记行、session 正本槽注、《商店黑板容器
 | P5 | prep 投影等价锁+登记面 | `apply_prep_action_logic` vs 旧投影 state 腿:SellBench 同输入逐域等价(gold 回金公式/摘槽);域集封闭断言(集外动作零写)+ None 跳写清单与登记面申报(形态对齐《商店黑板容器化方案》§4-M5) |
 | P6 | prep 域容器单源锁 | 段 2 后 prep 决策链(run_mandate/proof/criteria 族)`GameState` 形参与帧字段读 grep=0(predicates 容器支外的帧兼容支删除断言);对账族读容器 payload 断言 |
 | P7 | last_state 决策依赖清零锁 | 段 1 起持续绿:prep 决策链文件集(entry.py)对 `last_state` 直读 grep=0(写点与执行侧读者不辖,§2.5 边界表) |
-| P8 | 帧代次标注契约形状锁重推 | 既有 L6 形状锁按写点清单变更重推:prep 写点增 `apply_prep_action_logic` 投影 none 写/finalize view 写保留;shop 写点随段 3 收敛;标注槽保留断言(ADR-0583 §3.4) |
+| P8 | 帧代次标注契约形状锁重推 | 既有 L6 形状锁按写点清单变更重推:prep 写点增 `apply_prep_action_logic` 投影 none 写/finalize view 写保留;shop 写点随段 3 收敛;标注槽保留断言() |
 | M2 | shop_state_frame 零引用锁 | 段 3 后全仓(src+测试仓)`shop_state_frame` grep=0(《商店黑板容器化方案》§4-M2 移缴承接) |
 
 验证三元组:测试锁族(上表)+ 落地审(独立干净上下文 reviewer 逐 hunk)+ 实机窗口

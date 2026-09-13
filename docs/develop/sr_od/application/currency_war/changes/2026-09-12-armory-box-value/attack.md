@@ -68,7 +68,7 @@
 | 23 | 源迭代：P-1 范围/落地 0/5、V2 原文与注册表真相互斥（10≠7，实跑证实）、裁定 1/5/6/8 原文、「box 消费不变」在源 §7、OQ-3/P-3 辖域 | 直读源四文档 | ✓ 代位声明的事实前提全部成立；V2 若照原文落锁将恒红，修订正当 |
 | 24 | 旧锁处置三件：test_cw_material_score（target_comp 锚 + 两断言语义重锚后可保持）、test_cw_screens_ops 两把 mv 锁（:77-81 值锁 / :99-108 回落行为锁）、box 三既有锁（pick_arm 发射锁 / merged 效果推进锁 / obs_arch 扫描锚三断言——match 分支保留 decide_box_card 与 board_state_of 调用故锚不破） | 直读五个测试文件 | ✓ 处置方案与实锁面一一对应 |
 | 25 | 正本更新清单落点真实：13_pick_family E18 行、08_events E18 行（材料估值引用 + 待 derive）、16_evaluation_tables:77 PICK_BIAS 行含 E18、screen_op.md:140「材料通用性回落」 | 直读/grep | ✓ 四处全部在案 |
-| 26 | ADR-0524（定序族）存在；`_pairing_guard_ok` 例外①「core 上穿着合成=快路径」（cw_comps.py:1911-1912）；EQUIPMENT_ROSTER 在册 | glob/直读/grep | ✓ |
+| 26 | （定序族）存在；`_pairing_guard_ok` 例外①「core 上穿着合成=快路径」（cw_comps.py:1911-1912）；EQUIPMENT_ROSTER 在册 | glob/直读/grep | ✓ |
 
 ## 3. 攻过未破角度清单
 

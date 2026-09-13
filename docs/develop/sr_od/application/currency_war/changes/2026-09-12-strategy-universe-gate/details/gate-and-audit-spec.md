@@ -17,14 +17,14 @@
 
 - 全集阵营维 = `candidate_faction_universe(evicted)`（invest-env §2.1.1 定义的签名与语义，落 `kernel/cw_comps.py`），本迭代只消费不复刻；
 - `evicted` 语义单一源 = 意向层「等同信号未发生」契约（invest-env §2.1.1），decide_event 既有参数，零接口新增（`cw_events.py:195`）；
-- 归因串仅观测、不进检查器白名单（ADR-0593 C1→D4 口径，`cw_events.py:243-245` 同款声明）；
+- 归因串仅观测、不进检查器白名单（C1→D4 口径，`cw_events.py:243-245` 同款声明）；
 - 失格语义 = 形态 B（分数落 0 垫底），非集合级排除——三选一强制选一帧仍可选（用户裁定 2026-09-12，invest-env §0）。
 
 ### 宪法对账（硬约束）
 
 - 禁拍值：本门是集合存在性谓词，零数值进决策门；品质回落 rank×2+econ 等既有编码常数不动（`cw_events.py:253-257`）；
 - 位面零字面量：门谓词无位面维（宪法第 2 条，`strategy-docs/00_framework.md` §1）；
-- 定序与基数分账：门是结构判据不是分值族，不进 max() 覆盖定序的任何一档（ADR-0524 定序纪律）；它作用在分值族**之前**（删支，不打分）；
+- 定序与基数分账：门是结构判据不是分值族，不进 max() 覆盖定序的任何一档（定序纪律）；它作用在分值族**之前**（删支，不打分）；
 - 数字三形态：本文全部数字 = 【注】注册表直调值（`strategy-docs/01_math_framework.md` §6），无【拟】项。
 
 ## 方案
@@ -133,7 +133,7 @@ def candidate_core_char_universe(evicted: frozenset[str] | set[str] = frozenset(
 - **落码位**：`cw_events.py` 评分循环内、血本位分类（:298-306）邻位增加失格分类（复用同一 `_canon_st` 形态）；跳过点两处——S4 尾块（:335-343）与 eval-lcs 支（:344-346）以 `if not _失格:` 包裹；S1 位（:311-313）改 `if _aug and premise_ok`。
 - **豁免优先序**：血本位分区（结构性，is_blood_economy 字段族与门零交集）＞ S1 前提豁免（120）＞ S2 引擎豁免（域带）＞ 门。失格集定义已内含「非豁免」，故引擎/定义卡恒不进门。
 - **不动的面**：`ENV_PICK_VALUE`/`PICK_VALUE`/`STRATEGY_BINDINGS`/`AUGMENT_COMP_AFFINITY` 四表零改动（门是消费侧谓词）；steering 常数、品质回落编码、D\* 解析、env 分支、T-162 判据本体、`refresh_slots` 语义全部不动。
-- **归因串**：`strategy-off-universe`；与 `env-off-universe` 同为仅观测归因，不进任何检查器白名单（ADR-0593 C1→D4）。
+- **归因串**：`strategy-off-universe`；与 `env-off-universe` 同为仅观测归因，不进任何检查器白名单（C1→D4）。
 - **无开关**：结构判据直接落码，回滚 git revert（总纲 §2.4；strategy-work §3）。
 
 ### 6. 335 卡盘点审计规格（landing 3.1 的方法论）
@@ -154,7 +154,7 @@ def candidate_core_char_universe(evicted: frozenset[str] | set[str] = frozenset(
 
 - **Pass 1·名字形态扫描**：卡名含「星徽」「星徽套组」「专家:」「顾问」→ 必须在绑定表有行，或给出显式「不锚定」结论。套组已有派生守卫（缺单件建模 import 即炸，`cw_investments.py:846-848`）；单件无守卫，靠本扫描。已预跑实抓 1 例：**星徽大使叽米**（棱彩，pv=50，效果「超稀有的叽米登场！爆出超多星徽！！」直调）——效果 = 随机星徽池（多目标），非特定 comp 专属 ⟹ 判「非锚定」，记挂账说明（多目标随机授予 ≠ 单 comp 预示，判据见下）。
 - **Pass 2·效果原文专名扫描**：模式字典 = ①绑定表 factions∪chars 全集（24+42 名）∪ ②COMP_LIBRARY factions/core/shared/transition 全清单 ∪ ③游戏阵营全集 = 官方 config API（`tools/cw/gen_plaza_invest.py` 同源端点）`data.trait_info_list` 键的 `trait_name` 全集——2026-09-12 实测 33 名（含绑定表 24 名与全集外 4 名：护盾/治疗/狼狩/盛会之星），字典③的完备性以该键全集为准，审计批开工前重拉一次对账。命中卡逐条人工复核。
-- **人工复核判定规则（锚定的充要判据，ADR-0151 原文 `cw_investments.py:749-751`）**：效果引用 comp 专属机制/召唤物/星徽/赠 key 角色，且该引用是效果价值的**承载主体**（无它则效果空转或错向）→ 锚定；泛用数值（全队强度/给金/装备/全队护盾/治疗强度）中恰好出现同名同形词 → 不锚定。
+- **人工复核判定规则（锚定的充要判据，原文 `cw_investments.py:749-751`）**：效果引用 comp 专属机制/召唤物/星徽/赠 key 角色，且该引用是效果价值的**承载主体**（无它则效果空转或错向）→ 锚定；泛用数值（全队强度/给金/装备/全队护盾/治疗强度）中恰好出现同名同形词 → 不锚定。
 - **假阳性对照件（已直调，复核时对样）**：现金为王（「提供护盾」= 泛用护盾数值 ≠ 护盾阵营）、量产型装甲祝福（「护盾强度」同）、生命之花祝福（「治疗强度」同）——与绑定表前言记载的两类噪声（战术义眼/生命之花祝福，:750-751）同族。凡与对照件同形的命中一律不锚定。
 - **缺口的处置**：确认「应锚定未锚定」→ 逐条列出（卡名/效果引文/应绑实体/证据等级），由 landing 3.2 决定补 `STRATEGY_BINDINGS` 条目（landing 3.2 文件面已预留 `cw_investments.py`）；补条目 = 门咬合面扩大，须同步补该卡锁 fixture。
 

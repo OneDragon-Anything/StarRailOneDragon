@@ -3,7 +3,7 @@
 > 状态:**v3.0(已按复验报告 `P51_v2_REVALIDATION.md` 判决「需修后站得住」完成四项必修+附带项;修复对照见 §1 表 #13-#17;待复验复审后可消费为「已证」)**
 > v1 草案位置:`MATH_REVALIDATION_PLAN.md` §4(已废止);v1 的「W=2.5-4 金/轮」结论**作废、全线禁引**(§R.2——其推导链含血当量双计,真实带宽以本件 §4 为准)。
 > 本件与 v1 的差异逐项对应 `P51_VALIDATION.md` 七项阻断修复 + §R 裁定四项(见 §1 对照表);v2→v3 差异对应复验四必修 + T3/T5 附带(§1 表 #13-#17)。
-> 数据源(引用值逐一注明):`kernel/cw_economy`(`STREAK_GOLD_TABLE=(1,1,2,2,2,3,4)` / `LOSS_GOLD_BY_NODE={battle:2,encounter:4,boss:4}`,ADR-0439)、`gameplay.md` 官方原文「当生命值为 0 时,将结束对局」、`economy.md` §10.1/§10.2(收入三通道/金跨位面继承)、`combat.md` §4(败轮实发=基础+息,连胜成分掉)、P37(i)(XP 升级滞后 1+ 轮)、P51_VALIDATION 亲算复核值(局终金中位 197-236.5,本轮脚本逐位复现)。
+> 数据源(引用值逐一注明):`kernel/cw_economy`(`STREAK_GOLD_TABLE=(1,1,2,2,2,3,4)` / `LOSS_GOLD_BY_NODE={battle:2,encounter:4,boss:4}`)、`gameplay.md` 官方原文「当生命值为 0 时,将结束对局」、`economy.md` §10.1/§10.2(收入三通道/金跨位面继承)、`combat.md` §4(败轮实发=基础+息,连胜成分掉)、P37(i)(XP 升级滞后 1+ 轮)、P51_VALIDATION 亲算复核值(局终金中位 197-236.5,本轮脚本逐位复现)。
 > 标定脚本:`p51_v2_calib.py`(同目录,可重跑:`$env:PYTHONPATH='src'; $env:PYTHONIOENCODING='utf-8'; uv run python .debug/temp/currency_war/redesign/p51_v2_calib.py`;不入库)。
 > 公理栈:纯金流记账(血禁入账)/超额收益隔离(连胜置零底线成立)/λ 参数化在阵容面战力桶/调参最小化(估计必带 CI+稳健性划分,禁点值当闸门)。
 

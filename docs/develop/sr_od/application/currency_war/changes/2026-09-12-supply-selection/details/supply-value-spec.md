@@ -3,7 +3,7 @@
 > 承接总纲初稿深化；角色机器单一源 = `2026-09-12-invest-env` details/env-value-models.md §2.1（下称 env §2.1），本篇是它的第二消费位，禁二次建模。
 > 实现者遇到本文未覆盖的语义选择 → 停手回任务书指认本文件提请修订，禁自行拍板（iteration-design 写作硬规则 2）。
 > 依据标注约定：`cw_events.py:n` / `flow.py:n` 等 = 直调行号（2026-09-12 注册表态）；「直调」= 本详设写作时实跑注册表/代码取得的值；用户裁定 = README 裁定汇编（均为 2026-09-12）。
-> 宪法对账：禁战力建模（00_framework §1.1）、数字三形态（01_math_framework §6）、位面零字面量（00_framework §1.2）、定序与基数分账（ADR-0524）。
+> 宪法对账：禁战力建模（00_framework §1.1）、数字三形态（01_math_framework §6）、位面零字面量（00_framework §1.2）、定序与基数分账。
 
 ## 问题与约束
 
@@ -16,10 +16,10 @@
 
 1. **角色候选机器**（env §2.1.3）：`candidate_char_universe(evicted) -> frozenset[str]`（∪ core∪shared over 非 evicted COMP_LIBRARY）；单角色档位判定（core/shared/transition/off 四档，遍历域与 evicted 过滤同源）落 `kernel/cw_comps.py` helper 区，**归属 env 侧机器**——env §2.1.3 的 `gift_hit_tier` 以单角色判定为底座，本篇要求该底座以可复用形态落地（`char_candidate_tier(char, evicted) -> str`，返回 `'core'|'shared'|'transition'|'off'`）；若 env 落地形态缺独立单角色 helper，由 env 侧扩底座，**本迭代禁复制第二套 COMP_LIBRARY 遍历**。
 2. **过渡维机器**（README 裁定 7 指定单一源）：`cw_card_identity.line_identity_tier(name) -> str`（`TIER_REGISTRY_CORE`/`TIER_TRANSITION`/`TIER_UNRELATED`，cw_card_identity.py:96-112；其 transition 档 = TRANSITION_PACK 档 ∈ {carry, partial}，drop 档不入选）。
-3. **锁线布尔与锚**（单源定谳）：锁线 ⇔ `ist.locked_comp` 非空（cw_deploy_logic.py:1548 引 ADR-0534 §1；17_stall_form_spend_authority §1.1）；锁定 comp 解析 = `get_comp(ist.locked_comp)`（flow.py:404 同款读法）；P1 配方锁帧 locked_comp 恒空（ADR-0357，flow.py:405-410 注）→ 自然落入未锁分支。
-4. **pick 族接线先例**（T-155/ADR-0597）：flow `decide_invest` 从意向状态解析 `locked_comp/demoted_endgame/evicted` 传 kernel（flow.py:507-513），本篇 `decide_supply` 接线镜像同款；flow.py:495-497「supply/encounter 等 pick 族消费面不变」的括注随本迭代**过期**（supply 面改两态锚定），修正项入落地清单。
+3. **锁线布尔与锚**（单源定谳）：锁线 ⇔ `ist.locked_comp` 非空（cw_deploy_logic.py:1548 引 ；17_stall_form_spend_authority §1.1）；锁定 comp 解析 = `get_comp(ist.locked_comp)`（flow.py:404 同款读法）；P1 配方锁帧 locked_comp 恒空（flow.py:405-410 注）→ 自然落入未锁分支。
+4. **pick 族接线先例**（T-155）：flow `decide_invest` 从意向状态解析 `locked_comp/demoted_endgame/evicted` 传 kernel（flow.py:507-513），本篇 `decide_supply` 接线镜像同款；flow.py:495-497「supply/encounter 等 pick 族消费面不变」的括注随本迭代**过期**（supply 面改两态锚定），修正项入落地清单。
 5. **失格/垫底语义**（gate-and-audit-spec §3 先例）：结构性无价值 = 落 0 垫底，非集合排除；本篇角色层全集外同款（off → 0）。
-6. **执行模型不变式**：刷新 = 终结本轮、下轮重进重读（cw_screen_supply_node.py:21-25 ADR-0517 申报）；整排重掷（advantage_layouts.md:18）；每节点免费 1 次（README 机制事实）。
+6. **执行模型不变式**：刷新 = 终结本轮、下轮重进重读（cw_screen_supply_node.py:21-25 申报）；整排重掷（advantage_layouts.md:18）；每节点免费 1 次（README 机制事实）。
 
 ### 现状接线盘点（2026-09-12 直调）
 
@@ -59,7 +59,7 @@ char_tier(c) = max( env_machine: char_candidate_tier(c, evicted),   # 终局候�
                     identity_machine: line_identity_tier(c) 映射 )  # 过渡维（registry_core/transition_component/unrelated）
 ```
 
-档序与分值（定序实现常数族，锚点推导内建位次、禁读基数——ADR-0524 / env §2.1.2 GIFT_FLOOR 先例）：
+档序与分值（定序实现常数族，锚点推导内建位次、禁读基数——/ env §2.1.2 GIFT_FLOOR 先例）：
 
 | 档 | 常数 | 值 | 锚点推导 |
 |---|---|---|---|
@@ -78,7 +78,7 @@ PLANE_NODE_COUNT = {1: 9, 2: 9, 3: 9}  【注·节点表：node_ordinal_of =
     (plane-1)*9 + round（cw_board_state.py:201-204）+ economy.md §10.2 P1 = 9 节点（r5 = supply）】
 ```
 
-- **位面合宪形态（00_framework §1.2 / 01_math_framework §8.1）**：位面只以节点数表查表键入场（PLANE_NODE_COUNT）；`plane == 1` 条件是过渡域的**相位谓词**而非机制辖域门——过渡包本身就是 P1 构造（TRANSITION_PACK 服务 P1、P2 交接弃置，cw_transition.py 模块头），且「Early 期判定 (plane1 + 未定型) 由消费方内联声明」是 ADR-0469 后的既定内联形态（cw_transition.py 模块头原文）——本式沿用该既定形态，未新立按位面枚举的模块辖域。
+- **位面合宪形态（00_framework §1.2 / 01_math_framework §8.1）**：位面只以节点数表查表键入场（PLANE_NODE_COUNT）；`plane == 1` 条件是过渡域的**相位谓词**而非机制辖域门——过渡包本身就是 P1 构造（TRANSITION_PACK 服务 P1、P2 交接弃置，cw_transition.py 模块头），且「Early 期判定 (plane1 + 未定型) 由消费方内联声明」是 后的既定内联形态（cw_transition.py 模块头原文）——本式沿用该既定形态，未新立按位面枚举的模块辖域。
 - 线性形状 = 服务窗长度的恒等形（过渡成员的剩余兑现机会 ∝ 剩余 P1 节点数），**线性是推导基线**；任何非线性形状需额外推导，无则不取（禁拍形状）。
 - w_P1 为【推】（【注】坐标恒等式 + 声明的恒等形状），无拟合参数、无 CI 义务。
 - 平面 ≥ 2 时 w_P1 = 0：过渡包服务 P1（cw_transition.py 模块头语义），P2 未锁帧无过渡分可给——与裁定 7「锁线后收敛」方向一致。
@@ -92,7 +92,7 @@ PLANE_NODE_COUNT = {1: 9, 2: 9, 3: 9}  【注·节点表：node_ordinal_of =
 
 - **落点选型：新模块 `kernel/cw_equip_value.py`**。理由：①消费位横跨 kernel（supply/planner）/strategies（box）/operations（equip_pick）/sim（engine_p1 采样池 + ledger 审计），需独立于任何单一消费面的公共落点；`cw_prep_expect` 的模块界 = 备战期望态对账（其 docstring :1-9），混入决策期通用价值会破其边界；`cw_equipment_data`（data 层）只放注册表真值不放决策价值。②sim/checks 现跨模块 import 私有符号 `_EQUIP_VALUE`（ledger.py:1540/:1606）——升格同时消除该坏味。
 - **内容三件**：
-  1. `EQUIP_GENERIC_VALUE: dict[str, int]` —— 现 `_EQUIP_VALUE` **逐值平移**（cw_events.py:604-642，值零变化；ADR-0298/0130/0555 审计注释随迁；键 ⊆ EQUIPMENT_ROSTER 断言保持 ADR-0298 判据）。值不再重推：对位锚法产出的现表是已过审计的单一源，重拍 = 违禁拍值。
+  1. `EQUIP_GENERIC_VALUE: dict[str, int]` —— 现 `_EQUIP_VALUE` **逐值平移**（cw_events.py:604-642，值零变化； 审计注释随迁；键 ⊆ EQUIPMENT_ROSTER 断言保持 判据）。值不再重推：对位锚法产出的现表是已过审计的单一源，重拍 = 违禁拍值。
   2. `equip_material_generality(name) -> int` —— **注册表化**：合成材料通用性 = 全 EQUIPMENTS 配方引用计数（【注·注册表派生】），替换 `MATERIAL_VALUE_TABLE` 手表（cw_prep_expect.py:32-40 自注「v1:进阶配方引用数」）；手表值转锁（§5 V2 对拍），`cw_prep_expect.material_value` 改薄委托。
   3. `key_fit_names(key_equips) -> frozenset[str]` —— 契合全集 = key_equips 成品 ∪ 各成品 recipes 全部材料（两跳，【注·注册表】cw_equipment_data.recipes）；单一源供三个消费位（supply +10/+3、box +100/+30、equip_pick 子串集）。
 - **未锁态（裁定 5）**：装备分 = `equip_generic_value(equip)`，**无任何阵容绑定项**——现行 key_equips +10 消费 `target_comp` 伪 comp（P1 配方对物化，T-155 同款辖域错位，flow.py:405-410 自证）随两态化**移除**。行为变化锚点 = 锁 S8。
@@ -132,7 +132,7 @@ def decide_supply(options: list[SupplyOption], bs: BoardState, *,
    score(o) = char_score(o.char) + equip_score(o.equip)
    reason 按胜出维度主项 = 'char-comp-core' | 'char-comp-shared' | 'char-reg-core'
         | 'char-transition(w=…)' | 'equip-key-fit' | 'equip-key-material' | 'equip-generic'
-   归因串仅观测（op 日志面），不进检查器白名单（ADR-0593 C1→D4 口径）
+   归因串仅观测（op 日志面），不进检查器白名单（C1→D4 口径）
 ```
 
 - fail-closed 面：`locked_comp` 非空但 `get_comp` 解析失败（注册表漂移）→ 按未锁态评分 + 日志哨兵（保守向：漏提权非错提权）；char 空/未知 → 0；w_P1 计算所需的 plane/round 读数缺省帧（NodeKey 缺省 (1,1)）在补给节点实际不可达（补给居位面中段，前置备战腿已立节点账，cw_board_state §3.4.1）——如实声明，不做额外防。
@@ -160,7 +160,7 @@ def decide_supply(options: list[SupplyOption], bs: BoardState, *,
 | PLANE_NODE_COUNT=9/位面、plane/round 坐标 | 【注】节点表 | 可消费 |
 | 钻效果/配方、星徽配方对称、装备 recipes | 【注】注册表 | 可消费 |
 | w_P1、档位序、+10/+3 比例 | 【推】恒等式/对位锚 | 可消费 |
-| 档位常数 40/20/12/9 | 定序实现常数（ADR-0524 族） | 位次载体，锁表冻结；禁读基数 |
+| 档位常数 40/20/12/9 | 定序实现常数（族） | 位次载体，锁表冻结；禁读基数 |
 | 补给 offer 分布（物品/角色/钻率；「钻石闪耀」词缀抬升） | 【拟】无数据 | **挂账**：实采源 = op 已逐帧 log 识别选项清单（cw_screen_supply_node.py:377-378）+ chosen_supply 遥测行聚合；owner = 编排者；回炉时限 = 一个对局周期未决即回炉（01_math_framework §6 三要素 3）。消费位 = 刷新边界扩展（核心角色跳刷重裁）+ sim 带钻率 15% 粗估（engine_p1.py:2821）替换 |
 | P42 hoard_gaps 数值参数化（V_comp 流期望 × 边际、近兑现距离 × partner 到位率） | 【拟】λ 未标定 | **挂账**（§4） |
 
@@ -176,7 +176,7 @@ def decide_supply(options: list[SupplyOption], bs: BoardState, *,
 
 | 编号 | 断言 | 依据 |
 |---|---|---|
-| V1 | `EQUIP_GENERIC_VALUE` 键集 = 迁移前 `_EQUIP_VALUE` 键集（快照对拍）∧ ⊆ EQUIPMENT_ROSTER | §1.3 平移；ADR-0298 |
+| V1 | `EQUIP_GENERIC_VALUE` 键集 = 迁移前 `_EQUIP_VALUE` 键集（快照对拍）∧ ⊆ EQUIPMENT_ROSTER | §1.3 平移；|
 | V2 | `equip_material_generality(n)` == 旧 `MATERIAL_VALUE_TABLE[n]` ∀ 8 名 | §1.3 注册表化 ↔ 手表对拍（分歧 = 注册表变化信号，先红后改） |
 | V3 | `key_fit_names(k)` ⊆ EQUIPMENT_ROSTER ∧ k ⊆ key_fit_names(k) ∀ k ∈ {任一 comp key_equips 抽样} | §1.3 |
 

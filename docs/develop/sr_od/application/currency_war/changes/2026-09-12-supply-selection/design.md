@@ -36,11 +36,11 @@ gap：
 
 1. **带钻层（最高，保留）**：带钻选项优先选（裁定 1）。财富宝钻/红钻/蓝钻细分价值待标定（宝钻 = 人口上限，量级或高于星徽材料——深化批按效果定义分档，禁一概「碾压」）。
 2. **角色层（新增，相位感知——用户裁定 2026-09-12「除了终局的，在 P1 还要考虑过渡阵容的」）**：
-   - **P1（意向未定型）**：角色价值 = 终局候选命中 **+ 过渡阵容成员**。成员身份单一源 = `cw_card_identity.line_identity_tier`（registry_core / transition_component / unrelated 三分档，ADR-0580 转线前瞻已消费的同一机器，禁二次建模）——registry_core > transition_component > unrelated 0；过渡价值的权重随 P1 剩余时长衰减（深化批定量）；
+   - **P1（意向未定型）**：角色价值 = 终局候选命中 **+ 过渡阵容成员**。成员身份单一源 = `cw_card_identity.line_identity_tier`（registry_core / transition_component / unrelated 三分档，转线前瞻已消费的同一机器，禁二次建模）——registry_core > transition_component > unrelated 0；过渡价值的权重随 P1 剩余时长衰减（深化批定量）；
    - **锁线后**：收敛到锁定方向（core 命中提权、shared 次之、全集外 0）；
    - 价值机器与 env 送卡型详设 §2.1 同源（第二消费位），相位维为本迭代新增语义。
 3. **装备层（两态，裁定 5/6）**：
-   - **未锁线**：通用「输出最需要」统计先验——现有 `_EQUIP_VALUE`（对位锚法，ADR-0298/0130/0555）升格为共享机器（落点升出 cw_events 私有字典，消费位 = 补给/武装箱/穿戴分配等），统计面可接 plaza_meta 装备频次校准；
+   - **未锁线**：通用「输出最需要」统计先验——现有 `_EQUIP_VALUE`（对位锚法，）升格为共享机器（落点升出 cw_events 私有字典，消费位 = 补给/武装箱/穿戴分配等），统计面可接 plaza_meta 装备频次校准；
    - **已锁线**：锁定阵容 `key_equips` 契合优先（现行 +10 语义保留，锚从伪 comp 换锁定阵容）。
 
    三层的常数/公式/锚点推导定稿 = details/supply-value-spec.md §1（带钻细分：宝钻 > 红=蓝钻，配方可证；角色档序 40/20/12/9×w_P1；装备机器三件套落新模块 `kernel/cw_equip_value.py`，六消费位迁移表同节）。

@@ -1,7 +1,7 @@
 # P49 压库期望价值(买同费杂牌压缩牌池的边际定价 + [34] 判据数学化 + 2★ 合成 tradeoff)
 
 > 状态:**已推导(卖回档序=每金目标函数并翻转、槽价口径引 p41 规范版、r=3 收口 2026-08-31;数值自检通过——演示锚点三组命中、二维表全格断言、档序翻转断言;sim 对拍挂账)**
-> 数据源(单一源代码/文档,引用处逐一注明):`cw_shop_odds`(`expected_refreshes` 的 taken 参数=精确超几何 DP / `REFRESH_PROB` / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生 1费20/2费15/3费14/4费14/5费9)、`cw_state.sell_refund`(退金,ADR-0121)、`cw_economy.SHOP_REFRESH_COST`=2(经 p40 转引)、economy.md §1(牌池/卖回还池条)/§2(D 牌超几何模型)/§3(免费牌池操纵)/§2.1(节点切换=自动刷新)、user_playstyle [1][11][22][31][32][34];前置证明 = p41(V_opt/V_slot)、p40(E[refreshes] 消费/单步门 V*)、p46(否决域 + [11] 挂起注)、p38(完成概率日程)。**池参数 = 注册表基线;resolved 口径**(专家顾问族/黑塔纪元/人才下沉/援军等池构成族突变改 v_c/a_c → 概率表/压缩表整体重生成;设计 §4.10 resolved input;economy §1 二次确认版)——本篇全表在 resolved 池上须重算后方可消费
+> 数据源(单一源代码/文档,引用处逐一注明):`cw_shop_odds`(`expected_refreshes` 的 taken 参数=精确超几何 DP / `REFRESH_PROB` / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生 1费20/2费15/3费14/4费14/5费9)、`cw_state.sell_refund`(退金)、`cw_economy.SHOP_REFRESH_COST`=2(经 p40 转引)、economy.md §1(牌池/卖回还池条)/§2(D 牌超几何模型)/§3(免费牌池操纵)/§2.1(节点切换=自动刷新)、user_playstyle [1][11][22][31][32][34];前置证明 = p41(V_opt/V_slot)、p40(E[refreshes] 消费/单步门 V*)、p46(否决域 + [11] 挂起注)、p38(完成概率日程)。**池参数 = 注册表基线;resolved 口径**(专家顾问族/黑塔纪元/人才下沉/援军等池构成族突变改 v_c/a_c → 概率表/压缩表整体重生成;设计 §4.10 resolved input;economy §1 二次确认版)——本篇全表在 resolved 池上须重算后方可消费
 > 数值自检脚本:`tools/cw/proofs/p49_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p49_check.py`)
 > 提出:CW 策略重构·压库命题(archive/redesign/01 §4.1 六序第 4 类「压库件」的 EV 单一源;2026-09);证明 = 本批
 > ⚠️ 本篇为**自含推导**(同域旧证明 p04 未读未引;演示期锚点对拍曾用一次性临时脚本,其 5费行参数传错,本篇为正确参数补算——持久自检以 `tools/cw/proofs/p49_check.py` 为准)
@@ -28,7 +28,7 @@
 | V_comp | 一张杂牌的窗口内压缩价值 = A × Δ金(**下界**:只含当前活跃窗口,见 ②) | 本篇 ② |
 | V_opt / V_slot | 囤件期权价值 / bench 槽价 | p41 ①③(单一源,本篇只消费) |
 | r | 卖出 1 张 2★ 时回池的 1★ 副本张数 | **不变量推论 r=3(建模指令,2026-08-31 用户二次精确化:「r=3 不重要,只要用牌库总数减持有即可」)**——池量是**派生量**(`池 = resolved 固定池 − 持有副本总数`,2★ 计 3/3★ 计 9),**不设「卖出回池」事件处理**:买/卖/合成只改持有计数,池随不变量自动正确;原「O-1 待实测」由不变量收口撤销(economy §1 建模指令版) |
-| refund | 1★=cost 全额;2★=cost×3;star≥2 且 cost≥2 再 −1 | `sell_refund`(ADR-0121) |
+| refund | 1★=cost 全额;2★=cost×3;star≥2 且 cost≥2 再 −1 | `sell_refund` |
 
 ## 假设(显式;每条给内容/边界/失效方式)
 

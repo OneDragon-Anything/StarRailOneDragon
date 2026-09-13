@@ -10,7 +10,7 @@
 | 域 | 事实（出处） |
 |---|---|
 | 回合结构 | 3 位面；P1 九节点（slot3/5/6 为变异位，节点序以实时识别为权威，economy §10.2），P2 boss@r7；节点切换自动刷新商店 5 槽（不继承，economy §2.1） |
-| 经济 | 收入 = 基础(3/4/5) + 连胜档(1/2/3/4) + 利息(⌊g/10⌋≤5)【注】；刷新 2 金【注·对拍定谳：decisions.jsonl 金差对拍；cw_state.REFRESH_COST_BASE 注释自述建模常量非 OCR 读数（ADR-0456）；口径定义 = 01 §6 三形态章程】；买经验 4 金/次【注】；卖退金：1★ 全额 / 2★×3 / 3★×9（3★ 档 🔴 待 live 核），cost≥2 有手续费，1费各星净 0（economy §3） |
+| 经济 | 收入 = 基础(3/4/5) + 连胜档(1/2/3/4) + 利息(⌊g/10⌋≤5)【注】；刷新 2 金【注·对拍定谳：decisions.jsonl 金差对拍；cw_state.REFRESH_COST_BASE 注释自述建模常量非 OCR 读数；口径定义 = 01 §6 三形态章程】；买经验 4 金/次【注】；卖退金：1★ 全额 / 2★×3 / 3★×9（3★ 档 🔴 待 live 核），cost≥2 有手续费，1费各星净 0（economy §3） |
 | 牌池 | 副本 1/2费=27、3/4/5费=9【注】；持有≥9 清空该牌商店库存；概率表 REFRESH_PROB（Lv×费）【注】；D 牌期望精确模型已存在（cw_shop_odds.expected_refreshes） |
 | 板面 | 前台 4+后台 6 基线，后台扩展两通道（钻石/召唤 ∨ 投资环境 D 类扩槽），以 read_deploy_cap 实读为权威；等级=上场 cap；场上同名同星≤1 |
 | 合成 | 买牌落备战，3合1（场上吸收/备战最左）；连锁合成；满栏仍可买触发合成的牌（自动买足 min(店数, 3−已有 mod 3)） |
@@ -46,7 +46,7 @@
 - 部署候选排除"场上已有同名同星"（不可达状态）。
 - 吸伤害位互斥（符玄分摊 vs 万敌独占 vs 反震载体）——comp 知识声明，站位机执行。
 - **残余补部署（P24）**：空 cap 槽上任意合法单位 ΔEV≥0（"有羁绊的板 > 空槽"）——零支出严格支配整轮禁运，无条件先于一切 EV（01 §3.8）。
-- **列车配方底线门（r288）与锁定线语境豁免（ADR-0564）**：列车档 ≥ 门封顶且仙舟 < 基础线 → 列车件让位留 bench（仙舟基础线优先，防列车第 3 人挤占配方深度）；门判定单一源 = kernel `recipe_floor_holds`（档值常量 `RECIPE_FLOOR_TRAIN_CAP`/`RECIPE_FLOOR_XZ_BASE`）。**豁免** = 锁定线语境（`locked_comp` 成型目标档 > 门封顶，单源 `cw_intention.locked_line_recipe_floor_conflict`）∧ 本帧无有效仙舟供给（四条件谓词 `xianzhou_supply_exists`：全羁绊含仙舟/非物品槽/非同名在场/主阵营非列车同行）→ 门让位——锁线收束期列车 core 不被空槽拦死；供给保留条款不变（bench 有真供给时门照拦，供给先上）。豁免是帧属性：发射门/op 计划构造/op 拖拽循环/P24/swap 五消费点同帧同值。
+- **列车配方底线门（r288）与锁定线语境豁免**：列车档 ≥ 门封顶且仙舟 < 基础线 → 列车件让位留 bench（仙舟基础线优先，防列车第 3 人挤占配方深度）；门判定单一源 = kernel `recipe_floor_holds`（档值常量 `RECIPE_FLOOR_TRAIN_CAP`/`RECIPE_FLOOR_XZ_BASE`）。**豁免** = 锁定线语境（`locked_comp` 成型目标档 > 门封顶，单源 `cw_intention.locked_line_recipe_floor_conflict`）∧ 本帧无有效仙舟供给（四条件谓词 `xianzhou_supply_exists`：全羁绊含仙舟/非物品槽/非同名在场/主阵营非列车同行）→ 门让位——锁线收束期列车 core 不被空槽拦死；供给保留条款不变（bench 有真供给时门照拦，供给先上）。豁免是帧属性：发射门/op 计划构造/op 拖拽循环/P24/swap 五消费点同帧同值。
 - **发射门纪律**：部署计划空（候选全被配方底线/去重/cap 留 bench）= 合法稳态（bench 留置），发射方与执行方同源谓词判空不发射（发射×执行单一源契约；流程细节 = `../flow/action_exec.md` §2）。
 
 ## 2. 装备机器（重排自原 03 §4.6；数学件 P42/P50/P34/P19）
@@ -95,7 +95,7 @@
 
 **去向登记（实现须回答"拆下来的去哪"）**：每件取下物必须落位之一——①立即重穿给需求向量内的角色（分配器 `equip_allocation` 消费）；②回 owned 囤待合成/待发（[22] 囤件）；找不到去向 = 不拆（拆完散落 owned 无主是负操作）。
 
-**装备合成排序与"变宝为废"环境（ADR-0498）——junk_first 排序器已清退**：变宝为废环境下"首次合成 50% 垃圾化"为游戏机制事实（affix_effects_data 原文），分配序规避策略的排序器实现（kernel/cw_junk_first.py）与开关 junk_first_sacrifice_enabled 已随旧方案清退整批删除；合成分配回归基分配直通（cw_equip_env 基分配，信号包与生锈豁免门保留）。若实机数据证明变宝为废局需要排序规避，按生命周期第 1 态重新立项。
+**装备合成排序与"变宝为废"环境——junk_first 排序器已清退**：变宝为废环境下"首次合成 50% 垃圾化"为游戏机制事实（affix_effects_data 原文），分配序规避策略的排序器实现（kernel/cw_junk_first.py）与开关 junk_first_sacrifice_enabled 已随旧方案清退整批删除；合成分配回归基分配直通（cw_equip_env 基分配，信号包与生锈豁免门保留）。若实机数据证明变宝为废局需要排序规避，按生命周期第 1 态重新立项。
 
 **何时不用**：被拆者是当前核心、身上有 key_equips（r70 过渡持有语义，key 命脉件应留在上场的人；〔码〕`cw_op_equip_all.py:216-230` `_transition_hold_active`）；**装备转移无"角色间直拖"通道**（机制实锤 2026-09-02，装备穿身后拖拽无响应；旧"单人→单件走 equip_all 直拖"的途径不存在，该转移遍已删）：转移唯一途径 = 卖角色（装备全额回区后重穿）或扳手拆装（本节）——扳手的不可替代性在**批量**（一人全身迁多人）与"不想卖人重买"场景，单件且角色可卖时卖角色更省且不烧消耗品；无剩余去向核对（上文登记制不满足）。
 
@@ -140,8 +140,8 @@
 
 - 用户裁决：独立设计件，不并入任何进行中的修法批；本节即该需求的定义稿（收编归位：判据随**我们的架构与常量**演进——引用 `cw_synthesis` 函数与 key_equips 语义，注册表变了跟着重构，不随游戏版本直接变；机制事实继续单一源留在〔机制篇〕，本节不复写数值）。
 - 未来实现批的准入顺序建议：UI 建档（工具 icon 拖曳交互）→ 冷启动分支（炉准入+扳手闸，sim 可验先行）→ 投影仪/特权卡 → 令牌（等 R(c)）；每步按 strategy-work checklist 走完整验证阶梯。
-- **as-built 增量（21 号稿落码批，ADR-0531）**：判据面已落 `kernel/cw_equip_env.py` `evaluate_tool_actions`（本节三道门全量收编零改写：冷启动分支 = 炉准入 `recycle_qualified`+`hoard_gaps` m=1 保留 + 扳手闸 fail-closed；投影仪/令牌（R(c) 缺档）/未建模新工具 fail-closed 带拒因分键；特权卡「key 含特权 ∧ 对应进阶成品在手」完整落地）。发射面 = `admitted_tool_actions` G1 准入（执行通道未建档不发射）；发射位本体与拖曳执行、工具消耗确认通道（21 号稿 §3.2 四态登记+三分支）辖工具拖曳 op 落码批（其开臂 = `TOOL_EXEC_CHANNEL_READY` 翻正随批准入测试）。
-- **as-built 增量（工具执行批，ADR-0532）**：上条挂账的落码批已交付并开臂——发射位 = mandate_v1 M7.5（`RunTools` 组合动作，逐备战帧评估打 `[cw!][tools]` 拒因分键，工具期闩 `cw4_tools_phase` 置位在执行位 `mark_tools_pass_executed`）；执行 op = `cw_op_tools.CwOpTools`（炉目标 = `recycle_qualified` 死库存同源过滤禁宽取，特权卡 = 栏内拖法；确认通道 = `classify_tool_consume` 三分支）；`TOOL_EXEC_CHANNEL_READY=True`（UI 建档前置以既有 owned 网格建档满足，无新增档）。冷启动可执行 = furnace_single / privilege_upgrade，扳手/令牌/投影仪仍按本节 fail-closed 候独立批。
+- **as-built 增量（21 号稿落码批）**：判据面已落 `kernel/cw_equip_env.py` `evaluate_tool_actions`（本节三道门全量收编零改写：冷启动分支 = 炉准入 `recycle_qualified`+`hoard_gaps` m=1 保留 + 扳手闸 fail-closed；投影仪/令牌（R(c) 缺档）/未建模新工具 fail-closed 带拒因分键；特权卡「key 含特权 ∧ 对应进阶成品在手」完整落地）。发射面 = `admitted_tool_actions` G1 准入（执行通道未建档不发射）；发射位本体与拖曳执行、工具消耗确认通道（21 号稿 §3.2 四态登记+三分支）辖工具拖曳 op 落码批（其开臂 = `TOOL_EXEC_CHANNEL_READY` 翻正随批准入测试）。
+- **as-built 增量（工具执行批）**：上条挂账的落码批已交付并开臂——发射位 = mandate_v1 M7.5（`RunTools` 组合动作，逐备战帧评估打 `[cw!][tools]` 拒因分键，工具期闩 `cw4_tools_phase` 置位在执行位 `mark_tools_pass_executed`）；执行 op = `cw_op_tools.CwOpTools`（炉目标 = `recycle_qualified` 死库存同源过滤禁宽取，特权卡 = 栏内拖法；确认通道 = `classify_tool_consume` 三分支）；`TOOL_EXEC_CHANNEL_READY=True`（UI 建档前置以既有 owned 网格建档满足，无新增档）。冷启动可执行 = furnace_single / privilege_upgrade，扳手/令牌/投影仪仍按本节 fail-closed 候独立批。
 
 #### 2.1.8 现状：equip_all 对工具零覆盖（码源）
 
@@ -150,9 +150,9 @@
 | 码点 | 内容 | 性质 |
 |---|---|---|
 | `operations/cw_op/cw_op_equip_all.py:54` | `_TOOL_CATEGORIES = {'工具'}` | 过滤口径常量 |
-| `cw_op_equip_all.py:152-161` | `_owned_wearable_names`：read_equips 命中 → 非"工具"类才是穿戴候选（ADR-0358 搬运链写端复用同口径） | 穿戴**决策**过滤 |
+| `cw_op_equip_all.py:152-161` | `_owned_wearable_names`：read_equips 命中 → 非"工具"类才是穿戴候选（搬运链写端复用同口径） | 穿戴**决策**过滤 |
 | `cw_op_equip_all.py:648-650`（M7 主流程"全员装备"节点）、`:833-834`（front-only 回退路径） | `wearable` 列表构建，同过滤；工具不进 drag 序列 | 同上 |
-| `cw_op_equip_all.py:828-832` 注释块（front-only 内；主流程同款注 `:651-655`） | ⚠️ 历史：旧版把过滤后列表写 `session.last_owned_equips` 快照 → 冶金炉/扳手从不进决策快照（run 26 两件工具躺着无人知）；W209g 断点②（ADR-0387）修正为**写端全量 hits 含工具**，过滤只辖穿戴决策 | 采集已含工具 |
+| `cw_op_equip_all.py:828-832` 注释块（front-only 内；主流程同款注 `:651-655`） | ⚠️ 历史：旧版把过滤后列表写 `session.last_owned_equips` 快照 → 冶金炉/扳手从不进决策快照（run 26 两件工具躺着无人知）；W209g 断点②修正为**写端全量 hits 含工具**，过滤只辖穿戴决策 | 采集已含工具 |
 | `cw_op_equip_all.py:656-657`（主流程）/ `:835-837`（回退） | 写端：`session.last_owned_equips` = 全量 hits（含工具），每次现读覆写 | 采集已含工具 |
 | `cw_op_equip_all.py:668` | `[cw!][grant]` λ 标定埋点：每轮备战首次读板记 owned 全量（含工具）计数 | 遥测已有工具可见性 |
 

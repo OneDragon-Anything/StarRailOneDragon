@@ -117,7 +117,7 @@ unit_bond_tags(符玄, equips=['欢愉星徽','欢愉卡带']) → 欢愉 ×2   
 
 ## 关联
 
-- ADR-0312(board 口径分层:L1/L2/L3)、equipment_mechanics §6(口述语义
+- (board 口径分层:L1/L2/L3)、equipment_mechanics §6(口述语义
   与出处声明,G1 归位)、W362 审查批① §5(C1 seen 缺口发现与本篇 §②
   的同源问题:修复只盖正序)/ §6(G3 立项挂账);
 - P18(同批姊妹命题)、Σboard 采样键偏移声明(W362 挂账 G2:本计数只降

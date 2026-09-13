@@ -19,13 +19,13 @@ P39 升级 EV 双臂门在该格为正」的日程包络),并声明现行表相�
 ## 输入(全部游戏定义量,零拟合)
 
 - XP 费用表 `XP_TO_NEXT_LEVEL`(cw_state,机制真值)+ 单击 XP 价
-  `xp_click_cost`(OCR 实读优先,flat-4 兜底,ADR-0275);
+  `xp_click_cost`(OCR 实读优先,flat-4 兜底);
 - 收入日程 Ī(基础奖励×节点类型表 + 息律 50/10 + 连胜金表
   `STREAK_GOLD_TABLE`,全部注册表真值);
 - 商店刷率表 `cw_shop_odds`(等级→各费档出现率;峰值级
   peak_refresh_level 可由该表导出,非独立常数);
 - 出战位/人口解锁表(等级→出战上限,注册表);
-- 节点日程真值 `nodes_of_plane`(ADR-0366:9/7/7)。
+- 节点日程真值 `nodes_of_plane`(9/7/7)。
 
 ## 证明思路
 

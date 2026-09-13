@@ -5,9 +5,9 @@
 
 ## 0. 阅读门(已过)
 
-- 全量 `docs/game/currency_war/`:README/research 证明集(P5/P17/P28/P31/P35/P36 等 P16 关联篇)/economy.md §1-2(牌池/刷新机制)/data/gameplay.md/gameplay 职级节;`docs/develop/currency_war/strategy/06_input_model.md` §3 注册表地图(cw_shop_odds 行:REFRESH_PROB+POOL_COPIES+expected_refreshes,来源=实机 OCR ADR-0091 + V3.7 必修二 ADR-0109)。
+- 全量 `docs/game/currency_war/`:README/research 证明集(P5/P17/P28/P31/P35/P36 等 P16 关联篇)/economy.md §1-2(牌池/刷新机制)/data/gameplay.md/gameplay 职级节;`docs/develop/currency_war/strategy/06_input_model.md` §3 注册表地图(cw_shop_odds 行:REFRESH_PROB+POOL_COPIES+expected_refreshes,来源=实机 OCR + V3.7 用户收案)。
 - 注册表直调:`cw_shop_odds.py`(L28 SHOP_SLOTS=5、L33 POOL_COPIES_PER_CARD={1:27,2:27,3:9,4:9,5:9}、L37 DISTINCT_CARDS_PER_COST、L42-53 REFRESH_PROB)、`cw_chars.CHARACTERS`(标签集)、`cw_line_switch.py` 全文、`cw_registry.py` L940-948、`cw_intention.py` L641-655/L1004/L1141/L1262(消费点)。
-- 设计链:W328 DESIGN §③/§⑥/附5(`docs/develop/currency_war/prereg/w328_unformed_posture/DESIGN.md[已删·git 84370361 可溯]`)、W345 审查记录索引(ADR-0426 引)、AB 账本三轮(AB_cw3/AB_legacy_v2 × n40 s0/r2/r3)、w597_switch_ab、w665/w670/w683/w684/w696/w703/w706(换线门/振荡谱系)。
+- 设计链:W328 DESIGN §③/§⑥/附5(`docs/develop/currency_war/prereg/w328_unformed_posture/DESIGN.md[已删·git 84370361 可溯]`)、W345 审查记录索引(引)、AB 账本三轮(AB_cw3/AB_legacy_v2 × n40 s0/r2/r3)、w597_switch_ab、w665/w670/w683/w684/w696/w703/w706(换线门/振荡谱系)。
 - 无交集声明:无(`docs/game/currency_war/sources/` 外部攻略冻结原文与本案数值锚点无交集,未逐篇重读;`docs/game/gameplay/currency_war.md` 职级节已读,与本案无冲突)。
 
 ## 1. 五门判定
@@ -48,7 +48,7 @@
 ### 门⑤ 参数溯源 —— **需修(挂账未清,索引行声明不足)**
 
 - **θ/δ/D_min = 设计推导参数**(非拟合,无 CI):δ 的「10-20%」NPC 偏差带本身是估计值,无测量来源;θ=1.0/D_min=2 是量级论证。参数决策的稳健性设计(θ∈{0.5,1,2}×D_min∈{1,2,3}×δ∈{0.10,0.15,0.20} 网格 sim + 振荡率/假阴性率双指标 + Wilson 95% 上界 ≤15%)在 DESIGN §⑥/检验点 4 声明,但**全仓(.debug/temp/currency_war 968 个批次目录 + 进度流水)未找到任何执行记录**——「本命题预测:违例即证伪」的证伪通道从未启用。MATH_REVALIDATION_PLAN L70 自评「θ/δ/D_min=设计参数【推】」与此一致。
-- 阶梯值来源:无阶梯参数(θ/δ/D_min 均单点),牌池/概率表溯源链完整(实机 OCR ADR-0091、V3.7 用户收案 ADR-0109)✓。
+- 阶梯值来源:无阶梯参数(θ/δ/D_min 均单点),牌池/概率表溯源链完整(实机 OCR、V3.7 用户收案)✓。
 - 稳健性快评:δ 吸收带(10-20%)覆盖瑕疵 A 的结构性高估(≤8.2%)后余量薄;若按修正建议 A 把 p̄ 改精确式,δ 的职责回到纯 NPC 项,预算才自洽。
 
 ## 2. 最终判决:**需修(核心三命题数学上站得住,口径与实证面需修)**

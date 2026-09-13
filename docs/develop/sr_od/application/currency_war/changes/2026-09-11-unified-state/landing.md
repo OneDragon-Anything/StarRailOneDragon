@@ -29,8 +29,8 @@
 
 ### 3.3 阶段3：W7 剩余旧流写面删除（T-6）
 **范围**：board_state_archive 写点下线+逐能力归宿核对（bs_prov 注记/挂起摘要/局终速查 match_final——W2 载体已在产）+recorder/cw_telemetry_exit 残余 no-op 桩退场（record_exogenous/recover_dangling，候裁定谳后整段退）+保留流（defect_ledger/op_journal）按候裁 4 定谳执行+归档只读声明。
-**边界**：删除波 1 已兑现面不在本阶段——收编 9 流全部生产写入端、battle_done 旧写、retirement.md 影子框架重构与 ADR 同步均已先行完成（凭据=ADR-0641+commit 3d4461438；其后果节明载 W7 文档义务「后续 W7 到达时余量为零」）；旧流数据文件不删不写（归档只读）。
-**设计依据**：r5-migration-plan §2 W7 行；ADR-0641（删除波 1 先行段=本阶段的已完成部分，判据单一源）。
+**边界**：删除波 1 已兑现面不在本阶段——收编 9 流全部生产写入端、battle_done 旧写、retirement.md 影子框架重构与 ADR 同步均已先行完成（凭据=+commit 3d4461438；其后果节明载 W7 文档义务「后续 W7 到达时余量为零」）；旧流数据文件不删不写（归档只读）。
+**设计依据**：r5-migration-plan §2 W7 行；（删除波 1 先行段=本阶段的已完成部分，判据单一源）。
 **文件面**：operations/cw_loop.py（archive_snapshot 写点）、telemetry/recorder.py（残余桩）、kernel/cw_telemetry_exit.py（record_exogenous 桩）——P7 已兑现面（recorder 旧流方法/cw_screen_battle_wait 旧写/retirement.md/sim/ledger_hooks 兜底）移出。
 **依赖**：阶段1-2；候裁 2（invest 效果原文断供回流）与候裁 4（defect_ledger/op_journal 案 A/B）定谳（r5-migration-plan §7 把候裁 2/4 列编排者裁决清单 P2/P7 槽——账本 T-6 cond「用户定谳」措辞与其不一，路由对齐随修订批落账）。
 **优先级建议**：9（账本现值）
@@ -95,12 +95,12 @@
 ## 已执行波次对账（本账本外的先行执行面）
 > r5 八波中 W1/W2/W3/W5、W4 先行段与删除波 1 已在本账本（T-1..T-33）之外先行执行（2026-09-06
 > 迭代与删除波 1 独立批次）；本节=其在本文档的唯一对账载体，各阶段依赖行的「已绿」以此节凭据为准。
-- **W1 journal 常开化+观察接线收尾**：ADR-0634（直迁裁定、journal 无条件常开）；代码锚=telemetry/match_archive.py v12 注「无条件常开(R5 W1/ADR-0634)」；落地审=旧账 reviews/W1波-落地审.md。
-- **W2 局终域+收编准备**：ADR-0630 修订节三条（局终域域键/写口辖域勘误/监听触发语义勘误）；入库笔=commit 8294d0bdb；落地审=旧账 reviews/W2-局终域-落地审.md accept + W2-返工-delta审.md 闭环。
+- **W1 journal 常开化+观察接线收尾**：（直迁裁定、journal 无条件常开）；代码锚=telemetry/match_archive.py v12 注「无条件常开(R5 W1)」；落地审=旧账 reviews/W1波-落地审.md。
+- **W2 局终域+收编准备**：迁移批修订三条（局终域域键/写口辖域勘误/监听触发语义勘误）；入库笔=commit 8294d0bdb；落地审=旧账 reviews/W2-局终域-落地审.md accept + W2-返工-delta审.md 闭环。
 - **W3 判读/哨兵/运行时切新账+删旧读面**：哨兵三脚本切 journal（skills/sr-od-currency-war-dev/scripts/ cw_sentinel v5.2「活跃局判定切 journal」/cw_runs_gap/cw_early_stop）；telemetry/cli.py 头注「--source 双读面拆除」；落地审=旧账 reviews/W3波-落地审.md。
 - **W4 先行段（审计+键收编落码）**：旧账 reviews/W4-审计-r3-复核.md accept（键全集底稿 336 键+9 开放族）+ W4-键收编-落地审.md accept（流删+容器承载裁量+封闭锁 test_cw4_key_closure.py）；净余量与禁完成口径见 §3.1 先行段申报。
 - **W5 透传域建模收编**：入库笔=commit 8087ae3c9（落地审零阻断放行）；代码锚=kernel/cw_bs_view.py 域清单「容器值收编」；测试锁=sr-od-test test_cw_w5_passthrough_adoption.py；落地审=旧账 reviews/W5-实施-落地审.md。
-- **删除波 1（W7 先行段）**：ADR-0641+commit 3d4461438（38 文件 −2144/+397；落地审=旧账 reviews/删除波1-落地审.md accept，本地不入 git，凭据链见 ADR-0641 关联节）；retirement.md 影子框架重构随批兑现、battle_done 旧写随批删除。
+- **删除波 1（W7 先行段）**：+commit 3d4461438（38 文件 −2144/+397；落地审=旧账 reviews/删除波1-落地审.md accept，本地不入 git，凭据链 关联节）；retirement.md 影子框架重构随批兑现、battle_done 旧写随批删除。
 
 ## 末阶段：正本更新
 **范围**：按「正本更新清单」逐条更新正本

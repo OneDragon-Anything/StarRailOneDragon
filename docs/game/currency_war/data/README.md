@@ -32,7 +32,7 @@
 | [bosses.md](bosses.md) | boss 克制关系全集(**机制 tag 已入注册表 `cw_enemy_data.BOSS_MECHANICS`(20 boss)+ `matchup` 结构层;本文保留逐 boss 技能叙事与克制启示,克制方向待实机校验**) | V4.4 全量 | 🟢/🟡 |
 | [plaza_meta.md](plaza_meta.md) | plaza 实战 meta 人读版(生成勿手编,`tools/cw/gen_plaza_comps.py`;`cw_plaza_comps.py` 校准对拍源) | 29 聚类 | 🟢 官方 API |
 
-> 战力表系(`cw_power_table`/`cw_power_table_data`/生成器 `gen_power_table.py`)已零消费退役删除(ADR-0472);
+> 战力表系(`cw_power_table`/`cw_power_table_data`/生成器 `gen_power_table.py`)已零消费退役删除;
 > 退役前的人读快照 `docs/develop/currency_war/power_table_meta.md` 亦已退役,出处走 git 历史。
 
 ---
@@ -56,13 +56,13 @@
 
 | 缺口 | 影响 | 补法 |
 |---|---|---|
-| **米游社图鉴 vs 游戏内数据银行差额** | ~~策略差19(315/334)~~ **已闭**(plaza API 334 全量,ADR-0150)、环境差5 已闭(API 83)、装备差2(153/155) | 投资策略/环境已切 plaza API 直出(`gen_plaza_invest.py`,内建 diff);装备差 2 🔴 待实机补 |
+| **米游社图鉴 vs 游戏内数据银行差额** | ~~策略差19(315/334)~~ **已闭**(plaza API 334 全量)、环境差5 已闭(API 83)、装备差2(153/155) | 投资策略/环境已切 plaza API 直出(`gen_plaza_invest.py`,内建 diff);装备差 2 🔴 待实机补 |
 | 竞争对手阵营(20个) | ~~A8 boss 阵营/克制关系~~ **已闭**(2026-08-17 游戏内数据银行 20/20 采集,叙事层=bosses.md,注册表=cw_enemy_data.BOSS_MECHANICS) | 无 |
 | 概念股"角色:/装备:"具体清单 | 概念股送的精确角色名 | 图鉴原文是图标,抓取被剥离;效果文本已含规律(送某羁绊角色+装备) |
 | 敌人词缀完整名单(效果已采) | A8 对策配置 | 词缀**效果原文**已由 HandleBriefing 运行时采集入 `affix_effects_data`(进行中,实机遇新词缀自动补);米游社图鉴无词缀分类,名单补全靠实采;competitors.md 机制分类为攻略统计🟡 |
 | 罗刹站位/类型 | 角色表小缺口 | content/6252 单独取(本次批量漏取) |
 | **优势布局全量(钻钞 cost + 效果原文)** | 跨局 meta(R2-1 / 09) | advantage_layouts.md 暂用 bwiki;米游社图鉴 channel/map/209 **无此项**,玩法说明 6564 只有机制 → 待米游社专页(若日后收录)或实机校准 |
-| **费用刷新概率表(等级 × 1-5 费)** | ~~A4 牌池模型精度~~ **已闭** | `cw_shop_odds.REFRESH_PROB` 游戏内实机 OCR 全量落地(ADR-0091);economy.md 指常量名 |
+| **费用刷新概率表(等级 × 1-5 费)** | ~~A4 牌池模型精度~~ **已闭** | `cw_shop_odds.REFRESH_PROB` 游戏内实机 OCR 全量落地;economy.md 指常量名 |
 | 装备合成配方(哪 2 简易→哪进阶) | 07 装备合成树(EQUIP_RECIPES) | EQUIPMENTS 注册表有效果无逐条配方;待 content/info 逐条补或实机 |
 
 > **注**:旧文件 `../cw_game_data.md` 已废弃,数据已拆分到本目录各文件。

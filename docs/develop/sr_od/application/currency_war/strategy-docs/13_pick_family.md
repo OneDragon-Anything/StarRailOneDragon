@@ -1,12 +1,12 @@
 # 13 pick 族薄判据（九接口 + 事件面目录）
 
-> 本篇为新写薄篇：pick 族 = CwStrategy 的 9 个选项决策接口(ADR-0583 后全部在 ABC 契约面)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py:298-487` 实现反向 + `kernel/cw_events`/`kernel/cw_comps` 判据单源）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补三接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
+> 本篇为新写薄篇：pick 族 = CwStrategy 的 9 个选项决策接口(后全部在 ABC 契约面)（`strategies/impl/cw_strategy.py` + `strategies/impl/flow.py:298-487` 实现反向 + `kernel/cw_events`/`kernel/cw_comps` 判据单源）。事件面目录（E1-E18）重排自原 `03_strategy_layer.md`(已删除) §4.9（E16-E18 = 2026-08-19 用户定调批次「全部 overlay 选卡接入策略模块」后补三接口，本批补录）；数学判据逐项状态登记沿用 [08_events.md](08_events.md)（该篇管"目录全量/数学全空"的落差，不动件）。
 > 动作编排（画面 op 怎么点卡）不在本篇 = `../flow/outer_loop.md` §2.2（0x 分支）；本篇只管"选项怎么选"。
 > 每项标注**判据状态**：有规格（判据可执行）/ 待 derive（判据立项锚见 08）。
 
 ## 0. 共同形态
 
-- pick 族返回 PickEvent 系载体（选项决策；控制流归画面 op——单选族形态：选卡即动作、确认 = 终结 op，ADR-0517 / flow/screen_op.md §7）。
+- pick 族返回 PickEvent 系载体（选项决策；控制流归画面 op——单选族形态：选卡即动作、确认 = 终结 op，/ flow/screen_op.md §7）。
 - 新事件面优先评估归并进既有 pick 接口或走契约改版，禁旁路自造接口（遭遇分支刷新的 pick.refresh 旗标泄漏 = 已登记的后续收编候选）。
 - OCR 未就绪位（选项 char_id 空）的接口按 fallback（idx=0）执行并标注——供给面升级属 P4/阶段 5，不改变判据形态。
 - 权重常量单一源 = `strategies/impl/pick_bias.PICK_BIAS`（值在代码；本篇只写常量名）。
@@ -15,7 +15,7 @@
 
 | 接口 | 事件面 | 判据（现行规格） | 判据状态 |
 |---|---|---|---|
-| `decide_invest(kind, options)` | E1/E2（投资环境/策略三选一） | 委托 `cw_events.decide_event`（T-155 新定序结构，ADR-0597；用户裁定 2026-09-08「优先经济,然后是终局阵容」）：S1 定义型 120 > S2 经济引擎档（持续通道字段闭集存在性谓词，域带 111-119，档内 PICK_VALUE 定序）> S3 终局对齐族（comp-hit 45×N+20 与 env floor 的对齐对象 = D* 预期终局方向——flow 从意向状态解析 locked_comp/demoted_endgame/evicted 传参，D*② kernel 直算 detect_signals；不再消费过渡对 target_comp）> S4 常规评估（ADR-0143/0144）；血本位集合排除（ADR-0578）与 steering 轴原样；选卡结果喂 CommitSignals（纯遥测保留，决策面零消费，ADR-0209/0519 C5）。**刷新建议(T-162 重立,ADR-0600/P81)**：帧级触发(候选恰 3 ∧ 全精确分类 ∧ 非 env 帧 ∧ 无 S1/S2 ∧ max_N≠1)→ `PickEvent.refresh_slots` 逐槽动作集 → handler 逐卡刷新执行链(计数现读闸+唯一 L1 守卫+重决策仍经本入口,ADR-0600 §3.3)；env kind 恒不刷(§1.4 执行不启用) | **有规格**（知识判据；16 号稿 §1 评估表重估批定形）；数学判据：台账价值挂 P38 ⑤层参数化待 derive（08 E1/E2 行）；**刷新期权已立= P81(条件结构命题,零自由参数;事件面刷新免费 → P40 可负担性恒真,P81 承载其 R0「合格集」语义的事件面形态,与 P40 语义一致非双源——P40 本体辖商店刷新费用账不变;权威 = ADR-0600 §3.2)**；评分框架 = [11_shop_decisions.md](11_shop_decisions.md) §8 |
+| `decide_invest(kind, options)` | E1/E2（投资环境/策略三选一） | 委托 `cw_events.decide_event`（T-155 新定序结构；用户裁定 2026-09-08「优先经济,然后是终局阵容」）：S1 定义型 120 > S2 经济引擎档（持续通道字段闭集存在性谓词，域带 111-119，档内 PICK_VALUE 定序）> S3 终局对齐族（comp-hit 45×N+20 与 env floor 的对齐对象 = D* 预期终局方向——flow 从意向状态解析 locked_comp/demoted_endgame/evicted 传参，D*② kernel 直算 detect_signals；不再消费过渡对 target_comp）> S4 常规评估；血本位集合排除与 steering 轴原样；选卡结果喂 CommitSignals（纯遥测保留，决策面零消费， C5）。**刷新建议(T-162 重立,P81)**：帧级触发(候选恰 3 ∧ 全精确分类 ∧ 非 env 帧 ∧ 无 S1/S2 ∧ max_N≠1)→ `PickEvent.refresh_slots` 逐槽动作集 → handler 逐卡刷新执行链(计数现读闸+唯一 L1 守卫+重决策仍经本入口,)；env kind 恒不刷(§1.4 执行不启用) | **有规格**（知识判据；16 号稿 §1 评估表重估批定形）；数学判据：台账价值挂 P38 ⑤层参数化待 derive（08 E1/E2 行）；**刷新期权已立= P81(条件结构命题,零自由参数;事件面刷新免费 → P40 可负担性恒真,P81 承载其 R0「合格集」语义的事件面形态,与 P40 语义一致非双源——P40 本体辖商店刷新费用账不变;权威 = P81 本篇与 math_proofs P81 行)**；评分框架 = [11_shop_decisions.md](11_shop_decisions.md) §8 |
 | `decide_supply(options)` | E4（补给选装备/出钻 + 重刷 1 次） | 委托 `cw_events.decide_supply`（options + target_comp）；OCR 未就绪默认委托 | **有规格**（知识判据：选项价值 vs 目标线组件/成品需求，equipment_mechanics；[9]）；数学待 derive（08 E4：组件缺口 = P42 hoard_gaps 参数化） |
 | `decide_encounter(options)` | E3（遭遇难度/词缀避开，可刷 1 次） | **双轨**：基线核 = 委托 `cw_events.decide_encounter`（未成型→低难保生存 / 成型+词缀利→高难拿奖励 / 全克→刷新换批）；mandate_v1 核 = E3 EV 判据 `mandate_v1/encounter.py`（EV(b)=V_r−Δλ_death·G_loss，奖励子型分立 + λ label 四态接死 fail 向选低难 + 刷新肢条件化非免费期权；现态双 provisional 槽 None 期恒 fail 向低难、零刷新建议，语义单一源 = 该代码本体） | **有规格**（基线=知识判据，M13/competitors 节点表；mandate_v1=EV 数学判据，语义单一源 = encounter.py 代码）；08 E3 锚「收益侧挂 P26 同构」已由 mandate_v1 轨承载 |
 | `decide_megastar(options)` | E7（巨星/盛会之星） | 委托 `cw_comps.select_megastar`（state + target_comp + 候选名）命中该 idx；未命中/OCR 空 → idx=0 fallback | **有规格**（comp 知识：comp 引擎 × 乘区关系，M14）；数学面 = 知识判据面（08 E7：不立数学，登记为知识判据面） |

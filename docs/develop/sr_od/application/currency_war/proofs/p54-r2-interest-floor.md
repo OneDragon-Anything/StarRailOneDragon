@@ -40,7 +40,7 @@ r2_budget(g, g*+ρ, c_eff) ⟺ g − (g*+ρ) ≥ c_eff ⟺ ⌊(g − g* − ρ)/
 |---|---|---|
 | `g*`(息线) | `10 × cap_resolved` | `saturation_line(cap_resolved)`(statefn/interest 单一源;cap_resolved 经 `interest_cap_resolved`,默认局 = `GOLD_CAP_INTEREST=50`,cw_plane_table 表值) |
 | `ρ`(Σ预留卡价) | 合格集(可追成员)最低费卡价 | `CHARACTERS.cost` 注册表 min;可追性 = `refresh_prob(level, cost) > 0 ∧ 无 2★`(与 R1 装配侧 `_r1_member_accounts` 同一过滤,单一源不复制) |
-| `c_eff` | `state.shop_refresh_cost`(恒基价 2) | `REFRESH_COST_BASE`(cw_state 建模常量,ADR-0456 口径) |
+| `c_eff` | `state.shop_refresh_cost`(恒基价 2) | `REFRESH_COST_BASE`(cw_state 建模常量,口径) |
 
 每个分量都是注册表/表值直读或其结构派生(strategy-work §1 两类合法来源),无常数替换常数。合格集空(无可追成员)时 `ρ` 无定义——该帧 R1 门必先以 `no_chaseable_member` 关闭,R2 不可达,`ρ=0` 兜底值不影响任何可达路径。
 

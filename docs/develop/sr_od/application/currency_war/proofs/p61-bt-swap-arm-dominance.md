@@ -1,7 +1,7 @@
 # P61:B_t 支配命题(转型臂换血的弱支配与有限触发)
 
 > 状态:**已证(结构命题,零自由参数;边界三条如实入册;2026-09-06 正式化)**
-> 素材出处:ADR-0534 §9(支配论证,落地载体)+ 换血转型臂设计 v5 §3.3/
+> 素材出处:(支配论证,落地载体)+ 换血转型臂设计 v5 §3.3/
 > §3.3b(五轮无前提对抗收口的逐层竞争裁决,`.debug/temp/currency_war/
 > bench_to_board_swap_design/DESIGN.md`);正式化动机 = 策略审查
 > 20260906_0715 项1 Q6(支撑臂触发合法性的命题只住在 ADR,权威链
@@ -9,11 +9,11 @@
 > 代码锚:`cw_deploy_logic.swap_sell_exclusion_reason`(判定单一交汇点,
 > 发射⇔执行同函数)/ `SWAP_GUARD_SYSTEMS`(守恒门体系集)/
 > `seele_system_formed`(希儿系二元判定)/ `SWAP_TRANSITION_ARM_ENABLED`
-> (单点回滚);回滚开关声明见 ADR-0534 §6。
+> (单点回滚);回滚开关声明。
 
 ## 命题(形式化)
 
-设锁线转型帧满足转型臂触发域(ADR-0534 §决策.1):locked ∧ fp<1.00 ∧
+设锁线转型帧满足转型臂触发域():locked ∧ fp<1.00 ∧
 板满 ∧ 存在逐件守卫合格的 fenced victim v ∧ 卖出后假想态上序 ∩
 target 视图 ≠ ∅。臂发射 = 卖 v + 上板一个 target 视图成员。记:
 
@@ -26,7 +26,7 @@ target 视图 ≠ ∅。臂发射 = 卖 v + 上板一个 target 视图成员。�
 1. **B_t 严格增**:B_t(σ_post) ≥ B_t(σ_pre) + 1;
 2. **体系档守恒**:∀体系 s ∈ SWAP_GUARD_SYSTEMS:
    T_s(σ_post) ≥ T_s(σ_pre);
-3. **金不减**:G(σ_post) = G(σ_pre)(1★ 卖出全额退,ADR-0111);
+3. **金不减**:G(σ_post) = G(σ_pre)(1★ 卖出全额退);
 
 即臂触发是状态空间上的**弱支配转移**。**推论(有限触发)**:每帧
 B_t 为整数且 B_t ≤ |deployed ∩ target 视图| ≤ min(cap, |target 视图|),
@@ -45,14 +45,14 @@ B_t。触发域第 4 合取项(卖出后假想态上序 ∩ target 视图 ≠ �
 ### ② 体系档守恒
 
 `engines_guard` 逐体系判定卖出前后 achieved 档数不减(AIX 逐件求值,
-ADR-0534 §决策.2);希儿系取 `seele_system_formed` 单卡二元判定(自
+);希儿系取 `seele_system_formed` 单卡二元判定(自
 engines_count 提出,禁第二实现);体系集 = GUARD_SYSTEM_TIERS ∪ 护盾
 (注册表消费,零硬编码档),模块级断言 ⊇ DEPLOY_FENCE。守卫拒绝帧
 臂不发射 ⇒ 发射帧守恒成立。∎
 
 ### ③ 金不减
 
-v 为 1★(资格族 `star_guard` 限卖),1★ 卖出全额退(ADR-0111 sell_refund
+v 为 1★(资格族 `star_guard` 限卖),1★ 卖出全额退(sell_refund
 cost-based:1★ = cost)⇒ 卖出回金恰抵,金量不变。∎
 
 ### ④ 支配论证的隐藏成本项三层封闭(B_t 增量是定义量,全域成立)
@@ -87,8 +87,8 @@ cost-based:1★ = cost)⇒ 卖出回金恰抵,金量不变。∎
 
 ## 关联
 
-- ADR-0534(触发域/逐件守卫/单一交汇点/回滚开关,本命题的行为载体);
+- (触发域/逐件守卫/单一交汇点/回滚开关,本命题的行为载体);
 - P62/P63(B_t 作为披露口径的预测力面——本命题证「行为面弱支配」,
   P62/P63 证「观测面信息量」,两件事互不替代);
-- ADR-0111(1★ 全额退)、ADR-0521(locked_buy_membership 单一源)、
+- (1★ 全额退)、(locked_buy_membership 单一源)、
   P60(锁线 hoard 换手——买面义务集域,与本臂卖出面互补)。

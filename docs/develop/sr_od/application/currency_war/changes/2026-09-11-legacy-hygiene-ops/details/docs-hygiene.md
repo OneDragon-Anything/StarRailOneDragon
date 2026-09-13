@@ -5,7 +5,7 @@
 
 ### T-24 悬空 ADR 引用清理（0648/0649/0650/0653 删除笔遗留）
 - **根因归层**：流程层——ADR 删除流程缺「残留引用清扫」步骤（引用形态残缺，非语义缺陷）。
-- **症状**：用户命令删除 ADR-0648/0649/0650/0653 后残留悬空引用——记账时点约 20 处/11 文件，定稿时点实测 25 处/12 文件（不含本迭代 attack.md 自引；以开工时 grep 重跑为准）（依据 = 旧账交接检查点 §未竟清单#3；`git grep -E 'ADR-0648|ADR-0649|ADR-0650|ADR-0653|0648-p92|0649-equipment|0650-cw4|0653-m2b'` 实测命中面）。
+- **症状**：用户命令删除旧决策档(0648/0649/0650/0653 四件)后残留悬空引用——记账时点约 20 处/11 文件，定稿时点实测 25 处/12 文件（不含本迭代 attack.md 自引；以开工时 grep 重跑为准）（依据 = 旧账交接检查点 §未竟清单#3；`git grep -E 'ADR-06(48|49|50|53)|0648-p92|0649-equipment|0650-cw4|0653-m2b'` 实测命中面）。
 - **命中面（定稿时点实测，开工时以 grep 重跑为准）**：docs/develop/currency_war/strategy-docs/11_shop_decisions.md、19_reinforce_channel_and_survival_discount.md；changes/2026-09-11-unified-state/details/recovered/T-320-决策行文件schema设计.md；src 侧 telemetry/recorder.py、telemetry/match_archive.py、operations/cw_loop.py、kernel/cw_board_state.py、mandate_v1/shop.py、mandate_v1/mandate_state.py、mandate_v1/criteria/contracts.py、mandate_v1/criteria/equipment.py、mandate_v1/criteria/__init__.py。
 - **扩围面（账本 T-24 附注 2026-09-11T23:59:17）**：正本到 .debug 的悬空引用清单（引用目标文件已灭失——math_proofs/projection_contract/flow 多处）本批一并覆盖，清单 = reports/T-30-r1.md 第 4 节（attack.md F8 裁决回写 landing §3.2 同口径）。
 - **处置口径（总纲 IC-5）**：每处引用改写为纯语义描述（被引 ADR 的裁决语义一句话，读者无需回原文）或直接删除装饰性引用；**禁重建 ADR、禁改 ADR 历史原文**；src 注释面的改写遵循注释规范（持久索引或纯语义描述，禁会话局部标识符）。
@@ -20,7 +20,7 @@
   1. 主仓全仓旧路径引用（src 注释、docs、tools）grep 清零——迁移后旧路径全仓 0 引用 grep 锁（账本 criteria）；
   2. **sr-od-currency-war-dev skill 内路径引用同步**——skill 本体在**本仓** `skills/sr-od-currency-war-dev/`（junction 挂载 `.dsh/skills/sr-od-currency-war-dev`；SR 专属 skill 单源在本仓，依据 = AGENTS.md「SR 专属 skill 进本仓 skills/」；公共仓 OneDragon-Skills 的 skills/ 只有 od-dev-* 系，无此 skill——attack.md F5 裁决校正，防 worker 误去公共仓找/改甚至 fork 单源）。路径引用修改发生在本仓，单仓单笔 commit，交付报告登记本仓 hash；
   3. 正本区内部相对链接随目录整体迁移天然保持，逐篇抽查断链。
-- **边界**：`docs/game/currency_war/` 不迁（游戏知识树地址不变）；changes/ 迭代目录不迁（已在目标地址下）；ADR decisions/ 目录随树迁移（decisions 属设计文档区）。
+- **边界**：`docs/game/currency_war/` 不迁（游戏知识树地址不变）；changes/ 迭代目录不迁（已在目标地址下）；ADR decisions/ 目录随树迁移（decisions 属设计文档区;后经用户令整体删除,本节为当时点边界记录）。
 - **互斥**：与一切写 `docs/develop/currency_war/**` 的批互斥（T-24 先行；此后各代码批的文档回写按总纲 IC-4 用新路径）；与在飞 T-29/T-30 的 changes/ 写入互斥（它们写 changes/ 新址，本批迁旧树，物理不重叠，但开工前按 GC-1 对账一次防新落文档落错树）。
 
 ## 方案（实施序）

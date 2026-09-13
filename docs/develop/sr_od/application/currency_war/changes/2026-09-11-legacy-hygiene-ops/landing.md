@@ -16,13 +16,13 @@
 **验收凭据形式**：亲跑命令输出（脚本成功执行到骨架产出）+ ruff。
 
 ## 3.2 悬空 ADR 引用清理（账本 T-24）
-**范围**：ADR-0648/0649/0650/0653 删除笔残留引用全仓清零（记账时点 20 处/11 文件，定稿时点实测 25 处/12 文件——不含本迭代 attack.md 自引；以开工时 grep 重跑为准，docs + src 注释面），处置口径 IC-5。**扩围面（账本 T-24 附注 2026-09-11T23:59:17）：正本到 .debug 的悬空引用清单（引用目标文件已灭失——math_proofs/projection_contract/flow 多处）一并覆盖，清单 = reports/T-30-r1.md 第 4 节**。明确不含：ADR 重建、ADR 历史原文改动、语义勘误（引用处只改引用形态，不顺手改内容）。
+**范围**： 删除笔残留引用全仓清零（记账时点 20 处/11 文件，定稿时点实测 25 处/12 文件——不含本迭代 attack.md 自引；以开工时 grep 重跑为准，docs + src 注释面），处置口径 IC-5。**扩围面（账本 T-24 附注 2026-09-11T23:59:17）：正本到 .debug 的悬空引用清单（引用目标文件已灭失——math_proofs/projection_contract/flow 多处）一并覆盖，清单 = reports/T-30-r1.md 第 4 节**。明确不含：ADR 重建、ADR 历史原文改动、语义勘误（引用处只改引用形态，不顺手改内容）。
 **设计依据**：details/docs-hygiene.md §T-24；design.md §2 IC-5。
 **文件面**：docs/develop/currency_war/strategy-docs/{11,19}*.md、changes/2026-09-11-unified-state/details/recovered/T-320-决策行文件schema设计.md、src 命中文件（telemetry/recorder.py、telemetry/match_archive.py、operations/cw_loop.py、kernel/cw_board_state.py、mandate_v1/shop.py、mandate_state.py、criteria/{contracts,equipment,__init__}.py——以开工时 grep 重跑为准）。
 **依赖**：账本 T-30 done（recovered 文件互斥；边见 design.md §3，T-30 已 done 记边固化排布）；GC-1 留树面对账（src 命中文件多处在飞，开工前逐文件核对，不预写快照）；互斥排序：先于 3.8/3.9（共 shop.py）与 3.3（共 doc 树），边见 design.md §3。
 **优先级建议**：2
 **完成判据**（=账本 T-24 criteria）：
-- git grep -E 'ADR-0648|ADR-0649|ADR-0650|ADR-0653|0648-p92|0649-equipment|0650-cw4|0653-m2b' 全仓 0 命中
+- 旧档编号族(0648/0649/0650/0653 四件,档名 0648-p92/0649-equipment/0650-cw4/0653-m2b)全仓 grep 0 命中
 - ruff + 受影响测试绿
 - GC-1..GC-4
 **验收凭据形式**：grep 0 命中输出 + ruff/测试输出。
@@ -44,14 +44,14 @@
 ## 3.4 simulate 落洞 churn 重排治本（账本 T-17）【三层已由 T-308 入库，本阶段 = 残余收尾】
 **范围**：三层方案（S2 写回槽位表+健康门 / S1 四点下标直拷 / S3 epoch 通道）与顺路面三件**已由旧账 T-308 落码批入库**（主仓 bd27989d4，2026-09-11 12:42，7 文件 +203/−33；测试仓 377b61889ae0，3 文件新锁 15；落地审 reviews/T-308-落地审.md accept；方案正本 = T-280-交付报告.md §③ v2 修订版，落盘见 details/sources/）。本阶段辖残余四件：① **T-308 落地审 P3 残余小修**——cw_reconcile.py 健康门拒绝分支 sorted 混型防御面 + 返回值 docstring；② **「连续批跑 0 例降级 WARNING（前值 2 例）」正式取证**——sim 批，**挂 sim 门后执行（design.md §2 编排者裁决原文），不构成 W6 前置**；③ 同型 visit 实机回归 0 例（候实机窗）；④ T-308 已交付凭据（两例重放锁逐字节 EQ / 新锁 15 / 107 passed）与账本 criteria 对账记档。明确不含：三层方案重做（已入库，禁零 diff 白批）、观察结构改动、策略语义（零策略语义）、math_proofs 增行。
 **设计依据**：details/execution-seam-projection.md §T-17（按 T-308 后世界态重写）；design.md §2 跨迭代互斥（T-17 残余修复先于 W6 + sim 门辖域裁决）。
-**文件面**：kernel/cw_reconcile.py（P3 小修）+ 测试仓锁面（若取证需补锁）。已入库面（bd27989d4：cw_reconcile.py S2/S3 段、cw_exec_state.py、cw_op_buy_cards.py、cw_shop_action_ops.py、ADR-0646、decisions/INDEX.md、flow/projection_contract.md）禁重触；cw_state.py 零触碰（T-308 交付收窄）。
+**文件面**：kernel/cw_reconcile.py（P3 小修）+ 测试仓锁面（若取证需补锁）。已入库面（bd27989d4：cw_reconcile.py S2/S3 段、cw_exec_state.py、cw_op_buy_cards.py、cw_shop_action_ops.py、、decisions/INDEX.md、flow/projection_contract.md）禁重触；cw_state.py 零触碰（T-308 交付收窄）。
 **依赖**：GC-1 在飞面开工前核对（不预写快照结论）；互斥排序：先于账本 T-16（单源依赖 IC-2，边见 design.md §3）；时序主张：**T-17 残余修复先于 unified-state W6 开工**（r5 §2 窗内；「先于 W6/W7/W8」旧主张已废止，见 design.md §2）；批跑取证段候 sim 门（state 链全 done）。
 **优先级建议**：4
 **完成判据**（=账本 T-17 criteria；括注 T-308 兑现状态）：
 - 对账 churn 事件接投影链（跨 reconcile/投影两域独立批）——已由 T-308 兑现（S3 epoch 通道 + 播种期快照 + 单动作循环检差三步入库）
 - 修复后连续批跑 0 例降级 WARNING（前值 2 例实证）——残余①②，候 sim 门正式取证
 - 行为锁——已由 T-308 兑现（新锁 15，107 passed）
-- GC-1..GC-4（验证设计①-⑤：两例重放转锁全 EQ 已交付、写回 pad 态形状锁含健康门拒绝路径已入库、S3 epoch 事件锁已入库、同型 visit 实机回归候实机窗、SIFT 读链 slot 写点亲读结论已落 ADR-0646；P3 小修随残余批补齐）
+- GC-1..GC-4（验证设计①-⑤：两例重放转锁全 EQ 已交付、写回 pad 态形状锁含健康门拒绝路径已入库、S3 epoch 事件锁已入库、同型 visit 实机回归候实机窗、SIFT 读链 slot 写点亲读结论已落 ；P3 小修随残余批补齐）
 **验收凭据形式**：残余批交付报告（P3 小修 diff + 批跑 WARNING 计数对照（前值 2 → 0，候 sim 门）+ criteria 对账记档 + ruff）。
 
 ## 3.5 开局金/首收入校准（账本 T-21）
@@ -122,7 +122,7 @@
 **范围**：备战帧金动作（m3 经验批 LevelUp(-20金) 等）接入 journal 回执/outcome 计数/spend_executed 三套账 + 修点定谳义务三条（HEAD 对照组落档 / 钉死展开位 / 守卫锁出处回填持久指针）+ 执行缝账务包络测试锁。明确不含：商店单元账务语义改动、策略行为。
 **设计依据**：details/execution-seam-projection.md §T-16。
 **文件面**：strategies/impl/mandate_v1/mandate.py（m3_levelup_batch 段）、执行缝入账模块（以修点定谳为准：cw_screen_prep.py / cw_shop_action_ops.py / cw_op_buy_cards.py / cw_exec_state.py 子集）+ 锁面。
-**依赖**：3.4（单源依赖 IC-2：pad 态契约与 guard 形状**本体已由 T-308 入库（bd27989d4）**，开工前复核已入库契约（ADR-0646 + flow/projection_contract.md），以 T-17 残余修复落库后形状为修点定谳基准；边见 design.md §3）；与 3.8 共 mandate.py 互斥（m3_levelup_batch 段 × fuel_sell_candidates 段，见 design.md §1 症状 3）；**外部等待（账本 cond）：mandate 面在飞改动入库——复查时机 = 每次盘点 git status 与主线索引，在飞面落库即开工**；修复双审（方案段 + 落地审）。
+**依赖**：3.4（单源依赖 IC-2：pad 态契约与 guard 形状**本体已由 T-308 入库（bd27989d4）**，开工前复核已入库契约（+ flow/projection_contract.md），以 T-17 残余修复落库后形状为修点定谳基准；边见 design.md §3）；与 3.8 共 mandate.py 互斥（m3_levelup_batch 段 × fuel_sell_candidates 段，见 design.md §1 症状 3）；**外部等待（账本 cond）：mandate 面在飞改动入库——复查时机 = 每次盘点 git status 与主线索引，在飞面落库即开工**；修复双审（方案段 + 落地审）。
 **优先级建议**：4
 **完成判据**（=账本 T-16 criteria）：
 - m3 经验批 LevelUp(-20金) 等备战帧金动作经 journal 回执/outcome 计数/spend_executed 入账（执行缝三套账只辖商店单元的缺口闭合）

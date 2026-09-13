@@ -25,7 +25,7 @@
 
 ## 门② 锚点注册表直调 —— **过**
 
-- `STREAK_GOLD_TABLE=(1,1,2,2,2,3,4)`、`LOSS_GOLD_BY_NODE={battle:2,encounter:4,boss:4}`、`streak_gold()`、`BASE_INCOME=5`:逐个直调 `kernel/cw_economy`,与 v2 §头声明逐位一致;连胜四档表与 economy.md §10.1 弹窗判读(0-1→1/2-4→2/5→3/6+→4)一致;败轮底金 2/4 与 combat.md §「无连败补偿…败轮有底金」+ ADR-0439(实机 108 局/767 轮金差分)一致。✓
+- `STREAK_GOLD_TABLE=(1,1,2,2,2,3,4)`、`LOSS_GOLD_BY_NODE={battle:2,encounter:4,boss:4}`、`streak_gold()`、`BASE_INCOME=5`:逐个直调 `kernel/cw_economy`,与 v2 §头声明逐位一致;连胜四档表与 economy.md §10.1 弹窗判读(0-1→1/2-4→2/5→3/6+→4)一致;败轮底金 2/4 与 combat.md §「无连败补偿…败轮有底金」+ (实机 108 局/767 轮金差分)一致。✓
 - **CI 复算**:脚本原样重跑,§4 全表(A/B/C/附表)逐位复现(含 CI,seed 固定可复现);另以 3 个种子(7/1234/99)重抽 pooled p8-12 W_floor bootstrap,CI [48.5,71.8] 波动 ±1 金内——**CI 种子稳定,可复现成立**。✓
 - 轻微:溯源表称 λ_death「CI 已给」,实际 λ3 点值无单独 CI,只经 W_floor 联合 bootstrap 间接覆盖——声明略超额,非阻断。
 

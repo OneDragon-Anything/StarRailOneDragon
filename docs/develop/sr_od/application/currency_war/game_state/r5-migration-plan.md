@@ -24,8 +24,8 @@
 >
 > 输入正本不变:`docs/develop/sr_od/application/currency_war/game_state/retirement.md`(13 流处置表/11 消费面清单——
 > 其逐流处置与消费面清册继续有效;影子期/M1-M5 排期/前置六条按本裁定重构)+
-> `docs/develop/sr_od/application/currency_war/decisions/0630-unified-state-journal.md`(含修订节;其决策 6「影子双写」
-> 被本裁定推翻,需随实施批补裁定 ADR)+ 派生规则单一源判定方案 R5。
+> 迁移批裁定正本(原 decisions/0630 号件,已随 ADR 体系退役;含修订节;其决策 6「影子双写」
+> 被本裁定推翻)+ 派生规则单一源判定方案 R5。
 > 本批只读盘点+写规划,零代码/零配置改动。清点树 = 2026-09-11 工作树;口径 = 全仓 `*.py` 正则出现次数。
 
 **直迁五原则**(用户裁定,规划全篇据此):
@@ -117,7 +117,7 @@ cw_loop.py+零散 ops(=W7 删除面);**读点**在判读 CLI/装配器/sim 账�
 | **W4 cw4 审计+键收编+流删** | ①逐 key 审计(键级三分:游戏效果键→效果域/策略行为键→决策行/无消费键删;判定面四查=实机判读/sim 红则判据/轮差分/预注册披露);②键收编落码(效果键→效果域 inventory 写点、策略键→决策行字段、无消费键删分键代码);③流删:cw_loop `_record_cw4_counters_snapshot` 写点+match_archive `COUNTERS_FILE`+cli cw4 视图 | cw4_counters.jsonl 全链(写点/装配键/视图)+无消费键分键代码 | 审计部分无门可先行(与 W1-W3 并行);键收编落码候效果域设计件(候裁 8) | 键全集封闭性锁(写点全集对齐,禁凭概念断格);效果域写点经 inventory 方法域(D1 锚);落地审;实机窗口:判读面计数可见性抽查 |
 | **W5 透传域建模收编** | `cw_bs_view.py` 透传清单逐域建模入统一容器:bench/deployed(席位模型)、deploy_cap、shop(牌面 payload)、plane_bosses、enemy_affixes、active_env、equips、refresh_probs、board_next_tier(派生);**hp 专项**:容器存门前真值,新鲜度/门控施门迁消费侧(session 政策语义保留,记录/消费分离不变);类型去重(双 ShopCard 归一;BenchChar 居所定谳) | 旧透传分支(投影内的 frame 透传段随投影整体退役挂 W6;本波删除面=各域的旧「不入容器」豁免申报与双类型) | W1(写入面稳定);候裁 5(ExpectedState 归一方案)先行 | 逐域行为锁(值源切换逐位等价:回放语料对拍);hp 门重构专项对拍(血线决策语义,门后值=门前真值+消费侧施门的等价证明);D1 锁扩面(新域写点全走写入口);落地审;实机窗口:1 局备战/商店/结算帧字段核对 |
 | **W6 决策面切统一容器(消费迁移完成波)** | 生产决策面签名与字段读切换(kernel 20 文件+strategies/impl mandate_v1+decision_assembly+cw_game_ports,建议包内三段串行:kernel→strategies→sim);sim 引擎内部模型切统一容器(engine_p1/engine_p2 真值直写,`synthesize_from_game_state` 反转为直写喂入口,旧格式回放重建 `cw_replay.py:56` 切新账);applied-gate 族改观察侧 reconcile(发射行 receipts+后续快照对比;`cw_reconcile.py` 守卫+留证骨架复用);Δ池语料源切 journal(再生管线转 journal 行;既有 META 内嵌池沿用);last_state 链改统一容器喂入(read_game_state 产出直 observe);投影 `cw_bs_view.py` 退役;ExpectedState 归一落地。**落地态回写(prep 面,承接迭代 = `changes/2026-09-12-prep-chain-containerization`)**:prep 链决策面(mandate_v1 五处签名+prep 域全簇+对账族/装配缝)切容器、备战黑板槽退役(`PrepObservation.state` 槽删,`prep_obs_frame` 收敛纯视觉/占用观察载体)、商店黑板槽退役(`shop_state_frame` 槽删)、`game_state_view` 生产活调用清零已先行落地——本波剩余面 = sim 引擎内部模型反转、last_state 三写点喂入反转、`cw_bs_view.py` 文件删除、cw_game_ports 端口注解切换、applied-gate 迁移、Δ池语料源切换、ExpectedState 归一 | `GameState` 类型在决策/执行/sim/装配桶的全部引用(456 处的主体)、投影模块、last_state 三写点、action_log applied 消费路径、旧格式 sim 回放重建 | W5(建模绿)+W4(键新载体绿);候裁 5 定谳 | **零引用锁(src+测试仓 GameState=0)**;决策行为锁族全绿(mandate_v1/intention/economy 既有锁);sim 全量锁+零漂移锚(test_cw_sim_fidelity 指纹);applied-gate reconcile 双报对拍窗;回放语料逐位等价;落地审;实机窗口:≥2 完整局判读(决策语义直接暴露) |
-| **W7 旧 12 流写面删除** | 处置表定案流写点全部下线(recorder 旧流方法+cw_loop/ops 散布写点+battle_done 旧写+board_state_archive 写点+sim/ledger_hooks runs 兜底旧码);归档只读声明(数据文件不删不写,裸读考古);**retirement.md 影子框架重构文档批**(排期/前置六条按本规划改版)+ADR 同步 | 旧 12 流+补遗共 13 条流的**全部写面代码**(recorder 写方法、写点调用、recovered 兜底、battle_done 旧写、cw4 剩余写点);防双计无对象(单源后自然消失,勿实现) | W3+W4+W6 验收绿;候裁 2(invest_cards)定谳——**删除前定谳硬门**(效果原文回流断供不可逆) | 旧流文件名全仓零写点 grep 锁(先例 ADR-0571/D1 手法);全量测试绿;落地审;实机窗口:≥2 完整局(单源直迁后的第一手验证,判读全走新账) |
+| **W7 旧 12 流写面删除** | 处置表定案流写点全部下线(recorder 旧流方法+cw_loop/ops 散布写点+battle_done 旧写+board_state_archive 写点+sim/ledger_hooks runs 兜底旧码);归档只读声明(数据文件不删不写,裸读考古);**retirement.md 影子框架重构文档批**(排期/前置六条按本规划改版)+ADR 同步 | 旧 12 流+补遗共 13 条流的**全部写面代码**(recorder 写方法、写点调用、recovered 兜底、battle_done 旧写、cw4 剩余写点);防双计无对象(单源后自然消失,勿实现) | W3+W4+W6 验收绿;候裁 2(invest_cards)定谳——**删除前定谳硬门**(效果原文回流断供不可逆) | 旧流文件名全仓零写点 grep 锁(先例=旧 12 流写面删除批 D1 手法);全量测试绿;落地审;实机窗口:≥2 完整局(单源直迁后的第一手验证,判读全走新账) |
 | **W8 GameState 本体删除+正名** | ①`cw_state.py` **切割删除**:GameState 数据类+tracking/mutation 方法+last_state 链残留删除;共享词汇类型(BenchChar/动作类/常量/MatchOutcome 等)按候裁 9 定居所;②正名 BoardState→GameState(类名;模块文件名候裁 7);D1 锁 `_BOARD_STATE_MODULE` 常量+文档锚更新;pin_scope 零写入 grep 核对(候裁 10 终裁 C 案=字段整体退役删除,T-99 已执行,W8 仅存此核对) | GameState 数据类本体、cw_state.py 中其专属方法、(若裁正名)`cw_game_state.py` 旧类名/模块名 | W7 验收绿+全仓 GameState 零引用(W6 锁持续绿) | 零引用锁持续绿;全量测试绿;grep 锁全绿(D1/停写/读面);CLI/装配回归;落地审;实机窗口:1 完整局(正名后回归) |
 
 ### 删除时点论证(原「停写时点」)
@@ -152,7 +152,7 @@ W3/W4 并行(不同文件域:W5 在 kernel 容器与 obs 喂入面,W3 在 teleme
 2. **正名仍在最后**:W1-W7 的任务书/验收判据/测试锁/落地审锚全部引用 BoardState 符号,
    提前改名=对账锚失效税;且正名是机械大 diff(src 153 处/32 文件+测试仓 187 处+文档锚),
    与删除段的审查混装会污染逐 hunk 归属。同波内保持「先删后名」两段各自可验。
-3. **与 ADR-0630 改名计划锚兼容**:「迁移完之后将 BoardState 改名成 GameState」(后果节逐字锚)——
+3. **与 改名计划锚兼容**:「迁移完之后将 BoardState 改名成 GameState」(后果节逐字锚)——
    「迁移完」=W7 验收绿(消费迁移+旧流删除完成),W8 即执行。
 
 ---
@@ -184,7 +184,7 @@ W3/W4 并行(不同文件域:W5 在 kernel 容器与 obs 喂入面,W3 在 teleme
 | 8 | 判读考古断供 | 旧格式读面删除后,存量语料专用工具失效 | 候裁 6(随删 vs 保留只读考古);原始 JSONL 永远可裸读 | W3 |
 | 9 | 已删代码复活 | 后续开发重新引入旧流写点/GameState 构造 | 每删除波交付零引用 grep 锁(旧流文件名/GameState 符号),锁进全量集 | W6/W7/W8 |
 | 10 | invest_cards 效果原文不可逆断供 | 流删后候选卡效果原文无回流(注册表 ground truth 回流用途不变,但逐局原文语料断) | 候裁 2 定谳为 W7 硬门;倾向=strategy_offer 域建模(随 W5 payload 建模同批) | W5/W7 |
-| 11 | 知识双源漂移 | 影子框架推翻后,ADR-0630 决策 6/retirement.md 旧文与事实相抵 | ADR 义务:影子推翻裁定随 W1 入档;retirement.md 重构随 W7;改版前旧文以本规划为裁决口径 | W1/W7 |
+| 11 | 知识双源漂移 | 影子框架推翻后,决策 6/retirement.md 旧文与事实相抵 | ADR 义务:影子推翻裁定随 W1 入档;retirement.md 重构随 W7;改版前旧文以本规划为裁决口径 | W1/W7 |
 
 ---
 

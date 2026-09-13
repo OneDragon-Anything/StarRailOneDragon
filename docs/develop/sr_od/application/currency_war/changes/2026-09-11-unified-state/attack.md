@@ -17,10 +17,10 @@
 - 问题：阶段标题捆绑 T-1+T-2+T-3+T-4，但「范围」只写「cw4_counters 逐 key 审计+键收编落码+cw4 流删除」，「边界」明确「不含效果域内容语义设计件成文（候裁 8 前置）」——而 T-2 恰是该设计件任务（账本 T-2 title=W4前置:cw4效果域内容语义设计件），T-1（决策行 schema C1-C8 定谳）同样不在范围描述内。
 - 发作场景：实现者按范围边界读，跳过 T-1/T-2 直接做 T-4 键收编，违反账本 T-4 deps=[T-1,T-2,T-3] 的前置语义；或验收时对「T-2 交付物是否属本阶段」各执一词。阶段小节是派单唯一源，范围内两义不可并存。
 
-**H-2 T-6/landing 阶段3 范围与已执行的删除波 1（ADR-0641）重叠**
-- 位置：landing.md §3.3；账本 T-6 criteria；判据源 ADR-0641（docs/develop/currency_war/decisions/0641-delete-wave1-writer-retirement.md）。
-- 问题：ADR-0641（2026-09-11 入库，commit 3d4461438）已删除 9 流（decisions/outcomes/exogenous/spend_ledger/shop_snapshots/exec_events/invest_cards/obs_conflicts/runs）全部生产写入端，且其后果节明载「retirement.md 影子框架重构随本批兑现……后续 W7 到达时余量为零」。而 landing 阶段3 范围仍按 r5 W7 全量口径写「处置表定案流写点全部下线」+「retirement.md 影子框架重构文档批」，T-6 criteria 仍列「retirement 影子框架重构+ADR同步」——该 criterion 已被 ADR-0641 满足，属已完成项挂待办。
-- 发作场景：worker 领 T-6 后按范围重查 retirement.md 与已删写点，轻则困惑重查、重则把「已删」误判为「漏删」补刀；验收者按范围逐项核会与 ADR-0641 事实对撞。范围应按删除波 1 先行段收窄为：cw4 剩余写点（T-4 辖）+board_state_archive 写点+battle_done 旧写+recorder 残余+保留流定谳执行。
+**H-2 T-6/landing 阶段3 范围与已执行的删除波 1重叠**
+- 位置：landing.md §3.3；账本 T-6 criteria；判据源 （docs/develop/currency_war/decisions/0641-delete-wave1-writer-retirement.md）。
+- 问题：（2026-09-11 入库，commit 3d4461438）已删除 9 流（decisions/outcomes/exogenous/spend_ledger/shop_snapshots/exec_events/invest_cards/obs_conflicts/runs）全部生产写入端，且其后果节明载「retirement.md 影子框架重构随本批兑现……后续 W7 到达时余量为零」。而 landing 阶段3 范围仍按 r5 W7 全量口径写「处置表定案流写点全部下线」+「retirement.md 影子框架重构文档批」，T-6 criteria 仍列「retirement 影子框架重构+ADR同步」——该 criterion 已被 满足，属已完成项挂待办。
+- 发作场景：worker 领 T-6 后按范围重查 retirement.md 与已删写点，轻则困惑重查、重则把「已删」误判为「漏删」补刀；验收者按范围逐项核会与 事实对撞。范围应按删除波 1 先行段收窄为：cw4 剩余写点（T-4 辖）+board_state_archive 写点+battle_done 旧写+recorder 残余+保留流定谳执行。
 
 ### 中
 
@@ -31,7 +31,7 @@
 
 **M-2 W1/W2/W3/W5 已执行但在本迭代 landing 与账本零载体，T-5/T-6 的进入门无可验证凭据**
 - 位置：landing.md §3.2「依赖：阶段1；W5 透传域建模绿」、§3.3「依赖：阶段1-2；W1-W3 验收绿」；账本 T-5 标题「进入门=W5已绿」。
-- 问题：四波的执行证据在判据源与代码里都在（W1=ADR-0634+match_archive.py:158 注；W2=ADR-0630 修订节；W3=哨兵三脚本切 journal（cw_sentinel v5.2/cw_runs_gap v3/cw_early_stop v4）+cli.py:4 --source 拆除；W5=cw_bs_view.py 域清单「容器值收编」+test_cw_w5_passthrough_adoption.py 在仓），但 landing 依赖行与 T-5 标题只写「W5 透传域建模绿」「W1-W3 验收绿」，不给任何 ADR/评审/测试凭据指针；landing 排除声明也未列这四波。本账本（T-1..T-33）内无任何 W1/W2/W3/W5 任务行。
+- 问题：四波的执行证据在判据源与代码里都在（W1=+match_archive.py:158 注；W2=迁移批修订；W3=哨兵三脚本切 journal（cw_sentinel v5.2/cw_runs_gap v3/cw_early_stop v4）+cli.py:4 --source 拆除；W5=cw_bs_view.py 域清单「容器值收编」+test_cw_w5_passthrough_adoption.py 在仓），但 landing 依赖行与 T-5 标题只写「W5 透传域建模绿」「W1-W3 验收绿」，不给任何 ADR/评审/测试凭据指针；landing 排除声明也未列这四波。本账本（T-1..T-33）内无任何 W1/W2/W3/W5 任务行。
 - 发作场景：编排者对 T-5 放行时按账本对账进入门，「W5 已绿」查无凭据——要么卡派单、要么凭口头放行，验证三元组的「落地审+实机窗口」两腿在本迭代工件内无痕可查。
 
 **M-3 README 进度节与 design.md §0 的落地进度声称过期（批次三在产无记录）**
@@ -91,37 +91,37 @@
 
 > **裁决（2026-09-12 修订批）**：部分成立。成立部分 = cw_anchor 无 changes/ 引用（grep 证据：全仓引 changes/ 的代码文件仅 cw_board_state.py/cw_bs_view.py/cw_shop_refresh_obs.py 三处带路径，engine_p1.py:1575 与 cw_observation.py:2394 为裸名引用，cw_anchor.py 零命中）——已随修订落盘：landing 正本更新清单收口清单重列为 5 代码文件锚点并除去 cw_anchor。不成立部分 = 「cw_shop_refresh_obs 漏列」「列名 5 个」——修订批直读 landing 原文，该行本已列 cw_shop_refresh_obs（cw_board_state/cw_bs_view/cw_observation/cw_shop_refresh_obs/engine_p1/cw_anchor 六名齐列），与攻击转述不符；该子项按证据驳回记档，不影响 cw_anchor 修正。
 
-**L-5 design.md §2 依据编号不精确**：「依据 = ADR-0630 决策裁定 5」——三渠道封闭集实出自该 ADR 背景节裁定链第 5 条（其内自标「裁定 1」）与决策 2，无「决策裁定 5」编号。
+**L-5 design.md §2 依据编号不精确**：「依据 = 决策裁定 5」——三渠道封闭集实出自该 ADR 背景节裁定链第 5 条（其内自标「裁定 1」）与决策 2，无「决策裁定 5」编号。
 
-**L-6 无路径锚的速记词与跨迭代引用**：详设 §4.2「A8 盘点坐实」无出处路径（T1a/T1b 有 ADR-0623 锚可解析，A8 没有）；§8.7 批次三落位面引用「统一观察架构 §6.4/§6.5-1/§7.1」及旧账任务号（T-223/T-257/T-320）均无全路径。按 AGENTS.md 注释规范同类判据，持久索引应写全路径或语义描述。
+**L-6 无路径锚的速记词与跨迭代引用**：详设 §4.2「A8 盘点坐实」无出处路径（T1a/T1b 有 锚可解析，A8 没有）；§8.7 批次三落位面引用「统一观察架构 §6.4/§6.5-1/§7.1」及旧账任务号（T-223/T-257/T-320）均无全路径。按 AGENTS.md 注释规范同类判据，持久索引应写全路径或语义描述。
 
 > **裁决（2026-09-12 修订批）**：部分成立。成立部分 = A8 无出处路径、§4.2/§8.7「统一观察架构 §x.x」短引、T-223 旧账任务号无落文锚——已随修订落盘：详设 §4.2 两处与 §8.7 三处补全路径锚（A8 锚=docs/develop/currency_war/design/统一观察架构-画面op基类设计.md §8.0 盘点基线；T-223 改锚落文处 v12）。不成立部分 = 「T-257/T-320 无全路径」——修订批全目录 grep：T-257 在本迭代目录零引用（攻击虚指）；T-320 仅出现于 details/recovered/_INDEX.md 索引行，该行自带原始路径与对应账本任务锚（可解析），非无锚引用。
 
-**L-7 recovered/ 目录为 changes/ 模板外构成**：details/recovered/ 收 6 份找回草稿+索引。_INDEX.md 的地位注记（「裁定以 ADR-0630 为准，非裁定源」）写得规范，但 README/design 未声明该目录存在与其「禁作施工基准」约束，目录本身在 iteration-design §1 构成清单之外。
+**L-7 recovered/ 目录为 changes/ 模板外构成**：details/recovered/ 收 6 份找回草稿+索引。_INDEX.md 的地位注记（「裁定以 为准，非裁定源」）写得规范，但 README/design 未声明该目录存在与其「禁作施工基准」约束，目录本身在 iteration-design §1 构成清单之外。
 
-**L-8 deploy_cap 入容器推翻 ADR-0630 决策 1「不入存储」，详设引注缺权源锚**：§3.2.7.1 只锚 §8.8 例外形态与自证理由；实际权源是 r5-migration-plan W5（用户裁定重写的排期正本显式列 deploy_cap 建模）。实质合规（后裁定覆盖前 ADR），但「ADR 冲突处以其修订节为准」的惯例要求指认覆盖来源，现断链。
+**L-8 deploy_cap 入容器推翻迁移批裁定决策 1「不入存储」，详设引注缺权源锚**：§3.2.7.1 只锚 §8.8 例外形态与自证理由；实际权源是 r5-migration-plan W5（用户裁定重写的排期正本显式列 deploy_cap 建模）。实质合规（后裁定覆盖前 ADR），但「迁移裁定冲突处以其修订节为准」的惯例要求指认覆盖来源，现断链。
 
 **L-9 账本 criteria 内行号漂移实例**：T-5 criteria「last_state三写点删除（cw_screen_prep:563/787+cw_op_buy_cards:781）」对现树实为 :514/:737/:804（漂移 23-49 行）。写点本身在（本报告已核），符号可定位，但 criteria 以行号为主锚时验收会误判。
 
 ## 二、攻过未破角度清单
 
-1. **来源四值 vs ADR-0651「只保留 observation/logic 两态」**——详设 §2.1/§8.1 以「carried/prior=obs 族子模」（ADR-0630 裁定链第 5 条同源）调和，§8.1 docstring 显式声明，消费侧折叠有 hp trusted 映射先例（§8.7 W5 ⑤）。调和成立，未破。
+1. **来源四值 vs 「只保留 observation/logic 两态」**——详设 §2.1/§8.1 以「carried/prior=obs 族子模」（裁定链第 5 条同源）调和，§8.1 docstring 显式声明，消费侧折叠有 hp trusted 映射先例（§8.7 W5 ⑤）。调和成立，未破。
 2. **恢复局写「开局 hp 先验 82/62」的语义张力**（恢复局当前 hp≠开局值）——被 W5 hp 专项 trusted 映射兜住（prior→False，不进血线门）+首备战帧覆盖，§6.3 决策表三读法归一。未破。
 3. **payload 域离屏置 None 例外 vs §2.2「有过正式值禁清 None」硬边界**——例外显式申报为「结构事实非失读」，sim 合成口有落码与锁（批次三补单⑨，test_cw_board_state_batch3）。自洽，未破。
 4. **back_layout 8 格超集与 deploy_cap 双存**——准入③例外申报+「域外反推会把近似当真值」论证成立，cap 值域与 e4972b43 实证吻合。未破。
 5. **逐卡刷新次数键=normalize_invest_name 规范卡名**——归一函数单一源，写端已落码（cw_screen_invest_strategy 逐槽），免双坐标系换算的论证成立。未破。
-6. **两文件模型（E1）下单详设是否越界**——详设辖 BoardState 字段面，journal/决策行归 ADR-0630 与 T-1，总纲 §2 划分与「迁移排期单一源=r5 plan」声明清楚。未破。
+6. **两文件模型（E1）下单详设是否越界**——详设辖 BoardState 字段面，journal/决策行归 与 T-1，总纲 §2 划分与「迁移排期单一源=r5 plan」声明清楚。未破。
 7. **「对抗审中」状态与批次一/二/三已落地并存是否违 iteration-design §6 生命周期**（定稿才可派落地批）——追认式声明已披露账本先于文件、各批次有独立落地审（R1/R1.1/R2/R1.2/删除波1），未执行批次（T-2/T-3/T-9..T-12/T-15）已正确挂在 T-31（对抗定稿）之下。已知偏差而非疏漏，未破；但 M-4 的方向倒置使该安排缺一条明文豁免，建议定稿时在 README 补一句追认依据。
 8. **§7 冻结判据可执行性**——四步扫描、判定单位=条目下辖每条效果、五源枚举谓词均可程序化，快照记账有落点（进度账本）。未破（但 M-10 指出「缺口登记=归属」使冻结可绿而结构化排期缺位，属排期面非判据面）。
-9. **设计依据指向真实性抽查**——T-5 引用的 w6-切换波次调研草案存在于账本目录；T-1 底稿 recovered/T-320-决策行文件schema设计.md 存在；ADR-0634/0641/0623/0622/0620/0559/0596/0239 等被引 ADR 全部在册。未破。
+9. **设计依据指向真实性抽查**——T-5 引用的 w6-切换波次调研草案存在于账本目录；T-1 底稿 recovered/T-320-决策行文件schema设计.md 存在； 等被引 ADR 全部在册。未破。
 10. **详设代码锚点行号级抽查（约 20 处）**——read_star=cw_identity_obs.py:124、on_battle_end=cw_effect_inventory.py:281 与模块头申报 :151、board_rewrite=cw_investments.py:356/:366、BENCH_CAPACITY=cw_state.py:32、_SELL_MULT=:31、round_start_income=cw_economy.py:326、reconcile_hp=cw_reconcile.py:398、resolve_back_slots=cw_back_layout.py:535、本金充裕=cw_invest_data.py:251-252、星徽羁绊贡献缺失=cw_observation.py:1529-1536——全部命中或 ±2 行。详设的引用纪律总体扎实，未破。
 
 ## 三、判据核验记录（直调锚点）
 
 | 主张 | 来源 | 核验结果 |
 |---|---|---|
-| W1 journal 常开已落地 | match_archive.py:158「无条件常开(R5 W1/ADR-0634)」+ADR-0634 在册 | 成立 |
-| 删除波 1 已执行、retirement 重构已兑现 | ADR-0641 全文+commit 3d4461438+哨兵脚本 v5.2/v3/v4 注释 | 成立 |
+| W1 journal 常开已落地 | match_archive.py:158「无条件常开(R5 W1)」+在册 | 成立 |
+| 删除波 1 已执行、retirement 重构已兑现 | 全文+commit 3d4461438+哨兵脚本 v5.2/v3/v4 注释 | 成立 |
 | W3 旧读面已删 | cli.py:4「--source 双读面拆除」；哨兵三脚本尾读 journal | 成立 |
 | W5 透传域已收编 | cw_bs_view.py 域清单（hp/bench/deploy_cap/shop/refresh_probs/active_env/plane_bosses/enemy_affixes/equips/front_max/back_max 均标「容器值收编」）+test_cw_w5_passthrough_adoption.py | 成立 |
 | 批次三落位面在产 | 见 M-3 清单（9 处符号级命中） | 成立 |

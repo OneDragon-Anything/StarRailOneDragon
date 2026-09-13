@@ -16,14 +16,14 @@
 
 | 层 | 载体 | 角色 | 关键契约 |
 |---|---|---|---|
-| 状态面板 | `kernel/cw_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪） | `bench` 定长 9 槽表（ADR-0316）、`deployed` 定长 10 槽表（ADR-0392）；卖出/下场置 None 不移位 |
+| 状态面板 | `kernel/cw_state.py::GameState` | 决策域局面模型（OCR 填充 + bot 跟踪） | `bench` 定长 9 槽表、`deployed` 定长 10 槽表；卖出/下场置 None 不移位 |
 | 观察帧 | `kernel/cw_prep_actions.py::PrepObservation` | 备战决策单一输入（黑板内容物） | heavy 字段（`state`/`bench_chars`/`deployed_chars`/`deploy_vacancy`）入口单次刷新，light 步沿用可能 stale；轻字段（球/箱/占用/开态）每步现读 |
 | 快照视图 | `strategies/impl/mandate_v1/contracts.py::Snapshot` | frozen 观察视图（装配半部 `decision_assembly.snapshot_from_obs` 产出） | 容器下标 = 槽位语义（bench 下标 0-8、deployed 下标 0-3 前排/4-9 后排，声明在其类 docstring「空值表示总约定」）；deepcopy 隔离 |
-| 决策投影 | `strategies/impl/mandate_v1/turn_state.py::TurnState` | 每备战节点入口幂等装配（`assembly.py::assemble` 单一写端） | DirectionView（方向）/BudgetView（预算）；派生值不落 session，唯一豁免 = 遥测披露面四字段+键戳（ADR-0571） |
+| 决策投影 | `strategies/impl/mandate_v1/turn_state.py::TurnState` | 每备战节点入口幂等装配（`assembly.py::assemble` 单一写端） | DirectionView（方向）/BudgetView（预算）；派生值不落 session，唯一豁免 = 遥测披露面四字段+键戳 |
 
 执行侧载体（消费方读写的落地对象）：
 
-- `kernel/cw_exec_state.py::ExecState`：局容器级执行状态。`tracked_bench_chars`/`tracked_deployed` 双账（形状契约 = ADR-0316/0392 槽位表、pad 后含 None；T-308/ADR-0646 起 tracked_bench_chars 恒 pad 态由 reconcile 写回端经 `bench_from_compact` 重建保证，消费端下标即布局）、`deploy_fail_counts` 失败记忆、`expected_state` 期望态容器等。
+- `kernel/cw_exec_state.py::ExecState`：局容器级执行状态。`tracked_bench_chars`/`tracked_deployed` 双账（形状契约 =  槽位表、pad 后含 None；T-308 起 tracked_bench_chars 恒 pad 态由 reconcile 写回端经 `bench_from_compact` 重建保证，消费端下标即布局）、`deploy_fail_counts` 失败记忆、`expected_state` 期望态容器等。
 - 期望态路径寻址：`kernel/cw_expected_state.py::ExpectedEntry.path`，身份寻址字符串（§2.4）。
 - 帧级透传槽：`MandateState.cw4_m1p_arm_pending`（换血臂发射⇔执行归因透传，§4.3）。
 
@@ -32,7 +32,7 @@
 ### 2.1 两个容器（权威槽位 = 下标）
 
 - **bench（备战栏）**：定长 `BENCH_CAPACITY=9` 槽表（`cw_state.py::BENCH_CAPACITY`）。列表下标 0-8 = 物理槽位 1-9 减一；`BenchChar.slot` 保留 1-based 屏幕槽号，**信息位**。卖出/上阵置 None 不移位 → 索引跨动作组恒稳。容量判据 = `cw_state.py::bench_occupied`，**禁止 `len(bench)`**；迭代一律 `cw_state.py::iter_occupied`。
-- **deployed（上阵）**：定长 `DEPLOYED_CAPACITY=10` 槽表。下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6（ADR-0392；后排实际格数随布局档 6/7/8 变，扩展格属画面布局域不进本表示，见 `cw_back_layout.py`）。容量判据 = `deployed_occupied`；迭代 = `iter_occupied_deployed`；下标→排内槽号换算 = `deployed_slot_no`。
+- **deployed（上阵）**：定长 `DEPLOYED_CAPACITY=10` 槽表。下标 0-3 = 前排槽 1-4、4-9 = 后排槽 1-6（后排实际格数随布局档 6/7/8 变，扩展格属画面布局域不进本表示，见 `cw_back_layout.py`）。容量判据 = `deployed_occupied`；迭代 = `iter_occupied_deployed`；下标→排内槽号换算 = `deployed_slot_no`。
 
 `BenchChar.position_pref` / `BenchChar.slot` 在两容器中均为信息位，落槽写端（`bench_place` / `deployed_place`）负责归一信息位与下标一致；权威槽位恒为下标。
 
@@ -52,7 +52,7 @@
 
 - 点位单一源 = screen_info「货币战争-备战」的 `备战栏-N` / `前排-N` / `后排-N` area，经 `prep_actions.py::row_area_centers` 按 N 升序读出中心点。
 - 执行器（`PrepActionExecutor.__init__`）构造时读一次三排点位表；族 B 物理槽号 → 点位 = `pts[slot - 1]`；0-based 助手（如 `prep_actions.py::drag_bench_to_sell` 的 `bench_idx`）= `pts[bench_idx]`。screen_info 是静态建档，点位表构造一次全程有效；槽位**内容**才是动态面。
-- 后排点位按 cap 差公式选档（`cw_back_layout.py::select_back_layout` 单一入口，ADR-0385），`row_area_centers` 读全部已建档区自动跟上。
+- 后排点位按 cap 差公式选档（`cw_back_layout.py::select_back_layout` 单一入口），`row_area_centers` 读全部已建档区自动跟上。
 
 ### 2.4 期望态路径命名空间（`cw_expected_state.py`）
 
@@ -70,13 +70,13 @@
 
 ## 3. 写入端不变式（投影面对消费方的承诺）
 
-1. **槽位表形状**：bench/deployed 为定长槽位表，元素 `BenchChar | None`；删除语义 = 置 None 不移位。由此「生成期索引 = 执行期索引」在单轮内成立，同轮多笔卖出/部署不可能引起索引漂移（ADR-0316/0392 的立法目的）。
+1. **槽位表形状**：bench/deployed 为定长槽位表，元素 `BenchChar | None`；删除语义 = 置 None 不移位。由此「生成期索引 = 执行期索引」在单轮内成立，同轮多笔卖出/部署不可能引起索引漂移（的立法目的）。
 2. **信息位归一**：任何把 `BenchChar` 放进槽位表的写端（`bench_place`/`deployed_place`/部署装配 `assemble_bench_list`）必须让 `slot`/`position_pref` 与落位下标一致；跨排移动经 `_apply_row_to_char` 归一。
-3. **快照隔离**：TurnState 元素经 `cw_state.py::snapshot_copy` 浅拷贝 + equips 固化 tuple（ADR-0465 §9），与 `session.tracked_*` 断开对象别名——session 侧就地写端（shop 星级/装备拼接、deploy 装备覆盖）不穿透视图，反向亦然；Snapshot 为 frozen + deepcopy。快照不在帧间存活由拷贝机制保证，不靠消费纪律。
-4. **tracked 账随动**：卖出 handler 销账（`prep_actions.py::_track_remove_bench` 按 `bc.slot` 过滤；`_track_remove_deployed` 按 ADR-0392 换算置 None）；上阵落槽走 `deployed_place` 单一源（`_track_move_deployed`）；部署 op 收尾 SIFT 真值纠漂（`cw_op_deploy.py::_reconcile_tracking`，观测回路）+ 装备快照回写（`_snapshot_equips_into_tracking` 写 `tracked_deployed[].equips`）。tracked 账与期望态投影账的双账对拍 = 投影建模错的在环检测器（`screen_op.md` §2.3(ii)）。
+3. **快照隔离**：TurnState 元素经 `cw_state.py::snapshot_copy` 浅拷贝 + equips 固化 tuple，与 `session.tracked_*` 断开对象别名——session 侧就地写端（shop 星级/装备拼接、deploy 装备覆盖）不穿透视图，反向亦然；Snapshot 为 frozen + deepcopy。快照不在帧间存活由拷贝机制保证，不靠消费纪律。
+4. **tracked 账随动**：卖出 handler 销账（`prep_actions.py::_track_remove_bench` 按 `bc.slot` 过滤；`_track_remove_deployed` 按 换算置 None）；上阵落槽走 `deployed_place` 单一源（`_track_move_deployed`）；部署 op 收尾 SIFT 真值纠漂（`cw_op_deploy.py::_reconcile_tracking`，观测回路）+ 装备快照回写（`_snapshot_equips_into_tracking` 写 `tracked_deployed[].equips`）。tracked 账与期望态投影账的双账对拍 = 投影建模错的在环检测器（`screen_op.md` §2.3(ii)）。
 5. **幂等装配**：TurnState 同输入重入返回等值（`assembly.py::assemble`）；投影派生值不落 session；唯一豁免 = 遥测披露面（`v3_reserve_cap`/`v3_reserve_overflow`/`v3_release_budget`/`v3_release_spent` + `v3_disclosure_key` 键戳，禁决策消费，守卫锁 = test_cw_budget_disclosure）。
 6. **期望态两执行面同源**：原子动作的期望态推进唯一入口 = `cw_expected_state.py::apply_op_effect`（`PrepActionExecutor.execute` 与 decision 面绑定回放共同底层，登记挂执行器入口一次覆盖）。
-7. **装备 owned 搬运链**（ADR-0358）：装备 owned 名单写端 = `cw_op_equip_all.py::CwOpEquipAll`（`read_equips` 多列读 → `session.last_owned_equips`）；穿戴落地销账 = `cw_op_equip_all.py::register_equip_worn`（owned −1 件 + `tracked_deployed[idx]` equips +1，deployed 下标换算公式在其 docstring 声明）。
+7. **装备 owned 搬运链**：装备 owned 名单写端 = `cw_op_equip_all.py::CwOpEquipAll`（`read_equips` 多列读 → `session.last_owned_equips`）；穿戴落地销账 = `cw_op_equip_all.py::register_equip_worn`（owned −1 件 + `tracked_deployed[idx]` equips +1，deployed 下标换算公式在其 docstring 声明）。
 
 ## 4. 时序：生成期快照 vs 执行期现读
 
@@ -139,4 +139,4 @@
 
 - **T-13（装备穿着主病灶策略语义再评估：opening 窗口与非 key_equips 释放条件）**与 **T-18（词缀条件装备分配优先级）**的策略语义评估，其执行侧事实依据 = 本契约 §3.7（装备 owned 搬运链与穿戴销账）+ §4.3 末段（穿戴的执行期时序：稳帧/CV-diff 验穿/补救链/owned 授予快照每次执行只记一遍）+ §5 装备臂行。两任务判读执行侧「穿上/没穿上」证据时，以 `register_equip_worn` 销账链与 `equip_zero_wear` 哨兵的契约语义为准，不以画面单帧直觉为准。
 - 两任务涉及卖出/释放条件评估时，其动作面坐标系 = §2.2 双族对照（族 A `bench_idx`/`deployed_idx` + expect 代际校验；族 B 物理槽位无 expect）；评估「卖没卖对人」必须先分族再读数。
-- 本契约的验证阶梯状态：L0（读面基线）/L1（单件验穿）已过（报告 = `.debug/temp/currency_war/_archive_20260908/projection_ladder/阶梯执行报告_L0_L1.md`）；L2（已穿非空样本）/L3（落空补救链量化）需实机窗采样，**不在本批**，其结论落地前，涉及「批量穿戴不覆盖已穿」「落空率数字」的策略假设按未证对待（ADR-0482 口径）。
+- 本契约的验证阶梯状态：L0（读面基线）/L1（单件验穿）已过（报告 = `.debug/temp/currency_war/_archive_20260908/projection_ladder/阶梯执行报告_L0_L1.md`）；L2（已穿非空样本）/L3（落空补救链量化）需实机窗采样，**不在本批**，其结论落地前，涉及「批量穿戴不覆盖已穿」「落空率数字」的策略假设按未证对待（口径）。

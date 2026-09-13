@@ -142,7 +142,7 @@ V̄_net(r, plane) = Δp[plane] × 单战价值 × r
 **退役面**:
 
 - R1 刷新门比较项 V̄_net 整链退役:判据本体(criteria/refresh.r1_commitment_account)改为**形式二可负担性**——`c_eff·E(D|L*) + Σ卡费 + L(g, spend, R_剩余, Ī) ≤ g − g*`(E = expected_refreshes_for_card 按缺件集与等级选择输出 L*;g* = 10×cap_resolved);L* = 留级账 T_stay vs 升一级账 T_up(含 U_L 及其息损)取小(贪心序反例承载,11_shop_decisions.md §2 修正②)。输入全为游戏定义量(REFRESH_PROB 池参数 / XP 表 / 息律),零胜率。
-- P57 搜索窗 V̄ 读法门随链消解:窗口重锚塌缩带 `refresh_prob(L,c) ≥ ω×峰值级命中率`(ω = registry.omega_collapse_ratio,ADR-0475 同源);calib e2_24.7 对拍锚作废。
+- P57 搜索窗 V̄ 读法门随链消解:窗口重锚塌缩带 `refresh_prob(L,c) ≥ ω×峰值级命中率`(ω = registry.omega_collapse_ratio,同源);calib e2_24.7 对拍锚作废。
 - 实现:`statefn/vbar.py` 墓碑;`win_rate_dp_by_plane` / `vbar_hp_value_transitional` 注册表字段退役(本修订单);V_GAP/V_MS provisional 槽位保留登记、消费端清零。
 
 **结构存活(由新判据继承)**:帧级视界现算纪律(R_剩余 = horizon/schedule_of 现算,禁常数视界——本篇 §①r 因子行的纪律在新账的 L 项继续生效);「本期刷窗用尽即停」边界(新门由预算比较结构承载)。

@@ -6,7 +6,7 @@
 
 ## 0. 阅读门覆盖声明
 
-已读:p41 全文、`math_proofs.md` P41 索引行、注册表直调(`cw_shop_odds.py` 全文关键面:REFRESH_PROB/SHOP_SLOTS/POOL_COPIES_PER_CARD/DISTINCT_CARDS_PER_COST/`_refresh_dist`/`expected_refreshes`/ROTATION_CHANCE;`cw_state.sell_refund` + `_SELL_MULT`;`cw_economy.SHOP_REFRESH_COST=2`)、economy.md §1/§2/§2.1/§3(卖出退金/免费操纵/卖回还池不变量)、user_playstyle [22]/[31]/[32]/[34](囤积判据/梯队/腾席/购买序)、06_input_model §3(注册表地图)、merge_mechanics §2.5(经 p41 引证口径)、`MATH_REVALIDATION_PLAN.md`(公理与⑤门)、`MATH_EMPIRICAL_ATTACK.md`(V_power 攻击)、`TUNING_INVENTORY.md` 条 1/2/24、`P47_VALIDATION.md`/p47 单篇联动行(L 重锚)、`AB_R2/R3_ATTRIBUTION.md`/`AB_FAIL_ATTRIBUTION.md`/`DESIGN_MANDATE_LAYER.md`(43 vs 287 账本)、ADR-0513(fail-closed 缝)、cw3 归档 `calibration.py`/`input_contract.py`(u_by_cost/h_horizon 注入链)、`p41_check.py` 亲跑(ALL ASSERTIONS PASSED)。
+已读:p41 全文、`math_proofs.md` P41 索引行、注册表直调(`cw_shop_odds.py` 全文关键面:REFRESH_PROB/SHOP_SLOTS/POOL_COPIES_PER_CARD/DISTINCT_CARDS_PER_COST/`_refresh_dist`/`expected_refreshes`/ROTATION_CHANCE;`cw_state.sell_refund` + `_SELL_MULT`;`cw_economy.SHOP_REFRESH_COST=2`)、economy.md §1/§2/§2.1/§3(卖出退金/免费操纵/卖回还池不变量)、user_playstyle [22]/[31]/[32]/[34](囤积判据/梯队/腾席/购买序)、06_input_model §3(注册表地图)、merge_mechanics §2.5(经 p41 引证口径)、`MATH_REVALIDATION_PLAN.md`(公理与⑤门)、`MATH_EMPIRICAL_ATTACK.md`(V_power 攻击)、`TUNING_INVENTORY.md` 条 1/2/24、`P47_VALIDATION.md`/p47 单篇联动行(L 重锚)、`AB_R2/R3_ATTRIBUTION.md`/`AB_FAIL_ATTRIBUTION.md`/`DESIGN_MANDATE_LAYER.md`(43 vs 287 账本)、(fail-closed 缝)、cw3 归档 `calibration.py`/`input_contract.py`(u_by_cost/h_horizon 注入链)、`p41_check.py` 亲跑(ALL ASSERTIONS PASSED)。
 **无交集跳过声明**:`data/characters/` 72 篇卡面、`final_comps/` 全集、`sources/` 外部攻略、combat/board_structure——与「卡池再遇/退金/槽定价」无数值交集(卡面属性不进 q/P_shop/refund 式,已由注册表直调替代),特此声明。
 
 ## 1. 门① 内部推导(卖出主式 + V_opt 结构)
@@ -26,7 +26,7 @@
 - `DISTINCT_CARDS_PER_COST` 直调 = {1:20, 2:15, 3:14, 4:14, 5:9}、`POOL_COPIES_PER_CARD` = 27/27/9/9/9、`SHOP_SLOTS`=5、`SHOP_REFRESH_COST`=2——与 p41 数据源声明逐项一致。
 - `REFRESH_PROB` L7-L10 各档 p 值直调后重算 P_shop/1/P/C_rescue/P_miss/V_opt:20 格全命中(誊录无漂移)。口述锚点 [22]③ 四组独立复算:1费@L5 = 9.3 轮 ∈[7,15] ✓;5费@L8 60.4/@L7 180.4 轮 ✓;C_rescue 120.8/360.8 金(口述 120-360 的圆整源)✓;5费@L9 18.4 ∈[8,18] 邻域 ✓、@L10 7.6 轮出带(证明已诚实声明 4.9% 按区间带 [6,10] 命中——带命中非逐字命中,口径合规)。
 - `expected_refreshes(k=1, c=0)` vs 独立近似 1/P_shop:全 20 格相对差 ≤0.6%(A2 声明 <2% 成立且有余量)。注:验证首跑曾得 6% 差,系我方误把 `expected_refreshes` 第 4 参 `c`(同费非目标已拿走数)传成 cost——签名语义易混,但证明与官方脚本口径正确,非证明之罪。
-- `sell_refund` 直调:1★ = [1,2,3,4,5](全额)✓;2★ = [3,5,8,11,14](1费 +3 无费、cost≥2 −1)✓ 与 ADR-0121/经济 §3/live 实测(2★1费=+3)一致;3★=cost×9−1 系用户记忆口径 🟡,证明的 fee 消费(p46 差额 1)同源——继承注册表证据等级,非 p41 新增风险。
+- `sell_refund` 直调:1★ = [1,2,3,4,5](全额)✓;2★ = [3,5,8,11,14](1费 +3 无费、cost≥2 −1)✓ 与经济 §3/live 实测(2★1费=+3)一致;3★=cost×9−1 系用户记忆口径 🟡,证明的 fee 消费(p46 差额 1)同源——继承注册表证据等级,非 p41 新增风险。
 
 ## 3. 门③ 建模对象 vs 玩法文档
 
@@ -42,7 +42,7 @@
 
 **判定:半过——判据的数学侧无反例,但「判据→行为」的落差已在 AB 账本坐实,证明侧有可归因的辖域缺口。**
 
-- **账本事实**(AB_R3_ATTRIBUTION / DESIGN_MANDATE_LAYER):SellBench r2=0 → r3=43 笔 vs 旧侧 287;bench 满拒买 1163 笔/3114 金 vs 旧侧 13/44;拒买峰值轮与战斗败损失峰值轮逐轮重合。**归因链**:①r2 的 0 笔 = u=None fail-closed(ADR-0513 判据侧,数学侧是「未标定不可定价」纪律的代价);②r3 的 43 笔 = 分类判据要求「与锁定线零重叠才卖」,发散板面上锁定线不存在/不收敛 → 判据过严——**这是 p41 ② 分类判据表的辖域缺口**:其骨架/贯穿定义以「当前目标 comp K」为锚,未给未定型期(K 未锁定)与危局轮的卖出条款;后续 DESIGN_MANDATE_LAYER M4(「危局无条件卖最弱垫件」+ 线外零重叠硬出口)是对该缺口的补全,其纪律依据([32] bench 满→先卖杂件)在 p41 引证面内但未进 ② 的判据表。**落差主体是「没做/没接通」(实现通道),判据数学式本身无被证伪的实例**——43 笔已卖出的每一笔与不等式方向一致,无「该卖没判卖由公式错导致」的证据。
+- **账本事实**(AB_R3_ATTRIBUTION / DESIGN_MANDATE_LAYER):SellBench r2=0 → r3=43 笔 vs 旧侧 287;bench 满拒买 1163 笔/3114 金 vs 旧侧 13/44;拒买峰值轮与战斗败损失峰值轮逐轮重合。**归因链**:①r2 的 0 笔 = u=None fail-closed(判据侧,数学侧是「未标定不可定价」纪律的代价);②r3 的 43 笔 = 分类判据要求「与锁定线零重叠才卖」,发散板面上锁定线不存在/不收敛 → 判据过严——**这是 p41 ② 分类判据表的辖域缺口**:其骨架/贯穿定义以「当前目标 comp K」为锚,未给未定型期(K 未锁定)与危局轮的卖出条款;后续 DESIGN_MANDATE_LAYER M4(「危局无条件卖最弱垫件」+ 线外零重叠硬出口)是对该缺口的补全,其纪律依据([32] bench 满→先卖杂件)在 p41 引证面内但未进 ② 的判据表。**落差主体是「没做/没接通」(实现通道),判据数学式本身无被证伪的实例**——43 笔已卖出的每一笔与不等式方向一致,无「该卖没判卖由公式错导致」的证据。
 - **sim 对拍挂账**:p41 自检清单 1-6(V_opt 分档 A/B、卖出 on/off、槽定价 vs 固定阈值、u/H 敏感性、截止项、银狼分支)均未跑——门④ 的 sim 侧证据缺口在册,如实登记。
 - **V_power=0 的攻击方向与观测行为相反**(攻击预测「卖多了」,观测是「卖少了」):说明 43 vs 287 的根因不在 V_power 计价,而在 u/H 闸门与分类辖域——两问题独立,均需修,不可互相顶替。
 

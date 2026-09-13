@@ -2,7 +2,7 @@
 
 > 状态:**已证(结构命题,构造性直证,零自由参数;辖域=溢出段 g>g* 且发射帧∧战斗类节点;带内段 g≤g* 不在本命题辖域,挂 L1' 双门 fail-closed;2026-09-06 正式化)**
 > 立项材料指针:`.debug/temp/currency_war/launch_gold_tradeoff/DESIGN.md` v1(命题 L1 两段式设计;sim71 判读二 35/109 帧重叠面 + sink_baseline 三面 p<0.0001 成对恶化 = 立项事实面,非证明输入)
-> 代码锚:`kernel/cw_economy.py`(`interest` / `loss_exact` P47 命题 2 双轨迹递推单一源 / `saturation_line` g* 派生 / `in_must_spend_zone` 辖域缺口在案)、`kernel/cw_launch_admission.py:readiness_launch_decision`(发射判据核 armed 单一源,ADR-0557)、`sim/engine_p1.py:1130`(`range(0 if _round_launch else 8)` 发射帧短路决策段=本命题辖域缺口的代码形态)
+> 代码锚:`kernel/cw_economy.py`(`interest` / `loss_exact` P47 命题 2 双轨迹递推单一源 / `saturation_line` g* 派生 / `in_must_spend_zone` 辖域缺口在案)、`kernel/cw_launch_admission.py:readiness_launch_decision`(发射判据核 armed 单一源)、`sim/engine_p1.py:1130`(`range(0 if _round_launch else 8)` 发射帧短路决策段=本命题辖域缺口的代码形态)
 > 数值自检脚本:`tools/cw/proofs/p70_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p70_check.py`,全部断言通过)
 > 编号定谳:math_proofs 索引顺延至 P70(索引末位 P69,无 P70 占位冲突,对账批规则下本号成立)。
 
@@ -103,7 +103,7 @@ EV(spend) − EV(留存) = ΔV − L(g, spend, R, Ī) − 摩擦
 ## 关联
 
 - **P47**(息账 L 递推单一源——侧 1 的全部数学)、**P52**(窗口局部 ε-最优形态——发射帧是其推广点)、**P68**(boss 前置帧 r=0 特例,同构不同号,禁并键)、**P69**(备战等待零收益支配,同源机制前提,互补不重叠)、**P11**(溢余金机会成本——shop 决策帧同族,本命题辖发射帧新辖域);
-- **ADR-0557**(发射帧短路——本命题的辖域缺口即短路保留的决策段禁区;修复处置 = 短路前插消费仲裁段只跑本命题溢出段判据,带内 fail-closed);
+- **发射帧短路保留裁定**(本命题的辖域缺口即短路保留的决策段禁区;修复处置 = 短路前插消费仲裁段只跑本命题溢出段判据,带内 fail-closed);
 - 设计正文:`.debug/temp/currency_war/launch_gold_tradeoff/DESIGN.md` v1 §1.1/§1.4(命题 L1 两段式与统一判据式;带内段 L1' 立项挂账)。
 
 *(本件为 v1.0;未改任何现有证明文件;数值自检脚本入库 `tools/cw/proofs/p70_check.py` 可重跑。)*

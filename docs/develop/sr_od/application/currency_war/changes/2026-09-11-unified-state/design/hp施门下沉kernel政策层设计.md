@@ -17,7 +17,7 @@
 - **施门**：决策消费 hp 前对「门前真值」施加的政策修正。本文件辖两族：**结算新鲜度门**
   （结算屏真值在可信窗内覆盖现读，函数锚 = `gated_hp`，`strategies/impl/cw_strategy.py`）
   与**开局先验门**（开局无真值时按遥测实证先验写入，含词缀修正；载体 =
-  `cw_opening_hp.opening_hp_prior` / `_AFFIX_HP_DELTA`，ADR-0559）。
+  `cw_opening_hp.opening_hp_prior` / `_AFFIX_HP_DELTA`）。
 - **门前真值 / 门后消费值**：容器 `BoardState.hp` 存的是门前真值（记录面，不经门，
   fields.md §3.2.13）；门后消费值 = 施门后的决策输入，不入记录。
 - **结算锚**：`StrategySession.last_hp` / `last_hp_t`（kernel/cw_strategy_session.py；
@@ -43,7 +43,7 @@
 |---|---|---|---|---|
 | 1 | 开局先验门（含「开局不利」词缀 −修正，常量 = `_AFFIX_HP_DELTA`） | `kernel/cw_opening_hp.py` + `cw_reconcile.reconcile_hp` 开局分支 | 写侧（先验写入，readable=False） | **不迁**（已在 kernel；本设计只定其读侧语义衔接，§2.2） |
 | 2 | 下行拒信门（真读较沿用上行 ≥ 疑误读阈即留证拒信，常量锚 = `cw_reconcile` 模块常量） | `kernel/cw_reconcile.py` | 写侧对账 | **不迁**（写侧对账，非决策消费面） |
-| 3 | hp_trusted 帧龄门（同节点沿用窗，ADR-0431，`_same_node_stale`） | `kernel/cw_reconcile.py` | 写侧对账 | **不迁**（同上；其消费语义由定谳二收编，§2.2） |
+| 3 | hp_trusted 帧龄门（同节点沿用窗，，`_same_node_stale`） | `kernel/cw_reconcile.py` | 写侧对账 | **不迁**（同上；其消费语义由定谳二收编，§2.2） |
 | 4 | **结算新鲜度门**（本设计下沉对象） | `strategies/impl/cw_strategy.gated_hp` | 消费读点显式施（现役 6 调用点，§2.4 迁移表） | **下沉 kernel 政策层** |
 | 5 | 血线消费门（停升级线/急救分位/血预算停手；常量 = `emergency_hp` / `blood_budget_stop_d` / `vd_p1_loss_*` / `vd_p2_loss` 等） | `kernel/cw_economy.py` / `kernel/cw_discipline_rules.py`（血线常量载体 = `kernel/cw_registry.py` DecisionV2Registry 字段） | —（是门的**消费者**，非施门者） | 波 2 本体切换；其 hp 读点改经政策层读口（§2.4） |
 
@@ -64,10 +64,10 @@ kernel 评估簇挂账 hp 读点另有两处（`cw_comps.maybe_pivot` 保命分�
   实现层——kernel 不能反向 import 策略层（§0 依赖方向纪律），施门只能：漏门（不同门 =
   行为分叉，实证 = `gated_hp` docstring r68「先调方假 hp、后调方真 hp，同节点两次方向
   相反换线」）或每读点手写第二门实现（漂移温床，违反 W393 A1.1 单一源纪律）。
-- **根因归层（流程层）**：施门点分散在调用面，靠纪律（ADR-0583 §2.4「消费方必须同门」）
+- **根因归层（流程层）**：施门点分散在调用面，靠纪律（」）
   维持一致性；门政策本体与消费读口未单点化。修法 = 门语义下沉 kernel 政策层、消费经
   单一读口——属流程层治本，非表示层换名。
-- **归层依据**：调用点分散事实 = §1.1 表 #4 列；同门纪律 = ADR-0583 §2.4；
+- **归层依据**：调用点分散事实 = §1.1 表 #4 列；同门纪律同源；
   波 2 硬前置定位 = 调研草案 §5 风险 2「kernel 门居所未定……门放错层=消费拿到未施门
   真值，禁拆批」。
 
@@ -134,8 +134,8 @@ MAP ⓪ A3）。方案 B 对比详见 §3。
 - 容器 hp 写端全集与来源形态（依据 = 写点在码）：
   - 备战帧真读 → `observe`，`sig.quality['hp']='real_read'`，source=`observation`
     （`cw_observation._feed_board_state` hp 段）；
-  - 开局先验 → `write_prior`，quality=`'prior'`（同上；先验语义 = ADR-0559）；
-  - 沿用 → `carry`，quality=`'same_node_carried'`（同上；ADR-0431 同节点窗）；
+  - 开局先验 → `write_prior`，quality=`'prior'`（同上；先验语义 = 历史遥测调查先验,非本局亲见,载体 cw_opening_hp）；
+  - 沿用 → `carry`，quality=`'same_node_carried'`（同上；同节点窗）；
   - 结算覆盖 → `apply_settlement_cover` observe（source=`observation`，无 quality 标记，
     `kernel/cw_board_state.py`）；
   - sim 合成 → `synthesize_from_game_state` observe（evidence 恒 `sim:synthesized`，
@@ -145,8 +145,8 @@ MAP ⓪ A3）。方案 B 对比详见 §3。
   - **hp 决策可信位 ≡ `bs.hp.source in ('observation', 'carried')`**。
 - 等价性论证：旧口径 `hp_readable or hp_trusted` 在容器来源二分下恒等于上式
   （observation ⊆ 两支并集；carried 支 = `hp_trusted=True` 沿用放行语义，`cw_state.py`
-  hp_trusted 字段注释）；prior/logic 支两位皆 False = fail-closed（ADR-0448 血线谓词
-  唯一收口 / ADR-0495 None 保守）——映射保序。跨节点沿用帧旧位 False/新映射 True 的
+  hp_trusted 字段注释）；prior/logic 支两位皆 False = fail-closed（血线谓词
+  唯一收口（None 保守）——映射保序。跨节点沿用帧旧位 False/新映射 True 的
   行为差已在 W5 视图收编时申报（`cw_bs_view` hp_trusted 映射段在码申报面），本定谳
   沿用不重裁。
 - **quality 词表处置**：`sig.quality['hp']` 三值（`real_read`/`prior`/
@@ -169,7 +169,7 @@ def apply_hp_freshness_gate(current_hp: int | None, last_hp: int | None,
                             last_t: int | None, now_t: int | None,
                             current_readable: bool) -> int | None:
     """结算新鲜度门本体。语义逐位等价 gated_hp：锚缺任一（last_hp/last_t/now_t
-    为 None）→ 恒等返回 current_hp（None 现读恒等支穿透，ADR-0491）；锚全时
+    为 None）→ 恒等返回 current_hp（None 现读恒等支穿透）；锚全时
     gap=now_t−last_t：可信窗（gap==1）与放宽窗（current_readable=False 且
     1<gap≤HP_FRESH_GAP_UNTRUSTED_MAX）→ 返回 last_hp，窗外返回 current_hp。
     None 现读非恒等豁免——锚全时在窗内同样被结算值覆盖（现役同型语义：门只
@@ -200,7 +200,7 @@ def hp_decision_trusted_of(bs: BoardState) -> bool:
   函数（`is_emergency` 族）随波 2 签名切换补 session 形参**（调用方 = kernel 内部
   与策略装配，均持 session；依据 = 现役 `blood_budget_levelup_blocked(state, session,
   registry)` 同形态），禁函数内私有第二门。
-- 消费同门申报纪律（承接 ADR-0583 §2.4）：波 2 后新增 hp 决策消费点，要么经
+- 消费同门申报纪律（承接）：波 2 后新增 hp 决策消费点，要么经
   `decision_hp` / 上游门后值传递，要么在豁免清单登记（豁免判据见 §2.5）。
 
 ### 2.4 数据流与迁移点表
@@ -247,7 +247,7 @@ hp 读点含 entry 3 处，随 strategies 全簇切换一并走 `decision_hp`）
 2. **幂等与组合**：门幂等（同 gap 窗内重复施门值不变），读口可在装配层与消费层
    叠加施门而不判分叉；幂等性由 §4-L1 锁钉。
 3. **None 语义**：门不产兜底值；`bs.hp.value is None`（未读过）穿门为 None，消费面
-   按 ADR-0495 保守（血线条件不触发/授权位 fail-closed）。
+   按 保守（血线条件不触发/授权位 fail-closed）。
 4. **过渡桥失真申报**：`board_state_bridge` / `synthesize_from_game_state` 产出的
    BoardState 视图上 hp source 恒 `observation`（合成口写死，`synthesize_from_game_state`
    在码）——可信位读法在该视图上恒 True，**语义只在生产容器单例上成立**。过渡期

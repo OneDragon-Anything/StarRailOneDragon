@@ -104,14 +104,14 @@
 ### F13【低】T-24 计数快照内嵌账本 criteria；docs-hygiene 命中面路径写法不一
 
 - **位置**：账本 T-24 criteria「(20处/11文件)」；details/docs-hygiene.md §T-24 命中面。
-- **事实**：实测 `git grep -E 'ADR-0648|…|0653-m2b'` = 25 处/12 文件（较记账时点 +5/+1，另一在飞清理批会继续移动该数）。landing §3.2 用「约 20 处/11-12 文件…以开工时 grep 重跑为准」已免疫；账本 criteria 的括号计数是会过期的第二抄本（机械判据「0 命中」本身不受影响）。另 docs-hygiene 命中面写「mandate_v1/criteria/contracts.py、criteria/equipment.py、criteria/__init__.py」——后两者缺 mandate_v1/ 前缀，实际同目录，读者需自行补全。
+- **事实**：实测旧档编号族 grep(「ADR-」前缀接 0648…0653 档名族,0648-p92/0649-equipment/0650-cw4/0653-m2b) = 25 处/12 文件（较记账时点 +5/+1，另一在飞清理批会继续移动该数）。landing §3.2 用「约 20 处/11-12 文件…以开工时 grep 重跑为准」已免疫；账本 criteria 的括号计数是会过期的第二抄本（机械判据「0 命中」本身不受影响）。另 docs-hygiene 命中面写「mandate_v1/criteria/contracts.py、criteria/equipment.py、criteria/__init__.py」——后两者缺 mandate_v1/ 前缀，实际同目录，读者需自行补全。
 
 ## 二、攻过未破角度清单（证据在案，均未破）
 
 1. **覆盖面与计数**：T-13/T-14/T-16..T-27 = 14 项与 landing §3.1..3.14 一一对应；T-15 排除正确（观察架构域）；T-19 无详设走总纲内联设计合法（iteration-design §2.1 单文档方案）。
 2. **criteria/cond/优先级逐字段对账**：14 张卡 criteria 原文、cond 复查时机、优先级数字与 landing 各阶段小节逐条一致（含 T-14 七条、T-23 四条全量核对）。
 3. **T-28 deps 声明**：T-13/T-14 确在 T-28 deps 面（卡面实证），free-refresh「下游」句准确。
-4. **代码与文档锚点大面实测命中**：shop.py:2728-2729 seat_recoverable 申报、refresh.py:196-199 代理偏宽申报（逐字）；cw_economy.py BASE_INCOME:383/REWARD_BASE_GOLD_BY_ROUND/streak_gold:48/利息封顶；cw_equipment_data.py:53 宝钻官方效果原文逐字命中；mandate.py:248 fuel_sell_candidates；cw_state.py:153 is_item_slot；economy.md §10/§11 与 §11「待玩家确认」⚠️ 段；board_structure.md §备战栏（L47）/§上限 9 格（L25）；ADR-0623 决策 3；T-162 入库笔 1c65941a 真实存在且语义相符。
+4. **代码与文档锚点大面实测命中**：shop.py:2728-2729 seat_recoverable 申报、refresh.py:196-199 代理偏宽申报（逐字）；cw_economy.py BASE_INCOME:383/REWARD_BASE_GOLD_BY_ROUND/streak_gold:48/利息封顶；cw_equipment_data.py:53 宝钻官方效果原文逐字命中；mandate.py:248 fuel_sell_candidates；cw_state.py:153 is_item_slot；economy.md §10/§11 与 §11「待玩家确认」⚠️ 段；board_structure.md §备战栏（L47）/§上限 9 格（L25）；决策 3；T-162 入库笔 1c65941a 真实存在且语义相符。
 5. **T-19 死引用前提亲证**：`merge_round_rows` 在 src 零定义（grep 实测），ledger_hooks.py:10 仅注释提及，review_skeleton.py:47 导入必 ImportError；修法两分支（改现居路径/最小语义等价实现）覆盖两种现实，判据「亲跑复现通过」可机械验收。
 6. **T-25 迁移树碰撞排查**：目标址 docs/develop/sr_od/application/currency_war/ 现存仅 changes/，与旧树 7 子目录+2 文件零名称冲突；git mv 保历史、旧路径 0 引用 grep 锁方向可行（skill 文件在本仓被 git 跟踪，git grep 无盲区——归属仓声明本身的错误见 F5）。
 7. **r5 §2 波次并行约束相容性**（任务书指定项）：见 F2 结论——窗真实、约束不冲突，败点在依据与 state 门。

@@ -7,9 +7,9 @@
 
 - **索引行**:`docs/game/currency_war/research/math_proofs.md` 第 40 行 `| P28 | 应急带非转化型支出 EV ≤ S0_pass·V_inherit−C;…| 待证明(结构不等式与 P23.4 金零值引理同构可半证…) | 局4 hp16 囤件=漏网实证 | proofs/p28-emergency-band-hoard-ev.md |`
 - **单篇**:`docs/game/currency_war/research/proofs/p28-emergency-band-hoard-ev.md`(33 行,全文精读)
-- **命题实义**:应急带(hp≤emergency_hp=25)备战帧,非转化型支出(不新增上场/不合成/不构成羁绊激活边,含奖励轮囤件)的 EV 上界 = S0_pass·V_inherit − C;当 S0_pass·V_inherit < C 时严格负 → 应急带豁免必须带「当轮转化」约束。消费设计 = 血线三带(W774⑤ → ADR-0484 落码 → ADR-0487 删码 → ADR-0499 重建为 spend_gate D2 血线臂)。
+- **命题实义**:应急带(hp≤emergency_hp=25)备战帧,非转化型支出(不新增上场/不合成/不构成羁绊激活边,含奖励轮囤件)的 EV 上界 = S0_pass·V_inherit − C;当 S0_pass·V_inherit < C 时严格负 → 应急带豁免必须带「当轮转化」约束。消费设计 = 血线三带(W774⑤ → 落码 → 删码 → 重建为 spend_gate D2 血线臂)。
 
-**阅读门执行**:p28 单篇、math_proofs 索引全文、P23/P27/P21/P20/P15/P1/P36 索引行+关键单篇段、economy.md(§3 退金/§6-7 保血经济/§9 标定表/§10 节点与收入)、user_playstyle([22] 囤件与再遇窗口/[32] 消费有效性)、combat.md §4(败轮金口径)、`06_input_model`(注册表地图,经 data/README.md 转引)、W774 REPORT §2⑤(设计原文)、ADR-0499/0484/0487(经 `.debug/progress/…/支撑/adr_archive_20260901/` 存档)、discipline.py / spend_gate.py / cw_registry.py / cw_state.py 生产代码。**声明跳过**:data/characters/ 72 件角色档、final_comps/ 十类、advantage_layouts/bosses/competitors——本件命题(应急带非转化支出符号)不消费单卡数值/阵容知识/节点敌情,无消费点。
+**阅读门执行**:p28 单篇、math_proofs 索引全文、P23/P27/P21/P20/P15/P1/P36 索引行+关键单篇段、economy.md(§3 退金/§6-7 保血经济/§9 标定表/§10 节点与收入)、user_playstyle([22] 囤件与再遇窗口/[32] 消费有效性)、combat.md §4(败轮金口径)、`06_input_model`(注册表地图,经 data/README.md 转引)、W774 REPORT §2⑤(设计原文)、(经 `.debug/progress/…/支撑/adr_archive_20260901/` 存档)、discipline.py / spend_gate.py / cw_registry.py / cw_state.py 生产代码。**声明跳过**:data/characters/ 72 件角色档、final_comps/ 十类、advantage_layouts/bosses/competitors——本件命题(应急带非转化支出符号)不消费单卡数值/阵容知识/节点敌情,无消费点。
 
 ## 1. 门① 内部推导(逐步核)
 
@@ -17,7 +17,7 @@
 
 逐步核对:
 
-1. **不等式方向**:EV = 存活 worlds 的继承价值 − 成本。以 S0(存活概率上界)乘 V_inherit 构成 EV 收益侧**上界**,减 C 得 EV 上界 —— 上界 < 0 ⟹ 真值严格负。用上界做否决 = fail-safe(误放方向被压住),与 ADR-0470 的 S0 链取向一致。✅
+1. **不等式方向**:EV = 存活 worlds 的继承价值 − 成本。以 S0(存活概率上界)乘 V_inherit 构成 EV 收益侧**上界**,减 C 得 EV 上界 —— 上界 < 0 ⟹ 真值严格负。用上界做否决 = fail-safe(误放方向被压住),与 的 S0 链取向一致。✅
 2. **与 P23.4 同构**:P23.4 金零值引理 = 死亡域(S0→0)金留到死零价值,EV≤−C;P28 是同一不等式在 S0∈(0,1) 中间带(应急带)的线性内插,数学上无需新工具。✅(此「半证」声明如实)
 3. **推论(当轮转化约束)**:逻辑成立——转化型支出的战力当轮兑现,不受存活折扣(或折扣表不同),两者账式分离是干净的;「豁免必须带当轮转化」是上界不等式的直接设计推论。✅
 4. **期权框架引用([22]④)**:囤件价值=期权、期权被存活概率折现是标准贴现,方向无争议。✅
@@ -32,10 +32,10 @@
 |---|---|---|
 | 应急带阈值 | `cw_registry.py:180` `emergency_hp: int = 25` | ✅ 与单篇「现推导值 25」一致 |
 | S0 链 | `discipline.py:854 terminal_survival_upper_bound`:K=单发穿透链(L_i≥hp),battle L=vd_p1_loss_intercept+slope×rung,encounter/boss L=streak_floor_loss_damage,p=streak_floor_win_rate,非穿透场不入 K(上界口径) | ✅ 与单篇描述的口径逐条一致,不建第二账 |
-| L 表 | `vd_p1_loss_intercept=11.32`/`slope=-0.37`;encounter (24.32, −4.53);boss (26.71, 0.0)(ADR-0424 冻结语料 w324) | ✅ 溯源清楚 |
+| L 表 | `vd_p1_loss_intercept=11.32`/`slope=-0.37`;encounter (24.32, −4.53);boss (26.71, 0.0)(冻结语料 w324) | ✅ 溯源清楚 |
 | p 表 | `streak_floor_win_rate` 注入表(battle {0:0.009,1:0.356,2:0.315} 等,plaza 先验只进 rung≥2) | ✅(注意 rung2 boss 0.187 > rung1 0.027 的非单调=注入表声明内行为) |
-| ε | `terminal_survival_eps=0.03`(ADR-0470) | ✅(P28 不直接消费,仅同链) |
-| V_inherit 下界=卖出退金 | `cw_state.py:877-890 sell_refund`:1★ refund = cost×1,star=1 无手续费 → **1★=cost 全额(各费用档均成立)**,economy §3/economy.md §9 一致(ADR-0121) | ✅ 单篇「1星=cost 全额」锚点准确 |
+| ε | `terminal_survival_eps=0.03` | ✅(P28 不直接消费,仅同链) |
+| V_inherit 下界=卖出退金 | `cw_state.py:877-890 sell_refund`:1★ refund = cost×1,star=1 无手续费 → **1★=cost 全额(各费用档均成立)**,economy §3/economy.md §9 一致 | ✅ 单篇「1星=cost 全额」锚点准确 |
 
 **卡点 1(S0_pass 应急带取值)亲算复核**(`uv run python`,PYTHONPATH=src,DecisionV2Registry 缺省值,K 链按 hp=25/20/15/10 × rung 0/2 展开全表):
 
@@ -65,12 +65,12 @@
 
 1. **局 4 hp16 囤件实证**:只在 W774 REPORT §2⑤(「堵局 4 hp16 囤件漏洞」)及其口述映射表(⑤行「hp16 囤件」)中定位到,**原始对局档案(run id/遥测行)本次未再定位**——索引「局4 hp16 囤件=漏网实证」的证据链当前是设计批转引。方向与多个独立记录互证(w576_prereg REPORT 局21 hp16 型低血乱花、w608 局 hp16 p2r4 12×LevelUp 同族),但 P28 单篇所述「买 8 张囤件+升级」的具体数字未在本次验证中找到一手账本。**如实降级:实证=设计批二手引用,一手档案挂账可溯**。
 2. **落地实现**(推论的消费面):`spend_gate.py:207-217` D2 血线臂——应急带(hp≤emergency_hp)∧非转化(`_deploy_free` 当轮可上场/合成完备已让位)∧非 E-b 线内缺档件 → 拒因 `d2_blood 应急带非转化拒`。语义与 P28 推论(豁免带当轮转化约束)**逐字对齐**;转化判定=当轮可上场/合成,豁免面=转化∨E-b,与 W774⑤ v2/W829 v3 设计一致。✅
-3. **可达性**:`spend_gate_enabled` registry 缺省 **False**(ADR-0499 三轮 A/B 终局定性:不开臂默认关维持——合格息保护器+清账门三轮全绿,但 M 系传导三度双败,开臂判据改挂实机锚)。即:P28 推论的行为约束**当前生产默认不生效**,只在 sim A/B 臂与开臂后生效。这是有定谳背书的生命周期第 1 态,非违例;但「命题已落地」的表述须带此开关状态。
+3. **可达性**:`spend_gate_enabled` registry 缺省 **False**(三轮 A/B 终局定性:不开臂默认关维持——合格息保护器+清账门三轮全绿,但 M 系传导三度双败,开臂判据改挂实机锚)。即:P28 推论的行为约束**当前生产默认不生效**,只在 sim A/B 臂与开臂后生效。这是有定谳背书的生命周期第 1 态,非违例;但「命题已落地」的表述须带此开关状态。
 
 ## 5. 门⑤ 参数溯源(公理判定)
 
 - **零调参**:结构命题部分零自由参数(纯不等式)。✅
-- **参数溯源**:emergency_hp=25(W774 带结构)、L/p 表(ADR-0424 冻结语料,p 表注入先验 share≤0.25 已声明)、ε=0.03(ADR-0470)、退金(ADR-0121)——全部单一源可溯,无第二账。✅
+- **参数溯源**:emergency_hp=25(W774 带结构)、L/p 表(冻结语料,p 表注入先验 share≤0.25 已声明)、ε=0.03、退金——全部单一源可溯,无第二账。✅
 - **超额收益隔离**:S0 上界口径(fail-safe,误放压住)+ V_inherit 取下界(更易证负)= 双保守。✅
 - **纯金流**:V_inherit 以金当量计(下界=退金),EV 两侧同量纲,无战力/金混账。✅
 - **状态分级**:单篇自评「待证明(参数化)」——经验证:结构半证属实,且参数取值(卡点 1)已可用注册表复算(门②亲算),卡点 2(V_inherit 精确标定)确实未标定但按 fail-safe 取下界即可先行,单篇自己也如此声明。分级诚实。
@@ -83,7 +83,7 @@
 2. **卡点 1 过时(应更新)**:S0_pass 应急带取值已可由既有表离线复算(本报告 §2 表:hp=25 处 S0∈[0.027,0.187],仅 boss 入 K),单篇「检验点:若 S0 普遍>0.8 则低收益」的担忧不成立——禁令在现有标定下有真实触发面,命题可用性应上调(建议状态从「待证明(参数化)」升「结构已证+表值级取值,卡点 2(V_inherit 精确值)按退金下界先行」)。
 3. **边界未声明(应补)**:L/p 表为 P1 标定,P2 应急带消费同链属跨域外推,单篇应声明此辖域边界(方向可用、数值降档)。
 
-另两条挂账(不动摇判决):局 4 hp16 一手档案未溯(门④-1);落地开关生产默认关(ADR-0499 定谳内状态,引用 P28 作行为依据时须注明)。
+另两条挂账(不动摇判决):局 4 hp16 一手档案未溯(门④-1);落地开关生产默认关(定谳内状态,引用 P28 作行为依据时须注明)。
 
 ## 7. 修正建议汇总
 
@@ -93,6 +93,6 @@
 | 2 | p28 单篇 §卡点1 | 销卡:登记本报告表值复算(hp=25 S0∈[0.027,0.187],仅 boss 穿透;P1 标定口径),复算式=同 `terminal_survival_upper_bound` 表值 |
 | 3 | p28 单篇 §命题或§边界 | 补一行:P1 标定辖域注(vd_p1_*;P2 消费为外推,数值降档) |
 | 4 | math_proofs 索引 P28 行 | 状态与备注随 1-3 同步(P15v2 引用撤除、S0 取值已复算) |
-| 5 | 挂账(不改本件) | 局 4 hp16 一手对局档案定位;spend_gate 开臂实机锚(ADR-0499 既有挂账,不另立) |
+| 5 | 挂账(不改本件) | 局 4 hp16 一手对局档案定位;spend_gate 开臂实机锚(既有挂账,不另立) |
 
 > 本报告未修改任何文件;锚点复核脚本为注册表直调(`DecisionV2Registry` 缺省值,K 链式亲算),口径与生产 `terminal_survival_upper_bound` 同源,可重跑。

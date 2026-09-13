@@ -13,7 +13,7 @@
 
 ### 1.1 现状
 
-生产判据 = mandate EV 核（ADR-0536 双 provisional 槽 None 期）→ **恒选最低难度、零刷新**。其设计前提 = 把每场掉血折算成「对未来死亡风险的影响」（λ 复利）再与奖励定价比较——该前提被用户裁定否定（README 裁定 3：发展为主，发展好必然通关；HP 是下游表征非决策面，[39] 同哲学）。且 EV 核的胜率标定存在冷启动死锁（恒低难 → 高难样本永远为零），机器事实上永远无法开闸。
+生产判据 = mandate EV 核（双 provisional 槽 None 期）→ **恒选最低难度、零刷新**。其设计前提 = 把每场掉血折算成「对未来死亡风险的影响」（λ 复利）再与奖励定价比较——该前提被用户裁定否定（README 裁定 3：发展为主，发展好必然通关；HP 是下游表征非决策面，[39] 同哲学）。且 EV 核的胜率标定存在冷启动死锁（恒低难 → 高难样本永远为零），机器事实上永远无法开闸。
 
 ### 1.2 根因归层
 
@@ -54,7 +54,7 @@
 
 ### 2.3 mandate EV 核处置（单一接线方案）
 
-- **接线 = kernel 新函数 + bridge 改投**：新判据落 `kernel/cw_encounter_selection.py`；`MandateV1Strategy.decide_encounter` 改投新函数；`cw_events.decide_encounter` 基线核原样保留为历史对照；EV 核保留禁删 + 模块头搁置注释（指针 = 13_pick_family E3 行正本 + 替代语义，**禁引 changes/ 路径**；ADR-0536 已退役删除——用户命令 2026-09-12，现存代码注释引用随本批清理）；
+- **接线 = kernel 新函数 + bridge 改投**：新判据落 `kernel/cw_encounter_selection.py`；`MandateV1Strategy.decide_encounter` 改投新函数；`cw_events.decide_encounter` 基线核原样保留为历史对照；EV 核保留禁删 + 模块头搁置注释（指针 = 13_pick_family E3 行正本 + 替代语义，**禁引 changes/ 路径**；已退役删除——用户命令 2026-09-12，现存代码注释引用随本批清理）；
 - 死分键（encounter_ev_*）消费面盘点 + f_min 注入通道与 EV 核双 provisional 槽物理隔离 = E-2 交付义务。
 
 ### 2.4 零调参对账（宪法第 4 条自查；深化批逐数执行）

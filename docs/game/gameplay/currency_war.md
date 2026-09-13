@@ -18,7 +18,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 
 | 想了解 | 去读 |
 |---|---|
-| 人怎么打:开局 / 经济 / 升级 / 阵容 / 装备纪律 | [user_playstyle.md](../currency_war/research/user_playstyle.md)(直觉假设登记簿,ADR-0482) |
+| 人怎么打:开局 / 经济 / 升级 / 阵容 / 装备纪律 | [user_playstyle.md](../currency_war/research/user_playstyle.md)(直觉假设登记簿) |
 | 经济机制:牌池 / 刷新概率 / 商店行为 | [economy.md](../currency_war/research/economy.md) |
 | 战斗机制:伤害乘区 / 星级 / 扣血结构 | [combat.md](../currency_war/research/combat.md) |
 | 对局画面流程与各屏事实 | [screen_flow_timing.md](../currency_war/research/screen_flow_timing.md) + [screens/](../screens/)(currency_war_* 各屏) |
@@ -28,7 +28,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 | 投资策略 / 环境效果全景 | [invest_effects.md](../currency_war/research/invest_effects.md) |
 | 阵容理解方法 / 攻略黑话查证 | [combo_methodology.md](../currency_war/research/combo_methodology.md) |
 | 高玩方法论(M1-M16)/ 策略数学证明 | [plaza_methodology.md](../currency_war/research/plaza_methodology.md) / [math_proofs.md](../currency_war/research/math_proofs.md) |
-| bot 策略设计 as-built 与决策(ADR) | [docs/develop/sr_od/application/currency_war/](../../develop/sr_od/application/currency_war/)(strategy/ + decisions/) |
+| bot 策略设计 as-built 与决策 why | [docs/develop/sr_od/application/currency_war/](../../develop/sr_od/application/currency_war/)(strategy-docs/) |
 
 > 新读者的推荐顺序(依赖驱动:机制 → 纪律 → 过渡 → 阵容 → 方法论)见 [research/README.md「玩家理解序」](../currency_war/research/README.md)。
 
@@ -58,7 +58,7 @@ involves_screens: [星际和平指南, 货币战争-大厅, 货币战争-对局�
 - **对局类型**:标准博弈 / 超频博弈;通关奖励 = 周期积分(18000 上限)+ 晋升点(如 2700+1500)。周额外晋升点上限 1500。(⚠️ 易混口径:此处「晋升点」= **单局结算的段位分数**;与大厅「晋升等级」(段位刻度 A1-A8,亦由晋升点累积而来,赛季 V4.4 上限 170)是两个物——前者是分数、后者是刻度,bot 特征面均不消费(易变值)。)
 - **职级/难度(两阶模型;详 [strategy/06 信息模型](../../develop/currency_war/strategy/06_input_model.md))**:
   - **职级 `selected_difficulty`**:段位 黑铁→青铜→翠钢→钴银→冰肽→紫金→投资大师→资本帝王→**财富造物主(A8,最高)**。V4.0 扩到 **A8-1 ~ A8-50**(子档,如 A8-50)。**决定起始敌人难度** + 是否带额外敌人词缀。选难度在「开对局确认」屏。
-  - **敌人难度 `enemy_difficulty`(数值)**:**随节点推进递增**(节点类型不同曲线不同;V3.8 调过 —— 削遭遇敌人攻速攻击、提奖励节点奖励)。**构成与修正的口径单一源 = [research/economy.md §9](../currency_war/research/economy.md)**:基础难度 + 投资策略品质加成(白银 +0 / 黄金 +3 / 棱彩 +6,2026-08-26 定谳——旧口径「策略压低难度:银−4 / 部分金−3、最低降到 0」已作废)+ 遭遇等级加成 + 特殊加成(伟大征服+连胜等);银策略「难度修改器」= **遭遇+首领节点 −4**(节点限定,详 [research/invest_effects.md §3](../currency_war/research/invest_effects.md))。boss 血量随难度**指数增长**(每 +1 难度 ≈ ×1.052,UP 自拟合;⚠️ 挂靠对象未实证、跨难度数值外推已裁决禁用 ADR-0424,详 [research/combat.md §6](../currency_war/research/combat.md) 与 [data/competitors.md](../currency_war/data/competitors.md))。
+  - **敌人难度 `enemy_difficulty`(数值)**:**随节点推进递增**(节点类型不同曲线不同;V3.8 调过 —— 削遭遇敌人攻速攻击、提奖励节点奖励)。**构成与修正的口径单一源 = [research/economy.md §9](../currency_war/research/economy.md)**:基础难度 + 投资策略品质加成(白银 +0 / 黄金 +3 / 棱彩 +6,2026-08-26 定谳——旧口径「策略压低难度:银−4 / 部分金−3、最低降到 0」已作废)+ 遭遇等级加成 + 特殊加成(伟大征服+连胜等);银策略「难度修改器」= **遭遇+首领节点 −4**(节点限定,详 [research/invest_effects.md §3](../currency_war/research/invest_effects.md))。boss 血量随难度**指数增长**(每 +1 难度 ≈ ×1.052,UP 自拟合;⚠️ 挂靠对象未实证、跨难度数值外推已裁决禁用 ,详 [research/combat.md §6](../currency_war/research/combat.md) 与 [data/competitors.md](../currency_war/data/competitors.md))。
   - **难度↑ 的后果**:敌人属性(攻/速/血)↑ + 额外敌人词缀。「第一位面最难」(A8 一层遭遇常比 boss 凶)。
   - **★节点类型 × 战力要求(2026-08-12 用户知识;奖励节点定性 2026-09-13 实证修订)**:**普通奖励节点 = 战斗型节点**(有结算屏、可败——148 局实机全量对账:普通奖励轮 436/438 带结算屏真值 outcome 行、damage_dealt 前 100 条 94/100 有值、另 2/438 败局页行证明奖励战可败;实证单一源 = [plane_schedule_observed.md](../currency_war/research/plane_schedule_observed.md)「节点类型语义」节)。「无战力要求,出战必过(白嫖奖励)」= **未证经验假设**(奖励战败率/战力要求定量面无实证)——倾向仍是不需为奖励关堆战力/买牌,该把金币省给成型节点。⚠️ **例外:经济过热/严重过热投资环境把奖励节点 → 次元/超级次元扑满**(扑满关**有**战力要求,要打;且**不掉血**——扑满关自身机制,与 0hp 保底无关,应对口述见 user_playstyle [16] 注记)。其余节点(战斗/遭遇/首领)均有战力要求(限时 AV 内击杀,输出不足扣血)。
   - **★奖励节点清关奖励 = 奖励球(晶矿)面板(2026-08-14 live 建档)**:通关奖励节点后,备战右侧「区域-奖励」面板出现球形奖励(实测 1-8 清关:1 大金球 + 5 蓝球 + 2 灰球;球色疑=晶矿档位 ——「黄晶矿工」策略提「低一档晶矿」,大金球开出了工具「员工投影仪」,蓝球开出进阶装备「以太钻头」)。**点球即开启,内容即时入账**:金币/装备直接加;**角色或补给箱落备战席占 1 槽**。⚠️ **备战席满时球点不动**(球可能给角色/箱都要占席)→ 顺序 = **先开补给箱腾席 → 再点球**。晶矿条目见 `cw_factions.FACTIONS` 注册表(「开启后可能获取金币、角色、装备或其它稀有物品」)。

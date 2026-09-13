@@ -12,8 +12,8 @@
 效果族归属、生命周期与治理面)的正本 = [fields.md](fields.md)(沿用原详设节号体系,
 代码注释所引节号以该篇为解析归宿);本目录自足,不依赖任何迭代过程件。
 
-上位裁定与 why:**ADR-0630**(统一 state 状态流水:BoardState 收编升级+三渠道写入口+
-自足快照变更账)。ADR-0630 含修订节,冲突处以修订节为准——守卫族终版、单字段双值结构、
+上位裁定与 why(原以 ADR 档案承载;ADR 档案体系已按用户令整体退役,裁定 why 的解析归宿 = 本目录正本 + git 历史):**统一 state 状态流水** = BoardState 收编升级+三渠道写入口(observe/carry/write_prior)+
+自足快照变更账。迁移批后续修订为当前有效裁定——守卫族终版、单字段双值结构、
 字段层次终极版(观察层=原始读数/逻辑层=计算值)三条为当前有效裁定。
 
 ## 2. 设计理念(六条)
@@ -28,8 +28,8 @@
    专名字段再在读时合并。例:节点序 = `top_bar_raw`(观察层)+ `node_ord`(逻辑层)。
    单事实单值字段(金/hp 等)不拆,来源与质量维由渠道签名承载(见 journal.md §3)。
 4. **唯一写入口,禁旁路**。一切写入必经统一写入口(Field 系 API)或 inventory 方法域
-   (效果域);绕 API 直改字段=违反,机器面=grep 子串守卫锁(ADR-0630 决策 7,先例
-   ADR-0571)。
+   (效果域);绕 API 直改字段=违反,机器面=grep 子串守卫锁(先例
+   = 旧 12 流写面删除批「旧流文件名全仓零写点」grep 锁手法)。
 5. **单版本事务**。一次逻辑写入 = 一个版本 = 一笔自足快照行:写入口收到写入后,同一
    事务内先落原始变更,再按固定次序跑关注点派生(节点判定→类型→效果推进),所有连带
    字段更新共享同一版本 id;原子性=派生出错整笔回滚留证,无中间态。
@@ -46,27 +46,27 @@
 | 写口 | 层 | 用途 |
 |---|---|---|
 | `observe()` | 观察层 | 亲眼看到的原始读数,覆盖旧值;value=None 拒绝(缺读不写禁猜) |
-| `write_logic()` | 逻辑层 | 按游戏规则推算的逻辑值**直接写字段**(两态制 ADR-0651 标准通道,策略器立即可读;非免检——值之后仍受观察覆盖辖) |
+| `write_logic()` | 逻辑层 | 按游戏规则推算的逻辑值**直接写字段**(两态制 标准通道,策略器立即可读;非免检——值之后仍受观察覆盖辖) |
 
 配套口:`carry()`(失读沿用,evidence 带 carried:来源帧)/`write_prior()`
 (先验写入,如开局 hp 先验)/`leave_screen()`(画面附加域离屏置 None)/`relay()`
 (接管中继)/`note_obs_event()`(零状态变更的观察事件留证行)。完整 API 契约见
 journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
 [fields.md](fields.md) §8)。(原 `expect()`/`confirm()`/`discard_expected()`
-两步机制已随 ADR-0651 废除。)
+两步机制已随统一 state 直迁废除。)
 
 ### 3.2 权威序
 
 - **观察赢**:观察写入覆盖 logic 来源值;失配记 `observe_vs_logic_mismatch` 缺陷行
-  (留证显影,不静默)。失配 = 推算代码 bug,修推算代码(ADR-0651)。
+  (留证显影,不静默)。失配 = 推算代码 bug,修推算代码。
 - **节点生效序**:权威序字段的读口 = 生效序读口,语义=逻辑层现值与 run 内高水位
   取大(公式体单一源见 [node-domain.md](node-domain.md) §3);消费面恒取逻辑层。
-- **节点类型三源仲裁**:结算屏权威(ADR-0239)> 节点序列台账现读 > 帧标签 OCR
+- **节点类型三源仲裁**:结算屏权威> 节点序列台账现读 > 帧标签 OCR
   ([fields.md](fields.md) §3.2.1;仲裁细则单一源 = node-domain.md)。
 
 ### 3.3 域清单
 
-统一 state 按域组织(域=字段分组,读不分域;写入域准入白名单=ADR-0630 决策 2 硬
+统一 state 按域组织(域=字段分组,读不分域;写入域准入白名单=迁移批裁定硬
 约束,逐格以实码写点全集为准;域键=bs_schema 键,字段全集逐字段规格 =
 [fields.md](fields.md)):
 
@@ -115,8 +115,8 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   同步契约(帧 → 容器唯一通道 `feed_sim_truth`,容器值禁回写帧)与逐字段
   映射对账 = [fields.md](fields.md) §9。
 - **字段级规格**=[fields.md](fields.md)(本目录分篇,正本)——字段清单/决策 op
-  写入面/效果族归属/生命周期/治理面;与其冲突时以 ADR-0630 修订节为准。
-- **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=ADR-0630 关联行与文档拆分裁定记档)——本目录引用不复写。
+  写入面/效果族归属/生命周期/治理面;与其冲突时以迁移批修订为准。
+- **派生规则单一源**=场景一判定方案([node-derivation.md](node-derivation.md);2026-09-11 自 `.debug/temp/currency_war/流程hook场景一-节点推进-判定方案.md` 晋升入库,持久裁定锚=关联行与文档拆分裁定记档)——本目录引用不复写。
 - **旧流退役排期**=R5 迁移规划([r5-migration-plan.md](r5-migration-plan.md);单源直迁八波,重构 retirement.md 影子框架的裁决口径)。
 - **链观察设计件**=件 B(docs/develop/sr_od/application/currency_war/changes/2026-09-11-unified-state/details/recovered/节点链观察-设计v1.md;2026-09-11 自 `.debug/temp` 找回入库,落位清单=recovered/_INDEX.md)——
   [chain-observation.md](chain-observation.md) 是其对接面精炼,不是第二正本。
@@ -124,6 +124,6 @@ journal.md §6,符号单一源 = kernel/cw_game_state.py(字段级规格 =
   [effect-domain.md](effect-domain.md)(2026-09-11 成文入库);本目录只记捕获面
   (效果变化随快照行自带)与逐效果 state 影响登记。
 - **策略侧遥测**(决策行)= 两文件模型的另一文件,归策略侧设计正文;state 引用
-  只经版本钉 state_ref=`(run_id, v)`,且决策输入禁读状态流水(ADR-0577)。
+  只经版本钉 state_ref=`(run_id, v)`,且决策输入禁读状态流水。
 - 玩法语义(各效果游戏机制原文/节点流转时序)挂靠
   [docs/game/currency_war/](../../../game/currency_war/)(game 子树)。

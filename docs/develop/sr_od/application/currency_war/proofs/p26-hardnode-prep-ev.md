@@ -18,11 +18,11 @@ EV(C) = Δp_prep · G_loss + Δstreak·S_streak − C − I(息损)
 **血量不入任何账与自变量**。L_node(条件败面伤害,血量单位)不直接进金账——本式无任何血→金换算因子,hp_to_gold×L 旧形态(P12 判死)违 P15v2/P51 纯金流公理,禁用。金账承载方式:
 
 - **G_loss = λ_death 通道的销毁敞口**(P51 §F.3 底线口径,P48 统一囤钱判据同源形态):败面概率变化 Δp_prep 承载的是「败局 → 局终销毁」事件下的存量金 + 未来基础/息流敞口,即 G_loss = λ_death(板面战力桶×节点类型,剩余轮数近似视界)×(存量金 g + 未来流)。λ_death 生成式待标定(P51 采集 #3 挂账)。
-- **L_node 的合法位置 = 触发面**(水位比较 hp−L_node<emergency_hp,ADR-0448 族),只判「备战帧是否被该硬节点威胁」,不作数值授权;消费形态=**区间敞口比较,禁边际引用**(P51 消费纪律)。
+- **L_node 的合法位置 = 触发面**(水位比较 hp−L_node<emergency_hp,族),只判「备战帧是否被该硬节点威胁」,不作数值授权;消费形态=**区间敞口比较,禁边际引用**(P51 消费纪律)。
 
 ### L_node 单一源(触发面参数)
 
-- 注册表 `streak_floor_loss_damage`(**均值口径**,w324 冻结语料 417 条,ADR-0424):encounter = 24.32 − 4.53·rung(斜率 SE 2.41 显著)/ boss = 26.71(斜率 CI 含 0 退常数;battle 复用 `vd_p1_loss_*` 单一源)。
+- 注册表 `streak_floor_loss_damage`(**均值口径**,w324 冻结语料 417 条):encounter = 24.32 − 4.53·rung(斜率 SE 2.41 显著)/ boss = 26.71(斜率 CI 含 0 退常数;battle 复用 `vd_p1_loss_*` 单一源)。
 - P15v2 实测带(冻结核 `tools/cw/proofs/p15/fit_results.json`,sha 848dc1aa,2026-09-04 按现行冻结语料回填):P1 battle 10.45 CI[9.59,11.24] / encounter 12.18 / boss 26.79;rung 梯度方向已立(rung0 11.52 vs rung1 6.94 CI 分离)不立系数。
 - **分位口径(尾部)未标定**——挂采集账(见下),标定前禁写具体分位值。
 

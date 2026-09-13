@@ -1,9 +1,9 @@
 # 货币战争 · 玩法研究(经我们提炼/核实的知识)
 
-> **本目录 = 我们提炼或核实过的玩法知识**(上游原 sources/ 外部攻略存档已于 2026-08-23 整体删除[eb9c72a1],版本过期致误引;有实质细节的条目已内联回填,补记块标「此为仅存记录」):社区帖统计提炼、机制核实、用户口述(直觉假设与机制证词,ADR-0482)、确认过的打法卡。写作纪律与分层判据见 [docs/game/README.md](../../README.md)「玩法知识分层」节。
+> **本目录 = 我们提炼或核实过的玩法知识**(上游原 sources/ 外部攻略存档已于 2026-08-23 整体删除[eb9c72a1],版本过期致误引;有实质细节的条目已内联回填,补记块标「此为仅存记录」):社区帖统计提炼、机制核实、用户口述(直觉假设与机制证词)、确认过的打法卡。写作纪律与分层判据见 [docs/game/README.md](../../README.md)「玩法知识分层」节。
 > 版本基准:V4.4;版本更新时按证据链重核本目录,再同步代码注册表。
 
-## 权威序(两层,ADR-0482;冲突时以高者为准)
+## 权威序(两层;冲突时以高者为准)
 
 **机制事实层**(游戏怎么运转,只能观测确立):`实机实测/图鉴` > `[口述]`(证词;未实测标「待实测」挂验证账)> `[米游社]` > `[社区]`(bwiki/NGA/攻略,单源或推算标 🟡,未找到标 🔴)
 
@@ -23,10 +23,10 @@
    - [merge_mechanics.md](merge_mechanics.md) — 升星合成:买牌落点(备战→触发合成改落点)/场上吸收/备战最左/连锁合成(口述·权威;bot 期望态层与拖动对账的合成期望规格)
    - [equipment_mechanics.md](equipment_mechanics.md) — 装备机制与使用策略(证据三级标注,码源+口述):穿着即合成/前后台限定/商店自带装备/唯一件/工具 7 件全量+使用语义(策略决策件挂策略池)/冶金炉回收流水线(经济账框架,P14 生产化)
    - [invest_effects.md](invest_effects.md) — 335 投资策略 + 83 环境效果全量分类(哪类效果可建模)
-    - [变宝为废-首次合成垃圾化.md](变宝为废-首次合成垃圾化.md) — 投资环境「变宝为废」机制(游戏明文:每位面首次进阶合成 50% 垃圾袋)与牺牲合成对策(策略命题[口述]待证;决策见 ADR-0498)
+    - [变宝为废-首次合成垃圾化.md](变宝为废-首次合成垃圾化.md) — 投资环境「变宝为废」机制(游戏明文:每位面首次进阶合成 50% 垃圾袋)与牺牲合成对策(策略命题[口述]待证;决策)
    - [screen_flow_timing.md](screen_flow_timing.md) — 对局流程的画面流转时序(生产日志实证)
-2. **玩家纪律**(人怎么打;机制之上的打法约束,直觉假设来源——策略命题以 math_proofs 证明与实证为准,ADR-0482):
-   - [user_playstyle.md](user_playstyle.md) ★ — 用户口述节奏全集:开局 / 经济息律 / 升级 / 阵容 / 装备纪律(条目现存至 [42],稳定 ID 永不复用;**直觉假设登记簿**——策略命题以 [math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) 证明与 sim/实机分布实证为准,ADR-0482;条目引用须区分已证/待证)
+2. **玩家纪律**(人怎么打;机制之上的打法约束,直觉假设来源——策略命题以 math_proofs 证明与实证为准):
+   - [user_playstyle.md](user_playstyle.md) ★ — 用户口述节奏全集:开局 / 经济息律 / 升级 / 阵容 / 装备纪律(条目现存至 [42],稳定 ID 永不复用;**直觉假设登记簿**——策略命题以 [math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md) 证明与 sim/实机分布实证为准;条目引用须区分已证/待证)
 3. **过渡体系与战力证据**(P1 怎么活到成型、什么形态能过;按口述条目号展开,故排在纪律后):
    - [transitions.md](transitions.md) — 过渡叙事:开局分级(锁线资格)/ 成型停手线 / 换血点 / 护航(已抛弃史料)
    - [transition_combos.md](transition_combos.md) ★ — 四种过渡体系逐线定义(引擎池 / 核心池;落码依据)
@@ -43,7 +43,7 @@
 
 | 问题 | 文件 |
 |---|---|
-| 人怎么打(开局/经济/等级/阵容/装备的直觉假设全景及其证明状态) | [user_playstyle.md](user_playstyle.md) ★直觉假设登记簿(证明状态随 [math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md),ADR-0482) |
+| 人怎么打(开局/经济/等级/阵容/装备的直觉假设全景及其证明状态) | [user_playstyle.md](user_playstyle.md) ★直觉假设登记簿(证明状态随 [math_proofs](../../../develop/sr_od/application/currency_war/proofs/math_proofs.md)) |
 | 经济机制:牌池/退金/刷新概率/多刷/保血边界/阶段共识 | [economy.md](economy.md) |
 | 节点经验:基础经验(+2/+0/BOSS+12 挂确认)/购买经验 4 金=+4XP/升级门槛表 | [xp-rules.md](xp-rules.md) |
 | 节点类型:三位面默认序列地面真值 / 普通奖励节点=战斗型(有结算屏,档案定谳) | [plane_schedule_observed.md](plane_schedule_observed.md) |
@@ -73,4 +73,4 @@
 - **值(数据)的单一源 = 代码注册表**(`src/sr_od/application/currency_war/cw_*.py`);本目录记「凭什么信」。
 - **设计消费**:`docs/develop/sr_od/application/currency_war/strategy-docs/` 的 as-built 正文引用本目录结论(只引结论一句话+链接,不复制内容)。
 - **上游**:原 ../sources/ 外部原文存档(已删[eb9c72a1],git 历史 `eb9c72a1~1` 可查);仍被引用的条目以各篇「原文细节补记」块为仅存记录,本目录结论的证据等级就地标注。
-- **裁定/教训不进本目录**:玩法取舍 → ADR(`docs/develop/sr_od/application/currency_war/decisions/`);分析教训 → 本地 insights。
+- **裁定/教训不进本目录**:玩法取舍 → 设计文档动机段与代码注释(ADR 档案体系已按用户令退役);分析教训 → 本地 insights。

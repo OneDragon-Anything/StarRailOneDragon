@@ -78,7 +78,7 @@ T-145 实施实证：sim 引擎的内部真值模型（旧类 `CwWorkFrame`，�
 2. **容器 → 内核帧：禁止**。内核帧的真值来源 = 环境剧本构造（开局采样/重放档案/Δ池/段落进场态），不是容器；回读会把记录模型的缺读态（None/carried）污染机制真值。策略域读容器、引擎喂容器——信息流单向成环：帧 →（feed）→ 容器 →（读口）→ 策略 →（动作）→ 帧。禁令辖的是**把容器值回写进帧字段**；策略侧与引擎决策谓词经容器读口读为合法（§2.3.4 单向环与双 ShopCard 对齐块；engine_p1 容器触点全部为喂后读，:716-723/:1513-1517/:1677-1688/:1814-1834）。现树无容器值回写帧字段的通道（审计口径：engine_p2.build_state 帧源 = P2ReplayEntry 档案构造，engine_p2.py:102-104；cw_replay 在容器上直接决策、零帧重建，模块 docstring :9-12；runner.synthesize_snapshot 方向 = 帧→Snapshot）。
 3. **不入同步面（内核独占表示，容器设计不入）**：`ShopCard.x`、`merge_preview`、bench 侧 `position_pref`、`action_log`（§2.4）、帧本体 copy-on-write 语义。
 4. **实机观测保真位不入同步面**：`hp_readable`/`hp_trusted`/`gold_readable`/`board_readable`/`level_readable`/`enemy_difficulty_live` 是实机观测域字段；sim 帧恒真读（缺省 True 即 sim 恒真读帧约定，cw_vocab.py:123/:142 字段注）。容器侧质量语义由 Field.source/evidence/渠道签名承载，不与这些位互映射。
-5. **无 session 投影面**：`scalar_projection_state`（cw_game_state.py:3208-3271）语义契约原样保留（ADR-0598 结构性豁免不扩修），不属推演内核消费面。
+5. **无 session 投影面**：`scalar_projection_state`（cw_game_state.py:3208-3271）语义契约原样保留（结构性豁免不扩修），不属推演内核消费面。
 
 #### 2.3.3 全字段映射对账表（范围增补①）
 
@@ -115,7 +115,7 @@ T-145 实施实证：sim 引擎的内部真值模型（旧类 `CwWorkFrame`，�
 | 27 | hp_trusted | 同上 | C | |
 | 28 | enemy_difficulty_live | 无域 | C | 实机观测保真位 |
 | 29 | board_next_tier | 无容器域 | C | 实机 OCR 域（左面板 X/Y 的 Y），sim 不建模，喂入口不写 |
-| 30 | dual_track_phase | 无域 | **E** | ADR-0209 双轨期；W6 消费切换时随 last_state 链退役（字段注 cw_vocab.py:197），不迁容器 |
+| 30 | dual_track_phase | 无域 | **E** | 双轨期；W6 消费切换时随 last_state 链退役（字段注 cw_vocab.py:197），不迁容器 |
 | 31 | focus_factions | 无域（真家 = StrategyState） | **E** | 同上（cw_vocab.py:198） |
 | 32 | enemy_difficulty | `bs.enemy_difficulty` | **D** | 容器有域；喂入口现不写（现状申报）；若 sim 决策消费需该域，域覆盖增补 = 改 synthesize 单一源，不属本形态批 |
 | 33 | level_up_cost | `bs.level_up_cost` | **D** | 同上（桥面 `board_state_bridge` :3194 补写，喂入口不写） |

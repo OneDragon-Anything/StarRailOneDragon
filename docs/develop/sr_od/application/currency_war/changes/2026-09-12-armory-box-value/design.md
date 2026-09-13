@@ -49,7 +49,7 @@ argmax，无信息 fallback idx=0
 - **箱面特殊类/值表外件定价**：钻/财富宝钻、工具等 `EQUIP_GENERIC_VALUE` 表外件维持 base 0（新旧两制同 0 分），与裁定 1「钻单件价值高」存在潜在倒挂——箱池构成无在册证据，登记箱池构成实采钩子后重裁（§2.2 覆盖边界）；
 - 未锁态消费材料通用性的去留：裁定 5 辖域已裁「box 消费不变」（源迭代 §7）。本设计按 §1.1 gap 4 收窄其含义并**有意变更**：该维现行梯度无注册表依据，其产生的「简易件优先于无表值进阶件」旧序被输出先验序**有意取代**——依据 = 用户指令（未锁线选更普遍用于输出的）+ 裁定 5 同构；这是一次声明的行为反转（§2.6 行 1/3/4），不是「无行为影响的清理」。源迭代迁移表 box 行 ② 的消费语义随本设计修订（V2 修订见 §2.1）。
 
-**族级清点（跨件半问：同族「target_comp 伪 comp 锚 → 两态化」第三件）**：flow.py 内仍消费 `state_of(session).target_comp` 的 pick 族剩余消费位 = `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_star_tome` / `decide_wish_trial` / `decide_planner`。已修轨迹：decide_invest（T-155/ADR-0597，已落地）→ decide_supply（源迭代 P-3，**已定稿待落地**）→ 本迭代 decide_box_card（第三件）。**处置声明**：两态锚定契约（源详设契约 3：锁线 ⇔ `ist.locked_comp` 非空）已是族级底座，剩余六位各自的价值语义不同（遭遇难度/巨星/伙伴/典籍阵营匹配），逐位换轨**归口源迭代 OQ-3 扩容或后续族级迭代统一处置**，本迭代不第四件盲修——同族问题已升格为族级清点 + 归口，非逐件补丁延续。
+**族级清点（跨件半问：同族「target_comp 伪 comp 锚 → 两态化」第三件）**：flow.py 内仍消费 `state_of(session).target_comp` 的 pick 族剩余消费位 = `decide_encounter` / `decide_megastar` / `decide_partner` / `decide_star_tome` / `decide_wish_trial` / `decide_planner`。已修轨迹：decide_invest（T-155，已落地）→ decide_supply（源迭代 P-3，**已定稿待落地**）→ 本迭代 decide_box_card（第三件）。**处置声明**：两态锚定契约（源详设契约 3：锁线 ⇔ `ist.locked_comp` 非空）已是族级底座，剩余六位各自的价值语义不同（遭遇难度/巨星/伙伴/典籍阵营匹配），逐位换轨**归口源迭代 OQ-3 扩容或后续族级迭代统一处置**，本迭代不第四件盲修——同族问题已升格为族级清点 + 归口，非逐件补丁延续。
 
 ## 2. 方案
 
@@ -140,7 +140,7 @@ base(X) = equip_generic_value(X)        # 通用输出先验，值域 0-6（cw_e
 ### 2.4 锚定两态化
 
 - 锁线布尔与锚：单源 = 源迭代详设契约 3——锁线 ⇔ `ist.locked_comp` 非空；锁定 comp 解析 = `get_comp(ist.locked_comp)`；key_equips = 锁定 comp 的 `key_equips`。flow wrapper 内 `self._ensure_intention(state_of(session))` 解析（decide_invest 先例 flow.py:507-513），strategy 契约签名不变（cw_strategy.py:206-208）。
-- **target_comp 伪 comp 项移除**：现行 ①③ 项（+100/+30）的锚从 `state_of(session).target_comp` 切到 locked_comp 两态。P1 配方锁帧 locked_comp 恒空 → 自然落未锁分支（ADR-0357，源迭代契约 3 注）。锚切换为**行为等价**：伪 comp 的 key_equips 字段恒空（pair_target_comp 构造不传该字段，cw_intention.py:1076-1147；cw_comps.py:107 缺省空），现行 ①③ 项在伪 comp 帧结构性不触发（target_comp 带非空 key_equips 的写点全仓仅 flow.py:427 / engine_p2.py:143，均为锁定/引擎帧）——本切换消除对偶发写入形态的隐式依赖，非改变已显形行为（§2.6 行 9）。
+- **target_comp 伪 comp 项移除**：现行 ①③ 项（+100/+30）的锚从 `state_of(session).target_comp` 切到 locked_comp 两态。P1 配方锁帧 locked_comp 恒空 → 自然落未锁分支（源迭代契约 3 注）。锚切换为**行为等价**：伪 comp 的 key_equips 字段恒空（pair_target_comp 构造不传该字段，cw_intention.py:1076-1147；cw_comps.py:107 缺省空），现行 ①③ 项在伪 comp 帧结构性不触发（target_comp 带非空 key_equips 的写点全仓仅 flow.py:427 / engine_p2.py:143，均为锁定/引擎帧）——本切换消除对偶发写入形态的隐式依赖，非改变已显形行为（§2.6 行 9）。
 - fail-closed：locked_comp 非空但 `get_comp` 解析失败（注册表漂移）→ 按未锁态打分 + 日志哨兵（保守向：漏提权非错提权；源迭代详设 §1.4 同款）。
 
 ### 2.5 库存数据源 = state，直接消费
@@ -191,7 +191,7 @@ sim 侧三事实（2026-09-12 直调）：①`FakeMatch._pick_box_card`（fake_m
 |---|---|
 | 材料通用性保留在 base（渐变序） | 简易域内注册表等值（10 配方/11 槽完全同值）无序；跨域旧序（简易优先于无表值进阶件）相对序无注册表依据（出处文档已删；注册表仅简易/进阶二元引用差，与旧序简易优先同向），被输出先验序有意取代——声明的行为反转，依据 = 用户指令 + 裁定 5 同构（§1.4/§2.6 行 1）。机器保留诚实计数函数与快照对拍锁供非箱消费位/审计用 |
 | 近兑现并入 +100 加法档（复用直击常数） | base 项可把近兑现顶到直击之上，破坏「直击 ⊇ 近兑现」严格支配的序（§2.3 推导 1）；字典序分档制使支配结构成立 |
-| 近兑现设独立常数（如 60，ADR-0524 定序族） | 字典序制下档位即序、无需常数载体；(tier, base) 在档间与加法制同序（§2.2 漂移面精确陈述），改写仅档内有意变化且零新数 |
+| 近兑现设独立常数（如 60，定序族） | 字典序制下档位即序、无需常数载体；(tier, base) 在档间与加法制同序（§2.2 漂移面精确陈述），改写仅档内有意变化且零新数 |
 | 近兑现采用「对数净增加」宽定义（交叉 cnt(X)<cnt(另一侧) / 自对奇数） | 三套表述互相矛盾的根因 = 混两种语义；按意图锚定「选卡解锁首对」（选前不可合成 → 选后可合成），增量对（第 2+ 件 K）价值属 P42 数值化辖域，不进序数档（§2.3 定义节） |
 | 库存感知采用计数加权（k 件递减边际） | 数值边际模型 P42 绝对值等 λ 标定（源迭代 §4 双前置未决），任何计数系数 = 拍值违宪；序数切片已捕获零参数可证的全部收益 |
 | key 提权不加需求守卫（维持现行无条件 +100） | 需求向量超配对锁定线成型零边际（声明性模型假设），冗余件提权必挤占有用件；守卫零参数（需求件数 = 注册表 key_equips 件数，持有 = 备用+穿戴合计），同族适用于直击与近兑现（泛化义务）。唯一件死库存口述（equipment_mechanics §4，【口述·印象级】）仅作辅助佐证不作主依据；可叠加 key 反面信号在册（皮靴 effect 可叠加 + plaza 帖级佐证 3×皮靴【攻略佐证级】）已申报——冗余件落 base 参与排序限定咬合面，行 8a/8b 观测键挂账（§2.2） |

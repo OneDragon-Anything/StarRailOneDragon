@@ -49,7 +49,7 @@
 | 代码注册表（`cw_chars`/`cw_shop_odds`/`cw_state` 等） | **机制数值单一源** | 文档只写常量名与语义，值一律在代码 |
 | `src/sr_od/.../currency_war/` 代码 | **实现** | 本链是设计，代码是实现；行为变更走 ADR + 三同步（见 sr-od-currency-war-dev skill「文档同步」） |
 | `archive/design/`、`archive/redesign/`、`strategy/` 旧树 | **素材·已删除（4e32b2e4 吸收后删除）·git 历史可溯** | 塌缩素材来源仅存于 git 历史，不再承载现行语义；其中的 R 标链/勘误史不搬入本链 |
-| `.debug/progress/` 当前迭代 + `decisions/`（ADR） | 进度与决策 why | 进度不进共享文档；一决策一 ADR |
+| `.debug/progress/` 当前迭代 | 进度与决策 why 挂账 | 进度不进共享文档;决策 why 收敛于设计文档动机段与代码注释(ADR 档案已退役) |
 
 ## 4. 宪法：用户四条裁定（每篇都要过）
 

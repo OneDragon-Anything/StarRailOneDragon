@@ -1,7 +1,7 @@
 # P47 息律经济账:守 50 期望息流与息档损失函数(第一性原理重推)
 
 > 状态:**已证(精确双轨迹递推=规范解;闭式=逐边界求和近似,549 格对拍 max 偏差 6 金、典型 ≤2;数值自检入库可重跑(`tools/cw/proofs/p47_check.py`);两处待标定口径已收口——①息结算时点(2026-08-31 用户裁定)、②基础奖励分段(在案结算帧定谳 {1:3,2:4}+5,残余仅 1-5 归专项),残余待标定见清单③④⑤。五方联动批已执行(p38/p39/p40/p46/p41 消费方全部换轨;命题三含动态修正(卖回通道),见命题三末节))**
-> 数据源(引用值逐一注明):`cw_plane_table`(`GOLD_CAP_INTEREST`=50 / `interest`=min(g//10,5) / `DEFAULT_PLANE_LENGTHS` P1=9·P2=7·P3=9 先验)、`cw_economy`(`BASE_INCOME`=5 / `REWARD_BASE_GOLD_BY_ROUND`={1:3,2:4} / `STREAK_GOLD_TABLE` 0-1→1·2-4→2·5→3·6+→4 / `LOSS_GOLD_BY_NODE` battle=2·encounter=boss=4,ADR-0439)、economy.md §10.1(收入公式实测:基础+连胜+利息)、`cw_state.sell_refund`(卖出退金,本证明只在假设 A5 边界提及)
+> 数据源(引用值逐一注明):`cw_plane_table`(`GOLD_CAP_INTEREST`=50 / `interest`=min(g//10,5) / `DEFAULT_PLANE_LENGTHS` P1=9·P2=7·P3=9 先验)、`cw_economy`(`BASE_INCOME`=5 / `REWARD_BASE_GOLD_BY_ROUND`={1:3,2:4} / `STREAK_GOLD_TABLE` 0-1→1·2-4→2·5→3·6+→4 / `LOSS_GOLD_BY_NODE` battle=2·encounter=boss=4)、economy.md §10.1(收入公式实测:基础+连胜+利息)、`cw_state.sell_refund`(卖出退金,本证明只在假设 A5 边界提及)
 > 数值自检脚本:`tools/cw/proofs/p47_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p47_check.py`)
 > 提出:CW 策略重构·数学证明工程批(p47);证明=本批
 > 前置(消费方接口,定义本文输出形态):p38 ⑤层(A5/A6 金位递推 + 「31金/位面」简化)、p39 A4(C_int = t×min(R,3))、p40 R2(买 iff V ≥ t×min(R,3))

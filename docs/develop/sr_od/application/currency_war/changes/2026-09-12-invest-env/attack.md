@@ -1,8 +1,8 @@
 # T-124 投资环境迭代设计对抗报告
 
 - 对象：本目录 `design.md`（总纲）/ `details/env-value-models.md`（详设）/ `landing.md`（六阶段+正本更新）/ `README.md`。
-- 方法：iteration-design.md §7 三核（无前提/规范遵循/治本）+ 任务书四专项（开局静态可用约束逐条核 / fail-closed 消费端契约 / landing 依赖序与文件面互斥 / 数字三形态与 ADR-0524 咬合）；策略类 strategy-work 硬门（数学先行/数字三形态/定序基数分账）逐项对照。
-- 证据纪律：设计引用的权威源逐个亲读（00_framework / 01_math_framework §6 / ADR-0524 / ADR-0593 / ADR-0600 / ADR-0144 / ADR-0620 / math_proofs P47·P81 索引 / economy.md / screen_flow_timing.md #11 / invest_effects.md §5）；代码现实核对（cw_events.py / cw_investments.py / cw_comps.py / cw_effect_inventory.py / cw_screen_invest_env.py / flow.py / cw_intention.py / data/cw_invest_data.py）；全部注册表直调断言经 `uv run python` 直调复算（脚本存 `.debug/temp/t124_attack/verify_registry.py`），值对标签逐位核。
+- 方法：iteration-design.md §7 三核（无前提/规范遵循/治本）+ 任务书四专项（开局静态可用约束逐条核 / fail-closed 消费端契约 / landing 依赖序与文件面互斥 / 数字三形态与 咬合）；策略类 strategy-work 硬门（数学先行/数字三形态/定序基数分账）逐项对照。
+- 证据纪律：设计引用的权威源逐个亲读（00_framework / 01_math_framework §6      / math_proofs P47·P81 索引 / economy.md / screen_flow_timing.md #11 / invest_effects.md §5）；代码现实核对（cw_events.py / cw_investments.py / cw_comps.py / cw_effect_inventory.py / cw_screen_invest_env.py / flow.py / cw_intention.py / data/cw_invest_data.py）；全部注册表直调断言经 `uv run python` 直调复算（脚本存 `.debug/temp/t124_attack/verify_registry.py`），值对标签逐位核。
 - 结论：**发现 18 条（高 3 / 中 5 / 低 10），全部有效，已全部修订落稿；修订后攻击收敛，裁定 定稿[收敛+试读过]**。逐条见下。
 
 ## 一、发现清单
@@ -14,7 +14,7 @@
 修复：landing 重排为 3.1-3.8（新增「3.4 送卡型结构」「3.6 品质改写型结构与分派」两阶段，原 3.4/3.5/3.6 顺延为 3.5/3.7/3.8），集成阶段扩容纳入送卡档消费支与 G3-G7 消费锁；正本更新清单补两型行。已照此改稿。
 
 **A2（核一·跨件接口契约矛盾/试读拦截）详设 §1.3「两型各建独立结构……经 `env_economy_value` 同一入口分派」与 §2.1.3 送卡消费位直接矛盾。**
-依据：详设 §2.1.3 消费位 = `cw_events.py` env 分支直连 max() 支（`ENV_GIFTS.get` + `gift_hit_tier` → 66/60/54 定序档），不经 `env_economy_value`；仅品质改写型经该入口分派（§2.2.5）。契约句在唯一声明接口的地方（§1.3 总纲接口契约）写错分派机制——实现者凭 §1.3 会把定序档塞进 `(expected_gold, resolved)` 契约。定序/基数分账（ADR-0524）本就要求两族不同入口。
+依据：详设 §2.1.3 消费位 = `cw_events.py` env 分支直连 max() 支（`ENV_GIFTS.get` + `gift_hit_tier` → 66/60/54 定序档），不经 `env_economy_value`；仅品质改写型经该入口分派（§2.2.5）。契约句在唯一声明接口的地方（§1.3 总纲接口契约）写错分派机制——实现者凭 §1.3 会把定序档塞进 `(expected_gold, resolved)` 契约。定序/基数分账本就要求两族不同入口。
 修复：§1.3 改写为「品质改写型经 env_economy_value 分派；送卡型不经经济入口（定序档非金流期望），消费位独立 max() 支」。已改。
 
 **A3（核二·预注册锁断言在自有机器下不可达）G7 锁与 §2.1.4-5 例子的预期行为被直调证伪。**
@@ -27,7 +27,7 @@
 
 **A5（核一·跨迭代接口契约缺口）`candidate_char_universe` 双头规划。** 详设 §2.1.3 把该函数落 `cw_comps.py` 全集 helper 区；兄弟迭代 landing 3.2 亦计划「若需 candidate_char_universe 辅助函数，落 kernel/cw_comps.py 与阵营全集同区」，其 3.1 还将产出「角色全集口径建议」（factions+core_chars 起步，shared/transition 取舍未定）——同名函数、同文件、两个 owner、口径未对齐 = 双源漂移温床。修复：总纲 §1.3-2 增跨迭代契约行（口径与函数单一源 = 本详设 §2.1.2/§2.1.3，core∪shared、transition 不计，char_routes 同源理由；兄弟迭代消费同一函数，其口径建议流程改为对本口径确认/回写；落码互斥由编排者排序）。已改。
 
-**A6（核二·同族判据行为分叉无声明）§2.8 槽级分类缺 user-forbid 轴。** 集内被禁环境落「其余 → 不刷挂账」，但被禁者永不被选（−10000），刷新弱占优（argmax 只可能不变或改善）；ADR-0600 P5② 同族先例明文「被禁槽恒入可刷集（保护无对象）」。同族两轴分叉无理由声明。修复：槽级分类补「被禁 → 恒可刷（优先于顶级保护，P5② 同构）」+ R7 锁。已改。
+**A6（核二·同族判据行为分叉无声明）§2.8 槽级分类缺 user-forbid 轴。** 集内被禁环境落「其余 → 不刷挂账」，但被禁者永不被选（−10000），刷新弱占优（argmax 只可能不变或改善）；P5② 同族先例明文「被禁槽恒入可刷集（保护无对象）」。同族两轴分叉无理由声明。修复：槽级分类补「被禁 → 恒可刷（优先于顶级保护，P5② 同构）」+ R7 锁。已改。
 
 **A7（核二·fail-closed 契约定义不闭合）「决策序在置信区间内翻转 → resolved=False」不可按现契约实现。** 「决策序」是帧级跨候选量，而 `env_economy_value(name, bs)` 签名无候选集入参；E2 锁「CI 翻转 → resolved=False」无从构造。修复：钉死参数级定义（CI 两端点重算 expected_gold，「>0」方向翻转即 CI 含 0 → resolved=False；帧级序稳定性由域带门 `expected_gold > 0` 方向性承载）；E2 锁注明构造方式。已改。
 
@@ -65,7 +65,7 @@
 - **品质改写型**：7 条效果原文逐字对上（110/111/112/123/124/135/122）；品质子池 |银|=77/|金|=135/|棱彩|=123 精确；pick_value 品质中位 彩 45/金 35/银 32 精确；K=3 的效果原文序数依据成立；白银难度腿口径行存在（economy.md :107，白 0/金 3/彩 6，2026-08-26 用户定谳）。
 - **经济通道**：增发货币 (6,8,12)/蓝海 +6/成功经验 (8,3,12)/策略大师 2×已持有/长线利好 (30,20,成本 2→1)/二手市场 (20,30,件不入经济)——A/B 类条目与效果原文逐字一致；策略大师公式 Σ2×(k−1)×P(第 k 张) 数学正确。
 - **代码锚**：`decide_event` :193 签名含 evicted ✓；env 分支结构与门插入位成立 ✓；F9 结构检测 ✓；D*② evicted 过滤 ✓；locked/evicted 互斥有代码锚（cw_intention :1638-1640 逐出即清锁）→ 总纲 §2.1.3 正交性主张成立 ✓；ENV_FACTION_MATCH_FLOOR 70/72/78 ✓；S2 域带 111/8 复用锚 ✓；`SOURCE_PORTAL` 预留+「登记端未建」注释在案 ✓；`EffectSpec.payload` 联合类型待扩 ✓；`_decide_and_act`/active_env 写点 :240 ✓；`read_invest_refresh_counts('env')` 观察通道在案 ✓；flow.decide_invest 意向态三参直通（零接口新增主张成立）✓；ENV_COMP_AFFINITY[特邀专家:桑博]={专家桑博DOT:1.0} ✓。
-- **权威源**：ADR-0144 决策 3 六条防错装名单 ✓；ADR-0620 §3 无出处定谳 ✓；math_proofs P81（已证，条件结构命题）/P47（已证）在册可引 ✓；screen_flow_timing #11 首取卡点 1-3 节点后 ✓；PICK_VALUE 前言层级归属声明 ✓。
+- **权威源**：决策 3 六条防错装名单 ✓； 无出处定谳 ✓；math_proofs P81（已证，条件结构命题）/P47（已证）在册可引 ✓；screen_flow_timing #11 首取卡点 1-3 节点后 ✓；PICK_VALUE 前言层级归属声明 ✓。
 - **治本核**：症状 a 归语义层（有用性判据缺维度）、症状 b 归表示+语义层（字段结构装不下+估值语义未定义）——归层成立；修法 = 集合成员性结构谓词 + 新表示 + 登记端，非逐件补丁；与兄弟迭代的同族面（策略侧全集门）以复用协调（A5 缝已修）。
 - **专项①开局静态可用**：全集门/赠卡分档/品质改写 v1 三者判据输入 = COMP_LIBRARY + evicted（开局恒 ∅）+ 注册表，零局内信号依赖，逐条核通过；接管局帧由刷新判据顶级分类的 D* 支辖。
 - **专项②fail-closed**：`resolved=False` → 退裸分的消费路径在 §2.2.3/§2.3 门 4/详设 §2.2.5 三处同口径；「待建模」显式在册区别于漏登记；缺参/含 0 CI/未入模三态并入 E2 锁（A7 定义已钉）。

@@ -1,7 +1,7 @@
 # P41 囤积/卖出的期望决策规则(V_opt 定价 + 卖出判据 + bench 槽稀缺性)
 
 > 状态:**已推导(V_opt 三项结构 + 卖出不等式 + 槽定价近似;数值自检通过——口述锚点 [22]③ 四组数字全部复算落带;**二维表 L7-L10 全列由脚本生成并逐格断言 ±2%(`p41_check.py`);卖出主式 max(V_opt, V_ms·ΔP̂) 三处同形(命题/推导/脚本一致)**;sim 对拍挂账)——**P41 修复批落地(依 P41_VALIDATION 六条)**:①燃料件卖出改支配性论证消 u(零参数,零重叠∧1★全额退→卖出净成本=0 结构性支配);②V_power 按 0 计价改道声明为「待 P51 W 引理接管的缺省项」(λ_death 概率侧,禁 hp_to_gold);③② 分类表补未定型期/危局辖域条款(对齐 DESIGN_MANDATE_LAYER M4 判据回写);④二维表消费处金可行性截断规范;⑤`expected_refreshes` 第 4 参 c 消歧注;u/H 首版点值保留作历史对照(不授权消费)**
-> 数据源(单一源代码/文档,引用处逐一注明):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费实机 OCR 权威表 / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生自 `cw_chars`,当前 1费20/2费15/3费14/4费14/5费9 / `expected_refreshes` 超几何 DP)、`cw_state.sell_refund`(退金机制事实,ADR-0121)、economy.md §1(牌池)/§2(D 牌超几何模型)/§2.1(节点切换=整店自动刷新=每轮一次免费试验)/§3(卖出退金与免费操纵)、merge_mechanics §2.5(满栏合成例外)、user_playstyle [13][15][21][22][31][32][34];刷价 2 金 = `cw_economy.SHOP_REFRESH_COST`(经 p40 转引)
+> 数据源(单一源代码/文档,引用处逐一注明):`cw_shop_odds`(`REFRESH_PROB` Lv1-10×1-5费实机 OCR 权威表 / `SHOP_SLOTS`=5 / `POOL_COPIES_PER_CARD` 27/27/9/9/9 / `DISTINCT_CARDS_PER_COST` 派生自 `cw_chars`,当前 1费20/2费15/3费14/4费14/5费9 / `expected_refreshes` 超几何 DP)、`cw_state.sell_refund`(退金机制事实)、economy.md §1(牌池)/§2(D 牌超几何模型)/§2.1(节点切换=整店自动刷新=每轮一次免费试验)/§3(卖出退金与免费操纵)、merge_mechanics §2.5(满栏合成例外)、user_playstyle [13][15][21][22][31][32][34];刷价 2 金 = `cw_economy.SHOP_REFRESH_COST`(经 p40 转引)
 > 数值自检脚本:`tools/cw/proofs/p41_check.py`(入库可重跑:`$env:PYTHONPATH='src'; uv run python tools/cw/proofs/p41_check.py`)
 > 提出:CW 策略重构·囤积/卖出命题(2026-09);证明 = 本批
 > 前置(只引结论):p46(支出否决域——其豁免判据 `E_rev ⇔ V_opt ≥ L(g,c,R_全局,Ī)+fee` 消费本篇的 V_opt,**本篇即其定价来源**;L 联动批换轨)、p38(完成概率五层模型——分工声明见 ⑤)、p40(刷新 EV——C_rescue 复用其 c_eff 与 E[refreshes] 口径);p47 息损规范口径(L 递推)在接口处引用——L 联动批已落地
@@ -26,7 +26,7 @@
 | P_shop = 1−(1−q)^5 | 一轮商店(5 槽)至少出这张牌的概率(槽间独立近似;精确超几何见自检②对账) | `SHOP_SLOTS`=5;独立近似量级声明见 A2 |
 | 1/P_shop | 自然再遇的期望轮数(每轮一次免费自动刷新 = 一次试验) | economy.md §2.1「节点切换=整店自动刷新」 |
 | C_rescue = c_eff/P_shop | 急 D 补救金:c_eff=2 金/刷(`SHOP_REFRESH_COST`),E[刷次|k=1] = 1/P_shop | `expected_refreshes`(k=1 时 DP 闭式 = 1/(1−P(0)));p40 A4/A7 口径 |
-| refund(star,cost) | 1★=cost 全额;2★=cost×3、3★=cost×9;star≥2 且 cost≥2 再 −1;**1费各星净 0** | `cw_state.sell_refund`(ADR-0121;2★1费=+3 live 实测) |
+| refund(star,cost) | 1★=cost 全额;2★=cost×3、3★=cost×9;star≥2 且 cost≥2 再 −1;**1费各星净 0** | `cw_state.sell_refund`(2★1费=+3 live 实测) |
 | V_opt | 囤件期权价值(金计)——本篇主推导量,p46 E_rev 的消费对象 | [22]③ |
 | V_slot | 槽位释放价值(满栏语境,本篇 ③) | [34]/merge §2.5 |
 | u_x | 件 x 的**使用概率**:P(这张牌未来真的被需要) | 本篇假设 A5(待标定最大项) |
@@ -191,7 +191,7 @@ B = { 插件购(非合成完备), 囤积购(目标外/未定型,V_opt 型), 压�
 | **满栏+合成触发**(商店牌能触发 3合1) | 不受槽约束(∉B),正常买(自动多买 min(店内张数, 3−已有 mod 3),全款) | merge §2.5 逐字;③ 的 B 集定义 |
 | **满栏+插件/囤积候选** | V_slot 定价否决/放行(③) | [34] 购买序;[22]② |
 | **1费零成本操纵** | 买卖净 0(refund 全额)→ 有空槽时免费压库;满栏时 1费件最先被卖(②) | economy §3 推论逐字 |
-| **cost≥2 合成回卖** | 亏 1 手续费入 refund 项;操纵非免费需过 ② 不等式 | economy §3;ADR-0121 |
+| **cost≥2 合成回卖** | 亏 1 手续费入 refund 项;操纵非免费需过 ② 不等式 | economy §3;|
 | **位面末** | **无普遍最优清仓**:bench 与金都跨位面继承(HP 跨位面 economy §10.2 已证;金 [18])→ 卖出往返成本(fee+V_opt 风险)通常 > 持有;唯一例外 = 该件 V_power 在下位面确定归零(过渡件进 P2 被全面替换)→ 按不等式卖 | [18]「金跨位面继承」;非新规则,② 的自然结论 |
 | **终局(P3 末战前)** | G→0 → P_never→1 且 V_use→0(局后将不存在「需要」)→ V_opt→0 → 卖出不等式右端趋 0 = **清仓在「终局战力不影响结算」前提下恒优**(N4 收窄:若末战胜负影响结算奖励(胜负金/成就),V_power 在终局达峰,清仓不恒优——出口金价值前提为 [28] 双指标口径) | ① 的 H/G 语义 |
 | **银狼升费件**(升费前高费副本不进店) | **拆两条(N3 修)**:①基础费档副本——「不可弃购」的依据是**升级路径必要性**(升费后高费档依赖此副本,再遇窗口随档位前移)而**非** P_shop=0(基础费档照常刷到,P_shop>0);②升费后高费档副本在升费前**不构成决策对象**(不进店=无从弃购,无 V_opt 可言);P_shop=0 分支(如 5费@L6)→ C_rescue→∞ → V_opt→∞ = 该档弃购不可补救,式子退化语义 | economy §8 口述权威;① 的 P_shop=0 分支(脚本显式判 0) |

@@ -22,7 +22,7 @@
 |---|---|
 | 效果变化的捕获与落盘(不设专用写口/专用域行,变更随快照行自带) | [journal.md](journal.md) §4 效果域捕获声明 |
 | 逐效果「效果 → state 字段」四槽登记(官方原文/机制/state 影响/策略层消费)与逐条确定进度 | [strategy-env-impacts.md](strategy-env-impacts.md)(下称 impacts) |
-| 效果数值真值(官方卡文/经济字段数值) | 代码注册表:`data/cw_invest_data.py`(base 官方文本,数据权限序之首,ADR-0620)> `kernel/cw_investments.py`(overlay);值只在代码 |
+| 效果数值真值(官方卡文/经济字段数值) | 代码注册表:`data/cw_invest_data.py`(base 官方文本,数据权限序之首)> `kernel/cw_investments.py`(overlay);值只在代码 |
 | 节点推进判定与节点入口边界(counter +1 时机的判定基础) | [node-derivation.md](node-derivation.md)(派生规则单一源) |
 | 效果的游戏机制原文考证 | docs/game/currency_war/(game 子树) |
 | 单版本事务/渠道签名/派生序(节点判定→类型→效果推进) | [journal.md](journal.md) §2/§3/§4 |
@@ -148,7 +148,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 - 显示价支:原样直通零减项(效果在场时备战画面显示的即折后价,游戏已算好,再减即
   双扣);
 - 兜底支:基准 − 折扣族,max 0(基准恒 4 = 用户口径,非按等级;折扣族聚合单一源 =
-  kernel `xp_click_cost`,cw_economy.py:485,ADR-0632;升级总价 `upgrade_plan_fee`
+  kernel `xp_click_cost`,cw_economy.py:485;升级总价 `upgrade_plan_fee`
   :1196 同源委托,禁第二处独立折扣实现)。
 
 与节点序键同款单字段双值结构([node-domain.md](node-domain.md) §2);impacts §2 通用
@@ -253,7 +253,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
 - **规格注册表** = `AFFIX_EFFECT_SPECS` 三条(键=词缀名,spec.id 同键;构建层校验
   `_validate_affix_specs` 与策略源同纪律:孤儿键/id 漂移/payload↔category 不一致/
   pending 缺保守支任一命中 import 即炸)+ 豁免表 `AFFIX_SPEC_EXEMPT` 一条
-  (**开局不利**——开局 hp 专用载体 cw_opening_hp 承载,ADR-0559,禁第二份 −20 数值
+  (**开局不利**——开局 hp 专用载体 cw_opening_hp 承载,,禁第二份 −20 数值
   源)。在册三条:**成长的烦恼**(8 级后每次购经验 −1 金,LevelUp 金面)/
   **变宝为废**(每位面首次合成进阶装备 50% 变垃圾袋,ON_MERGE 装备库存改写,
   载体 `BattlefieldEffect.first_merge_equip_junk`)/ **永久创伤**(受击失生命上限
