@@ -31,8 +31,8 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils.file_utils import get_project_root
 from sr_od.application.currency_war.data.cw_chars import CHARACTER_ROSTER, get_char
-from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
 from sr_od.application.currency_war.obs.currency_war_char_id import (
     AvatarTemplates,
     identify_character,
@@ -1402,14 +1402,8 @@ _REWARD_HOUGH_DP: float = 1.2
 _REWARD_HOUGH_PARAM2: float = 40
 _REWARD_MIN_R: int = 15
 _REWARD_MAX_R: int = 60
-# 兜底 rect = screen_info「区域-奖励」缺时用(2026-08-14 实测;shop 关态面板主体)。
-# 溢出遮球边界核查(W261 2026-08-26,11 帧存档离线对拍:7 实拍 cw_reward__*.png + 4 测试仓
-# reward_*.webp):球体最右 x≤1609 < fallback 右缘 1662;owned 装备网格最左列实测 x≈1723
-# (w254b 左溢重排后),与奖励区无重叠。实验性把右界扩到 1725 → 2 帧各多检出 1 个假圆
-# (装备 icon 被当成球),反证排除域候选不可用 → 「收窄 panel rect / 装备 icon TM 排除域」
-# 两候选均不采纳。剩余缺口:「装备左溢越入 x<1662 遮板」的实拍帧仍未采到 —— 出现该帧后
-# 重开本防护(先量装备最左缘再定收窄界),此前保守态维持。
-_REWARD_PANEL_FALLBACK: tuple[int, int, int, int] = (1257, 140, 1662, 493)
+# 检测域 = screen_info「区域-奖励」rect 单一真相源;区域缺档 → 空读数
+# (不抛不猜,语义见 read_reward_spheres),禁回退硬编码 rect。
 
 # ===== 幻检交叉验证(奖励域读取防幻检批;实机停机局实证:×12 礼盒蝴蝶结/
 # 扣饰被 Hough 幻检为 2 球,点击零消失 → ClickSpheres 同签名死循环
@@ -1592,7 +1586,10 @@ def read_reward_spheres(ctx: SrContext, screen: MatLike,
     黑名单坐标不再进返回值,点球环由此获得「放弃该目标」的出口。"""
     rect = _area_rect(ctx, '区域-奖励')
     if rect is None:
-        rect = Rect(*_REWARD_PANEL_FALLBACK)
+        # 区域缺档(建档漂移/档案损坏)→ 空读数:reader 既有 no-read 语义
+        # (不抛不猜,点球环自然无目标),禁回退硬编码 rect 对陈旧区域
+        # Hough 检测(坐标单一真相源)。
+        return []
     spheres = find_reward_spheres(screen, rect)
     if prev is not None:
         spheres = filter_persistent_spheres(spheres, prev)

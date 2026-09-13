@@ -135,15 +135,19 @@ def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
 
 
 def sell_point(ctx: SrContext) -> Point:
-    """出售区落点(单一源):screen_info「货币战争-备战.区域-出售区」中心;
-    缺失/未建档兜底 ``PrepActionExecutor.SELL_POINT`` 常量(硬编码坐标)。
+    """出售区落点(单一源):screen_info「货币战争-备战.区域-出售区」中心
+    (ADR-0329 W62 件2 落地;游戏机制 = 拖到左下区域即出售,无按钮)。
 
-    W62 件2(ADR-0329,设计章2.6):出售区原是硬编码坐标
-    (``SELL_POINT = Point(70, 846)``,prep_actions/deploy_bench/shop.py 三处同值
-    ——游戏机制为「拖到左下区域即出售」,无按钮)→ 补 screen_info area 后
-    经本 helper 读中心,硬编码作兜底(与 ``LEVEL_UP_FALLBACK`` 同模式)。
+    area 缺失 = 建档漂移/档案损坏 → RuntimeError 显式上抛(信息带 area
+    名),禁回退硬编码坐标静默点击(坐标单一真相源)。消费面含
+    cw_op_deploy 卖 off-target 拖拽,落点直入 drag 原语 → None 不可流入,
+    直取 + 上抛是唯一兼容形态。
     """
-    return area_center(ctx, '区域-出售区') or PrepActionExecutor.SELL_POINT
+    pt = area_center(ctx, '区域-出售区')
+    if pt is None:
+        raise RuntimeError(
+            'area 缺失:区域-出售区(货币战争-备战),出售区落点不可派生,禁兜底坐标')
+    return pt
 
 
 def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> bool:
@@ -609,15 +613,11 @@ class PrepActionExecutor:
     DragCwChar.drag_char(中心拖 + hold0,2026-08-13 实测验证)。
     """
 
-    SELL_POINT: ClassVar[Point] = Point(70, 846)      # 出售区(左下,同 deploy_bench/_handle_bench_full)
     BOX_SCREEN: ClassVar[str] = '货币战争-备战-武装箱选择'
     BOX_OPEN_DY: ClassVar[int] = 41                   # 「开启」文字区 = 箱 icon 下方偏移(2026-08-14 实测:槽center(563,911)→命中(565,952))
     CARD_Y: ClassVar[int] = 290                       # 武装箱卡身点击 y(点卡名下方一点避「查看详情」)
     LEVEL_MAX_CLICKS: ClassVar[int] = 12              # 升级单动作最多买经验次数(同 _handle_bench_full 量级)
     SPHERE_MAX_CLICKS: ClassVar[int] = 12             # 单动作点球硬上限(防识别抖动死循环)
-    BATTLE_FALLBACK: ClassVar[Point] = Point(1817, 749)   # 出战按钮兜底(同 battle_prep)
-    CONFIRM_FALLBACK: ClassVar[Point] = Point(1159, 653)  # 未达上限确认兜底(同 battle_prep)
-    CHECKBOX_FALLBACK: ClassVar[Point] = Point(912, 589)   # 本局不再提示勾选兜底(ADR-0136;同 CwScreenDeployNotFull)
     LAUNCH_DEAD_LIMIT: ClassVar[int] = 3   # 出战未落地连败停机阈值(session 级计数;两局实证环重入 ~2min/次)
     #: P4R:出战后「转移成功」的拦截弹窗白名单(锚 = 已建档 id_mark)。
     #: 出战按钮点击后备战标识消失但下列弹窗在场 = 出战被游戏拒(1-1 事故
@@ -1620,7 +1620,12 @@ class PrepActionExecutor:
                 log.info('[cw][battle] 出战按钮为子态「跳过」(免战牌激活)→ 点跳过')
             else:
                 return False, '找不到出战按钮'
-        btn = area_center(self._ctx, _btn_area) or PrepActionExecutor.BATTLE_FALLBACK
+        btn = area_center(self._ctx, _btn_area)
+        if btn is None:
+            # area 缺失 = 建档漂移,显式失败禁兜底坐标(坐标单一真相源)。
+            # (False, 非「未落地」detail)→ _start_battle 重发后立即判败上交,
+            # 不进连败停机环(area 缺失是确定性失败,重发无意义)。
+            return False, f'area 缺失:{_btn_area}({SCREEN_NAME}),禁兜底坐标'
         self._ctx.controller.mouse_move(btn)   # bug#1 缓解(2026-08-06 r9 实打出战 click ×4 未落地)
         self._ctx.controller.click(btn, press_time=press_time)
         # r9 失焦守卫:click 后验窗口焦点,失焦 → game_win.active() 激活 + 重点一次
@@ -1643,13 +1648,19 @@ class PrepActionExecutor:
                 # M16 死循环根因修复(ADR-0136):只点确认不勾「本局不再提示」→ 人口不足时**每次**出战
                 # 都弹此窗;确认后若弹窗未消(点击落空/动画)轮询重进 → 外层判"仍在备战"=fail → 死循环 86min。
                 # 对齐 CwScreenDeployNotFull 完整行为:勾选(幂等,已勾无害)→ 确认 → 下轮验消失。
-                check = (area_center(self._ctx, '勾选-本局不再提示', '货币战争-未达上限警告')
-                         or PrepActionExecutor.CHECKBOX_FALLBACK)
+                check = area_center(self._ctx, '勾选-本局不再提示',
+                                    '货币战争-未达上限警告')
+                if check is None:
+                    return False, ('area 缺失:勾选-本局不再提示'
+                                   '(货币战争-未达上限警告),禁兜底坐标')
                 self._ctx.controller.mouse_move(check)
                 self._ctx.controller.click(check)
                 time.sleep(0.3)
-                confirm = (area_center(self._ctx, '按钮-确认', '货币战争-未达上限警告')
-                           or PrepActionExecutor.CONFIRM_FALLBACK)
+                confirm = area_center(self._ctx, '按钮-确认',
+                                      '货币战争-未达上限警告')
+                if confirm is None:
+                    return False, ('area 缺失:按钮-确认'
+                                   '(货币战争-未达上限警告),禁兜底坐标')
                 self._ctx.controller.mouse_move(confirm)   # bug#1 缓解(review M-5)
                 self._ctx.controller.click(confirm)
                 time.sleep(1.0)

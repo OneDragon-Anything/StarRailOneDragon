@@ -383,12 +383,6 @@ class CwOpEquipAll(SrOperation):
         '装备计划空(合法稳态,无穿戴步)'
     # 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量)。
     FRONT_SLOT_COUNT: ClassVar[int] = 4
-    # 前排 avatar 拖拽点兜底常量(坐标单一源整改:主源 = screen_info「前排-N」
-    # rect 派生,见 _front_avatar_points();此处仅 area 缺失(离线/档案损坏)时
-    # 回退,值 = 派生式对建档 rect 的算出值。D-36 验 y350 = rect.y1+21 校准)。
-    FRONT_AVATAR_FALLBACK: ClassVar[list[Point]] = [
-        Point(743, 350), Point(887, 350), Point(1033, 350), Point(1175, 350),
-    ]
     # avatar-slot 验穿(D-41/R19):目标 avatar 下方 mini icon 区(已装备显示处;D-41 测 y=479),
     # drag 前后 CV-diff → 变了=穿(新装/合成),不变=落空。robust 合成/reflow/read漏检(替 count-verify)。
     BELOW_ICON_Y: ClassVar[int] = 479             # 前排 avatar 下方 mini icon 中心 y(avatar y350 → below 479)
@@ -407,21 +401,24 @@ class CwOpEquipAll(SrOperation):
         SrOperation.__init__(self, ctx, op_name='货币战争-全员装备')
         self.plan: list[EquipWearStep] = list(plan)
 
-    def _front_avatar_points(self) -> list[Point]:
-        """前排 4 槽 avatar 拖拽点(screen_info 前排-N rect 派生;缺失回退常量)。
+    def _front_avatar_points(self) -> list[Point] | None:
+        """前排 4 槽 avatar 拖拽点(screen_info 前排-N rect 派生);缺档 → None。
 
-        坐标单一源(清点整改,原字面量 FRONT_AVATARS 与 deploy 侧「前排-N」
-        双源删除):派生式与后排 _slot_drag_point 同款 —— x = rect 中心,
-        y = rect.y1+21(前排 329→350 的 D-36 校准即此式)。对拍注:旧字面量
-        槽4 x=1179 与建档 rect 中心 1175 差 4px(双源漂移实证),随单源化消除。
+        坐标单一源(screen_info「前排-N」),派生式与后排 _slot_drag_point
+        同款 —— x = rect 中心,y = rect.y1+21(D-36 验 y350 = rect.y1+21
+        校准)。任一 前排-N area 缺失(建档漂移/档案损坏)→ 返回 None,
+        **禁残表输出**:槽位下标与 area 号对齐,残表会把 slot 语义错位
+        (拖点落邻槽);消费方各自按既有语义显式失败/跳过申报,禁兜底
+        硬编码坐标。
         """
         pts: list[Point] = []
         for _i in range(1, self.FRONT_SLOT_COUNT + 1):
             _r = _area_rect(self.ctx, f'前排-{_i}', self.SCREEN_NAME)
-            if _r is not None:
-                pts.append(Point((_r.x1 + _r.x2) // 2, _r.y1 + 21))
-            else:
-                pts.append(self.FRONT_AVATAR_FALLBACK[_i - 1])
+            if _r is None:
+                log.warning('[cw!][equip] screen_info 前排-%d 缺失(%s),'
+                            '前排拖拽点不可派生,禁兜底坐标', _i, self.SCREEN_NAME)
+                return None
+            pts.append(Point((_r.x1 + _r.x2) // 2, _r.y1 + 21))
         return pts
 
     def _get_templates(self) -> dict[str, tuple[MatLike, tuple, np.ndarray]] | None:
@@ -529,6 +526,8 @@ class CwOpEquipAll(SrOperation):
         """
         if row == 'front':
             _front_pts = self._front_avatar_points()
+            if _front_pts is None:
+                return None   # 前排 area 缺档 → None,走既有跳步申报语义
             if 1 <= slot <= len(_front_pts):
                 return _front_pts[slot - 1], self.BELOW_ICON_Y
             return None
@@ -637,7 +636,15 @@ class CwOpEquipAll(SrOperation):
             # for 有界(每对恰出现一次),今日 stall<2 中断面随迭代重规划
             # 一并退役,其余计划步照常执行。
             if step.char_name == '':
-                target = self._front_avatar_points()[step.slot - 1]
+                _front_pts = self._front_avatar_points()
+                if _front_pts is None:
+                    # area 缺失 = 建档漂移,显式失败交外环重判(同上
+                    # 「区域-道具装备 缺失」round_fail 先例);禁兜底坐标,
+                    # 禁残表索引(槽位语义错位)。
+                    return self.round_fail(
+                        'screen_info 前排-N 缺失(货币战争-备战),'
+                        '前排 avatar 拖拽点不可派生,禁兜底坐标')
+                target = _front_pts[step.slot - 1]
                 verify_y = None
             else:
                 pv = self._slot_drag_point(step.row, step.slot)

@@ -77,11 +77,6 @@ class CwScreenPartner(CwScreenOpBase):
     LABEL_CX_HI: ClassVar[int] = 1550
     # 候选立绘在 label 上方约 60px(label 362 → 立绘 302;实测点 (1127,300) 命中选中)。
     PORTRAIT_DY_ABOVE_LABEL: ClassVar[int] = 60
-    # OCR 无候选时兜底(点画面中央立绘区;2026-08-06 实测 2 候选间隙 x≈1010,中央 x=960 可能落间隙,
-    # 但兜底比 stall 强;真无候选极少)。⚠️ 待实机核(坐标单一源清点项):
-    # 本兜底与 step2 中央立绘 (960,300) 均为实测字面量未 area 化(本批实机
-    # 纪律不可测,建档挂账实机批)。
-    FALLBACK_PORTRAIT: ClassVar[Point] = Point(960, 300)
     _EXCLUDE: ClassVar[set[str]] = {'选择伙伴', '攻略', '确认选择', '详情', '角色', '装备'}
 
     def __init__(self, ctx: SrContext):
@@ -247,11 +242,13 @@ class CwScreenPartner(CwScreenOpBase):
                     produced_by='CwScreenPartner',
                     sig=ChannelSig(family='logic_action',
                                    actor='CwScreenPartner', mode='compute'))
-            if cands and 0 <= idx < len(cands):
-                _name, cx, cy = cands[idx]
-                portrait = Point(cx, cy - CwScreenPartner.PORTRAIT_DY_ABOVE_LABEL)
-            else:
-                portrait = CwScreenPartner.FALLBACK_PORTRAIT
+            if not cands or not (0 <= idx < len(cands)):
+                # 无候选(OCR 未命中任何候选标签)= 无可依据的选中点 →
+                # 显式失败交外环重判,禁兜底盲点中央坐标(该点可能落在候选
+                # 间隙点空,静默重入空转;坐标单一真相源)。
+                return self.round_fail('伙伴屏无候选(OCR 未命中候选标签),禁兜底盲点')
+            _name, cx, cy = cands[idx]
+            portrait = Point(cx, cy - CwScreenPartner.PORTRAIT_DY_ABOVE_LABEL)
             self.ctx.controller.mouse_move(portrait)
             self.ctx.controller.click(portrait)
             time.sleep(0.7)

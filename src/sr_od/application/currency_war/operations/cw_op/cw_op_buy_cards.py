@@ -6,7 +6,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
@@ -26,6 +25,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
+    SCREEN_NAME,
     SHOP_SCREEN_NAME,
     _area_rect,
     area_center,
@@ -383,8 +383,6 @@ def _form_progress(comp: 'Comp', session) -> float:
 
 # 「购买经验」按钮(= 买经验升等级)screen_info area 名;中心运行时读(area_center)
 BUY_EXP_AREA: str = '备战标识-购买经验'
-LEVEL_UP_FALLBACK: Point = Point(296, 860)   # screen_info 缺失时兜底
-REFRESH_FALLBACK: Point = Point(1592, 472)   # 「刷新」按钮兜底(screen_info 按钮-刷新)
 # D牌(刷新)硬上限:plan 的 _refresh_cap 是单次 plan 软上限;两阶段循环里再加硬墙防死循环
 MAX_REFRESH: int = 4
 # 单段决策循环防御帧帽(ADR-0518):决策侧席位门等提案门失效时的执行侧
@@ -799,11 +797,18 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _def = MandateV1Strategy()
         match = CurrencyWarMatch(_def, _def.create_session(config))
 
-    # 牌位/升级/刷新中心从 screen_info 读(缺失兜底)。方向视图由策略器
-    # 决策入口内化刷新(帧代次标注触发,ADR-0583)。
+    # 牌位/升级/刷新中心从 screen_info 直取;area 缺失 = 建档漂移,显式
+    # round_fail(信息带 area 名),禁兜底坐标静默点击(坐标单一真相源)。
+    # 方向视图由策略器决策入口内化刷新(帧代次标注触发,ADR-0583)。
     click_pts = shop_card_click_points(op.ctx)
-    level_btn = area_center(op.ctx, BUY_EXP_AREA) or LEVEL_UP_FALLBACK
-    refresh_btn = area_center(op.ctx, '按钮-刷新', SHOP_SCREEN_NAME) or REFRESH_FALLBACK
+    level_btn = area_center(op.ctx, BUY_EXP_AREA)
+    if level_btn is None:
+        return (op.round_fail(
+            f'area 缺失:{BUY_EXP_AREA}({SCREEN_NAME}),禁兜底点击'), None)
+    refresh_btn = area_center(op.ctx, '按钮-刷新', SHOP_SCREEN_NAME)
+    if refresh_btn is None:
+        return (op.round_fail(
+            f'area 缺失:按钮-刷新({SHOP_SCREEN_NAME}),禁兜底点击'), None)
 
     ledger = ShopVisitLedger()
     # T-82 段序号置位(商店 visit 开始;发射帧仲裁段消费 = 本函数带

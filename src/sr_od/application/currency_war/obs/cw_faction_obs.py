@@ -39,10 +39,10 @@ from sr_od.application.currency_war.kernel.cw_obs_core import A_BOARD, SCREEN_NA
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
 
-# 面板区域:screen_info「区域-羁绊面板」pc_rect (38,128,258,772) 为基,
+# 面板区域 = screen_info「区域-羁绊面板」pc_rect 为基(单一真相源),
 # 底边延到 830——截断条目的名字可见带(名底可到 ~y770)之下还可能有
 # 部分徽章残留,延边只为如实判截断,不改变条目定位逻辑。
-_PANEL_FALLBACK: Rect = Rect(38, 128, 258, 772)
+# 区域缺档 = 建档漂移 → 空读数(不猜,语义见 read_displayed_factions)。
 _PANEL_Y2_EXT: int = 830
 
 # 名称带裁切左界(实测名 x≈112 起,留余量;徽章/图标都在左侧,灰梯虽同
@@ -207,7 +207,10 @@ def read_displayed_factions(ctx: SrContext, screen: MatLike) -> FactionPanelRead
         if area is not None and area.pc_rect is not None:
             rect = area.pc_rect
     if rect is None:
-        rect = _PANEL_FALLBACK
+        # 区域缺档(screen 无档/area 无 rect)→ 空读数:reader 既有 no-read
+        # 语义(不抛不猜,对账侧按显示侧无条目计数),禁回退硬编码 rect
+        # 静默对陈旧区域 OCR(坐标单一真相源)。
+        return FactionPanelReading()
     full = Rect(rect.x1, rect.y1, rect.x2, max(rect.y2, _PANEL_Y2_EXT))
 
     name_rect = Rect(_NAME_RECT_X1, full.y1, full.x2, full.y2)
