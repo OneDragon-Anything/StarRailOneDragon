@@ -55,7 +55,7 @@
 ### 门⑤ 参数溯源(各常量;公理判定)— **通过,一处前提常量已失效**
 
 - 门体**零调参**:辖集字面量 `('off_target','for_gold')` 是结构常量非阈值;判据单源 `session.v3_release`(由 `evaluate_release` 每轮入口写入)——符合零调参公理。
-- 前提常量 `registry.release_spend_gate_enabled`:**已随 增补 D 删除**——证明命题定义、边界第 3 条(「默认 False 时恒空洞真」)、反例表第 4 行(「开关关帧」)均引用该常量,现已失效;但失效方向是**强化**(门恒接线,命题辖域扩大为所有 release 帧,无空洞臂)。
+- 前提常量 `registry.release_spend_gate_enabled`:**已随其增补 D 删除**——证明命题定义、边界第 3 条(「默认 False 时恒空洞真」)、反例表第 4 行(「开关关帧」)均引用该常量,现已失效;但失效方向是**强化**(门恒接线,命题辖域扩大为所有 release 帧,无空洞臂)。
 - 超额收益隔离:命题显式声明「不声明帧内金不涨」并枚举三个金账豁免面——无过度声明。
 - 纯金流:命题不涉金流数值,仅集合不变式,N/A(合规)。
 
@@ -68,7 +68,7 @@
 
 ## 3. 修正建议(供命题维护方采纳;本验证批未改动)
 
-1. **勘误前提定义**:命题的「门辖帧」改为 ≜ `spend_gate_active(session, registry) = True`(即 `session.v3_release is not None`),删除 `release_spend_gate_enabled` 合取项,并注明 增补 D 后门恒接线、命题辖域扩大。
+1. **勘误前提定义**:命题的「门辖帧」改为 ≜ `spend_gate_active(session, registry) = True`(即 `session.v3_release is not None`),删除 `release_spend_gate_enabled` 合取项,并注明增补 D 后门恒接线、命题辖域扩大。
 2. **刷新全部行号锚点**(candidates.py 455-478/481-518/556-574;posture_release.py 765-775),或改用符号名锚(建议后者,抗漂移)。
 3. **删/改边界第 3 条与反例表第 4 行**:开关臂已不存在,「恒空洞真」表述失效;保留一句历史注即可。
 4. **补记 `form_break_sell_blocked`**入守卫清单注记:提前返回 None,不削弱不变式。

@@ -1,7 +1,7 @@
 # P76 锁线时机期权定价:退货可逆性、携带成本、组合期权与隐式阈值 θ*(五件:甲~戊)
 
 > 状态:**已证·修订版·候轻量复核(六修正点)**(结构命题五件,零自由参数;2026-09-07 无偏对抗审查 6 修正+10 备注全部折入,逐条处置见文末修订记录;数值消费位本就全挂【拟】fail-closed)——甲=退货表代码实证+二值可逆定理;乙=持有携带成本双通道分解与 50 金息律三段闭界;丙=组合期权结构(进度持久+清算泄漏近零+集中度净二阶带内支配引理);丁=锁线一帧临界等式与隐式阈值方程(存在性[A-丁.2 条件]+可计算充分/必要夹界);戊=常值阈值系统偏差比较静态(双向偏差域并存,θ_c 限 θ* 值域内部)。**数值消费位全挂【拟】fail-closed(§7)——θ* 点值禁消费,结构/方向结论不受阻;A-丁.2/A-丁.3/A-丁.4 显式假设申报(§4)。**
-> 数据源(全部单一源直读,引用处逐一注明):`cw_state.sell_refund` + `_SELL_MULT`(退金机制真值,)、`BENCH_CAPACITY=9`/`DEPLOYED_CAPACITY=10`(cw_state.py L31/L38,cw_registry 游戏常数)、`cw_shop_odds`(`SHOP_SLOTS=5`/`POOL_COPIES_PER_CARD={1:27,2:27,3:9,4:9,5:9}`/`DISTINCT_CARDS_PER_COST` 派生/`REFRESH_PROB` L42-53/`ROTATION_CHANCE=0.2`)、`cw_plane_table`(`interest=min(g//10,5)`,L152-155,经 p47 转引——修订备注 6:interest() 定义在此非 cw_economy)/`cw_economy`(`SHOP_REFRESH_COST=2`)、实现层锁线机器三形态(`strategies/impl/mandate_v1/proof.py::evidence_gate` L183-203;`kernel/cw_intention.py::line_completion_feasibility` L915 + `p2_supply_horizon` L891 + `P1_PAIR_LOCK_MIN_SUPPORT` L481;设计层=strategy-docs/12 §1 两臂门)、economy.md §10.1(息律/收入)、[27](掉血=B+P,机制证词)、user_playstyle [1][15][22][31][36][40]
+> 数据源(全部单一源直读,引用处逐一注明):`cw_state.sell_refund` + `_SELL_MULT`(退金机制真值)、`BENCH_CAPACITY=9`/`DEPLOYED_CAPACITY=10`(cw_state.py L31/L38,cw_registry 游戏常数)、`cw_shop_odds`(`SHOP_SLOTS=5`/`POOL_COPIES_PER_CARD={1:27,2:27,3:9,4:9,5:9}`/`DISTINCT_CARDS_PER_COST` 派生/`REFRESH_PROB` L42-53/`ROTATION_CHANCE=0.2`)、`cw_plane_table`(`interest=min(g//10,5)`,L152-155,经 p47 转引——修订备注 6:interest() 定义在此非 cw_economy)/`cw_economy`(`SHOP_REFRESH_COST=2`)、实现层锁线机器三形态(`strategies/impl/mandate_v1/proof.py::evidence_gate` L183-203;`kernel/cw_intention.py::line_completion_feasibility` L915 + `p2_supply_horizon` L891 + `P1_PAIR_LOCK_MIN_SUPPORT` L481;设计层=strategy-docs/12 §1 两臂门)、economy.md §10.1(息律/收入)、[27](掉血=B+P,机制证词)、user_playstyle [1][15][22][31][36][40]
 > 数值自检:**直调生产单一源复算,不建独立脚本**(P72 先例——本命题数值面=退货表 15 格,复算命令见 §1.1;无落盘脚本对象)。本批禁碰 proofs 目录外文件,`tools/cw/proofs/` 不入新脚本。
 > 提出:用户质疑(2026-09-07 任务书):现行锁线判据「概率过阈值就锁」是**断言不是推导**,且未回答「为什么不能几套候选同时攒(卖出几乎无金币损失),没成型就锁是不是浪费其他机会」。本篇把它变成五个可证的数学命题:可逆性(甲)→ 携带成本(乙)→ 组合期权(丙)→ 时机不等式与阈值来源(丁)→ 常数阈值何时对何时错(戊)。
 > 前置(只引结论,不重推):P38(K 缺口集齐概率五层模型——丙/丁全部概率因子单一源)、P41(V_opt/V_slot/卖出不等式——乙.2 饱和定价与丁 F 项定价)、P47(息律 L 递推——乙.1 利息通道)、P16(换线机器 E_rounds/滞回——V_F 兜底通道)、P49(压库 V_comp 线性律——等待侧压库收益 B 项)、P51(等待代价引理 W_floor——D_death 形态与消费纪律)、P01(弃购再遇窗口——F 项上界的再遇口径)
@@ -69,7 +69,7 @@ refund(s, c) = max(c,1) × m(s) − 1[s≥2 ∧ c≥2],   m = {1★:1, 2★:3, 3
 
 - live 核过格:1★ 全档(丹恒·饮月 1★2费 详情面板「+2 出售」)、2★1费(万敌「+3」,VLM 客观读数)。
 - 未 live 核格:2★ cost≥2 的 −1(用户记忆)、3★/4★ 全行(规则外推)——Consequences 如实登记在案。
-- **不确定性方向对经济结论有利(精确形态与经济结论分开申报,修订备注 1)**:若 −1 实为 0(全额退),甲.2 的精确形态改写为「往返恒 0」(经济结论强化);若手续费为**非 1 常数 k** 或**比例费**,甲.2 的精确形态(∈{0,−1} 且 ⟺)都需相应改写——经济结论「亏为每件 O(1) 金上界、与投入额不成比例」在常数 k 下存活,仅比例费伤及之;当前无任何证据指向比例形态,且 的「点详情面板读 +N」验证法可直接排除。故「囤积金维度可逆」的**经济结论**在当前不确定性下稳健,精确形态绑定代码现状。
+- **不确定性方向对经济结论有利(精确形态与经济结论分开申报,修订备注 1)**:若 −1 实为 0(全额退),甲.2 的精确形态改写为「往返恒 0」(经济结论强化);若手续费为**非 1 常数 k** 或**比例费**,甲.2 的精确形态(∈{0,−1} 且 ⟺)都需相应改写——经济结论「亏为每件 O(1) 金上界、与投入额不成比例」在常数 k 下存活,仅比例费伤及之;当前无任何证据指向比例形态,且既有「点详情面板读 +N」验证法可直接排除。故「囤积金维度可逆」的**经济结论**在当前不确定性下稳健,精确形态绑定代码现状。
 
 ---
 
