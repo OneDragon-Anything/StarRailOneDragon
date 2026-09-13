@@ -58,7 +58,9 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
     返回字段(对齐 _observe heavy 段产出,消费方=director 回填):
     - bench_chars/deployed_chars:SIFT 身份(templates 未加载
       → None,调用方沿用缓存);
-    - state:CwSimFrame(read_game_state);
+    - read_receipt::class:`GameStateReadReceipt`(read_game_state 轻量
+      回执;旧 ``out['state']`` CwSimFrame 帧槽随返帧退役删除,逐帧读数
+      消费面——节点类型/level 审计/raw 牌缓存——改走本回执);
     - gold_reread:bool——是否走了 MED-2 gold==0 重读
       (**重新截图**重读——同帧重读结果恒同,无意义;
       op 可传则用 op.screenshot(),不可传(离线)跳过重读);
@@ -100,7 +102,7 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         else:
             out['bench_chars'] = None
             out['deployed_chars'] = None
-        st = read_game_state(ctx, frame)
+        _st = read_game_state(ctx, frame)
         # MED-2 gold==0 重读(OCR 弱点;帧稳定≠OCR 稳定——
         # stylized 间歇漏与帧稳定正交,重读是第二道)。
         # ⚠ 重读=**重新截图**(同帧重读结果恒同);
@@ -108,22 +110,21 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
         # r334(review 第5条:恢复 F2 门)——gold 仅 shop 开态
         # 可信(关态读空恒 0):重读也只在开态做,否则每个
         # 关态 heavy 白付 3×0.3s+3 次全量 OCR(系统性变慢)
-        # 且换入的 st2 来自 0.3-0.9s 后异帧(轮转窗内 board
+        # 且换入的帧来自 0.3-0.9s 后异帧(轮转窗内 board
         # 可回退)。shop_open 由调用方传(它有帧上下文)。
         import time
-        if st.gold == 0 and op is not None and shop_open:
+        if _st.gold == 0 and op is not None and shop_open:
             for _ in range(3):
                 time.sleep(0.3)
                 try:
-                    st2 = read_game_state(ctx, op.screenshot())
+                    _st2 = read_game_state(ctx, op.screenshot())
                 except Exception:   # noqa: BLE001  离线契约
                     break
-                if st2.gold > 0:
-                    st = st2
+                if _st2.gold > 0:
+                    _st = _st2
                     out['gold_reread'] = True
                     break
-        out['state'] = st
-        # 子态尽力读(A5:标注可读性,不强行全读)
+        out['read_receipt'] = _st
         out['substate'] = {
             'node_seq': read_node_sequence(ctx, frame) is not None,
             'shop_cards': read_shop_cards(ctx, frame) != [],
@@ -174,10 +175,10 @@ def observe_full(ctx: SrContext, frame: MatLike, *, tier: str,
                  tier, source,
                  len(out['bench_chars'] or []),
                  len(out['deployed_chars'] or []),
-                 st.gold, out['substate'],
+                 _st.gold, out['substate'],
                  len(out['owned_equips'] or []),
                  len(out['occupied_equips'] or {}))
     else:
-        out['state'] = read_game_state(ctx, frame)
+        out['read_receipt'] = read_game_state(ctx, frame)   # 容器直写即产物
         out['substate'] = {}
     return out

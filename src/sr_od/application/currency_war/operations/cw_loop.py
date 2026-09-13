@@ -155,7 +155,7 @@ def prep_no_progress_state_fingerprint(session) -> tuple:
 
     gold 分量语义(T-167 钉死,持久家 = ADR-0554 修订节第 5 条;
     last_state 链退役批换源申报):
-    分量源 = 容器 ``bs.gold``——观察漏斗(``_feed_board_state``)仅
+    分量源 = 容器 ``bs.gold``——观察漏斗(read_game_state 容器直写)仅
     gold_readable 帧观察写入,失读帧走 carry 不落值(关店帧 0 兜底
     与 OCR 噪声结构性进不了记录)。本函数钉死为「仅开态可信帧
     (prep_obs_frame.state_gold_trusted = heavy ∧ 店开,单一写点
@@ -600,12 +600,20 @@ def _launch_frame_arbitration(op) -> dict:
         )
         match = op.ctx.cw_match
         session = match.session
-        # 开店前干净备战全量读(关店帧 = hp 真读主路径):hp 三件组供评估栈
-        # 血线消费门(危机停付/血预算),传缺省会让升级臂被 fail-closed 全拦;
-        # 金位预判只作开店门,权威判定在访问内预算闸(入口观察含 gold 救援)。
-        _pre = read_game_state(op.ctx, _fresh, phase=PHASE_PREP_CLEAN)
+        # 开店前干净备战全量读(关店帧 = hp 真读主路径):容器 hp 经漏斗
+        # 直写刷新(评估栈血线消费门统一经 decision_hp 政策读口);金位
+        # 预判只作开店门,权威判定在访问内预算闸(入口观察含 gold 救援)。
+        # 读金口径 = 容器读口 gold_of(缺省 0 镜像,与原 ``int(... or 0)``
+        # 兜底同型零行为差)。
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of as _arb_bs_of,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            gold_of as _arb_gold_of,
+        )
+        _ = read_game_state(op.ctx, _fresh, phase=PHASE_PREP_CLEAN)
         _sess_hp = session
-        if not in_launch_spend_zone(int(_pre.gold or 0), _sess_hp):
+        if not in_launch_spend_zone(_arb_gold_of(_arb_bs_of(session)), _sess_hp):
             # 带内段 fail-closed(DESIGN v1.1 §3.2;L1' 挂账):不开店不花。
             _launch_arb_counter(op, cw_launch_arbitrage.KEY_INBAND_CLOSED)
             return report
@@ -647,11 +655,11 @@ def _launch_frame_arbitration(op) -> dict:
                 _launch_arb_counter(op, cw_launch_arbitrage.KEY_GATE_BLOCKS)
             return ok, why
 
-        _hp = getattr(_pre, 'hp', None)
-        _hp_readable = bool(getattr(_pre, 'hp_readable', False))
-        _hp_trusted = bool(getattr(_pre, 'hp_trusted', False))
-        _rr, outcome = run_buy_waves(op, match, _hp, _hp_readable,
-                                     _hp_trusted, spend_gate=_gate)
+        # (hp 三件组传参已随 BuyCardsOutcome/黑板帧退役删除(迁移批 3.2,
+        # 波 4 步 4 同款结论):访问内 hp 决策消费统一经容器政策读口
+        # decision_hp,门前真值由本入口 PHASE_PREP_CLEAN 读的漏斗直写承接,
+        # 段间无战斗,值同源——覆盖回写是绕行,删。)
+        _rr, outcome = run_buy_waves(op, match, spend_gate=_gate)
         if _rr is not None:
             # 访问失败路径不开收(店留着,与 prep 链同语义;典型 = 未识别卡
             # 停机钩子已置 stop_running——保画面待建档,禁关店/禁发射摧毁
@@ -1535,6 +1543,8 @@ class CwLoop(SrOperation):
             _st0 = read_game_state(self.ctx, screen, phase='battle_or_transit')
             # r25 恢复对局标记(telemetry):bot 侧新 match 但游戏已在中局(首读 round>1
             # = 上局残局;第十/十一局三次数据归属混乱实证)。只标不改行为。
+            # (迁移批 3.2:回执携带本帧 phase_round 原始读数,与旧帧字段
+            # 同源同值——经容器读口会吃 kind 继承写,不用。)
             if _st0.round_num > 1 or _st0.plane > 1:
                 # A18(hook审计退役批(ADR-0466/0467/0469)):数据归属标记,只标不改行为 → [cw] 非 [cw!]
                 log.warning('[cw][loop] 恢复对局检测:新 match 但游戏在 P%s-r%s(上局残局,'

@@ -84,12 +84,23 @@ def extract_frame(ctx, img, templates) -> dict:
             # ADR-0282/0491:hp 失读时沿用 last_hp_real,全无真值帧 hp=None
             # (W823 None 化,无 100 兜底);hp_readable=False 即「读不到」分字段标记;
             # gold 同款带保真位。
+            # (迁移批 3.2:输入 = read_game_state 轻量回执,逐字段语义与旧
+            # 帧逐位同;bench_full 改容器派生读口——旧帧 bench 恒空表,该
+            # 值此前结构性恒 False,现取真值,判读按新语义。)
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                bench_is_full,
+                board_state_of,
+            )
+            _match = getattr(ctx, 'cw_match', None)
+            _sess = getattr(_match, 'session', None) if _match is not None else None
+            _bs = board_state_of(_sess) if _sess is not None else None
             rec.update(gold=st.gold, hp=st.hp, hp_readable=bool(st.hp_readable),
                        gold_readable=bool(getattr(st, 'gold_readable', True)),
                        level=st.level,
                        # level 保真位透传(False=纯 _expected_level 启发式兜底,非真读)
                        level_readable=bool(getattr(st, 'level_readable', True)),
-                       board=dict(st.board), bench_full=st.bench_is_full())
+                       board=dict(st.board),
+                       bench_full=bool(bench_is_full(_bs)) if _bs is not None else False)
     except Exception as e:   # noqa: BLE001
         log.debug(f'[recorder] state 提取失败: {e}')
     try:

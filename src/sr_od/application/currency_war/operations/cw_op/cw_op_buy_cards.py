@@ -21,7 +21,6 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_occupied,
     exec_state_of,
     ledger_node_type,
-    pad_bench,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     A_SHOP_CARD_PREFIX,
@@ -35,7 +34,6 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_s
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
-    CwSimFrame,
     DeployMove,
     LevelUp,
     RefreshShop,
@@ -43,6 +41,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
 )
 from sr_od.application.currency_war.obs.cw_observation import (
     PHASE_PREP_SHOP_OPEN,
+    GameStateReadReceipt,
     ensure_portrait_templates,
     new_bench_slots,
     read_game_state,
@@ -77,25 +76,6 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
         CurrencyWarMatch,
     )
-
-
-def _apply_hp(state: CwSimFrame, hp_value: int | None,
-              readable: bool, trusted: bool) -> None:
-    """hp 值+保真位同写(单一写点;覆盖丢位根治)。
-
-    旧覆盖点只写 ``state.hp`` 不动 ``hp_readable/hp_trusted``,shop 开帧
-    read_game_state 产出的 (False, False) 两位与覆盖进来的值分家 → 产出
-    值位自洽的「带毒假值」形态。同写后位语义恒与值来源一致:真读覆盖
-    → (v, True, True);结算真值覆盖(fresh 门过)→ (v, False, True);
-    ``hp_value=None``(无真读且无新鲜结算真值)→ **不覆盖**,保留
-    read_game_state 对账层产物(位面正确标注,血线消费门按 fail-closed
-    拒收)。消费口径单一源=decision_v2.posture_release.hp_decision_trusted。
-    """
-    if hp_value is None:
-        return
-    state.hp = hp_value
-    state.hp_readable = readable
-    state.hp_trusted = trusted
 
 
 # 商店牌行区 rect(1080p)——读卡自愈门的目标区,与刷新分支(r325)同区。
@@ -323,47 +303,6 @@ def refresh_wave_is_refresh_only(actions: list) -> bool:
     return bool(actions) and isinstance(actions[0], RefreshShop)
 
 
-def build_post_buy_incremental_state(
-        base_state: CwSimFrame,
-        gold_read: int | None,
-        tracked_bench_chars: list[BenchChar],
-        hp_value: int | None,
-        hp_readable: bool,
-        hp_trusted: bool,
-) -> CwSimFrame | None:
-    """买后重估增量态构造(执行边界压缩·买后验证增量的单一构造点)。
-
-    机制不变量:买牌/卖牌/刷新不触 plane/round/board/level/xp/streak/
-    node_type(升级触 level/xp,由调用方 total_level 门拦截,不进本函数);
-    gold 用关店帧真读;bench 重播 tracked_bench_chars(执行侧
-    mutate_bench_deployed 逐动作同步的权威源,末波垫底 state 的 bench
-    是执行前快照,必须重播)。node_type 随 deepcopy 沿垫底帧透传——垫底
-    帧值由店开帧组装供给(台账查表,ADR-0587),本构造点禁再接会话滞后
-    标量覆盖(旧 last_node_type 参数已删,与买后重估回退分支同理由)。
-    fail-closed 两维:①gold_read=None(金失读)→ 返回 None,调用方回退
-    全量 read_game_state;②tracked_bench_chars 为空 → 同样返回 None。
-    ②的理由:bench 真空(全部署/合成清空)与跟踪丢失在本构造点不可区分,
-    而垫底 state.bench 是执行前快照——空 tracked 时沿用它会把陈旧 bench
-    当真值喂给方向刷新(误读维度造值;消费位 = finalize 暂存帧,ADR-0583)。
-    回退全量读后两种情形都得到 OCR 真值,代价只是罕见情形多一次整帧读。
-    (首参更名申报:原形参名 ``last_state`` 与已退役的 session 槽同名
-    无涉,随链退役批改名 ``base_state`` 防按名误判。)
-    """
-    if gold_read is None:
-        return None
-    if not tracked_bench_chars:
-        return None   # 空 tracked:真空/丢跟踪不可区分 → fail-closed 回退全量读
-    post = deepcopy(base_state)
-    post.gold = gold_read
-    # T-308/ADR-0646 S1:tracked 输入域下标直拷(pad 补 None;禁读 slot 字段
-    # ——tracked 域 slot 与下标的一致性由 S2 写回端保证,消费端下标即布局)。
-    # 旧 bench_from_compact 槽号重构仅对 SIFT 现读域(slot 与读序同帧同源)
-    # 合法,见 ADR-0646 消费点分界。
-    post.bench = pad_bench(deepcopy(tracked_bench_chars))
-    _apply_hp(post, hp_value, hp_readable, hp_trusted)
-    return post
-
-
 def _form_progress(comp: 'Comp', session) -> float:
     """fp 遥测helper(review 要求:fp 轨迹可观测;调用方保证 comp 非 None)。
 
@@ -411,13 +350,15 @@ def _fmt_action(a: 'Action') -> str:
 class BuyCardsOutcome:
     """买牌波循环产出(编排壳消费;W970 批 A §4.3.4「CwOpBuyCards 产出」)。
 
-    state = 末波融合态;total_* / spend_executed / gold_open = 动作账与
+    state = 入口观察轻量回执(迁移批 3.2:末波融合帧随黑板帧退役删除,
+    本字段暂存 :class:`GameStateReadReceipt`,段 3 随 outcome 退役一并删);
+    total_* / spend_executed / gold_open = 动作账与
     对拍基线(壳侧 gold 差值对拍消费);plan_truncated / refresh_* 执行
     事实(set_unit_exec_facts 消费);buy_* 期望态基座(w536 单元尾
     计算暂存消费);bought_names 已在 buy_cards 内消费(pixel-diff 落位),
     不外发。
     """
-    state: CwSimFrame
+    state: 'GameStateReadReceipt'
     config: CurrencyWarConfig
     total_buy: int
     total_level: int
@@ -447,7 +388,7 @@ class BuyCardsOutcome:
 
 def apply_action_outcome(_aop: 'ShopActionOp',
                          action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
-                         _ok: bool, _cur: CwSimFrame,
+                         _ok: bool, _cur: 'GameStateReadReceipt',
                          match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
                          visit_actions: list) -> None:
     """执行结果落地门(调用环单一源;落地审补办清单 C1 调用环级锁的承载体。
@@ -464,9 +405,10 @@ def apply_action_outcome(_aop: 'ShopActionOp',
     合成满栏买面已随 T-182 同构化——tracked mutate 带 shop 视图与
     simulate 同走 `_apply_full_bench_merge_buy`,不再丢件漏记)。
 
-    ``_cur`` = 动作执行前帧(journal 行 plane/round 基准 + pre_frame 输入;
-    帧级投影链已随 simulate 前瞻消费删除退役,T-163——期望态真值在容器,
-    函数无返回值,调用方不再推进任何帧链载体)。
+    ``_cur`` = 段顶入口观察回执(journal 行 plane/round 基准 + pre_frame
+    输入;帧级投影链已随 simulate 前瞻消费删除退役,T-163——期望态真值在
+    容器,函数无返回值,调用方不再推进任何帧链载体;迁移批 3.2 起载体 =
+    :class:`GameStateReadReceipt`,visit 内 plane/round 恒定不变)。
     """
     visit_actions.append(action)
     _post_frame = None   # 动作后投影帧(终结/未落地 = None → journal delta 省略)
@@ -673,7 +615,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
 
 def accrue_release_spent(match: 'CurrencyWarMatch',
                          action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
-                         ok: bool, state: CwSimFrame) -> None:
+                         ok: bool) -> None:
     """v3_release_spent 执行回执位记账(T-88 写点;裁决 = ADR-0571)。
 
     首版口径 = **只计刷新实花**(「宁窄勿虚」的遥测诚实性选择:买牌/
@@ -681,7 +623,8 @@ def accrue_release_spent(match: 'CurrencyWarMatch',
     混入会虚高——扩口径挂 ADR-0571 待裁)。刷新单通道前提:R1 = 今日
     唯一刷新发射点(kernel/cw_state.RefreshShop.reason 值域契约)。
     记账位语义 = 动作执行成功回执(本函数在 apply_action_outcome 之后
-    调用),决策帧值 = 轮内截至采样时点累计(schema 同款声明)。
+    调用),轮键 = 容器读口现读(迁移批 3.2:原入口帧 plane/round 形参
+    随黑板帧退役删除;visit 内轮键恒定,容器同值)。
 
     F4 栈守卫:仅当披露面轮键戳 == 当前 (plane, round)(即 mandate_v1
     本轮 prep 装配已跑)才累计——非 mandate_v1 栈(异型策略状态对象无
@@ -691,9 +634,14 @@ def accrue_release_spent(match: 'CurrencyWarMatch',
     """
     if not ok or not isinstance(action, RefreshShop):
         return
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        board_state_of,
+        plane_of,
+        round_num_of,
+    )
+    _bs_ar = board_state_of(match.session)
     st = strategy_state_of(match.session)
-    key = (int(getattr(state, 'plane', 0) or 0),
-           int(getattr(state, 'round_num', 0) or 0))
+    key = (int(plane_of(_bs_ar)), int(round_num_of(_bs_ar)))
     if getattr(st, 'v3_disclosure_key', None) != key:
         return
     st.v3_release_spent += max(0, int(getattr(action, 'cost', 0) or 0))
@@ -732,8 +680,6 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
 
 
 def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
-                  hp_value: int | None, hp_readable: bool,
-                  hp_trusted: bool,
                   *, spend_gate: Callable[[object], tuple[bool, str]] | None = None,
                   ) -> tuple[OperationRoundResult | None,
                              BuyCardsOutcome | None]:
@@ -750,9 +696,10 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
 
     一次画面访问 = 轮「入口观察 + 逐动作决策循环」(ADR-0517 决策 1):
 
-    - 入口观察(段顶,唯一读屏点):真实读屏 → 融合(hp/node_type/dual/
-      gold 救援/tracked 播种)→ 容器喂入(``synthesize_from_game_state``,
-      决策读单源;黑板槽已退役,投影链载体 = visit 局部 ``_cur``);
+    - 入口观察(段顶,唯一读屏点):真实读屏 → 漏斗容器直写(obs 族 sig,
+      决策读单源 = 容器单例;迁移批 3.2 起 read_game_state 不再构造帧,
+      返回 :class:`GameStateReadReceipt` 供逐帧读数消费;黑板槽已退役,
+      journal 基准载体 = visit 局部 ``_cur`` 回执);
     - 决策循环(零读屏,决策 1/8):``decide_shop_action`` 每次恰返回一个
       动作 → 守卫断言(proposal-vs-expected + expected-vs-tracked 双账,
       ``cw_shop_action_ops``)→ 执行(动作 op ``execute``,观测通道候选 a
@@ -765,8 +712,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
       重定位 = 执行侧 visit 级计数(``ledger.total_refresh``,§3.1 候选
       (a) 同款防线:防「终结→重进→再刷新」无进展环)。
 
-    hp 三件组来自调用方的 shop 关闭帧读链(W970 §4.3.4:商店开态 HP 区
-    不可读),段顶 read_game_state 后经 :func:`_apply_hp` 值位同写覆盖。
+    (hp 三件组传参已随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
+     访问内 hp 决策消费统一经容器政策读口 decision_hp,门前真值由备战帧
+     观察/结算既有写端承接,段间无战斗值同源,覆盖回写是绕行。)
 
     match=None(独立 run_operation 调本 op)→ 临时 match,不挂 ctx
     (局外不复用)。config 本函数内构造(W970 §4.3.4)。
@@ -834,7 +782,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     # 判据单一源 = refresh_wave_is_refresh_only)。
     _entry_frame_marked = False
     _prev_refresh_only = False
-    state: CwSimFrame | None = None
+    _entry: GameStateReadReceipt | None = None
     for _ in range(MAX_REFRESH + 1):
         ledger.refresh_first_action = True   # 段级复位(仅刷新段判定输入)
         # did_refresh 段级复位(终结 op 语义 review 修复批暴露):两消费点
@@ -855,12 +803,14 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 生产真实读屏,行为逐位不变。
         _src = observation_source()
         _entry_shot = op.screenshot()
-        state = (_src.observe_prep(op.ctx, PHASE_PREP_SHOP_OPEN).state
-                 if _src is not None else
-                 read_game_state(op.ctx, _entry_shot,
-                                 phase=PHASE_PREP_SHOP_OPEN))   # ADR-0462 开店动作期
+        _entry = (_src.observe_prep(op.ctx, PHASE_PREP_SHOP_OPEN).state
+                  if _src is not None else
+                  read_game_state(op.ctx, _entry_shot,
+                                  phase=PHASE_PREP_SHOP_OPEN))   # ADR-0462 开店动作期
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
-        _apply_hp(state, hp_value, hp_readable, hp_trusted)   # shop 开帧 hp 区空 → 用 shop 关闭帧值覆盖
+        # (hp 三件组覆盖随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
+        #  容器 hp 由备战帧观察/结算既有写端承接,消费统一经 decision_hp,
+        #  覆盖回写 = 绕行;传参链同批移除。)
         # 店开帧节点行被遮 node_type 恒 None → 查位面节点序列台账(键 =
         # 本帧 phase_round 现读的 (plane, round),写入端=位面详情采集/投资
         # 环境后重读,结构上不可能滞后)。ADR-0587:旧实现无条件拷
@@ -870,23 +820,44 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # None fail-open:②(b) 不发射(ADR-0580 None 语义),死金域义务由
         # 节点无关的 ②(a) 备战凑息承载;禁再退回 last_node_type 滞后拷贝
         # (连续硬节点段靠它侥幸开门的形态=有意变 None 关门,ADR-0587)。
-        _ledger_node = ledger_node_type(match.session, state.plane,
-                                        state.round_num)
+        # (迁移批 3.2:回填随黑板帧退役改容器直写 write_logic(logic 通道,
+        # evidence=node_ledger_backfill)——漏斗已按 kind 继承写 node,本写
+        # 以台账权威值覆盖;下一备战帧真读观察赢,§2.3。)
+        _ledger_node = ledger_node_type(match.session, _entry.plane,
+                                        _entry.round_num)
         if _ledger_node is not None:
-            state.node_type = _ledger_node
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                ChannelSig as _LedgerSig,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                NodeKey as _LedgerKey,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of as _bs_of_ledger,
+            )
+            _bs_lg = _bs_of_ledger(match.session)
+            _bs_lg.write_logic(
+                _bs_lg.node,
+                _LedgerKey(plane=int(_entry.plane),
+                           round_num=int(_entry.round_num),
+                           kind=str(_ledger_node)),
+                produced_by='CwOpBuyCards', evidence='node_ledger_backfill',
+                sig=_LedgerSig(family='logic_action', actor='CwOpBuyCards',
+                               mode='compute',
+                               group_id=(f'act:CwOpBuyCards@'
+                                         f'{_bs_lg.write_seq + 1}')))
         # (frame.dual_track_phase/focus_factions 回填点已随 last_state 链
         #  退役批删除(T-166 对账表 E 类行 30/31 兑现):决策读端 =
         #  committed_from(session) 派生与 StrategyState 真家,帧字段无
         #  消费面,随帧退役不迁容器。)
         # gold-robust:gold 数字 stylized,paddle OCR det 间歇漏 → 读 0 时重读几帧取首个 >0。
         # 观察冲突审计 #6:救援结果留证(救回/连读 0 统计,为 gold 双源排期供数据)。
-        if state.gold == 0:
-            _gold_rescued = None
+        _gold_rescued = None
+        if _entry.gold == 0:
             for _ in range(4):
                 time.sleep(0.4)
                 gv = read_gold(op.ctx, op.screenshot())
                 if gv > 0:
-                    state.gold = gv
                     _gold_rescued = gv
                     break
             from sr_od.application.currency_war.kernel.cw_observe import (
@@ -915,9 +886,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                                    mode='read',
                                    group_id=(f'obs:CwOpBuyCards@'
                                              f'{_bs_rescue.write_seq + 1}')))
-        # 开店首读金快照(仅首段;救援后取值——救援值比假 0 更接近真值)
+        # 开店首读金快照(仅首段;救援后取值——救援值比假 0 更接近真值;
+        # 回执冻结,救援值取局部暂存,与旧帧回写语义同值)
         if gold_open is None:
-            gold_open = state.gold
+            gold_open = _gold_rescued if _gold_rescued is not None \
+                else _entry.gold
         # 播种单一源 = tracked_bench_chars(带 star+merge,mutate/对账全程同步)。
         # 空 = bench 真空(全部署/合成清空的事实正确态),不回退任何残账——
         # 旧 tracked_bench 回退分支已退役:单动作架构下「首轮」场景由入口
@@ -936,32 +909,22 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 空播种段同样取值——检差面不依赖是否播种)。
         _seed_epoch = exec_state_of(match.session).bench_layout_epoch
         # (session.last_state 写点已随链退役批删除:段顶入口观察的局内
-        #  事实宿主 = 容器单例,喂入即下方 synthesize_from_game_state。)
-        # journal 基准帧(黑板槽退役收口,ADR-0651 容器单源):段顶入口
-        # 观察帧,T-163 起恒定不随动作推进(帧级投影链已随 simulate 前瞻
-        # 消费删除退役);仅供动作行 plane/round 基准与 pre_frame 序列化,
-        # 决策/守卫/env 读点 = 容器(波 4 读者切换已承接)。
-        _cur: CwSimFrame = state
+        #  事实宿主 = 容器单例,写入 = 观察漏斗直写。)
+        # journal 基准载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口
+        # 观察回执,T-163 起恒定不随动作推进(帧级投影链已随 simulate 前瞻
+        # 消费删除退役);仅供动作行 plane/round 基准,决策/守卫/env 读点
+        # = 容器(波 4 读者切换已承接;迁移批 3.2 起载体 = 轻量回执)。
+        _cur = _entry
         from sr_od.application.currency_war.kernel.cw_game_state import (
             board_state_of as _bs_of_entry,
         )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            synthesize_from_game_state as _syn_entry,
-        )
         _bs_of_entry = _bs_of_entry(match.session)
-        # 容器入口喂入(生产同路 = sim 合成口):决策读者已切容器,黑板帧
-        # 写不再承载决策输入——假环境(sim 适配器直驱,不经 read_game_state
-        # 漏斗)此位无漏斗写端,必须显式合成,否则在屏前置 shop=None 抛错。
-        # 识别域口径关断「空表=离屏」(shop_empty_off_screen=False):本位
-        # 相位恒店开(0n 三 id_mark 锚 + phase=PREP_SHOP_OPEN),入口空牌面
-        # = 买空/OCR 失读窗而非「不在商店」——按真值口径清 None 会让
-        # decide_shop_action 在屏前置契约崩(2026-09-13 实机 T-181:重进
-        # 买空店崩溃循环),失读窗沿用上一开店牌面、照旧决策、执行侧核对
-        # 兜底(decide_shop_action 契约,同观察漏斗「空牌面不写」口径)。
-        if not state.shop:
+        # (容器入口喂入 synthesize_from_game_state 随黑板帧退役删除——迁移
+        #  批 3.2:生产路径容器写入已由 read_game_state 漏斗直写承接(obs 族
+        #  sig);假环境路径的容器真值写入 = 观察源端口实现方契约。)
+        if not _entry.shop:
             log.info('[cw] 店开入口牌面空(买空/OCR 失读窗):离屏语义关断,'
                      '容器沿用现值牌面决策')
-        _syn_entry(_bs_of_entry, state, shop_empty_off_screen=False)
         # 帧代次标注(ADR-0583 §3.4):visit 首段入口观察 = full(方向视图
         # 由 decide_shop_action 入口消费刷新);续段刷新重观察 = none
         #(= 旧 _target_seeded「仅首段重估」语义,段内视图不随买入漂移)。
@@ -980,7 +943,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 disclose_budget_at_shop_frame,
             )
             disclose_budget_at_shop_frame(
-                state, match.session,
+                None, match.session,
                 registry=getattr(getattr(match, 'strategy', None),
                                  'registry', None))
         except Exception:  # noqa: BLE001  遥测 best-effort(降级留痕)
@@ -1001,10 +964,14 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _node = getattr(match.session, 'node_type_current', None) or '?'
         _upc = getattr(match.session, 'upcoming_types', None) or []
         _next = _upc[0] if _upc else '?'
-        log.info(f'[cw] state gold={state.gold} hp={state.hp} lv={state.level} '
-                 f'plane={state.plane} round={state.round_num} node={_node} '
-                 f'next={_next} board={state.board} '
-                 f'target={target_name!r} fp={_fp_v:.2f} bench={bench_occupied(state.bench)}')
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            bench_slots_of as _blog_slots,
+        )
+        log.info(f'[cw] state gold={_entry.gold} hp={_entry.hp} lv={_entry.level} '
+                 f'plane={_entry.plane} round={_entry.round_num} node={_node} '
+                 f'next={_next} board={_entry.board} '
+                 f'target={target_name!r} fp={_fp_v:.2f} '
+                 f'bench={bench_occupied(_blog_slots(_bs_of_entry))}')
         # (决策行披露值构造块 _cand/_eb/_extra 与统一 state 段入口版本钉
         #  _seg_pin_version 已随 decisions 流写入端退役删除——删除波 1;
         #  日志披露行(上方)保留。)
@@ -1163,7 +1130,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         type(action).__name__, _st_tok.cw4_segment_serial)
             # 义务实花回执位记账(T-88;闸前不记——spend_gate 拒绝帧
             # 未执行,本位只在 execute 成功回执后累计,F4 栈守卫见函数注)。
-            accrue_release_spent(match, action, _ok, _cur)
+            accrue_release_spent(match, action, _ok)
             # (帧链推进随 simulate 前瞻消费删除退役,T-163:_cur 恒为段顶
             # 入口观察帧,visit 内 plane/round 不变,journal 行基准语义
             # 不变;期望态真值在容器,由投影口直写推进。)
@@ -1178,14 +1145,12 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 # 期望态 = 「交回外循环重进」的物理载体;RefreshShop 与
                 # CompTransaction(终结邻接 fallback,禁半档中间态)同路径。
                 break
-        log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in state.shop]} '
+        log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in _entry.shop]} '
                  f'plan={[_fmt_action(a) for a in visit_actions]}')
         # (段尾 decisions 行已随 decisions 流写入端退役删除——删除波 1。)
-        # ⚠️ equips 拷贝必须在决策循环之后(cw_comps 装备动态权重读
-        # state.equips,提前拷=改决策行为,w222 遥测缺口①;原「决策之后」
-        # 的时序锚 = 段尾 decisions 行,行退役后时序约束不变,落在段循环
-        # 收尾处)。
-        state.equips = list(getattr(match.session, 'last_owned_equips', []) or [])
+        # (段尾 state.equips 帧拷贝随黑板帧退役删除——迁移批 3.2:装备库存
+        # 容器写端 = 备战装配点 observe + 载体中继兜底(cw_observation),
+        # 帧拷贝的唯一消费(下段 synthesize 喂入)已随喂入删除消亡。)
         # 连击续刷判定输入:本段是否「仅刷新且真点击」。
         _prev_refresh_only = bool(
             ledger.did_refresh and refresh_wave_is_refresh_only(visit_actions))
@@ -1203,8 +1168,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     # - W944 治本(2026-08-31):blind sleep 改判据化自愈(_wait_shop_row_stable,
     #   与刷新分支同门同 rect);预算 2 次,耗尽才真停(模态弹窗压暗不因重读消失)。
     # - f570a76e 审查#1 修:去 total_buy 门——残缺牌面上的买牌决策同样要留证。
-    if state is not None and any(not c.name for c in state.shop):
-        _unk = [i + 1 for i, c in enumerate(state.shop) if not c.name]
+    if _entry is not None and any(not c.name for c in _entry.shop):
+        _unk = [i + 1 for i, c in enumerate(_entry.shop) if not c.name]
         for _ in range(2):
             _wait_shop_row_stable(op)
             _reshop = read_shop_cards(op.ctx, op.screenshot())
@@ -1272,7 +1237,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                               '≥1 新占槽'),
                     observed=('pixel-diff 新占槽=0(占位不出现:点击落空/'
                               '动画帧误判基线帧)'),
-                    plane=state.plane, round_num=state.round_num,
+                    plane=_entry.plane, round_num=_entry.round_num,
                     verdict='留证-买牌占位未出现(设计§2.2 硬失败形态;'
                             '复现升级由台账复现计数承载)',
                     shot=_occ_shot,
@@ -1288,7 +1253,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                               f'{ledger.total_sell} = '
                               f'{len(ledger.bought_names) - ledger.total_sell}'),
                     observed=f'pixel-diff 新占槽={len(_new_slots)}',
-                    plane=state.plane, round_num=state.round_num,
+                    plane=_entry.plane, round_num=_entry.round_num,
                     verdict=('留证-落位计数不符(pixel-diff 不分方向,卖出/'
                              '合并槽变化计入,单元总账留证)'),
                     reader_source='bench_buy_pixel_diff',
@@ -1312,7 +1277,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         expected=f'回读身份含买牌名:{sorted(ledger.bought_names)}',
                         observed=(f'回读={sorted(c.char_id for c in _rb)};'
                                   f'未出现:{sorted(_missing)}'),
-                        plane=state.plane, round_num=state.round_num,
+                        plane=_entry.plane, round_num=_entry.round_num,
                         verdict=('留证-身份回读未含买牌名(容未识别;'
                                  '占位已另判,不构成失败)'),
                         reader_source='bench_buy_sift_readback',
@@ -1320,7 +1285,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         note='观测自检框架设计 §2.2:身份留证不算失败')
 
     outcome = BuyCardsOutcome(
-        state=state, config=config,
+        state=_entry, config=config,
         total_buy=ledger.total_buy, total_level=ledger.total_level,
         total_refresh=ledger.total_refresh, total_sell=ledger.total_sell,
         total_sell_income=ledger.total_sell_income,
@@ -1345,8 +1310,8 @@ class CwOpBuyCards(CwScreenOpBase):
 
     生产路径由编排壳直调 :func:`run_buy_waves`(宿主 op 复用,保证读屏
     次序/替身桩行为等价);本类为独立可跑壳(``run_operation`` 单跑定位
-    失败步)。hp 三件组缺省 (None, False, False) = 无覆盖(商店开态
-    HP 区本就不可读,单跑调试语义);生产入口必须传 shop 关闭帧读链产物。
+    失败步)。hp 决策消费统一经容器政策读口 decision_hp(迁移批 3.2 起
+    hp 三件组传参链随黑板帧退役删除)。
 
     统一观察架构收编(B4 挂账批,账本 T-45):改挂 ``CwScreenOpBase``,
     ``buy`` 节点顶部装配点分流(架构设计 §9.1 并存纪律:两端口完整在场
@@ -1364,18 +1329,12 @@ class CwOpBuyCards(CwScreenOpBase):
     (注册表缺席 = 零动作)。
     """
 
-    def __init__(self, ctx: SrContext, hp_value: int | None = None,
-                 hp_readable: bool = False, hp_trusted: bool = False):
+    def __init__(self, ctx: SrContext):
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-买牌')
-        self._hp_value = hp_value
-        self._hp_readable = hp_readable
-        self._hp_trusted = hp_trusted
 
     def _buy_round(self) -> OperationRoundResult:
         """旧路径委托体(buy 节点旧路径与变体决策循环共享的单一实现)。"""
-        rr, outcome = run_buy_waves(self, self.ctx.cw_match,
-                                    self._hp_value, self._hp_readable,
-                                    self._hp_trusted)
+        rr, outcome = run_buy_waves(self, self.ctx.cw_match)
         if rr is not None:
             return rr
         return self.round_success(
