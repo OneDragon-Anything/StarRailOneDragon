@@ -32,7 +32,7 @@
 | 商店编排 | `_open_shop_phase -> (progressed, detail)`；read_only 开店成功即 progressed（读数目标达成） |
 | 序列消费 | `StartBattle ∧ progressed` 才是出战完成；not progressed 一律 fail-stop 交回 |
 
-配套的**发射门**(发射方与执行方同源谓词,防空计划发射):部署候选单一源 = kernel `select_deployments` 现算（`cw_deploy_logic`；发射×执行单一源——旧 flow.py 发射门 `_deploy_up_candidates` 已随 迁移批死码清理删除）。发射门与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——**锁定线语境豁免**：豁免武装帧（`locked_comp` 成型目标档超门封顶，单源 `cw_intention.locked_line_recipe_floor_conflict`）且本帧无有效仙舟供给（`xianzhou_supply_exists`）时门让位；发射侧拒因/开火分键 = `deploy_emit_*`（mandate 发射门帧级去重），执行侧计划拒因/门命中分桶 = `deploy_exec_*`。
+配套的**发射门**(发射方与执行方同源谓词,防空计划发射):部署候选单一源 = kernel `select_deployments` 现算（`cw_deploy_logic`；发射×执行单一源——旧 flow.py 发射门 `_deploy_up_candidates` 已随单动作循环迁移批死码清理删除）。发射门与执行侧经同一帧属性 `recipe_floor_lock_exempt` 同帧同值——**锁定线语境豁免**：豁免武装帧（`locked_comp` 成型目标档超门封顶，单源 `cw_intention.locked_line_recipe_floor_conflict`）且本帧无有效仙舟供给（`xianzhou_supply_exists`）时门让位；发射侧拒因/开火分键 = `deploy_emit_*`（mandate 发射门帧级去重），执行侧计划拒因/门命中分桶 = `deploy_exec_*`。
 
 ## 3. 备战单动作消费（`cw_screen_prep.py` 备战单轮）
 
@@ -42,7 +42,7 @@
 
 ## 4. 商店动作执行（动作 op；`cw_shop_action_ops.py`）
 
-> 波批执行面的防线已按守卫断言语义重定位（`screen_op.md` §2.3 落定）：**proposal-vs-expected 断言**（`guard_proposal_vs_expected`——提案对象在期望态存在且未被消费,炸出 = 策略器算术 bug）与 **expected-vs-tracked 双账断言**（`guard_expected_vs_tracked`——投影建模 bug 的唯一在环检测器,满栏买入豁免已随 收窄:满栏合成买面 tracked 与 simulate 同走 `_apply_full_bench_merge_buy` 单一源双账同构,豁免面仅剩非合成满栏买被拒而像素差漏检的 fail-open 残余窗）。旧 `sell_guard_ok` 波级对拍与 x 去重随「整波共享帧快照」前提消失而退役（单动作下第一笔动作后期望态已更新,第二笔提案自然不指向已卖槽）。执行侧观测通道三件（卖回金实收/刷新有效性/免费刷新证据）走候选 (a) = 动作 op execute 实现层遥测（处置表）。
+> 波批执行面的防线已按守卫断言语义重定位（`screen_op.md` §2.3 落定）：**proposal-vs-expected 断言**（`guard_proposal_vs_expected`——提案对象在期望态存在且未被消费,炸出 = 策略器算术 bug）与 **expected-vs-tracked 双账断言**（`guard_expected_vs_tracked`——投影建模 bug 的唯一在环检测器,满栏买入豁免已随满栏合成买面单一源化收窄:满栏合成买面 tracked 与 simulate 同走 `_apply_full_bench_merge_buy` 单一源双账同构,豁免面仅剩非合成满栏买被拒而像素差漏检的 fail-open 残余窗）。旧 `sell_guard_ok` 波级对拍与 x 去重随「整波共享帧快照」前提消失而退役（单动作下第一笔动作后期望态已更新,第二笔提案自然不指向已卖槽）。执行侧观测通道三件（卖回金实收/刷新有效性/免费刷新证据）走候选 (a) = 动作 op execute 实现层遥测（处置表）。
 
 - **BuyCardOp**：点击牌位（click_pts 从 screen_info 读，缺失兜底字面量）→ 动画窗 0.4s → **买后同 rect 卡面未变检出**（`buy_click_ineffective`：灰度差均值 < 阈值 = 点击落空/试用/被拦；裁片缺失或形状不等 = 不可判，`skipped` 分键显影不与「判了未生效」混账）→ **未生效 ⇒ execute 返回 False ⇒ 落地门两侧都不动**（不投影/不守卫/不入已买集，与 SellBenchOp 失败分支同契约）→ 有效才记账（total_buy / spend_executed += cost / tracked 追加名 / 买前裁片证据）→ 满栏自动多买补差（k = `merge_buy_k` 单一源,总价 = k×单价,执行账补差 (k−1)×单价）→ 期望态推进 = 容器规则通道直写（`apply_shop_action_logic` 投影口简单腿 + `apply_shop_merge_leg` 合成升星腿,基点 = 买前快照三件组;T-163 起动作基类 execute 单方法,`project`/`simulate` 投影契约已删除）。落地契约的调用环单一源 = `apply_action_outcome`（未落地不投影/不守卫/不入已买集；落地且非终结才走容器投影直写+守卫）。
 - **LevelUpOp**：点购买经验单击 → 1.0s 动画（光标遮挡由段顶 park 防）→ 记账（clicks 序列 = 动作内部步骤,决策循环逐帧重组）。
@@ -52,7 +52,7 @@
 
 ## 5. 部署执行（CwOpDeploy，`cw_op_deploy.py`）
 
-- **前置**：registry decision 全集锚（`cw_overlay_registry.derive_decision()`，T-277 registry 化——旧硬编码三屏扩为全集单一源，纯收紧）任一命中 → `round_fail(STATUS_EVENT_OVERLAY+命中画面名)`（执行环境失配速报交回重判；op 内检查 = 派发间隙窗口期第二道执行断言，第一道 = cw_loop 0 系 overlay 分支 + 宿主入口防线；，禁旧 success-skip 把弃执行记成成功）。口径 = registry 内：选择装备/骇入策划等 registry 外 overlay 屏在本检查仍漏检（已知残余，第一道防线辖）。
+- **前置**：registry decision 全集锚（`cw_overlay_registry.derive_decision()`，T-277 registry 化——旧硬编码三屏扩为全集单一源，纯收紧）任一命中 → `round_fail(STATUS_EVENT_OVERLAY+命中画面名)`（执行环境失配速报交回重判；op 内检查 = 派发间隙窗口期第二道执行断言，第一道 = cw_loop 0 系 overlay 分支 + 宿主入口防线，禁旧 success-skip 把弃执行记成成功）。口径 = registry 内：选择装备/骇入策划等 registry 外 overlay 屏在本检查仍漏检（已知残余，第一道防线辖）。
 - **输入装配**：槽位坐标全部从 screen_info 读（备战栏 9/前排 4/后排按 cap 差公式选档 `select_back_layout`，单一入口；7 格档未建档保守 8 格超集+留证）；cap = paddle 直读域防抖（权威，含宝钻/诅咒修正；失读才单调链 max 兜底——低读阻塞上阵贵、高读白拖一次便宜）。
 - **选人/围栏/排序单一源** = kernel `cw_deploy_logic.select_deployments`（发射×执行单一源契约：执行方只做输入装配 + 拖拽执行；发射方同源）。围栏集 = RECIPE ∪ ENGINE（桥派生，`cw_op_deploy.py:46-56`）；r387 cap 富余放行散牌填空（空位>必上件数）。
 - **输入装配段计划构造**：op 对 `select_deployments_reasoned` 的装配调用同帧穿豁免实参（五消费点的计划构造面——漏武装 = kernel 计划层仍 held 列车件 → 豁免执行侧静默失效）。
