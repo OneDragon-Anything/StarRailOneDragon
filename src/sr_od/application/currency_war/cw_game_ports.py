@@ -19,20 +19,26 @@ currency_war/decisions/,编号待分配:INDEX 尾现役 ADR-0582,T-119 契约批
 读屏/真实执行链,行为逐位不变。安装只发生在测试 harness 显式接通(批 1),
 装配纪律:进程内单装配、卸载复位 None(方案 §3.3)。
 
-**依赖边界**:运行时只引用 kernel 纯类型(CwSimFrame/ShopCard/Action/
+**依赖边界**:运行时只引用 kernel 纯类型(GameState/ShopCard/Action/
 PrepObservation),ctx 仅 TYPE_CHECKING——零 obs/operations/sim 依赖。
 生产实现(批 1,LiveCwObserver 住 obs 桶)与假实现(测试仓)实现本协议,
 依赖方向单向无环(方案 §3.1 层级裁决:协议住 CW 根,零依赖纯抽象)。
+
+(迁移批 3.2:端口契约改容器形态——``ObservationBundle.state``/
+``ExecResult.observed`` 切 GameState,假环境直产容器真值;实现方契约 =
+容器直写(与读屏路径 read_game_state 观察漏斗直写同语义),消费方逐帧
+读数面自行经容器读口装配。)
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
+from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepObservation,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import Action, CwSimFrame, ShopCard
+from sr_od.application.currency_war.kernel.cw_vocab import Action, ShopCard
 
 if TYPE_CHECKING:
     from sr_od.context.sr_context import SrContext
@@ -40,15 +46,16 @@ if TYPE_CHECKING:
 
 @dataclass
 class ObservationBundle:
-    """入口观察产物对(CwSimFrame 主载荷 + 备战 heavy 观察;方案 §2.3 表)。
+    """入口观察产物对(GameState 主载荷 + 备战 heavy 观察;方案 §2.3 表)。
 
     为何是薄对而非新观察容器:方案 §2.3 明文「不发明新容器」——被测 op
     消费的观察产物就是这两件真类型。``state`` 恒在(商店段/最小读/补给
-    快照路径只消费 CwSimFrame);``prep`` 仅备战 heavy 观察路径填充
-    (None = 该观察阶段无 heavy 观察,消费方按阶段分流)。
+    快照路径只消费容器单例;迁移批 3.2 起为容器形态,实现方已直写真值);
+    ``prep`` 仅备战 heavy 观察路径填充(None = 该观察阶段无 heavy 观察,
+    消费方按阶段分流)。
     """
 
-    state: CwSimFrame
+    state: GameState
     prep: PrepObservation | None = None
 
 
@@ -68,7 +75,7 @@ class ExecResult:
     applied: bool
     income: int | None = None
     verification: dict = field(default_factory=dict)
-    observed: CwSimFrame | None = None
+    observed: GameState | None = None
 
 
 @runtime_checkable
@@ -79,8 +86,10 @@ class CwObservationSource(Protocol):
     FakeCwObserver(测试仓,假游戏状态机真值直出)。实现契约两则
     (方案 §2.3 契约三则中辖端口的两条):
 
-    - **保真位语义不取消**:CwSimFrame 的 ``hp_readable``/``gold_readable``
-      等位在假环境恒「真读」形态——这是「完美观测」环境参数,不是造假;
+    - **保真位语义不取消**:容器 ``Field.source``/``sig.quality`` 保真位
+      (hp 真读/沿用、gold 真读)在假环境恒「真读」形态——这是「完美观测」
+      环境参数,不是造假(迁移批 3.2:位载体随帧表示退役由帧布尔位改
+      容器来源位,语义不变);
     - **读屏次数语义保留**:每次观察调用必须留痕(次数/时点)——观察
       注入换掉的是**读图**,不是「观察」这个语义事件,读屏节奏类判读
       在假环境仍须可审计(留痕载体由实现自定)。

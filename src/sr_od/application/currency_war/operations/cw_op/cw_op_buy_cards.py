@@ -301,6 +301,38 @@ def refresh_wave_is_refresh_only(actions: list) -> bool:
     return bool(actions) and isinstance(actions[0], RefreshShop)
 
 
+def _entry_receipt_from_container(bs) -> GameStateReadReceipt:
+    """端口路径入口回执装配(迁移批 3.2/切片4:假环境容器真值 → 轻量回执)。
+
+    观察源端口实现方已把真值直写容器(与读屏路径漏斗直写同语义契约),
+    本装配把决策/日志/安灯消费的逐帧读数面从容器读口映射为
+    :class:`GameStateReadReceipt`——生产路径同面由 read_game_state 原生
+    产出。完美观测形态:gold/hp 可读位 = source=='observation'(假环境
+    恒真读);shop = 容器 payload 牌(容器 ShopCard 形态,消费面
+    name/faction/cost 兼容)。
+    """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        gold_of,
+        level_of,
+        node_kind_of,
+        plane_of,
+        round_num_of,
+    )
+    payload = bs.shop.value
+    hp_val = bs.hp.value
+    return GameStateReadReceipt(
+        gold=gold_of(bs),
+        gold_readable=bool(bs.gold.source == 'observation'),
+        hp=int(hp_val) if hp_val is not None else None,
+        hp_readable=bool(bs.hp.source == 'observation'),
+        level=level_of(bs),
+        plane=plane_of(bs),
+        round_num=round_num_of(bs),
+        node_type=node_kind_of(bs),
+        board=dict(bs.board.value or {}),
+        shop=list(payload.cards) if payload is not None else [])
+
+
 def _form_progress(comp: 'Comp', session) -> float:
     """fp 遥测helper(review 要求:fp 轨迹可观测;调用方保证 comp 非 None)。
 
@@ -772,16 +804,21 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # → 污染本帧 read_game_state;park 后再读。
         op.park_cursor(after_wait=0.1)
         # ---- 入口观察(ADR-0517 决策 1/8:唯一读屏点,即对账)----
-        # 观察源端口改道(T-120 方案 §2.3/§3.3,批 1;封闭集登记 =
-        # sr-od-test test_cw_game_ports 改道集守卫):端口在场(假环境)
-        # 时入口观察 = observe_prep 状态真值直出,跳过读图;缺省 None =
-        # 生产真实读屏,行为逐位不变。
+        # 观察源端口改道(T-120 方案 §2.3/§3.3,批 1;迁移批 3.2 切片4:
+        # 端口契约 = 容器形态,实现方直写真值,消费面经容器读口装配回执);
+        # 缺省 None = 生产真实读屏(read_game_state 漏斗直写 + 原生回执)。
         _src = observation_source()
         _entry_shot = op.screenshot()
-        _entry = (_src.observe_prep(op.ctx, PHASE_PREP_SHOP_OPEN).state
-                  if _src is not None else
-                  read_game_state(op.ctx, _entry_shot,
-                                  phase=PHASE_PREP_SHOP_OPEN))   # ADR-0462 开店动作期
+        if _src is not None:
+            _src.observe_prep(op.ctx, PHASE_PREP_SHOP_OPEN)
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of as _bs_of_port,
+            )
+            _entry = _entry_receipt_from_container(
+                _bs_of_port(match.session))
+        else:
+            _entry = read_game_state(op.ctx, _entry_shot,
+                                     phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         # (hp 三件组覆盖随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
         #  容器 hp 由备战帧观察/结算既有写端承接,消费统一经 decision_hp,

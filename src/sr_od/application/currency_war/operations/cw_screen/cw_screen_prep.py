@@ -30,7 +30,6 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BenchChar,
-    bench_from_compact,
     exec_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -511,9 +510,10 @@ class CwScreenPrep(CwScreenOpBase):
         """观察源端口路径的观察装配(T-120 方案 §2.3,批 1)。
 
         读半部(轻字段扫读 + observe_full 重观察)整体换端口真值直出;
-        装配半部(单写者 session 写点)与读屏路径同语义:bench 播种/
-        last_node_type 写点/期望态对账/缓存/黑板帧(last_state 写点已随
-        链退役批删除,容器喂入 = 观察源实现方契约)。
+        装配半部(单写者 session 写点)与读屏路径同语义:last_node_type
+        写点/期望态对账/缓存/黑板帧——容器喂入 = 观察源实现方契约。
+        (迁移批 3.2 切片4:``bundle.state`` 切容器形态,帧变量与 bench
+        黑板播种随帧表示退役删除;节点类型/视觉域缓存装配改容器读口。)
         缺席申报:cap×paddle 双源 vacancy 仲裁在端口路径结构性不跑——
         假环境 vacancy 单一真值(cap−deployed),双源分歧问题不存在;
         坐标/视觉域字段(spheres/boxes/tomes/overlay 检测)恒空,消费方
@@ -521,26 +521,32 @@ class CwScreenPrep(CwScreenOpBase):
         """
         bundle = src.observe_prep(self.ctx, 'prep_clean')
         obs = bundle.prep if bundle.prep is not None else PrepObservation()
-        # 容器化段 2:obs.state 槽装配随槽退役消亡——容器喂入归观察源
-        # 实现方契约(与读屏路径 read_game_state 观察漏斗直写同语义,
-        # 设计件 §2.6 端口路径边界行);st 现役用途 = 节点类型会话缓存与
-        # 视觉域缓存装配(last_state 写点已随链退役批删除)。
-        st = bundle.state
-        # 期望态基座:bench 播种(与读屏路径 :551 同语义,来源换端口真值)
-        st.bench = bench_from_compact(
-            list(obs.bench_chars
-                 or (exec_state_of(self._session()).tracked_bench_chars
-                     if self._session() else [])))
         session = self._session()
         if session is not None:
-            if st.node_type:
-                session.last_node_type = st.node_type
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of as _pobs_bs_of,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                node_kind_of as _pobs_kind,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                shop_cards_to_legacy as _pobs_cards_legacy,
+            )
+            _pobs_bs = _pobs_bs_of(session)
+            _node_kind = _pobs_kind(_pobs_bs)
+            if _node_kind:
+                session.last_node_type = _node_kind
             # (last_state 写点已随链退役批删除:遗留读者与执行侧装配源
             #  全切容器单例,端口路径容器喂入 = 观察源实现方契约;原
             #  「写 last_state 前过 gated_hp」门随写点退役,gated_hp 门
             #  现役在册位 = prep 装配消费位(读屏路径同)。)
-            # light 沿用缓存更新(视觉域载荷;MED-1 同读屏路径)
-            self._cached_shop_cards = list(getattr(st, 'shop', None) or [])
+            # light 沿用缓存更新(视觉域载荷;MED-1 同读屏路径)。raw 牌
+            # 缓存域:容器 payload 经 kernel 映射单一源转 legacy 读面
+            #(假环境 merge_preview 读取器域结构性为零,§4-6 同申报)。
+            _pobs_payload = _pobs_bs.shop.value
+            self._cached_shop_cards = (
+                _pobs_cards_legacy(list(_pobs_payload.cards))
+                if _pobs_payload is not None else [])
             self._cached_bench = list(obs.bench_chars)
             self._cached_deployed = list(obs.deployed_chars)
             self._cached_vacancy = obs.deploy_vacancy
