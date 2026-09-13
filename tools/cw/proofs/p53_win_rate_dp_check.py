@@ -1,4 +1,4 @@
-"""win_rate_dp_by_plane 注册表值的只读复算自检(增量 B,ADR-0515)。
+"""win_rate_dp_by_plane 注册表值的只读复算自检(增量 B)。
 
 复算对象 = ``cw_registry.win_rate_dp_by_plane``(Δp(e0→e1) 成型档条件
 胜率边际,分位面):对 p15 冻结语料(``tools/cw/proofs/p15/

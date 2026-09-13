@@ -226,7 +226,7 @@ print('  [7] V_opt > V_comp(effective) all tiers; raw 5cost@L7 conditional 60 > 
       'but gated by A<=0.05 (search itself non-executable, E0=2200 refreshes)')
 
 # --- (8) 2★ 合成 tradeoff(sell_refund 往返账;r=3 已收口) ---
-assert sell_refund(2, 1) == 3 and sell_refund(2, 3) == 8  # ADR-0121(2star 1cost=+3 live)
+assert sell_refund(2, 1) == 3 and sell_refund(2, 3) == 8  # 2star 1cost=+3 live(实证)
 rt_1c = sell_refund(2, 1) - 3 * 1
 rt_3c = sell_refund(2, 3) - 3 * 3
 assert rt_1c == 0, '1cost 2star round trip must be net 0 (frictionless)'

@@ -4,11 +4,11 @@
 数据源(不 import,值按代码注册表与 docs/game/currency_war/research 转写,本脚本自含):
   - 连胜表 STREAK_GOLD_TABLE = (1,1,2,2,2,3,4)(cw_economy,索引=连胜数,越界取尾;
     economy.md 10.1 弹窗实测 49/49)
-  - 败轮金 LOSS_GOLD_BY_NODE = battle 2 / encounter 4 / boss 4(ADR-0439 实机差分)
-  - 奖励轮照发连胜金 streak_gold(进轮连胜),计数不动(ADR-0439:85/85 零散布)
+  - 败轮金 LOSS_GOLD_BY_NODE = battle 2 / encounter 4 / boss 4(实机差分)
+  - 奖励轮照发连胜金 streak_gold(进轮连胜),计数不动(85/85 零散布)
   - 利息 interest(g)=min(g//10,5)(p47 A1 同源;本脚本只复用其 L 递推做对拍)
 
-收入口径 = 引擎口径(engine_p1.py 收入段 + ADR-0439,R1 对抗 B1 修正):
+收入口径 = 引擎口径(engine_p1.py 收入段,R1 对抗 B1 修正):
   - 每轮收入在**轮首**入账,连胜金 = streak_gold(进轮连胜 s)——胜轮发 T[s],
     胜的增量只影响下一轮(不是胜后取 T[s+1]);
   - 败轮金 = LOSS_GOLD_BY_NODE[败掉轮节点],在败轮的**下一轮**轮首补发,
@@ -125,7 +125,7 @@ def v_seq(s0: int, seq: tuple[str, ...], p: float) -> float:
     """从连胜 s0 进场、沿节点序列 seq 的期望连胜账(引擎口径,只含 streak 分量)。
 
     战斗类(battle/encounter/boss)按胜率 p;reward = 照发 T[进轮连胜] 不动计数
-    (ADR-0439);supply = 零发不动计数。败轮金按**败掉轮**节点类型
+    ;supply = 零发不动计数。败轮金按**败掉轮**节点类型
     (battle->2, 其余->4),在下一轮轮首补发且仅当下一轮是战斗类节点
     (reward/supply 分支优先——引擎 L738-746 分支序)。
     """
@@ -352,7 +352,7 @@ def main() -> None:
     print()
     print('=== P6: plane-tail streak account (with reward round, engine sequence) ===')
     # P2 尾段(r5 encounter, r6 reward, r7 boss):剩余 2 战斗轮 + 1 奖励轮
-    # 奖励轮照发连胜金(ADR-0439)使尾段账高于齐次纯战斗口径——熄火带对拍
+    # 奖励轮照发连胜金使尾段账高于齐次纯战斗口径——熄火带对拍
     tail = ('encounter', 'reward', 'boss')
     for s in (2, 4, 6):
         _SEQ_MEMO.clear()

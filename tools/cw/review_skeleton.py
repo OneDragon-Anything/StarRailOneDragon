@@ -3,7 +3,7 @@
 ## 用途
 
 逐局复盘的**骨架与可疑项预填面**:对本局决策数据跑检测器集
-(``sim/checks/suspects.py`` D1-D11,ADR-0593),生成按单局复盘协议
+(``sim/checks/suspects.py`` D1-D11),生成按单局复盘协议
 (``sr-od-currency-war-dev`` skill ``references/match-review.md`` §阶段 2)
 组织骨架 markdown——逐节点(P×R×)小节、入口观察/决策循环占位、
 **可疑项预填块插在对应节点小节的判定三槽之前**(复盘者做三槽判定
@@ -21,7 +21,7 @@ op 边界重建——同一协议两个消费面,判据单一源在协议文档�
 
 输入形状自适应:行带 ``sim`` 键 = sim 批次账本行(直用);否则 = 生产
 决策帧(经本文件 ``merge_round_rows`` 合并成账本同构形状,
-ADR-0593 §4.1 的生产数据入口)。输出缺省 stdout,``--out``
+ 的生产数据入口)。输出缺省 stdout,``--out``
 落盘。
 """
 
@@ -38,7 +38,7 @@ from sr_od.application.currency_war.sim.checks.suspects import (
 )
 
 #: 花费类动作白名单(合并行动作并集的入集判据)。
-# T-153(ADR-0593):SellBench 并入合并行动作并集——D1(同轮买卖分键
+# T-153:SellBench 并入合并行动作并集——D1(同轮买卖分键
 # 复核)/D5(种子回卖辖域自算)检测器的生产覆盖面需要卖出动作行。
 # 段级既有消费面核对:_seg_spent/__type__ 白名单(BuyCard/LevelUp/
 # RefreshShop)与 check_overflow_gold_zero_buy_streak 花费判定均不含
@@ -54,7 +54,7 @@ def merge_round_rows(rows: list[dict]) -> list[dict]:
     出处声明:本函数原居 ``sim/ledger_hooks.py``,随其读侧检查族在
     W3 波(账本 T-266)退役删除——本工具是未同步的残留消费面
     (legacy-hygiene-ops T-19 流程层缺口),按其内联设计以原实现
-    逐行等价补齐于此;语义与实现单一源 = ADR-0593 §4.1 生产数据
+    逐行等价补齐于此;语义与实现单一源 =  生产数据
     入口(原实现可自 git 历史该模块复活比对)。
 
     段级检查的输入口径 = 一轮一行(sim 账本);生产 decisions.jsonl
@@ -64,7 +64,7 @@ def merge_round_rows(rows: list[dict]) -> list[dict]:
       与段级 ``_seg_gold0``「首波 gold」同口径——末帧 gold 已含本轮
       花销,拿去判「溢余未泄」会系统性偏小);
     - actions = 全帧**花费类**动作并集(BuyCard/LevelUp/RefreshShop
-      + SellBench[T-153/ADR-0593:D1/D5 检测器生产覆盖面;生产卖出行
+      + SellBench[T-153:D1/D5 检测器生产覆盖面;生产卖出行
       缺 name/sell_reason 键,检测器按缺键跳过];
       生产 wrapper 动作 RunBuyPhase/RunDeploy/StartBattle 等非花费,
       不入——段级 ``_seg_spent`` 按 __type__ 白名单判,混入无害但
@@ -137,7 +137,7 @@ def load_rows(path: Path, run_id: str | None) -> tuple[list[dict], str]:
         rows = sorted(rows_all, key=lambda r: ((r.get('plane') or 1),
                                                (r.get('round_num') or 0)))
         return rows, f'sim 账本行 {len(rows)} 轮'
-    # 生产决策帧:同 run 多帧一轮,合并成账本同构(生产入口,ADR-0593 §4.1)
+    # 生产决策帧:同 run 多帧一轮,合并成账本同构(生产入口,)
     rids = {str(r.get('run_id')) for r in rows_all}
     if len(rids) > 1 and run_id is None:
         raise SystemExit(f'档案含 {len(rids)} 个 run,须 --run-id 点名: '
@@ -186,7 +186,7 @@ def render_skeleton(rows: list[dict], entries: list[dict],
     lines.append('# 单局复盘骨架(生成器预填)· match-review 协议')
     lines.append('')
     lines.append(f'> 来源: {source};检测器集 = sim/checks/suspects.py '
-                 f'({", ".join(detector_ids())};ADR-0593)。')
+                 f'({", ".join(detector_ids())})。')
     if det_errors:
         lines.append(f'> ⚠ 检测器异常未计入: {det_errors}')
     lines.append('> 复盘者须知: ①判定尺 = 玩法文档 + 在册用户裁定,'
@@ -244,7 +244,7 @@ def render_skeleton(rows: list[dict], entries: list[dict],
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description='复盘骨架生成器(T-153/ADR-0593)')
+    ap = argparse.ArgumentParser(description='复盘骨架生成器(T-153)')
     ap.add_argument('--decisions', required=True,
                     help='decisions.jsonl 路径(sim 批次目录或生产 telemetry)')
     ap.add_argument('--run-id', default=None,

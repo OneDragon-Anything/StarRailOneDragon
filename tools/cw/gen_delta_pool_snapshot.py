@@ -1,4 +1,4 @@
-"""货币战争 · Δ池快照生成器 CLI 壳(生成核心在 src,ADR-0344)。
+"""货币战争 · Δ池快照生成器 CLI 壳(生成核心在 src)。
 
 核心逻辑(regenerate_snapshot / build_pool / 写目标白名单与
 sim_runs 防自中毒守卫)位于

@@ -5,7 +5,7 @@
 本脚本自含以便离线审阅):
   - 利息 interest(g) = min(g // 10, 5)(50 金满息 5 金/轮;cw_plane_table.interest 同构)
   - 基础奖励分段 1-1=3 / 1-2=4 / 其余 5(cw_economy.REWARD_BASE_GOLD_BY_ROUND + BASE_INCOME)
-  - 连胜表 0-1->1 / 2-4->2 / 5->3 / 6+->4;败轮 battle=2 / encounter=boss=4(ADR-0439)
+  - 连胜表 0-1->1 / 2-4->2 / 5->3 / 6+->4;败轮 battle=2 / encounter=boss=4
   - 位面长度先验 P1=9 / P2=7 / P3=9(cw_plane_table.DEFAULT_PLANE_LENGTHS 语义)
 
 三段自检(对应证明 p47 的命题 1/2/2):

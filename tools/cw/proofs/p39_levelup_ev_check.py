@@ -16,7 +16,7 @@ from sr_od.application.currency_war.data.cw_shop_odds import (
 SHOP_REFRESH_COST = 2          # cw_state.REFRESH_COST_BASE(粗估常量)
 XP_PER_BUY = 4                 # cw_state 单一源
 XP_TO_NEXT_LEVEL = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
-XP_CLICK_GOLD = 4              # flat-4(ADR-0275 实机 VLM 三帧)
+XP_CLICK_GOLD = 4              # flat-4(实机 VLM 三帧)
 
 
 def upgrade_gold(lv: int) -> int:

@@ -67,7 +67,7 @@ DOT_POOL = ('艾丝妲', '椒丘', '卡芙卡', '桑博')
 SEELE = '希儿'
 
 # --- 特征列序(工件 schema 单一顺序;零方差列保留、系数自然学 0) ---
-# M2 增列(W148,ADR-0358/W92 修法 A+C):owned_equip_count(持有面,state.equips
+# M2 增列(W148,W92 修法 A+C):owned_equip_count(持有面,state.equips
 # 快照,搬运链修复后语料再生)、prev_damage(同 run 上一战斗行 damage_dealt 的
 # lag-1——敌方强度/我方输出代理;**不用同局 damage_dealt**,结算才可得=标签泄漏)。
 NUM_FEATURES = [
@@ -429,7 +429,7 @@ def main() -> None:
         'era_sensitivity': sens,
         'zero_variance_features': [c for c in NUM_FEATURES
                                    if X[:, FEATURE_COLS.index(c)].std() == 0],
-        'label_source': 'outcomes.killed(实机结算真值,ADR-0306 权威口径)',
+        'label_source': 'outcomes.killed(实机结算真值,权威口径)',
         'shadow_only': True,
     }
     meta_path = out_dir / 'cw_win_model_m1_meta.json'

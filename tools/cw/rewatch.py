@@ -135,7 +135,7 @@ def collect_tree(procs: list[psutil.Process]) -> list[psutil.Process]:
     """树收编:每个进程经 psutil children(recursive=True) 并入其全部后代,
     按 pid 去重(排除本工具自身),返回「匹配进程 ∪ 后代」的杀集。
 
-    为什么(ADR-0602 §2):哨兵实为 pwsh→uv→venv python→base python
+    为什么():哨兵实为 pwsh→uv→venv python→base python
     的进程链,今天四层命令行都含脚本名、命令行匹配够用,明天 uv 改实现
     未必——后代命令行不含脚本名/不可读时按命令行抓不到,树语义保证
     链上进程不孤儿化(2026-09-08 实证:单点杀 pwsh 留 uv→python 孤儿,
@@ -170,7 +170,7 @@ def _kill_procs(victims: list[psutil.Process]) -> list[psutil.Process]:
     kill 抑制 NoSuchProcess+AccessDenied:Windows TerminateProcess 是
     原子的——目标死了,或抛 AccessDenied(需管理员),不存在「不抛异常
     但不死」的中间态。杀不动=视作存活返回,交复扫轮有界重试,最终走
-    exit 2 可验证失败(ADR-0602 §2);不抑制会让真实「需管理员权限」
+    exit 2 可验证失败();不抑制会让真实「需管理员权限」
     场景变成未处理异常(traceback 退 1),绕过 exit 2 契约,消费方
     (编排者后台 job / cycle_restart)拿到契约外退出码。
     """
@@ -187,7 +187,7 @@ def _kill_procs(victims: list[psutil.Process]) -> list[psutil.Process]:
 
 
 def kill_all(procs: list[psutil.Process]) -> None:
-    """杀净(树终杀 + 杀后复扫断言,ADR-0602 §2)。
+    """杀净(树终杀 + 杀后复扫断言,)。
 
     树终杀:匹配进程+collect_tree 收编的后代一并杀;杀后复扫:重跑
     find_old_watchers,非空自动再杀(KILL_RESCAN_MAX 轮有界重试),仍
@@ -225,7 +225,7 @@ def kill_pids_tree(pids: list[int]) -> list[int]:
     """按 pid 树终杀:目标进程+psutil 树收编后代一并 kill。
 
     cycle_restart 两处单点杀消费点(supervise 兄弟终止 / start_app 失败
-    回滚)的复用缝(ADR-0602 §3):Popen.terminate() 在 Windows 下不
+    回滚)的复用缝:Popen.terminate() 在 Windows 下不
     级联,只杀 uv 层会孤儿化 venv python→base python 链——两处复用本
     实现,杀语义与 kill_all 单一源,禁在消费点自造第二套树杀。
     返回杀后仍存活的杀集 pid(含树收编后代;空列表 = 全杀净,以「杀集
@@ -263,7 +263,7 @@ def verify(expected: int) -> None:
     按进程数会翻倍,故按「命令行里出现该脚本名」去重计件);并把在岗状态写入
     rewatch.status;不等 → 非零退出。
 
-    已知局限(申报不修,ADR-0602 §4):①按名计件——同名双实例仍计 1 件,
+    已知局限(申报不修,):①按名计件——同名双实例仍计 1 件,
     exit 0 检不出实例堆积(打印的 pid 列表供人眼核对);②cmdline 命中即在岗——
     哑孤儿(报警信道已断的残留进程)照样绿,exit 0 ≠ 报警信道活,活性回读
     以 cw_sentinel.pos 心跳推进 / 后台 job 结算为准(runtime-ops「哨兵活性回读」)。

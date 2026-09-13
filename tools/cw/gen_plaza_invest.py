@@ -12,7 +12,7 @@
   2. ``docs/game/currency_war/data/invest_cards.md`` —— 人读版(翻阅/攻略引用):
      按品质分组的表格;id 列 = 代码侧 ``source='plaza:<id>'`` 的双向链接锚。
 
-两层架构(ADR-0150):本生成器只管 **base 事实层**(名字/品质/效果,API 直出);
+两层架构:本生成器只管 **base 事实层**(名字/品质/效果,API 直出);
 人工建模增量(economy 数值化/评估分/环境分类/阵营绑定/补遗条目)在
 ``cw_investments.py`` 手维护,合并层应用 —— 版本更新 = 重跑本脚本 + 按 diff 报告
 核对 overlay 孤儿键(测试 test_cw_invest_registry 有守卫)。

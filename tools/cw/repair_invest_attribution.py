@@ -1,15 +1,15 @@
-"""开局投资选卡遥测行 run 归属重算(ADR-0588;S12 历史档案治理)。
+"""开局投资选卡遥测行 run 归属重算(S12 历史档案治理)。
 
 ## 背景
 
 run_id 曾在 ``CwLoop.__init__`` 才铸造,而入口链(简报/投资环境/投资策略屏)
 的遥测行早于铸造产生:``record_invest_cards`` 的「run_id 空则丢,否则盖
 ``_CURRENT_RUN_ID``」门把开局 env/strategy 行盖到**上一局** run 戳上(冷启动
-首局则零行)。治本修复 = 铸造前移到入口链(ADR-0588,ensure_run_started);
+首局则零行)。治本修复 = 铸造前移到入口链(ensure_run_started);
 本工具治历史:按 runs.jsonl 收口时间线把 invest_cards.jsonl 逐行重归属
 「首个收口时刻 ≥ 行 ts 的 run」,再对受影响档案重建。
 
-## 重算判定规则(ADR-0588 方案 §2.2;判据与检出互逆)
+## 重算判定规则(方案 §2.2;判据与检出互逆)
 
 runs.jsonl 每行 ts = 收口时刻;run 生存期 = (上一收口, 本收口](单跑道一次
 一 run,顺序无交叠)。对 invest_cards.jsonl 每行 R(ts=t)::
@@ -22,7 +22,7 @@ runs.jsonl 每行 ts = 收口时刻;run 生存期 = (上一收口, 本收口](�
 **疑似串门-人工审(先于自动重归属;保持原 run_id,只点名)**——所盖 run S
 的收口状态存在两种失真形态,任一命中即入人工审清单:
 
-1. S 收口行 ``source='recovered'``(ADR-0273 兜底回填:ts=回填时刻而非真实
+1. S 收口行 ``source='recovered'``(兜底回填:ts=回填时刻而非真实
    终局时刻)且 R.ts 早于 S 自身流行(名下各流 + 收口行)的最晚 ts——回填
    时刻是名义窗尾而非真实窗尾,owner 规则对 S 名下的行失真。实践中即 S
    名义窗内全部行(超集保守,清单不改数据)。
@@ -76,7 +76,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 _REPO = get_project_root()
 
-#: 变更 journal 落点(ADR-0588 方案 §2.1 安全三件②;批报告目录,不入 git)
+#: 变更 journal 落点(方案 §2.1 安全三件②;批报告目录,不入 git)
 _JOURNAL_DIR = (_REPO / '.debug' / 'temp' / 'currency_war'
                 / 't109_telemetry_gaps')
 
@@ -88,7 +88,7 @@ _STREAM_FILES: tuple[str, ...] = (
     'op_journal.jsonl',
 )
 
-#: 兜底回填行的来源标记(ADR-0273;ledger_hooks.build_recovered_summary)
+#: 兜底回填行的来源标记(ledger_hooks.build_recovered_summary)
 _RECOVERED_SOURCE: str = 'recovered'
 
 
@@ -549,7 +549,6 @@ def _run(replay_dir: Path, apply_mode: bool) -> int:
         'repair_journal-' + datetime.now().strftime('%Y%m%d_%H%M%S') + '.json')
     journal = {
         'tool': 'tools/cw/repair_invest_attribution.py',
-        'adr': 'ADR-0588',
         'replay_dir': str(replay_dir),
         'backup': str(bak),
         'changed_rows': [
@@ -571,7 +570,7 @@ def _run(replay_dir: Path, apply_mode: bool) -> int:
 def main(argv: list[str] | None = None) -> int:
     """CLI 入口(dry-run 默认;--apply 显式落盘)。"""
     ap = argparse.ArgumentParser(
-        description='开局投资选卡遥测行 run 归属重算(ADR-0588;默认 dry-run)')
+        description='开局投资选卡遥测行 run 归属重算(默认 dry-run)')
     ap.add_argument('--replay-dir', default=str(DEFAULT_REPLAY_DIR),
                     help='live 流根(默认生产新树 telemetry/live;演练传副本目录)')
     ap.add_argument('--apply', action='store_true',

@@ -1,4 +1,4 @@
-"""P76 标定批数值自检(T-278/ADR-0639,r1 返工域):ε₂ 集中度二阶带全生产域包络 + Δ 三因子打印。
+"""P76 标定批数值自检(T-278,r1 返工域):ε₂ 集中度二阶带全生产域包络 + Δ 三因子打印。
 
 不进 src;重跑:PYTHONPATH=src uv run python tools/cw/proofs/p76_e2_band_check.py
 正本:P76 §3.4(丙.4 净二阶带两反向通道)+ §4.4(ε₂ 并入夹界余量);
@@ -141,7 +141,7 @@ def main() -> None:
           f'g74.4+Phi147.3), W=2 windows')
     print(f'Delta point = {dlam * exposure * 2:.1f} 金 (ci [0, '
           f'{0.391 * exposure * 3:.1f}];λ3 上包络 = pooled 分层表最高 '
-          f'95%CI 上端 p8-12×battle,小样本侧格排除口径见 ADR-0639)')
+          f'95%CI 上端 p8-12×battle,小样本侧格排除口径)')
 
 
 if __name__ == '__main__':

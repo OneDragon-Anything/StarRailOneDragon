@@ -2,9 +2,9 @@
 
 重跑:PYTHONPATH=src uv run python tools/cw/proofs/p48_check.py
 数据源(不 import,值按代码注册表/证明件转写,本脚本自含以便离线审阅):
-  - XP 机制:单击 +4 经验/4 金(XP_PER_BUY,ADR-0275 flat 三帧);等级门槛
+  - XP 机制:单击 +4 经验/4 金(XP_PER_BUY,flat 三帧);等级门槛
     XP_TO_NEXT_LEVEL = {3:4, 4:6, 5:20, 6:40, 7:52, 8:72, 9:84}(cw_state,economy.md
-    §9 粗估 ±20%);买牌同源 +4 经验/张(sim engine_p1,ADR-0286)。
+    §9 粗估 ±20%);买牌同源 +4 经验/张(sim engine_p1)。
   - 利息 interest(g) = min(g//10, 5),50 封顶(cw_plane_table,p47 A1)。
   - 净收入率 I 带 [6,9](p47 A3 同源;胜轮 5+连胜金)。
   - p39 移位价值示例:4费2星 L7->L8 ΔV_band=103.3;4费2星 L8->L9 ΔV=23.0;

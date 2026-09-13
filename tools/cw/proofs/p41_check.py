@@ -139,11 +139,11 @@ def should_sell(refund: int, v_slot: float, v_opt_: float, v_power: float,
     K 外件 ΔP̂=0 → v_ms_dp 缺省 0,max 退化为单通道,与 ⑤ 互斥分域自洽。"""
     return refund + v_slot > max(v_opt_, v_ms_dp) + v_power
 
-# refund 接口对拍(sell_refund 机制事实,ADR-0121)
+# refund 接口对拍(sell_refund 机制事实)
 assert sell_refund(1, 1) == 1 and sell_refund(1, 4) == 4
 assert sell_refund(2, 1) == 3, '2star 1cost = +3 live measured, no fee'
 assert sell_refund(2, 3) == 8, '2star 3cost = 9-1 fee'
-assert sell_refund(3, 3) == 26, '3star 3cost = 27-1 (speculative, ADR-0121)'
+assert sell_refund(3, 3) == 26, '3star 3cost = 27-1 (speculative)'
 
 # S-a 燃料件: bench 满(V_slot=6 被阻断插件),1star 1cost,V_power=0(K 外件,v_ms_dp=0)
 vo1 = v_opt(L_REF, 1, U_BAND[1], H_REF)

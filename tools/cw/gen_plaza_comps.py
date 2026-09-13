@@ -16,7 +16,7 @@
       覆盖面,不作无偏胜率训练集**——校准锚=实机遥测负样本)。
   3. ``docs/game/currency_war/data/plaza_meta.md`` —— 人读版(表格,供 COMP_LIBRARY 手判层校准)。
 
-两层架构(同 gen_plaza_invest.py ADR-0150 模式):本生成器只管 **base 事实层**(784 篇玩家帖
+两层架构(同 gen_plaza_invest.py 模式):本生成器只管 **base 事实层**(784 篇玩家帖
 聚合的客观频次);手判层(strength/form_difficulty/star_goals 曲线取舍)在 ``cw_comps.py``
 COMP_LIBRARY 手维护 —— 代码 ``plaza_carry`` 字段是两层的对拍锚点。
 
@@ -413,7 +413,7 @@ def render_data(version_tag: str, clusters: list, glob: dict) -> str:
         "",
         "",
         "def early_transition_pool() -> dict[str, int]:",
-        '    """Early(位面1)阶段单位频次 —— 全局过渡池先验(ADR-0149 消费)。"""',
+        '    """Early(位面1)阶段单位频次 —— 全局过渡池先验(消费)。"""',
         '    return dict(PLAZA_GLOBAL["early_units"])',
         "",
     ]

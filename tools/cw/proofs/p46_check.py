@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..
 from sr_od.application.currency_war.kernel import cw_plane_table  # noqa: E402
 from sr_od.application.currency_war.decision.decision_v2 import ev as cw_ev  # noqa: E402
 
-REC = 3  # interest_recovery_rounds(P13/ADR-0352 口径,常量漂移须人查)
+REC = 3  # interest_recovery_rounds(P13 口径,常量漂移须人查)
 
 
 def interest(g: int) -> int:

@@ -160,7 +160,7 @@ def task2() -> None:
         eg = j.get('endgame') or {}
         lens = plane_lengths_from_match(j)
         for v in lens:
-            if not 1 <= v <= 9:  # ADR-0366/0368 同款脏表夹:合法域 [1,9] 守卫
+            if not 1 <= v <= 9:  # 同注册表守卫同款:合法域 [1,9] 夹取
                 raise SystemExit(f'{fp.name}: 位面长度 {v} 越界 [1,9]')
         per_match.append((fp.name, str(eg.get('result')), lens))
     n = len(per_match)

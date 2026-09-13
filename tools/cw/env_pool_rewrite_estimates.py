@@ -555,7 +555,7 @@ def econ_value_full(eff: EconomyEffect, h: int, ctx: dict,
         delta = ctx['interest_delta'](start, h, eff.interest_cap_override)
         if delta is not None:
             v += delta
-    # 合成/卖价族(ADR-0211:正常成型路上白得的被动经济)
+    # 合成/卖价族(正常成型路上白得的被动经济)
     if eff.sell_price_mult != 1.0 and ctx['w_sell'](start, h) is not None:
         v += (eff.sell_price_mult - 1.0) * ctx['w_sell'](start, h)
     if eff.gold_per_2star2cost_merge and ctx['w_m2cost2'](start, h) is not None:

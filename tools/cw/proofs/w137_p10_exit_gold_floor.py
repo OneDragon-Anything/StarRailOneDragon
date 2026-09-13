@@ -52,7 +52,7 @@ W135 = (ROOT / '.debug' / 'temp' / 'currency_war' / 'w135_crosscheck'
         / 'metrics_w135.json')
 HP_TO_GOLD = 0.5        # registry.hp_to_gold(P3:4.4HP≈2.2金)
 H3 = {0: 0.139, 1: 0.416, 2: 0.778}   # registry.h3_win_rate(P3 配套阶梯)
-RECOVERY = 3.0          # registry.interest_recovery_rounds(ADR-0352)
+RECOVERY = 3.0          # registry.interest_recovery_rounds
 INTEREST_CAP = 5        # registry.interest_cap([17] 50 息律)
 #: Δ池硬节点掉血桶均值(w135 checks: encounter 桶9 -17.7 / boss 桶9 -24.9)
 HP_LOSS_ENCOUNTER = 17.7
@@ -77,7 +77,7 @@ def carry_premium(g0: int, net_income: float, r_left: int) -> float:
 
 
 def interest_cost_recovery(gold: int, cost: int) -> float:
-    """ADR-0352 回档口径 C_interest(跨档数 × min(R跨位面, 3);P1 末段近似)。"""
+    """回档口径 C_interest(跨档数 × min(R跨位面, 3);P1 末段近似)。"""
     tiers = gold // 10 - (gold - cost) // 10
     r_eff = min(TOTAL_NODES - NODES_PER_PLANE, RECOVERY)
     return float(max(0, tiers) * r_eff)
@@ -128,7 +128,7 @@ def hard_node_win_account() -> None:
         print(f'   {name}: 免掉血 {v_hp:.1f} 金 + 连胜续期 '
               f'{lo:.2f}-{hi:.2f} 金(胜率 {H3[1]} 加权)')
     print(f'   C 侧: boss 窗多花 5 金的息损 = 跨档数×min(R跨位面,{RECOVERY})'
-          ' ≤ 3 金(ADR-0352 回档口径)。'
+          ' ≤ 3 金(回档口径)。'
           'boss r9 时 remaining=0 → 连胜续期=0,支柱只剩免掉血项。')
 
 

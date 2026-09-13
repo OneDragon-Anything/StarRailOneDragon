@@ -3,7 +3,7 @@
 问题:战斗败轮的轮首补发基项有两个互斥候选口径——
   H_base(基础奖励口径,玩家裁定 2026-09-09):补发 = 被败节点的基础奖励
     (平面感知键:P1 r1=3 / r2=4 / 其余 5,与奖励轮同款)+ 利息;
-  H_type(节点类型表口径,ADR-0439 108 局差分的分桶读数):补发 =
+  H_type(节点类型表口径,108 局差分的分桶读数):补发 =
     LOSS_GOLD_BY_NODE{battle:2, encounter:4, boss:4} + 利息。
 判据:补发金额**随轮次/平面变**(P1r1→3、P1r2→4、其余→5)= H_base 胜;
 **按类型恒 2/4** = H_type 胜。
@@ -21,7 +21,7 @@
   一律整轮剔除;金面效果卡局(狸财经狸息 flat/双手狸代买扣金)整局剔除。
   胜轮同法校验 = 方法自检:差值应 = base + streak_gold(进轮连胜) + 利息。
 
-数据:.debug/currency_war/telemetry/matches/match_*.json(ADR-0439 同源语料;
+数据:.debug/currency_war/telemetry/matches/match_*.json(同源语料;
 本脚本只读)。用法:
   uv run python tools/cw/loss_comp_bucket_replay.py [--matches GLOB]
 """
@@ -77,7 +77,7 @@ def h_base(plane: int, round_num: int) -> int:
 
 
 def h_type(node_type: str) -> int:
-    """H_type 预测:LOSS_GOLD_BY_NODE 类型表(ADR-0439;非战斗类无预测)。"""
+    """H_type 预测:LOSS_GOLD_BY_NODE 类型表(非战斗类无预测)。"""
     return {'battle': 2, 'encounter': 4, 'boss': 4}.get(node_type, 0)
 
 

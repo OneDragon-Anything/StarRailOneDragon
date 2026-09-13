@@ -16,7 +16,7 @@ SHOP_SLOTS = 5
 REFRESH_COST = 2          # cw_economy.SHOP_REFRESH_COST
 XP_PER_BUY = 4            # cw_state
 XP_TO_NEXT = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}  # cw_state
-CLICK_COST = 4            # cw_state.XP_CLICK_COST_FALLBACK(flat-4,ADR-0275)
+CLICK_COST = 4            # cw_state.XP_CLICK_COST_FALLBACK(flat-4)
 
 
 def p_at_least_one(level: int, cost: int, j: int = 0) -> float:
