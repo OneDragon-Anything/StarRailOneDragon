@@ -2778,12 +2778,14 @@ def note_board_state_heartbeat(ctx_or_session: object) -> None:
 
 
 def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
-                               at_round: str = '') -> None:
+                               at_round: str = '',
+                               shop_empty_off_screen: bool = True) -> None:
     """CwSimFrame 真值 → 容器域写入(波 5 起为直写喂入口的写入实现)。
 
-    引擎侧统一经 :func:`feed_sim_truth` 调本函数(best-effort 边界在
-    喂入口);直接调用现仅余 kernel 内部面(喂入口写入实现与过渡桥自身
-    装箱),实机入口融合段的旧直调已随 T-117 融合段改道消亡。原「sim 合成口」
+    引擎侧统一经 :func:`feed_sim_truth` 调本函数;直接调用 = kernel 内部面
+    (喂入口写入实现与过渡桥自身装箱)与实机商店段入口喂入
+    (``cw_op_buy_cards.run_buy_waves``,该调用方必传
+    ``shop_empty_off_screen=False``,理由见下方 payload 域分支)。原「sim 合成口」
     域覆盖口径不变:
 
     - sim 无识别过程 = 恒真值帧:可读字段全记 observation,evidence 恒带
@@ -2798,10 +2800,16 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
     - **payload 域离屏分支**(§2.2 例外):shop 真值缺席 = 结构离屏(置
       None+left_screen,等价 leave_screen);encounter/supply 两域 sim 不建模,
       恒离屏口径——三 payload 域在合成帧恒反映「当前画面事实」,禁旧
-      payload 连旧 evidence 残留。**空表与 None 同判 = 离屏**(边界申报):
-      sim 真值域无 OCR 失读态,CwSimFrame.shop 空表 = 「不在商店」的真值
-      形态(开店帧恒有五张);与 live 观察链「空牌面 = OCR 失读不写、非本
-      画面才离屏」的语义分叉是有意申报(真值域 vs 识别域)。
+      payload 连旧 evidence 残留。**空表与 None 同判 = 离屏**只辖 sim 真值域
+      (``shop_empty_off_screen=True`` 缺省):sim 真值域无 OCR 失读态,
+      CwSimFrame.shop 空表 = 「不在商店」的真值形态(开店帧恒有五张)。
+      实机识别域(``shop_empty_off_screen=False``,店开相位喂入)同形空表 =
+      买空/OCR 失读窗,画面结构仍在店(画面锚 = 外循环 0n 三 id_mark,
+      phase=PHASE_PREP_SHOP_OPEN)——照 live 观察漏斗口径「空牌面不写、
+      保现值」(失读窗沿用,决策侧照旧决策、执行侧核对兜底),**禁按离屏
+      清 None**(2026-09-13 实机 T-181:买空店重进被真值口径清 None,
+      ``decide_shop_action`` 在屏前置 shop=None 契约崩循环,journal 铁证 =
+      current_screen 开商店同帧 prov.shop evidence=left_screen)。
     """
     _ev = f'{SIM_SYNTHESIZED}@{at_round}' if at_round else SIM_SYNTHESIZED
     # sim 合成签名(R1 §3.2.1:obs 族子模 mode='synthesized'——sim 真值合成
@@ -2916,12 +2924,12 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
                  if st.refresh_probs else {})
         bs.observe(bs.shop, ShopPayload(cards=cards, refresh_probs=probs),
                    evidence=_ev, sig=_synth_sig)
-    else:
-        # 画面附加域离屏分支(§2.2 显式例外):sim 真值
-        # 帧无商店牌 = 「不在商店」的结构事实——非当前画面置 None(等价
-        # leave_screen,evidence=left_screen),禁沿用旧 payload 连旧 evidence
-        # (残留会把离屏帧误读成「商店仍开着」)。此为「空则不写」的漏申报
-        # 面补口:payload 域的语义 = 当前画面的 payload(§8.4)。
+    elif shop_empty_off_screen:
+        # 画面附加域离屏分支(§2.2 显式例外):sim 真值域空表 = 「不在商店」
+        # 的结构事实——非当前画面置 None(等价 leave_screen,evidence=
+        # left_screen),禁沿用旧 payload 连旧 evidence(残留会把离屏帧误读
+        # 成「商店仍开着」)。识别域(shop_empty_off_screen=False)不走此支:
+        # 空表 = 买空/OCR 失读窗,保现值(分支语义见函数 docstring)。
         bs.leave_screen(bs.shop, sig=_synth_sig)
     # encounter/supply 两 payload 域:sim 的 CwSimFrame 不建模这两域(attr
     # 缺席 = sim 模型里结构离屏)——同口径置 left_screen,保持「三 payload

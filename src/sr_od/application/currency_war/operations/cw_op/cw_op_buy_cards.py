@@ -947,7 +947,16 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 容器入口喂入(生产同路 = sim 合成口):决策读者已切容器,黑板帧
         # 写不再承载决策输入——假环境(sim 适配器直驱,不经 read_game_state
         # 漏斗)此位无漏斗写端,必须显式合成,否则在屏前置 shop=None 抛错。
-        _syn_entry(_bs_of_entry, state)
+        # 识别域口径关断「空表=离屏」(shop_empty_off_screen=False):本位
+        # 相位恒店开(0n 三 id_mark 锚 + phase=PREP_SHOP_OPEN),入口空牌面
+        # = 买空/OCR 失读窗而非「不在商店」——按真值口径清 None 会让
+        # decide_shop_action 在屏前置契约崩(2026-09-13 实机 T-181:重进
+        # 买空店崩溃循环),失读窗沿用上一开店牌面、照旧决策、执行侧核对
+        # 兜底(decide_shop_action 契约,同观察漏斗「空牌面不写」口径)。
+        if not state.shop:
+            log.info('[cw] 店开入口牌面空(买空/OCR 失读窗):离屏语义关断,'
+                     '容器沿用现值牌面决策')
+        _syn_entry(_bs_of_entry, state, shop_empty_off_screen=False)
         # 帧代次标注(ADR-0583 §3.4):visit 首段入口观察 = full(方向视图
         # 由 decide_shop_action 入口消费刷新);续段刷新重观察 = none
         #(= 旧 _target_seeded「仅首段重估」语义,段内视图不随买入漂移)。

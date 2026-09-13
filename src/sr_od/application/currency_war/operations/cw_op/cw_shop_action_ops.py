@@ -173,10 +173,14 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
     满栏 merge 买的「一击多张」豁免属 expected-vs-tracked 双账豁免,
     本断言不受豁免——提案时点牌仍在店中,名恒可对)。
     """
+    # bench_slots_of 读口在函数顶导入:函数体内任何位置的 import 语句都会
+    # 把名字绑定为全函数局部变量——曾放 BuyCard 分支内,SellBench 分支
+    # 未执行该 import 即引用,UnboundLocalError(2026-09-13 实机 T-181:
+    # r2 席满卖人决策被守卫自身炸掉,触发买空店重进崩溃循环)。
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_slots_of,
+    )
     if isinstance(action, BuyCard):
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            bench_slots_of,
-        )
         _name = action.card.name or ''
         _payload = state.shop.value
         if _name and not any((c.name or '') == _name

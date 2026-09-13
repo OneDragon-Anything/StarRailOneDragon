@@ -968,7 +968,8 @@ class CwLoop(SrOperation):
         except Exception as e:   # noqa: BLE001  预检失败不阻塞对局
             log.debug('[cw-loop] 分发锚预检失败(不阻塞): %s', e)
 
-    def __init__(self, ctx: SrContext, max_rounds: int | None = None):
+    def __init__(self, ctx: SrContext, max_rounds: int | None = None,
+                 stop_at_prep: bool = False):
         SrOperation.__init__(self, ctx, op_name='货币战争-对局循环')
         self._iter: int = 0
         # 迁移审计 w75(git 历史)(ADR-0335):run 收口——中止/卡死/停机局不走 3c 回大厅
@@ -981,6 +982,11 @@ class CwLoop(SrOperation):
         # 轮锚点 = 分支3「挑战成功」结算(每打赢 1 轮 +1);停点 = 分支1 备战 gate(rounds_done≥max → 停)。
         # None = 现行跑到对局结束/超时(向后兼容)。app 从 config.max_rounds 透传;run_operation 可直传。
         self._max_rounds: int | None = max_rounds
+        # 退出调度专用(2026-09-13,CwEntryExit 节点1 复用本 loop 的画面处理
+        # 能力):True = 识别到干净备战(备战双锚,判定单一源 = _prep_anchors_hit)
+        # 即 round_success 返回,不执行备战策略。退出侧「干净备战」判定引用
+        # 同一函数——两侧判定同源是防「loop 停↔退出重派」互踢死循环的硬前提。
+        self._stop_at_prep: bool = stop_at_prep
         # (轮计数 _rounds_done 已随结算链收编 CwScreenBattleWait → SettlementState
         #  .rounds_done(W971 05-battle §1);本类经 self._settle.rounds_done 读。)
         # r119 停滞 watchdog 状态:画面指纹采样(OCR 关键词 frozenset 哈希)。
@@ -1481,6 +1487,16 @@ class CwLoop(SrOperation):
         # loop() 不再被调 → 原检查几乎永不触发(MCP stop 四局 [RUNS-GAP] 实锤)。
         # 收口钩子对成功/失败/停止全路径必达(operation.py:492),见类注。
         screen = self.last_screenshot
+
+        # 退出调度停机位(stop_at_prep,2026-09-13):CwEntryExit 节点1 把
+        # 「loop 能处理的画面」整段委托给本 loop,处理到干净备战即交还。
+        # 置顶于全部分支 = 「处理到回备战」语义不受分发序影响;判定单一源
+        # = _prep_anchors_hit(备战双锚)。已知边界:开商店浮层等不遮双锚的
+        # 备战子态会命中本停机位——委托侧(退出 op)对同款帧同样判干净备战
+        # 并直接走退局发起,两侧判定同源故无互踢;子态浮层不遮左上门形
+        # 退出图标,退局发起可达(实机验证项)。
+        if self._stop_at_prep and _prep_anchors_hit(self, screen):
+            return self.round_success('已到干净备战(退出调度停机)')
 
         # iter1 分发锚可解析预检:配置缺失第一轮炸到日志面,
         # 不等卡死 8 分钟后再排障。

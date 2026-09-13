@@ -125,9 +125,9 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         handler_id='CwScreenEncounter',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=4,
-        # 退局链现状 = 点「按钮-返回备战界面」回备战再走退局门(ESC 清零批把
-        # 旧 Esc 改建档点击,行为权威 = cw_entry_exit 遭遇分支注释);本表对
-        # 退局面仍是「声明+锁」,D 面切换前以 cw_entry_exit 现行为为准
+        # 退局面(2026-09-13 退局调度器架构):退出 op 不再内联处理本画面,
+        # 处理单一源 = CwScreenEncounter(loop 分发);本表 recovery_exit 是
+        # 本表恢复链自身的出口声明,与退出 op 解耦
         recovery_exit=RECOVERY_BACK_BUTTON,
         bail_tag='encounter',
     ),
@@ -148,7 +148,8 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         handler_id='CwScreenInvestEnv',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=7,
-        # 退局链现状 = 点「返回备战界面」
+        # 退局面(2026-09-13):本画面由 loop 分发 CwScreenInvestEnv 处理,
+        # 退出 op 不再内联(处理单一源在画面 op)
         recovery_exit=RECOVERY_BACK_BUTTON,
         bail_tag='invest_env',
     ),
@@ -159,10 +160,10 @@ OVERLAY_REGISTRY: tuple[OverlaySpec, ...] = (
         handler_id='CwScreenMegastar',
         close_action=CLOSE_ACTION_HANDLE,
         dispatch_priority=3,
-        # ⚠️ 挂账(ESC 清零批元数据):退局链现状 = 直点备战「按钮-退出对局」
-        # 门图标进中断挑战弹窗(cw_entry_exit 盛会之星分支),RECOVERY_* 词表
-        # 无「点门」对应项,现值 esc 已非实况——D 面(退出恢复链)切换前补
-        # 词表项并按该分支实作重推,勿按 esc 接线。
+        # ⚠️ 挂账更新(2026-09-13 退局调度器架构):旧「退出 op 盛会之星分支
+        # 直点门图标」已删——本画面由 loop 分发 CwScreenMegastar 处理(选候选
+        # +确认)。recovery_exit=esc 与实际恢复出口(点候选+确认离开)不符的
+        # 元数据修正仍按原挂账待 D 面统一切换时一并重推
         recovery_exit=RECOVERY_ESC,
         bail_tag='megastar',
     ),
