@@ -30,11 +30,6 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
     normalize_invest_name,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BENCH_CAPACITY,
-    deployed_occupied,
-)
-from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     SimInvestProfile,
 )
@@ -1066,80 +1061,6 @@ def _cli_main() -> None:
             '| max_rounds:', rep.get('max_rounds'))
 
 
-
-def synthesize_snapshot(st: CwSimFrame,
-                        substate_name: str = 'prep_shop'):
-    """CwSimFrame → Snapshot 同型合成器(sim 侧一次成本;`w583_stage2_contracts/` 阶段2批①)。
-
-    快照 Schema 定稿的第一个消费者:本函数即「CwSimFrame→Snapshot 逐字段
-    映射表」的代码化,映射式与 SCHEMA_DRAFT.md §四「来源」列一一对应;
-    无损验证门(sim 合成器门)= 对拍断言四件套,见
-    sr-od-test/test/sr_od/app/currency_war/test_cw_w583_snapshot_contracts.py。
-
-    sim 侧真值契约(与实机识别侧的差异,均为「sim 无识别过程」的直接推论):
-    - classification 恒 confident=True(分类恒真是合成器契约的一部分);
-    - gold_trusted 恒 True、shop_open 恒 True、board 恒可读(sim 金/店/板
-      恒真值,不存在「读空」);
-    - free_bench_slots 恒出 int(Q2 编排者裁决:sim 占用真值恒可读,不受
-      实机「读不到=满是猜测」收紧影响;箱不占席——sim 无箱实体);
-    - spheres/boxes/tomes 恒空元组、event_overlay=None、box_overlay_open=
-      False(sim 无交互面实体,决策域在 shop 开态)。
-
-    只读保证:不 mutate ``st``(无损门含合成前后深比较反锁);容器字段对
-    元素**深拷贝**进快照(bench/deployed/shop_cards 元素与 board 映射均与
-    上游 CwSimFrame 无共享可变态——快照 frozen 不变式的结构性防线,快照内
-    变异不会回写上游;映射式不变,仅表示结构收紧为只读)。
-    """
-    import copy
-    from types import MappingProxyType
-
-    from sr_od.application.currency_war.kernel.cw_exec_state import (
-        DEPLOYED_FRONT_CAPACITY,
-    )
-    from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
-        SNAPSHOT_SCHEMA_VERSION,
-        Snapshot,
-        SubstateClassification,
-    )
-
-    bench = tuple(copy.deepcopy(b) for b in st.bench)
-    deployed = tuple(copy.deepcopy(d) for d in st.deployed)
-    occupied = deployed_occupied(deployed)
-    front = frozenset(i for i, d in enumerate(deployed)
-                      if d is not None and i < DEPLOYED_FRONT_CAPACITY)
-    back = frozenset(i for i, d in enumerate(deployed)
-                     if d is not None and i >= DEPLOYED_FRONT_CAPACITY)
-    bench_used = sum(1 for b in bench if b is not None)
-    return Snapshot(
-        schema_version=SNAPSHOT_SCHEMA_VERSION,
-        classification=SubstateClassification(
-            name=substate_name, evidence=('sim:synthesized',), confident=True),
-        plane=st.plane,
-        round_num=st.round_num,
-        node_type=st.node_type,
-        selected_difficulty=st.selected_difficulty,
-        gold=st.gold if st.gold_readable else None,
-        gold_trusted=True,
-        streak=st.streak,
-        level=st.level,
-        xp_progress=st.xp_progress,
-        level_up_cost=st.level_up_cost,
-        bench=bench,
-        deployed=deployed,
-        board=(MappingProxyType(dict(st.board))
-               if st.board_readable else None),
-        deploy_cap=st.deploy_cap,
-        deploy_vacancy=(st.deploy_cap - occupied
-                        if st.deploy_cap is not None else None),
-        free_bench_slots=max(BENCH_CAPACITY - bench_used, 0),
-        front_occupied=front,
-        back_occupied=back,
-        front_size=st.front_max,
-        shop_open=True,
-        shop_cards=tuple(copy.deepcopy(c) for c in st.shop),
-        hp=st.hp if st.hp_readable else None,
-        hp_readable=st.hp_readable,
-    )
 
 
 
