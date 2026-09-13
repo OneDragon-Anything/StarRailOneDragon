@@ -135,7 +135,7 @@ def collect_tree(procs: list[psutil.Process]) -> list[psutil.Process]:
     """树收编:每个进程经 psutil children(recursive=True) 并入其全部后代,
     按 pid 去重(排除本工具自身),返回「匹配进程 ∪ 后代」的杀集。
 
-    为什么():哨兵实为 pwsh→uv→venv python→base python
+    为什么:哨兵实为 pwsh→uv→venv python→base python
     的进程链,今天四层命令行都含脚本名、命令行匹配够用,明天 uv 改实现
     未必——后代命令行不含脚本名/不可读时按命令行抓不到,树语义保证
     链上进程不孤儿化(2026-09-08 实证:单点杀 pwsh 留 uv→python 孤儿,
@@ -187,7 +187,7 @@ def _kill_procs(victims: list[psutil.Process]) -> list[psutil.Process]:
 
 
 def kill_all(procs: list[psutil.Process]) -> None:
-    """杀净(树终杀 + 杀后复扫断言,)。
+    """杀净(树终杀 + 杀后复扫断言)。
 
     树终杀:匹配进程+collect_tree 收编的后代一并杀;杀后复扫:重跑
     find_old_watchers,非空自动再杀(KILL_RESCAN_MAX 轮有界重试),仍
@@ -263,7 +263,7 @@ def verify(expected: int) -> None:
     按进程数会翻倍,故按「命令行里出现该脚本名」去重计件);并把在岗状态写入
     rewatch.status;不等 → 非零退出。
 
-    已知局限(申报不修,):①按名计件——同名双实例仍计 1 件,
+    已知局限(申报不修):①按名计件——同名双实例仍计 1 件,
     exit 0 检不出实例堆积(打印的 pid 列表供人眼核对);②cmdline 命中即在岗——
     哑孤儿(报警信道已断的残留进程)照样绿,exit 0 ≠ 报警信道活,活性回读
     以 cw_sentinel.pos 心跳推进 / 后台 job 结算为准(runtime-ops「哨兵活性回读」)。

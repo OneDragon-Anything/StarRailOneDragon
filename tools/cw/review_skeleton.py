@@ -137,7 +137,7 @@ def load_rows(path: Path, run_id: str | None) -> tuple[list[dict], str]:
         rows = sorted(rows_all, key=lambda r: ((r.get('plane') or 1),
                                                (r.get('round_num') or 0)))
         return rows, f'sim 账本行 {len(rows)} 轮'
-    # 生产决策帧:同 run 多帧一轮,合并成账本同构(生产入口,)
+    # 生产决策帧:同 run 多帧一轮,合并成账本同构(生产入口)
     rids = {str(r.get('run_id')) for r in rows_all}
     if len(rids) > 1 and run_id is None:
         raise SystemExit(f'档案含 {len(rids)} 个 run,须 --run-id 点名: '
