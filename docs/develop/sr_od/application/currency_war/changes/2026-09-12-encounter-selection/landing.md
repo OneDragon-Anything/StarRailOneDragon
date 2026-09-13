@@ -31,7 +31,7 @@
 
 **设计依据**：details/encounter-criterion-spec.md §1-§3/§5-§8（锁表 W 组）
 
-**文件面**：`kernel/cw_encounter_selection.py`（新建）、`kernel/cw_game_state.py`（结算观测环/遭遇经验表新增 + Settlement 准入注释修订）、`kernel/cw_performance.py`（RoundOutcome 双扩字段 + docstring 如实化）、`obs/cw_settlement_obs.py`（双扩字段装填——构造参/行后填形态 E-2 落码定）、`telemetry/schema.py`（OutcomeRecord 双字段同步，恢复同 schema 性质）、`strategies/impl/flow.py`（窗口提取与改投）、`strategies/impl/mandate_v1/bridge.py`（改投 + ADR 引用清理）、`strategies/impl/mandate_v1/encounter.py`（搁置注释 + ADR 引用清理）、`strategies/impl/mandate_v1/audit/provisional.py`（ADR 引用清理）、`operations/cw_screen/cw_screen_encounter.py`（journal 归因行——E-2 新增写点，现役仅 log.info）、`operations/cw_screen/cw_screen_battle_wait.py`（结算链改造（`difficulty_node` 快照装配〔两变体随读点定谳开关——details §8 表，定谳前双态实现、定谳后裁定〕 + **败局行拓扑改造**：环写位 = 守卫后三路过守卫者入环、同场去重合并、fill 暂存战斗窗生命周期、**环完整性对账 = E-3 离线项**（不对齐率〔缺行/多行/序错〕= 开闸门成员）——写点禁惰性 drain 位：取错帧且撞 D-94 红线〔D-94 = 结算帧错屏取数红线，代码指针 cw_screen_battle_wait.py:39/:128〕）、`sr-od-test/test/sr_od/app/currency_war/test_cw_encounter_selection.py`（新建）
+**文件面**：`kernel/cw_encounter_selection.py`（新建）、`kernel/cw_game_state.py`（结算观测环/遭遇经验表新增 + Settlement 准入注释修订）、`kernel/cw_performance.py`（RoundOutcome 双扩字段 + docstring 如实化）、`obs/cw_settlement_obs.py`（双扩字段装填——构造参/行后填形态 E-2 落码定）、`telemetry/schema.py`（OutcomeRecord 双字段同步，恢复同 schema 性质）、`strategies/impl/flow.py`（窗口提取与改投）、`strategies/impl/mandate_v1/bridge.py`（改投 + ADR 引用清理）、`strategies/impl/mandate_v1/encounter.py`（搁置注释 + ADR 引用清理）、`strategies/impl/mandate_v1/audit/provisional.py`（ADR 引用清理）、`operations/cw_screen/cw_screen_encounter.py`（journal 归因行——E-2 新增写点，现役仅 log.info）、`operations/cw_screen/cw_screen_battle_wait.py`（结算链改造（`difficulty_node` 快照装配〔两变体随读点定谳开关——details §8 表，定谳前双态实现、定谳后裁定〕 + **败局行拓扑改造**：环写位 = 守卫后三路过守卫者入环、同场去重合并、fill 暂存战斗窗生命周期、**环完整性对账 = E-3 离线项**（不对齐率〔缺行/多行/序错〕= 开闸门成员）——写点禁惰性 drain 位：取错帧且撞 D-94 红线〔D-94 = 结算即写禁惰性化时序红线，代码指针 cw_screen_battle_wait.py:39/:128〕）、`sr-od-test/test/sr_od/app/currency_war/test_cw_encounter_selection.py`（新建）
 
 **依赖**：3.1（tiebreak 映射表；判据本体其余部分无依赖，可先行落）
 
@@ -39,8 +39,8 @@
 
 **完成判据**：
 - W1-W6、W7、W8-W13 全绿（W14 = E-3 离线对账锁，见 3.3）；**W4 暗装锚全绿（行为零变化，含 D 真值缺失/窗口无 D_win 行分支）**
-- 死分键盘点清单交付（逐分键列消费面）；`test_cw_mandate_encounter_ev.py` 保持全绿（EV 核纯函数禁删）
-- `test_cw_mandate_decide.py` 遭遇代表锁按新语义重推后全绿（锁红 ≠ 改动错，先对照 details §1-§3/§5）+ 既有 encounter/mandate 锁回归全绿
+- 死分键盘点清单交付（逐分键列消费面）；`test_cw_encounter_selection.py` 含 EV 核纯函数锁全绿（EV 核纯函数禁删——禁删约束经导入级锁承载，mandate_v1/encounter.py 保留）
+- 遭遇代表锁按新语义重推后全绿（锁红 ≠ 改动错，先对照 details §1-§3/§5）+ 既有 encounter/mandate 锁回归全绿——**回归锁载体承接申报：旧三载体（test_cw_mandate_encounter_ev / test_cw_mandate_decide / test_cw_battle_wait_op）经用户令测试清理批（1cc1958b）整体删除，回归锁责任由本阶段新建套件 `test_cw_encounter_selection.py` 扩容承接（strategy-work §5 最小锁面）；cw_screen_battle_wait.py:47「测试在册」注释失真随 E-2 注释修订一并修正**
 - §12 通用工程门（引用，不复述）
 
 **验收凭据形式**：测试名清单 + 回归文件 + 死分键盘点清单 + ruff check
