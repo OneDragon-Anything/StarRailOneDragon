@@ -36,8 +36,7 @@ description: 当在 StarRailOneDragon 仓库开发/维护/自主推进货币战�
 | **实机运维细则**(单跑道 MCP 一次一 run;**改代码必须重启 server 才生效且重启杀对局 → 攒批局中不改**;重启/早停/残局清理/监控栈与哨兵) | [references/runtime-ops.md](references/runtime-ops.md) |
 | **自主推进模式运转框架**(开启仪式/编排者-worker/审查分层/提醒网) | `od-dev-agent-autonomous-mode`(公共 skill);CW 叠加细则 = [references/autonomous-loop.md](references/autonomous-loop.md);进度结构见 od-dev-progress-tracking §2.5 |
 | 人怎么玩(直觉假设登记簿——策略命题权威=math_proofs 证明与 sim/实机实证;改策略必读=了解在册假设及证明状态) | `docs/game/currency_war/research/user_playstyle.md` 全文 |
-| 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/sr_od/application/currency_war/strategy-docs/README.md`(分篇入口)+ `decisions/`(ADR;redesign.md 已砍除归档,ADR-0365) |
-| 决策 why(一决策一文件) | `docs/develop/sr_od/application/currency_war/decisions/`(INDEX + ADR-NNNN) |
+| 系统设计 as-built(为什么有 v2/架构/决策链/模块地图/边界)+ 设计 why | `docs/develop/sr_od/application/currency_war/strategy-docs/README.md`(分篇入口;决策 why 收敛于设计文档动机段与代码注释,decisions/ ADR 档案已按用户令退役) |
 | 单套 comp 打法知识 | `docs/game/currency_war/research/final_comps/`(唯一源) |
 | 阵容知识怎么提炼/修订/版本重跑 | [references/compo-knowledge.md](references/compo-knowledge.md)(证据三层+三笔账) |
 | 过渡阵容(引擎池/核心池/渐进路径) | `research/transition_combos.md` + `combo_methodology.md` + `transitions.md` |

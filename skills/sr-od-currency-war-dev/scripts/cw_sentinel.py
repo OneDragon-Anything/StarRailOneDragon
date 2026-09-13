@@ -623,7 +623,7 @@ def process_line(line: str, line_end: int | None) -> tuple[str, bool] | None:
         _now_tod = _now.tm_hour * 3600 + _now.tm_min * 60 + _now.tm_sec
         if (_now_tod - _t) % 86400 > 600:
             return None
-    # 设计内自愈白名单(ADR-0529 修订):round_retry 复探超窗重试是复探窗
+    # 设计内自愈白名单(修订):round_retry 复探超窗重试是复探窗
     # 的有界兜底路径(消耗 node_max_retry 预算),其日志不应触发 HIT 报警
     # 退出——但仅豁免 HIT,行仍向下喂 STALL/loop 累积(重试耗尽后的
     # op_fail 终态行不含白名单词,照常报警;真持续卡死双通道兜底)。

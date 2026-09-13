@@ -11,7 +11,7 @@
 - **代理近似(消费前核语义)**:`st.deployed` 代理名单;板深=`_deployable_depth` 可部署口径(≠已部署,视图带 `*`)。
 - **未建模**:装备效果、星级、词条/boss 克制、P2/P3 专属;P2 备战与 P1 共享(spend 正常非零),但结算键仅 3 维——涉 P2 战力判读须声明。
 - Δ 池按深度分桶:±2 深度测不出;「散面 vs 集中」与实机可能反向——这类维度以实机为准并记录偏差。
-- **持卡局观察键口径注(ADR-0598)**:`_obs_refresh_avail`(账本 obs.refresh_avail_frames)与 checks/segments 检查器的息线仍按注册表基础息线 50——持息帽卡局(买断制/开源节流/利息上调)的决策口径按 resolved 链(g\*=0/90/100),这些键的读数与决策口径**分叉**;A/B 判读消费它们前先核当批持卡构成,禁直接当「刷新可用性」跨臂对读。
+- **持卡局观察键口径注**:`_obs_refresh_avail`(账本 obs.refresh_avail_frames)与 checks/segments 检查器的息线仍按注册表基础息线 50——持息帽卡局(买断制/开源节流/利息上调)的决策口径按 resolved 链(g\*=0/90/100),这些键的读数与决策口径**分叉**;A/B 判读消费它们前先核当批持卡构成,禁直接当「刷新可用性」跨臂对读。
 - **coarse 战斗结算对板深/等级零敏感,A/B 禁消费该面(2026-09-09 在册裁定)**:coarse 两态模型(战斗类节点 battle/encounter/boss 的 sim 结算引擎,单一源 `cw_coarse_battle`)只按成型度 rung 查胜率表与伤害直方——板深/等级不进结算键。A/B 两臂若只在板深/等级维度不同,战斗结算面读数恒同:该面上的任何「有差异/无差异」都不是策略效应,禁据此下结论;涉板深/等级的命题以实机 A/B 为准。
 - **hp/掉血类指标校准前禁作 A/B 判据(2026-09-09 在册裁定,与金类指标同族——金类侧同款条目 = 「出口金校准前不作 A/B 判据」,载体 = docs/develop/sr_od/application/currency_war/proofs/p86-no-target-period-fund-allocation.md §5.1 键③,出处 T-169 纪律)**:sim 的 hp/掉血读数(出口 hp、hp≤20 低尾占比、单轮掉血等)依赖战斗结算校准,该维有已知失真(实证:出口 hp≤20 占比跨批同量级 12.7-14.7%,但 R9 单轮掉血中位 −34,且按板深四分位分组组间零敏感 = ±2 深度桶测不出)。校准补齐前这类指标只作报警线/观察面,禁当 A/B 判据;涉 hp 的结论以实机为准。
 - **重放 = seed + 池指纹(缺一不可)**:`cw_sim replay --seed N --pool snapshot`;跨日对照必核 `pool_fingerprint` 一致;校准数据缺源大声报错(静默回退=假信心);sim 批绝不写生产 replay 目录。
@@ -33,4 +33,4 @@
 从第 1 步的指标里筛出表现不好的(怎么筛不规定:与设计预期对照、与历史批/同批分布比,哪种都行)。
 
 ### 3. 挑一局复盘——归因到决策
-对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。直查:`cw_telemetry query --sim-batch <名|latest> --view rounds|economy|supply|...`。复盘骨架与可疑项预填生成器:`uv run python tools/cw/review_skeleton.py --decisions <decisions.jsonl> [--run-id <rid>]`(跑 sim/checks/suspects.py 检测器集 D1-D11,条目嵌对应节点小节判定三槽前;ADR-0593)。
+对表现不好的指标,拿体现它最重的那一局做复盘(脚本按指标点名最差局):sim 局=批次目录里该局的记录,实机局=对局档案;按 match-review.md 复盘协议读,带上面边界——sim 边界造成的现象不立为策略病灶。直查:`cw_telemetry query --sim-batch <名|latest> --view rounds|economy|supply|...`。复盘骨架与可疑项预填生成器:`uv run python tools/cw/review_skeleton.py --decisions <decisions.jsonl> [--run-id <rid>]`(跑 sim/checks/suspects.py 检测器集 D1-D11,条目嵌对应节点小节判定三槽前)。

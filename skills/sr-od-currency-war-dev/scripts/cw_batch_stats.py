@@ -28,7 +28,7 @@ P1 通关判定(按优先级):行面存在 plane>=2 行 → 行面证据;否则�
 (T-169 统计口径增补,2026-09-09)**:行面证据达 2 后还须末行 hp>0——死在
 P2 段的局(末行 hp=0)行面不存活。hp 缺读(行无 hp 键)局死亡筛不适用 =
 保持 plane 证据判定(边界如实申报:该类局死亡状态不可判,不折 0 不折 1)。
-**killed 消费(通关权威口径,ADR-0306 件3)**:通关 = 行面存活 ∧ 局末行
+**killed 消费(通关权威口径,件3)**:通关 = 行面存活 ∧ 局末行
 outcomes killed==True。killed = 结算屏「玩家击败对手」,是行面证据之外的
 唯一权威胜负口径——「活满末轮」与「杀穿 boss」两种结局在行面同形,
 只看行面会把前者整批误判为通关,通关率系统性虚高(全载体批实测为
@@ -54,7 +54,7 @@ P1 出口行(= ① 同行源)hp 分布 min/中位/max + 死亡地板命中数(si
 本行答「出口时还剩多少血」;hp 缺读局不入分布,可读数随行披露。
 
 boss 结算敏感性边界披露(sim 源头行固定披露):boss 战损 Δ 采样键 =
-净星深一维(迁移审计 w240/ADR-0404),不含 rung(成型度)维——「同净星深、
+净星深一维(迁移审计 w240),不含 rung(成型度)维——「同净星深、
 不同成型度」的 boss 战损差异在 sim 内不可分辨(无敏感性边界可读)。升维
 rung×净星深二维列是后续候选(T-169 增补项 ②,本批只披露不升维);判读
 boss 段读数(如 hp 轨迹尾段)时按此键边界理解。
@@ -126,7 +126,7 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
         for row in g(o.get('run_id') or '?')['rows']:
             if row['_key'] == (o.get('plane') or 1, o.get('round_num') or 0):
                 row['node_type'] = o.get('node_type')
-    # killed 真值捕获(通关权威口径消费源,ADR-0306 件3):逐局取
+    # killed 真值捕获(通关权威口径消费源,件3):逐局取
     # (plane, round) 最大的 outcome 行的 sim.killed——末行 = 该局最后一场
     # 战斗的结算,True = 玩家击败对手(全载体 = 杀穿 boss = 真通关)。
     # 不回退取早轮行:早轮 True 只证该轮胜,不证终局杀穿。sim 键缺/None
@@ -188,7 +188,7 @@ def _archive_rows(mid: str) -> dict:
         'locked_comp': None,
     } for r in m.get('rounds', [])]
     eg = m.get('endgame', {}) or {}
-    # killed 真值(权威口径,ADR-0306 件3):取 (plane, round) 最大轮的
+    # killed 真值(权威口径,件3):取 (plane, round) 最大轮的
     # outcome.killed,与 sim 侧同律——不回退取早轮(早轮 True 只证该轮胜,
     # 不证终局杀穿)。末轮 outcome 缺/null 或 killed=null = 不可判(未知
     # 桶,禁默认通关;旧档案末轮 outcome 未捕获常见,如实申报)。
@@ -224,7 +224,7 @@ def game_metrics(game: dict) -> dict:
     """逐局四指标取值(口径见模块 docstring;None = 无数据,不折 0)。
 
     通关双口径:passed_row = 行面口径(披露列);passed = killed 真值
-    (权威,ADR-0306 件3)= passed_row ∧ game['killed'] is True。killed
+    (权威,件3)= passed_row ∧ game['killed'] is True。killed
     不可判(None)→ passed 必 False 且入未知桶(禁默认通关)。
     """
     rows: list[dict] = game['rows']
@@ -241,7 +241,7 @@ def game_metrics(game: dict) -> dict:
     if passed_row and last is not None and last.get('hp') is not None \
             and last['hp'] <= 0:
         passed_row = False
-    # killed 消费(权威口径,ADR-0306 件3):通关 = 行面存活 ∧ 局末行
+    # killed 消费(权威口径,件3):通关 = 行面存活 ∧ 局末行
     # killed==True。killed None(缺行/缺键)= 未知桶,不入通关(禁默认
     # 通关)——「活到末轮」与「杀穿 boss」在行面同形,killed 是唯一区分。
     killed = game.get('killed')
@@ -294,7 +294,7 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
     ms = {rid: game_metrics(g) for rid, g in games.items()}
     n = len(ms)
 
-    # 通关双口径(权威 = killed 真值,ADR-0306 件3;行面口径旧列披露)。
+    # 通关双口径(权威 = killed 真值,件3;行面口径旧列披露)。
     # ② 过渡凑齐率的「通关局」分母随权威口径走。
     passed = sum(1 for m in ms.values() if m['passed'])
     passed_row_n = sum(1 for m in ms.values() if m['passed_row'])
@@ -313,7 +313,7 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
     if source == 'sim':
         # boss 结算敏感性边界披露(T-169 增补 ②,只披露不升维;口径见
         # 模块 docstring「boss 结算敏感性边界披露」节,单一源在彼处)
-        print('边界: boss 结算键=净星深一维(ADR-0404),无 rung×净星深'
+        print('边界: boss 结算键=净星深一维,无 rung×净星深'
               '敏感性——升维列后续候选,boss 段读数按一维键边界理解')
         # 局级权威源缺行小注(T-169 落地审 F3):runs/outcomes 两通道皆
         # 无法给出 plane_reached 的局数——该类局死亡筛不适用(不可判),
@@ -325,7 +325,7 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
                   '(runs/outcomes 双通道皆缺;通关判定降级行面证据)')
     # 通关双口径披露:权威 = killed 真值;行面口径旧列兼容历史批。
     # 差值拆解 = 行面误判面(未杀穿 a + 真值不可判 b),判读直接可见。
-    print(f'通关率(killed 真值,ADR-0306 权威): {passed}/{n}')
+    print(f'通关率(killed 真值,权威): {passed}/{n}')
     row_kf = sum(1 for m in ms.values()
                  if m['passed_row'] and m['killed'] is False)
     row_ku = sum(1 for m in ms.values()

@@ -8,7 +8,7 @@
 uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [--run ID] --view rounds|gold|hp|events|snapshot|final|all
 ```
 
-- **按局档案(跨 run 段免拼段)**:正常局局终自动装配;`--match <game_id>` 直读单局档案(`--recent` 读索引;崩溃局补装配 `assemble --game <game_id>`,ADR-0486)。
+- **按局档案(跨 run 段免拼段)**:正常局局终自动装配;`--match <game_id>` 直读单局档案(`--recent` 读索引;崩溃局补装配 `assemble --game <game_id>`)。
 
 - rounds=逐轮表(按节点分段);gold=金账行间差分;hp=hp 链;events=观察事件行显影;snapshot=末行快照摘要;final=局终行(match_final)。旧视图族(supply/anomalies/economy 等)已随旧流拆除,深维度按「新复盘需求=新视图」纪律按行差分直读。
 - **生产局秒级自检**:旧 `checks` 子命令已随旧流退役——生产自检走哨兵三件(journal 面;武装口径见 [runtime-ops.md](runtime-ops.md)「哨兵脚本组」);sim 批次侧等价物 = simulate_p1_batch 默认内嵌的 checks_violations(sim 检查器保留)。
@@ -72,7 +72,7 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 
 ## hp 真值链判读(schema 9 起)
 
-> hp 真值链 = 档案里解释「本局 HP 从开局到终值怎么一步步变的」的派生数据:rounds 逐轮 hp/hp_delta、loss_nodes(掉血条目表)、resume_reconciliation(恢复态对账列)、hp_events、hp_pay_defects。schema 9(ADR-0577)起,链的步进游标(装配时维护的「已解释到的当前 HP 值」,按时间序逐行推进)只由三类行推进:可信结算行(结算屏真读,hp_confidence≥0.9)、hp_pay 事件行(下文)、终局兜底(下文);补给合成行(补给节点无结算屏、由快照合成的 outcomes 行,详见「已知缺口」)一律不入链。判读 HP 问题先分辨落在哪个成员上。
+> hp 真值链 = 档案里解释「本局 HP 从开局到终值怎么一步步变的」的派生数据:rounds 逐轮 hp/hp_delta、loss_nodes(掉血条目表)、resume_reconciliation(恢复态对账列)、hp_events、hp_pay_defects。schema 9起,链的步进游标(装配时维护的「已解释到的当前 HP 值」,按时间序逐行推进)只由三类行推进:可信结算行(结算屏真读,hp_confidence≥0.9)、hp_pay 事件行(下文)、终局兜底(下文);补给合成行(补给节点无结算屏、由快照合成的 outcomes 行,详见「已知缺口」)一律不入链。判读 HP 问题先分辨落在哪个成员上。
 
 ### hp_pay 事件行与 hp_events 列
 
@@ -80,7 +80,7 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 - **粒度口径:行数 = 血购击数,总量 = Σhp_delta**。店通道单动作 1 行、备战通道连点循环每击 1 行;数击数、核对血购总量都用本口径。行内字段:hp_delta=−单次代价、currency='hp'、mode=生效卡名、basis='modeled'(按注册表建模的期望值,非实读);**行内不带 state 快照**——支付时点 HP HUD 结构性不可见,行里没有支付时点真值,这是设计而非采集缺失。
 - **mode 派生口径**:是否出行与 mode 值都和血购判定同源注册表(active_strategies 中 xp_buy_hp_cost>0 的卡,多卡命中取 active 序首个);卡非 active(金本位升级)→ 零行。零行 = 当局没发生建模内血购,不是采集漏。
 - **hp_events 列**:档案顶层加法列 = hp_pay 事件行显影;schema 9 前旧档案恒空(采集面修复只及新局,空 ≠ 没血购)。链上事件步只推进游标、不出掉血条目——「一条掉血条目 = 一次掉血结算」的语义不变,血购不冒充战斗掉血,战斗腿数字因此不含血购。
-- **遥测禁入决策输入**:hp_pay 行是纯观测追加写,任何决策/跟踪代码禁读它回写 state.hp / session.last_hp_real / 预算门状态(grep 守卫锁钉死,ADR-0577 §4 隔离申报)。判读同理:档案里有 hp_pay ≠ bot 决策时知道血购掉血——决策侧的血购感知走注册表判定,不经遥测。
+- **遥测禁入决策输入**:hp_pay 行是纯观测追加写,任何决策/跟踪代码禁读它回写 state.hp / session.last_hp_real / 预算门状态(grep 守卫锁钉死, 隔离申报)。判读同理:档案里有 hp_pay ≠ bot 决策时知道血购掉血——决策侧的血购感知走注册表判定,不经遥测。
 
 ### hp_pay_defects 列(建模期望账对账缺陷)
 
@@ -106,7 +106,7 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 
 - **「−33 双读数」注作废**:schema 8 时代「同档案重装配 −19→−33」的说法建立在合成行鬼值(与真值不符的陈旧快照值)游标上;合成行退链后 −33 不再产生(182456 v9 重装配该战斗腿 = −19,与原 schema 7 读数一致)。
 - **跨段净额读数作废**:续段首轮 −43 形态按上节重锚语义读(−19 + unexplained_delta=−24)。
-- **历史文档引用以重装配后为准**:存量档案已 auto-rebuild 原地重装配(schema_version=9);旧文档/旧 ADR 引用的上述读数凡与本节冲突,以重装配后档案直读为准(勘误出处 = ADR-0577 §4)。
+- **历史文档引用以重装配后为准**:存量档案已 auto-rebuild 原地重装配(schema_version=9);旧文档/旧 ADR 引用的上述读数凡与本节冲突,以重装配后档案直读为准(勘误出处 = 档案重装配记录)。
 
 ## 判读流程(局后必做)
 
@@ -115,20 +115,20 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 2. **hp 视图**看轨迹(注定不达标的局按早停纪律反思为什么没早停);档案 hp 真值链(hp_pay 事件行/段界重锚/终局兜底)的 schema 9 判读口径见上节;
 3. **tiers 视图**三维扫一遍(deployed 构成+装备+星级);
 4. **economy** 看滞留/收入核对;**supply** 看购买对错;
-5. **events** 视图观察事件行(obs_event)逐条定位根因（定位不了不进下一局）——旧 anomalies 视图已随旧流拆除；冲突/异常证据面 = journal 行型 2 在账直读（obs_conflicts 历史行 = 冻结档案只读，删除波 1 起，ADR-0641）；
+5. **events** 视图观察事件行(obs_event)逐条定位根因（定位不了不进下一局）——旧 anomalies 视图已随旧流拆除；冲突/异常证据面 = journal 行型 2 在账直读（obs_conflicts 历史行 = 冻结档案只读，删除波 1 起）；
 6. 视图外维度按需取:优先档案 rounds 的字段面(含决策流程明细——pair/意向/姿态,带策略版本戳);仍不够的「为什么/如果」问题走**回放**(用当期代码对档案状态现算,单帧锁同款机制)——不为此读流;
 7. 结论:有异常 → 先确定异常来源,再找出治本的修复方案,然后将方案的实施状态记录到进度账本中合适的位置;同一个问题出现两次 → 必须走到治本方案这步,不许再当单局异常放下;单局结论不留;声明数据边界。
 8. **局终的深度复盘不在本流程**——实机监控局终派单走 [match-review.md](match-review.md)「单局复盘协议」(干净子 agent,逐节点玩家对拍);本流程管流程卫生与视图判读,协议管「打得对不对」。
 
 ## 已知缺口(判读时心里有数)
 
-- **字段可信度分级(历史全面审计)**——可信白名单:outcomes.hp_after(conf≥0.9)/plane/round_num/progress_delta、decisions.actions/target_comp/candidate_scores、shop_snapshots 的 offer 波牌面(gold 除外)、sess_*/v2_* 快照族、obs_conflicts(冻结档案:该流已随删除波 1 停写,白名单仅辖存量档案判读;新局冲突证据 = journal obs_event 行型 2,ADR-0641/0643)。**历史脏区(修复前的旧数据)**:node_type 三源混写(英文 token/中文/旧兜底并存,后统一中文)、中止局无 runs 行、refresh 快照 gold 是算的(非真读)、首轮的 node_type 恒「普通战斗」、level 非单调偶发、board_before 是阵营人次非板深(多标签角色重复计)。判读旧局时这些字段降权。
+- **字段可信度分级(历史全面审计)**——可信白名单:outcomes.hp_after(conf≥0.9)/plane/round_num/progress_delta、decisions.actions/target_comp/candidate_scores、shop_snapshots 的 offer 波牌面(gold 除外)、sess_*/v2_* 快照族、obs_conflicts(冻结档案:该流已随删除波 1 停写,白名单仅辖存量档案判读;新局冲突证据 = journal obs_event 行型 2,)。**历史脏区(修复前的旧数据)**:node_type 三源混写(英文 token/中文/旧兜底并存,后统一中文)、中止局无 runs 行、refresh 快照 gold 是算的(非真读)、首轮的 node_type 恒「普通战斗」、level 非单调偶发、board_before 是阵营人次非板深(多标签角色重复计)。判读旧局时这些字段降权。
 - **phase 字段是两层语义(误判过实盘病理,W688 定性)**:P1 段 phase 恒 unlocked=设计态——P1 的锁产物记在 p1_pair,别拿 phase 判「P1 与配方脱钩」;终局锁相位只对 plane≥2 段有意义。判读锁相关行为先分清问的是哪一层。
 - **补给合成行是快照不是事件(schema 9 起退出 hp 真值链)**:source='synthetic_supply' 的行(补给节点无结算屏,由停机前快照合成的 outcomes 行)hp 结构上无新鲜性保证;病灶实证 = 182456 合成行载 45,而帧序上 19 秒前已结算 31(陈旧一整轮战斗的鬼值)。判读先验 = **陈旧直到证伪**:合成行 hp 一律先当陈旧快照,除非有帧序证据证伪;旧档案合成行 conf 可能仍载 1.0(写端诚实性降权只及新局),conf=1.0 不构成可信证据。退链的中间窗口:补给节点后的首个战斗腿可能吸入「补给时点 → 结算时点」的未建模间隙,判读并读该补给行快照值拆账。
 - **补给合成行轮归因 +1(登记不修)**:轮号归因(read_phase_round 走缓存)对补给合成行轮可能偏 +1;装配端退链已消除链上危害,归因偏移留判读侧已知缺口——补给轮跨局对照时 ±1 校对轮号。
-- **P2 备战轮台账 miss 18/24 已修(ADR-0609,写点③ 2026-09-09 后新局生效)**:病灶根因 = 位面节点台账写入端缺位——写点②(投资环境重读)只在开局触发、写点①(位面详情)仅接管局触发,正常局 P2/P3 序列恒无写入者;非识别失败(接管局 P2 反而命中是判别锚)。修复 = 备战帧 heavy 观察按位合并落表(ADR-0609),此后 P2/P3 备战帧 `p26_prep_obs.node_type_next` 应逐帧命中;**判读新局 P2 备战轮仍见 miss = 回归信号,先查写点③是否被跳过(clean 备战帧门/变异窗)**;边界:past 位次(已通过节点)读法结构性 None 不回填,查历史轮仍可能 miss(flow 回落维持原退化路径)。存量档案(修复前局)miss 形态永久留存,跨局对照时按钩子部署边界分段。
-- **结算 tooltip「长线作战」回血分量已入遥测(ADR-0609,新局 outcomes 行 `heal_longline` 键)**:此前「tooltip 两分量幅度 = hp 链差 + 2」系统偏移(T-57 P26 标定批败面 19/20 实证)机制定谳 = 「长线作战」战斗结算回血 +2(ADR-0241 口述 + 连胜轨迹双源;败面也 +2 ⇒ 回血非胜局专属,ADR-0241 的「胜利」限定被数据收窄,如实申报)。判读口径:hp 链差(净变化)= 掉血两分量(damage_base+damage_unfinished_progress)+ heal_longline,行内三量齐可直接验证;**禁把 +2 抹进对比公式**(回血量以行内现读为准,非恒定承诺);旧档案无此键,偏移验证仅新局可行。
-- **零结算段自标识(v11 起,段条目 `settlement_gap` 键;ADR-0615)**:键在场 = 本段零结算(决策帧≥1 且结算行=0:备战停滞/出战未成战后被守卫或人工停机),**非遥测丢失,不可离线补行**(真值源=结算屏帧,从未被捕获;decisions 的 hp 是沿用/冻结值非逐轮真值);随行 `claimed_rounds_survived` 取自收口时点 state.round_num,零结算段可带非零冻结值——「claimed=N 且零 outcome 行」曾是误报「结算断流」的形态(实证 g_20260908_165445 续段 run_20260908_210431),与 gap 并读即防。同批分组修正:决策独有段(零结算段)按段首 ts 归**前局**,后继新局入流不再夺段;旧档案 bump 后首次读档自动重装配纠偏。
+- **P2 备战轮台账 miss 18/24 已修(写点③ 2026-09-09 后新局生效)**:病灶根因 = 位面节点台账写入端缺位——写点②(投资环境重读)只在开局触发、写点①(位面详情)仅接管局触发,正常局 P2/P3 序列恒无写入者;非识别失败(接管局 P2 反而命中是判别锚)。修复 = 备战帧 heavy 观察按位合并落表,此后 P2/P3 备战帧 `p26_prep_obs.node_type_next` 应逐帧命中;**判读新局 P2 备战轮仍见 miss = 回归信号,先查写点③是否被跳过(clean 备战帧门/变异窗)**;边界:past 位次(已通过节点)读法结构性 None 不回填,查历史轮仍可能 miss(flow 回落维持原退化路径)。存量档案(修复前局)miss 形态永久留存,跨局对照时按钩子部署边界分段。
+- **结算 tooltip「长线作战」回血分量已入遥测(新局 outcomes 行 `heal_longline` 键)**:此前「tooltip 两分量幅度 = hp 链差 + 2」系统偏移(T-57 P26 标定批败面 19/20 实证)机制定谳 = 「长线作战」战斗结算回血 +2(口述 + 连胜轨迹双源;败面也 +2 ⇒ 回血非胜局专属,的「胜利」限定被数据收窄,如实申报)。判读口径:hp 链差(净变化)= 掉血两分量(damage_base+damage_unfinished_progress)+ heal_longline,行内三量齐可直接验证;**禁把 +2 抹进对比公式**(回血量以行内现读为准,非恒定承诺);旧档案无此键,偏移验证仅新局可行。
+- **零结算段自标识(v11 起,段条目 `settlement_gap` 键)**:键在场 = 本段零结算(决策帧≥1 且结算行=0:备战停滞/出战未成战后被守卫或人工停机),**非遥测丢失,不可离线补行**(真值源=结算屏帧,从未被捕获;decisions 的 hp 是沿用/冻结值非逐轮真值);随行 `claimed_rounds_survived` 取自收口时点 state.round_num,零结算段可带非零冻结值——「claimed=N 且零 outcome 行」曾是误报「结算断流」的形态(实证 g_20260908_165445 续段 run_20260908_210431),与 gap 并读即防。同批分组修正:决策独有段(零结算段)按段首 ts 归**前局**,后继新局入流不再夺段;旧档案 bump 后首次读档自动重装配纠偏。
 - **视图缺口**:上表「无」标记——按「新复盘需求=新视图」纪律渐进补,别写一次性脚本。
 - **采集缺口→接线状态(历次迭代已补 5 项)**:active_env/plane_bosses/enemy_affixes(read_game_state 尾部 session→state 统一回写,注入点单一、两策略同源)、megastar_char/partner_char(handler 选择时落 session.chosen_*,同处回写)。**仍缺 reader 的 2 项**:plane_modifiers/shop_locked(观察基建未建,非回写问题,记进度账本推进)。streak 一直是接好的(恒 0 是结算真值,非接线缺)。这些维度的复盘暂用 log/结算屏侧数据兜底。
 
