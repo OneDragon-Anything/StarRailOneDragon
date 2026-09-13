@@ -132,9 +132,6 @@ import math
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    shop_payload_content_cards,
-)
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS, get_char
 from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes_for_card,
@@ -183,6 +180,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     node_kind_of,
     plane_of,
     round_num_of,
+    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     merge_material_stale_names,
@@ -783,6 +781,18 @@ def decide_shop_action(bs: GameState, session: StrategySession,
     if getattr(state_of(session), 'cw4_counters', None) is None:
         state_of(session).cw4_counters = {}
     counters: dict = state_of(session).cw4_counters
+
+    # 全 unknown 窗(用户三态裁定 2026-09-13,shop-slot-model §5.1):店开
+    # 而牌面含 unknown(整帧 OCR/SIFT 失读窗)→ 花钱动作(BuyCard/
+    # RefreshShop/LevelUp)一律禁发射(烧金在失读牌面上、刷后重观察多半
+    # 仍失读,不猜),终结集降级为仅 CloseShop——收工路径的未识别卡停机
+    # 钩子(kind=='unknown' 判据)随即留证停机。行为收紧显式申报:旧
+    # 「失读窗沿用陈旧牌面续决策」退役,该窗从「带陈旧牌面试买」收紧为
+    # 「快速收店+停机留证」;真买空([empty×5])不受影响。
+    _payload_u = bs.shop.value
+    if _payload_u is not None and any(
+            s.kind == 'unknown' for s in _payload_u.cards):
+        return CloseShop()
 
     # T-82 续段 token 读清协议:入口读取后立即清除(防重复消费;生产单
     # 动作循环与 sim/replay 驱动器的共同必经点在本函数,读清单点覆盖全部
