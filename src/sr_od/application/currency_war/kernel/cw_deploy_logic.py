@@ -23,26 +23,21 @@ drag 验证留在 op)。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    GameState,
-    max_units_of,
-    plane_of,
-    round_num_of,
-)
-
-if TYPE_CHECKING:
-    # 仅类型注解引用(老帧兼容支注解;运行时零依赖)。
-    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     DEPLOYED_BACK_CAPACITY,
     DEPLOYED_FRONT_CAPACITY,
     BenchChar,
     deployed_occupied,
+    exec_state_of,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
+    max_units_of,
+    plane_of,
+    round_num_of,
 )
 from sr_od.application.currency_war.kernel.cw_line_defs import (
     ENGINE_FACTIONS,
@@ -959,15 +954,11 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 # 义务集排除独立承载,本载体只承担防抖+显影(拒因照记,不宣称切环)。
 
 
-def _fresh_phase(state: GameState | CwSimFrame | None) -> tuple:
-    """相位键读法(双形态过渡):容器 = plane_of/round_num_of 读口;
-    老栈 CwSimFrame 帧(测试夹具/波4 面调用) = 属性直读。兼容支随
-    调用面(波4 装配/测试重构)消亡,禁新消费点再喂旧帧。"""
+def _fresh_phase(state: GameState | None) -> tuple:
+    """相位键读法(容器读口;None = 缺读缺省 (None, 1))。"""
     if state is None:
         return (None, 1)
-    if isinstance(state, GameState):
-        return (plane_of(state), round_num_of(state))
-    return (getattr(state, 'plane', None), getattr(state, 'round_num', 1))
+    return (plane_of(state), round_num_of(state))
 
 
 def record_fresh_buy(session: object, bs: GameState | None,

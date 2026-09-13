@@ -117,7 +117,6 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_strategy_session import (
         StrategySession,
     )
-    from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 
 # ===== 常量(设计推断,sim 校准;strategy_v4 点0 摆动域)=====
 CORE_MISS_N: int = 6
@@ -2563,7 +2562,7 @@ def _obligation_truncate(scope: set[str], core_shared: set[str],
     return kept_core + rest_rank[:rest_budget]
 
 
-def locked_buy_cap_hold(state: GameState | CwSimFrame | None) -> int | None:
+def locked_buy_cap_hold(state: GameState | None) -> int | None:
     """容量可行截断的容量上界单源(T-307/R1,ADR-0647)。
 
     = ``BENCH_CAPACITY + max_units(level)``(现读;lv8 = 17 实用持有
@@ -2571,20 +2570,16 @@ def locked_buy_cap_hold(state: GameState | CwSimFrame | None) -> int | None:
     已不可达而不告警)。缺读 fail-closed 方向 = 返回 None ⇒ 消费方保宽
     (现行为,零漂移端)——容量不可得帧不做截断收紧。
 
-    state 形态(W6 波3):容器一等形态(max_units_of 读口)∧ 老栈
-    CwSimFrame 帧过渡兼容支(属性/方法直读)——过渡期调用面 11 点全在
-    mandate_v1(波4 辖域文件),零改续用;兼容支随波4 装配切容器消亡,
-    禁新消费点再喂旧帧。
+    state 形态 = 容器单型(读口 = level_of/max_units_of;None = 缺读,
+    谓词弃权路径)。
     """
     if state is None:
         return None
-    _is_bs = isinstance(state, GameState)
-    level = (level_of(state) if _is_bs
-             else int(getattr(state, 'level', 0) or 0))
+    level = level_of(state)
     if level <= 0:
         return None
     try:
-        mu = int(max_units_of(state) if _is_bs else int(state.max_units()))
+        mu = int(max_units_of(state))
     except Exception:   # noqa: BLE001  容量派生缺供给 = 保宽
         return None
     if mu <= 0:

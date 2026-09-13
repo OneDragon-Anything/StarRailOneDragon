@@ -16,7 +16,8 @@ strategy_id 双被测体;config 切 strategy_id 即换核)。实现体分两层:
 商店线口径(步4b,STEP34_REPORT 裁量 #1 的接线兑现;ADR-0517 迁移批
 后形态):
 ``decide_shop_screen`` = 序列兼容驱动器(循环调 ``shop.decide_shop_action``
-单动作核,黑板=``session.shop_state_frame``;生产执行侧入口 =
+单动作核,黑板=``session.prep_obs_frame`` + 容器单例
+``board_state_of(session)``;生产执行侧入口 =
 ``decide_shop_action``,由 cw_op_buy_cards.run_buy_waves 单动作循环消费)
 ——sim A/B 证明面=商店波(SIM_CONSUMPTION_MAP Q1)自此有行为载体。
 该驱动器自 ADR-0583 起降格出 ABC(基类缺省实现 = flow 层通用循环;

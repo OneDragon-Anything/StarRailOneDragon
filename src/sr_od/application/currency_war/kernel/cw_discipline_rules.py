@@ -1,11 +1,10 @@
-"""决策纪律·卖侧下界/种子年龄判据族(自 decision_v2.discipline
+"""决策纪律·卖侧下界判据族(自 decision_v2.discipline
 下沉;DESIGN §3.3-①e)。
 
-下沉闭包 = cw_evolution 溢出卖出/种子豁免消费面:
+下沉闭包 = cw_evolution 溢出卖出消费面:
 ``sole_engine_sell_floor_plan``(批量逐笔下界,ADR-0380)及其计数底座
-(``_sell_floor_counts/_eval/_decrement``,ADR-0373/0375 单一源)、
-``seed_age_blocked``(engine_seed 年龄豁免,ADR-0289/0339)及其计数
-依赖 ``star_weighted_copies``。全部为纯谓词(不依赖线库/桥池;
+(``_sell_floor_counts/_eval/_decrement``,ADR-0373/0375 单一源)与星级
+计数依赖 ``star_weighted_copies``。全部为纯谓词(不依赖线库/桥池;
 registry 注解在 cw_registry 下沉 kernel 后 kernel 内自洽)——
 discipline 余部(行为臂/纪律视图)留 decision 桶,经本模块消费同一
 计数底座(单一源不破)。"""
@@ -146,19 +145,6 @@ def _sell_floor_decrement(name: str, bonds: set, counts: dict) -> None:
             k = f'_seele_amp:{f}'
             if k in counts:
                 counts[k] -= 1
-
-
-def seed_age_blocked(bc, state: CwSimFrame,
-                     session: StrategySession | None) -> bool:
-    """engine_seed 年龄豁免——**结构性恒 False**(session.md §2.5 退役收口)。
-
-    豁免数据源 = 原购入轮登记(v2_seed_bought):其唯一写端是局首清零,
-    登记写端早已不存在 → 该 dict 现状恒空,豁免分支结构性失效(空输入
-    查表恒 miss → False)。职责分离切换批把该死码显式收口:删除恒空
-    查表读段,保留函数签名与恒 False 语义(cw_evolution 卖面判据的
-    豁免位消费零改;ADR-0289/0339 的豁免设计随登记写端消亡一并退役)。
-    """
-    return False
 
 
 # ===== 血预算停手/危机带判据族(自 decision_v2.discipline 下沉,迁移底稿

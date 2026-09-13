@@ -6,7 +6,7 @@
 
 设计见 ``docs/develop/currency_war/strategy/07_plugin.md``;决策见
 ``docs/develop/sr_od/application/currency_war/decisions/INDEX.md`` 。本模块**纯逻辑**:所有钩子只吃
-``CwSimFrame``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
+容器 ``GameState``/选项 + 出 ``Action``/``Pick``,**绝不碰屏幕 / ``ctx.controller``**(读屏与点击
 是框架职责)→ 策略可离线 unit 测、可 replay。
 
 四个组件(本模块 3 个 + manager):
@@ -41,8 +41,8 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     ExecState,
     bind_exec_state,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import Action, PickEvent
 from sr_od.application.currency_war.kernel.cw_strategy_session import StrategySession
+from sr_od.application.currency_war.kernel.cw_vocab import Action, PickEvent
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
@@ -307,8 +307,8 @@ def gated_hp(current_hp: int | None, session: StrategySession,
     读口」):cw_screen_prep 环入口×2(端口路径/读屏路径,写侧预施门,
     W5 收编后保留至旧链删除)+ cw_screen_prep 终饰×2(观察终饰+lifecycle
     payload 终饰,同写侧)+ mandate_v1 adapter decision_state×1(消费侧,
-    视图真值)+ mandate_v1 encounter λ 键读点×1(消费侧,_hp_gate_state,
-    W5 补门读点域)。旧注「shop.py buy 前」系 ADR-0583 内化前代码形态
+    视图真值)+ mandate_v1 encounter λ 键读点×1(消费侧,经政策层读口
+    ``decision_hp`` 同门)。旧注「shop.py buy 前」系 ADR-0583 内化前代码形态
     残留,商店线 buy 前吃门已由环入口终饰承载,shop.py 零调用。同门纪律:
     先调方用假 hp 判 pivot、后调方真 hp 反向 pivot,同节点两次方向相反
     换线(r68 实证)。方向重估(ADR-0583 内化进策略器决策入口)消费的是

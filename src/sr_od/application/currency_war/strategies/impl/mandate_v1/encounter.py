@@ -80,7 +80,7 @@ from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
+from sr_od.application.currency_war.kernel.cw_game_state import GameState
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
 )
@@ -175,18 +175,20 @@ def reward_subtype_value(rewards: list[str],
 
 
 def _branch_lambda(option: EncounterOption,
-                   state: CwSimFrame | None) -> tuple[str | None,
-                                                     LambdaCell | None,
-                                                     str | None]:
+                   state: GameState | None,
+                   session: StrategySession | None
+                   ) -> tuple[str | None,
+                              LambdaCell | None,
+                              str | None]:
     """分支 λ 键+格解析(共享 helper;label 与复合项两消费面同一解析链,
     禁各写一套双读 provisional=漂移源)。
 
     返回 (键, 格, 不可判原因)。键 = PL 键(难度带×血带×位面×encounter):
     分支敌难度 stat 真值经 provisional 槽位 ``ENCOUNTER_DSTAT_MAP``
     (旗牌→stat 映射;None 期 = 键观测量缺失 = 域外同判,禁拿旗牌值
-    冒充 stat 假真值,R29-6 同款);hp 只入路由键(裁定二),缺读 None
-    → 域外 fail-closed。节点类型 = 'encounter'(本判据仅在遭遇屏调用,
-    构造性已知,非 OCR 依赖)。
+    冒充 stat 假真值,R29-6 同款);hp 只入路由键(裁定二),经政策层读口
+    ``decision_hp`` 施门(与备战决策同门),缺读 None → 域外 fail-closed。
+    节点类型 = 'encounter'(本判据仅在遭遇屏调用,构造性已知,非 OCR 依赖)。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
         provisional,
@@ -200,8 +202,13 @@ def _branch_lambda(option: EncounterOption,
     stat = dstat.value.get(option.difficulty)
     if stat is None:
         return None, None, f'dstat_missing(diff={option.difficulty})'
-    hp = getattr(state, 'hp', None) if state is not None else None
-    plane = getattr(state, 'plane', 1) if state is not None else 1
+    if state is None:
+        hp, plane = None, 1
+    else:
+        from sr_od.application.currency_war.kernel.cw_game_state import plane_of
+        from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
+        hp = decision_hp(state, session)
+        plane = plane_of(state)
     key = lambda_death.make_key(stat, hp, int(plane), 'encounter')
     if key is None:
         return None, None, 'key_observable_missing'
@@ -212,38 +219,44 @@ def _branch_lambda(option: EncounterOption,
 
 
 def _branch_lambda_label(option: EncounterOption,
-                         state: CwSimFrame | None) -> tuple[str | None,
-                                                           str | None]:
+                         state: GameState | None,
+                         session: StrategySession | None
+                         ) -> tuple[str | None, str | None]:
     """分支 λ 格 label 四态查询(可消费/仅方向/禁用/空格;None=域外)。"""
-    _key, c, why = _branch_lambda(option, state)
+    _key, c, why = _branch_lambda(option, state, session)
     return (c.label if c is not None else None), why
 
 
-def _branch_composite(option: EncounterOption, state: CwSimFrame | None,
+def _branch_composite(option: EncounterOption, state: GameState | None,
                       session: StrategySession | None) -> ExposureComposite | None:
     """λ 敞口差分复合项(d̂×(g+Ī×R_剩余);P51 第三口唯一合法数值算子)。
 
     d̂ = 同格 CI 宽度(λ_U−λ_L,保守端——两支公共 λ_L 在差分中抵消,
     R29-3 同构);敞口 = 存量金 g(核心项,P51 §R.1)+ Ī×R_剩余。
     金充裕帧敞口放大 ⇒ 生存折现主导,高难支惩罚加重(P51 折现语义)。
-    金缺读帧(gold_readable False)→ None fail-closed:缺读兜底 0 非真值,
-    进敞口会压薄 λ 项(方向与保守相反)。
+    金缺读帧(gold source=prior 先验位)→ None fail-closed:缺读兜底 0
+    非真值,进敞口会压薄 λ 项(方向与保守相反)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import net_income
     from sr_od.application.currency_war.kernel.cw_plane_table import r_remaining
     from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import (
         lambda_death,
     )
-    key, c, _why = _branch_lambda(option, state)
+    key, c, _why = _branch_lambda(option, state, session)
     if key is None or c is None or c.label != '可消费':
         return None
-    if state is None or not getattr(state, 'gold_readable', True):
+    if state is None or state.gold.source == 'prior':
         return None
-    round_num = int(getattr(state, 'round_num', 1))
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        gold_of,
+        plane_of,
+        round_num_of,
+    )
+    round_num = round_num_of(state)
     ibar = net_income(round_num, 0)
-    r_rem = r_remaining(session, int(state.plane), round_num) \
+    r_rem = r_remaining(session, plane_of(state), round_num) \
         if session is not None else 0
-    return lambda_death.differential_composite(key, int(state.gold),
+    return lambda_death.differential_composite(key, int(gold_of(state)),
                                                ibar, r_rem)
 
 
@@ -262,46 +275,16 @@ def _count(session: StrategySession | None, key: str) -> None:
         counters[key] = counters.get(key, 0) + 1
 
 
-def _hp_gate_state(state: CwSimFrame | None,
-                   session: StrategySession | None) -> CwSimFrame | None:
-    """hp 消费读点显式施门(W5 hp 专项:视图 hp = 门前真值,记录/消费
-    分离;本读点是视图 hp 的直读消费域——遭遇屏恰在 gap==1 窗,结算在
-    紧邻上一节点,门辖语义见宪法 00 §3 hp 授权消费面与 ADR-0583 §2.4
-    「消费方必须同门」)。门输入 readable = 视图映射单一源
-    (``state.hp_readable``,源 = bs.hp.source=='observation' 最近观察),
-    时基 t 经 kernel 单一源派生(schedule_of 前序位面实际长度和,与生产门
-    同源同式)。session 无结算锚(last_hp/last_hp_t 缺)时门恒等返回 =
-    旧行为,纯函数可单测。
-
-    :return: hp 已施门的 state 拷贝(其余字段共享引用,本判据链只读);
-        state 为 None 时原样返回 None。
-    """
-    if state is None:
-        return None
-    from sr_od.application.currency_war.kernel.cw_plane_table import node_t_of
-    from sr_od.application.currency_war.strategies.impl.cw_strategy import (
-        gated_hp,
-    )
-    t = node_t_of(session, getattr(state, 'plane', None),
-                  getattr(state, 'round_num', None))
-    gated = gated_hp(state.hp, session, t,
-                     current_readable=bool(getattr(state, 'hp_readable',
-                                                   False)))
-    if gated == state.hp:
-        return state
-    import dataclasses
-    return dataclasses.replace(state, hp=gated)
-
-
-def decide_encounter_ev(options: list[EncounterOption], state: CwSimFrame | None,
+def decide_encounter_ev(options: list[EncounterOption], state: GameState | None,
                         session: StrategySession | None,
                         refresh_used: bool = False) -> EncounterPick:
     """E3 判据形态本体(纯函数;mandate_v1.decide_encounter 消费)。
 
-    hp 施门:入口处对 state 施新鲜度门(见 :func:`_hp_gate_state`)——
-    视图收编后 ``state.hp`` 是门前真值,λ 路由键的 hp 维必须与备战决策
-    同门,否则误读帧血带翻转→选支漂移(W5 方案 §2.4 读点清单点名域)。
-    旧链(帧值已门)再过门幂等,行为零变化。
+    hp 施门:λ 路由键的 hp 维经政策层读口 ``decision_hp`` 门后值
+    (_branch_lambda 内统一施门;helper 幂等,多次解析同值)——λ 路由键
+    的 hp 维必须与备战决策同门,否则误读帧血带翻转→选支漂移(W5 方案
+    §2.4 读点清单点名域;W6 波 4 双形态归一定谳:帧视图桥随帧表示退役
+    删除,消费统一走容器读口)。
 
     决策树(历史判据稿 §2):
     1. 无选项 → idx0(default,与生产 handler 一致);单卡帧(读缺)
@@ -319,31 +302,6 @@ def decide_encounter_ev(options: list[EncounterOption], state: CwSimFrame | None
          → fail 向低难;若刷新未用 → 附探索性刷新建议(原对弃用、重掷
          分布未建模可为负——非免费期权)。
     """
-    # hp 消费读点显式施门(见 helper)。W6 波 4 双形态归一:容器 bs 输入
-    # 先转帧形态本地视图(hp = 政策层读口 decision_hp 门后值,设计件
-    # 《商店黑板容器化方案》§2.2-2「商店链 hp 消费一律经 decision_hp」;
-    # gold/plane/round 经容器读口;gold_readable = source != 'prior' 保真
-    # 位映射)——下游 helper 的 duck 读零改。帧输入走原 _hp_gate_state 门
-    # (旧链再过门幂等,行为零变化)。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        GameState,
-    )
-    if isinstance(state, GameState):
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            gold_of,
-            plane_of,
-            round_num_of,
-        )
-        from sr_od.application.currency_war.kernel.cw_hp_policy import (
-            decision_hp,
-        )
-        from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame as _GS
-        _view = _GS(gold=gold_of(state), plane=plane_of(state),
-                    round_num=round_num_of(state), hp=decision_hp(state,
-                                                                  session))
-        _view.gold_readable = state.gold.source != 'prior'
-        state = _view
-    state = _hp_gate_state(state, session)   # 帧输入:hp 消费读点显式施门
     if not options:
         return EncounterPick(idx=0, refresh=False, reason='e3:no-options')
     if len(options) == 1:
@@ -354,10 +312,10 @@ def decide_encounter_ev(options: list[EncounterOption], state: CwSimFrame | None
     evals: list[_BranchEval] = []
     for o in options:
         kind, value = reward_subtype_value(o.rewards, g_gold)
-        label, why = _branch_lambda_label(o, state)
+        label, why = _branch_lambda_label(o, state, session)
         comp = _branch_composite(o, state, session) if label == '可消费' else None
         if label == '可消费' and comp is None:
-            # λ 格可消费但敞口缺真值金(gold_readable False):负项数值
+            # λ 格可消费但敞口缺真值金(gold 缺读/prior 先验位):负项数值
             # 不授权 → 并入整体不可判(fail 向),禁置零续比。
             why = 'gold_unreadable(λ 敞口缺真值金,fail-closed)'
         evals.append(_BranchEval(option=o, reward_kind=kind,

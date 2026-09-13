@@ -2,8 +2,8 @@
 
 SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店经济决策(买/卖/升/刷/事务)
 ——本模块是 mandate_v1 商店线的决策本体,黑板唯一输入 =
-``session.shop_state_frame``(CwSimFrame,写者=商店入口观察段/单动作投影/
-sim 引擎)。
+``session.prep_obs_frame`` + 容器单例 ``board_state_of(session)``
+(GameState,写者=商店入口观察段/单动作投影)。
 
 商店单动作形态(ADR-0517;前身份 = 波批 decide_shop_wave,迁移批改型):
 

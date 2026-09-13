@@ -555,8 +555,8 @@ def _launch_frame_arbitration(op) -> dict:
     L1' 独立命题 fail-closed 不开店(证不出不花;带内帧计
     ``launch_arbitrage_inband_closed`` 分键,与「溢出帧零消费」可辨)。
 
-    **预算闸闭包读金口径** = 期望态黑板现读(``session.shop_state_frame``,
-    run_buy_waves 逐动作投影回写)= 决策与闸同帧同值。后验跌破 g* 检测
+    **预算闸闭包读金口径** = 期望态容器现读(``board_state_of(session)``,
+    run_buy_waves 逐动作投影直写)= 决策与闸同帧同值。后验跌破 g* 检测
     (合并多买等投影外成本)计 ``launch_arbitrage_cross_line``,正常恒 0。
 
     返回报告 dict:``entered``(是否进入过商店访问——弃射豁免判定位)、
