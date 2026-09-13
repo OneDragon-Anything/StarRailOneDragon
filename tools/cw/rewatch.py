@@ -170,7 +170,7 @@ def _kill_procs(victims: list[psutil.Process]) -> list[psutil.Process]:
     kill 抑制 NoSuchProcess+AccessDenied:Windows TerminateProcess 是
     原子的——目标死了,或抛 AccessDenied(需管理员),不存在「不抛异常
     但不死」的中间态。杀不动=视作存活返回,交复扫轮有界重试,最终走
-    exit 2 可验证失败();不抑制会让真实「需管理员权限」
+    exit 2 可验证失败;不抑制会让真实「需管理员权限」
     场景变成未处理异常(traceback 退 1),绕过 exit 2 契约,消费方
     (编排者后台 job / cycle_restart)拿到契约外退出码。
     """
