@@ -182,7 +182,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
                                           退役残字段:物理删除(5 项,带前置)
 ```
 
-> as-built 实际数(账外两波收编后):MandateState 72 具名 + scratch;ExecState 22 具名——逐波清单与对账见 §2 统计行 as-built 注与 「落位裁量」节。
+> as-built 实际数(账外两波收编后):MandateState 72 具名 + scratch;ExecState 22 具名——逐波清单与对账见 §2 统计行 as-built 注。
 
 ## 5. 影响面逐项声明
 

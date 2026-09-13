@@ -26,7 +26,7 @@
 - **off-line fenced 臂可卖集** S(F) = { deployed 单位 d :
   bonds(d) ∩ all_factions(target_comp) = ∅ ∧ bonds(d) ∩ (RECIPE ∪ ENGINE) ≠ ∅
   ∧ d ∉ target_cores ∪ protect_names },其中 protect_names = target_comp
-  core∪shared(决策 1/2 全条件代入 `offtarget_sell_allowed`)。
+  core∪shared(全条件代入 `offtarget_sell_allowed`)。
 
 **命题:门辖前提下 B(F) ∩ S(F) = ∅。**(成立则义务臂无买↔卖振荡风险;
 证伪则触发门须修。)
