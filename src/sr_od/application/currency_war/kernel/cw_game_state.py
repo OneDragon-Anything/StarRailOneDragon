@@ -526,11 +526,43 @@ class ShopCard:
 
 
 @dataclass(frozen=True)
+class ShopSlot:
+    """商店一槽:三态之一(定长五槽的元素,用户三态裁定 2026-09-13)。
+
+    kind='content' 时 card 有效;empty=识别确证无内容(占位带);
+    unknown=应为内容但识别失败(必携缺陷台账,决策一律跳过)。
+    物理槽位 = 数组下标 + 1(1 基,= screen_info「商店牌-N」序号);
+    本类型无 slot 字段——定长数组下标即槽位,紧凑下标≠物理槽位的
+    历史病灶类(ADR-0646 同族)在本模型下结构性消失。
+    与 BenchSlot(kind + unit|None)同构。
+    """
+
+    kind: Literal['content', 'empty', 'unknown'] = 'empty'
+    card: ShopCard | None = None   # kind='content' 时有效
+
+
+@dataclass(frozen=True)
 class ShopPayload:
     """商店开态附加(§3.3):五张牌与概率条。非当前画面 = None(§2.2 例外)。"""
 
-    cards: list[ShopCard] = field(default_factory=list)            # 恒 5 张
+    #: 定长 5(下标 0-4 ↔ 物理槽 1-5,用户三态裁定 2026-09-13):
+    #: 买光 = [empty×5](合法真值,≠ None 离屏);unknown 槽决策一律跳过。
+    cards: list[ShopSlot] = field(default_factory=list)
     refresh_probs: dict[int, float] = field(default_factory=dict)  # 费用档→概率(§3.3.2 契约)
+
+
+def shop_payload_content_cards(payload: ShopPayload | None) -> list:
+    """ShopPayload → 内容牌紧缩视图(消费点兼容读,三态裁定 2026-09-13)。
+
+    返回 content 槽 card 的紧缩列表(序 = 槽序);empty/unknown 槽跳过——
+    即帧时代紧缩读语义(旧列表从不含空位),消费点行为零漂移。坐标系:
+    列表下标 = content 序(≠ 物理槽);物理槽直取 = 候选带槽号改造时切换
+    (商店域消费点审计 D 项清单批2 面)。
+    """
+    if payload is None:
+        return []
+    return [s.card for s in payload.cards
+            if s.kind == 'content' and s.card is not None]
 
 
 @dataclass(frozen=True)
@@ -1677,8 +1709,8 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         bench_slots = bench_slots_of(bs)
         dep_slots = deployed_slots_of(bs)
         payload = bs.shop.value
-        shop_view = (shop_cards_to_legacy(list(payload.cards))
-                     if payload is not None else [])
+        shop_view = (shop_cards_to_legacy(
+            shop_payload_content_cards(payload)))
         # k 来源(详设 §3 修订):executed 给定 = 回执 k(live);None =
         # 理想执行自算(简单腿 1;满栏从应用机器 _apply_full_bench_merge_buy 出)。
         k_exec = (max(1, int(executed.bought_count))
@@ -1717,17 +1749,24 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         g = bs.gold.value
         if g is not None:
             _w(bs.gold, int(g) - card_cost(card) * k, 'proj_buy_gold')
-        # shop payload −k 张((name, star) 计数;离屏 None 跳写)
+        # shop payload −k 张((name, star) 计数;离屏 None 跳写)。
+        # 三态定长模型(用户三态裁定 2026-09-13):被买槽 kind 置 empty
+        # (物理槽位保留,数组下标即槽位);同 (name,star) k 张按 canonical
+        # 序对前 k 个匹配槽置换。
         if payload is not None:
-            kept: list[ShopCard] = []
+            slots = list(payload.cards)
+            while len(slots) < 5:
+                slots.append(ShopSlot(kind='empty'))
             _left = k
-            for c in payload.cards:
-                if _left > 0 and (c.name or '') == name \
-                        and int(c.star or 1) == star:
+            for _i, s in enumerate(slots):
+                if _left <= 0:
+                    break
+                if s.kind == 'content' and s.card is not None \
+                        and (s.card.name or '') == name \
+                        and int(s.card.star or 1) == star:
+                    slots[_i] = ShopSlot(kind='empty')
                     _left -= 1
-                    continue
-                kept.append(c)
-            _w(bs.shop, ShopPayload(cards=kept,
+            _w(bs.shop, ShopPayload(cards=slots,
                                     refresh_probs=(dict(payload.refresh_probs) if payload.refresh_probs is not None else None)),
                'proj_buy_payload')
         # bench 整表写(落位+合成应用后终态;live 简单腿写语义保持)
@@ -1858,8 +1897,8 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         scratch_b = bench_slots_of(bs)
         scratch_d = deployed_slots_of(bs)
         payload = bs.shop.value
-        shop_view = (shop_cards_to_legacy(list(payload.cards))
-                     if payload is not None else [])
+        shop_view = (shop_cards_to_legacy(
+            shop_payload_content_cards(payload)))
         # 事务校验视图(宽松界来自容器读口;槽表/牌表为 scratch 引用,
         # _resolve 只读、_apply 就地应用——与 simulate 的 deepcopy 隔离
         # 等价:应用失败(拒)时 scratch 弃用零写)
@@ -1881,21 +1920,27 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         _w(bs.equips, list(view.equips), 'proj_tx_equips')
         _w(bs.board, dict(view.board), 'proj_tx_board')
         if plan['shop_fill_cards']:
-            kept: list[ShopCard] = []
+            # 三态定长:被填充牌所在的槽置 empty(几何同 BuyCard 置换)
+            slots = list(payload.cards) if payload is not None else []
+            while len(slots) < 5:
+                slots.append(ShopSlot(kind='empty'))
             _fills = [(str(getattr(c, 'name', '') or ''),
                        int(getattr(c, 'star', 1) or 1))
                       for c in plan['shop_fill_cards']]
             _left = list(_fills)
-            for c in (payload.cards if payload is not None else []):
-                _hit = next(
-                    (j for j, (n, s) in enumerate(_left)
-                     if (c.name or '') == n and int(c.star or 1) == s), None)
-                if _hit is not None:
-                    _left.pop(_hit)
-                    continue
-                kept.append(c)
+            for _i, s in enumerate(slots):
+                if not _left:
+                    break
+                if s.kind == 'content' and s.card is not None:
+                    _hit = next(
+                        (j for j, (n, st_) in enumerate(_left)
+                         if (s.card.name or '') == n
+                         and int(s.card.star or 1) == st_), None)
+                    if _hit is not None:
+                        _left.pop(_hit)
+                        slots[_i] = ShopSlot(kind='empty')
             _w(bs.shop, ShopPayload(
-                cards=kept,
+                cards=slots,
                 refresh_probs=(dict(payload.refresh_probs)
                                if payload is not None
                                and payload.refresh_probs is not None
@@ -3100,7 +3145,8 @@ def note_board_state_heartbeat(ctx_or_session: object) -> None:
 
 def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
                                at_round: str = '',
-                               shop_empty_off_screen: bool = True) -> None:
+                               shop_empty_off_screen: bool = True,
+                               shop_open: bool = False) -> None:
     """CwSimFrame 真值 → 容器域写入(波 5 起为直写喂入口的写入实现)。
 
     引擎侧统一经 :func:`feed_sim_truth` 调本函数;直接调用 = kernel 内部面
@@ -3239,11 +3285,26 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
         bs.observe(bs.board, dict(st.board), evidence=_ev, sig=_synth_sig)
     if st.shop:
         # 牌转换 = 映射单一源(W5 双 ShopCard 归一;cost_source 原值透传
-        # 不折叠,roster_fallback 的「徽章失读」证据分级禁丢)
-        cards = [shop_card_to_container(c) for c in st.shop]
+        # 不折叠,roster_fallback 的「徽章失读」证据分级禁丢)。
+        # 定长槽映射:帧卡 x = 抽牌序 i = 物理槽-1,按 x 对槽(缺位 empty)——
+        # 紧凑列表顺延映射会错位槽几何(用户三态裁定 2026-09-13)。
+        slots: list[ShopSlot] = [ShopSlot(kind='empty') for _ in range(5)]
+        for c in st.shop:
+            _i = int(getattr(c, 'x', 0) or 0)
+            if 0 <= _i < 5:
+                slots[_i] = ShopSlot(kind='content',
+                                     card=shop_card_to_container(c))
         probs = ({int(k): float(v) for k, v in st.refresh_probs.items()}
                  if st.refresh_probs else {})
-        bs.observe(bs.shop, ShopPayload(cards=cards, refresh_probs=probs),
+        bs.observe(bs.shop, ShopPayload(cards=slots, refresh_probs=probs),
+                   evidence=_ev, sig=_synth_sig)
+    elif shop_open and shop_empty_off_screen:
+        # 店开显式位(sim 真值域调用方声明;帧模型空表无法区分离屏/买空
+        # ——正是三态定长根治的塌缩病灶,用户三态裁定 2026-09-13):
+        # 买光 = [empty×5] 合法真值,店开即写,None 仅离屏。
+        bs.observe(bs.shop,
+                   ShopPayload(cards=[ShopSlot(kind='empty')
+                                      for _ in range(5)], refresh_probs={}),
                    evidence=_ev, sig=_synth_sig)
     elif shop_empty_off_screen:
         # 画面附加域离屏分支(§2.2 显式例外):sim 真值域空表 = 「不在商店」
@@ -3265,7 +3326,7 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
 
 
 def feed_sim_truth(bs: GameState, st: CwSimFrame, *,
-                   at_round: str = '') -> None:
+                   at_round: str = '', shop_open: bool = False) -> None:
     """sim 真值直写喂入口(波 5 喂入反转的正式入口)。
 
     方向契约(与过渡桥的反转边界):sim 引擎内部模型(CwSimFrame 工作帧)
@@ -3283,7 +3344,8 @@ def feed_sim_truth(bs: GameState, st: CwSimFrame, *,
       直读——墓碑门 = test_cw_w5_sim_retirement 桥零字样扫描。
     """
     try:
-        synthesize_from_game_state(bs, st, at_round=at_round)
+        synthesize_from_game_state(bs, st, at_round=at_round,
+                            shop_open=shop_open)
     except Exception as e:   # noqa: BLE001  记录层 best-effort,不毒化 sim
         log.warning('[cw-bs][feed] sim 真值直写跳过(at_round=%s): %r',
                     at_round, e)
@@ -3326,13 +3388,35 @@ def restore_state_snapshot(bs: GameState, snap: dict) -> None:
                                       or BENCH_CAPACITY_DEFAULT))
 
     def _shop_payload(d: dict) -> ShopPayload:
-        cards = [ShopCard(name=str(c.get('name') or ''),
-                          faction=str(c.get('faction') or '?'),
-                          cost=int(c.get('cost') or 1),
-                          star=int(c.get('star') or 1),
-                          cost_source=str(c.get('cost_source') or ''),
-                          slot=int(c.get('slot') or 0))
-                 for c in d.get('cards') or [] if isinstance(c, dict)]
+        # 三态定长(用户三态裁定 2026-09-13):cards 元素 = {kind, card}
+        # 槽字典;旧扁平卡字典兼容读(过渡期快照)按 content 顺延。
+        def _slot(c):
+            if isinstance(c, dict) and 'kind' in c:
+                cc = c.get('card')
+                card = ShopCard(
+                    name=str((cc or {}).get('name') or ''),
+                    faction=str((cc or {}).get('faction') or '?'),
+                    cost=int((cc or {}).get('cost') or 1),
+                    star=int((cc or {}).get('star') or 1),
+                    cost_source=str((cc or {}).get('cost_source') or ''),
+                    slot=int((cc or {}).get('slot') or 0),
+                ) if isinstance(cc, dict) and cc.get('name') else None
+                return ShopSlot(kind=str(c.get('kind') or 'empty'),
+                                card=card)
+            if isinstance(c, dict) and c.get('name'):
+                return ShopSlot(kind='content', card=ShopCard(
+                    name=str(c.get('name') or ''),
+                    faction=str(c.get('faction') or '?'),
+                    cost=int(c.get('cost') or 1),
+                    star=int(c.get('star') or 1),
+                    cost_source=str(c.get('cost_source') or ''),
+                    slot=int(c.get('slot') or 0)))
+            return ShopSlot(kind='empty')
+
+        cards = [_slot(c) for c in d.get('cards') or []
+                 if isinstance(c, dict)]
+        while len(cards) < 5:
+            cards.append(ShopSlot(kind='empty'))
         probs = {int(k): float(v)
                  for k, v in (d.get('refresh_probs') or {}).items()}
         return ShopPayload(cards=cards, refresh_probs=probs)

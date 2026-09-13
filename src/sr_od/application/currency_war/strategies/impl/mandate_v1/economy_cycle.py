@@ -46,6 +46,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_slots_of,
     deployed_slots_of,
@@ -112,8 +115,7 @@ def _scan_shop_buy_accounts(bs: GameState,
         will_merge_on_buy,
     )
     _slots = bench_slots_of(bs)
-    _payload_cards = (bs.shop.value.cards if bs.shop.value is not None
-                      else [])
+    _payload_cards = shop_payload_content_cards(bs.shop.value)
     bench_free = max(0, registry.bench_capacity - bench_occupied(_slots))
     for sc in _payload_cards:
         name = getattr(sc, 'name', '') or ''

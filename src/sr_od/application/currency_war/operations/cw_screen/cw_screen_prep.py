@@ -18,6 +18,9 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.cw_game_ports import (
     CwObservationSource,
     action_sink,
@@ -275,7 +278,7 @@ def _shop_pool_inputs(bs) -> tuple[list[tuple[str, int]], int]:
         shop_cards_to_legacy,
     )
     payload = bs.shop.value
-    shop = shop_cards_to_legacy(list(payload.cards)) \
+    shop = shop_cards_to_legacy(shop_payload_content_cards(payload)) \
         if payload is not None else []
     cards = [(c.name, c.cost) for c in shop if getattr(c, 'name', '')]
     return cards, len(shop) - len(cards)
@@ -311,7 +314,7 @@ def _merge_preview_inputs(bs, frame_cards: list | None = None
     bench = list(bench_slots_of(bs))
     deployed = list(deployed_slots_of(bs))
     payload = bs.shop.value
-    shop = shop_cards_to_legacy(list(payload.cards), frame_cards) \
+    shop = shop_cards_to_legacy(shop_payload_content_cards(payload), frame_cards) \
         if payload is not None else []
     for i, c in enumerate(shop):
         if not getattr(c, 'name', ''):
@@ -545,7 +548,7 @@ class CwScreenPrep(CwScreenOpBase):
             #(假环境 merge_preview 读取器域结构性为零,§4-6 同申报)。
             _pobs_payload = _pobs_bs.shop.value
             self._cached_shop_cards = (
-                _pobs_cards_legacy(list(_pobs_payload.cards))
+                _pobs_cards_legacy(shop_payload_content_cards(_pobs_payload))
                 if _pobs_payload is not None else [])
             self._cached_bench = list(obs.bench_chars)
             self._cached_deployed = list(obs.deployed_chars)

@@ -9,6 +9,9 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 from sr_od.application.currency_war.cw_game_ports import (
     action_sink,
@@ -330,7 +333,7 @@ def _entry_receipt_from_container(bs) -> GameStateReadReceipt:
         round_num=round_num_of(bs),
         node_type=node_kind_of(bs),
         board=dict(bs.board.value or {}),
-        shop=list(payload.cards) if payload is not None else [])
+        shop=shop_payload_content_cards(payload))
 
 
 def _form_progress(comp: 'Comp', session) -> float:
@@ -556,7 +559,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
             _pre_bench = list(_sg_slots(_bs_proj))
             _pre_dep = list(_sg_dep(_bs_proj))
             _payload_now = _bs_proj.shop.value
-            _pre_shop = (list(_payload_now.cards)
+            _pre_shop = (shop_payload_content_cards(_payload_now)
                          if _payload_now is not None else [])
         _proj_sig = _ProjSig(family='logic_action', actor='CwOpBuyCards',
                              mode='compute',

@@ -33,6 +33,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
@@ -215,7 +218,7 @@ class MandateV1Strategy(CwFlowStrategy):
                 _pre_bench = list(bench_slots_of(bs))
                 _pre_dep = list(deployed_slots_of(bs))
                 _payload_now = bs.shop.value
-                _pre_shop = (list(_payload_now.cards)
+                _pre_shop = (shop_payload_content_cards(_payload_now)
                              if _payload_now is not None else [])
             out.append(a)
             # T-82 续段 token 写入(sim/replay 驱动器位):驱动器采纳并

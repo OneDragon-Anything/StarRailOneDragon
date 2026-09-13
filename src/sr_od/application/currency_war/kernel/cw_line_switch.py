@@ -35,6 +35,9 @@ from __future__ import annotations
 import math
 
 from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_slots_of,
     gold_of,
@@ -117,7 +120,7 @@ def tier_progress(comp: Comp, bs: GameState) -> dict[str, tuple[int, int, int]]:
         shelf_t = 0
         if held_t < t:
             _payload = bs.shop.value
-            for c in (list(_payload.cards) if _payload is not None else []):
+            for c in shop_payload_content_cards(_payload):
                 if (getattr(c, 'faction', '') or '') == f:
                     shelf_t += 1
         out[f] = (t, held_t, shelf_t)

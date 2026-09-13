@@ -132,6 +132,9 @@ import math
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS, get_char
 from sr_od.application.currency_war.data.cw_shop_odds import (
     expected_refreshes_for_card,
@@ -512,7 +515,7 @@ def shop_unbought_reasons(bs: GameState,
     bought_names = {a.card.name or '' for a in actions
                     if isinstance(a, BuyCard)}
     out: dict[str, str] = {}
-    for card in (bs.shop.value.cards if bs.shop.value is not None else []):
+    for card in shop_payload_content_cards(bs.shop.value):
         name = card.name or ''
         if not name or name in out or name in bought_names:
             continue
@@ -533,7 +536,7 @@ def shop_unbought_reasons(bs: GameState,
                 cnt1 = sum(1 for c in copies if (c.star or 1) == 1)
                 cnt2 = len(copies) - cnt1
                 cost = min((card_cost(c))
-                           for c in (bs.shop.value.cards if bs.shop.value is not None else [])
+                           for c in shop_payload_content_cards(bs.shop.value)
                            if (c.name or '') == name)
                 if len(copies) == 2 and cnt2 == 0:
                     out[name] = ('merge_unaffordable' if gold < cost
@@ -548,7 +551,7 @@ def shop_unbought_reasons(bs: GameState,
                 else:
                     out[name] = 'owned'
                 continue
-            cost = min((card_cost(c)) for c in (bs.shop.value.cards if bs.shop.value is not None else [])
+            cost = min((card_cost(c)) for c in shop_payload_content_cards(bs.shop.value)
                        if (c.name or '') == name)
             if bench_free <= 0:
                 out[name] = 'missing_bench_full'
@@ -1123,7 +1126,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         _zw_armed = True
         _count('p90_zerostack_frame_armed')
         if not any(predicates.advances_four_system(
-                getattr(c, 'name', '') or '') for c in (bs.shop.value.cards if bs.shop.value is not None else [])):
+                getattr(c, 'name', '') or '') for c in shop_payload_content_cards(bs.shop.value)):
             # 面①(b) 四分键之三:触发帧店无可激活件(输入死观测位)
             _count('p94_no_activatable')
         elif provisional.is_none('U_X'):
@@ -1170,7 +1173,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         支出放行:全臂既有门照过,仅改同门通过时的取件序);非零成型
         帧零漂移。"""
         out: list[ShopCard] = []
-        for c in (bs.shop.value.cards if bs.shop.value is not None else []):
+        for c in shop_payload_content_cards(bs.shop.value):
             n = c.name or ''
             if n and n in _round_sold:
                 _count(f'{arm_key}_round_sold_excluded')
@@ -1189,7 +1192,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                 _count(f'{arm_key}_round_sold_excluded')
             return []
         return sorted(
-            (c for c in (bs.shop.value.cards if bs.shop.value is not None else []) if (c.name or '') == m),
+            (c for c in shop_payload_content_cards(bs.shop.value) if (c.name or '') == m),
             key=lambda c: (card_cost(c)))
 
     # ---- ③ 选择序逐帧取首项 ----
@@ -2002,7 +2005,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                 (c.name or '') in k_members
                 and mandate.check_affordable(
                     gold, card_cost(c))[0]
-                for c in (bs.shop.value.cards if bs.shop.value is not None else []))
+                for c in shop_payload_content_cards(bs.shop.value))
             _pop, _pop_why = crit_levelup.pop_slot(
                 len(deployed), _cap_now, gold, _bench_cand, g_star,
                 buyable_candidate=_buyable_cand, bench_free=bench_free)
@@ -2539,7 +2542,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
     # 语义承接,vacancy > 可部署 bench 件数预检保证买后仍有空槽可落;
     # held 闭环 = 出口③同款 N3 登记(cw4_fuel_filler_stall_buys 单一
     # 载体,T5 held 并入 fuel_filler_stall_held_postbuy 口径,ADR-0556 §5)。
-    if _buy_members is None and (bs.shop.value.cards if bs.shop.value is not None else []):
+    if _buy_members is None and shop_payload_content_cards(bs.shop.value):
         # L2 统一过滤位随行(本轮已卖垫件不再买回,ADR-0611 §3-3)。
         _t5_sale = [c for c in _buy_view('t3_unlocked_hemostat')
                     if (c.name or '') and (c.star or 1) == 1
@@ -2939,7 +2942,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
             round_num=round_num_of(bs))
         need = mandate.cheapest_member_cost(mf)
         for m in missing:
-            shop_cands = [c for c in (bs.shop.value.cards if bs.shop.value is not None else [])
+            shop_cands = [c for c in shop_payload_content_cards(bs.shop.value)
                           if (c.name or '') == m]
             if shop_cands:
                 need = min(need, min(

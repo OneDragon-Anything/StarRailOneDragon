@@ -33,6 +33,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.data.cw_shop_odds import acquirability_factor
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
@@ -1450,7 +1453,7 @@ def shop_supply(comp: Comp, bs: GameState) -> float:
     if not comp.factions:
         return 1.0
     _payload = bs.shop.value
-    shop_cards = list(_payload.cards) if _payload is not None else []
+    shop_cards = shop_payload_content_cards(_payload)
     if not shop_cards:
         return 1.0   # 无商店相位(奖励关/事件节点)——无观测≠断供,drought 中性
     shop_factions = {c.faction for c in shop_cards}

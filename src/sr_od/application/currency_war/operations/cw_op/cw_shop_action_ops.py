@@ -41,6 +41,9 @@ from cv2.typing import MatLike
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.kernel.cw_economy import REFRESH_COST_BASE
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
@@ -157,7 +160,7 @@ class ShopExecEnv:
 def _container_cards(state: GameState) -> list:
     """商店 payload 牌列表(容器;离屏 None = 空列表)。"""
     payload = state.shop.value
-    return list(payload.cards) if payload is not None else []
+    return shop_payload_content_cards(payload)
 
 
 def _plane_of(state: GameState) -> int:
@@ -198,12 +201,11 @@ def guard_proposal_vs_expected(action: Action, state: GameState) -> None:
         _name = action.card.name or ''
         _payload = state.shop.value
         if _name and not any((c.name or '') == _name
-                             for c in (_payload.cards
-                                       if _payload is not None else [])):
+                             for c in shop_payload_content_cards(_payload)):
             raise AssertionError(
                 f'[cw-shop][guard] BuyCard 提案牌不在期望态店中:'
                 f'name={_name!r} cost={action.card.cost} '
-                f'shop={[(c.name or "") for c in (_payload.cards if _payload is not None else [])]}'
+                f'shop={[(c.name or "") for c in shop_payload_content_cards(_payload)]}'
                 '(策略器 bug:跨代际/已消费提案,ADR-0517 决策 9)')
         return
     if isinstance(action, SellBench):
@@ -456,7 +458,7 @@ class BuyCardOp(ShopActionOp):
         # ——匹配下标仅作槽号缺失时的兜底锚,见下方点击解析。
         _slot_idx = None
         _payload = state.shop.value
-        _cards = list(_payload.cards) if _payload is not None else []
+        _cards = shop_payload_content_cards(_payload)
         for _i, _c in enumerate(_cards):
             if _c is action.card:
                 _slot_idx = _i
@@ -564,7 +566,7 @@ class BuyCardOp(ShopActionOp):
         # 进 tracked mutate,满栏完成合成的买入在 tracked 侧同样合成腾槽
         # ——旧丢件行为使 tracked 漏记合成,同 visit 下一动作守卫对拍
         # 误炸;2026-09-09 05:52 运行局双响事故)。
-        _payload_cards = (state.shop.value.cards
+        _payload_cards = (shop_payload_content_cards(state.shop.value)
                           if state.shop.value is not None else [])
         mutate_bench_deployed(exec_state_of(match.session).tracked_bench_chars,
                               exec_state_of(match.session).tracked_deployed,

@@ -31,6 +31,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_factions import FACTIONS
 from sr_od.application.currency_war.kernel.cw_board_by_row import board_by_row
@@ -442,7 +445,7 @@ def blank_window_policy(bs: GameState) -> BlankWindowDecision:
     # buy_idx:店内目标件(具名引擎件,或来牌方向阵营的件)
     buy_idx: list[int] = []
     _payload = bs.shop.value
-    for i, card in enumerate(list(_payload.cards) if _payload is not None else []):
+    for i, card in enumerate(shop_payload_content_cards(_payload)):
         if card.name and card.name in engine_chars:
             buy_idx.append(i)
             continue

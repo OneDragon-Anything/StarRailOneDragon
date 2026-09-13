@@ -777,7 +777,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                     _k = max(1, merge_buy_k(
                         a.card.name, a.card.star or 1, _slots,
                         deployed_slots_of(bs),
-                        list(bs.shop.value.cards)
+                        shop_payload_content_cards(bs.shop.value)
                         if bs.shop.value is not None else []))
                 return ShopActionExecuted(bought_count=_k)
             if isinstance(a, cw_state.LevelUp):
@@ -804,7 +804,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                 _pre_bench = list(bench_slots_of(bs))
                 _pre_dep = list(deployed_slots_of(bs))
                 _payload_now = bs.shop.value
-                _pre_shop = (list(_payload_now.cards)
+                _pre_shop = (shop_payload_content_cards(_payload_now)
                              if _payload_now is not None else [])
             apply_shop_action_logic(bs, a, executed=_executed_of(a),
                                     produced_by=type(a).__name__, sig=_sig)

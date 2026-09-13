@@ -49,6 +49,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from one_dragon.utils.log_utils import log
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import (
     DISTINCT_CARDS_PER_COST,
@@ -345,7 +348,7 @@ def _visible_chars(bs: GameState) -> set[str]:
     """当前可见角色规范名:shop 在店 + bench/deployed 到手(识别层已归一)。"""
     names: set[str] = set()
     _shop = bs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
-    for card in (_shop.cards if _shop is not None else []):
+    for card in shop_payload_content_cards(_shop):
         if card.name:
             names.add(card.name)
     for bc in [*bench_slots_of(bs), *deployed_slots_of(bs)]:
@@ -933,7 +936,7 @@ def _update_pair_drought(bs: GameState, ist: IntentionState,
         return
     _shop = bs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
     shop_names = {getattr(c, 'name', '') or ''
-                  for c in (_shop.cards if _shop is not None else [])}
+                  for c in shop_payload_content_cards(_shop)}
     all_systems = set(_ENGINE_BOND_KEYS) | {SEELE_SYSTEM}
     for sys in all_systems:
         if not shop_names:
@@ -1648,7 +1651,7 @@ def update_intention(bs: GameState, ist: IntentionState,
             # 成员(core∪shared)在店 +1,有成员清零,无店轮冻结。
             _shop = bs.shop.value   # payload 域:非当前画面 None(W6 波3 切换)
             shop_names = {getattr(c, 'name', '') or ''
-                          for c in (_shop.cards if _shop is not None else [])}
+                          for c in shop_payload_content_cards(_shop)}
             if shop_names:
                 line_members_seen = bool(
                     shop_names & (set(comp.core_chars)

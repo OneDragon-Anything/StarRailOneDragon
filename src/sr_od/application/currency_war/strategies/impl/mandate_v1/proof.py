@@ -39,6 +39,9 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    shop_payload_content_cards,
+)
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
 from sr_od.application.currency_war.data.cw_shop_odds import SHOP_SLOTS
 from sr_od.application.currency_war.kernel import cw_line_switch
@@ -373,7 +376,7 @@ def _missing_items(comp: Comp | None,
         extra: dict[int, int] = {}
         if shelf_t > 0:
             _payload = bs.shop.value
-            _shop_view = (shop_cards_to_legacy(list(_payload.cards))
+            _shop_view = (shop_cards_to_legacy(shop_payload_content_cards(_payload))
                           if _payload is not None else [])
             for c in _shop_view:
                 if (getattr(c, 'faction', '') or '') == f:

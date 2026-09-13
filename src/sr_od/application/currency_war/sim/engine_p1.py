@@ -57,6 +57,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     NodeKey,
     ShopActionExecuted,
     ShopPayload,
+    ShopSlot,
     apply_shop_action_logic,
     bench_slots_of,
     bench_view_of_slots,
@@ -272,10 +273,18 @@ def _sim_write_board(bs: GameState, slots: list, tag: str,
 def _sim_write_shop_payload(bs: GameState, drawn: list, probs,
                             tag: str, group: str) -> None:
     """抽牌帧 → shop payload obs 写(回合初始化外部事件;legacy 牌 →
-    容器牌换算单一源 = shop_card_to_container,refresh_probs 随载荷)。"""
+    容器牌换算单一源 = shop_card_to_container,refresh_probs 随载荷)。
+    定长 5 槽(用户三态裁定 2026-09-13):draw 卡 x = 抽牌序 = 物理槽-1,
+    按 x 对槽,缺位 empty——买光=[empty×5] 是合法真值,离屏才 None。"""
+    slots: list[ShopSlot] = [ShopSlot(kind='empty') for _ in range(5)]
+    for c in drawn:
+        _i = int(getattr(c, 'x', 0) or 0)
+        if 0 <= _i < 5:
+            slots[_i] = ShopSlot(kind='content',
+                                 card=shop_card_to_container(c))
     _sim_observe(
         bs, bs.shop,
-        ShopPayload(cards=[shop_card_to_container(c) for c in drawn],
+        ShopPayload(cards=slots,
                     refresh_probs=dict(probs) if probs else {}),
         tag, group)
 
@@ -1751,7 +1760,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 空牌面判据(买空店 payload cards=[] 与离屏 None 同判,
                 # T-181 语义:决策无候选面,段到止)。
                 _seg_payload = bs.shop.value
-                if _seg_payload is None or not _seg_payload.cards:
+                if _seg_payload is None or all(
+                        s.kind != 'content' for s in _seg_payload.cards):
                     break
                 # 段入口态快照(裁定 5 复核设计):两观测块口径 = 段入口态
                 # (ADR-0583 段帧首静态快照),而 decide_shop_screen 期间
@@ -1763,7 +1773,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                for c in bench_slots_of(bs)
                                + deployed_slots_of(bs)
                                if getattr(c, 'char_id', '')}
-                _seg_cands0 = list(_seg_payload.cards)
+                _seg_cands0 = [
+                    s.card for s in _seg_payload.cards
+                    if s.kind == 'content' and s.card is not None]
                 _seg_refresh_cost0 = (bs.shop_refresh_cost.value or 2)
                 # 段入口全量快照(动作循环回放基点):驱动器 decide 循环
                 # 对每个非终结动作即时投影(与 live 同代码,裁定 3)——decide
@@ -2115,7 +2127,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _sc = _seg_replay
                         _bench_slots0 = bench_slots_of(_sc)
                         _payload0 = _sc.shop.value
-                        _shop_view0 = list(_payload0.cards) \
+                        _shop_view0 = [s.card for s in _payload0.cards
+                                       if s.kind == 'content' and s.card] \
                             if _payload0 is not None else []
                         if bench_occupied(_bench_slots0) >= BENCH_CAPACITY \
                                 and not merge_buy_completes(
@@ -2409,6 +2422,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _dep_pre = deployed_slots_of(_apply_bs)
                         _bench_pre = bench_slots_of(_apply_bs)
                         _payload_pre = _apply_bs.shop.value
+                        _payload_content = (
+                            [s.card for s in _payload_pre.cards
+                             if s.kind == 'content' and s.card]
+                            if _payload_pre is not None else [])
                         _sold_names: list[str] = []
                         _shop_fill_cards: list[ShopCard] = []
                         if isinstance(a, SellDeployed) \
@@ -2426,10 +2443,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                 and 0 <= i < len(_dep_pre)
                                 and _dep_pre[i] is not None]   # ADR-0392
                             _shop_fill_cards = [
-                                _payload_pre.cards[f.idx]
+                                _payload_content[f.idx]
                                 for f in (a.fill or [])
-                                if f.source == 'shop' and _payload_pre is not None
-                                and 0 <= f.idx < len(_payload_pre.cards)]
+                                if f.source == 'shop'
+                                and 0 <= f.idx < len(_payload_content)]
                         _v2_outcome = apply_shop_action_logic(
                             _apply_bs, a, produced_by=_SIM_ENGINE_ACTOR,
                             sig=ChannelSig(family='logic_action',
