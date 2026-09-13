@@ -24,6 +24,8 @@
 
 **验收凭据形式**：测试名清单（V 组 + 回归帧）+ ruff check
 
+> **代位指针（armory-box-value 定稿）**：本阶段 P-1 已由 `2026-09-12-armory-box-value/landing.md` §3.1 代位执行并交付——V2 判据修订（原「通用性 8 名对拍」与注册表真相互斥：手表梯度无据，改独立构造对拍 + 形态快照）、件 2 薄委托暂缓（material_value 保持手表本体至该迭代 3.2 随打分器整体退役消灭）、S13 认领归属该迭代 3.1。编排者不再按本 §3.1 另立 P-1 任务。
+
 ## 3.2 P-2 执行面卫生
 
 **范围**：`_supply_refresh_used` 布尔升格节点戳 `_supply_refresh_node (plane, round)`（op + sim 两写点、ExecState 字段、旧布尔删除）；`flow.py:537` 与 `cw_strategy.py:173`「OCR 未就绪」滞后 docstring 修正。边界：不碰 decide_supply 判据（P-3）。

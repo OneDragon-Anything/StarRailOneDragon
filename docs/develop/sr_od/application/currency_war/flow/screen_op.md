@@ -137,7 +137,7 @@
 | 战斗等待（battle_wait） | 无（纯等待+探针） | 推进 | **空决策形态原生件**：`CwScreenBattleWait` 三段式 = 入口观察（闩∨帧锚,外循环判定）+推进（等结算/点继续）+交回；无策略器问询即合规，不再列「暂不适合」 |
 | 位面切换/情报 | 推进/确认 | 推进 | **空决策形态**：位面过渡 `CwScreenPlaneTransition` / 位面简报 `CwScreenBriefing` / 位面详情 `CwScreenPlaneDetail`（T-121 新立）/ 等待1-1 `CwScreenWaitOneOne`——推进为流程义务，独立 op + 交回外循环 |
 | 选装备三选一（equip_pick，`cw_screen_equip_pick.py`，r129） | 选卡（点卡即选） | 离开由主流程出战驱动（画面内无独立确认按钮,`cw_screen_equip_pick.py:4-5`） | 单选族例外（零投影账） |
-| 武装箱弹窗（armory_box，`cw_screen_armory_box.py`） | 点 × 关闭（道具获得说明弹窗,`:36-41`） | 关闭即离开 | 无选择面（说明弹窗）→ 不入规范;「四选一选卡」实为备战箱槽开箱链（`prep_actions.py` 执行器 `_pick_box_card`:OCR 卡名→`decide_box_card`/材料通用性回落）,不属本画面 |
+| 武装箱弹窗（armory_box，`cw_screen_armory_box.py`） | 点 × 关闭（道具获得说明弹窗,`:36-41`） | 关闭即离开 | 无选择面（说明弹窗）→ 不入规范;「四选一选卡」实为备战箱槽开箱链（`prep_actions.py` 执行器 `_pick_box_card`:OCR 卡名→`decide_box_card` 薄壳→共享机器 `cw_equip_value.pick_equipment` 序数分档）,不属本画面 |
 | **推进弹窗族（0a4/0e2/0e3/0f'/0g/0m/1b/1d/1g/5,T-121 新立 10 op;+0t 商店卡牌详情,T-163 补立:双 id_mark 门→点 X 验消失→交回,点球误触弹窗族消费分支）** | 无（推进为流程义务;0g 固定选首件=现行为申报） | 关闭/返回/点首件即终结 | 空决策形态（合同 = `screen_op.md` §8.3 判据总表 + T-121 方案 §2.1:新 op 单尝试/重试预算归外循环）;原 `cw_loop.py` 直管内联处理迁入 op（清单 = T-121 方案 §1.1）,分发判定留外循环 |
 
 ## 8. 开放问题五条（本节 = flow 侧展开 + 裁决建议，留 flow 实施批定）

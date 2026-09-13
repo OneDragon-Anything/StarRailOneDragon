@@ -23,7 +23,7 @@
 | `decide_planner(options)` | E16（银狼策划事件：升费卡二选一；2026-08-19 用户定调批次接入策略模块） | 委托 `cw_events.decide_planner`（升费卡打分含银狼线/在场判定；target_comp 决定银狼线加成） | **有规格**（知识判据；2026-08-19 用户定调接入策略模块） |
 | `decide_star_tome(options)` | E17（星徽秘典四选一；2026-08-19 用户定调批次接入策略模块） | 打分：①target_comp.all_factions 命中 +`PICK_BIAS.tome_target_faction`；②board 已有该阵营（板计数 ×`PICK_BIAS.tome_board_hit`）；③当前配方框架阵营命中 +`PICK_BIAS.tome_framework_faction`；无命中 fallback idx=0 | **有规格**（结构打分，非数学门） |
 | `decide_wish_trial(options)` | E5（圣杯试炼二选一，祈愿试炼） | 打分：①金币类 +`PICK_BIAS.wish_gold`；②target/框架阵营词命中 +`PICK_BIAS.wish_faction`；③「刷新/购买」操作向 +`PICK_BIAS.wish_operation`；另 effect_pick_bias 基分；fallback idx=0 | **有规格**（奖励偏好序雏形：Archer>金币>星徽，combo_methodology）；数学待 derive（08 E5：奖励序 = 知识判据；「何时接」可挂金日程；**供给硬缺为前置**） |
-| `decide_box_card(names)` | E18（武装箱/节点弹窗四选一装备卡；2026-08-19 用户定调批次接入策略模块） | 打分：①target.key_equips 命中 +`PICK_BIAS.box_key_equip`（成型加速压倒）；②合成材料通用性（`cw_prep_expect.material_value` 配方数）；③key_equips 的合成材料（两跳，读 EQUIPMENTS.recipes）命中 +`PICK_BIAS.box_key_material`；fallback idx=0 | **有规格**（结构打分） |
+| `decide_box_card(names)` | E18（武装箱/节点弹窗四选一装备卡；2026-08-19 用户定调批次接入策略模块） | 薄壳：locked_comp 两态锚 + 三本库存账 → 共享机器 `pick_equipment`（kernel/cw_equip_value，序数分档：key 直击 > 近兑现 > 材料 > 通用；base = `equip_generic_value` 通用输出先验）；fallback idx=0 | **有规格**（armory-box-value 定稿；零新常数，数值维 = P42 挂账不变） |
 
 ## 2. 事件面目录 E1-E18（原 03 §4.9 收编 + 2026-08-19 用户定调批次后补三接口 E16-E18；判据状态详见 [08_events.md](08_events.md)）
 
@@ -46,7 +46,7 @@
 | E15 | 额外/期权型策略三选一 | 非固定节点（期权/联席/远见子型） | 决策机制同 E2；子型退化：不可刷新型一次定 / 强制随机型仅登记按 resolved 语义；日程由已持效果登记推导 | invest_effects 批5/§2；INVEST_MUTATIONS |
 | E16 | 银狼策划事件（升费卡二选一） | 策划节点（2026-08-19 用户定调批次接入策略模块） | 升费卡打分含银狼线/在场判定；target_comp 决定银狼线加成（§1 `decide_planner` 行） | 2026-08-19 用户定调；cw_events |
 | E17 | 星徽秘典四选一 | 星徽秘典节点（2026-08-19 用户定调批次接入策略模块） | 结构打分：target 阵营命中/板面已有阵营/配方框架阵营命中三层 × PICK_BIAS（§1 `decide_star_tome` 行）。与 E8（虚数件驾驶员指派）同属星徽域但是不同决策点——E8 定「谁驾驶」、E17 定「选哪张秘典」，不归并 | 2026-08-19 用户定调批次；pick_bias |
-| E18 | 武装箱/节点弹窗四选一装备卡 | 武箱子节点（2026-08-19 用户定调批次接入策略模块） | 结构打分：key_equips 命中优先/合成材料通用性/key_equips 材料两跳命中（§1 `decide_box_card` 行） | 2026-08-19 用户定调批次；cw_prep_expect |
+| E18 | 武装箱/节点弹窗四选一装备卡 | 武箱子节点（2026-08-19 用户定调批次接入策略模块） | 序数分档制：key 直击 > 近兑现 > 材料 > 通用，base = 通用输出先验（§1 `decide_box_card` 行） | armory-box-value 定稿；cw_equip_value |
 
 **持续型形态约束**（被动改写决策面输入，invest_effects §4 D 类）：节省工位/人才空洞/济济/多元化团队/人海战术/规模效应——消费点 = [10_prep_decisions.md](10_prep_decisions.md) §3 板满门与 bench 稀缺定价、§1 部署谓词、[11_shop_decisions.md](11_shop_decisions.md) §1 插件边际贡献；以 max_units/bench_cap/bond_cap 谓词族接入，值随已选环境动态。
 

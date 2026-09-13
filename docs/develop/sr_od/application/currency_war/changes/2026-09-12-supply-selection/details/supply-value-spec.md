@@ -93,7 +93,7 @@ PLANE_NODE_COUNT = {1: 9, 2: 9, 3: 9}  【注·节点表：node_ordinal_of =
 - **落点选型：新模块 `kernel/cw_equip_value.py`**。理由：①消费位横跨 kernel（supply/planner）/strategies（box）/operations（equip_pick）/sim（engine_p1 采样池 + ledger 审计），需独立于任何单一消费面的公共落点；`cw_prep_expect` 的模块界 = 备战期望态对账（其 docstring :1-9），混入决策期通用价值会破其边界；`cw_equipment_data`（data 层）只放注册表真值不放决策价值。②sim/checks 现跨模块 import 私有符号 `_EQUIP_VALUE`（ledger.py:1540/:1606）——升格同时消除该坏味。
 - **内容三件**：
   1. `EQUIP_GENERIC_VALUE: dict[str, int]` —— 现 `_EQUIP_VALUE` **逐值平移**（cw_events.py:604-642，值零变化； 审计注释随迁；键 ⊆ EQUIPMENT_ROSTER 断言保持 判据）。值不再重推：对位锚法产出的现表是已过审计的单一源，重拍 = 违禁拍值。
-  2. `equip_material_generality(name) -> int` —— **注册表化**：合成材料通用性 = 全 EQUIPMENTS 配方引用计数（【注·注册表派生】），替换 `MATERIAL_VALUE_TABLE` 手表（cw_prep_expect.py:32-40 自注「v1:进阶配方引用数」）；手表值转锁（§5 V2 对拍），`cw_prep_expect.material_value` 改薄委托。
+  2. `equip_material_generality(name) -> int` —— **注册表化**：合成材料通用性 = 全 EQUIPMENTS 配方引用**条数**（【注·注册表派生】），替换 `MATERIAL_VALUE_TABLE` 手表（cw_prep_expect.py:32-40 自注「v1:进阶配方引用数」）。**修订指针（armory-box-value 定稿）**：实跑证实注册表无梯度（简易 8 件各 10 条完全同值）与 V2 原文互斥（手表出处文档已删）——V2 改独立构造对拍 + 形态快照；`material_value` 薄委托**暂缓**，保持手表本体至该迭代 3.2 随打分器整体退役消灭。
   3. `key_fit_names(key_equips) -> frozenset[str]` —— 契合全集 = key_equips 成品 ∪ 各成品 recipes 全部材料（两跳，【注·注册表】cw_equipment_data.recipes）；单一源供三个消费位（supply +10/+3、box +100/+30、equip_pick 子串集）。
 - **未锁态（裁定 5）**：装备分 = `equip_generic_value(equip)`，**无任何阵容绑定项**——现行 key_equips +10 消费 `target_comp` 伪 comp（P1 配方对物化，T-155 同款辖域错位，flow.py:405-410 自证）随两态化**移除**。行为变化锚点 = 锁 S8。
 - **已锁态**：`key_fit_names(locked_comp.key_equips)` 契合——成品命中 +10（现行 +10 语义保留，总纲初稿 §2.1-3）；成品 recipes 材料命中 +3（**组件缺口维度 v1 结构版**，§4）；+10/+3 比例承袭 decide_box_card 现行 100:30 结构（flow.py:662-664，对位锚非新拍值）。装备分 = 通用值 + 契合项（成品与材料不叠加，成品优先）。
@@ -177,7 +177,7 @@ def decide_supply(options: list[SupplyOption], bs: BoardState, *,
 | 编号 | 断言 | 依据 |
 |---|---|---|
 | V1 | `EQUIP_GENERIC_VALUE` 键集 = 迁移前 `_EQUIP_VALUE` 键集（快照对拍）∧ ⊆ EQUIPMENT_ROSTER | §1.3 平移；|
-| V2 | `equip_material_generality(n)` == 旧 `MATERIAL_VALUE_TABLE[n]` ∀ 8 名 | §1.3 注册表化 ↔ 手表对拍（分歧 = 注册表变化信号，先红后改） |
+| V2 | ~~`equip_material_generality(n)` == 旧 `MATERIAL_VALUE_TABLE[n]` ∀ 8 名~~ **已修订（armory-box-value）**：机器计数 vs 直查注册表独立构造逐名相等 + 形态快照（简易 8 名各 10 条/钻 11/垃圾袋 2/进阶 0；单位 = 配方引用条数）——原对拍与注册表真相互斥（手表梯度无据），实跑定谳见该迭代 design §1.1 gap 4 | §1.3 注册表化（修订版） |
 | V3 | `key_fit_names(k)` ⊆ EQUIPMENT_ROSTER ∧ k ⊆ key_fit_names(k) ∀ k ∈ {任一 comp key_equips 抽样} | §1.3 |
 
 **行为锁**（选项帧 = SupplyOption 列表；角色名/装备名用注册表实名，模块头断言其档位归属防漂移）：

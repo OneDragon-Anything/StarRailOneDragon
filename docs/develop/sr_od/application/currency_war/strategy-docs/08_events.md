@@ -30,7 +30,7 @@
 | E15 | 额外/期权型策略三选一（期权/联席/远见子型） | 决策机制同 E2；不可刷新型一次定 / 强制随机型仅登记按 resolved 语义；日程由已持效果登记推导；血本位候选排除（集合级已落码） | 待 derive | 同 E2 锚；期权型时值 = P38 金日程条件化 + 触发时点概率（INVEST_MUTATIONS 时效登记） |
 | E16 | 银狼策划事件（升费卡二选一；2026-08-19 用户定调批次接入策略模块） | 升费卡打分含银狼线/在场判定，target_comp 决定银狼线加成（`cw_events.decide_planner`，接口 = `strategies/impl/flow.py` `decide_planner`） | 待 derive（弱数学面；现行 = 知识判据） | 知识判据承载；后续可挂 target_comp 对齐参数化（同 E1 台账通道的降配形） |
 | E17 | 星徽秘典四选一（2026-08-19 用户定调批次接入策略模块） | 结构打分：target 阵营命中/板面已有阵营/配方框架阵营命中三层 × PICK_BIAS 常量（接口 = `decide_star_tome`） | 待 derive（结构打分，非数学门；现行实现无数学判据） | 同 E8 弱数学面（边际羁绊贡献结构判据同源）；不立数值门 |
-| E18 | 武装箱/节点弹窗四选一装备卡（2026-08-19 用户定调批次接入策略模块） | 结构打分：key_equips 命中优先/合成材料通用性/key_equips 材料两跳命中 × PICK_BIAS 常量（接口 = `decide_box_card`，材料估值 = `cw_prep_expect.material_value`） | 待 derive（结构打分，非数学门；现行实现无数学判据） | 组件缺口通道（P42 component_demand/hoard_gaps 参数化）可作后续锚 |
+| E18 | 武装箱/节点弹窗四选一装备卡（2026-08-19 用户定调批次接入策略模块） | 序数分档（共享机器 `pick_equipment`，接口 = `decide_box_card` 薄壳）：key 直击 > 近兑现 > 材料 > 通用 + 通用输出先验（`cw_equip_value`；材料估值表已退役） | 有规格（armory-box-value 定稿；组件缺口数值维 = P42 挂账不变） | 组件缺口通道（P42 component_demand/hoard_gaps 参数化）可作后续锚 |
 
 ## 2. 落差管理（本篇的核心职责）
 
