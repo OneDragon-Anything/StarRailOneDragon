@@ -13,6 +13,15 @@ from pathlib import Path
 from sr_od.application.currency_war.data.cw_battle_tables import (
     P2CombatCalib,
 )
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    BENCH_CAPACITY,
+    BenchChar,
+    deployed_from_compact,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
+    NodeKey,
+)
 
 # 血预算停手·终止分支账本决策位(设计 迁移审计 w659(git 历史) v2 §5.1 R4;ADR-0469)——
 # 账本行 'terminal_release' 键的写入侧单一源 =
@@ -23,12 +32,6 @@ from sr_od.application.currency_war.kernel.cw_investments import (
     EconomyEffect,
     normalize_invest_name,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    BENCH_CAPACITY,
-    BenchChar,
-    deployed_from_compact,
-)
-from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 from sr_od.application.currency_war.strategies.impl.cw_strategy import StrategySession
 
 # 开局 bench 构成(遥测校准:开局 4 张,1 费主导)
@@ -99,19 +102,44 @@ class P2ReplayEntry:
             position_pref=u.get('position_pref', 'back'),
             equips=list(u.get('equips') or []))
 
-    def build_state(self) -> CwSimFrame:
-        """进场态 → CwSimFrame(plane=2;bench 保 9 槽 pad 语义)。"""
-        st = CwSimFrame()
-        st.plane, st.level, st.gold, st.hp = 2, self.level, self.gold, self.hp
-        st.board = dict(self.board)
+    def build_state(self, bs: GameState) -> GameState:
+        """进场态 → 播种进容器 GameState(plane=2;bench 保 9 槽 pad 语义;
+        T-185 批B:工作帧退役,引擎容器 = board_state_of(sess) 单例,
+        开局播种 = obs 族(裁定 A 渠道表);返回 bs 便于链式调用)。"""
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            ChannelSig,
+            bench_view_of_slots,
+            deployed_slots_to_rows,
+        )
+        _sig = ChannelSig(family='obs', actor='SimEngineP1',
+                          mode='synthesized',
+                          group_id='sim:SimEngineP1@p2-entry')
+        _ev = 'sim:engine:p2-entry'
+
+        def _obs(field, value) -> None:
+            bs.observe(field, value, evidence=_ev, sig=_sig)
+
+        # 节点键 = plane 2 进场锚(round 序列由引擎逐轮覆写;kind 空 =
+        # 进场锚,首轮 round-init 写真值 kind)
+        _obs(bs.node, NodeKey(plane=2, round_num=1, kind=''))
+        _obs(bs.level, int(self.level))
+        _obs(bs.gold, int(self.gold))
+        _obs(bs.hp, int(self.hp))
+        _obs(bs.board, dict(self.board))
+        _bench = [None] * BENCH_CAPACITY
         for i, u in enumerate(self.bench[:BENCH_CAPACITY]):
-            st.bench[i] = self._unit(u, i + 1)
+            _bench[i] = self._unit(u, i + 1)
+        _obs(bs.bench, bench_view_of_slots(_bench))
         # ADR-0392:进场态紧缩序 → 槽位表(按 position_pref 路由落槽)
-        st.deployed = deployed_from_compact(
+        _slots = deployed_from_compact(
             [self._unit(u, i + 1) for i, u in enumerate(self.deployed)])
-        st.equips = list(self.equips)
-        st.streak = self.streak
-        return st
+        _front, _back = deployed_slots_to_rows(_slots)
+        _obs(bs.front_row, _front)
+        _obs(bs.back_row, _back)
+        if self.equips:
+            _obs(bs.equips, list(self.equips))
+        _obs(bs.streak, int(self.streak))
+        return bs
 
 
 

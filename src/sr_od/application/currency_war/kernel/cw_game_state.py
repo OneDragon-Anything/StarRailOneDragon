@@ -289,6 +289,9 @@ REGISTERED_ACTORS: set[str] = {
     'CwLoop',                  # 外循环(开局链分支标识写点,obs 族 ①)
     'EffectLedgerBridge',      # 效果账本→字段桥(容量投影/增额授予;v3.2-G4
                                # §3.2.1 登记类属补项;R5 W1 起显式签名)
+    'SimEngineP1',             # sim P1 引擎(T-185 批B:外部事件 obs 族写点
+                               # ——收入/结算/回合初始化/开局播种/装备发放/
+                               # 部署代理;动作应用走 logic_action 族转移函数)
 }
 
 
@@ -717,12 +720,26 @@ def consume_defect_sink() -> list[dict]:
     return rows
 
 
+#: 观察覆盖 logic 失配告警的抑制登记面(T-185 批B;裁定 A/裁定 4 申报表
+#: 的代码化):evidence 命中前缀的失配缺陷**不落 buffer 不告警**。
+#: 语义:sim 引擎外部事件写(obs 族)覆盖动作投影(logic 源)是 sim 建模
+#: 的结构形态——事件注入(收入/结算/回声)对投影的推进不是「推算 bug」,
+#: 留证无判读价值;xp 即时结转(投影)vs sim 轮末延迟结转(引擎账本)
+#: = 申报差异(裁定 4 明点)。生产实机链零 'sim:engine:' 前缀写点,
+#: 抑制面零触达(喂入口 evidence = 'sim:synthesized' 不同前缀,不受辖)。
+_MISMATCH_SUPPRESS_PREFIXES: tuple[str, ...] = ('sim:engine',)
+
+
 def _emit_defect(*, field_name: str, expected: Any, actual: Any,
                  evidence: str | None,
                  kind: str = 'observe_vs_logic_mismatch') -> None:
     """缺陷台账留证(§2.3 观察赢):观察覆盖 logic 值失配 = 推算 bug,
     留证后修推算代码(ADR-0651;不做运行时挂账对账)。best-effort:
-    外送钩子异常不阻塞观察主链。"""
+    外送钩子异常不阻塞观察主链。抑制登记面见
+    :data:`_MISMATCH_SUPPRESS_PREFIXES`(T-185 申报表代码化)。"""
+    if evidence is not None and any(
+            evidence.startswith(p) for p in _MISMATCH_SUPPRESS_PREFIXES):
+        return
     row: dict = {'kind': kind, 'field': field_name,
                  'expected': expected, 'actual': actual,
                  'observed_evidence': evidence}
@@ -1672,6 +1689,14 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         # 应用(_apply_full_bench_merge_buy,前置不满足返回 None = 拒买)。
         scratch_b = list(bench_slots)
         scratch_d = list(dep_slots)
+        # ⚠ list() 浅拷贝与读口结果共享元素对象——_merge_bench 原地改星
+        # 后「scratch is pre」逐元素相等,行写判据必须用值签名快照
+        # (合成吃场上件时星级变化才可检;槽表副本别名域)。
+        _dep_pre_sig = [(str(getattr(d, 'char_id', '') or ''),
+                         int(getattr(d, 'star', 1) or 1),
+                         tuple(getattr(d, 'equips', ()) or ()),
+                         str(getattr(d, 'position_pref', '') or ''))
+                        for d in dep_slots]
         new_bc = BenchChar(slot=0, char_id=name,
                            faction=str(getattr(card, 'faction', '') or '?'),
                            star=star)
@@ -1708,8 +1733,13 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         # bench 整表写(落位+合成应用后终态;live 简单腿写语义保持)
         _w(bs.bench, bench_view_of_slots(scratch_b), 'proj_buy_place')
         # 合成连锁全场域:deployed 被合成消费/升星时 rows + board 随写
-        # (域扩面申报表;无合成 = scratch 逐值等 ≡ pre,零写 = live 逐位同)
-        if scratch_d != dep_slots:
+        # (域扩面申报表;值签名比较——见上方浅拷贝别名注)
+        _dep_post_sig = [(str(getattr(d, 'char_id', '') or ''),
+                          int(getattr(d, 'star', 1) or 1),
+                          tuple(getattr(d, 'equips', ()) or ()),
+                          str(getattr(d, 'position_pref', '') or ''))
+                         for d in scratch_d]
+        if _dep_post_sig != _dep_pre_sig:
             _write_deployed(scratch_d)
             _write_board(scratch_d)
         return LogicOutcome(applied=True, bought_count=k)

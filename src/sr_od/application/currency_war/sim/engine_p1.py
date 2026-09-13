@@ -38,8 +38,6 @@ from sr_od.application.currency_war.kernel.cw_battle_calib import (
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
-    card_cost,
-    sell_refund,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BENCH_CAPACITY,
@@ -52,6 +50,25 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     exec_state_of,
     iter_occupied,
     iter_occupied_deployed,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    ChannelSig,
+    GameState,
+    NodeKey,
+    ShopActionExecuted,
+    ShopPayload,
+    apply_shop_action_logic,
+    bench_slots_of,
+    bench_view_of_slots,
+    board_state_of,
+    deployed_slots_of,
+    deployed_slots_to_rows,
+    gold_of,
+    level_of,
+    max_units_of,
+    plane_of,
+    round_num_of,
+    shop_card_to_container,
 )
 from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
 from sr_od.application.currency_war.kernel.cw_investments import (
@@ -66,7 +83,6 @@ from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_s
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CompTransaction,
-    CwSimFrame,
     LevelUp,
     LevelUpShop,
     RefreshShop,
@@ -74,9 +90,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     SellDeployed,
     ShopCard,
     SwapDeploy,
-    bench_char_cost,
 )
-from sr_od.application.currency_war.kernel.cw_vocab import simulate as _simulate_state
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     InvestInjectionState,
     SimInvestProfile,
@@ -149,7 +163,7 @@ if TYPE_CHECKING:
 
 
 def _board_next_tier_of(board_factions: dict[str, int]) -> dict[str, int]:
-    """板面各阵营「下档阈值」观测键(生产 ``CwSimFrame.board_next_tier``
+    """板面各阵营「下档阈值」观测键(sim 观测键面;
     的 sim 同构面;语义 = 左面板 "X/Y" 的 Y)。
 
     派生单一源 = ``kernel.cw_game_state.board_next_tier_of``(迁移批次二:
@@ -205,6 +219,67 @@ HP_UPPER_BOUND: int = 100
 LEVEL_CAP: int = 9
 
 
+# ===== T-185 批B:引擎写面(裁定 A 渠道表,修订版详设 §1)=====
+# 动作应用 = 转移函数 apply_shop_action_logic(logic_action 族,与 live
+# 同函数同渠道);外部事件(收入/结算/回合初始化/开局播种/装备发放穿戴/
+# 部署代理)= obs 族(下方 helper);驱动器 decide 期投影写维持现状
+# (裁定 3:live/sim 同代码不分叉,引擎动作应用与其幂等收敛)。
+_SIM_ENGINE_ACTOR: str = 'SimEngineP1'
+
+
+def _sim_sig(group: str) -> ChannelSig:
+    """sim 引擎外部事件写签名(obs 族,synthesized 子模 = sim 真值语义)。"""
+    return ChannelSig(family='obs', actor=_SIM_ENGINE_ACTOR,
+                      mode='synthesized',
+                      group_id=f'sim:{_SIM_ENGINE_ACTOR}@{group}')
+
+
+def _sim_ev(tag: str) -> str:
+    """外部事件 evidence('sim:engine' 前缀 = 失配抑制登记面前缀,
+    kernel ``_MISMATCH_SUPPRESS_PREFIXES`` 申报表代码化)。"""
+    return f'sim:engine:{tag}'
+
+
+def _sim_observe(bs: GameState, field, value, tag: str, group: str) -> None:
+    """外部事件 obs 写单域。"""
+    bs.observe(field, value, evidence=_sim_ev(tag), sig=_sim_sig(group))
+
+
+def _sim_write_bench(bs: GameState, slots: list, tag: str, group: str) -> None:
+    """bench 槽表中间形态 → 容器 bench 域 obs 写。"""
+    _sim_observe(bs, bs.bench, bench_view_of_slots(slots), tag, group)
+
+
+def _sim_write_deployed(bs: GameState, slots: list, tag: str,
+                        group: str) -> None:
+    """deployed 槽表中间形态 → front/back rows 整表 obs 写(平移契约
+    同款换算单一源 = deployed_slots_to_rows)。"""
+    front, back = deployed_slots_to_rows(slots)
+    _sim_observe(bs, bs.front_row, front, f'{tag}-front', group)
+    _sim_observe(bs, bs.back_row, back, f'{tag}-back', group)
+
+
+def _sim_write_board(bs: GameState, slots: list, tag: str,
+                     group: str) -> None:
+    """board 全量重算 obs 写(派生单一源 = _recount_board,与引擎既有
+    _board_counts_of 同本体)。"""
+    from sr_od.application.currency_war.kernel.cw_bond_equips import (
+        _recount_board,
+    )
+    _sim_observe(bs, bs.board, _recount_board(slots), tag, group)
+
+
+def _sim_write_shop_payload(bs: GameState, drawn: list, probs,
+                            tag: str, group: str) -> None:
+    """抽牌帧 → shop payload obs 写(回合初始化外部事件;legacy 牌 →
+    容器牌换算单一源 = shop_card_to_container,refresh_probs 随载荷)。"""
+    _sim_observe(
+        bs, bs.shop,
+        ShopPayload(cards=[shop_card_to_container(c) for c in drawn],
+                    refresh_probs=dict(probs) if probs else {}),
+        tag, group)
+
+
 # 装备供给结构校准(供给重校准批;数据源 = 实机 [cw!][grant] 快照 57 局
 # 逐轮差分画像,分析脚本与校准目标表见 .debug 产物 w477_supply_recalib/):
 # 实机装备类发放 = 基础件 86% / 进阶 14%(工具冶金炉/拆装扳手为跨局
@@ -227,7 +302,7 @@ EQUIP_GRANT_BONUS_ADV_SHARE: float = 0.35   # 追加件中进阶占比
 # 注入走**追加件通道旁路**:pool 非空且命中概率时追加 1 件工具(不经
 # 供给 3 选项,不改 decide_supply 决策语义)。**缺省(pool 空 ∧ P=0)零
 # 漂移**——既有批次与池指纹完全不受影响;开注入属显式实验配置,池指纹
-# 变化由实验批自行声明。消费侧:工具名进 st.equips 后不进 equip_allocation
+# 变化由实验批自行声明。消费侧:工具名进引擎装备 owned 池后不进 equip_allocation
 # 可穿池(下方分配调用处按注册表类别过滤,与执行层 wearable 同口径)。
 TOOL_GRANT_INJECT_POOL: list[str] = []
 TOOL_GRANT_INJECT_P: float = 0.0
@@ -396,7 +471,7 @@ def _lag_excluding_fenced_holds(lag_idx: list[int], replay_occ: list[int],
                and replay_occ[i] not in main_held_slots)
 
 
-def _fill_lag_replay(st: CwSimFrame,
+def _fill_lag_replay(bs: GameState,
                      target_factions: frozenset[str],
                      target_cores: frozenset[str],
                      fw_carry: frozenset[str],
@@ -406,20 +481,23 @@ def _fill_lag_replay(st: CwSimFrame,
     """统一 lag 口径:对补部署后的 bench 残余重放围栏,「围栏认可未上」
     件数即 deploy_lag_units(W678:围栏 hold 不计漏上,豁免集 =
     ``last_held_slots``)。原为 ``_residual_fill_deploy`` 内嵌段,T-279
-    R1-a 计划直投路径需同一 lag 口径,提取共用(行为逐位同旧)。"""
+    R1-a 计划直投路径需同一 lag 口径,提取共用(行为逐位同旧)。
+    T-185 批B:读源切容器席位读口(部署代理写回后容器 = 权威态)。"""
     from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
-    _lag_slots = [i for i, bc in enumerate(st.bench) if bc is not None]
-    _lag_keep = [bc for bc in st.bench if bc is not None]
+    _bench_slots = bench_slots_of(bs)
+    _dep_slots = deployed_slots_of(bs)
+    _lag_slots = [i for i, bc in enumerate(_bench_slots) if bc is not None]
+    _lag_keep = [bc for bc in _bench_slots if bc is not None]
     if not _lag_keep:
         return 0
     _lag_idx, _ = _dl.select_deployments(
         _lag_keep,
         deployed_cids={d.char_id
-                       for d in iter_occupied_deployed(st.deployed)
+                       for d in iter_occupied_deployed(_dep_slots)
                        if d.char_id},
-        deployed_fac=_board_factions_of(st.deployed),
-        board=dict(st.board),
-        cap=st.max_units(),
+        deployed_fac=_board_factions_of(_dep_slots),
+        board=dict(bs.board.value or {}),
+        cap=max_units_of(bs),
         target_factions=target_factions,
         target_cores=target_cores,
         fw_carry=fw_carry,
@@ -433,7 +511,7 @@ def _fill_lag_replay(st: CwSimFrame,
 
 
 def _residual_fill_deploy(
-    st: CwSimFrame,
+    bs: GameState,
     target_factions: frozenset[str],
     target_cores: frozenset[str],
     fw_carry: frozenset[str],
@@ -479,7 +557,11 @@ def _residual_fill_deploy(
     """
     from sr_od.application.currency_war.kernel import cw_deploy_logic as _dl
 
-    _occ = [(i, bc) for i, bc in enumerate(st.bench) if bc is not None]
+    # T-185 批B:槽表中间形态工作(容器读口取表 → 本地表部署 → 整表
+    # obs 写回);部署代理 = 结算期代理,obs 通道申报对齐(详设 §3 A3)。
+    _bench_slots = bench_slots_of(bs)
+    _dep_slots = deployed_slots_of(bs)
+    _occ = [(i, bc) for i, bc in enumerate(_bench_slots) if bc is not None]
     _keep = _occ
     _res_held = 0   # 保留集恒空(v3_hoard 写端已亡),如实恒 0
     _res_up = 0
@@ -487,15 +569,16 @@ def _residual_fill_deploy(
     # 判据可能使此前 held 的件转为可上(生产 op 侧 = drag 循环逐件动态
     # 仲裁同语义)——单趟会把「先上激活成对」的件错留 bench(640442 r7
     # 取证:单趟 up=2/lag=2,循环后归零)。
+    _placed_any_ever = False
     while _keep:
         _up_idx, _held_idx = _dl.select_deployments(
             [bc for _, bc in _keep],
             deployed_cids={d.char_id
-                           for d in iter_occupied_deployed(st.deployed)
+                           for d in iter_occupied_deployed(_dep_slots)
                            if d.char_id},
-            deployed_fac=_board_factions_of(st.deployed),
-            board=dict(st.board),
-            cap=st.max_units(),
+            deployed_fac=_board_factions_of(_dep_slots),
+            board=dict(_board_counts_of(_dep_slots)),
+            cap=max_units_of(bs),
             target_factions=target_factions,
             target_cores=target_cores,
             fw_carry=fw_carry,
@@ -513,24 +596,33 @@ def _residual_fill_deploy(
         for _j in _up_idx:
             if _j < len(_keep):
                 _slot, bc = _keep[_j]
-                if st.bench[_slot] is not None:
-                    deployed_place(st.deployed, bc)
-                    st.bench[_slot] = None
+                if _bench_slots[_slot] is not None:
+                    deployed_place(_dep_slots, bc)
+                    _bench_slots[_slot] = None
                     _res_up += 1
                     _placed_any = True
+                    _placed_any_ever = True
         if not _placed_any:
             break
-        st.board = _board_counts_of(st.deployed)
-        _keep = [(i, bc) for i, bc in _keep if st.bench[i] is not None]
+        _keep = [(i, bc) for i, bc in _keep
+                 if _bench_slots[i] is not None]
+    if _placed_any_ever:
+        # 整表写回(部署代理 obs;board 全量重算派生同旧)
+        _sim_write_bench(bs, _bench_slots, 'deploy-fill-bench',
+                         'residual-fill')
+        _sim_write_deployed(bs, _dep_slots, 'deploy-fill-dep',
+                            'residual-fill')
+        _sim_write_board(bs, _dep_slots, 'deploy-fill-board',
+                         'residual-fill')
     # 统一 lag:补部署后残余(围栏认可未上件;重放单一实现 =
     # _fill_lag_replay,T-279 R1-a 直投路径共用)
-    _lag = _fill_lag_replay(st, target_factions, target_cores, fw_carry,
+    _lag = _fill_lag_replay(bs, target_factions, target_cores, fw_carry,
                             locked_factions, recipe_floor_lock_exempt,
                             _last_held_slots)
     return _res_up, _res_held, _lag
 
 
-def _m1p_plan_fill_deploy(st: CwSimFrame, plan: SwapPlan,
+def _m1p_plan_fill_deploy(bs: GameState, plan: SwapPlan,
                           ctx: SwapPlanContext | None, sess) \
         -> tuple[int, int, int]:
     """M1″ 换血轮轮末补部署——计划单一源消费(T-279 R1;ADR-0640)。
@@ -570,69 +662,53 @@ def _m1p_plan_fill_deploy(st: CwSimFrame, plan: SwapPlan,
         assemble_swap_plan_inputs,
         swap_plan_up_names,
     )
+    # T-185 批B:读源 = 容器席位读口(容器 = 转移函数权威态,喂入口
+    # 随工作帧退役删除);部署 = 本地槽表 + 整表 obs 写回。
+    _bench_slots = bench_slots_of(bs)
+    _dep_slots = deployed_slots_of(bs)
     up_names = swap_plan_up_names(plan, ctx)
-    occ_now = sum(1 for _ in iter_occupied_deployed(st.deployed))
+    occ_now = sum(1 for _ in iter_occupied_deployed(_dep_slots))
     occ_plan = len(ctx.deployed) if ctx is not None else None
-    bench_names = {b.char_id for b in st.bench
+    bench_names = {b.char_id for b in _bench_slots
                    if b is not None and b.char_id}
-    dep_names = {d.char_id for d in iter_occupied_deployed(st.deployed)
+    dep_names = {d.char_id for d in iter_occupied_deployed(_dep_slots)
                  if d.char_id}
     direct_ok = (ctx is not None and bool(up_names)
                  and occ_plan is not None and occ_now == occ_plan - 1
                  and all(n in bench_names for n in up_names)
                  and not (set(up_names) & dep_names)
-                 and occ_now + len(up_names) <= st.max_units())
+                 and occ_now + len(up_names) <= max_units_of(bs))
     if direct_ok:
         _placed = 0
         for _n in up_names:
-            _slot = next((i for i, b in enumerate(st.bench)
+            _slot = next((i for i, b in enumerate(_bench_slots)
                           if b is not None and b.char_id == _n), -1)
             if _slot < 0 or deployed_place(
-                    st.deployed, st.bench[_slot]) is None:
+                    _dep_slots, _bench_slots[_slot]) is None:
                 break   # 防御:前提已验不可达;部分放置如实计数
-            st.bench[_slot] = None
+            _bench_slots[_slot] = None
             _placed += 1
-        st.board = _board_counts_of(st.deployed)
+        if _placed:
+            _sim_write_bench(bs, _bench_slots, 'm1p-fill-bench', 'm1p-fill')
+            _sim_write_deployed(bs, _dep_slots, 'm1p-fill-dep', 'm1p-fill')
+            _sim_write_board(bs, _dep_slots, 'm1p-fill-board', 'm1p-fill')
         if _placed == len(up_names):
             _lag = _fill_lag_replay(
-                st, ctx.target_factions, ctx.target_cores, ctx.fw_carry,
+                bs, ctx.target_factions, ctx.target_cores, ctx.fw_carry,
                 ctx.locked_factions, ctx.recipe_floor_lock_exempt)
             return _placed, 0, _lag
         # 部分放置(前提中途破,直投不完整)→ 落 R1-b 对当前态补余
         # (已放置件在板,重 derive 从现读出发,不回滚)
     # R1-b:卖出后现读重 derive(域辖域钉计划时点事实);装配不可得
     # (sim 供给齐备不可达,防御缺省)退计划 ctx 视图——最近真值源。
+    # T-185 批B:喂入口随工作帧退役删除(容器 = 权威态,直读)。
     _ctx2 = None
     try:
-        # 波 5b 桥退役消点:assemble 已切容器签名,sim 工作帧真值经喂入口
-        # 直写容器后读容器(原过渡桥装箱一次性视图退役)。
-        # T-185 批A:装配入参(deployed/bench/cap)同步切容器读口
-        # (上方喂入口已保证容器与本帧同拍;纯读换源零行为面)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            bench_slots_of as _bs_red_bench,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of as _bs_red_of,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            deployed_slots_of as _bs_red_dep,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            feed_sim_truth as _bs_red_feed,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            max_units_of as _bs_red_cap,
-        )
-        _bs_red = _bs_red_of(sess)
-        _bs_red_feed(_bs_red, st,
-                     at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
-                              f'-r{int(getattr(st, "round_num", 1) or 1)}'
-                              f'-r1b')
         _ctx2 = assemble_swap_plan_inputs(
-            sess, state=_bs_red,
-            deployed=[d for d in _bs_red_dep(_bs_red) if d is not None],
-            bench=[b for b in _bs_red_bench(_bs_red) if b is not None],
-            cap=_bs_red_cap(_bs_red),
+            sess, state=bs,
+            deployed=[d for d in deployed_slots_of(bs) if d is not None],
+            bench=[b for b in bench_slots_of(bs) if b is not None],
+            cap=max_units_of(bs),
             transition_domain=(ctx.transition_domain
                                if ctx is not None else None))
     except Exception:   # noqa: BLE001  重 derive 缺供给 = 退计划视图
@@ -640,10 +716,10 @@ def _m1p_plan_fill_deploy(st: CwSimFrame, plan: SwapPlan,
     if _ctx2 is None:
         _ctx2 = ctx
     if _ctx2 is None:
-        return _residual_fill_deploy(st, frozenset(), frozenset(),
+        return _residual_fill_deploy(bs, frozenset(), frozenset(),
                                      frozenset(), frozenset())
     return _residual_fill_deploy(
-        st, _ctx2.target_factions, _ctx2.target_cores, _ctx2.fw_carry,
+        bs, _ctx2.target_factions, _ctx2.target_cores, _ctx2.fw_carry,
         _ctx2.locked_factions,
         recipe_floor_lock_exempt=_ctx2.recipe_floor_lock_exempt)
 
@@ -689,7 +765,7 @@ def project_sell_buyback(acts: list[dict]) -> list[dict]:
     return loops
 
 
-def _m1p_plan_and_record(st: CwSimFrame, sess) \
+def _m1p_plan_and_record(bs: GameState, sess) \
         -> tuple[SwapPlan, dict, SwapPlanContext | None]:
     """M1″ 计划计算 + 发射意图记录(sim 决策面共用同一份计划对象)。
 
@@ -707,34 +783,21 @@ def _m1p_plan_and_record(st: CwSimFrame, sess) \
     份装配,禁二次装配出第二份输入)。
 
     谓词 = 生产同款单一源 ``assemble_swap_plan_inputs`` + ``select_swap_
-    plan``(st = 买/升级后黑板,deployed/bench = 占用件现读,cap =
+    plan``(bs = 买/升级后黑板,deployed/bench = 占用件现读,cap =
     max_units 派生链)——与生产发射/执行两面同函数、同一装配契约,禁
     第二装配。零 rng 消耗、纯读(状态写入只发生在引擎执行转录块)。
+    T-185 批B:签名 st→bs,喂入口随工作帧退役删除(容器 = 权威态)。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assemble_swap_plan_inputs,
         select_swap_plan,
         swap_plan_up_names,
     )
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        bench_slots_of,
-        board_state_of,
-        deployed_slots_of,
-        feed_sim_truth,
-        max_units_of,
-    )
-    # 波 5 喂入反转:计划谓词装配消费前直写容器、喂容器直读
-    # (旧桥装箱一次性视图随桥退役拆除;同函数同装配契约不变)。
-    # T-185 批A:装配入参切容器读口(喂入口已保证容器与本帧同拍)。
-    _bs_plan = board_state_of(sess)
-    feed_sim_truth(_bs_plan, st,
-                   at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
-                            f'-r{int(getattr(st, "round_num", 1) or 1)}-m1p')
     ctx = assemble_swap_plan_inputs(
-        sess, state=_bs_plan,
-        deployed=[d for d in deployed_slots_of(_bs_plan) if d is not None],
-        bench=[b for b in bench_slots_of(_bs_plan) if b is not None],
-        cap=max_units_of(_bs_plan))
+        sess, state=bs,
+        deployed=[d for d in deployed_slots_of(bs) if d is not None],
+        bench=[b for b in bench_slots_of(bs) if b is not None],
+        cap=max_units_of(bs))
     reasons: dict[str, str] = {}
     plan = select_swap_plan(ctx, reasons_out=reasons)
     record = {
@@ -748,7 +811,7 @@ def _m1p_plan_and_record(st: CwSimFrame, sess) \
     return plan, record, ctx
 
 
-def m1p_intent_record(st: CwSimFrame, sess) -> dict:
+def m1p_intent_record(bs: GameState, sess) -> dict:
     """M1″ 发射意图记录(兼容入口;计划本体经 ``_m1p_plan_and_record``)。
 
     返回记录 dict 形状 = nonempty/abstain/sell/up/up_names/reasons
@@ -756,22 +819,23 @@ def m1p_intent_record(st: CwSimFrame, sess) -> dict:
     取计划执行,本包装仅供锁测试与只读探针消费(test_cw_swap_plan
     意图面双向断言)。
     """
-    return _m1p_plan_and_record(st, sess)[1]
+    return _m1p_plan_and_record(bs, sess)[1]
 
 
-def m1p_swap_execute(st: CwSimFrame, plan: SwapPlan, *, acts: list[dict],
-                     spend: dict, pool: _Pool) -> tuple[CwSimFrame, bool]:
+def m1p_swap_execute(bs: GameState, plan: SwapPlan, *, acts: list[dict],
+                     spend: dict, pool: _Pool) -> bool:
     """M1″ 执行面 sim 转录:计划非空 → 逐件卖 victim(卖出臂)。
 
     T-169 最小执行面(总图设计 R2 §2 sim 边界行):生产链 = mandate 发射
     RunDeploy(m1_swap_redeploy)+ CwOpDeploy 卖出臂现读逐件卖 +
     部署 op 补上;sim 对应物 = 本函数卖 victim + 引擎轮末部署块残余
     补部署补上(调用方据返回值置显式动作旗 → skip_fence+residual_
-    fill,与显式动作轮同语义)。卖出执行走 ``cw_state.simulate`` 单一源
-    (金回充/装备回收/板面重算全在源内),账本转录行带 name+reason=
-    'm1_swap_redeploy'(换血可见性的判读锚;既有显式动作行无名,本行
-    加键不破消费)。victim 槽位 = 按 char_id 现读(占用件同名唯一,W43
-    板面约束);单一源拒绝(原子性防线)= 零行为转录如实跳过。
+    fill,与显式动作轮同语义)。卖出执行走 **容器单一转移函数**
+    (T-185 批B:apply_shop_action_logic,金回充/装备回收/板面重算
+    全在源内;income/applied 读 LogicOutcome,禁自判),账本转录行带
+    name+reason='m1_swap_redeploy'(换血可见性的判读锚;既有显式动作行
+    无名,本行加键不破消费)。victim 槽位 = 按 char_id 现读(占用件同名
+    唯一,W43 板面约束);单一源拒绝 = 零行为转录如实跳过。
 
     同构边界申报(T-169 落地审 F2):生产发射位门**未镜像**——生产
     plan.nonempty 后还有 m1p_defer_levelup(同帧 LevelUp 抑制,mandate
@@ -791,24 +855,27 @@ def m1p_swap_execute(st: CwSimFrame, plan: SwapPlan, *, acts: list[dict],
     :param acts: 轮账本动作流(调用方 ``_acts``,就地追加转录行);
     :param spend: 轮经济账(调用方 ``_spend``,sell_income 就地累加);
     :param pool: 有限牌池(卖出回池 ``ret``,与 SellBench 通道同守恒);
-    :returns: (卖出后的新 CwSimFrame, 是否有任一 victim 真卖出)。
+    :returns: 是否有任一 victim 真卖出(容器就地应用,无帧替换)。
     """
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_count_of,
+    )
     sold_any = False
-    new_st = st
     for name in plan.sell_names:
-        idx = next((i for i, d in enumerate(new_st.deployed)
+        idx = next((i for i, d in enumerate(deployed_slots_of(bs))
                     if d is not None and d.char_id == name), -1)
         if idx < 0:
             continue   # victim 已不在场(防御;同帧装配不会走到)
-        victim = new_st.deployed[idx]
-        applied_st = _simulate_state(
-            new_st, SellDeployed(deployed_idx=idx,
-                                 reason='m1_swap_redeploy', expect=name))
-        log = applied_st.action_log[-1] if applied_st.action_log else {}
-        if log.get('result') != 'applied':
+        _pre_dep = deployed_count_of(bs)
+        outcome = apply_shop_action_logic(
+            bs, SellDeployed(deployed_idx=idx,
+                             reason='m1_swap_redeploy', expect=name),
+            produced_by=_SIM_ENGINE_ACTOR,
+            sig=ChannelSig(family='logic_action', actor=_SIM_ENGINE_ACTOR,
+                           group_id='sim:SimEngineP1@m1p'))
+        if not outcome.applied:
             continue   # 单一源拒绝 → 零行为转录(与显式动作分支同口径)
-        new_st = applied_st
-        refund = sell_refund(victim.star, bench_char_cost(victim))
+        refund = int(outcome.income or 0)
         spend['sell_income'] = spend.get('sell_income', 0) + refund
         if name:
             pool.ret(name)
@@ -816,7 +883,7 @@ def m1p_swap_execute(st: CwSimFrame, plan: SwapPlan, *, acts: list[dict],
                      'name': name, 'income': refund,
                      'reason': 'm1_swap_redeploy', 'result': 'applied'})
         sold_any = True
-    return new_st, sold_any
+    return sold_any
 
 
 def _line_member_names(sess) -> frozenset[str]:
@@ -995,9 +1062,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 位面段循环体(单一源;与 simulate_p1 主入口零复制)。
         if invest:
             raise ValueError('案 b 臂(_p2_entry)不支持 invest 注入')
-        st = _p2_entry.build_state()
         sess = session or StrategySession(
             rng=random.Random(f'sim-p1-entry-{seed}'))
+        # T-185 批B:工作帧退役——进场态直接播种进会话容器(开局播种 =
+        # obs 族,裁定 A 渠道表;build_state 改容器播种签名)。
+        bs = board_state_of(sess)
+        _p2_entry.build_state(bs)
         # 初始相位经统一 sim 构建口注入(session.md §3.4-2:禁裸 setattr
         # session 策略字段;ensure_strategy_state = 被测策略工厂薄 helper)。
         from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
@@ -1012,10 +1082,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # ADR-0439 败轮金路径)。案 b 臂进场真值自带带符号值。
         streak_signed = int(_p2_entry.streak or 0)
     else:
-        st = CwSimFrame()
-        st.plane, st.level, st.gold, st.hp = 1, 3, 5, 80
-        # bench 槽位表(ADR-0316):CwSimFrame() 已 pad 9 空槽,勿重置为
-        # 紧缩 [](会让 bench_place 只见 0 槽 → 全部买入失败)
+        # bench 槽位表(ADR-0316):定长 9 槽(pad 语义,
+        # 勿重置为紧缩 []——会让 bench_place 只见 0 槽 → 全部买入失败)
+        _bench_slots: list = [None] * BENCH_CAPACITY
         for _ in range(START_BENCH_COUNT):
             cost = rng.choices(
                 [c for c, _ in START_BENCH_COST_WEIGHTS],
@@ -1025,7 +1094,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if names:
                 n = rng.choice(names)
                 cards_pool.take(n)
-                bench_place(st.bench, BenchChar(
+                bench_place(_bench_slots, BenchChar(
                     slot=0, char_id=n,
                     faction=(CHARACTERS[n].factions or ['散'])[0]))
         # 会话随机流从局 seed 派生(w910_sim_determinism/REPORT):与上方
@@ -1033,6 +1102,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # 的 OS 熵默认——未来决策层接入 rng 消费时,同 seed 局天然可复现。
         sess = session or StrategySession(
             rng=random.Random(f'sim-p1-{seed}'))
+        # T-185 批B:工作帧退役——引擎状态容器 = board_state_of(sess)
+        # 单例(引擎内部模型切容器,详设 §1 反转形态)。
+        bs = board_state_of(sess)
         # 初始相位经统一 sim 构建口注入(session.md §3.4-2;同上案 b 臂)。
         from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
             ensure_strategy_state,
@@ -1041,15 +1113,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             'economy', False, False, 0, 0, 0, 0, 0))
         streak = 0
         streak_signed = 0
-    # hp 决策可信位对齐生产真读帧口径(sim 无识别过程 = 恒真值帧;生产
-    # 真读帧两位皆 True,写入点语义 = operations/cw_op/cw_op_buy_cards.py `_apply_hp`
-    # 真读分支。hp_readable 本就恒 True,本位对齐后 hp_decision_trusted
-    # 读数不变,纯口径一致化零行为漂移)。
-    st.hp_trusted = True
-    # 开局帧带符号 streak 兜 0(生产备战帧 state.streak = session.last_streak,
-    # 默认 0 非 None;结算逐轮覆写见下方结算段)。案 b 臂 build_state 已带。
-    if st.streak is None:
-        st.streak = streak_signed
+        # 开局播种(obs 族,裁定 A 渠道表;值序 = 原帧初值 1/3/5/80)。
+        _sim_observe(bs, bs.level, 3, 'opening', 'opening')
+        _sim_observe(bs, bs.gold, 5, 'opening', 'opening')
+        _sim_observe(bs, bs.hp, 80, 'opening', 'opening')
+        _sim_write_bench(bs, _bench_slots, 'opening', 'opening')
+        # 开局带符号 streak 兜 0(生产备战帧 state.streak = session.last_streak,
+        # 默认 0 非 None;结算逐轮覆写见下方结算段)。案 b 臂 build_state 已带。
+        _sim_observe(bs, bs.streak, streak_signed, 'opening', 'opening')
+    # hp 决策可信位/hp_readable:政策层派生承载,不迁移(详设 §2);
+    # sim 恒真值帧 → 账本面恒 True(F8 定谳),无容器写点。
     # (期望态离线口径段已随 ADR-0651 两态制删除:expected_state 条目表
     #  容器不存在,sim 无挂账对账环节;op 效果 = 字段直推。)
     # `w162_inject/`/ADR-0364:投资注入剧本解析(独立 rng 流,默认 False 零开销)。
@@ -1083,27 +1156,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     if _inv is not None:
         if _inv.profile.active_env:
             sess.active_env = _inv.profile.active_env
-            st.active_env = _inv.profile.active_env
+            _sim_observe(bs, bs.active_env, _inv.profile.active_env,
+                         'invest-env', 'invest')
     elif _sink is not None:
         # 基线臂·开局环境选卡:3 候选 → decide_invest('env') 裁决。
         # 时点对齐生产 entry 流程(简报→投资环境屏);comp 未定(None)与
-        # 生产开局环境屏同态。波 5 喂入反转:决策消费前先直写容器再喂
-        # 容器直读(旧裸传 CwSimFrame 帧值在 kernel 新签名下是 AttributeError
-        # 破口,cw_events.bs.board.value 读法;修复 = T-98 批首清单⑥)。
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of as _bs_of_inv,
-        )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            feed_sim_truth as _feed_inv,
-        )
-        _feed_inv(_bs_of_inv(sess), st, at_round=f'p{int(getattr(st, "plane", 1) or 1)}-r0-env')
+        # 生产开局环境屏同态。T-185 批B:容器 = 权威态,喂入口随工作帧
+        # 退役删除,决策直读容器。
         _env_opts = _sink.sample_env_options()
         if _env_opts:
             _env_pick = strat.decide_invest(
-                'env', list(_env_opts), _bs_of_inv(sess), sess, config)
+                'env', list(_env_opts), bs, sess, config)
             _env = _env_opts[_env_pick.option_idx]
             sess.active_env = _env
-            st.active_env = _env
+            _sim_observe(bs, bs.active_env, _env, 'invest-env', 'invest')
             _env_pick_rec = {'kind': 'env', 'plane': 1, 'round': 1,
                              'options': list(_env_opts), 'picked': _env,
                              'reason': _env_pick.reason}
@@ -1120,8 +1186,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
     # 同语义),买牌/买经验累 XP_PER_BUY,升级按 XP_TO_NEXT_LEVEL 清零结转;
     # line_v2 的 clicks_to_next_level 消费点从此读到真值(旧恒 None → 恒按
     # 0 进度向上取整,追级类 EV 在 sim 系统性偏)。案 b 臂=进场真值直带。
-    st.xp_progress = (_p2_entry.xp_progress if _p2_entry is not None
-                      else (0, XP_TO_NEXT_LEVEL.get(st.level, 4)))
+    # T-185 批B:xp = 引擎本地账本(申报差异 #4 载体面),容器 xp = 回声写。
+    _xp_progress_0 = (_p2_entry.xp_progress if _p2_entry is not None
+                      else (0, XP_TO_NEXT_LEVEL.get(level_of(bs), 4)))
+    _sim_observe(bs, bs.xp, _xp_progress_0, 'opening', 'opening')
     # ADR-0286(迁移审计批 F4):财富宝钻通道(注入频率参数化,默认 0 不注入)
     _diamonds = 0
     # `w614_sim_fidelity/` 保真三补的局级计数器(纯观测,不进 rng 流;默认路径全 0):
@@ -1161,7 +1229,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # equips 跨位面无重置证据,按全继承+标注假设(迁移审计 w156(git 历史) 表
             # #4)。决策代码 plane-aware:p1_pair 进 P2 由意向层
             # 自动清(cw_intention,ADR-0357),策略层零改动。
-            st.plane = _seg_plane
+            # T-185 批B:plane 由节点键承载(回合初始化 NodeKey 写,
+            # 容器 = 权威态),无独立帧写点。
             res.p2_entered = True
             # 生产语义对齐:开局帧槽序表写 session(cw_screen_prep
             # 首帧写;battles_left_p2 消费,ADR-0361)
@@ -1196,7 +1265,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 sess.plane_lengths_seen.append(len(nodes))
         for rn in range(1, _seg_rounds + 1):
             _ts += 1
-            st.round_num = rn
+            # T-185 批B:节点键(回合初始化 obs;round_num/node_type 合一)
+            _sim_observe(
+                bs, bs.node,
+                NodeKey(plane=_seg_plane, round_num=rn,
+                        kind=str(nodes[rn - 1])),
+                'round-init', 'round-init')
             # 基线臂本轮选卡归因条(env 条挂 P1 r1 行,见 _env_pick_rec 注)
             _round_pick_recs: list[dict] = (
                 [_env_pick_rec]
@@ -1208,31 +1282,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # (300 局「地板降 5」0 次)。词表与 sim nodes 同源
             # (battle/encounter/boss/…)。
             sess.node_type_current = nodes[rn - 1]
-            # 决策帧同点填充 st.node_type(「2026-09-08 奖励帧策略审查」
-            # 建议①可见性批):规则①/②(b) 的帧型判据单一源
-            # reward_node_suppressed 按帧 node_type 判(ADR-0580),此前
-            # sim 决策帧该字段恒 None → 抑制在 sim 全域 fail-open,同一
-            # 决策核在 sim/实机两域语义分叉(实机可辨面 = ADR-0587 台账制)。
-            # 与上行同源同点,词表同为策略层 token 层('reward' 等,
-            # sample_node_sequence/P2_NODE_SEQUENCE)。填充分支零行为改变
-            # 边界:除本字段外帧内容逐位不变、不消耗 rng;申报行为面 =
-            # 规则①四消费位与 ②(b) 在 sim 奖励帧按实机语义生效(审查
-            # 定谳「属修复非波及」),遥测面 = 硬节点门计数与
-            # v3_piggy_reward 刷新点(两者均无决策分支消费)。
-            st.node_type = nodes[rn - 1]
             # ① 账本:收入分解(rng 消耗序不变——event 先取后加,同原式)
-            _gold_before = st.gold
+            _gold_before = gold_of(bs)
             _inc_event = _event_gold(rn, rng)   # 事件金 ADR-0233
             # `w193_p2sim/`/ADR-0377:事件金双臂(K3 零样本敏感性)——'zero' 臂
             # P2 段事件金归零;rng 照耗(双臂同 seed 配对可比)。
-            if st.plane >= 2 and _p2c.event_gold == 'zero':
+            if _seg_plane >= 2 and _p2c.event_gold == 'zero':
                 _inc_event = 0
             # `w162_inject/`/ADR-0364:注入策略的经济聚合(economy_effect_of 链已建模
             # 子集)——息帽覆写 + 每节点给金。无 active_strategies 时表达式
             # 与旧逐位相同(零漂移);'invest' 键只在有持卡时才加(账本行
             # 形状对默认路径不变)。
-            _agg_inv = (aggregate_economy(st.active_strategies)
-                        if st.active_strategies else None)
+            _act_strats = list(bs.active_strategies.value or [])
+            _agg_inv = (aggregate_economy(_act_strats)
+                        if _act_strats else None)
             # T-64:win_reward_mult 接线(fields.md §4.1 施于连胜分量
             # 含奖励轮;聚合取最大不叠乘 = ADR-0623)——无持卡恒 1.0
             # (缺省局零漂移);值随账本行披露供 checks.runtime 镜像消费
@@ -1243,7 +1306,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # T-21 校准:base 平面感知键 + 息帽 interest_cap_resolved 归一;
             # 败轮金 ADR-0439 路径与 T-64 倍率接线见该 docstring)
             _inc = sim_round_income(
-                st.plane, rn, _node, _gold_before, streak,
+                _seg_plane, rn, _node, _gold_before, streak,
                 prev_node=_prev_node, prev_combat_lost=_prev_combat_lost,
                 win_reward_mult=_win_mult,
                 interest_flat=(_agg_inv.interest_flat_per_node
@@ -1253,7 +1316,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _inc['event'] = _inc_event
             if _agg_inv is not None and _agg_inv.gold_per_node:
                 _inc['invest'] = _agg_inv.gold_per_node
-            st.gold += sum(_inc.values())
+            # 收入 = 外部事件(obs 族,裁定 A 渠道表)
+            _sim_observe(bs, bs.gold, _gold_before + sum(_inc.values()),
+                         'income', 'income')
             # `w162_inject/`/ADR-0364:本轮策略选卡注入(overlay 在备战期出现 → 收入
             # 结算后、决策前;实机写点 = cw_screen_invest_strategy 的 session
             # append+去重)。instant_gold 在选卡时点入账(生产游戏引擎同点)。
@@ -1268,20 +1333,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if _inv is not None:
                 _pk = _inv.picks_by_key.get((_seg_plane, rn))
             elif _sink is not None and (_seg_plane, rn) in _sink.pick_slots:
-                # 波 5 喂入反转:消费前直写容器、喂容器直读(同 env 臂,
-                # 修 T-98 批首⑥破口)。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of as _bs_of_inv,
-                )
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    feed_sim_truth as _feed_inv,
-                )
-                _feed_inv(_bs_of_inv(sess), st,
-                          at_round=f'p{_seg_plane}-r{rn}-invest')
+                # T-185 批B:容器 = 权威态,喂入口随工作帧退役删除。
                 _opts = _sink.sample_strategy_options(sess.active_strategies)
                 if _opts:
                     _pe = strat.decide_invest(
-                        'strategy', list(_opts), _bs_of_inv(sess), sess, config)
+                        'strategy', list(_opts), bs, sess, config)
                     _pk = _opts[_pe.option_idx]
                     _pick_rec = {'kind': 'strategy', 'plane': _seg_plane,
                                  'round': rn, 'options': list(_opts),
@@ -1290,9 +1346,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     _round_pick_recs.append(_pick_rec)
             if _pk is not None and _pk not in sess.active_strategies:
                 sess.active_strategies.append(_pk)
-                st.active_strategies = list(sess.active_strategies)
+                _sim_observe(bs, bs.active_strategies,
+                             list(sess.active_strategies),
+                             'invest-strategy', 'invest')
                 _pk_econ = economy_effect_of(_pk)
-                st.gold += _pk_econ.instant_gold
+                _sim_observe(bs, bs.gold,
+                             gold_of(bs) + _pk_econ.instant_gold,
+                             'invest-gold', 'invest')
                 if _pk_econ.xp_instant > 0:
                     # 一次性经验选卡时点入账**一次**(接缝面批 S-4:
                     # xp_instant oneshot 位的生产对位——登记表独立
@@ -1300,44 +1360,52 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 生产由游戏引擎同点入账、决策侧 XP 条读数已含,
                     # 壳只披露不叠加,防双计)。
                     xp += _pk_econ.xp_instant
-                    st.xp_progress = (
-                        xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
+                    _sim_observe(bs, bs.xp,
+                                 (xp, XP_TO_NEXT_LEVEL.get(level_of(bs), 4)),
+                                 'xp-echo', 'xp-echo')
             _free_r = (_agg_inv.free_refresh_per_node
                        if _agg_inv is not None else 0)
             if _inv is not None:
                 # 注入局:免费刷额度按**选卡后**持卡重算(当轮选的卡当轮生效)
-                _free_r = (aggregate_economy(st.active_strategies)
+                _act_strats = list(bs.active_strategies.value or [])
+                _free_r = (aggregate_economy(_act_strats)
                            .free_refresh_per_node
-                           if st.active_strategies else 0)
+                           if _act_strats else 0)
             _free_used = 0
             # ADR-0286(批㉓ F4)轮岗事件——**已勘误重建模**(01 §4.10 概率表族,
             # DESIGN_FINAL_ATTACK 阻断-2):旧「ROTATION_CHANCE=0.2 无条件掷
             # 事件」把 replay 观测在场频率误当机制概率。机制语义 = 已选轮岗
             # 环境后**每备战阶段 100% 重掷翻倍档**(翻倍档 1/5 均匀系建模
             # 假设,实机待核);未选环境恒基线表(None)。
-            # 条件位 = st.active_env(注入点写 session+state 双处,见上方
-            # _inv 装配;生产 handler 同字段语义)。
-            if (getattr(st, 'active_env', '') or '') == '轮岗':
-                st.refresh_probs = roll_rotation_per_stage(rng, st.level)
+            # 条件位 = active_env(注入点写 session+容器两处;生产 handler
+            # 同字段语义)。
+            if (bs.active_env.value or '') == '轮岗':
+                _probs = roll_rotation_per_stage(rng, level_of(bs))
             else:
-                st.refresh_probs = None
+                _probs = None
             # ADR-0286(迁移审计批 F4):宝钻通道(默认 prob=0 不掷,保 baseline 可配对)
             if diamond_cap_prob > 0 and rng.random() < diamond_cap_prob:
                 _diamonds += 1
             # cap 真值 = level + 宝钻数(生产 read_deploy_cap 语义);无宝钻 None
-            # → max_units() 兜底 level(与生产防抖拒信路径同态)
-            st.deploy_cap = st.level + _diamonds if _diamonds else None
+            # → max_units 兜底 level(与生产防抖拒信路径同态;容器缺席不写)
+            if _diamonds:
+                _sim_observe(bs, bs.deploy_cap, level_of(bs) + _diamonds,
+                             'round-init', 'round-init')
             # 宝钻联动后排格数真值(规格 = T-23-r1 §⑤.1,批首清单②):
             # 实机后台格数 = 6 + (deploy_cap − level) = 6 + 宝钻数,值域
             # 6-9 封顶 9(board_structure.md 量化公式节;与 T-322 公式封顶
             # 修正 _CAP_DIFF_MAX=3 同值域)。默认 diamond_cap_prob=0 →
-            # back_max 恒 6 与 CwSimFrame 缺省逐位同(零漂移);合成口
-            # back_layout 域「缺席不写」口径不受影响(缺省 6 恒非 None)。
-            st.back_max = min(6 + _diamonds, 9)
-            st.shop = cards_pool.draw_shop(st.level, probs=st.refresh_probs)
-            _waves = [{'event': 'offer', 'gold': st.gold,
+            # 值恒 6(与帧缺省逐位同)。
+            _sim_observe(bs, bs.back_layout, min(6 + _diamonds, 9),
+                         'round-init', 'round-init')
+            # 抽牌(回合初始化外部事件;refresh_probs 随载荷)
+            _drawn = cards_pool.draw_shop(level_of(bs), probs=_probs)
+            _x_used: dict = {}   # card.x 消费序镜像(随牌面重写复位)
+            _sim_write_shop_payload(bs, _drawn, _probs, 'round-init',
+                                    'round-init')
+            _waves = [{'event': 'offer', 'gold': gold_of(bs),
                        'cards': [{'name': c.name, 'faction': c.faction,
-                                  'cost': c.cost} for c in st.shop],
+                                  'cost': c.cost} for c in _drawn],
                        # 拒因串逐波留档位(None=本波无决策段:8 段上限
                        # 截断等;决策段覆写,见轮决策循环)
                        'rejects': None}
@@ -1383,23 +1451,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _round_bench_full = False
             # - board_next_tier:各阵营下档阈值(观测披露面;兑现链开关族
             #   已随旧方案清退批删除,键保留作判读面)。
-            # T-185 批A(喂点补齐,详设 sim-state-switch §4「读前必有喂」):
-            # 决策入口快照切容器直读,此处补喂保证容器与工作帧同拍
-            # (feed 零 rng 消耗零漂移;记录层 best-effort 同既有喂点)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of as _bs_entry_of,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                deployed_slots_of as _bs_entry_dep,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                feed_sim_truth as _bs_entry_feed,
-            )
-            _bs_entry = _bs_entry_of(sess)
-            _bs_entry_feed(_bs_entry, st,
-                           at_round=f'p{_seg_plane}-r{rn}-entry')
+            # T-185 批B:决策入口快照 = 容器直读(容器 = 权威态,喂入口
+            # 随工作帧退役删除)。
             _round_board_next_tier = _board_next_tier_of(
-                _board_factions_of(_bs_entry_dep(_bs_entry)))
+                _board_factions_of(deployed_slots_of(bs)))
             # - ADR-0474 分配器遥测键(消费 = 锁#11 D2 接管可观测性):
             #   alloc_frame = 本轮最后一段 decide_prep 的分配器帧位
             #   (strategy_state_of(session).v3_alloc_frame 每段覆写,末值 = 轮终帧披露;
@@ -1525,11 +1580,6 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _tc_launch = getattr(strategy_state_of(sess), 'target_comp', None)
             if (nodes[rn - 1] in ('battle', 'encounter', 'boss')
                     and _tc_launch is not None):
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
-                    feed_sim_truth,
-                    gold_of,
-                )
                 from sr_od.application.currency_war.kernel.cw_launch_admission import (
                     LAUNCH_QUALITY_DEFER_FRAMES_KEY,
                     LAUNCH_QUALITY_EVAL_ERROR_KEY,
@@ -1538,13 +1588,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.predicates import (
                     line_members,
                 )
-                # 波 5 喂入反转:开战放行判定消费前直写容器、喂容器直读
-                # (旧桥装箱一次性视图随桥退役拆除;消费时点不变)。
-                _bs_launch = board_state_of(sess)
-                feed_sim_truth(_bs_launch, st,
-                               at_round=f'p{_seg_plane}-r{rn}-launch')
+                # T-185 批B:容器 = 权威态,喂入口随工作帧退役删除,
+                # 放行判定直读容器(消费时点不变)。
                 _core = readiness_launch_decision(
-                    _bs_launch, _tc_launch,
+                    bs, _tc_launch,
                     line_members=line_members)
                 # 质量闸观测分键(ADR-0570 待标定①观测 sink:推迟帧/评估
                 # 异常帧;best-effort,容器缺席静默跳过,与
@@ -1575,8 +1622,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 该帧现读金(逐帧分布);②session.cw4_counters 增量
                     # 键 launch_frame_idle_gold(累计金,经 obs.cw4_counters
                     # 轮差分入账本;容器缺席静默跳过 = 缺省零漂移)。
-                    # T-185 批A:金读数切容器读口(本块喂点后,同拍)。
-                    _idle_gold = gold_of(_bs_launch)
+                    _idle_gold = gold_of(bs)
                     _cts_l = getattr(strategy_state_of(sess), 'cw4_counters', None)
                     if _cts_l is not None:
                         _cts_l['launch_frame_idle_gold'] = \
@@ -1625,15 +1671,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.kernel.cw_economy import (
                     saturation_line as _sat_a,
                 )
-
-                # T-185 批A:金读数切容器读口(发射块喂点后,同拍)。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of as _bs_arb_of,
-                )
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    gold_of as _gold_of_arb,
-                )
-                _g0_arb = _gold_of_arb(_bs_arb_of(sess))
+                _g0_arb = gold_of(bs)
                 _cts_a = getattr(strategy_state_of(sess), 'cw4_counters', None)
                 _launch_arb = {
                     'gold_before': _g0_arb,
@@ -1697,41 +1735,55 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 保留(消费读点 = flow._consume_shop_direction_frame,
                 # 帧本体 = 容器)。
                 sess.shop_frame_class = 'full'
-                # GameState 记录模型真值直写(波 5 喂入反转;域覆盖规格
-                # = fields.md:sim 真值帧同步记观察
-                # (evidence 恒 sim:synthesized),bench 槽位保序 = 记录模型
-                # 按实机真值箱占席(sim「无箱实体」只是内部口径约定不进
-                # 记录)。纯记录零决策面:sim 账本/行为逐位不变。best-effort
-                # 不炸引擎(记录层故障不毒化 sim,best-effort 边界在喂入口)。
+                # T-185 批B:工作帧退役——喂入口删除,决策直读容器
+                # (容器 = 转移函数权威态,裁定 A/裁定 3)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     bench_is_full as _bs_bench_is_full,
                 )
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of as _bs_of,
-                )
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    feed_sim_truth as _bs_feed,
-                )
-                # 波 5 喂入反转:直写喂入口(旧内联 try/except 合成块收编
-                # 进 kernel 喂入口;best-effort 纪律随迁,记录层故障不毒化 sim)。
-                _bs_feed(_bs_of(sess), st, at_round=f'p{_seg_plane}-r{rn}')
                 # ADR-0488 席满观测键·派生支(迁移批次二;设计 §8.7 as-built
                 # 「席满观测键 ADR-0488 经合成口后 bench_is_full 供给」):
-                # 满栏旗标改经 GameState 派生(席空数==0,§3.2.5 派生单一
-                # 源),不再直接数 st.bench。**语义等值申报**:sim 无箱实体,
-                # 占席谓词(unit/empty)与 bench_occupied 非 None 计数逐位
-                # 等值——零行为漂移。轮内 OR 聚合语义不变(生产 merge 同式:
-                # 「任一决策帧满栏」;本判定在合成口后 = 本段帧语境,与旧
-                # 「段入口值」同点);合成失败窗(None→False)保守端,下段
-                # 合成自愈。
+                # 满栏旗标经 GameState 派生(席空数==0,§3.2.5 派生单一源)。
+                # **语义等值申报**:sim 无箱实体,占席谓词(unit/empty)与
+                # bench_occupied 非 None 计数逐位等值——零行为漂移。轮内
+                # OR 聚合语义不变(生产 merge 同式:「任一决策帧满栏」)。
                 _round_bench_full = _round_bench_full or bool(
-                    _bs_bench_is_full(_bs_of(sess)))
-                # T-185 批A:空牌面判据切容器 payload 读(本段入口喂点后
-                # 同拍;合成口把帧空表归一为离屏 None,§2.1 空表=None 同判)。
-                if _bs_of(sess).shop.value is None:
-                    # 空牌面真值 = 离屏(sim 合成口同判,§2.1 空表=None 同
-                    # 判申报)——旧黑板路径决策空发射等价(无候选面),段到止。
+                    _bs_bench_is_full(bs))
+                # 空牌面判据(买空店 payload cards=[] 与离屏 None 同判,
+                # T-181 语义:决策无候选面,段到止)。
+                _seg_payload = bs.shop.value
+                if _seg_payload is None or not _seg_payload.cards:
                     break
+                # 段入口态快照(裁定 5 复核设计):两观测块口径 = 段入口态
+                # (ADR-0583 段帧首静态快照),而 decide_shop_screen 期间
+                # mandate 驱动器会向容器做期望态投影直写(裁定 3 维持现状)
+                # ——快照取自决策调用前(容器尚为段入口权威态),消费在
+                # 决策调用后,读数语义 = 段入口态,与帧时代逐位同。
+                _seg_gold0 = gold_of(bs)
+                _seg_owned0 = {(c.char_id or '')
+                               for c in bench_slots_of(bs)
+                               + deployed_slots_of(bs)
+                               if getattr(c, 'char_id', '')}
+                _seg_cands0 = list(_seg_payload.cards)
+                _seg_refresh_cost0 = (bs.shop_refresh_cost.value or 2)
+                # 段入口全量快照(动作循环回放基点):驱动器 decide 循环
+                # 对每个非终结动作即时投影(与 live 同代码,裁定 3)——decide
+                # 后容器 = 投影终态;引擎对非终结动作不再二次应用(真值应用
+                # = 驱动器投影,同函数同渠道),账本转录的逐动作 outcome 由
+                # 段入口快照回放容器(一次性 board_state_of(None))跑转移
+                # 函数取得——回放语义 = 帧时代 simulate 逐位等价(金样锁
+                # 已证函数≡simulate);终结动作(RefreshShop/CompTransaction,
+                # 驱动器不投影)与引擎自 Init 动作(m1p 卖出)仍由引擎在
+                # 真容器上转移函数应用。
+                _seg_entry_snap = bs.full_state_snapshot()
+                # 回放容器即刻建立(decide 后):真容器此刻 = 驱动器投影
+                # 终态;一切「段入口引擎真值」语义的读与应用(动作循环
+                # 预检/仲裁闸金读)都走回放容器——回放 = 帧时代 simulate
+                # 逐位等价(金样锁已证)。
+                from sr_od.application.currency_war.kernel.cw_game_state import (
+                    restore_state_snapshot as _restore_seg,
+                )
+                _seg_replay = board_state_of(None)
+                _restore_seg(_seg_replay, _seg_entry_snap)
                 acts = strat.decide_shop_screen(sess, config)
                 # 采购面三观察·帧级只读投影(见轮首「采购面三观察计数」
                 # 块;位次 = 本段入口刷新后 = 意向状态已刷新,与策略决策帧
@@ -1765,19 +1817,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _obs_locked_b = max(_obs_locked_b, len(_obs_bm))
                         if len(_obs_bm) > BENCH_CAPACITY + DEPLOYED_CAPACITY:
                             _obs_overcap_frames += 1
-                    # 席位/牌面/刷新费/金读数保持工作帧直读(T-185 批A 实测
-                    # 勘误):本块位次在 decide_shop_screen 之后,mandate
-                    # 驱动器已向容器做期望态投影直写(logic 源),容器此处
-                    # ≠帧真值——切容器读口会让观测面读到投影值(实测 r6
-                    # refresh_avail_frames/r9 must_spend 域漂移),故两点
-                    # 留帧读,容器切换归批B随引擎写面反转一并定谳。
-                    _obs_owned = {(c.char_id or '')
-                                  for c in list(st.bench or [])
-                                  + list(st.deployed or [])
-                                  if getattr(c, 'char_id', '')}
+                    # 席位/牌面/刷新费/金读数消费段入口态快照(T-185 批B:
+                    # 帧退役;快照取自决策前,读数语义 = 段入口态,与帧
+                    # 时代逐位同——见上方快照块注释)。
+                    _obs_owned = _seg_owned0
                     _obs_missing = [m for m in _obs_bm if m not in _obs_owned]
                     if _obs_missing:
-                        _obs_cands = [c for c in (st.shop or [])
+                        _obs_cands = [c for c in _seg_cands0
                                       if (c.name or '') in _obs_missing]
                         if _obs_cands:
                             from sr_od.application.currency_war.kernel.cw_registry import (
@@ -1787,17 +1833,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                 (c.cost if c.cost else 3)
                                 for c in _obs_cands)
                             _obs_thr = (_obs_reg.interest_floor()
-                                        + (st.shop_refresh_cost or 2)
+                                        + _seg_refresh_cost0
                                         + _obs_buy0)
-                            if (st.gold or 0) >= _obs_thr:
+                            if _seg_gold0 >= _obs_thr:
                                 _obs_refresh_avail += 1
                 # 必花域观测三键(20 号稿 §6;判定单一源,见轮首块注释)。
                 from sr_od.application.currency_war.kernel.cw_economy import (
                     in_must_spend_zone as _msz_pred,
                 )
-                # 金读数保持工作帧直读(T-185 批A 实测勘误,理由同上块:
-                # decide 后容器已被驱动器投影直写,≠帧真值)。
-                if _msz_pred(st.gold, sess):
+                # 金读数消费段入口态快照(T-185 批B,理由同上块)。
+                if _msz_pred(_seg_gold0, sess):
                     _ms_zone += 1
                     # 层命中按动作类 isinstance 判定:
                     # decide_shop_screen 出口的升级意图为 LevelUpShop
@@ -1855,32 +1900,20 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
 
                     # 波 5b 桥退役消点:k 空窗回退/三臂判据已切容器签名,
                     # sim 工作帧真值经喂入口直写容器后读容器(原桥装箱退役)。
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        board_state_of as _bs_rej_of,
-                    )
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        feed_sim_truth as _bs_rej_feed,
-                    )
-                    _bs_rej_feed(_bs_rej_of(sess), st,
-                                 at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
-                                          f'-r{int(getattr(st, "round_num", 1) or 1)}'
-                                          f'-rejtag')
+                    # T-185 批B:喂入口随工作帧退役删除,读容器权威态。
                     _rej_fb, _rej_tok = (
                         _rej_intention.k_empty_window_fallback(
-                            _bs_rej_of(sess), _obs_ist, session=sess,
+                            bs, _obs_ist, session=sess,
                             registry=_obs_registry))
                     if _rej_tok == 'p2plus':
                         _rej_arms = _rej_intention.no_target_arms(
-                            _bs_rej_of(sess), _obs_ist, session=sess,
+                            bs, _obs_ist, session=sess,
                             registry=_obs_registry)
                         _seg_hub = frozenset(_rej_arms.hub_names)
                 # 拒因遥测读点 = 容器(W6 波 4 读者切换;shop_unbought_
-                # reasons 已切容器签名;真值 = 段入口合成口已喂)。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of as _seg_bs_of,
-                )
+                # reasons 已切容器签名;容器 = 段入口权威态)。
                 _seg_rejects = shop_unbought_reasons(
-                    _seg_bs_of(sess), _k_comp, _obs_bm, acts,
+                    bs, _k_comp, _obs_bm, acts,
                     hub_names=_seg_hub)
                 _round_shop_rejects = _seg_rejects
                 if _waves:
@@ -1905,20 +1938,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 标「本轮已写」:旧核每决策段自写、键戳恒盖 →
                     # 守卫不触发(旧核路径零漂移);缺写且策略带该钩子时
                     # 在此补写(新核路径,判据同源无第二实现)。
-                    # T-185 批A:轮键读数切容器读口(本段入口喂点后同拍;
-                    # 值 = (plane, round) 与帧键逐位同)。
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        plane_of as _bs_plane_mk,
-                    )
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        round_num_of as _bs_rn_mk,
-                    )
+                    # T-185 批B:轮键读数 = 容器读口;镜像写者传容器
+                    # (flow.write_shop_mirrors 双型签名容器支)。
                     if getattr(strategy_state_of(sess), 'v3_mirror_key', None) \
-                            != (_bs_plane_mk(_bs_of(sess)),
-                                _bs_rn_mk(_bs_of(sess))):
+                            != (plane_of(bs), round_num_of(bs)):
                         _wsm = getattr(strat, 'write_shop_mirrors', None)
                         if callable(_wsm):
-                            _wsm(st, sess)
+                            _wsm(bs, sess)
                     _round_phase = str(getattr(strategy_state_of(sess), 'v3_phase', '') or '')
                     _round_form_ok = bool(getattr(strategy_state_of(sess), 'v3_form_ok', False))
                     # B_t 板面目标线承重计数(form_score 替代披露口径;
@@ -1955,10 +1981,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 帧现值,与检查器「决策发生在本轮回战斗前」的 hp
                     # 口径同源;旧 session 闩载体已删——其恒释放语义与
                     # 本谓词的无状态 hp 带口径冲突)。
+                    from types import SimpleNamespace as _NS
+
                     from sr_od.application.currency_war.sim.checks.segments import (
                         terminal_release_bit as _tr_bit,
                     )
-                    _round_terminal_release = bool(_tr_bit(sess, st))
+                    # T-185 批B:检查器形参为帧 duck 读(plane/round_num/hp;
+                    # sim/checks 文件面外)——容器读口装配的只读视图 shim。
+                    _tr_view = _NS(plane=plane_of(bs),
+                                   round_num=round_num_of(bs),
+                                   hp=bs.hp.value)
+                    _round_terminal_release = bool(_tr_bit(sess, _tr_view))
                 # 预算-回执契约·对账门声明(**逐段覆写=末段口径**,
                 # 与回执 last-wins/生产 per-frame 直读同语义;w943_audit5
                 # P3-4:首段口径会漏记「前段已兑现、刷新后重决策段未兑现」
@@ -1983,8 +2016,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         from sr_od.application.currency_war.kernel import (
                             cw_launch_arbitrage as _kla_g,
                         )
+                        # 闸金读 = 回放容器(段入口引擎真值语义;真容器此刻
+                        # = 驱动器投影终态,读它会投影后金位误触闸)
                         _g_ok, _g_why = _kla_g.launch_arbitration_gate(
-                            a, int(getattr(st, 'gold', 0) or 0), sess)
+                            a, gold_of(_seg_replay), sess)
                         if not _g_ok:
                             _launch_arb['stop_reason'] = _g_why
                             _launch_arb['gate_blocks'] += 1
@@ -2004,16 +2039,26 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _r_src = getattr(a, 'reason', '') or 'other'
                         _obs_refresh_src[_r_src] = \
                             _obs_refresh_src.get(_r_src, 0) + 1
-                        if st.plane >= 2:
+                        if plane_of(bs) >= 2:
                             res.p2_refreshes += 1   # ADR-0362:P2 段 D 次数
-                        _cost_r = (st.shop_refresh_cost or 2)
+                        _cost_r = (bs.shop_refresh_cost.value or 2)
                         # `w162_inject/`/ADR-0364:策略免费刷额度(如 加油站 每节点
                         # 1 次;cw_economy._refresh_cost 同语义)——额度内
                         # 刷价 0。无持卡/无额度时与旧逐位相同。
                         if _free_r and _free_used < _free_r:
                             _cost_r = 0
                             _free_used += 1
-                        st.gold -= _cost_r
+                        # 金转移进单一转移函数(裁定 A;实付金由引擎传入 =
+                        # 免费刷注入差异 #2 参数通道,详设 §3)。
+                        # T-185 批B 合并形态:应用面 = 回放容器(段尾全量
+                        # 再锚定发布到真容器)。
+                        apply_shop_action_logic(
+                            _seg_replay, a,
+                            executed=ShopActionExecuted(refresh_paid=_cost_r),
+                            produced_by=_SIM_ENGINE_ACTOR,
+                            sig=ChannelSig(family='logic_action',
+                                           actor=_SIM_ENGINE_ACTOR,
+                                           group_id=f'sim:SimEngineP1@r{rn}'))
                         _spend['refresh'] += _cost_r
                         # xp_per_refresh 数值接入:付费刷新产经验(淘金客 +2,
                         # 官方原文「每次消耗金币刷新商店都会获得 2 经验值」;
@@ -2022,99 +2067,98 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 逐持卡查 spec payload,overlay 值变更 sim 跟随;
                         # pending 条目 payload 即保守支)。
                         # 零漂移:无持卡时表达式恒 0,无 xp/行为变化。
-                        _xpr = (_overlay_xp_per_refresh(st.active_strategies)
-                                if st.active_strategies else 0)
+                        _act_strats = list(bs.active_strategies.value or [])
+                        _xpr = (_overlay_xp_per_refresh(_act_strats)
+                                if _act_strats else 0)
                         if _cost_r > 0 and _xpr > 0:
                             xp += _xpr
                             _refresh_xp_total += _xpr
                             _refresh_xp_round += _xpr
-                            st.xp_progress = (
-                                xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
+                            # xp 回声(引擎账本载体,申报差异 #4;回放容器)
+                            _sim_observe(_seg_replay, _seg_replay.xp,
+                                         (xp, XP_TO_NEXT_LEVEL.get(
+                                             level_of(_seg_replay), 4)),
+                                         'xp-echo', 'xp-echo')
                         _acts.append({'__type__': 'RefreshShop',
                                       'cost': _cost_r, 'reason': _r_src})
-                        st.shop = cards_pool.draw_shop(st.level,
-                                                       probs=st.refresh_probs)
+                        # 池重采样 = 引擎保留面(详设 §3 平移边界);payload
+                        # 写 = 回合初始化类外部事件(obs 族;回放容器,段尾
+                        # 再锚定发布)
+                        _drawn = cards_pool.draw_shop(level_of(_seg_replay),
+                                                      probs=_probs)
+                        _x_used = {}   # card.x 消费序镜像(随牌面重写复位)
+                        _sim_write_shop_payload(_seg_replay, _drawn, _probs,
+                                                'shop-draw', 'shop-draw')
                         _waves.append(
-                            {'event': 'refresh', 'gold': st.gold,
+                            {'event': 'refresh', 'gold': gold_of(_seg_replay),
                              'cards': [{'name': c.name, 'faction': c.faction,
-                                        'cost': c.cost} for c in st.shop],
+                                        'cost': c.cost} for c in _drawn],
                              # 拒因串留档位(下一段决策覆写;段上限截断
                              # 时保持 None=无决策段)
                              'rejects': None})
                         progressed = True
                         break          # 刷后立即 re-decide(见新店)
                     if isinstance(a, BuyCard):
-                        # 商店买入执行 = kernel/cw_state.simulate 单一源
-                        # (live 投影同款;分歧消解对账 = ADR-0561 申报表):
-                        # 状态变更(金/店槽下架/合成连锁/满栏合成买)全在
-                        # simulate 内部,引擎只余预检披露 + 池/经济/账本转录。
+                        # 商店买入执行(T-185 批B 合并形态):非终结动作的
+                        # 真值应用 = 驱动器 decide 期投影(裁定 3+1,同函数
+                        # 同渠道收敛);引擎侧在段入口回放容器上跑转移函数
+                        # 取 outcome 驱动转录(帧时代 simulate 逐位等价)。
                         # 满栏预检(ADR-0283/`w566_sim_guard/`):只为「满栏
-                        # 非合成拒买」计数披露,判定函数与 simulate 内部
+                        # 非合成拒买」计数披露,判定函数与转移函数内部
                         # 同源(merge_buy_completes),不构成第二套语义。
-                        if bench_occupied(st.bench) >= BENCH_CAPACITY \
+                        from sr_od.application.currency_war.kernel.cw_game_state import (
+                            restore_state_snapshot as _restore_seg,
+                        )
+                        if _seg_replay is None:
+                            _seg_replay = board_state_of(None)
+                            _restore_seg(_seg_replay, _seg_entry_snap)
+                        _sc = _seg_replay
+                        _bench_slots0 = bench_slots_of(_sc)
+                        _payload0 = _sc.shop.value
+                        _shop_view0 = list(_payload0.cards) \
+                            if _payload0 is not None else []
+                        if bench_occupied(_bench_slots0) >= BENCH_CAPACITY \
                                 and not merge_buy_completes(
-                                    a.card.name, a.card.star or 1, st.bench,
-                                    st.deployed, st.shop):
+                                    a.card.name, a.card.star or 1,
+                                    _bench_slots0, deployed_slots_of(_sc),
+                                    _shop_view0):
                             _bench_full_skips += 1
                             _bench_full_skip_gold += a.card.cost
                             continue
-                        # 幻影再买披露(ADR-0284):槽匹配判定随单一源统一为
-                        # simulate 的 x 槽位口径;此处身份→同名兜底只辖
-                        # 「已消费槽再买」的可执行性跳过(金/池/板不消费)
-                        # 与店外构造(测试桩)的 legacy 执行披露;真策略
-                        # 提案恒来自 st.shop,phantom_rebuys 锁真批次恒 0。
-                        # 双 ShopCard 桥(W6 波 4 归一):决策核发射容器牌
-                        # (无 x),引擎真值帧 = 旧牌(带 x 槽位)——按
-                        # (name, star) 对齐到帧牌再应用(simulate 的 x 槽位
-                        # 删除/序列化 x 字段均以帧牌为准;单一转换 =
-                        # kernel shop_cards_to_legacy 同族镜像,禁散落
-                        # 第二转换面)。identity 命中优先(同帧同对象)。
-                        from sr_od.application.currency_war.kernel.cw_vocab import (
-                            ShopCard as _LegacyCard,
-                        )
-                        _a_card = a.card
-                        if not hasattr(_a_card, 'x'):
-                            _a_card = next(
-                                (c for c in st.shop
-                                 if c.name == _a_card.name
-                                 and int(c.star or 1)
-                                 == int(_a_card.star or 1)),
-                                _LegacyCard(
-                                    x=0,
-                                    faction=str(getattr(a.card, 'faction',
-                                                       '') or '?'),
-                                    name=str(getattr(a.card, 'name', '')
-                                             or ''),
-                                    cost=int(getattr(a.card, 'cost', 0)
-                                             or 0),
-                                    star=int(getattr(a.card, 'star', 1)
-                                             or 1),
-                                    cost_source=str(
-                                        getattr(a.card, 'cost_source', '')
-                                        or 'roster')))
-                        _slot = next((c for c in st.shop if c is _a_card),
-                                     None)
-                        if _slot is None:
-                            _slot = next(
-                                (c for c in st.shop
+                        # 幻影再买披露(ADR-0284):槽匹配 = 回放容器 payload
+                        # 身份/同名现读(决策牌即入口 payload 牌对象,同帧同
+                        # 对象命中优先);真策略提案恒来自入口 payload,
+                        # phantom_rebuys 锁真批次恒 0。
+                        _in_shop = next(
+                            (c for c in _shop_view0 if c is a.card), None)
+                        if _in_shop is None:
+                            _in_shop = next(
+                                (c for c in _shop_view0
                                  if c.name == a.card.name), None)
-                        if _slot is None:
+                        if _in_shop is None:
                             _phantom_rebuys += 1
                             _offered = {c.get('name') for w in _waves
                                         for c in w.get('cards') or []}
                             if a.card.name in _offered:
                                 continue   # 已消费槽再买:不可执行
-                        _was_full = (bench_occupied(st.bench)
+                        _was_full = (bench_occupied(_bench_slots0)
                                      >= BENCH_CAPACITY)
                         _ch = a.reason or 'unknown'
                         # reason=**通道**(创建点语义);channel=**身份**
                         # (classify_buy——通道经济分析别混桶,审查#7)。
                         # 序列化形状对齐生产 serialize_action(card 嵌套;
                         # 视图读 a['card']['cost'],平铺会让 economy 算 0)。
+                        # 回放容器装配只读视图(classify_buy 旧帧 duck 读形
+                        # plane/board/bench;禁扩散)。
+                        from types import SimpleNamespace as _NS_cb
+
                         from sr_od.application.currency_war.kernel.cw_line_defs import (
                             classify_buy as _cb,
                         )
-                        _channel = _cb(a.card, st)
+                        _channel = _cb(a.card, _NS_cb(
+                            plane=plane_of(_sc),
+                            board=dict(_sc.board.value or {}),
+                            bench=bench_slots_of(_sc)))
                         # T-153 生成侧自算披露(ADR-0593):成型度执行点
                         # 现读(单一源 = cw_deploy_logic.engines_count;
                         # 买前帧口径,零 rng/零状态写入纯观测)。消费 =
@@ -2124,32 +2168,49 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
                             engines_count as _ec,
                         )
+                        _dep_slots0 = deployed_slots_of(_sc)
                         _dec_engines = _ec(
-                            _board_factions_of(st.deployed),
-                            {d.char_id for d in (st.deployed or [])
+                            _board_factions_of(_dep_slots0),
+                            {d.char_id for d in _dep_slots0
                              if getattr(d, 'char_id', '')})
-                        _pre_units = (bench_occupied(st.bench)
-                                      + deployed_occupied(st.deployed))
-                        _pre_gold = st.gold
-                        st = _simulate_state(
-                            st, a if _a_card is a.card
-                            else BuyCard(card=_a_card, reason=a.reason))
-                        _spent = _pre_gold - st.gold
-                        if _spent <= 0:
-                            # 防御:预检守卫与 simulate 判定同源,恒 applied;
-                            # 零消费 = 单一源语义漂移信号,如实不转录。
+                        _pre_units = (bench_occupied(_bench_slots0)
+                                      + deployed_occupied(_dep_slots0))
+                        _pre_gold = gold_of(_sc)
+                        # 账本 card.x = 店面槽位(帧时代语义:draw 序 x=i;
+                        # 同名多张按消费序顺延取第 N 个匹配——帧时代「先买
+                        # 先删 x 槽位、(name,star) 首匹配顺延」的消费计数
+                        # 镜像,键 = (name, star),随每次牌面重写复位)
+                        _x_key = (a.card.name, int(a.card.star or 1))
+                        _x_matches = [c.x for c in _drawn
+                                      if c.name == a.card.name
+                                      and int(c.star or 1) == _x_key[1]]
+                        _dup_ord = _x_used.get(_x_key, 0)
+                        _act_x = (_x_matches[_dup_ord]
+                                  if _dup_ord < len(_x_matches) else 0)
+                        _x_used[_x_key] = _dup_ord + 1
+                        _buy_outcome = apply_shop_action_logic(
+                            _sc, a, produced_by=_SIM_ENGINE_ACTOR,
+                            sig=ChannelSig(family='logic_action',
+                                           actor=_SIM_ENGINE_ACTOR,
+                                           group_id=f'sim:SimEngineP1@r{rn}'))
+                        if not _buy_outcome.applied:
+                            # 防御:预检守卫与转移函数判定同源,恒 applied;
+                            # 拒绝 = 单一源语义漂移信号,如实不转录。
                             continue
-                        # 实购张数(满栏合成买 k>1;常规买恒 1)
-                        _k = max(1, _spent // max(1, card_cost(a.card)))
+                        # 实购张数 = 函数权威回声(满栏合成买 k>1;常规买 1)
+                        _k = max(1, int(_buy_outcome.bought_count or 1))
+                        _spent = _pre_gold - gold_of(_sc)
                         _spend['buys'][_ch] = \
                             _spend['buys'].get(_ch, 0) + _spent
                         for _ in range(_k):
                             cards_pool.take(a.card.name)
                         _acts.append({'__type__': 'BuyCard',
-                                      'card': {'x': _a_card.x,
-                                               'faction': _a_card.faction,
-                                               'name': _a_card.name,
-                                               'cost': _a_card.cost},
+                                      'card': {'x': _act_x,
+                                               'faction': str(getattr(
+                                                   a.card, 'faction', '') or ''),
+                                               'name': a.card.name,
+                                               'cost': int(getattr(
+                                                   a.card, 'cost', 0) or 0)},
                                       'reason': _ch,
                                       'channel': _channel,
                                       # T-153 披露键(纯观测;ADR-0593)
@@ -2158,9 +2219,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # ADR-0129 购买经验单击模型:一次点击 +XP_PER_BUY
                         # (k 张自动多买仍是一次点击,不加倍)。XP 记账统一
                         # (ADR-0561 申报表 #4):XP 只在引擎侧本单一
-                        # 记账点累加,simulate 分支无 XP 语义,数值逐位不变。
+                        # 记账点累加,转移函数分支无 XP 语义,数值逐位不变。
                         xp += XP_PER_BUY
-                        st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
+                        _sim_observe(_seg_replay, _seg_replay.xp,
+                                     (xp, XP_TO_NEXT_LEVEL.get(
+                                         level_of(_seg_replay), 4)),
+                                     'xp-echo', 'xp-echo')
                         # 轮内新鲜度登记(发射位写入取舍,与
                         # cw4_fuel_filler_stall_buys 先例同位):多买入
                         # 意图逐名入集(k 张合成买 = k 个意图,防漏记)。
@@ -2168,12 +2232,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             record_fresh_buy as _rfb,
                         )
                         for _ in range(_k if _was_full else 1):
-                            _rfb(sess, st, a.card.name)
+                            _rfb(sess, bs, a.card.name)
                         # 合并次数按单位消减推算(每次合并净减 2 个单位;
                         # 消费 3 产 1,链式多级同式)
                         _merges += (_pre_units + (_k if _was_full else 1)
-                                    - bench_occupied(st.bench)
-                                    - deployed_occupied(st.deployed)) // 2
+                                    - bench_occupied(bench_slots_of(_sc))
+                                    - deployed_occupied(deployed_slots_of(_sc))) // 2
                         progressed = True
                     elif isinstance(a, LevelUp):
                         # cap 守卫:level >= LEVEL_CAP 时 LevelUp 拒付
@@ -2187,39 +2251,44 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 实机 lv10 才禁用购买经验,lv9 是正常付费档,本守卫
                         # 在 lv9 拒付与实机方向相反;LEVEL_CAP=9 冻结有在案
                         # 前置(见本文件 LEVEL_CAP 注释:追级虚高治理+池指纹
-                        # 重锚,归行为变更批)。不随本批切 simulate:切源会
-                        # 连带引入「cap10 + 攒够即升即时升级」双重行为变更,
-                        # 违本批「切源不改行为」零漂移门,#6 只登记不顺手改。
-                        if st.level >= LEVEL_CAP:
+                        # 重锚,归行为变更批)。
+                        # T-185 批B(详设 §3 平移边界):金/XP 真值应用 =
+                        # 驱动器投影(裁定 3);引擎在回放容器上取 outcome
+                        # 驱动转录;LEVEL_CAP 守卫与拒付行留引擎(前置检查
+                        # 不写状态字段,lv9 差异保持申报)。
+                        from sr_od.application.currency_war.kernel.cw_game_state import (
+                            restore_state_snapshot as _restore_seg,
+                        )
+                        if _seg_replay is None:
+                            _seg_replay = board_state_of(None)
+                            _restore_seg(_seg_replay, _seg_entry_snap)
+                        _sc = _seg_replay
+                        if level_of(_sc) >= LEVEL_CAP:
                             _lv_cap_rejects += 1
                             _acts.append({'__type__': 'LevelUpRejected',
                                           'reason': 'level_cap',
-                                          'level': st.level})
+                                          'level': level_of(_sc)})
                             continue
                         # 花费载体统一(ADR-0561 申报表 #5,载体面):从
                         # action.cost 读(策略层 xp_click_cost 真值优先,
                         # fallback 常量;sim 恒 4 = 兜底值,真值接入归
                         # sim-wiring P2 件——本行只消灭执行侧硬编码载体)。
+                        # 引擎经济账按载体面记;金转移以动作 cost 为准
+                        # (转移函数口径;策略发射恒 cost≥4,载体面
+                        # or-4 兜底与转移实扣在现役域逐位同)。
                         _lv_cost = int(getattr(a, 'cost', 0) or 4)
-                        st.gold -= _lv_cost
+                        apply_shop_action_logic(
+                            _sc, a, produced_by=_SIM_ENGINE_ACTOR,
+                            sig=ChannelSig(family='logic_action',
+                                           actor=_SIM_ENGINE_ACTOR,
+                                           group_id=f'sim:SimEngineP1@r{rn}'))
                         _spend['levelup'] += _lv_cost
                         # auth=授权依据观测(ADR-0354):LevelUp.auth_basis
                         # 放行臂名(pop_slot/dp/static_ev/m3_batch;
                         # ''=default 栈旧调用或未过账)——检查器
                         # levelup_interest_engine_gate 判据消费;记录非指令。
                         _lv_auth = getattr(a, 'auth_basis', '')
-                        # 支A 谓词输入的执行点披露(观测非指令;零 rng 消耗/
-                        # 零状态写入):单动作架构(ADR-0517)下动作执行点
-                        # 状态 = 发射帧状态,levelup_budget_gate 检查器的支A
-                        # 镜像据此按击判 realize——行末快照在「帧内合成
-                        # 2★→升级批→轮末部署块当帧上板」确定性序列下 bench
-                        # 已无 2★,行末口径恒误报绕闸(假阳定谳 =
-                        # ADR-0589;谓词单一源 = ADR-0576 §2.5 支A,
-                        # criteria/levelup._realize_chain_ready 同判)。cap
-                        # 缺读对齐生产谓词 fail-closed(False,非恒真)。
-                        # 行为投影 digest 只取动作 (__type__,reason,result)
-                        # (test_cw_w614_sim_fidelity 锚),本键零位移。
-                        _lv_mu = st.max_units()
+                        _lv_mu = max_units_of(_sc)
                         # T-153 生成侧自算披露(ADR-0593):升级授权存在性
                         # 腿执行点现读——板满腿 = 下方 dec_board_full
                         # (ADR-0589 同披露载体);待上场腿 = bench 持有
@@ -2228,41 +2297,52 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         _dec_wait = any(
                             getattr(b, 'char_id', '') in _line_member_names(
                                 sess)
-                            for b in iter_occupied(st.bench))
+                            for b in iter_occupied(bench_slots_of(_sc)))
                         _acts.append({'__type__': 'LevelUp',
                                       'cost': _lv_cost, 'auth': _lv_auth,
                                       'dec_board_full': (
                                           _lv_mu is not None
-                                          and deployed_occupied(st.deployed)
+                                          and deployed_occupied(
+                                              deployed_slots_of(_sc))
                                           >= _lv_mu),
                                       'dec_bench_2star': any(
                                           (getattr(b, 'star', 1) or 1) >= 2
-                                          for b in iter_occupied(st.bench)),
+                                          for b in iter_occupied(
+                                              bench_slots_of(_sc))),
                                       # T-153 披露键(纯观测;ADR-0593)
                                       'dec_bench_wait_member': _dec_wait})
                         xp += XP_PER_BUY   # 与买牌同源(ADR-0286 xp 真值化;值=4)
-                        st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, 4))
+                        _sim_observe(_seg_replay, _seg_replay.xp,
+                                     (xp, XP_TO_NEXT_LEVEL.get(
+                                         level_of(_seg_replay), 4)),
+                                     'xp-echo', 'xp-echo')
                         progressed = True
                     elif isinstance(a, SellBench):
-                        # 卖出执行 = kernel/cw_state.simulate 单一源
-                        # (ADR-0561 申报表 #7/#8):装备回收随单一源生效
-                        # ——【已申报行为修正,申报表 #7】sim 卖带装件装备回 owned
-                        # 池(C6 装备守恒,修复前凭空消失);expect 代际校验
-                        # 同源归位(#8,stale_proposal 拒绝;sim 单线程同帧
-                        # 语义下实际不可达,纯防线)。引擎保留池回填/同轮
-                        # 保留集销账/账本转录。
-                        _tgt = (st.bench[a.bench_idx]
-                                if 0 <= a.bench_idx < len(st.bench) else None)
+                        # 卖出执行(T-185 批B 合并形态):真值应用 = 驱动器
+                        # decide 期投影(金回充/装备回收随投影生效);引擎在
+                        # 回放容器上取 outcome 驱动转录禁自判。陈旧提案
+                        # (expect 失配)/空槽 = 函数拒 → 引擎静默跳过(与帧
+                        # 时代「非 stale 才进 simulate,否则静默」同语义);
+                        # expect 代际校验语义源 = ADR-0561 申报表 #8(单线程
+                        # 同帧不可达,纯防线)。引擎保留池回填/同轮保留集
+                        # 销账/账本转录。
+                        from sr_od.application.currency_war.kernel.cw_game_state import (
+                            restore_state_snapshot as _restore_seg,
+                        )
+                        if _seg_replay is None:
+                            _seg_replay = board_state_of(None)
+                            _restore_seg(_seg_replay, _seg_entry_snap)
+                        _sc = _seg_replay
+                        _bench_pre = bench_slots_of(_sc)
+                        _tgt = (_bench_pre[a.bench_idx]
+                                if 0 <= a.bench_idx < len(_bench_pre) else None)
                         _stale = (_tgt is not None and a.expect
                                   and _tgt.char_id != a.expect)
                         if _tgt is not None and not _stale:
-                            # ADR-0276:卖出回金接生产 sell_refund 单一源
-                            # (费用口径随单一源 = bench_char_cost:识别名查
-                            # 注册表,未知名 3 中费保守估——与旧 ch.cost
-                            # 兜底 1 在已识别名域恒等;merge 后 bench 可有
-                            # star≥2,按星退防合成件价值低估)。
-                            _sell_v = sell_refund(_tgt.star,
-                                                  bench_char_cost(_tgt))
+                            # ADR-0276:卖出回金 = 转移函数 income 出参
+                            # (口径随单一源 = sell_refund + bench_char_cost,
+                            # 识别名查注册表,未知名 3 中费保守估;merge 后
+                            # bench 可有 star≥2,按星退防合成件价值低估)。
                             # T-153 生成侧自算披露(ADR-0593):孤儿性机械
                             # 腿执行点现读 = 被卖件是否当前线名册成员
                             # (线账闭合语境判据;义务登记簿引擎层不可见,
@@ -2274,7 +2354,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             # 处置(seed18 p1r1 口径,禁据键定罪)。
                             _dec_in_line = _tgt.char_id in (
                                 _line_member_names(sess))
-                            st = _simulate_state(st, a)
+                            _sell_outcome = apply_shop_action_logic(
+                                _sc, a, produced_by=_SIM_ENGINE_ACTOR,
+                                sig=ChannelSig(family='logic_action',
+                                               actor=_SIM_ENGINE_ACTOR,
+                                               group_id=f'sim:SimEngineP1@r{rn}'))
+                            if not _sell_outcome.applied:
+                                continue   # 单一源拒 = 零行为静默(帧时代同)
+                            _sell_v = int(_sell_outcome.income or 0)
                             _spend['sell_income'] += _sell_v
                             _acts.append({'__type__': 'SellBench',
                                           'bench_idx': a.bench_idx,
@@ -2303,66 +2390,78 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             progressed = True
                     elif isinstance(a, (SellDeployed, SwapDeploy,
                                         CompTransaction)):
-                        # 动作 v2(契约包 C1,步2):显式部署通道执行——
-                        # 转移语义在 cw_state.simulate 单一源(全量校验+原子
-                        # 应用),此处转录账本 + 池守恒/经济记账同步。
+                        # 动作 v2(契约包 C1,步2):显式部署通道执行。
+                        # T-185 批B 合并形态:SellDeployed/SwapDeploy 若由
+                        # 商店决策循环发射 = 驱动器已投影(裁定 3,非终结
+                        # 动作),引擎在回放容器上取 outcome 转录;CompTrans-
+                        # action = 终结动作(驱动器不投影)→ 引擎在真容器上
+                        # 转移函数应用(全量校验+原子应用;outcome 驱动转录
+                        # 禁自判),此处转录账本 + 池守恒/经济记账同步。
                         # 迁移审计 w65(git 历史) 修法3(ADR-0323):``_explicit_deploy_seen`` 移到
                         # 下方 applied 分支置位——**只有真执行(未被拒)的显式
                         # 动作才占显式通道**;被拒事务不消耗围栏(围栏跳过语义
                         # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死;迁移审计 w64(git 历史)
                         # Ring5:被拒事务也 skip_fence,90 次/11 局)。
-                        # 预状态引用快照(池 ret / 经济记账用;simulate 会
-                        # deepcopy,引用不跨界)
+                        # 预状态引用快照(池 ret / 经济记账用;读口新建对象,
+                        # 预读值不跨界)。T-185 批B 合并形态:三类动作统一
+                        # 在回放容器上应用(段尾全量再锚定发布到真容器)。
+                        _apply_bs = _seg_replay
+                        _dep_pre = deployed_slots_of(_apply_bs)
+                        _bench_pre = bench_slots_of(_apply_bs)
+                        _payload_pre = _apply_bs.shop.value
                         _sold_names: list[str] = []
                         _shop_fill_cards: list[ShopCard] = []
                         if isinstance(a, SellDeployed) \
-                                and 0 <= a.deployed_idx < len(st.deployed) \
-                                and st.deployed[a.deployed_idx] is not None:   # ADR-0392 空槽
-                            _sold = st.deployed[a.deployed_idx]
-                            _sold_names = [_sold.char_id]
+                                and 0 <= a.deployed_idx < len(_dep_pre) \
+                                and _dep_pre[a.deployed_idx] is not None:   # ADR-0392 空槽
+                            _sold_names = [_dep_pre[a.deployed_idx].char_id]
                         elif isinstance(a, CompTransaction):
                             _sold_names = [
-                                st.bench[i].char_id
+                                _bench_pre[i].char_id
                                 for i, d in a.sell if d == 'bench'
-                                and 0 <= i < len(st.bench)
-                                and st.bench[i] is not None] + [
-                                st.deployed[i].char_id
+                                and 0 <= i < len(_bench_pre)
+                                and _bench_pre[i] is not None] + [
+                                _dep_pre[i].char_id
                                 for i, d in a.sell if d == 'deployed'
-                                and 0 <= i < len(st.deployed)
-                                and st.deployed[i] is not None]   # ADR-0392
+                                and 0 <= i < len(_dep_pre)
+                                and _dep_pre[i] is not None]   # ADR-0392
                             _shop_fill_cards = [
-                                st.shop[f.idx] for f in (a.fill or [])
-                                if f.source == 'shop'
-                                and 0 <= f.idx < len(st.shop)]
-                        _new = _simulate_state(st, a)
-                        _log = _new.action_log[-1] if _new.action_log else {}
-                        _applied = _log.get('result') == 'applied'
-                        _tx_income = int(_log.get('income', 0) or 0)
-                        _tx_fill_cost = int(_log.get('fill_cost', 0) or 0)
+                                _payload_pre.cards[f.idx]
+                                for f in (a.fill or [])
+                                if f.source == 'shop' and _payload_pre is not None
+                                and 0 <= f.idx < len(_payload_pre.cards)]
+                        _v2_outcome = apply_shop_action_logic(
+                            _apply_bs, a, produced_by=_SIM_ENGINE_ACTOR,
+                            sig=ChannelSig(family='logic_action',
+                                           actor=_SIM_ENGINE_ACTOR,
+                                           group_id=f'sim:SimEngineP1@r{rn}'))
+                        _applied = _v2_outcome.applied
+                        # income/fill_cost = 转移函数出参(SellDeployed 单动作
+                        # income 亦随出参;事务汇总同源)
+                        _tx_income = int(_v2_outcome.income or 0)
+                        _tx_fill_cost = int(_v2_outcome.fill_cost or 0)
                         # 迁移审计 w101(git 历史):applied 事务的 bench 净腾位数(执行点真值;账本
                         # 序列化不展开 deploy/sell/fill 明细,检查器重放缺此
                         # 项会把合法买误报超容——seeds 18/22 实证)。正数=腾位。
                         _tx_bench_delta = (
-                            bench_occupied(st.bench) - bench_occupied(_new.bench)
+                            bench_occupied(_bench_pre)
+                            - bench_occupied(bench_slots_of(_apply_bs))
                             if isinstance(a, CompTransaction) else 0)
-                        if _applied and isinstance(a, SellDeployed) \
-                                and 0 <= a.deployed_idx < len(st.deployed) \
-                                and st.deployed[a.deployed_idx] is not None:   # ADR-0392
-                            # SellDeployed 的 income 未进 action_log(单动作
-                            # 无事务汇总)——预状态现算(与 simulate 同口径)
-                            _tx_income = sell_refund(
-                                _sold.star, bench_char_cost(_sold))
                         if _applied:
                             # 迁移审计 w65(git 历史) 修法3(ADR-0323):显式动作**真执行**才置位
                             # (被拒不跳围栏,见上方分支注释)
                             _explicit_deploy_seen = True
-                            st = _new   # 整体替换(事务原子;simulate 单一源)
                             for _n in _sold_names:
                                 if _n:
                                     cards_pool.ret(_n)
                             for _c in _shop_fill_cards:
                                 cards_pool.take(_c.name)
                                 xp += XP_PER_BUY   # 买牌同源给 XP(ADR-0129)
+                            if _shop_fill_cards:
+                                _sim_observe(_seg_replay, _seg_replay.xp,
+                                             (xp, XP_TO_NEXT_LEVEL.get(
+                                                 level_of(_seg_replay), 4)),
+                                             'xp-echo', 'xp-echo')
                             _spend['sell_income'] += _tx_income
                             if _tx_fill_cost:
                                 _ch = a.reason or 'tx_fill'
@@ -2378,7 +2477,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         if _applied and _tx_bench_delta:
                             _entry['bench_delta'] = _tx_bench_delta
                         if not _applied:
-                            _entry['reject_reason'] = _log.get('reason', '')
+                            _entry['reject_reason'] = _v2_outcome.reason
                         if _tx_income:
                             _entry['income'] = _tx_income
                         if _tx_fill_cost:
@@ -2387,26 +2486,56 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         if _applied and _shop_fill_cards:
                             # 迁移审计 w43(git 历史) leader 裁决 2(phantom_rebuys 根治):事务
                             # fill 已消费店槽——同批后续 BuyCard 是对陈旧
-                            # state.shop 的提案,作废并立即重决策(同
+                            # 店面的提案,作废并立即重决策(同
                             # RefreshShop 的 break-redecide 语义),不套用
                             # 陈旧引用。
                             break
+                # 段尾全量再锚定(引擎真值发布):回放容器 = 本段动作的
+                # 帧时代引擎真值;真容器在驱动器 decide 后 = 投影终态——
+                # 动作全执行时两者收敛(同值写零漂移),消费中断(仲裁闸
+                # 阻断等)时真容器滞留未执行动作的残余投影,回放值纠偏。
+                # 等价语义 = 帧时代「下一决策段入口 feed 真值」(喂入口随
+                # 工作帧退役后本写点承接该职责);evidence 前缀 sim:engine
+                # = 失配抑制登记面。
+                if _seg_replay is not None:
+                    _ra_sig = _sim_sig('reanchor')
+                    _ra_ev = 'sim:engine:reanchor'
+                    for _ra_real, _ra_src in ((bs.gold, _seg_replay.gold),
+                                              (bs.xp, _seg_replay.xp),
+                                              (bs.bench, _seg_replay.bench),
+                                              (bs.front_row,
+                                               _seg_replay.front_row),
+                                              (bs.back_row,
+                                               _seg_replay.back_row),
+                                              (bs.board, _seg_replay.board),
+                                              (bs.equips, _seg_replay.equips),
+                                              (bs.shop, _seg_replay.shop)):
+                        _ra_val = _ra_src.value
+                        if _ra_val is None:
+                            continue   # 回放容器失读域不覆盖(禁清正式值)
+                        bs.observe(_ra_real, _ra_val,
+                                   evidence=_ra_ev, sig=_ra_sig)
                 if _arb_stop:
                     break   # 仲裁段预算闸拒:消费终止,带内预算已用尽(ADR-0566)
                 if not progressed:
                     break
-            while (st.level < LEVEL_CAP
-                   and xp >= XP_TO_NEXT_LEVEL.get(st.level, 999)):
-                xp -= XP_TO_NEXT_LEVEL[st.level]
-                st.level += 1
+            # 轮末升级结转(引擎延迟结转语义保持 = 申报差异 #4;容器
+            # level/xp = obs 回声写)
+            while (level_of(bs) < LEVEL_CAP
+                   and xp >= XP_TO_NEXT_LEVEL.get(level_of(bs), 999)):
+                xp -= XP_TO_NEXT_LEVEL[level_of(bs)]
+                _sim_observe(bs, bs.level, level_of(bs) + 1, 'round-end',
+                             'round-end')
             # ADR-0286:轮末升级后 xp_progress 同步清零结转(生产 XP 条语义)
-            st.xp_progress = (xp, XP_TO_NEXT_LEVEL.get(st.level, xp or 4))
+            _sim_observe(bs, bs.xp,
+                         (xp, XP_TO_NEXT_LEVEL.get(level_of(bs), xp or 4)),
+                         'xp-echo', 'xp-echo')
             # 仲裁段披露终化(ADR-0566):gold_after/segments/spent 落
             # launch.arbitrage 位(发射帧行内;零漂移锚辖非发射帧,本键只
             # 在发射帧存在)。后验跌破检测 = 合并多买等投影外成本显影
             #(正常恒 0);溢出帧零消费单列分键,与带内 fail-closed 可辨。
             if _launch_arb is not None and _round_launch is not None:
-                _ga_arb = int(getattr(st, 'gold', 0) or 0)
+                _ga_arb = gold_of(bs)
                 _launch_arb['gold_after'] = _ga_arb
                 _launch_arb['segments'] = _segs_used
                 _launch_arb['spent'] = _launch_arb['gold_before'] - _ga_arb
@@ -2454,7 +2583,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if _round_launch is None:
                 try:
                     _m1p_plan, _m1p_obs, _m1p_ctx = \
-                        _m1p_plan_and_record(st, sess)
+                        _m1p_plan_and_record(bs, sess)
                 except Exception:   # noqa: BLE001  观测 best-effort(launch 同款)
                     _m1p_plan, _m1p_obs, _m1p_ctx = None, None, None
                 # M1″ 执行面 sim 转录(T-169;总图设计 R2 §2 sim 边界行,
@@ -2469,8 +2598,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 消费计划单一源两段同构)。计划空/卖出被拒帧零状态写入
                 #(原「零行为面」语义在这些帧保持)。
                 if _m1p_plan is not None and _m1p_plan.nonempty:
-                    st, _m1p_sold = m1p_swap_execute(
-                        st, _m1p_plan, acts=_acts, spend=_spend,
+                    _m1p_sold = m1p_swap_execute(
+                        bs, _m1p_plan, acts=_acts, spend=_spend,
                         pool=cards_pool)
                     if _m1p_sold:
                         _m1p_obs['executed'] = True
@@ -2533,12 +2662,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # DeployMove:bench.pop → deployed.append → board 聚合)。
             # deployed 跨轮累积(生产跟踪态),select_deployments 吃真实
             # deployed_cids/deployed_fac/cap 语义;board = deployed 主阵营
-            # 聚合(生产 board 口径)。ADR-0287:此处 cap=st.max_units()
-            # 在轮末升级后读 → LevelUp 当轮腾出的 cap 立即生效(批㉘ F5
-            # 「升级→上阵」链断一轮的修复)。
-            _dep_cids = {d.char_id for d in iter_occupied_deployed(st.deployed)
-                         if d.char_id}
-            _dep_fac = _board_factions_of(st.deployed)
+            # 聚合(生产 board 口径)。ADR-0287:此处 cap 在轮末升级后读 →
+            # LevelUp 当轮腾出的 cap 立即生效(批㉘ F5「升级→上阵」链断
+            # 一轮的修复)。T-185 批B:部署代理 obs 通道(结算期代理,
+            # 详设 §3 A3 申报对齐)——槽表中间形态 + 整表 obs 写回。
+            _dep_cids = {d.char_id for d in iter_occupied_deployed(
+                deployed_slots_of(bs))
+                if d.char_id}
+            _dep_fac = _board_factions_of(deployed_slots_of(bs))
             # 围栏互斥(契约包 C1 + 六矛盾裁决1,步2):**被应用**的显式动作发出轮
             # select_deployments 围栏跳过自动部署(显式>围栏,同轮不叠加),
             # **账本必记一行 skip_fence**(防静默跳过,checks 可见——
@@ -2559,11 +2690,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 裁决:同款双源暴露面在彼处无分母无证据,不扩面)。
                 if _m1p_sold:
                     _res_up, _res_held, _deploy_lag_units = \
-                        _m1p_plan_fill_deploy(st, _m1p_plan, _m1p_ctx,
+                        _m1p_plan_fill_deploy(bs, _m1p_plan, _m1p_ctx,
                                               sess)
                 else:
                     _res_up, _res_held, _deploy_lag_units = \
-                        _residual_fill_deploy(st, _tf, _tc, _fw, _lf,
+                        _residual_fill_deploy(bs, _tf, _tc, _fw, _lf,
                                               recipe_floor_lock_exempt=_rf)
                 _acts.append({
                     '__type__': 'skip_fence',
@@ -2578,7 +2709,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             else:
                 # ADR-0316:select_deployments 吃**紧缩占用序**(None 槽剔除;
                 # 返回 up_idx 是占用序下标,下方回映射槽位下标)
-                _occ_idx = [i for i, b in enumerate(st.bench) if b is not None]
+                _bench_slots_f = bench_slots_of(bs)
+                _occ_idx = [i for i, b in enumerate(_bench_slots_f)
+                            if b is not None]
                 # 迁移审计 w652(git 历史) §5 处置①(重放语境冻结):真趟**行动前**快照。
                 # 重放趟改用与真趟完全相同的围栏输入判定——残余语义 =
                 # 「行动语境下仍有围栏认可件未上」。此前重放吃真趟部署
@@ -2587,13 +2720,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 过判为可上(迁移审计 w652(git 历史) 两帧取证:seed 630027/630035 r6 lag=2,
                 # 复算含 locked_factions 亦不变)。真趟输入不变。
                 _snap_dep_fac = dict(_dep_fac)
-                _snap_board = dict(st.board)
+                _snap_board = dict(_board_counts_of(deployed_slots_of(bs)))
                 _up_idx, _held_idx = _dl.select_deployments(
-                    [b for b in st.bench if b is not None],
+                    [b for b in _bench_slots_f if b is not None],
                     deployed_cids=_dep_cids,
                     deployed_fac=_dep_fac,
-                    board=dict(st.board),
-                    cap=st.max_units(),
+                    board=dict(_board_counts_of(deployed_slots_of(bs))),
+                    cap=max_units_of(bs),
                     target_factions=_tf,
                     target_cores=_tc,
                     fw_carry=_fw,
@@ -2601,14 +2734,19 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     recipe_floor_lock_exempt=_rf,
                 )
                 # ADR-0316:up_idx 是紧缩占用序 → 回映射槽位下标置 None
-                # (ADR-0271 上阵即出 bench 语义不变)
+                # (ADR-0271 上阵即出 bench 语义不变);槽表中间形态操作,
+                # 整表 obs 写回(部署代理 = 结算期代理,裁定 A 渠道表)
+                _bench_f = list(_bench_slots_f)
+                _dep_f = list(deployed_slots_of(bs))
                 for _i in _up_idx:
                     if _i < len(_occ_idx):
-                        bc = st.bench[_occ_idx[_i]]
+                        bc = _bench_f[_occ_idx[_i]]
                         if bc is not None:
-                            deployed_place(st.deployed, bc)   # ADR-0392 槽位落位
-                            st.bench[_occ_idx[_i]] = None
-                st.board = _board_counts_of(st.deployed)
+                            deployed_place(_dep_f, bc)   # ADR-0392 槽位落位
+                            _bench_f[_occ_idx[_i]] = None
+                _sim_write_bench(bs, _bench_f, 'fence-bench', 'fence')
+                _sim_write_deployed(bs, _dep_f, 'fence-dep', 'fence')
+                _sim_write_board(bs, _dep_f, 'fence-board', 'fence')
                 # ADR-0287(批㉘ 检查项 ledger_deploy_lag_disclosure):重放
                 # 围栏,残留可上件数入账本(deploy_lag_units)——部署时序
                 # 回归(未来重构再犯轮首序/围栏漏上)可被 checks 常态扫出。
@@ -2619,14 +2757,16 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 「行动语境下仍有围栏认可件未上」:不再因本轮自身部署
                 # 改变 board 阵营计数而翻转围栏「成对」判据产生口径过判
                 # (迁移审计 w652(git 历史) 两帧取证:seed 630027/630035 r6 lag=2,冻结后判 0)。
+                _bench_post = bench_slots_of(bs)
                 _lag_idx, _ = _dl.select_deployments(
-                    [b for b in st.bench if b is not None],
+                    [b for b in _bench_post if b is not None],
                     deployed_cids={d.char_id
-                                   for d in iter_occupied_deployed(st.deployed)
+                                   for d in iter_occupied_deployed(
+                                       deployed_slots_of(bs))
                                    if d.char_id},
                     deployed_fac=dict(_snap_dep_fac),
                     board=dict(_snap_board),
-                    cap=st.max_units(),
+                    cap=max_units_of(bs),
                     target_factions=_tf,
                     target_cores=_tc,
                     fw_carry=_fw,
@@ -2640,7 +2780,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 31016 p1r6 lag=1,board 5/6 非满板 hold 形态)。
                 _lag_units = _lag_excluding_fenced_holds(
                     _lag_idx,
-                    [i for i, b in enumerate(st.bench) if b is not None],
+                    [i for i, b in enumerate(_bench_post) if b is not None],
                     {_occ_idx[j] for j in _held_idx if j < len(_occ_idx)})
                 _deploy_lag_units = _lag_units
             # T3 同轮保留集「部署即销」(生命周期出口①,sim 对应物):
@@ -2650,7 +2790,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 stall_buys_prune_deployed as _sbpd,
             )
             _sbpd(sess, {d.char_id
-                         for d in iter_occupied_deployed(st.deployed)
+                         for d in iter_occupied_deployed(deployed_slots_of(bs))
                          if d.char_id})
             # `w614_sim_fidelity/` G2:上阵代理记账(轮末部署块后取值;纯观测零漂移)。
             # - bench_recipe_pieces:bench 上配方隶属件数(char∈target core
@@ -2661,12 +2801,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             #   ——星级加权 + 核心标记,记账级代理(非物理仿真),供成型质量
             #   粗比较;与 Δ池结算键(_settle_rung)口径无关。
             _bench_recipe = sum(
-                1 for b in iter_occupied(st.bench)
+                1 for b in iter_occupied(bench_slots_of(bs))
                 if b.char_id in _tc or b.faction in _tf)
             _dep_power = sum(
                 (int(getattr(d, 'star', 1) or 1)
                  + (1 if getattr(d, 'char_id', '') in _tc else 0))
-                for d in iter_occupied_deployed(st.deployed))
+                for d in iter_occupied_deployed(deployed_slots_of(bs)))
             if _seg_plane == 1:
                 _bench_recipe_rounds_p1 += _bench_recipe
                 _dep_power_sum_p1 += _dep_power
@@ -2697,20 +2837,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # vs 实机 32% 裂口的最大已定量化分量;encounter 亦 rung 键
             # (v11/ADR-0407,depth 键下期望伤害真平故迁 rung);
             # boss 键=净星深(迁移审计 w240(git 历史)/ADR-0404,修升星方向冲突)。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of as _bs_cal_of,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                feed_sim_truth as _bs_cal_feed,
-            )
-            # 波 5b 桥退役消点:波1 判据核容器签名——本段判据输入(board/
-            # deployed/level 判据不变量)工作帧真值经喂入口直写容器后读
-            # 容器,段首一次,段内复用(原桥装箱一次性视图退役)。
-            _bs_cal_feed(_bs_cal_of(sess), st,
-                         at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
-                                  f'-r{int(getattr(st, "round_num", 1) or 1)}'
-                                  f'-settle')
-            _bs_cal = _bs_cal_of(sess)
+            # T-185 批B:判据输入 = 容器权威态(喂入口随工作帧退役删除,
+            # 段首直读;判据核容器签名不变)。
+            _bs_cal = bs
             _dep = _deployable_depth(_bs_cal)
             # `w193_p2sim/`/ADR-0377:参数化校准层辖 plane≥2 战斗类结算——绕过
             # Δ池 plane=2 合并采样(防饥饿守卫已抹平其条件性,ADR-0362
@@ -2718,7 +2847,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 池采样)。calibrated=False = 逐位回 `w157_p2/` 路径(池优先 +
             # node_delta 回退档)。planes=1 恒不进本分支(P1 零漂移)。
             _p2_wp: float | None = None
-            if (st.plane >= 2 and _p2c.calibrated
+            if (_seg_plane >= 2 and _p2c.calibrated
                     and nodes[rn - 1] in ('battle', 'encounter', 'boss')):
                 delta, _p2_wp = p2_combat_delta(
                     _bs_cal, nodes[rn - 1], rn, rng, _p2c)
@@ -2740,32 +2869,32 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 位面维透传(P1 先行):P1 层现值/P2 别名,取表见
                     # cw_coarse_battle 模块头;默认 plane=1 = 旧调用零漂移。
                     delta = _cb.sample_battle_delta(
-                        _node, _settle_rung(_bs_cal), st.hp, rng,
-                        difficulty=getattr(st, 'enemy_difficulty', None),
-                        plane=st.plane)
+                        _node, _settle_rung(_bs_cal), int(bs.hp.value or 0), rng,
+                        difficulty=bs.enemy_difficulty.value,
+                        plane=_seg_plane)
                 else:
                     if _node == 'battle':
                         _ld = live_delta_for('battle', _settle_rung(_bs_cal), rng,
-                                             pool_map=pool_map, plane=st.plane)
+                                             pool_map=pool_map, plane=_seg_plane)
                     elif _node == 'boss':
                         # 迁移审计 w240(git 历史)/ADR-0404:boss 采样键=净星深(修 Σboard 升星
                         # 方向冲突,见 live_delta_for docstring)。
                         _ld = live_delta_for(
                             'boss', deployed_star_depth(_bs_cal), rng,
-                            pool_map=pool_map, plane=st.plane)
+                            pool_map=pool_map, plane=_seg_plane)
                     elif _node == 'encounter':
                         # v11/ADR-0407:encounter 采样键=rung(与 battle 同源
                         # _settle_rung——depth 键下期望伤害真平,`w250_delta_pool/` 查证;
                         # live_delta_for 桶缺逐级下探路径与 battle 共用)。
                         _ld = live_delta_for('encounter', _settle_rung(_bs_cal), rng,
-                                             pool_map=pool_map, plane=st.plane)
+                                             pool_map=pool_map, plane=_seg_plane)
                     elif _node in ('reward', 'supply'):
                         # ADR-0292(批㉗ F3/F4):reward/supply 由恒 EARLY_WIN_DELTA
                         # 改 Δ池经验分布采样(语料真值;F4 胖尾经复核为跨 run 配对
                         # 伪影,真值分布 = 恒 +2,采样口径保语料增长自动跟真)。
                         # 池缺 → live_delta_for None → node_delta 回退常数。
                         _ld = live_delta_for(_node, _dep, rng,
-                                             pool_map=pool_map, plane=st.plane)
+                                             pool_map=pool_map, plane=_seg_plane)
                     else:
                         _ld = None
                     if _ld is not None:
@@ -2783,12 +2912,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # ADR-0308 最终兜底语义(本路径不再消费;测试/
                         # 单元引用不受影响)。
                         delta = _cb.sample_battle_delta(
-                            _node, _settle_rung(_bs_cal), st.hp, rng,
-                            difficulty=getattr(st, 'enemy_difficulty', None),
-                            plane=st.plane)
+                            _node, _settle_rung(_bs_cal), int(bs.hp.value or 0), rng,
+                            difficulty=bs.enemy_difficulty.value,
+                            plane=_seg_plane)
                     else:
                         delta = node_delta(_node, rn, res.dir_round, rng,
-                                           plane=st.plane)
+                                           plane=_seg_plane)
             # 批㉘ F6(ADR-0287,hp_upper_bound_truth):HP 结算加上界钳制。
             # 游戏机制真值未见文档证据(语料 max hp_after=88 / sim max 92
             # 均未触界,非 cap 证明)——暂按 cap 100 钳制;批㉗ reward
@@ -2809,7 +2938,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     RESERVED_COMPONENTS as _RC,
                 )
                 _worn_units = 0.0
-                for _d in (st.deployed or []):
+                for _d in deployed_slots_of(bs):
                     for _e in (getattr(_d, 'equips', ()) or ()):
                         # 进阶成品全权 1.0;基础件半权 0.5(用户裁定
                         # 「简易件效果通常不大」;穿戴可逆=卖角色取回)
@@ -2817,7 +2946,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 if _worn_units > 0:
                     delta = max(delta, round(
                         delta * (1.0 - min(0.6, _wear_eff * _worn_units))))
-            st.hp = max(0, min(HP_UPPER_BOUND, int(st.hp + delta)))
+            _sim_observe(bs, bs.hp, max(0, min(HP_UPPER_BOUND, int((bs.hp.value or 0) + delta))), 'settle', 'settle')
             # ADR-0351 计数口径(奖励/补给轮不计连胜数;实机奖励轮结算后
             # streak 恒 0):战斗类节点(battle/encounter/boss)胜后计数
             # (delta>0)否则归零;奖励/补给轮不动 streak。发金半句已按
@@ -2825,7 +2954,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             if nodes[rn - 1] in ('battle', 'encounter', 'boss'):
                 streak = streak + 1 if delta > 0 else 0
                 # 带符号 streak(生产口径:连胜 +/连败 −;奖励/补给轮不动,
-                # 与无符号计数同规则)。备战帧 st.streak 恒 None 曾使 ④连败
+                # 与无符号计数同规则)。备战帧 streak 容器缺席(None)曾使 ④连败
                 # 金流与 ①连败门在 sim 成死输入(观测态补齐)。
                 streak_signed = (streak_signed + 1 if streak_signed > 0 else 1) \
                     if delta > 0 \
@@ -2847,14 +2976,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # v2 消费面核验:allocator._w_per_battle 负值钳 0、discipline
             # _streak_floor streak<2 门负值不点火,均与旧 0 等价。
             sess.last_streak = streak_signed
-            st.streak = streak_signed
-            res.hp_trail.append(st.hp)
+            _sim_observe(bs, bs.streak, streak_signed, 'settle', 'settle')
+            res.hp_trail.append(int(bs.hp.value or 0))
             # ADR-0362:P2 段事件用跨位面单调轮号(_ts);P1 段 _ts==rn
             # (零漂移);方向判据 P2 段=「P1 内已建立」
             res.hp_events.append(( _ts, nodes[rn - 1], delta,
-                                   res.dir_round <= rn if st.plane == 1
+                                   res.dir_round <= rn if _seg_plane == 1
                                    else res.dir_round < 99))
-            if st.plane >= 2:
+            if _seg_plane >= 2:
                 # ADR-0362:P2 段观测(存活轮/战斗胜负)
                 res.p2_rounds += 1
                 if nodes[rn - 1] in ('battle', 'encounter', 'boss'):
@@ -2865,18 +2994,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 桥池 fixed+core/三人组单一口径(旧 v1 线库 core_cards
             # 随 ADR-0336 删除),旧 core_trio_count 绑死仙舟非仙舟
             # 线局恒 0,审查二轮#8)
-            # 波 5b 桥退役消点:账本 depth 单一源——工作帧真值经喂入口
-            # 直写容器后读容器(结算段已喂过一次,此处重喂取结算后帧,
-            # 与原「每轮现装箱」值流逐位同)。
-            _bs_cal_feed(_bs_cal_of(sess), st,
-                         at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
-                                  f'-r{int(getattr(st, "round_num", 1) or 1)}'
-                                  f'-ledger')
-            _depth = _deployable_depth(_bs_cal_of(sess))
+            # 波 5b 桥退役消点:账本 depth 单一源——T-185 批B:容器权威态
+            # 直读(喂入口随工作帧退役删除;结算后 depth = 结算写后现值)。
+            _depth = _deployable_depth(bs)
             res.depth_trail.append(_depth)
             # r393(装备层执行代理):supply 节点 = 3 选 1 装备——
             # decide_supply(纯逻辑,与 run_supply_node 同源)选 →
-            # 入 st.equips(owned 池);equip_allocation(纯逻辑,与
+            # 入 owned 池(容器 equips 域);equip_allocation(纯逻辑,与
             # CwOpEquipAll 同源)分配给 deployed → 账本 equipped 字段。
             # 装备获取采样(供给重校准后):池结构见 EQUIP_GRANT_CALIB_VERSION
             # 模块常量注;带钻概率 15%(实机简报词缀影响的粗估,校准点)。
@@ -2890,6 +3014,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 时点画像:~3.8 个发放轮/局,sim 供给节点仅 ~1 个/局——单靠
             # 它永远凑不出实机件数;奖励节点同为零战力节点,承载通道
             # 语义等价)。结构与常量见 EQUIP_GRANT_CALIB_VERSION 注。
+            # T-185 批B:装备链 = 本地 owned 池/槽表工作 + 一次性 obs 写回
+            # (发放/穿戴/合成 = 外部事件,裁定 A 渠道表);槽表/池为读口
+            # 新建对象,本地变异不共享;喂入口随工作帧退役删除,decide_
+            # supply 直读容器权威态。
+            _eq = list(bs.equips.value or [])
+            _eq_dep = deployed_slots_of(bs)
             _equipped_now: list[tuple[str, str]] = []
             if nodes[rn - 1] in ('supply', 'reward'):
                 from sr_od.application.currency_war.data.cw_equipment_data import (
@@ -2938,31 +3068,18 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 if _is_supply:
                     # 补给节点:真两步 decide_supply(语义零改动,见下)
                     _opts = _sample_supply_opts(_basic_names)
-                    # 波 5b 桥退役消点:decide_supply 已切容器签名;分支内局部
-                    # 导入(函数前段容器读口为他分支局部名,禁跨分支引用)——
-                    # sim 工作帧真值经喂入口直写容器后读容器(原桥装箱退役)。
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        board_state_of as _bs_sup_of,
-                    )
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        feed_sim_truth as _bs_sup_feed,
-                    )
-                    _bs_sup_feed(_bs_sup_of(sess), st,
-                                 at_round=f'p{int(getattr(st, "plane", 1) or 1)}'
-                                          f'-r{int(getattr(st, "round_num", 1) or 1)}'
-                                          f'-supply')
-                    _pick = decide_supply(_opts, _bs_sup_of(sess), strategy_state_of(sess).target_comp, None,
+                    _pick = decide_supply(_opts, bs, strategy_state_of(sess).target_comp, None,
                                           refresh_used=exec_state_of(sess)._supply_refresh_used)
                     if _pick.refresh and not exec_state_of(sess)._supply_refresh_used:
                         exec_state_of(sess)._supply_refresh_used = True
                         _opts = _sample_supply_opts(_basic_names)
-                        _pick = decide_supply(_opts, _bs_sup_of(sess), strategy_state_of(sess).target_comp, None,
+                        _pick = decide_supply(_opts, bs, strategy_state_of(sess).target_comp, None,
                                               refresh_used=True)
-                    st.equips.append(_opts[_pick.idx].equip)
+                    _eq.append(_opts[_pick.idx].equip)
                     _equip_grants += 1   # `w614_sim_fidelity/` G1 发放落账
                 else:
                     # 奖励节点:非选择型发放,直接 1 件基础件(均匀)
-                    st.equips.append(rng.choice(_basic_names))
+                    _eq.append(rng.choice(_basic_names))
                     _equip_grants += 1   # `w614_sim_fidelity/` G1 发放落账
                 # 追加件(多通道聚合代理):实机装备来自奖励/补给/投资
                 # 环境/遭遇后多通道,sim 只有上述两类节点承载 →
@@ -2971,14 +3088,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 无带钻语义——钻只属补给节点选项)。
                 if rng.random() < EQUIP_GRANT_BONUS_P:
                     if rng.random() < EQUIP_GRANT_BONUS_ADV_SHARE:
-                        st.equips.append(rng.choice(_adv_names))
+                        _eq.append(rng.choice(_adv_names))
                     else:
-                        st.equips.append(rng.choice(_basic_names))
+                        _eq.append(rng.choice(_basic_names))
                     _equip_grants += 1   # `w614_sim_fidelity/` G1 追加件落账
                 # 工具注入旁路(21 号稿 §4/§5 最小面;缺省零漂移,见
                 # TOOL_GRANT_INJECT_POOL 注)
                 if TOOL_GRANT_INJECT_POOL and rng.random() < TOOL_GRANT_INJECT_P:
-                    st.equips.append(rng.choice(TOOL_GRANT_INJECT_POOL))
+                    _eq.append(rng.choice(TOOL_GRANT_INJECT_POOL))
                     _equip_grants += 1
                 if _is_supply and _pick.idx < len(_opts) \
                         and _opts[_pick.idx].has_diamond:
@@ -2999,7 +3116,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             _ist = getattr(strategy_state_of(sess), 'v3_intention', None)
             _line_locked = (getattr(_ist, 'phase', '') == 'locked'
                             and getattr(_ist, 'locked_comp', ''))
-            if _synth_on and _line_locked and st.equips:
+            if _synth_on and _line_locked and _eq:
                 from sr_od.application.currency_war.data.cw_synthesis import (
                     plan_syntheses,
                 )
@@ -3013,25 +3130,25 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     component_demand as _cd,
                 )
                 _need_comps = set(_cd(_keys))
-                for _d in iter_occupied_deployed(st.deployed):
+                for _d in iter_occupied_deployed(_eq_dep):
                     for _e in list(getattr(_d, 'equips', ()) or ()):
                         if _e in _need_comps:
                             _d.equips.remove(_e)
-                            st.equips.append(_e)
-                for _adv, _comps in plan_syntheses(_keys, st.equips):
+                            _eq.append(_e)
+                for _adv, _comps in plan_syntheses(_keys, _eq):
                     for _c in _comps:
-                        st.equips.remove(_c)
-                    st.equips.append(_adv)
+                        _eq.remove(_c)
+                    _eq.append(_adv)
                     _synth_events.append(_adv)
                     _equip_syntheses += 1   # `w614_sim_fidelity/` G1 合成落账
             _duty = False
-            if st.equips and deployed_occupied(st.deployed):   # ADR-0392 占用数(定长表恒真值)
+            if _eq and deployed_occupied(_eq_dep):   # ADR-0392 占用数(定长表恒真值)
                 from sr_od.application.currency_war.data.cw_equipment_data import (
                     EQUIP_TOOL_CATEGORY as _EQTOOL,
                 )
 
                 # 工具注入伴随面(21 号稿 §4):工具不进可穿池(执行层
-                # wearable 同口径,类别=工具排除);st.equips 本体不动,
+                # wearable 同口径,类别=工具排除);owned 池本体不动,
                 # 工具行为分布由工具判据消费端观测。
                 from sr_od.application.currency_war.data.cw_equipment_data import (
                     EQUIPMENTS as _EQM,
@@ -3039,7 +3156,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.kernel.cw_comps import (
                     equip_allocation,
                 )
-                _wearable_equips = [n for n in st.equips
+                _wearable_equips = [n for n in _eq
                                     if _EQM.get(n) is not None
                                     and _EQM[n].category != _EQTOOL]
                 # `w212_sim_equip/`/ADR-0393:equip_allocation 生产调用形态——
@@ -3048,7 +3165,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 见本趟内部分配,跨轮守卫形同虚设)。BenchChar.equips
                 # (r393 写回)即跨轮已穿真值。
                 _occupied: dict[tuple[str, int], list[str]] = {}
-                for d in iter_occupied_deployed(st.deployed):
+                for d in iter_occupied_deployed(_eq_dep):
                     _occupied[(getattr(d, 'position_pref', '') or '',
                                int(getattr(d, 'slot', 0) or 0))
                               ] = list(getattr(d, 'equips', ()) or ())
@@ -3056,8 +3173,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # ADR-0487:谓词 p1_iface_carry_duty_active 已删;账本行
                 # p1_duty 键按披露稳定保留恒 False。)
                 _equipped_now = equip_allocation(
-                    strategy_state_of(sess).target_comp, st.deployed, _wearable_equips,
-                    occupied=_occupied)
+                    strategy_state_of(sess).target_comp, _eq_dep,
+                    _wearable_equips, occupied=_occupied)
                 # ADR-0312(迁移审计 w50(git 历史) L2 雏形):分配结果同步写回 BenchChar.equips
                 # ——星徽/卡带的羁绊贡献随 unit_bond_tags 进 board(生产
                 # tracked_deployed[].equips 同语义)。写回按**多重集差**:
@@ -3066,11 +3183,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 旧「not in」防重守卫把同趟第二件静默丢弃 = 装备凭空消失)。
                 _adds: dict[str, list[str]] = {}
                 for _who, _what in _equipped_now:
-                    if _what in st.equips:
-                        st.equips.remove(_what)
+                    if _what in _eq:
+                        _eq.remove(_what)
                         _equip_wears += 1   # `w614_sim_fidelity/` G1 穿戴落账(owned→已穿)
                     _adds.setdefault(_who, []).append(_what)
-                for d in iter_occupied_deployed(st.deployed):
+                for d in iter_occupied_deployed(_eq_dep):
                     _want = _adds.pop(d.char_id, None)
                     if not _want:
                         continue
@@ -3080,6 +3197,10 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _pre.remove(_w)   # 轮前已穿,不双记
                         else:
                             d.equips.append(_w)
+            # 装备链一次性 obs 写回(owned 池 + 上阵席位;无变化 = 同值写,
+            # 观察幂等零行为)
+            _sim_observe(bs, bs.equips, _eq, 'equips', 'equips')
+            _sim_write_deployed(bs, _eq_dep, 'equips-dep', 'equips')
             from sr_od.application.currency_war.kernel.cw_line_defs import (
                 core_count_for,
             )
@@ -3101,8 +3222,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         + sum(lp['net_gold'] for lp in _sell_buyback_loops)
             res.ledger.append({
                 'ts': _ts,   # 单调轮序号(跨位面累计;P1 段 == rn;审查①#9)
-                'plane': st.plane, 'round_num': rn,
-                'gold': st.gold, 'hp': st.hp,
+                'plane': _seg_plane, 'round_num': rn,
+                'gold': gold_of(bs), 'hp': int(bs.hp.value or 0),
                 # ADR-0343:成型停手态入账本(轮内 OR 聚合;检查器豁免/判读锚点数据源)
                 'formed_stop': _round_formed_stop,
                 # 血预算停手·终止豁免位(轮入口首段快照;写入侧单一源 =
@@ -3143,12 +3264,13 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 'v3_intention': serialize_intention(
                     getattr(strategy_state_of(sess), 'v3_intention', None)),
                 'target_comp': _target_comp_label(sess),
-                'state': {'board': dict(st.board), 'level': st.level,
+                'state': {'board': dict(bs.board.value or {}),
+                          'level': level_of(bs),
                           # r394(过渡阵容判据接线):板面阵营档位——
                           # deployed 的 factions 计数(生产 board 口径;
                           # 旧恒空 dict 让「r几凑到配方X档/三人组上场」
                           # 在 sim 判读不可见)。recipe_tier 判据的输入。
-                          'board_factions': _board_factions_of(st.deployed),
+                          'board_factions': _board_factions_of(deployed_slots_of(bs)),
                           # bench 对齐生产 BenchChar 形状(dict 带
                           # char_id/faction——视图/检查读 b['faction']
                           # 不炸;审查#3)。ADR-0316:序列化保持**占用序
@@ -3167,7 +3289,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                      # equips 同语义)——换下场角色可带装,
                                      # 缺此键会让保有量口径漏计 bench 侧
                                      'equips': list(getattr(b, 'equips', ()) or ())}
-                                    for b in iter_occupied(st.bench)],
+                                    for b in iter_occupied(bench_slots_of(bs))],
                           # r391(执行层代理配套):deployed/cap 入账本
                           # ——「开局 deploy<cap」检查项的数据源
                           # (r387 类 bug 的 sim 常态化防线)。deployed
@@ -3183,20 +3305,22 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                         # row)复算星徽羁绊贡献需要它
                                         'equips': list(getattr(d, 'equips', ())
                                                        or ())}
-                                       for d in (st.deployed or [])
+                                       for d in deployed_slots_of(bs)
                                        if getattr(d, 'char_id', '')],
-                          'cap': st.max_units(),
+                          'cap': max_units_of(bs),
                           # r393(装备层代理):本轮分配结果(谁穿了什么)
                           # +owned 余量——「开局零穿着/乱穿」检查项数据源。
                           'equipped': [{'char': w, 'equip': e}
                                        for w, e in _equipped_now],
-                          'owned_equips': list(st.equips),
+                          'owned_equips': list(bs.equips.value or []),
                           # 观测态保真位入账本(带符号 streak + hp 可信
                           # 两位;死输入哨兵检查 sim_streak_propagation_
                           # live 与 replay 对拍的观测面)
-                          'streak': st.streak,
-                          'hp_readable': bool(st.hp_readable),
-                          'hp_trusted': bool(st.hp_trusted),
+                          'streak': bs.streak.value,
+                          # 保真位恒 True(F8 定谳:sim 恒真读帧约定随迁;
+                          # 政策层派生承载,不迁移)
+                          'hp_readable': True,
+                          'hp_trusted': True,
                           # 观测硬依赖键(决策入口快照,语义见轮入口块
                           # 注释):bench_full_flag 消费 = 锁#10 D1 对账;
                           # board_next_tier 消费 = Δp_tier 档位分解标定。
@@ -3206,8 +3330,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                           #  ② MAP A7/B 类;新数据恒缺省。)
                           # 表。生产 OCR 覆盖 21% 的 sim 全量对账源)
                           'refresh_probs': (
-                              dict(st.refresh_probs)
-                              if st.refresh_probs else None)},
+                              dict(_probs)
+                              if _probs else None)},
                 # 投资环境名(生产 decisions 行 _extra.sess_active_env
                 # 同名同位;invest 注入写 session.active_env,cw_replay
                 # 回读消费。空串 = 未注入/无环境——机制性缺省,非缺口)
@@ -3304,14 +3428,14 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # ADR-0336:target 用 v3 意向名(旧 v1 字段已删)
                     'core_count': core_count_for(
                         _target_comp_label(sess),
-                        {d.char_id for d in (st.deployed or [])
+                        {d.char_id for d in deployed_slots_of(bs)
                          if getattr(d, 'char_id', '')}),
                     # deployed 代理名单(审查#5:tiers sim 行可渲染
                     # 角色构成——比只有计数信息量高一档)
-                    'deployed': [d.char_id for d in (st.deployed or [])
+                    'deployed': [d.char_id for d in deployed_slots_of(bs)
                                  if getattr(d, 'char_id', '')],
                     'shop_waves': _waves,
-                    'dir_established': (res.dir_round <= rn if st.plane == 1
+                    'dir_established': (res.dir_round <= rn if _seg_plane == 1
                                         else res.dir_round < 99),
                     'segments': _segs_used,
                     # ADR-0276:本轮 3合1 合并次数(单位守恒/席位判读输入)
@@ -3382,12 +3506,12 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     # 未穿滞留件数/生锈暴露(词条语义 cw_comps.RUST_AFFIX_NAME:
                     # 每件未穿装备敌伤+3%,最多 10 件;「生锈泄洪」=穿戴/合成
                     # 使 rust_units 下降的轮,配 sim.refresh_xp 旁的计数读)
-                    'unworn_equips': len(st.equips),
-                    'rust_units': min(10, len(st.equips)),
+                    'unworn_equips': len(bs.equips.value or []),
+                    'rust_units': min(10, len(bs.equips.value or [])),
                     'worn_equips_total': sum(
                         len(getattr(u, 'equips', ()) or ())
-                        for u in (*iter_occupied_deployed(st.deployed),
-                                  *iter_occupied(st.bench))),
+                        for u in (*iter_occupied_deployed(deployed_slots_of(bs)),
+                                  *iter_occupied(bench_slots_of(bs)))),
                     # 付费刷新产经验(xp_per_refresh;免费刷不计)
                     'refresh_xp': _refresh_xp_round,
                     # 上阵代理(G2):配方件躺 bench 数 / 上阵战力贡献
@@ -3415,8 +3539,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 穿戴时,两读数分叉(峰值≠行值最大);T-169 锁红重推后移点
             # 收口,勘误说明留在 power 块注释。
             if _seg_plane == 1:
-                _rust_peak = max(_rust_peak, min(10, len(st.equips)))
-            if st.hp <= 0:
+                _rust_peak = max(_rust_peak, min(10, len(bs.equips.value or [])))
+            if int(bs.hp.value or 0) <= 0:
                 break
         # `w213_sim_supply/`/ADR-0394:P1 段出口 key_equips 命中度量段末快照
         # (无论 P1 段是打满还是中途死亡都记;口径见 SimResult
@@ -3424,15 +3548,15 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         if _seg_plane == 1:
             # `w614_sim_fidelity/` G1:P1 出口滞留件数(段末 owned 池快照;实机出口
             # 「滞留件数」的 sim 对应物,段内死亡也记)
-            res.p1_unworn_exit = len(st.equips)
+            res.p1_unworn_exit = len(bs.equips.value or [])
             res.p1_rust_units_peak = _rust_peak
             _tc = getattr(strategy_state_of(sess), 'target_comp', None)
             _keys = (list(getattr(_tc, 'key_equips', ()) or ())
                      if _tc is not None else [])
             _have: dict[str, int] = {}
-            for _e in (*[e for d in (st.deployed or [])
+            for _e in (*[e for d in deployed_slots_of(bs)
                          for e in (getattr(d, 'equips', ()) or ())],
-                       *st.equips):
+                       *(bs.equips.value or [])):
                 _have[_e] = _have.get(_e, 0) + 1
             _need: dict[str, int] = {}
             for _k in _keys:
@@ -3443,11 +3567,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             res.p1_key_hit_hits = sum(
                 min(_n, _have.get(_k, 0)) for _k, _n in _need.items())
         # ADR-0362:位面段间死亡即终局(P1 段死=不进 P2,P2 段死=止)
-        if st.hp <= 0:
+        if int(bs.hp.value or 0) <= 0:
             break
-    res.p2_hp0 = res.p2_entered and st.hp <= 0
-    res.final_hp = st.hp
-    res.level = st.level
+    res.p2_hp0 = res.p2_entered and int(bs.hp.value or 0) <= 0
+    res.final_hp = int(bs.hp.value or 0)
+    res.level = level_of(bs)
     # `w614_sim_fidelity/` 保真三补:局级记账出口汇总(纯观测)
     res.equip_grants = _equip_grants
     res.equip_wears = _equip_wears
@@ -3512,5 +3636,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
         # decide_event 归因串透传,判读/统计入口)
         res.invest_picks = tuple(_inv_picks)
     return res
+
+
+
+
+
+
 
 
