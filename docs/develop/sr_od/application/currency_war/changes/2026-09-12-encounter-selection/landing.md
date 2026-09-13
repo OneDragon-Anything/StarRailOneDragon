@@ -30,7 +30,7 @@
 
 **设计依据**：details/encounter-criterion-spec.md §1-§3/§5-§8（锁表 W 组）
 
-**文件面**：`kernel/cw_encounter_selection.py`（新建）、`kernel/cw_game_state.py`（结算观测环/遭遇经验表新增 + Settlement 准入注释修订）、`kernel/cw_performance.py`（RoundOutcome 双扩字段 + docstring 如实化）、`obs/cw_settlement_obs.py`（双扩字段装填——构造参/行后填形态 E-2 落码定）、`telemetry/schema.py`（OutcomeRecord 双字段同步，恢复同 schema 性质）、`strategies/impl/flow.py`（窗口提取与改投）、`strategies/impl/mandate_v1/bridge.py`（改投 + ADR 引用清理）、`strategies/impl/mandate_v1/encounter.py`（搁置注释 + ADR 引用清理）、`strategies/impl/mandate_v1/audit/provisional.py`（ADR 引用清理）、`operations/cw_screen/cw_screen_encounter.py`（journal 归因行——E-2 新增写点，现役仅 log.info）、`operations/cw_screen/cw_screen_battle_wait.py`（结算链改造（`difficulty_node` 快照装配〔两变体随读点定谳开关——details §8 表，定谳前双态实现、定谳后裁定〕 + **败局行拓扑改造**：环写位 = 守卫后三路过守卫者入环、同场去重合并、fill 暂存战斗窗生命周期、**环完整性对账 = E-3 离线项**（不对齐率〔缺行/多行/序错〕= 开闸门成员）——写点禁惰性 drain 位：取错帧且撞 D-94 红线）、`sr-od-test/test/sr_od/app/currency_war/test_cw_encounter_selection.py`（新建）
+**文件面**：`kernel/cw_encounter_selection.py`（新建）、`kernel/cw_game_state.py`（结算观测环/遭遇经验表新增 + Settlement 准入注释修订）、`kernel/cw_performance.py`（RoundOutcome 双扩字段 + docstring 如实化）、`obs/cw_settlement_obs.py`（双扩字段装填——构造参/行后填形态 E-2 落码定）、`telemetry/schema.py`（OutcomeRecord 双字段同步，恢复同 schema 性质）、`strategies/impl/flow.py`（窗口提取与改投）、`strategies/impl/mandate_v1/bridge.py`（改投 + ADR 引用清理）、`strategies/impl/mandate_v1/encounter.py`（搁置注释 + ADR 引用清理）、`strategies/impl/mandate_v1/audit/provisional.py`（ADR 引用清理）、`operations/cw_screen/cw_screen_encounter.py`（journal 归因行——E-2 新增写点，现役仅 log.info）、`operations/cw_screen/cw_screen_battle_wait.py`（结算链改造（`difficulty_node` 快照装配〔两变体随读点定谳开关——details §8 表，定谳前双态实现、定谳后裁定〕 + **败局行拓扑改造**：环写位 = 守卫后三路过守卫者入环、同场去重合并、fill 暂存战斗窗生命周期、**环完整性对账 = E-3 离线项**（不对齐率〔缺行/多行/序错〕= 开闸门成员）——写点禁惰性 drain 位：取错帧且撞 D-94 红线〔D-94 定义单一源 = 迁移审计在册〕）、`sr-od-test/test/sr_od/app/currency_war/test_cw_encounter_selection.py`（新建）
 
 **依赖**：3.1（tiebreak 映射表；判据本体其余部分无依赖，可先行落）
 
@@ -46,7 +46,7 @@
 
 ## 3.3 E-3 需求线标定批（开闸）
 
-**范围**：实机窗口采集（**自备采集脚本**落 `.debug/`，禁依赖现役 settle_frame_collect 临时件）——遭遇决策帧与其后结算帧配对（决策帧 D_enc 口读值/选档档位/填充率/胜负）——**按选档结果标定净值 Δ_t 与 f_min**（读点归属两假设未定谳〔契约 2〕：判 (ii) → 净值 Δ_t 与 f_min、判 (i) → 原始口径线族；敌方信息浮层读数通道未接线〔建档已完成，provisional.py:96-102〕，结果标定无需自身旗牌；浮层读点为升级路径），n≥5 起步（比例型单参数最小可行样本，采样随对局继续累积）→ f_min CI；**进度条语义定谳 = 开闸前置**（离线可先行：归档对局 fill 轨迹 vs 逐节点胜负对账，判别式 details §2）+ Δ_t 净值语义配对定谳；g 曲线客户端配置表查表并行（命中 → 【注】切换，W8）；**f_min/g/Δ_t 三常量登记 01_math_framework §6 在册【拟】清单**（消费面/分级/fail-closed 退路/owner=编排者/期限=下一实机对局窗口——超期未决按 strategy-work §3（开关生命周期）回炉）；fill 读取率（结算遥测页 1 帧态）、**遭遇败局行入表率、环完整性对账不对齐率〔缺行/多行/序错〕**、节点类型解析率、档位读出率与分级混淆矩阵量测；**档位翻转线族（净值口径）= {0.738, 0.444, 0.268} 预置分支**：CI 跨任一线 → 按 01 §6 要素②「方向翻转 = 数据不足」处置（继续采样/维持暗装），禁硬选端点。f_min/g/Δ_t 注册落点定死 = `kernel/cw_encounter_selection.py` 常量区。**开闸门 = 三常量逐个满足 01 §6 要素①②③ ∧ 进度条语义（两假设 + 方向维度）已定谳 ∧ D_enc 读点归属定谳 ∧ 环完整性对账不对齐 = 0〔缺行/多行/序错〕∧ fill 读取率达标 ∧ D_enc 现场读命中率达标（W14 离线对账），任一不可得/不合格 → 维持暗装并如实申报**。算法质量验证通道 = 实机本批（sim 无遭遇决策段，判据 sim 不可观测——3.2 申报）。
+**范围**：实机窗口采集（**自备采集脚本**落 `.debug/`，禁依赖现役 settle_frame_collect 临时件）——遭遇决策帧与其后结算帧配对（决策帧 D_enc 口读值/选档档位/填充率/胜负）——**按选档结果标定净值 Δ_t 与 f_min**（读点归属两假设未定谳〔契约 2〕：判 (ii) → 净值 Δ_t 与 f_min、判 (i) → 原始口径线族；敌方信息浮层读数通道未接线〔建档已完成，provisional.py:96-102〕，结果标定无需自身旗牌；浮层读点为升级路径），n≥5 起步（比例型单参数最小可行样本，采样随对局继续累积）→ f_min CI；**进度条语义定谳 = 开闸前置**（离线可先行：归档对局 fill 轨迹 vs 逐节点胜负对账，判别式 details §2）+ Δ_t 净值语义配对定谳；g 曲线客户端配置表查表并行（命中 → 【注】切换，W8）；**f_min/g/Δ_t 三常量登记 01_math_framework §6 在册【拟】清单**（消费面/分级/fail-closed 退路/owner=编排者/期限=下一实机对局窗口——超期未决按 strategy-work.md §3（开关生命周期）回炉）；fill 读取率（结算遥测页 1 帧态）、**遭遇败局行入表率、环完整性对账不对齐率〔缺行/多行/序错〕**、节点类型解析率、档位读出率与分级混淆矩阵量测；**档位翻转线族（净值口径）= {0.738, 0.444, 0.268} 预置分支**：CI 跨任一线 → 按 01 §6 要素②「方向翻转 = 数据不足」处置（继续采样/维持暗装），禁硬选端点。f_min/g/Δ_t 注册落点定死 = `kernel/cw_encounter_selection.py` 常量区；判 (ii) 判别子切换形态落码位同模块（双态实现随定谳裁定，契约 2）。**开闸门 = 三常量逐个满足 01 §6 要素①②③ ∧ 进度条语义（两假设 + 方向维度）已定谳 ∧ D_enc 读点归属定谳 ∧ 环完整性对账不对齐 = 0〔缺行/多行/序错〕∧ fill 读取率达标 ∧ D_enc 现场读命中率达标（W14 离线对账），任一不可得/不合格 → 维持暗装并如实申报**。算法质量验证通道 = 实机本批（sim 无遭遇决策段，判据 sim 不可观测——3.2 申报）。
 
 **设计依据**：details/encounter-criterion-spec.md §3（三态表/翻转分支/登记义务）+ §4（读链申报）+ §9 零调参对账
 
@@ -60,6 +60,7 @@
 - f_min 带 CI 注入（或不可得 → 维持暗装的申报记录）；01 §6 登记完成（f_min/g/Δ_t 三行，含 owner/期限）
 - 进度条语义定谳结论记录（两假设二选一 + 红段方向 + 证据帧指针；判为累计 → 按 details §2 保守回退条款回写设计）
 - W14 环完整性对账锁绿（对账不对齐〔缺行/多行/序错〕= 0 在册）
+- 开闸后激活复验 W1-W14 全量复跑记录在册（含 W2b/W5）
 - fill 读取率达标判定记录在册（开闸门成员）
 - W1-W3 激活全绿（g 不可得场景以三常量 + 条语义测试注入态判定，见 details 锁表表注）；W8 两态全绿
 - §12 通用工程门（引用，不复述）

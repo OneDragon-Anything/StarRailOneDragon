@@ -47,7 +47,7 @@
 |---|---|---|
 | 窗口两场结果（killed/进度填充率） | GameState 结算观测环（E-2 新建，深度 10；写端 = RoundOutcome 构造唯一点三路过守卫者入环，同场去重合并） | 新增状态结构；跨局持久化缺位（写端退役）→ 收窄局内 scope，跨局挂账 |
 | 窗口战斗难度值 D_win | RoundOutcome 扩字段 `difficulty_node`（E-2 补，备战帧旗牌快照） | 新增字段 |
-| 遭遇决策 D_enc 读值 | 决策时读 GameState 现存值（前一普通战斗节点备战帧写入；净值语义见 details §3） | 现役 |
+| 遭遇决策 D_enc 读值 | 决策时读 GameState 现存值（读点归属两假设未定谳——details 契约 2；判 (ii) 净值语义见 details §3） | 现役 |
 | 经验档层数据点 (t, D_enc, fill, killed) | GameState 遭遇经验表（E-2 新建，本局全量遭遇行；字段 `encounter_tier`/`difficulty_node`） | 新增状态结构（产出端锁 W13） |
 | 奖励 tiebreak | 选卡屏奖励预览——**读数已在**（2026-08-07 baseline），缺消费端与多件结构化 | E-1 补消费面 |
 | f_min / g / Δ_t | 标定批（实机窗口）+ 客户端配置表查表 | 待标定（暗装；三常量开闸门，details §9） |
