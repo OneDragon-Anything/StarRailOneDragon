@@ -6,9 +6,10 @@
 - kind='action':单动作执行回执(商店域唯一写点 = apply_action_outcome
   回执位;备战域写点 = PrepActionExecutor._note_action_journal,T-16
   执行缝账务包络扩围——备战帧金动作自此逐行在账,op 分键
-  「货币战争-备战动作」,行携执行点 ``gold_delta``),
-  expected_delta = 执行前后帧序列化的**全量展平叶级 diff**——投影之外的真实
-  变化必须出现在 delta 里(「投影没算到但真变了」正是深度复盘要抓的投影残差);
+  「货币战争-备战动作」,行携执行点 ``gold_delta``)。期望态 delta 列
+  (expected_delta/gold/bench_used)已随 T-163 前瞻投影消费退役不入行:
+  投影真值在容器 receipts 直写流水(state/journal.jsonl 行行自足),
+  判读输入 = 动作行本体 + 该流水 join,行内不再复制第二份投影;
 - kind='op':非决策 op(战斗等待/入口链/位面切换)enter/exit 成对行。轮询
   内循环逐 tick 不落行(用户需求粒度 = 每次 op 调用;tick 级留日志)。孤儿
   enter 行(进程中断/停局导致 exit 丢失)= 进程中断证据,装配端标注
@@ -33,7 +34,6 @@ from typing import Any
 from sr_od.application.currency_war.kernel.cw_observe import LIVE_DIR
 from sr_od.application.currency_war.telemetry.schema import (
     serialize_action,
-    serialize_state,
 )
 from sr_od.application.currency_war.telemetry.state import current_run_id
 
@@ -103,43 +103,6 @@ def current_frame_seq() -> int:
     return _frame_seq_by_run.get(current_run_id(), 0)
 
 
-def _flatten(obj: Any, prefix: str, out: dict[str, Any]) -> None:
-    """全量展平叶级(方案 C3 写死):嵌套 dict 递归展开点号路径;列表叶 =
-    整列表替换计一条(列表下标语义随内容漂移,逐元素对位产生假对应)。"""
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            _flatten(v, f'{prefix}.{k}' if prefix else str(k), out)
-        return
-    out[prefix or '<root>'] = obj
-
-
-def flatten_diff(before: dict[str, Any], after: dict[str, Any],
-                 cap: int) -> dict[str, Any]:
-    """前后两序列化帧的全量叶级 diff(零漏报口径)。
-
-    两侧都展平后做键集对称差 + 同键值比较;超 ``cap`` 条截断并置
-    ``_trunc=True``(读端按「此帧 delta 不完整」分型)。
-    """
-    fb: dict[str, Any] = {}
-    fa: dict[str, Any] = {}
-    _flatten(before, '', fb)
-    _flatten(after, '', fa)
-    delta: dict[str, Any] = {}
-    for k in fb:
-        if k not in fa:
-            delta[f'-{k}'] = fb[k]
-    for k, v in fa.items():
-        if k not in fb:
-            delta[f'+{k}'] = v
-        elif fb[k] != v:
-            delta[f'~{k}'] = v
-    if len(delta) > cap:
-        kept = dict(list(delta.items())[:cap])
-        kept['_trunc'] = True
-        return kept
-    return delta
-
-
 def _emit(rec: dict[str, Any], row_cap: int) -> None:
     """best-effort 追加一行(局外无 run_id 不写假键;
     序列化超行帽截断 + ``_trunc``,obs_conflict 同款 try/except 兜底;
@@ -150,7 +113,11 @@ def _emit(rec: dict[str, Any], row_cap: int) -> None:
     try:
         blob = _json.dumps(rec, ensure_ascii=False)
         if len(blob.encode('utf-8')) > row_cap:
-            slim = {k: rec[k] for k in rec if k != 'expected_delta'}
+            # 超帽降级 = 摘大载荷键后重试(expected_delta 已退役,降级
+            # 现为纯截断标记;键名保留 = 旧判读面「_trunc 行 = 行不完整」
+            # 分型语义不变,未来大载荷键扩条只改本剥离清单)。
+            slim = {k: v for k, v in rec.items()
+                    if k not in ('expected_delta',)}
             slim['_trunc'] = True
             blob = _json.dumps(slim, ensure_ascii=False)
         out = _journal_path()
@@ -169,7 +136,7 @@ def _base_row(plane: int, round_num: int) -> dict[str, Any]:
 
 
 def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
-                          pre_frame: Any, post_frame: Any, *,
+                          pre_receipt: Any, post_receipt: Any = None, *,
                           op_name: str = '货币战争-买牌',
                           extra: dict[str, Any] | None = None) -> None:
     """缺口②写点:单动作执行回执行(商店域唯一写点 =
@@ -182,9 +149,14 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
     :param seq: 段内动作序(1 起;visit_actions 追加后长度)。备战域恒 0
       = 无段序账(行序即时序,商店 seq 语义不适用)
     :param exec_ok: 执行落地与否(False 行照落,exec_ok=False 判读面)
-    :param pre_frame: 动作执行前帧(CwSimFrame;序列化做 diff 左侧)
-    :param post_frame: 动作执行后帧(CwSimFrame;None=终结/投影跳过,delta 省略;
-      T-163 起商店恒 None,备战恒 None)
+    :param pre_receipt: 执行前时点位置回执(容器期:本函数只读
+      ``plane``/``round_num`` 两属性作行位置键;商店域 = 段顶
+      ``GameStateReadReceipt``,备战域 = 容器读口现读的命名空间桩。
+      位置键真值由调用方在动作时点捕获,本函数不回读容器防时点漂移)
+    :param post_receipt: 退役位,恒 None(形参保留只为调用点位兼容——
+      期望态 delta/gold/bench_used 列已随 T-163 前瞻投影消费退役不入行,
+      两域同口径;投影真值单一源 = 容器 receipts 直写流水,判读 join
+      该流水,本行不复制第二份。传非 None = 调用方契约违约)
     :param op_name: 行 op 键(复盘「分发了谁/金动归属」直读域分键):缺省
       = 商店「货币战争-买牌」;备战域 = 「货币战争-备战动作」
     :param extra: 行级结构化扩展(备战域携 ``gold_delta`` = 执行点金差,
@@ -194,26 +166,13 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
         rid = current_run_id()
         if not rid:
             return
-        rec = _base_row(int(getattr(pre_frame, 'plane', 0) or 0),
-                        int(getattr(pre_frame, 'round_num', 0) or 0))
+        rec = _base_row(int(getattr(pre_receipt, 'plane', 0) or 0),
+                        int(getattr(pre_receipt, 'round_num', 0) or 0))
         rec.update({'kind': 'action', 'op': op_name,
                     'seq': seq, 'frame_seq': current_frame_seq(),
                     'action': serialize_action(action), 'exec_ok': exec_ok})
         if extra:
             rec.update(dict(extra))
-        if post_frame is not None:
-            delta = flatten_diff(serialize_state(pre_frame),
-                                 serialize_state(post_frame), cap=12)
-            if delta:
-                rec['expected_delta'] = delta
-            rec['gold'] = getattr(post_frame, 'gold', None)
-            try:
-                from sr_od.application.currency_war.kernel.cw_exec_state import (
-                    bench_occupied,
-                )
-                rec['bench_used'] = bench_occupied(post_frame.bench)
-            except Exception:   # noqa: BLE001  观测 best-effort
-                pass
         _emit(rec, _ROW_CAP)
     except Exception:   # noqa: BLE001  journal best-effort
         pass

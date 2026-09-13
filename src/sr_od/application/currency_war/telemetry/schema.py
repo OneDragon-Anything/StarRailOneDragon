@@ -8,10 +8,14 @@ from pathlib import Path
 from typing import Any
 
 from sr_od.application.currency_war.kernel.cw_economy import sell_refund
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
+    bench_slots_of,
+    deployed_slots_of,
+)
 from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     BuyCard,
-    CwSimFrame,
     bench_char_cost,
 )
 
@@ -152,7 +156,7 @@ id+时间戳)」;键节原文已删档,取回=ADR-0644)。
 
 # ===== 序列化(dataclass → JSON-safe dict)=====
 
-def salvageable_1star_value(state: CwSimFrame) -> int:
+def salvageable_1star_value(state: GameState) -> int:
     """出口财富口径的「可回收 1★ 值」:手上(deployed+bench)全部 star==1
     件的卖出回金和。
 
@@ -160,17 +164,21 @@ def salvageable_1star_value(state: CwSimFrame) -> int:
       ``docs/develop/sr_od/application/currency_war/proofs/p10-exit-gold-floor.md``
       §④ 与「对实现的检验点」3(判读防「袋穷板富」误读:出口金低但
       本值高 → 钱在卡上,非经济病;两字段必须并读)。
-    - 计算式:Σ ``cw_state.sell_refund(1, cost)``。1★ 卖出全额退、无
+    - 计算式:Σ ``cw_economy.sell_refund(1, cost)``。1★ 卖出全额退、无
       手续费(sell_refund 单一源),故值 = Σ cost;费用单一源 =
-      ``cw_state.bench_char_cost``(char_id 未识别 → 3 中费保守估)。
+      ``cw_economy.bench_char_cost``(char_id 未识别 → 3 中费保守估)。
     - 件集边界:只算 1★(2★+ 是沉没通道——合成已花成本,卖出还有
       手续费,不构成「活期金」);deployed 与 bench 并集,空槽 None
       跳过。
-    - 纯函数契约:只读 state、零行为消费(挂载点见
-      ``TelemetryRecorder.record_decision`` 的 handoff 富化处)。
+    - 件集读口 = 容器公共读口 ``deployed_slots_of``/``bench_slots_of``
+      (kernel 单一源;ADR-0392 定长 10 槽 / 9 槽镜像,元素 BenchChar|
+      None)——本函数不持任何帧表示,容器单例直读。
+    - 纯函数契约:只读 state、零行为消费(P10④ 判读供给;挂载点
+      ``TelemetryRecorder.record_decision`` handoff 富化处已随 handoff
+      快照换代退役,本函数保留为在册判读口径的读值单一源)。
     """
     total = 0
-    for d in list(state.deployed or []) + list(state.bench or []):
+    for d in deployed_slots_of(state) + bench_slots_of(state):
         if d is None:
             continue
         if int(getattr(d, 'star', 1) or 1) != 1:
@@ -225,17 +233,23 @@ def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
     return out
 
 
-def serialize_state(state: CwSimFrame) -> dict[str, Any]:
-    """CwSimFrame → JSON-safe dict(剔除大且无决策价值的字段由调用方按需;默认全量)。
+def serialize_state(state: GameState) -> dict[str, Any]:
+    """容器 GameState → JSON-safe dict(遥测行 state 快照域面)。
 
-    ADR-0392:``deployed`` 槽位表 → **紧缩占用序**落遥测(None 空槽剔除)——
-    下游视图(rounds/win_features/replay)零迁移,占用数=len 语义不变。
+    - 序列化单一源 = :meth:`GameState.full_state_snapshot`(kernel 正本:
+      values=非 None 域值 / prov=非默认来源注记 / effects=效果账本整窗 /
+      write_seq 等工程结构;行行自足形状,与 state/journal.jsonl 行内
+      state 同源同形)——本函数只做遥测面的形状委托,禁本地第二套
+      Field 反射(第二实现 = 双源漂移入口)。
+    - 域值语义原样保留:None=不可读(容器「禁兜底假值」红线),来源
+      两态 observation/logic 经 prov 注记可辨,判读不猜。
+    - 旧档案兼容窗(读侧,申报):2026-09-13 状态收敛批前的 decisions 行
+      state 子字典 = 旧帧序列化形状(deployed/bench 槽位表等旧键面),
+      历史数据只读,读端按 dict 宽容读(:func:`terminal_state_summary`
+      与 tools/cw 判读工具同款 .get + isinstance 门);本函数产物只进
+      新行,键面 = full_state_snapshot 形状,读端按 ``values`` 子字典取域。
     """
-    out = _to_jsonable(state)
-    _dep = getattr(state, 'deployed', None)
-    if isinstance(_dep, list):
-        out['deployed'] = _to_jsonable([d for d in _dep if d is not None])
-    return out
+    return state.full_state_snapshot()
 
 
 
@@ -350,7 +364,7 @@ class DecisionTrace:
     difficulty: str = ""                          # A1..A8(调用方传)
     round_num: int = 0                            # 位面内轮次
     plane: int = 0
-    state: dict[str, Any] = field(default_factory=dict)        # CwSimFrame 快照
+    state: dict[str, Any] = field(default_factory=dict)        # 决策时点 state 快照(容器期 = serialize_state 产物,full_state_snapshot 形状;2026-09-13 状态收敛批前的历史行 = 旧帧序列化形状,读端按 dict 宽容分型)
     target_comp: str = ""                         # 选中的 target comp 名
     candidate_scores: dict[str, float] = field(default_factory=dict)  # {comp_name: comp_score}
     eval_breakdown: dict[str, float] = field(default_factory=dict)    # target comp 的特征分解
