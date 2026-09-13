@@ -4,7 +4,7 @@
 > 素材出处:form_score 口径修订预测力判定报告(判定批 2026-09-06,
 > sim61/62/63 三批全量:n=90 局 / 981 决策帧 / 108 场 boss 战,非抽样;
 > 明细与脚本在 `.debug/temp/currency_war/form_score_predicate/`,判读
-> 出口经 正式化);决策记录 = 。
+> 出口已正式化)。
 > 口径:form_score = min(2, E + 0.3·Φ)/2,写者 = `flow.py`
 > `_restore_form_score_writer`;E = `cw_deploy_logic.engines_count`
 > (四体系引擎计数),Φ = `cw_line_defs.recipe_tier/RECIPE_BASE`。
