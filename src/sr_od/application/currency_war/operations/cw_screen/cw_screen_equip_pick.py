@@ -11,8 +11,9 @@
 → 失败循环(哨兵 09:45 推送实证)。修:本屏建档(标识-选择装备 id_mark
 优先)+ 本 handler + loop 分支在选择伙伴**之前**(双 id_mark:装备标题
 + 请选择1个都命中才算)。
-策略:卡名 OCR → key_equips 命中(target/stash comp)+100 / 材料类次之
-(与 decide_box_card 同语义,r104 家族)。
+策略:卡名 OCR → 已锁线 key_fit_names(锁定阵容 keys∪材料,共享机器
+cw_equip_value)子串 +100 / 泛用关键词次之;未锁线无任何绑定项
+(supply-selection 迭代 S13 裁定:stash/伪 comp 方向不再进装备选择)。
 
 统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
 B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
@@ -40,6 +41,32 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_op_base impor
     CwScreenOpBase,
 )
 from sr_od.context.sr_context import SrContext
+
+
+def _resolve_locked_key_fit(ctx: SrContext) -> frozenset[str]:
+    """已锁线契合全集(key_fit_names;未锁 → 空集)。
+
+    锚 = 意向状态 locked_comp(flow.decide_invest 同源读法);target/stash
+    方向已随 S13 移除——未锁态装备选择不绑囤牌方向(严格版裁定 5)。"""
+    _match = getattr(ctx, 'cw_match', None)
+    if _match is None or getattr(_match, 'session', None) is None:
+        return frozenset()
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        strategy_state_of,
+    )
+    _mst = strategy_state_of(_match.session)
+    _ist = getattr(_mst, 'v3_intention', None)
+    locked = getattr(_ist, 'locked_comp', '') if _ist is not None else ''
+    if not locked:
+        return frozenset()
+    from sr_od.application.currency_war.kernel.cw_comps import get_comp
+    comp = get_comp(locked)
+    if comp is None:
+        return frozenset()   # 注册表漂移:保守按未锁(漏提权非错提权)
+    from sr_od.application.currency_war.kernel.cw_equip_value import (
+        key_fit_names,
+    )
+    return key_fit_names(comp.key_equips or ())
 
 
 @dataclass
@@ -134,18 +161,9 @@ class CwScreenEquipPick(CwScreenOpBase):
                 return self.round_success(status='装备选择完成(重入观察裁决)')
         screen = self.screenshot()
         texts = self._read_cards(screen)
-        # 策略:key_equips 命中优先(与 decide_box_card 同语义)
-        _match = getattr(self.ctx, 'cw_match', None)
-        key_equips: list[str] = []
-        if _match is not None and _match.session is not None:
-            # 策略器状态读点(合法通道 = 访问函数;ADR-0563)
-            from sr_od.application.currency_war.kernel.cw_strategy_session import (
-                strategy_state_of,
-            )
-            _mst = strategy_state_of(_match.session)
-            for comp in (getattr(_mst, 'target_comp', None),
-                         getattr(_mst, 'stash_comp', None)):
-                key_equips.extend(getattr(comp, 'key_equips', ()) or ())
+        # 策略:已锁线 key_fit_names 子串命中优先(共享机器单一源;
+        # stash/伪 comp 方向已随 S13 移除,未锁线仅泛用关键词)
+        key_equips = sorted(_resolve_locked_key_fit(self.ctx))
         best_i, best_s = 0, -1.0
         for i, t in enumerate(texts):
             s = 0.0

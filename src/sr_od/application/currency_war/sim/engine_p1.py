@@ -35,15 +35,6 @@ from sr_od.application.currency_war.kernel.cw_battle_calib import (
     roll_rotation_per_stage,
     sample_node_sequence,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
-from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
-from sr_od.application.currency_war.kernel.cw_investments import (
-    STRATEGY_EFFECTS,
-    EconomyEffect,
-    aggregate_economy,
-    economy_effect_of,
-    normalize_invest_name,
-)
 from sr_od.application.currency_war.kernel.cw_economy import (
     XP_PER_BUY,
     XP_TO_NEXT_LEVEL,
@@ -58,10 +49,20 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_place,
     deployed_occupied,
     deployed_place,
+    exec_state_of,
     iter_occupied,
     iter_occupied_deployed,
 )
+from sr_od.application.currency_war.kernel.cw_intention import serialize_intention
+from sr_od.application.currency_war.kernel.cw_investments import (
+    STRATEGY_EFFECTS,
+    EconomyEffect,
+    aggregate_economy,
+    economy_effect_of,
+    normalize_invest_name,
+)
 from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_completes
+from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CompTransaction,
@@ -76,7 +77,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     bench_char_cost,
 )
 from sr_od.application.currency_war.kernel.cw_vocab import simulate as _simulate_state
-from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.sim.cw_sim_invest import (
     InvestInjectionState,
     SimInvestProfile,
@@ -699,10 +699,6 @@ def _m1p_plan_and_record(st: CwSimFrame, sess) \
     max_units 派生链)——与生产发射/执行两面同函数、同一装配契约,禁
     第二装配。零 rng 消耗、纯读(状态写入只发生在引擎执行转录块)。
     """
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
-        feed_sim_truth,
-    )
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
         assemble_swap_plan_inputs,
         select_swap_plan,
@@ -710,6 +706,10 @@ def _m1p_plan_and_record(st: CwSimFrame, sess) \
     )
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         iter_occupied_deployed,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        board_state_of,
+        feed_sim_truth,
     )
     # 波 5 喂入反转:计划谓词装配消费前直写容器、喂容器直读
     # (旧桥装箱一次性视图随桥退役拆除;同函数同装配契约不变)。
@@ -2836,8 +2836,8 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 from sr_od.application.currency_war.data.cw_equipment_data import (
                     EQUIPMENT_ROSTER,
                 )
-                from sr_od.application.currency_war.kernel.cw_events import (
-                    _EQUIP_VALUE as _EV,
+                from sr_od.application.currency_war.kernel.cw_equip_value import (
+                    EQUIP_GENERIC_VALUE as _EV,
                 )
                 from sr_od.application.currency_war.kernel.cw_events import (
                     SupplyOption,

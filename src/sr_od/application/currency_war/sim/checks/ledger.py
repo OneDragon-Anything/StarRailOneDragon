@@ -990,10 +990,10 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
     (copy 收集语境/seed 身份/转化分键线成员三复核,判定核单一源 =
     selfcalc;失配 = 可疑项条目 + 该对计入 osc 不豁免;键缺省照旧)。
     """
+    from sr_od.application.currency_war.kernel.cw_economy import XP_TO_NEXT_LEVEL
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
         SELL_BENCH_ORPHAN_REASONS,
     )
-    from sr_od.application.currency_war.kernel.cw_economy import XP_TO_NEXT_LEVEL
     from sr_od.application.currency_war.kernel.cw_vocab import (
         SELL_BENCH_CONVERT_REASONS,
     )
@@ -1523,7 +1523,8 @@ def check_supply_pool_roster_purity(rows: list[dict]) -> list[str]:
 def check_equip_value_table_roster_coherence(rows: list[dict]) -> list[str]:
     """批㉛ 检查项(数据层债披露,预期红灯):价值表键-注册表一致性。
 
-    判据:_EQUIP_VALUE(cw_events,V4.4 先验)的每个键应存在于
+    判据:EQUIP_GENERIC_VALUE(cw_equip_value 共享机器,原 cw_events
+    _EQUIP_VALUE 平移,V4.4 先验)的每个键应存在于
     EQUIPMENT_ROSTER——注册表外键 = 死名(游戏已改名/先验陈旧),
     它们被 ADR-0294 件2 的采样过滤静默剔除出 sim 供给池(批㉛ 实测
     3/12 键、约 20% 表值质量),且 decide_supply 生产侧对真名供给
@@ -1537,7 +1538,9 @@ def check_equip_value_table_roster_coherence(rows: list[dict]) -> list[str]:
     from sr_od.application.currency_war.data.cw_equipment_data import (
         EQUIPMENT_ROSTER,
     )
-    from sr_od.application.currency_war.kernel.cw_events import _EQUIP_VALUE
+    from sr_od.application.currency_war.kernel.cw_equip_value import (
+        EQUIP_GENERIC_VALUE as _EQUIP_VALUE,
+    )
     stale = sorted(n for n in _EQUIP_VALUE if n not in EQUIPMENT_ROSTER)
     if not stale:
         return []
@@ -1591,7 +1594,8 @@ def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
 
     判据:COMP_LIBRARY key_equips 中在 EQUIPMENT_ROSTER 内的**全部**
     装备名(不设引用次数阈值——批㉜ F4 实证 ≥3 阈值只看见 2 名、
-    盲区 13 名同样恒 0 分),应存在于 _EQUIP_VALUE——缺失 = 该装备
+    盲区 13 名同样恒 0 分),应存在于 EQUIP_GENERIC_VALUE(cw_equip_value
+    共享机器)——缺失 = 该装备
     在本阵容未锁线时(decide_supply 第 3 分支,key_fit +10 不触发)
     通用价值恒 0 分,与策略层自己的重要性声明矛盾。清偿判据 =
     本检查归 0(补值入表 / 显式裁决「通用价值确为 0」后按 ADR-0298
@@ -1603,7 +1607,9 @@ def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
         EQUIPMENT_ROSTER,
     )
     from sr_od.application.currency_war.kernel.cw_comps import COMP_LIBRARY
-    from sr_od.application.currency_war.kernel.cw_events import _EQUIP_VALUE
+    from sr_od.application.currency_war.kernel.cw_equip_value import (
+        EQUIP_GENERIC_VALUE as _EQUIP_VALUE,
+    )
     kc: Counter[str] = Counter()
     for c in COMP_LIBRARY:
         for k in c.key_equips:
