@@ -6,7 +6,6 @@ from one_dragon.base.operation.operation_base import OperationResult as _Operati
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import (
     OperationRoundResult,
-    OperationRoundResultEnum,
 )
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
