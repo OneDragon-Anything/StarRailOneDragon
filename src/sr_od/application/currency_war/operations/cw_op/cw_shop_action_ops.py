@@ -116,6 +116,14 @@ class ShopVisitLedger:
     # 动作推进,必须取入口时点快照)。
     buy_pre_bench: list = field(default_factory=list)
     buy_pre_deployed: list = field(default_factory=list)
+    # [索引定义] 访问事实行(安灯暂存载体;迁移批 3.2 切片5):list 下标 =
+    # 发射序(先进先出;元素 = 发射/受阻时点构造的回执行 dict——发射行带
+    # serialize_action 同 schema 动作载荷,受阻行仅结构化 extra);取值时机
+    # = 发射时增量追加(写点 = note_shop_action_receipt,与 receipts 域
+    # 同点同构造),自积累无容量上界,禁回读 receipts 滚动窗(容量 8 会
+    # 截断繁忙访问段的计划侧 = 该停不停)。消费方 = visit_open_shop 经
+    # unit_exec_facts_from_receipts 派生安灯判定输入。
+    fact_rows: list = field(default_factory=list)
     # T-13 真值通道:刷前刷新钮按钮态 UI 读数(RefreshShopOp.execute 点击前
     # 帧快照,一次刷新写一次;消费方 = cw_op_buy_cards.apply_action_outcome
     # 免费闸)。None = 失读回退逻辑账(接线前保守形态),禁当 False。

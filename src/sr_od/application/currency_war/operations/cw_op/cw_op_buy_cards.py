@@ -640,7 +640,8 @@ def accrue_release_spent(match: 'CurrencyWarMatch',
 def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
                              applied: bool, reason: str = '',
                              extra: dict | None = None,
-                             include_payload: bool = True) -> None:
+                             include_payload: bool = True,
+                             fact_rows: list | None = None) -> None:
     """商店动作执行回执(R2 §3.2.5;receipts 域,渠道② logic_action)。
 
     run_buy_waves 的**单一写点**:逐动作执行落地挂点 + 受阻挂点(刷新
@@ -653,10 +654,14 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
     best-effort 不阻塞循环。
 
     ``include_payload``(迁移批 3.2 安灯换轨):True = 回执行附带
-    ``action`` 键(serialize_action 同 schema)——安灯执行失败停机钩子
-    的动作序列源 = 访问窗发射行本载荷。缺省 True = 发射行(execute 后
-    落点,与旧 visit_actions 成员资格同界);受阻挂点(硬墙/闸拒,动作
-    未发射)传 False,载荷不入行(plan 口径与旧 visit_actions 逐位一致)。
+    ``action`` 键(serialize_action 同 schema)。缺省 True = 发射行
+    (execute 后落点);受阻挂点(硬墙/闸拒,动作未发射)传 False,
+    载荷不入行(plan 口径与旧 visit_actions 成员资格同界)。
+
+    ``fact_rows``(迁移批 3.2 切片5):安灯访问事实行增量追加载体
+    (调用方传 ledger.fact_rows)。同发射时点按本行同构造追加——安灯
+    动作序列自积累无容量上界,不回读 receipts 滚动窗(容量 8 截断繁忙
+    访问段 = 该停不停,非可接受稳态)。
     """
     try:
         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -674,6 +679,15 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
         _extra = dict(extra or {})
         if include_payload:
             _extra['action'] = serialize_action(action)
+        if fact_rows is not None:
+            # 访问事实行与 receipts 回执行同点同构造(op/applied/reason/
+            # screen + extra 含载荷);发射时增量追加 = 安灯源无窗上界。
+            _fact: dict = {'op': type(action).__name__,
+                           'applied': bool(applied),
+                           'reason': str(reason or ''),
+                           'screen': SHOP_SCREEN_NAME}
+            _fact.update(_extra)
+            fact_rows.append(_fact)
         note_action_receipt(
             board_state_of(session), op=type(action).__name__,
             applied=bool(applied), reason=reason, screen=SHOP_SCREEN_NAME,
@@ -724,8 +738,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     返回 (失败 round 结果, 访问账本)。正常收工 → (None, ledger);
     未识别卡停机钩子触发 → (round_fail 留证结果, None)。
     (迁移批 3.2:产出载体 = ShopVisitLedger 本体——BuyCardsOutcome 已退役,
-    动作账/期望态基座随账本外发;安灯动作序列/执行事实源 = 访问窗
-    receipts 发射行,消费方 = 编排壳。)
+    动作账/期望态基座随账本外发;安灯动作序列/执行事实源 =
+    ledger.fact_rows 发射时增量追加行,切片5 起无窗口容量上界,消费方 =
+    编排壳。)
     """
     from sr_od.application.currency_war.kernel.cw_vocab import CloseShop
     from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
@@ -1088,7 +1103,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                     reason='skipped:max_cap(刷新硬墙,计划未尝试)',
                     extra={'plan_truncated': True,
                            'refresh_skipped': 'max_cap'},
-                    include_payload=False)
+                    include_payload=False,
+                    fact_rows=ledger.fact_rows)
                 break
             if spend_gate is not None:
                 # 单动作政策闸(缺省 None 零漂移;发射帧仲裁专用,ADR-0566):
@@ -1103,7 +1119,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         match, action, applied=False,
                         reason=f'blocked:spend_gate:{_g_why}',
                         extra={'blocked': 'spend_gate'},
-                        include_payload=False)
+                        include_payload=False,
+                        fact_rows=ledger.fact_rows)
                     break
             # 守卫/env 读点 = 容器(波 4 读者切换,设计件 §2.4-2:
             # guard_proposal_vs_expected 守卫输入 + ShopExecEnv.state
@@ -1138,7 +1155,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             note_shop_action_receipt(
                 match, action, applied=bool(_ok),
                 reason='' if _ok else f'执行未落地({type(_aop).__name__})',
-                extra=_rcpt_extra)
+                extra=_rcpt_extra,
+                fact_rows=ledger.fact_rows)
             apply_action_outcome(_aop, action, _ok, _cur, match,
                                  ledger, visit_actions)
             # T-82 续段 token 写入(生产商店循环执行位):动作确认已执行
@@ -1307,7 +1325,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                         note='观测自检框架设计 §2.2:身份留证不算失败')
 
     # (BuyCardsOutcome 已随迁移批 3.2 退役:动作账/期望态基座 = ledger 本体
-    #  外发;安灯动作序列/执行事实 = 访问窗 receipts 发射行 + extra;gold
+    #  外发;安灯动作序列/执行事实 = ledger.fact_rows 发射时增量追加行(切片5,无窗上界);gold
     #  基线 = 编排壳 visit 入口容器现读。消费方迁移见 cw_screen_prep
     #  .visit_open_shop/finalize_buy_phase 与 cw_loop 仲裁段。)
     return None, ledger
