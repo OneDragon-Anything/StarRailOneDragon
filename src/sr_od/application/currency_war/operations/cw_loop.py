@@ -659,7 +659,7 @@ def _launch_frame_arbitration(op) -> dict:
         # 波 4 步 4 同款结论):访问内 hp 决策消费统一经容器政策读口
         # decision_hp,门前真值由本入口 PHASE_PREP_CLEAN 读的漏斗直写承接,
         # 段间无战斗,值同源——覆盖回写是绕行,删。)
-        _rr, outcome = run_buy_waves(op, match, spend_gate=_gate)
+        _rr, ledger = run_buy_waves(op, match, spend_gate=_gate)
         if _rr is not None:
             # 访问失败路径不开收(店留着,与 prep 链同语义;典型 = 未识别卡
             # 停机钩子已置 stop_running——保画面待建档,禁关店/禁发射摧毁
@@ -669,16 +669,25 @@ def _launch_frame_arbitration(op) -> dict:
             _arb_token = None
             return report
         _ = close_shop(op)   # B3 拆除:发出即过,不问成败(关店动作本身必发)
-        if outcome is not None:
-            report['executed'] = int(outcome.total_buy + outcome.total_level
-                                     + outcome.total_refresh)
+        if ledger is not None:
+            # 动作账消费 = 访问账本本体(迁移批 3.2:BuyCardsOutcome 退役,
+            # run_buy_waves 产出载体 = ShopVisitLedger)。
+            report['executed'] = int(ledger.total_buy + ledger.total_level
+                                     + ledger.total_refresh)
             if report['executed'] == 0:
                 _launch_arb_counter(op,
                                     cw_launch_arbitrage.KEY_ZERO_CONSUME)
             # 后验跌破检测:闸投影成本与执行侧真实成本存在模型差时暴露
-            # (正常恒 0;>0 = 残量显影,判读归 ADR-0566)。
+            # (正常恒 0;>0 = 残量显影,判读归 ADR-0566)。金读 = 容器读口
+            # (outcome.state 帧金随 outcome 退役,容器 gold 同源)。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of as _xa_bs_of,
+            )
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                gold_of as _xa_gold_of,
+            )
             g_star = saturation_line(cap_resolved_of_session(_sess_hp))
-            _final_gold = int(getattr(outcome.state, 'gold', 0) or 0)
+            _final_gold = _xa_gold_of(_xa_bs_of(session))
             if report['executed'] > 0 and _final_gold < g_star:
                 _launch_arb_counter(op, cw_launch_arbitrage.KEY_CROSS_LINE)
         # B3 拆除(同上,M1③):close_shop 的验关型失败回执退役——直调场景

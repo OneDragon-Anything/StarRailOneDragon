@@ -100,15 +100,22 @@ class ShopVisitLedger:
     total_sell: int = 0
     total_sell_income: int = 0
     total_sell_skip: int = 0
-    total_sell_fail: int = 0
     spend_executed: int = 0
     plan_truncated: bool = False
-    refresh_skipped: str | None = None
     refresh_attempted: bool = False
     refresh_board_changed: bool | None = None
     bought_names: list[str] = field(default_factory=list)
     refresh_first_action: bool = True
     did_refresh: bool = False
+    # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
+    buy_purchases: list = field(default_factory=list)
+    buy_has_sell: bool = False
+    buy_unidentified: bool = False
+    # 买牌期望态基座(单元执行前 tracked 快照;迁移批 3.2 起随账本外发,
+    # 消费方 = finalize 的 compute_buy_expect——事后取 tracked 已被本单元
+    # 动作推进,必须取入口时点快照)。
+    buy_pre_bench: list = field(default_factory=list)
+    buy_pre_deployed: list = field(default_factory=list)
     # T-13 真值通道:刷前刷新钮按钮态 UI 读数(RefreshShopOp.execute 点击前
     # 帧快照,一次刷新写一次;消费方 = cw_op_buy_cards.apply_action_outcome
     # 免费闸)。None = 失读回退逻辑账(接线前保守形态),禁当 False。

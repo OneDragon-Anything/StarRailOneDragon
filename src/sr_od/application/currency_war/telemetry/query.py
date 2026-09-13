@@ -140,8 +140,10 @@ def classify_spend_unit(plan_actions: list[dict[str, Any]],
     tolerance 与 shop.py spend_audit ±2 同源;boundary != 'closed'(半单元/
     中断单元)不判——执行链不完整,任何判定都是猜。
 
-    executed(`w577_refresh_fee_and_andon/`,可选)= 执行侧可见化事实(W3/T-255
-    起 = BuyCardsOutcome 执行事实字段;None = 旧数据/未挂钩,判定退回
+    executed(`w577_refresh_fee_and_andon/`,可选)= 执行侧可见化事实
+    (W3/T-255 起运行时源 = 安灯钩子的 receipts 派生暂存
+    ``unit_exec_facts_from_receipts``;迁移批 3.2 前历史源 =
+    BuyCardsOutcome 执行事实字段;None = 旧数据/未挂钩,判定退回
     `w494_spend_ledger/` 原语义)。判定序(ADR-0456):
     ①plan_truncated → plan_truncated(**不停**——口径差,留台账);
     ②金差≈0 ∧ 计划花费>0 ∧ 已尝试 → not_effective(**停**——真点击落空);
