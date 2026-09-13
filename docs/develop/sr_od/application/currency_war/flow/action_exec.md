@@ -36,11 +36,11 @@
 
 ## 3. 备战单动作消费（`cw_screen_prep.py` 备战单轮）
 
-逐动作（单动作决策循环取首项,）：`_record_step`（obs+action 落遥测）→ 控制流类短路 → F3 `validate(action)`（参数非法 = 拒绝执行 + 交回留证，与执行失败同型不进连败链）→ 期望态计算（SellBench/DeployMove → drag_expect；SellDeployed → equip_expect；部署/卖出 → deployed 计数前后拍）→ 执行 → acct 暂存 `session.cw_prep_pending_accts`（对账归**下一入口 heavy**时点统一消费,`_v2_post_frame_accounting` 动作级对账族：paddle 审计/拖动期望/买牌期望/经验/羁绊/商店池/合成预览/装备期望——per-action heavy 重观察契约已灭）→ 结束判定（StartBattle/OpenShop = 终结 op;not progressed = fail-stop）。
+逐动作（单动作决策循环取首项）：`_record_step`（obs+action 落遥测）→ 控制流类短路 → F3 `validate(action)`（参数非法 = 拒绝执行 + 交回留证，与执行失败同型不进连败链）→ 期望态计算（SellBench/DeployMove → drag_expect；SellDeployed → equip_expect；部署/卖出 → deployed 计数前后拍）→ 执行 → acct 暂存 `session.cw_prep_pending_accts`（对账归**下一入口 heavy**时点统一消费,`_v2_post_frame_accounting` 动作级对账族：paddle 审计/拖动期望/买牌期望/经验/羁绊/商店池/合成预览/装备期望——per-action heavy 重观察契约已灭）→ 结束判定（StartBattle/OpenShop = 终结 op;not progressed = fail-stop）。
 
 **恢复原语** `try_recovery`（关已知弹层，一次/动作实例）：fail-stop 时先试恢复再交回外循环。
 
-## 4. 商店动作执行（动作 op；`cw_shop_action_ops.py`,）
+## 4. 商店动作执行（动作 op；`cw_shop_action_ops.py`）
 
 > 波批执行面的防线已按守卫断言语义重定位（`screen_op.md` §2.3 落定）：**proposal-vs-expected 断言**（`guard_proposal_vs_expected`——提案对象在期望态存在且未被消费,炸出 = 策略器算术 bug）与 **expected-vs-tracked 双账断言**（`guard_expected_vs_tracked`——投影建模 bug 的唯一在环检测器,满栏买入豁免已随 收窄:满栏合成买面 tracked 与 simulate 同走 `_apply_full_bench_merge_buy` 单一源双账同构,豁免面仅剩非合成满栏买被拒而像素差漏检的 fail-open 残余窗）。旧 `sell_guard_ok` 波级对拍与 x 去重随「整波共享帧快照」前提消失而退役（单动作下第一笔动作后期望态已更新,第二笔提案自然不指向已卖槽）。执行侧观测通道三件（卖回金实收/刷新有效性/免费刷新证据）走候选 (a) = 动作 op execute 实现层遥测（处置表）。
 

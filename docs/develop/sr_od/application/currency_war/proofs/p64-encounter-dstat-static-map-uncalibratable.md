@@ -6,7 +6,7 @@
 
 ## 命题
 
-遭遇节点二选一判据(E3)的 λ 项需要分支敌难度 stat 相对带界 108 的分带(`lambda_death.difficulty_band`,界 = `DIFFICULTY_BAND_BOUND = 108`);旗牌读数(`EncounterOption.difficulty` ∈ 1-6,即「遭遇其X」)不携带 stat 的构成分量。**在现机制公式下,任何非空的静态 `dict[旗牌→stat]` 注入都会产出假真值**——即对每个旗牌 x 与每个候选静态值 v,存在合法运行时状态使真 stat 落 D0 带而 v 给出 D1(或反之)。故 `ENCOUNTER_DSTAT_MAP` 的可标定子集 = ∅,数值 argmax 臂在本批后保持结构性不可达(双槽互锁 fail-closed,)。
+遭遇节点二选一判据(E3)的 λ 项需要分支敌难度 stat 相对带界 108 的分带(`lambda_death.difficulty_band`,界 = `DIFFICULTY_BAND_BOUND = 108`);旗牌读数(`EncounterOption.difficulty` ∈ 1-6,即「遭遇其X」)不携带 stat 的构成分量。**在现机制公式下,任何非空的静态 `dict[旗牌→stat]` 注入都会产出假真值**——即对每个旗牌 x 与每个候选静态值 v,存在合法运行时状态使真 stat 落 D0 带而 v 给出 D1(或反之)。故 `ENCOUNTER_DSTAT_MAP` 的可标定子集 = ∅,数值 argmax 臂在本批后保持结构性不可达(双槽互锁 fail-closed)。
 
 ## 证明
 

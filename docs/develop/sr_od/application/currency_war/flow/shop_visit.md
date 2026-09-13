@@ -83,7 +83,7 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
 
 `MAX_REFRESH=4`【注·框架常量】是**visit 级刷新硬墙**（候选 (a) 落定）：终结→重进→再刷新的循环形态下,防策略器反复选刷新造成外循环无进展——超墙后终结集降级为仅关店。刷新是否值得刷是策略判据（P40 三层门,见 `../strategy-docs/11_shop_decisions.md` §刷新）。
 
-**对抗修复批登记（补登节）**：①决策循环有防御帧帽 `SHOP_SEGMENT_ACTION_CAP=16`（内层 while 顶计数,超帽 RuntimeError + `plan_visit_action_cap` 分键,禁静默——与备战 VISIT_ACTION_CAP 同款防线）；②EV 买面席位门（满栏帧不提案,拒因分键 `shop_ev_bench_wait`;~~席位门后满栏 §2.5 分支与双账满栏豁免在商店生产路径不可达=防御纵深~~ **该不可达声明已被 2026-09-09 05:52 运行局证伪**——m2_merge_completion 提案在满栏帧照常发射并触发满栏 §2.5 合成分支,）；③计数键 `shop_visit_idle_gold`（旧 `shop_wave_idle_gold` 改名,visit 语义,跨结构不可直接对拍）。
+**对抗修复批登记（补登节）**：①决策循环有防御帧帽 `SHOP_SEGMENT_ACTION_CAP=16`（内层 while 顶计数,超帽 RuntimeError + `plan_visit_action_cap` 分键,禁静默——与备战 VISIT_ACTION_CAP 同款防线）；②EV 买面席位门（满栏帧不提案,拒因分键 `shop_ev_bench_wait`;~~席位门后满栏 §2.5 分支与双账满栏豁免在商店生产路径不可达=防御纵深~~ **该不可达声明已被 2026-09-09 05:52 运行局证伪**——m2_merge_completion 提案在满栏帧照常发射并触发满栏 §2.5 合成分支）；③计数键 `shop_visit_idle_gold`（旧 `shop_wave_idle_gold` 改名,visit 语义,跨结构不可直接对拍）。
 
 **与波批的输出等价是条件命题**（前提 = 波批投影无残差;投影残差史 bug 类）——帧级锁按「锁的存在性纪律」重推语义,禁机械跟绿（w614 哨兵锚已重锚）。
 

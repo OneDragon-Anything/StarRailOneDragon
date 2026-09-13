@@ -69,7 +69,7 @@ src/one_dragon/base/screen/
 | 路径 | 触发入口 | 执行序列 | 进度句柄 | 结果来源 |
 |---|---|---|---|---|
 | **app** | `run_one_dragon` / `run_standalone_app` | 委托 `run_application`（复用 GUI/CLI 共享入口，内含 `start_running` / 绑定 / `execute` / `stop_running`） | `run_context.current_application` | `run_context.last_application_result` |
-| **op** | `open_game` / `run_operation`（自定义 op） | 槽自己 `start_running → op_factory(ctx) → op.execute() → finish_running()`（自然完成走 `finish_running` 收口，不置停机中断闩，） | 槽内 `current_op` | `op.execute()` 返回值 |
+| **op** | `open_game` / `run_operation`（自定义 op） | 槽自己 `start_running → op_factory(ctx) → op.execute() → finish_running()`（自然完成走 `finish_running` 收口，不置停机中断闩） | 槽内 `current_op` | `op.execute()` 返回值 |
 
 - **单跑道互斥**收进 `_start` 锁内：`future` 未完成检查与 `executor.submit` 在同一把锁中原子完成（check-then-submit），消除跨槽 check-then-act 竞态；框架层 `run_context.start_running` 不可重入是第二重保证。
 - **字段**（单一事实源）：`source`、`op_id`（app 路径=app_id、op 路径=`package.path.ClassName` 或类名）、`run_type`（`APPLICATION` / `OPERATION`）、`app`（展示名，`_run` 内固化）、`started_at` / `finished_at`、`terminal_state`、`last_status`、`failed_node`、`current_op`（op 路径回填，app 路径为 `None`）。
