@@ -1218,19 +1218,19 @@ class PrepActionExecutor:
         return True, f'选卡 {chosen}'
 
     def _default_box_card(self, names: list[tuple[str, int]]) -> tuple[str, int]:
-        """执行器默认选卡:局内决策单一源 = 策略模块 ``decide_box_card``(r104 委托)。
+        """执行器默认选卡:决策单一源 = 共享机器 ``pick_equipment``
+        (armory-box-value landing 3.2;局内经策略模块 ``decide_box_card``
+        薄壳,局外直接机器空键 = 纯通用输出先验排序)。
 
-        分层纪律(T-20 谓词单一源判例同款):match 在场(局内)时选卡打分
-        只住策略层(key_equips 命中 +100 / key 材料两跳 +30 / 材料通用性),
-        本执行器**禁第二打分实现**——``decide_box_card`` 异常留证(完整栈)
-        后显式上抛(与 ``cw_op_buy_cards.run_buy_waves`` 决策异常同款;本
-        模块 docstring 失败路径「执行异常 → 异常上抛,外层 op retry 接管」
+        分层纪律(T-20 谓词单一源判例同款):打分只住机器,本执行器
+        **禁第二打分实现**——``decide_box_card`` 异常留证(完整栈)后显式
+        上抛(与 ``cw_op_buy_cards.run_buy_waves`` 决策异常同款;本模块
+        docstring 失败路径「执行异常 → 异常上抛,外层 op retry 接管」
         同约),返回越界索引同 fail-closed 上抛;两者都禁无声回落内联打分
         (策略 bug 永久遮蔽,2026-09-12 动作 op 规范判读应修②)。
-        仅局外(match None,无策略面可委托)保留机械默认:材料通用性
-        并列取第 1 张(旧 match 场 key_equips 预选腿随内联回落通道一并
-        退役——它原只辖「策略炸错回落」路径;回落路径行为锁 =
-        test_cw_screens_ops.test_pick_card_fallback_by_material_value)。
+        局外回落行为变化(armory-box-value §2.6 行 10):材料通用性梯度
+        (出处文档已删,注册表无据)→ 通用输出先验;行为锁重锚 =
+        test_cw_screens_ops 回落行为锁(重锚后 = test_pick_card_fallback_by_output_prior)。
         """
         match = self._ctx.cw_match
         if match is not None:
@@ -1256,11 +1256,12 @@ class PrepActionExecutor:
                     f'decide_box_card 返回越界索引 {idx}(实读卡数 '
                     f'{len(names)});策略契约违约 fail-closed,禁回落内联选卡')
             return names[idx]
-        from sr_od.application.currency_war.kernel.cw_prep_expect import (
-            material_value,
+        # 局外(无策略面):机器空键 = 纯 base 排序(与局内未锁态同构,
+        # 打分单一源;原梯度回落随虚构表退役,行 10)
+        from sr_od.application.currency_war.kernel.cw_equip_value import (
+            pick_equipment,
         )
-        best = max(names, key=lambda t: material_value(t[0]))
-        return best
+        return names[pick_equipment([n for n, _ in names])]
 
     # ===== 席位域 =====
 

@@ -655,42 +655,44 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
     def decide_box_card(self, names: list[str], bs: GameState,
                         session: StrategySession, config) -> int:
-        """武装箱/节点弹窗 4 选 1 装备卡(r104 接入策略模块)。
-
-        打分:①target.key_equips 命中 +100(成型加速压倒一切);
-        ②合成材料通用性(material_value 配方数,kernel cw_prep_expect 单一源;生命之花 7/轮滑鞋 6/光能电池 6);
-        ③target.key_equips 的合成材料(两跳:该材料能合出 key_equip)命中 +30。
-        无信息 fallback idx=0。返回索引(调用方点卡)。"""
+        """武装箱/节点弹窗装备卡 4 选 1(薄壳;armory-box-value 定稿设计
+        §2.2-§2.5)。锚 = 意向状态 locked_comp 两态(get_comp 失败落未锁 +
+        日志哨兵,保守向);打分唯一住共享机器 ``pick_equipment``(序数
+        分档 + 近兑现 + 通用输出先验,design §2.2/§2.3),本壳零打分实现。
+        库存账三本(design §2.5):备用 ``last_owned_equips``(近兑现对数)+
+        部署位/备战席穿戴账(合计进总持有,需求守卫)。effect_pick_bias
+        通道随薄壳化移除(恒 0 无行为差,处置声明见 design §1.4)。
+        无信息 fallback idx=0(机器 names 空契约);返回索引(调用方点卡)。"""
         self._consume_prep_direction_frame(session)   # ADR-0583 入口内务
         if not names:
             return 0
-        from sr_od.application.currency_war.kernel.cw_prep_expect import (
-            material_value as _material_value,
+        _ist = self._ensure_intention(state_of(session))
+        locked = _ist.locked_comp
+        key_equips: list[str] = []
+        if locked:
+            comp = get_comp(locked)
+            if comp is None:
+                # 注册表漂移:按未锁态打分(保守向——漏提权非错提权)
+                log.warning('[cw!][box] locked_comp 解析失败(%s),按未锁态打分',
+                            locked)
+            else:
+                key_equips = list(comp.key_equips or ())
+        spare = list(getattr(session, 'last_owned_equips', None) or [])
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            exec_state_of,
         )
-        _key: set[str] = set()
-        _key_mats: set[str] = set()
-        if state_of(session).target_comp is not None:
-            _ke = [k for k in (state_of(session).target_comp.key_equips or []) if k]
-            _key = set(_ke)
-            # 两跳材料集改机器单一源 derivation(armory-box-value §1.3 迁移:
-            # 与旧 EQUIPMENTS.recipes 直查集合恒等,行为等价重接)
-            from sr_od.application.currency_war.kernel.cw_equip_value import (
-                key_recipe_pairs,
-            )
-            for _pairs in key_recipe_pairs(_ke).values():
-                for _pair in _pairs:
-                    _key_mats.update(m for m in _pair if m)
-        best_i, best_s = 0, -1.0
-        for i, n in enumerate(names):
-            s = effect_pick_bias(session, n)
-            if n in _key:
-                s += PICK_BIAS.box_key_equip
-            if n in _key_mats:
-                s += PICK_BIAS.box_key_material
-            s += float(_material_value(n))
-            if s > best_s:
-                best_i, best_s = i, s
-        return best_i
+        _es = exec_state_of(session)
+        worn = [eq
+                for slot_list in (getattr(_es, 'tracked_deployed', None) or [],
+                                  getattr(_es, 'tracked_bench_chars', None) or [])
+                for bc in slot_list if bc is not None
+                for eq in (getattr(bc, 'equips', None) or [])]
+        from sr_od.application.currency_war.kernel.cw_equip_value import (
+            pick_equipment,
+        )
+        return pick_equipment(names, key_equips=tuple(key_equips),
+                              owned_spare=spare,
+                              owned_total=spare + worn)
 
     def decide_shop_action(self, session: StrategySession,
                            config: CurrencyWarConfig) -> Action:

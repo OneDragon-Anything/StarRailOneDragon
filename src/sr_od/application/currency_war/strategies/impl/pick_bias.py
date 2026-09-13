@@ -26,10 +26,8 @@ class PickBiasTable:
     wish_gold: float = 25.0               # 金币类(直接经济,阵容无关)
     wish_faction: float = 20.0            # target/框架阵营相关词
     wish_operation: float = 10.0          # 刷新/购买操作向(与 DP 攒息协同)
-    # 武装箱四选一(decide_box_card)
-    box_key_equip: float = 100.0          # target.key_equips 命中(成型加速)
-    box_key_material: float = 30.0        # key_equip 合成材料(两跳)
-    # 材料通用性 _material_value 表维持其模块单一源(生命周期/配方数)不变
+    # 武装箱四选一常数(box_key_equip/box_key_material)已随该面迁共享机器
+    # cw_equip_value 序数分档制退役(armory-box-value);材料通用性表同批退役
 
 
 PICK_BIAS = PickBiasTable()
