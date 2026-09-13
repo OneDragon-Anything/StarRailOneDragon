@@ -7,7 +7,7 @@
 
 ## 3.1 E-1 奖励读法结构化 + tiebreak 映射表
 
-**范围**：现读法评估与结构化（`read_encounter_options` 奖励带已读**单项文本**——多件预览结构化评估，确有二件以上同卡 → 扩读法；单件够 → 如实申报不扩）；奖励文本 → tiebreak 偏好档映射表（**降级分支比较器定义义务**：奖励预览缺失/空集卡字典序 + 档位并列降级比较器，随映射表一并定义；词表权威 = `DIAMOND_EQUIP_NAMES`（cw_node_obs.py:231）∪ `EQUIPMENT_ROSTER`/`EQUIPMENTS`/`EQUIP_TOOL_CATEGORY`（data/cw_equipment_data.py）∪ 金币字面，逐项注册表出处核对，给不出 → 映射表整表退化取低档并申报）。**不含 tiebreak 消费端**（判据耦合，归 3.2）。锁：映射表单测（词表样本逐项）。
+**范围**：现读法评估与结构化（`read_encounter_options` 奖励带已读**单项文本**——多件预览结构化评估，确有二件以上同卡 → 扩读法；单件够 → 如实申报不扩）；奖励文本 → tiebreak 偏好档映射表（**多件结构化结论 = 不扩**：现读法单件归集保持——依据 = 遭遇 overlay 奖励带单行布局〔归档帧〕，二件以上同卡无在册证据；扩读法判据〔同卡 x-span ≥2 条奖励 token〕已定义，E-3 归档帧触发复核。**降级分支比较器定义义务**：奖励预览缺失/空集卡字典序 + 档位并列降级比较器，随映射表一并定义；词表权威 = `DIAMOND_EQUIP_NAMES`（cw_node_obs.py:231）∪ `EQUIPMENT_ROSTER`/`EQUIPMENTS`/`EQUIP_TOOL_CATEGORY`（data/cw_equipment_data.py）∪ 金币字面，逐项注册表出处核对，给不出 → 映射表整表退化取低档并申报）。**不含 tiebreak 消费端**（判据耦合，归 3.2）。锁：映射表单测（词表样本逐项）。
 
 **设计依据**：details/encounter-criterion-spec.md §6 + 接口契约 4
 
@@ -39,7 +39,7 @@
 
 **完成判据**：
 - W1-W6、W7、W8-W13 全绿（W14 = E-3 离线对账锁，见 3.3）；**W4 暗装锚全绿（行为零变化，含 D 真值缺失/窗口无 D_win 行分支）**
-- 死分键盘点清单交付（逐分键列消费面）；`test_cw_encounter_selection.py` 含 EV 核纯函数锁全绿（EV 核纯函数禁删——禁删约束经导入级锁承载，mandate_v1/encounter.py 保留）
+- 死分键盘点清单交付（逐分键列消费面）——**已交付**：`encounter_ev_*` 十分键全部为 encounter.py 单文件写端（state_of(session).cw4_counters 计数位），全仓零生产读端消费（仅回放/账本离线读）；EV 核搁置后键即死，保留写端零行为（计数无读者），随搁置注释保留不删；`test_cw_encounter_selection.py` 含 EV 核纯函数锁全绿（EV 核纯函数禁删——禁删约束经导入级锁承载，mandate_v1/encounter.py 保留）
 - 遭遇代表锁（新建套件内重立）按新语义重推后全绿（锁红 ≠ 改动错，先对照 details §1-§3/§5）+ 既有 encounter/mandate 锁回归全绿——**回归锁载体承接申报：用户令测试清理批（1cc1958b）删除整个 CW 测试域（test/sr_od/app/currency_war/ 目录级约 200 文件，含旧三载体 test_cw_mandate_encounter_ev / test_cw_mandate_decide / test_cw_battle_wait_op），本迭代文件面各文件既有回归面随之清零；回归锁责任由本阶段新建套件 `test_cw_encounter_selection.py` 扩容承接（strategy-work「锁的存在性纪律」）；E-2 文件面内「测试在册」失真注释约 10 处（battle_wait:47-48 实引两文件、cw_screen_encounter.py:39、cw_game_state.py 8 处）随 E-2 注释修订全量修正，全域约 70 处另批挂账**
 - §12 通用工程门（引用，不复述）
 

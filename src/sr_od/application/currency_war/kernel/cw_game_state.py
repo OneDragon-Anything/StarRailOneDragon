@@ -74,6 +74,11 @@ import hashlib
 import json
 import subprocess
 import time
+
+from sr_od.application.currency_war.kernel.cw_encounter_selection import (
+    EncounterLog,
+    SettlementRing,
+)
 import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -544,7 +549,7 @@ class SupplyPayload:
 class Settlement:
     """结算屏真值组(§3.5.1):战斗后覆盖更新的数据源。
 
-    伤害不入本结构——遥测面(字段准入①:无决策消费,设计 §3.5.1 明示);
+    伤害不入本结构(遥测面;字段准入注释修订——遭遇选档判据的结算观测消费走 GameState 平级新结构 settlement_ring/encounter_log 见下,本域仍只承载 hp/streak/killed/进度/金等级经验覆盖组,设计 §3.5.1 的准入边界不变);
     金仅胜局有值(败局结算屏无收入面板);等级/经验仅胜局结算页可读
     (cw_settlement_obs.py:118-135)。
     """
@@ -1969,6 +1974,15 @@ class GameState:
     selected_difficulty: Field[str] = field(default_factory=Field)   # 职级,开局写定恒稳(§3.1.1)
     game_mode: Field[str] = field(default_factory=Field)             # 对局类型:标准/超频博弈(§3.1.2;两屏无建档,接线前补档)
     enemy_difficulty: Field[int] = field(default_factory=Field)      # 非单调(§3.2.14)
+
+    # —— 遭遇选档观测面(E-2 平级新结构;非 Settlement 域字段,准入注释见该域)——
+    # 结算观测环:产结算屏节点的 RoundOutcome 消费子集,深度 10,同场去重合并,
+    # 生命周期 = 局(开局清空;relaunch 残留行由写入端 residual 排除)。判据与
+    # 经验层读源单一源(遭遇选档迭代设计 §8)。
+    settlement_ring: SettlementRing = field(default_factory=SettlementRing)
+    # 遭遇经验表:本局全量遭遇行(其五/六 Δ 无源档的经验正证据通道;跨局
+    # 持久化挂账另行立项)。
+    encounter_log: EncounterLog = field(default_factory=EncounterLog)
     plane_bosses: Field[list[str | None]] = field(default_factory=Field)  # 三位面 boss 名,None=该位面无身份(ADR-0398)
     active_env: Field[str | None] = field(default_factory=Field)     # 已选投资环境(§3.2.20/§3.4.3)
     enemy_affixes: Field[list[str]] = field(default_factory=Field)   # 当前词缀名单(§3.1.3;≠投资环境)

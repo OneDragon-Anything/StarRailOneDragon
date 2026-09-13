@@ -591,6 +591,10 @@ class OutcomeRecord:
     # 可选字段追加(关键字序列化,位置无关),旧记录缺省 None 不破坏 schema
     # (读取端 .get 容忍)。
     heal_longline: int | None = None
+    # 遭遇选档观测扩字段(与 cw_performance.RoundOutcome 同 schema;难度快照
+    # live 位为门,遭遇行随读点定谳两变体)
+    difficulty_node: float | None = None
+    encounter_tier: int | None = None
     # —— r339 板深快照(板深→胜率模型校准数据源;复盘发现 sim
     # 天花板 8%>=60 vs 实机 3/3 达标的矛盾根因=模型缺板深机制,
     # 而逐轮板面×掉血对就是拟合数据):战前板面+上阵深度。

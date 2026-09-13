@@ -1,6 +1,8 @@
-"""遭遇分支选卡判据(E3 奖励侧候选模型落码;判据语义单一源 = ADR-0536)。
+"""遭遇分支选卡判据候选(EV 核;已搁置让位——现役遭遇选档 = kernel/cw_encounter_selection.py,本模块保留禁删,EV 核纯函数锁承载)。
 
-落码形态(ADR-0536 §2,前身为不入库设计稿 v2 的收编件):对实际读到的
+ 搁置注:本 docstring 与代码本体 = 历史判据语义的记载载体(原外部语义单一源文件已按用户命令删除);判据替代语义 = 敌方通道结算观测比值判据(κ_S 能力态 + 双值可及性 + 暗装门),详见现役模块。
+
+落码形态(历史判据稿 §2,前身为不入库设计稿 v2 的收编件):对实际读到的
 每个分支 b:
 
     EV(b) = V_r(r_b) − Δλ_death(b)·G_loss
@@ -17,7 +19,7 @@ P26 备战 EV 门同构(奖励增量 vs λ_death 敞口增量),λ 项按 P51 折
     观察值挂采——exogenous event_choice 单例 +8,另有 ["10"] 读数两帧
     OCR 存疑;定带 = 先判读历史帧再开新采集,≥3 局观察值后注入标定值。
     **None 期金币支 V_r 未立**(未立 ≠ 0),数值开闸 = 本槽与
-    ``ENCOUNTER_DSTAT_MAP`` 双槽都注入(ADR-0536 §3:双槽互锁防半标定
+    ``ENCOUNTER_DSTAT_MAP`` 双槽都注入(历史判据稿 §3:双槽互锁防半标定
     全开闸——只注 dstat 时金币支未立 → fail 向,「12>8 ⇒ 高难更优」
     结论不会在 G_gold 定带前产出);
   * 其余子型(随机 5 费角色/员工投影仪/读空)在册未建模 ⇒ V_r 未立
@@ -32,14 +34,14 @@ P26 备战 EV 门同构(奖励增量 vs λ_death 敞口增量),λ 项按 P51 折
   旗牌 1-6,旗牌→stat 映射未标定 ⇒ 键观测量缺失 = 域外同判(R29-6
   同款:禁产假真值),经 provisional 槽位 ``ENCOUNTER_DSTAT_MAP`` 供给,
   None 期 fail-closed。
-- **λ label 四态接死(ADR-0536 §2-③)**:「不可判」≡ 任一分支 λ 键为
+- **λ label 四态接死(历史判据稿 §2-③)**:「不可判」≡ 任一分支 λ 键为
   None/域外/损坏态,或格 label ≠ 可消费(空格/禁用/仅方向)⇒ **放弃
   argmax、整体 fail 向选低难度支**;「负项置零继续比较」是禁止实现
   (其产出与设计申报的现态行为相反)。仅方向格只作方向注记不决胜负。
 - fail 向 = 选低难度支(并列取先读支),保守 = 少掉血方向;与现行
   「未成型→低难保生存」零冲突(未成型帧动作序列 diff 空);formed 态
   dare→高难帧被 fail 向覆盖 = 判据接线的预期差(验收门按动作序列级)。
-- 刷新肢(ADR-0536 §2-④):分支刷新**不是免费期权**——生产执行链语义
+- 刷新肢(历史判据稿 §2-④):分支刷新**不是免费期权**——生产执行链语义
   是刷新生效后原对弃用、强制从重掷对中选(cw_screen_encounter :95-101/
   :144-155),重掷分布未建模、期望可为负。故仅当双支 λ 可消费、EV 比较
   存在但**不稳健**(保守端 d̂=CI 宽度与乐观端 d̂=0 给出不同胜者 = EV 差
@@ -51,7 +53,7 @@ P26 备战 EV 门同构(奖励增量 vs λ_death 敞口增量),λ 项按 P51 折
   金流,裁定二),不进任何数值运算;不建胜率阶梯、不评单位强弱、分支
   间 argmax 不新增排序键。
 
-现态行为申报与验收口径(ADR-0536 §4):现态生产 = 双槽 None 期恒
+现态行为申报与验收口径(历史判据稿 §4):现态生产 = 双槽 None 期恒
 fail 向选低难、**零刷新建议**(刷新建议结构性不可触发:其前置 = 双支
 λ 可消费 + 胜者翻转,双槽 None 期不成立;标定注入后亦仅在窄域可观测,
 作条件触发观察位,验收勿按「应见到刷新建议」判接线)。
@@ -64,7 +66,7 @@ encounter_ev_undecidable_band_flip / encounter_ev_refresh_suggested /
 encounter_ev_reward_gold / encounter_ev_reward_4fee /
 encounter_ev_lambda_direction_note。拒因串经 ``EncounterPick.reason``
 透传至既有 ``record_event_choice``(event_choice)账本,拒因串从难度
-评分格式改为 EV 拒因格式 = 预期遥测差(ADR-0536 §2)。
+评分格式改为 EV 拒因格式 = 预期遥测差(历史判据稿 §2)。
 """
 from __future__ import annotations
 
@@ -73,11 +75,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from one_dragon.utils import str_utils
+from sr_od.application.currency_war.kernel.cw_economy import sell_refund
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
 )
-from sr_od.application.currency_war.kernel.cw_economy import sell_refund
 from sr_od.application.currency_war.kernel.cw_vocab import CwSimFrame
 from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate_state import (
     state_of,
@@ -128,7 +130,7 @@ def _g_gold_observed() -> int | None:
 
     为什么经槽位而非代码常量:金额是观察值(单例)非机制定义,数值开闸
     须过「≥3 局观察值定带」判据;槽位 None 期金币支 V_r 未立(fail 向),
-    与 dstat 槽构成双槽互锁(ADR-0536 §3),防「只注 λ 侧映射即半标定
+    与 dstat 槽构成双槽互锁(历史判据稿 §3),防「只注 λ 侧映射即半标定
     全开闸、单例金额进承重比较位」的越线形态。
     """
     from sr_od.application.currency_war.strategies.impl.mandate_v1.audit import (
@@ -157,7 +159,7 @@ def reward_subtype_value(rewards: list[str],
                 return 'fee', None      # 家族在场、档位不可辨:未立,禁猜档
             tier = int(m.group(1))
             if tier == 5:
-                # 5 费:在册实录、**未入树**(ADR-0536 §5 辖域外,标定轮
+                # 5 费:在册实录、**未入树**(历史判据稿 §5 辖域外,标定轮
                 # 首扩展对象)⇒ V_r 恒未立,即便其独立下界形态可算
                 # (3×sell_refund(1,5)=15)——子型授权面扩展须过标定批,
                 # 禁在判据内顺手开闸。
@@ -301,7 +303,7 @@ def decide_encounter_ev(options: list[EncounterOption], state: CwSimFrame | None
     同门,否则误读帧血带翻转→选支漂移(W5 方案 §2.4 读点清单点名域)。
     旧链(帧值已门)再过门幂等,行为零变化。
 
-    决策树(ADR-0536 §2):
+    决策树(历史判据稿 §2):
     1. 无选项 → idx0(default,与生产 handler 一致);单卡帧(读缺)
        → 已读卡直接选;
     2. 任一分支 V_r 未立(未建模子型/金币未定带/读空)→ fail 向低难

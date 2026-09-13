@@ -78,6 +78,12 @@ class RoundOutcome:
     damage_unfinished_progress: int | None = None
     damage_breakdown_visible: bool = False
     heal_longline: int | None = None
+    # —— 遭遇选档观测扩字段(E-2):difficulty_node = 结算快照取该节点最近
+    # 备战帧现场真读旗牌值(live 位为门,无现场读 → None;遭遇行取值随读点
+    # 定谳两变体,未定谳期装 None);encounter_tier = 遭遇战决策落点难度档
+    # (经验档层其五/六正证据的行内通道;普通战斗行恒 None)。
+    difficulty_node: float | None = None
+    encounter_tier: int | None = None
     # —— T-185 收口终局行标记:仅对局收口终局行携带('stopped'/'abandoned'),
     # 普通结算行恒 ''(字段语义与读端消费边界 =
     # telemetry.schema.OutcomeRecord.match_result 注)。
@@ -106,7 +112,7 @@ class PerformanceTracker:
     (只写)等死链已清——敌方观测整条从未接通,伤害真值走结算屏
     progress_delta/killed。
     RoundOutcome 敌方三字段(enemy_hp_after/damage_dealt/killed)保留 dataclass 定义
-    (telemetry OutcomeRecord 同 schema;enemy_hp/damage 仍未灌值)。
+    (telemetry OutcomeRecord 同 schema;enemy_hp 仍未灌值,damage_dealt 已由结算屏「数据统计」面板求和灌值)。
     """
 
     def __init__(self) -> None:

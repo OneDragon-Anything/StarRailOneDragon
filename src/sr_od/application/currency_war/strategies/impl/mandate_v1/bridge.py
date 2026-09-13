@@ -32,12 +32,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    GameState,
-)
 from sr_od.application.currency_war.kernel.cw_events import (
     EncounterOption,
     EncounterPick,
+)
+from sr_od.application.currency_war.kernel.cw_game_state import (
+    GameState,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepAction,
@@ -138,24 +138,22 @@ class MandateV1Strategy(CwFlowStrategy):
                          bs: GameState, session: StrategySession,
                          config: CurrencyWarConfig,
                          refresh_used: bool = False) -> EncounterPick:
-        """遭遇分支选卡:E3 判据形态(mandate_v1/encounter.py 单一源)。
+        """遭遇分支选卡:E-2 判据落码(kernel/cw_encounter_selection.py 单一源)。
 
-        EV(b)=V_r(r_b)−Δλ_death(b)·G_loss(P26/E3 锚同构,P51 折现口径
-        入负项);λ label 四态接死、fail 向选低难支、EV 精确并列走并列
-        出口、刷新肢条件化——语义单一源 = ADR-0536(细则见
-        mandate_v1/encounter.py docstring)。
-        基线 ``cw_events.decide_encounter`` 零触碰(其他策略核行为不变);
-        拒因串改 EV 格式 = 预期遥测差(ADR-0536 §2);现态生产验收口径 =
-        恒 fail 向低难、零刷新建议(ADR-0536 §4)。
-        入口内务 = 结算惰性 drain + 备战帧代次消费(ADR-0583 §3.2 触发面;
-        覆写不落基类实现,须自带入口内务)。
+        暗装优先(fail-closed):三常量/两组定谳未就绪 → 恒最低档 + 零刷新,
+        reason 带门诊断(e3-simple 归因串,D_enc 口读值与 live 判别子随行
+        ——E-3 配对采集通道)。窗口读源 = GameState 结算观测环(E-2 平级
+        新结构);同档并列次序 = tiebreak 映射(钻>装备>金币>末档)。
+        历史 EV 候选核(mandate_v1/encounter.py)搁置让位、保留禁删;基线
+        ``cw_events.decide_encounter`` 零触碰(其他策略核行为不变)。
+        入口内务 = 备战帧代次消费(覆写不落基类实现,须自带)。
         """
         self._consume_prep_direction_frame(session)
-        from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
-            encounter,
+        from sr_od.application.currency_war.kernel import (
+            cw_encounter_selection,
         )
-        return encounter.decide_encounter_ev(options, bs, session,
-                                             refresh_used=refresh_used)
+        return cw_encounter_selection.decide_encounter(
+            options, bs, refresh_used=refresh_used)
 
     def decide_shop_screen(self, session: StrategySession,
                            config: CurrencyWarConfig) -> list:

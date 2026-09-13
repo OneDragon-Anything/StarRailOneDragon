@@ -44,8 +44,8 @@ reconcile = 空申报(结算写端拆 reconcile 必改执行时序,撞 D-94「�
 (``__init__(ctx, st, config)``,RunLoop 持有)不变;``node_max_retry_times=
 400`` 归节点不随路径变。本屏 sim 腿 = 不适用(F11 例外清单:sim 事实来源
 为 coarse 结算产出非画面段),等价判据主承重 = 实机在册行为锁经
-execute()/wait() 走新路径全绿(B2-③ 主门;锁面 = sr-od-test
-test_cw_battle_wait_op.py 在册 + test_cw_obs_arch_phase_screens.py 新路径)。
+execute()/wait() 走新路径全绿(B2-③ 主门;锁面随测试仓清理批重建
+——旧 test_cw_battle_wait_op.py 已删,回归责任由 test_cw_encounter_selection.py 扩容承接,见遭遇选档迭代 landing 承接申报)。
 """
 from __future__ import annotations
 
@@ -180,6 +180,9 @@ class SettlementState:
     settle_page1_progress: int | None = None
     settle_page1_settle: dict = field(default_factory=dict)
     settle_p1_ts: float | None = None
+    # 页1 暂存所属战斗窗标记(= 填充时点的 battle_ts;消费时同窗才取用——
+    # 跨窗滞留即弃,防上一场页1 暂存污染下一场结算行)
+    settle_p1_battle_ts: float | None = None
     settle_stay: int = 0
     last_settle_fp: tuple | None = None
     last_loss_fp: tuple | None = None
@@ -281,6 +284,58 @@ class CwScreenBattleWait(CwScreenOpBase):
         return self.round_by_ocr(screen, '点击空白处继续',
                                  lcs_percent=0.8).is_success
 
+    def _cw_selection_write(self, session: StrategySession,
+                            obs: RoundOutcome, plane: int, round_num: int,
+                            node_type: str, *, residual: bool) -> str:
+        """结算行入环(E-2 观测面单一写端;调用位 = _record_round_outcome 环写位)。
+
+        difficulty_node 装填双态(拨盘 = kernel D_ENC_VARIANT,定谳前 None):
+        普战行恒 live 门(observation 态 ∧ 非空);遭遇行 (i) = observation 态、
+        (ii) = observation/carried 自证态(简报值无容器入口,自证链封闭)。
+        encounter_tier = 遭遇行取 chosen_encounter 落点档(选择落地写入先于
+        结算)。残留行不入环(旧局键,跨局污染排除)。归因串返回留痕。"""
+        from sr_od.application.currency_war.kernel.cw_encounter_selection import (
+            D_ENC_VARIANT,
+            record_settlement_row,
+        )
+        from sr_od.application.currency_war.kernel.cw_game_state import (
+            board_state_of,
+        )
+        bs = board_state_of(session)
+        _f = bs.enemy_difficulty
+        _val, _src = _f.value, _f.source
+        diff = None
+        tier = None
+        if _val is not None and node_type != "遭遇":
+            if _src == "observation":
+                diff = float(_val)
+        elif _val is not None:
+            if D_ENC_VARIANT == "i":
+                diff = float(_val) if _src == "observation" else None
+            elif D_ENC_VARIANT == "ii":
+                diff = (float(_val) if _src in ("observation", "carried")
+                        else None)
+            _chosen = bs.chosen_encounter.value
+            if isinstance(_chosen, tuple) and _chosen:
+                try:
+                    tier = int(_chosen[0])
+                except (TypeError, ValueError):
+                    tier = None
+        return record_settlement_row(bs, obs, plane=plane,
+                                     round_num=round_num, node_type=node_type,
+                                     difficulty_node=diff,
+                                     encounter_tier=tier, residual=residual)
+
+    def _cw_selection_capture(self, session: StrategySession,
+                              obs: RoundOutcome, plane: int, round_num: int,
+                              node_type: str, *, suppressed: bool = False) -> None:
+        """E-3 对账落盘 hook(缺省关;启用点 = E-3 标定采集显式接通)。
+
+        对账数据源 = 环写位同点 hook 全量落盘序列(含 W239 抑制行留痕标记;
+        非运行时环 dump——环旋转会制造假缺行)。本批只钉点位,零副作用;
+        落盘件格式与启用开关随 E-3 标定批采集协议一并定。"""
+        return None
+
     # ===== 结算链遥测(自 cw_loop 原样平移;写端调用零变更)=====
 
     def _record_round_outcome(self, screen, telemetry_only: bool = False) -> None:
@@ -301,7 +356,10 @@ class CwScreenBattleWait(CwScreenOpBase):
         if not telemetry_only:
             self._st.saw_settlement = True   # ADR-0250:见结算屏 → 窗口关
         _st = self._st
-        _residual = False if telemetry_only else self._mark_relaunch_residual()
+        # 残留判定与 telemetry_only 解耦(两路同源):判定值来自结算处理入口
+        # 恰一次调用(首见副作用,环写位禁二次调用),1f/3b/胜局三路的残留行
+        # 排除共用本值。
+        _residual = self._mark_relaunch_residual()
         # (_source 行来源标记(''/'recovered'/'loss_page')随 outcomes 流写入端
         #  退役删除——删除波 1;_residual 残局判定保留,消费方 = 下方 plane
         #  归属校正分支。)
@@ -372,11 +430,15 @@ class CwScreenBattleWait(CwScreenOpBase):
             if telemetry_only and _obs.killed is not False:
                 log.info('[cw-bwait] loss_page 行不落:killed=%s 非显式败局(W239)',
                          _obs.killed)
+                # 守卫抑制形态:不入环(W239 防毒设计保留);E-3 对账 hook 在
+                # 环写位同点上游括守卫两臂,抑制行以留痕标记进落盘序列。
+                self._cw_selection_capture(_session, _obs, _plane, _round,
+                                           _node, suppressed=True)
                 return
             # r68 页1 progress 合并(暂存源 = SettlementState)
             if _obs.progress_delta is None:
                 _pg1 = _st.settle_page1_progress
-                if _pg1 is not None:
+                if _pg1 is not None and _st.settle_p1_battle_ts == _st.battle_ts:
                     _obs.progress_delta = _pg1
                     log.info('[cw-bwait] progress 合并(第一页暂存):%s', _pg1)
                 _st.settle_page1_progress = None
@@ -406,6 +468,8 @@ class CwScreenBattleWait(CwScreenOpBase):
             # 结算三项遥测页1 暂存合并(同 progress 合并法;暂存值优先于页2 同帧读数)
             # heal_longline 同并入(T-83/ADR-0609:回血分量,页1 瞬窗才可见)
             _st1 = _st.settle_page1_settle
+            if _st1 and _st.settle_p1_battle_ts != _st.battle_ts:
+                _st1 = {}   # 异窗滞留即弃(跨场污染排除)
             if _st1:
                 for _k in ('progress_fill_ratio', 'damage_base',
                            'damage_unfinished_progress', 'heal_longline'):
@@ -415,6 +479,12 @@ class CwScreenBattleWait(CwScreenOpBase):
                     _obs.damage_breakdown_visible = True
             _st.settle_page1_settle = {}
             _st.settle_p1_ts = None
+            # —— 遭遇选档观测面(E-2):环写位 = 页1 暂存合并消费之后、观察半
+            # 直写之前;过守卫三路均入环,残留行排除,同场去重合并(键 =
+            # plane+round)。E-3 对账 hook 同点(缺省关,启用 = E-3 采集接通)。
+            self._cw_selection_capture(_session, _obs, _plane, _round, _node)
+            self._cw_selection_write(_session, _obs, _plane, _round, _node,
+                                     residual=_residual)
             if not telemetry_only:
                 # —— 观察半直写(ADR-0583 §2.5;原 on_round_end 观察段逐行平移,
                 # 写点与原调用同点同时序)——
@@ -494,11 +564,11 @@ class CwScreenBattleWait(CwScreenOpBase):
                 # 零行为差。独立 best-effort try(同 on_battle_end 纪律,
                 # 不与结算覆盖写端共享异常域;失败不阻塞结算链)。
                 try:
-                    from sr_od.application.currency_war.kernel.cw_game_state import (
-                        board_state_of,
-                    )
                     from sr_od.application.currency_war.kernel.cw_effect_inventory import (
                         settle_copy_machine_participation,
+                    )
+                    from sr_od.application.currency_war.kernel.cw_game_state import (
+                        board_state_of,
                     )
                     for _cm in settle_copy_machine_participation(
                             board_state_of(_session),
@@ -720,6 +790,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                     _pg1f = parse_settlement_progress([r.data for r in _1f_items])
                     if _pg1f is not None:
                         self._st.settle_page1_progress = _pg1f
+                    self._st.settle_p1_battle_ts = self._st.battle_ts
                 _fr_1f = parse_progress_fill_ratio(screen) if _on_p1_1f else None
                 _st_1f = self._st.settle_page1_settle or {}
                 for _k, _v in (('damage_base', _pnl['damage_base']),
@@ -766,6 +837,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                 _pg1 = parse_settlement_progress(_texts1)
                 if _pg1 is not None:
                     self._st.settle_page1_progress = _pg1
+                    self._st.settle_p1_battle_ts = self._st.battle_ts
             except Exception as e:   # noqa: BLE001  暂存 best-effort
                 log.warning('[cw-bwait] 结算页1 progress 暂存失败(不阻塞): %s', e)
             _panel_now = None
@@ -784,6 +856,7 @@ class CwScreenBattleWait(CwScreenOpBase):
                 if _fr is not None:
                     _stash['progress_fill_ratio'] = _fr
                 self._st.settle_page1_settle = _stash
+                self._st.settle_p1_battle_ts = self._st.battle_ts
             except Exception as e:   # noqa: BLE001  暂存 best-effort
                 log.warning('[cw-bwait] 结算页1 三项暂存失败(不阻塞): %s', e)
             if _accel_hit.is_success and not (

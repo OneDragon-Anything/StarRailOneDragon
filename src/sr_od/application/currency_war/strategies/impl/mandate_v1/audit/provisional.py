@@ -19,6 +19,8 @@ V̄ 拟合族类型级封印(R10-2):``V_BAR`` 槽位不提供数值取值接口
 """
 from __future__ import annotations
 
+# 新遭遇选档判据的标定注入 = kernel/cw_encounter_selection.apply_calibration
+# (与本模块槽位物理隔离,互不可见——防把新判据标定值误注给本 EV 核槽)
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -99,13 +101,13 @@ _SLOTS: dict[str, _Slot] = {
     # 公式 stat=B+q+L+s(−m) 的自由项未定界,带别不是旗牌的函数,任何
     # 非空静态 dict 注入 = 假真值,R29-6)⇒ 本槽保持 None(诚实缺省),
     # 数值臂点亮前置 = 浮层难度条读数通道 → 条件表 ≥3 局实采 → 双槽注入
-    # (ADR-0536 §3);None 期 = 键观测量缺失 = 域外同判 fail-closed。
+    # (历史判据稿 §3);None 期 = 键观测量缺失 = 域外同判 fail-closed。
     # 载体类型例外(落地审低-2 登记):value 静态注解 float,本槽实载
     # dict[int, int](键=旗牌)——运行无碍,后续批可放宽注解。
-    'ENCOUNTER_DSTAT_MAP': _Slot('遭遇分支旗牌→敌难度 stat 映射(ADR-0536 §3;'
+    'ENCOUNTER_DSTAT_MAP': _Slot('遭遇分支旗牌→敌难度 stat 映射(历史判据稿 §3;'
                                  'P64 定谳静态标定域 ∅ 保持 None,点亮须条件表'
                                  '实采;None 期 E3 λ 项域外 fail 向选低难)'),
-    # 金币×2 分支奖励金额(E3 判据金币支 V_r;ADR-0536 §3):金额非机制
+    # 金币×2 分支奖励金额(E3 判据金币支 V_r;历史判据稿 §3):金额非机制
     # 定义常量(节点收入=基础+息+连胜,运行时变,P64 金额侧同判),存量
     # 观察值仅 1 可信单例(+8)+ 2 帧存疑读数,「≥3 局观察值定带」判据
     # 未过 ⇒ 保持 None(诚实缺省)并申报采集——None 期金币支 V_r 未立
@@ -113,7 +115,7 @@ _SLOTS: dict[str, _Slot] = {
     # 与 ENCOUNTER_DSTAT_MAP 构成**双槽互锁**:数值 argmax 臂要求两槽都在
     # 场,防「标定批只注 λ 侧映射即半标定全开闸、单例金额进承重比较位」
     # (落地审建议-1 治本:代码常量 8 退役,槽位化单源)。
-    'ENCOUNTER_G_GOLD': _Slot('E3 金币×2 金额观察值(ADR-0536 §3;P64 定谳'
+    'ENCOUNTER_G_GOLD': _Slot('E3 金币×2 金额观察值(历史判据稿 §3;P64 定谳'
                               '非机制常量、≥3 局定带门未过保持 None;与 DSTAT '
                               '槽双槽互锁)'),
     # —— 锁线夹界槽位(math_proofs P76 §5.5 落码批,ADR-0628;规约态,
