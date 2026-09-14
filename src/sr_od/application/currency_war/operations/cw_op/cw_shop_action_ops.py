@@ -24,9 +24,11 @@ test_cw_shop_projection_logic)):
 检测器——历次投影口径返工史证明投影建模错是常态)。双账断言
 零读屏(tracked 账纯内存随动),不违决策 1/8「循环内不读屏」。
 
-执行侧观测通道(ADR-0517 §执行侧观测通道去向,候选 a):卖回金实收
-遥测/刷新有效性检测/免费刷新证据保留为 execute 实现层遥测,与决策读屏
-解耦(三通道均观测职责,非决策输入)。
+执行侧观测通道(ADR-0517 §执行侧观测通道去向,候选 a;T-192 判效
+拆除后的保留面):卖回金实收遥测/牌面变化留证位(安灯 free_refresh_proc
+豁免判定输入)/免费刷新证据保留为 execute 实现层遥测,与决策读屏解耦
+(均观测职责,非决策输入;刷新有效性判效半已随 T-192 拆除,判效权归
+观察侧 reconcile)。
 """
 from __future__ import annotations
 
@@ -59,7 +61,6 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     _area_rect,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
-from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
     CloseShop,
@@ -619,8 +620,10 @@ class SellBenchOp(ShopActionOp):
 
 class RefreshShopOp(ShopActionOp):
     """刷新 = 终结 op(决策 7:唯一引入新事实的动作,期望态必须在新事实
-    处重建——终结后外循环入口重观察)。刷新有效性检测/免费刷新证据/
-    刷新期望对账 = 执行实现层遥测(候选 a;与决策读屏解耦)。"""
+    处重建——终结后外循环入口重观察)。T-192 判效半拆除:牌名集三值
+    对比仅作安灯豁免判定输入 + 遥测字段(候选 a 留证遥测半合法保留);
+    免费刷新证据/刷新期望对账 = 执行实现层遥测(与决策读屏解耦);
+    「刷新是否生效」的判效权归观察侧 reconcile。"""
 
     terminal = True
 
@@ -631,9 +634,6 @@ class RefreshShopOp(ShopActionOp):
         # 测试 monkeypatch 面;自本模块直接 import 会绕开替身)。
         from sr_od.application.currency_war.operations.cw_op import (
             cw_op_buy_cards as _buy_cards_mod,
-        )
-        from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
-            refresh_effective,
         )
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_prep import (
             build_refresh_expect,
@@ -723,33 +723,18 @@ class RefreshShopOp(ShopActionOp):
             _new_shop = _buy_cards_mod.read_shop_cards(op.ctx, op.screenshot())
             # (refresh 牌面快照行已随 shop_snapshots 流写入端退役删除
             #  ——删除波 1;牌面现役归宿 = journal 快照行自带 shop 域。)
-            # 刷新有效性对拍(§2.5):三值,False=全同(未变)透传分类器。
-            ledger.refresh_board_changed = refresh_effective(
-                _pre_shop_names or [],
-                [s.card.name for s in (_new_shop or [])
-                 if s.kind == 'content' and s.card and s.card.name])
-            if ledger.refresh_board_changed is False:
-                _ineff_shot = None
-                with contextlib.suppress(Exception):
-                    _ineff_shot = op.save_screenshot(
-                        prefix='refresh_ineffective')
-                defects.record_defect(
-                    'shop_refresh', 'invariant_break',
-                    expected=('刷后牌面≠刷前:'
-                              f'{sorted(_pre_shop_names or [])}'),
-                    observed=('刷新后5牌与刷前全同(点击落空/费金照扣未刷/'
-                              f'动画误读):'
-                              f'{sorted(c.name for c in _new_shop)}'),
-                    plane=_plane_of(state), round_num=_round_of(state),
-                    verdict='留证-刷新未生效嫌疑(费金照扣牌面未变)',
-                    shot=_ineff_shot,
-                    reader_source='refresh_set_compare',
-                    gap_large=True,
-                    # refs 旧挂点清理(W7 refs 迁移):decisions 流已退役,
-                    # 改指 journal (run_id,v) 锚(plane/round 已在行参内联)。
-                    refs=journal_refs(),
-                    note='观测自检框架设计 §2.5:全同=刷新未生效;'
-                         '两连全同才确认(台账复现计数)')
+            # 留证遥测半(T-192 判效半拆除后的保留面,候选 a):刷前/刷后
+            # 牌名集三值对比只作安灯 free_refresh_proc 豁免判定输入
+            # (classify_spend_unit 判定序③)+ 遥测字段
+            # (schema.refresh_board_changed),不再产「刷新未生效嫌疑」
+            # 判效结论——判效权归观察侧 reconcile。任一侧空(整帧失读/
+            # 买光全空位)= None 不可判,不猜。
+            _post_shop_names = [s.card.name for s in (_new_shop or [])
+                                if s.kind == 'content' and s.card
+                                and s.card.name]
+            ledger.refresh_board_changed = (
+                None if not _pre_shop_names or not _post_shop_names
+                else set(_pre_shop_names) != set(_post_shop_names))
             # 刷新期望 vs 实读对账(零决策记账):金腿 + 牌腿。
             if _refresh_expect is not None and _reconcile is not None:
                 _gold_after = _buy_cards_mod.read_gold_opt(

@@ -198,21 +198,9 @@ def expected_gold_after_actions(state_gold: int, spend: int,
     return state_gold - spend + sell_income
 
 
-def refresh_effective(before_names: list[str] | tuple[str, ...],
-                      after_names: list[str] | tuple[str, ...]) -> bool | None:
-    """刷新有效性判据(观测自检框架设计 §2.5;纯观测零决策)。
-
-    刷后牌名集合 == 刷前集合 → 刷新未生效(点击落空/费金照扣没刷/动画帧
-    误读)。真刷出全同 5 牌是牌池组合级小概率、连续两次全同更低——「两连全同
-    才确认」的防抖由台账复现计数承载(同特征首见 L1、再现升 L0),本函数只给
-    单波判定。任一侧含未识别槽('')→ 读不可判返 None 不猜(宁缺勿造,与既有
-    unknown miss 语义同);空列表同样视为不可判(牌面整帧失读)。
-    """
-    if (not before_names or not after_names
-            or any(not n for n in before_names)
-            or any(not n for n in after_names)):
-        return None
-    return set(before_names) != set(after_names)
+# (refresh_effective 判刷新未生效函数已随 T-192 阶段三判效拆除删除:
+#  判效权归观察侧 reconcile;牌名集三值对比的留证半(安灯 free_refresh_proc
+#  豁免判定输入)内联保留在 RefreshShopOp.execute。)
 
 
 # 买牌动画(卡牌飞行)收敛等待:首采无新槽后重采前的延迟秒数。
