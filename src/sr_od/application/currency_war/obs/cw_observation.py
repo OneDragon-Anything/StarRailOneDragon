@@ -1910,7 +1910,10 @@ def read_shop_cards(ctx: SrContext,
     # 过渡帧,以第二次为准留证;上限一次,不构成等待环。
     import time as _time
     _time.sleep(0.8)
-    slots2 = _read_once(ctx.controller.screenshot())
+    # controller.screenshot 返回 (时间戳, 帧|None) 元组(非帧本体),须解包;
+    # 帧缺席(截取失败)= 无法重观察,保首读不猜。
+    _ts2, _frame2 = ctx.controller.screenshot()
+    slots2 = _read_once(_frame2) if _frame2 is not None else slots
     if slots2 != slots:
         try:  # noqa: SIM105  遥测 best-effort
             record_defect(
