@@ -20,6 +20,11 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
   档案 v12 及以前内嵌的旧流切片照常可读,裸数据归档只读),``--match``
   视图把切片物化到临时目录后走 journal_query 视图族读新账。
   obs_conflicts.jsonl 例外:跨局 journal 无 run_id 键且体积大,不入切片。
+- **派生输入回源流(重装配保真)**:派生列(rounds/loss_nodes/departures/
+  opening/resume_reconciliation 等)的输入吃旧流键,不在 v12 切片契约内
+  ——装配时切片缺键回源流文件按段过滤补读(``_load_derived_inputs``;
+  源流在 = 无损重装配,消除 v7 注申报的「重装配无益有损」;源流已清 =
+  空列表诚实退化)。档案 ``slices`` 载荷不变(仍两文件契约)。
 - **归局骨架(W3 起三源)**:journal 实机形态段(``run_YYYYMMDD_HHMMSS``,
   过滤 sim/测试段——journal 单文件多写者,哨兵同口径)+ 旧流段(存量语料
   重装配仍可归局);两源段按段首 ts 合并进同一时序插位。装配收尾走跨档
@@ -180,6 +185,16 @@ _WATERMARK_NAME: str = '.watermark.json'
 #: 归档只读可考古)。
 _SLICE_FILES: tuple[str, ...] = (
     'op_journal.jsonl', 'state/journal.jsonl',
+)
+
+#: 派生列输入消费的旧流文件(rounds/loss_nodes/departures/opening/
+#: resume_reconciliation/final_snapshot/hp_events 的真函数消费面编译自
+#: 各派生函数的 slice_rows 键)。v12 切片契约外——装配时切片缺键回
+#: 源流按段补读(语义见 ``_load_derived_inputs``);journal 新账键恒在
+#: 切片内,不入本集。
+_DERIVED_INPUT_FILES: tuple[str, ...] = (
+    'decisions.jsonl', 'outcomes.jsonl', 'shop_snapshots.jsonl',
+    'exogenous.jsonl', 'invest_cards.jsonl',
 )
 
 #: journal 段归局的 run_id 实机形态(段过滤单一判据;与哨兵脚本组
@@ -492,6 +507,38 @@ def _annotate_orphan_op_rows(rows: list[dict[str, Any]] | None) -> None:
     for pending in open_stack.values():
         for r in pending:
             r['outcome'] = 'orphan'
+
+
+def _load_derived_inputs(rd: Path, segments: set[str],
+                         slice_rows: dict[str, list[dict[str, Any]]],
+                         ) -> dict[str, list[dict[str, Any]]]:
+    """派生列输入行集(重装配保真的输入供给,装配主路径在册函数)。
+
+    - 为什么存在:v12 切片契约只含两文件(op_journal + state/journal),
+      而 ``_build_rounds`` / ``_derive_departures`` 等派生函数的输入吃
+      旧流键——不回源流,任何重装配(load_archive 版本迁移 /
+      assemble_pending 段集增长 / 跨档守卫整体重装配)都会把
+      rounds/loss_nodes/departures 等派生列全量清空(v7 注申报的
+      「重装配无益有损」;T-242 真实双档重放实证)。
+    - 供给语义:切片在档且非空的键原样透传(切片优先);缺键回源流文件
+      按段集过滤读取——源流在 = 无损重装配;源流已清 = 空列表(与
+      ``_load_slice`` 旧流「文件缺 = 空切片」同契约,诚实退化不猜测)。
+    - 边界:产物只作装配端派生输入,不进档案 ``slices`` 载荷(v12 两
+      文件契约不回填旧流键,裸数据考古归源流归档)。
+    """
+    out = dict(slice_rows)
+    refilled: list[str] = []
+    for name in _DERIVED_INPUT_FILES:
+        if out.get(name):
+            continue
+        out[name] = [r for r in read_jsonl(rd / name)
+                     if r.get('run_id') in segments]
+        if out[name]:
+            refilled.append(name)
+    if refilled:
+        log.info('[cw][archive] 派生列输入切片缺键,回源流补读 %s'
+                 '(重装配保真路径)', refilled)
+    return out
 
 
 def _best_decision_frame(dec_rows: list[dict[str, Any]],
@@ -1310,6 +1357,9 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
     segments: list[str] = list(game['segments'])
     seg_set = set(segments)
     slice_rows = _load_slice(rd, seg_set)
+    # 派生列输入供给(重装配保真):v12 切片无旧流键,缺键回源流补读,
+    # 消除「重装配派生列全空」(语义见 _load_derived_inputs)
+    derived_rows = _load_derived_inputs(rd, seg_set, slice_rows)
     runs_rows = [r for r in read_jsonl(rd / 'runs.jsonl')
                  if r.get('run_id') in seg_set]
     runs_by_seg = {r.get('run_id'): r for r in runs_rows}
@@ -1318,15 +1368,15 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
     # abandoned 判定:末段无 runs 摘要(收口路径没走)或 result 非完结值域
     abandoned = (not result) or (result not in _TERMINAL_RESULTS)
     rounds, loss_nodes, boundaries, hp_pay_defects = _build_rounds(
-        rd, slice_rows, segments, result)
+        rd, derived_rows, segments, result)
     seg_summaries = [
         {'run_id': rid,
-         'first_frame': _first_frame_key(slice_rows.get('decisions.jsonl') or [], rid)
-         or _first_frame_key(slice_rows.get('outcomes.jsonl') or [], rid),
+         'first_frame': _first_frame_key(derived_rows.get('decisions.jsonl') or [], rid)
+         or _first_frame_key(derived_rows.get('outcomes.jsonl') or [], rid),
          'summary': runs_by_seg.get(rid),
          # 零结算段自标识(v11 加法,见 _settlement_gap;非零结算段键缺省)
-         **_settlement_gap(slice_rows.get('decisions.jsonl') or [],
-                           slice_rows.get('outcomes.jsonl') or [], rid,
+         **_settlement_gap(derived_rows.get('decisions.jsonl') or [],
+                           derived_rows.get('outcomes.jsonl') or [], rid,
                            runs_by_seg.get(rid))}
         for rid in segments]
     # 孤立续局(本段是续局但上一局不在库)留痕:首段首帧非 (p1,r1)
@@ -1368,18 +1418,18 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
         # boundaries 按 run_id 并入对应续段行(unexplained_delta/consumed_
         # by_chain),不进 loss_nodes——重锚差是「段界间隙变化」显影非战斗腿。
         'resume_reconciliation': _merge_boundary_records(
-            _resume_reconciliation(segments, slice_rows), boundaries),
+            _resume_reconciliation(segments, derived_rows), boundaries),
         'rounds': rounds,
         'loss_nodes': loss_nodes,
         # hp 变化事件显影列(v9 加法,装配端纯读;旧档案恒空 = 采集面修复
         # 只及新局)与 modeled 期望账对账偏差列(v9 加法,留证不阻塞)
-        'hp_events': _hp_pay_events(slice_rows.get('exogenous.jsonl') or []),
+        'hp_events': _hp_pay_events(derived_rows.get('exogenous.jsonl') or []),
         'hp_pay_defects': hp_pay_defects,
         # 离场事件派生列(v10 加法,ADR-0605;装配端纯读,旧档案重装配补齐):
         # 执行期 deploy 换血卖出逐件落账缺口(075840 Saber 实锤)的判读面。
-        'departures': _derive_departures(slice_rows.get('decisions.jsonl') or [],
+        'departures': _derive_departures(derived_rows.get('decisions.jsonl') or [],
                                          segments),
-        'opening': _build_opening(slice_rows, runs_by_seg),
+        'opening': _build_opening(derived_rows, runs_by_seg),
         'endgame': {'result': result or 'abandoned',
                     'abandoned': abandoned,
                     'plane_reached': (last_summary or {}).get('plane_reached'),
@@ -1389,7 +1439,7 @@ def build_archive(replay_dir: Path | str, game: dict[str, Any]) -> dict[str, Any
                     # 局级终局快照(M2 增强批 ③;None=零决策迹局):
                     # 终局阵容/金/等级,取值口径见 _final_snapshot。
                     'final_snapshot': _final_snapshot(
-                        slice_rows.get('decisions.jsonl') or []),
+                        derived_rows.get('decisions.jsonl') or []),
                     # 局终行(局终域识别,R5 W2;None=末段无局终行):
                     # runs 收编载体的档案显影位,局边界判定读此键。
                     'match_final': match_final_view(
