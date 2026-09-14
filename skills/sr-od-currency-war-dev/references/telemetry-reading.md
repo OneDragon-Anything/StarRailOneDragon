@@ -5,9 +5,10 @@
 ## 查询工具(遥测 CLI)
 
 ```
-uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [--run ID] --view rounds|gold|hp|events|snapshot|final|all
+$env:PYTHONPATH='src'; uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [--run ID] --view rounds|gold|hp|events|snapshot|final|all
 ```
 
+- **模块入口必须带 `PYTHONPATH=src` 前缀**(上式已含;裸 `-m` 与 `--env-file .env` 都报 ModuleNotFoundError——`.env` 不放 PYTHONPATH)。仓内无独立 `cw_telemetry` 可执行命令,help 的 prog 名显示为 cw_telemetry 而已。
 - **按局档案(跨 run 段免拼段)**:正常局局终自动装配;`--match <game_id>` 直读单局档案(`--recent` 读索引;崩溃局补装配 `assemble --game <game_id>`)。
 
 - rounds=逐轮表(按节点分段);gold=金账行间差分;hp=hp 链;events=观察事件行显影;snapshot=末行快照摘要;final=局终行(match_final)。旧视图族(supply/anomalies/economy 等)已随旧流拆除,深维度按「新复盘需求=新视图」纪律按行差分直读。
@@ -28,18 +29,18 @@ uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [
 ### 阵容质量(三维,缺一即盲判)
 | 字段 | 视图 | 复盘问题 |
 |---|---|---|
-| board | rounds/tiers | 羁绊档位构成;配方成型进度 |
+| board | 档案 rounds 行(board 键) | 羁绊档位构成;配方成型进度 |
 | board_next_tier | 无 | 距下档几人(差一人没凑上=供给问题) |
-| deployed(char_id/star/equips/position_pref) | tiers(名+★+装备) | 核心在场吗(空壳档位);星级演进(核心 2★ 何时到);装备归属(carry 拿 key_equips 了吗/乱穿);**站位**(前排数 vs 设计) |
+| deployed(char_id/star/equips/position_pref) | 档案 rounds 行(deployed 键:名+★+装备+站位) | 核心在场吗(空壳档位);星级演进(核心 2★ 何时到);装备归属(carry 拿 key_equips 了吗/乱穿);**站位**(前排数 vs 设计) |
 | bench | 无(仅 outcome bench_count) | bench 囤什么(压缩件/final 囤件/滞留件);席满管理 |
-| equips(owned) | tiers(owned 行) | 装备滞留/合成材料囤积 |
+| equips(owned) | 档案 rounds 行(equips 键) | 装备滞留/合成材料囤积 |
 | plane_bosses | **空** | boss 克制兑现(counter 线该避没避) |
 | enemy_affixes | **空** | 词条 counter 兑现 |
 
 ### 经济与节奏
 | 字段 | 视图 | 复盘问题 |
 |---|---|---|
-| gold | rounds/economy | 轨迹/滞留轮/息核对 |
+| gold | rounds/gold | 轨迹/滞留轮/息核对 |
 | level | rounds(部分) | 升级节奏 vs 5→7→9 基线;错过窗口 |
 | xp_progress | 无 | 经验点了几下/何时升级;半吊子点经验(金尽未升级) |
 | level_up_cost / shop_refresh_cost | 无 | 折扣卡生效核对 |
@@ -49,7 +50,7 @@ uv run python -m sr_od.application.currency_war.telemetry.cli query --recent N [
 ### 供给与选择
 | 字段 | 视图 | 复盘问题 |
 |---|---|---|
-| shop | supply | 全波牌面 vs 购买:该买没买(错过供给)/不该买买(散件固化) |
+| shop | 档案 rounds 行(shop_snapshots/actions 键) | 全波牌面 vs 购买:该买没买(错过供给)/不该买买(散件固化) |
 | refresh_probs | 无(7/39 有数据) | 轮岗概率条(环境效果兑现) |
 | shop_locked | **空** | 锁店策略维持 |
 | active_env | **空**(仅选卡时) | 环境选择与路线匹配 |
@@ -113,8 +114,8 @@ target_comp(换线序列/churn)、candidate_scores、eval_breakdown、actions、
 0. **先取尺子再看数——两种判读两种尺子,别混**:**单局复盘**(打得对不对)的尺子=玩法恒常标准(配方纪律/经济纪律/响应纪律/已证命题,协议=[match-review.md](match-review.md));**验证当期改动(A/B)**的尺子=当期进度账本目标行判据(没写判据=先补写再判读)+ strategy-work「验证」——**HP 从来不是验收指标,拿 HP 当验收=目标函数错**;
 1. **局后判读一律档案直读**:`--recent N` 概览(读档案索引)→ `--match <game_id>` 锁定目标局看视图;`--run` 流查询仅局中实时定位用(早停/哨兵/卡死——游戏还在跑,档案未生成)。**结束值以档案为准:决策日志最后一行的血量不是结束值,那之后还打了仗**;
 2. **hp 视图**看轨迹(注定不达标的局按早停纪律反思为什么没早停);档案 hp 真值链(hp_pay 事件行/段界重锚/终局兜底)的 schema 9 判读口径见上节;
-3. **tiers 视图**三维扫一遍(deployed 构成+装备+星级);
-4. **economy** 看滞留/收入核对;**supply** 看购买对错;
+3. **阵容三维扫一遍**(羁绊档位×角色构成×装备分配):档案 rounds 行直读 `board`/`deployed`/`bench`/`equips` 键(CLI 无独立 tiers 视图,已随旧视图族拆除);
+4. **gold 视图**看滞留/收入核对(金账行间差分);**购买对错**直读档案 rounds 行 `shop_snapshots`(全波牌面)+`actions`(实付动作);
 5. **events** 视图观察事件行(obs_event)逐条定位根因（定位不了不进下一局）——旧 anomalies 视图已随旧流拆除；冲突/异常证据面 = journal 行型 2 在账直读（obs_conflicts 历史行 = 冻结档案只读，删除波 1 起）；
 6. 视图外维度按需取:优先档案 rounds 的字段面(含决策流程明细——pair/意向/姿态,带策略版本戳);仍不够的「为什么/如果」问题走**回放**(用当期代码对档案状态现算,单帧锁同款机制)——不为此读流;
 7. 结论:有异常 → 先确定异常来源,再找出治本的修复方案,然后将方案的实施状态记录到进度账本中合适的位置;同一个问题出现两次 → 必须走到治本方案这步,不许再当单局异常放下;单局结论不留;声明数据边界。
