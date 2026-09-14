@@ -1201,6 +1201,9 @@ def bench_view_from_obs(bench_chars: list) -> BenchView | None:
       入记录(席空数派生误报 free=9 会污染席满决策);
     - 槽位越界条目丢弃并 log 留证(物理槽 1..capacity 外 = 读链漂移信号,
       静默丢弃 = 身份静默丢失);
+    - ``is_item_slot`` 占位件(读链道具位,箱/典籍/书册卡)→ supply_box
+      槽位往返保旗标(占 1 席、非可卖燃料;与 :func:`bench_slots_to_legacy`
+      的重建分支配对);
     - 非 None 返回 = 槽位保序映射(下标 i = 物理槽 i+1,与 sim 合成口同构)。
     """
     if not bench_chars:
@@ -1209,6 +1212,12 @@ def bench_view_from_obs(bench_chars: list) -> BenchView | None:
     for bc in bench_chars:
         s = int(getattr(bc, 'slot', 0) or 0)
         if 1 <= s <= BENCH_CAPACITY_DEFAULT:
+            if bool(getattr(bc, 'is_item_slot', False)):
+                # 占位件保旗标(与 bench_view_of_slots 的 supply_box 映射配对):
+                # 恒映射 'unit' 会把占位件退化成 '' 1★ 可卖燃料,腾席守卫失守
+                #(波 4 落码审 A 组探针同款形态)。
+                slots[s - 1] = BenchSlot(kind='supply_box')
+                continue
             slots[s - 1] = BenchSlot(kind='unit', unit=Unit(
                 char_id=str(getattr(bc, 'char_id', '') or ''),
                 star=int(getattr(bc, 'star', 1) or 1),

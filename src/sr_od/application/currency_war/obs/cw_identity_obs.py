@@ -815,7 +815,9 @@ def check_system_unit_layout(
 def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates) -> list[BenchChar]:
     """备战栏角色(9 槽)→ list[BenchChar](position_pref=角色固有偏好,未上阵)。
 
-    空槽 / 未识别 → 不进列表。用途:离线重建 / 漂移恢复。
+    空槽 / 未识别 → 不进列表;已建档物品(箱/典籍/书册卡)占用的槽位以
+    ``is_item_slot=True`` 空名位入列表(占 1 席,见
+    :func:`_merge_item_occupied_slots`)。用途:离线重建 / 漂移恢复。
     """
     chars = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
     # [停机钩子·偏常驻兜底(hook审计 S3/r351 分类修正:触发=「占用且全部识别
@@ -919,7 +921,32 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                 break
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass
+    _merge_item_occupied_slots(ctx, screen, chars)
     return chars
+
+
+def _merge_item_occupied_slots(ctx: SrContext, screen: MatLike,
+                               chars: list[BenchChar]) -> None:
+    """已建档物品(补给箱/秘密典籍/书册卡)占用的备战席槽位并入身份读链结果
+    (就地追加 ``is_item_slot=True`` 空名位)。
+
+    为什么必须:SIFT 只产角色位,而物品同样占备战席 1 槽(补给球掉箱实机
+    语义,见下方「补给箱识别」节首注)——漏记 = 席满帧被当成有空位,策略照
+    幻影空位发买牌、游戏侧全部拒买且金不动(实机局:点球奖励「开启」箱补满
+    末槽后 3 张连发全拒)。识别面 = ``bench_item_slots`` 精确档(与部署装配
+    路径同源,同函数同档);泛扫描档不入账,留召唤物停机钩子兜未建档变体。
+    坐标系:slot = 备战栏物理槽 1..9(与 ``BenchChar.slot`` 同系);已识别
+    角色位跳过;异常静默(本模块采集面 best-effort 纪律)。
+    """
+    try:
+        named = {c.slot for c in chars}
+        for slot in sorted(bench_item_slots(ctx, screen, fuzzy=False)):
+            if slot in named:
+                continue
+            chars.append(BenchChar(slot=slot, char_id='', star=1,
+                                   is_item_slot=True))
+    except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
+        pass
 
 
 # ===== SIFT 三层漏斗(session 优先匹配;P4R4 heavy 性能批) =====
@@ -1069,9 +1096,11 @@ def read_bench_chars_tiered(session, ctx: SrContext, screen: MatLike,
                             templates: AvatarTemplates) -> list[BenchChar]:
     """:func:`read_bench_chars` 的漏斗版(识别走三层漏斗;召唤物停机钩子
     等 best-effort 尾巴复用旧实现——tiered 不改变「识别不出」的语义)。"""
-    return identify_slots_tiered(session, screen, templates,
-                                 _ctx_slots(ctx, '备战栏', 9), '',
-                                 min_inliers=10)
+    chars = identify_slots_tiered(session, screen, templates,
+                                  _ctx_slots(ctx, '备战栏', 9), '',
+                                  min_inliers=10)
+    _merge_item_occupied_slots(ctx, screen, chars)
+    return chars
 
 
 # ===== 补给箱识别(备战栏槽位;2026-08-14 首见实机) =====
