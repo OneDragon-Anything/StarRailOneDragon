@@ -1,86 +1,89 @@
-# sim 接线对照表(GameState ↔ sim 引擎)
+# sim 接线对照表(容器 GameState ↔ sim 引擎)
 
-> as-built 存量清查(2026-08-24 首版;此后每批接线变更同步更新本表):
-> GameState 35 个字段在
-> P1 模拟器(`engine_p1.simulate_p1`)中的接线状态,三档归类 + 逐字段
-> 一行。用途:新字段的「三消费面」检查(策略/遥测/sim 代理三面同改
-> 纪律)以此为底账;改 sim 接线时更新对应行。
+> as-built 底账(引擎直写容器形态;接线变更同步更新本表):
+> sim 引擎(P1 = `sim/engine_p1.simulate_p1`,P2 段 = `sim/engine_p2`)
+> 不持本地工作帧,局状态 = 容器 `GameState` 单例
+> (`kernel/cw_game_state.board_state_of(session)`)。引擎写容器一律走
+> 带渠道签名的写入口(渠道族封闭集 obs/logic_action/logic_hook,写入口
+> 校验渠道族与 actor 在册);读容器走决策面公共读口族与 Field 直读。
+> 本表逐域记录 sim 的产生面(哪个渠道、什么事件写)与读取面;用途:
+> 新域的「三消费面」检查(策略/遥测/sim 代理三面同改纪律)以此为底账,
+> 改 sim 接线时更新对应行。
 >
-> 对账:**已接 17(首版 13 + 接入 board + 接入
-> node_type/streak[session 口径]+ 接入 xp_progress/
-> refresh_probs/deploy_cap[宝钻通道参数化,默认频率 0]+ 动作 v2 契约
-> 接入 action_log[动作 v2 账本])+ 必须接线 12 + 观测冗余豁免 6 =
-> 35**(与 GameState dataclass 实测字段数一致;2026-09-11 重对账,
-> 实测面 = cw_state.py GameState 字段定义)。历史数字链(37→39→40
-> →41→36)是**表行数口径,恒比 GameState 真实字段数多 1**——首版
-> 已接表误列了 bench_full_flag 行,而它**不是 GameState 字段**(「备战
-> 席已满」警告位通道已退役出 dataclass,席满判定 = `bench_is_full()`
-> 占用派生,cw_state.py 该方法注释自证);其现役载体 = sim 账本行
-> state 键(engine_p1 决策入口快照写点 `'bench_full_flag'`),现役
-> 消费面 = checks/ledger.py 的账本行键 schema 校验(非布尔即报
-> 「满栏旗标写端断线」);生产读端已随 W3 退役(merge_round_rows,
-> 退役锁在册 = sr-od-test `test_cw_w3_journal_only_reads.py`),判读
-> 走 journal 新账视图族(telemetry/journal_query)。本行已移出字段表,
-> 表行数与字段数归一 = 35。(历史批次字段增减:新增
-> deploy_cap;enemy_difficulty_live、action_log、hp_trusted、
-> level_readable 依次新增入观测冗余豁免档;2026-09-08 死字段清理:
-> 自建表起恒缺省、零接线零消费的 5 个「结构未建」占位字段
-> match_type/plane_modifiers/shop_locked/megastar_char/partner_char
-> 从 GameState 删除,该档随之撤档——字段复现需求随依赖结构建设时
-> 按新字段流程重立。)
->
-> 优先级:P1 = 影响当期 sim A/B 结论有效性;P2 = 决策消费存在但当前
-> 栈(decision_v2)影响面小;P3 = 随依赖结构建设顺带接入。
+> 域全集与字段级规格正本 = `game_state/fields.md`;体系纪律(单一转移
+> 函数/引擎白名单/行为锁)= [sim-design.md](sim-design.md) §2。
 
-## 一、已接线(17;sim 语义 = 生产语义或其 P1 域内真值)
+## 一、写入渠道(封闭集三通道)
 
-| 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
-|---|---|---|---|---|
-| gold | 收入模型(基础+息+连胜+事件金)+逐笔花销 | OCR 金币数 | 已接(模型) | — |
-| round_num | 轮循环:P1 段 1-9;`planes>=2` 追加 P2 段 1-7(进场继承 P1 末态) | 位面内轮次 OCR | 已接 | — |
-| level | XP 循环升级(封顶 9) | 等级 OCR/XP 推导 | 已接(封顶 9=XP 表域) | — |
-| plane | P1 段恒 1;P2 段设 2(位面段迭代;决策代码 plane-aware,`cw_economy`/`cw_intention`/V_D P2 分支自动激活) | 位面 1/2/3 | 已接(P1/P2 域内真值;P3 未实现) | — |
-| hp | 节点结算轨迹 | 小队生命值 OCR | 已接(结算模型) | — |
-| shop | _Pool 抽店(REFRESH_PROB;全费) | 商店牌面 OCR/SIFT | 已接 | — |
-| bench | 开局 4 张+买入+卖出+上阵;买入/卖出执行 = `cw_state.simulate` 单一源(引擎只余预检披露+池/账本转录)+上阵 pop | 备战栏 SIFT 跟踪 | 已接(起 merge 同源 `_merge_bench`;合并数入账本 sim.merges) | — |
-| deployed | select_deployments 围栏输出,跨轮累积 | bot 跟踪已上阵 | 已接 | — |
-| board | deployed 羁绊全集聚合(主阵营单标签口径已废;per-unit 单一源 = `cw_bond_equips.unit_bond_tags`,L1+L2 含星徽装备贡献;DeployMove 增量、动作 v2 全量重算) | OCR 左面板阵营计数 / board_from_tracked 计算(同口径) | 已接(全集口径) | — |
-| equips | supply 3选1 采样(池=注册表过滤后的装备名,件2)+equip_allocation+分配结果回写 BenchChar.equips(星徽羁绊贡献进 board);卖出回收走 `cw_state.simulate` 单一源(`s.equips.extend`,,C6 守恒对账覆盖 sim 域);带钻是词缀元数据→披露计数 `phantom_supply_picks`,不进 owned 池 | 装备区 OCR;tracked_deployed[].equips(deploy_bench 读回) | 已接(代理) | — |
-| shop_refresh_cost | 恒基价 2(读 `st.shop_refresh_cost or 2`);注入局免费刷额度内刷价 0(`free_refresh_per_node`) | 基价常量 `REFRESH_COST_BASE`(实付恒 2,旧「OCR 刷新金币数」rect 实为面板徽标=利息数值,已退役出决策链) | 已接(P1 无投资减免域内 2=真值;注入局额度内 0=cw_economy._refresh_cost 同语义) | P3 |
-| front_max | 默认 4(常量=机制真值) | 前排槽上限 | 已接(常量) | — |
-| back_max | 默认 6(常量=机制真值) | 后排槽上限 | 已接(常量) | — |
-| xp_progress | 买牌/买经验累 XP_PER_BUY,轮末升级按 XP_TO_NEXT_LEVEL 清零结转 | XP 条 OCR;economy clicks_to_next_level/追级门 | 已接(真值化——旧恒 None,clicks_to_next_level 恒按 0 进度估) | — |
-| refresh_probs | 每备战期 20%(ROTATION_CHANCE)掷轮岗,随机可翻倍档 ×2 与 REFRESH_PROB 组合(cw_shop_odds.rotation_probs);draw_shop(开态+每次刷新)消费轮岗后表 | 商店开态概率条 OCR(轮岗:每备战阶段随机翻倍一档);decision_v2 成本采样实读消费 | 已接(轮岗建模——lv1-3 纯 1 费无可翻倍档恒 None,与生产同态) | — |
-| deploy_cap | 宝钻通道参数化 diamond_cap_prob(每备战期以此概率 +1 宝钻,cap=level+宝钻数;默认 0 = 通道建好不注入,与旧树同态) | read_deploy_cap_debounced 防抖真值(cap<level/\|cap−level\|>2 重读一帧仍异拒 None);max_units() 优先消费、level 兜底 | 已接(通道;频率待实机语料统计后标定) | P3 |
-| action_log | cw_state.simulate 对动作 v2(SellDeployed/SwapDeploy/CompTransaction)逐条写 applied/rejected 记录;cw_sim 转录进轮账本 actions、checks(comp_tx_atomicity)消费 | 生产侧无对应(账本走遥测 actions 流;拒绝可见性 invariant 的 sim 侧载体) | 已接(契约包 C1 步2;策略不读——决策禁依赖账本) | — |
+| 通道 | 辖面 | 载体 |
+|---|---|---|
+| logic_action(动作应用) | 动作的字段转移全集,域集 = `SHOP_PROJECTION_DOMAINS`(gold/bench/shop/xp/front_row/back_row/board/equips) | 单一转移函数 `apply_shop_action_logic`(全动作族;DeployMove 不入本口——围栏部署走 obs,登记面申报) |
+| obs(外部事件) | 非动作语义的状态事实 = sim 的真值写入面 | `bs.observe(...)`,签名 = actor `SimEngineP1` + mode `synthesized` + evidence 前缀 `sim:engine:` |
+| 引擎白名单(不写容器) | XP 权威账本(买牌累加/轮末结转)、牌池登记(ret/take)、金出入转录、装备分配记账、观测披露键(auth/dec_* 族)、免费刷额度注入 | 引擎本地账本与批账本(waves/actions/checks) |
 
-## 二、必须接线(12;决策消费存在,sim 未接)
+obs 通道的事件面(evidence tag 括注):开局播种(opening:level/gold/hp/
+bench/streak/xp)、投资注入(invest:active_env/active_strategies/
+instant_gold/xp 回声)、收入结算(income:gold)、回合初始化
+(round-init:node 节点键/抽牌 payload/deploy_cap/back_layout)、节点结算
+(settle:hp/streak)、装备发放穿戴(equips:equips 库存/deployed 双排)、
+部署代理(deploy-fill/m1p-fill/fence:bench + front_row/back_row + board
+整表)、轮末升级结转(round-end:level/xp 回声)、P2 进场播种(p2-entry:
+engine_p2 `build_state` 全量进场态)。抽牌 payload 的 obs 写点 = 回合
+初始化与每次刷新后(重采样)。
 
-| 字段 | sim 现状 | 生产语义(消费点) | 接线状态 | 优先级 |
-|---|---|---|---|---|
-| node_type | 决策前写 session.node_type_current;state.node_type 仍不写 | 顶部标签 OCR;evaluate reward/boss 分、economy 利息门、boss 窗 | 已接(session 口径——策略消费读 session) | — |
-| streak | 结算后写 session.last_streak;state.streak 仍不写 | 结算连胜 OCR;evaluate 连胜分、economy win_reward | 已接(session 口径;收入侧早已有 streak_gold) | — |
-| level_up_cost | LevelUp 花费载体 = `action.cost`(策略 `xp_click_cost` 真值优先);值仍 4 = 兜底 | OCR 购买经验金币数;xp_click_cost 真值优先 | 未接(sim 4=fallback 值,真值注入待接) | P1 |
-| selected_difficulty | 恒 ""(阈值回退 40) | 难度确认屏;effective_hp_threshold 职级表 | 未接(应按模拟难度设 A8) | P1 |
-| board_next_tier | 恒 {} | 左面板 X/Y 的 Y(聚焦裁切 OCR);comp/progress 距档评分 | 未接(可由 FACTIONS 注册表派生) | P1 |
-| active_strategies | **注入通道**:`simulate_p1(invest=)` 注入——剧本 = `cw_sim_invest.sample_invest_profile(seed)`(plaza 频次)或显式 `SimInvestProfile`;轮收入结算后按日程 append session(去重)+state 镜像;默认 invest=False = 恒 [] 零漂移 | 已持有投资策略;economy 聚合/spend_mode/effect_ledger;经济聚合子集在 sim 生效(息帽/gold_per_node/instant_gold/免费刷) | 已接(注入;默认关) | — |
-| active_env | **注入通道**:同上,开局写 session.active_env + state 镜像 | 已选投资环境(简报);ENV_COMP_AFFINITY/①资格通道 | 已接(注入;默认关) | — |
-| enemy_affixes | 恒 [] | 简报词缀;mechanics_fit | 未接(简报层未建) | P2 |
-| plane_bosses | 恒 [] | 简报 3 位面 boss;boss_fit/select_comp | 未接(简报层未建) | P2 |
-| dual_track_phase | 恒 False(decision_v2 经 session 位消费) | default 栈写 state 位;plan/prefilter 消费 | 未接(decision_v2 栈无 state 位消费,接线随栈归一) | P3 |
-| focus_factions | 恒 None | update_target 写入;evaluate 消费 | 未接(同上) | P3 |
-| enemy_difficulty | 恒 None | 左上难度 OCR(常空);cw_events 选卡难度罚 | 未接(生产亦常空,决策安全降级) | P3 |
+## 二、逐域接线表
 
-## 三、观测冗余豁免(6;保真位,sim 完美观测假设下无决策语义)
+| 容器域 | sim 产生面 | sim 消费面 |
+|---|---|---|
+| node | obs round-init(`NodeKey`:plane/round_num/kind 三分量合一写) | 读口 `plane_of`/`round_num_of`/`node_kind_of`;策略 plane-aware 分支 |
+| gold | obs opening 初值 + round-init 收入结算;logic_action 动作扣减与回金 | 读口 `gold_of`;策略消费面 |
+| level | obs opening 初值 + round-end 升级结转(引擎延迟结转,申报差异见 sim-design §2.3 #4);logic_action 不写 level(升档等覆盖) | 读口 `level_of`;抽牌概率档/XP 表 |
+| xp | logic_action LevelUpShop 腿(`xp_apply_clicks` 单一源:满级封顶零推进)+ obs 回声写(买牌 xp-echo/轮末结转) | 策略追级消费(clicks_to_next_level) |
+| hp | obs opening 初值 + settle 结算轨迹 | 结算模型/Δ池采样 |
+| streak | obs opening + settle(带符号:正连胜/负连败) | 收入侧连胜金/结算 |
+| bench | obs opening 播种与部署代理整表写;logic_action BuyCard 落位/合成连锁/SellBench | 读口 `bench_slots_of`(定长 9 槽表);策略与围栏 |
+| front_row / back_row | obs 部署代理与装备穿戴整表写;logic_action v2 族腿经 deployed 槽表中间形态(置空/对调不移位)整表写 | 读口 `deployed_slots_of`(ADR-0392 定长 10 槽表,0-3 前/4-9 后)等 |
+| board | obs 部署代理整表重算(重算单一源 = `cw_bond_equips._recount_board`);logic_action v2 腿重算 | 围栏「成对/点火」判据/策略 |
+| equips | obs 装备发放穿戴;logic_action SellBench/CompTransaction 回收腿(卖出装备归 owned 池) | 装备分配记账(引擎白名单面)消费 |
+| shop | obs 抽牌 payload(回合初始化与刷新后重采样;定长 5 槽全真值,缺位 empty);logic_action BuyCard 槽置换/CloseShop 离屏 | 策略决策面(payload.cards 三态消费) |
+| shop_refresh_cost | 不写(live OCR 真值域);读侧缺省回基价常量 2 | 刷新费决策 |
+| deploy_cap | obs round-init 宝钻注入通道(diamond_cap_prob 参数化,默认 0 = 不注入) | 读口 `max_units_of` 封顶域 |
+| back_layout | obs round-init 宝钻扩展通道(6+宝钻数,封顶 9) | 读口 `back_capacity_of` |
+| active_env / active_strategies | obs 投资注入(invest= 参数;默认关 = 恒空零漂移) | 策略经济聚合子集(息帽/免费刷等) |
+| 流程面域(chosen_* / settlement / encounter / supply / prep_substate / 派生域等) | sim 不产不写(sim 无画面流程;结算面以 settle 事件的 hp/streak 承载) | — |
 
-| 字段 | sim 现状 | 生产语义 | 接线状态 | 优先级 |
-|---|---|---|---|---|
-| hp_readable | 恒默认 True | hp 是否真读到(遥测保真;决策不用) | 豁免(sim 假设完美观测=终态,「识别噪声注入不做」) | — |
-| hp_trusted | 恒默认 False;决策消费经 `hp_readable or hp_trusted`,sim 帧 readable=True 短路 → 行为逐位等价 | hp 值可信位(False=仅开局无真值兜底 100 假值帧;写入端唯一=read_game_state) | 豁免(同上;FLIP 假帧守卫已按或位兼容 sim 默认态) | — |
-| gold_readable | 恒默认 True | gold 是否真读到(同上) | 豁免(同上) | — |
-| board_readable | 恒默认 True | board 是否真读到(空 dict 双义标注) | 豁免(同上) | — |
-| enemy_difficulty_live | 恒默认 False | 难度值是否逐帧真读(判读用保真位;判读过滤用,决策不用) | 豁免(sim 假设完美观测;生产亦仅判读侧消费) | — |
-| level_readable | 恒默认 True | level 是否真读到(False=纯 _expected_level 启发式兜底帧;判读过滤用,决策不用) | 豁免(同上) | — |
+## 三、读口族(值读单一源)
+
+kernel 决策面公共读口 12 口(kernel/cw_game_state.py):`plane_of` /
+`round_num_of` / `node_kind_of` / `gold_of` / `level_of` /
+`deployed_slots_of` / `bench_slots_of` / `back_capacity_of` /
+`deployed_count_of` / `front_count_of` / `back_count_of` / `max_units_of`。
+读口负责镜像旧缺省形态(如 gold 未读 = 0、deployed 双排全未观察 =
+`[None]×10`、back_layout 未读 = 机制基线 6),禁消费点自写兜底造成
+第二源;引擎在此之上另有 Field 直读(bs.shop.value/bs.equips.value 等)。
+
+表示申报:阵营不入容器——Unit 只存 char_id,阵营经角色注册表派生
+(game_state/fields.md §3.2.3);引擎围栏记账用的阵营计数在引擎本地由
+槽表现算,容器 board 域写经重算单一源,细节归代码注释。
+
+## 四、保真位面(容器语义吸收)
+
+旧帧 `*_readable`/`*_trusted` 保真位族不入容器:容器语义
+「None = 不可读,禁兜底假值」天然承载可读性(gold=None 即不可读,
+level 直写即真值)。引擎对旧保真位五位(enemy_difficulty_live /
+level_readable / gold_readable / board_readable / bench_readable)一律
+不写、不读;hp 可读/可信语义 = 政策层派生承载(hp 写入闸:非真读帧
+不经 observe)。sim 无识别失真面,不产生失读值。
+
+## 五、sim 未接域(判读申报面)
+
+| 域 | sim 现状 | 判读影响 |
+|---|---|---|
+| level_up_cost | 不写;升级花费载体 = 动作 cost(策略侧 xp_click_cost 真值优先),sim 容器无真值 → 恒落兜底常量 | 花费敏感结论失真申报在案(sim-design §4.1) |
+| selected_difficulty | 不写(恒未读) | 阈值回退口径 |
+| enemy_affixes / plane_bosses / enemy_difficulty / game_mode | 不写(简报层未建) | 难度/boss 敏感面零变化(sim-design §2.3 #9) |
+| 商店刷新计数组(free_refresh_balance/paid_refresh_count/total_refresh_count/prev_node_spent) | 不写(注入局免费刷额度在引擎本地按持卡重算) | 长线利好/二手市场计数类决策消费在 sim 走缺省 |
+| 节点屏刷新计数组(encounter/supply/env/strategy_refresh_used) | 不写 | 遭遇/补给刷新策略域 sim 不可测 |
 
 ## 羁绊口径分层(board 统计语义单一源声明)
 
@@ -88,8 +91,8 @@
 
 | 层 | 内容 | 消费方 | 状态 |
 |---|---|---|---|
-| L1 纯羁绊全集 | 角色标签:factions+flows+independent,开拓者按排归一 | board 语义、recipe 门、tier 计算、判读 | **三处一致**(实机 `board_from_tracked` / sim `_recount_board` / checks 镜像,per-unit 单一源 = `cw_bond_equips.unit_bond_tags`,起) |
-| L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」(净效果无条件 +1) | board_from_tracked(实机)、GameState.equips→BenchChar.equips(sim 代理)、win_features faction_counts | **雏形落地**(equips 消费链通,sim equip_allocation 回写) |
+| L1 纯羁绊全集 | 角色标签:factions+flows+independent,开拓者按排归一 | board 语义、recipe 门、tier 计算、判读 | **三处一致**(实机 `board_from_tracked` / sim `_recount_board` / checks 镜像,per-unit 单一源 = `cw_bond_equips.unit_bond_tags`) |
+| L2 +装备羁绊贡献 | L1 + 星徽「加入【X】」/卡带「计数+1」(净效果无条件 +1) | board_from_tracked(实机)、GameState.equips→BenchChar.equips(sim 代理)、win_features faction_counts | **落地**(equips 消费链通,sim equip_allocation 回写) |
 | L3 全战力 | L2 + 装备 props 强度 + 投资策略/环境效果 + 羁绊档位效果数值 | win_model 特征、power_table、结算校准层 | 未建(挂「语料积累后」,裁定链见 sim-power-model) |
 
 配对端点资格:Δ池任一差分的两行端点须过 `sim/pool.py` 的 `hp_pair_endpoint_admissible`(合成行恒拒 + hp 可信门;`build_pool` 与 `_pool_from_replay` 共用单件)。
@@ -104,19 +107,23 @@ JSON 快照重放)。
 
 ## P2 段接线(`simulate_p1(planes=2)`)
 
-- 进场继承:P1 末态 hp/gold/board/bench/deployed/equips/意向原样
-  带过(hp 跨位面继承=用户纠错真值;其余无重置证据按全继承标注
-  假设);`st.plane=2` 激活决策侧 plane-aware 分支,策略层零改动。
+- 进场继承:P1 末态容器经 `engine_p2.build_state(bs)` 以 obs 族
+  p2-entry 事件整量播种(plane=2 节点键锚/hp 跨位面继承=用户纠错
+  真值/bench 保 9 槽 pad 语义/deployed 紧缩序按 position_pref 路由
+  落槽);决策代码 plane-aware 分支按容器 plane 值自动激活,策略层
+  零改动。
 - 节点序列:`P2_NODE_SEQUENCE`(16 局 outcomes 拼版,逐槽一致;
-  与 economy.md §10.2 单帧开局表的 r3-r6 槽序分歧注释在代码)。
+  与 `docs/game/currency_war/research/economy.md` §10.2 单帧开局表的
+  r3-r6 槽序分歧注释在代码)。
 - 结算:Δ池 plane=2 桶优先 → P2 battle 回退掉血带 15-17/胜率
   0.11(小样本实机局语料);encounter/boss 沿用 P1 档+标注。
-- 事件金复用 P1 表(打标未校准;P2 基础收入 5 已实测,economy.md
-  §10.1);P2 事件 overlay/简报/投资二段**披露不建模**(P2 金流/
+- 事件金复用 P1 表(打标未校准;P2 基础收入 5 已实测,research
+  economy.md §10.1);P2 事件 overlay/简报/投资二段**披露不建模**(P2 金流/
   装备流系统性偏瘦,P2 专项面按需补建)。
-- P2 headline 四联(存活轮/胜率/hp0 率/D 次数,分母=进场局)进
-  批报告;`simulate_p2_ab` 同池同 seed 配对 `vd_p2_enabled`(同进程
-  flag 对照)。
+- P2 headline 四联(存活轮/胜率/hp0 率/D 次数)进批报告;
+  `vd_p2_enabled`(registry 布尔两态 = P2 段 V_D 口径在场/退场)的
+  A/B 配对经 registry 注入实现,同池同 seed 两臂;P2 修法的分布级
+  结论走 `simulate_p2_sensitivity` β/γ/事件金敏感性扫描(裁决口径)。
 
 ## 已知接线缺口的影响面(判读边界)
 
@@ -125,13 +132,13 @@ JSON 快照重放)。
   使 sim 金状态分布对齐实机;对拍项 `gold_dist_calib`(金均值软告警)
   与 `shop_cost_curve`(费用曲线纯披露)进批报告。重整定触发 =
   spend_ledger/执行面修复消化「该花不花」缺口(届时注入量应显著回落)。
-- **3合1 全场合并已接入**(生产 `_merge_bench` 同源;
-  决策)。残余失真:末轮 bench 仍 ≥9 高占比
+- **3合1 全场合并已接入**(生产 `_merge_bench` 同源;转移函数合成
+  连锁腿承载)。残余失真:末轮 bench 仍 ≥9 高占比
   (9.64 均值)——候选件合法持位形态,非副本堆积;滞留金 2.17×
   未收敛,残差定位到 P1 末段花金通道(P2 继承价值 sim 不可判),
   以 `sim_endgold_calib` 披露追踪。
 - **轮岗已建模**:每备战期 20% 掷轮岗(随机可翻倍档 ×2,
-  其余档重归一),draw_shop/_sample_cost 消费轮岗后表——对齐生产 20%
+  其余档重归一),抽牌采样消费轮岗后表——对齐生产 20%
   帧率(实测帧率口径);lv1-3 纯 1 费无可翻倍档恒基线,与生产同态。
 - **宝钻 cap 通道参数化、默认 0**:cap=level+宝钻数的获取
   频率待实机语料统计(replay cap 键落地后可采),标定前 baseline 不注入。
@@ -139,4 +146,3 @@ JSON 快照重放)。
   时胜率 = ``node_win_p``(n=192,~0.05),不再随成型度 rung 变化;
   「大胜 boss」幅度未建模——hp 类 A/B 方向可信、点值 ±30% 浮动。
   主路径(Δ池)boss 深度桶采样不变。
-
