@@ -1798,10 +1798,18 @@ def read_shop_cards(ctx: SrContext,
         # → 决策前置门炸。二值化下白字必然弹出(find_area_in_screen_
         # binary,screen_utils 自带),按钮亮/暗双态恒命中。
         from one_dragon.base.screen.screen_utils import (
-            find_area_in_screen_binary,
+            find_area_in_screen,
         )
-        if find_area_in_screen_binary(
-                ctx, screen, _collapse_area).value != 1:
+        from one_dragon.utils import cv2_utils
+        # 自管二值化(实机四败:框架 find_area_in_screen_binary 的
+        # to_binary 产物为 2D 灰度,onnx 文本检测要求 (H,W,3) 直接崩;
+        # 此处灰度回填 BGR 3 通道后走普通彩色 OCR 路径——白字黑底对
+        # det/识别均为高对比输入,暗态钮恒可检)。
+        _bin_screen = cv2_utils.to_binary(screen, threshold=127)
+        if _bin_screen.ndim == 2:
+            import cv2 as _cv2
+            _bin_screen = _cv2.cvtColor(_bin_screen, _cv2.COLOR_GRAY2BGR)
+        if find_area_in_screen(ctx, _bin_screen, _collapse_area).value != 1:
             # 锚文本 OCR 可 flake(截图实证买光店面板展开仍可 miss)→
             # 0.6s 后单次重判;仍 miss 才认「店未开」(过渡帧防抖,与
             # 下方稳定门同形态,上限一次不构成等待环)。
@@ -1811,8 +1819,13 @@ def read_shop_cards(ctx: SrContext,
             # controller 返回 (ts, frame|None) 元组(实机失败 1 实证);
             # None 帧 = 采集失败,按 miss 处理(店未开语义)
             _frame2 = (_shot2[1] if isinstance(_shot2, tuple) else _shot2)
-            if _frame2 is None or find_area_in_screen_binary(
-                    ctx, _frame2, _collapse_area).value != 1:
+            _bin_frame2 = cv2_utils.to_binary(_frame2, threshold=127)
+            if _bin_frame2.ndim == 2:
+                import cv2 as _cv2
+                _bin_frame2 = _cv2.cvtColor(_bin_frame2,
+                                            _cv2.COLOR_GRAY2BGR)
+            if find_area_in_screen(ctx, _bin_frame2,
+                                   _collapse_area).value != 1:
                 return None
 
     from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
