@@ -755,10 +755,13 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
 
     config = CurrencyWarConfig(op.ctx.current_instance_idx)
     if match is None:
-        # 防御:无对局态(独立 run_operation 调本 op)→ 临时 match,不挂 ctx(局外不复用)
-        # (防御具现 = 活策略核 mandate_v1,与生产注册面同源;统一迁移批重指向)。
-        # 该路径经 create_session 冷建(ADR-0583:live 初值 v3_phase='FORM'
-        # 随唯一冷建口在此落位,旧 on_match_start 写点已删;phase 列仅诊断用)。
+        # 防御:无对局态(独立 run_operation 调本 op)→ 临时 match。
+        # (迁移批 3.2 起必须挂 ctx:read_game_state 容器直写按 ctx.cw_match
+        # 定位 session 容器,不挂 = 漏斗写块整体跳过 → decide 前置门
+        # shop=None。「局外不复用」语义由「每次 run_operation 新建」保持,
+        # 挂 ctx 只是给漏斗写块一个可寻址的 session 容器。该路径经
+        # create_session 冷建(ADR-0583:live 初值 v3_phase='FORM' 随唯一
+        # 冷建口在此落位,旧 on_match_start 写点已删;phase 列仅诊断用)。
         from sr_od.application.currency_war.strategies.impl.cw_strategy import (
             CurrencyWarMatch,
         )
@@ -767,6 +770,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         )
         _def = MandateV1Strategy()
         match = CurrencyWarMatch(_def, _def.create_session(config))
+        op.ctx.cw_match = match
 
     # 牌位/升级/刷新中心从 screen_info 直取;area 缺失 = 建档漂移,显式
     # round_fail(信息带 area 名),禁兜底坐标静默点击(坐标单一真相源)。
