@@ -174,8 +174,11 @@ class StrategySession:
     # state 同名字段(复盘维度:巨星绑定/伙伴选择与 comp 匹配)。
     chosen_megastar: str = ''
     chosen_partner: str = ''
-    # star 回退防抖(char → 已见次数;274 存证重读实证:合成动画窗 live 读
-    # 1★)——首次回退 star 保旧不写回,连续第二次才采新确认。框架识别守卫。
+    # star 回退防抖(char → 连续降级读帧数;274 存证重读实证:合成动画窗
+    # live 读 1★;同名多星副本并存另有星读抖动形态,run_20260915_054718
+    # 深检 §5)——防抖窗内 star 保旧不写回,连续
+    # STAR_DOWNGRADE_CONFIRM_FRAMES(cw_reconcile,值单一源)帧一致才采新
+    # 确认;读回恢复/角色离场即清。框架识别守卫。
     star_pending_regression: dict[str, int] = field(default_factory=dict)
     # 简报词缀(对局开始 debuff/boss 词缀;写入端 = CwScreenBriefing 内联
     # 直写(仅空时写);mechanics_fit 输入,ADR-0397/0398 保位勿滤)。

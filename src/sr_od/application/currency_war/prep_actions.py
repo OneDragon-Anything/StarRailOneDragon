@@ -183,6 +183,40 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
 # (装备穿戴计划构造已迁 kernel/cw_equip_wear_plan(R2 原子通路);原
 # 「本模块 import 供执行位 _run_equip 薄派发消费」随组合壳 RunEquip 删除
 # 退役——发射位(mandate M7)直接消费同一构造函数,无第二源。)
+
+
+def _expose_unhealthy_tracked_slots(tracked: list[BenchChar | None]) -> None:
+    """tracked 写点槽号健康显影(占用槽号重复/越界 → 缺陷台账;best-effort)。
+
+    判据单一源 = kernel ``bench_slots_healthy``;台账行型与 reseed 健康门
+    同 kind(cw_shop_action_ops._reseed_bench_layout),reader_source 分键
+    = 写点 fail-fast 显影,先于 reseed 门(其拒播种=晚发现)暴露既有污染。
+    只显影不拒写:本 helper 的两个调用点均为「只减不增」摘除腿(置 None),
+    拒绝摘除会让已卖/已上场件滞留 tracked,两账分叉比污染本身更糟;
+    布局修复归 reconcile 写回(bench_from_compact 重建归一)。"""
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        bench_occupied_slot_nos,
+        bench_slots_healthy,
+    )
+    slots = bench_occupied_slot_nos(tracked)
+    if bench_slots_healthy(slots):
+        return
+    try:
+        from sr_od.application.currency_war.telemetry import defects
+        defects.record_defect(
+            'bench', defects.DEFECT_KIND_BENCH_SLOT_UNHEALTHY,
+            expected='tracked 占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY',
+            observed=f'slots={sorted(map(str, slots))}',
+            verdict=('留证-tracked 写点健康显影(既有重复/越界槽号;'
+                     '摘除腿照常执行,布局修复归 reconcile 写回;'
+                     '处理:频发→查 tracked 写点链)'),
+            reader_source='tracked_write_guard',
+            gap_large=True,
+            note='tracked 写点槽号唯一性守卫(观察层对账仲裁批)')
+    except Exception:  # noqa: BLE001  显影 best-effort
+        pass
+
+
 class PrepActionExecutor:
     """备战原子动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
@@ -961,16 +995,23 @@ class PrepActionExecutor:
         """卖出后备势跟踪同步(单一跟踪账 tracked_bench_chars)。
 
         [索引定义] bench_idx = bench 槽位表下标 0-8(与动作字段同系);
-        tracked 行槽位信息位 bc.slot = 下标+1(bench_from_compact 重建
-        契约),按信息位对位摘除(执行坐标边换算:下标+1 → 信息位)。"""
+        摘除 = 按下标置 None(权威槽位 = 下标,pad 态契约 ADR-0316 不破坏;
+        T-261 前按信息位过滤产出紧凑列表,信息位/下标脱节经后续买入
+        bench_place 追加累积成重复槽号——实机缺陷台账 slots=[1,3,4,5,6,7,8,9,9]
+        等 4 局实证,reseed 健康门 L0/L1 显影后归观察层仲裁批治本)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
-        _slot_no = bench_idx + 1
-        # 形状双源防御(ADR-0316):tracked_bench_chars 可能是 pad 态(含 None)
-        exec_state_of(match.session).tracked_bench_chars = [
-            bc for bc in exec_state_of(match.session).tracked_bench_chars
-            if bc is not None and bc.slot != _slot_no]
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            pad_bench,
+        )
+        _es = exec_state_of(match.session)
+        _pre = list(_es.tracked_bench_chars or [])
+        _expose_unhealthy_tracked_slots(_pre)
+        tracked = pad_bench(_pre)
+        if 0 <= bench_idx < len(tracked):
+            tracked[bench_idx] = None   # 置 None 不移位(pad 态保持)
+        _es.tracked_bench_chars = tracked
 
     def _track_remove_deployed(self, row: str, slot: int) -> None:
         match = self._ctx.cw_match
@@ -994,24 +1035,29 @@ class PrepActionExecutor:
 
         [索引定义] bench_idx = bench 槽位表下标 0-8(tracked 行按信息位
         bc.slot = 下标+1 对位);to_slot = 落位物理槽号 1 基(执行坐标边
-        现读值,落槽后覆写信息位)。"""
+        现读值,落槽后覆写信息位)。bench 侧摘除 = 按下标置 None(同
+        _track_remove_bench 治本:紧凑重排会累积重复槽号,实机台账实证)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
-        _src_slot = bench_idx + 1
-        # 形状双源防御(ADR-0316):tracked_bench_chars 可能是 pad 态(含 None)
-        moved = [bc for bc in exec_state_of(match.session).tracked_bench_chars
-                 if bc is not None and bc.slot == _src_slot]
-        exec_state_of(match.session).tracked_bench_chars = [
-            bc for bc in exec_state_of(match.session).tracked_bench_chars
-            if bc is not None and bc.slot != _src_slot]
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            pad_bench,
+        )
+        _es = exec_state_of(match.session)
+        tracked = pad_bench(list(_es.tracked_bench_chars or []))
+        _expose_unhealthy_tracked_slots(tracked)
+        moved = (tracked[bench_idx]
+                 if 0 <= bench_idx < len(tracked) else None)
+        if moved is not None:
+            tracked[bench_idx] = None   # 置 None 不移位(pad 态保持)
+        _es.tracked_bench_chars = tracked
         # ADR-0392:tracked_deployed 槽位表——deployed_place 单一源落槽;
         # to_slot 是执行器物理槽位真值,落槽后覆写信息位。
         from sr_od.application.currency_war.kernel.cw_exec_state import deployed_place
-        for bc in moved:
-            bc.position_pref = to_row
-            deployed_place(exec_state_of(match.session).tracked_deployed, bc)
-            bc.slot = to_slot
+        if moved is not None:
+            moved.position_pref = to_row
+            deployed_place(exec_state_of(match.session).tracked_deployed, moved)
+            moved.slot = to_slot
 
     # ===== 商店域 =====
 

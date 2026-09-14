@@ -30,6 +30,8 @@ import weakref
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from one_dragon.utils.log_utils import log
+
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_vocab import (
         CwAction,
@@ -535,6 +537,26 @@ def pad_bench(bench: list[BenchChar | None]) -> list[BenchChar | None]:
     return bench
 
 
+def bench_occupied_slot_nos(bench: list[BenchChar | None]) -> list[int]:
+    """占用槽号信息位集(槽号健康门输入;None 槽跳过)。
+
+    [索引定义] 值 = BenchChar.slot 信息位(1 基物理槽号,ADR-0316);
+    信息位恒为派生位,权威槽位 = 表下标(ADR-0605 §5.2)。"""
+    return [b.slot for b in (bench or []) if b is not None]
+
+
+def bench_slots_healthy(slot_nos: list[int]) -> bool:
+    """槽号健康不变量单一源:占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY。
+
+    背景:SIFT 读/对账 churn 产生的槽号属无守卫数据(T-308/ADR-0646),
+    违者不得固化为槽位表。消费方 = 对账写回门(kernel/cw_reconcile)、
+    tracked 写点显影(prep_actions);reseed 健康门(cw_shop_action_ops)
+    暂持同式内联实现(该文件批间只读,收口时并本单一源)。"""
+    return (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
+                for s in slot_nos)
+            and len(set(slot_nos)) == len(slot_nos))
+
+
 def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
     """紧缩序列 → 槽位表(顺序放置;BenchChar.slot 已带 1-based 物理槽号
     时按槽放置)。旧语料/紧缩构造入槽位模型的适配单一源。"""
@@ -549,7 +571,14 @@ def bench_from_compact(chars: list[BenchChar]) -> list[BenchChar | None]:
         if slot is not None and bench[slot - 1] is None:
             bench[slot - 1] = bc
         else:
-            bench_place(bench, bc)
+            # 冲突回退首空槽 = 归一修复(输入槽号重复/越界),非覆盖真值;
+            # 但禁静默:重复槽号本应被写回健康门拒绝(cw_reconcile/prep_
+            # actions),走到这里是门被绕过的信号,warning 显影供排障。
+            _idx = bench_place(bench, bc)
+            log.warning(f'[cw!] bench_from_compact 槽号冲突回退首空槽'
+                        f'(输入槽号重复/越界,禁静默显影):'
+                        f'slot={bc.slot} char={bc.char_id!r} → 实落槽'
+                        f'{(_idx + 1) if _idx is not None else "无(席满丢弃)"}')
     return bench
 
 
