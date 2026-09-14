@@ -4,13 +4,17 @@
 OCR 3 张投资环境卡名 → ``cw_events.decide_event`` 按事件白名单打分 → 点**最优**卡底
 + 确认。替代原"盲点中卡"(无策略)。
 
-环境刷新执行链(invest-env 迭代 3.8,design.md §2.8;取代 ADR-0600 §2/§4
-「env 帧恒不刷」规则,kernel 侧判据已随 3.5 落 decide_event):决策返回
-``refresh_slots`` 非空 → 读「剩余次数」计数(观察通道转正为执行闸)→ 逐次
-整组重掷(文本锚定刷新钮 → 等 1.5s → 掷后重读,零判效)→ 掷后以最终
-名集重走 ``decide_invest`` 重分类(G1)→ 停止后照常选卡确认。环境屏与策略
-屏刷新交互不同构(整组重掷单钮单计数 vs 逐卡刷新),落地形态见
-``_decide_and_act`` 链头注。
+环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入新事实的动作,
+须交回外循环重观察;结构语义 = flow/screen_op.md 决策 7 + §8.4 商店/补给
+刷新同款——期望态必须在新事实处重建,禁为刷新设计循环内重读机制):
+决策返回 ``refresh_slots`` 非空(kernel 侧环境刷新判据经 decide_invest
+产出)∧「剩余次数」计数现读授权 → 点刷新圆钮一次(文本锚定偏移)→
+动画窗固定等待(机械时序,非判效)→ 零效果缺陷留证 → 本访问即交回
+(pending + round_retry 节点重跑,与确认交回同款);新事实的观察与决策归
+重入的下一访问(重入裁决后走正常观察链重分类)。计数承载 = 画面计数文本
+(屏幕可观察,无 carried 融合载体),取值时机 = 每访问执行闸从当帧现读。
+环境屏与策略屏刷新交互不同构(整组重掷单钮单计数 vs 逐卡刷新),落地
+形态见 ``_decide_and_act`` 链头注。
 
 卡名按行过滤:标题「投资环境」在顶(y≈98)、卡名在中(y≈392)、描述在下(y≈432)、
 「确认」在底(y≈982);取 y≈392 行的短文本(2-6 字)即 3 张卡名,按 center-x 排序
@@ -29,8 +33,8 @@ cw_game_ports 两端口完整在场 → 五段生命周期新路径;缺省 None 
 旧路径(原序列,生产行为零变化)。五段形态:observe = 入口门 + 1s 稳定帧
 + 候选读取(实机适配器①封口 = ``_observe_frame``,两路径共享同一读链)+
 刷新计数 log 观察通道(遥测保留,与 _decide_and_act 执行闸同源 reader 各司
-其职);decide+act 内聚 ``_decide_and_act``(环境刷新执行链 invest-env
-迭代 3.8 design §2.8 → 选卡时点写 ``active_env``
+其职);decide+act 内聚 ``_decide_and_act``(环境刷新终结动作:refresh_slots
+非空 → 点刷新交回本访问,链头注 → 选卡时点写 ``active_env``
 → portal 效果登记(active_env 写入同址,invest-env design §2.4,best-effort)
 → 点卡 → 台账变异窗 → 确认 → 台账写点②,两路径共享零转录);reconcile/
 on_outcome = 空申报(本屏无独立对账面、无登记件)。本屏 sim 腿 = 不适用
@@ -115,8 +119,9 @@ class CwScreenInvestEnv(CwScreenOpBase):
     # ——单帧证据不足判文本漂移形态,固定 area 不可行;遭遇屏/策略屏同款)。
     # 偏移实测收口(归档帧 sr-od-test/screens/货币战争-投资环境/default.webp
     # 亮像素簇质心:钮心 x≈671、计数文本中心 x≈772,y 同带 ≈983)→ dx ≈ −101。
-    # 偏移错 → 刷新未命中(计数不扣、牌不变):零效果只落缺陷台账留证,
-    # 链照常走到计数授权耗尽后选卡(能力退化非事故,复测即修)。
+    # 偏移错 → 刷新未命中(计数不扣、牌不变):零效果只落缺陷台账留证;
+    # 重进后计数未扣、预算仍在 → 再次刷新,每圈耗 1 次节点重试预算,
+    # 预算耗尽 FAIL bail(能力退化非事故,复测即修)。
     _REFRESH_BTN_DX: ClassVar[int] = -101
     # 刷新后等待(整组重掷动画覆盖;沿策略屏 REFRESH_ANIM_WAIT_S 同值先例)。
     REFRESH_ANIM_WAIT_S: ClassVar[float] = 1.5
@@ -126,13 +131,15 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # 适配器位缺省装配(先例 = CwScreenPrep/CwScreenEncounter):观察口 =
         # 实机适配器(现役读链封口);动作口 = None = 直连现役确认链(基类
         # 「None = 子类缺省实现自担」)。on_outcome 注册表:本屏无登记件
-        # (环境刷新执行链零登记件——计数为画面现读权威,无发射型载体,
-        # design §2.8;active_env = 选卡 handler 单次逻辑写入豁免,§3.4 申报
-        # 豁免面留守 _decide_and_act。原 ADR-0600 §2/§4「环境侧刷新执行不
-        # 启用」已由 invest-env 迭代取代,见 _decide_and_act 链头注)。
+        # (环境刷新零登记件——计数为画面现读权威,无发射型载体;
+        # active_env = 选卡 handler 单次逻辑写入豁免,§3.4 申报豁免面留守
+        # _decide_and_act。原 ADR-0600 §2/§4「环境侧刷新执行不启用」规则
+        # 已废,现行刷新形态见 _decide_and_act 链头注)。
         self._observation_adapter = InvestEnvLiveObservationAdapter()
         # 确认已发待重入裁决标志(验证废除形态):重入裁决见 handle 顶部。
         self._confirm_pending: bool = False
+        # 刷新已发待重入裁决标志(终结动作交回形态):重入裁决见 handle 顶部。
+        self._refresh_pending: bool = False
 
     def _read_options(self, screen) -> list[tuple[str, int]]:
         """OCR 3 张卡的 ``(名字, 名字 center-x)``,按卡名行 y 过滤 + 左→右排序。"""
@@ -176,8 +183,8 @@ class CwScreenInvestEnv(CwScreenOpBase):
     def _log_env_refresh_counts(self, screen) -> None:
         """刷新计数观察写入(ADR-0600 §3.4,G5;零点击零决策——本读数 =
         观察段遥测面,供 V5/V6 实证与 GameState §2.5 写入端;执行闸不消费
-        本读数,``_decide_and_act`` 刷新链独立现读同源 reader,design §2.8
-        执行链 3.8 转正)。两路径共用(旧 handle 内联位平移)。"""
+        本读数,``_decide_and_act`` 刷新闸独立现读同源 reader)。两路径共用
+        (旧 handle 内联位平移)。"""
         _env_counts = read_invest_refresh_counts(self.ctx, screen, 'env')
         log.info(f'[cw-env] 刷新剩余计数读数={_env_counts}(T-162 观察通道,V5/V6)')
 
@@ -194,6 +201,19 @@ class CwScreenInvestEnv(CwScreenOpBase):
                     self.last_screenshot, '货币战争-投资环境',
                     '标识-投资环境').is_success:
                 return self.round_success('投资环境已确认(重入观察裁决)', wait=2.0)
+        # 刷新重入裁决(终结动作交回形态,与确认重入裁决同款结构):上轮
+        # 已发刷新 → 本轮入口锚在 = 预期(整组重掷后 overlay 仍在、新牌面
+        # 已渲染)→ 穿透到正常观察链(重观察 + 重分类);锚不在 = overlay
+        # 意外离开(刷新从不关 overlay,非预期面)→ success 交回外循环按
+        # 当前画面重分派(success/retry = 轮次流转语义,非动作成败回执,
+        # _overlay_confirm 出口同口径)。两路径共用(分流前挂)。
+        if self._refresh_pending:
+            self._refresh_pending = False
+            if not self.round_by_find_area(
+                    self.last_screenshot, '货币战争-投资环境',
+                    '标识-投资环境').is_success:
+                return self.round_success(
+                    '投资环境刷新后画面已离开(重入观察裁决)', wait=2.0)
         # 装配点分流(统一观察架构 §9.1 并存期;先例 = CwScreenPrep.run/
         # CwScreenEncounter.handle):两端口完整在场(= 测试 harness 显式装配)
         # → 五段生命周期新路径;缺省 None = 生产直连旧路径(下方原序列,
@@ -210,10 +230,11 @@ class CwScreenInvestEnv(CwScreenOpBase):
                         screen: Any = None) -> OperationRoundResult:
         """决策+动作内聚体(五段 decide+act 两路径共享零转录;旧 handle
         :120-201 逐位平移):decide_event/decide_invest 决策(空候选 fallback
-        链)→ 环境刷新执行链(design.md §2.8,链头注)→ ``active_env`` 选卡
-        时点写(点卡**前**,ADR-0598 投资两屏各自实证语义,禁与策略屏重入
-        裁决出口 append 统一)→ portal 效果登记(active_env 写入同址,
-        best-effort)→ 点最优卡底 → 台账变异窗 → 确认 → 台账写点②。
+        链)→ 环境刷新终结动作(refresh_slots 非空 ∧ 计数授权 → 点刷新后
+        本访问即交回,链头注)→ ``active_env`` 选卡时点写(点卡**前**,
+        ADR-0598 投资两屏各自实证语义,禁与策略屏重入裁决出口 append 统一)
+        → portal 效果登记(active_env 写入同址,best-effort)→ 点最优卡底
+        → 台账变异窗 → 确认 → 台账写点②。
 
         ``screen`` = 观察段稳定帧(刷新计数现读的执行闸输入);缺省 None =
         旧调用形兼容(无帧 = 无授权,刷新链跳过,失败安全)——生产两路径
@@ -246,55 +267,54 @@ class CwScreenInvestEnv(CwScreenOpBase):
                 pick = decide_event(names, config, _BS_Empty(schema_version=1))
         else:
             pick = None
-        # ===== 环境刷新执行链(invest-env 迭代 3.8,design.md §2.8;镜像
-        # ADR-0600 §3.3 策略侧先例,取代下方原「事件面刷新执行不启用」退役态
-        # ——ADR-0600 §2/§4 env 帧恒不刷规则已由 kernel 侧环境帧刷新判据取代,
-        # 3.5 落 decide_event,启用前置「环境侧顶级类建模」由经济域带/送卡档
-        # 接线满足)=====
-        # 形态适配:环境屏 = 整组重掷(单全局钮 + 单计数,cw_node_obs 归档帧
-        # 实证,与策略屏逐卡刷新不同构)→ design「槽序循环」落地为「动作集
-        # 非空 ∧ 计数授权」门槛下的逐次全局重掷:每次点击重掷三卡,掷后以
-        # 最终名集重走 decide_invest 重分类(G1——evicted/D* 三参只在此解析,
-        # handler 禁直调 kernel 判据算刷新建议,策略侧锁 13 同款纪律),新
-        # PickEvent.refresh_slots = 新动作集,兼承载停止条件:无零价值槽 →
-        # 动作集空;不可分类(未知名/读缺帧)→ kernel 帧级门 fail-closed 恒空;
-        # 计数耗尽 → _budget 上界(首帧现读值,防计数读异常无限掷)。
-        # 零判效(T-223 判效归一,统一观察架构画面 op 基类设计 §6.2;原
-        # design §2.8「验效双通道」条款与「与策略屏分屏并存」申报均废除,
-        # 环境屏与策略屏同判):动作只机械执行,掷后无条件重读供授权
-        # 闸与重决策,「刷没刷成」不判不重试;防双耗权威 = 计数现读(下一
-        # 轮预算取现读值,已耗读 0 → 闸关),无需 exec_state 防重入载体;
-        # 「点了零效果」异常面只落缺陷台账留证(零决策零改道,判效权归
-        # 观察侧 reconcile)。
+        # ===== 环境刷新 = 终结动作(用户裁定 2026-09-14:刷新 = 唯一引入
+        # 新事实的动作,须交回外循环重观察;结构语义 = flow/screen_op.md
+        # 决策 7 + §8.4 商店/补给刷新同款——期望态必须在新事实处重建,
+        # 禁为刷新设计循环内重读机制)=====
+        # 形态:refresh_slots 非空(kernel 侧环境刷新判据经 decide_invest
+        # 产出,handler 禁直调 kernel 判据算刷新建议,策略侧锁 13 同款纪律)
+        # ∧ 计数现读授权 → 点刷新圆钮一次(环境屏 = 整组重掷:单全局钮 +
+        # 单计数,cw_node_obs 归档帧实证,与策略屏逐卡刷新不同构)→ 动画窗
+        # 固定等待(机械时序,非判效)→ 零效果缺陷留证 → 本访问即交回
+        #(pending + round_retry 节点重跑,确认交回 emit_overlay_confirm
+        # 同款机械形态;重入裁决见 handle 顶部,重入后走正常观察链重分类)。
+        # 刷新计数授权(计数现读):承载 = 画面「剩余次数」计数文本——屏幕
+        # 可观察,每次访问入口重现在当帧,无跨访问承载需求,不引入 session
+        # carried 融合载体(screen_op.md §3.1/§8.4 归属判据:非屏幕可观察
+        # 字段才归 carried,补给侧 _supply_refresh_used 对照);取值时机 =
+        # 每访问执行闸从当访问稳定帧现读,读缺 = 无授权(失败安全)。重进后
+        # 再次刷新由既有计数读数自然闸住(每刷一次计数扣一,已耗读 0 → 闸
+        # 关),无需 exec_state 防重入载体;点偏未生效(计数不扣)时重进后
+        # 预算仍在 → 再次刷新,每圈耗 1 次节点重试预算,预算耗尽 FAIL bail
+        #(有界终止单,emit_overlay_confirm 同款收口)。
+        # 零判效(T-223 判效归一,统一观察架构画面 op 基类设计 §6.2,环境屏
+        # 与策略屏同判):动作只机械执行,「刷没刷成」不判不重试;「点了零
+        # 效果」异常面只落缺陷台账留证(零决策零改道,判效权归观察侧
+        # reconcile),刷后帧机械重读仅作留证输入,不进决策。
         # 无 match 防御路径显式跳过(局外防御帧零行为增量,策略侧同款);
         # getattr 守卫 = 既有桩 pick(本链落地前的测试替身)无 refresh_slots
         # 字段时按不刷处理,失败安全。
-        _refreshed = 0
         if (match is not None and pick is not None
                 and getattr(pick, 'refresh_slots', ()) and opts
                 and screen is not None):
             _counts = read_invest_refresh_counts(self.ctx, screen, 'env')
             _budget = _counts[0][0] if _counts else 0   # 全局计数至多一条;读缺 = 无授权
-            while (getattr(pick, 'refresh_slots', ()) and _counts
-                   and _refreshed < _budget):
+            if _budget > 0:
                 _c, _tx, _ty = _counts[0]
                 # 点钮:「剩余次数」文本中心 + 固定偏移(文本锚定,常量注见
                 # _REFRESH_BTN_DX;safe_click 带 bug#1 mouse_move 缓解)。
                 safe_click(self,
                            Point(_tx + CwScreenInvestEnv._REFRESH_BTN_DX, _ty),
                            tag='cw-env')
-                _refreshed += 1
+                # 动画窗固定等待(整组重掷动画覆盖;机械执行时序,非判效)。
                 time.sleep(CwScreenInvestEnv.REFRESH_ANIM_WAIT_S)
-                # 验效双通道已拆(T-223 判效归一,统一观察架构画面 op 基类
-                # 设计 §6.2;环境屏与策略屏同判):固定等待后无条件重读刷后
-                # 帧(机械执行),「刷没刷成」不判——链继续只由计数现读授权
-                # 闸与重决策名集可用性承载。
+                # 刷后帧机械重读,只作零效果留证输入:计数未扣 ∧ 名集未变 =
+                # 点偏/文本锚漂移强信号 → 落缺陷台账(零决策零改道);任一侧
+                # 读缺 = 过渡帧不可判,不猜。读数不进决策——重读重分类归
+                # 重入访问。
                 _after = self.screenshot()
                 _counts2 = read_invest_refresh_counts(self.ctx, _after, 'env')
                 _opts2 = self._read_options(_after)
-                # 零效果留证(best-effort,零决策零改道):计数未扣且名集
-                # 未变 = 点偏/文本锚漂移强信号,只落缺陷台账不改链;任一侧
-                # 读缺 = 过渡帧不可判,不猜(判效权归观察侧 reconcile)。
                 if (bool(_counts2) and _counts2[0][0] >= _c
                         and [n for n, _ in _opts2] == [n for n, _ in opts]):
                     try:
@@ -310,30 +330,18 @@ class CwScreenInvestEnv(CwScreenOpBase):
                             note='执行侧判效已拆(T-223 判效归一),仅机械留证',
                             gap_large=False,
                             severity=cw_defects.SEVERITY_L2_RECORD)
-                    except Exception:   # noqa: BLE001  留证不阻塞刷新链
+                    except Exception:   # noqa: BLE001  留证不阻塞交回
                         pass
-                if len(_opts2) != len(opts):
-                    # 刷后帧读缺 → 新观察不可用:名集不更新、不重决策(G1:
-                    # 重决策必须用最终名集,残缺名 = 幻影卡),链停照常选
-                    #(失败安全,策略侧同款)。
-                    log.warning(f'[cw-env] 刷后帧读缺(opts2={len(_opts2)})'
-                                f'→ 停止刷新照常选(失败安全)')
-                    break
-                # 掷后重分类(G1 入口;新动作集随新 PickEvent 返回,_counts2
-                # 非空时携新计数进下一轮闸,读缺则闸关)。
-                opts = _opts2
-                names = [n for n, _ in opts]
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
-                )
-                pick = match.strategy.decide_invest(
-                    'env', names, board_state_of(match.session),
-                    match.session, config)
-                _counts = _counts2
-        _rs = f'+环境刷新x{_refreshed}' if _refreshed else ''
+                log.info(f'[cw-env] 环境刷新终结交回:计数 {_c}→'
+                         f'{_counts2[0][0] if _counts2 else "读缺"},'
+                         f'重入后重观察重分类')
+                # 终结交回:pending + round_retry 节点重跑——选卡/确认/
+                # active_env 写均不在本访问。
+                self._refresh_pending = True
+                return self.round_retry(wait=1)
         if pick is not None and 0 <= pick.option_idx < len(opts):
             chosen, choose_x = opts[pick.option_idx]
-            reason = pick.reason + _rs
+            reason = pick.reason
         elif opts:
             chosen, choose_x, reason = opts[0][0], opts[0][1], 'fallback(no-decision)'
         else:
@@ -467,10 +475,11 @@ class CwScreenInvestEnv(CwScreenOpBase):
     def lifecycle_decision_cycle(self, payload: InvestEnvObservation
                                  ) -> OperationRoundResult:
         """段3-5(单动作决策循环):decide+act 内聚 ``_decide_and_act``
-        (决策/环境刷新执行链/active_env 选卡时点写/点卡/确认/台账全在
+        (决策/环境刷新终结动作/active_env 选卡时点写/点卡/确认/台账全在
         现役时序,两路径共享零转录);on_outcome = 本屏无登记件(注册表
-        缺席 = 零动作,__init__ 申报)。轮次终结出口 = 确认机械交回(落地
-        判定归下一轮重入裁决,验证废除形态)。"""
+        缺席 = 零动作,__init__ 申报)。轮次终结出口 = 环境刷新终结交回 +
+        确认机械交回(两者的落地/重观察判定均归下一轮重入裁决,验证废除
+        形态)。"""
         self._lifecycle_mark('decide')
         self._lifecycle_mark('act')
         rs = self._decide_and_act(payload.options, payload.screen)
