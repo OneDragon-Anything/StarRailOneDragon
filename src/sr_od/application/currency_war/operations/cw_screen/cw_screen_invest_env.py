@@ -7,7 +7,7 @@ OCR 3 张投资环境卡名 → ``cw_events.decide_event`` 按事件白名单打
 环境刷新执行链(invest-env 迭代 3.8,design.md §2.8;取代 ADR-0600 §2/§4
 「env 帧恒不刷」规则,kernel 侧判据已随 3.5 落 decide_event):决策返回
 ``refresh_slots`` 非空 → 读「剩余次数」计数(观察通道转正为执行闸)→ 逐次
-整组重掷(文本锚定刷新钮 → 等 1.5s → 验效双通道,双输即停)→ 掷后以最终
+整组重掷(文本锚定刷新钮 → 等 1.5s → 掷后重读,零判效)→ 掷后以最终
 名集重走 ``decide_invest`` 重分类(G1)→ 停止后照常选卡确认。环境屏与策略
 屏刷新交互不同构(整组重掷单钮单计数 vs 逐卡刷新),落地形态见
 ``_decide_and_act`` 链头注。
@@ -115,7 +115,8 @@ class CwScreenInvestEnv(CwScreenOpBase):
     # ——单帧证据不足判文本漂移形态,固定 area 不可行;遭遇屏/策略屏同款)。
     # 偏移实测收口(归档帧 sr-od-test/screens/货币战争-投资环境/default.webp
     # 亮像素簇质心:钮心 x≈671、计数文本中心 x≈772,y 同带 ≈983)→ dx ≈ −101。
-    # 偏移错 → 刷新未命中,验效双输 → 链停照常选(能力退化非事故,复测即修)。
+    # 偏移错 → 刷新未命中(计数不扣、牌不变):零效果只落缺陷台账留证,
+    # 链照常走到计数授权耗尽后选卡(能力退化非事故,复测即修)。
     _REFRESH_BTN_DX: ClassVar[int] = -101
     # 刷新后等待(整组重掷动画覆盖;沿策略屏 REFRESH_ANIM_WAIT_S 同值先例)。
     REFRESH_ANIM_WAIT_S: ClassVar[float] = 1.5
@@ -130,7 +131,6 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # 豁免面留守 _decide_and_act。原 ADR-0600 §2/§4「环境侧刷新执行不
         # 启用」已由 invest-env 迭代取代,见 _decide_and_act 链头注)。
         self._observation_adapter = InvestEnvLiveObservationAdapter()
-        self._ocr_map: dict | None = None   # ADR-0132:效果采集复用同一帧 OCR
         # 确认已发待重入裁决标志(验证废除形态):重入裁决见 handle 顶部。
         self._confirm_pending: bool = False
 
@@ -139,7 +139,6 @@ class CwScreenInvestEnv(CwScreenOpBase):
         ocr_map = self.ctx.ocr_service.get_ocr_result_map(
             image=screen, rect=None, color_range=None, crop_first=False,
         )
-        self._ocr_map = ocr_map
         opts: list[tuple[str, int]] = []
         for text, mrl in ocr_map.items():
             if mrl.max is None:
@@ -259,13 +258,14 @@ class CwScreenInvestEnv(CwScreenOpBase):
         # handler 禁直调 kernel 判据算刷新建议,策略侧锁 13 同款纪律),新
         # PickEvent.refresh_slots = 新动作集,兼承载停止条件:无零价值槽 →
         # 动作集空;不可分类(未知名/读缺帧)→ kernel 帧级门 fail-closed 恒空;
-        # 计数耗尽 → _budget 上界(现读值;验效扣减逐次逼近,防计数读异常
-        # 无限掷)。
-        # 验效双通道(design §2.8 定稿条款,与策略屏 2026-09-10 验效拆除裁定
-        # 分屏并存):计数扣减 = 权威,卡名变化 = 兜底,双输即停不重试——
-        # 「刷没刷成」不确定时继续掷有双耗计数风险,停链失败安全;重试面归
-        # op 轮次预算(下一轮重走决策链,计数现读为唯一防双耗权威:已耗计数
-        # 读 0 → 闸关,无需 exec_state 防重入载体)。
+        # 计数耗尽 → _budget 上界(首帧现读值,防计数读异常无限掷)。
+        # 零判效(T-223 判效归一,统一观察架构画面 op 基类设计 §6.2;原
+        # design §2.8「验效双通道」条款与「与策略屏分屏并存」申报均废除,
+        # 环境屏与策略屏同判):动作只机械执行,掷后无条件重读供授权
+        # 闸与重决策,「刷没刷成」不判不重试;防双耗权威 = 计数现读(下一
+        # 轮预算取现读值,已耗读 0 → 闸关),无需 exec_state 防重入载体;
+        # 「点了零效果」异常面只落缺陷台账留证(零决策零改道,判效权归
+        # 观察侧 reconcile)。
         # 无 match 防御路径显式跳过(局外防御帧零行为增量,策略侧同款);
         # getattr 守卫 = 既有桩 pick(本链落地前的测试替身)无 refresh_slots
         # 字段时按不刷处理,失败安全。
@@ -285,19 +285,33 @@ class CwScreenInvestEnv(CwScreenOpBase):
                            tag='cw-env')
                 _refreshed += 1
                 time.sleep(CwScreenInvestEnv.REFRESH_ANIM_WAIT_S)
-                # 验效双通道:计数扣减 = 权威;卡名变化 = 兜底;读缺计数按
-                # 未扣减处理(只剩名集通道可救)。双输即停不重试(design §2.8)。
+                # 验效双通道已拆(T-223 判效归一,统一观察架构画面 op 基类
+                # 设计 §6.2;环境屏与策略屏同判):固定等待后无条件重读刷后
+                # 帧(机械执行),「刷没刷成」不判——链继续只由计数现读授权
+                # 闸与重决策名集可用性承载。
                 _after = self.screenshot()
                 _counts2 = read_invest_refresh_counts(self.ctx, _after, 'env')
                 _opts2 = self._read_options(_after)
-                _count_dec = bool(_counts2) and _counts2[0][0] < _c
-                _names_changed = (len(_opts2) == len(opts)
-                                  and [n for n, _ in _opts2] != [n for n, _ in opts])
-                if not _count_dec and not _names_changed:
-                    log.warning('[cw-env] 刷新验效双输(计数 %s→%s,名集未变)'
-                                '→ 停止刷新照常选(不重试)',
-                                _c, _counts2[0][0] if _counts2 else '读缺')
-                    break
+                # 零效果留证(best-effort,零决策零改道):计数未扣且名集
+                # 未变 = 点偏/文本锚漂移强信号,只落缺陷台账不改链;任一侧
+                # 读缺 = 过渡帧不可判,不猜(判效权归观察侧 reconcile)。
+                if (bool(_counts2) and _counts2[0][0] >= _c
+                        and [n for n, _ in _opts2] == [n for n, _ in opts]):
+                    try:
+                        from sr_od.application.currency_war.telemetry import (
+                            defects as cw_defects,
+                        )
+                        cw_defects.record_defect(
+                            'invest_env', 'refresh_no_effect',
+                            expected=f'计数<{_c} 或名集变化',
+                            observed=f'计数={_counts2[0][0]},名集未变',
+                            verdict='留证-刷新零效果(零决策)',
+                            reader_source='cw_screen_invest_env',
+                            note='执行侧判效已拆(T-223 判效归一),仅机械留证',
+                            gap_large=False,
+                            severity=cw_defects.SEVERITY_L2_RECORD)
+                    except Exception:   # noqa: BLE001  留证不阻塞刷新链
+                        pass
                 if len(_opts2) != len(opts):
                     # 刷后帧读缺 → 新观察不可用:名集不更新、不重决策(G1:
                     # 重决策必须用最终名集,残缺名 = 幻影卡),链停照常选
