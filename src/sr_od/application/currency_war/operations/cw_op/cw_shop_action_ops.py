@@ -126,6 +126,12 @@ class ShopVisitLedger:
     refresh_pre_gold: int | None = None
     refresh_pre_names: list[str] = field(default_factory=list)
     refresh_pending_reconcile: bool = False
+    # T-251 种子段 tracked 空账读屏重建的单向阀门:同 visit(含刷新续段,
+    # 账本跨段共用)至多尝试一次重建。触发红线 = tracked 空账/未建——
+    # tracked 有账但与屏幕分叉不走此出口(那是丢件/幻影,重建会掩盖真
+    # bug,交 guard_expected_vs_tracked 断言响亮暴露)。写点 =
+    # run_buy_waves 段顶种子守卫前(消费方 rebuild_tracked_at_seed_if_vacant)。
+    tracked_seed_rebuild_done: bool = False
     # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
     buy_purchases: list = field(default_factory=list)
     buy_has_sell: bool = False

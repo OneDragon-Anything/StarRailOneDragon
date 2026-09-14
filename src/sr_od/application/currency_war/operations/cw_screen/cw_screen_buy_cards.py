@@ -5,6 +5,8 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
+from cv2.typing import MatLike
+
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
@@ -29,7 +31,10 @@ from sr_od.application.currency_war.kernel.cw_obs_core import (
     area_center,
     shop_card_click_points,
 )
-from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
+from sr_od.application.currency_war.kernel.cw_strategy_session import (
+    StrategySession,
+    strategy_state_of,
+)
 from sr_od.application.currency_war.kernel.cw_telemetry_exit import journal_refs
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
@@ -663,6 +668,175 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
         log.warning('[cw][receipt] 商店动作回执写入失败(不阻塞): %s', e)
 
 
+def make_seed_screen_bench_read(
+        ctx: SrContext, session: StrategySession) -> Callable[
+        [MatLike], list | None]:
+    """种子段读屏重建的 SIFT 身份读链工厂(读函数与 heavy 观察同源)。
+
+    返回闭包 frame → list[BenchChar](None = 识别域未就绪;[] = 读成功且
+    屏幕席真空)。读链 = ``read_bench_chars_tiered``(三层漏斗生产主路径,
+    与备战环 heavy 观察 reconcile_tracking 的读侧同一单一源),模板经
+    ``ensure_portrait_templates``;未就绪返 None(宁缺勿造,调用方按失读
+    处置不写账)。测试经 ``rebuild_tracked_at_seed_if_vacant`` 的
+    ``read_bench_fn`` 注入替身,不经本工厂。
+    """
+    from sr_od.application.currency_war.obs.cw_observation import (
+        ensure_portrait_templates as _templates,
+    )
+
+    def _read(frame: MatLike) -> list | None:
+        templates = _templates(ctx)
+        if templates is None:
+            return None
+        from sr_od.application.currency_war.obs.cw_identity_obs import (
+            read_bench_chars_tiered,
+        )
+        return read_bench_chars_tiered(session, ctx, frame, templates)
+
+    return _read
+
+
+def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
+                                      entry_shot: MatLike,
+                                      ledger: 'ShopVisitLedger', *,
+                                      read_bench_fn: Callable[
+                                          [MatLike], list | None]) -> str:
+    """种子段 tracked 空账读屏重建(T-251 接管真空治本出口)。
+
+    背景与根因(T-227 定性亲核):商店 visit 入口观察
+    (``read_game_state`` phase=prep_shop_open)设计上不读 bench 身份,
+    店开 0n 分发路径(visit_open_shop→run_buy_waves)也不经过备战环
+    heavy 观察(reconcile_tracking 是 tracked 主账唯一生产重建写点)——
+    接管局/新账首分发即商店节点时 tracked 主账从未被建,守卫消息自注的
+    「下一入口 heavy 读屏重建可归零」在该路径结构性不可达,真分歧即粘性
+    崩溃循环(实机 2026-09-15 两次停局实证)。本函数 = 守卫唯一合法出路
+    的落点:tracked 未建(空账)时用屏幕真值重建,守卫本体零改动。
+
+    触发红线(设计边界,必须守):**仅 tracked 空账/未建触发**。tracked
+    有账但与屏幕分叉不走此出口——有账分叉 = 丢件/识别幻影/逻辑态建模
+    bug,读屏重建会掩盖真 bug,必须交 ``guard_expected_vs_tracked``
+    断言响亮暴露(调用方在本函数返回后立即跑种子守卫,分叉照旧炸)。
+
+    两账同帧语义:重建写 tracked 主账(``bench_from_compact``,槽号即
+    布局,与 reconcile_tracking 写回同构)+ 容器 bench 观察
+    (``bench_view_from_obs`` 构造,family='obs' 渠道;纯 tracked 重建而
+    容器保持旧值时,空账真空形态会被守卫判成新分叉——重建只救一半反而
+    制造炸点)。两账同源后守卫对拍自然通过,策略器拿到真席面。
+
+    单向阀门(ledger.tracked_seed_rebuild_done):同 visit 至多尝试一次
+    读屏重建(刷新续段共用同一账本);重建后仍分叉 = 照旧断言停,禁反复
+    重建稀释防线。合成特效窗内读数物理不可信(星爆动画,与备战环观察
+    写端同判 ``is_merge_effect_window``)→ 本帧不读不关阀门,续段/下
+    visit 新帧重试。
+
+    Args:
+        session: 策略会话(tracked 主账与容器宿主)。
+        entry_shot: 段顶入口观察帧(与 read_game_state 同帧,店开态备战
+          栏可见,不新增截图)。
+        ledger: 访问账本(阀门载体)。
+        read_bench_fn: 读链注入缝(生产 = ``make_seed_screen_bench_read``
+          产物;测试注入替身)。frame → list[BenchChar];None = 识别域未
+          就绪,[] = 读成功且屏幕席真空。
+
+    Returns:
+        'tracked_present' = tracked 有账(红线,零读屏零写,交守卫);
+        'valve_closed' = 本 visit 已尝试过;'effect_window' = 特效窗帧
+        不读(阀门未关);'read_failed' = 读链失读(不写账,台账显影);
+        'screen_vacant' = 屏幕席真空(合法态,两账已空,零写);
+        'slot_unhealthy' = 读回槽号不健康(拒绝写账,台账显影,同
+        reconcile 健康门语义);'rebuilt' = 两账已同帧重建。
+    """
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        BENCH_CAPACITY,
+        bench_from_compact,
+        exec_state_of,
+    )
+    _es = exec_state_of(session)
+    if any(bc is not None for bc in (_es.tracked_bench_chars or [])):
+        return 'tracked_present'   # 红线:有账不重建,分叉交守卫断言
+    if ledger.tracked_seed_rebuild_done:
+        return 'valve_closed'
+    from sr_od.application.currency_war.kernel.cw_reconcile import (
+        is_merge_effect_window,
+    )
+    if is_merge_effect_window(entry_shot):
+        return 'effect_window'   # 特效窗读数不可信,不消耗阀门
+    ledger.tracked_seed_rebuild_done = True   # 阀门先关:尝试即一次
+    read = read_bench_fn(entry_shot)
+    if read is None:
+        with contextlib.suppress(Exception):
+            defects.record_defect(
+                'bench', defects.DEFECT_KIND_TRACKED_SEED_REBUILD,
+                expected='tracked 空账且识别域就绪,屏幕 bench 可读',
+                observed='读链返 None(模板未加载/识别域未就绪)',
+                verdict=('留证-种子段重建读链失读,两账未动(随后守卫照常'
+                         '对拍;频发→查 portrait 模板加载链)'),
+                reader_source='rebuild_tracked_at_seed_if_vacant',
+                gap_large=False,
+                note='接管真空重建出口(T-251)失读分支')
+        log.warning('[cw!][seed] tracked 空账但读屏重建失读(模板未就绪)'
+                    '→ 两账未动,交种子守卫')
+        return 'read_failed'
+    if not read:
+        # 空读 = 屏幕席真空(合法态;与失读不可分是备战环 P2-1 既有判例,
+        # 本处读链 None/[] 已分型,[] 按真真空)。tracked 已空,容器未写,
+        # 零行为面。
+        log.debug('[cw][seed] tracked 空账且屏幕席真空 → 无需重建')
+        return 'screen_vacant'
+    slots = [getattr(bc, 'slot', None) for bc in read]
+    healthy = (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
+                   for s in slots) and len(set(slots)) == len(slots))
+    if not healthy:
+        with contextlib.suppress(Exception):
+            defects.record_defect(
+                'bench', defects.DEFECT_KIND_BENCH_SLOT_UNHEALTHY,
+                expected='读回占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY',
+                observed=f'slots={sorted(map(str, slots))}',
+                verdict=('留证-种子段重建读回槽号不健康,拒绝写账(坏槽号'
+                         '不进不可逆卖出链;与 reconcile 写回健康门同式;'
+                         '随后守卫照常对拍)'),
+                reader_source='rebuild_tracked_at_seed_if_vacant',
+                gap_large=False,
+                note='接管真空重建出口(T-251)槽号健康门(与 reconcile/'
+                     '_reseed 同式)')
+        log.warning('[cw!][seed] tracked 空账读屏重建但槽号不健康 %s '
+                    '→ 拒绝写账,交种子守卫', sorted(map(str, slots)))
+        return 'slot_unhealthy'
+    # 两账同帧重建:tracked 主账(bench_from_compact,槽号即布局,与
+    # reconcile_tracking 写回同构)+ 容器 bench 观察(family='obs',
+    # actor 在册;bench_view_from_obs 空集守卫上方已挡,此处恒非 None)。
+    _es.tracked_bench_chars = bench_from_compact(list(read))
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        ChannelSig,
+        bench_view_from_obs,
+        board_state_of,
+    )
+    _bs = board_state_of(session)
+    _view = bench_view_from_obs(read)
+    if _view is not None:
+        _bs.observe(_bs.bench, _view,
+                    sig=ChannelSig(family='obs', actor='CwScreenBuyCards',
+                                   screen=SHOP_SCREEN_NAME, mode='read',
+                                   quality={'bench': 'real_read'}))
+    with contextlib.suppress(Exception):
+        defects.record_defect(
+            'bench', defects.DEFECT_KIND_TRACKED_SEED_REBUILD,
+            expected='tracked 主账在场(非接管真空态)',
+            observed=(f'tracked 空账,屏幕 bench 读回 {len(read)} 件 '
+                      f'{[(bc.char_id, bc.star) for bc in read]},'
+                      'tracked+容器两账已同帧重建'),
+            verdict=('留证-种子段 tracked 空账读屏重建成功(接管真空治本'
+                     '出口,T-251;触发红线 = 仅 tracked 空账,有账分叉'
+                     '不走此出口交守卫断言;单向阀门 = 同 visit 一次)'),
+            reader_source='rebuild_tracked_at_seed_if_vacant',
+            gap_large=True, auto_resolved=True,
+            note='接管真空单向阀门重建事件(判读接管真空复发直接查本键)')
+    log.warning('[cw!][seed] tracked 空账(接管真空)→ 读屏重建两账:%s'
+                '(同 visit 单次;重建后仍分叉 = 守卫断言)',
+                [(bc.char_id, bc.star) for bc in read])
+    return 'rebuilt'
+
+
 def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                   *, spend_gate: Callable[[object], tuple[bool, str]] | None = None,
                   ) -> tuple[OperationRoundResult | None, 'ShopVisitLedger']:
@@ -1016,6 +1190,15 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
             guard_expected_vs_tracked as _guard_seed,
         )
+        # T-251 接管真空重建出口:种子守卫前,tracked 主账未建(空账)时
+        # 用入口帧屏幕真值同帧重建 tracked+容器两账(店开 0n/接管首分发
+        # 路径不经过 heavy 观察,守卫自注「下一入口 heavy 重建」结构性
+        # 不可达——本出口即该唯一合法出路的落点)。触发红线 = 仅空账,
+        # 有账分叉零读屏零写照旧断言;单向阀门 = 同 visit 一次
+        #(语义详见 rebuild_tracked_at_seed_if_vacant docstring)。
+        rebuild_tracked_at_seed_if_vacant(
+            match.session, _entry_shot, ledger,
+            read_bench_fn=make_seed_screen_bench_read(op.ctx, match.session))
         # 对账守卫输入 = 容器(W6 波 4,设计件 §2.5-2:期望态读值改
         # 容器;tracked 播种取消后分叉归因「播种/入口账 vs 模型」语义不变)
         _guard_seed(_bs_of_entry, match.session, stage='seed')
