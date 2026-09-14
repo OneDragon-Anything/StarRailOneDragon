@@ -22,7 +22,7 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
   obs_conflicts.jsonl 例外:跨局 journal 无 run_id 键且体积大,不入切片。
 - **派生输入回源流(重装配保真)**:派生列(rounds/loss_nodes/departures/
   opening/resume_reconciliation 等)的输入吃旧流键,不在 v12 切片契约内
-  ——装配时切片缺键回源流文件按段过滤补读(``_load_derived_inputs``;
+  ——装配时切片缺键或空回源流文件按段过滤补读(``_load_derived_inputs``;
   源流在 = 无损重装配,消除 v7 注申报的「重装配无益有损」;源流已清 =
   空列表诚实退化)。档案 ``slices`` 载荷不变(仍两文件契约)。
 - **归局骨架(W3 起三源)**:journal 实机形态段(``run_YYYYMMDD_HHMMSS``,

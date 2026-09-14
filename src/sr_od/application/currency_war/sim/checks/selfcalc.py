@@ -2,7 +2,7 @@
 
 循环面(C1-C7,ADR-0593 §1)的豁免边从「静默采信策略自述」降级为
 「自算复核通过才豁免」。本模块 = 各检查器迁移面与检测器面(检测器
-集以 ``sim.checks.suspects._SUSPECT_DETECTORS`` 注册表实数为准)共用
+集以 ``sim.checks.suspects.detector_ids()`` 公开口实数为准)共用
 的自算判定核(单一源;同判定核两处消费,禁第二实现——先例 = launch 判据
 核 kernel/cw_launch_admission 消费纪律)。输入形状 = 账本行 dict:sim 检查
 器与生产 ``tools/cw/review_skeleton.merge_round_rows`` 合并行同构(ADR-0593
