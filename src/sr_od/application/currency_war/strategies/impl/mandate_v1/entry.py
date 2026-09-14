@@ -248,8 +248,8 @@ def truncate_frame_stable(actions: list[PrepAction],
     前序累积静态推出,推不出即截断」):
 
     - ``SellBench``/``DeployMove``:bench 槽位引用对 ``bench_slots``
-      (生成期观察的占用槽位集)复检 + 前序同序列卖出/拖出累积投影
-      (槽位卖出后从投影集移除)——引用空槽/未知槽 ⇒ 推不出 ⇒ 该动作
+      (生成期观察的占用槽位集)复检 + 前序同序列卖出/拖出累积逻辑态
+      (槽位卖出后从逻辑态集移除)——引用空槽/未知槽 ⇒ 推不出 ⇒ 该动作
       处截断 + ``emitter_conditional_truncated`` 计数。``bench_slots``
       缺省 None = 复检语境缺失,按条件成立续发(发射器自身产序列时
       引用即生成期观察,生产路径 bridge 总是供给语境)。
@@ -453,7 +453,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         # OpenBox 动作纯机械执行不内联选卡,ADR-0601)。第十八局停场修复
         # (g_20260905_175220 备战 2-2):此前 OpenBox→弹窗后决策面无臂
         # 消费 box_overlay_open,OpenBox 重开空转 15 分钟(执行器
-        # _pick_box_card/期望态投影/适配器注册均早在库,独缺发射位)。
+        # _pick_box_card/期望态逻辑态直写/适配器注册均早在库,独缺发射位)。
         return [Emitted(PickBoxCard(), True, 'prep_box_pick')]
     if obs.boxes:
         return [Emitted(OpenBox(slot=obs.boxes[0][0]), True, 'prep_box')]
@@ -638,7 +638,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # (G1 准入)原样;工具期闩 cw4_tools_phase 同 phase 一次语义原样
     #(写点 mark_tools_pass_executed 在执行位,发射位只读不写)。发射
     # 语义 = 判据/准入通过的 RunTools 挂起,骨架 pass 输出后前置合并
-    #(见下方 ④ 合流)——RunTools 投影未建模,当帧 visit 终结,消耗品
+    #(见下方 ④ 合流)——RunTools 逻辑态未建模,当帧 visit 终结,消耗品
     # 给的经验/金经下一 visit 入口 heavy 进 M3;前移真正消除的是
     # 「旧输入 LevelUp 先执行→错误升级照发」面(编者⑤ 裁决输入新鲜度;
     # 收益路径口径 = 方案 §4 猎点 12 v2.1 更正)。
@@ -741,7 +741,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # ④ 合流(迁移 C):工具发射前置 = 同帧 LevelUp+RunTools 形态执行序
     # = RunTools 先于 LevelUp(编者⑤ 升级裁决输入新鲜度;行为锚 =
     # test_cw_prep_flag_machine::test_runtools_emit_position)。RunTools
-    # 投影未建模 ⇒ 当帧 visit 在工具消费后终结,其后动作下一帧带新输入
+    # 逻辑态未建模 ⇒ 当帧 visit 在工具消费后终结,其后动作下一帧带新输入
     # 重评。M7 发射序回排块(run_mandate 内)已不见 RunTools,零特例叠加。
     if _tools_emitted:
         out = _tools_emitted + out

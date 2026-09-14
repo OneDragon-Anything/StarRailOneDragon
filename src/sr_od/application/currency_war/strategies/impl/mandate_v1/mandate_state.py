@@ -214,7 +214,7 @@ class StrategyState:
     # /telemetry schema piggy_reward(恢复真值)。历史:ADR-0348 本体已
     # 随 decision_v2 删除,本字段曾为恒 False 死值(写者已死)。
     v3_piggy_reward: bool = False
-    # 商店拒因遥测(shop.py 逐帧刷新;期望态即投影后真值)。
+    # 商店拒因遥测(shop.py 逐帧刷新;期望态即逻辑态后真值)。
     cw4_shop_rejects: dict = field(default_factory=dict)
     # cw4 线级状态机(proof.LineState;_line_state 惰性建入口统一收口)。
     cw4_line_state: object = None
@@ -245,10 +245,10 @@ class StrategyState:
     # 有候选但不可逆护栏拒=非本结论,不写。命中判定要求闩序号 == 当前
     # 段序号(与 token 序号两道独立,任一不等即失效重推导)。
     cw4_m2_stall_latch: tuple[bool, int] | None = None
-    # 帧动作记录 token(载体单一源):None=无记录。写入端=动作执行/投影
+    # 帧动作记录 token(载体单一源):None=无记录。写入端=动作执行/逻辑态直写
     # 层确认已执行后写 (动作型名 type().__name__, 当前段序号),物理写入
     # 位四处:①生产商店循环(cw_op_buy_cards.run_buy_waves 执行位);
-    # ②sim-replay 驱动器(bridge.decide_shop_screen 投影位);③生产 prep
+    # ②sim-replay 驱动器(bridge.decide_shop_screen 逻辑态直写位);③生产 prep
     # 循环主环(cw_screen_prep 决策循环 OpenShop/执行器分支合流执行位);
     # ④同文件备战席满破墙段执行位(_bench_full_break_round;破墙动作多为
     # SellBench/DeployMove ∉ 备战白名单恒不命中——登记防未来白名单扩集

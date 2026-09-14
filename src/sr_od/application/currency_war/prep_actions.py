@@ -212,7 +212,7 @@ def _build_equip_wear_plan(ctx: SrContext) -> EquipPlanBuild:
 
     P4 观察接线(T-171):三路事实源 = **入口观察产物**
     ``session.prep_obs_frame``(PrepObservation;写者白名单 = cw_screen_prep
-    观察装配点/循环投影步,装备域采集单一源 = ``obs.cw_observe_full
+    观察装配点/循环逻辑态直写步,装备域采集单一源 = ``obs.cw_observe_full
     .observe_full`` heavy)。本函数**零读屏**:原对执行帧现读三路
     owned(read_equips)/occupied(read_row_equipped)/deployed
     (read_deployed_chars)退役 = 调用位置迁移——识别函数本体归观察链
@@ -958,7 +958,7 @@ class PrepActionExecutor:
           levelup_clicks/_prep_gold_channel 同式同源);
         - ``SellBench``/``SellDeployed`` = +sell_refund(星×招募费;对象 =
           dispatch 前快照,费单一源 = kernel ``bench_char_cost``——与容器
-          投影写口 apply_prep_action_logic 同式;身份不可辨 = None 诚实
+          逻辑态写口 apply_prep_action_logic 同式;身份不可辨 = None 诚实
           缺失,不做保守估值假账,观察覆盖兜底);
         - ``ClickSpheres`` = None(球金通道随机,执行点不可推算——声明
           盲区,观察覆盖兜底,禁拍值);

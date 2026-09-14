@@ -165,11 +165,11 @@ class MandateV1Strategy(CwFlowStrategy):
 
         生产执行侧已改调 :meth:`decide_shop_action`(单动作循环,
         ``cw_op_buy_cards.run_buy_waves``);本驱动器保留给 sim 引擎/回放/既有序列锁——
-        驱动 = 逐帧调单动作核 + 容器投影直写推进期望态
+        驱动 = 逐帧调单动作核 + 容器逻辑态直写推进期望态
         (``apply_shop_action_logic`` 简单腿 + 合成升星腿;T-163 起零
         simulate 前瞻消费),终结动作(RefreshShop/CompTransaction)截停
         序列、CloseShop 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
-        批的输出等价是条件命题(波批投影无残差时逐位一致;投影残差史见
+        批的输出等价是条件命题(波批逻辑态直写无残差时逐位一致;逻辑态残差史见
         ADR-0517 §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推
         语义。观察帧缺失 = 观察层失约,抛错(禁静默按空态决策)。rng 中立。
         覆写存在理由 = mandate 特有记账(下方已买件/段序号/续段 token)。
@@ -183,7 +183,7 @@ class MandateV1Strategy(CwFlowStrategy):
             board_state_of,
             deployed_slots_of,
         )
-        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 投影推进
+        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 逻辑态直写推进
         # 切 apply_shop_action_logic;在屏前置 = bs.shop.value is not None,
         # 离屏 = 观察层失约抛错(黑板契约容器化等价物)。
         bs = board_state_of(session)
@@ -213,7 +213,7 @@ class MandateV1Strategy(CwFlowStrategy):
                 return out
             if isinstance(a, (cw_state.BuyCard,)):
                 state_of(session).cw4_visit_bought_names.append(a.card.name or '')
-                # 买前快照三件组(升星腿 scratch 基点;必须在投影口写之前
+                # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前
                 # 取,失准形态申报见 apply_shop_merge_leg docstring)。
                 _pre_bench = list(bench_slots_of(bs))
                 _pre_dep = list(deployed_slots_of(bs))
@@ -230,7 +230,7 @@ class MandateV1Strategy(CwFlowStrategy):
                 type(a).__name__, _st_rec.cw4_segment_serial)
             if isinstance(a, (cw_state.RefreshShop, cw_state.CompTransaction)):
                 return out      # 终结 op:序列到止(重观察语境)
-            # 投影推进 = apply_shop_action_logic(设计件 §2.2-3 驱动器同路;
+            # 逻辑态直写推进 = apply_shop_action_logic(设计件 §2.2-3 驱动器同路;
             # 回执 kernel 判据派生,单动作核逐帧恰一动作 = 击数恒 1)。
             _exec = ShopActionExecuted(
                 bought_count=1 if isinstance(a, cw_state.BuyCard) else None,

@@ -35,7 +35,7 @@ class ContractCtx:
 
     - k_members:目标线 K 成员名元组(predicates.line_members 产物;
       空/None=目标线未成型)。
-    - gold:决策帧金(消费位口径——商店波为支出后投影金)。
+    - gold:决策帧金(消费位口径——商店波为支出后逻辑态金)。
     - reserve:S 预留值(消费位现读,如 b_target 组装结果)。
     - deploy_cap:等级驱动可上阵 cap(CwSimFrame.max_units() 口径;
       None=消费位退固定槽表常数,即 arm1 域错位形态)。

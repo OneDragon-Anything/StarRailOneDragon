@@ -2,7 +2,7 @@
 迁移批,底稿 MAP ⓪ A2「Snapshot/TurnState/assemble 三件迁出」的落位)。
 
 装配点管线(蓝图 §1.3):``assemble()``(Snapshot + session → TurnState,
-方向/预算投影一次装配)。纪律(蓝图 §2):投影幂等重算、单一写端
+方向/预算投影一次装配)。纪律(蓝图 §2):装配幂等重算、单一写端
 (assemble 装配点)、派生值一律不落 session——唯一显式豁免 = 遥测
 披露面四字段 + 键戳(``_disclose_budget`` 写点;不入决策输入,裁决
 与边界 = ADR-0571)。
@@ -132,7 +132,7 @@ def _disclose_budget(state: Any, session: StrategySession,
 
     装配纪律(派生值不落 session)的立法目的 = 根治**决策输入**读跨帧
     旧共享态的污染类缺陷;本写点四字段 + 键戳是**遥测披露面**,不入
-    决策输入——决策判据一律消费 TurnState 幂等投影,禁读这些字段
+    决策输入——决策判据一律消费 TurnState 幂等装配,禁读这些字段
     (守卫锁 = test_cw_budget_disclosure.py::test_disclosure_fields_not_consumed_by_decision_modules
     禁消费 grep 锁)。写端
     只有本函数与商店执行回执位(cw_op_buy_cards.accrue_release_spent,

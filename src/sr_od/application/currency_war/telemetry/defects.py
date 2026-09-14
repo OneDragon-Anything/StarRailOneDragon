@@ -109,7 +109,7 @@ DEFECT_KIND_DEPLOYED_COUNT_2SRC_DEGRADED: str = 'deployed_count_2src_degraded'
 
 #: 双账槽位布局漂移分键(期望态 vs tracked 多集等价、仅槽序分歧):
 #: 守卫降级不炸环,但漂移事实落台账(判读工具可查频次/局分布);
-#: 处置 = 按 tracked 真值重播种投影 bench(见 cw_shop_action_ops)。
+#: 处置 = 按 tracked 真值重播种逻辑态 bench(见 cw_shop_action_ops)。
 DEFECT_KIND_BENCH_SLOT_LAYOUT_DRIFT: str = 'bench_slot_layout_drift'
 
 #: tracked 槽号健康门拦截分键:占用槽号重复/越界(对账 churn 家族的

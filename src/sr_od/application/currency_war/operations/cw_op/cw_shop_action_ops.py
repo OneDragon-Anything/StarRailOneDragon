@@ -2,7 +2,7 @@
 
 动作基类单方法(execute;原 execute+project 两方法契约(ADR-0517 决策 10)
 的 project 半已删——T-163 纯规则路线裁定(用户 2026-09-12):策略与实机
-操作链零 simulate 前瞻消费,期望态推进改走容器投影直写
+操作链零 simulate 前瞻消费,期望态推进改走容器逻辑态直写
 (``apply_shop_action_logic`` 简单腿 + ``apply_shop_merge_leg`` 合成升星腿,
 kernel 规则单一源,与序列驱动器同形;等价性由锁 M1 钉,
 test_cw_shop_projection_logic)):
@@ -20,8 +20,8 @@ test_cw_shop_projection_logic)):
 守卫断言(决策 9):执行侧检查 = 防 bug 路栏非控制流分支,非法返回 =
 策略器 bug 响亮暴露——``guard_proposal_vs_expected``(提案动作的对象在
 期望态中存在且未被消费,防策略器算术 bug)+ ``guard_expected_vs_tracked``
-(期望态投影链 vs 执行侧 tracked 账双账对拍,投影建模 bug 的唯一在环
-检测器——历次投影口径返工史证明投影建模错是常态)。双账断言
+(期望态逻辑态链 vs 执行侧 tracked 账双账对拍,逻辑态建模 bug 的唯一在环
+检测器——历次逻辑态口径返工史证明逻辑态建模错是常态)。双账断言
 零读屏(tracked 账纯内存随动),不违决策 1/8「循环内不读屏」。
 
 执行侧观测通道(ADR-0517 §执行侧观测通道去向,候选 a;T-192 判效
@@ -215,12 +215,12 @@ def _bench_identity_signature(
 
 def _reseed_bench_layout(state: GameState,
                          tracked: list[BenchChar | None]) -> bool:
-    """投影 bench 布局按执行侧 tracked 槽位表就地回写(布局单一源重播种:
-    churn 后 tracked/实况是重排侧真值,投影副本跟随)。
+    """逻辑态 bench 布局按执行侧 tracked 槽位表就地回写(布局单一源重播种:
+    churn 后 tracked/实况是重排侧真值,逻辑态副本跟随)。
 
     槽号健康门:tracked 槽号来自 SIFT/对账 churn,属无守卫数据——占用
     槽号须唯一 ∧ 全在 1..BENCH_CAPACITY,违者**拒绝重播种**维持旧布局
-    (防坏槽号污染投影后进入 M4 卖出链:重播种后两账同源,
+    (防坏槽号污染逻辑态后进入 M4 卖出链:重播种后两账同源,
     guard_proposal_vs_expected 对表位置-物理格错位结构性失明,错格拖拽
     = 卖错人/卖空格),并落 ``bench_slot_unhealthy`` 台账分键留证。
     返回是否实际重播种。
@@ -235,7 +235,7 @@ def _reseed_bench_layout(state: GameState,
                 'bench', defects.DEFECT_KIND_BENCH_SLOT_UNHEALTHY,
                 expected='tracked 占用槽号唯一 ∧ 全在 1..BENCH_CAPACITY',
                 observed=f'slots={sorted(slots)}',
-                verdict=('留证-tracked 槽号不健康,拒绝重播种(维持旧投影'
+                verdict=('留证-tracked 槽号不健康,拒绝重播种(维持旧逻辑态'
                          '布局,坏槽号不进不可逆卖出链;根因=对账 churn '
                          '槽号无守卫,归观察层仲裁批)'),
                 reader_source='reseed_health_gate',
@@ -243,8 +243,8 @@ def _reseed_bench_layout(state: GameState,
                 note='重播种槽号健康门(占用表槽号唯一性与值域校验)')
         return False
     # 写目标 = 容器 bench 域(W6 波 4,设计件 §2.3:重播种写点 =
-    # write_logic(bs.bench, tracked 重建 BenchView),投影域集例外申报
-    # 面;原「投影帧就地回写」随黑板槽退役消亡)。
+    # write_logic(bs.bench, tracked 重建 BenchView),逻辑态域集例外申报
+    # 面;原「逻辑态帧就地回写」(前身黑板槽载体)随黑板槽退役消亡)。
     from sr_od.application.currency_war.kernel.cw_game_state import (
         GameState,
         bench_view_of_slots,
@@ -268,7 +268,7 @@ def reseed_bench_if_layout_stale(state: GameState, session,
     (reconcile 纠漂递增,唯一写点 kernel/cw_reconcile),已发射动作的
     bench_idx 代际失效,不可只换 state.bench。三步语义:
     ①截断在飞计划(序列决策契约截断语义,plan_truncated 记账由调用方承担——
-      本函数零 ledger 依赖,保持纯投影面可单测);
+      本函数零 ledger 依赖,保持纯逻辑态面可单测);
     ②按 tracked 重播种(下标直拷 pad 后经 ``_reseed_bench_layout``,
       含槽号健康门——脏槽号拒绝重播种维持旧布局);
     ③重入决策(调用方 continue,decide 消费重播种后黑板帧)。
@@ -292,8 +292,8 @@ def guard_expected_vs_tracked(state: GameState, session,
                               stage: str = 'project') -> None:
     """expected-vs-tracked 双账断言(ADR-0517 §守卫两属 (ii))。
 
-    期望态(容器投影直写链 = apply_shop_action_logic/合成升星腿维护;
-    T-163 起 simulate 前瞻投影已删)vs 执行侧 tracked 账
+    期望态(容器逻辑态直写链 = apply_shop_action_logic/合成升星腿维护;
+    T-163 起 simulate 前瞻推算已删)vs 执行侧 tracked 账
     (``tracked_bench_chars`` 经 mutate 随执行更新)的对拍——分叉的
     在环检测器。零读屏(tracked 纯内存)。
 
@@ -302,7 +302,7 @@ def guard_expected_vs_tracked(state: GameState, session,
       分歧——历史 bug 态(tracked 紧凑 × slot 稀疏)下对账 churn 后两域
       落洞不同源。根因申报(T-308/ADR-0646 已治本):漂移之根 =
       reconcile 写回紧凑列表制造**布局双源**——两域在播种时刻即读出
-      不同布局(投影=bench_from_compact 槽号重构、tracked=mutate 下标
+      不同布局(逻辑态=bench_from_compact 槽号重构、tracked=mutate 下标
       演化),每次落洞动作放大一次差异。治本 = S2 写回经
       bench_from_compact 重建槽位表(kernel/cw_reconcile,deployed 侧
       同构先例补齐)+ S1 tracked 域消费点下标直拷(播种同源,本守卫的
@@ -310,7 +310,7 @@ def guard_expected_vs_tracked(state: GameState, session,
       epoch 检差(``reseed_bench_if_layout_stale``)的复用件,历史
       bug 态(tracked 未及 S2 重建)残留时仍可显影自愈。
       处置 = WARNING + 台账分键 ``bench_slot_layout_drift`` 留证
-      (判读工具可查)+ 按 tracked 真值就地重播种投影 bench
+      (判读工具可查)+ 按 tracked 真值就地重播种逻辑态 bench
       (``_reseed_bench_layout``,含槽号健康门)——回写源选 tracked
       而非 ``match.bench_slot_map`` 的依据:后者只在买组确认后产出
       (守卫炸点在组中,来不及)且只含所购名→槽、不承载 churn 重排
@@ -321,9 +321,9 @@ def guard_expected_vs_tracked(state: GameState, session,
       CwSimFrame.bench_readable),两账多集分歧 = 观察漏斗与执行账
       真实分叉(跟踪账丢件/观察失真),fail-stop 交回重观察——下一入口
       heavy 读屏重建可归零。
-      stage='project'(默认,动作投影后):分叉 = 投影直写/mutate 模型
-      分叉——投影建模 bug 的唯一在环检测器(错误卖出会实际执行、损害
-      不可逆,历次投影口径返工史为证)。
+      stage='project'(默认,动作直写后):分叉 = 逻辑态直写/mutate 模型
+      分叉——逻辑态建模 bug 的唯一在环检测器(错误卖出会实际执行、损害
+      不可逆,历次逻辑态口径返工史为证)。
 
     已申报豁免(非分叉 bug 的已知建模分叉,豁免帧由调用方判定):
     满栏买入(豁免面 = 游戏接受而两模型都不收编的残余窗:非合成满栏买
@@ -348,7 +348,7 @@ def guard_expected_vs_tracked(state: GameState, session,
         if _Counter(expect_sig) == _Counter(tracked_sig):
             log.warning(
                 '[cw-shop][guard] 双账槽位布局漂移(多集等价,降级不炸;'
-                '已按 tracked 重播种投影 bench):expected=%s tracked=%s',
+                '已按 tracked 重播种逻辑态 bench):expected=%s tracked=%s',
                 expect_sig, tracked_sig)
             with contextlib.suppress(Exception):
                 defects.record_defect(
@@ -356,7 +356,7 @@ def guard_expected_vs_tracked(state: GameState, session,
                     expected=f'expected={expect_sig}',
                     observed=f'tracked={tracked_sig}',
                     verdict=('留证-双账槽位布局漂移(多集等价,仅槽序分歧;'
-                             '降级不炸,已按 tracked 真值重播种投影 bench;'
+                             '降级不炸,已按 tracked 真值重播种逻辑态 bench;'
                              '根因=播种双源已随 T-308/ADR-0646 S2+S1 治本,'
                              '本行为历史 bug 态残留自愈面,复发=回退哨兵)'),
                     reader_source='guard_expected_vs_tracked',
@@ -370,10 +370,10 @@ def guard_expected_vs_tracked(state: GameState, session,
                 '(跟踪账丢件/识别幻影嫌疑,非播种错误——播种 bug 形态'
                 '已随 ADR-0520 旧账退役消失):'
                 f'expected={expect_sig} tracked={tracked_sig}'
-                '(期望态在首动作前即与 tracked 账不同源,投影链无责;'
+                '(期望态在首动作前即与 tracked 账不同源,逻辑态链无责;'
                 '下一入口 heavy 读屏重建可归零)')
         raise AssertionError(
-            '[cw-shop][guard] 期望态 vs tracked 双账分离(投影建模 bug?):'
+            '[cw-shop][guard] 期望态 vs tracked 双账分离(逻辑态建模 bug?):'
             f'expected={expect_sig} tracked={tracked_sig}'
             '(ADR-0517 §守卫两属 (ii);首动作前另有播种期对账,'
             '此处炸出 = project/mutate 模型分叉)')

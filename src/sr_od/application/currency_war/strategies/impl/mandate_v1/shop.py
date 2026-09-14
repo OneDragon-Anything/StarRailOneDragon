@@ -3,7 +3,7 @@
 SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店经济决策(买/卖/升/刷/事务)
 ——本模块是 mandate_v1 商店线的决策本体,黑板唯一输入 =
 ``session.prep_obs_frame`` + 容器单例 ``board_state_of(session)``
-(GameState,写者=商店入口观察段/单动作投影)。
+(GameState,写者=商店入口观察段/单动作逻辑态直写)。
 
 商店单动作形态(ADR-0517;前身份 = 波批 decide_shop_wave,迁移批改型):
 
@@ -18,7 +18,7 @@ SIM_CONSUMPTION_MAP Q1:sim A/B 证明面 = 商店经济决策(买/卖/升/刷/�
 2. 预算投影:cap_resolved 现读 → 守息线 g* = 10×cap_resolved(R70-1 参数化)
    + S 预留(P56 可变现息线下界 s_reserve := g* − Σ活期退金投影,设计
    13_buy_face_design §2.2)——单动作下输入金/席位 = 期望态当前值
-   (动作后真值),「帧首快照 + 逐动作累积投影」口径随波批退役;
+   (动作后真值),「帧首快照 + 逐动作累积逻辑态」口径随波批退役;
 3. criteria 七面发射(§4.2.1 臂①旁路集:骨架面[M2/M3/M4/dominance/M6
    存在性]两臂同开,真 EV 发射面[ev_buy/付费刷新/凑息档]臂①旁路;
    支付支撑通道两臂同开,R13-5);
@@ -98,7 +98,7 @@ t3_unaffordable / t3_below_reserve / t3_p1_true_blocked(P1 真帧
 计数键粒度(ADR-0517 迁移步 2):各键从「每波一次」改「每决策帧一次」
 (shop_drought_reset_on_buy 经 drought 值门维持「每访问至多一笔」);
 ``shop_merge_trigger_truncate``/``emitter_*`` 族随截断器退役(语义被
-投影与终结 op 吸收)。R197 症6 的 funding need 注册表派生
+逻辑态直写与终结 op 吸收)。R197 症6 的 funding need 注册表派生
 (``mandate.cheapest_member_cost`` 单一源)原样保留。
 
 P77 缺口面装载批(ADR-0626)增补:m2_stockpile_spot2_buy(j=1 帧
@@ -771,8 +771,8 @@ def decide_shop_action(bs: GameState, session: StrategySession,
     计数键粒度声明(ADR-0517 迁移步 2):``state_of(session).cw4_counters`` 各键
     语义从「每波一次」改「每决策帧一次」;跨结构对比(A/B 或回归判读)
     须声明口径切换,禁把两粒度计数直接对拍。拒因遥测
-    (``state_of(session).cw4_shop_rejects``)同样逐帧刷新——期望态即投影后真值,
-    无累积投影账,``actions`` 传空列表(买走的牌已从 state.shop 摘除)。
+    (``state_of(session).cw4_shop_rejects``)同样逐帧刷新——期望态即逻辑态直写后真值,
+    无累积逻辑态账,``actions`` 传空列表(买走的牌已从 state.shop 摘除)。
     M3 粒度(ADR-0517 决策 3 + §权衡):升一级 = 一个动作 op,clicks
     序列是动作内部步骤;单动作形态下每帧恰发一个单击动作,下一帧以更新
     后的 xp/level 重判(spend_unified 逐次校验整批可负担,可负担面单调
@@ -1075,7 +1075,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                         # 停手门([41]),不受本弃权影响
 
     # ---- ② 预算投影(期望态当前值;帧首快照口径随波批退役,ADR-0517
-    # §消灭的 bug 类·金位买后投影族——期望态金即动作后真值,无口径可言)----
+    # §消灭的 bug 类·金位买后逻辑态族——期望态金即动作后真值,无口径可言)----
     cap_resolved = mandate._cap_of(session)
     g_star = saturation_line(cap_resolved)
     # P56 可变现息线下界(设计 13_buy_face_design §2.2):s_reserve :=
@@ -1632,7 +1632,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         return _emit_buy(card, 'm2_merge_completion')
 
     # dominance_buy(零参数资格门,两臂同开;金口径 = 期望态现值——单动作下
-    # 每帧金即买后真值,R197 症9 的投影口径问题无存在载体)。
+    # 每帧金即买后真值,R197 症9 的逻辑态口径问题无存在载体)。
     # (stop_flag 已摘,见 mandate.dominance_buy_eligible docstring——
     # 泄金阶梯档 0,ADR-0604 §2,三处消费位同步摘;本臂物理位次先于
     # 下方档 1/档 2,支配性优先序先于带参臂,发射序申报同 §2。)
@@ -2338,7 +2338,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         # 必花域帧义务来源披露(T-88 写点;遥测键 sess_release_reason 透传
         # 源):帧内 last-wins、域外帧不覆写,轮界清零在装配键戳
         # (assembly._disclose_budget)。披露面字段禁决策判据消费
-        #(决策输入一律走 TurnState 投影;ADR-0571)。
+        #(决策输入一律走 TurnState 幂等装配;ADR-0571)。
         state_of(session).v3_release_reason = 'must_spend'
     # D 支锁线布尔单一源 = ``_ist.locked_comp````(17 号稿 §1.1 应修-8 B-1
     # 定谳;flow.py 物化段证明 P1 未锁线帧早对物化伪 comp →
@@ -2720,7 +2720,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         # 决策 7)。R1 门形态 = 形式二可负担性(路径总账判据);输入全为游戏定义
         # 量,零胜率建模。L* = 形式二等级选择输出(留级账 T_stay vs 升一
         # 级账 T_up 取小);P40 R2 息线熔断保留原语义。金基准 = 期望态
-        # 现值(旧「买后投影金」专修无存在载体——每帧金即真值)。
+        # 现值(旧「买后逻辑态金」专修无存在载体——每帧金即真值)。
         # 触发源记录初值(息线门 R1 域外常规;域内 yielded 支在上方
         # 切分线覆写。值域契约见 kernel/cw_state.RefreshShop.reason 注)。
         _r1_src = 'r1'

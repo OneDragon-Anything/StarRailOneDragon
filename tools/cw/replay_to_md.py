@@ -6,7 +6,7 @@ json 对局档案不便逐条阅读;本工具把单局档案渲染成一份 mark
 渲染基本单元 = **一次外层循环画面 op 调用**(协议 = ``sr-od-currency-war``
 skill ``references/match-review.md``;架构依据 = ``docs/develop/sr_od/application/currency_war/
 flow/screen_op.md`` §1「一次画面 op 调用 = 入口观察 + 逐动作决策循环」、
-``flow/outer_loop.md`` §2.2 分支序表、``flow/prep_visit.md`` §1 投影规则):
+``flow/outer_loop.md`` §2.2 分支序表、``flow/prep_visit.md`` §1 逻辑态直写规则):
 逐节点(P×R×)分组,组内按时间戳输出 op 记录,每个 op 单独一条,尾部留三个
 判定空槽,供审阅者(人/审查智能体)按「玩法文档 + 在册用户裁定」判定尺填写。
 
@@ -14,7 +14,7 @@ flow/screen_op.md`` §1「一次画面 op 调用 = 入口观察 + 逐动作决�
 
 - **第一遍(op 序列重建)**:按 op 边界规则从档案流行重建 op 序列——
   decisions 帧动作切分(OpenShop…CloseShop 段 = 商店访问 op,其余备战动作
-  按投影终结规则切备战 op)、快照边界定位商店 op 起点、exogenous 行定位
+  按逻辑态终结规则切备战 op)、快照边界定位商店 op 起点、exogenous 行定位
   遭遇/简报等 op。op 属性 = 序号 + 分支号 + 处理类名 + 入口时间戳。
 - **第二遍(分组渲染)**:节点(P×R×)分组、组内按时间戳输出 op 记录;
   每 op 最小渲染面 = 入口观察 + 逐动作与拒因 + 终结标记;商店 op 按快照
@@ -29,9 +29,9 @@ flow/screen_op.md`` §1「一次画面 op 调用 = 入口观察 + 逐动作决�
   - 动作含商店词表(BuyCard/LevelUpShop/RefreshShop/OpenShop)或行级
     ``phase`` 非空(零买入段行 acts=[] 只有 phase 可辨)→ 商店帧;
     连续商店帧合并为**一个商店访问 op**(刷新产生的多波段行同属一次访问);
-  - 其余 = 备战帧;备战帧按投影终结规则切 op——帧动作含
+  - 其余 = 备战帧;备战帧按逻辑态终结规则切 op——帧动作含
     RunDeploy/RunEquip/LevelUp/DeployMove/SellDeployed(prep_visit.md §1
-    未建模投影面)或 StartBattle(出战,§3 唯一完成态)→ 该帧后切分;
+    逻辑态未建模面)或 StartBattle(出战,§3 唯一完成态)→ 该帧后切分;
     无终结动作收尾 = 访问交回外循环重识别(如下一调度是商店)。
 - 战斗窗/结算 = 每个 outcomes 行(合成补给行除外)一个 ``CwScreenBattleWait``
   一体 op;合成补给行(source=synthetic_supply)挂靠最近的补给 op。
@@ -147,7 +147,7 @@ _CONFLICT_ROWS_CAP = 15
 # ---------------------------------------------------------------------------
 
 #: 商店动作词表(动作含其一 = 商店帧;SellBench 不入表:它在 prep_visit.md §1
-#: 属建模投影动作,且只出现在商店语境——含 SellBench 的帧必同时含其他商店
+#: 属建模逻辑态直写动作,且只出现在商店语境——含 SellBench 的帧必同时含其他商店
 #: 动作或带段行 phase)
 _SHOP_ACTION_TYPES: frozenset[str] = frozenset(
     {'OpenShop', 'BuyCard', 'LevelUpShop', 'RefreshShop'})
@@ -155,7 +155,7 @@ _SHOP_ACTION_TYPES: frozenset[str] = frozenset(
 #: 补给帧的行级 phase 前缀(决策帧 phase=supply_detour/supply_pick)
 _SUPPLY_PHASE_PREFIX = 'supply'
 
-#: 投影未建模动作(prep_visit.md §1:未建模面 → 本访问终结交回外循环重观察;
+#: 逻辑态未建模动作(prep_visit.md §1:未建模面 → 本访问终结交回外循环重观察;
 #: 出战另列)——帧动作含其一则该帧是备战 op 的终结帧
 _PREP_TERM_ACTIONS: frozenset[str] = frozenset(
     {'RunDeploy', 'RunEquip', 'LevelUp', 'DeployMove', 'SellDeployed'})
@@ -529,7 +529,7 @@ def _group_frames(frames: list[tuple[int, dict[str, Any]]]
     - 连续商店帧合并为一个商店访问 op;OpenShop 行在场 = 开店步已记录。
     - 连续补给帧(detour+pick)合并为一个补给 op,节点取首帧(分流帧;
       拾取帧轮号跨轮漂移先例 = 084421 复盘完整性审计 S5)。
-    - 备战帧按终结动作切分(prep_visit.md §1 投影规则/§3 出战):帧动作
+    - 备战帧按终结动作切分(prep_visit.md §1 逻辑态直写规则/§3 出战):帧动作
       含终结词表 → 该帧闭合当前访问,下一个备战帧 = 新一次访问。
     """
     ops: list[dict[str, Any]] = []
@@ -1304,7 +1304,7 @@ def _terminal_line(op: dict[str, Any], next_kind: str | None) -> list[str]:
         return ['- 终结:StartBattle 出战 → 交战斗窗']
     term = sorted(last_acts & _PREP_TERM_ACTIONS)
     if term:
-        return [f'- 终结:{"、".join(term)}(投影未建模,访问终结交回外循环)']
+        return [f'- 终结:{"、".join(term)}(逻辑态未建模,访问终结交回外循环)']
     if next_kind is None:
         return ['- 终结:流终止(截断,未见终结动作)']
     label = OP_LABELS.get(next_kind, ('', next_kind, ''))[1] or next_kind
@@ -2019,7 +2019,7 @@ def render_match(archive: dict[str, Any], replay_dir: Path,
     parts = _render_header(archive, seg_ids, run_filter, gaps)
     parts += ['## 2. 逐 op 复盘(外层循环画面 op 粒度)', '']
     parts += ['> op 边界重建规则:decisions 帧动作切分——OpenShop…CloseShop 段'
-              ' = 商店访问 op(分支 0n),备战动作按投影终结规则切备战 op'
+              ' = 商店访问 op(分支 0n),备战动作按逻辑态终结规则切备战 op'
               '(分支 1,flow/prep_visit.md §1);战斗窗/结算 = 每条 outcomes 行'
               '一个一体 op;补给/遭遇/投资选卡按各自数据面定位。协议 = '
               'sr-od-currency-war-dev skill references/match-review.md;'

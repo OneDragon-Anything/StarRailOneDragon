@@ -556,8 +556,8 @@ def _launch_frame_arbitration(op) -> dict:
     ``launch_arbitrage_inband_closed`` 分键,与「溢出帧零消费」可辨)。
 
     **预算闸闭包读金口径** = 期望态容器现读(``board_state_of(session)``,
-    run_buy_waves 逐动作投影直写)= 决策与闸同帧同值。后验跌破 g* 检测
-    (合并多买等投影外成本)计 ``launch_arbitrage_cross_line``,正常恒 0。
+    run_buy_waves 逐动作逻辑态直写)= 决策与闸同帧同值。后验跌破 g* 检测
+    (合并多买等逻辑态外成本)计 ``launch_arbitrage_cross_line``,正常恒 0。
 
     返回报告 dict:``entered``(是否进入过商店访问——弃射豁免判定位)、
     ``zone``('overflow'/'inband')、``executed``(本帧消费动作数)、
@@ -641,7 +641,7 @@ def _launch_frame_arbitration(op) -> dict:
             # 读金口径(W6 波 4 黑板容器化,设计件 §2.4-2):容器读口
             # ``gold_of``(缺省 0 镜像,与原 ``int(... or 0)`` 兜底同型
             # 零行为差;禁裸 bs.gold.value 引入 None 形态行为差)——黑板
-            # 槽退役后闸与决策同读容器,逐动作投影回写经
+            # 槽退役后闸与决策同读容器,逐动作逻辑态回写经
             # apply_shop_action_logic 承接,同帧同值语义不变。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
@@ -677,7 +677,7 @@ def _launch_frame_arbitration(op) -> dict:
             if report['executed'] == 0:
                 _launch_arb_counter(op,
                                     cw_launch_arbitrage.KEY_ZERO_CONSUME)
-            # 后验跌破检测:闸投影成本与执行侧真实成本存在模型差时暴露
+            # 后验跌破检测:闸逻辑态成本与执行侧真实成本存在模型差时暴露
             # (正常恒 0;>0 = 残量显影,判读归 ADR-0566)。金读 = 容器读口
             # (outcome.state 帧金随 outcome 退役,容器 gold 同源)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -2111,8 +2111,8 @@ class CwLoop(SrOperation):
                                 _ex_eff.spec.name)
                 # 账本→字段桥(迁移批次三 B1,设计 §5.1/§3.3.5-6/§3.2.5):
                 # per_node 余额累加仅在真实推进时(每节点恰一次,闸门=
-                # advance_node advanced 位);容量投影每 pass 重锚(观察构造器
-                # 按默认容量建视图会覆盖投影值,备战帧观察后须回写)。均
+                # advance_node advanced 位);容量逻辑态直写每 pass 重锚(观察构造器
+                # 按默认容量建视图会覆盖直写值,备战帧观察后须回写)。均
                 # write_logic 记录面,best-effort 不阻塞备战主链。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     grant_effect_node_refresh_balance,

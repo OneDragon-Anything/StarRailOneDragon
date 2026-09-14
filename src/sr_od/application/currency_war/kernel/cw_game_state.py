@@ -286,10 +286,10 @@ REGISTERED_ACTORS: set[str] = {
                                # 事实组 record_refresh_execution 的计数写入)
     'CwOpOpenShop',            # 开商店原子(op 函数与独立壳同名登记)
     'CwOpCloseShop',           # 关商店原子
-    'CwFlowStrategy',          # 商店序列驱动器·基类缺省(投影直写,波 4)
-    'MandateV1Strategy',       # 商店序列驱动器·mandate 覆写(投影直写,波 4)
+    'CwFlowStrategy',          # 商店序列驱动器·基类缺省(逻辑态直写,波 4)
+    'MandateV1Strategy',       # 商店序列驱动器·mandate 覆写(逻辑态直写,波 4)
     'CwLoop',                  # 外循环(开局链分支标识写点,obs 族 ①)
-    'EffectLedgerBridge',      # 效果账本→字段桥(容量投影/增额授予;v3.2-G4
+    'EffectLedgerBridge',      # 效果账本→字段桥(容量逻辑态直写/增额授予;v3.2-G4
                                # §3.2.1 登记类属补项;R5 W1 起显式签名)
     'SimEngineP1',             # sim P1 引擎(T-185 批B:外部事件 obs 族写点
                                # ——收入/结算/回合初始化/开局播种/装备发放/
@@ -756,9 +756,9 @@ def consume_defect_sink() -> list[dict]:
 
 #: 观察覆盖 logic 失配告警的抑制登记面(T-185 批B;裁定 A/裁定 4 申报表
 #: 的代码化):evidence 命中前缀的失配缺陷**不落 buffer 不告警**。
-#: 语义:sim 引擎外部事件写(obs 族)覆盖动作投影(logic 源)是 sim 建模
-#: 的结构形态——事件注入(收入/结算/回声)对投影的推进不是「推算 bug」,
-#: 留证无判读价值;xp 即时结转(投影)vs sim 轮末延迟结转(引擎账本)
+#: 语义:sim 引擎外部事件写(obs 族)覆盖动作逻辑态直写(logic 源)是 sim 建模
+#: 的结构形态——事件注入(收入/结算/回声)对逻辑态的推进不是「推算 bug」,
+#: 留证无判读价值;xp 即时结转(逻辑态直写)vs sim 轮末延迟结转(引擎账本)
 #: = 申报差异(裁定 4 明点)。生产实机链零 'sim:engine:' 前缀写点,
 #: 抑制面零触达(喂入口 evidence = 'sim:synthesized' 不同前缀,不受辖)。
 _MISMATCH_SUPPRESS_PREFIXES: tuple[str, ...] = ('sim:engine',)
@@ -1161,17 +1161,17 @@ def grant_effect_node_refresh_balance(bs: GameState, *,
 
 
 def project_effect_capacity(bs: GameState) -> None:
-    """桥·容量投影(§3.2.5):按账本在册容量时限声明回写备战席容量——
+    """桥·容量逻辑态直写(§3.2.5):按账本在册容量时限声明回写备战席容量——
     激活期 capacity=N、条目到期移除后自动回默认 9。
 
     声明契约:容量条目的 payload 携带 ``capacity_limit: int``(激活期容量;
     注册表现零条目携带——§5.2 缺口登记「禁到注册表找规格」,载体归注册表
     建模批候选,声明字段名由此钉死,首批容量条目入册即自动生效)。多声明
-    取 min(叠加收紧向)。当前零携带 → 投影恒等于默认 9(幂等 no-op,行为
+    取 min(叠加收紧向)。当前零携带 → 直写恒等于默认 9(幂等 no-op,行为
     与接线前逐位一致)。
 
     采样点 = 备战帧观察后(cw_loop 备战分支,**每 pass 重锚**):观察构造器
-    (bench_view_from_obs)按默认容量建视图,会覆盖投影值,故观察后须重锚;
+    (bench_view_from_obs)按默认容量建视图,会覆盖逻辑态直写值,故观察后须重锚;
     bench 从未观察(值 None)= 无容器可写,跳过(容量随 bench 首帧进入
     记录)。建模批补首张容量条目时须同批补观察构造器的容量感知,防观察
     覆盖 logic 值刷缺陷台账(本桥 docstring 即该义务的挂点)。
@@ -1424,8 +1424,8 @@ def _json_safe(value: Any) -> Any:
 
 def bench_view_of_slots(bench_list: list) -> BenchView:
     """CwSimFrame.bench 槽位表(0 基下标 + None 洞)→ BenchView(记录模型
-    形状契约;槽 i = 物理槽 i+1,与 sim 合成口同构映射)。投影面用
-    (BuyCard 升星投影的逻辑直写值构造源,ADR-0651)。"""
+    形状契约;槽 i = 物理槽 i+1,与 sim 合成口同构映射)。逻辑态面用
+    (BuyCard 升星逻辑态直写的值构造源,ADR-0651)。"""
     slots: list[BenchSlot] = []
     for i, bc in enumerate(bench_list or []):
         if bc is None:
@@ -1448,9 +1448,9 @@ def bench_view_of_slots(bench_list: list) -> BenchView:
 
 
 def detect_merge_upgrade(cur: Any, proj: Any) -> bool:
-    """BuyCard 投影是否发生 3 合 1 升星(§3.2.18 修法 a 触发判定;纯函数)。
+    """BuyCard 逻辑态直写是否发生 3 合 1 升星(§3.2.18 修法 a 触发判定;纯函数)。
 
-    判据 = 同名角色投影后最高星级 > 投影前同名最高星——3 份合成是该
+    判据 = 同名角色直写后最高星级 > 直写前同名最高星——3 份合成是该
     签名的唯一来源(星级只经合成上升;买新卡不抬同名最高星)。合成域 =
     全场(bench+deployed,``cw_state._merge_bench`` 同口径)。级联合并
     (3×1★→2★→…)只看「有抬升」真值,层级数不影响本判定。
@@ -1514,23 +1514,23 @@ def apply_settlement_cover(bs: GameState, *, hp_after: int | None,
         sig=_sig, note=note)
 
 
-# ============================================================ 商店动作投影直写
+# ============================================================ 商店动作逻辑态直写
 # (波 4 黑板容器化;设计件 = changes/2026-09-11-unified-state/design/
 #  商店黑板容器化方案.md §2.1-2/§4-M1/M5)
 
-#: 投影公式语义源锁的登记面(设计件 §4-M5:直写域集/None 跳写清单/
+#: 逻辑态公式语义源锁的登记面(设计件 §4-M5:直写域集/None 跳写清单/
 #: executed 回执字段集/支持动作集随本锁登记;未登记写点 = 缺陷,禁扩静默):
 #: - **域集封闭**(gold / bench / shop payload / xp 四域;CloseShop 的
 #:   leave_screen 与 reseed 的 bench write_logic 为同域通道形态);
 #: - **支持动作集** = BuyCard / SellBench / LevelUpShop(is-a LevelUp) /
 #:   RefreshShop / CloseShop(商店单动作循环在产动作面;fields.md §4.2
-#:   逐 op 行;SellDeployed/DeployMove/CompTransaction 不投影——等观察
+#:   逐 op 行;SellDeployed/DeployMove/CompTransaction 不写逻辑态——等观察
 #:   覆盖,申报 = 商店 visit 在产动作集外);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold /
 #:   xp / 刷新费(paid=None 整动作跳写);
 #: - **executed 回执字段集** = bought_count(BuyCard 实购张数,满栏多买
 #:   k 执行期确定)/ levelup_clicks(LevelUpShop 实际击数)/ refresh_paid
-#:   (RefreshShop 实付刷新费,免费帧 0);回执缺字段 = 该动作本轮不投影。
+#:   (RefreshShop 实付刷新费,免费帧 0);回执缺字段 = 该动作本轮不写逻辑态。
 #: **T-185 扩面申报表**(详设 sim-state-switch §3「扩面随本迭代申报表」,
 #: 注释按该修订改写,原「禁扩静默」条款由本表承接):
 #: - 支持动作集扩:v2 动作族 SellDeployed / SwapDeploy / CompTransaction
@@ -1577,7 +1577,7 @@ class ShopActionExecuted:
     执行期决定量以落地门回执为准,禁按动作对象预估(设计件 §2.1-2):
     BuyCard 满栏多买 k 张(LevelUp 满栏例外一击多张)与 LevelUpShop
     实际击数(循环点击至 level+1)均由执行侧回执;缺字段(None)= 该
-    动作本轮不投影,等观察覆盖。
+    动作本轮不写逻辑态,等观察覆盖。
 
     **T-185 Optional 语义(详设 §3 修订)**:executed 整体可缺省
     (None = 理想执行)——live 传执行回执(参数化不变);sim 引擎传
@@ -1595,9 +1595,9 @@ class ShopActionExecuted:
     #: RefreshShop 实付刷新费(免费帧 = 0 → gold 不写,fields.md §3.3.4)。
     #: 现役喂入方 = sim/replay 驱动器(flow/bridge decide_shop_screen,按
     #: 动作 cost 派生);生产落地门(cw_op_buy_cards.apply_action_outcome)
-    #: **暂不喂本字段**——商店线 RefreshShop 是终结 op,生产投影门对终结
-    #: 动作整体跳写(期望态按下段入口重观察作废,终结不投影为申报过渡
-    #: 语义),单接本字段不可达;接线(含终结投影语义改)与 receipts 接线
+    #: **暂不喂本字段**——商店线 RefreshShop 是终结 op,生产逻辑态直写门对终结
+    #: 动作整体跳写(期望态按下段入口重观察作废,终结不写逻辑态为申报过渡
+    #: 语义),单接本字段不可达;接线(含终结直写语义改)与 receipts 接线
     #: 同批评估(账本 T-98 批首清单候选,波 5 sim 反转时裁决)。
     refresh_paid: int | None = None
 
@@ -1632,7 +1632,7 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
       (C1 冻结 invariant),应用携 income/fill_cost 出参。
     - **LevelUpShop** = xp 按实际击数(``xp_apply_clicks`` 单一源:满级
       封顶零推进)+ gold −击数×单击价(单价 = 动作对象决策期值)。
-      level 域不在投影域集(升档等观察覆盖)。满级 = applied=False +
+      level 域不在逻辑态直写域集(升档等观察覆盖)。满级 = applied=False +
       reason='level_cap' 零写。executed None = 击数自算 1(理想执行)。
     - **RefreshShop** = gold −刷新费(paid=0 免费帧 −0/不写)。executed
       None = 跳写(实付金含免费刷注入等引擎差异,不可自算——sim 引擎
@@ -1998,7 +1998,7 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
                 _w(bs.gold, int(g) - paid, 'proj_refresh_gold')
         # 刷后牌面 = 续段重观察(payload 不写;免费帧 gold 同不写)
         return LogicOutcome(applied=True)
-    # —— CloseShop(结构离屏;离屏渠道 = obs 族,actor 沿投影 sig)——
+    # —— CloseShop(结构离屏;离屏渠道 = obs 族,actor 沿逻辑态直写 sig)——
     if isinstance(action, CloseShop):
         if bs.shop.value is not None:
             _off_sig = ChannelSig(family='obs', actor=sig.actor,
@@ -2067,13 +2067,13 @@ def mutate_bench_deployed_local(bench, deployed, action,
     mutate_bench_deployed(bench, deployed, action, shop=shop)
 
 
-#: 备战投影直写域集封闭登记面(设计件《prep 链容器化方案》§2.4-3/§4-P5,
+#: 备战逻辑态直写域集封闭登记面(设计件《prep 链容器化方案》§2.4-3/§4-P5,
 #: 形态对齐 :data:`SHOP_PROJECTION_DOMAINS` 的商店登记面):本口只辖
 #: gold / bench 两域(集外动作零写,未登记写点 = 缺陷,禁扩静默):
 #: - **域集封闭** = gold(SellBench 回金,公式单一源 = ``cw_state.
 #:   sell_refund``)+ bench(SellBench 摘槽,BenchView 重建 write_logic,
 #:   重播种先例 =《商店黑板容器化方案》§2.3 布局代次行);
-#: - **OpenBox/OpenTome/ClickSpheres 投影只动视觉域**(boxes/tomes/spheres
+#: - **OpenBox/OpenTome/ClickSpheres 直写只动视觉域**(boxes/tomes/spheres
 #:   在黑板帧上推进,容器零写);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold(gold
 #:   未读 None 时回金域跳写,值留观察覆盖;bench 摘槽不受 gold 缺读辖);
@@ -2084,7 +2084,7 @@ PREP_PROJECTION_DOMAINS: tuple[str, ...] = ('gold', 'bench')
 
 def apply_prep_action_logic(bs: GameState, action: Any, *,
                             produced_by: str, sig: ChannelSig) -> None:
-    """备战动作投影直写(逐动作零读屏的期望态纯计算推进的容器半;
+    """备战动作逻辑态直写(逐动作零读屏的期望态纯计算推进的容器半;
     设计件《prep 链容器化方案》§2.4-3)。落位 = 本写口单一源,消费位 =
     ``cw_screen_prep._project_prep_obs``(SellBench 分支;黑板帧保留
     视觉域半,state 复制腿随黑板槽退役消亡)。
@@ -2098,13 +2098,13 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
       MandateFrame/bench 读口同坐标系),读口 ``bench_slots_of`` 下标
       i = 物理槽 i+1,换算在此单点完成。槽位空/越界 = 陈旧提案,本口
       零写(等观察覆盖);槽位件缺星级/缺费 = ``bench_char_cost`` 注册
-      表单一源兜底,与旧投影腿同式。
+      表单一源兜底,与旧直写腿同式。
     - **OpenBox/OpenTome/ClickSpheres** = 视觉域推进(boxes/tomes/spheres
       在黑板帧上),容器零写,本口直接返回。
 
     输入域 None 语义(域级独立跳写):gold 未读(None)时回金域跳过、
-    值留观察覆盖;bench 摘槽不受 gold 缺读辖。投影直写值受后续观察覆盖
-    (fields.md §2.3 观察赢),失配 = 投影模型 bug 走缺陷台账。
+    值留观察覆盖;bench 摘槽不受 gold 缺读辖。逻辑态直写值受后续观察覆盖
+    (fields.md §2.3 观察赢),失配 = 逻辑态模型 bug 走缺陷台账。
     sig 纪律 = family='logic_action'(渠道②;actor 在册校验,写入口
     统一辖),group_id 按 ``act:<op类名>@<seq>`` 先例在口内补齐。
     """
@@ -2880,7 +2880,7 @@ def _derive_write(bs: GameState, target: Field, value: int | NodeKey, *,
 
 def effective_node_ord(bs: GameState) -> int | None:
     """生效序读口(派生计算,非存储字段;判定基准读口,非决策消费切换目标
-    ——「node 投影改读派生域」M4 工作项已作废:cw_bs_view 现读 bs.node 镜像
+    ——「node 逻辑态改读派生域」M4 工作项已作废:cw_bs_view 现读 bs.node 镜像
     合规,无切换义务,ADR-0630 修订节 2/正本消费面申报)
     = max(node_ord 字段现值, node_hist_ord)——单字段双值结构(ADR-0630 修订
     节 2):字段现值 = 最近一次派生写入(四腿全逻辑层 write_logic),hist =

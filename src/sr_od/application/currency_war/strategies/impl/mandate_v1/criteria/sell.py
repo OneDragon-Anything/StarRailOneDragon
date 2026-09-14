@@ -123,7 +123,7 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     """凑息卖·回拉发射位(T1 语义重写;设计 13_buy_face_design §2.2)。
 
     语义重写三项(R2-N4,取代旧「T_SEARCH_A 注入态资格全集无差别全发」):
-    ① **金位触发(缺口驱动)**:买/花后投影金 ``gold`` < 息线
+    ① **金位触发(缺口驱动)**:买/花后逻辑态金 ``gold`` < 息线
        g* = saturation_line(cap_resolved) 才发射,缺口 = g* − gold;
        非缺口帧零发射(返回 'not_needed',与 funding_support 触发形态同构);
     ② **目标量止盈**:remaining 递减贪心(funding_support ``remaining``
@@ -139,14 +139,14 @@ def sell_for_interest(gold: int, bench: list[BenchChar],
     同门——占席物品不可卖且无金币现值,空名 1★ 禁穿透资格循环;
     语境经 ``predicates.bench_effect_context`` 共享装配现读——症3 三通道
     统一)。序:``prefer_names``
-    (刚买件名集合,R2-N1 发射约束:首卖刚买件使连带卖出损失=0;帧投影
+    (刚买件名集合,R2-N1 发射约束:首卖刚买件使连带卖出损失=0;帧级逻辑态
     架构下刚买件尚未入 bench,按名匹配同资格在册件)优先,其余按
     (star, slot) 升序(funding_support 同款序)。
 
     分键遥测(R3-R5 四字段,设计 §3.2;counters=None 时不记):
     ``t1_interest_emit_frames``(发射帧数)/``t1_interest_gap_total``(缺口
     累计)与 ``t1_interest_sellback_total``(实际卖回累计,两者之比=覆盖
-    缺口率)/``t1_pullback_gold_ge_gstar``(回拉后投影金 ≥ g* 帧数=金位
+    缺口率)/``t1_pullback_gold_ge_gstar``(回拉后逻辑态金 ≥ g* 帧数=金位
     轨迹)。
 
     凑息禁令(血线硬地板解锁包件②,≤15 族在册授权):死亡线帧不凑息

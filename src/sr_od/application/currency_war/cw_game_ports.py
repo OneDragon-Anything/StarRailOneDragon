@@ -130,7 +130,7 @@ class CwActionSink(Protocol):
     生产实现(LiveActionSink,批 1)= 现行动作 op execute(坐标点击/
     拖拽)+ 执行侧验证读(read_gold 对拍/read_shop_cards 重读)的原样
     封装,生产行为逐位不变;测试实现(FakeActionSink)= 假游戏
-    ``apply(action)``,动作语义投影走 ``cw_state.simulate`` 单一源 +
+    ``apply(action)``,动作语义逻辑态推算走 ``cw_state.simulate`` 单一源 +
     规则外效应一次落定(方案 §2.2:假游戏不内联任何动作转移)。
     """
 

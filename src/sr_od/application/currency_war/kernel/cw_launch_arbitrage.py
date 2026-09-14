@@ -33,7 +33,7 @@
    互斥读数降格为**总量弱对账**;sim 侧逐帧强断言(哨兵
    ``sim/checks/launch.py``,「决策段零执行 ∧ 仲裁段外零消费」)。
 
-**执行皮肤不在本模块**:消费动作的执行/投影是两面各自的循环体(生产 =
+**执行皮肤不在本模块**:消费动作的执行/逻辑态直写是两面各自的循环体(生产 =
 ``run_buy_waves`` 单动作循环既有守卫链;sim = 引擎动作转录),与
 「发射核 launch_prepared_battle 留 operations 不动」同判据(两面差异全部
 属执行/观测皮肤,判定语义恰此处一份——cw_launch_admission 同款先例)。
@@ -71,8 +71,8 @@ KEY_GATE_BLOCKS: str = 'launch_arbitrage_gate_blocked'
 #: 未过 ⇒ 走既有 stale 分支弃射;可辨识残量,从「非发射帧 digest 零变化」
 #: 锚辖域显式豁免,禁静默——DESIGN v1.1 §3.2 载体)。
 KEY_ABANDONED_LAUNCH: str = 'launch_arbitrage_abandoned_launch'
-#: 花后跌破 g* 残量计数(后验检测:合并多买等投影外成本使实际花穿线;
-#: 正常恒 0,>0 = 预算闸投影成本与执行侧真实成本存在模型差,响亮暴露)。
+#: 花后跌破 g* 残量计数(后验检测:合并多买等逻辑态外成本使实际花穿线;
+#: 正常恒 0,>0 = 预算闸逻辑态成本与执行侧真实成本存在模型差,响亮暴露)。
 KEY_CROSS_LINE: str = 'launch_arbitrage_cross_line'
 #: 仲裁开店失败帧数(生产;店未开成即收,不消费)。
 KEY_OPEN_FAILED: str = 'launch_arbitrage_open_failed'
@@ -82,7 +82,7 @@ KEY_PRECHECK_SKIP: str = 'launch_arbitrage_precheck_skip'
 
 
 def launch_spend_cost(action) -> int:
-    """动作投影成本(预算闸用;零新判据,成本字段随动作类单一来源)。
+    """动作逻辑态成本(预算闸用;零新判据,成本字段随动作类单一来源)。
 
     - BuyCard:``card.cost``(缺省 3 中费保守估,与评估栈 check_affordable
       同口径);

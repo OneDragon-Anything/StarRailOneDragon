@@ -479,8 +479,8 @@ def _apply_full_bench_merge_buy(bench: list[BenchChar | None],
 
     双账同构依据(T-182,2026-09-09 05:52 运行局双响事故):满栏时游戏
     对完成合成的买入**接受并合成**(金照扣、bench 素材被消费腾槽、场上
-    载体升星)——投影与 tracked 两本账必须同走本分支;旧 tracked 侧
-    丢件不合成使两账结构性分叉,守卫在同 visit 下一动作(投影侧已腾槽、
+    载体升星)——逻辑态与 tracked 两本账必须同走本分支;旧 tracked 侧
+    丢件不合成使两账结构性分叉,守卫在同 visit 下一动作(逻辑态侧已腾槽、
     豁免条件失效)对拍误炸。
     """
     _name = card.name

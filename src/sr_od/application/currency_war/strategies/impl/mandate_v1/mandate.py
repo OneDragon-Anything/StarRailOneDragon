@@ -1005,7 +1005,7 @@ def run_mandate(frame: MandateFrame,
     边界:闩置位在**商店决策访问位**(mandate_v1/shop.decide_shop_action
     入口=开店动作真执行、商店域决策已发生的时点),不在发射位——
     备战环是单动作环,同发射列表里 M7 发射序回排后的 RunEquip(可续类)
-    先执行即投影未建模终结本环,发射列表中其后的 OpenShop 意图未执行;
+    先执行即逻辑态未建模终结本环,发射列表中其后的 OpenShop 意图未执行;
     若发射即置闩,闩烧而店未开,后续环重跑 mandate 被闩挡死 ⇒ 空批
     StartBattle(2026-09-05 单动作备战环实机停机局的扩展诊断定谳:同局
     备战环连续三轮经济冻结后空批出战,「闩置位在发射位而非执行位」;
@@ -1668,7 +1668,7 @@ def run_mandate(frame: MandateFrame,
     # 必须移出而非前移:M7 发射序回排块(下方,本体一行不动)对 out 列表内
     # 任何 RunTools 无条件重排到首个截断/终结类动作之前——同帧含
     # LevelUp+OpenShop 的常态形态下 RunTools 必被重排到 LevelUp 之后,
-    # LevelUp 先执行而投影未建模终结本 visit,RunTools 本帧从未执行
+    # LevelUp 先执行而逻辑态未建模终结本 visit,RunTools 本帧从未执行
     # (旧输入升级照发)。移出后本回排不再见 RunTools,少一个特例。
     # 本执行器内不再发射 RunTools(防双发射;回归锚 =
     # test_cw_prep_flag_machine::test_runtools_emit_position)。
@@ -1709,7 +1709,7 @@ def mark_equip_pass_executed(session: StrategySession,
     RunEquip 组合 op 成功返回时——「一次完整穿戴 pass 已落地」的记账
     时点(含 0 穿完成态:候选全拉黑/hold 过滤后的完成 pass 信息完备,
     装备穿戴放行判定门②论证不变)。为什么不在发射位:备战环是单动作环,发射
-    列表中排在 RunEquip 之前的可续类动作(RunDeploy 等)先执行即投影
+    列表中排在 RunEquip 之前的可续类动作(RunDeploy 等)先执行即逻辑态
     未建模终结本环,RunEquip 意图未执行而闩已烧 → 后续环
     equip_latch_skip 挡死,装备滞留整个备战期(与开店闩置位时机修复
     同型,见 run_mandate docstring「备战期开店闩」节)。键式与
@@ -1897,7 +1897,7 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     事件语义(本守卫触发形态):2026-09-06 实机首局(单动作架构,
     ADR-0518)00:08:25 备战环无进展守卫以「连续 3 环同签名动作批
     ['RunDeploy'] ∧ 零推进」停机留证——决策核每轮提案 RunDeploy,
-    执行方计划空报 no-op 成功,RunDeploy 投影未建模(保守回退)交回
+    执行方计划空报 no-op 成功,RunDeploy 逻辑态未建模(保守回退)交回
     外循环,重进再提案,3 环零推进。守卫行为正确,根因 = 本发射位
     漏接抑制谓词。禁第二实现:判空一律走 kernel;本函数只做输入装配
     (与 CwScreenDeploy 同款,经 kernel deploy_target_sets /

@@ -7,9 +7,9 @@
   回执位;备战域写点 = PrepActionExecutor._note_action_journal,T-16
   执行缝账务包络扩围——备战帧金动作自此逐行在账,op 分键
   「货币战争-备战动作」,行携执行点 ``gold_delta``)。期望态 delta 列
-  (expected_delta/gold/bench_used)已随 T-163 前瞻投影消费退役不入行:
-  投影真值在容器 receipts 直写流水(state/journal.jsonl 行行自足),
-  判读输入 = 动作行本体 + 该流水 join,行内不再复制第二份投影;
+  (expected_delta/gold/bench_used)已随 T-163 前瞻推算消费退役不入行:
+  逻辑态真值在容器 receipts 直写流水(state/journal.jsonl 行行自足),
+  判读输入 = 动作行本体 + 该流水 join,行内不再复制第二份逻辑态;
 - kind='op':非决策 op(战斗等待/入口链/位面切换)enter/exit 成对行。轮询
   内循环逐 tick 不落行(用户需求粒度 = 每次 op 调用;tick 级留日志)。孤儿
   enter 行(进程中断/停局导致 exit 丢失)= 进程中断证据,装配端标注
@@ -21,7 +21,7 @@
 journal 侧静默触顶停写会让长局尾段 op 行无感丢失——复盘盲区的代价
 远大于流体积风险(T-121 深局实测单 run 690 行即已越旧顶)。禁入决策
 输入(守卫 = 键族命中锁,ADR-0571 §2.3 范式;决策输入一律走 TurnState
-幂等投影)。
+幂等装配)。
 """
 from __future__ import annotations
 
@@ -154,8 +154,8 @@ def record_action_journal(match: Any, action: Any, seq: int, exec_ok: bool,
       ``GameStateReadReceipt``,备战域 = 容器读口现读的命名空间桩。
       位置键真值由调用方在动作时点捕获,本函数不回读容器防时点漂移)
     :param post_receipt: 退役位,恒 None(形参保留只为调用点位兼容——
-      期望态 delta/gold/bench_used 列已随 T-163 前瞻投影消费退役不入行,
-      两域同口径;投影真值单一源 = 容器 receipts 直写流水,判读 join
+      期望态 delta/gold/bench_used 列已随 T-163 前瞻推算消费退役不入行,
+      两域同口径;逻辑态真值单一源 = 容器 receipts 直写流水,判读 join
       该流水,本行不复制第二份。传非 None = 调用方契约违约)
     :param op_name: 行 op 键(复盘「分发了谁/金动归属」直读域分键):缺省
       = 商店「货币战争-买牌」;备战域 = 「货币战争-备战动作」

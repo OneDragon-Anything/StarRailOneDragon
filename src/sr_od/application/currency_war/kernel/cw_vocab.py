@@ -13,15 +13,15 @@ docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
 与 OCR 填帧链的局内事实宿主 = 容器单例(喂入 = read_game_state 漏斗
 ``_feed_board_state`` / sim 合成口 ``synthesize_from_game_state``)。
 本类现役消费面 = 推演内核(sim 引擎/engine runner/机制等价性验证锁 M1
-/假环境动作语义投影),实机操作链零持有;退役指针(申报面 =
+/假环境动作语义逻辑态推算),实机操作链零持有;退役指针(申报面 =
 kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
 
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
 试探。本文件的 ``simulate`` 是单步动作应用器(纯函数),消费面终态 =
-sim 引擎整局推进 / 假游戏环境动作语义投影 / 规则实现等价性验证
+sim 引擎整局推进 / 假游戏环境动作语义逻辑态推算 / 规则实现等价性验证
 (锁 M1)——策略域与实机操作链零消费:
 - 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
-  (容器读,纯规则分支),期望态推进 = 容器投影直写
+  (容器读,纯规则分支),期望态推进 = 容器逻辑态直写
   (``cw_game_state.apply_shop_action_logic`` + 合成升星腿)。
 
 字段多由 sim 环境剧本/重放档案构造填充;未填(None/默认)时决策安全降级。
@@ -301,7 +301,7 @@ def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | No
     return None
 
 
-# ===== Action(动作词表;sim 引擎推进/执行链投影/守卫消费) =====
+# ===== Action(动作词表;sim 引擎推进/执行链逻辑态直写/守卫消费) =====
 #
 # ── 索引字段定义约定(本族一切 idx/slot/index 字段的单一源;AGENTS.md 硬约束
 #    「索引/槽位字段必须带定义注释」的正文展开)──────────────────────────

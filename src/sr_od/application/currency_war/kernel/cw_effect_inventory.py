@@ -700,8 +700,8 @@ def apply_board_rewrite(bs: GameState, spec: EffectSpec, *,
     退款以 logic 标写成权威值(观察帧覆盖前记录层留错误金)。gold 未读
     (None)= 无累加基座,跳过金写入(禁把退款当余额);退款合计为 0
     (出售域全未读/空场)同样跳过——禁把观察金翻标成 logic(§2.1 来源
-    标记到字段)。bench 清空保留现容量(节省工位类容量改写归容量投影
-    桥辖域,两桥互不越界)。
+    标记到字段)。bench 清空保留现容量(节省工位类容量改写归容量逻辑态
+    直写桥辖域,两桥互不越界)。
 
     **sim 语义申报(适用性/对齐)**:本桥不接 sim——sim 的 GameState 全量
     经 synthesize_from_game_state 由 sim 真值 CwSimFrame 合成(evidence 恒
@@ -775,7 +775,7 @@ def apply_board_rewrite(bs: GameState, spec: EffectSpec, *,
         bs.write_logic(
             bs.bench,
             # 槽位表原位清空:槽数保持观察现值,全槽置空;容量保留现值
-            #(容量改写辖域 = 容量投影桥 project_effect_capacity,互不越界)。
+            #(容量改写辖域 = 容量逻辑态直写桥 project_effect_capacity,互不越界)。
             BenchView(slots=[BenchSlot(kind='empty')] * len(view.slots),
                       capacity=view.capacity),
             produced_by='EffectLedgerBridge', evidence=ev, sig=sig)

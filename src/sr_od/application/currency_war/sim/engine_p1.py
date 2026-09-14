@@ -223,7 +223,7 @@ LEVEL_CAP: int = 9
 # ===== T-185 批B:引擎写面(裁定 A 渠道表,修订版详设 §1)=====
 # 动作应用 = 转移函数 apply_shop_action_logic(logic_action 族,与 live
 # 同函数同渠道);外部事件(收入/结算/回合初始化/开局播种/装备发放穿戴/
-# 部署代理)= obs 族(下方 helper);驱动器 decide 期投影写维持现状
+# 部署代理)= obs 族(下方 helper);驱动器 decide 期逻辑态直写维持现状
 # (裁定 3:live/sim 同代码不分叉,引擎动作应用与其幂等收敛)。
 _SIM_ENGINE_ACTOR: str = 'SimEngineP1'
 
@@ -539,7 +539,7 @@ def _residual_fill_deploy(
       不刷新、不 swap——金账恒等式(gold_before+inc−buys−levelup−refresh
       +income)不含本动作,任何 Δp>0 受益在 C=I=0 下严格非负(P-F1,
       docs/develop/sr_od/application/currency_war/proofs/p24-residual-fill-dominance.md)。
-    - 显式保留集投影已随 v3_hoard 通道退役删除(A6 裁决;
+    - 显式保留集逻辑态写点已随 v3_hoard 通道退役删除(A6 裁决;
       统一迁移批 commit b94e9cfb,2026-09-04 用户裁定清理)——
       写端已亡,保留集恒空;「与在场(deployed)同名」的素材副本
       仍由围栏 dedup(r404-A2/5.1.7 在场唯一)自然 held(ADR-0473
@@ -550,7 +550,7 @@ def _residual_fill_deploy(
       deploy_lag_units,消除 skip 轮 lag 恒 0 的检查器失明面(设计 §四-2)。
 
     返回 (residual_deployed 补上场件数, residual_held 恒 0——保留集
-    投影已随 v3_hoard 通道退役删除(见上),字段保留仅为账本 schema
+    逻辑态写点已随 v3_hoard 通道退役删除(见上),字段保留仅为账本 schema
     兼容, deploy_lag_units 补部署后残余可上件数)。
 
     T3 同轮保留·sim 建模缺口显式申报(修复批验收口径):本函数只在
@@ -1737,7 +1737,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # (黑板契约),禁静默按空态决策。
                 # 帧代次 = full(ADR-0583 §3.3-sim):每段入口帧触发方向重估——
                 # 首段键新驱动机器、后续段键同只刷视图(每段视图刷新保持,
-                # 与旧「每段战略层直调重估」效果一致;段内投影帧槽值保持
+                # 与旧「每段战略层直调重估」效果一致;段内逻辑态帧槽值保持
                 # 'none' 不再刷新,= 段内视图不漂)。
                 # W6 波 4:黑板槽写点退役(设计件 §1.3-1 读写端同波)——
                 # 决策读容器,真值喂入 = 下方直写喂入口;标注槽(帧代次)
@@ -1765,7 +1765,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     break
                 # 段入口态快照(裁定 5 复核设计):两观测块口径 = 段入口态
                 # (ADR-0583 段帧首静态快照),而 decide_shop_screen 期间
-                # mandate 驱动器会向容器做期望态投影直写(裁定 3 维持现状)
+                # mandate 驱动器会向容器做期望态逻辑态直写(裁定 3 维持现状)
                 # ——快照取自决策调用前(容器尚为段入口权威态),消费在
                 # 决策调用后,读数语义 = 段入口态,与帧时代逐位同。
                 _seg_gold0 = gold_of(bs)
@@ -1778,17 +1778,17 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                     if s.kind == 'content' and s.card is not None]
                 _seg_refresh_cost0 = (bs.shop_refresh_cost.value or 2)
                 # 段入口全量快照(动作循环回放基点):驱动器 decide 循环
-                # 对每个非终结动作即时投影(与 live 同代码,裁定 3)——decide
-                # 后容器 = 投影终态;引擎对非终结动作不再二次应用(真值应用
-                # = 驱动器投影,同函数同渠道),账本转录的逐动作 outcome 由
+                # 对每个非终结动作即时逻辑态直写(与 live 同代码,裁定 3)——decide
+                # 后容器 = 逻辑态终态;引擎对非终结动作不再二次应用(真值应用
+                # = 驱动器逻辑态直写,同函数同渠道),账本转录的逐动作 outcome 由
                 # 段入口快照回放容器(一次性 board_state_of(None))跑转移
                 # 函数取得——回放语义 = 帧时代 simulate 逐位等价(金样锁
                 # 已证函数≡simulate);终结动作(RefreshShop/CompTransaction,
-                # 驱动器不投影)与引擎自 Init 动作(m1p 卖出)仍由引擎在
+                # 驱动器不写逻辑态)与引擎自 Init 动作(m1p 卖出)仍由引擎在
                 # 真容器上转移函数应用。
                 _seg_entry_snap = bs.full_state_snapshot()
-                # 回放容器即刻建立(decide 后):真容器此刻 = 驱动器投影
-                # 终态;一切「段入口引擎真值」语义的读与应用(动作循环
+                # 回放容器即刻建立(decide 后):真容器此刻 = 驱动器逻辑态
+                # 直写终态;一切「段入口引擎真值」语义的读与应用(动作循环
                 # 预检/仲裁闸金读)都走回放容器——回放 = 帧时代 simulate
                 # 逐位等价(金样锁已证)。
                 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -2029,7 +2029,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             cw_launch_arbitrage as _kla_g,
                         )
                         # 闸金读 = 回放容器(段入口引擎真值语义;真容器此刻
-                        # = 驱动器投影终态,读它会投影后金位误触闸)
+                        # = 驱动器逻辑态终态,读它会直写后金位误触闸)
                         _g_ok, _g_why = _kla_g.launch_arbitration_gate(
                             a, gold_of(_seg_replay), sess)
                         if not _g_ok:
@@ -2112,7 +2112,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         break          # 刷后立即 re-decide(见新店)
                     if isinstance(a, BuyCard):
                         # 商店买入执行(T-185 批B 合并形态):非终结动作的
-                        # 真值应用 = 驱动器 decide 期投影(裁定 3+1,同函数
+                        # 真值应用 = 驱动器 decide 期逻辑态直写(裁定 3+1,同函数
                         # 同渠道收敛);引擎侧在段入口回放容器上跑转移函数
                         # 取 outcome 驱动转录(帧时代 simulate 逐位等价)。
                         # 满栏预检(ADR-0283/`w566_sim_guard/`):只为「满栏
@@ -2266,7 +2266,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         # 前置(见本文件 LEVEL_CAP 注释:追级虚高治理+池指纹
                         # 重锚,归行为变更批)。
                         # T-185 批B(详设 §3 平移边界):金/XP 真值应用 =
-                        # 驱动器投影(裁定 3);引擎在回放容器上取 outcome
+                        # 驱动器逻辑态直写(裁定 3);引擎在回放容器上取 outcome
                         # 驱动转录;LEVEL_CAP 守卫与拒付行留引擎(前置检查
                         # 不写状态字段,lv9 差异保持申报)。
                         from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -2332,7 +2332,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                         progressed = True
                     elif isinstance(a, SellBench):
                         # 卖出执行(T-185 批B 合并形态):真值应用 = 驱动器
-                        # decide 期投影(金回充/装备回收随投影生效);引擎在
+                        # decide 期逻辑态直写(金回充/装备回收随逻辑态生效);引擎在
                         # 回放容器上取 outcome 驱动转录禁自判。陈旧提案
                         # (expect 失配)/空槽 = 函数拒 → 引擎静默跳过(与帧
                         # 时代「非 stale 才进 simulate,否则静默」同语义);
@@ -2405,9 +2405,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                         CompTransaction)):
                         # 动作 v2(契约包 C1,步2):显式部署通道执行。
                         # T-185 批B 合并形态:SellDeployed/SwapDeploy 若由
-                        # 商店决策循环发射 = 驱动器已投影(裁定 3,非终结
+                        # 商店决策循环发射 = 驱动器已直写逻辑态(裁定 3,非终结
                         # 动作),引擎在回放容器上取 outcome 转录;CompTrans-
-                        # action = 终结动作(驱动器不投影)→ 引擎在真容器上
+                        # action = 终结动作(驱动器不写逻辑态)→ 引擎在真容器上
                         # 转移函数应用(全量校验+原子应用;outcome 驱动转录
                         # 禁自判),此处转录账本 + 池守恒/经济记账同步。
                         # 迁移审计 w65(git 历史) 修法3(ADR-0323):``_explicit_deploy_seen`` 移到
@@ -2508,9 +2508,9 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             # 陈旧引用。
                             break
                 # 段尾全量再锚定(引擎真值发布):回放容器 = 本段动作的
-                # 帧时代引擎真值;真容器在驱动器 decide 后 = 投影终态——
+                # 帧时代引擎真值;真容器在驱动器 decide 后 = 逻辑态终态——
                 # 动作全执行时两者收敛(同值写零漂移),消费中断(仲裁闸
-                # 阻断等)时真容器滞留未执行动作的残余投影,回放值纠偏。
+                # 阻断等)时真容器滞留未执行动作的残余逻辑态,回放值纠偏。
                 # 等价语义 = 帧时代「下一决策段入口 feed 真值」(喂入口随
                 # 工作帧退役后本写点承接该职责);evidence 前缀 sim:engine
                 # = 失配抑制登记面。
@@ -2549,7 +2549,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                          'xp-echo', 'xp-echo')
             # 仲裁段披露终化(ADR-0566):gold_after/segments/spent 落
             # launch.arbitrage 位(发射帧行内;零漂移锚辖非发射帧,本键只
-            # 在发射帧存在)。后验跌破检测 = 合并多买等投影外成本显影
+            # 在发射帧存在)。后验跌破检测 = 合并多买等逻辑态外成本显影
             #(正常恒 0);溢出帧零消费单列分键,与带内 fail-closed 可辨。
             if _launch_arb is not None and _round_launch is not None:
                 _ga_arb = gold_of(bs)

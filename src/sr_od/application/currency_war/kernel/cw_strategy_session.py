@@ -206,14 +206,14 @@ class StrategySession:
     # shop_frame_class 标注对象重锚 =「最近一次商店域容器观察写点」(入口
     # 观察段 synthesize 喂入/续段重观察;商店黑板槽已随两态制收口退役,
     # 容器 = 决策读单源)。写者 = 流程
-    # 观察段具名写点(cw_screen_prep 入口 heavy/破墙/投影/read_only 分支、
+    # 观察段具名写点(cw_screen_prep 入口 heavy/破墙/逻辑态直写/read_only 分支、
     # finalize 买后暂存;cw_op_buy_cards 商店 visit 首段/续段;sim engine_p1
     # 每决策段;写点清单 = ADR-0583 §3.4,守卫 = 契约形状锁 L6);
     # 策略器/驱动器零标注写点(帧类写'full'/'view' = 观察层专属身份,D6)。
     # 读者 = 策略器决策入口(flow 层 _consume_*_direction_frame),读后即复位
     # 'none'(消费即清;复位是读协议半部,非新鲜度宣告)。语义:full = 入口
     # 主观察帧(方向重估全程触发);view = 派生帧(只刷派生视图);
-    # none = 投影/循环续段/pick 未持新观察(不触发刷新)。
+    # none = 逻辑态直写/循环续段/pick 未持新观察(不触发刷新)。
     prep_frame_class: str = 'none'
     shop_frame_class: str = 'none'
     # 结算观察累积槽(ADR-0583 §2.5:旧 on_round_end 拆两半的存活半)。观察层在

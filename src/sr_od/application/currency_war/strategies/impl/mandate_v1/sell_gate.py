@@ -419,7 +419,7 @@ def _close_switched_obligations(session: StrategySession,
 # ===== 义务镜像簿与换线孤儿证明(L1 carve-out 的证据载体;ADR-0611)=====
 # 为什么需要镜像簿:装配 A 身份段的换线闭合读点(``_close_switched_
 # obligations``)会**就地销账**义务类登记——同帧更早的 A 读点(帧首
-# 投影等)触发销账后,登记面不可再辨「曾义务」,L1 换线孤儿 carve-out
+# 逻辑态读等)触发销账后,登记面不可再辨「曾义务」,L1 换线孤儿 carve-out
 # (ADR-0611 §3-7)迟到读登记簿 = 永远扑空。义务买入镜像簿
 # (scratch,轮戳)与登记账分离,跨销账存活 = 孤儿证明的载体(与
 # shop 帧首 ``_sw_orphans`` 证明集同一依据,ADR-0591 §4)。
@@ -542,10 +542,10 @@ def _seed_frame_axes(session: StrategySession) -> tuple[
     轴源 = session 容器(W6 波 4 黑板容器化改道,设计件 §2.4-2):
     - **plane/round 轴 = bs.node**(NodeKey;权威写端 = 派生规则四腿,
       段入口粒度对轮/位面恒安全);
-    - **bench 轴 = bs.bench**(prep 帧观察值 + visit 内投影直写)。原
-      「双帧并集」的活性闭合语义由容器活值天然承载:逐动作投影直写
+    - **bench 轴 = bs.bench**(prep 帧观察值 + visit 内逻辑态直写)。原
+      「双帧并集」的活性闭合语义由容器活值天然承载:逐动作逻辑态直写
       (apply_shop_action_logic bench 域)使店内新鲜买入即时在席,
-      last_state 段入口滞后窗与投影帧 prep 语境滞留窗一并消亡——
+      last_state 段入口滞后窗与逻辑态帧 prep 语境滞留窗一并消亡——
       对抗审发现 1(新鲜种子账被活性闭合在获取 visit 内就地销毁)的
       防线由容器活值续承。
     NodeKey 未定帧 plane/round = None;bench 未观察 = 空集,消费侧

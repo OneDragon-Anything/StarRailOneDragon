@@ -698,7 +698,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
                            config: CurrencyWarConfig) -> Action:
         """商店单动作决策接口(ADR-0517 决策 1/2/5;ADR-0583 升格入契约面)。
 
-        输入 = session 容器(board_state_of;黑板槽退役,设计件《商店黑板容器化方案》§2.2-1:入口观察/单动作投影/
+        输入 = session 容器(board_state_of;黑板槽退役,设计件《商店黑板容器化方案》§2.2-1:入口观察/单动作逻辑态直写/
         sim 引擎写);输出 = **恰一个动作**,全函数永不 None——「无动作
         可做」由 ``CloseShop`` 恒可用终结表达(决策 5/6)。决策本体 =
         ``mandate_v1/shop.decide_shop_action``(选择序 = 既有波批优先级
@@ -739,7 +739,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
 
         sim/回放/既有序列锁消费(生产执行侧走单动作循环):逐帧调
         :meth:`decide_shop_action`(单动作核,帧代次消费在核入口)+ 容器
-        投影直写推进期望态(``apply_shop_action_logic`` 简单腿 + 合成升星
+        逻辑态直写推进期望态(``apply_shop_action_logic`` 简单腿 + 合成升星
         腿;T-163 起零 simulate 前瞻消费),终结动作(RefreshShop/
         CompTransaction)截停、``CloseShop`` 收尾不入序列。本缺省 = 通用
         循环(不绑 mandate 判据);mandate 特有记账(已买件/段序号/续段
@@ -750,7 +750,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             ChannelSig,
             deployed_slots_of,
         )
-        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 投影推进
+        # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 逻辑态直写推进
         # = apply_shop_action_logic(执行回执经 kernel 单一源派生);与
         # simulate 的逐域等价由锁 M1 钉住(test_cw_shop_projection_logic)。
         # 帧缺失 = 容器离屏 = 观察层失约同型抛错(在屏前置)。
@@ -799,7 +799,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             if isinstance(a, (cw_state.RefreshShop, cw_state.CompTransaction)):
                 return out      # 终结 op:序列到止(重观察语境)
             if isinstance(a, cw_state.BuyCard):
-                # 买前快照三件组(升星腿 scratch 基点;必须在投影口写之前
+                # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前
                 # 取,失准形态申报见 apply_shop_merge_leg docstring)。
                 _pre_bench = list(bench_slots_of(bs))
                 _pre_dep = list(deployed_slots_of(bs))

@@ -9,7 +9,7 @@ Snapshot(已落库 contracts,原样嵌入)+ 方向/预算投影。纪律:
   豁免 = **遥测披露面**(T-88:reserve_cap/overflow/release_budget/
   release_spent 四字段 + v3_disclosure_key 键戳,写端 = assembly.
   _disclose_budget 与商店执行回执位)——豁免判据 = 写入值不入任何
-  决策判据输入(决策输入一律走本件幂等投影),读端只有 recorder/
+  决策判据输入(决策输入一律走本件幂等装配),读端只有 recorder/
   engine_p1 遥测读链;披露面字段禁决策消费,裁决与守卫锁 = ADR-0571;
 - **快照语义 = 机制事实(W636 C 经 W639 升级落码)**:TurnState 元素经
   ``cw_state.snapshot_copy`` 浅拷贝 + equips 固化 tuple,与

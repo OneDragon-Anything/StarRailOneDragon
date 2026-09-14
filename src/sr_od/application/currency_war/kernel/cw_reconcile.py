@@ -55,7 +55,7 @@ def is_merge_effect_window(screen: MatLike | None) -> bool:
     与 star 回退帧态门是同一特效窗物理事实的两个消费口)。``screen=None`` 或
     槽缺省关(未装配)恒 False = 核对放行,与既有门 best-effort 语义同向,
     不引入新故障面;注入后 True = 窗内星读数物理不可信,消费方顺延核对
-    (本帧不写观察、保 logic 投影值,下帧干净帧实读覆盖)。
+    (本帧不写观察、保 logic 逻辑态值,下帧干净帧实读覆盖)。
     """
     if screen is None or _IS_MERGE_EFFECT_FRAME is None:
         return False

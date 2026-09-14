@@ -271,7 +271,7 @@ class CwScreenOpBase(SrOperation):
     def lifecycle_decision_cycle(self, payload: Any) -> OperationRoundResult:
         """段3-5:单动作决策循环——decide→act→on_outcome 逐动作迭代。
 
-        迭代语义(终结出口/投影推进)归画面 op 自身(§5.2:CwScreenPrep
+        迭代语义(终结出口/逻辑态直写推进)归画面 op 自身(§5.2:CwScreenPrep
         五段是本生命周期的原型);动作未生效归动作层处置(修动作适配器,
         §5.1 验证段废除裁定),不在本循环留验证残段。
         """

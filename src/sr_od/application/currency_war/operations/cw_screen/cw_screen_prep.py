@@ -443,7 +443,7 @@ class CwScreenPrep(CwScreenOpBase):
     # 环级预算(§7 环级:步数>60 → 强制出战兜底;实跑校准 §10)
     MAX_STEPS: ClassVar[int] = 60
     STALL_LIMIT: ClassVar[int] = 5
-    # 单动作访问动作数上限(ADR-0517:防御上界——决策循环不收敛 = 投影或
+    # 单动作访问动作数上限(ADR-0517:防御上界——决策循环不收敛 = 逻辑态或
     # 策略 bug,到顶交回外循环由 stall 防线接管,不静默续跑)
     VISIT_ACTION_CAP: ClassVar[int] = 16
 
@@ -693,13 +693,13 @@ class CwScreenPrep(CwScreenOpBase):
                     # 合成特效窗态门(P3-10 批次二复审,两态制 ADR-0651 等价
                     # 形态):星爆动画窗(≥2 帧)内 read_star 读旧星(reconcile_
                     # tracking 防抖同口径,读数物理不可信)——本帧**不写观察**
-                    # (保 bench 的 logic 投影值,§2.2 失读处置①的同族语义),
-                    # 下帧干净帧实读覆盖:投影与实读一致 = 零缺陷行;失配 =
-                    # 投影 bug 留证。原「挂起预期顺延核对」的防噪声语义由此
+                    # (保 bench 的 logic 逻辑态值,§2.2 失读处置①的同族语义),
+                    # 下帧干净帧实读覆盖:逻辑态与实读一致 = 零缺陷行;失配 =
+                    # 逻辑态 bug 留证。原「挂起预期顺延核对」的防噪声语义由此
                     # 承接(原核对半随 expected 机制废除)。
                     if is_merge_effect_window(screen):
                         log.info('[cw][bs] 合成特效窗内读数不可信 → 本帧观察'
-                                 '不写(保 logic 投影值,下帧干净帧覆盖)')
+                                 '不写(保 logic 逻辑态值,下帧干净帧覆盖)')
                     else:
                         _bs_obs.observe(_bs_obs.bench, _bench_obs, sig=_prep_sig)
                 else:
@@ -723,7 +723,7 @@ class CwScreenPrep(CwScreenOpBase):
                     screen='货币战争-备战', mode='carried')
                 if _dep_rows is not None:
                     if is_merge_effect_window(screen):
-                        # 与 bench 特效窗门同语义:窗内不写(保 logic 投影值,
+                        # 与 bench 特效窗门同语义:窗内不写(保 logic 逻辑态值,
                         # 下帧干净帧实读覆盖),不落 carried 假新鲜度。
                         pass
                     else:
@@ -886,9 +886,9 @@ class CwScreenPrep(CwScreenOpBase):
 
     def _project_prep_obs(self, action: PrepAction,
                           obs: PrepObservation) -> PrepObservation | None:
-        """执行后期望态投影(ADR-0517 决策 7/10;纯计算零读屏)。
+        """执行后期望态逻辑态直写(ADR-0517 决策 7/10;纯计算零读屏)。
 
-        返回投影后的 obs(黑板推进给下一动作决策);**None = 该动作的画面
+        返回直写后的 obs(黑板推进给下一动作决策);**None = 该动作的画面
         后果未建模 → 保守回退:本访问终结交回外循环重观察**(重观察语境,
         禁猜——与商店线 CompTransaction 终结邻接 fallback 同款纪律)。
 
@@ -899,12 +899,12 @@ class CwScreenPrep(CwScreenOpBase):
         - ClickSpheres:执行器内验早停(掉箱即停),残球数不可静态精确
           预测 ⇒ 保守清空(下轮入口对账重建;多残球的收敛由重观察承担);
         - SellBench:该物理槽位件离席(bench_chars 摘除 +
-          free_bench_slots+1)+ 容器域投影直写(gold 回金 + bench 摘槽,
+          free_bench_slots+1)+ 容器域逻辑态直写(gold 回金 + bench 摘槽,
           kernel 写口 ``apply_prep_action_logic`` 单一源,域集封闭
           gold/bench,write_logic 渠道,ADR-0651)——与
           ``cw_state.simulate`` 卖出分支同式(单一源公式;槽位空/越界 =
           陈旧提案守卫零写,保守侧 = 等下一 heavy 重读对账)。保真边界:
-          gold 可信位(``state_gold_trusted``)不随投影翻转——投影金是
+          gold 可信位(``state_gold_trusted``)不随逻辑态翻转——直写金是
           账面值,可信位语义(heavy 真读)保持不变,消费端按位判读。
 
         未建模面(保守回退,读屏量与旧 per-action heavy 持平、决策面更准):
@@ -935,7 +935,7 @@ class CwScreenPrep(CwScreenOpBase):
         if isinstance(action, SellBench):
             _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
                       if bc is None or getattr(bc, 'slot', None) != action.slot]
-            # 容器域投影直写(容器化段 2:黑板帧 state 复制腿消亡;
+            # 容器域逻辑态直写(容器化段 2:黑板帧 state 复制腿消亡;
             # gold 回金公式单一源 = cw_state.sell_refund,bench 摘槽 =
             # BenchView 重建 write_logic——写口内自持陈旧提案守卫)。
             from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -1560,9 +1560,9 @@ class CwScreenPrep(CwScreenOpBase):
     # ===== 备战单轮 op(W971 P3b 返工定稿:拆内环,op 生命周期五段化)=====
     # 外循环(cw_loop)是唯一循环:备战画面在 → 外循环每轮调本 op 一轮。
     # 单轮 = ①数据观察(heavy→写 session)②对账(观察 vs session 历史/上轮
-    # 期望)③-⑤ 单动作决策循环(决策→执行→投影,循环内零读屏;终结 op
+    # 期望)③-⑤ 单动作决策循环(决策→执行→逻辑态直写,循环内零读屏;终结 op
     # 交回外循环)——ADR-0517 迁移批:per-action heavy 重读契约已灭,期望态
-    # 投影承载逐动作推进。原内环机制
+    # 由逻辑态直写承载逐动作推进。原内环机制
     # (步数预算/stall 门/连败→恢复→屏蔽/bail 同因计数/ping-pong 停机)随
     # 内环拆除——稳定性由外循环每轮重识别保证(特效帧/overlay 弹出在轮间
     # 自然可见);无进展留证归外循环 stall 防线(cw_loop 备战分支)。
@@ -1617,7 +1617,7 @@ class CwScreenPrep(CwScreenOpBase):
         #      仅消费 pending_buy_expect + 经验/羁绊/商店池/合成预览留证族)。
         #      ADR-0517 迁移批:上一访问逐动作暂存的期望态记账(acct 族)在此
         #      时点统一消费——入口观察即对账(决策 8),per-action heavy 重读
-        #      契约已灭(逐动作零读屏,期望态投影承载;投影建模分叉由本对账
+        #      契约已灭(逐动作零读屏,期望态由逻辑态直写承载;逻辑态建模分叉由本对账
         #      在下一入口暴露,错卖类不可逆损害窗口的收窄手段 = 执行侧
         #      tracked 账随动,同商店线双账口径)。
         for _pend in list(getattr(exec_state_of(session), 'cw_prep_pending_accts', None) or []):
@@ -1643,11 +1643,11 @@ class CwScreenPrep(CwScreenOpBase):
         #      hp 消费统一经 decision_hp 门前真值+施门)。
         #      —— ③④⑤ 单动作决策循环(ADR-0517 迁移批;前身份 = 序列消费 +
         #      每动作落地后 heavy 重观察的保守口径)。新形态:入口 heavy 一次
-        #      建期望态 → 逐动作「决策(黑板=投影态)→ F3 校验 → 期望态计算 →
-        #      执行 → 投影」循环,循环内零读屏;三遍编排序保持(决策核输出
+        #      建期望态 → 逐动作「决策(黑板=逻辑态)→ F3 校验 → 期望态计算 →
+        #      执行 → 逻辑态直写」循环,循环内零读屏;三遍编排序保持(决策核输出
         #      逐帧取首项 = 单动作选择序,输出等价系条件命题——帧级锁按锁
         #      纪律重推)。已知画面出口(OpenShop/StartBattle)= 终结 op,
-        #      执行即本访问结束交回外循环(下次入口重观察)。投影未建模的
+        #      执行即本访问结束交回外循环(下次入口重观察)。逻辑态未建模的
         #      动作同判保守回退。
         #      B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——
         #      动作机械执行(端口无成败回执),无进展治理归外循环 stall
@@ -1664,7 +1664,7 @@ class CwScreenPrep(CwScreenOpBase):
             _st_seg.cw4_segment_serial += 1
         for _vi in range(self.VISIT_ACTION_CAP):
             # —— ③ 决策(黑板:读 session.prep_obs_frame,写者 = 入口观察/
-            #      循环投影步;首帧 = 入口 heavy,后续 = 投影态)
+            #      循环逻辑态直写步;首帧 = 入口 heavy,后续 = 逻辑态)
             try:
                 actions = match.strategy.decide_prep_screen(session, config)
             except Exception as e:  # noqa: BLE001  策略异常 = 本轮 fail(外循环 retry 链兜)
@@ -1752,21 +1752,21 @@ class CwScreenPrep(CwScreenOpBase):
             if isinstance(action, OpenShop):
                 # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
                 return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
-            # —— 投影(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算推进;
-            #      批3a 显式设计:发出即投影。原投影触发门(progressed)随
+            # —— 逻辑态直写(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算推进;
+            #      批3a 显式设计:发出即直写。原直写触发门(progressed)随
             #      回执退役——动作未落地的假黑板风险由下一入口 heavy
-            #      reconcile 以实读纠投影承担(期望态对账族即纠偏通道,
+            #      reconcile 以实读纠逻辑态承担(期望态对账族即纠偏通道,
             #      失配 = 纠偏/缺陷台账),非只删门。
             #      未建模动作 → None = 保守回退:本访问终结交回外循环重观察)
             _proj = self._project_prep_obs(action, obs)
             if _proj is None:
                 return self.round_success(
-                    f'{key} ✓(投影未建模,访问终结交回外循环重观察)', wait=1.0)
+                    f'{key} ✓(逻辑态未建模,访问终结交回外循环重观察)', wait=1.0)
             obs = _proj
-            session.prep_obs_frame = obs   # 黑板推进(下一动作决策读投影态)
-            # 投影帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
+            session.prep_obs_frame = obs   # 黑板推进(下一动作决策读逻辑态)
+            # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             session.prep_frame_class = 'none'
-        # 访问动作数上限(防御:决策循环不收敛 = 投影或策略 bug,交回外循环
+        # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
         # 由 stall 防线接管——不静默续跑)
         return self.round_success(
             f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
@@ -1857,7 +1857,7 @@ class CwScreenPrep(CwScreenOpBase):
         注册表在 _act_execute 发射点统一触发,单一发射口发射即触发)。
         生命周期无验证段(用户裁定 2026-09-10:动作未生效归动作层修可靠
         性,落地判定归观察侧 reconcile)。终结出口语义 = 空批/控制流/参数
-        非法/出战(发出即终结)/开店切换/投影未建模/访问上限。"""
+        非法/出战(发出即终结)/开店切换/逻辑态未建模/访问上限。"""
         match = self._match()
         session = match.session
         from sr_od.application.currency_war.currency_war_config import (
@@ -1876,7 +1876,7 @@ class CwScreenPrep(CwScreenOpBase):
             _st_seg.cw4_segment_serial += 1
         for _vi in range(self.VISIT_ACTION_CAP):
             # —— 段3 decide(黑板:读 session.prep_obs_frame,写者 = 入口
-            #      观察/循环投影步;首帧 = 入口 heavy,后续 = 投影态)
+            #      观察/循环逻辑态直写步;首帧 = 入口 heavy,后续 = 逻辑态)
             self._lifecycle_mark('decide')
             try:
                 actions = match.strategy.decide_prep_screen(session, config)
@@ -1963,19 +1963,19 @@ class CwScreenPrep(CwScreenOpBase):
             if isinstance(action, OpenShop):
                 # 开店切商店画面(非帧稳定)→ 终结,交回外循环重识别
                 return self.round_success(f'{key} ✓,交回外循环重识别', wait=1.0)
-            # —— 投影(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算推进;
-            #      批3a 显式设计:发出即投影,假黑板风险由下一入口 heavy
-            #      reconcile 以实读纠投影承担(期望态对账族即纠偏通道);
+            # —— 逻辑态直写(ADR-0517 决策 7/10:逐动作零读屏,期望态纯计算推进;
+            #      批3a 显式设计:发出即直写,假黑板风险由下一入口 heavy
+            #      reconcile 以实读纠逻辑态承担(期望态对账族即纠偏通道);
             #      未建模动作 → None = 保守回退:本访问终结交回外循环重观察)
             _proj = self._project_prep_obs(action, payload)
             if _proj is None:
                 return self.round_success(
-                    f'{key} ✓(投影未建模,访问终结交回外循环重观察)', wait=1.0)
+                    f'{key} ✓(逻辑态未建模,访问终结交回外循环重观察)', wait=1.0)
             payload = _proj
-            session.prep_obs_frame = payload   # 黑板推进(下一动作决策读投影态)
-            # 投影帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
+            session.prep_obs_frame = payload   # 黑板推进(下一动作决策读逻辑态)
+            # 直写帧代次 = none(ADR-0583 §3.4):同 visit 内续动作不重复刷新
             session.prep_frame_class = 'none'
-        # 访问动作数上限(防御:决策循环不收敛 = 投影或策略 bug,交回外循环
+        # 访问动作数上限(防御:决策循环不收敛 = 逻辑态或策略 bug,交回外循环
         # 由 stall 防线接管——不静默续跑)
         return self.round_success(
             f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
@@ -2008,7 +2008,7 @@ class CwScreenPrep(CwScreenOpBase):
         T-223 端口无返回后的旁路通道)。
 
         ``obs`` = 当前黑板帧(调用方传入;缺省 = session.prep_obs_frame
-        黑板现值——黑板两写点[入口观察/循环投影步]与决策循环局部帧恒
+        黑板现值——黑板两写点[入口观察/循环逻辑态直写步]与决策循环局部帧恒
         同步,契约 W971 §2,故黑板现值即合法供给源)。"""
         if isinstance(action, OpenShop):
             if obs is None:
@@ -2390,7 +2390,7 @@ class CwScreenPrep(CwScreenOpBase):
           不可读,W970 §4.3.4 读互斥;访问内 hp 决策消费统一经 decision_hp
           政策读口——迁移批 3.2 起 hp 三件组传参链随黑板帧退役删除)→
           商店单动作循环(run_buy_waves:入口观察 → decide_shop_action
-          逐动作循环+投影,终结 op 交回;MAX_REFRESH 硬墙)→
+          逐动作循环+逻辑态直写,终结 op 交回;MAX_REFRESH 硬墙)→
           CwOpCloseShop → finalize_buy_phase(买后重估/期望暂存/gold 对拍/
           执行事实)→ 节点探针。
 

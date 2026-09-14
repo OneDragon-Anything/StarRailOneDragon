@@ -56,7 +56,7 @@ XP_PER_BUY: int = 4
 XP_TO_NEXT_LEVEL: dict[int, int] = {3: 4, 4: 6, 5: 20, 6: 40, 7: 52, 8: 72, 9: 84}
 XP_CLICK_COST_FALLBACK: int = 4   # 单击经验花金兜底(level_up_cost OCR 缺失时;telemetry lv5 实测 4 金/击)
 #: 玩家等级封顶(live 语义:10 级后购买经验无效;xp_apply_clicks/xp_clicks_to_level/
-#: simulate LevelUp 分支/cw_game_state 投影满级门同此单一源。sim 侧 LEVEL_CAP=9
+#: simulate LevelUp 分支/cw_game_state 逻辑态直写满级门同此单一源。sim 侧 LEVEL_CAP=9
 #: 是已知建模分歧,勿混用——本常量只辖 live 侧)。
 MAX_PLAYER_LEVEL: int = 10
 

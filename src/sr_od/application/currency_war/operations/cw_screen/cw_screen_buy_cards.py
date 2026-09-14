@@ -333,7 +333,7 @@ def _form_progress(comp: 'Comp', session) -> float:
     (T-70 线),本 hunk 实际随 T-13 提交入库而原提交信息未申报,此处
     补记归属供审计对账。**换源(T-146,T-163 后措辞更正)**:T-163 删帧
     链后本 helper 输入域 = 段顶入口观察帧(非 simulate 推演态,旧措辞
-    「波内投影帧」作废);该帧在 visit 段顶已合成进 session 容器单例,
+    「波内逻辑态帧」作废);该帧在 visit 段顶已合成进 session 容器单例,
     本读改直取单例(board 同帧同源),桥消费随之清零。
     """
     from sr_od.application.currency_war.kernel.cw_comps import form_progress
@@ -349,7 +349,7 @@ BUY_EXP_AREA: str = '备战标识-购买经验'
 MAX_REFRESH: int = 4
 # 单段决策循环防御帧帽(ADR-0518):决策侧席位门等提案门失效时的执行侧
 # 兜底,与 cw_screen_prep.VISIT_ACTION_CAP 同款防线——决策循环不收敛 =
-# 投影或策略器 bug,超帽响亮暴露(RuntimeError)+ 遥测分键
+# 逻辑态或策略器 bug,超帽响亮暴露(RuntimeError)+ 遥测分键
 # plan_visit_action_cap,禁静默续跑。
 SHOP_SEGMENT_ACTION_CAP: int = 16
 
@@ -376,25 +376,25 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                          visit_actions: list) -> None:
     """执行结果落地门(调用环单一源;落地审补办清单 C1 调用环级锁的承载体。
 
-    C1 语义 = 旧 return True 使期望账投影与 tracked 实账分叉、guard 当轮
+    C1 语义 = 旧 return True 使期望账逻辑态与 tracked 实账分叉、guard 当轮
     炸;应修-2 语义 = 已买集无条件追加使检出帧名污染 prefer_names/churn
     (落地审补办审,2026-09-05;原清单为会话产物不入库,语义以此为准)。
 
-    未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不投影、
+    未落地(_ok=False,如执行侧检出购买未生效)⇒ **两侧都不动**:不写逻辑态、
     不守卫、不入「已买」集(防检出帧名污染 prefer_names/churn/P60,
-    应修-2);落地且非终结 ⇒ 投影(容器规则通道:投影口直写 + 合成升星
+    应修-2);落地且非终结 ⇒ 逻辑态直写(容器规则通道:直写口简单腿 + 合成升星
     腿)+ guard_expected_vs_tracked
     (满栏买入豁免照旧:豁免面 = 游戏接受而两模型都不收编的残余窗;
     合成满栏买面已随 T-182 同构化——tracked mutate 带 shop 视图与
     simulate 同走 `_apply_full_bench_merge_buy`,不再丢件漏记)。
 
     ``_cur`` = 段顶入口观察回执(journal 行 plane/round 基准 + pre_frame
-    输入;帧级投影链已随 simulate 前瞻消费删除退役,T-163——期望态真值在
+    输入;帧级逻辑态推算链已随 simulate 前瞻消费删除退役,T-163——期望态真值在
     容器,函数无返回值,调用方不再推进任何帧链载体;迁移批 3.2 起载体 =
     :class:`GameStateReadReceipt`,visit 内 plane/round 恒定不变)。
     """
     visit_actions.append(action)
-    _post_frame = None   # 动作后投影帧(终结/未落地 = None → journal delta 省略)
+    _post_frame = None   # 动作后逻辑态帧(前身载体已删,恒 None;终结/未落地 = None → journal delta 省略)
     if _ok and isinstance(action, SellBench):
         # T-159 §3.3 误标检出位(s1_reset_mischannel 交叉对账的运行时半):
         # 商店域落地门不辖 S1 清键(落域澄清:店内段 S1 语义正在成立中,
@@ -504,10 +504,10 @@ def apply_action_outcome(_aop: 'ShopActionOp',
                        and bench_occupied(
                            _sg_slots(_sg_bs(match.session)))
                        >= BENCH_CAPACITY)
-        # 商店动作投影直写·容器通道(纯规则路线,T-163:simulate 前瞻投影
-        # 消费已删除,期望态推进 = 投影口直写 + 合成升星腿,与序列驱动器
+        # 商店动作逻辑态直写·容器通道(纯规则路线,T-163:simulate 前瞻推算
+        # 消费已删除,期望态推进 = 逻辑态直写口 + 合成升星腿,与序列驱动器
         # 同形单一源;设计件《商店黑板容器化方案》§2.1-2/§4-M1)。
-        # 写序申报:投影口先写(含 bench 简单落位),升星整表直写后写覆盖
+        # 写序申报:直写口先写(含 bench 简单落位),升星整表直写后写覆盖
         # (后写赢)——两写合计对 simulate 输出等价(锁 M1,
         # test_cw_shop_projection_logic)。
         # 执行回执(设计件 §2.1-2):k = 执行侧实购张数(merge_buy_k 计数,
@@ -539,7 +539,7 @@ def apply_action_outcome(_aop: 'ShopActionOp',
             _executed = _ShopExecuted(bought_count=_k)
         elif isinstance(action, LevelUp):
             _executed = _ShopExecuted(levelup_clicks=1)
-        # 买前快照三件组(升星腿 scratch 基点;必须在投影口写之前取——
+        # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前取——
         # 基点误取买后容器会重复落位,shop 视图缺失会漏满栏合成,失准
         # 形态申报见 apply_shop_merge_leg docstring)。
         if isinstance(action, BuyCard):
@@ -561,18 +561,18 @@ def apply_action_outcome(_aop: 'ShopActionOp',
         if isinstance(action, BuyCard):
             # 合成升星整表直写(升星腿,买前快照基点):发生 3 合 1 升星 →
             # 合成后 bench 视图经 write_logic 直写(source=logic,策略器
-            # 立即可读);下一备战帧实读照常覆盖(观察赢),失配 = 投影
+            # 立即可读);下一备战帧实读照常覆盖(观察赢),失配 = 逻辑态
             # 模型 bug,缺陷台账留证后修推算代码。last-wins:同段级联
-            # 合并只留末张投影。纯记录面,决策零影响(bench 为消费视图
+            # 合并只留末张直写。纯记录面,决策零影响(bench 为消费视图
             # 透传域,§8.7 批次二 as-built)。
             _apply_merge_leg(_bs_proj, action, sig=_proj_sig,
                              pre_bench=_pre_bench, pre_deployed=_pre_dep,
                              pre_shop=_pre_shop)
-        _post_frame = None   # 帧投影随 simulate 前瞻消费删除退役(T-163):
+        _post_frame = None   # 帧级逻辑态推算随 simulate 前瞻消费删除退役(T-163):
         # journal 动作行不再带期望态 delta/金/占用字段(遥测面变化,
-        # 判读输入 = 动作行本体 + 容器投影直写证据)。
+        # 判读输入 = 动作行本体 + 容器逻辑态直写证据)。
         if not _skip_guard:
-            # 守卫输入 = 容器(W6 波 4 读者切换;期望态读值 = 投影口直写
+            # 守卫输入 = 容器(W6 波 4 读者切换;期望态读值 = 逻辑态直写口
             # 的容器 bench,payload 域集同源)
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of as _gt_bs,
@@ -712,7 +712,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     - 决策循环(零读屏,决策 1/8):``decide_shop_action`` 每次恰返回一个
       动作 → 守卫断言(proposal-vs-expected + expected-vs-tracked 双账,
       ``cw_shop_action_ops``)→ 执行(动作 op ``execute``,观测通道候选 a
-      遥测在内)→ 容器投影直写推进期望态(``apply_shop_action_logic``
+      遥测在内)→ 容器逻辑态直写推进期望态(``apply_shop_action_logic``
       简单腿 + 合成升星腿;T-163 起零 simulate 前瞻消费);
     - 终结 op(RefreshShop/CloseShop):执行即本段结束。刷新终结 = 交回
       外循环重进——物理载体 = 本函数段循环的下一次迭代(入口观察重建,
@@ -938,7 +938,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # 双账分叉事故,诊断档
         # .debug/temp/currency_war/20260905_openshop_fork_diag/report.md)。
         # (tracked 播种已随 W6 波 4 黑板容器化取消——设计件 §2.1-5:容器
-        #  bench = prep 帧观察值(观察漏斗写端)+ visit 内投影直写;黑板帧
+        #  bench = prep 帧观察值(观察漏斗写端)+ visit 内逻辑态直写;黑板帧
         #  播种的唯一消费者 = 旧帧决策链,读者切换后无行为面。)
         if exec_state_of(match.session).tracked_bench_chars:
             log.info(f'[cw] tracked_bench_chars='
@@ -950,7 +950,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         # (session.last_state 写点已随链退役批删除:段顶入口观察的局内
         #  事实宿主 = 容器单例,写入 = 观察漏斗直写。)
         # journal 基准载体(黑板槽退役收口,ADR-0651 容器单源):段顶入口
-        # 观察回执,T-163 起恒定不随动作推进(帧级投影链已随 simulate 前瞻
+        # 观察回执,T-163 起恒定不随动作推进(帧级逻辑态推算链已随 simulate 前瞻
         # 消费删除退役);仅供动作行 plane/round 基准,决策/守卫/env 读点
         # = 容器(波 4 读者切换已承接;迁移批 3.2 起载体 = 轻量回执)。
         _cur = _entry
@@ -1016,9 +1016,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         #  日志披露行(上方)保留。)
         # ---- 单动作决策循环(ADR-0517 决策 1/2;循环内零读屏)----
         # 播种期对账(守卫两属消息分离的判定序):首动作前先对一次账,
-        # 分叉在此出现 = 归「播种/入口账分叉」;此后投影后出现的分叉才归
+        # 分叉在此出现 = 归「播种/入口账分叉」;此后逻辑态直写后出现的分叉才归
         # 「project/mutate 模型分叉」(2026-09-05 OpenShop 事故:播种层
-        # 双源分叉曾被投影消息误标,误导排查方向)。
+        # 双源分叉曾被逻辑态消息误标,误导排查方向)。
         from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
             guard_expected_vs_tracked as _guard_seed,
         )
@@ -1040,7 +1040,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 reseed_bench_if_layout_stale,
             )
             # 重播种写目标 = 容器 bench 域(设计件 §2.3 reseed 写点;
-            # 输入改容器单例,投影帧不再承载 bench)
+            # 输入改容器单例,逻辑态帧不再承载 bench)
             _stale = reseed_bench_if_layout_stale(_bs_of_entry,
                                                   match.session,
                                                   _seed_epoch)
@@ -1048,7 +1048,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 _seed_epoch = exec_state_of(match.session).bench_layout_epoch
                 ledger.plan_truncated = True
                 log.warning('[cw!][plan] 布局代次检差命中:在飞计划截断),'
-                            '已按 tracked 重播种投影 bench,重入决策')
+                            '已按 tracked 重播种逻辑态 bench,重入决策')
                 continue
             if _stale == 'failed':
                 ledger.plan_truncated = True
@@ -1079,7 +1079,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 )
                 _st_cap = _bcap_of(match.session)
                 _msg = (f'[cw!][plan] 决策循环帧数超帽'
-                        f'({SHOP_SEGMENT_ACTION_CAP}),疑投影/策略器不收敛'
+                        f'({SHOP_SEGMENT_ACTION_CAP}),疑逻辑态/策略器不收敛'
                         f'(末态 gold={_gold_of(_st_cap)} '
                         f'bench={bench_occupied(_bslots_of(_st_cap))})')
                 log.error('%s', _msg)
@@ -1139,7 +1139,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                     break
             # 守卫/env 读点 = 容器(波 4 读者切换,设计件 §2.4-2:
             # guard_proposal_vs_expected 守卫输入 + ShopExecEnv.state
-            # 改容器单例);黑板槽读已随槽退役删除,_cur = visit 局部投影链。
+            # 改容器单例);黑板槽读已随槽退役删除,_cur = visit 局部逻辑态链。
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of as _bs_of_cur,
             )
@@ -1188,10 +1188,10 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             accrue_release_spent(match, action, _ok)
             # (帧链推进随 simulate 前瞻消费删除退役,T-163:_cur 恒为段顶
             # 入口观察帧,visit 内 plane/round 不变,journal 行基准语义
-            # 不变;期望态真值在容器,由投影口直写推进。)
+            # 不变;期望态真值在容器,由逻辑态直写口推进。)
             if _aop.terminal:
                 # 终结 op 统一退出(ADR-0517 决策 4/7;终结 op 语义 review
-                # V1/V2 修复,P35 实证):终结动作 execute 后黑板不投影
+                # V1/V2 修复,P35 实证):终结动作 execute 后黑板不写逻辑态
                 # (apply_action_outcome 对终结跳过,期望态按规格作废)——
                 # 循环若不在此退出,下一帧 decide 读到的仍是刷前旧牌面,
                 # 策略器(期望态的确定性纯函数)对旧牌面重发 RefreshShop

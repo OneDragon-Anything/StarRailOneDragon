@@ -143,7 +143,7 @@ class ExecState:
     tracked_deployed: list[BenchChar | None] = field(default_factory=list)
     # bench 布局代次(T-308 S3 churn 事件通道,最小面)。[索引定义] 坐标系
     # = 单调递增计数器(非槽位号、非下标);取值时机 = reconcile 纠漂写回期
-    # 递增(kernel/cw_reconcile,唯一写点)/ 投影播种期快照(每段入口观察)+
+    # 递增(kernel/cw_reconcile,唯一写点)/ 逻辑态播种期快照(每段入口观察)+
     # 单动作循环每动作消费前现读检差(cw_op_buy_cards,唯一消费点)。命中 =
     # 布局已重排,在飞动作的 bench_idx 代际失效 → 序列决策契约截断+按 tracked
     # 重播种+重入决策。当前架构 reconcile 均在 visit 外跑,visit 内恒不变
