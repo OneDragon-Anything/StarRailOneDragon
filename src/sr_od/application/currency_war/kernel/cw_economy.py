@@ -895,9 +895,8 @@ def get_node_goal(plane: int, round_num: int, *,
         # 标量投影容器:直接按入参构造最小决策容器(供给核只读经济/板面
         # 字段;无 session、无现成容器)。字段契约单一源 =
         # kernel cw_game_state.scalar_projection_state(对旧「惰性构造
-        # CwSimFrame + 过渡桥装箱」投影的逐字段镜像,等价锁
-        # = sr-od-test test_cw_w5_sim_retirement 投影等价测试;旧载体随
-        # T-145 766 投影缝退役删除)。
+        # CwSimFrame + 过渡桥装箱」投影的逐字段镜像;旧载体随
+        # T-145 766 投影缝退役删除,过渡期投影等价测试已随之定谳不续)。
         # session=None:nodes_of_plane 走缺表回退先验 9(一次性告警即记档)
         # → h=9−r 常 >0,R* 窗口分量在投影容器**照常储蓄**(预算收权攻击
         # 审读 F6b 纠偏:原注释「投影帧不储蓄」与实现不符;方向保守无害)。

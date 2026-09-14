@@ -290,7 +290,8 @@ def serialize_action(action: Action) -> dict[str, Any]:
 ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
     'reason', 'route_tag', 'auth_basis', 'convert_reason',
 )
-"""动作项理由溯源提取键序单一源(测试锁面 = test_cw_decision_trace_r4 锁②e)。
+"""动作项理由溯源提取键序单一源(提取语义见下;原过程件测试锁已随
+09-13 清理删除,定谳不恢复)。
 
 - 语义:决策行 actions 逐项附 ``reason`` 键(判据命中 id 持久索引),取值 =
   按本键序从**现役决策构建链已有字段**提取首个非空值——纯提取禁新算

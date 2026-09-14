@@ -7,11 +7,10 @@ runner/engine 既有函数,零侵入);runner 侧正式合流入口待裁。
 A/B 约束(SIM_CONSUMPTION_MAP ③/Q3):
 - 环境恒等:同 seed_base/同 pool(核 pool_fingerprint)/同 planes/
   同注册表视图(``sim_decision_registry()`` 派生,两臂一致);
-- rng 中立:新核不消费局内 rng 流(会话流派生注释=契约;R197 症5
-  升格=测试锁 ``test_rng_neutral_static_lock``,静态扫 cw4 包零
-  ``random`` 消费。运行期守卫不可行如实申报:局内 session rng 在
-  引擎内按 seed 派生,臂侧不可达——同 seed 自配对对「消费 rng」
-  构造性不敏感[两跑同样消费],静态锁是可实现的强形态);
+- rng 中立:新核不消费局内 rng 流(会话流派生注释=契约。运行期守卫
+  不可行如实申报:局内 session rng 在引擎内按 seed 派生,臂侧不可达
+  ——同 seed 自配对对「消费 rng」构造性不敏感[两跑同样消费];原计
+  划的静态扫描测试锁属源码扫描禁形,该防线归 review 与代码规范);
 - 新核 registry 属性带上(Q3 坑位①:注入策略无 registry 属性时观测键
   走回退路径,口径混)。
 

@@ -37,7 +37,8 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_prep_actions import PrepObservation
 
 #: 策略器状态工厂注入槽(kernel 不识策略状态具体类型——依赖矩阵禁 kernel→impl
-#: 边,连 TYPE_CHECKING 也被布局锁 test_cw_package_layout 判违规;先例 =
+#: 边,连 TYPE_CHECKING 引用也在分层纪律禁域(该纪律归 review 与代码规范
+#: 守卫);先例 =
 #: set_merge_effect_gate/set_obs_reset_hook 注入槽)。注册点 =
 #: ``strategies/impl/mandate_v1/__init__``(包被导入即安装,三方策略不装
 #: = 缺省关)。kernel 写路径(drive_intention/_bump_obs)经

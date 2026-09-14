@@ -2,7 +2,7 @@
 
 为什么在 kernel:发射面观测(sim/engine_p1 的 LaunchBattle 建模)需要
 直调生产 G1 准入判据,而包依赖矩阵(sim 桶不可依 app/operations 桶,
-test_cw_package_layout LEGAL_EDGES)禁止 sim→cw_loop 直引。本模块只依
+分层纪律,归 review 与代码规范守卫)禁止 sim→cw_loop 直引。本模块只依
 kernel(cw_line_defs/cw_state)与 data 注册表,三方消费面(sim 引擎/
 cw_loop 调用面/测试)共用同一实现,零第二份。
 

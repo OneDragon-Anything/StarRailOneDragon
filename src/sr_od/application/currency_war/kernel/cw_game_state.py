@@ -676,8 +676,8 @@ def _resolve_registry_fingerprint() -> str:
 #: 版本戳,沿用 version_stamp」;runs 退役后 = 策略版本戳唯一在档载体,
 #: 由 :meth:`write_match_final` 落账时填充)。模块级常量 = 进程导入时点
 #: 解析一次,同进程跑的局戳一致;取值单一源语义 = telemetry/version_stamp,
-#: 桶依赖矩阵禁 kernel→telemetry(sr-od-test test_cw_package_layout
-#: .LEGAL_EDGES),故同口径就地落常量,与单一源的等值性由
+#: 桶依赖矩阵禁 kernel→telemetry(分层纪律,归 review 与代码规范守卫),
+#: 故同口径就地落常量,与单一源的等值性由
 #: test_cw_match_final::test_match_final_version_stamps 对拍钉住。
 _CODE_COMMIT: str = _resolve_code_commit()
 _REGISTRY_FINGERPRINT: str = _resolve_registry_fingerprint()
@@ -721,8 +721,10 @@ class MatchFinal:
     backfilled: bool = False
     cw4_counters: dict[str, int] | None = None
     # 策略行为观测计数局终聚合(R5 W4 键收编载体,ADR-0650;键全集登记
-    # 单一源 = 封闭锁 sr-od-test test_cw4_key_closure,底稿 = W4 逐键审计
-    # 256 字面+16 闭族+9 开放族,全部=策略行为键,零效果域键)。取值 =
+    # 底稿 = W4 逐键审计 256 字面+16 闭族+9 开放族,全部=策略行为键,零
+    # 效果域键;键封闭性防线原由测试仓封闭锁承载,该锁随 09-13 有损清理
+    # 删除且经 T-252 分诊为源码扫描形态不恢复,防漂移归 review 与代码
+    # 规范)。取值 =
     # 调用方收口时点自策略 state 容器(mandate_v1 StrategyState.cw4_counters)
     # 现读;写口落载荷时浅拷贝一份(本结构不持有容器引用,后写不串)。
     # None = 无策略载体/历史段补写无源(诚实缺省,判读按「无计数载体」
@@ -800,8 +802,8 @@ def _emit_defect(*, field_name: str, expected: Any, actual: Any,
 #: 槽契约:接收一行完整行 dict(自足快照行,§3.2.3),自担序列化/缓冲/落盘。
 _STATE_JOURNAL_SINK: Callable[[dict], None] | None = None
 
-#: run 归属供给槽(依赖倒置:kernel 禁依 telemetry——桶依赖矩阵锁
-#: sr-od-test test_cw_package_layout.LEGAL_EDGES;行内 run_id 由装配点注入
+#: run 归属供给槽(依赖倒置:kernel 禁依 telemetry——桶依赖矩阵分层纪律,
+#: 归 review 与代码规范守卫;行内 run_id 由装配点注入
 #: 读取函数,生产武装点 = currency_war_app 装配段传 telemetry 现读口)。
 _RUN_ID_PROVIDER: Callable[[], str] | None = None
 

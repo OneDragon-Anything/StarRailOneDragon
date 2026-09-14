@@ -1062,8 +1062,8 @@ class DecisionV2Registry:
     # ===== P1→P2 接口机制五开关——定谳清理,删码留档(ADR-0487)=====
     #: 曾以 p1_iface_{lockline_v2,carry_equip,hardnode_prep,lossstreak_
     #: flow,blood_bands}_enabled 五开关 + swing_degrade_n/swing_loss_n/
-    #: board_match_min 三阈值落码默认关(设计决策=ADR-0484;行为锁=
-    #: test_cw_p1_iface 六锁,随清理删除)。定谳依据(开关生命周期
+    #: board_match_min 三阈值落码默认关(设计决策=ADR-0484;行为锁六件
+    #: 已随 09-13 清理删除,定谳退役件不恢复)。定谳依据(开关生命周期
     #: 第 4 态,W793 重跑批):W790 首轮 A/B 因 sim 死输入触发面未开火
     #: 判「数据不足」;补齐带符号 streak/hp_trusted/duty 观测桩后重跑
     #: (同预注册协议零改动),触发面全面开火(①397 局锁定/②1169 义务
