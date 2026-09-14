@@ -2125,7 +2125,9 @@ class GameStateReadReceipt:
     逐字段镜像:gold 失读 raw 0(gold_readable=False)、hp = 对账层决策
     值(hp_readable/hp_trusted 位不变)、level 三源解析值(level_readable
     阶段跳过帧按旧帧缺省 True)、board = 徽标裁决后计数、shop = 原始
-    读牌列表(遗留 ShopCard 形态,与旧帧 shop 域同源)。
+    读牌列表(遗留 ShopCard 形态,与旧帧 shop 域同源)。读数域 None
+    (离屏/店未开,三态契约)在本回执域塌缩为空容器——回执只携带
+    旧帧形态,三态区分归容器域 bs.shop.value。
     """
 
     gold: int = 0
@@ -2449,8 +2451,9 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             plane_bosses_val = list(_sess.briefing_bosses)
         if getattr(_sess, 'briefing_affixes', None):
             enemy_affixes_val = list(_sess.briefing_affixes)
-    # shop_cards:spec 无的阶段(prep_clean 面板未开,收起锚门本就返空 = 「没牌」
-    # 观测真值;battle 帧同)直接置空列表,连锚判定都省(ADR-0462)。
+    # shop_cards:spec 无的阶段(prep_clean 面板未开;battle 帧同)直置
+    # None(三态语义 None=离屏,不与「买光=[empty×5]」混载),连锚判定都
+    # 省(ADR-0462)。
     # 全帧 OCR 一次(锚位匹配 + 牌面判定同源;买光态暗钮裁剪路径
     # 确定性拒识的根治,实机五败定谳)
     _full_ocr = (ctx.ocr_service.get_ocr_result_list(image=screen)
@@ -2678,12 +2681,23 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             bs.mark_frame_obs('view' if _spec is not None else 'full')
     except Exception as e:  # noqa: BLE001  记录层 best-effort,不毒化决策链
         log.warning('[cw!][bs-feed] GameState 观察流跳过: %s', e)
+    # 回执构造 None 容缺:口径 = 「空表与 None 同判=离屏」(合成口先例,
+    # 见 kernel/cw_game_state.py 合成链 st.shop 判空写端)。shop_val=None
+    # 是设计态,来源二:①spec 无 shop_cards 的阶段(prep_clean/battle 店
+    # 面板物理不可见)直置 None;②read_shop_cards 三态契约(收起锚 miss =
+    # 店未开,「不在商店」≠「没牌」)。三态区分(店未开/买光 [empty×5]/
+    # 失读 unknown)的权威承载 = 容器域 bs.shop.value(上方 observe/carry/
+    # leave_screen 写端已按三态适配);回执 = 旧 CwSimFrame 逐字段镜像,
+    # shop 域遗留形态本就是紧缩 [](空表 = 不在商店真值),消费方全为列表
+    # 真值/迭代语义,塌缩不丢语义。board 值域恒 dict(徽标裁决合并或 OCR
+    # 底座),or 同判 = 同口径防御。
     return GameStateReadReceipt(
         gold=gold_val, gold_readable=gold_readable,
         hp=hp_val, hp_readable=hp_readable, hp_trusted=hp_trusted,
         level=level, level_readable=level_readable,
         plane=plane, round_num=round_num,
-        node_type=node_type, board=dict(board_val), shop=list(shop_val))
+        node_type=node_type, board=dict(board_val or {}),
+        shop=list(shop_val or []))
 def _phase_screen_context(phase: str | None, plane: int | None,
                           round_num: int | None,
                           ) -> tuple[str | None, tuple[int, int] | None]:
