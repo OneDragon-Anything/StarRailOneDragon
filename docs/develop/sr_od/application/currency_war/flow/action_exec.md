@@ -27,7 +27,7 @@
 
 | 执行面 | 三态形态 |
 |---|---|
-| 部署 CwOpDeploy | ①计划空 ∧ 0 落地 = `STATUS_NOOP`（合法稳态，bench 留置，round_success）；②计划非空 ∧ placed=0（非遮蔽域）= round_fail（交框架失败链，"失败帧已存证"）；③placed>0 = `STATUS_DEPLOYED`；④入口失配闸命中 = round_fail 先于①②③（板满失配/幻影满板 = 发射面读与执行面读失配的暴露信号；**窄豁免**：板满失配 ∧ fresh 帧前排 4 槽全空 ∧ 后排非系统单位在场 = 合法场内换排工作形态 → 场内换排修复 → 出口复验前排 ≥1 → `STATUS_ROWFIX_RECOVERED`（新具名成功状态）/维持 fail；幻影满板与「满板∧前排有人」仍立即 return， 修订辖域）；⑤遮蔽域落地判定 UNKNOWN（T-277，发射契约四态出口修订）= `STATUS_LANDING_VERDICT_UNKNOWN` round_fail，同 gate_fail 通道立即 return——部署拖拽自身触发的 decision overlay 遮蔽验证窗（列车同行跨档部署触发「选择伙伴」为驱动形态），像素判据双向无发言权，**槽位不回收、剩余单位留 bench、可带 placed>0**，0 系 overlay 分支接管自愈。执行契约 = 3 元组 `(placed, plan_empty, gate_fail)`；失败状态具名常量 5 个 = `STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`/`STATUS_LANDING_VERDICT_UNKNOWN`（`CwOpDeploy` 类常量，判读侧分键； 枚举）。**出口不变量（T-174 修订 §2.1）**：成功出口（`STATUS_DEPLOYED`/`STATUS_NOOP` 收尾复验、`STATUS_NO_BENCH` 早退点复验、`STATUS_ROWFIX_RECOVERED` 豁免路径复验）CV 现读承诺「上阵 ≥1 ⇒ 前排 ≥1」，不过 = `STATUS_FRONT_INVARIANT_FAIL` round_fail，禁静默 success |
+| 部署 CwOpDeploy | ①计划空 ∧ 0 落地 = `STATUS_NOOP`（合法稳态，bench 留置，round_success）；②计划非空 ∧ placed=0（非遮蔽域）= round_fail（交框架失败链，"失败帧已存证"）；③placed>0 = `STATUS_DEPLOYED`；④入口失配闸命中 = round_fail 先于①②③（板满失配/幻影满板 = 发射面读与执行面读失配的暴露信号；**窄豁免**：板满失配 ∧ fresh 帧前排 4 槽全空 ∧ 后排非系统单位在场 = 合法场内换排工作形态 → 场内换排修复 → 出口复验前排 ≥1 → `STATUS_ROWFIX_RECOVERED`（新具名成功状态）/维持 fail；幻影满板与「满板∧前排有人」仍立即 return， 修订辖域）；⑤遮蔽哨命中（registry decision presence 探测哨，**发射前拦截**）= `STATUS_OVERLAY_PREEMPTED` round_fail，同 gate_fail 通道立即 return——部署拖拽自身触发的 decision overlay 遮蔽发射窗（列车同行跨档部署触发「选择伙伴」为驱动形态），发射面在一切像素读之前让位，**槽位不回收、剩余单位留 bench**，0 系 overlay 分支接管自愈。**拖拽零判效**（T-268/T-277 落地判定 machinery 已拆）：拖拽机械发出即计入，落地事实归下一帧入口观察对账。执行契约 = 3 元组 `(placed, plan_empty, gate_fail)`；失败状态具名常量 = `STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`/`STATUS_OVERLAY_PREEMPTED`（`CwOpDeploy` 类常量，判读侧分键）。**出口不变量（T-174 修订 §2.1）**：成功出口（`STATUS_DEPLOYED`/`STATUS_NOOP` 收尾复验、`STATUS_NO_BENCH` 早退点复验、`STATUS_ROWFIX_RECOVERED` 豁免路径复验）CV 现读承诺「上阵 ≥1 ⇒ 前排 ≥1」，不过 = `STATUS_FRONT_INVARIANT_FAIL` round_fail，禁静默 success |
 | 备战动作执行器 | `execute(action) -> (progressed: bool, detail: str)`：progressed=False 涵盖 NOOP 与失败时由 detail 区分（`cw_screen_prep.py:1368-1372` 消费） |
 | 商店编排 | `_open_shop_phase -> (progressed, detail)`；read_only 开店成功即 progressed（读数目标达成） |
 | 序列消费 | `StartBattle ∧ progressed` 才是出战完成；not progressed 一律 fail-stop 交回 |
@@ -44,10 +44,10 @@
 
 > 波批执行面的防线已按守卫断言语义重定位（`screen_op.md` §2.3 落定）：**proposal-vs-expected 断言**（`guard_proposal_vs_expected`——提案对象在期望态存在且未被消费,炸出 = 策略器算术 bug）与 **expected-vs-tracked 双账断言**（`guard_expected_vs_tracked`——投影建模 bug 的唯一在环检测器,满栏买入豁免已随满栏合成买面单一源化收窄:满栏合成买面 tracked 与 simulate 同走 `_apply_full_bench_merge_buy` 单一源双账同构,豁免面仅剩非合成满栏买被拒而像素差漏检的 fail-open 残余窗）。旧 `sell_guard_ok` 波级对拍与 x 去重随「整波共享帧快照」前提消失而退役（单动作下第一笔动作后期望态已更新,第二笔提案自然不指向已卖槽）。执行侧观测通道三件（卖回金实收/刷新有效性/免费刷新证据）走候选 (a) = 动作 op execute 实现层遥测（处置表）。
 
-- **BuyCardOp**：点击牌位（click_pts 从 screen_info 读，缺失兜底字面量）→ 动画窗 0.4s → **买后同 rect 卡面未变检出**（`buy_click_ineffective`：灰度差均值 < 阈值 = 点击落空/试用/被拦；裁片缺失或形状不等 = 不可判，`skipped` 分键显影不与「判了未生效」混账）→ **未生效 ⇒ execute 返回 False ⇒ 落地门两侧都不动**（不投影/不守卫/不入已买集，与 SellBenchOp 失败分支同契约）→ 有效才记账（total_buy / spend_executed += cost / tracked 追加名 / 买前裁片证据）→ 满栏自动多买补差（k = `merge_buy_k` 单一源,总价 = k×单价,执行账补差 (k−1)×单价）→ 期望态推进 = 容器规则通道直写（`apply_shop_action_logic` 投影口简单腿 + `apply_shop_merge_leg` 合成升星腿,基点 = 买前快照三件组;T-163 起动作基类 execute 单方法,`project`/`simulate` 投影契约已删除）。落地契约的调用环单一源 = `apply_action_outcome`（未落地不投影/不守卫/不入已买集；落地且非终结才走容器投影直写+守卫）。
+- **BuyCardOp**：点击定位 = 期望态 payload 定长槽阵列（数组下标+1 = 物理槽；身份同一性优先，退化按 (name, star)；坐标 = screen_info「商店牌-N」现取，area 缺失显式失败）→ 买前裁片**纯留证**（只进 buy_purchases 遥测，零判效）→ 点击 → 动画窗 0.4s → **发出即记账**（total_buy / spend_executed += cost / bought_names / 裁片证据）→ tracking 同步（mutate 与投影同分支单一源：满栏合成买 tracked 侧同样合成腾槽）→ 满栏自动多买补差（k = `merge_buy_k` 单一源,总价 = k×单价,执行账补差 (k−1)×单价）。**execute 恒 True**（发出即职责完成,零判效——落地事实归下一帧入口观察 reconcile 对账,不据执行侧判定改道）。期望态推进 = 容器规则通道直写（`apply_shop_action_logic` 投影口简单腿 + `apply_shop_merge_leg` 合成升星腿,基点 = 买前快照三件组;T-163 起动作基类 execute 单方法,`project`/`simulate` 投影契约已删除）。落地契约的调用环单一源 = `apply_action_outcome`（未落地不投影/不守卫/不入已买集；落地且非终结才走容器投影直写+守卫;现役 execute 恒 True,该门保留为结构性防线）。
 - **LevelUpOp**：点购买经验单击 → 1.0s 动画（光标遮挡由段顶 park 防）→ 记账（clicks 序列 = 动作内部步骤,决策循环逐帧重组）。
-- **RefreshShopOp**（终结）：硬墙（shop_visit.md §2,visit 级）；刷前现读两口径 → 点击后**两帧指纹一致门**等牌行稳定（非 blind sleep）→ 刷后重读三通道（遥测,候选 a）。
-- **SellBenchOp**：拖前 gold 基数（实收遥测）→ 拖拽（3 次源槽未变 = 失败,**不投影**——两侧都不动保持双账一致）→ tracking 同步（置 None 不紧缩）+ `register_round_sold`（同轮不回买，执行侧幂等加固）+ 卖出入账实收观测。
+- **RefreshShopOp**（终结）：硬墙（shop_visit.md §2,visit 级）；刷前现读两口径（仅刷新段复用段顶整帧读;其余段点击前一帧现读金+牌名集）→ 刷前刷新钮真值读（按钮三态 + 免费态剩余次数,best-effort）→ 点击 → **两帧指纹一致门等牌行稳定**（非 blind sleep,超时回退静置）→ **发出即记账**（当次刷价 = 基价常量;total_refresh/did_refresh）。**判效半拆除 as-built**：牌名集三值对比仅作安灯 free_refresh_proc 豁免判定输入 + 遥测字段（refresh_board_changed;任一侧空 = None 不可判,不猜）;免费刷新 proc 留证（牌面已变 ∧ 金未扣 → 截图+flag,不停机）与刷新期望对账（金腿+牌腿,缺陷台账零决策）照常;「刷新是否生效」判定归观察侧 reconcile,执行侧零重试。
+- **SellBenchOp**：拖拽卖出（统一拖拽原语**机械单发**:确认 settle → hold 短拖 → 光标 parking;零判效零重试,源槽像素验重试已拆）→ **发出即记账**（total_sell / total_sell_income 计划值）→ tracking 同步（置 None 不紧缩）+ `register_round_sold`（同轮不回买,轮键自校验）。execute 恒 True;落地事实归下一帧入口观察 reconcile 对账。
 - **CloseShopOp**（终结恒可用）：动作 op 内 no-op,关店点击由编排壳 CwOpCloseShop 承担。**CompTransactionOp**（终结,复合动作类）：执行即访问结束交回重观察（终结邻接 fallback）。
 
 ## 5. 部署执行（CwOpDeploy，`cw_op_deploy.py`）
@@ -57,7 +57,7 @@
 - **选人/围栏/排序单一源** = kernel `cw_deploy_logic.select_deployments`（发射×执行单一源契约：执行方只做输入装配 + 拖拽执行；发射方同源）。围栏集 = RECIPE ∪ ENGINE（桥派生，`cw_op_deploy.py:46-56`）；r387 cap 富余放行散牌填空（空位>必上件数）。
 - **输入装配段计划构造**：op 对 `select_deployments_reasoned` 的装配调用同帧穿豁免实参（五消费点的计划构造面——漏武装 = kernel 计划层仍 held 列车件 → 豁免执行侧静默失效）。
 - **拖拽循环运行时守卫**（保留作防线）：每槽动态 cap 复查（起始检查只做一次的历史事故）、同名在场禁双（`deploy_legal` 不变量）、列车配方底线仲裁（r288：判定单一源 = kernel `recipe_floor_holds`，op 侧经 `r288_hold_now` 适配器消费拖拽增量真值；含**锁定线语境豁免**——豁免武装帧无有效仙舟供给时门让位，供给保留条款不变；档值常量 = `RECIPE_FLOOR_TRAIN_CAP`/`RECIPE_FLOOR_XZ_BASE`）、fresh 复查源槽占用（起始帧假阳）、前排保证（前排全空先重排真 front 候选，无则强转）、系统单位剔除（cost==0 不可拖）。P24 残余补部署的列车件过滤经同一判定（`filter_fill_plan_by_floor`，kernel 留 bench 件不得绕回上板）。
-- **遮蔽哨 + 落地判定三态化**（T-277，T-268 治本；发射契约四态出口修订）：拖拽循环与 P24 fill 循环每槽迭代体一切像素读之前置 registry decision presence 探测哨（`_decision_overlay_screen`，presence 近似——锚在场即判遮蔽，方向保守无假成功面），命中 = `STATUS_LANDING_VERDICT_UNKNOWN` 截断本轮（剩余单位留 bench，交 0 系 overlay 分支自愈）；拖拽落地判定经 `_landing_verdict` 三态统一入口（landed=像素验出占用现行语义 / invalid=非遮蔽域判负+回收槽，1-1 防线零放宽 / unknown=遮蔽域诚实未知）——遮蔽域内像素判据与游戏真值独立（渲染空白=假阴两例实机、渲染出卡面=假阳双向），既不判成功也不判无效（T-268 命题引理 1；纯 UNKNOWN 方案，ΔC 计数器改判支已裁剪 = R2 确认轮裁决，遮蔽域不消费计数器）。
+- **遮蔽哨（发射前拦截）**：拖拽循环与 P24 fill 循环每槽迭代体一切像素读之前置 registry decision presence 探测哨（`_decision_overlay_screen`，presence 近似——锚在场即判遮蔽，方向保守），命中 = `STATUS_OVERLAY_PREEMPTED` 截断本轮（剩余单位留 bench，交 0 系 overlay 分支自愈）。**部署落地零像素判效**（T-268/T-277 落地判定 machinery 已拆）：拖拽机械发出即计入，落地事实归备战环入口观察对账——遮蔽域内像素判据与游戏真值独立（渲染空白=假阴两例实机、渲染出卡面=假阳双向）正是拆除依据；遮蔽哨只做发射前让位，不做落地裁决。
 - **换排纠正**（r241/r250）：场内错排者拖回正排；**禁清空前排守卫**：front→back 纠正若会把前排拖空则跳过（出战硬要求 > 站位偏好），守卫计数 = 调用内动态维护（初值 = 单帧采样，front→back 完成 −1 / back→front 完成 +1，禁循环内静态帧重采样——双前角色形态下静态读法双双放行清空前排），拦截分键 `rowfix_skip_front_invariant`；**前排保证后置**：纠正循环后前排仍空 ∧ 后排有人 → 挪一后排到前排 1（真 pref=front 优先）——出口不变量「上阵≥1⇒前排≥1」由此在函数出口成立，收尾出口断言现读复验（`STATUS_FRONT_INVARIANT_FAIL` 兜底）。
 - **拖后整队等待 2.0s**【注·口述口径 screen_flow_timing.md #10】：羁绊徽章动画窗。
 - **收尾**：SIFT 真值纠 tracking（观测回路）+ 装备快照回写 tracked_deployed.equips（画面真值覆盖，账本漂移告警留痕）。
@@ -76,7 +76,7 @@
 
 | 层 | 重试/恢复 | 上限与去向 |
 |---|---|---|
-| 动作实例 | 拖拽 3 次源槽未变 = 失败 | 计失败 → fail-stop 交回（外循环防线接管） |
+| 动作实例 | 机械单发,动作级零重试零判效(拖拽像素验重试已拆除;落地事实归下一入口观察对账) | 无动作级去向;外循环防线接管未转移 |
 | 失败记忆 | deploy_fail_counts（同角色拖拽被游戏拒 ≥1 → 跳过） | 备战后对账刷新自然重置 |
 | 恢复原语 | try_recovery 关已知弹层 | 一次/动作实例 |
 | defer 门 | OpenTome/收球反复失败（defer≥2）→ 放弃走主流程 | 环入口 defer 清零重判自愈 |
@@ -84,4 +84,4 @@
 
 ## 8. ⚠️ 现状违宪待改标记
 
-本篇辖内（词表/执行/对账）无位面字面门、无 hp 消费、无无标数字进决策门。`LEVEL_UP_FALLBACK`/`REFRESH_FALLBACK` 字面量坐标为 screen_info 缺失兜底（1080p 项目既有前提，AGENTS 容许），非违例。
+本篇辖内（词表/执行/对账）无位面字面门、无 hp 消费、无无标数字进决策门。坐标兜底字面量已清零——牌位/升级/刷新中心 area 缺失 = 显式 round_fail（信息带 area 名），禁兜底坐标静默点击（坐标单一真相源）。

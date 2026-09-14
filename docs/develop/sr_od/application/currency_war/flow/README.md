@@ -26,7 +26,8 @@
 ├─ 动作执行（kernel/cw_prep_actions.py 词表 + prep_actions.py 执行器│
 │ + cw_op_buy_cards.py 循环壳 + cw_shop_action_ops.py 商店动作 op    │
  │ (execute 单方法) + cw_op_deploy.py 部署）────────────────────┤
-│ 三态发射契约（NOOP/失败/成功可区分）、重试/恢复原语、观测复查   │
+│ 三态发射契约（NOOP/失败/成功可区分）、动作机械发出+until 转移   │
+│ 验证+执行侧守卫面、恢复原语、观测复查                          │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -107,7 +108,7 @@
 | [screen_op.md](screen_op.md) | **画面 op 统一规范（规格,已落码）**：单动作决策循环、动作基类 execute 单方法（期望态推进 = 容器规则通道:投影口 + 合成升星腿,T-163）、终结 op 集、期望态生命周期、复合动作类、观测通道归属、开放问题落点 |
 | [prep_visit.md](prep_visit.md) | 备战访问：单轮形态（入口 heavy + 单动作决策循环 + 投影/保守回退）、备战决策 live 链（mandate_v1）、旧骨架删除注、完成判定与交还外循环 |
 | [shop_visit.md](shop_visit.md) | 商店访问：单动作循环（入口观察→逐动作→终结 op）、visit 级刷新硬墙、离店条件与收尾 |
-| [action_exec.md](action_exec.md) | 复合动作执行：词表、发射契约三态、重试/恢复语义、观测复查 |
+| [action_exec.md](action_exec.md) | 复合动作执行：词表、发射契约三态、动作机械发出+until 转移验证、执行侧守卫面、恢复语义、观测复查 |
 | [projection_contract.md](projection_contract.md) | 备战投影面交互契约：cw_state 面板/TurnState 投影 ↔ 执行臂的字段消费、双族坐标系、快照 vs 现读时序、注释规范缺口登记 |
 | [guards.md](guards.md) | 守卫总册：G3 环级无进展守卫、停滞/未知/失活防线、降级链、fail-closed 行为 |
 
@@ -120,7 +121,7 @@
 | 未知画面兜底 | 连续 15 轮全分支不命中（指数退避封顶 10s） | 停机保画面待建档 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
 | 策略失活早停 | 连续 2 个完整轮无策略心跳决策行 | 停局重启加载策略 | `cw_loop.py::CwLoop.loop` 策略失活早停检查段 |
 | 执行失败安灯 | 购买单元"计划花费>0 金差≈0"（分类器三态） | 停机留现场 flag | `cw_screen_prep.py::CwScreenPrep._exec_fail_hook_check` |
-| 商店未识别卡停机 | 防抖重读 2 帧后仍有未识别槽 | 停机保画面待建档 | `cw_op_buy_cards.py::run_buy_waves` 未识别卡停机钩子段 |
+| 商店未识别卡停机 | 收工段牌面仍有 unknown 槽（kind 判据）；判据化自愈重读 2 帧自愈面 | 停机保画面待建档 | `cw_op_buy_cards.py::run_buy_waves` 未识别卡停机钩子段 |
 | 误分发/恢复链限额 | 位面过渡连败 3 / 前台无角色重部署 2 / director 连败 5 | round_fail 交兜底链 | `cw_loop.py::CwLoop` 限额类常量（FRONTLESS_REDEPLOY_LIMIT/PLANE_MISDISPATCH_LIMIT）与 loop 内 director streak 判定 |
 
 ## 5. 宪法四条对流程层的适用口径

@@ -26,18 +26,19 @@ OpenShop 动作两形态（`kernel/cw_prep_actions.py:108-117`）：
 for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段开始)
   ├─ 段顶 settle：非连击续刷段 sleep 0.3s（board 面板动画防 OCR 误读）+ park_cursor
   ├─ 入口观察(段顶,唯一决策读屏点 = 对账):
-  │    read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读（gold/hp/lv/plane/round/shop 五槽）
-  │    → _apply_hp（shop 关闭帧 hp 三件组值+位同写覆盖）
+  │    read_game_state(phase=PHASE_PREP_SHOP_OPEN) 全量现读,漏斗容器直写
+  │    (obs 族渠道签名;产出 = GameStateReadReceipt 回执,journal 行基准)
+  │    → 店开入口防抖(shop 域未入容器时有界重读 3×0.8s;仍缺 = 交决策前置门)
   │    → 首段帧代次标注 full（方向视图由 decide_shop_action 入口消费刷新,续段 none 保持首段值）
-  │    → node_type 查位面节点序列台账（键 = 本帧 plane/round；查不到保持 None fail-open）
-  │    → dual_track_phase/committed_from 拷入（R1 唯一读端）
-  │    → gold==0 救援（读 0 时重读 4 帧取首个 >0；结果留证 obs_conflict）
-  │    → gold_open = 首段快照（对拍基线，任何动作执行前）
-  │    → bench 播种：tracked_bench_chars 优先（带 star+merge），空退 tracked_bench（旧路径）
-  │    → session.last_state = state；黑板写 session.shop_state_frame（写者白名单 = 本段/投影步）
-  │    → 期望态覆盖点 shop_wave_top 清账（gold 族可信读清账；tracked 族透传不确认）
-  │    → recorder.record_shop_snapshot('offer') + state/plan 日志行（带 node/next 节点上下文）
-  └─ 决策循环 while True（零读屏,决策 1/8）:
+  │    → node_type 台账回填（键 = 本帧 plane/round；查不到保持 None fail-open;
+  │      回填 = write_logic 台账权威值覆盖,下一备战帧真读观察赢）
+  │    → gold==0 救援（读 0 时重读 4 帧取首个 >0；结果留证 obs_conflict,
+  │      救回值经观察渠道覆盖写 bs.gold）
+  │    → 店开帧预算披露覆写（gold 真值入链,overflow/budget 三预算字段）
+  │    → 播种期对账 guard_expected_vs_tracked(stage='seed';先对账分叉归因
+  │      「播种/入口账」,投影后分叉才归「投影模型」)
+  └─ 决策循环 while True（零读屏,决策 1/8;循环顶布局代次检差 reseed +
+       防御帧帽 SHOP_SEGMENT_ACTION_CAP=16,超帽 RuntimeError 响亮暴露）:
        action = strategy.decide_shop_action(session, config)   # 恰返回一个动作,全函数
        │    异常 → decisions 落 Error 占位行 + 完整栈 log 后上抛（留证后抛,r95）
        ├─ CloseShop 终结 → break（关店点击由编排壳 CwOpCloseShop 承担）
@@ -45,39 +46,41 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
        │    plan_truncated=True + refresh_skipped='max_cap'（可见化不停）→ break
        │    （终结 break 落地后每段恰至多一次刷新;硬墙封顶的是跨段刷新提案——
        │      终结→重进→再刷新,防外循环无进展;did_refresh 段级复位）
+       ├─ spend_gate（发射帧仲裁,缺省 None）: 拒 = 本动作不执行 + 本访问收工
        ├─ 守卫断言（cw_shop_action_ops,决策 9——防 bug 路栏,炸出 = 策略器 bug）:
        │    guard_proposal_vs_expected（提案对象在期望态存在且未被消费）
-       ├─ 动作 op execute（cw_shop_action_ops._OP_TABLE 词表分发）:
-       │    BuyCard：点牌位 → sleep 0.4 → 账（total_buy/spend_executed/tracked/买前裁片
-       │            留证）→ 满栏自动多买补差（k 公式单一源 cw_state.merge_buy_k）
+       ├─ 动作 op execute（cw_shop_action_ops._OP_TABLE 词表分发;机械发出,
+       │    执行回执 note_shop_action_receipt 逐动作一行,零成败判定）:
+       │    BuyCard：槽号定位（payload 定长槽阵列,数组下标+1 = 物理槽;身份同一性
+       │            优先,退化 (name,star)）→ 买前裁片纯留证 → 点牌位 → sleep 0.4
+       │            → 账（total_buy/spend_executed/bought_names）→ 满栏自动多买
+       │            补差（k 单一源 = merge_buy_k）
        │    LevelUp：点购买经验单击 → sleep 1.0（动画对齐）→ 账（clicks 序列 = 动作内部
        │            步骤,由决策循环逐帧重组——外部买面在单击之间不可插花）
        │    RefreshShop（终结）：刷前现读两口径（仅刷新段复用段顶整帧读;其余段点击前
-       │            一帧现读金+牌名集）→ 点刷新 → 牌行两帧指纹一致门（≤2.5s,超时回退
-       │            静置）→ 刷后重读三通道（执行实现层遥测,候选 a）: record_shop_snapshot
-       │            ('refresh') + refresh_effective 三值判定（False=全同 → 缺陷台账留证;
-       │            True ∧ 金未扣 → 免费刷新 proc flag 留证不停机）+ 刷新期望对账
-       │            （金腿失读不评；牌腿 1-4 张不判错——槽位解锁未建模）
-       │    SellBench：拖前 gold 基数 → 拖拽卖出（拖 3 次源槽未变 = 失败,不投影——
-       │            两侧都不动保持双账一致）→ tracking 同步（置 None 不紧缩）
-       │            + register_round_sold（同轮不回买）+ 卖出入账实收观测（前后 gold 差落盘）
-       ├─ 落地门 apply_action_outcome（调用环单一源,cw_op_buy_cards）: execute 返回
-       │    False（未落地,如 BuyCard 检出点击未生效）⇒ 两侧都不动——不投影/不守卫/
-       │    不入已买集（cw4_visit_bought_names,防检出帧名污染对账）;落地且非终结才进投影
-       ├─ 投影（决策 10:动作 op project = cw_state.simulate 单一源,纯计算零读屏）:
-            非终结且落地 → 黑板推进 session.shop_state_frame = project(态)
-            → guard_expected_vs_tracked 双账断言（满栏买入豁免——豁免面已随
-              收窄为非合成满栏买的像素差 fail-open 残余窗;满栏合成
-              买面 tracked 与 simulate 同走 _apply_full_bench_merge_buy 单一
-              源,双账同构,不再丢件漏记）
-  段尾：state.equips 拷贝（必须在决策之后——cw_comps 装备动态权重读 state.equips）
-        + decisions 行（段尾累计行:actions = 本段执行累计,CloseShop 终结不入行;
-          与旧「空序列=完成」的行形态对齐;单动作下无截断丢弃尾,plan_truncated
-          仅由刷新硬墙置位;粒度申报:刷新 = 终结 op 后本段即 break ⇒ 每刷独立成行）
-       └─ 终结 op 退出（决策 4/7;review V1/V2 修复批）: execute 后 _aop.terminal
-       │    为真 → break——刷新引入的新牌面 = 新事实,由下一段入口观察重建期望态;
-       │    黑板对终结不投影（期望态按规格作废）,旧牌面不再回流策略器（消灭
-       │    RefreshShop 连发至硬墙 / 旧牌面 BuyCard 提案错买两个分支）。
+       │            一帧现读金+牌名集）→ 刷前刷新钮真值读（三态+免费剩余次数）→
+       │            点刷新 → 牌行两帧指纹一致门（≤2s,超时回退静置）→ 发出即记账
+       │            （刷价 = 基价常量）;牌名集三值对比仅作安灯豁免判定输入 + 遥测
+       │            （refresh_board_changed）;免费刷新 proc 留证（牌面已变∧金未扣
+       │            → flag 不停机）+ 刷新期望对账（零决策）
+       │    SellBench：拖拽机械单发（零判效零重试）→ 发出即记账（total_sell/
+       │            total_sell_income 计划值）→ tracking 同步（置 None 不紧缩）
+       │            + register_round_sold（同轮不回买）
+       ├─ 落地门 apply_action_outcome（调用环单一源,cw_op_buy_cards）: execute
+       │    恒 True（发出即职责完成,零判效）;门保留为结构防线——未落地 ⇒ 两侧
+       │    都不动:不投影/不守卫/不入已买集/不计数;落地且非终结才进投影
+       ├─ 投影（容器规则通道直写,纯计算零读屏）: apply_shop_action_logic 投影口
+            简单腿 + apply_shop_merge_leg 合成升星腿（买前快照三件组基点）直写
+            容器 → guard_expected_vs_tracked 双账断言（满栏买入 skip——满栏合成
+              买面 tracked 与投影同走 _apply_full_bench_merge_buy 单一源,双账
+              同构,不再丢件漏记）
+  段尾：decisions 行（段尾累计行:actions = 本段执行累计,CloseShop 终结不入行;
+          单动作下无截断丢弃尾,plan_truncated 仅由刷新硬墙/闸拒置位;粒度申报:
+          刷新 = 终结 op 后本段即 break ⇒ 每刷独立成行）
+       └─ 终结 op 退出（决策 4/7）: execute 后 _aop.terminal 为真 → break——
+       │    刷新引入的新牌面 = 新事实,由下一段入口观察重建期望态;终结不投影
+       │    （期望态按规格作废）,旧牌面不再回流策略器（消灭 RefreshShop 连发
+       │    至硬墙 / 旧牌面 BuyCard 提案错买两个分支）。
   段间判定：did_refresh=False → break（本段无刷新/硬墙 → 收工）
 ```
 
@@ -92,8 +95,9 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
 | 条件 | 语义 |
 |---|---|
 | **CloseShop 终结** | 策略器主动选关店终结 op（全函数「无动作可做」的表达,决策 4/5;取代旧「空序列 = 决策完成」通道）→ 本段收工。唯一常规离店条件 |
+| 全 unknown 窗 | 牌面含 unknown 槽（整帧 OCR/SIFT 失读窗）→ 决策入口前置门仅返回 CloseShop（花钱动作 BuyCard/RefreshShop/LevelUp 一律禁发射,不猜;真买空 [empty×5] 不受影响）→ 收工段未识别卡停机钩子随即承接留证 |
 | 刷新硬墙 | visit 级 `total_refresh` ≥ MAX_REFRESH → 终结集降级仅关店（本轮当未刷新收工） |
-| 未识别卡停机 | 收工前检查：商店仍有未识别槽（SIFT miss）→ 判据化自愈重读 2 帧（`_wait_shop_row_stable` 两帧指纹一致 + ≥1.0s 最短观察窗）→ 仍 miss → 停机保画面待建档（用户裁决 2026-08-24：未识别不能降级带病跑；`cw_op_buy_cards.py` 收工段停机钩子） |
+| 未识别卡停机 | 收工前检查：牌面仍有 unknown 槽（kind=='unknown' 判据;empty=确证空位不计）→ 判据化自愈重读 2 帧（`_wait_shop_row_stable` 两帧指纹一致 + ≥1.0s 最短观察窗）→ 仍 miss → 停机保画面待建档（用户裁决 2026-08-24：未识别不能降级带病跑；`cw_op_buy_cards.py` 收工段停机钩子） |
 | 循环异常 | 上抛 → 编排层单元 aborted 关账，店不收（交上层重新识别） |
 
 ## 4. 单元收尾 finalize_buy_phase（`cw_screen_prep.py:2071`）

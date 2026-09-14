@@ -55,7 +55,7 @@ run 级初始化 = `handle_init`（每次 execute() 开头框架回调；`cw_loo
 | 0t | 商店卡牌详情弹窗（T-163 实机事故建档:奖励节点点球误触开的角色 offer 购买页） | 双 id_mark 门:'按钮-购买' ∧ '按钮-角色详情'（弹窗前景独有锚,双锚全中才接管;判据单一源 `_shop_card_detail_anchor_hit`） | **CwScreenShopCardDetailPopup（新·推进,T-163）**:点 X(按钮-关闭,cw_lobby_close 同族模板)→ 验 X 消失 → 交回重判（店开 → 0n 商店访问接管购买;备战 → 备战环）;**绝不点购买**（买不买归商店域,关闭动作不代替购买决策）;on_fail_retry 消费 retry 池。序位 0 系——弹窗暗色衬底遮蔽底层全部锚（T-163 实证:开商店三锚/备战双锚 OCR 全灭）,不先分流 = 事故形态 |
 | 0m | 备战暗色锁定子态族 | 右上"返回XX选择"按钮锚 | **CwScreenPrepLockedReturn（新·推进）**;两画面档参数化(策略锁定/遭遇锁定,分发处传命中的那对) |
 | 0n | 备战-开商店(商店浮层态) | 开商店画面档三 id_mark(购买经验+按钮-收起+标识-备战阶段;与干净备战的按钮-出战天然互斥,idmark 审计批定稿) | 转交商店访问路径:CwScreenPrep.visit_open_shop **经包装(元组适配形),op='商店访问' 行补齐 = S11 对齐**——入口观察→策略器逐动作决策→CloseShop 终结收店;路由层禁硬编码收起。分键 branch_shop_open_hit + visit_ok/_fail |
-| 0j | 前台无角色提示 | id_mark | 直管恢复链保留(边界申报:发射核/战斗窗口状态耦合,op 化挂后续批);**经包装链形补 op='前台无角色恢复' 行**;确认 → 带落点验证重部署 → 验前排≥1 → 本迭代内再出战;重试上限 FRONTLESS_REDEPLOY_LIMIT=2 |
+| 0j | 前台无角色提示 | id_mark | 直管恢复链保留(边界申报:发射核/战斗窗口状态耦合,op 化挂后续批);**经包装链形补 op='前台无角色恢复' 行**;确认 → 重部署(CwOpDeploy 机械执行,执行侧守卫面保留)→ 本迭代内直接再出战(StartBattle until 转移验证;失败信号 = 出战链 POST_LAUNCH_BLOCKERS 弹窗守卫);重试上限 FRONTLESS_REDEPLOY_LIMIT=2 |
 | 0p | BOSS 简报 | area 锚 ∨ 共享判别 `is_boss_briefing_texts`（误读鲁棒） | CwScreenBossBriefing（经包装补行）;**先于备战双锚**（横幅遮挡下双锚仍透出命中）;streak 复位留外循环回调 |
 | 0q | 位面过渡 | OCR'点击空白处继续' ∧ 非 boss 帧（两画面排他） | CwScreenPlaneTransition（经包装）;误分发型 fail streak/超限 round_fail 留外循环回调（PLANE_MISDISPATCH_LIMIT=3） |
 | 0r | 位面简报 | id_mark | CwScreenBriefing（经包装补行） |

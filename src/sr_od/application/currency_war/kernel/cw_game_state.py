@@ -9,10 +9,10 @@ GameState(正名前暂名 BoardState,ADR-0630 后果节+W8 候裁7)= 当前仍�
 
 **与推演内核帧 CwSimFrame 的关系**:平行表示,不是镜像——本容器 =
 实机真值记录模型(只记录实机会产生的已知事实);``CwSimFrame``
-(kernel/cw_vocab)= sim 模拟环境的局面帧(环境真值工作态)。内核帧 →
-容器唯一同步通道 = :func:`feed_sim_truth`(observation 渠道,evidence
-恒带 ``sim:synthesized``);容器值禁回写帧字段(策略与引擎经容器读口
-读值为合法)。逐字段映射对账正本 =
+(kernel/cw_vocab)= sim 侧局面帧类型(sim 转移/检查/离线重建面载体)。
+生产写入 = **引擎直写**(sim 引擎内部工作态即本容器,经渠道签名写入口
+落字,渠道族封闭集见下文遥测段);容器值禁回写帧字段(策略与引擎经容器
+读口读值为合法)。逐字段映射对账正本 =
 docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
 字段准入按设计 §8.8 治理三件:派生量(席空数/席满判定/board 下档阈值)
 是计算函数不存储;识别质量位是写入闸门不存储(失读统一口径 =
@@ -34,8 +34,10 @@ PendingEntry/confirm 转正/discard_expected)全套废除;逻辑态错误 =
 旁表模式,弱引用表 + 桩面兜底)——session 对象 = 局身份,新局新 session
 即天然新建,符合「单例,每局新建」(§1/§6.2)。
 
-**sim 合成口** = :func:`synthesize_from_game_state`:sim 以 CwSimFrame 真值
-合成时同样记 observation,evidence 恒带 ``sim:synthesized``(§2.1);
+**帧→容器合成口** = :func:`synthesize_from_game_state`(正式入口包装 =
+:func:`feed_sim_truth`):CwSimFrame 真值合成时记 observation,evidence
+恒带 ``sim:synthesized``(§2.1)——生产 sim 引擎已直写容器(见上段),
+本口现役消费面 = 离线/测试构造(生产零调用);
 bench 槽位保序映射——记录模型按实机真值箱占席(§3.2.5),不采 sim
 「无箱实体」的内部口径约定。
 
@@ -3147,13 +3149,12 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
                                at_round: str = '',
                                shop_empty_off_screen: bool = True,
                                shop_open: bool = False) -> None:
-    """CwSimFrame 真值 → 容器域写入(波 5 起为直写喂入口的写入实现)。
+    """CwSimFrame 真值 → 容器域写入(帧→容器合成口的写入实现)。
 
-    引擎侧统一经 :func:`feed_sim_truth` 调本函数;直接调用 = kernel 内部面
-    (喂入口写入实现与过渡桥自身装箱)与实机商店段入口喂入
-    (``cw_op_buy_cards.run_buy_waves``,该调用方必传
-    ``shop_empty_off_screen=False``,理由见下方 payload 域分支)。原「sim 合成口」
-    域覆盖口径不变:
+    生产 sim 引擎已直写容器(引擎内部工作态即容器,渠道签名写入口),不再
+    经本口喂入;经 :func:`feed_sim_truth` 调本函数与直接调用现役 = 离线/
+    测试构造面(识别域调用方传 ``shop_empty_off_screen=False``,理由见下方
+    payload 域分支)。原「sim 合成口」域覆盖口径不变:
 
     - sim 无识别过程 = 恒真值帧:可读字段全记 observation,evidence 恒带
       ``sim:synthesized``(at_round 非空时并入轮键后缀
@@ -3327,15 +3328,14 @@ def synthesize_from_game_state(bs: GameState, st: CwSimFrame, *,
 
 def feed_sim_truth(bs: GameState, st: CwSimFrame, *,
                    at_round: str = '', shop_open: bool = False) -> None:
-    """sim 真值直写喂入口(波 5 喂入反转的正式入口)。
+    """sim 真值直写喂入口(帧→容器合成口的正式入口包装)。
 
-    方向契约(与过渡桥的反转边界):sim 引擎内部模型(CwSimFrame 工作帧)
-    的真值由**引擎侧主动直写**进 session 容器,消费端(策略/op)一律
-    经 ``board_state_of(session)`` 直读容器——禁再造桥装箱一次性视图。
+    生产写入 = **引擎直写**(sim 引擎内部工作态即 session 容器,经渠道签名
+    写入口落字,消费端一律经 ``board_state_of(session)`` 直读容器——禁再造
+    桥装箱一次性视图);本口的现役消费面 = 离线/测试构造(生产引擎零调用,
+    喂入反转的旧生产路径已随引擎切容器收敛)。
     写入实现 = :func:`synthesize_from_game_state`(域覆盖/evidence/
-    payload 离屏口径单一源,本口零第二实现);喂入时点 = 决策消费点
-    之前(商店决策段/投资选卡/意向重估等),保证消费读到的容器帧与
-    引擎内部模型同拍。
+    payload 离屏口径单一源,本口零第二实现)。
 
     - best-effort:记录层故障不毒化 sim(与 note_action_receipt 同纪律),
       异常 log 留痕后返回,容器保持上一拍帧;
