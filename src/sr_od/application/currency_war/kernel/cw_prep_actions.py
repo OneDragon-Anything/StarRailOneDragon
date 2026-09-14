@@ -44,8 +44,15 @@ class PrepAction:
 
 @dataclass
 class ClickSpheres(PrepAction):
-    """点奖励球(带上界批,大球优先,内验早停;掉箱即停回环交规则统筹)。"""
-    max_k: int = 1
+    """点奖励球(R4 坐标参数化机械动作:载荷 = 有序球坐标点击列表)。
+
+    ``points`` = 按点击顺序排列的球心坐标 (x, y)(1080p 游戏空间,与
+    ``PrepObservation.spheres`` 的 Point 同系)。挑选逻辑(大球优先/
+    上界截断)归决策侧 kernel 单一源 = :func:`select_sphere_clicks`,
+    发射位调用之;执行器纯机械逐个点,零读屏零排序。逻辑态按载荷
+    精确摘球(坐标匹配,``cw_screen_prep._project_prep_obs``)。
+    """
+    points: tuple[tuple[int, int], ...] = ()
 
 
 @dataclass
@@ -62,12 +69,6 @@ class OpenTome(PrepAction):
     选卡决策在 loop 0i handler(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
     """
     slot: int | None = None
-
-
-@dataclass
-class PickBoxCard(PrepAction):
-    """武装箱 4 选 1 点卡。card_idx=None → 执行器内嵌默认选卡(v7 M-3:P1 住执行器,P5 上移策略)。"""
-    card_idx: int | None = None
 
 
 @dataclass
@@ -134,6 +135,121 @@ class LevelUp(PrepAction):
     """买经验升等级(点「购买经验」循环至 level+1;cap+1 = 腾席链 b 步)。"""
 
 
+# ===== 原子动作扩域(R2 组合壳溶解 / R8 工具按消耗品各立类;design.md
+#      unified-action-factory §2.6)=====
+#
+# 词表边界(design §2.1):框架词表 = 原子动作 + 坐标参数化机械动作;
+# 组合编排/授权循环/批内挑选逻辑 = 策略实现,不入词表。下列各类的
+# 计划/授权面在发射位(kernel 计划构造 + 判据准入),类本体只载
+# 「单步拖拽」参数。
+#
+# 通用坐标系声明(装备域两类目标,全族共用):
+# - 装备源件 = owned 装备网格内 icon,按 ``item_name`` 机械现读定位
+#   (执行坐标边合法现读;坐标不入动作——网格 reflow 会使坐标失真,
+#   名字定位是唯一稳锚)。
+# - 角色目标槽位 ``row``/``slot``:row ∈ 'front'|'back'(画面物理排);
+#   slot = 画面物理槽位 1 基(前排 1-4 / 后排 1-选档 N;非列表下标,
+#   与 prep_actions §13.1 slot 语义同域)。取值时机 = 生成期快照
+#   (发射位从备战观察/容器槽位表现读;同一 visit 内 tracked 账随动,
+#   槽位跨动作组恒稳——置 None 不移位坐标系,ADR-0392)。
+
+@dataclass
+class WearEquip(PrepAction):
+    """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路)。
+
+    计划构造 = kernel ``build_equip_wear_plan``(自执行器模块迁居,
+    决策侧逐帧现算);发射序即执行序(决策核逐帧取首项)。逻辑态 =
+    ``obs.owned_equips`` 摘件(视觉域,与 OpenBox/OpenTome 同形);
+    穿没穿归观察写入边对账(裁决 3 零比对出生:体内零 CV-diff 验穿)。
+    ``char_name`` = 目标角色注册名('' = front-only 回退步,拖点 =
+    前排空槽 avatar,与 EquipWearStep 契约同形)。
+    """
+    item_name: str
+    char_name: str
+    row: str            # 'front' | 'back'(见上方通用坐标系声明)
+    slot: int           # 画面物理槽位 1 基(前排 1-4 / 后排 1-N)
+
+
+@dataclass
+class FurnaceUse(PrepAction):
+    """冶金炉(R8 按消耗品各立类;双模式)。
+
+    - target_kind='equip':拖装备 = 原地变异同类型随机(target =
+      装备库 owned 件,``item_name``;产物不可预知 → 随机面观察收口,
+      ``EQUIP_WRITE_SIDES['冶金炉']`` 负写端在册);
+    - target_kind='char':拖角色 = 全拆 + 每件变异随机(target =
+      角色槽位,``row``/``slot``;确定面 = 穿戴域 → 库存域全量迁移,
+      变异产物 = 随机面观察收口)。
+    """
+    target_kind: str    # 'equip' | 'char'(作用对象模式;值域封闭)
+    item_name: str = ''  # target_kind='equip':装备库 owned 件名
+    row: str = ''        # target_kind='char':见上方通用坐标系声明
+    slot: int = 0        # target_kind='char':画面物理槽位 1 基
+
+
+@dataclass
+class PrivilegeCardUse(PrepAction):
+    """特权赋予卡(R8;双腿)。
+
+    - target_kind='equip'(库存腿,现役执行臂):确定变换 = target 件
+      名替换为对应·特权名(映射单一源 = ``cw_effect_inventory.
+      privilege_counterpart``,写端 = ``transform_equip_to_privilege``);
+    - target_kind='char'(拖角色腿):该角色已穿进阶装备随机一件变
+      特权——「哪件被选」= 随机面 → 逻辑态只写工具 −1,选定后确定面
+      归观察收口(``transform_worn_equip_to_privilege`` 桥在册)。
+    """
+    target_kind: str    # 'equip' | 'char'(值域封闭,同 FurnaceUse)
+    item_name: str = ''  # target_kind='equip':被变换的进阶成品件名
+    row: str = ''        # target_kind='char':见上方通用坐标系声明
+    slot: int = 0        # target_kind='char':画面物理槽位 1 基
+
+
+@dataclass
+class WrenchUse(PrepAction):
+    """拆装扳手(R8):target = 角色槽位(取下该角色全部穿戴,装备归属
+    面回区);工具消耗品 −1(用后消失)。"""
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class PrecisionWrenchUse(PrepAction):
+    """精密拆装扳手(R8):target = 角色槽位(同 WrenchUse);无限次用,
+    工具库存面不递减(重复获得改 +1 金 = 贡献算术,获得回执窗在册)。"""
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class StaffProjectorUse(PrepAction):
+    """员工投影仪(R8 投影仪按型号两类之一):target = 角色槽位
+    (在备战席创造该角色 1 星复制);费用门 = 3 费及以下(门表单一源 =
+    ``cw_affix_effects`` 投影仪费用门行),门由发射位判据面辖。"""
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class PerfectProjectorUse(PrepAction):
+    """完美投影仪(R8 投影仪按型号两类之二):target = 角色槽位
+    (同 StaffProjectorUse 但无费用门)。"""
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class LuckyTokenUse(PrepAction):
+    """好运令牌(R8):拖到角色 → 从其推荐进阶装备中获得一件。
+
+    ⚠️ 发射位挂账(裁决 1/R9 纪律):作用对象判据面现役 fail-closed
+    永不进准入(``cw_equip_env.evaluate_tool_actions`` rc_missing 拒因
+    在册)——类随族立档 + 注册行,发射位禁无判据发射;判据面建模批
+    补档(知识缺口登记 = ``flow/action-logic-state.md`` §7 好运令牌行)。
+    """
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
 @dataclass
 class OpenShop(PrepAction):
     """开商店意图(W970 批 C/§4.3.6;EnsureShop 意图退役后的承接形态)。
@@ -172,12 +288,15 @@ class RunTools(PrepAction):
 
 # 动作全集白名单(F3 membership 校验;新动作加入全集时同步此处)
 PREP_ACTION_TYPES: tuple = (
-    ClickSpheres, OpenBox, OpenTome, PickBoxCard,
+    ClickSpheres, OpenBox, OpenTome,
     SellBench, SellDeployed, DeployMove, LevelUp,
+    WearEquip,
+    FurnaceUse, PrivilegeCardUse, WrenchUse, PrecisionWrenchUse,
+    StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,
     StartBattle,
     OpenShop,
-    RunDeploy, RunEquip, RunTools,
-)
+    RunDeploy, RunEquip, RunTools,   # 组合壳(R2):2a 原子通路就位后零构造,
+)                                    # 类与登记行删除归批2b 归一删除面
 # ⚠️ 教训:**新增 PrepAction 必须同步登记本白名单**——漏登记时 validate 拒
 # 「未知动作类型」,动作从未真正执行(OpenTome 曾漏登记,数百次 F3 拒绝
 # 被误读为执行失败;F3 校验是最后防线,登记是入口门)。
@@ -202,6 +321,30 @@ def action_key(action: PrepAction) -> str:
             return type(action).__name__   # 无字段 dataclass(StartBattle 等)→ 裸名
         return f'{type(action).__name__}({params})'
     return type(action).__name__
+
+
+#: 点球单批硬上限(原执行器 SPHERE_MAX_CLICKS 常量迁居 kernel:挑选上界
+#: 归挑选函数,执行器只机械点载荷;防识别抖动死循环的防线语义不变)。
+SPHERE_CLICK_HARD_CAP: int = 12
+
+
+def select_sphere_clicks(spheres: list, cap: int,
+                         ) -> tuple[tuple[int, int], ...]:
+    """奖励球挑选 kernel 单一源(R4 ClickSpheres 改形;纯函数)。
+
+    输入 = ``PrepObservation.spheres``([(color, Point, r)];颜色与半径
+    仅排序消费,不进载荷);``cap`` = 本批点击预算(发射位常量,如
+    mandate_v1 SPHERE_CLICK_BATCH_MAX_K)。输出 = 有序 (x, y) 点击列——
+    大球优先(r 降序;稳定排序保持观察序),上界 = min(cap, 硬上限
+    SPHERE_CLICK_HARD_CAP)。席满让路门/占席球语义归发射位(既有门),
+    本函数不辖。
+
+    消费面:发射位(mandate_v1 entry)构造 ClickSpheres 载荷;执行器
+    零排序零截断纯机械点(第二实现禁)。
+    """
+    budget = max(0, min(int(cap), SPHERE_CLICK_HARD_CAP))
+    ordered = sorted(spheres, key=lambda t: t[2], reverse=True)[:budget]
+    return tuple((int(p.x), int(p.y)) for _c, p, _r in ordered)
 
 
 @dataclass

@@ -1803,6 +1803,84 @@ def select_swap_plan(ctx: SwapPlanContext | None,
     return plan
 
 
+# ===== 原子部署发射位件(R2 组合壳溶解;批 2a)=====
+# RunDeploy 组合壳退役后,部署计划 → 物理落位指派归发射位逐帧现算;
+# 本节两纯函数 = 发射位(kernel select_deployments 上移消费)的槽位
+# 指派单一源,与执行侧 CwScreenDeploy 主拖拽循环选排同式(前排保证/
+# 首选排满 fallback 另一排)。
+
+def empty_deploy_slots(deployed_slots: list[BenchChar],
+                       front_total: int = 4,
+                       back_total: int = 6,
+                       ) -> tuple[list[int], list[int]]:
+    """部署席位空槽读数(纯函数):容器/观察 deployed 槽位 → (前排空槽,
+    后排空槽),物理槽位 1 基升序。``deployed_slots`` 元素取
+    position_pref/slot 信息位(ADR-0392 槽位表或 SIFT 观察视图同构)。"""
+    front_occ: set[int] = set()
+    back_occ: set[int] = set()
+    for d in deployed_slots:
+        if d is None:
+            continue
+        _row = getattr(d, 'position_pref', None) or 'back'
+        _slot = int(getattr(d, 'slot', 0) or 0)
+        (front_occ if _row == 'front' else back_occ).add(_slot)
+    return ([i for i in range(1, front_total + 1) if i not in front_occ],
+            [i for i in range(1, back_total + 1) if i not in back_occ])
+
+
+def assign_deploy_slots(bench: list[BenchChar],
+                        up_idx: list[int],
+                        front_empty: list[int],
+                        back_empty: list[int],
+                        front_total: int = 4,
+                        ) -> list[tuple[int, str, int]]:
+    """原子部署选排指派(纯函数;发射位 DeployMove 载荷单一源)。
+
+    输入 = bench(选排消费 position_pref)/ ``up_idx``(select_deployments
+    上场序,bench 下标)/ 前后排空槽(物理 1 基)。输出 =
+    ``[(bench 下标, row, 物理槽位 1 基)]``(发射序 = 执行序)。选排规则
+    与 CwScreenDeploy 主拖拽循环逐条同式:首选排 = position_pref
+    (缺省 back);对应排满 fallback 另一排;**前排保证** = pref=back 且
+    前排全空(出战硬要求前排有角色)时队列后方真 front 候选先提,无
+    front 候选才强转当前 back 件(2026-08-16 M47 修正口径)。两排全满
+    = 截断(调用侧 cap 门先行,防御停)。
+
+    消费面:mandate 发射位与 cw_loop 出战链(禁各写一套指派)。
+    """
+    fe = list(front_empty)
+    be = list(back_empty)
+    pending = list(up_idx)
+    out: list[tuple[int, str, int]] = []
+    oi = 0
+    while oi < len(pending):
+        bi = pending[oi]
+        pref = (getattr(bench[bi], 'position_pref', None) or 'back')
+        if pref == 'back' and len(fe) == front_total and fe:
+            # 前排保证(重排):队列后方有真 front 候选提到当前位
+            _later = next((j for j in pending[oi + 1:]
+                           if (getattr(bench[j], 'position_pref', None)
+                               or 'back') == 'front'), None)
+            if _later is not None:
+                pending.remove(_later)
+                pending.insert(oi, _later)
+                continue   # 原地重处理当前位(现为真 front)
+            pref = 'front'   # 无 front 候选 → 强转前排
+        if pref == 'front':
+            row, chosen, fallback = 'front', fe, be
+        else:
+            row, chosen, fallback = 'back', be, fe
+        if chosen:
+            slot = chosen.pop(0)
+        elif fallback:
+            row = 'front' if row == 'back' else 'back'
+            slot = fallback.pop(0)
+        else:
+            break   # 两排全满(防御停;cap 门先行时不可达)
+        out.append((bi, row, slot))
+        oi += 1
+    return out
+
+
 # ============================================================
 # 候裁9 词汇迁入(原 kernel/cw_state.py;第 5 归宿):板上唯一性守卫
 # board_unique_key(唯一活消费方 = 部署围栏,本模块同域)。
