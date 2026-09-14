@@ -36,7 +36,7 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
   │      救回值经观察渠道覆盖写 bs.gold）
   │    → 店开帧预算披露覆写（gold 真值入链,overflow/budget 三预算字段）
   │    → 播种期对账 guard_expected_vs_tracked(stage='seed';先对账分叉归因
-  │      「播种/入口账」,投影后分叉才归「投影模型」)
+  │      「播种/入口账」,逻辑态直写后分叉才归「逻辑态模型」)
   └─ 决策循环 while True（零读屏,决策 1/8;循环顶布局代次检差 reseed +
        防御帧帽 SHOP_SEGMENT_ACTION_CAP=16,超帽 RuntimeError 响亮暴露）:
        action = strategy.decide_shop_action(session, config)   # 恰返回一个动作,全函数
@@ -68,27 +68,29 @@ for _ in range(MAX_REFRESH + 1):          # 段循环(刷新终结 = 下一段�
        │            + register_round_sold（同轮不回买）
        ├─ 落地门 apply_action_outcome（调用环单一源,cw_op_buy_cards）: execute
        │    恒 True（发出即职责完成,零判效）;门保留为结构防线——未落地 ⇒ 两侧
-       │    都不动:不投影/不守卫/不入已买集/不计数;落地且非终结才进投影
-       ├─ 投影（容器规则通道直写,纯计算零读屏）: apply_shop_action_logic 投影口
+       │    都不动:不写逻辑态/不守卫/不入已买集/不计数;落地且非终结才进逻辑态直写
+       ├─ 逻辑态直写（容器规则通道,纯计算零读屏）: apply_shop_action_logic 逻辑态直写口
             简单腿 + apply_shop_merge_leg 合成升星腿（买前快照三件组基点）直写
             容器 → guard_expected_vs_tracked 双账断言（满栏买入 skip——满栏合成
-              买面 tracked 与投影同走 _apply_full_bench_merge_buy 单一源,双账
+              买面 tracked 与逻辑态直写同走 _apply_full_bench_merge_buy 单一源,双账
               同构,不再丢件漏记）
   段尾：decisions 行（段尾累计行:actions = 本段执行累计,CloseShop 终结不入行;
           单动作下无截断丢弃尾,plan_truncated 仅由刷新硬墙/闸拒置位;粒度申报:
           刷新 = 终结 op 后本段即 break ⇒ 每刷独立成行）
        └─ 终结 op 退出（决策 4/7）: execute 后 _aop.terminal 为真 → break——
-       │    刷新引入的新牌面 = 新事实,由下一段入口观察重建期望态;终结不投影
+       │    刷新引入的新牌面 = 新事实,由下一段入口观察重建期望态;终结不写逻辑态
        │    （期望态按规格作废）,旧牌面不再回流策略器（消灭 RefreshShop 连发
        │    至硬墙 / 旧牌面 BuyCard 提案错买两个分支）。
   段间判定：did_refresh=False → break（本段无刷新/硬墙 → 收工）
 ```
 
+> 术语注:逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
+
 `MAX_REFRESH=4`【注·框架常量】是**visit 级刷新硬墙**（候选 (a) 落定）：终结→重进→再刷新的循环形态下,防策略器反复选刷新造成外循环无进展——超墙后终结集降级为仅关店。刷新是否值得刷是策略判据（P40 三层门,见 `../strategy-docs/11_shop_decisions.md` §刷新）。
 
 **对抗修复批登记（补登节）**：①决策循环有防御帧帽 `SHOP_SEGMENT_ACTION_CAP=16`（内层 while 顶计数,超帽 RuntimeError + `plan_visit_action_cap` 分键,禁静默——与备战 VISIT_ACTION_CAP 同款防线）；②EV 买面席位门（满栏帧不提案,拒因分键 `shop_ev_bench_wait`;~~席位门后满栏 §2.5 分支与双账满栏豁免在商店生产路径不可达=防御纵深~~ **该不可达声明已被 2026-09-09 05:52 运行局证伪**——m2_merge_completion 提案在满栏帧照常发射并触发满栏 §2.5 合成分支）；③计数键 `shop_visit_idle_gold`（旧 `shop_wave_idle_gold` 改名,visit 语义,跨结构不可直接对拍）。
 
-**与波批的输出等价是条件命题**（前提 = 波批投影无残差;投影残差史 bug 类）——帧级锁按「锁的存在性纪律」重推语义,禁机械跟绿（w614 哨兵锚已重锚）。
+**与波批的输出等价是条件命题**（前提 = 波批逻辑态直写无残差;逻辑态残差史 bug 类）——帧级锁按「锁的存在性纪律」重推语义,禁机械跟绿（w614 哨兵锚已重锚）。
 
 ## 3. 离店条件
 

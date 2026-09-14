@@ -3,7 +3,8 @@
 > 本目录是货币战争（CW）**流程控制的唯一现行设计家**，由流程层代码反向规格化而成（本批为纯文档，零代码改动）。原 `strategy-docs/09_architecture.md`（契约/插件/管理器/注册壳/三臂）已删除，其内容全部收编入本 README §2。
 > 职责分界（用户裁定）：**策略文档（`../strategy-docs/`）只管"每个画面结合哪些数学证明、怎么产出决策"；流程控制单独立文档（本目录）**——画面识别与路由、访问相位推进、动作发射契约、守卫与停机。
 > 读者 = 无会话历史的工程师/智能体。术语首次出现给定义。代码定位一律用符号锚 `文件::符号名`（loop 内语义段用 `文件::CwLoop.loop(段名)` 形态）——行号随代码增长漂移，不作定位依据；路径根 = `src/sr_od/application/currency_war/`。
-> **单动作循环架构 = 已迁移（设计定案并实施,2026-09-06 落码）**：商店决策波批形态（一次观察算整波动作、截断器、波级契约）已被单动作循环（入口观察→逐动作决策循环→终结 op）替换;备战 per-action heavy 重读契约已灭（入口单次 + 逐动作投影 + 未建模面保守回退）;旧备战骨架死码（flow.py 10 方法 + kernel/cw_deploy_seat + prep_phase 族 session 字段）已物理删除。目标态规格 = [screen_op.md](screen_op.md)（as-designed 与 as-built 对齐维护）;各篇 as-built 描述即为现行实现。波批时代的 §2.2 序列契约保留为历史注（见该节）。
+> **单动作循环架构 = 已迁移（设计定案并实施,2026-09-06 落码）**：商店决策波批形态（一次观察算整波动作、截断器、波级契约）已被单动作循环（入口观察→逐动作决策循环→终结 op）替换;备战 per-action heavy 重读契约已灭（入口单次 + 逐动作逻辑态直写 + 未建模面保守回退）;旧备战骨架死码（flow.py 10 方法 + kernel/cw_deploy_seat + prep_phase 族 session 字段）已物理删除。目标态规格 = [screen_op.md](screen_op.md)（as-designed 与 as-built 对齐维护）;各篇 as-built 描述即为现行实现。波批时代的 §2.2 序列契约保留为历史注（见该节）。
+> 术语注(首次出现):逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
 
 ## 1. 四层结构总图
 
@@ -14,7 +15,7 @@
 │ 停机/遥测钩子（守卫、runs summary、分配器、对局存档）           │
 ├─ 画面指挥（cw_screen_prep.py = 备战单轮：入口 heavy 观察+对账+单动作决策循环）─────────────────┤
 │ ①入口观察(heavy) ②对账(暂存记账入口消费) ③-⑤单动作循环:决策取 │
- │ 首项→期望态计算→执行→投影(零读屏);终结 op 交回外循环            │
+ │ 首项→期望态计算→执行→逻辑态直写(零读屏);终结 op 交回外循环            │
 │ 商店编排（_open_shop_phase：开店→单动作循环→关店→finalize→节点探针）│
 ├─ 策略步进（mandate_v1：bridge.py 决策入口 + entry.py 三遍编排）┤
 │ 备战决策 live 链 = bridge.decide_prep_screen → decide_from_turn   │
@@ -60,13 +61,13 @@
 
 | 接口 | 输入(黑板) | 返回 | 语义 |
 |---|---|---|---|
-| `decide_prep_screen(session, config)` | `session.prep_obs_frame`(备战观察帧;写者 = CwScreenPrep 入口观察段/破墙派生帧/循环投影步) | `list[PrepAction]`,单动作循环取**首项**消费(逐帧取首项 = 单动作选择序) | 空序列合法 = 本帧无动作(交回外循环重观察);**观察帧缺失即抛错**(禁静默按空观察决策) |
-| `decide_shop_action(session, config)` [本批升格入 ABC] | `session.shop_state_frame`(期望态;写者 = 入口观察段/单动作投影步/sim 引擎) | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧单动作循环逐帧调用(`run_buy_waves`),契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;观察帧缺失即抛错 |
+| `decide_prep_screen(session, config)` | `session.prep_obs_frame`(备战观察帧;写者 = CwScreenPrep 入口观察段/破墙派生帧/循环逻辑态直写步) | `list[PrepAction]`,单动作循环取**首项**消费(逐帧取首项 = 单动作选择序) | 空序列合法 = 本帧无动作(交回外循环重观察);**观察帧缺失即抛错**(禁静默按空观察决策) |
+| `decide_shop_action(session, config)` [本批升格入 ABC] | `session.shop_state_frame`(期望态;写者 = 入口观察段/单动作逻辑态直写步/sim 引擎) | **恰一个动作**,「无动作可做」= `CloseShop` 恒可用终结;生产执行侧单动作循环逐帧调用(`run_buy_waves`),契约核验挂本入口 | 决策本体 = `mandate_v1/shop.py`;观察帧缺失即抛错 |
 | `decide_invest/supply/encounter/megastar/partner/planner/star_tome/wish_trial/box_card`(pick 族 9) | overlay 观察实参 + session | PickEvent 系载体/索引 | 选项决策;动作编排归画面 op,不进序列契约辖内。决策规格 = `../strategy-docs/13_pick_family.md` |
 
 **非契约成员(实现层,不在 ABC 面)**:
 
-- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 容器投影直写推进期望态(`apply_shop_action_logic` 简单腿 + `apply_shop_merge_leg` 合成升星腿,买前快照三件组基点;T-163 起零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
+- `decide_shop_screen`(flow 层缺省驱动器 + bridge 覆写)——**序列兼容驱动器**:逐帧调 `decide_shop_action` + 容器逻辑态直写推进期望态(`apply_shop_action_logic` 简单腿 + `apply_shop_merge_leg` 合成升星腿,买前快照三件组基点;T-163 起零 `cw_state.simulate` 前瞻消费),终结动作截停、CloseShop 收尾不入序列。sim 引擎/回放/既有序列锁消费;生产执行侧不走(单动作循环)。mandate 覆写保留特有记账(已买件/段序号/续段 token)。
 - `_refresh_direction`/`_refresh_direction_views`(flow 层私有)——**方向节拍内化**:键守卫贵段(`update_intention` 状态机 + 候选评分遥测)每 game-round 恰一次 + 便宜派生视图段;触发信号 = 黑板帧代次标注(`session.prep_frame_class`/`shop_frame_class` ∈ full/view/none,写者 = 流程观察段具名写点,读者 = 决策入口,读后即清;驱动器不写帧类槽)。
 - ~~`_drain_pending_round_outcomes`(flow 层私有)~~——**已删(T-64 退役批)**:结算策略半惰性加工(掉血三臂/node_type 回落/谷底回滚登记)经方案批复核为零行为死链(登记臂前置零写端/三臂零决策消费端),04_survival_budget §7 #7/#8 裁决落地删除;`session.pending_round_outcomes` 槽保留为观察半累积面。
 - `write_shop_mirrors`(遥测镜像写者)。
@@ -74,7 +75,7 @@
 注(生命周期):旧 `on_match_start/on_match_end` 删除(职责归 create_session 唯一冷建口/局终收口);旧 `on_round_end` 拆两半——观察半(performance.record/last_streak/last_hp 过置信门/last_hp_t)= battle_wait 结算点**即时直写**(`cw_screen_battle_wait._write_settlement_observation` 单一写点),策略半原经 `session.pending_round_outcomes` 待加工槽惰性 drain——**该消费半已随 T-64 退役批删除,槽保留为只写不读的观察累积面**。旧 `decide_prep_action` 薄委托已删(P5 挂账兑现)。
 
 **序列语义(历史注——波批时代的冻结条款,反向自旧 `cw_strategy.py` 与旧 `cw_screen_prep.py` 序列消费段)**【迁移后本节为**历史契约**:整波返回/帧稳定截断/空批终止语义已由终结 op 与单动作循环取代([screen_op.md](screen_op.md) §3),本节保留作旧序列锁与历史 ADR 的解读钥匙——现行 fail-stop/控制流/生命周期机制条款仍有效】:
-- **帧稳定域**(历史):序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;发射时逐动作判"执行后画面状态能否静态推出",推不出即截断——截断器已退役,截断点语义由终结 op 吸收;流程侧保守口径(每动作落地后 heavy 重观察)已由「入口单次 heavy + 逐动作投影」取代。OpenShop/StartBattle 现为终结 op。
+- **帧稳定域**(历史):序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;发射时逐动作判"执行后画面状态能否静态推出",推不出即截断——截断器已退役,截断点语义由终结 op 吸收;流程侧保守口径(每动作落地后 heavy 重观察)已由「入口单次 heavy + 逐动作逻辑态直写」取代。OpenShop/StartBattle 现为终结 op。
 - **fail-stop**(现行有效):任一动作未落地 → 恢复原语(关已知弹层,`prep_actions.try_recovery`)→ 交回外循环 heavy 重观察重调接口。参数非法(F3 拒绝)与执行失败同型。
 - **逐动作验证保留**(现行有效):期望态对账/执行验证照跑,不依赖重决策(对账时点 = 下一入口,经 `cw_prep_pending_accts` 暂存)。
 - **控制流类动作已整体退役出词表**(DeferSpheres 族随词汇清理批删除;overlay 让位由环入口直接交回外循环承载);策略器禁用空批表达控制流(商店侧空批通道已由 CloseShop 终结取代)。
@@ -106,11 +107,11 @@
 | 篇 | 一句话 |
 |---|---|
 | [outer_loop.md](outer_loop.md) | 外层循环：画面识别分支序、路由、轮次推进、停机/遥测钩子 |
-| [screen_op.md](screen_op.md) | **画面 op 统一规范（规格,已落码）**：单动作决策循环、动作基类 execute 单方法（期望态推进 = 容器规则通道:投影口 + 合成升星腿,T-163）、终结 op 集、期望态生命周期、复合动作类、观测通道归属、开放问题落点 |
-| [prep_visit.md](prep_visit.md) | 备战访问：单轮形态（入口 heavy + 单动作决策循环 + 投影/保守回退）、备战决策 live 链（mandate_v1）、旧骨架删除注、完成判定与交还外循环 |
+| [screen_op.md](screen_op.md) | **画面 op 统一规范（规格,已落码）**：单动作决策循环、动作基类 execute 单方法（期望态推进 = 容器规则通道:逻辑态直写口 + 合成升星腿,T-163）、终结 op 集、期望态生命周期、复合动作类、观测通道归属、开放问题落点 |
+| [prep_visit.md](prep_visit.md) | 备战访问：单轮形态（入口 heavy + 单动作决策循环 + 逻辑态直写/保守回退）、备战决策 live 链（mandate_v1）、旧骨架删除注、完成判定与交还外循环 |
 | [shop_visit.md](shop_visit.md) | 商店访问：单动作循环（入口观察→逐动作→终结 op）、visit 级刷新硬墙、离店条件与收尾 |
 | [action_exec.md](action_exec.md) | 复合动作执行：词表、发射契约三态、动作机械发出+until 转移验证、执行侧守卫面、恢复语义、观测复查 |
-| [projection_contract.md](projection_contract.md) | 备战投影面交互契约：cw_state 面板/TurnState 投影 ↔ 执行臂的字段消费、双族坐标系、快照 vs 现读时序、注释规范缺口登记 |
+| [projection_contract.md](projection_contract.md) | 备战逻辑态面交互契约：cw_state 面板/TurnState 视图 ↔ 执行臂的字段消费、双族坐标系、快照 vs 现读时序、注释规范缺口登记 |
 | [guards.md](guards.md) | 守卫总册：G3 环级无进展守卫、停滞/未知/失活防线、降级链、fail-closed 行为 |
 
 ## 4. 守卫总览（细则 = guards.md）

@@ -6,8 +6,9 @@
 
 ## 1. 能力面与策略面(区分原则,用户裁定 2026-09-14)
 
-- **能力面** = 画面机制上可做的动作全集:游戏在该画面提供了什么可执行操作,以及我们把每个操作落地为哪个动作 op。七动作族(§2)与容器转移函数(`kernel/cw_game_state.py::apply_shop_action_logic` 等投影通道)**全保留**,不随策略收缩删除。
-- **策略面** = 默认策略(mandate_v1)在当前策略形态下实际会做的子集。策略面收缩是策略域变更:只改决策入口的提案集,不删执行器/词表/投影。
+- **能力面** = 画面机制上可做的动作全集:游戏在该画面提供了什么可执行操作,以及我们把每个操作落地为哪个动作 op。七动作族(§2)与容器转移函数(`kernel/cw_game_state.py::apply_shop_action_logic` 等逻辑态直写通道)**全保留**,不随策略收缩删除。
+- **策略面** = 默认策略(mandate_v1)在当前策略形态下实际会做的子集。策略面收缩是策略域变更:只改决策入口的提案集,不删执行器/词表/逻辑态直写。
+  > 术语注(首次出现):逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
 - **判例(在案裁定)**:卖备战(SellBench)与买经验(LevelUp)是商店开画面的**可用**动作(§3.5),但默认策略**不在商店期做**——两者收缩至备战期决策(策略面清单见 22/23 号篇)。能力矩阵按能力面记;策略归属见 strategy-docs 画面策略篇(22-27)。
 - 本篇记载纪律:每个画面列「游戏可用动作全集」并逐条给 op 映射;某动作当前不被策略使用时在策略归属列注明「策略面收缩至 X 期」,不删行。
 
@@ -23,7 +24,7 @@
 | SellBench(卖备战) | `kernel/cw_vocab.py::SellBench`(族 A 下标)/ `kernel/cw_prep_actions.py::SellBench`(族 B 物理槽位 1-9) | `cw_sell_bench_action.py::SellBenchOp`(商店域,机制上可用;策略面收缩后商店期不提案,见 §5 判例) | `prep_actions.py::PrepActionExecutor` → `prep_actions.py::drag_bench_to_sell`(拖备战栏→出售区) | 非终结 |
 | LevelUp(买经验) | `kernel/cw_vocab.py::LevelUp`(`LevelUpShop` is-a `LevelUp`,同 op 单击)/ `kernel/cw_prep_actions.py::LevelUp`(备战域,连点至升一级) | `cw_level_up_action.py::LevelUpOp`(单击「购买经验」=+4 经验,非整级;机制依据 `research/xp-rules.md` §2) | `PrepActionExecutor` 备战连点循环(单击价现读,缺读兜底 `kernel/cw_economy.py::XP_CLICK_COST_FALLBACK`) | 非终结 |
 | SellDeployed(卖上阵) | `kernel/cw_vocab.py::SellDeployed` | —(未入商店 op 表 `cw_shop_actions.py::_OP_TABLE`) | `PrepActionExecutor`(拖上阵位→出售区)/ `operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`(部署面换血卖出) | 非终结 |
-| SwapDeploy(上阵↔备战对调) | `kernel/cw_vocab.py::SwapDeploy` | — | —(词表+容器投影/sim 消费;生产执行器未接线,词表完备性保留) | 非终结 |
+| SwapDeploy(上阵↔备战对调) | `kernel/cw_vocab.py::SwapDeploy` | — | —(词表+容器逻辑态直写/sim 消费;生产执行器未接线,词表完备性保留) | 非终结 |
 
 补充词条(非七动作族但属动作空间):`CompTransaction`(整档替换事务,`cw_comp_transaction_action.py::CompTransactionOp`,终结邻接 fallback)、`DeployMove`(备战栏→上阵拖拽,`kernel/cw_prep_actions.py::DeployMove` + 部署机)、控制流/组合动作(`ClickSpheres`/`OpenBox`/`OpenTome`/`PickBoxCard`/`RunDeploy`/`RunEquip`/`RunTools`/`OpenShop`/`StartBattle`,全集白名单 = `kernel/cw_prep_actions.py::PREP_ACTION_TYPES`)。
 
@@ -53,7 +54,7 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 策略归属 | 访问终结语义 |
 |---|---|---|---|---|
-| 上阵(拖备战栏→前排/后排空槽) | 等级=可上阵数(`data/gameplay.md`);站位前台/后台激活角色赋能 | `DeployMove`(族 B)+ 部署机 `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy.deploy`(组合路径 = `RunDeploy`) | 备战期(22/24 号篇) | 非终结;部署属未建模投影面 → 执行后保守回退交回外循环重观察(prep_visit.md §1) |
+| 上阵(拖备战栏→前排/后排空槽) | 等级=可上阵数(`data/gameplay.md`);站位前台/后台激活角色赋能 | `DeployMove`(族 B)+ 部署机 `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy.deploy`(组合路径 = `RunDeploy`) | 备战期(22/24 号篇) | 非终结;部署属逻辑态未建模面 → 执行后保守回退交回外循环重观察(prep_visit.md §1) |
 | 换排(上阵单位前排↔后排拖拽) | 同上(放对激活赋能) | 部署机内拖拽(`_deploy_deterministic` 含错排归位 `_fix_misplaced_rows`) | 备战期 | 同上 |
 | 卖备战(拖备战栏→区域-出售区) | 卖出退金规则(`research/economy.md` §3,单一源 `kernel/cw_economy.py::sell_refund`) | `PrepActionExecutor` → `prep_actions.py::drag_bench_to_sell`;词表 `kernel/cw_prep_actions.py::SellBench` | 备战期:腾位(M4)/凑息(P49 ⑤)/筹资/换线塌缩(22 号篇) | 非终结 |
 | 卖上阵(拖上阵位→出售区) | 同上 | 词表 `kernel/cw_vocab.py::SellDeployed`;备战执行器 + 部署面换血(`cw_screen_deploy.py::_sell_offtarget_deployed`) | 备战期/部署期换血(24 号篇) | 非终结 |
@@ -127,7 +128,7 @@
 | 备战 OpenShop | 备战环终结 | 交商店访问编排(显式开店)或回外循环重识别(读数开店) |
 | 备战 overlay 检出 | 环中止 | 弹层/事件在场 → 交回外循环分支 handler(如盛会之星/事件 overlay) |
 | 备战空批(无动作) | 合法交回 | 空序列合法 = 本帧无动作,交回外循环重观察(商店域无此通道,已被 CloseShop 终结取代) |
-| 备战未建模投影面动作 | 保守回退终结 | DeployMove/SellDeployed/LevelUp/RunDeploy/RunEquip 等投影未建模面执行后本访问终结交回外循环重观察(重观察语境禁猜,`prep_visit.md` §1) |
+| 备战逻辑态未建模面动作 | 保守回退终结 | DeployMove/SellDeployed/LevelUp/RunDeploy/RunEquip 等逻辑态未建模面执行后本访问终结交回外循环重观察(重观察语境禁猜,`prep_visit.md` §1) |
 | 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏,合成 outcome 行,0e1) |
 | 推进型画面(简报/过渡/详情/弹窗族) | 画面终结 | 点推进/关闭即终结(空决策形态) |
 | 恢复局锁定态 | 例外约束 | 进过战斗后异常重启的恢复局,商店交互被游戏禁用(只能出战;`research/economy.md` §2.1 恢复态限制),外循环锁定态直通出战(`operations/cw_loop.py::locked_resume_sync_and_battle`) |
@@ -136,5 +137,5 @@
 
 - **判例(用户裁定 2026-09-14)**:卖备战/买经验是商店开画面**可用**动作(SellBenchOp/LevelUpOp 在商店 op 表在役,机制路径已验证),但默认策略**不在商店期做**——策略面收缩至备战期(商店期 = 买牌/刷新/关商店;席满腾位链 = 关商店→备战期卖→重开商店,节点内关店/重开不刷新牌面、牌面持久,节点切换才自动刷新,`research/economy.md` §2.1)。能力矩阵按能力面记:七动作族、商店 op 表、容器转移函数全保留;策略归属 = [23_shop_screen.md](../strategy-docs/23_shop_screen.md)(商店期动作面)与 [22_prep_screen.md](../strategy-docs/22_prep_screen.md)(备战期接收面)。
 - **商店锁**:游戏机制存在(整店级,`research/economy.md` §2.1),建档已有按钮坐标,生产链路未建模(无识别/无动作)——能力面登记为「存在但未接线」。
-- **SwapDeploy**:词表/容器投影/sim 消费在役,生产执行器未接线(备战域部署换位经部署机拖拽承载)——能力面按词表完备性保留。
+- **SwapDeploy**:词表/容器逻辑态直写/sim 消费在役,生产执行器未接线(备战域部署换位经部署机拖拽承载)——能力面按词表完备性保留。
 - **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为锚(`research/economy.md` §2.1)。

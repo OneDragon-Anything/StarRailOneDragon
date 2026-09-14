@@ -160,11 +160,12 @@
 
 ### 3.4 与 sim 侧策略实例生命周期的对齐
 
-**现状(对抗审查 A3 修正,初版前提与现状相反)**:sim 引擎**不经** `create_session`——三处裸构造:`sim/engine_p1.py:670`、`:699`(`sess = session or StrategySession(rng=random.Random(...))`,session 参数为注入通道)、`sim/engine_p2.py:132-133`(注释明言禁裸构造的 OS 熵默认入 sim);且 sim **现状就直写策略字段**:`engine_p1.py:672`/`:701`(`sess.v2_state = ('economy', ...)`,给决策层喂初始相位)、`:1098`(`sess.v3_form_ok = True`,镜像投影);create_session 的 sim 侧唯一消费方 = `sim/cw_replay.py:195`(回放工具,非引擎主路径)。sim 另对 `v3_intention`/`cw4_counters`/`v3_dir_refresh_used`/`v3_alloc_frame`/`v3_reserve_cap` 广域只读(engine_p1.py:930/1158/1264-1300/2103/2248/2422 等)。
+**现状(对抗审查 A3 修正,初版前提与现状相反)**:sim 引擎**不经** `create_session`——三处裸构造:`sim/engine_p1.py:670`、`:699`(`sess = session or StrategySession(rng=random.Random(...))`,session 参数为注入通道)、`sim/engine_p2.py:132-133`(注释明言禁裸构造的 OS 熵默认入 sim);且 sim **现状就直写策略字段**:`engine_p1.py:672`/`:701`(`sess.v2_state = ('economy', ...)`,给决策层喂初始相位)、`:1098`(`sess.v3_form_ok = True`,镜像逻辑态写);create_session 的 sim 侧唯一消费方 = `sim/cw_replay.py:195`(回放工具,非引擎主路径)。sim 另对 `v3_intention`/`cw4_counters`/`v3_dir_refresh_used`/`v3_alloc_frame`/`v3_reserve_cap` 广域只读(engine_p1.py:930/1158/1264-1300/2103/2248/2422 等)。
 
 对齐裁决(**sim 侧有实质改造,「零改动」断言撤回**):
 1. **构造**:三处裸构造改经统一 sim 侧构建口(候选 = 引擎入参接被测策略的 create_session/state 工厂,或 sim 内薄 helper 调工厂),保证 sim/live 状态生命周期同源;`session` 注入参数通道保留(回放/进场态复用 session 时,`strategy_state` 为 None 的处理 = 由该口惰性走工厂补建,禁留 None 进决策)。
-2. **写点**:`v2_state` 初始相位(672/701)改经 MandateState **构造参数/初始化入口**(初始相位是策略状态的合法初始化输入,不再事后 setattr);`v3_form_ok` 写点(1098)属镜像投影面——sim 与 live 共享同一镜像函数(write_shop_mirrors 等价),写经状态对象,禁裸 setattr。
+2. **写点**:`v2_state` 初始相位(672/701)改经 MandateState **构造参数/初始化入口**(初始相位是策略状态的合法初始化输入,不再事后 setattr);`v3_form_ok` 写点(1098)属镜像逻辑态写面——sim 与 live 共享同一镜像函数(write_shop_mirrors 等价),写经状态对象,禁裸 setattr。
+   > 术语注(首次出现):逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。
 3. **读点**:全部 getattr 消费改经访问函数(与 live 同一口),读取口径逐字节一致。
 
 ## 4. 目标态结构(双态)
@@ -225,7 +226,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 | 改造点 | 现状锚点 | 改法 |
 |---|---|---|
 | 裸构造 ×3 | engine_p1.py:670、:699;engine_p2.py:132-133 | 统一 sim 侧构建口走被测策略工厂;session 注入通道保留,None 时惰性走工厂补建 strategy_state |
-| 策略字段直写 ×3 | engine_p1.py:672/701(`v2_state` 初始相位)、:1098(`v3_form_ok` 镜像投影) | 前者改 MandateState 构造参数;后者改 sim/live 共享镜像函数写状态对象,禁裸 setattr |
+| 策略字段直写 ×3 | engine_p1.py:672/701(`v2_state` 初始相位)、:1098(`v3_form_ok` 镜像逻辑态写) | 前者改 MandateState 构造参数;后者改 sim/live 共享镜像函数写状态对象,禁裸 setattr |
 | 广域只读点 | engine_p1.py:930/1158/1264-1300/2103/2248/2422(`v3_intention`/`cw4_counters`/`v3_dir_refresh_used`/`v3_alloc_frame`/`v3_reserve_cap`) | 全部换访问函数(与 live 同口) |
 | cw4_counters 轮差分 | engine_p1.py:1038-1108/2192-2198/2355-2360 | 读点同上换;差分口径不变 |
 | create_session 直调 | cw_replay.py:195(回放工具) | 随 §5.1 钩子自动生效,核对 strategy_state 非 None |

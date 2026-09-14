@@ -12,7 +12,8 @@
 | **live** | 实机运行的 bot(operations 逐动作执行 + 遥测落盘) |
 | **sim** | P1/P2 模拟器:`sim/engine_p1.py` 的 `simulate_p1` 决策循环,用于离线批量评估策略 |
 | **容器** | `kernel/cw_game_state.py` 的 `GameState`:局内已知事实的唯一状态类型,live 与 sim 同一类型;单例宿主 = session 旁表(`board_state_of(session)`),写入走带渠道签名的写入口(渠道族封闭集 obs/logic_action/logic_hook),frozen 帧替换(持旧引用的读者不被污染) |
-| **单一转移函数** | `kernel/cw_game_state.py` 的 `apply_shop_action_logic(bs, action)`:把动作的字段转移就地应用到容器(logic_action 渠道),返回 `LogicOutcome` 结果出参。live 执行侧与 sim 引擎共用的状态转移函数;行文中的「投影/投影写」即指经本函数推进状态 |
+| **逻辑态** | 动作执行后不经观察、按游戏规则推算并直写容器的预期状态;真值以下一帧观察为准(观察赢)。行文中的「逻辑态(直写)」即指经单一转移函数推进该状态 |
+| **单一转移函数** | `kernel/cw_game_state.py` 的 `apply_shop_action_logic(bs, action)`:把动作的字段转移就地应用到容器(logic_action 渠道),返回 `LogicOutcome` 结果出参。live 执行侧与 sim 引擎共用的状态转移函数;经本函数推进状态即写逻辑态 |
 | **单一源** | 某语义只有一处权威实现,其他出现处一律调用或引用它 |
 | **严格检查器** | 产生 violations / 告警的检查项 |
 | **宽松向** | 只写披露键不判罚(violations 恒 0)、阈值软、或触发条件极窄的检查项——漏报是它的默认失败形态 |
@@ -68,7 +69,7 @@ sim 只做一件事:**在 shop 决策面上评估策略 A/B**——同 seed 同�
 
 **全部动作的容器字段转移必须经 `kernel/cw_game_state.apply_shop_action_logic` 单一转移函数完成;禁止在引擎内为容器字段另写一份转移逻辑(下称「内联重实现」)。**
 
-- **现状(as-built)**:全动作族(BuyCard/SellBench/LevelUpShop/RefreshShop/CloseShop + v2 族 SellDeployed/SwapDeploy/CompTransaction)的容器字段转移全部在单一转移函数内就地应用;sim 引擎与 live 执行侧调同一函数、同一 logic_action 渠道(裁定:引擎动作后状态应用 = 理想执行 = 逻辑投影,与 live 动作记账同函数同渠道)。拒绝语义在函数腿内,以显式结果出参 `LogicOutcome`(applied/reason/income/fill_cost/bought_count)承载:拒绝 = applied=False + reason + 零容器写(满栏非合成拒买/陈旧提案/同名拒上/CompTransaction 整批校验拒/满级拒);调用方只读出参做账本转录,**禁在引擎自判拒绝**;live 调用点忽略出参 = 行为零变化。
+- **现状(as-built)**:全动作族(BuyCard/SellBench/LevelUpShop/RefreshShop/CloseShop + v2 族 SellDeployed/SwapDeploy/CompTransaction)的容器字段转移全部在单一转移函数内就地应用;sim 引擎与 live 执行侧调同一函数、同一 logic_action 渠道(裁定:引擎动作后状态应用 = 理想执行 = 逻辑态直写,与 live 动作记账同函数同渠道)。拒绝语义在函数腿内,以显式结果出参 `LogicOutcome`(applied/reason/income/fill_cost/bought_count)承载:拒绝 = applied=False + reason + 零容器写(满栏非合成拒买/陈旧提案/同名拒上/CompTransaction 整批校验拒/满级拒);调用方只读出参做账本转录,**禁在引擎自判拒绝**;live 调用点忽略出参 = 行为零变化。
 - **执行决定量双来源**:`executed` 回执入参可缺省(None = 理想执行)——live 传执行落地门回执(实购张数/击数/实付刷新费);sim 引擎传 None,函数自算决定量(简单腿恒 1,满栏合成买 k 从应用机器出)。决定量的「来源」分双路,「应用面」(合成连锁/店槽置换)恒在函数内 = 单源本义;回执与自算值的关系核对归调用方守卫面,不入函数。
 - why:历史审计(逐动作 sim/live 对照,方法=同输入下比对 sim 引擎与转移语义的逐字段结果)曾实测 13 条语义分歧,系统性根因即同名动作两套转移代码——每处分歧都要逐点人工对账,且一份修 bug 时另一份不自动跟。
 - **可判定边界(什么叫违规)**:转移函数辖「容器字段怎么变」(域集 = `SHOP_PROJECTION_DOMAINS`:gold/bench/shop/xp/front_row/back_row/board/equips);引擎辖「账本转录 + 引擎本地记账面」,列为显式白名单:牌池登记(ret/take)、XP 权威账本(买牌累加/轮末结转)、金出入转录、装备分配记账、观测披露键(auth/dec_* 族)、免费刷额度注入、刷后抽牌重采样与刷后 break-redecide、LEVEL_CAP 前置守卫。白名单之外,引擎代码直接改写容器字段以实现动作语义即违规(结构锁在册,见下条)。
@@ -81,8 +82,8 @@ sim 只做一件事:**在 shop 决策面上评估策略 A/B**——同 seed 同�
 | 动作 | 权威语义源(转移函数腿) | sim 侧契约要点 |
 |---|---|---|
 | BuyCard | BuyCard 腿(含满栏合成买) | 张数 k 双来源(live = 执行回执 / sim = None 自算)、店槽置换(被买槽 kind 置 empty,定长 5 不变,§2.5)、`_merge_bench` 合成连锁、金账扣减全在函数内;新鲜度登记用与 live 同源的策略层函数 |
-| LevelUpShop | LevelUpShop 腿 | XP 按击数(`xp_apply_clicks` 单一源:满级封顶零推进)+ gold −击数×单击价(单价 = 动作决策期值;sim 恒兜底常量,真值未接,见 sim-wiring level_up_cost 行);level 域不在投影域集(升档等覆盖——sim 由引擎轮末 obs 写,时序申报 §2.3 #4);满级 = 拒(level_cap) |
-| RefreshShop | RefreshShop 腿 | 投影只扣金(实付刷新费:live = 执行回执 / sim = 引擎按动作 cost 与免费额度喂入,免费帧 0 不写金);**刷后牌面不投影**:sim 由引擎抽牌重采样 obs 写,live 由续段入口观察重写 payload;终结语义不变(刷后必须重观察重决策,不得沿用旧牌面续决策);免费刷语义见 §2.3 |
+| LevelUpShop | LevelUpShop 腿 | XP 按击数(`xp_apply_clicks` 单一源:满级封顶零推进)+ gold −击数×单击价(单价 = 动作决策期值;sim 恒兜底常量,真值未接,见 sim-wiring level_up_cost 行);level 域不在逻辑态直写域集(升档等覆盖——sim 由引擎轮末 obs 写,时序申报 §2.3 #4);满级 = 拒(level_cap) |
+| RefreshShop | RefreshShop 腿 | 逻辑态直写只扣金(实付刷新费:live = 执行回执 / sim = 引擎按动作 cost 与免费额度喂入,免费帧 0 不写金);**刷后牌面不进逻辑态直写**:sim 由引擎抽牌重采样 obs 写,live 由续段入口观察重写 payload;终结语义不变(刷后必须重观察重决策,不得沿用旧牌面续决策);免费刷语义见 §2.3 |
 | SellBench | SellBench 腿 | 回金走 `sell_refund` 单一源;**卖出必须回收装备进 equips**(C6 守恒,§6);陈旧提案拒绝语义(expect 失配 = stale_proposal 拒)在函数腿内 |
 | SellDeployed / SwapDeploy / CompTransaction | v2 族同名腿 | deployed 槽表中间形态(置空/对调不移位,同轮多笔卖出索引恒稳)→ front/back rows 整表写;CompTransaction 携 income/fill_cost 出参,全量校验拒 = 整批零写;applied/rejected 逐条转录账本;合成连锁(fill 路径)随函数;已消费店槽的同批买入作废并立即重决策 |
 | DeployMove(围栏部署) | 不入转移函数(登记面申报) | 围栏自动部署 = 结算期代理:bench/front_row/back_row/board 整表 obs 写;围栏选择与 live 共用 `select_deployments` 单一源 |
@@ -97,7 +98,7 @@ sim 只做一件事:**在 shop 决策面上评估策略 A/B**——同 seed 同�
 | 1 | 执行恒成功 | live 有执行失败面(点击落空检测、被拦、试用),sim 无 | 执行缺口类改动的 A/B 在 sim 不可验证;执行率类指标 sim 恒理想值 |
 | 2 | 免费刷注入 | 投资注入局的免费刷额度:引擎注入局免费刷额度内刷价 0,实付刷新费经 executed.refresh_paid 参数通道喂入转移函数(函数不自算刷新费);live 侧定价走基价常量+事后证据留档 | 注入局的刷新行为 sim 与 live 不同维 |
 | 3 | LEVEL_CAP 域 | sim 等级上界与 live(封顶 10)存在档位差,sim 有意冻结,放开前置=追级虚高治理+池指纹重锚(`engine_p1.py` 冻结声明注);**且引擎在 lv9 拒付 LevelUp,与实机方向相反**(实机 lv9 是正常付费档,lv10 才禁用;引擎 level_cap 守卫注释自认,以 level_cap_rejects 披露) | 上界附近段(追级/后期概率档)的策略结论 sim 不可测;lv9 帧的升级行为不可比 |
-| 4 | XP 记账载体与时序 | 买牌 XP 权威账本在引擎本地单点累加(转移函数无买牌 XP 语义),容器 xp/level = obs 回声写;升档结转时序:live 驱动器 decide 期投影即时结转 vs 引擎轮末延迟结转——sim 侧该域失配告警经 evidence 前缀 `sim:engine` 抑制(kernel `_MISMATCH_SUPPRESS_PREFIXES` 登记面) | XP 曲线对拍须钉口径;升档时点附近帧的等级读数不可逐帧比对 |
+| 4 | XP 记账载体与时序 | 买牌 XP 权威账本在引擎本地单点累加(转移函数无买牌 XP 语义),容器 xp/level = obs 回声写;升档结转时序:live 驱动器 decide 期逻辑态直写即时结转 vs 引擎轮末延迟结转——sim 侧该域失配告警经 evidence 前缀 `sim:engine` 抑制(kernel `_MISMATCH_SUPPRESS_PREFIXES` 登记面) | XP 曲线对拍须钉口径;升档时点附近帧的等级读数不可逐帧比对 |
 | 5 | 补部署时机 | 残余补部署只发生在显式动作轮(skip 分支);非显式轮的滞后件只披露不补 | 非 skip 轮的上板转化率不可测 |
 | 6 | 装备效果未建模 | 装备穿戴效果/生锈词条只披露不进结算 | 装备战力/掉血绝对量不可信;覆盖率结论只有记账意义 |
 | 7 | 收球/开箱缺建模 | 球掉角色占备战席、席满中断-腾席-续收流程,sim 无对应实体 | 备战席占用 sim 偏松,满栏族指标(满栏拒买/合成买触发率)sim 偏乐观 |
@@ -116,7 +117,7 @@ sim 只做一件事:**在 shop 决策面上评估策略 A/B**——同 seed 同�
 | obs(外部事件) | 收入结算/回合初始化(节点键/抽牌 payload/收入入账/deploy_cap/back_layout)/开局播种/装备发放穿戴/部署代理/轮末升级结转 | actor=`SimEngineP1`,mode=`synthesized`,evidence 前缀 `sim:engine:`(逐域事件面 = sim-wiring §一) |
 | 引擎白名单(不写容器) | XP 权威账本/牌池登记/金出入转录/装备分配记账/观测披露键 | §2.1 白名单 |
 
-- **驱动器 decide 期投影写维持现状**:live/sim 共用的策略驱动器在 decide 期以执行回执调同一转移函数推进期望态;引擎动作应用与其幂等收敛(live/sim 同代码不分叉)。
+- **驱动器 decide 期逻辑态直写维持现状**:live/sim 共用的策略驱动器在 decide 期以执行回执调同一转移函数推进期望态;引擎动作应用与其幂等收敛(live/sim 同代码不分叉)。
 - sim 外部事件写 = sim 真值语义(obs 族 synthesized 子模);`sim:engine` 前缀同时是失配告警抑制登记面(kernel `_MISMATCH_SUPPRESS_PREFIXES`)——申报差异域(§2.3 #4)的 sim/live 写入时序差不产生告警噪声。
 - **读侧** = 决策面公共读口族(kernel 12 口:plane/round_num/node_kind/gold/level/deployed_slots/bench_slots/back_capacity/deployed_count/front_count/back_count/max_units)+ Field 直读;读口负责镜像缺省形态,禁消费点自写兜底造成第二源。
 - **表示申报**:阵营不入容器——Unit 只存 char_id,阵营经角色注册表派生(game_state/fields.md §3.2.3);引擎围栏记账用的阵营计数在引擎本地由槽表现算,容器 board 域写经重算单一源,细节归代码注释。
@@ -127,7 +128,7 @@ sim 只做一件事:**在 shop 决策面上评估策略 A/B**——同 seed 同�
 
 - live 读链的三态判定(内容/确证空/失读 unknown)由观察侧承载;unknown 槽必携缺陷台账,决策消费一律跳过;**全 unknown 窗**(店开锚命中而五槽全 unknown,整帧失读):花钱动作禁发射,终结集降级仅 CloseShop,收工未识别卡停机钩子停机留证。
 - sim 抽牌 payload 恒全真值:抽牌序对槽落 content、缺位 empty——sim 无失读面,永不产生 unknown(与 §1.2 执行成功面不建模同一边界)。
-- 投影口 BuyCard = 槽置换(被买槽 kind 置 empty、card 置 None,同名同星 k 张按序对 k 槽),不是紧凑列表剔除;定长与形态锁在册(sr-od-test `test_cw_shop_slot_model.py`:定长 5 不变量/买光形态/失读窗收店)。
+- 逻辑态直写口 BuyCard = 槽置换(被买槽 kind 置 empty、card 置 None,同名同星 k 张按序对 k 槽),不是紧凑列表剔除;定长与形态锁在册(sr-od-test `test_cw_shop_slot_model.py`:定长 5 不变量/买光形态/失读窗收店)。
 
 ---
 
@@ -314,7 +315,7 @@ sim 批 runner 在批末对满足任一判据的局触发复盘包生成:
 ### 7.1 已达成项自查(✓ 仅对「已达成 + 有载体」项打)
 
 - 归因域边界声明完整,prep 域无真值源已申报:§1.2 ✓
-- sim-only 差异申报清单 9 条完整(lv9 拒付方向分歧等;「引擎内联 SellBench 不回收装备」差异已随切投影消解,按本表维护纪律移出申报清单):§2.3 ✓
+- sim-only 差异申报清单 9 条完整(lv9 拒付方向分歧等;「引擎内联 SellBench 不回收装备」差异已随切逻辑态直写消解,按本表维护纪律移出申报清单):§2.3 ✓
 - 检查器四分类完备(校准漂移哨兵有类可归、报告措辞判据边界已声明),方向声明强制与覆盖洞「补/豁免」二选一已立规:§3 ✓(规则面;升格结构化字段等载体见 §7.2)
 - 保真度参数有权威源/触发/过期判据,复测触发有感知通道与责任落点,降级期结论口径已定义,禁 sim 自身为靶:§4 ✓
 - 不变量清单与对账门完备性要求:§6 ✓(清单面;不变量辖守检查器为代码既有物)

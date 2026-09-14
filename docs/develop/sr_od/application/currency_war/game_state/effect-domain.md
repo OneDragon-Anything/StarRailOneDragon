@@ -210,7 +210,7 @@ W4 键级三分(游戏效果键→效果域/策略行为键→决策行/无消�
   `apply_effect_burst_grant`(选卡时点一次性批量授予)/
   `grant_effect_node_refresh_balance`(每节点余额累加,闸门 = 推进有效位;**条件判定
   族已同桥 wire**——按金现值逐条目评估:金 > 阈值每额外步长金 +1 次、至多封顶,金未读
-  None 保守零授予)/`project_effect_capacity`(容量投影)/`apply_board_rewrite`
+  None 保守零授予)/`project_effect_capacity`(容量逻辑态直写;逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧观察为准(观察赢))/`apply_board_rewrite`
   (板面重写:出售面逻辑写、替换面零逻辑写,归属单一源 = fields.md §5.3 两行)。
 - **到期与尾款**:到期条目移除 = 尾款触发面;尾款金面走**观察覆盖兜底**,禁到期挂点
   logic 直写金币防双计(`advance_node` 契约,:234-236);确需单列逻辑写的建模者

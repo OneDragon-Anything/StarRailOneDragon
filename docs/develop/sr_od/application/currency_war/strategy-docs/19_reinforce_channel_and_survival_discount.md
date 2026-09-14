@@ -13,7 +13,7 @@
 | ② | D-D 观察级消费位 | `mandate_v1/shop.py`（支付支撑卖之后、CloseShop 之前；符号锚 = D-D 段，14 号稿设计时行号 :771-779 **已漂移**，现行 ≈:1101-1109——Y2 惯例，行号仅历史线索） | **非发射位、无行为差**，仅计数 `shop_hard_node_gate_open`；14 号稿 §10 位次表附注明确「不入本表」。**计数语义 = 尾部帧条件分布**（双重删失，详见 §2.3-4/§5，r1 应修-1） |
 | ③ | kernel 穿戴释放判据链（原 `criteria/equipment.py:wear_release` ③支占位自入库起零调用、未走定谳程序，已退役除名(裁定档已删,git da3a7370ce 可溯)） | `kernel/cw_equip_env.py`（消费位 `prep_actions.py` 分发段） | 硬节点释放进阶成品穿戴 = `resolve_wear_release` row3（row1 否定支，仅辖 P1 r≤2 扣留窗口的战斗类节点释放；词汇表 = 注册表单一源 `opening_hold_battle_nodes` 四 OCR 标签，非英文 token 集）+ O1 战斗前置门（21 号稿）；r≥3 帧无扣留，硬节点释放系「无扣留默认」承载，非节点条件分支——零金、零 hp、零 λ，授权根 = D-B 穿戴释放语义（18 号稿）——**唯一已落行为差的补强落点**，不占 P26 数值授权位 |
 
-备战语境的流程载体 = `flow/prep_visit.md` §1 的单动作决策循环（VISIT_ACTION_CAP 防御上界行：决策循环不收敛 = 投影或策略 bug，交回外循环由停滞防线接管，不静默续跑）——补强类动作若未来接线，必须落在 `decide_prep_screen`/`decide_shop_action` 的既有选择序内，不得旁路该循环。
+备战语境的流程载体 = `flow/prep_visit.md` §1 的单动作决策循环（VISIT_ACTION_CAP 防御上界行：决策循环不收敛 = 逻辑态或策略 bug，交回外循环由停滞防线接管，不静默续跑；逻辑态 = 动作执行后不经观察、按游戏规则推算并直写容器的预期状态,真值以下一帧观察为准(观察赢)）——补强类动作若未来接线，必须落在 `decide_prep_screen`/`decide_shop_action` 的既有选择序内，不得旁路该循环。
 
 ## 2. 补强通道接线重估（P26/P40）
 
