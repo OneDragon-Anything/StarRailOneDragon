@@ -1685,6 +1685,16 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                 continue
             if not predicates.zero_overlap(name, k_members):
                 continue
+            # 死库存买入防线(T-229 方向②;T-243 接线,谓词单一源 =
+            # mandate.dead_stock_pair_buy_reject_reason):C=1 帧第二张
+            # 拒买,非线内名同名 1★ 对构造性不可达(G-S1 卖侧拒因
+            # dead_stock_pair 同键;C=2 第三张合成消对放行,K 成员豁免
+            # 皆在谓词内)。bench/deployed = 帧首现读(与 hub 位
+            # same_star_count 消费同源),计数归消费位。
+            if mandate.dead_stock_pair_buy_reject_reason(
+                    name, star, bench, deployed, k_members):
+                _count('dominance_dead_stock_pair_blocked')
+                continue
             if not refund_full_star_ok(star, cost):
                 continue
             ok2, _ = mandate.check_seats(
@@ -1716,6 +1726,13 @@ def decide_shop_action(bs: GameState, session: StrategySession,
             if _reopen_armed:
                 _count('shop_reopen_discretionary_actions')
             return _emit_buy(card, 'dominance_buy')
+    elif _dom_ok and gold > g_star and bench_free <= 1:
+        # band 否决分键(T-234 验收观察;T-243):命题 4 席位外部性带
+        #(bench_free ≤ 1,mandate.dominance_buy_eligible 后半合取)拒发
+        # 帧显影——资格门 False 此前静默,否决观测面只剩发射频次差。
+        # 本支只计数不决策:两半合取的复算 = 遥测归因(金带外 False =
+        # 非必花域常态不计),判定单一源仍在资格门本体。
+        _count('dominance_band_wait')
 
     # C1 直通核心卡支配性支(并列支配通道;位次 = dominance 邻位:既有
     # 通道之后、M3 之前——支配族发射位先于一切带参数值比较,
@@ -2137,6 +2154,15 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                             and (card.star or 1) == 1
                             and predicates.zero_overlap(name, k_members)
                             and refund_full_star_ok(1, cost))
+                    # 死库存买入防线(T-229 方向②;T-243 接线,与
+                    # dominance 臂同谓词单一源):燃料类拒成对第二张,
+                    # 分键 press_dead_stock_pair_blocked;prio0(缺口)/
+                    # prio1(持有档)不接 = 义务通道豁免(T-234 §④ 申报)。
+                    if _hit and mandate.dead_stock_pair_buy_reject_reason(
+                            name, card.star or 1, bench, deployed,
+                            k_members):
+                        _count('press_dead_stock_pair_blocked')
+                        _hit = False
                 if not _hit:
                     continue
                 ok2, _ = mandate.check_seats(
