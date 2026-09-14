@@ -21,7 +21,7 @@
 ### 3.2 阶段2：W6 决策面切统一容器（T-5）
 **范围**：生产决策面签名与字段读切换统一容器、sim 内部模型切换、投影 cw_bs_view 退役；交付次序按账本 T-5 criteria 预注册 5 波=kernel 标量评估簇/经济血线门/方向层演化部署事件/strategies 全簇+装配/sim 引擎+退役（次序单一源=账本目录 w6-切换波次调研草案）；边界=不含旧 GameState 本体删除（归阶段4）。
 **设计依据**：r5-migration-plan §2 W6 行；详设 §8.7（迁移批次二消费切换落位面）。
-**文件面**（r5-migration-plan §6 P6 全列）：kernel 决策簇、strategies/impl（mandate_v1）、sim（engine_p1/engine_p2/cw_replay/runner）、decision_assembly/cw_game_ports、kernel/cw_bs_view.py 删除、kernel/cw_evolution.py（applied-gate 族改 receipts+reconcile）、cw_expected_state.py（两态制残余清理）、Δ池再生管线（语料源切 journal）、last_state 三写点（operations/cw_screen/cw_screen_prep.py 与 operations/cw_op/cw_op_buy_cards.py 的 `session.last_state` 赋值点——符号锚，行号随树漂移）。
+**文件面**（r5-migration-plan §6 P6 全列）：kernel 决策簇、strategies/impl（mandate_v1）、sim（engine_p1/engine_p2/cw_replay/runner）、decision_assembly/cw_game_ports、kernel/cw_bs_view.py 删除、kernel/cw_evolution.py（applied-gate 族改 receipts+reconcile）、cw_expected_state.py（两态制残余清理）、Δ池再生管线（语料源切 journal）、last_state 三写点（operations/cw_screen/cw_screen_prep.py 与 operations/cw_screen/cw_screen_buy_cards.py 的 `session.last_state` 赋值点——符号锚，行号随树漂移）。
 **依赖**：阶段1；W5 已绿（r5-migration-plan §2 W6 进入门；执行凭据=「已执行波次对账」节 W5 行）。
 **优先级建议**：10（账本现值）
 **完成判据**：账本 T-5 criteria 预注册（dag.jsonl）。

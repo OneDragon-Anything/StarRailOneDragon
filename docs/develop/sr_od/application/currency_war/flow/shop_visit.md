@@ -1,6 +1,6 @@
 # 商店访问（shop_visit）
 
-> 反向规格化来源 = `operations/cw_screen/cw_screen_prep.py:_open_shop_phase`（流程层商店编排）+ `operations/cw_op/cw_op_buy_cards.py:run_buy_waves`（商店单动作循环）+ `finalize_buy_phase`（单元收尾）。职责：商店打开态的一次访问编排——单动作决策循环驱动 `decide_shop_action`、终结 op 离店、收尾。路径根 = `src/sr_od/application/currency_war/`。
+> 反向规格化来源 = `operations/cw_screen/cw_screen_prep.py:_open_shop_phase`（流程层商店编排）+ `operations/cw_screen/cw_screen_buy_cards.py:run_buy_waves`（商店单动作循环）+ `finalize_buy_phase`（单元收尾）。职责：商店打开态的一次访问编排——单动作决策循环驱动 `decide_shop_action`、终结 op 离店、收尾。路径根 = `src/sr_od/application/currency_war/`。
 > **决策判据（买什么/卖什么/刷不刷/升不升）一律不在本篇**——本篇只管"循环怎么转、期望态怎么推进、何时离店"；判据见 `../strategy-docs/11_shop_decisions.md`。架构 = 单动作循环（已落码,单动作实现批 2026-09-06）。
 
 ## 1. 入口与形态（`cw_screen_prep.py:1791` `_open_shop_phase`）

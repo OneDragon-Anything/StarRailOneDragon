@@ -24,7 +24,7 @@
 - 波批形态消灭的 bug 类（波内口径记账族：金位买后投影 / 席位静态投影 / Σ活期退金帧级让渡 / j 低估 / 同槽去重防线）：在新结构无存在载体，明细 bug 类。
 
 **现行代码映射（迁移面）**：
-- 商店：`strategies/impl/mandate_v1/shop.py:497 decide_shop_wave`（整波 `list[Action]`）→ 改单动作接口（选择序不变，取逐帧最优首项）；`operations/cw_op/cw_op_buy_cards.py:415 run_buy_waves` 波循环 → 单动作循环。
+- 商店：`strategies/impl/mandate_v1/shop.py:497 decide_shop_wave`（整波 `list[Action]`）→ 改单动作接口（选择序不变，取逐帧最优首项）；`operations/cw_screen/cw_screen_buy_cards.py:415 run_buy_waves` 波循环 → 单动作循环。
 - 判据层（criteria/statefn）**零改动**：判据函数已是「输入态 → 布尔/值」纯函数形态，单动作循环只是把「一次调用判 N 次」改为「N 次调用各判一次」。
 
 ## 2. 动作基类与动作粒度（决策 3、10、9）
@@ -118,7 +118,7 @@
 
 | 通道 | 现况锚点（行号直调） | 处置候选 |
 |---|---|---|
-| 卖回金实收遥测 | `operations/cw_op/cw_op_buy_cards.py:1022`（拖前基数）/ `:1054`（入账后实收），`record_sell_income` 落盘 | (a) 归属动作 op 执行实现层，保留为执行遥测（非决策输入）；(b) 移至入口对账（下一画面入口观察对差） |
+| 卖回金实收遥测 | `operations/cw_screen/cw_screen_buy_cards.py:1022`（拖前基数）/ `:1054`（入账后实收），`record_sell_income` 落盘 | (a) 归属动作 op 执行实现层，保留为执行遥测（非决策输入）；(b) 移至入口对账（下一画面入口观察对差） |
 | 刷新有效性检测 | 同文件 `:882`（刷后 `read_shop_cards` 重读，与刷前名集比对出 `refresh_effective` 三值）；**as-built 终局**：判效半已拆除（`refresh_effective` 删除）——三值对比现役只作安灯豁免判定输入 + 遥测字段（`refresh_board_changed`），归属候选 (a) 执行实现层留证遥测 | 同上二候选；刷新在新结构 = 终结 op，检测天然落在终结后重观察语境，与候选 (b) 近邻 |
 | 免费刷新证据 | 同文件 `:929`（刷后 `read_gold`，判定语义组成部分） | 同上二候选 |
 
@@ -128,7 +128,7 @@
 
 | 画面(op) | 动作（单动作粒度） | 终结动作 | 适配判注 |
 |---|---|---|---|
-| 商店（`operations/cw_op/cw_op_buy_cards.py` 波循环） | 买一张/卖一张/升一级（clicks 拆逐 op）/刷新 | 刷新、关店 | **规范原生画面**，迁移首选；商店访问入口遥测分三载体（显式开店/0n 直入/仲裁触发；op 行与决策行归属见 flow/session.md 表） |
+| 商店（`operations/cw_screen/cw_screen_buy_cards.py` 波循环） | 买一张/卖一张/升一级（clicks 拆逐 op）/刷新 | 刷新、关店 | **规范原生画面**，迁移首选；商店访问入口遥测分三载体（显式开店/0n 直入/仲裁触发；op 行与决策行归属见 flow/session.md 表） |
 | 备战（`cw_screen_prep`，决策 = live 链 `cw_screen_prep.py:1278/1477` → `mandate_v1/bridge.py:80 decide_prep_screen` → `bridge.py:146 decide_from_turn` → `entry.py:325 emit`（三遍编排，自有动作词表 OpenBox/OpenTome/ClickSpheres/RunDeploy/RunEquip/StartBattle）；`flow.py` 旧备战骨架死码簇已物理删除（`prep_visit.md` §2.1）;方向重估由 decide_prep_screen 入口经黑板帧代次标注内化触发） | 开典籍/开箱/收球/部署拖拽/升级/卖件/开店/装备 | 开店、开战 | 适配；prep_phase 相位机已随 mandate_v1 接线退出 live（见 §8.2），不再是迁移阻碍 |
 | 备战·整档替换（CompTransaction，`kernel/cw_state.py:696-714`） | 整档替换事务 = 一个宏动作 op（§5） | 无固有终结（归属备战终结集） | 复合动作类 |
 | 事件单选族（invest_strategy/invest_env/planner/megastar/partner/wish_trial/bookcard/expert_invite/boss_briefing/**fortune**） | 选卡（每候选一个动作） | 确认离开 | 形式兼容（循环退化为一步：选即终结，零投影账→§8.3 单选族例外不入规范）；fortune=`cw_screen_fortune.py` live-verified(r115),点卡+确认同族 |

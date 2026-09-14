@@ -1,6 +1,6 @@
 # 守卫总册（guards）
 
-> 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_op/cw_op_buy_cards.py` 的守卫/停机/降级段。职责：卡死与失活的检出、留证、停机或降级。路径根 = `src/sr_od/application/currency_war/`。
+> 反向规格化来源 = `operations/cw_loop.py` + `operations/cw_screen/cw_screen_prep.py` + `operations/cw_screen/cw_screen_buy_cards.py` 的守卫/停机/降级段。职责：卡死与失活的检出、留证、停机或降级。路径根 = `src/sr_od/application/currency_war/`。
 > 分工判据（od-dev-stop-hooks）：**采集哨兵不停机**（bot 可能只是慢）；**停机钩子保画面**（stop_running + flag + 截图，处理完删 flag 重启）。本篇全部为流程防线，与策略判据无关。
 
 ## 1. G3 环级无进展守卫（架构反思三卡死批防线①；`cw_loop.py::prep_no_progress_tick` + `CwLoop.loop` 备战分支 G3 计数段）

@@ -1,6 +1,6 @@
 # 复合动作执行（action_exec）
 
-> 反向规格化来源 = `kernel/cw_prep_actions.py`（动作词表）+ `prep_actions.py`（PrepActionExecutor 执行器）+ `operations/cw_op/cw_op_deploy.py`（部署执行）。职责：动作怎么落地、怎么验证、失败怎么恢复。路径根 = `src/sr_od/application/currency_war/`。
+> 反向规格化来源 = `kernel/cw_prep_actions.py`（动作词表）+ `prep_actions.py`（PrepActionExecutor 执行器）+ `operations/cw_screen/cw_screen_deploy.py`（部署执行）。职责：动作怎么落地、怎么验证、失败怎么恢复。路径根 = `src/sr_od/application/currency_war/`。
 
 ## 1. 动作词表（`kernel/cw_prep_actions.py`）
 

@@ -143,7 +143,7 @@ arbitrate(key, readings, ctx) -> (value, verdict, divergent)
 | `obs/cw_observation.py` | `arbitrate_deployed_count` 迁注册面(签名/语义不变,内核转调);board 帧态门仲裁迁注册面;hp/level 通道仲裁**暂不迁**(先例最复杂,迁移收益最低,§8⑥) | 批 A |
 | `obs/cw_back_layout.py` | §3.2 三信号仲裁:公式输入净化+右探针下界(带三读防抖)+cv_back_slots 部分返回+未知态+已建档 CV 读数防抖门 | 批 B |
 | `obs/cw_identity_obs.py` | ①`_session_level` 改造为 authoritative 位透传的**单一源**(A7;`cw_op_deploy._session_level` 同逻辑双拷贝合一于此);②read_deployed_chars 布局钩子消费新返回结构(right_probe/unknown 字段) | 批 B |
-| `operations/cw_op/cw_op_deploy.py` | 板满门(已接仲裁,不动);`_session_level` 改为转调 identity 单一源(A7);cap 失读兜底链(:638-645)**显式豁免合一**(B7,依据=T-8 行登记的 r60/r64 不对称);swap 收口位按 §4 约束(与 14 落码批合流) | 批 B/C |
+| `operations/cw_screen/cw_screen_deploy.py` | 板满门(已接仲裁,不动);`_session_level` 改为转调 identity 单一源(A7);cap 失读兜底链(:638-645)**显式豁免合一**(B7,依据=T-8 行登记的 r60/r64 不对称);swap 收口位按 §4 约束(与 14 落码批合流) | 批 B/C |
 | `operations/cw_screen/cw_screen_prep.py` | ①heavy 段 deployed_count_2src 对拍迁注册面(批 A);②**heavy vacancy 计算改仲裁值+divergent 位入 snapshot(A5,§4.1 真实落点,批 C)**——与本批 A 改动同文件不同段,需串行不并行 | 批 A(对拍)+ 批 C(vacancy) |
 | mandate/adapter/contracts(14 落码批) | §4 三约束:发射门读仲裁 vacancy + divergent 字段传播 + 分歧帧延迟 | 批 C |
 | `kernel/cw_observe.py` | 无接口变化(obs_conflict 复用);如需 set_obs_phase 语义对齐则微调 | 批 A |

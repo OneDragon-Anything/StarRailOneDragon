@@ -191,7 +191,7 @@ StrategySession(104 项混装:              StrategySession(30 项:观察 28 + �
 - `cw_strategy_manager.py`:`create_session` 增「调用实现包状态工厂」一步(ABC 工厂接口 `create_state(config) -> object`,非 abstract)。
 - **第三方插件兼容条款**(对抗审查 B4 采纳):CwStrategy 是 plugins/currency_war_strategies 的参赛入口契约,新增 **abstract** 钩子会让所有存量第三方策略实例化后调 create_session 即 TypeError。裁决:`create_state` 定义为 **ABC 非 abstract 钩子,基类缺省实现返回 None**——存量第三方策略零破坏(None 态 = 策略器可沿用惰性建模式,与现状 cw_intention.py:1695-1702 惰性建同构);mandate_v1 覆写返回 MandateState。不做插件契约版本化(非 abstract 缺省已消除破坏面,版本化属过度设计)。
   **B4 承诺收缩申报(as-built,「落位裁量」节同文)**:「零破坏」收缩为「缺省 None **不炸策略构造与 create_session**」;**不承诺**框架行为面读点(ops 主链决策输入等)容忍 `strategy_state=None`——第三方策略未覆写 create_state 且无工厂注册时状态恒 None,进入行为面读点 = AttributeError 显式炸错(mis-assembly 信号,优于静默产 None 假数据)。判据/披露面(kernel 判据、遥测披露键)维持防御 getattr 形态(异型状态对象字段缺席退缺省)。两形态划分与 None 契约单一源 = `strategy_state_of` docstring。附带工厂契约:`create_state(config)` 的 config **可忽略、可为 None**(sim 注入桩面传 None,工厂实现禁读 config 取值)。
-- **create_session 直调点两处纳入改造面**(对抗审查 B2-6 补):`sim/cw_replay.py:195` 与 `operations/cw_op/cw_op_buy_cards.py:497` 绕过 StrategyManager 直调 `strat.create_session(config)`——两处的状态工厂语义随 §5.1 钩子自动生效(直调的就是 ABC 方法),核对项 = 直调后 session.strategy_state 非 None。
+- **create_session 直调点两处纳入改造面**(对抗审查 B2-6 补):`sim/cw_replay.py:195` 与 `operations/cw_screen/cw_screen_buy_cards.py:497` 绕过 StrategyManager 直调 `strat.create_session(config)`——两处的状态工厂语义随 §5.1 钩子自动生效(直调的就是 ABC 方法),核对项 = 直调后 session.strategy_state 非 None。
 - 注册壳 `mandate_v1_strategy.py`:零判据纪律不变;仅透传工厂。
 
 ### 5.2 中间 ABC(`strategies/impl/flow.py`)

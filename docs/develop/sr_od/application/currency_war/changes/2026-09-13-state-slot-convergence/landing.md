@@ -19,7 +19,7 @@
 ## 3.2 阶段一·生产观察链直写 + BuyCardsOutcome 退役 + 签名收口
 **范围**:read_game_state 产出直 observe 进容器(8 调用点,详见 sim-state-switch.md §5);BuyCardsOutcome 删除(消费方四件迁移,安灯钩子数据源改 receipts+容器派生,对拍窗一期);cw_game_ports 端口注解切容器;策略签名收口(2 处签名勘误/4 处注释勘误/5 真双型收敛——state_equips_multiset 例外申报/encounter.py 本地帧视图删除/seed_age_blocked 死码删除)。
 **设计依据**:design.md §2 系统级变化 1;details/sim-state-switch.md §5-§6
-**文件面**:obs/cw_observation.py、obs/cw_observe_full.py、operations/cw_op/cw_op_buy_cards.py、operations/cw_screen/cw_screen_prep.py、cw_game_ports.py、telemetry/query.py、kernel/cw_shop_action_ops 相关、strategies/impl/mandate_v1/(签名面)、kernel/cw_discipline_rules.py
+**文件面**:obs/cw_observation.py、obs/cw_observe_full.py、operations/cw_screen/cw_screen_buy_cards.py、operations/cw_screen/cw_screen_prep.py、cw_game_ports.py、telemetry/query.py、kernel/cw_shop_action_ops 相关、strategies/impl/mandate_v1/(签名面)、kernel/cw_discipline_rules.py
 **依赖**:3.1(转移函数已单源)
 **优先级建议**:8
 **完成判据**:
@@ -49,7 +49,7 @@
 ## 3.5 阶段二·批1 商店域三态定长根闭环
 **范围**:ShopSlot 三态词表;read_shop_cards 定长 5 槽产出(锚门/亮度判据/SIFT miss→unknown+缺陷台账);容器 ShopPayload.cards 定长写入;投影口 BuyCard 移除改空位置换;两个硬必改点(收工停机钩子 `any(not c.name)` 改 kind 判据;cw_observe_full.py:129 子态判定改锚判);全 unknown 窗行为(花钱禁发射+CloseShop+停机留证,shop-slot-model §5.1);定长不变量锁;锁面处置按 sim-state-switch §3 表(M1 重推为容器单函数行为锁)。
 **设计依据**:design.md §2 详设 details/shop-slot-model.md
-**文件面**:kernel/cw_vocab.py、obs/cw_observation.py、kernel/cw_game_state.py、operations/cw_op/cw_op_buy_cards.py、operations/cw_op/cw_shop_action_ops.py、obs/cw_observe_full.py、strategies/impl/mandate_v1/shop.py(投影口相关面)
+**文件面**:kernel/cw_vocab.py、obs/cw_observation.py、kernel/cw_game_state.py、operations/cw_screen/cw_screen_buy_cards.py、operations/cw_op/cw_shop_action_ops.py、obs/cw_observe_full.py、strategies/impl/mandate_v1/shop.py(投影口相关面)
 **依赖**:3.2(生产链直写)
 **优先级建议**:9
 **完成判据**:
@@ -80,7 +80,7 @@
 ## 3.8 阶段三·判效拆除 4 族
 **范围**:按 design.md §2 阶段三方案拆 BuyCardOp 灰度差判效/SellBench 像素验重试/RefreshShopOp 判效半边/CwScreenDeploy 像素判效族;合法面 5 个不拆。
 **设计依据**:design.md §2 阶段三(单文档)
-**文件面**:operations/cw_op/cw_shop_action_ops.py、operations/currency_war/prep_actions.py、operations/cw_op/cw_op_deploy.py
+**文件面**:operations/cw_op/cw_shop_action_ops.py、operations/currency_war/prep_actions.py、operations/cw_screen/cw_screen_deploy.py
 **依赖**:3.5(①族的 reconcile 承接前提)
 **优先级建议**:6
 **完成判据**:4 族判效代码删除;合法面 5 个原样;实机 ≥1 局落地-观察链路走查正常。
