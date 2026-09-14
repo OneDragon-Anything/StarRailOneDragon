@@ -1,5 +1,5 @@
 # live-verified 2026-08-20:局29 P2r6 银狼策划事件 41min 卡死后建;坐标来自当场实测
-# (左卡中心 (755,400) 命中选中;详情面板 × 归一化 775,245→(1488,265))。机制见
+# (左卡中心 (755,400) 命中选中)。机制见
 # docs/game/gameplay/currency_war.md「银狼我来当策划事件」节(用户口述)。
 
 """货币战争 银狼「我来当策划」策划事件 overlay 处理 op(r103)。
@@ -11,7 +11,9 @@
 - 5 费升 2 星:两选项都是装备(无法升费),任选其一。
 
 识别:OCR 左/右卡区域,找「提升费用」字样 → 那张是升费卡;无 → 任选(左)。
-选卡后可能自动弹「属性详情」面板 → 点右上 × 关闭。
+点卡 = 机械单发(用户裁定 2026-09-14:详情面板检测拆,用户定性 = 详情
+弹出 = 点错所致)——选卡后可能自动弹「属性详情」面板(点错区所致),
+不判不关,后果归下一帧重入(外循环按当前画面重分派自愈)。
 
 统一观察架构逐屏迁移(试点步骤 3;架构设计 §9.2 迁移步骤 4 + 开放问题清单
 B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreenOpBase 子类,
@@ -106,8 +108,6 @@ class CwScreenPlanner(CwScreenOpBase):
     # 在**右侧偏下** (1440-1542,584-615),非画面中央!旧写 (960,615) 是猜的——
     # 局29 事件 1.5h 未消费的另一半原因)
     CONFIRM: ClassVar[Point] = Point(1491, 600)
-    # 详情面板关闭 ×(归一化 780,220 → 1080p;23:30 实测点击生效)
-    DETAIL_CLOSE: ClassVar[Point] = Point(1497, 238)
 
     def __init__(self, ctx: SrContext):
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-策划事件')
@@ -159,8 +159,9 @@ class CwScreenPlanner(CwScreenOpBase):
     def _handle_overlay(self) -> OperationRoundResult:
         """选卡+确认链(旧 handle 体纯移入,两路径共享零转录;试点步骤 3,
         先例 = 盛会之星 ``_do_action`` 共享式)。策略接线(W953:唯一入口 =
-        策略对象,kernel 直调仅无 match 防御分支)/press_time 加固/详情面板
-        防御语义逐位保留;验关半拆除(用户裁定 2026-09-10)。"""
+        策略对象,kernel 直调仅无 match 防御分支)/press_time 加固语义保留,
+        详情面板防御已拆(用户裁定 2026-09-14,点卡=机械单发);验关半拆除
+        (用户裁定 2026-09-10)。"""
         # 重入裁决(观察驱动,M7 同化先例 + cw_entry_start 守卫先例):本屏
         # 分发即门(无 op 内入口守卫),round_retry 重入不经外循环分发 →
         # 顶部出口门补位:入口词不在 = overlay 已关(上轮确认已落地)→
@@ -223,16 +224,11 @@ class CwScreenPlanner(CwScreenOpBase):
         self.ctx.controller.mouse_move(target)
         self.ctx.controller.click(target, press_time=self.CLICK_PRESS_TIME)
         time.sleep(1.2)   # 等选中动画
-        # 3b. 验选中(「已选择」或确认亮);若弹出详情面板(点错区)→ 关掉重试点卡
-        screen_m = self.screenshot()
-        ocr_m = self.ctx.ocr_service.get_ocr_result_map(
-            image=screen_m, rect=None, color_range=None, crop_first=False,
-        )
-        if any('属性详情' in t for t in ocr_m):
-            log.info('[cw][planner] 点卡触发详情面板(非选中)→ 关闭后 retry 重点')
-            self.ctx.controller.click(self.DETAIL_CLOSE)
-            time.sleep(0.8)
-            return self.round_retry(wait=1)
+        # 点卡 = 机械单发(用户裁定 2026-09-14:详情面板检测拆;用户定性
+        # = 详情弹出 = 点错所致,该面归选中点几何治理,面板检测是症状侧
+        # 补丁)。原「判『属性详情』面板 → 点 × 关闭 + retry」分支已删;
+        # 面板若真弹出,后果归下一帧重入:本屏分发即门,外循环按当前画面
+        # 重分派(详情 overlay 族分支/本 op 重走链)自愈。
         # 4. 点确认+机械交回(r326/P1⑦ 防线语义由重入裁决+预算耗尽 bail
         # 承接,验关半拆除——用户裁定 2026-09-10:动作 op 禁验证)。
         # r327(终审 E):裁决词用全词「我来当策划」(入场锚同词,
@@ -267,10 +263,10 @@ class CwScreenPlanner(CwScreenOpBase):
     def lifecycle_decision_cycle(self, payload: PlannerObservation
                                  ) -> OperationRoundResult:
         """段3-5(单动作内聚):decide+act 内聚于 ``_handle_overlay`` 共享体
-        (卡面 OCR/策略决策/遥测/点卡/详情面板防御/确认收尾全部原位,两路径
-        共享零转录)。段5 on_outcome = 本屏无落地登记件(注册表缺席 = 零
-        动作,见 __init__ 申报);轮次结果语义在共享体内逐位保留(段迹到
-        act)。"""
+        (卡面 OCR/策略决策/遥测/点卡/确认收尾,两路径共享零转录;详情面板
+        防御已拆,用户裁定 2026-09-14)。段5 on_outcome = 本屏无落地登记件
+        (注册表缺席 = 零动作,见 __init__ 申报);轮次结果语义在共享体内
+        逐位保留(段迹到 act)。"""
         self._lifecycle_mark('decide')
         rs = self._handle_overlay()
         self._lifecycle_mark('act')
