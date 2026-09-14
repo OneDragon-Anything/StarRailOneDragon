@@ -34,7 +34,7 @@ B3 三段走第二段「补给 + 余事件屏按族批量」):本类是 CwScreen
 handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生命周期新路径;
 缺省 None = 生产直连旧路径,handle 原序列,生产行为零变化 §9.1)。迁移手法
 单一源 = 盛会之星先例(CwScreenMegastar,reviews/T-215-r1.md 验收):decide+act
-内聚于现役动作体 ``_do_action``(detour/刷新/选卡确认三形态,两路径共享零转录);
+内聚于现役动作体 ``_do_action``(刷新/选卡确认两形态,两路径共享零转录);
 本屏无 on_outcome 落地登记件(§6.4 收编面无补给行;``supply_refresh_used``
 GameState 字段位 = 先申报禁静默、无写端,cw_game_state.py 字段行自注
 「收窄待证」——执行侧防重入旗标 ``_supply_refresh_used`` 留守 _do_action,
@@ -100,18 +100,6 @@ class CwScreenSupplyNode(CwScreenOpBase):
     选定+确认时点经 cw_telemetry.set_last_supply_pick 暂存选择快照
     (char/equip/has_diamond/refreshed + 实际识别选项清单),供 overlay 消失后
     cw_loop 合成 supply 遥测行消费(synthetic_supply 合成行)。
-
-    **主流程 = 采集 detour 完整循环(坐标 2026-08-27 实机冻结画面实测)**:
-    识别补给画面(完成验证锚前置门)→ 点「返回备战界面」(货币战争-补给/
-    按钮-返回备战界面,实测有效)→ 备战画面等待快照管线采集(1-2 帧;显式
-    phase='supply_detour'+actions=[] 非购买轮语义)→ 点「按钮-返回补给阶段」
-    (货币战争-备战,实测有效)重进 overlay(重试 3 次+OCR 文本兜底枪)→
-    继续原选择流程。补给轮不驻留备战画面,不 detour 则战斗结算后状态是数据
-    真空。实测时序(2026-08-27 冻结画面验证):回备战过渡 ~2.5s、重进过渡
-    ~2s;已选择/剩余次数状态重进后保留(实测确认),故采集先行不丢选择进度。
-    标记**仅在成功重进后**落(_mark_supply_detour):失败下轮重试整个 detour
-    ——宁可见 FAIL bail 不带病把备战屏当补给屏跑(假完成会让外环把采集轮
-    当购买轮消化)。
     """
 
     CARD_BODY: ClassVar[Point] = Point(900, 550)  # 补给卡 body 不开对话(沿用 HandleSupply)
@@ -126,13 +114,6 @@ class CwScreenSupplyNode(CwScreenOpBase):
     _REFRESH_BTN_DX: ClassVar[int] = -100
     # 刷新文本锚 = 建档「文本-剩余次数」area(货币战争-补给;OCR 带 rect 单一源)。
     _REFRESH_TEXT_AREA: ClassVar[str] = '文本-剩余次数'
-    # detour 实测时序(2026-08-27 实机冻结画面验证):回备战过渡 ~2.5s、
-    # 重进 overlay 过渡 ~2s;重进重试上限(area 版),area×3 全 miss 再 OCR 文本
-    # 兜一枪(全败=本轮零选择动作交下轮重试整个 detour,标记仅成功后落——
-    # 防带病降级成假完成)
-    TO_PREP_SETTLE_S: ClassVar[float] = 2.5
-    REENTER_SETTLE_S: ClassVar[float] = 2.0
-    REENTER_TRIES: ClassVar[int] = 3
 
     def __init__(self, ctx: SrContext):
         CwScreenOpBase.__init__(self, ctx, op_name='货币战争-补给节点')
@@ -220,60 +201,6 @@ class CwScreenSupplyNode(CwScreenOpBase):
         # 还在补给屏 = 标识-补给阶段 area 命中(位置区分,非全屏 LCS:防「补给阶段」与「备战阶段」共享「阶段」误匹配)。
         return self.round_by_find_area(screen, '货币战争-补给', '标识-补给阶段', crop_first=False).is_success
 
-    def _should_supply_detour(self, match) -> bool:
-        """本补给节点还没做过 detour?优先 session 态(跨外环重建存活,
-        同 _supply_refresh_used 惯例),无 match 退实例态。"""
-        if match is not None:
-            return not getattr(exec_state_of(match.session), '_supply_detour_done', False)
-        return not getattr(self, '_detour_done', False)
-
-    def _mark_supply_detour(self, match) -> None:
-        if match is not None:
-            exec_state_of(match.session)._supply_detour_done = True
-        else:
-            self._detour_done = True
-
-    def _supply_detour_collect(self, match) -> bool:
-        """补给备战状态采集 detour(主流程第一步):回备战 → 采集快照 → 重进 overlay。
-
-        标记仅在**成功重进**后落(_mark_supply_detour):失败不落,下轮重试
-        整个 detour——宁可见节点预算烧尽 FAIL bail,不带病把备战屏当补给屏
-        继续跑(假完成会让外环误派购买管线 = 采集轮变购买轮)。
-        """
-        # ① 返回备战界面(area 已建 + 实测有效:currency_war_supply 按钮-返回备战界面,
-        #    2026-08-27 实机验证 → 备战画面出现;过渡 ~2.5s)
-        rs = self.round_by_find_and_click_area(
-            self.screenshot(), '货币战争-补给', '按钮-返回备战界面', success_wait=1.5)
-        if rs is None or not rs.is_success:
-            log.warning('[cw-supply] detour:「返回备战界面」点击 miss → 放弃本次采集')
-            return False
-        time.sleep(CwScreenSupplyNode.TO_PREP_SETTLE_S)
-        # ② (detour 采集性 decisions 快照行已随 decisions 流写入端退役删除
-        #     ——删除波 1;detour 帧的现役证据 = journal 备战腿派生行。)
-        # ③ 重进 overlay(实测:已选择/剩余次数状态重进后保留;备战屏「按钮-返回补给
-        #    阶段」area 已建 + 实测有效;过渡 ~2s。area 全 miss 再用全屏 OCR 文本兜
-        #    一枪——lcs_percent=0.8 防与「返回货币战争」误匹配)
-        for i in range(CwScreenSupplyNode.REENTER_TRIES):
-            rr = self.round_by_find_and_click_area(
-                self.screenshot(), '货币战争-备战', '按钮-返回补给阶段',
-                success_wait=1.5)
-            time.sleep(CwScreenSupplyNode.REENTER_SETTLE_S)
-            if rr is not None and rr.is_success and self._in_node(self.screenshot()):
-                log.info('[cw-supply] detour 完成:回到补给界面(第 %d 次尝试)', i + 1)
-                self._mark_supply_detour(match)
-                return True
-            if i == CwScreenSupplyNode.REENTER_TRIES - 1:
-                self.round_by_ocr_and_click(self.screenshot(), '返回补给阶段',
-                                            success_wait=1.5, lcs_percent=0.8)
-                time.sleep(CwScreenSupplyNode.REENTER_SETTLE_S)
-                if self._in_node(self.screenshot()):
-                    log.info('[cw-supply] detour 完成:OCR 文本兜底回到补给界面')
-                    self._mark_supply_detour(match)
-                    return True
-        log.warning('[cw!][cw-supply] detour:area×%d + OCR 兜底均未回到补给界面'
-                    '(下轮重试;若持续=节点预算耗尽 FAIL bail)', CwScreenSupplyNode.REENTER_TRIES)
-        return False
-
     def _read_refresh_anchor(self, screen) -> Point | None:
         """「剩余次数：N」文本锚(刷新圆钮文本锚定用;遭遇屏
         ``read_encounter_refresh_count`` 同族形态)。
@@ -312,12 +239,6 @@ class CwScreenSupplyNode(CwScreenOpBase):
         # ✅(SIFT 主+文本兜底,cw_node_obs);刷新按钮 = 「剩余次数」文锚左侧
         # _REFRESH_BTN_DX 偏移点,无钻+未刷 → 点刷新重掷。
         match = self.ctx.cw_match
-        # 主流程:首次进入先做备战状态采集 detour(detour 后用新帧读选项;
-        # 未成功重进 → 本轮不做任何选择动作,防在备战屏盲点卡身/误触发购买语义)
-        if self._should_supply_detour(match):
-            if not self._supply_detour_collect(match):
-                return
-            screen = self.screenshot()
         opts = read_supply_options(self.ctx, screen)
         # r2 review#2:实例态在外环每次新建 op 下失效 → 挂 match.session
         # (正式字段,非 Optional)读;r10 review#3:getattr 兜底删(拼错字段名会静默
@@ -431,7 +352,7 @@ class CwScreenSupplyNode(CwScreenOpBase):
     def lifecycle_decision_cycle(self, payload: SupplyObservation
                                  ) -> OperationRoundResult:
         """段3-5(单动作内聚):decide+act 内聚于 ``_do_action`` 现役动作体
-        (detour/刷新/选卡确认三形态一次一动作;决策/遥测/session 写端/
+        (刷新/选卡确认两形态一次一动作;决策/遥测/session 写端/
         到账登记全部原位,两路径共享零转录)。段5 on_outcome = 本屏无落地
         登记件(注册表缺席 = 零动作,见 __init__ 申报);节点完成判定 =
         下一轮 observe 段 ``_in_node`` 复检(观察驱动节点循环:round_retry
