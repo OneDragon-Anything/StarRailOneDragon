@@ -34,7 +34,9 @@ handle 顶部装配点分流(cw_game_ports 两端口完整在场 → 五段生�
 refresh_used 写端收编 on_outcome 注册表(触发时点轴·发射型,§6.4-R-E
 在册成员①;触发点 = ``_emit_refresh_click`` 两路径共用分派面,唯一性同
 ``_act_execute`` 先例);chosen_encounter 写端 = 选择 handler 单次逻辑写入
-豁免(§2.2/§6.5-6 豁免面不扩散)留守出口验真通过分支。本屏 sim 腿 =
+豁免(§2.2/§6.5-6 豁免面不扩散)留守重入裁决点写(pending 置位 =
+``_act_execute`` 共享段头部,两路径同承;五段路径断链修,用户裁定
+2026-09-14)。本屏 sim 腿 =
 不适用(F11 例外清单:T5 前引擎无遭遇决策段),等价判据主承重 = 实机
 在册行为锁 + 写入流对拍(锁面 = sr-od-test test_cw_obs_arch_event_screens.py)。
 """
@@ -343,9 +345,10 @@ class CwScreenEncounter(CwScreenOpBase):
         # (event_choice 存证行已随 exogenous 流写入端退役删除——删除波 1。)
         # 动作执行(点卡选中 → 确认机械交回)经分派面(试点步骤 2;先例 =
         # CwScreenPrep 旧路径同经 _act_execute:注册表触发点唯一 + 未来
-        # 落地型登记件两路径同享)。chosen 写端 = 确认发出后置 pending,
-        # 由 handle 顶部重入裁决承载(验证废除,出口验真语义时点后移)。
-        self._confirm_pending = (options, idx)
+        # 落地型登记件两路径同享)。chosen 写端 = 确认发出后置 pending
+        #(置位点 = ``_act_execute`` 共享段头部,两路径同承;五段路径断链
+        # 修,用户裁定 2026-09-14),由 handle 顶部重入裁决承载(验证废除,
+        # 出口验真语义时点后移)。
         return self._act_execute(pick, options, idx)
 
     def _act_execute(self, pick: EncounterPick | None,
@@ -357,7 +360,13 @@ class CwScreenEncounter(CwScreenOpBase):
         登记件(chosen_encounter = 重入裁决承载的 write_logic 豁免),发射
         型 encounter_refresh_used 触发归 ``_emit_refresh_click``——本口
         不再收落地回执(原 progressed 门调用位随 T-223 门退役删除,防
-        单一发射口下与刷新件混触双计)。"""
+        单一发射口下与刷新件混触双计)。
+
+        pending 置位 = 本面共享段头部(用户裁定 2026-09-14 五段路径断链
+        修):确认发出的选卡快照 (options, idx) 在此对两路径同承置位,
+        下一轮重入由 handle 顶部裁决写 chosen_encounter——五段路径此前
+        漏置位 → 裁决链断,chosen 错挂退役回执消费。"""
+        self._confirm_pending = (options, idx)
         _adp = self._action_port()
         if _adp is not None:
             _adp.execute(self, pick)
@@ -458,17 +467,13 @@ class CwScreenEncounter(CwScreenOpBase):
         log.info(f'[cw-encounter] options={[(o.difficulty, o.rewards) for o in options]} '
                  f'pick=idx{idx} refreshed={refreshed} {reason}')
         # (event_choice 存证行已随 exogenous 流写入端退役删除——删除波 1。)
-        # —— 段4 act(分派面;验关锚 = 适配器落地回执载体,§6.2)+
-        #      段5 on_outcome(注册表回执点)
+        # —— 段4 act(分派面;pending 置位 = 分派面共享段头部,两路径同承)
+        #      + 段5 on_outcome(注册表回执点)
         self._lifecycle_mark('act')
         rs = self._act_execute(pick, options, idx)
         self._lifecycle_mark('on_outcome')
-        # —— 落地回执通过分支:rs.is_success(确认链落地回执,§6.5-1
-        #      落地回执门同口径)= 本轮选卡落地 → chosen 写端(选择
-        #      handler 单次逻辑写入豁免,§2.2;不入注册表收编面)。
-        if rs.is_success:
-            # 出口落地回执通过 = 选卡落地 → 写记录面(值取本轮现读候选
-            # 与决策,与落地点击同帧同源)。
-            self._record_chosen(match.session if match is not None else None,
-                                options, idx)
+        # chosen 写端 = 重入裁决点承载(handle 顶部 pending 分支;五段路径
+        # 断链修,用户裁定 2026-09-14:退役回执 ``rs.is_success`` 消费删除
+        # ——round 成功态 = 轮次流转语义非动作落地回执(_overlay_confirm
+        # 出口同口径),「确认已发」≠「已落地」,落地判定归下一帧重入观察)。
         return rs
