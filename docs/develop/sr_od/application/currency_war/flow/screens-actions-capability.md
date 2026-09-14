@@ -13,19 +13,19 @@
 
 ## 2. 动作词表:七动作族与执行载体
 
-七动作族 = 商店/备战两域共用的动作词汇核,词表载体 = `kernel/cw_vocab.py`(策略动作 `Action` 族)与 `kernel/cw_prep_actions.py`(备战域 `PrepAction` 族)。动作 op 执行载体两套:
+七动作族 = 商店/备战两域共用的动作词汇核,词表载体 = `kernel/cw_vocab.py`(策略动作 `Action` 族)与 `kernel/cw_prep_actions.py`(备战域 `PrepAction` 族)。动作 op 执行载体两套:商店域 op 按「一 op 一文件」住 `operations/cw_op/cw_<action>_action.py`(聚合注册与分发 = `cw_shop_actions.py::shop_action_op_for`,T-201 拆分);备战域执行载体 = `prep_actions.py::PrepActionExecutor`:
 
 | 动作族 | 词表载体 | 商店域 op(执行器) | 备战域执行载体 | 终结性 |
 |---|---|---|---|---|
-| BuyCard(买牌) | `kernel/cw_vocab.py::BuyCard` | `operations/cw_op/cw_shop_actions.py::BuyCardOp` | —(备战域无买牌;牌只在商店买) | 非终结 |
-| RefreshShop(刷新) | `kernel/cw_vocab.py::RefreshShop` | `cw_shop_actions.py::RefreshShopOp`(`terminal=True`) | — | **段终结**(§4) |
-| CloseShop(关商店) | `kernel/cw_vocab.py::CloseShop` | `cw_shop_actions.py::CloseShopOp`(`terminal=True`;关店点击由编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop` 承担) | — | **访问终结**(§4) |
-| SellBench(卖备战) | `kernel/cw_vocab.py::SellBench`(族 A 下标)/ `kernel/cw_prep_actions.py::SellBench`(族 B 物理槽位 1-9) | `cw_shop_actions.py::SellBenchOp`(商店域,机制上可用;策略面收缩后商店期不提案,见 §5 判例) | `prep_actions.py::PrepActionExecutor` → `prep_actions.py::drag_bench_to_sell`(拖备战栏→出售区) | 非终结 |
-| LevelUp(买经验) | `kernel/cw_vocab.py::LevelUp`(`LevelUpShop` is-a `LevelUp`,同 op 单击)/ `kernel/cw_prep_actions.py::LevelUp`(备战域,连点至升一级) | `cw_shop_actions.py::LevelUpOp`(单击「购买经验」=+4 经验,非整级;机制依据 `research/xp-rules.md` §2) | `PrepActionExecutor` 备战连点循环(单击价现读,缺读兜底 `kernel/cw_economy.py::XP_CLICK_COST_FALLBACK`) | 非终结 |
+| BuyCard(买牌) | `kernel/cw_vocab.py::BuyCard` | `operations/cw_op/cw_buy_card_action.py::BuyCardOp` | —(备战域无买牌;牌只在商店买) | 非终结 |
+| RefreshShop(刷新) | `kernel/cw_vocab.py::RefreshShop` | `cw_refresh_shop_action.py::RefreshShopOp`(`terminal=True`) | — | **段终结**(§4) |
+| CloseShop(关商店) | `kernel/cw_vocab.py::CloseShop` | `cw_close_shop_action.py::CloseShopOp`(`terminal=True`;关店点击由编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop` 承担) | — | **访问终结**(§4) |
+| SellBench(卖备战) | `kernel/cw_vocab.py::SellBench`(族 A 下标)/ `kernel/cw_prep_actions.py::SellBench`(族 B 物理槽位 1-9) | `cw_sell_bench_action.py::SellBenchOp`(商店域,机制上可用;策略面收缩后商店期不提案,见 §5 判例) | `prep_actions.py::PrepActionExecutor` → `prep_actions.py::drag_bench_to_sell`(拖备战栏→出售区) | 非终结 |
+| LevelUp(买经验) | `kernel/cw_vocab.py::LevelUp`(`LevelUpShop` is-a `LevelUp`,同 op 单击)/ `kernel/cw_prep_actions.py::LevelUp`(备战域,连点至升一级) | `cw_level_up_action.py::LevelUpOp`(单击「购买经验」=+4 经验,非整级;机制依据 `research/xp-rules.md` §2) | `PrepActionExecutor` 备战连点循环(单击价现读,缺读兜底 `kernel/cw_economy.py::XP_CLICK_COST_FALLBACK`) | 非终结 |
 | SellDeployed(卖上阵) | `kernel/cw_vocab.py::SellDeployed` | —(未入商店 op 表 `cw_shop_actions.py::_OP_TABLE`) | `PrepActionExecutor`(拖上阵位→出售区)/ `operations/cw_screen/cw_screen_deploy.py::_sell_offtarget_deployed`(部署面换血卖出) | 非终结 |
 | SwapDeploy(上阵↔备战对调) | `kernel/cw_vocab.py::SwapDeploy` | — | —(词表+容器投影/sim 消费;生产执行器未接线,词表完备性保留) | 非终结 |
 
-补充词条(非七动作族但属动作空间):`CompTransaction`(整档替换事务,`cw_shop_actions.py::CompTransactionOp`,终结邻接 fallback)、`DeployMove`(备战栏→上阵拖拽,`kernel/cw_prep_actions.py::DeployMove` + 部署机)、控制流/组合动作(`ClickSpheres`/`OpenBox`/`OpenTome`/`PickBoxCard`/`RunDeploy`/`RunEquip`/`RunTools`/`OpenShop`/`StartBattle`,全集白名单 = `kernel/cw_prep_actions.py::PREP_ACTION_TYPES`)。
+补充词条(非七动作族但属动作空间):`CompTransaction`(整档替换事务,`cw_comp_transaction_action.py::CompTransactionOp`,终结邻接 fallback)、`DeployMove`(备战栏→上阵拖拽,`kernel/cw_prep_actions.py::DeployMove` + 部署机)、控制流/组合动作(`ClickSpheres`/`OpenBox`/`OpenTome`/`PickBoxCard`/`RunDeploy`/`RunEquip`/`RunTools`/`OpenShop`/`StartBattle`,全集白名单 = `kernel/cw_prep_actions.py::PREP_ACTION_TYPES`)。
 
 **双族坐标系**(跨域阅读必读,单一源 = `kernel/cw_vocab.py` Action 节约定块):族 A(`cw_vocab`)= 状态容器槽位表下标(bench 0-8 / deployed 0-9);族 B(`cw_prep_actions`)= 画面物理槽位(bench 1-9 / deployed row+slot)。换算:bench 域族 B = 族 A + 1;deployed 域 front idx=slot−1、back idx=4+slot−1。
 
@@ -36,6 +36,7 @@
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 简报点「下一步」 | `research/screen_flow_timing.md` 口述时序 #1(首领出现 +1s 可点) | `operations/cw_screen/cw_screen_briefing.py::CwScreenBriefing`(外循环 0r 分支) | 点推进即终结(空决策形态,`screen_op.md` §8.3) |
+| 点词缀弹效果 tooltip | 点词缀弹效果 tooltip(词缀条上方,切换不关旧;机制见 `cw_screen_briefing.py` docstring 载 2026-08-05 实机实测) | `operations/cw_screen/cw_screen_briefing.py::_collect_affix_effects`(简报处理内嵌采集段:逐词缀点采 OCR 效果 → 对注册表 `data/affix_effects_data.py` 比对,新名/不一致才截图收集;**采集写端,best-effort**——OCR 采不到即跳过,零决策零停机) | 不终结(点采后留本画面,推进仍走「下一步」行) |
 | BOSS 简报点空白 | 同上 #26(「点击空白处继续」出现即可点) | `operations/cw_screen/cw_screen_boss_briefing.py::CwScreenBossBriefing`(0p 分支);关闭后自动开店(screen_flow_timing #14 触发源清单) | 点空白即终结 |
 | 位面过渡点空白 | 同上 #2 | `operations/cw_screen/cw_screen_plane_transition.py::CwScreenPlaneTransition`(0q 分支) | 点空白即终结 |
 
@@ -80,11 +81,11 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 策略归属 | 访问终结语义 |
 |---|---|---|---|---|
-| 买牌(点商店牌-N) | 买后槽位留空不紧缩;满栏仍可买触发合成的牌(一击多张,`research/merge_mechanics.md`);牌费 = 费用徽章直读 | `cw_shop_actions.py::BuyCardOp`(槽号定位 = payload 定长槽阵列→「商店牌-N」坐标;买前裁片留证) | 商店期主力动作(23 号篇) | 非终结 |
-| 刷新(点「按钮-刷新」) | 手动刷新 2 金/次恒定(`research/economy.md` §2;常量 `kernel/cw_economy.py::REFRESH_COST_BASE`);刷新后整店 5 槽全换(同 §2.1) | `cw_shop_actions.py::RefreshShopOp`(刷前现读→点刷新→牌行两帧指纹一致门) | 商店期(刷新门判据 = 23 号篇) | **段终结**(§4) |
-| 买经验(点「备战标识-购买经验」) | 同 §3.3 买经验行 | `cw_shop_actions.py::LevelUpOp`(单击;`LevelUpShop` 意图) | **能力面可用、策略面收缩**:默认策略不在商店期买经验,移备战期决策(§5 判例;23 号篇) | 非终结 |
-| 卖备战(拖备战栏→出售区;店开态备战席条仍可见) | 同 §3.3 卖备战 | `cw_shop_actions.py::SellBenchOp`(`drag_bench_to_sell` 复用) | **能力面可用、策略面收缩**:席满腾位/凑息卖收缩至备战期(§5 判例;腾位链 = 关店→备战卖→重开,牌面持久,23 号篇) | 非终结 |
-| 关商店(点「按钮-收起」) | 收起 ~1s 过场回备战(`research/screen_flow_timing.md` #15) | `cw_shop_actions.py::CloseShopOp`(no-op)+ 编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop` 承担点击 | 商店期收工动作(恒可用终结) | **访问终结**(§4) |
+| 买牌(点商店牌-N) | 买后槽位留空不紧缩;满栏仍可买触发合成的牌(一击多张,`research/merge_mechanics.md`);牌费 = 费用徽章直读 | `cw_buy_card_action.py::BuyCardOp`(槽号定位 = payload 定长槽阵列→「商店牌-N」坐标;买前裁片留证) | 商店期主力动作(23 号篇) | 非终结 |
+| 刷新(点「按钮-刷新」) | 手动刷新 2 金/次恒定(`research/economy.md` §2;常量 `kernel/cw_economy.py::REFRESH_COST_BASE`);刷新后整店 5 槽全换(同 §2.1) | `cw_refresh_shop_action.py::RefreshShopOp`(刷前现读→点刷新→牌行两帧指纹一致门) | 商店期(刷新门判据 = 23 号篇) | **段终结**(§4) |
+| 买经验(点「备战标识-购买经验」) | 同 §3.3 买经验行 | `cw_level_up_action.py::LevelUpOp`(单击;`LevelUpShop` 意图) | **能力面可用、策略面收缩**:默认策略不在商店期买经验,移备战期决策(§5 判例;23 号篇) | 非终结 |
+| 卖备战(拖备战栏→出售区;店开态备战席条仍可见) | 同 §3.3 卖备战 | `cw_sell_bench_action.py::SellBenchOp`(`drag_bench_to_sell` 复用) | **能力面可用、策略面收缩**:席满腾位/凑息卖收缩至备战期(§5 判例;腾位链 = 关店→备战卖→重开,牌面持久,23 号篇) | 非终结 |
+| 关商店(点「按钮-收起」) | 收起 ~1s 过场回备战(`research/screen_flow_timing.md` #15) | `cw_close_shop_action.py::CloseShopOp`(no-op)+ 编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop` 承担点击 | 商店期收工动作(恒可用终结) | **访问终结**(§4) |
 | 查看牌详情(商店牌详情弹窗) | — | `operations/cw_screen/cw_screen_shop_card_detail.py::CwScreenShopCardDetailPopup`(0t 分支;点 X 验消失,**绝不点购买**) | 无(推进为流程义务) | 关闭即终结 |
 | 查看刷新概率表(弹窗/概率条) | 概率表 OCR 双源一致(`research/economy.md` §2;单一源 `data/cw_shop_odds.py::REFRESH_PROB`) | 弹窗:`operations/cw_screen/cw_screen_refresh_odds_popup.py::CwScreenRefreshOddsPopup`(0e2);概率条直读进 `refresh_probs`(观察,非动作) | 无 | 关闭即终结 |
 | 锁商店 | 同 §3.3 | 未建模(同 §3.3 行) | 无 | — |
