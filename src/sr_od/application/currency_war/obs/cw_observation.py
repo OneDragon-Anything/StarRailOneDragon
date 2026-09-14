@@ -2496,6 +2496,8 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                                    mode='read')
             _sig_carry = ChannelSig(family='obs', actor='cw_observation',
                                     mode='carried')
+            log.info('[t189-diag] 写块进入: session 在, _w shop_cards=%s, '
+                     'phase=%s', _w('shop_cards'), phase)
 
             # 节点(phase_round 全阶段必读;node_type 仅 spec 门内为帧读值)。
             # P1-1(落地审):kind 未读帧(battle_or_transit spec 无 node_type /
@@ -2587,9 +2589,15 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                     probs = ({int(k): float(v) for k, v in
                               (refresh_probs_val or {}).items()}
                              if refresh_probs_val else {})
+                    log.info('[t189-diag] shop 写入: kinds=%s probs=%s',
+                             [s.kind for s in shop_val], bool(probs))
                     bs.observe(bs.shop, ShopPayload(cards=shop_val,
                                                     refresh_probs=probs),
                                sig=_sig_read)
+                    log.info('[t189-diag] shop 写入后 bs.shop.value=%s',
+                             bs.shop.value is not None)
+                else:
+                    log.info('[t189-diag] shop_val=None(锚门 miss),不写沿用')
                 # None = 收起锚 miss(OCR 判据可 flake;截图实证买光店
                 # 面板展开仍可 miss)→ 沿用现值不写不改(flow.py 决策入口
                 # 契约原文:「开店态失读窗=喂入口失读不写,沿用上一开店
