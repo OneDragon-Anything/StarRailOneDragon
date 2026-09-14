@@ -414,6 +414,29 @@ def identify_slots(
                 else:
                     avatar_id = avatar_id.split('#')[0]
         if avatar_id is None:
+            # 三态判定面增态(T-191 §7.2,裁定①):亮度≥50 的 miss =
+            # 应有内容但识别失败 → unknown 显态落缺陷台账(§7.2 豁免
+            # 延后:写端仍沿用不写,本记录只解除「失读与真空」沉默二义);
+            # <50 = 确证空位,良性 miss 不留痕(与 shop 亮度判定表同源)。
+            try:
+                _mean = float(screen[rect.y1:rect.y2,
+                                     rect.x1:rect.x2].mean())
+            except Exception:   # noqa: BLE001  裁剪越界等,留证降级
+                _mean = -1.0
+            if _mean >= 50:
+                try:
+                    from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+                        record_defect,
+                    )
+                    record_defect(
+                        'confidence', 'perception_conflict',
+                        expected=f'{row or "deployed"} 槽{slot_idx} SIFT 识别出身份',
+                        observed=f'miss(inliers={inliers}, 均值{_mean:.1f})',
+                        reader_source='identify_slots',
+                        confidence=float(_mean),
+                        note='deployed 槽级 unknown 显态(§7 判定面增态)')
+                except Exception:   # noqa: BLE001  遥测 best-effort
+                    pass
             continue
         name = resolve_char_name(avatar_id)
         if name is None:
