@@ -2672,7 +2672,9 @@ def decide_shop_action(bs: GameState, session: StrategySession,
             # EV 排除集 = 买入义务集(buy_members):义务面成员「走 M2,
             # 非 EV 域」——与买面同口径;非卖免面,不吃锁定全集收窄裁。
             cands, ckey = crit_buy.ev_buy_candidates(
-                gold, s_reserve, bs.shop, buy_members,
+                gold, s_reserve,
+                (bs.shop.value.cards if bs.shop.value is not None else []),
+                buy_members,
                 level=level_of(bs), window=card_w,
                 counters=counters)
             if ckey:
@@ -2696,8 +2698,13 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                     #(三分类 (iii),ADR-0528);域外 veto 照旧直拒。
                     _deferred = []
                     for cand in cands:
-                        card = (bs.shop.value.cards if bs.shop.value is not None else [])[cand.slot_idx] \
-                            if cand.slot_idx < len(bs.shop.value.cards if bs.shop.value is not None else []) else None
+                        _slots = (bs.shop.value.cards
+                                  if bs.shop.value is not None else [])
+                        _slot = (_slots[cand.slot_idx]
+                                 if cand.slot_idx < len(_slots) else None)
+                        card = (_slot.card
+                                if _slot is not None
+                                and _slot.kind == 'content' else None)
                         if card is None:
                             continue
                         # L2 统一过滤位(ev_buy 走 slot_idx 解析,过滤位

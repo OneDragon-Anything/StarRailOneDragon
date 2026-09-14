@@ -25,7 +25,7 @@ class BuyCandidate:
     card_name: str
     cost: int
     star: int
-    slot_idx: int          # 商店槽位下标(商店线坐标系)
+    slot_idx: int          # 定长槽数组下标(0 基)= 物理槽-1(三态定长模型)
     reason: str = 'ev_buy'
 
 
@@ -68,7 +68,13 @@ def ev_buy_candidates(gold: int, s_reserve: int, shop_cards: list | None,
         t_search = card_search_window(level)  # 单卡消费位:读法乙(旧调用面)
     else:
         t_search = frozenset()   # T_SEARCH_A None ⇒ 活跃窗口空(fail-closed)
-    for i, card in enumerate(shop_cards):
+    # slot_idx = 定长槽数组下标(0 基)= 物理槽-1(三态定长模型同源,
+    # 用户三态裁定 2026-09-13):非 content 槽(empty/unknown)不产候选;
+    # 禁再按紧缩 content 序取下标(定长数组含 empty 后两序分叉)。
+    for i, slot in enumerate(shop_cards):
+        card = getattr(slot, 'card', None)
+        if getattr(slot, 'kind', '') != 'content' or card is None:
+            continue
         name = getattr(card, 'char_id', '') or ''
         cost = int(getattr(card, 'cost', 0) or 0)
         star = int(getattr(card, 'star', 1) or 1)
