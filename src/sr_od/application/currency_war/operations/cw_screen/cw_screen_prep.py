@@ -1146,7 +1146,7 @@ class CwScreenPrep(CwScreenOpBase):
 
     def _xp_apply_buy_clicks(self, detail: str) -> None:
         """RunBuyPhase 通道推进账本:执行 detail 解析升级次数(执行侧实况
-        计数,shop.py total_level 口径;发射时点触发,批3a:原 progressed
+        计数,shop.py total_xp_buy 口径(买经验击数;非升级次数——单击=+4XP 非整级);发射时点触发,批3a:原 progressed
         门随 T-223 退役——商店编排机械完成后携摘要 detail,解析不出击数
         (单元中断等)自然零推进,差值由下一帧观察 reconcile 对账吸收)。
         已知盲区:shop._handle_bench_full 席满急救的盲击购买经验不经单元
@@ -3027,7 +3027,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
         expected_gold_after_actions,
     )
     total_buy = ledger.total_buy
-    total_level = ledger.total_level
+    total_xp_buy = ledger.total_xp_buy
     total_refresh = ledger.total_refresh
     total_sell = ledger.total_sell
     total_sell_income = ledger.total_sell_income
@@ -3047,7 +3047,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     # (§3.3-③):pick 窗口 = 同一容器喂入逐位同源;备战入口 = heavy
     # full 帧构造性覆盖(同一物理 bench)。
     try:
-        if match is not None and (total_buy or total_level or total_refresh):
+        if match is not None and (total_buy or total_xp_buy or total_refresh):
             # 买后重估容器喂入(容器化段 2:CwSimFrame 增量构造随黑板槽
             # 退役改容器直写——gold 关店真读 → write_logic(bs.gold);
             # bench tracked 重播 → write_logic(bs.bench, BenchView 重建,
@@ -3065,7 +3065,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
                 getattr(exec_state_of(match.session), 'tracked_bench_chars',
                         None) or [])
             _inc_gold = None
-            if not total_level:
+            if not total_xp_buy:
                 # 单区金真读(执行边界压缩·买后验证增量):本单元动作
                 # (无升级)只改 gold/bench。金读走稳定门(read_gold_settled)
                 # :关店帧入账计数器可能仍在跳,单帧会采到入账前旧值
@@ -3127,7 +3127,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     # 间歇漏,但差值对拍容忍 ±2:收入/连胜金不可观项混入)。不等 → 一方有
     # 毒(stylized 漏读 / cost 错 / 未观收入),留证统计毒化率;机制核对器
     # (r9)另有 REFRESH_COST 专项,此处只管 gold 总账。
-    if total_buy or total_level or total_refresh or total_sell:
+    if total_buy or total_xp_buy or total_refresh or total_sell:
         _spend = _spend_executed
         _final_gold = read_gold(op.ctx, op.screenshot())
         # 安灯 gold_close 回填(W3/T-255):关店实读金直供单元执行事实,
@@ -3175,7 +3175,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     #  面 = receipts 发射行 extra(plan_truncated/refresh_skipped 结构化
     #  在账,note_shop_action_receipt 写点)。)
     return (
-        f'plan 买{total_buy}张 升{total_level}次 刷{total_refresh}次 '
+        f'plan 买{total_buy}张 经验{total_xp_buy}击 刷{total_refresh}次 '
         f'卖{total_sell}张(+{total_sell_income}金,'
         f'守卫拦{ledger.total_sell_skip}) '
         f'(gold={_fb_gold_of(_fb_bs)} lv={_fb_level_of(_fb_bs)} '

@@ -1383,7 +1383,7 @@ class CwScreenBuyCards(CwScreenOpBase):
         if rr is not None:
             return rr
         return self.round_success(
-            f'plan 买{ledger.total_buy}张 升{ledger.total_level}次 '
+            f'plan 买{ledger.total_buy}张 经验{ledger.total_xp_buy}击 '
             f'刷{ledger.total_refresh}次 卖{ledger.total_sell}张')
 
     @operation_node(name='买牌', is_start_node=True)

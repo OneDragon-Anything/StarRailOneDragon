@@ -672,7 +672,7 @@ def _launch_frame_arbitration(op) -> dict:
         if ledger is not None:
             # 动作账消费 = 访问账本本体(迁移批 3.2:BuyCardsOutcome 退役,
             # run_buy_waves 产出载体 = ShopVisitLedger)。
-            report['executed'] = int(ledger.total_buy + ledger.total_level
+            report['executed'] = int(ledger.total_buy + ledger.total_xp_buy
                                      + ledger.total_refresh)
             if report['executed'] == 0:
                 _launch_arb_counter(op,

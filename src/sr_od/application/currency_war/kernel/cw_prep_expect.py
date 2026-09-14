@@ -401,7 +401,7 @@ _XP_DEFECT_KIND = 'xp_expect_mismatch'
 
 
 #: RunBuyPhase 执行返回 detail 中「升级次数」的解析形态。来源链:shop.py
-#: 单元收尾摘要 'plan 买N张 升M次 刷K次 …'(total_level = 执行侧实际单击数)
+#: 单元收尾摘要 'plan 买N张 升M次 刷K次 …'(total_xp_buy = 执行侧买经验击数(单击=+4XP 非整级))
 #: → prep_actions._run_composite 透传为 director 的 execute detail。
 _XP_BUY_CLICKS_PAT = re.compile(r'升(\d+)次')
 

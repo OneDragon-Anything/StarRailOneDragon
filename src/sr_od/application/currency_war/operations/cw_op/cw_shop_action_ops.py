@@ -78,7 +78,7 @@ class ShopVisitLedger:
     """
 
     total_buy: int = 0
-    total_level: int = 0
+    total_xp_buy: int = 0   # 买经验击数(单击=+4XP 非整级;真实升级=XP 过门槛,以读屏为准)
     total_refresh: int = 0
     total_sell: int = 0
     total_sell_income: int = 0

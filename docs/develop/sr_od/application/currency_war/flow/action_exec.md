@@ -14,7 +14,7 @@
 | 领取类 | `ClickSpheres(max_k)` / `OpenBox(slot)` / `OpenTome(slot)` / `PickBoxCard(card_idx)` | 点球带上界批大球优先内验早停；开箱/开典籍即腾席 + 弹 overlay 交外环分支 |
 | 卖出类 | `SellBench(slot, reason)` / `SellDeployed(row, slot)` | slot = **物理槽位**（备战栏 1-9 / 排内槽号），非列表下标（`cw_prep_actions.py:12-15` 坐标系约定）；SellBench.reason = 线账闭合孤儿证明载体（**记录非指令**，执行层不读；'' = 未标，缺省形态）。纯归因遥测面已随 2026-09-08 用户归因遥测删除指令拆除：发射侧值域闭集 = `cw_prep_actions.SELL_BENCH_REASONS` 唯一承重值 `line_switch_collapse`（线账闭合孤儿清算标记，授予须伴随登记簿线账闭合证明，T-141）；检查器豁免键集 `cw_state.SELL_BENCH_CONVERT_REASONS` 四键保留 = 检查器面单一源（非发射填充面）；reason 不入幂等键，序列化等值口径 = 字段带默认值，类型消费全向后兼容，sim 账本白名单挑字段、prep 域不入 sim 账本 |
 | 部署类 | `DeployMove(from_slot, to_row, to_slot)` | bench→上阵单步拖拽（腾席链专用；组合部署走 RunDeploy） |
-| 升级 | `LevelUp` | 点购买经验循环至 level+1 |
+| 买经验 | `LevelUp` | 单击「购买经验」= +4XP(非整级;升级 = XP 过门槛表结果,真实等级以读屏为准) |
 | 商店 | `OpenShop(read_only)` | 开店意图（EnsureShopOpen/Closed 已退役，W970 批 C） |
 | 出战 | `StartBattle` | 环出口；含未达上限确认；验证 = 备战标识消失；**豁免屏蔽** |
 | 组合（P1 过渡） | `RunBuyPhase` / `RunDeploy` / `RunEquip` / `RunTools` | 组合壳：RunBuyPhase 执行分支已删（改 OpenShop 编排）；RunDeploy = CwScreenDeploy；RunEquip = CwOpEquipAll；RunTools = CwOpTools（工具执行批 ；白名单/文档曾漏登本行，V3-01 勘误） |
