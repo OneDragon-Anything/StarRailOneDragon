@@ -1772,11 +1772,15 @@ def _anchor_hit_full_ocr(full_ocr, area) -> bool:
         if not data or not str_utils.find_by_lcs(expected, data,
                                                  percent=0.5):
             continue
-        rr = getattr(r, 'rect', None)
-        if rr is None:
+        # OcrMatchResult 几何 = x/y/w/h(无 rect 属性;位匹配按中心点)
+        cx = getattr(r, 'x', None)
+        cy = getattr(r, 'y', None)
+        rw = getattr(r, 'w', 0)
+        rh = getattr(r, 'h', 0)
+        if cx is None or cy is None:
             continue
-        cx = (getattr(rr, 'x1', 0) + getattr(rr, 'x2', 0)) / 2
-        cy = (getattr(rr, 'y1', 0) + getattr(rr, 'y2', 0)) / 2
+        cx = cx + rw / 2
+        cy = cy + rh / 2
         if area_rect.x1 <= cx <= area_rect.x2 \
                 and area_rect.y1 <= cy <= area_rect.y2:
             return True
