@@ -4,9 +4,11 @@
 
 1. ``DragCwChar.drag_char``(静态原语,**生产共用**):中心拖一个角色 ``src → dst`` —— ``mouse_move`` 源
    (bug#1 settle:框架截图前把光标移角落,紧接 drag 落空,先 settle 到源)→ ``drag_to(hold_time=0`` **按下即移**
-   即拾取,2026-08-13 实测)→ ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)→ 验**源槽
-   像素 diff**(角色离开 / swap 换人都致源槽变)= 生效;retry ``max_retry`` 次。deploy(``CwOpDeploy``)/
-   sell(``_sell_offtarget_deployed``)/ 本 op 都走它 —— **全仓角色拖拽机制单一源**(不再各处散落 drag_to + avatar 偏移)。
+   即拾取,2026-08-13 实测)→ ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
+   **机械执行零判效**(T-192 阶段三判效拆除,总纲阶段三族2):原「验源槽像素 diff + retry 3 次」
+   随拆除退役——发出即职责完成,落地事实归下一帧入口观察 reconcile 对账;deploy(``CwOpDeploy``)/
+   sell(``_sell_offtarget_deployed`` / ``drag_bench_to_sell``)/ 本 op 都走它
+   —— **全仓角色拖拽机制单一源**(不再各处散落 drag_to + avatar 偏移)。
 
 2. ``DragCwChar``(op,开发 / 测试用):``run_operation`` 按 ``(from_row, from_idx) → (to_row, to_idx)`` 拖,
    ``row ∈ {"front","back","bench"}``,`idx` 1-based。槽位坐标从 screen_info 读;**后排槽位数随财富宝钻
@@ -24,9 +26,6 @@
 """
 import time
 from typing import ClassVar
-
-import cv2
-import numpy as np
 
 from one_dragon.base.geometry.point import Point
 from one_dragon.base.operation.operation_node import operation_node
@@ -104,55 +103,39 @@ class DragCwChar(SrOperation):
                         f' to={self.to_row}-{self.to_idx}'
                         f'(screen_info 缺该 area / row 非法 / 后排>6 未传 back_centers)')
             return self.round_fail(status=DragCwChar.STATUS_BAD_SLOT)
-        if DragCwChar.drag_char(self, src, dst):
-            log.info(f'[cw-drag] {self.from_row}-{self.from_idx} → {self.to_row}-{self.to_idx}'
-                     f' ✓ (中心拖 + hold0,源槽像素变)')
-            return self.round_success(DragCwChar.STATUS_DRAGGED, wait=1)
-        log.warning(f'[cw-drag] {self.from_row}-{self.from_idx} → {self.to_row}-{self.to_idx}'
-                    f' 拖3次源槽未变(bug#1 间歇 / deployed→bench 限制),调用方可重跑')
-        return self.round_fail(status=DragCwChar.STATUS_DRAGGED)
+        DragCwChar.drag_char(self, src, dst)
+        log.info(f'[cw-drag] {self.from_row}-{self.from_idx} → {self.to_row}-{self.to_idx}'
+                 f' ✓ (中心拖 + hold0,机械发出)')
+        return self.round_success(DragCwChar.STATUS_DRAGGED, wait=1)
 
     @staticmethod
-    def drag_char(op: SrOperation, src: Point, dst: Point, max_retry: int = 3) -> bool:
+    def drag_char(op: SrOperation, src: Point, dst: Point) -> bool:
         """**统一角色拖拽原语**(生产共用:deploy / sell / 本 op)。
 
-        中心拖 ``src → dst`` + ``hold_time=0`` + retry + 验源槽像素变。
+        中心拖 ``src → dst`` + ``hold_time=0``,机械执行零判效(T-192 阶段三
+        判效拆除:原「验源槽像素 diff + retry 3 次」退役,发出即职责完成;
+        落地事实归下一帧入口观察 reconcile 对账)。
 
         机制(2026-08-13 实测,推翻旧 avatar 假设):整张卡可拖,中心拖 + 按下即移(hold_time=0)即拾取。
         流程:``mouse_move`` 源(bug#1 settle,防截图移光标后紧接 drag 落空)→ ``drag_to(hold_time=0)``
-        → ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)→ 验源槽像素 diff(角色离开 / 换人)。
+        → ``mouse_move`` 羁绊面板区释放光标(防 drag 锁残留致后续 drag 落空)。
 
         Args:
-            op: 调用方 op(取 ``op.ctx.controller`` 操作 + ``op.screenshot()`` 验证)。
+            op: 调用方 op(取 ``op.ctx.controller`` 操作)。
             src / dst: 源 / 目标槽中心(1080p)。
-            max_retry: retry 次数(防 bug#1 间歇 click/drag 时序)。
 
         Returns:
-            ``True`` = 源槽像素变(拖生效);``False`` = retry 尽源槽未变。
+            恒 ``True`` = 拖拽已机械发出(过渡形态:布尔签名保留至部署
+            消费面切片收敛,T-192 切片4 起退役为无返回)。
         """
-        before = op.screenshot()
-        for _attempt in range(max_retry):
-            op.ctx.controller.mouse_move(src)                 # bug#1 settle(先到源)
-            time.sleep(0.2)
-            op.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.0)
-            time.sleep(0.5)
-            # 光标 parking(审计 P0,2026-08-16):旧停 (100,500) 在羁绊面板 [38,128,258,772] 内,
-            # 污染每次 Director heavy observe 的 board OCR;park_cursor = UID 黑块中立区。
-            op.park_cursor(after_wait=0.3)
-            if DragCwChar._src_changed(before, op.screenshot(), src):
-                return True
-        return False
-
-    @staticmethod
-    def _src_changed(before: np.ndarray, after: np.ndarray, src: Point,
-                     diff_thr: float = 8.0) -> bool:
-        """drag 前后源槽中心 40×40 crop 像素均值 diff > 阈 = 变(角色离开 / swap 换人都致变)。"""
-        x, y = int(src.x), int(src.y)
-        b = before[y - 20:y + 20, x - 20:x + 20]
-        a = after[y - 20:y + 20, x - 20:x + 20]
-        if b.size == 0 or a.size == 0:
-            return False
-        return float(np.mean(cv2.absdiff(b, a))) > diff_thr
+        op.ctx.controller.mouse_move(src)                 # bug#1 settle(先到源)
+        time.sleep(0.2)
+        op.ctx.controller.drag_to(start=src, end=dst, duration=1.0, hold_time=0.0)
+        time.sleep(0.5)
+        # 光标 parking(审计 P0,2026-08-16):旧停 (100,500) 在羁绊面板 [38,128,258,772] 内,
+        # 污染每次 Director heavy observe 的 board OCR;park_cursor = UID 黑块中立区。
+        op.park_cursor(after_wait=0.3)
+        return True
 
 
 _EXPORT = DragCwChar

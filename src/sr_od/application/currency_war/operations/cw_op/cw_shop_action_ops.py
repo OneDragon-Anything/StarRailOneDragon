@@ -580,12 +580,10 @@ class SellBenchOp(ShopActionOp):
         from sr_od.application.currency_war.prep_actions import (
             drag_bench_to_sell,
         )
-        ok = drag_bench_to_sell(op, op.ctx, action.bench_idx)
-        if not ok:
-            ledger.total_sell_fail += 1   # 拖 3 次源槽未变(现有语义)
-            log.warning('[cw-shop] Sell bench%d %s 拖3次源槽未变',
-                        action.bench_idx, _expected_name)
-            return False
+        # T-192 机械执行:拖拽零判效(源槽像素验重试已拆),发出即记账
+        # 并推进 tracked 双账;落地事实归下一帧入口观察 reconcile 对账。
+        # (槽位越界 = 调用方 bug,drag_bench_to_sell 守卫响亮上抛。)
+        drag_bench_to_sell(op, op.ctx, action.bench_idx)
         # tracking 同步:置 None 不紧缩(ADR-0316)。T-308/ADR-0646 S1:
         # 下标直拷(pad 补 None)替代 bench_from_compact 槽号重构——S2 写回
         # 端保证 tracked 恒槽位表后本归一恒等;历史 bug 态(紧凑)下布局以

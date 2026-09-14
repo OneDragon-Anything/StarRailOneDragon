@@ -150,22 +150,26 @@ def sell_point(ctx: SrContext) -> Point:
     return pt
 
 
-def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> bool:
+def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
     """拖备战槽(槽位下标 0-8)→ 出售区(共享卖原语,W62 件2/设计章2.10)。
 
     d2 卖通道生产接线(shop.py prefix 循环 SellBench 分支)与 prep_actions
-    ``_sell_bench`` 共用本 helper:「拖→出售区→验源槽空」一段(DragCwChar.drag_char
-    内含验源槽像素变 + retry);tracking 同步由调用方各自做。失焦守卫同
-    ``PrepActionExecutor._drag`` 语义(窗口后台化时拖拽输入静默丢,r9 实证)。
+    ``_sell_bench`` 共用本 helper:「拖→出售区」机械一段(T-192 拆源槽
+    像素验重试:发出即职责完成,落地事实归观察侧 reconcile 对账);
+    tracking 同步由调用方各自做。失焦守卫同 ``PrepActionExecutor._drag``
+    语义(窗口后台化时拖拽输入静默丢,r9 实证)。
 
     Args:
-        op: 调用方 op(取 ctx.controller 操作 + screenshot 验证)。
+        op: 调用方 op(取 ctx.controller 操作)。
         ctx: SrContext。
-        bench_idx: 槽位下标 0-8(ADR-0316:列表下标 = 物理备战栏槽位 1-9 减一)。
+        bench_idx: 槽位下标 0-8(ADR-0316:列表下标 = 物理备战栏槽位 1-9 减一);
+            越界 = 调用方 bug,响亮上抛(守卫非判效)。
     """
     pts = row_area_centers(ctx, '备战栏')
     if not (0 <= bench_idx < len(pts)):
-        return False
+        raise AssertionError(
+            f'[cw][guard] 卖出拖拽槽位越界:bench_idx={bench_idx}'
+            f'(备战栏 area 数={len(pts)};调用方 bug 响亮暴露)')
     try:
         gw = ctx.controller.game_win
         if not gw.is_win_active:
@@ -177,7 +181,7 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> bool:
     from sr_od.application.currency_war.operations.dev.drag_cw_char import (
         DragCwChar,
     )
-    return DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx))
+    DragCwChar.drag_char(op, pts[bench_idx], sell_point(ctx))
 
 
 # (血购回执行挂点已随 exogenous 流写入端退役删除——删除波 1;
@@ -1267,64 +1271,57 @@ class PrepActionExecutor:
 
     def _sell_bench(self, action: SellBench) -> tuple[str, bool]:
         """卖备战槽角色:drag 槽中心 → 出售区(``drag_bench_to_sell`` 单一源;
-        拖拽原语内部源槽像素验 A8 面,批5 拆)。返回 (摘要, 是否发出)。
+        机械执行,T-192 源槽像素验重试拆除)。返回 (摘要, 是否发出)。
 
-        emitted = 拖拽真发出(源槽像素验 ok):拖3次源槽未变 = 动作未发出
-        (分派位契约「环境无对象/未发出 = False」;T-16 金账诚实性归位——
-        失败卖出若记 emitted=True,执行缝金账会把未发生的回金入账,且与
-        apply_op_effect 卖入推进双记账)。"""
-        ok = drag_bench_to_sell(self._op, self._ctx, action.slot - 1)
-        if ok:
-            self._track_remove_bench(action.slot)
-            # 用户口述口径(screen_flow_timing.md #21,2026-09-02):卖出金币
-            # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
-            time.sleep(1.0)
-        # 拖拽原语的源槽状态作信息性摘要记录(非成败门控;批5 A8 拆原语验)
-        return (f'卖备战槽{action.slot} {"✓" if ok else "拖3次源槽未变"}', ok)
+        emitted = 动作已机械发出(拖拽原语零判效,落地事实归观察侧
+        reconcile 对账)。"""
+        drag_bench_to_sell(self._op, self._ctx, action.slot - 1)
+        self._track_remove_bench(action.slot)
+        # 用户口述口径(screen_flow_timing.md #21,2026-09-02):卖出金币
+        # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
+        time.sleep(1.0)
+        return (f'卖备战槽{action.slot} ✓', True)
 
     def _sell_deployed(self, action: SellDeployed) -> tuple[str, bool]:
         """卖上阵角色:drag 排槽中心 → 出售区(落点经 ``sell_point`` 单一源)。
-        返回 (摘要, 是否发出)。emitted 语义 = 同 _sell_bench(拖拽未过 =
-        未发出,防幻记回金)。"""
+        返回 (摘要, 是否发出)。emitted 语义 = 同 _sell_bench(机械发出)。"""
         pts = self._front_pts if action.row == 'front' else self._back_pts
         src = pts[action.slot - 1]
-        ok = self._drag(src, sell_point(self._ctx))
-        if ok:
-            self._track_remove_deployed(action.row, action.slot)
-            time.sleep(1.0)   # 同上 #21 口径:卖出动画 1s
-        return (f'卖{action.row}排{action.slot} {"✓" if ok else "拖3次源槽未变"}',
-                ok)
+        self._drag(src, sell_point(self._ctx))
+        self._track_remove_deployed(action.row, action.slot)
+        time.sleep(1.0)   # 同上 #21 口径:卖出动画 1s
+        return (f'卖{action.row}排{action.slot} ✓', True)
 
     def _deploy_move(self, action: DeployMove) -> tuple[str, bool]:
         """bench → 上阵单步拖拽(腾席链专用)。返回 (摘要, 是否发出)。"""
         pts = self._front_pts if action.to_row == 'front' else self._back_pts
         src = self._bench_pts[action.from_slot - 1]
         dst = pts[action.to_slot - 1]
-        ok = self._drag(src, dst)
-        if ok:
-            self._track_move_deployed(action.from_slot, action.to_row, action.to_slot)
-            # 用户口述口径(screen_flow_timing.md #10,2026-09-02):拖动触发
-            # 羁绊阶段变更时角色头顶徽章动画 ~2s——拖完立即返回会让批尾
-            # heavy 观察打在徽章动画帧上(SIFT/对账读脏,「对账纠漂」日志
-            # 噪声源之一)。按「都等 2s」简单方案落(批尾/中间的区分不做)。
-            time.sleep(2.0)
-            # 用户口述口径(#24,2026-09-02):羁绊达标触发的 overlay(盛会之星
-            # 等)在徽章动画后再 ~2s 才弹出——固定等待覆盖不住。执行端等待后
-            # 快查一次触发型 overlay 锚(模板毫秒级),命中 → detail 标注(拖拽
-            # 本身已发出);批尾 heavy 的 event_overlay 检测将看到它并 bail 交
-            # 外环 handler——防「decide 的下一步动作打在 overlay 上」。清单
-            # 可扩(圣杯/银狼升星等实测出现时加锚)。
-            _post = self._op.screenshot()
-            if self._op.round_by_find_area(
-                    _post, '货币战争-盛会之星', '标识-盛会之星',
-                    crop_first=False).is_success:
-                log.info('[cw][deploy] 拖后检出盛会之星 overlay(羁绊达标触发)')
-                return ('部署已发,盛会之星 overlay 弹出(外环接管)', True)
-        return (f'部署槽{action.from_slot}→{action.to_row}{action.to_slot} '
-                f'{"✓" if ok else "拖3次源槽未变"}', True)
+        self._drag(src, dst)
+        self._track_move_deployed(action.from_slot, action.to_row, action.to_slot)
+        # 用户口述口径(screen_flow_timing.md #10,2026-09-02):拖动触发
+        # 羁绊阶段变更时角色头顶徽章动画 ~2s——拖完立即返回会让批尾
+        # heavy 观察打在徽章动画帧上(SIFT/对账读脏,「对账纠漂」日志
+        # 噪声源之一)。按「都等 2s」简单方案落(批尾/中间的区分不做)。
+        time.sleep(2.0)
+        # 用户口述口径(#24,2026-09-02):羁绊达标触发的 overlay(盛会之星
+        # 等)在徽章动画后再 ~2s 才弹出——固定等待覆盖不住。执行端等待后
+        # 快查一次触发型 overlay 锚(模板毫秒级),命中 → detail 标注(拖拽
+        # 本身已发出);批尾 heavy 的 event_overlay 检测将看到它并 bail 交
+        # 外环 handler——防「decide 的下一步动作打在 overlay 上」。清单
+        # 可扩(圣杯/银狼升星等实测出现时加锚)。
+        _post = self._op.screenshot()
+        if self._op.round_by_find_area(
+                _post, '货币战争-盛会之星', '标识-盛会之星',
+                crop_first=False).is_success:
+            log.info('[cw][deploy] 拖后检出盛会之星 overlay(羁绊达标触发)')
+            return ('部署已发,盛会之星 overlay 弹出(外环接管)', True)
+        return (f'部署槽{action.from_slot}→{action.to_row}{action.to_slot} ✓',
+                True)
 
-    def _drag(self, src: Point, dst: Point) -> bool:
-        """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0+retry+验源槽像素变)。
+    def _drag(self, src: Point, dst: Point) -> None:
+        """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,
+        T-192 源槽像素验重试拆除)。
 
         r10 review#2:失焦守卫下沉到本原语(所有拖拽路径共享)——窗口后台化时
         拖拽输入静默丢(r9 实证同机制:截图正常/输入丢/连环「源槽未变」假失败),
@@ -1343,7 +1340,7 @@ class PrepActionExecutor:
                 time.sleep(0.3)
         except Exception:   # noqa: BLE001  焦点守卫 best-effort
             pass
-        return DragCwChar.drag_char(self._op, src, dst)
+        DragCwChar.drag_char(self._op, src, dst)
 
     def _track_remove_bench(self, slot: int) -> None:
         """卖出后备势跟踪同步(单一跟踪账 tracked_bench_chars)。"""
