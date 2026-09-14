@@ -2093,16 +2093,25 @@ PREP_PROJECTION_DOMAINS: tuple[str, ...] = (
 
 
 def apply_prep_action_logic(bs: GameState, action: Any, *,
-                            produced_by: str, sig: ChannelSig) -> None:
+                            produced_by: str, sig: ChannelSig,
+                            session: object = None) -> None:
     """备战动作逻辑态直写(逐动作零读屏的期望态纯计算推进的容器半;
     设计件《prep 链容器化方案》§2.4-3;R9 全覆盖扩域见
     :data:`PREP_PROJECTION_DOMAINS` 登记面)。落位 = 本写口单一源,
     消费位 = ``cw_screen_prep._project_prep_obs``(黑板帧保留视觉域半)。
 
+    session(可选,T-227):执行侧 tracked 主账宿主。溢出腿落地时同帧
+    对称吸收进 ``tracked_bench_chars``(见 SellBench 分支)——容器腿只写
+    GameState,执行账不吸收 = 守卫 expected-vs-tracked 播种期对拍分叉
+    (实机 2-4 停机实证);None = 缺席跳过(离线/旧调用形态行为零变化)。
+
     逐动作分支(域集封闭,登记面见域集注释,禁扩静默):
 
     - **SellBench** = bench −该槽 + gold +退款(退款锚 = ``cw_state.
       sell_refund``,与 ``cw_state.simulate`` 卖出分支同式单一源)。
+      溢出腿落地时容器 bench 该槽回占入位卡,并同帧吸收执行侧
+      tracked 主账(session 在场;T-227 对称修,缺口实证 = 实机 2-4
+      商店播种守卫 tracked 缺入位卡停机)。
       备战动作槽坐标 = ``SellBench.slot`` = bench 物理槽位 1-9(1 基,
       MandateFrame/bench 读口同坐标系),读口 ``bench_slots_of`` 下标
       i = 物理槽 i+1,换算在此单点完成。槽位空/越界 = 陈旧提案,本口
@@ -2189,6 +2198,22 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
             new_slots[idx] = BenchChar(slot=idx + 1, char_id=_ov_id)
             _w(bs.overflow_card, '', 'proj_overflow_absorbed')
             _w(bs.overflow_warning, False, 'proj_overflow_cleared')
+            # 执行侧 tracked 对称吸收(T-227):入位卡同帧记进执行主账,
+            # 摘该槽(执行器摘除腿可能先行,幂等)+ 追加入位卡后按槽号
+            # 重建槽位表——bench_from_compact 重建 = S2 写回同构(形状
+            # 契约 ADR-0316 恒 pad 态,槽号即布局),守卫播种期对拍
+            # expected-vs-tracked 不再因本腿分叉。星级缺读 1 兜底与容器
+            # 腿同构,下帧 heavy 实读覆盖修正(观察赢)。
+            if session is not None:
+                from sr_od.application.currency_war.kernel.cw_exec_state import (
+                    bench_from_compact,
+                    exec_state_of,
+                )
+                _es = exec_state_of(session)
+                _tracked = [bc for bc in (_es.tracked_bench_chars or [])
+                            if bc is not None and bc.slot != idx + 1]
+                _tracked.append(BenchChar(slot=idx + 1, char_id=_ov_id))
+                _es.tracked_bench_chars = bench_from_compact(_tracked)
         _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
         g = bs.gold.value
         if g is not None:
@@ -2528,7 +2553,9 @@ class GameState:
     # 消费门 = mandate 溢出门,先卖腾位再出战)。取值时机 = 备战 heavy
     # 观察每入口帧实读覆盖(两态制,观察赢);写入端单一源 = CwScreenPrep
     # 观察写端(渠道①)。SellBench 溢出腿(apply_prep_action_logic)落地
-    # 后 logic 直写 False(推算消亡,下帧实读覆盖)。
+    # 后 logic 直写 False(推算消亡,下帧实读覆盖);落地同帧容器 bench
+    # 回占入位卡 + 执行侧 tracked 主账对称吸收(session 在场;T-227,
+    # 缺吸收 = 守卫播种期双账分叉实机停机)。
     overflow_warning: Field[bool] = field(default_factory=Field)
     # [索引定义] overflow_card:溢出位(固定停车位,建档 area「区域-溢出角色」,
     # 1080p rect 1352,710-1465,805)上的角色身份。'' = 溢出位无卡或身份未

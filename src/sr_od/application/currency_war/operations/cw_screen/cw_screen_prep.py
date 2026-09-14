@@ -975,7 +975,9 @@ class CwScreenPrep(CwScreenOpBase):
         - ClickSpheres:按载荷坐标**精确摘球**(R4 改形;原保守清空退役
           ——载荷即点击列,被点的球从 spheres 摘除,坐标匹配);
         - SellBench:该物理槽位件离席(bench_chars 摘除 +
-          free_bench_slots+1)+ 容器域逻辑态直写(gold 回金 + bench 摘槽,
+          free_bench_slots+1;溢出腿落地时改为入位卡回占该槽、free 不变
+          ——黑板帧镜像,与容器腿/执行账吸收同帧同源,T-227)+
+          容器域逻辑态直写(gold 回金 + bench 摘槽,
           kernel 写口 ``apply_prep_action_logic`` 单一源);
         - DeployMove(批 2a 补齐,§3.1):bench 摘件 + deployed 落件
           (排/槽号信息位重写)+ 占用集推进 + 容器域(bench/front_row/
@@ -1029,21 +1031,45 @@ class CwScreenPrep(CwScreenOpBase):
                         if (int(s[1].x), int(s[1].y)) not in _pts]
             return dataclasses.replace(obs, spheres=_spheres)
         if isinstance(action, SellBench):
-            _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
-                      if bc is None or getattr(bc, 'slot', None) != action.slot]
+            _sess = self._session()
+            _bs_sell = board_state_of(_sess)
+            # 溢出腿镜像读数(先读后写):溢出卡身份/旗标在本写口内被消费
+            # 清空,镜像判定须取写前值;落地判定 = 写后旗标已清(本调用内
+            # 唯一清空者 = 溢出腿,陈旧提案零写分支不清 → 镜像不误发)。
+            _ov_id_pre = str(_bs_sell.overflow_card.value or '')
+            _ov_warn_pre = bool(_bs_sell.overflow_warning.value)
             # 容器域逻辑态直写(容器化段 2:黑板帧 state 复制腿消亡;
             # gold 回金公式单一源 = cw_state.sell_refund,bench 摘槽 =
             # BenchView 重建 write_logic——写口内自持陈旧提案守卫;
             # 写口经模块顶 import 单一源,函数内禁局部再 import——局部
             # import 会把名字标记为函数局部变量,令同函数其余分支的
             # 裸引用在未走该分支时 UnboundLocalError)。
+            # session 透传(T-227):溢出腿落地时写口内同步吸收执行侧
+            # tracked 主账(容器腿/执行账同帧同源,商店播种守卫对拍
+            # 不因本腿分叉)。
             apply_prep_action_logic(
-                board_state_of(self._session()), action,
+                _bs_sell, action,
                 produced_by='CwScreenPrep',
-                sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
+                sig=ChannelSig(family='logic_action', actor='CwScreenPrep'),
+                session=_sess)
+            _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
+                      if bc is None or getattr(bc, 'slot', None) != action.slot]
+            _free = (getattr(obs, 'free_bench_slots', 0) or 0)
+            if _ov_warn_pre and _ov_id_pre \
+                    and _bs_sell.overflow_warning.value is False:
+                # 黑板帧镜像(T-227):溢出卡当帧入位,腾出槽即刻回占——
+                # 入位卡补进黑板 bench,free 不 +1(与容器腿/tracked 吸收
+                # 同帧同源;缺镜像 = 决策面假空席,席满拒落类门被假象绕过)。
+                from sr_od.application.currency_war.kernel.cw_exec_state import (
+                    BenchChar as _OvBenchChar,
+                )
+                _bench = list(_bench) + [
+                    _OvBenchChar(slot=action.slot, char_id=_ov_id_pre)]
+                return dataclasses.replace(obs, bench_chars=_bench,
+                                           free_bench_slots=_free)
             return dataclasses.replace(
                 obs, bench_chars=_bench,
-                free_bench_slots=(getattr(obs, 'free_bench_slots', 0) or 0) + 1)
+                free_bench_slots=_free + 1)
         if isinstance(action, DeployMove):
             _bs = board_state_of(self._session())
             apply_prep_action_logic(
