@@ -1795,7 +1795,18 @@ def read_shop_cards(ctx: SrContext,
     if _collapse_area is not None:
         from one_dragon.base.screen.screen_utils import find_area_in_screen
         if find_area_in_screen(ctx, screen, _collapse_area).value != 1:
-            return None
+            # 锚文本 OCR 可 flake(截图实证买光店面板展开仍可 miss)→
+            # 0.6s 后单次重判;仍 miss 才认「店未开」(过渡帧防抖,与
+            # 下方稳定门同形态,上限一次不构成等待环)。
+            import time as _time
+            _time.sleep(0.6)
+            _shot2 = ctx.controller.screenshot()
+            # controller 返回 (ts, frame|None) 元组(实机失败 1 实证);
+            # None 帧 = 采集失败,按 miss 处理(店未开语义)
+            _frame2 = (_shot2[1] if isinstance(_shot2, tuple) else _shot2)
+            if _frame2 is None or find_area_in_screen(
+                    ctx, _frame2, _collapse_area).value != 1:
+                return None
 
     from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
         record_defect,
@@ -2524,9 +2535,11 @@ def read_game_state(ctx: SrContext, screen: MatLike,
                     bs.observe(bs.shop, ShopPayload(cards=shop_val,
                                                     refresh_probs=probs),
                                sig=_sig_read)
-                else:
-                    # None = 店未开(收起锚 miss)= 结构事实(§2.2 例外)
-                    bs.leave_screen(bs.shop, sig=_sig_read)
+                # None = 收起锚 miss(OCR 判据可 flake;截图实证买光店
+                # 面板展开仍可 miss)→ 沿用现值不写不改(flow.py 决策入口
+                # 契约原文:「开店态失读窗=喂入口失读不写,沿用上一开店
+                # 牌面,照旧决策、执行侧核对兜底」);真离屏结构事实由
+                # spec 外阶段分支(下方 elif)承载。
             elif bs.shop.value is not None:
                 bs.leave_screen(bs.shop,
                                 sig=_sig_read)   # 离开商店画面 = 结构事实(§2.2 例外)
