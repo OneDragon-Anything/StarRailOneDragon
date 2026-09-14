@@ -1207,8 +1207,11 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 # 期望态 = 「交回外循环重进」的物理载体;RefreshShop 与
                 # CompTransaction(终结邻接 fallback,禁半档中间态)同路径。
                 break
-        log.info(f'[cw] shop={[(c.faction, c.name, c.cost) for c in _entry.shop]} '
-                 f'plan={[_fmt_action(a) for a in visit_actions]}')
+        log.info('[cw] shop=%s plan=%s',
+                 [(s.kind,
+                   (s.card.name, s.card.faction, s.card.cost)
+                   if s.card else None) for s in _entry.shop],
+                 [_fmt_action(a) for a in visit_actions])
         # (段尾 decisions 行已随 decisions 流写入端退役删除——删除波 1。)
         # (段尾 state.equips 帧拷贝随黑板帧退役删除——迁移批 3.2:装备库存
         # 容器写端 = 备战装配点 observe + 载体中继兜底(cw_observation),
