@@ -11,6 +11,25 @@ from one_dragon.yolo.log_utils import log
 _GH_PROXY_URL = 'https://ghfast.top'
 
 
+def build_model_download_url(model_download_url: str, model_name: str,
+                             gh_proxy: bool, gh_proxy_url: str | None,
+                             personal_proxy: str | None) -> str:
+    """
+    构建模型 zip 的完整下载 URL（纯函数，便于测试）。
+
+    gh_proxy 开启但 gh_proxy_url 为空时回落模块默认代理 _GH_PROXY_URL：
+    空值直接拼接会产生 'None/https://...' 形式的非法 URL，模型下载必失败
+    （实机实证：模型目录为空时模拟宇宙 app 启动即崩，ValueError unknown url type）。
+    personal_proxy 优先级高于 gh_proxy：此时不加代理前缀，代理由
+    download_model 设置的 http_proxy/https_proxy 环境变量承担。
+    """
+    url = f'{model_download_url}/{model_name}.zip'
+    if gh_proxy and not personal_proxy:
+        proxy_url = gh_proxy_url or _GH_PROXY_URL
+        url = f'{proxy_url}/{url}'
+    return url
+
+
 class OnnxModelLoader:
 
     def __init__(self,
@@ -76,12 +95,16 @@ class OnnxModelLoader:
         if not os.path.exists(self.model_dir_path):
             os.mkdir(self.model_dir_path)
 
-        download_url = f'{self.model_download_url}/{self.model_name}.zip'
         if self.personal_proxy is not None and len(self.personal_proxy) > 0:
             os.environ['http_proxy'] = self.personal_proxy
             os.environ['https_proxy'] = self.personal_proxy
-        elif self.gh_proxy:
-            download_url = f'{self.gh_proxy_url}/{self.model_download_url}/{self.model_name}.zip'
+        download_url = build_model_download_url(
+            model_download_url=self.model_download_url,
+            model_name=self.model_name,
+            gh_proxy=self.gh_proxy,
+            gh_proxy_url=self.gh_proxy_url,
+            personal_proxy=self.personal_proxy,
+        )
         log.info('开始下载 %s %s', self.model_name, download_url)
         zip_file_path = os.path.join(self.model_dir_path, f'{self.model_name}.zip')
         last_log_time = time.time()
