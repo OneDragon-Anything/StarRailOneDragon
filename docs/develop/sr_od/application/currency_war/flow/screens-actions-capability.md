@@ -125,7 +125,7 @@
 | 商店全 unknown 失读窗 | 收工终结 | 牌面含 unknown 槽 → 花钱动作禁发射,仅 CloseShop 收工;未识别卡停机钩子留证(`shop_visit.md` §3) |
 | 备战 StartBattle | **访问终结(唯一完成态)** | 出战落地 → 外循环置战斗窗口(备战→战斗→结算→回备战轮推进,`outer_loop.md` §4) |
 | 备战 OpenShop | 备战环终结 | 交商店访问编排(显式开店)或回外循环重识别(读数开店) |
-| 备战 BailToOuter / overlay 检出 | 环中止 | 弹层/事件在场 → 交回外循环分支 handler(如盛会之星/事件 overlay) |
+| 备战 overlay 检出 | 环中止 | 弹层/事件在场 → 交回外循环分支 handler(如盛会之星/事件 overlay) |
 | 备战空批(无动作) | 合法交回 | 空序列合法 = 本帧无动作,交回外循环重观察(商店域无此通道,已被 CloseShop 终结取代) |
 | 备战未建模投影面动作 | 保守回退终结 | DeployMove/SellDeployed/LevelUp/RunDeploy/RunEquip 等投影未建模面执行后本访问终结交回外循环重观察(重观察语境禁猜,`prep_visit.md` §1) |
 | 单选族确认离开 | 画面终结 | overlay 消失即节点完成(补给节点无结算屏,合成 outcome 行,0e1) |

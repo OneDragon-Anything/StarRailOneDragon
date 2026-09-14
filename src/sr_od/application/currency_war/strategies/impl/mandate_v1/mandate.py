@@ -1011,7 +1011,7 @@ def run_mandate(frame: MandateFrame,
     备战环连续三轮经济冻结后空批出战,「闩置位在发射位而非执行位」;
     发射序回排修订后本闩置位时机是同型残留)。闩未置时发射位
     照常重发(下帧重试);位面/轮次推进=新键自动失效(新店内容
-    重新决策)。旧核 step1 RunBuyPhase 的每备战期一次店内完整决策与本
+    重新决策)。旧核每备战期一次店内完整决策与本
     闩同构,佐证非理由。
     """
     counters = getattr(state_of(session), 'cw4_counters', None)

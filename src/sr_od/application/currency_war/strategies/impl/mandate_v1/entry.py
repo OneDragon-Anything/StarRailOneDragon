@@ -20,8 +20,7 @@ ADR-0585 §5 + flow/action_exec.md §1 正本)+ §3.3 fail-closed(词表外/无�
 动作 ⇒ 截断 + 计数披露,禁静默丢弃)。发射器实现期增补条目须回契约
 改版,禁只改代码。R196 修复批(症5)对齐:ClickSpheres=条件判(末批
 可能掉箱 ⇒ 其后截断)、conditional 五类名-槽一致性复检(推不出即截断,
-计数 ``emitter_conditional_truncated``)、BailToOuter=退役·终点(判型
-标签对齐契约 §3.2 行,发射行为等价)。
+计数 ``emitter_conditional_truncated``)。
 
 R197 修复批(症1)发射序规格:同一 decide 输出内,EV 卖面
 (line_switch_sell/funding_support)与骨架动作按**依赖拓扑**重排——
@@ -69,19 +68,14 @@ from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_cap_hold,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    BailToOuter,
     ClickSpheres,
-    DeferSpheres,
     DeployMove,
-    EnsureShopClosed,
-    EnsureShopOpen,
     LevelUp,
     OpenBox,
     OpenShop,
     OpenTome,
     PickBoxCard,
     PrepAction,
-    RunBuyPhase,
     RunDeploy,
     RunEquip,
     RunTools,
@@ -199,14 +193,11 @@ log = logging.getLogger(__name__)
 #: 截断点(该动作可作序列最后一个动作发出,其后截断)
 _TRUNCATION_POINTS: tuple[type, ...] = (
     OpenBox, OpenTome, PickBoxCard, OpenShop,
-    EnsureShopOpen, EnsureShopClosed,      # 退役类兼容面保守判=截断点
-    RunBuyPhase,                           # 退役类兼容面保守判=截断点
 )
-#: 终点(只能作序列最后一个动作;StartBattle=出战环出口;BailToOuter=
-#: 退役·终点——中止本环交外环按序列终点语义,契约 §3.2 行,R196 症5 标签对齐)
-_TERMINAL: tuple[type, ...] = (StartBattle, BailToOuter)
+#: 终点(只能作序列最后一个动作;StartBattle=出战环出口)
+_TERMINAL: tuple[type, ...] = (StartBattle,)
 #: 可续(画面零迁移/坐标不变)
-_CONTINUE: tuple[type, ...] = (LevelUp, DeferSpheres)
+_CONTINUE: tuple[type, ...] = (LevelUp,)
 #: 条件续(bench 索引结构恒稳+名-槽一致性复检;board 空位/星级合成按
 #: 前序动作累积静态推出,推不出即截断——契约 §3.2 五行+ClickSpheres 行;
 #: 组合动作类(SellDeployed/RunDeploy/RunEquip)按发射期计划静态推出成立
@@ -492,8 +483,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         # 探针计数,成效重置;会话级=局级,接管局冷建=保守侧恢复点击)/
         # sphere_defer_progress_sig(成效签名快照,门簿记账非行为计数)/
         # sphere_defer_yield(让路帧计数)/ sphere_blocked_bench_full
-        #(死码块内,现状恒零写)。与 exec_state.defer_count 零读写关系
-        #(该字段为既有死词汇,纠偏见 cw_exec_state.py;方案 §3.6/B7)。
+        #(死码块内,现状恒零写)。
         _ct_sp = state_of(session).cw4_counters
         _sf_free = _sphere_bench_free(obs)
         if _sf_free > 0:
@@ -526,7 +516,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         # 模块头:现役缺省空集 = 宁多收球不误卖),整块不可达;备选A
         # 激活(晶矿 odds 采集批登记占席色,方案 §4)时恢复可达 = 让路
         # 帧腾席先于收球。禁删除:退役-复活双倍审面(方案稿 §7.1 编排者
-        # 终态;读者陷阱以本标注显影,与 defer_count 纠偏同批零行为代价)。
+        # 终态;读者陷阱以本标注显影,零行为代价)。
         _sf_occupied = any(
             (color or '') in SPHERE_OCCUPYING_COLORS
             for color, _pt, _r in obs.spheres)
@@ -555,9 +545,6 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 _ct_sf['sphere_blocked_bench_full'] = \
                     _ct_sf.get('sphere_blocked_bench_full', 0) + 1
             # 球残留跳过:不 return,落入下方常规步骤序(下帧 ① 再尝试)
-    if obs.event_overlay:
-        return [Emitted(BailToOuter(reason=obs.event_overlay), True,
-                        'event_overlay')]
 
     # ①′ wanted 闭环消费臂(T-159 迁移 A;位次 = ①实体面后、②证明 pass
     # 前——wanted 是未完成义务,滞留越久损失越大,方案 §5.2)。非空返回

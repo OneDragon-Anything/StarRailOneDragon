@@ -15,7 +15,7 @@ slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1
 与族 A(cw_state.Action 策略动作)同名类(SellBench/DeployMove/SellDeployed)的坐标系对照:
 族 B 物理槽位 = 族 A 下标 + 1(bench 域);deployed 域两族结构不同(族 B=row+slot
 物理排槽位,族 A=紧缩列表下标)——完整对照表见 cw_state.py Action 节约定块。
-组合动作命名映射(§7 L1):RunDeploy=CwScreenDeploy / RunEquip=CwOpEquipAll(RunBuyPhase 组合已随 shop.py 壳退役删除,W970 批 C 后决策核只发显式开店意图)
+组合动作命名映射(§7 L1):RunDeploy=CwScreenDeploy / RunEquip=CwOpEquipAll(整段买牌组合已随 shop.py 壳退役删除,W970 批 C 后决策核只发显式开店意图)
 (P1 过渡,P2/P3 溶解为原子)。
 """
 from __future__ import annotations
@@ -36,19 +36,14 @@ if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
-    SHOP_SCREEN_NAME,
     _area_rect,
     _ocr,
     area_center,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PREP_ACTION_TYPES,
-    BailToOuter,
     ClickSpheres,
-    DeferSpheres,
     DeployMove,
-    EnsureShopClosed,
-    EnsureShopOpen,
     LevelUp,
     OpenBox,
     OpenTome,
@@ -1023,8 +1018,6 @@ class PrepActionExecutor:
             # 执行缝替换分派时仍成立)。
             ok, detail = self._start_battle()
             return detail, ok
-        if isinstance(action, (DeferSpheres, BailToOuter)):   # 本模块定义,无需导入
-            return '控制流动作不经 execute(框架信号,§4.2b;环应在控制流分支拦下)', False
         return self._dispatch_direct(action)
 
     def _dispatch_direct(self, action: PrepAction) -> tuple[str, bool]:
@@ -1046,10 +1039,6 @@ class PrepActionExecutor:
             return self._deploy_move(action)
         if isinstance(action, LevelUp):
             return self._level_up()
-        if isinstance(action, EnsureShopOpen):
-            return self._ensure_shop(True)
-        if isinstance(action, EnsureShopClosed):
-            return self._ensure_shop(False)
         return f'未知动作类型 {type(action).__name__}', False
 
     # ===== 奖励域 =====
@@ -1525,38 +1514,6 @@ class PrepActionExecutor:
                   f'(基线 level {before};级真值=下一帧观察 reconcile)')
         log.info(f'[cw][levelup] {detail}')
         return detail, True
-
-    def _ensure_shop(self, want_open: bool) -> tuple[str, bool]:
-        """开/关商店(点击 + 固定动画等待;开态判定交下一帧观察侧 0n 三锚)。
-
-        入口幂等检查 = 执行前观察(已开/已关 = 无动作可发,M6 边界面,非
-        判效)。A5 拆除(用户裁定 2026-09-10):点击 + 固定等待后「重读
-        按钮-收起」判效半删除(原单次验证在动画窗可假阴性喂恢复机制噪声
-        的 r312 论证随验证拆除一并退役)——开/关是否生效由下一帧观察
-        (0n 三锚/备战双锚)自然判定。
-        """
-        screen = self._op.screenshot()
-        is_open = self._op.round_by_find_area(screen, SHOP_SCREEN_NAME, '按钮-收起').is_success
-        if want_open:
-            if is_open:
-                return '商店已开(无动作可发)', False
-            # 手动开(用户口述 2026-09-02 场景②):干净备战画面点击商店打开。
-            # 自动开店场景不经此处:结算后由 cw_loop 备战分支按
-            # 「备战阶段」识别等面板就位(W971 §2.5/§2.6 场景①),两场景互不竞速。
-            self._op.round_by_find_and_click_area(
-                screen, SCREEN_NAME, '按钮-商店')
-            # 光标 parking(审计 R3):点击点在动画后观察矩形正中(0px),park 防光标压读
-            self._op.park_cursor(before_wait=0.5, after_wait=0.1)
-            time.sleep(SHOP_OPEN_ANIM_S)
-            return '开商店 点击已发(动画等待 1s;开态交下一帧观察)', True
-        if not is_open:
-            return '商店已关(无动作可发)', False
-        self._op.round_by_find_and_click_area(
-            screen, SHOP_SCREEN_NAME, '按钮-收起')
-        self._op.park_cursor(before_wait=0.5, after_wait=0.1)   # 同 R3
-        # 收起动画 ~1s(#15)自等;关态由下一帧观察判定。
-        time.sleep(SHOP_CLOSE_ANIM_S)
-        return '关商店 点击已发(动画等待 1s;关态交下一帧观察)', True
 
     # ===== 战斗域 =====
 

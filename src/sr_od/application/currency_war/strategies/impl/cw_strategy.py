@@ -137,8 +137,6 @@ class CwStrategy(ABC, Generic[_TState]):
             重新决策)。
           - **空序列合法** = 「本帧无动作可发」;备战线空批处理归流程侧框架
             (重观察,stall 兜底由流程侧定义),策略器**禁用空批表达控制流**。
-          - 控制流走词表内特殊动作(``DeferSpheres`` 族;defer 计数归框架),
-            不进 execute 验证链。
           - 生命周期机制(幂等键 ``action_key``/连败→恢复→屏蔽/stall 门/强制
             出战)归框架,策略器不自实现。
         - 契约:同 ``decide_prep_action``(F1/F3/F4);「观察帧缺失即抛错」

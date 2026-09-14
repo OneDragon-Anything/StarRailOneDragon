@@ -35,9 +35,9 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
 # (观察审计设计件)。
 # 边界:本对账只辖 cw_screen_prep 直发链的拖动动作(SellBench/DeployMove)。
 # 买牌期望态走独立通道:购买意图在 shop.py 买入点记录(compute_buy_expect,
-# 落点规则单一源 = cw_state._merge_bench),由本环在 RunBuyPhase 后的 heavy
+# 落点规则单一源 = cw_state._merge_bench),由本环在购买单元后的 heavy
 # 定型帧上消费对账(_reconcile_buy_expect,台账 kind=buy_expect_mismatch);
-# RunBuyPhase 内 shop.py 的 SellBench 仍走 §2.2 既有通道,破警告分支
+# 单元内 shop.py 的 SellBench 仍走 §2.2 既有通道,破警告分支
 # (bench_full)无定型帧不进对账。
 
 #: 台账 surface/kind(缺陷台账复现计数按 (surface, kind, expected) 分档,
@@ -167,7 +167,7 @@ _BUY_DEFECT_KIND = 'buy_expect_mismatch'
 
 @dataclass
 class BuyPurchase:
-    """一次 RunBuyPhase 单元内记录的单条购买意图(shop.py 买入点写入)。
+    """一次购买单元内记录的单条购买意图(shop.py 买入点写入)。
 
     [定义注释] name/star = 商店牌 OCR 身份与星级(ShopCard 真值源);
     count = 该牌本单元购入张数 k——常态=1;备战栏满且可触发合成时 =
@@ -188,7 +188,7 @@ class BuyPurchase:
 
 @dataclass
 class BuyExpect:
-    """一次 RunBuyPhase 购买单元的期望态(compute_buy_expect 产出 /
+    """一次购买单元的期望态(compute_buy_expect 产出 /
     compare_buy_expect 消费)。
 
     [索引定义] bench_after = 期望备战栏槽位表(下标 0-8 = 物理槽位 1-9,
@@ -400,7 +400,7 @@ _XP_DEFECT_SURFACE = 'xp'
 _XP_DEFECT_KIND = 'xp_expect_mismatch'
 
 
-#: RunBuyPhase 执行返回 detail 中「升级次数」的解析形态。来源链:shop.py
+#: 购买单元执行摘要 detail 中「升级次数」的解析形态。来源链:shop.py
 #: 单元收尾摘要 'plan 买N张 升M次 刷K次 …'(total_xp_buy = 执行侧买经验击数(单击=+4XP 非整级))
 #: → prep_actions._run_composite 透传为 director 的 execute detail。
 _XP_BUY_CLICKS_PAT = re.compile(r'升(\d+)次')
@@ -436,7 +436,7 @@ class XpLedger:
 
 
 def _xp_parse_buy_clicks(detail: str) -> int:
-    """RunBuyPhase 执行 detail → 购买经验单击数;解析不出 → 0(宁缺勿造:
+    """购买单元执行 detail → 购买经验单击数;解析不出 → 0(宁缺勿造:
     该单元不进经验账,不做猜测推进)。"""
     m = _XP_BUY_CLICKS_PAT.search(detail or '')
     return int(m.group(1)) if m else 0

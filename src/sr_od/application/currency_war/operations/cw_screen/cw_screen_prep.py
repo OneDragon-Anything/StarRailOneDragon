@@ -43,8 +43,6 @@ from sr_od.application.currency_war.kernel.cw_overlay_registry import (
     derive_decision,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    BailToOuter,
-    DeferSpheres,
     DeployMove,
     LevelUp,
     OpenShop,
@@ -340,7 +338,7 @@ def build_refresh_expect(gold: int | None,
     **禁把面板徽标读数当刷价传入**。
 
     挂账(producer 集成点):期望必须在**刷新动作内**构建——波前金与波前
-    面板费都是单元内部现读;cw_screen_prep 持有的 RunBuyPhase 前后帧均为
+    面板费都是单元内部现读;cw_screen_prep 持有的购买单元前后帧均为
     关店帧(F2 下金不可信、五格牌不可读),无合法评估窗。集成点 =
     ``operations/cw_op/cw_refresh_shop_action.py`` RefreshShopOp 刷新分支现读处
     (ADR-0517 迁移后消费时点 = 刷新动作的执行实现层,刷后现读帧即对账帧;
@@ -1036,7 +1034,7 @@ class CwScreenPrep(CwScreenOpBase):
             log.debug(f'[cw-director] drag_expect reconcile skip: {e}')
 
     def _reconcile_buy_expect(self, expect: BuyExpect) -> None:
-        """买牌期望态对账(RunBuyPhase 完成后调用;零决策行为变更:不一致仅落台账)。
+        """买牌期望态对账(购买单元完成后调用;零决策行为变更:不一致仅落台账)。
 
         读法与 _reconcile_drag_expect 同款:复用 heavy 定型帧(last_screenshot,
         零新增截屏)+ identify_slots/read_deployed_chars 纯读组合(不经
@@ -1145,7 +1143,7 @@ class CwScreenPrep(CwScreenOpBase):
         led.events_txt += f'+LevelUp×{clicks}(至{led.level}级)'
 
     def _xp_apply_buy_clicks(self, detail: str) -> None:
-        """RunBuyPhase 通道推进账本:执行 detail 解析升级次数(执行侧实况
+        """购买单元通道推进账本:执行 detail 解析升级次数(执行侧实况
         计数,shop.py total_xp_buy 口径(买经验击数;非升级次数——单击=+4XP 非整级);发射时点触发,批3a:原 progressed
         门随 T-223 退役——商店编排机械完成后携摘要 detail,解析不出击数
         (单元中断等)自然零推进,差值由下一帧观察 reconcile 对账吸收)。
@@ -1648,9 +1646,9 @@ class CwScreenPrep(CwScreenOpBase):
         #      建期望态 → 逐动作「决策(黑板=投影态)→ F3 校验 → 期望态计算 →
         #      执行 → 投影」循环,循环内零读屏;三遍编排序保持(决策核输出
         #      逐帧取首项 = 单动作选择序,输出等价系条件命题——帧级锁按锁
-        #      纪律重推)。已知画面出口(OpenShop/StartBattle)与控制流
-        #      (DeferSpheres/BailToOuter)= 终结 op,执行即本访问结束交回
-        #      外循环(下次入口重观察)。投影未建模的动作同判保守回退。
+        #      纪律重推)。已知画面出口(OpenShop/StartBattle)= 终结 op,
+        #      执行即本访问结束交回外循环(下次入口重观察)。投影未建模的
+        #      动作同判保守回退。
         #      B1 拆除(用户裁定 2026-09-10):验证段+恢复原语分支退役——
         #      动作机械执行(端口无成败回执),无进展治理归外循环 stall
         #      防线(F2),落地判定归观察侧 reconcile。
@@ -1687,17 +1685,6 @@ class CwScreenPrep(CwScreenOpBase):
             # 累计本访问已执行动作类型 + 当前提案。
             exec_state_of(session).last_prep_action_sig = tuple(
                 _visit_acts + [type(action).__name__])
-            # 控制流(契约 §4:词表内特殊动作,不进 execute;defer 计数归框架)
-            if isinstance(action, DeferSpheres):
-                exec_state_of(session).defer_count += 1
-                log.info(f'[cw][director] DeferSpheres(defer={exec_state_of(session).defer_count})'
-                         '→ 交回外循环')
-                return self.round_success('球留置(空动作),交回外循环', wait=1.0)
-            if isinstance(action, BailToOuter):
-                # 词表已退役(W971 §2.6.1);防御性兜底 = 原样交回(无计数)
-                log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环'
-                         '(词表退役兜底)')
-                return self.round_success(f'BailToOuter({action.reason}),交回外循环(词表退役兜底)', wait=1.0)
             # F3 校验(契约 §2:参数非法交回留证;M6 边界面——执行前输入
             # 契约检查,非动作后判效)
             err = self._executor.validate(action)
@@ -1911,17 +1898,6 @@ class CwScreenPrep(CwScreenOpBase):
             # 累计本访问已执行动作类型 + 当前提案。
             exec_state_of(session).last_prep_action_sig = tuple(
                 _visit_acts + [type(action).__name__])
-            # 控制流(契约 §4:词表内特殊动作,不进 execute;defer 计数归框架)
-            if isinstance(action, DeferSpheres):
-                exec_state_of(session).defer_count += 1
-                log.info(f'[cw][director] DeferSpheres(defer={exec_state_of(session).defer_count})'
-                         '→ 交回外循环')
-                return self.round_success('球留置(空动作),交回外循环', wait=1.0)
-            if isinstance(action, BailToOuter):
-                # 词表已退役(W971 §2.6.1);防御性兜底 = 原样交回(无计数)
-                log.info(f'[cw][director] BailToOuter({action.reason})→ 交回外循环'
-                         '(词表退役兜底)')
-                return self.round_success(f'BailToOuter({action.reason}),交回外循环(词表退役兜底)', wait=1.0)
             # F3 校验(契约 §2:参数非法交回留证;M6 边界面——执行前输入
             # 契约检查,非动作后判效)
             err = self._executor.validate(action)
@@ -2289,7 +2265,7 @@ class CwScreenPrep(CwScreenOpBase):
     # ===== 购买单元记账(spend_ledger;纯观测,零行为变更)=====
 
     def _spend_unit_open(self, obs: PrepObservation) -> None:
-        """开购买单元(RunBuyPhase 执行前):记单元身份与序号。
+        """开购买单元(单元执行前):记单元身份与序号。
 
         W3/T-255:执行事实(计划≠尝试/gold 基线)改由
         访问执行事实(visit_open_shop 一手暂存,切片5 起 = fact_rows 增量追加)在单元收口侧
@@ -2400,7 +2376,7 @@ class CwScreenPrep(CwScreenOpBase):
         if rc is not None:
             rc.stop_running(reason='hook:exec_fail_mismatch')
 
-    # ===== W970 批 C:流程层商店编排(RunBuyPhase 解体的承接,§4.3.2/§4.3.6)=====
+    # ===== W970 批 C:流程层商店编排(整段买牌解体的承接,§4.3.2/§4.3.6)=====
 
     def _open_shop_phase(self, action: PrepAction,
                          obs: PrepObservation) -> tuple[bool, str]:
@@ -2418,8 +2394,8 @@ class CwScreenPrep(CwScreenOpBase):
           CwOpCloseShop → finalize_buy_phase(买后重估/期望暂存/gold 对拍/
           执行事实)→ 节点探针。
 
-        节点探针挂点 = CwOpCloseShop 完成后(店确定关的可靠时点;原
-        EnsureShopClosed 后字符串匹配判据退役,改类型分派)。
+        节点探针挂点 = CwOpCloseShop 完成后(店确定关的可靠时点;旧关店
+        通道的字符串匹配判据已退役,改类型分派)。
         波循环失败路径不开收(店留着交上层/外环重新识别,同 BuyShopCards 原语义)。
         """
         from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
@@ -2752,7 +2728,7 @@ class CwScreenPrep(CwScreenOpBase):
         with contextlib.suppress(Exception):
             if acct.get('drag_expect') is not None:
                 self._reconcile_drag_expect(acct['drag_expect'])
-        # 期望态层·买牌:RunBuyPhase 单元购买期望由
+        # 期望态层·买牌:购买单元期望由
         # shop.py 买入点写入 exec_state_of(session).pending_buy_expect;本帧消费对账。
         with contextlib.suppress(Exception):
             _pending_buy = exec_state_of(session).pending_buy_expect
@@ -2779,7 +2755,7 @@ class CwScreenPrep(CwScreenOpBase):
 
         read_node_sequence =
         HoughCircles 动态定圆 + HSV 三态 + Hu 匹配 + OCR(见 cw_node_reader)。
-        screen 传入时(EnsureShopClosed 后的 gate 稳定帧透传)复用该帧
+        screen 传入时(关店后的 gate 稳定帧透传)复用该帧
         不重截——gate 稳定帧的全图 OCR 已按 id(image) 缓存,节点行 OCR 读缓存命中,
         省一次截图 + 全图 OCR;None=自截图(旧行为,离线/其他调用点兼容)。
         未识别图标采集钩子(版本前哨,保留):未来圆 hu_dist > 阈值 → 裁图标存盘。
@@ -3008,7 +2984,7 @@ def unit_exec_facts_from_receipts(receipt_rows: list[dict],
 
 
 def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) -> str:
-    """买牌单元收尾(W970 批 C 抽出:RunBuyPhase 解体后由流程层
+    """买牌单元收尾(W970 批 C 抽出:整段买牌解体后由流程层
     ``CwScreenPrep._open_shop_phase`` 与 sim 兼容壳 BuyShopCards.buy 共用;
     单一源防双份漂移)。买后重估 / 买牌期望暂存 / gold 对拍 / 执行事实
     gold_close 回填,返回单元摘要字符串(消费方包装成 round status/detail)。
@@ -3105,7 +3081,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
     except Exception as e:   # noqa: BLE001  重估暂存失败不阻塞买牌
         log.debug('[cw] 买后重估暂存失败(不阻塞): %s', e)
     # `w536_merge_expect/`:单元购买意图 → 期望态,暂存 session 供 CwScreenPrep 主环在
-    # RunBuyPhase 后的 heavy 定型帧上消费对账(surface='bench',
+    # 购买单元后的 heavy 定型帧上消费对账(surface='bench',
     # kind='buy_expect_mismatch';零决策记账)。含卖出/未识别牌不建
     # (见单元头注释);计算失败静默跳过(best-effort,不阻塞买牌)。
     if match is not None and _buy_purchases \

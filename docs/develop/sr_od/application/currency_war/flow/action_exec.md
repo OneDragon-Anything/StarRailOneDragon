@@ -6,18 +6,17 @@
 
 > **契约正本落档申报（批 4）**：本节即**序列决策契约**备战线域词表 as-built 正本的**首次文档落档**——原正文权威 `CONTRACT_SERIES_DECISION.md`（`.debug` 工作副本）已灭失（全仓零命中，`.debug/` 不入 git），承接目标 `strategy/07_plugin.md` 从未创建；引用序列决策契约处一律以本节为权威正本。判型机器可读形式 = `entry.py` 帧稳定截断分类区（`_TRUNCATION_POINTS/_TERMINAL/_CONTINUE/_CONDITIONAL` + `classify_frame_stability`）。
 
-备战线 PrepAction 全集（18 类，`PREP_ACTION_TYPES` 白名单 `cw_prep_actions.py:178-184`；**新增动作必须同步登记白名单**——漏登记时 validate 拒"未知动作类型"，动作从未真正执行）：
+备战线 PrepAction 全集（13 类，`PREP_ACTION_TYPES` 白名单 `kernel/cw_prep_actions.py`；**新增动作必须同步登记白名单**——漏登记时 validate 拒"未知动作类型"，动作从未真正执行）：
 
 | 类别 | 动作 | 语义要点 |
 |---|---|---|
-| 控制流 | `DeferSpheres` / `BailToOuter` | 框架信号，不进 execute 验证链；defer 计数归框架（门=2）；BailToOuter 词表已退役（防御性兜底 = 原样交回，`cw_screen_prep.py:1313-1318`） |
 | 领取类 | `ClickSpheres(max_k)` / `OpenBox(slot)` / `OpenTome(slot)` / `PickBoxCard(card_idx)` | 点球带上界批大球优先内验早停；开箱/开典籍即腾席 + 弹 overlay 交外环分支 |
 | 卖出类 | `SellBench(slot, reason)` / `SellDeployed(row, slot)` | slot = **物理槽位**（备战栏 1-9 / 排内槽号），非列表下标（`cw_prep_actions.py:12-15` 坐标系约定）；SellBench.reason = 线账闭合孤儿证明载体（**记录非指令**，执行层不读；'' = 未标，缺省形态）。纯归因遥测面已随 2026-09-08 用户归因遥测删除指令拆除：发射侧值域闭集 = `cw_prep_actions.SELL_BENCH_REASONS` 唯一承重值 `line_switch_collapse`（线账闭合孤儿清算标记，授予须伴随登记簿线账闭合证明，T-141）；检查器豁免键集 `cw_state.SELL_BENCH_CONVERT_REASONS` 四键保留 = 检查器面单一源（非发射填充面）；reason 不入幂等键，序列化等值口径 = 字段带默认值，类型消费全向后兼容，sim 账本白名单挑字段、prep 域不入 sim 账本 |
 | 部署类 | `DeployMove(from_slot, to_row, to_slot)` | bench→上阵单步拖拽（腾席链专用；组合部署走 RunDeploy） |
 | 买经验 | `LevelUp` | 单击「购买经验」= +4XP(非整级;升级 = XP 过门槛表结果,真实等级以读屏为准) |
-| 商店 | `OpenShop(read_only)` | 开店意图（EnsureShopOpen/Closed 已退役，W970 批 C） |
+| 商店 | `OpenShop(read_only)` | 开店意图 |
 | 出战 | `StartBattle` | 环出口；含未达上限确认；验证 = 备战标识消失；**豁免屏蔽** |
-| 组合（P1 过渡） | `RunBuyPhase` / `RunDeploy` / `RunEquip` / `RunTools` | 组合壳：RunBuyPhase 执行分支已删（改 OpenShop 编排）；RunDeploy = CwScreenDeploy；RunEquip = CwOpEquipAll；RunTools = CwOpTools（工具执行批 ；白名单/文档曾漏登本行，V3-01 勘误） |
+| 组合（P1 过渡） | `RunDeploy` / `RunEquip` / `RunTools` | 组合壳：RunDeploy = CwScreenDeploy；RunEquip = CwOpEquipAll；RunTools = CwOpTools（工具执行批；白名单/文档曾漏登本行，V3-01 勘误） |
 
 动作实例键 `action_key(action)` = 类型+行为参数（SellBench(3) 与 SellBench(5) 各自计数；归因字段经字段 metadata 不入键——归因标签不改变动作实例身份；`cw_prep_actions.py:190-206`）——屏蔽/失败计数的幂等粒度。
 
@@ -36,7 +35,7 @@
 
 ## 3. 备战单动作消费（`cw_screen_prep.py` 备战单轮）
 
-逐动作（单动作决策循环取首项）：`_record_step`（obs+action 落遥测）→ 控制流类短路 → F3 `validate(action)`（参数非法 = 拒绝执行 + 交回留证，与执行失败同型不进连败链）→ 期望态计算（SellBench/DeployMove → drag_expect；SellDeployed → equip_expect；部署/卖出 → deployed 计数前后拍）→ 执行 → acct 暂存 `session.cw_prep_pending_accts`（对账归**下一入口 heavy**时点统一消费,`_v2_post_frame_accounting` 动作级对账族：paddle 审计/拖动期望/买牌期望/经验/羁绊/商店池/合成预览/装备期望——per-action heavy 重观察契约已灭）→ 结束判定（StartBattle/OpenShop = 终结 op;not progressed = fail-stop）。
+逐动作（单动作决策循环取首项）：`_record_step`（obs+action 落遥测）→ F3 `validate(action)`（参数非法 = 拒绝执行 + 交回留证，与执行失败同型不进连败链）→ 期望态计算（SellBench/DeployMove → drag_expect；SellDeployed → equip_expect；部署/卖出 → deployed 计数前后拍）→ 执行 → acct 暂存 `session.cw_prep_pending_accts`（对账归**下一入口 heavy**时点统一消费,`_v2_post_frame_accounting` 动作级对账族：paddle 审计/拖动期望/买牌期望/经验/羁绊/商店池/合成预览/装备期望——per-action heavy 重观察契约已灭）→ 结束判定（StartBattle/OpenShop = 终结 op;not progressed = fail-stop）。
 
 **恢复原语** `try_recovery`（关已知弹层，一次/动作实例）：fail-stop 时先试恢复再交回外循环。
 
@@ -81,7 +80,6 @@
 | 动作实例 | 机械单发,动作级零重试零判效(拖拽像素验重试已拆除;落地事实归下一入口观察对账) | 无动作级去向;外循环防线接管未转移 |
 | 失败记忆 | deploy_fail_counts（同角色拖拽被游戏拒 ≥1 → 跳过） | 备战后对账刷新自然重置 |
 | 恢复原语 | try_recovery 关已知弹层 | 一次/动作实例 |
-| defer 门 | OpenTome/收球反复失败（defer≥2）→ 放弃走主流程 | 环入口 defer 清零重判自愈 |
 | 外循环 | node_max_retry_times=400（备战节点）| round_fail 交兜底链；无进展归 G3 守卫 |
 
 ## 8. ⚠️ 现状违宪待改标记

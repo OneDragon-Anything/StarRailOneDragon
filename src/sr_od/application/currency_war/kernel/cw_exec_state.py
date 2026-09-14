@@ -100,10 +100,8 @@ class ExecState:
     新建即天然清零)。账外收编账本 = ADR-0563「落位裁量」节。
 
     生命周期分级(迁移核对判据:落点生命周期 ≥ 原生命周期,session.md
-    §7.2-3):局级(失败记忆/互斥账/bail 计数/tracked 账/期望账)、跨环
-    (发射连败)、节点/visit(防重入/期望覆盖)、环级(defer 门——
-    生命周期分级纠偏见 ADR-0642:唯一复位 = 战斗结算写端,环入口清零
-    无写点)。
+    §7.2-3):局级(失败记忆/互斥账/tracked 账/期望账)、跨环
+    (发射连败)、节点/visit(防重入/期望覆盖)。
     """
 
     # 腾席链 DeployMove 失败记忆(char_id → 失败计数)。拖拽被拒 → 跳过
@@ -133,19 +131,9 @@ class ExecState:
     # 「可否再刷」权威判定 = 逐卡计数现读(cw_node_obs reader),本集唯一
     # 职责 = 同 visit 防重入(双保险不同源,观察赢规则照常辖)。
     _invest_refresh_used_slots: set[int] = field(default_factory=set)
-    # 奖励球留置计数码(纠偏 = ADR-0642/T-297,覆写两处失实:①注释曾
-    # 宣称「门=2 防空转环」——全库无任何比较消费点;②「环级——Director
-    # 每次环入口清零」——无环级清零写点,唯一复位 = 战斗结算
-    # cw_screen_battle_wait.py 写端)。DeferSpheres 全库零发射者,字段
-    # 保留候死词汇清理批,退役需随删 director 两消费分支 + 复位点。
-    # 框架流程侧。
-    defer_count: int = 0
     # star 回退停机钩子计数(char → 连续回退次数;连续 2 节点回退 = 真识别
     # 问题 → 停机保画面排查;读回恢复即清零)。执行侧停机钩子载体。
     star_regression_count: dict[str, int] = field(default_factory=dict)
-    # BailToOuter 同因计数(局级,环重建不清零——ping-pong 诊断;≥3 记
-    # [cw!])。流程侧。
-    bail_reason_counts: dict[str, int] = field(default_factory=dict)
     # 执行侧跟踪账(随动更新;双账断言 screen_op.md §2.3(ii))。两账形状
     # 契约 = pad 态定长槽表**含 None**(ADR-0316/0392;tracked_bench_chars
     # T-308 后=reconcile 写回经 bench_from_compact 重建的槽位表,恒 pad 态;
@@ -170,7 +158,7 @@ class ExecState:
     # §3.2 评级「中」,恢复轮判读义务 6.2-4)。
     v2_round_sold: set[str] = field(default_factory=set)
     # 买牌单元期望态(cw_screen_prep.BuyExpect)。坐标系 = 哪次购买:一次
-    # RunBuyPhase 单元购买意图的「单元执行后应然态」。取值时机 = 购买意图
+    # 购买单元意图的「单元执行后应然态」。取值时机 = 购买意图
     # 落账——shop.py 单元收尾写入;消费 = 主环下一轮 heavy 定型帧对账后清
     # None,跨单元不残留。None = 无挂起期望。
     pending_buy_expect: object = None
@@ -381,7 +369,7 @@ def apply_op_effect(session, action: PrepAction | dict, *,
     else:
         # 显式不推进理由(原 §3 铁律枚举,两态制下语义存续):
         # - OpenBox/OpenTome:箱/典籍不消失(仅画面态,消耗在选卡确认);
-        # - OpenShop(含 read_only)/EnsureShop*:画面态周转,零局状态变更;
+        # - OpenShop(含 read_only):画面态周转,零局状态变更;
         # - StartBattle:进战斗,hp/gold/streak 由结算屏观察覆盖接管;
         # - RunDeploy/RunEquip:组合动作,tracked 本体推进 = 执行器
         #   (_sync_tracking_after_sell/_track_move_deployed 单一写者);
@@ -389,7 +377,7 @@ def apply_op_effect(session, action: PrepAction | dict, *,
         #   (XpLedger 通道);金账点击数不可推算 → 观察覆盖兜底;
         # - DeployMove:tracked 位移 = 执行器 _track_move_deployed;
         # - ClickSpheres:pending_reward 无 session 字段载体,零推进;
-        # - RunBuyPhase:BuyExpect 载体走 exec_state.pending_buy_expect
+        # - 买牌单元:BuyExpect 载体走 exec_state.pending_buy_expect
         #   独立通道(shop.py 买组收尾写,heavy 定型帧消费)。
         pass
     return effects

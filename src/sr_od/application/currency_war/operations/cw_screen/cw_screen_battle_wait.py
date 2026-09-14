@@ -719,17 +719,6 @@ class CwScreenBattleWait(CwScreenOpBase):
             if self.round_by_find_and_click_area(
                     self.screenshot(), '货币战争-结算', '按钮-继续挑战',
                     success_wait=1).is_success:
-                # 备战 defer 计数复位(结算点 = 新备战轮入口;W971 P3b 平移
-                # 语义。旧 prep_phase/prep_phase_retry 相位机复位随 ADR-0517
-                # 迁移批死码清理删除——字段已不存在)。宿主 = 执行侧载体
-                # ExecState(session.md §2.4:defer_count 归框架流程侧,随
-                # ADR-0563 session 职责分离迁出 session;读 session 形态 =
-                # AttributeError,session 上已无该字段)
-                if self.ctx.cw_match is not None:
-                    _ps = self.ctx.cw_match.exec_state
-                    if _ps.defer_count:
-                        _ps.defer_count = 0
-                        log.info('[cw-bwait] 新备战轮(结算点)→ defer 计数复位')
                 # M39:停留 ≥3 轮 = 点击未生效 → 长按兜底推进 + 留证观察
                 self._st.settle_stay += 1
                 if self._st.settle_stay >= CwScreenBattleWait.SETTLE_STAY_LONG_PRESS:

@@ -736,7 +736,7 @@ class ExogenousEvent:
 class SpendUnitRecord:
     """购买单元账框架行(spend_ledger.jsonl;`w494_spend_ledger/`,纯观测)。
 
-    一次 RunBuyPhase(开店→买牌/升级/刷新→关店)= 一个购买单元;本行只记
+    一个购买单元(开店→买牌/升级/刷新→关店);本行只记
     director 执行边界的**单元框架事实**(边界/耗时/执行结果),plan 动作清单
     与金真值不在此复制——它们已在 decisions.jsonl(shop plan 行)与
     obs_conflicts.jsonl(gold_delta 冲突行),读端 query_spend_ledger join 三流

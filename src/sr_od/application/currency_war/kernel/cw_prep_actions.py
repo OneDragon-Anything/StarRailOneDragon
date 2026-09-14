@@ -43,17 +43,6 @@ class PrepAction:
 
 
 @dataclass
-class DeferSpheres(PrepAction):
-    """控制流:奖励球留置(本环不再尝试;不计 stall,计步数)。"""
-
-
-@dataclass
-class BailToOuter(PrepAction):
-    """控制流:中止本环交外环(弹层/事件;框架信号不走验证链)。"""
-    reason: str = ""
-
-
-@dataclass
 class ClickSpheres(PrepAction):
     """点奖励球(带上界批,大球优先,内验早停;掉箱即停回环交规则统筹)。"""
     max_k: int = 1
@@ -146,20 +135,6 @@ class LevelUp(PrepAction):
 
 
 @dataclass
-class EnsureShopOpen(PrepAction):
-    """开商店(gold 备战帧同可见可读:玩家确认 2026-09-09「干净备战帧金币可见」,
-    恢复局备战期金币无机制性例外——备战帧观察为 gold 覆盖写端之一,非「仅开态可读」)。
-    ⚠️ W970 批 C 退役:生产路径改发
-    :class:`OpenShop`(read_only 变体),本类仅存续于旧环/离线兼容面。"""
-
-
-@dataclass
-class EnsureShopClosed(PrepAction):
-    """关商店(HP 只在关态可读)。⚠️ W970 批 C 退役:关店由商店决策空序列
-    触发 CwOpCloseShop;开态清洁面板场景改发 :class:`OpenShop`(read_only)。"""
-
-
-@dataclass
 class OpenShop(PrepAction):
     """开商店意图(W970 批 C/§4.3.6;EnsureShop 意图退役后的承接形态)。
 
@@ -175,11 +150,6 @@ class OpenShop(PrepAction):
 @dataclass
 class StartBattle(PrepAction):
     """出战(环出口;含未达上限确认;验证=备战标识消失)。StartBattle 豁免屏蔽。"""
-
-
-@dataclass
-class RunBuyPhase(PrepAction):
-    """组合(P1 过渡):整段买牌 = RunBuyPhase(执行器组合分支已随 BuyShopCards 壳退役删除;动作类型保留供期望态/对账兼容)。"""
 
 
 @dataclass
@@ -202,11 +172,11 @@ class RunTools(PrepAction):
 
 # 动作全集白名单(F3 membership 校验;新动作加入全集时同步此处)
 PREP_ACTION_TYPES: tuple = (
-    DeferSpheres, BailToOuter, ClickSpheres, OpenBox, OpenTome, PickBoxCard,
+    ClickSpheres, OpenBox, OpenTome, PickBoxCard,
     SellBench, SellDeployed, DeployMove, LevelUp,
-    EnsureShopOpen, EnsureShopClosed, StartBattle,
+    StartBattle,
     OpenShop,
-    RunBuyPhase, RunDeploy, RunEquip, RunTools,
+    RunDeploy, RunEquip, RunTools,
 )
 # ⚠️ 教训:**新增 PrepAction 必须同步登记本白名单**——漏登记时 validate 拒
 # 「未知动作类型」,动作从未真正执行(OpenTome 曾漏登记,数百次 F3 拒绝
@@ -275,8 +245,8 @@ class PrepObservation:
     # (back_size 字段已删(波 5b 死字段退役,写读闭环终端消费者零;决策链
     #  后排容量单一源 = 容器 back_capacity_of)。)
     overlay_state: str | None = None    # P5
-    # 事件 overlay 检测(盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即 BailToOuter
-    # 交外环分支 handler;实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
+    # 事件 overlay 检测(盛会之星/选择伙伴/祈愿试炼 —— 挡操作,检测到即
+    # 交回外循环分支 handler;实锤:盛会之星 overlay 下 deploy 全灭 → 空场 HP 82→1)
     event_overlay: str | None = None
     overlay_options: list | None = None # P5
     shop_cards: list | None = None      # P1 恒 None(仅买牌阶段刷新)

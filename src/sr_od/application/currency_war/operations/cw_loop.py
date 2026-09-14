@@ -223,7 +223,7 @@ def prep_no_progress_tick(prev_sig: tuple | None, prev_count: int,
 #: 恒指纹窗口
 #: 内出现过的动作批并集 ⊆ {OpenShop, RunDeploy} 才可能出战——真实进展
 #: 必变指纹,能留在恒指纹窗口的动作定义性零变换(零购买开店=纯读、
-#: 无部署可做 RunDeploy=合法稳态);第三类动作(DeferSpheres/ClickSpheres/
+#: 无部署可做 RunDeploy=合法稳态);其他动作(ClickSpheres/
 #: RunEquip/SellBench 等)在窗口出现 = 语义未核实,不出战、落守卫停机
 #: 留证交判读(不代打)。
 EXHAUSTION_WINDOW_ACTIONS: frozenset[str] = frozenset({'OpenShop', 'RunDeploy'})
@@ -1212,16 +1212,6 @@ class CwLoop(SrOperation):
                         sorted(texts)[:8], _shot)
             self._stall_flag_written = True   # 只写一次,画面变化后可重置重写
 
-    def _clear_bail_count(self, reason: str) -> None:
-        """外环 handler 成功消化某 overlay 后清其 bail 计数(M11 误停机修复)。
-
-        Director 对同一 overlay 的多次 bail 若都被外环**成功处理**(巨星节点每场触发一次,连胜连开),
-        是合法流转而非 ping-pong —— 不清零会在第 3 次合法出现时误升级停机(M11 2-2 巨星实锤)。
-        """
-        _m = self.ctx.cw_match
-        if _m is not None and getattr(_m.exec_state, 'bail_reason_counts', None):
-            _m.exec_state.bail_reason_counts.pop(reason, None)
-
     def _cw4_counters_snapshot(self, session: Any) -> dict[str, int] | None:
         """策略行为观测计数局终聚合快照(R5 W4 键收编载体,r5-migration-plan.md §2 W4)。
 
@@ -1584,13 +1574,9 @@ class CwLoop(SrOperation):
                 CwScreenEquipPick,
             )
 
-            def _on_equip_pick(ok: bool, _res: Any) -> None:
-                if ok:   # review M2:仅成功才清(失败保计数=ping-pong 安全网)
-                    self._clear_bail_count('事件overlay:equip_pick')
-
             return self._dispatch_screen_op(
                 CwScreenEquipPick(self.ctx), journal_name='选择装备',
-                frame_tag='overlay_equip_pick', wait=2, on_result=_on_equip_pick)
+                frame_tag='overlay_equip_pick', wait=2)
 
         # 0a. 选择伙伴 overlay(必须在 0b 巨星前:选择伙伴也有"确认选择"但候选是 stage 立绘)
         #     → CwScreenPartner(overlay 分发接管;委托现役 handler,详见 op)。
@@ -1600,13 +1586,9 @@ class CwLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-列车同行', '标识-选择伙伴', crop_first=False).is_success:
             self._snap('choose_partner')  # 选人选项(立绘名)→ 后续建策略评估用
 
-            def _on_partner(ok: bool, _res: Any) -> None:
-                if ok:   # review M2:仅成功才清(失败保计数=ping-pong 安全网)
-                    self._clear_bail_count('事件overlay:partner')
-
             return self._dispatch_screen_op(
                 CwScreenPartner(self.ctx), journal_name='选择伙伴',
-                frame_tag='overlay_partner', wait=2, on_result=_on_partner)
+                frame_tag='overlay_partner', wait=2)
 
         # 0a2. 银狼「我来当策划」策划事件 overlay(r103,局29 P2r6 41min 卡死实证;
         #      机制见 docs/game/gameplay/currency_war.md 银狼策划事件节)→ CwScreenPlanner
@@ -1614,15 +1596,10 @@ class CwLoop(SrOperation):
         #      选卡后可能弹「属性详情」面板 → handler 内关)。
         #      ⚠️ 必须在 0a 后/备战(1)前:overlay 盖备战屏,loop 不认它就反复空读。
         if self.round_by_find_area(screen, '货币战争-骇入策划', '标识-我来当策划', crop_first=False).is_success:
-
-            def _on_planner(ok: bool, _res: Any) -> None:
-                if ok:
-                    self._clear_bail_count('事件overlay:planner')
-
             # 失败 round_retry(与原分支内联同语义,消费同一 retry 池)
             return self._dispatch_screen_op(
                 CwScreenPlanner(self.ctx), journal_name='策划事件',
-                frame_tag='overlay_planner', wait=2, on_result=_on_planner,
+                frame_tag='overlay_planner', wait=2,
                 on_fail_retry=True)
 
         # 0a3. 命运卜者「强化效果三选一」overlay(r115,局32 P2r2 卡死 30min 实证;
@@ -1630,14 +1607,9 @@ class CwLoop(SrOperation):
         #      (W971 P3b overlay 分发接管)。P2 强化关。
         if (self.round_by_find_area(screen, '货币战争-命运卜者强化', '标识-命运卜者', crop_first=False).is_success
                 and self.round_by_find_area(screen, '货币战争-命运卜者强化', '标识-请选择强化效果', crop_first=False).is_success):
-
-            def _on_fortune(ok: bool, _res: Any) -> None:
-                if ok:
-                    self._clear_bail_count('事件overlay:fortune')
-
             return self._dispatch_screen_op(
                 CwScreenFortune(self.ctx), journal_name='命运卜者',
-                frame_tag='overlay_fortune', wait=2, on_result=_on_fortune,
+                frame_tag='overlay_fortune', wait=2,
                 on_fail_retry=True)
 
         # 0a4. 位面详情 overlay(主循环兜底):情报采集 op 失败退出残留/开局自动
@@ -1650,8 +1622,7 @@ class CwLoop(SrOperation):
                                    crop_first=False).is_success:
 
             def _on_plane_detail(ok: bool, _res: Any) -> None:
-                if ok:   # 仅成功清(原 :1309 语义:fail 不清 bail 计数)
-                    self._clear_bail_count('事件overlay:plane_detail')
+                if ok:
                     log.info('[cw-loop] 位面详情 overlay 已关(主循环兜底)')
 
             # 验消失迁入 op(单尝试);关不掉 → on_fail_retry 映射 round_retry
@@ -1668,14 +1639,10 @@ class CwLoop(SrOperation):
         if self.round_by_find_area(screen, '货币战争-盛会之星', '标识-盛会之星', crop_first=False).is_success:
             self._snap('megastar')  # 巨星候选(立绘名)→ 后续建策略评估用
 
-            def _on_megastar(ok: bool, _res: Any) -> None:
-                if ok:   # 合法 bail 清计数(live M11 误停机;M2:仅成功才清)
-                    self._clear_bail_count('事件overlay:megastar')
-
             # 生命周期 owner:验证 overlay 消失,超预算 bail(op 内 as-built)
             return self._dispatch_screen_op(
                 CwScreenMegastar(self.ctx), journal_name='巨星强化',
-                frame_tag='overlay_megastar', wait=2, on_result=_on_megastar)
+                frame_tag='overlay_megastar', wait=2)
 
         # 0c. 遭遇节点(难度二选一 + 选择)→ CwScreenEncounter(点卡选中 + 选择确认)。
         #     live 2026-08-15:改 id_mark area 检测(标识-遭遇节点,yml 已建)—— 旧全屏 OCR「遭遇其一」
@@ -1798,14 +1765,9 @@ class CwLoop(SrOperation):
         #     透出命中 → 备战分支误派 → shop 被遮失败 → 死循环)。ESC 不关;
         #     点卡身选中(金色边框)→ 确认选择 → 关回备战。
         if self.round_by_find_area(screen, '货币战争-祈愿试炼', '标识-祈愿试炼', crop_first=False).is_success:
-
-            def _on_wish_trial(ok: bool, _res: Any) -> None:
-                if ok:
-                    self._clear_bail_count('事件overlay:wish_trial')
-
             return self._dispatch_screen_op(
                 CwScreenWishTrial(self.ctx), journal_name='祈愿试炼',
-                frame_tag='overlay_wish_trial', wait=2, on_result=_on_wish_trial)
+                frame_tag='overlay_wish_trial', wait=2)
 
         # 0i. 星徽秘典四选一(2026-08-16 M45 完整建档,用户指导):备战席「秘密典籍」道具
         #     开启后弹四选一星徽 → CwScreenBookcard(overlay 分发接管,选卡读法按
@@ -1840,8 +1802,6 @@ class CwLoop(SrOperation):
         if _shop_card_detail_anchor_hit(self, screen):
 
             def _on_shop_card_detail(ok: bool, _res: Any) -> None:
-                if ok:
-                    self._clear_bail_count('事件overlay:shop_card_detail')
                 log.info('[cw-loop] 商店卡牌详情弹窗 → 点X关闭(ok=%s)', ok)
 
             # 关不掉 → on_fail_retry 映射 round_retry(消费同一 retry 池,

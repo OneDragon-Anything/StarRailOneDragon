@@ -617,12 +617,11 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
 「只分叉在适配器」的前提。
 
 - **词表载体现役已统一,本架构只做契约化申报**:
-  - 备战线意图 = `PrepAction` 词表(kernel/cw_prep_actions.py:DeferSpheres /
-    BailToOuter / ClickSpheres / OpenBox / OpenTome / PickBoxCard /
-    SellBench / SellDeployed / DeployMove / LevelUp / EnsureShopOpen† /
-    EnsureShopClosed† / OpenShop / StartBattle / RunBuyPhase / RunDeploy /
-    RunEquip / RunTools;† = 标退役——词表成员保留、发射路径退役,
-    禁静默缺席或静默复活);
+  - 备战线意图 = `PrepAction` 词表(kernel/cw_prep_actions.py:
+    ClickSpheres / OpenBox / OpenTome / PickBoxCard /
+    SellBench / SellDeployed / DeployMove / LevelUp /
+    OpenShop / StartBattle / RunDeploy /
+    RunEquip / RunTools);
   - 商店线意图 = `Action` 词表(kernel/cw_state:BuyCard / LevelUpShop(is-a
     LevelUp) / RefreshShop / SellBench / SellDeployed(:749) /
     DeployMove(:650) / PickEvent(:694——decide_invest 契约返回类型即它,
@@ -643,8 +642,8 @@ on_outcome  落地登记钩子(共用):动作发射触发统一登记集(单一�
   端口契约并接口化执行面(§6.3)。
 - **词表纪律**:新动作类型入词表 = 先改契约(两适配器同批给映射)再落码;
   禁止适配器私有动作类型(实机造一个 sim 不认识的意图 = 分叉复发)。
-- 控制流走词表内特殊动作(DeferSpheres 族),不进执行验证链(decide_prep_screen
-  契约 §4 既有口径,BailToOuter 已退役为防御兜底)。
+  控制流类动作已整体退役出词表(DeferSpheres/BailToOuter 等随词汇清理批
+  删除;overlay 让位 = 环入口直接交回外循环,空批交回语义承载无动作帧)。
 
 ### 6.2 实机动作适配器(点击链)
 
@@ -855,7 +854,6 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 | SellBench 卖备战席 | 拖拽至卖出区;验真=备战席少该牌 + 退款金入账(期望态对账) | simulate(SellBench) + 引擎退款(cw_state.sell_refund 口径) | 拖拽期望态对账(compute_drag_expect,执行侧保留) | 退款公式=kernel 已就位;sim 卖牌退款调用点对账=§7 行 4 |
 | SellDeployed 卖场上角色(两线词表成员:PrepAction + Action cw_state:749) | 同拖拽链 + 装备期望态(_equip_expect_for_sell→compare_equip_expect);**换血卖通道 = CwScreenDeploy._sell_offtarget_deployed(cw_op_deploy.py:1564,主链活跃)**——部署腾位的 off-target 卖出经本通道(CwOpSellOffTarget op 已下线预登记:文件头自注「当前零调用,清理由 _sell_offtarget_deployed 承担」,重接前非活跃通道) | simulate + 引擎退坑 | 拖拽/装备期望态对账 | 同上;换血卖通道=实机私有合法(执行通道,非数学推导) |
 | SwapDeploy 换血部署(商店线词表成员 cw_state:769) | 无现役点击链 | 无现役引擎调用 | 无(**负向锁申报 F7:登记槽 v3_pending_rollback 非空 = 告警**) | **发射面退役 = as-built 事实申报(F7,无退役裁定 ADR 在案,不引裁定)**:发射面 = 发射器不再被策略器发射;**登记半边仍活**——flow 谷底回滚臂(flow._process_settlement_strategy_half:287-297,锚 rollback_weakest 调用处 :293)仍构造 SwapDeploy(cw_evolution.py:1596 = 构造点非裁定出处)写入 v3_pending_rollback(StrategyState 声明 mandate_state.py:124),全仓零消费(1 写 0 读)= 半边活口;测试锁 test_cw_comps_library 仍断言 rollback_weakest 返回 SwapDeploy。词表成员保留,显式申报禁静默缺席、**禁静默复活**;重接时两适配器同批补映射(词表纪律 §6.1) |
-| EnsureShopOpen / EnsureShopClosed(PrepAction 词表成员) | 已退役——现役开店/关店由 OpenShop/CloseShop 语义承载 | 无 | 无 | **标退役**——词表成员保留、发射路径退役,禁静默缺席或静默复活 |
 | DeployMove / RunDeploy 部署 | 拖拽 bench→行槽(CwScreenDeploy,槽位 SIFT);验真=paddle 部署数变化(dep_pre 对照) | simulate(DeployMove) + 引擎部署块(轮末,序;**策略选择面 sim 零覆盖**,§1.2 病例 4) | 部署对账(dep_delta 记账,执行侧保留) | 装配源契约=钉死(尾批独立重验,§10.1);策略面收敛=T5 扩域 |
 | RunEquip 穿装备 | 拖装备→角色(cw_op_equip_all);验真=装备归属期望态(compare_equip_expect) | simulate + 引擎装备分配(equip_allocation,与执行器同源;策略选择面同上零覆盖) | 装备期望态对账 | 分配逻辑两域同源已就位;穿着即合成等观察收口(记录模型 §4.1 豁免);策略面收敛=T5 扩域 |
 | RunTools 用工具 | 拖装备→冶金炉 / 拆装扳手(cw_op_tools);验真=装备区变化 | 未建模(TOOL_GRANT_INJECT 注入通道=校准层) | 无 | sim 未建模=合法(工具为跨局持存物品不建模,申报在册) |
@@ -866,7 +864,6 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 | OpenShop / CloseShop 开关店 | _open_shop_phase 单动作循环 + 投影(MAX_REFRESH 硬墙)/ 点收起;验真=商店锚出现/消失 | 引擎商店段边界(shop_state_frame 写点);CloseShop=驱动器恒可用终结 | 无 | 流程编排=实机私有合法;段边界申报挂 §11-R1 |
 | 事件选择(Encounter/Supply/Megastar/Partner/Planner/WishTrial/StarTome/BoxCard/EquipPick/Expert) | 点卡身选中→确认(confirm_and_verify 验 overlay 消失);中间勿插空白点击 | decide_* 调用 + 引擎事件落定;**遭遇未接(T5)、补给直调 kernel 绕接口(T5)** | chosen_* write_logic 豁免;遭遇刷新计数(随点击置位) | 决策面收敛=T5(§7);点击链=实机私有合法 |
 | 投资选择(InvestStrategy / InvestEnv) | CwScreenInvestStrategy / CwScreenInvestEnv(选卡+确认+刷新链) | decide_invest 注入段(已接策略器接口) | active_env / active_strategies write_logic + 效果账本登记 + apply_effect_burst_grant(分列申报:仅策略屏已接,`cw_screen_invest_strategy.py:602-604`;环境侧无一次性施放语义——by-design 申报,非欠账) | 登记件=kernel 已就位;sim 经济聚合收敛=T4(§7);效果施加考题详见 §8 |
-| DeferSpheres / BailToOuter 控制流 | 词表内特殊动作,不进执行验证链(交回外循环/计数归框架) | 无对应(决策层语义) | 无 | 契约既有=已就位 |
 | 选职级(简报相位,§4.4) | 现役=入口流固定策略(CwEntryStart「返回最高职级」→「开始对局」);统一后=两域同源(kernel 缺省函数「恒选最高」),调用点两域各异——实机=CwEntryStart 入口流内(§4.2,替换硬编码;相位 1 策略口对实机只观察核对 bs.selected_difficulty)(A10 已裁决选项②+F5 调用点修正;接口成员升格待分化需求) | Engine.new_match 生成的职级选项 → 同一 kernel 函数(sim 调用点=引擎开局);sim 现役未建模职级,缺省函数落地时同批补齐 | bs.selected_difficulty 观察写端(难度确认屏);relay 镜像随真写端自然跳过 | 两域同源=kernel 缺省函数(A10 已裁决);实机导航链=实机私有合法(循环外) |
 
 ## 7. 逻辑计算清单表

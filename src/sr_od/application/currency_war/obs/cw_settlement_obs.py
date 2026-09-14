@@ -434,8 +434,8 @@ def read_round_outcome(ctx: SrContext, screen: MatLike, *, plane: int, round_num
 
     OCR 全屏 → ``parse_settlement_hp`` 得 hp_after;解析成功 hp_confidence=1.0(进 trend),失败 0.0
     (< ``HP_CONFIDENCE_THRESHOLD`` 不进 trend,防噪声)。plane/round_num/comp_tag 由调用方
-    (loop)传入。node_type:**结算屏自身解析优先**(r366/ADR-0239——局48 实锤 prep 流
-    RunBuyPhase 下 EnsureShopClosed 零执行,node_type 生产链全死,传参恒回退普通战斗);
+    (loop)传入。node_type:**结算屏自身解析优先**(r366/ADR-0239——局48 实锤
+    购买单元内关店通道零执行,node_type 生产链全死,传参恒回退普通战斗);
     解析不出再退调用方传入值(备战期 nodeseq 链,当前流下常 None→普通战斗)。
 
     ✅ 已接线(2026-08-07 起):CwScreenBattleWait._record_round_outcome 每轮胜结算屏调用 →

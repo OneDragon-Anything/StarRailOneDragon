@@ -98,7 +98,7 @@ class _OpSpec:
     domain: str
 
 
-#: 全集映射表(16 动作;键 = PrepAction 类型)。PrepAction 新增动作必须
+#: 全集映射表(13 动作;键 = PrepAction 类型)。PrepAction 新增动作必须
 #: 同步登记(F3 白名单同纪律:漏登记 = 影子侧未知动作缺陷计数,开环侧
 #: decide 直接抛错防静默)。
 _OP_SPECS: dict[str, _OpSpec] = {}
@@ -111,12 +111,9 @@ for _cls, _fam, _dom in [
     ('SellDeployed', 'sell_deployed', 'bench'),
     ('DeployMove', 'deploy', 'bench'),
     ('LevelUp', 'level_up', 'shop'),
-    ('EnsureShopOpen', 'ensure_shop_open', 'shop'),
-    ('EnsureShopClosed', 'ensure_shop_closed', 'shop'),
-    # W970 批 C:EnsureShop 意图退役后的承接形态(§4.3.6 read_only 变体)
+    # 开店意图(W970 批 C 退役形态的承接,§4.3.6 read_only 变体)
     ('OpenShop', 'open_shop', 'shop'),
     ('StartBattle', 'start_battle', 'battle'),
-    ('RunBuyPhase', 'run_buy_phase', 'shop'),
     ('RunDeploy', 'run_deploy', 'deploy'),
     ('RunEquip', 'run_equip', 'equip'),
 ]:
