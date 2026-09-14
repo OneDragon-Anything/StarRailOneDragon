@@ -837,6 +837,21 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         else:
             _entry = read_game_state(op.ctx, _entry_shot,
                                      phase=PHASE_PREP_SHOP_OPEN)   # ADR-0462 开店动作期
+            # 店开入口防抖:开店转场/淡入帧可令收起锚 miss → shop payload
+            # 未入容器(fresh 容器无上一牌面可沿用,decide 前置门即炸——
+            # 实机买光店五败定谳;已渲染帧离线全链复现全绿,读数函数无恙)。
+            # 本 op 前置已知店在屏,有界重读(3 × 0.8s)直至 shop 入容器;
+            # 仍缺 = 真离屏/持续失读,交由决策前置门大声失败(禁静默空态)。
+            from sr_od.application.currency_war.kernel.cw_game_state import (
+                board_state_of as _bs_of_debounce,
+            )
+            for _attempt in range(3):
+                if _bs_of_debounce(match.session).shop.value is not None:
+                    break
+                time.sleep(0.8)
+                _entry_shot = op.screenshot()
+                _entry = read_game_state(op.ctx, _entry_shot,
+                                         phase=PHASE_PREP_SHOP_OPEN)
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
         # (hp 三件组覆盖随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
         #  容器 hp 由备战帧观察/结算既有写端承接,消费统一经 decision_hp,
