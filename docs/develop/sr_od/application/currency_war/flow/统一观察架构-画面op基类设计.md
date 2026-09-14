@@ -865,7 +865,7 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 | 跳过(免战) | 点「按钮-跳过」(StartBattle 发射位 fallback) | 未建模(免战牌 sim 侧未建模) | consume_use(归零移除;未登记返 None 零动作) | 登记件=kernel 已就位(接线点收编中);sim 未建模挂 §7-T4 收敛纪律 |
 | OpenShop / CloseShop 开关店 | _open_shop_phase 单动作循环 + 投影(MAX_REFRESH 硬墙)/ 点收起;验真=商店锚出现/消失 | 引擎商店段边界(shop_state_frame 写点);CloseShop=驱动器恒可用终结 | 无 | 流程编排=实机私有合法;段边界申报挂 §11-R1 |
 | 事件选择(Encounter/Supply/Megastar/Partner/Planner/WishTrial/StarTome/BoxCard/EquipPick/Expert) | 点卡身选中→确认(confirm_and_verify 验 overlay 消失);中间勿插空白点击 | decide_* 调用 + 引擎事件落定;**遭遇未接(T5)、补给直调 kernel 绕接口(T5)** | chosen_* write_logic 豁免;遭遇刷新计数(随点击置位) | 决策面收敛=T5(§7);点击链=实机私有合法 |
-| 投资选择(InvestStrategy / InvestEnv) | CwScreenInvestStrategy / CwScreenInvestEnv(选卡+确认+刷新链) | decide_invest 注入段(已接策略器接口) | active_env / active_strategies write_logic + 效果账本登记 + apply_effect_burst_grant | 登记件=kernel 已就位;sim 经济聚合收敛=T4(§7);效果施加考题详见 §8 |
+| 投资选择(InvestStrategy / InvestEnv) | CwScreenInvestStrategy / CwScreenInvestEnv(选卡+确认+刷新链) | decide_invest 注入段(已接策略器接口) | active_env / active_strategies write_logic + 效果账本登记 + apply_effect_burst_grant(分列申报:仅策略屏已接,`cw_screen_invest_strategy.py:602-604`;环境侧无一次性施放语义——by-design 申报,非欠账) | 登记件=kernel 已就位;sim 经济聚合收敛=T4(§7);效果施加考题详见 §8 |
 | DeferSpheres / BailToOuter 控制流 | 词表内特殊动作,不进执行验证链(交回外循环/计数归框架) | 无对应(决策层语义) | 无 | 契约既有=已就位 |
 | 选职级(简报相位,§4.4) | 现役=入口流固定策略(CwEntryStart「返回最高职级」→「开始对局」);统一后=两域同源(kernel 缺省函数「恒选最高」),调用点两域各异——实机=CwEntryStart 入口流内(§4.2,替换硬编码;相位 1 策略口对实机只观察核对 bs.selected_difficulty)(A10 已裁决选项②+F5 调用点修正;接口成员升格待分化需求) | Engine.new_match 生成的职级选项 → 同一 kernel 函数(sim 调用点=引擎开局);sim 现役未建模职级,缺省函数落地时同批补齐 | bs.selected_difficulty 观察写端(难度确认屏);relay 镜像随真写端自然跳过 | 两域同源=kernel 缺省函数(A10 已裁决);实机导航链=实机私有合法(循环外) |
 
