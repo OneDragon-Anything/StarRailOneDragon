@@ -1,4 +1,15 @@
-"""货币战争 动作契约词汇 + sim 推演内核机制面。
+"""货币战争 统一动作词表 + sim 推演内核机制面。
+
+**统一词表(unified-action-factory 批2b 归一)**:全仓动作单一坐标系、
+单一真相源 = 本模块。基类 ``CwAction`` + 全动作类 + ``CW_ACTION_TYPES``
+运行时元组 + ``action_key`` 幂等键函数同居此处;原族B 词表
+(kernel/cw_prep_actions,物理槽位 1 基)已随归一退役,该模块现仅承载
+备战观察视图 PrepObservation 与点球挑选 kernel 纯函数。坐标系裁定 =
+容器槽位表下标(族A 口径,0 基;ADR-0316/0392)——发射面从容器槽位表
+读口直接取下标构造动作;物理槽位号仅存观察写入边与执行坐标边两边界
+(design.md §2.6 换算归属)。例外 = 坐标参数化机械动作(WearEquip/
+工具原子类):row/slot 字段按定义 = 画面物理排槽位 1 基(执行器拖点
+直取画面 area;字段注释逐类声明)。
 
 **推演内核正式类型 = ``CwSimFrame``**(sim 模拟环境的局面帧;命名与 sim
 包家族 cw_sim_invest/cw_sim_piggy 同构):sim 引擎整局推进的状态载体,
@@ -6,7 +17,6 @@
 续用),机制本体永不物理删除;与容器 GameState(实机真值记录模型)的
 表示分界、单向同步契约与逐字段映射对账正本 =
 docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
-本文件另定居动作契约族 14 符号(动作类 12 + ShopCard + CwSimFrame)。
 
 **终态消费面声明**(过渡期双职责已收口):实机执行链的观察工作载体
 职责随 last_state 链退役批终结——session.last_state 槽已删除,三写点
@@ -224,8 +234,8 @@ class CwSimFrame:
     #  StrategyState.focus_factions(方向刷新写入),决策读端走策略态。
     #  帧回填点(原 cw_op_buy_cards 装配位)同批删除。)
     active_strategies: list[str] = field(default_factory=list)  # 已持有投资策略(局中选,可多张;影响经济/难度)
-    # 动作v2 账本(契约包 C1,步2):显式动作(SellDeployed/SwapDeploy/
-    # CompTransaction)的执行结果逐条记录(applied/rejected + reason)
+    # 动作v2 账本(契约包 C1,步2):显式动作(SellDeployed/SwapDeploy)
+    # 的执行结果逐条记录(applied/rejected + reason)
     # ——事务拒绝必须可见(checks 消费;冻结 invariant「拒绝记录进账本」)。
     # 三消费面:策略不读(决策禁依赖账本);遥测经 sim ledger 的 actions
     # 序列化间接可见;sim 代理 = 本字段自身(simulate 写、cw_sim 转录)。
@@ -301,7 +311,7 @@ def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | No
     return None
 
 
-# ===== Action(动作词表;sim 引擎推进/执行链逻辑态直写/守卫消费) =====
+# ===== 统一词表(动作类全集;sim 引擎推进/执行链逻辑态直写/守卫消费) =====
 #
 # ── 索引字段定义约定(本族一切 idx/slot/index 字段的单一源;AGENTS.md 硬约束
 #    「索引/槽位字段必须带定义注释」的正文展开)──────────────────────────
@@ -312,37 +322,46 @@ def deployed_clear(deployed: list[BenchChar | None], idx: int) -> BenchChar | No
 #   #            取值时机: <生成期快照(执行期重校验,见 expect) | 生成期=执行期(恒稳) | 事务前快照 | 执行期现读>
 #   #            写入端: <发射点函数/模块>(仅 expect/锚定类防线字段必填)
 #
-# 双族对照表(CW 的「动作」有两族,同名类坐标系不同基——跨族阅读时对撞,
-# 类头已按约定标「≠ 另一族」):
-#   ┌─────────────────────┬──────────────────────────────┬──────────────────────────────┐
-#   │ 同名类               │ 族 A(cw_state,本模块)        │ 族 B(prep_actions,执行器)   │
-#   ├─────────────────────┼──────────────────────────────┼──────────────────────────────┤
-#   │ SellBench           │ bench_idx=槽位表下标 0-8      │ slot=物理槽位 1-9            │
-#   │ DeployMove          │ bench_idx=槽位表下标 0-8      │ from_slot/to_slot=物理槽位   │
-#   │                     │                             │   (前排 1-4/后排 1-N)        │
-#   │ SellDeployed        │ deployed_idx=槽位表下标 0-9   │ row+slot=物理排+槽位         │
-#   │                     │   (front 0-3/back 4-9)       │                              │
-#   └─────────────────────┴──────────────────────────────┴──────────────────────────────┘
-#   换算:bench 域 族 A 下标 = 族 B 物理槽位 − 1;deployed 域(ADR-0392)
-#   族 A 下标 = (row='front': slot−1 | row='back': 4+slot−1)。
-#
-# 两个坐标系的关键差异(为什么有两族):族 A 是**状态坐标系**(CwSimFrame
-# 容器的下标,sim 与策略层用);族 B 是**画面坐标系**(屏幕物理槽位,执行器
-# 拖拽/点击用)。bench/deployed 两域族 A 均为定长槽位表(ADR-0316/0392),
-# 下标恒稳——生成期索引 = 执行期索引。
+# 坐标系(unified-action-factory 批2b 归一后单一):bench/deployed 域动作
+# 携**容器槽位表下标**(定长槽位表 ADR-0316/0392,下标恒稳——生成期索引 =
+# 执行期索引);发射面从容器槽位表读口(bench_slots_of/deployed_slots_of)
+# 直接取下标构造动作。物理槽位号(BenchChar.slot 信息位,1 基)仅存两边界,
+# 各只允许一处换算函数:①观察写入边(observe/reconcile 写链);
+# ②执行坐标边(executor 单点;kernel 助手 = ``cw_exec_state
+# .deployed_row_slot``/``deployed_idx_of``)。坐标参数化机械动作
+# (WearEquip/工具原子类,见备战域节)的 row/slot 字段 = 画面物理排槽位,
+# 属动作参数定义,不在换算边辖域。
 
 @dataclass
-class BuyCard:
+class CwAction:
+    """货币战争动作标记基类(策略 → 框架的单步意图载体;统一词表全类
+    公共祖先,sim 侧运行时 isinstance 检查统一用本基类)。
+
+    ``route_tag`` = 发射臂路线标签(T-159 备战旗标状态机 §3.3;桥
+    ``bridge.decide_from_turn`` 从 ``Emitted.reason`` 透传,动作自带、
+    无时序错位面)。定位 = 策略内部路由键(发射分支的构造事实,不随
+    时间漂移、不维护状态),只回答「该次落地该不该清 S1 开店闩」的
+    环路控制路由问题,**非**卖出资格面(资格单一源 = sell_gate 装配 A)
+    、非放行证据(T-153 治理立场对表:禁检查器采信)。值域:现役发射位
+    = m4_fuel_sell / interest_prep(单帧锁
+    ``test_route_tag_whitelist`` 锁映射表)。kw_only 缺省 '' ⇒ 构造调用
+    全向后兼容(归一前族A 类无本字段,sim 构造面零改动)。
+    """
+    route_tag: str = field(default='', kw_only=True,
+                           metadata={'action_key_exclude': True})
+
+
+@dataclass
+class BuyCard(CwAction):
     card: ShopCard
     reason: str = ''   # 买入分类(① 账本 reason 单一源;line/bridge_seed/p2_core/pair/engine/board_focus/emergency/swap/plan;''=旧调用未标)
 
 
 @dataclass
-class SellBench:
+class SellBench(CwAction):
     """bench 卖出动作。
 
-    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316;
-    ≠ prep_actions.SellBench.slot 的物理槽位 1-9)。
+    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316 定长 9 槽)。
 
     sim↔生产账本 income 对齐:sim 侧卖出回金按
     ``cost`` 1:1(cw_sim L630);生产真值 = ``sell_refund(star, cost)``
@@ -359,26 +378,26 @@ class SellBench:
     = mandate_v1/shop.py 卖出发射位(M2 腾席两处/凑息回拉/funding 变现
     /funding 兜底,逐位带 expect 写入;原「remediation 两补偿器」表述
     无实码对应,全仓 grep 仅本 docstring 自引用,锁面引用同勘误);
-    prep 域载体(cw_prep_actions.SellBench)无 expect 字段,不涉本校验。
+    prep 域发射位(mandate_v1/entry)构造留 expect 缺省 ''(不校验形态,
+    归一前族B 载体无本字段的等价延续)。
     锁面 = test_cw_sell_reason_matrix.py(reason/归因面)与
     test_cw_sell_window_launch.py(TestFundingHoldFallback 兜底位
     expect+income 正锁)。
     """
     bench_idx: int
-    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316 定长 9 槽,空槽 None;
-    #             ≠ prep_actions.SellBench.slot 的物理槽位 1-9)
+    # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316 定长 9 槽,空槽 None)
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None   # 创建时预期回金(sell_refund 口径;None=未标)
     expect: str = ''           # 代际校验期望名(''=不校验,不符→拒绝)
     reason: str = ''           # 卖出通道记录字段(记录非指令,仿 LevelUp.auth_basis 形态;
     #                            ''=未标,缺省形态)。现役发射侧唯一承重值 =
     #                            line_switch_collapse(线账闭合孤儿证明标记,
-    #                            cw_prep_actions.SELL_BENCH_REASONS;纯归因
+    #                            SELL_BENCH_REASONS;纯归因
     #                            通道值填充已随 2026-09-08 用户归因遥测删除
     #                            指令拆除);sim 账本 SellBench 行
     #                            sell_reason 键转录本字段,检查器孤儿豁免
-    #                            分支据此判定(豁免键集 = cw_prep_actions
-    #                            .SELL_BENCH_ORPHAN_REASONS,与发射登记门
+    #                            分支据此判定(豁免键集 =
+    #                            SELL_BENCH_ORPHAN_REASONS,与发射登记门
     #                            分离的独立闭集,T-180)。
     convert_reason: str = ''   # 转化类豁免分键(结构化证明键,ADR-0611):
     #                            值域收窄为本批两类放行键 ⊂
@@ -430,8 +449,36 @@ SELL_BENCH_CONVERT_REASONS: frozenset[str] = frozenset({
 })
 
 
+# 卖出发射位值域闭集(2026-09-08 用户归因遥测删除指令后 = 唯一承重
+# 值)。原 ADR-0585 §3 批 4 的 5 通道值中,仅 line_switch_collapse 有
+# 存活填充位(凑息回拉换线闭合卖出载体+商店孤儿证明打标链);其余
+# 通道值/转化特化值的发射位填充已全撤,无填充位的枚举值不保留。
+# 转化特化值单一源 = 上方 SELL_BENCH_CONVERT_REASONS(同轮买卖
+# 检查豁免键集,保留)。新增发射位先在此登记再接线(登记门:值漂移
+# 由 test_cw_sell_reason_matrix 双向暴露)。
+# (unified-action-factory 批2b 自 kernel/cw_prep_actions 迁居,与
+# SELL_BENCH_CONVERT_REASONS 同居;来源语义与登记门不变。)
+SELL_BENCH_REASONS: frozenset[str] = frozenset({
+    'line_switch_collapse',     # 线账闭合孤儿清算(T-141/ADR-0591 证明打标制)
+})
+
+
+# 检查器孤儿豁免键集(同轮买后卖检查的孤儿清算豁免边;**与上方发射位
+# 值域登记门 SELL_BENCH_REASONS 分离的独立闭集**,T-180):两集当前同值
+# 但语义不同源——发射登记门的新增值不得静默放大豁免面(豁免面若随
+# 登记门生长即成振荡防空洞;同轮买卖振荡零容忍 = ADR-0267/0593 治理
+# 立场)。当前值 = line_switch_collapse(线账闭合孤儿清算证明标记,
+# 授予须伴随登记簿线账闭合事件,ADR-0591 §4)。三消费位 = sim/checks
+# /ledger 的 check_no_same_round_buy_sell 与 check_oscillation_xp_cap、
+# sim/checks/suspects 的 d1_same_round_pair_review(检查器/复盘面同键
+# 集,禁借道发射登记门)。值漂移由 test_cw_sell_reason_matrix 暴露。
+SELL_BENCH_ORPHAN_REASONS: frozenset[str] = frozenset({
+    'line_switch_collapse',
+})
+
+
 @dataclass
-class LevelUp:
+class LevelUp(CwAction):
     cost: int        # 本次「购买经验」单击花金(ADR-0129:一次点击 = +XP_PER_BUY 经验,非整级;凑够门槛才升级)
     auth_basis: str = ''
     # 授权依据**记录**字段(非指令;ADR-0354):
@@ -464,11 +511,13 @@ class LevelUpShop(LevelUp):
 
 
 @dataclass
-class DeployMove:
+class DeployMove(CwAction):
     """bench → 上阵(某排)。
 
-    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316;
-    ≠ prep_actions.DeployMove.from_slot/to_slot 的物理槽位 1-N)。
+    [坐标系] bench_idx = bench 槽位表下标 0-8(ADR-0316 定长 9 槽)。
+    上阵落位物理槽 = 执行坐标边现读首空位(kernel ``empty_deploy_slots``
+    同式);``faction`` = 上阵后 board 阵营计数所需,发射位从容器槽位表
+    角色对象现取(simulate 的 DeployMove 分支消费此字段)。
     """
     bench_idx: int
     # [索引定义] 坐标系: bench 槽位表下标 0-8(ADR-0316;同 SellBench.bench_idx)
@@ -479,7 +528,7 @@ class DeployMove:
 
 
 @dataclass
-class RefreshShop:
+class RefreshShop(CwAction):
     cost: int = 0    # 刷新花费(实机 OCR 补)
     # 触发源**记录**字段(非指令;先例 = LevelUp.
     # auth_basis / SellBench.income 的「记录不是指令」形态——执行层
@@ -494,7 +543,7 @@ class RefreshShop:
 
 
 @dataclass
-class CloseShop:
+class CloseShop(CwAction):
     """关店终结动作(ADR-0517 决策 4/5/6:商店画面的恒可用终结 op)。
 
     单动作架构(ADR-0517)下「无动作可做」的表达 = 策略器主动选关店终结
@@ -508,7 +557,7 @@ class CloseShop:
 
 
 @dataclass
-class PickEvent:
+class PickEvent(CwAction):
     """选事件选项(投资环境/策略/遭遇/补给)。
 
     refresh(T-162 重立,ADR-0600;旧「阈值建议」判据已退役,
@@ -534,46 +583,16 @@ class PickEvent:
 
 
 @dataclass
-class FillSpec:
-    """人口缺口填位描述(CompTransaction.fill 元素 / 独立填位动作共用)。
-
-    [坐标系] idx 双义随 source:bench 源=槽位下标 0-8 / shop 源=state.shop
-    列表下标(契约包 C1 冻结,详见下)。
-
-    契约包 C1(冻结):``source`` = 'bench' | 'shop'(shop 时 ``idx`` 为
-    ``state.shop`` 列表索引);``row`` = 'front' | 'back'。
-    在 CompTransaction.fill 中,**bench 源的 idx = 槽位下标(0-8,定长稳定,
-    ADR-0316)**——生成期索引 = 执行期索引,天然免疫 pop 漂移(F3 根治)。
-    填位候选池 = 迁移(deploy/undeploy/sell)后的 bench 槽位表(deploy/sell
-    清槽、undeploy 放回首个空槽),校验/应用端按同一视图解析。
-
-    ``expect``(代际校验;草案级扩字段,默认 ''=不
-    校验):提案生成时该 idx 指向内容的期望名(bench 源 = char_id,
-    shop 源 = card.name)——提案生成→应用之间槽位内容可能已变,应用时
-    不符 → 整事务拒绝(stale_proposal),不套用陈旧引用。
-    """
-
-    source: str                        # 'bench' | 'shop'(shop 时带 card 索引)
-    idx: int
-    row: str                           # 'front' | 'back'
-    expect: str = ''
-    # 代际校验期望名(''=不校验;见 docstring)。expect-whitelist: 草案级
-    # 字段——发射点尚未接线,属「待发射点补赋值」观察位;
-    # 接线时删本豁免(静态锁 test_expect_fields_have_writers_or_whitelist 督办)
-
-
-@dataclass
-class SellDeployed:
+class SellDeployed(CwAction):
     """卖场上单位(deployed 生命周期开口;不再'只增不减')——契约包 C1。
 
     [坐标系] deployed_idx = state.deployed **槽位表**下标 0-9(ADR-0392;
     front 0-3 / back 4-9,空槽 None,卖出置 None 不移位——索引跨动作组
-    恒稳;≠ prep_actions.SellDeployed 的 row+slot 物理排槽位,
-    换算 front:idx=slot−1 / back:idx=4+slot−1)。
+    恒稳)。
     """
     deployed_idx: int
     # [索引定义] 坐标系: deployed 槽位表下标 0-9(ADR-0392 定长 10 槽,空槽
-    #             None;≠ prep_actions.SellDeployed 的 row+slot 物理排槽位)
+    #             None)
     #             取值时机: 生成期=执行期(槽位表恒稳,卖出置 None 不移位)
     income: int | None = None  # 预期回金(sell_refund 口径;None=未标;记录非指令,同 SellBench)
     reason: str = ''           # 账本 reason(如 'evict_replaced'/'plugin_recycle')
@@ -583,12 +602,11 @@ class SellDeployed:
 
 
 @dataclass
-class SwapDeploy:
+class SwapDeploy(CwAction):
     """bench ↔ deployed 换位(场上场下对调;装备随人走)——契约包 C1。
 
     [坐标系] deployed_idx = state.deployed 槽位表下标 0-9(ADR-0392)/
-    bench_idx = bench 槽位表下标 0-8(两域均定长槽位表,索引恒稳;换算见
-    Action 节约定块双族对照表)。
+    bench_idx = bench 槽位表下标 0-8(两域均定长槽位表,索引恒稳)。
 
     装备随人走 = 换位移动 BenchChar 对象本身(``equips`` 字段随对象迁移,
     无单独装备转移步骤);上场者继承下场者的排(``position_pref``),
@@ -607,46 +625,204 @@ class SwapDeploy:
     expect_bench: str = ''     # 期望上场者名
 
 
-@dataclass
-class CompTransaction:
-    """整档组合替换事务(转型讨论两步解耦的第 1 步,原子执行)——契约包 C1。
-
-    [坐标系] deploy/sell 的 bench 侧=槽位下标 0-8;undeploy/sell 的
-    deployed 侧=槽位表下标 0-9(ADR-0392)——均按事务前状态解析且槽位
-    恒稳(字段口径节冻结)。
-
-    一次敲定:换谁上、谁下、谁直接卖、谁进 bench(完整方案预定义)。
-    语义保证:sim 执行时整体应用,任一子步资源不足(金/槽)则整个事务拒绝,
-    不产生半档中间态。
-
-    字段口径(步2 实现批声明):
-    - ``deploy``/``undeploy``/``sell`` 的索引均按**事务前状态**解析
-      (bench_idx → state.bench,deployed_idx → state.deployed);
-    - 同域索引不得重复;deploy(bench) 与 sell(bench) 不得指向同槽,
-      undeploy 与 sell(deployed) 不得指向同槽;
-    - ``fill`` 的 bench 源按**后置 bench**解析(见 FillSpec);
-    - 金校验 = 卖出收入(sell_refund 口径)− shop 填位费用(card_cost)
-      后 gold ≥ 0;
-    - 槽校验 = 终态 bench ≤ BENCH_CAPACITY、终态 deployed ≤ max_units()、
-      终态 front ≤ front_max / back ≤ back_max(冻结 invariant)。
-    """
-    deploy: list[tuple[int, str]]      # [(bench_idx, 'front'|'back')] 新档成员上场
-    undeploy: list[int]                # 旧档成员 deployed_idx 列表(下场)
-    sell: list[tuple[int, str]]        # [(idx, 'bench'|'deployed')] 直接卖出项
-    fill: list[FillSpec] | None = None # 人口缺口填位(第 2 步可同轮或下轮;None=另行走常规填位)
-    reason: str = ''                   # 账本(如 'evolve:DOT2→仙舟3'/'branch_pivot')
-    # 代际校验期望名(草案级扩字段,默认 None=不校验):
-    # 与 deploy/undeploy/sell 的索引**同序**对齐;应用时 idx 指向内容与
-    # 期望不符 → 整事务拒绝(stale_proposal)。空串项跳过该项校验。
-    expect_deploy: list[str] | None = None    # 对齐 deploy 的 bench_idx 序;expect-whitelist:草案级(发射点未接线)
-    expect_undeploy: list[str] | None = None  # 对齐 undeploy 序;expect-whitelist:草案级(发射点未接线)
-    expect_sell: list[str] | None = None      # 对齐 sell 序(按给定序,不分域);expect-whitelist:草案级(发射点未接线)
-    # ↑ 三者接线时删行内豁免标记(静态锁 test_expect_fields_have_writers_or_whitelist 督办);
-    # 事务整批拒语义现由 _resolve_comp_transaction 全量校验承担
-
-
 Action = (BuyCard | SellBench | LevelUp | DeployMove | RefreshShop | CloseShop
-          | PickEvent | SellDeployed | SwapDeploy | CompTransaction)
+          | PickEvent | SellDeployed | SwapDeploy)
+
+
+# ===== 统一词表·备战域动作(unified-action-factory 批2b 自
+#       kernel/cw_prep_actions 迁居;类体逐字保留,基类引用翻 CwAction)=====
+#
+# 通用坐标系声明(装备域两类目标,全族共用):
+# - 装备源件 = owned 装备网格内 icon,按 ``item_name`` 机械现读定位
+#   (执行坐标边合法现读;坐标不入动作——网格 reflow 会使坐标失真,
+#   名字定位是唯一稳锚)。
+# - 角色目标槽位 ``row``/``slot``:row ∈ 'front'|'back'(画面物理排);
+#   slot = 画面物理槽位 1 基(前排 1-4 / 后排 1-选档 N;非列表下标)。
+#   取值时机 = 生成期快照(发射位从备战观察/容器槽位表现读;同一 visit
+#   内 tracked 账随动,槽位跨动作组恒稳——置 None 不移位坐标系,
+#   ADR-0392)。
+
+@dataclass
+class ClickSpheres(CwAction):
+    """点奖励球(R4 坐标参数化机械动作:载荷 = 有序球坐标点击列表)。
+
+    ``points`` = 按点击顺序排列的球心坐标 (x, y)(1080p 游戏空间,与
+    ``PrepObservation.spheres`` 的 Point 同系)。挑选逻辑(大球优先/
+    上界截断)归决策侧 kernel 单一源 = :func:`cw_prep_actions
+    .select_sphere_clicks`,发射位调用之;执行器纯机械逐个点,零读屏
+    零排序。逻辑态按载荷精确摘球(坐标匹配,
+    ``cw_screen_prep._project_prep_obs``)。
+    """
+    points: tuple[tuple[int, int], ...] = ()
+
+
+@dataclass
+class OpenBox(CwAction):
+    """开补给箱(点「开启」→ 弹武装箱 overlay;开箱即腾席)。slot=None → 第一箱。"""
+    slot: int | None = None
+
+
+@dataclass
+class OpenTome(CwAction):
+    """开秘密典籍(点槽两次:选中→开启 → 弹星徽四选一;开典籍即腾席+loop 0i 接管选卡)。
+
+    建档:投资策略「秘密典籍」给的红金典籍道具占备战席 1 槽(类补给箱);
+    选卡决策在 loop 0i handler(板上阵营匹配),本动作只负责把典籍点开。slot=None → 第一典籍。
+    """
+    slot: int | None = None
+
+
+@dataclass
+class WearEquip(CwAction):
+    """穿装备(装备库 owned 件 → 目标角色物理槽位;R2 穿戴原子通路)。
+
+    计划构造 = kernel ``build_equip_wear_plan``(自执行器模块迁居,
+    决策侧逐帧现算);发射序即执行序(决策核逐帧取首项)。逻辑态 =
+    ``obs.owned_equips`` 摘件(视觉域,与 OpenBox/OpenTome 同形);
+    穿没穿归观察写入边对账(裁决 3 零比对出生:体内零 CV-diff 验穿)。
+    ``char_name`` = 目标角色注册名('' = front-only 回退步,拖点 =
+    前排空槽 avatar,与 EquipWearStep 契约同形)。
+    """
+    item_name: str
+    char_name: str
+    row: str            # 'front' | 'back'(见上方通用坐标系声明)
+    slot: int           # 画面物理槽位 1 基(前排 1-4 / 后排 1-N)
+
+
+@dataclass
+class FurnaceUse(CwAction):
+    """冶金炉(R8 按消耗品各立类;双模式)。
+
+    - target_kind='equip':拖装备 = 原地变异同类型随机(target =
+      装备库 owned 件,``item_name``;产物不可预知 → 随机面观察收口,
+      ``EQUIP_WRITE_SIDES['冶金炉']`` 负写端在册);
+    - target_kind='char':拖角色 = 全拆 + 每件变异随机(target =
+      角色槽位,``row``/``slot``;确定面 = 穿戴域 → 库存域全量迁移,
+      变异产物 = 随机面观察收口)。
+    """
+    target_kind: str    # 'equip' | 'char'(作用对象模式;值域封闭)
+    item_name: str = ''  # target_kind='equip':装备库 owned 件名
+    row: str = ''        # target_kind='char':见上方通用坐标系声明
+    slot: int = 0        # target_kind='char':画面物理槽位 1 基
+
+
+@dataclass
+class PrivilegeCardUse(CwAction):
+    """特权赋予卡(R8;双腿)。
+
+    - target_kind='equip'(库存腿,现役执行臂):确定变换 = target 件
+      名替换为对应·特权名(映射单一源 = ``cw_effect_inventory.
+      privilege_counterpart``,写端 = ``transform_equip_to_privilege``);
+    - target_kind='char'(拖角色腿):该角色已穿进阶装备随机一件变
+      特权——「哪件被选」= 随机面 → 逻辑态只写工具 −1,选定后确定面
+      归观察收口(``transform_worn_equip_to_privilege`` 桥在册)。
+    """
+    target_kind: str    # 'equip' | 'char'(值域封闭,同 FurnaceUse)
+    item_name: str = ''  # target_kind='equip':被变换的进阶成品件名
+    row: str = ''        # target_kind='char':见上方通用坐标系声明
+    slot: int = 0        # target_kind='char':画面物理槽位 1 基
+
+
+@dataclass
+class WrenchUse(CwAction):
+    """拆装扳手(R8):target = 角色槽位(取下该角色全部穿戴,装备归属
+    面回区);工具消耗品 −1(用后消失)。"""
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class PrecisionWrenchUse(CwAction):
+    """精密拆装扳手(R8):target = 角色槽位(同 WrenchUse);无限次用,
+    工具库存面不递减(重复获得改 +1 金 = 贡献算术,获得回执窗在册)。"""
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class StaffProjectorUse(CwAction):
+    """员工投影仪(R8 投影仪按型号两类之一):target = 角色槽位
+    (在备战席创造该角色 1 星复制);费用门 = 3 费及以下(门表单一源 =
+    ``cw_affix_effects`` 投影仪费用门行),门由发射位判据面辖。"""
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class PerfectProjectorUse(CwAction):
+    """完美投影仪(R8 投影仪按型号两类之二):target = 角色槽位
+    (同 StaffProjectorUse 但无费用门)。"""
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class LuckyTokenUse(CwAction):
+    """好运令牌(R8):拖到角色 → 从其推荐进阶装备中获得一件。
+
+    ⚠️ 发射位挂账(裁决 1/R9 纪律):作用对象判据面现役 fail-closed
+    永不进准入(``cw_equip_env.evaluate_tool_actions`` rc_missing 拒因
+    在册)——类随族立档 + 注册行,发射位禁无判据发射;判据面建模批
+    补档(知识缺口登记 = ``flow/action-logic-state.md`` §7 好运令牌行)。
+    """
+    row: str            # 见上方通用坐标系声明
+    slot: int           # 画面物理槽位 1 基
+
+
+@dataclass
+class OpenShop(CwAction):
+    """开商店意图(W970 批 C/§4.3.6;EnsureShop 意图退役后的承接形态)。
+
+    read_only=False:显式开店 → 流程层编排商店动作循环(观察→decide_shop_screen
+    →波执行→空序列 CwOpCloseShop→节点探针)。
+    read_only=True:读数性开店(腾席链 b 取 gold 真值 / 开态清洁面板)→
+    CwOpOpenShop(幂等:已开不点)→ 商店观察刷新 → **不调商店决策** →
+    CwOpCloseShop → 回备战(M-6 门保持:free=0 不进买牌)。
+    """
+    read_only: bool = False
+
+
+@dataclass
+class StartBattle(CwAction):
+    """出战(环出口;含未达上限确认;验证=备战标识消失)。StartBattle 豁免屏蔽。"""
+
+
+# 动作全集白名单(统一词表运行时元组;注册完备锁的遍历单一源,批4
+# 消费 = 逐类断言注册表解析可命中。新动作加入全集时同步此处——漏登记
+# ⚠️ 教训(原 PREP_ACTION_TYPES 先例):**新增动作必须同步登记本白名单**
+# ——漏登记时执行面 validate 拒「未知动作类型」,动作从未真正执行
+# (OpenTome 曾漏登记,数百次拒绝被误读为执行失败;登记是入口门)。
+CW_ACTION_TYPES: tuple = (
+    BuyCard, SellBench, LevelUp, LevelUpShop, DeployMove, RefreshShop,
+    CloseShop, SellDeployed,
+    ClickSpheres, OpenBox, OpenTome,
+    WearEquip,
+    FurnaceUse, PrivilegeCardUse, WrenchUse, PrecisionWrenchUse,
+    StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,
+    StartBattle,
+    OpenShop,
+)
+
+
+def action_key(action: CwAction) -> str:
+    """动作实例键(屏蔽计数粒度 = 动作类型 + 参数;SellBench(3) 与 SellBench(5) 各自计数)。
+
+    带 ``action_key_exclude`` metadata 的字段不入键(现役 =
+    SellBench.reason 卖出归因 + CwAction.route_tag 发射臂路线标签
+    [T-159 §3.3]):幂等粒度 = 行为参数,归因/路由标签不改变动作实例
+    身份——同槽位不同归因是同一动作,禁拆成两个幂等键。
+    """
+    import dataclasses
+
+    if dataclasses.is_dataclass(action):
+        params = dict(vars(action))
+        for f in dataclasses.fields(action):
+            if f.metadata.get('action_key_exclude'):
+                params.pop(f.name, None)
+        if not params:
+            return type(action).__name__   # 无字段 dataclass(StartBattle 等)→ 裸名
+        return f'{type(action).__name__}({params})'
+    return type(action).__name__
 
 
 def _card_to_bench(card: ShopCard, position_pref: str = "back") -> BenchChar:
@@ -665,271 +841,6 @@ def _log_action(s: CwSimFrame, action_name: str, result: str,
     s.action_log.append(entry)
 
 
-def _resolve_comp_transaction(
-        s: CwSimFrame, tx: CompTransaction) -> tuple[str, dict]:
-    """CompTransaction 全量校验(原子性前置;不改动状态)。
-
-    返回 ``(reject_reason, plan)``:reject_reason 空 = 通过,plan 含
-    后续应用所需的对象引用快照与终态计数(引用快照防应用中途索引漂移)。
-    校验项见 CompTransaction docstring(金/槽/索引域/排上限)。
-    """
-    n_b = bench_occupied(s.bench)   # ADR-0316:容量=占用数
-    n_d = deployed_occupied(s.deployed)   # ADR-0392:容量=占用数(非 len)
-    und = list(tx.undeploy or [])
-    dep = list(tx.deploy or [])
-    sell = list(tx.sell or [])
-    fill = list(tx.fill or [])
-    dep_b = [i for i, _r in dep]
-    dep_rows = [r for _i, r in dep]
-    sell_b = [i for i, d in sell if d == 'bench']
-    sell_d = [i for i, d in sell if d == 'deployed']
-    # 索引域:范围+占用(bench=槽位下标 0-8 且须占用;deployed=槽位下标
-    # 0-9 且须占用,ADR-0392)+ 同域去重 + 跨子步互斥
-    for label, idxs in (('undeploy', und), ('deploy', dep_b),
-                        ('sell_bench', sell_b),
-                        ('sell_deployed', sell_d)):
-        pool = s.bench if 'bench' in label or label == 'deploy' else s.deployed
-        if any(not 0 <= i < len(pool) or pool[i] is None for i in idxs):
-            return f'{label}_idx_out_of_range', {}
-        if len(set(idxs)) != len(idxs):
-            return f'{label}_dup_idx', {}
-    if set(dep_b) & set(sell_b):
-        return 'deploy_sell_bench_overlap', {}
-    if set(und) & set(sell_d):
-        return 'undeploy_sell_deployed_overlap', {}
-    for _i, r in dep:
-        if r not in ('front', 'back'):
-            return f'deploy_row_invalid:{r}', {}
-    for f in fill:
-        if f.source not in ('bench', 'shop'):
-            return f'fill_source_invalid:{f.source}', {}
-        if f.row not in ('front', 'back'):
-            return f'fill_row_invalid:{f.row}', {}
-    # 引用快照(应用阶段按身份操作,索引不再漂移)
-    und_chars = [s.deployed[i] for i in und]
-    dep_chars = [(s.bench[i], r) for (i, r) in dep]
-    sell_b_chars = [s.bench[i] for i in sell_b]
-    sell_d_chars = [s.deployed[i] for i in sell_d]
-    # 代际校验:提案生成→应用之间 bench/deployed 序
-    # 可能已被同批先行动作改变——expect 序列与索引同序对齐,idx 指向
-    # 内容与提案不符 → 整事务拒绝(stale_proposal),不套用陈旧引用。
-    if tx.expect_deploy is not None:
-        if len(tx.expect_deploy) != len(dep):
-            return 'stale_proposal:expect_deploy_len', {}
-        for (i, _r), name in zip(dep, tx.expect_deploy, strict=False):
-            if name and s.bench[i].char_id != name:
-                return (f'stale_proposal:deploy_bench:{name}'
-                        f'!={s.bench[i].char_id}'), {}
-    if tx.expect_undeploy is not None:
-        if len(tx.expect_undeploy) != len(und):
-            return 'stale_proposal:expect_undeploy_len', {}
-        for i, name in zip(und, tx.expect_undeploy, strict=False):
-            if name and s.deployed[i].char_id != name:
-                return (f'stale_proposal:undeploy:{name}'
-                        f'!={s.deployed[i].char_id}'), {}
-    if tx.expect_sell is not None:
-        if len(tx.expect_sell) != len(sell):
-            return 'stale_proposal:expect_sell_len', {}
-        for (i, dom), name in zip(sell, tx.expect_sell, strict=False):
-            actual = (s.bench[i] if dom == 'bench' else s.deployed[i])
-            if name and actual.char_id != name:
-                return (f'stale_proposal:sell_{dom}:{name}'
-                        f'!={actual.char_id}'), {}
-    # 金:卖出收入 − shop 填位费用(sell_refund / card_cost 单一源)
-    income = sum(sell_refund(c.star, bench_char_cost(c))
-                 for c in sell_b_chars + sell_d_chars)
-    shop_fill_cards: list[ShopCard] = []
-    for f in fill:
-        if f.source == 'shop':
-            if not 0 <= f.idx < len(s.shop):
-                return f'fill_shop_idx_out_of_range:{f.idx}', {}
-            if f.expect and s.shop[f.idx].name != f.expect:
-                return (f'stale_proposal:fill_shop:{f.expect}'
-                        f'!={s.shop[f.idx].name}'), {}
-            shop_fill_cards.append(s.shop[f.idx])
-    fill_cost = sum(card_cost(c) for c in shop_fill_cards)
-    if s.gold + income - fill_cost < 0:
-        return (f'gold_short:{s.gold}+{income}-{fill_cost}<0', {})
-    # bench 容量:终态 = 现 − deploy − sell_bench + undeploy
-    # (填位只出不入:bench 源出队,shop 源买后即上,净 0)
-    n_bench_final = n_b - len(dep_b) - len(sell_b) + len(und)
-    if n_bench_final > BENCH_CAPACITY:
-        return f'bench_overflow:{n_bench_final}>{BENCH_CAPACITY}', {}
-    # 后置 bench(fill bench 源的解析域,ADR-0316):**槽位表视图**——迁移
-    # (deploy/sell 清槽、undeploy 放回首个空槽)后的 bench,与 _apply 应用
-    # 序同式构造(sell → undeploy → deploy)。fill 的 bench 源 idx 直接按
-    # 槽位下标解析(定长稳定,生成期=执行期,无 pop 漂移——F3 根治)。
-    _gone_b = set(dep_b) | set(sell_b)
-    post_bench: list[BenchChar | None] = list(s.bench)
-    for i in sell_b:
-        post_bench[i] = None            # 步 1:sell 的 bench 槽清空
-    for i in dep_b:
-        post_bench[i] = None            # 步 2:deploy 源清槽(ADR-0380
-        # 件③:先于 undeploy 放回,与 _apply 应用序同式——否则 bench 满
-        # 时 undeploy 放回落空,fill 的槽位解析与真实应用错位)
-    for c in und_chars:
-        bench_place(post_bench, c)      # 步 3:undeploy 放回首个空槽
-    for f in fill:
-        if f.source == 'bench':
-            if not 0 <= f.idx < BENCH_CAPACITY or post_bench[f.idx] is None:
-                return (f'fill_bench_idx_out_of_range:{f.idx}', {})
-            if f.expect and post_bench[f.idx].char_id != f.expect:
-                return (f'stale_proposal:fill_bench:{f.expect}'
-                        f'!={post_bench[f.idx].char_id}'), {}
-    # deployed 上限(冻结 invariant)与排上限
-    n_dep_final = n_d - len(und) - len(sell_d) + len(dep_b) + len(fill)
-    if n_dep_final > s.max_units():
-        return f'deploy_cap_exceeded:{n_dep_final}>{s.max_units()}', {}
-    _removed_front = sum(1 for c in und_chars + sell_d_chars
-                         if c.position_pref == 'front')
-    _added_front = sum(1 for r in dep_rows + [f.row for f in fill]
-                       if r == 'front')
-    n_front_final = s.front_count() - _removed_front + _added_front
-    if n_front_final > s.front_max:
-        return f'front_overflow:{n_front_final}>{s.front_max}', {}
-    n_back_final = n_dep_final - n_front_final   # 总终态 − 前排终态
-    if n_back_final > s.back_max:
-        return f'back_overflow:{n_back_final}>{s.back_max}', {}
-    # 同名唯一性(场上同角色仅 1):终态 deployed 名单
-    # 查重——留下的旧档 + deploy 新上 + fill 填位(bench 源/买后即上)。
-    # 任一重复 → 整事务拒绝(reason='duplicate_on_board',进 action_log;
-    # board/factions 虚高的污染源,A/B 实测旧臂 54% 轮同名重复)。
-    _gone_d = set(und) | set(sell_d)
-    final_keys: set[str] = set()
-    _final_units: list[BenchChar | None] = [
-        d for i, d in enumerate(s.deployed)
-        if d is not None and i not in _gone_d]   # ADR-0392:槽位表滤 None
-    _final_units += [c for c, _r in dep_chars]
-    _final_units += [post_bench[f.idx] for f in fill
-                     if f.source == 'bench'
-                     and 0 <= f.idx < BENCH_CAPACITY
-                     and post_bench[f.idx] is not None]
-    for c in _final_units:
-        k = board_unique_key(c)
-        if k is None:
-            continue
-        if k in final_keys:
-            return f'duplicate_on_board:{k}', {}
-        final_keys.add(k)
-    for card in shop_fill_cards:
-        if not card.name:
-            continue
-        if card.name in final_keys:
-            return f'duplicate_on_board:{card.name}', {}
-        final_keys.add(card.name)
-    return '', {
-        'und_chars': und_chars, 'dep_chars': dep_chars,
-        'sell_bench_chars': sell_b_chars, 'sell_deployed_chars': sell_d_chars,
-        'fill': fill, 'post_bench': post_bench,
-        'shop_fill_cards': shop_fill_cards,
-        'income': income, 'fill_cost': fill_cost,
-    }
-
-
-def _tx_state_view(bench: list[BenchChar],
-                   deployed: list[BenchChar]) -> CwSimFrame:
-    """mutate_bench_deployed 侧的事务校验视图:共享 bench/deployed 引用,
-    金/上限取宽松值(金 10^9、level 10)——本函数域只做**索引域/身份
-    转移校验**(金/cap/排上限的权威校验在 simulate 侧,CwSimFrame 全字段
-    才是校验域;此处宽松 = 不因缺上下文误拒合法转移)。"""
-    view = CwSimFrame()
-    view.gold = 10 ** 9
-    view.level = 10
-    view.bench = bench
-    view.deployed = deployed   # ADR-0392:槽位表引用(bench/deployed 均含 None)
-    return view
-
-
-def _remove_by_identity(pool: list, target) -> None:
-    """按身份索引删除(shop 等紧缩表专用;同名同星 dataclass 值相等会删错
-    对象,同 _merge_bench 纪律)。bench/deployed 槽位表勿用——用
-    ``_bench_clear_by_identity`` / ``_deployed_clear_by_identity``
-    (置 None 不移位,ADR-0316/0392)。"""
-    _idx = next((i for i, y in enumerate(pool) if y is target), None)
-    if _idx is not None:
-        del pool[_idx]
-
-
-def _bench_clear_by_identity(bench: list[BenchChar | None],
-                             target: BenchChar) -> None:
-    """bench 槽位表按身份清槽(ADR-0316:置 None 不移位)。"""
-    for i, b in enumerate(bench):
-        if b is target:
-            bench[i] = None
-            return
-
-
-def _deployed_clear_by_identity(deployed: list[BenchChar | None],
-                                target: BenchChar) -> None:
-    """deployed 槽位表按身份清槽(ADR-0392:置 None 不移位)。"""
-    for i, d in enumerate(deployed):
-        if d is target:
-            deployed[i] = None
-            return
-
-
-def _apply_comp_transaction(s: CwSimFrame, tx: CompTransaction,
-                            plan: dict) -> None:
-    """应用已校验通过的事务(就地;调用前必须经 _resolve_comp_transaction)。
-
-    应用序:sell → deploy 源清槽 → undeploy → deploy → fill(填位的 bench
-    源按后置 bench 槽位表(plan['post_bench'])解析——ADR-0316 槽位下标,
-    不 pop 不移位;ADR-0380 件③:deploy 源清槽先于 undeploy 放回,
-    否则 bench 满时保留件被静默丢弃——单位守恒)。
-    终态重算 board(_recount_board 单一源)。
-    卖出单位的装备回收进 ``state.equips``(owned 池;🟡 游戏侧「卖带装
-    单位装备去向」未见实机证据,暂按回收建模保装备守恒,待 live 核)。
-    """
-    for c in plan['sell_bench_chars'] + plan['sell_deployed_chars']:
-        s.gold += sell_refund(c.star, bench_char_cost(c))
-        s.equips.extend(c.equips)
-        _bench_clear_by_identity(s.bench, c)
-        _deployed_clear_by_identity(s.deployed, c)   # ADR-0392:置 None 不移位
-    # ADR-0380 件③:deploy 源清槽先于 undeploy 放回——旧序
-    # (undeploy 先)在 bench 满时 bench_place 无空槽返回 None,保留件
-    # 被**静默删除**(无退款/不回池,单位守恒违约;终态容量校验只看
-    # 终态看不见中间态溢出)。清槽提前只影响中间态,终态与旧序一致;
-    # post_bench 构造(_resolve)同式同步。
-    for c, _row in plan['dep_chars']:
-        _bench_clear_by_identity(s.bench, c)
-    for c in plan['und_chars']:
-        _deployed_clear_by_identity(s.deployed, c)
-        bench_place(s.bench, c)
-    for c, row in plan['dep_chars']:
-        _apply_row_to_char(c, row)
-        deployed_place(s.deployed, c)   # ADR-0392:按排路由落槽(替代 append)
-    post_bench = plan['post_bench']
-    # 索引漂移防御:shop fill 按校验期已解析的
-    # 卡对象消费(``plan['shop_fill_cards']``,与 fill 的 shop 源子序列同序)
-    # ——**禁在 fill 循环内按下标现读 ``s.shop[f.idx]`` 再 remove**:前一笔
-    # remove 左移列表,后续 f.idx 全部失效 → 买错卡(错档部署)+记错账
-    # (sim ledger_consistency 金不守恒实证:两笔 2费 fill 被
-    # 读成 2费+4费,Δ−6 vs 记账−4)。
-    _shop_fills = iter(plan['shop_fill_cards'])
-    for f in plan['fill']:
-        if f.source == 'bench':
-            # ADR-0316:bench 源 idx = 槽位下标,post_bench 是迁移后槽位表
-            # 视图(与 s.bench 同槽位)——按身份清槽,不 pop 不移位。
-            if not 0 <= f.idx < len(post_bench) \
-                    or post_bench[f.idx] is None:
-                continue   # 校验已过;防御性兜底
-            c = post_bench[f.idx]
-            _bench_clear_by_identity(s.bench, c)
-            _apply_row_to_char(c, f.row)
-            deployed_place(s.deployed, c)   # ADR-0392 槽位落位
-        else:   # shop:买后即上(卡对象取自校验期解析——见上方索引漂移注)
-            card = next(_shop_fills, None)
-            if card is None:
-                continue
-            s.gold -= card_cost(card)
-            _remove_by_identity(s.shop, card)
-            bc = _card_to_bench(card)
-            _apply_row_to_char(bc, f.row)
-            deployed_place(s.deployed, bc)   # ADR-0392 槽位落位
-    s.board = _recount_board(s.deployed)
-
-
-
 def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
     """单步动作应用(纯函数):返回应用 action 后的**新** CwSimFrame
     (不改原 state)。消费位 = sim 引擎整局逐步推进 / 假游戏环境动作转移 /
@@ -939,7 +850,7 @@ def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
     board[faction]+=1(保留身份/站位供 char_quality 与站位分流用)。
 
     C6 装备守恒对账(W38):装备相关动作(BuyCard/SellBench/SellDeployed/
-    SwapDeploy/CompTransaction)执行前后跑账本快照比对——mismatch 记
+    SwapDeploy)执行前后跑账本快照比对——mismatch 记
     action_log(``EquipsLedger`` 条目,checks/遥测可见),不静默(cw_bench_equips 单一源)。
     """
     from sr_od.application.currency_war.kernel.cw_bench_equips import (
@@ -951,7 +862,7 @@ def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
     # (直接赋值绕过 __post_init__);copy 不触发 __post_init__,入口防御 pad
     pad_deployed(s.deployed)   # ADR-0392 同理(deployed 槽位表定长 10)
     _equips_action = isinstance(action, (BuyCard, SellBench, SellDeployed,
-                                         SwapDeploy, CompTransaction))
+                                         SwapDeploy))
     _pre_equips = state_equips_multiset(state) if _equips_action else None
     if isinstance(action, BuyCard):
         # ADR-0316 槽位语义:买入放首个空槽;无空槽=拒(bench_full 语义
@@ -1008,10 +919,10 @@ def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
             sold = bench_clear(s.bench, action.bench_idx)
             if sold is not None:
                 s.gold += sell_refund(sold.star, bench_char_cost(sold))
-                # 装备回收进 owned 池(C6 装备守恒;与 SellDeployed/
-                # CompTransaction 同一建模假设——卖带装单位装备回收,
-                # 🟡 待 live 核。修复前本分支漏回收 = 账本凭空消失,
-                # EquipsLedger 对账必报)。
+                # 装备回收进 owned 池(C6 装备守恒;与 SellDeployed
+                # 同一建模假设——卖带装单位装备回收,🟡 待 live 核。
+                # 修复前本分支漏回收 = 账本凭空消失,EquipsLedger
+                # 对账必报)。
                 s.equips.extend(sold.equips)
     elif isinstance(action, LevelUp):
         # 真实语义(ADR-0129):一次「购买经验」= +XP_PER_BUY 经验、-单击金币;攒够当前级门槛自动
@@ -1073,7 +984,8 @@ def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
                 # ADR-0392:置 None 不移位(deployed_idx 跨动作组恒稳)
                 # income 是记录非指令(同 SellBench 口径):sim 侧按 sell_refund 执行
                 s.gold += sell_refund(sold.star, bench_char_cost(sold))
-                # 装备回收进 owned 池(🟡 同 _apply_comp_transaction 假设,待 live 核)
+                # 装备回收进 owned 池(🟡 游戏侧「卖带装单位装备去向」
+                # 未见实机证据,按回收建模保装备守恒,待 live 核)
                 s.equips.extend(sold.equips)
                 s.board = _recount_board(s.deployed)
                 _log_action(s, 'SellDeployed', 'applied', reason=action.reason,
@@ -1123,18 +1035,6 @@ def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
             _log_action(s, 'SwapDeploy', 'rejected',
                         reason=(f'idx_out_of_range:'
                                 f'd{action.deployed_idx}/b{action.bench_idx}'))
-    elif isinstance(action, CompTransaction):
-        # 动作 v2(契约包 C1,步2):整档替换事务——先全量校验后应用,
-        # 任一子步资源不足 → 整体拒绝(原状态返回 + 拒绝记录进账本,
-        # 冻结 invariant:执行后无半档残留)。
-        reject, plan = _resolve_comp_transaction(s, action)
-        if reject:
-            _log_action(s, 'CompTransaction', 'rejected',
-                        reason=f'{reject}|tx_reason={action.reason or ""}')
-        else:
-            _apply_comp_transaction(s, action, plan)
-            _log_action(s, 'CompTransaction', 'applied', reason=action.reason,
-                        income=plan['income'], fill_cost=plan['fill_cost'])
     elif isinstance(action, RefreshShop):
         s.gold -= action.cost
         # shop 内容变化未知(随机),不模拟具体牌;仅扣金
@@ -1229,42 +1129,8 @@ def mutate_bench_deployed(bench: list[BenchChar | None],
             bench[action.bench_idx] = out_char
             _apply_row_to_char(in_char, _row)
             in_char.slot = deployed_slot_no(action.deployed_idx)
-    elif isinstance(action, CompTransaction):
-        # 动作 v2(契约包 C1):转移部分原子应用(金/排上限校验在
-        # simulate 侧,这里只做 bench/deployed 身份同步;shop 源填位
-        # 的卡数据不在本函数域——生产执行点买牌走 BuyCard,故剥离
-        # shop 填位后再校验/应用,bench 侧转移不受影响)。
-        _tx = action
-        if action.fill and any(f.source == 'shop' for f in action.fill):
-            _tx = CompTransaction(
-                deploy=action.deploy, undeploy=action.undeploy,
-                sell=action.sell,
-                fill=[f for f in action.fill if f.source == 'bench'],
-                reason=action.reason)
-        reject, plan = _resolve_comp_transaction(
-            _tx_state_view(bench, deployed), _tx)
-        if reject:
-            return   # 原子:拒绝即整体不动
-        for c in plan['sell_bench_chars']:
-            _bench_clear_by_identity(bench, c)
-        for c in plan['sell_deployed_chars']:
-            _deployed_clear_by_identity(deployed, c)
-        for c in plan['und_chars']:
-            _deployed_clear_by_identity(deployed, c)
-            bench_place(bench, c)
-        for c, row in plan['dep_chars']:
-            _bench_clear_by_identity(bench, c)
-            _apply_row_to_char(c, row)
-            deployed_place(deployed, c)   # ADR-0392:按排路由落槽
-        post_bench = plan['post_bench']
-        for f in plan['fill']:
-            if f.source == 'bench' \
-                    and 0 <= f.idx < len(post_bench) \
-                    and post_bench[f.idx] is not None:
-                c = post_bench[f.idx]   # ADR-0316 槽位下标;不 pop 不移位
-                _bench_clear_by_identity(bench, c)
-                _apply_row_to_char(c, f.row)
-                deployed_place(deployed, c)   # ADR-0392:按排路由落槽
+
+
 
 
 # ===== 布局未知态的策略侧支撑(15 号稿批 C 落地审修订)=====
