@@ -46,7 +46,7 @@
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 三选一选环境卡 | `data/gameplay.md`(投资环境 = 整局增益);开场必经 | `operations/cw_screen/cw_screen_invest_env.py::CwScreenInvestEnv`(0s 分支);决策 = pick 族 `decide_invest`(契约面 `strategies/impl/cw_strategy.py::CwStrategy`,规格 = strategy-docs 13 号篇) | 确认离开(overlay 消失) |
-| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:文本锚定刷新钮→点→等动画→重读);是否建议刷新 = `PickEvent.refresh` 判据(`kernel/cw_events.py::decide_event`,math_proofs P81) | 刷新不终结(留在本画面重选);确认离开才终结 |
+| 刷新圆钮重掷三卡 | `research/screen_flow_timing.md` #4(刷新动画 ~2s) | 同 op 内整组重掷(`cw_screen_invest_env.py::_decide_and_act`:文本锚定刷新钮→点→等动画→**本访问即交回**,pending+round_retry 重入后重观察重决策);是否建议刷新 = `PickEvent.refresh` 判据(`kernel/cw_events.py::decide_event`,math_proofs P81) | **刷新即本访问终结**(刷新 = 唯一引入新事实的动作,交回外循环重观察;`screen_op.md` §8.4 同款语义);确认离开才画面终结 |
 
 ### 3.3 备战画面(货币战争-备战)
 
@@ -98,7 +98,11 @@
 | 游戏可用动作 | 机制依据 | 我们的 op | 访问终结语义 |
 |---|---|---|---|
 | 选卡(N 选 1) | 投资策略整局增益+难度加成(`data/gameplay.md`/`research/economy.md` §9) | 各画面 op(`operations/cw_screen/cw_screen_invest_strategy.py` 等;分支序 0c/0e/0e1/0a 族/0h/0i/0k/0f) | 确认离开(overlay 消失)= 画面终结 |
-| 逐卡/整屏刷新重掷 | 投资策略逐卡刷新、遭遇/补给屏刷新(时序 #13/#19/#23:刷新后 ~2s 稳定) | 投资策略逐槽(`cw_screen_invest_strategy.py::_emit_refresh_click`)/ 遭遇(`cw_screen_encounter.py::_try_refresh`)/ 补给(「剩余次数」文本锚定点刷新,`cw_screen_supply_node.py`);建议刷新 = `PickEvent.refresh`(`kernel/cw_events.py::decide_event`,P81;策略屏逐槽 = `PickEvent.refresh_slots`) | 刷新不终结(留在本画面);确认离开才终结 |
+| 逐卡/整屏刷新重掷 | 投资策略逐卡刷新、遭遇/补给屏刷新(时序 #13/#19/#23:刷新后 ~2s 稳定) | 投资策略逐槽(`cw_screen_invest_strategy.py::_emit_refresh_click`)/ 遭遇(`cw_screen_encounter.py::_try_refresh`)/ 补给(「剩余次数」文本锚定点刷新,`cw_screen_supply_node.py`);建议刷新 = `PickEvent.refresh`(`kernel/cw_events.py::decide_event`,P81;策略屏逐槽 = `PickEvent.refresh_slots`) | 投资策略逐卡刷新 = **本访问终结**(点一槽刷新圆钮即 pending+round_retry 交回,次轮重入重观察重决策;零比对,逐卡计数现读闸保留)——与投资环境整组重掷同款(§3.2);遭遇/补给刷新不终结(留在本画面访问内重读重选);确认离开才画面终结 |
+| 补给备战状态采集 detour(回备战界面→快照采集→返回补给阶段) | 补给轮不驻留备战画面,采集先行不丢选择进度(2026-08-27 实机冻结画面时序实测,`cw_screen_supply_node.py` 模块头注) | `cw_screen_supply_node.py::_supply_detour_collect`(补给节点首访问 detour;完成标记仅在成功重进后落,失败下轮重试整个 detour) | 不终结(回到补给画面续原选择流程) |
+| 关「属性详情」面板(点 ×) | 点卡身上部误触发的详情面板(局29 事件实证) | 未建模独立处理:点卡后详情面板检测已拆(点卡 = 机械单发,用户裁定 2026-09-14);面板残留归下一帧重入自愈(`cw_screen_planner.py` 重分发重走链/详情 overlay 族分支) | 面板关闭即随重入收敛(无独立终结点) |
+| 盛会之星 step2:选强化目标 + 确认(「请选择强化角色」) | 强化角色**可选**(不选也能确认推进;米游社 wiki content/6239) | 未建模独立处理:step2 在场检测已拆(确认 = 纯机械单发,用户裁定 2026-09-14);step2 面板残留归巨星节点循环重入自愈(`cw_screen_megastar.py`:标识锚仍命中 → 再单发确认推进) | 确认推进即画面终结 |
+| 开书册卡(点备战席槽位「开启」→ 弹专家邀请函) | 书册卡 = 备战席占槽道具(2026-08-30 实机人工处理实录) | `cw_screen_expert_invite.py::open_card`(0k 处理链首节点;找书册卡/点开启/过渡帧等待,纯导航零决策) | 弹窗开成即链内转选卡(不终结外层访问) |
 | 返回备战/返回选择(暗色锁定子态) | 暗色蒙层态判别锚 = 右上操作按钮(screen_flow_timing #18) | `operations/cw_screen/cw_screen_prep_locked_return.py::CwScreenPrepLockedReturn`(0m;策略锁定/遭遇锁定两档参数化) | 点返回即终结 |
 
 ### 3.7 战斗窗与结算(货币战争-战斗 / 货币战争-战斗结算 / 货币战争-结算 / 货币战争-结算-战报)
