@@ -2068,29 +2068,38 @@ def mutate_bench_deployed_local(bench, deployed, action,
 
 
 #: 备战逻辑态直写域集封闭登记面(设计件《prep 链容器化方案》§2.4-3/§4-P5,
-#: 形态对齐 :data:`SHOP_PROJECTION_DOMAINS` 的商店登记面):本口只辖
-#: gold / bench 两域(集外动作零写,未登记写点 = 缺陷,禁扩静默):
-#: - **域集封闭** = gold(SellBench 回金,公式单一源 = ``cw_state.
-#:   sell_refund``)+ bench(SellBench 摘槽,BenchView 重建 write_logic,
-#:   重播种先例 =《商店黑板容器化方案》§2.3 布局代次行);
-#: - **OpenBox/OpenTome/ClickSpheres 直写只动视觉域**(boxes/tomes/spheres
-#:   在黑板帧上推进,容器零写);
+#: 形态对齐 :data:`SHOP_PROJECTION_DOMAINS` 的商店登记面;批 2a 扩域申报 =
+#: unified-action-factory design.md §2.6「逻辑态计算全覆盖(R9)」):
+#: - gold(SellBench/SellDeployed 回金,公式单一源 = ``cw_state.
+#:   sell_refund``)+ bench(SellBench/DeployMove 摘槽,BenchView 重建
+#:   write_logic,重播种先例 =《商店黑板容器化方案》§2.3 布局代次行);
+#: - xp/level(批 2a 扩:LevelUp 逐帧单击分支,推进算子单一源 =
+#:   ``cw_economy.xp_apply_clicks``;**金腿本批不写**——2a 中间态 =
+#:   执行缝金差承担,``action.cost`` 直写翻转归批 2b);
+#: - front_row/back_row/board(批 2a 扩:DeployMove 落槽 + board 羁绊
+#:   增量 / SellDeployed 摘槽 + board 重算,槽表中间形态 → 整表 write_logic
+#:   平移契约,与 :func:`deployed_slots_to_rows` 同源);
+#: - **OpenBox/OpenTome/ClickSpheres/WearEquip/工具原子直写只动视觉域**
+#:   (boxes/tomes/spheres/owned_equips 在黑板帧上推进,容器零写;
+#:   ClickSpheres 视觉域见 ``cw_screen_prep._project_prep_obs`` 精确摘球);
 #: - **None 跳写清单**(域级独立跳写,禁缺省值参与计算):gold(gold
-#:   未读 None 时回金域跳写,值留观察覆盖;bench 摘槽不受 gold 缺读辖);
+#:   未读 None 时回金域跳写)、level/xp(等级或经验进度未读时该域跳写,
+#:   值留观察覆盖;bench/deployed 摘槽不受其辖);
 #: - **陈旧提案守卫**:目标槽位空/越界 = 提案与容器失配,本口零写
 #:   (等观察覆盖,与商店 SellBench 支同纪律)。
-PREP_PROJECTION_DOMAINS: tuple[str, ...] = ('gold', 'bench')
+PREP_PROJECTION_DOMAINS: tuple[str, ...] = (
+    'gold', 'bench', 'xp', 'level', 'front_row', 'back_row', 'board',
+)
 
 
 def apply_prep_action_logic(bs: GameState, action: Any, *,
                             produced_by: str, sig: ChannelSig) -> None:
     """备战动作逻辑态直写(逐动作零读屏的期望态纯计算推进的容器半;
-    设计件《prep 链容器化方案》§2.4-3)。落位 = 本写口单一源,消费位 =
-    ``cw_screen_prep._project_prep_obs``(SellBench 分支;黑板帧保留
-    视觉域半,state 复制腿随黑板槽退役消亡)。
+    设计件《prep 链容器化方案》§2.4-3;R9 全覆盖扩域见
+    :data:`PREP_PROJECTION_DOMAINS` 登记面)。落位 = 本写口单一源,
+    消费位 = ``cw_screen_prep._project_prep_obs``(黑板帧保留视觉域半)。
 
-    域集封闭 = :data:`PREP_PROJECTION_DOMAINS`(gold/bench;集外动作
-    零写,登记面见其注释,禁扩静默):
+    逐动作分支(域集封闭,登记面见域集注释,禁扩静默):
 
     - **SellBench** = bench −该槽 + gold +退款(退款锚 = ``cw_state.
       sell_refund``,与 ``cw_state.simulate`` 卖出分支同式单一源)。
@@ -2098,13 +2107,31 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
       MandateFrame/bench 读口同坐标系),读口 ``bench_slots_of`` 下标
       i = 物理槽 i+1,换算在此单点完成。槽位空/越界 = 陈旧提案,本口
       零写(等观察覆盖);槽位件缺星级/缺费 = ``bench_char_cost`` 注册
-      表单一源兜底,与旧直写腿同式。
-    - **OpenBox/OpenTome/ClickSpheres** = 视觉域推进(boxes/tomes/spheres
-      在黑板帧上),容器零写,本口直接返回。
+      表单一源兜底。
+    - **SellDeployed**(批 2a 补齐,规则 = flow/action-logic-state.md §3.2)
+      = deployed 槽表摘槽(物理排槽位 → 槽表下标换算:front slot−1 /
+      back 4+slot−1,ADR-0392)+ gold +退款 + board 全量重算
+      (``_recount_board`` 单一源)。
+    - **DeployMove**(批 2a 补齐,规则 = flow/action-logic-state.md §3.1)
+      = bench 源槽摘槽 + deployed 目标槽落位(对象整体迁移,身份/星级/
+      装备随人走,排/槽号信息位重写)+ board 羁绊计数**增量**(按上场
+      单位羁绊标签全集逐标签 +1,增量口径防全量重算抹掉 OCR 真值,
+      ADR-0312;标签单一源 = ``cw_bond_equips.unit_bond_tags``,无标签
+      回退阵营)+ 上阵计数(派生,零独立字段)。
+    - **LevelUp**(批 2a 补齐,规则 = design.md §2.6 LevelUp 粒度定案④)
+      = xp/level 跨门槛推进(推进算子单一源 = ``cw_economy.
+      xp_apply_clicks``,单击 +XP_PER_BUY);**gold 不写**(2a 中间态:
+      金腿 = 执行缝金差,批 2b 类合并翻转切 ``action.cost`` 直写);
+      **deploy_cap 不写**——容量真值由观察写端防抖读承接,``max_units``
+      的 cap<level 兜底规则自然保守承接升级增量。level/xp 缺读 = 域级
+      跳写(值留观察覆盖)。
+    - **OpenBox/OpenTome/ClickSpheres/WearEquip/工具原子** = 视觉域推进
+      (boxes/tomes/spheres/owned_equips 在黑板帧上),容器零写,本口
+      直接返回。
 
     输入域 None 语义(域级独立跳写):gold 未读(None)时回金域跳过、
-    值留观察覆盖;bench 摘槽不受 gold 缺读辖。逻辑态直写值受后续观察覆盖
-    (fields.md §2.3 观察赢),失配 = 逻辑态模型 bug 走缺陷台账。
+    值留观察覆盖;level/xp 未读时该两域跳写。逻辑态直写值受后续观察
+    覆盖(fields.md §2.3 观察赢),失配 = 逻辑态模型 bug 走缺陷台账。
     sig 纪律 = family='logic_action'(渠道②;actor 在册校验,写入口
     统一辖),group_id 按 ``act:<op类名>@<seq>`` 先例在口内补齐。
     """
@@ -2118,9 +2145,12 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         sell_refund,
     )
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        DeployMove,
+        LevelUp,
         SellBench,
+        SellDeployed,
     )
-    if not isinstance(action, SellBench):
+    if not isinstance(action, (SellBench, SellDeployed, DeployMove, LevelUp)):
         # 集外动作型:零写(登记面申报,等观察覆盖;禁扩静默)。
         return
     _grp_sig = (sig if sig.group_id is not None else _dc_replace(
@@ -2130,19 +2160,110 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         bs.write_logic(target, value, produced_by=produced_by,
                        evidence=evidence, sig=_grp_sig)
 
-    bench_slots = bench_slots_of(bs)
-    idx = int(getattr(action, 'slot', 0)) - 1   # 物理槽位 1 基 → 读口 0 基下标
-    if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None:
-        return   # 陈旧提案(守卫),本口零写
-    sold = bench_slots[idx]
-    new_slots = list(bench_slots)
-    new_slots[idx] = None
-    _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
-    g = bs.gold.value
-    if g is not None:
-        refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
-                             bench_char_cost(sold))
-        _w(bs.gold, int(g) + int(refund), 'proj_sell_refund')
+    from sr_od.application.currency_war.kernel.cw_exec_state import (
+        DEPLOYED_FRONT_CAPACITY,
+    )
+
+    if isinstance(action, SellBench):
+        bench_slots = bench_slots_of(bs)
+        idx = int(getattr(action, 'slot', 0)) - 1   # 物理槽位 1 基 → 读口 0 基下标
+        if not (0 <= idx < len(bench_slots)) or bench_slots[idx] is None:
+            return   # 陈旧提案(守卫),本口零写
+        sold = bench_slots[idx]
+        new_slots = list(bench_slots)
+        new_slots[idx] = None
+        _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
+        g = bs.gold.value
+        if g is not None:
+            refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
+                                 bench_char_cost(sold))
+            _w(bs.gold, int(g) + int(refund), 'proj_sell_refund')
+        return
+
+    if isinstance(action, SellDeployed):
+        from sr_od.application.currency_war.kernel.cw_bond_equips import (
+            _recount_board,
+        )
+        dep_slots = deployed_slots_of(bs)
+        _row = getattr(action, 'row', '')
+        _slot = int(getattr(action, 'slot', 0))
+        idx = (_slot - 1 if _row == 'front'
+               else DEPLOYED_FRONT_CAPACITY + _slot - 1)
+        if not (0 <= idx < len(dep_slots)) or dep_slots[idx] is None:
+            return   # 陈旧提案(守卫),本口零写
+        sold = dep_slots[idx]
+        scratch = list(dep_slots)
+        scratch[idx] = None
+        front, back = deployed_slots_to_rows(scratch)
+        _w(bs.front_row, front, 'proj_sell_deployed_front')
+        _w(bs.back_row, back, 'proj_sell_deployed_back')
+        _w(bs.board, _recount_board(scratch), 'proj_board_recount')
+        g = bs.gold.value
+        if g is not None:
+            refund = sell_refund(int(getattr(sold, 'star', 1) or 1),
+                                 bench_char_cost(sold))
+            _w(bs.gold, int(g) + int(refund), 'proj_sell_deployed_gold')
+        return
+
+    if isinstance(action, DeployMove):
+        from sr_od.application.currency_war.kernel.cw_bond_equips import (
+            unit_bond_tags,
+        )
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            DEPLOYED_CAPACITY,
+        )
+        bench_slots = bench_slots_of(bs)
+        dep_slots = deployed_slots_of(bs)
+        from_idx = int(getattr(action, 'from_slot', 0)) - 1
+        to_row = getattr(action, 'to_row', '')
+        to_slot = int(getattr(action, 'to_slot', 0))
+        to_idx = (to_slot - 1 if to_row == 'front'
+                  else DEPLOYED_FRONT_CAPACITY + to_slot - 1)
+        if not (0 <= from_idx < len(bench_slots)) \
+                or bench_slots[from_idx] is None:
+            return   # 陈旧提案(守卫:源槽空),本口零写
+        if not (0 <= to_idx < DEPLOYED_CAPACITY) \
+                or (to_idx < len(dep_slots) and dep_slots[to_idx] is not None):
+            return   # 陈旧提案(守卫:目标槽越界/被占),本口零写
+        moved = bench_slots[from_idx]
+        new_bench = list(bench_slots)
+        new_bench[from_idx] = None
+        _w(bs.bench, bench_view_of_slots(new_bench), 'proj_deploy_src_clear')
+        moved.position_pref = to_row
+        moved.slot = to_slot
+        scratch = list(dep_slots)
+        # 直接落目标槽(守卫已验空槽;发射位选排按「首个空槽」序分配,
+        # to_slot 即 scratch 中该排首个空槽,与 deployed_place 首空语义
+        # 逐位一致——显式赋值免去重复推导,ADR-0392 置 None 不移位系)。
+        scratch[to_idx] = moved
+        front, back = deployed_slots_to_rows(scratch)
+        _w(bs.front_row, front, 'proj_deploy_front')
+        _w(bs.back_row, back, 'proj_deploy_back')
+        # board 羁绊计数增量(ADR-0312 增量全集;无标签回退阵营)
+        board = dict(bs.board.value or {})
+        _tags = (unit_bond_tags(moved) if moved.char_id else ())
+        if not _tags:
+            _tags = (moved.faction,) if getattr(moved, 'faction', '') else ()
+        for t in _tags:
+            board[t] = board.get(t, 0) + 1
+        if board != dict(bs.board.value or {}):
+            _w(bs.board, board, 'proj_deploy_board_incr')
+        return
+
+    # LevelUp(单击;xp/level 推进,gold 中间态不写)
+    _lv = bs.level.value
+    _xp = bs.xp.value
+    if _lv is None or _xp is None:
+        return   # 域级跳写(等级/经验进度未读,值留观察覆盖)
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        XP_TO_NEXT_LEVEL,
+        xp_apply_clicks,
+    )
+    new_level, new_cur = xp_apply_clicks(int(_lv), int(_xp[0]), 1)
+    _w(bs.xp, (new_cur, XP_TO_NEXT_LEVEL.get(new_level,
+                                              int(_xp[1]) if _xp else 4)),
+       'proj_levelup_xp')
+    _w(bs.level, new_level, 'proj_levelup_level')
     return
 
 

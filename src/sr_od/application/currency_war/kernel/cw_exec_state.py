@@ -305,9 +305,9 @@ def apply_op_effect(session, action: PrepAction | dict, *,
     if session is None:
         return effects
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        PickBoxCard,
         SellBench,
         SellDeployed,
+        WearEquip,
     )
     from sr_od.application.currency_war.kernel.cw_vocab import (
         DEPLOYED_FRONT_CAPACITY,
@@ -339,14 +339,22 @@ def apply_op_effect(session, action: PrepAction | dict, *,
             for eq in (getattr(bc, 'equips', None) or []):
                 _owned_add(session, eq)
                 _eff(f'owned[{eq}]', '+1(卖场上装备全额返还)', 'owned')
-    elif isinstance(action, PickBoxCard):
-        chosen = ''
-        for token in (detail or '').replace('选卡', ' ').split():
-            chosen = token.strip()
-            break
-        if chosen:
-            _owned_add(session, chosen)
-            _eff(f'owned[{chosen}]', '+1(武装箱选卡)', 'owned')
+    elif isinstance(action, WearEquip):
+        # 穿戴原子(R2;发出即登记,零比对形态——原「落点已验后调」门
+        # 随 CV-diff 拆除):last_owned_equips −1 + tracked 目标角色 +1。
+        owned = list(getattr(session, 'last_owned_equips', None) or [])
+        if action.item_name in owned:
+            owned.remove(action.item_name)
+            session.last_owned_equips = owned
+            _eff(f'owned[{action.item_name}]', '-1(穿戴)', 'owned')
+        idx = (action.slot - 1 if action.row == 'front'
+               else DEPLOYED_FRONT_CAPACITY + action.slot - 1)
+        _bench, dep = _session_tracked(session)
+        if 0 <= idx < len(dep) and dep[idx] is not None:
+            dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
+                + [action.item_name]
+            _eff(f'deployed[{idx}].equips', f'+{action.item_name}(穿戴)',
+                 'tracked')
     elif isinstance(action, dict):
         # 确认类到账(dict 形态;{'op','item'}):owned 本体推进。
         # ConfirmStrategy 不在此推(active_strategies 本体追加 = handler
@@ -368,14 +376,21 @@ def apply_op_effect(session, action: PrepAction | dict, *,
             _apply_buy_card(session, action, _eff)
     else:
         # 显式不推进理由(原 §3 铁律枚举,两态制下语义存续):
-        # - OpenBox/OpenTome:箱/典籍不消失(仅画面态,消耗在选卡确认);
+        # - OpenBox/OpenTome:箱/典籍不消失(仅画面态,消耗在选卡确认;
+        #   OpenBox 2a 终结化后选卡 = 武装箱选择画面 op,零容器账);
         # - OpenShop(含 read_only):画面态周转,零局状态变更;
         # - StartBattle:进战斗,hp/gold/streak 由结算屏观察覆盖接管;
-        # - RunDeploy/RunEquip:组合动作,tracked 本体推进 = 执行器
-        #   (_sync_tracking_after_sell/_track_move_deployed 单一写者);
-        # - LevelUp:经验账本推进 = CwScreenPrep._xp_apply_levelup
-        #   (XpLedger 通道);金账点击数不可推算 → 观察覆盖兜底;
-        # - DeployMove:tracked 位移 = 执行器 _track_move_deployed;
+        # - RunDeploy/RunEquip/RunTools:组合壳(R2 溶解中,2b 删类)——
+        #   2a 起决策核改发原子动作(DeployMove/WearEquip/工具原子),
+        #   组合形态生产不可达;
+        # - LevelUp:经验/等级 = 容器逻辑态(apply_prep_action_logic
+        #   LevelUp 分支,xp_apply_clicks 单一源);金腿 = 执行缝金差
+        #   (``_advance_gold``,PrepActionExecutor 执行包络);
+        # - DeployMove/SellDeployed:容器逻辑态 = apply_prep_action_logic
+        #   扩域分支;tracked 位移/摘除 = 执行器 _track_* 单一写者;
+        # - 工具原子(FurnaceUse 等):消耗/变换 = 视觉域逻辑态
+        #   (_project_prep_obs 按 EQUIP_WRITE_SIDES 申报)+ 下一帧装备区
+        #   读数覆盖;last_owned_equips 挂账面随对拍拆除不入本口;
         # - ClickSpheres:pending_reward 无 session 字段载体,零推进;
         # - 买牌单元:BuyExpect 载体走 exec_state.pending_buy_expect
         #   独立通道(shop.py 买组收尾写,heavy 定型帧消费)。
