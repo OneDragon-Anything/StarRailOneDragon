@@ -2117,7 +2117,7 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         sold = bench_slots[idx]
         new_slots = list(bench_slots)
         new_slots[idx] = None
-        # 溢出腿(T-226/R11,规则 = flow/action-logic-state.md §2.4 溢出条
+        # 溢出腿(规则 = flow/action-logic-state.md §2.4 溢出条
         # 件行):席满溢出态(overflow_warning 在场)下卖牌,腾出槽当帧记
         # 溢出卡入位——「卖 → 溢出卡自动入自由槽」是游戏侧行为(prep.md
         # 告警节 2026-09-15 实机建档;有溢出时席必满,自由槽恒唯一,落位
