@@ -1060,11 +1060,8 @@ class CwScreenPrep(CwScreenOpBase):
                 # 黑板帧镜像(T-227):溢出卡当帧入位,腾出槽即刻回占——
                 # 入位卡补进黑板 bench,free 不 +1(与容器腿/tracked 吸收
                 # 同帧同源;缺镜像 = 决策面假空席,席满拒落类门被假象绕过)。
-                from sr_od.application.currency_war.kernel.cw_exec_state import (
-                    BenchChar as _OvBenchChar,
-                )
                 _bench = list(_bench) + [
-                    _OvBenchChar(slot=action.slot, char_id=_ov_id_pre)]
+                    BenchChar(slot=action.slot, char_id=_ov_id_pre)]
                 return dataclasses.replace(obs, bench_chars=_bench,
                                            free_bench_slots=_free)
             return dataclasses.replace(
