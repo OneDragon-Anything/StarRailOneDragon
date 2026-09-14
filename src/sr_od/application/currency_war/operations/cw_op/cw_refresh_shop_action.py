@@ -15,7 +15,7 @@ from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_economy import REFRESH_COST_BASE
 from sr_od.application.currency_war.obs import cw_shop_refresh_obs
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ShopActionOp,
+    ActionOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
@@ -31,7 +31,7 @@ from sr_od.application.currency_war.telemetry import defects
 REFRESH_CLICK_SETTLE_WAIT_S: float = 1.0
 
 
-class RefreshShopOp(ShopActionOp):
+class RefreshShopOp(ActionOp):
     """刷新 = 终结 op(决策 7:唯一引入新事实的动作,期望态必须在新事实
     处重建——终结后外循环入口重观察)。T-192 判效半拆除:牌名集三值
     对比仅作安灯豁免判定输入 + 遥测字段(候选 a 留证遥测半合法保留)。

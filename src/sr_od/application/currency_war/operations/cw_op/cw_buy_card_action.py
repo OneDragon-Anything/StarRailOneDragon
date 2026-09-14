@@ -29,14 +29,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ShopActionOp,
+    ActionOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
 
 
-class BuyCardOp(ShopActionOp):
+class BuyCardOp(ActionOp):
     """买一张 = 一个动作 op(ADR-0517 决策 3;满栏例外下一击多张仍一个
     op,张数由游戏规则定、逻辑态直写按 merge_buy_k 计——方案 A 补裁)。"""
 

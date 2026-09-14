@@ -8,14 +8,14 @@ import time
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_vocab import LevelUp
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ShopActionOp,
+    ActionOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
 
 
-class LevelUpOp(ShopActionOp):
+class LevelUpOp(ActionOp):
     """买经验 = 一个动作 op(单击「购买经验」=+XP_PER_BUY 经验,**非整级**;
     升级 = XP 累积过门槛表的结果,真实等级变化以读屏为准)。单动作形态下
     每帧恰发一击,多击序列由决策循环逐帧重组(ADR-0517 §权衡构造性消解)。"""

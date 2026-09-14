@@ -13,14 +13,14 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     mutate_bench_deployed,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ShopActionOp,
+    ActionOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
 
 
-class SellBenchOp(ShopActionOp):
+class SellBenchOp(ActionOp):
     """卖一张 = 一个动作 op;卖回金实收遥测 = 执行实现层(候选 a)。"""
 
     def execute(self, env: ShopExecEnv) -> bool:

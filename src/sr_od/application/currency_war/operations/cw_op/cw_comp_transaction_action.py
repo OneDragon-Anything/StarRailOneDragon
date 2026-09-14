@@ -5,14 +5,14 @@ from __future__ import annotations
 
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ShopActionOp,
+    ActionOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
     ShopExecEnv,
 )
 
 
-class CompTransactionOp(ShopActionOp):
+class CompTransactionOp(ActionOp):
     """整档替换事务 = 复合动作类(ADR-0517 §复合动作类):一个 op、
     原子逻辑态直写、C1 前置合法性(任一子步资源不足 ⇒ 整体不提案)。
 

@@ -1,56 +1,23 @@
-"""聚合注册文件,非 op 文件(T-201 一 op 一文件拆分):商店单动作 op
-族已拆至各自 ``cw_<action>_action.py``,本文件只做词表→op 工厂注册与
-聚合导出(消费面 import 口径不变:工厂与 op 类从本文件取,基类从
-cw_action_base 取)。新增动作 = 建 op 文件 + 在 _OP_TABLE 注册一行。
+"""商店工厂门面(unified-action-factory 批1 起转薄):词表→op 注册表
+已迁 ``cw_action_registry.py``(单一工厂),本文件只保留
+``shop_action_op_for`` 薄委托——消费面(cw_screen_buy_cards 调用点零
+改动)与测试替身缝(函数内 lazy import 本文件)不变,零行为
+(design.md §2.3)。op 类仍住各自 ``cw_<action>_action.py`` 文件,
+通用基类 ``ActionOp`` 住 cw_action_base。
 """
 from __future__ import annotations
 
-from sr_od.application.currency_war.kernel.cw_vocab import (
-    Action,
-    BuyCard,
-    CloseShop,
-    CompTransaction,
-    LevelUp,
-    RefreshShop,
-    SellBench,
-)
+from sr_od.application.currency_war.kernel.cw_vocab import Action
 from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-    ShopActionOp,
+    ActionOp,
 )
-from sr_od.application.currency_war.operations.cw_op.cw_buy_card_action import (
-    BuyCardOp,
-)
-from sr_od.application.currency_war.operations.cw_op.cw_close_shop_action import (
-    CloseShopOp,
-)
-from sr_od.application.currency_war.operations.cw_op.cw_comp_transaction_action import (
-    CompTransactionOp,
-)
-from sr_od.application.currency_war.operations.cw_op.cw_level_up_action import (
-    LevelUpOp,
-)
-from sr_od.application.currency_war.operations.cw_op.cw_refresh_shop_action import (
-    RefreshShopOp,
-)
-from sr_od.application.currency_war.operations.cw_op.cw_sell_bench_action import (
-    SellBenchOp,
+from sr_od.application.currency_war.operations.cw_op.cw_action_registry import (
+    action_op_for,
 )
 
-_OP_TABLE = {
-    BuyCard: BuyCardOp,
-    LevelUp: LevelUpOp,       # LevelUpShop is-a LevelUp,同 op(单击)
-    RefreshShop: RefreshShopOp,
-    SellBench: SellBenchOp,
-    CloseShop: CloseShopOp,
-    CompTransaction: CompTransactionOp,
-}
 
-
-def shop_action_op_for(action: Action) -> ShopActionOp:
-    """动作词表 → 动作 op(词表外类型 = 策略器 bug 响亮暴露,决策 9)。"""
-    for cls, op_cls in _OP_TABLE.items():
-        if isinstance(action, cls):
-            return op_cls(action)
-    raise AssertionError(
-        f'[cw-shop][guard] 商店动作词表外类型:{type(action).__name__}'
-        '(ADR-0517 决策 9:非法返回 = 策略器 bug,禁静默跳过)')
+def shop_action_op_for(action: Action) -> ActionOp:
+    """商店消费面口径(薄委托单一工厂):行为语义 = ``action_op_for``
+    原样(注册表行序 isinstance 首中即返;词表外类型 AssertionError
+    响亮暴露,决策 9 语义不变)。"""
+    return action_op_for(action)

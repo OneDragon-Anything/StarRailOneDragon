@@ -391,6 +391,9 @@ def guard_expected_vs_tracked(state: GameState, session,
 
 
 
-# 商店单动作 op 族住动作文件:ShopActionOp 基类 = cw_action_base.py;
-# 六动作 = 各自 cw_<action>_action.py;词表→op 工厂 = cw_shop_actions.py
-# (聚合注册文件)。本文件 = 账本+守卫+执行支撑(ShopExecEnv/ShopVisitLedger 单一源)。
+# 商店单动作 op 族住动作文件:通用基类 ActionOp = cw_action_base.py
+# (批1 自 ShopActionOp 升格);六动作 = 各自 cw_<action>_action.py;
+# 词表→op 工厂 = cw_action_registry.py(单一注册表,批1 自
+# cw_shop_actions 迁入,消费面 shop_action_op_for 转薄委托)。本文件 =
+# 账本+守卫+执行支撑(ShopExecEnv/ShopVisitLedger 单一源;ShopExecEnv
+# 以公共字段 op/match/config 结构化满足 ActionExecEnv 协议)。

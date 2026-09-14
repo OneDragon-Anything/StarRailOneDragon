@@ -69,7 +69,7 @@ if TYPE_CHECKING:
         LevelUpShop,
     )
     from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
-        ShopActionOp,
+        ActionOp,
     )
     from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
         ShopVisitLedger,
@@ -343,7 +343,7 @@ def _fmt_action(a: 'Action') -> str:
     return type(a).__name__
 
 
-def apply_action_outcome(_aop: 'ShopActionOp',
+def apply_action_outcome(_aop: 'ActionOp',
                          action: 'BuyCard | RefreshShop | SellBench | LevelUpShop | CloseShop',
                          _ok: bool, _cur: 'GameStateReadReceipt',
                          match: 'CurrencyWarMatch', ledger: 'ShopVisitLedger',
