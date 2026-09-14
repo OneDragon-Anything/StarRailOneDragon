@@ -3,7 +3,8 @@
 ## 用途
 
 逐局复盘的**骨架与可疑项预填面**:对本局决策数据跑检测器集
-(``sim/checks/suspects.py`` D1-D13),生成按单局复盘协议
+(检测器集以 ``sim.checks.suspects._SUSPECT_DETECTORS`` 注册表实数
+为准),生成按单局复盘协议
 (``sr-od-currency-war-dev`` skill ``references/match-review.md`` §阶段 2)
 组织骨架 markdown——逐节点(P×R×)小节、入口观察/决策循环占位、
 **可疑项预填块插在对应节点小节的判定三槽之前**(复盘者做三槽判定
