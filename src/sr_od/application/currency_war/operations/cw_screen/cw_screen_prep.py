@@ -18,9 +18,6 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.kernel.cw_game_state import (
-    shop_payload_content_cards,
-)
 from sr_od.application.currency_war.cw_game_ports import (
     CwObservationSource,
     action_sink,
@@ -37,6 +34,7 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
     board_state_of,
+    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_merge_simulate import same_star_count
 from sr_od.application.currency_war.kernel.cw_obs_core import SHOP_SCREEN_NAME
@@ -2682,11 +2680,11 @@ class CwScreenPrep(CwScreenOpBase):
         from sr_od.application.currency_war.kernel.cw_game_state import (
             gold_of as _gold_of_open,
         )
-        from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
-            run_buy_waves,
-        )
         from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
             close_shop,
+        )
+        from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
+            run_buy_waves,
         )
         _gold_open = _gold_of_open(_bs_of_open(match.session))
         _rr, ledger = run_buy_waves(self, match)
@@ -3025,7 +3023,7 @@ def finalize_buy_phase(op: SrOperation, match, ledger, gold_open: int | None) ->
         read_gold,
         read_gold_settled,
     )
-    from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
+    from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
         expected_gold_after_actions,
     )
     total_buy = ledger.total_buy

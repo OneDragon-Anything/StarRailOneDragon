@@ -589,14 +589,14 @@ def _launch_frame_arbitration(op) -> dict:
             PHASE_PREP_CLEAN,
             read_game_state,
         )
-        from sr_od.application.currency_war.operations.cw_op.cw_op_buy_cards import (
-            run_buy_waves,
-        )
         from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
             close_shop,
         )
         from sr_od.application.currency_war.operations.cw_op.cw_op_open_shop import (
             open_shop,
+        )
+        from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
+            run_buy_waves,
         )
         match = op.ctx.cw_match
         session = match.session
@@ -1945,7 +1945,7 @@ class CwLoop(SrOperation):
                 log.info('[cw-loop] 前台无角色提示 → 确认关闭(%d/%d)→ 带验证重部署',
                          self._frontless_redeploy,
                          CwLoop.FRONTLESS_REDEPLOY_LIMIT)
-                from sr_od.application.currency_war.operations.cw_op.cw_op_deploy import (
+                from sr_od.application.currency_war.operations.cw_screen.cw_screen_deploy import (
                     CwOpDeploy,
                 )
                 _rd = CwOpDeploy(self.ctx).execute()

@@ -630,8 +630,8 @@ class RefreshShopOp(ShopActionOp):
 
         # 读函数经 cw_op_buy_cards 模块属性路由(该模块的读点替身缝,
         # 测试 monkeypatch 面;自本模块直接 import 会绕开替身)。
-        from sr_od.application.currency_war.operations.cw_op import (
-            cw_op_buy_cards as _buy_cards_mod,
+        from sr_od.application.currency_war.operations.cw_screen import (
+            cw_screen_buy_cards as _buy_cards_mod,
         )
         from sr_od.application.currency_war.operations.cw_screen.cw_screen_prep import (
             build_refresh_expect,

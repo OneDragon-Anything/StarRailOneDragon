@@ -1245,7 +1245,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             _fp.parent.mkdir(parents=True, exist_ok=True)
             _fp.write_text(
                 f'[HOOK-STOP] shop 未识别卡停机钩子(常驻兜底,方案D恢复):'
-                f'operations/cw_op/cw_op_buy_cards.py run_buy_waves\n'
+                f'operations/cw_screen/cw_screen_buy_cards.py run_buy_waves\n'
                 f'触发:未购买且商店槽{_unk}未识别(防抖重读 2 帧后仍 miss)——\n'
                 f'   新版本新卡/昔涟诗篇类非角色内容/立绘缺。\n'
                 f'处理步骤:1. 看 shot={_shot};对停机画面跑 analyze_screen\n'

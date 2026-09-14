@@ -12,15 +12,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.data.cw_chars import CHARACTERS
+from sr_od.application.currency_war.kernel.cw_comps import RUST_AFFIX_NAME, Comp
+from sr_od.application.currency_war.kernel.cw_economy import loss_exact
+from sr_od.application.currency_war.kernel.cw_exec_state import DEPLOYED_CAPACITY
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     deployed_slots_of,
     plane_of,
     round_num_of,
 )
-from sr_od.application.currency_war.kernel.cw_comps import RUST_AFFIX_NAME, Comp
-from sr_od.application.currency_war.kernel.cw_economy import loss_exact
-from sr_od.application.currency_war.kernel.cw_exec_state import DEPLOYED_CAPACITY
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
@@ -145,7 +145,7 @@ def item_slot_unsellable(unit: BenchChar) -> bool:
     """占位件物理门(腾席卖出资格跨通道共享谓词;三通道资格循环首门)。
 
     真值 = ``BenchChar.is_item_slot``(部署装配点 assemble_bench_list
-    显式标记,operations/cw_op/cw_op_deploy):备战槽非角色占席物品
+    显式标记,operations/cw_screen/cw_screen_deploy):备战槽非角色占席物品
     (补给箱/星徽秘典/典籍书册等)无卖出交互且无金币现值——实机采证:
     同参数拖拽出售,角色 9 连全卖、箱零效果;宝箱面 = 4 选 1 装备面板,
     无金币现值、无出售项。任何星级不可变现 ⇒ 恒不入腾席卖出资格集。

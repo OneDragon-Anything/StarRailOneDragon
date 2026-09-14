@@ -1007,7 +1007,7 @@ class PrepActionExecutor:
             # 画面检查属转移验证用途(cw_op_deploy 内,非路由闸门);
             # STATUS 具名常量经 detail 显影透传(观察侧对账供给面)。
             return self._run_composite(
-                '部署', 'sr_od.application.currency_war.operations.cw_op.cw_op_deploy.CwOpDeploy')
+                '部署', 'sr_od.application.currency_war.operations.cw_screen.cw_screen_deploy.CwOpDeploy')
         if isinstance(action, RunEquip):
             # 计划随指令下发(ADR-0601 §3-C1,2026-09-09):装备走专用
             # 派发 _run_equip——分发段产出穿戴计划(_build_equip_wear_plan)
