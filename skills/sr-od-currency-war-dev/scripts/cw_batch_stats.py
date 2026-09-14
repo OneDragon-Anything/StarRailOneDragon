@@ -21,6 +21,18 @@ row{plane, round, node_type, gold, hp, form, form_ok, level, locked_comp},
   分母 = 可判局。口径分叉:sim 行 locked_comp 缺键/空串 = 未锁线
   (引擎未建锁线态 = 没锁);档案行结构性无 v3_intention 键 = 无数据,
   不入分母(「无数据」与「未锁线」两种事实,混同会把档案伪影当行为信号)。
+  **P1 配方对代理键(观测面专用,局表 p 标)**:locked_comp 空而同行
+  v3_intention.p1_pair 非空 = P1 配方锁活跃帧(ADR-0357:配方锁局
+  locked_comp 恒空,引擎语义零改,本脚本只读遥测)——锁定目标代理 =
+  配方对,④ 改读该行 form_ok 判定并标 p。语义依据:P1 配方锁帧的
+  form_ok 判据核 = readiness_form_ok(target_comp),而 target_comp 在
+  该帧族即配方对物化(strategies/impl/flow.py _refresh_direction_views;
+  kernel/cw_intention.pair_target_comp),故该帧 form_ok ⟺ 终局板面
+  完成配方锁方向 = ④ 问题的 P1 等价问法。动机:P1-only 载体下不加
+  代理则 ④ 结构性恒 0 = 指标-载体错配。边界:配方对空窗帧
+  (p1_pair 空)仍按未锁线 = 0;①资格锁局 locked_comp 非空走既有
+  判定分支,代理不辖;P2+ 帧 p1_pair 恒空(IntentionState 字段契约),
+  代理结构性不可达。
 
 P1 通关判定(按优先级):行面存在 plane>=2 行 → 行面证据;否则局级权威源
 (sim = runs.jsonl 的 plane_reached;档案 = endgame.plane_reached)≥2 → 行面
@@ -150,6 +162,8 @@ def _sim_rows(batch: Path) -> dict[str, dict]:
             'level': st.get('level'),
             # 锁线字段(单一源 = v3_intention.locked_comp;缺键/空串 = 未锁线)
             'locked_comp': (r.get('v3_intention') or {}).get('locked_comp') or '',
+            # P1 配方锁目标(v3_intention.p1_pair;缺键/空 = 配方锁未活跃)
+            'p1_pair': (r.get('v3_intention') or {}).get('p1_pair') or (),
         })
     for o in outs:
         for row in g(o.get('run_id') or '?')['rows']:
@@ -215,6 +229,8 @@ def _archive_rows(mid: str) -> dict:
         # 档案行无 v3_intention 键 → None(结构性无数据;与 sim 的「未锁线」
         # 是两种事实,④ 判定时不入分母,见模块 docstring)
         'locked_comp': None,
+        # 档案行结构性无 p1_pair(同上,两种事实)→ None,代理分支不可达
+        'p1_pair': None,
     } for r in m.get('rounds', [])]
     eg = m.get('endgame', {}) or {}
     # killed 真值(权威口径,件3):取 (plane, round) 最大轮的
@@ -276,12 +292,20 @@ def game_metrics(game: dict) -> dict:
     killed = game.get('killed')
     passed = passed_row and killed is True
     lc = last.get('locked_comp') if last else None
+    proxy = False
     if lc is None:
         comp_done = None            # 档案源结构性无锁线字段 = 无数据
     elif lc:
         comp_done = 1 if last.get('form_ok') else 0
+    elif last.get('p1_pair'):
+        # P1 配方对代理键(观测面专用;口径与语义依据见模块 docstring ④ 节):
+        # locked_comp 按 ADR-0357 在 P1 配方锁帧恒空,p1_pair 非空 = 配方锁
+        # 活跃 → 锁定目标代理 = 配方对,完成判定读同行 form_ok(该帧族
+        # form_ok 判据核即配方对物化方向)。只读遥测,ADR-0357 语义零改。
+        comp_done = 1 if last.get('form_ok') else 0
+        proxy = True
     else:
-        comp_done = 0               # 未锁线 = 0(用户规格逐字)
+        comp_done = 0               # 未锁线 = 0(用户规格逐字;含配方对空窗帧)
     return {
         'passed_row': passed_row,
         'passed': passed,
@@ -292,6 +316,7 @@ def game_metrics(game: dict) -> dict:
         'exit_form': p1_last.get('form') if p1_last else None,
         'final_gold': last.get('gold') if last else None,
         'comp_done': comp_done,
+        'comp_proxy': proxy,
     }
 
 
@@ -373,8 +398,11 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
           if golds else '无数据')
     print(f'③终局金 min/中位/max: {g3}(可读 {len(golds)}/{n} 局)')
     if comp:
+        proxy_n = sum(1 for m in ms.values() if m['comp_proxy'])
         print(f'④终局阵容完成率: {comp1}/{len(comp)} = {comp1 / len(comp):.0%}'
-              + (f'(可判 {len(comp)}/{n} 局)' if len(comp) < n else ''))
+              + (f'(可判 {len(comp)}/{n} 局)' if len(comp) < n else '')
+              + (f'[P1 配方对代理判定 {proxy_n} 局,局表 p 标]'
+                 if proxy_n else ''))
     else:
         print('④终局阵容完成率: 无数据(全批无锁线字段观测)')
     print(f'[28]线 出口金≥50: {line28}/{gold28} 局(读数,非门)')
@@ -401,7 +429,8 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
             c2 = '—'
         else:
             c2 = ('✓' if m['exit_form_ok'] else '✗') + f' {_fmt(m["exit_form"], 2)}'
-        c4 = '—' if m['comp_done'] is None else str(m['comp_done'])
+        c4 = ('—' if m['comp_done'] is None
+              else str(m['comp_done']) + ('p' if m['comp_proxy'] else ''))
         print(f'{rid:<22} {mark:<6} {_fmt(m["exit_gold"]):>7} {c2:<14} '
               f'{_fmt(m["final_gold"]):>7} {c4:>5}')
 
