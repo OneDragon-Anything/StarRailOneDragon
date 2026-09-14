@@ -115,6 +115,17 @@ class ShopVisitLedger:
     # apply_action_outcome 与 free_refresh_balance 逻辑账刷前值对票,失配落
     # 缺陷台账零决策)。
     refresh_free_remaining_truth: int | None = None
+    # T-219 免费刷新对账三件(判定 = 对账类,比对收口在观察侧;动作 op
+    # 只写不比)。写入端 = RefreshShopOp.execute(刷新点击前现读,一次
+    # 刷新覆盖写一次);消费端 = run_buy_waves 段顶入口观察对账点(三腿
+    # 比对 + 存证),消费即清 pending。坐标系:refresh_pre_gold = 刷前一帧
+    # 游戏金币读数(仅刷新段 = 段顶整帧,连击段 = 点击前一帧;None =
+    # 失读,金腿不可判);refresh_pre_names = 同帧商店 content 具名牌名集
+    # (1080p 商店五槽读牌口径);生命周期 = 一次刷新恰一段(刷新为终结
+    # op,段间无其他动作覆盖字段)。
+    refresh_pre_gold: int | None = None
+    refresh_pre_names: list[str] = field(default_factory=list)
+    refresh_pending_reconcile: bool = False
     # `w536_merge_expect/` 买牌期望态基座(单元尾计算消费):
     buy_purchases: list = field(default_factory=list)
     buy_has_sell: bool = False

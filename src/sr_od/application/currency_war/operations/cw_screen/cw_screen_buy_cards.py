@@ -24,10 +24,8 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_obs_core import (
-    A_SHOP_CARD_PREFIX,
     SCREEN_NAME,
     SHOP_SCREEN_NAME,
-    _area_rect,
     area_center,
     shop_card_click_points,
 )
@@ -81,84 +79,6 @@ if TYPE_CHECKING:
     )
 
 
-# 商店牌行区 rect(1080p)——读卡自愈门的目标区,与刷新分支(r325)同区。
-# 派生化:优先按建档 area「商店牌-1」现算(单一源=screen_info);area 缺失
-# 才回退字面量(1080p 项目既有前提,与 r325 同值)。
-_SHOP_ROW_RECTS: tuple | None = None
-
-
-def _shop_row_rects(op: SrOperation) -> tuple:
-    """牌行区 rect 派生(建档 area 优先,字面量兜底);进程内缓存。"""
-    global _SHOP_ROW_RECTS
-    if _SHOP_ROW_RECTS is None:
-        from one_dragon.base.geometry.rectangle import Rect
-        _r = None
-        with contextlib.suppress(Exception):
-            _r = _area_rect(op.ctx, f'{A_SHOP_CARD_PREFIX}1', SHOP_SCREEN_NAME)
-        _SHOP_ROW_RECTS = (_r if _r is not None
-                           else Rect(300, 228, 1560, 326),)
-    return _SHOP_ROW_RECTS
-
-
-# 超时回退补偿:调用方契约是「等稳后读」,超时(画面 2s 永变)返回时若
-# 立即读 = 把「未稳」当「已尽最大等待」;补 0.5s 静置再交读,与被替换的
-# M35 blind sleep(读前必有 ≥1.0s 等待)语义对齐。
-_SETTLE_TIMEOUT_COMPENSATE_S: float = 0.5
-
-
-def _wait_shop_row_stable(op: SrOperation, max_wait_s: float = 2.0,
-                          min_observe_s: float = 1.0) -> bool:
-    """等待商店牌行区「两帧指纹一致」(动画/settle 收敛判据,非 blind sleep)。
-
-    为什么不用固定 sleep:M35 之前未识别停机钩子的防抖重读是 blind
-    sleep(1.0s×2),对「刷新动画/settle 瞬时帧」类 miss 自愈靠猜时长;
-    判据化后读卡前先等牌行区连续两帧指纹一致(与刷新分支 r325 同门同
-    rect),稳定即读。
-
-    **fast-path 最短观察窗(W952 审计 P2-1)**:两帧相同即放行会被慢机
-    冻结帧骗过(两次采样落在同一冻结画面上,间隔可短至 0.5s)→ 非终帧
-    放行 → 本可自愈的 case 烧成真停(M35「0.3s 不够」教训同型)。故
-    指纹相同还须**观察时长 ≥ min_observe_s**(默认 1.0,对齐被替换的
-    M35 单次等待)才放行;冻结帧最短也观察满 1.0s。
-
-    **超时回退补偿(W952 审计 P2-2)**:超时返回 False 前,静置
-    ``_SETTLE_TIMEOUT_COMPENSATE_S`` 再交还调用方——调用方契约是
-    「等稳后读」,永变超时立读 = 未稳即读;补偿后单次门最短等待语义
-    恒 ≥1.0s,与被替换行为对齐。
-
-    边界:模态覆盖层(如「我来当策划·骇入效果」弹窗)压暗全屏时画面
-    本身稳定,本门按 fast-path 放行——该形态不是瞬态帧,重读不会自愈,
-    由调用方的有限次预算耗尽后走停机留证(弹窗处置归弹窗批域)。
-
-    返回 True=观测到稳定帧(且已观察 ≥min_observe_s);False=超时
-    (已补偿静置)。截图异常按离线契约降级继续等(r327 同契约)。
-
-    预算总时长(调用方声明):钩子 2 次重读 × (门 ≤2.0s+补偿 0.5s)
-    ≈ 最坏 5.0s + 2 次读卡耗时,量级与被替换 M35(2×1.0s+读)同档。
-    """
-    rects = _shop_row_rects(op)
-    from one_dragon.utils import cv2_utils
-    base = None
-    start = time.monotonic()
-    deadline = start + max_wait_s
-    while True:
-        time.sleep(0.25)
-        fp = None
-        try:
-            fp = cv2_utils.fingerprint_in_rects(op.screenshot(), rects)
-        except Exception:   # noqa: BLE001  离线契约(r327 同款)
-            fp = None
-        if fp is not None and base is not None \
-                and cv2_utils.fingerprint_same(fp, base) \
-                and time.monotonic() - start >= min_observe_s:
-            return True
-        if fp is not None:
-            base = fp
-        if time.monotonic() >= deadline:
-            time.sleep(_SETTLE_TIMEOUT_COMPENSATE_S)
-            return False
-
-
 def _r1_retry_read_hp(read_fn) -> int | None:
     """r1 备战 HP 重试读(用户修正前提:r1 血量固定但**不恒为 100**,随当局
     难度/词缀变化——真值源=备战画面显示值,默认 100 兜底在 r1 是错误值)。
@@ -203,6 +123,60 @@ def expected_gold_after_actions(state_gold: int, spend: int,
 # (refresh_effective 判刷新未生效函数已随 T-192 阶段三判效拆除删除:
 #  判效权归观察侧 reconcile;牌名集三值对比的留证半(安灯 free_refresh_proc
 #  豁免判定输入)内联保留在 RefreshShopOp.execute。)
+
+
+def _shop_entry_names(shop: list) -> list[str]:
+    """入口回执 shop 域 → content 具名牌名集(两路径形态兼容)。
+
+    读路径条目 = 槽包装(kind/card);容器紧缩路径(``_entry_receipt_from_
+    container``)= 裸 card(缺 kind 视作 content,该路径本就只产 content)。
+    """
+    names: list[str] = []
+    for _s in shop or []:
+        _kind = getattr(_s, 'kind', 'content')
+        _name = getattr(getattr(_s, 'card', _s), 'name', '') or ''
+        if _kind == 'content' and _name:
+            names.append(_name)
+    return names
+
+
+def _record_free_refresh_proc(op: SrOperation, ledger: 'ShopVisitLedger', *,
+                              pre_gold: int, gold_after: int,
+                              pre_names: list[str], post_names: list[str],
+                              plane: int, round_num: int) -> None:
+    """免费刷新 proc 留证(ADR-0456 通道;对账类判定,宿主 = 入口观察
+    对账点)。
+
+    比对收口纪律(T-219 裁定):判定随对账走不随动作走——三腿比对
+    (上段刷新已发 ∧ 金未扣 ∧ 牌面已变)在对账点评完才进本函数,函数体
+    只做存证(截图+flag+log),零决策零改道;免费来源的频率汇总与处置
+    归 flag 消费方。通道归属 = 观察侧对账点(按比对收口纪律维护),
+    非独立的常驻承诺。
+    """
+    from datetime import datetime as _dt
+
+    from one_dragon.utils.file_utils import get_project_root
+    from sr_od.application.currency_war.telemetry import state as _cw_tel
+    _free_shot = op.save_screenshot(prefix='free_refresh_proc')
+    _flag_p = get_project_root() / '.debug' / 'temp' \
+        / 'cw_free_refresh_proc.flag'
+    _flag_p.parent.mkdir(parents=True, exist_ok=True)
+    _flag_p.write_text(
+        'FREE-REFRESH-PROC: 免费刷新实机正证据(非停机,bot 照常跑)\n'
+        f'run={_cw_tel.current_run_id()} '
+        f'plane={plane} round={round_num} '
+        f'wave={ledger.total_refresh} '
+        f'ts={_dt.now().isoformat(timespec="seconds")}\n'
+        f'前后牌面: {sorted(pre_names or [])} -> {sorted(post_names or [])}\n'
+        f'gold: 前={pre_gold} 后={gold_after}(未扣=免费)\n'
+        f'截图: {_free_shot}\n'
+        '处理: 汇总频率判免费来源(棱 45%/策略类/未知),确认后删本 flag;'
+        '通道住观察侧对账点(比对收口纪律)。\n',
+        encoding='utf-8')
+    log.warning(
+        '[cw!][shop] 免费刷新 proc:牌面已变 金未扣(前=%s 后=%s)'
+        '→ 留证不停 flag=cw_free_refresh_proc.flag',
+        pre_gold, gold_after)
 
 
 # 买牌动画(卡牌飞行)收敛等待:首采无新槽后重采前的延迟秒数。
@@ -850,6 +824,26 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 _entry = read_game_state(op.ctx, _entry_shot,
                                          phase=PHASE_PREP_SHOP_OPEN)
         save_decision_frame(op, 'shop_entry', _entry_shot)   # 识别完成点原始帧留证(牌面仲裁基准;每段一帧,刷新重观察同点覆盖)
+        # 免费刷新对账点(T-219 裁定:对账类判定收口在观察态写入的对账
+        # 点,动作 op 内不做):上段刷新已发(ledger.refresh_pending_reconcile,
+        # 写入端 = RefreshShopOp.execute)∧ 刷前金在场 ∧ 入口观察金 =
+        # 刷前金(金未扣)∧ 牌面已变(ledger.refresh_board_changed,
+        # execute 刷后现读)→ 存证(截图+flag+log),零决策零改道。
+        # 任一腿失读/不满足 = 静默放行(宁缺勿造);标记消费即清,
+        # 生命周期 = 一次刷新恰一段(刷新为终结 op,段间无其他动作覆盖)。
+        if ledger.refresh_pending_reconcile:
+            if (ledger.refresh_board_changed is True
+                    and ledger.refresh_pre_gold is not None
+                    and _entry.gold == ledger.refresh_pre_gold):
+                with contextlib.suppress(Exception):
+                    _record_free_refresh_proc(
+                        op, ledger,
+                        pre_gold=ledger.refresh_pre_gold,
+                        gold_after=_entry.gold,
+                        pre_names=ledger.refresh_pre_names,
+                        post_names=_shop_entry_names(_entry.shop),
+                        plane=_entry.plane, round_num=_entry.round_num)
+            ledger.refresh_pending_reconcile = False
         # (hp 三件组覆盖随黑板帧退役删除——迁移批 3.2,波 4 步 4 同款结论:
         #  容器 hp 由备战帧观察/结算既有写端承接,消费统一经 decision_hp,
         #  覆盖回写 = 绕行;传参链同批移除。)
@@ -1223,8 +1217,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     # 只删 flag 不删钩子。
     # 📋 调研档案(2026-08-17 阮·梅/白厄单帧 miss 归因闭环,下次触发先读这段):
     # - 历史触发全部是刷新动画/settle 瞬时帧;本 hook 防抖重读两次均自愈。
-    # - W944 治本(2026-08-31):blind sleep 改判据化自愈(_wait_shop_row_stable,
-    #   与刷新分支同门同 rect);预算 2 次,耗尽才真停(模态弹窗压暗不因重读消失)。
+    # - 重读 = 立即再读(两帧指纹等稳门已废弃,T-219;动画/settle 类瞬态
+    #   由刷新分支的固定等待 REFRESH_CLICK_SETTLE_WAIT_S 前置收敛);
+    #   预算 2 次,耗尽才真停(模态弹窗压暗不因重读消失)。
     # - f570a76e 审查#1 修:去 total_buy 门——残缺牌面上的买牌决策同样要留证。
     # 硬必改(商店域审计 D 项):判据 any(not c.name) → kind=='unknown'
     # (三态模型:empty=识别确证空位非未识别;content 恒有 name)。
@@ -1233,7 +1228,6 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         _unk = [i + 1 for i, s in enumerate(_entry.shop)
                 if getattr(s, 'kind', '') == 'unknown']
         for _ in range(2):
-            _wait_shop_row_stable(op)
             _reshop = read_shop_cards(op.ctx, op.screenshot())
             _unk = [i + 1 for i, s in enumerate(_reshop or [])
                     if s.kind == 'unknown']
