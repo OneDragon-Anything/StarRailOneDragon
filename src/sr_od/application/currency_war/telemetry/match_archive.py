@@ -22,7 +22,12 @@ hp=100 备帧假值、grep 跨 run 帧流、多源现算拼视图。本模块把
   obs_conflicts.jsonl 例外:跨局 journal 无 run_id 键且体积大,不入切片。
 - **归局骨架(W3 起三源)**:journal 实机形态段(``run_YYYYMMDD_HHMMSS``,
   过滤 sim/测试段——journal 单文件多写者,哨兵同口径)+ 旧流段(存量语料
-  重装配仍可归局);两源段按段首 ts 合并进同一时序插位。
+  重装配仍可归局);两源段按段首 ts 合并进同一时序插位。装配收尾走跨档
+  归属收敛守卫(``_converge_cross_archive_ownership``):档案段集中「当前
+  分组归他局」的段全部摘除(源流在 = 整体重装配自愈;源流失 = 定向剪枝 +
+  ``pruned_segments`` 显影),保证同一 journal 段只归属一个档案——旧口径
+  时代写入的存量档案错误持有续段时(跨档双计,T-242 实证),靠水位线/
+  读端重装配都够不到,守卫是唯一收敛路径。
 - **写盘原子性**:档案与 index 均 tmp 写入 + ``os.replace`` 原子改名,
   并发/中断读者不会读到半截 JSON。
 
@@ -45,17 +50,17 @@ from pathlib import Path
 from typing import Any
 
 from one_dragon.utils import log_utils
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    DEPLOYED_CAPACITY,
+    DEPLOYED_FRONT_CAPACITY,
+    deployed_slot_no,
+)
 from sr_od.application.currency_war.kernel.cw_game_state import (
     MATCH_FINAL_FIELD,
 )
 from sr_od.application.currency_war.kernel.cw_observe import (
     LIVE_DIR,
     MATCHES_ROOT,
-)
-from sr_od.application.currency_war.kernel.cw_exec_state import (
-    DEPLOYED_CAPACITY,
-    DEPLOYED_FRONT_CAPACITY,
-    deployed_slot_no,
 )
 from sr_od.application.currency_war.telemetry.journal_query import (
     JOURNAL_REL,
@@ -1543,8 +1548,13 @@ def rebuild_index(replay_dir: Path | str) -> None:
         raise
 
 
-def assemble_game(replay_dir: Path | str, game_id: str) -> dict[str, Any] | None:
-    """装配指定局(补装配入口:不问水位线;游戏不存在 → None)。"""
+# 装配主体(不带跨档守卫;公开入口 assemble_game/assemble_pending 收尾统一
+# 走 _converge_cross_archive_ownership,守卫内部重装配也走本函数防递归套娃)
+
+
+def _assemble_game_once(replay_dir: Path | str,
+                        game_id: str) -> dict[str, Any] | None:
+    """装配指定局主体(不问水位线;游戏不存在 → None)。"""
     rd = Path(replay_dir)
     game = next((g for g in assign_games(rd) if g['game_id'] == game_id), None)
     if game is None:
@@ -1552,6 +1562,160 @@ def assemble_game(replay_dir: Path | str, game_id: str) -> dict[str, Any] | None
     archive = build_archive(rd, game)
     _atomic_write_json(archive_path(rd, game_id), archive)
     rebuild_index(rd)
+    return archive
+
+
+def find_cross_archive_segment_dups(
+        replay_dir: Path | str) -> list[dict[str, Any]]:
+    """跨档案段归属核验(纯读):同段 run_id 出现在多个档案的段集即违例。
+
+    违例形态即「跨档段重复入账」:同一 journal 行集被两个档案各自内嵌
+    切片,跨档对照同时段会双计(T-232 验收实证:run_20260908_210431 曾
+    同时在 g_20260908_165445 与 g_20260909_084216 的切片里)。核验单位 =
+    段级(档案 segments 的 run_id):档案切片由 build_archive 严格按段集
+    过滤(单一写端契约),「同段跨档案」⇒「同段行跨档案」,段级判据即
+    行级双计的充分条件;行级逐行对账是档案完整性问题(手改/半截),不属
+    本核验辖域。返回 ``[{run_id, archives: [game_id...]}]``,空 = 通过。
+    """
+    md = matches_dir(replay_dir)
+    owners: dict[str, list[str]] = {}
+    for p in sorted(md.glob('match_*.json')):
+        try:
+            with p.open('r', encoding='utf-8') as f:
+                a = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue   # 半截/损坏档案跳过(与 rebuild_index 同契约)
+        gid = str(a.get('game_id') or '')
+        if not gid:
+            continue
+        for s in a.get('segments') or []:
+            rid = str(s.get('run_id') or '')
+            if not rid:
+                continue
+            owners.setdefault(rid, [])
+            if gid not in owners[rid]:
+                owners[rid].append(gid)
+    return [{'run_id': rid, 'archives': gids}
+            for rid, gids in sorted(owners.items()) if len(gids) > 1]
+
+
+def _warn_cross_archive_dups(rd: Path) -> list[dict[str, Any]]:
+    """装配收尾核验:违例逐条 WARNING 显影(判读可见,不阻塞装配)。"""
+    dups = find_cross_archive_segment_dups(rd)
+    for d in dups:
+        log.warning('[cw][archive] 段 %s 同时存在于 %d 个档案 %s——'
+                    '跨档段重复入账,跨档对照会双计(装配守卫未能收敛,'
+                    '常见于双档源流均已清理、归属无法重派生的孤立形态)',
+                    d['run_id'], len(d['archives']), d['archives'])
+    return dups
+
+
+#: 剪枝记录的成因常量(唯一调用点 = 源流失档案的定向剪枝;被剪段仍在
+#: live 流、归属可重派生时走整体重装配,不产生本记录)
+_PRUNE_REASON = 'foreign_segment_owned_elsewhere'
+
+
+def _prune_foreign_segments(path: Path, archive: dict[str, Any],
+                            foreign: list[str],
+                            owner: dict[str, str]) -> list[str]:
+    """源流失档案的定向剪枝:摘除归属他局的段条目与全部切片行。
+
+    为什么是剪枝不是重装配:该局的源流行已被清理(assign_games 分不出
+    本局),build_archive 无从重派生;剪枝只动「归属错误」的面(段集 +
+    切片),rounds/loss_nodes 等派生列基于剪枝前段集、保留不动——档案
+    级 ``pruned_segments`` 显影记录声明这一局限,判读跨档对照以被剪段
+    的归属局档案为准。schema_version 不动(不宣称按当前口径全量重派生)。
+    """
+    foreign_set = set(foreign)
+    archive['segments'] = [s for s in archive.get('segments') or []
+                           if str(s.get('run_id') or '') not in foreign_set]
+    slices = archive.get('slices')
+    if isinstance(slices, dict):
+        for k, rows in slices.items():
+            if isinstance(rows, list):
+                slices[k] = [r for r in rows
+                             if r.get('run_id') not in foreign_set]
+    record = [{'run_id': rid, 'owned_by': owner.get(rid, ''),
+               'reason': _PRUNE_REASON} for rid in foreign]
+    # 追加式(与 criteria 同纪律):多次剪枝的历史共存,不覆盖前记录
+    archive['pruned_segments'] = list(archive.get('pruned_segments') or []) \
+        + record
+    archive['archived_at'] = datetime.now().isoformat(timespec='seconds')
+    _atomic_write_json(path, archive)
+    return foreign
+
+
+def _converge_cross_archive_ownership(
+        rd: Path, games: list[dict[str, Any]]) -> list[str]:
+    """跨档案归属收敛守卫:档案段集中「当前分组归他局」的段全部摘除。
+
+    根因(T-242):旧装配口径时代的存量档案可能错误持有后续才归前局的
+    续段(如 g_20260909_084216 持有 run_20260908_210431),而该档案常落
+    水位线以下(end_ts <= wm 被 assemble_pending 永久跳过)、判读又直读
+    JSON 不经 load_archive 的读端重装配——错误归属永续,跨档双计。本
+    守卫在每次装配收尾按当前口径全局对账:
+    - 本局仍在分组(源流在)→ 整体重装配(build_archive 按当前口径
+      重派生,派生列一并自愈);
+    - 本局已不在分组(源流失)→ 定向剪枝(:func:`_prune_foreign_segments`)。
+    分组判定为「该段活着且归他局」才触发;分组无此段(孤本形态,live 流
+    已清且无第二档案持有)不辖——孤本是唯一存档,禁动。
+    返回被收敛(重装配或剪枝)的 game_id 列表。收敛方向单向(每次触发
+    严格减少全局多余段数),循环内联处理全部违例档案,不递归套守卫。
+    """
+    owner: dict[str, str] = {}
+    for g in games:
+        for rid in g['segments']:
+            owner[rid] = g['game_id']
+    known_games = {g['game_id'] for g in games}
+    md = matches_dir(rd)
+    touched: list[str] = []
+    for p in sorted(md.glob('match_*.json')):
+        try:
+            with p.open('r', encoding='utf-8') as f:
+                a = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        gid = str(a.get('game_id') or '')
+        if not gid:
+            continue
+        foreign = [rid for rid in (str(s.get('run_id') or '')
+                                   for s in a.get('segments') or [])
+                   if rid and owner.get(rid, gid) != gid]
+        if not foreign:
+            continue
+        if gid in known_games:
+            rebuilt = _assemble_game_once(rd, gid)
+            if rebuilt is not None:
+                touched.append(gid)
+                log.info('[cw][archive] 档案 %s 段集与当前归属口径不符'
+                         '(多余段 %s)——按当前口径整体重装配收敛',
+                         gid, foreign)
+                continue
+            log.warning('[cw][archive] 档案 %s 有多余段 %s 且本局在分组'
+                        '但重装配失败——保持原样交核验显影', gid, foreign)
+            continue
+        pruned = _prune_foreign_segments(p, a, foreign, owner)
+        touched.append(gid)
+        log.info('[cw][archive] 档案 %s(源流已清)定向剪枝多余段 %s'
+                 '(归属见档案内 pruned_segments 记录)', gid, pruned)
+    if touched:
+        rebuild_index(rd)
+    return touched
+
+
+def assemble_game(replay_dir: Path | str, game_id: str) -> dict[str, Any] | None:
+    """装配指定局(补装配入口:不问水位线;游戏不存在 → None)。
+
+    收尾走跨档归属收敛守卫 + 核验(:func:`_converge_cross_archive_ownership`
+    / :func:`_warn_cross_archive_dups`):本局装配可能收编其他存量档案
+    错误持有的段,守卫保证「同一 journal 段只归属一个档案」。
+    """
+    rd = Path(replay_dir)
+    archive = _assemble_game_once(rd, game_id)
+    if archive is None:
+        return None
+    _converge_cross_archive_ownership(rd, assign_games(rd))
+    _warn_cross_archive_dups(rd)
     return archive
 
 
@@ -1618,7 +1782,8 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     > 水位线);更早的漏网局用 ``assemble_game`` 点名补装配。
     段集合有增长的局(活局续段并入)随版本检查一并重装,不丢不重:
     重装 = 从源流全量重派生后原子覆盖,续段并入即唯一变化。返回本次
-    装配的 game_id 列表。
+    装配的 game_id 列表。收尾走跨档归属收敛守卫与核验(含水位线以下的
+    存量档案——双计档案的收敛不问水位线,见模块 docstring 归局骨架节)。
     观测面:水位线是历史最大值锚——end_ts < wm 的局被静默跳过且永不
     自动装配(时钟回拨/DST 回拨段的真实形态)。此类局若未入档且落后
     wm 在告警窗内(``_BEHIND_WARN_WINDOW_HOURS``),落 WARNING 带溯源
@@ -1633,6 +1798,9 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     if not wm:
         # 首次启用:只记账不回填(边界:旧段 shop 刷新波已丢,回填也残缺)
         _write_watermark(rd, _latest_end_ts(games))
+        # 首跑目录也可能有手工放置的存量档案,跨档守卫不因早退缺席
+        _converge_cross_archive_ownership(rd, games)
+        _warn_cross_archive_dups(rd)
         return done
     for g in games:
         if (g['end_ts'] or '') <= wm:
@@ -1672,6 +1840,10 @@ def assemble_pending(replay_dir: Path | str) -> list[str]:
     if done:
         rebuild_index(rd)
         _write_watermark(rd, _latest_end_ts(games))
+    # 跨档归属收敛 + 核验(T-242):水位线上方新装配的局可能收编存量档案
+    # 错误持有的续段(该档案常落水位线以下,只随本守卫收敛,双计才可消)
+    _converge_cross_archive_ownership(rd, games)
+    _warn_cross_archive_dups(rd)
     return done
 
 
