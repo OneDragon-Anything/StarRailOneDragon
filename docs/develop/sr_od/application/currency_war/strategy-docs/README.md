@@ -35,7 +35,12 @@
 | 08 | [08_events.md](08_events.md) | 事件面规格骨架：E1-E18 逐项收录语义、数学判据逐项标「待 derive」（落差登记） |
 | 07 | [07_meta_run.md](07_meta_run.md) | 跨局 meta 域：显式声明出辖（当前无可设计对象，登记为未来立项） |
 | 18 | [18_equip_wear_semantics.md](18_equip_wear_semantics.md) | 装备穿戴策略语义：RunEquip 穿戴定谳、opening/非 key_equips 释放判据、词缀条件分配优先级 |
-| 22 | [22_default_policy.md](22_default_policy.md) | 默认策略总述（mandate_v1 · 按画面）：各时期会执行的动作清单与判据指针；能力面对偶篇 = `../flow/screens-actions-capability.md` |
+| 22 | [22_prep_screen.md](22_prep_screen.md) | 备战画面策略面：收缩后动作清单(含商店期移入的卖备战/买经验)+ 判据指针(判据本体 = 10/02/04/18) |
+| 23 | [23_shop_screen.md](23_shop_screen.md) | 商店开画面策略面：买/刷/关收缩动作面 + 满席腾位链 + 能力/策略判例(判据本体 = 11) |
+| 24 | [24_deploy_segment.md](24_deploy_segment.md) | 部署执行段策略面：选人围栏/换血卖出/残余补部署(判据本体 = 10 §1/02 §7) |
+| 25 | [25_event_overlays.md](25_event_overlays.md) | 事件面画面(投资环境/投资策略/单选族)策略：选卡 + 刷新建议(判据本体 = 13/08) |
+| 26 | [26_battle_settlement.md](26_battle_settlement.md) | 战斗与结算期策略面：出战标准/结算读数供数/无战斗期独立决策申报(判据本体 = 04) |
+| 27 | [27_transit_screens.md](27_transit_screens.md) | 过场与推进型画面(简报/BOSS简报/位面过渡/回大厅)：无策略决策面申报 |
 
 （原 03/05/06/09 已按决策点重排删除：03/05/06 拆入 10-13；09 架构篇整体迁 `../flow/README.md` §2——策略↔流程契约。）
 

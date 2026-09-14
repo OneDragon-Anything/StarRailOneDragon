@@ -1,14 +1,14 @@
 # 画面-动作能力矩阵(screens-actions-capability)
 
-> 定位:货币战争主链每一画面/状态的「游戏可用动作全集 + 我们的动作 op 映射 + 回外循环(终结)语义」正本。本篇记**能力面**(画面机制上可做的动作全集);**策略面**(默认策略实际会做的子集)见 [../strategy-docs/22_default_policy.md](../strategy-docs/22_default_policy.md)。
+> 定位:货币战争主链每一画面/状态的「游戏可用动作全集 + 我们的动作 op 映射 + 回外循环(终结)语义」正本。本篇记**能力面**(画面机制上可做的动作全集);**策略面**(默认策略实际会做的子集)= strategy-docs 画面策略篇 22-27(逐画面一文档,索引 = [../strategy-docs/README.md](../strategy-docs/README.md))。
 > 机制事实依据 = `docs/game/currency_war/data/gameplay.md`(官方玩法)、`research/xp-rules.md`、`research/screen_flow_timing.md`、`research/economy.md` 与 `assets/game_data/screen_info/` 画面建档;op 映射依据 = 代码现状。符号锚 = `文件::符号名`(行号不写,随代码漂移);路径根 = `src/sr_od/application/currency_war/`。
-> 读者 = 无会话历史的工程师/智能体。职责分界:「循环怎么转、路由怎么走」= [outer_loop.md](outer_loop.md)、[README.md](README.md);「一次访问内观察→决策→执行的编排」= [prep_visit.md](prep_visit.md)、[screen_op.md](screen_op.md)、[shop_visit.md](shop_visit.md);「每个画面策略会做什么、按什么判据」= strategy-docs 22 号篇与本目录各判据篇。
+> 读者 = 无会话历史的工程师/智能体。职责分界:「循环怎么转、路由怎么走」= [outer_loop.md](outer_loop.md)、[README.md](README.md);「一次访问内观察→决策→执行的编排」= [prep_visit.md](prep_visit.md)、[screen_op.md](screen_op.md)、[shop_visit.md](shop_visit.md);「每个画面策略会做什么、按什么判据」= strategy-docs 画面策略篇(22-27)与本目录各判据篇。
 
 ## 1. 能力面与策略面(区分原则,用户裁定 2026-09-14)
 
 - **能力面** = 画面机制上可做的动作全集:游戏在该画面提供了什么可执行操作,以及我们把每个操作落地为哪个动作 op。七动作族(§2)与容器转移函数(`kernel/cw_game_state.py::apply_shop_action_logic` 等投影通道)**全保留**,不随策略收缩删除。
 - **策略面** = 默认策略(mandate_v1)在当前策略形态下实际会做的子集。策略面收缩是策略域变更:只改决策入口的提案集,不删执行器/词表/投影。
-- **判例(在案裁定)**:卖备战(SellBench)与买经验(LevelUp)是商店开画面的**可用**动作(§3.5),但默认策略**不在商店期做**——两者收缩至备战期决策(22 号篇 §3)。能力矩阵按能力面记;策略归属见 22 号篇。
+- **判例(在案裁定)**:卖备战(SellBench)与买经验(LevelUp)是商店开画面的**可用**动作(§3.5),但默认策略**不在商店期做**——两者收缩至备战期决策(策略面清单见 22/23 号篇)。能力矩阵按能力面记;策略归属见 strategy-docs 画面策略篇(22-27)。
 - 本篇记载纪律:每个画面列「游戏可用动作全集」并逐条给 op 映射;某动作当前不被策略使用时在策略归属列注明「策略面收缩至 X 期」,不删行。
 
 ## 2. 动作词表:七动作族与执行载体
@@ -52,11 +52,11 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 策略归属 | 访问终结语义 |
 |---|---|---|---|---|
-| 上阵(拖备战栏→前排/后排空槽) | 等级=可上阵数(`data/gameplay.md`);站位前台/后台激活角色赋能 | `DeployMove`(族 B)+ 部署机 `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy.deploy`(组合路径 = `RunDeploy`) | 备战期(22 号篇 §2/§4) | 非终结;部署属未建模投影面 → 执行后保守回退交回外循环重观察(prep_visit.md §1) |
+| 上阵(拖备战栏→前排/后排空槽) | 等级=可上阵数(`data/gameplay.md`);站位前台/后台激活角色赋能 | `DeployMove`(族 B)+ 部署机 `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy.deploy`(组合路径 = `RunDeploy`) | 备战期(22/24 号篇) | 非终结;部署属未建模投影面 → 执行后保守回退交回外循环重观察(prep_visit.md §1) |
 | 换排(上阵单位前排↔后排拖拽) | 同上(放对激活赋能) | 部署机内拖拽(`_deploy_deterministic` 含错排归位 `_fix_misplaced_rows`) | 备战期 | 同上 |
-| 卖备战(拖备战栏→区域-出售区) | 卖出退金规则(`research/economy.md` §3,单一源 `kernel/cw_economy.py::sell_refund`) | `PrepActionExecutor` → `prep_actions.py::drag_bench_to_sell`;词表 `kernel/cw_prep_actions.py::SellBench` | 备战期:腾位(M4)/凑息(P49 ⑤)/筹资/换线塌缩(22 号篇 §2) | 非终结 |
-| 卖上阵(拖上阵位→出售区) | 同上 | 词表 `kernel/cw_vocab.py::SellDeployed`;备战执行器 + 部署面换血(`cw_screen_deploy.py::_sell_offtarget_deployed`) | 备战期/部署期换血(22 号篇 §4) | 非终结 |
-| 买经验(点「备战标识-购买经验」) | 4 金/击=+4 经验,升级=过门槛表(`research/xp-rules.md` §2;表值 = `kernel/cw_economy.py::XP_TO_NEXT_LEVEL`) | `PrepActionExecutor` 备战连点循环;词表 `kernel/cw_prep_actions.py::LevelUp` | 备战期(22 号篇 §2;商店期收缩后的唯一买经验期) | 非终结 |
+| 卖备战(拖备战栏→区域-出售区) | 卖出退金规则(`research/economy.md` §3,单一源 `kernel/cw_economy.py::sell_refund`) | `PrepActionExecutor` → `prep_actions.py::drag_bench_to_sell`;词表 `kernel/cw_prep_actions.py::SellBench` | 备战期:腾位(M4)/凑息(P49 ⑤)/筹资/换线塌缩(22 号篇) | 非终结 |
+| 卖上阵(拖上阵位→出售区) | 同上 | 词表 `kernel/cw_vocab.py::SellDeployed`;备战执行器 + 部署面换血(`cw_screen_deploy.py::_sell_offtarget_deployed`) | 备战期/部署期换血(24 号篇) | 非终结 |
+| 买经验(点「备战标识-购买经验」) | 4 金/击=+4 经验,升级=过门槛表(`research/xp-rules.md` §2;表值 = `kernel/cw_economy.py::XP_TO_NEXT_LEVEL`) | `PrepActionExecutor` 备战连点循环;词表 `kernel/cw_prep_actions.py::LevelUp` | 备战期(22 号篇;商店期收缩后的唯一买经验期) | 非终结 |
 | 开商店(点「按钮-商店」) | 商店每节点自动刷新 1 次(`data/gameplay.md`);备战帧金币可见可读(`kernel/cw_prep_actions.py::OpenShop` 注) | 词表 `kernel/cw_prep_actions.py::OpenShop`(read_only 两形态);编排 = `cw_screen_prep.py` 商店访问段 | 备战期(进商店访问的唯一入口动作) | **备战环终结**:开店/读数开店后交商店访问编排或回外循环重识别(prep_visit.md §1/§3) |
 | 出战(点「按钮-出战」) | 未在行动值内取胜扣血(`data/gameplay.md`) | 词表 `kernel/cw_prep_actions.py::StartBattle`;发射核 = `kernel/cw_launch_admission.py::readiness_launch_decision` + `operations/cw_loop.py::readiness_battle_launch`(达标臂) | 备战期出口(唯一完成态) | **备战访问终结**:交回外循环战斗分支(prep_visit.md §3) |
 | 点奖励球(区域-奖励) | 奖励球飞行动画 ≤2s(`research/screen_flow_timing.md` #16) | `PrepActionExecutor._click_spheres`(批式:一次全点→等 2s→统一验证);词表 `ClickSpheres` | 备战期(席满让路门 = `strategies/impl/mandate_v1/entry.py` 席满探针段) | 非终结 |
@@ -80,10 +80,10 @@
 
 | 游戏可用动作 | 机制依据 | 我们的 op | 策略归属 | 访问终结语义 |
 |---|---|---|---|---|
-| 买牌(点商店牌-N) | 买后槽位留空不紧缩;满栏仍可买触发合成的牌(一击多张,`research/merge_mechanics.md`);牌费 = 费用徽章直读 | `cw_shop_actions.py::BuyCardOp`(槽号定位 = payload 定长槽阵列→「商店牌-N」坐标;买前裁片留证) | 商店期主力动作(22 号篇 §3) | 非终结 |
-| 刷新(点「按钮-刷新」) | 手动刷新 2 金/次恒定(`research/economy.md` §2;常量 `kernel/cw_economy.py::REFRESH_COST_BASE`);刷新后整店 5 槽全换(同 §2.1) | `cw_shop_actions.py::RefreshShopOp`(刷前现读→点刷新→牌行两帧指纹一致门) | 商店期(刷新门判据 = 22 号篇 §3) | **段终结**(§4) |
-| 买经验(点「备战标识-购买经验」) | 同 §3.3 买经验行 | `cw_shop_actions.py::LevelUpOp`(单击;`LevelUpShop` 意图) | **能力面可用、策略面收缩**:默认策略不在商店期买经验,移备战期决策(§5 判例;22 号篇 §3) | 非终结 |
-| 卖备战(拖备战栏→出售区;店开态备战席条仍可见) | 同 §3.3 卖备战 | `cw_shop_actions.py::SellBenchOp`(`drag_bench_to_sell` 复用) | **能力面可用、策略面收缩**:席满腾位/凑息卖收缩至备战期(§5 判例;腾位链 = 关店→备战卖→重开,牌面持久,22 号篇 §3) | 非终结 |
+| 买牌(点商店牌-N) | 买后槽位留空不紧缩;满栏仍可买触发合成的牌(一击多张,`research/merge_mechanics.md`);牌费 = 费用徽章直读 | `cw_shop_actions.py::BuyCardOp`(槽号定位 = payload 定长槽阵列→「商店牌-N」坐标;买前裁片留证) | 商店期主力动作(23 号篇) | 非终结 |
+| 刷新(点「按钮-刷新」) | 手动刷新 2 金/次恒定(`research/economy.md` §2;常量 `kernel/cw_economy.py::REFRESH_COST_BASE`);刷新后整店 5 槽全换(同 §2.1) | `cw_shop_actions.py::RefreshShopOp`(刷前现读→点刷新→牌行两帧指纹一致门) | 商店期(刷新门判据 = 23 号篇) | **段终结**(§4) |
+| 买经验(点「备战标识-购买经验」) | 同 §3.3 买经验行 | `cw_shop_actions.py::LevelUpOp`(单击;`LevelUpShop` 意图) | **能力面可用、策略面收缩**:默认策略不在商店期买经验,移备战期决策(§5 判例;23 号篇) | 非终结 |
+| 卖备战(拖备战栏→出售区;店开态备战席条仍可见) | 同 §3.3 卖备战 | `cw_shop_actions.py::SellBenchOp`(`drag_bench_to_sell` 复用) | **能力面可用、策略面收缩**:席满腾位/凑息卖收缩至备战期(§5 判例;腾位链 = 关店→备战卖→重开,牌面持久,23 号篇) | 非终结 |
 | 关商店(点「按钮-收起」) | 收起 ~1s 过场回备战(`research/screen_flow_timing.md` #15) | `cw_shop_actions.py::CloseShopOp`(no-op)+ 编排壳 `operations/cw_op/cw_op_close_shop.py::CwOpCloseShop` 承担点击 | 商店期收工动作(恒可用终结) | **访问终结**(§4) |
 | 查看牌详情(商店牌详情弹窗) | — | `operations/cw_screen/cw_screen_shop_card_detail.py::CwScreenShopCardDetailPopup`(0t 分支;点 X 验消失,**绝不点购买**) | 无(推进为流程义务) | 关闭即终结 |
 | 查看刷新概率表(弹窗/概率条) | 概率表 OCR 双源一致(`research/economy.md` §2;单一源 `data/cw_shop_odds.py::REFRESH_PROB`) | 弹窗:`operations/cw_screen/cw_screen_refresh_odds_popup.py::CwScreenRefreshOddsPopup`(0e2);概率条直读进 `refresh_probs`(观察,非动作) | 无 | 关闭即终结 |
@@ -133,7 +133,7 @@
 
 ## 5. 判例载明与边界
 
-- **判例(用户裁定 2026-09-14)**:卖备战/买经验是商店开画面**可用**动作(SellBenchOp/LevelUpOp 在商店 op 表在役,机制路径已验证),但默认策略**不在商店期做**——策略面收缩至备战期(商店期 = 买牌/刷新/关商店;席满腾位链 = 关商店→备战期卖→重开商店,节点内关店/重开不刷新牌面、牌面持久,节点切换才自动刷新,`research/economy.md` §2.1)。能力矩阵按能力面记:七动作族、商店 op 表、容器转移函数全保留;策略归属 = [22_default_policy.md](../strategy-docs/22_default_policy.md) §3/§7。
+- **判例(用户裁定 2026-09-14)**:卖备战/买经验是商店开画面**可用**动作(SellBenchOp/LevelUpOp 在商店 op 表在役,机制路径已验证),但默认策略**不在商店期做**——策略面收缩至备战期(商店期 = 买牌/刷新/关商店;席满腾位链 = 关商店→备战期卖→重开商店,节点内关店/重开不刷新牌面、牌面持久,节点切换才自动刷新,`research/economy.md` §2.1)。能力矩阵按能力面记:七动作族、商店 op 表、容器转移函数全保留;策略归属 = [23_shop_screen.md](../strategy-docs/23_shop_screen.md)(商店期动作面)与 [22_prep_screen.md](../strategy-docs/22_prep_screen.md)(备战期接收面)。
 - **商店锁**:游戏机制存在(整店级,`research/economy.md` §2.1),建档已有按钮坐标,生产链路未建模(无识别/无动作)——能力面登记为「存在但未接线」。
 - **SwapDeploy**:词表/容器投影/sim 消费在役,生产执行器未接线(备战域部署换位经部署机拖拽承载)——能力面按词表完备性保留。
 - **刷新不换牌面的场景**:节点内关店→重开不刷新(牌面持久);跨节点自动刷新全店(不继承)。判「是否刷新」以节点推进事件为锚(`research/economy.md` §2.1)。
