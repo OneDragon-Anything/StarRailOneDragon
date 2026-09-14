@@ -33,6 +33,13 @@
 > 申报「逻辑态显式不推进」)与本篇 LevelUp 定案④相反,随批2a 落码
 > 同步转录(landing §3.2a);保守回退仅在该文档标注的知识缺口处临时
 > 存在且须带补档计划。
+> R10 开书册卡归备战词表(逐画面审查裁定 2026-09-14):「点备战席书册卡
+> 『开启』→弹专家邀请函」发生在备战画面(书册卡 = 备战席占槽道具,与补给
+> 箱/秘密典籍并列第三件),开卡动作归备战词表——与 OpenBox/OpenTome 同形;
+> 新备战动作类 `OpenBookcard`(坐标参数化机械动作,零判效);
+> `CwScreenExpertInvite` 收缩为弹窗画面 op(只辖选卡,open_card 节点退役);
+> 「开卡→选卡」链改外循环编排(R7 OpenBox 终结化同构)。落位 = 批2c
+> (landing §3.2c),条款见 §2.6 末。
 > 裁决3 比对收口纪律升格通用原则:所有比对(验证/判效/一致性检查)只
 > 收口在 game_state 写入观察态的对账点,动作 op 内零比对;WearEquip 零
 > 比对出生,旧 CV-diff 验穿批2 同批删;现役动作 op 内留证比对面列待迁
@@ -430,6 +437,29 @@
     内行为连贯);批3 收编清单联动(PickBoxCard 不立 op 类);批4 锁面
     词表数联动(本裁定单项:备战词表 13 → 12;批4 锁面以批2 完成后的
     统一词表 `CW_ACTION_TYPES` 实际元组为准,不另记账目数)。
+- **书册卡开卡归位**(用户裁定 R10,逐画面审查 2026-09-14):书册卡 =
+  备战席占槽道具(与补给箱/秘密典籍并列第三件),「点槽开启 → 弹专家邀请
+  函」发生在备战画面,开卡动作归备战词表——现役错挂在弹窗画面 op 的
+  `open_card` 节点(`cw_screen_expert_invite.py::open_card` :170),与
+  OpenBox(开补给箱)/OpenTome(开秘密典籍)已入备战词表不对称。定案:
+  - **新备战动作类 `OpenBookcard`**(`slot: int | None = None`,与
+    OpenBox/OpenTome 同签名;执行 = `find_bookcards` 识别 + 点槽中心 +
+    动画等待,体自现役 `open_card` 迁入;坐标参数化机械动作,零判效;
+    视觉域 = 开卡即摘件,与 OpenBox/OpenTome 同形,`cw_screen_prep.py`
+    :899/:913 先例;逻辑态枚举文档随批2c 落行)。
+  - **`CwScreenExpertInvite` 收缩为弹窗画面 op**:只辖选卡(重入裁决 +
+    `chosen_expert` 写 + 现金为王到账登记原位);`open_card` 节点与其
+    申报面锁(`test_expert_open_card_node_stays_legacy`)随拆退役,入口
+    态收敛为「弹窗已开」单一形态(门 = `lifecycle_observe` 在册)。
+  - **链拆编排**:备战侧发 `OpenBookcard` → 弹窗出现 → 外循环 0k 按画面
+    分发选卡(R7 OpenBox 终结化同构;Tome 先例 = `entry.py:461` 发射 +
+    loop 0i 接管)。现役预清场自动开卡路径(`cw_screen_prep.py` 的
+    `_clear_prep_cards` journal 包装全链)改产 `OpenBookcard` + 交回,
+    弹窗交 0k;是否升 director 门控(Tome 先例 = 策略发射)留策略侧定,
+    本批不升。
+  - **批次归位**:批2c 新立(landing §3.2c;依赖批2b 统一词表就位,新类
+    直生 `cw_vocab` 免二次迁移;批3 收编面随扩,新执行器分支照旧机械
+    op 类化)。
 - **逻辑态计算全覆盖**(用户裁定 R9,废除「未建模 → 保守回退」):
   「逻辑态未建模 → 交回外循环保守回退」自目标架构废除(现役形态 =
   `_project_prep_obs` 未建模返回 None → visit 终结交回外循环,

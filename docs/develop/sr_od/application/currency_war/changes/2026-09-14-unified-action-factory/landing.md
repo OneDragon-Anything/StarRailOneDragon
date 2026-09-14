@@ -190,11 +190,42 @@ import 行)、`sim/engine_p1.py`、`sim/checks/suspects.py`、
 **验收凭据形式**:各专锁测试名 + sim seed
 锁测试名 + 兼容窗申报 diff + L1/回归门记录。
 
+## 3.2c 批2c:书册卡开卡归位(语义小批;R10)
+
+**范围**:新备战动作类 `OpenBookcard`(直生统一词表 `cw_vocab` + 词表
+元组登记 + 注册行;执行体自 `cw_screen_expert_invite.py::open_card` 迁入
+执行器分支 `_open_bookcard`:`find_bookcards` 识别 + 点槽中心 + 动画等待;
+逻辑态 = 视觉域摘件,与 OpenBox/OpenTome 同形;枚举文档落行);
+`CwScreenExpertInvite` 收缩(open_card 节点拆退役,op 入口收敛为「弹窗
+已开」单一形态,申报面锁 `test_expert_open_card_node_stays_legacy` 随拆
+退役);链拆编排:备战预清场(`cw_screen_prep.py::_clear_prep_cards`)
+改产 `OpenBookcard` 经执行器发射 + 交回,弹窗交 cw_loop 0k 分发选卡
+(现役 journal 包装全链路径退役;R7 OpenBox 终结化同构)。
+**不含**:书册卡发射是否升 director 门控(留策略侧,本批维持预清场触发);
+选卡决策面改动(`choose_expert_index` 原位)。
+**设计依据**:design.md §2.6 R10 条款。
+**文件面**:`kernel/cw_vocab.py`、`prep_actions.py`、
+`operations/cw_screen/cw_screen_expert_invite.py`、
+`operations/cw_screen/cw_screen_prep.py`、`operations/cw_loop.py`(0k 分发
+面核对,分发行已在其册,预计零改)、`flow/action-logic-state.md`
+(OpenBookcard 行)、`sr-od-test/` 回归与专锁。
+**依赖**:批2b(T-214;统一词表就位,新类免二次迁移)。
+**优先级建议**:6。
+**完成判据**:
+- `OpenBookcard` 词表行 + 注册行在册;备战侧发射 → 点槽 → 弹窗出现 →
+  0k 接管选卡全链行为对照现役预清场全链等价(遥测动作行 OpenBookcard
+  在册,op 行/journal 形态对照在案);
+- `CwScreenExpertInvite` 无开卡残留(节点/申报面锁退役,入口门 = 弹窗
+  已开单一形态);
+- 逻辑态摘件对账绿(开卡后槽位表与实机一致);
+- 回归门①+②(见卷首「验证门口径」)+ `ruff check` 本批文件零告警。
+**验收凭据形式**:专锁测试名 + L1/回归门记录 + 行为对照记录。
+
 ## 3.3 批3:备战执行器收编(执行器方法 → op 类,零行为)
 
 **范围**:备战动作 op 类逐字迁移(体迁 + executor 薄委托,§2.4;LevelUp/
 ClickSpheres 体已批2 定形,本批只迁形;PickBoxCard 已批2 随 R7 删除,
-不立 op 类;OpenBoxOp 置 terminal=True,terminal_wait 与批2a 落地
+不立 op 类;OpenBookcard 体已批2c 落定,本批只迁形;OpenBoxOp 置 terminal=True,terminal_wait 与批2a 落地
 交回等待值等价(`_OVERLAY_ANIM_WAIT_S`,来源写死见 §3.2a);`PrepExecEnv`;执行包络留守;
 分派链删除改查注册表;终结判定改读 `terminal` + `terminal_wait` 类属性
 (wait 3/1.0 等价锁;决策循环与生命周期孪生环两处对齐);OpenShop 注册行
@@ -278,6 +309,9 @@ ClickSpheres 体已批2 定形,本批只迁形;PickBoxCard 已批2 随 R7 删除
   (单一工厂 + 域 env);双族坐标系节改「统一词表 + 容器下标规范系 +
   执行边换算」;补词表边界声明(原子动作 + 坐标参数化机械动作入词表,
   组合/挑选逻辑属策略实现)← 批2/批3
+- `flow/screens-actions-capability.md`:开书册卡行载体列更新
+  (`cw_screen_expert_invite.py::open_card` → `OpenBookcard` op 类);
+  专家邀请函画面行动作列收敛为选卡 ← 批2c
 - `flow/action_exec.md` §1/§2/§4:词表节(备战动作表 → 统一词表指针;
   退役 = 删纪律;逻辑态计算枚举指针 = `flow/action-logic-state.md`);
   执行载体表述统一(PrepActionExecutor 表述改「备战
