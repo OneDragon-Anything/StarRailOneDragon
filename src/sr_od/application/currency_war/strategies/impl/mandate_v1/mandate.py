@@ -50,6 +50,7 @@ from sr_od.application.currency_war.kernel.cw_intention import (
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     count_merge_material_blocked,
     merge_material_reject_reason,
+    same_star_count,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     DeployMove,
@@ -501,10 +502,22 @@ def dominance_buy_eligible(gold: int, bench_free: int,
 
     辖域注(双引注,ADR-0627;P88 落码纪律——缺本注则上文支配性论述
     构成收窄回滚的合法依据):上段「无条件放行」是**金维**论证,成立
-    前提 = 席位免费;席位维的两处辖域修正在本函数**之外**、消费位侧
-    落码,禁据上文支配性论述回滚——
-    ① ADR-0616 命题 4:V_slot>0 带(bench_free ≤ 1)席位外部性否决,
-    落点 = 本函数本体单点收紧(T-166 批 2 候派,现未落);
+    前提 = 席位免费;席位维的两处辖域修正在本函数**之外、消费位侧**
+    落码的只有 ②(P88),① 经本函数本体收紧落码,禁据上文支配性论述
+    回滚——
+    ① ADR-0616 命题 4(§2.5):V_slot>0 带(bench_free ≤ 1)席位外部性
+    否决,落点 = 本函数本体单点收紧(bench_free > 0 → > 1)。账目形态
+    = 补账非推翻:P41② 支配论证前提集 = {金轴, 持有期权},不含席位
+    占用后果;仅剩最后空槽的帧,非定向买入对该槽的占用对更高优先级
+    方向动作(P24 补部署/M2 线成员)构成席位阻断外部性,该带成本已由
+    P41③ 定价(V_slot = 被阻断动作 EV 上界,既有已证量)——带内买入
+    失去 P41② 自动性、须过正账比较而未证 ⟹ fail-closed 否决;
+    bench_free ≥ 2 域支配论证原样有效(零干涉)。非定向买臂闭集:
+    dominance_buy 辖;EV 买(EV 账已含 V_slot 定价,再否决 = 重复计价)/
+    M6 溢余转压库(既有 bench_free>0 前置+P49 线性律辖垫库席位成本)/
+    ②(b) 死金压库(同左)不辖——三臂不经本函数,既有前置各自管辖;
+    m2_merge_completion = 义务通道且 P41③ 阻断集不含合成完备购
+    (免席门),零误伤。
     ② P88 调和引理(docs/develop/sr_od/application/currency_war/proofs/p88.md):锁线
     转型域 D 帧(armed ∧ locked ∧ fp<1.00 ∧ 板满)席位最贵态——线外
     1★ 候选占位成本 = 被阻线内义务净 EV>0(P41③/P76 丙),金维
@@ -513,14 +526,68 @@ def dominance_buy_eligible(gold: int, bench_free: int,
     hub_option_buy)的辖域前置(``swap_transition_narrow_frame``,
     域谓词单一源 = kernel ``_swap_transition_domain_of``);豁免 ⇔
     reason ∈ LAUNCH_CAUSE_BY_ARM ∖ PRESS_NARROWED_ARMS(闭集单一源 =
-    sell_gate,m2 族/C1/M6 零触碰)。本函数本体(金位+bench_free>0)
-    是金维+席物理维资格门,不辖 D 域判定——两域修正叠加合取,互不
-    替代。
+    sell_gate,m2 族/C1/M6 零触碰)。本函数本体(金位+席物理维资格门,
+    后者已按命题 4 收紧为 bench_free > 1)不辖 D 域判定——两域修正
+    叠加合取,互不替代。
     [13] 停手线纪律语义
     由候选集判据承载(零重叠 1★ 全额退),不随本旗消失(迁移完备性
     申报 = ADR-0604 §4-①)。
     """
-    return gold > saturation_line(cap_resolved) and bench_free > 0
+    return gold > saturation_line(cap_resolved) and bench_free > 1
+
+
+# ===== 买入死库存防线(G-S1 买侧对偶;T-229 方向②)=====
+
+def dead_stock_pair_buy_reject_reason(name: str, star: int,
+                                      bench: list[BenchChar | None],
+                                      deployed: list[BenchChar] | None = None,
+                                      k_members: tuple[str, ...] = (),
+                                      ) -> str:
+    """非定向 1★ 买入资格子谓词:买入将制造「同名 1★ 第二张死库存对」
+    时拒(返回拒因键 ``dead_stock_pair``,'' = 可买;API 形态与
+    ``cw_merge_simulate.merge_material_reject_reason`` 同形——判据本体
+    单点,计数归消费位,键 ``dead_stock_pair_blocked`` 事件口径)。
+
+    判据(全称谓词,零参数):拒 ⟺ star=1 ∧ name∉K ∧
+    ``same_star_count(name, 1, bench, deployed) == 1``。C 为全场域
+    (bench∪deployed)同名同 1★ 计数(计数单一源 = ``same_star_count``,
+    与 G-S1 卖侧同源,禁消费方手搓同式),逐值验证:
+    - C=0:买入后 C=1,单张 1★ 全额可退件零锁席,放行;
+    - C=1:买入后 C=2——G-S1(cw_merge_simulate.
+      ``merge_material_reject_reason``,ADR-0558)按「2/3 合成进度
+      期权 fail-closed 不卖」把该对**两成员都**永久拒卖;对非线内名
+      该对无第三张来源(义务面不含 ⇒ M2/m2_merge_completion 不买它)
+      ⟹ 无合成意图的确定性死库存对,每对锁 2 席。买侧断新生对 =
+      C 在 {0,1} 上单调(0→1 许,1→2 禁),该名 G-S1 拒卖集构造性
+      恒空,死库存不可达;
+    - C=2:买入即同名同星满 3 自动合成 2★(全场 C 3→1 净释放席位,
+      merge_mechanics §2;G-S1 辖星 = 1 同款口径),是消对修复动作,
+      放行——禁误伤;
+    - name∈K(线内/义务基座成员):任意 C 放行——线内同名对 = 合法
+      合成素材,第三张由 m2_merge_completion 通道管辖(免席门),本
+      谓词与该通道零交集。参照系与 G-S1 卖侧同键族(K 成员性 +
+      same_star_count),防双源。
+
+    为什么(实证):死库存对 = 席位死锁的直接成因之一——G-S1 保护
+    对无合成意图的非线内名属过度保护,卖侧放行(改 G-S1 语义)与
+    买侧断新生(本谓词)两案中取后者:保守向、零触碰在册守卫语义、
+    与 T-229 方向③(G-S1 退出通道)正交不互斥。s77091 型案例:
+    R1 死金压库买入阿格莱雅×2、R5 dominance 连买绯英成对,两对锁席
+    九轮,缺口件(仙舟#3)无兑付通道致 form_ok 九连 False。
+
+    边界:辖 1★ 买入(2★ 直出不成对恒放行);辖「非定向」臂(候选
+    资格维,消费位 = dominance_buy / ②(b) 死金压库燃料类 prio 的
+    候选过滤),义务通道(M2/m2_merge_completion/prio0 缺口/prio1
+    持有档)零消费;``bench`` 含 ``None`` 槽形态与 ``same_star_count``
+    签名对齐。
+    """
+    if (star or 1) != 1:
+        return ''
+    if not name or name in k_members:
+        return ''
+    if same_star_count(name, 1, bench, deployed) == 1:
+        return 'dead_stock_pair'
+    return ''
 
 
 # ===== 锁线转型域收窄辖域(T-190 批 B;P88,ADR-0627)=====
