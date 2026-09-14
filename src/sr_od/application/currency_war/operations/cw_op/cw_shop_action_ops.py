@@ -454,18 +454,23 @@ class BuyCardOp(ShopActionOp):
         # 坐标单一真相源 = screen_info,设计件 §2.5-5)。身份匹配优先
         # 同一性(action 由决策核自 payload 产出),退化按 (name, star)
         # ——匹配下标仅作槽号缺失时的兜底锚,见下方点击解析。
-        _slot_idx = None
+        # 槽号主源 = payload 定长槽阵列位置(三态模型:数组下标+1 =
+        # 物理槽;身份同一性优先,退化 (name, star));card.slot 兼容
+        # 字段降为最后兜底(退役面审计:T-190 批2)。
+        _slot_no_matched = None
         _payload = state.shop.value
-        _cards = shop_payload_content_cards(_payload)
-        for _i, _c in enumerate(_cards):
-            if _c is action.card:
-                _slot_idx = _i
+        _slots = (_payload.cards if _payload is not None else [])
+        for _i, _s in enumerate(_slots):
+            if _s.kind == 'content' and _s.card is not None \
+                    and _s.card is action.card:
+                _slot_no_matched = _i + 1
                 break
-        if _slot_idx is None:
-            for _i, _c in enumerate(_cards):
-                if (_c.name or '') == (action.card.name or '') \
-                        and int(_c.star or 1) == int(action.card.star or 1):
-                    _slot_idx = _i
+        if _slot_no_matched is None:
+            for _i, _s in enumerate(_slots):
+                if _s.kind == 'content' and _s.card is not None \
+                        and (_s.card.name or '') == (action.card.name or '') \
+                        and int(_s.card.star or 1) == int(action.card.star or 1):
+                    _slot_no_matched = _i + 1
                     break
         # 点击坐标 = 牌自带实测槽位(观察期读链写入的物理槽号)→ screen_info
         # 「商店牌-N」中心。紧凑下标只在牌行满列期与物理槽位等价:游戏买入
@@ -474,13 +479,14 @@ class BuyCardOp(ShopActionOp):
         # 1 槽框,「买牌点击不注册」根因;布局双源同族 = ADR-0646 bench 布局
         # 错位的商店牌行版)。槽号缺省(0 = sim/离线构造、修复前旧档)退回
         # 紧凑下标映射(旧行为)。
-        _slot_no = int(getattr(action.card, 'slot', 0) or 0)
+        _slot_no = _slot_no_matched
+        if _slot_no is None:
+            # 兼容兜底:旧档/sim 构造牌的 slot 字段(退役过渡期保留)
+            _slot_no = int(getattr(action.card, 'slot', 0) or 0)
         if 1 <= _slot_no <= len(env.click_pts):
             pt = env.click_pts[_slot_no - 1]
         else:
-            pt = (env.click_pts[_slot_idx]
-                  if _slot_idx is not None and _slot_idx < len(env.click_pts)
-                  else (_Pt(0, 288) if not env.click_pts else env.click_pts[0]))
+            pt = (_Pt(0, 288) if not env.click_pts else env.click_pts[0])
         # 买前裁该片矩形拷贝(`w536_merge_expect/`:「买了什么」的像素级
         # 证据,随期望态带到对账点;一帧原则,必须 copy 防帧缓存覆写)。
         _card_crop = None
