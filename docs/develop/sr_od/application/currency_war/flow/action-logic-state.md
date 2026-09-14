@@ -108,6 +108,7 @@ op = `operations/cw_op/cw_close_shop_action.py::CloseShopOp`（动作 op 内 no-
 2. gold += 退款，公式单一源 = `kernel/cw_economy.py::sell_refund`：退款 = 招募费（`bench_char_cost`，注册表单一源，未知按中位保守估）× 星级倍数表 `_SELL_MULT`（星级倍数 = 合成副本数结构：1★=全额，2★/3★/4★ = `star_base_copies` 同构倍数）；**手续费口径**：star≥2 且 cost≥2 再 −1；cost=1 豁免（2★1费 卖出=全额倍数，live 实测定谳，`sell_refund` 注 + `research/economy.md` §3）；3★/4★ 的手续费档 = 推测待 live 核（§7 G3）；
 3. **装备全量回装备区**：被卖单位身上的全部装备（简易/进阶/核心不分）进入 owned 装备库存——穿戴是可逆暂借（【口述·权威】`research/equipment_mechanics.md` §1「卖出角色=装备全量回装备区」；kernel 按 C6 装备守恒回收建模，`cw_vocab.py` 卖出分支注；实机帧级证据未采 = §7 G5）；商店逻辑态直写腿已落码 equips 回收（`apply_shop_action_logic` SellBench 腿）；备战写口域集 = gold/bench（`apply_prep_action_logic`，equips 域留观察覆盖——域集封闭申报）；
 4. 陈旧提案拒：expect 身份与槽内不符 = 零写（ADR-0317）。
+5. **溢出条件腿**（T-226/R11，2026-09-15 实机建档 [prep.md 告警节](../../../game/screens/currency_war_prep.md)）：`overflow_warning` 在场（备战席满告警横幅 = 存在未安置溢出角色，此刻出战点击被游戏忽略）时，卖出语义补一条——**腾出槽当帧记溢出卡入位**（`bench[i] := 溢出卡`，「卖 → 溢出卡自动入自由槽」是游戏侧行为；有溢出时席必满、自由槽恒唯一，落位无歧义）+ `overflow_card` 消费清空 + 旗标 logic 消亡（下帧实读覆盖，两态制观察赢）。入位对象身份缺读（`overflow_card=''`）= 跳过入位（槽留空等观察），卖出语义本体不受阻；星级缺读按 1 兜底。容器字段 = `overflow_warning: bool` / `overflow_card: str`（观察写端 = `cw_screen_prep` 备战 heavy 溢出观察写端，渠道①）；策略消费门 = mandate 溢出门（flag 在场 → 本帧决策强收窄单动作 SellBench，禁发 StartBattle/冻结买面）。
 
 **随机面**：无（卖价修饰效果 = 大裁员/降本增效的卖价 ×2，其作用口径待实证 = §7 G4，缺口闭合前不写修饰腿）。
 
@@ -317,7 +318,7 @@ op = `operations/cw_op/cw_comp_transaction_action.py::CompTransactionOp`（**终
 |---|---|---|---|---|
 | G1 | 非满栏一击买牌张数（「恒 1 张」= 框架推论，零实测样本） | BuyCard | 按 k=1 记账；买后观察多张 → 对账纠偏 + 缺陷台账 | 实机局买牌动作行 × 备战席增量对账；或停机钩子采集「非满栏一击多张」帧 |
 | G2 | 满栏连升（own=0 基础星满栏连买 3 张触发合成；merge_mechanics §2.5「连升同理」自标低置信未亲见） | BuyCard（满栏例外腿） | `merge_buy_completes` own≥1 门按**拒买**实现（ADR-0619 申报边界）；若拖动对账网实证连升可行 → 回该单一源改门 | 满栏 + 商店 3 张同牌帧采集；对账层出现「拒买但画面买成」缺陷票即触发复测 |
-| G3 | sell_refund 3★/4★ 手续费精确值（−1 为推测） | SellBench / SellDeployed / CompTransaction | 退款消费按保守端（下界）组装；live 核定 = 单局复盘检查项 | 合 3★ 后读出售按钮金数 |
+| G3 | sell_refund 3★/4★ 手续费精确值(−1 为推测) | SellBench / SellDeployed / CompTransaction | 退款消费按保守端(下界)组装;live 核定 = 单局复盘检查项 | 3★ 已 live 定谳(2026-09-15 详情面板实测:3★2费=+17=cost×9−1 ✓,1★/2★ 同场三点全中,详 economy.md §3——4★ 档仍未核,剩余缺口收敛到 4★) |
 | G4 | 卖价修饰 ×2（大裁员/降本增效）作用口径（净额 vs 基础价） | SellBench / SellDeployed | 不写修饰腿，退款按基础公式；实持效果局观察覆盖 | 持修饰效果局卖 2★ 看回金差 |
 | G5 | 卖带装角色装备去向（口述·权威 = 全量回区；实机帧级证据未采） | SellBench / SellDeployed / CompTransaction | 按 C6 装备守恒回收建模直写（在役）；对账层认「账面 2 组件 == 画面 1 进阶」类合法态 | 卖带装单位前后装备区逐格对拍（heavy 帧采集） |
 | G6 | 好运令牌定向池结构（「四件」vs「3+3」）与判据面（R(c) 推荐表未采集） | 好运令牌（§4.7/§3A.2） | 判据面 fail-closed 永不进准入；`LuckyTokenUse` 类随族立档 + 发射位禁无判据发射（批 2a 申报），逻辑态 = 工具 −1 + 获得面按选定后确定直写 | 拖一次令牌数选项实机采集（proofs/p14 Q5）+ 判据面建模批补档 |

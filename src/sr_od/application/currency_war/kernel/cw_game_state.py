@@ -2172,6 +2172,23 @@ def apply_prep_action_logic(bs: GameState, action: Any, *,
         sold = bench_slots[idx]
         new_slots = list(bench_slots)
         new_slots[idx] = None
+        # 溢出腿(T-226/R11,规则 = flow/action-logic-state.md §2.4 溢出条
+        # 件行):席满溢出态(overflow_warning 在场)下卖牌,腾出槽当帧记
+        # 溢出卡入位——「卖 → 溢出卡自动入自由槽」是游戏侧行为(prep.md
+        # 告警节 2026-09-15 实机建档;有溢出时席必满,自由槽恒唯一,落位
+        # 无歧义)。入位对象 = overflow_card 身份(星级缺读 1 兜底,下帧
+        # heavy 实读覆盖修正);身份缺读('')= 跳过入位(槽留空等观察覆
+        # 盖),卖出语义本体不受阻。落地后旗标/身份 logic 消亡(下帧实读
+        # 覆盖,两态制观察赢)。
+        _ov_warn = bs.overflow_warning.value
+        _ov_id = bs.overflow_card.value
+        if _ov_warn and _ov_id:
+            from sr_od.application.currency_war.kernel.cw_exec_state import (
+                BenchChar,
+            )
+            new_slots[idx] = BenchChar(slot=idx + 1, char_id=_ov_id)
+            _w(bs.overflow_card, '', 'proj_overflow_absorbed')
+            _w(bs.overflow_warning, False, 'proj_overflow_cleared')
         _w(bs.bench, bench_view_of_slots(new_slots), 'proj_sell_bench')
         g = bs.gold.value
         if g is not None:
@@ -2504,6 +2521,22 @@ class GameState:
     # —— 交互状态 ——
     prep_substate: Field[str] = field(default_factory=Field)     # 分类子态四档(§3.2.17;恢复锁定=会话推断档,写端=接管协议 §6.3)
     event_overlay: Field[str | None] = field(default_factory=Field)  # 'none'=确认无浮层;None=没读到(§3.6.1 双义禁令)
+
+    # —— 备战席溢出(§3.2.20;2026-09-15 实机建档 prep.md 告警/溢出节)——
+    # [索引定义] overflow_warning:告警横幅「备战席已满」在场 = 存在未安置
+    # 溢出角色(此刻出战点击被游戏忽略——launch_dead 三连停机实证;策略
+    # 消费门 = mandate 溢出门,先卖腾位再出战)。取值时机 = 备战 heavy
+    # 观察每入口帧实读覆盖(两态制,观察赢);写入端单一源 = CwScreenPrep
+    # 观察写端(渠道①)。SellBench 溢出腿(apply_prep_action_logic)落地
+    # 后 logic 直写 False(推算消亡,下帧实读覆盖)。
+    overflow_warning: Field[bool] = field(default_factory=Field)
+    # [索引定义] overflow_card:溢出位(固定停车位,建档 area「区域-溢出角色」,
+    # 1080p rect 1352,710-1465,805)上的角色身份。'' = 溢出位无卡或身份未
+    # 识别(与 overflow_warning 配对解读:True ∧ '' = 有卡未识别);值语义
+    # = SellBench 溢出腿的入位对象身份(char_id;星级缺读按 1 兜底,下帧
+    # heavy 实读覆盖修正)。写入端单一源 = 同上观察写端;溢出腿落地后
+    # logic 直写 ''(入位消费)。
+    overflow_card: Field[str] = field(default_factory=Field)
 
     # —— 画面附加域(当前画面的 payload,非当前画面=None,§2.2 例外)——
     shop: Field[ShopPayload | None] = field(default_factory=Field)

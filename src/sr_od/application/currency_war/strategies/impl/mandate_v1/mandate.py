@@ -189,6 +189,11 @@ class MandateFrame:
     # [] = 真读到空。旧读点 = session.last_owned_equips 陈旧快照,已退役
     # (消费面与计划产出位同帧同源,防门①与产出位双源漂移)。
     owned_equips: list[str] | None = None
+    # 溢出告警旗标(T-226/R11,2026-09-15):备战席满告警在场 = 存在未安置
+    # 溢出角色,出战点击被游戏忽略(prep.md 告警节,launch_dead 三连实证)。
+    # 装配点 = entry.emit 从容器 overflow_warning 直传(观察写端单一源);
+    # 缺省 False = 旧构造点/店域帧门关(fail-open 向常规决策,语义同值)。
+    overflow_warning: bool = False
 
     @property
     def bench_free(self) -> int:
@@ -1084,6 +1089,40 @@ def run_mandate(frame: MandateFrame,
     out: list[Emitted] = []
     k = frame.k_members
 
+    # T3 同轮保留集卖侧读端(prep 域;单一源 = stall_protect_active,
+    # 轮界过期名就地销账 t3_protect_expired_round)。计算位 = 溢出告警门
+    # 之前(门先消费 defer_names;单点计算,禁同帧双算致轮界过期名重复
+    # 销账计数——原「凑息接线之前」计算位随门前置上移,凑息块消费同变量)。
+    _t3_protect = stall_protect_active(session, frame.round_num,
+                                       counters=counters)
+
+    # ---- 溢出告警门(T-226/R11,2026-09-15 用户定案;强收窄先于一切臂)----
+    # 告警在场 = 存在未安置溢出角色,此刻出战点击被游戏忽略(launch_dead
+    # 停机钩子三连实证,prep.md 告警节)→ 本帧决策输出强收窄为单动作
+    # SellBench(腾位后溢出卡自动入自由槽,下入口帧告警消失恢复常规决策):
+    # StartBattle 禁发、买面/凑息/部署全冻结。候选与排除同源(wanted_close
+    # 腿 2 先例:统一装配 A channel='m4_fuel' + fuel_sell_candidates 全守卫
+    # ——占位件恒拒/合成素材拒入/T3 降序;零新增通道,reason 沿用
+    # m4_fuel_sell,构造事实分键 overflow_clear_sell/overflow_no_fuel)。
+    # 候选空集 = fail-closed 空批(禁乱卖被守卫件),交回外循环,环级无
+    # 进展守卫兜底。
+    if frame.overflow_warning:
+        _ov_excl = sell_exclusions(session, k, channel='m4_fuel',
+                                   cap_hold=locked_buy_cap_hold(state),
+                                   current_round=frame.round_num)
+        _ov_cands = fuel_sell_candidates(frame.bench, k, state=state,
+                                         exclude_names=_ov_excl,
+                                         defer_names=_t3_protect,
+                                         counters=counters)
+        if _ov_cands:
+            # 轮内卖出登记(档 2 新鲜度排除写端,与 M4/凑息臂同口径)。
+            record_round_sold(session, state, _ov_cands[0].char_id or '')
+            _count('overflow_clear_sell')
+            return [Emitted(SellBench(slot=_ov_cands[0].slot), True,
+                            'm4_fuel_sell')]
+        _count('overflow_no_fuel')
+        return []
+
     # crisis_refresh_invariant(P36-a 结构位;刷新域=商店线,prep 帧无对象,
     # 结构位在 executor——此处为序位声明,判据本体 refresh.crisis_refresh_invariant)
     # M5 开局板(§2.9 无数学面:开局帧(round_num≤1)板空且有 bench 件;
@@ -1094,13 +1133,6 @@ def run_mandate(frame: MandateFrame,
             and _deployable(frame, session, state)):
         _emit_deploy_moves(out, frame, session, state, 'm5_opening_board')
         deploy_intent_emitted = bool(out)
-
-    # T3 同轮保留集卖侧读端(prep 域;单一源 = stall_protect_active,
-    # 轮界过期名就地销账 t3_protect_expired_round)。计算位 = T-115 ②(a)
-    # 凑息接线之前(D5 接线位先消费 defer_names);原 M2 块前计算点删除
-    #(单点计算,禁同帧双算致轮界过期名重复销账计数)。
-    _t3_protect = stall_protect_active(session, frame.round_num,
-                                       counters=counters)
 
     # ---- T-115 规则②(a) 凑息卖 prep 接线(ADR-0580)----
     # 触发 = gold < g*(息帽 resolved 口径;买断制局 g*=0 自然全关,B2

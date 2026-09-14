@@ -782,7 +782,11 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         round_num=_round_num,
         # 装备域 owned 件名池直传(P4 观察接线,T-171):M7 装备穿戴放行
         # 判定输入与计划产出位同帧同源(None = 识别域未就绪,门按空保守关)。
-        owned_equips=getattr(obs, 'owned_equips', None))
+        owned_equips=getattr(obs, 'owned_equips', None),
+        # 溢出告警旗标直传(T-226/R11):容器观察写端单一源(cw_screen_prep
+        # 溢出观察写端);缺读 None = 门关(fail-open 向常规决策,与 False
+        # 同向——旗标只由真读横幅置位)。
+        overflow_warning=bool(bs.overflow_warning.value))
     # registry 下传骨架 pass(等级帽单一源,ADR-0565 收口 = ADR-0606:
     # M3 链 lv9_stop/level_spend_blocked 消费注入表,与 ④′ 姿态对账
     # 同一注入链)。

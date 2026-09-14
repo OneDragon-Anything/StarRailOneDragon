@@ -800,6 +800,37 @@ class CwScreenPrep(CwScreenOpBase):
                     # 值源;穿戴/选卡/卖返等 logic 增量写点不变,本重写 =
                     # 每次入口观察的真值刷新(频次高于旧派发位一次/期)。
                     session.last_owned_equips = list(obs.owned_equips)
+                # 溢出告警观察写端(T-226/R11,2026-09-15 实机建档 prep.md
+                # 告警/溢出节):横幅 = 游戏侧权威信号(出战被游戏忽略的
+                # 处理门,策略消费 = mandate 溢出门强收窄);溢出位 SIFT =
+                # 入位对象身份旁路(SellBench 溢出腿;缺读 '' = 未识别,
+                # 腿降级槽留空等下帧)。两读独立;横幅在场 = 唯一门语义,
+                # 身份只作 tracked 闭合不作门。
+                _ov_hit = self.round_by_find_area(
+                    screen, '货币战争-备战', '告警-备战席已满',
+                    crop_first=False).is_success
+                _ov_id = ''
+                if _ov_hit:
+                    # ensure_portrait_templates 用模块级导入(:87;函数内
+                    # 重绑定会遮蔽 _observe 前段 687 行的引用,F823 实证)。
+                    from sr_od.application.currency_war.kernel.cw_obs_core import (
+                        _area_rect,
+                    )
+                    from sr_od.application.currency_war.obs.cw_identity_obs import (
+                        identify_slots,
+                    )
+                    _ov_rect = _area_rect(self.ctx, '区域-溢出角色',
+                                          '货币战争-备战')
+                    _ov_tmpl = ensure_portrait_templates(self.ctx)
+                    if _ov_rect is not None and _ov_tmpl is not None:
+                        _ov_chars = identify_slots(screen, _ov_tmpl,
+                                                   [(1, _ov_rect)], '')
+                        if _ov_chars:
+                            _ov_id = _ov_chars[0].char_id or ''
+                _bs_obs.observe(_bs_obs.overflow_warning, _ov_hit,
+                                sig=_prep_sig)
+                _bs_obs.observe(_bs_obs.overflow_card, _ov_id,
+                                sig=_prep_sig)
             # (obs.state 视图合成随黑板槽退役消亡——容器化段 2 消点:
             #  game_state_view 全仓最后活调用清零,决策读自容器单例;
             #  cw_bs_view 文件本体删除归波 5,设计件 §2.3/§2.6。)
