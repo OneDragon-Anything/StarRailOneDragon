@@ -820,9 +820,27 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
     :func:`_merge_item_occupied_slots`)。用途:离线重建 / 漂移恢复。
     """
     chars = identify_slots(screen, templates, _ctx_slots(ctx, '备战栏', 9), '')
-    # [停机钩子·偏常驻兜底(hook审计 S3/r351 分类修正:触发=「占用且全部识别
-    # 路径不认识」= 兜一切未知物品变体,比临时建档面宽——真删了,下个新物品
-    # 变体会被当空槽乱操作,比停机贵;保留,识别覆盖新变体时自然不再触发)]
+    _summon_unknown_hook(ctx, screen, chars)
+    _merge_item_occupied_slots(ctx, screen, chars)
+    return chars
+
+
+def _summon_unknown_hook(ctx: SrContext, screen: MatLike,
+                         chars: list[BenchChar]) -> None:
+    """召唤物/物品停机钩子(偏常驻兜底,hook审计 S3):占用但全部识别路径
+    不认识的备战席槽 → 停机保画面留现场建档。
+
+    为什么读链双路径都必须挂:身份读链有旧路径(:func:`read_bench_chars`)
+    与漏斗路径(:func:`read_bench_chars_tiered`,P4R4 heavy 批起的生产主路径)
+    两条,钩子段原本只内联在旧路径——漏斗路径「占用未识别」的槽被静默
+    丢弃,跟踪席数少 1 → 席满被当有空位,策略照幻影空位发买牌、游戏全拒
+    且金不动(实机局:黄泉槽整槽丢读后 2 张连发全拒,2026-09-14
+    run_20260914_210200 停机钩子 exec_fail_mismatch)。本函数即原旧路径
+    内联段原样抽出,双路径共用单一源。
+    """
+    # [触发=「占用且全部识别路径不认识」= 兜一切未知物品变体,比临时建档
+    # 面宽——真删了,下个新物品变体会被当空槽乱操作,比停机贵;保留,识别
+    # 覆盖新变体时自然不再触发]
     # 召唤物/特殊形态建档(用户 2026-08-18 定调):
     # 槽位占用(slot_occupied CV)真 + SIFT 认不出 = 未建档单位现身 → **停机保画面**,
     # AI 现场点该槽 → 右侧详情面板出角色名(身份 ground truth 源)+ 外观对照 → 定名建档
@@ -847,7 +865,7 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                 _panel_open = True
                 break
         if _panel_open:
-            return chars
+            return
         # r100j 修正(用户纠偏:商店开态**不**挤压备战席;slot1「开启」=占槽物品的
         # 开启按钮,非购买经验 UI)。撤掉昨天的商店开态静默跳过(它掩盖真问题:
         # 真召唤物在商店开时占槽也永远发现不了)。真根因 = 该占槽物品是箱/卡包的
@@ -921,8 +939,6 @@ def read_bench_chars(ctx: SrContext, screen: MatLike, templates: AvatarTemplates
                 break
     except Exception:   # noqa: BLE001  采集 best-effort,绝不阻塞身份读取
         pass
-    _merge_item_occupied_slots(ctx, screen, chars)
-    return chars
 
 
 def _merge_item_occupied_slots(ctx: SrContext, screen: MatLike,
@@ -961,12 +977,31 @@ def _merge_item_occupied_slots(ctx: SrContext, screen: MatLike,
 #   L3 全库兜底:新角色首次上场(= 旧全库路径)。
 # 状态读取与写回均挂 session(``cw_idfunnel_last``/``cw_idfunnel_seen``),
 # 不引入模块级全局;无 session(离线/测试)→ 直接 L3 全库,行为等价。
-# 实现手法 = **传缩小后的 templates 子字典**:门槛与裁决代码零改动,
-# 子集内裁决只会「拒绝下探」,不会误收(误收须过全部门槛)。
+# 实现手法 = **传缩小后的 templates 子字典**;裁决代码零改动。
+# ⚠️ 子集仲裁的固有缺陷(T-218 实机实证,2026-09-14 run_20260914_210200
+# 停机钩子 exec_fail_mismatch):歧义比在子集里失真——真身不在子集时,
+# 基准线上的跨身份弱命中即可称王(黄泉卡全库 27 内点为冠军,子集里被
+# 10~18 内点的忘归人/不死途弱命中顶替),毒化 last/seen 后整槽丢读 →
+# 席满被当有空位,策略发幻影买牌被游戏全拒。故 L1/L2 子集命中须清
+# 加严线(:data:`_FUNNEL_SUBSET_MIN_INLIERS_FACTOR`),弱命中一律下探
+# L3 全库仲裁兜底——子集只做「强信号快配」,不做裁决。
 
 #: 漏斗 session 状态字段名(session 上动态挂;对象由本层独占读写)。
 _FUNNEL_LAST: str = 'cw_idfunnel_last'
 _FUNNEL_SEEN: str = 'cw_idfunnel_seen'
+
+#: L1/L2 子集命中的加严倍数(子集命中门槛 = 调用方 min_inliers × 本值;
+#: 基准档 10 → 20,部署排 15 → 30)。为什么存在:子集仲裁无法复现全局
+#: 歧义比(缺席的高分真身不进比较),基准线上的弱命中在子集内恒称王;
+#: 实测跨身份弱命中带 10~18 内点、同帧干净真身 ≥27(黄泉 27/其余槽
+#: 29~61,离线对拍停机帧)→ 2× 线把弱命中全部压到 L3 仲裁,真身快配
+#: 通路不受影响。代价:内点在 [基准线, 2× 线) 窗的真命中多付一次全库
+#: 扫描(性能面,非正确性)。边界:①真身内点本帧跌破加严线时也下探 L3,
+#: L3 同阈值再败则该槽丢读——单帧丢读的防线在召唤物停机钩子
+#: (``_summon_unknown_hook``,占用未识别 → 停机保画面),不在本参数;
+#: ②跨身份第二名内点在加严线之上时,子集仍可能误收(全局歧义比无法在
+#: 子集复现,属本机制残余风险),由对账留证(obs_conflict)与钩子兜底。
+_FUNNEL_SUBSET_MIN_INLIERS_FACTOR: int = 2
 
 
 def _funnel_state(session) -> tuple[dict, set]:
@@ -1005,7 +1040,7 @@ def identify_slots_tiered(
     live_only: bool = False,
     center_gate: bool = False,
 ) -> list[BenchChar]:
-    """三层漏斗识别(门槛与全库完全一致,只缩候选集;见模块漏斗注释)。
+    """三层漏斗识别(L1/L2 子集命中走加严线,弱命中下探 L3;见模块漏斗注释)。
 
     :param session: 局 session(漏斗状态挂载点);None = 直接全库(行为等价旧路径)。
     :return: 同 :func:`identify_slots`;命中结果同步写回漏斗状态。
@@ -1016,6 +1051,9 @@ def identify_slots_tiered(
                               center_gate=center_gate)
     last, seen = _funnel_state(session)
     variant_keys = _full_variant_keys(templates) if live_only else None
+    # 子集命中的加严线(见 _FUNNEL_SUBSET_MIN_INLIERS_FACTOR 注):子集
+    # 冠军 ≠ 全局冠军,弱命中必须下探 L3 仲裁。
+    _subset_min = min_inliers * _FUNNEL_SUBSET_MIN_INLIERS_FACTOR
     out: list[BenchChar] = []
     for slot_idx, rect in slots:
         ch: BenchChar | None = None
@@ -1026,7 +1064,7 @@ def identify_slots_tiered(
             sub = _sub_templates(templates, [prev])
             if sub:
                 hits = identify_slots(screen, sub, [(slot_idx, rect)], row,
-                                      min_inliers=min_inliers,
+                                      min_inliers=_subset_min,
                                       live_only=live_only, center_gate=center_gate,
                                       variant_keys=variant_keys)
                 if hits:
@@ -1037,7 +1075,7 @@ def identify_slots_tiered(
             sub = _sub_templates(templates, l2)
             if sub:
                 hits = identify_slots(screen, sub, [(slot_idx, rect)], row,
-                                      min_inliers=min_inliers,
+                                      min_inliers=_subset_min,
                                       live_only=live_only, center_gate=center_gate,
                                       variant_keys=variant_keys)
                 if hits:
@@ -1095,10 +1133,12 @@ def read_deployed_chars_tiered(session, ctx: SrContext, screen: MatLike,
 def read_bench_chars_tiered(session, ctx: SrContext, screen: MatLike,
                             templates: AvatarTemplates) -> list[BenchChar]:
     """:func:`read_bench_chars` 的漏斗版(识别走三层漏斗;召唤物停机钩子
-    等 best-effort 尾巴复用旧实现——tiered 不改变「识别不出」的语义)。"""
+    双路径共用单一源——本路径是 heavy 生产主路径,占用未识别的槽若只静默
+    丢弃,跟踪席数失真会直通策略决策,见 :func:`_summon_unknown_hook`)。"""
     chars = identify_slots_tiered(session, screen, templates,
                                   _ctx_slots(ctx, '备战栏', 9), '',
                                   min_inliers=10)
+    _summon_unknown_hook(ctx, screen, chars)
     _merge_item_occupied_slots(ctx, screen, chars)
     return chars
 
