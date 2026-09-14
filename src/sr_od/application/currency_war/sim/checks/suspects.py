@@ -54,6 +54,7 @@ MODE_NAMES: dict[str, str] = {
     'D9': 'P2 血降金堆',
     'D10': '部署欠载',
     'D11': '幻影实体与槽超买',
+    'D12': '末轮升级超发',
 }
 
 
@@ -603,6 +604,69 @@ def d11_phantom_and_slot(rows: list[dict]) -> list[dict]:
     return out
 
 
+# =====================================================================
+# --- D12 位面末轮升级超发对账(T-228;对账型零新参数) ------------------
+# =====================================================================
+
+def d12_plane_last_xp_overspend(rows: list[dict]) -> list[dict]:
+    """位面末轮(ALL IN 豁免窗)升级击数对账:击数 > 整买一级需求上限
+    → 条目(20260913 sim 找问题报告问题 1/3 的检测器补位)。
+
+    对账式,零新参数:需求上限 = ⌈XP_TO_NEXT_LEVEL[轮入口等级]/4⌉
+    (xp_cur=0 最坏口径,买牌附赠经验只会压低真实需求,超上限必为超发;
+    单一源 = kernel cw_economy XP 表,禁第二份);击数 = 账本 LevelUp
+    动作行计数(单击粒度,ADR-0517 决策 3,行数≡击数)。
+
+    轮入口等级口径按行形状分派:行带 ``sim.spend`` = sim 账本行,
+    ``state.level`` 是轮末值 → 入口 = 前一行 state.level(D3 同款行序
+    携带,账本首行缺前行按 3);生产决策帧合并行(review_skeleton
+    ``merge_round_rows``)``state.level`` 是轮首帧值 = 入口本级直读。
+    跨位面等级继承单调,携带不按位面复位。
+
+    辖域 = 各位面最后一行(行序判定,不依赖节点名);位面末 boss 战 =
+    ALL IN 豁免窗(P72 §2.5),预算闸让位后击数只受 XP 表对账辖,
+    非末轮帧预算闸 ((3a) 量闸) 已逐帧管账不入辖域。
+    """
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        XP_PER_BUY,
+        XP_TO_NEXT_LEVEL,
+    )
+    out: list[dict] = []
+    last_of_plane: set[int] = set()
+    for idx, row in enumerate(rows):
+        nxt = rows[idx + 1] if idx + 1 < len(rows) else None
+        if nxt is None or (nxt.get('plane') or 1) != (row.get('plane') or 1):
+            last_of_plane.add(idx)
+    prev_level = 3
+    for idx, row in enumerate(rows):
+        if idx in last_of_plane:
+            clicks = sum(1 for a in (row.get('actions') or [])
+                         if a.get('__type__') == 'LevelUp')
+            if clicks > 0:
+                is_sim_row = 'spend' in (row.get('sim') or {})
+                st_level = (row.get('state') or {}).get('level')
+                entry = prev_level if is_sim_row else (
+                    st_level or prev_level)
+                need = XP_TO_NEXT_LEVEL.get(entry, 4)
+                cap = -(-need // XP_PER_BUY)
+                if clicks > cap:
+                    over_gold = (clicks - cap) * XP_PER_BUY
+                    out.append(_entry('D12', row, (
+                        f'可疑项(末轮升级超发):p{row.get("plane")}'
+                        f'r{row.get("round_num")} 升级 {clicks} 击 > '
+                        f'整买一级上限 {cap} 击(lv{entry} 需 {need} XP'
+                        f'/击{XP_PER_BUY};超发 ≥{over_gold} 金)'
+                        '——请裁决: ALL IN 窗连买下级 / 同级重复超发'),
+                        evidence={
+                            'clicks': clicks, 'cap_clicks': cap,
+                            'entry_level': entry,
+                            'xp_need': need, 'over_gold_floor': over_gold,
+                            'row_shape': 'sim' if is_sim_row else 'merged',
+                        }))
+        prev_level = ((row.get('state') or {}).get('level') or prev_level)
+    return out
+
+
 #: 检测器注册表(id → fn(rows)->list[entry];复盘模板生成器消费面)
 _SUSPECT_DETECTORS: dict[str, Callable[[list[dict]], list[dict]]] = {
     'D1': d1_same_round_pair_review,
@@ -616,6 +680,7 @@ _SUSPECT_DETECTORS: dict[str, Callable[[list[dict]], list[dict]]] = {
     'D9': d9_p2_bleed_gold_stack,
     'D10': d10_deploy_lag,
     'D11': d11_phantom_and_slot,
+    'D12': d12_plane_last_xp_overspend,
 }
 
 

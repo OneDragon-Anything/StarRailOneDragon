@@ -42,6 +42,46 @@ def lv9_stop(level: int, level_max: int) -> bool:
     return level >= level_max
 
 
+def xp_ledger_stop(xp_progress: tuple[int, int] | None,
+                   level_max: int) -> bool:
+    """XP 期望账本升级停判据(lv9_stop 的轮内盲区补位,与 lv9_stop
+    同位合取消费;语义锚 = design.md unified-action-factory §2.6
+    LevelUp 定案④「推进算子单一源 = xp_apply_clicks」)。
+
+    为什么需要(病灶实测):商店域逻辑态直写只写 xp 元组不写 level
+    域(升档等观察覆盖,kernel/cw_game_state.py apply_shop_action_logic
+    LevelUpShop 行);ALL IN 窗逐击决策环(decide_shop_screen 驱动器
+    逐动作直写推进)内 level 域滞留轮初值 ⇒ lv9_stop 恒 False,而
+    clicks_to_next_level 按推进后元组的新级 need 续算 ⇒ 同窗内连买
+    下级(sim n100 s77000 段 44/100 局 R9 击数超整买上限,批计 ≥864 金,
+    20260913 sim 找问题报告问题 1)。本判据改读「XP 期望账本」——
+
+    判据式:元组不变量 = need 槽恒为 ``XP_TO_NEXT_LEVEL[账本真等级]``
+    (xp_apply_clicks 写端写入,跨门槛推进后 need 槽换新级门槛;门槛表
+    按级严格递增)⇒ ``need >= XP_TO_NEXT_LEVEL[level_max]`` ⟺ 账本真
+    等级 ≥ level_max,即已到/越过升级目标,拒发。
+
+    跨域同构:sim/live 消费同一函数。live 注册表 level_max = 10,门槛表
+    键域 3-9 无表项 ⇒ 判据不辖恒 False,live 停止语义完全由 lv9_stop
+    承载(行为零变更);sim 注入视图 level_max = 9(sim_decision_
+    registry,LEVEL_CAP 冻结)有表项 ⇒ 账本越过 9 即停。
+
+    ``xp_progress`` = 容器 ``bs.xp.value`` 原样透传(缺读 None 不辖,
+    与 clicks_to_next_level 的缺省兜底方向一致——停判据缺读宁可放行
+    交 lv9_stop/量闸管辖,不制造静默拒)。单一源 = kernel
+    ``cw_economy.XP_TO_NEXT_LEVEL``,禁第二份表。
+    """
+    if not xp_progress or len(xp_progress) < 2:
+        return False
+    from sr_od.application.currency_war.kernel.cw_economy import (
+        XP_TO_NEXT_LEVEL,
+    )
+    threshold = XP_TO_NEXT_LEVEL.get(int(level_max))
+    if threshold is None:
+        return False   # level_max 无门槛表项(live=10):判据不辖
+    return int(xp_progress[1]) >= threshold
+
+
 def arm2_schedule(gold: int, cap_resolved: int, *, gate_open: bool = False,
                   ) -> bool:
     """arm2 调度门(R5-4 范畴定谳:门,无发射;臂①=门关闭恒 false)。

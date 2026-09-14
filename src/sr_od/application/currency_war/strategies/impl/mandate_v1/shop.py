@@ -2015,7 +2015,16 @@ def decide_shop_action(bs: GameState, session: StrategySession,
             _count('blood_xp_gate_defer')
         elif contracts.ensure_contract(
                 ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \
-                and not crit_levelup.lv9_stop(level_of(bs), _reg.level_max):
+                and contracts.ensure_contract(
+                    ('levelup', 'xp_ledger_stop'), contracts.ContractCtx(),
+                    counters) \
+                and not crit_levelup.lv9_stop(level_of(bs), _reg.level_max) \
+                and not crit_levelup.xp_ledger_stop(
+                    bs.xp.value, _reg.level_max):
+            # xp_ledger_stop(T-228):level 域轮内滞留时 lv9_stop 恒 False
+            # 的盲区补位(商店域逻辑态直写不写 level,升档等观察覆盖)——
+            # 按 XP 期望账本判「已到/越过 level_max」拒发,防 ALL IN 窗
+            # 同窗连买下级。判据本体见 criteria/levelup.xp_ledger_stop。
             clicks = clicks_to_next_level(bs)
             cost = xp_click_cost(bs)
             if contracts.ensure_contract(
@@ -3025,7 +3034,12 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         _lvl_now = level_of(bs)
         _lv9_ok = contracts.ensure_contract(
             ('levelup', 'lv9_stop'), contracts.ContractCtx(), counters) \
-            and not crit_levelup.lv9_stop(_lvl_now, _reg.level_max)
+            and contracts.ensure_contract(
+                ('levelup', 'xp_ledger_stop'), contracts.ContractCtx(),
+                counters) \
+            and not crit_levelup.lv9_stop(_lvl_now, _reg.level_max) \
+            and not crit_levelup.xp_ledger_stop(
+                bs.xp.value, _reg.level_max)   # T-228 账本停,与 M3 批位同判据
         if not _lvl_readable or not _lv9_ok:
             _count('level_cap')
         else:
