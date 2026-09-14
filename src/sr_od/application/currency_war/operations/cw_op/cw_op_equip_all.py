@@ -1,25 +1,22 @@
 
-"""货币战争 全员装备 op:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排角色头像 → count 验穿。
+"""货币战争 全员装备 op:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排角色头像。
 
 **机制(D-36~D-40)**:drag **穿戴类**装备(排除工具)→ 前排角色头像 (743,350) = 穿(D-36 轮滑鞋验)。
 装备 owned = **多列规则网格**(col1 x1800-1918 + col2 x1660-1800 + ...,D-40),**无空槽**(「+」=星徽 icon D-38)。
 read_equips(thr7)名准+无假阳(D-39,4/4 click 验),覆盖多列(区域 = screen_info「区域-道具装备」x1620-1918,D-40)。
 
-**avatar-slot CV-diff 验穿(R19治本③,已替 count-verify)**:drag 前后对比目标 avatar 下方 mini icon 区
-(CV diff > 阈值 = 穿[新装或合成都变 icon],不变 = drag 落空)。**robust 合成消耗2件/列reflow/read漏检**
-(count-verify D-41 实测报3实4 失真:合成消耗2件 → column count 扰;avatar below-icon 变化直接观测,免受其扰)。
-
-**已接 cycle**(CwScreenPrep 备战单轮 ③,live A8 实跑):装备量受 bug#1 drag 间歇落空影响。
-bug#1 根治(W849 批,台账 6/6「retry 仍败」证明原地 retry 失败相关):拖前稳帧确认
-(``_wait_stable_frame``)+ 落空补救链(``_wear_with_recovery``:坐标现读重定位 + 按压/移动参数逐档升级)。
+**零比对形态(裁决 3 比对收口,2026-09-14 unified-action-factory 批 2a)**:
+原 avatar-slot CV-diff 验穿(R19)随穿戴原子化删除——穿没穿归观察写入边
+对账(装备期望态对账族在下一入口暴露),动作 op 内零验证;拖前稳帧确认
+(``_wait_stable_frame``,动画收尾输入条件化)保留,拖后零判效。
+计划/拉黑/排序判据单一源 = ``kernel/cw_equip_wear_plan``(2a 自本模块迁居,
+本模块只消费)。**已接 cycle**(CwScreenPrep 备战单轮 ③,live A8 实跑)。
 
 **前置(外层判干净)**:建档画面判定确认「货币战争-备战」(入口 + 每次拖拽循环重入点)。
 面板/浮窗态各有独立建档且盖备战 id_mark(角色详情面板盖右下「出战」)→ 判不出备战
 即非干净,直接停;识别器 read_equip_grid 纯识别,画面状态判断统一在本层。
 """
 import time
-from collections.abc import Callable
-from dataclasses import dataclass
 from typing import ClassVar
 
 import numpy as np
@@ -30,11 +27,21 @@ from one_dragon.base.operation.operation_node import operation_node
 from one_dragon.base.operation.operation_round_result import OperationRoundResult
 from one_dragon.utils.file_utils import get_project_root
 from one_dragon.utils.log_utils import log
-from sr_od.application.currency_war.data.cw_equipment_data import (
-    EQUIP_TOOL_CATEGORY,
-)
 from sr_od.application.currency_war.kernel.cw_equip_env import (
     classify_zero_wear_stop_reason,
+)
+from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (  # noqa: F401
+    DRAG_FAIL_BLACKLIST_LIMIT,  # noqa: F401
+    EquipPlanBuild,  # noqa: F401
+    EquipWearStep,
+    _empty_slots,  # noqa: F401
+    _prioritize_wearable,  # noqa: F401
+    equip_drag_key,
+    filter_alloc_blacklisted,  # noqa: F401
+    register_equip_drag_failure,  # noqa: F401
+)
+from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
+    FRONT_SLOT_COUNT as _FRONT_SLOT_COUNT,
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
 from sr_od.application.currency_war.kernel.cw_obs_core import _area_rect
@@ -58,77 +65,12 @@ from sr_od.operations.sr_operation import SrOperation
 # 类名单一源 = cw_equipment_data.EQUIP_TOOL_CATEGORY(与策略侧同源,原本地
 # 平行定义 _TOOL_CATEGORIES 已收编)。
 
-
-@dataclass(frozen=True)
-class EquipWearStep:
-    """单件穿戴计划步(计划随指令下发的契约载体;ADR-0601 §3-C1)。
-
-    产出位 = 分发段 ``prep_actions._build_equip_wear_plan``(读备战入口
-    观察产物 PrepObservation,P4 观察接线 T-171 后零读屏,由 kernel 判据
-    单一源求值),随 ``CwOpEquipAll.__init__(ctx, plan)``
-    构造下发;op 对计划只做机械执行(定位/拖拽/验穿/报告),禁二次求值。
-
-    字段坐标系(索引/槽位字段定义注释约定):
-    - ``row``: 'front'|'back'(画面物理排;deployed 槽位表同坐标系);
-    - ``slot``: 物理槽位 1-based(前排 1-4 / 后排 1-选档 N;非列表下标
-      ——与 prep_actions §13.1 slot 语义全局统一一致),**产出期快照**
-      (builder 现读 deployed 戳记),pass 内恒稳;
-    - ``char_name``: 分配目标角色注册名;**'' = front-only 回退步**
-      (身份读失败分支:无角色身份,拖点 = 前排空槽 avatar),全 char_name
-      为 '' 的计划 = 回退路径计划(哨兵不挂,与今日该分支无哨兵一致)。
-    """
-    item_name: str
-    char_name: str
-    row: str
-    slot: int
-
-# ===== 拖拽失败降级(复盘 g_20260902_181254 修复项 A)=====
-# 实证形态:同一(源件→目标)拖拽 diff=0.0 连败 4 轮,每轮整个装备步骤
-# 中止(~18s/轮)且无跨轮记忆。修法三件:失败计数登记(session 级,跨轮
-# 存活)→ 连败达限拉黑该(件,角色)对;单件失败跳过继续穿下一件(不再
-# break 中止整批);拖点坐标错配修正见 ``CwOpEquipAll._slot_drag_point``。
-DRAG_FAIL_BLACKLIST_LIMIT: int = 2   # 同一对连败达此次数 → 拉黑
-
-
-def equip_drag_key(item_name: str, char_name: str) -> tuple[str, str]:
-    """装备拖拽失败记忆键(纯函数):(装备名, 角色名)。
-
-    粒度取「件×角色」而非「件×槽位」:角色在场槽位一轮内稳定,而
-    分配候选(alloc)只携带 角色+件名,槽位要到拖拽前才解析——键与
-    过滤面同构才能在 alloc 生成后立即过滤拉黑对。
-    """
-    return (item_name, char_name)
-
-
-def register_equip_drag_failure(counts: dict, key: tuple[str, str]) -> bool:
-    """登记一次拖拽失败 → 返回是否已达拉黑线(纯函数)。
-
-    ``counts`` = exec_state_of(session).equip_drag_fail_counts(局级持久,跨轮累积);
-    同一对达 ``DRAG_FAIL_BLACKLIST_LIMIT`` 后恒返回 True(幂等拉黑)。
-    """
-    counts[key] = counts.get(key, 0) + 1
-    return counts[key] >= DRAG_FAIL_BLACKLIST_LIMIT
-
-
-def filter_alloc_blacklisted(alloc: list, counts: dict) -> list:
-    """分配序列剔除已拉黑的(件→角色)对(纯函数)。
-
-    ``alloc`` 元素 = (角色名, 件名)(``equip_allocation`` 产出口径);
-    拉黑对按 ``equip_drag_key`` 命中且计数达 ``DRAG_FAIL_BLACKLIST_LIMIT``
-    才剔除——失败 1 次的对保留(补救链重试一次,再败才拉黑)。
-    """
-    return [pair for pair in alloc
-            if counts.get(equip_drag_key(pair[1], pair[0]), 0)
-            < DRAG_FAIL_BLACKLIST_LIMIT]
-
 # ===== bug#1 drag 落空根治参数(replay/defect_ledger.jsonl drag 条目实证)=====
-# 台账形态:retry 仍败 6/6 —— 原地 retry 与首拖共用同一帧读出的坐标与同一时序,
-# 失败是**相关**的(首拖因画面未稳/按压未识别落空时,原地同参重拖同样落空),
-# 「retry 一次」的独立性假设不成立 → 治本 = 稳帧确认 + 坐标现读重定位 + 参数升级。
-DRAG_HOLD_TIME: float = 0.5    # 首拖按压保持秒数(拾取识别窗;升级档见 _WEAR_RETRY_PARAMS)
+# 拖前稳帧确认保留(拖前输入条件化,非判效);补救链(坐标现读重定位 +
+# 按压/移动参数逐档升级)随 CV-diff 判效半退役——无落地信号即无重试判据,
+# 落空由下一入口观察重派(重算计划 = 天然重试)。
+DRAG_HOLD_TIME: float = 0.5    # 首拖按压保持秒数(拾取识别窗)
 DRAG_DURATION: float = 1.5     # 首拖移动时长秒数
-# 补救链每档(hold_time, duration):逐档加长按压与移动,对抗拾取识别窗的间歇漏识
-_WEAR_RETRY_PARAMS: list[tuple[float, float]] = [(0.5, 1.5), (0.8, 2.0), (1.1, 2.5)]
 _SETTLE_DIFF_THRESHOLD: float = 2.0   # 稳帧判据:相邻两帧全图像素差均值 < 阈值 = 画面已稳
 
 
@@ -137,9 +79,9 @@ def register_equip_worn(session, item_name: str, char_name: str,
                         produced_by: str = 'CwOpEquipAll') -> None:
     """装备分布逻辑推进(两态制 ADR-0651;原 §3 B-6 行 M7 装备拖拽期望态)。
 
-    落点已验(avatar-slot CV-diff 判穿)后调:``last_owned_equips`` −1 件 +
-    ``tracked_deployed`` 目标角色 equips +1 件(字段本体推进——推算值直接
-    写,策略器立即可读;实读帧照常覆盖,失配 = 推算 bug 留证修码)。
+    拖拽发出即调(发出即登记,零比对形态:原「落点已验(CV-diff 判穿)
+    后调」门随验穿拆除;实读帧照常覆盖,失配 = 推算 bug 留证修码):
+    ``last_owned_equips`` −1 件 + ``tracked_deployed`` 目标角色 equips +1 件。
     槽位坐标系:deployed 槽位表下标 = 前排 slot−1 / 后排
     DEPLOYED_FRONT_CAPACITY+slot−1(与 apply_op_effect SellDeployed 同式)。
     best-effort:session 缺失 / infra 异常不阻塞穿戴主循环。
@@ -171,61 +113,12 @@ def _owned_wearable_names(hits: list) -> list[str]:
     持有面原先有读点、无写链,决策/遥测全盲(3,061 条 decisions 里 state.equips
     0 条非空)——本函数供 ``equip_all`` 写 ``session.last_owned_equips``。
     """
+    from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIP_TOOL_CATEGORY,
+    )
     return [n for n, _, _ in hits
             if EQUIPMENTS.get(n) is not None
             and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-
-
-def _below_icon_diff(
-    screen_pre: MatLike, screen_post: MatLike, avatar_x: int,
-    below_y: int = 479, bx_half: int = 35, by_half: int = 30,
-) -> float:
-    """drag 前后目标 avatar 下方 mini icon 区的像素差均值(>阈值=穿了;R19 CV-diff 验穿)。
-
-    纯函数(可离线 fixture 测):crop below-icon 区 → 两帧像素绝对差均值。``CwOpEquipAll`` 用它判 drag
-    是否落地穿(robust 合成消耗2件/列reflow/read漏检,替 count-verify D-41)。默认 below_y/bx_half/by_half
-    对齐 ``CwOpEquipAll`` 类常量(D-41 测 below-icon y=479),测试可直接调。
-
-    实测验证(D-56,飞霄 0→1→2→3 件 fixture):连续态(加 icon)diff 28-41(>>阈值 8.0),同态 0.0。
-    """
-    pre = screen_pre[below_y - by_half:below_y + by_half, avatar_x - bx_half:avatar_x + bx_half]
-    post = screen_post[below_y - by_half:below_y + by_half, avatar_x - bx_half:avatar_x + bx_half]
-    return float(np.abs(pre.astype(np.int16) - post.astype(np.int16)).mean())
-
-
-def _empty_slots(occupied: dict[int, list[str]], count: int) -> list[int]:
-    """已穿槽位 dict → 空槽位序号列表(1-based;P0-2 drag 前占位检测)。
-
-    ``occupied`` = ``read_row_equipped`` 结果(``{slot_idx: [装备名]}``,slot_idx 1-based);槽不在 dict = 空。
-    纯函数(可离线测):只往空槽 drag,避免覆盖已穿装备(原 bug:``target`` 按已穿计数索引旧字面量表(该表已删,现走 _front_avatar_points 派生)
-    按已穿计数索引 → 已穿槽被覆盖)。
-    """
-    return [i for i in range(1, count + 1) if i not in occupied]
-
-
-def _prioritize_wearable(
-    wearable: list[tuple[str, tuple[int, int]]],
-    key_equips: list[str] | None,
-) -> list[tuple[str, tuple[int, int]]]:
-    """穿戴候选按 target_comp.key_equips 优先排序(命脉件在前,其余原序)。
-
-    comp 驱动穿戴(替 naive ``wearable[0]``):CwOpEquipAll 优先穿 target comp 的关键装备
-    (如反甲流需 3 以牙还牙甲 / 阿雅需 2 反重力皮靴),而非 read_equips 返回的第一个。无 target /
-    无 key_equips → 原序(等价旧行为)。``key_equips`` 可含重复 → 按 multiplicity 消费(命中的重复件也优先,
-    但不超额)。与 ``equip_fit`` 同源(``comp.key_equips`` 出发,不设通用 equip_score;决策见 ADR-0101)。
-    """
-    if not key_equips:
-        return wearable
-    remaining = list(key_equips)
-    prioritized: list[tuple[str, tuple[int, int]]] = []
-    rest: list[tuple[str, tuple[int, int]]] = []
-    for name, pos in wearable:
-        if name in remaining:
-            prioritized.append((name, pos))
-            remaining.remove(name)   # 消费一个 multiplicity(重复件不超额优先)
-        else:
-            rest.append((name, pos))
-    return prioritized + rest
 
 
 # ===== hold 触发权归策略侧(ADR-0526 判据表;ADR-0601 §3-C1)=====
@@ -321,6 +214,9 @@ def record_zero_wear_defect(ctx: SrContext, equipped: int,
     """
     if equipped > 0:
         return
+    from sr_od.application.currency_war.data.cw_equipment_data import (
+        EQUIP_TOOL_CATEGORY,
+    )
     wearable_owned = [n for n in owned_names
                       if EQUIPMENTS.get(n) is not None
                       and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
@@ -355,14 +251,16 @@ def record_zero_wear_defect(ctx: SrContext, equipped: int,
 
 
 class CwOpEquipAll(SrOperation):
-    """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排**空**角色头像(P0-2 占位检测)→ avatar-slot CV-diff 验穿。
+    """备战:read_equips 多列 owned → 过滤工具 → drag 穿戴类 → 前排**空**角色头像(P0-2 占位检测)。
 
     装备库区域 = screen_info「区域-道具装备」(多列 x1620-1918,D-40;坐标维护 yml 非硬编码)。
     **P0-2 drag 前占位检测**:``read_row_equipped`` 读前排 avatar 已穿 → 只往空槽 drag(``_empty_slots``,
-    修原 target 按已穿计数索引旧字面量表(符号已删) → 已穿槽被覆盖)。
-    avatar-slot 验穿(R19治本③,替 count-verify):drag 前后对比目标 avatar 下方 mini icon 区 CV-diff,
-    变了=穿(新装/合成都变),不变=落空。robust 合成消耗2件/列reflow/read漏检(D-41 count-verify 报3实4 失真)。
-    前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**已接 cycle**(CwScreenPrep 备战单轮 ③);bug#1 根治 = 拖前稳帧确认 + 落空补救链(坐标现读重定位 + 参数升级)。
+    修原 target 按已穿计数索引旧字面量表 → 已穿槽被覆盖)。
+    **零比对形态**(裁决 3,批 2a):avatar-slot CV-diff 验穿删除——拖前
+    稳帧确认(输入条件化)+ 单次机械拖拽 + 发出即登记,穿没穿归观察
+    写入边对账(装备期望态对账族下一入口暴露)。落空重试通道 = 观察
+    重派(重算计划天然重试)。
+    前置:已在「货币战争-备战」(角色详情面板关 —— 装备详情面板不遮 icon D-37)。**已接 cycle**(CwScreenPrep 备战单轮 ③)。
     """
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
@@ -381,14 +279,9 @@ class CwOpEquipAll(SrOperation):
     # 对称出口,不承担闩闭合职责。
     STATUS_PLAN_EMPTY: ClassVar[str] = \
         '装备计划空(合法稳态,无穿戴步)'
-    # 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量)。
-    FRONT_SLOT_COUNT: ClassVar[int] = 4
-    # avatar-slot 验穿(D-41/R19):目标 avatar 下方 mini icon 区(已装备显示处;D-41 测 y=479),
-    # drag 前后 CV-diff → 变了=穿(新装/合成),不变=落空。robust 合成/reflow/read漏检(替 count-verify)。
-    BELOW_ICON_Y: ClassVar[int] = 479             # 前排 avatar 下方 mini icon 中心 y(avatar y350 → below 479)
-    BY_HALF: ClassVar[int] = 30                   # below-icon crop 半高
-    BX_HALF: ClassVar[int] = 35                   # below-icon crop 半宽
-    BELOW_DIFF_THRESHOLD: ClassVar[float] = 8.0   # drag 前后 diff 阈值(>阈值=穿了;待跨局面调)
+    # 前排槽位数(= screen_info 前排-1..4;deploy 侧同容量;消费面 =
+    # 本类旧计划面,现役单一源 = kernel/cw_equip_wear_plan.FRONT_SLOT_COUNT)。
+    FRONT_SLOT_COUNT: ClassVar[int] = _FRONT_SLOT_COUNT
 
     def __init__(self, ctx: SrContext, plan: list[EquipWearStep]):
         """组合 op 构造(计划随指令下发;ADR-0601 §3-C1)。
@@ -448,80 +341,41 @@ class CwOpEquipAll(SrOperation):
             prev = cur
         return prev
 
-    def _drag_equip(self, start: Point, target: Point,
-                    verify_y: int | None = None,
-                    hold_time: float = DRAG_HOLD_TIME,
-                    duration: float = DRAG_DURATION) -> tuple[bool, float]:
-        """单次 drag 穿戴 + 拖前稳帧确认 + avatar-slot CV-diff 验穿。返 (是否穿上, diff)。
+    def _drag_equip(self, start: Point, target: Point) -> None:
+        """单次 drag 穿戴 + 拖前稳帧确认(零比对形态:无验穿无返回值)。
 
-        ``verify_y`` = 目标 avatar 的 below-icon 中心 y(默认前排 479;后排按 avatar_to_below
-        = rect.y2+14,后排位扩展支持)。``hold_time``/``duration`` = 按压保持/移动时长
-        (补救链逐档升级,常量 _WEAR_RETRY_PARAMS)。拖前 ``_wait_stable_frame`` 确认画面已稳
-        (动画未收尾时按压抓空 = 落空主形态);稳帧结果直接用作 CV-diff 基准帧。
+        拖前 ``_wait_stable_frame`` 确认画面已稳(动画未收尾时按压抓空 =
+        落空主形态,输入条件化等待非判效);拖后固定异步落地等待,零
+        CV-diff 零判效——穿没穿归观察写入边对账(裁决 3,批 2a 零比对
+        出生;落空由下一入口观察重派,重算计划 = 天然重试)。
         """
-        cur = self._wait_stable_frame()
+        self._wait_stable_frame()
         self.ctx.controller.mouse_move(start)
         time.sleep(0.2)
         self.ctx.controller.drag_to(start=start, end=target,
-                                    duration=duration, hold_time=hold_time)
+                                    duration=DRAG_DURATION,
+                                    hold_time=DRAG_HOLD_TIME)
         time.sleep(1.5)  # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
         # 光标 parking(审计 R4):drag 终点=目标 avatar,光标停其上 → Director heavy observe 的
-        # read_deployed_chars SIFT 同 rect 读被遮。park 后再验穿截图(diff 裁剪区在 avatar 下方,
-        # park 不影响 diff)。UID 黑块 = 中立区。
+        # read_deployed_chars SIFT 同 rect 读被遮。park 后再继续。
         self.park_cursor(after_wait=0.1)
-        post = self.screenshot()
-        vy = self.BELOW_ICON_Y if verify_y is None else verify_y
-        diff = _below_icon_diff(cur, post, target.x, vy, self.BX_HALF, self.BY_HALF)
-        return diff > self.BELOW_DIFF_THRESHOLD, diff
-
-    def _wear_with_recovery(self, start: Point, target: Point, verify_y: int | None,
-                            relocate: Callable[[], Point | None]) -> tuple[bool, float]:
-        """单件穿戴 + 落空补救链(bug#1 根治;替原地同参 retry)。
-
-        台账实证(replay/defect_ledger.jsonl drag 条目,6/6 retry 仍败):原地 retry 与
-        首拖共用同一帧坐标/同一时序 → 失败相关。补救链每次重试前:① park 光标
-        ② ``relocate()`` 现读坐标(列 reflow/首读动画帧错位自愈)③ 参数升级
-        (_WEAR_RETRY_PARAMS 逐档)。``relocate`` 返 None = 件已不在 owned(被合成消耗/
-        reflow miss)→ 立即放弃本件(交还主循环按计划步语义处置)。全档仍败 →
-        (False, 末次 diff),交由主循环停手并进哨兵归因。
-        """
-        cur_start = start
-        diff = 0.0
-        for attempt, (hold, dur) in enumerate(_WEAR_RETRY_PARAMS):
-            if attempt > 0:
-                self.park_cursor(after_wait=0.1)
-                fresh = relocate()
-                if fresh is None:
-                    log.info('[cw-equip] 补救链:件已不在 owned(消耗/reflow)→ 放弃本件')
-                    return False, diff
-                if (fresh.x, fresh.y) != (cur_start.x, cur_start.y):
-                    log.info('[cw-equip] 补救链重定位 (%d,%d)→(%d,%d)',
-                             cur_start.x, cur_start.y, fresh.x, fresh.y)
-                cur_start = fresh
-                log.info('[cw-equip] 补救重试 #%d hold=%.1f dur=%.1f', attempt, hold, dur)
-            landed, diff = self._drag_equip(cur_start, target, verify_y,
-                                            hold_time=hold, duration=dur)
-            if landed:
-                return True, diff
-        return False, diff
 
     def _get_avatar_templates(self) -> AvatarTemplates | None:
         """加载立绘 SIFT 模板(单一源 = get_avatar_templates_cached)。"""
         return get_avatar_templates_cached(self.ctx)
 
-    def _slot_drag_point(self, row: str, slot: int) -> tuple[Point, int] | None:
-        """(row, slot) → (avatar 拖拽点, below 验穿 y);后排位扩展支持。
+    def _slot_drag_point(self, row: str, slot: int) -> Point | None:
+        """(row, slot) → avatar 拖拽点;后排位扩展支持。
 
         前排走 _front_avatar_points()(screen_info 前排-N rect 派生,D-36 验
-        y350)+ BELOW_ICON_Y=479(D-41 验);
-        后排从 screen_info rect 推导:drag_y = rect.y1+21(前排 329→350 校准外推),
-        verify_y = rect.y2+14(avatar_to_below 同式,前排 467→481≈479 互证)。
+        y350);后排从 screen_info rect 推导:drag_y = rect.y1+21(前排 329→350
+        校准外推)。验穿 y 分量随 CV-diff 拆除退役(零比对形态)。
 
         排障修正:后排 area 前缀原硬编码「后排」(6 槽档),而占用读侧
         (M7 ``_row_specs``)与部署侧均走 ``select_back_layout`` 档位前缀
         (「后排7槽」/「后排8槽」,ADR-0385)——布局非 6 槽时槽号→rect 错配
-        半个槽位,拖点落在邻槽(装备穿到别人身上/落空,diff 恒 0.0 假失败,
-        复盘 g_20260902_181254 A 条「back-3 拖点坐标可疑」的坐标侧根因)。
+        半个槽位,拖点落在邻槽(装备穿到别人身上/落空;复盘
+        g_20260902_181254 A 条「back-3 拖点坐标可疑」的坐标侧根因)。
         修正 = 与占用读侧同源(布局选档单一入口);读档失败退 6 槽基线。
         """
         if row == 'front':
@@ -529,7 +383,7 @@ class CwOpEquipAll(SrOperation):
             if _front_pts is None:
                 return None   # 前排 area 缺档 → None,走既有跳步申报语义
             if 1 <= slot <= len(_front_pts):
-                return _front_pts[slot - 1], self.BELOW_ICON_Y
+                return _front_pts[slot - 1]
             return None
         _pfx = '后排'
         try:
@@ -542,7 +396,7 @@ class CwOpEquipAll(SrOperation):
         slots = _ctx_slots(self.ctx, _pfx, 10)
         for idx, r in slots:
             if idx == slot:
-                return Point((r.x1 + r.x2) // 2, r.y1 + 21), r.y2 + 14
+                return Point((r.x1 + r.x2) // 2, r.y1 + 21)
         return None
 
     def _zero_wear_sentinel(self, equipped: int, owned_names: list[str],
@@ -581,19 +435,14 @@ class CwOpEquipAll(SrOperation):
         if tmpl_grays is None:
             return self.round_fail('cw_equip TM grays 未加载(无法读槽位占位)')
         # ===== 计划消费循环(ADR-0601 §3-C1:机械执行,禁二次求值)=====
-        # 计划 = 分发段 _build_equip_wear_plan 产出随构造下发(self.plan);
-        # hold/释放/分配四 kernel 判据已随求值块迁出至分发段(prep_actions,
-        # 函数名清单见该 builder docstring——本文件对四名零字面引用,验收锁
-        # test_cw_equip_plan_builder::test_equip_op_kernel_criteria_free
-        # 按源码文本逐名扫描)。
+        # 计划 = kernel/cw_equip_wear_plan 产出随构造下发(self.plan);
+        # hold/释放/分配四 kernel 判据已随求值块迁出至 kernel 构造位——
+        # 本文件对四名零字面引用(机械执行红线)。
         # 本循环只做:屏断言(E2/E3 执行断言)→ owned 现读(W209g 快照
         # 写端)→ 计划件定位(miss → 一次机械现读重试 → 仍 miss =
-        # STATUS_PLAN_STALE fail-fast,下帧重派时分发段对 fresh 帧重算)
-        # → 拖点解析(缺失跳步)→ 拖拽补救链/CV-diff 验穿/失败拉黑登记。
+        # STATUS_PLAN_STALE fail-fast,下帧重派时构造位对 fresh 帧重算)
+        # → 拖点解析(缺失跳步)→ 零比对机械拖拽(发出即登记)。
         _match = self.ctx.cw_match
-        _fail_counts: dict = {}
-        if _match is not None and _match.session is not None:
-            _fail_counts = _match.exec_state.equip_drag_fail_counts
         equipped = 0
         _owned_last: list[str] = []   # 哨兵输入:步内最后一次 owned 全量快照
         _stop_reason = ''   # 零穿戴哨兵(W596)归因字段:执行面停手原因
@@ -633,8 +482,7 @@ class CwOpEquipAll(SrOperation):
                 _match.session.last_owned_equips = list(_owned_last)
             # 拖点解析(front-only 步 = 前排空槽 avatar 序号;M7 步 =
             # (row, slot) 物理槽位现读)。解析失败只跳过本计划步——计划
-            # for 有界(每对恰出现一次),今日 stall<2 中断面随迭代重规划
-            # 一并退役,其余计划步照常执行。
+            # for 有界(每对恰出现一次),其余计划步照常执行。
             if step.char_name == '':
                 _front_pts = self._front_avatar_points()
                 if _front_pts is None:
@@ -645,20 +493,18 @@ class CwOpEquipAll(SrOperation):
                         'screen_info 前排-N 缺失(货币战争-备战),'
                         '前排 avatar 拖拽点不可派生,禁兜底坐标')
                 target = _front_pts[step.slot - 1]
-                verify_y = None
             else:
-                pv = self._slot_drag_point(step.row, step.slot)
-                if pv is None:
+                target = self._slot_drag_point(step.row, step.slot)
+                if target is None:
                     log.info('[cw-equip] %s 槽位坐标缺失 → 跳过该计划步',
                              step.char_name)
                     _skipped += 1
                     _stop_reason = f'{step.char_name} 槽位坐标缺失'
                     continue
-                target, verify_y = pv
-            # 网格现读定位计划件:首读 miss → 一次机械现读重试(补救链
-            # relocate 同源;单件瞬时识别 miss 由该次重试吸收,不进失效
-            # 通道)→ 仍 miss = 计划失效(件被 robust 合成消耗/列 reflow)
-            # → fail-fast 闩不置,下帧重派重算(保住期内穿戴极大性)。
+            # 网格现读定位计划件:首读 miss → 一次机械现读重试(单件瞬时
+            # 识别 miss 由该次重试吸收,不进失效通道)→ 仍 miss = 计划失效
+            # (件被 robust 合成消耗/列 reflow)→ fail-fast 闩不置,下帧
+            # 重派重算(保住期内穿戴极大性)。
             entry = next(((n, p) for n, p, _ in hits if n == step.item_name),
                          None)
             if entry is None:
@@ -677,52 +523,17 @@ class CwOpEquipAll(SrOperation):
             log.info('[cw-equip] 计划步 drag %s @(%d,%d) → %s(%s-%d)',
                      name, cx, cy,
                      step.char_name or '前排空槽', step.row, step.slot)
-
-            def _relocate_item(_want: str = step.item_name,
-                               _tmpl=templates,
-                               _rect=equip_rect) -> Point | None:
-                """补救链坐标现读:件被合成消耗/列 reflow 后,首读坐标作废 → 现读。
-
-                默认参绑定计划步值(ruff B023:闭包不绑循环变量)。
-                """
-                _hits = read_equips(self.screenshot(), _tmpl, equip_rect=_rect)
-                _e = next(((n, p) for n, p, _ in _hits if n == _want), None)
-                return Point(_e[1][0], _e[1][1]) if _e is not None else None
-
-            landed, diff = self._wear_with_recovery(Point(cx, cy), target,
-                                                    verify_y, _relocate_item)
-            if landed:
-                equipped += 1
-                # 装备分布期望态(§3 B-6;落点已验后才登记;front-only 步
-                # 无角色身份,char 传 '',与今日回退路径登记同形)
-                if _match is not None and _match.session is not None:
-                    register_equip_worn(_match.session, name,
-                                        step.char_name,
-                                        step.row, step.slot)
-                log.info('[cw-equip] %s → %s 穿了(diff=%.1f)',
-                         name, step.char_name or '前排空槽', diff)
-            else:
-                # 拖拽失败降级 + pass 终止语义落名(R3):拖拽硬失败(补救链全档
-                # 仍败)与今日 break 语义一致——登记失败(≥2 次拉黑该对,
-                # 跨轮存活;只影响下一计划的过滤)、终止本 pass、round_
-                # success 已穿件数(闩照置)。剩余计划步交回下帧重派(重算
-                # 计划已无该拉黑对;真持续失败由拉黑过滤收敛)。
-                # 定谳(2026-09-02,临时捕获钩子已删):该场景主根因 = M7 分配
-                # 把阵营星徽分给同阵营角色(游戏装备不上,diff=0,机制见
-                # equipment_mechanics §6 星徽 add-if-absent)——分配层已加同阵营
-                # 排除,本降级只兜未知失败(设备/画面态偶发)。
-                _bl = register_equip_drag_failure(
-                    _fail_counts, equip_drag_key(name, step.char_name))
-                if _bl:
-                    log.warning('[cw!][equip] %s → %s 拖拽连败 %d 次 → 拉黑('
-                                ' diff=%.1f;后排拖点已随布局档修正)',
-                                name, step.char_name,
-                                _fail_counts[equip_drag_key(name, step.char_name)], diff)
-                else:
-                    log.info('[cw-equip] %s 补救链仍败(diff=%.1f)→ 终止本 pass,'
-                             '剩余计划步交回下帧重派)', name, diff)
-                _stop_reason = 'drag 落空(失败继续)'
-                break
+            # 零比对机械拖拽(裁决 3):单次发出,无验穿无补救链无拉黑
+            # 登记——落地信号面已删,失败由下一入口观察重派承接(重算
+            # 计划天然重试);发出即登记装备分布逻辑推进。
+            self._drag_equip(Point(cx, cy), target)
+            equipped += 1
+            if _match is not None and _match.session is not None:
+                register_equip_worn(_match.session, name,
+                                    step.char_name,
+                                    step.row, step.slot)
+            log.info('[cw-equip] %s → %s 拖拽已发(零比对,落地归观察对账)',
+                     name, step.char_name or '前排空槽')
         if _is_m7:
             # 零穿戴哨兵(W596/W593 方案②;纯观测,不停机零行为变更)。
             # 计划面原因(pool_empty/两 hold/分配方案空/分配对全部拉黑)

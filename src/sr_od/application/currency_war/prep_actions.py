@@ -21,7 +21,6 @@ slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar
 
 from one_dragon.base.geometry.point import Point
@@ -34,34 +33,41 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
+    _build_equip_wear_plan,
+)
 from sr_od.application.currency_war.kernel.cw_obs_core import (
     SCREEN_NAME,
     _area_rect,
-    _ocr,
     area_center,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PREP_ACTION_TYPES,
+    SPHERE_CLICK_HARD_CAP,
     ClickSpheres,
     DeployMove,
+    FurnaceUse,
     LevelUp,
+    LuckyTokenUse,
     OpenBox,
     OpenTome,
-    PickBoxCard,
+    PerfectProjectorUse,
+    PrecisionWrenchUse,
     PrepAction,
+    PrivilegeCardUse,
     RunDeploy,
     RunEquip,
     RunTools,
     SellBench,
     SellDeployed,
+    StaffProjectorUse,
     StartBattle,
+    WearEquip,
+    WrenchUse,
 )
-from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_identity_obs import (
-    read_reward_spheres,
     read_supply_boxes,
 )
-from sr_od.application.currency_war.obs.cw_observation import read_gold
 from sr_od.context.sr_context import SrContext
 from sr_od.operations.sr_operation import SrOperation
 
@@ -93,18 +99,6 @@ class StopBrakeShortCircuit(RuntimeError):
     下轮 loop 顶见 STOP 退出。判据 = last_run_result 非空(start 清
     None/stop 写入;run_state STOP 是 idle 初始态不能直接用)。
     """
-
-
-def _read_level_raw(ctx: SrContext, screen) -> int | None:
-    """OCR 直读等级数字(「文本-等级」区,**无 _expected_level 兜底**)。
-
-    read_level 的兜底曲线适合决策估值,不适合作击数推导基线(期望值>实际时
-    推导失真)。漏读返 None,调用方决定基线退路。放大读与读链单一源 =
-    ``cw_observation.read_level_raw_opt``。
-    """
-    from sr_od.application.currency_war.obs.cw_observation import read_level_raw_opt
-
-    return read_level_raw_opt(ctx, screen)
 
 
 def row_area_centers(ctx: SrContext, prefix: str) -> list[Point]:
@@ -184,426 +178,11 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
 #  观察链,装配端 hp_pay_defects 对账面随流冻结。)
 
 
-@dataclass(frozen=True)
-class EquipPlanBuild:
-    """装备穿戴计划产出(``_build_equip_wear_plan`` 返回载体;ADR-0601 §3-C1)。
-
-    - ``steps``: 机械执行计划(EquipWearStep 列表,产出期快照,pass 内恒稳);
-    - ``empty_reason``: 计划空时的具名原因(字面量与今日 op 停手归因逐字
-      相等——``classify_zero_wear_stop_reason`` 词表与分键锁零漂移);
-      非空计划时为 ''(发射契约 NOOP 形态的产生位);
-    - ``fail_reason``: 资源前置缺失原因(模板/tm_grays/rect None → 走本
-      通道 ok=False 闩不置,同今日 op round_fail 同形);非空时 steps=[] 且
-      不与 empty_reason 并用;
-    - ``branch``: 'm7'(M7 角色级分配)| 'front_only'(身份读失败回退;
-      空计划 NOOP 不挂哨兵,与今日该分支无哨兵覆盖一致);
-    - ``owned_wearable_names``: 本帧可穿名单(零穿戴哨兵双挂点之计划面输入;
-      哨兵内部再做工具类过滤,幂等)。
-    """
-    steps: list = field(default_factory=list)
-    empty_reason: str = ''
-    fail_reason: str = ''
-    branch: str = 'm7'
-    owned_wearable_names: list[str] = field(default_factory=list)
-
-
-def _build_equip_wear_plan(ctx: SrContext) -> EquipPlanBuild:
-    """装备穿戴计划产出位(分发段;ADR-0601 §3-C1 计划随指令下发)。
-
-    P4 观察接线(T-171):三路事实源 = **入口观察产物**
-    ``session.prep_obs_frame``(PrepObservation;写者白名单 = cw_screen_prep
-    观察装配点/循环逻辑态直写步,装备域采集单一源 = ``obs.cw_observe_full
-    .observe_full`` heavy)。本函数**零读屏**:原对执行帧现读三路
-    owned(read_equips)/occupied(read_row_equipped)/deployed
-    (read_deployed_chars)退役 = 调用位置迁移——识别函数本体归观察链
-    复用(识别机制不出端口,obs.cw_observe_full 采集),op 外读屏白名单
-    待申报面随之消点(架构正本 §1.1 白名单制);kernel 判据单一源求值
-    (释放判据表/hold 逐件/词缀序/环境变体 → equip_allocation)→ 静态
-    计划(EquipWearStep 列表)随 op 构造下发。
-
-    新鲜度语义(执行帧现读退役的架构内解法,note 判据③):计划 = 入口
-    观察期快照;发射后执行前板面漂移(合成耗件/列 reflow)→ 计划步定位
-    miss → 装备版 ``STATUS_PLAN_STALE`` round_fail → 下帧重派 → 重新入口
-    观察,不回退执行链现读。观察范围外的派生字段(配对守卫/hold 判据等)
-    保持策略层纯计算(kernel 判据零改动)。「执行时刻屏态复验」职权留守
-    派发位(``_run_equip`` 的 ``_guard_screen_mismatch`` 前置闸,用户裁定
-    背书的分发层复验先例),与本读容器互不替代。
-
-    op 侧四 kernel 判据(resolve_wear_release/classify_item_hold/
-    apply_equip_env_variants/resolve_affix_priority_order)在
-    cw_op_equip_all.py 零引用(机械执行红线,验收锁
-    test_cw_equip_plan_builder::test_equip_op_kernel_criteria_free)。
-    W880 装备环境信号「构造点唯一」契约维持:唯一构造点 = 本函数。
-
-    失读通道(契约保真位,与 empty_reason 合法稳态禁并用):黑板帧缺失 /
-    owned None(模板库或装备区 rect 缺失)/ occupied None(TM grays 缺失)
-    → fail_reason 通道(未发出,闩不置,下帧重派;资源缺失原因在采集层
-    observe_full log 留证,此处 fail_reason 保留分键关键词)。
-    """
-    from sr_od.application.currency_war.data.cw_equipment_data import (
-        EQUIP_TOOL_CATEGORY,
-        EQUIPMENTS,
-    )
-    from sr_od.application.currency_war.kernel.cw_comps import (
-        EQUIP_CAPACITY,
-    )
-    from sr_od.application.currency_war.kernel.cw_equip_env import (
-        classify_item_hold,
-        resolve_affix_priority_order,
-        resolve_wear_release,
-    )
-    from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
-        DRAG_FAIL_BLACKLIST_LIMIT,
-        EquipWearStep,
-        _empty_slots,
-        _prioritize_wearable,
-        equip_drag_key,
-        filter_alloc_blacklisted,
-    )
-
-    # ===== 事实源前置(读入口观察产物,零读屏;fail_reason 通道)=====
-    _match = ctx.cw_match
-    _sess = (_match.session if _match is not None else None)
-    obs = (getattr(_sess, 'prep_obs_frame', None)
-           if _sess is not None else None)
-    if obs is None:
-        return EquipPlanBuild(
-            fail_reason='备战观察帧缺失(黑板契约:入口观察先于派发)')
-    if getattr(obs, 'owned_equips', None) is None:
-        return EquipPlanBuild(
-            fail_reason='装备观察域未就绪:owned'
-                        '(cw_equip 模板库未加载/区域-道具装备 缺失)')
-    if getattr(obs, 'occupied_equips', None) is None:
-        return EquipPlanBuild(
-            fail_reason='装备观察域未就绪:occupied'
-                        '(cw_equip TM grays 未加载)')
-    owned_names = list(obs.owned_equips)
-    # occupied 键坐标系 = (row, 物理槽位 1-based),采集层直出;防御拷贝
-    # (计划求值全程本地态,禁反向污染黑板帧)。
-    occupied_all: dict = {(row, int(slot)): list(names)
-                          for (row, slot), names in obs.occupied_equips.items()}
-    _bk_n = getattr(obs, 'back_layout_slots', None)
-    deployed = list(getattr(obs, 'deployed_chars', None) or [])
-    _tgt_comp = (strategy_state_of(_match.session).target_comp
-                 if (_match is not None and _match.session is not None) else None)
-    # ⚖️ 过渡期持有语义修正(r70 审计刀②,替 2026-08-16 旧指示):旧版 form<COMMIT_FRAC
-    # 全 P1 攒仓库 = 白板打 8 个战斗节点 + r9 boss(每场稳定掉血的确定性损失;r70 实证
-    # P1 八战掉 62 血)。修正:过渡期**穿给当前上场的 5 人**——key_equips 命中件照穿
-    # (未来迁给核心只付一次性拆卸),非 key 散件穿给当前板面高战力者(carry 优先);
-    # 「攒给成型核心」只在**已定型**(非双轨)且 form 低时保留。
-    # 装配源换源(T-146 尾批,ADR-0530 决策2 核销;桥登记集 prep 根消点):
-    # 执行侧装配源 = session 容器单例(备战帧观察写端同链刷新);旧
-    # last_state 帧链 + 过渡桥装箱退役。容器与帧同帧同源
-    # (同一备战观察),读口 = 容器公共读口单一源。
-    from sr_od.application.currency_war.kernel.cw_game_state import (
-        board_state_of,
-    )
-    _bs_c = (board_state_of(_match.session)
-             if (_match is not None and _match.session is not None) else None)
-    _form = 0.0
-    if _tgt_comp is not None and deployed and _bs_c is not None:
-        from sr_od.application.currency_war.kernel.cw_comps import (
-            form_progress,
-        )
-        _form = form_progress(_tgt_comp, _bs_c)
-    # W629-R1 扩口(批 2):state/last_state 通道读点点名迁移——
-    # committed 读端唯一化(decision_v2.prep_brain.committed_from,
-    # 内部 = cw_intention 权威派生);旧形为 last_state 通道裸直读
-    # 双轨字段,已并入守卫辖域(state 通道 grep 锁,
-    # test_cw_w620/test_cw_migration_direction_layer)。
-    from sr_od.application.currency_war.kernel.cw_intention import (
-        committed_from as _committed_from,
-    )
-    _committed = (_committed_from(_match.session, _bs_c)
-                  if (_match is not None
-                      and _match.session is not None
-                      and _bs_c is not None
-                      and _bs_c.node.value is not None) else False)   # 缺供给 = 双轨保守侧(D2)
-    # r388(用户 live 质问「1-2 就乱装备」):开局轮(r≤2,奖励
-    # 节点无战斗)穿装备零战斗变现,且阵容未起步(form≈0 时
-    # 分配语义退化为「谁在场谁独占」——r2 一人穿 2 件实证);
-    # key_equips 命中件照穿(命中即阵容意图明确),gen 散件
-    # 攒到 r3 战斗轮再穿。与 r70「P1 白板也该穿」不冲突:
-    # 白板 8 战指的是 r3+ 战斗期,不含奖励轮。
-    # R3 修正(ADR-0257):开局 hold 不再依赖 target 存在。
-    # hold 块换源(T-146):node 未观察 ⟺ 旧 last_state None(同帧同源,
-    # 容器 node = 备战帧顶栏解析写端);kind 空串按帧未识别镜像回 None。
-    _hold_node = (_bs_c.node.value if _bs_c is not None else None)
-    _round_now = (_hold_node.round_num
-                  if (_hold_node is not None
-                      and _hold_node.plane == 1) else None)
-    # ADR-0461:hold 收窄+生锈豁免,开关走策略 registry
-    # (DecisionV2Strategy 注入臂可达;default 栈无 registry 属性 → 缺省表
-    # =全关,零漂移)。
-    from sr_od.application.currency_war.kernel.cw_exec_state import ledger_node_type
-    from sr_od.application.currency_war.kernel.cw_registry import (
-        DEFAULT_REGISTRY,
-    )
-    _reg_eq = (getattr(getattr(_match, 'strategy', None), 'registry', None)
-               or DEFAULT_REGISTRY)
-    _node_type = ((_hold_node.kind or None)
-                  if _hold_node is not None else None)
-    if _node_type is None and _hold_node is not None and _round_now is not None:
-        _node_type = ledger_node_type(_match.session,
-                                      _hold_node.plane,
-                                      _round_now)
-    # O1 门输入(21 号稿 §2.3):后随节点 = 本备战帧之后第一个节点的
-    # 台账类型(r+1);缺档 None → 门不中(保守维持保留域判定,词汇表
-    # 与 row1 同源 opening_hold_battle_nodes)。
-    _next_node_type = (
-        ledger_node_type(_match.session, _hold_node.plane,
-                         _round_now + 1)
-        if (_match is not None and _hold_node is not None
-            and _round_now is not None) else None)
-    # W880 装备环境信号单源(设计 §2.2):构造点唯一 = 本函数(求值块
-    # 搬迁后;原构造点 = op 主循环前段),一次打包传递;
-    # 生锈豁免(门)、变宝为废(序)等变体一律吃 signals,
-    # 不再各自摸 state;state 缺失(离线/旧栈)= 空集 → 判据安全默认不启用。
-    from sr_od.application.currency_war.kernel.cw_equip_env import (
-        apply_equip_env_variants as _apply_env_variants,
-    )
-    from sr_od.application.currency_war.kernel.cw_equip_env import (
-        build_equip_env_signals,
-    )
-    _equip_signals = build_equip_env_signals(_bs_c)
-    # 释放判据表(ADR-0526)+ 收窄(ADR-0531):
-    # 五行评估单点在策略侧;row1(opening) 域扣留收窄为「三门全不中 ∧
-    # 保留域命中」的逐件判定(classify_item_hold),帧级 ``.hold`` 只辖
-    # row2 域——hold 触发权归策略侧(§1.2-1),禁在执行层加第二套时机判断。
-    _release = resolve_wear_release(
-        _round_now, _node_type,
-        _reg_eq.opening_hold_battle_gate_enabled,
-        _reg_eq.opening_hold_battle_nodes,
-        _tgt_comp, _form, _committed,
-        sorted(_equip_signals.enemy_affixes),
-        _reg_eq.rust_wear_release_enabled,
-        next_node_type=_next_node_type)
-    _hold = _release.hold
-    # fill 防线③(设计 §3.1):row2 帧级扣留不激活 fill——
-    # hold 语义(攒给成型核心)优先,防两套意图打架
-    _fill_hold = _hold
-    if _release.rust_release and (_release.opening_hold
-                                  or _release.committed_hold):
-        log.info('[cw-equip] 库藏生锈在场 → hold 豁免(owned 滞留喂敌),全量穿戴')
-    elif _release.opening_hold or _hold:
-        log.info('[cw-equip] hold 域活跃(row1=%s O1战斗前置=%s row2=%s '
-                 'node=%s next_node=%s rust=%s penalty=%s form=%.2f):'
-                 'opening 扣留收窄为逐件判定(21 号稿 §2.3)',
-                 _release.opening_hold, _release.battle_precede_release,
-                 _release.committed_hold, _node_type, _next_node_type,
-                 _release.rust_release, _release.output_penalty_release,
-                 _form)
-    if deployed:
-        # W209g 断点③语义保留:后排 occupied 采集随布局选档(ADR-0385/0387
-        # 双通道单一源)——选档已在采集层 observe_full 完成(_bk_n 随帧携带,
-        # 布局未知帧该排不采集),本处只消费采集产物。
-        occupied_m7: dict[tuple[str, int], list[str]] = occupied_all
-        deployed_by_name: dict[str, list] = {}
-        for d in deployed:
-            if d.char_id:
-                deployed_by_name.setdefault(d.char_id, []).append(d)
-        log.info('[cw-equip] M7 角色级分配:deployed=%s occupied=%s',
-                 [(d.char_id, d.position_pref, d.slot) for d in deployed],
-                 {f'{r}{s}': '+'.join(v) for (r, s), v in occupied_m7.items() if v})
-        # (原 hits = read_equips 执行帧现读退役:owned 件名池 = 入口观察
-        #  产物 owned_names。M7 计划消费只辖件名——read_equips 的坐标分量
-        # 归执行位定位读(机械现读,合法),不在计划面。)
-        wearable = [n for n in owned_names
-                    if EQUIPMENTS.get(n) is not None
-                    and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-        # (原派发位 last_owned_equips 全量重写 + bs.equips 观察写端退役:
-        #  写端随采集归位备战入口观察链,写点 = cw_screen_prep._observe
-        #  heavy 装配点(P4 观察接线 T-171)——本函数零读屏零采集。)
-        # ADR-0391 λ 标定埋点(P14 假设表 λ 行「待遥测标定」的数据源):
-        # 每次派发记 owned 全量快照(含工具;每 pass 恰一次 = _run_equip
-        # 每次派发至多调本函数一次)——离线 diff 相邻轮快照 = 各节点发放
-        # 件数 → λ 与事件条件化修正(P14 记账)。
-        # (换源 T-146:plane/round 取容器 node;未观察显 '?' 同旧缺帧形态)
-        _ref_node = (_bs_c.node.value
-                     if (_match is not None and _bs_c is not None) else None)
-        _own_ct: dict[str, int] = {}
-        for n in owned_names:
-            _own_ct[n] = _own_ct.get(n, 0) + 1
-        log.info('[cw!][grant] plane=%s round=%s owned=%s',
-                 _ref_node.plane if _ref_node is not None else '?',
-                 _ref_node.round_num if _ref_node is not None else '?',
-                 _own_ct)
-        # 判读锚点(P14 检验点 2):「缺什么囤什么」——目标 K 的
-        # 组件需求 − 当前库存正差,判读/值守按此报装备面。
-        if _tgt_comp is not None and _tgt_comp.key_equips:
-            from sr_od.application.currency_war.data.cw_synthesis import (
-                hoard_gaps,
-            )
-            gaps = hoard_gaps(list(_tgt_comp.key_equips), list(owned_names))
-            log.info('[cw!][hoard] gaps=%s', gaps or '库存已覆盖需求')
-        if not wearable:
-            log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 计划空',
-                     len(owned_names))
-            return EquipPlanBuild(
-                empty_reason='pool_empty(无穿戴候选)',
-                branch='m7',
-                owned_wearable_names=wearable)
-        # 21 号稿 §2.3 消费位逐件化(v3,S6/B1):帧级布尔 hold 改
-        # 件级判定——同帧可「自由件穿+key 命中穿+保留域件扣」并存;
-        # 原「扣留帧只穿 key_equips 命中件」过滤迁移入
-        # classify_item_hold(求值序 O3→O1/O2→保留域→清单外)。
-        # free_slot = O2 门输入(存在有空装备槽的在场角色;源 = 入口
-        # 观察产物 occupied_equips,非现读)。
-        _free_slot_any = any(len(v) < EQUIP_CAPACITY
-                             for v in occupied_m7.values())
-        _releasable = [n for n in wearable
-                       if not classify_item_hold(
-                           _release, n, _tgt_comp, _free_slot_any)]
-        if not _releasable:
-            # row1/row2 分键停手(21 号稿 §5 遥测分键:row1 域帧数
-            # 趋零锚与 row2 committed hold 不回归锚预期相反,无
-            # 分键则 O2 实机验收锚不可判读,v3,B3)
-            if _release.opening_hold:
-                log.info('[cw-equip] opening(row1) 三门全不中'
-                         '(保留域扣留)→ 计划空')
-                _reason = ('opening_hold(row1):三门全不中'
-                           '(保留域扣留)')
-            else:
-                log.info('[cw-equip] 扣留帧无 key_equips 命中(全攒着)→ 计划空')
-                _reason = '过渡期hold:无 key_equips 命中(全攒着)'
-            return EquipPlanBuild(
-                empty_reason=_reason, branch='m7',
-                owned_wearable_names=wearable)
-        # ADR-0526 词缀条件优先层在**释放帧**
-        # 重排(释放动作的次序)。收窄后扣留收窄为
-        # 逐件判定,可释放集非空即(部分)释放帧——序 = 策略侧决策层
-        # 产物,每次派发重算(occupied 源 = 入口观察快照,计划产出位
-        # 求值不变)。
-        _priority_order = resolve_affix_priority_order(
-            _tgt_comp, deployed,
-            sorted(_equip_signals.enemy_affixes), occupied_m7)
-        # W880 装备分配入口(kernel/cw_equip_env.apply_equip_env_
-        # variants;fill3 量变体与变宝为废序变体已随各自开关族删除
-        # ——旧方案清退批,清查报告 OLD_MIX_AUDIT §1.3,现=基分配
-        # equip_allocation 直通零漂移)。
-        alloc, _env_actions = _apply_env_variants(
-            _equip_signals, _reg_eq, _match.session, _tgt_comp,
-            deployed, _releasable, occupied_m7,
-            hold_active=_fill_hold,
-            priority_order=_priority_order)
-        # (P1→P2 接口机制·②分配义务 hold 豁免已随五开关定谳清理
-        # 删除,ADR-0487:过渡期 hold 过滤恢复无条件既有语义。)
-        if not alloc:
-            # W596/W593 方案③:分配空做结构化归因(pool_empty/capacity_full/
-            # pairing_guard/no_deployed/unknown),替旧的一句话两义日志。
-            from sr_od.application.currency_war.kernel.cw_comps import (
-                equip_alloc_empty_reason,
-            )
-            _empty_reason = equip_alloc_empty_reason(
-                _tgt_comp, deployed, _releasable,
-                occupied_m7)
-            log.info('[cw-equip] 分配方案空 原因=%s(owned=%s)→ 计划空',
-                     _empty_reason, _releasable)
-            return EquipPlanBuild(
-                empty_reason=f'分配方案空:{_empty_reason}', branch='m7',
-                owned_wearable_names=wearable)
-        # 拖拽失败降级:剔除已拉黑(件→角色)对后再产计划步(失败 1 次的保留,
-        # 补救链重试一次;再败即拉黑,不再进后续派发的计划)。过滤随产出位
-        # (读同一 exec_state.equip_drag_fail_counts;登记/键函数留执行位)。
-        _fail_counts: dict = {}
-        if (_match is not None and _match.session is not None):
-            _fail_counts = _match.exec_state.equip_drag_fail_counts
-        alloc = filter_alloc_blacklisted(alloc, _fail_counts)
-        if not alloc:
-            log.info('[cw-equip] 分配对全部拉黑(拖拽连败)→ 计划空;'
-                     ' 拉黑集=%s', sorted(_fail_counts))
-            return EquipPlanBuild(
-                empty_reason='分配对全部拉黑(drag 连败)', branch='m7',
-                owned_wearable_names=[n for n, _ in wearable])
-        # (row, slot) 戳记(本批新落名):alloc 对 → 计划步目标物理槽位。
-        # 遍历序与今日执行位解析一致(deployed_by_name 首个静态可解析者);
-        # 静态可解析 = front 1..4 / back 1..选档 N(与执行位 _slot_drag_point
-        # 同构;执行时拖点仍机械现读,reflow 只会导致找不到件、不会拖错目标)。
-        # 全部不可解析的对不入计划 = 今日「跳过该分配项」等价面;计划 for
-        # 有界,无今日 stall<2 中断面(其余计划步照常执行)。
-        steps: list = []
-        for char_name, want in alloc:
-            _picked: tuple[str, int] | None = None
-            for d in deployed_by_name.get(char_name) or []:
-                _row = getattr(d, 'position_pref', None) or 'back'
-                _slot = int(getattr(d, 'slot', 0) or 1)
-                if (_row == 'front' and 1 <= _slot <= 4) \
-                        or (_row != 'front' and 1 <= _slot <= (_bk_n or 6)):
-                    _picked = (_row, _slot)
-                    break
-            if _picked is None:
-                log.info('[cw-equip] %s 槽位坐标缺失 → 跳过该分配项(计划面)',
-                         char_name)
-                continue
-            steps.append(EquipWearStep(item_name=want, char_name=char_name,
-                                       row=_picked[0], slot=_picked[1]))
-        return EquipPlanBuild(steps=steps, branch='m7',
-                              owned_wearable_names=wearable)
-    # ===== front-only 回退分支(身份读失败 fallback;ADR-0101 key_equips
-    # 优先;求值块自 op :869-930 整体搬迁,一并计划化不设豁免——豁免会把
-    # 第二套微分配语义留在执行位,违反 ADR-0601 §3-C1 红线)=====
-    from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
-        CwOpEquipAll,
-    )
-    # 前排已穿槽 = 入口观察产物 occupied_equips 的前排切片(键坐标系
-    # 同采集层:(row, 物理槽位 1-based);原 read_row_equipped 现读退役)。
-    occupied = {slot: names for (row, slot), names in occupied_all.items()
-                if row == 'front'}
-    if occupied:
-        log.info('[cw-equip] 前排已穿槽(跳过不覆盖): %s',
-                 {k: '+'.join(v) for k, v in sorted(occupied.items())})
-    slots = _empty_slots(occupied, CwOpEquipAll.FRONT_SLOT_COUNT)
-    unknown = [n for n in owned_names if EQUIPMENTS.get(n) is None]
-    if unknown:
-        log.warning('[cw-equip] owned 观察命中但不在 EQUIPMENTS registry(名对齐缺失?R18 P1): %s',
-                    sorted(set(unknown)))
-    # 过滤工具类(拆装扳手/冶金炉等非 drag 穿);⚠️ 过滤只辖**穿戴决策**
-    # (wearable)。位置分量已无计划面消费(计划步定位 = op 执行位机械
-    # 现读,合法),零元组仅保 _prioritize_wearable 元组契约形状。
-    wearable = [(n, (0, 0)) for n in owned_names
-                if EQUIPMENTS.get(n) is not None
-                and EQUIPMENTS[n].category != EQUIP_TOOL_CATEGORY]
-    # (原回退分支 last_owned_equips 全量重写 + bs.equips 观察写端退役:
-    #  写点已随采集归位备战入口观察链,同 M7 分支,P4 观察接线 T-171。)
-    if not slots:
-        # 「前排 avatar 全已穿」→ 空计划具名 NOOP(回退分支不挂哨兵,
-        # 与今日该分支 success 跳过且无哨兵覆盖一致;今日 detail 字面
-        # 保留进 reason 供分键)。
-        log.info('[cw-equip] 前排 avatar 全已穿 → 计划空(回退分支)')
-        return EquipPlanBuild(empty_reason='前排 avatar 全已穿',
-                              branch='front_only',
-                              owned_wearable_names=[n for n, _p in wearable])
-    if not wearable:
-        log.info('[cw-equip] 无穿戴候选(count=%d,全工具/空)→ 计划空(回退分支)',
-                 len(owned_names))
-        return EquipPlanBuild(empty_reason='pool_empty(无穿戴候选)',
-                              branch='front_only',
-                              owned_wearable_names=[])
-    # comp 驱动穿戴(ADR-0101):优先穿 target_comp.key_equips 命脉件。
-    _key_equips = (_tgt_comp.key_equips if _tgt_comp is not None else None)
-    wearable = _prioritize_wearable(wearable, _key_equips)
-    # 拖拽失败降级:回退路径同主路径纪律——拉黑件不重试;回退路径无角色身份
-    # (拖点=空槽 avatar),拉黑键取 (件名, '')。
-    _fail_counts_fb: dict = {}
-    if _match is not None and _match.session is not None:
-        _fail_counts_fb = _match.exec_state.equip_drag_fail_counts
-    wearable = [(n, p) for n, p in wearable
-                if _fail_counts_fb.get(equip_drag_key(n, ''), 0)
-                < DRAG_FAIL_BLACKLIST_LIMIT]
-    if not wearable:
-        log.info('[cw-equip] 回退路径候选全拉黑 → 计划空')
-        return EquipPlanBuild(
-            empty_reason='分配对全部拉黑(drag 连败)',
-            branch='front_only', owned_wearable_names=[])
-    # 排序后候选 × 空槽序 zip(产出期快照;中途合成耗件 → 计划步定位
-    # miss → STATUS_PLAN_STALE fail-fast,与 M7 主路径同一失效通道)。
-    steps_fb: list = []
-    for (name, _pos), slot_idx in zip(wearable, slots, strict=False):
-        steps_fb.append(EquipWearStep(item_name=name, char_name='',
-                                      row='front', slot=int(slot_idx)))
-    return EquipPlanBuild(steps=steps_fb, branch='front_only',
-                          owned_wearable_names=[n for n, _p in wearable])
-
+# ===== 装备穿戴计划构造(kernel 化,unified-action-factory 批 2a)=====
+# `_build_equip_wear_plan`/EquipPlanBuild/EquipWearStep 与拉黑/排序纯 helper
+# 迁居 kernel/cw_equip_wear_plan(R2 原子通路:发射位直接消费同一构造
+# 函数,组合壳删除后无第二源;kernel 不得依 operations,故纯 helper 同迁);
+# 本模块 import 供执行位 `_run_equip` 薄派发消费(组合壳登记行删除归批 2b)。
 class PrepActionExecutor:
     """备战原子/组合动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
@@ -612,11 +191,7 @@ class PrepActionExecutor:
     DragCwChar.drag_char(中心拖 + hold0,2026-08-13 实测验证)。
     """
 
-    BOX_SCREEN: ClassVar[str] = '货币战争-备战-武装箱选择'
     BOX_OPEN_DY: ClassVar[int] = 41                   # 「开启」文字区 = 箱 icon 下方偏移(2026-08-14 实测:槽center(563,911)→命中(565,952))
-    CARD_Y: ClassVar[int] = 290                       # 武装箱卡身点击 y(点卡名下方一点避「查看详情」)
-    LEVEL_MAX_CLICKS: ClassVar[int] = 12              # 升级单动作最多买经验次数(同 _handle_bench_full 量级)
-    SPHERE_MAX_CLICKS: ClassVar[int] = 12             # 单动作点球硬上限(防识别抖动死循环)
     LAUNCH_DEAD_LIMIT: ClassVar[int] = 3   # 出战未落地连败停机阈值(session 级计数;两局实证环重入 ~2min/次)
     #: P4R:出战后「转移成功」的拦截弹窗白名单(锚 = 已建档 id_mark)。
     #: 出战按钮点击后备战标识消失但下列弹窗在场 = 出战被游戏拒(1-1 事故
@@ -679,17 +254,47 @@ class PrepActionExecutor:
             if not (1 <= action.to_slot <= n):
                 return f'DeployMove to_slot={action.to_slot} 越界(1-{n})'
         elif isinstance(action, ClickSpheres):
-            if action.max_k < 1:
-                return f'ClickSpheres max_k={action.max_k} < 1'
+            if not action.points:
+                return 'ClickSpheres 载荷为空(挑选归决策侧 kernel,空载荷 = 无对象)'
+            if len(action.points) > SPHERE_CLICK_HARD_CAP:
+                return (f'ClickSpheres 载荷 {len(action.points)} '
+                        f'超硬上限 {SPHERE_CLICK_HARD_CAP}(挑选越权)')
         elif isinstance(action, OpenBox):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
                 return f'OpenBox slot={action.slot} 越界(1-{len(self._bench_pts)})'
         elif isinstance(action, OpenTome):
             if action.slot is not None and not (1 <= action.slot <= len(self._bench_pts)):
                 return f'OpenTome slot={action.slot} 越界(1-{len(self._bench_pts)})'
-        elif isinstance(action, PickBoxCard):
-            if action.card_idx is not None and not (1 <= action.card_idx <= 4):
-                return f'PickBoxCard card_idx={action.card_idx} 越界(1-4)'
+        elif isinstance(action, WearEquip):
+            if action.row not in ('front', 'back'):
+                return f'WearEquip row={action.row!r} 非法(front/back)'
+            n = len(self._front_pts if action.row == 'front' else self._back_pts)
+            if not (1 <= action.slot <= n):
+                return f'WearEquip slot={action.slot} 越界(1-{n})'
+        elif isinstance(action, (FurnaceUse, PrivilegeCardUse)):
+            if action.target_kind not in ('equip', 'char'):
+                return (f'{type(action).__name__} target_kind='
+                        f'{action.target_kind!r} 非法(equip/char)')
+            if action.target_kind == 'equip':
+                if not action.item_name:
+                    return (f'{type(action).__name__} equip 腿缺目标件名')
+            else:
+                if action.row not in ('front', 'back'):
+                    return (f'{type(action).__name__} row={action.row!r} '
+                            '非法(front/back)')
+                n = len(self._front_pts if action.row == 'front'
+                        else self._back_pts)
+                if not (1 <= action.slot <= n):
+                    return (f'{type(action).__name__} slot={action.slot} '
+                            f'越界(1-{n})')
+        elif isinstance(action, (WrenchUse, PrecisionWrenchUse,
+                                StaffProjectorUse, PerfectProjectorUse,
+                                LuckyTokenUse)):
+            if action.row not in ('front', 'back'):
+                return f'{type(action).__name__} row={action.row!r} 非法(front/back)'
+            n = len(self._front_pts if action.row == 'front' else self._back_pts)
+            if not (1 <= action.slot <= n):
+                return f'{type(action).__name__} slot={action.slot} 越界(1-{n})'
         return None
 
     # ===== 执行入口(机械执行,无返回;执行前拒绝见 _execute_dispatch)=====
@@ -1028,15 +633,18 @@ class PrepActionExecutor:
             return self._open_box(action)
         if isinstance(action, OpenTome):
             return self._open_tome(action)
-        if isinstance(action, PickBoxCard):
-            _clicked, msg = self._pick_box_card(action)
-            return msg, _clicked
         if isinstance(action, SellBench):
             return self._sell_bench(action)
         if isinstance(action, SellDeployed):
             return self._sell_deployed(action)
         if isinstance(action, DeployMove):
             return self._deploy_move(action)
+        if isinstance(action, WearEquip):
+            return self._wear_equip(action)
+        if isinstance(action, (FurnaceUse, PrivilegeCardUse, WrenchUse,
+                               PrecisionWrenchUse, StaffProjectorUse,
+                               PerfectProjectorUse, LuckyTokenUse)):
+            return self._use_tool(action)
         if isinstance(action, LevelUp):
             return self._level_up()
         return f'未知动作类型 {type(action).__name__}', False
@@ -1044,35 +652,25 @@ class PrepActionExecutor:
     # ===== 奖励域 =====
 
     def _click_spheres(self, action: ClickSpheres) -> tuple[str, bool]:
-        """批式点球(大球优先):一次全点 → 等满动画(机械执行半)。
+        """逐坐标点球(R4 机械执行半;载荷 = kernel ``select_sphere_clicks``
+        产出的有序点击列)。
 
-        2026-09-02 用户指导(screen_flow_timing.md #16):奖励球飞行动画
-        最长 ~2s(去向 = 备战/商店/装备栏),原逐球「点击 + 1.2s 验证」×N
-        慢(且实证日志有同 step 重复发球)。权衡(用户裁定):席满时部分球
+        大球优先/上界挑选归决策侧 kernel 单一源(发射位构造载荷),本方法
+        纯机械逐个点(2026-09-02 用户指导 screen_flow_timing.md #16:奖励球
+        飞行动画最长 ~2s → 点完等满动画;去向 = 备战/商店/装备栏)。零读屏
+        零排序零截断(原读屏选球与 max_k 截断半随改形退役);席满时部分球
         可能没点开——由后续 heavy 观察自然回补(球仍在 → 下轮再派)。
-        A2 拆除(用户裁定 2026-09-10):点后「重读验球消失」判效半删除,
-        球未消由下一帧观察回补;幻球检出+会话黑名单随 M5 裁定整体删除
-        (幻球 = 观察 bug,观察侧质量治理另立不入本线——读侧过滤函数与
-        其测试面归拖拽失败降级批五文件面)。
+        掉箱感知随之删除(掉箱归下一帧观察 → OpenBox 臂)。
         """
-        budget = min(action.max_k, PrepActionExecutor.SPHERE_MAX_CLICKS)
-        screen = self._op.screenshot()
-        spheres = read_reward_spheres(self._ctx, screen)
-        if not spheres:
-            return '无球(观察-执行竞态,无事可做)', False   # LOW-2:环境无对象
-        targets = sorted(spheres, key=lambda t: t[2], reverse=True)[:budget]
-        clicked = 0
-        for _color, center, _r in targets:
+        for _x, _y in action.points:
+            center = Point(_x, _y)
             self._ctx.controller.mouse_move(center)   # bug#1 缓解
             self._ctx.controller.click(center)
-            clicked += 1
             self._op.park_cursor(after_wait=0.1)
         # 用户口径:飞行动画最长 ~2s → 等满(固定等待归产生动画的操作)
         time.sleep(2.0)
-        detail = (f'点球 {clicked}/{budget}(动画等待 2s;'
-                  f'球未消由下一帧观察回补)')
-        if read_supply_boxes(self._ctx, screen):
-            detail += ' 掉箱→下步 OpenBox 统筹'
+        detail = (f'点球 {len(action.points)} 个(载荷机械点;'
+                  f'动画等待 2s,球未消由下一帧观察回补)')
         log.info(f'[cw][sphere] {detail}')
         return detail, True
 
@@ -1109,17 +707,12 @@ class PrepActionExecutor:
     def _open_box(self, action: OpenBox) -> tuple[str, bool]:
         """开箱:找箱槽 → 点「开启」→ 固定动画等待(纯机械执行,ADR-0601)。
 
-        选卡动作不在本执行链(ADR-0601:动作 op 机械执行,决策归决策面;
-        原内联选卡 = 「决策与点卡同执行链闭环」违例,随动作 op 规范判读
-        拆除):点完开启本动作即结束——武装箱选择 overlay 在场由观察侧
-        每步现读(``PrepObservation.box_overlay_open``),策略器 prep 实体
-        面臂(mandate_v1 entry「箱对话框在场 ⇒ PickBoxCard」,臂序先于
-        boxes 重开臂)在下一决策帧提选卡动作,经 ``_dispatch_direct`` →
-        :meth:`_pick_box_card` 执行(选卡打分单一源 = 策略
-        ``decide_box_card``;与 ``_open_tome``「选卡交决策面」同构)。
-        历史注记:同动作内联选卡(commit 698631b19)的动机 = 当时跨帧
-        闭环链(观察臂)未接住 overlay;承接面失真要治在观察/建档面,
-        不在执行链内联第二决策点。
+        选卡动作不在本执行链(R7 批 2a 定形):点完开启本动作即终结
+        (OpenBox 终结化,决策循环交回外循环)——武装箱选择画面由外循环
+        按画面分发独立画面 op(:mod:``cw_screen_box_pick``)选卡(选卡
+        决策单一源 = 策略 ``decide_box_card`` 契约 / 局外 kernel
+        ``pick_equipment`` 机器;原「决策面 PickBoxCard 臂 + 执行器选卡半」
+        随 PickBoxCard 删除退役)。
         A3 拆除:「轮询验 overlay 弹出」判效半删除,改固定动画等待
         (等待归产生动画的操作);弹窗就位与否交下一帧观察。
         """
@@ -1139,7 +732,8 @@ class PrepActionExecutor:
         self._ctx.controller.click(open_point)
         # 固定动画等待(原轮询判效半拆除,A3;值取原轮询上界)
         time.sleep(_OVERLAY_ANIM_WAIT_S)
-        log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(选卡交决策面 PickBoxCard 臂)')
+        log.info(f'[cw][box] 开箱槽{slot} → 点开启已发(交回外循环,武装箱'
+                 '选择画面分发选卡)')
         return f'开箱槽{slot}', True
 
     def _open_tome(self, action: OpenTome) -> tuple[str, bool]:
@@ -1170,91 +764,6 @@ class PrepActionExecutor:
         time.sleep(_OVERLAY_ANIM_WAIT_S)
         log.info(f'[cw][tome] 开典籍槽{slot} → 点两次已发(选卡交 loop 0i)')
         return f'开典籍槽{slot}', True
-
-    def _pick_box_card(self, action: PickBoxCard) -> tuple[bool, str]:
-        """选卡:OCR 卡名行 → (card_idx 指定 | 执行器默认:key_equips 命中 → 材料通用性 → 第1张)→ 点卡 + 固定等待。
-
-        返回 ``(选卡点击是否已发出, 摘要)``——点击事实(期望态登记门控),
-        非成败回执:overlay 关没关交下一帧观察(A3 判效半拆除,用户裁定
-        2026-09-10)。入口锚检查 = 选卡点击的前置读(需 overlay 在场才有
-        卡名可读,机械目标获取面)。"""
-        overlay = self._op.screenshot()
-        if not self._op.round_by_find_area(overlay, PrepActionExecutor.BOX_SCREEN, '标识-请选择').is_success:
-            return False, '武装箱 overlay 未开(先 OpenBox)'
-        rect = _area_rect(self._ctx, '区域-卡名行', PrepActionExecutor.BOX_SCREEN)
-        names: list[tuple[str, int]] = []
-        if rect is not None:
-            for r in _ocr(self._ctx, overlay, rect):
-                if 2 <= len(r.data) <= 8:
-                    names.append((r.data, r.center.x))
-        names.sort(key=lambda t: t[1])
-        if not names:
-            # 简易武装箱变体兜底:卡名行 OCR 不可得(变体字型/布局)→
-            # 点首张装备卡(点卡选中即确认)。
-            _fb = _area_rect(self._ctx, '装备卡-1',
-                             PrepActionExecutor.BOX_SCREEN)
-            if _fb is None:
-                return False, 'OCR 未读到卡名且无装备卡-1 兜底区'
-            chosen, choose_x = '装备卡-1(兜底)', (_fb.x1 + _fb.x2) // 2
-        elif action.card_idx is not None:
-            if not (1 <= action.card_idx <= len(names)):
-                return False, f'card_idx={action.card_idx} 超实读卡数 {len(names)}'
-            chosen, choose_x = names[action.card_idx - 1]
-        else:
-            chosen, choose_x = self._default_box_card(names)
-        card_point = Point(choose_x, PrepActionExecutor.CARD_Y)
-        self._ctx.controller.mouse_move(card_point)   # bug#1 缓解
-        self._ctx.controller.click(card_point)        # 点卡选中即确认(实测单步)
-        # 固定动画等待(原轮询判效半拆除,A3)
-        time.sleep(_OVERLAY_ANIM_WAIT_S)
-        log.info(f'[cw][box] 选卡 {chosen} → 点击已发')
-        return True, f'选卡 {chosen}'
-
-    def _default_box_card(self, names: list[tuple[str, int]]) -> tuple[str, int]:
-        """执行器默认选卡:决策单一源 = 共享机器 ``pick_equipment``
-        (armory-box-value landing 3.2;局内经策略模块 ``decide_box_card``
-        薄壳,局外直接机器空键 = 纯通用输出先验排序)。
-
-        分层纪律(T-20 谓词单一源判例同款):打分只住机器,本执行器
-        **禁第二打分实现**——``decide_box_card`` 异常留证(完整栈)后显式
-        上抛(与 ``cw_op_buy_cards.run_buy_waves`` 决策异常同款;本模块
-        docstring 失败路径「执行异常 → 异常上抛,外层 op retry 接管」
-        同约),返回越界索引同 fail-closed 上抛;两者都禁无声回落内联打分
-        (策略 bug 永久遮蔽,2026-09-12 动作 op 规范判读应修②)。
-        局外回落行为变化(armory-box-value §2.6 行 10):材料通用性梯度
-        (出处文档已删,注册表无据)→ 通用输出先验;行为锁重锚 =
-        test_cw_screens_ops 回落行为锁(重锚后 = test_pick_card_fallback_by_output_prior)。
-        """
-        match = self._ctx.cw_match
-        if match is not None:
-            try:
-                # 决策输入 = session 容器单例(W6 波 4 取帧点改道容器直读,
-                # 与全 pick 族同款;decide_box_card 契约面已切 GameState)。
-                # 禁回落 last_state 直读——被删的 cw_screen_supply.
-                # pick_box_card 原本同款直读,迁移批已切,直读 = 观察流旁路。
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
-                )
-                idx = match.strategy.decide_box_card(
-                    [n for n, _ in names], board_state_of(match.session),
-                    match.session, getattr(match, 'config', None))
-            except Exception:   # noqa: BLE001  留证后显式上抛,禁无声回落
-                import traceback
-
-                log.error('[cw!][box] decide_box_card 异常(留证后上抛):\n%s',
-                          traceback.format_exc())
-                raise
-            if not (0 <= idx < len(names)):
-                raise ValueError(
-                    f'decide_box_card 返回越界索引 {idx}(实读卡数 '
-                    f'{len(names)});策略契约违约 fail-closed,禁回落内联选卡')
-            return names[idx]
-        # 局外(无策略面):机器空键 = 纯 base 排序(与局内未锁态同构,
-        # 打分单一源;原梯度回落随虚构表退役,行 10)
-        from sr_od.application.currency_war.kernel.cw_equip_value import (
-            pick_equipment,
-        )
-        return names[pick_equipment([n for n, _ in names])]
 
     # ===== 席位域 =====
 
@@ -1307,6 +816,149 @@ class PrepActionExecutor:
             return ('部署已发,盛会之星 overlay 弹出(外环接管)', True)
         return (f'部署槽{action.from_slot}→{action.to_row}{action.to_slot} ✓',
                 True)
+
+    # ===== 装备/工具原子域(R2 穿戴 / R8 工具按消耗品各立类)=====
+
+    _TOOL_NAME_BY_CLASS: ClassVar[dict[type, str]] = {
+        FurnaceUse: '冶金炉',
+        PrivilegeCardUse: '特权赋予卡',
+        WrenchUse: '拆装扳手',
+        PrecisionWrenchUse: '精密拆装扳手',
+        StaffProjectorUse: '员工投影仪',
+        PerfectProjectorUse: '完美投影仪',
+        LuckyTokenUse: '好运令牌',
+    }
+
+    def _equip_slot_drag_point(self, row: str, slot: int) -> Point | None:
+        """(row, slot) → avatar 拖拽点(与 CwOpEquipAll._slot_drag_point 同式;
+        前排 = 前排-N rect 中心 x + y1+21(D-36 校准),后排 = 布局选档前缀
+        (select_back_layout 单一入口,ADR-0385)同式派生)。缺失 → None
+        (建档漂移,禁兜底坐标)。"""
+        _si = self._ctx.screen_loader.get_screen(SCREEN_NAME)
+        if _si is None:
+            return None
+        if row == 'front':
+            r = next((a for a in _si.area_list
+                      if a.area_name == f'前排-{slot}' and a.pc_rect is not None),
+                     None)
+            if r is None:
+                return None
+            return Point((r.pc_rect.x1 + r.pc_rect.x2) // 2, r.pc_rect.y1 + 21)
+        _pfx = '后排'
+        try:
+            from sr_od.application.currency_war.obs.cw_back_layout import (
+                select_back_layout as _sel_bl,
+            )
+            _pfx = _sel_bl(self._ctx, self._op.screenshot())[1] or _pfx
+        except Exception:   # noqa: BLE001  选档失败退 6 槽基线(旧行为)
+            pass
+        r = next((a for a in _si.area_list
+                  if a.area_name == f'{_pfx}-{slot}' and a.pc_rect is not None),
+                 None)
+        if r is None:
+            return None
+        return Point((r.pc_rect.x1 + r.pc_rect.x2) // 2, r.pc_rect.y1 + 21)
+
+    def _owned_grid_locate(self, item_name: str) -> Point | None:
+        """owned 装备网格内按名定位 icon 中心(机械现读;执行坐标边合法读)。
+
+        名字定位是唯一稳锚(网格 reflow 使快照坐标失真);miss → None
+        (调用方按「计划失效」未发出通道处理,下帧重派重算)。"""
+        from sr_od.application.currency_war.obs.cw_equipment import read_equips
+        from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
+            get_equip_templates_cached,
+        )
+        templates = get_equip_templates_cached(self._ctx)
+        if templates is None:
+            return None
+        rect = _area_rect(self._ctx, '区域-道具装备', SCREEN_NAME)
+        if rect is None:
+            return None
+        hits = read_equips(self._op.screenshot(), templates,
+                           equip_rect=(rect.x1, rect.y1, rect.x2, rect.y2))
+        entry = next(((n, p) for n, p, _ in hits if n == item_name), None)
+        return Point(entry[1][0], entry[1][1]) if entry is not None else None
+
+    def _wear_equip(self, action: WearEquip) -> tuple[str, bool]:
+        """穿装备单步(WearEquip 原子通路机械半;零比对出生,裁决 3)。
+
+        流程 = 稳帧确认(动画收尾输入条件化,非判效)→ owned 网格按名
+        定位源件 → 单次拖拽 → 发出即登记。零 CV-diff 零验穿零补救链——
+        穿没穿归观察写入边对账(装备期望态对账族下一入口暴露);落空由
+        下一入口观察重派承接(重算计划 = 天然重试)。逻辑态(owned 摘件)
+        在观察侧 ``_project_prep_obs`` 直写。
+        """
+        target = self._equip_slot_drag_point(action.row, action.slot)
+        if target is None:
+            return (f'装备槽位坐标缺失:{action.row}-{action.slot}'
+                    '(建档漂移,禁兜底坐标)'), False
+        start = self._owned_grid_locate(action.item_name)
+        if start is None:
+            return (f'owned 网格未定位到 {action.item_name}'
+                    '(模板库缺失/计划失效,下帧重派重算)'), False
+        self._wait_stable_frame()
+        self._ctx.controller.mouse_move(start)   # bug#1 缓解
+        time.sleep(0.2)
+        self._ctx.controller.drag_to(start=start, end=target,
+                                     hold_time=0.5, duration=1.5)
+        time.sleep(1.5)   # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
+        self._op.park_cursor(after_wait=0.1)
+        detail = (f'穿戴 {action.item_name} → {action.char_name or "前排空槽"}'
+                  f'({action.row}-{action.slot}) 已发(零比对,落地归观察对账)')
+        log.info(f'[cw][wear] {detail}')
+        return detail, True
+
+    def _use_tool(self, action: PrepAction) -> tuple[str, bool]:
+        """工具消耗单步(R8 七类共用机械半:owned 网格内 icon → 目标拖曳)。
+
+        源件 = 工具 icon(按注册名定位);目标 = equip 模式 owned 网格
+        icon / char 模式角色槽位中心。零消耗确认对拍(裁决 3:原
+        CwOpTools 三态对拍随原子化由观察承接)——拖后固定等待,消费
+        真值 = 下一帧装备区读数;逻辑态(工具 −1/库存变换)在
+        ``_project_prep_obs`` 按 ``EQUIP_WRITE_SIDES`` 申报直写。
+        """
+        tool_name = self._TOOL_NAME_BY_CLASS[type(action)]
+        start = self._owned_grid_locate(tool_name)
+        if start is None:
+            return (f'owned 网格未定位到工具 {tool_name}'
+                    '(模板库缺失/已消耗,下帧重派)'), False
+        if getattr(action, 'target_kind', 'char') == 'equip':
+            tgt_name = getattr(action, 'item_name', '')
+            end = self._owned_grid_locate(tgt_name)
+            if end is None:
+                return (f'owned 网格未定位到目标件 {tgt_name}'
+                        '(合成消耗/reflow,下帧重派)'), False
+            tgt_desc = tgt_name
+        else:
+            pts = self._front_pts if action.row == 'front' else self._back_pts
+            end = pts[action.slot - 1]
+            tgt_desc = f'{action.row}-{action.slot}'
+        self._ctx.controller.mouse_move(start)   # bug#1 缓解
+        time.sleep(0.2)
+        self._ctx.controller.drag_to(start=start, end=end,
+                                     hold_time=0.5, duration=1.2)
+        time.sleep(1.5)   # MCP drag 异步落地(memory mcp-click-async-sleep-rule)
+        self._op.park_cursor(after_wait=0.1)
+        detail = f'{tool_name} → {tgt_desc} 拖曳已发(零对拍,消费归观察)'
+        log.info(f'[cw][tool] {detail}')
+        return detail, True
+
+    def _wait_stable_frame(self, interval: float = 0.3,
+                           budget_s: float = 1.2) -> None:
+        """拖前稳帧确认(与 CwOpEquipAll._wait_stable_frame 同式同参):
+        等相邻两帧全图像素差均值 < 阈值(画面动画收尾)再拖。输入条件化
+        等待,非判效;预算耗尽仍未稳 → 放行(落空由观察重派兜底)。"""
+        deadline = time.time() + budget_s
+        import numpy as np
+
+        prev = self._op.screenshot()
+        while time.time() < deadline:
+            time.sleep(interval)
+            cur = self._op.screenshot()
+            diff = float(np.abs(prev.astype('int16') - cur.astype('int16')).mean())
+            if diff < 2.0:
+                return
+            prev = cur
 
     def _drag(self, src: Point, dst: Point) -> None:
         """统一拖拽原语(DragCwChar.drag_char:中心拖+hold0;机械执行,
@@ -1381,137 +1033,49 @@ class PrepActionExecutor:
     # ===== 商店域 =====
 
     def _level_up(self) -> tuple[str, bool]:
-        """买经验(循环点「购买经验」机械执行;gold 前置由策略保证)。
+        """买经验(R6 逐帧单击形态:找钮 → 单击 → 固定等待,零授权零计数)。
 
-        A4 拆除(用户裁定 2026-09-10):逐击点后 OCR 验级判效半删除——
-        点击按授权击数机械执行(金本位 = kernel ``clicks_to_next_level``
-        推导击数;血本位 = 入口整级授权击数,血闸授权已是入口整级授权),
-        级真值由下一帧观察 reconcile(``_reconcile_xp_expect`` 经验对账族
-        承接);原过冲 fail-closed 防线改策略层授权口径(授权击数 = 上界,
-        循环结构性不超击)。
+        执行器授权面全删(design.md unified-action-factory §2.6 LevelUp
+        粒度定案):授权击数推导/血闸整级授权/逐击金地板全部上移发射位
+        (kernel ``clicks_to_next_level`` 现算击数 > 0 = 每帧发射前置;
+        spend_unified / levelup_budget_gate / posture 血闸 = 决策核发射门)。
+        升 N 击 = N 帧(决策循环逐帧重组,与商店域单击形态
+        ``cw_level_up_action`` 同构先例)。
 
-        入口前检(M6 边界面,非判效):level 基线读不到拒绝盲点(击数无法
-        推导);血闸(ADR-0578,血本位协议限定;金模式零改动)整级授权检
-        (全量口径 ``⌈need/4⌉×血单价``,hp 不可信 fail-closed)。
-        r15 review P1 金检查保留:每点前读金,gold < 单击价(kernel
-        ``XP_CLICK_COST_FALLBACK``)即停(防排干买牌本金——执行前资源契约,
-        非点击效果判断)。
+        金腿 = 执行缝金差(2a 中间态定案):单击价 kernel 单一源
+        ``xp_click_cost`` 现算(失读回退 ``XP_CLICK_COST_FALLBACK``),
+        经 ``_last_levelup_spent`` → ``_executed_gold_delta`` → 容器金账
+        直推;cost/auth_basis 分键装载与 ``action.cost`` 直写翻转归批 2b。
+        经验/等级真值 = 下一帧观察对账族 + 逻辑态 xp/level 推进
+        (``apply_prep_action_logic`` LevelUp 分支)双通道。
         """
         match = self._ctx.cw_match
         session = match.session if match is not None else None
-        screen = self._op.screenshot()
-        before = _read_level_raw(self._ctx, screen)
-        if before is None and session is not None and session.last_level_obs:
-            before = session.last_level_obs   # OCR 漏读基线退单调守卫值(只作比较基,不写回)
-        if before is None:
-            return 'level 基线读不到(OCR 漏读),拒绝盲点', False
-        from sr_od.application.currency_war.kernel.cw_discipline_rules import (
-            hp_decision_trusted,
-        )
         from sr_od.application.currency_war.kernel.cw_economy import (
-            blood_xp_full_clicks,
-            blood_xp_gate,
-            clicks_to_next_level,
             xp_click_cost,
         )
-        from sr_od.application.currency_war.kernel.cw_game_state import (
-            board_state_of as _bs_of_auth,
-        )
-        from sr_od.application.currency_war.kernel.cw_hp_policy import (
-            decision_hp as _decision_hp_auth,
-        )
-        from sr_od.application.currency_war.kernel.cw_investments import (
-            blood_xp_mode,
-        )
-        _blood = None if session is None else blood_xp_mode(session)
-        _hp: int | None = None
-        _auth_clicks = 0
-        if _blood is not None:
-            _mode_name, _cost = _blood
-            # 血闸 hp 消费经决策读口(prep 链容器化段 2 消点,kernel 判读
-            # S5:旧 last_state 帧 raw hp 直读未经新鲜度门+桥视图可信位
-            # 恒 observation 失真,与同闸 P21 面「同面同输入」申报不符;
-            # 现改 decision_hp 门后值+容器来源位可信位,两面对同一购买
-            # 动作输入同源——可信位单一源 = kernel cw_discipline_rules)。
-            _bs_auth = _bs_of_auth(session)
-            _hp = _decision_hp_auth(_bs_auth, session)
-            _trusted = hp_decision_trusted(_bs_auth)
-            # 批入口整级授权检(全量口径);拒 → 与「level 基线读不到」同返回路径
-            if not blood_xp_gate(_hp, _trusted, before, _cost):
-                return (f'血闸拒:hp={_hp} < 下一级血成本 '
-                        f'{blood_xp_full_clicks(before) * _cost}'
-                        f'(mode={_mode_name};[40]② 否则停,升级走买牌自然 XP)',
-                        False)
-            _auth_clicks = blood_xp_full_clicks(before)
-        else:
-            # 金本位授权击数 = kernel 击数推导(§6.6 单击价/击数单一源):
-            # 优先容器现值(W6 波 4 接缝族切容器帧;xp 进度精确),缺席退
-            # 权威表全量口径(blood_xp_full_clicks = ⌈need/4⌉ 同式,xp 结转
-            # 忽略);满级(0 击)= 无购买对象,机械不发。
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                board_state_of as _bs_of_clicks,
-            )
-            from sr_od.application.currency_war.kernel.cw_game_state import (
-                level_of as _level_of_clicks,
-            )
-            _st = _bs_of_clicks(session)
-            _gold_clicks = clicks_to_next_level(_st)
-            if _gold_clicks <= 0:
-                lv_now = _level_of_clicks(_st)
-                return f'已满级(level {lv_now}),无购买对象', False
-            _auth_clicks = min(_gold_clicks, PrepActionExecutor.LEVEL_MAX_CLICKS)
         btn = area_center(self._ctx, '备战标识-购买经验') or Point(296, 860)
-        _clicked = 0   # 实击数(机械回显真实停点;金地板可提前停)
-        _spent = 0     # 实击花金累计(T-16 执行点金差;单价 = xp_click_cost 逐击现算)
-        # 单击价容器读口(逐击现算:等级门折扣随升级跨档变化,禁循环外
-        # 单次快照;无局 = 兜底价。单一源 = kernel xp_click_cost,与假
-        # 环境执行缝同式)。
-        _bs_price = None
+        # 单击价容器读口(kernel 单一源,失读回退兜底价;与假环境执行缝同式)
+        _price = XP_CLICK_COST_FALLBACK
         if session is not None:
             from sr_od.application.currency_war.kernel.cw_game_state import (
                 board_state_of,
             )
-            _bs_price = board_state_of(session)
-        for k in range(_auth_clicks):
-            if _blood is not None and _hp is not None:
-                # 逐击支付能力地板:modeled_hp(= hp_trusted − 已击数×单价)≥ 单价才可点下一击
-                if _hp - k * _cost < _cost:
-                    log.info('[cw][levelup] 血模式 modeled hp %s 第%s击前不足单价 %s → 停点',
-                             _hp - k * _cost, k + 1, _cost)
-                    break
-            # r15 review P1:循环内金检查——策略侧金前置滞后一环时
-            # (如 P2 急救态 _saving_for_level 仍攒金但 plan 已发 LevelUp),gold 63→9
-            # 一动作排干(M57 P2-1 实证)。每点前读金,gold < 单击价即停(防排干
-            # 买牌本金);单击价单一源 = kernel XP_CLICK_COST_FALLBACK。
-            gold_now = read_gold(self._ctx, self._op.screenshot())
-            if gold_now is not None and gold_now < XP_CLICK_COST_FALLBACK:
-                log.info('[cw][levelup] gold %s < 单击价 → 停点(保买牌本金)', gold_now)
-                break
-            _price = xp_click_cost(_bs_price) if _bs_price is not None \
-                else XP_CLICK_COST_FALLBACK
-            _clicked += 1
-            _spent += _price
-            self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5:循环内 screenshot 移光标后紧接 click)
-            self._ctx.controller.click(btn)
-            # 血购回执行挂点已随 exogenous 流写入端退役删除
-            # (删除波 1);点击循环其余机械事实面不变。
-            # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
-            # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。
-            self._op.park_cursor(before_wait=0.3, after_wait=0.15)
-        if _clicked <= 0:
-            return f'授权击数 {_auth_clicks} 击未发出(金地板/血地板先行停点)', False
-        # W612 挂点A(升级事件;发射时点登记,批3a:原「验级成功分支内」
-        # 挂点随判效拆除改发出即登记;级真值由下一帧观察 reconcile,锚点
-        # 吸收外生差):inventory 标记(level_up 外生事件行已随 exogenous
-        # 流写入端退役删除——删除波 1)。观测 best-effort,零决策语义。
+            _price = xp_click_cost(board_state_of(session))
+        self._ctx.controller.mouse_move(btn)   # bug#1 缓解(review M-5)
+        self._ctx.controller.click(btn)
+        # 光标 parking(审计 P0,2026-08-16 = M38 level 毒化注入点):按钮距等级显示区 18px,
+        # 点击后光标压住 Lv.N 区 → 下帧 OCR 读错(4 毒化 3 位面的链头)。park 后再继续。
+        self._op.park_cursor(before_wait=0.3, after_wait=0.15)
+        # W612 挂点A(升级事件;发出即登记,观测 best-effort,零决策语义)。
         try:
             if session is not None:
                 session.effect_inventory.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
             log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
-        self._last_levelup_spent = _spent   # 执行点金差供给(_executed_gold_delta 消费)
-        detail = (f'买经验授权{_auth_clicks}击实击{_clicked}花金{_spent}'
-                  f'(基线 level {before};级真值=下一帧观察 reconcile)')
+        self._last_levelup_spent = int(_price)   # 执行点金差供给(_executed_gold_delta 消费)
+        detail = (f'买经验单击 1 击花金{_price}'
+                  '(逐帧单击形态;级真值=下一帧观察 reconcile)')
         log.info(f'[cw][levelup] {detail}')
         return detail, True
 
@@ -1763,7 +1327,12 @@ class PrepActionExecutor:
             log.warning('[cw!][composite] 装备 派发前置:当前画面 %s 非干净备战'
                         ' → 不派,环重观察', _drift)
             return f'装备 不在预期屏: {_drift}', False
-        build = _build_equip_wear_plan(self._ctx)
+        _m_eq = self._ctx.cw_match
+        _sess_eq = getattr(_m_eq, 'session', None) if _m_eq is not None else None
+        build = _build_equip_wear_plan(
+            _sess_eq,
+            exec_state_of(_sess_eq) if _sess_eq is not None else None,
+            getattr(getattr(_m_eq, 'strategy', None), 'registry', None))
         if build.fail_reason:
             return f'装备 {build.fail_reason}', False
         if not build.steps:
