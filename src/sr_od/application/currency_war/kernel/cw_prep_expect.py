@@ -21,9 +21,9 @@ from sr_od.application.currency_war.kernel.cw_exec_state import (
 from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     _merge_bench as cw_merge_bench,
 )
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwAction,
     DeployMove,
-    PrepAction,
     SellBench,
 )
 
@@ -52,57 +52,47 @@ _DRAG_DEFECT_KIND = 'intent_state_mismatch'
 class DragExpect:
     """一次拖动动作的期望态(compute_drag_expect 产出 / compare_drag_expect 消费)。
 
-    [索引定义] from_slot = 备战栏画面物理槽位 1-9(prep_actions 族 B 坐标系);
-    target_slot = 部署排**排内**物理槽位 1-N。取值时机 = 动作发出时快照
-    (源 = 上次 heavy 观察的 SIFT 身份,非执行期现读)。
-    identity/target_identity = SIFT 规范名;identity 空 = 源槽身份未识别。
+    [索引定义] from_bench_idx = bench 槽位表下标 0-8(统一词表坐标系,
+    unified-action-factory 批2b 翻转:原族B 物理槽位 1-9 退役);取值时机
+    = 动作发出时快照(源 = 上次 heavy 观察的 SIFT 身份,非执行期现读)。
+    identity = SIFT 规范名;identity 空 = 源槽身份未识别。
+    target_row = deploy_move 落位排(信息面):SIFT 实读按
+    物理排+槽号键,落位槽号 = 执行坐标边首空现读值,发出期不可从动作
+    推导(unified DeployMove 不携目标槽),故目标腿判据 = 身份离场
+    (源槽)+ 落位排记录,不再钉具体槽位。
     """
     kind: str                # 'sell'(拖卖出)| 'deploy_move'(拖到部署排)
     identity: str            # 被拖角色身份(SIFT 名)
-    from_slot: int           # bench 源物理槽位 1-9
-    target_row: str = ''     # deploy_move:'front'/'back'
-    target_slot: int = 0     # deploy_move:目标排内槽位
-    target_kind: str = ''    # deploy_move:'place'(空槽落位)/'swap'(互换)
-    target_identity: str = ''  # 目标槽执行前身份(swap 期望换回本槽用)
+    from_bench_idx: int      # bench 槽位表下标 0-8
+    target_row: str = ''     # deploy_move:'front'/'back'(落位排记录)
 
 
-
-def compute_drag_expect(action: PrepAction,
+def compute_drag_expect(action: CwAction,
                         bench_chars: list[BenchChar],
                         deployed_chars: list[BenchChar]) -> DragExpect | None:
     """动作意图 → 期望态(纯函数;期望态由发指令的同一条代码路径更新,
     动作语义单一源,防模型与现实分叉——架构原则边界②)。
 
+    实读键换算(观察读链是物理槽号键;容器下标 = 物理槽号−1,构造不变
+    量,换算仅在本函数入口一处):bench 读口按 ``bc.slot == idx+1`` 对位。
     无法建真值 → None 不评(对齐「无法建真值不评」基准口径,不猜):
-    - 源槽身份未识别(上次 heavy SIFT 无该槽条目);
-    - deploy_move 目标槽为**同名**占用——merge_mechanics.md §3 恒成立约束
-      「场上同名同星 ≤1」+ 部署链 5.1.7 不变量「同角色在场只 1」下该动作
-      不可达(游戏拒绝),期望态不定义。
+    - 源槽身份未识别(上次 heavy SIFT 无该槽条目)。
     """
     if isinstance(action, SellBench):
         ident = next((bc.char_id for bc in bench_chars
-                      if bc.slot == action.slot and bc.char_id), '')
+                      if bc.slot == action.bench_idx + 1 and bc.char_id), '')
         if not ident:
             return None
-        return DragExpect(kind='sell', identity=ident, from_slot=action.slot)
+        return DragExpect(kind='sell', identity=ident,
+                          from_bench_idx=action.bench_idx)
     if isinstance(action, DeployMove):
         ident = next((bc.char_id for bc in bench_chars
-                      if bc.slot == action.from_slot and bc.char_id), '')
+                      if bc.slot == action.bench_idx + 1 and bc.char_id), '')
         if not ident:
             return None
-        tgt = next((dc for dc in deployed_chars
-                    if dc.position_pref == action.to_row
-                    and dc.slot == action.to_slot and dc.char_id), None)
-        if tgt is None:
-            tk, ti = 'place', ''
-        elif tgt.char_id == ident:
-            return None   # 同名占位:该动作不可达(游戏拒绝),期望态不定义
-        else:
-            tk, ti = 'swap', tgt.char_id
         return DragExpect(kind='deploy_move', identity=ident,
-                          from_slot=action.from_slot,
-                          target_row=action.to_row, target_slot=action.to_slot,
-                          target_kind=tk, target_identity=ti)
+                          from_bench_idx=action.bench_idx,
+                          target_row=action.to_row)
     return None
 
 
@@ -112,47 +102,33 @@ def compare_drag_expect(expect: DragExpect,
                         deployed_read: list[BenchChar]) -> list[dict[str, str]]:
     """期望态 vs 定型帧实读逐槽比对(纯函数)。
 
-    判据(槽位级身份比对):
+    判据(槽位级身份比对;槽位键 = 源 bench 槽,经观察读链物理槽号键
+    对位,见 compute_drag_expect 入口换算注):
     - sell:源槽**不得再出现该身份**(原槽位空/无该身份;SIFT 未识别≠空槽,
       槽内其他身份不构成本判据的不一致——身份消失即满足任务语义①);
-    - deploy_move/place:源槽无该身份 + 目标槽=该身份(空槽落位);
-    - deploy_move/swap:两槽互换(源槽=原目标身份 + 目标槽=被拖身份)。
+    - deploy_move:源槽无该身份(目标落位槽号 = 执行坐标边首空现读,
+      发出期不可从动作推导,目标腿身份比对退役——落位对账归容器逻辑态
+      deployed_place 写口与下一入口 heavy reconcile 族)。
     实读中该槽**无条目**(SIFT 未识别/空读)= 无法建真值 → 跳过不评,
     不算一致也不算不一致。返回不一致项列表(空列表=全部可比项一致)。
     """
     mism: list[dict[str, str]] = []
 
-    def _bench_at(slot: int) -> BenchChar | None:
-        return next((c for c in bench_read if c.slot == slot and c.char_id), None)
-
-    def _dep_at(row: str, slot: int) -> BenchChar | None:
-        return next((c for c in deployed_read
-                     if c.position_pref == row and c.slot == slot and c.char_id), None)
+    def _bench_at(idx: int) -> BenchChar | None:
+        # 源槽位对位:容器下标 → 观察读链物理槽号键(构造不变量 slot=idx+1)
+        return next((c for c in bench_read
+                     if c.slot == idx + 1 and c.char_id), None)
 
     def _add(domain: str, slot: int, want: str, got: str) -> None:
         mism.append({'domain': domain, 'slot': str(slot),
                      'expected': want, 'observed': got})
 
-    if expect.kind == 'sell':
-        src = _bench_at(expect.from_slot)
-        if src is not None and src.char_id == expect.identity:
-            _add('bench', expect.from_slot, f'无 {expect.identity}(已卖出)',
-                 src.char_id)
-        return mism
-    # deploy_move:源槽
-    src = _bench_at(expect.from_slot)
-    if expect.target_kind == 'place':
-        if src is not None and src.char_id == expect.identity:
-            _add('bench', expect.from_slot, f'无 {expect.identity}(已离槽)',
-                 src.char_id)
-    else:   # swap
-        if src is not None and src.char_id != expect.target_identity:
-            _add('bench', expect.from_slot, expect.target_identity, src.char_id)
-    # 目标槽(place 与 swap 同判:应是被拖身份)
-    tgt = _dep_at(expect.target_row, expect.target_slot)
-    if tgt is not None and tgt.char_id != expect.identity:
-        _add(f'deployed.{expect.target_row}', expect.target_slot,
-             expect.identity, tgt.char_id)
+    src = _bench_at(expect.from_bench_idx)
+    if src is not None and src.char_id == expect.identity:
+        _add('bench', expect.from_bench_idx,
+             f'无 {expect.identity}(已卖出)' if expect.kind == 'sell'
+             else f'无 {expect.identity}(已离槽)',
+             src.char_id)
     return mism
 
 
@@ -402,7 +378,7 @@ _XP_DEFECT_KIND = 'xp_expect_mismatch'
 
 #: 购买单元执行摘要 detail 中「升级次数」的解析形态。来源链:shop.py
 #: 单元收尾摘要 'plan 买N张 升M次 刷K次 …'(total_xp_buy = 执行侧买经验击数(单击=+4XP 非整级))
-#: → prep_actions._run_composite 透传为 director 的 execute detail。
+#: → 商店执行链透传为 director 的 execute detail。
 _XP_BUY_CLICKS_PAT = re.compile(r'升(\d+)次')
 
 

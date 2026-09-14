@@ -1,4 +1,4 @@
-"""货币战争 备战决策环 原子动作全集 + 执行器(P1;strategy/03(原 doc 15§4)/§13)。
+"""货币战争 备战决策环 执行器(P1;strategy/03(原 doc 15§4)/§13)。
 
 框架层:本模块**不含玩法判断**(何时收球/卖谁/何时出战 = 策略层 CwStrategy.decide_prep_screen),
 只负责「机械执行一个动作」(用户裁定 2026-09-10:动作 op 只管机械执行,
@@ -11,12 +11,16 @@ reconcile 对账;T-223 终裁:执行回执 ``(progressed, detail)`` 退役,
 - 执行异常 → 异常上抛(Director 上抛 = 本环 fail,外层 op retry 接管)。
 原第三路径「验证失败 → progressed=False」随验证拆除退役。
 
-slot 语义全局统一(§13.1):**物理槽位** —— 备战栏 1-9 / 前排 1-4 / 后排 1-N;非 bench 列表下标!
-与族 A(cw_state.Action 策略动作)同名类(SellBench/DeployMove/SellDeployed)的坐标系对照:
-族 B 物理槽位 = 族 A 下标 + 1(bench 域);deployed 域两族结构不同(族 B=row+slot
-物理排槽位,族 A=紧缩列表下标)——完整对照表见 cw_state.py Action 节约定块。
-组合动作命名映射(§7 L1):RunDeploy=CwScreenDeploy / RunEquip=CwOpEquipAll(整段买牌组合已随 shop.py 壳退役删除,W970 批 C 后决策核只发显式开店意图)
-(P1 过渡,P2/P3 溶解为原子)。
+slot 语义(unified-action-factory 批2b 归一后):席位域动作(SellBench/
+SellDeployed/DeployMove)携**容器槽位表下标**(0 基,词表单一源 =
+kernel/cw_vocab,坐标系裁定见其模块头);本执行器 = **执行坐标边**——
+容器下标 → screen_info 槽位中心的换算单点(bench 侧 = 备战栏-N area 序
+直取;deployed 侧 = kernel ``deployed_row_slot`` 单一函数)。坐标参数化
+机械动作(WearEquip/工具原子类/OpenBox/OpenTome)的 row/slot 字段 =
+画面物理排槽位 1 基(动作参数定义,拖点直取 area,不经换算)。
+组合动作形态已随统一词表删除(R2:RunDeploy/RunEquip/RunTools 退役,
+部署/穿戴/工具 = 决策核逐帧原子发射;CwScreenDeploy 画面 op 仍由
+cw_loop 0j 前台无角色恢复链直调,非词表成员)。
 """
 from __future__ import annotations
 
@@ -27,24 +31,15 @@ from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_economy import XP_CLICK_COST_FALLBACK
 from sr_od.application.currency_war.kernel.cw_exec_state import (
+    DEPLOYED_CAPACITY,
     _advance_gold,
+    deployed_row_slot,
     exec_state_of,
 )
-
-if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
-from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
-    _build_equip_wear_plan,
-)
-from sr_od.application.currency_war.kernel.cw_obs_core import (
-    SCREEN_NAME,
-    _area_rect,
-    area_center,
-)
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    PREP_ACTION_TYPES,
-    SPHERE_CLICK_HARD_CAP,
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CW_ACTION_TYPES,
     ClickSpheres,
+    CwAction,
     DeployMove,
     FurnaceUse,
     LevelUp,
@@ -53,17 +48,24 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     OpenTome,
     PerfectProjectorUse,
     PrecisionWrenchUse,
-    PrepAction,
     PrivilegeCardUse,
-    RunDeploy,
-    RunEquip,
-    RunTools,
     SellBench,
     SellDeployed,
     StaffProjectorUse,
     StartBattle,
     WearEquip,
     WrenchUse,
+)
+
+if TYPE_CHECKING:
+    from sr_od.application.currency_war.kernel.cw_exec_state import BenchChar
+from sr_od.application.currency_war.kernel.cw_obs_core import (
+    SCREEN_NAME,
+    _area_rect,
+    area_center,
+)
+from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    SPHERE_CLICK_HARD_CAP,
 )
 from sr_od.application.currency_war.obs.cw_identity_obs import (
     read_supply_boxes,
@@ -178,13 +180,11 @@ def drag_bench_to_sell(op: SrOperation, ctx: SrContext, bench_idx: int) -> None:
 #  观察链,装配端 hp_pay_defects 对账面随流冻结。)
 
 
-# ===== 装备穿戴计划构造(kernel 化,unified-action-factory 批 2a)=====
-# `_build_equip_wear_plan`/EquipPlanBuild/EquipWearStep 与拉黑/排序纯 helper
-# 迁居 kernel/cw_equip_wear_plan(R2 原子通路:发射位直接消费同一构造
-# 函数,组合壳删除后无第二源;kernel 不得依 operations,故纯 helper 同迁);
-# 本模块 import 供执行位 `_run_equip` 薄派发消费(组合壳登记行删除归批 2b)。
+# (装备穿戴计划构造已迁 kernel/cw_equip_wear_plan(R2 原子通路);原
+# 「本模块 import 供执行位 _run_equip 薄派发消费」随组合壳 RunEquip 删除
+# 退役——发射位(mandate M7)直接消费同一构造函数,无第二源。)
 class PrepActionExecutor:
-    """备战原子/组合动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
+    """备战原子动作执行器(框架层;持 ctx + 宿主 op 复用截图/区域匹配/拖拽原语)。
 
     宿主 op = CwScreenPrep(SrOperation);机械执行(点击/拖拽/等待),落地
     判定归观察侧 reconcile(用户裁定 2026-09-10);拖拽统一走
@@ -215,11 +215,9 @@ class PrepActionExecutor:
         # 写入,None = 该动作执行点金差不可推算(诚实缺失,非 0);消费方
         # = 回执 extra 金差键与观察侧备战帧金对账。getattr 容缺
         # (__new__ 桩形态,execute 入口显式复位不依赖构造)。
+        # (LevelUp 金腿已随批2b 翻转切 action.cost 直写——
+        # apply_prep_action_logic 单一写点,本执行缝对 LevelUp 恒 0。)
         self.last_gold_delta: int | None = None
-        # LevelUp 机械半边的实击花金累计(写入端 = _level_up 点击环;
-        # 单击价单一源 = kernel xp_click_cost 逐击现算)。execute 入口
-        # 复位 None,dispatch 后由 _executed_gold_delta 消费。
-        self._last_levelup_spent: int | None = None
         # 槽位中心(screen_info 静态,构造时读一次;F3 参数校验 + 拖拽坐标共用)
         self._bench_pts: list[Point] = row_area_centers(ctx, '备战栏')
         self._front_pts: list[Point] = row_area_centers(ctx, '前排')
@@ -227,32 +225,32 @@ class PrepActionExecutor:
 
     # ===== F3 参数校验(非法 → 错误串;合法 → None)=====
 
-    def validate(self, action: PrepAction) -> str | None:
+    def validate(self, action: CwAction) -> str | None:
         """校验动作合法域 + 参数(§5.0 F3)。返回错误描述;None=合法。
 
-        两层:① 动作全集白名单(review M-4 —— 未知类型走参数非法路径拒绝,不进 execute
-        的验证失败/fail 循环);② 静态可判参数(槽位越界/row 枚举)。动态前置(球是否存
-        在/overlay 是否开)由 execute 的完成验证覆盖(验证失败路径,非参数非法路径)。
+        两层:① 统一词表白名单(review M-4 —— 未知类型走参数非法路径拒绝,
+        不进 execute 的验证失败/fail 循环;元组单一源 = cw_vocab
+        CW_ACTION_TYPES);② 静态可判参数(槽位越界/row 枚举)。动态前置
+        (球是否存在/overlay 是否开)由 execute 的完成验证覆盖(验证失败
+        路径,非参数非法路径)。席位域动作坐标系 = 容器槽位表下标 0 基
+        (词表模块头声明);机械动作 row/slot = 画面物理槽位 1 基。
         """
-        if not isinstance(action, PREP_ACTION_TYPES):
+        if not isinstance(action, CW_ACTION_TYPES):
             return f'未知动作类型 {type(action).__name__}(不在动作全集,§4)'
         if isinstance(action, SellBench):
-            if not (1 <= action.slot <= len(self._bench_pts)):
-                return f'SellBench slot={action.slot} 越界(1-{len(self._bench_pts)})'
+            if not (0 <= action.bench_idx < len(self._bench_pts)):
+                return (f'SellBench bench_idx={action.bench_idx} 越界'
+                        f'(0-{len(self._bench_pts) - 1})')
         elif isinstance(action, SellDeployed):
-            if action.row not in ('front', 'back'):
-                return f'SellDeployed row={action.row!r} 非法(front/back)'
-            n = len(self._front_pts if action.row == 'front' else self._back_pts)
-            if not (1 <= action.slot <= n):
-                return f'SellDeployed slot={action.slot} 越界(1-{n})'
+            n = DEPLOYED_CAPACITY
+            if not (0 <= action.deployed_idx < n):
+                return f'SellDeployed deployed_idx={action.deployed_idx} 越界(0-{n - 1})'
         elif isinstance(action, DeployMove):
-            if not (1 <= action.from_slot <= len(self._bench_pts)):
-                return f'DeployMove from_slot={action.from_slot} 越界(1-{len(self._bench_pts)})'
+            if not (0 <= action.bench_idx < len(self._bench_pts)):
+                return (f'DeployMove bench_idx={action.bench_idx} 越界'
+                        f'(0-{len(self._bench_pts) - 1})')
             if action.to_row not in ('front', 'back'):
                 return f'DeployMove to_row={action.to_row!r} 非法(front/back)'
-            n = len(self._front_pts if action.to_row == 'front' else self._back_pts)
-            if not (1 <= action.to_slot <= n):
-                return f'DeployMove to_slot={action.to_slot} 越界(1-{n})'
         elif isinstance(action, ClickSpheres):
             if not action.points:
                 return 'ClickSpheres 载荷为空(挑选归决策侧 kernel,空载荷 = 无对象)'
@@ -299,7 +297,7 @@ class PrepActionExecutor:
 
     # ===== 执行入口(机械执行,无返回;执行前拒绝见 _execute_dispatch)=====
 
-    def execute(self, action: PrepAction) -> None:
+    def execute(self, action: CwAction) -> None:
         """机械执行一个动作(无返回;T-223:发出即职责完成,落地判定归
         观察侧 reconcile)。
 
@@ -318,7 +316,6 @@ class PrepActionExecutor:
                      '(W209j 刹车,ADR-0388)', type(action).__name__)
             raise StopBrakeShortCircuit('已停止[W209j刹车]')
         # 执行点金差显影账(T-16)每动作复位:上动作余量禁跨动作残留。
-        self._last_levelup_spent = None
         # 落地门前捕获备战席占用(tracked 账现读):S1 路径 (ii) 翻正判读
         # 需要 pre/post 两点,post 点必须在 dispatch 之后读(dispatch 内
         # 卖出/部署 handler 会同步销账)。
@@ -355,61 +352,18 @@ class PrepActionExecutor:
             _sess_sb = getattr(_m_sb, 'session', None) if _m_sb is not None else None
             if _sess_sb is not None:
                 exec_state_of(_sess_sb).last_prep_battle_launch_ok = emitted
-        if emitted and isinstance(action, RunEquip):
-            # M7 备战期装备闩置位(批3a 重推 = 发出即置 + 观察纠偏,申报
-            # 择一;原「组合 op 成功返回才置」消费 ok 回执,随回执退役改
-            # 发出即置——单动作备战环下发射列表中 RunEquip 之前的可续动作
-            # 先执行即终结本环,发射位(策略侧)置闩会闩烧而装备未穿的
-            # 论证不变(mandate.mark_equip_pass_executed docstring),本写点
-            # = 执行位派发事实。组合 op 执行后失败的面由装备期望态对账族
-            # 在下一入口暴露(纠偏/缺陷台账);执行前输入契约拒绝(守卫/
-            # 计划产出失败)= 未发出,不置闩,下帧照常重发。唯一写点 =
-            # mandate.mark_equip_pass_executed。
-            try:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
-                )
-                from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
-                    mark_equip_pass_executed,
-                )
-                _m = self._ctx.cw_match
-                _sess = _m.session if _m is not None else None
-                if _sess is not None:
-                    # 换源 T-146:phase 键 = 容器单例(mandate mark_* 族
-                    # 已切 GameState 形态,键值同帧同源)
-                    mark_equip_pass_executed(
-                        _sess, board_state_of(_sess))
-            except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
-                log.warning('[cw][equip-latch] 置位失败(不阻塞): %s', e)
-        if emitted and isinstance(action, RunTools):
-            # M7.5 工具期闩置位(工具执行批 ADR-0532;批3a 重推同装备闩:
-            # 发出即置 + 观察纠偏)。唯一写点 = mandate.mark_tools_pass_executed。
-            try:
-                from sr_od.application.currency_war.kernel.cw_game_state import (
-                    board_state_of,
-                )
-                from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
-                    mark_tools_pass_executed,
-                )
-                _m = self._ctx.cw_match
-                _sess = _m.session if _m is not None else None
-                if _sess is not None:
-                    mark_tools_pass_executed(
-                        _sess, board_state_of(_sess))
-            except Exception as e:  # noqa: BLE001  记账失败不阻塞执行
-                log.warning('[cw][tools-latch] 置位失败(不阻塞): %s', e)
         if emitted:
             # T-159 迁移 D:S1 清键门(唯一写点 = mandate.mark_s1_route_
             # check,三路径封闭枚举)。批3a 跨批对齐写死:``landed`` 供给
             # 改观察侧 reconcile 落地事实(接口本批定、批5 E1 落地供给),
             # 过渡期恒传 False = fail-closed(宁「该清不清」不「乱清」,
             # 后者可无限重复——T-167 交替活锁;「该清不清」侧 wanted 滞留
-            # 一拍自愈,非正确性损害,mandate docstring 在案)。RunDeploy
-            # 的 (i)-deploy_launch 路径过渡期不清,防线语义(no-op 不清)
-            # 完整存活。发射位只读不写的同型纪律在此不适用——本门消费
-            # 「已落地」事实,发射侧天然无此事实(猎点 8)。OpenShop 分支
-            # 不经本执行器(cw_screen_prep 流程层编排),开店落地不触清键
-            # 面,与其置位语义(商店决策访问位)自洽。
+            # 一拍自愈,非正确性损害,mandate docstring 在案)。部署类
+            # (DeployMove)(i)-deploy_launch 路径过渡期不清,防线语义
+            # (no-op 不清)完整存活。发射位只读不写的同型纪律在此不适用
+            # ——本门消费「已落地」事实,发射侧天然无此事实(猎点 8)。
+            # OpenShop 分支不经本执行器(cw_screen_prep 流程层编排),开店
+            # 落地不触清键面,与其置位语义(商店决策访问位)自洽。
             try:
                 from sr_od.application.currency_war.kernel.cw_game_state import (
                     board_state_of,
@@ -445,7 +399,7 @@ class PrepActionExecutor:
         log.info('[cw][exec] %s → %s', type(action).__name__,
                  detail or '(无摘要)')
 
-    def _note_action_receipt(self, action: PrepAction, emitted: bool,
+    def _note_action_receipt(self, action: CwAction, emitted: bool,
                              detail: str,
                              extra: dict | None = None) -> None:
         """动作执行回执 → GameState receipts 域(R2 §3.1.1-4/§3.2.5;
@@ -477,13 +431,15 @@ class PrepActionExecutor:
         except Exception as e:  # noqa: BLE001  回执失败不阻塞执行
             log.warning('[cw][receipt] 动作回执写入失败(不阻塞): %s', e)
 
-    def _note_action_journal(self, action: PrepAction, emitted: bool,
+    def _note_action_journal(self, action: CwAction, emitted: bool,
                              extra: dict | None) -> None:
         """备战动作 journal 行(op_journal.jsonl kind='action';T-113/
         ADR-0579 薄流的备战域扩围,T-16 执行缝账务包络):执行缝三套账的
-        journal 回执腿——备战帧金动作自此逐行在账(定谳缺口 = T-234 复盘
+        journal 回执腿——备战帧金动作逐行在账(定谳缺口 = T-234 复盘
         「备战帧 5 击零 journal 行」),op 分键「货币战争-备战动作」与商店
-        「货币战争-买牌」域分键,行携 ``gold_delta`` 执行点金差。
+        「货币战争-买牌」域分键,行携 ``gold_delta`` 执行点金差(LevelUp
+        行自批2b 起无本键——金腿切 action.cost 逻辑态直写,见
+        _executed_gold_delta)。
 
         - seq 恒 0 = 备战域无段序账(行序即时序;商店 seq 语义不适用);
           post_frame 恒 None = 行不带期望态 delta(T-163 起两域同口径);
@@ -516,14 +472,14 @@ class PrepActionExecutor:
         except Exception as e:   # noqa: BLE001  journal best-effort
             log.warning('[cw][journal] 备战动作行写入失败(不阻塞): %s', e)
 
-    def _pre_sell_tracked_bc(self, action: PrepAction) -> BenchChar | None:
+    def _pre_sell_tracked_bc(self, action: CwAction) -> BenchChar | None:
         """卖出对象 dispatch 前 tracked 快照(T-16 执行点金差供给;卖出外
         动作 = None)。
 
-        [槽位定义] SellBench.slot = 备战栏物理槽位 1-9(1 基,tracked 表
-        slot 字段同系直接对位);SellDeployed (row, slot) = 物理排槽位
-        1 基(front 1-4 / back 1-N),下标换算 = 前排 slot-1 / 后排
-        4+slot-1(ADR-0392 定长 10 槽表,pad 后取)。取值时机 = execute()
+        [索引定义] SellBench.bench_idx / SellDeployed.deployed_idx =
+        容器槽位表下标(0 基;tracked 表 = 同构槽位表,tracked_bench 经
+        bench_from_compact 重建恒 pad 态、tracked_deployed 恒 pad 态
+        ADR-0316/0392)——按下标直接对位,零换算。取值时机 = execute()
         内 dispatch **前** tracked 账现读(卖出 handler 在 dispatch 内
         同步销账,dispatch 后按 tracked 复查恒落空——apply_op_effect
         卖入会话推进在现役链路不可达的同根);消费 = dispatch 后
@@ -539,32 +495,31 @@ class PrepActionExecutor:
                 return None
             es = exec_state_of(session)
             if isinstance(action, SellBench):
-                return next((b for b in (es.tracked_bench_chars or [])
-                             if b is not None and b.slot == action.slot), None)
+                tracked = es.tracked_bench_chars or []
+                return (tracked[action.bench_idx]
+                        if 0 <= action.bench_idx < len(tracked) else None)
             from sr_od.application.currency_war.kernel.cw_exec_state import (
-                DEPLOYED_FRONT_CAPACITY,
                 pad_deployed,
             )
             tracked = pad_deployed(list(es.tracked_deployed or []))
-            idx = (action.slot - 1 if action.row == 'front'
-                   else DEPLOYED_FRONT_CAPACITY + action.slot - 1)
+            idx = action.deployed_idx
             return tracked[idx] if 0 <= idx < len(tracked) else None
         except Exception:   # noqa: BLE001  观测容缺,不阻塞执行链
             return None
 
-    def _executed_gold_delta(self, action: PrepAction, emitted: bool,
+    def _executed_gold_delta(self, action: CwAction, emitted: bool,
                              pre_sell_bc: BenchChar | None) -> int | None:
         """执行点金差显影(备战执行缝账务包络,T-16):gold 域备战动作在
         机械半边发出时点的金变化量。
 
         公式单一源与边界:
-        - ``LevelUp`` = −实击花金(机械半边 ``_level_up`` 逐击累计,单击价
-          单一源 = kernel ``xp_click_cost``;与假环境 fixtures _apply_
-          levelup_clicks/_prep_gold_channel 同式同源);
         - ``SellBench``/``SellDeployed`` = +sell_refund(星×招募费;对象 =
           dispatch 前快照,费单一源 = kernel ``bench_char_cost``——与容器
           逻辑态写口 apply_prep_action_logic 同式;身份不可辨 = None 诚实
           缺失,不做保守估值假账,观察覆盖兜底);
+        - ``LevelUp`` = 0(批2b 翻转:金腿切 ``action.cost`` 直写,唯一
+          写点 = apply_prep_action_logic LevelUp 分支;原执行缝金差
+          ``_last_levelup_spent`` 通道随翻转退役,防双记);
         - ``ClickSpheres`` = None(球金通道随机,执行点不可推算——声明
           盲区,观察覆盖兜底,禁拍值);
         - 其余动作 = 0(发出零金动);未发出 = None(无金动无账)。
@@ -573,9 +528,6 @@ class PrepActionExecutor:
         """
         if not emitted:
             return None
-        if isinstance(action, LevelUp):
-            spent = getattr(self, '_last_levelup_spent', None)
-            return None if spent is None else -int(spent)
         if isinstance(action, (SellBench, SellDeployed)):
             if pre_sell_bc is None:
                 return None
@@ -592,31 +544,18 @@ class PrepActionExecutor:
             return None
         return 0
 
-    def _execute_dispatch(self, action: PrepAction) -> tuple[str, bool]:
+    def _execute_dispatch(self, action: CwAction) -> tuple[str, bool]:
         """动作分派(原 execute 主体;期望态钩子/闩在其上层 execute)。
 
         返回 ``(机械执行摘要, 是否实际发出)``。``emitted`` = **发出事实**
         (非落地判定、非成败回执):False 只用于「执行前输入契约拒绝/
         环境无对象」(球/箱/按钮等目标不在,M6 边界面——动作没发出,期望
-        态/闩不登记);True = 点击/拖拽/组合 op 已发出。原 ``(ok, detail,
-        landed)`` 三元组随 T-223 退役(成败与落地均不再是执行器输出;
-        RunDeploy 落地结构化判定 F1b 迁观察侧对账,S1 门过渡期 landed=
-        False 见 execute)。
+        态/闩不登记);True = 点击/拖拽已发出。原 ``(ok, detail, landed)``
+        三元组随 T-223 退役(成败与落地均不再是执行器输出;部署落地结构
+        化判定迁观察侧对账,S1 门过渡期 landed=False 见 execute)。
+        组合动作分支(RunDeploy/RunEquip/RunTools)已随统一词表删除退役
+        (R2;部署/穿戴/工具 = 决策核逐帧原子发射)。
         """
-        if isinstance(action, RunDeploy):
-            # 画面检查属转移验证用途(cw_op_deploy 内,非路由闸门);
-            # STATUS 具名常量经 detail 显影透传(观察侧对账供给面)。
-            return self._run_composite(
-                '部署', 'sr_od.application.currency_war.operations.cw_screen.cw_screen_deploy.CwScreenDeploy')
-        if isinstance(action, RunEquip):
-            # 计划随指令下发(ADR-0601 §3-C1,2026-09-09):装备走专用
-            # 派发 _run_equip——分发段产出穿戴计划(_build_equip_wear_plan)
-            # 随 op 构造下发,空计划具名 NOOP(闩照置);通用 _run_composite
-            # 路径 op_cls(self._ctx).execute() 无法传构造参,不承接装备。
-            return self._run_equip()
-        if isinstance(action, RunTools):
-            return self._run_composite('工具', 'sr_od.application.currency_war.operations.cw_op.cw_op_tools.CwOpTools',
-                                       guard_screen='货币战争-备战')
         if isinstance(action, StartBattle):
             # A6 出战链(批4 拆):内部 ok(找不到按钮/未落地 = False)经
             # 发出位返回;last_launch_ok/执行态写点在 wrapper 半部(execute,
@@ -625,8 +564,8 @@ class PrepActionExecutor:
             return detail, ok
         return self._dispatch_direct(action)
 
-    def _dispatch_direct(self, action: PrepAction) -> tuple[str, bool]:
-        """直执行动作分派(非组合动作)。返回 (机械执行摘要, 是否实际发出)。"""
+    def _dispatch_direct(self, action: CwAction) -> tuple[str, bool]:
+        """直执行动作分派。返回 (机械执行摘要, 是否实际发出)。"""
         if isinstance(action, ClickSpheres):
             return self._click_spheres(action)
         if isinstance(action, OpenBox):
@@ -772,31 +711,67 @@ class PrepActionExecutor:
         机械执行,T-192 源槽像素验重试拆除)。返回 (摘要, 是否发出)。
 
         emitted = 动作已机械发出(拖拽原语零判效,落地事实归观察侧
-        reconcile 对账)。"""
-        drag_bench_to_sell(self._op, self._ctx, action.slot - 1)
-        self._track_remove_bench(action.slot)
+        reconcile 对账)。bench_idx = 容器槽位表下标,拖点直取(执行坐标
+        边:备战栏-N area 序 = 下标序,零换算);detail 沿用物理槽号显示
+        (= 下标+1,遥测行连续性)。"""
+        drag_bench_to_sell(self._op, self._ctx, action.bench_idx)
+        self._track_remove_bench(action.bench_idx)
         # 用户口述口径(screen_flow_timing.md #21,2026-09-02):卖出金币
         # 动画很快,等 1s 足够——批尾观察前补这段,防读到金币动画帧。
         time.sleep(1.0)
-        return (f'卖备战槽{action.slot} ✓', True)
+        return (f'卖备战槽{action.bench_idx + 1} ✓', True)
 
     def _sell_deployed(self, action: SellDeployed) -> tuple[str, bool]:
         """卖上阵角色:drag 排槽中心 → 出售区(落点经 ``sell_point`` 单一源)。
-        返回 (摘要, 是否发出)。emitted 语义 = 同 _sell_bench(机械发出)。"""
-        pts = self._front_pts if action.row == 'front' else self._back_pts
-        src = pts[action.slot - 1]
+        返回 (摘要, 是否发出)。emitted 语义 = 同 _sell_bench(机械发出)。
+
+        执行坐标边:deployed_idx → (row, 物理槽号) 单一换算函数 =
+        kernel ``deployed_row_slot``。"""
+        row, slot_no = deployed_row_slot(action.deployed_idx)
+        pts = self._front_pts if row == 'front' else self._back_pts
+        src = pts[slot_no - 1]
         self._drag(src, sell_point(self._ctx))
-        self._track_remove_deployed(action.row, action.slot)
+        self._track_remove_deployed(row, slot_no)
         time.sleep(1.0)   # 同上 #21 口径:卖出动画 1s
-        return (f'卖{action.row}排{action.slot} ✓', True)
+        return (f'卖{row}排{slot_no} ✓', True)
 
     def _deploy_move(self, action: DeployMove) -> tuple[str, bool]:
-        """bench → 上阵单步拖拽(腾席链专用)。返回 (摘要, 是否发出)。"""
-        pts = self._front_pts if action.to_row == 'front' else self._back_pts
-        src = self._bench_pts[action.from_slot - 1]
-        dst = pts[action.to_slot - 1]
+        """bench → 上阵单步拖拽(腾席链专用;统一词表 DeployMove)。
+        返回 (摘要, 是否发出)。
+
+        执行坐标边:源拖点 = ``bench_idx`` 备战栏 area 序直取(容器下标 =
+        area 序,零换算);落位排 = ``to_row``,落位物理槽 = tracked 占用
+        现读首空位(kernel ``empty_deploy_slots`` 单一源,与发射位
+        ``assign_deploy_slots`` 选排规则逐位同构——首选排满 fallback 另一排)。
+        两排全满 = 未发出(False,观察重派);faction 字段不入执行(sim
+        board 计数消费)。"""
+        match = self._ctx.cw_match
+        session = match.session if match is not None else None
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            empty_deploy_slots,
+        )
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            pad_deployed,
+        )
+        tracked = (pad_deployed(list(exec_state_of(session).tracked_deployed))
+                   if session is not None else [])
+        front_empty, back_empty = empty_deploy_slots(
+            tracked, front_total=len(self._front_pts),
+            back_total=max(1, len(self._back_pts)))
+        chosen, fallback = ((front_empty, back_empty)
+                            if action.to_row == 'front'
+                            else (back_empty, front_empty))
+        if chosen:
+            row, slot_no = action.to_row, chosen[0]
+        elif fallback:
+            row = 'back' if action.to_row == 'front' else 'front'
+            slot_no = fallback[0]
+        else:
+            return '部署落位无空槽(两排全满,观察重派)', False
+        src = self._bench_pts[action.bench_idx]
+        dst = (self._front_pts if row == 'front' else self._back_pts)[slot_no - 1]
         self._drag(src, dst)
-        self._track_move_deployed(action.from_slot, action.to_row, action.to_slot)
+        self._track_move_deployed(action.bench_idx, row, slot_no)
         # 用户口述口径(screen_flow_timing.md #10,2026-09-02):拖动触发
         # 羁绊阶段变更时角色头顶徽章动画 ~2s——拖完立即返回会让批尾
         # heavy 观察打在徽章动画帧上(SIFT/对账读脏,「对账纠漂」日志
@@ -814,8 +789,7 @@ class PrepActionExecutor:
                 crop_first=False).is_success:
             log.info('[cw][deploy] 拖后检出盛会之星 overlay(羁绊达标触发)')
             return ('部署已发,盛会之星 overlay 弹出(外环接管)', True)
-        return (f'部署槽{action.from_slot}→{action.to_row}{action.to_slot} ✓',
-                True)
+        return (f'部署槽{action.bench_idx + 1}→{row}{slot_no} ✓', True)
 
     # ===== 装备/工具原子域(R2 穿戴 / R8 工具按消耗品各立类)=====
 
@@ -908,7 +882,7 @@ class PrepActionExecutor:
         log.info(f'[cw][wear] {detail}')
         return detail, True
 
-    def _use_tool(self, action: PrepAction) -> tuple[str, bool]:
+    def _use_tool(self, action: CwAction) -> tuple[str, bool]:
         """工具消耗单步(R8 七类共用机械半:owned 网格内 icon → 目标拖曳)。
 
         源件 = 工具 icon(按注册名定位);目标 = equip 模式 owned 网格
@@ -983,45 +957,54 @@ class PrepActionExecutor:
             pass
         DragCwChar.drag_char(self._op, src, dst)
 
-    def _track_remove_bench(self, slot: int) -> None:
-        """卖出后备势跟踪同步(单一跟踪账 tracked_bench_chars)。"""
+    def _track_remove_bench(self, bench_idx: int) -> None:
+        """卖出后备势跟踪同步(单一跟踪账 tracked_bench_chars)。
+
+        [索引定义] bench_idx = bench 槽位表下标 0-8(与动作字段同系);
+        tracked 行槽位信息位 bc.slot = 下标+1(bench_from_compact 重建
+        契约),按信息位对位摘除(执行坐标边换算:下标+1 → 信息位)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
+        _slot_no = bench_idx + 1
         # 形状双源防御(ADR-0316):tracked_bench_chars 可能是 pad 态(含 None)
         exec_state_of(match.session).tracked_bench_chars = [
             bc for bc in exec_state_of(match.session).tracked_bench_chars
-            if bc is not None and bc.slot != slot]
+            if bc is not None and bc.slot != _slot_no]
 
     def _track_remove_deployed(self, row: str, slot: int) -> None:
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
-        # ADR-0392:tracked_deployed 槽位表(置 None 不移位);(row, slot)
-        # 物理 1-based → 槽位下标(front: slot-1 / back: 4+slot-1)
+        # ADR-0392:tracked_deployed 槽位表(置 None 不移位);物理 (row,
+        # slot) → 槽位下标换算单一函数 = deployed_idx_of(执行坐标边)
         from sr_od.application.currency_war.kernel.cw_exec_state import (
-            DEPLOYED_FRONT_CAPACITY,
+            deployed_idx_of,
             pad_deployed,
         )
         tracked = pad_deployed(list(exec_state_of(match.session).tracked_deployed))
-        idx = (slot - 1 if row == 'front'
-               else DEPLOYED_FRONT_CAPACITY + slot - 1)
+        idx = deployed_idx_of(row, slot)
         if 0 <= idx < len(tracked) and tracked[idx] is not None \
                 and tracked[idx].position_pref == row:
             tracked[idx] = None
         exec_state_of(match.session).tracked_deployed = tracked
 
-    def _track_move_deployed(self, from_slot: int, to_row: str, to_slot: int) -> None:
-        """上阵后备势跟踪同步:bench 条目 → deployed 条目(位置/槽位改写)。"""
+    def _track_move_deployed(self, bench_idx: int, to_row: str, to_slot: int) -> None:
+        """上阵后备势跟踪同步:bench 条目 → deployed 条目(位置/槽位改写)。
+
+        [索引定义] bench_idx = bench 槽位表下标 0-8(tracked 行按信息位
+        bc.slot = 下标+1 对位);to_slot = 落位物理槽号 1 基(执行坐标边
+        现读值,落槽后覆写信息位)。"""
         match = self._ctx.cw_match
         if match is None or match.session is None:
             return
+        _src_slot = bench_idx + 1
         # 形状双源防御(ADR-0316):tracked_bench_chars 可能是 pad 态(含 None)
         moved = [bc for bc in exec_state_of(match.session).tracked_bench_chars
-                 if bc is not None and bc.slot == from_slot]
+                 if bc is not None and bc.slot == _src_slot]
         exec_state_of(match.session).tracked_bench_chars = [
             bc for bc in exec_state_of(match.session).tracked_bench_chars
-            if bc is not None and bc.slot != from_slot]
+            if bc is not None and bc.slot != _src_slot]
         # ADR-0392:tracked_deployed 槽位表——deployed_place 单一源落槽;
         # to_slot 是执行器物理槽位真值,落槽后覆写信息位。
         from sr_od.application.currency_war.kernel.cw_exec_state import deployed_place
@@ -1042,10 +1025,11 @@ class PrepActionExecutor:
         升 N 击 = N 帧(决策循环逐帧重组,与商店域单击形态
         ``cw_level_up_action`` 同构先例)。
 
-        金腿 = 执行缝金差(2a 中间态定案):单击价 kernel 单一源
-        ``xp_click_cost`` 现算(失读回退 ``XP_CLICK_COST_FALLBACK``),
-        经 ``_last_levelup_spent`` → ``_executed_gold_delta`` → 容器金账
-        直推;cost/auth_basis 分键装载与 ``action.cost`` 直写翻转归批 2b。
+        金腿 = 容器逻辑态直写(批2b 翻转定案):金账唯一写点 =
+        ``apply_prep_action_logic`` LevelUp 分支按 ``action.cost`` 扣减
+        (cost = 发射面 xp_click_cost 现算装载);原 2a 中间态执行缝金差
+        (``_last_levelup_spent`` → ``_executed_gold_delta``)随翻转退役。
+        单击价本处现算仅作 detail 显影(与发射面同源 kernel 读口)。
         经验/等级真值 = 下一帧观察对账族 + 逻辑态 xp/level 推进
         (``apply_prep_action_logic`` LevelUp 分支)双通道。
         """
@@ -1073,7 +1057,6 @@ class PrepActionExecutor:
                 session.effect_inventory.on_level_up()
         except Exception as e:   # noqa: BLE001  观测失败不阻塞对局
             log.warning('[cw][levelup] effect inventory 挂点失败(不阻塞): %s', e)
-        self._last_levelup_spent = int(_price)   # 执行点金差供给(_executed_gold_delta 消费)
         detail = (f'买经验单击 1 击花金{_price}'
                   '(逐帧单击形态;级真值=下一帧观察 reconcile)')
         log.info(f'[cw][levelup] {detail}')
@@ -1288,105 +1271,6 @@ class PrepActionExecutor:
                 rc.stop_running(reason='hook:cw_launch_dead')
         return f'出战 click 未落地×{streak} → 停机留证(hook:cw_launch_dead)'
 
-    # ===== 组合动作(P1 过渡;旧 op 内部一行不动)=====
-
-    def _guard_screen_mismatch(self, guard_screen: str) -> str | None:
-        """派发前置预期屏检查(T-163 D5 判断上提的共用实现)。
-
-        返回 None = 干净可派;返回当前画面名 = 不干净、不派、环重观察
-        (断批重规划)。``_run_composite``(部署/工具)与 ``_run_equip``
-        (装备计划派发)共用——守卫语义单一源,防两派发位漂移。
-        """
-        current = self._op.check_and_update_current_screen(
-            self._op.screenshot(), screen_name_list=[guard_screen])
-        return None if current == guard_screen else current
-
-    def _run_equip(self) -> tuple[str, bool]:
-        """RunEquip 专用派发:计划产出 → 空计划具名 NOOP / 计划随 op 下发。
-
-        为什么不走 _run_composite:通用路径 ``op_cls(self._ctx).execute()``
-        无法传构造参——穿戴计划在分发段产出(``_build_equip_wear_plan``,
-        ADR-0601 §3-C1 计划产出位)后随 op 构造下发(CwOpEquipAll
-        ``__init__(ctx, plan)`` 必填),「计划」概念不泄漏进部署/工具分派。
-
-        空计划 = 合法稳态具名 NOOP(发射契约形态):返回
-        ``(f'装备 计划空: {具名原因}', True)``——发出事实 = True,execute
-        的 ``mark_equip_pass_executed`` 唯一写点照置(装备穿戴放行判定活锁
-        三条件闭环不变;批3a:原 ok=True 语义同值为「发出事实」)。
-
-        资源前置缺失走未发出通道 (detail, False):闩不置,下帧重派,与
-        今日 op round_fail('模板库未加载')同形,Director 交回外循环
-        重观察重派(ADR-0601 §5),无新环。
-        """
-        from sr_od.application.currency_war.operations.cw_op.cw_op_equip_all import (
-            CwOpEquipAll,
-            record_zero_wear_defect,
-        )
-        _drift = self._guard_screen_mismatch('货币战争-备战')
-        if _drift is not None:
-            log.warning('[cw!][composite] 装备 派发前置:当前画面 %s 非干净备战'
-                        ' → 不派,环重观察', _drift)
-            return f'装备 不在预期屏: {_drift}', False
-        _m_eq = self._ctx.cw_match
-        _sess_eq = getattr(_m_eq, 'session', None) if _m_eq is not None else None
-        build = _build_equip_wear_plan(
-            _sess_eq,
-            exec_state_of(_sess_eq) if _sess_eq is not None else None,
-            getattr(getattr(_m_eq, 'strategy', None), 'registry', None))
-        if build.fail_reason:
-            return f'装备 {build.fail_reason}', False
-        if not build.steps:
-            # 空计划短路:不实例化 op。哨兵双挂点之计划面(equipped=0,
-            # 计划面具名原因);front_only 回退分支不挂——与今日该分支
-            # 无哨兵覆盖一致。
-            if build.branch == 'm7':
-                record_zero_wear_defect(self._ctx, 0,
-                                        build.owned_wearable_names,
-                                        build.empty_reason)
-            log.info('[cw-equip] 计划空(%s)→ 具名 NOOP(闩照置)',
-                     build.empty_reason)
-            return f'装备 计划空: {build.empty_reason}', True
-        result = CwOpEquipAll(self._ctx, build.steps).execute()
-        # live 修复(2026-08-14,同 _run_composite):OperationResult 字段
-        # 是 success(非 is_success)。op 级 success/status 作摘要透传
-        #(信息面;成败不再门控任何下游——批3a 发出即职责完成,穿戴
-        # 落地面由装备期望态对账族在下一入口暴露)。
-        status = getattr(result, 'status', '')
-        log.info(f'[cw][composite] 装备 → {status}')
-        return f'装备 {status}', True
-
-    def _run_composite(self, name: str, op_path: str,
-                       guard_screen: str | None = None,
-                       ) -> tuple[str, bool]:
-        """执行组合动作(按模块路径延迟导入,避免 prep_actions ↔ operations 循环导入)。
-
-        返回 ``(摘要, 是否发出)``:守卫不派/环境不备 = 未发出(False);
-        组合 op 已实例化执行 = 发出(True,op 级结果仅作摘要透传)。
-
-        :param guard_screen: 派发前置预期屏(T-163 D5,2026-09-08 用户架构
-            裁定:「该不该执行」的判断归分发层)——非 None 时实例化组合 op
-            **前**判干净备战,不干净即不派、环重观察(返回未发出断批重规划;
-            批前提中途失效本就该重规划)。装备/工具两组合传入(对应 op 内
-            旧 success-skip 闸门同批降级为执行断言);部署不传——其画面
-            检查属转移验证用途(cw_op_deploy),非路由闸门,不越权接管。
-        """
-        import importlib
-
-        if guard_screen is not None:
-            current = self._guard_screen_mismatch(guard_screen)
-            if current is not None:
-                log.warning('[cw!][composite] %s 派发前置:当前画面 %s 非干净备战'
-                            ' → 不派,环重观察', name, current)
-                return f'{name} 不在预期屏: {current}', False
-        module_path, cls_name = op_path.rsplit('.', 1)
-        op_cls = getattr(importlib.import_module(module_path), cls_name)
-        result = op_cls(self._ctx).execute()
-        # live 修复(2026-08-14):OperationResult 字段是 success(非 is_success —— 那是
-        # OperationRoundResult 的字段);旧 getattr 恒 False → 组合动作全被误判失败。
-        # (批3a:success 仅作日志摘要,成败不再门控下游——发出即职责完成。)
-        status = getattr(result, 'status', '')
-        log.info(f'[cw][composite] {name} → {status}')
-        return f'{name} {status}', True
 
 
 # ===== 恢复原语退役墓碑(A9,用户裁定 2026-09-10)=====

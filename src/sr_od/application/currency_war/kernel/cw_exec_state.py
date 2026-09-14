@@ -31,8 +31,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        PrepAction,
+    from sr_od.application.currency_war.kernel.cw_vocab import (
+        CwAction,
     )
 
 _EXEC_BY_SESSION: weakref.WeakKeyDictionary[object, ExecState] = \
@@ -297,7 +297,7 @@ def _owned_add(session, item: str) -> None:
     session.last_owned_equips = owned
 
 
-def apply_op_effect(session, action: PrepAction | dict, *,
+def apply_op_effect(session, action: CwAction | dict, *,
                     produced_by: str = 'PrepActionExecutor',
                     detail: str = '') -> list[dict]:
     """原子 op 的逻辑效果推进(两态制标准语义,ADR-0651;两执行面同源入口)。
@@ -315,14 +315,10 @@ def apply_op_effect(session, action: PrepAction | dict, *,
     effects: list[dict] = []
     if session is None:
         return effects
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         SellBench,
         SellDeployed,
         WearEquip,
-    )
-    from sr_od.application.currency_war.kernel.cw_vocab import (
-        DEPLOYED_FRONT_CAPACITY,
-        iter_occupied,
         sell_refund,
     )
 
@@ -331,7 +327,9 @@ def apply_op_effect(session, action: PrepAction | dict, *,
 
     if isinstance(action, SellBench):
         bench, _dep = _session_tracked(session)
-        bc = next((b for b in iter_occupied(bench) if b.slot == action.slot), None)
+        # 槽位表下标直取(词表统一坐标系;无 slot−1 换算)
+        bc = (bench[action.bench_idx]
+              if 0 <= action.bench_idx < len(bench) else None)
         fee = _char_fee(bc.char_id) if bc is not None else None
         if bc is not None and fee is not None:
             refund = sell_refund(bc.star, fee)
@@ -339,9 +337,9 @@ def apply_op_effect(session, action: PrepAction | dict, *,
             _eff('gold', f'+{refund}(sell_refund {bc.star}星×{fee}费)', 'gold')
     elif isinstance(action, SellDeployed):
         _bench, dep = _session_tracked(session)
-        idx = (action.slot - 1 if action.row == 'front'
-               else DEPLOYED_FRONT_CAPACITY + action.slot - 1)
-        bc = dep[idx] if 0 <= idx < len(dep) else None
+        # 槽位表下标直取(词表统一坐标系;无 row/slot 反推)
+        bc = dep[action.deployed_idx] \
+            if 0 <= action.deployed_idx < len(dep) else None
         fee = _char_fee(bc.char_id) if bc is not None else None
         if bc is not None and fee is not None:
             refund = sell_refund(bc.star, fee)
@@ -353,13 +351,14 @@ def apply_op_effect(session, action: PrepAction | dict, *,
     elif isinstance(action, WearEquip):
         # 穿戴原子(R2;发出即登记,零比对形态——原「落点已验后调」门
         # 随 CV-diff 拆除):last_owned_equips −1 + tracked 目标角色 +1。
+        # WearEquip 是坐标参数化机械动作(row/slot = 画面物理槽位,词表
+        # 定义);物理→下标换算单一函数 = deployed_idx_of(执行坐标边)。
         owned = list(getattr(session, 'last_owned_equips', None) or [])
         if action.item_name in owned:
             owned.remove(action.item_name)
             session.last_owned_equips = owned
             _eff(f'owned[{action.item_name}]', '-1(穿戴)', 'owned')
-        idx = (action.slot - 1 if action.row == 'front'
-               else DEPLOYED_FRONT_CAPACITY + action.slot - 1)
+        idx = deployed_idx_of(action.row, action.slot)
         _bench, dep = _session_tracked(session)
         if 0 <= idx < len(dep) and dep[idx] is not None:
             dep[idx].equips = list(getattr(dep[idx], 'equips', None) or []) \
@@ -391,12 +390,9 @@ def apply_op_effect(session, action: PrepAction | dict, *,
         #   OpenBox 2a 终结化后选卡 = 武装箱选择画面 op,零容器账);
         # - OpenShop(含 read_only):画面态周转,零局状态变更;
         # - StartBattle:进战斗,hp/gold/streak 由结算屏观察覆盖接管;
-        # - RunDeploy/RunEquip/RunTools:组合壳(R2 溶解中,2b 删类)——
-        #   2a 起决策核改发原子动作(DeployMove/WearEquip/工具原子),
-        #   组合形态生产不可达;
-        # - LevelUp:经验/等级 = 容器逻辑态(apply_prep_action_logic
-        #   LevelUp 分支,xp_apply_clicks 单一源);金腿 = 执行缝金差
-        #   (``_advance_gold``,PrepActionExecutor 执行包络);
+        # - LevelUp:经验/等级/金 = 容器逻辑态(apply_prep_action_logic
+        #   LevelUp 分支,xp_apply_clicks + action.cost 直写单一源,
+        #   批2b 翻转后金腿不经执行缝);
         # - DeployMove/SellDeployed:容器逻辑态 = apply_prep_action_logic
         #   扩域分支;tracked 位移/摘除 = 执行器 _track_* 单一写者;
         # - 工具原子(FurnaceUse 等):消耗/变换 = 视觉域逻辑态
@@ -575,6 +571,29 @@ def deployed_slot_no(idx: int) -> int:
     """槽位下标 → 排内 1-based 槽号信息位(0-3→前排 1-4;4-9→后排 1-6)。"""
     return idx - DEPLOYED_FRONT_CAPACITY + 1 if idx >= DEPLOYED_FRONT_CAPACITY \
         else idx + 1
+
+
+def deployed_row_slot(idx: int) -> tuple[str, int]:
+    """deployed 槽位表下标 → (物理排, 排内槽号)(执行坐标边换算单一函数;
+    unified-action-factory 批2b 换算收口:容器下标 → 画面物理槽位的换算
+    全仓仅此一处,消费方 = 执行器拖点定位/判读显示)。
+
+    [索引定义] idx = deployed 槽位表下标 0-9(ADR-0392;0-3 前/4-9 后);
+    返回 slot = 排内 1 基画面槽号(前排 1-4 / 后排 1-6)。
+    """
+    return ('front' if idx < DEPLOYED_FRONT_CAPACITY else 'back',
+            deployed_slot_no(idx))
+
+
+def deployed_idx_of(row: str, slot_no: int) -> int:
+    """物理 (排, 排内槽号) → deployed 槽位表下标(执行坐标边换算单一函数;
+    与 :func:`deployed_row_slot` 互逆,tracked 同步物理↔下标换算收拢点)。
+
+    [索引定义] row ∈ 'front'|'back';slot_no = 排内 1 基画面槽号;返回
+    槽位表下标(front: slot−1 / back: 4+slot−1,ADR-0392)。
+    """
+    return (slot_no - 1 if row == 'front'
+            else DEPLOYED_FRONT_CAPACITY + slot_no - 1)
 
 
 def deployed_place(deployed: list[BenchChar | None], bc: BenchChar) -> int | None:
