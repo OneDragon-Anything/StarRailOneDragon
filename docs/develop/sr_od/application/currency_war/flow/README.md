@@ -24,7 +24,8 @@
 │   （相位机/腾席链等 10 方法+session 字段）已删（prep_visit.md §2.1）│
 │   pick 族 9 接口与冷建/结算收编仍由 flow.py 中间 ABC 承载│
 ├─ 动作执行（kernel/cw_prep_actions.py 词表 + prep_actions.py 执行器│
-│ + cw_op_buy_cards.py 循环壳 + cw_shop_action_ops.py 商店动作 op    │
+│ + cw_screen_buy_cards.py 循环壳 + cw_shop_actions.py 商店动作工厂  │
+ │ (cw_<action>_action.py 一 op 一文件;守卫 cw_shop_action_ops.py)  │
  │ (execute 单方法) + cw_op_deploy.py 部署）────────────────────┤
 │ 三态发射契约（NOOP/失败/成功可区分）、动作机械发出+until 转移   │
 │ 验证+执行侧守卫面、恢复原语、观测复查                          │
@@ -121,7 +122,7 @@
 | 未知画面兜底 | 连续 15 轮全分支不命中（指数退避封顶 10s） | 停机保画面待建档 | `cw_loop.py::CwLoop._handle_unknown_fallback` |
 | 策略失活早停 | 连续 2 个完整轮无策略心跳决策行 | 停局重启加载策略 | `cw_loop.py::CwLoop.loop` 策略失活早停检查段 |
 | 执行失败安灯 | 购买单元"计划花费>0 金差≈0"（分类器三态） | 停机留现场 flag | `cw_screen_prep.py::CwScreenPrep._exec_fail_hook_check` |
-| 商店未识别卡停机 | 收工段牌面仍有 unknown 槽（kind 判据）；判据化自愈重读 2 帧自愈面 | 停机保画面待建档 | `cw_op_buy_cards.py::run_buy_waves` 未识别卡停机钩子段 |
+| 商店未识别卡停机 | 收工段牌面仍有 unknown 槽（kind 判据）；判据化自愈重读 2 帧自愈面 | 停机保画面待建档 | `cw_screen_buy_cards.py::run_buy_waves` 未识别卡停机钩子段 |
 | 误分发/恢复链限额 | 位面过渡连败 3 / 前台无角色重部署 2 / director 连败 5 | round_fail 交兜底链 | `cw_loop.py::CwLoop` 限额类常量（FRONTLESS_REDEPLOY_LIMIT/PLANE_MISDISPATCH_LIMIT）与 loop 内 director streak 判定 |
 
 ## 5. 宪法四条对流程层的适用口径
