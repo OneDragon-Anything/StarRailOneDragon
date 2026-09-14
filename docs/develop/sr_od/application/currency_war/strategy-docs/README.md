@@ -35,6 +35,7 @@
 | 08 | [08_events.md](08_events.md) | 事件面规格骨架：E1-E18 逐项收录语义、数学判据逐项标「待 derive」（落差登记） |
 | 07 | [07_meta_run.md](07_meta_run.md) | 跨局 meta 域：显式声明出辖（当前无可设计对象，登记为未来立项） |
 | 18 | [18_equip_wear_semantics.md](18_equip_wear_semantics.md) | 装备穿戴策略语义：RunEquip 穿戴定谳、opening/非 key_equips 释放判据、词缀条件分配优先级 |
+| 22 | [22_default_policy.md](22_default_policy.md) | 默认策略总述（mandate_v1 · 按画面）：各时期会执行的动作清单与判据指针；能力面对偶篇 = `../flow/screens-actions-capability.md` |
 
 （原 03/05/06/09 已按决策点重排删除：03/05/06 拆入 10-13；09 架构篇整体迁 `../flow/README.md` §2——策略↔流程契约。）
 
