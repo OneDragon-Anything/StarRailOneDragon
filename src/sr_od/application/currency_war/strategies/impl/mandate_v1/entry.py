@@ -46,6 +46,12 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_comps import get_comp
+from sr_od.application.currency_war.kernel.cw_economy import (
+    blood_xp_gate_for,
+    in_must_spend_zone,
+)
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
     bench_slots_of,
@@ -58,11 +64,6 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     plane_of,
     round_num_of,
 )
-from sr_od.application.currency_war.kernel.cw_comps import get_comp
-from sr_od.application.currency_war.kernel.cw_economy import (
-    blood_xp_gate_for,
-    in_must_spend_zone,
-)
 from sr_od.application.currency_war.kernel.cw_hp_policy import decision_hp
 from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_cap_hold,
@@ -70,23 +71,30 @@ from sr_od.application.currency_war.kernel.cw_intention import (
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     ClickSpheres,
     DeployMove,
+    FurnaceUse,
     LevelUp,
+    LuckyTokenUse,
     OpenBox,
     OpenShop,
     OpenTome,
-    PickBoxCard,
+    PerfectProjectorUse,
+    PrecisionWrenchUse,
     PrepAction,
+    PrivilegeCardUse,
     RunDeploy,
     RunEquip,
     RunTools,
     SellBench,
     SellDeployed,
+    StaffProjectorUse,
     StartBattle,
+    WearEquip,
+    WrenchUse,
+    select_sphere_clicks,
 )
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     reward_node_suppressed,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     mandate,
     proof,
@@ -160,10 +168,10 @@ SPHERE_DEFER_PROBE_K: int = 1
 #: 机制依据 = 席满时球点不动(docs/game/screens/currency_war_prep.md
 #: 奖励球节):每球内容可能占席,批式连点越过自由席位数即空点,批间由
 #: 球计数自然回补(screen_flow_timing #16「部分没点开自然回补」用户
-#: 裁定容忍语义)。层位关系:执行层硬帽 = prep_actions.
-#: PrepActionExecutor.SPHERE_MAX_CLICKS=12(防识别抖动死循环,不互替);
-#: kernel ``ClickSpheres.max_k`` 缺省 1 = 保守缺省,本发射位显式覆写
-#: 为本常量(单一源,禁再内联字面 3)。
+#: 裁定容忍语义)。层位关系:执行层硬帽 = kernel ``SPHERE_CLICK_HARD_CAP``
+#:=12(防识别抖动死循环,批 2a 随挑选函数迁居 kernel,不互替);
+#: kernel ``select_sphere_clicks``(批 2a 大球优先/上界挑选单一源)
+#: 显式消费本常量为预算参数(单一源,禁再内联字面 3)。
 SPHERE_CLICK_BATCH_MAX_K: int = 3
 
 
@@ -190,9 +198,14 @@ log = logging.getLogger(__name__)
 
 # ===== 帧稳定截断分类(契约 v2 §3.2 备战线域逐类)=====
 
-#: 截断点(该动作可作序列最后一个动作发出,其后截断)
+#: 截断点(该动作可作序列最后一个动作发出,其后截断)。武装箱选卡(R7)
+#: = 画面 op 分发,非动作词表成员,PickBoxCard 行随批 2a 删除。穿戴/工具
+#: 原子(R2/R8,批 2a)= 截断点:穿戴即合成/网格 reflow aftermath 不可
+#: 静态预测(决策侧逐帧现算,每原子独占发射帧)。
 _TRUNCATION_POINTS: tuple[type, ...] = (
-    OpenBox, OpenTome, PickBoxCard, OpenShop,
+    OpenBox, OpenTome, OpenShop,
+    WearEquip, FurnaceUse, PrivilegeCardUse, WrenchUse, PrecisionWrenchUse,
+    StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,
 )
 #: 终点(只能作序列最后一个动作;StartBattle=出战环出口)
 _TERMINAL: tuple[type, ...] = (StartBattle,)
@@ -448,13 +461,9 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     _round_num = round_num_of(bs)
 
     # ① prep 实体面
-    if getattr(obs, 'box_overlay_open', False):
-        # 武装箱选择对话框在场 ⇒ 选卡动作闭环(本臂 = 选卡决策唯一发射点:
-        # OpenBox 动作纯机械执行不内联选卡,ADR-0601)。第十八局停场修复
-        # (g_20260905_175220 备战 2-2):此前 OpenBox→弹窗后决策面无臂
-        # 消费 box_overlay_open,OpenBox 重开空转 15 分钟(执行器
-        # _pick_box_card/期望态逻辑态直写/适配器注册均早在库,独缺发射位)。
-        return [Emitted(PickBoxCard(), True, 'prep_box_pick')]
+    # (武装箱选择对话框在场的选卡臂随 PickBoxCard 删除退役,批 2a R7:
+    #  OpenBox 终结化后选卡归独立画面 op 分发——cw_loop 按画面派发
+    #  ``CwScreenBoxPick``,决策核不再消费 ``box_overlay_open``。)
     if obs.boxes:
         return [Emitted(OpenBox(slot=obs.boxes[0][0]), True, 'prep_box')]
     if obs.tomes:
@@ -490,7 +499,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             if isinstance(_ct_sp, dict):
                 _ct_sp['sphere_defer_streak'] = 0
             return [Emitted(ClickSpheres(
-                        max_k=min(SPHERE_CLICK_BATCH_MAX_K, len(obs.spheres))),
+                        points=select_sphere_clicks(
+                            obs.spheres, SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
         _prog_sig = _sphere_progress_sig(bs, obs)
         _streak = 0
@@ -502,9 +512,10 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             _ct_sp['sphere_defer_streak'] = _streak
             _ct_sp['sphere_defer_progress_sig'] = _prog_sig
         if _streak <= SPHERE_DEFER_PROBE_K:
-            # 单探针:同发射形态 = 现状 prep_spheres 动作(零新动作类)。
+            # 单探针:同发射形态 = 常规 prep_spheres 动作。
             return [Emitted(ClickSpheres(
-                        max_k=min(SPHERE_CLICK_BATCH_MAX_K, len(obs.spheres))),
+                        points=select_sphere_clicks(
+                            obs.spheres, SPHERE_CLICK_BATCH_MAX_K)),
                         True, 'prep_spheres')]
         if isinstance(_ct_sp, dict):
             _ct_sp['sphere_defer_yield'] = \
@@ -649,7 +660,6 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         evaluate_tool_actions as _eval_tools,
     )
     _tools_emitted: list[Emitted] = []
-    _tools_phase = (plane_of(bs), _round_num)
     # owned 快照源 = 黑板帧 owned_equips(P4 观察接线,T-171;旧
     # session.last_owned_equips 陈旧快照读点退役——评估输入与计划产出位
     # 同帧同源,开箱新件经下一入口观察进帧)。
@@ -663,7 +673,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
         # owned 快照在场即计已评估帧;零可执行件帧按拟执行动作分键显影
         #(m7_5_reject_{action},action = 判据面稳定标识;reason 是中文
         # 判读文本非键面,禁直拼)。无任何条目产出计 m7_5_reject_none。
-        # 观测面零策略语义:工具动作放行判定(any usable)与闩不变。
+        # 观测面零策略语义:工具动作放行判定(any usable)不变。
         _ct_tools['m7_5_evaluated'] = _ct_tools.get('m7_5_evaluated', 0) + 1
         if not any(a.usable for a in _tool_admitted):
             if any(a.usable for a in _tool_actions):
@@ -683,13 +693,53 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
             log.info('[cw!][tools] tool=%s action=%s usable=%s reason=%s',
                      _ta.tool, _ta.action, _ta.usable, _ta.reason or '-')
         if any(a.usable for a in _tool_admitted):
-            if getattr(state_of(session), 'cw4_tools_phase',
-                       None) == _tools_phase:
-                _ct_tools['tools_latch_skip'] = \
-                    _ct_tools.get('tools_latch_skip', 0) + 1
-            else:
+            # R8 原子通路(批 2a):RunTools 组合壳退役,按 admitted usable
+            # 逐件产工具原子类(裁决 1 定案命名);目标件 = 判据面同源纯
+            # 函数(recycle_qualified / 特权基名映射)按 owned 序首中。
+            # 工具期闩(cw4_tools_phase)随原子化退役:逐件逻辑态(工具 −1)
+            # 落黑板帧后判据面天然不再放行,同 phase 一次语义由收敛性承载
+            #(发射位闩会挡死同 phase 第二件工具,与逐件序互斥)。
+            from sr_od.application.currency_war.data.cw_synthesis import (
+                recycle_qualified as _rq,
+            )
+            from sr_od.application.currency_war.kernel.cw_equip_env import (
+                _privilege_base_name as _pbn,
+            )
+            _keys = list(getattr(getattr(state_of(session), 'target_comp',
+                                         None), 'key_equips', None) or [])
+            _rq_set = _rq(_keys)
+            _priv_targets = {_pbn(k) for k in _keys if _pbn(k) is not None}
+            for _ta in _tool_admitted:
+                if not _ta.usable:
+                    continue
+                _tgt = ''
+                if _ta.action == 'furnace_single':
+                    _tgt = next((n for n in _owned_snap
+                                 if n != _ta.tool and n in _rq_set), '')
+                elif _ta.action == 'privilege_upgrade':
+                    _tgt = next((n for n in _owned_snap
+                                 if n in _priv_targets), '')
+                else:
+                    # 未知 usable 动作 = 判据面扩容未同步原子类(禁猜交互,
+                    # 与执行面 plan_tool_drags 同款口径;LuckyTokenUse 禁
+                    # 无判据发射,判据面建模批挂账 = 枚举文档 §7)。
+                    _ct_tools['m7_5_atomic_unmapped'] = \
+                        _ct_tools.get('m7_5_atomic_unmapped', 0) + 1
+                    continue
+                if not _tgt:
+                    continue
+                if _ta.tool == '冶金炉':
+                    _atom: PrepAction = FurnaceUse(target_kind='equip',
+                                                   item_name=_tgt)
+                elif _ta.tool == '特权赋予卡':
+                    _atom = PrivilegeCardUse(target_kind='equip',
+                                             item_name=_tgt)
+                else:
+                    _ct_tools['m7_5_atomic_unmapped'] = \
+                        _ct_tools.get('m7_5_atomic_unmapped', 0) + 1
+                    continue
                 _tools_emitted.append(
-                    Emitted(RunTools(), True, 'm7_5_tool_consume'))
+                    Emitted(_atom, True, 'm7_5_tool_consume'))
 
     # ③ 升档器求值位(先于一切卖面判据评估,§3.1;载体 = 置顶 bs,
     # hp 调用方供给 = decision_hp 政策读口(门前真值+消费侧施门单一源;
@@ -993,6 +1043,12 @@ def _reconcile_posture_authorization(session: StrategySession,
         levelup,
     )
     cap = max_units_of(bs)
+    # 批 2a 口径(R6 逐帧单击):**本帧授权存在(击数>0)∧ 本帧未发射
+    # ⇒ unfulfilled**——击数 = kernel clicks_to_next_level 现算,击数 0
+    #(满级/经验已达门槛)= 无授权,非未兑现(置位面前置短路,防满级帧
+    # 被逐门定位当故障链走)。
+    if clicks_to_next_level(bs) <= 0:
+        return None
     if levelup.lv9_stop(_level, _reg.level_max):
         reason = 'lv9_stop'
     elif cap is None:

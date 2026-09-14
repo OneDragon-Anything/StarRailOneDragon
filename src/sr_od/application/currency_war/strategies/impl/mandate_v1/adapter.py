@@ -24,11 +24,11 @@ import dataclasses
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
     PrepAction,
     PrepObservation,
 )
-from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     AtomOp,
     Snapshot,
@@ -98,12 +98,12 @@ class _OpSpec:
     domain: str
 
 
-#: 全集映射表(13 动作;键 = PrepAction 类型)。PrepAction 新增动作必须
-#: 同步登记(F3 白名单同纪律:漏登记 = 影子侧未知动作缺陷计数,开环侧
-#: decide 直接抛错防静默)。
+#: 全集映射表(键 = PrepAction 类型)。PrepAction 新增动作必须同步登记
+#: (F3 白名单同纪律:漏登记 = 影子侧未知动作缺陷计数,开环侧 decide
+#: 直接抛错防静默)。武装箱选卡(R7)= 画面 op 分发,非动作词表成员,
+#: 映射行随 PickBoxCard 删除(批 2a);组合壳行保留至批 2b 归一删除。
 _OP_SPECS: dict[str, _OpSpec] = {}
 for _cls, _fam, _dom in [
-    ('PickBoxCard', 'pick_box_card', 'interact'),
     ('OpenBox', 'open_box', 'interact'),
     ('OpenTome', 'open_tome', 'interact'),
     ('ClickSpheres', 'click_spheres', 'interact'),
@@ -111,11 +111,20 @@ for _cls, _fam, _dom in [
     ('SellDeployed', 'sell_deployed', 'bench'),
     ('DeployMove', 'deploy', 'bench'),
     ('LevelUp', 'level_up', 'shop'),
+    ('WearEquip', 'wear_equip', 'equip'),
+    ('FurnaceUse', 'furnace_use', 'equip'),
+    ('PrivilegeCardUse', 'privilege_card_use', 'equip'),
+    ('WrenchUse', 'wrench_use', 'equip'),
+    ('PrecisionWrenchUse', 'precision_wrench_use', 'equip'),
+    ('StaffProjectorUse', 'staff_projector_use', 'equip'),
+    ('PerfectProjectorUse', 'perfect_projector_use', 'equip'),
+    ('LuckyTokenUse', 'lucky_token_use', 'equip'),
     # 开店意图(W970 批 C 退役形态的承接,§4.3.6 read_only 变体)
     ('OpenShop', 'open_shop', 'shop'),
     ('StartBattle', 'start_battle', 'battle'),
     ('RunDeploy', 'run_deploy', 'deploy'),
     ('RunEquip', 'run_equip', 'equip'),
+    ('RunTools', 'run_tools', 'equip'),
 ]:
     _OP_SPECS[_cls] = _OpSpec(_fam, _dom)
 

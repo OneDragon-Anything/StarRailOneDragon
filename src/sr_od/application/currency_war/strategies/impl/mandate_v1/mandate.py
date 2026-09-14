@@ -52,13 +52,21 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     merge_material_reject_reason,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    DeployMove,
+    FurnaceUse,
     LevelUp,
+    LuckyTokenUse,
     OpenShop,
+    PerfectProjectorUse,
+    PrecisionWrenchUse,
     PrepAction,
+    PrivilegeCardUse,
     RunDeploy,
-    RunEquip,
-    RunTools,
     SellBench,
+    SellDeployed,
+    StaffProjectorUse,
+    WearEquip,
+    WrenchUse,
 )
 from sr_od.application.currency_war.kernel.cw_reward_node import (
     is_piggy_reward_frame,
@@ -96,6 +104,12 @@ from sr_od.application.currency_war.strategies.impl.mandate_v1.sell_gate import 
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn import predicates
 from sr_od.application.currency_war.strategies.impl.mandate_v1.statefn.interest import (
     saturation_line,
+)
+
+#: 装备/工具原子类集(M7 发射序回排辖域;批 2a 原子通路,R8 按消耗品各立类)
+_EQUIP_ATOM_TYPES: tuple[type, ...] = (
+    WearEquip, FurnaceUse, PrivilegeCardUse, WrenchUse, PrecisionWrenchUse,
+    StaffProjectorUse, PerfectProjectorUse, LuckyTokenUse,
 )
 
 if TYPE_CHECKING:
@@ -696,12 +710,12 @@ WANTED_REOPEN_CAP: int = BENCH_CAPACITY + 1
 def route_tag_of(action: PrepAction) -> str:
     """动作落地路线标签(执行侧清键路由的唯一读法;T-159 §3.3)。
 
-    deploy_launch 类 = RunDeploy 动作本体(部署臂唯一载体;m5/m1/m1′/
-    m1″ 细分归因保留在 Emitted.reason,不维护第二份状态);卖出类 =
-    route_tag 字段原值(桥自 Emitted.reason 透传,见 bridge.
-    decide_from_turn)。未标 = ''。
+    deploy_launch 类 = 部署臂动作本体(批 2a 前载体 = RunDeploy 组合壳,
+    R2 原子通路后 = DeployMove;细分归因保留在 Emitted.reason,不维护
+    第二份状态);卖出类 = route_tag 字段原值(桥自 Emitted.reason 透传,
+    见 bridge.decide_from_turn)。未标 = ''。
     """
-    if isinstance(action, RunDeploy):
+    if isinstance(action, (RunDeploy, DeployMove)):
         return 'deploy_launch'
     return getattr(action, 'route_tag', '') or ''
 
@@ -868,7 +882,9 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
             if not _wanted_reopen_budget(st, phase, counters):
                 return []
             _count('wanted_leg_deploy')
-            return [Emitted(RunDeploy(), True, 'wanted_close')]
+            _out: list[Emitted] = []
+            _emit_deploy_moves(_out, _frame, session, state, 'wanted_close')
+            return _out
 
     # 腿 2(M4 卖角色):候选与排除同源(M4 腾席臂同参 fuel_sell_candidates
     # + 统一装配 A channel='m4_fuel');路线类 = m4_fuel_sell(§5.2 腿 2:
@@ -912,8 +928,9 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
     reconcile 落地事实接管供给)。
 
     三路径封闭枚举(方案 §3.3,审 D1;三条均未命中一律不清):
-    (i) route_tag 白名单落地(deploy_launch 由动作类型承载);RunDeploy
-         另须 ``landed=True``(F1b,T-167:no-op 部署零新信息,清闩 = 凭空
+    (i) route_tag 白名单落地(deploy_launch 由动作类型承载;批 2a 载体 =
+         RunDeploy 组合壳 → DeployMove 原子序);部署类另须 ``landed=True``
+         (F1b,T-167:no-op 部署零新信息,清闩 = 凭空
          再武装一次开店意图,实证 = 同事故 25 次无信息量重开店交替活锁。
          landed 为必传参:禁由 detail 字符串反推——带前缀显影文本裸比对
          恒 False;批5 供给接管前执行器恒传 False = 宁「该清不清」不
@@ -938,7 +955,7 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
     route = ''
     if tag in S1_RESET_ROUTE_TAGS:
         route = tag                                   # (i) 卖出类
-    elif isinstance(action, RunDeploy):
+    elif isinstance(action, (RunDeploy, DeployMove)):
         if not landed:
             return   # F1b:no-op 部署(STATUS_NOOP 等零落地形态)不清闩
         route = 'deploy_launch'                       # (i) 部署类
@@ -1070,13 +1087,13 @@ def run_mandate(frame: MandateFrame,
     # crisis_refresh_invariant(P36-a 结构位;刷新域=商店线,prep 帧无对象,
     # 结构位在 executor——此处为序位声明,判据本体 refresh.crisis_refresh_invariant)
     # M5 开局板(§2.9 无数学面:开局帧(round_num≤1)板空且有 bench 件;
-    # K 直通线开局配方归 TRANSITION_SYSTEMS 第五类,本批载体 = RunDeploy
-    # 现读重建[D-C44])
+    # K 直通线开局配方归 TRANSITION_SYSTEMS 第五类,批 2a 载体 = DeployMove
+    # 原子序[kernel select_deployments 逐帧现算,R2 原子通路])
     deploy_intent_emitted = False
     if (frame.round_num <= 1 and not frame.deployed and frame.bench
             and _deployable(frame, session, state)):
-        out.append(Emitted(RunDeploy(), True, 'm5_opening_board'))
-        deploy_intent_emitted = True
+        _emit_deploy_moves(out, frame, session, state, 'm5_opening_board')
+        deploy_intent_emitted = bool(out)
 
     # T3 同轮保留集卖侧读端(prep 域;单一源 = stall_protect_active,
     # 轮界过期名就地销账 t3_protect_expired_round)。计算位 = T-115 ②(a)
@@ -1270,10 +1287,11 @@ def run_mandate(frame: MandateFrame,
                 _emit_open_shop('m2_buy')
             # 金不足侧:funding_support 变现通道在 EV pass(criteria/sell)
 
-    # M1 同帧部署(买入完成后立即评估成对上阵;P24 零支出补部署严格支配)
+    # M1 同帧部署(买入完成后立即评估成对上阵;P24 零支出补部署严格支配;
+    # 批 2a 载体 = DeployMove 原子序)
     if (not deploy_intent_emitted and frame.deploy_vacancy > 0
             and _deployable(frame, session, state)):
-        out.append(Emitted(RunDeploy(), True, 'm1_deploy'))
+        _emit_deploy_moves(out, frame, session, state, 'm1_deploy')
 
     # M3 升级整批(触发信号 = arm1_existence(statefn/predicates);
     # arm2 调度门只延迟不否决;P48 整买纪律 D-BUYNOTE 内嵌)。
@@ -1485,12 +1503,14 @@ def run_mandate(frame: MandateFrame,
                         else:
                             _count('l3_reject_batch_unaffordable')
 
-    # M1′(M3 后新人口位补部署;R6-6/R8-1:迭代至不动点——RunDeploy
-    # 执行侧现读重建输入(D-C44),发射即覆盖升级增量空位的部署重评)
+    # M1′(M3 后新人口位补部署;R6-6/R8-1:迭代至不动点——批 2a 载体 =
+    # DeployMove 原子序,逻辑态直写推进黑板,发射即覆盖升级增量空位的
+    # 部署重评)
     if frame.deploy_vacancy > 0 and _deployable(frame, session, state):
         has_levelup = any(isinstance(e.action, LevelUp) for e in out)
         if has_levelup:
-            out.append(Emitted(RunDeploy(), True, 'm1_prime_redeploy'))
+            _emit_deploy_moves(out, frame, session, state,
+                               'm1_prime_redeploy')
 
     # M1″(板满换阵补部署意图;发射序 = M1′ 后、M6 前)。语义出处 =
     # ADR-0530(board-full swap redeploy;判据单一源 =
@@ -1520,7 +1540,7 @@ def run_mandate(frame: MandateFrame,
     # (cw4_m1p_plan_pending,T-279 R1)同帧级同宿复组。
     state_of(session).cw4_m1p_arm_pending = None
     state_of(session).cw4_m1p_plan_pending = None
-    if not any(isinstance(e.action, RunDeploy) for e in out):
+    if not any(isinstance(e.action, (DeployMove, SellDeployed)) for e in out):
         from sr_od.application.currency_war.kernel.cw_deploy_logic import (
             assemble_swap_plan_inputs,
             select_swap_plan,
@@ -1576,37 +1596,52 @@ def run_mandate(frame: MandateFrame,
                 # 「该不该这帧换」(帧级 defer,替补席线内成员轴/代价轴)。
                 _count('redeploy_cost_gate_defer')
             else:
-                out.append(Emitted(RunDeploy(), True, 'm1_swap_redeploy'))
-                _count('m1p_fired')
-                # 双臂分键(plan.arm = 胜出者资格族标注,ADR-0534 §5;禁新排序键)
-                if _m1p.arm == 'transition':
-                    _count('swap_arm_transition_trigger')
-                elif _m1p.arm == 'formed':
-                    _count('swap_arm_formed_trigger')
-                # 被换下场成员逐件归因分键(T-127 §2.3/§6.3:替补席待上场
-                # 轮数判读可归因;只随发射显影,defer 帧由 defer 键单义承载)
-                if _m1p.arm == 'transition' and _m1p.sell_names:
-                    _count(f"redeploy_transition_victim_"
-                           f"{_m1p.sell_names[0]}")
-                # 执行侧透传:本帧发射位 m1p 换血及其臂,供 CwScreenDeploy
-                # 卖出臂归因分键(键族 sell_offtarget_arm_*,缺省 None)
-                state_of(session).cw4_m1p_arm_pending = _m1p.arm
-                # 计划载荷透传(T-279 R1;ADR-0640):sell/up 名单 +
-                # 计划时点转型域事实(ctx 装配快照) + 计划时点板占用数,
-                # 供 CwScreenDeploy 部署段消费计划单一源(R1-a 直投核对 =
-                # 对抗审 F2 名字级三点式;R1-b 域辖域钉定——卖出后
-                # board_full 翻假,域谓词现算会丢收窄辖域)。载荷仅作
-                # 核对与快路径准入,不改卖出仲裁权(卖谁仍由执行侧
-                # 现读仲裁 = ADR-0590 后果⑤在册分工,ADR-0640 分工
-                # 裁决二选一取「维持现分工」支)。
-                state_of(session).cw4_m1p_plan_pending = {
-                    'sell': list(_m1p.sell_names),
-                    'up': swap_plan_up_names(_m1p, _m1p_ctx),
-                    'trans_domain': bool(getattr(_m1p_ctx,
-                                                 'transition_domain',
-                                                 False)),
-                    'occ': len(frame.deployed),
-                }
+                # 批 2a 原子通路:换血发射 = 逐 victim 产 SellDeployed(先卖);
+                # 卖后上序 = kernel 计划语义(select_swap_plan 的 up 复用
+                # select_deployments 同一谓词),后续帧卖出逻辑态腾位后由
+                # M1/M1′ 臂对 fresh 黑板重评自然续发 DeployMove——发射序
+                # (先卖后上)由 kernel 计划序表达,不再经组合壳执行臂。
+                # (执行侧 CwScreenDeploy 卖出臂随组合壳退役,换血卖出归
+                # SellDeployed 原子;卖出资格同吃义务集∪新鲜度排除,
+                # swap_sell_exclusion_reason 单一判定不变。)
+                _victims: list[Emitted] = []
+                for _vn in _m1p.sell_names:
+                    _vd = next((d for d in frame.deployed
+                                if d is not None
+                                and (d.char_id or '') == _vn), None)
+                    if _vd is None:
+                        continue   # 计划名与黑板失配(陈旧提案),逐件跳过
+                    _victims.append(Emitted(
+                        SellDeployed(row=(getattr(_vd, 'position_pref', None)
+                                          or 'back'),
+                                     slot=int(getattr(_vd, 'slot', 0) or 0)),
+                        True, 'm1_swap_redeploy'))
+                if _victims:
+                    out.extend(_victims)
+                    _count('m1p_fired')
+                    # 双臂分键(plan.arm = 胜出者资格族标注,ADR-0534 §5;禁新排序键)
+                    if _m1p.arm == 'transition':
+                        _count('swap_arm_transition_trigger')
+                    elif _m1p.arm == 'formed':
+                        _count('swap_arm_formed_trigger')
+                    # 被换下场成员逐件归因分键(T-127 §2.3/§6.3:替补席待上场
+                    # 轮数判读可归因;只随发射显影,defer 帧由 defer 键单义承载)
+                    if _m1p.arm == 'transition' and _m1p.sell_names:
+                        _count(f"redeploy_transition_victim_"
+                               f"{_m1p.sell_names[0]}")
+                    # 计划载荷透传(T-279 R1;ADR-0640):sell/up 名单 +
+                    # 计划时点转型域事实(ctx 装配快照) + 计划时点板占用数。
+                    # 原消费方 = CwScreenDeploy 部署段(组合壳退役后零读者,
+                    # 载荷保留为计划快照留证面;卖出仲裁权归本发射位)。
+                    state_of(session).cw4_m1p_arm_pending = _m1p.arm
+                    state_of(session).cw4_m1p_plan_pending = {
+                        'sell': list(_m1p.sell_names),
+                        'up': swap_plan_up_names(_m1p, _m1p_ctx),
+                        'trans_domain': bool(getattr(_m1p_ctx,
+                                                     'transition_domain',
+                                                     False)),
+                        'occ': len(frame.deployed),
+                    }
         else:
             _count('m1p_plan_empty')
 
@@ -1634,68 +1669,69 @@ def run_mandate(frame: MandateFrame,
                 _emit_open_shop('m6_stock')
 
     # M7 装备转移(常态:关键装备穿上场单位;D-B 释放判据 = kernel
-    # cw_equip_env.resolve_wear_release 五行表,prep_actions 分发段
-    # 计划产出位消费(ADR-0526/0601);基础载体 = RunEquip)。
-    # 装备动作放行判定 = 变换可能性两件套(设计文档旧称「装备发射门」,
-    # 2026-09-03 实机 RunEquip 备战环活锁定谳修法):
+    # cw_equip_env.resolve_wear_release 五行表;计划产出位 =
+    # kernel/cw_equip_wear_plan(批 2a 自执行器模块迁居);载体 =
+    # WearEquip 原子序[R2 原子通路,RunEquip 组合壳退役])。
+    # 装备动作放行判定 = 变换可能性两件套:
     # ①可穿存在性(m7_wearable_exists):owned 快照里有注册表已登记且非
-    #   工具类的件。快照源 = 决策帧 owned_equips(P4 观察接线,T-171;
-    #   旧 session.last_owned_equips 陈旧快照读点退役——门①与计划产出位
-    #   同帧同源,防门开了而计划面无件的双源漂移)。快照按 ADR-0387 全量
-    #   含工具件(扳手/冶金炉等不可穿)——工具-only 库存
-    #   谓词永真 ⇒ 每帧重发 RunEquip 且 0 穿 ⇒ 空批出口(StartBattle)
-    #   永不可达,备战环活锁(实机 1-6 卡死,签名「序列完成(RunEquip)」)。
-    # ②备战期闩(cw4_m7_equipped_phase):同 (plane, round) 备战期只发一次
-    #   ——执行侧一次完整穿戴 pass 信息完备(内含补救链/拉黑/分配归因,
-    #   cw_op_equip_all),期内重开输入不变结果不变(与开店闩同构论证);
-    #   位面/轮次推进=新键自动失效(新发放件重评)。闩置位在**执行位**
-    #   (mark_equip_pass_executed,唯一写点由 prep_actions 执行入口在
-    #   RunEquip 组合 op 成功返回时调用),不在发射位——发射位只读不写,
-    #   理由与本函数 docstring「备战期开店闩」节同型(单动作环下发射
-    #   列表中 RunEquip 之前的可续类动作先执行即终结本环,RunEquip
-    #   意图未执行,发射即置闩会让闩烧而装备未穿、后续环被闩挡死)。
+    #   工具类的件。快照源 = 决策帧 owned_equips(P4 观察接线,T-171)。
+    # ②备战期闩(cw4_m7_equipped_phase)**随原子化退役**(批 2a 裁定,
+    #   依据 = design.md §2.6「计划构造 kernel 化 + 决策侧逐帧现算」):
+    #   逐帧现算形态下发射面天然收敛——每件 WearEquip 执行后逻辑态
+    #   (owned 摘件)落黑板,计划随帧收缩至空;同 phase 一次闩与「逐件
+    #   序」互斥(闩在首件后挡死余件)。0 穿重发环(2026-09-03 组合壳
+    #   活锁病灶)由两层既有防线承接:visit 动作数上限 + 环级无进展守卫
+    #   (恒指纹 3 环停机留证),确定性出口不减。
     if frame.owned_equips \
             and m7_wearable_exists(frame.owned_equips):
-        if getattr(state_of(session), 'cw4_m7_equipped_phase', None) == phase:
-            _count('equip_latch_skip_m7')
+        from sr_od.application.currency_war.kernel.cw_equip_wear_plan import (
+            _build_equip_wear_plan,
+        )
+        from sr_od.application.currency_war.kernel.cw_exec_state import (
+            exec_state_of as _exec_state_of,
+        )
+        _build = _build_equip_wear_plan(session, _exec_state_of(session),
+                                        registry)
+        if _build.fail_reason:
+            # 资源前置缺失(黑板帧/装备观察域未就绪)= 未发出通道,闩不置,
+            # 下帧重派(与组合壳时代 round_fail 同形)。
+            _count('equip_plan_resource_missing')
         else:
-            out.append(Emitted(RunEquip(), True, 'm7_equip_transfer'))
+            for _step in _build.steps:
+                out.append(Emitted(
+                    WearEquip(item_name=_step.item_name,
+                              char_name=_step.char_name,
+                              row=_step.row, slot=_step.slot),
+                    True, 'm7_equip_transfer'))
+            if not _build.steps:
+                # 空计划具名 NOOP(合法稳态;哨兵计划面挂点随分发段迁 kernel
+                # 构造位,零穿戴哨兵执行面在 CwOpEquipAll)。
+                _count('equip_plan_empty_noop')
 
     # M7.5 工具消费发射位已物理移出本执行器(T-159 迁移 C,审 A1 主案):
     # 发射位 = entry.emit ②证明 pass 与③升档器求值位之间(判据单一源
-    # = kernel/cw_equip_env.evaluate_tool_actions、G1 准入与工具期闩
-    # cw4_tools_phase 同 phase 一次语义原样保留,仅发射位搬家)。为什么
-    # 必须移出而非前移:M7 发射序回排块(下方,本体一行不动)对 out 列表内
-    # 任何 RunTools 无条件重排到首个截断/终结类动作之前——同帧含
-    # LevelUp+OpenShop 的常态形态下 RunTools 必被重排到 LevelUp 之后,
-    # LevelUp 先执行而逻辑态未建模终结本 visit,RunTools 本帧从未执行
-    # (旧输入升级照发)。移出后本回排不再见 RunTools,少一个特例。
-    # 本执行器内不再发射 RunTools(防双发射;回归锚 =
-    # test_cw_prep_flag_machine::test_runtools_emit_position)。
+    # = kernel/cw_equip_env.evaluate_tool_actions + G1 准入;批 2a 起
+    # 按裁决 1 逐件产工具原子类,RunTools 组合壳退役)。
 
-    # M7 发射序回排(实机局 g_20260904_010335 1-6/1-7 漏发
-    # 定谳):M7 在执行序末位评估,发射落在同帧开店意图(OpenShop=帧稳定
-    # 契约 §3.2 截断点)之后 ⇒ 截断器 truncate_frame_stable 其后必截,
-    # RunEquip 被静默丢弃而门②闩已在发射位消耗——同帧「开店 ∧ 可穿件」
-    # 形态下装备滞留整个备战期(闩挡死后续帧重评,1-8 无开店面才首穿)。
-    # 修法 = 发射组织面回排:RunEquip 系可续类(conditional,装备 pass
-    # 画面零迁移),插到首个截断点/终点之前,两动作均保留、执行序
-    # (先穿后开店)与发射序一致;门①谓词不变。闩置位时机已移执行位
-    # (mark_equip_pass_executed,与开店闩置位时机修复同批)——回排
-    # 语义仍保证 RunEquip 落在执行序前段、先于截断点被消费。分类单一
-    # 源 = entry.classify_frame_stability(函数内延迟 import 防模块环)。
-    if any(isinstance(e.action, (RunEquip, RunTools)) for e in out):
+    # M7 发射序回排(实机局 g_20260904_010335 1-6/1-7 漏发定谳的原子化
+    # 形态):装备/工具原子(批 2a 起 = 截断类,aftermath 含穿着即合成/
+    # 网格 reflow,不可静态预测)若落在同帧其他截断点/终点(如 OpenShop)
+    # 之后 ⇒ 截断器其后必截,穿戴被静默丢弃。修法 = 发射组织面回排:
+    # 装备/工具原子插到**其他**截断点/终点之前,执行序(先穿后开店)与
+    # 发射序一致。分类单一源 = entry.classify_frame_stability(函数内
+    # 延迟 import 防模块环)。
+    if any(isinstance(e.action, _EQUIP_ATOM_TYPES) for e in out):
         from sr_od.application.currency_war.strategies.impl.mandate_v1.entry import (
             classify_frame_stability,
         )
-        equips = [e for e in out if isinstance(e.action, (RunEquip, RunTools))]
-        rest = [e for e in out if not isinstance(e.action, (RunEquip, RunTools))]
+        equips = [e for e in out if isinstance(e.action, _EQUIP_ATOM_TYPES)]
+        rest = [e for e in out if not isinstance(e.action, _EQUIP_ATOM_TYPES)]
         cut = next((i for i, e in enumerate(rest)
                     if classify_frame_stability(e.action)
                     in ('truncation', 'terminal')), len(rest))
-        # 组内序:装备先行、工具随后(炉烧死库存与穿戴互不依赖,但
-        # 先穿后烧让确认通道对拍读到的是穿戴后的稳定板面)
-        equips.sort(key=lambda e: 0 if isinstance(e.action, RunEquip) else 1)
+        # 组内序:穿戴先行、工具随后(炉烧死库存与穿戴互不依赖,但
+        # 先穿后烧与 M7.5 原组内序等价)
+        equips.sort(key=lambda e: 0 if isinstance(e.action, WearEquip) else 1)
         out = rest[:cut] + equips + rest[cut:]
 
     return out
@@ -1885,6 +1921,76 @@ def _record_deploy_emit_held(session: StrategySession,
         pass
 
 
+def _deploy_plan_inputs(frame: MandateFrame, session: StrategySession,
+                        state: GameState) -> dict:
+    """select_deployments 同参装配(发射侧装配单一源;原 ``_deployable``
+    内联装配抽提——原子发射位(R2)与放行判定谓词共用同一份输入,禁
+    双源)。键集 = ``select_deployments_reasoned`` 形参(围栏/去重/cap/
+    配方底线语义全在 kernel 谓词内)。"""
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        deploy_target_sets,
+        deployed_bond_counts,
+    )
+    from sr_od.application.currency_war.kernel.cw_intention import (
+        locked_faction_scope,
+    )
+    _comp = getattr(state_of(session), 'target_comp', None)
+    _tgt, _fw_carry = deploy_target_sets(
+        _comp, getattr(state_of(session), 'transition_framework', '') or '')
+    _cids = {d.char_id for d in frame.deployed if d.char_id}
+    _ist = getattr(state_of(session), 'v3_intention', None)
+    return {
+        'bench': frame.bench,
+        'deployed_cids': _cids,
+        'deployed_fac': deployed_bond_counts(_cids),
+        'board': dict(state.board.value or {}),
+        'cap': (frame.deploy_cap if frame.deploy_cap and frame.deploy_cap > 0
+                else 10 ** 6),
+        'target_factions': _tgt,
+        'target_cores': set(getattr(_comp, 'core_chars', None) or ()),
+        'fw_carry': _fw_carry,
+        'locked_factions': (locked_faction_scope(_ist) or frozenset()),
+    }
+
+
+def _emit_deploy_moves(out: list, frame: MandateFrame,
+                       session: StrategySession, state: GameState,
+                       tag: str) -> None:
+    """原子部署发射位(R2;out 追加 DeployMove 序,决策核逐帧取首项)。
+
+    部署计划 = kernel ``select_deployments``(发射×执行单一源,输入 =
+    ``_deploy_plan_inputs`` 同参装配)现算;落位指派 = kernel
+    ``assign_deploy_slots``(选排单一源,空槽源 = 容器 deployed 槽位表;
+    后排容量 = 容器 back_layout,值域 6-9,缺省 6 基线)。发射序即执行序
+    (备战环逐帧取决策输出首项);同帧多 move 排序由本发射位表达。逻辑态
+    (bench 摘槽/deployed 落槽/board 增量)在观察侧
+    ``_project_prep_obs`` 直写,下一帧对 fresh 黑板重评自然续发剩余 move。
+    """
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        assign_deploy_slots,
+        empty_deploy_slots,
+        select_deployments_reasoned,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_slots_of,
+    )
+    _inputs = _deploy_plan_inputs(frame, session, state)
+    up, _held, _reasons = select_deployments_reasoned(**_inputs)
+    if not up:
+        return
+    dep_slots = deployed_slots_of(state)
+    _back_total = (getattr(state.back_layout, 'value', None)
+                   or getattr(state, 'back_max', None) or 6)
+    front_empty, back_empty = empty_deploy_slots(
+        dep_slots, front_total=4, back_total=int(_back_total))
+    for bi, row, slot in assign_deploy_slots(frame.bench, up,
+                                             front_empty, back_empty):
+        out.append(Emitted(
+            DeployMove(from_slot=int(frame.bench[bi].slot),
+                       to_row=row, to_slot=slot),
+            True, tag))
+
+
 def _deployable(frame: MandateFrame, session: StrategySession,
                 state: GameState) -> bool:
     """RunDeploy 提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
@@ -1908,35 +2014,18 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     逐次调用经 _record_deploy_emit_held 落发射侧分键(帧级去重)。
     """
     from sr_od.application.currency_war.kernel.cw_deploy_logic import (
-        deploy_target_sets,
-        deployed_bond_counts,
         has_deployable_reasoned,
     )
     from sr_od.application.currency_war.kernel.cw_intention import (
-        locked_faction_scope,
         locked_line_recipe_floor_conflict,
     )
-    _comp = getattr(state_of(session), 'target_comp', None)
-    _tgt, _fw_carry = deploy_target_sets(
-        _comp, getattr(state_of(session), 'transition_framework', '') or '')
-    _cids = {d.char_id for d in frame.deployed if d.char_id}
-    _ist = getattr(state_of(session), 'v3_intention', None)
+    st = state_of(session)
+    _ist = getattr(st, 'v3_intention', None)
     try:
         _rf_ctx = locked_line_recipe_floor_conflict(_ist)
     except Exception:   # noqa: BLE001  豁免语境 best-effort:fail-closed
         _rf_ctx = False
-    _inputs = {
-        'bench': frame.bench,
-        'deployed_cids': _cids,
-        'deployed_fac': deployed_bond_counts(_cids),
-        'board': dict(state.board.value or {}),
-        'cap': (frame.deploy_cap if frame.deploy_cap and frame.deploy_cap > 0
-                else 10 ** 6),
-        'target_factions': _tgt,
-        'target_cores': set(getattr(_comp, 'core_chars', None) or ()),
-        'fw_carry': _fw_carry,
-        'locked_factions': (locked_faction_scope(_ist) or frozenset()),
-    }
+    _inputs = _deploy_plan_inputs(frame, session, state)
     _ok, _reasons = has_deployable_reasoned(
         recipe_floor_lock_exempt=_rf_ctx, **_inputs)
     _record_deploy_emit_held(session, state, frame, _reasons, _rf_ctx,
