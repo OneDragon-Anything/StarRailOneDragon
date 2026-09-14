@@ -116,7 +116,7 @@
 | 部署臂 | `operations/cw_screen/cw_screen_deploy.py::CwScreenDeploy` | bench/前/后排占用（CV `slot_occupied` 现读）、身份（SIFT `read_bench_chars`/`read_deployed_chars`）、`deploy_cap`（防抖真读）、board（`session.last_state.board`） | 全执行期现读；计划判定单一源 = kernel `select_deployments_reasoned`；`assemble_bench_list` 构造 BenchChar（`slot=_bi+1`，占槽物品显式 `is_item_slot=True`） |
 | 换血臂（M1″/m1p） | 发射面 `mandate.py` m1p 段 + 执行面 `CwScreenDeploy.deploy` deploy-swap 卖出臂 | 发射面 = 决策帧槽位表（Snapshot/GameState 域）；执行面 = last_state 滞后帧 + SIFT 现读；逐件拒因 = `swap_sell_exclusion_reason` 现读域喂入 | §4.3；1:1 替换上限 = `bench_target_count`；卖出后残余补部署走 `residual_fill_plan`（点位下标域） |
 | 卖出臂（prep 域） | `prep_actions.py::_sell_bench` | 族 B `SellBench.slot`（物理槽号） | `drag_bench_to_sell(op, ctx, slot−1)`（基转换在调用点）；成功后 `_track_remove_bench` 销 tracked 账 + `apply_op_effect` 登记期望态 |
-| 卖出臂（shop 域） | `operations/cw_op/cw_shop_action_ops.py::SellBenchOp` | 族 A `SellBench.bench_idx`（槽位表下标）+ `expect` 期望名 | `drag_bench_to_sell` 直收 0-based，机械单发发出即记账（tracked 双账无条件推进：置 None 不紧缩）+ `register_round_sold`；expect 代际校验归转移函数（`apply_shop_action_logic` 对非空 expect 做 `stale_proposal` 拒，applied=False 零容器写）；零判效，落地事实归下一入口观察对账 |
+| 卖出臂（shop 域） | `operations/cw_op/cw_sell_bench_action.py::SellBenchOp` | 族 A `SellBench.bench_idx`（槽位表下标）+ `expect` 期望名 | `drag_bench_to_sell` 直收 0-based，机械单发发出即记账（tracked 双账无条件推进：置 None 不紧缩）+ `register_round_sold`；expect 代际校验归转移函数（`apply_shop_action_logic` 对非空 expect 做 `stale_proposal` 拒，applied=False 零容器写）；零判效，落地事实归下一入口观察对账 |
 | 装备臂 | `operations/cw_op/cw_op_equip_all.py::CwOpEquipAll` | owned 多列网格（`read_equips`）、`session.last_owned_equips`、`read_row_equipped` 已穿表（slot 1-based）、avatar CV-diff | §3.7 搬运链；穿戴候选过滤工具类；P0-2 只往空槽 drag（`_empty_slots`，防覆盖已穿） |
 
 ## 6. 现状边界与缺口登记（对照注释规范逐文件点名）
