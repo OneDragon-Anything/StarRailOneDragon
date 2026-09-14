@@ -23,7 +23,7 @@
 - [sim-design](sim/sim-design.md)(sim 体系设计总纲:架构边界/动作语义契约/检查器分类/保真度纪律/复盘通道/守恒不变量) / [sim-power-model](sim/sim-power-model.md)(战力模型设计件,需求定义) / [sim-wiring](sim/sim-wiring.md)(GameState↔sim 接线对照 as-built 底账)
 
 ### [design/](design/) —— 系统组件设计件
-- [统一观察架构-画面op基类设计](design/统一观察架构-画面op基类设计.md) / [设计-C1直通核心入口](design/设计-C1直通核心入口.md)
+- [统一观察架构-画面op基类设计](flow/统一观察架构-画面op基类设计.md) / [设计-C1直通核心入口](flow/设计-C1直通核心入口.md)
 - BoardState-数据结构设计(统一 state 容器数据结构与画面字段规格):正本入口 = [game_state/README.md](game_state/README.md)(总纲;字段级完整规格在其 [fields.md](game_state/fields.md))
 - [冻结残余清单](design/冻结残余清单.md) —— 度量面/验证装置的「已知缺口、冻结不修、数据积累后按项重开校准」登记正本(冻结裁定 2026-09-02;登记 12 项、现存有效 11 项;2026-09-11 自 git 历史 commit 90f1acdb2^ 回灌,原文保真)
 
