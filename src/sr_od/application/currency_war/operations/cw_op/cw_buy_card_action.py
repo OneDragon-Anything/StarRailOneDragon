@@ -38,7 +38,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
 
 class BuyCardOp(ShopActionOp):
     """买一张 = 一个动作 op(ADR-0517 决策 3;满栏例外下一击多张仍一个
-    op,张数由游戏规则定、投影按 merge_buy_k 计——方案 A 补裁)。"""
+    op,张数由游戏规则定、逻辑态直写按 merge_buy_k 计——方案 A 补裁)。"""
 
     def execute(self, env: ShopExecEnv) -> bool:
         from one_dragon.base.geometry.point import Point as _Pt
@@ -127,7 +127,7 @@ class BuyCardOp(ShopActionOp):
                             record_drought_buy_no_reset(
                                 member=action.card.name,
                                 system=_sys, drought=_d)
-        # tracking 同步:满栏合成买与投影同分支单一源(T-182:shop 视图
+        # tracking 同步:满栏合成买与逻辑态直写同分支单一源(T-182:shop 视图
         # 进 tracked mutate,满栏完成合成的买入在 tracked 侧同样合成腾槽
         # ——旧丢件行为使 tracked 漏记合成,同 visit 下一动作守卫对拍
         # 误炸;2026-09-09 05:52 运行局双响事故)。

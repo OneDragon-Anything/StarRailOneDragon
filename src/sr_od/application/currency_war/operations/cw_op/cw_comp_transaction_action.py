@@ -14,7 +14,7 @@ from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
 
 class CompTransactionOp(ShopActionOp):
     """整档替换事务 = 复合动作类(ADR-0517 §复合动作类):一个 op、
-    原子投影、C1 前置合法性(任一子步资源不足 ⇒ 整体不提案)。
+    原子逻辑态直写、C1 前置合法性(任一子步资源不足 ⇒ 整体不提案)。
 
     **终结邻接 fallback(现行档)**:合成建模验证未过(非满栏一击张数
     = research 知识缺口,模块头申报)⇒ 执行后本画面访问结束交回外循环

@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 
 
 class ShopActionOp(ABC):
-    """商店动作 op 基类(execute 单方法;原 project 投影半已删,T-163
-    纯规则路线——期望态推进 = 容器投影直写,模块头申报)。"""
+    """商店动作 op 基类(execute 单方法;原 project 逻辑态推算半已删(前身
+    契约),T-163 纯规则路线——期望态推进 = 容器逻辑态直写,模块头申报)。"""
 
     #: 终结动作(执行即本画面访问结束,交回外循环;决策 4)
     terminal: bool = False
