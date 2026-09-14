@@ -192,7 +192,7 @@ def terminal_state_summary(st: dict[str, Any] | None) -> dict[str, Any]:
     """轮「战后终态」板面计数(档案逐轮 ``terminal`` 列的单一源;纯函数)。
 
     - 背景(w936_deploy_fill 移交①):档案逐轮 deployed/bench/equips 列取自
-      「决策帧」(``_best_decision_frame``,决策时点快照),而 CwOpDeploy/
+      「决策帧」(``_best_decision_frame``,决策时点快照),而 CwScreenDeploy/
       CwOpEquipAll 在决策之后的同备战期执行——复盘把决策帧当战后板面读 =
       快照时序误读(实证:g_20260831_032006 r9 决策帧 4/6,实机执行后 6/6)。
       本函数与决策帧列并列,读端一眼区分「决策时」vs「执行后」。

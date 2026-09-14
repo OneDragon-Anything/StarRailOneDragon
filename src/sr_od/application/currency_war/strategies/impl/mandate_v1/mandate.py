@@ -1499,7 +1499,7 @@ def run_mandate(frame: MandateFrame,
     # 复用 select_deployments 判 up 非空——底线留置件不作上序候选,
     # 零新启发式)。发射载体 = RunDeploy(条件续类,entry.
     # classify_frame_stability,不触发截断、不受 M7 发射序回排辖);
-    # 卖谁由执行侧 CwOpDeploy 卖出臂现读仲裁(发射=存在性,执行=逐件;
+    # 卖谁由执行侧 CwScreenDeploy 卖出臂现读仲裁(发射=存在性,执行=逐件;
     # 执行侧同吃义务集∪新鲜度排除,swap_sell_exclusion_reason 单一判定)。
     # 同帧 LevelUp 抑制(m1p_defer_levelup):升级开新 vacancy,下帧
     # M1′ 以零卖出成本接管——卖出不可逆 > 等一帧。
@@ -1514,7 +1514,7 @@ def run_mandate(frame: MandateFrame,
     # 不辖(§2.3 不动)。
     # m1p 执行侧分键载体帧级复位(无条件,pending 只活一个决策帧):
     # 本帧发射位有 m1p 换血时在发射处置为 plan.arm,消费点 =
-    # CwOpDeploy.deploy 卖出臂(读后即清)。非 m1p 帧恒 None ⇒ 执行侧
+    # CwScreenDeploy.deploy 卖出臂(读后即清)。非 m1p 帧恒 None ⇒ 执行侧
     # 卖出计 regular 键,零漂移。无条件复位防「m1p 帧后接 M1 帧(下方
     # 块被跳过)且执行未及消费」的跨帧残留误归因。计划载荷
     # (cw4_m1p_plan_pending,T-279 R1)同帧级同宿复组。
@@ -1588,12 +1588,12 @@ def run_mandate(frame: MandateFrame,
                 if _m1p.arm == 'transition' and _m1p.sell_names:
                     _count(f"redeploy_transition_victim_"
                            f"{_m1p.sell_names[0]}")
-                # 执行侧透传:本帧发射位 m1p 换血及其臂,供 CwOpDeploy
+                # 执行侧透传:本帧发射位 m1p 换血及其臂,供 CwScreenDeploy
                 # 卖出臂归因分键(键族 sell_offtarget_arm_*,缺省 None)
                 state_of(session).cw4_m1p_arm_pending = _m1p.arm
                 # 计划载荷透传(T-279 R1;ADR-0640):sell/up 名单 +
                 # 计划时点转型域事实(ctx 装配快照) + 计划时点板占用数,
-                # 供 CwOpDeploy 部署段消费计划单一源(R1-a 直投核对 =
+                # 供 CwScreenDeploy 部署段消费计划单一源(R1-a 直投核对 =
                 # 对抗审 F2 名字级三点式;R1-b 域辖域钉定——卖出后
                 # board_full 翻假,域谓词现算会丢收窄辖域)。载荷仅作
                 # 核对与快路径准入,不改卖出仲裁权(卖谁仍由执行侧
@@ -1890,7 +1890,7 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     """RunDeploy 提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
 
     谓词单一源 = ``kernel.cw_deploy_logic.has_deployable_reasoned``
-    (发射×执行单一源):与执行方 CwOpDeploy 计划构造(select_deployments_reasoned)
+    (发射×执行单一源):与执行方 CwScreenDeploy 计划构造(select_deployments_reasoned)
     同源同参语义——围栏/去重/cap/配方底线全在谓词内。计划空(含「候选
     全被规则留 bench」形态)⇒ False,不提案 RunDeploy(序内取下一动作)。
 
@@ -1900,7 +1900,7 @@ def _deployable(frame: MandateFrame, session: StrategySession,
     执行方计划空报 no-op 成功,RunDeploy 投影未建模(保守回退)交回
     外循环,重进再提案,3 环零推进。守卫行为正确,根因 = 本发射位
     漏接抑制谓词。禁第二实现:判空一律走 kernel;本函数只做输入装配
-    (与 CwOpDeploy 同款,经 kernel deploy_target_sets /
+    (与 CwScreenDeploy 同款,经 kernel deploy_target_sets /
     deployed_bond_counts 单一源)。
 
     ADR-0564:配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,

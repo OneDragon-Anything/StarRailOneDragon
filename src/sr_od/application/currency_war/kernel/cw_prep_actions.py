@@ -184,7 +184,7 @@ class RunBuyPhase(PrepAction):
 
 @dataclass
 class RunDeploy(PrepAction):
-    """组合(P1 过渡):整体部署 = CwOpDeploy(v7 H-2:保 D-10 换血/同角色去重/前排保证/cap 门
+    """组合(P1 过渡):整体部署 = CwScreenDeploy(v7 H-2:保 D-10 换血/同角色去重/前排保证/cap 门
     四项板上行为,P3 原子化时上移策略)。"""
 
 

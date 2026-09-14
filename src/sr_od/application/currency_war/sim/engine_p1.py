@@ -836,7 +836,7 @@ def m1p_swap_execute(bs: GameState, plan: SwapPlan, *, acts: list[dict],
     """M1″ 执行面 sim 转录:计划非空 → 逐件卖 victim(卖出臂)。
 
     T-169 最小执行面(总图设计 R2 §2 sim 边界行):生产链 = mandate 发射
-    RunDeploy(m1_swap_redeploy)+ CwOpDeploy 卖出臂现读逐件卖 +
+    RunDeploy(m1_swap_redeploy)+ CwScreenDeploy 卖出臂现读逐件卖 +
     部署 op 补上;sim 对应物 = 本函数卖 victim + 引擎轮末部署块残余
     补部署补上(调用方据返回值置显式动作旗 → skip_fence+residual_
     fill,与显式动作轮同语义)。卖出执行走 **容器单一转移函数**
@@ -2611,7 +2611,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # 部署路径(裁决1「显式>围栏」同语义;T-279 R1/ADR-0640
                 # 起 m1p 卖出成功帧的补上 = 计划单一源消费
                 # _m1p_plan_fill_deploy:R1-a 计划 up 直投/防御退 R1-b
-                # 卖出后现读重 derive,与生产 CwOpDeploy 卖出臂+部署 op
+                # 卖出后现读重 derive,与生产 CwScreenDeploy 卖出臂+部署 op
                 # 消费计划单一源两段同构)。计划空/卖出被拒帧零状态写入
                 #(原「零行为面」语义在这些帧保持)。
                 if _m1p_plan is not None and _m1p_plan.nonempty:
@@ -2628,7 +2628,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 _m1p_obs_skipped = 'launch_short_circuit'
             # ②部署(ADR-0287,批㉘ F1-F5):买/升级**之后**执行(生产序
             # 对齐)。r390 起 deployed 代理 = deploy_bench 真实围栏逻辑
-            # (cw_deploy_logic.select_deployments 纯函数,与 CwOpDeploy op
+            # (cw_deploy_logic.select_deployments 纯函数,与 CwScreenDeploy op
             # 同一源)——r373/r387 类执行层 bug sim 可发现。target 集从
             # session **买后**现读(生产:买牌段 finalize 暂存帧已由决策
             # 入口刷新方向视图,锁线轮目标已更新,ADR-0583);未识别

@@ -1,16 +1,16 @@
-"""deploy 选人纯逻辑(sim 与 CwOpDeploy op 共用单一源)。
+"""deploy 选人纯逻辑(sim 与 CwScreenDeploy op 共用单一源)。
 
 背景(用户定调「这些问题明明都可以模拟发现」):实机暴露的
 deploy 侧 bug(桥期 target 真空/cap 富余仍拦
-散牌)全是 **CwOpDeploy op 的选人围栏**行为——而 sim 的 deployed
+散牌)全是 **CwScreenDeploy op 的选人围栏**行为——而 sim 的 deployed
 是自动代理(bench 引擎件直进,围栏零覆盖),执行层 bug 天然测不出。
 
 本模块把围栏判定提取为**纯函数**(无 ctx/无画面/无 SIFT):输入
-bench/deployed/目标集/围栏集/cap,输出「谁上场」。CwOpDeploy op
+bench/deployed/目标集/围栏集/cap,输出「谁上场」。CwScreenDeploy op
 与 cw_sim 都调它——同一份逻辑,实机改=sim 改,漂移不可能。
 
 ⚠️ 对齐语义(ADR-0261 裁决「1+3 组合」):
-① CwOpDeploy op `_deploy_deterministic` 排序含 ignition_gain 首键
+① CwScreenDeploy op `_deploy_deterministic` 排序含 ignition_gain 首键
 (经本模块 `ignition_gain`,与 select_deployments 同语义);② 本模块
 select_deployments 含配方底线门(列车≥2 且仙舟<3 → 列车件
 让位留 bench,与 op 侧同语义)。对齐后 op 与本
@@ -229,8 +229,8 @@ def recipe_floor_holds(main_faction: str,
 
     返回 True = 该件应被门持有(拒因 'recipe_floor')。消费面五处,
     禁任何分支副本(ADR-0261 门本体 + ADR-0564 豁免;判定语义只此一份):
-    select_deployments / CwOpDeploy 主拖拽循环 / CwOpDeploy P24 fill
-    过滤 / CwOpDeploy 输入装配段计划构造(经 select_deployments_reasoned)
+    select_deployments / CwScreenDeploy 主拖拽循环 / CwScreenDeploy P24 fill
+    过滤 / CwScreenDeploy 输入装配段计划构造(经 select_deployments_reasoned)
     / select_swap_plan(经 select_deployments_reasoned 复用)。
 
     豁免语义:lock_exempt_armed(豁免条件(1)锁定线语境成立,单源 =
@@ -320,7 +320,7 @@ def has_deployable(
     """「是否存在可部署件」的单一源谓词(发射×执行契约)。
 
     = ``has_deployable_reasoned(...)[0]``(委托,判空语义不变)——发射方
-    (决策核准备战段)与执行方(CwOpDeploy)共用同一份围栏/去重/cap/
+    (决策核准备战段)与执行方(CwScreenDeploy)共用同一份围栏/去重/cap/
     配方底线语义判「还有没有部署可做」。背景(run 20260904_28xx 局11
     停机形态):发射方判「bench 有货该部署」、执行方按配方底线规则把该件
     留 bench → RunDeploy 空计划被包装成 ✓「已部署角色」→ 同签名动作批
@@ -374,7 +374,7 @@ def has_deployable_reasoned(
 def deployed_bond_counts(deployed_cids: set[str]) -> dict[str, int]:
     """已上场角色全羁绊计数(factions+flows 逐项 +1;r361b 全羁绊口径)。
 
-    消费面 = ``has_deployable`` 发射侧装配与 CwOpDeploy 执行侧的
+    消费面 = ``has_deployable`` 发射侧装配与 CwScreenDeploy 执行侧的
     ``_deployed_fac``(两侧计数同循环同口径,单一源;未注册名不计
     ——无名可判即无阵营信号,件本身的去重/fail-open 由
     select_deployments 的 cid 分支管)。
@@ -409,7 +409,7 @@ def deploy_target_sets(target_comp: object | None,
     信任边界:``fw`` 非 '' 即双轨期信号(与 ``cw_recipe.decision_target`` 的
     committed 门同向;定型后框架无写端=休眠,不存在 committed 携 fw 帧)。
     防御退型:框架无配方注册(理论态)/comp 无 all_factions 属性(鸭子型
-    comp)→ 逐位退旧语义,零漂移。消费面 = CwOpDeploy 执行侧与 mandate
+    comp)→ 逐位退旧语义,零漂移。消费面 = CwScreenDeploy 执行侧与 mandate
     发射侧 ``select_deployments``/``has_deployable`` 的同参装配——发射侧
     抑制谓词(发射×执行契约)接线后两侧各写一份即双源,禁复制。
     """
@@ -453,7 +453,7 @@ def select_deployments(
 ) -> tuple[list[int], list[int]]:
     """围栏判定:返回 (上场 bench 下标序, 留 bench 下标)。
 
-    语义与 CwOpDeploy op 的 deterministic 段逐条对应
+    语义与 CwScreenDeploy op 的 deterministic 段逐条对应
     (ADR-0130 散牌围栏/补档序/引擎对优先/cap 富余
     填空/点火首键+桶序/配方底线门/板空保底),唯一省略:
     SIFT 未识别(char_id 空)照旧上
@@ -932,7 +932,7 @@ def swap_yield_contribution(target_factions: frozenset[str] | set[str],
 
 # ===== 板满换阵补部署计划(M1″ 发射面谓词;与 select_deployments 同族)=====
 # 语义出处:ADR-0530(board-full swap redeploy)。
-# 结构:发射侧(mandate M1″)与执行侧(CwOpDeploy 卖出臂)**同函数、
+# 结构:发射侧(mandate M1″)与执行侧(CwScreenDeploy 卖出臂)**同函数、
 # 同一装配契约**(assemble_swap_plan_inputs),但输入源两侧分轨——发射
 # = 决策帧黑板,执行 = last_state + SIFT(装配源契约钉死为执行侧卖出
 # 决策实际消费的快照链,禁另起第三路);两侧输入的逐字段对齐由 seam
@@ -1043,7 +1043,7 @@ def swap_sell_exclusion_reason(name: str, ctx: SwapPlanContext | None, *,
                                ) -> str:
     """卖出 victim 的单一判定(逐件;ADR-0530 + 转型臂同位扩展)。
 
-    消费面 = 发射面谓词(select_swap_plan)与执行侧卖出臂(CwOpDeploy
+    消费面 = 发射面谓词(select_swap_plan)与执行侧卖出臂(CwScreenDeploy
     `_sell_offtarget_deployed`)——卖出通道统一排除辖域 + **逐件可卖性**
     的唯一交汇点(ADR-0534 §3 内聚声明:守恒门/合成素材守卫/
     SWAP_TRANSITION_ARM_ENABLED 的消费点全部落回本函数或其唯一调用链,
@@ -1234,7 +1234,7 @@ class SwapPlanContext:
 # 语义出处:T-167 无方向幻影部署软卡死事故(裁决持久家 = docs/develop/
 # currency_war/decisions/0534-swap-transition-arm.md「修订(T-167)」节,
 # ADR-0530 决策4 键表追加行为伴登记)。
-# 为什么存在:发射面(select_swap_plan)与执行面(CwOpDeploy 卖出臂两门)
+# 为什么存在:发射面(select_swap_plan)与执行面(CwScreenDeploy 卖出臂两门)
 # 对「这场换阵能否兑现」判定不同源时,发射面会发出执行面必然空转的
 # RunDeploy(2026-09-08 实机软卡死 run_20260908_210431:无方向态
 # 发射 53 次幻影部署,执行 0 次真实换阵,交替活锁 15 分钟)——本谓词是
@@ -1347,7 +1347,7 @@ def swap_realizable(ctx: SwapPlanContext | None, *,
       蕴含,预判只会把逐件显影挤成单键;门③由 victim 扫描自然承载
       (逐件同判 swap_sell_exclusion_reason,扫描空即计划空,语义等价
       且逐件拒因保留显影);
-    - 执行面(CwOpDeploy 卖出臂两门)消费本函数与合取②计数;
+    - 执行面(CwScreenDeploy 卖出臂两门)消费本函数与合取②计数;
     - sim 镜像经 select_swap_plan 自动继承。
 
     :returns: (ok, why)。why ∈ SWAP_REALIZABLE_WHY(拒因闭集)或 ''
@@ -1413,7 +1413,7 @@ def evolution_swap_arm_trigger(membership: frozenset[str] | None,
     最小等效通道的准入面:「锁线转型域 ∧ 板满 ∧ bench 有在册线件待上」
     (ADR-0614 修向「板满∧bench有locked线core→发射卖线外件上core事务」
     的准入三元)。三面消费(装配级缺省计算 = 发射面 mandate M1″ 与
-    sim 引擎;执行侧 CwOpDeploy 卖出臂经本函数用 SIFT 现读 bench 域
+    sim 引擎;执行侧 CwScreenDeploy 卖出臂经本函数用 SIFT 现读 bench 域
     重算覆写)——同函数同谓词,发射⇔执行资格自动同值,禁分轨态
     (ADR-0534 §3 同款纪律)。
 

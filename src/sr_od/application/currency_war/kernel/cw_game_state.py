@@ -282,7 +282,7 @@ REGISTERED_ACTORS: set[str] = {
     # 「动作 op / handler 类名」;actor = 执行动作的 op 类,动作身份由
     # 回执记录 op 字段承载)——
     'PrepActionExecutor',      # 备战动作执行器(动作全集唯一分派点)
-    'CwOpBuyCards',            # 商店单动作循环(run_buy_waves;含刷新执行
+    'CwScreenBuyCards',            # 商店单动作循环(run_buy_waves;含刷新执行
                                # 事实组 record_refresh_execution 的计数写入)
     'CwOpOpenShop',            # 开商店原子(op 函数与独立壳同名登记)
     'CwOpCloseShop',           # 关商店原子
@@ -1001,9 +1001,9 @@ def record_refresh_execution(bs: GameState, *, free: bool,
     _ev = f'refresh_exec@{frame}' if frame else 'refresh_exec'
     # 渠道②签名(§3.2.1:actor = 执行动作的 op 类名;组 id = 同一次刷新
     # 执行的三笔计数写共享 act 组;R5 W1 起签名必填,ADR-0634)。
-    _sig = ChannelSig(family='logic_action', actor='CwOpBuyCards',
+    _sig = ChannelSig(family='logic_action', actor='CwScreenBuyCards',
                       mode='compute',
-                      group_id=f'act:CwOpBuyCards@{bs.write_seq + 1}')
+                      group_id=f'act:CwScreenBuyCards@{bs.write_seq + 1}')
     total = bs.total_refresh_count.value or 0
     bs.write_logic(bs.total_refresh_count, int(total) + 1,
                    produced_by='RefreshShop', evidence=_ev, sig=_sig)

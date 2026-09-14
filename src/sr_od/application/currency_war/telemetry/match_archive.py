@@ -136,7 +136,7 @@ log = log_utils.log
 #: (modeled 期望账 vs 结算真值偏差)。旧档案经版本检查自动重装配。
 #: v10(T-109①场上件离场逐件落账批,ADR-0605):+顶层 ``departures``(离场
 #: 事件派生列,装配端纯读派生、零新运行时写入)。缺口实锤(g_20260907_075840
-#: p1r1,Saber):执行期 deploy 换血卖出(CwOpDeploy._sell_offtarget_deployed)
+#: p1r1,Saber):执行期 deploy 换血卖出(CwScreenDeploy._sell_offtarget_deployed)
 #: 的逐件身份只在 log 行与匿名计数键(sell_offtarget_*),无遥测行——场上件
 #: 「无卖出动作而消失」挡 pivot 判读。决策时点卖出(SellBench/SellDeployed)
 #: 本就逐件在案(actions+期望态快照),不在本列重复;本列吃的是帧间差分:
@@ -531,7 +531,7 @@ def _last_decision_frame(dec_rows: list[dict[str, Any]],
     """同轮取 ts 最晚的决策迹帧(含执行步进帧)——「战后终态」的取帧端。
 
     - 为什么不是 ``_best_decision_frame``:后者按「actions 最多、并列取
-      晚」选**决策帧**(计划动作最全的时点,先于 CwOpDeploy/CwOpEquipAll
+      晚」选**决策帧**(计划动作最全的时点,先于 CwScreenDeploy/CwOpEquipAll
       执行);终态要的恰是**执行后**的最晚账面,故只按 ts 取最晚帧。
     - 取值时机边界:最晚帧落在本轮备战执行后、战斗前;战斗不改板面
       (部署/装备/买卖只发生在备战期),故该帧板面 = 该轮战后终态。
@@ -768,7 +768,7 @@ def _derive_departures(dec: list[dict[str, Any]],
                        segments: list[str]) -> list[dict[str, Any]]:
     """顶层 ``departures`` 派生列(v10,ADR-0605;纯读,零运行时写入)。
 
-    - 缺口与实锤:执行期 deploy 换血卖出(CwOpDeploy._sell_offtarget_deployed)
+    - 缺口与实锤:执行期 deploy 换血卖出(CwScreenDeploy._sell_offtarget_deployed)
       逐件身份只在 log 行与匿名计数键,无遥测行——复盘实证 g_20260907_075840
       p1r1 Saber(08:00:18 帧 [椒丘,藿藿,Saber] → 08:00:42 帧 [椒丘,艾丝妲,
       藿藿],无任何 Sell 动作)。决策时点卖出(SellBench/SellDeployed)本就
@@ -1032,7 +1032,7 @@ def _build_rounds(replay_dir: Path, slice_rows: dict[str, list[dict[str, Any]]],
             'target_comp': (frame or {}).get('target_comp'),
             'board': st.get('board'),
             # 以下 deployed/bench/equips/board 三四列 = **决策帧**快照
-            # (_best_decision_frame:决策时点,先于 CwOpDeploy/CwOpEquipAll
+            # (_best_decision_frame:决策时点,先于 CwScreenDeploy/CwOpEquipAll
             # 执行)——判读「执行后板面」必须并读 terminal 列,勿把本列
             # 当战后实况(w936_deploy_fill 移交①:g_20260831_032006 r9
             # 决策帧 4/6 被误读为部署停驻,实机已填到 6/6)。

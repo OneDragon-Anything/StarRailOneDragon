@@ -268,7 +268,7 @@ class StrategyState:
     # M1″ 计划载荷 pending(mandate 写,deploy 消费后清 None;T-279 R1/
     # ADR-0640):{'sell': [victim 名], 'up': [上序名单],
     # 'trans_domain': 计划时点转型域事实, 'occ': 计划时点板占用数}。
-    # 消费面 = CwOpDeploy 部署段(R1-a 直投核对 F2 名字级三点式 + R1-b
+    # 消费面 = CwScreenDeploy 部署段(R1-a 直投核对 F2 名字级三点式 + R1-b
     # 域辖域钉定);载荷仅作核对与快路径准入,**不改卖出仲裁权**(卖谁
     # 仍由执行侧现读仲裁,在册分工维持,ADR-0640 分工裁决)。
     cw4_m1p_plan_pending: object = None
