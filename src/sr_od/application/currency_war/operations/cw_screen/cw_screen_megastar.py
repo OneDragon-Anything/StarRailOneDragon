@@ -80,8 +80,10 @@ class CwScreenMegastar(CwScreenOpBase):
     盛会之星 = 阵营羁绊;「巨星」= 选 1 名盛会之星角色当巨星,给全队独特 buff。
     触发 = 羁绊激活时弹出(非固定节点),一局可多次 → 选中标记不能跨节点保持。
     dispatch 是 OCR 反应式(主循环 0b 检测「盛会之星」就接)→ 不管何时弹都接得住。
-    强化角色**可选**(不选也能确认推进)——本节点维持「选巨星候选 → 确认(跳过
-    step2,罕见残留再 confirm 安全网)」。候选坐标经 screen_info
+    强化角色**可选**(不选也能确认推进)——本节点 = 「选巨星候选 → 确认」,
+    确认 = 纯机械单发(用户裁定 2026-09-14:step2「罕见残留再 confirm」
+    安全网拆除,后果归下一帧重入裁决——step2 面板属同画面,节点循环单
+    确认自愈)。候选坐标经 screen_info
     ``currency_war_megastar``(候选-左/右 + 按钮-确认选择);缺失用兜底常量。
     """
 
@@ -194,11 +196,13 @@ class CwScreenMegastar(CwScreenOpBase):
         self.ctx.controller.mouse_move(confirm)
         self.ctx.controller.click(confirm)
         time.sleep(0.9)
-        if self.round_by_find_area(self.screenshot(), '货币战争-盛会之星', '按钮-请选择强化角色', crop_first=False).is_success:
-            log.info('[cw-megastar] step2 请选择强化角色 仍在(罕见)→ 再 confirm(安全网)')
-            self.ctx.controller.mouse_move(confirm)
-            self.ctx.controller.click(confirm)
-            time.sleep(0.9)
+        # 确认 = 纯机械单发(用户裁定 2026-09-14:step2 安全网拆除)。原
+        # 「判『请选择强化角色』还在 → 再 confirm」检测分支已删:强化角色
+        # 可选(不选也能确认推进,类 docstring 玩法机制),确认点击系统性
+        # 不生效 = 动作链 bug(修动作链,不加验证)。step2 面板若残留 =
+        # 下一帧重入裁决自愈:节点循环读「仍在巨星 overlay?」(step2 属
+        # 同画面,标识锚仍命中)→ 重走本方法 → 候选已选 → 机械单发确认
+        # 再推进(计 node_max_retry_times 预算)。
         # (原「到账登记」ConfirmMegastar 块已随 ADR-0651 两态制废除:
         #  chosen_megastar 写端 = 候选选中时点的 session 写 + write_logic
         #  直写(上方分支),无挂账登记环节。)
