@@ -52,7 +52,12 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import (
     merge_material_reject_reason,
     same_star_count,
 )
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
+from sr_od.application.currency_war.kernel.cw_reward_node import (
+    is_piggy_reward_frame,
+    reward_node_suppressed,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwAction,
     DeployMove,
     FurnaceUse,
     LevelUp,
@@ -60,18 +65,12 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     OpenShop,
     PerfectProjectorUse,
     PrecisionWrenchUse,
-    PrepAction,
     PrivilegeCardUse,
-    RunDeploy,
     SellBench,
     SellDeployed,
     StaffProjectorUse,
     WearEquip,
     WrenchUse,
-)
-from sr_od.application.currency_war.kernel.cw_reward_node import (
-    is_piggy_reward_frame,
-    reward_node_suppressed,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.criteria import (
     contracts,
@@ -157,7 +156,7 @@ M2_STALL_NONVARIANT_PREP_ACTIONS: frozenset[str] = frozenset({'LevelUp'})
 class Emitted:
     """发射项(动作 + 标记面;mandate=pass 归属,R14-4)。"""
 
-    action: PrepAction
+    action: CwAction
     mandate: bool = True
     reason: str = ''
     funding_support: bool = False
@@ -278,6 +277,46 @@ def _deployed_of(state: GameState) -> list:
         deployed_slots_of,
     )
     return deployed_slots_of(state)
+
+
+def _bench_container_idx(state: GameState, victim: BenchChar) -> int | None:
+    """发射面容器下标解析·bench 域(角色对象入口;见 by_slot 变体)。"""
+    return _bench_container_idx_by_slot(
+        state, int(getattr(victim, 'slot', 0) or 0))
+
+
+def _bench_container_idx_by_slot(state: GameState, slot_no: int) -> int | None:
+    """发射面容器下标解析·bench 域(unified-action-factory 批2b 换算收口)。
+
+    发射位不产物理槽位、不做 ``slot − 1`` 反推(design.md §2.6 换算归属
+    ——发射面吃容器下标,物理槽位号仅存观察写入边与执行坐标边两边界)。
+    入参 = 帧内槽位信息位(物理槽号,两视图同帧同源——容器 bench 由本帧
+    观察写端按 slot 落位构造),与容器槽位表读口 ``bench_slots_of`` 对位,
+    返回其枚举下标 = 容器下标。失配(None)= 黑板视图与容器失配(陈旧/
+    carry 帧),发射位 fail-closed 跳过该候选,禁猜位。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_slots_of,
+    )
+    if slot_no < 1:
+        return None
+    return next((i for i, b in enumerate(bench_slots_of(state))
+                 if b is not None and b.slot == slot_no), None)
+
+
+def _deployed_container_idx(state: GameState, victim: BenchChar) -> int | None:
+    """发射面容器下标解析·deployed 域(换算收口同 :func:`_bench_container_idx`)。
+
+    对位键 = (position_pref, slot) 信息位二元组(场上同名唯一性不变量下
+    与槽位键等价,二元组更稳);返回容器 ``deployed_slots_of`` 枚举下标,
+    失配 None = fail-closed 跳过。"""
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        deployed_slots_of,
+    )
+    _row = getattr(victim, 'position_pref', None) or 'back'
+    _slot = int(getattr(victim, 'slot', 0) or 0)
+    return next((i for i, d in enumerate(deployed_slots_of(state))
+                 if d is not None and d.position_pref == _row
+                 and d.slot == _slot), None)
 
 
 def fuel_sell_candidates(bench: list[BenchChar],
@@ -779,7 +818,7 @@ S1_RESET_ROUTE_TAGS: frozenset[str] = frozenset({
 WANTED_REOPEN_CAP: int = BENCH_CAPACITY + 1
 
 
-def route_tag_of(action: PrepAction) -> str:
+def route_tag_of(action: CwAction) -> str:
     """动作落地路线标签(执行侧清键路由的唯一读法;T-159 §3.3)。
 
     deploy_launch 类 = 部署臂动作本体(批 2a 前载体 = RunDeploy 组合壳,
@@ -787,7 +826,7 @@ def route_tag_of(action: PrepAction) -> str:
     第二份状态);卖出类 = route_tag 字段原值(桥自 Emitted.reason 透传,
     见 bridge.decide_from_turn)。未标 = ''。
     """
-    if isinstance(action, (RunDeploy, DeployMove)):
+    if isinstance(action, DeployMove):
         return 'deploy_launch'
     return getattr(action, 'route_tag', '') or ''
 
@@ -973,7 +1012,11 @@ def wanted_closure_emit(session: StrategySession, state: GameState,
         _count('wanted_leg_fuel_sell')
         # 轮内卖出登记(档 2 新鲜度排除写端,与 M4 腾席臂同口径)。
         record_round_sold(session, state, cands[0].char_id or '')
-        return [Emitted(SellBench(slot=cands[0].slot), True, 'm4_fuel_sell')]
+        _vidx = _bench_container_idx(state, cands[0])
+        if _vidx is None:
+            _count('wanted_leg_fuel_sell_stale_idx')
+            return []
+        return [Emitted(SellBench(bench_idx=_vidx), True, 'm4_fuel_sell')]
 
     # 两腿皆不可行 = 裁决放弃态:本节点不再重进;S2 键式保留至节点推进
     # 自动失效(放弃态同样键式,跨节点零污染)。
@@ -990,7 +1033,7 @@ def _phase_key_of(state: GameState | None) -> tuple[int | None, int]:
 
 
 def mark_s1_route_check(session: StrategySession, state: GameState | None,
-                        action: PrepAction, *,
+                        action: CwAction, *,
                         pre_bench_count: int,
                         post_bench_count: int,
                         landed: bool) -> None:
@@ -1027,7 +1070,7 @@ def mark_s1_route_check(session: StrategySession, state: GameState | None,
     route = ''
     if tag in S1_RESET_ROUTE_TAGS:
         route = tag                                   # (i) 卖出类
-    elif isinstance(action, (RunDeploy, DeployMove)):
+    elif isinstance(action, DeployMove):
         if not landed:
             return   # F1b:no-op 部署(STATUS_NOOP 等零落地形态)不清闩
         route = 'deploy_launch'                       # (i) 部署类
@@ -1184,8 +1227,12 @@ def run_mandate(frame: MandateFrame,
         if _ov_cands:
             # 轮内卖出登记(档 2 新鲜度排除写端,与 M4/凑息臂同口径)。
             record_round_sold(session, state, _ov_cands[0].char_id or '')
+            _vidx = _bench_container_idx(state, _ov_cands[0])
+            if _vidx is None:
+                _count('overflow_clear_sell_stale_idx')
+                return []
             _count('overflow_clear_sell')
-            return [Emitted(SellBench(slot=_ov_cands[0].slot), True,
+            return [Emitted(SellBench(bench_idx=_vidx), True,
                             'm4_fuel_sell')]
         _count('overflow_no_fuel')
         return []
@@ -1252,6 +1299,11 @@ def run_mandate(frame: MandateFrame,
             _t1_name_of = {(b.slot): (b.char_id or '')
                            for b in frame.bench}
             for _s in _t1_slots:
+                # 容器下标解析(换算收口,见 _bench_container_idx_by_slot):
+                # 失配 = 陈旧/carry 帧,fail-closed 跳过该候选。
+                _vidx = _bench_container_idx_by_slot(state, _s)
+                if _vidx is None:
+                    continue
                 # Emitted.reason = route_tag 透传载体填充(T-159 §3.3;
                 # 桥伴带到执行侧动作):interest_prep = 凑息臂构造事实,
                 # 只作 S1 清键路由消费(白名单外,仅经路径 (ii) S2 在册∧
@@ -1261,7 +1313,7 @@ def run_mandate(frame: MandateFrame,
                 # 轮内卖出登记(档 2 新鲜度排除写端;凑息卖出抬高金位后
                 # 同轮压库买回 = s108 净零自旋,写端防抖见 helper 注)。
                 record_round_sold(session, state, _t1_name_of.get(_s, ''))
-                out.append(Emitted(SellBench(slot=_s), True,
+                out.append(Emitted(SellBench(bench_idx=_vidx), True,
                                    'interest_prep'))
             _count('t1_interest_prep_emit')
 
@@ -1364,7 +1416,13 @@ def run_mandate(frame: MandateFrame,
                     # 轮内卖出登记(档 2 新鲜度排除写端;腾席卖出后同轮
                     # 压库买回 = 净零席面自旋,写端防抖见 helper 注)。
                     record_round_sold(session, state, _vname)
-                    out.append(Emitted(SellBench(slot=victim.slot), True,
+                    _vidx = _bench_container_idx(state, victim)
+                    if _vidx is None:
+                        # 容器下标失配(陈旧/carry 帧)= 换手循环输入失真,
+                        # fail-closed 终止环(重放必再失败,同 no_fuel 形态)。
+                        no_fuel = True
+                        break
+                    out.append(Emitted(SellBench(bench_idx=_vidx), True,
                                        'm4_fuel_sell'))
                     bench = [b for b in bench if b.slot != victim.slot]
                     freed = True
@@ -1595,8 +1653,17 @@ def run_mandate(frame: MandateFrame,
                                         else:
                                             _arm_tag = 'must_spend'
                                             _count('must_spend_l3_prep_trigger')
-                                        out.append(Emitted(LevelUp(), True,
-                                                           f'm3_levelup_batch:{_arm_tag}'))
+                                        # cost/auth_basis 分键装载(unified-action-
+                                        # factory 批2b 类合并翻转,design.md §2.6
+                                        # 定案③口径):cost = kernel xp_click_cost
+                                        # 现算(上方已算,失读函数内回退兜底);
+                                        # auth_basis = 发射臂放行名分键(记录非指令,
+                                        # action_key_exclude 不入幂等键)。
+                                        out.append(Emitted(
+                                            LevelUp(cost=int(cost),
+                                                    auth_basis=_arm_tag),
+                                            True,
+                                            f'm3_levelup_batch:{_arm_tag}'))
                                     else:
                                         _count(_gate_why)
                         else:
@@ -1710,10 +1777,13 @@ def run_mandate(frame: MandateFrame,
                                 and (d.char_id or '') == _vn), None)
                     if _vd is None:
                         continue   # 计划名与黑板失配(陈旧提案),逐件跳过
+                    # 容器下标解析(换算收口,见 _deployed_container_idx):
+                    # 失配 = 黑板视图与容器失配,fail-closed 逐件跳过。
+                    _didx = _deployed_container_idx(state, _vd)
+                    if _didx is None:
+                        continue
                     _victims.append(Emitted(
-                        SellDeployed(row=(getattr(_vd, 'position_pref', None)
-                                          or 'back'),
-                                     slot=int(getattr(_vd, 'slot', 0) or 0)),
+                        SellDeployed(deployed_idx=_didx),
                         True, 'm1_swap_redeploy'))
                 if _victims:
                     out.extend(_victims)
@@ -1836,40 +1906,11 @@ def run_mandate(frame: MandateFrame,
     return out
 
 
-def mark_equip_pass_executed(session: StrategySession,
-                             state: GameState | None) -> None:
-    """M7 备战期装备闩唯一写点(置位=执行位)。
-
-    调用点 = 执行入口(prep_actions.PrepActionExecutor.execute)在
-    RunEquip 组合 op 成功返回时——「一次完整穿戴 pass 已落地」的记账
-    时点(含 0 穿完成态:候选全拉黑/hold 过滤后的完成 pass 信息完备,
-    装备穿戴放行判定门②论证不变)。为什么不在发射位:备战环是单动作环,发射
-    列表中排在 RunEquip 之前的可续类动作(RunDeploy 等)先执行即逻辑态
-    未建模终结本环,RunEquip 意图未执行而闩已烧 → 后续环
-    equip_latch_skip 挡死,装备滞留整个备战期(与开店闩置位时机修复
-    同型,见 run_mandate docstring「备战期开店闩」节)。键式与
-    run_mandate 的 phase 同构(同一 state 读出,含缺省退化)。执行
-    失败(ok=False)不经本函数=不置闩,下帧照常重发;意图持续不落地
-    由环级无进展守卫兜底,非本闩职责。
-    """
-    if session is None:
-        return
-    state_of(session).cw4_m7_equipped_phase = _phase_key_of(state)
-
-
-def mark_tools_pass_executed(session: StrategySession,
-                             state: GameState | None) -> None:
-    """M7.5 备战期工具闩唯一写点(置位=执行位;工具执行批 ADR-0532)。
-
-    调用点 = prep_actions.PrepActionExecutor.execute 在 RunTools 组合 op
-    成功返回时。与 M7 装备闩同型论证(见 mark_equip_pass_executed):
-    备战环是单动作环,发射即置闩会闩烧而工具未消耗,后续环被闩挡死
-    ——置位必须在执行位。执行失败不置闩,下帧照常重发;键式与
-    run_mandate 的 phase 同构(位面/轮次推进 = 新键自动失效)。
-    """
-    if session is None:
-        return
-    state_of(session).cw4_tools_phase = _phase_key_of(state)
+# (mark_equip_pass_executed / mark_tools_pass_executed 备战期闩写点已随
+#  组合壳 RunEquip/RunTools 删除退役(unified-action-factory 批2b):
+#  M7/M7.5 逐帧现算形态下逐件逻辑态使判据面天然收敛,同 phase 一次闩与
+#  逐件序互斥;载体字段 cw4_m7_equipped_phase/cw4_tools_phase 同批删除,
+#  0 穿活锁防线归 visit 动作数上限 + 环级无进展守卫。)
 
 
 def m7_wearable_exists(owned: list[str]) -> bool:
@@ -2071,6 +2112,7 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
         select_deployments_reasoned,
     )
     from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_slots_of,
         deployed_slots_of,
     )
     _inputs = _deploy_plan_inputs(frame, session, state)
@@ -2082,30 +2124,42 @@ def _emit_deploy_moves(out: list, frame: MandateFrame,
                    or getattr(state, 'back_max', None) or 6)
     front_empty, back_empty = empty_deploy_slots(
         dep_slots, front_total=4, back_total=int(_back_total))
-    for bi, row, slot in assign_deploy_slots(frame.bench, up,
-                                             front_empty, back_empty):
+    _cidx_of = {b.slot: i for i, b in enumerate(bench_slots_of(state))
+                if b is not None}
+    for bi, row, _slot in assign_deploy_slots(frame.bench, up,
+                                              front_empty, back_empty):
+        # 容器下标解析(换算收口,同帧 slot 信息位 ↔ 容器槽位表枚举下标;
+        # 失配 = 黑板视图与容器失配,fail-closed 跳过该 move)+ faction =
+        # 容器槽位表角色对象现取(design.md §2.6 字段裁定,sim board 计数
+        # 消费)。
+        _slot_no = int(frame.bench[bi].slot)
+        _bi = _cidx_of.get(_slot_no)
+        if _bi is None:
+            continue
         out.append(Emitted(
-            DeployMove(from_slot=int(frame.bench[bi].slot),
-                       to_row=row, to_slot=slot),
+            DeployMove(bench_idx=int(_bi),
+                       to_row=row,
+                       faction=(frame.bench[bi].faction or '')),
             True, tag))
 
 
 def _deployable(frame: MandateFrame, session: StrategySession,
                 state: GameState) -> bool:
-    """RunDeploy 提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
+    """部署提案合法门(ADR-0517 决策 2:合法性=提议侧约束)。
 
     谓词单一源 = ``kernel.cw_deploy_logic.has_deployable_reasoned``
-    (发射×执行单一源):与执行方 CwScreenDeploy 计划构造(select_deployments_reasoned)
+    (发射×执行单一源):与部署计划构造(select_deployments_reasoned)
     同源同参语义——围栏/去重/cap/配方底线全在谓词内。计划空(含「候选
-    全被规则留 bench」形态)⇒ False,不提案 RunDeploy(序内取下一动作)。
+    全被规则留 bench」形态)⇒ False,不提案部署序(序内取下一动作)。
 
-    事件语义(本守卫触发形态):2026-09-06 实机首局(单动作架构,
+    事件语义(本守卫触发形态;组合壳 RunDeploy 时代旧事,删类后防线
+    语义由本谓词续承):2026-09-06 实机首局(单动作架构,
     ADR-0518)00:08:25 备战环无进展守卫以「连续 3 环同签名动作批
-    ['RunDeploy'] ∧ 零推进」停机留证——决策核每轮提案 RunDeploy,
-    执行方计划空报 no-op 成功,RunDeploy 逻辑态未建模(保守回退)交回
+    ['RunDeploy'] ∧ 零推进」停机留证——决策核每轮提案部署,
+    执行方计划空报 no-op 成功,逻辑态未建模(保守回退)交回
     外循环,重进再提案,3 环零推进。守卫行为正确,根因 = 本发射位
     漏接抑制谓词。禁第二实现:判空一律走 kernel;本函数只做输入装配
-    (与 CwScreenDeploy 同款,经 kernel deploy_target_sets /
+    (经 kernel deploy_target_sets /
     deployed_bond_counts 单一源)。
 
     ADR-0564:配方底线门锁定线语境豁免在此同帧武装(豁免是帧属性,

@@ -46,7 +46,7 @@ from sr_od.application.currency_war.kernel.cw_vocab import Action, PickEvent
 
 if TYPE_CHECKING:
     from sr_od.application.currency_war.kernel.cw_game_state import GameState
-    from sr_od.application.currency_war.kernel.cw_prep_actions import PrepAction
+    from sr_od.application.currency_war.kernel.cw_vocab import CwAction
     from sr_od.context.sr_context import SrContext
 
 # 注解中的 ``CurrencyWarConfig`` 刻意不 import 真类型:config 属 app 桶,本模块
@@ -119,13 +119,13 @@ class CwStrategy(ABC, Generic[_TState]):
 
     @abstractmethod
     def decide_prep_screen(self, session: StrategySession,
-                           config: CurrencyWarConfig) -> list[PrepAction]:
+                           config: CurrencyWarConfig) -> list[CwAction]:
         """备战画面黑板决策接口——**序列契约 v1**(序列决策契约,
         2026-09-03 冻结;前身 = ``decide_prep_action`` 单动作,W971 §2 黑板模式)。
 
         - 输入:``session`` 唯一数据总线——备战观察结果由观察层写入
           ``session.prep_obs_frame``;跨步状态(defer 计数/phase 位等)同 session。
-        - 返回:``list[PrepAction]``,**执行序 = 列表序**(契约 §1;与商店线
+        - 返回:``list[CwAction]``,**执行序 = 列表序**(契约 §1;与商店线
           ``decide_shop_screen`` 同构的裸 list,Decision/AtomOp 层不进生产接口)。
           序列语义(契约 §2/§3/§4):
           - **帧稳定域**:序列内第 i+1 个动作不得依赖第 i 个动作执行后的新观察;

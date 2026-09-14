@@ -2,7 +2,7 @@
 
 换核批 1 结构签名(R189-4;迁移序原文已删档,取回口径=ADR-0644):
 
-    def _emit(turn) -> list[PrepAction]:
+    def _emit(turn) -> list[CwAction]:
         actions += self._mandate_pass(turn)    # 骨架动作流,逐条 mandate=True
         actions += self._criteria_pass(turn)   # EV 追加动作流,mandate=False
         return truncate_frame_stable(actions)  # 帧稳定截断(契约 v2 §3.2)
@@ -69,7 +69,14 @@ from sr_od.application.currency_war.kernel.cw_intention import (
     locked_buy_cap_hold,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    select_sphere_clicks,
+)
+from sr_od.application.currency_war.kernel.cw_reward_node import (
+    reward_node_suppressed,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
     ClickSpheres,
+    CwAction,
     DeployMove,
     FurnaceUse,
     LevelUp,
@@ -79,21 +86,13 @@ from sr_od.application.currency_war.kernel.cw_prep_actions import (
     OpenTome,
     PerfectProjectorUse,
     PrecisionWrenchUse,
-    PrepAction,
     PrivilegeCardUse,
-    RunDeploy,
-    RunEquip,
-    RunTools,
     SellBench,
     SellDeployed,
     StaffProjectorUse,
     StartBattle,
     WearEquip,
     WrenchUse,
-    select_sphere_clicks,
-)
-from sr_od.application.currency_war.kernel.cw_reward_node import (
-    reward_node_suppressed,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1 import (
     mandate,
@@ -213,17 +212,16 @@ _TERMINAL: tuple[type, ...] = (StartBattle,)
 _CONTINUE: tuple[type, ...] = (LevelUp,)
 #: 条件续(bench 索引结构恒稳+名-槽一致性复检;board 空位/星级合成按
 #: 前序动作累积静态推出,推不出即截断——契约 §3.2 五行+ClickSpheres 行;
-#: 组合动作类(SellDeployed/RunDeploy/RunEquip)按发射期计划静态推出成立
-#: [ADR-0316],复检不适用,经 _CONDITIONAL fallthrough 达成同效——
-#: R197 症8:独立死常量 _CONDITIONAL_COMPOSITE 已删,分类语义不变)
+#: 原组合动作类(SellDeployed/RunDeploy/RunEquip)行随组合壳删除退役
+#: (unified-action-factory 批2b,R2)——SellDeployed 为显式发射动作,
+#: 复检语境语义与 SellBench 同源,本批起按条件续复检)
 _CONDITIONAL: tuple[type, ...] = (
-    SellBench, SellDeployed, DeployMove, RunDeploy, RunEquip,
-    RunTools,                             # 组合类(ADR-0532 工具执行批):同组合语义
+    SellBench, SellDeployed, DeployMove,
     ClickSpheres,                          # 条件:常态可续;末批可能掉箱后截断
 )
 
 
-def classify_frame_stability(action: PrepAction) -> str:
+def classify_frame_stability(action: CwAction) -> str:
     """单动作帧稳定分类(契约 v2 §3.2 逐类判的机器可读形式)。
 
     返回:'continue' / 'conditional' / 'truncation' / 'terminal' /
@@ -244,10 +242,10 @@ def classify_frame_stability(action: PrepAction) -> str:
     return 'unknown'
 
 
-def truncate_frame_stable(actions: list[PrepAction],
+def truncate_frame_stable(actions: list[CwAction],
                           session: StrategySession | None = None,
                           *, bench_slots: set[int] | None = None,
-                          ) -> list[PrepAction]:
+                          ) -> list[CwAction]:
     """帧稳定截断发射器(契约 §2 帧稳定域 + §3 分域枚举 + §3.3)。
 
     逐动作判「本动作执行后的画面状态能否静态推出」:可续/条件续 →
@@ -258,10 +256,11 @@ def truncate_frame_stable(actions: list[PrepAction],
     契约禁成遥测键第二登记源)。
 
     conditional 类的复检(R196 症5,契约 §3.2 依据列「名-槽一致性复检/
-    前序累积静态推出,推不出即截断」):
+    前序累积静态推出,推不出即截断」;键 = 容器槽位表下标,unified-action-
+    factory 批2b 翻转——bridge 供给语境 = 容器读口占用下标集):
 
     - ``SellBench``/``DeployMove``:bench 槽位引用对 ``bench_slots``
-      (生成期观察的占用槽位集)复检 + 前序同序列卖出/拖出累积逻辑态
+      (生成期观察的占用容器下标集)复检 + 前序同序列卖出/拖出累积逻辑态
       (槽位卖出后从逻辑态集移除)——引用空槽/未知槽 ⇒ 推不出 ⇒ 该动作
       处截断 + ``emitter_conditional_truncated`` 计数。``bench_slots``
       缺省 None = 复检语境缺失,按条件成立续发(发射器自身产序列时
@@ -271,8 +270,8 @@ def truncate_frame_stable(actions: list[PrepAction],
       掉箱,掉箱弹 overlay 不可静态预测)⇒ 其后截断(契约 §3.2
       ClickSpheres 行;末批截断系判型内语义,非失败,不计
       ``emitter_conditional_truncated``)。
-    - 组合类(SellDeployed/RunDeploy/RunEquip):内部成员按部署/装备
-      计划静态推出,发射器序列内成立(ADR-0316)⇒ 可续。
+    - ``SellDeployed``:deployed 槽表下标恒稳(ADR-0392,卖出置 None
+      不移位),序列内成立 ⇒ 可续。
 
     尾动作丢弃计数(R197 症1②):任一截断路径(词表外/复检失败/截断点/
     终点/ClickSpheres 末批)丢弃的后续动作逐个计数
@@ -290,10 +289,10 @@ def truncate_frame_stable(actions: list[PrepAction],
         if counters is not None:
             counters[key] = counters.get(key, 0) + n
 
-    out: list[PrepAction] = []
+    out: list[CwAction] = []
     slots: set[int] | None = set(bench_slots) if bench_slots is not None else None
 
-    def _cut() -> list[PrepAction]:
+    def _cut() -> list[CwAction]:
         # 截断收口:丢弃尾动作逐个计数(零静默披露,R197 症1②)
         _count('emitter_post_truncation_dropped', len(actions) - len(out))
         return out
@@ -312,22 +311,22 @@ def truncate_frame_stable(actions: list[PrepAction],
                     return _cut()  # 末批可能掉箱 ⇒ 其后截断(判型内语义)
                 continue
             if isinstance(a, SellBench):
-                if slots is not None and a.slot not in slots:
+                if slots is not None and a.bench_idx not in slots:
                     _count('emitter_conditional_truncated')
                     return _cut()  # 名-槽一致性复检失败:推不出即截断
                 out.append(a)
                 if slots is not None:
-                    slots.discard(a.slot)
+                    slots.discard(a.bench_idx)
                 continue
             if isinstance(a, DeployMove):
-                if slots is not None and a.from_slot not in slots:
+                if slots is not None and a.bench_idx not in slots:
                     _count('emitter_conditional_truncated')
                     return _cut()
                 out.append(a)
                 if slots is not None:
-                    slots.discard(a.from_slot)
+                    slots.discard(a.bench_idx)
                 continue
-            # 组合类(SellDeployed/RunDeploy/RunEquip):按计划静态推出成立
+            # SellDeployed:deployed 槽表下标恒稳(ADR-0392),序列内成立
             out.append(a)
             continue
         out.append(a)
@@ -463,7 +462,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # ① prep 实体面
     # (武装箱选择对话框在场的选卡臂随 PickBoxCard 删除退役,批 2a R7:
     #  OpenBox 终结化后选卡归独立画面 op 分发——cw_loop 按画面派发
-    #  ``CwScreenBoxPick``,决策核不再消费 ``box_overlay_open``。)
+    #  ``CwScreenBoxPick``,决策核不再消费 ``box_overlay_open``;采集面已随批2b 退役删除)。
     if obs.boxes:
         return [Emitted(OpenBox(slot=obs.boxes[0][0]), True, 'prep_box')]
     if obs.tomes:
@@ -549,8 +548,12 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 # 压库买回 X 的净零自旋在该路径残余可达)。
                 mandate.record_round_sold(session, bs,
                                           _sf_cands[0].char_id or '')
-                return [Emitted(SellBench(slot=_sf_cands[0].slot), True,
-                                'm4_fuel_sell')]
+                _vidx = mandate._bench_container_idx(bs, _sf_cands[0])
+                if _vidx is not None:
+                    return [Emitted(SellBench(bench_idx=_vidx), True,
+                                    'm4_fuel_sell')]
+                # 容器下标失配(陈旧/carry 帧)= fail-closed 不卖,
+                # 落入下方常规步骤序重评(与候选空集同向)。
             _ct_sf = state_of(session).cw4_counters
             if isinstance(_ct_sf, dict):
                 _ct_sf['sphere_blocked_bench_full'] = \
@@ -646,8 +649,8 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
     # ②′ 工具消费发射位(T-159 迁移 C,审 A1 主案:物理移出自
     # run_mandate M7.5 块,防双发射由 mandate 侧删块承载)。判据单一源
     # = kernel/cw_equip_env.evaluate_tool_actions + admitted_tool_actions
-    # (G1 准入)原样;工具期闩 cw4_tools_phase 同 phase 一次语义原样
-    #(写点 mark_tools_pass_executed 在执行位,发射位只读不写)。发射
+    # (G1 准入)原样;工具期闩 cw4_tools_phase 随组合壳删除退役(unified-action-factory 批2b,逐件逻辑态天然收敛)
+    #。发射
     # 语义 = 判据/准入通过的 RunTools 挂起,骨架 pass 输出后前置合并
     #(见下方 ④ 合流)——RunTools 逻辑态未建模,当帧 visit 终结,消耗品
     # 给的经验/金经下一 visit 入口 heavy 进 M3;前移真正消除的是
@@ -729,7 +732,7 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                 if not _tgt:
                     continue
                 if _ta.tool == '冶金炉':
-                    _atom: PrepAction = FurnaceUse(target_kind='equip',
+                    _atom: CwAction = FurnaceUse(target_kind='equip',
                                                    item_name=_tgt)
                 elif _ta.tool == '特权赋予卡':
                     _atom = PrivilegeCardUse(target_kind='equip',
@@ -852,25 +855,31 @@ def emit(obs: PrepObservation, turn: TurnState, session: StrategySession,
                     deployed=deployed_slots_of(bs),
                     cap_hold=locked_buy_cap_hold(bs))
             for s in slots:
-                if s in sold_slots:
-                    _ct['ev_conflict_dropped'] = \
-                        _ct.get('ev_conflict_dropped', 0) + 1
+                # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
+                _vidx = mandate._bench_container_idx_by_slot(bs, s)
+                if _vidx is None or _vidx in sold_slots:
+                    if _vidx is not None:
+                        _ct['ev_conflict_dropped'] = \
+                            _ct.get('ev_conflict_dropped', 0) + 1
                     continue
                 # 纯归因载体填充/plain 分键计数已随 2026-09-08 用户归因
                 # 遥测删除指令拆除:reason/标记缺省 '' 未标,发射行为零面。
                 ev_out.append(Emitted(
-                    SellBench(slot=s), False, funding_support=True))
+                    SellBench(bench_idx=_vidx), False, funding_support=True))
             for bc in _f_fallback:
-                if bc.slot in sold_slots:
-                    _ct['ev_conflict_dropped'] = \
-                        _ct.get('ev_conflict_dropped', 0) + 1
+                # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
+                _vidx = mandate._bench_container_idx(bs, bc)
+                if _vidx is None or _vidx in sold_slots:
+                    if _vidx is not None:
+                        _ct['ev_conflict_dropped'] = \
+                            _ct.get('ev_conflict_dropped', 0) + 1
                     continue
                 # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数/
                 # 载体填充已随 2026-09-08 用户归因遥测删除指令拆除
                 #(reason/标记缺省 '' 未标)。
                 sell_gate.consume_on_sell(session, bc.char_id or '')
                 ev_out.append(Emitted(
-                    SellBench(slot=bc.slot), False, funding_support=True))
+                    SellBench(bench_idx=_vidx), False, funding_support=True))
                 break
     out = _merge_ev_before_frame_end(out, ev_out)
 
@@ -1158,8 +1167,9 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     if not isinstance(counters, dict):
         counters = {}
         state_of(session).cw4_counters = counters
-    # 先到先得冲突域:骨架 pass 已发射的 SellBench 槽位(席位冲突面)
-    sold_slots = {e.action.slot for e in (skeleton_out or [])
+    # 先到先得冲突域:骨架 pass 已发射的 SellBench 容器下标(席位冲突面;
+    # 统一词表坐标系 = bench 槽位表下标,批2b 翻转,物理槽号键退役)
+    sold_slots = {e.action.bench_idx for e in (skeleton_out or [])
                   if isinstance(e.action, SellBench)}
     # 拦截事件去重集(C1 口径:同一备战帧内同一素材名只计 1;跨通道共享,
     # 单一源 = cw_state.count_merge_material_blocked)
@@ -1178,13 +1188,17 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
     else:
         slots = []
     for s in slots:
-        if s in sold_slots:
-            counters['ev_conflict_dropped'] = \
-                counters.get('ev_conflict_dropped', 0) + 1
+        # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
+        _vidx = mandate._bench_container_idx_by_slot(bs, s)
+        if _vidx is None or _vidx in sold_slots:
+            if _vidx is not None:
+                counters['ev_conflict_dropped'] = \
+                    counters.get('ev_conflict_dropped', 0) + 1
             continue
-        out.append(Emitted(SellBench(slot=s, reason='line_switch_collapse'),
-                           False, 'line_switch_collapse'))
-        sold_slots.add(s)
+        out.append(Emitted(
+            SellBench(bench_idx=_vidx, reason='line_switch_collapse'),
+            False, 'line_switch_collapse'))
+        sold_slots.add(_vidx)
     # 凑息档 EV 面 / 压库 / 装备精修 / 付费刷新:商店线辖域或【拟】
     # None 期 fail-closed,prep 帧无追加发射(判据本体已落
     # criteria/*,商店线接线随步6 前接线批——STEP34_REPORT 裁量呈报)。
@@ -1224,9 +1238,12 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
                 deployed=deployed_slots_of(bs),
                 cap_hold=locked_buy_cap_hold(bs))
         for s in fslots:
-            if s in sold_slots:
-                counters['ev_conflict_dropped'] = \
-                    counters.get('ev_conflict_dropped', 0) + 1
+            # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
+            _vidx = mandate._bench_container_idx_by_slot(bs, s)
+            if _vidx is None or _vidx in sold_slots:
+                if _vidx is not None:
+                    counters['ev_conflict_dropped'] = \
+                        counters.get('ev_conflict_dropped', 0) + 1
                 continue
             # T3 转化类卖出销账(店侧同款)。转化/plain 分键计数与载体
             # 归因填充已随 2026-09-08 用户归因遥测删除指令拆除——prep
@@ -1236,19 +1253,22 @@ def _criteria_pass(frame: mandate.MandateFrame, session: StrategySession,
             _fname = (_fbc.char_id or '') if _fbc is not None else ''
             if _fname in _t3_protect:
                 mandate.stall_buys_consume(session, _fname)
-            out.append(Emitted(SellBench(slot=s), False,
+            out.append(Emitted(SellBench(bench_idx=_vidx), False,
                                funding_support=True))
-            sold_slots.add(s)
+            sold_slots.add(_vidx)
         for bc in _f_fallback:
-            if bc.slot in sold_slots:
-                counters['ev_conflict_dropped'] = \
-                    counters.get('ev_conflict_dropped', 0) + 1
+            # 容器下标解析(换算收口;失配 = 陈旧/carry 帧,fail-closed 跳过)
+            _vidx = mandate._bench_container_idx(bs, bc)
+            if _vidx is None or _vidx in sold_slots:
+                if _vidx is not None:
+                    counters['ev_conflict_dropped'] = \
+                        counters.get('ev_conflict_dropped', 0) + 1
                 continue
             # 卖出销账(出口①;单笔即止,need 即止)。兜底分键计数/载体
             # 填充已随 2026-09-08 用户归因遥测删除指令拆除(缺省 '' 未标)。
             sell_gate.consume_on_sell(session, bc.char_id or '')
             out.append(Emitted(
-                SellBench(slot=bc.slot), False, funding_support=True))
-            sold_slots.add(bc.slot)
+                SellBench(bench_idx=_vidx), False, funding_support=True))
+            sold_slots.add(_vidx)
             break
     return out

@@ -1,7 +1,7 @@
 """货币战争 v2 决策纯映射层(decision 桶;原 w606 阶段2批③ adapter 的映射半部)。
 
 分包期 5 起原 adapter.py 拆两半:本模块只留**纯映射**——Snapshot →
-PrepObservation(视觉/占用观察视图)、PrepAction → AtomOp
+PrepObservation(视觉/占用观察视图)、CwAction → AtomOp
 (动作 → 原子记账键)。装配半部(DecideAdapter/影子比对/observe 端口
 snapshot_from_obs/影子开关)落 app 桶 ``decision_assembly.py``:那些代码
 import prep_actions/cw_screen_prep 执行面词汇,留 decision 会构成
@@ -26,8 +26,10 @@ from typing import TYPE_CHECKING
 
 from sr_od.application.currency_war.kernel.cw_exec_state import BENCH_CAPACITY
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    PrepAction,
     PrepObservation,
+)
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwAction,
 )
 from sr_od.application.currency_war.strategies.impl.mandate_v1.contracts import (
     AtomOp,
@@ -88,7 +90,7 @@ def _point(x: int, y: int):
     return Point(x, y)
 
 
-# ------------------------------------------- PrepAction → AtomOp 映射(§4)
+# ------------------------------------------- CwAction → AtomOp 映射(§4)
 
 @dataclass(frozen=True)
 class _OpSpec:
@@ -98,10 +100,10 @@ class _OpSpec:
     domain: str
 
 
-#: 全集映射表(键 = PrepAction 类型)。PrepAction 新增动作必须同步登记
+#: 全集映射表(键 = CwAction 类型)。CwAction 新增动作必须同步登记
 #: (F3 白名单同纪律:漏登记 = 影子侧未知动作缺陷计数,开环侧 decide
 #: 直接抛错防静默)。武装箱选卡(R7)= 画面 op 分发,非动作词表成员,
-#: 映射行随 PickBoxCard 删除(批 2a);组合壳行保留至批 2b 归一删除。
+#: 映射行随 PickBoxCard 删除(批 2a);组合壳行已随批 2b 归一删除(unified-action-factory R2)。
 _OP_SPECS: dict[str, _OpSpec] = {}
 for _cls, _fam, _dom in [
     ('OpenBox', 'open_box', 'interact'),
@@ -122,14 +124,11 @@ for _cls, _fam, _dom in [
     # 开店意图(W970 批 C 退役形态的承接,§4.3.6 read_only 变体)
     ('OpenShop', 'open_shop', 'shop'),
     ('StartBattle', 'start_battle', 'battle'),
-    ('RunDeploy', 'run_deploy', 'deploy'),
-    ('RunEquip', 'run_equip', 'equip'),
-    ('RunTools', 'run_tools', 'equip'),
 ]:
     _OP_SPECS[_cls] = _OpSpec(_fam, _dom)
 
 
-def _param_fingerprint(action: PrepAction) -> str:
+def _param_fingerprint(action: CwAction) -> str:
     """op_key 参数指纹(与 action_key 同粒度思想:同族不同参数=不同幂等键;
     带 ``action_key_exclude`` metadata 的归因字段同样不入——批 4
     SellBench.reason 填充后,归因标签不得分裂同槽动作的幂等键,与
@@ -145,8 +144,8 @@ def _param_fingerprint(action: PrepAction) -> str:
     return ':'.join(parts) if any(parts) else ''
 
 
-def action_to_atomop(action: PrepAction) -> AtomOp:
-    """PrepAction → AtomOp(控制流动作不经此——Defer/Bail 走 Decision.control)。"""
+def action_to_atomop(action: CwAction) -> AtomOp:
+    """CwAction → AtomOp(控制流动作不经此——Defer/Bail 走 Decision.control)。"""
     spec = _OP_SPECS.get(type(action).__name__)
     if spec is None:
         raise ValueError(f'action_to_atomop:未登记动作 {type(action).__name__}'

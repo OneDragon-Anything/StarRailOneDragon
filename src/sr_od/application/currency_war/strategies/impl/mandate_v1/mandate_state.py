@@ -38,10 +38,10 @@ one_dragon 零 import 本类。
 verified/drought_excluded/cw4_cap_override(后经 ADR-0598 死链处置
 删字段,见类体墓碑注)/v3_reserve_overflow/
 v3_release_budget/v3_release_reason/v3_piggy_reward;第二波 11 个:
-cw4_fuel_filler_stall_buys/cw4_m1p_arm_pending/cw4_m7_equipped_phase/
+cw4_fuel_filler_stall_buys/cw4_m1p_arm_pending/
 cw4_must_spend_phase/cw4_pop_slot_why/cw4_prev_line_name/
 cw4_recent_sold_names/cw4_shopped_phase/cw4_stale_seen_rounds/
-cw4_tools_phase/cw4_visit_bought_names。合计 72 具名,逐波归类理由见
+cw4_visit_bought_names。(cw4_m7_equipped_phase/cw4_tools_phase 已随组合壳删除退役,unified-action-factory 批2b),逐波归类理由见
 ADR-0563「落位裁量」节账外清单;批 3 并账申报(ADR-0585):第二波
 中的 cw4_dead_gold_bought_names(②(b) 压库登记集)已并入
 cw4_fuel_filler_stall_buys 统一发射登记簿,字段退役删除。原
@@ -272,8 +272,6 @@ class StrategyState:
     # 域辖域钉定);载荷仅作核对与快路径准入,**不改卖出仲裁权**(卖谁
     # 仍由执行侧现读仲裁,在册分工维持,ADR-0640 分工裁决)。
     cw4_m1p_plan_pending: object = None
-    # M7 已穿相位(位面,轮) 元组。
-    cw4_m7_equipped_phase: object = None
     # 必花域相位闩(同值重入防抖)。
     cw4_must_spend_phase: object = None
     # pop 槽否向理由留决策迹(D-lv7)。
@@ -286,8 +284,6 @@ class StrategyState:
     cw4_shopped_phase: object = None
     # 素材滞留首见轮账(名 → 首见帧轮次)。
     cw4_stale_seen_rounds: dict = field(default_factory=dict)
-    # 发射位闩相位(位面,轮) 元组。
-    cw4_tools_phase: object = None
     # 本次商店访问已买名单(bridge 清账/op 落账跨层共享)。
     cw4_visit_bought_names: list = field(default_factory=list)
     # 统一发射登记簿(T-126 批 3;ADR-0585 §2/§3,P78 窗口段载体):

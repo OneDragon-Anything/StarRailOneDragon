@@ -198,7 +198,6 @@ class Snapshot:
     spheres: tuple[RewardSphere, ...] = ()
     boxes: tuple[SupplyBox, ...] = ()
     tomes: tuple[Tome, ...] = ()
-    box_overlay_open: bool = False
     event_overlay: str | None = None        # None=无 overlay;非 None=挡操作 → control=Bail
     # —— 生命域 ——
     hp: int | None = None                   # None=现读失败;陈值对账锚(last_hp_real

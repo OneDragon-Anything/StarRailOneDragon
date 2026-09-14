@@ -43,8 +43,8 @@ from sr_od.application.currency_war.kernel.cw_events import (
 from sr_od.application.currency_war.kernel.cw_game_state import (
     GameState,
 )
-from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    PrepAction,
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwAction,
 )
 from sr_od.application.currency_war.strategies.impl.flow import (
     CwFlowStrategy,
@@ -105,13 +105,13 @@ class MandateV1Strategy(CwFlowStrategy):
         calibration.apply()
 
     def decide_prep_screen(self, session: StrategySession,
-                           config: CurrencyWarConfig) -> list[PrepAction]:
+                           config: CurrencyWarConfig) -> list[CwAction]:
         """备战画面黑板决策(契约 v1/v2 接口;序列决策契约正本 = flow/action_exec.md §1)。
 
         输入 = ``session.prep_obs_frame``(黑板唯一写者=画面 op);内部
         装配缝(步3)经 ``_assemble_turn``(注册桥壳覆写注入装配链;
         本类缺省 = 未注入即抛错的可观测兜底)。输出 =
-        ``list[PrepAction]``(执行序=列表序),经帧稳定截断
+        ``list[CwAction]``(执行序=列表序),经帧稳定截断
         (契约 §3.2 逐类判 + §3.3 fail-closed)。观察帧缺失 = 观察
         层失约,抛错(禁静默按空观察决策)。
         入口内务 = 结算惰性 drain + 备战帧代次消费(方向刷新先于三遍
@@ -167,7 +167,7 @@ class MandateV1Strategy(CwFlowStrategy):
         ``cw_op_buy_cards.run_buy_waves``);本驱动器保留给 sim 引擎/回放/既有序列锁——
         驱动 = 逐帧调单动作核 + 容器逻辑态直写推进期望态
         (``apply_shop_action_logic`` 简单腿 + 合成升星腿;T-163 起零
-        simulate 前瞻消费),终结动作(RefreshShop/CompTransaction)截停
+        simulate 前瞻消费),终结动作(RefreshShop)截停
         序列、CloseShop 收尾不入序列(与旧截断器的输出形态对齐)。与旧波
         批的输出等价是条件命题(波批逻辑态直写无残差时逐位一致;逻辑态残差史见
         ADR-0517 §消灭的 bug 类)——帧级序列锁不预期保持绿,按锁纪律重推
@@ -228,8 +228,9 @@ class MandateV1Strategy(CwFlowStrategy):
             _st_rec = state_of(session)
             _st_rec.cw4_frame_action_record = (
                 type(a).__name__, _st_rec.cw4_segment_serial)
-            if isinstance(a, (cw_state.RefreshShop, cw_state.CompTransaction)):
-                return out      # 终结 op:序列到止(重观察语境)
+            if isinstance(a, cw_state.RefreshShop):
+                return out      # 终结 op:序列到止(重观察语境;原
+                # CompTransaction 邻接终结已随批2b R3 删除)
             # 逻辑态直写推进 = apply_shop_action_logic(设计件 §2.2-3 驱动器同路;
             # 回执 kernel 判据派生,单动作核逐帧恰一动作 = 击数恒 1)。
             _exec = ShopActionExecuted(
@@ -258,7 +259,7 @@ class MandateV1Strategy(CwFlowStrategy):
 def decide_from_turn(obs: PrepObservation, turn: TurnState,
                      session: StrategySession, config: object,
                      *, registry: DecisionV2Registry | None = None,
-                     ) -> list[PrepAction]:
+                     ) -> list[CwAction]:
     """三遍编排 + 帧稳定截断(纯函数;R189-4 结构签名)。
 
     ev_arm 模式参数取 ``config.ev_arm``(缺省 full;非法值回落 full)。
@@ -279,7 +280,12 @@ def decide_from_turn(obs: PrepObservation, turn: TurnState,
     for _e in emitted:
         _e.action.route_tag = _e.reason
     actions = [e.action for e in emitted]
-    bench_slots = {b.slot for b in (obs.bench_chars or [])
-                   if b is not None and getattr(b, 'slot', None)}
+    # 复检语境 = 生成期占用容器下标集(容器读口直取,统一词表坐标系)
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_slots_of,
+        board_state_of,
+    )
+    bench_slots = {i for i, b in enumerate(bench_slots_of(board_state_of(session)))
+                   if b is not None}
     return entry.truncate_frame_stable(actions, session,
                                        bench_slots=bench_slots)

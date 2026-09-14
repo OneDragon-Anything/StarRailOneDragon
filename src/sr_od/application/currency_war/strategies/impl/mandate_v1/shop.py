@@ -257,7 +257,7 @@ if TYPE_CHECKING:
 # ===== 截断分类退役声明(ADR-0517 迁移批)=====
 # 旧 _SHOP_CONTINUE/_SHOP_CONDITIONAL/_SHOP_TRUNCATION 三分类与
 # ``truncate_shop_frame_stable`` 截断器已随波批形态退役——截断点语义被
-# 终结 op 吸收(RefreshShop/CompTransaction 即终结,CloseShop 恒可用),
+# 终结 op 吸收(RefreshShop 即终结,CloseShop 恒可用;原 CompTransaction 邻接 fallback 已随批2b R3 删除),
 # 名-槽一致性复检降级为执行侧 proposal-vs-expected 守卫断言
 # (cw_shop_action_ops;ADR-0517 决策 9 和解注)。
 
@@ -854,7 +854,7 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         资产对象不存在)。接线位申报:方案 v3 §3.1 理想位 = 执行层合成
         事务应用位(cw_op_buy_cards/sim 引擎,本批文件面禁碰);单动作
         契约下发射位检出与执行层应用等价(动作被无条件采纳执行),
-        CompTransaction fill 残余形态由轮界销 ≤1 轮兜底(V2-05 有界性
+        事务 fill 残余形态载体已随批2b R3 删除(轮界销 ≤1 轮兜底语义随原子序列重表达消亡;V2-05 有界性
         申报)。
 
         sim 边界(ADR-0585 §6 申报,三审 F2 回填):上述等价性前提 =

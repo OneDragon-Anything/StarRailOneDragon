@@ -62,6 +62,7 @@ from sr_od.application.currency_war.kernel.cw_game_state import (
     gold_of,
     plane_of,
     round_num_of,
+    shop_payload_content_cards,
 )
 from sr_od.application.currency_war.kernel.cw_intention import (
     IntentionState,
@@ -740,8 +741,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
         sim/回放/既有序列锁消费(生产执行侧走单动作循环):逐帧调
         :meth:`decide_shop_action`(单动作核,帧代次消费在核入口)+ 容器
         逻辑态直写推进期望态(``apply_shop_action_logic`` 简单腿 + 合成升星
-        腿;T-163 起零 simulate 前瞻消费),终结动作(RefreshShop/
-        CompTransaction)截停、``CloseShop`` 收尾不入序列。本缺省 = 通用
+        腿;T-163 起零 simulate 前瞻消费),终结动作(RefreshShop)截停、
+        ``CloseShop`` 收尾不入序列(原 CompTransaction 邻接终结已随批2b R3 删除)。本缺省 = 通用
         循环(不绑 mandate 判据);mandate 特有记账(已买件/段序号/续段
         token)在 ``MandateV1Strategy.decide_shop_screen`` 覆写。观察帧
         缺失 = 观察层失约,抛错。"""
@@ -796,7 +797,7 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             if isinstance(a, cw_state.CloseShop):
                 return out
             out.append(a)
-            if isinstance(a, (cw_state.RefreshShop, cw_state.CompTransaction)):
+            if isinstance(a, cw_state.RefreshShop):
                 return out      # 终结 op:序列到止(重观察语境)
             if isinstance(a, cw_state.BuyCard):
                 # 买前快照三件组(升星腿 scratch 基点;必须在直写口写之前
