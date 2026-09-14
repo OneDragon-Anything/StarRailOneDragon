@@ -1793,8 +1793,15 @@ def read_shop_cards(ctx: SrContext,
         from one_dragon.utils import log_utils
         log_utils.log.warning('[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
     if _collapse_area is not None:
-        from one_dragon.base.screen.screen_utils import find_area_in_screen
-        if find_area_in_screen(ctx, screen, _collapse_area).value != 1:
+        # 二值化锚门(买光店实机三败定谳):gold=0 时收起钮暗态渲染,
+        # 原彩色 OCR 对暗底小裁剪拒识 → 锚确定性 miss → payload 清 None
+        # → 决策前置门炸。二值化下白字必然弹出(find_area_in_screen_
+        # binary,screen_utils 自带),按钮亮/暗双态恒命中。
+        from one_dragon.base.screen.screen_utils import (
+            find_area_in_screen_binary,
+        )
+        if find_area_in_screen_binary(
+                ctx, screen, _collapse_area).value != 1:
             # 锚文本 OCR 可 flake(截图实证买光店面板展开仍可 miss)→
             # 0.6s 后单次重判;仍 miss 才认「店未开」(过渡帧防抖,与
             # 下方稳定门同形态,上限一次不构成等待环)。
@@ -1804,7 +1811,7 @@ def read_shop_cards(ctx: SrContext,
             # controller 返回 (ts, frame|None) 元组(实机失败 1 实证);
             # None 帧 = 采集失败,按 miss 处理(店未开语义)
             _frame2 = (_shot2[1] if isinstance(_shot2, tuple) else _shot2)
-            if _frame2 is None or find_area_in_screen(
+            if _frame2 is None or find_area_in_screen_binary(
                     ctx, _frame2, _collapse_area).value != 1:
                 return None
 
