@@ -269,24 +269,23 @@ class CwScreenPartner(CwScreenOpBase):
         # (原「到账登记」ConfirmPartner 块已随 ADR-0651 两态制废除:
         #  chosen_partner 写端 = 候选选中时点的 session 写 + write_logic
         #  直写(本 handler),无挂账登记环节。retry 轮重复确认零副作用。)
-        # step2 观察(T#98,伙伴 overlay 两步链):确认后弹出「请选择强化角色」
-        # = 还有第二步 → 选强化目标 + 确认(观察分支:发现第二步并处理,
-        # 非判效)。step2 确认后不再原地判「overlay 关没关」——统一机械交回,
-        # 由 handle 顶部重入裁决(标识不在 = 链完结 → success 交回)。
-        if self.round_by_find_area(self.screenshot(), '货币战争-盛会之星',
-                                   '按钮-请选择强化角色').is_success:
-            # step2 strengthen target = overlay 中心立绘(~960,300;click-test 实锤:非 stage 前排(overlay 覆盖不可点)
-            # / 非 bench(不可点)。中心立绘 = 玩家角色 portrait → 点击选中「已选择」→ 确认即关 overlay)。
-            target = Point(960, 300)
-            log.info(f'[cw-partner] step2 请选择强化角色 → 点中心立绘 {target}')
-            self.ctx.controller.mouse_move(target)
-            self.ctx.controller.click(target)
-            time.sleep(0.7)
-            confirm2 = self._find_text_center(self.screenshot(), '确认选择')
-            if confirm2 is not None:
-                self.ctx.controller.mouse_move(confirm2)
-                self.ctx.controller.click(confirm2)
-                time.sleep(1.0)
+        # step2 = 两步链第二段(T#98,伙伴 overlay 必经:确认后进入「请选择
+        # 强化角色」选强化目标,羁绊机制 = 选伙伴并强化)。机械直发(用户
+        # 裁定 2026-09-14:两步链点击序列保留、step2 在场检测拆):点 overlay
+        # 中心立绘(step2 强化目标 = 玩家角色 portrait,click-test 实锤:非
+        # stage 前排(overlay 覆盖不可点)/ 非 bench(不可点))→ 点确认。
+        # confirm2 定位沿用 step1 同款机械定位(坐标单一真相源;locate miss
+        # = 本帧不可点,不盲点,交回重入)。
+        target = Point(960, 300)
+        log.info(f'[cw-partner] step2 点中心立绘 {target}(机械)')
+        self.ctx.controller.mouse_move(target)
+        self.ctx.controller.click(target)
+        time.sleep(0.7)
+        confirm2 = self._find_text_center(self.screenshot(), '确认选择')
+        if confirm2 is not None:
+            self.ctx.controller.mouse_move(confirm2)
+            self.ctx.controller.click(confirm2)
+            time.sleep(1.0)
         # 机械交回(验证废除):step1/step2 确认是否落地由下一轮重入裁决
         #(handle 顶部 pending 分支);未落地轮重走已选择态分支(计预算)。
         self._confirm_pending = True
