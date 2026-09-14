@@ -1,10 +1,11 @@
 """全动作单一注册表(统一动作工厂批1;design.md §2.3):词表类 → 动作
 op 类一张表,``action_op_for`` = 全动作唯一注册点(单一工厂)。
 
-**收编计划(防「表已单一」误读)**:本表批1 仅商店域六行首批在册——
+**收编计划(防「表已单一」误读)**:本表批1 仅商店域五行首批在册——
 备战域 op 类批3 收编(design.md §2.4)、事件线 pick 族批4 收编(§2.5)
 后,表内行集 = 统一词表全集;注册完备锁(批4)自此以本表为机械约束
-对象。CompTransaction 行删除归批2(R3),批1 行键先行稳定。
+对象。(原 CompTransaction 行已随 unified-action-factory 批2b R3 删除
+——整档替换宏动作全链退役。)
 
 **注册行顺序敏感**:``action_op_for`` 按行序 isinstance 首中即返——
 is-a 链的父类行必须在子类可独立匹配处之前兜底(子类共享父 op 时父行
@@ -18,7 +19,6 @@ from sr_od.application.currency_war.kernel.cw_vocab import (
     Action,
     BuyCard,
     CloseShop,
-    CompTransaction,
     LevelUp,
     RefreshShop,
     SellBench,
@@ -31,9 +31,6 @@ from sr_od.application.currency_war.operations.cw_op.cw_buy_card_action import (
 )
 from sr_od.application.currency_war.operations.cw_op.cw_close_shop_action import (
     CloseShopOp,
-)
-from sr_od.application.currency_war.operations.cw_op.cw_comp_transaction_action import (
-    CompTransactionOp,
 )
 from sr_od.application.currency_war.operations.cw_op.cw_level_up_action import (
     LevelUpOp,
@@ -52,7 +49,6 @@ _REGISTRY: dict[type, type[ActionOp]] = {
     RefreshShop: RefreshShopOp,
     SellBench: SellBenchOp,
     CloseShop: CloseShopOp,
-    CompTransaction: CompTransactionOp,   # 行删除归批2(R3),行键先行稳定
 }
 
 

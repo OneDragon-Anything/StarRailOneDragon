@@ -30,6 +30,7 @@ from sr_od.application.currency_war.kernel.cw_economy import (
 )
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     BenchChar,
+    deployed_row_slot,
     exec_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_game_state import (
@@ -45,16 +46,7 @@ from sr_od.application.currency_war.kernel.cw_overlay_registry import (
     derive_decision,
 )
 from sr_od.application.currency_war.kernel.cw_prep_actions import (
-    DeployMove,
-    LevelUp,
-    OpenBox,
-    OpenShop,
-    PrepAction,
     PrepObservation,
-    SellBench,
-    SellDeployed,
-    StartBattle,
-    action_key,
 )
 from sr_od.application.currency_war.kernel.cw_prep_expect import (
     _BUY_DEFECT_KIND,
@@ -78,6 +70,17 @@ from sr_od.application.currency_war.kernel.cw_prep_expect import (
     compute_equip_drag_expect,
 )
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
+from sr_od.application.currency_war.kernel.cw_vocab import (
+    CwAction,
+    DeployMove,
+    LevelUp,
+    OpenBox,
+    OpenShop,
+    SellBench,
+    SellDeployed,
+    StartBattle,
+    action_key,
+)
 from sr_od.application.currency_war.obs.currency_war_cv import slot_occupied
 from sr_od.application.currency_war.obs.cw_faction_obs import (
     compare_factions,
@@ -468,7 +471,7 @@ class PrepLiveActionAdapter:
     (引擎动作应用,§6.3),本批不建。
     """
 
-    def execute(self, op: CwScreenPrep, action: PrepAction) -> None:
+    def execute(self, op: CwScreenPrep, action: CwAction) -> None:
         op._act_execute_default(action)
 
 
@@ -644,8 +647,9 @@ class CwScreenPrep(CwScreenOpBase):
         obs.tomes = cw_identity_obs_read_tomes(self.ctx, screen)
         obs.shop_open = self.round_by_find_area(
             screen, SHOP_SCREEN_NAME, '按钮-收起', crop_first=False).is_success
-        obs.box_overlay_open = self.round_by_find_area(
-            screen, '货币战争-备战-武装箱选择', '标识-请选择', crop_first=False).is_success
+        # (box_overlay_open 采集已随 unified-action-factory 批2b 退役删除:
+        #  唯一决策消费面(entry 武装箱臂)随 R7 终结化删除,武装箱选择
+        #  = cw_loop 画面分发(0f2 行)辖,观察字段零消费即删,R1 退役=删。)
         # 事件 overlay(挡操作:deploy/equip 全灭根因,live 2026-08-15):检测到即由环 bail 交外环。
         # 扫描集单一源 = kernel/cw_overlay_registry 的 decision 派生段(B 面切换,
         # 零成员变化):锚 = spec.anchor_area,tag = spec.bail_tag,消费方拼
@@ -960,7 +964,7 @@ class CwScreenPrep(CwScreenOpBase):
             _sess.prep_obs_frame = obs
         return obs
 
-    def _project_prep_obs(self, action: PrepAction,
+    def _project_prep_obs(self, action: CwAction,
                           obs: PrepObservation) -> PrepObservation:
         """执行后期望态逻辑态直写(ADR-0517 决策 7/10;纯计算零读屏)。
 
@@ -1004,7 +1008,10 @@ class CwScreenPrep(CwScreenOpBase):
         """
         import dataclasses
 
-        from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+            empty_deploy_slots,
+        )
+        from sr_od.application.currency_war.kernel.cw_vocab import (
             ClickSpheres,
             DeployMove,
             FurnaceUse,
@@ -1052,8 +1059,12 @@ class CwScreenPrep(CwScreenOpBase):
                 produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'),
                 session=_sess)
+            # 黑板帧键 = SIFT 槽位信息位(物理槽号);动作携容器下标,读键
+            # 映射 = 下标+1(构造不变量 slot=idx+1,与 cw_prep_expect 入口
+            # 同一处换算声明)。
+            _slot_key = action.bench_idx + 1
             _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
-                      if bc is None or getattr(bc, 'slot', None) != action.slot]
+                      if bc is None or getattr(bc, 'slot', None) != _slot_key]
             _free = (getattr(obs, 'free_bench_slots', 0) or 0)
             if _ov_warn_pre and _ov_id_pre \
                     and _bs_sell.overflow_warning.value is False:
@@ -1061,7 +1072,7 @@ class CwScreenPrep(CwScreenOpBase):
                 # 入位卡补进黑板 bench,free 不 +1(与容器腿/tracked 吸收
                 # 同帧同源;缺镜像 = 决策面假空席,席满拒落类门被假象绕过)。
                 _bench = list(_bench) + [
-                    BenchChar(slot=action.slot, char_id=_ov_id_pre)]
+                    BenchChar(slot=_slot_key, char_id=_ov_id_pre)]
                 return dataclasses.replace(obs, bench_chars=_bench,
                                            free_bench_slots=_free)
             return dataclasses.replace(
@@ -1072,21 +1083,39 @@ class CwScreenPrep(CwScreenOpBase):
             apply_prep_action_logic(
                 _bs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
+            # 黑板帧键 = SIFT 槽位信息位(同上);落位槽 = 本帧 deployed
+            # 视图首空(kernel empty_deploy_slots 单一源,与发射位
+            # assign_deploy_slots/执行坐标边同式规则)。
+            _slot_key = action.bench_idx + 1
             _bench = [bc for bc in (getattr(obs, 'bench_chars', None) or [])
-                      if bc is None or getattr(bc, 'slot', None) != action.from_slot]
+                      if bc is None or getattr(bc, 'slot', None) != _slot_key]
             moved = next((bc for bc in (getattr(obs, 'bench_chars', None) or [])
                           if bc is not None
-                          and getattr(bc, 'slot', None) == action.from_slot), None)
+                          and getattr(bc, 'slot', None) == _slot_key), None)
             _deployed = list(getattr(obs, 'deployed_chars', None) or [])
             if moved is not None:
                 import copy as _copy
+                _back_total = (getattr(obs, 'back_layout_slots', None) or 6)
+                _fe, _be = empty_deploy_slots(
+                    _deployed, front_total=4, back_total=int(_back_total))
+                _chosen, _fb = ((_fe, _be) if action.to_row == 'front'
+                                else (_be, _fe))
+                if _chosen:
+                    _row, _slot_no = action.to_row, _chosen[0]
+                elif _fb:
+                    _row = 'back' if action.to_row == 'front' else 'front'
+                    _slot_no = _fb[0]
+                else:
+                    _row, _slot_no = action.to_row, 0   # 满板:信息位照记,
+                    # 真实落位归容器 deployed_place 守卫(陈旧提案零写)
                 moved = _copy.copy(moved)
-                moved.position_pref = action.to_row
-                moved.slot = action.to_slot
+                moved.position_pref = _row
+                moved.slot = _slot_no
                 _deployed.append(moved)
             _front = set(getattr(obs, 'front_occupied', None) or set())
             _back = set(getattr(obs, 'back_occupied', None) or set())
-            (_front if action.to_row == 'front' else _back).add(action.to_slot)
+            (_front if action.to_row == 'front' else _back).add(
+                moved.slot if moved is not None else 0)
             return dataclasses.replace(
                 obs, bench_chars=_bench, deployed_chars=_deployed,
                 front_occupied=_front, back_occupied=_back,
@@ -1096,13 +1125,17 @@ class CwScreenPrep(CwScreenOpBase):
             apply_prep_action_logic(
                 _bs, action, produced_by='CwScreenPrep',
                 sig=ChannelSig(family='logic_action', actor='CwScreenPrep'))
+            # 容器下标 → (排, 槽号) 读键映射 = kernel deployed_row_slot
+            # 单一函数(执行坐标边换算收口);黑板帧 deployed 是 SIFT 物理
+            # 键视图,按读键对位摘除。
+            _row, _slot_no = deployed_row_slot(action.deployed_idx)
             _deployed = [d for d in (getattr(obs, 'deployed_chars', None) or [])
                          if d is None
-                         or not (getattr(d, 'position_pref', '') == action.row
-                                 and getattr(d, 'slot', None) == action.slot)]
+                         or not (getattr(d, 'position_pref', '') == _row
+                                 and getattr(d, 'slot', None) == _slot_no)]
             return dataclasses.replace(obs, deployed_chars=_deployed)
         if isinstance(action, LevelUp):
-            # 视觉帧零变;容器域 xp/level 推进(gold 中间态不写)
+            # 视觉帧零变;容器域 xp/level/gold(action.cost 直写)推进
             _bs = board_state_of(self._session())
             apply_prep_action_logic(
                 _bs, action, produced_by='CwScreenPrep',
@@ -1122,7 +1155,7 @@ class CwScreenPrep(CwScreenOpBase):
             f'_project_prep_obs:动作 {type(action).__name__} 无逻辑态分支'
             '(词表外/分派漏斗被绕过,响亮暴露)')
 
-    def _project_tool_obs(self, action: PrepAction,
+    def _project_tool_obs(self, action: CwAction,
                           obs: PrepObservation) -> PrepObservation:
         """工具原子逻辑态(R8 七类逐件;规则正本 = ``flow/action-logic-state.md``
         §4,写端登记单一源 = ``EQUIP_WRITE_SIDES``)。逐类:
@@ -1149,7 +1182,7 @@ class CwScreenPrep(CwScreenOpBase):
         from sr_od.application.currency_war.kernel.cw_effect_inventory import (
             privilege_counterpart,
         )
-        from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        from sr_od.application.currency_war.kernel.cw_vocab import (
             FurnaceUse,
             LuckyTokenUse,
             PerfectProjectorUse,
@@ -1305,9 +1338,9 @@ class CwScreenPrep(CwScreenOpBase):
             )
             _bs_def = board_state_of(self._session())
             exp_txt = (f'{expect.kind} identity={expect.identity} '
-                       f'from_slot={expect.from_slot}'
-                       + (f' target={expect.target_row}{expect.target_slot}'
-                          f'/{expect.target_kind}' if expect.kind == 'deploy_move' else ''))
+                       f'from_bench_idx={expect.from_bench_idx}'
+                       + (f' target_row={expect.target_row}'
+                          if expect.kind == 'deploy_move' else ''))
             obs_txt = ';'.join(f"{m['domain']}槽{m['slot']} 期望[{m['expected']}] "
                                f"实读[{m['observed']}]" for m in mism)
             defects.record_defect(
@@ -1321,10 +1354,8 @@ class CwScreenPrep(CwScreenOpBase):
                          '零决策行为,不 return/不重拖)'),
                 refs=[{'field': k, 'value': v} for k, v in (
                     ('kind', expect.kind), ('identity', expect.identity),
-                    ('from_slot', str(expect.from_slot)),
-                    ('target_row', expect.target_row),
-                    ('target_slot', str(expect.target_slot)),
-                    ('target_kind', expect.target_kind))],
+                    ('from_bench_idx', str(expect.from_bench_idx)),
+                    ('target_row', expect.target_row))],
                 reader_source='drag_expect_reconcile',
                 note='期望态层:期望=动作意图纯函数,与 W512 paddle 动作级对拍分立(身份级 vs 计数级)')
         except Exception as e:  # noqa: BLE001  观测 best-effort,不阻塞环
@@ -1765,7 +1796,10 @@ class CwScreenPrep(CwScreenOpBase):
             templates = ensure_equip_sift_templates(self.ctx)
             if grays is None or templates is None:
                 return None
-            if action.row == 'front':
+            # 容器下标 → (排, 槽号) 读键映射 = kernel deployed_row_slot
+            # 单一函数(执行坐标边换算收口)。
+            row, slot_no = deployed_row_slot(action.deployed_idx)
+            if row == 'front':
                 prefix, n = '前排', 4
             else:
                 n, prefix = select_back_layout(self.ctx, frame)
@@ -1774,12 +1808,12 @@ class CwScreenPrep(CwScreenOpBase):
                 avatar_to_below,
             )
             rect = next((r for i, r in _ctx_slots(self.ctx, prefix, n)
-                         if i == action.slot), None)
+                         if i == slot_no), None)
             if rect is None:
                 return None
             equipped = read_equipped_below(
-                frame, grays, [(action.slot, avatar_to_below(rect))]
-            ).get(action.slot, [])
+                frame, grays, [(slot_no, avatar_to_below(rect))]
+            ).get(slot_no, [])
             if not equipped:
                 return None   # 未穿/穿戴读失读:无可评增量,不评
             # 前置契约:帧 = 决策环定型截图(gate stable 已判「货币战争-备战」)。
@@ -1970,10 +2004,10 @@ class CwScreenPrep(CwScreenOpBase):
                 log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')
             if (not isinstance(actions, list)
-                    or not all(isinstance(a, PrepAction) for a in actions)):
-                log.warning(f'[cw!][director] 策略输出非 list[PrepAction]: '
+                    or not all(isinstance(a, CwAction) for a in actions)):
+                log.warning(f'[cw!][director] 策略输出非 list[CwAction]: '
                             f'{type(actions).__name__}')
-                return self.round_fail(status='策略输出非 list[PrepAction](F3)')
+                return self.round_fail(status='策略输出非 list[CwAction](F3)')
             if not actions:
                 # 空批合法(契约 §4:本帧无动作可发,策略器禁用空批表达控制流)
                 # → 交回外循环重观察;连续空批的 stall 兜底归外循环防线。
@@ -2185,10 +2219,10 @@ class CwScreenPrep(CwScreenOpBase):
                 log.warning(f'[cw!][director] decide_prep_screen 异常: {e}')
                 return self.round_fail(status=f'策略决策异常: {e}')
             if (not isinstance(actions, list)
-                    or not all(isinstance(a, PrepAction) for a in actions)):
-                log.warning(f'[cw!][director] 策略输出非 list[PrepAction]: '
+                    or not all(isinstance(a, CwAction) for a in actions)):
+                log.warning(f'[cw!][director] 策略输出非 list[CwAction]: '
                             f'{type(actions).__name__}')
-                return self.round_fail(status='策略输出非 list[PrepAction](F3)')
+                return self.round_fail(status='策略输出非 list[CwAction](F3)')
             if not actions:
                 # 空批合法(契约 §4:本帧无动作可发,策略器禁用空批表达控制流)
                 # → 交回外循环重观察;连续空批的 stall 兜底归外循环防线。
@@ -2279,7 +2313,7 @@ class CwScreenPrep(CwScreenOpBase):
         return self.round_success(
             f'访问动作数达上限({self.VISIT_ACTION_CAP}),交回外循环重观察', wait=1.0)
 
-    def _act_execute(self, action: PrepAction,
+    def _act_execute(self, action: CwAction,
                      obs: PrepObservation | None = None) -> None:
         """动作执行段(五段之 act 的端口分派面;两路径共用,落地登记注册表
         的**唯一触发点**)。注入动作适配器在场 → 经适配器机械执行(§6.2
@@ -2296,7 +2330,7 @@ class CwScreenPrep(CwScreenOpBase):
             self._act_execute_default(action, obs)
         self.fire_outcome_hooks(action, detail=self._last_mech_detail)
 
-    def _act_execute_default(self, action: PrepAction,
+    def _act_execute_default(self, action: CwAction,
                              obs: PrepObservation | None = None) -> None:
         """现役点击链缺省执行体(实机适配器②的封口内容;旧路径 run() 与
         五段循环同调,自身**不触发**注册表——触发统一归
@@ -2677,7 +2711,7 @@ class CwScreenPrep(CwScreenOpBase):
 
     # ===== W970 批 C:流程层商店编排(整段买牌解体的承接,§4.3.2/§4.3.6)=====
 
-    def _open_shop_phase(self, action: PrepAction,
+    def _open_shop_phase(self, action: CwAction,
                          obs: PrepObservation) -> tuple[bool, str]:
         """OpenShop 动作的流程层编排(壳直调三 op 调用点自 BuyShopCards 上移)。
 
@@ -3227,7 +3261,7 @@ class CwScreenPrep(CwScreenOpBase):
                 _NODE_ICON_SHOT_TS[s.idx] = now
                 log.info(f'[cw-director][nodeseq] 未识别图标 idx={s.idx} hu={s.hu_dist:.1f} → 采 {fn}')
 
-    def _record_step(self, obs: PrepObservation, action: PrepAction) -> None:
+    def _record_step(self, obs: PrepObservation, action: CwAction) -> None:
         """(已退役 no-op:步进 decisions 行随 decisions 流写入端删除——删除波 1。)
 
         方法体保留空壳的原因:测试 harness(_cw_helpers.make_prep_round_

@@ -1471,7 +1471,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 # 是 no-op,此处提前退出与「execute 后按 terminal 统一 break」
                 # 行为等价;保留 execute 前落点是有意声明——保持 decisions
                 # 行形态契约(CloseShop 终结不入行,ADR-0518 §decisions 遥测行,
-                # 安灯/判读输入面)。可执行终结(RefreshShop/CompTransaction)
+                # 安灯/判读输入面)。可执行终结(RefreshShop)
                 # 的统一退出在 execute 之后(下方 _aop.terminal 分支),两条路径
                 # 承载同一语义「终结 = 本段结束」,非双轨。
                 break
@@ -1570,7 +1570,8 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 # 连发至硬墙,或把旧牌面的 BuyCard 提案点在新牌面槽位
                 # (错买随机卡)。break 后段循环下一次迭代的入口观察重建
                 # 期望态 = 「交回外循环重进」的物理载体;RefreshShop 与
-                # CompTransaction(终结邻接 fallback,禁半档中间态)同路径。
+                # CloseShop 同路径(原 CompTransaction 终结邻接 fallback
+                # 已随 unified-action-factory 批2b R3 删除)。
                 break
         log.info('[cw] shop=%s plan=%s',
                  [(s.kind,

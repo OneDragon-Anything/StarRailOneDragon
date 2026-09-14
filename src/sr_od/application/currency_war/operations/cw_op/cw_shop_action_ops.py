@@ -15,7 +15,7 @@ test_cw_shop_projection_logic)):
 **一击一张**(kernel 规则面同判:常态单击单张,满栏例外按 merge_buy_k
 一击多张),规则模型误差由入口
 对账兜底(下一画面入口观察 = 事实重建,决策 8)。实机冻结解除后补档
-验证:验证未过则该买面升格为终结 op(fallback 语义,见 CompTransactionOp)。
+验证:验证未过则该买面升格为终结 op(原 fallback 载体 CompTransactionOp 已随 unified-action-factory 批2b R3 删除,终结语义收敛于 RefreshShop/CloseShop)。
 
 守卫断言(决策 9):执行侧检查 = 防 bug 路栏非控制流分支,非法返回 =
 策略器 bug 响亮暴露——``guard_proposal_vs_expected``(提案动作的对象在

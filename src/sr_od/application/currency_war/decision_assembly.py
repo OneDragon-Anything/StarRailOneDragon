@@ -188,7 +188,6 @@ def snapshot_from_obs(obs: PrepObservation, session: StrategySession,
                       for c, p, r in obs.spheres),
         boxes=tuple(SupplyBox(x=p.x, y=p.y) for _s, p in obs.boxes),
         tomes=tuple(Tome(x=p.x, y=p.y) for _s, p in obs.tomes),
-        box_overlay_open=obs.box_overlay_open,
         event_overlay=obs.event_overlay,
         hp=(last.hp.value if (_hp_readable and last.hp.value is not None)
             else None),

@@ -393,7 +393,7 @@ def _battle_chain_deploy_moves(session) -> list:
         level_of,
         max_units_of,
     )
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         DeployMove,
     )
     from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
@@ -401,7 +401,8 @@ def _battle_chain_deploy_moves(session) -> list:
         _deploy_plan_inputs,
     )
     bs = board_state_of(session)
-    bench = [b for b in bench_slots_of(bs) if b is not None]
+    bench_slots = bench_slots_of(bs)
+    bench = [b for b in bench_slots if b is not None]
     deployed = [d for d in deployed_slots_of(bs) if d is not None]
     _node = bs.node.value
     frame = MandateFrame(
@@ -416,11 +417,19 @@ def _battle_chain_deploy_moves(session) -> list:
     _back_total = int(bs.back_layout.value or 6)
     front_empty, back_empty = empty_deploy_slots(
         deployed, front_total=4, back_total=_back_total)
-    return [DeployMove(from_slot=int(bench[bi].slot), to_row=row,
-                       to_slot=slot)
-            for bi, row, slot in assign_deploy_slots(bench, up,
-                                                     front_empty,
-                                                     back_empty)]
+    # 容器下标解析(换算收口,unified-action-factory 批2b):bench 源取
+    # 容器槽位表下标(assign 的 bi 是紧缩视图下标,经同帧 slot 信息位对
+    # 容器读口对位);faction = 容器槽位表角色对象现取(sim board 计数)。
+    _cidx_of = {b.slot: i for i, b in enumerate(bench_slots) if b is not None}
+    _out: list[DeployMove] = []
+    for bi, row, _slot in assign_deploy_slots(bench, up, front_empty,
+                                              back_empty):
+        _bi = _cidx_of.get(bench[bi].slot)
+        if _bi is None:
+            continue   # 对位失配(陈旧帧)= fail-closed 跳过该 move
+        _out.append(DeployMove(bench_idx=_bi, to_row=row,
+                               faction=(bench[bi].faction or '')))
+    return _out
 
 
 def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
@@ -444,7 +453,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     非 T-223 端口回执——端口本 身已无返回)。W209j 刹车短路(停机标志
     已设)→ 返回 (False, '已停止[W209j刹车]'),交回外循环由 loop 顶退出。
     """
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+    from sr_od.application.currency_war.kernel.cw_vocab import (
         StartBattle,
     )
     from sr_od.application.currency_war.prep_actions import (
@@ -990,8 +999,9 @@ class CwLoop(SrOperation):
     #: 检测 get_area→None→AREA_NO_CONFIG 被 is_success 静默吞掉(第三起实机
     #: 卡死根因:选择伙伴遮罩下部署死局 ~8min,日志零线索)。本表在 iter1 对
     #: 全部锚做可解析预检,缺失逐条 log.error(带分支名),把「配置缺失」在
-    #: 第一轮就炸到日志面。新增浮层分支须同步登记本表与测试仓序锁矩阵
-    #: (test_cw_dispatch_order_matrix:矩阵锁序位,本表锁运行时可解析)。
+    #: 第一轮就炸到日志面。新增浮层分支须同步登记本表
+    #(原序锁矩阵 test_cw_dispatch_order_matrix 随 09-13 有损清理删除,经
+    #: T-252 分诊为源码扫描形态不恢复;序位防漂移归 review 与本表登记纪律)。
     DISPATCH_AREA_ANCHORS: ClassVar[tuple[tuple[str, str, str], ...]] = (
         # (分支名, 画面名, 锚 area 名)
         ('0a0 选择装备', '货币战争-选择装备', '标识-选择装备'),
@@ -2026,7 +2036,7 @@ class CwLoop(SrOperation):
                 time.sleep(1.0)   # 部署动画/特效窗(出战点击时序,防特效帧落空;机械等待非判效)
                 # 前排已有角色 → 本迭代内直接再出战(不再依赖下轮 CwScreenPrep
                 # 重派——旧链的假成功正是发生在这段间隙)。
-                from sr_od.application.currency_war.kernel.cw_prep_actions import (
+                from sr_od.application.currency_war.kernel.cw_vocab import (
                     StartBattle as _StartBattle,
                 )
                 from sr_od.application.currency_war.prep_actions import (
@@ -2085,8 +2095,8 @@ class CwLoop(SrOperation):
                 on_result=_on_boss_briefing)
 
         # 0q. 位面过渡(P4R2 序位返工:原在备战分支之后——「浮层叠备战」家族
-        #     审计中唯一的序位漏项;全浮层序位纪律 = 先于备战双锚,序锁矩阵
-        #     test_cw_dispatch_order_matrix.py 逐一钉死)。
+        #     审计中唯一的序位漏项;全浮层序位纪律 = 先于备战双锚;原序锁矩阵
+        #     test_cw_dispatch_order_matrix 已删(T-252 分诊不恢复,序位归本注)。
         #     P4R3 两画面排他(第五局 1-9 实锤):boss 简报画面**也含**「点击
         #     空白处继续」(共享交互文案不作判据)——「强敌」特征在场 = boss
         #     简报帧,不进位面过渡(留给 0p);误分发型 fail(过渡提示不在)
