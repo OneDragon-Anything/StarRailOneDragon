@@ -447,7 +447,7 @@ active_env 核对源。开局写端见 §3.4.3(多屏写入,本条=备战屏侧�
   **消费端** = mandate 溢出门(flag 在场 → 本帧决策强收窄单动作 SellBench,
   禁发 StartBattle/冻结买面,flow/action-logic-state.md §2.4 溢出条件行)。
   腿落地同帧 = 三账事件:容器 bench 回占 + 执行侧 tracked 主账吸收
-  (`apply_prep_action_logic` `session` 形参;T-227,缺吸收 = 商店播种守卫
+  (`apply_prep_action_logic` `session` 形参;缺吸收 = 商店播种守卫
   双账分叉实机停机)+ 黑板帧镜像。
 - `overflow_card: str`——溢出位角色身份(char_id;`''` = 溢出位无卡或身份未
   识别,与 warning 配对解读:True ∧ `''` = 有卡未识别)。**写端** = 同上观察
