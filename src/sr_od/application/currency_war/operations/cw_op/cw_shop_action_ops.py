@@ -37,8 +37,6 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from cv2.typing import MatLike
-
 from one_dragon.base.geometry.point import Point
 from one_dragon.utils.log_utils import log
 from sr_od.application.currency_war.kernel.cw_economy import REFRESH_COST_BASE
@@ -413,29 +411,8 @@ class ShopActionOp(ABC):
 
     @abstractmethod
     def execute(self, env: ShopExecEnv) -> bool:
-        """机械执行;返回执行是否落地(SellBench 拖 3 次失败 = False,
-        调用方据此跳过投影保持双账一致)。"""
-
-
-def buy_click_ineffective(before: MatLike | None, after: MatLike | None,
-                          diff_thr: float = 12.0) -> bool:
-    """买后同 rect 卡面未变判定(纯函数):灰度差均值 < 阈值 ⇒ 卡未离场
-    = 购买未生效(点击落空/试用/被拦)。任一裁片缺失或形状不等 ⇒ False
-    = **不可判**(fail-open,保持既有记账;与「判了未生效」可分,执行侧
-    以 skipped 计数分键显影——两态分键语义见落地审补办审低-4 条目)。
-
-    阈值如实口径:12.0 = 合成帧推导的保守带(未生效形态 ≈ 逐像素全同;
-    生效形态 = 整卡替换,均值差大一个量级),**非实机边界标定**——同美术
-    异星卡等假阳窗口未评估,细标定挂账。
-    """
-    if before is None or after is None:
-        return False
-    if getattr(before, 'shape', None) != getattr(after, 'shape', None):
-        return False
-    import cv2
-    g1 = cv2.cvtColor(before, cv2.COLOR_BGR2GRAY)
-    g2 = cv2.cvtColor(after, cv2.COLOR_BGR2GRAY)
-    return float(cv2.absdiff(g1, g2).mean()) < diff_thr
+        """机械执行;返回恒 True(T-223 终裁:发出即职责完成,零判效——
+        落地事实归下一帧入口观察 reconcile 对账,不据执行侧判定改道)。"""
 
 
 class BuyCardOp(ShopActionOp):
@@ -489,8 +466,9 @@ class BuyCardOp(ShopActionOp):
             pt = (_Pt(0, 288) if not env.click_pts else env.click_pts[0])
         # 买前裁该片矩形拷贝(`w536_merge_expect/`:「买了什么」的像素级
         # 证据,随期望态带到对账点;一帧原则,必须 copy 防帧缓存覆写)。
+        # 纯留证零判效(T-192):crop 只进 buy_purchases 遥测;落地事实
+        # 归下一帧入口观察 reconcile,不据执行侧像素判定改道。
         _card_crop = None
-        _hit_rect = None
         with contextlib.suppress(Exception):
             _frame = op.screenshot()
             for _i in range(1, 6):
@@ -498,7 +476,6 @@ class BuyCardOp(ShopActionOp):
                                 f'{A_SHOP_CARD_PREFIX}{_i}',
                                 SHOP_SCREEN_NAME)
                 if _r is not None and _r.x1 <= pt.x <= _r.x2:
-                    _hit_rect = _r
                     _card_crop = _frame[_r.y1:_r.y2, _r.x1:_r.x2].copy()
                     break
         op.ctx.controller.click(pt)
@@ -506,43 +483,6 @@ class BuyCardOp(ShopActionOp):
                  f'{action.card.faction}/{action.card.name}/'
                  f'{action.card.cost}')
         time.sleep(0.4)
-        # 买后同 rect 复采:卡面未离场 = 购买未生效(第十八局 p2r7 实证:
-        # 点击发出而金差≈0;识别结构无试用/可买性字段,执行侧检出兜底)。
-        _after_crop = None
-        with contextlib.suppress(Exception):
-            if _hit_rect is not None:
-                _after = op.screenshot()
-                _after_crop = _after[_hit_rect.y1:_hit_rect.y2,
-                                     _hit_rect.x1:_hit_rect.x2].copy()
-        if _card_crop is None or _after_crop is None:
-            # 不可判(裁片缺失)与没判可分:skipped 计数分键显影
-            # (低-4 清单见 buy_click_ineffective docstring 指针)。
-            with contextlib.suppress(Exception):
-                _ct = strategy_state_of(match.session).cw4_counters
-                _ct['buy_click_verify_skipped'] = \
-                    _ct.get('buy_click_verify_skipped', 0) + 1
-        if buy_click_ineffective(_card_crop, _after_crop):
-            with contextlib.suppress(Exception):
-                from sr_od.application.currency_war.telemetry.defects import (
-                    record_defect,
-                )
-                record_defect(
-                    'shop', 'buy_click_ineffective',
-                    expected=(f'买 {action.card.name}/'
-                              f'{action.card.cost} 金扣账并离场'),
-                    observed=('点击后同 rect 卡面未变化(点击落空/试用/'
-                              '被拦;识别结构无试用字段,执行侧检出)'),
-                    verdict='留证-购买未生效;账不计入(bought_names/purchases/'
-                            'spend 均不记),防 pixel-diff 假配对',
-                    reader_source='buy_click_card_diff',
-                    note='计划花费>0 金差≈0 形态的执行侧闭环')
-            log.warning(f'[cw-shop] Buy 未生效(卡面未变):'
-                        f'{action.card.name}')
-            # 基类契约「未落地=False、两侧都不动」:False ⇒ 调用方跳过
-            # project()/guard——期望账不得投影未发生的买入(落地审补办审
-            # C1 语义:旧 return True 使期望账/tracked 分叉,guard 断言当轮
-            # 炸,满栏豁免下假买入还污染下次对账)。
-            return False
         ledger.total_buy += 1
         ledger.spend_executed += action.card.cost
         if action.card.name:
