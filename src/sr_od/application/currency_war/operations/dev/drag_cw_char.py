@@ -109,7 +109,7 @@ class DragCwChar(SrOperation):
         return self.round_success(DragCwChar.STATUS_DRAGGED, wait=1)
 
     @staticmethod
-    def drag_char(op: SrOperation, src: Point, dst: Point) -> bool:
+    def drag_char(op: SrOperation, src: Point, dst: Point) -> None:
         """**统一角色拖拽原语**(生产共用:deploy / sell / 本 op)。
 
         中心拖 ``src → dst`` + ``hold_time=0``,机械执行零判效(T-192 阶段三
@@ -123,10 +123,6 @@ class DragCwChar(SrOperation):
         Args:
             op: 调用方 op(取 ``op.ctx.controller`` 操作)。
             src / dst: 源 / 目标槽中心(1080p)。
-
-        Returns:
-            恒 ``True`` = 拖拽已机械发出(过渡形态:布尔签名保留至部署
-            消费面切片收敛,T-192 切片4 起退役为无返回)。
         """
         op.ctx.controller.mouse_move(src)                 # bug#1 settle(先到源)
         time.sleep(0.2)
@@ -135,7 +131,6 @@ class DragCwChar(SrOperation):
         # 光标 parking(审计 P0,2026-08-16):旧停 (100,500) 在羁绊面板 [38,128,258,772] 内,
         # 污染每次 Director heavy observe 的 board OCR;park_cursor = UID 黑块中立区。
         op.park_cursor(after_wait=0.3)
-        return True
 
 
 _EXPORT = DragCwChar
