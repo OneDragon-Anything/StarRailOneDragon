@@ -1312,7 +1312,19 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                     # 特化值填充已删,'' = 未标缺省形态。转化类豁免分键
                     # 走结构化字段 convert_reason(ADR-0611 §3-5:
                     # 值域收窄两类放行键;孤儿键留 reason,零双源)。
-                    return CloseShop()
+                    # 发射 = 中间步动作:卖出真执行腾出 1 席,下一决策
+                    # 迭代 bench_free ≥ 1 由 M2 原判据买入;CloseShop 在
+                    # 此处等于把「有后续意图」表达成「终结」——商店段
+                    # 提前收口,升级/刷新通道整段不可达(T-238 修复)。
+                    return SellBench(bench_idx=idx,
+                                     income=_shop_sell_refund(victim),
+                                     expect=_vname,
+                                     reason=('line_switch_collapse'
+                                             if _vname in _sw_orphans
+                                             else ''),
+                                     convert_reason=(
+                                         'fuel_victim_protect_demoted'
+                                         if _prot_hit else ''))
             else:
                 _count('m2_retry_exhausted')
                 _count('m2_stall_cache_rederive')
@@ -1586,8 +1598,19 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                 _note_sell(_vname1)
                 # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591,同
                 # M2 位);纯归因填充已删,'' = 未标缺省形态。转化分键 =
-                # convert_reason(同 M4 位,ADR-0611 §3-5)。
-                return CloseShop()
+                # convert_reason(同 M4 位,ADR-0611 §3-5)。发射 = 中间
+                # 步动作(同 M4 缺员腾席位):卖出真执行,下一决策迭代
+                # 席空由本臂原判据买入;CloseShop 会提前终结商店段
+                #(T-238 修复,机制同 M4 位注释)。
+                return SellBench(bench_idx=idx,
+                                 income=_shop_sell_refund(victim),
+                                 expect=_vname1,
+                                 reason=('line_switch_collapse'
+                                         if _vname1 in _sw_orphans
+                                         else ''),
+                                 convert_reason=(
+                                     'fuel_victim_protect_demoted'
+                                     if _prot1 else ''))
             _count('bench_full')
             continue
         _on_target_buy(card.name or m)
@@ -1798,7 +1821,17 @@ def decide_shop_action(bs: GameState, session: StrategySession,
         _note_sell(_vname)
         # 出口键(§5.6 闭集;发射 = 席换手,判红检测器与判读面载体)
         _count(f'{prefix}_seat_swap')
-        return CloseShop()
+        # 发射 = 中间步动作(docstring 契约):卖出真执行释放 1 席,
+        # 下一决策迭代席空原臂原判据买入;CloseShop = 终结语义,会把
+        # 商店段提前收口(T-238 修复,机制同 M4 缺员腾席位注释)。
+        return SellBench(bench_idx=idx,
+                         income=_shop_sell_refund(victim),
+                         expect=_vname,
+                         reason=('line_switch_collapse'
+                                 if _vname in _sw_orphans else ''),
+                         convert_reason=(
+                             'fuel_victim_protect_demoted'
+                             if _prot else ''))
 
     _core_locked = _buy_members is not None
     _core_cands = [c for c in _buy_view('core_single_card_buy')
@@ -2922,7 +2955,16 @@ def decide_shop_action(bs: GameState, session: StrategySession,
                 # 合法形态,键带账闭合证明供同轮买卖检查豁免面分键;被保
                 # 件已被 defer 绝对跳过)。凑息通道归因值已随 2026-09-08
                 # 用户归因遥测删除指令拆除,'' = 未标缺省形态。
-                return CloseShop()
+                # 发射 = 中间步动作:卖出真执行回金,金位向 g* 递增,
+                # 止盈(Σrefund ≥ 缺口)后凑息位不再触发、后续位续评;
+                # CloseShop 会提前终结商店段(T-238 修复,机制同 M4
+                # 缺员腾席位注释)。
+                return SellBench(bench_idx=idx,
+                                 income=_shop_sell_refund(bc) if bc else None,
+                                 expect=_iname,
+                                 reason=('line_switch_collapse'
+                                         if _iname in _sw_orphans
+                                         else ''))
     # 支付支撑通道(两臂同开,R13-5):骨架义务动作金不足侧筹资变现。
     # F2 已由 ADR-0585 §4 拆三块修订(原「有意不扩 Z1 排除集」申报废止):
     # ①义务基座并入(本位旧排除 buy_members 与义务基座同源,并入零
@@ -2986,7 +3028,18 @@ def decide_shop_action(bs: GameState, session: StrategySession,
             # reason 仅存线账闭合孤儿证明标记(T-141/ADR-0591,通道
             # 无关);纯归因填充已删,'' = 未标缺省形态。被保垫件筹资卖
             # = 转化类,分键走 convert_reason(ADR-0611 §3-5)。
-            return CloseShop()
+            # 发射 = 中间步动作:卖出真执行筹资,下一决策迭代金 ≥ need
+            # 由 M2 原判据买入义务件;CloseShop 会提前终结商店段
+            #(T-238 修复,机制同 M4 缺员腾席位注释)。
+            return SellBench(
+                bench_idx=idx,
+                income=_shop_sell_refund(bc) if bc else None,
+                expect=_fname,
+                reason=('line_switch_collapse'
+                        if _fname in _sw_orphans
+                        else ''),
+                convert_reason=('funding_support_stall_convert'
+                                if _fprot else ''))
         for bc in _f_fallback:
             _fidx = bench_slots_of(bs).index(bc)
             _fname = bc.char_id or ''
@@ -2996,7 +3049,14 @@ def decide_shop_action(bs: GameState, session: StrategySession,
             # funding_hold_liquidated(ADR-0611 §3-5)。
             sell_gate.consume_on_sell(session, _fname)
             _note_sell(_fname)
-            return CloseShop()
+            # 发射 = 中间步动作(同筹资主路径):卖出真执行筹资,
+            # 下一决策迭代金 ≥ need 由 M2 原判据买入义务件;CloseShop
+            # 会提前终结商店段(T-238 修复,机制同 M4 缺员腾席位注释)。
+            return SellBench(
+                bench_idx=_fidx,
+                income=_shop_sell_refund(bc),
+                expect=_fname,
+                convert_reason='funding_hold_liquidated')
 
     # ---- D-D 硬节点补强门消费(观察级接线;逐帧计数,粒度申报见上)----
     _gate_open, _gkey = crit_refresh.hard_node_reinforce_gate(
