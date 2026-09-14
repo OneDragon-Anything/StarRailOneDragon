@@ -5,11 +5,13 @@
   一件获得。该道具使用后消失」),叠在 3 选 1 屏(投资策略/环境)或备战上;
 - 弹窗内**顶部箱图标是展示图不可点**((812,175)/(810,194)/(960,837) 三点全无反应);
 - 正确动作 = **点 × 关闭**弹窗(道具进背包,备战界面箱槽走 prep_actions 的
-  OpenBox→PickBoxCard 开箱链路);
+  OpenBox 开箱链路;选卡 = 武装箱选择画面 op ``cw_screen_box_pick``,
+  R7 批 2a);
 - 不关会挡死底层屏(M20 卡 19min/286 次 retry 实证)。
 
 ⚠️ M19 建档时曾按「点箱图标开箱→四选一」建模——错误(展示图不可点);M20 实锤后改关闭模型。
-四选一选卡职责在备战箱槽链(prep_actions.PrepActionExecutor._pick_box_card),本 op 只关弹窗。
+四选一选卡职责在独立画面 op(cw_screen_box_pick,CwScreenBoxPick;R7 批 2a 起替代
+原 PickBoxCard 备战动作形态),本 op 只关弹窗。
 
 统一观察架构逐屏迁移(账本 T-48 收尾五屏;架构设计 §9.1 并存纪律):本类是
 CwScreenOpBase 子类,handle 顶部装配点分流(重入裁决**之后**,先例锚 =

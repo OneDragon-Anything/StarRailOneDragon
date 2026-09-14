@@ -44,6 +44,9 @@ from sr_od.application.currency_war.operations.cw_screen.cw_screen_bookcard impo
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_boss_briefing import (
     CwScreenBossBriefing,
 )
+from sr_od.application.currency_war.operations.cw_screen.cw_screen_box_pick import (
+    CwScreenBoxPick,
+)
 from sr_od.application.currency_war.operations.cw_screen.cw_screen_briefing import (
     CwScreenBriefing,
 )
@@ -219,14 +222,15 @@ def prep_no_progress_tick(prev_sig: tuple | None, prev_count: int,
     return sig, 0, frozenset(actions)
 
 
-#: 收益耗尽臂窗口动作白名单(F2 判据放宽;ADR-0554 修订节第 2 条):
-#: 恒指纹窗口
-#: 内出现过的动作批并集 ⊆ {OpenShop, RunDeploy} 才可能出战——真实进展
-#: 必变指纹,能留在恒指纹窗口的动作定义性零变换(零购买开店=纯读、
-#: 无部署可做 RunDeploy=合法稳态);其他动作(ClickSpheres/
-#: RunEquip/SellBench 等)在窗口出现 = 语义未核实,不出战、落守卫停机
-#: 留证交判读(不代打)。
-EXHAUSTION_WINDOW_ACTIONS: frozenset[str] = frozenset({'OpenShop', 'RunDeploy'})
+#: 收益耗尽臂窗口动作白名单(F2 判据放宽;ADR-0554 修订节第 2 条;
+#: 批 2a 重推 = {OpenShop},重推判据:RunDeploy 组合壳随 R2 删除,
+#: DeployMove 是进展性动作——出现恒指纹窗 = 部署未落地 = 语义未核实,
+#: 不入窗落守卫停机留证;OpenShop 零购买 = 纯读,定义性零变换):
+#: 恒指纹窗口内出现过的动作批并集 ⊆ {OpenShop} 才可能出战——真实进展
+#: 必变指纹,能留在恒指纹窗口的动作定义性零变换;其他动作(ClickSpheres/
+#: DeployMove/WearEquip/SellBench 等)在窗口出现 = 语义未核实,不出战、
+#: 落守卫停机留证(不代打)。
+EXHAUSTION_WINDOW_ACTIONS: frozenset[str] = frozenset({'OpenShop'})
 
 
 def prep_exhaustion_launch_eligible(action_sig: tuple | None,
@@ -242,16 +246,18 @@ def prep_exhaustion_launch_eligible(action_sig: tuple | None,
     等待时长无关(等待不改变任何战力输入)⇒ 支配性论证:收益耗尽帧
     出战严格优于继续等待,无参数权衡,零拍定值。
 
-    判据(F2 放宽,T-167;ADR-0554 修订):
-    - **恒指纹窗口动作批并集 ⊆ {OpenShop, RunDeploy}**(EXHAUSTION_WINDOW_
-      ACTIONS):恒指纹本身已是窗口内全部动作的定义性零变换证明——真实
-      买入/卖出/升级必变 gold 或身份串,无需逐动作核实计划是否为零;
+    判据(F2 放宽,T-167;ADR-0554 修订;批 2a 重推,重推判据见
+    EXHAUSTION_WINDOW_ACTIONS 注):
+    - **恒指纹窗口动作批并集 ⊆ {OpenShop}**(EXHAUSTION_WINDOW_ACTIONS):
+      恒指纹本身已是窗口内全部动作的定义性零变换证明——真实买入/卖出/
+      升级/部署/穿戴必变 gold 或身份串,无需逐动作核实计划是否为零;
       窗口含白名单外动作 = 语义未核实形态 → 不出战(守卫停机留证);
-    - **末批 = RunDeploy**(``action_sig[-1]``):有部署意图在场才替以
-      出战;末批 = OpenShop 的第 3 恒指纹环判据假 → 落守卫停机留证——
-      出战/停机出口按末批相位二选一,3 环内必有出口,结构性缺口闭合
-      是确定性的(两种末批相位形态都锁,实机验收断言「必出战」
-      只对末批=RunDeploy 相位成立);
+    - **末批相位条款随 RunDeploy 删除退役**:原「末批 = RunDeploy」辖
+      「有部署意图在场才替以出战」的相位判别——组合壳删除后部署意图 =
+      DeployMove 批,而 DeployMove 已被白名单排除(恒指纹窗内出现 =
+      部署未落地 = 停机留证形态),相位二选一退化为单出口:窗口 ⊆
+      {OpenShop} 即出战(支配性论证不变,备战等待边际收益恒 0,
+      确定性出口防「纯开店读环」僵尸滞留);
     - **上一备战环 success**:发射契约保证「计划空+0 落地 = STATUS_
       NOOP 合法稳态」走 success、「计划非空+0 落地 = 执行面失败」走
       round_fail——success 即排除执行面失败形态(拖拽落空/遮罩挡拖拽);
@@ -259,7 +265,6 @@ def prep_exhaustion_launch_eligible(action_sig: tuple | None,
     """
     return (last_prep_success is True
             and bool(action_sig)
-            and action_sig[-1] == 'RunDeploy'
             and bool(actions_union)
             and actions_union <= EXHAUSTION_WINDOW_ACTIONS)
 
@@ -338,12 +343,13 @@ def locked_resume_sync_and_battle(op, ctx):
     策略审查报告 .debug/temp/currency_war/20260905-093104-strategy-review/
     策略审查-第十二跳.md #7):恢复局分支原样跳过全部备战交互直接
     StartBattle,板面调整被跳过(实证:恢复局首战快照 board_before 为空
-    ——部署面零执行)。本函数在 StartBattle 前插一次 **RunDeploy 组合
-    同步步**(deploy-swap/腾席/确定性部署整面跑一遍,零商店交互——锁定
+    ——部署面零执行)。本函数在 StartBattle 前插一次 **部署原子序同步步**
+    (批 2a:RunDeploy 组合壳退役,按 kernel select_deployments 现算逐
+    move 发 DeployMove——板空时计划恒空,与零商店交互形态同构;锁定
     局「商店探针零响应」禁令只辖商店域,部署面不受辖)。
 
     证据位语义(批3a 修订,T-223 最严读法申报「发出即写」):同步步
-    RunDeploy **发射后立即置位** ``op._cw_locked_sync_done``——原「ok=True
+    **发射后立即置位** ``op._cw_locked_sync_done``——原「ok=True
     才置位 + 失败重试(上限 3)」消费执行器成败回执,回执随 T-223 退役,
     失败概念在发射型下消解,重试/放弃治理结构随之退役(发射次数预算
     承载归批4 J2 形态,同源重推);「部署是否真落地」由下一帧观察侧
@@ -367,20 +373,71 @@ def locked_resume_sync_and_battle(op, ctx):
     return launch_prepared_battle(op, ctx, sync_once=True)
 
 
+def _battle_chain_deploy_moves(session) -> list:
+    """出战链部署计划(容器读 → kernel 单一源;R2 原子通路,批 2a)。
+
+    与 mandate 发射位同参同源(``_deploy_plan_inputs`` 装配 +
+    ``select_deployments`` 选人 + ``assign_deploy_slots`` 选排),禁第二套
+    计划语义。恢复局同步步/达标臂共用;空板面/计划空 = 空 move 序
+    (StartBattle 照发)。"""
+    from sr_od.application.currency_war.kernel.cw_deploy_logic import (
+        assign_deploy_slots,
+        empty_deploy_slots,
+        select_deployments_reasoned,
+    )
+    from sr_od.application.currency_war.kernel.cw_game_state import (
+        bench_slots_of,
+        board_state_of,
+        deployed_slots_of,
+        gold_of,
+        level_of,
+        max_units_of,
+    )
+    from sr_od.application.currency_war.kernel.cw_prep_actions import (
+        DeployMove,
+    )
+    from sr_od.application.currency_war.strategies.impl.mandate_v1.mandate import (
+        MandateFrame,
+        _deploy_plan_inputs,
+    )
+    bs = board_state_of(session)
+    bench = [b for b in bench_slots_of(bs) if b is not None]
+    deployed = [d for d in deployed_slots_of(bs) if d is not None]
+    _node = bs.node.value
+    frame = MandateFrame(
+        gold=gold_of(bs), level=level_of(bs),
+        bench=bench, deployed=deployed, deploy_cap=max_units_of(bs),
+        node_type=None, stop_flag=False, k_members=(),
+        round_num=int(_node.round_num) if _node is not None else 1)
+    _inputs = _deploy_plan_inputs(frame, session, bs)
+    up, _held, _reasons = select_deployments_reasoned(**_inputs)
+    if not up:
+        return []
+    _back_total = int(bs.back_layout.value or 6)
+    front_empty, back_empty = empty_deploy_slots(
+        deployed, front_total=4, back_total=_back_total)
+    return [DeployMove(from_slot=int(bench[bi].slot), to_row=row,
+                       to_slot=slot)
+            for bi, row, slot in assign_deploy_slots(bench, up,
+                                                     front_empty,
+                                                     back_empty)]
+
+
 def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
-    """出战底层发射核(C1 单一发射函数,14号稿 §9.6):RunDeploy 组合 +
+    """出战底层发射核(C1 单一发射函数,14号稿 §9.6):部署原子序 +
     StartBattle 的执行核,恢复局面与达标臂两调用面共用,禁各写一套
     StartBattle 发射位。
 
     - ``sync_once=True``(恢复局面面,调用面 = locked_resume_sync_and_
       battle):首战前插备战同步步,**发出即置位**证据位
-      ``op._cw_locked_sync_done``(批3a,T-223 回执退役后失败概念消解,
-      见 locked_resume_sync_and_battle docstring);连续失败放弃结构随
-      退役。锁定确认分支复位证据位。
+      ``op._cw_locked_sync_done``(批3a,T-223 回执退役后失败概念消解);
+      锁定确认分支复位证据位。同步步载体 = DeployMove 原子序(批 2a:
+      RunDeploy 组合壳退役,按 kernel select_deployments 现算逐 move 发;
+      恢复局卖出通道整体跳过语义不变——board 未观察时计划恒空)。
     - ``sync_once=False``(达标臂面,调用面 = readiness_battle_launch):
-      **不过闩**——每达标帧都 RunDeploy+StartBattle(部署面现读重建,
-      已同步形态下 RunDeploy 合法 no-op 即零待部署;闩只辖恢复局面,
-      达标臂第二次发射被「每局恰一次」闩吞 = C1 明令防的双源病)。
+      **不过闩**——每达标帧都部署原子序 + StartBattle(部署面现读重建,
+      已同步形态下零 move 即零待部署;闩只辖恢复局面,达标臂第二次发射
+      被「每局恰一次」闩吞 = C1 明令防的双源病)。
 
     返回 ``(launch_ok, detail)`` = StartBattle 发射位**内部事实**(执行器
     last_launch_ok 旁路;A6 出战链判效面,批4 随 J2/J3/J4 消费端同退役,
@@ -388,7 +445,6 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     已设)→ 返回 (False, '已停止[W209j刹车]'),交回外循环由 loop 顶退出。
     """
     from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        RunDeploy,
         StartBattle,
     )
     from sr_od.application.currency_war.prep_actions import (
@@ -397,19 +453,33 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     )
     ex = PrepActionExecutor(op, ctx)
     try:
+        _moves = []
         if sync_once:
             if not getattr(op, '_cw_locked_sync_done', False):
-                ex.execute(RunDeploy())   # 机械执行无返回(T-223)
-                # 发出即写(批3a 申报,T-223 回执退役;失败概念消解)
+                _m_lpb = getattr(ctx, 'cw_match', None)
+                _sess_lpb = getattr(_m_lpb, 'session', None) \
+                    if _m_lpb is not None else None
+                _moves = (_battle_chain_deploy_moves(_sess_lpb)
+                          if _sess_lpb is not None else [])
+                for _mv in _moves:
+                    ex.execute(_mv)   # 机械执行无返回(T-223)
+                # 发出即写(批3a申报,T-223 回执退役;失败概念消解)
                 op._cw_locked_sync_done = True
-                log.info('[cw-loop] 恢复局备战同步步(RunDeploy)已发出: %s',
-                         getattr(ex, 'last_detail', ''))
+                log.info('[cw-loop] 恢复局备战同步步(DeployMove×%d)已发出: %s',
+                         len(_moves), getattr(ex, 'last_detail', ''))
             else:
-                log.debug('[cw-loop] 恢复局同步步已置位,跳过 RunDeploy')
+                log.debug('[cw-loop] 恢复局同步步已置位,跳过部署原子序')
         else:
-            # 达标臂面:每帧 RunDeploy(部署面现读重建;已同步形态合法 no-op)
-            ex.execute(RunDeploy())
-            log.info('[cw-loop] 达标臂 RunDeploy: %s', getattr(ex, 'last_detail', ''))
+            # 达标臂面:每帧部署原子序(部署面现读重建;已同步形态零 move)
+            _m_lpb = getattr(ctx, 'cw_match', None)
+            _sess_lpb = getattr(_m_lpb, 'session', None) \
+                if _m_lpb is not None else None
+            _moves = (_battle_chain_deploy_moves(_sess_lpb)
+                      if _sess_lpb is not None else [])
+            for _mv in _moves:
+                ex.execute(_mv)
+            log.info('[cw-loop] 达标臂部署原子序 ×%d: %s',
+                     len(_moves), getattr(ex, 'last_detail', ''))
         ex.execute(StartBattle())
     except StopBrakeShortCircuit as e:
         log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)
@@ -447,7 +517,7 @@ def readiness_admission_report(state, comp) -> dict:
 
 def readiness_battle_launch(op, ctx):
     """达标即出战臂调用面(14号稿 §9.6):线成型(fp≥1.00,备战环锚帧)
-    ∧ 战斗就绪 ⇒ 立即 RunDeploy 组合 + StartBattle,不过
+    ∧ 战斗就绪 ⇒ 立即部署原子序 + StartBattle,不过
     ``_cw_locked_sync_done`` 闩(C1:闩只辖恢复局面,达标臂每达标帧发射)
     ——发射核与恢复局面共用 ``launch_prepared_battle``,禁第二套
     StartBattle 发射位。
@@ -1705,6 +1775,19 @@ class CwLoop(SrOperation):
                 CwScreenArmoryBox(self.ctx), journal_name='武装箱',
                 frame_tag='overlay_armory_box', wait=2)
 
+        # 0f2. 备战武装箱选择画面(R7,批 2a):OpenBox 终结化开箱后弹出的
+        #      四选一选卡画面 → CwScreenBoxPick(OCR 卡名 → decide_box_card
+        #      策略契约 → 点卡;选卡即终结交回,单选族例外 screen_op.md §7)。
+        #      分发位序:在备战分支(1)前——选卡画面盖备战,不截胡会误派
+        #      CwScreenPrep ping-pong。PickBoxCard 备战动作形态随批 2a 删除
+        #      (词表/发射臂/执行器选卡半),选卡职责归本画面 op。
+        if self.round_by_find_area(screen, '货币战争-备战-武装箱选择',
+                                   '标识-请选择', crop_first=False).is_success:
+            self._snap('box_pick')
+            return self._dispatch_screen_op(
+                CwScreenBoxPick(self.ctx), journal_name='武装箱选择',
+                frame_tag='overlay_box_pick', wait=1.5)
+
         # 0e2. 商店刷新概率表弹窗 → 点 × 关闭(live 2026-08-14 1-2 实锤补:点球误触开后无分支消化,
         #       遮出战按钮 → Director bail → 外环也认不出 → 停机)。× 位置 VLM 定位 (1501,263);
         #       mouse_move 必带(bug#1:恢复原语同坐标点击曾落空)。
@@ -2378,13 +2461,15 @@ class CwLoop(SrOperation):
             if self._prep_np_count == 0:
                 self._cw_exhaust_attempts = 0
             if self._prep_np_count >= self.PREP_NO_PROGRESS_ROUNDS:
-                # 备战收益耗尽 → 出战臂(ADR-0554;F2 判据放宽,T-167):
-                # 恒指纹窗口动作批并集 ⊆ {OpenShop, RunDeploy} ∧ 末批
-                # RunDeploy ∧ 上环 success 的形态不属执行面卡死,停机只会
-                # 烧掉不可复现的对局预算——备战等待零收益(机制依据见判据
-                # docstring),出战支配性优于等待。发射核与达标臂共用
-                # readiness_battle_launch(C1 单一发射函数);失败连击
-                # 达 3 放弃短路回落守卫停机(与达标臂防线 C1 同构)。
+                # 备战收益耗尽 → 出战臂(ADR-0554;F2 判据放宽,T-167;
+                # 批 2a 重推 = {OpenShop},末批相位条款随 RunDeploy 删除
+                # 退役——重推判据见 EXHAUSTION_WINDOW_ACTIONS 注):恒指纹
+                # 窗口动作批并集 ⊆ {OpenShop} ∧ 上环 success 的形态不属
+                # 执行面卡死,停机只会烧掉不可复现的对局预算——备战等待
+                # 零收益(机制依据见判据 docstring),出战支配性优于等待。
+                # 发射核与达标臂共用 readiness_battle_launch(C1 单一发射
+                # 函数);失败连击达 3 放弃短路回落守卫停机(与达标臂防线
+                # C1 同构)。
                 if prep_exhaustion_launch_eligible(
                         _np_actions, getattr(self, '_prep_last_success',
                                              None),
@@ -2479,8 +2564,8 @@ class CwLoop(SrOperation):
                                 self._battle_ts = time.monotonic()  # ADR-0250
                                 self._battle_wait_active = True
                                 log.info('[cw-loop] 备战收益耗尽(连续 %d 环 '
-                                         '状态指纹零推进,窗口动作批并集 %s ∧ '
-                                         '末批 RunDeploy)→ 出战: %s',
+                                         '状态指纹零推进,窗口动作批并集 %s)→ '
+                                         '出战: %s',
                                          self._prep_np_count,
                                          sorted(getattr(
                                              self, '_prep_np_actions',
@@ -2633,8 +2718,8 @@ class CwLoop(SrOperation):
             # 分派,识别机制不出分发层(设计 §3.4 过渡相位件收编挂账兑现;
             # 书册卡处理链经 journal 包装保 op 行,先例 = 本文件 0k 分支)。
             def _on_prep_round(ok: bool, res: Any) -> OperationRoundResult | None:
-                # 备战环出口 success 记录(收益耗尽判据输入,ADR-0554):RunDeploy
-                # 发射契约下 success 含 STATUS_NOOP 合法稳态,fail = 执行面失败。
+                # 备战环出口 success 记录(收益耗尽判据输入,ADR-0554):
+                # 发射契约下 success 含计划空合法稳态,fail = 执行面失败。
                 self._prep_last_success = ok
                 if not ok:   # 迁移审计 w68(git 历史):OperationResult 无 __bool__,
                     # bool(FAIL)=True——裸 not _ok 恒 False,r332 停滞守卫成死码
