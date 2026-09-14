@@ -14,9 +14,9 @@
 
 | 动作 | 词表/op 载体 | 触发判据(指针) |
 |---|---|---|
-| 买牌 | `BuyCard` → `operations/cw_op/cw_shop_actions.py::BuyCardOp` | 六序判类 + M2 义务 + M2b/C1 支配支 + EV 买面(§1 候选买入评估行) |
-| 刷新 | `RefreshShop` → `cw_shop_actions.py::RefreshShopOp`(**段终结**) | 刷新门路径总账 + R2 熔断 + P92 存在性门 + P36-a(§1 刷新门行) |
-| 关商店 | `CloseShop` → `cw_shop_actions.py::CloseShopOp`(**访问终结**) | 收工判定(§1);席满腾位链第一步 |
+| 买牌 | `BuyCard` → `operations/cw_op/cw_buy_card_action.py::BuyCardOp` | 六序判类 + M2 义务 + M2b/C1 支配支 + EV 买面(§1 候选买入评估行) |
+| 刷新 | `RefreshShop` → `cw_refresh_shop_action.py::RefreshShopOp`(**段终结**) | 刷新门路径总账 + R2 熔断 + P92 存在性门 + P36-a(§1 刷新门行) |
+| 关商店 | `CloseShop` → `cw_close_shop_action.py::CloseShopOp`(**访问终结**) | 收工判定(§1);席满腾位链第一步 |
 
 ## 3. 能力 vs 策略(在案判例)
 
