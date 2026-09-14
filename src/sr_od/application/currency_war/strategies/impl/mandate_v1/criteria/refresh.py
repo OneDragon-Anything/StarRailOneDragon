@@ -66,6 +66,22 @@ def r1_commitment_account(total_ledger: float, budget: int) -> tuple[bool, str]:
             else (False, 'account_over_budget'))
 
 
+def r1_horizon_closed(r_remaining: int) -> bool:
+    """R1 域内放行的末轮豁免谓词(计划视野关闭维;消费位 = shop.py
+    R1 域内残形切分线)。
+
+    ``r_remaining`` 坐标系 = kernel/cw_plane_table.r_remaining(到局终
+    的总剩余轮数,**含当前节点**);``<= 1`` = 本帧后无未来节点,金随
+    局终沉没(货币战争单局制,结算不保留金)=> 刷新的机会成本归零,
+    任何正概率出牌机会弱支配停手——「一次买齐这一级即停」的完整性
+    判据(r1_commitment_account)在此帧族失去辖域根据(计划无后续
+    可完成),放行交还必花域授权。非末轮帧族(金有存续价值)完整性
+    判据照常辖刷新发射,超账帧拦(转升级/停手,泄金阶梯其余臂不受
+    影响)。血线维度不辖刷新发射(user_playstyle [39]:hp 只进读数
+    位)。
+    """
+    return r_remaining <= 1
+
 def r2_budget(gold: int, reserve: int, refresh_cost: int) -> bool:
     """付费刷新预算门(r2;臂①=门关闭)。金−预留 ≥ 刷价才批。"""
     return gold - reserve >= refresh_cost

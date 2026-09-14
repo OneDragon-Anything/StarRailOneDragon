@@ -2832,19 +2832,41 @@ def decide_shop_action(bs: GameState, session: StrategySession,
             ok_r1, rkey = crit_refresh.r1_commitment_account(
                 _ledger, _g0 - g_star)
             if _zone_hit and rkey == 'account_over_budget':
-                # R1 域内残形切分线(20 号稿;ADR-0528):g*/L 核算账降为
-                # 期望核算排序信号(三分类 (iii) 整门,非只豁免息损项),
-                # 可负担性(r2_budget)留资格硬闸;合格集空守卫
-                # (no_chaseable_member,(ii) 类 fail-closed)不在此列照旧。
-                ok_r1 = True
-                _r1_src = 'must_spend_r1_yielded'   # 触发源记录(sim obs)
-                _count('must_spend_r1_account_yielded')   # 零静默纪律
-                if _arms is not None:
-                    # F-6(落地审;批件 §6-4)键④联合分键:yielded 支在
-                    # p2plus 无目标帧族的分布直读键——落码后该族预期归零
-                    #(判死帧合格集空,no_chaseable 先于 yielded),联合键
-                    # 与历史全量键分离,禁混桶。
-                    _count('must_spend_r1_yielded_no_target')
+                # R1 域内残形切分线(20 号稿;ADR-0528)——设计出处 =
+                # 必花域「要花」授权对 g*/L 核算账的切分;辖域申报:现辖
+                # = 末轮豁免支(计划视野关闭),其余域内超账帧恢复账前件
+                # 拦(口径分叉修复;病灶 = 2026-09-15 sim 批量找问题报告
+                # 「问题 1」零买入连刷段)。合格集空守卫(no_chaseable_
+                # member,(ii) 类 fail-closed)不在此列照旧。
+                # 末轮豁免支:本帧后无未来节点(谓词单一源 = crit_refresh.
+                # r1_horizon_closed;契约弃权 fail-closed 走拦支),金随
+                # 局终沉没 => 刷新机会成本 = 0,正概率出牌机会弱支配
+                # 停手——放行照旧。
+                _hc_ok = contracts.ensure_contract(
+                    ('refresh', 'r1_horizon_closed'),
+                    contracts.ContractCtx(gold=gold), counters) \
+                    and crit_refresh.r1_horizon_closed(_rounds)
+                if _hc_ok:
+                    ok_r1 = True
+                    _r1_src = 'must_spend_r1_yielded'   # 触发源记录(sim obs)
+                    _count('must_spend_r1_account_yielded')   # 零静默纪律
+                    if _arms is not None:
+                        # F-6(落地审;批件 §6-4)键④联合分键。辖域申报:
+                        # 本键现辖 = 末轮豁免支放行量;修复前旧批读数 =
+                        # 全域 yielded 量级(同上报告,零买入连刷段量级
+                        # 代理),两口径禁混桶,跨批对照按口径分节。
+                        _count('must_spend_r1_yielded_no_target')
+                else:
+                    # 期望账前件恢复:「一次买齐这一级即停」的完整性判据
+                    #(r1_commitment_account 路径总账,输入全为游戏定义
+                    # 量)全域一致辖刷新发射——计划账超预算 = 一次买不
+                    # 齐,部分刷的期望尾段 = 零产出烧金段(主批零买入
+                    # 刷新 761 次 × 2 金);拦后帧落 L3 必花域升级
+                    #(转升级)或 CloseShop(停手),泄金阶梯买/压库臂
+                    # 不受影响。血线维度不辖本判据(user_playstyle
+                    # [39]:hp 只进读数位)。
+                    ok_r1 = False
+                    _count('must_spend_r1_account_fail')
         else:
             ok_r1, rkey = (False, 'contract_abstain')
             r2_reserve = g_star

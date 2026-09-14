@@ -300,7 +300,11 @@ CONTRACTS: dict[tuple[str, str], Contract] = {
         '+ L ≤ g − g*,输入全为游戏定义量(REFRESH_PROB/XP 表/息律),'
         '无标定槽位依赖(旧 V_GAP 槽位比较项已随 V̄ 链退役)',
         '用户裁定禁胜率建模(2026-09-04);形式二规格=P40/P47/P56 复用'),
-    ('refresh', 'r2_budget'): Contract(
+    ('refresh', 'r1_horizon_closed'): Contract(
+        None, 'R1 域内放行的末轮豁免谓词(计划视野关闭维;r_remaining '
+        '含当前节点,<=1 = 金随局终沉没;输入=horizon 现读,零新自由'
+        '参数;T-245 批)',
+        'sim 批量找问题报告 2026-09-15「问题 1」+user_playstyle [39]'),    ('refresh', 'r2_budget'): Contract(
         _gold_minus_reserve_ctx,
         '付费刷新预算门:前提=金−预留语境(现读金与预留均在场;'
         'r2 不在硬约束③ S 预留拦截对象列)',
