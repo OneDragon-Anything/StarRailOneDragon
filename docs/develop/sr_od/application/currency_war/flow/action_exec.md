@@ -17,7 +17,7 @@
 | 升级 | `LevelUp` | 点购买经验循环至 level+1 |
 | 商店 | `OpenShop(read_only)` | 开店意图（EnsureShopOpen/Closed 已退役，W970 批 C） |
 | 出战 | `StartBattle` | 环出口；含未达上限确认；验证 = 备战标识消失；**豁免屏蔽** |
-| 组合（P1 过渡） | `RunBuyPhase` / `RunDeploy` / `RunEquip` / `RunTools` | 组合壳：RunBuyPhase 执行分支已删（改 OpenShop 编排）；RunDeploy = CwOpDeploy；RunEquip = CwOpEquipAll；RunTools = CwOpTools（工具执行批 ；白名单/文档曾漏登本行，V3-01 勘误） |
+| 组合（P1 过渡） | `RunBuyPhase` / `RunDeploy` / `RunEquip` / `RunTools` | 组合壳：RunBuyPhase 执行分支已删（改 OpenShop 编排）；RunDeploy = CwScreenDeploy；RunEquip = CwOpEquipAll；RunTools = CwOpTools（工具执行批 ；白名单/文档曾漏登本行，V3-01 勘误） |
 
 动作实例键 `action_key(action)` = 类型+行为参数（SellBench(3) 与 SellBench(5) 各自计数；归因字段经字段 metadata 不入键——归因标签不改变动作实例身份；`cw_prep_actions.py:190-206`）——屏蔽/失败计数的幂等粒度。
 
@@ -27,7 +27,7 @@
 
 | 执行面 | 三态形态 |
 |---|---|
-| 部署 CwOpDeploy | ①计划空 ∧ 0 落地 = `STATUS_NOOP`（合法稳态，bench 留置，round_success）；②计划非空 ∧ placed=0（非遮蔽域）= round_fail（交框架失败链，"失败帧已存证"）；③placed>0 = `STATUS_DEPLOYED`；④入口失配闸命中 = round_fail 先于①②③（板满失配/幻影满板 = 发射面读与执行面读失配的暴露信号；**窄豁免**：板满失配 ∧ fresh 帧前排 4 槽全空 ∧ 后排非系统单位在场 = 合法场内换排工作形态 → 场内换排修复 → 出口复验前排 ≥1 → `STATUS_ROWFIX_RECOVERED`（新具名成功状态）/维持 fail；幻影满板与「满板∧前排有人」仍立即 return， 修订辖域）；⑤遮蔽哨命中（registry decision presence 探测哨，**发射前拦截**）= `STATUS_OVERLAY_PREEMPTED` round_fail，同 gate_fail 通道立即 return——部署拖拽自身触发的 decision overlay 遮蔽发射窗（列车同行跨档部署触发「选择伙伴」为驱动形态），发射面在一切像素读之前让位，**槽位不回收、剩余单位留 bench**，0 系 overlay 分支接管自愈。**拖拽零判效**（T-268/T-277 落地判定 machinery 已拆）：拖拽机械发出即计入，落地事实归下一帧入口观察对账。执行契约 = 3 元组 `(placed, plan_empty, gate_fail)`；失败状态具名常量 = `STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`/`STATUS_OVERLAY_PREEMPTED`（`CwOpDeploy` 类常量，判读侧分键）。**出口不变量（T-174 修订 §2.1）**：成功出口（`STATUS_DEPLOYED`/`STATUS_NOOP` 收尾复验、`STATUS_NO_BENCH` 早退点复验、`STATUS_ROWFIX_RECOVERED` 豁免路径复验）CV 现读承诺「上阵 ≥1 ⇒ 前排 ≥1」，不过 = `STATUS_FRONT_INVARIANT_FAIL` round_fail，禁静默 success |
+| 部署 CwScreenDeploy | ①计划空 ∧ 0 落地 = `STATUS_NOOP`（合法稳态，bench 留置，round_success）；②计划非空 ∧ placed=0（非遮蔽域）= round_fail（交框架失败链，"失败帧已存证"）；③placed>0 = `STATUS_DEPLOYED`；④入口失配闸命中 = round_fail 先于①②③（板满失配/幻影满板 = 发射面读与执行面读失配的暴露信号；**窄豁免**：板满失配 ∧ fresh 帧前排 4 槽全空 ∧ 后排非系统单位在场 = 合法场内换排工作形态 → 场内换排修复 → 出口复验前排 ≥1 → `STATUS_ROWFIX_RECOVERED`（新具名成功状态）/维持 fail；幻影满板与「满板∧前排有人」仍立即 return， 修订辖域）；⑤遮蔽哨命中（registry decision presence 探测哨，**发射前拦截**）= `STATUS_OVERLAY_PREEMPTED` round_fail，同 gate_fail 通道立即 return——部署拖拽自身触发的 decision overlay 遮蔽发射窗（列车同行跨档部署触发「选择伙伴」为驱动形态），发射面在一切像素读之前让位，**槽位不回收、剩余单位留 bench**，0 系 overlay 分支接管自愈。**拖拽零判效**（T-268/T-277 落地判定 machinery 已拆）：拖拽机械发出即计入，落地事实归下一帧入口观察对账。执行契约 = 3 元组 `(placed, plan_empty, gate_fail)`；失败状态具名常量 = `STATUS_EVENT_OVERLAY`/`STATUS_BOARD_FULL_MISMATCH`/`STATUS_PHANTOM_FULL_BOARD`/`STATUS_LANDED_NONE`/`STATUS_OVERLAY_PREEMPTED`（`CwScreenDeploy` 类常量，判读侧分键）。**出口不变量（T-174 修订 §2.1）**：成功出口（`STATUS_DEPLOYED`/`STATUS_NOOP` 收尾复验、`STATUS_NO_BENCH` 早退点复验、`STATUS_ROWFIX_RECOVERED` 豁免路径复验）CV 现读承诺「上阵 ≥1 ⇒ 前排 ≥1」，不过 = `STATUS_FRONT_INVARIANT_FAIL` round_fail，禁静默 success |
 | 备战动作执行器 | `execute(action) -> (progressed: bool, detail: str)`：progressed=False 涵盖 NOOP 与失败时由 detail 区分（`cw_screen_prep.py:1368-1372` 消费） |
 | 商店编排 | `_open_shop_phase -> (progressed, detail)`；read_only 开店成功即 progressed（读数目标达成） |
 | 序列消费 | `StartBattle ∧ progressed` 才是出战完成；not progressed 一律 fail-stop 交回 |
@@ -50,7 +50,7 @@
 - **SellBenchOp**：拖拽卖出（统一拖拽原语**机械单发**:确认 settle → hold 短拖 → 光标 parking;零判效零重试,源槽像素验重试已拆）→ **发出即记账**（total_sell / total_sell_income 计划值）→ tracking 同步（置 None 不紧缩）+ `register_round_sold`（同轮不回买,轮键自校验）。execute 恒 True;落地事实归下一帧入口观察 reconcile 对账。
 - **CloseShopOp**（终结恒可用）：动作 op 内 no-op,关店点击由编排壳 CwOpCloseShop 承担。**CompTransactionOp**（终结,复合动作类）：执行即访问结束交回重观察（终结邻接 fallback）。
 
-## 5. 部署执行（CwOpDeploy，`cw_op_deploy.py`）
+## 5. 部署执行（CwScreenDeploy，`cw_op_deploy.py`）
 
 - **前置**：registry decision 全集锚（`cw_overlay_registry.derive_decision()`，T-277 registry 化——旧硬编码三屏扩为全集单一源，纯收紧）任一命中 → `round_fail(STATUS_EVENT_OVERLAY+命中画面名)`（执行环境失配速报交回重判；op 内检查 = 派发间隙窗口期第二道执行断言，第一道 = cw_loop 0 系 overlay 分支 + 宿主入口防线，禁旧 success-skip 把弃执行记成成功）。口径 = registry 内：选择装备/骇入策划等 registry 外 overlay 屏在本检查仍漏检（已知残余，第一道防线辖）。
 - **输入装配**：槽位坐标全部从 screen_info 读（备战栏 9/前排 4/后排按 cap 差公式选档 `select_back_layout`，单一入口；7 格档未建档保守 8 格超集+留证）；cap = paddle 直读域防抖（权威，含宝钻/诅咒修正；失读才单调链 max 兜底——低读阻塞上阵贵、高读白拖一次便宜）。

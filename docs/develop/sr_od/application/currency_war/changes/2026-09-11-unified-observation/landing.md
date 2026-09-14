@@ -44,7 +44,7 @@
 - 位面情报采集纯函数三件既有测试锁原样保绿 + 双节点图边保留断言;
 - sim 腿不适用例外清单逐屏落测试 docstring;
 - 写入流对拍:本阶段无适用面(五屏零 BoardState 写端;位面情报采集 ctx 中转原样,如实申报;design.md §2.2-4);
-- **收口锁**:cw_screen 全目录画面 op 均为 `CwScreenOpBase` 后代(AST 断言,落本阶段锁文件)——B4 判据第 1 条的 `cw_screen/` 目录达成凭据(达成面收窄:B4 点名清单余 `cw_op/` 商店系三件 `CwOpBuyCards`/`CwOpOpenShop`/`CwOpCloseShop` 直继 `SrOperation`,不在本迭代,挂账归后续批;design.md §2.1-4);
+- **收口锁**:cw_screen 全目录画面 op 均为 `CwScreenOpBase` 后代(AST 断言,落本阶段锁文件)——B4 判据第 1 条的 `cw_screen/` 目录达成凭据(达成面收窄:B4 点名清单余 `cw_op/` 商店系三件 `CwScreenBuyCards`/`CwOpOpenShop`/`CwOpCloseShop` 直继 `SrOperation`,不在本迭代,挂账归后续批;design.md §2.1-4);
 - §12 通用工程门(同上)。
 **验收凭据形式**:锁文件 + L1 快速集输出。
 

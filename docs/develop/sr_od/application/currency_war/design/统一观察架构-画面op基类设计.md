@@ -853,10 +853,10 @@ fire_emit_hooks 合并为单一发射口;落地回执门〔OUTCOME_TRIGGER_LANDE
 | RefreshShop 刷新 | 点刷新钮;验真=牌名集变化 ∨ 金币扣减(点击核对,不存快照字段) | simulate(RefreshShop) + 引擎重抽五张(draw_shop,rng) | record_refresh_execution(免费闸照旧)+ REFRESH bump_key | 计数登记=kernel 已就位(接线点收编中);重抽=引擎校准层合法 |
 | LevelUp / LevelUpShop 升级 | 循环点「购买经验」至 level+1(prep_actions);验真=等级 +1 ∨ 金扣减 | simulate(LevelUp) + 引擎等级/XP 推进 | 升级标记挂点(prep_actions 既有,经属性归一接账本);XP 簿记=执行侧保留 | 单击价/击数推导=kernel 已就位(xp_click_cost/clicks_to_next_level,FALLBACK 遗留随批次二) |
 | SellBench 卖备战席 | 拖拽至卖出区;验真=备战席少该牌 + 退款金入账(期望态对账) | simulate(SellBench) + 引擎退款(cw_state.sell_refund 口径) | 拖拽期望态对账(compute_drag_expect,执行侧保留) | 退款公式=kernel 已就位;sim 卖牌退款调用点对账=§7 行 4 |
-| SellDeployed 卖场上角色(两线词表成员:PrepAction + Action cw_state:749) | 同拖拽链 + 装备期望态(_equip_expect_for_sell→compare_equip_expect);**换血卖通道 = CwOpDeploy._sell_offtarget_deployed(cw_op_deploy.py:1564,主链活跃)**——部署腾位的 off-target 卖出经本通道(CwOpSellOffTarget op 已下线预登记:文件头自注「当前零调用,清理由 _sell_offtarget_deployed 承担」,重接前非活跃通道) | simulate + 引擎退坑 | 拖拽/装备期望态对账 | 同上;换血卖通道=实机私有合法(执行通道,非数学推导) |
+| SellDeployed 卖场上角色(两线词表成员:PrepAction + Action cw_state:749) | 同拖拽链 + 装备期望态(_equip_expect_for_sell→compare_equip_expect);**换血卖通道 = CwScreenDeploy._sell_offtarget_deployed(cw_op_deploy.py:1564,主链活跃)**——部署腾位的 off-target 卖出经本通道(CwOpSellOffTarget op 已下线预登记:文件头自注「当前零调用,清理由 _sell_offtarget_deployed 承担」,重接前非活跃通道) | simulate + 引擎退坑 | 拖拽/装备期望态对账 | 同上;换血卖通道=实机私有合法(执行通道,非数学推导) |
 | SwapDeploy 换血部署(商店线词表成员 cw_state:769) | 无现役点击链 | 无现役引擎调用 | 无(**负向锁申报 F7:登记槽 v3_pending_rollback 非空 = 告警**) | **发射面退役 = as-built 事实申报(F7,无退役裁定 ADR 在案,不引裁定)**:发射面 = 发射器不再被策略器发射;**登记半边仍活**——flow 谷底回滚臂(flow._process_settlement_strategy_half:287-297,锚 rollback_weakest 调用处 :293)仍构造 SwapDeploy(cw_evolution.py:1596 = 构造点非裁定出处)写入 v3_pending_rollback(StrategyState 声明 mandate_state.py:124),全仓零消费(1 写 0 读)= 半边活口;测试锁 test_cw_comps_library 仍断言 rollback_weakest 返回 SwapDeploy。词表成员保留,显式申报禁静默缺席、**禁静默复活**;重接时两适配器同批补映射(词表纪律 §6.1) |
 | EnsureShopOpen / EnsureShopClosed(PrepAction 词表成员) | 已退役——现役开店/关店由 OpenShop/CloseShop 语义承载 | 无 | 无 | **标退役**——词表成员保留、发射路径退役,禁静默缺席或静默复活 |
-| DeployMove / RunDeploy 部署 | 拖拽 bench→行槽(CwOpDeploy,槽位 SIFT);验真=paddle 部署数变化(dep_pre 对照) | simulate(DeployMove) + 引擎部署块(轮末,序;**策略选择面 sim 零覆盖**,§1.2 病例 4) | 部署对账(dep_delta 记账,执行侧保留) | 装配源契约=钉死(尾批独立重验,§10.1);策略面收敛=T5 扩域 |
+| DeployMove / RunDeploy 部署 | 拖拽 bench→行槽(CwScreenDeploy,槽位 SIFT);验真=paddle 部署数变化(dep_pre 对照) | simulate(DeployMove) + 引擎部署块(轮末,序;**策略选择面 sim 零覆盖**,§1.2 病例 4) | 部署对账(dep_delta 记账,执行侧保留) | 装配源契约=钉死(尾批独立重验,§10.1);策略面收敛=T5 扩域 |
 | RunEquip 穿装备 | 拖装备→角色(cw_op_equip_all);验真=装备归属期望态(compare_equip_expect) | simulate + 引擎装备分配(equip_allocation,与执行器同源;策略选择面同上零覆盖) | 装备期望态对账 | 分配逻辑两域同源已就位;穿着即合成等观察收口(记录模型 §4.1 豁免);策略面收敛=T5 扩域 |
 | RunTools 用工具 | 拖装备→冶金炉 / 拆装扳手(cw_op_tools);验真=装备区变化 | 未建模(TOOL_GRANT_INJECT 注入通道=校准层) | 无 | sim 未建模=合法(工具为跨局持存物品不建模,申报在册) |
 | OpenBox 开箱 | 点箱→确认;验真=箱槽变空/新内容 | 未建模(sim 无箱实体——记录模型按实机真值箱占席,合成口已申报) | 无 | sim 未建模=合法 |
@@ -1059,7 +1059,7 @@ sample_node_sequence / P2_NODE_SEQUENCE 与替换函数的关系(替换前后序
    事件屏族/投资两屏/结算(战斗等待)/简报/BOSS 简报(T-8)、推进型变体
    11 屏(T-47)、收尾五屏(T-48)均已迁毕,cw_screen/ 全目录收口锁在册
    (AST 断言:凡 op 祖链达 SrOperation 者必为 CwScreenOpBase 后代);
-   cw_op/ 商店系三件(CwOpBuyCards/CwOpOpenShop/CwOpCloseShop)经 B4
+   cw_op/ 商店系三件(CwScreenBuyCards/CwOpOpenShop/CwOpCloseShop)经 B4
    挂账批收编(T-45:open/close = 只读/导航变体,buy_cards = 旧体委托
    变体,五段映射申报住类 docstring),B4 判据第 1 条点名清单全量达成。
    **相位 1 深度统一仍待独立批**:kernel 选职级缺省函数落地 + 简报/

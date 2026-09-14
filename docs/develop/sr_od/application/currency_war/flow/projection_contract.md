@@ -100,8 +100,8 @@
 
 ### 4.3 发射⇔执行透传通道（换血臂）
 
-- **归因透传**：`MandateState.cw4_m1p_arm_pending`——写端 = mandate 发射位（发射 `RunDeploy` 时置臂名）；消费点 = `cw_op_deploy.py::CwOpDeploy.deploy` 卖出臂**读后即清**（一次消费）；发射位每帧入口**无条件复位** None（防「本帧无 m1p、执行未及消费」的跨帧残留误归因）。该槽只承载归因分键（键族 `sell_offtarget_arm_*`），不承载行为参数。
-- **臂态位**：`ExecState.cw4_swap_arm_on`——执行面换阵卖出义务臂开合状态（`CwOpDeploy.deploy` 逐环重评写入），供判读开合抖动。
+- **归因透传**：`MandateState.cw4_m1p_arm_pending`——写端 = mandate 发射位（发射 `RunDeploy` 时置臂名）；消费点 = `cw_op_deploy.py::CwScreenDeploy.deploy` 卖出臂**读后即清**（一次消费）；发射位每帧入口**无条件复位** None（防「本帧无 m1p、执行未及消费」的跨帧残留误归因）。该槽只承载归因分键（键族 `sell_offtarget_arm_*`），不承载行为参数。
+- **臂态位**：`ExecState.cw4_swap_arm_on`——执行面换阵卖出义务臂开合状态（`CwScreenDeploy.deploy` 逐环重评写入），供判读开合抖动。
 - **判定单一源 + 两域差**：换血计划装配单一源 = `kernel/cw_deploy_logic.py::assemble_swap_plan_inputs` + `select_swap_plan`（发射⇔执行同函数同参，禁第二份口径）。已知域差（by design，非分叉）：发射面喂入决策帧槽位表（`mandate.py` m1p 段，`frame.bench`/`frame.deployed`）；执行面喂入 `session.last_state` 滞后帧 + **SIFT 现读覆写** `evolution_swap_armed`（`cw_op_deploy.py` deploy-swap 段，域 = 本帧 SIFT 读）。发射⇔执行间隙内 bench 变化由执行面现读吸收；逐件可卖判定单一源 = `swap_sell_exclusion_reason`。
 - **装备穿戴的执行期时序**（L0/L1 实证批素材）：穿戴落点判定 = avatar 下方 mini icon 区 CV-diff（`_below_icon_diff`，阈值常量在 `cw_op_equip_all.py`），drag 前稳帧确认 + 落空补救链坐标现读重定位；owned 授予快照每次穿戴 op 执行只记一遍（`_snap_logged`，循环重读不重复记）；跨轮 owned 演化靠穿戴销账与复读覆盖——消费 `session.last_owned_equips` 的一方不得假设其逐帧重读。
 
@@ -113,8 +113,8 @@
 
 | 臂 | 载体 | 读的投影面字段 | 读法 |
 |---|---|---|---|
-| 部署臂 | `operations/cw_op/cw_op_deploy.py::CwOpDeploy` | bench/前/后排占用（CV `slot_occupied` 现读）、身份（SIFT `read_bench_chars`/`read_deployed_chars`）、`deploy_cap`（防抖真读）、board（`session.last_state.board`） | 全执行期现读；计划判定单一源 = kernel `select_deployments_reasoned`；`assemble_bench_list` 构造 BenchChar（`slot=_bi+1`，占槽物品显式 `is_item_slot=True`） |
-| 换血臂（M1″/m1p） | 发射面 `mandate.py` m1p 段 + 执行面 `CwOpDeploy.deploy` deploy-swap 卖出臂 | 发射面 = 决策帧槽位表（Snapshot/GameState 域）；执行面 = last_state 滞后帧 + SIFT 现读；逐件拒因 = `swap_sell_exclusion_reason` 现读域喂入 | §4.3；1:1 替换上限 = `bench_target_count`；卖出后残余补部署走 `residual_fill_plan`（点位下标域） |
+| 部署臂 | `operations/cw_op/cw_op_deploy.py::CwScreenDeploy` | bench/前/后排占用（CV `slot_occupied` 现读）、身份（SIFT `read_bench_chars`/`read_deployed_chars`）、`deploy_cap`（防抖真读）、board（`session.last_state.board`） | 全执行期现读；计划判定单一源 = kernel `select_deployments_reasoned`；`assemble_bench_list` 构造 BenchChar（`slot=_bi+1`，占槽物品显式 `is_item_slot=True`） |
+| 换血臂（M1″/m1p） | 发射面 `mandate.py` m1p 段 + 执行面 `CwScreenDeploy.deploy` deploy-swap 卖出臂 | 发射面 = 决策帧槽位表（Snapshot/GameState 域）；执行面 = last_state 滞后帧 + SIFT 现读；逐件拒因 = `swap_sell_exclusion_reason` 现读域喂入 | §4.3；1:1 替换上限 = `bench_target_count`；卖出后残余补部署走 `residual_fill_plan`（点位下标域） |
 | 卖出臂（prep 域） | `prep_actions.py::_sell_bench` | 族 B `SellBench.slot`（物理槽号） | `drag_bench_to_sell(op, ctx, slot−1)`（基转换在调用点）；成功后 `_track_remove_bench` 销 tracked 账 + `apply_op_effect` 登记期望态 |
 | 卖出臂（shop 域） | `operations/cw_op/cw_shop_action_ops.py::SellBenchOp` | 族 A `SellBench.bench_idx`（槽位表下标）+ `expect` 期望名 | `drag_bench_to_sell` 直收 0-based，机械单发发出即记账（tracked 双账无条件推进：置 None 不紧缩）+ `register_round_sold`；expect 代际校验归转移函数（`apply_shop_action_logic` 对非空 expect 做 `stale_proposal` 拒，applied=False 零容器写）；零判效，落地事实归下一入口观察对账 |
 | 装备臂 | `operations/cw_op/cw_op_equip_all.py::CwOpEquipAll` | owned 多列网格（`read_equips`）、`session.last_owned_equips`、`read_row_equipped` 已穿表（slot 1-based）、avatar CV-diff | §3.7 搬运链；穿戴候选过滤工具类；P0-2 只往空槽 drag（`_empty_slots`，防覆盖已穿） |

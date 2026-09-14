@@ -2,7 +2,7 @@
 
 ## 0. 元信息
 
-- 迭代目标:`cw_screen/` 目录下仍直继 `SrOperation` 的画面 op 全部迁移 `CwScreenOpBase` 生命周期,并把第二画面 op 基类 `CwProgressionScreenOp` 收编为基类的只读/导航变体——B4 全局判据第 1 条「画面 op 点名清单内全部 op 继承基类(含只读/导航变体)」在本迭代的达成面 = `cw_screen/` 目录;点名清单余 `cw_op/` 商店系三件(`CwOpBuyCards`/`CwOpOpenShop`/`CwOpCloseShop`,直继 `SrOperation`,由 `CwScreenPrep` 内部驱动)不在本迭代辖域,挂账归后续批(达成声明收窄定谳见 §2.1-4;清单副本 = 本目录 `recovered/统一观察架构-开放问题清单.md`)。账本指针:T-32(本迭代设计)/T-8(首落地阶段,优先级 8)。
+- 迭代目标:`cw_screen/` 目录下仍直继 `SrOperation` 的画面 op 全部迁移 `CwScreenOpBase` 生命周期,并把第二画面 op 基类 `CwProgressionScreenOp` 收编为基类的只读/导航变体——B4 全局判据第 1 条「画面 op 点名清单内全部 op 继承基类(含只读/导航变体)」在本迭代的达成面 = `cw_screen/` 目录;点名清单余 `cw_op/` 商店系三件(`CwScreenBuyCards`/`CwOpOpenShop`/`CwOpCloseShop`,直继 `SrOperation`,由 `CwScreenPrep` 内部驱动)不在本迭代辖域,挂账归后续批(达成声明收窄定谳见 §2.1-4;清单副本 = 本目录 `recovered/统一观察架构-开放问题清单.md`)。账本指针:T-32(本迭代设计)/T-8(首落地阶段,优先级 8)。
 - 状态:定稿(2026-09-11 对抗报告 11 项逐条处置后;待复验)
 - 文档清单:
   - `details/五相位屏迁移详设.md` —— 账本 T-8 五屏(投资环境/投资策略/战斗等待/简报/BOSS 简报)逐屏五段形态
@@ -43,7 +43,7 @@
    | 位面过渡/武装箱/未达上限/等待1-1/位面情报采集 | 无 | 直迁 `CwScreenOpBase`(**不**重挂变体) | §3.4 收编映射(位面详情/敌人情报行)+ 本总纲关键取舍 2 |
    | 推进型 11 子类(`CwProgressionScreenOp`) | 无(空决策合同) | 随基类收编成为变体子类 | 合同逐字保留 = B4 变体形态 |
 3. **推进型基类收编**:`CwProgressionScreenOp` 改继承 `CwScreenOpBase`,其空决策骨架(入口观察 → 单次推进 → 重入观察裁决,预算 = 1 推进 + 1 重入裁决)映射为变体五段:observe = 入口/重入观察裁决、decide = 空申报、act = `progress_once`、on_outcome = 无登记件;合同逐字保留,11 子类零改动(实测:无子类覆写 `handle`,仅覆写 `entry_ok`/`progress_once`)。
-4. **收口锁面**:三阶段全交付后,「cw_screen 全目录画面 op 均为 `CwScreenOpBase` 后代」成立 AST 静态断言(落阶段三锁文件)。**达成声明收窄(定谳)**:该锁证明面 = `cw_screen/` 目录,是 B4 判据第 1 条的**严格弱命题**——点名清单内 `cw_op/` 商店系三件 `CwOpBuyCards`(`cw_op_buy_cards.py:1162`)/`CwOpOpenShop`(`cw_op_open_shop.py:72`)/`CwOpCloseShop`(`cw_op_close_shop.py:65`)直继 `SrOperation`(由 `CwScreenPrep` 内部驱动),三阶段全交付后仍非基类后代,如实申报为**不在本迭代**,挂账归后续批;refresh_odds 交互屏已随阶段二变体收编。B4 其余三条(read_game_state 调用点封闭集/§7 T1-T5/§6.6 覆盖度盘点)不在本迭代辖域。
+4. **收口锁面**:三阶段全交付后,「cw_screen 全目录画面 op 均为 `CwScreenOpBase` 后代」成立 AST 静态断言(落阶段三锁文件)。**达成声明收窄(定谳)**:该锁证明面 = `cw_screen/` 目录,是 B4 判据第 1 条的**严格弱命题**——点名清单内 `cw_op/` 商店系三件 `CwScreenBuyCards`(`cw_op_buy_cards.py:1162`)/`CwOpOpenShop`(`cw_op_open_shop.py:72`)/`CwOpCloseShop`(`cw_op_close_shop.py:65`)直继 `SrOperation`(由 `CwScreenPrep` 内部驱动),三阶段全交付后仍非基类后代,如实申报为**不在本迭代**,挂账归后续批;refresh_odds 交互屏已随阶段二变体收编。B4 其余三条(read_game_state 调用点封闭集/§7 T1-T5/§6.6 覆盖度盘点)不在本迭代辖域。
 
 ### 2.2 详设划分与跨详设接口契约
 

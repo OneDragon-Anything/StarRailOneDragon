@@ -25,7 +25,7 @@
 **完成判据**:
 - 生产链 CwSimFrame 零残留(grep 锁,src 全树);
 - 安灯钩子行为保持:计划花费>0 金差≈0 → 仍停机(对拍既有哨兵语义);
-- 买光商店实机单跑 CwOpBuyCards 不再崩(重启 server 后)——本判据与 3.5 批1 联合验收,本阶段允许 shop 域仍走旧紧缩读链的过渡态(容器 shop 域写入口径不变)。
+- 买光商店实机单跑 CwScreenBuyCards 不再崩(重启 server 后)——本判据与 3.5 批1 联合验收,本阶段允许 shop 域仍走旧紧缩读链的过渡态(容器 shop 域写入口径不变)。
 **验收凭据形式**:grep 锁 + 安灯钩子对拍 + 实机买光店单跑。
 
 ## 3.3 阶段一·遥测序列化面切换
@@ -53,7 +53,7 @@
 **依赖**:3.2(生产链直写)
 **优先级建议**:9
 **完成判据**:
-- 买光商店实机单跑 CwOpBuyCards 正常 CloseShop 收工(goal 总判据);
+- 买光商店实机单跑 CwScreenBuyCards 正常 CloseShop 收工(goal 总判据);
 - 定长不变量锁绿;两个硬必改点行为锁绿(空位不触发未识别卡钩子);
 - 失读形态锁绿(全 unknown 窗 → CloseShop+停机留证,shop-slot-model §5.1);
 - 受影响测试全量一次过(精简纪律:只新增定长不变量/三态判据/单源锁)。
@@ -78,7 +78,7 @@
 **验收凭据形式**:四域复扫 + 文档对照。
 
 ## 3.8 阶段三·判效拆除 4 族
-**范围**:按 design.md §2 阶段三方案拆 BuyCardOp 灰度差判效/SellBench 像素验重试/RefreshShopOp 判效半边/CwOpDeploy 像素判效族;合法面 5 个不拆。
+**范围**:按 design.md §2 阶段三方案拆 BuyCardOp 灰度差判效/SellBench 像素验重试/RefreshShopOp 判效半边/CwScreenDeploy 像素判效族;合法面 5 个不拆。
 **设计依据**:design.md §2 阶段三(单文档)
 **文件面**:operations/cw_op/cw_shop_action_ops.py、operations/currency_war/prep_actions.py、operations/cw_op/cw_op_deploy.py
 **依赖**:3.5(①族的 reconcile 承接前提)

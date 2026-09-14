@@ -32,7 +32,7 @@
 ### A-4【中】B4 判据第 1 条达成声明过度:收口锁面(cw_screen/ 全目录)小于 B4 点名清单
 
 - **位置**:`design.md` §0(迭代目标 =「使『画面 op 点名清单内全部 op 继承基类(含只读/导航变体)』成立」)与 §2.1-4、`landing.md` 3.3(收口锁 =「B4 判据第 1 条本迭代达成凭据」);对照 `recovered/统一观察架构-开放问题清单.md` §B4——决策屏清单明列「商店系(buy_cards/open_shop/close_shop/refresh_odds 交互屏)」。
-- **核验**:商店系三件在 `cw_op/` 且直继 `SrOperation`——`cw_op_buy_cards.py:1162`(CwOpBuyCards)/`cw_op_open_shop.py:72`/`cw_op_close_shop.py:65`(由 CwScreenPrep 内部驱动,cw_screen_prep.py:2268-2279)。本迭代三阶段全部交付后,它们仍非基类后代;收口锁(AST 断言限 cw_screen/ 目录)证明的是严格更弱的命题。
+- **核验**:商店系三件在 `cw_op/` 且直继 `SrOperation`——`cw_op_buy_cards.py:1162`(CwScreenBuyCards)/`cw_op_open_shop.py:72`/`cw_op_close_shop.py:65`(由 CwScreenPrep 内部驱动,cw_screen_prep.py:2268-2279)。本迭代三阶段全部交付后,它们仍非基类后代;收口锁(AST 断言限 cw_screen/ 目录)证明的是严格更弱的命题。
 - **发作场景**:迭代收口后按 §0 认定 B4 第 1 条成立 → 旧路径退役批、read_game_state 白名单复核、正本 §9.2 步骤 4 更新以假前提开工;或该声明被照抄进正本,迁移完成判定面永久失真。
 - **修法方向**:二选一——①§0 目标句与 3.3 凭据句缩圈为「cw_screen/ 目录达成;B4 第 1 条余 cw_op/ 商店系三件挂账(归后续批)」;②对三件显式申报「非画面 op / 豁免 + 理由」并回填 B4 清单。禁维持现状的两头表述。
 
