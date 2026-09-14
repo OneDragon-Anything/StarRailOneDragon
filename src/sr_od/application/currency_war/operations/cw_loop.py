@@ -1357,6 +1357,11 @@ class CwLoop(SrOperation):
                 exec_state_of,
             )
             exec_state_of(session).cw_resumed_match = True
+            # T-251 双形态出口:接管场景两账与屏幕结构性不同源(tracked
+            # 未建/残缺、容器逻辑态陈旧均可能),标记种子段待再锚定——
+            # 消费端 = 商店种子段 rebuild_tracked_at_seed_if_vacant
+            #(重建成功才清;失败下 visit 重试)。
+            exec_state_of(session).cw_resume_seed_anchor = True
         except Exception as e:  # noqa: BLE001  旗标写入不阻塞分派
             log.debug(f'[cw-loop] 恢复局旗标写入跳过: {e}')
 

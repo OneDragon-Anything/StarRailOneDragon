@@ -227,6 +227,17 @@ class ExecState:
     # 生命周期:新 match 新执行态 = 缺省 False(正常新局恒 False,开局推断
     # 合法不受误伤)。
     cw_resumed_match: bool = False
+    # 接管后种子段两账再锚定待办(T-251 双形态出口)。True = 本局标记为
+    # 恢复对局后,商店种子段尚未用屏幕真值重建 tracked+容器 bench 两账
+    # ——接管场景两账与屏幕结构性不同源(tracked 未建/残缺、容器逻辑态
+    # 陈旧均可能,实机 04:39 形态 expected 8 件 vs tracked 9 件反向分叉),
+    # 首次商店访问种子段须以屏幕真值再锚定一次,重建成功即消费置 False;
+    # 失败(失读/槽号不健康)不消费,下一 visit 重试。写端 =
+    # cw_loop._mark_session_resumed(与 cw_resumed_match 同点同口);消费端 =
+    # cw_screen_buy_cards.rebuild_tracked_at_seed_if_vacant。session 级
+    # 生命周期:新 match 新执行态 = 缺省 False(正常新局首播种即同源,
+    # 不走本出口)。
+    cw_resume_seed_anchor: bool = False
 
 
 # ============================================================ op 逻辑效果推进

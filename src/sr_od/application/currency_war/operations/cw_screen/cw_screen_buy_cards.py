@@ -712,10 +712,16 @@ def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
     崩溃循环(实机 2026-09-15 两次停局实证)。本函数 = 守卫唯一合法出路
     的落点:tracked 未建(空账)时用屏幕真值重建,守卫本体零改动。
 
-    触发红线(设计边界,必须守):**仅 tracked 空账/未建触发**。tracked
-    有账但与屏幕分叉不走此出口——有账分叉 = 丢件/识别幻影/逻辑态建模
-    bug,读屏重建会掩盖真 bug,必须交 ``guard_expected_vs_tracked``
+    触发红线(设计边界,必须守):**非接管场景仅 tracked 空账/未建触发**。
+    tracked 有账但与屏幕分叉不走此出口——有账分叉 = 丢件/识别幻影/逻辑态
+    建模 bug,读屏重建会掩盖真 bug,必须交 ``guard_expected_vs_tracked``
     断言响亮暴露(调用方在本函数返回后立即跑种子守卫,分叉照旧炸)。
+    **接管场景例外**(``cw_resume_seed_anchor`` 待办在场;编排者补证实锤
+    2026-09-15 04:39 形态:种子守卫 expected 8 件 vs tracked 9 件,tracked
+    多镜流/黄泉——与空账形态方向相反):接管后两账与屏幕**结构性不同源**
+    (tracked 未建/残缺、容器逻辑态陈旧均可能),任一账态都视为未锚定,
+    首个商店访问种子段以屏幕真值再锚定一次;「有账分叉仍断言」红线仅在
+    非接管场景保留。
 
     两账同帧语义:重建写 tracked 主账(``bench_from_compact``,槽号即
     布局,与 reconcile_tracking 写回同构)+ 容器 bench 观察
@@ -725,9 +731,11 @@ def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
 
     单向阀门(ledger.tracked_seed_rebuild_done):同 visit 至多尝试一次
     读屏重建(刷新续段共用同一账本);重建后仍分叉 = 照旧断言停,禁反复
-    重建稀释防线。合成特效窗内读数物理不可信(星爆动画,与备战环观察
-    写端同判 ``is_merge_effect_window``)→ 本帧不读不关阀门,续段/下
-    visit 新帧重试。
+    重建稀释防线。接管待办(execute 级 ``cw_resume_seed_anchor``)独立于
+    本阀门跨 visit 存续:**仅重建成功消费**,失败/特效窗不消费,下 visit
+    新帧重试。合成特效窗内读数物理不可信(星爆动画,与备战环观察写端
+    同判 ``is_merge_effect_window``)→ 本帧不读不关阀门,续段/下 visit
+    新帧重试。
 
     Args:
         session: 策略会话(tracked 主账与容器宿主)。
@@ -739,12 +747,12 @@ def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
           就绪,[] = 读成功且屏幕席真空。
 
     Returns:
-        'tracked_present' = tracked 有账(红线,零读屏零写,交守卫);
-        'valve_closed' = 本 visit 已尝试过;'effect_window' = 特效窗帧
-        不读(阀门未关);'read_failed' = 读链失读(不写账,台账显影);
-        'screen_vacant' = 屏幕席真空(合法态,两账已空,零写);
-        'slot_unhealthy' = 读回槽号不健康(拒绝写账,台账显影,同
-        reconcile 健康门语义);'rebuilt' = 两账已同帧重建。
+        'tracked_present' = 非接管场景 tracked 有账(红线,零读屏零写,
+        交守卫);'valve_closed' = 本 visit 已尝试过;'effect_window' =
+        特效窗帧不读(阀门未关);'read_failed' = 读链失读(不写账,台账
+        显影);'screen_vacant' = 屏幕席真空(合法态,零写;接管待办不
+        消费,交守卫);'slot_unhealthy' = 读回槽号不健康(拒绝写账,台账
+        显影,同 reconcile 健康门语义);'rebuilt' = 两账已同帧重建。
     """
     from sr_od.application.currency_war.kernel.cw_exec_state import (
         BENCH_CAPACITY,
@@ -752,8 +760,13 @@ def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
         exec_state_of,
     )
     _es = exec_state_of(session)
-    if any(bc is not None for bc in (_es.tracked_bench_chars or [])):
-        return 'tracked_present'   # 红线:有账不重建,分叉交守卫断言
+    # 接管待办(双形态出口):接管后任一账态(空账/有账残缺)都重建;
+    # 重建成功才消费,失败下 visit 重试。
+    _resume_anchor = bool(getattr(_es, 'cw_resume_seed_anchor', False))
+    _tracked_vacant = not any(bc is not None
+                              for bc in (_es.tracked_bench_chars or []))
+    if not _tracked_vacant and not _resume_anchor:
+        return 'tracked_present'   # 红线:非接管有账不重建,分叉交守卫断言
     if ledger.tracked_seed_rebuild_done:
         return 'valve_closed'
     from sr_od.application.currency_war.kernel.cw_reconcile import (
@@ -774,14 +787,15 @@ def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
                 reader_source='rebuild_tracked_at_seed_if_vacant',
                 gap_large=False,
                 note='接管真空重建出口(T-251)失读分支')
-        log.warning('[cw!][seed] tracked 空账但读屏重建失读(模板未就绪)'
-                    '→ 两账未动,交种子守卫')
+        log.warning('[cw!][seed] 种子段读屏重建失读(模板未就绪,接管待办'
+                    '不消费)→ 两账未动,交种子守卫')
         return 'read_failed'
     if not read:
         # 空读 = 屏幕席真空(合法态;与失读不可分是备战环 P2-1 既有判例,
-        # 本处读链 None/[] 已分型,[] 按真真空)。tracked 已空,容器未写,
-        # 零行为面。
-        log.debug('[cw][seed] tracked 空账且屏幕席真空 → 无需重建')
+        # 本处读链 None/[] 已分型)。空账形态下零行为面;接管待办形态下
+        # 账面claims占用而屏幕真空 = 账屏真分歧,不写不消费待办,交守卫
+        # 断言(与 reconcile 双空读守卫「空读不是板真没了」同向保守)。
+        log.debug('[cw][seed] 屏幕席真空 → 无需重建(账面若有占用交守卫)')
         return 'screen_vacant'
     slots = [getattr(bc, 'slot', None) for bc in read]
     healthy = (all(isinstance(s, int) and 1 <= s <= BENCH_CAPACITY
@@ -806,6 +820,8 @@ def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
     # reconcile_tracking 写回同构)+ 容器 bench 观察(family='obs',
     # actor 在册;bench_view_from_obs 空集守卫上方已挡,此处恒非 None)。
     _es.tracked_bench_chars = bench_from_compact(list(read))
+    # 接管待办消费(仅成功;失败分支保留待办,下 visit 重试)。
+    _es.cw_resume_seed_anchor = False
     from sr_od.application.currency_war.kernel.cw_game_state import (
         ChannelSig,
         bench_view_from_obs,
@@ -821,17 +837,18 @@ def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
     with contextlib.suppress(Exception):
         defects.record_defect(
             'bench', defects.DEFECT_KIND_TRACKED_SEED_REBUILD,
-            expected='tracked 主账在场(非接管真空态)',
-            observed=(f'tracked 空账,屏幕 bench 读回 {len(read)} 件 '
+            expected=('tracked 主账在场且与屏幕同源' if not _tracked_vacant
+                      else 'tracked 主账在场(非接管真空态)'),
+            observed=(f'屏幕 bench 读回 {len(read)} 件 '
                       f'{[(bc.char_id, bc.star) for bc in read]},'
                       'tracked+容器两账已同帧重建'),
-            verdict=('留证-种子段 tracked 空账读屏重建成功(接管真空治本'
-                     '出口,T-251;触发红线 = 仅 tracked 空账,有账分叉'
-                     '不走此出口交守卫断言;单向阀门 = 同 visit 一次)'),
+            verdict=('留证-种子段两账读屏重建成功(T-251 双形态出口:'
+                     '空账真空 or 接管结构性不同源;有账分叉红线仅在非'
+                     '接管场景保留;单向阀门 = 同 visit 一次)'),
             reader_source='rebuild_tracked_at_seed_if_vacant',
             gap_large=True, auto_resolved=True,
-            note='接管真空单向阀门重建事件(判读接管真空复发直接查本键)')
-    log.warning('[cw!][seed] tracked 空账(接管真空)→ 读屏重建两账:%s'
+            note='接管重建单向阀门事件(判读接管真空/异向分叉复发直接查本键)')
+    log.warning('[cw!][seed] 种子段两账读屏重建(空账真空/接管不同源):%s'
                 '(同 visit 单次;重建后仍分叉 = 守卫断言)',
                 [(bc.char_id, bc.star) for bc in read])
     return 'rebuilt'
@@ -1190,12 +1207,14 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
         from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
             guard_expected_vs_tracked as _guard_seed,
         )
-        # T-251 接管真空重建出口:种子守卫前,tracked 主账未建(空账)时
-        # 用入口帧屏幕真值同帧重建 tracked+容器两账(店开 0n/接管首分发
-        # 路径不经过 heavy 观察,守卫自注「下一入口 heavy 重建」结构性
-        # 不可达——本出口即该唯一合法出路的落点)。触发红线 = 仅空账,
-        # 有账分叉零读屏零写照旧断言;单向阀门 = 同 visit 一次
-        #(语义详见 rebuild_tracked_at_seed_if_vacant docstring)。
+        # T-251 接管真空重建出口(编排者补证后扩双形态):种子守卫前,
+        # tracked 空账(真空)或接管待办(cw_resume_seed_anchor,账屏
+        # 结构性不同源)时,用入口帧屏幕真值同帧重建 tracked+容器两账
+        #(店开 0n/接管首分发路径不经过 heavy 观察,守卫自注「下一入口
+        # heavy 重建」结构性不可达——本出口即该唯一合法出路的落点)。
+        # 触发红线 = 非接管场景有账分叉零读屏零写照旧断言;单向阀门 =
+        # 同 visit 一次,接管待办仅成功消费(语义详见
+        # rebuild_tracked_at_seed_if_vacant docstring)。
         rebuild_tracked_at_seed_if_vacant(
             match.session, _entry_shot, ledger,
             read_bench_fn=make_seed_screen_bench_read(op.ctx, match.session))
