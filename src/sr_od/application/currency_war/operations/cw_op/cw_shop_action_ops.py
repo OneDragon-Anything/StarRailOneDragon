@@ -336,8 +336,10 @@ def guard_expected_vs_tracked(state: GameState, session,
       stage='seed'(visit 入口首动作前):期望侧 = 容器 bench(唯一实机
       漏斗写端 = 备战装配环 bench 观察块;合成口对未读域跳写,见
       CwSimFrame.bench_readable),两账多集分歧 = 观察漏斗与执行账
-      真实分叉(跟踪账丢件/观察失真),fail-stop 交回重观察——下一入口
-      heavy 读屏重建可归零。
+      真实分叉(跟踪账丢件/观察失真),断言炸出后由店开态恢复路由
+      接管(cw_screen_buy_cards:守卫前的空账/接管重建出口辖结构性
+      不同源;守卫后的收店→备战环 heavy 重建→再入辖有账真分歧,
+      对局预算一次,耗尽即停)。
       stage='project'(默认,动作直写后):分叉 = 逻辑态直写/mutate 模型
       分叉——逻辑态建模 bug 的唯一在环检测器(错误卖出会实际执行、损害
       不可逆,历次逻辑态口径返工史为证)。
@@ -382,13 +384,20 @@ def guard_expected_vs_tracked(state: GameState, session,
             _reseed_bench_layout(state, tracked)
             return
         if stage == 'seed':
+            # 文案与实际条件对齐(勘误:旧文案「tracked 主账为空而屏幕
+            # bench 非空」只覆盖单侧形态,本分支真实条件 = 双账多集不等
+            # 的任意方向真分歧;旧句「下一入口 heavy 读屏重建可归零」
+            # 描述的路径在店开 0n/接管首分发结构性不可达,现役出路 =
+            # 守卫**前**的 rebuild_tracked_at_seed_if_vacant(空账/接管
+            # 待办辖域)+ 守卫**后**的种子分叉恢复路由(收店→备战环
+            # heavy 重建→再入,对局预算一次;耗尽 = 本消息随 round_fail
+            # 升级为停机凭据,见 cw_screen_buy_cards 恢复路由)。
             raise AssertionError(
-                '[cw-shop][guard] tracked 主账为空而屏幕 bench 非空'
-                '(跟踪账丢件/识别幻影嫌疑,非播种错误——播种 bug 形态'
-                '已随 ADR-0520 旧账退役消失):'
+                '[cw-shop][guard] 种子期双账多集真分歧(播种/入口账分叉:'
+                '跟踪账丢件/识别幻影/逻辑态陈旧嫌疑,非播种错误——播种 '
+                'bug 形态已随 ADR-0520 旧账退役消失):'
                 f'expected={expect_sig} tracked={tracked_sig}'
-                '(期望态在首动作前即与 tracked 账不同源,逻辑态链无责;'
-                '下一入口 heavy 读屏重建可归零)')
+                '(期望态在首动作前即与 tracked 账不同源,逻辑态链无责)')
         raise AssertionError(
             '[cw-shop][guard] 期望态 vs tracked 双账分离(逻辑态建模 bug?):'
             f'expected={expect_sig} tracked={tracked_sig}'

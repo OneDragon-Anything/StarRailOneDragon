@@ -1952,14 +1952,30 @@ class CwLoop(SrOperation):
                     _so_counters.get('branch_shop_open_hit', 0) + 1
             _prep = CwScreenPrep(self.ctx)
 
-            def _on_shop_visit(ok: bool, res: Any) -> None:
+            def _on_shop_visit(ok: bool, res: Any) -> OperationRoundResult | None:
                 if isinstance(_so_counters, dict):
                     _k = 'branch_shop_open_visit_ok' if ok \
                         else 'branch_shop_open_visit_fail'
                     _so_counters[_k] = _so_counters.get(_k, 0) + 1
+                if not ok:
+                    # T-230 恢复标记带消费端:种子分叉恢复预算耗尽后,
+                    # visit 失败不再默认 round_wait 重入(重入 → 段顶
+                    # 守卫仍红 → 再失败 = 粘性环),改 round_fail 交未知
+                    # 画面兜底链。标记写端/谓词单一源 = cw_screen_buy_cards
+                    # 恢复路由(seed_divergence_stopped)。
+                    from sr_od.application.currency_war.operations.cw_screen.cw_screen_buy_cards import (
+                        seed_divergence_stopped as _sd_stopped,
+                    )
+                    if _sd_stopped(_so_counters):
+                        log.error('[cw!] 种子分叉恢复已停机(预算耗尽标记'
+                                  '在场)→ visit 失败不再重入,round_fail '
+                                  '交兜底链')
+                        return self.round_fail(
+                            '种子分叉恢复停机后的商店访问(交兜底链)')
                 log.info('[cw-loop] 开商店态(备战子态族)→ 商店访问路径'
                          '(策略器决策+关店终结)(ok=%s detail=%s)',
                          ok, getattr(res, 'status', ''))
+                return None   # 默认映射 round_wait(1.5)
 
             # 0n 转交通道经包装落 op='商店访问' 行(S11 对齐关键行:复盘按
             # journal 直读商店访问边界,ADR-0584 §3.3)。visit_open_shop 返回

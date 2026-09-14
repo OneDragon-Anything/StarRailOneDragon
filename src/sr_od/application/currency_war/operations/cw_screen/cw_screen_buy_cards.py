@@ -854,6 +854,169 @@ def rebuild_tracked_at_seed_if_vacant(session: StrategySession,
     return 'rebuilt'
 
 
+# ===== T-230 店开态种子分叉恢复路由(守卫**后**出口;状态机判据)=====
+
+#: 恢复预算上限:每对局至多一次「收店→备战环 heavy 重建→再入」。
+#: K=1 的语义论证(改值前先驳论证,禁拍值):恢复算子 R = 收店 + 备战环
+#: heavy 观察(reconcile_tracking 写回 tracked、备战环观察块写容器,同一次
+#: 读屏同帧)→ 再入重判。R 后种子守卫两账同源 ⟺ 分叉源 ∈ 观察滞后类;
+#: R 执行一次即完成分叉源归类——R 后仍分叉 ⇒ 分叉源 ∉ 观察滞后类(识别
+#: 幻影/逻辑态建模 bug)⇒ 重复同一算子不收敛(恢复循环 = 新型死循环),
+#: 禁止第二次。收店机械失败不需独立执行预算:点击已发未关店 → 下 visit
+#: 0n 重入 → 守卫仍红(两账未变)→ 预算已耗走停机支;重入幂等性由
+#: close_shop 与 0n 既有自愈语义承载。
+SEED_DIVERGENCE_RECOVER_LIMIT: int = 1
+
+#: 恢复路由状态机的载体键(strategy_state.cw4_counters;对局级跨 visit
+#: dict——exec_state 字段为本批授权面外,以 seed_divergence_ 前缀与观测
+#: 分键族区分;两键为**执行控制键**,非纯观测:计数参与预算谓词、标记
+#: 参与 cw_loop 0n 分支停机判据,判读时同表)。写点 = 恢复函数,消费点
+#: = 谓词与 cw_loop _on_shop_visit。
+CW4_KEY_SEED_DIVERGENCE_RECOVERIES = 'seed_divergence_recoveries'
+CW4_KEY_SEED_DIVERGENCE_STOPPED = 'seed_divergence_stopped'
+
+
+def seed_divergence_recovery_budget(counters: Any) -> bool:
+    """恢复预算谓词(状态机迁移 M1「守卫红→恢复」的判据单一源)。
+
+    允许恢复 ⟺ 载体在场(dict)∧ 已恢复次数 < SEED_DIVERGENCE_RECOVER_LIMIT。
+    载体缺席(裸 session/第三方策略面,生产 mandate 不发生)→ False:
+    调用方保持断言原样上抛的响亮路径(与本路由落地前行为一致,保守端
+    安全,不引入新停机形态)。禁在调用点内联计数比较——判据只走本谓词。
+    """
+    if not isinstance(counters, dict):
+        return False
+    return counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0) \
+        < SEED_DIVERGENCE_RECOVER_LIMIT
+
+
+def seed_divergence_stopped(counters: Any) -> bool:
+    """停机标记谓词(M2 落标 → cw_loop 0n 分支消费;判据单一源)。
+
+    True = 本对局种子分叉恢复预算已耗尽且已停机交回——0n 分支对 visit
+    失败不再默认 round_wait 重入(防「重入→再守卫红→再失败」粘性),
+    改 round_fail 交未知画面兜底链。载体缺席 → False(无标记即无停机
+    语义,与谓词缺席契约一致)。
+    """
+    return isinstance(counters, dict) and bool(
+        counters.get(CW4_KEY_SEED_DIVERGENCE_STOPPED, 0))
+
+
+def recover_seed_divergence_by_close_shop(
+        op: SrOperation, match: Any, ledger: 'ShopVisitLedger',
+        err: AssertionError, *,
+        close_fn: Callable[[], Any] | None = None,
+) -> OperationRoundResult | None:
+    """店开态种子分叉恢复路由(T-230;T-251 重建出口的辖域外邻接件)。
+
+    【辖域切分声明】run_buy_waves 段顶两出口互斥、顺序固定:
+    - T-251 出口(rebuild_tracked_at_seed_if_vacant,守卫**前**):触发 =
+      tracked 空账 ∨ 接管待办(cw_resume_seed_anchor);动作 = 就地两账
+      同帧重建(零路由,同 visit 单向阀门);辖域 = 接管/真空的结构性
+      不同源在店内消化。
+    - 本函数(守卫**后**,AssertionError 已发生):触发 = 非接管有账真
+      分歧(bug 嫌疑);动作 = 响亮留证后收店交回外循环 → 备战分支
+      heavy 观察(reconcile_tracking + 观察块,既有生产写点)同帧重建
+      两账 → 再入重判;辖域 = 有账真分歧的一次自愈机会 + 不收敛即停
+      (预算论证见 SEED_DIVERGENCE_RECOVER_LIMIT)。
+    同帧互斥:T-251 出口成功 → 守卫绿,不会进入本函数;其失败分支
+    (失读/槽号不健康/屏真空)→ 守卫红 → 本函数接管(收店后备战环
+    heavy 观察是更强的重建机会,读屏画面不同)。
+
+    【不辖域】stage='project'(动作循环内)守卫分叉不经本路由:动作
+    已发射,收店恢复不安全且会掩盖逻辑态建模 bug——该守卫 = 建模 bug
+    的在环检测器,响亮断言即设计行为。
+
+    恢复的自愈机制:守卫红时两账均未写(守卫只断言);收店后外循环
+    下轮识别备战画面走备战分支,环入口 heavy 观察以屏幕真值重建两账,
+    分叉归零当且仅当分叉源 = 观察滞后类;此后再开店守卫自然绿。
+
+    Args:
+        op: 宿主 op(留证截图与 round_fail 构造;0n 路径 = CwScreenPrep
+          实例,显式开店路径 = 环实例,均具 round 上下文)。
+        match: 局容器(counters 载体宿主 = match.session.strategy_state
+          .cw4_counters)。
+        ledger: 访问账本(本函数只读不改;恢复后调用方以 (None, ledger)
+          收工,visit 收尾照常走 finalize 空账 best-effort)。
+        err: 守卫断言异常(载体缺席时原样重抛,保持改动前语义)。
+        close_fn: 收店动作注入缝(测试替身;缺省 None = 生产闭包
+          close_shop(op),幂等——收起不在即店已关,无失败形态)。
+
+    Returns:
+        None = 恢复动作已发(收店交回),调用方 return (None, ledger);
+        OperationRoundResult(round_fail)= 预算耗尽停机支,调用方
+        return (_rec, None),0n 分支经 ``seed_divergence_stopped`` 标记
+        round_fail 交兜底链(单次停,不再粘性重入)。
+    """
+    from sr_od.application.currency_war.kernel.cw_strategy_session import (
+        strategy_state_of,
+    )
+    _counters = getattr(strategy_state_of(match.session), 'cw4_counters',
+                        None)
+    if not seed_divergence_recovery_budget(_counters):
+        if not isinstance(_counters, dict):
+            # 载体缺席(非 mandate 生产形态)= 预算不可查:原样重抛,
+            # 交节点级重试链(与落地前行为逐位一致,无标记可落)。
+            raise err
+        # 停机支(M2):置标记 + 留证 + 单次停。标记 = 0n 分支判据,
+        # run_buy_waves 自身经 (round_fail, None) 退出(重入已被标记
+        # 在外循环截断,本函数不会再被触达第二次同形分叉)。
+        _counters[CW4_KEY_SEED_DIVERGENCE_STOPPED] = 1
+        with contextlib.suppress(Exception):
+            op.save_screenshot(prefix='seed_divergence_stop')
+        with contextlib.suppress(Exception):
+            defects.record_defect(
+                'bench', 'seed_divergence_stop',
+                expected=('守卫 seed 双账同源(恢复算子后仍分叉 = 分叉源'
+                          '非观察滞后类,自愈出口不收敛)'),
+                observed=str(err),
+                verdict=(f'留证-种子分叉恢复预算耗尽停机(对局内已恢复 '
+                         f'{_counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0)}'
+                         f'/{SEED_DIVERGENCE_RECOVER_LIMIT} 次;判读查 '
+                         f'recovered 分键行对照,分叉源下钻交给报告面)'),
+                reader_source='recover_seed_divergence_by_close_shop',
+                gap_large=True,
+                note=('分键登记 = 本写点注释(恢复路由族两个 kind 字符串'
+                      '均内联,先例 = deployed invariant_break;常量化挂'
+                      ' defects.py 授权批)'))
+        log.error('[cw!] 种子分叉恢复预算耗尽(已恢复 %d/%d 次)→ 单次停,'
+                  '交兜底链;分叉凭据 = %s',
+                  _counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0),
+                  SEED_DIVERGENCE_RECOVER_LIMIT, err)
+        return op.round_fail(
+            f'种子分叉恢复预算耗尽'
+            f'({_counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0)}/'
+            f'{SEED_DIVERGENCE_RECOVER_LIMIT}),交兜底链')
+    # 恢复支(M1):计数 → 留证 → 收店。两账零写(守卫只断言),重建
+    # 交备战环 heavy 观察(借既有生产写点,本路由零读屏重建)。
+    _counters[CW4_KEY_SEED_DIVERGENCE_RECOVERIES] = \
+        _counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0) + 1
+    with contextlib.suppress(Exception):
+        op.save_screenshot(prefix='seed_divergence_recover')
+    with contextlib.suppress(Exception):
+        defects.record_defect(
+            'bench', 'seed_divergence_recovered',
+            expected='守卫 seed 双账同源',
+            observed=str(err),
+            verdict=('留证-种子分叉断言红后收店恢复(交回外循环走备战环'
+                     'heavy 重建再入;再入仍分叉 = 预算耗尽停机,查 stop '
+                     '分键;重建零读屏本路由不代偿)'),
+            reader_source='recover_seed_divergence_by_close_shop',
+            gap_large=True,
+            note='分键登记 = 本写点注释(同 stop 分键口径)')
+    log.warning('[cw!] 种子分叉断言红 → 收店恢复(%d/%d):交回外循环'
+                '备战环 heavy 重建后重判;再入仍分叉 = 停机',
+                _counters.get(CW4_KEY_SEED_DIVERGENCE_RECOVERIES, 0),
+                SEED_DIVERGENCE_RECOVER_LIMIT)
+    if close_fn is None:
+        from sr_od.application.currency_war.operations.cw_op.cw_op_close_shop import (
+            close_shop as _close_shop,
+        )
+        close_fn = lambda: _close_shop(op)   # noqa: E731  生产闭包(幂等收店)
+    close_fn()
+    return None
+
+
 def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                   *, spend_gate: Callable[[object], tuple[bool, str]] | None = None,
                   ) -> tuple[OperationRoundResult | None, 'ShopVisitLedger']:
@@ -1220,7 +1383,20 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
             read_bench_fn=make_seed_screen_bench_read(op.ctx, match.session))
         # 对账守卫输入 = 容器(W6 波 4,设计件 §2.5-2:期望态读值改
         # 容器;tracked 播种取消后分叉归因「播种/入口账 vs 模型」语义不变)
-        _guard_seed(_bs_of_entry, match.session, stage='seed')
+        try:
+            _guard_seed(_bs_of_entry, match.session, stage='seed')
+        except AssertionError as _div:
+            # T-230 店开态种子分叉恢复路由:非接管有账真分歧在此从
+            # 「异常→节点重试→重入→再炸」的粘性改道「收店→备战环
+            # heavy 重建→再入」(对局预算一次,SEED_DIVERGENCE_RECOVER_
+            # LIMIT 论证);预算耗尽 = 单次停(round_fail,0n 分支经
+            # stopped 标记交兜底链)。辖域切分(与 T-251 出口/不辖
+            # project 守卫)与返回值契约见恢复函数 docstring。
+            _rec = recover_seed_divergence_by_close_shop(
+                op, match, ledger, _div)
+            if _rec is not None:
+                return (_rec, None)   # 预算耗尽:单次停(停机钩子先例形态)
+            return (None, ledger)   # 恢复动作已发:本 visit 收工交回外循环
         visit_actions: list = []
         _seg_frames = 0
         while True:
