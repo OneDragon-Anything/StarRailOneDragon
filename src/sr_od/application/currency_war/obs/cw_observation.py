@@ -1756,8 +1756,36 @@ def resolve_cost_star(badge_cost: int | None, roster_cost: int) -> tuple[int, in
     return roster_cost, 1, COST_SOURCE_ROSTER_FALLBACK
 
 
-def read_shop_cards(ctx: SrContext,
-                    screen: MatLike) -> list[ShopSlot] | None:
+def _anchor_hit_full_ocr(full_ocr, area) -> bool:
+    """全帧 OCR 位匹配锚判定(token 文本 LCS≥0.5 且 bbox 中心落在
+    area.rect 内;识别层同源全帧路径——裁剪路径对买光态暗钮确定性
+    拒识,实机三败定谳;实测 token 位 (1598,967,47×27) ⊆ 锚 rect)。"""
+    from one_dragon.utils import str_utils
+    if not full_ocr or area is None:
+        return False
+    area_rect = getattr(area, 'rect', None)
+    expected = str_utils.gt(getattr(area, 'text', '') or '', 'game')
+    if area_rect is None or not expected:
+        return False
+    for r in full_ocr:
+        data = getattr(r, 'data', '')
+        if not data or not str_utils.find_by_lcs(expected, data,
+                                                 percent=0.5):
+            continue
+        rr = getattr(r, 'rect', None)
+        if rr is None:
+            continue
+        cx = (getattr(rr, 'x1', 0) + getattr(rr, 'x2', 0)) / 2
+        cy = (getattr(rr, 'y1', 0) + getattr(rr, 'y2', 0)) / 2
+        if area_rect.x1 <= cx <= area_rect.x2 \
+                and area_rect.y1 <= cy <= area_rect.y2:
+            return True
+    return False
+
+
+def read_shop_cards(ctx: SrContext, screen: MatLike,
+                    full_ocr: list | None = None
+                    ) -> list[ShopSlot] | None:
     """SIFT 商店牌行 → 定长 5 槽三态数组(ShopSlot;用户三态裁定 2026-09-13)。
 
     返回 None = 店未开(收起锚 miss;调用方漏斗不写 payload)——旧紧缩
@@ -1792,47 +1820,41 @@ def read_shop_cards(ctx: SrContext,
         # 锚缺失 fail-open 告警(改名/删 area 的回归可见性,r9 review)。
         from one_dragon.utils import log_utils
         log_utils.log.warning('[cw!] read_shop_cards 商店开态锚「按钮-收起」缺失(fail-open)→ 检查 yml')
-    if _collapse_area is not None:
-        # 二值化锚门(买光店实机三败定谳):gold=0 时收起钮暗态渲染,
-        # 原彩色 OCR 对暗底小裁剪拒识 → 锚确定性 miss → payload 清 None
-        # → 决策前置门炸。二值化下白字必然弹出(find_area_in_screen_
-        # binary,screen_utils 自带),按钮亮/暗双态恒命中。
+    if _collapse_area is not None and full_ocr is not None:
+        # 全帧 OCR 位匹配锚判定(实机五败定谳:裁剪路径对买光态暗钮
+        # 确定性拒识——det 模型对低对比小图不可检,二值化亦不救;全帧
+        # 路径活,识别层同源。漏斗既有全帧结果下传,零额外成本)。
+        # 判定确定 → 无重试(同数据重判同结果)。
+        if not _anchor_hit_full_ocr(full_ocr, _collapse_area):
+            return None
+    elif _collapse_area is not None:
+        # 无全帧结果的调用方:二值化裁剪门(3 通道回填,实机四败位),
+        # 首判 miss → 0.6s 单次重判(过渡帧防抖)。
         from one_dragon.base.screen.screen_utils import (
             find_area_in_screen,
         )
         from one_dragon.utils import cv2_utils
-        # 自管二值化(实机四败:框架 find_area_in_screen_binary 的
-        # to_binary 产物为 2D 灰度,onnx 文本检测要求 (H,W,3) 直接崩;
-        # 此处灰度回填 BGR 3 通道后走普通彩色 OCR 路径——白字黑底对
-        # det/识别均为高对比输入,暗态钮恒可检)。
         _bin_screen = cv2_utils.to_binary(screen, threshold=127)
         if _bin_screen.ndim == 2:
             import cv2 as _cv2
             _bin_screen = _cv2.cvtColor(_bin_screen, _cv2.COLOR_GRAY2BGR)
         if find_area_in_screen(ctx, _bin_screen, _collapse_area).value != 1:
-            # 锚文本 OCR 可 flake(截图实证买光店面板展开仍可 miss)→
-            # 0.6s 后单次重判;仍 miss 才认「店未开」(过渡帧防抖,与
-            # 下方稳定门同形态,上限一次不构成等待环)。
             import time as _time
             _time.sleep(0.6)
             _shot2 = ctx.controller.screenshot()
-            # controller 返回 (ts, frame|None) 元组(实机失败 1 实证);
-            # None 帧 = 采集失败,按 miss 处理(店未开语义)
             _frame2 = (_shot2[1] if isinstance(_shot2, tuple) else _shot2)
-            _bin_frame2 = cv2_utils.to_binary(_frame2, threshold=127)
-            if _bin_frame2.ndim == 2:
-                import cv2 as _cv2
-                _bin_frame2 = _cv2.cvtColor(_bin_frame2,
-                                            _cv2.COLOR_GRAY2BGR)
-            if find_area_in_screen(ctx, _bin_frame2,
-                                   _collapse_area).value != 1:
+            if _frame2 is None:
+                return None
+            _bin2 = cv2_utils.to_binary(_frame2, threshold=127)
+            if _bin2.ndim == 2:
+                _bin2 = _cv2.cvtColor(_bin2, _cv2.COLOR_GRAY2BGR)
+            if find_area_in_screen(ctx, _bin2, _collapse_area).value != 1:
                 return None
 
-    from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
-        record_defect,
-    )
-
     def _read_once(scr: MatLike) -> list[ShopSlot]:
+        from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+            record_defect,
+        )
         out: list[ShopSlot] = []
         for i in range(1, 6):
             rect = _area_rect(ctx, f'{A_SHOP_CARD_PREFIX}{i}',
@@ -1940,6 +1962,10 @@ def read_shop_cards(ctx: SrContext,
     # 防淡入帧亮度<50 被误判 empty → 买光店假象 → 误关店。不一致 =
     # 过渡帧,以第二次为准留证;上限一次,不构成等待环。
     import time as _time
+
+    from sr_od.application.currency_war.kernel.cw_telemetry_exit import (
+        record_defect,
+    )
     _time.sleep(0.8)
     # controller.screenshot 返回 (时间戳, 帧|None) 元组(非帧本体),须解包;
     # 帧缺席(截取失败)= 无法重观察,保首读不猜。
@@ -2421,7 +2447,12 @@ def read_game_state(ctx: SrContext, screen: MatLike,
             enemy_affixes_val = list(_sess.briefing_affixes)
     # shop_cards:spec 无的阶段(prep_clean 面板未开,收起锚门本就返空 = 「没牌」
     # 观测真值;battle 帧同)直接置空列表,连锚判定都省(ADR-0462)。
-    shop_val = read_shop_cards(ctx, screen) if _w('shop_cards') else None
+    # 全帧 OCR 一次(锚位匹配 + 牌面判定同源;买光态暗钮裁剪路径
+    # 确定性拒识的根治,实机五败定谳)
+    _full_ocr = (ctx.ocr_service.get_ocr_result_list(image=screen)
+                 if _w('shop_cards') else None)
+    shop_val = (read_shop_cards(ctx, screen, full_ocr=_full_ocr)
+                if _w('shop_cards') else None)
     # r77(轮岗接线):商店开态顺手读概率条真值(60/22/15/3/0 类)——read 失败(None)时
     # 消费方(_sample_cost)自动退基线表;成功时 D 牌蒙特卡洛用实际分布。
     # spec 无的阶段(prep_clean/battle:概率条只印在开店面板,读出恒 None)跳过。
