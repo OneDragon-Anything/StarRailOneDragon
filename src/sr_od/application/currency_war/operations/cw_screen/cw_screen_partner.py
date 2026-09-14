@@ -1,5 +1,7 @@
-# live-verified 2026-08-13:CwScreenPartner 端到端跑通(step1 候选 click 早前实测;step2 点中心立绘
-# (960,300)→「已选择」→ 确认 → overlay 关,live 验)。原自主推进期代码,已 review + live 验,可信。
+# live-verified 2026-08-13:CwScreenPartner 端到端跑通(候选 click 早前实测;确认 →
+# overlay 关,live 验)。更正(2026-09-14 建档证据):本屏 = 单屏单选 + 一次确认,
+# 无第二画面——旧「step2 选强化目标(点中心立绘 960,300→确认)」为确认钮旁
+# 伴随文案「请选择强化角色」的误读(巨星档同款误读),在场检测与二次确认序列已删。
 
 # r104(2026-08-20):SIFT 立绘识别接入(portrait_plaza 库)——候选真身喂 decide_partner,
 # core_chars 匹配真正生效(此前 label 流派名恒不命中 → 恒 idx=0 最左盲点)。
@@ -158,7 +160,7 @@ class CwScreenPartner(CwScreenOpBase):
 
         主源 = 建档「按钮-确认选择」rect 约束 OCR(坐标单一真相源 = screen_info;
         命中即该按钮文本实际位置,与全屏 OCR 同帧同词同点)。rect 内未命中
-        (布局漂移/step2 异位形态)→ 降级全屏 OCR 兜底腿(原行为,miss 语义不变)。
+        (布局漂移)→ 降级全屏 OCR 兜底腿(原行为,miss 语义不变)。
         """
         _area = self.ctx.screen_loader.get_area('货币战争-列车同行', '按钮-确认选择')
         if _area is not None and _area.pc_rect is not None:
@@ -269,24 +271,14 @@ class CwScreenPartner(CwScreenOpBase):
         # (原「到账登记」ConfirmPartner 块已随 ADR-0651 两态制废除:
         #  chosen_partner 写端 = 候选选中时点的 session 写 + write_logic
         #  直写(本 handler),无挂账登记环节。retry 轮重复确认零副作用。)
-        # step2 = 两步链第二段(T#98,伙伴 overlay 必经:确认后进入「请选择
-        # 强化角色」选强化目标,羁绊机制 = 选伙伴并强化)。机械直发(用户
-        # 裁定 2026-09-14:两步链点击序列保留、step2 在场检测拆):点 overlay
-        # 中心立绘(step2 强化目标 = 玩家角色 portrait,click-test 实锤:非
-        # stage 前排(overlay 覆盖不可点)/ 非 bench(不可点))→ 点确认。
-        # confirm2 定位沿用 step1 同款机械定位(坐标单一真相源;locate miss
-        # = 本帧不可点,不盲点,交回重入)。
-        target = Point(960, 300)
-        log.info(f'[cw-partner] step2 点中心立绘 {target}(机械)')
-        self.ctx.controller.mouse_move(target)
-        self.ctx.controller.click(target)
-        time.sleep(0.7)
-        confirm2 = self._find_text_center(self.screenshot(), '确认选择')
-        if confirm2 is not None:
-            self.ctx.controller.mouse_move(confirm2)
-            self.ctx.controller.click(confirm2)
-            time.sleep(1.0)
-        # 机械交回(验证废除):step1/step2 确认是否落地由下一轮重入裁决
+        # 确认 = 单屏单选的一次确认(用户澄清+建档证据更正 2026-09-14):
+        # 本屏无第二画面、无「选强化目标」步——选伙伴 → 点确认 → 重入裁决
+        # 即完。原「判『请选择强化角色』在场 → 点中心立绘+二次确认」整段
+        # 已删(先拆检测、后删序列):该文本 = 确认钮旁伴随文案,旧检测拿
+        # 巨星档 area 跨屏读伙伴帧致误判(巨星调研已证同款误读;建档 =
+        # currency_war_partner.yml 仅 标识-选择伙伴/按钮-确认选择,见
+        # docs/game/screens/currency_war_choose_partner.md)。
+        # 机械交回(验证废除):确认是否落地由下一轮重入裁决
         #(handle 顶部 pending 分支);未落地轮重走已选择态分支(计预算)。
         self._confirm_pending = True
         return self.round_retry(wait=1)
@@ -310,10 +302,11 @@ class CwScreenPartner(CwScreenOpBase):
     def lifecycle_decision_cycle(self, payload: PartnerObservation
                                  ) -> OperationRoundResult:
         """段3-5(单动作内聚):decide+act 内聚于 ``_handle_overlay`` 共享体
-        (候选 OCR/SIFT/决策/遥测/session 写端/到账登记/step2 链全部原位,
-        两路径共享零转录)。段5 on_outcome = 本屏无落地登记件(注册表缺席
-        = 零动作,见 __init__ 申报);出口验真/轮次结果语义在共享体内逐位
-        保留(段迹到 act)。"""
+        (候选 OCR/SIFT/决策/遥测/session 写端/到账登记/确认链全部原位,
+        两路径共享零转录;单屏单选一次确认,step2 序列已删——用户澄清
+        2026-09-14 建档证据更正)。段5 on_outcome = 本屏无落地登记件(注册
+        表缺席 = 零动作,见 __init__ 申报);出口验真/轮次结果语义在共享体
+        内逐位保留(段迹到 act)。"""
         self._lifecycle_mark('decide')
         rs = self._handle_overlay(payload.screen)
         self._lifecycle_mark('act')
