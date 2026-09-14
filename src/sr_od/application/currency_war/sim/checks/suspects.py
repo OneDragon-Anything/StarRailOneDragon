@@ -1,4 +1,4 @@
-"""可疑项检测器集 D1-D11(T-153 自证循环迁移的复盘面;ADR-0593)。
+"""可疑项检测器集 D1-D13(T-153 自证循环迁移的复盘面;ADR-0593)。
 
 **架构定位**(ADR-0593 §4,用户裁定 2026-09-08):检测的归宿 =
 复盘模板生成器(tools/cw/review_skeleton.py)——逐局复盘文档生成时,
@@ -55,6 +55,7 @@ MODE_NAMES: dict[str, str] = {
     'D10': '部署欠载',
     'D11': '幻影实体与槽超买',
     'D12': '末轮升级超发',
+    'D13': '收敛缺陷线',
 }
 
 
@@ -667,6 +668,116 @@ def d12_plane_last_xp_overspend(rows: list[dict]) -> list[dict]:
     return out
 
 
+# =====================================================================
+# --- D13 席满死锁收敛缺陷线(T-229 沉淀;合取判据零新参数) -------------
+# =====================================================================
+
+def _d13_line_bench_full_names(
+        row: dict, member_set: frozenset[str] | None) -> tuple[str, ...]:
+    """本行线内件被席满拒(missing_bench_full)的名集。
+
+    拒因读取 = 波级 ``sim.shop_waves[].rejects`` 全量并;帧级
+    ``shop_rejects`` 只记末波 last-wins,单吃会漏中波拒买(s77091
+    R6 波 1 忘归人被拒、末波无配方牌的实证形态),仅波级缺失
+    (生产合并行形状)时回退帧级。名册不可解析 → 空集(不可复核
+    不定罪)。
+    """
+    if member_set is None:
+        return ()
+    waves = (row.get('sim') or {}).get('shop_waves') or []
+    source: dict[str, str] = {}
+    if waves:
+        for wave in waves:
+            for name, reason in (wave.get('rejects') or {}).items():
+                source[name] = str(reason)
+    else:
+        source = {name: str(reason) for name, reason
+                  in (row.get('shop_rejects') or {}).items()}
+    return tuple(sorted(name for name, reason in source.items()
+                        if reason == 'missing_bench_full'
+                        and name in member_set))
+
+
+def _d13_dead_star1_pairs(row: dict,
+                          member_set: frozenset[str]) -> dict[str, int]:
+    """bench 同名 1★ 非线内对计数(name → 对内件数,≥2 才入)。
+
+    线内同名对 = 合法合成素材,不入;星级读法 = ``int(b.get('star')
+    or 1)``(与 t190_c 死库存分类同款宽容读,星级缺读按 1★ 近似,
+    生产旧行边界如实声明)。
+    """
+    counts: dict[str, int] = {}
+    for piece in (row.get('state') or {}).get('bench') or []:
+        if not isinstance(piece, dict):
+            continue
+        name = piece.get('char_id') or ''
+        if not name or name in member_set \
+                or int(piece.get('star') or 1) != 1:
+            continue
+        counts[name] = counts.get(name, 0) + 1
+    return {name: n for name, n in sorted(counts.items()) if n >= 2}
+
+
+def d13_bench_full_deadlock(rows: list[dict]) -> list[dict]:
+    """席满死锁收敛缺陷线条目:连续 ≥2 轮线内件被 missing_bench_full
+    拒 ∧ bench 含同名 1★ 非线内对(T-229 报告 s77091 下钻的最小充分
+    组合,全字段在帧内,零新参数)。
+
+    形态语义:缺口件持续在售却被席满闸拦,而席位被合成素材守卫锁死
+    的同名 1★ 非线内对(死库存候选)占用——偶发单轮席满属金/席硬闸
+    合法拦截,合取双条件同时成立才显影。豁免边 = 本检测器面(需语境
+    裁决):对是否真死库存(有无第三张来源/囤腿登记)机械不可复算,
+    条目只显影形态交复盘者裁决。
+
+    连击窗 = 行序单调轴同位面相邻轮(D5 同款轴声明;round_num 跨位面
+    重启,跨面不续连击);线成员判定核 = selfcalc.k_members_of_row
+    (line_members 单一源,与拒因生产端 P1 口径同源;P2 锁定帧的
+    locked_buy_membership 收窄面只致漏检方向,不造假阳)。锚点 =
+    判据首次同时成立的轮(连击 ≥2 ∧ 对在场;对迟现则锚点后移),
+    连击延伸轮加交叉引用行(D9 同款归属,ADR-0593 §4.1)。
+    """
+    out: list[dict] = []
+    streak = 0
+    anchor_rn: int | None = None
+    prev_plane: int | None = None
+    for row in rows:
+        plane = row.get('plane') or 1
+        if plane != prev_plane:
+            streak, anchor_rn = 0, None
+            prev_plane = plane
+        members = _sl.k_members_of_row(row)
+        member_set = frozenset(members) if members is not None else None
+        hits = _d13_line_bench_full_names(row, member_set)
+        if not hits:
+            streak, anchor_rn = 0, None
+            continue
+        streak += 1
+        if streak < 2:
+            continue
+        pairs = _d13_dead_star1_pairs(row, member_set or frozenset())
+        bench_used = sum(1 for b in (row.get('state') or {}).get('bench')
+                         or [] if isinstance(b, dict) and b.get('char_id'))
+        rn = row.get('round_num') or 0
+        if pairs and anchor_rn is None:
+            anchor_rn = rn
+            out.append(_entry('D13', row, (
+                f'可疑项(收敛缺陷线):p{plane}r{rn} 线内件 '
+                f'{"、".join(hits)} 被 missing_bench_full 拒(连续 '
+                f'{streak} 轮);bench 同名 1★ 非线内对='
+                f'{"、".join(f"{n}×{c}" for n, c in pairs.items())}'
+                '(合成素材守卫锁席候选)'
+                '——请裁决: 席满死锁收敛缺陷 / 合法席满拦截'),
+                evidence={
+                    'rejected_line_names': list(hits),
+                    'streak_rounds': streak,
+                    'dead_star1_pairs': pairs,
+                    'bench_used': bench_used,
+                }))
+        elif anchor_rn is not None:
+            out.append(_cross_ref('D13', row, anchor_rn))
+    return out
+
+
 #: 检测器注册表(id → fn(rows)->list[entry];复盘模板生成器消费面)
 _SUSPECT_DETECTORS: dict[str, Callable[[list[dict]], list[dict]]] = {
     'D1': d1_same_round_pair_review,
@@ -681,6 +792,7 @@ _SUSPECT_DETECTORS: dict[str, Callable[[list[dict]], list[dict]]] = {
     'D10': d10_deploy_lag,
     'D11': d11_phantom_and_slot,
     'D12': d12_plane_last_xp_overspend,
+    'D13': d13_bench_full_deadlock,
 }
 
 

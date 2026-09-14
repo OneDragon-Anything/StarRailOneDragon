@@ -66,6 +66,7 @@ boss 段读数(如 hp 轨迹尾段)时按此键边界理解。
 
 数据源与用法(项目根运行;另机/异目录语料用 --sim-root/--matches-root 显式指路):
     uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --sim-batch latest
+    (latest 口径 = 批目录名内嵌创建时间戳最新的含账批次,非字典序/非 mtime)
     uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --batch <批次目录>
     uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --recent 10
     uv run python skills/sr-od-currency-war-dev/scripts/cw_batch_stats.py --match <game_id>
@@ -74,6 +75,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import statistics
 from pathlib import Path
 
@@ -81,6 +83,33 @@ from pathlib import Path
 # 单一源 = src kernel/cw_observe 根常量块,本脚本零 src 导入故按同值独立声明)
 SIM_ROOT = Path('.debug/currency_war/telemetry/sim')
 MATCHES = Path('.debug/currency_war/telemetry/matches')
+
+# 批目录名内嵌创建戳形状(YYYYMMDD_HHMMSS;runner 毫秒批为 15 字符前缀)
+_SIM_STAMP_RE = re.compile(r'\d{8}_\d{6}')
+
+
+def _latest_sim_batch(root: Path) -> Path:
+    """``--sim-batch latest`` 的最新批选取(口径:批名内嵌创建时间戳)。
+
+    批目录名内嵌 ``YYYYMMDD_HHMMSS`` 创建戳是落盘命名自带事实(单一源 =
+    sim/runner._default_sim_runs_dir 与 sim/cw_sim_piggy 的 stamp 段),
+    取最大 = 最近开批的统计批。弃两候选口径的理由:
+    - 名字典序:sim_piggy_*(p>数字)压过全部日期批,会命中探针小批
+      而非最新统计批(sim_piggy_super_20260912… 实证);
+    - 目录 mtime:批目录会被批外后写触碰(2026-09-10 六批目录 mtime
+      全同实证),顺序失真。
+    无时间戳目录(freeze_* 等池目录)与缺 decisions.jsonl 的目录不入
+    候选;同秒并列按名字典序取大(runner 毫秒段已使同秒碰撞趋零)。
+    """
+    def _key(d: Path) -> tuple[str, str]:
+        m = _SIM_STAMP_RE.search(d.name)
+        return (m.group(0) if m else '', d.name)
+
+    cands = [d for d in root.iterdir() if d.is_dir()
+             and (d / 'decisions.jsonl').is_file()]
+    if not cands:
+        raise SystemExit(f'批根下无可统计批次(缺 decisions.jsonl):{root}')
+    return max(cands, key=_key)
 
 
 def _load(path: Path) -> list[dict]:
@@ -380,7 +409,9 @@ def report(games: dict[str, dict], title: str, source: str = 'sim') -> None:
 def main() -> None:
     global SIM_ROOT, MATCHES
     ap = argparse.ArgumentParser()
-    ap.add_argument('--sim-batch', default='', help='sim 批次名或 latest')
+    ap.add_argument('--sim-batch', default='',
+                    help='sim 批次名或 latest(= 批名内嵌创建时间戳最新'
+                         '的含账批次;口径见 _latest_sim_batch)')
     ap.add_argument('--batch', default='', help='sim 批次目录直接指路径(离线/另机语料)')
     ap.add_argument('--recent', type=int, default=0, help='生产档案最近 N 局')
     ap.add_argument('--match', default='', help='生产档案单局 game_id')
@@ -399,8 +430,8 @@ def main() -> None:
         report(_sim_rows(batch), batch.name, source='sim')
     elif args.sim_batch:
         name = args.sim_batch
-        batch = (sorted(d for d in SIM_ROOT.iterdir() if d.is_dir())[-1]
-                 if name == 'latest' else SIM_ROOT / name)
+        batch = (_latest_sim_batch(SIM_ROOT) if name == 'latest'
+                 else SIM_ROOT / name)
         if not batch.is_dir():
             raise SystemExit(f'批次不存在:{batch}')
         report(_sim_rows(batch), batch.name, source='sim')
