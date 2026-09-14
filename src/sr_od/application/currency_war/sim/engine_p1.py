@@ -83,13 +83,11 @@ from sr_od.application.currency_war.kernel.cw_merge_simulate import merge_buy_co
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.kernel.cw_vocab import (
     BuyCard,
-    CompTransaction,
     LevelUp,
     LevelUpShop,
     RefreshShop,
     SellBench,
     SellDeployed,
-    ShopCard,
     SwapDeploy,
 )
 from sr_od.application.currency_war.sim.cw_sim_invest import (
@@ -530,7 +528,7 @@ def _residual_fill_deploy(
     """skip_fence 轮轮末残余补部署(迁移审计 w716(git 历史) F1 修复设计 §三;命题 P-F1)。
 
     为什么:围栏互斥(裁决1「显式>围栏,同轮互斥」)原实现是**轮级禁运**
-    ——演进事务密集轮每轮必有 applied CompTransaction,换阵撤回/3合1 吞
+    ——显式部署动作密集轮每轮必有 applied 卖上/换位,换阵撤回/3合1 吞
     副本造成的板面空槽连续过夜,欠载打仗掉血(F1 病理;样本 640247
     r5-r7 缩退 6→3→2)。修法 = 把互斥辖域从「轮级」收窄到「通道级」:
     skip 轮轮末对「围栏认可」执行 bench→空槽补部署。
@@ -1435,7 +1433,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
             # 只读——观测非指令)
             _dir_used0 = int(getattr(strategy_state_of(sess), 'v3_dir_refresh_used', 0) or 0)
             # 动作 v2(契约包 C1,步2):本轮策略是否发出**且被应用**的显式部署
-            # 动作(SellDeployed/SwapDeploy/CompTransaction)——是则轮末围栏
+            # 动作(SellDeployed/SwapDeploy)——是则轮末围栏
             # 跳过自动部署并记 skip_fence(裁决1:显式>围栏,同轮互斥;
             # 迁移审计 w65(git 历史)/ADR-0323:被拒事务不置位,围栏照跑)
             _explicit_deploy_seen = False
@@ -1783,7 +1781,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # = 驱动器逻辑态直写,同函数同渠道),账本转录的逐动作 outcome 由
                 # 段入口快照回放容器(一次性 board_state_of(None))跑转移
                 # 函数取得——回放语义 = 帧时代 simulate 逐位等价(金样锁
-                # 已证函数≡simulate);终结动作(RefreshShop/CompTransaction,
+                # 已证函数≡simulate);终结动作(RefreshShop,
                 # 驱动器不写逻辑态)与引擎自 Init 动作(m1p 卖出)仍由引擎在
                 # 真容器上转移函数应用。
                 _seg_entry_snap = bs.full_state_snapshot()
@@ -2401,69 +2399,37 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             _sbc(sess, _tgt.char_id)
                             cards_pool.ret(_tgt.char_id)
                             progressed = True
-                    elif isinstance(a, (SellDeployed, SwapDeploy,
-                                        CompTransaction)):
+                    elif isinstance(a, (SellDeployed, SwapDeploy)):
                         # 动作 v2(契约包 C1,步2):显式部署通道执行。
                         # T-185 批B 合并形态:SellDeployed/SwapDeploy 若由
                         # 商店决策循环发射 = 驱动器已直写逻辑态(裁定 3,非终结
-                        # 动作),引擎在回放容器上取 outcome 转录;CompTrans-
-                        # action = 终结动作(驱动器不写逻辑态)→ 引擎在真容器上
-                        # 转移函数应用(全量校验+原子应用;outcome 驱动转录
-                        # 禁自判),此处转录账本 + 池守恒/经济记账同步。
+                        # 动作),引擎在回放容器上取 outcome 转录;此处转录账本
+                        # + 池守恒/经济记账同步。(原 CompTransaction 终结腿
+                        # 已随 unified-action-factory 批2b R3 删除——整档替换
+                        # 宏动作退役,原子序列重表达归策略侧。)
                         # 迁移审计 w65(git 历史) 修法3(ADR-0323):``_explicit_deploy_seen`` 移到
                         # 下方 applied 分支置位——**只有真执行(未被拒)的显式
-                        # 动作才占显式通道**;被拒事务不消耗围栏(围栏跳过语义
-                        # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死;迁移审计 w64(git 历史)
-                        # Ring5:被拒事务也 skip_fence,90 次/11 局)。
+                        # 动作才占显式通道**;被拒不消耗围栏(围栏跳过语义
+                        # 修正,同轮围栏照跑,板面欠载不再被事务风暴封死)。
                         # 预状态引用快照(池 ret / 经济记账用;读口新建对象,
-                        # 预读值不跨界)。T-185 批B 合并形态:三类动作统一
+                        # 预读值不跨界)。T-185 批B 合并形态:两类动作统一
                         # 在回放容器上应用(段尾全量再锚定发布到真容器)。
                         _apply_bs = _seg_replay
                         _dep_pre = deployed_slots_of(_apply_bs)
                         _bench_pre = bench_slots_of(_apply_bs)
-                        _payload_pre = _apply_bs.shop.value
-                        _payload_content = (
-                            [s.card for s in _payload_pre.cards
-                             if s.kind == 'content' and s.card]
-                            if _payload_pre is not None else [])
                         _sold_names: list[str] = []
-                        _shop_fill_cards: list[ShopCard] = []
                         if isinstance(a, SellDeployed) \
                                 and 0 <= a.deployed_idx < len(_dep_pre) \
                                 and _dep_pre[a.deployed_idx] is not None:   # ADR-0392 空槽
                             _sold_names = [_dep_pre[a.deployed_idx].char_id]
-                        elif isinstance(a, CompTransaction):
-                            _sold_names = [
-                                _bench_pre[i].char_id
-                                for i, d in a.sell if d == 'bench'
-                                and 0 <= i < len(_bench_pre)
-                                and _bench_pre[i] is not None] + [
-                                _dep_pre[i].char_id
-                                for i, d in a.sell if d == 'deployed'
-                                and 0 <= i < len(_dep_pre)
-                                and _dep_pre[i] is not None]   # ADR-0392
-                            _shop_fill_cards = [
-                                _payload_content[f.idx]
-                                for f in (a.fill or [])
-                                if f.source == 'shop'
-                                and 0 <= f.idx < len(_payload_content)]
                         _v2_outcome = apply_shop_action_logic(
                             _apply_bs, a, produced_by=_SIM_ENGINE_ACTOR,
                             sig=ChannelSig(family='logic_action',
                                            actor=_SIM_ENGINE_ACTOR,
                                            group_id=f'sim:SimEngineP1@r{rn}'))
                         _applied = _v2_outcome.applied
-                        # income/fill_cost = 转移函数出参(SellDeployed 单动作
-                        # income 亦随出参;事务汇总同源)
+                        # income = 转移函数出参(SellDeployed 卖出回金同源)
                         _tx_income = int(_v2_outcome.income or 0)
-                        _tx_fill_cost = int(_v2_outcome.fill_cost or 0)
-                        # 迁移审计 w101(git 历史):applied 事务的 bench 净腾位数(执行点真值;账本
-                        # 序列化不展开 deploy/sell/fill 明细,检查器重放缺此
-                        # 项会把合法买误报超容——seeds 18/22 实证)。正数=腾位。
-                        _tx_bench_delta = (
-                            bench_occupied(_bench_pre)
-                            - bench_occupied(bench_slots_of(_apply_bs))
-                            if isinstance(a, CompTransaction) else 0)
                         if _applied:
                             # 迁移审计 w65(git 历史) 修法3(ADR-0323):显式动作**真执行**才置位
                             # (被拒不跳围栏,见上方分支注释)
@@ -2471,19 +2437,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                             for _n in _sold_names:
                                 if _n:
                                     cards_pool.ret(_n)
-                            for _c in _shop_fill_cards:
-                                cards_pool.take(_c.name)
-                                xp += XP_PER_BUY   # 买牌同源给 XP(ADR-0129)
-                            if _shop_fill_cards:
-                                _sim_observe(_seg_replay, _seg_replay.xp,
-                                             (xp, XP_TO_NEXT_LEVEL.get(
-                                                 level_of(_seg_replay), 4)),
-                                             'xp-echo', 'xp-echo')
                             _spend['sell_income'] += _tx_income
-                            if _tx_fill_cost:
-                                _ch = a.reason or 'tx_fill'
-                                _spend['buys'][_ch] = \
-                                    _spend['buys'].get(_ch, 0) + _tx_fill_cost
                             progressed = True
                         else:
                             res.explicit_action_rejects += 1
@@ -2491,22 +2445,11 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                                   'reason': getattr(a, 'reason', ''),
                                   'result':
                                       'applied' if _applied else 'rejected'}
-                        if _applied and _tx_bench_delta:
-                            _entry['bench_delta'] = _tx_bench_delta
                         if not _applied:
                             _entry['reject_reason'] = _v2_outcome.reason
                         if _tx_income:
                             _entry['income'] = _tx_income
-                        if _tx_fill_cost:
-                            _entry['fill_cost'] = _tx_fill_cost
                         _acts.append(_entry)
-                        if _applied and _shop_fill_cards:
-                            # 迁移审计 w43(git 历史) leader 裁决 2(phantom_rebuys 根治):事务
-                            # fill 已消费店槽——同批后续 BuyCard 是对陈旧
-                            # 店面的提案,作废并立即重决策(同
-                            # RefreshShop 的 break-redecide 语义),不套用
-                            # 陈旧引用。
-                            break
                 # 段尾全量再锚定(引擎真值发布):回放容器 = 本段动作的
                 # 帧时代引擎真值;真容器在驱动器 decide 后 = 逻辑态终态——
                 # 动作全执行时两者收敛(同值写零漂移),消费中断(仲裁闸
@@ -2703,7 +2646,7 @@ def simulate_p1(seed: int, *, use_refresh: bool = True,
                 # T-279 R1(ADR-0640):m1p 换血卖出成功帧 → 补部署消费
                 # 计划单一源(R1-a 计划 up 直投,前提破退 R1-b 卖出后
                 # 现读重 derive,域辖域钉计划时点事实);非 m1p 显式动作
-                # 轮(CompTransaction 等)维持现状围栏 fill(F4 辖域
+                # 轮维持现状围栏 fill(F4 辖域;原事务终结形态已随批2b R3 删除)
                 # 裁决:同款双源暴露面在彼处无分母无证据,不扩面)。
                 if _m1p_sold:
                     _res_up, _res_held, _deploy_lag_units = \

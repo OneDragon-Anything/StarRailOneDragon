@@ -116,7 +116,14 @@ def plan_gold_flow(plan_actions: list[dict[str, Any]],
                 income_unknown = True
                 inc = 0
             income += int(inc)
-            items.append({'type': t, 'target': str(a.get('bench_idx', a.get('deployed_idx', '?'))),
+            # 席位键双键兼容读(跨批判读窗,unified-action-factory 批2b):
+            # bench_idx 缺席回退 slot−1(历史 prep 域行为族B 1-9 物理槽位行);
+            # deployed 域历史行无键 → '?'(族B SellDeployed 现役零构造,容缺)。
+            _idx = a.get('bench_idx')
+            if _idx is None:
+                _slot = a.get('slot')
+                _idx = _slot - 1 if _slot is not None else a.get('deployed_idx', '?')
+            items.append({'type': t, 'target': str(_idx),
                           'cost': int(inc), 'direction': 'income'})
     return {'planned_spend': spend, 'planned_income': income,
             'net': income - spend, 'has_refresh': has_refresh,

@@ -301,7 +301,7 @@ ACTION_REASON_SOURCE_KEYS: tuple[str, ...] = (
   bridge.decide_from_turn 透传),授权/豁免记录兜底(LevelUp.auth_basis /
   SellBench.convert_reason,「记录非指令」形态)。
 - 键集扩条只改本元组;各键的值域闭集归其定义模块(sell_gate/
-  cw_prep_actions.SELL_BENCH_REASONS 等),本元组不做第二登记。
+  cw_vocab.SELL_BENCH_REASONS 等),本元组不做第二登记。
 """
 
 

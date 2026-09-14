@@ -528,7 +528,7 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     convert_reason ∈ ``SELL_BENCH_CONVERT_REASONS``(M4 腾席唯一燃料
     放行 / 支付变现筹资,金转化成线成员/义务动作,非净零自旋;结构化
     证明键,值域收窄两类放行位);孤儿豁免读 sell_reason ∈
-    ``cw_prep_actions.SELL_BENCH_ORPHAN_REASONS``(线账闭合孤儿清算,
+    ``cw_vocab.SELL_BENCH_ORPHAN_REASONS``(线账闭合孤儿清算,
     ADR-0591 §4 证明打标制;T-180 起与发射位登记门 SELL_BENCH_REASONS
     分离的独立闭集——登记门新增值不得静默放大豁免面,振荡零容忍)。
     豁免面按分键
@@ -547,11 +547,9 @@ def check_no_same_round_buy_sell(rows: list[dict]) -> list[str]:
     (按振荡 0 容忍判违);不可复核(旧账本无披露键)= 豁免照旧
     (兼容先例 = ADR-0589,避免一刀切翻旧案)。
     """
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        SELL_BENCH_ORPHAN_REASONS,
-    )
     from sr_od.application.currency_war.kernel.cw_vocab import (
         SELL_BENCH_CONVERT_REASONS,
+        SELL_BENCH_ORPHAN_REASONS,
     )
     from sr_od.application.currency_war.sim.checks import selfcalc as _sl
     out: list[dict] = []
@@ -936,13 +934,15 @@ def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
     容量口径(近似声明):期初 bench = 上一轮末 bench;本轮可买
     上限 = 9 − 期初 + 本轮卖出数 + 2×本轮 merges(3合1 每次腾
     2 席;守卫在执行层逐笔判,账本只能轮末重放近似)+ 本轮 bench
-    腾位数(DeployMove 上阵 + applied CompTransaction 的
+    腾位数(DeployMove 上阵;原 applied CompTransaction bench_delta 披露键已随批2b R3 删除)
     bench_delta 披露[执行点真值,迁移审计 w101(git 历史) 涌现修正]:过渡型板面轮内
     重排变多,缺该项会把合法买误报超容——seeds 18/22 实证,r8
     九买伴随 8 笔事务,执行层守卫 cw_sim r419 逐笔判活状态无回归)。
     SwapDeploy 净零/SellDeployed 不动 bench/shop 源填位不占
-    bench,均不计;旧账本(无 bench_delta 字段)按 0 读——重放
+    bench,均不计;旧账本按 0 读——重放
     旧批时该检查以现口径为准,历史违规记录见 git 历史。
+    (原 applied CompTransaction 的 bench_delta 腾位披露键已随
+    unified-action-factory 批2b R3 删除——事务载体退役。)
     """
     out: list[str] = []
     prev_bench = 0
@@ -952,12 +952,6 @@ def check_buys_at_full_bench(rows: list[dict]) -> list[str]:
         buys = sum(1 for a in acts if a.get('__type__') == 'BuyCard')
         sells = sum(1 for a in acts if a.get('__type__') == 'SellBench')
         deploys = sum(1 for a in acts if a.get('__type__') == 'DeployMove')
-        for a in acts:
-            if a.get('__type__') == 'CompTransaction' \
-                    and a.get('result') == 'applied':
-                # 迁移审计 w101(git 历史):applied 事务的 bench 净腾位(执行点真值
-                # bench_delta;账本不展开事务明细,重放只能吃该披露)
-                deploys += int(a.get('bench_delta', 0) or 0)
         merges = (row.get('sim') or {}).get('merges') or 0
         allowed = 9 - prev_bench + sells + 2 * merges + deploys
         if buys > max(allowed, 0):
@@ -982,20 +976,18 @@ def check_oscillation_xp_cap(rows: list[dict]) -> list[str]:
     r408 修后振荡应归 0 → 本检查恒绿;涌现即买卖互踩回归。
     T3 转化类卖出分键豁免与 check_no_same_round_buy_sell 同边,并随
     T-165 按键分工判定同步(转化类读 convert_reason / 孤儿读
-    sell_reason ∈ cw_prep_actions.SELL_BENCH_ORPHAN_REASONS(T-180 起
+    sell_reason ∈ cw_vocab.SELL_BENCH_ORPHAN_REASONS(T-180 起
     与发射位登记门分离的独立闭集),键集单一源 =
-    cw_state.SELL_BENCH_CONVERT_REASONS + cw_prep_actions.SELL_BENCH_
+    cw_state.SELL_BENCH_CONVERT_REASONS + cw_vocab.SELL_BENCH_
     ORPHAN_REASONS)。
     T-153 迁移(C4/ADR-0593):豁免边同款降级为「自算复核通过才豁免」
     (copy 收集语境/seed 身份/转化分键线成员三复核,判定核单一源 =
     selfcalc;失配 = 可疑项条目 + 该对计入 osc 不豁免;键缺省照旧)。
     """
     from sr_od.application.currency_war.kernel.cw_economy import XP_TO_NEXT_LEVEL
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        SELL_BENCH_ORPHAN_REASONS,
-    )
     from sr_od.application.currency_war.kernel.cw_vocab import (
         SELL_BENCH_CONVERT_REASONS,
+        SELL_BENCH_ORPHAN_REASONS,
     )
     from sr_od.application.currency_war.sim.checks import selfcalc as _sl
     out: list[str] = []
@@ -1626,7 +1618,7 @@ def check_equip_value_strategy_key_coverage(rows: list[dict]) -> list[str]:
 
 
 
-_EXPLICIT_V2_ACTIONS = ('SellDeployed', 'SwapDeploy', 'CompTransaction')
+_EXPLICIT_V2_ACTIONS = ('SellDeployed', 'SwapDeploy')
 
 
 
@@ -1665,7 +1657,7 @@ def check_comp_tx_atomicity(rows: list[dict]) -> list[str]:
 
     判据:
     - 轮内含 **applied** 显式部署动作(SellDeployed/SwapDeploy/
-      CompTransaction)时,该轮账本 state.board 必须与 deployed 名单的
+      时,该轮账本 state.board 必须与 deployed 名单的
       羁绊全集聚合一致(转移后 board 由 _recount_board 维护;不一致 =
       半档残留/board 派生断裂);
     - **rejected** 显式动作必须带非空 reject_reason(拒绝记录可见性
@@ -1701,7 +1693,7 @@ def check_skip_fence_pairing(rows: list[dict]) -> list[str]:
 
     判据(裁决1:显式>围栏,同轮互斥;围栏跳过必须记账本一行):
     - 轮内含 **applied** 显式部署动作(SellDeployed/SwapDeploy/
-      CompTransaction)→ 该轮 actions 必须恰有一条 skip_fence 且
+      → 该轮 actions 必须恰有一条 skip_fence 且
       reason 非空(缺 = 围栏静默跳过或叠加,双违规;多 = 误记);
     - **rejected** 显式动作**不**占显式通道(迁移审计 w65(git 历史)/ADR-0323:被拒不消耗
       围栏,同轮围栏照跑)→ 不要求配对;被拒轮若仍记 skip_fence = 误记;

@@ -67,7 +67,7 @@ def merge_round_rows(rows: list[dict]) -> list[dict]:
     - actions = 全帧**花费类**动作并集(BuyCard/LevelUp/RefreshShop
       + SellBench[T-153:D1/D5 检测器生产覆盖面;生产卖出行
       缺 name/sell_reason 键,检测器按缺键跳过];
-      生产 wrapper 动作 RunDeploy/StartBattle 等非花费,
+      生产 StartBattle 等非花费动作(原 RunDeploy 组合壳随批2b 退役),
       不入——段级 ``_seg_spent`` 按 __type__ 白名单判,混入无害但
       并集只留花费类更省);
     - formed_stop = 全帧或;

@@ -105,11 +105,9 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
     持有语境 = 净持有(买入入集/卖出台账销账;ADR-0593 后果.5(L2),「终身持有
     通行证」形态封死)。
     """
-    from sr_od.application.currency_war.kernel.cw_prep_actions import (
-        SELL_BENCH_ORPHAN_REASONS,
-    )
     from sr_od.application.currency_war.kernel.cw_vocab import (
         SELL_BENCH_CONVERT_REASONS,
+        SELL_BENCH_ORPHAN_REASONS,
     )
     out: list[dict] = []
     held_net: set[str] = set()
@@ -159,7 +157,7 @@ def d1_same_round_pair_review(rows: list[dict]) -> list[dict]:
                         identity = '线外散牌/垫件'
                 # 失配判定(与检查器复核同判据;任一自报分键被自算反驳;
                 # T-165 按键分工:转化类读 convert_reason,孤儿读
-                # sell_reason ∈ cw_prep_actions.SELL_BENCH_ORPHAN_REASONS
+                # sell_reason ∈ cw_vocab.SELL_BENCH_ORPHAN_REASONS
                 # (T-180 起与发射位登记门分离的独立闭集),与
                 # check_no_same_round_buy_sell 零双源同构)
                 _conv_key = a.get('convert_reason') or ''

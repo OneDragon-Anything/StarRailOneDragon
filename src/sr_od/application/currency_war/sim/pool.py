@@ -133,7 +133,7 @@ class SimResult:
     # 付费刷新产经验(xp_per_refresh,如淘金客;免费刷不计)局级累计
     refresh_xp_total: int = 0
     # 动作 v2(契约包 C1,步2):显式部署动作(SellDeployed/SwapDeploy/
-    # CompTransaction)被整体拒绝的次数(原子性拒绝披露;真策略当前
+    # 事务)被整体拒绝的次数(原子性拒绝披露;真策略当前;原 CompTransaction
     # 不发显式动作 → 恒 0,演进引擎 C3 接入后 >0 即决策侧提案越界信号)
     explicit_action_rejects: int = 0
     # 动作 v2:围栏跳过轮数(显式动作发出轮 select_deployments 自动
