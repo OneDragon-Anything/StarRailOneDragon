@@ -342,7 +342,7 @@ def build_refresh_expect(gold: int | None,
     挂账(producer 集成点):期望必须在**刷新动作内**构建——波前金与波前
     面板费都是单元内部现读;cw_screen_prep 持有的 RunBuyPhase 前后帧均为
     关店帧(F2 下金不可信、五格牌不可读),无合法评估窗。集成点 =
-    ``operations/cw_op/cw_shop_action_ops.py`` RefreshShopOp 刷新分支现读处
+    ``operations/cw_op/cw_refresh_shop_action.py`` RefreshShopOp 刷新分支现读处
     (ADR-0517 迁移后消费时点 = 刷新动作的执行实现层,刷后现读帧即对账帧;
     旧「本环 heavy 帧消费」时点随 per-action heavy 契约退役归并于此);
     消费判据 = refresh_reconcile_mismatches(本文件,真值表已锁),落台账

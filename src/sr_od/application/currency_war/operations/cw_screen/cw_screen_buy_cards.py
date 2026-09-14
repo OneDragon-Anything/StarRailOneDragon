@@ -70,8 +70,10 @@ if TYPE_CHECKING:
         CloseShop,
         LevelUpShop,
     )
-    from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
+    from sr_od.application.currency_war.operations.cw_op.cw_action_base import (
         ShopActionOp,
+    )
+    from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
         ShopVisitLedger,
     )
     from sr_od.application.currency_war.strategies.impl.cw_strategy import (
@@ -733,11 +735,14 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     ledger.fact_rows 发射时增量追加行,切片5 起无窗口容量上界,消费方 =
     编排壳。)
     """
+    # 工厂住聚合注册文件(动作 op 一 op 一文件后 cw_shop_action_ops 不持 op 类)
     from sr_od.application.currency_war.kernel.cw_vocab import CloseShop
     from sr_od.application.currency_war.operations.cw_op.cw_shop_action_ops import (
         ShopExecEnv,
         ShopVisitLedger,
         guard_proposal_vs_expected,
+    )
+    from sr_od.application.currency_war.operations.cw_op.cw_shop_actions import (
         shop_action_op_for,
     )
 

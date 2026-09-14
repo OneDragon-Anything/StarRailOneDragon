@@ -380,5 +380,6 @@ def guard_expected_vs_tracked(state: GameState, session,
 
 
 
-# 商店单动作 op 族(ShopActionOp 基类/六动作/shop_action_op_for 工厂)已于
-# 2026-09-14 拆离至 cw_shop_actions.py(纯动作文件);本文件 = 账本+守卫+执行支撑。
+# 商店单动作 op 族住动作文件:ShopActionOp 基类 = cw_action_base.py;
+# 六动作 = 各自 cw_<action>_action.py;词表→op 工厂 = cw_shop_actions.py
+# (聚合注册文件)。本文件 = 账本+守卫+执行支撑(ShopExecEnv/ShopVisitLedger 单一源)。
