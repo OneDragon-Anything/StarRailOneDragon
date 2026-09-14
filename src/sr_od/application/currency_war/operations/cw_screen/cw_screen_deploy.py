@@ -349,7 +349,7 @@ def _note_deployed_count_divergence(ctx: SrContext, screen: MatLike, source: str
         pass
 
 
-class CwOpDeploy(SrOperation):
+class CwScreenDeploy(SrOperation):
     """备战阶段:bench 角色 → 舞台空槽(CV 占用 + SIFT 身份 + position_pref 选排;拖拽走 DragCwChar.drag_char)。"""
 
     SCREEN_NAME: ClassVar[str] = '货币战争-备战'
@@ -401,7 +401,7 @@ class CwOpDeploy(SrOperation):
         ``_back_row_centers`` 选档(cap 差公式,ADR-0385;**别假设
         「后排-」只有 6 个**——档前缀由调用方传入)。
         """
-        si = self.ctx.screen_loader.get_screen(CwOpDeploy.SCREEN_NAME)
+        si = self.ctx.screen_loader.get_screen(CwScreenDeploy.SCREEN_NAME)
         if si is None:
             return []
         pts: list[tuple[int, Point]] = []
@@ -463,10 +463,10 @@ class CwOpDeploy(SrOperation):
 
     @operation_node(name='部署备战栏角色', is_start_node=True)
     def deploy(self) -> OperationRoundResult:
-        si = self.ctx.screen_loader.get_screen(CwOpDeploy.SCREEN_NAME)
+        si = self.ctx.screen_loader.get_screen(CwScreenDeploy.SCREEN_NAME)
         if si is None:
             log.warning('[cw-deploy] 未加载「货币战争-备战」screen_info,跳过部署')
-            return self.round_fail(status=CwOpDeploy.STATUS_NO_SCREEN)
+            return self.round_fail(status=CwScreenDeploy.STATUS_NO_SCREEN)
         # 窗口防线执行断言(ADR-0601 §3 D1,同 E1 形态):
         # 派发间隙(宿主入口观察 → 本 op 执行)overlay 弹出 = 执行环境失配,
         # 如实 round_fail 交回重判——禁旧 success-skip 把「弃执行」记成成功
@@ -490,7 +490,7 @@ class CwOpDeploy(SrOperation):
                 log.warning(f'[cw!][deploy] 事件 overlay({_spec.screen_name})'
                             '在 → 执行断言 fail(重判归分发层)')
                 return self.round_fail(
-                    f'{CwOpDeploy.STATUS_EVENT_OVERLAY}({_spec.screen_name})')
+                    f'{CwScreenDeploy.STATUS_EVENT_OVERLAY}({_spec.screen_name})')
 
         bench = self._row_centers('备战栏')
         save_decision_frame(self, 'deploy', self.last_screenshot)   # 识别完成点原始帧留证(部署仲裁基准)
@@ -513,9 +513,9 @@ class CwOpDeploy(SrOperation):
             if not self._front_ok_now(front, back):
                 log.warning('[cw!] [deploy] NO_BENCH 出口不变量断言失败:'
                             '板上有角色而前排空 → round_fail 交回')
-                return self.round_fail(CwOpDeploy.STATUS_FRONT_INVARIANT_FAIL)
+                return self.round_fail(CwScreenDeploy.STATUS_FRONT_INVARIANT_FAIL)
             log.info('[cw-deploy] 备战栏无槽坐标,跳过')
-            return self.round_success(CwOpDeploy.STATUS_NO_BENCH)
+            return self.round_success(CwScreenDeploy.STATUS_NO_BENCH)
 
         # deployed-lock(doc gameplay:78)是误判,deployed 可卖(用户实机确认 gold 增加)。
         _match = self.ctx.cw_match
@@ -680,7 +680,7 @@ class CwOpDeploy(SrOperation):
             # 失配实质 = 发射位谓词违约(0j 无条件派发重部署),不是帧不可信
             #(ADR-0601 §5 辖域修订);此形态执行场内换排修复,让 0j 恢复链
             # 第一次真正可达 r250 场内前排保证。
-            if _gate_fail == CwOpDeploy.STATUS_BOARD_FULL_MISMATCH and \
+            if _gate_fail == CwScreenDeploy.STATUS_BOARD_FULL_MISMATCH and \
                     self._rowfix_front_empty_recoverable(
                         front, back, templates):
                 self._bump_cw4_counter('board_full_front_empty_rowfix')
@@ -698,7 +698,7 @@ class CwOpDeploy(SrOperation):
                 if self._front_ok_now(front, back):
                     log.info('[cw-deploy] 板满失配豁免:换排修复后前排 ≥1 ✓')
                     return self.round_success(
-                        CwOpDeploy.STATUS_ROWFIX_RECOVERED, wait=1)
+                        CwScreenDeploy.STATUS_ROWFIX_RECOVERED, wait=1)
                 log.warning('[cw!] [deploy] 板满失配豁免:换排修复后前排仍空 '
                             '→ round_fail 交回(修复不可达,守卫兜底)')
                 return self.round_fail(_gate_fail)
@@ -735,7 +735,7 @@ class CwOpDeploy(SrOperation):
         if not self._front_ok_now(front, back):
             log.warning('[cw!] [deploy] 出口不变量断言失败:上阵 ≥1 而前排空 '
                         '(修复失败) → round_fail 交回')
-            return self.round_fail(CwOpDeploy.STATUS_FRONT_INVARIANT_FAIL)
+            return self.round_fail(CwScreenDeploy.STATUS_FRONT_INVARIANT_FAIL)
 
         # r132 装备读时机(穿戴侧盲区修复;原以 decisions 行携带为目的,行写入
         # 已随删除波 1 退役,读时机保留——tracking 链是部署决策的活输入):
@@ -767,9 +767,9 @@ class CwOpDeploy(SrOperation):
                 # 由真实部署意图(M1′/达标臂)派发,本 no-op 是其合法稳态。
                 log.info('[cw-deploy] 无部署可做(计划空,候选全被规则留 bench;'
                          '发射契约:no-op 状态,F1 同源谓词已抑制不可兑现发射)')
-                return self.round_success(CwOpDeploy.STATUS_NOOP, wait=1)
-            return self.round_fail(CwOpDeploy.STATUS_LANDED_NONE)
-        return self.round_success(CwOpDeploy.STATUS_DEPLOYED, wait=1)
+                return self.round_success(CwScreenDeploy.STATUS_NOOP, wait=1)
+            return self.round_fail(CwScreenDeploy.STATUS_LANDED_NONE)
+        return self.round_success(CwScreenDeploy.STATUS_DEPLOYED, wait=1)
 
     def _fix_misplaced_rows(self, front: list, back: list,
                             templates: AvatarTemplates | None) -> None:
@@ -1180,7 +1180,7 @@ class CwOpDeploy(SrOperation):
                 log.warning(f'[cw!][deploy] 板满失配:deployed={_deployed}(双源仲裁) '
                             f'≥ cap={_cap} 而 RunDeploy 已派发 → 执行断言 fail'
                             f'(front空={len(front_empty)} back空={len(back_empty)})')
-                return 0, False, CwOpDeploy.STATUS_BOARD_FULL_MISMATCH
+                return 0, False, CwScreenDeploy.STATUS_BOARD_FULL_MISMATCH
         if not front_empty and not back_empty:
             # 幻影满板矛盾帧执行断言(ADR-0601 §3 D2 三分之二;P1 闭死升级):
             # CV 采样占满全部槽但仲裁值未达 cap(或 cap 失读)= 采样结构性
@@ -1189,7 +1189,7 @@ class CwOpDeploy(SrOperation):
             log.warning(f'[cw!][deploy] 幻影满板矛盾帧:CV 采样无空槽但仲裁值 '
                         f'deployed={_deployed}(cv={_deployed_cv})未达板满 → '
                         f'执行断言 fail(矛盾帧交回重观察)')
-            return 0, False, CwOpDeploy.STATUS_PHANTOM_FULL_BOARD
+            return 0, False, CwScreenDeploy.STATUS_PHANTOM_FULL_BOARD
         # r70 过渡框架并进 deploy target 集(双轨期):框架牌 = 当前阶段的「临时 target」,
         # 否则保血资产(三月七/藿藿/饮月)被判 off-target 散牌留 bench → 白板挨打
         # (r70 审计「买了→不上场→被卖」三侧断裂的 deploy 侧)。定型后 framework 已清空,
@@ -1483,7 +1483,7 @@ class CwOpDeploy(SrOperation):
                             f'在场 → 终止本轮(placed={placed} 如实保留;'
                             '剩余单位留 bench,交 overlay 分支接管)')
                 return placed, False, \
-                    CwOpDeploy.STATUS_OVERLAY_PREEMPTED
+                    CwScreenDeploy.STATUS_OVERLAY_PREEMPTED
             # live 2026-08-15(match4 deploy storm 根因):起始帧 slot_occupied 瞬时假阳(商店关闭/卖出
             # 动画残影 → 对空槽白烧 3×2s drag 重试)。每槽 drag 前 fresh 复查占用,空 → 跳过。
             if not slot_occupied(_scr_slot, int(bench[bi].x), int(bench[bi].y)):
@@ -1624,7 +1624,7 @@ class CwOpDeploy(SrOperation):
                                 f'在场 → 终止本轮(placed={placed} 如实保留;'
                                 '剩余 fill 单位留 bench,交 overlay 分支接管)')
                     return placed, False, \
-                        CwOpDeploy.STATUS_OVERLAY_PREEMPTED
+                        CwScreenDeploy.STATUS_OVERLAY_PREEMPTED
                 if not slot_occupied(_scr_fill_slot, int(bench[_fi].x), int(bench[_fi].y)):
                     _skipped += 1
                     continue   # fresh 复查空(已上阵/假阳),同主循环语义

@@ -549,9 +549,9 @@ def apply_action_outcome(_aop: 'ShopActionOp',
             _payload_now = _bs_proj.shop.value
             _pre_shop = (shop_payload_content_cards(_payload_now)
                          if _payload_now is not None else [])
-        _proj_sig = _ProjSig(family='logic_action', actor='CwOpBuyCards',
+        _proj_sig = _ProjSig(family='logic_action', actor='CwScreenBuyCards',
                              mode='compute',
-                             group_id=(f'act:CwOpBuyCards@'
+                             group_id=(f'act:CwScreenBuyCards@'
                                        f'{_bs_proj.write_seq + 1}'))
         _apply_shop_logic(_bs_proj, action, executed=_executed,
                           produced_by=type(action).__name__,
@@ -682,7 +682,7 @@ def note_shop_action_receipt(match: 'CurrencyWarMatch', action: 'Action', *,
         note_action_receipt(
             board_state_of(session), op=type(action).__name__,
             applied=bool(applied), reason=reason, screen=SHOP_SCREEN_NAME,
-            actor='CwOpBuyCards', extra=_extra)
+            actor='CwScreenBuyCards', extra=_extra)
     except Exception as e:  # noqa: BLE001  回执失败不阻塞循环
         log.warning('[cw][receipt] 商店动作回执写入失败(不阻塞): %s', e)
 
@@ -878,10 +878,10 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 _LedgerKey(plane=int(_entry.plane),
                            round_num=int(_entry.round_num),
                            kind=str(_ledger_node)),
-                produced_by='CwOpBuyCards', evidence='node_ledger_backfill',
-                sig=_LedgerSig(family='logic_action', actor='CwOpBuyCards',
+                produced_by='CwScreenBuyCards', evidence='node_ledger_backfill',
+                sig=_LedgerSig(family='logic_action', actor='CwScreenBuyCards',
                                mode='compute',
-                               group_id=(f'act:CwOpBuyCards@'
+                               group_id=(f'act:CwScreenBuyCards@'
                                          f'{_bs_lg.write_seq + 1}')))
         # (frame.dual_track_phase/focus_factions 回填点已随 last_state 链
         #  退役批删除(T-166 对账表 E 类行 30/31 兑现):决策读端 =
@@ -919,9 +919,9 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
                 _bs_rescue.observe(
                     _bs_rescue.gold, int(_gold_rescued),
                     evidence='gold_rescue:shop_first_read_fake_zero',
-                    sig=_RescueSig(family='obs', actor='CwOpBuyCards',
+                    sig=_RescueSig(family='obs', actor='CwScreenBuyCards',
                                    mode='read',
-                                   group_id=(f'obs:CwOpBuyCards@'
+                                   group_id=(f'obs:CwScreenBuyCards@'
                                              f'{_bs_rescue.write_seq + 1}')))
         # (开店首读金快照 gold_open 随 outcome 退役移出本函数——迁移批
         #  3.2:基线 = 编排壳 visit 入口容器 gold 现读暂存,详见 visit_open_shop。)
@@ -1349,7 +1349,7 @@ def run_buy_waves(op: SrOperation, match: 'CurrencyWarMatch | None',
     return None, ledger
 
 
-class CwOpBuyCards(CwScreenOpBase):
+class CwScreenBuyCards(CwScreenOpBase):
     """备战-开商店原子 op:执行商店单动作循环(ADR-0517 迁移批;
     前身份 = 商店动作波循环,W970 批 A 契约 §4.2)。
 

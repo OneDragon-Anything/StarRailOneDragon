@@ -1923,7 +1923,7 @@ class CwLoop(SrOperation):
 
         # 0j. 「前台区域无角色,无法出战」提示弹窗(2026-08-17 M49 停机建档)。
         #     P4R 升级(1-1 事故 5h 死循环返工):确认关闭 → **带落点验证的
-        #     重部署**(CwOpDeploy,落点 CV 已收编)→ 本迭代内直接再出战;
+        #     重部署**(CwScreenDeploy,落点 CV 已收编)→ 本迭代内直接再出战;
         #     重试上限 FRONTLESS_REDEPLOY_LIMIT,超限 round_fail 交未知画面
         #     兜底链(旧「确认关闭→等下轮 CwScreenPrep→StartBattle 假成功」
         #     形态 = 无限 round_wait,根因见弹窗污染守卫 prep_actions
@@ -1946,9 +1946,9 @@ class CwLoop(SrOperation):
                          self._frontless_redeploy,
                          CwLoop.FRONTLESS_REDEPLOY_LIMIT)
                 from sr_od.application.currency_war.operations.cw_screen.cw_screen_deploy import (
-                    CwOpDeploy,
+                    CwScreenDeploy,
                 )
-                _rd = CwOpDeploy(self.ctx).execute()
+                _rd = CwScreenDeploy(self.ctx).execute()
                 log.info('[cw-loop] 前台无角色重部署 → %s',
                          getattr(_rd, 'status', '') or ('成功' if getattr(_rd, 'success', False) else '失败'))
                 # T-176 V-1 收编:外循环像素判效读(slot_occupied 判前排 ≥1)
