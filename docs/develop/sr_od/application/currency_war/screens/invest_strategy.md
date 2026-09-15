@@ -9,6 +9,8 @@
 
 ## 2. 画面形态声明
 
+**横幅中间态**(2026-09-15 决策帧实证 + 用户裁定,过渡记录 = [../../../../game/currency_war/research/screen_flow_timing.md](../../../../game/currency_war/research/screen_flow_timing.md) #30):入口展开为两段——备战画面先完整可见,选卡页展开过程中存在「备战完整可见 + 中部横幅『请选择投资策略』(y≈510,选卡未渲染)」的中间态。横幅态**零可交互元素,裁定不派发不处理**(等展开完成;横幅态标题不在 id_mark 位 [855,78,1065,118],锚判定天然 miss)。分发判据向裁定的收敛(0e OCR 全短语腿退役 + 备战派发判据升级建档完整组合)待代码批落地;落地前 §1 双信号+复探为现行行为。
+
 **单选族例外**(有选择面零逻辑态账,判据 = [README.md](README.md) §3;不入决策规范,op 形态照常)。本屏为统一观察架构五相位屏:`CwScreenOpBase` 子类,handle 顶部**重入裁决先于装配点分流**(确认/刷新两 pending 裁决两路径共用),两端口完整在场走五段生命周期、缺省走旧路径(并存纪律 = [op-layer.md](op-layer.md))。决策入口 = 契约 `strategies/impl/cw_strategy.py::CwStrategy.decide_invest('strategy', ...)`(规格 = [../strategy-docs/13_pick_family.md](../strategy-docs/13_pick_family.md) §1;判据本体 = `kernel/cw_events.py::decide_event`)。重入裁决两件(handle 顶部):
 - 确认裁决:上轮已发确认 → 本轮入口锚不在 = overlay 已关(选卡落地)→ 补 append 持卡 + success 交回;锚仍在 = 确认未落地 → 清标志重走(计节点预算)。
 - 刷新裁决:上轮已发刷新 → 锚在 = 预期(逐卡重掷后 overlay 仍在)→ 穿透正常观察链重分类重决策;锚不在 = overlay 意外离开(刷新从不关 overlay)→ success 交回外循环重分派。
