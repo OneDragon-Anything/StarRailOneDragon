@@ -1919,8 +1919,8 @@ def apply_shop_action_logic(bs: GameState, action: Any, *,
         if clicks is None:
             return LogicOutcome(applied=False, reason='levelup_clicks_not_fed')
         clicks = max(0, int(clicks))
-        # 满级购买无效(fields.md §4.2 LevelUp 行;simulate 同门:
-        # 满级零金零经验),与 simulate 逐位等价(锁 M1)。
+        # 满级购买无效(fields.md §4.2 LevelUp 行:满级零金零经验)。
+        # 投影期望态由直锁钉住(锁 M1,test_cw_shop_projection_logic)。
         # 封顶单一源 = MAX_PLAYER_LEVEL(10)。
         if level_of(bs) >= MAX_PLAYER_LEVEL:
             return LogicOutcome(applied=False, reason='level_cap')
@@ -1983,7 +1983,7 @@ def apply_shop_merge_leg(bs: GameState, action: Any, *,
     k>1 买漏合成)。两形态等价性由锁 M1 钉(test_cw_shop_projection_logic)。
 
     调用序 = 先 :func:`apply_shop_action_logic`(简单落位)后本口(整表
-    覆盖)——两写合计对 simulate 输出等价(锁 M1)。
+    覆盖)——两写合计的期望态由投影直锁钉住(锁 M1)。
     """
     _validate_sig(sig, ('logic_action',))
     from types import SimpleNamespace as _NS

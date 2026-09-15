@@ -28,9 +28,9 @@ docs/develop/sr_od/application/currency_war/game_state/fields.md §9。
 kernel/cw_intention.py ``committed_authority`` 形态注)已兑现。
 
 策略为纯规则路线(用户裁定 2026-09-12):规则直接产出动作,决策零模拟
-试探。本文件的 ``simulate`` 是单步动作应用器(纯函数),消费面终态 =
-sim 引擎整局推进 / 假游戏环境动作语义逻辑态推算 / 规则实现等价性验证
-(锁 M1)——策略域与实机操作链零消费:
+试探。原单步动作应用器 ``simulate``(整帧副本纯函数)已删除——期望态
+推进单一源 = 容器逻辑态直写(``cw_game_state.apply_shop_action_logic``
++ 合成升星腿);动作语义验证 = 投影直锁(M1,test_cw_shop_projection_logic):
 - 现役策略(mandate_v1)决策 = mandate_v1/shop.decide_shop_action
   (容器读,纯规则分支),期望态推进 = 容器逻辑态直写
   (``cw_game_state.apply_shop_action_logic`` + 合成升星腿)。
@@ -43,8 +43,8 @@ sim 引擎整局推进 / 假游戏环境动作语义逻辑态推算 / 规则实�
   ``board_from_tracked`` = 游戏左面板真值;口径 = 羁绊全集,非主阵营单标签)。
 - ``deployed`` = bot 自己跟踪的已上阵角色(含 char_id/star/站位),用于 char_quality 评估
   已上阵的优先角色 + 站位分流。两者应一致(deployed 按羁绊全集聚合 == board)。
-- simulate(DeployMove) 同时更新 deployed(槽位落位 deployed_place,ADR-0392)与 board(_recount_board 重算)。
-- simulate(BuyCard) 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
+- DeployMove 同时更新 deployed(槽位落位 deployed_place,ADR-0392)与 board(_recount_board 重算)。
+- BuyCard 后做 3 合 1 升星(同名同星 ≥3 → 合并为 star+1)。
 """
 from __future__ import annotations
 
@@ -65,13 +65,9 @@ from sr_od.application.currency_war.kernel.cw_deploy_logic import (  # noqa: E40
 from sr_od.application.currency_war.kernel.cw_economy import (  # noqa: E402
     DIFFICULTY_HP_TABLE,  # noqa: F401
     HP_SAFE_THRESHOLD,  # noqa: F401
-    MAX_PLAYER_LEVEL,
     REFRESH_COST_BASE,  # noqa: F401
     XP_CLICK_COST_FALLBACK,  # noqa: F401
-    XP_PER_BUY,
-    XP_TO_NEXT_LEVEL,
     bench_char_cost,  # noqa: F401
-    card_cost,
     effective_hp_threshold,  # noqa: F401
     sell_refund,  # noqa: F401
     xp_apply_clicks,  # noqa: F401
@@ -870,239 +866,21 @@ def _card_to_bench(card: ShopCard, position_pref: str = "back") -> BenchChar:
                      star=card.star, position_pref=position_pref)
 
 
-def _log_action(s: CwSimFrame, action_name: str, result: str,
-                reason: str = '', **extra) -> None:
-    """动作 v2 账本写入(契约包 C1 冻结 invariant:拒绝记录进账本)。"""
-    entry: dict = {'action': action_name, 'result': result}
-    if reason:
-        entry['reason'] = reason
-    entry.update(extra)
-    s.action_log.append(entry)
-
-
-def simulate(state: CwSimFrame, action: Action) -> CwSimFrame:
-    """单步动作应用(纯函数):返回应用 action 后的**新** CwSimFrame
-    (不改原 state)。消费位 = sim 引擎整局逐步推进 / 假游戏环境动作转移 /
-    规则实现等价性验证(锁 M1 等);策略决策零消费(纯规则路线)。
-
-    买入落 bench(3 合 1 自动升星);上阵(DeployMove)把角色从 bench 移到 deployed +
-    board[faction]+=1(保留身份/站位供 char_quality 与站位分流用)。
-
-    C6 装备守恒对账(W38):装备相关动作(BuyCard/SellBench/SellDeployed/
-    SwapDeploy)执行前后跑账本快照比对——mismatch 记
-    action_log(``EquipsLedger`` 条目,checks/遥测可见),不静默(cw_bench_equips 单一源)。
-    """
-    from sr_od.application.currency_war.kernel.cw_bench_equips import (
-        ledger_mismatch,
-        state_equips_multiset,
-    )
-    s = state.copy()
-    pad_bench(s.bench)   # ADR-0316 定长不变量:调用方可能构造短 bench
-    # (直接赋值绕过 __post_init__);copy 不触发 __post_init__,入口防御 pad
-    pad_deployed(s.deployed)   # ADR-0392 同理(deployed 槽位表定长 10)
-    _equips_action = isinstance(action, (BuyCard, SellBench, SellDeployed,
-                                         SwapDeploy))
-    _pre_equips = state_equips_multiset(state) if _equips_action else None
-    if isinstance(action, BuyCard):
-        # ADR-0316 槽位语义:买入放首个空槽;无空槽=拒(bench_full 语义
-        # 不变——金不扣、牌不下架,整动作 no-op)。
-        # S3(ADR-0325):**合并买入**例外——满员也通,新卡临时挂槽位表
-        # 尾部参与 _merge_bench(合成后恒被消费置 None),再截回定长 9。
-        # ADR-0453:满栏判据从「买第 3 份同名 1★(k=1)」升级为
-        # merge_mechanics §2.5 一般式——k = min(店内张数, 3−已有数 mod 3)
-        # 张一次买入(游戏自动多买,无价格优惠:金账按 k×单价记全款),
-        # 判据单一源 = merge_buy_completes(不满足仍拒,ADR-0283 兜底)。
-        new_bc = _card_to_bench(action.card)
-        placed = bench_place(s.bench, new_bc) is not None
-        if not placed:
-            _name = action.card.name
-            _star = action.card.star or 1
-            # 分支应用单一源 = _apply_full_bench_merge_buy(与运行时
-            # tracked mutate 共用,双账同构;判据面不变 = merge_buy_completes
-            # 不满足仍拒,ADR-0283 兜底)。
-            _k = _apply_full_bench_merge_buy(s.bench, s.deployed,
-                                             action.card, s.shop)
-            if _k is None:
-                return state.copy()
-            s.gold -= card_cost(action.card) * max(1, _k)
-            # 合成恰耗尽本次 k 张(own+k ≡ 0 mod 3),尾部临时槽恒被清,
-            # 截回定长 9;店侧 k 张同身份牌全部下架(自动多买语义)。
-            _left = max(1, _k)
-            _kept: list[ShopCard] = []
-            for c in s.shop:
-                if _left > 0 and c.name == _name \
-                        and (c.star or 1) == _star:
-                    _left -= 1
-                    continue
-                _kept.append(c)
-            s.shop = _kept
-        else:
-            s.gold -= card_cost(action.card)
-            _merge_bench(s.bench, s.deployed)   # 全场域(3合1 是全场;deploy_bench L427 口径)
-            # 买走该槽位 → 从 shop 移除(否则 plan 贪心会重买同一张堆星,sim 不反映"槽位空了")
-            s.shop = [c for c in s.shop if c.x != action.card.x]
-    elif isinstance(action, SellBench):
-        # ADR-0316:校验槽占用后置 None(索引跨动作组稳定)
-        # ADR-0317 代际校验第三块(ADR-0326 §1.7):expect 非空且与槽内名
-        # 不符 = 陈旧提案 → no-op + stale_proposal 语义(对齐
-        # SellDeployed/SwapDeploy 既有守卫;emit 端=remediation 补偿器)
-        _tgt = (s.bench[action.bench_idx]
-                if 0 <= action.bench_idx < len(s.bench) else None)
-        if _tgt is not None and action.expect \
-                and _tgt.char_id != action.expect:
-            _log_action(s, 'SellBench', 'rejected',
-                        reason=(f'stale_proposal:{action.expect}'
-                                f'!={_tgt.char_id}'),
-                        char=_tgt.char_id)
-        else:
-            sold = bench_clear(s.bench, action.bench_idx)
-            if sold is not None:
-                s.gold += sell_refund(sold.star, bench_char_cost(sold))
-                # 装备回收进 owned 池(C6 装备守恒;与 SellDeployed
-                # 同一建模假设——卖带装单位装备回收,🟡 待 live 核。
-                # 修复前本分支漏回收 = 账本凭空消失,EquipsLedger
-                # 对账必报)。
-                s.equips.extend(sold.equips)
-    elif isinstance(action, LevelUp):
-        # 真实语义(ADR-0129):一次「购买经验」= +XP_PER_BUY 经验、-单击金币;攒够当前级门槛自动
-        # 升级(跨级结转溢出)。旧模型「一次动作 = 升 1 级 + 扣整级大金」与机制不符 → 升级门过度
-        # 保守(以为要点 36-60 金,实际每击 4-8 金)→ 升级滞后 live 实锤(M15 进位面 2 真实 lv5)。
-        if s.level < MAX_PLAYER_LEVEL:  # 封顶 10 级(单一源 MAX_PLAYER_LEVEL)
-            s.gold -= action.cost
-            _cur = s.xp_progress[0] if s.xp_progress else 0
-            _cur += XP_PER_BUY
-            while s.level < MAX_PLAYER_LEVEL:
-                _need = XP_TO_NEXT_LEVEL.get(s.level, 4)
-                if _cur < _need:
-                    break
-                _cur -= _need
-                s.level += 1
-            s.xp_progress = (_cur, XP_TO_NEXT_LEVEL.get(s.level, _cur))
-    elif isinstance(action, DeployMove):
-        _target = (s.bench[action.bench_idx]
-                   if 0 <= action.bench_idx < len(s.bench) else None)
-        if _target is not None:
-            _k = board_unique_key(_target)
-            # 同名唯一性(W43 裁决 1):单卡上场同理——已在场同名 → 拒绝
-            # (进 action_log;bench 同名副本是 3合1 素材,合成走 bench 域)。
-            if _k is not None and any(board_unique_key(d) == _k
-                                       for d in iter_occupied_deployed(s.deployed)):
-                _log_action(s, 'DeployMove', 'rejected',
-                            reason=f'duplicate_on_board:{_k}')
-            else:
-                bc = bench_clear(s.bench, action.bench_idx)
-                # 站位记录 + 开拓者换排形态归一(单一源 helper)
-                _apply_row_to_char(bc, action.to_row)
-                deployed_place(s.deployed, bc)   # ADR-0392:按排路由落槽
-                # ADR-0312:**增量**全集计数——board 可能来自
-                # OCR 真值而 deployed 尚空(生产 read_game_state 填充序),
-                # 全量重算会抹掉 OCR 提供的计数;单位标签 = unit_bond_tags
-                # 全集(星徽/卡带贡献在内)。
-                from sr_od.application.currency_war.kernel.cw_bond_equips import (
-                    unit_bond_tags,
-                )
-                _tags = unit_bond_tags(bc)
-                if not _tags:
-                    _f = getattr(bc, 'faction', '') or ''
-                    _tags = (_f,) if _f and _f != '?' else ()
-                for _t in _tags:
-                    s.board[_t] = s.board.get(_t, 0) + 1
-    elif isinstance(action, SellDeployed):
-        # 动作 v2(契约包 C1,步2):卖场上单位——deployed 生命周期开口。
-        if 0 <= action.deployed_idx < len(s.deployed) \
-                and s.deployed[action.deployed_idx] is not None:   # ADR-0392 空槽拒
-            _tgt = s.deployed[action.deployed_idx]
-            # 代际校验(expect=遥测观测字段,ADR-0392):名不符 = 跨代际提案 → 拒绝不套用
-            if action.expect and _tgt.char_id != action.expect:
-                _log_action(s, 'SellDeployed', 'rejected',
-                            reason=(f'stale_proposal:{action.expect}'
-                                    f'!={_tgt.char_id}'),
-                            char=_tgt.char_id)
-            else:
-                sold = deployed_clear(s.deployed, action.deployed_idx)
-                # ADR-0392:置 None 不移位(deployed_idx 跨动作组恒稳)
-                # income 是记录非指令(同 SellBench 口径):sim 侧按 sell_refund 执行
-                s.gold += sell_refund(sold.star, bench_char_cost(sold))
-                # 装备回收进 owned 池(🟡 游戏侧「卖带装单位装备去向」
-                # 未见实机证据,按回收建模保装备守恒,待 live 核)
-                s.equips.extend(sold.equips)
-                s.board = _recount_board(s.deployed)
-                _log_action(s, 'SellDeployed', 'applied', reason=action.reason,
-                            char=sold.char_id)
-        else:
-            _log_action(s, 'SellDeployed', 'rejected',
-                        reason=f'deployed_idx_out_of_range:{action.deployed_idx}',
-                        char='')
-    elif isinstance(action, SwapDeploy):
-        # 动作 v2(契约包 C1,步2):场上场下对调,装备随人走(对象迁移)。
-        if 0 <= action.deployed_idx < len(s.deployed) \
-                and s.deployed[action.deployed_idx] is not None \
-                and 0 <= action.bench_idx < len(s.bench) \
-                and s.bench[action.bench_idx] is not None:
-            out_char = s.deployed[action.deployed_idx]
-            in_char = s.bench[action.bench_idx]
-            # 代际校验(W43 裁决 2):跨轮登记的换位提案 idx 已指向别人 → 拒绝
-            if (action.expect_deployed
-                    and out_char.char_id != action.expect_deployed) \
-                    or (action.expect_bench
-                        and in_char.char_id != action.expect_bench):
-                _log_action(s, 'SwapDeploy', 'rejected',
-                            reason=(f'stale_proposal:'
-                                    f'{action.expect_deployed}/{action.expect_bench}'
-                                    f'!={out_char.char_id}/{in_char.char_id}'))
-            else:
-                # 同名唯一性(W43 裁决 1):上场者与场上其余单位同名 → 拒绝
-                _k = board_unique_key(in_char)
-                if _k is not None and any(
-                        board_unique_key(d) == _k
-                        for _i, d in iter_deployed_slots(s.deployed)
-                        if _i != action.deployed_idx):
-                    _log_action(s, 'SwapDeploy', 'rejected',
-                                reason=f'duplicate_on_board:{_k}')
-                else:
-                    _row = out_char.position_pref
-                    s.deployed[action.deployed_idx] = in_char   # 槽位语义:原槽对调
-                    s.bench[action.bench_idx] = out_char
-                    # 上场者继承下场者的排(含开拓者形态归一);下场者保留原
-                    # position_pref 记录(回 bench 后不消费,再上场时重写)
-                    _apply_row_to_char(in_char, _row)
-                    in_char.slot = deployed_slot_no(action.deployed_idx)
-                    s.board = _recount_board(s.deployed)
-                    _log_action(s, 'SwapDeploy', 'applied', reason=action.reason,
-                                in_char=in_char.char_id, out_char=out_char.char_id)
-        else:
-            _log_action(s, 'SwapDeploy', 'rejected',
-                        reason=(f'idx_out_of_range:'
-                                f'd{action.deployed_idx}/b{action.bench_idx}'))
-    elif isinstance(action, RefreshShop):
-        s.gold -= action.cost
-        # shop 内容变化未知(随机),不模拟具体牌;仅扣金
-    # PickEvent 不在本模拟范围(event 单独决策)
-    if _pre_equips is not None:
-        # C6 装备守恒对账:mismatch 记账本(禁静默;漂移由 checks/测试锁暴露)
-        _diffs = ledger_mismatch(_pre_equips, state_equips_multiset(s))
-        if _diffs:
-            _log_action(s, 'EquipsLedger', 'mismatch',
-                        reason=f'{type(action).__name__}:{",".join(_diffs)}')
-    return s
-
-
 def mutate_bench_deployed(bench: list[BenchChar | None],
                           deployed: list[BenchChar],
                           action: Action,
                           shop: list[ShopCard] | None = None) -> None:
     """就地应用 action 的 bench/deployed 转移到持久跟踪状态(运行时同步用)。
 
-    与 ``simulate`` 的区别:``simulate`` 返回新 ``CwSimFrame`` copy(整帧副本
-    语义,含 gold/level/shop 全字段);
     本函数**就地改** bench/deployed 两个列表,只做身份/星级/站位转移(buy→bench+merge / deploy→deployed /
     sell→置 None),供运行时执行点(shop.buy / deploy_bench verify / _handle_bench_full sell)同步
-    ``session.bench``/``session.deployed``。转移规则与 simulate 一致(单一源,避双源漂移)。
+    ``session.bench``/``session.deployed``。gold/shop/XP 期望态不在此辖:
+    容器逻辑态直写 = ``apply_shop_action_logic``(动作语义单一源,避双源漂移)。
     ADR-0316/0392:bench/deployed 均为槽位表(定长 9/10,None=空槽)——入口防御性 pad。
     LevelUp/RefreshShop/PickEvent 不影响 bench/deployed → no-op。
 
     ``shop``(缺省 None = 零漂移兼容):调用方的当前店面视图。提供时,
-    满栏合成买与 simulate 同分支单一源——满栏时游戏对完成合成
+    满栏合成买走 ``_apply_full_bench_merge_buy`` 单一源——满栏时游戏对完成合成
     的买入接受并合成(bench 素材被消费腾槽),tracked 侧同走
     ``_apply_full_bench_merge_buy``,不再丢件漏记;未提供或未识别牌
     (name 空,无法判合成对象)时维持旧丢件行为。

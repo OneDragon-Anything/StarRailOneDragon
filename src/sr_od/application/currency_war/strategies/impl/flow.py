@@ -757,8 +757,8 @@ class CwFlowStrategy(CwStrategy[StrategyState]):
             deployed_slots_of,
         )
         # 驱动器同路(W6 波 4,设计件 §2.2-3):决策读容器单例 + 逻辑态直写推进
-        # = apply_shop_action_logic(执行回执经 kernel 单一源派生);与
-        # simulate 的逐域等价由锁 M1 钉住(test_cw_shop_projection_logic)。
+        # = apply_shop_action_logic(执行回执经 kernel 单一源派生);逐域
+        # 期望态由投影直锁钉住(test_cw_shop_projection_logic,锁 M1)。
         # 帧缺失 = 容器离屏 = 观察层失约同型抛错(在屏前置)。
         bs = board_state_of(session)
         if bs.shop.value is None:

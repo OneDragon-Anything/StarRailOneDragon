@@ -528,7 +528,7 @@ def apply_action_outcome(_aop: 'ActionOp',
         # 消费已删除,期望态推进 = 逻辑态直写口 + 合成升星腿,与序列驱动器
         # 同形单一源;设计件《商店黑板容器化方案》§2.1-2/§4-M1)。
         # 写序申报:直写口先写(含 bench 简单落位),升星整表直写后写覆盖
-        # (后写赢)——两写合计对 simulate 输出等价(锁 M1,
+        # (后写赢)——两写合计的期望态由投影直锁钉住(锁 M1,
         # test_cw_shop_projection_logic)。
         # 执行回执(设计件 §2.1-2):k = 执行侧实购张数(merge_buy_k 计数,
         # ledger.buy_purchases 执行落地事实);LevelUpShop 单动作形态恒
