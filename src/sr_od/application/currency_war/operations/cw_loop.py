@@ -23,7 +23,6 @@ from sr_od.application.currency_war.cw_screen_state import (
 from sr_od.application.currency_war.kernel.cw_exec_state import (
     bench_occupied_slot_nos,
     bench_slots_healthy,
-    exec_state_of,
 )
 from sr_od.application.currency_war.kernel.cw_run_allocator import MatchOutcome
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
@@ -267,9 +266,10 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
       已同步形态下零 move 即零待部署;闩只辖恢复局面,达标臂第二次发射
       被「每局恰一次」闩吞 = C1 明令防的双源病)。
 
-    返回 ``(launch_ok, detail)`` = StartBattle 发射位**内部事实**(执行器
-    last_launch_ok 旁路;A6 出战链判效面,批4 随 J2/J3/J4 消费端同退役,
-    非 T-223 端口回执——端口本 身已无返回)。W209j 刹车短路(停机标志
+    返回 ``(launch_ok, detail)`` = 出战**点击序列已执行**(出战域重设计
+    T-286 收缩语义:执行器 last_launch_ok 旁路;False = 找不到按钮/area
+    缺失等未执行形态——旧「发射位内部事实」判效面随 op 重写退役,交回后
+    画面状态由外循环下一帧重判)。W209j 刹车短路(停机标志
     已设)→ 返回 (False, '已停止[W209j刹车]'),交回外循环由 loop 顶退出。
     """
     from sr_od.application.currency_war.kernel.cw_vocab import (
@@ -312,7 +312,7 @@ def launch_prepared_battle(op, ctx, *, sync_once: bool = False):
     except StopBrakeShortCircuit as e:
         log.info('[cw-loop] 停机刹车(%s)→ 出战链动作未发出,交回外循环', e)
         return False, '已停止[W209j刹车]'
-    # StartBattle 发射位内部事实(A6 判效面,批4 同退役;getattr 容缺 =
+    # StartBattle 点击序列事实(出战域重设计 T-286 收缩语义;getattr 容缺 =
     # __new__/桩形态兼容)
     return bool(getattr(ex, 'last_launch_ok', False) or False), \
         getattr(ex, 'last_detail', '')
@@ -763,10 +763,6 @@ class CwLoop(SrOperation):
     #: 换取停机钩子触发前画面有充分自愈窗口(若真是过渡帧,长动画期 2s 恒重试
     #: 只烧预算不推进)。
     UNKNOWN_RETRY_BACKOFF_CAP_S: ClassVar[float] = 10.0
-    #: P4R:0j「前台无角色」恢复链的验证重部署重试上限(本 run 累计;出战
-    #: 真转移后复位)。超限 round_fail 交未知画面兜底链——不再无限 round_wait
-    #(1-1 事故 5h 死循环返工)。
-    FRONTLESS_REDEPLOY_LIMIT: ClassVar[int] = 2
     #: P4R3:0q 位面过渡误分发型 fail 上限(连续计;0p 接管/过渡成功清零)。
     #: 超限 round_fail 交未知画面兜底链——第五局实锤:boss 简报帧误分发
     #: CwScreenPlaneTransition(「提示未出现」fail)每 2s 无限循环。
@@ -776,7 +772,7 @@ class CwLoop(SrOperation):
     #: 的无界空转(实锤形态 = 选择伙伴 15 连败,由 NODE-DWELL 900s 系统
     #: 哨兵兜住才停,2026-09-15 事故)。取值 = prep 环既有
     #: ``_director_fail_streak`` 阈值 5(本文件既有最严分支连续 fail
-    #: 预算,零新拍定值):既有专用守卫上限全部 ≤ 本值(0j=2/0q=3/
+    #: 预算,零新拍定值):既有专用守卫上限全部 ≤ 本值(0q=3/
     #: 达标臂=3/耗尽臂=3/prep=5)且在各自 on_result/链形透传内短路返回,
     #: 而本防线的计数位次在 hook 早退之后 → 专用守卫同值平手时先返回,
     #: 通用网结构性不抢占任何专用守卫,只辖无专用预算的分支(overlay/
@@ -1093,7 +1089,7 @@ class CwLoop(SrOperation):
 
         :param op: 画面 op 实例(有 ``execute()``)或零参可调用——可调用返回
             ``(ok, detail)`` 元组时经 ``_FnResult`` 适配(0n 的 visit_open_shop
-            形),返回 OperationRoundResult 时链形透传(0j/3c 恢复链/收口链,
+            形),返回 OperationRoundResult 时链形透传(3c 恢复链/收口链,
             轮次结果即分支出口,outcome = 非 FAIL/RETRY 即 ok)。
         :param journal_name: [cw-op] 日志行的 op 名(复盘「分发了谁」直读键)
         :param frame_tag: 决策帧 tag;None = 跳过落帧(留证面零扩的可退选项)
@@ -1109,8 +1105,8 @@ class CwLoop(SrOperation):
         (``op_fail_redispatch_tick``);无专用预算分支的 fail 连续达
         ``OP_FAIL_REDISPATCH_LIMIT`` → round_fail 显式停交上层,取代
         「fail → round_wait 零预算重派」的无界空转。计数/判定位于
-        hook 早退之后 → 专用守卫(0j/0q/prep streak)结构性先于本网;
-        链形透传分支(0j/3c)不经本网(各有自身预算)。
+        hook 早退之后 → 专用守卫(0q/prep streak)结构性先于本网;
+        链形透传分支(3c)不经本网(各有自身预算)。
 
         异常安全(ADR-0584 §5.2):``op`` 体或 ``on_result`` 抛异常时,补落
         outcome='error' 的 [cw-op] 行后原样上抛——异常语义归节点级重试链
@@ -1476,48 +1472,22 @@ class CwLoop(SrOperation):
 
         if name == '货币战争-提示-前台无角色':
 
-            def _frontless_recovery_step() -> OperationRoundResult:
+            def _frontless_confirm_step() -> OperationRoundResult:
+                # 出战域重设计(T-286):弹窗确认交回语义——点确认关弹窗,
+                # 零恢复动作(不重部署不补发射,原 0j 恢复链退役);交回
+                # 外循环下一帧重判真实画面(备战 = 重走备战环决策;弹窗
+                # 残留 = 本分支再入确认,天然幂等)。「前台无角色」根因
+                # 处置归部署面决策,弹窗臂不自愈。
                 _ok_pt = self.round_by_find_and_click_area(
                     screen, '货币战争-提示-前台无角色', '按钮-确认', success_wait=1)
-                self._frontless_redeploy = getattr(self, '_frontless_redeploy', 0) + 1
-                if self._frontless_redeploy > CwLoop.FRONTLESS_REDEPLOY_LIMIT:
-                    log.error('[cw!] [loop] 前台无角色:验证重部署 %d 次仍前台空 → '
-                              'round_fail 交兜底链(不再无限重试)',
-                              CwLoop.FRONTLESS_REDEPLOY_LIMIT)
-                    return self.round_fail('前台无角色重部署超限(前台仍空)')
-                log.info('[cw-loop] 前台无角色提示 → 确认关闭(%d/%d)→ 带验证重部署',
-                         self._frontless_redeploy,
-                         CwLoop.FRONTLESS_REDEPLOY_LIMIT)
-                from sr_od.application.currency_war.operations.cw_screen.cw_screen_deploy import (
-                    CwScreenDeploy,
-                )
-                _rd = CwScreenDeploy(self.ctx).execute()
-                log.info('[cw-loop] 前台无角色重部署 → %s',
-                         getattr(_rd, 'status', '') or ('成功' if getattr(_rd, 'success', False) else '失败'))
-                time.sleep(1.0)   # 部署动画/特效窗(出战点击时序,防特效帧落空;机械等待非判效)
-                from sr_od.application.currency_war.kernel.cw_vocab import (
-                    StartBattle as _StartBattle,
-                )
-                from sr_od.application.currency_war.prep_actions import (
-                    PrepActionExecutor as _PAE,
-                )
-                _sb_ok, _sb_detail = _PAE(self, self.ctx).execute(_StartBattle())
-                if _sb_ok:
-                    self._frontless_redeploy = 0   # 出战真转移 → 重试预算复位
-                    self._battle_ts = time.monotonic()
-                    self._battle_wait_active = True
-                    log.info('[cw-loop] 前台无角色恢复链:重部署 → 出战成功')
-                    return self.round_wait(wait=3)
-                log.warning('[cw!] [loop] 前台无角色恢复链:重部署后出战未落地(%s)'
-                            '→ retry(下轮再入本臂计重试;失败信号 = '
-                            'POST_LAUNCH_BLOCKERS 弹窗守卫)',
-                            _sb_detail)
-                return self.round_retry(wait=2)
+                log.info('[cw-loop] 前台无角色提示 → 确认关闭(%s)→ 交回重判',
+                         _ok_pt.is_success)
+                return self.round_wait(wait=1.5)
 
             # C1(ADR-0584 §1.3):准推进恢复链非纯推进画面——链形透传,
             # 轮次结果即分支出口,包装只补 journal 行与留证帧。
             return self._dispatch_screen_op(
-                _frontless_recovery_step, journal_name='前台无角色恢复',
+                _frontless_confirm_step, journal_name='前台无角色确认',
                 frame_tag='overlay_frontless', wait=1.0)
 
         if name == '货币战争-BOSS简报':
@@ -2136,11 +2106,13 @@ class CwLoop(SrOperation):
                         # 成功复位失败计数(窗口 = 连续失败,非累计)
                         self._cw_readiness_fail_n = 0
                         return self.round_wait(wait=3)
-                    # 发射失败连续计数(防线 C1,出处 = 14 号稿 §7.1 as-built
-                    # 开战放行判定三元语义):fp≥1.00 恒真 +
-                    # StartBattle 持续失败 + round_wait 不耗 retry = 框架内
-                    # 零防线自旋。连续 3 次失败放弃短路,回落守卫链(守卫
-                    # 照常计数,卡死仍可停机),分键零静默;成功即复位。
+                    # 点击未执行连续计数(防线 C1,出处 = 14 号稿 §7.1 as-built
+                    # 开战放行判定三元语义;语义随出战域重设计收缩:False =
+                    # 找不到按钮/area 缺失等未执行形态,op 已零判效——
+                    # 交回后画面由下一帧重判,此处只防「判定键在但按钮恒
+                    # 找不到」的确定性卡死自旋)。连续 3 次失败放弃短路,
+                    # 回落守卫链(守卫照常计数,卡死仍可停机),分键零静默;
+                    # 成功即复位。
                     _rf = getattr(self, '_cw_readiness_fail_n', 0) + 1
                     self._cw_readiness_fail_n = _rf
                     counters = getattr(strategy_state_of(
@@ -2153,11 +2125,11 @@ class CwLoop(SrOperation):
                         if isinstance(counters, dict):
                             counters['readiness_launch_giveup'] = \
                                 counters.get('readiness_launch_giveup', 0) + 1
-                        log.error('[cw!][loop] 达标臂连续 %d 次发射失败(最后一次:'
+                        log.error('[cw!][loop] 达标臂连续 %d 次出战未执行(最后一次:'
                                   ' %s)→ 放弃短路,回落守卫链(防线 C1)', _rf,
                                   _detail_r)
                     else:
-                        log.warning('[cw!][loop] 达标臂发射失败(第 %d/3 次,%s)'
+                        log.warning('[cw!][loop] 达标臂出战未执行(第 %d/3 次,%s)'
                                     '→ 下环重试', _rf, _detail_r)
                         return self.round_wait(wait=3)
             # (原 PREP_SETTLE_S 子态稳定门 + _post_settle_auto_shop 自动开店判稳
@@ -2185,7 +2157,8 @@ class CwLoop(SrOperation):
             # 判据(设计章1.2)= 新 match(无本局记录)+ 首个备战相位 round>1 → 候选;
             # 一次「点商店→验收起」探针(章1.3)区分锁定/未锁(锁定唯一可观测特征
             # =商店按钮零响应);锁定态跳过全部备战交互直接出战(复用 StartBattle
-            # 执行体,内含未达上限确认),出战成功即解除(章1.5)。误判防线:候选
+            # 执行体,内含出战后两类弹窗确认——出战域重设计 T-286 同款语义),
+            # 出战成功即解除(章1.5)。误判防线:候选
             # 撤回(1-1 正常新局)/探针可开(非锁定)两处都不进锁定分支。
             if self._cw_resume_candidate:
                 _pr = read_phase_round(self.ctx, screen)
@@ -2223,7 +2196,7 @@ class CwLoop(SrOperation):
                     # (exec_events 发射事件行与流程心跳载体行已随 decisions/
                     #  exec_events 流写入端退役删除——删除波 1。)
                     return self.round_wait(wait=3)
-                log.warning('[cw!][loop] 锁定模式出战未落地(%s)→ retry(保锁定)',
+                log.warning('[cw!][loop] 锁定模式出战未执行(%s)→ retry(保锁定)',
                             detail)
                 return self.round_retry(wait=2)
             # 过渡门说明(r7 review P0-B):0e 系分支(上方)先于本分支检查同截图同三元组(id_mark
@@ -2275,22 +2248,9 @@ class CwLoop(SrOperation):
                         return self.round_fail('CwScreenPrep 连续失败(停滞)')
                 else:
                     self._director_fail_streak = 0
-                    # 正常备战环跑完一轮 = 部署链健康 → 0j 恢复链重试预算复位
-                    #(预算只辖「前台无角色→重部署」连续失败窗,非整局总量)。
-                    # F3/T-174(ADR-0610)复位条件收紧:StartBattle 发射但
-                    # 内部发射事实为 False 的环在外循环仍记 round_success
-                    #(发出即终结交回)——1-1 冻结局实证该形态每环误复位预算
-                    #(两次显示 (1/2)),预算形同虚设、唯一止住循环的是环级
-                    # 守卫。故「发射但 False」不复位;「本环未发射」(None)
-                    # 或发射 True 才复位。读后即清防跨环残留。
-                    _prep_sess = (self.ctx.cw_match.session
-                                  if self.ctx.cw_match is not None else None)
-                    _launch_ok = getattr(
-                        exec_state_of(_prep_sess),
-                        'last_prep_battle_launch_ok', None)
-                    if _launch_ok is not False:
-                        self._frontless_redeploy = 0
-                    exec_state_of(_prep_sess).last_prep_battle_launch_ok = None
+                    # (0j 恢复链重试预算复位段已随 0j 链整删退役——出战域
+                    # 重设计 T-286:出战后画面状态交外循环下一帧重判,无
+                    # op 内恢复预算可复位。)
                     # ADR-0250:备战环经出战出口 → 战斗窗口开(watch 宽限计时起点)
                     self._battle_ts = time.monotonic()
                     # 环出口含出战 → 战斗窗口驻留闩置位(下轮委托 CwScreenBattleWait;

@@ -553,8 +553,8 @@ class CwScreenPrep(CwScreenOpBase):
         # 通道),发射时点逐位迁移(位置迁移;「未落地不计数」防线由观察
         # 侧 reconcile 对账承接 = _reconcile_xp_expect,§6.5-1)。执行器内
         # 登记件(刷新计数组免费闸 record_refresh_execution、免战牌
-        # consume_use,现役接线点 = cw_op_buy_cards 执行落地门/prep_actions
-        # _launch_attempt)**不随本批收编**:该执行链为双路径共链,迁移即
+        # consume_use,现役接线点 = cw_op_buy_cards 执行落地门/kernel
+        # apply_op_effect 上报路径)**不随本批收编**:该执行链为双路径共链,迁移即
         # 生产行为变化——收编挂账至试点等价门通过后的执行器批(§6.4-R-J
         # 非登记职责留守执行器;免费闸/随点击置位等 §6.5 六条语义以现役
         # 位置逐字保绿)。
@@ -2332,9 +2332,9 @@ class CwScreenPrep(CwScreenOpBase):
         非终结动作到达 = 终结集与消费面失配,响亮暴露。
         """
         if op_cls is StartBattleOp:
-            # 出战提前终结(批3a:发出即终结——机械发射完成即交回外循环
-            # 战斗分支;发射位内部事实经执行器 last_launch_ok/exec_state
-            # 旁路供 cw_loop J2/J3/J4,批4 同退役)。
+            # 出战提前终结(批3a:发出即终结——点击序列完成即交回外循环
+            # 战斗分支;点击序列事实经执行器 last_launch_ok 旁路供 cw_loop
+            # 发射核,出战域重设计 T-286 收缩语义)。
             return self.round_success('出战(交回外循环战斗分支)',
                                       wait=op_cls.terminal_wait)
         if op_cls is OpenShopOp:
