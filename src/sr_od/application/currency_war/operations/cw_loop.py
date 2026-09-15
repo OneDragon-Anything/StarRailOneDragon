@@ -833,25 +833,6 @@ class CwLoop(SrOperation):
     #: 事件族 + on_fail_retry 族——后者原退路是消耗 400 节点重试池
     #: ≈ 13min 同 op 空转)。
     OP_FAIL_REDISPATCH_LIMIT: ClassVar[int] = 5
-    # r119 停滞 watchdog 参数:每 5 iter 采一次指纹(≈5-10s),连续 6 次相同
-    # (≈1-2min 同屏)→ 哨兵。合法静止态(结算族)按固定短语豁免,见
-    # STALL_EXEMPT_PHRASES;战斗进行期由 BATTLE_WATCH_GRACE_S 宽限窗承管。
-    STALL_SNAPSHOT_EVERY: ClassVar[int] = 5
-    STALL_N: ClassVar[int] = 6
-    #: 停滞豁免固定短语表(T-163 去盲,2026-09-08 实机事故):合法静止态的
-    #: **全帧 OCR 固定短语**,非裸子串。旧裸子串表(战斗/胜利/挑战/结算/
-    #: 准备/倒计时)被弹窗正文撞车致盲——天赋文本「进入战斗前为自己打造
-    #: 装备」含「战斗」、词缀描述含「倒计时/战斗节点」→ 豁免恒中 → 停滞
-    #: 计数恒清零,卡死 26 分钟无人报(哨兵 stall_watch.flag 零落盘实证)。
-    #: 短语集取自归档结算族 fixture 实测 OCR(货币战争-结算/结算-失败/
-    #: 挑战失败 三屏):挑战成功/继续挑战(win)、挑战结束/前往结算(轮败)、
-    #: 挑战失败(团灭)。战斗进行期本就零关键词(ADR-0250 局54 实锤:
-    #: HUD 词可全程缺位),由宽限窗承管,不入本表——本表只辖「结算/等待
-    #: 态合法静止」。新增豁免态须先归档 fixture、从实帧 OCR 取短语,
-    #: 禁凭裸词直觉回填(裸词 = T-163 同型致盲面)。
-    STALL_EXEMPT_PHRASES: ClassVar[tuple[str, ...]] = (
-        '挑战成功', '挑战失败', '挑战结束', '继续挑战', '前往结算',
-    )
     #: 战斗窗口 watch 宽限(ADR-0250):出战后合法静止上限。实测战斗 4-5.5min
     #: (P1r9 boss 4min20s/P2r1 遭遇 5min20s),600s 覆盖余量后仍可哨兵真挂死。
     BATTLE_WATCH_GRACE_S: ClassVar[float] = 600.0
@@ -968,10 +949,6 @@ class CwLoop(SrOperation):
         # (轮计数 _rounds_done 已随结算链收编 CwScreenBattleWait → SettlementState
         #  .rounds_done(W971 05-battle §1);本类经 self._settle.rounds_done 读。)
         # r119 停滞 watchdog 状态:画面指纹采样(OCR 关键词 frozenset 哈希)。
-        # 每 STALL_SNAPSHOT_EVERY iter 采样一次;连续 STALL_N 次相同 → 哨兵。
-        self._stall_last_fp: int | None = None
-        self._stall_count: int = 0
-        self._stall_flag_written: bool = False
         # 战斗窗口宽限计时起点(monotonic;出战/战斗帧双入口赋值)。接管局首帧
         # 可直接落战斗窗口(先于任何出战),必须在此初始化——否则 1213 行
         # ``self._settle.battle_ts = self._battle_ts`` 直接访问未初始化属性
@@ -1089,85 +1066,6 @@ class CwLoop(SrOperation):
         except Exception as e:  # noqa: BLE001  debug 路径,失败不阻塞对局
             log.warning(f'[cw-snap] {tag} iter={self._iter} failed: {e}')
 
-    @staticmethod
-    def _watch_in_battle_grace(battle_ts: float | None, now: float) -> bool:
-        """战斗窗口宽限判定(纯函数,ADR-0250):``battle_ts`` 非空且未超
-        ``BATTLE_WATCH_GRACE_S`` → True(watch 不计数)。None/超时 → False。"""
-        return (battle_ts is not None
-                and now - battle_ts < CwLoop.BATTLE_WATCH_GRACE_S)
-
-    @staticmethod
-    def _stall_exempt(texts: frozenset[str]) -> bool:
-        """停滞豁免判据(T-163 去盲):全帧 OCR 含任一合法静止态固定短语。
-
-        短语集与致盲机理见 ``STALL_EXEMPT_PHRASES`` 注;独立成纯函数供
-        测试仓锁「弹窗正文类文本不豁免」(裸子串回归 = 26min 致盲复发面)。
-        """
-        return any(p in t for t in texts
-                   for p in CwLoop.STALL_EXEMPT_PHRASES)
-
-    def _stall_watch_tick(self, screen) -> None:
-        """r119 停滞 watchdog:同屏指纹连续相同 → 哨兵(不停机,日志+flag 双通道)。
-
-        指纹 = OCR 关键词 frozenset 哈希(5 iter 采一次,~5-10s 粒度)。战斗/
-        结算/等待态按固定短语豁免(合法静止,STALL_EXEMPT_PHRASES;战斗
-        进行期归下方宽限窗)。触发 = 写 stall_watch.flag
-        (含处理指引)+ [cw!] 日志一次;画面变化后自动清计数(flag 留给 AI 巡检
-        后删)。设计:采集哨兵非停机(bot 可能只是慢,停机代价>等待代价;
-        od-dev-stop-hooks 采集/停机分流判据)。
-        """
-        if self._iter % CwLoop.STALL_SNAPSHOT_EVERY != 0:
-            return
-        # ADR-0250(战斗窗口宽限,局54 哨兵误报复盘):出战后的战斗进行期是
-        # 合法静止(实测 4-5.5min > watch 阈值 ≈2.5min),且战斗 HUD 关键词
-        # 可全程不含豁免词(局54 实锤:4 词缀+3 首领+难度常驻简报信息面板,
-        # 「决战在即」是词缀名非战斗标语)→ 关键词豁免兜不住,误报稀释真哨兵
-        # 信号。窗口内不计数;宽限过 → 恢复正常判定(出战卡死类真挂死仍可触发)。
-        # 开窗=备战环出口(出战);关窗=结算观测回路(battle_wait)/备战分支再入。
-        if self._watch_in_battle_grace(
-                getattr(self, '_battle_ts', None), time.monotonic()):
-            self._stall_count = 0
-            self._stall_last_fp = None
-            return
-        if getattr(self, '_battle_ts', None) is not None:
-            self._battle_ts = None   # 宽限已过 → 恢复正常停滞判定
-        ocr_map = self.ctx.ocr_service.get_ocr_result_map(
-            image=screen, rect=None, color_range=None, crop_first=False,
-        )
-        texts = frozenset(k for k, mrl in ocr_map.items() if mrl.max is not None)
-        # 结算/等待态豁免(合法静止;固定短语判据,T-163 去盲——旧裸子串
-        # 「战斗」被弹窗正文撞车致盲 26min,机理见 STALL_EXEMPT_PHRASES 注)
-        if self._stall_exempt(texts):
-            self._stall_count = 0
-            self._stall_last_fp = None
-            return
-        fp = hash(texts)
-        if fp == self._stall_last_fp:
-            self._stall_count += 1
-        else:
-            self._stall_count = 0
-            self._stall_last_fp = fp
-            self._stall_flag_written = False   # 画面动了 → 哨兵可再次触发(新一轮停滞)
-        if self._stall_count >= CwLoop.STALL_N and not self._stall_flag_written:
-            _shot = self.save_screenshot(prefix='cw_stall')
-            _sentinel = (get_project_root() / '.debug' / 'temp'
-                         / 'currency_war' / 'stall_watch.flag')
-            _sentinel.parent.mkdir(parents=True, exist_ok=True)
-            _sentinel.write_text(
-                f'停滞 watchdog:iter={self._iter} 同屏指纹连续 {self._stall_count} 次'
-                f'(≈{self._stall_count * CwLoop.STALL_SNAPSHOT_EVERY} iter)\n'
-                f'OCR 关键词: {sorted(texts)[:12]}\n'
-                f'处理流程:\n'
-                f'1. 看关键词/截图:疑似事件 overlay(未建档 handler)→ 按\n'
-                f'   od-dev-screen-onboarding 建档 + cw_loop 0x 分支加 handler;\n'
-                f'2. 处理完删本 flag。bot 未停机(可能只是慢),处理完可继续跑。\n'
-                f'shot={_shot}', encoding='utf-8')
-            log.warning('[cw!][watch] 停滞哨兵:同屏 %s 次(≈%s iter)关键词=%s '
-                        'shot=%s —— 疑似未处理 overlay/操作循环,详见 stall_watch.flag',
-                        self._stall_count,
-                        self._stall_count * CwLoop.STALL_SNAPSHOT_EVERY,
-                        sorted(texts)[:8], _shot)
-            self._stall_flag_written = True   # 只写一次,画面变化后可重置重写
 
     def _cw4_counters_snapshot(self, session: Any) -> dict[str, int] | None:
         """策略行为观测计数局终聚合快照(R5 W4 键收编载体,r5-migration-plan.md §2 W4)。
@@ -1527,17 +1425,6 @@ class CwLoop(SrOperation):
         if self._iter == 1:
             self._dispatch_anchor_precheck()
 
-        # r119 停滞 watchdog(用户 2026-08-21 纠偏「卡 30min 没发现」):
-        # 局29 银狼 41min/局32 命运卜者 30min/局33 祈愿崩 553 iter——轮询监控
-        # 只看进度摘要,卡死形态(同屏不动/空转)要跨采样对比才可见。本钩子
-        # 让 bot 自己检测:**每 STALL_SNAPSHOT_EVERY 次迭代采样一次画面指纹
-        # (OCR 关键词集合的哈希),连续 STALL_N 次指纹相同且非战斗/结算态
-        # → 写 stall_watch.flag 哨兵**(AI 下次巡检/交互第一时间可见,处理
-        # 流程写在 flag 里)。不停机(bot 可能只是慢),哨兵+日志双通道。
-        try:
-            self._stall_watch_tick(screen)
-        except Exception as _e:   # noqa: BLE001  watchdog 失败不阻塞
-            log.debug('[cw-watch] 停滞检测失败(不阻塞): %s', _e)
 
         # 窗口焦点防线(loop 级,失焦僵尸根治):每 10 迭代主动验窗口焦点,失焦即激活。
         # 实证依据:窗口后台化时输入静默丢/截图正常 → 环僵尸;click/drag 点位守卫
