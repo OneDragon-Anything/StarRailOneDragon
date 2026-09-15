@@ -14,7 +14,11 @@ from sr_od.application.currency_war.currency_war_config import CurrencyWarConfig
 # 迁移审计 w75(git 历史)(ADR-0335):after_operation_done 的 result 注解在类定义期求值,OperationResult
 # 必须**运行期可导入**(TYPE_CHECKING 块对此场景不够——本模块无
 # `from __future__ import annotations`;用 _ 别名避与参数名冲突)。
-from sr_od.application.currency_war.kernel.cw_exec_state import exec_state_of
+from sr_od.application.currency_war.kernel.cw_exec_state import (
+    bench_occupied_slot_nos,
+    bench_slots_healthy,
+    exec_state_of,
+)
 from sr_od.application.currency_war.kernel.cw_run_allocator import MatchOutcome
 from sr_od.application.currency_war.kernel.cw_strategy_session import strategy_state_of
 from sr_od.application.currency_war.obs.cw_observation import (
@@ -420,6 +424,25 @@ def _battle_chain_deploy_moves(session) -> list:
     # 容器下标解析(换算收口,unified-action-factory 批2b):bench 源取
     # 容器槽位表下标(assign 的 bi 是紧缩视图下标,经同帧 slot 信息位对
     # 容器读口对位);faction = 容器槽位表角色对象现取(sim board 计数)。
+    # 对位防线(T-266 追加,三审代-2 编排者升应修):容器槽位表存在重复/
+    # 越界槽号时 ``{slot: 下标}`` 字典对位语义未定义(dict 推导静默保留
+    # 后值 = DeployMove 对位同槽号另一条目、拖错人出场的通道;T-261 已治
+    # tracked 写点与写回门,本处为读侧残余通道)。判据单一源 =
+    # ``bench_slots_healthy``(槽号健康不变量,T-261 落地);不健康 →
+    # fail-closed 整份部署计划不出(映射整体不可信,无部分可信子集;
+    # 出战链照常发射,部署缺失由下一帧观察侧 reconcile 对账暴露),
+    # cw4 分键显影防静默降级。
+    _slot_nos = bench_occupied_slot_nos(bench_slots)
+    if not bench_slots_healthy(_slot_nos):
+        _bcd_counters = getattr(strategy_state_of(session), 'cw4_counters',
+                                None)
+        if isinstance(_bcd_counters, dict):
+            _bcd_counters['deploy_chain_slot_table_unhealthy'] = \
+                _bcd_counters.get('deploy_chain_slot_table_unhealthy', 0) + 1
+        log.warning('[cw!][loop] 出战链部署计划弃算:容器槽位表槽号不健康'
+                    '(重复/越界,%s)→ {slot:下标} 对位 fail-closed,'
+                    '本帧零 DeployMove(出战照常,对账归观察侧)', _slot_nos)
+        return []
     _cidx_of = {b.slot: i for i, b in enumerate(bench_slots) if b is not None}
     _out: list[DeployMove] = []
     for bi, row, _slot in assign_deploy_slots(bench, up, front_empty,
